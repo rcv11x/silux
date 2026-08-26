@@ -11,6 +11,15 @@ Gráficos, Almacenamiento, Red, Sistema, Rendimiento, Sensores y Ajustes.
 
 Escrito con ayuda de Claude.
 
+![La pestaña de CPU](capturas/cpu.png)
+
+<p align="center">
+  <img src="capturas/graficos.png" width="49%" alt="Gráficos">
+  <img src="capturas/sensores.png" width="49%" alt="Sensores">
+  <img src="capturas/almacenamiento.png" width="49%" alt="Almacenamiento">
+  <img src="capturas/red.png" width="49%" alt="Red">
+</p>
+
 ## Qué es y qué no
 
 Dos preguntas, y solo dos:
@@ -40,7 +49,12 @@ python3 -m silux.cli                    # volcado en el terminal
 python3 -m silux.cli --json             # el mismo dato, para otros programas
 python3 -m silux.cli --watch            # refresco continuo en texto
 python3 -m silux.cli --report i.md      # informe para adjuntar a un fallo
+python3 -m silux.ui.app --anonimo       # oculta lo que identifica al equipo
 ```
+
+`--anonimo` cambia el nombre del equipo, las direcciones y los números de
+serie por otros de la misma pinta. Las capturas de aquí arriba están hechas
+así: el hardware es real y lo que señala a una máquina concreta, no.
 
 La ventana abre a 900×680 y recuerda el tamaño al cerrarla. El suelo depende
 de la densidad (470×400 en normal, 400×340 en compacta) y no es el mínimo

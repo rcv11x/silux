@@ -469,6 +469,9 @@ def build_app(argv: Optional[list[str]] = None) -> tuple[QApplication, MainWindo
     parser.add_argument("--accent", metavar="COLOR", choices=ACCENT_NAMES,
                         help="fuerza el color de acento solo para esta ejecución")
     parser.add_argument("--size", metavar="ANCHOxALTO", help="tamaño de ventana, p. ej. 820x620")
+    parser.add_argument("--anonimo", action="store_true",
+                        help="oculta lo que identifica al equipo: nombre, "
+                             "direcciones y números de serie")
     parser.add_argument("--screenshot", metavar="RUTA",
                         help="captura la ventana en un PNG y sale (útil sin pantalla)")
     parser.add_argument("--page", metavar="NOMBRE", help="sección a mostrar al abrir")
@@ -511,6 +514,19 @@ def build_app(argv: Optional[list[str]] = None) -> tuple[QApplication, MainWindo
     return app, MainWindow(prefs), args
 
 
+def _anonimizador(activo: bool):
+    """Lo que se le hace a cada foto antes de pintarla, si se pidió.
+
+    Una captura de pantalla lleva el nombre del equipo y el número de serie
+    de la gráfica, igual que el informe de fallos, y acaba en los mismos
+    sitios públicos. Aquí se cambian por otros de la misma pinta.
+    """
+    if not activo:
+        return lambda foto: foto
+    from ..privacidad import anonimizar
+    return anonimizar
+
+
 def main(argv: Optional[list[str]] = None) -> int:
     app, window, args = build_app(argv)
 
@@ -522,9 +538,10 @@ def main(argv: Optional[list[str]] = None) -> int:
         window.show()
         collector = Collector()
         collector.snapshot()
+        preparar = _anonimizador(args.anonimo)
         for _ in range(10):
             time.sleep(0.08)
-            window._on_sample(collector.snapshot())
+            window._on_sample(preparar(collector.snapshot()))
         # Una sola pasada de eventos no basta: los layouts anidados dentro del
         # área de desplazamiento necesitan asentarse antes de grabar.
         QTimer.singleShot(400, app.quit)
