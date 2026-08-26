@@ -62,6 +62,7 @@ def _cabecera(snapshot: Snapshot, anonymous: bool) -> str:
         f"| Python | {platform.python_version()} |",
         f"| Qt (PySide6) | {qt or 'no instalado'} |",
         f"| Fuentes activas | {', '.join(sorted(snapshot.capabilities)) or 'ninguna'} |",
+        f"| Ejecutado desde | {_procedencia()} |",
     ]
     if not anonymous and sistema.hostname:
         lineas.append(f"| Equipo | {sistema.hostname} |")
@@ -205,7 +206,9 @@ def _diagnostico(snapshot: Snapshot) -> str:
         lineas.append("**Módulos del kernel que ampliarían lo que se ve:**")
         lineas.append("")
         for pista in snapshot.driver_hints:
-            lineas.append(f"- `{pista.module}`: {pista.reason}")
+            lineas.append(f"- `{pista.module}`: {pista.provides}")
+            if pista.command:
+                lineas.append(f"  `{pista.command}`")
         lineas.append("")
 
     if snapshot.notes:
@@ -217,6 +220,21 @@ def _diagnostico(snapshot: Snapshot) -> str:
     else:
         lineas.append("Sin datos ausentes: todo lo que el equipo expone se ha leído.")
     return "\n".join(lineas)
+
+
+def _procedencia() -> str:
+    """Si corre desde un AppImage o desde el código.
+
+    Importa más de lo que parece: desde un AppImage el ayudante privilegiado
+    necesita un rodeo, y un «no me deja elevar permisos» sin este dato no lleva
+    a ninguna parte.
+    """
+    import os
+    import sys
+
+    if os.environ.get("APPIMAGE") or "/.mount_" in sys.executable:
+        return "AppImage"
+    return "código fuente o paquete del sistema"
 
 
 def _version_de_qt() -> Optional[str]:

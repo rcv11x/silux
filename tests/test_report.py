@@ -7,6 +7,7 @@ pedía ayuda.
 """
 
 import unittest
+from unittest import mock
 
 from silux import report
 from silux.model import (Board, Clocks, CpuInfo, CpuType, Gpu, GpuMemory, Need,
@@ -82,6 +83,25 @@ class TestContenido(unittest.TestCase):
         texto = report.build(_snapshot(notes=notas))
         self.assertIn("cpu.voltage_v", texto)
         self.assertIn("falta un módulo del kernel", texto)
+
+    def test_los_modulos_que_faltan_salen_con_su_orden(self):
+        # El informe reventaba al llegar aquí: pedía un campo que DriverHint no
+        # tiene, y como en la máquina de desarrollo no faltaba ningún módulo,
+        # no se veía nunca.
+        from silux.model import DriverHint
+        pistas = (DriverHint(module="drivetemp",
+                             provides="la temperatura de los discos SATA",
+                             command="sudo modprobe drivetemp"),)
+        texto = report.build(_snapshot(driver_hints=pistas))
+        self.assertIn("drivetemp", texto)
+        self.assertIn("sudo modprobe drivetemp", texto)
+
+    def test_dice_desde_donde_se_ejecuta(self):
+        # Desde un AppImage el ayudante privilegiado necesita un rodeo, así que
+        # un «no me deja elevar permisos» sin este dato no lleva a ninguna parte.
+        import os
+        with mock.patch.dict(os.environ, {"APPIMAGE": "/home/x/silux.AppImage"}):
+            self.assertIn("AppImage", report.build(_snapshot()))
 
     def test_sin_nada_que_falte_tambien_lo_dice(self):
         self.assertIn("Sin datos ausentes", report.build(_snapshot()))
