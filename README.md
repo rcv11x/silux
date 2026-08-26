@@ -6,8 +6,8 @@ ahora mismo.
 
 Escrito en Python puro, sin más dependencia que Qt para la ventana.
 
-Estado: las nueve secciones terminadas. CPU, Cachés, Placa base, Memoria,
-Gráficos, Red, Sistema, Sensores y Ajustes.
+Estado: las once secciones terminadas. CPU, Cachés, Placa base, Memoria,
+Gráficos, Almacenamiento, Red, Sistema, Rendimiento, Sensores y Ajustes.
 
 Escrito con ayuda de Claude.
 
@@ -180,6 +180,15 @@ SSE/AVX. Es una función que este proyecto no persigue.
 | UEFI o BIOS heredada, arranque seguro, TPM | `/sys/firmware`, `/sys/class/tpm` | no |
 | Chipset y controlador de memoria | bus PCI + `pci.ids` | no |
 | Umbrales de alarma de cada sensor | `hwmon` (`*_max`, `*_crit`) | no |
+| Gráfica: identidad, VRAM, tabla DPM, enlace PCIe | nodo DRM en `/sys/class/drm` | no |
+| Tipo de VRAM, anchura del bus, unidades de cómputo | ioctl `AMDGPU_INFO` | no |
+| Versiones de OpenGL, Vulkan y OpenCL | las bibliotecas, en otro proceso | no |
+| Monitor: modelo, tamaño, resolución y refresco | EDID del conector | no |
+| Por qué se frena la gráfica AMD | `gpu_metrics` del firmware | no |
+| Gráficas NVIDIA con el driver propietario | NVML | no |
+| Discos: modelo, tipo, enlace, particiones | `/sys/block`, `/proc/mounts` | no |
+| Horas de encendido, terabytes escritos, desgaste | SMART por `ioctl` (NVMe y SATA) | sí |
+| Interfaces de red, direcciones y tráfico | `/sys/class/net`, `/proc/net/dev` | no |
 
 Cuando algo no se puede leer, la aplicación **lo dice y explica por qué** en
 lugar de dejar el campo vacío o esconder la sección.
@@ -393,23 +402,28 @@ debajo de su PL1. Coincide con lo que reporta Mission Center.
 
 ```
 silux/
-├─ rawcpuid.py     CPUID desde Python, con fijación de afinidad por núcleo
-├─ features.py     tabla declarativa de banderas: hoja, registro, bit, nombre
 ├─ model.py        dataclasses congeladas: valores tipados, nunca texto
 ├─ render.py       ÚNICO sitio donde un valor se convierte en texto
 ├─ collector.py    orquesta los proveedores; separa lo estático de lo dinámico
-├─ providers/      una fuente cada uno; ninguno conoce a los demás
-├─ db/             cpu_ids.json (generado) + sockets.json (propio)
 ├─ tracking.py     mínimos, máximos y medias por sensor a lo largo de la sesión
-├─ pciids.py       resuelve nombres de dispositivos PCI contra la base del sistema
-├─ spd.py         decodifica el chip de identificación de los módulos de RAM
-├─ privileged/    ayudante root: helper.py (mínimo), client.py, smbios.py
-├─ providers/derived.py   convierte relojes, uso y potencia en sensores del árbol
-├─ cli.py          volcado, JSON y modo continuo
-└─ ui/             Qt: tema, hilo de muestreo, widgets y páginas
-                   pages/cpu.py      ← qué hardware es
-                   pages/monitor.py  ← qué está haciendo
-                   pages/caches.py, pages/settings.py
+├─ rawcpuid.py     CPUID desde Python, sin root (mmap + ctypes)
+├─ features.py     tabla declarativa de banderas: hoja, registro, bit, nombre
+├─ gpuapi.py       OpenGL, Vulkan y OpenCL por ctypes, en un proceso aparte
+├─ amdgpu.py       ioctl DRM: tipo de VRAM, bus, unidades de cómputo, ROP
+├─ gpumetrics.py   telemetría del firmware AMD: por qué se frena la tarjeta
+├─ nvml.py         NVIDIA propietaria, que no publica nada en sysfs
+├─ edid.py         decodifica la chapa de identificación del monitor
+├─ spd.py          decodifica el chip de identificación de la RAM (DDR4 y DDR5)
+├─ smart.py        interpreta el diagnóstico de los discos
+├─ pciids.py       nombres de dispositivos PCI desde la base del sistema
+├─ benchmark.py    prueba de CPU que reporta en qué condiciones midió
+├─ report.py       informe en Markdown para reportar fallos
+├─ providers/      una fuente cada uno; ninguno conoce a los demás
+├─ privileged/     ayudante root mínimo (helper.py) + cliente + SMBIOS
+├─ db/             cpu_ids.json (generado, con la tabla de MIDR de ARM)
+│                  + sockets.json y families.json, curados a mano
+├─ cli.py          volcado, JSON, informe y modo continuo
+└─ ui/             Qt: tema, hilo de muestreo, widgets y una página por sección
 ```
 
 Dos decisiones sostienen el resto:
@@ -452,11 +466,18 @@ modelos sueltos, aquí bastan 49 reglas para cubrir mucho más.
 ## Tests
 
 ```bash
-python3 -m unittest discover -s tests -t .
+QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Ninguno necesita hardware concreto: los proveedores se prueban contra árboles
-de sysfs sintéticos y el generador contra fragmentos de C.
+Son 582 y tardan quince segundos. Ninguno necesita hardware concreto: los
+proveedores se prueban contra árboles de sysfs sintéticos, el generador contra
+fragmentos de C, y los chips (SPD, EDID, SMART, `gpu_metrics`) contra volcados
+binarios de piezas reales guardados en `tests/fixtures`.
+
+Buena parte de ellos existe porque algo salió mal una vez: hay un test que
+comprueba que a un procesador ARM no se le atribuye una instrucción de Intel,
+y otro que vigila que las unidades de cómputo de una gráfica no acaben en la
+ficha de la de al lado.
 
 ## Probarlo
 
