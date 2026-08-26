@@ -9,7 +9,7 @@ más allá de donde toca no falla, simplemente enseña un número equivocado.
 import struct
 import unittest
 
-from cpuz.privileged import smbios
+from silux.privileged import smbios
 
 
 def _structure(type_: int, fields: bytes, strings: list[str]) -> bytes:

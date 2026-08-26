@@ -11,10 +11,10 @@ from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QMouseEvent
 from PySide6.QtWidgets import QApplication
 
-from cpuz import render
-from cpuz.settings import ACCENT_NAMES, Preferences
-from cpuz.ui import theme
-from cpuz.ui.widgets import Sparkline
+from silux import render
+from silux.settings import ACCENT_NAMES, Preferences
+from silux.ui import theme
+from silux.ui.widgets import Sparkline
 
 
 class TestAcento(unittest.TestCase):

@@ -76,8 +76,8 @@ SECTIONS = (
 NAV_HIDE_BELOW = 620
 
 # Debe coincidir con el nombre del fichero .desktop instalado, sin extensión.
-DESKTOP_ID = "cpuz"
-BUNDLED_ICON = pathlib.Path(__file__).parent / "assets" / "cpuz.svg"
+DESKTOP_ID = "silux"
+BUNDLED_ICON = pathlib.Path(__file__).parent / "assets" / "silux.svg"
 
 
 def application_icon() -> QIcon:
@@ -96,7 +96,7 @@ class MainWindow(QMainWindow):
     def __init__(self, prefs: Preferences):
         super().__init__()
         self.prefs = prefs
-        self.setWindowTitle("cpuz")
+        self.setWindowTitle("Silux")
         self.resize(prefs.window_width, prefs.window_height)
         self.setMinimumSize(theme.METRICS.min_window_w, theme.METRICS.min_window_h)
 
@@ -203,7 +203,7 @@ class MainWindow(QMainWindow):
         column.setContentsMargins(2, 6, 2, 6)
         column.setSpacing(4)
 
-        wordmark = QLabel(f"{EMOJI} cpuz")
+        wordmark = QLabel(f"{EMOJI} Silux")
         wordmark.setObjectName("Headline")
         wordmark.setContentsMargins(10, 0, 0, 0)
 
@@ -316,7 +316,7 @@ class MainWindow(QMainWindow):
                                     "Todavía no hay ninguna lectura del equipo.")
             return
 
-        sugerido = str(pathlib.Path.home() / "informe-cpuz.md")
+        sugerido = str(pathlib.Path.home() / "informe-silux.md")
         destino, _ = QFileDialog.getSaveFileName(
             self, "Guardar informe del equipo", sugerido, "Markdown (*.md);;Texto (*.txt)")
         if not destino:
@@ -414,7 +414,7 @@ class MainWindow(QMainWindow):
 
 
 def build_app(argv: Optional[list[str]] = None) -> tuple[QApplication, MainWindow, argparse.Namespace]:
-    parser = argparse.ArgumentParser(prog="cpuz-gui", description="Perfilador de hardware.")
+    parser = argparse.ArgumentParser(prog="silux-gui", description="Perfilador de hardware.")
     parser.add_argument("--interval", type=float, metavar="SEGUNDOS",
                         help="anula el intervalo guardado solo para esta ejecución")
     parser.add_argument("--dark", action="store_true", help="fuerza el tema oscuro")
@@ -452,8 +452,8 @@ def build_app(argv: Optional[list[str]] = None) -> tuple[QApplication, MainWindo
     prefs = prefs.normalized()
 
     app = QApplication(sys.argv[:1])
-    app.setApplicationName("cpuz")
-    app.setApplicationDisplayName("cpuz")
+    app.setApplicationName("silux")
+    app.setApplicationDisplayName("Silux")
     app.setApplicationVersion(__version__)
     # En Wayland el compositor no adivina qué ventana pertenece a qué entrada
     # de menú: lo saca de aquí. Sin esta línea, la barra de tareas de Plasma

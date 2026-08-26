@@ -1,11 +1,11 @@
 """Lo que las APIs gráficas cuentan de cada tarjeta.
 
 Preguntar cuesta caro —los drivers de las tres suman 118 MB de residente— así
-que `cpuz.gpuapi` lo hace en un proceso aparte y aquí solo llega el resultado.
+que `silux.gpuapi` lo hace en un proceso aparte y aquí solo llega el resultado.
 
 El kernel dice qué hay puesto; OpenGL, Vulkan y OpenCL dicen qué se puede hacer
 con ello. Son datos de otra naturaleza —versiones de API, no registros— y por
-eso van en un proveedor aparte que se apoya en `cpuz.gpuapi`.
+eso van en un proveedor aparte que se apoya en `silux.gpuapi`.
 
 Además resuelve una ambigüedad que sysfs no puede: `pci.ids` puede dar un
 nombre para tres modelos («Radeon RX 9070/9070 XT/9070 GRE») y es el driver
@@ -48,7 +48,7 @@ class GpuApis(Provider):
             return
 
         # Una sola llamada: por dentro lanza un proceso aparte que carga los
-        # drivers, contesta y muere. Ver el porqué en `cpuz.gpuapi`.
+        # drivers, contesta y muere. Ver el porqué en `silux.gpuapi`.
         datos = _sin_reventar(gpuapi.consultar) or {}
         vulkan = datos.get("vulkan") or []
         opencl = datos.get("opencl") or []

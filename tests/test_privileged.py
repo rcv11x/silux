@@ -11,10 +11,10 @@ import struct
 import unittest
 from unittest import mock
 
-from cpuz.model import Need, PrivilegedState
-from cpuz.privileged import helper, protocol
-from cpuz.providers.base import Draft
-from cpuz.providers.privileged_memory import PrivilegedMemory
+from silux.model import Need, PrivilegedState
+from silux.privileged import helper, protocol
+from silux.providers.base import Draft
+from silux.providers.privileged_memory import PrivilegedMemory
 
 from tests.test_smbios import _end, _memory_array, _memory_device, _empty_slot
 
@@ -47,8 +47,8 @@ class TestContrato(unittest.TestCase):
 
     def test_el_ayudante_solo_importa_biblioteca_estandar(self):
         fuente = open(helper.__file__, encoding="utf-8").read()
-        self.assertNotIn("from cpuz", fuente)
-        self.assertNotIn("import cpuz", fuente)
+        self.assertNotIn("from silux", fuente)
+        self.assertNotIn("import silux", fuente)
 
 
 class TestListaBlancaDeMsr(unittest.TestCase):
@@ -152,7 +152,7 @@ class TestProveedorDeModulos(unittest.TestCase):
         self.assertIn("smbios", draft.capabilities)
 
     def test_si_el_usuario_cancela_se_explica_y_no_se_insiste(self):
-        from cpuz.privileged.client import HelperDenied
+        from silux.privileged.client import HelperDenied
 
         proveedor = PrivilegedMemory(_FakeClient(fail=HelperDenied("cancelado")))
         proveedor.requested = True
@@ -174,7 +174,7 @@ class TestProveedorDeModulos(unittest.TestCase):
         cliente = _FakeClient(self.TABLA)
         proveedor = PrivilegedMemory(cliente)
         draft = Draft()
-        with mock.patch("cpuz.providers.privileged_memory.already_root", return_value=True), \
+        with mock.patch("silux.providers.privileged_memory.already_root", return_value=True), \
              mock.patch("builtins.open", mock.mock_open(read_data=self.TABLA)):
             proveedor.collect(draft)
         self.assertFalse(cliente.connected_flag, "como root no hace falta pkexec")
@@ -183,7 +183,7 @@ class TestProveedorDeModulos(unittest.TestCase):
 
 class TestPeticionDeElevacion(unittest.TestCase):
     def test_el_colector_marca_el_proveedor(self):
-        from cpuz.collector import Collector
+        from silux.collector import Collector
 
         colector = Collector()
         proveedores = [p for p in colector.providers if isinstance(p, PrivilegedMemory)]

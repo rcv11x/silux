@@ -3,13 +3,13 @@
 import os
 import unittest
 
-from cpuz.model import (
+from silux.model import (
     Board, CpuInfo, CpuType, Power, Sensor, SensorKind, Snapshot,
     short_brand, short_vendor,
 )
-from cpuz.providers.base import Draft
-from cpuz.providers.derived import DerivedSensors
-from cpuz.tracking import Tracker
+from silux.providers.base import Draft
+from silux.providers.derived import DerivedSensors
+from silux.tracking import Tracker
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -164,8 +164,8 @@ class TestWidgetDelArbol(unittest.TestCase):
         cls.app = QApplication.instance() or QApplication([])
 
     def _tree(self):
-        from cpuz.ui import theme
-        from cpuz.ui.widgets import SensorTree
+        from silux.ui import theme
+        from silux.ui.widgets import SensorTree
 
         return SensorTree(theme.DARK)
 

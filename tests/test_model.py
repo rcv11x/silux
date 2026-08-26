@@ -5,8 +5,8 @@ import unittest
 
 import dataclasses
 
-from cpuz import model
-from cpuz.model import (Cache, Clocks, CpuInfo, CpuType, Need, Note, Snapshot,
+from silux import model
+from silux.model import (Cache, Clocks, CpuInfo, CpuType, Need, Note, Snapshot,
                         to_jsonable)
 
 
@@ -119,7 +119,7 @@ class TestFormateoDeTamano(unittest.TestCase):
     """El formateo eligió mal la unidad una vez y se vio en la interfaz."""
 
     def setUp(self):
-        from cpuz import render
+        from silux import render
 
         self.size = render.size
 

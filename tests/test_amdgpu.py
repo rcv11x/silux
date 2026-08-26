@@ -12,7 +12,7 @@ import struct
 import unittest
 from unittest import mock
 
-from cpuz import amdgpu
+from silux import amdgpu
 
 # Los valores reales de una Radeon RX 9070 XT, para que las cuentas se puedan
 # contrastar con su ficha técnica: 64 CU, 128 ROP, 20 Gbps, 644 GB/s.

@@ -244,10 +244,10 @@ class SettingsPage(QScrollArea):
 
     def _build_credits(self) -> Card:
         """Quién lo hace y sobre qué está construido."""
-        card = Card("Acerca de cpuz")
+        card = Card("Acerca de silux")
         m = theme.METRICS
 
-        titulo = QLabel(f"{EMOJI} cpuz {VERSION}")
+        titulo = QLabel(f"{EMOJI} Silux {VERSION}")
         titulo.setObjectName("Headline")
         card.body.addWidget(titulo)
 

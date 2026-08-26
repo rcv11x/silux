@@ -10,7 +10,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-from cpuz import pciids
+from silux import pciids
 
 FICHERO = """\
 # Un pci.ids recortado

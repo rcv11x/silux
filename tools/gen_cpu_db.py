@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Genera `cpuz/db/cpu_ids.json` a partir de las fuentes de libcpuid y CPU-X.
+"""Genera `silux/db/cpu_ids.json` a partir de las fuentes de libcpuid y CPU-X.
 
 La identificación de un procesador —nombre en clave, nodo de fabricación,
 socket— no se puede deducir del hardware: es una tabla de correspondencias que
@@ -26,7 +26,7 @@ import subprocess
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-DEFAULT_CACHE = pathlib.Path.home() / ".cache" / "cpuz" / "sources"
+DEFAULT_CACHE = pathlib.Path.home() / ".cache" / "silux" / "sources"
 
 REPOS = {
     "libcpuid": "https://github.com/anrieff/libcpuid.git",
@@ -229,7 +229,7 @@ def main() -> int:
     parser.add_argument("--libcpuid", type=pathlib.Path, help="ruta a un clon de libcpuid ya existente")
     parser.add_argument("--cpux", type=pathlib.Path, help="ruta a un clon de CPU-X ya existente")
     parser.add_argument("--offline", action="store_true", help="no tocar la red")
-    parser.add_argument("--out", type=pathlib.Path, default=ROOT / "cpuz" / "db" / "cpu_ids.json")
+    parser.add_argument("--out", type=pathlib.Path, default=ROOT / "silux" / "db" / "cpu_ids.json")
     args = parser.parse_args()
 
     print("Obteniendo fuentes:", file=sys.stderr)

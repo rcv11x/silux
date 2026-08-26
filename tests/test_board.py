@@ -6,9 +6,9 @@ import tempfile
 import unittest
 from unittest import mock
 
-from cpuz.model import Board, clean_dmi
-from cpuz.providers import dmi
-from cpuz.providers.base import Draft
+from silux.model import Board, clean_dmi
+from silux.providers import dmi
+from silux.providers.base import Draft
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 

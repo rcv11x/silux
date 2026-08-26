@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "cpuz"
+name = "silux"
 version = "0.1.0"
 description = "Perfilador de hardware para Linux con interfaz Qt"
 readme = "README.md"
@@ -26,14 +26,14 @@ dependencies = []
 gui = ["PySide6>=6.6"]
 
 [project.scripts]
-cpuz = "cpuz.cli:main"
+silux = "silux.cli:main"
 
 [project.gui-scripts]
-cpuz-gui = "cpuz.ui.app:main"
+silux-gui = "silux.ui.app:main"
 
 [tool.setuptools.packages.find]
-include = ["cpuz*"]
+include = ["silux*"]
 
 [tool.setuptools.package-data]
-"cpuz.db" = ["*.json"]
-"cpuz.ui.assets" = ["*.svg"]
+"silux.db" = ["*.json"]
+"silux.ui.assets" = ["*.svg"]

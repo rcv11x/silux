@@ -14,10 +14,10 @@ import tempfile
 import unittest
 from unittest import mock
 
-from cpuz import render
-from cpuz.model import Display, GpuLink, GpuMemory
-from cpuz.providers import drm
-from cpuz.providers.base import Draft
+from silux import render
+from silux.model import Display, GpuLink, GpuMemory
+from silux.providers import drm
+from silux.providers.base import Draft
 from tests.test_edid import construir as construir_edid
 
 

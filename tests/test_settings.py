@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-from cpuz import settings
+from silux import settings
 
 
 class TestPreferencias(unittest.TestCase):
@@ -20,7 +20,7 @@ class TestPreferencias(unittest.TestCase):
 
     def test_respeta_xdg_config_home(self):
         self.assertTrue(str(settings.config_path()).startswith(self._tmp.name))
-        self.assertTrue(str(settings.config_path()).endswith("cpuz/settings.json"))
+        self.assertTrue(str(settings.config_path()).endswith("silux/settings.json"))
 
     def test_normaliza_valores_imposibles(self):
         p = settings.Preferences(
@@ -71,7 +71,7 @@ class TestRepartoDeColumnas(unittest.TestCase):
 
     def setUp(self):
         try:
-            from cpuz.ui.widgets import balanced_columns
+            from silux.ui.widgets import balanced_columns
         except ImportError:
             self.skipTest("PySide6 no está instalado")
         self.columnas = balanced_columns

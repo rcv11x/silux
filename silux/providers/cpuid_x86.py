@@ -184,7 +184,7 @@ class CpuidIdentity(Provider):
             draft.note(
                 "cpu.socket", Need.DATABASE,
                 f"No hay encapsulado catalogado para «{ident.codename}».",
-                "Se puede añadir una regla en cpuz/db/sockets.json.",
+                "Se puede añadir una regla en silux/db/sockets.json.",
             )
 
 

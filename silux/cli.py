@@ -244,7 +244,7 @@ def watch(collector: Collector, style: Style, interval: float) -> int:
 
 def main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(
-        prog="cpuz", description="Perfilador de hardware para Linux."
+        prog="silux", description="Perfilador de hardware para Linux."
     )
     parser.add_argument("--json", action="store_true", help="salida en JSON para otros programas")
     parser.add_argument("--sensors", action="store_true",
@@ -259,7 +259,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                         help="incluye en el informe lo que identifica al equipo "
                              "(nombre, IP, MAC, números de serie)")
     parser.add_argument("--db-info", action="store_true", help="de dónde salió la base de datos")
-    parser.add_argument("--version", action="version", version=f"cpuz {__version__}")
+    parser.add_argument("--version", action="version", version=f"silux {__version__}")
     args = parser.parse_args(argv)
 
     style = Style(enabled=not args.no_color and sys.stdout.isatty())

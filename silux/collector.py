@@ -133,7 +133,7 @@ class Collector:
                     provider.provides or provider.name,
                     Need.PLATFORM,
                     f"El proveedor «{provider.name}» falló: {exc}",
-                    "Es un fallo de cpuz, no de tu equipo. Merece un informe.",
+                    "Es un fallo de silux, no de tu equipo. Merece un informe.",
                 )
         return draft
 

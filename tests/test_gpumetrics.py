@@ -9,7 +9,7 @@ otra no da error, da números creíbles y falsos.
 import struct
 import unittest
 
-from cpuz import gpumetrics
+from silux import gpumetrics
 
 # Los valores reales de una RX 9070 XT en reposo, para poder contrastarlos.
 CAMPOS = {

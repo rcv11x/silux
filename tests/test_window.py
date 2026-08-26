@@ -28,7 +28,7 @@ class TestVentana(unittest.TestCase):
         cls.app = QApplication.instance() or QApplication([])
 
     def setUp(self):
-        from cpuz.ui import theme
+        from silux.ui import theme
 
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
@@ -39,8 +39,8 @@ class TestVentana(unittest.TestCase):
         self.addCleanup(theme.set_density, "normal")
 
     def _window(self, **kwargs):
-        from cpuz.settings import Preferences
-        from cpuz.ui.app import MainWindow
+        from silux.settings import Preferences
+        from silux.ui.app import MainWindow
 
         window = MainWindow(Preferences(**kwargs).normalized())
         window.show()
@@ -50,7 +50,7 @@ class TestVentana(unittest.TestCase):
     # -- adaptación al ancho ------------------------------------------------
 
     def test_barra_lateral_se_esconde_en_ventanas_estrechas(self):
-        from cpuz.ui.app import NAV_HIDE_BELOW
+        from silux.ui.app import NAV_HIDE_BELOW
 
         window = self._window(window_width=900, window_height=680)
         self.app.processEvents()
@@ -63,7 +63,7 @@ class TestVentana(unittest.TestCase):
         self.assertTrue(window._compact_nav.isVisible())
 
     def test_el_selector_compacto_ofrece_solo_secciones_reales(self):
-        from cpuz.ui.app import SECTIONS
+        from silux.ui.app import SECTIONS
 
         window = self._window()
         self.app.processEvents()
@@ -83,7 +83,7 @@ class TestVentana(unittest.TestCase):
         self.assertIs(window.stack.currentWidget(), window.settings_page)
 
     def test_todas_las_secciones_activas_tienen_pagina(self):
-        from cpuz.ui.app import SECTIONS
+        from silux.ui.app import SECTIONS
 
         window = self._window()
         activas = sum(1 for _, enabled in SECTIONS if enabled)
@@ -108,7 +108,7 @@ class TestVentana(unittest.TestCase):
 
     def test_cambiar_la_densidad_reconstruye_y_aplica_metricas(self):
         from dataclasses import replace
-        from cpuz.ui import theme
+        from silux.ui import theme
 
         window = self._window(density="normal")
         pagina = window.cpu_page
@@ -121,7 +121,7 @@ class TestVentana(unittest.TestCase):
 
     def test_cambiar_de_tema_cambia_la_paleta(self):
         from dataclasses import replace
-        from cpuz.ui import theme
+        from silux.ui import theme
 
         window = self._window(theme="light")
         self.assertEqual(window._palette, theme.LIGHT)
@@ -130,7 +130,7 @@ class TestVentana(unittest.TestCase):
 
     def test_las_preferencias_se_guardan_al_cambiarlas(self):
         from dataclasses import replace
-        from cpuz import settings
+        from silux import settings
 
         window = self._window()
         window._on_preferences(replace(window.prefs, temperature_unit="f", interval_s=3.0))
@@ -139,7 +139,7 @@ class TestVentana(unittest.TestCase):
         self.assertEqual(recargado.interval_s, 3.0)
 
     def test_el_tamano_de_ventana_se_recuerda_al_cerrar(self):
-        from cpuz import settings
+        from silux import settings
 
         window = self._window(window_width=900, window_height=680)
         window.resize(760, 540)
@@ -151,7 +151,7 @@ class TestVentana(unittest.TestCase):
     # -- tema ---------------------------------------------------------------
 
     def test_los_iconos_de_flecha_se_generan_y_se_cachean(self):
-        from cpuz.ui import theme
+        from silux.ui import theme
 
         primera = theme._arrow_icon(theme.DARK.muted, True)
         self.assertTrue(os.path.exists(primera))
@@ -162,7 +162,7 @@ class TestVentana(unittest.TestCase):
         self.assertNotEqual(theme._arrow_icon(theme.DARK.muted, False), primera)
 
     def test_apply_deja_estilo_paleta_y_hoja(self):
-        from cpuz.ui import theme
+        from silux.ui import theme
 
         from PySide6.QtGui import QColor, QPalette
 
@@ -185,7 +185,7 @@ class TestVentana(unittest.TestCase):
     # -- datos --------------------------------------------------------------
 
     def test_una_muestra_real_llena_la_pagina(self):
-        from cpuz.collector import Collector
+        from silux.collector import Collector
 
         window = self._window()
         window._on_sample(Collector().sample())
@@ -194,7 +194,7 @@ class TestVentana(unittest.TestCase):
         self.assertIn("núcleos", window.cpu_page.subtitle.text())
 
     def test_la_pagina_de_caches_se_llena(self):
-        from cpuz.collector import Collector
+        from silux.collector import Collector
 
         window = self._window()
         window._on_sample(Collector().sample())
@@ -204,7 +204,7 @@ class TestVentana(unittest.TestCase):
         self.assertGreater(page.table._rows, 0)
 
     def test_la_ventana_no_baja_del_suelo_de_su_densidad(self):
-        from cpuz.ui import theme
+        from silux.ui import theme
 
         for densidad, metrics in (("normal", theme.NORMAL), ("compact", theme.COMPACT)):
             with self.subTest(densidad=densidad):
@@ -223,8 +223,8 @@ class TestVentana(unittest.TestCase):
         el fallo que se veía al encoger la ventana, y por eso se comprueba
         página a página y en las dos densidades.
         """
-        from cpuz.collector import Collector
-        from cpuz.ui import theme
+        from silux.collector import Collector
+        from silux.ui import theme
 
         muestra = Collector().sample()
         for densidad, metrics in (("normal", theme.NORMAL), ("compact", theme.COMPACT)):
@@ -244,7 +244,7 @@ class TestVentana(unittest.TestCase):
 
     def test_fahrenheit_cambia_la_unidad_de_la_ficha(self):
         from dataclasses import replace
-        from cpuz.collector import Collector
+        from silux.collector import Collector
 
         window = self._window(temperature_unit="c")
         window._on_sample(Collector().sample())
@@ -272,7 +272,7 @@ class TestVentana(unittest.TestCase):
     def test_los_extremos_sobreviven_a_un_cambio_de_tema(self):
         """Perder mínimos y máximos por cambiar de tema sería inaceptable."""
         from dataclasses import replace
-        from cpuz.collector import Collector
+        from silux.collector import Collector
 
         window = self._window(theme="light")
         window._on_sample(Collector().sample())

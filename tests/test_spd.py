@@ -10,7 +10,7 @@ import pathlib
 import struct
 import unittest
 
-from cpuz import spd
+from silux import spd
 
 FIXTURE = pathlib.Path(__file__).parent / "fixtures" / "ddr4-crucial-3200.spd"
 
@@ -122,9 +122,9 @@ class TestEmparejado(unittest.TestCase):
     """Pegar cada lectura de SPD al módulo de SMBIOS que le corresponde."""
 
     def setUp(self):
-        from cpuz.model import MemoryModule
-        from cpuz.providers.base import Draft
-        from cpuz.providers.spd_modules import SpdModules
+        from silux.model import MemoryModule
+        from silux.providers.base import Draft
+        from silux.providers.spd_modules import SpdModules
 
         self.Draft = Draft
         self.MemoryModule = MemoryModule
@@ -161,7 +161,7 @@ class TestEmparejado(unittest.TestCase):
 
 class TestVelocidadReal(unittest.TestCase):
     def test_detecta_un_modulo_por_debajo_de_su_velocidad(self):
-        from cpuz.model import MemoryModule
+        from silux.model import MemoryModule
 
         info = spd.decode(FIXTURE.read_bytes())
         modulo = MemoryModule(populated=True, speed_mts=2667,
@@ -170,7 +170,7 @@ class TestVelocidadReal(unittest.TestCase):
         self.assertTrue(modulo.underclocked)
 
     def test_sin_spd_se_fia_de_smbios(self):
-        from cpuz.model import MemoryModule
+        from silux.model import MemoryModule
 
         modulo = MemoryModule(populated=True, speed_mts=3200, configured_mts=3200)
         self.assertEqual(modulo.rated_mts, 3200)
