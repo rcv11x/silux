@@ -23,6 +23,16 @@ import subprocess
 import sys
 from typing import Any, Optional
 
+# Intérpretes del sistema con los que lanzar el ayudante cuando el del programa
+# no sirve. Al ayudante le basta la biblioteca estándar, así que vale cualquiera.
+SYSTEM_PYTHON = ("/usr/bin/python3", "/bin/python3", "/usr/local/bin/python3")
+
+
+def _cache_dir() -> pathlib.Path:
+    """Donde dejar la copia del ayudante, siguiendo la convención del sistema."""
+    base = os.environ.get("XDG_CACHE_HOME") or (pathlib.Path.home() / ".cache")
+    return pathlib.Path(base) / "silux"
+
 from .protocol import (ACTION_MSR, ACTION_PING, ACTION_SMART, ACTION_SMBIOS,
                        MAX_MESSAGE)
 
@@ -55,6 +65,11 @@ class PrivilegedClient:
     def supported() -> bool:
         return bool(shutil.which("pkexec")) and HELPER.is_file()
 
+    @staticmethod
+    def empaquetado() -> bool:
+        """Si el programa corre desde dentro de un AppImage."""
+        return bool(os.environ.get("APPIMAGE")) or "/.mount_" in sys.executable
+
     def connected(self) -> bool:
         return self._process is not None and self._process.poll() is None
 
@@ -73,9 +88,10 @@ class PrivilegedClient:
                 "Falta pkexec. Se instala con el paquete polkit de la distribución."
             )
 
+        interprete, ayudante = self._preparar()
         try:
             process = subprocess.Popen(
-                ["pkexec", sys.executable, str(HELPER)],
+                ["pkexec", interprete, str(ayudante)],
                 stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL, text=True, bufsize=1,
             )
@@ -91,11 +107,57 @@ class PrivilegedClient:
             # 126 = el usuario canceló el diálogo; 127 = no autorizado.
             if code in (126, 127):
                 raise HelperDenied("Autorización cancelada o denegada.") from None
+            if code == 1 and self.empaquetado():
+                raise HelperUnavailable(
+                    "pkexec no pudo lanzar el ayudante desde el AppImage."
+                ) from None
             raise
 
         if not reply.get("ok") or reply.get("uid") != 0:
             self.close()
             raise HelperError("el ayudante no arrancó con privilegios")
+
+    def _preparar(self) -> tuple[str, pathlib.Path]:
+        """El intérprete y el ayudante que pkexec puede llegar a ejecutar.
+
+        Desde un AppImage no valen los de dentro, por dos motivos distintos y
+        los dos insalvables:
+
+        * El punto de montaje va con `nosuid`, y pkexec se niega a ejecutar
+          nada de un sistema de archivos así. Deniega antes de preguntar, que es
+          por lo que no llegaba a salir el diálogo de la contraseña.
+        * El montaje es de FUSE y pertenece al usuario, así que **root ni
+          siquiera puede leer dentro**. Aunque pkexec arrancara, no encontraría
+          el ayudante.
+
+        Así que se usa el intérprete del sistema —al ayudante le basta la
+        biblioteca estándar— y se deja una copia del propio ayudante fuera del
+        montaje. Fuera de un AppImage no se copia nada.
+        """
+        if not self.empaquetado():
+            return sys.executable, HELPER
+
+        interprete = next((ruta for ruta in SYSTEM_PYTHON if os.path.exists(ruta)),
+                          None)
+        if interprete is None:
+            raise HelperUnavailable(
+                "No hay ningún Python del sistema con el que lanzar el ayudante. "
+                "El que trae el AppImage no sirve: pkexec no ejecuta nada desde "
+                "su punto de montaje."
+            )
+
+        destino = _cache_dir() / "helper.py"
+        try:
+            destino.parent.mkdir(parents=True, exist_ok=True)
+            # Se reescribe siempre: si el AppImage se actualiza, la copia de
+            # una versión vieja del ayudante hablaría otro protocolo.
+            destino.write_bytes(HELPER.read_bytes())
+            destino.chmod(0o700)
+        except OSError as exc:
+            raise HelperUnavailable(
+                f"no se pudo preparar el ayudante fuera del AppImage: {exc}"
+            ) from exc
+        return interprete, destino
 
     def close(self) -> None:
         process, self._process = self._process, None
