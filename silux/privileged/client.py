@@ -23,7 +23,8 @@ import subprocess
 import sys
 from typing import Any, Optional
 
-from .protocol import ACTION_MSR, ACTION_PING, ACTION_SMBIOS, MAX_MESSAGE
+from .protocol import (ACTION_MSR, ACTION_PING, ACTION_SMART, ACTION_SMBIOS,
+                       MAX_MESSAGE)
 
 HELPER = pathlib.Path(__file__).resolve().parent / "helper.py"
 DEFAULT_TIMEOUT = 15.0
@@ -157,6 +158,19 @@ class PrivilegedClient:
             self._last_error = reply.get("message")
             raise HelperError(reply.get("message", "no se pudieron leer los MSR"))
         return {int(k): v for k, v in reply.get("values", {}).items()}
+
+
+    def read_smart(self, device: str) -> tuple[bytes, str]:
+        """Los datos de diagnóstico de un disco, y de qué familia son.
+
+        Devuelve los bytes sin tocar: interpretarlos es cosa de `silux.smart`,
+        que corre sin privilegios.
+        """
+        reply = self.request({"action": ACTION_SMART, "device": device})
+        if not reply.get("ok"):
+            self._last_error = reply.get("message")
+            raise HelperError(reply.get("message", "no se pudo leer el diagnóstico"))
+        return base64.b64decode(reply.get("data", "")), reply.get("kind", "")
 
 
 def already_root() -> bool:

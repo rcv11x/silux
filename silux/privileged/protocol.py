@@ -13,12 +13,26 @@ PROTOCOL_VERSION = 1
 ACTION_PING = "ping"
 ACTION_SMBIOS = "smbios"
 ACTION_MSR = "msr"
-ACTIONS = frozenset({ACTION_PING, ACTION_SMBIOS, ACTION_MSR})
+ACTION_SMART = "smart"
+ACTIONS = frozenset({ACTION_PING, ACTION_SMBIOS, ACTION_MSR, ACTION_SMART})
 
 # Rutas que el ayudante puede abrir. No hay ninguna forma de pedirle otra.
 DMI_TABLE = "/sys/firmware/dmi/tables/DMI"
 DMI_ENTRY_POINT = "/sys/firmware/dmi/tables/smbios_entry_point"
 MSR_DEVICE = "/dev/cpu/{cpu}/msr"
+
+# Los nombres de disco que el ayudante acepta abrir. El patrón es estricto a
+# propósito: sin él, un nombre como «../../etc/shadow» le haría abrir
+# cualquier cosa. Aquí solo caben nvme0, nvme0n1, sda y parecidos.
+DISK_NAME = r"^(nvme\d+n\d+|nvme\d+|sd[a-z]{1,2}|hd[a-z])$"
+DISK_DEVICE = "/dev/{name}"
+
+# El ayudante solo pide los registros de diagnóstico, que son de lectura. No
+# hay forma de pedirle un comando de escritura ni de borrado.
+NVME_GET_LOG_PAGE = 0x02          # opcode de administración
+NVME_LOG_SMART = 0x02             # el registro de salud
+ATA_SMART_READ_DATA = 0xD0        # función de SMART READ DATA
+SMART_DATA_BYTES = 512            # lo que ocupa la respuesta de los dos
 
 # Registros MSR permitidos, con lo que significan. La lista blanca existe
 # porque un MSR arbitrario puede exponer información sensible o depender de

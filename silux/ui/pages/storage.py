@@ -166,10 +166,16 @@ class StoragePage(QScrollArea):
             self.total_bar.hide()
 
     def _apply_tiles(self, discos) -> None:
+        # La suma de todas las unidades, no la del disco del sistema: en un
+        # equipo con cinco discos, la cifra que interesa es cuánto se está
+        # moviendo en total. Cuál se mueve va en la tabla de abajo.
         lectura = sum(x.io.read_rate_bps or 0 for x in discos) if discos else None
         escritura = sum(x.io.write_rate_bps or 0 for x in discos) if discos else None
         self.tile_read.update_value(render.rate(lectura), lectura)
         self.tile_write.update_value(render.rate(escritura), escritura)
+        cuantos = f"suma de {len(discos)} {render.plural(len(discos), 'unidad', 'unidades')}"
+        self.tile_read.set_detail(cuantos)
+        self.tile_write.set_detail(cuantos)
 
         libres = [p.free_bytes for x in discos for p in x.mounted_partitions
                   if p.free_bytes is not None]

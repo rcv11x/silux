@@ -12,10 +12,12 @@ dejar la aplicación en blanco.
 from __future__ import annotations
 
 import copy
+import inspect
 import time
 from typing import Iterable, Optional, Sequence
 
 from .model import Need, Snapshot
+from .privileged.client import PrivilegedClient
 from .providers import (
     CppcClocks,
     CpuidIdentity,
@@ -40,6 +42,13 @@ from .providers import (
     SystemState,
     TurboState,
 )
+
+def _instanciar(cls: type[Provider], cliente: PrivilegedClient) -> Provider:
+    """Crea un proveedor pasándole el ayudante si sabe usarlo."""
+    if "client" in inspect.signature(cls).parameters:
+        return cls(client=cliente)                     # type: ignore[call-arg]
+    return cls()
+
 
 # El orden importa: la topología define qué tipos de núcleo hay, y CPUID
 # necesita saberlo para preguntar una vez por cada uno.
@@ -71,9 +80,14 @@ class Collector:
     """Punto de entrada de la capa de datos. Reutilizable y con estado propio."""
 
     def __init__(self, providers: Optional[Sequence[Provider]] = None) -> None:
-        self.providers: list[Provider] = list(providers) if providers is not None else [
-            cls() for cls in DEFAULT_PROVIDERS
-        ]
+        if providers is not None:
+            self.providers: list[Provider] = list(providers)
+        else:
+            # Un solo ayudante para todos los que lo necesiten. Cada cliente
+            # lanza su propio proceso y abre su propio diálogo de polkit, así
+            # que dos clientes serían dos veces la contraseña para lo mismo.
+            compartido = PrivilegedClient()
+            self.providers = [_instanciar(cls, compartido) for cls in DEFAULT_PROVIDERS]
         self._static: Optional[Draft] = None
 
     # -- API ----------------------------------------------------------------
@@ -110,9 +124,13 @@ class Collector:
         self.invalidate()
 
     def close(self) -> None:
+        # Los proveedores comparten cliente, así que se cierra cada uno una
+        # sola vez aunque lo tengan varios.
+        cerrados: set[int] = set()
         for provider in self.providers:
             client = getattr(provider, "client", None)
-            if client is not None:
+            if client is not None and id(client) not in cerrados:
+                cerrados.add(id(client))
                 client.close()
 
     def invalidate(self) -> None:
