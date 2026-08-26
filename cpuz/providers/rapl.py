@@ -26,15 +26,28 @@ POWERCAP = pathlib.Path("/sys/class/powercap")
 SUBDOMAINS = {"core": "core_w", "uncore": "uncore_w", "dram": "dram_w"}
 
 
+# El framework se llama «intel-rapl» por su origen, pero AMD lo usa igual y
+# según la versión del kernel aparece como «amd-rapl». Buscar solo el primero
+# dejaba a las máquinas AMD sin lectura de consumo.
+RAPL_ZONES = ("intel-rapl:*", "amd-rapl:*", "*-rapl:*")
+
+
 def _packages() -> list[pathlib.Path]:
     if not POWERCAP.is_dir():
         return []
-    found = []
-    for entry in sorted(POWERCAP.glob("intel-rapl:*")):
-        if ":" in entry.name[len("intel-rapl:"):]:
-            continue                        # es un subdominio, no un paquete
-        if (read_text(str(entry / "name")) or "").startswith("package"):
-            found.append(entry)
+
+    found: list[pathlib.Path] = []
+    seen: set[str] = set()
+    for pattern in RAPL_ZONES:
+        for entry in sorted(POWERCAP.glob(pattern)):
+            if entry.name in seen:
+                continue
+            # Los subdominios (core, uncore, dram) llevan un segundo «:».
+            if entry.name.count(":") > 1:
+                continue
+            if (read_text(str(entry / "name")) or "").startswith("package"):
+                seen.add(entry.name)
+                found.append(entry)
     return found
 
 
