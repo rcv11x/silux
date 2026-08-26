@@ -118,8 +118,11 @@ class Collector:
         diálogo de autenticación lo abre el proveedor en el hilo de muestreo,
         que es donde puede bloquear sin congelar la ventana.
         """
+        # A todo el que sepa esperar la señal, no solo al de memoria: los
+        # discos también piden permisos y comparten el mismo ayudante, así que
+        # una autorización sirve para los dos.
         for provider in self.providers:
-            if isinstance(provider, PrivilegedMemory):
+            if hasattr(provider, "requested"):
                 provider.requested = True
         self.invalidate()
 
