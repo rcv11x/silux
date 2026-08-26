@@ -17,7 +17,7 @@ from __future__ import annotations
 import dataclasses
 
 from .. import nvml
-from ..model import GpuClocks, GpuLink, GpuMemory, Need
+from ..model import GpuClocks, PcieLink, GpuMemory, Need
 from .base import Draft, Provider
 
 # La velocidad de cada generación de PCIe, para traducir el número que da NVML.
@@ -105,7 +105,7 @@ def _rellenar(gpu: dict, tarjeta: nvml.NvidiaGpu) -> None:
 
     # NVML da la generación de PCIe; el modelo guarda gigatransferencias, que es
     # lo que publica sysfs para todas las demás tarjetas.
-    enlace: GpuLink = gpu.get("link") or GpuLink()
+    enlace: PcieLink = gpu.get("link") or PcieLink()
     gpu["link"] = dataclasses.replace(
         enlace,
         current_speed_gts=(enlace.current_speed_gts

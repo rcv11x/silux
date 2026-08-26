@@ -49,6 +49,7 @@ from .pages.cpu import CpuPage
 from .pages.graphics import GraphicsPage
 from .pages.memory import MemoryPage
 from .pages.network import NetworkPage
+from .pages.storage import StoragePage
 from .pages.monitor import MonitorPage
 from .pages.settings import SettingsPage
 from .pages.system import SystemPage
@@ -66,6 +67,7 @@ SECTIONS = (
     ("Placa base", True),
     ("Memoria", True),
     ("Gráficos", True),
+    ("Almacenamiento", True),
     ("Red", True),
     ("Sistema", True),
     ("Sensores", True),
@@ -162,6 +164,7 @@ class MainWindow(QMainWindow):
         self.memory_page = MemoryPage(self._palette, self.prefs)
         self.memory_page.elevation_requested.connect(self._on_elevation_requested)
         self.graphics_page = GraphicsPage(self._palette, self.prefs)
+        self.storage_page = StoragePage(self._palette, self.prefs)
         self.network_page = NetworkPage(self._palette, self.prefs)
         self.network_page.unit_changed.connect(self._on_network_unit)
         self.system_page = SystemPage(self._palette, self.prefs)
@@ -169,8 +172,9 @@ class MainWindow(QMainWindow):
         self.settings_page.changed.connect(self._on_preferences)
         self.settings_page.report_requested.connect(self._on_report_requested)
         for page in (self.cpu_page, self.caches_page, self.board_page,
-                     self.memory_page, self.graphics_page, self.network_page,
-                     self.system_page, self.monitor_page, self.settings_page):
+                     self.memory_page, self.graphics_page, self.storage_page,
+                     self.network_page, self.system_page, self.monitor_page,
+                     self.settings_page):
             self.stack.addWidget(page)
         layout.addWidget(self.stack, 1)
 
@@ -406,7 +410,7 @@ class MainWindow(QMainWindow):
     def _distribute(self, snapshot: Snapshot) -> None:
         for page in (self.cpu_page, self.monitor_page, self.caches_page,
                      self.board_page, self.memory_page, self.system_page,
-                     self.graphics_page, self.network_page):
+                     self.graphics_page, self.network_page, self.storage_page):
             page.apply(snapshot)
 
     def _on_failure(self, message: str) -> None:

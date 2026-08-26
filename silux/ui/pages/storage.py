@@ -1,0 +1,286 @@
+"""Página de almacenamiento: qué unidades hay y qué están haciendo.
+
+El orden responde a las preguntas por frecuencia: primero cuánto espacio queda,
+que es lo que trae aquí a casi todo el mundo; después qué unidades hay y de qué
+tipo; y al final la ficha de cada una.
+
+Las particiones van en su propia tabla y no dentro de cada disco. Un equipo con
+cinco unidades y doce particiones se vuelve ilegible si cada una cuelga de su
+disco, y la pregunta «dónde está montado /home» no se hace por disco.
+"""
+
+from __future__ import annotations
+
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QLabel, QScrollArea, QVBoxLayout, QWidget
+
+from ... import render
+from ...model import Disk, Snapshot
+from ...settings import Preferences
+from .. import theme
+from ..theme import Palette
+from ..widgets import (Card, ChipRow, InfoGrid, ResponsiveRow, StackedBar,
+                       StatTile, Table, clear_layout)
+
+DISK_HEADERS = ("Unidad", "Modelo", "Tipo", "Capacidad", "Ocupado",
+                "Temperatura", "Leyendo", "Escribiendo")
+PART_HEADERS = ("Partición", "Sistema", "Montada en", "Tamaño", "Usado", "Libre")
+
+DISK_FIELDS = ("Modelo", "Fabricante", "Tipo", "Conexión", "Capacidad",
+               "Firmware", "Sector lógico", "Sector físico", "Planificador",
+               "Enlace", "Temperatura", "Horas encendido", "Escrito en total",
+               "Vida restante")
+
+# Los discos se ordenan por lo que le importa a quien mira: primero el que
+# lleva el sistema, luego por tipo y al final los que se pueden desenchufar.
+PRIORIDAD = {"NVMe": 0, "SSD": 1, "HDD": 2}
+
+
+def _orden(disco: Disk) -> tuple:
+    arranque = not any(p.mountpoint == "/" for p in disco.partitions)
+    return (disco.removable, arranque, PRIORIDAD.get(disco.kind or "", 9), disco.name)
+
+
+class StoragePage(QScrollArea):
+    def __init__(self, palette: Palette, prefs: Preferences, parent=None):
+        super().__init__(parent)
+        self._p = palette
+        self._prefs = prefs
+        m = theme.METRICS
+
+        self.setWidgetResizable(True)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+        root = QWidget()
+        root.setObjectName("Root")
+        self.setWidget(root)
+
+        layout = QVBoxLayout(root)
+        layout.setContentsMargins(m.page_margin, m.page_margin,
+                                  m.page_margin, m.page_margin)
+        layout.setSpacing(m.section_gap)
+
+        layout.addWidget(self._build_header())
+        layout.addWidget(self._build_tiles())
+
+        disk_card = Card("Unidades")
+        self.disks = Table(DISK_HEADERS,
+                           numeric=(False, False, False, True, True, True, True, True))
+        disk_card.body.addWidget(self.disks)
+        layout.addWidget(disk_card)
+
+        part_card = Card("Particiones montadas")
+        self.parts = Table(PART_HEADERS, numeric=(False, False, False, True, True, True))
+        part_card.body.addWidget(self.parts)
+        layout.addWidget(part_card)
+
+        self._cards_host = QVBoxLayout()
+        self._cards_host.setSpacing(m.section_gap)
+        layout.addLayout(self._cards_host)
+        layout.addStretch(1)
+
+        self._grids: dict[str, InfoGrid] = {}
+        self._bars: dict[str, StackedBar] = {}
+        self._orden_actual: tuple = ()
+        self._chip_signature: tuple = ()
+
+    # -- construcción -------------------------------------------------------
+
+    def _build_header(self) -> QWidget:
+        card = Card()
+        self.title = QLabel("Leyendo los discos…")
+        self.title.setObjectName("Headline")
+        self.title.setWordWrap(True)
+        self.subtitle = QLabel("")
+        self.subtitle.setObjectName("Subhead")
+        self.badges = ChipRow()
+        self.total_bar = StackedBar(self._p)
+
+        card.body.addWidget(self.title)
+        card.body.addWidget(self.subtitle)
+        card.body.addWidget(self.badges)
+        card.body.addWidget(self.total_bar)
+        return card
+
+    def _build_tiles(self) -> QWidget:
+        fila = ResponsiveRow(min_item_width=150)
+        self.tile_read = StatTile("Leyendo", "", self._p)
+        self.tile_write = StatTile("Escribiendo", "", self._p)
+        self.tile_free = StatTile("Espacio libre", "", self._p)
+        self.tile_temp = StatTile("Más caliente", "°C", self._p)
+        for tile in (self.tile_read, self.tile_write, self.tile_free, self.tile_temp):
+            fila.add(tile)
+        # El espacio libre no se mueve de un segundo a otro: su curva sería una
+        # recta que no dice nada.
+        self.tile_free.chart.hide()
+        intervalo = self._prefs.interval_s
+        self.tile_read.chart.set_formatter(render.rate, intervalo)
+        self.tile_write.chart.set_formatter(render.rate, intervalo)
+        self.tile_temp.chart.set_formatter(
+            lambda v: render.temperature(v, self._prefs.fahrenheit), intervalo)
+        return fila
+
+    # -- actualización ------------------------------------------------------
+
+    def apply(self, snapshot: Snapshot) -> None:
+        discos = sorted(snapshot.disks, key=_orden)
+        self._apply_header(discos)
+        self._apply_tiles(discos)
+        self._apply_tables(discos)
+        self._apply_cards(discos)
+
+    def _apply_header(self, discos) -> None:
+        d = render.DASH
+        if not discos:
+            self.title.setText("Sin unidades de almacenamiento")
+            self.subtitle.setText("")
+            self.total_bar.hide()
+            return
+
+        total = sum(x.size_bytes or 0 for x in discos)
+        usado = sum(x.used_bytes or 0 for x in discos)
+        self.title.setText(f"{render.size(total)} en {len(discos)} "
+                           f"{render.plural(len(discos), 'unidad', 'unidades')}")
+        montadas = sum(len(x.mounted_partitions) for x in discos)
+        self.subtitle.setText(
+            f"{render.size(usado)} ocupados en {montadas} "
+            f"{render.plural(montadas, 'partición montada', 'particiones montadas')}"
+        )
+
+        chips = []
+        for tipo in ("NVMe", "SSD", "HDD"):
+            cuantos = sum(1 for x in discos if x.kind == tipo)
+            if cuantos:
+                chips.append(f"{cuantos} × {tipo}")
+        if tuple(chips) != self._chip_signature:
+            self._chip_signature = tuple(chips)
+            self.badges.set_chips(chips, highlight_first=True)
+
+        if total and usado:
+            self.total_bar.set_segments(
+                [("Ocupado", usado, "accent"), ("Libre", total - usado, "line")],
+                total=total, formatter=render.size,
+            )
+            self.total_bar.show()
+        else:
+            self.total_bar.hide()
+
+    def _apply_tiles(self, discos) -> None:
+        lectura = sum(x.io.read_rate_bps or 0 for x in discos) if discos else None
+        escritura = sum(x.io.write_rate_bps or 0 for x in discos) if discos else None
+        self.tile_read.update_value(render.rate(lectura), lectura)
+        self.tile_write.update_value(render.rate(escritura), escritura)
+
+        libres = [p.free_bytes for x in discos for p in x.mounted_partitions
+                  if p.free_bytes is not None]
+        self.tile_free.update_value(render.size(sum(libres)) if libres else render.DASH)
+        if libres:
+            self.tile_free.set_detail(f"en {len(libres)} "
+                                      f"{render.plural(len(libres), 'partición', 'particiones')}")
+
+        temperaturas = [(x.temp_c, x) for x in discos if x.temp_c is not None]
+        if temperaturas:
+            valor, disco = max(temperaturas)
+            mostrado = valor * 9 / 5 + 32 if self._prefs.fahrenheit else valor
+            self.tile_temp.set_unit("°F" if self._prefs.fahrenheit else "°C")
+            self.tile_temp.update_value(f"{mostrado:.0f}", mostrado)
+            self.tile_temp.set_detail(disco.name)
+        else:
+            self.tile_temp.update_value(render.DASH)
+            self.tile_temp.set_detail("ningún disco publica su temperatura")
+
+    def _apply_tables(self, discos) -> None:
+        d = render.DASH
+        self.disks.set_rows([
+            (x.name,
+             (x.model or d)[:30],
+             x.kind or d,
+             render.size(x.size_bytes),
+             render.size(x.used_bytes) if x.used_bytes else d,
+             render.temperature(x.temp_c, self._prefs.fahrenheit),
+             render.rate(x.io.read_rate_bps),
+             render.rate(x.io.write_rate_bps))
+            for x in discos
+        ] or [("Sin unidades", d, d, d, d, d, d, d)])
+
+        filas = [
+            (p.name, p.filesystem or d, p.mountpoint or d,
+             render.size(p.size_bytes),
+             f"{render.size(p.used_bytes)}   ({p.used_percent:.0f} %)"
+             if p.used_percent is not None else d,
+             render.size(p.free_bytes))
+            for x in discos for p in x.mounted_partitions
+        ]
+        self.parts.set_rows(filas or [("Ninguna montada", d, d, d, d, d)])
+
+    def _apply_cards(self, discos) -> None:
+        nombres = tuple(x.name for x in discos)
+        if nombres != self._orden_actual:
+            self._orden_actual = nombres
+            clear_layout(self._cards_host)
+            self._grids.clear()
+            self._bars.clear()
+            fila = ResponsiveRow(min_item_width=320)
+            for disco in discos:
+                card = Card(disco.name)
+                barra = StackedBar(self._p)
+                grid = InfoGrid()
+                for campo in DISK_FIELDS:
+                    grid.add(campo)
+                card.body.addWidget(barra)
+                card.body.addWidget(grid)
+                fila.add(card)
+                self._grids[disco.name] = grid
+                self._bars[disco.name] = barra
+            self._cards_host.addWidget(fila)
+
+        for disco in discos:
+            self._fill(disco)
+
+    def _fill(self, disco: Disk) -> None:
+        d = render.DASH
+        grid = self._grids.get(disco.name)
+        if grid is None:
+            return
+
+        barra = self._bars[disco.name]
+        usado = disco.used_bytes
+        if disco.size_bytes and usado:
+            barra.set_segments(
+                [("Ocupado", usado, "accent"),
+                 ("Libre", max(0, disco.size_bytes - usado), "line")],
+                total=disco.size_bytes, formatter=render.size,
+            )
+            barra.show()
+        else:
+            barra.hide()
+
+        f = grid.set
+        f("Modelo", disco.model or d)
+        f("Fabricante", disco.vendor or d)
+        f("Tipo", disco.kind or d,
+          tooltip="No hay ningún campo que lo diga: se deduce de si el kernel "
+                  "considera que el disco gira y de por qué bus va conectado.")
+        f("Conexión", (disco.transport or d).upper() if disco.transport else d)
+        f("Capacidad", render.size(disco.size_bytes))
+        f("Firmware", disco.firmware or d)
+        f("Sector lógico", f"{disco.logical_sector} B" if disco.logical_sector else d)
+        f("Sector físico", f"{disco.physical_sector} B" if disco.physical_sector else d,
+          tooltip="Los discos modernos trabajan en sectores de 4 KB por dentro "
+                  "aunque le digan al sistema que son de 512 B.")
+        f("Planificador", disco.scheduler or d,
+          tooltip="Cómo ordena el kernel las peticiones antes de mandarlas al "
+                  "disco. En un NVMe suele estar desactivado porque el propio "
+                  "disco lo hace mejor.")
+        f("Enlace", render.pcie_link(disco.link) if disco.link else d)
+        f("Temperatura", render.temperature(disco.temp_c, self._prefs.fahrenheit))
+
+        salud = disco.health
+        f("Horas encendido", f"{salud.power_on_hours:n} h" if salud.power_on_hours else d)
+        f("Escrito en total", render.size(salud.written_bytes) if salud.written_bytes else d,
+          tooltip="El TBW: cuántos datos se han escrito en este disco desde que "
+                  "salió de fábrica. Es lo que consume la vida de un SSD.")
+        f("Vida restante",
+          f"{salud.life_left_percent} %" if salud.life_left_percent is not None else d,
+          tooltip="Lo que el propio disco calcula que le queda, según su "
+                  "contador de desgaste.")
