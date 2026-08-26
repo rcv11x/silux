@@ -274,7 +274,13 @@ class InfoGrid(QWidget):
 
 
 class Sparkline(QWidget):
-    """Serie temporal compacta: relleno de área, línea y punto en el extremo."""
+    """Serie temporal compacta: relleno de área, línea y punto en el extremo.
+
+    Con el ratón encima se puede leer cualquier punto de la curva, no solo el
+    último. Una gráfica de este tamaño enseña la forma —si hubo un pico, si se
+    mantiene plana— pero el pico sin su cifra deja a medias: se ve que pasó
+    algo y no cuánto. Con el cursor aparece la guía, el valor y hace cuánto fue.
+    """
 
     def __init__(self, palette: Palette, capacity: int = 90, parent: Optional[QWidget] = None):
         super().__init__(parent)
@@ -282,11 +288,50 @@ class Sparkline(QWidget):
         self._values: deque[float] = deque(maxlen=capacity)
         self._floor: Optional[float] = None
         self._ceiling: Optional[float] = None
+        self._hover: Optional[int] = None
+        self._formatter = None
+        self._interval_s = 1.0
         self.setMinimumHeight(theme.METRICS.chart_height)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.setMouseTracking(True)
+        self.setCursor(Qt.CursorShape.CrossCursor)
 
     def set_range(self, floor: Optional[float], ceiling: Optional[float]) -> None:
         self._floor, self._ceiling = floor, ceiling
+
+    def set_formatter(self, formatter, interval_s: float = 1.0) -> None:
+        """Cómo escribir el valor que se lee bajo el cursor, y cada cuánto se
+        toma una muestra, para poder decir hace cuánto ocurrió."""
+        self._formatter = formatter
+        self._interval_s = max(0.05, interval_s)
+
+    # -- lectura con el ratón ----------------------------------------------
+
+    def mouseMoveEvent(self, event) -> None:  # noqa: N802
+        indice = self._index_at(event.position().x())
+        if indice != self._hover:
+            self._hover = indice
+            self.update()
+
+    def leaveEvent(self, event) -> None:  # noqa: N802
+        if self._hover is not None:
+            self._hover = None
+            self.update()
+
+    def _index_at(self, x: float) -> Optional[int]:
+        if len(self._values) < 2 or self.width() <= 1:
+            return None
+        proporcion = min(1.0, max(0.0, x / self.width()))
+        return round(proporcion * (len(self._values) - 1))
+
+    def _hover_text(self, valor: float, indice: int) -> str:
+        cifra = self._formatter(valor) if self._formatter else f"{valor:g}"
+        atras = (len(self._values) - 1 - indice) * self._interval_s
+        if atras < 1:
+            return f"{cifra} · ahora"
+        if atras < 60:
+            return f"{cifra} · hace {atras:.0f} s"
+        return f"{cifra} · hace {atras / 60:.0f} min"
 
     def push(self, value: Optional[float]) -> None:
         if value is not None:
@@ -349,7 +394,41 @@ class Sparkline(QWidget):
         painter.setBrush(QBrush(self._p.q("accent")))
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawEllipse(points[-1], 2.6, 2.6)
+
+        if self._hover is not None and 0 <= self._hover < len(points):
+            self._draw_hover(painter, rect, points[self._hover], values[self._hover])
         painter.end()
+
+    def _draw_hover(self, painter: QPainter, rect: QRectF,
+                    punto: QPointF, valor: float) -> None:
+        """La guía vertical, el punto marcado y la cifra que hay debajo."""
+        painter.setPen(QPen(self._p.q("muted", 0.55), 1.0, Qt.PenStyle.DashLine))
+        painter.drawLine(QPointF(punto.x(), rect.top()), QPointF(punto.x(), rect.bottom()))
+
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QBrush(self._p.q("surface")))
+        painter.drawEllipse(punto, 3.6, 3.6)
+        painter.setBrush(QBrush(self._p.q("accent")))
+        painter.drawEllipse(punto, 2.4, 2.4)
+
+        texto = self._hover_text(valor, self._hover or 0)
+        painter.setFont(ui_font(max(7, theme.METRICS.small_pt - 1)))
+        metrica = painter.fontMetrics()
+        ancho = metrica.horizontalAdvance(texto) + 8
+        alto = metrica.height() + 2
+
+        # La etiqueta se pega al lado que tenga sitio, para no salirse.
+        izquierda = punto.x() + 6
+        if izquierda + ancho > rect.right():
+            izquierda = punto.x() - 6 - ancho
+        izquierda = max(rect.left(), izquierda)
+        caja = QRectF(izquierda, rect.top(), ancho, alto)
+
+        painter.setBrush(QBrush(self._p.q("surface", 0.92)))
+        painter.setPen(QPen(self._p.q("line"), 1.0))
+        painter.drawRoundedRect(caja, 3, 3)
+        painter.setPen(QPen(self._p.q("ink")))
+        painter.drawText(caja, Qt.AlignmentFlag.AlignCenter, texto)
 
 
 class StatTile(Card):

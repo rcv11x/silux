@@ -18,6 +18,8 @@ constructor de cada widget— añadía un parámetro a doce clases sin ganar nad
 
 from __future__ import annotations
 
+import dataclasses
+
 import pathlib
 import tempfile
 from dataclasses import dataclass
@@ -75,6 +77,42 @@ DARK = Palette(
     ok="#6FBF9A", warn="#D6AF4E", crit="#DE8078", info="#79A9D9",
     disabled="#525C6A",
 )
+
+
+# --------------------------------------------------------------------------
+# color de acento
+# --------------------------------------------------------------------------
+
+# Cada acento son tres tonos y no uno: el color en sí, una variante más clara
+# para lo que se superpone, y un lavado casi negro (o casi blanco) para los
+# fondos de las insignias. Se eligen a mano y no por cálculo porque el mismo
+# tono necesita valores distintos sobre un fondo oscuro que sobre uno claro, y
+# derivarlos automáticamente da o bien colores apagados o bien texto ilegible.
+ACCENTS: dict[str, dict[str, tuple[str, str, str]]] = {
+    "naranja": {"dark": ("#E1834A", "#F0A272", "#2A1D14"),
+                "light": ("#B4501B", "#C0601F", "#F7EAE1")},
+    "azul":    {"dark": ("#5AA9E6", "#85C3F0", "#12212E"),
+                "light": ("#1D6FB8", "#2782CE", "#E3EEF8")},
+    "verde":   {"dark": ("#5FBF8B", "#8AD4AC", "#10241A"),
+                "light": ("#1F7A4D", "#268A58", "#E2F2E9")},
+    "morado":  {"dark": ("#A98BE0", "#C0A9EC", "#201A2E"),
+                "light": ("#6A45B0", "#7A52C4", "#EDE7F8")},
+    "rojo":    {"dark": ("#E57373", "#F09999", "#2E1618"),
+                "light": ("#B23A3A", "#C44646", "#FAE7E7")},
+    "cian":    {"dark": ("#4FBFC4", "#7CD5D9", "#0E2426"),
+                "light": ("#10767C", "#14868C", "#E0F2F3")},
+}
+ACCENT_DEFAULT = "naranja"
+
+
+def tinted(base: Palette, accent: str, dark: bool) -> Palette:
+    """La misma paleta con otro color de acento."""
+    tonos = ACCENTS.get(accent)
+    if tonos is None or accent == ACCENT_DEFAULT:
+        return base
+    fuerte, suave, lavado = tonos["dark" if dark else "light"]
+    return dataclasses.replace(base, accent=fuerte, accent_soft=suave,
+                               accent_wash=lavado)
 
 
 # --------------------------------------------------------------------------
@@ -139,9 +177,44 @@ DENSITIES: dict[str, Metrics] = {
 }
 
 
-def set_density(name: str) -> Metrics:
+# Cuánto se agranda la letra. Los pasos son los que se notan de verdad: por
+# debajo de un 15 % el cambio no compensa volver a Ajustes.
+FONT_SCALES: dict[str, float] = {
+    "normal": 1.0, "grande": 1.15, "mayor": 1.3, "máximo": 1.5,
+}
+
+
+def _escalar(base: Metrics, factor: float) -> Metrics:
+    """Agranda la letra, y con ella lo que tiene que seguirla.
+
+    Los tamaños de texto van al factor entero. Las celdas y los anchos fijos
+    también, o el texto grande se saldría de ellos. Los márgenes y separaciones
+    crecen a la mitad de ritmo: si se agrandan igual, la pantalla se llena de
+    aire justo cuando el usuario está pidiendo que quepa mejor lo que lee.
+    """
+    if factor == 1.0:
+        return base
+    entero = lambda valor: max(1, round(valor * factor))
+    suave = lambda valor: max(1, round(valor * (1 + (factor - 1) / 2)))
+    return dataclasses.replace(
+        base,
+        base_pt=entero(base.base_pt), small_pt=entero(base.small_pt),
+        mono_pt=entero(base.mono_pt), headline_px=entero(base.headline_px),
+        tile_value_pt=entero(base.tile_value_pt),
+        cell_w=entero(base.cell_w), cell_h=entero(base.cell_h),
+        nav_width=entero(base.nav_width), chart_height=entero(base.chart_height),
+        min_window_w=entero(base.min_window_w), min_window_h=entero(base.min_window_h),
+        page_margin=suave(base.page_margin), section_gap=suave(base.section_gap),
+        card_pad_h=suave(base.card_pad_h), card_pad_v=suave(base.card_pad_v),
+        card_gap=suave(base.card_gap),
+        grid_vspace=suave(base.grid_vspace), grid_hspace=suave(base.grid_hspace),
+    )
+
+
+def set_density(name: str, font_scale: str = "normal") -> Metrics:
     global METRICS
-    METRICS = DENSITIES.get(name, NORMAL)
+    METRICS = _escalar(DENSITIES.get(name, NORMAL),
+                       FONT_SCALES.get(font_scale, 1.0))
     return METRICS
 
 
@@ -568,15 +641,28 @@ def _draw_sensor_glyph(painter: QPainter, kind: str, color: QColor, box: float) 
         painter.drawEllipse(QRectF(5 * unit, 5 * unit, 6 * unit, 6 * unit))
 
 
-def apply(app: QApplication, choice: str, density: str) -> Palette:
+def palette_for(app: QApplication, choice: str, accent: str = ACCENT_DEFAULT) -> Palette:
+    """El tema resuelto y ya teñido con el acento elegido.
+
+    Es el único sitio del que se saca una paleta. Antes la ventana llamaba a
+    `resolve` por su cuenta y se quedaba con la paleta sin teñir, así que el
+    color elegido llegaba a la hoja de estilos pero no a lo que se pinta a
+    mano —las gráficas, las barras, la matriz de núcleos— y salía a medias.
+    """
+    base = resolve(app, choice)
+    return tinted(base, accent, dark=base.bg == DARK.bg)
+
+
+def apply(app: QApplication, choice: str, density: str,
+          font_scale: str = "normal", accent: str = ACCENT_DEFAULT) -> Palette:
     """Deja la aplicación entera con el tema pedido y devuelve la paleta.
 
     El estilo Fusion se fija a propósito: es el único que se comporta igual en
     todos los escritorios, y como aquí se pinta casi todo con la hoja de
     estilos, la integración nativa aporta menos que la previsibilidad.
     """
-    set_density(density)
-    palette = resolve(app, choice)
+    set_density(density, font_scale)
+    palette = palette_for(app, choice, accent)
     app.setStyle("Fusion")
     app.setPalette(qt_palette(palette))
     app.setStyleSheet(stylesheet(palette))

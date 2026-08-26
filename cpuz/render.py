@@ -11,7 +11,8 @@ from __future__ import annotations
 from typing import Optional
 
 from .features import pretty as pretty_feature
-from .model import Cache, Clocks, CpuType, Power
+from .model import (Cache, Clocks, CpuType, Display, Edid, GpuApi, GpuLink,
+                    GpuMemory, NetworkInterface, NetworkTraffic, Power)
 
 DASH = "—"
 
@@ -175,6 +176,178 @@ def power_tooltip(power: Power) -> str:
     if power.limit_short_w:
         lines.append(f"Límite de pico (PL2): {watts(power.limit_short_w)}")
     return "\n".join(lines)
+
+
+def rate(value: Optional[float], bits: bool = False) -> str:
+    """Un ritmo de transferencia: «2.1 MB/s» o «17.6 Mb/s», a elegir.
+
+    Las dos unidades son correctas y se llevan un factor de ocho, que es
+    justo lo que confunde: el mismo enlace son 116 MB/s en un gestor de
+    descargas y 931 Mb/s en un test de velocidad. Como no hay una respuesta
+    buena para todo el mundo, se ofrecen las dos y decide quien mira.
+
+    Las dos van en potencias de mil, no de 1024. En redes esa es la convención
+    —un enlace «gigabit» son mil millones de bits por segundo— y respetarla
+    hace que las dos unidades cuadren entre sí y con lo que enseña un test de
+    velocidad: los mismos datos son 116 MB/s y 931 Mb/s, exactamente ocho
+    veces. Con potencias de 1024 saldrían 976 y nadie entendería de dónde sale
+    la diferencia. Los totales acumulados sí usan 1024, como el resto del
+    programa, porque ahí la referencia es el disco y no el cable.
+    """
+    if _none(value):
+        return DASH
+    value = float(value) * (8 if bits else 1)
+    escala = ((1e9, "Gb/s" if bits else "GB/s"),
+              (1e6, "Mb/s" if bits else "MB/s"),
+              (1e3, "kb/s" if bits else "kB/s"))
+    for factor, unidad in escala:
+        if value >= factor:
+            return f"{value / factor:.1f} {unidad}"
+    return f"{value:.0f} {'b/s' if bits else 'B/s'}"
+
+
+def traffic_summary(traffic: NetworkTraffic) -> str:
+    """«↓ 1.2 GB · ↑ 456 MB», el histórico desde que se levantó la interfaz."""
+    if not traffic.total_bytes:
+        return DASH
+    return f"↓ {size(traffic.rx_bytes)}   ↑ {size(traffic.tx_bytes)}"
+
+
+def interface_state(interface: NetworkInterface) -> str:
+    """En qué estado está el enlace, en una palabra."""
+    if not interface.up:
+        # Distinguir «apagada» de «encendida pero sin cable» ahorra ir a mirar
+        # detrás del ordenador.
+        return "sin cable" if interface.carrier is False else "parada"
+    if interface.ipv4 or interface.ipv6:
+        return "activa"
+    return "sin dirección"
+
+
+def rpm(value: Optional[int]) -> str:
+    return DASH if _none(value) else f"{int(value)} RPM"
+
+
+def pcie_link(link: GpuLink, maximum: bool = False) -> str:
+    """«PCIe 5.0 × 16», que es como lo nombra todo el mundo menos sysfs."""
+    generation = link.max_generation if maximum else link.generation
+    width = link.max_width if maximum else link.current_width
+    speed = link.max_speed_gts if maximum else link.current_speed_gts
+    if generation is None and speed is None:
+        return DASH
+    nombre = f"PCIe {generation}.0" if generation else f"{speed:g} GT/s"
+    return f"{nombre} × {width}" if width else nombre
+
+
+def pcie_note(link: GpuLink) -> Optional[str]:
+    """Por qué el enlace va más lento de lo que puede, cuando pasa.
+
+    Casi siempre es que la tarjeta está en reposo y el driver ha bajado el
+    enlace para gastar menos, así que se dice como apunte y no como aviso: en
+    una máquina parada es lo que tiene que ocurrir.
+    """
+    if not link.downgraded:
+        return None
+    return f"Ahora a {pcie_link(link)}; la tarjeta y la ranura llegan a {pcie_link(link, maximum=True)}"
+
+
+def gpu_memory_summary(memory: GpuMemory) -> str:
+    """«2.0 GB de 15.9 GB  (12 %)»."""
+    if memory.total_bytes is None:
+        return DASH
+    if memory.used_bytes is None:
+        return size(memory.total_bytes)
+    return (f"{size(memory.used_bytes)} de {size(memory.total_bytes)}"
+            f"   ({memory.used_percent:.0f} %)")
+
+
+def bandwidth(value: Optional[int]) -> str:
+    """El ancho de banda de la memoria, en las unidades de las fichas técnicas."""
+    if _none(value):
+        return DASH
+    return f"{float(value) / 1e9:.0f} GB/s"
+
+
+def vram_kind(memory: GpuMemory) -> str:
+    """«GDDR6 256 bits», que es como se nombra una memoria de vídeo."""
+    partes = [p for p in (memory.kind,
+                          f"{memory.bus_bits} bits" if memory.bus_bits else None) if p]
+    return " · ".join(partes) if partes else DASH
+
+
+def resizable_bar(memory: GpuMemory) -> str:
+    """Si la CPU alcanza toda la VRAM o solo una ventana de 256 MB."""
+    if memory.resizable_bar is None:
+        return DASH
+    if memory.resizable_bar:
+        return "activo"
+    ventana = size(memory.visible_bytes) if memory.visible_bytes else DASH
+    return f"desactivado — la CPU solo alcanza {ventana}"
+
+
+def throttle_state(gpu) -> str:
+    """Si la tarjeta se está frenando, y por qué motivos."""
+    if gpu.throttled is None:
+        return DASH
+    if not gpu.throttled:
+        return "sin límites"
+    if not gpu.throttle_reasons:
+        return "recortando rendimiento"
+    return "recortando por " + ", ".join(gpu.throttle_reasons)
+
+
+def monitor_name(monitor: Optional[Edid]) -> str:
+    """El modelo tal y como lo enseñaría la pegatina de detrás."""
+    if monitor is None:
+        return DASH
+    partes = [p for p in (monitor.manufacturer, monitor.model) if p]
+    return " ".join(partes) if partes else (monitor.manufacturer_id or DASH)
+
+
+def monitor_summary(monitor: Optional[Edid]) -> str:
+    """«26.6" · 590 × 330 mm · semana 16 de 2024»."""
+    if monitor is None:
+        return DASH
+    pulgadas = f'{monitor.diagonal_inches}"' if monitor.diagonal_inches else None
+    medida = (f"{monitor.width_mm} × {monitor.height_mm} mm"
+              if monitor.width_mm and monitor.height_mm else None)
+    partes = [p for p in (pulgadas, medida, monitor.made) if p]
+    return " · ".join(partes) if partes else DASH
+
+
+def display_mode(display: Display) -> str:
+    """La resolución nativa con su refresco: «2560 × 1440 · 48–240 Hz»."""
+    if not display.connected:
+        return DASH
+    rango = display.monitor.refresh_range if display.monitor else None
+    if not rango and display.refresh_hz:
+        rango = f"{display.refresh_hz:g} Hz"
+    partes = [p for p in (display.resolution, rango) if p]
+    return " · ".join(partes) if partes else DASH
+
+
+def display_summary(display: Display) -> str:
+    """Una salida de vídeo: qué hay enchufado y a qué resolución.
+
+    A propósito no dice si la pantalla está encendida. El kernel publica un
+    `enabled` y un `dpms` que lo parecen, pero bajo Wayland el compositor toma
+    el control del modeset y sysfs pasa a decir «disabled» y «Off» de pantallas
+    que están funcionando delante de uno. Un dato que miente en el escritorio
+    más común no se enseña.
+    """
+    if not display.connected:
+        return "sin conectar"
+    return display.resolution or "conectada"
+
+
+def gpu_api_summary(api: GpuApi) -> str:
+    """«1.4.354 · Mesa 26.2.1 · 64 unidades de cómputo»."""
+    partes = [api.version or DASH]
+    if api.driver:
+        partes.append(api.driver)
+    if api.extra:
+        partes.append(api.extra)
+    return " · ".join(partes)
 
 
 def turbo_note(clocks: Clocks) -> Optional[str]:

@@ -14,8 +14,24 @@ han recogido y no toca ningún fichero.
 
 from __future__ import annotations
 
+from typing import Optional
+
 from ..model import Sensor, SensorKind, short_brand
 from .base import Draft, Provider
+
+
+# Un voltaje redondeado a un decimal deja de ser un voltaje: 0,845 V se
+# convierte en 0,8 y ya no dice nada. Cada magnitud tiene la suya.
+DECIMALES = {SensorKind.VOLTAGE: 3, SensorKind.TEMPERATURE: 1, SensorKind.CLOCK: 1,
+             SensorKind.USAGE: 1, SensorKind.MEMORY: 0, SensorKind.NETWORK: 1}
+
+
+def _mhz(hz: Optional[int]) -> Optional[float]:
+    return round(hz / 1e6, 1) if hz else None
+
+
+def _megas(byte: Optional[int]) -> Optional[float]:
+    return round(byte / 1024**2, 1) if byte else None
 
 
 class DerivedSensors(Provider):
@@ -24,6 +40,8 @@ class DerivedSensors(Provider):
 
     def collect(self, draft: Draft) -> None:
         if not draft.types:
+            # Aun sin procesador identificado, las gráficas pueden tener datos.
+            draft.sensors.extend(self._graphics(draft))
             return
         first = draft.types[next(iter(draft.types))]
         device = short_brand(first.get("brand"))
@@ -31,6 +49,102 @@ class DerivedSensors(Provider):
         draft.sensors.extend(self._power(draft, device))
         draft.sensors.extend(self._clocks(draft, device))
         draft.sensors.extend(self._usage(draft, device))
+        draft.sensors.extend(self._graphics(draft))
+        draft.sensors.extend(self._network(draft))
+
+    @staticmethod
+    def _network(draft: Draft) -> list[Sensor]:
+        """El ritmo de cada interfaz que esté moviendo algo.
+
+        Solo las que están levantadas: un equipo con Docker puede tener quince
+        interfaces virtuales a cero, y llenar el árbol con ellas lo hace
+        ilegible sin añadir nada.
+        """
+        sensors: list[Sensor] = []
+        for interfaz in draft.network:
+            if not interfaz.up or interfaz.kind == "loopback":
+                continue
+            device = f"Red ({interfaz.name})"
+            trafico = interfaz.traffic
+            campos = (
+                ("rx", "Bajada", SensorKind.NETWORK, trafico.rx_rate_bps, 0),
+                ("tx", "Subida", SensorKind.NETWORK, trafico.tx_rate_bps, 1),
+                ("rx_total", "Recibido", SensorKind.MEMORY,
+                 _megas(trafico.rx_bytes), 10),
+                ("tx_total", "Enviado", SensorKind.MEMORY,
+                 _megas(trafico.tx_bytes), 11),
+            )
+            for clave, etiqueta, tipo, valor, orden in campos:
+                if valor is None:
+                    continue
+                sensors.append(Sensor(
+                    key=f"net/{interfaz.name}/{clave}", chip="net", device=device,
+                    label=etiqueta, kind=tipo,
+                    value=round(float(valor) / (1024 if tipo is SensorKind.NETWORK else 1),
+                                DECIMALES.get(tipo, 1)),
+                    order=orden,
+                ))
+        return sensors
+
+    @staticmethod
+    def _graphics(draft: Draft) -> list[Sensor]:
+        """Lo de la gráfica que no sale de hwmon.
+
+        El chip de sensores de una tarjeta da temperaturas, ventilador y poco
+        más. El uso, la memoria ocupada, los relojes que solo conoce el firmware
+        y las temperaturas de los reguladores vienen del driver y del ioctl, y
+        en el árbol pintan tanto como los otros: son magnitudes que cambian y
+        que interesa seguir con su mínimo y su máximo.
+        """
+        sensors: list[Sensor] = []
+        for gpu in draft.gpus:
+            device = gpu.get("name") or f"Gráfica {gpu.get('index', 0)}"
+            marca = f"gpu{gpu.get('index', 0)}"
+            relojes = gpu.get("clocks")
+            memoria = gpu.get("memory")
+
+            campos: list[tuple[str, str, SensorKind, object, int]] = [
+                ("busy", "Uso del núcleo", SensorKind.USAGE, gpu.get("busy_percent"), 0),
+                ("mem_busy", "Uso de la memoria", SensorKind.USAGE,
+                 gpu.get("memory_busy_percent"), 1),
+                ("video_busy", "Uso del motor de vídeo", SensorKind.USAGE,
+                 gpu.get("video_busy_percent"), 2),
+                ("vr_gfx", "Regulador gráfico", SensorKind.TEMPERATURE,
+                 gpu.get("vr_gfx_c"), 10),
+                ("vr_soc", "Regulador del SoC", SensorKind.TEMPERATURE,
+                 gpu.get("vr_soc_c"), 11),
+                ("vr_mem", "Regulador de memoria", SensorKind.TEMPERATURE,
+                 gpu.get("vr_memory_c"), 12),
+                ("v_soc", "SoC", SensorKind.VOLTAGE, gpu.get("voltage_soc_v"), 20),
+                ("v_mem", "Memoria", SensorKind.VOLTAGE, gpu.get("voltage_memory_v"), 21),
+                ("fan_pct", "Ventilador", SensorKind.USAGE, gpu.get("fan_percent"), 3),
+            ]
+            if relojes is not None:
+                campos += [
+                    ("clk_soc", "SoC", SensorKind.CLOCK, _mhz(relojes.soc_hz), 32),
+                    ("clk_mem_eff", "Memoria (efectiva)", SensorKind.CLOCK,
+                     _mhz(relojes.memory_effective_hz), 31),
+                ]
+            if memoria is not None:
+                campos += [
+                    ("vram_pct", "Memoria de vídeo", SensorKind.USAGE,
+                     memoria.used_percent, 4),
+                    ("vram_mb", "Memoria de vídeo", SensorKind.MEMORY,
+                     _megas(memoria.used_bytes), 40),
+                    ("gtt_mb", "Memoria prestada al sistema", SensorKind.MEMORY,
+                     _megas(memoria.gtt_used_bytes), 41),
+                ]
+
+            for clave, etiqueta, tipo, valor, orden in campos:
+                if valor is None:
+                    continue
+                sensors.append(Sensor(
+                    key=f"{marca}/{clave}", chip="drm", device=device,
+                    label=etiqueta, kind=tipo,
+                    value=round(float(valor), DECIMALES.get(tipo, 1)),
+                    order=orden,
+                ))
+        return sensors
 
     # -- interno ------------------------------------------------------------
 

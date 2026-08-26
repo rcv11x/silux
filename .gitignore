@@ -7,3 +7,7 @@ dist/
 venv/
 .pytest_cache/
 *.png.tmp
+RETOMAR.md
+
+# Notas de trabajo con asistente, no forman parte del proyecto.
+CLAUDE.md

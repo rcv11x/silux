@@ -10,12 +10,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import pathlib
 import shutil
 import sys
 import time
 from typing import Optional
 
-from . import __version__, db, render
+from . import __version__, db, render, report
 from .collector import Collector
 from .model import Need, Snapshot, to_jsonable
 
@@ -81,7 +82,7 @@ def dump(snapshot: Snapshot, style: Style) -> str:
         clocks = cpu_type.clocks
         lines.append(style.bold(style.accent("├─ Relojes")))
         lines.append(_row(style, "Frecuencia", f"{render.hz(clocks.current_hz)}  {render.multiplier(clocks.multiplier)}"))
-        lines.append(_row(style, "Base", f"{render.hz(clocks.base_hz)}  {render.multiplier(clocks.base_hz / clocks.bus_hz if clocks.base_hz and clocks.bus_hz else None)}"))
+        lines.append(_row(style, "Base", f"{render.hz(clocks.base_hz)}  {render.multiplier(clocks.base_multiplier)}"))
         lines.append(_row(style, "Mínima", f"{render.hz(clocks.min_hz)}  {render.multiplier(clocks.min_multiplier)}"))
         lines.append(_row(style, "Máxima (kernel)", f"{render.hz(clocks.max_hz)}  {render.multiplier(clocks.max_multiplier)}"))
         lines.append(_row(style, "Máxima (silicio)", f"{render.hz(clocks.max_turbo_hz)}  {render.multiplier(clocks.max_turbo_multiplier)}"))
@@ -131,6 +132,66 @@ def dump(snapshot: Snapshot, style: Style) -> str:
             )
         for i in range(0, len(cells), columns):
             lines.append("".join(cells[i : i + columns]))
+        lines.append("")
+
+    for gpu in snapshot.gpus:
+        lines.append(style.bold(style.accent(f"├─ {gpu.display_name}")))
+        lines.append(_row(style, "Fabricante", gpu.vendor or render.DASH))
+        lines.append(_row(style, "Tarjeta de", gpu.subsystem_name or render.DASH))
+        lines.append(_row(style, "Nombre en clave", gpu.codename or render.DASH))
+        lines.append(_row(style, "Driver", f"{gpu.driver or render.DASH}"
+                          + (f" · {gpu.driver_version}" if gpu.driver_version else "")))
+        lines.append(_row(style, "Identificador", gpu.pci_id or render.DASH))
+        lines.append(_row(style, "Subsistema", gpu.subsystem_id or render.DASH))
+        lines.append(_row(style, "Ranura", gpu.pci_slot or render.DASH))
+        lines.append(_row(style, "BIOS de vídeo", gpu.vbios or render.DASH))
+        lines.append(_row(style, "Enlace", render.pcie_link(gpu.link)))
+        if nota := render.pcie_note(gpu.link):
+            lines.append(_row(style, "", style.dim(nota)))
+
+        lines.append(_row(style, "Memoria", render.gpu_memory_summary(gpu.memory)))
+        detalle = " · ".join(p for p in (
+            render.vram_kind(gpu.memory) if gpu.memory.kind else None,
+            render.bandwidth(gpu.memory.bandwidth_bytes)
+            if gpu.memory.bandwidth_bytes else None,
+            f"chips de {gpu.memory.vendor}" if gpu.memory.vendor else None) if p)
+        if detalle:
+            lines.append(_row(style, "", style.dim(detalle)))
+        lines.append(_row(style, "Núcleo", f"{render.hz(gpu.clocks.core_hz)}"
+                          f"  de {render.hz(gpu.clocks.core_max_hz)}"))
+        lines.append(_row(style, "Memoria (reloj)", f"{render.hz(gpu.clocks.memory_hz)}"
+                          f"  de {render.hz(gpu.clocks.memory_max_hz)}"))
+        lines.append(_row(style, "Uso", render.percent(gpu.busy_percent)))
+        lines.append(_row(style, "Temperatura", render.temperature(gpu.temp_c)))
+        if gpu.hotspot_c is not None:
+            lines.append(_row(style, "", style.dim(
+                f"punto caliente {render.temperature(gpu.hotspot_c)}"
+                f" · memoria {render.temperature(gpu.memory_temp_c)}")))
+        consumo = render.watts(gpu.power_w)
+        if gpu.power_cap_w:
+            consumo += f"  de {render.watts(gpu.power_cap_w)}"
+        lines.append(_row(style, "Consumo", consumo))
+        lines.append(_row(style, "Ventilador", f"{render.rpm(gpu.fan_rpm)}"
+                          + (f"  ({render.percent(gpu.fan_percent)})"
+                             if gpu.fan_percent is not None else "")))
+        unidades = " · ".join(p for p in (
+            f"{gpu.compute_units} unidades de cómputo" if gpu.compute_units else None,
+            f"{gpu.rops} ROP" if gpu.rops else None,
+            f"{gpu.shader_engines} motores" if gpu.shader_engines else None) if p)
+        lines.append(_row(style, "Unidades", unidades or render.DASH))
+
+        for api in gpu.apis:
+            lines.append(_row(style, api.name, render.gpu_api_summary(api)))
+        for salida in gpu.displays:
+            if salida.monitor:
+                lines.append(_row(style, salida.connector,
+                                  render.monitor_name(salida.monitor)))
+                lines.append(_row(style, "", style.dim(
+                    f"{render.display_mode(salida)} · "
+                    f"{render.monitor_summary(salida.monitor)}")))
+            else:
+                lines.append(_row(style, salida.connector,
+                                  style.dim(render.display_summary(salida))))
         lines.append("")
 
     if snapshot.sensors:
@@ -191,6 +252,12 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--watch", nargs="?", type=float, const=1.0, metavar="SEGUNDOS",
                         help="refresca de forma continua (por defecto cada segundo)")
     parser.add_argument("--no-color", action="store_true", help="sin colores ANSI")
+    parser.add_argument("--report", nargs="?", const="-", metavar="FICHERO",
+                        help="informe en Markdown para pegar en un issue; "
+                             "sin fichero, lo escribe por pantalla")
+    parser.add_argument("--with-identifiers", action="store_true",
+                        help="incluye en el informe lo que identifica al equipo "
+                             "(nombre, IP, MAC, números de serie)")
     parser.add_argument("--db-info", action="store_true", help="de dónde salió la base de datos")
     parser.add_argument("--version", action="version", version=f"cpuz {__version__}")
     args = parser.parse_args(argv)
@@ -224,6 +291,23 @@ def main(argv: Optional[list[str]] = None) -> int:
                     mark = style.warn(" ⚠") if sensor.alarm else ""
                     print(f"    {sensor.label:<24} "
                           f"{sensor.value:>10.{digits}f} {sensor.unit}{mark}")
+        return 0
+
+    if args.report:
+        texto = report.build(snapshot, anonymous=not args.with_identifiers)
+        if args.report == "-":
+            sys.stdout.write(texto)
+        else:
+            try:
+                pathlib.Path(args.report).write_text(texto, encoding="utf-8")
+            except OSError as error:
+                print(f"No se pudo escribir el informe: {error}", file=sys.stderr)
+                return 1
+            print(f"Informe guardado en {args.report}")
+            if not args.with_identifiers:
+                print("Se han omitido el nombre del equipo, las direcciones IP y "
+                      "MAC y los números de serie.\n"
+                      "Para incluirlos:  --report FICHERO --with-identifiers")
         return 0
 
     if args.json:

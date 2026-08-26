@@ -34,12 +34,23 @@ MEASUREMENTS: dict[str, tuple[SensorKind, float]] = {
     "power": (SensorKind.POWER, 1_000_000.0),      # microvatios
     "curr": (SensorKind.CURRENT, 1000.0),          # miliamperios
     "energy": (SensorKind.ENERGY, 1_000_000.0),    # microjulios
+    # Las gráficas publican aquí sus relojes, en hercios. Se pasan a megahercios
+    # porque es la unidad en la que el árbol guarda todos los relojes, incluidos
+    # los del procesador. Sin esta línea la tarjeta enseñaba temperaturas y
+    # ventilador pero ninguna frecuencia.
+    "freq": (SensorKind.CLOCK, 1_000_000.0),
 }
+
+# Canales que no se llaman `_input`. amdgpu publica el consumo como
+# `power1_average` —es una media de la última ventana, no una lectura
+# instantánea— y sin mirar aquí la tarjeta se quedaba sin consumo.
+ALTERNATIVAS = ("_average",)
 
 # A qué aparato pertenece cada chip. El orden importa: gana la primera regla.
 CPU_CHIP = re.compile(r"^(coretemp|k10temp|k8temp|zenpower|cpu_thermal)$")
 BOARD_CHIP = re.compile(r"^(nct\d+|it\d+|w836\d+|f71\d+|smsc|lm\d+|nzxt|asus|acpitz|thermal)")
 DISK_CHIP = re.compile(r"^(drivetemp|nvme)")
+NET_CHIP = re.compile(r"^(r8\d+|e1000|igb|ixgbe|iwlwifi|mt79|ath\d+k?)")
 GPU_CHIP = re.compile(r"^(amdgpu|radeon|i915|xe|nouveau)")
 
 # Chips de Super I/O: si no hay ninguno, la placa no está dando ventiladores.
@@ -53,7 +64,8 @@ _VCORE_LABEL = re.compile(r"(vcore|cpu\s*v(core|oltage)|vid)", re.IGNORECASE)
 CPU_CHIPS = ("coretemp", "k10temp", "zenpower", "cpu_thermal", "k8temp", "acpitz")
 
 
-def device_for(chip: str, entry: pathlib.Path, cpu_name: str, board_name: str) -> str:
+def device_for(chip: str, entry: pathlib.Path, cpu_name: str, board_name: str,
+               gpu_names: Optional[dict[str, str]] = None) -> str:
     """A qué aparato del árbol cuelga este chip.
 
     El nombre importa: un árbol que dice "coretemp" y "nct6683" obliga a saber
@@ -67,8 +79,51 @@ def device_for(chip: str, entry: pathlib.Path, cpu_name: str, board_name: str) -
     if DISK_CHIP.match(chip):
         return _disk_name(entry) or "Almacenamiento"
     if GPU_CHIP.match(chip):
+        # El nombre de verdad si se sabe cuál es: un árbol que dice «amdgpu» no
+        # sirve de nada en un equipo con dos gráficas, y en uno con una sola
+        # obliga igualmente a saber qué driver lleva.
+        if nombre := (gpu_names or {}).get(_ranura_pci(entry) or ""):
+            return nombre
         return f"Gráfica ({chip})"
+    if NET_CHIP.match(chip):
+        return _net_name(entry) or f"Red ({chip})"
     return chip
+
+
+def _ranura_pci(entry: pathlib.Path) -> Optional[str]:
+    """La dirección PCI del aparato al que cuelga un chip de sensores."""
+    try:
+        destino = (entry / "device").resolve()
+    except OSError:
+        return None
+    while destino.name and destino.name != "/":
+        if re.fullmatch(r"[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\.[0-9a-f]", destino.name):
+            return destino.name
+        destino = destino.parent
+    return None
+
+
+def _net_name(entry: pathlib.Path) -> Optional[str]:
+    """El nombre de la interfaz de red a la que pertenece un sensor.
+
+    El sensor de temperatura de una Realtek no cuelga de la tarjeta sino del
+    bus MDIO por el que se habla con el chip físico, un par de niveles más
+    abajo. Así que se sube hasta dar con el `net/` de la interfaz.
+    """
+    try:
+        actual = (entry / "device").resolve()
+    except OSError:
+        return None
+    for _ in range(6):
+        red = actual / "net"
+        if red.is_dir():
+            interfaces = sorted(p.name for p in red.iterdir())
+            if interfaces:
+                return f"Red ({interfaces[0]})"
+        if actual.parent == actual:
+            break
+        actual = actual.parent
+    return None
 
 
 def _disk_name(entry: pathlib.Path) -> Optional[str]:
@@ -80,8 +135,20 @@ def _disk_name(entry: pathlib.Path) -> Optional[str]:
     return None
 
 
+# Las etiquetas que pone amdgpu son las del firmware. Dicen algo si uno sabe
+# qué es un «sclk», y nada si no.
+ETIQUETAS_GPU = {
+    "sclk": "Núcleo", "mclk": "Memoria", "fclk": "Fabric", "socclk": "SoC",
+    "vddgfx": "Núcleo", "vddnb": "Northbridge", "vddc": "Núcleo",
+    "edge": "Borde", "junction": "Punto caliente", "mem": "Memoria",
+    "PPT": "Paquete",
+}
+
+
 def _friendly(chip: str, prefix: str, index: str, label: Optional[str]) -> str:
     if label:
+        if GPU_CHIP.match(chip):
+            return ETIQUETAS_GPU.get(label, label)
         return label
     fallback = {
         "temp": "Temperatura", "in": "Tensión", "fan": "Ventilador",
@@ -110,8 +177,12 @@ class HwmonSensors(Provider):
         cpu_name = short_brand(draft.types[next(iter(draft.types), "")].get("brand")
                                if draft.types else None)
         board_name = draft.board.display_name
+        # Las gráficas ya están enumeradas cuando esto corre: el orden de los
+        # proveedores en `collector.py` lo garantiza.
+        gpu_names = {gpu["pci_slot"]: (gpu.get("name") or f"Gráfica {gpu['index']}")
+                     for gpu in draft.gpus if gpu.get("pci_slot")}
 
-        sensors = list(self._read_hwmon(cpu_name, board_name))
+        sensors = list(self._read_hwmon(cpu_name, board_name, gpu_names))
         sensors += list(self._read_power_supplies())
         if not sensors:
             return
@@ -123,25 +194,32 @@ class HwmonSensors(Provider):
 
     # -- lectura ------------------------------------------------------------
 
-    def _read_hwmon(self, cpu_name: str, board_name: str) -> Iterator[Sensor]:
+    def _read_hwmon(self, cpu_name: str, board_name: str,
+                    gpu_names: Optional[dict[str, str]] = None) -> Iterator[Sensor]:
         if not HWMON.is_dir():
             return
         for entry in sorted(HWMON.iterdir()):
             chip = read_text(str(entry / "name"))
             if not chip:
                 continue
-            device = device_for(chip, entry, cpu_name, board_name)
-            for order, path in enumerate(sorted(entry.glob("*_input"))):
+            device = device_for(chip, entry, cpu_name, board_name, gpu_names)
+            canales = sorted(entry.glob("*_input"))
+            vistos = {ruta.name.replace("_input", "") for ruta in canales}
+            for sufijo in ALTERNATIVAS:
+                canales += [ruta for ruta in sorted(entry.glob(f"*{sufijo}"))
+                            if ruta.name.replace(sufijo, "") not in vistos]
+            for order, path in enumerate(canales):
                 sensor = self._parse(chip, device, path, order)
                 if sensor is not None:
                     yield sensor
 
     @staticmethod
     def _parse(chip: str, device: str, path: pathlib.Path, order: int = 0) -> Optional[Sensor]:
-        match = re.match(r"^([a-z]+)(\d+)_input$", path.name)
+        match = re.match(r"^([a-z]+)(\d+)_(?:input|average)$", path.name)
         if match is None:
             return None
         prefix, index = match.groups()
+        sufijo = "_average" if path.name.endswith("_average") else "_input"
         if prefix not in MEASUREMENTS:
             return None
 
@@ -150,8 +228,8 @@ class HwmonSensors(Provider):
             return None
         kind, divisor = MEASUREMENTS[prefix]
 
-        def threshold(suffix: str) -> Optional[float]:
-            value = read_int(str(path).replace("_input", f"_{suffix}"))
+        def threshold(nombre: str) -> Optional[float]:
+            value = read_int(str(path).replace(sufijo, f"_{nombre}"))
             return None if value is None else value / divisor
 
         return Sensor(
@@ -159,7 +237,7 @@ class HwmonSensors(Provider):
             chip=chip,
             device=device,
             label=_friendly(chip, prefix, index,
-                            read_text(str(path).replace("_input", "_label"))),
+                            read_text(str(path).replace(sufijo, "_label"))),
             kind=kind,
             value=round(raw / divisor, 3),
             low=threshold("min"),
