@@ -480,9 +480,14 @@ def diagnostico() -> tuple[str, str]:
                 "a los parámetros de arranque del kernel. Es lo que hacen "
                 "lm-sensors y decode-dimms para lo mismo.")
 
+    # Cada generación de memoria lleva un chip distinto y hace falta el driver
+    # que le corresponde. Faltaba el de DDR3, y a una placa X79 con Xeon E5 v2
+    # se le proponían los dos que no le sirven de nada.
     return ("El bus está, pero los chips SPD no tienen driver que los lea.",
-            "Cárgalo con:  sudo modprobe ee1004     (DDR4)\n"
-            "              sudo modprobe spd5118    (DDR5)")
+            "Según la memoria que lleve el equipo:\n"
+            "  sudo modprobe spd5118    (DDR5)\n"
+            "  sudo modprobe ee1004     (DDR4)\n"
+            "  sudo modprobe at24       (DDR3 y anteriores)")
 
 
 def _hay_controlador_smbus() -> bool:

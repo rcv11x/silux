@@ -148,8 +148,12 @@ class ArmIdentity(Provider):
     @staticmethod
     def _rellenar(entry: dict, bloque: dict[str, str],
                   implementer: Optional[int], part: Optional[int]) -> None:
-        fabricante = db.arm_implementer(implementer)
-        nucleo = db.arm_part(implementer, part)
+        # La base de datos generada ya trae la tabla de MIDR de libcpuid, con
+        # el nombre en clave de cada núcleo y su litografía.
+        identidad = (db.identify_arm(implementer, part)
+                     if None not in (implementer, part) else {})
+        fabricante = identidad.get("vendor")
+        nucleo = identidad.get("part_name")
         variante = _entero(bloque, "CPU variant")
         revision = _entero(bloque, "CPU revision")
 
@@ -162,7 +166,8 @@ class ArmIdentity(Provider):
             vendor=fabricante,
             vendor_id=f"0x{implementer:02x}" if implementer is not None else None,
             brand=" ".join(p for p in (fabricante, nucleo, paso) if p) or None,
-            codename=nucleo,
+            codename=identidad.get("codename"),
+            technology=identidad.get("technology"),
             architecture=platform.machine(),
             # El equivalente ARM de la firma de CPUID: los dos números que
             # identifican el silicio, sin inventarles una familia y un modelo
