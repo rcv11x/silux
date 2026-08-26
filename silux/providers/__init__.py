@@ -2,6 +2,7 @@
 
 from .base import Draft, Provider
 from .cppc import CppcClocks
+from .armcpu import ArmIdentity
 from .cpuid_x86 import CpuidIdentity
 from .derived import DerivedSensors
 from .dmi import DmiBoard
@@ -21,7 +22,7 @@ from .turbo import TurboState
 
 __all__ = [
     "Draft", "Provider",
-    "SysfsTopology", "CpuidIdentity", "CppcClocks", "DmiBoard", "TurboState",
+    "SysfsTopology", "CpuidIdentity", "ArmIdentity", "CppcClocks", "DmiBoard", "TurboState",
     "SysfsClocks", "CpuUsage", "HwmonSensors", "RaplPower", "DerivedSensors",
     "DrmGpus", "GpuState", "GpuApis", "NvidiaGpus", "NetworkInterfaces",
     "SystemIdentity", "SystemState", "PrivilegedMemory", "SpdModules", "Disks",

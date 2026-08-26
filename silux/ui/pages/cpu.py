@@ -20,7 +20,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QLabel, QScrollArea, QVBoxLayout, QWidget
 
 from ... import render
-from ...features import HIGHLIGHTS, pretty as pretty_feature
+from ...features import para_arquitectura
 from ...model import CpuType, Need, Snapshot
 from ...settings import Preferences
 from .. import theme
@@ -182,11 +182,12 @@ class TypeSection(QWidget):
             )
 
     def _apply_features(self, cpu_type: CpuType) -> None:
+        destacadas, bonitos = para_arquitectura(cpu_type.architecture)
         present = set(cpu_type.features)
         if self._prefs.show_all_features:
-            shown = [pretty_feature(f) for f in cpu_type.features]
+            shown = [bonitos.get(f, f.upper()) for f in cpu_type.features]
         else:
-            shown = [pretty_feature(f) for f in HIGHLIGHTS if f in present]
+            shown = [bonitos.get(f, f.upper()) for f in destacadas if f in present]
         if cpu_type.smt:
             shown.insert(0, "HT" if cpu_type.vendor == "Intel" else "SMT")
 

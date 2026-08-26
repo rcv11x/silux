@@ -71,6 +71,17 @@ class Draft:
     def note(self, path: str, need: Need, message: str, hint: str = "") -> None:
         self.notes.append(Note(path=path, need=need, message=message, hint=hint))
 
+    def resolve(self, path: str) -> None:
+        """Retira las notas de un dato que otro proveedor sí ha conseguido.
+
+        Los proveedores no se conocen entre sí, pero varios pueden apuntar al
+        mismo dato por caminos distintos, y el que llega primero deja dicho
+        que no pudo. En ARM eso hacía que la identidad del procesador
+        apareciera como ausente —«CPUID es una instrucción de x86»— con el
+        nombre del núcleo escrito justo encima.
+        """
+        self.notes = [n for n in self.notes if n.path != path]
+
     # -- congelación --------------------------------------------------------
 
     def freeze(self) -> Snapshot:

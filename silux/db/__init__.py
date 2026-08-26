@@ -310,3 +310,37 @@ def _por_familia(vendor_id: str, ext_family: int, ext_model: int) -> Optional[di
         if regla.get("from", 0) <= ext_model <= regla.get("to", -1):
             return regla
     return None
+
+
+# --------------------------------------------------------------------------
+# ARM
+# --------------------------------------------------------------------------
+
+@functools.lru_cache(maxsize=1)
+def _load_arm() -> dict[str, Any]:
+    path = pathlib.Path(__file__).parent / "arm_ids.json"
+    try:
+        with path.open(encoding="utf-8") as fh:
+            return json.load(fh)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def arm_implementer(code: Optional[int]) -> Optional[str]:
+    """Quién fabrica el núcleo, según el byte alto de MIDR_EL1."""
+    if code is None:
+        return None
+    return _load_arm().get("implementers", {}).get(f"0x{code:02x}")
+
+
+def arm_part(implementer: Optional[int], part: Optional[int]) -> Optional[str]:
+    """Qué núcleo es: «Cortex-A55», «Firestorm», «Neoverse-N1».
+
+    El número de pieza solo significa algo dentro de un fabricante: el 0xd05
+    de ARM es un Cortex-A55 y el 0xd01 de HiSilicon un TaiShan, y ambos
+    conviven con un 0xd01 de ARM que es un Cortex-A32.
+    """
+    if implementer is None or part is None:
+        return None
+    tabla = _load_arm().get("parts", {}).get(f"0x{implementer:02x}", {})
+    return tabla.get(f"0x{part:03x}")

@@ -7,6 +7,8 @@ reconocibles y se puedan contrastar con lo que dice el kernel.
 
 from __future__ import annotations
 
+from typing import Optional
+
 EAX, EBX, ECX, EDX = 0, 1, 2, 3
 
 # (hoja, subhoja, registro, bit, nombre)
@@ -71,6 +73,28 @@ HIGHLIGHTS: tuple[str, ...] = (
     "bmi1", "bmi2", "adx", "rdrand", "rdseed", "vmx", "svm",
 )
 
+# Lo mismo para ARM, que tiene sus propias extensiones y sus propios nombres.
+# Hace falta una lista aparte porque unas cuantas banderas se llaman igual en
+# las dos arquitecturas sin ser lo mismo: la «aes» de un aarch64 es la
+# extensión criptográfica de ARMv8, y llamarla AES-NI —que es de Intel— es
+# ponerle a un procesador una instrucción que no tiene.
+HIGHLIGHTS_ARM: tuple[str, ...] = (
+    "asimd", "sve", "sve2", "sme", "aes", "pmull", "sha1", "sha2", "sha3",
+    "sha512", "crc32", "atomics", "fphp", "asimdhp", "asimddp", "asimdrdm",
+    "i8mm", "bf16", "jscvt", "fcma", "lrcpc", "dcpop", "flagm", "rng",
+    "sm3", "sm4",
+)
+
+PRETTY_ARM: dict[str, str] = {
+    "asimd": "NEON", "sve": "SVE", "sve2": "SVE2", "sme": "SME",
+    "aes": "AES", "pmull": "PMULL", "sha1": "SHA1", "sha2": "SHA2",
+    "sha3": "SHA3", "sha512": "SHA512", "crc32": "CRC32",
+    "atomics": "LSE", "fphp": "FP16", "asimdhp": "NEON-FP16",
+    "asimddp": "DotProd", "asimdrdm": "RDM", "i8mm": "I8MM", "bf16": "BF16",
+    "jscvt": "JSCVT", "fcma": "FCMA", "lrcpc": "LRCPC", "dcpop": "DCPOP",
+    "flagm": "FlagM", "rng": "RNG", "sm3": "SM3", "sm4": "SM4",
+}
+
 # Nombres bonitos para lo que se enseña destacado.
 PRETTY: dict[str, str] = {
     "mmx": "MMX", "sse": "SSE", "sse2": "SSE2", "sse3": "SSE3",
@@ -107,3 +131,14 @@ def decode(reader) -> tuple[str, ...]:
 
 def pretty(name: str) -> str:
     return PRETTY.get(name, name.upper().replace("_", "-"))
+
+
+def para_arquitectura(architecture: Optional[str]):
+    """Las banderas que se destacan y cómo se nombran, según qué CPU sea.
+
+    Una bandera con el mismo nombre no es la misma instrucción en las dos
+    arquitecturas, así que no vale una tabla única: hay que elegir la del
+    silicio que se está mirando.
+    """
+    es_arm = (architecture or "").lower().startswith(("aarch64", "arm"))
+    return (HIGHLIGHTS_ARM, PRETTY_ARM) if es_arm else (HIGHLIGHTS, PRETTY)

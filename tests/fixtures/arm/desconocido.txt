@@ -1,0 +1,7 @@
+processor	: 0
+Features	: fp asimd
+CPU implementer	: 0x41
+CPU architecture: 8
+CPU variant	: 0x1
+CPU part	: 0xfab
+CPU revision	: 2

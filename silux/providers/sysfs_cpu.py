@@ -39,6 +39,36 @@ def online_cpus() -> tuple[int, ...]:
     return tuple(sorted(found)) or (0,)
 
 
+def _por_nucleo_arm(cpus: tuple[int, ...]) -> dict[str, list[int]]:
+    """Reparte las CPU de un ARM por el núcleo que lleva cada una.
+
+    Devuelve vacío si no hay más de un tipo, que es lo normal fuera de ARM y
+    también en un ARM de un solo núcleo: en ese caso manda el reparto de
+    siempre y aquí no se toca nada.
+    """
+    from .armcpu import es_arm, midr_por_cpu
+
+    if not es_arm():
+        return {}
+    midr = midr_por_cpu()
+    grupos: dict[tuple, list[int]] = {}
+    for cpu in cpus:
+        identidad = midr.get(cpu)
+        if identidad is None or identidad == (None, None):
+            return {}                     # incompleto: no se adivina
+        grupos.setdefault(identidad, []).append(cpu)
+    if len(grupos) < 2:
+        return {}
+
+    # Los grandes primero, que es como los numera el fabricante y como los
+    # espera quien mira: el orden lo da el número de pieza, más alto cuanto
+    # más reciente y más grande es el núcleo.
+    orden = sorted(grupos, key=lambda k: (k[1] or 0), reverse=True)
+    nombres = ["performance", "efficiency"] if len(orden) == 2 else [
+        f"nucleo{i}" for i in range(len(orden))]
+    return {nombres[i]: grupos[clave] for i, clave in enumerate(orden)}
+
+
 class SysfsTopology(Provider):
     """Reparto de CPUs por tipo de núcleo, socket, y jerarquía de cachés."""
 
@@ -106,6 +136,13 @@ class SysfsTopology(Provider):
             # Sin PMUs separados hay un solo tipo; con ellos, esto no debería
             # ocurrir, pero si el kernel deja alguna CPU fuera no se pierde.
             buckets["general" if not buckets else "other"] = leftover
+
+        if len(buckets) == 1 and "general" in buckets:
+            # Un big.LITTLE de ARM es tan híbrido como un Intel de 12ª, pero
+            # el kernel no le publica un PMU por tipo. Lo que sí publica es
+            # qué núcleo lleva cada CPU, y con eso se separan igual.
+            if reparto := _por_nucleo_arm(tuple(buckets["general"])):
+                return reparto
         return buckets or {"general": list(cpus)}
 
     @staticmethod
