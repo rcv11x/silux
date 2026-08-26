@@ -1,7 +1,7 @@
 """Página de sistema: sobre qué software corre esto.
 
 Es la única sección que no habla de hardware, y está aquí porque las preguntas
-que responde —qué kernel, cuánta memoria queda, desde cuándo está encendido—
+que responde (qué kernel, cuánta memoria queda, desde cuándo está encendido)
 son las que uno se hace justo después de mirar los sensores.
 
 El reparto de memoria se enseña como barra además de como cifras: que el

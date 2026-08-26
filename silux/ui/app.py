@@ -8,7 +8,7 @@ qué falta en lugar de fingir que la aplicación está completa.
 Cambiar de tema o de densidad reconstruye la interfaz en vez de repintarla
 pieza a pieza. Es una operación de milisegundos, ocurre solo cuando el
 usuario toca un ajuste, y evita tener que propagar la paleta a mano por doce
-clases —que es justo donde se cuelan los widgets que se quedan del color
+clases, que es justo donde se cuelan los widgets que se quedan del color
 anterior. El hilo de muestreo no se toca, así que no se pierde ni una
 lectura ni el histórico de las gráficas.
 """
@@ -57,8 +57,8 @@ from .theme import ui_font
 from .widgets import ElidingLabel
 
 # (etiqueta, ¿implementada?)
-# El orden va de arriba abajo por el equipo —procesador, cachés, placa, memoria,
-# gráfica— y deja al final las dos secciones que no describen una pieza:
+# El orden va de arriba abajo por el equipo (procesador, cachés, placa, memoria,
+# gráfica) y deja al final las dos secciones que no describen una pieza:
 # Sensores, que es el estado de todo a la vez, y Ajustes.
 SECTIONS = (
     ("CPU", True),

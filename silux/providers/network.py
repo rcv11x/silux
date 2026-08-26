@@ -3,7 +3,7 @@
 Casi todo está en `/sys/class/net`, que es de lectura libre: estado del enlace,
 velocidad negociada, MAC, MTU y los contadores de tráfico. Lo único que el
 kernel no publica ahí es la dirección IP, y para esa hay que preguntarle al
-sistema con un ioctl de toda la vida —el mismo que usa `ifconfig`— porque las
+sistema con un ioctl de toda la vida (el mismo que usa `ifconfig`) porque las
 direcciones no viven en el dispositivo sino en la pila de red.
 
 El ritmo de subida y bajada se calcula entre dos muestreos. Los contadores son
@@ -40,8 +40,8 @@ CONTADORES = ("rx_bytes", "tx_bytes", "rx_packets", "tx_packets",
 TIPO_ETHERNET, TIPO_LOOPBACK = 1, 772
 
 # Interfaces que existen pero no son una tarjeta: puentes de máquinas
-# virtuales, túneles, contenedores. Se enseñan igual —quien tiene libvirt
-# quiere ver su puente— pero marcadas como lo que son.
+# virtuales, túneles, contenedores. Se enseñan igual (quien tiene libvirt
+# quiere ver su puente) pero marcadas como lo que son.
 PREFIJOS_VIRTUALES = ("virbr", "docker", "veth", "br-", "tun", "tap", "vmnet",
                       "wg", "tailscale", "zt", "bond", "dummy")
 

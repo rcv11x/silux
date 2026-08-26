@@ -183,7 +183,7 @@ class CachesPage(QScrollArea):
 
     @staticmethod
     def _group(snapshot: Snapshot) -> dict[tuple, Cache]:
-        """Una entrada por nivel, tipo y —si la CPU es híbrida— tipo de núcleo.
+        """Una entrada por nivel, tipo y (si la CPU es híbrida) tipo de núcleo.
 
         En una CPU homogénea todos los tipos de núcleo describen las mismas
         cachés, así que agrupar evita repetir cada fila.

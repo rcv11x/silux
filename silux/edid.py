@@ -1,6 +1,6 @@
 """Decodifica el EDID, que es la chapa de identificación de un monitor.
 
-Cada pantalla lleva 128 bytes —a veces con extensiones detrás— que el kernel
+Cada pantalla lleva 128 bytes (a veces con extensiones detrás) que el kernel
 deja tal cual en `/sys/class/drm/<conector>/edid`, sin pedir permisos. Dentro
 está lo que sysfs no cuenta por otra vía: quién la fabricó, qué modelo es,
 cuándo se hizo, cuánto mide de verdad y a qué resolución y refresco quiere

@@ -6,7 +6,7 @@ y cuántos ROP monta el chip. El driver los tiene, pero solo los da por
 `DRM_IOCTL_AMDGPU_INFO`, que es como los pide Mesa y como los saca LACT.
 
 Se abre el nodo de render (`/dev/dri/renderD128`), que en cualquier
-distribución de escritorio es legible por todo el mundo — está pensado para que
+distribución de escritorio es legible por todo el mundo, porque está pensado para que
 cualquier programa pueda dibujar. No hace falta root ni estar en el grupo
 `video`, y no se escribe nada: la petición solo lee.
 
@@ -49,8 +49,8 @@ TIPOS_DE_VRAM = {
 
 # Cuántas transferencias hace cada tipo por ciclo del reloj que publica el
 # driver. No es un dato que se pueda leer: sale de cómo funciona cada memoria,
-# y se comprueba contra tarjetas conocidas —una RX 9070 XT da 20 Gbps con su
-# reloj a 1258 MHz, una RX 580 daba 8 con 2000, una Vega 1,89 con 945—. Los
+# y se comprueba contra tarjetas conocidas (una RX 9070 XT da 20 Gbps con su
+# reloj a 1258 MHz, una RX 580 daba 8 con 2000, una Vega 1,89 con 945). Los
 # tipos que no están aquí se quedan sin ancho de banda antes que enseñar uno
 # inventado.
 TRANSFERENCIAS = {

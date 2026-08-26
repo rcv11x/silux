@@ -1,7 +1,7 @@
 """Identidad del procesador leyendo CPUID directamente, sin root.
 
 Es lo único que sysfs no puede dar: fabricante real, cadena de marca, familia
-y modelo, el juego de instrucciones y —en Intel moderno— el reloj base, el
+y modelo, el juego de instrucciones y (en Intel moderno) el reloj base, el
 techo de turbo del silicio y el BCLK, en la hoja 0x16. Ese último dato es el
 que CPU-X saca leyendo MSR con un daemon privilegiado; aquí sale gratis.
 
@@ -95,8 +95,8 @@ class CpuidIdentity(Provider):
         ext_family_bits = (eax >> 20) & 0xFF
         ext_model_bits = (eax >> 16) & 0xF
 
-        # Las hojas de datos del fabricante —y las bases de datos de
-        # identificación— usan los valores compuestos, no los bits crudos.
+        # Las hojas de datos del fabricante (y las bases de datos de
+        # identificación) usan los valores compuestos, no los bits crudos.
         disp_family = family + ext_family_bits if family == 0xF else family
         disp_model = model + (ext_model_bits << 4) if family in (6, 0xF) else model
 

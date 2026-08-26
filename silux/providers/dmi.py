@@ -1,7 +1,7 @@
 """Placa base, firmware y chipset.
 
-Tres orígenes distintos que responden a la misma pregunta —«sobre qué está
-montado esto»— y por eso viven juntos:
+Tres orígenes distintos que responden a la misma pregunta («sobre qué está
+montado esto») y por eso viven juntos:
 
 * `/sys/class/dmi/id` da la placa, la BIOS y el equipo, tal y como los declara
   la tabla SMBIOS. Los números de serie y el UUID están ahí al lado pero con

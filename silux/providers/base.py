@@ -59,7 +59,7 @@ class Draft:
         """La tarjeta número N, creándola si es la primera vez que se la nombra.
 
         Se guardan como diccionarios y no como `Gpu` porque las rellenan varios
-        proveedores por turnos —el kernel primero, las APIs gráficas después— y
+        proveedores por turnos (el kernel primero, las APIs gráficas después) y
         rehacer un dataclass congelado en cada paso se come los campos que otro
         acaba de poner.
         """

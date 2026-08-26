@@ -13,7 +13,7 @@ de bindings y Qt arrastra otros 100 en bibliotecas. Casi nada de eso se usa.
 Lo que se hace para que quepa:
 
 - **De PySide6, tres módulos.** silux solo usa QtCore, QtGui y QtWidgets. Los
-  otros treinta —Quick, 3D, Charts, Multimedia, WebEngine— se quedan fuera.
+  otros treinta (Quick, 3D, Charts, Multimedia, WebEngine) se quedan fuera.
 - **Las bibliotecas se resuelven con `ldd`**, no a mano, y se copian solo las
   que hagan falta de verdad. Las que trae cualquier Linux (glibc, X11, los
   drivers gráficos) se dejan al sistema: meterlas dentro es lo que rompe un
@@ -62,7 +62,7 @@ QT_PLUGINS = (
 # lo usaría de todas formas.
 
 # De `imageformats` solo estos. Los demás tiran de los códecs de vídeo del
-# sistema —x265, aom, SVT-AV1— que suman otros 35 MB por poder abrir un HEIF o
+# sistema (x265, aom, SVT-AV1) que suman otros 35 MB por poder abrir un HEIF o
 # un AVIF que aquí no se abre nunca.
 IMAGEFORMATS = ("qsvg", "qico", "qjpeg", "qgif")
 
@@ -81,8 +81,8 @@ DEL_SISTEMA = (
 STDLIB_FUERA = (
     # `site-packages` es lo primero de la lista y por un buen motivo: vive
     # dentro de la biblioteca estándar y contiene todo lo que el usuario haya
-    # instalado con pip. Copiarla entera metía 300 MB de paquetes ajenos —el
-    # PySide6 completo entre ellos, justo el que se está podando— en un
+    # instalado con pip. Copiarla entera metía 300 MB de paquetes ajenos (el
+    # PySide6 completo entre ellos, justo el que se está podando) en un
     # AppImage que solo necesita la stdlib.
     "site-packages", "dist-packages",
     "test", "tests", "idlelib", "tkinter", "turtledemo", "lib2to3",

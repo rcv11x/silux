@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Genera `silux/db/cpu_ids.json` a partir de las fuentes de libcpuid y CPU-X.
 
-La identificación de un procesador —nombre en clave, nodo de fabricación,
-socket— no se puede deducir del hardware: es una tabla de correspondencias que
+La identificación de un procesador (nombre en clave, nodo de fabricación,
+socket) no se puede deducir del hardware: es una tabla de correspondencias que
 alguien tiene que mantener. libcpuid lleva más de una década manteniéndola, y
 sus tablas son datos tabulares regulares, no lógica. Este script las convierte
 a JSON para que actualizar la base de datos sea volver a ejecutarlo, no editar
@@ -12,8 +12,8 @@ código y recompilar.
     python3 tools/gen_cpu_db.py --offline      # usa lo que ya haya en caché
 
 Fuentes y licencias:
-  · libcpuid  — BSD 2 cláusulas — https://github.com/anrieff/libcpuid
-  · CPU-X     — GPL-3.0         — https://github.com/TheTumultuousUnicornOfDarkness/CPU-X
+  · libcpuid  ( BSD 2 cláusulas ) https://github.com/anrieff/libcpuid
+  · CPU-X     ( GPL-3.0         ) https://github.com/TheTumultuousUnicornOfDarkness/CPU-X
 """
 
 from __future__ import annotations

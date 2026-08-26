@@ -2,7 +2,7 @@
 
 Se enumera el árbol entero una sola vez y de ahí salen dos cosas: la lista
 completa de sensores que consume la página de Monitor, y los valores concretos
-—temperatura por núcleo, voltaje— que necesita la de CPU. Hacerlo en dos
+(temperatura por núcleo, voltaje) que necesita la de CPU. Hacerlo en dos
 pasadas sería leer los mismos ficheros dos veces por muestreo.
 
 Aquí vive también la parte que más diferencia a un monitor de hardware en
@@ -42,8 +42,8 @@ MEASUREMENTS: dict[str, tuple[SensorKind, float]] = {
 }
 
 # Canales que no se llaman `_input`. amdgpu publica el consumo como
-# `power1_average` —es una media de la última ventana, no una lectura
-# instantánea— y sin mirar aquí la tarjeta se quedaba sin consumo.
+# `power1_average` (es una media de la última ventana, no una lectura
+# instantánea) y sin mirar aquí la tarjeta se quedaba sin consumo.
 ALTERNATIVAS = ("_average",)
 
 # A qué aparato pertenece cada chip. El orden importa: gana la primera regla.

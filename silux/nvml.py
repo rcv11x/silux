@@ -6,8 +6,8 @@ temperatura. Todo eso está detrás de NVML, la biblioteca que trae el propio
 driver y que es lo que usa por dentro `nvidia-smi`.
 
 Se carga con `ctypes` como el resto de bibliotecas del programa. NVML lleva
-más de una década con la misma ABI y versiona los símbolos que cambia —de ahí
-los sufijos `_v2` y `_v3`—, así que se piden los versionados y se cae a los
+más de una década con la misma ABI y versiona los símbolos que cambia (de ahí
+los sufijos `_v2` y `_v3`), así que se piden los versionados y se cae a los
 antiguos si el driver es viejo.
 
 ⚠ Ojo al mantenerlo: esto está escrito contra la API documentada, pero no se

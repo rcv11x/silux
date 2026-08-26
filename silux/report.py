@@ -192,7 +192,7 @@ def _sensores(snapshot: Snapshot) -> str:
         cuantos = sum(len(s) for s in categorias.values())
         resumen = ", ".join(f"{nombre.lower()} ({len(s)})"
                             for nombre, s in categorias.items())
-        lineas.append(f"- **{aparato}** — {cuantos}: {resumen}")
+        lineas.append(f"- **{aparato}**, {cuantos}: {resumen}")
     return "\n".join(lineas)
 
 
@@ -204,7 +204,7 @@ def _diagnostico(snapshot: Snapshot) -> str:
         lineas.append("**Módulos del kernel que ampliarían lo que se ve:**")
         lineas.append("")
         for pista in snapshot.driver_hints:
-            lineas.append(f"- `{pista.module}` — {pista.reason}")
+            lineas.append(f"- `{pista.module}`: {pista.reason}")
         lineas.append("")
 
     if snapshot.notes:

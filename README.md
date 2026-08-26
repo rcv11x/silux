@@ -6,7 +6,7 @@ ahora mismo.
 
 Escrito en Python puro, sin más dependencia que Qt para la ventana.
 
-Estado: **las nueve secciones terminadas** — CPU, Cachés, Placa base, Memoria,
+Estado: las nueve secciones terminadas. CPU, Cachés, Placa base, Memoria,
 Gráficos, Red, Sistema, Sensores y Ajustes.
 
 Escrito con ayuda de Claude.
@@ -27,7 +27,7 @@ demostrándolo.
 
 **Lo que este programa no es: un administrador de tareas.** Los procesos son
 software, no hardware; se leen de otro sitio, se presentan de otra forma y
-—a diferencia de todo lo que hay aquí— exigen actuar sobre el sistema y no
+(a diferencia de todo lo que hay aquí) exigen actuar sobre el sistema y no
 solo leerlo. Además Linux ya tiene buenos administradores de tareas. El hueco
 está en el otro lado.
 
@@ -43,13 +43,13 @@ python3 -m silux.cli --report i.md      # informe para adjuntar a un fallo
 ```
 
 La ventana abre a 900×680 y recuerda el tamaño al cerrarla. El suelo depende
-de la densidad —470×400 en normal, 400×340 en compacta— y no es el mínimo
+de la densidad (470×400 en normal, 400×340 en compacta) y no es el mínimo
 técnico, que ronda los 270 px: es el punto por debajo del cual los nombres de
 campo se recortan tanto que dejan de identificar nada.
 
 Para llegar hasta ahí sin romperse: las filas de tarjetas se reparten en
-menos columnas, los textos largos se recortan con puntos suspensivos —el
-completo queda en el tooltip—, la tabla de cachés se desplaza dentro de su
+menos columnas, los textos largos se recortan con puntos suspensivos (el
+completo queda en el tooltip), la tabla de cachés se desplaza dentro de su
 propia tarjeta, y por debajo de 620 px la barra lateral se cambia por un
 selector compacto en la barra de estado.
 
@@ -128,7 +128,7 @@ soak de tres minutos que mide la media de RSS por tramos de treinta segundos:
 ```
 
 Antes de encontrarla, una fuga hacía subir esa cifra 0,31 MB cada treinta
-segundos **sin aplanarse nunca** —unos 37 MB por hora—. La causa: la fila de
+segundos **sin aplanarse nunca** (unos 37 MB por hora). La causa: la fila de
 insignias y la tabla simple creaban widgets nuevos en cada muestreo en vez de
 reescribir los que ya tenían, y dejaban miles de etiquetas vivas. Ahora ambas
 reutilizan, y hay tests que comprueban que cuarenta refrescos seguidos no
@@ -138,8 +138,8 @@ crean ni un widget.
 
 CPU-X necesita C++ porque se apoya en librerías de C (libcpuid, libpci,
 libprocps) y porque lleva embebido un benchmark de ancho de banda de memoria
-escrito en ensamblador. Pero el trabajo de fondo —leer archivos de sysfs y
-emparejar identificadores contra una tabla— no necesita nada de eso.
+escrito en ensamblador. Pero el trabajo de fondo (leer archivos de sysfs y
+emparejar identificadores contra una tabla) no necesita nada de eso.
 
 El único punto que parecía exigir código nativo es la instrucción `CPUID`, y
 se resuelve en unas sesenta líneas: `silux/rawcpuid.py` escribe **20 bytes** de
@@ -217,7 +217,7 @@ de ingeniería inversa, así que todo perfil decodificado pasa un filtro de
 plausibilidad: si la velocidad o la latencia salen absurdas se descarta en
 silencio. Es preferible no enseñar un perfil a enseñar uno inventado.
 
-Los tests usan el volcado real de un módulo —con el número de serie a cero—
+Los tests usan el volcado real de un módulo (con el número de serie a cero)
 en `tests/fixtures/`. Un volcado de verdad vale más que cualquier tabla
 sintética: los desplazamientos de este formato no fallan cuando se leen mal,
 solo enseñan otra cifra.
@@ -225,7 +225,7 @@ solo enseñan otra cifra.
 ## El ayudante privilegiado
 
 Dos cosas necesitan root y no hay forma de evitarlo: la tabla SMBIOS completa
-—donde están los módulos de memoria— y los registros MSR del procesador. El
+(donde están los módulos de memoria) y los registros MSR del procesador. El
 programa **nunca corre como root**. Cuando el usuario pide esos datos, lanza
 por polkit un ayudante mínimo y le habla por una tubería.
 
@@ -242,8 +242,8 @@ reglas:
   código, y los registros MSR admitidos son una lista cerrada de diez.
 
 Hay tests que comprueban que el ayudante no contiene `subprocess`, `eval`,
-`exec` ni importaciones del paquete, y que las dos listas blancas de MSR —la
-del contrato y la suya— no se han separado.
+`exec` ni importaciones del paquete, y que las dos listas blancas de MSR (la
+del contrato y la suya) no se han separado.
 
 Tampoco se pide nada al arrancar: la pestaña de Memoria enseña lo que sabe,
 explica qué falta y pone un botón. Un programa de diagnóstico que abre un
@@ -288,8 +288,8 @@ CHIPSET                               Arranque seguro  desactivado
 ```
 
 El chipset no sale de ninguna base de datos propia: **el puente LPC/eSPI del
-bus 0 es el chipset**, y `pci.ids` —que ya está instalado en cualquier
-distribución— le pone nombre. De «H510 Chipset eSPI Controller» se extrae
+bus 0 es el chipset**, y `pci.ids` (que ya está instalado en cualquier
+distribución) le pone nombre. De «H510 Chipset eSPI Controller» se extrae
 «Intel H510», que es como lo llama todo el mundo.
 
 Los fabricantes dejan campos SMBIOS sin rellenar con textos de fábrica:
@@ -329,8 +329,8 @@ Los nodos se llaman como el aparato, no como el chip: «Intel Core i5-10400»
 en vez de «coretemp», «MSI H510M PRO-E» en vez de «nct6683». Un árbol que
 obliga a saber qué es cada driver no se lee.
 
-Bajo el procesador conviven sensores de tres orígenes distintos —el chip de
-temperaturas, los contadores RAPL y `cpufreq`— porque en un monitor lo que
+Bajo el procesador conviven sensores de tres orígenes distintos (el chip de
+temperaturas, los contadores RAPL y `cpufreq`) porque en un monitor lo que
 importa no es de dónde sale el dato sino a qué pertenece. Es lo mismo que
 hace HWiNFO.
 
@@ -368,8 +368,8 @@ base" de 5 que por sí solo no significa nada, mientras Intel lo llama
 modelo 165.
 
 La primera versión de la interfaz enseñaba las dos formas en cuatro filas, y
-confundía. Ahora se enseña lo que publica el fabricante —familia 6,
-modelo 165 (0xA5)— y una fila con la firma en crudo, `0x000A0653`, cuyo
+confundía. Ahora se enseña lo que publica el fabricante (familia 6,
+modelo 165 (0xA5)) y una fila con la firma en crudo, `0x000A0653`, cuyo
 tooltip desglosa de dónde sale cada valor.
 
 ## Sobre el consumo
@@ -395,7 +395,7 @@ debajo de su PL1. Coincide con lo que reporta Mission Center.
 silux/
 ├─ rawcpuid.py     CPUID desde Python, con fijación de afinidad por núcleo
 ├─ features.py     tabla declarativa de banderas: hoja, registro, bit, nombre
-├─ model.py        dataclasses congeladas — valores tipados, nunca texto
+├─ model.py        dataclasses congeladas: valores tipados, nunca texto
 ├─ render.py       ÚNICO sitio donde un valor se convierte en texto
 ├─ collector.py    orquesta los proveedores; separa lo estático de lo dinámico
 ├─ providers/      una fuente cada uno; ninguno conoce a los demás
@@ -440,8 +440,8 @@ python3 -m silux.cli --db-info        # de qué commit salieron los datos
 
 `silux/db/cpu_ids.json` sale de las tablas de identificación de libcpuid (517
 filas de Intel, 371 de AMD, 198 piezas ARM) y de la tabla de sockets de CPU-X.
-El algoritmo de emparejado —puntuar cada fila por cuántos campos coinciden y
-quedarse con la mejor— está reimplementado en `silux/db/__init__.py` con los
+El algoritmo de emparejado (puntuar cada fila por cuántos campos coinciden y
+quedarse con la mejor) está reimplementado en `silux/db/__init__.py` con los
 mismos pesos que libcpuid.
 
 `silux/db/sockets.json` es tabla propia y **se edita a mano**. Cubre por
@@ -470,8 +470,8 @@ chmod +x silux-x86_64.AppImage
 ```
 
 Lleva dentro Python, Qt y las bibliotecas que necesita. Ocupa 51 MB, que es lo
-que queda después de podar: de PySide6 solo van QtCore, QtGui y QtWidgets —los
-otros treinta módulos sobran— y se dejan fuera la integración con el tema del
+que queda después de podar: de PySide6 solo van QtCore, QtGui y QtWidgets (los
+otros treinta módulos sobran) y se dejan fuera la integración con el tema del
 escritorio (arrastra GTK y los iconos de Breeze, 40 MB, y el programa fija el
 estilo Fusion de todas formas) y los formatos de imagen que tiran de los
 códecs de video del sistema. Sin esa poda serían 561 MB.
@@ -539,7 +539,7 @@ resuelven así:
 
 El motivo es de alcance: nueve de cada diez hispanohablantes están al otro lado
 del Atlántico, y «BIOS de vídeo» o «ficheros abiertos» les suenan a traducción
-ajena. Neutro no significa insípido —el resto del texto mantiene su voz— sino
+ajena. Neutro no significa insípido (el resto del texto mantiene su voz) sino
 no cerrarle la puerta a nadie por una tilde.
 
 Los comentarios del código van en el español del autor y no siguen esta regla:
@@ -555,6 +555,6 @@ GPL-3.0.
 
 ### Fuentes de datos
 
-- [libcpuid](https://github.com/anrieff/libcpuid) — BSD 2 cláusulas — tablas de identificación
-- [CPU-X](https://github.com/TheTumultuousUnicornOfDarkness/CPU-X) — GPL-3.0 — tabla de sockets
-- `pci.ids` y `pnp.ids` del sistema (paquete hwdata) — nombres de dispositivos y de monitores
+- [libcpuid](https://github.com/anrieff/libcpuid) · BSD 2 cláusulas · tablas de identificación
+- [CPU-X](https://github.com/TheTumultuousUnicornOfDarkness/CPU-X) · GPL-3.0 · tabla de sockets
+- `pci.ids` y `pnp.ids` del sistema (paquete hwdata) · nombres de dispositivos y de monitores

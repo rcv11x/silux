@@ -113,7 +113,7 @@ def load_average(values: tuple[float, ...], threads: int = 0) -> str:
 
 
 def cache_summary(cache: Cache) -> str:
-    """"6 × 32 KB, 8 vías" — la forma en que se lee una jerarquía de caché."""
+    """«6 × 32 KB, 8 vías»: la forma en que se lee una jerarquía de caché."""
     parts = [size(cache.size_bytes)]
     if cache.instances > 1:
         parts[0] = f"{cache.instances} × {parts[0]}"
@@ -187,7 +187,7 @@ def rate(value: Optional[float], bits: bool = False) -> str:
     buena para todo el mundo, se ofrecen las dos y decide quien mira.
 
     Las dos van en potencias de mil, no de 1024. En redes esa es la convención
-    —un enlace «gigabit» son mil millones de bits por segundo— y respetarla
+    (un enlace «gigabit» son mil millones de bits por segundo) y respetarla
     hace que las dos unidades cuadren entre sí y con lo que enseña un test de
     velocidad: los mismos datos son 116 MB/s y 931 Mb/s, exactamente ocho
     veces. Con potencias de 1024 saldrían 976 y nadie entendería de dónde sale
@@ -282,7 +282,7 @@ def resizable_bar(memory: GpuMemory) -> str:
     if memory.resizable_bar:
         return "activo"
     ventana = size(memory.visible_bytes) if memory.visible_bytes else DASH
-    return f"desactivado — la CPU solo alcanza {ventana}"
+    return f"desactivado: la CPU solo alcanza {ventana}"
 
 
 def throttle_state(gpu) -> str:
@@ -353,7 +353,7 @@ def gpu_api_summary(api: GpuApi) -> str:
 def turbo_note(clocks: Clocks) -> Optional[str]:
     """Una frase corta cuando el techo real no llega al del silicio."""
     if clocks.turbo_enabled is False and clocks.max_turbo_hz:
-        return f"Turbo desactivado — el silicio llegaría a {hz(clocks.max_turbo_hz)}"
+        return f"Turbo desactivado: el silicio llegaría a {hz(clocks.max_turbo_hz)}"
     if clocks.turbo_headroom_hz:
         return f"El kernel limita a {hz(clocks.max_hz)} de los {hz(clocks.max_turbo_hz)} del silicio"
     return None

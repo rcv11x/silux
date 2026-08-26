@@ -2,7 +2,7 @@
 
 Es la parte ingrata que faltaba, y lo es porque aquí no hay un CPUID: cada
 driver publica lo suyo donde le parece. Lo único común a todos es el nodo PCI
-—fabricante, dispositivo, subsistema, enlace— y los conectores de vídeo. A
+(fabricante, dispositivo, subsistema, enlace) y los conectores de vídeo. A
 partir de ahí:
 
 - **amdgpu** es el que más cuenta: VRAM, tabla DPM de frecuencias, uso, VBIOS
@@ -14,7 +14,7 @@ partir de ahí:
   de enseñar una tarjeta vacía.
 
 El nombre comercial sale de `pci.ids`, pero en las tarjetas recientes viene
-ambiguo —«Radeon RX 9070/9070 XT/9070 GRE» son tres modelos distintos— y quien
+ambiguo («Radeon RX 9070/9070 XT/9070 GRE» son tres modelos distintos) y quien
 lo desambigua es el propio driver a través de Vulkan. Eso lo hace otro
 proveedor; este deja el nombre que sabe.
 """
@@ -56,11 +56,11 @@ DRIVERS_CIEGOS = {
                 "y NVML."),
 }
 
-# «0: 500Mhz », «1: 1150Mhz *» — el asterisco marca la frecuencia en uso.
+# «0: 500Mhz », «1: 1150Mhz *»: el asterisco marca la frecuencia en uso.
 #
 # Ojo con lo que hay aquí: en las tarjetas antiguas esto es una tabla DPM de
-# verdad, con sus ocho escalones. En RDNA3 y RDNA4 son solo tres líneas —el
-# mínimo, la frecuencia actual y el máximo— y la primera puede llegar con una
+# verdad, con sus ocho escalones. En RDNA3 y RDNA4 son solo tres líneas (el
+# mínimo, la frecuencia actual y el máximo), y la primera puede llegar con una
 # «S:» en vez de un número: es la GPU en reposo profundo, a 0 MHz. Por eso el
 # índice se acepta como texto y se descarta si no es un número.
 _NIVEL_DPM = re.compile(r"^\s*(\w+)\s*:\s*([\d.]+)\s*([MG])hz\s*(\*?)", re.IGNORECASE)
@@ -188,7 +188,7 @@ class DrmGpus(Provider):
 
         if subsistema and (encontrado := nombres.get(subsistema[0])):
             # Quien montó la tarjeta y cómo la llamó. Esto es lo que convierte
-            # «Radeon RX 9070/9070 XT/9070 GRE» —tres modelos— en el que hay.
+            # «Radeon RX 9070/9070 XT/9070 GRE» (tres modelos) en el que hay.
             fabricante, modelo = encontrado
             gpu["subsystem_name"] = fabricante or None
             clave, comercial = _partir_nombre(modelo)

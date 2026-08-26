@@ -40,7 +40,7 @@ class Sampler(QThread):
         """Pide al colector los datos privilegiados y despierta el bucle.
 
         Se llama desde el hilo de la interfaz, pero solo marca una bandera: el
-        trabajo —y el diálogo de polkit, que bloquea— ocurre en este hilo.
+        trabajo (y el diálogo de polkit, que bloquea) ocurre en este hilo.
         """
         self._elevate = True
         self._wake.wakeAll()

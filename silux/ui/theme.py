@@ -1,8 +1,8 @@
 """Paleta, métricas y hoja de estilos.
 
 Se define un juego de tokens propio en vez de heredar los colores del sistema
-tal cual: una aplicación de datos densos necesita jerarquía —superficie,
-línea, tinta, tinta apagada— y las paletas de escritorio solo garantizan un
+tal cual: una aplicación de datos densos necesita jerarquía (superficie,
+línea, tinta, tinta apagada) y las paletas de escritorio solo garantizan un
 puñado de roles. Del sistema sí se hereda, si el usuario no dice otra cosa,
 la decisión de claro u oscuro y la tipografía.
 
@@ -12,8 +12,8 @@ pelearse con ellos.
 
 `METRICS` es una variable de módulo a propósito. Los widgets la leen al
 construirse, y cambiar de densidad reconstruye las páginas, así que nunca hay
-dos densidades vivas a la vez. La alternativa —pasar las métricas por el
-constructor de cada widget— añadía un parámetro a doce clases sin ganar nada.
+dos densidades vivas a la vez. La alternativa (pasar las métricas por el
+constructor de cada widget) añadía un parámetro a doce clases sin ganar nada.
 """
 
 from __future__ import annotations
@@ -138,8 +138,8 @@ class Metrics:
     cell_w: int
     cell_h: int
     nav_width: int
-    # Suelo de la ventana. No es el mínimo técnico —el contenido cabe en unos
-    # 230 px— sino el punto por debajo del cual la aplicación deja de leerse
+    # Suelo de la ventana. No es el mínimo técnico (el contenido cabe en unos
+    # 230 px) sino el punto por debajo del cual la aplicación deja de leerse
     # bien: los nombres de campo se recortan tanto que dejan de identificar
     # nada. Mejor que el usuario tope aquí a que la encoja hasta lo inútil.
     min_window_w: int
@@ -647,7 +647,7 @@ def palette_for(app: QApplication, choice: str, accent: str = ACCENT_DEFAULT) ->
     Es el único sitio del que se saca una paleta. Antes la ventana llamaba a
     `resolve` por su cuenta y se quedaba con la paleta sin teñir, así que el
     color elegido llegaba a la hoja de estilos pero no a lo que se pinta a
-    mano —las gráficas, las barras, la matriz de núcleos— y salía a medias.
+    mano (las gráficas, las barras, la matriz de núcleos) y salía a medias.
     """
     base = resolve(app, choice)
     return tinted(base, accent, dark=base.bg == DARK.bg)

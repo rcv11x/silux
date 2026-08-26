@@ -88,7 +88,7 @@ def decode(reader) -> tuple[str, ...]:
     """Lee todas las banderas soportadas, agrupando por hoja para no repetir.
 
     `reader` es cualquier cosa invocable como `reader(hoja, subhoja)` que
-    devuelva la tupla (eax, ebx, ecx, edx) — es decir, un `CpuidReader`.
+    devuelva la tupla (eax, ebx, ecx, edx), es decir, un `CpuidReader`.
     """
     cache: dict[tuple[int, int], tuple[int, int, int, int]] = {}
     found: list[str] = []

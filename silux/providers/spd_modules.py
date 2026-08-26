@@ -58,7 +58,7 @@ class SpdModules(Provider):
 
         No hay ninguna correspondencia oficial entre la dirección del chip en
         el bus y el nombre del zócalo que da la BIOS, así que primero se
-        intenta casar por referencia —que es fiable cuando ambas la publican—
+        intenta casar por referencia (que es fiable cuando ambas la publican)
         y si no, por orden, que es lo que hacen todas las herramientas y
         acierta salvo en placas muy raras.
         """

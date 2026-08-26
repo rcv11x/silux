@@ -2,7 +2,7 @@
 
 El uso es una derivada: no hay ningún fichero que diga "35 %", solo
 contadores acumulados de jiffies. Hace falta guardar la lectura anterior y
-dividir la diferencia, así que este proveedor tiene estado — el único que lo
+dividir la diferencia, así que este proveedor tiene estado, el único que lo
 tiene, junto con el de energía.
 """
 

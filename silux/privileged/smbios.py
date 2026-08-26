@@ -1,7 +1,7 @@
 """Analizador de la tabla SMBIOS.
 
 La tabla es una lista de estructuras binarias, cada una con una cabecera de
-cuatro bytes —tipo, longitud, identificador—, una zona de campos de tamaño
+cuatro bytes (tipo, longitud, identificador), una zona de campos de tamaño
 fijo y, detrás, las cadenas de texto separadas por ceros. Los campos de texto
 no guardan la cadena sino su número de orden dentro de esa lista.
 

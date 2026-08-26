@@ -43,8 +43,8 @@ NEED_TITLES = {
 }
 
 # El orden va de lo que identifica al procesador a lo que solo interesa
-# para depurar. Antes había cuatro filas de familia y modelo —dos de ellas
-# con los bits en crudo, que por sí solos no significan nada— y ahora se
+# para depurar. Antes había cuatro filas de familia y modelo (dos de ellas
+# con los bits en crudo, que por sí solos no significan nada) y ahora se
 # enseñan los valores compuestos, con el desglose en el tooltip de la firma.
 PROCESSOR_FIELDS = (
     "Fabricante", "Especificación", "Nombre en clave", "Tecnología",
