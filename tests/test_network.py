@@ -198,7 +198,7 @@ class TestRender(unittest.TestCase):
         self.assertEqual(render.rate(125e6, bits=True), "1.0 Gb/s")
 
     def test_estado_de_una_interfaz(self):
-        activa = NetworkInterface(name="eth0", up=True, ipv4="10.0.0.2")
+        activa = NetworkInterface(name="eth0", up=True, ipv4="192.0.2.2")
         self.assertEqual(render.interface_state(activa), "activa")
         sin_ip = NetworkInterface(name="eth0", up=True, carrier=True)
         self.assertEqual(render.interface_state(sin_ip), "sin dirección")
