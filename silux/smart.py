@@ -50,8 +50,20 @@ class _Nvme:
 ATA_HORAS = 9
 ATA_CICLOS = 12
 ATA_TEMPERATURA = 194
-ATA_ESCRITO = 241
-ATA_LEIDO = 242
+# El de siempre y el que usan Crucial y Micron para lo mismo.
+ATA_ESCRITO = (241, 246)
+ATA_LEIDO = (242, 247)
+
+# Contadores que caben de sobra en 32 bits y donde varios fabricantes usan los
+# dos bytes altos del contador para otra cosa. Un Seagate declaraba 132 billones
+# de horas de encendido —quince mil millones de años— porque ahí guarda algo
+# suyo; leídos los 32 bits bajos son 13 147 horas, que es un disco de año y
+# medio. Es exactamente lo que avisa la cabecera de este módulo, y pasó igual.
+ATA_32_BITS = (ATA_HORAS, ATA_CICLOS)
+
+# Ningún disco fabricado ha estado encendido doscientos años. Si sale más, el
+# contador no significa lo que se cree y es mejor no enseñarlo.
+HORAS_PLAUSIBLES = 200 * 365 * 24
 ATA_REASIGNADOS = 5
 ATA_PENDIENTES = 197
 ATA_INCORREGIBLES = 198
@@ -132,7 +144,9 @@ def _atributos(data: bytes) -> dict[int, tuple[int, int]]:
         if identificador == 0:                 # entrada vacía
             continue
         normalizado = data[inicio + 3]
-        crudo = int.from_bytes(data[inicio + 5:inicio + 11], "little")
+        bytes_crudos = data[inicio + 5:inicio + 11]
+        ancho = 4 if identificador in ATA_32_BITS else 6
+        crudo = int.from_bytes(bytes_crudos[:ancho], "little")
         encontrados[identificador] = (normalizado, crudo)
     return encontrados
 
@@ -144,16 +158,27 @@ def _parse_ata(data: bytes) -> Optional[DiskHealth]:
     if not tabla:
         return None
 
-    def crudo(identificador: int) -> Optional[int]:
-        valor = tabla.get(identificador)
-        return valor[1] if valor else None
+    def crudo(*identificadores: int) -> Optional[int]:
+        """El primero de estos atributos que el disco publique.
+
+        Varios fabricantes guardan lo mismo en números distintos, así que se
+        prueban en orden en vez de dar por hecho uno solo.
+        """
+        for identificador in identificadores:
+            valor = tabla.get(identificador)
+            if valor:
+                return valor[1]
+        return None
 
     vida = next((tabla[i][0] for i in ATA_VIDA if i in tabla), None)
-    escrito = crudo(ATA_ESCRITO)
-    leido = crudo(ATA_LEIDO)
+    escrito = crudo(*ATA_ESCRITO)
+    leido = crudo(*ATA_LEIDO)
+    horas = crudo(ATA_HORAS)
+    if horas is not None and horas > HORAS_PLAUSIBLES:
+        horas = None
 
     return DiskHealth(
-        power_on_hours=crudo(ATA_HORAS),
+        power_on_hours=horas,
         power_cycles=crudo(ATA_CICLOS),
         written_bytes=escrito * ATA_SECTOR if escrito else None,
         read_bytes=leido * ATA_SECTOR if leido else None,
