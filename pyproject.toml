@@ -7,7 +7,7 @@ name = "silux"
 version = "0.1.0"
 description = "Perfilador de hardware para Linux con interfaz Qt"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 license = "GPL-3.0-or-later"
 license-files = ["LICENSE"]
 authors = [{ name = "rcv11x" }]
