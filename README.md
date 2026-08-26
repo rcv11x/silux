@@ -254,3 +254,10 @@ lee el chip SPD de la memoria o el EDID del monitor, qué hace el ayudante
 privilegiado y qué se intentó antes que no salió bien:
 
 **[docs/como-funciona.md](docs/como-funciona.md)**
+
+Y para quien vaya a tocar el código, [CLAUDE.md](CLAUDE.md): las reglas que
+sostienen el diseño, con el problema concreto del que salió cada una, y la
+lista de lo que ya se intentó y no funcionó. Se llama así porque el proyecto
+se escribió con ayuda de Claude y es el archivo que lee al abrirlo, pero lo
+que hay dentro no va dirigido a una herramienta: es por qué el código está
+hecho como está.
