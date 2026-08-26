@@ -100,12 +100,35 @@ class TestPlausibilidad(unittest.TestCase):
         self.assertEqual(spd.Timings(name="x", speed_mts=3200).summary, "—")
 
 
+class TestCapacidadSinPermisos(unittest.TestCase):
+    """La capacidad sale del propio chip del módulo, que se lee sin ser root.
+
+    Hasta ahora solo la daba la tabla SMBIOS, que el kernel reserva al
+    administrador. En un equipo donde nadie eleve permisos, esta es la única
+    forma de saber cuánta memoria hay en cada zócalo.
+    """
+
+    def test_contra_un_modulo_real(self):
+        # El fixture es el volcado de un Crucial CT8G4DFRA32A, que es de 8 GB.
+        raw = pathlib.Path(FIXTURE).read_bytes()
+        self.assertEqual(spd.decode(raw).capacity_bytes, 8 * 1024**3)
+
+    def test_la_misma_cuenta_vale_para_ddr5(self):
+        info = spd.decode(construir_ddr5())
+        self.assertEqual(info.capacity_bytes, 8 * 1024**3)
+
+    def test_sin_densidad_conocida_no_se_inventa(self):
+        info = spd.decode(construir_ddr5(densidad=0))
+        self.assertIsNone(info.capacity_bytes)
+
+
 class TestFormatosNoSoportados(unittest.TestCase):
-    def test_ddr5_se_identifica_pero_no_se_decodifica(self):
+    def test_ddr3_se_identifica_pero_no_se_decodifica(self):
+        # DDR4 y DDR5 sí se decodifican; lo anterior se reconoce y se dice.
         raw = bytearray(512)
-        raw[2] = 0x12                                  # DDR5
+        raw[2] = 0x0B                                  # DDR3
         info = spd.decode(bytes(raw))
-        self.assertEqual(info.dram_type, "DDR5")
+        self.assertEqual(info.dram_type, "DDR3")
         self.assertFalse(info.decoded)
         self.assertIsNone(info.jedec)
 
@@ -179,3 +202,136 @@ class TestVelocidadReal(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def construir_ddr5(*, tck_ps=357, taa=16250, trcd=16250, trp=16250,
+                   tras=32000, trc=48000, densidad=4, dies=0, io_width=2,
+                   ranks=1, canales=2, ancho_canal=2, ecc=0, tipo_modulo=0x02,
+                   fabricante=(0x80, 0x2C), part="CT16G56C46U5.M8G1",
+                   anno=0x24, semana=0x32, xmp=False, expo=False,
+                   longitud=1024) -> bytes:
+    """Un SPD de DDR5 armado a mano, con los valores que se quieran probar.
+
+    Los offsets salen de JEDEC JESD400-5. Se construye en vez de guardar el
+    volcado de un módulo real porque así se pueden probar configuraciones que
+    no se tienen delante, y porque un volcado real lleva el número de serie del
+    equipo de alguien.
+    """
+    b = bytearray(longitud)
+    b[0], b[1] = 0x30, 0x10
+    b[2] = 0x12                                   # la firma de DDR5
+    b[3] = tipo_modulo
+    b[4] = (dies << 5) | densidad
+    b[6] = io_width << 5
+    for offset, valor in ((20, tck_ps), (24, taa), (26, trcd), (28, trp),
+                          (30, tras), (32, trc)):
+        b[offset] = valor & 0xFF
+        b[offset + 1] = (valor >> 8) & 0xFF
+    b[234] = (ranks - 1) << 3
+    b[235] = ((canales - 1) << 5) | (ecc << 3) | ancho_canal
+    if longitud > 553:
+        b[512], b[513] = fabricante
+        b[515], b[516] = anno, semana
+        b[521:521 + len(part)] = part.encode()
+        b[552], b[553] = 0x80, 0x2C
+    if xmp and longitud > 642:
+        b[640], b[641] = 0x0C, 0x4A
+    if expo and longitud > 836:
+        b[832:836] = b"EXPO"
+    return bytes(b)
+
+
+class TestDdr5(unittest.TestCase):
+    """El formato de DDR5, que no se parece al de DDR4 en casi nada."""
+
+    def setUp(self):
+        self.info = spd.decode(construir_ddr5(), address="0-0050", slot=0)
+
+    def test_reconoce_el_tipo(self):
+        self.assertEqual(self.info.dram_type, "DDR5")
+        self.assertEqual(self.info.module_type, "UDIMM")
+        self.assertTrue(self.info.decoded)
+
+    def test_velocidad_desde_los_picosegundos(self):
+        # DDR5 guarda el tiempo de ciclo en picosegundos de dieciséis bits, sin
+        # la parte fina que tenía DDR4. Un tCK de 357 ps son 5600 MT/s.
+        self.assertEqual(self.info.jedec.speed_mts, 5600)
+
+    def test_las_latencias_se_redondean_hacia_arriba(self):
+        # 16250 ps entre 357 son 45,5 ciclos. La memoria no puede responder
+        # antes de tiempo, así que es un CL46: redondear al más cercano daría
+        # un CL45 que no existe.
+        self.assertEqual(self.info.jedec.cl, 46)
+
+    def test_voltaje_de_ddr5(self):
+        self.assertEqual(self.info.jedec.voltage_v, 1.1)
+
+    def test_identidad_del_modulo(self):
+        self.assertEqual(self.info.manufacturer, "Micron")
+        self.assertEqual(self.info.part_number, "CT16G56C46U5.M8G1")
+        self.assertEqual(self.info.manufactured, "semana 32 de 2024")
+
+    def test_los_dos_subcanales(self):
+        # Un DIMM de DDR5 se parte en dos canales de 32 bits. Sin decirlo, un
+        # bus de 64 bits con chips de 16 no cuadra.
+        self.assertEqual(self.info.channels, 2)
+        self.assertEqual(self.info.bus_width, 64)
+        self.assertEqual(self.info.device_width, 16)
+
+    def test_la_capacidad_sale_del_spd_sin_permisos(self):
+        # 16 Gb por chip, cuatro chips por rank, un rank: 8 GiB. El mismo
+        # número que da SMBIOS, que sí pide ser administrador.
+        self.assertEqual(self.info.capacity_bytes, 8 * 1024**3)
+
+    def test_un_modulo_de_dos_ranks_y_chips_grandes(self):
+        info = spd.decode(construir_ddr5(densidad=6, ranks=2))   # 32 Gb por chip
+        self.assertEqual(info.ranks, 2)
+        self.assertEqual(info.capacity_bytes, 32 * 1024**3)
+
+    def test_ecc(self):
+        info = spd.decode(construir_ddr5(ecc=2))
+        self.assertEqual(info.ecc_bits, 16)
+        self.assertTrue(info.has_ecc if hasattr(info, "has_ecc") else info.ecc_bits)
+
+
+class TestPerfilesDeDdr5(unittest.TestCase):
+    """Se reconoce que están; sus cifras no se inventan."""
+
+    def test_detecta_xmp_3(self):
+        info = spd.decode(construir_ddr5(xmp=True))
+        self.assertEqual(info.overclock_profiles, ("XMP 3.0",))
+
+    def test_detecta_expo(self):
+        info = spd.decode(construir_ddr5(expo=True))
+        self.assertEqual(info.overclock_profiles, ("EXPO",))
+
+    def test_un_modulo_puede_traer_los_dos(self):
+        info = spd.decode(construir_ddr5(xmp=True, expo=True))
+        self.assertEqual(info.overclock_profiles, ("XMP 3.0", "EXPO"))
+
+    def test_sin_perfiles(self):
+        self.assertEqual(spd.decode(construir_ddr5()).overclock_profiles, ())
+
+    def test_no_se_inventan_temporizaciones(self):
+        # Los formatos de XMP 3.0 y EXPO no son públicos como el de JEDEC.
+        # Reconocer la firma es seguro; leer sus cifras a ojo, no.
+        info = spd.decode(construir_ddr5(xmp=True, expo=True))
+        self.assertEqual(info.profiles, ())
+
+
+class TestDdr5Roto(unittest.TestCase):
+    def test_un_chip_cortado_no_revienta(self):
+        # Algunos controladores devuelven solo el primer bloque.
+        info = spd.decode(construir_ddr5(longitud=256))
+        self.assertEqual(info.dram_type, "DDR5")
+        self.assertEqual(info.jedec.speed_mts, 5600)
+        self.assertIsNone(info.part_number)
+
+    def test_un_tiempo_de_ciclo_a_cero(self):
+        info = spd.decode(construir_ddr5(tck_ps=0))
+        self.assertIsNone(info.jedec)
+
+    def test_una_velocidad_imposible_se_descarta(self):
+        # 20 ps de ciclo serían 100 000 MT/s: el chip está mal leído.
+        info = spd.decode(construir_ddr5(tck_ps=20))
+        self.assertIsNone(info.jedec)

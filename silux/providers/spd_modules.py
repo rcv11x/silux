@@ -49,7 +49,7 @@ class SpdModules(Provider):
                 "spd", Need.PLATFORM,
                 f"El SPD de {' y '.join(sorted(tipos)) or 'estos módulos'} "
                 "todavía no se sabe interpretar.",
-                "De momento solo está implementado el formato de DDR4.",
+                "Están implementados los formatos de DDR4 y DDR5.",
             )
 
     @staticmethod

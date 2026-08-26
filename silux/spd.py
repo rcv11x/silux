@@ -103,9 +103,18 @@ class SpdInfo:
     device_width: Optional[int] = None
     bus_width: Optional[int] = None
     ecc_bits: int = 0
+    # DDR5 parte el módulo en dos subcanales de 32 bits. Explica por qué un
+    # DIMM de 64 bits declara dos canales y no es un error de lectura.
+    channels: int = 1
+    # Sale de multiplicar la densidad de los chips por cuántos hay. Es el mismo
+    # número que da SMBIOS, pero sin pedir permisos de administrador.
+    capacity_bytes: Optional[int] = None
     jedec: Optional[Timings] = None
     profiles: tuple[Timings, ...] = ()
     xmp_revision: Optional[str] = None
+    # Perfiles cuya presencia se reconoce pero cuyas cifras no se interpretan:
+    # hoy, los de DDR5. Ver `_ddr5_perfiles`.
+    overclock_profiles: tuple[str, ...] = ()
     decoded: bool = False                     # False = formato no soportado
 
     @property
@@ -113,6 +122,13 @@ class SpdInfo:
         """La velocidad más alta que el módulo declara saber dar."""
         candidatos = [t.speed_mts for t in (self.jedec, *self.profiles) if t]
         return max(candidatos) if candidatos else None
+
+
+# Densidad de cada chip, en gigabits. El índice es el valor del SPD, y cada
+# generación numera los suyos.
+DDR5_DENSIDADES = {1: 4, 2: 8, 3: 12, 4: 16, 5: 24, 6: 32, 7: 48, 8: 64}
+DDR5_ANCHOS = {0: 4, 1: 8, 2: 16, 3: 32}
+DDR4_DENSIDADES = {2: 1, 3: 2, 4: 4, 5: 8, 6: 16, 7: 32}
 
 
 # --------------------------------------------------------------------------
@@ -135,6 +151,7 @@ class _Ddr4:
     ORGANIZATION, BUS_WIDTH = 12, 13
     VENDOR_BANK, VENDOR_ID = 320, 321
     DRAM_BANK, DRAM_ID = 350, 351
+    DENSITY = 4
     DATE_YEAR, DATE_WEEK = 323, 324
     PART_NUMBER = slice(329, 349)
     XMP_MAGIC = slice(384, 386)
@@ -177,6 +194,9 @@ def _decode_ddr4(spd: bytes, address: str, slot: int) -> SpdInfo:
 
     organization = spd[d.ORGANIZATION]
     bus = spd[d.BUS_WIDTH]
+    ranks = ((organization >> 3) & 0x07) + 1
+    ancho_chip = 4 << (organization & 0x07)
+    ancho_bus = 8 << (bus & 0x07)
 
     return SpdInfo(
         address=address,
@@ -187,15 +207,154 @@ def _decode_ddr4(spd: bytes, address: str, slot: int) -> SpdInfo:
         dram_manufacturer=_vendor(spd[d.DRAM_BANK], spd[d.DRAM_ID]),
         part_number=_text(spd[d.PART_NUMBER]),
         manufactured=_date(spd[d.DATE_YEAR], spd[d.DATE_WEEK]),
-        ranks=((organization >> 3) & 0x07) + 1,
-        device_width=4 << (organization & 0x07),
-        bus_width=8 << (bus & 0x07),
+        ranks=ranks,
+        device_width=ancho_chip,
+        bus_width=ancho_bus,
         ecc_bits=8 if (bus >> 3) & 0x03 else 0,
+        capacity_bytes=_capacidad(
+            DDR4_DENSIDADES.get(spd[d.DENSITY] & 0x0F), ancho_chip, ancho_bus, ranks),
         jedec=jedec if jedec.plausible else None,
         profiles=tuple(_xmp_profiles(spd)),
         xmp_revision=_xmp_revision(spd),
         decoded=True,
     )
+
+
+# --------------------------------------------------------------------------
+# decodificación DDR5
+# --------------------------------------------------------------------------
+
+
+class _Ddr5:
+    """Los desplazamientos del formato DDR5 (JEDEC JESD400-5).
+
+    No se parece al de DDR4 más que en el byte que dice qué tipo de memoria es.
+    El chip pasa de 512 bytes a 1024, los tiempos dejan de ir en dos partes
+    (una gruesa y un ajuste fino) y se guardan en picosegundos de dieciséis
+    bits, y todo lo que identifica al módulo se muda a un bloque propio que
+    empieza en el byte 512.
+    """
+
+    TCK_MIN, TCK_MAX = 20, 22
+    TAA, TRCD, TRP, TRAS, TRC = 24, 26, 28, 30, 32
+    DENSITY, ADDRESSING, IO_WIDTH = 4, 5, 6
+    ORGANIZATION, BUS_WIDTH = 234, 235
+    VENDOR_BANK, VENDOR_ID = 512, 513
+    DATE_YEAR, DATE_WEEK = 515, 516
+    PART_NUMBER = slice(521, 551)
+    DRAM_BANK, DRAM_ID = 552, 553
+    # Los bloques de perfiles de fábrica, cada uno con su firma al principio.
+    XMP_MAGIC = slice(640, 642)
+    EXPO_MAGIC = slice(832, 836)
+
+
+def _u16(spd: bytes, offset: int) -> int:
+    """Los tiempos van en dos bytes, el bajo primero."""
+    if offset + 1 >= len(spd):
+        return 0
+    return spd[offset] | (spd[offset + 1] << 8)
+
+
+def _ddr5_ciclos(picosegundos: int, tck_ps: int) -> Optional[int]:
+    """Un tiempo del SPD pasado a ciclos de reloj.
+
+    Se redondea hacia arriba: un CL que sale en 39,2 ciclos es un CL40, porque
+    la memoria no puede responder antes de tiempo. Redondear al más cercano
+    convierte un CL40 en CL39, que no existe.
+    """
+    if not (tck_ps and picosegundos):
+        return None
+    return -(-picosegundos // tck_ps) or None
+
+
+def _decode_ddr5(spd: bytes, address: str, slot: int) -> SpdInfo:
+    d = _Ddr5
+    tck_ps = _u16(spd, d.TCK_MIN)
+    # Como DDR4, dos transferencias por ciclo. Un tCK de 357 ps son 5600 MT/s.
+    speed = round(2_000_000 / tck_ps / 100) * 100 if tck_ps else 0
+
+    jedec = Timings(
+        name="JEDEC",
+        speed_mts=speed,
+        cl=_ddr5_ciclos(_u16(spd, d.TAA), tck_ps),
+        trcd=_ddr5_ciclos(_u16(spd, d.TRCD), tck_ps),
+        trp=_ddr5_ciclos(_u16(spd, d.TRP), tck_ps),
+        tras=_ddr5_ciclos(_u16(spd, d.TRAS), tck_ps),
+        trc=_ddr5_ciclos(_u16(spd, d.TRC), tck_ps),
+        # DDR5 bajó de 1,2 V a 1,1 V, que es de donde sale buena parte de su
+        # eficiencia.
+        voltage_v=1.1,
+    )
+
+    organizacion = spd[d.ORGANIZATION] if len(spd) > d.ORGANIZATION else 0
+    bus = spd[d.BUS_WIDTH] if len(spd) > d.BUS_WIDTH else 0
+    ranks = ((organizacion >> 3) & 0x07) + 1
+    canales = ((bus >> 5) & 0x03) + 1
+    ancho_canal = 8 << (bus & 0x07)
+    extension = ((bus >> 3) & 0x03) * 4        # los bits de ECC, si los hay
+
+    densidad = spd[d.DENSITY] if len(spd) > d.DENSITY else 0
+    ancho_chip = DDR5_ANCHOS.get((spd[d.IO_WIDTH] >> 5) & 0x07
+                                 if len(spd) > d.IO_WIDTH else -1)
+
+    return SpdInfo(
+        address=address,
+        slot=slot,
+        dram_type=DRAM_TYPES.get(spd[2]),
+        module_type=MODULE_TYPES.get(spd[3] & 0x0F),
+        manufacturer=_vendor(spd[d.VENDOR_BANK], spd[d.VENDOR_ID])
+        if len(spd) > d.VENDOR_ID else None,
+        dram_manufacturer=_vendor(spd[d.DRAM_BANK], spd[d.DRAM_ID])
+        if len(spd) > d.DRAM_ID else None,
+        part_number=_text(spd[d.PART_NUMBER]) if len(spd) > d.PART_NUMBER.stop else None,
+        manufactured=_date(spd[d.DATE_YEAR], spd[d.DATE_WEEK])
+        if len(spd) > d.DATE_WEEK else None,
+        ranks=ranks,
+        device_width=ancho_chip,
+        bus_width=ancho_canal * canales,
+        ecc_bits=extension * canales,
+        channels=canales,
+        capacity_bytes=_capacidad(
+            DDR5_DENSIDADES.get(densidad & 0x1F), ancho_chip,
+            ancho_canal * canales, ranks, dies=1 << ((densidad >> 5) & 0x07)),
+        jedec=jedec if jedec.plausible else None,
+        overclock_profiles=_ddr5_perfiles(spd),
+        decoded=True,
+    )
+
+
+def _ddr5_perfiles(spd: bytes) -> tuple[str, ...]:
+    """Qué perfiles de fábrica trae el módulo, sin interpretarlos.
+
+    XMP 3.0 y EXPO guardan aquí las temporizaciones que el fabricante garantiza
+    por encima de las de JEDEC. Sus formatos no son públicos como el de JEDEC, y
+    leerlos a ojo daría cifras creíbles y equivocadas, que es peor que no
+    darlas. Reconocer su firma sí es seguro, y decir que están es mejor que
+    callarlo: quien mire sabrá que su memoria puede ir más rápido de lo que
+    marca la tabla.
+    """
+    d = _Ddr5
+    encontrados = []
+    if len(spd) > d.XMP_MAGIC.stop and spd[d.XMP_MAGIC] == b"\x0c\x4a":
+        encontrados.append("XMP 3.0")
+    if len(spd) > d.EXPO_MAGIC.stop and spd[d.EXPO_MAGIC] == b"EXPO":
+        encontrados.append("EXPO")
+    return tuple(encontrados)
+
+
+def _capacidad(gigabits: Optional[int], ancho_chip: Optional[int],
+               ancho_bus: int, ranks: int, dies: int = 1) -> Optional[int]:
+    """Cuánta memoria hay: los chips que caben por lo que guarda cada uno.
+
+    Es el mismo número que da la tabla SMBIOS, pero aquella pide permisos de
+    administrador y el chip SPD del módulo se lee sin pedir nada. En un equipo
+    donde el usuario no eleve permisos, esta es la única forma de saber cuánta
+    memoria tiene cada zócalo.
+    """
+    if not (gigabits and ancho_chip and ancho_bus):
+        return None
+    chips_por_rank = ancho_bus // ancho_chip
+    return gigabits * chips_por_rank * ranks * dies * 1024**3 // 8
 
 
 def _vendor(bank: int, code: int) -> Optional[str]:
@@ -278,8 +437,10 @@ def decode(spd: bytes, address: str = "", slot: int = 0) -> SpdInfo:
     dram = DRAM_TYPES.get(spd[2])
     if spd[2] == 0x0C:
         return _decode_ddr4(spd, address, slot)
+    if spd[2] == 0x12:
+        return _decode_ddr5(spd, address, slot)
 
-    # DDR5 y anteriores tienen otro formato. Se identifica el tipo, que ya es
+    # DDR3 y anteriores tienen otro formato. Se identifica el tipo, que ya es
     # algo, y se deja claro que el detalle no está implementado.
     return SpdInfo(address=address, slot=slot, dram_type=dram, decoded=False)
 

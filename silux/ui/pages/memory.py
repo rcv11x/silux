@@ -44,7 +44,7 @@ NEED_TITLES = {
 
 MODULE_FIELDS = ("Fabricante", "Chips", "Referencia", "Tipo", "Capacidad",
                  "Catalogado a", "Funcionando a", "Rangos", "Voltaje",
-                 "Formato", "Fabricado", "Banco")
+                 "Formato", "Perfiles", "Fabricado", "Banco")
 
 TIMING_HEADERS = ("Perfil", "Velocidad", "CL", "tRCD", "tRP", "tRAS", "tRC", "Voltaje")
 
@@ -344,7 +344,12 @@ class MemoryPage(QScrollArea):
                          "vende el módulo. Lo dice el SPD, no la tabla SMBIOS.")
         grid.set("Referencia", module.part_number or (spd.part_number if spd else None) or d)
         grid.set("Tipo", module.type or (spd.dram_type if spd else None) or d)
-        grid.set("Capacidad", render.size(module.size_bytes) if module.size_bytes else d)
+        # La capacidad sale de SMBIOS, que pide permisos, pero el SPD de DDR5
+        # la trae en la densidad de sus chips y ese se lee sin pedir nada.
+        capacidad = module.size_bytes or (spd.capacity_bytes if spd else None)
+        grid.set("Capacidad", render.size(capacidad) if capacidad else d,
+                 tooltip="Calculada desde el propio chip SPD del módulo."
+                 if not module.size_bytes and capacidad else "")
 
         rated = module.rated_mts
         grid.set("Catalogado a", f"{rated} MT/s" if rated else d,
@@ -373,6 +378,14 @@ class MemoryPage(QScrollArea):
                          and spd.jedec.voltage_v else d))
         grid.set("Voltaje", voltaje)
         grid.set("Formato", module.form_factor or (spd.module_type if spd else None) or d)
+
+        perfiles = spd.overclock_profiles if spd else ()
+        grid.set("Perfiles", ", ".join(perfiles) if perfiles else d,
+                 tooltip="Temporizaciones que el fabricante garantiza por "
+                         "encima de las de JEDEC. Se reconoce que están, pero "
+                         "sus formatos no son públicos y sus cifras no se "
+                         "interpretan: darlas a ojo sería inventarlas."
+                 if perfiles else "")
         grid.set("Fabricado", (spd.manufactured if spd else None) or d)
         grid.set("Banco", module.bank or d)
 
