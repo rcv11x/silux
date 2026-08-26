@@ -244,7 +244,13 @@ def watch(collector: Collector, style: Style, interval: float) -> int:
         print("\033[?25h", end="")        # y lo devuelve
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def build_parser() -> argparse.ArgumentParser:
+    """Las opciones del volcado en terminal.
+
+    Aparte para que se puedan enumerar sin ejecutar nada: el AppImage reparte
+    entre la interfaz y esto según con qué se le llame, y hay un test que
+    comprueba contra esta lista que no se quede ninguna sin repartir.
+    """
     parser = argparse.ArgumentParser(
         prog="silux", description="Perfilador de hardware para Linux."
     )
@@ -262,6 +268,11 @@ def main(argv: Optional[list[str]] = None) -> int:
                              "(nombre, IP, MAC, números de serie)")
     parser.add_argument("--db-info", action="store_true", help="de dónde salió la base de datos")
     parser.add_argument("--version", action="version", version=f"silux {__version__}")
+    return parser
+
+
+def main(argv: Optional[list[str]] = None) -> int:
+    parser = build_parser()
     args = parser.parse_args(argv)
 
     style = Style(enabled=not args.no_color and sys.stdout.isatty())
