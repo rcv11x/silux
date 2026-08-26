@@ -516,8 +516,10 @@ class CoreMatrix(QWidget):
         self._cores: list[dict] = []
         self._cell_w = theme.METRICS.cell_w
         # La celda crece para dejar sitio al historial: una barra dice cómo
-        # está el núcleo ahora, la curva dice si viene de estar cargado.
-        self._cell_h = theme.METRICS.cell_h + 10
+        # está el núcleo ahora, la curva dice si viene de estar cargado. Ese
+        # hueco se mide en letra, no en píxeles sueltos, o con el texto grande
+        # la gráfica se queda con lo que sobre.
+        self._cell_h = theme.METRICS.cell_h + max(10, theme.METRICS.mono_pt)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setMinimumWidth(120)
 
@@ -554,6 +556,12 @@ class CoreMatrix(QWidget):
         font = mono_font(max(7, theme.METRICS.mono_pt - 1))
         painter.setFont(font)
         metrics = painter.fontMetrics()
+        # Todo lo de dentro se mide contra la altura de línea, que es lo único
+        # que crece cuando el usuario pide letra grande.
+        linea = metrics.height()
+        pad_h = max(5.0, linea * 0.45)
+        pad_v = max(4.0, linea * 0.35)
+        grosor = max(3.0, round(linea * 0.28))
 
         for i, core in enumerate(self._cores):
             col, row = i % columns, i // columns
@@ -564,8 +572,12 @@ class CoreMatrix(QWidget):
             painter.setBrush(QBrush(self._p.q("surface_alt")))
             painter.drawRoundedRect(cell.adjusted(0.5, 0.5, -0.5, -0.5), 5, 5)
 
-            inner = cell.adjusted(7, 5, -7, -5)
-            text_height = min(12.0, inner.height() - 8)
+            inner = cell.adjusted(pad_h, pad_v, -pad_h, -pad_v)
+            # La caja del texto la marca la fuente. Estaba fija en 12 px, y
+            # con la letra al máximo la línea seguía ocupando doce mientras
+            # las letras medían dieciocho: el nombre del núcleo se comía la
+            # gráfica por arriba y quedaba un hueco por abajo.
+            text_height = min(float(metrics.height()), inner.height() - pad_v * 2)
 
             name = core["name"]
             detail = core["detail"]
@@ -594,10 +606,12 @@ class CoreMatrix(QWidget):
             if len(history) >= 2:
                 self._draw_history(painter, QRectF(
                     inner.left(), inner.top() + text_height + 1,
-                    inner.width(), max(8.0, inner.height() - text_height - 8),
+                    inner.width(),
+                    max(8.0, inner.height() - text_height - grosor - 3),
                 ), history)
 
-            track = QRectF(inner.left(), inner.bottom() - 5, inner.width(), 4)
+            track = QRectF(inner.left(), inner.bottom() - grosor,
+                           inner.width(), grosor)
             painter.setPen(Qt.PenStyle.NoPen)
             painter.setBrush(QBrush(self._p.q("line")))
             painter.drawRoundedRect(track, 2, 2)

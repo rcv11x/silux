@@ -119,3 +119,35 @@ class TestLecturaDeGraficas(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestNucleosConLetraGrande(unittest.TestCase):
+    """La rejilla de núcleos se pinta a mano, así que no la recoloca Qt.
+
+    Con la letra al máximo el nombre del núcleo se comía la gráfica por
+    arriba y quedaba un hueco por abajo: la caja del texto estaba fija en
+    doce píxeles mientras las letras medían dieciocho.
+    """
+
+    def _celda(self, escala: str) -> int:
+        from silux.ui.widgets import CoreMatrix
+        app = QApplication.instance() or QApplication([])
+        theme.set_density("normal", escala)
+        return CoreMatrix(theme.palette_for(app, "dark"))._cell_h
+
+    def test_la_celda_crece_con_la_letra(self):
+        normal = self._celda("normal")
+        maximo = self._celda("máximo")
+        self.assertGreater(maximo, normal * 1.3,
+                           "la celda no acompaña al texto")
+
+    def test_y_el_hueco_del_historial_tambien(self):
+        """El extra sobre la celda base iba en píxeles fijos."""
+        alto_max = self._celda("máximo")
+        extra_max = alto_max - theme.METRICS.cell_h
+        alto_normal = self._celda("normal")
+        extra_normal = alto_normal - theme.METRICS.cell_h
+        self.assertGreater(extra_max, extra_normal)
+
+    def tearDown(self):
+        theme.set_density("normal", "normal")
