@@ -22,7 +22,7 @@ from .base import Draft, Provider, read_text
 OS_RELEASE = "/etc/os-release"
 MEMINFO = "/proc/meminfo"
 
-_OS_LINE = re.compile(r'^([A-Z_]+)=(?:"(.*)"|(.*))$')
+_OS_LINE = re.compile(r'^([A-Za-z_][A-Za-z0-9_]*)=(.*)$')
 _MEM_FIELDS = {
     "MemTotal": "total_bytes",
     "MemAvailable": "available_bytes",
@@ -36,13 +36,33 @@ _MEM_FIELDS = {
 }
 
 
+def _desentrecomillar(valor: str) -> str:
+    """Quita las comillas de un valor de os-release.
+
+    El formato es el de un fragmento de shell, así que las comillas pueden ser
+    dobles o simples. Mirando solo las dobles, Gentoo —que usa simples—
+    aparecía en la ventana como 'Gentoo Linux' y '2.18', con las comillas
+    puestas.
+    """
+    valor = valor.strip()
+    for comilla in ('"', "'"):
+        if len(valor) >= 2 and valor[0] == comilla and valor[-1] == comilla:
+            valor = valor[1:-1]
+            break
+    # En las dobles, el shell deja escapar unos cuantos caracteres.
+    return re.sub(r"\\([\\$`\"'])", r"\1", valor)
+
+
 def _os_release() -> dict[str, str]:
     values: dict[str, str] = {}
     try:
         with open(OS_RELEASE, encoding="utf-8") as handle:
             for line in handle:
-                if match := _OS_LINE.match(line.strip()):
-                    values[match.group(1)] = match.group(2) or match.group(3) or ""
+                line = line.strip()
+                if line.startswith("#"):
+                    continue
+                if match := _OS_LINE.match(line):
+                    values[match.group(1)] = _desentrecomillar(match.group(2))
     except OSError:
         pass
     return values
@@ -79,13 +99,31 @@ class SystemIdentity(Provider):
 
     @staticmethod
     def _kernel_build() -> Optional[str]:
-        """La fecha y el compilador con que se construyó el kernel."""
+        """La fecha y el compilador con que se construyó el kernel.
+
+        Lo interesante empieza en el «#», que es el número de compilación, y
+        sigue con la fecha. El compilador va en el último paréntesis anterior.
+        Antes se exigía que fuera gcc, y con cualquier otro —CachyOS compila
+        con clang— el respaldo devolvía «Linux version 6.18.35-gentoo», que
+        es repetir el kernel en el renglón de al lado.
+        """
         raw = read_text("/proc/version")
         if not raw:
             return None
-        if match := re.search(r"\(gcc[^)]*\)[^#]*(#\S+\s+.*)$", raw):
-            return match.group(1).strip()
-        return raw.split("(")[0].strip() or None
+        marca = re.search(r"(#\d+.*)$", raw)
+        if not marca:
+            return None
+        build = marca.group(1).strip()
+        cabeza = raw[:marca.start()]
+        # Quién lo compiló. Nada de fiarse de los paréntesis: Gentoo escribe
+        # «gcc (Gentoo 14.3.0 p2) 14.3.0» y Ubuntu «gcc-13 (Ubuntu 13.2.0)
+        # 13.2.0», los dos con paréntesis dentro de paréntesis. Vale con
+        # buscar el nombre y quedarse con la última versión que va detrás.
+        if quien := re.search(r"\b(gcc|clang)\b", cabeza, re.IGNORECASE):
+            hasta_la_coma = cabeza[quien.end():].split(",")[0]
+            if versiones := re.findall(r"\d+\.\d+(?:\.\d+)?", hasta_la_coma):
+                return f"{build} · {quien.group(1).lower()} {versiones[-1]}"
+        return build
 
     @staticmethod
     def _init_system() -> Optional[str]:

@@ -79,27 +79,38 @@ class GpuApis(Provider):
                 ))
                 _afinar_nombre(gpu, dispositivo["name"])
 
-            # OpenGL y OpenCL no dicen a qué nodo PCI pertenecen, así que solo
-            # se le atribuyen a la tarjeta que el sistema usa por omisión.
-            if indice == principal:
-                if opengl and opengl.get("version"):
-                    apis.append(GpuApi(
-                        name="OpenGL",
-                        version=_solo_version(opengl["version"]),
-                        device=opengl.get("renderer"),
-                        driver=_mesa(opengl["version"]),
-                        extra=f"GLSL {opengl['glsl']}" if opengl.get("glsl") else None,
-                    ))
-                for dispositivo in opencl:
-                    apis.append(GpuApi(
-                        name="OpenCL",
-                        version=_solo_version(dispositivo.get("version") or ""),
-                        device=dispositivo.get("name"),
-                        driver=dispositivo.get("driver_version"),
-                        extra=_unidades(dispositivo),
-                    ))
-                    if dispositivo.get("compute_units"):
-                        gpu["compute_units"] = dispositivo["compute_units"]
+            # OpenGL y OpenCL no publican el nodo PCI, pero sí dicen quién
+            # contesta. Antes se le atribuían a la tarjeta que el kernel marca
+            # como principal, y en un portátil híbrido esa es la integrada
+            # mientras quien responde es la dedicada: la ficha de una Radeon
+            # acababa con «GLSL 4.60 NVIDIA» y con las unidades de cómputo de
+            # la otra tarjeta.
+            if opengl and opengl.get("version") and _es_de(
+                    f"{opengl.get('renderer') or ''} {opengl.get('vendor') or ''}",
+                    gpu, draft.gpus, principal, indice):
+                apis.append(GpuApi(
+                    name="OpenGL",
+                    version=_solo_version(opengl["version"]),
+                    device=opengl.get("renderer"),
+                    driver=_mesa(opengl["version"]),
+                    extra=f"GLSL {opengl['glsl']}" if opengl.get("glsl") else None,
+                ))
+            for dispositivo in opencl:
+                if not _es_de(f"{dispositivo.get('name') or ''} "
+                              f"{dispositivo.get('vendor') or ''}",
+                              gpu, draft.gpus, principal, indice):
+                    continue
+                apis.append(GpuApi(
+                    name="OpenCL",
+                    version=_solo_version(dispositivo.get("version") or ""),
+                    device=dispositivo.get("name"),
+                    driver=dispositivo.get("driver_version"),
+                    extra=_unidades(dispositivo),
+                ))
+                # Solo si nadie lo sabía ya: el ioctl de amdgpu y NVML cuentan
+                # el silicio, y OpenCL cuenta lo que expone su driver.
+                if dispositivo.get("compute_units") and not gpu.get("compute_units"):
+                    gpu["compute_units"] = dispositivo["compute_units"]
 
             if apis:
                 gpu["apis"] = tuple(apis)
@@ -124,6 +135,61 @@ def _principal(gpus: list[dict]) -> int:
         if gpu.get("primary"):
             return indice
     return 0
+
+
+# Por qué palabras se reconoce a cada fabricante en el texto que devuelven
+# OpenGL y OpenCL, que no es una lista de campos sino una cadena suelta:
+# «NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2», «AMD Radeon 740M (RADV
+# PHOENIX)», «Mesa Intel(R) Graphics (RPL-P)».
+_MARCAS = {
+    "NVIDIA": ("nvidia", "geforce", "quadro", "tesla", "rtx ", "gtx "),
+    "AMD": ("amd", "radeon", "radv", "amdgpu", "gfx1", "gfx9", "advanced micro"),
+    "Intel": ("intel", "iris", "arc ", " uhd", " hd graphics", "anv"),
+}
+# Rasterizadores por software: contestan cuando no hay driver que conteste, y
+# no son ninguna de las tarjetas puestas.
+_POR_SOFTWARE = ("llvmpipe", "softpipe", "swrast", "zink", "lavapipe")
+
+
+def _fabricante_de(texto: str) -> Optional[str]:
+    """A qué fabricante suena el texto de una API, si es que suena a alguno."""
+    bajo = texto.lower()
+    if any(marca in bajo for marca in _POR_SOFTWARE):
+        return "software"
+    for nombre, marcas in _MARCAS.items():
+        if any(marca in bajo for marca in marcas):
+            return nombre
+    return None
+
+
+def _es_de(texto: str, gpu: dict, gpus: list[dict],
+           principal: int, indice: int) -> bool:
+    """Si esta API la contesta esta tarjeta y no otra de las puestas.
+
+    Con una sola tarjeta no hay nada que decidir. Con varias se mira quién
+    dice ser: es lo único que OpenGL y OpenCL publican, porque el nodo PCI no
+    lo dan. Cuando el texto no permite decidir se cae en la principal, que es
+    lo que se hacía siempre, pero eso ya no arrastra las unidades de cómputo.
+    """
+    if len(gpus) <= 1:
+        return indice == principal
+    quien = _fabricante_de(texto)
+    if quien == "software":
+        return False                      # no es ninguna de las puestas
+    if quien is None:
+        return indice == principal        # sin pistas, lo de antes
+    candidatos = [i for i, g in enumerate(gpus) if (g.get("vendor") or "") == quien]
+    if not candidatos:
+        return indice == principal
+    if len(candidatos) == 1:
+        return indice == candidatos[0]
+    # Varias del mismo fabricante: desempata el modelo si aparece entero.
+    bajo = texto.lower()
+    for i in candidatos:
+        nombre = (gpus[i].get("name") or "").lower()
+        if nombre and nombre in bajo:
+            return indice == i
+    return indice == (principal if principal in candidatos else candidatos[0])
 
 
 def _vulkan_de(gpu: dict, dispositivos: list[dict]) -> Optional[dict]:

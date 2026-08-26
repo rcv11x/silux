@@ -131,7 +131,9 @@ class PrivilegedMemory(Provider):
         if any((entry / "eeprom").exists() for entry in candidates):
             return                            # ya está leído
 
-        for module in ("ee1004", "spd5118"):
+        # De la más nueva a la más vieja: el driver que sobra no encuentra
+        # nada y no molesta, pero sin el que toca no se lee el módulo.
+        for module in ("spd5118", "ee1004", "at24"):
             if not shutil.which("modinfo"):
                 return
             result = subprocess.run(["modinfo", "-F", "filename", module],

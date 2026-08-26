@@ -1,8 +1,8 @@
 """OpenGL, Vulkan y OpenCL colgados de la tarjeta que les toca.
 
 Vulkan publica el identificador PCI y se casa sin ambigüedad. OpenGL y OpenCL
-no dicen a qué tarjeta pertenecen, así que se le atribuyen a la que el sistema
-usa por omisión, que es lo único honesto que se puede hacer sin adivinar.
+no dicen a qué nodo pertenecen, pero sí dicen quién contesta, y eso basta para
+no colgárselas a la tarjeta equivocada.
 """
 
 import json
@@ -203,3 +203,78 @@ class TestConsultaEnOtroProceso(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# El portátil de un probador: Ryzen 7 7445HS con Radeon 740M integrada y una
+# RTX 3050 Mobile dedicada. El kernel marca la integrada como principal porque
+# es la que lleva la pantalla, pero quien contesta a OpenGL y OpenCL es la
+# NVIDIA. Los datos son los que se vieron en su captura.
+IGPU_AMD = {"vendor_id": 0x1002, "device_id": 0x1901, "vendor": "AMD",
+            "name": "Radeon 740M", "primary": True}
+DGPU_NVIDIA = {"vendor_id": 0x10DE, "device_id": 0x25A2, "vendor": "NVIDIA",
+               "name": "GeForce RTX 3050 Mobile", "compute_units": 2048}
+OPENGL_NVIDIA = {
+    "version": "4.6.0 NVIDIA 610.57.04",
+    "renderer": "NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2",
+    "vendor": "NVIDIA Corporation", "glsl": "4.60 NVIDIA",
+}
+OPENCL_NVIDIA = {
+    "platform": "NVIDIA CUDA", "name": "NVIDIA GeForce RTX 3050 Laptop GPU",
+    "vendor": "NVIDIA Corporation", "version": "OpenCL 3.0",
+    "driver_version": "610.57.04", "compute_units": 16,
+}
+
+
+class TestPortatilHibrido(unittest.TestCase):
+    """Dos tarjetas de fabricantes distintos y una sola que contesta."""
+
+    def _hibrido(self):
+        return _recolectar([dict(IGPU_AMD), dict(DGPU_NVIDIA)],
+                           opengl=OPENGL_NVIDIA, opencl=[OPENCL_NVIDIA])
+
+    def test_el_opengl_de_nvidia_no_va_a_la_radeon(self):
+        draft = self._hibrido()
+        self.assertNotIn("apis", draft.gpus[0])
+
+    def test_va_a_la_nvidia_aunque_no_sea_la_principal(self):
+        draft = self._hibrido()
+        self.assertEqual([a.name for a in draft.gpus[1]["apis"]],
+                         ["OpenGL", "OpenCL"])
+
+    def test_y_no_le_pega_a_la_radeon_las_unidades_de_la_otra(self):
+        """16 unidades de cómputo son los 16 SM de la RTX 3050, no de la 740M."""
+        draft = self._hibrido()
+        self.assertIsNone(draft.gpus[0].get("compute_units"))
+
+    def test_ni_pisa_las_que_ya_se_sabian(self):
+        """2048 núcleos CUDA los dio NVML; OpenCL cuenta otra cosa."""
+        draft = self._hibrido()
+        self.assertEqual(draft.gpus[1]["compute_units"], 2048)
+
+
+class TestQuienContesta(unittest.TestCase):
+    def test_reconoce_a_cada_fabricante(self):
+        for texto, esperado in [
+            ("NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2", "NVIDIA"),
+            ("AMD Radeon 740M (RADV PHOENIX)", "AMD"),
+            ("Mesa Intel(R) Graphics (RPL-P)", "Intel"),
+            ("AMD Radeon RX 9070 XT (radeonsi, gfx1201, ACO)", "AMD"),
+        ]:
+            self.assertEqual(gpu_apis._fabricante_de(texto), esperado, texto)
+
+    def test_un_rasterizador_por_software_no_es_ninguna_tarjeta(self):
+        """llvmpipe contesta cuando no hay driver, y no es la tarjeta puesta."""
+        self.assertEqual(gpu_apis._fabricante_de("llvmpipe (LLVM 19.1.0, 256 bits)"),
+                         "software")
+
+    def test_y_no_se_le_cuelga_a_nadie(self):
+        draft = _recolectar(
+            [dict(IGPU_AMD), dict(DGPU_NVIDIA)],
+            opengl={"version": "4.5 (Core Profile) Mesa 26.2.1",
+                    "renderer": "llvmpipe (LLVM 19.1.0, 256 bits)",
+                    "vendor": "Mesa", "glsl": "4.50"})
+        self.assertNotIn("apis", draft.gpus[0])
+        self.assertNotIn("apis", draft.gpus[1])
+
+    def test_lo_que_no_dice_nada_sigue_yendo_a_la_principal(self):
+        self.assertIsNone(gpu_apis._fabricante_de("Generic Renderer 1.0"))

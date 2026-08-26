@@ -63,8 +63,13 @@ class TestIdentidad(unittest.TestCase):
     def test_pone_el_nombre_del_nucleo(self):
         entry = self._identidad("raspberry-pi-4.txt")
         self.assertEqual(entry["brand"], "ARM Cortex-A72 r0p3")
-        self.assertEqual(entry["codename"], "Cortex-A72")
         self.assertEqual(entry["vendor"], "ARM")
+
+    def test_y_el_nombre_en_clave_de_verdad(self):
+        """El de ARM, no el del núcleo: un Cortex-A72 es «Maia»."""
+        entry = self._identidad("raspberry-pi-4.txt")
+        self.assertEqual(entry["codename"], "Maia")
+        self.assertEqual(entry["technology"], "28-16 nm")
 
     def test_la_revision_va_como_la_nombra_arm(self):
         """rXpY: es como ARM numera sus revisiones y sus erratas."""
@@ -74,6 +79,7 @@ class TestIdentidad(unittest.TestCase):
         entry = self._identidad("desconocido.txt")
         self.assertEqual(entry["brand"], "ARM núcleo 0xfab r1p2")
         self.assertIsNone(entry["codename"])
+        self.assertIsNone(entry["technology"])
 
     def test_las_banderas_salen_como_las_nombra_el_kernel(self):
         """Crudas en el modelo. Ponerles nombre es cosa de render."""
@@ -120,23 +126,34 @@ class TestBigLittle(unittest.TestCase):
 
 
 class TestTabla(unittest.TestCase):
+    """La tabla de MIDR viene de libcpuid, en la base de datos generada."""
+
     def test_el_numero_de_pieza_solo_vale_dentro_de_su_fabricante(self):
-        """0xd01 es un Cortex-A32 en ARM y un TaiShan en HiSilicon."""
-        self.assertEqual(db.arm_part(0x41, 0xd01), "Cortex-A32")
-        self.assertEqual(db.arm_part(0x48, 0xd01), "TaiShan v110")
+        """0xd01 no significa lo mismo en ARM que en HiSilicon."""
+        de_arm = db.identify_arm(0x41, 0xd01)
+        de_hisilicon = db.identify_arm(0x48, 0xd01)
+        self.assertEqual(de_arm.get("vendor"), "ARM")
+        self.assertEqual(de_hisilicon.get("vendor"), "HiSilicon")
+        self.assertNotEqual(de_arm.get("part_name"), de_hisilicon.get("part_name"))
 
     def test_lo_que_no_conoce_no_se_lo_inventa(self):
-        self.assertIsNone(db.arm_part(0x41, 0xfff))
-        self.assertIsNone(db.arm_implementer(0x99))
+        desconocido = db.identify_arm(0x41, 0xfff)
+        self.assertIsNone(desconocido.get("part_name"))
+        self.assertFalse(desconocido.matched)
 
     def test_cubre_los_de_uso_corriente(self):
         for impl, part, esperado in [
             (0x41, 0xd03, "Cortex-A53"), (0x41, 0xd08, "Cortex-A72"),
             (0x41, 0xd0c, "Neoverse-N1"), (0x41, 0xd82, "Cortex-X4"),
-            (0x51, 0x804, "Kryo 4xx Gold"), (0x61, 0x023, "Firestorm"),
-            (0xc0, 0xac3, "Ampere-1"), (0x4e, 0x004, "Carmel"),
+            (0xc0, 0xac3, "Ampere-1"),
         ]:
-            self.assertEqual(db.arm_part(impl, part), esperado)
+            self.assertEqual(db.identify_arm(impl, part).get("part_name"), esperado)
+
+    def test_trae_el_nombre_en_clave_y_la_litografia(self):
+        """Lo que mi tabla escrita a mano no tenía y esta sí."""
+        a55 = db.identify_arm(0x41, 0xd05)
+        self.assertEqual(a55.codename, "Ananke")
+        self.assertEqual(a55.technology, "28-5 nm")
 
 
 class TestInstrucciones(unittest.TestCase):
