@@ -30,9 +30,12 @@ class SpdModules(Provider):
     def unavailable_reason(self):
         if self.available():
             return None
-        return ("spd", Need.DRIVER,
-                "Los chips SPD de los módulos no están expuestos por el kernel.",
-                "Se activan con el módulo ee1004 (DDR4) o spd5118 (DDR5).")
+        # El motivo no es siempre el mismo y la solución tampoco: puede faltar
+        # el bus entero, puede estar reservado por el firmware o puede que solo
+        # falte cargar un módulo. Decir siempre «carga ee1004» era inútil en la
+        # mayoría de las placas AMD, donde ese módulo ya está y no hay bus.
+        motivo, solucion = spd_module.diagnostico()
+        return ("spd", Need.DRIVER, motivo, solucion)
 
     def collect(self, draft: Draft) -> None:
         readings = spd_module.read_all()

@@ -9,6 +9,7 @@ y un byte de más no falla, simplemente enseña otra cifra.
 import pathlib
 import struct
 import unittest
+from unittest import mock
 
 from silux import spd
 
@@ -335,3 +336,56 @@ class TestDdr5Roto(unittest.TestCase):
         # 20 ps de ciclo serían 100 000 MT/s: el chip está mal leído.
         info = spd.decode(construir_ddr5(tck_ps=20))
         self.assertIsNone(info.jedec)
+
+
+class TestDiagnosticoDelBus(unittest.TestCase):
+    """Por qué no se lee el SPD, que no siempre es por lo mismo.
+
+    Antes se contestaba siempre «carga ee1004», y en la mayoría de las placas
+    AMD ese consejo no sirve: el módulo ya está y lo que falta es el bus. Cada
+    causa tiene su solución y no se parecen entre sí.
+    """
+
+    def _con(self, controlador: bool, bus: bool):
+        return (mock.patch.object(spd, "_hay_controlador_smbus", lambda: controlador),
+                mock.patch.object(spd, "_hay_bus_de_memoria", lambda: bus))
+
+    def test_sin_controlador_no_hay_nada_que_hacer(self):
+        with self._con(False, False)[0], self._con(False, False)[1]:
+            motivo, solucion = spd.diagnostico()
+        self.assertIn("no expone", motivo)
+        self.assertIn("No hay forma", solucion)
+
+    def test_con_controlador_pero_sin_bus_lo_reserva_el_firmware(self):
+        with self._con(True, False)[0], self._con(True, False)[1]:
+            motivo, solucion = spd.diagnostico()
+        self.assertIn("firmware", motivo)
+        self.assertIn("acpi_enforce_resources=lax", solucion)
+
+    def test_con_bus_solo_falta_el_modulo(self):
+        with self._con(True, True)[0], self._con(True, True)[1]:
+            motivo, solucion = spd.diagnostico()
+        self.assertIn("driver", motivo)
+        self.assertIn("ee1004", solucion)
+        self.assertIn("spd5118", solucion)
+
+    def test_los_buses_de_la_grafica_no_cuentan(self):
+        # Una tarjeta gráfica registra buses i2c para hablar con los monitores
+        # y con sus sensores. Ninguno lleva a la memoria, así que contarlos
+        # haría creer que el bus está listo cuando no lo está.
+        import pathlib as _p
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            raiz = _p.Path(tmp)
+            for n, nombre in enumerate(("AMDGPU SMU 0", "AMDGPU DM i2c hw bus 0")):
+                bus = raiz / f"i2c-{n}"
+                bus.mkdir()
+                (bus / "name").write_text(nombre)
+            with mock.patch.object(spd, "SYS_I2C", raiz):
+                self.assertFalse(spd._hay_bus_de_memoria())
+            # Y con uno de verdad, sí.
+            real = raiz / "i2c-9"
+            real.mkdir()
+            (real / "name").write_text("SMBus PIIX4 adapter port 0")
+            with mock.patch.object(spd, "SYS_I2C", raiz):
+                self.assertTrue(spd._hay_bus_de_memoria())
