@@ -145,7 +145,7 @@ def _graficas(snapshot: Snapshot, anonymous: bool) -> str:
             f"{gpu.subsystem_name or '—'} · {gpu.codename or '—'}",
             f"- Identificador: {gpu.pci_id or '—'} · subsistema {gpu.subsystem_id or '—'}",
             f"- Driver: {gpu.driver or '—'} {gpu.driver_version or ''}".rstrip(),
-            f"- BIOS de vídeo: {gpu.vbios or '—'}",
+            f"- BIOS de video: {gpu.vbios or '—'}",
             f"- Memoria: {render.size(gpu.memory.total_bytes)} "
             f"{render.vram_kind(gpu.memory)} · {render.bandwidth(gpu.memory.bandwidth_bytes)}",
             f"- Unidades: {gpu.compute_units or '—'} CU · {gpu.rops or '—'} ROP",
@@ -187,7 +187,7 @@ def _sensores(snapshot: Snapshot) -> str:
         return "\n## Sensores\n\nNinguno detectado.\n"
     arbol = snapshot.sensor_tree()
     lineas = ["", "## Sensores", "",
-              f"{len(snapshot.sensors)} lecturas en {len(arbol)} aparatos.", ""]
+              f"{len(snapshot.sensors)} lecturas en {len(arbol)} dispositivos.", ""]
     for aparato, categorias in arbol.items():
         cuantos = sum(len(s) for s in categorias.values())
         resumen = ", ".join(f"{nombre.lower()} ({len(s)})"

@@ -34,7 +34,7 @@ NEED_TITLES = {
 
 CARD_FIELDS = (
     "Fabricante", "Tarjeta de", "Nombre en clave", "Driver", "Versión del driver",
-    "Identificador", "Subsistema", "Ranura PCI", "Nodo DRM", "BIOS de vídeo",
+    "Identificador", "Subsistema", "Ranura PCI", "Nodo DRM", "BIOS de video",
     "Unidades de cómputo", "Unidades de rasterizado", "Motores de sombreado",
     "Identificador único",
 )
@@ -50,7 +50,7 @@ CLOCK_FIELDS = ("Núcleo", "Núcleo (máximo)", "Memoria", "Memoria (efectiva)",
 SENSOR_FIELDS = ("Estado", "Temperatura", "Punto caliente", "Memoria (temp.)",
                  "Regulador gráfico", "Regulador del SoC", "Regulador de memoria",
                  "Consumo", "Límite de consumo", "Ventilador",
-                 "Voltaje", "Voltaje del SoC", "Voltaje de memoria", "Uso de vídeo")
+                 "Voltaje", "Voltaje del SoC", "Voltaje de memoria", "Uso de video")
 
 API_HEADERS = ("API", "Versión", "Driver", "Detalle")
 DISPLAY_HEADERS = ("Salida", "Monitor", "Resolución", "Refresco", "Tamaño", "Fabricado")
@@ -87,7 +87,7 @@ class GpuSection(QWidget):
         api_card.body.addWidget(self.apis)
         layout.addWidget(api_card)
 
-        display_card = Card("Monitores y salidas de vídeo")
+        display_card = Card("Monitores y salidas de video")
         self.displays = Table(DISPLAY_HEADERS,
                               numeric=(False, False, True, True, True, False))
         display_card.body.addWidget(self.displays)
@@ -152,7 +152,7 @@ class GpuSection(QWidget):
         return card
 
     def _build_memory_card(self) -> Card:
-        card = Card("Memoria de vídeo")
+        card = Card("Memoria de video")
         self.memory_bar = StackedBar(self._p)
         self.memory = InfoGrid()
         for name in MEMORY_FIELDS:
@@ -181,7 +181,7 @@ class GpuSection(QWidget):
         c("Subsistema", gpu.subsystem_id or d)
         c("Ranura PCI", gpu.pci_slot or d)
         c("Nodo DRM", gpu.drm_node or d)
-        c("BIOS de vídeo", gpu.vbios or d)
+        c("BIOS de video", gpu.vbios or d)
         c("Unidades de cómputo", str(gpu.compute_units) if gpu.compute_units else d)
         c("Unidades de rasterizado", str(gpu.rops) if gpu.rops else d,
           tooltip="Los ROP, que son los que escriben los píxeles ya calculados "
@@ -241,8 +241,8 @@ class GpuSection(QWidget):
         s("Voltaje", render.volts(gpu.voltage_v))
         s("Voltaje del SoC", render.volts(gpu.voltage_soc_v))
         s("Voltaje de memoria", render.volts(gpu.voltage_memory_v))
-        s("Uso de vídeo", render.percent(gpu.video_busy_percent),
-          tooltip="Los motores de codificación y decodificación de vídeo, que "
+        s("Uso de video", render.percent(gpu.video_busy_percent),
+          tooltip="Los motores de codificación y decodificación de video, que "
                   "trabajan aparte del resto de la GPU.")
 
         self.apis.set_rows([
@@ -251,7 +251,7 @@ class GpuSection(QWidget):
         ] or [("Sin bibliotecas gráficas", d, d, d)])
 
         self.displays.set_rows([_fila_de_salida(salida) for salida in gpu.displays]
-                               or [("Sin salidas de vídeo", d, d, d, d, d)])
+                               or [("Sin salidas de video", d, d, d, d, d)])
 
     def _apply_badges(self, gpu: Gpu) -> None:
         chips = [c for c in (

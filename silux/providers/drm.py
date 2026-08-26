@@ -109,7 +109,7 @@ class DrmGpus(Provider):
             draft.note(
                 "gpus", Need.HARDWARE,
                 "No hay ninguna tarjeta gráfica registrada en el kernel.",
-                "Pasa en servidores sin salida de vídeo y en máquinas virtuales "
+                "Pasa en servidores sin salida de video y en máquinas virtuales "
                 "sin gráfica emulada.",
             )
             return

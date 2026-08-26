@@ -25,7 +25,7 @@ OS_FIELDS = ("Distribución", "Versión", "Variante", "Identificador", "Nombre d
 KERNEL_FIELDS = ("Kernel", "Arquitectura", "Compilación", "Init", "Escritorio", "Sesión", "Shell")
 MEMORY_FIELDS = ("Total", "Usada", "Disponible", "Aplicaciones", "Caché",
                  "Buffers", "Compartida", "Libre", "Intercambio", "Intercambio usado")
-ACTIVITY_FIELDS = ("Encendido desde", "Tiempo encendido", "Procesos", "Hilos", "Ficheros abiertos")
+ACTIVITY_FIELDS = ("Encendido desde", "Tiempo encendido", "Procesos", "Hilos", "Archivos abiertos")
 
 
 def format_uptime(seconds: float) -> str:
@@ -178,7 +178,7 @@ class SystemPage(QScrollArea):
         a("Tiempo encendido", format_uptime(system.uptime_seconds))
         a("Procesos", f"{system.processes:,}".replace(",", " "))
         a("Hilos", f"{system.threads:,}".replace(",", " "))
-        a("Ficheros abiertos", f"{system.open_files:,}".replace(",", " "))
+        a("Archivos abiertos", f"{system.open_files:,}".replace(",", " "))
 
     def _apply_badges(self, system: System) -> None:
         session = None

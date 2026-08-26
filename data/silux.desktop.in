@@ -2,15 +2,18 @@
 Type=Application
 Version=1.5
 Name=Silux
-GenericName=Perfilador de hardware
-GenericName[en]=Hardware profiler
-Comment=Información y monitorización del procesador, las cachés y los sensores
-Comment[en]=Processor, cache and sensor information and monitoring
+GenericName=Información y sensores del equipo
+GenericName[en]=Hardware information and sensors
+Comment=Qué hardware tienes y qué está haciendo ahora mismo
+Comment[en]=What hardware you have and what it is doing right now
 Exec=@EXEC@
 Path=@PATH@
 Icon=silux
 Terminal=false
 Categories=System;Monitor;
-Keywords=cpu;procesador;processor;hardware;cache;caché;sensor;temperatura;vatios;
+# Las palabras con las que alguien buscaría esto en el lanzador. Van sin tildes
+# además de con ellas porque nadie teclea «caché» con acento al buscar, y sin
+# marcas registradas: el nombre se cambió justamente para no rozarlas.
+Keywords=hardware;cpu;procesador;processor;gpu;grafica;gráfica;graphics;tarjeta;radeon;geforce;vram;memoria;memory;ram;dimm;cache;caché;placa;motherboard;bios;uefi;red;network;ethernet;wifi;ip;monitor;pantalla;display;edid;sensor;sensores;temperatura;temperature;ventilador;fan;rpm;voltaje;voltage;vatios;watts;frecuencia;frequency;mhz;ghz;reloj;clock;monitorizacion;monitorización;monitoring;diagnostico;diagnóstico;info;sistema;system;
 StartupNotify=true
 StartupWMClass=silux
