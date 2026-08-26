@@ -63,6 +63,9 @@ class Disks(Provider):
         # terabytes escritos. Se lee una vez y se guarda.
         self._salud: dict[str, object] = {}
         self._sin_salud: set[str] = set()
+        # La pone el colector cuando el usuario pulsa el botón. Sin ella el
+        # diagnóstico solo se lee si alguien elevó permisos por otra cosa.
+        self.requested = False
 
     def available(self) -> bool:
         return SYS_BLOCK.is_dir()
@@ -87,7 +90,14 @@ class Disks(Provider):
         eleve permisos para ver la memoria se lleva esto de propina.
         """
         if not self.client.connected():
-            return
+            if not self.requested:
+                return
+            try:
+                self.client.connect()
+            except Exception:                          # noqa: BLE001
+                self.requested = False
+                return
+            self.requested = False
 
         for indice, disco in enumerate(draft.disks):
             nombre = disco.name

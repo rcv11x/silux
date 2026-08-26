@@ -11,8 +11,9 @@ disco, y la pregunta «dónde está montado /home» no se hace por disco.
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QLabel, QScrollArea, QVBoxLayout, QWidget
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtWidgets import (QHBoxLayout, QLabel, QPushButton, QScrollArea,
+                               QVBoxLayout, QWidget)
 
 from ... import render
 from ...model import Disk, Snapshot
@@ -42,6 +43,11 @@ def _orden(disco: Disk) -> tuple:
 
 
 class StoragePage(QScrollArea):
+    # El diagnóstico de los discos exige permisos, igual que el detalle de la
+    # memoria. Sin un botón aquí, los campos aparecían vacíos y sin explicación
+    # y no había forma de adivinar que la contraseña se pedía en otra pestaña.
+    elevation_requested = Signal()
+
     def __init__(self, palette: Palette, prefs: Preferences, parent=None):
         super().__init__(parent)
         self._p = palette
@@ -62,6 +68,7 @@ class StoragePage(QScrollArea):
 
         layout.addWidget(self._build_header())
         layout.addWidget(self._build_tiles())
+        layout.addWidget(self._build_elevation())
 
         disk_card = Card("Unidades")
         self.disks = Table(DISK_HEADERS,
@@ -120,6 +127,37 @@ class StoragePage(QScrollArea):
             lambda v: render.temperature(v, self._prefs.fahrenheit), intervalo)
         return fila
 
+    def _build_elevation(self) -> Card:
+        """La tarjeta que explica qué falta y por qué, con su botón."""
+        card = Card("Estado de los discos")
+        self.elevation_text = QLabel(
+            "Las horas de encendido, los terabytes escritos y el desgaste los "
+            "guarda cada disco en sus propios contadores de diagnóstico. El "
+            "kernel reserva esos comandos al administrador porque son los "
+            "mismos que sirven para borrar un disco."
+        )
+        self.elevation_text.setObjectName("NoticeBody")
+        self.elevation_text.setWordWrap(True)
+
+        detalle = QLabel(
+            "El ayudante que se lanza solo sabe pedir diagnóstico y leer unas "
+            "tablas del sistema: no ejecuta órdenes ni escribe nada."
+        )
+        detalle.setObjectName("Muted")
+        detalle.setWordWrap(True)
+
+        self.elevation_button = QPushButton("Leer con permisos de administrador")
+        self.elevation_button.clicked.connect(self.elevation_requested)
+        fila = QHBoxLayout()
+        fila.addWidget(self.elevation_button)
+        fila.addStretch(1)
+
+        card.body.addWidget(self.elevation_text)
+        card.body.addWidget(detalle)
+        card.body.addLayout(fila)
+        self.elevation_card = card
+        return card
+
     # -- actualización ------------------------------------------------------
 
     def apply(self, snapshot: Snapshot) -> None:
@@ -128,6 +166,14 @@ class StoragePage(QScrollArea):
         self._apply_tiles(discos)
         self._apply_tables(discos)
         self._apply_cards(discos)
+        # La tarjeta solo estorba cuando ya no hace falta.
+        leidos = sum(1 for x in discos if x.health.power_on_hours is not None)
+        self.elevation_card.setVisible(bool(discos) and leidos < len(discos))
+        if leidos:
+            self.elevation_text.setText(
+                f"Leído el diagnóstico de {leidos} de {len(discos)} unidades. "
+                "Las que faltan no lo publican o no respondieron."
+            )
 
     def _apply_header(self, discos) -> None:
         d = render.DASH

@@ -165,6 +165,7 @@ class MainWindow(QMainWindow):
         self.memory_page.elevation_requested.connect(self._on_elevation_requested)
         self.graphics_page = GraphicsPage(self._palette, self.prefs)
         self.storage_page = StoragePage(self._palette, self.prefs)
+        self.storage_page.elevation_requested.connect(self._on_elevation_requested)
         self.network_page = NetworkPage(self._palette, self.prefs)
         self.network_page.unit_changed.connect(self._on_network_unit)
         self.system_page = SystemPage(self._palette, self.prefs)
@@ -379,9 +380,11 @@ class MainWindow(QMainWindow):
 
     def _on_sample(self, snapshot: Snapshot) -> None:
         self._last_snapshot = snapshot
-        if not self.memory_page.elevation_button.isEnabled():
-            self.memory_page.elevation_button.setEnabled(True)
-            self.memory_page.elevation_button.setText("Leer con permisos de administrador")
+        for boton in (self.memory_page.elevation_button,
+                      self.storage_page.elevation_button):
+            if not boton.isEnabled():
+                boton.setEnabled(True)
+                boton.setText("Leer con permisos de administrador")
         self._distribute(snapshot)
 
         text = (f"Cada {self.prefs.interval_s:g} s · {len(snapshot.sensors)} sensores · "
@@ -397,8 +400,12 @@ class MainWindow(QMainWindow):
         el hilo de muestreo, que puede bloquear sin congelar la ventana. Se le
         da un toque para que no haya que esperar al siguiente intervalo.
         """
-        self.memory_page.elevation_button.setEnabled(False)
-        self.memory_page.elevation_button.setText("Esperando autorización…")
+        # Los dos botones piden lo mismo y se lanza un solo ayudante, así que
+        # los dos se quedan esperando a la vez.
+        for boton in (self.memory_page.elevation_button,
+                      self.storage_page.elevation_button):
+            boton.setEnabled(False)
+            boton.setText("Esperando autorización…")
         self.sampler.request_elevation()
 
     def _on_columns_resized(self, widths: tuple) -> None:
