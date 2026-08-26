@@ -175,10 +175,19 @@ class MonitorPage(QScrollArea):
                 (clocks.min_hz or 0) / 1e9,
                 (clocks.max_hz or clocks.max_turbo_hz or 0) / 1e9 or None,
             )
-            if clocks.base_hz and clocks.max_hz:
-                self.tile_freq.set_detail(
-                    f"{clocks.base_hz / 1e9:.2f} – {clocks.max_hz / 1e9:.2f} GHz"
-                )
+            # El mismo rango que dibuja la gráfica de debajo, para que la
+            # cifra y el trazo digan lo mismo. Con base y máximo se leía
+            # «2.60 – 2.60 GHz» en un Xeon con el turbo apagado, que es
+            # verdad y no informa de nada: lo que recorre es de 1.20 a 2.60.
+            suelo = clocks.min_hz or clocks.base_hz
+            techo = clocks.max_hz or clocks.max_turbo_hz
+            if suelo and techo:
+                if abs(techo - suelo) < 1e7:          # menos de 10 MHz: es fijo
+                    self.tile_freq.set_detail(f"fija en {techo / 1e9:.2f} GHz")
+                else:
+                    self.tile_freq.set_detail(
+                        f"{suelo / 1e9:.2f} – {techo / 1e9:.2f} GHz"
+                    )
 
         if cpu.usage_percent is not None:
             self.tile_usage.update_value(f"{cpu.usage_percent:.0f}", cpu.usage_percent)

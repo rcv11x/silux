@@ -261,6 +261,26 @@ def rpm(value: Optional[int]) -> str:
     return DASH if _none(value) else f"{int(value)} RPM"
 
 
+def fan(rpm_value: Optional[int], percent_value: Optional[float]) -> str:
+    """El ventilador, con las dos cifras o con la que haya.
+
+    Cada driver da una cosa: amdgpu publica las revoluciones y NVML solo el
+    porcentaje. Juntar «—» con «(0.0 %)» quedaba como si faltara un dato y
+    sobrara otro, cuando lo que dicen los dos es que está parado.
+    """
+    parado = (rpm_value == 0) or (percent_value == 0)
+    if _none(rpm_value) and _none(percent_value):
+        return DASH
+    if parado:
+        return "parado"
+    partes = []
+    if not _none(rpm_value):
+        partes.append(f"{int(rpm_value)} RPM")
+    if not _none(percent_value):
+        partes.append(f"({percent(percent_value)})" if partes else percent(percent_value))
+    return "   ".join(partes)
+
+
 def pcie_link(link: PcieLink, maximum: bool = False) -> str:
     """«PCIe 5.0 × 16», que es como lo nombra todo el mundo menos sysfs."""
     generation = link.max_generation if maximum else link.generation

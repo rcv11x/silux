@@ -70,6 +70,22 @@ _VELOCIDAD = re.compile(r"([\d.]+)\s*GT/s")
 _NOMBRE_ENTRE_CORCHETES = re.compile(r"^(.*?)\s*\[(.+)\]\s*$")
 
 
+# AMD escribe el nombre de la gráfica integrada dentro de la cadena de marca
+# del procesador: «AMD Ryzen 7 7445HS w/ Radeon 740M Graphics». Hace falta
+# porque pci.ids no siempre trae el comercial: al 1002:1901 lo llama
+# «HawkPoint2» a secas, sin los corchetes donde suele ir.
+_IGPU_EN_LA_MARCA = re.compile(r"\bw/\s+(Radeon\s+[\w\s]*?)\s*Graphics\b",
+                               re.IGNORECASE)
+
+
+def _igpu_de_la_cpu(draft) -> Optional[str]:
+    """El nombre comercial de la integrada, si el procesador lo declara."""
+    for entry in draft.types.values():
+        if encaje := _IGPU_EN_LA_MARCA.search(entry.get("brand") or ""):
+            return " ".join(encaje.group(1).split())
+    return None
+
+
 def _partir_nombre(texto: str) -> tuple[Optional[str], Optional[str]]:
     """pci.ids escribe «nombre en clave [nombre comercial]»; los separa."""
     if encaje := _NOMBRE_ENTRE_CORCHETES.match(texto):
@@ -194,6 +210,15 @@ class DrmGpus(Provider):
             clave, comercial = _partir_nombre(modelo)
             gpu["name"] = comercial or gpu.get("name")
             gpu["codename"] = gpu.get("codename") or clave
+
+        # Lo que pci.ids dejó sin nombre comercial. Solo se toca lo que sigue
+        # llamándose por su nombre en clave: si ya pone «Radeon» algo, ese
+        # nombre salió de la base de datos y es más concreto que este.
+        if (gpu.get("vendor") == "AMD"
+                and "radeon" not in (gpu.get("name") or "").lower()
+                and (integrada := _igpu_de_la_cpu(draft))):
+            gpu["codename"] = gpu.get("codename") or gpu.get("name")
+            gpu["name"] = integrada
 
 
 class GpuState(Provider):
