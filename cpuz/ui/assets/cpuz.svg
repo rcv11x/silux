@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Icono de cpuz.
+
+  Está dibujado con formas macizas y no con trazos: un contorno fino se
+  desvanece a 16 px, que es el tamaño al que lo verá la barra de tareas. Los
+  detalles finos (las pistas que salen del die) llevan opacidad baja, así que
+  aparecen en los tamaños grandes y desaparecen sin ensuciar en los pequeños.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="cobre" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#D4762F"/>
+      <stop offset="1" stop-color="#96420F"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="24" y="24" width="464" height="464" rx="108" fill="url(#cobre)"/>
+
+  <!-- Patas: cuatro por lado, macizas, para que el contorno se reconozca -->
+  <g fill="#FBF6F0">
+    <rect x="176" y="112" width="26" height="42" rx="9"/>
+    <rect x="230" y="112" width="26" height="42" rx="9"/>
+    <rect x="284" y="112" width="26" height="42" rx="9"/>
+    <rect x="176" y="358" width="26" height="42" rx="9"/>
+    <rect x="230" y="358" width="26" height="42" rx="9"/>
+    <rect x="284" y="358" width="26" height="42" rx="9"/>
+    <rect x="112" y="176" width="42" height="26" rx="9"/>
+    <rect x="112" y="230" width="42" height="26" rx="9"/>
+    <rect x="112" y="284" width="42" height="26" rx="9"/>
+    <rect x="358" y="176" width="42" height="26" rx="9"/>
+    <rect x="358" y="230" width="42" height="26" rx="9"/>
+    <rect x="358" y="284" width="42" height="26" rx="9"/>
+  </g>
+
+  <!-- Cuerpo del encapsulado -->
+  <rect x="142" y="142" width="228" height="228" rx="34" fill="#FBF6F0"/>
+
+  <!-- El die, en hueco: deja ver el cobre del fondo -->
+  <rect x="202" y="202" width="108" height="108" rx="18" fill="url(#cobre)"/>
+
+  <!-- Pistas hacia el die: solo se aprecian en tamaños grandes -->
+  <g fill="url(#cobre)" opacity="0.30">
+    <rect x="168" y="246" width="34" height="9" rx="4"/>
+    <rect x="310" y="246" width="34" height="9" rx="4"/>
+    <rect x="251" y="168" width="9" height="34" rx="4"/>
+    <rect x="251" y="310" width="9" height="34" rx="4"/>
+  </g>
+
+  <!-- Marca de orientación, como la esquina biselada de un procesador real -->
+  <circle cx="176" cy="176" r="13" fill="url(#cobre)"/>
+</svg>

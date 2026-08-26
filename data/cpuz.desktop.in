@@ -1,0 +1,16 @@
+[Desktop Entry]
+Type=Application
+Version=1.5
+Name=cpuz
+GenericName=Perfilador de hardware
+GenericName[en]=Hardware profiler
+Comment=Información y monitorización del procesador, las cachés y los sensores
+Comment[en]=Processor, cache and sensor information and monitoring
+Exec=@EXEC@
+Path=@PATH@
+Icon=cpuz
+Terminal=false
+Categories=System;Monitor;
+Keywords=cpu;procesador;processor;hardware;cache;caché;sensor;temperatura;vatios;
+StartupNotify=true
+StartupWMClass=cpuz

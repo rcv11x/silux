@@ -1,0 +1,674 @@
+"""El modelo de datos: valores tipados, nunca texto ya formateado.
+
+Todo lo que sale de aquí es inmutable. Un `Snapshot` es una foto completa
+del sistema en un instante; la interfaz compara dos fotos consecutivas para
+saber qué repintar, y el exportador de JSON serializa una sin más trabajo.
+
+Los nombres de campo llevan la unidad (`freq_hz`, `size_bytes`, `temp_c`)
+para que no haya ninguna duda de qué guarda cada uno.
+"""
+
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass, field, fields, is_dataclass
+from enum import Enum
+from typing import Any, Optional
+
+from .spd import SpdInfo, Timings  # noqa: F401  (se reexporta al modelo)
+
+
+class Need(str, Enum):
+    """Por qué falta un dato. Es lo que la interfaz enseña al usuario."""
+
+    ROOT = "root"            # hace falta elevar privilegios
+    DATABASE = "database"    # el hardware no está en la base de datos
+    HARDWARE = "hardware"    # esta máquina simplemente no lo expone
+    DRIVER = "driver"        # haría falta cargar un módulo del kernel
+    PLATFORM = "platform"    # no aplica a esta arquitectura
+
+
+@dataclass(frozen=True, slots=True)
+class Note:
+    """Explica la ausencia de un dato concreto, con su motivo."""
+
+    path: str          # p. ej. "cpu.voltage_v"
+    need: Need
+    message: str
+    hint: str = ""     # qué puede hacer el usuario al respecto
+
+
+# --------------------------------------------------------------------------
+# CPU
+# --------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class Cache:
+    level: int
+    kind: str                       # "data" | "instruction" | "unified"
+    size_bytes: int
+    ways: Optional[int] = None
+    line_bytes: Optional[int] = None
+    sets: Optional[int] = None
+    instances: int = 1              # cuántas hay para este tipo de núcleo
+    shared_by: int = 1              # cpus lógicas que comparten cada instancia
+    # Qué CPUs lógicas comparten cada instancia. Es lo que permite dibujar el
+    # mapa de la jerarquía: sin esto solo se sabe cuántas hay, no cuáles.
+    instance_cpus: tuple[tuple[int, ...], ...] = ()
+
+    @property
+    def total_bytes(self) -> int:
+        return self.size_bytes * self.instances
+
+
+@dataclass(frozen=True, slots=True)
+class Clocks:
+    current_hz: Optional[int] = None      # media de los núcleos de este tipo
+    min_hz: Optional[int] = None
+    max_hz: Optional[int] = None          # techo efectivo que aplica el kernel
+    base_hz: Optional[int] = None
+    max_turbo_hz: Optional[int] = None    # techo del silicio, según CPUID 0x16
+    bus_hz: Optional[int] = None          # BCLK / reloj de referencia
+    turbo_enabled: Optional[bool] = None
+    driver: Optional[str] = None
+    governor: Optional[str] = None
+    energy_preference: Optional[str] = None    # EPP: hacia rendimiento o hacia ahorro
+
+    def _mult(self, hz: Optional[int]) -> Optional[float]:
+        if not hz or not self.bus_hz:
+            return None
+        return round(hz / self.bus_hz, 1)
+
+    @property
+    def multiplier(self) -> Optional[float]:
+        return self._mult(self.current_hz)
+
+    @property
+    def min_multiplier(self) -> Optional[float]:
+        return self._mult(self.min_hz)
+
+    @property
+    def max_multiplier(self) -> Optional[float]:
+        return self._mult(self.max_hz)
+
+    @property
+    def max_turbo_multiplier(self) -> Optional[float]:
+        return self._mult(self.max_turbo_hz)
+
+    @property
+    def turbo_headroom_hz(self) -> Optional[int]:
+        """Cuánta frecuencia deja sin usar el techo actual frente al del silicio."""
+        if self.max_turbo_hz and self.max_hz and self.max_turbo_hz > self.max_hz:
+            return self.max_turbo_hz - self.max_hz
+        return None
+
+
+@dataclass(frozen=True, slots=True)
+class Power:
+    """Consumo del paquete, desglosado y con los límites del hardware.
+
+    Un solo número deja al usuario sin saber si está bien. El desglose por
+    dominio y el límite declarado por el propio procesador convierten
+    "7 W" en "7 de 65 W, y casi todo son los núcleos".
+    """
+
+    package_w: Optional[float] = None
+    core_w: Optional[float] = None
+    uncore_w: Optional[float] = None
+    dram_w: Optional[float] = None
+    limit_long_w: Optional[float] = None       # PL1: el sostenido, suele ser el TDP
+    limit_short_w: Optional[float] = None      # PL2: el pico de unos segundos
+
+    @property
+    def load_percent(self) -> Optional[float]:
+        """Qué fracción del límite sostenido se está usando."""
+        if self.package_w is None or not self.limit_long_w:
+            return None
+        return round(100.0 * self.package_w / self.limit_long_w, 1)
+
+
+@dataclass(frozen=True, slots=True)
+class LogicalCpu:
+    """Una CPU lógica: un hilo, tal y como lo ve el kernel."""
+
+    index: int
+    core_id: int
+    package_id: int
+    type_key: str = "general"
+    freq_hz: Optional[int] = None
+    temp_c: Optional[float] = None
+    usage_percent: Optional[float] = None
+
+
+@dataclass(frozen=True, slots=True)
+class CpuType:
+    """Un tipo de núcleo. En una CPU homogénea hay uno; en una híbrida, dos.
+
+    Modelar esto como lista desde el principio es deliberado: convertirlo
+    después obliga a reescribir el modelo entero y toda la interfaz.
+    """
+
+    key: str                    # "general" | "performance" | "efficiency"
+    label: str                  # lo decide `render`, esto es solo un identificador
+    vendor: str = ""            # "Intel", "AMD"…
+    vendor_id: str = ""         # "GenuineIntel"
+    brand: str = ""             # cadena de marca cruda de CPUID
+    codename: Optional[str] = None
+    technology: Optional[str] = None
+    socket: Optional[str] = None
+    architecture: str = ""
+
+    # CPUID parte la familia y el modelo en un campo base y otro extendido,
+    # por razones históricas: cuando los cuatro bits del campo base se
+    # agotaron, se añadieron los extendidos y hay que recomponerlos. Los
+    # campos "disp" son ya la suma, que es lo que el fabricante publica en su
+    # hoja de datos; los otros son los bits en crudo, útiles solo para
+    # depurar. `signature` es el registro EAX entero de la hoja 1.
+    family: Optional[int] = None
+    model: Optional[int] = None
+    stepping: Optional[int] = None
+    disp_family: Optional[int] = None
+    disp_model: Optional[int] = None
+    signature: Optional[int] = None
+
+    virtualization: Optional[str] = None       # "VT-x", "AMD-V" o nada
+    in_virtual_machine: bool = False
+
+    cores: int = 0
+    threads: int = 0
+    cpus: tuple[int, ...] = ()
+    smt: bool = False
+
+    caches: tuple[Cache, ...] = ()
+    features: tuple[str, ...] = ()
+    clocks: Clocks = field(default_factory=Clocks)
+
+    temp_c: Optional[float] = None
+    voltage_v: Optional[float] = None
+    microcode: Optional[str] = None
+
+    def cache_at(self, level: int, kind: str | None = None) -> Optional[Cache]:
+        for c in self.caches:
+            if c.level == level and (kind is None or c.kind == kind):
+                return c
+        return None
+
+
+@dataclass(frozen=True, slots=True)
+class CpuInfo:
+    sockets: int = 1
+    hybrid: bool = False
+    types: tuple[CpuType, ...] = ()
+    logical: tuple[LogicalCpu, ...] = ()
+    usage_percent: Optional[float] = None
+    package_temp_c: Optional[float] = None
+    power: Power = field(default_factory=Power)
+    load_average: tuple[float, ...] = ()       # 1, 5 y 15 minutos
+
+    @property
+    def package_power_w(self) -> Optional[float]:
+        return self.power.package_w
+
+    @property
+    def total_cores(self) -> int:
+        return sum(t.cores for t in self.types)
+
+    @property
+    def total_threads(self) -> int:
+        return sum(t.threads for t in self.types)
+
+
+# --------------------------------------------------------------------------
+# Sistema
+# --------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class Memory:
+    """Reparto de la memoria, tal y como lo cuenta /proc/meminfo.
+
+    Hay dos formas legítimas de contar la memoria usada y conviene no
+    mezclarlas:
+
+    * `used_bytes` = total − disponible. Es la definición de `free` y la de
+      cualquier monitor del sistema: «cuánta no podría recuperar aunque
+      quisiera». Incluye la parte de la caché que no es recuperable, como
+      tmpfs y la memoria compartida.
+    * `apps_bytes` = total − libre − buffers − caché recuperable. Es la que
+      permite dibujar una barra cuyos trozos suman exactamente el total.
+
+    La primera sale siempre algo mayor que la segunda, y no es un error: la
+    diferencia es justo la caché que el kernel no puede devolver.
+    """
+
+    total_bytes: int = 0
+    available_bytes: int = 0
+    free_bytes: int = 0
+    buffers_bytes: int = 0
+    cached_bytes: int = 0
+    shared_bytes: int = 0
+    reclaimable_bytes: int = 0          # SReclaimable: slab que sí se devuelve
+    swap_total_bytes: int = 0
+    swap_free_bytes: int = 0
+
+    @property
+    def used_bytes(self) -> int:
+        return max(0, self.total_bytes - self.available_bytes)
+
+    @property
+    def cache_bytes(self) -> int:
+        """La caché que el kernel puede devolver si alguien pide memoria."""
+        return max(0, self.cached_bytes + self.reclaimable_bytes - self.shared_bytes)
+
+    @property
+    def apps_bytes(self) -> int:
+        """Lo que no es ni libre, ni buffers, ni caché recuperable."""
+        return max(0, self.total_bytes - self.free_bytes
+                   - self.buffers_bytes - self.cache_bytes)
+
+    @property
+    def used_percent(self) -> float:
+        return round(100.0 * self.used_bytes / self.total_bytes, 1) if self.total_bytes else 0.0
+
+    @property
+    def swap_used_bytes(self) -> int:
+        return max(0, self.swap_total_bytes - self.swap_free_bytes)
+
+    @property
+    def swap_used_percent(self) -> float:
+        if not self.swap_total_bytes:
+            return 0.0
+        return round(100.0 * self.swap_used_bytes / self.swap_total_bytes, 1)
+
+
+@dataclass(frozen=True, slots=True)
+class System:
+    distribution: Optional[str] = None
+    distribution_id: Optional[str] = None
+    version_id: Optional[str] = None
+    variant: Optional[str] = None
+
+    kernel: Optional[str] = None
+    kernel_build: Optional[str] = None
+    architecture: Optional[str] = None
+
+    hostname: Optional[str] = None
+    init: Optional[str] = None
+    desktop: Optional[str] = None
+    session_type: Optional[str] = None
+    shell: Optional[str] = None
+
+    uptime_seconds: float = 0.0
+    boot_time: Optional[str] = None
+
+    processes: int = 0
+    threads: int = 0
+    open_files: int = 0
+
+    memory: Memory = field(default_factory=Memory)
+
+
+@dataclass(frozen=True, slots=True)
+class MemoryModule:
+    """Un zócalo de memoria, esté ocupado o no.
+
+    Los zócalos vacíos también salen: saber que quedan dos libres es la mitad
+    de la razón por la que alguien abre esta pestaña.
+    """
+
+    locator: Optional[str] = None            # "DIMM A1"
+    bank: Optional[str] = None               # "P0 CHANNEL A"
+    populated: bool = False
+    size_bytes: int = 0
+    type: Optional[str] = None               # "DDR4"
+    form_factor: Optional[str] = None        # "DIMM", "SODIMM"
+    details: tuple[str, ...] = ()
+    speed_mts: Optional[int] = None          # lo que el módulo puede dar
+    configured_mts: Optional[int] = None     # a lo que va de verdad
+    manufacturer: Optional[str] = None
+    part_number: Optional[str] = None
+    rank: Optional[int] = None
+    data_width: Optional[int] = None
+    total_width: Optional[int] = None
+    voltage_min_mv: Optional[int] = None
+    voltage_max_mv: Optional[int] = None
+    voltage_configured_mv: Optional[int] = None
+
+    @property
+    def has_ecc(self) -> Optional[bool]:
+        """Si el ancho total supera al de datos, esos bits de más son ECC."""
+        if self.total_width is None or self.data_width is None or not self.data_width:
+            return None
+        return self.total_width > self.data_width
+
+    # Se rellena desde el chip SPD del propio módulo, cuando se puede leer.
+    spd: Optional[SpdInfo] = None
+
+    @property
+    def rated_mts(self) -> Optional[int]:
+        """A cuánto puede ir el módulo, no a cuánto lo han puesto.
+
+        El SPD lo sabe de verdad; la tabla SMBIOS solo repite lo que la BIOS
+        ha negociado, que sin XMP son los valores conservadores de JEDEC.
+        """
+        if self.spd is not None and self.spd.rated_mts:
+            return self.spd.rated_mts
+        return self.speed_mts
+
+    @property
+    def underclocked(self) -> bool:
+        """El módulo va por debajo de lo que sabe dar."""
+        actual = self.configured_mts or self.speed_mts
+        rated = self.rated_mts
+        return bool(actual and rated and actual < rated)
+
+
+@dataclass(frozen=True, slots=True)
+class MemoryArray:
+    slots: Optional[int] = None
+    max_capacity_bytes: int = 0
+    error_correction: Optional[str] = None
+
+
+@dataclass(frozen=True, slots=True)
+class PrivilegedState:
+    """Qué se sabe del ayudante privilegiado, para poder explicarlo."""
+
+    supported: bool = False                  # hay pkexec y ayudante
+    connected: bool = False
+    already_root: bool = False
+    message: Optional[str] = None            # el último fallo, si lo hubo
+
+
+# --------------------------------------------------------------------------
+# Placa base
+# --------------------------------------------------------------------------
+
+
+# Los fabricantes se identifican en DMI con su razón social completa. Nadie
+# llama "Micro-Star International Co., Ltd." a una MSI.
+VENDOR_ALIASES: dict[str, str] = {
+    "micro-star international": "MSI",
+    "asustek computer": "ASUS",
+    "gigabyte technology": "Gigabyte",
+    "american megatrends": "AMI",
+    "hewlett-packard": "HP",
+    "lenovo": "Lenovo",
+    "dell inc.": "Dell",
+    "asrock": "ASRock",
+    "biostar": "Biostar",
+    "supermicro": "Supermicro",
+    "acer": "Acer",
+    "notebook": "",
+}
+
+
+def short_vendor(name: Optional[str]) -> Optional[str]:
+    if not name:
+        return name
+    lowered = name.lower()
+    for needle, alias in VENDOR_ALIASES.items():
+        if lowered.startswith(needle):
+            return alias or name
+    return name
+
+
+_BRAND_NOISE = re.compile(r"\((?:R|TM|tm|r)\)|\bCPU\b|\bProcessor\b|@.*$|\b\d+-Core\b")
+
+
+def short_brand(brand: Optional[str]) -> str:
+    """"Intel(R) Core(TM) i5-10400 CPU @ 2.90GHz" -> "Intel Core i5-10400"."""
+    if not brand:
+        return "Procesador"
+    return " ".join(_BRAND_NOISE.sub("", brand).split()) or "Procesador"
+
+
+# Valores que los fabricantes dejan sin rellenar en la tabla SMBIOS. Enseñar
+# "Default string" como si fuera un dato es peor que no enseñar nada.
+DMI_PLACEHOLDERS = frozenset({
+    "default string", "to be filled by o.e.m.", "to be filled by oem",
+    "system manufacturer", "system product name", "system version",
+    "not specified", "not applicable", "none", "n/a", "unknown",
+    "oem", "o.e.m.", "chassis manufacturer", "chassis version",
+    "0123456789", "xxxxxxxx", "empty",
+})
+
+
+def clean_dmi(value: Optional[str]) -> Optional[str]:
+    """Descarta los rellenos que dejan las BIOS sin configurar."""
+    if not value:
+        return None
+    return None if value.strip().lower() in DMI_PLACEHOLDERS else value.strip()
+
+
+@dataclass(frozen=True, slots=True)
+class Board:
+    vendor: Optional[str] = None
+    name: Optional[str] = None
+    version: Optional[str] = None
+
+    bios_vendor: Optional[str] = None
+    bios_version: Optional[str] = None
+    bios_date: Optional[str] = None
+    bios_release: Optional[str] = None
+
+    firmware: Optional[str] = None          # "UEFI (64 bits)" o "BIOS heredada"
+    secure_boot: Optional[bool] = None
+    tpm_version: Optional[str] = None
+
+    chipset: Optional[str] = None           # "Intel H510"
+    chipset_full: Optional[str] = None      # el nombre completo de pci.ids
+    host_bridge: Optional[str] = None
+
+    system_vendor: Optional[str] = None
+    system_name: Optional[str] = None
+    system_version: Optional[str] = None
+    system_family: Optional[str] = None
+    system_sku: Optional[str] = None
+
+    chassis_vendor: Optional[str] = None
+    chassis: Optional[str] = None
+
+    @property
+    def display_name(self) -> str:
+        """Cómo se llama esta placa en una frase: "MSI H510M PRO-E"."""
+        parts = [short_vendor(self.vendor), self.name]
+        joined = " ".join(p for p in parts if p)
+        return joined or "Placa base"
+
+    @property
+    def bios_summary(self) -> str:
+        parts = [short_vendor(self.bios_vendor), self.bios_version]
+        joined = " ".join(p for p in parts if p)
+        return f"{joined} ({self.bios_date})" if joined and self.bios_date else joined or "—"
+
+
+# --------------------------------------------------------------------------
+# Sensores
+# --------------------------------------------------------------------------
+
+
+class SensorKind(str, Enum):
+    TEMPERATURE = "temperature"
+    VOLTAGE = "voltage"
+    FAN = "fan"
+    POWER = "power"
+    CURRENT = "current"
+    ENERGY = "energy"
+    CLOCK = "clock"
+    USAGE = "usage"
+    OTHER = "other"
+
+
+UNITS: dict[str, str] = {
+    SensorKind.TEMPERATURE: "°C",
+    SensorKind.VOLTAGE: "V",
+    SensorKind.FAN: "RPM",
+    SensorKind.POWER: "W",
+    SensorKind.CURRENT: "A",
+    SensorKind.ENERGY: "J",
+    SensorKind.CLOCK: "MHz",
+    SensorKind.USAGE: "%",
+    SensorKind.OTHER: "",
+}
+
+# El nombre de la rama en la que cae cada tipo dentro del árbol de sensores.
+CATEGORIES: dict[str, str] = {
+    SensorKind.VOLTAGE: "Voltajes",
+    SensorKind.TEMPERATURE: "Temperaturas",
+    SensorKind.FAN: "Ventiladores",
+    SensorKind.POWER: "Potencias",
+    SensorKind.CURRENT: "Corrientes",
+    SensorKind.ENERGY: "Energía",
+    SensorKind.CLOCK: "Relojes",
+    SensorKind.USAGE: "Uso",
+    SensorKind.OTHER: "Otros",
+}
+
+# Orden en que se enseñan las ramas: el mismo que usan HWMonitor y HWiNFO,
+# de lo que más se consulta a lo que menos.
+CATEGORY_ORDER: tuple[str, ...] = (
+    "Voltajes", "Temperaturas", "Ventiladores", "Potencias",
+    "Relojes", "Uso", "Corrientes", "Energía", "Otros",
+)
+
+
+@dataclass(frozen=True, slots=True)
+class Sensor:
+    """Una lectura suelta de un chip de sensores.
+
+    `key` tiene que ser estable entre muestreos: es lo que permite acumular
+    mínimos y máximos por sensor a lo largo de la sesión, que es la gracia de
+    un monitor de hardware frente a un simple visor de valores actuales.
+    """
+
+    key: str                        # "coretemp/temp2"
+    chip: str                       # nombre crudo del chip: "coretemp"
+    device: str                     # el aparato: "MSI H510M PRO-E", "Core i5-10400"
+    label: str                      # "Core 0", "Vcore", "CPU Fan"
+    kind: SensorKind
+    value: float
+    low: Optional[float] = None     # umbral bajo declarado por el chip
+    high: Optional[float] = None    # umbral alto
+    critical: Optional[float] = None
+    order: int = 0                  # para mantener el orden natural dentro de la rama
+
+    @property
+    def unit(self) -> str:
+        return UNITS.get(self.kind, "")
+
+    @property
+    def category(self) -> str:
+        return CATEGORIES.get(self.kind, "Otros")
+
+    @property
+    def alarm(self) -> bool:
+        """Si la lectura ha pasado un umbral que declara el propio hardware."""
+        if self.critical is not None and self.value >= self.critical:
+            return True
+        if self.high is not None and self.value > self.high:
+            return True
+        if self.low is not None and self.value < self.low:
+            return True
+        return False
+
+
+@dataclass(frozen=True, slots=True)
+class DriverHint:
+    """Un módulo del kernel que daría más sensores y no está cargado.
+
+    En Linux, un monitor de hardware no está limitado por lo que puede leer
+    sino por los drivers que haya cargados. Detectarlo y decirlo vale más que
+    cualquier sensor extra.
+    """
+
+    module: str
+    provides: str
+    command: str
+    caution: str = ""
+
+
+# --------------------------------------------------------------------------
+# Snapshot
+# --------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class Snapshot:
+    monotonic_ns: int
+    cpu: CpuInfo
+    board: Board = field(default_factory=Board)
+    system: System = field(default_factory=System)
+    modules: tuple[MemoryModule, ...] = ()
+    spd: tuple[SpdInfo, ...] = ()
+    memory_array: Optional[MemoryArray] = None
+    privileged: PrivilegedState = field(default_factory=PrivilegedState)
+    sensors: tuple[Sensor, ...] = ()
+    driver_hints: tuple[DriverHint, ...] = ()
+    capabilities: frozenset[str] = frozenset()
+    notes: tuple[Note, ...] = ()
+
+    def sensor_tree(self) -> dict[str, dict[str, tuple[Sensor, ...]]]:
+        """Dispositivo → categoría → sensores, en el orden en que se dibujan.
+
+        Es la forma en que presentan los datos HWMonitor y HWiNFO, y no es
+        casualidad: agrupar por aparato y luego por magnitud es lo que permite
+        mirar «qué hace la placa» o «qué temperaturas hay» sin leerlo todo.
+        """
+        tree: dict[str, dict[str, list[Sensor]]] = {}
+        for sensor in self.sensors:
+            tree.setdefault(sensor.device, {}).setdefault(sensor.category, []).append(sensor)
+
+        ordered: dict[str, dict[str, tuple[Sensor, ...]]] = {}
+        for device, categories in tree.items():
+            ordered[device] = {
+                name: tuple(sorted(categories[name], key=lambda s: (s.order, s.label)))
+                for name in CATEGORY_ORDER
+                if name in categories
+            }
+        return ordered
+
+    def notes_for(self, prefix: str) -> tuple[Note, ...]:
+        return tuple(n for n in self.notes if n.path.startswith(prefix))
+
+
+def to_jsonable(obj: Any) -> Any:
+    """Convierte el modelo a estructuras que `json` sabe serializar.
+
+    Se escribe a mano en lugar de usar `dataclasses.asdict` porque hay que
+    incluir las propiedades calculadas (multiplicadores, totales) y ordenar
+    los conjuntos para que la salida sea estable entre ejecuciones.
+    """
+    if is_dataclass(obj) and not isinstance(obj, type):
+        out: dict[str, Any] = {}
+        for f in fields(obj):
+            out[f.name] = to_jsonable(getattr(obj, f.name))
+        for extra in _COMPUTED.get(type(obj).__name__, ()):
+            out[extra] = to_jsonable(getattr(obj, extra))
+        return out
+    if isinstance(obj, Enum):
+        return obj.value
+    if isinstance(obj, (frozenset, set)):
+        return sorted(obj)
+    if isinstance(obj, (list, tuple)):
+        return [to_jsonable(v) for v in obj]
+    if isinstance(obj, dict):
+        return {k: to_jsonable(v) for k, v in obj.items()}
+    return obj
+
+
+_COMPUTED: dict[str, tuple[str, ...]] = {
+    "Cache": ("total_bytes",),
+    "Clocks": ("multiplier", "min_multiplier", "max_multiplier",
+               "max_turbo_multiplier", "turbo_headroom_hz"),
+    "Power": ("load_percent",),
+    "CpuInfo": ("total_cores", "total_threads", "package_power_w"),
+    "Sensor": ("unit", "category", "alarm"),
+    "Board": ("display_name", "bios_summary"),
+    "MemoryModule": ("has_ecc", "underclocked", "rated_mts"),
+    "SpdInfo": ("rated_mts",),
+    "Timings": ("summary",),
+    "Memory": ("used_bytes", "used_percent", "cache_bytes", "apps_bytes",
+               "swap_used_bytes", "swap_used_percent"),
+}

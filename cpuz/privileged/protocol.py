@@ -1,0 +1,45 @@
+"""El contrato entre el programa y su ayudante privilegiado.
+
+Vive en un módulo aparte porque lo comparten los dos lados, y porque tener el
+contrato escrito en un solo sitio es lo que permite auditarlo de un vistazo:
+estas son *todas* las cosas que el proceso con privilegios sabe hacer.
+"""
+
+from __future__ import annotations
+
+PROTOCOL_VERSION = 1
+
+# Acciones admitidas. Cualquier otra cosa se rechaza sin mirarla.
+ACTION_PING = "ping"
+ACTION_SMBIOS = "smbios"
+ACTION_MSR = "msr"
+ACTIONS = frozenset({ACTION_PING, ACTION_SMBIOS, ACTION_MSR})
+
+# Rutas que el ayudante puede abrir. No hay ninguna forma de pedirle otra.
+DMI_TABLE = "/sys/firmware/dmi/tables/DMI"
+DMI_ENTRY_POINT = "/sys/firmware/dmi/tables/smbios_entry_point"
+MSR_DEVICE = "/dev/cpu/{cpu}/msr"
+
+# Registros MSR permitidos, con lo que significan. La lista blanca existe
+# porque un MSR arbitrario puede exponer información sensible o depender de
+# efectos secundarios; estos son de solo lectura y bien documentados.
+MSR_ALLOWED: dict[int, str] = {
+    0x0198: "IA32_PERF_STATUS",          # voltaje y ratio actuales
+    0x0199: "IA32_PERF_CTL",             # ratio solicitado
+    0x019C: "IA32_THERM_STATUS",         # margen hasta el límite térmico
+    0x01A2: "MSR_TEMPERATURE_TARGET",    # TjMax
+    0x01AD: "MSR_TURBO_RATIO_LIMIT",     # multiplicadores turbo por nº de núcleos
+    0x00CE: "MSR_PLATFORM_INFO",         # ratio base, mínimo y máximo eficiente
+    0x0610: "MSR_PKG_POWER_LIMIT",       # PL1 y PL2 configurados
+    0x0606: "MSR_RAPL_POWER_UNIT",       # unidades para interpretar los de arriba
+    0xC0010293: "AMD_MSR_CORE_ENERGY",   # energía por núcleo en AMD
+    0xC0010299: "AMD_MSR_RAPL_UNIT",
+}
+
+# Tamaño máximo de un mensaje, en bytes. Evita que un lado pueda hacer que el
+# otro reserve memoria sin límite.
+MAX_MESSAGE = 4 * 1024 * 1024
+
+
+class ProtocolError(RuntimeError):
+    """El otro lado ha dicho algo que no encaja con el contrato."""
