@@ -4,8 +4,10 @@ Perfilador de hardware para Linux con interfaz Qt. Alternativa a
 [CPU-X](https://github.com/TheTumultuousUnicornOfDarkness/CPU-X), escrita en
 Python puro.
 
-Estado: **CPU, Monitor, Cachés, Placa base, Memoria y Sistema terminadas**.
-Falta Gráficos.
+Estado: **las nueve secciones terminadas** — CPU, Cachés, Placa base, Memoria,
+Gráficos, Red, Sistema, Sensores y Ajustes.
+
+Escrito con ayuda de Claude.
 
 ## Qué es y qué no
 
@@ -35,6 +37,7 @@ python3 -m cpuz.ui.app --size 700x520  # tamaño concreto para esta ejecución
 python3 -m cpuz.cli                    # volcado en el terminal
 python3 -m cpuz.cli --json             # el mismo dato, para otros programas
 python3 -m cpuz.cli --watch            # refresco continuo en texto
+python3 -m cpuz.cli --report i.md      # informe para adjuntar a un fallo
 ```
 
 La ventana abre a 900×680 y recuerda el tamaño al cerrarla. El suelo depende
@@ -75,6 +78,9 @@ En la sección **Ajustes**, que se guarda en `~/.config/cpuz/settings.json`:
 | Tema | Seguir al sistema, claro u oscuro |
 | Densidad | Amplia, normal o compacta: márgenes, tipografía, filas y columnas |
 | Unidad de temperatura | Celsius o Fahrenheit |
+| Tamaño de la letra | Normal, grande, mayor o máximo. Las tarjetas y columnas crecen con él |
+| Color de acento | Naranja, azul, verde, morado, rojo o cian |
+| Velocidad de red | Bytes o bits por segundo: los mismos datos son 116 MB/s o 931 Mb/s |
 
 En el árbol de sensores **todas las columnas se arrastran** y el ancho se
 recuerda entre sesiones. Con el botón derecho sobre la cabecera se vuelve a
@@ -450,7 +456,83 @@ python3 -m unittest discover -s tests -t .
 Ninguno necesita hardware concreto: los proveedores se prueban contra árboles
 de sysfs sintéticos y el generador contra fragmentos de C.
 
-## Licencias de las fuentes de datos
+## Probarlo
+
+### AppImage
+
+Un solo fichero, sin instalar nada:
+
+```bash
+chmod +x cpuz-x86_64.AppImage
+./cpuz-x86_64.AppImage
+```
+
+Lleva dentro Python, Qt y las bibliotecas que necesita. Ocupa 51 MB, que es lo
+que queda después de podar: de PySide6 solo van QtCore, QtGui y QtWidgets —los
+otros treinta módulos sobran— y se dejan fuera la integración con el tema del
+escritorio (arrastra GTK y los iconos de Breeze, 40 MB, y el programa fija el
+estilo Fusion de todas formas) y los formatos de imagen que tiran de los
+códecs de vídeo del sistema. Sin esa poda serían 561 MB.
+
+Se construye con:
+
+```bash
+python3 tools/build_appimage.py
+```
+
+### Desde el código
+
+Hace falta Python 3.11 o superior y PySide6. La base de datos de CPU y los
+nombres de dispositivos vienen del paquete `hwdata`, que ya está en casi
+cualquier distribución.
+
+```bash
+# Arch, CachyOS, Manjaro
+sudo pacman -S --needed python-pyside6 hwdata polkit
+
+# Fedora
+sudo dnf install python3-pyside6 hwdata polkit
+
+# Debian, Ubuntu
+sudo apt install python3-pyside6 hwdata policykit-1
+
+git clone https://github.com/rcv11x/cpuz-linux
+cd cpuz-linux
+python3 -m cpuz.ui.app
+```
+
+Sin PySide6 el volcado en terminal (`python3 -m cpuz.cli`) funciona igual: la
+interfaz es lo único que lo necesita.
+
+## Si algo no sale bien
+
+```bash
+python3 -m cpuz.cli --report informe.md
+```
+
+O el botón **Guardar informe del equipo…** en Ajustes. Genera un fichero con el
+hardware detectado y, sobre todo, con lo que **no** se ha podido leer y por
+qué: qué fuentes respondieron, qué módulos del kernel faltan y qué datos no
+están disponibles. Es lo que hay que adjuntar al abrir un issue.
+
+El informe **omite el nombre del equipo, las direcciones IP y MAC y los números
+de serie**, porque está pensado para pegarlo en un sitio público. Con
+`--with-identifiers` se incluyen, si hacen falta para el caso.
+
+Lo que más falta por probar, porque aquí no hay hardware para ello: una AMD con
+dos CCD (7950X3D y parecidos), cualquier NVIDIA con el driver propietario, un
+Intel híbrido con núcleos P y E, y una APU con gráficos integrados.
+
+## Licencia
+
+GPL-3.0 o posterior. El texto completo está en [LICENSE](LICENSE).
+
+Es la GPL y no una licencia permisiva porque la base de datos de identificación
+que se distribuye incluye la tabla de encapsulados heredada de CPU-X, que es
+GPL-3.0.
+
+### Fuentes de datos
 
 - [libcpuid](https://github.com/anrieff/libcpuid) — BSD 2 cláusulas — tablas de identificación
 - [CPU-X](https://github.com/TheTumultuousUnicornOfDarkness/CPU-X) — GPL-3.0 — tabla de sockets
+- `pci.ids` y `pnp.ids` del sistema (paquete hwdata) — nombres de dispositivos y de monitores
