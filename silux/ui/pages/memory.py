@@ -40,6 +40,7 @@ NEED_TITLES = {
     Need.HARDWARE: "Este equipo no lo expone",
     Need.DRIVER: "Falta un módulo del kernel",
     Need.PLATFORM: "Todavía no está implementado",
+    Need.ERROR: "Falló al leerse",
 }
 
 MODULE_FIELDS = ("Fabricante", "Chips", "Referencia", "Tipo", "Capacidad",

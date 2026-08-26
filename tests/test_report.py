@@ -129,3 +129,60 @@ class TestCasosVacios(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestDatosAusentes(unittest.TestCase):
+    """Una máquina de la que apenas se sabe nada.
+
+    El caso salió de un aarch64 con Debian dentro de PRoot, donde casi todo
+    proveedor se queda a medias. El informe se llenó de «None»: la familia, el
+    modelo y el stepping se interpolaban crudos, y `None` es lo que escribe
+    Python cuando le pides el texto de un dato que no tiene.
+    """
+
+    def _pelado(self):
+        return _snapshot(
+            cpu=CpuInfo(types=(CpuType(key="general", label="general", brand=None,
+                                       cores=8, threads=8,
+                                       clocks=Clocks(max_hz=1_612_800_000,
+                                                     driver="sprd-cpufreq-v2",
+                                                     governor="schedutil")),)),
+            board=Board(), gpus=(), network=(), sensors=(),
+        )
+
+    def test_no_escribe_None_en_ningun_sitio(self):
+        texto = report.build(self._pelado())
+        self.assertNotIn("None", texto)
+
+    def test_lo_que_falta_sale_con_su_guion(self):
+        texto = report.build(self._pelado())
+        self.assertIn("Familia — · modelo — · stepping —", texto)
+
+    def test_lo_que_si_se_sabe_sigue_saliendo(self):
+        texto = report.build(self._pelado())
+        self.assertIn("8 / 8", texto)
+        self.assertIn("sprd-cpufreq-v2", texto)
+
+    def test_un_stepping_cero_es_un_stepping(self):
+        """Con `or` en vez de comparar contra None, el 0 se volvía guion."""
+        texto = report.build(_snapshot(
+            cpu=CpuInfo(types=(CpuType(key="general", label="general", brand="Intel",
+                                       cores=6, threads=12, stepping=0,
+                                       clocks=Clocks()),)),
+        ))
+        self.assertIn("stepping 0", texto)
+
+
+class TestMotivosDeFallo(unittest.TestCase):
+    """Por qué falta un dato, que no siempre es lo que parece."""
+
+    def test_un_permiso_denegado_no_es_una_plataforma_que_no_aplica(self):
+        nota = Note("network", Need.ROOT, "Sin permiso para leer /sys/class/net.")
+        texto = report.build(_snapshot(notes=(nota,)))
+        self.assertIn("requiere permisos de administrador", texto)
+        self.assertNotIn("no aplica a esta plataforma", texto)
+
+    def test_un_fallo_nuestro_se_dice_como_tal(self):
+        nota = Note("spd", Need.ERROR, "El proveedor «spd» falló: vaya")
+        texto = report.build(_snapshot(notes=(nota,)))
+        self.assertIn("falló al leerse", texto)

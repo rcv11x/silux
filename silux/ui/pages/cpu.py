@@ -40,6 +40,7 @@ NEED_TITLES = {
     Need.HARDWARE: "Este equipo no lo expone",
     Need.DRIVER: "Falta un módulo del kernel",
     Need.PLATFORM: "No aplica a esta plataforma",
+    Need.ERROR: "Falló al leerse",
 }
 
 # El orden va de lo que identifica al procesador a lo que solo interesa
@@ -130,7 +131,7 @@ class TypeSection(QWidget):
         p("Virtualización", self._virtualization(cpu_type))
         p("Familia", render.hex_id(cpu_type.disp_family))
         p("Modelo", render.hex_id(cpu_type.disp_model))
-        p("Stepping", str(cpu_type.stepping) if cpu_type.stepping is not None else render.DASH)
+        p("Stepping", render.dec(cpu_type.stepping))
         p("Firma CPUID", render.signature(cpu_type.signature),
           tooltip=render.signature_tooltip(cpu_type))
         p("Microcódigo", cpu_type.microcode or render.DASH)

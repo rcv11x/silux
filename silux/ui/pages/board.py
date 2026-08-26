@@ -34,6 +34,7 @@ NEED_TITLES = {
     Need.HARDWARE: "Este equipo no lo expone",
     Need.DRIVER: "Falta un módulo del kernel",
     Need.PLATFORM: "No aplica a esta plataforma",
+    Need.ERROR: "Falló al leerse",
 }
 
 

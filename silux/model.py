@@ -27,6 +27,7 @@ class Need(str, Enum):
     HARDWARE = "hardware"    # esta máquina simplemente no lo expone
     DRIVER = "driver"        # haría falta cargar un módulo del kernel
     PLATFORM = "platform"    # no aplica a esta arquitectura
+    ERROR = "error"          # falló al leerse; esto es un fallo nuestro
 
 
 @dataclass(frozen=True, slots=True)

@@ -76,6 +76,11 @@ DEFAULT_PROVIDERS: tuple[type[Provider], ...] = (
 )
 
 
+def _ruta_de(exc: OSError) -> str:
+    """El fichero que provocó el error, o una descripción si no lo dice."""
+    return str(exc.filename) if exc.filename else str(exc)
+
+
 class Collector:
     """Punto de entrada de la capa de datos. Reutilizable y con estado propio."""
 
@@ -151,10 +156,26 @@ class Collector:
                         draft.note(*reason)
                     continue
                 provider.collect(draft)
+            except PermissionError as exc:
+                # No es que el dato no exista: es que no se deja leer. Pasaba
+                # con «no aplica a esta plataforma», que es lo contrario de lo
+                # que ocurre, y en un entorno enjaulado salía así hasta la red.
+                draft.note(
+                    provider.provides or provider.name,
+                    Need.ROOT,
+                    f"Sin permiso para leer {_ruta_de(exc)}.",
+                    "El sistema no deja acceder a esa ruta con este usuario.",
+                )
+            except (FileNotFoundError, NotADirectoryError) as exc:
+                draft.note(
+                    provider.provides or provider.name,
+                    Need.HARDWARE,
+                    f"Este equipo no publica {_ruta_de(exc)}.",
+                )
             except Exception as exc:                      # noqa: BLE001
                 draft.note(
                     provider.provides or provider.name,
-                    Need.PLATFORM,
+                    Need.ERROR,
                     f"El proveedor «{provider.name}» falló: {exc}",
                     "Es un fallo de silux, no de tu equipo. Merece un informe.",
                 )
