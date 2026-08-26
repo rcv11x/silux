@@ -3,7 +3,7 @@
  "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
  "http://www.freedesktop.org/software/polkit/policyconfig-1.dtd">
 <!--
-  Política de polkit para el ayudante de cpuz.
+  Política de polkit para el ayudante de silux.
 
   Es opcional: sin ella pkexec pide la contraseña de administrador con un
   mensaje genérico y todo funciona igual. Instalarla —cosa que solo puede
@@ -12,15 +12,15 @@
   y recordar la autorización durante la sesión en vez de preguntar cada vez.
 -->
 <policyconfig>
-  <vendor>cpuz</vendor>
+  <vendor>silux</vendor>
   <vendor_url>https://github.com/</vendor_url>
 
-  <action id="org.cpuz.helper">
+  <action id="org.silux.helper">
     <description>Leer información de hardware reservada al administrador</description>
     <description xml:lang="en">Read administrator-only hardware information</description>
     <message>Para mostrar los módulos de memoria y el voltaje del procesador hace falta autenticarse.</message>
     <message xml:lang="en">Authentication is required to show memory modules and processor voltage.</message>
-    <icon_name>cpuz</icon_name>
+    <icon_name>silux</icon_name>
     <defaults>
       <allow_any>auth_admin</allow_any>
       <allow_inactive>auth_admin</allow_inactive>

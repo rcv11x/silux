@@ -22,10 +22,10 @@ import subprocess
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-SVG = ROOT / "cpuz" / "ui" / "assets" / "cpuz.svg"
-DESKTOP_TEMPLATE = ROOT / "data" / "cpuz.desktop.in"
+SVG = ROOT / "silux" / "ui" / "assets" / "silux.svg"
+DESKTOP_TEMPLATE = ROOT / "data" / "silux.desktop.in"
 
-APP_ID = "cpuz"
+APP_ID = "silux"
 # Los tamaños que pide la especificación de iconos de freedesktop, más los que
 # usan en la práctica Plasma y GNOME para la barra de tareas.
 SIZES = (16, 22, 24, 32, 48, 64, 128, 256, 512)
@@ -95,9 +95,9 @@ def resolve_exec() -> tuple[str, str]:
     intérprete actual y se fija el directorio de trabajo con `Path=`, que es
     justo para lo que existe ese campo.
     """
-    if (script := shutil.which("cpuz-gui")):
+    if (script := shutil.which("silux-gui")):
         return script, ""
-    return f"{sys.executable} -m cpuz.ui.app", str(ROOT)
+    return f"{sys.executable} -m silux.ui.app", str(ROOT)
 
 
 def write_desktop() -> pathlib.Path:

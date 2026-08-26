@@ -29,7 +29,7 @@ class TestPlantillaDesktop(unittest.TestCase):
         self.texto = installer.DESKTOP_TEMPLATE.read_text(encoding="utf-8")
 
     def test_claves_obligatorias(self):
-        for clave in ("Type=Application", "Name=", "Exec=@EXEC@", "Icon=cpuz", "Categories="):
+        for clave in ("Type=Application", "Name=", "Exec=@EXEC@", "Icon=silux", "Categories="):
             with self.subTest(clave=clave):
                 self.assertIn(clave, self.texto)
 
@@ -95,7 +95,7 @@ class TestInstalacion(unittest.TestCase):
     def test_sin_ejecutable_instalado_se_fija_el_directorio(self):
         with mock.patch.object(installer.shutil, "which", return_value=None):
             comando, directorio = installer.resolve_exec()
-        self.assertIn("-m cpuz.ui.app", comando)
+        self.assertIn("-m silux.ui.app", comando)
         self.assertTrue(pathlib.Path(directorio).is_dir())
 
 
@@ -104,7 +104,7 @@ class TestIconoDeLaVentana(unittest.TestCase):
     def test_hay_icono_aunque_no_este_instalado_en_el_tema(self):
         from PySide6.QtGui import QIcon
         from PySide6.QtWidgets import QApplication
-        from cpuz.ui import app as ui_app
+        from silux.ui import app as ui_app
 
         QApplication.instance() or QApplication([])
         with mock.patch.object(QIcon, "fromTheme", return_value=QIcon()):

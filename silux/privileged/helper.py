@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Ayudante privilegiado de cpuz. Se ejecuta como root, y solo hace esto.
+"""Ayudante privilegiado de silux. Se ejecuta como root, y solo hace esto.
 
 Está escrito para poder leerse entero de una sentada, porque un programa que
 corre con privilegios hay que poder auditarlo. De ahí tres decisiones:
 
-* **No importa nada del propio cpuz**, solo la biblioteca estándar. Un fallo
+* **No importa nada del propio silux**, solo la biblioteca estándar. Un fallo
   en cualquier otro módulo del programa no puede llegar hasta aquí.
 * **No interpreta lo que lee.** Devuelve los bytes crudos de la tabla SMBIOS
   y deja que el proceso sin privilegios los analice. Analizar formatos

@@ -8,7 +8,7 @@ repositorio los números de serie del equipo de nadie.
 
 import unittest
 
-from cpuz import edid
+from silux import edid
 
 
 def construir(*, fabricante="GBT", producto=10025, serie=0x01010101,

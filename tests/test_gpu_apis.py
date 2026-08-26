@@ -10,9 +10,9 @@ import subprocess
 import unittest
 from unittest import mock
 
-from cpuz import gpuapi
-from cpuz.providers import gpu_apis
-from cpuz.providers.base import Draft
+from silux import gpuapi
+from silux.providers import gpu_apis
+from silux.providers.base import Draft
 
 VULKAN_AMD = {
     "name": "AMD Radeon RX 9070 XT (RADV GFX1201)",
@@ -175,7 +175,7 @@ class TestConsultaEnOtroProceso(unittest.TestCase):
 
     def test_un_driver_colgado_no_cuelga_el_muestreo(self):
         def se_atasca(*args, **kwargs):
-            raise subprocess.TimeoutExpired(cmd="cpuz.gpuapi", timeout=gpuapi.TIEMPO_MAXIMO)
+            raise subprocess.TimeoutExpired(cmd="silux.gpuapi", timeout=gpuapi.TIEMPO_MAXIMO)
 
         with mock.patch.object(subprocess, "run", se_atasca):
             self.assertEqual(gpuapi.consultar(), self.VACIO)
@@ -197,7 +197,7 @@ class TestConsultaEnOtroProceso(unittest.TestCase):
 
         with mock.patch.object(subprocess, "run", espia):
             gpuapi.consultar()
-        self.assertEqual(capturado["orden"][1:], ["-m", "cpuz.gpuapi"])
+        self.assertEqual(capturado["orden"][1:], ["-m", "silux.gpuapi"])
         self.assertIn("PYTHONPATH", capturado["env"])
 
 

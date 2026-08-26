@@ -12,10 +12,10 @@ import tempfile
 import unittest
 from unittest import mock
 
-from cpuz import render
-from cpuz.model import NetworkInterface, NetworkTraffic
-from cpuz.providers import network
-from cpuz.providers.base import Draft
+from silux import render
+from silux.model import NetworkInterface, NetworkTraffic
+from silux.providers import network
+from silux.providers.base import Draft
 
 
 def _write(path: pathlib.Path, value: str) -> None:

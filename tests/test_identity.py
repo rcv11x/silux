@@ -7,8 +7,8 @@ llama 165 no informa de nada; estos tests fijan la presentación buena.
 
 import unittest
 
-from cpuz import render
-from cpuz.model import CpuType, Power
+from silux import render
+from silux.model import CpuType, Power
 
 
 class TestFirmaCpuid(unittest.TestCase):
@@ -37,7 +37,7 @@ class TestFirmaCpuid(unittest.TestCase):
 
     def test_la_interfaz_enseña_los_valores_compuestos(self):
         try:
-            from cpuz.ui.pages.cpu import PROCESSOR_FIELDS
+            from silux.ui.pages.cpu import PROCESSOR_FIELDS
         except ImportError:                                # pragma: no cover
             self.skipTest("PySide6 no está instalado")
         self.assertIn("Familia", PROCESSOR_FIELDS)
@@ -87,7 +87,7 @@ class TestPotencia(unittest.TestCase):
 class TestVirtualizacion(unittest.TestCase):
     def setUp(self):
         try:
-            from cpuz.ui.pages.cpu import TypeSection
+            from silux.ui.pages.cpu import TypeSection
         except ImportError:                                # pragma: no cover
             self.skipTest("PySide6 no está instalado")
         self.describe = TypeSection._virtualization

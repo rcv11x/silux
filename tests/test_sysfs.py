@@ -11,8 +11,8 @@ import tempfile
 import unittest
 from unittest import mock
 
-from cpuz.providers import sysfs_cpu
-from cpuz.providers.base import Draft, parse_cpu_list, parse_size
+from silux.providers import sysfs_cpu
+from silux.providers.base import Draft, parse_cpu_list, parse_size
 
 
 def _write(path: pathlib.Path, value: str) -> None:

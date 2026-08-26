@@ -273,7 +273,7 @@ def _arrow_icon(color: str, direction: str) -> str:
     darle una imagen. Se genera aquí para que siga el color del tema en vez
     de arrastrar un PNG por el repositorio.
     """
-    cache = pathlib.Path(tempfile.gettempdir()) / "cpuz-icons"
+    cache = pathlib.Path(tempfile.gettempdir()) / "silux-icons"
     target = cache / f"arrow-{color.lstrip('#')}-{direction}.png"
     if target.exists():
         return target.as_posix()
@@ -570,7 +570,7 @@ SENSOR_COLORS: dict[str, str] = {
 def sensor_icon(kind: str, palette: Palette):
     """Devuelve la ruta de un icono de 16 px para una magnitud."""
     color = getattr(palette, SENSOR_COLORS.get(kind, "muted"))
-    cache = pathlib.Path(tempfile.gettempdir()) / "cpuz-icons"
+    cache = pathlib.Path(tempfile.gettempdir()) / "silux-icons"
     target = cache / f"sensor-{kind}-{color.lstrip('#')}.png"
     if target.exists():
         return target.as_posix()

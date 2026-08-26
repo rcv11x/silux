@@ -11,9 +11,9 @@ import tempfile
 import unittest
 from unittest import mock
 
-from cpuz.model import Clocks
-from cpuz.providers import cppc
-from cpuz.providers.base import Draft
+from silux.model import Clocks
+from silux.providers import cppc
+from silux.providers.base import Draft
 
 
 def _write(path: pathlib.Path, value: str) -> None:

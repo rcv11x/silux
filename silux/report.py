@@ -51,7 +51,7 @@ def _cabecera(snapshot: Snapshot, anonymous: bool) -> str:
     sistema = snapshot.system
     qt = _version_de_qt()
     lineas = [
-        f"# Informe de cpuz {__version__}",
+        f"# Informe de silux {__version__}",
         "",
         "| | |",
         "|---|---|",

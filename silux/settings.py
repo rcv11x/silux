@@ -17,7 +17,7 @@ from typing import Any
 
 def config_dir() -> pathlib.Path:
     base = os.environ.get("XDG_CONFIG_HOME") or (pathlib.Path.home() / ".config")
-    return pathlib.Path(base) / "cpuz"
+    return pathlib.Path(base) / "silux"
 
 
 def config_path() -> pathlib.Path:

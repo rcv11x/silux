@@ -8,8 +8,8 @@ pedía ayuda.
 
 import unittest
 
-from cpuz import report
-from cpuz.model import (Board, Clocks, CpuInfo, CpuType, Gpu, GpuMemory, Need,
+from silux import report
+from silux.model import (Board, Clocks, CpuInfo, CpuType, Gpu, GpuMemory, Need,
                         NetworkInterface, Note, Sensor, SensorKind, Snapshot,
                         System)
 
@@ -66,7 +66,7 @@ class TestPrivacidad(unittest.TestCase):
 class TestContenido(unittest.TestCase):
     def test_lleva_lo_que_hace_falta_para_diagnosticar(self):
         texto = report.build(_snapshot())
-        for encabezado in ("# Informe de cpuz", "## Procesador", "## Placa base",
+        for encabezado in ("# Informe de silux", "## Procesador", "## Placa base",
                            "## Gráficos", "## Red", "## Sensores", "## Diagnóstico"):
             self.assertIn(encabezado, texto)
 
@@ -104,7 +104,7 @@ class TestContenido(unittest.TestCase):
 class TestCasosVacios(unittest.TestCase):
     def test_un_snapshot_pelado_no_revienta(self):
         texto = report.build(Snapshot(monotonic_ns=0, cpu=CpuInfo()))
-        self.assertIn("# Informe de cpuz", texto)
+        self.assertIn("# Informe de silux", texto)
 
 
 if __name__ == "__main__":

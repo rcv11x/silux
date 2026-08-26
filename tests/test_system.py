@@ -6,9 +6,9 @@ import tempfile
 import unittest
 from unittest import mock
 
-from cpuz.model import Memory, System
-from cpuz.providers import system as provider
-from cpuz.providers.base import Draft
+from silux.model import Memory, System
+from silux.providers import system as provider
+from silux.providers.base import Draft
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -79,7 +79,7 @@ class TestRepartoDeMemoria(unittest.TestCase):
 class TestTiempoEncendido(unittest.TestCase):
     def setUp(self):
         try:
-            from cpuz.ui.pages.system import format_uptime
+            from silux.ui.pages.system import format_uptime
         except ImportError:                             # pragma: no cover
             self.skipTest("PySide6 no está instalado")
         self.formato = format_uptime
@@ -141,9 +141,9 @@ class TestColumnasDelArbol(unittest.TestCase):
         cls.app = QApplication.instance() or QApplication([])
 
     def _tree(self):
-        from cpuz.collector import Collector
-        from cpuz.ui import theme
-        from cpuz.ui.widgets import SensorTree
+        from silux.collector import Collector
+        from silux.ui import theme
+        from silux.ui.widgets import SensorTree
 
         tree = SensorTree(theme.DARK)
         tree.rebuild(Collector().sample().sensor_tree())
@@ -211,7 +211,7 @@ class TestColumnasDelArbol(unittest.TestCase):
 
     def test_si_no_caben_las_columnas_el_arbol_se_desplaza(self):
         """Antes se recortaba la última columna en silencio."""
-        from cpuz.ui import theme
+        from silux.ui import theme
 
         theme.set_density("spacious")
         tree = self._tree()
@@ -226,7 +226,7 @@ class TestColumnasDelArbol(unittest.TestCase):
     def test_la_cabecera_avisa_de_que_se_puede_arrastrar(self):
         """Qt cambia el cursor sobre el separador, pero eso solo se descubre
         por accidente: hace falta una marca visible."""
-        from cpuz.ui.widgets import ResizableHeader
+        from silux.ui.widgets import ResizableHeader
 
         tree = self._tree()
         tree.show()
@@ -239,7 +239,7 @@ class TestColumnasDelArbol(unittest.TestCase):
         self.assertEqual(header._divider_at(borde // 2), -1)
 
     def test_la_densidad_amplia_deja_mas_aire_que_la_compacta(self):
-        from cpuz.ui import theme
+        from silux.ui import theme
 
         anchos = {}
         for densidad in ("spacious", "compact"):
@@ -272,7 +272,7 @@ class TestReutilizacionDeWidgets(unittest.TestCase):
         cls.app = QApplication.instance() or QApplication([])
 
     def test_la_fila_de_insignias_reescribe_en_vez_de_recrear(self):
-        from cpuz.ui.widgets import ChipRow
+        from silux.ui.widgets import ChipRow
 
         fila = ChipRow()
         fila.set_chips(["Usada 6.5 GB", "Caché 8.1 GB", "Libre 1.2 GB"])
@@ -283,7 +283,7 @@ class TestReutilizacionDeWidgets(unittest.TestCase):
         self.assertEqual(originales[0].text(), "Usada 6.6 GB")
 
     def test_cambiar_el_numero_de_insignias_sí_rehace(self):
-        from cpuz.ui.widgets import ChipRow
+        from silux.ui.widgets import ChipRow
 
         fila = ChipRow()
         fila.set_chips(["A", "B"])
@@ -291,7 +291,7 @@ class TestReutilizacionDeWidgets(unittest.TestCase):
         self.assertEqual(len(fila._widgets), 3)
 
     def test_la_tabla_reescribe_las_celdas(self):
-        from cpuz.ui.widgets import Table
+        from silux.ui.widgets import Table
 
         tabla = Table(("Perfil", "Velocidad"), numeric=(False, True))
         tabla.set_rows([["JEDEC", "3200 MT/s"], ["XMP 1", "3600 MT/s"]])
@@ -302,7 +302,7 @@ class TestReutilizacionDeWidgets(unittest.TestCase):
         self.assertEqual(celdas[0][1].full_text(), "3201 MT/s")
 
     def test_cambiar_el_numero_de_filas_sí_rehace(self):
-        from cpuz.ui.widgets import Table
+        from silux.ui.widgets import Table
 
         tabla = Table(("A", "B"))
         tabla.set_rows([["1", "2"]])
@@ -311,10 +311,10 @@ class TestReutilizacionDeWidgets(unittest.TestCase):
 
     def test_muchos_refrescos_no_dejan_widgets_vivos(self):
         from PySide6.QtWidgets import QWidget
-        from cpuz.collector import Collector
-        from cpuz.settings import Preferences
-        from cpuz.ui import theme
-        from cpuz.ui.app import MainWindow
+        from silux.collector import Collector
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.app import MainWindow
 
         theme.set_density("normal")
         ventana = MainWindow(Preferences(theme="dark"))

@@ -2,7 +2,7 @@
 
 import unittest
 
-from cpuz.model import Cache, CpuInfo, CpuType, LogicalCpu, Snapshot
+from silux.model import Cache, CpuInfo, CpuType, LogicalCpu, Snapshot
 
 
 def _snapshot(hybrid: bool = False) -> Snapshot:
@@ -41,7 +41,7 @@ def _snapshot(hybrid: bool = False) -> Snapshot:
 class TestEje(unittest.TestCase):
     def setUp(self):
         try:
-            from cpuz.ui.pages.caches import cache_axis
+            from silux.ui.pages.caches import cache_axis
         except ImportError:                             # pragma: no cover
             self.skipTest("PySide6 no está instalado")
         self.axis = cache_axis
@@ -51,7 +51,7 @@ class TestEje(unittest.TestCase):
         self.assertEqual(self.axis(_snapshot()), [0, 3, 1, 4, 2, 5])
 
     def test_cada_instancia_queda_contigua_en_el_eje(self):
-        from cpuz.ui.widgets import _contiguous_runs
+        from silux.ui.widgets import _contiguous_runs
 
         eje = self.axis(_snapshot())
         posicion = {cpu: i for i, cpu in enumerate(eje)}
@@ -64,7 +64,7 @@ class TestEje(unittest.TestCase):
 class TestAgrupado(unittest.TestCase):
     def setUp(self):
         try:
-            from cpuz.ui.pages.caches import CachesPage
+            from silux.ui.pages.caches import CachesPage
         except ImportError:                             # pragma: no cover
             self.skipTest("PySide6 no está instalado")
         self.page = CachesPage
@@ -100,7 +100,7 @@ class TestTabla(unittest.TestCase):
         cls.app = QApplication.instance() or QApplication([])
 
     def _table(self, filas: int):
-        from cpuz.ui.widgets import Table
+        from silux.ui.widgets import Table
 
         tabla = Table(("Nivel", "Tamaño", "Total"), numeric=(False, True, True))
         tabla.set_rows([[f"L{i}", "32 KB", "192 KB"] for i in range(filas)])

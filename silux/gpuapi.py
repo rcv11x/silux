@@ -65,7 +65,7 @@ def _sin_ruido() -> Iterator[None]:
 
     Los drivers de Mesa escriben avisos por su cuenta al cargarse —que RADV no
     está certificado, que rusticl es experimental— y no hay forma de pedirles
-    que se callen. Sin esto, un `cpuz --json` deja de ser JSON.
+    que se callen. Sin esto, un `silux --json` deja de ser JSON.
     """
     try:
         copia = os.dup(2)
@@ -146,7 +146,7 @@ def vulkan() -> list[dict]:
         with contextlib.suppress(AttributeError):
             lib.vkEnumerateInstanceVersion(ctypes.byref(instancia_ver))
 
-        app = _VkAppInfo(VK_STRUCTURE_TYPE_APPLICATION_INFO, None, b"cpuz", 0,
+        app = _VkAppInfo(VK_STRUCTURE_TYPE_APPLICATION_INFO, None, b"silux", 0,
                          None, 0, VK_API_1_0)
         info = _VkInstanceInfo(VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO, None, 0,
                                ctypes.pointer(app), 0, None, 0, None)
@@ -360,7 +360,7 @@ def consultar() -> dict[str, Any]:
     """
     vacio: dict[str, Any] = {"vulkan": [], "opencl": [], "opengl": None}
     # El directorio que contiene el paquete, para que el hijo lo encuentre esté
-    # cpuz instalado o ejecutándose desde el código fuente.
+    # silux instalado o ejecutándose desde el código fuente.
     raiz = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     entorno = dict(os.environ)
     entorno["PYTHONPATH"] = os.pathsep.join(
@@ -368,7 +368,7 @@ def consultar() -> dict[str, Any]:
     )
     try:
         completado = subprocess.run(
-            [sys.executable, "-m", "cpuz.gpuapi"],
+            [sys.executable, "-m", "silux.gpuapi"],
             capture_output=True, timeout=TIEMPO_MAXIMO, env=entorno, check=False,
         )
     except (OSError, subprocess.SubprocessError):

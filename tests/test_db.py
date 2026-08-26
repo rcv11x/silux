@@ -2,7 +2,7 @@
 
 import unittest
 
-from cpuz import db
+from silux import db
 
 
 class TestPatrones(unittest.TestCase):

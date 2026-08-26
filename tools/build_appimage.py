@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Empaqueta cpuz como AppImage: un fichero que se ejecuta sin instalar nada.
+"""Empaqueta silux como AppImage: un fichero que se ejecuta sin instalar nada.
 
-    python3 tools/build_appimage.py                 # construye dist/cpuz-x86_64.AppImage
+    python3 tools/build_appimage.py                 # construye dist/silux-x86_64.AppImage
     python3 tools/build_appimage.py --appdir-only   # solo el árbol, para depurar
     python3 tools/build_appimage.py --keep          # no borra el AppDir al terminar
 
@@ -12,7 +12,7 @@ de bindings y Qt arrastra otros 100 en bibliotecas. Casi nada de eso se usa.
 
 Lo que se hace para que quepa:
 
-- **De PySide6, tres módulos.** cpuz solo usa QtCore, QtGui y QtWidgets. Los
+- **De PySide6, tres módulos.** silux solo usa QtCore, QtGui y QtWidgets. Los
   otros treinta —Quick, 3D, Charts, Multimedia, WebEngine— se quedan fuera.
 - **Las bibliotecas se resuelven con `ldd`**, no a mano, y se copian solo las
   que hagan falta de verdad. Las que trae cualquier Linux (glibc, X11, los
@@ -40,10 +40,10 @@ import urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 DIST = ROOT / "dist"
-APPDIR = DIST / "cpuz.AppDir"
-APP_ID = "cpuz"
+APPDIR = DIST / "silux.AppDir"
+APP_ID = "silux"
 
-# Lo único que cpuz importa de Qt. Todo lo demás sobra.
+# Lo único que silux importa de Qt. Todo lo demás sobra.
 QT_MODULES = ("QtCore", "QtGui", "QtWidgets")
 
 # Plugins de Qt sin los que la ventana no abre o se ve mal.
@@ -58,7 +58,7 @@ QT_PLUGINS = (
 
 # `platformthemes` se queda fuera a propósito: arrastra GTK entero y los iconos
 # de Breeze, unos 40 MB, para integrar el programa con el tema del escritorio.
-# cpuz fija el estilo Fusion en `ui/theme.py` y se pinta él mismo, así que no
+# silux fija el estilo Fusion en `ui/theme.py` y se pinta él mismo, así que no
 # lo usaría de todas formas.
 
 # De `imageformats` solo estos. Los demás tiran de los códecs de vídeo del
@@ -100,19 +100,19 @@ export LD_LIBRARY_PATH="$AQUI/usr/lib:$LD_LIBRARY_PATH"
 # otra versión y no cargar.
 export QT_PLUGIN_PATH="$AQUI/usr/lib/qt/plugins"
 export QT_QPA_PLATFORM_PLUGIN_PATH="$AQUI/usr/lib/qt/plugins/platforms"
-exec "$AQUI/usr/bin/python3" -m cpuz.ui.app "$@"
+exec "$AQUI/usr/bin/python3" -m silux.ui.app "$@"
 """
 
 DESKTOP = """[Desktop Entry]
 Type=Application
-Name=cpuz
+Name=silux
 GenericName=Perfilador de hardware
 Comment=Identificación del equipo y monitorización de sensores
-Exec=cpuz
-Icon=cpuz
+Exec=silux
+Icon=silux
 Categories=System;Monitor;
 Terminal=false
-StartupWMClass=cpuz
+StartupWMClass=silux
 """
 
 
@@ -131,8 +131,8 @@ def main() -> int:
 
     print("· intérprete de Python")
     bibliotecas = copiar_python()
-    print("· cpuz")
-    copiar_cpuz()
+    print("· silux")
+    copiar_silux()
     print("· PySide6, solo", ", ".join(QT_MODULES))
     bibliotecas |= copiar_pyside()
     print("· plugins de Qt")
@@ -185,9 +185,9 @@ def copiar_python() -> set[str]:
     return set(dependencias(destino_bin))
 
 
-def copiar_cpuz() -> None:
-    destino = APPDIR / "usr" / "lib" / "python" / "cpuz"
-    shutil.copytree(ROOT / "cpuz", destino,
+def copiar_silux() -> None:
+    destino = APPDIR / "usr" / "lib" / "python" / "silux"
+    shutil.copytree(ROOT / "silux", destino,
                     ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
 
 
@@ -279,7 +279,7 @@ def escribir_metadatos() -> None:
     (APPDIR / "usr" / "lib" / "python").mkdir(exist_ok=True)
 
     (APPDIR / f"{APP_ID}.desktop").write_text(DESKTOP, encoding="utf-8")
-    icono = ROOT / "cpuz" / "ui" / "assets" / "cpuz.svg"
+    icono = ROOT / "silux" / "ui" / "assets" / "silux.svg"
     if icono.exists():
         shutil.copy2(icono, APPDIR / f"{APP_ID}.svg")
         destino_icono = APPDIR / "usr" / "share" / "icons" / "hicolor" / "scalable" / "apps"

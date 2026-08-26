@@ -1,4 +1,4 @@
-# cpuz
+# Silux
 
 Perfilador de hardware para Linux con interfaz Qt. Alternativa a
 [CPU-X](https://github.com/TheTumultuousUnicornOfDarkness/CPU-X), escrita en
@@ -30,14 +30,14 @@ solo leerlo. Además Linux ya tiene buenos administradores de tareas. El hueco
 está en el otro lado.
 
 ```bash
-python3 -m cpuz.ui.app                 # interfaz gráfica
-python3 -m cpuz.cli --sensors          # solo el árbol de sensores
-python3 -m cpuz.ui.app --compact       # densidad compacta
-python3 -m cpuz.ui.app --size 700x520  # tamaño concreto para esta ejecución
-python3 -m cpuz.cli                    # volcado en el terminal
-python3 -m cpuz.cli --json             # el mismo dato, para otros programas
-python3 -m cpuz.cli --watch            # refresco continuo en texto
-python3 -m cpuz.cli --report i.md      # informe para adjuntar a un fallo
+python3 -m silux.ui.app                 # interfaz gráfica
+python3 -m silux.cli --sensors          # solo el árbol de sensores
+python3 -m silux.ui.app --compact       # densidad compacta
+python3 -m silux.ui.app --size 700x520  # tamaño concreto para esta ejecución
+python3 -m silux.cli                    # volcado en el terminal
+python3 -m silux.cli --json             # el mismo dato, para otros programas
+python3 -m silux.cli --watch            # refresco continuo en texto
+python3 -m silux.cli --report i.md      # informe para adjuntar a un fallo
 ```
 
 La ventana abre a 900×680 y recuerda el tamaño al cerrarla. El suelo depende
@@ -69,7 +69,7 @@ por muy bien instalado que esté el `.desktop`.
 
 ## Ajustes
 
-En la sección **Ajustes**, que se guarda en `~/.config/cpuz/settings.json`:
+En la sección **Ajustes**, que se guarda en `~/.config/silux/settings.json`:
 
 | Ajuste | Qué hace |
 | --- | --- |
@@ -104,7 +104,7 @@ Medido con la ventana abierta y muestreo cada 300 ms:
 ```
 intérprete Python            9,7 MB
 + PySide6                   40,9 MB     ← el coste fijo de Qt
-+ cpuz (7 secciones)        53,4 MB
++ silux (7 secciones)        53,4 MB
 + ventana construida        84,4 MB
 + las 7 secciones visitadas 89,3 MB
 estabilizado                98,1 MB
@@ -140,7 +140,7 @@ escrito en ensamblador. Pero el trabajo de fondo —leer ficheros de sysfs y
 emparejar identificadores contra una tabla— no necesita nada de eso.
 
 El único punto que parecía exigir código nativo es la instrucción `CPUID`, y
-se resuelve en unas sesenta líneas: `cpuz/rawcpuid.py` escribe **20 bytes** de
+se resuelve en unas sesenta líneas: `silux/rawcpuid.py` escribe **20 bytes** de
 código máquina en una página anónima, la marca como ejecutable y la llama con
 `ctypes`. Es todo el ensamblador del proyecto, va comentado instrucción a
 instrucción, y no hace falta compilador para usarlo.
@@ -247,7 +247,7 @@ Tampoco se pide nada al arrancar: la pestaña de Memoria enseña lo que sabe,
 explica qué falta y pone un botón. Un programa de diagnóstico que abre un
 diálogo de contraseña nada más abrirse es un programa que se desinstala.
 
-`data/org.cpuz.helper.policy.in` es la política de polkit para quien empaquete
+`data/org.silux.helper.policy.in` es la política de polkit para quien empaquete
 el programa. Es opcional: sin ella pkexec pide la contraseña igual, solo que
 con un mensaje genérico y sin recordar la autorización durante la sesión.
 
@@ -390,7 +390,7 @@ debajo de su PL1. Coincide con lo que reporta Mission Center.
 ## Arquitectura
 
 ```
-cpuz/
+silux/
 ├─ rawcpuid.py     CPUID desde Python, con fijación de afinidad por núcleo
 ├─ features.py     tabla declarativa de banderas: hoja, registro, bit, nombre
 ├─ model.py        dataclasses congeladas — valores tipados, nunca texto
@@ -433,16 +433,16 @@ escribe a mano, las **genera**:
 ```bash
 python3 tools/gen_cpu_db.py          # clona/actualiza libcpuid y CPU-X y regenera
 python3 tools/gen_cpu_db.py --offline
-python3 -m cpuz.cli --db-info        # de qué commit salieron los datos
+python3 -m silux.cli --db-info        # de qué commit salieron los datos
 ```
 
-`cpuz/db/cpu_ids.json` sale de las tablas de identificación de libcpuid (517
+`silux/db/cpu_ids.json` sale de las tablas de identificación de libcpuid (517
 filas de Intel, 371 de AMD, 198 piezas ARM) y de la tabla de sockets de CPU-X.
 El algoritmo de emparejado —puntuar cada fila por cuántos campos coinciden y
-quedarse con la mejor— está reimplementado en `cpuz/db/__init__.py` con los
+quedarse con la mejor— está reimplementado en `silux/db/__init__.py` con los
 mismos pesos que libcpuid.
 
-`cpuz/db/sockets.json` es tabla propia y **se edita a mano**. Cubre por
+`silux/db/sockets.json` es tabla propia y **se edita a mano**. Cubre por
 microarquitectura en vez de por modelo concreto, así que una regla vale para
 una generación entera: donde la tabla heredada de CPU-X tiene 125 entradas de
 modelos sueltos, aquí bastan 49 reglas para cubrir mucho más.
@@ -463,8 +463,8 @@ de sysfs sintéticos y el generador contra fragmentos de C.
 Un solo fichero, sin instalar nada:
 
 ```bash
-chmod +x cpuz-x86_64.AppImage
-./cpuz-x86_64.AppImage
+chmod +x silux-x86_64.AppImage
+./silux-x86_64.AppImage
 ```
 
 Lleva dentro Python, Qt y las bibliotecas que necesita. Ocupa 51 MB, que es lo
@@ -496,18 +496,18 @@ sudo dnf install python3-pyside6 hwdata polkit
 # Debian, Ubuntu
 sudo apt install python3-pyside6 hwdata policykit-1
 
-git clone https://github.com/rcv11x/cpuz-linux
-cd cpuz-linux
-python3 -m cpuz.ui.app
+git clone https://github.com/rcv11x/silux-linux
+cd silux-linux
+python3 -m silux.ui.app
 ```
 
-Sin PySide6 el volcado en terminal (`python3 -m cpuz.cli`) funciona igual: la
+Sin PySide6 el volcado en terminal (`python3 -m silux.cli`) funciona igual: la
 interfaz es lo único que lo necesita.
 
 ## Si algo no sale bien
 
 ```bash
-python3 -m cpuz.cli --report informe.md
+python3 -m silux.cli --report informe.md
 ```
 
 O el botón **Guardar informe del equipo…** en Ajustes. Genera un fichero con el

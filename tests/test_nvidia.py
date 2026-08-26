@@ -11,10 +11,10 @@ contrastar las cifras con `nvidia-smi -q`.
 import unittest
 from unittest import mock
 
-from cpuz import nvml
-from cpuz.model import GpuClocks, GpuLink, GpuMemory
-from cpuz.providers import nvidia
-from cpuz.providers.base import Draft
+from silux import nvml
+from silux.model import GpuClocks, GpuLink, GpuMemory
+from silux.providers import nvidia
+from silux.providers.base import Draft
 
 UNA_4070 = nvml.NvidiaGpu(
     index=0, pci_slot="0000:01:00.0", name="NVIDIA GeForce RTX 4070",
