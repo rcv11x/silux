@@ -15,6 +15,7 @@ from dataclasses import dataclass, field, fields, is_dataclass
 from enum import Enum
 from typing import Any, Optional
 
+from .edid import Edid  # noqa: F401  (se reexporta al modelo)
 from .spd import SpdInfo, Timings  # noqa: F401  (se reexporta al modelo)
 
 
@@ -83,6 +84,10 @@ class Clocks:
     @property
     def multiplier(self) -> Optional[float]:
         return self._mult(self.current_hz)
+
+    @property
+    def base_multiplier(self) -> Optional[float]:
+        return self._mult(self.base_hz)
 
     @property
     def min_multiplier(self) -> Optional[float]:
@@ -489,6 +494,300 @@ class Board:
 # --------------------------------------------------------------------------
 
 
+@dataclass(frozen=True, slots=True)
+class GpuMemory:
+    """La VRAM de la tarjeta, y la RAM del sistema que tiene prestada."""
+
+    total_bytes: Optional[int] = None
+    used_bytes: Optional[int] = None
+    # El trozo de VRAM que la CPU puede direccionar. Con Resizable BAR es toda;
+    # sin él son los 256 MB de siempre, y eso cuesta rendimiento.
+    visible_bytes: Optional[int] = None
+    visible_used_bytes: Optional[int] = None
+    # GTT: memoria del sistema que el driver le presta a la GPU cuando la VRAM
+    # se queda corta. No es memoria de la tarjeta y por eso va aparte.
+    gtt_total_bytes: Optional[int] = None
+    gtt_used_bytes: Optional[int] = None
+    vendor: Optional[str] = None
+    kind: Optional[str] = None          # GDDR6, HBM2e…
+    bus_bits: Optional[int] = None
+    # La tasa a la que viajan los datos, que no es el reloj: una GDDR6 a
+    # 1258 MHz mueve 20 Gbps. Es el número que sale en las fichas técnicas.
+    data_rate_hz: Optional[int] = None
+    bandwidth_bytes: Optional[int] = None
+
+    @property
+    def used_percent(self) -> Optional[float]:
+        if not self.total_bytes or self.used_bytes is None:
+            return None
+        return round(self.used_bytes / self.total_bytes * 100, 1)
+
+    @property
+    def resizable_bar(self) -> Optional[bool]:
+        """Si la CPU ve toda la VRAM de golpe en vez de por una ventana."""
+        if not self.total_bytes or not self.visible_bytes:
+            return None
+        # Un margen pequeño: el firmware reserva unos megas para sí mismo.
+        return self.visible_bytes >= self.total_bytes * 0.95
+
+
+@dataclass(frozen=True, slots=True)
+class GpuLink:
+    """El enlace PCIe: a cuánto va ahora y a cuánto podría ir."""
+
+    current_speed_gts: Optional[float] = None
+    current_width: Optional[int] = None
+    max_speed_gts: Optional[float] = None
+    max_width: Optional[int] = None
+
+    @staticmethod
+    def _generation(gts: Optional[float]) -> Optional[int]:
+        if not gts:
+            return None
+        # 2,5 · 5 · 8 · 16 · 32 · 64 GT/s son las seis generaciones de PCIe.
+        for generation, velocidad in enumerate((2.5, 5.0, 8.0, 16.0, 32.0, 64.0), start=1):
+            if abs(gts - velocidad) < 0.1:
+                return generation
+        return None
+
+    @property
+    def generation(self) -> Optional[int]:
+        return self._generation(self.current_speed_gts)
+
+    @property
+    def max_generation(self) -> Optional[int]:
+        return self._generation(self.max_speed_gts)
+
+    @property
+    def downgraded(self) -> bool:
+        """La tarjeta va por debajo de lo que puede.
+
+        En reposo es lo normal —los drivers bajan el enlace para gastar menos—
+        así que esto se enseña como un apunte, no como un aviso.
+        """
+        if self.current_speed_gts and self.max_speed_gts:
+            if self.current_speed_gts < self.max_speed_gts - 0.1:
+                return True
+        if self.current_width and self.max_width:
+            return self.current_width < self.max_width
+        return False
+
+
+@dataclass(frozen=True, slots=True)
+class GpuClockLevel:
+    """Un escalón de la tabla DPM: la GPU solo corre a estas frecuencias."""
+
+    index: int
+    hz: int
+    active: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class GpuClocks:
+    core_hz: Optional[int] = None
+    memory_hz: Optional[int] = None
+    core_max_hz: Optional[int] = None
+    memory_max_hz: Optional[int] = None
+    # El reloj al que de verdad viaja la memoria, que es el de las fichas
+    # técnicas: una GDDR6 con el reloj de comando a 1258 va a 2505 efectivos.
+    memory_effective_hz: Optional[int] = None
+    soc_hz: Optional[int] = None
+    core_levels: tuple[GpuClockLevel, ...] = ()
+    memory_levels: tuple[GpuClockLevel, ...] = ()
+    performance_level: Optional[str] = None   # auto, low, high, manual…
+
+
+@dataclass(frozen=True, slots=True)
+class GpuApi:
+    """Una API gráfica y hasta dónde llega en esta máquina."""
+
+    name: str                       # OpenGL, Vulkan, OpenCL
+    version: Optional[str] = None
+    device: Optional[str] = None    # cómo se llama a sí misma la tarjeta ahí
+    driver: Optional[str] = None
+    extra: Optional[str] = None     # GLSL, unidades de cómputo…
+
+
+@dataclass(frozen=True, slots=True)
+class Display:
+    """Una salida de vídeo de la tarjeta, esté enchufada o no."""
+
+    connector: str                  # DP-1, HDMI-A-1…
+    connected: bool = False
+    # Cuidado con esto: es el modeset del kernel, no la sesión. Con un
+    # compositor Wayland al mando vale False en pantallas encendidas, así que
+    # sirve en consola y en X11 pero no para afirmar que algo está en uso.
+    enabled: bool = False
+    # El modo preferido que declara el monitor, que es el que casi siempre
+    # acaba usándose. La resolución que el compositor tenga puesta ahora mismo
+    # no está en sysfs.
+    width: Optional[int] = None
+    height: Optional[int] = None
+    refresh_hz: Optional[float] = None
+    monitor: Optional[Edid] = None
+
+    @property
+    def resolution(self) -> Optional[str]:
+        if not (self.width and self.height):
+            return None
+        return f"{self.width} × {self.height}"
+
+
+@dataclass(frozen=True, slots=True)
+class Gpu:
+    """Una tarjeta gráfica: lo que sabe el kernel y lo que dicen las APIs."""
+
+    index: int = 0
+    name: Optional[str] = None
+    vendor: Optional[str] = None
+    codename: Optional[str] = None
+    driver: Optional[str] = None
+    driver_version: Optional[str] = None
+    drm_node: Optional[str] = None      # card0, card1… no tiene por qué ir en orden
+    pci_slot: Optional[str] = None
+    vendor_id: Optional[int] = None
+    device_id: Optional[int] = None
+    subsystem_vendor_id: Optional[int] = None
+    subsystem_device_id: Optional[int] = None
+    subsystem_name: Optional[str] = None
+    revision: Optional[int] = None
+    vbios: Optional[str] = None
+    unique_id: Optional[str] = None
+    integrated: bool = False
+    primary: bool = False
+
+    memory: GpuMemory = field(default_factory=GpuMemory)
+    link: GpuLink = field(default_factory=GpuLink)
+    clocks: GpuClocks = field(default_factory=GpuClocks)
+
+    busy_percent: Optional[float] = None
+    memory_busy_percent: Optional[float] = None
+    video_busy_percent: Optional[float] = None
+    temp_c: Optional[float] = None
+    hotspot_c: Optional[float] = None
+    memory_temp_c: Optional[float] = None
+    power_w: Optional[float] = None
+    power_cap_w: Optional[float] = None
+    fan_rpm: Optional[int] = None
+    fan_percent: Optional[float] = None
+    voltage_v: Optional[float] = None
+    voltage_soc_v: Optional[float] = None
+    voltage_memory_v: Optional[float] = None
+    # Los reguladores de voltaje de la propia tarjeta. No están en hwmon: los
+    # cuenta el microcontrolador del firmware.
+    vr_gfx_c: Optional[float] = None
+    vr_soc_c: Optional[float] = None
+    vr_memory_c: Optional[float] = None
+    # Si la tarjeta se está frenando, y por qué. Es la pregunta que se hace
+    # cualquiera cuando un juego rinde menos de lo que debería.
+    throttled: Optional[bool] = None
+    throttle_reasons: tuple[str, ...] = ()
+    compute_units: Optional[int] = None
+    rops: Optional[int] = None
+    shader_engines: Optional[int] = None
+    asic: Optional[str] = None
+
+    displays: tuple[Display, ...] = ()
+    apis: tuple[GpuApi, ...] = ()
+
+    @property
+    def display_name(self) -> str:
+        return self.name or self.codename or f"Gráfica {self.index}"
+
+    @property
+    def pci_id(self) -> Optional[str]:
+        if self.vendor_id is None or self.device_id is None:
+            return None
+        return f"{self.vendor_id:04X}:{self.device_id:04X}"
+
+    @property
+    def subsystem_id(self) -> Optional[str]:
+        if self.subsystem_vendor_id is None or self.subsystem_device_id is None:
+            return None
+        return f"{self.subsystem_vendor_id:04X}:{self.subsystem_device_id:04X}"
+
+    @property
+    def connected_displays(self) -> tuple[Display, ...]:
+        return tuple(d for d in self.displays if d.connected)
+
+
+@dataclass(frozen=True, slots=True)
+class NetworkTraffic:
+    """Lo que ha pasado por una interfaz, y a qué ritmo pasa ahora."""
+
+    rx_bytes: int = 0
+    tx_bytes: int = 0
+    rx_packets: int = 0
+    tx_packets: int = 0
+    rx_errors: int = 0
+    tx_errors: int = 0
+    rx_dropped: int = 0
+    tx_dropped: int = 0
+    # Ritmo instantáneo, calculado entre dos muestreos. En bytes por segundo:
+    # el modelo guarda números, y ya decidirá el render si los enseña en bits.
+    rx_rate_bps: Optional[float] = None
+    tx_rate_bps: Optional[float] = None
+
+    @property
+    def total_bytes(self) -> int:
+        return self.rx_bytes + self.tx_bytes
+
+    @property
+    def total_rate_bps(self) -> Optional[float]:
+        if self.rx_rate_bps is None and self.tx_rate_bps is None:
+            return None
+        return (self.rx_rate_bps or 0.0) + (self.tx_rate_bps or 0.0)
+
+    @property
+    def problems(self) -> int:
+        """Paquetes que no llegaron a su destino, por el motivo que sea."""
+        return self.rx_errors + self.tx_errors + self.rx_dropped + self.tx_dropped
+
+
+@dataclass(frozen=True, slots=True)
+class NetworkInterface:
+    """Una interfaz de red: qué es, cómo está conectada y cuánto mueve."""
+
+    name: str
+    kind: str = "ethernet"          # ethernet, wifi, loopback, virtual, puente
+    up: bool = False
+    carrier: Optional[bool] = None  # si hay cable enchufado / asociación wifi
+    mac: Optional[str] = None
+    ipv4: Optional[str] = None
+    netmask: Optional[str] = None
+    ipv6: tuple[str, ...] = ()
+    gateway: Optional[str] = None
+    default_route: bool = False
+    speed_mbps: Optional[int] = None
+    duplex: Optional[str] = None
+    mtu: Optional[int] = None
+    driver: Optional[str] = None
+    model: Optional[str] = None
+    vendor: Optional[str] = None
+    pci_slot: Optional[str] = None
+    traffic: NetworkTraffic = field(default_factory=NetworkTraffic)
+
+    @property
+    def display_name(self) -> str:
+        return self.model or self.name
+
+    @property
+    def active(self) -> bool:
+        """Enchufada y con dirección: la que de verdad está dando servicio."""
+        return self.up and bool(self.ipv4 or self.ipv6)
+
+    @property
+    def link_summary(self) -> Optional[str]:
+        """«2.5 Gb/s · full», que es como se lee la negociación del enlace."""
+        if not self.speed_mbps:
+            return None
+        if self.speed_mbps >= 1000:
+            velocidad = f"{self.speed_mbps / 1000:g} Gb/s"
+        else:
+            velocidad = f"{self.speed_mbps} Mb/s"
+        return f"{velocidad} · {self.duplex}" if self.duplex else velocidad
+
+
 class SensorKind(str, Enum):
     TEMPERATURE = "temperature"
     VOLTAGE = "voltage"
@@ -498,6 +797,8 @@ class SensorKind(str, Enum):
     ENERGY = "energy"
     CLOCK = "clock"
     USAGE = "usage"
+    MEMORY = "memory"
+    NETWORK = "network"
     OTHER = "other"
 
 
@@ -510,6 +811,8 @@ UNITS: dict[str, str] = {
     SensorKind.ENERGY: "J",
     SensorKind.CLOCK: "MHz",
     SensorKind.USAGE: "%",
+    SensorKind.MEMORY: "MB",
+    SensorKind.NETWORK: "KB/s",
     SensorKind.OTHER: "",
 }
 
@@ -523,6 +826,8 @@ CATEGORIES: dict[str, str] = {
     SensorKind.ENERGY: "Energía",
     SensorKind.CLOCK: "Relojes",
     SensorKind.USAGE: "Uso",
+    SensorKind.MEMORY: "Ocupación",
+    SensorKind.NETWORK: "Tráfico",
     SensorKind.OTHER: "Otros",
 }
 
@@ -530,7 +835,7 @@ CATEGORIES: dict[str, str] = {
 # de lo que más se consulta a lo que menos.
 CATEGORY_ORDER: tuple[str, ...] = (
     "Voltajes", "Temperaturas", "Ventiladores", "Potencias",
-    "Relojes", "Uso", "Corrientes", "Energía", "Otros",
+    "Relojes", "Uso", "Ocupación", "Tráfico", "Corrientes", "Energía", "Otros",
 )
 
 
@@ -553,10 +858,14 @@ class Sensor:
     high: Optional[float] = None    # umbral alto
     critical: Optional[float] = None
     order: int = 0                  # para mantener el orden natural dentro de la rama
+    # Para lo que no encaja en ningún tipo con unidad fija, como un ritmo de
+    # transferencia. Es la excepción, no la norma: si algo se repite, merece su
+    # propio SensorKind.
+    unit_override: Optional[str] = None
 
     @property
     def unit(self) -> str:
-        return UNITS.get(self.kind, "")
+        return self.unit_override or UNITS.get(self.kind, "")
 
     @property
     def category(self) -> str:
@@ -603,6 +912,8 @@ class Snapshot:
     modules: tuple[MemoryModule, ...] = ()
     spd: tuple[SpdInfo, ...] = ()
     memory_array: Optional[MemoryArray] = None
+    gpus: tuple[Gpu, ...] = ()
+    network: tuple[NetworkInterface, ...] = ()
     privileged: PrivilegedState = field(default_factory=PrivilegedState)
     sensors: tuple[Sensor, ...] = ()
     driver_hints: tuple[DriverHint, ...] = ()
@@ -660,9 +971,16 @@ def to_jsonable(obj: Any) -> Any:
 
 _COMPUTED: dict[str, tuple[str, ...]] = {
     "Cache": ("total_bytes",),
-    "Clocks": ("multiplier", "min_multiplier", "max_multiplier",
-               "max_turbo_multiplier", "turbo_headroom_hz"),
+    "Clocks": ("multiplier", "base_multiplier", "min_multiplier",
+               "max_multiplier", "max_turbo_multiplier", "turbo_headroom_hz"),
     "Power": ("load_percent",),
+    "GpuMemory": ("used_percent", "resizable_bar"),
+    "GpuLink": ("generation", "max_generation", "downgraded"),
+    "Display": ("resolution",),
+    "Edid": ("diagonal_inches", "made", "refresh_range"),
+    "Gpu": ("display_name", "pci_id", "subsystem_id", "connected_displays"),
+    "NetworkTraffic": ("total_bytes", "total_rate_bps", "problems"),
+    "NetworkInterface": ("display_name", "active", "link_summary"),
     "CpuInfo": ("total_cores", "total_threads", "package_power_w"),
     "Sensor": ("unit", "category", "alarm"),
     "Board": ("display_name", "bios_summary"),

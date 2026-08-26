@@ -24,12 +24,24 @@ def config_path() -> pathlib.Path:
     return config_dir() / "settings.json"
 
 
+# Los nombres válidos de acento. Se repiten aquí en vez de importarlos de
+# `ui.theme` porque los ajustes no deben depender de que haya interfaz: el CLI
+# los lee igual y no carga Qt.
+ACCENT_NAMES = ("naranja", "azul", "verde", "morado", "rojo", "cian")
+
+
 @dataclass(frozen=True)
 class Preferences:
     interval_s: float = 1.0
     theme: str = "system"                 # system | light | dark
     temperature_unit: str = "c"           # c | f
     density: str = "normal"               # spacious | normal | compact
+    font_scale: str = "normal"            # normal | grande | mayor | máximo
+    accent: str = "naranja"               # ver ui/theme.ACCENTS
+    # En bytes por segundo o en bits por segundo. Los fabricantes miden los
+    # enlaces en bits y los programas de descarga en bytes, y son ocho veces
+    # distintos: quien compara con un test de velocidad quiere bits.
+    network_unit: str = "bytes"           # bytes | bits
     show_all_features: bool = False
     # Ancho de la columna «Sensor» del árbol. 0 = calcularlo del contenido.
     # Ancho de cada columna del árbol de sensores. Vacío = calcularlo.
@@ -46,6 +58,11 @@ class Preferences:
             theme=self.theme if self.theme in ("system", "light", "dark") else "system",
             temperature_unit="f" if self.temperature_unit == "f" else "c",
             density=self.density if self.density in ("spacious", "normal", "compact") else "normal",
+            font_scale=(self.font_scale
+                        if self.font_scale in ("normal", "grande", "mayor", "máximo")
+                        else "normal"),
+            accent=self.accent if self.accent in ACCENT_NAMES else "naranja",
+            network_unit="bits" if self.network_unit == "bits" else "bytes",
             show_all_features=bool(self.show_all_features),
             sensor_columns=tuple(min(900, max(30, int(w))) for w in (self.sensor_columns or ())),
             # El recorte aquí es solo un saneado grueso; el suelo de verdad lo

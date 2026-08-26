@@ -255,14 +255,19 @@ class TestVentana(unittest.TestCase):
         self.assertEqual(window.monitor_page.tile_temp.unit.text(), "°F")
 
     def test_la_identificacion_y_el_monitor_estan_separados(self):
-        """La página de CPU no debe volver a llenarse de cosas vivas."""
+        """La página de CPU dice qué hay; Sensores dice qué está haciendo.
+
+        La separación se llevó hasta el final a petición del autor: CPU ya no
+        tiene ni las cuatro cifras vivas que le quedaban. Todo lo que cambia
+        —gráficas, matriz de núcleos, temperatura, consumo— vive en Sensores, y
+        tenerlo en dos sitios solo obligaba a mirar cuál de los dos iba primero.
+        """
         window = self._window()
-        # Lo vivo con gráfica vive en Monitor; en CPU solo quedan cifras sueltas.
-        self.assertTrue(hasattr(window.monitor_page, "tile_temp"))
-        self.assertTrue(hasattr(window.monitor_page, "cores"))
-        self.assertFalse(hasattr(window.cpu_page, "tile_temp"))
-        self.assertFalse(hasattr(window.cpu_page, "cores"))
-        self.assertTrue(hasattr(window.cpu_page, "stat_temp"))
+        for vivo in ("tile_temp", "cores"):
+            self.assertTrue(hasattr(window.monitor_page, vivo))
+            self.assertFalse(hasattr(window.cpu_page, vivo))
+        for cifra in ("stat_temp", "stat_freq", "stat_usage", "stat_power"):
+            self.assertFalse(hasattr(window.cpu_page, cifra))
 
     def test_los_extremos_sobreviven_a_un_cambio_de_tema(self):
         """Perder mínimos y máximos por cambiar de tema sería inaceptable."""

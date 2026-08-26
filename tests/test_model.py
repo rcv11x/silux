@@ -3,7 +3,11 @@
 import json
 import unittest
 
-from cpuz.model import Cache, Clocks, CpuInfo, CpuType, Need, Note, Snapshot, to_jsonable
+import dataclasses
+
+from cpuz import model
+from cpuz.model import (Cache, Clocks, CpuInfo, CpuType, Need, Note, Snapshot,
+                        to_jsonable)
 
 
 class TestClocks(unittest.TestCase):
@@ -17,11 +21,50 @@ class TestClocks(unittest.TestCase):
     def test_sin_bus_no_hay_multiplicador(self):
         self.assertIsNone(Clocks(current_hz=3_700_000_000).multiplier)
 
+    def test_multiplicador_del_reloj_base(self):
+        clocks = Clocks(base_hz=3_401_000_000, bus_hz=100_029_412)
+        self.assertEqual(clocks.base_multiplier, 34.0)
+
     def test_margen_de_turbo(self):
         limitado = Clocks(max_hz=2_900_000_000, max_turbo_hz=4_300_000_000)
         self.assertEqual(limitado.turbo_headroom_hz, 1_400_000_000)
         libre = Clocks(max_hz=4_300_000_000, max_turbo_hz=4_300_000_000)
         self.assertIsNone(libre.turbo_headroom_hz)
+
+
+class TestPropiedadesExportadas(unittest.TestCase):
+    """Toda propiedad calculada tiene que salir también en el JSON.
+
+    La interfaz lee las propiedades del modelo directamente, pero el JSON solo
+    lleva las que estén en `_COMPUTED`. Añadir una y olvidarse de la lista deja
+    la salida para otros programas con un dato menos que la ventana, y no lo
+    nota nadie: el valor no falta, sale nulo.
+    """
+
+    # Propiedades que a propósito no salen al JSON, con su motivo. Sacar algo
+    # de aquí es una decisión, no un descuido.
+    SOLO_INTERNAS = {
+        # Filtro del decodificador de SPD: descarta perfiles corruptos antes de
+        # guardarlos, así que todo lo que llega al snapshot ya es plausible y
+        # exportarlo sería exportar un `true` constante.
+        ("Timings", "plausible"),
+    }
+
+    def test_ninguna_propiedad_se_queda_fuera(self):
+        for nombre, esperadas in model._COMPUTED.items():
+            clase = getattr(model, nombre)
+            calculadas = {
+                atributo for atributo in vars(clase)
+                if isinstance(getattr(clase, atributo), property)
+                and (nombre, atributo) not in self.SOLO_INTERNAS
+            }
+            self.assertEqual(calculadas, set(esperadas), f"en {nombre}")
+
+    def test_las_clases_congeladas_no_declaran_de_mas(self):
+        for nombre in model._COMPUTED:
+            clase = getattr(model, nombre)
+            campos = {f.name for f in dataclasses.fields(clase)}
+            self.assertFalse(campos & set(model._COMPUTED[nombre]), f"en {nombre}")
 
 
 class TestCache(unittest.TestCase):

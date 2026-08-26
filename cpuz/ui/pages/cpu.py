@@ -29,7 +29,6 @@ from ..widgets import (
     Card,
     ChipRow,
     InfoGrid,
-    MiniStat,
     Notice,
     ResponsiveRow,
     clear_layout,
@@ -140,7 +139,7 @@ class TypeSection(QWidget):
         clocks = cpu_type.clocks
         c("Frecuencia", render.hz(clocks.current_hz))
         c("Multiplicador", render.multiplier(clocks.multiplier))
-        c("Base", render.hz(clocks.base_hz))
+        c("Base", f"{render.hz(clocks.base_hz)}  {render.multiplier(clocks.base_multiplier)}")
         c("Mínima", f"{render.hz(clocks.min_hz)}  {render.multiplier(clocks.min_multiplier)}")
         c("Máxima (kernel)", f"{render.hz(clocks.max_hz)}  {render.multiplier(clocks.max_multiplier)}")
         c("Máxima (silicio)", f"{render.hz(clocks.max_turbo_hz)}  {render.multiplier(clocks.max_turbo_multiplier)}")
@@ -221,7 +220,6 @@ class CpuPage(QScrollArea):
         self._layout.setSpacing(m.section_gap)
 
         self._layout.addWidget(self._build_header())
-        self._layout.addWidget(self._build_strip())
 
         self._sections_host = QVBoxLayout()
         self._sections_host.setSpacing(m.section_gap)
@@ -259,17 +257,6 @@ class CpuPage(QScrollArea):
         card.body.addWidget(self.badges)
         return card
 
-    def _build_strip(self) -> QWidget:
-        """Cuatro cifras vivas, sin gráficas. El histórico está en Monitor."""
-        row = ResponsiveRow(min_item_width=126)
-        self.stat_freq = MiniStat("Frecuencia")
-        self.stat_usage = MiniStat("Uso")
-        self.stat_temp = MiniStat("Temperatura")
-        self.stat_power = MiniStat("Consumo")
-        for stat in (self.stat_freq, self.stat_usage, self.stat_temp, self.stat_power):
-            row.add(stat)
-        return row
-
     # -- actualización ------------------------------------------------------
 
     def apply(self, snapshot: Snapshot) -> None:
@@ -285,7 +272,6 @@ class CpuPage(QScrollArea):
             + (" · híbrida" if cpu.hybrid else "")
         )
         self._apply_badges(primary)
-        self._apply_strip(snapshot)
         self._apply_sections(snapshot)
         self._apply_notices(snapshot)
 
@@ -296,31 +282,6 @@ class CpuPage(QScrollArea):
             return
         self._badge_signature = wanted
         self.badges.set_chips(wanted, highlight_first=True)
-
-    def _apply_strip(self, snapshot: Snapshot) -> None:
-        cpu = snapshot.cpu
-        clocks = cpu.types[0].clocks
-
-        self.stat_freq.set_value(
-            render.hz(clocks.current_hz),
-            f"Multiplicador {render.multiplier(clocks.multiplier)} sobre "
-            f"{render.hz(clocks.bus_hz, 0)} de bus",
-        )
-        self.stat_usage.set_value(
-            render.percent(cpu.usage_percent),
-            "Carga media: " + render.load_average(cpu.load_average, cpu.total_threads),
-        )
-
-        unit = "°F" if self._prefs.fahrenheit else "°C"
-        temperature = cpu.types[0].temp_c
-        if temperature is None:
-            temperature = cpu.package_temp_c
-        self.stat_temp.set_value(
-            render.DASH if temperature is None else f"{self._temp(temperature):.0f} {unit}"
-        )
-        self.stat_power.set_value(
-            render.watts(cpu.power.package_w), render.power_tooltip(cpu.power)
-        )
 
     def _temp(self, celsius: float) -> float:
         return celsius * 9 / 5 + 32 if self._prefs.fahrenheit else celsius

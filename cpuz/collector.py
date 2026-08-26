@@ -17,11 +17,17 @@ from typing import Iterable, Optional, Sequence
 
 from .model import Need, Snapshot
 from .providers import (
+    CppcClocks,
     CpuidIdentity,
     CpuUsage,
     DerivedSensors,
     DmiBoard,
     Draft,
+    DrmGpus,
+    GpuApis,
+    GpuState,
+    NetworkInterfaces,
+    NvidiaGpus,
     HwmonSensors,
     PrivilegedMemory,
     Provider,
@@ -39,13 +45,19 @@ from .providers import (
 DEFAULT_PROVIDERS: tuple[type[Provider], ...] = (
     SysfsTopology,      # define qué tipos de núcleo hay
     CpuidIdentity,      # necesita saberlo para preguntar una vez por tipo
+    CppcClocks,         # rellena los relojes que CPUID 0x16 no supo dar
     DmiBoard,           # da el nombre de la placa, que usa el árbol de sensores
+    DrmGpus,            # enumera las gráficas antes de que nadie las consulte
+    GpuApis,            # y después les pregunta a OpenGL, Vulkan y OpenCL
     SystemIdentity,
     PrivilegedMemory,   # espera a que el usuario lo pida
     SpdModules,         # después, para pegarse a lo que aquél haya leído
     SysfsClocks,
     TurboState,
     CpuUsage,
+    GpuState,
+    NetworkInterfaces,  # las interfaces y su ritmo, que se mide entre muestreos
+    NvidiaGpus,
     SystemState,
     RaplPower,
     HwmonSensors,       # nombra los aparatos con lo que ya se sabe
@@ -144,6 +156,8 @@ class Collector:
         draft.modules = list(static.modules)
         draft.spd = list(static.spd)
         draft.memory_array = static.memory_array
+        draft.gpus = [dict(g) for g in static.gpus]
+        draft.network = list(static.network)
         draft.privileged = static.privileged
         draft.sensors = list(static.sensors)
         draft.driver_hints = list(static.driver_hints)

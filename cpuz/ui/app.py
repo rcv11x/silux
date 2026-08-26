@@ -38,15 +38,17 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .. import __version__, settings as prefs_module
+from .. import EMOJI, __version__, settings as prefs_module
 from ..model import Snapshot
-from ..settings import Preferences
+from ..settings import ACCENT_NAMES, Preferences
 from ..tracking import Tracker
 from . import theme
 from .pages.board import BoardPage
 from .pages.caches import CachesPage
 from .pages.cpu import CpuPage
+from .pages.graphics import GraphicsPage
 from .pages.memory import MemoryPage
+from .pages.network import NetworkPage
 from .pages.monitor import MonitorPage
 from .pages.settings import SettingsPage
 from .pages.system import SystemPage
@@ -55,16 +57,18 @@ from .theme import ui_font
 from .widgets import ElidingLabel
 
 # (etiqueta, ¿implementada?)
-# El orden separa las dos preguntas del programa: qué hardware es esto
-# (CPU, Cachés, Placa base…) y qué está haciendo ahora (Monitor).
+# El orden va de arriba abajo por el equipo —procesador, cachés, placa, memoria,
+# gráfica— y deja al final las dos secciones que no describen una pieza:
+# Sensores, que es el estado de todo a la vez, y Ajustes.
 SECTIONS = (
     ("CPU", True),
-    ("Monitor", True),
     ("Cachés", True),
     ("Placa base", True),
     ("Memoria", True),
+    ("Gráficos", True),
+    ("Red", True),
     ("Sistema", True),
-    ("Gráficos", False),
+    ("Sensores", True),
     ("Ajustes", True),
 )
 
@@ -97,7 +101,8 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(theme.METRICS.min_window_w, theme.METRICS.min_window_h)
 
         self._last_snapshot: Optional[Snapshot] = None
-        self._palette = theme.resolve(QApplication.instance(), prefs.theme)
+        self._palette = theme.palette_for(QApplication.instance(), prefs.theme,
+                                          prefs.accent)
         # El seguimiento de mínimos y máximos vive en la ventana, no en la
         # página: cambiar de tema reconstruye las páginas, y perder por eso el
         # histórico de una sesión de pruebas sería inaceptable.
@@ -156,12 +161,16 @@ class MainWindow(QMainWindow):
         self.board_page = BoardPage(self._palette, self.prefs)
         self.memory_page = MemoryPage(self._palette, self.prefs)
         self.memory_page.elevation_requested.connect(self._on_elevation_requested)
+        self.graphics_page = GraphicsPage(self._palette, self.prefs)
+        self.network_page = NetworkPage(self._palette, self.prefs)
+        self.network_page.unit_changed.connect(self._on_network_unit)
         self.system_page = SystemPage(self._palette, self.prefs)
         self.settings_page = SettingsPage(self.prefs)
         self.settings_page.changed.connect(self._on_preferences)
-        for page in (self.cpu_page, self.monitor_page, self.caches_page,
-                     self.board_page, self.memory_page, self.system_page,
-                     self.settings_page):
+        self.settings_page.report_requested.connect(self._on_report_requested)
+        for page in (self.cpu_page, self.caches_page, self.board_page,
+                     self.memory_page, self.graphics_page, self.network_page,
+                     self.system_page, self.monitor_page, self.settings_page):
             self.stack.addWidget(page)
         layout.addWidget(self.stack, 1)
 
@@ -194,7 +203,7 @@ class MainWindow(QMainWindow):
         column.setContentsMargins(2, 6, 2, 6)
         column.setSpacing(4)
 
-        wordmark = QLabel("cpuz")
+        wordmark = QLabel(f"{EMOJI} cpuz")
         wordmark.setObjectName("Headline")
         wordmark.setContentsMargins(10, 0, 0, 0)
 
@@ -296,6 +305,42 @@ class MainWindow(QMainWindow):
             self.stack.setCurrentIndex(index)
         self._sync_compact_selection()
 
+    def _on_report_requested(self) -> None:
+        """Guarda el informe que se adjunta al reportar un fallo."""
+        from PySide6.QtWidgets import QFileDialog, QMessageBox
+
+        from .. import report
+
+        if self._last_snapshot is None:
+            QMessageBox.information(self, "Informe",
+                                    "Todavía no hay ninguna lectura del equipo.")
+            return
+
+        sugerido = str(pathlib.Path.home() / "informe-cpuz.md")
+        destino, _ = QFileDialog.getSaveFileName(
+            self, "Guardar informe del equipo", sugerido, "Markdown (*.md);;Texto (*.txt)")
+        if not destino:
+            return
+
+        try:
+            texto = report.build(self._last_snapshot, anonymous=True)
+            pathlib.Path(destino).write_text(texto, encoding="utf-8")
+        except OSError as error:
+            QMessageBox.warning(self, "Informe", f"No se pudo guardar:\n{error}")
+            return
+        QMessageBox.information(
+            self, "Informe",
+            f"Guardado en {destino}\n\n"
+            "No incluye el nombre del equipo, las direcciones IP y MAC ni los "
+            "números de serie.",
+        )
+
+    def _on_network_unit(self, unidad: str) -> None:
+        """El conmutador de bytes/bits de la pestaña de Red."""
+        from dataclasses import replace
+
+        self._on_preferences(replace(self.prefs, network_unit=unidad))
+
     def _on_preferences(self, prefs: Preferences) -> None:
         from dataclasses import replace
 
@@ -306,19 +351,24 @@ class MainWindow(QMainWindow):
         if prefs.interval_ms != previous.interval_ms and hasattr(self, "sampler"):
             self.sampler.set_interval(prefs.interval_ms)
 
-        appearance_changed = (prefs.theme, prefs.density) != (previous.theme, previous.density)
-        content_changed = (prefs.temperature_unit, prefs.show_all_features) != (
-            previous.temperature_unit, previous.show_all_features
+        appearance_changed = ((prefs.theme, prefs.density, prefs.font_scale, prefs.accent)
+                              != (previous.theme, previous.density, previous.font_scale,
+                                  previous.accent))
+        content_changed = (prefs.temperature_unit, prefs.show_all_features,
+                           prefs.network_unit) != (
+            previous.temperature_unit, previous.show_all_features,
+            previous.network_unit
         )
 
-        if prefs.density != previous.density:
+        if (prefs.density, prefs.font_scale) != (previous.density, previous.font_scale):
             # Los anchos guardados se midieron con otra tipografía y otro
             # espaciado; conservarlos deja columnas que no encajan.
             self.prefs = replace(self.prefs, sensor_columns=())
             prefs_module.save(self.prefs)
 
         if appearance_changed:
-            self._palette = theme.apply(QApplication.instance(), prefs.theme, prefs.density)
+            self._palette = theme.apply(QApplication.instance(), prefs.theme,
+                                        prefs.density, prefs.font_scale, prefs.accent)
             self._build_ui()
         elif content_changed:
             self._build_ui()
@@ -355,7 +405,8 @@ class MainWindow(QMainWindow):
 
     def _distribute(self, snapshot: Snapshot) -> None:
         for page in (self.cpu_page, self.monitor_page, self.caches_page,
-                     self.board_page, self.memory_page, self.system_page):
+                     self.board_page, self.memory_page, self.system_page,
+                     self.graphics_page, self.network_page):
             page.apply(snapshot)
 
     def _on_failure(self, message: str) -> None:
@@ -369,6 +420,10 @@ def build_app(argv: Optional[list[str]] = None) -> tuple[QApplication, MainWindo
     parser.add_argument("--dark", action="store_true", help="fuerza el tema oscuro")
     parser.add_argument("--light", action="store_true", help="fuerza el tema claro")
     parser.add_argument("--compact", action="store_true", help="fuerza la densidad compacta")
+    parser.add_argument("--font-scale", metavar="TAMAÑO", choices=("normal", "grande", "mayor", "máximo"),
+                        help="fuerza el tamaño de letra solo para esta ejecución")
+    parser.add_argument("--accent", metavar="COLOR", choices=ACCENT_NAMES,
+                        help="fuerza el color de acento solo para esta ejecución")
     parser.add_argument("--size", metavar="ANCHOxALTO", help="tamaño de ventana, p. ej. 820x620")
     parser.add_argument("--screenshot", metavar="RUTA",
                         help="captura la ventana en un PNG y sale (útil sin pantalla)")
@@ -386,6 +441,10 @@ def build_app(argv: Optional[list[str]] = None) -> tuple[QApplication, MainWindo
         prefs = replace(prefs, theme="light")
     if args.compact:
         prefs = replace(prefs, density="compact")
+    if args.font_scale:
+        prefs = replace(prefs, font_scale=args.font_scale)
+    if args.accent:
+        prefs = replace(prefs, accent=args.accent)
     if args.size and "x" in args.size:
         width, _, height = args.size.partition("x")
         if width.isdigit() and height.isdigit():
@@ -402,7 +461,7 @@ def build_app(argv: Optional[list[str]] = None) -> tuple[QApplication, MainWindo
     app.setDesktopFileName(DESKTOP_ID)
     app.setWindowIcon(application_icon())
 
-    theme.apply(app, prefs.theme, prefs.density)
+    theme.apply(app, prefs.theme, prefs.density, prefs.font_scale, prefs.accent)
 
     return app, MainWindow(prefs), args
 

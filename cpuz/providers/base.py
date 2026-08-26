@@ -17,7 +17,8 @@ from dataclasses import dataclass, field
 from typing import Any, Iterable, Optional
 
 from ..model import (
-    Board, Cache, Clocks, CpuInfo, CpuType, DriverHint, LogicalCpu,
+    Board, Cache, Clocks, CpuInfo, CpuType, DriverHint, Gpu, LogicalCpu,
+    NetworkInterface,
     MemoryArray, MemoryModule, Need, Note, Power, PrivilegedState, Sensor,
     Snapshot, System,
 )
@@ -38,6 +39,8 @@ class Draft:
     modules: list[MemoryModule] = field(default_factory=list)
     spd: list = field(default_factory=list)
     memory_array: Optional[MemoryArray] = None
+    gpus: list[dict[str, Any]] = field(default_factory=list)
+    network: list = field(default_factory=list)
     privileged: PrivilegedState = field(default_factory=PrivilegedState)
     sensors: list[Sensor] = field(default_factory=list)
     driver_hints: list[DriverHint] = field(default_factory=list)
@@ -51,6 +54,18 @@ class Draft:
 
     def cpu(self, index: int) -> dict[str, Any]:
         return self.logical.setdefault(index, {"index": index, "core_id": -1, "package_id": 0})
+
+    def gpu(self, index: int) -> dict[str, Any]:
+        """La tarjeta número N, creándola si es la primera vez que se la nombra.
+
+        Se guardan como diccionarios y no como `Gpu` porque las rellenan varios
+        proveedores por turnos —el kernel primero, las APIs gráficas después— y
+        rehacer un dataclass congelado en cada paso se come los campos que otro
+        acaba de poner.
+        """
+        while len(self.gpus) <= index:
+            self.gpus.append({"index": len(self.gpus)})
+        return self.gpus[index]
 
     def note(self, path: str, need: Need, message: str, hint: str = "") -> None:
         self.notes.append(Note(path=path, need=need, message=message, hint=hint))
@@ -94,6 +109,11 @@ class Draft:
             modules=tuple(self.modules),
             spd=tuple(self.spd),
             memory_array=self.memory_array,
+            network=tuple(self.network),
+            gpus=tuple(
+                Gpu(**{k: v for k, v in raw.items() if k in Gpu.__dataclass_fields__})
+                for raw in self.gpus
+            ),
             privileged=self.privileged,
             sensors=tuple(self.sensors),
             driver_hints=tuple(self.driver_hints),

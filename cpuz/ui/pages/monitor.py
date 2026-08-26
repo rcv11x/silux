@@ -112,6 +112,15 @@ class MonitorPage(QScrollArea):
         self.tile_usage = StatTile("Uso", "%", self._p)
         self.tile_temp = StatTile("Temperatura", "°C", self._p)
         self.tile_power = StatTile("Consumo", "W", self._p)
+
+        # Cada gráfica sabe escribir su propia cifra cuando se la señala.
+        intervalo = self._prefs.interval_s
+        self.tile_freq.chart.set_formatter(lambda v: render.hz(v * 1e9), intervalo)
+        self.tile_usage.chart.set_formatter(render.percent, intervalo)
+        self.tile_temp.chart.set_formatter(
+            lambda v: f"{v:.1f} °F" if self._prefs.fahrenheit else f"{v:.1f} °C",
+            intervalo)
+        self.tile_power.chart.set_formatter(render.watts, intervalo)
         for tile in (self.tile_freq, self.tile_usage, self.tile_temp, self.tile_power):
             row.add(tile)
         return row

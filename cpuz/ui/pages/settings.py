@@ -20,15 +20,45 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ... import db
+from ... import EMOJI, db
 from ...settings import Preferences, config_path
 from .. import theme
 from ..theme import ui_font
 from ..widgets import Card, ResponsiveRow
 
+VERSION = "0.1.0"
+
+AUTORIA = (
+    ("rcv11x", "autor: diseño, desarrollo, pruebas y documentación"),
+    ("Claude", ""),
+)
+
+CONSTRUIDO_CON = (
+    ("Python 3", "sin dependencias fuera de la biblioteca estándar"),
+    ("PySide6 / Qt 6", "solo para la interfaz"),
+    ("ctypes y mmap", "CPUID, ioctl de DRM y las bibliotecas gráficas"),
+    ("polkit", "el ayudante que lee la tabla SMBIOS"),
+)
+
+DATOS_DE_TERCEROS = (
+    ("libcpuid", "identificación de procesadores · BSD-2"),
+    ("CPU-X", "tabla de encapsulados · GPL-3.0"),
+    ("hwdata", "pci.ids y pnp.ids del sistema"),
+)
+
 THEMES = (("Seguir al sistema", "system"), ("Claro", "light"), ("Oscuro", "dark"))
 UNITS = (("Celsius (°C)", "c"), ("Fahrenheit (°F)", "f"))
 DENSITIES = (("Amplia", "spacious"), ("Normal", "normal"), ("Compacta", "compact"))
+# El tamaño de la letra va aparte de la densidad a propósito: son dos cosas
+# distintas. La densidad decide cuánto aire hay entre las filas; esto, cómo de
+# grande se lee lo que hay dentro. Quien necesita letra grande no tiene por qué
+# querer además que todo ocupe el doble.
+FONT_SCALES = (("Normal", "normal"), ("Grande", "grande"),
+               ("Mayor", "mayor"), ("Máximo", "máximo"))
+ACCENTS = (("Naranja", "naranja"), ("Azul", "azul"), ("Verde", "verde"),
+           ("Morado", "morado"), ("Rojo", "rojo"), ("Cian", "cian"))
+NETWORK_UNITS = (("Bytes por segundo (MB/s)", "bytes"),
+                 ("Bits por segundo (Mb/s)", "bits"))
 
 
 class _Field(QWidget):
@@ -65,6 +95,9 @@ class _Field(QWidget):
 
 class SettingsPage(QScrollArea):
     changed = Signal(object)          # Preferences
+    # La página de ajustes no tiene la foto del hardware; la pide y ya la
+    # guarda la ventana, que sí la tiene.
+    report_requested = Signal()
 
     def __init__(self, prefs: Preferences, parent=None):
         super().__init__(parent)
@@ -88,6 +121,7 @@ class SettingsPage(QScrollArea):
         columns.add(self._build_appearance())
         layout.addWidget(columns)
 
+        layout.addWidget(self._build_credits())
         layout.addWidget(self._build_about())
         layout.addStretch(1)
 
@@ -144,12 +178,61 @@ class SettingsPage(QScrollArea):
             "que quepa más en la misma pantalla.",
         ))
 
+        self.font_box = QComboBox()
+        for label, value in FONT_SCALES:
+            self.font_box.addItem(label, value)
+        self.font_box.setCurrentIndex(
+            [v for _, v in FONT_SCALES].index(self._prefs.font_scale))
+        self.font_box.currentIndexChanged.connect(self._emit)
+        card.body.addWidget(_Field(
+            "Tamaño de la letra", self.font_box,
+            "Agranda todo el texto de la interfaz. Las tarjetas y las columnas "
+            "crecen con él para que nada se recorte.",
+        ))
+
+        self.accent_box = QComboBox()
+        for label, value in ACCENTS:
+            self.accent_box.addItem(label, value)
+        self.accent_box.setCurrentIndex([v for _, v in ACCENTS].index(self._prefs.accent))
+        self.accent_box.currentIndexChanged.connect(self._emit)
+        card.body.addWidget(_Field(
+            "Color de acento", self.accent_box,
+            "El color con el que se resaltan los datos, las gráficas y la "
+            "sección abierta.",
+        ))
+
+        self.network_box = QComboBox()
+        for label, value in NETWORK_UNITS:
+            self.network_box.addItem(label, value)
+        self.network_box.setCurrentIndex(
+            [v for _, v in NETWORK_UNITS].index(self._prefs.network_unit))
+        self.network_box.currentIndexChanged.connect(self._emit)
+        card.body.addWidget(_Field(
+            "Velocidad de red", self.network_box,
+            "Los mismos datos son 116 MB/s o 931 Mb/s. Los tests de velocidad y "
+            "los operadores usan bits; los gestores de descargas, bytes.",
+        ))
+
         self.unit_box = QComboBox()
         for label, value in UNITS:
             self.unit_box.addItem(label, value)
         self.unit_box.setCurrentIndex([v for _, v in UNITS].index(self._prefs.temperature_unit))
         self.unit_box.currentIndexChanged.connect(self._emit)
         card.body.addWidget(_Field("Unidad de temperatura", self.unit_box))
+
+        informe = QPushButton("Guardar informe del equipo…")
+        informe.setToolTip(
+            "Genera un fichero de texto con todo el hardware detectado y, sobre "
+            "todo, con lo que no se ha podido leer y por qué. Es lo que hay que "
+            "adjuntar al reportar un fallo.\n\n"
+            "No incluye el nombre del equipo, las direcciones IP y MAC ni los "
+            "números de serie."
+        )
+        informe.clicked.connect(self.report_requested.emit)
+        fila_informe = QHBoxLayout()
+        fila_informe.addStretch(1)
+        fila_informe.addWidget(informe)
+        card.body.addLayout(fila_informe)
 
         reset = QPushButton("Restablecer valores por defecto")
         reset.clicked.connect(self._reset)
@@ -158,6 +241,52 @@ class SettingsPage(QScrollArea):
         row.addWidget(reset)
         card.body.addLayout(row)
         return card
+
+    def _build_credits(self) -> Card:
+        """Quién lo hace y sobre qué está construido."""
+        card = Card("Acerca de cpuz")
+        m = theme.METRICS
+
+        titulo = QLabel(f"{EMOJI} cpuz {VERSION}")
+        titulo.setObjectName("Headline")
+        card.body.addWidget(titulo)
+
+        lema = QLabel(
+            "Perfilador de hardware para Linux: identificación del equipo y "
+            "monitorización de sensores en un solo programa nativo."
+        )
+        lema.setObjectName("Subhead")
+        lema.setWordWrap(True)
+        card.body.addWidget(lema)
+
+        fila = ResponsiveRow(min_item_width=250)
+        fila.add(self._bloque("Autoría", AUTORIA))
+        fila.add(self._bloque("Construido con", CONSTRUIDO_CON))
+        fila.add(self._bloque("Datos de terceros", DATOS_DE_TERCEROS))
+        card.body.addWidget(fila)
+        return card
+
+    def _bloque(self, titulo: str, lineas: tuple[tuple[str, str], ...]) -> QWidget:
+        """Una columna de «cosa — para qué», con su encabezado."""
+        m = theme.METRICS
+        caja = QWidget()
+        columna = QVBoxLayout(caja)
+        columna.setContentsMargins(0, 0, 0, 0)
+        columna.setSpacing(3)
+
+        encabezado = QLabel(titulo.upper())
+        encabezado.setObjectName("CardTitle")
+        columna.addWidget(encabezado)
+
+        for nombre, detalle in lineas:
+            etiqueta = QLabel(f"<b>{nombre}</b> — {detalle}" if detalle else f"<b>{nombre}</b>")
+            etiqueta.setObjectName("Muted")
+            etiqueta.setWordWrap(True)
+            etiqueta.setFont(ui_font(m.small_pt))
+            etiqueta.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+            columna.addWidget(etiqueta)
+        columna.addStretch(1)
+        return caja
 
     def _build_about(self) -> Card:
         card = Card("Base de datos y configuración")
@@ -206,6 +335,9 @@ class SettingsPage(QScrollArea):
             theme=self.theme_box.currentData(),
             temperature_unit=self.unit_box.currentData(),
             density=self.density_box.currentData(),
+            font_scale=self.font_box.currentData(),
+            accent=self.accent_box.currentData(),
+            network_unit=self.network_box.currentData(),
             show_all_features=self.all_features.isChecked(),
         ).normalized()
 
