@@ -102,7 +102,9 @@ APPRUN = """#!/bin/sh
 AQUI="$(dirname "$(readlink -f "$0")")"
 export PYTHONHOME="$AQUI/usr"
 export PYTHONPATH="$AQUI/usr/lib/python:$PYTHONPATH"
-export LD_LIBRARY_PATH="$AQUI/usr/lib:$LD_LIBRARY_PATH"
+# El segundo directorio es para cuando PySide6 trae su propio Qt: el de PyPI
+# lo guarda junto a sus módulos y no en el sitio de siempre.
+export LD_LIBRARY_PATH="$AQUI/usr/lib:$AQUI/usr/lib/python/PySide6/Qt/lib:$LD_LIBRARY_PATH"
 # Que Qt encuentre sus plugins dentro y no los del sistema, que pueden ser de
 # otra versión y no cargar.
 export QT_PLUGIN_PATH="$AQUI/usr/lib/qt/plugins"
@@ -330,13 +332,17 @@ def copiar_pyside() -> set[str]:
     destino = APPDIR / "usr" / "lib" / "python" / "PySide6"
     destino.mkdir(parents=True)
 
+    # El PySide6 de PyPI trae su propio Qt aquí dentro; el de una distribución
+    # usa el del sistema. Hay que mirar en los dos sitios.
+    qt_propio = [origen / "Qt" / "lib", origen]
+
     bibliotecas: set[str] = set()
     (destino / "__init__.py").write_bytes((origen / "__init__.py").read_bytes())
     for modulo in QT_MODULES:
         for fichero in origen.glob(f"{modulo}.*.so"):
             copia = destino / fichero.name
             shutil.copy2(fichero, copia)
-            bibliotecas |= set(dependencias(copia))
+            bibliotecas |= set(dependencias(copia, extra=qt_propio))
         for pyi in origen.glob(f"{modulo}.pyi"):
             pass                          # las anotaciones no hacen falta en tiempo de ejecución
 
@@ -346,7 +352,7 @@ def copiar_pyside() -> set[str]:
     shutil.copytree(origen_shiboken, destino_shiboken,
                     ignore=shutil.ignore_patterns("__pycache__", "*.pyi", "docs"))
     for so in destino_shiboken.rglob("*.so*"):
-        bibliotecas |= set(dependencias(so))
+        bibliotecas |= set(dependencias(so, extra=qt_propio + [origen_shiboken]))
     return bibliotecas
 
 
@@ -381,6 +387,10 @@ def copiar_bibliotecas(rutas: set[str]) -> None:
     pendientes = [r for r in rutas if r]
     vistas: set[str] = set()
 
+    # Los directorios de donde salieron las primeras, para que las siguientes
+    # se resuelvan igual: las de Qt dependen unas de otras y viven juntas.
+    origenes = {pathlib.Path(r).parent for r in pendientes if r}
+
     while pendientes:
         ruta = pendientes.pop()
         if ruta in vistas:
@@ -395,7 +405,7 @@ def copiar_bibliotecas(rutas: set[str]) -> None:
                 shutil.copy2(ruta, copia, follow_symlinks=True)
             except OSError:
                 continue
-        pendientes.extend(dependencias(copia))
+        pendientes.extend(dependencias(copia, extra=sorted(origenes)))
 
 
 def escribir_metadatos() -> None:
@@ -435,7 +445,12 @@ def empaquetar() -> pathlib.Path | None:
         return None
 
     destino = DIST / f"{APP_ID}-x86_64.AppImage"
-    entorno = dict(os.environ, ARCH="x86_64")
+    # appimagetool es a su vez un AppImage, así que necesita FUSE para
+    # montarse a sí mismo. Dentro de un contenedor no lo hay, y en muchas
+    # distribuciones modernas tampoco: ya solo traen FUSE 3 y estos piden el 2.
+    # Con esta variable se descomprime en /tmp y se ejecuta desde ahí, que
+    # funciona siempre y cuesta un segundo más.
+    entorno = dict(os.environ, ARCH="x86_64", APPIMAGE_EXTRACT_AND_RUN="1")
     resultado = subprocess.run(
         [str(herramienta), "--comp", "zstd", str(APPDIR), str(destino)],
         env=entorno, check=False,
@@ -468,11 +483,24 @@ def conseguir_appimagetool() -> pathlib.Path | None:
 
 # -- utilidades --------------------------------------------------------------
 
-def dependencias(binario: pathlib.Path) -> list[str]:
-    """Las bibliotecas de las que depende un binario, según `ldd`."""
+def dependencias(binario: pathlib.Path,
+                 extra: Optional[list[pathlib.Path]] = None) -> list[str]:
+    """Las bibliotecas de las que depende un binario, según `ldd`.
+
+    `extra` son directorios donde buscar además de los del sistema. Hacen falta
+    para el PySide6 de PyPI, que no usa el Qt de la distribución sino que trae
+    el suyo dentro del propio paquete: sin decírselo a `ldd`, sus módulos
+    aparecen como si no dependieran de nada y el AppImage sale sin Qt.
+    """
+    entorno = dict(os.environ)
+    if extra:
+        rutas = [str(d) for d in extra if d.is_dir()]
+        if rutas:
+            entorno["LD_LIBRARY_PATH"] = os.pathsep.join(
+                rutas + ([entorno["LD_LIBRARY_PATH"]] if entorno.get("LD_LIBRARY_PATH") else []))
     try:
         salida = subprocess.run(["ldd", str(binario)], capture_output=True,
-                                text=True, check=False).stdout
+                                text=True, check=False, env=entorno).stdout
     except OSError:
         return []
     encontradas = []
