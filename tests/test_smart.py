@@ -165,3 +165,43 @@ class TestElAyudanteSoloLeeBytes(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestContadoresDeFabricante(unittest.TestCase):
+    """Los atributos de SATA no significan lo mismo en todos los discos.
+
+    Es la trampa que advierte la cabecera del módulo, y en la que se cayó igual:
+    un Seagate declaraba 132 658 654 884 699 horas de encendido, que son quince
+    mil millones de años. Guarda algo suyo en los dos bytes altos del contador.
+    """
+
+    def test_las_horas_se_leen_en_32_bits(self):
+        # El valor real de un ST2000DM008 de año y medio.
+        salud = smart.parse(tabla_ata([(9, 80, 132658654884699)]), "ata")
+        self.assertEqual(salud.power_on_hours, 13147)
+
+    def test_lo_escrito_sí_usa_los_48_bits(self):
+        # Ahí no sobra sitio: un disco puede escribir más de lo que cabe en 32
+        # bits de sectores, así que se leen los seis bytes.
+        salud = smart.parse(tabla_ata([(241, 100, 40_000_000_000)]), "ata")
+        self.assertEqual(salud.written_bytes, 40_000_000_000 * 512)
+
+    def test_unas_horas_imposibles_se_descartan(self):
+        # Por si algún fabricante usa los 32 bits bajos para otra cosa: ningún
+        # disco fabricado lleva doscientos años encendido.
+        salud = smart.parse(tabla_ata([(9, 80, 0x7FFFFFFF)]), "ata")
+        self.assertIsNone(salud.power_on_hours)
+
+    def test_crucial_guarda_lo_escrito_en_otro_atributo(self):
+        # Los MX500 usan el 246 donde otros usan el 241.
+        salud = smart.parse(tabla_ata([(246, 100, 17_800_000_000)]), "ata")
+        self.assertEqual(salud.written_bytes, 17_800_000_000 * 512)
+
+    def test_si_están_los_dos_gana_el_de_siempre(self):
+        salud = smart.parse(tabla_ata([(241, 100, 1000), (246, 100, 2000)]), "ata")
+        self.assertEqual(salud.written_bytes, 1000 * 512)
+
+    def test_un_disco_mecanico_no_tiene_desgaste(self):
+        # Los platos no se gastan por escribir, así que no publican el atributo.
+        salud = smart.parse(tabla_ata([(9, 80, 13147), (241, 100, 1000)]), "ata")
+        self.assertIsNone(salud.life_left_percent)

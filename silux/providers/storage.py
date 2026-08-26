@@ -25,7 +25,7 @@ import time
 from typing import Iterator, Optional
 
 from .. import smart as smart_module
-from ..model import Disk, DiskIo, Partition, PcieLink
+from ..model import Disk, DiskIo, Need, Partition, PcieLink
 from ..privileged.client import HelperError, PrivilegedClient
 from .base import Draft, Provider, read_int, read_text
 
@@ -91,6 +91,16 @@ class Disks(Provider):
         """
         if not self.client.connected():
             if not self.requested:
+                # Sin esta nota el contador de la barra de estado decía «1 dato
+                # requiere permisos» cuando eran dos: el detalle de la memoria y
+                # el diagnóstico de los discos.
+                draft.note(
+                    "disks.health", Need.ROOT,
+                    "El diagnóstico de los discos lo guarda cada unidad en sus "
+                    "propios contadores.",
+                    "Con permisos se ven las horas de encendido, los terabytes "
+                    "escritos y el desgaste de cada uno.",
+                )
                 return
             try:
                 self.client.connect()

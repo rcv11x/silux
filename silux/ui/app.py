@@ -387,11 +387,17 @@ class MainWindow(QMainWindow):
                 boton.setText("Leer con permisos de administrador")
         self._distribute(snapshot)
 
-        text = (f"Cada {self.prefs.interval_s:g} s · {len(snapshot.sensors)} sensores · "
-                f"{', '.join(sorted(snapshot.capabilities)) or 'sin fuentes'}")
-        if blocked := sum(1 for n in snapshot.notes if n.need.value == "root"):
-            text += f" · {blocked} dato(s) requieren permisos"
-        self._status.set_full_text(text)
+        partes = [f"Se actualiza cada {self.prefs.interval_s:g} s"]
+        if bloqueados := sum(1 for n in snapshot.notes if n.need.value == "root"):
+            # El plural va bien puesto: «1 dato(s)» delataba que nadie lo había
+            # mirado, en un programa cuyo argumento es que los datos están
+            # cuidados.
+            partes.append(f"{bloqueados} "
+                          f"{'dato requiere' if bloqueados == 1 else 'datos requieren'} "
+                          "permisos")
+        partes.append(f"{len(snapshot.sensors)} sensores")
+        partes.append(", ".join(sorted(snapshot.capabilities)) or "sin fuentes")
+        self._status.set_full_text(" · ".join(partes))
 
     def _on_elevation_requested(self) -> None:
         """El usuario ha pedido los datos que exigen privilegios.
