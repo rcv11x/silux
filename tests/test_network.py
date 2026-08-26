@@ -43,8 +43,13 @@ class BancoDeRed(unittest.TestCase):
 
     def interfaz(self, nombre: str, *, operstate="up", carrier="1", speed="2500",
                  duplex="full", mtu="1500", mac="74:fe:ce:6c:d6:43", tipo="1",
-                 rx=1000, tx=500, **extra) -> None:
+                 rx=1000, tx=500, fisica=True, **extra) -> None:
         base = self.root / nombre
+        if fisica:
+            # Una tarjeta de verdad cuelga de un bus. Sin este nodo el
+            # proveedor la clasifica como virtual, que es lo correcto: así es
+            # como se distingue una Realtek de un puente de libvirt.
+            (base / "device").mkdir(parents=True, exist_ok=True)
         for campo, valor in (("operstate", operstate), ("carrier", carrier),
                              ("speed", speed), ("duplex", duplex), ("mtu", mtu),
                              ("address", mac), ("type", tipo)):
@@ -129,13 +134,14 @@ class TestClases(BancoDeRed):
         # Su driver no informa del enlace y responde «unknown»; llamarlo parado
         # sería mentir sobre una interfaz que está trabajando.
         self.interfaz("lo", operstate="unknown", carrier="1", tipo="772",
-                      speed=None, duplex=None)
+                      speed=None, duplex=None, fisica=False)
         interfaz = self.recolectar().freeze().network[0]
         self.assertEqual(interfaz.kind, "loopback")
         self.assertTrue(interfaz.up)
 
     def test_un_puente_de_maquinas_virtuales(self):
-        self.interfaz("virbr0", operstate="down", carrier="0", speed=None)
+        self.interfaz("virbr0", operstate="down", carrier="0", speed=None,
+                      fisica=False)
         (self.root / "virbr0" / "bridge").mkdir(parents=True, exist_ok=True)
         self.assertEqual(self.recolectar().freeze().network[0].kind, "puente")
 
@@ -151,6 +157,15 @@ class TestClases(BancoDeRed):
         self.assertIsNone(interfaz.speed_mbps)
         self.assertFalse(interfaz.up)
         self.assertEqual(render.interface_state(interfaz), "sin cable")
+
+    def test_lo_que_no_lleva_cable_no_se_queda_sin_cable(self):
+        # Un puente de máquinas virtuales apagado está parado, no desenchufado.
+        # Decir «sin cable» manda a alguien a mirar detrás del equipo.
+        self.interfaz("virbr0", operstate="down", carrier="0", speed=None,
+                      fisica=False)
+        (self.root / "virbr0" / "bridge").mkdir(parents=True, exist_ok=True)
+        interfaz = self.recolectar().freeze().network[0]
+        self.assertEqual(render.interface_state(interfaz), "parada")
 
 
 class TestRender(unittest.TestCase):

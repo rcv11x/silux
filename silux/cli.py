@@ -151,7 +151,8 @@ def dump(snapshot: Snapshot, style: Style) -> str:
 
         lines.append(_row(style, "VRAM", render.gpu_memory_summary(gpu.memory)))
         detalle = " · ".join(p for p in (
-            render.vram_kind(gpu.memory) if gpu.memory.kind else None,
+            f"{render.vram_kind(gpu.memory)} · {render.vram_bus(gpu.memory)}"
+            if gpu.memory.kind else None,
             render.bandwidth(gpu.memory.bandwidth_bytes)
             if gpu.memory.bandwidth_bytes else None,
             f"chips de {gpu.memory.vendor}" if gpu.memory.vendor else None) if p)
@@ -175,7 +176,7 @@ def dump(snapshot: Snapshot, style: Style) -> str:
                           + (f"  ({render.percent(gpu.fan_percent)})"
                              if gpu.fan_percent is not None else "")))
         unidades = " · ".join(p for p in (
-            f"{gpu.compute_units} unidades de cómputo" if gpu.compute_units else None,
+            render.compute_units(gpu) if gpu.compute_units else None,
             f"{gpu.rops} ROP" if gpu.rops else None,
             f"{gpu.shader_engines} motores" if gpu.shader_engines else None) if p)
         lines.append(_row(style, "Unidades", unidades or render.DASH))

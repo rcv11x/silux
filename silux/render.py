@@ -178,6 +178,16 @@ def power_tooltip(power: Power) -> str:
     return "\n".join(lines)
 
 
+def plural(cantidad: int, singular: str, plural_: str) -> str:
+    """La palabra que toca según la cantidad.
+
+    Parece una tontería hasta que un equipo con un solo módulo de memoria lee
+    «1 módulos leídos» y piensa que el programa está roto. Cuando alguien va a
+    fiarse de las cifras, la concordancia es parte de fiarse.
+    """
+    return singular if cantidad == 1 else plural_
+
+
 def rate(value: Optional[float], bits: bool = False) -> str:
     """Un ritmo de transferencia: «2.1 MB/s» o «17.6 Mb/s», a elegir.
 
@@ -217,8 +227,13 @@ def interface_state(interface: NetworkInterface) -> str:
     """En qué estado está el enlace, en una palabra."""
     if not interface.up:
         # Distinguir «apagada» de «encendida pero sin cable» ahorra ir a mirar
-        # detrás del ordenador.
-        return "sin cable" if interface.carrier is False else "parada"
+        # detrás del equipo, pero solo tiene sentido donde hay un cable que
+        # mirar: un puente de máquinas virtuales o un túnel están parados, no
+        # desenchufados.
+        con_cable = interface.kind in ("ethernet", "wifi")
+        if con_cable and interface.carrier is False:
+            return "sin señal" if interface.kind == "wifi" else "sin cable"
+        return "parada"
     if interface.ipv4 or interface.ipv6:
         return "activa"
     return "sin dirección"
@@ -269,10 +284,43 @@ def bandwidth(value: Optional[int]) -> str:
 
 
 def vram_kind(memory: GpuMemory) -> str:
-    """«GDDR6 256 bits», que es como se nombra una memoria de vídeo."""
-    partes = [p for p in (memory.kind,
-                          f"{memory.bus_bits} bits" if memory.bus_bits else None) if p]
-    return " · ".join(partes) if partes else DASH
+    """El tipo de memoria a secas: GDDR6, HBM2e. Nada más.
+
+    Antes devolvía «GDDR6 · 256 bits» y, cuando no se conocía el tipo, un
+    escueto «128 bits» en un campo que se llamaba «Tipo». La anchura del bus es
+    otro dato distinto y tiene su propia fila.
+    """
+    return memory.kind or DASH
+
+
+def vram_bus(memory: GpuMemory) -> str:
+    """La anchura del bus de memoria: «256 bits»."""
+    return f"{memory.bus_bits} bits" if memory.bus_bits else DASH
+
+
+# Cada fabricante cuenta sus unidades de proceso de una forma y no son
+# equivalentes entre sí.
+UNIDADES_DE_PROCESO = {
+    "NVIDIA": "núcleos CUDA",
+    "AMD": "unidades de cómputo",
+    "Intel": "unidades de ejecución",
+}
+
+
+def compute_units(gpu) -> str:
+    """«64 unidades de cómputo», «2048 núcleos CUDA»."""
+    if not gpu.compute_units:
+        return DASH
+    nombre = UNIDADES_DE_PROCESO.get(gpu.vendor or "", "unidades de proceso")
+    return f"{gpu.compute_units} {nombre}"
+
+
+def compute_units_short(gpu) -> Optional[str]:
+    """Lo mismo pero para una insignia: «64 CU», «2048 CUDA»."""
+    if not gpu.compute_units:
+        return None
+    corto = {"NVIDIA": "CUDA", "AMD": "CU", "Intel": "EU"}.get(gpu.vendor or "", "u.")
+    return f"{gpu.compute_units} {corto}"
 
 
 def resizable_bar(memory: GpuMemory) -> str:

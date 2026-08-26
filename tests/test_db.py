@@ -85,3 +85,55 @@ class TestBaseReal(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestElSilicioMandaSobreElNombre(unittest.TestCase):
+    """La familia y el modelo no admiten interpretación; la marca sí.
+
+    Un probador con un Ryzen 7 7445HS (familia 25, modelo 0x7C) vio «Dragon
+    Range», que es el modelo 0x61. Casó porque el patrón de marca «Ryzen 7
+    7###H» de esa entrada le encajaba el nombre comercial, y el modelo, que no
+    cuadraba, solo restaba puntos en vez de descartarla. El resultado era un
+    nombre en clave, una litografía y un encapsulado de otro chip, dados con
+    toda seguridad. Es peor que no saberlo.
+    """
+
+    def test_un_modelo_que_no_cuadra_descarta_la_entrada(self):
+        resultado = db.identify_x86(
+            vendor_id="AuthenticAMD", family=15, model=12, stepping=0,
+            ext_family=25, ext_model=124, cores=6,
+            brand="AMD Ryzen 7 7445HS w/ Radeon 740M Graphics",
+            l2_kb=1024, l3_kb=16384,
+        )
+        self.assertFalse(resultado.matched)
+        self.assertIsNone(resultado.codename)
+
+    def test_lo_que_sí_cuadra_se_sigue_identificando(self):
+        resultado = db.identify_x86(
+            vendor_id="AuthenticAMD", family=15, model=1, stepping=2,
+            ext_family=25, ext_model=33, cores=8,
+            brand="AMD Ryzen 7 5800X3D 8-Core Processor",
+            l2_kb=512, l3_kb=98304,
+        )
+        self.assertTrue(resultado.matched)
+        self.assertIn("Vermeer", resultado.codename)
+
+    def test_una_familia_de_otra_epoca_no_puede_ganar(self):
+        # Antes de exigir la familia, un Ryzen sin entrada acababa
+        # identificándose como un K6-2 de 250 nm.
+        resultado = db.identify_x86(
+            vendor_id="AuthenticAMD", family=15, model=99, stepping=0,
+            ext_family=25, ext_model=250, cores=6, brand="AMD Ryzen 7 Futuro",
+            l2_kb=1024, l3_kb=16384,
+        )
+        self.assertIsNone(resultado.codename)
+
+    def test_el_comodin_de_libcpuid_no_es_una_identificacion(self):
+        # libcpuid usa «Unknown …» para lo que no reconoce. Enseñarlo sería
+        # contestar «no lo sé» con cara de saberlo.
+        resultado = db.identify_x86(
+            vendor_id="AuthenticAMD", family=15, model=12, stepping=0,
+            ext_family=25, ext_model=124, cores=6, brand="AMD Ryzen 7 7445HS",
+            l2_kb=1024, l3_kb=16384,
+        )
+        self.assertIsNone(resultado.codename)

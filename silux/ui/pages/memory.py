@@ -203,7 +203,9 @@ class MemoryPage(QScrollArea):
             if snapshot.spd:
                 catalogados = {i.rated_mts for i in snapshot.spd if i.rated_mts}
                 velocidad = f" a {max(catalogados)} MT/s" if catalogados else ""
-                return (f"{len(snapshot.spd)} módulos leídos de su chip SPD"
+                cuantos = len(snapshot.spd)
+                return (f"{cuantos} {render.plural(cuantos, 'módulo', 'módulos')} "
+                        f"{render.plural(cuantos, 'leído', 'leídos')} de su chip SPD"
                         f"{velocidad} · el zócalo y la capacidad necesitan permisos")
             return "El detalle por módulo necesita permisos de administrador"
         ocupados = sum(1 for m in modules if m.populated)
@@ -254,12 +256,13 @@ class MemoryPage(QScrollArea):
         else:
             leidos = len(snapshot.spd)
             if leidos:
+                cabecera = ("El módulo de arriba sale" if leidos == 1
+                            else f"Los {leidos} módulos de arriba salen")
                 self.elevation_text.setText(
-                    f"Los {leidos} módulos de arriba salen de su propio chip SPD, "
-                    "que se lee sin permisos. La capacidad de cada uno, en qué "
-                    "zócalo va, cuántos quedan libres y a qué velocidad los ha "
-                    "puesto la BIOS están en la tabla SMBIOS, que el kernel "
-                    "reserva al administrador."
+                    f"{cabecera} de su propio chip SPD, que se lee sin permisos. "
+                    "La capacidad de cada uno, en qué zócalo va, cuántos quedan "
+                    "libres y a qué velocidad los ha puesto la BIOS están en la "
+                    "tabla SMBIOS, que el kernel reserva al administrador."
                 )
             else:
                 self.elevation_text.setText(

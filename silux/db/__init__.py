@@ -122,7 +122,25 @@ class Identification(dict):
         return bool(self.get("matched"))
 
 
+# La familia y el modelo identifican el silicio: los pone el propio procesador
+# y no admiten interpretación. Si una entrada declara uno de ellos y no
+# coincide, esa entrada no es de este chip por mucho que su nombre comercial se
+# parezca, así que queda descartada en vez de sumar puntos por lo demás.
+#
+# Sin esto, un Ryzen 7 7445HS (modelo 0x7C) se identificaba como «Dragon Range»
+# porque el patrón «Ryzen 7 7###H» de una entrada del modelo 0x61 le casaba el
+# nombre. Salía un nombre en clave, una litografía y un encapsulado que eran de
+# otro chip, y con toda la seguridad del mundo. Un dato ausente se ve; uno
+# inventado que suena bien, no.
+_DISCRIMINANTES = ("f", "xf", "xm")
+
+
 def _score(entry: dict, probe: dict, brand: str) -> int:
+    for key in _DISCRIMINANTES:
+        declarado = entry.get(key, -1)
+        if declarado >= 0 and declarado != probe.get(key):
+            return 0
+
     total = 0
     for key, weight in _FIELD_WEIGHTS:
         expected = entry[key]
@@ -170,11 +188,16 @@ def identify_x86(
     if best is None:
         return Identification(codename=None, technology=None, score=0, matched=False)
 
+    # libcpuid usa «Unknown …» como comodín para lo que no reconoce. Enseñarlo
+    # como nombre en clave sería contestar «no lo sé» con cara de saberlo: mejor
+    # dar el procesador por no identificado y que la sección lo explique.
+    nombre = best["name"]
+    reconocido = best_score > 0 and not nombre.lower().startswith("unknown")
     return Identification(
-        codename=best["name"],
-        technology=best.get("tech"),
+        codename=nombre if reconocido else None,
+        technology=best.get("tech") if reconocido else None,
         score=best_score,
-        matched=best_score > 0,
+        matched=reconocido,
     )
 
 
