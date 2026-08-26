@@ -99,14 +99,18 @@ class TestElSilicioMandaSobreElNombre(unittest.TestCase):
     """
 
     def test_un_modelo_que_no_cuadra_descarta_la_entrada(self):
+        # El caso del probador: su modelo es el 0x7C y la entrada de Dragon
+        # Range es del 0x61, así que esa entrada queda fuera aunque su patrón
+        # de marca encaje. Lo identifica la tabla por rangos, y con el nombre
+        # correcto.
         resultado = db.identify_x86(
             vendor_id="AuthenticAMD", family=15, model=12, stepping=0,
             ext_family=25, ext_model=124, cores=6,
             brand="AMD Ryzen 7 7445HS w/ Radeon 740M Graphics",
             l2_kb=1024, l3_kb=16384,
         )
-        self.assertFalse(resultado.matched)
-        self.assertIsNone(resultado.codename)
+        self.assertNotIn("Dragon Range", resultado.codename or "")
+        self.assertEqual(resultado.codename, "Phoenix")
 
     def test_lo_que_sí_cuadra_se_sigue_identificando(self):
         resultado = db.identify_x86(
@@ -130,10 +134,64 @@ class TestElSilicioMandaSobreElNombre(unittest.TestCase):
 
     def test_el_comodin_de_libcpuid_no_es_una_identificacion(self):
         # libcpuid usa «Unknown …» para lo que no reconoce. Enseñarlo sería
-        # contestar «no lo sé» con cara de saberlo.
+        # contestar «no lo sé» con cara de saberlo. Aquí se usa una familia que
+        # tampoco cubre la tabla por rangos, para que no haya red de seguridad.
+        resultado = db.identify_x86(
+            vendor_id="AuthenticAMD", family=15, model=9, stepping=0,
+            ext_family=99, ext_model=200, cores=6, brand="AMD Ryzen del futuro",
+            l2_kb=1024, l3_kb=16384,
+        )
+        self.assertIsNone(resultado.codename)
+        self.assertFalse(resultado.matched)
+
+
+class TestTablaPorRangos(unittest.TestCase):
+    """La red de seguridad para lo que libcpuid todavía no cubre.
+
+    Su tabla va por modelo concreto y tarda meses en incorporar lo recién
+    salido, así que un procesador nuevo se queda sin nombre en clave ni
+    litografía. El fabricante documenta rangos enteros: toda la familia 19h de
+    la 0x70 a la 0x7F es Phoenix. Una regla por rango cubre lo que vendrá.
+    """
+
+    def test_cubre_un_modelo_que_la_tabla_por_modelo_no_tiene(self):
         resultado = db.identify_x86(
             vendor_id="AuthenticAMD", family=15, model=12, stepping=0,
             ext_family=25, ext_model=124, cores=6, brand="AMD Ryzen 7 7445HS",
             l2_kb=1024, l3_kb=16384,
         )
+        self.assertEqual(resultado.codename, "Phoenix")
+        self.assertEqual(resultado.technology, "TSMC N4")
+
+    def test_no_pisa_lo_que_la_tabla_por_modelo_sí_sabe(self):
+        # Un Vermeer identificado por modelo conserva su nombre completo, que
+        # es más preciso que el de la microarquitectura a secas.
+        resultado = db.identify_x86(
+            vendor_id="AuthenticAMD", family=15, model=1, stepping=2,
+            ext_family=25, ext_model=33, cores=8,
+            brand="AMD Ryzen 7 5800X3D 8-Core Processor", l2_kb=512, l3_kb=98304,
+        )
+        self.assertIn("Vermeer", resultado.codename)
+
+    def test_de_ahí_sale_también_el_encapsulado(self):
+        self.assertEqual(db.find_socket("AuthenticAMD", "Phoenix",
+                                        "AMD Ryzen 7 7445HS"), "FP7/FP8")
+
+    def test_una_familia_que_no_está_en_ninguna_tabla(self):
+        resultado = db.identify_x86(
+            vendor_id="AuthenticAMD", family=15, model=9, stepping=0,
+            ext_family=99, ext_model=200, cores=6, brand="AMD Ryzen inventado",
+            l2_kb=-1, l3_kb=-1,
+        )
         self.assertIsNone(resultado.codename)
+
+    def test_las_reglas_no_se_solapan(self):
+        # Dos reglas que cubran el mismo modelo harían que el nombre dependiera
+        # del orden del archivo.
+        from silux.db import _load_families
+        vistos = set()
+        for regla in _load_families():
+            for modelo in range(regla["from"], regla["to"] + 1):
+                clave = (regla["vendor"], regla["family"], modelo)
+                self.assertNotIn(clave, vistos, f"solapan en {clave}")
+                vistos.add(clave)
