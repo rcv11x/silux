@@ -449,6 +449,70 @@ def available() -> bool:
     return any(True for _ in _eeproms())
 
 
+# Clase PCI de un controlador SMBus, que es como se le reconoce sin depender
+# del fabricante.
+CLASE_SMBUS = 0x0C0500
+SYS_PCI = pathlib.Path("/sys/bus/pci/devices")
+SYS_I2C = pathlib.Path("/sys/bus/i2c/devices")
+
+
+def diagnostico() -> tuple[str, str]:
+    """Por qué no se puede leer el SPD en este equipo, y qué hacer.
+
+    Hay tres motivos distintos y la solución de cada uno no se parece a la de
+    los otros. Antes se contestaba siempre lo mismo —«carga ee1004»— y en la
+    mayoría de las placas AMD ese consejo no sirve de nada: el módulo ya está
+    disponible y el problema es que no hay ningún bus donde buscar.
+    """
+    if not _hay_controlador_smbus():
+        return ("Esta placa no expone ningún controlador SMBus, que es el bus "
+                "por el que se leen los chips SPD de los módulos.",
+                "Pasa en portátiles y en placas donde el firmware lo reserva "
+                "para sí mismo. No hay forma de leerlo desde el sistema.")
+
+    if not _hay_bus_de_memoria():
+        # El caso más común en placas AMD: el firmware declara la región de
+        # entrada/salida del SMBus como suya y el kernel no la toca por si
+        # los dos escriben a la vez.
+        return ("El controlador SMBus existe pero el kernel no lo ha activado: "
+                "el firmware de la placa se reserva ese bus.",
+                "Se le puede pedir que ceda añadiendo acpi_enforce_resources=lax "
+                "a los parámetros de arranque del kernel. Es lo que hacen "
+                "lm-sensors y decode-dimms para lo mismo.")
+
+    return ("El bus está, pero los chips SPD no tienen driver que los lea.",
+            "Cárgalo con:  sudo modprobe ee1004     (DDR4)\n"
+            "              sudo modprobe spd5118    (DDR5)")
+
+
+def _hay_controlador_smbus() -> bool:
+    """Si la placa trae el bus por el que viven los chips SPD."""
+    try:
+        for dispositivo in SYS_PCI.iterdir():
+            crudo = (dispositivo / "class").read_text().strip()
+            if int(crudo, 16) == CLASE_SMBUS:
+                return True
+    except (OSError, ValueError):
+        pass
+    return False
+
+
+def _hay_bus_de_memoria() -> bool:
+    """Si hay algún bus i2c que no sea el de la gráfica.
+
+    Las tarjetas gráficas registran los suyos para hablar con los monitores y
+    con sus propios sensores, y no llevan a ninguna memoria.
+    """
+    try:
+        for bus in SYS_I2C.glob("i2c-*"):
+            nombre = (bus / "name").read_text().strip().lower()
+            if "amdgpu" not in nombre and "nvidia" not in nombre and "i915" not in nombre:
+                return True
+    except OSError:
+        pass
+    return False
+
+
 def _eeproms() -> Iterator[tuple[pathlib.Path, int]]:
     if not I2C_DEVICES.is_dir():
         return
