@@ -35,11 +35,11 @@ NEED_TITLES = {
 CARD_FIELDS = (
     "Fabricante", "Ensamblada por", "Nombre en clave", "Driver", "Versión del driver",
     "Identificador", "Subsistema", "Ranura PCI", "Nodo DRM", "BIOS de video",
-    "Unidades de cómputo", "Unidades de rasterizado", "Motores de sombreado",
+    "Unidades de proceso", "Unidades de rasterizado", "Motores de sombreado",
     "Identificador único",
 )
 
-MEMORY_FIELDS = ("Total", "En uso", "Tipo", "Ancho de banda", "Tasa de datos",
+MEMORY_FIELDS = ("Total", "En uso", "Tipo", "Bus", "Ancho de banda", "Tasa de datos",
                  "Visible por la CPU", "Resizable BAR", "Chips",
                  "Prestada al sistema")
 
@@ -182,7 +182,10 @@ class GpuSection(QWidget):
         c("Ranura PCI", gpu.pci_slot or d)
         c("Nodo DRM", gpu.drm_node or d)
         c("BIOS de video", gpu.vbios or d)
-        c("Unidades de cómputo", str(gpu.compute_units) if gpu.compute_units else d)
+        c("Unidades de proceso", render.compute_units(gpu),
+          tooltip="Cada fabricante las cuenta a su manera y no son equivalentes: "
+                  "una unidad de cómputo de AMD agrupa decenas de núcleos como "
+                  "los que NVIDIA cuenta de uno en uno.")
         c("Unidades de rasterizado", str(gpu.rops) if gpu.rops else d,
           tooltip="Los ROP, que son los que escriben los píxeles ya calculados "
                   "en la imagen final.")
@@ -258,7 +261,7 @@ class GpuSection(QWidget):
             gpu.codename,
             f"{gpu.driver} {gpu.driver_version}".strip() if gpu.driver else None,
             render.size(gpu.memory.total_bytes) if gpu.memory.total_bytes else None,
-            f"{gpu.compute_units} CU" if gpu.compute_units else None,
+            render.compute_units_short(gpu),
             "integrada" if gpu.integrated else None,
             "principal" if gpu.primary else None,
         ) if c]
@@ -314,6 +317,7 @@ class GpuSection(QWidget):
         m("Total", render.size(memoria.total_bytes))
         m("En uso", render.gpu_memory_summary(memoria) if memoria.total_bytes else d)
         m("Tipo", render.vram_kind(memoria))
+        m("Bus", render.vram_bus(memoria))
         m("Ancho de banda", render.bandwidth(memoria.bandwidth_bytes),
           tooltip="Cuántos datos caben por el bus en un segundo: la tasa de la "
                   "memoria por la anchura del bus. Es lo que limita a una "

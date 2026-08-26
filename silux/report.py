@@ -147,8 +147,9 @@ def _graficas(snapshot: Snapshot, anonymous: bool) -> str:
             f"- Driver: {gpu.driver or '—'} {gpu.driver_version or ''}".rstrip(),
             f"- BIOS de video: {gpu.vbios or '—'}",
             f"- Memoria: {render.size(gpu.memory.total_bytes)} "
-            f"{render.vram_kind(gpu.memory)} · {render.bandwidth(gpu.memory.bandwidth_bytes)}",
-            f"- Unidades: {gpu.compute_units or '—'} CU · {gpu.rops or '—'} ROP",
+            f"{render.vram_kind(gpu.memory)} · {render.vram_bus(gpu.memory)} · "
+            f"{render.bandwidth(gpu.memory.bandwidth_bytes)}",
+            f"- Unidades: {render.compute_units(gpu)} · {gpu.rops or '—'} ROP",
             f"- Enlace: {render.pcie_link(gpu.link)} (máx {render.pcie_link(gpu.link, True)})",
             f"- APIs: {', '.join(f'{a.name} {a.version}' for a in gpu.apis) or '—'}",
         ]

@@ -356,3 +356,57 @@ class TestRenderDeGraficos(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestUnidadesDeProceso(unittest.TestCase):
+    """Cada fabricante cuenta las suyas y no son equivalentes.
+
+    Una unidad de cómputo de AMD agrupa decenas de núcleos como los que NVIDIA
+    cuenta de uno en uno. Enseñar «64 CU» y «2048 CU» con la misma etiqueta
+    hacía creer que la segunda tarjeta tiene treinta veces más de lo mismo.
+    """
+
+    def test_amd_cuenta_unidades_de_computo(self):
+        from silux.model import Gpu
+        gpu = Gpu(vendor="AMD", compute_units=64)
+        self.assertEqual(render.compute_units(gpu), "64 unidades de cómputo")
+        self.assertEqual(render.compute_units_short(gpu), "64 CU")
+
+    def test_nvidia_cuenta_nucleos_cuda(self):
+        from silux.model import Gpu
+        gpu = Gpu(vendor="NVIDIA", compute_units=2048)
+        self.assertEqual(render.compute_units(gpu), "2048 núcleos CUDA")
+        self.assertEqual(render.compute_units_short(gpu), "2048 CUDA")
+
+    def test_intel_cuenta_unidades_de_ejecucion(self):
+        from silux.model import Gpu
+        gpu = Gpu(vendor="Intel", compute_units=96)
+        self.assertEqual(render.compute_units_short(gpu), "96 EU")
+
+    def test_un_fabricante_desconocido_no_se_inventa_la_unidad(self):
+        from silux.model import Gpu
+        gpu = Gpu(vendor="Matrox", compute_units=8)
+        self.assertEqual(render.compute_units(gpu), "8 unidades de proceso")
+
+    def test_sin_dato_no_hay_insignia(self):
+        from silux.model import Gpu
+        self.assertIsNone(render.compute_units_short(Gpu(vendor="AMD")))
+        self.assertEqual(render.compute_units(Gpu(vendor="AMD")), render.DASH)
+
+
+class TestTipoYBusDeMemoria(unittest.TestCase):
+    def test_van_por_separado(self):
+        # Juntarlos hacía que una tarjeta sin tipo conocido enseñara «128 bits»
+        # en un campo llamado «Tipo».
+        memoria = GpuMemory(kind="GDDR6", bus_bits=256)
+        self.assertEqual(render.vram_kind(memoria), "GDDR6")
+        self.assertEqual(render.vram_bus(memoria), "256 bits")
+
+    def test_solo_el_bus(self):
+        memoria = GpuMemory(bus_bits=128)
+        self.assertEqual(render.vram_kind(memoria), render.DASH)
+        self.assertEqual(render.vram_bus(memoria), "128 bits")
+
+    def test_sin_nada(self):
+        self.assertEqual(render.vram_kind(GpuMemory()), render.DASH)
+        self.assertEqual(render.vram_bus(GpuMemory()), render.DASH)
