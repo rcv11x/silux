@@ -198,3 +198,43 @@ class TestSalud(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestDosDiscosIguales(unittest.TestCase):
+    """Dos discos a la misma temperatura tumbaban la pestaña entera.
+
+    El sitio más caliente se buscaba con `max()` sobre una lista de tuplas
+    (temperatura, disco). Con temperaturas distintas la primera posición
+    decide y no se llega a mirar la segunda; en cuanto dos coinciden, Python
+    pasa a comparar los Disk y no hay forma de decir si uno es mayor que otro.
+
+    Aparecía con el equipo llevando un rato encendido, que es cuando las
+    temperaturas se estabilizan y coinciden.
+    """
+
+    def _pagina_con(self, temperaturas):
+        from PySide6.QtWidgets import QApplication
+        from silux.model import Disk, Snapshot, CpuInfo
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.storage import StoragePage
+
+        app = QApplication.instance() or QApplication([])
+        discos = tuple(
+            Disk(name=f"nvme{i}n1", model=f"Disco {i}", temp_c=t,
+                 size_bytes=500 * 1000**3, kind="NVMe")
+            for i, t in enumerate(temperaturas)
+        )
+        pagina = StoragePage(theme.palette_for(app, "dark"), Preferences())
+        pagina.apply(Snapshot(monotonic_ns=0, cpu=CpuInfo(), disks=discos))
+        return pagina
+
+    def test_con_temperaturas_iguales_no_revienta(self):
+        self._pagina_con([42.0, 42.0])
+
+    def test_ni_con_tres(self):
+        self._pagina_con([38.5, 38.5, 38.5])
+
+    def test_y_sigue_eligiendo_el_mas_caliente(self):
+        pagina = self._pagina_con([35.0, 51.0, 44.0])
+        self.assertIn("51", pagina.tile_temp.value.text())

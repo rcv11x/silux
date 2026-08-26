@@ -232,7 +232,12 @@ class StoragePage(QScrollArea):
 
         temperaturas = [(x.temp_c, x) for x in discos if x.temp_c is not None]
         if temperaturas:
-            valor, disco = max(temperaturas)
+            # Por la clave, no por la tupla entera: con dos discos a la misma
+            # temperatura Python pasa a comparar el segundo elemento, que es un
+            # Disk, y un Disk no sabe si es mayor o menor que otro. Reventaba
+            # solo cuando las cifras coincidían, que es cuando el equipo lleva
+            # un rato encendido y todo se estabiliza.
+            valor, disco = max(temperaturas, key=lambda par: par[0])
             mostrado = valor * 9 / 5 + 32 if self._prefs.fahrenheit else valor
             self.tile_temp.set_unit("°F" if self._prefs.fahrenheit else "°C")
             self.tile_temp.update_value(f"{mostrado:.0f}", mostrado)
