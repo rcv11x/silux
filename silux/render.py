@@ -75,6 +75,12 @@ def multiplier(value: Optional[float]) -> str:
     return DASH if _none(value) else f"× {float(value):.1f}"
 
 
+def dec(value: Optional[int]) -> str:
+    """Un entero tal cual. Existe para no escribir `x or DASH`: un stepping 0
+    es un stepping de verdad, y con `or` se convertiría en un guion."""
+    return DASH if value is None else str(value)
+
+
 def hex_id(value: Optional[int]) -> str:
     """Como lo enseñan las hojas de datos: decimal y hexadecimal juntos."""
     if value is None:
