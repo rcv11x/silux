@@ -193,6 +193,16 @@ def identify_x86(
     # dar el procesador por no identificado y que la sección lo explique.
     nombre = best["name"]
     reconocido = best_score > 0 and not nombre.lower().startswith("unknown")
+    if not reconocido:
+        # La tabla por modelo no lo conoce. Antes de darse por vencido, la
+        # tabla por rangos, que cubre las familias enteras.
+        if regla := _por_familia(vendor_id, ext_family, ext_model):
+            return Identification(
+                codename=regla["name"],
+                technology=regla.get("tech"),
+                score=1,
+                matched=True,
+            )
     return Identification(
         codename=nombre if reconocido else None,
         technology=best.get("tech") if reconocido else None,
@@ -271,3 +281,32 @@ def _load_overlay() -> dict[str, Any]:
             return json.load(fh)
     except FileNotFoundError:
         return {}
+
+
+@functools.lru_cache(maxsize=1)
+def _load_families() -> list[dict]:
+    """La tabla de microarquitecturas por rango de modelo."""
+    path = pathlib.Path(__file__).parent / "families.json"
+    try:
+        with path.open(encoding="utf-8") as fh:
+            return json.load(fh).get("rules", [])
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
+
+
+def _por_familia(vendor_id: str, ext_family: int, ext_model: int) -> Optional[dict]:
+    """La microarquitectura de un procesador que la tabla por modelo no cubre.
+
+    libcpuid va por modelo concreto y tarda meses en incorporar lo recién
+    salido, así que un procesador nuevo se queda sin nombre en clave ni
+    litografía. El fabricante, en cambio, documenta rangos enteros: toda la
+    familia 19h de la 0x70 a la 0x7F es Phoenix. Una regla por rango cubre lo
+    que vendrá, y como solo se consulta cuando la otra tabla no encuentra nada,
+    nunca puede empeorar un dato que ya se sabía.
+    """
+    for regla in _load_families():
+        if regla.get("vendor") != vendor_id or regla.get("family") != ext_family:
+            continue
+        if regla.get("from", 0) <= ext_model <= regla.get("to", -1):
+            return regla
+    return None
