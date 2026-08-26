@@ -28,7 +28,7 @@ import re
 from typing import Optional
 
 from .. import amdgpu, edid, gpumetrics, pciids
-from ..model import (Display, GpuClockLevel, GpuClocks, GpuLink, GpuMemory,
+from ..model import (Display, GpuClockLevel, GpuClocks, PcieLink, GpuMemory,
                       Need)
 from .base import Draft, Provider, read_int, read_text
 
@@ -218,7 +218,7 @@ class GpuState(Provider):
             gpu["memory_busy_percent"] = _porcentaje(dispositivo / "mem_busy_percent")
             gpu["video_busy_percent"] = _porcentaje(dispositivo / "vcn_busy_percent")
             gpu["memory"] = _memoria_usada(dispositivo, gpu.get("memory") or GpuMemory())
-            gpu["link"] = _enlace(dispositivo, gpu.get("link") or GpuLink())
+            gpu["link"] = _enlace(dispositivo, gpu.get("link") or PcieLink())
             gpu["clocks"] = _relojes(dispositivo)
             _sensores(gpu, dispositivo)
             _telemetria(gpu, dispositivo)
@@ -278,7 +278,7 @@ def _cadena_pcie(dispositivo: pathlib.Path) -> list[pathlib.Path]:
     return eslabones
 
 
-def _enlace(dispositivo: pathlib.Path, previo: Optional[GpuLink] = None) -> GpuLink:
+def _enlace(dispositivo: pathlib.Path, previo: Optional[PcieLink] = None) -> PcieLink:
     def velocidad(nodo: pathlib.Path, nombre: str) -> Optional[float]:
         crudo = read_text(f"{nodo}/{nombre}")
         if not crudo:
@@ -294,7 +294,7 @@ def _enlace(dispositivo: pathlib.Path, previo: Optional[GpuLink] = None) -> GpuL
     ancho = lambda nodo, nombre: read_int(f"{nodo}/{nombre}")
     maxima = (previo.max_speed_gts if previo else None) or minimo("max_link_speed", velocidad)
     max_ancho = (previo.max_width if previo else None) or minimo("max_link_width", ancho)
-    return GpuLink(
+    return PcieLink(
         current_speed_gts=minimo("current_link_speed", velocidad),
         current_width=(lambda v: int(v) if v is not None else None)(minimo("current_link_width", ancho)),
         # El techo no cambia; en el remuestreo se conserva el que ya se leyó.

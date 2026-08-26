@@ -15,7 +15,7 @@ import unittest
 from unittest import mock
 
 from silux import render
-from silux.model import Display, GpuLink, GpuMemory
+from silux.model import Display, PcieLink, GpuMemory
 from silux.providers import drm
 from silux.providers.base import Draft
 from tests.test_edid import construir as construir_edid
@@ -323,20 +323,20 @@ class TestPantallasBajoWayland(BancoDrm):
 
 class TestRenderDeGraficos(unittest.TestCase):
     def test_enlace_a_medio_gas(self):
-        enlace = GpuLink(current_speed_gts=2.5, current_width=16,
+        enlace = PcieLink(current_speed_gts=2.5, current_width=16,
                          max_speed_gts=32.0, max_width=16)
         self.assertTrue(enlace.downgraded)
         self.assertEqual(render.pcie_link(enlace), "PCIe 1.0 × 16")
         self.assertIn("PCIe 5.0 × 16", render.pcie_note(enlace))
 
     def test_una_velocidad_que_no_es_de_ninguna_generacion(self):
-        enlace = GpuLink(current_speed_gts=7.0, current_width=8)
+        enlace = PcieLink(current_speed_gts=7.0, current_width=8)
         self.assertIsNone(enlace.generation)
         self.assertEqual(render.pcie_link(enlace), "7 GT/s × 8")
 
     def test_sin_enlace_no_se_inventa_nada(self):
-        self.assertEqual(render.pcie_link(GpuLink()), render.DASH)
-        self.assertIsNone(render.pcie_note(GpuLink()))
+        self.assertEqual(render.pcie_link(PcieLink()), render.DASH)
+        self.assertIsNone(render.pcie_note(PcieLink()))
 
     def test_resumen_de_memoria(self):
         memoria = GpuMemory(total_bytes=16 * 1024**3, used_bytes=4 * 1024**3)

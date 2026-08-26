@@ -532,8 +532,12 @@ class GpuMemory:
 
 
 @dataclass(frozen=True, slots=True)
-class GpuLink:
-    """El enlace PCIe: a cuánto va ahora y a cuánto podría ir."""
+class PcieLink:
+    """Un enlace PCIe: a cuánto va ahora y a cuánto podría ir.
+
+    Lo usan la gráfica y los discos NVMe por igual. Vale el eslabón más lento
+    de la cadena hasta el puerto raíz, no lo que declare el aparato del final.
+    """
 
     current_speed_gts: Optional[float] = None
     current_width: Optional[int] = None
@@ -657,7 +661,7 @@ class Gpu:
     primary: bool = False
 
     memory: GpuMemory = field(default_factory=GpuMemory)
-    link: GpuLink = field(default_factory=GpuLink)
+    link: PcieLink = field(default_factory=PcieLink)
     clocks: GpuClocks = field(default_factory=GpuClocks)
 
     busy_percent: Optional[float] = None
@@ -788,6 +792,121 @@ class NetworkInterface:
         return f"{velocidad} · {self.duplex}" if self.duplex else velocidad
 
 
+@dataclass(frozen=True, slots=True)
+class Partition:
+    """Una partición, con lo que ocupa si está montada."""
+
+    name: str                                  # nvme0n1p2
+    size_bytes: Optional[int] = None
+    filesystem: Optional[str] = None
+    mountpoint: Optional[str] = None
+    used_bytes: Optional[int] = None
+    free_bytes: Optional[int] = None
+
+    @property
+    def used_percent(self) -> Optional[float]:
+        if not self.size_bytes or self.used_bytes is None:
+            return None
+        return round(self.used_bytes / self.size_bytes * 100, 1)
+
+    @property
+    def mounted(self) -> bool:
+        return bool(self.mountpoint)
+
+
+@dataclass(frozen=True, slots=True)
+class DiskIo:
+    """Lo que ha pasado por el disco, y a qué ritmo pasa ahora."""
+
+    read_bytes: int = 0
+    write_bytes: int = 0
+    read_ops: int = 0
+    write_ops: int = 0
+    read_rate_bps: Optional[float] = None
+    write_rate_bps: Optional[float] = None
+
+    @property
+    def total_rate_bps(self) -> Optional[float]:
+        if self.read_rate_bps is None and self.write_rate_bps is None:
+            return None
+        return (self.read_rate_bps or 0.0) + (self.write_rate_bps or 0.0)
+
+
+@dataclass(frozen=True, slots=True)
+class DiskHealth:
+    """El estado del disco según sus propios contadores SMART.
+
+    Casi nada de esto se puede leer sin permisos: el kernel reserva los
+    comandos de diagnóstico al administrador porque son los mismos que borran
+    un disco. Por eso viene aparte y puede estar entero vacío.
+    """
+
+    power_on_hours: Optional[int] = None
+    power_cycles: Optional[int] = None
+    written_bytes: Optional[int] = None        # el famoso TBW
+    read_bytes: Optional[int] = None
+    # Cuánta vida le queda al SSD según su propio contador de desgaste, de 0
+    # a 100. Los discos mecánicos no lo tienen.
+    percentage_used: Optional[int] = None
+    spare_percent: Optional[int] = None
+    unsafe_shutdowns: Optional[int] = None
+    media_errors: Optional[int] = None
+    critical_warning: Optional[int] = None
+
+    @property
+    def life_left_percent(self) -> Optional[int]:
+        if self.percentage_used is None:
+            return None
+        return max(0, 100 - self.percentage_used)
+
+    @property
+    def healthy(self) -> Optional[bool]:
+        if self.critical_warning is None:
+            return None
+        return self.critical_warning == 0
+
+
+@dataclass(frozen=True, slots=True)
+class Disk:
+    """Una unidad de almacenamiento."""
+
+    name: str                                  # sda, nvme0n1
+    model: Optional[str] = None
+    vendor: Optional[str] = None
+    firmware: Optional[str] = None
+    serial: Optional[str] = None
+    size_bytes: Optional[int] = None
+    # HDD, SSD o NVMe. Es lo primero que se quiere saber y no está en ningún
+    # campo: hay que deducirlo de si el disco gira y de por dónde va conectado.
+    kind: Optional[str] = None
+    transport: Optional[str] = None            # sata, nvme, usb…
+    rotational: Optional[bool] = None
+    logical_sector: Optional[int] = None
+    physical_sector: Optional[int] = None
+    scheduler: Optional[str] = None
+    removable: bool = False
+    pci_slot: Optional[str] = None
+    link: Optional[PcieLink] = None            # solo los NVMe
+    temp_c: Optional[float] = None
+    partitions: tuple[Partition, ...] = ()
+    io: DiskIo = field(default_factory=DiskIo)
+    health: DiskHealth = field(default_factory=DiskHealth)
+
+    @property
+    def display_name(self) -> str:
+        return self.model or self.name
+
+    @property
+    def used_bytes(self) -> Optional[int]:
+        """Lo ocupado sumando las particiones montadas."""
+        usados = [p.used_bytes for p in self.partitions if p.used_bytes is not None]
+        return sum(usados) if usados else None
+
+    @property
+    def mounted_partitions(self) -> tuple[Partition, ...]:
+        return tuple(p for p in self.partitions if p.mounted)
+
+
 class SensorKind(str, Enum):
     TEMPERATURE = "temperature"
     VOLTAGE = "voltage"
@@ -914,6 +1033,7 @@ class Snapshot:
     memory_array: Optional[MemoryArray] = None
     gpus: tuple[Gpu, ...] = ()
     network: tuple[NetworkInterface, ...] = ()
+    disks: tuple[Disk, ...] = ()
     privileged: PrivilegedState = field(default_factory=PrivilegedState)
     sensors: tuple[Sensor, ...] = ()
     driver_hints: tuple[DriverHint, ...] = ()
@@ -975,12 +1095,16 @@ _COMPUTED: dict[str, tuple[str, ...]] = {
                "max_multiplier", "max_turbo_multiplier", "turbo_headroom_hz"),
     "Power": ("load_percent",),
     "GpuMemory": ("used_percent", "resizable_bar"),
-    "GpuLink": ("generation", "max_generation", "downgraded"),
+    "PcieLink": ("generation", "max_generation", "downgraded"),
     "Display": ("resolution",),
     "Edid": ("diagonal_inches", "made", "refresh_range"),
     "Gpu": ("display_name", "pci_id", "subsystem_id", "connected_displays"),
     "NetworkTraffic": ("total_bytes", "total_rate_bps", "problems"),
     "NetworkInterface": ("display_name", "active", "link_summary"),
+    "Partition": ("used_percent", "mounted"),
+    "DiskIo": ("total_rate_bps",),
+    "DiskHealth": ("life_left_percent", "healthy"),
+    "Disk": ("display_name", "used_bytes", "mounted_partitions"),
     "CpuInfo": ("total_cores", "total_threads", "package_power_w"),
     "Sensor": ("unit", "category", "alarm"),
     "Board": ("display_name", "bios_summary"),

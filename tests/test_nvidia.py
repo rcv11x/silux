@@ -12,7 +12,7 @@ import unittest
 from unittest import mock
 
 from silux import nvml
-from silux.model import GpuClocks, GpuLink, GpuMemory
+from silux.model import GpuClocks, PcieLink, GpuMemory
 from silux.providers import nvidia
 from silux.providers.base import Draft
 

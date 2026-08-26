@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import Optional
 
 from .features import pretty as pretty_feature
-from .model import (Cache, Clocks, CpuType, Display, Edid, GpuApi, GpuLink,
+from .model import (Cache, Clocks, CpuType, Display, Edid, GpuApi, PcieLink,
                     GpuMemory, NetworkInterface, NetworkTraffic, Power)
 
 DASH = "—"
@@ -41,7 +41,10 @@ def size(value: Optional[int]) -> str:
     if _none(value):
         return DASH
     value = int(value)
-    for unit, factor in (("GB", 1024**3), ("MB", 1024**2), ("KB", 1024)):
+    # Los terabytes aparecieron con los discos: hasta entonces la unidad más
+    # grande que se veía era la RAM, y «8849.3 GB» de almacenamiento total no
+    # se lee, se cuenta.
+    for unit, factor in (("TB", 1024**4), ("GB", 1024**3), ("MB", 1024**2), ("KB", 1024)):
         if value >= factor:
             scaled = value / factor
             return f"{int(scaled)} {unit}" if scaled.is_integer() else f"{scaled:.1f} {unit}"
@@ -243,7 +246,7 @@ def rpm(value: Optional[int]) -> str:
     return DASH if _none(value) else f"{int(value)} RPM"
 
 
-def pcie_link(link: GpuLink, maximum: bool = False) -> str:
+def pcie_link(link: PcieLink, maximum: bool = False) -> str:
     """«PCIe 5.0 × 16», que es como lo nombra todo el mundo menos sysfs."""
     generation = link.max_generation if maximum else link.generation
     width = link.max_width if maximum else link.current_width
@@ -254,7 +257,7 @@ def pcie_link(link: GpuLink, maximum: bool = False) -> str:
     return f"{nombre} × {width}" if width else nombre
 
 
-def pcie_note(link: GpuLink) -> Optional[str]:
+def pcie_note(link: PcieLink) -> Optional[str]:
     """Por qué el enlace va más lento de lo que puede, cuando pasa.
 
     Casi siempre es que la tarjeta está en reposo y el driver ha bajado el

@@ -21,6 +21,7 @@ from .providers import (
     CpuidIdentity,
     CpuUsage,
     DerivedSensors,
+    Disks,
     DmiBoard,
     Draft,
     DrmGpus,
@@ -57,6 +58,7 @@ DEFAULT_PROVIDERS: tuple[type[Provider], ...] = (
     CpuUsage,
     GpuState,
     NetworkInterfaces,  # las interfaces y su ritmo, que se mide entre muestreos
+    Disks,              # y los discos, con el suyo
     NvidiaGpus,
     SystemState,
     RaplPower,
@@ -158,6 +160,7 @@ class Collector:
         draft.memory_array = static.memory_array
         draft.gpus = [dict(g) for g in static.gpus]
         draft.network = list(static.network)
+        draft.disks = list(static.disks)
         draft.privileged = static.privileged
         draft.sensors = list(static.sensors)
         draft.driver_hints = list(static.driver_hints)

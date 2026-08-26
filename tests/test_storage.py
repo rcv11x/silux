@@ -1,0 +1,200 @@
+"""Los discos, contra un /sys/block falso.
+
+Se montan a mano porque hace falta probar combinaciones que no se tienen
+delante: un NVMe, un SSD SATA, un disco mecánico, uno externo y uno sin
+particionar. La máquina donde corren los tests no tiene por qué llevar ninguno.
+"""
+
+import pathlib
+import tempfile
+import unittest
+from unittest import mock
+
+from silux import render
+from silux.model import Disk, DiskHealth, DiskIo, Partition
+from silux.providers import storage
+from silux.providers.base import Draft
+
+
+def _write(path: pathlib.Path, value: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(f"{value}\n", encoding="utf-8")
+
+
+class BancoDeDiscos(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = pathlib.Path(self._tmp.name)
+        (self.root / "block").mkdir()
+        parches = [
+            mock.patch.object(storage, "SYS_BLOCK", self.root / "block"),
+            mock.patch.object(storage, "PROC_MOUNTS", str(self.root / "mounts")),
+            mock.patch.object(storage, "_ocupacion", lambda punto: (1000, 4000)),
+        ]
+        for parche in parches:
+            parche.start()
+            self.addCleanup(parche.stop)
+        self.addCleanup(self._tmp.cleanup)
+        _write(self.root / "mounts", "")
+
+    def disco(self, nombre, *, sectores=1000000, rotational="0", modelo="MODELO X",
+              vendor=None, firmware="1.0", scheduler="none [mq-deadline] kyber",
+              removable="0", logico="512", fisico="4096", stat=None,
+              particiones=()) -> pathlib.Path:
+        base = self.root / "block" / nombre
+        _write(base / "size", str(sectores))
+        _write(base / "queue" / "rotational", rotational)
+        _write(base / "queue" / "scheduler", scheduler)
+        _write(base / "queue" / "logical_block_size", logico)
+        _write(base / "queue" / "physical_block_size", fisico)
+        _write(base / "removable", removable)
+        _write(base / "device" / "model", modelo)
+        _write(base / "device" / "firmware_rev", firmware)
+        if vendor:
+            _write(base / "device" / "vendor", vendor)
+        _write(base / "stat", stat or "104 0 22384 0 50 0 4096 0 0 0 0")
+        for parte, tam in particiones:
+            _write(base / parte / "size", str(tam))
+            _write(base / parte / "partition", "1")
+        return base
+
+    def montar(self, *entradas) -> None:
+        lineas = [f"/dev/{n} {punto} {fs} rw 0 0" for n, punto, fs in entradas]
+        _write(self.root / "mounts", "\n".join(lineas))
+
+    def recolectar(self, proveedor=None) -> Draft:
+        draft = Draft()
+        (proveedor or storage.Disks()).collect(draft)
+        return draft
+
+
+class TestTipos(BancoDeDiscos):
+    """Qué disco es cada cosa, que no lo dice ningún campo."""
+
+    def test_un_disco_mecanico(self):
+        self.disco("sda", rotational="1", modelo="ST2000DM008")
+        disco = self.recolectar().freeze().disks[0]
+        self.assertEqual(disco.kind, "HDD")
+        self.assertTrue(disco.rotational)
+
+    def test_un_ssd_sata(self):
+        self.disco("sdc", rotational="0", modelo="CT500MX500SSD1")
+        self.assertEqual(self.recolectar().freeze().disks[0].kind, "SSD")
+
+    def test_un_nvme_no_es_lo_mismo_que_un_ssd(self):
+        # Los dos son «no rotatorios» y no se parecen en nada. El nombre del
+        # dispositivo es lo que los separa.
+        self.disco("nvme0n1", rotational="0", modelo="WD_BLACK SN850X")
+        disco = self.recolectar().freeze().disks[0]
+        self.assertEqual(disco.kind, "NVMe")
+        self.assertEqual(disco.transport, "nvme")
+
+    def test_sin_saber_si_gira_no_se_inventa(self):
+        base = self.disco("sdz")
+        (base / "queue" / "rotational").unlink()
+        self.assertIsNone(self.recolectar().freeze().disks[0].kind)
+
+    def test_el_fabricante_ata_no_es_un_fabricante(self):
+        # Todos los discos SATA dicen «ATA» ahí; no aporta nada.
+        self.disco("sda", vendor="ATA")
+        self.assertIsNone(self.recolectar().freeze().disks[0].vendor)
+
+    def test_los_dispositivos_que_no_son_discos_no_salen(self):
+        for nombre in ("loop0", "ram0", "zram0", "dm-0", "sr0"):
+            self.disco(nombre)
+        self.disco("sda")
+        discos = self.recolectar().freeze().disks
+        self.assertEqual([d.name for d in discos], ["sda"])
+
+
+class TestParticiones(BancoDeDiscos):
+    def setUp(self):
+        super().setUp()
+        self.disco("sda", sectores=2000000,
+                   particiones=(("sda1", 500000), ("sda2", 1500000)))
+        self.montar(("sda1", "/boot", "vfat"), ("sda2", "/", "ext4"))
+
+    def test_las_encuentra_con_su_sistema_de_archivos(self):
+        disco = self.recolectar().freeze().disks[0]
+        self.assertEqual([p.name for p in disco.partitions], ["sda1", "sda2"])
+        self.assertEqual(disco.partitions[1].filesystem, "ext4")
+        self.assertEqual(disco.partitions[1].mountpoint, "/")
+
+    def test_una_particion_sin_montar_no_dice_cuanto_ocupa(self):
+        self.montar(("sda1", "/boot", "vfat"))
+        disco = self.recolectar().freeze().disks[0]
+        sin_montar = disco.partitions[1]
+        self.assertFalse(sin_montar.mounted)
+        self.assertIsNone(sin_montar.used_bytes)
+
+    def test_el_ocupado_del_disco_suma_sus_particiones(self):
+        self.assertEqual(self.recolectar().freeze().disks[0].used_bytes, 2000)
+
+    def test_los_sistemas_virtuales_no_son_particiones(self):
+        _write(self.root / "mounts",
+               "proc /proc proc rw 0 0\ntmpfs /tmp tmpfs rw 0 0\n"
+               "/dev/sda1 /boot vfat rw 0 0")
+        disco = self.recolectar().freeze().disks[0]
+        self.assertEqual([p.mountpoint for p in disco.mounted_partitions], ["/boot"])
+
+
+class TestRitmo(BancoDeDiscos):
+    def test_la_primera_lectura_no_tiene_con_que_comparar(self):
+        self.disco("sda")
+        disco = self.recolectar().freeze().disks[0]
+        self.assertIsNone(disco.io.read_rate_bps)
+        self.assertEqual(disco.io.read_bytes, 22384 * 512)
+
+    def test_la_segunda_ya_da_velocidad(self):
+        proveedor = storage.Disks()
+        self.disco("sda", stat="104 0 1000 0 50 0 500 0 0 0 0")
+        self.recolectar(proveedor)
+        proveedor._previo["sda"] = (proveedor._previo["sda"][0] - 1.0,
+                                    1000 * 512, 500 * 512)
+        self.disco("sda", stat="104 0 3000 0 50 0 500 0 0 0 0")
+        disco = self.recolectar(proveedor).freeze().disks[0]
+        self.assertAlmostEqual(disco.io.read_rate_bps, 2000 * 512, delta=5000)
+
+    def test_un_contador_reiniciado_no_da_ritmo_negativo(self):
+        # Pasa al desconectar y volver a conectar un disco externo.
+        proveedor = storage.Disks()
+        self.disco("sda", stat="104 0 900000 0 50 0 500 0 0 0 0")
+        self.recolectar(proveedor)
+        self.disco("sda", stat="1 0 10 0 1 0 5 0 0 0 0")
+        disco = self.recolectar(proveedor).freeze().disks[0]
+        self.assertIsNone(disco.io.read_rate_bps)
+
+
+class TestEnlacePcie(BancoDeDiscos):
+    def test_un_disco_sata_no_tiene_enlace_propio(self):
+        # Quien negocia PCIe es su controladora, que además la comparte con los
+        # otros discos del mismo cable. Enseñarlo como del disco era mentir.
+        self.disco("sda", rotational="1")
+        self.assertIsNone(self.recolectar().freeze().disks[0].link)
+
+
+class TestFormatoDeTamanos(unittest.TestCase):
+    def test_los_discos_se_miden_en_terabytes(self):
+        # Con la RAM nunca hizo falta, y un total de «8849.3 GB» no se lee.
+        self.assertEqual(render.size(2 * 1024**4), "2 TB")
+        self.assertEqual(render.size(int(1.8 * 1024**4)), "1.8 TB")
+        self.assertEqual(render.size(500 * 1024**3), "500 GB")
+
+
+class TestSalud(unittest.TestCase):
+    def test_la_vida_restante_es_lo_contrario_del_desgaste(self):
+        self.assertEqual(DiskHealth(percentage_used=7).life_left_percent, 93)
+        self.assertIsNone(DiskHealth().life_left_percent)
+
+    def test_un_disco_pasado_de_vuelta_no_baja_de_cero(self):
+        # Los SSD siguen funcionando después del 100 % de desgaste.
+        self.assertEqual(DiskHealth(percentage_used=130).life_left_percent, 0)
+
+    def test_el_aviso_critico(self):
+        self.assertTrue(DiskHealth(critical_warning=0).healthy)
+        self.assertFalse(DiskHealth(critical_warning=1).healthy)
+        self.assertIsNone(DiskHealth().healthy)
+
+
+if __name__ == "__main__":
+    unittest.main()
