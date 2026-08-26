@@ -2,12 +2,17 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 build/
-dist/
 .venv/
 venv/
 .pytest_cache/
 *.png.tmp
-RETOMAR.md
 
-# Notas de trabajo con asistente, no forman parte del proyecto.
-CLAUDE.md
+# El AppImage y el árbol con que se arma. Se construyen, no se versionan, y
+# el que se reparte va en una release.
+dist/
+
+# Apunte de traspaso entre dos máquinas concretas: caduca en dos días y no le
+# interesa a nadie más. CLAUDE.md sí va dentro del repositorio: no son notas
+# sueltas, son las reglas que sostienen el diseño y la lista de lo que ya se
+# probó y no funcionó, que es lo que hace falta leer antes de tocar el código.
+RETOMAR.md
