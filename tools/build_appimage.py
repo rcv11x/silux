@@ -76,12 +76,26 @@ IMAGEFORMATS = ("qsvg", "qico", "qjpeg", "qgif")
 # Bibliotecas que trae cualquier Linux de escritorio. Empaquetarlas es la causa
 # más común de que un AppImage funcione en la máquina donde se hizo y en
 # ninguna otra: la copia de dentro choca con los drivers de fuera.
+# Bibliotecas que se dejan al anfitrión. Se comparan por principio de nombre,
+# no por subcadena: escrito como "libxcb" a secas, el filtro también descartaba
+# libxcb-cursor, libxcb-icccm y las otras nueve auxiliares que necesita el
+# plugin xcb de Qt. No son parte del protocolo con el servidor X, son utilidades
+# que muchas distribuciones no instalan de serie, y sin ellas el programa no
+# levanta ventana: «xcb-cursor0 or libxcb-cursor0 is needed».
 DEL_SISTEMA = (
-    "libc.so", "libm.so", "libpthread", "libdl.so", "librt.so", "ld-linux",
-    "libgcc_s", "libstdc++", "libGL", "libEGL", "libGLX", "libGLdispatch",
-    "libX11", "libxcb", "libXau", "libXdmcp", "libXext", "libXrender",
-    "libXi", "libXfixes", "libXrandr", "libXcursor", "libwayland",
-    "libdrm", "libgbm", "libudev", "libselinux", "libdbus-1",
+    # El tiempo de ejecución de C y C++, que tiene que ser el del sistema.
+    "libc.so", "libm.so", "libpthread.so", "libdl.so", "librt.so",
+    "ld-linux", "libgcc_s.so", "libstdc++.so",
+    # Aceleración gráfica: esto es el driver de la tarjeta que haya puesta.
+    "libGL.so", "libGLX.so", "libGLdispatch.so", "libEGL.so", "libOpenGL.so",
+    "libdrm.so", "libgbm.so",
+    # Quien habla con el servidor gráfico y con el bus del escritorio. Estas
+    # sí van por protocolo y deben ser las de la máquina.
+    "libX11.so", "libX11-xcb.so", "libxcb.so", "libdbus-1.so",
+    "libwayland-client.so", "libwayland-cursor.so", "libwayland-egl.so",
+    "libwayland-server.so",
+    # Con estado en /run y /sys.
+    "libudev.so", "libselinux.so",
 )
 
 # De la biblioteca estándar de Python: lo que no se usa y ocupa.
@@ -160,6 +174,8 @@ def main() -> int:
     escribir_metadatos()
     print("· strip")
     quitar_simbolos()
+    print("· comprobación")
+    comprobar_autocontenido()
 
     total = sum(f.stat().st_size for f in APPDIR.rglob("*") if f.is_file())
     print(f"\nAppDir listo: {total / 1024**2:.0f} MB sin comprimir")
@@ -181,9 +197,17 @@ def main() -> int:
 RECETA = """set -eu
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
+# Las libxcb-* auxiliares hacen falta *instaladas* aunque luego se empaqueten:
+# `ldd` solo informa de lo que puede resolver, así que una biblioteca que no
+# esté en la imagen no aparece como dependencia y se queda fuera sin ruido.
 apt-get install -y -qq --no-install-recommends \
     python3 python3-pip python3-venv file desktop-file-utils \
-    libgl1 libegl1 libxkbcommon0 libdbus-1-3 libfontconfig1 >/dev/null
+    libgl1 libegl1 libdbus-1-3 libfontconfig1 \
+    libxkbcommon0 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 \
+    libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
+    libxcb-shape0 libxcb-sync1 libxcb-util1 libxcb-xfixes0 \
+    libxcb-xinerama0 libxcb-xinput0 libxcb-xkb1 libsm6 libice6 \
+    libwayland-client0 libwayland-cursor0 libwayland-egl1 >/dev/null
 # El PySide6 de PyPI viene compilado para manylinux: glibc antigua y x86-64
 # básico. El de la distribución iría atado a la versión de Qt del sistema.
 pip3 install --quiet --break-system-packages 'PySide6>=6.6' 2>/dev/null || \
@@ -323,6 +347,20 @@ def copiar_silux() -> None:
                     ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
 
 
+def qt_propio() -> list[pathlib.Path]:
+    """Dónde busca `ldd` las bibliotecas de Qt además de las del sistema.
+
+    El PySide6 de PyPI trae su propio Qt dentro del paquete; el de una
+    distribución usa el del sistema. Sin mirar en los dos sitios, los módulos
+    y los plugins aparecen como si no dependieran de nada y el AppImage sale
+    sin Qt: arranca con `offscreen`, que apenas necesita nada, y revienta en
+    cuanto hay una pantalla de verdad delante.
+    """
+    import PySide6
+    origen = pathlib.Path(PySide6.__file__).parent
+    return [origen / "Qt" / "lib", origen]
+
+
 def copiar_pyside() -> set[str]:
     """Solo los módulos que se usan, y sus bibliotecas."""
     import PySide6
@@ -332,9 +370,6 @@ def copiar_pyside() -> set[str]:
     destino = APPDIR / "usr" / "lib" / "python" / "PySide6"
     destino.mkdir(parents=True)
 
-    # El PySide6 de PyPI trae su propio Qt aquí dentro; el de una distribución
-    # usa el del sistema. Hay que mirar en los dos sitios.
-    qt_propio = [origen / "Qt" / "lib", origen]
 
     bibliotecas: set[str] = set()
     (destino / "__init__.py").write_bytes((origen / "__init__.py").read_bytes())
@@ -342,7 +377,7 @@ def copiar_pyside() -> set[str]:
         for fichero in origen.glob(f"{modulo}.*.so"):
             copia = destino / fichero.name
             shutil.copy2(fichero, copia)
-            bibliotecas |= set(dependencias(copia, extra=qt_propio))
+            bibliotecas |= set(dependencias(copia, extra=qt_propio()))
         for pyi in origen.glob(f"{modulo}.pyi"):
             pass                          # las anotaciones no hacen falta en tiempo de ejecución
 
@@ -352,7 +387,7 @@ def copiar_pyside() -> set[str]:
     shutil.copytree(origen_shiboken, destino_shiboken,
                     ignore=shutil.ignore_patterns("__pycache__", "*.pyi", "docs"))
     for so in destino_shiboken.rglob("*.so*"):
-        bibliotecas |= set(dependencias(so, extra=qt_propio + [origen_shiboken]))
+        bibliotecas |= set(dependencias(so, extra=qt_propio() + [origen_shiboken]))
     return bibliotecas
 
 
@@ -377,7 +412,7 @@ def copiar_plugins() -> set[str]:
         else:
             shutil.copytree(origen, destino)
         for so in destino.rglob("*.so"):
-            bibliotecas |= set(dependencias(so))
+            bibliotecas |= set(dependencias(so, extra=qt_propio()))
     return bibliotecas
 
 
@@ -397,7 +432,7 @@ def copiar_bibliotecas(rutas: set[str]) -> None:
             continue
         vistas.add(ruta)
         nombre = os.path.basename(ruta)
-        if any(marca in nombre for marca in DEL_SISTEMA):
+        if nombre.startswith(DEL_SISTEMA):
             continue
         copia = destino / nombre
         if not copia.exists():
@@ -406,6 +441,47 @@ def copiar_bibliotecas(rutas: set[str]) -> None:
             except OSError:
                 continue
         pendientes.extend(dependencias(copia, extra=sorted(origenes)))
+
+
+def comprobar_autocontenido() -> None:
+    """Avisa si algo del AppDir depende de una biblioteca que no lleva dentro.
+
+    Vale la pena aunque parezca redundante: en la máquina donde se construye
+    casi todo se resuelve solo, porque el sistema tiene puesto lo mismo que se
+    está empaquetando. El agujero solo se ve en la máquina ajena, y para
+    entonces ya se ha repartido. Aquí se mira una a una: si la resuelve algo de
+    fuera del AppDir y no está en la lista de las que se dejan al anfitrión,
+    falta por copiar.
+    """
+    raiz = APPDIR.resolve()
+    dentro = sorted({p.parent for p in raiz.rglob("*.so*") if p.is_file()})
+    faltan: dict[str, set[str]] = {}
+    for so in sorted(raiz.rglob("*.so*")):
+        if not so.is_file():
+            continue
+        resueltas, sin_resolver = dependencias(so, extra=dentro, ausentes=True)
+        for nombre in sin_resolver:
+            # Ni dentro ni en el sistema donde se construye. Esta es la peor
+            # de las dos: al no resolverla, `ldd` tampoco la propone para
+            # copiar, así que se cae del AppImage sin decir nada.
+            if not nombre.startswith(DEL_SISTEMA):
+                faltan.setdefault(nombre, set()).add(so.name)
+        for resuelta in resueltas:
+            nombre = os.path.basename(resuelta)
+            if nombre.startswith(DEL_SISTEMA):
+                continue
+            if pathlib.Path(resuelta).resolve().is_relative_to(raiz):
+                continue
+            faltan.setdefault(nombre, set()).add(so.name)
+
+    if not faltan:
+        print("  todo resuelve dentro")
+        return
+    print(f"  aviso: {len(faltan)} bibliotecas se cogen del sistema y "
+          f"pueden no estar en otra máquina:", file=sys.stderr)
+    for nombre, quienes in sorted(faltan.items()):
+        pide = ", ".join(sorted(quienes)[:3])
+        print(f"    {nombre}  ({pide})", file=sys.stderr)
 
 
 def escribir_metadatos() -> None:
@@ -484,7 +560,8 @@ def conseguir_appimagetool() -> pathlib.Path | None:
 # -- utilidades --------------------------------------------------------------
 
 def dependencias(binario: pathlib.Path,
-                 extra: Optional[list[pathlib.Path]] = None) -> list[str]:
+                 extra: Optional[list[pathlib.Path]] = None,
+                 ausentes: bool = False):
     """Las bibliotecas de las que depende un binario, según `ldd`.
 
     `extra` son directorios donde buscar además de los del sistema. Hacen falta
@@ -502,15 +579,18 @@ def dependencias(binario: pathlib.Path,
         salida = subprocess.run(["ldd", str(binario)], capture_output=True,
                                 text=True, check=False, env=entorno).stdout
     except OSError:
-        return []
-    encontradas = []
+        return ([], []) if ausentes else []
+    encontradas, sin_resolver = [], []
     for linea in salida.splitlines():
         if "=>" not in linea:
             continue
-        ruta = linea.split("=>")[1].strip().split(" ")[0]
+        izquierda, derecha = linea.split("=>", 1)
+        ruta = derecha.strip().split(" ")[0]
         if ruta.startswith("/") and os.path.exists(ruta):
             encontradas.append(ruta)
-    return encontradas
+        elif "not found" in derecha:
+            sin_resolver.append(izquierda.strip())
+    return (encontradas, sin_resolver) if ausentes else encontradas
 
 
 def plugins_de_qt() -> pathlib.Path | None:
