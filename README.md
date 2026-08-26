@@ -481,9 +481,10 @@ modelos sueltos, aquí bastan 49 reglas para cubrir mucho más.
 
 ```bash
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
+python3 tools/comprobar_privacidad.py    # antes de publicar nada
 ```
 
-Son 582 y tardan quince segundos. Ninguno necesita hardware concreto: los
+Son 592 y tardan quince segundos. Ninguno necesita hardware concreto: los
 proveedores se prueban contra árboles de sysfs sintéticos, el generador contra
 fragmentos de C, y los chips (SPD, EDID, SMART, `gpu_metrics`) contra volcados
 binarios de piezas reales guardados en `tests/fixtures`.

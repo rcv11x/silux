@@ -1,7 +1,10 @@
 """Quitarle a una foto del equipo lo que señala a quien la sacó.
 
 Existe porque las capturas del repositorio llevaban dentro el nombre del
-equipo y el número de serie de la gráfica del autor. Una captura acaba en un
+equipo y el número de serie de la gráfica del autor. Los datos de entrada de
+aquí abajo son inventados, de los rangos de documentación: escribir un caso
+de prueba copiando lo que uno tiene delante es justo como llegaron los otros
+al repositorio. Una captura acaba en un
 foro o en un README igual que el informe de fallos, y el informe ya se
 cuidaba de esto desde el principio.
 """
@@ -17,14 +20,14 @@ def _foto() -> Snapshot:
     return Snapshot(
         monotonic_ns=0, cpu=CpuInfo(),
         system=System(distribution="CachyOS", kernel="Linux 7.2.0",
-                      hostname="silux-pc", desktop="KDE"),
+                      hostname="portatil-de-ana", desktop="KDE"),
         gpus=(Gpu(index=0, name="Radeon RX 9070 XT", vendor="AMD",
-                  unique_id="0f1e2d3c4b5a6978",
+                  unique_id="fedcba9876543210",
                   memory=GpuMemory(total_bytes=16 * 1024**3)),),
-        network=(NetworkInterface(name="enp6s0", up=True, ipv4="192.168.1.120",
-                                  ipv6=("fe80::21",),
-                                  gateway="192.168.1.1",
-                                  mac="00:00:5e:00:53:21", speed_mbps=2500),),
+        network=(NetworkInterface(name="enp6s0", up=True, ipv4="203.0.113.7",
+                                  ipv6=("2001:db8:1::7",),
+                                  gateway="203.0.113.1",
+                                  mac="00:00:5e:00:53:0b", speed_mbps=2500),),
     )
 
 
@@ -36,7 +39,7 @@ class TestLoQueSeTapa(unittest.TestCase):
         self.assertEqual(self.limpia.system.hostname, "equipo")
 
     def test_el_numero_de_serie_de_la_grafica(self):
-        self.assertNotEqual(self.limpia.gpus[0].unique_id, "0f1e2d3c4b5a6978")
+        self.assertNotEqual(self.limpia.gpus[0].unique_id, "fedcba9876543210")
 
     def test_la_direccion_ip_y_la_puerta_de_enlace(self):
         interfaz = self.limpia.network[0]
@@ -52,8 +55,8 @@ class TestLoQueSeTapa(unittest.TestCase):
     def test_no_queda_ni_un_rastro_en_la_foto_entera(self):
         """El barrido que se hizo a mano antes de publicar, automatizado."""
         texto = repr(self.limpia)
-        for real in ("silux-pc", "0f1e2d3c4b5a6978", "192.168.96",
-                     "00:00:5e:00:53:21", "fe80::59e7"):
+        for real in ("portatil-de-ana", "fedcba9876543210", "203.0.113",
+                     "00:00:5e:00:53:0b", "2001:db8:1::7"):
             self.assertNotIn(real, texto, f"se ha colado {real}")
 
 
@@ -70,7 +73,7 @@ class TestLoQueNoSeToca(unittest.TestCase):
     def test_lo_tapado_mide_lo_mismo(self):
         """Si cambiara el largo, la ventana se recolocaría al ocultarlo."""
         self.assertEqual(len(self.limpia.gpus[0].unique_id),
-                         len("0f1e2d3c4b5a6978"))
+                         len("fedcba9876543210"))
 
     def test_una_foto_sin_nada_que_tapar_se_devuelve_igual(self):
         vacia = Snapshot(monotonic_ns=0, cpu=CpuInfo())
