@@ -504,7 +504,7 @@ fuera lo que acaba de construir.
 
 ### Desde el código
 
-Hace falta Python 3.11 o superior y PySide6. La base de datos de CPU y los
+Hace falta Python 3.10 o superior y PySide6. La base de datos de CPU y los
 nombres de dispositivos vienen del paquete `hwdata`, que ya está en casi
 cualquier distribución.
 
