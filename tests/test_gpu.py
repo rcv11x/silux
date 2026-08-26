@@ -96,7 +96,7 @@ class TestAmdCompleta(BancoDrm):
             vendor="0x1002", device="0x7550",
             subsystem_vendor="0x148c", subsystem_device="0x2435",
             revision="0xc0", boot_vga="1",
-            vbios_version="113-EXT108779-100", unique_id="d718956bebe9d407",
+            vbios_version="113-EXT108779-100", unique_id="0000000000000000",
             current_link_speed="32.0 GT/s PCIe", current_link_width="16",
             max_link_speed="32.0 GT/s PCIe", max_link_width="16",
             mem_info_vram_total="17095983104", mem_info_vram_used="2108162048",

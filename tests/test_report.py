@@ -14,10 +14,14 @@ from silux.model import (Board, Clocks, CpuInfo, CpuType, Gpu, GpuMemory, Need,
                         NetworkInterface, Note, Sensor, SensorKind, Snapshot,
                         System)
 
-EQUIPO = "milkshake"
-DIRECCION = "192.168.96.11"
-MAC = "74:fe:ce:6c:d6:43"
-SERIE = "d718956bebe9d407"
+# Inventados a propósito, y de los rangos que existen para esto: 192.0.2.0/24
+# es la TEST-NET-1 de la RFC 5737 y 00:00:5E:00:53:xx el bloque que la RFC 7042
+# reserva para documentación. Antes eran los del equipo del autor, que es una
+# forma curiosa de publicarlos desde el test que comprueba que no se publican.
+EQUIPO = "equipo-de-pruebas"
+DIRECCION = "192.0.2.11"
+MAC = "00:00:5e:00:53:af"
+SERIE = "0000000000000000"
 
 
 def _snapshot(**cambios) -> Snapshot:

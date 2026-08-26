@@ -7,6 +7,10 @@ comparar, y los contadores se reinician si la interfaz se cae— y las dos está
 probadas.
 """
 
+# Las direcciones son de la TEST-NET-1 (RFC 5737) y la MAC del bloque que la
+# RFC 7042 reserva para documentación. No poner aquí las de la máquina en la
+# que se escribe el test: acaban publicadas en el repositorio.
+
 import pathlib
 import tempfile
 import unittest
@@ -39,10 +43,10 @@ class BancoDeRed(unittest.TestCase):
             parche.start()
             self.addCleanup(parche.stop)
         self.addCleanup(self._tmp.cleanup)
-        network._Direcciones._falsas = {"enp6s0": "192.168.96.11"}
+        network._Direcciones._falsas = {"enp6s0": "192.0.2.11"}
 
     def interfaz(self, nombre: str, *, operstate="up", carrier="1", speed="2500",
-                 duplex="full", mtu="1500", mac="74:fe:ce:6c:d6:43", tipo="1",
+                 duplex="full", mtu="1500", mac="00:00:5e:00:53:af", tipo="1",
                  rx=1000, tx=500, fisica=True, **extra) -> None:
         base = self.root / nombre
         if fisica:
@@ -62,7 +66,7 @@ class BancoDeRed(unittest.TestCase):
         for campo, valor in estadisticas.items():
             _write(base / "statistics" / campo, str(valor))
 
-    def ruta_por_defecto(self, interfaz: str, puerta_hex: str = "0160A8C0") -> None:
+    def ruta_por_defecto(self, interfaz: str, puerta_hex: str = "010200C0") -> None:
         _write(self.root / "route",
                "Iface\tDestination\tGateway\tFlags\tRefCnt\tUse\tMetric\tMask\n"
                f"{interfaz}\t00000000\t{puerta_hex}\t0003\t0\t0\t100\t00000000")
@@ -89,9 +93,9 @@ class TestLectura(BancoDeRed):
 
     def test_direccion_y_puerta_de_enlace(self):
         interfaz = self.recolectar().freeze().network[0]
-        self.assertEqual(interfaz.ipv4, "192.168.96.11")
+        self.assertEqual(interfaz.ipv4, "192.0.2.11")
         # El kernel escribe la puerta en hexadecimal y del revés.
-        self.assertEqual(interfaz.gateway, "192.168.96.1")
+        self.assertEqual(interfaz.gateway, "192.0.2.1")
         self.assertTrue(interfaz.default_route)
 
     def test_esta_activa(self):
