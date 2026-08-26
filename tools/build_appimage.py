@@ -32,13 +32,20 @@ from __future__ import annotations
 import argparse
 import os
 import pathlib
+import re
 import shutil
 import subprocess
 import sys
 import sysconfig
 import urllib.request
+from typing import Optional
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
+
+# Una distribución vieja y genérica. Lo que se compila contra una glibc antigua
+# funciona en las nuevas, pero no al revés; y sus paquetes van para x86-64
+# básico, no para las extensiones que solo tienen los procesadores recientes.
+IMAGEN_BASE = "docker.io/library/ubuntu:22.04"
 DIST = ROOT / "dist"
 APPDIR = DIST / "silux.AppDir"
 APP_ID = "silux"
@@ -122,7 +129,15 @@ def main() -> int:
                         help="construye el árbol pero no lo empaqueta")
     parser.add_argument("--keep", action="store_true",
                         help="conserva el AppDir después de empaquetar")
+    parser.add_argument("--container", metavar="IMAGEN", nargs="?",
+                        const=IMAGEN_BASE,
+                        help="construye dentro de un contenedor con una "
+                             "distribución antigua, para que el resultado "
+                             "funcione en procesadores y sistemas viejos")
     args = parser.parse_args()
+
+    if args.container:
+        return construir_en_contenedor(args.container)
 
     if APPDIR.exists():
         shutil.rmtree(APPDIR)
@@ -146,6 +161,7 @@ def main() -> int:
 
     total = sum(f.stat().st_size for f in APPDIR.rglob("*") if f.is_file())
     print(f"\nAppDir listo: {total / 1024**2:.0f} MB sin comprimir")
+    avisar_de_compatibilidad()
 
     if args.appdir_only:
         print(f"En {APPDIR}")
@@ -158,6 +174,120 @@ def main() -> int:
     if not args.keep:
         shutil.rmtree(APPDIR)
     return 0
+
+
+RECETA = """set -eu
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -qq
+apt-get install -y -qq --no-install-recommends \
+    python3 python3-pip python3-venv file desktop-file-utils \
+    libgl1 libegl1 libxkbcommon0 libdbus-1-3 libfontconfig1 >/dev/null
+# El PySide6 de PyPI viene compilado para manylinux: glibc antigua y x86-64
+# básico. El de la distribución iría atado a la versión de Qt del sistema.
+pip3 install --quiet --break-system-packages 'PySide6>=6.6' 2>/dev/null || \
+    pip3 install --quiet 'PySide6>=6.6'
+cd /fuente
+python3 tools/build_appimage.py "$@"
+"""
+
+
+def construir_en_contenedor(imagen: str) -> int:
+    """Repite la construcción dentro de una distribución antigua.
+
+    Un AppImage se lleva dentro los binarios de donde se construyó. Hecho en
+    una distribución moderna, exige una glibc reciente y las extensiones de
+    procesador que ella use, y deja fuera a quien no las tenga. Hecho en una
+    antigua, funciona en las dos.
+    """
+    motor = next((m for m in ("podman", "docker") if shutil.which(m)), None)
+    if motor is None:
+        print("Hace falta podman o docker para construir en contenedor.\n"
+              "  sudo pacman -S podman        (Arch, CachyOS)\n"
+              "  sudo dnf install podman      (Fedora)\n"
+              "  sudo apt install podman      (Debian, Ubuntu)", file=sys.stderr)
+        return 1
+
+    print(f"· construyendo dentro de {imagen} con {motor}")
+    DIST.mkdir(parents=True, exist_ok=True)
+    orden = [
+        motor, "run", "--rm",
+        "-v", f"{ROOT}:/fuente:z",
+        "-w", "/fuente",
+        imagen, "bash", "-c", RECETA,
+    ]
+    resultado = subprocess.run(orden, check=False)
+    if resultado.returncode != 0:
+        print("La construcción en contenedor falló.", file=sys.stderr)
+    return resultado.returncode
+
+
+def avisar_de_compatibilidad() -> None:
+    """Dice en qué máquinas NO va a funcionar lo que se acaba de construir.
+
+    Un AppImage se lleva dentro los binarios de la distribución donde se
+    construyó, con sus exigencias. Dos de ellas dejan fuera a mucha gente y no
+    se ven hasta que alguien lo ejecuta:
+
+    * **El nivel de ISA.** Algunas distribuciones compilan para `x86-64-v3`,
+      que pide AVX2 y compañía: procesadores de 2013 en adelante. En una CPU
+      anterior el enlazador se niega a arrancar con un escueto «CPU ISA level
+      is lower than required», que no dice de quién es la culpa. CachyOS lo
+      hace por omisión, y es justo donde se está desarrollando esto.
+    * **La versión de glibc.** Un binario compilado contra una glibc nueva no
+      arranca en un sistema con una más vieja, aunque al revés sí funcione.
+
+    Las dos se arreglan igual: construyendo dentro de un contenedor con una
+    distribución antigua y genérica. Mientras tanto, al menos que quien
+    construye sepa a quién está dejando fuera.
+    """
+    nivel = _nivel_isa()
+    glibc = _glibc_minima()
+    if not (nivel or glibc):
+        return
+
+    print("\nCompatibilidad de lo construido:")
+    if nivel and nivel != "x86-64-baseline":
+        print(f"  ⚠ Exige {nivel}: no arrancará en procesadores anteriores a "
+              f"{'2013 (Haswell / Zen)' if nivel.endswith('v3') else '2009'}.")
+        print("    El error que verán es «CPU ISA level is lower than required».")
+    if glibc:
+        print(f"  ⚠ Exige glibc {glibc} o superior.")
+    print("  Las dos cosas se resuelven construyendo en un contenedor con una")
+    print("  distribución antigua; ver la sección «Compatibilidad» del README.")
+
+
+def _nivel_isa() -> Optional[str]:
+    """El nivel de instrucciones más alto que exige el intérprete empaquetado."""
+    binario = APPDIR / "usr" / "bin" / "python3"
+    if not binario.exists() or not shutil.which("readelf"):
+        return None
+    try:
+        salida = subprocess.run(["readelf", "-n", str(binario)],
+                                capture_output=True, text=True, check=False).stdout
+    except OSError:
+        return None
+    for linea in salida.splitlines():
+        if "ISA needed" in linea:
+            niveles = [t.strip() for t in linea.split(":", 1)[1].split(",")]
+            return niveles[-1] if niveles else None
+    return None
+
+
+def _glibc_minima() -> Optional[str]:
+    """La versión de glibc más alta que pide cualquiera de las bibliotecas."""
+    if not shutil.which("objdump"):
+        return None
+    mayor = (0, 0)
+    for binario in list((APPDIR / "usr" / "lib").glob("*.so*"))[:60]:
+        try:
+            salida = subprocess.run(["objdump", "-T", str(binario)],
+                                    capture_output=True, text=True, check=False).stdout
+        except OSError:
+            continue
+        for pieza in re.findall(r"GLIBC_(\d+)\.(\d+)", salida):
+            version = (int(pieza[0]), int(pieza[1]))
+            mayor = max(mayor, version)
+    return f"{mayor[0]}.{mayor[1]}" if mayor > (0, 0) else None
 
 
 # -- piezas ------------------------------------------------------------------

@@ -479,8 +479,28 @@ códecs de video del sistema. Sin esa poda serían 561 MB.
 Se construye con:
 
 ```bash
-python3 tools/build_appimage.py
+python3 tools/build_appimage.py              # con lo que haya en esta máquina
+python3 tools/build_appimage.py --container  # en Ubuntu 22.04, para repartirlo
 ```
+
+### Compatibilidad
+
+Un AppImage se lleva dentro los binarios del sistema donde se construyó, **con
+sus exigencias**, y hay dos que dejan fuera a mucha gente sin avisar:
+
+**El nivel de instrucciones.** Algunas distribuciones compilan para
+`x86-64-v3`, que pide AVX2 y compañía: procesadores de 2013 en adelante.
+CachyOS lo hace por omisión. En una CPU anterior el sistema se niega a arrancar
+con un escueto `CPU ISA level is lower than required`, que no dice de quién es
+la culpa.
+
+**La versión de glibc.** Lo compilado contra una glibc nueva no arranca en un
+sistema con una más vieja, aunque al revés sí funcione.
+
+Las dos se resuelven igual: construyendo dentro de una distribución antigua y
+genérica, que es lo que hace `--container` y lo que hace la acción de GitHub en
+cada versión publicada. El script avisa al terminar de a quién está dejando
+fuera lo que acaba de construir.
 
 ### Desde el código
 
