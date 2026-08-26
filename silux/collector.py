@@ -19,6 +19,7 @@ from typing import Iterable, Optional, Sequence
 from .model import Need, Snapshot
 from .privileged.client import PrivilegedClient
 from .providers import (
+    ArmIdentity,
     CppcClocks,
     CpuidIdentity,
     CpuUsage,
@@ -55,6 +56,7 @@ def _instanciar(cls: type[Provider], cliente: PrivilegedClient) -> Provider:
 DEFAULT_PROVIDERS: tuple[type[Provider], ...] = (
     SysfsTopology,      # define qué tipos de núcleo hay
     CpuidIdentity,      # necesita saberlo para preguntar una vez por tipo
+    ArmIdentity,        # y lo mismo donde no hay CPUID porque no es x86
     CppcClocks,         # rellena los relojes que CPUID 0x16 no supo dar
     DmiBoard,           # da el nombre de la placa, que usa el árbol de sensores
     DrmGpus,            # enumera las gráficas antes de que nadie las consulte

@@ -139,6 +139,14 @@ def cache_label(cache: Cache) -> str:
 def core_type_label(cpu_type: CpuType, hybrid: bool) -> str:
     if not hybrid:
         return "Procesador"
+    # «P» y «E» son como los llama Intel; ARM llama a lo mismo big.LITTLE.
+    # El reparto es el mismo, el nombre no, y quien mira su teléfono no
+    # reconoce «núcleo E» por ninguna parte.
+    if (cpu_type.architecture or "").lower().startswith(("aarch64", "arm")):
+        return {
+            "performance": "Núcleos grandes (big)",
+            "efficiency": "Núcleos pequeños (LITTLE)",
+        }.get(cpu_type.key, f"Núcleos «{cpu_type.key}»")
     return {
         "performance": "Núcleos P (rendimiento)",
         "efficiency": "Núcleos E (eficiencia)",
@@ -146,10 +154,11 @@ def core_type_label(cpu_type: CpuType, hybrid: bool) -> str:
 
 
 def instructions(cpu_type: CpuType, limit: int | None = None) -> str:
-    from .features import HIGHLIGHTS
+    from .features import para_arquitectura
 
+    destacadas, bonitos = para_arquitectura(cpu_type.architecture)
     present = set(cpu_type.features)
-    shown = [pretty_feature(f) for f in HIGHLIGHTS if f in present]
+    shown = [bonitos.get(f, f.upper()) for f in destacadas if f in present]
     if cpu_type.smt:
         shown.insert(0, "HT" if cpu_type.vendor == "Intel" else "SMT")
     if limit is not None and len(shown) > limit:
