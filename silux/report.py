@@ -27,6 +27,7 @@ MOTIVOS = {
     Need.HARDWARE: "este equipo no lo expone",
     Need.DRIVER: "falta un módulo del kernel",
     Need.PLATFORM: "no aplica a esta plataforma",
+    Need.ERROR: "falló al leerse",
 }
 
 
@@ -82,8 +83,10 @@ def _procesador(snapshot: Snapshot) -> str:
             f"- Nombre en clave: {tipo.codename or '—'} · {tipo.technology or '—'}",
             f"- Encapsulado: {tipo.socket or '—'}",
             f"- Núcleos / hilos: {tipo.cores} / {tipo.threads}",
-            f"- Familia {tipo.disp_family} · modelo {tipo.disp_model} · "
-            f"stepping {tipo.stepping} · firma {render.signature(tipo.signature)}",
+            f"- Familia {render.dec(tipo.disp_family)} · "
+            f"modelo {render.dec(tipo.disp_model)} · "
+            f"stepping {render.dec(tipo.stepping)} · "
+            f"firma {render.signature(tipo.signature)}",
             f"- Microcódigo: {tipo.microcode or '—'}",
             f"- Relojes: base {render.hz(relojes.base_hz)} · "
             f"máx kernel {render.hz(relojes.max_hz)} · "

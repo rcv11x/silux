@@ -26,6 +26,7 @@ NEED_LABELS = {
     Need.HARDWARE: "no lo expone este hardware",
     Need.DRIVER: "falta un driver",
     Need.PLATFORM: "no aplica aquí",
+    Need.ERROR: "falló al leerse",
 }
 
 
@@ -71,7 +72,7 @@ def dump(snapshot: Snapshot, style: Style) -> str:
         lines.append(_row(style, "Núcleos / hilos", f"{cpu_type.cores} / {cpu_type.threads}"))
         lines.append(_row(style, "Familia", render.hex_id(cpu_type.disp_family)))
         lines.append(_row(style, "Modelo", render.hex_id(cpu_type.disp_model)))
-        lines.append(_row(style, "Stepping", str(cpu_type.stepping)))
+        lines.append(_row(style, "Stepping", render.dec(cpu_type.stepping)))
         lines.append(_row(style, "Firma CPUID", render.signature(cpu_type.signature)))
         lines.append(_row(style, "Microcódigo", cpu_type.microcode or render.DASH))
         lines.append(_row(style, "Virtualización",

@@ -30,6 +30,7 @@ NEED_TITLES = {
     Need.HARDWARE: "Este equipo no lo expone",
     Need.DATABASE: "Falta en la base de datos",
     Need.PLATFORM: "No aplica a esta plataforma",
+    Need.ERROR: "Falló al leerse",
 }
 
 CARD_FIELDS = (
