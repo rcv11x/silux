@@ -1,0 +1,367 @@
+"""Una prueba de rendimiento que dice en qué condiciones se hizo.
+
+La cifra de un benchmark no vale nada por sí sola. El mismo procesador da
+resultados muy distintos según el gobernador de energía, según lo caliente que
+esté, según si otro programa le está robando la mitad de los núcleos. Quien
+compara su número con el de internet y no cuadra se queda sin saber por qué.
+
+Silux ya sabe leer todo eso mientras trabaja, así que aquí la prueba no
+devuelve un número: devuelve un número **y las condiciones en las que salió**.
+Si el gobernador estaba en ahorro, lo dice. Si la CPU bajó de frecuencia a
+mitad de prueba, lo dice. Si había carga de fondo, avisa de que el resultado no
+es comparable. Eso es lo que convierte una cifra en un diagnóstico.
+
+Sobre las cargas: son de la biblioteca estándar, y no por comodidad. Compilar
+un núcleo en C daría lo mismo (se probó: la misma estabilidad), pero dentro de
+un AppImage no hay compilador, y una prueba que solo funciona desde el código
+fuente no le sirve a quien descarga el programa. `zlib` y `hashlib` tienen su
+bucle en C igualmente, ya compilado, y liberan el intérprete mientras trabajan,
+así que reparten de verdad entre núcleos.
+
+`SHA-512` y no `SHA-256` a propósito: la instrucción `sha_ni` acelera la
+segunda y no la primera, así que con SHA-256 un procesador que la tenga saldría
+inflado y dejaría de poder compararse con uno que no.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import os
+import pathlib
+import threading
+import time
+import zlib
+from dataclasses import dataclass, field
+from typing import Callable, Optional
+
+SYS_CPU = "/sys/devices/system/cpu"
+
+# 4 MB con entropía media: ni tan repetido que la compresión sea trivial ni tan
+# aleatorio que no haya nada que comprimir.
+BLOQUE = bytes(range(256)) * 16384
+
+# Cuánto dura cada medida. Por debajo de tres segundos el resultado depende de
+# si al turbo le dio tiempo a subir; por encima de diez, la prueba entera se
+# hace larga sin cambiar la cifra.
+SEGUNDOS = 5.0
+SEGUNDOS_RAPIDO = 2.0
+
+# A partir de aquí, la carga de fondo estropea la medida.
+CARGA_ACEPTABLE = 10.0
+# Y a partir de aquí, la frecuencia cayó lo bastante como para decirlo.
+CAIDA_NOTABLE = 0.90
+
+
+@dataclass(frozen=True, slots=True)
+class Carga:
+    """Una de las cosas que se le pide hacer al procesador."""
+
+    key: str
+    name: str
+    explanation: str
+    work: Callable[[], object]
+
+
+CARGAS: tuple[Carga, ...] = (
+    Carga("compresion", "Compresión",
+          "Comprimir es enteros y acceso a memoria, que es lo que hace el "
+          "equipo al instalar un juego o abrir un proyecto grande.",
+          lambda: zlib.compress(BLOQUE, 9)),
+    Carga("hash", "Resumen criptográfico",
+          "Enteros puros y sin instrucciones especializadas: mide el núcleo, "
+          "no una aceleración concreta.",
+          lambda: hashlib.sha512(BLOQUE).digest()),
+)
+
+
+@dataclass(frozen=True, slots=True)
+class Medida:
+    """El resultado de una carga con un número de hilos."""
+
+    load: str
+    threads: int
+    operations: int
+    seconds: float
+
+    @property
+    def per_second(self) -> float:
+        return self.operations / self.seconds if self.seconds else 0.0
+
+
+@dataclass(frozen=True, slots=True)
+class Conditions:
+    """En qué estado estaba la máquina mientras se medía."""
+
+    frequency_avg_hz: Optional[int] = None
+    frequency_peak_hz: Optional[int] = None
+    frequency_end_hz: Optional[int] = None
+    temperature_start_c: Optional[float] = None
+    temperature_peak_c: Optional[float] = None
+    governor: Optional[str] = None
+    energy_preference: Optional[str] = None
+    background_load: Optional[float] = None
+
+    @property
+    def throttled(self) -> bool:
+        """Si la frecuencia cayó de forma apreciable durante la prueba."""
+        if not (self.frequency_peak_hz and self.frequency_end_hz):
+            return False
+        return self.frequency_end_hz < self.frequency_peak_hz * CAIDA_NOTABLE
+
+
+@dataclass(frozen=True, slots=True)
+class Result:
+    """Las medidas y el contexto que dice si valen."""
+
+    measures: tuple[Medida, ...] = ()
+    conditions: Conditions = field(default_factory=Conditions)
+    warnings: tuple[str, ...] = ()
+
+    def find(self, load: str, threads: int) -> Optional[Medida]:
+        return next((m for m in self.measures
+                     if m.load == load and m.threads == threads), None)
+
+    def scaling(self, load: str, threads: int) -> Optional[float]:
+        """Cuánto multiplica el rendimiento al usar todos los hilos."""
+        uno = self.find(load, 1)
+        muchos = self.find(load, threads)
+        if not (uno and muchos and uno.per_second):
+            return None
+        return round(muchos.per_second / uno.per_second, 1)
+
+
+def run(quick: bool = False, on_progress: Optional[Callable[[str, float], None]] = None,
+        stop: Optional[threading.Event] = None) -> Result:
+    """Ejecuta la prueba entera. Bloquea: llámese desde un hilo aparte.
+
+    `on_progress` recibe qué se está midiendo y cuánto se lleva, de 0 a 1.
+    `stop` permite cancelar entre medidas.
+    """
+    duracion = SEGUNDOS_RAPIDO if quick else SEGUNDOS
+    hilos = os.cpu_count() or 1
+    vigilante = _Vigilante()
+
+    fondo = _carga_de_fondo()
+    temperatura_inicial = _temperatura()
+
+    pasos = [(carga, n) for carga in CARGAS for n in (1, hilos)]
+    medidas: list[Medida] = []
+    vigilante.empezar()
+    try:
+        for indice, (carga, n) in enumerate(pasos):
+            if stop is not None and stop.is_set():
+                break
+            if on_progress:
+                etiqueta = f"{carga.name}, {n} {'hilo' if n == 1 else 'hilos'}"
+                on_progress(etiqueta, indice / len(pasos))
+            medidas.append(_medir(carga, n, duracion))
+    finally:
+        vigilante.parar()
+
+    if on_progress:
+        on_progress("listo", 1.0)
+
+    condiciones = Conditions(
+        frequency_avg_hz=vigilante.media(),
+        frequency_peak_hz=vigilante.pico(),
+        frequency_end_hz=vigilante.final(),
+        temperature_start_c=temperatura_inicial,
+        temperature_peak_c=vigilante.temperatura_pico(),
+        governor=_leer(f"{SYS_CPU}/cpu0/cpufreq/scaling_governor"),
+        energy_preference=_leer(f"{SYS_CPU}/cpu0/cpufreq/energy_performance_preference"),
+        background_load=fondo,
+    )
+    return Result(tuple(medidas), condiciones, _avisos(condiciones))
+
+
+# -- ejecución ---------------------------------------------------------------
+
+def _medir(carga: Carga, hilos: int, duracion: float) -> Medida:
+    """Cuenta cuántas veces cabe la carga en el tiempo dado.
+
+    Se mide por tiempo y no por trabajo fijo porque una cantidad que en un
+    Ryzen tarda un segundo, en un portátil de hace diez años tarda treinta.
+    """
+    parar = threading.Event()
+    cuenta = [0] * hilos
+    fijar = hilos == 1
+
+    def bucle(indice: int) -> None:
+        if fijar:
+            _fijar_afinidad()
+        vueltas = 0
+        trabajo = carga.work
+        while not parar.is_set():
+            trabajo()
+            vueltas += 1
+        cuenta[indice] = vueltas
+
+    obreros = [threading.Thread(target=bucle, args=(i,), daemon=True)
+               for i in range(hilos)]
+    inicio = time.perf_counter()
+    for obrero in obreros:
+        obrero.start()
+    time.sleep(duracion)
+    parar.set()
+    for obrero in obreros:
+        obrero.join(timeout=10)
+    transcurrido = time.perf_counter() - inicio
+
+    return Medida(load=carga.key, threads=hilos,
+                  operations=sum(cuenta), seconds=transcurrido)
+
+
+def _fijar_afinidad() -> None:
+    """Ata el hilo a un solo núcleo para que la medida no baile.
+
+    Sin esto el planificador lo va moviendo, y cada salto tira la caché y
+    obliga al núcleo nuevo a subir de frecuencia desde abajo. Dos ejecuciones
+    seguidas pueden salir con un diez por ciento de diferencia por eso solo.
+    """
+    try:
+        os.sched_setaffinity(0, {_nucleo_preferido()})
+    except (OSError, AttributeError):
+        pass
+
+
+def _nucleo_preferido() -> int:
+    """El núcleo que el firmware considera mejor, si lo dice.
+
+    AMD publica un ranking por núcleo: los del silicio mejor conseguido llegan
+    más alto. Medir un hilo en el peor núcleo de un Ryzen puede costar un par
+    de cientos de megahercios.
+    """
+    mejor, ranking_mejor = 0, -1
+    for indice in range(os.cpu_count() or 1):
+        crudo = _leer(f"{SYS_CPU}/cpu{indice}/cpufreq/amd_pstate_prefcore_ranking")
+        try:
+            ranking = int(crudo) if crudo else -1
+        except ValueError:
+            ranking = -1
+        if ranking > ranking_mejor:
+            mejor, ranking_mejor = indice, ranking
+    return mejor
+
+
+# -- contexto ----------------------------------------------------------------
+
+class _Vigilante:
+    """Sigue la frecuencia y la temperatura mientras se mide."""
+
+    def __init__(self) -> None:
+        self._frecuencias: list[int] = []
+        self._temperaturas: list[float] = []
+        self._parar = threading.Event()
+        self._hilo: Optional[threading.Thread] = None
+
+    def empezar(self) -> None:
+        self._hilo = threading.Thread(target=self._bucle, daemon=True)
+        self._hilo.start()
+
+    def parar(self) -> None:
+        self._parar.set()
+        if self._hilo is not None:
+            self._hilo.join(timeout=2)
+
+    def _bucle(self) -> None:
+        while not self._parar.is_set():
+            # Solo cuenta la frecuencia más alta del momento: la media de todos
+            # los núcleos, con la mitad dormidos, no dice a qué fue el trabajo.
+            picos = [_entero(f"{SYS_CPU}/cpu{i}/cpufreq/scaling_cur_freq")
+                     for i in range(os.cpu_count() or 1)]
+            validos = [p for p in picos if p]
+            if validos:
+                self._frecuencias.append(max(validos) * 1000)
+            if (grados := _temperatura()) is not None:
+                self._temperaturas.append(grados)
+            self._parar.wait(0.25)
+
+    def media(self) -> Optional[int]:
+        return int(sum(self._frecuencias) / len(self._frecuencias)) if self._frecuencias else None
+
+    def pico(self) -> Optional[int]:
+        return max(self._frecuencias) if self._frecuencias else None
+
+    def final(self) -> Optional[int]:
+        """La media del último tramo, para ver si acabó más baja que empezó."""
+        if len(self._frecuencias) < 8:
+            return self._frecuencias[-1] if self._frecuencias else None
+        cola = self._frecuencias[-len(self._frecuencias) // 4:]
+        return int(sum(cola) / len(cola))
+
+    def temperatura_pico(self) -> Optional[float]:
+        return max(self._temperaturas) if self._temperaturas else None
+
+
+def _avisos(condiciones: Conditions) -> tuple[str, ...]:
+    """Lo que hay que saber antes de comparar esta cifra con otra."""
+    avisos = []
+    if condiciones.background_load and condiciones.background_load > CARGA_ACEPTABLE:
+        avisos.append(
+            f"Había un {condiciones.background_load:.0f} % de carga de fondo al "
+            "empezar. El resultado no es comparable con el de una máquina en "
+            "reposo."
+        )
+    if condiciones.governor and condiciones.governor not in ("performance",):
+        avisos.append(
+            f"El gobernador de energía estaba en «{condiciones.governor}». "
+            "En «performance» la cifra sería más alta."
+        )
+    if condiciones.throttled:
+        pico = condiciones.frequency_peak_hz or 0
+        final = condiciones.frequency_end_hz or 0
+        avisos.append(
+            f"La frecuencia bajó de {pico / 1e9:.2f} a {final / 1e9:.2f} GHz "
+            "durante la prueba: el procesador no pudo sostener su máximo."
+        )
+    return tuple(avisos)
+
+
+def _carga_de_fondo() -> Optional[float]:
+    """Qué porcentaje de la máquina está ocupado antes de empezar."""
+    def instantanea() -> Optional[tuple[int, int]]:
+        try:
+            with open("/proc/stat", encoding="utf-8") as fichero:
+                campos = fichero.readline().split()
+        except OSError:
+            return None
+        if len(campos) < 5:
+            return None
+        numeros = [int(c) for c in campos[1:8] if c.isdigit()]
+        return sum(numeros), numeros[3]        # total, inactivo
+
+    antes = instantanea()
+    if antes is None:
+        return None
+    time.sleep(0.3)
+    despues = instantanea()
+    if despues is None or despues[0] == antes[0]:
+        return None
+    ocupado = (despues[0] - antes[0]) - (despues[1] - antes[1])
+    return round(ocupado / (despues[0] - antes[0]) * 100, 1)
+
+
+def _temperatura() -> Optional[float]:
+    """La del procesador, del primer chip que la publique."""
+    for indice in range(16):
+        nombre = _leer(f"/sys/class/hwmon/hwmon{indice}/name")
+        if nombre in ("k10temp", "coretemp", "zenpower", "cpu_thermal"):
+            milesimas = _entero(f"/sys/class/hwmon/hwmon{indice}/temp1_input")
+            if milesimas:
+                return round(milesimas / 1000, 1)
+    return None
+
+
+def _leer(ruta: str) -> Optional[str]:
+    try:
+        return pathlib.Path(ruta).read_text(encoding="utf-8").strip() or None
+    except OSError:
+        return None
+
+
+def _entero(ruta: str) -> Optional[int]:
+    crudo = _leer(ruta)
+    try:
+        return int(crudo) if crudo else None
+    except ValueError:
+        return None

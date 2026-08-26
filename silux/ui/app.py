@@ -49,6 +49,7 @@ from .pages.cpu import CpuPage
 from .pages.graphics import GraphicsPage
 from .pages.memory import MemoryPage
 from .pages.network import NetworkPage
+from .pages.performance import PerformancePage
 from .pages.storage import StoragePage
 from .pages.monitor import MonitorPage
 from .pages.settings import SettingsPage
@@ -70,6 +71,7 @@ SECTIONS = (
     ("Almacenamiento", True),
     ("Red", True),
     ("Sistema", True),
+    ("Rendimiento", True),
     ("Sensores", True),
     ("Ajustes", True),
 )
@@ -169,13 +171,14 @@ class MainWindow(QMainWindow):
         self.network_page = NetworkPage(self._palette, self.prefs)
         self.network_page.unit_changed.connect(self._on_network_unit)
         self.system_page = SystemPage(self._palette, self.prefs)
+        self.performance_page = PerformancePage(self._palette, self.prefs)
         self.settings_page = SettingsPage(self.prefs)
         self.settings_page.changed.connect(self._on_preferences)
         self.settings_page.report_requested.connect(self._on_report_requested)
         for page in (self.cpu_page, self.caches_page, self.board_page,
                      self.memory_page, self.graphics_page, self.storage_page,
-                     self.network_page, self.system_page, self.monitor_page,
-                     self.settings_page):
+                     self.network_page, self.system_page, self.performance_page,
+                     self.monitor_page, self.settings_page):
             self.stack.addWidget(page)
         layout.addWidget(self.stack, 1)
 
