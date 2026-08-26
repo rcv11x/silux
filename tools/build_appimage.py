@@ -123,6 +123,14 @@ export LD_LIBRARY_PATH="$AQUI/usr/lib:$AQUI/usr/lib/python/PySide6/Qt/lib:$LD_LI
 # otra versión y no cargar.
 export QT_PLUGIN_PATH="$AQUI/usr/lib/qt/plugins"
 export QT_QPA_PLATFORM_PLUGIN_PATH="$AQUI/usr/lib/qt/plugins/platforms"
+# Con qué se arranca. La interfaz es lo normal, pero el volcado en terminal
+# tiene que estar a mano: «--report» es lo primero que se le pide a quien dice
+# que algo no le sale, y quien usa el AppImage no tiene otra forma de sacarlo.
+case "${1:-}" in
+    --cli) shift; exec "$AQUI/usr/bin/python3" -m silux.cli "$@" ;;
+    --report|--json|--sensors|--watch|--db-info|--no-color|--with-identifiers)
+        exec "$AQUI/usr/bin/python3" -m silux.cli "$@" ;;
+esac
 exec "$AQUI/usr/bin/python3" -m silux.ui.app "$@"
 """
 

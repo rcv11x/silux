@@ -104,3 +104,39 @@ class TestPreparacion(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestPuntoDeEntrada(unittest.TestCase):
+    """Qué arranca el AppImage según con qué se le llame.
+
+    Sin esto solo levantaba la interfaz, y `--report` es lo primero que se le
+    pide a quien dice que algo no le sale: quien usa el AppImage no tenía
+    ninguna forma de sacarlo.
+    """
+
+    def _apprun(self) -> str:
+        import tools.build_appimage as build
+        return build.APPRUN
+
+    def test_por_omision_abre_la_interfaz(self):
+        apprun = self._apprun()
+        self.assertIn("silux.ui.app", apprun)
+        # la última línea, la que se ejecuta si no casó ningún caso
+        self.assertTrue(apprun.strip().splitlines()[-1].endswith('silux.ui.app "$@"'))
+
+    def test_las_banderas_del_terminal_van_al_cli(self):
+        apprun = self._apprun()
+        for bandera in ("--report", "--json", "--sensors", "--cli"):
+            self.assertIn(bandera, apprun, f"{bandera} no llega al CLI")
+        self.assertIn("silux.cli", apprun)
+
+    def test_no_se_deja_ninguna_bandera_del_cli(self):
+        """Si el CLI gana una opción nueva, aquí hay que añadirla."""
+        from silux import cli
+        apprun = self._apprun()
+        parser = cli.build_parser()
+        propias = {a for accion in parser._actions for a in accion.option_strings
+                   if a.startswith("--") and a not in ("--help", "--version")}
+        # En el `case` van separadas por barras, no por espacios.
+        faltan = {b for b in propias if b not in apprun}
+        self.assertFalse(faltan, f"el AppRun no reparte: {sorted(faltan)}")
