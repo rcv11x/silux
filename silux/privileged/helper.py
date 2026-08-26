@@ -11,7 +11,12 @@ corre con privilegios hay que poder auditarlo. De ahí tres decisiones:
   binarios es de donde salen la mayoría de los fallos de memoria, y hacerlo
   como root sería regalar el problema.
 * **No acepta rutas ni órdenes.** Las dos rutas que abre están escritas aquí
-  como constantes, y los registros MSR que admite son una lista cerrada.
+  como constantes, los registros MSR que admite son una lista cerrada y los
+  nombres de disco tienen que encajar en un patrón que solo deja pasar
+  `sda`, `nvme0n1` y parecidos.
+* **De los discos solo pide diagnóstico.** Los dos comandos SMART que manda
+  son de lectura y están fijados aquí; no hay forma de pedirle uno de
+  escritura ni de borrado, que van por el mismo camino.
 
 Habla JSON por líneas: una petición por línea en la entrada, una respuesta
 por línea en la salida. Termina cuando la entrada se cierra.
@@ -20,8 +25,11 @@ por línea en la salida. Termina cuando la entrada se cierra.
 from __future__ import annotations
 
 import base64
+import ctypes
+import fcntl
 import json
 import os
+import re
 import struct
 import sys
 
@@ -32,6 +40,23 @@ DMI_ENTRY_POINT = "/sys/firmware/dmi/tables/smbios_entry_point"
 
 MAX_TABLE_BYTES = 2 * 1024 * 1024
 MAX_REQUEST_BYTES = 64 * 1024
+
+# Nombres de disco admitidos. Estricto a propósito: sin esto, un nombre como
+# «../../dev/mem» le haría abrir cualquier cosa.
+DISK_NAME = re.compile(r"^(nvme\d+n\d+|nvme\d+|sd[a-z]{1,2}|hd[a-z])$")
+SMART_BYTES = 512
+
+# NVMe: ioctl de administración y el registro de salud.
+NVME_ADMIN_CMD = 0xC0484E41           # _IOWR('N', 0x41, struct nvme_passthru_cmd)
+NVME_GET_LOG_PAGE = 0x02
+NVME_LOG_SMART = 0x02
+
+# SATA: SMART READ DATA a través de ATA PASS-THROUGH.
+SG_IO = 0x2285
+SG_DXFER_FROM_DEV = -3
+ATA_16 = 0x85
+ATA_SMART = 0xB0
+ATA_SMART_READ_DATA = 0xD0
 
 # Lista cerrada de registros MSR. Todos son de solo lectura y documentados en
 # los manuales de Intel y AMD; ninguno tiene efectos secundarios al leerlo.
@@ -110,6 +135,130 @@ def read_msr(cpu: object, registers: object) -> dict:
     return {"ok": True, "cpu": cpu, "values": values}
 
 
+def read_smart(name) -> dict:
+    """Los 512 bytes del registro de salud de un disco, sin interpretarlos.
+
+    Los dos comandos que se mandan (`Get Log Page` en NVMe y `SMART READ DATA`
+    en SATA) son de diagnóstico y de solo lectura. Interpretar lo que devuelven
+    es trabajo del proceso sin privilegios: aquí solo se leen bytes.
+    """
+    if not isinstance(name, str) or not DISK_NAME.match(name):
+        return _fail(f"nombre de disco no admitido: {name!r}", "bad_request")
+
+    ruta = f"/dev/{name}"
+    try:
+        descriptor = os.open(ruta, os.O_RDONLY | os.O_NONBLOCK)
+    except OSError as error:
+        return _fail(f"no se pudo abrir {ruta}: {error.strerror}", "io_error")
+
+    try:
+        if name.startswith("nvme"):
+            datos, familia = _smart_nvme(descriptor), "nvme"
+        else:
+            datos, familia = _smart_ata(descriptor), "ata"
+    except OSError as error:
+        return _fail(f"el disco no respondió al diagnóstico: {error.strerror}",
+                     "io_error")
+    finally:
+        os.close(descriptor)
+
+    if datos is None:
+        return _fail("el disco no devolvió datos de diagnóstico", "io_error")
+    return {"ok": True, "device": name, "kind": familia,
+            "data": base64.b64encode(datos).decode("ascii")}
+
+
+def _smart_nvme(descriptor: int):
+    """`Get Log Page` del registro 0x02, que es el de salud."""
+    buffer = ctypes.create_string_buffer(SMART_BYTES)
+    # struct nvme_passthru_cmd, 72 bytes. El número de dobles palabras va
+    # menos uno, como manda la especificación.
+    numd = SMART_BYTES // 4 - 1
+    peticion = bytearray(struct.pack(
+        "<BBHIIIQQIIIIIIIIII",
+        NVME_GET_LOG_PAGE, 0, 0,          # opcode, flags, reservado
+        0xFFFFFFFF,                       # nsid: el controlador entero
+        0, 0,                             # cdw2, cdw3
+        0,                                # metadata
+        ctypes.addressof(buffer),         # addr
+        0, SMART_BYTES,                   # metadata_len, data_len
+        NVME_LOG_SMART | (numd << 16),    # cdw10
+        0, 0, 0, 0, 0,                    # cdw11 a cdw15
+        5000, 0,                          # timeout_ms, result
+    ))
+    fcntl.ioctl(descriptor, NVME_ADMIN_CMD, peticion)
+    return buffer.raw
+
+
+class _SgIoHdr(ctypes.Structure):
+    """`struct sg_io_hdr`, la petición genérica del subsistema SCSI.
+
+    Se declara con ctypes y no con `struct.pack` porque lleva punteros mezclados
+    con enteros cortos, y el compilador inserta relleno para alinearlos. Con un
+    formato empaquetado a mano los campos caen desplazados y el kernel lee
+    basura donde espera un puntero.
+    """
+
+    _fields_ = [
+        ("interface_id", ctypes.c_int),
+        ("dxfer_direction", ctypes.c_int),
+        ("cmd_len", ctypes.c_ubyte),
+        ("mx_sb_len", ctypes.c_ubyte),
+        ("iovec_count", ctypes.c_ushort),
+        ("dxfer_len", ctypes.c_uint),
+        ("dxferp", ctypes.c_void_p),
+        ("cmdp", ctypes.c_void_p),
+        ("sbp", ctypes.c_void_p),
+        ("timeout", ctypes.c_uint),
+        ("flags", ctypes.c_uint),
+        ("pack_id", ctypes.c_int),
+        ("usr_ptr", ctypes.c_void_p),
+        ("status", ctypes.c_ubyte),
+        ("masked_status", ctypes.c_ubyte),
+        ("msg_status", ctypes.c_ubyte),
+        ("sb_len_wr", ctypes.c_ubyte),
+        ("host_status", ctypes.c_ushort),
+        ("driver_status", ctypes.c_ushort),
+        ("resid", ctypes.c_int),
+        ("duration", ctypes.c_uint),
+        ("info", ctypes.c_uint),
+    ]
+
+
+def _smart_ata(descriptor: int):
+    """`SMART READ DATA` por ATA PASS-THROUGH, que es como se pide en SATA."""
+    orden = bytes((
+        ATA_16,
+        0x08,                     # protocolo 4: entrada de datos PIO
+        0x0E,                     # dirección desde el disco, cuenta en sectores
+        0x00, ATA_SMART_READ_DATA,
+        0x00, 0x01,               # un sector
+        0x00, 0x00,
+        0x00, 0x4F,               # la firma que SMART exige en LBA medio
+        0x00, 0xC2,               # y en LBA alto
+        0x00, ATA_SMART, 0x00,
+    ))
+    buffer = ctypes.create_string_buffer(SMART_BYTES)
+    sentido = ctypes.create_string_buffer(32)
+    cmd = ctypes.create_string_buffer(orden, len(orden))
+
+    cabecera = _SgIoHdr(
+        interface_id=ord("S"),
+        dxfer_direction=SG_DXFER_FROM_DEV,
+        cmd_len=len(orden),
+        mx_sb_len=len(sentido),
+        dxfer_len=SMART_BYTES,
+        dxferp=ctypes.cast(buffer, ctypes.c_void_p),
+        cmdp=ctypes.cast(cmd, ctypes.c_void_p),
+        sbp=ctypes.cast(sentido, ctypes.c_void_p),
+        timeout=5000,
+    )
+    fcntl.ioctl(descriptor, SG_IO, cabecera)
+    if cabecera.status not in (0, 2):      # 2 es «con información de sentido»
+        return None
+    return buffer.raw
+
+
 def handle(request: dict) -> dict:
     action = request.get("action")
     if action == "ping":
@@ -118,6 +267,8 @@ def handle(request: dict) -> dict:
         return read_smbios()
     if action == "msr":
         return read_msr(request.get("cpu"), request.get("registers"))
+    if action == "smart":
+        return read_smart(request.get("device"))
     return _fail(f"acción desconocida: {action!r}", "bad_request")
 
 

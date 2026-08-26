@@ -17,13 +17,16 @@ partir del tipo de conexión acertaría casi siempre y mentiría el resto.
 
 from __future__ import annotations
 
+import dataclasses
 import os
 import pathlib
 import re
 import time
 from typing import Iterator, Optional
 
+from .. import smart as smart_module
 from ..model import Disk, DiskIo, Partition, PcieLink
+from ..privileged.client import HelperError, PrivilegedClient
 from .base import Draft, Provider, read_int, read_text
 
 SYS_BLOCK = pathlib.Path("/sys/block")
@@ -52,9 +55,14 @@ class Disks(Provider):
     name = "storage"
     provides = "disks"
 
-    def __init__(self) -> None:
+    def __init__(self, client: Optional[PrivilegedClient] = None) -> None:
         # Contadores de la vuelta anterior, para restar y sacar el ritmo.
         self._previo: dict[str, tuple[float, int, int]] = {}
+        self.client = client or PrivilegedClient()
+        # El diagnóstico no cambia de un segundo a otro: son horas encendido y
+        # terabytes escritos. Se lee una vez y se guarda.
+        self._salud: dict[str, object] = {}
+        self._sin_salud: set[str] = set()
 
     def available(self) -> bool:
         return SYS_BLOCK.is_dir()
@@ -68,6 +76,45 @@ class Disks(Provider):
         draft.capabilities.add("storage")
         montajes = _montajes()
         draft.disks = [self._leer(nombre, montajes) for nombre in nombres]
+        self._diagnostico(draft)
+
+    def _diagnostico(self, draft: Draft) -> None:
+        """Pide el SMART de cada disco, si hay permisos para ello.
+
+        Solo cuando el ayudante ya está conectado: conectarlo abre un diálogo
+        de autenticación, y hacerlo por su cuenta para enseñar unas horas de
+        encendido sería pedirle la contraseña a alguien que no la pidió. Quien
+        eleve permisos para ver la memoria se lleva esto de propina.
+        """
+        if not self.client.connected():
+            return
+
+        for indice, disco in enumerate(draft.disks):
+            nombre = disco.name
+            if nombre in self._sin_salud:
+                continue
+            if nombre not in self._salud:
+                try:
+                    datos, familia = self.client.read_smart(nombre)
+                except (HelperError, OSError):
+                    self._sin_salud.add(nombre)
+                    continue
+                salud = smart_module.parse(datos, familia)
+                if salud is None:
+                    self._sin_salud.add(nombre)
+                    continue
+                self._salud[nombre] = salud
+                # De paso, la temperatura de los discos que no la publican por
+                # hwmon: los SATA sin `drivetemp` cargado sí la traen aquí.
+                if disco.temp_c is None:
+                    grados = (smart_module.nvme_temperature(datos)
+                              if familia == "nvme"
+                              else smart_module.ata_temperature(datos))
+                    if grados is not None:
+                        draft.disks[indice] = dataclasses.replace(disco, temp_c=grados)
+                        disco = draft.disks[indice]
+            draft.disks[indice] = dataclasses.replace(
+                disco, health=self._salud[nombre])
 
     # -- interno ------------------------------------------------------------
 
