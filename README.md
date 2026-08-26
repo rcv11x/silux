@@ -1,8 +1,10 @@
 # Silux
 
-Perfilador de hardware para Linux con interfaz Qt. Alternativa a
-[CPU-X](https://github.com/TheTumultuousUnicornOfDarkness/CPU-X), escrita en
-Python puro.
+**Perfilador de hardware para Linux.** Lo que en Windows hacen CPU-Z, GPU-Z y
+HWMonitor, en un solo programa nativo: qué equipo tienes y qué está haciendo
+ahora mismo.
+
+Escrito en Python puro, sin más dependencia que Qt para la ventana.
 
 Estado: **las nueve secciones terminadas** — CPU, Cachés, Placa base, Memoria,
 Gráficos, Red, Sistema, Sensores y Ajustes.
@@ -136,7 +138,7 @@ crean ni un widget.
 
 CPU-X necesita C++ porque se apoya en librerías de C (libcpuid, libpci,
 libprocps) y porque lleva embebido un benchmark de ancho de banda de memoria
-escrito en ensamblador. Pero el trabajo de fondo —leer ficheros de sysfs y
+escrito en ensamblador. Pero el trabajo de fondo —leer archivos de sysfs y
 emparejar identificadores contra una tabla— no necesita nada de eso.
 
 El único punto que parecía exigir código nativo es la instrucción `CPUID`, y
@@ -267,7 +269,7 @@ segunda porque es la única con la que los segmentos cuadran al 0,000 %.
 
 ## La pestaña de placa base
 
-Veinte campos, todos de ficheros que el kernel expone sin permisos:
+Veinte campos, todos de archivos que el kernel expone sin permisos:
 
 ```
 MSI H510M PRO-E (MS-7D23)
@@ -460,7 +462,7 @@ de sysfs sintéticos y el generador contra fragmentos de C.
 
 ### AppImage
 
-Un solo fichero, sin instalar nada:
+Un solo archivo, sin instalar nada:
 
 ```bash
 chmod +x silux-x86_64.AppImage
@@ -472,7 +474,7 @@ que queda después de podar: de PySide6 solo van QtCore, QtGui y QtWidgets —lo
 otros treinta módulos sobran— y se dejan fuera la integración con el tema del
 escritorio (arrastra GTK y los iconos de Breeze, 40 MB, y el programa fija el
 estilo Fusion de todas formas) y los formatos de imagen que tiran de los
-códecs de vídeo del sistema. Sin esa poda serían 561 MB.
+códecs de video del sistema. Sin esa poda serían 561 MB.
 
 Se construye con:
 
@@ -510,7 +512,7 @@ interfaz es lo único que lo necesita.
 python3 -m silux.cli --report informe.md
 ```
 
-O el botón **Guardar informe del equipo…** en Ajustes. Genera un fichero con el
+O el botón **Guardar informe del equipo…** en Ajustes. Genera un archivo con el
 hardware detectado y, sobre todo, con lo que **no** se ha podido leer y por
 qué: qué fuentes respondieron, qué módulos del kernel faltan y qué datos no
 están disponibles. Es lo que hay que adjuntar al abrir un issue.
@@ -522,6 +524,26 @@ de serie**, porque está pensado para pegarlo en un sitio público. Con
 Lo que más falta por probar, porque aquí no hay hardware para ello: una AMD con
 dos CCD (7950X3D y parecidos), cualquier NVIDIA con el driver propietario, un
 Intel híbrido con núcleos P y E, y una APU con gráficos integrados.
+
+## El idioma de la interfaz
+
+**Español neutro**, no de España. La diferencia son cuatro palabras y se
+resuelven así:
+
+| En vez de | Se escribe |
+| --- | --- |
+| vídeo | video |
+| fichero | archivo |
+| aparato | dispositivo |
+| ordenador | equipo |
+
+El motivo es de alcance: nueve de cada diez hispanohablantes están al otro lado
+del Atlántico, y «BIOS de vídeo» o «ficheros abiertos» les suenan a traducción
+ajena. Neutro no significa insípido —el resto del texto mantiene su voz— sino
+no cerrarle la puerta a nadie por una tilde.
+
+Los comentarios del código van en el español del autor y no siguen esta regla:
+no los ve el usuario, no se traducen y no hay razón para uniformarlos.
 
 ## Licencia
 

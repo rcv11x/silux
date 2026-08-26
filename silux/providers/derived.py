@@ -107,7 +107,7 @@ class DerivedSensors(Provider):
                 ("busy", "Uso del núcleo", SensorKind.USAGE, gpu.get("busy_percent"), 0),
                 ("mem_busy", "Uso de la memoria", SensorKind.USAGE,
                  gpu.get("memory_busy_percent"), 1),
-                ("video_busy", "Uso del motor de vídeo", SensorKind.USAGE,
+                ("video_busy", "Uso del motor de video", SensorKind.USAGE,
                  gpu.get("video_busy_percent"), 2),
                 ("vr_gfx", "Regulador gráfico", SensorKind.TEMPERATURE,
                  gpu.get("vr_gfx_c"), 10),
@@ -127,9 +127,9 @@ class DerivedSensors(Provider):
                 ]
             if memoria is not None:
                 campos += [
-                    ("vram_pct", "Memoria de vídeo", SensorKind.USAGE,
+                    ("vram_pct", "Memoria de video", SensorKind.USAGE,
                      memoria.used_percent, 4),
-                    ("vram_mb", "Memoria de vídeo", SensorKind.MEMORY,
+                    ("vram_mb", "Memoria de video", SensorKind.MEMORY,
                      _megas(memoria.used_bytes), 40),
                     ("gtt_mb", "Memoria prestada al sistema", SensorKind.MEMORY,
                      _megas(memoria.gtt_used_bytes), 41),

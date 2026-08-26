@@ -222,7 +222,7 @@ class SettingsPage(QScrollArea):
 
         informe = QPushButton("Guardar informe del equipo…")
         informe.setToolTip(
-            "Genera un fichero de texto con todo el hardware detectado y, sobre "
+            "Genera un archivo de texto con todo el hardware detectado y, sobre "
             "todo, con lo que no se ha podido leer y por qué. Es lo que hay que "
             "adjuntar al reportar un fallo.\n\n"
             "No incluye el nombre del equipo, las direcciones IP y MAC ni los "

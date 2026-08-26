@@ -239,7 +239,7 @@ class MonitorPage(QScrollArea):
             self._structure = structure
             self.count.setText(
                 f"· {len(snapshot.sensors)} en {len(tree)} "
-                + ("aparato" if len(tree) == 1 else "aparatos")
+                + ("dispositivo" if len(tree) == 1 else "dispositivos")
             )
 
         for sensor in snapshot.sensors:

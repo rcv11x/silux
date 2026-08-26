@@ -144,7 +144,7 @@ def dump(snapshot: Snapshot, style: Style) -> str:
         lines.append(_row(style, "Identificador", gpu.pci_id or render.DASH))
         lines.append(_row(style, "Subsistema", gpu.subsystem_id or render.DASH))
         lines.append(_row(style, "Ranura", gpu.pci_slot or render.DASH))
-        lines.append(_row(style, "BIOS de vídeo", gpu.vbios or render.DASH))
+        lines.append(_row(style, "BIOS de video", gpu.vbios or render.DASH))
         lines.append(_row(style, "Enlace", render.pcie_link(gpu.link)))
         if nota := render.pcie_note(gpu.link):
             lines.append(_row(style, "", style.dim(nota)))
@@ -252,9 +252,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--watch", nargs="?", type=float, const=1.0, metavar="SEGUNDOS",
                         help="refresca de forma continua (por defecto cada segundo)")
     parser.add_argument("--no-color", action="store_true", help="sin colores ANSI")
-    parser.add_argument("--report", nargs="?", const="-", metavar="FICHERO",
+    parser.add_argument("--report", nargs="?", const="-", metavar="ARCHIVO",
                         help="informe en Markdown para pegar en un issue; "
-                             "sin fichero, lo escribe por pantalla")
+                             "sin archivo, lo escribe por pantalla")
     parser.add_argument("--with-identifiers", action="store_true",
                         help="incluye en el informe lo que identifica al equipo "
                              "(nombre, IP, MAC, números de serie)")
@@ -307,7 +307,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             if not args.with_identifiers:
                 print("Se han omitido el nombre del equipo, las direcciones IP y "
                       "MAC y los números de serie.\n"
-                      "Para incluirlos:  --report FICHERO --with-identifiers")
+                      "Para incluirlos:  --report ARCHIVO --with-identifiers")
         return 0
 
     if args.json:
