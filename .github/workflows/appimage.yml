@@ -1,0 +1,60 @@
+# Construye el AppImage en una distribución antigua, que es lo que lo hace
+# funcionar en máquinas que no son la del que compila.
+#
+# Un AppImage se lleva dentro los binarios del sistema donde se construyó, con
+# sus exigencias: la versión de glibc y el nivel de instrucciones del
+# procesador. Construido en una distribución moderna deja fuera a quien tenga
+# un sistema o un procesador más viejos, y el error que ven no dice de qué se
+# trata. Construido en Ubuntu 22.04 funciona en las dos.
+
+name: AppImage
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    # A propósito la más antigua con soporte: lo compilado contra una glibc
+    # vieja funciona en las nuevas, pero no al revés.
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar lo que Qt necesita para arrancar
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libgl1 libegl1 libxkbcommon-x11-0 libdbus-1-3 \
+            libfontconfig1 libfreetype6 file desktop-file-utils fuse
+
+      - name: Instalar PySide6
+        # El de PyPI viene compilado para manylinux: glibc antigua y x86-64
+        # básico, sin extensiones que dejen fuera a los procesadores de hace
+        # diez años.
+        run: pip install 'PySide6>=6.6'
+
+      - name: Pasar los tests
+        run: QT_QPA_PLATFORM=offscreen python -m unittest discover -s tests -t .
+
+      - name: Construir el AppImage
+        run: python tools/build_appimage.py
+
+      - name: Comprobar que arranca
+        run: |
+          chmod +x dist/silux-x86_64.AppImage
+          APPIMAGE_EXTRACT_AND_RUN=1 QT_QPA_PLATFORM=offscreen \
+            ./dist/silux-x86_64.AppImage --help
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: silux-x86_64.AppImage
+          path: dist/silux-x86_64.AppImage
+
+      - name: Publicarlo en la release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/silux-x86_64.AppImage
