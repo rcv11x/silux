@@ -234,9 +234,7 @@ class GpuSection(QWidget):
         s("Chips de memoria", render.temperature(gpu.memory_temp_c, fahrenheit))
         s("Consumo", render.watts(gpu.power_w))
         s("Límite de consumo", render.watts(gpu.power_cap_w))
-        s("Ventilador", f"{render.rpm(gpu.fan_rpm)}"
-          + (f"   ({render.percent(gpu.fan_percent)})"
-             if gpu.fan_percent is not None else ""))
+        s("Ventilador", render.fan(gpu.fan_rpm, gpu.fan_percent))
         s("Regulador gráfico", render.temperature(gpu.vr_gfx_c, fahrenheit),
           tooltip="Los reguladores que alimentan al chip. No están en hwmon: "
                   "los cuenta el microcontrolador de la propia tarjeta.")

@@ -433,6 +433,30 @@ class MainWindow(QMainWindow):
         self._status.set_full_text(f"Fallo en el muestreo: {message}")
 
 
+def _callar_el_portal() -> None:
+    """Silencia un aviso de Qt que no le dice nada a nadie.
+
+    Al arrancar, Qt se presenta al portal de escritorio con el identificador
+    de la aplicación, y el portal lo busca entre los .desktop instalados. Un
+    AppImage que no se ha integrado en el menú no tiene ninguno, así que suelta
+    «Could not register app ID: App info not found for 'silux'» y sigue
+    funcionando igual: el registro solo sirve para que el escritorio sepa de
+    quién es la ventana.
+
+    Se filtra ese mensaje y nada más; el resto de lo que diga Qt pasa tal cual,
+    porque un aviso que sí importe no se puede perder por callar este.
+    """
+    from PySide6.QtCore import QtMsgType, qInstallMessageHandler
+
+    def filtro(tipo, contexto, mensaje):
+        if "Could not register app ID" in mensaje:
+            return
+        destino = sys.stderr if tipo != QtMsgType.QtInfoMsg else sys.stdout
+        print(mensaje, file=destino)
+
+    qInstallMessageHandler(filtro)
+
+
 def build_app(argv: Optional[list[str]] = None) -> tuple[QApplication, MainWindow, argparse.Namespace]:
     parser = argparse.ArgumentParser(prog="silux-gui", description="Perfilador de hardware.")
     parser.add_argument("--interval", type=float, metavar="SEGUNDOS",
@@ -471,6 +495,7 @@ def build_app(argv: Optional[list[str]] = None) -> tuple[QApplication, MainWindo
             prefs = replace(prefs, window_width=int(width), window_height=int(height))
     prefs = prefs.normalized()
 
+    _callar_el_portal()
     app = QApplication(sys.argv[:1])
     app.setApplicationName("silux")
     app.setApplicationDisplayName("Silux")
