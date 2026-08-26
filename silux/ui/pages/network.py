@@ -2,8 +2,8 @@
 
 Es la única sección cuyo dato principal no es un estado sino un ritmo, y por
 eso las dos cifras grandes de arriba llevan su gráfica: en una red lo que
-importa no es cuánto va ahora mismo sino la forma que dibuja —si sube en picos,
-si se mantiene plana, si se ha caído del todo—. El resto de la página es la
+importa no es cuánto va ahora mismo sino la forma que dibuja (si sube en picos,
+si se mantiene plana, si se ha caído del todo). El resto de la página es la
 ficha de cada interfaz, que sí es información estable.
 
 Las interfaces virtuales de Docker, libvirt o una VPN se enseñan igual que las

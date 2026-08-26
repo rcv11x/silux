@@ -562,7 +562,7 @@ class GpuLink:
     def downgraded(self) -> bool:
         """La tarjeta va por debajo de lo que puede.
 
-        En reposo es lo normal —los drivers bajan el enlace para gastar menos—
+        En reposo es lo normal (los drivers bajan el enlace para gastar menos)
         así que esto se enseña como un apunte, no como un aviso.
         """
         if self.current_speed_gts and self.max_speed_gts:

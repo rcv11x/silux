@@ -1,7 +1,7 @@
 """Piezas visuales reutilizables.
 
-Todas son widgets de Qt normales; las que dibujan datos —la gráfica y la
-matriz de núcleos— usan QPainter directamente, que para esto es más rápido y
+Todas son widgets de Qt normales; las que dibujan datos (la gráfica y la
+matriz de núcleos) usan QPainter directamente, que para esto es más rápido y
 más controlable que componer decenas de widgets pequeños.
 
 Dos piezas existen para que la ventana aguante tamaños pequeños:
@@ -277,8 +277,8 @@ class Sparkline(QWidget):
     """Serie temporal compacta: relleno de área, línea y punto en el extremo.
 
     Con el ratón encima se puede leer cualquier punto de la curva, no solo el
-    último. Una gráfica de este tamaño enseña la forma —si hubo un pico, si se
-    mantiene plana— pero el pico sin su cifra deja a medias: se ve que pasó
+    último. Una gráfica de este tamaño enseña la forma (si hubo un pico, si se
+    mantiene plana) pero el pico sin su cifra deja a medias: se ve que pasó
     algo y no cuánto. Con el cursor aparece la guía, el valor y hace cuánto fue.
     """
 
@@ -650,7 +650,7 @@ class CoreMatrix(QWidget):
 
 class ChipRow(QWidget):
     """Lista de etiquetas que salta de línea sola. Qt no trae una disposición
-    así, y para el juego de instrucciones —que cambia de largo según la CPU—
+    así, y para el juego de instrucciones (que cambia de largo según la CPU)
     es justo lo que hace falta."""
 
     def __init__(self, parent: Optional[QWidget] = None):
@@ -669,8 +669,8 @@ class ChipRow(QWidget):
         chips = [(str(text), highlight_first and i == 0)
                  for i, text in enumerate(labels)]
 
-        # Si solo ha cambiado el texto —el caso normal: una leyenda que sigue a
-        # unos valores vivos— se reescriben las insignias que ya existen. Crear
+        # Si solo ha cambiado el texto (el caso normal: una leyenda que sigue a
+        # unos valores vivos) se reescriben las insignias que ya existen. Crear
         # widgets nuevos en cada muestreo iba dejando miles vivos: era la fuga
         # que hacía crecer la memoria medio megabyte por minuto.
         if len(chips) == len(self._widgets) and \
@@ -857,8 +857,8 @@ class Table(QScrollArea):
         if self.widget() is None:
             return
 
-        # Se calcula, no se pregunta. `sizeHint` —tanto del layout como del
-        # widget— se refresca en la siguiente pasada de Qt, así que justo
+        # Se calcula, no se pregunta. `sizeHint` (tanto del layout como del
+        # widget) se refresca en la siguiente pasada de Qt, así que justo
         # después de añadir filas devuelve el alto anterior y la tabla se
         # quedaba recortada a una sola línea.
         line = max(
@@ -1110,8 +1110,8 @@ class SensorTree(QTreeWidget):
         self.setColumnCount(len(self.COLUMNS))
         self.setHeaderLabels(list(self.COLUMNS))
         # La cabecera se alinea como los datos que hay debajo: el nombre a la
-        # izquierda y las cifras a la derecha. Centrada —que es lo que hace Qt
-        # por omisión— no cuadra con ninguna de las dos columnas.
+        # izquierda y las cifras a la derecha. Centrada (que es lo que hace Qt
+        # por omisión) no cuadra con ninguna de las dos columnas.
         header_item = self.headerItem()
         header_item.setTextAlignment(0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         for column in range(1, len(self.COLUMNS)):
@@ -1124,7 +1124,7 @@ class SensorTree(QTreeWidget):
         self.setSelectionBehavior(QTreeWidget.SelectionBehavior.SelectRows)
         self.setEditTriggers(QTreeWidget.EditTrigger.NoEditTriggers)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        # En una ventana estrecha —o en densidad amplia— las columnas suman
+        # En una ventana estrecha (o en densidad amplia) las columnas suman
         # más que el ancho disponible. Antes se recortaba la última en
         # silencio; ahora el árbol se desplaza dentro de su tarjeta, que es lo
         # que se espera de una tabla ancha.
@@ -1188,8 +1188,8 @@ class SensorTree(QTreeWidget):
     def _apply_widths(self, widths) -> None:
         """Aplica anchos con un suelo en la columna de nombres.
 
-        Sin él, unos anchos guardados con otra densidad —o un arrastre
-        demasiado entusiasta— dejan la columna tan estrecha que el sangrado y
+        Sin él, unos anchos guardados con otra densidad (o un arrastre
+        demasiado entusiasta) dejan la columna tan estrecha que el sangrado y
         el icono se la comen entera y las etiquetas desaparecen.
         """
         self._applying_widths = True
@@ -1343,7 +1343,7 @@ class SensorTree(QTreeWidget):
     def _fit_height(self) -> None:
         """El árbol crece con su contenido en vez de tener su propio scroll.
 
-        Dos zonas de desplazamiento anidadas —la página y el árbol— hacen que
+        Dos zonas de desplazamiento anidadas (la página y el árbol) hacen que
         la rueda del ratón haga cosas distintas según dónde esté el puntero,
         que es de las cosas que más molestan de una interfaz.
         """

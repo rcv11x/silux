@@ -43,6 +43,6 @@ class TurboState(Provider):
             entry["clocks"] = dataclasses.replace(clocks, turbo_enabled=enabled)
 
         # No se deja nota. El estado del turbo se enseña donde corresponde
-        # —junto a las frecuencias, en la tarjeta de Relojes— y como cambia
+        # (junto a las frecuencias, en la tarjeta de Relojes) y como cambia
         # solo con el perfil de energía, una tarjeta de aviso al pie aparecía
         # y desaparecía dando saltos por algo que ya estaba dicho arriba.

@@ -1,4 +1,4 @@
-"""silux — perfilador de hardware para Linux.
+"""silux: perfilador de hardware para Linux.
 
 Copyright (C) 2026 rcv11x
 

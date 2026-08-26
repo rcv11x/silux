@@ -1,8 +1,8 @@
 """Interfaz de línea de órdenes.
 
 Existe por tres razones, y las tres importan: sirve para depurar sin abrir la
-ventana, produce JSON que otros programas pueden consumir —cosa que el
-`--dump` de CPU-X no puede porque ya es texto— y es la prueba de que la capa
+ventana, produce JSON que otros programas pueden consumir (cosa que el
+`--dump` de CPU-X no puede porque ya es texto) y es la prueba de que la capa
 de datos no depende de Qt para nada.
 """
 
@@ -137,7 +137,7 @@ def dump(snapshot: Snapshot, style: Style) -> str:
     for gpu in snapshot.gpus:
         lines.append(style.bold(style.accent(f"├─ {gpu.display_name}")))
         lines.append(_row(style, "Fabricante", gpu.vendor or render.DASH))
-        lines.append(_row(style, "Tarjeta de", gpu.subsystem_name or render.DASH))
+        lines.append(_row(style, "Ensamblada por", gpu.subsystem_name or render.DASH))
         lines.append(_row(style, "Nombre en clave", gpu.codename or render.DASH))
         lines.append(_row(style, "Driver", f"{gpu.driver or render.DASH}"
                           + (f" · {gpu.driver_version}" if gpu.driver_version else "")))
@@ -149,7 +149,7 @@ def dump(snapshot: Snapshot, style: Style) -> str:
         if nota := render.pcie_note(gpu.link):
             lines.append(_row(style, "", style.dim(nota)))
 
-        lines.append(_row(style, "Memoria", render.gpu_memory_summary(gpu.memory)))
+        lines.append(_row(style, "VRAM", render.gpu_memory_summary(gpu.memory)))
         detalle = " · ".join(p for p in (
             render.vram_kind(gpu.memory) if gpu.memory.kind else None,
             render.bandwidth(gpu.memory.bandwidth_bytes)
@@ -159,7 +159,7 @@ def dump(snapshot: Snapshot, style: Style) -> str:
             lines.append(_row(style, "", style.dim(detalle)))
         lines.append(_row(style, "Núcleo", f"{render.hz(gpu.clocks.core_hz)}"
                           f"  de {render.hz(gpu.clocks.core_max_hz)}"))
-        lines.append(_row(style, "Memoria (reloj)", f"{render.hz(gpu.clocks.memory_hz)}"
+        lines.append(_row(style, "Reloj de memoria", f"{render.hz(gpu.clocks.memory_hz)}"
                           f"  de {render.hz(gpu.clocks.memory_max_hz)}"))
         lines.append(_row(style, "Uso", render.percent(gpu.busy_percent)))
         lines.append(_row(style, "Temperatura", render.temperature(gpu.temp_c)))
@@ -211,7 +211,7 @@ def dump(snapshot: Snapshot, style: Style) -> str:
     if snapshot.driver_hints:
         lines.append(style.bold(style.accent("├─ Drivers de sensores que faltan")))
         for hint in snapshot.driver_hints:
-            lines.append(f"  {style.warn('•')} {style.bold(hint.module)} — {hint.provides}")
+            lines.append(f"  {style.warn('•')} {style.bold(hint.module)}: {hint.provides}")
             lines.append(f"    {hint.command}")
             if hint.caution:
                 lines.append(f"    {style.dim(hint.caution)}")

@@ -256,10 +256,10 @@ class MemoryPage(QScrollArea):
             if leidos:
                 self.elevation_text.setText(
                     f"Los {leidos} módulos de arriba salen de su propio chip SPD, "
-                    "que se lee sin permisos. Lo que falta —la capacidad de cada "
-                    "uno, en qué zócalo va, cuántos quedan libres y a qué "
-                    "velocidad los ha puesto la BIOS— está en la tabla SMBIOS, "
-                    "que el kernel reserva al administrador."
+                    "que se lee sin permisos. La capacidad de cada uno, en qué "
+                    "zócalo va, cuántos quedan libres y a qué velocidad los ha "
+                    "puesto la BIOS están en la tabla SMBIOS, que el kernel "
+                    "reserva al administrador."
                 )
             else:
                 self.elevation_text.setText(

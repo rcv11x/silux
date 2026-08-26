@@ -252,8 +252,9 @@ class SettingsPage(QScrollArea):
         card.body.addWidget(titulo)
 
         lema = QLabel(
-            "Perfilador de hardware para Linux: identificación del equipo y "
-            "monitorización de sensores en un solo programa nativo."
+            "Perfilador de hardware para Linux. Lo que en Windows hacen "
+            "CPU-Z, GPU-Z y HWMonitor, en un solo programa nativo: qué equipo "
+            "tienes y qué está haciendo ahora mismo."
         )
         lema.setObjectName("Subhead")
         lema.setWordWrap(True)
@@ -267,7 +268,7 @@ class SettingsPage(QScrollArea):
         return card
 
     def _bloque(self, titulo: str, lineas: tuple[tuple[str, str], ...]) -> QWidget:
-        """Una columna de «cosa — para qué», con su encabezado."""
+        """Una columna de «cosa, para qué», con su encabezado."""
         m = theme.METRICS
         caja = QWidget()
         columna = QVBoxLayout(caja)
@@ -279,7 +280,7 @@ class SettingsPage(QScrollArea):
         columna.addWidget(encabezado)
 
         for nombre, detalle in lineas:
-            etiqueta = QLabel(f"<b>{nombre}</b> — {detalle}" if detalle else f"<b>{nombre}</b>")
+            etiqueta = QLabel(f"<b>{nombre}</b><br>{detalle}" if detalle else f"<b>{nombre}</b>")
             etiqueta.setObjectName("Muted")
             etiqueta.setWordWrap(True)
             etiqueta.setFont(ui_font(m.small_pt))

@@ -44,8 +44,8 @@ def lookup(
     resultado; quien llama decide qué enseñar en su lugar.
 
     `subsystems` pide además las líneas anidadas de tercer nivel, con las que
-    una tarjeta deja de ser «Radeon RX 9070/9070 XT/9070 GRE» —tres modelos a
-    la vez— y pasa a ser la que de verdad hay puesta. Se resuelven en la misma
+    una tarjeta deja de ser «Radeon RX 9070/9070 XT/9070 GRE» (tres modelos a
+    la vez) y pasa a ser la que de verdad hay puesta. Se resuelven en la misma
     pasada, y sus resultados vuelven con la clave de cuatro números.
     """
     wanted = {(int(v), int(d)) for v, d in pairs}

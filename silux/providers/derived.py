@@ -2,8 +2,8 @@
 
 Los relojes, el uso por núcleo y el desglose de potencia no salen de un chip
 hwmon: los da CPUID, cpufreq, /proc/stat y RAPL. Pero en un árbol de sensores
-son exactamente eso —magnitudes que cambian y que interesa seguir con sus
-mínimos y máximos—, así que aquí se convierten al mismo formato que el resto.
+son exactamente eso (magnitudes que cambian y que interesa seguir con sus
+mínimos y máximos), así que aquí se convierten al mismo formato que el resto.
 
 Es lo que hace HWiNFO: bajo el nodo del procesador conviven las temperaturas
 del chip de sensores con los relojes y el uso, que vienen de otro sitio.

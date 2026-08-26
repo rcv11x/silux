@@ -1,10 +1,10 @@
 """Lo que las APIs gráficas cuentan de cada tarjeta.
 
-Preguntar cuesta caro —los drivers de las tres suman 118 MB de residente— así
+Preguntar cuesta caro (los drivers de las tres suman 118 MB de residente) así
 que `silux.gpuapi` lo hace en un proceso aparte y aquí solo llega el resultado.
 
 El kernel dice qué hay puesto; OpenGL, Vulkan y OpenCL dicen qué se puede hacer
-con ello. Son datos de otra naturaleza —versiones de API, no registros— y por
+con ello. Son datos de otra naturaleza (versiones de API, no registros) y por
 eso van en un proveedor aparte que se apoya en `silux.gpuapi`.
 
 Además resuelve una ambigüedad que sysfs no puede: `pci.ids` puede dar un
@@ -165,7 +165,7 @@ def _unidades(dispositivo: dict) -> Optional[str]:
 def _version_del_driver(dispositivo: dict) -> Optional[str]:
     """Vulkan da la versión del driver en 32 bits, y no todos la empaquetan igual.
 
-    Casi todos siguen el reparto de la propia API —10, 10 y 12 bits—, con lo que
+    Casi todos siguen el reparto de la propia API (10, 10 y 12 bits), con lo que
     Mesa sale como 26.2.1. NVIDIA usa el suyo, y leerlo con el reparto estándar
     da un número que no se parece a nada.
     """

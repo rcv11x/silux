@@ -4,7 +4,7 @@ Es la sección que más fuentes junta de todo el programa, y por eso las tarjeta
 están separadas por procedencia y no por tema: lo que dice el nodo PCI, lo que
 dice el driver, lo que dicen las APIs. Cuando algo falta se ve dónde falta.
 
-Con dos gráficas —una integrada y una dedicada, lo normal en un portátil— se
+Con dos gráficas (una integrada y una dedicada, lo normal en un portátil) se
 repite el bloque entero, igual que la pestaña de CPU repite el suyo para los
 núcleos P y los E.
 """
@@ -33,7 +33,7 @@ NEED_TITLES = {
 }
 
 CARD_FIELDS = (
-    "Fabricante", "Tarjeta de", "Nombre en clave", "Driver", "Versión del driver",
+    "Fabricante", "Ensamblada por", "Nombre en clave", "Driver", "Versión del driver",
     "Identificador", "Subsistema", "Ranura PCI", "Nodo DRM", "BIOS de video",
     "Unidades de cómputo", "Unidades de rasterizado", "Motores de sombreado",
     "Identificador único",
@@ -47,7 +47,7 @@ CLOCK_FIELDS = ("Núcleo", "Núcleo (máximo)", "Memoria", "Memoria (efectiva)",
                 "Memoria (máximo)", "SoC", "Perfil de rendimiento",
                 "Enlace", "Enlace (máximo)")
 
-SENSOR_FIELDS = ("Estado", "Temperatura", "Punto caliente", "Memoria (temp.)",
+SENSOR_FIELDS = ("Estado", "Temperatura", "Punto caliente", "Chips de memoria",
                  "Regulador gráfico", "Regulador del SoC", "Regulador de memoria",
                  "Consumo", "Límite de consumo", "Ventilador",
                  "Voltaje", "Voltaje del SoC", "Voltaje de memoria", "Uso de video")
@@ -127,7 +127,7 @@ class GpuSection(QWidget):
         self.tile_usage = StatTile("Uso", "%", self._p)
         self.tile_temp = StatTile("Temperatura", "°C", self._p)
         self.tile_power = StatTile("Consumo", "W", self._p)
-        self.tile_vram = StatTile("Memoria", "%", self._p)
+        self.tile_vram = StatTile("VRAM ocupada", "%", self._p)
         for tile in (self.tile_usage, self.tile_temp, self.tile_power, self.tile_vram):
             fila.add(tile)
         self.tile_usage.chart.set_range(0, 100)
@@ -173,7 +173,7 @@ class GpuSection(QWidget):
 
         c = self.card.set
         c("Fabricante", gpu.vendor or d)
-        c("Tarjeta de", gpu.subsystem_name or d)
+        c("Ensamblada por", gpu.subsystem_name or d)
         c("Nombre en clave", gpu.codename or d)
         c("Driver", gpu.driver or d)
         c("Versión del driver", gpu.driver_version or d)
@@ -227,7 +227,7 @@ class GpuSection(QWidget):
         s("Punto caliente", render.temperature(gpu.hotspot_c, fahrenheit),
           tooltip="El punto más caliente del chip, siempre por encima de la "
                   "temperatura de borde. Es el que gobierna el ventilador.")
-        s("Memoria (temp.)", render.temperature(gpu.memory_temp_c, fahrenheit))
+        s("Chips de memoria", render.temperature(gpu.memory_temp_c, fahrenheit))
         s("Consumo", render.watts(gpu.power_w))
         s("Límite de consumo", render.watts(gpu.power_cap_w))
         s("Ventilador", f"{render.rpm(gpu.fan_rpm)}"

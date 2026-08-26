@@ -1,8 +1,8 @@
 """Acumulación de mínimos, máximos y medias por sensor.
 
 Es la función que define a un monitor de hardware: el valor actual lo da
-cualquiera, pero saber a cuánto llegó la temperatura mientras jugabas —o si
-un ventilador se paró un instante— exige recordar. Se guarda aparte del
+cualquiera, pero saber a cuánto llegó la temperatura mientras jugabas (o si
+un ventilador se paró un instante) exige recordar. Se guarda aparte del
 modelo a propósito: el snapshot es una foto, y esto es la película.
 """
 

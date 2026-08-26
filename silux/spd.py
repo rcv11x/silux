@@ -6,8 +6,8 @@ puede ir el módulo**, no solo a cuál lo ha puesto la BIOS. Esa diferencia es
 justo lo que explica una memoria de 3200 corriendo a 2667.
 
 Se llega a él por el bus SMBus, y en la mayoría de distribuciones el fichero
-queda legible por cualquiera —no hay nada sensible salvo el número de serie,
-que este módulo ni mira—. Hace falta que el kernel haya cargado el driver del
+queda legible por cualquiera (no hay nada sensible salvo el número de serie,
+que este módulo ni mira). Hace falta que el kernel haya cargado el driver del
 chip: `ee1004` para DDR4, `spd5118` para DDR5.
 
 Lo que sigue decodifica el formato de DDR4 (JEDEC 21-C, anexo K, 4.1.2.12).

@@ -53,7 +53,7 @@ MOTIVOS = {
 }
 
 # Las posiciones dentro de cada versión de la tabla. Las v1.0 a v1.3 comparten
-# toda la primera mitad —cada una añadió campos detrás— así que se construyen
+# toda la primera mitad (cada una añadió campos detrás) así que se construyen
 # una a partir de la anterior; las v1.4 en adelante reordenaron y no valen.
 _V1_0 = {
     "temp_edge": ("H", 4), "temp_hotspot": ("H", 6), "temp_mem": ("H", 8),

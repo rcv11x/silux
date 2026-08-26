@@ -1,8 +1,8 @@
 """Página de Monitor: todo lo que cambia con el tiempo.
 
 Separar esto de la pestaña de CPU no es cosmética. Antes una sola página
-respondía a dos preguntas —«qué procesador es este» y «qué está haciendo
-ahora»— y no servía bien a ninguna: para mirar el socket había que pasar por
+respondía a dos preguntas («qué procesador es este» y «qué está haciendo
+ahora») y no servía bien a ninguna: para mirar el socket había que pasar por
 encima de gráficas, y para vigilar temperaturas había que pasar por encima de
 la familia y el stepping. Aquí vive la segunda pregunta, con sitio para
 hacerlo bien.
@@ -226,8 +226,8 @@ class MonitorPage(QScrollArea):
         tree = snapshot.sensor_tree()
         self._tracker.update_many((s.key, s.value) for s in snapshot.sensors)
 
-        # La estructura solo cambia cuando aparece o desaparece hardware —al
-        # cargar un módulo de sensores, por ejemplo—, así que reconstruir es
+        # La estructura solo cambia cuando aparece o desaparece hardware (al
+        # cargar un módulo de sensores, por ejemplo), así que reconstruir es
         # excepcional y actualizar textos es lo normal.
         structure = tuple(
             (device, category, tuple(s.key for s in sensors))

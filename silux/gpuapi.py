@@ -10,15 +10,15 @@ Así que se cargan con `ctypes`, igual que `rawcpuid` hace con CPUID. Cada una
 va por su cuenta: que falte Vulkan no impide leer OpenGL.
 
 De aquí sale además el dato que el kernel no sabe dar. `pci.ids` dice que esta
-tarjeta es una «Radeon RX 9070/9070 XT/9070 GRE» —tres modelos distintos con el
-mismo identificador PCI— y es el driver, a través de Vulkan, quien dice cuál de
+tarjeta es una «Radeon RX 9070/9070 XT/9070 GRE» (tres modelos distintos con el
+mismo identificador PCI) y es el driver, a través de Vulkan, quien dice cuál de
 las tres hay puesta.
 
 Nada de esto se llama desde el hilo de la interfaz: crear una instancia Vulkan
 o un contexto de OpenGL tarda lo suyo.
 
 Y no se llama en este proceso siquiera. Preguntar a las tres cuesta 118 MB de
-residente —rusticl arrastra LLVM entero por decir «OpenCL 3.1»— y el programa
+residente (rusticl arrastra LLVM entero por decir «OpenCL 3.1») y el programa
 tiene un presupuesto de 100 MB para todo. Así que `consultar()` lanza una copia
 de este módulo como proceso aparte, le lee la respuesta y lo deja morir con los
 drivers dentro. De paso sale gratis lo otro que preocupaba: un driver roto que
@@ -63,8 +63,8 @@ def _cargar(nombres: tuple[str, ...]) -> Optional[ctypes.CDLL]:
 def _sin_ruido() -> Iterator[None]:
     """Tapa el descriptor 2 mientras se pregunta.
 
-    Los drivers de Mesa escriben avisos por su cuenta al cargarse —que RADV no
-    está certificado, que rusticl es experimental— y no hay forma de pedirles
+    Los drivers de Mesa escriben avisos por su cuenta al cargarse (que RADV no
+    está certificado, que rusticl es experimental) y no hay forma de pedirles
     que se callen. Sin esto, un `silux --json` deja de ser JSON.
     """
     try:

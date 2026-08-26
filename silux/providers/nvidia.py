@@ -1,6 +1,6 @@
 """Rellena las tarjetas NVIDIA con lo que solo sabe NVML.
 
-`DrmGpus` ya las ha enumerado —el nodo PCI está ahí para todos los drivers—
+`DrmGpus` ya las ha enumerado (el nodo PCI está ahí para todos los drivers)
 pero con el driver propietario esa ficha viene casi vacía. Este proveedor la
 completa preguntando a NVML y casando por la dirección PCI, que es el único
 identificador que ambos lados publican.
