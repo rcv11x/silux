@@ -308,3 +308,33 @@ class TestCancelar(unittest.TestCase):
         benchmark._bloque_grande()
         benchmark.run(seconds=1.0, stop=parar)
         self.assertIsNone(benchmark._grande)
+
+
+class TestDuracionTotal(unittest.TestCase):
+    """Diez medidas: lo que se elige por medida no es lo que dura la prueba."""
+
+    def _pagina(self):
+        from PySide6.QtWidgets import QApplication
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.performance import PerformancePage
+        app = QApplication.instance() or QApplication([])
+        theme.set_density("normal", "normal")
+        return PerformancePage(theme.palette_for(app, "dark"),
+                               Preferences(font_scale="normal").normalized())
+
+    def test_el_total_es_la_medida_por_diez(self):
+        pagina = self._pagina()
+        pagina.duracion.setCurrentIndex(1)          # 5 s
+        self.assertIn("50 s", pagina.duracion_total.text())
+
+    def test_y_se_dice_en_minutos_cuando_toca(self):
+        pagina = self._pagina()
+        for indice in range(pagina.duracion.count()):
+            if pagina.duracion.itemData(indice) == 30.0:
+                pagina.duracion.setCurrentIndex(indice)
+                break
+        self.assertIn("min", pagina.duracion_total.text())
+
+    def test_diez_porque_son_cinco_cargas_en_uno_y_en_todos(self):
+        self.assertEqual(len(benchmark.CARGAS) * 2, 10)
