@@ -144,6 +144,12 @@ class MainWindow(QMainWindow):
         # todo lo que se dibuja.
         self._congelado = False
         self._desde_la_muestra = QElapsedTimer()
+        # Lo que tarda de verdad entre muestra y muestra, que no es lo que se
+        # pidió: el hilo recorre sysfs, hwmon y los discos, y eso lleva su
+        # rato. Animar contra el intervalo configurado dejaba la línea parada
+        # en el último tramo esperando un dato que aún no había llegado, y de
+        # ahí el tirón al llegar.
+        self._intervalo_real = float(prefs.interval_ms)
         self._latido = QTimer(self)
         self._latido.setInterval(33)                  # unos 30 por segundo
         self._latido.timeout.connect(self._avanzar_graficas)
@@ -421,8 +427,7 @@ class MainWindow(QMainWindow):
     def _avanzar_graficas(self) -> None:
         if self._congelado or not self._desde_la_muestra.isValid():
             return
-        intervalo = max(1, self.prefs.interval_ms)
-        fase = self._desde_la_muestra.elapsed() / intervalo
+        fase = self._desde_la_muestra.elapsed() / max(1.0, self._intervalo_real)
         for grafica in self._graficas(solo_visibles=True):
             grafica.advance(fase)
 
@@ -443,7 +448,13 @@ class MainWindow(QMainWindow):
     def _on_sample(self, snapshot: Snapshot) -> None:
 
         self._last_snapshot = snapshot
-        self._desde_la_muestra.restart()
+        transcurrido = (self._desde_la_muestra.restart()
+                        if self._desde_la_muestra.isValid()
+                        else self._desde_la_muestra.start() or 0)
+        if transcurrido and 0 < transcurrido < 60_000:
+            # Media corrida: un muestreo lento suelto no descoloca el ritmo,
+            # pero si el equipo se pone en serio la animación lo sigue.
+            self._intervalo_real = (self._intervalo_real * 3 + transcurrido) / 4
         if self._congelado:
             # Los datos siguen entrando: los mínimos y máximos no se pierden
             # por mirar. Lo que se para es lo que se pinta.
@@ -455,7 +466,10 @@ class MainWindow(QMainWindow):
                 boton.setText("Leer con permisos de administrador")
         self._distribute(snapshot)
 
-        partes = [f"Se actualiza cada {self.prefs.interval_s:g} s"]
+        # La pista del atajo va aquí porque es donde se mira sin buscar. Un
+        # atajo que no se ve en ningún sitio no existe para quien no lo sabe.
+        partes = [f"Se actualiza cada {self.prefs.interval_s:g} s",
+                  "espacio para congelar"]
         if bloqueados := sum(1 for n in snapshot.notes if n.need.value == "root"):
             # El plural va bien puesto: «1 dato(s)» delataba que nadie lo había
             # mirado, en un programa cuyo argumento es que los datos están

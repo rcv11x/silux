@@ -245,6 +245,15 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   apagado los dos valen 2.60 GHz y el renglón dice «2.60 – 2.60 GHz», que es
   cierto y no informa. Lo que se recorre es de la mínima al máximo.
 
+- **Animar contra el intervalo que se pidió y no contra el que se cumple**:
+  recorrer sysfs, hwmon y los discos lleva entre 330 y 450 ms, así que entre
+  muestra y muestra pasan 1200 y no 1000. La animación llegaba al final y se
+  quedaba parada esperando el dato: eso es lo que se ve como un tirón. El
+  ritmo se mide sobre la marcha, con una media corrida para que un muestreo
+  lento suelto no descoloque.
+- **Un atajo de teclado que no aparece en ninguna parte**: no existe para
+  quien no lo sabe. La barra de estado es donde se mira sin buscar.
+
 - **Medir el coste de repintar sobre widgets que no están a la vista**: la
   primera medida del movimiento fluido dio un 117 % de un núcleo, y era falsa:
   forzaba el dibujo de las dieciséis gráficas montadas cuando Qt no repinta

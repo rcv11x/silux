@@ -166,7 +166,9 @@ class SettingsPage(QScrollArea):
             "redibuja treinta veces por segundo en lugar de una, y únicamente "
             "las gráficas que estén a la vista. Cuesta alrededor de un 2 % de "
             "un núcleo; en un portátil con batería se nota más que en un "
-            "sobremesa.",
+            "sobremesa. Con la barra espaciadora se congela lo que se ve, en "
+            "esta y en cualquier otra pantalla, para leer un pico antes de que "
+            "se vaya; las cifras se siguen recogiendo por debajo.",
         ))
         return card
 
