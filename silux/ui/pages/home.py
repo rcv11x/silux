@@ -123,9 +123,19 @@ class HomePage(QScrollArea):
         self.subtitle.setObjectName("Subhead")
         self.subtitle.setWordWrap(True)
         self.badges = ChipRow()
+
+        # Quien abre esto por primera vez no sabe qué está mirando ni qué
+        # puede esperar. Una línea al principio ahorra la pregunta.
+        self.pitch = QLabel(
+            "Qué hardware llevas dentro y qué está haciendo ahora mismo. "
+            "Todo se lee del propio sistema: ningún dato sale de este equipo.")
+        self.pitch.setObjectName("Muted")
+        self.pitch.setWordWrap(True)
+
         card.body.addWidget(self.title)
         card.body.addWidget(self.subtitle)
         card.body.addWidget(self.badges)
+        card.body.addWidget(self.pitch)
         return card
 
     # -- actualización ------------------------------------------------------

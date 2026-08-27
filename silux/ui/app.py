@@ -73,7 +73,7 @@ SECTIONS = (
     ("Almacenamiento", True),
     ("Red", True),
     ("Sistema", True),
-    ("Rendimiento", True),
+    ("Benchmark", True),
     ("Sensores", True),
     ("Ajustes", True),
 )
