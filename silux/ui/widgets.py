@@ -286,6 +286,30 @@ class InfoGrid(QWidget):
 # --------------------------------------------------------------------------
 
 
+def _rango_redondo(low: float, high: float) -> tuple[float, float]:
+    """Redondea los extremos del eje a cifras que no bailen.
+
+    Es lo que de verdad quita el tirón. Ajustar el eje al milímetro de lo
+    medido significa moverlo en cuanto una muestra sube medio grado, y cada
+    movimiento reescala la curva entera. Redondeando a pasos legibles, una
+    temperatura que va de 45 a 52 se dibuja con el mismo eje todo el rato y
+    la gráfica solo se reajusta cuando de verdad cambia el orden de magnitud.
+
+    No se recorta nada: el redondeo siempre va hacia fuera.
+    """
+    span = high - low
+    if span <= 0:
+        return low, high
+    # Un paso de la familia 1-2-5 por década, que es la que se lee sin pensar.
+    import math
+    decada = 10 ** math.floor(math.log10(span))
+    for multiplo in (1, 2, 5, 10):
+        paso = decada * multiplo
+        if span / paso <= 4:
+            break
+    return math.floor(low / paso) * paso, math.ceil(high / paso) * paso
+
+
 def curva_suave(points, cerrar_en=None) -> QPainterPath:
     """Una polilínea convertida en curva, sin inventarse lo que no midió.
 
@@ -354,6 +378,9 @@ class Sparkline(QWidget):
         # para que la línea se deslice en vez de dar un salto por segundo:
         # con el movimiento fluido apagado se queda en 1 y no se nota.
         self._phase = 1.0
+        # La escala vertical que se está usando ahora mismo, que no siempre es
+        # la que piden los datos: ver _escala_visible.
+        self._escala: Optional[tuple[float, float]] = None
         self.setMinimumHeight(theme.METRICS.chart_height)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setMouseTracking(True)
@@ -417,6 +444,7 @@ class Sparkline(QWidget):
 
     def clear(self) -> None:
         self._values.clear()
+        self._escala = None
         self.update()
 
     def stats(self) -> Optional[tuple[float, float, float]]:
@@ -425,6 +453,52 @@ class Sparkline(QWidget):
             return None
         values = list(self._values)
         return min(values), max(values), sum(values) / len(values)
+
+    def _escala_visible(self, values: list[float]) -> tuple[float, float]:
+        """Hasta dónde llega el eje vertical, sin que baile.
+
+        De aquí salía el tirón, y no del deslizamiento: con 90 muestras en 300
+        píxeles la línea avanza 3,4 px por segundo, que no se ve. Lo que se
+        veía era el eje reajustándose. Ajustarlo al milímetro de lo medido
+        significa moverlo en cuanto una muestra sube medio grado, y cada
+        movimiento reescala la curva entera de golpe.
+
+        La regla es: si lo que hay que dibujar cabe en el eje que ya está
+        puesto, no se toca. Solo se cambia cuando algo se sale —y entonces
+        de inmediato, porque encoger un dato para que quepa sería dibujarlo
+        donde no está— o cuando sobra tanto hueco que la curva se ha quedado
+        aplastada abajo, y eso se corrige poco a poco.
+        """
+        suelo = self._floor if self._floor is not None else min(values)
+        techo = self._ceiling if self._ceiling is not None else max(values)
+        if self._floor is not None and self._ceiling is not None:
+            return (suelo, techo) if techo > suelo else (suelo, suelo + 1.0)
+
+        if techo - suelo < 1e-9:
+            techo = suelo + 1.0
+        margen = (techo - suelo) * 0.12
+        suelo, techo = suelo - margen, techo + margen
+
+        previa = self._escala
+        if previa is None:
+            self._escala = _rango_redondo(suelo, techo)
+            return self._escala
+
+        antes_suelo, antes_techo = previa
+        if suelo >= antes_suelo and techo <= antes_techo:
+            # Cabe. Solo se estrecha si ha quedado ridículamente holgado, y
+            # despacio: ahí no hay ninguna lectura en juego, solo el hueco que
+            # dejó un pico que ya pasó.
+            if (antes_techo - antes_suelo) > (techo - suelo) * 2.5:
+                paso = 1 / 12
+                self._escala = (antes_suelo + (suelo - antes_suelo) * paso,
+                                antes_techo + (techo - antes_techo) * paso)
+            return self._escala
+
+        # Algo se sale: el eje crece ya, y redondeado para que aguante.
+        self._escala = _rango_redondo(min(suelo, antes_suelo),
+                                      max(techo, antes_techo))
+        return self._escala
 
     def paintEvent(self, event) -> None:  # noqa: N802
         if len(self._values) < 2:
@@ -436,12 +510,7 @@ class Sparkline(QWidget):
         rect = QRectF(self.rect()).adjusted(0.5, 3.5, -0.5, -0.5)
         values = list(self._values)
 
-        low = self._floor if self._floor is not None else min(values)
-        high = self._ceiling if self._ceiling is not None else max(values)
-        if high - low < 1e-9:
-            high = low + 1.0
-        margin = (high - low) * 0.12
-        low, high = low - margin, high + margin
+        low, high = self._escala_visible(values)
 
         step = rect.width() / (len(values) - 1)
         # Con el movimiento fluido, la muestra recién llegada entra por la
