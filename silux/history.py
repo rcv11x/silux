@@ -158,3 +158,12 @@ def comparar(actual: Entry, anteriores: list[Entry]) -> Optional[tuple[Entry, fl
         if anterior:
             return otra, (total - anterior) / anterior * 100
     return None
+
+
+def clear() -> bool:
+    """Borra el historial entero. Devuelve si había algo que borrar."""
+    try:
+        history_path().unlink()
+        return True
+    except OSError:
+        return False

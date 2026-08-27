@@ -97,6 +97,17 @@ class PerformancePage(QScrollArea):
         nota.setObjectName("Muted")
         nota.setWordWrap(True)
         self.history_card.body.addWidget(nota)
+
+        acciones = QHBoxLayout()
+        self.open_folder = QPushButton("Abrir la carpeta")
+        self.open_folder.setToolTip(str(history.history_path()))
+        self.open_folder.clicked.connect(self._abrir_carpeta)
+        self.clear_history = QPushButton("Borrar el historial")
+        self.clear_history.clicked.connect(self._borrar_historial)
+        acciones.addWidget(self.open_folder)
+        acciones.addWidget(self.clear_history)
+        acciones.addStretch(1)
+        self.history_card.body.addLayout(acciones)
         self.history_card.hide()
         self._layout.addWidget(self.history_card)
 
@@ -211,6 +222,37 @@ class PerformancePage(QScrollArea):
     def _on_progress(self, que: str, cuanto: float) -> None:
         self.progress.setValue(int(cuanto * 100))
         self.progress.setFormat(f"{que}  ·  %p %")
+
+    def _abrir_carpeta(self) -> None:
+        """Abre el gestor de archivos donde se guardan las pruebas.
+
+        Con el gestor del escritorio, no con una ruta escrita en un aviso:
+        quien quiere ver el archivo lo quiere abrir, no leer dónde está.
+        """
+        from PySide6.QtCore import QUrl
+        from PySide6.QtGui import QDesktopServices
+        history.data_dir().mkdir(parents=True, exist_ok=True)
+        QDesktopServices.openUrl(
+            QUrl.fromLocalFile(str(history.data_dir())))
+
+    def _borrar_historial(self) -> None:
+        """Borra las pruebas guardadas, preguntando antes."""
+        from PySide6.QtWidgets import QMessageBox
+
+        cuantas = len(history.load())
+        if not cuantas:
+            return
+        respuesta = QMessageBox.question(
+            self, "Borrar el historial",
+            f"Se van a borrar {cuantas} "
+            f"{render.plural(cuantas, 'prueba guardada', 'pruebas guardadas')} "
+            f"de este equipo.\n\nNo se puede deshacer.",
+            QMessageBox.StandardButton.Cancel | QMessageBox.StandardButton.Yes,
+            QMessageBox.StandardButton.Cancel)
+        if respuesta == QMessageBox.StandardButton.Yes:
+            history.clear()
+            self.history.set_rows([])
+            self.history_card.hide()
 
     def _on_finished(self, resultado: benchmark.Result) -> None:
         self._resultado = resultado

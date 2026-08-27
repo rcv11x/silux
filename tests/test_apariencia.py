@@ -219,3 +219,28 @@ class TestCurvaSuave(unittest.TestCase):
         from silux.ui.widgets import curva_suave
         camino = curva_suave(self._puntos([20.0, 50.0, 30.0]), cerrar_en=100.0)
         self.assertTrue(any(abs(y - 100.0) < 0.6 for y in self._recorrer(camino)))
+
+
+class TestJerarquiaVisual(unittest.TestCase):
+    """Que cada cosa pese lo que le toca en la pantalla."""
+
+    def test_el_titulo_de_una_tarjeta_pesa_mas_que_una_cabecera(self):
+        """Un título nombra la tarjeta entera; una cabecera, una columna.
+
+        Compartían estilo, así que agrandar el primero agrandaba la segunda y
+        las tablas acababan gritando tanto como las secciones que las
+        contienen.
+        """
+        app = QApplication.instance() or QApplication([])
+        hoja = theme.stylesheet(theme.palette_for(app, "dark"))
+        self.assertIn("QLabel#CardTitle", hoja)
+        self.assertIn("QLabel#ColumnTitle", hoja)
+
+    def test_la_tabla_usa_su_propio_estilo(self):
+        from silux.ui.widgets import Table
+        app = QApplication.instance() or QApplication([])
+        tabla = Table(("Uno", "Dos"), numeric=(False, True))
+        from PySide6.QtWidgets import QLabel
+        nombres = {e.objectName() for e in tabla.findChildren(QLabel)}
+        self.assertIn("ColumnTitle", nombres)
+        self.assertNotIn("CardTitle", nombres)
