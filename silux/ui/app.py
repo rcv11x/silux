@@ -46,6 +46,7 @@ from . import theme
 from .pages.board import BoardPage
 from .pages.caches import CachesPage
 from .pages.cpu import CpuPage
+from .pages.home import HomePage
 from .pages.graphics import GraphicsPage
 from .pages.memory import MemoryPage
 from .pages.network import NetworkPage
@@ -63,6 +64,7 @@ from .widgets import ElidingLabel
 # gráfica) y deja al final las dos secciones que no describen una pieza:
 # Sensores, que es el estado de todo a la vez, y Ajustes.
 SECTIONS = (
+    ("Inicio", True),
     ("CPU", True),
     ("Cachés", True),
     ("Placa base", True),
@@ -178,6 +180,8 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.nav_panel, 0)
 
         self.stack = QStackedWidget()
+        self.home_page = HomePage(self._palette, self.prefs)
+        self.home_page.seccion_pedida.connect(self.select_section)
         self.cpu_page = CpuPage(self._palette, self.prefs)
         self.monitor_page = MonitorPage(self._palette, self.prefs, self._tracker)
         self.monitor_page.columns_resized.connect(self._on_columns_resized)
@@ -195,7 +199,7 @@ class MainWindow(QMainWindow):
         self.settings_page = SettingsPage(self.prefs)
         self.settings_page.changed.connect(self._on_preferences)
         self.settings_page.report_requested.connect(self._on_report_requested)
-        for page in (self.cpu_page, self.caches_page, self.board_page,
+        for page in (self.home_page, self.cpu_page, self.caches_page, self.board_page,
                      self.memory_page, self.graphics_page, self.storage_page,
                      self.network_page, self.system_page, self.performance_page,
                      self.monitor_page, self.settings_page):
@@ -503,7 +507,7 @@ class MainWindow(QMainWindow):
             self.prefs = replace(self.prefs, sensor_columns=tuple(widths))
 
     def _distribute(self, snapshot: Snapshot) -> None:
-        for page in (self.cpu_page, self.monitor_page, self.caches_page,
+        for page in (self.home_page, self.cpu_page, self.monitor_page, self.caches_page,
                      self.board_page, self.memory_page, self.system_page,
                      self.graphics_page, self.network_page, self.storage_page):
             page.apply(snapshot)
