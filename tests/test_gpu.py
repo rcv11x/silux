@@ -470,3 +470,51 @@ class TestIntegradaODedicada(unittest.TestCase):
         """Mejor no decirlo que decirlo por descarte."""
         self.assertIsNone(self._clasificar(vendor="Matrox", pci_slot="0000:04:00.0"))
         self.assertIsNone(self._clasificar(vendor="AMD", pci_slot="0000:05:00.0"))
+
+
+class TestFrecuenciasIntel(BancoDrm):
+    """Las frecuencias de una Intel integrada, se llamen como se llamen.
+
+    Salieron de una captura de una UHD 630 con todos los relojes en blanco.
+    No era que no se leyeran: se buscaban en `card0/device/`, que es el enlace
+    al dispositivo PCI, y i915 las publica en el nodo DRM. Encima han cambiado
+    de sitio con el kernel 6.2, que las metió en `gt/gt0/` con prefijo `rps_`
+    para poder tener varios motores gráficos por tarjeta.
+    """
+
+    def _uhd(self, **ficheros):
+        self.tarjeta(0, ranura="0000:00:02.0", vendor="0x8086", device="0x9bc8")
+        for nombre, valor in ficheros.items():
+            _write(self.root / "card0" / nombre.replace("__", "/"), valor)
+        return self.recolectar().freeze().gpus[0]
+
+    def test_el_sitio_clasico_de_i915(self):
+        gpu = self._uhd(gt_act_freq_mhz="350", gt_max_freq_mhz="1150")
+        self.assertEqual(gpu.clocks.core_hz, 350_000_000)
+        self.assertEqual(gpu.clocks.core_max_hz, 1_150_000_000)
+
+    def test_el_sitio_nuevo_desde_el_kernel_6_2(self):
+        gpu = self._uhd(**{"gt__gt0__rps_act_freq_mhz": "450",
+                           "gt__gt0__rps_max_freq_mhz": "1200"})
+        self.assertEqual(gpu.clocks.core_hz, 450_000_000)
+        self.assertEqual(gpu.clocks.core_max_hz, 1_200_000_000)
+
+    def test_prefiere_la_que_va_de_verdad_a_la_que_se_pide(self):
+        """`act` es lo que hace el chip; `cur` es lo que se le ha pedido."""
+        gpu = self._uhd(**{"gt__gt0__rps_act_freq_mhz": "300",
+                           "gt__gt0__rps_cur_freq_mhz": "1100"})
+        self.assertEqual(gpu.clocks.core_hz, 300_000_000)
+
+    def test_si_solo_esta_la_pedida_vale_esa(self):
+        gpu = self._uhd(**{"gt__gt0__rps_cur_freq_mhz": "900"})
+        self.assertEqual(gpu.clocks.core_hz, 900_000_000)
+
+    def test_sin_ninguna_de_las_dos_no_se_inventa(self):
+        gpu = self._uhd()
+        self.assertIsNone(gpu.clocks.core_hz)
+        self.assertIsNone(gpu.clocks.core_max_hz)
+
+    def test_una_gpu_parada_a_cero_no_es_un_dato_ausente(self):
+        """0 MHz es la respuesta de un motor gráfico en reposo profundo."""
+        gpu = self._uhd(gt_act_freq_mhz="0", gt_max_freq_mhz="1150")
+        self.assertEqual(gpu.clocks.core_max_hz, 1_150_000_000)

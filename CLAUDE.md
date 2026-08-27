@@ -245,6 +245,24 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   apagado los dos valen 2.60 GHz y el renglón dice «2.60 – 2.60 GHz», que es
   cierto y no informa. Lo que se recorre es de la mínima al máximo.
 
+- **Buscar los datos de i915 en `card0/device/`**: ese es el enlace al nodo
+  PCI, e Intel publica las frecuencias del motor gráfico en el nodo DRM, un
+  nivel más arriba. Encima cambiaron de sitio en el kernel 6.2, que las metió
+  en `gt/gt0/` con prefijo `rps_` sin quitar las viejas. Hay que mirar en las
+  cuatro rutas: una UHD 630 salía con todos los relojes en blanco.
+- **Decidir si una gráfica es integrada por si tiene VRAM**: no leerla no es
+  no tenerla. Con nouveau no se lee ninguna, y una GTX 1050 Mobile —una
+  tarjeta dedicada— salía marcada como integrada; al revés, una APU reserva
+  un trozo de la RAM del sistema y parecía tener memoria propia. En AMD lo
+  dice el bit FUSION del ioctl, la integrada de Intel vive en 0000:00:02.0, y
+  una NVIDIA en un PC nunca lo es. Lo que no se pueda decidir se queda en
+  `None`.
+- **Restarle lo ocupado a la capacidad para saber lo libre**: eso da por
+  montado todo el disco. Con un Windows al lado, 570 GB de otra partición se
+  contaban como espacio libre, y el recuadro de al lado —que suma el hueco de
+  las particiones montadas— decía otra cifra en la misma pantalla. Lo que no
+  está montado no está libre y se dice aparte.
+
 - **Colgar OpenGL y OpenCL de la tarjeta que el kernel marca como principal**:
   no publican su nodo PCI, pero sí dicen quién contesta. En un portátil
   híbrido la principal es la integrada, porque lleva la pantalla, mientras
