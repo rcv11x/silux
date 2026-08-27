@@ -8,6 +8,7 @@ recolección, y traducir sin reescribir nada.
 
 from __future__ import annotations
 
+import re
 from typing import Optional
 
 from .features import pretty as pretty_feature
@@ -443,3 +444,27 @@ def turbo_note(clocks: Clocks) -> Optional[str]:
     if clocks.turbo_headroom_hz:
         return f"El kernel limita a {hz(clocks.max_hz)} de los {hz(clocks.max_turbo_hz)} del silicio"
     return None
+
+
+# Coletillas que los fabricantes meten en la cadena de marca y que no
+# distinguen a un procesador de otro.
+_RELLENO_DE_MARCA = re.compile(
+    r"\s*(?:\d+-Core\s+Processor|Processor|CPU|\(R\)|\(TM\)|™|®"
+    r"|@\s*[\d.]+\s*[GM]Hz|with\s+Radeon\s+Graphics"
+    r"|w/\s+Radeon[\w\s]*Graphics)",
+    re.IGNORECASE)
+
+
+def cpu_short_name(brand: Optional[str]) -> str:
+    """El nombre del procesador sin la paja: «Ryzen 7 5800X3D».
+
+    La cadena de marca viene con coletillas que no distinguen un modelo de
+    otro —«8-Core Processor», «(R)», «@ 2.90GHz»— y que en un titular ocupan
+    dos líneas para no decir nada: los núcleos y la frecuencia ya están al
+    lado, con su propia etiqueta.
+    """
+    if not brand:
+        return DASH
+    limpio = _RELLENO_DE_MARCA.sub("", brand)
+    limpio = re.sub(r"\s{2,}", " ", limpio).strip(" -·")
+    return limpio or brand
