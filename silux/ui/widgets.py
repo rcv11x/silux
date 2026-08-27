@@ -408,11 +408,29 @@ class Sparkline(QWidget):
             self._hover = None
             self.update()
 
+    def _geometria(self) -> tuple[float, float]:
+        """Dónde empieza la serie y cuánto ocupa cada muestra.
+
+        En un solo sitio a propósito: al pintar y al leer con el cursor hay
+        que hacer la misma cuenta, y cuando cada uno la hacía por su lado, el
+        cursor señalaba una muestra y la guía se dibujaba sobre otra.
+        """
+        ancho = max(1.0, self.width() - 1.0)
+        capacidad = self._values.maxlen or max(1, len(self._values))
+        paso = ancho / max(1, capacidad - 1)
+        origen = (0.5 + ancho) - (len(self._values) - 1) * paso
+        return origen, paso
+
     def _index_at(self, x: float) -> Optional[int]:
         if len(self._values) < 2 or self.width() <= 1:
             return None
-        proporcion = min(1.0, max(0.0, x / self.width()))
-        return round(proporcion * (len(self._values) - 1))
+        origen, paso = self._geometria()
+        indice = round((x - origen) / paso)
+        # Mientras la gráfica se está llenando, la mitad izquierda está vacía
+        # y ahí no hay ninguna muestra que leer.
+        if not 0 <= indice < len(self._values):
+            return None
+        return indice
 
     def _hover_text(self, valor: float, indice: int) -> str:
         cifra = self._formatter(valor) if self._formatter else f"{valor:g}"
@@ -517,13 +535,11 @@ class Sparkline(QWidget):
         # el paso y toda la curva se recoloca: un salto de seis píxeles hasta
         # que la cola se llena. Así la gráfica se llena desde la derecha con
         # el paso definitivo desde el primer momento.
-        capacidad = self._values.maxlen or len(values)
-        step = rect.width() / max(1, capacidad - 1)
+        origen, step = self._geometria()
         # Las muestras viejas se van hacia la izquierda y salen por ahí; la
         # nueva ya está dibujada en el borde derecho. Al revés —empujando
         # todo a la derecha— el relleno dejaba un hueco parpadeante en el
         # borde izquierdo, que es el rebote que se veía.
-        origen = rect.right() - (len(values) - 1) * step
         deslizamiento = -self._phase * step
         if self._phase < 1.0:
             painter.setClipRect(self.rect())

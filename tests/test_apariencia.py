@@ -57,8 +57,14 @@ class TestLecturaDeGraficas(unittest.TestCase):
     def setUpClass(cls):
         cls.app = QApplication.instance() or QApplication([])
 
-    def _grafica(self, valores, ancho=100) -> Sparkline:
-        chart = Sparkline(theme.DARK)
+    def _grafica(self, valores, ancho=100, capacidad=None) -> Sparkline:
+        """Por defecto, una gráfica ya llena: es como se usa el 99 % del rato.
+
+        La capacidad importa porque el ancho se reparte entre ella y no entre
+        las muestras que haya, para que la curva no se recoloque cada vez que
+        entra una. Mientras se llena, la serie ocupa solo la parte derecha.
+        """
+        chart = Sparkline(theme.DARK, capacity=capacidad or max(2, len(valores)))
         chart.resize(ancho, 30)
         chart.set_formatter(render.percent, interval_s=1.0)
         for valor in valores:
@@ -71,10 +77,18 @@ class TestLecturaDeGraficas(unittest.TestCase):
         self.assertEqual(chart._index_at(50), 2)          # el pico, en el centro
         self.assertEqual(chart._index_at(100), 4)
 
-    def test_fuera_del_widget_se_queda_en_los_extremos(self):
+    def test_fuera_del_widget_no_señala_nada(self):
         chart = self._grafica([1, 2, 3])
-        self.assertEqual(chart._index_at(-40), 0)
-        self.assertEqual(chart._index_at(9999), 2)
+        self.assertIsNone(chart._index_at(-40))
+        self.assertIsNone(chart._index_at(9999))
+
+    def test_sobre_el_hueco_de_una_grafica_a_medio_llenar_tampoco(self):
+        """Mientras se llena, la mitad izquierda está vacía: ahí no hay nada
+        que leer, y antes el cursor señalaba una muestra que estaba en el
+        otro extremo."""
+        chart = self._grafica([10, 20, 30], capacidad=90)
+        self.assertIsNone(chart._index_at(5))
+        self.assertEqual(chart._index_at(99), 2)
 
     def test_una_grafica_vacia_no_tiene_nada_que_señalar(self):
         self.assertIsNone(self._grafica([]) ._index_at(50))
