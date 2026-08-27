@@ -181,7 +181,14 @@ class PerformancePage(QScrollArea):
         fila.addSpacing(12)
         fila.addWidget(QLabel("Cada medida:"))
         fila.addWidget(self.duracion)
+        # Cuánto tarda la prueba entera. Son diez medidas, así que «30 s» son
+        # cinco minutos: la cuenta la hace nadie de cabeza mientras elige.
+        self.duracion_total = QLabel("")
+        self.duracion_total.setObjectName("Muted")
+        fila.addWidget(self.duracion_total)
         fila.addStretch(1)
+        self.duracion.currentIndexChanged.connect(self._pintar_total)
+        self._pintar_total()
 
         self.progress = QProgressBar()
         self.progress.setRange(0, 100)
@@ -244,6 +251,21 @@ class PerformancePage(QScrollArea):
         self.progress.setValue(int(cuanto * 100))
         self.progress.setFormat(f"{que}  ·  %p %")
 
+    def _pintar_total(self) -> None:
+        segundos = self._segundos_elegidos() if hasattr(self, "_duracion_libre") else \
+            self.duracion.currentData()
+        if not segundos:
+            self.duracion_total.setText("")
+            return
+        total = segundos * len(benchmark.CARGAS) * 2
+        if total < 90:
+            texto = f"· la prueba entera, {total:.0f} s"
+        elif total < 3600:
+            texto = f"· la prueba entera, {total / 60:.0f} min"
+        else:
+            texto = f"· la prueba entera, {total / 3600:.1f} h"
+        self.duracion_total.setText(texto)
+
     def _segundos_elegidos(self) -> float | None:
         elegido = self.duracion.currentData()
         return self._duracion_libre if elegido is None else elegido
@@ -272,9 +294,8 @@ class PerformancePage(QScrollArea):
             self._duracion_libre = None
             return
         self._duracion_libre = minutos * 60.0
-        total = minutos * len(benchmark.CARGAS) * 2
-        self.duracion.setItemText(
-            indice, f"{minutos:g} min cada una · {total:g} min en total")
+        self.duracion.setItemText(indice, f"{minutos:g} min cada una")
+        self._pintar_total()
 
     def _cancelar(self) -> None:
         """Para la prueba en cuanto termine la medida que esté en curso."""

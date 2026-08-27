@@ -1342,7 +1342,13 @@ class SensorTree(QTreeWidget):
         self.setAlternatingRowColors(True)
         self.setRootIsDecorated(True)
         self.setUniformRowHeights(True)
+        # Sin selección: esto es una tabla de lectura, no una lista de la que
+        # se elige algo. Un clic dejaba la fila marcada en azul hasta que se
+        # pulsaba otra, y esa marca no significa nada. El resaltado al pasar
+        # el cursor sí se queda, que ese ayuda a seguir el renglón.
+        self.setSelectionMode(QTreeWidget.SelectionMode.NoSelection)
         self.setSelectionBehavior(QTreeWidget.SelectionBehavior.SelectRows)
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.setEditTriggers(QTreeWidget.EditTrigger.NoEditTriggers)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         # En una ventana estrecha (o en densidad amplia) las columnas suman
