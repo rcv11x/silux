@@ -126,6 +126,36 @@ class _VkProps(ctypes.Structure):
     ]
 
 
+class _VkMemoryHeap(ctypes.Structure):
+    _fields_ = [("size", ctypes.c_uint64), ("flags", ctypes.c_uint32),
+                ("_relleno", ctypes.c_uint32)]
+
+
+class _VkMemoryType(ctypes.Structure):
+    _fields_ = [("propertyFlags", ctypes.c_uint32), ("heapIndex", ctypes.c_uint32)]
+
+
+class _VkMemoryProps(ctypes.Structure):
+    """`VkPhysicalDeviceMemoryProperties`: de dónde sale la memoria de la tarjeta.
+
+    Es la única vía para saber cuánta VRAM tiene una gráfica cuyo driver no la
+    publica en sysfs. amdgpu la escribe en `mem_info_vram_total` y NVML la da
+    para las NVIDIA con el driver propietario, pero con nouveau no hay ni una
+    cosa ni la otra y la ficha se quedaba entera en blanco.
+    """
+
+    _fields_ = [
+        ("memoryTypeCount", ctypes.c_uint32),
+        ("memoryTypes", _VkMemoryType * 32),
+        ("memoryHeapCount", ctypes.c_uint32),
+        ("memoryHeaps", _VkMemoryHeap * 16),
+    ]
+
+
+# El montón que vive en la propia tarjeta, frente al que se le presta del
+# sistema. Es el bit que distingue la VRAM de la memoria compartida.
+VK_MEMORY_HEAP_DEVICE_LOCAL_BIT = 0x1
+
 VK_TIPOS = {1: "integrada", 2: "dedicada", 3: "virtual", 4: "CPU"}
 
 VK_STRUCTURE_TYPE_APPLICATION_INFO = 0
@@ -175,10 +205,30 @@ def vulkan() -> list[dict]:
                     "vendor_id": props.vendorID,
                     "device_id": props.deviceID,
                     "kind": VK_TIPOS.get(props.deviceType),
+                    "device_memory_bytes": _vk_memoria(lib, handle),
                 })
             return encontradas
         finally:
             lib.vkDestroyInstance(instancia, None)
+
+
+def _vk_memoria(lib, handle) -> Optional[int]:
+    """La memoria que la tarjeta lleva encima, sumando sus montones propios.
+
+    Solo cuentan los marcados como locales del dispositivo: los demás son
+    memoria del sistema que el driver le deja usar, y sumarla daría una cifra
+    que no se corresponde con ningún chip.
+    """
+    try:
+        props = _VkMemoryProps()
+        lib.vkGetPhysicalDeviceMemoryProperties(ctypes.c_void_p(handle),
+                                                ctypes.byref(props))
+    except Exception:                                  # noqa: BLE001
+        return None
+    total = sum(props.memoryHeaps[i].size
+                for i in range(min(props.memoryHeapCount, 16))
+                if props.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+    return total or None
 
 
 # -- OpenCL ------------------------------------------------------------------

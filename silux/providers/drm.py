@@ -51,9 +51,12 @@ VENDORS = {
 DRIVERS_CIEGOS = {
     "nvidia": ("El driver propietario de NVIDIA no publica los datos de la tarjeta "
                "en sysfs.", "Se leen con NVML, la biblioteca que trae el propio driver."),
-    "nouveau": ("nouveau no publica frecuencias ni memoria de la tarjeta sin depurar el "
-                "kernel.", "Los datos completos de una NVIDIA piden el driver propietario "
-                "y NVML."),
+    "nouveau": ("nouveau no publica en sysfs las frecuencias, el consumo ni el uso "
+                "de la tarjeta.",
+                "Es el driver libre: lo que enseña un programa como este de una "
+                "NVIDIA —relojes, vatios, núcleos CUDA, recortes— sale de NVML, "
+                "que viene con el driver propietario. Con nouveau quedan la "
+                "temperatura, el enlace PCIe y la memoria que dice Vulkan."),
 }
 
 # «0: 500Mhz », «1: 1150Mhz *»: el asterisco marca la frecuencia en uso.

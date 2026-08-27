@@ -20,7 +20,9 @@ import re
 from typing import Optional
 
 from .. import gpuapi
-from ..model import GpuApi, Need
+import dataclasses
+
+from ..model import GpuApi, GpuMemory, Need
 from .base import Draft, Provider
 
 # «AMD Radeon RX 9070 XT (RADV GFX1201)» → el paréntesis es del driver, no del
@@ -78,6 +80,7 @@ class GpuApis(Provider):
                     extra=f"instancia {dispositivo['instance_version']}",
                 ))
                 _afinar_nombre(gpu, dispositivo["name"])
+                _memoria_de_vulkan(gpu, dispositivo)
 
             # OpenGL y OpenCL no publican el nodo PCI, pero sí dicen quién
             # contesta. Antes se le atribuían a la tarjeta que el kernel marca
@@ -117,6 +120,26 @@ class GpuApis(Provider):
                 gpu["driver_version"] = gpu.get("driver_version") or next(
                     (a.driver for a in apis if a.driver), None
                 )
+
+
+def _memoria_de_vulkan(gpu: dict, dispositivo: dict) -> None:
+    """La VRAM que el driver no publica, si Vulkan la sabe.
+
+    amdgpu la escribe en sysfs y NVML la da para las NVIDIA con el driver
+    propietario. Con nouveau no hay ninguna de las dos, y la ficha de una
+    GeForce entera se quedaba sin un solo dato de memoria. Vulkan enumera los
+    montones de memoria de la tarjeta y ahí está.
+
+    Nunca pisa lo que ya se sabía: el driver mide su propio chip y Vulkan
+    informa de lo que puede repartir, que no tiene por qué ser lo mismo.
+    """
+    bytes_ = dispositivo.get("device_memory_bytes")
+    if not bytes_:
+        return
+    memoria = gpu.get("memory") or GpuMemory()
+    if memoria.total_bytes:
+        return
+    gpu["memory"] = dataclasses.replace(memoria, total_bytes=bytes_)
 
 
 # -- casado y limpieza -------------------------------------------------------
