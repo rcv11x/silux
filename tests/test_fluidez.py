@@ -110,3 +110,64 @@ class TestCongelado(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestRitmoReal(unittest.TestCase):
+    """La animación tiene que durar lo que dura el muestreo, no lo que se pidió.
+
+    Recorrer sysfs, hwmon y los discos lleva su rato, así que entre muestra y
+    muestra pasa más de lo configurado. Animando contra el intervalo pedido,
+    la línea llegaba al final y se quedaba parada esperando el dato: eso es lo
+    que se veía como un tirón.
+    """
+
+    def _ventana(self, **kwargs):
+        from silux.ui.app import MainWindow
+        _app()
+        theme.set_density("normal", "normal")
+        return MainWindow(Preferences(font_scale="normal", **kwargs).normalized())
+
+    def test_arranca_con_lo_configurado(self):
+        ventana = self._ventana(interval_s=2.0)
+        self.assertEqual(ventana._intervalo_real, 2000.0)
+
+    def test_y_se_ajusta_a_lo_que_de_verdad_tarda(self):
+        import time
+        from silux.collector import Collector
+
+        ventana = self._ventana()
+        muestra = Collector().sample()
+        ventana._on_sample(muestra)
+        for _ in range(6):
+            time.sleep(0.05)
+            ventana._on_sample(muestra)
+        self.assertLess(ventana._intervalo_real, 1000.0,
+                        "no ha seguido al ritmo de verdad")
+
+    def test_una_pausa_larga_no_descoloca_el_ritmo(self):
+        """Suspender el equipo no puede dejar la animación en horas."""
+        from unittest import mock
+        from silux.collector import Collector
+
+        ventana = self._ventana()
+        antes = ventana._intervalo_real
+        muestra = Collector().sample()
+        ventana._on_sample(muestra)
+        # Como si el equipo hubiera estado dormido dos minutos.
+        with mock.patch.object(ventana._desde_la_muestra, "restart",
+                               return_value=120_000):
+            ventana._on_sample(muestra)
+        self.assertEqual(ventana._intervalo_real, antes,
+                         "un salto absurdo tiene que descartarse")
+
+
+class TestElAtajoSeVe(unittest.TestCase):
+    def test_la_barra_de_estado_lo_dice(self):
+        """Un atajo que no aparece en ningún sitio no existe."""
+        from silux.collector import Collector
+        from silux.ui.app import MainWindow
+        _app()
+        theme.set_density("normal", "normal")
+        ventana = MainWindow(Preferences(font_scale="normal").normalized())
+        ventana._on_sample(Collector().sample())
+        self.assertIn("espacio", ventana._status.full_text().lower())
