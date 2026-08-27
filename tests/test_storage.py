@@ -238,3 +238,71 @@ class TestDosDiscosIguales(unittest.TestCase):
     def test_y_sigue_eligiendo_el_mas_caliente(self):
         pagina = self._pagina_con([35.0, 51.0, 44.0])
         self.assertIn("51", pagina.tile_temp.value.text())
+
+
+class TestEspacioLibre(unittest.TestCase):
+    """Lo que no está montado no está libre.
+
+    En un equipo con Windows al lado, la barra decía «Libre 859.4 GB» de un
+    disco de 931 con solo 359 en particiones montadas: restaba lo ocupado a
+    la capacidad y daba por libre todo lo demás. El recuadro de al lado, que
+    suma el hueco de las particiones montadas, decía 280.6 GB en la misma
+    pantalla.
+    """
+
+    GB = 1000 ** 3
+
+    def _pagina(self, particiones, capacidad):
+        from PySide6.QtWidgets import QApplication
+        from silux.model import CpuInfo, Disk, Snapshot
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.storage import StoragePage
+
+        app = QApplication.instance() or QApplication([])
+        # `used_bytes` y `mounted_partitions` son propiedades: salen de las
+        # particiones, no se pasan.
+        disco = Disk(name="sda", model="Samsung SSD 870", kind="SSD",
+                     size_bytes=capacidad, partitions=tuple(particiones))
+        pagina = StoragePage(theme.palette_for(app, "dark"), Preferences())
+        pagina.apply(Snapshot(monotonic_ns=0, cpu=CpuInfo(), disks=(disco,)))
+        return pagina
+
+    def _dual_boot(self):
+        """Un disco de 931 GB con 359 en Linux y el resto en Windows."""
+        from silux.model import Partition
+        return [
+            Partition(name="sda6", mountpoint="/efi", filesystem="vfat",
+                      size_bytes=2 * self.GB, used_bytes=694 * 1000**2,
+                      free_bytes=1300 * 1000**2),
+            Partition(name="sda7", mountpoint="/", filesystem="ext4",
+                      size_bytes=357 * self.GB, used_bytes=71 * self.GB,
+                      free_bytes=279 * self.GB),
+        ]
+
+    def _trozos(self, pagina):
+        return {etiqueta: valor for etiqueta, valor, _ in pagina.total_bar._segments}
+
+    def test_lo_libre_sale_de_las_particiones_montadas(self):
+        trozos = self._trozos(self._pagina(self._dual_boot(), 931 * self.GB))
+        self.assertLess(trozos["Libre"], 300 * self.GB,
+                        "está contando como libre el disco sin montar")
+
+    def test_y_el_resto_del_disco_se_dice_aparte(self):
+        trozos = self._trozos(self._pagina(self._dual_boot(), 931 * self.GB))
+        self.assertIn("Sin montar", trozos)
+        self.assertGreater(trozos["Sin montar"], 500 * self.GB)
+
+    def test_los_tres_trozos_suman_el_disco(self):
+        trozos = self._trozos(self._pagina(self._dual_boot(), 931 * self.GB))
+        self.assertAlmostEqual(sum(trozos.values()), 931 * self.GB,
+                               delta=self.GB)
+
+    def test_un_disco_entero_montado_no_gana_un_trozo_de_mas(self):
+        from silux.model import Partition
+        entera = [Partition(name="sda1", mountpoint="/", filesystem="ext4",
+                            size_bytes=500 * self.GB, used_bytes=200 * self.GB,
+                            free_bytes=300 * self.GB)]
+        trozos = self._trozos(self._pagina(entera, 500 * self.GB))
+        self.assertNotIn("Sin montar", trozos)
+        self.assertEqual(trozos["Libre"], 300 * self.GB)

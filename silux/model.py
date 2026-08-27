@@ -658,7 +658,10 @@ class Gpu:
     revision: Optional[int] = None
     vbios: Optional[str] = None
     unique_id: Optional[str] = None
-    integrated: bool = False
+    # None cuando no se puede decidir. No es lo mismo que no serlo: con
+    # nouveau no se lee la VRAM, y por ahí una GTX 1050 acababa de
+    # integrada solo porque su memoria no se pudo contar.
+    integrated: Optional[bool] = None
     primary: bool = False
 
     memory: GpuMemory = field(default_factory=GpuMemory)
