@@ -40,13 +40,24 @@ class BancoDrm(unittest.TestCase):
         self.addCleanup(patch.stop)
         self.addCleanup(self._tmp.cleanup)
 
-    def tarjeta(self, numero: int, **campos: str) -> pathlib.Path:
-        """Un nodo cardN con su nodo PCI detrás."""
-        dispositivo = self.root / f"card{numero}" / "device"
+    def tarjeta(self, numero: int, ranura: str = "0000:03:00.0",
+                **campos: str) -> pathlib.Path:
+        """Un nodo cardN con su nodo PCI detrás.
+
+        `ranura` importa para distinguir una integrada de una dedicada: la de
+        Intel vive siempre en 0000:00:02.0 y una tarjeta aparte va detrás de
+        un puente, en otro bus.
+        """
+        real = self.root / "pci0000:00" / ranura
+        real.mkdir(parents=True, exist_ok=True)
         for nombre, valor in campos.items():
-            _write(dispositivo / nombre, valor)
-        (dispositivo / "driver").parent.mkdir(parents=True, exist_ok=True)
-        return dispositivo
+            _write(real / nombre, valor)
+        enlace = self.root / f"card{numero}" / "device"
+        enlace.parent.mkdir(parents=True, exist_ok=True)
+        if not enlace.exists():
+            enlace.symlink_to(real)
+        (real / "driver").parent.mkdir(parents=True, exist_ok=True)
+        return enlace
 
     def cadena_pcie(self, numero: int, eslabones) -> None:
         """Monta la GPU al final de una cadena real de puentes PCI.
@@ -245,11 +256,13 @@ class TestFormatosQueCambian(BancoDrm):
 
 class TestOtrosDrivers(BancoDrm):
     def test_una_intel_integrada(self):
-        self.tarjeta(0, vendor="0x8086", device="0x9bc4",
+        self.tarjeta(0, ranura="0000:00:02.0", vendor="0x8086", device="0x9bc4",
                      gt_cur_freq_mhz="350", gt_max_freq_mhz="1150")
         gpu = self.recolectar().freeze().gpus[0]
         self.assertEqual(gpu.vendor, "Intel")
-        # Sin VRAM propia: es una integrada.
+        # La integrada de Intel vive en la función 0 del dispositivo 2 del
+        # bus 0, siempre. Antes se decidía por no tener VRAM, y eso confundía
+        # «no se pudo leer» con «no tiene».
         self.assertTrue(gpu.integrated)
         self.assertEqual(gpu.clocks.core_hz, 350_000_000)
         self.assertEqual(gpu.clocks.core_max_hz, 1_150_000_000)
@@ -410,3 +423,50 @@ class TestTipoYBusDeMemoria(unittest.TestCase):
     def test_sin_nada(self):
         self.assertEqual(render.vram_kind(GpuMemory()), render.DASH)
         self.assertEqual(render.vram_bus(GpuMemory()), render.DASH)
+
+
+class TestIntegradaODedicada(unittest.TestCase):
+    """Una tarjeta dedicada cuya VRAM no se puede leer sigue siendo dedicada.
+
+    El caso salió de una GeForce GTX 1050 Mobile con el driver nouveau, que
+    no publica la memoria en sysfs. Como la clasificación miraba si había
+    VRAM, la tarjeta aparecía marcada como integrada, que es lo contrario de
+    lo que es. Y por el mismo motivo al revés: una APU reserva un trozo de la
+    RAM del sistema y parecía tener memoria propia.
+    """
+
+    def _clasificar(self, **gpu):
+        from silux.providers.drm import _es_integrada
+        return _es_integrada(gpu)
+
+    def test_una_nvidia_nunca_es_integrada(self):
+        """Aunque no se le lea la memoria, como pasa con nouveau."""
+        self.assertIs(self._clasificar(
+            vendor="NVIDIA", pci_slot="0000:01:00.0", driver="nouveau"), False)
+
+    def test_la_intel_del_bus_cero_si(self):
+        self.assertIs(self._clasificar(
+            vendor="Intel", pci_slot="0000:00:02.0"), True)
+
+    def test_pero_una_intel_en_otro_bus_no(self):
+        """Una Arc dedicada va detrás de un puente, como cualquier tarjeta."""
+        self.assertIs(self._clasificar(
+            vendor="Intel", pci_slot="0000:03:00.0"), False)
+
+    def test_en_amd_manda_el_ioctl(self):
+        """El bit FUSION lo pone el driver y no admite interpretación."""
+        self.assertIs(self._clasificar(
+            vendor="AMD", pci_slot="0000:05:00.0", _is_apu=True), True)
+        self.assertIs(self._clasificar(
+            vendor="AMD", pci_slot="0000:0c:00.0", _is_apu=False), False)
+
+    def test_una_apu_con_su_trozo_de_ram_no_pasa_por_dedicada(self):
+        """512 MB reservados de la RAM del sistema parecen memoria propia."""
+        self.assertIs(self._clasificar(
+            vendor="AMD", pci_slot="0000:05:00.0", _is_apu=True,
+            memory_total=512 * 1024**2), True)
+
+    def test_lo_que_no_se_sabe_se_queda_sin_saber(self):
+        """Mejor no decirlo que decirlo por descarte."""
+        self.assertIsNone(self._clasificar(vendor="Matrox", pci_slot="0000:04:00.0"))
+        self.assertIsNone(self._clasificar(vendor="AMD", pci_slot="0000:05:00.0"))

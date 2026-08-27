@@ -40,7 +40,14 @@ CAMPOS = {
     "cu_active_number": 48, "enabled_rb_pipes_mask": 120, "num_rb_pipes": 124,
     "num_hw_gfx_contexts": 128, "vram_type": 176, "vram_bit_width": 180,
 }
-CAMPOS_64 = {"max_engine_clock": 32, "max_memory_clock": 40}
+# `ids_flags` va después de num_hw_gfx_contexts (128) y de un hueco de 4 bytes.
+# Su bit 0 es AMDGPU_IDS_FLAGS_FUSION: lo enciende el driver cuando el chip
+# está fusionado con el procesador, o sea cuando es una APU. Es la única forma
+# fiable de saberlo; por la VRAM no se puede, porque una APU reserva su trozo
+# de la RAM del sistema y parece que tiene memoria propia.
+CAMPOS_64 = {"max_engine_clock": 32, "max_memory_clock": 40, "ids_flags": 136}
+
+AMDGPU_IDS_FLAGS_FUSION = 0x1
 
 TIPOS_DE_VRAM = {
     1: "GDDR1", 2: "DDR2", 3: "GDDR3", 4: "GDDR4", 5: "GDDR5", 6: "HBM",
@@ -86,6 +93,8 @@ class DeviceInfo:
     render_backends: Optional[int] = None
     max_engine_hz: Optional[int] = None
     max_memory_hz: Optional[int] = None
+    # None cuando el ioctl no contestó: no saberlo no es lo mismo que no serlo.
+    is_apu: Optional[bool] = None
 
     @property
     def rops(self) -> Optional[int]:
@@ -160,6 +169,7 @@ def query(node: str, expected_device_id: Optional[int] = None) -> Optional[Devic
         shader_engines=leidos["num_shader_engines"] or None,
         arrays_per_engine=leidos["num_shader_arrays_per_engine"] or None,
         render_backends=leidos["num_rb_pipes"] or None,
+        is_apu=bool(khz["ids_flags"] & AMDGPU_IDS_FLAGS_FUSION),
         max_engine_hz=khz["max_engine_clock"] * 1000 or None,
         max_memory_hz=khz["max_memory_clock"] * 1000 or None,
     )

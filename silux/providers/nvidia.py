@@ -92,7 +92,9 @@ def _rellenar(gpu: dict, tarjeta: nvml.NvidiaGpu) -> None:
         else tarjeta.memory_used_bytes,
         bus_bits=memoria.bus_bits or tarjeta.memory_bus_bits,
     )
-    gpu["integrated"] = not (gpu["memory"].total_bytes or 0)
+    # Las GeForce y las Quadro son tarjetas aparte. Lo que NVIDIA fusiona
+    # con el procesador son los Tegra, que no hablan por NVML en un PC.
+    gpu["integrated"] = False
 
     relojes: GpuClocks = gpu.get("clocks") or GpuClocks()
     gpu["clocks"] = dataclasses.replace(

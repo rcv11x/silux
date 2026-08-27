@@ -203,9 +203,20 @@ class StoragePage(QScrollArea):
             self.badges.set_chips(chips, highlight_first=True)
 
         if total and usado:
+            # Tres trozos, no dos. Restarle lo ocupado a la capacidad da un
+            # «libre» que se cree que todo el disco está montado, y en un
+            # equipo con Windows al lado eso son cientos de gigas contados
+            # como libres que no lo están. Lo libre de verdad es lo que dicen
+            # las particiones montadas; el resto del disco es otra cosa y se
+            # dice aparte.
+            libre = sum(p.free_bytes or 0 for x in discos
+                        for p in x.mounted_partitions)
+            sin_montar = max(0, total - usado - libre)
+            segmentos = [("Ocupado", usado, "accent"), ("Libre", libre, "line")]
+            if sin_montar:
+                segmentos.append(("Sin montar", sin_montar, "muted"))
             self.total_bar.set_segments(
-                [("Ocupado", usado, "accent"), ("Libre", total - usado, "line")],
-                total=total, formatter=render.size,
+                segmentos, total=total, formatter=render.size,
             )
             self.total_bar.show()
         else:

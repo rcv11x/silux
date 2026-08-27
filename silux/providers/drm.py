@@ -143,9 +143,8 @@ class DrmGpus(Provider):
             gpu["link"] = _enlace(dispositivo)
             gpu["memory"] = _memoria_total(dispositivo)
             gpu["displays"] = _salidas(nodo.name)
-            # Una gráfica sin VRAM propia va pegada a la CPU.
-            gpu["integrated"] = not (gpu["memory"].total_bytes or 0)
             self._preguntar_al_driver(gpu, dispositivo)
+            gpu["integrated"] = _es_integrada(gpu)
 
             aviso = DRIVERS_CIEGOS.get(gpu["driver"] or "")
             if aviso:
@@ -175,6 +174,9 @@ class DrmGpus(Provider):
         gpu["compute_units"] = info.compute_units or gpu.get("compute_units")
         gpu["rops"] = info.rops
         gpu["shader_engines"] = info.shader_engines
+        # Con guion bajo porque no es un campo del modelo: solo lo usa
+        # _es_integrada y el congelado descarta lo que no reconoce.
+        gpu["_is_apu"] = info.is_apu
 
     @staticmethod
     def _identidad(gpu: dict, dispositivo: pathlib.Path) -> None:
@@ -219,6 +221,39 @@ class DrmGpus(Provider):
                 and (integrada := _igpu_de_la_cpu(draft))):
             gpu["codename"] = gpu.get("codename") or gpu.get("name")
             gpu["name"] = integrada
+
+
+def _es_integrada(gpu: dict) -> Optional[bool]:
+    """Si la gráfica va pegada al procesador o es una tarjeta aparte.
+
+    Antes se decidía por la VRAM: sin memoria propia, integrada. Pero no leer
+    la memoria no significa que no la haya —con nouveau no se lee ninguna— y
+    así una GeForce GTX 1050 Mobile, que es una tarjeta dedicada de las de
+    verdad, aparecía como integrada. Y al revés: una APU reserva un trozo de
+    la RAM del sistema, así que parece tener memoria propia y salía dedicada.
+
+    Cada fabricante lo dice a su manera, y lo que no se pueda decidir se queda
+    sin decidir en vez de contestar por descarte.
+    """
+    fabricante = gpu.get("vendor") or ""
+    ranura = gpu.get("pci_slot") or ""
+
+    # AMD lo publica en el ioctl: el bit FUSION dice que el chip está fusionado
+    # con el procesador. No hay nada más fiable.
+    if (apu := gpu.get("_is_apu")) is not None:
+        return apu
+
+    if fabricante == "Intel":
+        # La integrada de Intel vive siempre en la función 0 del dispositivo 2
+        # del bus 0. Una Arc dedicada va en otro bus, detrás de un puente.
+        return ranura.endswith(":00:02.0")
+
+    if fabricante == "NVIDIA":
+        # En un PC no hay ninguna integrada de NVIDIA; las que van pegadas al
+        # procesador son los Tegra, que no llevan este driver.
+        return False
+
+    return None
 
 
 class GpuState(Provider):
