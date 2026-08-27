@@ -15,7 +15,7 @@ from dataclasses import dataclass, field, fields, is_dataclass
 from enum import Enum
 from typing import Any, Optional
 
-from .edid import Edid  # noqa: F401  (se reexporta al modelo)
+from .edid import Edid, VideoMode  # noqa: F401  (se reexportan al modelo)
 from .spd import SpdInfo, Timings  # noqa: F401  (se reexporta al modelo)
 
 
@@ -1141,7 +1141,8 @@ _COMPUTED: dict[str, tuple[str, ...]] = {
     "GpuMemory": ("used_percent", "resizable_bar"),
     "PcieLink": ("generation", "max_generation", "downgraded"),
     "Display": ("resolution",),
-    "Edid": ("diagonal_inches", "made", "refresh_range"),
+    "Edid": ("diagonal_inches", "made", "refresh_range", "best_mode"),
+    "VideoMode": ("label",),
     "Gpu": ("display_name", "pci_id", "subsystem_id", "connected_displays"),
     "NetworkTraffic": ("total_bytes", "total_rate_bps", "problems"),
     "NetworkInterface": ("display_name", "active", "link_summary"),

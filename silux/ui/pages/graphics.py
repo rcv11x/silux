@@ -54,7 +54,8 @@ SENSOR_FIELDS = ("Estado", "Temperatura", "Punto caliente", "Chips de memoria",
                  "Voltaje", "Voltaje del SoC", "Voltaje de memoria", "Uso de video")
 
 API_HEADERS = ("API", "Versión", "Driver", "Detalle")
-DISPLAY_HEADERS = ("Salida", "Monitor", "Resolución", "Refresco", "Tamaño", "Fabricado")
+DISPLAY_HEADERS = ("Salida", "Monitor", "Resolución", "Refresco", "Tamaño",
+                   "Color y HDR", "Fabricado")
 
 
 class GpuSection(QWidget):
@@ -351,17 +352,19 @@ def _fila_de_salida(salida) -> tuple[str, ...]:
     """Una línea de la tabla de monitores; la mitad se queda vacía si no hay."""
     d = render.DASH
     if not salida.connected:
-        return (salida.connector, "libre", d, d, d, d)
+        return (salida.connector, "libre", d, d, d, d, d)
     monitor = salida.monitor
     if monitor is None:
         # Conectada pero sin EDID legible: pasa con algunos adaptadores y KVM.
-        return (salida.connector, "sin identificar", salida.resolution or d, d, d, d)
+        return (salida.connector, "sin identificar", salida.resolution or d,
+                d, d, d, d)
     return (
         salida.connector,
         render.monitor_name(monitor),
         salida.resolution or d,
         monitor.refresh_range or d,
         f'{monitor.diagonal_inches}"' if monitor.diagonal_inches else d,
+        render.monitor_color(monitor),
         monitor.made or d,
     )
 
