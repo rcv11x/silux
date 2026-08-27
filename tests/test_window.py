@@ -110,7 +110,9 @@ class TestVentana(unittest.TestCase):
         from dataclasses import replace
         from silux.ui import theme
 
-        window = self._window(density="normal")
+        # Escala explícita: las métricas de theme.NORMAL son las de la letra
+        # sin escalar, y la de serie ya no lo está.
+        window = self._window(density="normal", font_scale="normal")
         pagina = window.cpu_page
         self.assertEqual(theme.METRICS, theme.NORMAL)
 
@@ -123,10 +125,16 @@ class TestVentana(unittest.TestCase):
         from dataclasses import replace
         from silux.ui import theme
 
+        # Contra la paleta ya teñida con el acento: comparar con theme.LIGHT
+        # a secas solo funcionaba mientras el color de serie fuese el mismo
+        # con el que están escritas las paletas base.
         window = self._window(theme="light")
-        self.assertEqual(window._palette, theme.LIGHT)
+        acento = window.prefs.accent
+        self.assertEqual(window._palette,
+                         theme.tinted(theme.LIGHT, acento, dark=False))
         window._on_preferences(replace(window.prefs, theme="dark"))
-        self.assertEqual(window._palette, theme.DARK)
+        self.assertEqual(window._palette,
+                         theme.tinted(theme.DARK, acento, dark=True))
 
     def test_las_preferencias_se_guardan_al_cambiarlas(self):
         from dataclasses import replace
@@ -228,8 +236,8 @@ class TestVentana(unittest.TestCase):
 
         muestra = Collector().sample()
         for densidad, metrics in (("normal", theme.NORMAL), ("compact", theme.COMPACT)):
-            theme.set_density(densidad)
-            window = self._window(density=densidad)
+            theme.set_density(densidad, "normal")
+            window = self._window(density=densidad, font_scale="normal")
             window.resize(metrics.min_window_w, metrics.min_window_h)
             window._on_sample(muestra)
             self.app.processEvents()
