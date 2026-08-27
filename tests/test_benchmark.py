@@ -126,3 +126,72 @@ class TestEjecucion(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestCargaDeMemoria(unittest.TestCase):
+    """La carga que sale a buscar datos fuera del núcleo.
+
+    El bloque tiene que no caber en la caché, y cuánto es eso depende del
+    procesador: un 5800X3D lleva 96 MB de L3 y se traga entero un bloque de
+    64, con lo que la prueba mediría la caché y no la memoria. Medido aquí,
+    con el bloque pequeño escalaba ×8.3 —igual que las cargas de cómputo— y
+    con el bloque bien dimensionado baja a ×5, que es lo que se espera de un
+    camino a memoria que se comparte entre todos los núcleos.
+    """
+
+    def test_esta_entre_las_cargas(self):
+        self.assertIn("memoria", [c.key for c in benchmark.CARGAS])
+
+    def test_el_bloque_se_dimensiona_con_la_cache(self):
+        from unittest import mock
+        with mock.patch.object(benchmark, "_leer", side_effect=lambda r: "32768K"):
+            self.assertEqual(benchmark._tamano_del_bloque(), 64)
+        with mock.patch.object(benchmark, "_leer", side_effect=lambda r: "96M"):
+            self.assertEqual(benchmark._tamano_del_bloque(), 192)
+
+    def test_con_un_suelo_y_un_techo(self):
+        from unittest import mock
+        with mock.patch.object(benchmark, "_leer", return_value=None):
+            self.assertEqual(benchmark._tamano_del_bloque(),
+                             benchmark.BLOQUE_MINIMO_MB)
+        with mock.patch.object(benchmark, "_leer", return_value="512M"):
+            self.assertEqual(benchmark._tamano_del_bloque(),
+                             benchmark.BLOQUE_MAXIMO_MB)
+
+    def test_el_bloque_se_suelta_al_terminar(self):
+        """Son hasta 192 MB y el programa entero se mueve en 130."""
+        benchmark._bloque_grande()
+        self.assertIsNotNone(benchmark._grande)
+        benchmark._soltar_el_bloque()
+        self.assertIsNone(benchmark._grande)
+
+
+class TestDuracion(unittest.TestCase):
+    def test_se_puede_pedir_cuanto_dura(self):
+        resultado = benchmark.run(seconds=benchmark.MINIMO_SEGUNDOS)
+        for medida in resultado.measures:
+            self.assertLess(medida.seconds, benchmark.MINIMO_SEGUNDOS * 3)
+
+    def test_no_se_acepta_una_barbaridad(self):
+        from unittest import mock
+        vistas = []
+        with mock.patch.object(benchmark, "_medir",
+                               side_effect=lambda c, h, d: vistas.append(d) or
+                               benchmark.Medida(c.key, h, 1, d)):
+            benchmark.run(seconds=9999.0)
+        self.assertTrue(all(d <= benchmark.MAXIMO_SEGUNDOS for d in vistas))
+        vistas.clear()
+        with mock.patch.object(benchmark, "_medir",
+                               side_effect=lambda c, h, d: vistas.append(d) or
+                               benchmark.Medida(c.key, h, 1, d)):
+            benchmark.run(seconds=0.001)
+        self.assertTrue(all(d >= benchmark.MINIMO_SEGUNDOS for d in vistas))
+
+    def test_sin_pedir_nada_manda_el_modo(self):
+        from unittest import mock
+        vistas = []
+        with mock.patch.object(benchmark, "_medir",
+                               side_effect=lambda c, h, d: vistas.append(d) or
+                               benchmark.Medida(c.key, h, 1, d)):
+            benchmark.run(quick=True)
+        self.assertEqual(set(vistas), {benchmark.SEGUNDOS_RAPIDO})
