@@ -278,3 +278,49 @@ class TestQuienContesta(unittest.TestCase):
 
     def test_lo_que_no_dice_nada_sigue_yendo_a_la_principal(self):
         self.assertIsNone(gpu_apis._fabricante_de("Generic Renderer 1.0"))
+
+
+class TestMemoriaPorVulkan(unittest.TestCase):
+    """La VRAM de una tarjeta cuyo driver no la publica.
+
+    Salió de una GeForce GTX 1050 Mobile con nouveau: amdgpu escribe la
+    memoria en sysfs y NVML la da con el driver propietario, pero con nouveau
+    no hay ninguna de las dos y la ficha entera se quedaba en blanco. Vulkan
+    enumera los montones de memoria de la tarjeta y ahí está.
+    """
+
+    VULKAN_CON_MEMORIA = dict(VULKAN_AMD, device_memory_bytes=17_163_091_968)
+
+    def test_rellena_la_que_falta(self):
+        draft = _recolectar(
+            [{"vendor_id": 0x1002, "device_id": 0x7550, "primary": True}],
+            vulkan=[self.VULKAN_CON_MEMORIA])
+        self.assertEqual(draft.gpus[0]["memory"].total_bytes, 17_163_091_968)
+
+    def test_pero_no_pisa_la_que_dio_el_driver(self):
+        """El driver mide su chip; Vulkan dice lo que puede repartir."""
+        from silux.model import GpuMemory
+        draft = _recolectar(
+            [{"vendor_id": 0x1002, "device_id": 0x7550, "primary": True,
+              "memory": GpuMemory(total_bytes=16_000_000_000)}],
+            vulkan=[self.VULKAN_CON_MEMORIA])
+        self.assertEqual(draft.gpus[0]["memory"].total_bytes, 16_000_000_000)
+
+    def test_sin_el_dato_no_se_inventa_nada(self):
+        draft = _recolectar(
+            [{"vendor_id": 0x1002, "device_id": 0x7550, "primary": True}],
+            vulkan=[VULKAN_AMD])
+        memoria = draft.gpus[0].get("memory")
+        self.assertTrue(memoria is None or memoria.total_bytes is None)
+
+    def test_y_conserva_lo_demas_de_la_memoria(self):
+        """El tipo y la anchura del bus los dio el ioctl y siguen ahí."""
+        from silux.model import GpuMemory
+        draft = _recolectar(
+            [{"vendor_id": 0x1002, "device_id": 0x7550, "primary": True,
+              "memory": GpuMemory(kind="GDDR6", bus_bits=256)}],
+            vulkan=[self.VULKAN_CON_MEMORIA])
+        memoria = draft.gpus[0]["memory"]
+        self.assertEqual(memoria.kind, "GDDR6")
+        self.assertEqual(memoria.bus_bits, 256)
+        self.assertEqual(memoria.total_bytes, 17_163_091_968)
