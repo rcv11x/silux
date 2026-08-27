@@ -393,11 +393,18 @@ class MemoryPage(QScrollArea):
     def _apply_timings(self, modules: list[MemoryModule]) -> None:
         rows: list[list[str]] = []
         tooltips: list[str] = []
+        # Los zócalos de una placa se llaman casi igual —«Controller0-ChannelA»
+        # y «Controller0-ChannelB»— y lo que los distingue está al final, que
+        # es justo lo que se recorta cuando no cabe: las dos filas salían como
+        # «Controller0-C…» y no había forma de saber cuál era cuál.
+        corto = _sin_el_prefijo_comun(
+            [m.locator or (m.spd.address if m.spd else "") for m in modules])
         for module in modules:
             spd = module.spd
             if spd is None:
                 continue
-            etiqueta = module.locator or spd.address
+            etiqueta = corto.get(module.locator or spd.address) or \
+                module.locator or spd.address
             for timing in (spd.jedec, *spd.profiles):
                 if timing is None:
                     continue
@@ -416,3 +423,30 @@ class MemoryPage(QScrollArea):
         self.timings_card.setVisible(bool(rows))
         if rows:
             self.timings.set_rows(rows, tooltips=tooltips)
+
+
+def _sin_el_prefijo_comun(nombres: list[str]) -> dict[str, str]:
+    """Quita a todos el trozo de nombre que comparten, si queda algo detrás.
+
+    Con un solo módulo no hay nada que comparar y se devuelve tal cual.
+    """
+    utiles = [n for n in nombres if n]
+    if len(utiles) < 2:
+        return {}
+    # Solo se toca lo que de verdad no cabe. «Zócalo 0» y «Zócalo 2» entran
+    # enteros, y dejarlos en «0» y «2» quitaría contexto en vez de darlo.
+    if max(len(n) for n in utiles) <= 14:
+        return {}
+    comun = utiles[0]
+    for nombre in utiles[1:]:
+        while not nombre.startswith(comun):
+            comun = comun[:-1]
+            if not comun:
+                return {}
+    # Se corta por el último separador, para no partir una palabra por la mitad.
+    corte = max(comun.rfind(c) for c in "-_ .") + 1
+    if corte <= 0:
+        return {}
+    recortados = {n: n[corte:] for n in utiles}
+    # Si alguno se queda sin nada, el prefijo era todo el nombre: mejor dejarlo.
+    return recortados if all(recortados.values()) else {}

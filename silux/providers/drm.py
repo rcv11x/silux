@@ -213,6 +213,13 @@ class DrmGpus(Provider):
             gpu["name"] = comercial or gpu.get("name")
             gpu["codename"] = gpu.get("codename") or clave
 
+        # pci.ids solo trae la línea del subsistema completo para las
+        # combinaciones que alguien se ha molestado en añadir, y una placa
+        # reciente rara vez está. El fabricante suelto sí: decir quién montó
+        # la tarjeta vale más que un guion.
+        if not gpu.get("subsystem_name") and sub and sub[0] is not None:
+            gpu["subsystem_name"] = pciids.vendor_name(sub[0])
+
         # Lo que pci.ids dejó sin nombre comercial. Solo se toca lo que sigue
         # llamándose por su nombre en clave: si ya pone «Radeon» algo, ese
         # nombre salió de la base de datos y es más concreto que este.

@@ -478,10 +478,33 @@ class Board:
 
     @property
     def display_name(self) -> str:
-        """Cómo se llama esta placa en una frase: "MSI H510M PRO-E"."""
+        """Cómo se llama esto en una frase: «MSI H510M PRO-E».
+
+        En un portátil la placa no tiene nombre comercial —un IdeaPad 330
+        lleva dentro una «LNVNB161216»— y quien mira no reconoce ese código
+        por ninguna parte. Ahí manda el nombre del equipo, que es el que
+        viene escrito en la pegatina.
+        """
+        if self.chassis_is_portable and self.system_version:
+            marca = short_vendor(self.system_vendor) or ""
+            nombre = self.system_version
+            # Lenovo escribe «Lenovo ideapad 330-15ICH» ahí dentro, con la
+            # marca incluida; anteponerla otra vez da «Lenovo Lenovo ideapad».
+            equipo = (nombre if nombre.lower().startswith(marca.lower() or "\0")
+                      else " ".join(p for p in (marca, nombre) if p))
+            # Solo si aporta: algunos fabricantes repiten ahí el código de placa.
+            if equipo and (self.name or "") not in equipo:
+                return equipo
         parts = [short_vendor(self.vendor), self.name]
         joined = " ".join(p for p in parts if p)
         return joined or "Placa base"
+
+    @property
+    def chassis_is_portable(self) -> bool:
+        """Si el DMI dice que esto se lleva encima."""
+        return (self.chassis or "").lower() in (
+            "notebook", "laptop", "portátil", "portable", "sub notebook",
+            "hand held", "tablet", "convertible", "detachable")
 
     @property
     def bios_summary(self) -> str:

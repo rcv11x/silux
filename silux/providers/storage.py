@@ -144,10 +144,11 @@ class Disks(Provider):
         rotatorio = read_int(str(base / "queue" / "rotational"))
         transporte = _transporte(base, nombre)
 
+        modelo = _limpio(read_text(str(base / "device" / "model")))
         return Disk(
             name=nombre,
-            model=_limpio(read_text(str(base / "device" / "model"))),
-            vendor=_fabricante(base),
+            model=modelo,
+            vendor=_fabricante(base, modelo),
             firmware=_limpio(read_text(str(base / "device" / "firmware_rev"))
                              or read_text(str(base / "device" / "rev"))),
             serial=_limpio(read_text(str(base / "device" / "serial"))),
@@ -204,10 +205,48 @@ def _limpio(texto: Optional[str]) -> Optional[str]:
     return " ".join(texto.split()) if texto else None
 
 
-def _fabricante(base: pathlib.Path) -> Optional[str]:
+# Cómo empieza el modelo de cada fabricante y cómo se llama de verdad. Los
+# discos no publican quién los hace: el campo `vendor` de sysfs dice «ATA» en
+# SATA y nada en NVMe, así que el nombre solo está dentro del modelo.
+MARCAS = {
+    "samsung": "Samsung", "kingston": "Kingston", "crucial": "Crucial",
+    "wdc": "Western Digital", "wd_black": "Western Digital",
+    "wd_blue": "Western Digital", "wd_green": "Western Digital",
+    "wd_red": "Western Digital", "wd ": "Western Digital",
+    "seagate": "Seagate", "st1": "Seagate", "st2": "Seagate",
+    "st3": "Seagate", "st4": "Seagate", "st5": "Seagate", "st6": "Seagate",
+    "st8": "Seagate", "kioxia": "Kioxia", "toshiba": "Toshiba",
+    "intel": "Intel", "micron": "Micron", "sandisk": "SanDisk",
+    "adata": "ADATA", "xpg": "ADATA", "corsair": "Corsair",
+    "sk hynix": "SK hynix", "hynix": "SK hynix", "patriot": "Patriot",
+    "pny": "PNY", "team": "Team Group", "transcend": "Transcend",
+    "lexar": "Lexar", "intenso": "Intenso", "netac": "Netac",
+    "silicon power": "Silicon Power", "sabrent": "Sabrent",
+    "gigabyte": "Gigabyte", "hgst": "HGST", "hitachi": "Hitachi",
+    "apacer": "Apacer", "verbatim": "Verbatim", "goodram": "GOODRAM",
+    "solidigm": "Solidigm", "phison": "Phison", "ct": "Crucial",
+}
+
+
+def _de_la_marca(modelo: Optional[str]) -> Optional[str]:
+    """Quién fabrica un disco, a partir de cómo empieza su modelo."""
+    if not modelo:
+        return None
+    bajo = modelo.strip().lower()
+    # Del más largo al más corto: «wd_black» antes que «wd », «sk hynix»
+    # antes que «hynix», o el prefijo corto se lleva la coincidencia.
+    for prefijo in sorted(MARCAS, key=len, reverse=True):
+        if bajo.startswith(prefijo):
+            return MARCAS[prefijo]
+    return None
+
+
+def _fabricante(base: pathlib.Path, modelo: Optional[str] = None) -> Optional[str]:
     """El campo `vendor` de un disco SATA dice «ATA», que no es un fabricante."""
     valor = _limpio(read_text(str(base / "device" / "vendor")))
-    return None if valor in (None, "ATA", "NVME") else valor
+    if valor not in (None, "ATA", "NVME"):
+        return valor
+    return _de_la_marca(modelo)
 
 
 def _transporte(base: pathlib.Path, nombre: str) -> Optional[str]:

@@ -15,6 +15,7 @@ Formato del fichero:
 
 from __future__ import annotations
 
+import functools
 import pathlib
 from typing import Iterable, Optional
 
@@ -120,3 +121,32 @@ def lookup(
     for clave, nombre in subs_crudos.items():
         found[clave] = (vendor_names.get(clave[2], ""), nombre)
     return found
+
+
+@functools.lru_cache(maxsize=64)
+def vendor_name(vendor: int) -> Optional[str]:
+    """Solo el nombre de un fabricante, sin pedir ningún modelo.
+
+    Hace falta para el «Ensamblada por» de una gráfica: pci.ids trae la línea
+    del subsistema completo solo para las combinaciones que alguien se ha
+    molestado en añadir, y una placa reciente no suele estar. Pero el
+    fabricante sí: el 0x1462 es MSI aunque no aparezca esa tarjeta suya
+    concreta, y decir quién la montó vale más que un guion.
+    """
+    path = database_path()
+    if path is None:
+        return None
+    try:
+        with path.open(encoding="utf-8", errors="replace") as handle:
+            for line in handle:
+                if not line or line.startswith(("#", "\t")):
+                    continue
+                code, _, name = line.partition("  ")
+                try:
+                    if int(code, 16) == vendor:
+                        return name.strip() or None
+                except ValueError:
+                    continue
+    except OSError:
+        return None
+    return None

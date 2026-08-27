@@ -152,10 +152,15 @@ class SystemPage(QScrollArea):
         m("Buffers", render.size(memory.buffers_bytes))
         m("Compartida", render.size(memory.shared_bytes))
         m("Libre", render.size(memory.free_bytes))
-        m("Intercambio", render.size(memory.swap_total_bytes) if memory.swap_total_bytes else "sin swap")
-        m("Intercambio usado",
-          f"{render.size(memory.swap_used_bytes)}   ({memory.swap_used_percent:.0f} %)"
-          if memory.swap_total_bytes else d)
+        hay_swap = bool(memory.swap_total_bytes)
+        m("Intercambio", render.size(memory.swap_total_bytes) if hay_swap else "sin swap")
+        # Sin swap, «Intercambio usado: —» se lee como si faltara un dato. No
+        # falta: es que no hay nada de lo que decir cuánto se usa.
+        self.memory.set_visible("Intercambio usado", hay_swap)
+        if hay_swap:
+            m("Intercambio usado",
+              f"{render.size(memory.swap_used_bytes)}   "
+              f"({memory.swap_used_percent:.0f} %)")
 
         o = self.os.set
         o("Distribución", system.distribution or d)
