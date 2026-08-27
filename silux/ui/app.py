@@ -22,8 +22,8 @@ from typing import Optional
 
 import pathlib
 
-from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QIcon
+from PySide6.QtCore import Qt, QElapsedTimer, QTimer
+from PySide6.QtGui import QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -138,6 +138,20 @@ class MainWindow(QMainWindow):
         self.sampler = Sampler(interval_ms=prefs.interval_ms)
         self.sampler.sampled.connect(self._on_sample)
         self.sampler.failed.connect(self._on_failure)
+
+        # Uno solo para todas las gráficas. Con cuarenta y tantas en pantalla,
+        # cuarenta temporizadores despertando por su cuenta cuestan más que
+        # todo lo que se dibuja.
+        self._congelado = False
+        self._desde_la_muestra = QElapsedTimer()
+        self._latido = QTimer(self)
+        self._latido.setInterval(33)                  # unos 30 por segundo
+        self._latido.timeout.connect(self._avanzar_graficas)
+        self._aplicar_fluidez()
+
+        atajo = QShortcut(QKeySequence(Qt.Key.Key_Space), self)
+        atajo.setContext(Qt.ShortcutContext.ApplicationShortcut)
+        atajo.activated.connect(self.alternar_congelado)
 
     # -- construcción -------------------------------------------------------
 
@@ -359,6 +373,9 @@ class MainWindow(QMainWindow):
         if prefs.interval_ms != previous.interval_ms and hasattr(self, "sampler"):
             self.sampler.set_interval(prefs.interval_ms)
 
+        if prefs.fluid_charts != previous.fluid_charts:
+            self._aplicar_fluidez()
+
         appearance_changed = ((prefs.theme, prefs.density, prefs.font_scale, prefs.accent)
                               != (previous.theme, previous.density, previous.font_scale,
                                   previous.accent))
@@ -381,8 +398,56 @@ class MainWindow(QMainWindow):
         elif content_changed:
             self._build_ui()
 
+    def _aplicar_fluidez(self) -> None:
+        """Enciende o apaga el deslizamiento de las gráficas."""
+        if self.prefs.fluid_charts and not self._congelado:
+            self._latido.start()
+        else:
+            self._latido.stop()
+            # Sin animación, cada gráfica se queda en su sitio definitivo.
+            for grafica in self._graficas():
+                grafica.advance(1.0)
+
+    def _graficas(self, solo_visibles: bool = False):
+        """Las gráficas de la ventana; las de las páginas cerradas no cuentan.
+
+        Qt no repinta un widget oculto, así que avisarlas es gasto tonto: de
+        las dieciséis que hay montadas, en pantalla no llegan a cinco.
+        """
+        from .widgets import Sparkline
+        graficas = self.findChildren(Sparkline)
+        return [g for g in graficas if g.isVisible()] if solo_visibles else graficas
+
+    def _avanzar_graficas(self) -> None:
+        if self._congelado or not self._desde_la_muestra.isValid():
+            return
+        intervalo = max(1, self.prefs.interval_ms)
+        fase = self._desde_la_muestra.elapsed() / intervalo
+        for grafica in self._graficas(solo_visibles=True):
+            grafica.advance(fase)
+
+    def alternar_congelado(self) -> None:
+        """Para lo que se pinta, para poder leer un pico antes de que se vaya.
+
+        La recolección sigue: los mínimos y máximos no se pierden por mirar.
+        Al soltar, la ventana se pone al día con la muestra que haya.
+        """
+        self._congelado = not self._congelado
+        self._aplicar_fluidez()
+        if self._congelado:
+            self._status.set_full_text(
+                "Congelado · pulsa espacio para seguir")
+        elif self._last_snapshot is not None:
+            self._on_sample(self._last_snapshot)
+
     def _on_sample(self, snapshot: Snapshot) -> None:
+
         self._last_snapshot = snapshot
+        self._desde_la_muestra.restart()
+        if self._congelado:
+            # Los datos siguen entrando: los mínimos y máximos no se pierden
+            # por mirar. Lo que se para es lo que se pinta.
+            return
         for boton in (self.memory_page.elevation_button,
                       self.storage_page.elevation_button):
             if not boton.isEnabled():

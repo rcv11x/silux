@@ -155,6 +155,19 @@ class SettingsPage(QScrollArea):
             "Por defecto solo se enseñan las banderas relevantes. Activado, "
             "aparecen las 53 que devuelve CPUID en este equipo.",
         ))
+
+        self.fluid_charts = QCheckBox()
+        self.fluid_charts.setChecked(self._prefs.fluid_charts)
+        self.fluid_charts.stateChanged.connect(self._emit)
+        card.body.addWidget(_Field(
+            "Movimiento fluido de las gráficas", self.fluid_charts,
+            "Las líneas se deslizan entre una muestra y la siguiente en vez de "
+            "avanzar a saltos. No lee nada más ni cambia ninguna cifra: solo "
+            "redibuja treinta veces por segundo en lugar de una, y únicamente "
+            "las gráficas que estén a la vista. Cuesta alrededor de un 2 % de "
+            "un núcleo; en un portátil con batería se nota más que en un "
+            "sobremesa.",
+        ))
         return card
 
     def _build_appearance(self) -> Card:
@@ -340,6 +353,7 @@ class SettingsPage(QScrollArea):
             accent=self.accent_box.currentData(),
             network_unit=self.network_box.currentData(),
             show_all_features=self.all_features.isChecked(),
+            fluid_charts=self.fluid_charts.isChecked(),
         ).normalized()
 
     def _emit(self, *_args) -> None:

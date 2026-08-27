@@ -350,6 +350,10 @@ class Sparkline(QWidget):
         self._hover: Optional[int] = None
         self._formatter = None
         self._interval_s = 1.0
+        # Cuánto se ha avanzado hacia la muestra siguiente, de 0 a 1. Sirve
+        # para que la línea se deslice en vez de dar un salto por segundo:
+        # con el movimiento fluido apagado se queda en 1 y no se nota.
+        self._phase = 1.0
         self.setMinimumHeight(theme.METRICS.chart_height)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setMouseTracking(True)
@@ -395,7 +399,21 @@ class Sparkline(QWidget):
     def push(self, value: Optional[float]) -> None:
         if value is not None:
             self._values.append(float(value))
+            self._phase = 0.0
             self.update()
+
+    def advance(self, phase: float) -> None:
+        """Coloca la gráfica entre la muestra anterior y la siguiente.
+
+        La llama un temporizador único de la ventana, no uno por gráfica: con
+        cuarenta y tantas en pantalla, cuarenta temporizadores despertando por
+        su cuenta cuestan más que lo que se dibuja.
+        """
+        nueva = max(0.0, min(1.0, phase))
+        if abs(nueva - self._phase) < 0.01:
+            return
+        self._phase = nueva
+        self.update()
 
     def clear(self) -> None:
         self._values.clear()
@@ -426,10 +444,17 @@ class Sparkline(QWidget):
         low, high = low - margin, high + margin
 
         step = rect.width() / (len(values) - 1)
+        # Con el movimiento fluido, la muestra recién llegada entra por la
+        # derecha y la línea se desliza hasta su sitio en vez de saltar un
+        # escalón entero. Apagado, la fase vale 1 y esto es cero.
+        deslizamiento = (1.0 - self._phase) * step
+        if deslizamiento:
+            painter.setClipRect(self.rect())
 
         def point(i: int, v: float) -> QPointF:
             y = rect.bottom() - (v - low) / (high - low) * rect.height()
-            return QPointF(rect.left() + i * step, max(rect.top(), min(rect.bottom(), y)))
+            return QPointF(rect.left() + i * step + deslizamiento,
+                           max(rect.top(), min(rect.bottom(), y)))
 
         points = [point(i, v) for i, v in enumerate(values)]
 
