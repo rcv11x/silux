@@ -20,12 +20,15 @@ así que reparten de verdad entre núcleos.
 
 `SHA-512` y no `SHA-256` a propósito: la instrucción `sha_ni` acelera la
 segunda y no la primera, así que con SHA-256 un procesador que la tenga saldría
-inflado y dejaría de poder compararse con uno que no.
+inflado y dejaría de poder compararse con uno que no. Vale para las dos cargas
+que usan hash, la del resumen y la de derivación de clave: en esta última el
+efecto sería incluso mayor, porque son miles de rondas encadenadas.
 """
 
 from __future__ import annotations
 
 import hashlib
+import lzma
 import os
 import pathlib
 import threading
@@ -39,6 +42,9 @@ SYS_CPU = "/sys/devices/system/cpu"
 # 4 MB con entropía media: ni tan repetido que la compresión sea trivial ni tan
 # aleatorio que no haya nada que comprimir.
 BLOQUE = bytes(range(256)) * 16384
+# Un trozo del anterior: LZMA es tan lenta que con los 4 MB enteros
+# cada operación tardaría más que la medida entera.
+MEDIO = BLOQUE[:65536]
 
 # Cuánto dura cada medida. Por debajo de tres segundos el resultado depende de
 # si al turbo le dio tiempo a subir; por encima de diez, la prueba entera se
@@ -49,7 +55,10 @@ SEGUNDOS_RAPIDO = 2.0
 # si al turbo le dio tiempo a subir; por encima de sesenta, la prueba se hace
 # eterna para medir lo mismo que a los treinta.
 MINIMO_SEGUNDOS = 1.0
-MAXIMO_SEGUNDOS = 60.0
+# Media hora por medida. Con seis medidas eso son tres horas de prueba, que es
+# más de lo que nadie necesita, pero quien quiera dejar el equipo cociéndose
+# toda la tarde para ver si aguanta tiene derecho a pedirlo.
+MAXIMO_SEGUNDOS = 1800.0
 
 # A partir de aquí, la carga de fondo estropea la medida.
 CARGA_ACEPTABLE = 10.0
@@ -124,6 +133,16 @@ CARGAS: tuple[Carga, ...] = (
           "Enteros puros y sin instrucciones especializadas: mide el núcleo, "
           "no una aceleración concreta.",
           lambda: hashlib.sha512(BLOQUE).digest()),
+    Carga("compresion_dura", "Compresión pesada",
+          "Lo mismo pero apretando de verdad: LZMA hace mucho más trabajo por "
+          "byte y se apoya en la caché, así que separa a un núcleo rápido de "
+          "uno que solo tiene muchos hermanos.",
+          lambda: lzma.compress(MEDIO, preset=0)),
+    Carga("derivacion", "Derivación de clave",
+          "Miles de rondas encadenadas sin poder adelantar trabajo: es lo que "
+          "hace un gestor de contraseñas al abrirse, y no lo acelera ninguna "
+          "instrucción especial.",
+          lambda: hashlib.pbkdf2_hmac("sha512", b"silux", b"benchmark", 12_000)),
     Carga("memoria", "Memoria",
           "Recorre de una vez el doble de lo que cabe en la caché de este "
           "procesador. Aquí no gana el que va más rápido sino el "

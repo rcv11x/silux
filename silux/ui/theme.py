@@ -417,8 +417,13 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         border-radius: 6px;
         margin-bottom: 2px;
     }}
+    /* La sección abierta con el color de acento: en una lista de doce, un
+       recuadro gris sobre fondo gris se busca, y este se encuentra. */
     QListWidget#Nav::item:selected {{
-        background: {p.surface}; color: {p.ink}; border: 1px solid {p.line};
+        background: {p.accent_wash};
+        color: {p.accent};
+        border: 1px solid {p.accent};
+        font-weight: 600;
     }}
     QListWidget#Nav::item:hover:!selected {{ background: {p.surface_alt}; color: {p.ink_dim}; }}
     QListWidget#Nav::item:disabled {{ color: {p.disabled}; }}

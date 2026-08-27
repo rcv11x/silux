@@ -37,6 +37,9 @@ DURACIONES = (
     ("5 s · normal", 5.0),
     ("15 s · sostenida", 15.0),
     ("30 s · con el equipo caliente", 30.0),
+    ("2 min · resistencia", 120.0),
+    ("5 min · estabilidad", 300.0),
+    ("Otra duración…", None),
 )
 
 
@@ -129,8 +132,11 @@ class PerformancePage(QScrollArea):
         titulo = QLabel("Prueba de rendimiento")
         titulo.setObjectName("Headline")
         subtitulo = QLabel(
-            "Mide el procesador con tres cargas distintas, primero en un solo "
-            "hilo y después en todos. Mientras dura, el equipo irá al máximo."
+            "Mide el procesador con cinco cargas distintas, primero en un solo "
+            "hilo y después en todos. Lo interesante no es solo la cifra: es "
+            "que cada carga escala de una forma, y ahí se ve qué aprovecha los "
+            "hilos y qué se queda esperando a la memoria. Mientras dura, el "
+            "equipo irá al máximo."
         )
         subtitulo.setObjectName("Subhead")
         subtitulo.setWordWrap(True)
@@ -152,9 +158,13 @@ class PerformancePage(QScrollArea):
         for etiqueta, segundos in DURACIONES:
             self.duracion.addItem(etiqueta, segundos)
         self.duracion.setCurrentIndex(1)
+        self.duracion.activated.connect(self._quizas_preguntar_duracion)
+        self._duracion_libre: float | None = None
         self.duracion.setToolTip(
-            "Cuánto dura cada medida. Las largas no dan más puntuación: dan "
-            "la que se sostiene cuando el equipo ya está caliente.")
+            "Cuánto dura cada una de las diez medidas: cinco cargas, en un "
+            "hilo y en todos. La prueba entera tarda diez veces esto.\n\n"
+            "Las largas no dan más puntuación: dan la que se sostiene cuando "
+            "el equipo ya está caliente.")
 
         fila = QHBoxLayout()
         fila.addWidget(self.run_button)
@@ -205,7 +215,7 @@ class PerformancePage(QScrollArea):
         self.progress.show()
         clear_layout(self._warnings_host)
 
-        segundos = None if quick else self.duracion.currentData()
+        segundos = None if quick else self._segundos_elegidos()
 
         def trabajo() -> None:
             resultado = benchmark.run(
@@ -222,6 +232,38 @@ class PerformancePage(QScrollArea):
     def _on_progress(self, que: str, cuanto: float) -> None:
         self.progress.setValue(int(cuanto * 100))
         self.progress.setFormat(f"{que}  ·  %p %")
+
+    def _segundos_elegidos(self) -> float | None:
+        elegido = self.duracion.currentData()
+        return self._duracion_libre if elegido is None else elegido
+
+    def _quizas_preguntar_duracion(self, indice: int) -> None:
+        """Si han elegido «Otra duración», pregunta cuántos minutos.
+
+        En minutos y no en segundos porque quien llega hasta aquí ya no está
+        midiendo un pico: quiere dejar el equipo trabajando un rato largo para
+        ver si aguanta, y eso se piensa en minutos.
+        """
+        from PySide6.QtWidgets import QInputDialog
+
+        if self.duracion.itemData(indice) is not None:
+            self._duracion_libre = None
+            return
+        minutos, aceptado = QInputDialog.getDouble(
+            self, "Otra duración",
+            "Cuántos minutos dura cada una de las diez medidas.\n\n"
+            "La prueba entera tarda diez veces esto.",
+            value=(self._duracion_libre or 600.0) / 60.0,
+            minValue=benchmark.MINIMO_SEGUNDOS / 60.0,
+            maxValue=benchmark.MAXIMO_SEGUNDOS / 60.0, decimals=1)
+        if not aceptado:
+            self.duracion.setCurrentIndex(1)
+            self._duracion_libre = None
+            return
+        self._duracion_libre = minutos * 60.0
+        total = minutos * len(benchmark.CARGAS) * 2
+        self.duracion.setItemText(
+            indice, f"{minutos:g} min cada una · {total:g} min en total")
 
     def _abrir_carpeta(self) -> None:
         """Abre el gestor de archivos donde se guardan las pruebas.

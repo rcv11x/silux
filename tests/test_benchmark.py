@@ -7,6 +7,7 @@ avisos salgan cuando toca, que la caída de frecuencia se detecte, y que la
 escala se calcule bien.
 """
 
+import pathlib
 import threading
 import unittest
 from unittest import mock
@@ -195,3 +196,84 @@ class TestDuracion(unittest.TestCase):
                                benchmark.Medida(c.key, h, 1, d)):
             benchmark.run(quick=True)
         self.assertEqual(set(vistas), {benchmark.SEGUNDOS_RAPIDO})
+
+
+class TestCargasNuevas(unittest.TestCase):
+    """Las cinco cargas, y por qué son cinco y no siete."""
+
+    def test_estan_las_cinco(self):
+        claves = [c.key for c in benchmark.CARGAS]
+        self.assertEqual(claves, ["compresion", "hash", "compresion_dura",
+                                  "derivacion", "memoria"])
+
+    def test_ninguna_usa_un_hash_que_acelere_sha_ni(self):
+        """Vale para las dos que usan hash, no solo para la del resumen.
+
+        En la derivación de clave el efecto sería mayor todavía: son miles de
+        rondas encadenadas, así que una CPU con la instrucción saldría muy por
+        encima de otra sin ella por algo que no es su velocidad.
+        """
+        fuente = pathlib.Path(benchmark.__file__).read_text(encoding="utf-8")
+        self.assertNotIn("sha256", fuente)
+        self.assertNotIn("sha_256", fuente)
+
+    def test_todas_reparten_de_verdad_entre_hilos(self):
+        """La condición para entrar: si no suelta el GIL, no mide la CPU.
+
+        Se comprueba de verdad, ejecutándolas: una carga que escale ×1 con
+        dieciséis hilos estaría midiendo el candado del intérprete y no el
+        procesador, y eso ya pasó con una candidata de coma flotante.
+        """
+        import os
+        import threading
+        import time
+
+        hilos = os.cpu_count() or 1
+        if hilos < 4:
+            self.skipTest("hacen falta varios núcleos para ver el reparto")
+
+        for carga in benchmark.CARGAS:
+            with self.subTest(carga=carga.key):
+                def cuantas(n: int) -> int:
+                    total = [0] * n
+                    fin = time.perf_counter() + 0.4
+
+                    def bucle(i: int) -> None:
+                        veces = 0
+                        while time.perf_counter() < fin:
+                            carga.work()
+                            veces += 1
+                        total[i] = veces
+
+                    obreros = [threading.Thread(target=bucle, args=(i,))
+                               for i in range(n)]
+                    for o in obreros:
+                        o.start()
+                    for o in obreros:
+                        o.join()
+                    return sum(total)
+
+                uno = max(1, cuantas(1))
+                escala = cuantas(hilos) / uno
+                self.assertGreater(escala, 1.8,
+                                   f"{carga.key} no reparte: ×{escala:.1f}")
+
+    def test_cada_una_explica_qué_mide(self):
+        for carga in benchmark.CARGAS:
+            self.assertTrue(carga.explanation.strip(), carga.key)
+            self.assertGreater(len(carga.explanation), 40, carga.key)
+
+
+class TestDuracionLarga(unittest.TestCase):
+    def test_se_puede_pedir_media_hora_por_medida(self):
+        """Para dejar el equipo cociéndose y ver si aguanta."""
+        self.assertGreaterEqual(benchmark.MAXIMO_SEGUNDOS, 1800.0)
+
+    def test_pero_no_más(self):
+        from unittest import mock
+        vistas = []
+        with mock.patch.object(benchmark, "_medir",
+                               side_effect=lambda c, h, d: vistas.append(d) or
+                               benchmark.Medida(c.key, h, 1, d)):
+            benchmark.run(seconds=99_999.0)
+        self.assertTrue(all(d <= benchmark.MAXIMO_SEGUNDOS for d in vistas))
