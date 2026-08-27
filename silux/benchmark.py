@@ -45,6 +45,11 @@ BLOQUE = bytes(range(256)) * 16384
 # hace larga sin cambiar la cifra.
 SEGUNDOS = 5.0
 SEGUNDOS_RAPIDO = 2.0
+# Los extremos de lo que se puede pedir. Por debajo de uno la cifra depende de
+# si al turbo le dio tiempo a subir; por encima de sesenta, la prueba se hace
+# eterna para medir lo mismo que a los treinta.
+MINIMO_SEGUNDOS = 1.0
+MAXIMO_SEGUNDOS = 60.0
 
 # A partir de aquí, la carga de fondo estropea la medida.
 CARGA_ACEPTABLE = 10.0
@@ -62,6 +67,54 @@ class Carga:
     work: Callable[[], object]
 
 
+# El bloque tiene que no caber en la caché, y cuánto es eso depende del
+# procesador: un 5800X3D lleva 96 MB de L3 y se traga entero un bloque de 64,
+# así que ahí la prueba mediría la caché y no la memoria. Se dimensiona al
+# doble de la L3 que haya, con un suelo para las CPU pequeñas y un techo para
+# no pedir media RAM prestada.
+BLOQUE_MINIMO_MB = 64
+BLOQUE_MAXIMO_MB = 192
+_grande: Optional[bytes] = None
+
+
+def _tamano_del_bloque() -> int:
+    """En megas: el doble de la caché de último nivel, entre 64 y 192."""
+    mayor = 0
+    for indice in range(5):
+        crudo = _leer(f"{SYS_CPU}/cpu0/cache/index{indice}/size")
+        if not crudo:
+            continue
+        try:
+            valor = int(crudo.rstrip("KMG"))
+        except ValueError:
+            continue
+        if crudo.endswith("M"):
+            valor *= 1024
+        elif crudo.endswith("G"):
+            valor *= 1024 * 1024
+        mayor = max(mayor, valor // 1024)          # a megas
+    return max(BLOQUE_MINIMO_MB, min(BLOQUE_MAXIMO_MB, mayor * 2 or BLOQUE_MINIMO_MB))
+
+
+def _bloque_grande() -> bytes:
+    global _grande
+    if _grande is None:
+        megas = _tamano_del_bloque()
+        _grande = BLOQUE * (megas * 1024 * 1024 // len(BLOQUE))
+    return _grande
+
+
+def _soltar_el_bloque() -> None:
+    """Devuelve los megas del bloque al terminar la prueba.
+
+    Son hasta 192 MB, y el programa entero se mueve en 130: dejarlos vivos
+    después de medir dispararía el consumo el resto de la sesión por una
+    prueba que dura medio minuto.
+    """
+    global _grande
+    _grande = None
+
+
 CARGAS: tuple[Carga, ...] = (
     Carga("compresion", "Compresión",
           "Comprimir es enteros y acceso a memoria, que es lo que hace el "
@@ -71,7 +124,19 @@ CARGAS: tuple[Carga, ...] = (
           "Enteros puros y sin instrucciones especializadas: mide el núcleo, "
           "no una aceleración concreta.",
           lambda: hashlib.sha512(BLOQUE).digest()),
+    Carga("memoria", "Memoria",
+          "Recorre de una vez el doble de lo que cabe en la caché de este "
+          "procesador. Aquí no gana el que va más rápido sino el "
+          "que trae los datos antes, y por eso escala mucho peor con los "
+          "hilos: el camino hasta la memoria es uno y se comparte.",
+          lambda: zlib.crc32(_bloque_grande())),
 )
+
+# No hay carga de coma flotante, y no es un olvido. Todo lo que la haría en
+# Python sin dependencias —sumar, multiplicar listas— tiene el bucle en C pero
+# manejando objetos del intérprete, así que no suelta el GIL: medido aquí,
+# escala ×1.0 con dieciséis hilos. Una prueba multihilo que no reparte no mide
+# el procesador, mide el candado.
 
 
 @dataclass(frozen=True, slots=True)
@@ -131,13 +196,21 @@ class Result:
 
 
 def run(quick: bool = False, on_progress: Optional[Callable[[str, float], None]] = None,
-        stop: Optional[threading.Event] = None) -> Result:
+        stop: Optional[threading.Event] = None,
+        seconds: Optional[float] = None) -> Result:
     """Ejecuta la prueba entera. Bloquea: llámese desde un hilo aparte.
 
     `on_progress` recibe qué se está midiendo y cuánto se lleva, de 0 a 1.
     `stop` permite cancelar entre medidas.
+    `seconds` fija cuánto dura cada medida; sin él manda `quick`.
+
+    Alargar la prueba no cambia la cifra, cambia en qué condiciones se toma:
+    a los cinco segundos el turbo ya subió y el disipador aún no se ha
+    calentado, mientras que a los treinta se mide con el equipo asentado, que
+    es lo que de verdad va a pasar mientras se juega o se compila.
     """
-    duracion = SEGUNDOS_RAPIDO if quick else SEGUNDOS
+    duracion = (max(MINIMO_SEGUNDOS, min(MAXIMO_SEGUNDOS, float(seconds)))
+                if seconds else (SEGUNDOS_RAPIDO if quick else SEGUNDOS))
     hilos = os.cpu_count() or 1
     vigilante = _Vigilante()
 
@@ -157,6 +230,7 @@ def run(quick: bool = False, on_progress: Optional[Callable[[str, float], None]]
             medidas.append(_medir(carga, n, duracion))
     finally:
         vigilante.parar()
+        _soltar_el_bloque()
 
     if on_progress:
         on_progress("listo", 1.0)

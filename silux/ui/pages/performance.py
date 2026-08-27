@@ -15,7 +15,7 @@ from __future__ import annotations
 import threading
 
 from PySide6.QtCore import Qt, QTimer, Signal
-from PySide6.QtWidgets import (QHBoxLayout, QLabel, QProgressBar, QPushButton,
+from PySide6.QtWidgets import (QComboBox,QHBoxLayout, QLabel, QProgressBar, QPushButton,
                                QScrollArea, QVBoxLayout, QWidget)
 
 from ... import benchmark, render
@@ -28,6 +28,15 @@ RESULT_HEADERS = ("Carga", "Un hilo", "Todos los hilos", "Escala")
 CONDITION_FIELDS = ("Frecuencia media", "Frecuencia máxima", "Frecuencia al final",
                     "Temperatura al empezar", "Temperatura máxima",
                     "Gobernador", "Preferencia de energía", "Carga de fondo")
+
+
+# Lo que se puede pedir, y para qué sirve cada uno.
+DURACIONES = (
+    ("3 s · rápida", 3.0),
+    ("5 s · normal", 5.0),
+    ("15 s · sostenida", 15.0),
+    ("30 s · con el equipo caliente", 30.0),
+)
 
 
 class PerformancePage(QScrollArea):
@@ -91,9 +100,8 @@ class PerformancePage(QScrollArea):
         titulo = QLabel("Prueba de rendimiento")
         titulo.setObjectName("Headline")
         subtitulo = QLabel(
-            "Mide el procesador con dos cargas distintas, primero en un solo "
-            "hilo y después en todos. Tarda unos veinte segundos y durante ese "
-            "rato el equipo irá al máximo."
+            "Mide el procesador con tres cargas distintas, primero en un solo "
+            "hilo y después en todos. Mientras dura, el equipo irá al máximo."
         )
         subtitulo.setObjectName("Subhead")
         subtitulo.setWordWrap(True)
@@ -107,9 +115,24 @@ class PerformancePage(QScrollArea):
         )
         self.quick_button.clicked.connect(lambda: self._start(quick=True))
 
+        # Alargar la prueba no cambia la cifra: cambia en qué condiciones se
+        # toma. A los cinco segundos el turbo ya subió y el disipador aún está
+        # frío; a los treinta se mide con el equipo asentado, que es lo que de
+        # verdad pasa mientras se juega o se compila.
+        self.duracion = QComboBox()
+        for etiqueta, segundos in DURACIONES:
+            self.duracion.addItem(etiqueta, segundos)
+        self.duracion.setCurrentIndex(1)
+        self.duracion.setToolTip(
+            "Cuánto dura cada medida. Las largas no dan más puntuación: dan "
+            "la que se sostiene cuando el equipo ya está caliente.")
+
         fila = QHBoxLayout()
         fila.addWidget(self.run_button)
         fila.addWidget(self.quick_button)
+        fila.addSpacing(12)
+        fila.addWidget(QLabel("Cada medida:"))
+        fila.addWidget(self.duracion)
         fila.addStretch(1)
 
         self.progress = QProgressBar()
@@ -153,9 +176,12 @@ class PerformancePage(QScrollArea):
         self.progress.show()
         clear_layout(self._warnings_host)
 
+        segundos = None if quick else self.duracion.currentData()
+
         def trabajo() -> None:
             resultado = benchmark.run(
                 quick=quick,
+                seconds=segundos,
                 on_progress=lambda que, cuanto: self._progressed.emit(que, cuanto),
                 stop=self._parar,
             )
