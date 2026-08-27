@@ -512,17 +512,25 @@ class Sparkline(QWidget):
 
         low, high = self._escala_visible(values)
 
-        step = rect.width() / (len(values) - 1)
-        # Con el movimiento fluido, la muestra recién llegada entra por la
-        # derecha y la línea se desliza hasta su sitio en vez de saltar un
-        # escalón entero. Apagado, la fase vale 1 y esto es cero.
-        deslizamiento = (1.0 - self._phase) * step
-        if deslizamiento:
+        # El paso lo marca la capacidad, no cuántas muestras hay todavía. Si
+        # se reparte el ancho entre las que hay, cada muestra nueva estrecha
+        # el paso y toda la curva se recoloca: un salto de seis píxeles hasta
+        # que la cola se llena. Así la gráfica se llena desde la derecha con
+        # el paso definitivo desde el primer momento.
+        capacidad = self._values.maxlen or len(values)
+        step = rect.width() / max(1, capacidad - 1)
+        # Las muestras viejas se van hacia la izquierda y salen por ahí; la
+        # nueva ya está dibujada en el borde derecho. Al revés —empujando
+        # todo a la derecha— el relleno dejaba un hueco parpadeante en el
+        # borde izquierdo, que es el rebote que se veía.
+        origen = rect.right() - (len(values) - 1) * step
+        deslizamiento = -self._phase * step
+        if self._phase < 1.0:
             painter.setClipRect(self.rect())
 
         def point(i: int, v: float) -> QPointF:
             y = rect.bottom() - (v - low) / (high - low) * rect.height()
-            return QPointF(rect.left() + i * step + deslizamiento,
+            return QPointF(origen + i * step + deslizamiento,
                            max(rect.top(), min(rect.bottom(), y)))
 
         points = [point(i, v) for i, v in enumerate(values)]

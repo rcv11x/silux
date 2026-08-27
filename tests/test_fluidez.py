@@ -252,3 +252,72 @@ class TestEscalaVertical(unittest.TestCase):
         self._pintar(g)
         g.clear()
         self.assertIsNone(g._escala)
+
+
+class TestSinRebote(unittest.TestCase):
+    """La línea avanza hacia la izquierda y no vuelve atrás.
+
+    El primer intento deslizaba los puntos hacia la derecha y los iba
+    devolviendo a su sitio. Con la cola llena las muestras caían donde debían,
+    pero el relleno empezaba un paso más adentro y dejaba en el borde
+    izquierdo un hueco que se abría y cerraba cada segundo: eso es lo que se
+    veía rebotar. Y mientras la cola se llenaba era peor, porque el ancho se
+    repartía entre las muestras que hubiera y cada una nueva estrechaba el
+    paso y recolocaba la curva entera.
+    """
+
+    ANCHO = 300
+
+    def _grafica(self, cuantas):
+        from silux.ui.widgets import Sparkline
+        g = Sparkline(theme.palette_for(_app(), "dark"))
+        g.resize(self.ANCHO, 40)
+        for i in range(cuantas):
+            g.push(40.0 + (i % 7))
+        return g
+
+    def _equis(self, g, phase):
+        """Dónde cae cada muestra, con la misma cuenta que el paintEvent."""
+        valores = list(g._values)
+        ancho = self.ANCHO - 1.0
+        capacidad = g._values.maxlen or len(valores)
+        step = ancho / max(1, capacidad - 1)
+        origen = (0.5 + ancho) - (len(valores) - 1) * step
+        return [origen + i * step - phase * step for i in range(len(valores))], step
+
+    def _seguir_una(self, cuantas):
+        """Cuánto se mueve una muestra concreta al entrar la siguiente."""
+        g = self._grafica(cuantas)
+        antes, _ = self._equis(g, 1.0)
+        marcada, x_antes = list(g._values)[5], antes[5]
+        g.push(999.0)
+        valores = list(g._values)
+        despues, _ = self._equis(g, 0.0)
+        return despues[valores.index(marcada)] - x_antes
+
+    def test_con_la_cola_llena_no_rebota(self):
+        self.assertAlmostEqual(self._seguir_una(90), 0.0, places=6)
+
+    def test_ni_mientras_se_llena(self):
+        """Aquí saltaba seis píxeles: el paso cambiaba con cada muestra."""
+        self.assertAlmostEqual(self._seguir_una(50), 0.0, places=6)
+        self.assertAlmostEqual(self._seguir_una(12), 0.0, places=6)
+
+    def test_el_paso_no_depende_de_cuantas_haya(self):
+        _, con_pocas = self._equis(self._grafica(12), 1.0)
+        _, con_muchas = self._equis(self._grafica(90), 1.0)
+        self.assertAlmostEqual(con_pocas, con_muchas, places=6)
+
+    def test_la_mas_nueva_se_dibuja_en_el_borde_derecho(self):
+        equis, _ = self._equis(self._grafica(90), 0.0)
+        self.assertAlmostEqual(equis[-1], self.ANCHO - 0.5, places=6)
+
+    def test_el_relleno_cubre_el_borde_izquierdo_al_terminar(self):
+        """El hueco parpadeante de ahí era el rebote que se veía."""
+        equis, _ = self._equis(self._grafica(90), 1.0)
+        self.assertLess(equis[0], 0.5, "deja un hueco sin rellenar")
+
+    def test_y_la_gráfica_se_llena_desde_la_derecha(self):
+        equis, _ = self._equis(self._grafica(10), 1.0)
+        self.assertGreater(equis[0], self.ANCHO / 2,
+                           "con pocas muestras deben quedar a la derecha")
