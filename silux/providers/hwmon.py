@@ -157,6 +157,86 @@ def _friendly(chip: str, prefix: str, index: str, label: Optional[str]) -> str:
     return f"{fallback.get(prefix, prefix)} {index}"
 
 
+# Hasta dónde puede llegar razonablemente un umbral de cada tipo. Los chips
+# dejan sin usar los campos que no aplican y el kernel los devuelve tal cual:
+# un NVMe publicaba «alto = 65261.85 °C», que son 0xFFFF en kelvin, o sea el
+# valor de fábrica de un umbral que nadie rellenó. Sin filtrarlos, la mitad de
+# los sensores tendría un límite que no se alcanza ni fundiendo la placa, y un
+# aviso que nunca salta es igual de inútil que no tenerlo.
+TOPES = {
+    SensorKind.TEMPERATURE: 200.0,      # °C
+    SensorKind.VOLTAGE: 30.0,           # V
+    SensorKind.FAN: 30_000.0,           # RPM
+    SensorKind.POWER: 2_000.0,          # W
+    SensorKind.CURRENT: 200.0,          # A
+    SensorKind.USAGE: 100.0,            # %
+}
+
+
+# Cuando el sensor no publica sus límites, los pone silux por el chip que es.
+# Hace falta: de las 28 temperaturas de un equipo corriente, solo 7 traen
+# umbral, y el procesador —que es el que importa— no suele traer ninguno.
+#
+# Las cifras son conservadoras a propósito, y del punto en que el fabricante
+# empieza a recortar, no del que rompe. Un aviso que salta antes de tiempo
+# quema la confianza en todos los demás, así que donde hay duda no se pone
+# nada: los sensores de placa (it87, nct, acpitz, gigabyte_wmi) miden puntos
+# que solo conoce quien diseñó la placa, y ahí no hay forma de acertar.
+LIMITES_ESTIMADOS = {
+    # AMD: Tctl llega a 90 por diseño en Zen 3 y no es una avería.
+    "k10temp": (88.0, 95.0),
+    "zenpower": (88.0, 95.0),
+    # Intel: Tjmax anda por 100 en las de escritorio.
+    "coretemp": (95.0, 100.0),
+    # NVMe que no declara el suyo. Los que lo declaran ganan ellos.
+    "nvme": (75.0, 85.0),
+    # Discos mecánicos: aquí sí hay consenso, y es más bajo de lo que parece.
+    "drivetemp": (55.0, 60.0),
+}
+
+
+def _plausible(valor, kind):
+    """Descarta un umbral fuera de lo que ese tipo de sensor puede dar."""
+    if valor is None:
+        return None
+    tope = TOPES.get(kind)
+    if tope is not None and not -tope <= valor <= tope:
+        return None
+    return valor
+
+
+def _umbrales(kind, bajo, alto, critico, chip=None) -> dict:
+    """Los tres límites de un sensor, ya limpios de los que no valen.
+
+    Los chips traen de fábrica los campos que nadie configuró, y el kernel los
+    devuelve tal cual. Un nct6798 publica `temp_min = 127` y `temp_max = 127`
+    para sus seis temperaturas: con eso, una placa a 34 °C queda «por debajo
+    del mínimo» y saltan seis avisos a la vez. Un aviso falso gasta más
+    confianza de la que gana uno acertado.
+
+    De los ventiladores no se avisa. Que uno vaya a tope no es un problema —es
+    lo que se espera bajo carga— y que esté parado tampoco, porque casi todas
+    las tarjetas modernas los paran a propósito en reposo.
+    """
+    if kind is SensorKind.FAN:
+        return {"low": None, "high": None, "critical": None}
+
+    bajo = _plausible(bajo, kind)
+    alto = _plausible(alto, kind)
+    critico = _plausible(critico, kind)
+
+    # Un mínimo por encima del máximo es un par que nadie rellenó.
+    if bajo is not None and alto is not None and bajo >= alto:
+        bajo = alto = None
+
+    if (alto is None and critico is None
+            and kind is SensorKind.TEMPERATURE
+            and (estimado := LIMITES_ESTIMADOS.get(chip or ""))):
+        return {"low": bajo, "high": estimado[0], "critical": estimado[1],
+                "estimated_limits": True}
+    return {"low": bajo, "high": alto, "critical": critico}
+
+
 class HwmonSensors(Provider):
     """Enumera todos los chips y reparte lo que corresponde a la CPU."""
 
@@ -240,9 +320,8 @@ class HwmonSensors(Provider):
                             read_text(str(path).replace(sufijo, "_label"))),
             kind=kind,
             value=round(raw / divisor, 3),
-            low=threshold("min"),
-            high=threshold("max"),
-            critical=threshold("crit"),
+            **_umbrales(kind, threshold("min"), threshold("max"),
+                        threshold("crit"), chip),
             order=order,
         )
 

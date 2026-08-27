@@ -1004,6 +1004,10 @@ class Sensor:
     high: Optional[float] = None    # umbral alto
     critical: Optional[float] = None
     order: int = 0                  # para mantener el orden natural dentro de la rama
+    # True cuando los umbrales no los publica el sensor y los pone silux por
+    # el chip que es. Se dice en la ventana: un límite estimado y uno que
+    # declara el fabricante no merecen la misma confianza.
+    estimated_limits: bool = False
     # Para lo que no encaja en ningún tipo con unidad fija, como un ritmo de
     # transferencia. Es la excepción, no la norma: si algo se repite, merece su
     # propio SensorKind.
@@ -1020,13 +1024,26 @@ class Sensor:
     @property
     def alarm(self) -> bool:
         """Si la lectura ha pasado un umbral que declara el propio hardware."""
+        return self.alarm_level != "ok"
+
+    @property
+    def alarm_level(self) -> str:
+        """«ok», «alto» o «crítico», según lo que diga el propio hardware.
+
+        Dos niveles y no uno porque no es lo mismo: `max` es donde el
+        fabricante empieza a incomodarse y `crit` donde el equipo se apaga
+        solo. Pintar los dos del mismo color deja al que mira sin saber si
+        tiene que hacer algo ahora o solo estar al tanto.
+        """
+        if self.value is None:
+            return "ok"
         if self.critical is not None and self.value >= self.critical:
-            return True
+            return "crítico"
         if self.high is not None and self.value > self.high:
-            return True
+            return "alto"
         if self.low is not None and self.value < self.low:
-            return True
-        return False
+            return "alto"
+        return "ok"
 
 
 @dataclass(frozen=True, slots=True)
@@ -1133,7 +1150,7 @@ _COMPUTED: dict[str, tuple[str, ...]] = {
     "DiskHealth": ("life_left_percent", "healthy"),
     "Disk": ("display_name", "used_bytes", "mounted_partitions"),
     "CpuInfo": ("total_cores", "total_threads", "package_power_w"),
-    "Sensor": ("unit", "category", "alarm"),
+    "Sensor": ("unit", "category", "alarm", "alarm_level"),
     "Board": ("display_name", "bios_summary"),
     "MemoryModule": ("has_ecc", "underclocked", "rated_mts"),
     "SpdInfo": ("rated_mts",),
