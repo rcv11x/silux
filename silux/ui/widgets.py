@@ -181,10 +181,11 @@ class Card(QFrame):
         outer.setContentsMargins(m.card_pad_h, m.card_pad_v, m.card_pad_h, m.card_pad_v)
         outer.setSpacing(m.card_gap)
 
+        self._title_label: Optional[QLabel] = None
         if title:
-            label = QLabel(title.upper())
-            label.setObjectName("CardTitle")
-            outer.addWidget(label)
+            self._title_label = QLabel(title.upper())
+            self._title_label.setObjectName("CardTitle")
+            outer.addWidget(self._title_label)
 
         self.body = QVBoxLayout()
         self.body.setContentsMargins(0, 0, 0, 0)
@@ -193,6 +194,11 @@ class Card(QFrame):
         # Sin este muelle, el espacio sobrante se reparte entre el título y el
         # contenido, y el título acaba flotando a media altura.
         outer.addStretch(0)
+
+    def set_title(self, title: str) -> None:
+        """Cambia el título de la tarjeta si la tenía."""
+        if self._title_label is not None:
+            self._title_label.setText(title.upper())
 
 
 class Badge(QLabel):
