@@ -254,6 +254,19 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
 - **Un atajo de teclado que no aparece en ninguna parte**: no existe para
   quien no lo sabe. La barra de estado es donde se mira sin buscar.
 
+- **Fiarse de los umbrales que publica un chip sin mirarlos**: devuelven de
+  fábrica los campos que nadie configuró. Un nct6798 da `min = 127` y
+  `max = 127` en sus seis temperaturas, y con eso una placa a 34 °C queda «por
+  debajo del mínimo»: seis avisos falsos de golpe. Un NVMe da 65261.85 °C, que
+  son 0xFFFF en kelvin. Se descarta lo implausible y los pares donde el mínimo
+  supera al máximo, y de los ventiladores no se avisa nunca: ir a tope bajo
+  carga es lo normal y estar parado en reposo también.
+- **Esperar que el hardware publique sus límites**: de 28 temperaturas de un
+  equipo corriente, solo 7 traen umbral, y el procesador no suele traer
+  ninguno. Sin estimar nada, el aviso no salta donde más falta hace. Se
+  estiman por chip conocido (k10temp, coretemp, nvme, drivetemp), del lado
+  prudente, y se dice en la ventana que son estimados.
+
 - **Medir el coste de repintar sobre widgets que no están a la vista**: la
   primera medida del movimiento fluido dio un 117 % de un núcleo, y era falsa:
   forzaba el dibujo de las dieciséis gráficas montadas cuando Qt no repinta

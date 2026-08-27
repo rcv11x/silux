@@ -170,6 +170,17 @@ class HomePage(QScrollArea):
         if pendientes:
             chips.append(f"{pendientes} "
                          f"{render.plural(pendientes, 'dato', 'datos')} sin leer")
+
+        # Lo que está fuera de umbral se dice en la portada, que es donde se
+        # entra. Enterarse de que la GPU va a 100 grados solo si se abre la
+        # pestaña de sensores y se despliega su rama es enterarse tarde.
+        niveles = [s.alarm_level for s in snapshot.sensors if s.alarm_level != "ok"]
+        if niveles:
+            criticos = niveles.count("crítico")
+            chips.append(
+                f"⚠ {criticos} en crítico" if criticos
+                else f"⚠ {len(niveles)} "
+                     f"{render.plural(len(niveles), 'sensor alto', 'sensores altos')}")
         chips = [c for c in chips if c]
         if tuple(chips) != self._chips:
             self._chips = tuple(chips)

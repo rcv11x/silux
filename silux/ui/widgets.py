@@ -1500,8 +1500,25 @@ class SensorTree(QTreeWidget):
         self._autosize_columns()
         self._fit_height()
 
+    def marcar_aviso(self, device: str, cuantos: int, critico: bool) -> None:
+        """Pone en la rama del aparato cuántos de sus sensores están fuera.
+
+        Sin esto, un aviso solo se ve desplegando la rama que lo tiene, y con
+        ocho aparatos y noventa y nueve sensores eso es no verlo. La rama va
+        cerrada casi siempre; el aviso tiene que llegar hasta arriba.
+        """
+        item = self._rows.get(f"::{device}")
+        if item is None:
+            return
+        texto = device if not cuantos else f"{device}   ⚠ {cuantos}"
+        if item.text(0) != texto:
+            item.setText(0, texto)
+        item.setForeground(0, self._p.q("crit") if critico
+                           else self._p.q("warn") if cuantos
+                           else self._p.q("ink"))
+
     def update_row(self, key: str, values: list[str], tooltip: str = "",
-                   alarm: bool = False) -> None:
+                   alarm: str = "ok") -> None:
         item = self._rows.get(key)
         if item is None:
             return
@@ -1509,7 +1526,11 @@ class SensorTree(QTreeWidget):
             if item.text(column) != text:
                 item.setText(column, text)
                 self._ensanchar_para(column, text)
-        colour = self._p.q("crit") if alarm else self._p.q("ink")
+        # Tres estados y no dos: «alto» es donde el fabricante empieza a
+        # incomodarse y «crítico» donde el equipo se protege solo. Pintarlos
+        # igual deja sin saber si hay que hacer algo ahora o solo mirarlo.
+        colour = {"crítico": self._p.q("crit"),
+                  "alto": self._p.q("warn")}.get(alarm, self._p.q("ink"))
         item.setForeground(1, colour)
         if tooltip:
             for column in range(len(self.COLUMNS)):

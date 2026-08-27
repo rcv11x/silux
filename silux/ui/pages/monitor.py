@@ -251,10 +251,20 @@ class MonitorPage(QScrollArea):
                 + ("dispositivo" if len(tree) == 1 else "dispositivos")
             )
 
+        avisos: dict[str, list[str]] = {}
         for sensor in snapshot.sensors:
             self.tree.update_row(
-                sensor.key, self._values(sensor), self._tooltip(sensor), sensor.alarm
+                sensor.key, self._values(sensor), self._tooltip(sensor),
+                sensor.alarm_level
             )
+            if sensor.alarm_level != "ok":
+                avisos.setdefault(sensor.device, []).append(sensor.alarm_level)
+
+        # El aviso tiene que llegar a la rama cerrada: con ocho aparatos y cien
+        # sensores, uno en rojo dentro de una rama plegada no lo ve nadie.
+        for device in tree:
+            niveles = avisos.get(device, [])
+            self.tree.marcar_aviso(device, len(niveles), "crítico" in niveles)
 
     def _values(self, sensor: Sensor) -> list[str]:
         digits = DECIMALS.get(sensor.kind, 1)
@@ -290,8 +300,16 @@ class MonitorPage(QScrollArea):
             limits.append(f"crítico {sensor.critical:g} {sensor.unit}")
         if limits:
             lines.append("\n".join(limits))
-        if sensor.alarm:
-            lines.append("⚠  La lectura ha superado un umbral del propio hardware.")
+        if sensor.estimated_limits:
+            lines.append("Este sensor no publica sus límites: los de arriba los "
+                         "estima silux por el chip que es, y van del lado "
+                         "prudente.")
+        if sensor.alarm_level == "crítico":
+            lines.append("⚠  Ha llegado al umbral crítico. Es donde el equipo "
+                         "empieza a protegerse solo.")
+        elif sensor.alarm_level == "alto":
+            lines.append("⚠  Por encima del umbral alto. No es una avería, pero "
+                         "conviene saberlo.")
         return "\n\n".join(lines)
 
     def _apply_hints(self, snapshot: Snapshot) -> None:
