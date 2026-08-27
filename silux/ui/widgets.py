@@ -842,7 +842,7 @@ class ChipRow(QWidget):
         super().__init__(parent)
         self._column = QVBoxLayout(self)
         self._column.setContentsMargins(0, 0, 0, 0)
-        self._column.setSpacing(4)
+        self._column.setSpacing(max(4, theme.METRICS.card_gap - 2))
         self._chips: list[tuple[str, bool]] = []
         self._widgets: list[Badge] = []
         self._laid_width = 0
@@ -881,10 +881,13 @@ class ChipRow(QWidget):
         for text, loud in self._chips:
             chip = Badge(text, quiet=not loud)
             self._widgets.append(chip)
-            needed = chip.sizeHint().width() + 4
+            # El hueco entre insignias sigue a la densidad: pegadas unas a
+            # otras, una leyenda de tres se lee como una sola etiqueta larga.
+            hueco = max(6, theme.METRICS.card_gap)
+            needed = chip.sizeHint().width() + hueco
             if row is None or (used and used + needed > width):
                 row = QHBoxLayout()
-                row.setSpacing(4)
+                row.setSpacing(hueco)
                 row.setContentsMargins(0, 0, 0, 0)
                 self._column.addLayout(row)
                 used = 0
@@ -979,7 +982,7 @@ class Table(QScrollArea):
 
         for column, title in enumerate(self._headers):
             label = QLabel(title.upper())
-            label.setObjectName("CardTitle")
+            label.setObjectName("ColumnTitle")
             label.setAlignment(
                 Qt.AlignmentFlag.AlignRight if self._numeric[column]
                 else Qt.AlignmentFlag.AlignLeft

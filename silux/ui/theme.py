@@ -349,10 +349,19 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
     }}
 
     QLabel#CardTitle {{
+        color: {p.ink_dim};
+        font-size: {m.small_pt + 4}px;
+        font-weight: 700;
+        letter-spacing: 1.4px;
+        padding-bottom: 2px;
+    }}
+    /* La cabecera de una columna no es el título de una tarjeta: nombra un
+       dato de la fila de abajo y tiene que quedarse por detrás de él. */
+    QLabel#ColumnTitle {{
         color: {p.muted};
-        font-size: {m.small_pt + 1}px;
+        font-size: {m.small_pt}px;
         font-weight: 600;
-        letter-spacing: 1.2px;
+        letter-spacing: 1.1px;
     }}
     QLabel#FieldName  {{ color: {p.muted}; }}
     QLabel#FieldValue {{ color: {p.ink}; }}
@@ -366,8 +375,8 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         background: {p.accent_wash};
         color: {p.accent};
         border: 1px solid {p.accent};
-        border-radius: 4px;
-        padding: 1px 7px;
+        border-radius: 5px;
+        padding: 2px 9px;
         font-size: {m.small_pt + 1}px;
         font-weight: 600;
     }}
@@ -375,8 +384,8 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         background: {p.surface_alt};
         color: {p.muted};
         border: 1px solid {p.line};
-        border-radius: 4px;
-        padding: 1px 7px;
+        border-radius: 5px;
+        padding: 2px 9px;
         font-size: {m.small_pt + 1}px;
     }}
 
