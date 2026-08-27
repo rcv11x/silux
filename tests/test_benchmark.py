@@ -277,3 +277,34 @@ class TestDuracionLarga(unittest.TestCase):
                                benchmark.Medida(c.key, h, 1, d)):
             benchmark.run(seconds=99_999.0)
         self.assertTrue(all(d <= benchmark.MAXIMO_SEGUNDOS for d in vistas))
+
+
+class TestCancelar(unittest.TestCase):
+    """Poder parar es lo que hace que probar una duración larga no dé miedo."""
+
+    def test_se_para_entre_medidas(self):
+        parar = threading.Event()
+        parar.set()
+        resultado = benchmark.run(seconds=1.0, stop=parar)
+        self.assertEqual(resultado.measures, ())
+
+    def test_lo_medido_antes_de_parar_se_conserva(self):
+        parar = threading.Event()
+        hechas = []
+
+        def contar(que, cuanto):
+            hechas.append(que)
+            if len(hechas) >= 2:
+                parar.set()
+
+        resultado = benchmark.run(seconds=1.0, stop=parar, on_progress=contar)
+        self.assertGreaterEqual(len(resultado.measures), 1)
+        self.assertLess(len(resultado.measures), len(benchmark.CARGAS) * 2)
+
+    def test_el_bloque_grande_se_suelta_aunque_se_cancele(self):
+        """Si no, quedarían 192 MB colgados por haber pulsado Cancelar."""
+        parar = threading.Event()
+        parar.set()
+        benchmark._bloque_grande()
+        benchmark.run(seconds=1.0, stop=parar)
+        self.assertIsNone(benchmark._grande)

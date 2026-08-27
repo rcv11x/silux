@@ -902,10 +902,34 @@ class ChipRow(QWidget):
         # que se volvía a mover la ventana.
         self.updateGeometry()
 
+    def filas(self) -> int:
+        """Cuántas líneas de insignias hay montadas ahora mismo."""
+        return max(1, self._column.count())
+
+    def alto_de_fila(self) -> int:
+        """Lo que mide una fila de insignias, haya o no alguna todavía.
+
+        No vale preguntarle al `sizeHint`: en el primer trazado aún no se han
+        creado, devuelve cero y quien reserve sitio a partir de ahí se queda
+        corto. La altura sale de la fuente y del relleno, que se saben antes.
+        """
+        if self._widgets:
+            return max(w.sizeHint().height() for w in self._widgets)
+        muestra = Badge("Ag", quiet=True)
+        alto = muestra.sizeHint().height()
+        muestra.deleteLater()
+        return alto
+
     def resizeEvent(self, event) -> None:  # noqa: N802
         super().resizeEvent(event)
         if abs(self.width() - self._laid_width) > 16:
             self._rebuild()
+            # Quien nos contenga puede tener que reservar más alto: al pasar
+            # de una fila a dos, esto mide el doble.
+            if (padre := self.parentWidget()) is not None:
+                reservar = getattr(padre, "_reservar_alto", None)
+                if reservar is not None:
+                    reservar()
 
 
 class Notice(QFrame):
@@ -984,7 +1008,10 @@ class Table(QScrollArea):
         self._grid = QGridLayout(inner)
         self._grid.setContentsMargins(0, 0, 0, 0)
         self._grid.setHorizontalSpacing(theme.METRICS.grid_hspace)
-        self._grid.setVerticalSpacing(theme.METRICS.grid_vspace)
+        # Más aire entre filas del que pide la rejilla general: aquí cada
+        # renglón es un registro entero, no un campo suelto, y pegados unos a
+        # otros la tabla se lee como un bloque de texto.
+        self._grid.setVerticalSpacing(theme.METRICS.grid_vspace + 3)
 
         for column, title in enumerate(self._headers):
             label = QLabel(title.upper())
@@ -1648,7 +1675,24 @@ class StackedBar(QWidget):
         self._legend.set_chips(
             f"{label}  {self._formatter(value)}" for label, value, _ in segments if value > 0
         )
+        self._reservar_alto()
         self.update()
+
+    def _reservar_alto(self) -> None:
+        """Exige el alto de la barra más el de su leyenda, sin negociar.
+
+        Un layout apretado reparte a base de encoger a quien se deja, y aquí
+        lo que se encogía era el hueco de la barra: la leyenda subía encima de
+        ella y las insignias salían cortadas por la mitad. Con un mínimo de
+        verdad, el que cede es el espacio de alrededor.
+        """
+        filas = max(1, self._legend.filas())
+        alto = (self.BAR_HEIGHT + self.layout().spacing()
+                + filas * self._legend.alto_de_fila()
+                + max(0, filas - 1) * self._legend.layout().spacing())
+        if self.minimumHeight() != alto:
+            self.setMinimumHeight(alto)
+            self.updateGeometry()
 
     def paintEvent(self, event) -> None:  # noqa: N802
         if not self._segments:
