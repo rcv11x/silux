@@ -896,6 +896,12 @@ class ChipRow(QWidget):
         if row is not None:
             row.addStretch(1)
 
+        # Avisar al layout de arriba: al pasar de una fila a dos, esto mide
+        # el doble, y si nadie se lo dice sigue repartiendo el sitio de antes.
+        # Era lo que dejaba las insignias pintadas encima de la barra hasta
+        # que se volvía a mover la ventana.
+        self.updateGeometry()
+
     def resizeEvent(self, event) -> None:  # noqa: N802
         super().resizeEvent(event)
         if abs(self.width() - self._laid_width) > 16:
@@ -1622,8 +1628,16 @@ class StackedBar(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(6)
-        layout.addSpacing(self.BAR_HEIGHT)
+        # Un hueco de verdad y no un `addSpacing`: ese es comprimible, y
+        # cuando la ventana se estrecha y la leyenda pasa a dos filas, Qt lo
+        # aplastaba y las insignias acababan pintadas encima de la barra.
+        self._hueco_de_la_barra = QWidget()
+        self._hueco_de_la_barra.setFixedHeight(self.BAR_HEIGHT)
+        self._hueco_de_la_barra.setSizePolicy(QSizePolicy.Policy.Expanding,
+                                              QSizePolicy.Policy.Fixed)
+        layout.addWidget(self._hueco_de_la_barra)
         layout.addWidget(self._legend)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
     def set_segments(self, segments: list[tuple[str, float, str]], total: float,
                      formatter=None) -> None:

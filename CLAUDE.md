@@ -258,6 +258,19 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   descriptor de rangos 0xFD. Lo que sí aportan las extensiones y no está en
   ningún otro sitio es el HDR y los espacios de color.
 
+- **Reorganizar un widget sin avisar al layout de arriba**: la fila de
+  insignias pasa a dos líneas cuando la ventana se estrecha, pero sin
+  `updateGeometry` nadie le da la altura nueva y acababa pintada encima de la
+  barra. Se arreglaba sola al mover la ventana otra vez, que es la pista de
+  que faltaba un recálculo y no espacio.
+- **Compartir el estilo de un título con el de una cabecera de columna**: no
+  pesan lo mismo. Un título nombra la tarjeta entera; una cabecera nombra una
+  columna y tiene que quedarse por detrás del dato.
+- **Meter una carga de benchmark sin comprobar que reparte**: `base64` escala
+  ×1.0 con dieciséis hilos y la de coma flotante también. Si no suelta el GIL
+  no mide el procesador, mide el candado, y hay un test que lo ejecuta de
+  verdad para cada carga en vez de fiarse.
+
 - **Fiarse de los umbrales que publica un chip sin mirarlos**: devuelven de
   fábrica los campos que nadie configuró. Un nct6798 da `min = 127` y
   `max = 127` en sus seis temperaturas, y con eso una placa a 34 °C queda «por
