@@ -18,13 +18,14 @@ from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import (QComboBox,QHBoxLayout, QLabel, QProgressBar, QPushButton,
                                QScrollArea, QVBoxLayout, QWidget)
 
-from ... import benchmark, render
+from ... import benchmark, history, render
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette
 from ..widgets import Card, InfoGrid, Notice, ResponsiveRow, Table, clear_layout
 
 RESULT_HEADERS = ("Carga", "Un hilo", "Todos los hilos", "Escala")
+HISTORY_HEADERS = ("Cuándo", "Puntuación", "Frecuencia media", "Temp. máxima")
 CONDITION_FIELDS = ("Frecuencia media", "Frecuencia máxima", "Frecuencia al final",
                     "Temperatura al empezar", "Temperatura máxima",
                     "Gobernador", "Preferencia de energía", "Carga de fondo")
@@ -85,10 +86,27 @@ class PerformancePage(QScrollArea):
         self.columns.hide()
         self._layout.addWidget(fila)
 
+        self.history_card = Card("Pruebas anteriores de este equipo")
+        self.history = Table(HISTORY_HEADERS, numeric=(False, True, True, True))
+        self.history_card.body.addWidget(self.history)
+        nota = QLabel(
+            "Solo de este equipo y solo en el disco: no se envía a ninguna "
+            "parte. Comparar con cifras de internet casi nunca sirve, porque "
+            "están medidas con otro gobernador y otra temperatura; compararse "
+            "con uno mismo sí dice si algo ha cambiado.")
+        nota.setObjectName("Muted")
+        nota.setWordWrap(True)
+        self.history_card.body.addWidget(nota)
+        self.history_card.hide()
+        self._layout.addWidget(self.history_card)
+
         self._warnings_host = QVBoxLayout()
         self._warnings_host.setSpacing(6)
         self._layout.addLayout(self._warnings_host)
         self._layout.addStretch(1)
+
+        self._cpu_actual = "?"
+        self._pintar_historial(history.load())
 
         self._finished.connect(self._on_finished)
         self._progressed.connect(self._on_progress)
@@ -200,6 +218,41 @@ class PerformancePage(QScrollArea):
         self.quick_button.setEnabled(True)
         self.progress.hide()
         self._show(resultado)
+        self._guardar(resultado)
+
+    def _guardar(self, resultado: benchmark.Result) -> None:
+        """Apunta la prueba en el historial y enseña con qué se compara."""
+        if not resultado.measures:
+            return
+        segundos = max(m.seconds for m in resultado.measures)
+        entrada = history.from_result(resultado, self._cpu_actual, segundos)
+        anteriores = history.append(entrada)
+        self._pintar_historial(anteriores, entrada)
+
+    def _pintar_historial(self, entradas, actual=None) -> None:
+        if not entradas:
+            self.history_card.hide()
+            return
+        filas = []
+        for e in entradas:
+            total = e.total()
+            filas.append([
+                e.when,
+                f"{total:.0f}" if total else render.DASH,
+                render.hz(e.frequency_avg_hz),
+                render.temperature(e.temperature_peak_c, self._prefs.fahrenheit),
+            ])
+        self.history.set_rows(filas)
+        self.history_card.show()
+
+        if actual is not None:
+            comparacion = history.comparar(actual, entradas)
+            if comparacion is not None:
+                otra, cambio = comparacion
+                signo = "+" if cambio >= 0 else ""
+                self.history_card.set_title(
+                    f"Pruebas anteriores de este equipo   ·   "
+                    f"{signo}{cambio:.1f} % frente a la del {otra.when}")
 
     def _show(self, resultado: benchmark.Result) -> None:
         d = render.DASH
@@ -243,7 +296,15 @@ class PerformancePage(QScrollArea):
                 Notice("Antes de comparar esta cifra", aviso))
 
     def apply(self, snapshot) -> None:
-        """La página no depende del muestreo: solo del último resultado."""
+        """La página no depende del muestreo, salvo para saber qué CPU es.
+
+        El historial guarda contra qué procesador se midió: comparar la
+        puntuación de este equipo con la de otro no significa nada, y en un
+        portátil que cambia de dueño o en un banco de pruebas ese dato evita
+        poner dos equipos en la misma tabla.
+        """
+        if snapshot.cpu.types:
+            self._cpu_actual = render.cpu_short_name(snapshot.cpu.types[0].brand)
 
     def stop(self) -> None:
         self._parar.set()
