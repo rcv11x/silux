@@ -480,6 +480,13 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         border-radius: 5px;
         padding: 5px 13px;
     }}
+    /* Para lo que interrumpe o descarta: se tiene que distinguir del botón
+       que empieza algo, sin gritar más que el contenido. */
+    QPushButton#Danger {{
+        color: {p.crit};
+        border-color: {p.crit};
+    }}
+    QPushButton#Danger:hover {{ background: {p.surface_alt}; }}
     QPushButton:hover {{ border-color: {p.accent}; color: {p.accent}; }}
     QPushButton:pressed {{ background: {p.accent_wash}; }}
 
@@ -488,12 +495,15 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
     QTreeWidget {{
         background: {p.surface};
         alternate-background-color: {p.surface_alt};
-        border: none;
+        border: 1px solid {p.line_soft};
+        border-radius: 8px;
         outline: none;
+        padding: 2px;
     }}
     QTreeWidget::item {{
-        padding: {max(1, m.grid_vspace - 2)}px 4px;
+        padding: {max(3, m.grid_vspace)}px 6px;
         border: none;
+        border-radius: 5px;
         color: {p.ink_dim};
     }}
     QTreeWidget::item:selected {{ background: {p.accent_wash}; color: {p.accent}; }}
@@ -503,7 +513,7 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         color: {p.muted};
         border: none;
         border-bottom: 1px solid {p.line};
-        padding: 5px 6px;
+        padding: 7px 6px;
         font-size: {m.small_pt + 1}px;
         font-weight: 600;
         letter-spacing: 0.8px;

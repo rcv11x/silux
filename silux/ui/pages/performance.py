@@ -166,9 +166,18 @@ class PerformancePage(QScrollArea):
             "Las largas no dan más puntuación: dan la que se sostiene cuando "
             "el equipo ya está caliente.")
 
+        # Con diez medidas y la duración a elegir, la prueba puede irse a
+        # horas. Poder pararla no es un extra: es lo que hace que probar una
+        # duración larga no dé miedo.
+        self.cancel_button = QPushButton("Cancelar")
+        self.cancel_button.setObjectName("Danger")
+        self.cancel_button.clicked.connect(self._cancelar)
+        self.cancel_button.hide()
+
         fila = QHBoxLayout()
         fila.addWidget(self.run_button)
         fila.addWidget(self.quick_button)
+        fila.addWidget(self.cancel_button)
         fila.addSpacing(12)
         fila.addWidget(QLabel("Cada medida:"))
         fila.addWidget(self.duracion)
@@ -208,8 +217,10 @@ class PerformancePage(QScrollArea):
         if self._hilo is not None and self._hilo.is_alive():
             return
         self._parar.clear()
+        self.cancel_button.setEnabled(True)
         self.run_button.setEnabled(False)
         self.quick_button.setEnabled(False)
+        self.cancel_button.show()
         self.progress.setValue(0)
         self.progress.setFormat("preparando…")
         self.progress.show()
@@ -265,6 +276,12 @@ class PerformancePage(QScrollArea):
         self.duracion.setItemText(
             indice, f"{minutos:g} min cada una · {total:g} min en total")
 
+    def _cancelar(self) -> None:
+        """Para la prueba en cuanto termine la medida que esté en curso."""
+        self._parar.set()
+        self.cancel_button.setEnabled(False)
+        self.progress.setFormat("cancelando…")
+
     def _abrir_carpeta(self) -> None:
         """Abre el gestor de archivos donde se guardan las pruebas.
 
@@ -300,7 +317,13 @@ class PerformancePage(QScrollArea):
         self._resultado = resultado
         self.run_button.setEnabled(True)
         self.quick_button.setEnabled(True)
+        self.cancel_button.hide()
         self.progress.hide()
+        if not resultado.measures:
+            # Cancelada antes de la primera medida: no hay nada que enseñar ni
+            # que guardar, y apuntar media prueba en el historial la
+            # ensuciaría con cifras que no se pueden comparar con nada.
+            return
         self._show(resultado)
         self._guardar(resultado)
 
