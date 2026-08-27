@@ -270,7 +270,8 @@ class GpuState(Provider):
             nodo = gpu.get("drm_node")
             if not nodo:
                 continue
-            dispositivo = pathlib.Path(f"{SYS_DRM}/{nodo}/device")
+            raiz = pathlib.Path(f"{SYS_DRM}/{nodo}")
+            dispositivo = raiz / "device"
             if not dispositivo.is_dir():
                 continue
 
@@ -279,7 +280,7 @@ class GpuState(Provider):
             gpu["video_busy_percent"] = _porcentaje(dispositivo / "vcn_busy_percent")
             gpu["memory"] = _memoria_usada(dispositivo, gpu.get("memory") or GpuMemory())
             gpu["link"] = _enlace(dispositivo, gpu.get("link") or PcieLink())
-            gpu["clocks"] = _relojes(dispositivo)
+            gpu["clocks"] = _relojes(dispositivo, raiz)
             _sensores(gpu, dispositivo)
             _telemetria(gpu, dispositivo)
 
@@ -409,7 +410,8 @@ def _primero(*candidatos: Optional[int]) -> Optional[int]:
     return next((c for c in candidatos if c is not None), None)
 
 
-def _relojes(dispositivo: pathlib.Path) -> GpuClocks:
+def _relojes(dispositivo: pathlib.Path,
+             nodo: Optional[pathlib.Path] = None) -> GpuClocks:
     nucleo = _niveles(dispositivo / "pp_dpm_sclk")
     memoria = _niveles(dispositivo / "pp_dpm_mclk")
     hwmon = _hwmon(dispositivo)
@@ -420,10 +422,10 @@ def _relojes(dispositivo: pathlib.Path) -> GpuClocks:
     activo = lambda niveles: next((n.hz for n in niveles if n.active), None)
     return GpuClocks(
         core_hz=_primero(frecuencias.get("sclk"), activo(nucleo),
-                         _intel_hz(dispositivo, "cur")),
+                         _intel_hz(dispositivo, nodo, "cur")),
         memory_hz=_primero(frecuencias.get("mclk"), activo(memoria)),
         core_max_hz=_primero(max((n.hz for n in nucleo), default=None),
-                             _intel_hz(dispositivo, "max")),
+                             _intel_hz(dispositivo, nodo, "max")),
         memory_max_hz=max((n.hz for n in memoria), default=None),
         core_levels=nucleo,
         memory_levels=memoria,
@@ -431,8 +433,31 @@ def _relojes(dispositivo: pathlib.Path) -> GpuClocks:
     )
 
 
-def _intel_hz(dispositivo: pathlib.Path, cual: str) -> Optional[int]:
-    """i915 publica las frecuencias del motor gráfico en megahercios sueltos."""
+def _intel_hz(dispositivo: pathlib.Path, nodo: Optional[pathlib.Path],
+              cual: str) -> Optional[int]:
+    """Las frecuencias del motor gráfico de una Intel, se llamen como se llamen.
+
+    Han cambiado de sitio dos veces y ninguna de las dos rutas viejas se ha
+    borrado del todo, así que hay que mirar en las cuatro:
+
+    - i915 clásico las pone sueltas en el nodo DRM, no en el nodo PCI. Eso es
+      lo que las dejaba sin leer: se buscaban en `device/`, que es el enlace
+      al dispositivo PCI, y ahí no están.
+    - i915 desde el kernel 6.2 las mete en `gt/gt0/` con el prefijo `rps_`,
+      para poder tener más de un motor gráfico por tarjeta.
+    - xe, el driver nuevo, usa otra jerarquía distinta.
+    """
+    if nodo is not None:
+        # `act` es la que va de verdad; `cur` es la que se ha pedido. Para el
+        # máximo no hay tal distinción.
+        medida = "act" if cual == "cur" else cual
+        for ruta in (f"{nodo}/gt/gt0/rps_{medida}_freq_mhz",
+                     f"{nodo}/gt/gt0/rps_{cual}_freq_mhz",
+                     f"{nodo}/gt_{medida}_freq_mhz",
+                     f"{nodo}/gt_{cual}_freq_mhz"):
+            if (mhz := read_int(ruta)) is not None:
+                return mhz * 1_000_000 if mhz else None
+
     mhz = read_int(f"{dispositivo}/gt_{cual}_freq_mhz")
     if mhz is None:
         # xe, el driver nuevo de Intel, las mueve dentro de la jerarquía de gt.
