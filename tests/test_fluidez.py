@@ -171,3 +171,84 @@ class TestElAtajoSeVe(unittest.TestCase):
         ventana = MainWindow(Preferences(font_scale="normal").normalized())
         ventana._on_sample(Collector().sample())
         self.assertIn("espacio", ventana._status.full_text().lower())
+
+
+class TestEscalaVertical(unittest.TestCase):
+    """De aquí salía el tirón, y no del deslizamiento.
+
+    Con 90 muestras en 300 píxeles la línea avanza 3,4 px por segundo: eso no
+    se ve. Lo que se veía era la escala reajustándose de golpe cada vez que
+    entraba un valor fuera de lo que había, aplastando la curva entera.
+    """
+
+    def _grafica(self, valores):
+        from silux.ui.widgets import Sparkline
+        g = Sparkline(theme.palette_for(_app(), "dark"))
+        g.resize(300, 40)
+        for v in valores:
+            g.push(v)
+        return g
+
+    def _pintar(self, g):
+        from PySide6.QtGui import QPixmap
+        g.render(QPixmap(300, 40))
+        return g._escala
+
+    def test_crecer_es_inmediato(self):
+        """Encoger un dato para que quepa sería dibujarlo donde no está."""
+        g = self._grafica([800.0] * 10)
+        self._pintar(g)
+        g.push(3400.0)
+        _, techo = self._pintar(g)
+        self.assertGreaterEqual(techo, 3400.0)
+
+    def test_si_cabe_en_el_eje_que_hay_no_se_toca(self):
+        """Lo que quita el tirón: el eje no se mueve por medio grado."""
+        # Arranca con un eje holgado y se mueve dentro de él: lo que no puede
+        # pasar es que el eje se reajuste por unas décimas.
+        g = self._grafica([40.0, 56.0])
+        primero = self._pintar(g)
+        for v in (47.5, 48.2, 48.9, 47.1, 50.0):
+            g.push(v)
+            self.assertEqual(self._pintar(g), primero,
+                             f"el eje se ha movido por {v}")
+
+    def test_encoger_es_progresivo(self):
+        g = self._grafica([800.0] * 5 + [3400.0])
+        self._pintar(g)
+        alto_con_pico = g._escala[1]
+        # El pico tiene que salirse de la ventana de verdad: la gráfica guarda
+        # noventa muestras, así que con veinte seguía dentro y la escala hacía
+        # bien en no bajar.
+        for _ in range(100):
+            g.push(800.0)
+        _, tras_una_pintada = self._pintar(g)
+        self.assertLess(tras_una_pintada, alto_con_pico, "no ha empezado a bajar")
+        self.assertGreater(tras_una_pintada, 1500.0, "ha bajado de golpe")
+
+    def test_y_acaba_llegando(self):
+        g = self._grafica([800.0] * 5 + [3400.0])
+        self._pintar(g)
+        for _ in range(100):
+            g.push(800.0)
+        for _ in range(80):
+            self._pintar(g)
+        self.assertLess(g._escala[1], 1000.0, "se ha quedado a medias")
+
+    def test_ningun_valor_se_sale_de_la_escala(self):
+        """Lo que se dibuja tiene que caber, siempre."""
+        import random
+        random.seed(11)
+        g = self._grafica([800.0])
+        for _ in range(60):
+            g.push(random.choice([800.0, 800.0, 2600.0, 4400.0]))
+            suelo, techo = self._pintar(g)
+            actuales = list(g._values)
+            self.assertLessEqual(max(actuales), techo)
+            self.assertGreaterEqual(min(actuales), suelo)
+
+    def test_al_limpiar_se_olvida_la_escala(self):
+        g = self._grafica([800.0, 3400.0])
+        self._pintar(g)
+        g.clear()
+        self.assertIsNone(g._escala)
