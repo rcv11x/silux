@@ -40,6 +40,22 @@ TIPO_NOMBRE = 0xFC
 
 
 @dataclass(frozen=True, slots=True)
+class VideoMode:
+    """Un modo de vídeo de los que el monitor declara admitir."""
+
+    width: int
+    height: int
+    refresh_hz: float
+    interlaced: bool = False
+    native: bool = False
+
+    @property
+    def label(self) -> str:
+        entrelazado = "i" if self.interlaced else ""
+        return f"{self.width} × {self.height}{entrelazado} @ {self.refresh_hz:g} Hz"
+
+
+@dataclass(frozen=True, slots=True)
 class Edid:
     """Lo que una pantalla dice de sí misma."""
 
@@ -61,6 +77,24 @@ class Edid:
     # llegar a 240. Enseñar solo el preferido se queda muy corto.
     refresh_min_hz: Optional[int] = None
     refresh_max_hz: Optional[int] = None
+    # De las extensiones CTA-861. El bloque base solo tiene sitio para el modo
+    # preferido y unos pocos estándar, así que sin mirarlas un monitor que
+    # admite 4K a 120 aparece como si solo hiciera 1080p a 60.
+    modes: tuple[VideoMode, ...] = ()
+    hdr: tuple[str, ...] = ()
+    color_spaces: tuple[str, ...] = ()
+    audio: tuple[str, ...] = ()
+
+    @property
+    def best_mode(self) -> Optional[VideoMode]:
+        """El modo más exigente de los declarados.
+
+        Ordena por píxeles y luego por refresco: entre 4K a 60 y 1080p a 240
+        gana el 4K, que es lo que define de lo que es capaz el panel.
+        """
+        if not self.modes:
+            return None
+        return max(self.modes, key=lambda m: (m.width * m.height, m.refresh_hz))
 
     @property
     def diagonal_inches(self) -> Optional[float]:
@@ -123,6 +157,7 @@ def parse(raw: bytes) -> Optional[Edid]:
         native_refresh_hz=refresco,
         refresh_min_hz=minimo,
         refresh_max_hz=maximo,
+        **_extensiones(raw),
     )
 
 
@@ -216,3 +251,148 @@ def _modo_preferido(raw: bytes) -> tuple[Optional[int], Optional[int], Optional[
     total = (ancho + ancho_blanco) * (alto + alto_blanco)
     refresco = round(reloj / total, 1) if total else None
     return ancho, alto, refresco
+
+
+# --------------------------------------------------------------------------
+# Extensiones CTA-861
+# --------------------------------------------------------------------------
+
+ETIQUETA_CTA = 0x02
+# Los códigos de la tabla 3 de CTA-861: (ancho, alto, refresco, entrelazado).
+# Están los de uso corriente, no los 219 que existen; un código que no esté
+# aquí se salta en vez de inventarle una resolución.
+VIC = {
+    1: (640, 480, 59.94, False),
+    2: (720, 480, 59.94, False), 3: (720, 480, 59.94, False),
+    4: (1280, 720, 60.0, False),
+    5: (1920, 1080, 60.0, True),
+    6: (720, 480, 59.94, True), 7: (720, 480, 59.94, True),
+    16: (1920, 1080, 60.0, False),
+    17: (720, 576, 50.0, False), 18: (720, 576, 50.0, False),
+    19: (1280, 720, 50.0, False),
+    20: (1920, 1080, 50.0, True),
+    31: (1920, 1080, 50.0, False),
+    32: (1920, 1080, 24.0, False), 33: (1920, 1080, 25.0, False),
+    34: (1920, 1080, 30.0, False),
+    60: (1280, 720, 24.0, False), 61: (1280, 720, 25.0, False),
+    62: (1280, 720, 30.0, False),
+    63: (1920, 1080, 120.0, False), 64: (1920, 1080, 100.0, False),
+    65: (1280, 720, 24.0, False), 68: (1280, 720, 50.0, False),
+    69: (1280, 720, 60.0, False), 70: (1280, 720, 100.0, False),
+    71: (1280, 720, 120.0, False),
+    72: (1920, 1080, 24.0, False), 75: (1920, 1080, 50.0, False),
+    76: (1920, 1080, 60.0, False), 77: (1920, 1080, 100.0, False),
+    78: (1920, 1080, 120.0, False),
+    93: (3840, 2160, 24.0, False), 94: (3840, 2160, 25.0, False),
+    95: (3840, 2160, 30.0, False), 96: (3840, 2160, 50.0, False),
+    97: (3840, 2160, 60.0, False),
+    98: (4096, 2160, 24.0, False), 99: (4096, 2160, 25.0, False),
+    100: (4096, 2160, 30.0, False), 101: (4096, 2160, 50.0, False),
+    102: (4096, 2160, 60.0, False),
+    103: (3840, 2160, 24.0, False), 104: (3840, 2160, 25.0, False),
+    105: (3840, 2160, 30.0, False), 106: (3840, 2160, 50.0, False),
+    107: (3840, 2160, 60.0, False),
+    108: (3840, 2160, 100.0, False), 109: (3840, 2160, 120.0, False),
+    114: (3840, 2160, 60.0, False),
+    117: (3840, 2160, 100.0, False), 118: (3840, 2160, 120.0, False),
+    120: (5120, 2160, 60.0, False),
+    124: (7680, 4320, 24.0, False), 125: (7680, 4320, 25.0, False),
+    126: (7680, 4320, 30.0, False),
+    193: (5120, 2160, 100.0, False), 194: (5120, 2160, 120.0, False),
+    218: (5120, 2880, 60.0, False), 219: (5120, 2880, 120.0, False),
+}
+
+# Los tipos de bloque dentro de la colección de datos.
+BLOQUE_AUDIO, BLOQUE_VIDEO, BLOQUE_FABRICANTE = 1, 2, 3
+BLOQUE_ALTAVOCES, BLOQUE_EXTENDIDO = 4, 7
+
+# Y los subtipos de los extendidos, que es donde vive lo moderno.
+EXT_COLORIMETRIA, EXT_HDR = 5, 6
+
+FORMATOS_AUDIO = {
+    1: "LPCM", 2: "AC-3", 3: "MPEG-1", 4: "MP3", 5: "MPEG-2", 6: "AAC",
+    7: "DTS", 8: "ATRAC", 9: "DSD", 10: "E-AC-3", 11: "DTS-HD",
+    12: "Dolby TrueHD", 13: "DST", 14: "WMA Pro",
+}
+
+# Las curvas de transferencia del bloque de HDR estático. La primera es la
+# de siempre, así que solo se enseñan las otras: decir que un monitor admite
+# gamma tradicional no es noticia.
+CURVAS_HDR = {1: "HDR gamma", 2: "HDR10 (PQ)", 3: "HLG"}
+
+ESPACIOS_COLOR = {
+    0: "xvYCC601", 1: "xvYCC709", 2: "sYCC601", 3: "opYCC601",
+    4: "opRGB", 5: "BT.2020 cYCC", 6: "BT.2020 YCC", 7: "BT.2020 RGB",
+}
+
+
+def _modos_cta(datos: bytes) -> list[VideoMode]:
+    """Los modos del bloque de vídeo: un byte por código, el bit 7 marca nativo."""
+    modos = []
+    for octeto in datos:
+        codigo, nativo = octeto & 0x7F, bool(octeto & 0x80)
+        if (medidas := VIC.get(codigo)) is None:
+            continue
+        ancho, alto, hz, entrelazado = medidas
+        modos.append(VideoMode(ancho, alto, hz, entrelazado, nativo))
+    return modos
+
+
+def _extension_cta(bloque: bytes) -> dict:
+    """Lo que dice una extensión CTA-861: modos, HDR, color y audio.
+
+    La colección de bloques de datos ocupa desde el byte 4 hasta donde diga el
+    byte 2, y cada bloque lleva su tipo y su longitud en la cabecera. Se
+    recorre con cuidado de no salirse: un EDID mal grabado es de las cosas más
+    fáciles de encontrar, y aquí no puede tumbar la lectura de nada más.
+    """
+    salida: dict = {"modes": [], "hdr": [], "color_spaces": [], "audio": []}
+    if len(bloque) < 4 or bloque[0] != ETIQUETA_CTA:
+        return salida
+
+    fin = bloque[2]
+    if not 4 <= fin <= len(bloque):
+        return salida
+
+    i = 4
+    while i < fin:
+        cabecera = bloque[i]
+        etiqueta, largo = cabecera >> 5, cabecera & 0x1F
+        datos = bloque[i + 1:i + 1 + largo]
+        if len(datos) < largo:
+            break
+
+        if etiqueta == BLOQUE_VIDEO:
+            salida["modes"].extend(_modos_cta(datos))
+        elif etiqueta == BLOQUE_AUDIO:
+            # Tríos de bytes: los cinco bits altos del primero son el formato.
+            for j in range(0, len(datos) - 2, 3):
+                nombre = FORMATOS_AUDIO.get((datos[j] >> 3) & 0x0F)
+                if nombre and nombre not in salida["audio"]:
+                    salida["audio"].append(nombre)
+        elif etiqueta == BLOQUE_EXTENDIDO and datos:
+            if datos[0] == EXT_HDR and len(datos) >= 2:
+                salida["hdr"] = [nombre for bit, nombre in CURVAS_HDR.items()
+                                 if datos[1] & (1 << bit)]
+            elif datos[0] == EXT_COLORIMETRIA and len(datos) >= 2:
+                salida["color_spaces"] = [
+                    nombre for bit, nombre in ESPACIOS_COLOR.items()
+                    if datos[1] & (1 << bit)]
+        i += largo + 1
+    return salida
+
+
+def _extensiones(raw: bytes) -> dict:
+    """Recorre los bloques que van detrás del principal y junta lo que traen."""
+    juntos: dict = {"modes": [], "hdr": [], "color_spaces": [], "audio": []}
+    for inicio in range(BLOQUE, len(raw) - BLOQUE + 1, BLOQUE):
+        trozo = raw[inicio:inicio + BLOQUE]
+        if len(trozo) < BLOQUE or trozo[0] != ETIQUETA_CTA:
+            continue
+        for clave, valores in _extension_cta(trozo).items():
+            for valor in valores:
+                if valor not in juntos[clave]:
+                    juntos[clave].append(valor)
+    # Tuplas: el Snapshot es inmutable de arriba abajo, y una lista dentro de
+    # un dataclass congelado es una promesa que no se cumple.
+    return {clave: tuple(valores) for clave, valores in juntos.items()}

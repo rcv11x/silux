@@ -468,3 +468,21 @@ def cpu_short_name(brand: Optional[str]) -> str:
     limpio = _RELLENO_DE_MARCA.sub("", brand)
     limpio = re.sub(r"\s{2,}", " ", limpio).strip(" -·")
     return limpio or brand
+
+
+def monitor_color(edid) -> str:
+    """Lo que el monitor declara en sus extensiones: HDR y espacios de color.
+
+    Sale de los bloques CTA-861, que es donde vive lo moderno. El bloque base
+    del EDID es de 1994 y no tiene sitio para nada de esto: sin mirar las
+    extensiones, un panel con HDR10 y BT.2020 se describe igual que uno de
+    hace veinte años.
+    """
+    piezas = list(edid.hdr)
+    # De los espacios de color solo el más ancho: enseñar los seis que declara
+    # un monitor llena la celda sin decir mucho más que el mayor de ellos.
+    for amplio in ("BT.2020 RGB", "BT.2020 YCC", "opRGB", "xvYCC709"):
+        if amplio in edid.color_spaces:
+            piezas.append(amplio)
+            break
+    return " · ".join(piezas) if piezas else DASH

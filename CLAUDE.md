@@ -89,7 +89,7 @@ silux/
 ├─ rawcpuid.py     CPUID desde Python, sin root (mmap + ctypes)
 ├─ gpuapi.py       OpenGL, Vulkan y OpenCL por ctypes, en un proceso aparte
 ├─ amdgpu.py       ioctl DRM: tipo de VRAM, bus, unidades, ROP
-├─ edid.py         decodifica la chapa de identificación del monitor
+├─ edid.py         la chapa del monitor, con sus extensiones CTA-861
 ├─ report.py       informe en Markdown para reportar fallos
 ├─ gpumetrics.py   telemetría del firmware AMD: por qué se frena la tarjeta
 ├─ nvml.py         NVIDIA propietaria, que no publica nada en sysfs
@@ -118,8 +118,6 @@ enlace PCIe, sensores propios— más lo que solo da el ioctl de amdgpu (tipo de
 memoria, anchura del bus, ancho de banda, unidades de cómputo y ROP), las tres
 APIs y el EDID de cada monitor. Queda pendiente:
 
-- **Las extensiones del EDID** (bloques CTA-861), con los modos de vídeo que
-  el monitor admite además del preferido.
 - **Las versiones de `gpu_metrics` de la 1.4 en adelante**, que reordenaron los
   campos, y las 2.x de las APU. Hoy se reconocen y se dejan pasar en vez de
   interpretarlas mal.
@@ -253,6 +251,12 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   lento suelto no descoloque.
 - **Un atajo de teclado que no aparece en ninguna parte**: no existe para
   quien no lo sabe. La barra de estado es donde se mira sin buscar.
+
+- **Creer que los códigos de vídeo del EDID describen el panel**: los VIC de
+  CTA-861 son códigos de TV y HDMI, y no llegan a 1440p a 240 Hz. El AORUS
+  FO27Q2 declara como mucho 1080p a 120 por ahí, y sus 240 Hz solo están en el
+  descriptor de rangos 0xFD. Lo que sí aportan las extensiones y no está en
+  ningún otro sitio es el HDR y los espacios de color.
 
 - **Fiarse de los umbrales que publica un chip sin mirarlos**: devuelven de
   fábrica los campos que nadie configuró. Un nct6798 da `min = 127` y
