@@ -286,6 +286,52 @@ class InfoGrid(QWidget):
 # --------------------------------------------------------------------------
 
 
+def curva_suave(points, cerrar_en=None) -> QPainterPath:
+    """Una polilínea convertida en curva, sin inventarse lo que no midió.
+
+    Unir las muestras con rectas deja una línea de sierra que cansa de mirar,
+    sobre todo con el muestreo a un segundo. La curva se traza con el método
+    de Catmull-Rom, que pasa por todos los puntos —eso no es negociable: son
+    lecturas, no una tendencia—, y con los tiradores recortados para que no
+    se salga por arriba ni por abajo de lo que hay medido.
+
+    Sin ese recorte, una curva entre dos valores iguales y un tercero más alto
+    se abomba por encima del máximo, y quien lo mira ve un pico de temperatura
+    que nunca ocurrió.
+
+    `cerrar_en` es la y donde bajar al terminar, para el relleno bajo la línea.
+    """
+    if len(points) < 2:
+        camino = QPainterPath(points[0]) if points else QPainterPath()
+        return camino
+
+    inicio = QPointF(points[0].x(), cerrar_en) if cerrar_en is not None else points[0]
+    camino = QPainterPath(inicio)
+    if cerrar_en is not None:
+        camino.lineTo(points[0])
+
+    for i in range(len(points) - 1):
+        p0 = points[i - 1] if i else points[0]
+        p1, p2 = points[i], points[i + 1]
+        p3 = points[i + 2] if i + 2 < len(points) else p2
+
+        c1 = QPointF(p1.x() + (p2.x() - p0.x()) / 6.0,
+                     p1.y() + (p2.y() - p0.y()) / 6.0)
+        c2 = QPointF(p2.x() - (p3.x() - p1.x()) / 6.0,
+                     p2.y() - (p3.y() - p1.y()) / 6.0)
+        # Los tiradores no pueden salirse del tramo: es lo que evita el pico
+        # inventado entre dos muestras iguales.
+        techo, suelo = min(p1.y(), p2.y()), max(p1.y(), p2.y())
+        c1.setY(max(techo, min(suelo, c1.y())))
+        c2.setY(max(techo, min(suelo, c2.y())))
+        camino.cubicTo(c1, c2, p2)
+
+    if cerrar_en is not None:
+        camino.lineTo(points[-1].x(), cerrar_en)
+        camino.closeSubpath()
+    return camino
+
+
 class Sparkline(QWidget):
     """Serie temporal compacta: relleno de área, línea y punto en el extremo.
 
@@ -387,20 +433,14 @@ class Sparkline(QWidget):
 
         points = [point(i, v) for i, v in enumerate(values)]
 
-        area = QPainterPath(QPointF(points[0].x(), rect.bottom()))
-        for pt in points:
-            area.lineTo(pt)
-        area.lineTo(points[-1].x(), rect.bottom())
-        area.closeSubpath()
+        area = curva_suave(points, cerrar_en=rect.bottom())
 
         gradient = QLinearGradient(0, rect.top(), 0, rect.bottom())
         gradient.setColorAt(0.0, self._p.q("accent", 0.28))
         gradient.setColorAt(1.0, self._p.q("accent", 0.02))
         painter.fillPath(area, QBrush(gradient))
 
-        line = QPainterPath(points[0])
-        for pt in points[1:]:
-            line.lineTo(pt)
+        line = curva_suave(points)
         painter.setPen(QPen(self._p.q("accent"), 1.6))
         painter.drawPath(line)
 
@@ -647,17 +687,11 @@ class CoreMatrix(QWidget):
             ratio = min(100.0, max(0.0, float(value))) / 100.0
             points.append(QPointF(rect.left() + i * step, rect.bottom() - ratio * rect.height()))
 
-        area = QPainterPath(QPointF(points[0].x(), rect.bottom()))
-        for point in points:
-            area.lineTo(point)
-        area.lineTo(points[-1].x(), rect.bottom())
-        area.closeSubpath()
+        area = curva_suave(points, cerrar_en=rect.bottom())
         painter.setPen(Qt.PenStyle.NoPen)
         painter.fillPath(area, QBrush(self._p.q("accent", 0.16)))
 
-        line = QPainterPath(points[0])
-        for point in points[1:]:
-            line.lineTo(point)
+        line = curva_suave(points)
         painter.setPen(QPen(self._p.q("accent", 0.75), 1.1))
         painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawPath(line)

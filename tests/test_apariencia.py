@@ -28,7 +28,7 @@ class TestAcento(unittest.TestCase):
 
     def test_los_ajustes_y_el_tema_conocen_los_mismos_colores(self):
         # Están definidos en dos sitios porque los ajustes no cargan Qt; si se
-        # desincronizan, elegir un color válido lo revertiría a naranja.
+        # desincronizan, elegir un color válido lo revertiría al de serie.
         self.assertEqual(set(ACCENT_NAMES), set(theme.ACCENTS))
 
     def test_tenir_cambia_los_tres_tonos(self):
@@ -47,7 +47,8 @@ class TestAcento(unittest.TestCase):
         self.assertIs(theme.tinted(theme.LIGHT, "turquesa", dark=False), theme.LIGHT)
 
     def test_los_ajustes_rechazan_un_color_que_no_existe(self):
-        self.assertEqual(Preferences(accent="fucsia").normalized().accent, "naranja")
+        self.assertEqual(Preferences(accent="fucsia").normalized().accent,
+                         Preferences().accent)
         self.assertEqual(Preferences(accent="azul").normalized().accent, "azul")
 
 
@@ -151,3 +152,56 @@ class TestNucleosConLetraGrande(unittest.TestCase):
 
     def tearDown(self):
         theme.set_density("normal", "normal")
+
+
+class TestCurvaSuave(unittest.TestCase):
+    """Una gráfica de datos no puede dibujar lo que no midió.
+
+    Unir las muestras con curvas se lee mucho mejor que con rectas, pero una
+    curva mal hecha se abomba entre dos puntos y enseña un pico de temperatura
+    que nunca ocurrió. La de aquí pasa por todas las muestras y no se sale del
+    tramo entre cada dos.
+    """
+
+    def _puntos(self, alturas):
+        from PySide6.QtCore import QPointF
+        return [QPointF(i * 10.0, y) for i, y in enumerate(alturas)]
+
+    def _recorrer(self, camino, pasos=200):
+        """Las alturas por las que pasa la curva, muestreadas."""
+        return [camino.pointAtPercent(i / pasos).y() for i in range(pasos + 1)]
+
+    def test_pasa_por_todas_las_muestras(self):
+        from silux.ui.widgets import curva_suave
+        alturas = [50.0, 20.0, 80.0, 35.0]
+        camino = curva_suave(self._puntos(alturas))
+        recorrido = self._recorrer(camino)
+        for altura in alturas:
+            self.assertTrue(any(abs(y - altura) < 0.6 for y in recorrido),
+                            f"la curva no pasa por {altura}")
+
+    def test_no_se_sale_por_arriba_ni_por_abajo(self):
+        """Es lo que evita el pico inventado entre dos muestras iguales."""
+        from silux.ui.widgets import curva_suave
+        alturas = [40.0, 40.0, 10.0, 40.0, 40.0]
+        recorrido = self._recorrer(curva_suave(self._puntos(alturas)))
+        self.assertGreaterEqual(min(recorrido), 10.0 - 0.5)
+        self.assertLessEqual(max(recorrido), 40.0 + 0.5)
+
+    def test_una_linea_plana_se_queda_plana(self):
+        from silux.ui.widgets import curva_suave
+        recorrido = self._recorrer(curva_suave(self._puntos([30.0] * 6)))
+        self.assertLess(max(recorrido) - min(recorrido), 0.01)
+
+    def test_con_una_sola_muestra_no_revienta(self):
+        from silux.ui.widgets import curva_suave
+        self.assertEqual(curva_suave(self._puntos([12.0])).elementCount(), 1)
+
+    def test_sin_ninguna_tampoco(self):
+        from silux.ui.widgets import curva_suave
+        self.assertEqual(curva_suave([]).elementCount(), 0)
+
+    def test_el_relleno_baja_hasta_el_suelo_y_cierra(self):
+        from silux.ui.widgets import curva_suave
+        camino = curva_suave(self._puntos([20.0, 50.0, 30.0]), cerrar_en=100.0)
+        self.assertTrue(any(abs(y - 100.0) < 0.6 for y in self._recorrer(camino)))
