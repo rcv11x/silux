@@ -245,6 +245,20 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   apagado los dos valen 2.60 GHz y el renglón dice «2.60 – 2.60 GHz», que es
   cierto y no informa. Lo que se recorre es de la mínima al máximo.
 
+- **Medir el ancho de una columna cuando aún no hay nada que medir**: los
+  anchos del árbol de sensores se calculan al montarlo, con las celdas
+  vacías, y luego llegan los valores. La columna del reloj enseñaba
+  «800.0 M…». Al cambiar un valor se ensancha si hace falta; nunca se encoge,
+  o la tabla bailaría a cada muestreo.
+- **Quedarse con el fabricante que publica sysfs en un disco**: dice «ATA» en
+  SATA y nada en NVMe. El nombre solo está dentro del modelo, y hay que
+  buscar el prefijo más largo primero: «wd_black» antes que «wd », «sk hynix»
+  antes que «hynix».
+- **Titular la ficha de la placa con la placa en un portátil**: un IdeaPad 330
+  lleva dentro una «LNVNB161216», que no le dice nada a nadie. Ahí manda el
+  nombre del equipo, que es el de la pegatina; en un sobremesa es al revés,
+  porque la placa es lo que se compró.
+
 - **Buscar los datos de i915 en `card0/device/`**: ese es el enlace al nodo
   PCI, e Intel publica las frecuencias del motor gráfico en el nodo DRM, un
   nivel más arriba. Encima cambiaron de sitio en el kernel 6.2, que las metió

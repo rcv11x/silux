@@ -228,6 +228,7 @@ class InfoGrid(QWidget):
         self._grid.setColumnStretch(1, 1)
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
         self._values: dict[str, ElidingLabel] = {}
+        self._names: dict[str, ElidingLabel] = {}
         self._rows = 0
 
     def add(self, name: str, value: str = "—", tooltip: str = "") -> ElidingLabel:
@@ -251,6 +252,7 @@ class InfoGrid(QWidget):
         self._grid.addWidget(name_label, self._rows, 0, Qt.AlignmentFlag.AlignTop)
         self._grid.addWidget(value_label, self._rows, 1)
         self._values[name] = value_label
+        self._names[name] = name_label
         self._rows += 1
         return value_label
 
@@ -262,9 +264,20 @@ class InfoGrid(QWidget):
         if tooltip:
             label.setToolTip(f"{value}\n\n{tooltip}" if value else tooltip)
 
+    def set_visible(self, name: str, visible: bool) -> None:
+        """Esconde o enseña una fila entera, nombre incluido.
+
+        Se ocultan, no se destruyen: crear widgets en cada muestreo es lo que
+        hacía crecer la memoria medio megabyte por minuto.
+        """
+        for mapa in (self._values, self._names):
+            if (label := mapa.get(name)) is not None:
+                label.setVisible(visible)
+
     def reset(self) -> None:
         clear_layout(self._grid)
         self._values.clear()
+        self._names.clear()
         self._rows = 0
 
 
@@ -1343,11 +1356,35 @@ class SensorTree(QTreeWidget):
         for column, text in enumerate(values, start=1):
             if item.text(column) != text:
                 item.setText(column, text)
+                self._ensanchar_para(column, text)
         colour = self._p.q("crit") if alarm else self._p.q("ink")
         item.setForeground(1, colour)
         if tooltip:
             for column in range(len(self.COLUMNS)):
                 item.setToolTip(column, tooltip)
+
+    def _ensanchar_para(self, column: int, text: str) -> None:
+        """Da sitio a un valor que ha crecido después de medir las columnas.
+
+        Los anchos se calculan al montar el árbol, cuando muchas celdas están
+        todavía vacías o traen un guion. Luego llegan los valores de verdad y
+        alguno ya no cabe: la columna del reloj enseñaba «800.0 M…» porque se
+        midió antes de que hubiera ningún reloj que medir.
+
+        Solo ensancha, nunca encoge, o la tabla bailaría a cada muestreo. Y no
+        toca nada si el usuario ha puesto los anchos a mano.
+        """
+        if self._preferred_widths or not text:
+            return
+        necesario = (QFontMetrics(self._value_font).horizontalAdvance(text)
+                     + theme.METRICS.grid_hspace)
+        if necesario <= self.columnWidth(column):
+            return
+        self._applying_widths = True
+        try:
+            self.setColumnWidth(column, min(necesario, 220))
+        finally:
+            self._applying_widths = False
 
     def has(self, key: str) -> bool:
         return key in self._rows

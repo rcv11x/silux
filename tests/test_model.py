@@ -48,6 +48,11 @@ class TestPropiedadesExportadas(unittest.TestCase):
         # guardarlos, así que todo lo que llega al snapshot ya es plausible y
         # exportarlo sería exportar un `true` constante.
         ("Timings", "plausible"),
+        # Solo sirve para elegir cómo titular la ficha de la placa: en un
+        # portátil manda el nombre del equipo y en un sobremesa el de la
+        # placa. El chasis del que sale ya va en el JSON, así que quien lo
+        # lea puede decidir lo mismo por su cuenta.
+        ("Board", "chassis_is_portable"),
     }
 
     def test_ninguna_propiedad_se_queda_fuera(self):
