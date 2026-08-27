@@ -33,6 +33,11 @@ ACCENT_NAMES = ("naranja", "azul", "verde", "morado", "rojo", "cian")
 @dataclass(frozen=True)
 class Preferences:
     interval_s: float = 1.0
+    # Las gráficas se deslizan entre muestra y muestra en vez de saltar. No
+    # lee nada más: solo repinta más veces, y solo las que están a la vista,
+    # que son cuatro. Medido en un Ryzen 7 5800X3D sale al 2 % de un núcleo.
+    # Apagado de serie de todas formas: en un portátil eso es batería.
+    fluid_charts: bool = False
     theme: str = "system"                 # system | light | dark
     temperature_unit: str = "c"           # c | f
     density: str = "normal"               # spacious | normal | compact
@@ -57,6 +62,7 @@ class Preferences:
         return replace(
             self,
             interval_s=min(10.0, max(0.2, float(self.interval_s))),
+            fluid_charts=bool(self.fluid_charts),
             theme=self.theme if self.theme in ("system", "light", "dark") else "system",
             temperature_unit="f" if self.temperature_unit == "f" else "c",
             density=self.density if self.density in ("spacious", "normal", "compact") else "normal",

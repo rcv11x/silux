@@ -245,6 +245,12 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   apagado los dos valen 2.60 GHz y el renglón dice «2.60 – 2.60 GHz», que es
   cierto y no informa. Lo que se recorre es de la mínima al máximo.
 
+- **Medir el coste de repintar sobre widgets que no están a la vista**: la
+  primera medida del movimiento fluido dio un 117 % de un núcleo, y era falsa:
+  forzaba el dibujo de las dieciséis gráficas montadas cuando Qt no repinta
+  las de las páginas cerradas. A la vista hay cuatro, y el coste real es un
+  2 %. Un número así de malo conviene comprobarlo antes de rendirse.
+
 - **Medir el ancho de una columna cuando aún no hay nada que medir**: los
   anchos del árbol de sensores se calculan al montarlo, con las celdas
   vacías, y luego llegan los valores. La columna del reloj enseñaba
