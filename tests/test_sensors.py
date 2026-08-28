@@ -9,7 +9,7 @@ from silux.model import (
 )
 from silux.providers.base import Draft
 from silux.providers.derived import DerivedSensors
-from silux.tracking import Tracker
+from silux.tracking import HISTORIAL, Tracker
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -200,3 +200,41 @@ class TestWidgetDelArbol(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestHistorialDelSeguidor(unittest.TestCase):
+    """La serie reciente que alimenta las curvas del árbol de sensores."""
+
+    def test_la_serie_esta_acotada(self):
+        """Un monitor se deja abierto horas. Sin tope, cien sensores a una
+        muestra por segundo son treinta y seis mil valores cada uno en una
+        tarde, y el programa crece hasta que alguien lo cierra."""
+        seguidor = Tracker()
+        for muestra in range(HISTORIAL * 3):
+            seguidor.update("cpu", float(muestra))
+        historial = seguidor.get("cpu").history
+        self.assertEqual(len(historial), HISTORIAL)
+        # Y lo que queda es lo último, no lo primero.
+        self.assertEqual(historial[-1], float(HISTORIAL * 3 - 1))
+
+    def test_la_primera_muestra_ya_cuenta(self):
+        seguidor = Tracker()
+        seguidor.update("cpu", 42.0)
+        self.assertEqual(list(seguidor.get("cpu").history), [42.0])
+
+    def test_reiniciar_tambien_borra_la_curva(self):
+        """El botón dice «reiniciar mín/máx» y lo que hace es empezar a contar
+        de nuevo: dejar la curva vieja colgando de unos extremos nuevos
+        enseñaría dos tramos de tiempo distintos en el mismo renglón."""
+        seguidor = Tracker()
+        for muestra in range(10):
+            seguidor.update("cpu", float(muestra))
+        seguidor.reset("cpu")
+        self.assertIsNone(seguidor.get("cpu"))
+
+    def test_un_valor_ausente_no_entra_en_la_curva(self):
+        """Un sensor que deja de responder no dibuja un cero: no hay dato."""
+        seguidor = Tracker()
+        seguidor.update("cpu", 50.0)
+        seguidor.update("cpu", None)
+        self.assertEqual(list(seguidor.get("cpu").history), [50.0])

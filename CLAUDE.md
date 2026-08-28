@@ -22,7 +22,7 @@ python3 tools/build_appimage.py --container   # el AppImage que se reparte
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **844** y tardan unos cincuenta segundos. Si sale bastante
+Los tests son **849** y tardan unos cincuenta segundos. Si sale bastante
 menos, falta algo por recoger.
 
 `--container` no es opcional para repartir: sin él se construye contra el
@@ -329,6 +329,10 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   lento suelto no descoloque.
 - **Un atajo de teclado que no aparece en ninguna parte**: no existe para
   quien no lo sabe. La barra de estado es donde se mira sin buscar.
+- **Dar el respiro de una columna ensanchándola**: con el texto alineado a la
+  derecha, ese hueco cae por la izquierda y la cifra sigue terminando pegada
+  al borde, que es donde el árbol dibuja su marca de arrastre. El aire donde
+  hace falta lo pone el relleno del propio renglón.
 - **Poner una marca de color sin nada que la traduzca**: el punto que señala
   los mejores núcleos no significa nada por sí solo. Su leyenda va debajo de
   la propia rejilla, no en la ficha de al lado: separadas, el punto se queda

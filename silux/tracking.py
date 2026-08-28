@@ -8,8 +8,15 @@ modelo a propósito: el snapshot es una foto, y esto es la película.
 
 from __future__ import annotations
 
+from collections import deque
 from dataclasses import dataclass, field
 from typing import Iterable, Optional
+
+# Cuántas muestras guarda la curva de cada sensor. Sesenta a un segundo es el
+# último minuto, que es el tramo en el que se ve si algo está subiendo. Cien
+# sensores por sesenta muestras son unos 200 KB: dentro del presupuesto, y
+# ampliarlo mucho más no añade lectura, solo aplasta la curva.
+HISTORIAL = 60
 
 
 @dataclass
@@ -19,6 +26,9 @@ class Extremes:
     total: float = 0.0
     samples: int = 0
     last: float = 0.0
+    # La serie reciente. Los extremos dicen dónde estuvo el sensor; esto dice
+    # hacia dónde va, que es lo que uno mira cuando algo empieza a calentarse.
+    history: deque = field(default_factory=lambda: deque(maxlen=HISTORIAL))
 
     @property
     def average(self) -> float:
@@ -36,14 +46,17 @@ class Tracker:
             return
         entry = self._values.get(key)
         if entry is None:
-            self._values[key] = Extremes(minimum=value, maximum=value,
-                                         total=value, samples=1, last=value)
+            entry = Extremes(minimum=value, maximum=value,
+                             total=value, samples=1, last=value)
+            entry.history.append(value)
+            self._values[key] = entry
             return
         entry.minimum = min(entry.minimum, value)
         entry.maximum = max(entry.maximum, value)
         entry.total += value
         entry.samples += 1
         entry.last = value
+        entry.history.append(value)
 
     def update_many(self, items: Iterable[tuple[str, Optional[float]]]) -> None:
         for key, value in items:
