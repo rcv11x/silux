@@ -190,15 +190,30 @@ class GpuSection(QWidget):
         self.tile_temp = StatTile("Temperatura", "°C", self._p)
         self.tile_power = StatTile("Consumo", "W", self._p)
         self.tile_vram = StatTile("VRAM ocupada", "%", self._p)
-        for tile in (self.tile_usage, self.tile_temp, self.tile_power, self.tile_vram):
+        # La frecuencia del núcleo es la primera cifra que se mira de una
+        # gráfica y estaba solo en la ficha de relojes, sin curva. Sin ella no
+        # se distingue una tarjeta que va al máximo de una que se está
+        # frenando, que es lo que las otras cuatro dejan a medio explicar.
+        self.tile_clock = StatTile("Frecuencia", "MHz", self._p)
+        # Y el bus de memoria, que no es lo mismo que la VRAM ocupada: una dice
+        # cuánta cabe y esta cuánta se está moviendo. Una tarjeta con la VRAM
+        # llena y el bus parado tiene datos cargados y no los está tocando.
+        self.tile_membus = StatTile("Bus de memoria", "%", self._p)
+
+        for tile in (self.tile_usage, self.tile_clock, self.tile_temp,
+                     self.tile_power, self.tile_vram, self.tile_membus):
             fila.add(tile)
         self.tile_usage.chart.set_range(0, 100)
         self.tile_vram.chart.set_range(0, 100)
+        self.tile_membus.chart.set_range(0, 100)
 
         intervalo = self._prefs.interval_s
         self.tile_usage.chart.set_formatter(render.percent, intervalo)
         self.tile_vram.chart.set_formatter(render.percent, intervalo)
+        self.tile_membus.chart.set_formatter(render.percent, intervalo)
         self.tile_power.chart.set_formatter(render.watts, intervalo)
+        self.tile_clock.chart.set_formatter(
+            lambda v: render.hz(v * 1e6), intervalo)
         self.tile_temp.chart.set_formatter(
             lambda v: render.temperature(v, False), intervalo)
         return fila
@@ -393,9 +408,41 @@ class GpuSection(QWidget):
         self.tile_usage.update_value(
             f"{gpu.busy_percent:.0f}" if gpu.busy_percent is not None else render.DASH,
             gpu.busy_percent)
+        # El detalle del uso deja de repetir la memoria: ahora tiene su cuadro.
         self.tile_usage.set_detail(
-            f"memoria {render.percent(gpu.memory_busy_percent)}"
-            if gpu.memory_busy_percent is not None else "")
+            f"video {render.percent(gpu.video_busy_percent)}"
+            if gpu.video_busy_percent else "")
+
+        relojes = gpu.clocks
+        nucleo_mhz = relojes.core_hz / 1e6 if relojes.core_hz is not None else None
+        self.tile_clock.update_value(
+            f"{nucleo_mhz:.0f}" if nucleo_mhz is not None else render.DASH,
+            nucleo_mhz)
+        # La escala llega hasta el techo de la tabla DPM, que es lo que hace
+        # que la curva diga «va al máximo» en vez de solo «va subiendo».
+        if relojes.core_max_hz:
+            self.tile_clock.chart.set_range(0, relojes.core_max_hz / 1e6)
+        # Las dos cifras de la memoria son ciertas y distintas: el reloj y la
+        # tasa de datos, que en GDDR6 son dieciséis transferencias por ciclo.
+        if relojes.memory_effective_hz:
+            self.tile_clock.set_detail(
+                f"memoria {render.hz(relojes.memory_effective_hz)}")
+        elif relojes.memory_hz:
+            self.tile_clock.set_detail(f"memoria {render.hz(relojes.memory_hz)}")
+        else:
+            self.tile_clock.set_detail("")
+
+        bus = gpu.memory_busy_percent
+        self.tile_membus.update_value(
+            f"{bus:.0f}" if bus is not None else render.DASH, bus)
+        # Contra qué se compara ese porcentaje: sin el ancho de banda de la
+        # tarjeta, un 21 % no dice si son megas o gigas por segundo.
+        if bus is not None and gpu.memory.bandwidth_bytes:
+            movido = gpu.memory.bandwidth_bytes * bus / 100
+            self.tile_membus.set_detail(f"{render.bandwidth(int(movido))} de "
+                                        f"{render.bandwidth(gpu.memory.bandwidth_bytes)}")
+        else:
+            self.tile_membus.set_detail("")
 
         temperatura = gpu.temp_c
         if self._prefs.fahrenheit and temperatura is not None:
