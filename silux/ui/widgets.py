@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QMenu,
+    QPushButton,
     QSizePolicy,
     QTreeWidget,
     QTreeWidgetItem,
@@ -933,11 +934,27 @@ class ChipRow(QWidget):
 
 
 class Notice(QFrame):
-    """Explica un dato que falta. Sustituye a esconder la pestaña entera."""
+    """Explica un dato que falta. Sustituye a esconder la pestaña entera.
 
-    def __init__(self, title: str, body: str, hint: str = "", parent: Optional[QWidget] = None):
+    `tone` decide el color de la banda: no es lo mismo algo que el usuario
+    puede arreglar —dar permisos, cargar un módulo— que un hecho del hardware
+    que no va a cambiar nunca. Pintar los dos del mismo ámbar convierte «esta
+    gráfica no trae sensor de temperatura» en una alarma permanente.
+
+    `action` añade un botón dentro del propio aviso, que es donde hace falta:
+    quien lee por qué falta un dato es quien quiere arreglarlo.
+    """
+
+    action_clicked = Signal()
+
+    def __init__(self, title: str, body: str, hint: str = "",
+                 parent: Optional[QWidget] = None, tone: str = "warn",
+                 action: Optional[str] = None):
         super().__init__(parent)
         self.setObjectName("Notice")
+        # Antes de que Qt aplique la hoja de estilos, para no tener que
+        # repintar a mano.
+        self.setProperty("tone", tone)
         m = theme.METRICS
 
         layout = QVBoxLayout(self)
@@ -962,6 +979,16 @@ class Notice(QFrame):
             note.setWordWrap(True)
             note.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
             layout.addWidget(note)
+
+        self.action_button: Optional[QPushButton] = None
+        if action:
+            self.action_button = QPushButton(action)
+            self.action_button.clicked.connect(self.action_clicked)
+            fila = QHBoxLayout()
+            fila.setContentsMargins(0, 6, 0, 0)
+            fila.addWidget(self.action_button)
+            fila.addStretch(1)
+            layout.addLayout(fila)
 
 
 def clear_layout(layout) -> None:
@@ -1028,6 +1055,12 @@ class Table(QScrollArea):
         self._grid.setColumnStretch(len(self._headers), 1)
         self._rows = 0
         self._cells: list[list[ElidingLabel]] = []
+        # Los anchos se calculan al montar la tabla, con las celdas vacías, y
+        # los valores llegan después: la columna «Uso» se quedaba con el ancho
+        # de su cabecera y enseñaba «12…» en vez de «12.4 %». Al llegar un
+        # valor la columna se ensancha si hace falta; nunca se encoge, o la
+        # tabla bailaría a cada muestreo.
+        self._anchos = [0] * len(self._headers)
 
     def set_rows(self, rows: Sequence[Sequence[str]], tooltips: Sequence[str] = ()) -> None:
         # Mientras la tabla tenga la misma forma se reescriben las celdas que
@@ -1040,6 +1073,7 @@ class Table(QScrollArea):
                     cell.set_full_text(str(value))
                     if tip:
                         cell.setToolTip(tip)
+            self._ajustar_anchos(rows)
             return
 
         while self._grid.count() > len(self._headers):
@@ -1065,7 +1099,33 @@ class Table(QScrollArea):
                 fila.append(label)
             self._cells.append(fila)
         self._rows = len(rows)
+        self._ajustar_anchos(rows)
         self._fit_height()
+
+    def _ajustar_anchos(self, rows: Sequence[Sequence[str]]) -> None:
+        """Que cada columna quepa, midiendo el texto que de verdad lleva.
+
+        Se mide contra la fuente de cada columna, que no es la misma: la
+        primera va en la tipografía de la interfaz y las demás en
+        monoespaciada, y la cabecera en versalitas.
+        """
+        if not self._cells:
+            return
+        tope = theme.METRICS.small_pt * 26      # freno para un valor absurdo
+        for columna in range(len(self._headers)):
+            celda = self._cells[0][columna] if columna < len(self._cells[0]) else None
+            if celda is None:
+                continue
+            metricas = celda.fontMetrics()
+            ancho = max(
+                (metricas.horizontalAdvance(str(fila[columna]))
+                 for fila in rows if columna < len(fila)),
+                default=0,
+            )
+            ancho = min(ancho, tope)
+            if ancho > self._anchos[columna]:
+                self._anchos[columna] = ancho
+                self._grid.setColumnMinimumWidth(columna, ancho)
 
     def _fit_height(self) -> None:
         """La tabla ocupa justo lo que necesita de alto; el ancho lo negocia

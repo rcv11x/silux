@@ -190,6 +190,7 @@ class MainWindow(QMainWindow):
         self.memory_page = MemoryPage(self._palette, self.prefs)
         self.memory_page.elevation_requested.connect(self._on_elevation_requested)
         self.graphics_page = GraphicsPage(self._palette, self.prefs)
+        self.graphics_page.elevation_requested.connect(self._on_elevation_requested)
         self.storage_page = StoragePage(self._palette, self.prefs)
         self.storage_page.elevation_requested.connect(self._on_elevation_requested)
         self.network_page = NetworkPage(self._palette, self.prefs)
@@ -492,10 +493,12 @@ class MainWindow(QMainWindow):
         el hilo de muestreo, que puede bloquear sin congelar la ventana. Se le
         da un toque para que no haya que esperar al siguiente intervalo.
         """
-        # Los dos botones piden lo mismo y se lanza un solo ayudante, así que
-        # los dos se quedan esperando a la vez.
-        for boton in (self.memory_page.elevation_button,
-                      self.storage_page.elevation_button):
+        # Todos los botones piden lo mismo y se lanza un solo ayudante, así
+        # que todos se quedan esperando a la vez. Los de Gráficos van dentro
+        # del aviso y nacen y mueren con él, así que se preguntan cada vez.
+        for boton in [self.memory_page.elevation_button,
+                      self.storage_page.elevation_button,
+                      *self.graphics_page.elevation_buttons]:
             boton.setEnabled(False)
             boton.setText("Esperando autorización…")
         self.sampler.request_elevation()

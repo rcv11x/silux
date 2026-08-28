@@ -15,7 +15,7 @@ import unittest
 from unittest import mock
 
 from silux import render
-from silux.model import Display, PcieLink, GpuMemory
+from silux.model import Display, Gpu, GpuMemory, Need, Note, PcieLink
 from silux.providers import drm
 from silux.providers.base import Draft
 from tests.test_edid import construir as construir_edid
@@ -518,3 +518,735 @@ class TestFrecuenciasIntel(BancoDrm):
         """0 MHz es la respuesta de un motor gráfico en reposo profundo."""
         gpu = self._uhd(gt_act_freq_mhz="0", gt_max_freq_mhz="1150")
         self.assertEqual(gpu.clocks.core_max_hz, 1_150_000_000)
+
+
+class TestMemoriaQueNoSeConoce(unittest.TestCase):
+    """Un dato que falta se dice que falta.
+
+    Cuando el driver no publica la memoria ocupada, el resumen devolvía el
+    total y la página lo pintaba bajo el renglón «En uso»: una integrada de
+    Intel declaraba tener sus 11,6 GB ocupados al completo.
+    """
+
+    def test_sin_lo_usado_no_se_inventa_el_total(self):
+        memoria = GpuMemory(total_bytes=12_426_808_320)
+        self.assertEqual(render.gpu_memory_summary(memoria), render.DASH)
+
+    def test_con_los_dos_se_resume_como_siempre(self):
+        memoria = GpuMemory(total_bytes=16 * 1024 ** 3, used_bytes=4 * 1024 ** 3)
+        self.assertEqual(render.gpu_memory_summary(memoria), "4 GB de 16 GB   (25 %)")
+
+
+class TestCentinelasDelEnlace(unittest.TestCase):
+    """Un dispositivo que no cuelga de un bus PCIe publica los ficheros igual.
+
+    La gráfica integrada dice ancho 0 y máximo 255 (0xFF): son centinelas de
+    «no hay enlace» y «no se sabe», no anchos. Sin filtrarlos, declaraba un
+    enlace de 255 carriles.
+    """
+
+    def test_los_anchos_validos_son_los_de_la_especificacion(self):
+        from silux.providers.drm import ANCHOS_PCIE
+
+        for carriles in (1, 2, 4, 8, 12, 16, 32):
+            self.assertIn(carriles, ANCHOS_PCIE)
+
+    def test_los_centinelas_no_lo_son(self):
+        from silux.providers.drm import ANCHOS_PCIE
+
+        for centinela in (0, 255, 3, 7, 100):
+            self.assertNotIn(centinela, ANCHOS_PCIE)
+
+
+class TestAvisoDeIntel(unittest.TestCase):
+    def test_los_tres_avisos_dicen_lo_de_la_temperatura(self):
+        # Es lo único que una Intel no da por ningún camino: el nodo DRM no
+        # trae hwmon y su PMU no tiene evento térmico.
+        from silux.providers.drm import INTEL_AVISOS
+
+        for clave, (mensaje, pista) in INTEL_AVISOS.items():
+            with self.subTest(clave=clave):
+                self.assertIn("temperatura", mensaje)
+                self.assertTrue(pista)
+
+    def test_solo_el_de_permisos_promete_uso_y_consumo(self):
+        # Los otros dos se enseñan cuando ya hay permisos: prometer ahí lo que
+        # ya está en pantalla sobra, y prometerlo cuando el kernel no lo da
+        # sería mentir.
+        from silux.providers.drm import INTEL_AVISOS
+
+        self.assertIn("consumo", INTEL_AVISOS["root"][0])
+        self.assertNotIn("consumo", INTEL_AVISOS["driver"][0])
+
+    def test_ninguno_manda_al_usuario_a_tocar_el_kernel(self):
+        """Bajar perf_event_paranoid afloja el cerrojo de toda la máquina.
+
+        A 0 —que es el único valor que sirve, comprobado: con 1 el contador
+        sigue denegado— cualquier proceso sin privilegios puede perfilar el
+        equipo entero. Eso no se le pide a nadie para ver un porcentaje, y
+        menos cuando el ayudante privilegiado ya lo lee sin tocar nada.
+        """
+        from silux.providers.drm import INTEL_AVISOS
+
+        for clave, textos in INTEL_AVISOS.items():
+            for texto in textos:
+                with self.subTest(clave=clave):
+                    self.assertNotIn("paranoid", texto)
+                    self.assertNotIn("CAP_PERFMON", texto)
+                    self.assertNotIn("sysctl", texto)
+
+    def test_i915_y_xe_ya_no_van_por_la_tabla_estatica(self):
+        # Su aviso depende de si el usuario ha elevado permisos, y eso cambia
+        # a mitad de sesión. La tabla la lee un proveedor que corre una vez.
+        from silux.providers.drm import DRIVERS_CIEGOS
+
+        self.assertNotIn("i915", DRIVERS_CIEGOS)
+        self.assertNotIn("xe", DRIVERS_CIEGOS)
+
+    def test_los_drivers_que_sí_publican_no_llevan_aviso(self):
+        from silux.providers.drm import DRIVERS_CIEGOS
+
+        self.assertNotIn("amdgpu", DRIVERS_CIEGOS)
+
+
+class TestDondeSePintanLosAvisos(unittest.TestCase):
+    """Un aviso vale de poco si está lejos del hueco que explica.
+
+    En una UHD 630 sin CAP_PERFMON las cuatro fichas de arriba —uso,
+    temperatura, consumo y VRAM— salen todas a «—», y la explicación se
+    pintaba al final de la página, detrás de todas las tarjetas. Para leerla
+    había que bajar del todo, así que en la práctica no se leía: la queja fue
+    «no sale ningún dato abajo».
+    """
+
+    def _pagina_con(self, gpus, notes):
+        from PySide6.QtWidgets import QApplication
+        from silux.model import CpuInfo, Snapshot
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.graphics import GraphicsPage
+
+        app = QApplication.instance() or QApplication([])
+        pagina = GraphicsPage(theme.palette_for(app, "dark"), Preferences())
+        pagina.apply(Snapshot(monotonic_ns=0, cpu=CpuInfo(),
+                              gpus=tuple(gpus), notes=tuple(notes)))
+        return pagina
+
+    def _cuantos_avisos(self, layout) -> int:
+        return sum(1 for i in range(layout.count())
+                   if layout.itemAt(i).widget() is not None)
+
+    def test_el_aviso_de_una_grafica_va_en_su_tarjeta(self):
+        nota = Note("gpus.0.utilization", Need.DRIVER, "Falta un driver.")
+        pagina = self._pagina_con([Gpu(name="UHD 630")], [nota])
+        self.assertEqual(self._cuantos_avisos(pagina._sections[0]._notices_host), 1)
+        self.assertEqual(self._cuantos_avisos(pagina._notices_host), 0)
+
+    def test_cada_grafica_recibe_el_suyo_y_no_el_de_al_lado(self):
+        notas = [Note("gpus.1.utilization", Need.DRIVER, "Falta un driver.")]
+        pagina = self._pagina_con(
+            [Gpu(name="UHD 630"), Gpu(name="Radeon RX 9070 XT")], notas)
+        self.assertEqual(self._cuantos_avisos(pagina._sections[0]._notices_host), 0)
+        self.assertEqual(self._cuantos_avisos(pagina._sections[1]._notices_host), 1)
+
+    def test_el_que_no_lleva_numero_se_queda_al_pie(self):
+        notas = [Note("gpus", Need.DRIVER, "No se encontró ninguna gráfica.")]
+        pagina = self._pagina_con([Gpu(name="UHD 630")], notas)
+        self.assertEqual(self._cuantos_avisos(pagina._sections[0]._notices_host), 0)
+        self.assertEqual(self._cuantos_avisos(pagina._notices_host), 1)
+
+    def test_uno_con_un_numero_que_no_existe_tampoco_se_pierde(self):
+        # Si el proveedor numera más gráficas de las que la página montó, el
+        # aviso baja al pie en vez de desaparecer.
+        notas = [Note("gpus.7.utilization", Need.DRIVER, "Falta un driver.")]
+        pagina = self._pagina_con([Gpu(name="UHD 630")], notas)
+        self.assertEqual(self._cuantos_avisos(pagina._notices_host), 1)
+
+
+class ClienteFalso:
+    """Un ayudante de mentira que devuelve los contadores que se le digan."""
+
+    def __init__(self, respuestas, conectado=True):
+        self._respuestas = list(respuestas)
+        self._conectado = conectado
+        self.llamadas = 0
+
+    def connected(self):
+        return self._conectado
+
+    def gpu_pmu(self):
+        self.llamadas += 1
+        siguiente = self._respuestas.pop(0)
+        if isinstance(siguiente, Exception):
+            raise siguiente
+        return siguiente
+
+
+def _lectura(reloj_ns, ocupado_ns, energia=None):
+    motores = {"i915": {"rcs0-busy": ocupado_ns}}
+    escalas = {}
+    if energia is not None:
+        motores["power"] = {"energy-gpu": energia}
+        escalas["power"] = {"energy-gpu": 2.3283064365386963e-10}
+    return reloj_ns, motores, escalas
+
+
+class TestContadoresDelKernel(unittest.TestCase):
+    """El uso y el consumo de una Intel, que solo salen del PMU de perf.
+
+    Contrastado contra intel_gpu_top en una UHD 630 con glxgears delante:
+    la herramienta de referencia daba 40-43 % y 2.07-2.35 W, y esta cuenta
+    sobre los mismos contadores dio 42 % y 2.25 W.
+    """
+
+    def _proveedor(self, respuestas, conectado=True):
+        from silux.providers.drm import GpuState
+
+        cliente = ClienteFalso(respuestas, conectado)
+        return GpuState(client=cliente), cliente
+
+    def test_la_primera_lectura_solo_fija_la_referencia(self):
+        proveedor, _ = self._proveedor([_lectura(0, 0)])
+        self.assertEqual(proveedor._contadores(), (None, None))
+
+    def test_la_segunda_ya_da_el_porcentaje(self):
+        # Medio segundo ocupado dentro de una ventana de un segundo.
+        proveedor, _ = self._proveedor([
+            _lectura(1_000_000_000, 0),
+            _lectura(2_000_000_000, 500_000_000),
+        ])
+        proveedor._contadores()
+        ocupacion, _ = proveedor._contadores()
+        self.assertAlmostEqual(ocupacion["i915"]["rcs0-busy"], 50.0)
+
+    def test_un_contador_reiniciado_se_salta_esa_vuelta(self):
+        proveedor, _ = self._proveedor([
+            _lectura(1_000_000_000, 900_000_000),
+            _lectura(2_000_000_000, 10_000_000),
+        ])
+        proveedor._contadores()
+        ocupacion, _ = proveedor._contadores()
+        self.assertEqual(ocupacion, {})
+
+    def test_no_se_pasa_del_cien_por_cien(self):
+        # En ventanas cortas el contador y el reloj no arrancan alineados.
+        proveedor, _ = self._proveedor([
+            _lectura(1_000_000_000, 0),
+            _lectura(1_000_050_000, 60_000),
+        ])
+        proveedor._contadores()
+        ocupacion, _ = proveedor._contadores()
+        self.assertEqual(ocupacion["i915"]["rcs0-busy"], 100.0)
+
+    def test_los_vatios_salen_del_contador_de_energia(self):
+        # 2^32 unidades de 2^-32 julios son un julio; en un segundo, un vatio.
+        proveedor, _ = self._proveedor([
+            _lectura(1_000_000_000, 0, energia=0),
+            _lectura(2_000_000_000, 0, energia=2**32),
+        ])
+        proveedor._contadores()
+        _, vatios = proveedor._contadores()
+        self.assertAlmostEqual(vatios, 1.0, places=6)
+
+    def test_la_energia_no_se_cuela_como_un_motor_mas(self):
+        proveedor, _ = self._proveedor([
+            _lectura(1_000_000_000, 0, energia=0),
+            _lectura(2_000_000_000, 0, energia=2**32),
+        ])
+        proveedor._contadores()
+        ocupacion, _ = proveedor._contadores()
+        self.assertNotIn("power", ocupacion)
+
+    def test_sin_permisos_no_se_le_pregunta_nada(self):
+        proveedor, cliente = self._proveedor([], conectado=False)
+        self.assertEqual(proveedor._contadores(), (None, None))
+        self.assertEqual(cliente.llamadas, 0)
+
+    def test_una_maquina_sin_contadores_deja_de_preguntarse(self):
+        from silux.privileged.client import PmuUnsupported
+
+        proveedor, cliente = self._proveedor([PmuUnsupported("no hay")])
+        proveedor._contadores()
+        proveedor._contadores()
+        proveedor._contadores()
+        self.assertEqual(cliente.llamadas, 1)
+
+    def test_un_fallo_suelto_no_lo_da_por_perdido(self):
+        # La tubería se puede cortar y el usuario volver a autorizar.
+        from silux.privileged.client import HelperError
+
+        proveedor, cliente = self._proveedor([
+            HelperError("se cortó"),
+            _lectura(1_000_000_000, 0),
+            _lectura(2_000_000_000, 250_000_000),
+        ])
+        proveedor._contadores()
+        proveedor._contadores()
+        ocupacion, _ = proveedor._contadores()
+        self.assertAlmostEqual(ocupacion["i915"]["rcs0-busy"], 25.0)
+        self.assertEqual(cliente.llamadas, 3)
+
+    def test_sin_cliente_no_revienta(self):
+        from silux.providers.drm import GpuState
+
+        self.assertEqual(GpuState()._contadores(), (None, None))
+
+
+class TestRepartoDeMotores(unittest.TestCase):
+    def test_el_pmu_de_i915_tiene_nombre_fijo(self):
+        from silux.providers.drm import _pmu_de
+
+        self.assertEqual(_pmu_de({"driver": "i915"}), "i915")
+
+    def test_el_de_xe_lleva_la_ranura_pci_detras(self):
+        from silux.providers.drm import _pmu_de
+
+        self.assertEqual(_pmu_de({"driver": "xe", "pci_slot": "0000:03:00.0"}),
+                         "xe_0000_03_00.0")
+
+    def test_las_demas_no_tienen(self):
+        from silux.providers.drm import _pmu_de
+
+        for gpu in ({"driver": "amdgpu"}, {"driver": "nvidia"},
+                    {"driver": "xe"}, {}):
+            with self.subTest(gpu=gpu):
+                self.assertIsNone(_pmu_de(gpu))
+
+    def test_el_render_y_el_video_van_a_campos_distintos(self):
+        from silux.providers.drm import _uso_intel
+
+        gpu = {"driver": "i915"}
+        _uso_intel(gpu, {"i915": {"rcs0-busy": 40.0, "vcs0-busy": 12.0,
+                                  "vecs0-busy": 3.0}})
+        self.assertEqual(gpu["busy_percent"], 40.0)
+        self.assertEqual(gpu["video_busy_percent"], 12.0)
+
+    def test_con_varios_motores_manda_el_mayor_y_no_la_suma(self):
+        # Sumar pasaría del 100 % sin que la tarjeta esté a tope de nada.
+        from silux.providers.drm import _uso_intel
+
+        gpu = {"driver": "i915"}
+        _uso_intel(gpu, {"i915": {"rcs0-busy": 60.0, "ccs0-busy": 70.0}})
+        self.assertEqual(gpu["busy_percent"], 70.0)
+
+    def test_sin_contadores_no_se_inventa_un_cero(self):
+        from silux.providers.drm import _uso_intel
+
+        gpu = {"driver": "i915"}
+        _uso_intel(gpu, None)
+        self.assertNotIn("busy_percent", gpu)
+
+
+class TestElAvisoSigueAlEstado(unittest.TestCase):
+    """El mismo hueco se explica distinto según lo que se pueda leer hoy."""
+
+    def _aviso(self, proveedor):
+        draft = Draft()
+        proveedor._avisar_de_intel(draft, 0)
+        return draft.notes[0]
+
+    def test_sin_permisos_pide_permisos(self):
+        from silux.model import Need
+        from silux.providers.drm import GpuState
+
+        self.assertEqual(self._aviso(GpuState()).need, Need.ROOT)
+
+    def test_una_vez_leido_deja_de_pedirlos(self):
+        from silux.model import Need
+        from silux.providers.drm import GpuState
+
+        proveedor = GpuState()
+        proveedor._pmu_ok = True
+        self.assertEqual(self._aviso(proveedor).need, Need.HARDWARE)
+
+    def test_si_el_kernel_no_los_da_lo_dice(self):
+        from silux.model import Need
+        from silux.providers.drm import GpuState
+
+        proveedor = GpuState()
+        proveedor._pmu_mudo = True
+        self.assertEqual(self._aviso(proveedor).need, Need.DRIVER)
+
+
+class TestMotoresDeLaTarjeta(unittest.TestCase):
+    """Una gráfica no es un bloque «al 40 %»: son varias unidades.
+
+    Saber cuál va cargada distingue «la tarjeta no da más» de «solo está
+    saturado el decodificador de video», que son dos problemas distintos con
+    dos soluciones distintas.
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.raiz = pathlib.Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+
+    def _motor(self, nombre, capacidades=""):
+        carpeta = self.raiz / "engine" / nombre
+        carpeta.mkdir(parents=True)
+        (carpeta / "capabilities").write_text(capacidades + "\n", encoding="utf-8")
+
+    def test_cada_motor_sale_con_su_funcion(self):
+        from silux.providers.drm import _motores_intel
+
+        for nombre in ("rcs0", "bcs0", "vcs0", "vecs0"):
+            self._motor(nombre)
+        funciones = {m.name: m.kind for m in _motores_intel(self.raiz)}
+        self.assertEqual(funciones, {"rcs0": "render", "bcs0": "copia",
+                                     "vcs0": "video", "vecs0": "video-enhance"})
+
+    def test_las_capacidades_no_salen_por_ningun_otro_sitio(self):
+        # «hevc» dice que decodifica H.265 por hardware y «sfc» que trae
+        # escalador. Ni Vulkan ni OpenGL lo cuentan.
+        from silux.providers.drm import _motores_intel
+
+        self._motor("vcs0", "hevc sfc")
+        motor = _motores_intel(self.raiz)[0]
+        self.assertEqual(motor.capabilities, ("hevc", "sfc"))
+
+    def test_un_motor_desconocido_no_se_inventa_una_funcion(self):
+        from silux.providers.drm import _motores_intel
+
+        self._motor("zzz0")
+        self.assertIsNone(_motores_intel(self.raiz)[0].kind)
+
+    def test_sin_carpeta_de_motores_no_hay_motores(self):
+        from silux.providers.drm import _motores_intel
+
+        self.assertEqual(_motores_intel(self.raiz), ())
+
+    def test_el_uso_del_pmu_se_pega_a_cada_motor(self):
+        from silux.model import GpuEngine
+        from silux.providers.drm import _uso_intel
+
+        gpu = {"driver": "i915",
+               "engines": (GpuEngine(name="rcs0", kind="render"),
+                           GpuEngine(name="vcs0", kind="video"))}
+        _uso_intel(gpu, {"i915": {"rcs0-busy": 42.0, "vcs0-busy": 0.0}})
+        self.assertEqual([m.busy_percent for m in gpu["engines"]], [42.0, 0.0])
+
+    def test_un_motor_parado_marca_cero_y_no_un_hueco(self):
+        # Un motor a 0 % no es un dato ausente: es la respuesta.
+        from silux.model import GpuEngine
+        from silux.providers.drm import _uso_intel
+
+        gpu = {"driver": "i915", "engines": (GpuEngine(name="bcs0"),)}
+        _uso_intel(gpu, {"i915": {"bcs0-busy": 0.0}})
+        self.assertEqual(gpu["engines"][0].busy_percent, 0.0)
+
+
+class TestReposoDeLaGrafica(unittest.TestCase):
+    """El RC6, que sale de sysfs y no cuesta permisos.
+
+    Es lo único de la telemetría de una Intel que se lee sin elevar nada, así
+    que es lo que evita que la página esté del todo vacía antes de autorizar.
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.raiz = pathlib.Path(self._tmp.name)
+        (self.raiz / "gt" / "gt0").mkdir(parents=True)
+        self.addCleanup(self._tmp.cleanup)
+
+    def _dormido(self, ms):
+        (self.raiz / "gt" / "gt0" / "rc6_residency_ms").write_text(f"{ms}\n")
+
+    def test_la_primera_lectura_solo_fija_la_referencia(self):
+        from silux.providers.drm import GpuState
+
+        self._dormido(1000)
+        self.assertIsNone(GpuState()._reposo("card1", self.raiz))
+
+    def test_la_segunda_da_el_porcentaje(self):
+        from silux.providers.drm import GpuState
+
+        proveedor = GpuState()
+        with mock.patch("silux.providers.drm.time.monotonic", side_effect=[10.0, 11.0]):
+            self._dormido(1000)
+            proveedor._reposo("card1", self.raiz)
+            self._dormido(1800)          # 800 ms dormida en 1000 de ventana
+            self.assertAlmostEqual(proveedor._reposo("card1", self.raiz), 80.0)
+
+    def test_no_se_pasa_del_cien(self):
+        from silux.providers.drm import GpuState
+
+        proveedor = GpuState()
+        with mock.patch("silux.providers.drm.time.monotonic", side_effect=[10.0, 11.0]):
+            self._dormido(0)
+            proveedor._reposo("card1", self.raiz)
+            self._dormido(1200)
+            self.assertEqual(proveedor._reposo("card1", self.raiz), 100.0)
+
+    def test_un_contador_reiniciado_se_salta(self):
+        from silux.providers.drm import GpuState
+
+        proveedor = GpuState()
+        self._dormido(5000)
+        proveedor._reposo("card1", self.raiz)
+        self._dormido(10)
+        self.assertIsNone(proveedor._reposo("card1", self.raiz))
+
+    def test_sin_contador_no_se_inventa(self):
+        from silux.providers.drm import GpuState
+
+        self.assertIsNone(GpuState()._reposo("card1", self.raiz))
+
+    def test_no_es_lo_contrario_del_uso(self):
+        # Entre trabajar y dormir hay un término medio —encendida y sin
+        # trabajo— que gasta y que no cuenta como reposo. Si esto se juntara,
+        # el dato dejaría de significar nada.
+        from silux.model import Gpu
+
+        self.assertIn("sleep_percent", Gpu.__dataclass_fields__)
+        self.assertIsNone(Gpu(name="x").sleep_percent)
+
+
+class TestElBotonDePermisos(unittest.TestCase):
+    """Sin botón aquí, había que ir a Memoria o Almacenamiento y volver.
+
+    El uso y el consumo de una Intel piden permisos, pero la única forma de
+    darlos estaba en otras dos páginas. Quien mira Gráficos leía «requiere
+    permisos» sin nada que pulsar, y tenía que adivinar dónde estaba el botón.
+    """
+
+    def _pagina_con(self, notes, gpus=None):
+        from PySide6.QtWidgets import QApplication
+        from silux.model import CpuInfo, Snapshot
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.graphics import GraphicsPage
+
+        app = QApplication.instance() or QApplication([])
+        pagina = GraphicsPage(theme.palette_for(app, "dark"), Preferences())
+        pagina.apply(Snapshot(monotonic_ns=0, cpu=CpuInfo(),
+                              gpus=tuple(gpus or [Gpu(name="UHD 630")]),
+                              notes=tuple(notes)))
+        return pagina
+
+    def test_el_aviso_de_permisos_trae_su_boton(self):
+        nota = Note("gpus.0", Need.ROOT, "Hace falta elevar.")
+        self.assertEqual(len(self._pagina_con([nota]).elevation_buttons), 1)
+
+    def test_los_demas_avisos_no(self):
+        # Un botón que no arregla nada es peor que ninguno.
+        for need in (Need.HARDWARE, Need.DRIVER, Need.PLATFORM, Need.DATABASE):
+            with self.subTest(need=need):
+                nota = Note("gpus.0", need, "No lo expone.")
+                self.assertEqual(self._pagina_con([nota]).elevation_buttons, [])
+
+    def test_pulsarlo_pide_los_permisos(self):
+        nota = Note("gpus.0", Need.ROOT, "Hace falta elevar.")
+        pagina = self._pagina_con([nota])
+        recibido = []
+        pagina.elevation_requested.connect(lambda: recibido.append(True))
+        pagina.elevation_buttons[0].click()
+        self.assertEqual(recibido, [True])
+
+    def test_cuando_ya_hay_permisos_el_boton_desaparece(self):
+        pagina = self._pagina_con([Note("gpus.0", Need.ROOT, "Hace falta elevar.")])
+        self.assertEqual(len(pagina.elevation_buttons), 1)
+        # La nota cambia sola en cuanto el contador contesta.
+        pagina.apply(__import__("silux.model", fromlist=["Snapshot"]).Snapshot(
+            monotonic_ns=1,
+            cpu=__import__("silux.model", fromlist=["CpuInfo"]).CpuInfo(),
+            gpus=(Gpu(name="UHD 630"),),
+            notes=(Note("gpus.0", Need.HARDWARE, "No lo expone."),)))
+        self.assertEqual(pagina.elevation_buttons, [])
+
+
+class TestElColorDelAviso(unittest.TestCase):
+    """Un hecho del hardware no es una avería, y no debe pintarse igual.
+
+    Con la misma banda ámbar para todo, «esta gráfica no trae sensor de
+    temperatura» —que no va a cambiar nunca— se lee como una alarma
+    permanente, igual de urgente que algo que sí se puede arreglar.
+    """
+
+    def test_lo_que_se_arregla_va_en_ambar(self):
+        from silux.ui.pages.graphics import NEED_TONES
+
+        for need in (Need.ROOT, Need.DRIVER, Need.DATABASE):
+            with self.subTest(need=need):
+                self.assertEqual(NEED_TONES[need], "warn")
+
+    def test_lo_que_es_asi_y_ya_esta_va_en_gris(self):
+        from silux.ui.pages.graphics import NEED_TONES
+
+        for need in (Need.HARDWARE, Need.PLATFORM):
+            with self.subTest(need=need):
+                self.assertEqual(NEED_TONES[need], "idle")
+
+    def test_un_fallo_nuestro_se_nota(self):
+        from silux.ui.pages.graphics import NEED_TONES
+
+        self.assertEqual(NEED_TONES[Need.ERROR], "bad")
+
+    def test_el_tono_llega_al_widget(self):
+        from PySide6.QtWidgets import QApplication
+        from silux.ui.widgets import Notice
+
+        QApplication.instance() or QApplication([])
+        self.assertEqual(Notice("t", "b", tone="idle").property("tone"), "idle")
+        self.assertEqual(Notice("t", "b").property("tone"), "warn")
+
+    def test_la_hoja_de_estilo_define_los_tres(self):
+        from PySide6.QtWidgets import QApplication
+        from silux.ui import theme
+
+        app = QApplication.instance() or QApplication([])
+        hoja = theme.stylesheet(theme.palette_for(app, "dark"))
+        self.assertIn('QFrame#Notice[tone="idle"]', hoja)
+        self.assertIn('QFrame#Notice[tone="bad"]', hoja)
+
+
+class TestCodecsDeVideo(unittest.TestCase):
+    """Lo que decide si un video se ve gastando dos vatios o quemando la CPU.
+
+    Contrastado contra `vainfo` en una UHD 630: HEVC hasta 10 bits en los dos
+    sentidos, H.264 en los dos, VP9 solo de lectura y ningún AV1, que esta
+    generación no lo trae.
+    """
+
+    def _codecs(self, perfiles):
+        """Monta la respuesta de VA-API a mano y la agrupa como el módulo."""
+        from silux import gpuapi
+
+        lib = mock.Mock()
+        lib.vaMaxNumProfiles.return_value = len(perfiles)
+        lib.vaMaxNumEntrypoints.return_value = 8
+        lib.vaQueryConfigProfiles.side_effect = self._perfiles(perfiles)
+        lib.vaQueryConfigEntrypoints.side_effect = self._entradas(perfiles)
+        return gpuapi._va_codecs(lib, 1)
+
+    @staticmethod
+    def _perfiles(perfiles):
+        def relleno(display, lista, cuantos):
+            for i, (perfil, _) in enumerate(perfiles):
+                lista[i] = perfil
+            cuantos._obj.value = len(perfiles)
+            return 0
+        return relleno
+
+    @staticmethod
+    def _entradas(perfiles):
+        def relleno(display, perfil, lista, cuantos):
+            puntos = dict(perfiles)[perfil]
+            for i, punto in enumerate(puntos):
+                lista[i] = punto
+            cuantos._obj.value = len(puntos)
+            return 0
+        return relleno
+
+    def test_decodificar_y_codificar_no_son_lo_mismo(self):
+        # 7 = H.264 High; 1 = VLD (decodifica), 6 = EncSlice (codifica).
+        solo_lee = self._codecs([(7, [1])])
+        self.assertTrue(solo_lee[0]["decode"])
+        self.assertFalse(solo_lee[0]["encode"])
+        los_dos = self._codecs([(7, [1, 6])])
+        self.assertTrue(los_dos[0]["encode"])
+
+    def test_los_perfiles_de_un_mismo_codec_se_juntan(self):
+        # 17 = HEVC Main y 18 = HEVC Main 10: un solo códec, no dos.
+        codecs = self._codecs([(17, [1]), (18, [1, 6])])
+        self.assertEqual(len(codecs), 1)
+        self.assertEqual(codecs[0]["name"], "HEVC")
+        self.assertEqual(codecs[0]["profiles"], ["Main", "Main 10"])
+
+    def test_la_profundidad_es_la_mayor_que_admita(self):
+        codecs = self._codecs([(17, [1]), (18, [1])])
+        self.assertEqual(codecs[0]["bits"], 10)
+
+    def test_un_punto_de_entrada_que_no_es_ni_leer_ni_escribir_no_cuenta(self):
+        # 10 = VideoProc, 12 = Stats: postproceso y estadísticas.
+        self.assertEqual(self._codecs([(7, [10, 12])]), [])
+
+    def test_un_perfil_que_no_esta_en_la_tabla_se_ignora(self):
+        # Antes que inventarse un nombre, no enseñarlo.
+        self.assertEqual(self._codecs([(999, [1])]), [])
+
+    def test_se_ordenan_por_lo_que_la_gente_busca(self):
+        from silux.gpuapi import VA_ORDEN
+
+        # 0 = MPEG-2 Simple, 32 = AV1 Profile 0, 7 = H.264 High.
+        nombres = [c["name"] for c in self._codecs([(0, [1]), (32, [1]), (7, [1])])]
+        self.assertEqual(nombres, ["AV1", "H.264", "MPEG-2"])
+        self.assertLess(VA_ORDEN.index("AV1"), VA_ORDEN.index("JPEG"))
+
+    def test_cada_familia_conocida_tiene_su_nombre(self):
+        from silux.gpuapi import VA_PERFILES
+
+        familias = {familia for familia, _, _ in VA_PERFILES.values()}
+        for esperada in ("H.264", "HEVC", "AV1", "VP9", "VP8", "MPEG-2"):
+            with self.subTest(codec=esperada):
+                self.assertIn(esperada, familias)
+
+
+class TestRepartoDeCodecs(unittest.TestCase):
+    """VA-API se abre sobre un nodo concreto, así que no hay que adivinar.
+
+    Es lo contrario de lo que pasa con OpenGL, que no dice de qué tarjeta
+    habla y obligó a casar por el nombre del fabricante.
+    """
+
+    def test_cada_tarjeta_recibe_los_de_su_nodo(self):
+        from silux.providers.gpu_apis import _codecs_de
+
+        respuesta = [{"node": "renderD129",
+                      "codecs": [{"name": "AV1", "decode": True, "encode": False,
+                                  "bits": 10, "profiles": ["Profile 0"]}]}]
+        with mock.patch("silux.providers.gpu_apis.amdgpu.render_node",
+                        return_value="/dev/dri/renderD129"):
+            codecs = _codecs_de({"pci_slot": "0000:03:00.0"}, respuesta)
+        self.assertEqual(len(codecs), 1)
+        self.assertEqual(codecs[0].name, "AV1")
+        self.assertTrue(codecs[0].decode)
+        self.assertFalse(codecs[0].encode)
+
+    def test_los_de_otra_tarjeta_no_se_le_cuelgan(self):
+        from silux.providers.gpu_apis import _codecs_de
+
+        respuesta = [{"node": "renderD128", "codecs": [{"name": "AV1"}]}]
+        with mock.patch("silux.providers.gpu_apis.amdgpu.render_node",
+                        return_value="/dev/dri/renderD129"):
+            self.assertEqual(_codecs_de({"pci_slot": "0000:03:00.0"}, respuesta), ())
+
+    def test_sin_ranura_no_se_atribuye_nada(self):
+        from silux.providers.gpu_apis import _codecs_de
+
+        self.assertEqual(_codecs_de({}, [{"node": "renderD128"}]), ())
+
+
+class TestAnchoDeLasColumnas(unittest.TestCase):
+    """La columna se mide al montarla, cuando aún no hay nada que medir.
+
+    «Uso» se quedaba con el ancho de su cabecera —tres letras— y enseñaba
+    «12…» en vez de «12.4 %». El mismo fallo que ya tenía el árbol de
+    sensores, y se arregla igual: al llegar un valor la columna se ensancha;
+    nunca se encoge, o la tabla bailaría a cada muestreo.
+    """
+
+    def _tabla(self):
+        from PySide6.QtWidgets import QApplication
+        from silux.ui.widgets import Table
+
+        QApplication.instance() or QApplication([])
+        return Table(("Motor", "Uso"), numeric=(False, True))
+
+    def test_la_columna_se_ensancha_con_el_valor(self):
+        tabla = self._tabla()
+        tabla.set_rows([("rcs0", "0 %")])
+        estrecha = tabla._anchos[1]
+        tabla.set_rows([("rcs0", "100.0 %")])
+        self.assertGreater(tabla._anchos[1], estrecha)
+
+    def test_pero_no_se_encoge_cuando_el_valor_baja(self):
+        tabla = self._tabla()
+        tabla.set_rows([("rcs0", "100.0 %")])
+        ancha = tabla._anchos[1]
+        tabla.set_rows([("rcs0", "0 %")])
+        self.assertEqual(tabla._anchos[1], ancha)
+
+    def test_un_valor_desmesurado_no_estira_la_tabla_sin_fin(self):
+        tabla = self._tabla()
+        tabla.set_rows([("rcs0", "x" * 4000)])
+        self.assertLess(tabla._anchos[1], 1000)
