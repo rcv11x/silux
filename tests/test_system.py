@@ -854,3 +854,92 @@ class TestArrastrarLasColumnas(unittest.TestCase):
         self.app.processEvents()
         self._muestreo(arbol)
         self.assertGreaterEqual(arbol.columnWidth(1), 200)
+
+
+class TestOrdenarElArbol(unittest.TestCase):
+    """Pulsar una columna para ver qué está más caliente ahora mismo.
+
+    Con noventa y nueve sensores es la diferencia entre buscar y encontrar.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        from PySide6.QtWidgets import QApplication
+        cls.app = QApplication.instance() or QApplication([])
+
+    def _tree(self):
+        from silux.collector import Collector
+        from silux.ui import theme
+        from silux.ui.widgets import SensorTree
+
+        arbol = SensorTree(theme.DARK)
+        foto = Collector().sample()
+        arbol.rebuild(foto.sensor_tree())
+        for sensor in foto.sensors:
+            arbol.update_row(
+                sensor.key,
+                [f"{sensor.value}" if sensor.value is not None else "—",
+                 "", "", ""])
+        return arbol
+
+    def _categoria_larga(self, arbol):
+        for i in range(arbol.topLevelItemCount()):
+            aparato = arbol.topLevelItem(i)
+            for j in range(aparato.childCount()):
+                categoria = aparato.child(j)
+                if categoria.childCount() >= 4:
+                    return categoria
+        self.skipTest("esta máquina no tiene ninguna categoría con varios sensores")
+
+    def _valores(self, categoria):
+        from silux.ui.widgets import _cifra
+
+        return [_cifra(categoria.child(k).text(1))
+                for k in range(categoria.childCount())]
+
+    def test_el_primer_toque_pone_lo_mas_alto_arriba(self):
+        """Es lo que se quiere casi siempre: cuál está más caliente."""
+        arbol = self._tree()
+        arbol._ordenar_por(1)
+        valores = self._valores(self._categoria_larga(arbol))
+        self.assertEqual(valores, sorted(valores, reverse=True))
+
+    def test_el_segundo_lo_invierte(self):
+        arbol = self._tree()
+        arbol._ordenar_por(1)
+        arbol._ordenar_por(1)
+        valores = self._valores(self._categoria_larga(arbol))
+        self.assertEqual(valores, sorted(valores))
+
+    def test_el_tercero_devuelve_el_orden_por_aparato(self):
+        """Reinsertar lo que ya está ordenado lo deja igual: hay que recordar
+        cómo estaba al montarse."""
+        arbol = self._tree()
+        antes = self._valores(self._categoria_larga(arbol))
+        for _ in range(3):
+            arbol._ordenar_por(1)
+        self.assertEqual(self._valores(self._categoria_larga(arbol)), antes)
+
+    def test_cada_aparato_se_ordena_por_dentro(self):
+        """Sacar la temperatura de un disco de debajo de su disco para
+        ponerla entre las de la placa deja de decir de quién es cada cosa."""
+        arbol = self._tree()
+        aparatos_antes = [arbol.topLevelItem(i).text(0)
+                          for i in range(arbol.topLevelItemCount())]
+        arbol._ordenar_por(1)
+        aparatos_despues = [arbol.topLevelItem(i).text(0)
+                            for i in range(arbol.topLevelItemCount())]
+        self.assertEqual(aparatos_antes, aparatos_despues)
+
+    def test_la_columna_del_nombre_no_ordena(self):
+        arbol = self._tree()
+        arbol._ordenar_por(0)
+        self.assertIsNone(arbol._orden)
+
+    def test_un_sensor_sin_lectura_se_va_al_final(self):
+        """No es ni el más alto ni el más bajo: es que no hay dato."""
+        from silux.ui.widgets import _cifra
+
+        self.assertLess(_cifra("—"), _cifra("0.0 °C"))
+        self.assertEqual(_cifra("82.5 °C"), 82.5)
+        self.assertEqual(_cifra("1470 RPM"), 1470.0)
