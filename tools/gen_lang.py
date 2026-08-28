@@ -91,6 +91,36 @@ def cadenas_del_codigo() -> dict[str, list[str]]:
     return encontradas
 
 
+# Cuánto se tienen que parecer dos frases para sospechar que una es la otra
+# retocada. Por debajo, emparejarlas daría traducciones que dicen otra cosa:
+# «Frecuencia» y «Frecuencia máxima» se parecen mucho y no significan lo mismo.
+PARECIDO_MINIMO = 0.82
+
+
+def emparejar(huerfanas: dict[str, str],
+              sin_traducir: list[str]) -> list[tuple[str, str, str, float]]:
+    """Qué traducción huérfana podría ser de qué cadena nueva.
+
+    Cambiar una coma en el español deja la traducción colgada de la frase
+    vieja, y en la interfaz en inglés sale el español nuevo. Aquí se dice cuál
+    se parece a cuál para que quien mantiene el idioma lo mueva a mano; se
+    sugiere y no se arrastra, porque «Frecuencia» y «Frecuencia máxima» se
+    parecen mucho y no se pueden traducir igual.
+    """
+    import difflib
+
+    sugerencias = []
+    for nueva in sin_traducir:
+        mejor, parecido = None, 0.0
+        for vieja in huerfanas:
+            ratio = difflib.SequenceMatcher(None, vieja, nueva).ratio()
+            if ratio > parecido:
+                mejor, parecido = vieja, ratio
+        if mejor and parecido >= PARECIDO_MINIMO:
+            sugerencias.append((nueva, mejor, huerfanas[mejor], parecido))
+    return sugerencias
+
+
 def actualizar(codigo: str, cadenas: dict[str, list[str]],
                escribir: bool) -> tuple[int, int, int]:
     """Sincroniza un idioma. Devuelve (traducidas, sin traducir, sobrantes)."""
@@ -120,6 +150,11 @@ def actualizar(codigo: str, cadenas: dict[str, list[str]],
             encoding="utf-8")
 
     hechas = sum(1 for v in nuevo.values() if v)
+    faltan = [k for k in cadenas if not nuevo.get(k)]
+    for nueva, vieja, traduccion, parecido in emparejar(sobrantes, faltan):
+        print(f"    ¿«{nueva[:52]}»")
+        print(f"     es «{vieja[:52]}»?  ({parecido:.0%})")
+        print(f"     tenía: «{traduccion[:52]}»")
     return hechas, len(nuevo) - hechas, len(sobrantes)
 
 

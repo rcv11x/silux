@@ -163,3 +163,49 @@ class TestLaHerramientaNoBorraTrabajo(unittest.TestCase):
         modulo = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(modulo)
         self.assertIn("Sensores", modulo.cadenas_de_tablas())
+
+
+class TestCambiarElEspañol(unittest.TestCase):
+    """Con la clave siendo el texto español, retocar una frase deja su
+    traducción colgada de la versión vieja. No se puede evitar sin reescribir
+    el código entero con claves simbólicas, así que al menos se avisa."""
+
+    def _modulo(self):
+        import importlib.util
+
+        raiz = pathlib.Path(__file__).resolve().parent.parent
+        spec = importlib.util.spec_from_file_location(
+            "gen_lang", raiz / "tools" / "gen_lang.py")
+        modulo = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(modulo)
+        return modulo
+
+    def test_una_frase_retocada_se_reconoce(self):
+        modulo = self._modulo()
+        sugerencias = modulo.emparejar(
+            {"Movimiento fluido de las gráficas": "Smooth chart motion"},
+            ["Movimiento fluido de las gráficas y barras"])
+        self.assertEqual(len(sugerencias), 1)
+        self.assertEqual(sugerencias[0][2], "Smooth chart motion")
+
+    def test_dos_frases_distintas_no_se_confunden(self):
+        """«Frecuencia» y «Frecuencia máxima» se parecen mucho y no significan
+        lo mismo: emparejarlas daría una traducción que dice otra cosa."""
+        modulo = self._modulo()
+        self.assertEqual(
+            modulo.emparejar({"Frecuencia": "Frequency"}, ["Frecuencia máxima"]),
+            [])
+
+    def test_no_se_arrastra_sola(self):
+        """Se sugiere y decide una persona: una traducción movida a la frase
+        equivocada es peor que un hueco, porque el hueco se ve."""
+        modulo = self._modulo()
+        with tempfile.TemporaryDirectory() as tmp:
+            carpeta = pathlib.Path(tmp)
+            (carpeta / "xx.json").write_text(
+                json.dumps({"Tema viejo": "Old theme"}), encoding="utf-8")
+            with mock.patch.object(modulo, "LANG", carpeta):
+                modulo.actualizar("xx", {"Tema viejo retocado": []}, escribir=True)
+            datos = json.loads((carpeta / "xx.json").read_text(encoding="utf-8"))
+        self.assertEqual(datos["Tema viejo retocado"], "")
+        self.assertEqual(datos["Tema viejo"], "Old theme")
