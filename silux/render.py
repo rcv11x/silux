@@ -30,6 +30,12 @@ def hz(value: Optional[float], decimals: int | None = None) -> str:
         return f"{value / 1e9:.{2 if decimals is None else decimals}f} GHz"
     if value >= 1e6:
         return f"{value / 1e6:.{0 if decimals is None else decimals}f} MHz"
+    # Un cero no se escala: una GPU en reposo profundo marca 0 y salía como
+    # «0 kHz», que sugiere una frecuencia diminuta en vez de una parada. La
+    # unidad que se elige por magnitud deja de tener sentido cuando no hay
+    # magnitud. Sigue sin ser un dato ausente: parada es la respuesta.
+    if value == 0:
+        return "0 MHz"
     return f"{value / 1e3:.0f} kHz"
 
 
@@ -489,6 +495,25 @@ def best_cores(logical, cuantos: int = 2) -> str:
     if len(nombres) == 1:
         return nombres[0].capitalize()
     return (", ".join(nombres[:-1]) + " y " + nombres[-1]).capitalize()
+
+
+def starred_cpus(logical) -> str:
+    """Las CPU lógicas que llevan estrella, para que la cuenta cuadre.
+
+    Con SMT cada núcleo bueno marca sus dos hilos, así que en un 5800X3D se
+    ven cuatro estrellas y la frase decía «núcleo 1 y núcleo 3». Las dos cosas
+    son ciertas y no lo parecen: quien mira cuenta cuatro y lee dos.
+    """
+    orden = core_quality(logical)
+    if not orden:
+        return ""
+    mejor = orden[0][1]
+    cabeza = {core for core, nota, _ in orden if nota == mejor}
+    indices = sorted(c.index for c in logical if c.core_id in cabeza)
+    if len(indices) <= len(cabeza):        # sin SMT no hay nada que aclarar
+        return ""
+    nombres = [f"CPU {i}" for i in indices]
+    return ", ".join(nombres[:-1]) + " y " + nombres[-1]
 
 
 def core_quality_spread(logical) -> Optional[str]:

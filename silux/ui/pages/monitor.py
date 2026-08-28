@@ -21,6 +21,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QPushButton,
     QScrollArea,
     QVBoxLayout,
@@ -58,6 +59,7 @@ class MonitorPage(QScrollArea):
     # Lo emite el árbol cuando el usuario arrastra una columna; la ventana lo
     # guarda para que el ajuste sobreviva al cierre.
     columns_resized = Signal(tuple)
+    branches_changed = Signal(tuple)
 
     def __init__(self, palette: Palette, prefs: Preferences, tracker: Tracker, parent=None):
         super().__init__(parent)
@@ -84,8 +86,9 @@ class MonitorPage(QScrollArea):
         sensors_card.body.addWidget(self._build_sensor_header())
         self.tree = SensorTree(palette)
         self.tree.set_column_widths(prefs.sensor_columns)
-        self.tree.itemExpanded.connect(lambda _: self.tree.refresh_height())
-        self.tree.itemCollapsed.connect(lambda _: self.tree.refresh_height())
+        self.tree.set_collapsed(prefs.sensor_collapsed or None)
+        self.tree.itemExpanded.connect(self._rama_movida)
+        self.tree.itemCollapsed.connect(self._rama_movida)
         self.tree.columnsResized.connect(self.columns_resized)
         sensors_card.body.addWidget(self.tree)
         self._layout.addWidget(sensors_card)
@@ -98,9 +101,14 @@ class MonitorPage(QScrollArea):
 
         self._core_history: dict[int, deque] = defaultdict(lambda: deque(maxlen=40))
         self._structure: tuple = ()
+        self._cuenta_completa = ""
         self._hint_signature: tuple = ()
 
     # -- construcción -------------------------------------------------------
+
+    def _rama_movida(self, _item) -> None:
+        self.tree.refresh_height()
+        self.branches_changed.emit(self.tree.collapsed())
 
     def _build_sensor_header(self) -> QWidget:
         holder = QWidget()
@@ -115,6 +123,16 @@ class MonitorPage(QScrollArea):
         self.count.setObjectName("Muted")
         self.count.setFont(ui_font(theme.METRICS.small_pt))
 
+        self.search = QLineEdit()
+        self.search.setPlaceholderText("Buscar…")
+        self.search.setClearButtonEnabled(True)
+        self.search.setToolTip(
+            "Filtra por el nombre del sensor o del aparato.\n"
+            "«memoria», «9070», «ventilador»…"
+        )
+        self.search.setFixedWidth(190)
+        self.search.textChanged.connect(self._buscar)
+
         self.reset_button = QPushButton("Reiniciar mín/máx")
         self.reset_button.setToolTip(
             "Vuelve a empezar a contar los extremos desde este momento.\n"
@@ -125,8 +143,23 @@ class MonitorPage(QScrollArea):
         row.addWidget(title)
         row.addWidget(self.count)
         row.addStretch(1)
+        row.addWidget(self.search)
         row.addWidget(self.reset_button)
         return holder
+
+    def _buscar(self, texto: str) -> None:
+        self.tree.set_filter(texto)
+        self._actualizar_cuenta()
+
+    def _actualizar_cuenta(self) -> None:
+        """Buscando cuenta lo que queda; parado, lo que hay."""
+        if self.search.text().strip():
+            visibles = self.tree.coincidencias()
+            self.count.setText(
+                f"· {visibles} {render.plural(visibles, 'coincidencia', 'coincidencias')}"
+                if visibles else "· ninguna coincidencia")
+        else:
+            self.count.setText(self._cuenta_completa)
 
     # -- actualización ------------------------------------------------------
 
@@ -152,10 +185,11 @@ class MonitorPage(QScrollArea):
         if structure != self._structure:
             self.tree.rebuild(tree)
             self._structure = structure
-            self.count.setText(
+            self._cuenta_completa = (
                 f"· {len(snapshot.sensors)} en {len(tree)} "
                 + ("dispositivo" if len(tree) == 1 else "dispositivos")
             )
+            self._actualizar_cuenta()
 
         avisos: dict[str, list[str]] = {}
         for sensor in snapshot.sensors:

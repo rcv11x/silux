@@ -164,11 +164,15 @@ class CpuLiveSection(QWidget):
 
         if orden:
             reparto = render.core_quality_spread(snapshot.cpu.logical)
+            hilos = render.starred_cpus(snapshot.cpu.logical)
+            # Con SMT las estrellas son el doble que los núcleos, y sin decirlo
+            # quien mira cuenta cuatro y lee dos.
+            aclaracion = f" — {hilos}, que son sus hilos" if hilos else ""
             self.calidad.setText(
                 f'<span style="color:{self._p.accent}">&#9733;</span> '
-                f"{render.best_cores(snapshot.cpu.logical)}: los que mejor "
-                f"salieron de la oblea según el firmware, y a los que el "
-                f"planificador manda el trabajo de un hilo suelto. "
+                f"{render.best_cores(snapshot.cpu.logical)}{aclaracion}: los "
+                f"que mejor salieron de la oblea según el firmware, y a los "
+                f"que el planificador manda el trabajo de un hilo suelto. "
                 f"{reparto[0].upper()}{reparto[1:]}."
             )
             self.calidad.show()
