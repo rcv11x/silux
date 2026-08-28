@@ -663,36 +663,104 @@ pudo preguntar».
 
 ## Ficheros tocados
 
+Los 22 que cambiaron, contrastados contra `git diff --name-only 7a7c1f1..HEAD`.
+
+### Capa de datos
+
 ```
-silux/smart.py                  unidad de escritura por fabricante
-silux/providers/storage.py      pasar fabricante y modelo; caché de temperatura
-                                y refresco del diagnóstico cada 30 s
-silux/render.py                 el resumen de VRAM ya no rellena con el total
-silux/ui/pages/graphics.py      la ficha de VRAM pide el total por su nombre;
-                                los avisos, debajo de las fichas de su gráfica
-silux/cli.py                    lo mismo en el volcado de terminal; reposo y
-                                motores en la sección de gráficas
-silux/model.py                  GpuEngine, VideoCodec y sus campos en Gpu
-silux/gpuapi.py                 VA-API por ctypes, en el proceso de siempre
-silux/providers/gpu_apis.py     reparte los códecs por nodo de render
-silux/ui/widgets.py             Notice con botón y con tono; anchos de Table
-silux/ui/theme.py               la banda del aviso, por tono
-silux/ui/app.py                 conecta el botón de Gráficos
-silux/providers/drm.py          centinelas del enlace PCIe; GpuState lee el PMU
-                                por el ayudante y el aviso sigue al estado
-silux/privileged/helper.py      acción gpu_pmu: contadores de ocupación y el
-                                plano de energía de la gráfica
-silux/privileged/protocol.py    la acción y sus dos patrones, para auditarlos
+silux/model.py                  GpuEngine y VideoCodec, y cuatro campos nuevos
+                                en Gpu: engines, codecs y sleep_percent
+silux/smart.py                  ATA_UNIDAD_ESCRITURA: la unidad del atributo
+                                241 por fabricante, con Kioxia y Toshiba a
+                                32 MiB y el resto en sectores de 512 B
+silux/gpuapi.py                 VA-API por ctypes: perfiles, puntos de entrada
+                                y agrupado por códec, en el proceso que ya se
+                                lanzaba para OpenGL, Vulkan y OpenCL
+silux/render.py                 gpu_memory_summary deja de enseñar el total
+                                cuando no se sabe lo ocupado
+silux/cli.py                    reposo, motores y códecs en el volcado de
+                                terminal; el total de VRAM por su nombre
+```
+
+### Proveedores
+
+```
+silux/providers/drm.py          lo más tocado de todo:
+                                · GpuState recibe el cliente del ayudante y
+                                  calcula uso y vatios contra la vuelta anterior
+                                · _reposo(): el RC6, que no cuesta permisos
+                                · _motores_intel(): la lista de engine/ y sus
+                                  capacidades
+                                · INTEL_AVISOS: tres textos según el estado, y
+                                  i915/xe fuera de DRIVERS_CIEGOS
+                                · ANCHOS_PCIE: centinelas del enlace
+silux/providers/storage.py      pasa fabricante y modelo a smart.parse; caché
+                                de temperatura, refresco cada 30 s y un fallo
+                                que ya no borra lo anterior
+silux/providers/gpu_apis.py     _codecs_de(): reparte los códecs por nodo de
+                                render, sin adivinar
+```
+
+### El ayudante privilegiado
+
+```
+silux/privileged/helper.py      acción gpu_pmu: enumera los PMU, abre solo los
+                                eventos de ocupación y energy-gpu, y traduce el
+                                nombre a config con el formato del kernel
+silux/privileged/protocol.py    la acción nueva y sus dos patrones, escritos
+                                aquí para poder auditarlos de un vistazo
 silux/privileged/client.py      gpu_pmu() y la excepción PmuUnsupported
-tests/test_smart.py             5 tests de la unidad de escritura
-tests/test_gpu.py               6 tests de memoria, enlace y aviso
-                                + 4 de dónde se pinta cada aviso
-tests/test_storage.py           6 tests de la temperatura del diagnóstico
-tests/test_privileged.py        10 tests del contrato del PMU
-tests/test_gpu.py               22 de la cuenta y del aviso, y 21 más de
-                                motores, reposo, botón y tonos
-CLAUDE.md                       la cifra de tests: 827
 ```
+
+### Interfaz
+
+```
+silux/ui/pages/graphics.py      los avisos bajo las fichas de su gráfica y con
+                                botón; tarjetas de Motores gráficos y de
+                                Códecs de video; NEED_TONES
+silux/ui/widgets.py             Notice con botón y con tono; _ajustar_anchos
+                                en Table
+silux/ui/theme.py               la banda del aviso, distinta por tono
+silux/ui/app.py                 conecta el botón de Gráficos con el ayudante
+```
+
+### Tests — de 751 a 827
+
+```
+tests/test_gpu.py               +64  el grueso: memoria y enlace, dónde se
+                                     pinta cada aviso, la cuenta del PMU,
+                                     motores, reposo, botón, tonos, códecs y
+                                     anchos de columna
+tests/test_privileged.py        +10  el contrato del PMU: que los patrones del
+                                     ayudante y del protocolo coinciden y que
+                                     no se puede salir del directorio
+tests/test_storage.py           +6   la temperatura del diagnóstico
+tests/test_smart.py             +5   la unidad de escritura por marca
+tests/test_gpu_apis.py           ~   corregido: el diccionario vacío de
+                                     consultar() ahora lleva vaapi
+```
+
+### Documentación
+
+```
+CLAUDE.md                       la cifra de tests (827), ocho entradas nuevas
+                                en «cosas que ya se probaron y no funcionaron»,
+                                y el estado de Gráficos al día
+CAMBIOS-2026-08-28-igpu-turbo-discos.md   este archivo
+```
+
+## Los commits
+
+Seis, en este orden:
+
+| | Qué lleva |
+|---|---|
+| `4f43621` | **Discos**: la unidad de escritura por marca y la temperatura del diagnóstico |
+| `784fefa` | **Intel**: uso y consumo de la iGPU por el ayudante privilegiado |
+| `ed4bc6c` | **Gráficos**: motores, reposo y códecs |
+| `cb07b8e` | **Interfaz**: el botón, el color de los avisos y los anchos de columna |
+| `d50000a` | Las notas del `CLAUDE.md` y este registro |
+| `adbb0c6` | **Gráficos**: la VRAM ocupada deja de rellenarse con el total |
 
 ## Lo que NO se ha tocado, a propósito
 

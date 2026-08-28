@@ -104,7 +104,8 @@ silux/
 ├─ history.py      historial de pruebas de este equipo
 ├─ privacidad.py   qué se omite de un informe público y qué no
 ├─ providers/      una fuente cada uno; ninguno conoce a los demás
-├─ privileged/     ayudante root mínimo (helper.py) + cliente + SMBIOS
+├─ privileged/     ayudante root mínimo (helper.py) + cliente + SMBIOS.
+│                  Lee DMI, MSR, el SMART de los discos y el PMU de la iGPU
 ├─ db/             cpu_ids.json (generado; incluye la tabla de MIDR de ARM) +
 │                  sockets.json y families.json (curados a mano; el segundo
 │                  cubre lo que libcpuid no tiene)
@@ -122,10 +123,10 @@ De Gráficos sale todo lo que publica el nodo DRM —identidad, VRAM, tabla DPM,
 enlace PCIe, sensores propios— más lo que solo da el ioctl de amdgpu (tipo de
 memoria, anchura del bus, ancho de banda, unidades de cómputo y ROP), las tres
 APIs y el EDID de cada monitor. De las Intel, el uso por motor y los vatios
-salen del PMU de perf leído por el ayudante privilegiado (`gpu_pmu`), el
-reposo (RC6) y los motores con sus capacidades salen de sysfs sin permisos, y
-los códecs que acelera salen de VA-API atados a su nodo de render, y su
-temperatura no existe por ningún camino. Queda pendiente:
+salen del PMU de perf leído por el ayudante privilegiado (`gpu_pmu`); el
+reposo (RC6) y los motores con sus capacidades, de sysfs sin permisos; y los
+códecs que acelera, de VA-API atada a su nodo de render. Su temperatura no
+existe por ningún camino. Queda pendiente:
 
 - **Las versiones de `gpu_metrics` de la 1.4 en adelante**, que reordenaron los
   campos, y las 2.x de las APU. Hoy se reconocen y se dejan pasar en vez de
