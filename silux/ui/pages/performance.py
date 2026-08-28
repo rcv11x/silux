@@ -365,15 +365,26 @@ class PerformancePage(QScrollArea):
             contenedor.setLayout(acciones)
             rejilla.addWidget(contenedor, fila, len(HISTORY_HEADERS))
 
-        rejilla.setColumnStretch(0, 1)
+        # El sobrante va detrás de los botones y no a la columna del nombre.
+        # Estirando la primera, en pantalla completa quedaba un palmo entre la
+        # fecha de la prueba y sus cifras, que son justo lo que se compara.
+        rejilla.setColumnStretch(len(HISTORY_HEADERS) + 1, 1)
         envoltorio = QWidget()
         envoltorio.setLayout(rejilla)
         self.history_host.addWidget(envoltorio)
 
     def _duracion_de(self, entrada) -> str:
-        """Cómo se midió: es la mitad de lo que hace comparable una cifra."""
+        """Cómo se midió: es la mitad de lo que hace comparable una cifra.
+
+        Se redondea porque lo guardado es lo que tardó de verdad —2,00182 s—
+        y esa precisión no es un dato: nadie eligió medir durante dos segundos
+        y mil ochocientas microsegundos. Lo que importa es contra qué se puede
+        comparar, y para eso basta el número que se pidió.
+        """
         segundos = entrada.seconds
-        return f"{segundos:g} s" if segundos < 90 else f"{segundos / 60:g} min"
+        if segundos < 90:
+            return f"{segundos:.0f} s" if segundos >= 10 else f"{segundos:.1f} s"
+        return f"{segundos / 60:.0f} min"
 
     def _renombrar(self, entrada) -> None:
         from PySide6.QtWidgets import QInputDialog

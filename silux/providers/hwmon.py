@@ -87,7 +87,36 @@ def device_for(chip: str, entry: pathlib.Path, cpu_name: str, board_name: str,
         return f"Gráfica ({chip})"
     if NET_CHIP.match(chip):
         return _net_name(entry) or f"Red ({chip})"
+    if (energia := _nombre_de_alimentacion(chip)):
+        return energia
     return chip
+
+
+# Lo que un portátil publica como chip de sensores y que sale en crudo si no
+# se traduce. `ucsi_source_psy_USBC000:001` es el nombre que el kernel le da al
+# puerto USB-C que negocia la carga, y en el árbol no lo reconoce nadie.
+_ALIMENTACION = (
+    (re.compile(r"^(?:BAT|CMB)(\d*)$", re.I), "Batería"),
+    (re.compile(r"^(?:AC|ADP)(\d*)$", re.I), "Adaptador de corriente"),
+    # Sin número: lo que sigue a `USBC` es un identificador de ACPI, no el
+    # puerto número tantos. «Puerto USB-C 2» en un portátil con uno solo.
+    (re.compile(r"^(ucsi)[-_].*$", re.I), "Puerto USB-C"),
+)
+
+
+def _nombre_de_alimentacion(chip: str) -> Optional[str]:
+    """«Batería» en vez de «BAT0», «Puerto USB-C» en vez del nombre del kernel.
+
+    Se conserva el número cuando lo hay: un portátil con dos baterías las
+    tiene que poder distinguir, y con una sola el número sobra.
+    """
+    for patron, nombre in _ALIMENTACION:
+        if (encaje := patron.match(chip)):
+            sufijo = encaje.group(1)
+            if sufijo.isdigit() and int(sufijo):
+                return f"{nombre} {int(sufijo) + 1}"
+            return nombre
+    return None
 
 
 def _ranura_pci(entry: pathlib.Path) -> Optional[str]:
@@ -109,6 +138,14 @@ def _net_name(entry: pathlib.Path) -> Optional[str]:
     El sensor de temperatura de una Realtek no cuelga de la tarjeta sino del
     bus MDIO por el que se habla con el chip físico, un par de niveles más
     abajo. Así que se sube hasta dar con el `net/` de la interfaz.
+
+    Las interfaces virtuales no cuentan. Subiendo a ciegas se llegaba a
+    `/sys/devices/virtual`, que también tiene un `net/` dentro —con el bucle
+    local y los puentes— y acababa colgando de «Red (lo)» la temperatura de
+    cualquier sensor virtual: un ThinkPad enseñaba el loopback a 34 °C, y el
+    bucle local no tiene con qué calentarse. No vale parar donde se acaben los
+    dispositivos, porque el bus MDIO por el que se sube es un contenedor sin
+    `uevent` y está justo en medio del camino bueno.
     """
     try:
         actual = (entry / "device").resolve()
@@ -116,7 +153,7 @@ def _net_name(entry: pathlib.Path) -> Optional[str]:
         return None
     for _ in range(6):
         red = actual / "net"
-        if red.is_dir():
+        if red.is_dir() and "/virtual/" not in f"{red}/":
             interfaces = sorted(p.name for p in red.iterdir())
             if interfaces:
                 return f"Red ({interfaces[0]})"
@@ -217,8 +254,15 @@ def _umbrales(kind, bajo, alto, critico, chip=None) -> dict:
     De los ventiladores no se avisa. Que uno vaya a tope no es un problema —es
     lo que se espera bajo carga— y que esté parado tampoco, porque casi todas
     las tarjetas modernas los paran a propósito en reposo.
+
+    Y tampoco de lo que se enchufa por fuera. Un puerto USB-C sin nada
+    conectado marca 0 V, y eso está por debajo de cualquier mínimo que declare
+    el chip: un ThinkPad saltaba con un aviso permanente por tener el cargador
+    desenchufado. Cero ahí no es una avería, es que no hay nada puesto.
     """
     if kind is SensorKind.FAN:
+        return {"low": None, "high": None, "critical": None}
+    if _nombre_de_alimentacion(chip or ""):
         return {"low": None, "high": None, "critical": None}
 
     bajo = _plausible(bajo, kind)

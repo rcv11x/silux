@@ -1,6 +1,7 @@
 """El árbol de sensores: agrupado, orden y nombres de los aparatos."""
 
 import os
+import pathlib
 import unittest
 
 from silux.model import (
@@ -238,3 +239,114 @@ class TestHistorialDelSeguidor(unittest.TestCase):
         seguidor.update("cpu", 50.0)
         seguidor.update("cpu", None)
         self.assertEqual(list(seguidor.get("cpu").history), [50.0])
+
+
+class TestAQuienPerteneceUnSensor(unittest.TestCase):
+    """El nombre del aparato bajo el que cuelga cada sensor de hwmon."""
+
+    def setUp(self):
+        import tempfile
+        self._tmp = tempfile.TemporaryDirectory()
+        self.raiz = pathlib.Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+
+    def _dispositivo(self, ruta: pathlib.Path) -> pathlib.Path:
+        """Un directorio que sysfs reconocería como dispositivo."""
+        ruta.mkdir(parents=True, exist_ok=True)
+        (ruta / "uevent").write_text("", encoding="utf-8")
+        return ruta
+
+    def test_el_sensor_de_una_tarjeta_de_red_lleva_su_interfaz(self):
+        from silux.providers.hwmon import _net_name
+
+        tarjeta = self._dispositivo(self.raiz / "devices" / "pci0000:00" / "0000:04:00.0")
+        (tarjeta / "net" / "enp4s0").mkdir(parents=True)
+        hwmon = self.raiz / "hwmon0"
+        hwmon.mkdir()
+        (hwmon / "device").symlink_to(tarjeta)
+
+        self.assertEqual(_net_name(hwmon), "Red (enp4s0)")
+
+    def test_un_sensor_virtual_no_acaba_colgado_del_bucle_local(self):
+        """Subiendo a ciegas se llegaba a `/sys/devices/virtual`, que también
+        tiene un `net/` dentro —con `lo`— y un ThinkPad enseñaba el loopback a
+        34 °C. El bucle local no tiene con qué calentarse."""
+        from silux.providers.hwmon import _net_name
+
+        virtual = self.raiz / "devices" / "virtual"
+        (virtual / "net" / "lo").mkdir(parents=True)
+        zona = self._dispositivo(virtual / "thermal" / "thermal_zone0")
+        hwmon = self.raiz / "hwmon1"
+        hwmon.mkdir()
+        (hwmon / "device").symlink_to(zona)
+
+        self.assertIsNone(_net_name(hwmon))
+
+    def test_sube_por_el_bus_hasta_la_tarjeta(self):
+        """El sensor de una Realtek cuelga del bus MDIO, no de la tarjeta."""
+        from silux.providers.hwmon import _net_name
+
+        tarjeta = self._dispositivo(self.raiz / "0000:04:00.0")
+        (tarjeta / "net" / "enp4s0").mkdir(parents=True)
+        mdio = self._dispositivo(tarjeta / "mdio_bus" / "r8169-4-200")
+        hwmon = self.raiz / "hwmon2"
+        hwmon.mkdir()
+        (hwmon / "device").symlink_to(mdio)
+
+        self.assertEqual(_net_name(hwmon), "Red (enp4s0)")
+
+
+class TestNombresDeAlimentacion(unittest.TestCase):
+    """Lo que un portátil publica como chip y salía en crudo en el árbol."""
+
+    def test_una_bateria_se_llama_bateria(self):
+        from silux.providers.hwmon import _nombre_de_alimentacion
+
+        self.assertEqual(_nombre_de_alimentacion("BAT0"), "Batería")
+
+    def test_la_segunda_bateria_se_distingue(self):
+        from silux.providers.hwmon import _nombre_de_alimentacion
+
+        self.assertEqual(_nombre_de_alimentacion("BAT1"), "Batería 2")
+
+    def test_el_puerto_usbc_no_lleva_el_nombre_del_kernel(self):
+        """`ucsi_source_psy_USBC000:001` no lo reconoce nadie en un árbol."""
+        from silux.providers.hwmon import _nombre_de_alimentacion
+
+        self.assertEqual(
+            _nombre_de_alimentacion("ucsi_source_psy_USBC000:001"),
+            "Puerto USB-C")
+
+    def test_lo_que_sigue_a_usbc_no_es_un_numero_de_puerto(self):
+        """Es un identificador de ACPI. Numerarlo daba «Puerto USB-C 2» en un
+        portátil que tiene uno solo."""
+        from silux.providers.hwmon import _nombre_de_alimentacion
+
+        self.assertEqual(
+            _nombre_de_alimentacion("ucsi_source_psy_USBC000:002"),
+            "Puerto USB-C")
+
+    def test_un_chip_normal_no_se_toca(self):
+        from silux.providers.hwmon import _nombre_de_alimentacion
+
+        for chip in ("coretemp", "nct6798", "thinkpad", "amdgpu", "nvme"):
+            with self.subTest(chip=chip):
+                self.assertIsNone(_nombre_de_alimentacion(chip))
+
+    def test_de_una_fuente_externa_no_se_avisa(self):
+        """Un puerto USB-C sin nada conectado marca 0 V, y eso queda por
+        debajo de cualquier mínimo que declare el chip: un ThinkPad tenía un
+        aviso permanente por llevar el cargador desenchufado."""
+        from silux.model import SensorKind
+        from silux.providers.hwmon import _umbrales
+
+        limites = _umbrales(SensorKind.VOLTAGE, 4.0, 20.0, 22.0,
+                            "ucsi_source_psy_USBC000:001")
+        self.assertEqual(limites, {"low": None, "high": None, "critical": None})
+
+    def test_un_chip_de_verdad_conserva_sus_umbrales(self):
+        from silux.model import SensorKind
+        from silux.providers.hwmon import _umbrales
+
+        limites = _umbrales(SensorKind.VOLTAGE, 1.0, 1.5, 1.6, "nct6798")
+        self.assertEqual(limites["high"], 1.5)
