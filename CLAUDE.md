@@ -22,7 +22,7 @@ python3 tools/build_appimage.py --container   # el AppImage que se reparte
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **907** y tardan unos cincuenta segundos. Si sale bastante
+Los tests son **914** y tardan unos cincuenta segundos. Si sale bastante
 menos, falta algo por recoger.
 
 `--container` no es opcional para repartir: sin él se construye contra el
@@ -333,6 +333,15 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   derecha, ese hueco cae por la izquierda y la cifra sigue terminando pegada
   al borde, que es donde el árbol dibuja su marca de arrastre. El aire donde
   hace falta lo pone el relleno del propio renglón.
+- **Deduplicar las cachés por su nivel**: en un Ryzen de dos chiplets con
+  V-Cache en uno solo hay dos L3 del mismo nivel y el mismo tipo con tamaños
+  distintos —96 MB y 32—, y quedarse con la primera enseñaba la buena para
+  todo el procesador. Es justo el dato por el que se compra esa pieza y justo
+  la mitad del chip donde no es cierto. El tamaño entra en la clave.
+- **Deducir el V-Cache del tamaño de la L3**: crece por otros motivos según la
+  familia. Quien lo dice es el fabricante en la cadena de marca («X3D»); la
+  asimetría entre chiplets es un hecho aparte, que se describe aunque el
+  nombre no lo confirme.
 - **Comparar la nota de silicio entre tipos de núcleo distintos**: un E-core
   con la mitad de nota que un P-core no salió peor de la oblea; es otro
   núcleo, con otro tamaño y otro propósito, y la plataforma lo puntúa más bajo

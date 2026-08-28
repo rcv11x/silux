@@ -159,3 +159,112 @@ class TestCpuHibrida(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestRyzenDeDosChiplets(unittest.TestCase):
+    """Un 7950X3D: dos CCD, y el V-Cache apilado sobre uno solo.
+
+    La mitad de los núcleos ve 96 MB de L3 y la otra mitad 32. No es un
+    detalle de ficha técnica: es la razón de ser de la pieza, y de qué chiplet
+    coja el planificador depende que un juego rinda como el modelo caro o como
+    el barato. No hay ninguna de estas aquí, así que se monta su sysfs.
+    """
+
+    L3_GRANDE = 96 * 1024 * 1024
+    L3_NORMAL = 32 * 1024 * 1024
+
+    def setUp(self):
+        import tempfile
+        self._tmp = tempfile.TemporaryDirectory()
+        self.raiz = pathlib.Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+        self._montar()
+
+    def _montar(self, asimetrica: bool = True) -> None:
+        for cpu in range(32):
+            ccd0 = cpu < 16
+            base = self.raiz / f"cpu{cpu}" / "cache"
+            pareja = f"{min(cpu, cpu ^ 1)},{max(cpu, cpu ^ 1)}"
+            niveles = [(1, "Data", "32K", 8), (1, "Instruction", "32K", 8),
+                       (2, "Unified", "1024K", 8)]
+            for idx, (nivel, tipo, tam, vias) in enumerate(niveles):
+                d = base / f"index{idx}"
+                _write(d / "level", nivel)
+                _write(d / "type", tipo)
+                _write(d / "size", tam)
+                _write(d / "ways_of_associativity", vias)
+                _write(d / "coherency_line_size", 64)
+                _write(d / "number_of_sets", 64)
+                _write(d / "shared_cpu_list", pareja)
+            d = base / "index3"
+            grande = ccd0 or not asimetrica
+            _write(d / "level", 3)
+            _write(d / "type", "Unified")
+            _write(d / "size", "98304K" if grande else "32768K")
+            _write(d / "ways_of_associativity", 16)
+            _write(d / "coherency_line_size", 64)
+            _write(d / "number_of_sets", 16384 if grande else 8192)
+            _write(d / "shared_cpu_list", "0-15" if ccd0 else "16-31")
+
+    def _caches(self):
+        from silux.providers import sysfs_cpu
+
+        with mock.patch.object(sysfs_cpu, "SYS_CPU", str(self.raiz)):
+            return sysfs_cpu.SysfsTopology._caches_for(list(range(32)))
+
+    def test_las_dos_l3_salen_por_separado(self):
+        """Deduplicar por nivel se quedaba con la primera que llegara."""
+        ele3 = [c for c in self._caches() if c.level == 3]
+        self.assertEqual(len(ele3), 2)
+        self.assertEqual({c.size_bytes for c in ele3},
+                         {self.L3_GRANDE, self.L3_NORMAL})
+
+    def test_cada_l3_sabe_qué_nucleos_la_ven(self):
+        ele3 = {c.size_bytes: c for c in self._caches() if c.level == 3}
+        self.assertEqual(ele3[self.L3_GRANDE].instance_cpus, (tuple(range(16)),))
+        self.assertEqual(ele3[self.L3_NORMAL].instance_cpus, (tuple(range(16, 32)),))
+
+    def test_un_ryzen_simetrico_sigue_teniendo_una_sola_l3(self):
+        """Un 7950X normal lleva 32 MB en cada chiplet: mismo tamaño, dos
+        instancias, una sola fila."""
+        self._montar(asimetrica=False)
+        ele3 = [c for c in self._caches() if c.level == 3]
+        self.assertEqual(len(ele3), 1)
+        self.assertEqual(ele3[0].instances, 2)
+
+    def _tipo(self, marca: str = "AMD Ryzen 9 7950X3D 16-Core Processor"):
+        from silux.model import CpuType
+
+        return CpuType(key="general", label="general", brand=marca,
+                       caches=tuple(self._caches()))
+
+    def test_se_dice_qué_nucleos_llevan_la_caché_grande(self):
+        from silux import render
+
+        frase = render.l3_asimetrica(self._tipo())
+        self.assertIn("96 MB", frase)
+        self.assertIn("0-15", frase)
+        self.assertIn("32 MB", frase)
+        self.assertIn("16-31", frase)
+
+    def test_el_vcache_lo_confirma_el_nombre_y_no_el_tamaño(self):
+        """La L3 crece por otros motivos según la familia: quien dice que es
+        V-Cache es el fabricante en la cadena de marca."""
+        from silux import render
+
+        self.assertIn("V-Cache", render.l3_asimetrica(self._tipo()))
+        sin_marca = render.l3_asimetrica(self._tipo("Procesador genérico"))
+        self.assertIn("96 MB", sin_marca)
+        self.assertNotIn("V-Cache", sin_marca)
+
+    def test_un_ryzen_simetrico_no_tiene_nada_que_explicar(self):
+        from silux import render
+
+        self._montar(asimetrica=False)
+        self.assertIsNone(render.l3_asimetrica(self._tipo("AMD Ryzen 9 7950X")))
+
+    def test_la_etiqueta_de_vcache_sale_del_nombre(self):
+        from silux import render
+
+        self.assertEqual(render.vcache(self._tipo()), "3D V-Cache · 96 MB de L3")
+        self.assertIsNone(render.vcache(self._tipo("AMD Ryzen 9 7950X")))
