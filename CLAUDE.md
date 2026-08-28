@@ -29,8 +29,9 @@ menos, falta algo por recoger.
 Python y el Qt de la máquina, y sale un AppImage que exige el juego de
 instrucciones y la glibc de quien lo compiló. Con contenedor sale
 `x86-64-baseline` y glibc 2.34. El paso final de comprobación recorre el
-AppDir y avisa de lo que resuelve fuera; los módulos opcionales de Python
-(`libssl`, `libsqlite3`, `libncurses`) salen ahí y son normales.
+AppDir y avisa de lo que resuelve fuera. Si avisa de algo, hay que mirarlo:
+lo que sale ahí es una biblioteca que el programa espera encontrar puesta en
+la máquina ajena.
 
 Capturas sin pantalla: `python3 -m silux.ui.app --screenshot salida.png
 --page Sensores --dark --compact --size 900x680`. Acepta además `--accent` y
@@ -534,6 +535,16 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
 - **Probar la interfaz solo con `QT_QPA_PLATFORM=offscreen`**: ese plugin
   apenas necesita bibliotecas, así que un AppImage al que le falte medio Qt
   arranca igual. El fallo aparece en la primera máquina ajena con pantalla.
+- **Recorrer solo las dependencias del ejecutable de Python**: los módulos de
+  extensión de su biblioteca estándar tienen las suyas y viven aparte, en
+  `lib-dynload`. Así `_hashlib` se quedaba sin `libcrypto` y `_lzma` sin
+  `liblzma`, y dos de las cinco cargas del benchmark reventaban en cualquier
+  máquina que no las trajera puestas: en las distribuciones con OpenSSL 1.1,
+  siempre. De paso, los módulos que el programa no usa se borran antes de
+  mirar de qué dependen: `nis` se lleva Kerberos entero detrás.
+- **Tomar por normal un aviso del comprobador del AppImage**: decía que trece
+  bibliotecas se cogían del sistema «y son normales», y dos de ellas hacían
+  falta de verdad.
 - **Fiarse de `ldd` en la máquina donde se construye**: resuelve contra lo que
   esa máquina tiene instalado, que es justo lo que se está empaquetando. Lo
   que no esté puesto no aparece como dependencia y se cae del paquete en
