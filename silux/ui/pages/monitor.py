@@ -176,10 +176,10 @@ class MonitorPage(QScrollArea):
 
         carpeta = registro.carpeta()
         carpeta.mkdir(parents=True, exist_ok=True)
-        ruta, _ = QFileDialog.getSaveFileName(
+        ruta, _filtro = QFileDialog.getSaveFileName(
             self, "Guardar el registro de sensores",
             str(carpeta / registro.nombre_sugerido()),
-            "Valores separados por comas (*.csv)")
+            _("csv.filter"))
         if not ruta:
             return
         self._registro = registro.Registro(pathlib.Path(ruta))

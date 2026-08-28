@@ -200,14 +200,14 @@ class SettingsPage(QScrollArea):
         self.theme_box = QComboBox()
         for label, value in THEMES:
             self.theme_box.addItem(_(label), value)
-        self.theme_box.setCurrentIndex([v for _, v in THEMES].index(self._prefs.theme))
+        self.theme_box.setCurrentIndex([v for _descarte, v in THEMES].index(self._prefs.theme))
         self.theme_box.currentIndexChanged.connect(self._emit)
         card.body.addWidget(_Field(_("settings.theme.label"), self.theme_box))
 
         self.density_box = QComboBox()
         for label, value in DENSITIES:
             self.density_box.addItem(_(label), value)
-        self.density_box.setCurrentIndex([v for _, v in DENSITIES].index(self._prefs.density))
+        self.density_box.setCurrentIndex([v for _descarte, v in DENSITIES].index(self._prefs.density))
         self.density_box.currentIndexChanged.connect(self._emit)
         card.body.addWidget(_Field(
             _("settings.density.label"), self.density_box,
@@ -219,7 +219,7 @@ class SettingsPage(QScrollArea):
         for label, value in FONT_SCALES:
             self.font_box.addItem(_(label), value)
         self.font_box.setCurrentIndex(
-            [v for _, v in FONT_SCALES].index(self._prefs.font_scale))
+            [v for _descarte, v in FONT_SCALES].index(self._prefs.font_scale))
         self.font_box.currentIndexChanged.connect(self._emit)
         card.body.addWidget(_Field(
             _("settings.fontsize.label"), self.font_box,
@@ -230,7 +230,7 @@ class SettingsPage(QScrollArea):
         self.accent_box = QComboBox()
         for label, value in ACCENTS:
             self.accent_box.addItem(_(label), value)
-        self.accent_box.setCurrentIndex([v for _, v in ACCENTS].index(self._prefs.accent))
+        self.accent_box.setCurrentIndex([v for _descarte, v in ACCENTS].index(self._prefs.accent))
         self.accent_box.currentIndexChanged.connect(self._emit)
         card.body.addWidget(_Field(
             _("settings.accent.label"), self.accent_box,
@@ -242,7 +242,7 @@ class SettingsPage(QScrollArea):
         for label, value in NETWORK_UNITS:
             self.network_box.addItem(_(label), value)
         self.network_box.setCurrentIndex(
-            [v for _, v in NETWORK_UNITS].index(self._prefs.network_unit))
+            [v for _descarte, v in NETWORK_UNITS].index(self._prefs.network_unit))
         self.network_box.currentIndexChanged.connect(self._emit)
         card.body.addWidget(_Field(
             _("settings.netunit.label"), self.network_box,
@@ -253,7 +253,7 @@ class SettingsPage(QScrollArea):
         self.unit_box = QComboBox()
         for label, value in UNITS:
             self.unit_box.addItem(_(label), value)
-        self.unit_box.setCurrentIndex([v for _, v in UNITS].index(self._prefs.temperature_unit))
+        self.unit_box.setCurrentIndex([v for _descarte, v in UNITS].index(self._prefs.temperature_unit))
         self.unit_box.currentIndexChanged.connect(self._emit)
         card.body.addWidget(_Field(_("settings.tempunit.label"), self.unit_box))
 

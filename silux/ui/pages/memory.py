@@ -36,12 +36,12 @@ from ..widgets import (
 from ...model import Need
 
 NEED_TITLES = {
-    Need.ROOT: "Hace falta elevar permisos",
-    Need.DATABASE: "Falta en la base de datos",
-    Need.HARDWARE: "Este equipo no lo expone",
-    Need.DRIVER: "Falta un módulo del kernel",
+    Need.ROOT: "note.needsroot",
+    Need.DATABASE: "note.database",
+    Need.HARDWARE: "note.hardware",
+    Need.DRIVER: "note.needsmodule",
     Need.PLATFORM: "Todavía no está implementado",
-    Need.ERROR: "Falló al leerse",
+    Need.ERROR: "note.failed",
 }
 
 MODULE_FIELDS = ("memory.field.vendor", "memory.field.chips", "memory.field.part", "memory.field.type", "memory.field.size",
@@ -167,7 +167,8 @@ class MemoryPage(QScrollArea):
         array = snapshot.memory_array
         modules = snapshot.modules
 
-        self.title.setText(f"{render.size(memory.total_bytes)} de memoria")
+        self.title.setText(_("mem.title").format(
+            tam=render.size(memory.total_bytes)))
         self.subtitle.setText(self._subtitle(snapshot))
         self._apply_avisos(snapshot)
         self._apply_badges(snapshot)
@@ -216,10 +217,8 @@ class MemoryPage(QScrollArea):
         if lentos:
             actual = lentos[0].configured_mts or lentos[0].speed_mts
             lineas.append(
-                f"La memoria va a {actual} MT/s de los {lentos[0].rated_mts} "
-                f"que declara admitir. Suele ser el perfil rápido —XMP o "
-                f"EXPO— sin activar en la BIOS, aunque también puede ser el "
-                f"límite oficial del procesador.")
+                _("mem.underclocked").format(
+                    actual=actual, rated=lentos[0].rated_mts))
         self.avisos.setText("  ".join(lineas))
         self.avisos.setVisible(bool(lineas))
 

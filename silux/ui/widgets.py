@@ -1047,9 +1047,9 @@ class ChipRow(QWidget):
         # widgets nuevos en cada muestreo iba dejando miles vivos: era la fuga
         # que hacía crecer la memoria medio megabyte por minuto.
         if len(chips) == len(self._widgets) and \
-                [loud for _, loud in chips] == [loud for _, loud in self._chips]:
+                [loud for _descarte, loud in chips] == [loud for _descarte, loud in self._chips]:
             self._chips = chips
-            for widget, (text, _) in zip(self._widgets, chips):
+            for widget, (text, _tono) in zip(self._widgets, chips):
                 if widget.text() != text:
                     widget.setText(text)
             return
@@ -1980,7 +1980,7 @@ class SensorTree(QTreeWidget):
         cabecera = self.header()
         if self._orden is None:
             cabecera.setSortIndicatorShown(False)
-            for _, categoria, hojas in self._recorrer():
+            for _descarte, categoria, hojas in self._recorrer():
                 # El orden natural es el que tenía al montarse, no el que
                 # tenga ahora: reinsertar lo que ya está ordenado lo deja
                 # exactamente igual.
@@ -2346,7 +2346,7 @@ class StackedBar(QWidget):
         if formatter is not None:
             self._formatter = formatter
         self._legend.set_chips(
-            f"{label}  {self._formatter(value)}" for label, value, _ in segments if value > 0
+            f"{label}  {self._formatter(value)}" for label, value, _descarte in segments if value > 0
         )
         self._reservar_alto()
         self.update()
@@ -2383,7 +2383,7 @@ class StackedBar(QWidget):
         painter.drawRect(rect)
 
         offset = 0.0
-        for _, value, token in self._segments:
+        for _descarte, value, token in self._segments:
             if value <= 0:
                 continue
             width = rect.width() * value / self._total

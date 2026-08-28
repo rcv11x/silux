@@ -184,8 +184,9 @@ class NetworkPage(QScrollArea):
         chips = [c for c in (
             principal.name,
             principal.link_summary,
-            f"puerta {principal.gateway}" if principal.gateway else None,
-            f"{activas} de {len(interfaces)} activas",
+            (_("net.gateway2").format(ip=principal.gateway)
+             if principal.gateway else None),
+            _("net.active2").format(n=activas, total=len(interfaces)),
         ) if c]
         if tuple(chips) != self._chip_signature:
             self._chip_signature = tuple(chips)
@@ -204,7 +205,8 @@ class NetworkPage(QScrollArea):
         self.tile_tx.update_value(render.size(trafico.tx_bytes) if trafico else render.DASH)
 
         if trafico:
-            self.tile_rx.set_detail(f"{trafico.rx_packets:n} paquetes")
+            self.tile_rx.set_detail(_("net.packets2").format(
+                n=f"{trafico.rx_packets:n}"))
             self.tile_tx.set_detail(f"{trafico.tx_packets:n} paquetes")
             perdidos = trafico.problems
             self.tile_down.set_detail(

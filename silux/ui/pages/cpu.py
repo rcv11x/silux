@@ -37,12 +37,12 @@ from ..widgets import (
 )
 
 NEED_TITLES = {
-    Need.ROOT: "Hace falta elevar permisos",
-    Need.DATABASE: "Falta en la base de datos",
-    Need.HARDWARE: "Este equipo no lo expone",
-    Need.DRIVER: "Falta un módulo del kernel",
-    Need.PLATFORM: "No aplica a esta plataforma",
-    Need.ERROR: "Falló al leerse",
+    Need.ROOT: "note.needsroot",
+    Need.DATABASE: "note.database",
+    Need.HARDWARE: "note.hardware",
+    Need.DRIVER: "note.needsmodule",
+    Need.PLATFORM: "note.platform",
+    Need.ERROR: "note.failed",
 }
 
 # El orden va de lo que identifica al procesador a lo que solo interesa
@@ -50,15 +50,15 @@ NEED_TITLES = {
 # con los bits en crudo, que por sí solos no significan nada) y ahora se
 # enseñan los valores compuestos, con el desglose en el tooltip de la firma.
 PROCESSOR_FIELDS = (
-    "Fabricante", "Especificación", "Nombre en clave", "Tecnología",
-    "Encapsulado", "Arquitectura", "Núcleos", "Hilos", "Virtualización",
-    "Familia", "Modelo", "Stepping", "Firma CPUID", "Microcódigo",
+    "cpu.field.vendor", "cpu.field.spec", "cpu.field.codename", "cpu.field.process",
+    "cpu.field.package", "cpu.field.arch", "cpu.field.cores", "cpu.field.threads", "cpu.field.virt",
+    "cpu.field.family", "cpu.field.model", "cpu.field.stepping", "cpu.field.signature", "cpu.field.microcode",
 )
 
 CLOCK_FIELDS = (
-    "Frecuencia", "Multiplicador", "Base", "Mínima",
-    "Máxima (kernel)", "Máxima (silicio)", "Bus (BCLK)", "Turbo",
-    "Driver", "Gobernador", "Preferencia de energía",
+    "cpu.clock.current", "cpu.clock.multiplier", "cpu.clock.base", "cpu.clock.min",
+    "cpu.clock.maxk", "cpu.clock.maxs", "cpu.clock.bus", "cpu.clock.turbo",
+    "cpu.clock.driver", "bench.cond.governor", "bench.cond.epp",
 )
 
 

@@ -42,12 +42,12 @@ SI = "✓"
 NO = "·"
 
 NEED_TITLES = {
-    Need.ROOT: "Requiere permisos",
-    Need.DRIVER: "Falta un driver",
-    Need.HARDWARE: "Este equipo no lo expone",
-    Need.DATABASE: "Falta en la base de datos",
-    Need.PLATFORM: "No aplica a esta plataforma",
-    Need.ERROR: "Falló al leerse",
+    Need.ROOT: "note.needsperm",
+    Need.DRIVER: "note.needsdriver",
+    Need.HARDWARE: "note.hardware",
+    Need.DATABASE: "note.database",
+    Need.PLATFORM: "note.platform",
+    Need.ERROR: "note.failed",
 }
 
 CARD_FIELDS = (
@@ -423,7 +423,8 @@ class GpuSection(QWidget):
             gpu.busy_percent)
         # El detalle del uso deja de repetir la memoria: ahora tiene su cuadro.
         self.tile_usage.set_detail(
-            f"video {render.percent(gpu.video_busy_percent)}"
+            _("gpu.tile.video").format(
+                pct=render.percent(gpu.video_busy_percent))
             if gpu.video_busy_percent else "")
 
         relojes = gpu.clocks
@@ -439,9 +440,11 @@ class GpuSection(QWidget):
         # tasa de datos, que en GDDR6 son dieciséis transferencias por ciclo.
         if relojes.memory_effective_hz:
             self.tile_clock.set_detail(
-                f"memoria {render.hz(relojes.memory_effective_hz)}")
+                _("gpu.tile.memclock").format(
+                    valor=render.hz(relojes.memory_effective_hz)))
         elif relojes.memory_hz:
-            self.tile_clock.set_detail(f"memoria {render.hz(relojes.memory_hz)}")
+            self.tile_clock.set_detail(_("gpu.tile.memclock").format(
+                valor=render.hz(relojes.memory_hz)))
         else:
             self.tile_clock.set_detail("")
 
@@ -452,8 +455,9 @@ class GpuSection(QWidget):
         # tarjeta, un 21 % no dice si son megas o gigas por segundo.
         if bus is not None and gpu.memory.bandwidth_bytes:
             movido = gpu.memory.bandwidth_bytes * bus / 100
-            self.tile_membus.set_detail(f"{render.bandwidth(int(movido))} de "
-                                        f"{render.bandwidth(gpu.memory.bandwidth_bytes)}")
+            self.tile_membus.set_detail(_("gpu.tile.bandwidth").format(
+                actual=render.bandwidth(int(movido)),
+                max=render.bandwidth(gpu.memory.bandwidth_bytes)))
         else:
             self.tile_membus.set_detail("")
 
@@ -464,20 +468,23 @@ class GpuSection(QWidget):
         self.tile_temp.update_value(
             f"{temperatura:.0f}" if temperatura is not None else render.DASH, temperatura)
         self.tile_temp.set_detail(
-            f"punto caliente {render.temperature(gpu.hotspot_c, self._prefs.fahrenheit)}"
+            _("gpu.tile.hotspot").format(valor=render.temperature(
+                gpu.hotspot_c, self._prefs.fahrenheit))
             if gpu.hotspot_c is not None else "")
 
         self.tile_power.update_value(
             f"{gpu.power_w:.0f}" if gpu.power_w is not None else render.DASH, gpu.power_w)
         self.tile_power.set_detail(
-            f"de {render.watts(gpu.power_cap_w)}" if gpu.power_cap_w else "")
+            _("gpu.tile.of").format(valor=render.watts(gpu.power_cap_w))
+            if gpu.power_cap_w else "")
 
         porcentaje = gpu.memory.used_percent
         self.tile_vram.update_value(
             f"{porcentaje:.0f}" if porcentaje is not None else render.DASH, porcentaje)
         # La ficha ya enseña el porcentaje; aquí solo hace falta contra qué.
-        self.tile_vram.set_detail(f"de {render.size(gpu.memory.total_bytes)}"
-                                  if gpu.memory.total_bytes else "")
+        self.tile_vram.set_detail(
+            _("gpu.tile.of").format(valor=render.size(gpu.memory.total_bytes))
+            if gpu.memory.total_bytes else "")
 
     def _apply_memory(self, gpu: Gpu) -> None:
         d = render.DASH
@@ -498,7 +505,7 @@ class GpuSection(QWidget):
         m(_("gpu.vram.total"), render.size(memoria.total_bytes))
         m(_("gpu.vram.used"), render.gpu_memory_summary(memoria) if memoria.total_bytes else d)
         m(_("gpu.vram.type"), render.vram_kind(memoria))
-        m("Bus", render.vram_bus(memoria))
+        m(_("gpu.vram.bus"), render.vram_bus(memoria))
         m(_("gpu.vram.bandwidth"), render.bandwidth(memoria.bandwidth_bytes),
           tooltip="Cuántos datos caben por el bus en un segundo: la tasa de la "
                   "memoria por la anchura del bus. Es lo que limita a una "

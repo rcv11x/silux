@@ -132,7 +132,7 @@ class MainWindow(QMainWindow):
 
         # Etiquetas que se recortan: con QLabel normal, el texto de la barra de
         # estado exigía 533 px y era lo que impedía encoger la ventana.
-        self._status = ElidingLabel("Iniciando el muestreo…")
+        self._status = ElidingLabel(_("app.sampling"))
         self._status.setObjectName("Muted")
         self.statusBar().addWidget(self._status, 1)
         self._sources = ElidingLabel("")
@@ -377,12 +377,12 @@ class MainWindow(QMainWindow):
 
         if self._last_snapshot is None:
             QMessageBox.information(self, "Informe",
-                                    "Todavía no hay ninguna lectura del equipo.")
+                                    _("app.noreading"))
             return
 
         sugerido = str(pathlib.Path.home() / "informe-silux.md")
-        destino, _ = QFileDialog.getSaveFileName(
-            self, "Guardar informe del equipo", sugerido, "Markdown (*.md);;Texto (*.txt)")
+        destino, _filtro = QFileDialog.getSaveFileName(
+            self, "Guardar informe del equipo", sugerido, _("app.report.filter"))
         if not destino:
             return
 
@@ -484,7 +484,7 @@ class MainWindow(QMainWindow):
         self._aplicar_fluidez()
         if self._congelado:
             self._status.set_full_text(
-                "Congelado · pulsa espacio para seguir")
+                _("app.frozen"))
         elif self._last_snapshot is not None:
             self._on_sample(self._last_snapshot)
 
@@ -722,7 +722,7 @@ def build_app(argv: Optional[list[str]] = None) -> tuple[QApplication, MainWindo
     if args.accent:
         prefs = replace(prefs, accent=args.accent)
     if args.size and "x" in args.size:
-        width, _, height = args.size.partition("x")
+        width, _sep, height = args.size.partition("x")
         if width.isdigit() and height.isdigit():
             prefs = replace(prefs, window_width=int(width), window_height=int(height))
     prefs = prefs.normalized()
@@ -772,7 +772,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         collector = Collector()
         collector.snapshot()
         preparar = _anonimizador(args.anonimo)
-        for _ in range(10):
+        for _paso in range(10):
             time.sleep(0.08)
             window._on_sample(preparar(collector.snapshot()))
         # Una sola pasada de eventos no basta: los layouts anidados dentro del

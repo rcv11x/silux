@@ -341,3 +341,39 @@ class TestNoQuedaTextoSuelto(unittest.TestCase):
             with self.subTest(archivo=archivo.name):
                 sueltas = self._sueltas(archivo)
                 self.assertEqual(sueltas, [], f"{archivo.name}: {sueltas}")
+
+
+class TestNadieSombreaLaTraduccion(unittest.TestCase):
+    """`_` es la función que traduce, así que no puede usarse de descarte.
+
+    En Python, `for _ in range(10)` o `ruta, _ = dialogo()` es lo idiomático
+    para decir «esto no me importa». Aquí eso reemplaza la función dentro de
+    esa función, y la siguiente llamada revienta con «'int' object is not
+    callable» — un error que no menciona ni el idioma ni la traducción.
+
+    Y lo peor es cuándo aparece: el código funciona hasta que alguien añade
+    una cadena traducible en ese mismo método, meses después.
+    """
+
+    def test_ningun_archivo_de_interfaz_usa_guion_bajo_de_descarte(self):
+        import ast
+
+        raiz = pathlib.Path(__file__).resolve().parent.parent / "silux"
+        malos = []
+        for archivo in sorted(raiz.rglob("*.py")):
+            arbol = ast.parse(archivo.read_text(encoding="utf-8"))
+            # Solo importa donde `_` es la traducción.
+            if "i18n import _" not in archivo.read_text(encoding="utf-8"):
+                continue
+            for nodo in ast.walk(arbol):
+                objetivos = []
+                if isinstance(nodo, ast.Assign):
+                    objetivos = nodo.targets
+                elif isinstance(nodo, (ast.For, ast.comprehension)):
+                    objetivos = [nodo.target]
+                for objetivo in objetivos:
+                    for nombre in ast.walk(objetivo):
+                        if isinstance(nombre, ast.Name) and nombre.id == "_":
+                            malos.append(
+                                f"{archivo.name}:{getattr(nodo, 'lineno', '?')}")
+        self.assertEqual(malos, [], f"sombrean _(): {malos}")

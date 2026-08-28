@@ -138,8 +138,7 @@ class BoardPage(QScrollArea):
           tooltip="El nombre completo con el que pci.ids identifica al puente "
                   "LPC/eSPI del bus 0, que es lo que define al chipset.")
         c(_("board.field.memctl"), board.host_bridge or d,
-          tooltip="En los procesadores modernos va integrado en la propia CPU, "
-                  "no en el chipset.")
+          tooltip=_("board.tip.memctl"))
 
         s = self.system.set
         s(_("memory.field.vendor"), board.system_vendor or d)

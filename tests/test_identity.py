@@ -40,13 +40,14 @@ class TestFirmaCpuid(unittest.TestCase):
             from silux.ui.pages.cpu import PROCESSOR_FIELDS
         except ImportError:                                # pragma: no cover
             self.skipTest("PySide6 no está instalado")
-        self.assertIn("Familia", PROCESSOR_FIELDS)
-        self.assertIn("Modelo", PROCESSOR_FIELDS)
-        self.assertIn("Firma CPUID", PROCESSOR_FIELDS)
+        # Los campos son claves de idioma; el texto lo pone `_()` al montar.
+        self.assertIn("cpu.field.family", PROCESSOR_FIELDS)
+        self.assertIn("cpu.field.model", PROCESSOR_FIELDS)
+        self.assertIn("cpu.field.signature", PROCESSOR_FIELDS)
         # Las filas con los bits en crudo ya no existen: confundían más de lo
         # que aportaban, y su contenido vive ahora en el tooltip de la firma.
-        self.assertNotIn("Modelo mostrado", PROCESSOR_FIELDS)
-        self.assertNotIn("Familia mostrada", PROCESSOR_FIELDS)
+        self.assertNotIn("cpu.field.dispmodel", PROCESSOR_FIELDS)
+        self.assertNotIn("cpu.field.dispfamily", PROCESSOR_FIELDS)
 
 
 class TestCargaMedia(unittest.TestCase):

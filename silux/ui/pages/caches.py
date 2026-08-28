@@ -134,21 +134,22 @@ class CachesPage(QScrollArea):
         grouped = self._group(snapshot)
         signature = tuple(
             (level, kind, cache.size_bytes, cache.instances, key)
-            for (level, kind, key, _), cache in grouped.items()
+            for (level, kind, key, _tam), cache in grouped.items()
         )
         if signature == self._signature:
             return
         self._signature = signature
 
         total = sum(cache.total_bytes for cache in grouped.values())
-        self.total.setText(f"{render.size(total)} de caché en total")
+        self.total.setText(_("caches.total").format(tam=render.size(total)))
         self.subtitle.setText(
-            f"{len(grouped)} cachés distintas sobre {cpu.total_cores} núcleos "
-            f"y {cpu.total_threads} hilos"
+            _("caches.subtitle").format(n=len(grouped),
+                                        nucleos=cpu.total_cores,
+                                        hilos=cpu.total_threads)
         )
         etiquetas = [
             f"{self._label(level, kind, key, cpu.hybrid)} {render.size(cache.total_bytes)}"
-            for (level, kind, key, _), cache in grouped.items()
+            for (level, kind, key, _tam), cache in grouped.items()
         ]
         if (marca := render.vcache(cpu.types[0])):
             etiquetas.insert(0, marca)
@@ -167,7 +168,7 @@ class CachesPage(QScrollArea):
                 "instances": [(cpus, render.size(cache.size_bytes))
                               for cpus in cache.instance_cpus],
             }
-            for (level, kind, key, _), cache in grouped.items()
+            for (level, kind, key, _tam), cache in grouped.items()
             if cache.instance_cpus
         ])
 
@@ -181,9 +182,10 @@ class CachesPage(QScrollArea):
                     str(cache.ways or render.DASH),
                     f"{cache.line_bytes} B" if cache.line_bytes else render.DASH,
                     str(cache.sets or render.DASH),
-                    f"{cache.shared_by} hilo{'s' if cache.shared_by != 1 else ''}",
+                    _("caches.shared.one" if cache.shared_by == 1
+                      else "caches.shared.many").format(n=cache.shared_by),
                 ]
-                for (level, kind, key, _), cache in grouped.items()
+                for (level, kind, key, _tam), cache in grouped.items()
             ],
             tooltips=[
                 "CPUs por instancia: "
@@ -222,7 +224,8 @@ class CachesPage(QScrollArea):
     def _label(level: int, kind: str, key: str, hybrid: bool) -> str:
         name = f"L{level}"
         if kind in ("data", "instruction"):
-            name += " " + ("datos" if kind == "data" else "instr.")
+            name += " " + _("caches.kind.data" if kind == "data"
+                            else "caches.kind.instr")
         if hybrid and key:
             name += " " + ("P" if key == "performance" else "E")
         return name
