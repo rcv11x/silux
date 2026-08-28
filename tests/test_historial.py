@@ -126,3 +126,63 @@ class TestPuntuacion(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestNombrarYBorrar(_ConCarpetaPropia):
+    """Una lista de fechas no dice qué cambió entre una prueba y otra."""
+
+    def _tres(self):
+        entradas = []
+        for _ in range(3):
+            entrada = history.from_result(_resultado(), "CPU", 2.0)
+            history.append(entrada)
+            entradas.append(entrada)
+            time.sleep(0.01)
+        return entradas
+
+    def test_una_prueba_puede_llevar_nombre(self):
+        entrada = history.from_result(_resultado(), "CPU", 2.0)
+        history.append(entrada)
+        history.rename(entrada.timestamp, "con la pasta nueva")
+        self.assertEqual(history.load()[0].label, "con la pasta nueva")
+
+    def test_el_nombre_se_guarda_en_el_disco(self):
+        entrada = history.from_result(_resultado(), "CPU", 2.0)
+        history.append(entrada)
+        history.rename(entrada.timestamp, "verano")
+        self.assertIn("verano", history.history_path().read_text(encoding="utf-8"))
+
+    def test_renombrar_no_toca_a_las_demas(self):
+        primera, segunda, tercera = self._tres()
+        history.rename(segunda.timestamp, "la de en medio")
+        nombres = {e.timestamp: e.label for e in history.load()}
+        self.assertEqual(nombres[segunda.timestamp], "la de en medio")
+        self.assertEqual(nombres[primera.timestamp], "")
+        self.assertEqual(nombres[tercera.timestamp], "")
+
+    def test_se_borra_una_sola(self):
+        primera, segunda, tercera = self._tres()
+        quedan = history.remove(segunda.timestamp)
+        self.assertEqual(len(quedan), 2)
+        self.assertNotIn(segunda.timestamp, [e.timestamp for e in quedan])
+        self.assertIn(primera.timestamp, [e.timestamp for e in quedan])
+
+    def test_borrar_una_que_no_esta_no_rompe_nada(self):
+        self._tres()
+        self.assertEqual(len(history.remove(1.0)), 3)
+
+    def test_sin_nombre_se_queda_sin_nombre(self):
+        entrada = history.from_result(_resultado(), "CPU", 2.0)
+        self.assertEqual(entrada.label, "")
+
+    def test_un_nombre_con_espacios_de_sobra_se_recorta(self):
+        entrada = history.from_result(_resultado(), "CPU", 2.0)
+        history.append(entrada)
+        history.rename(entrada.timestamp, "   verano   ")
+        self.assertEqual(history.load()[0].label, "verano")
+
+    def test_la_duracion_de_la_medida_se_guarda(self):
+        """Es la mitad de lo que hace comparable una cifra con otra."""
+        entrada = history.from_result(_resultado(), "CPU", 15.0)
+        history.append(entrada)
+        self.assertEqual(history.load()[0].seconds, 15.0)

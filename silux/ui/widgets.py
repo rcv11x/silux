@@ -1478,13 +1478,23 @@ class SensorTree(QTreeWidget):
         Sin él, unos anchos guardados con otra densidad (o un arrastre
         demasiado entusiasta) dejan la columna tan estrecha que el sangrado y
         el icono se la comen entera y las etiquetas desaparecen.
+
+        El suelo de la primera cuenta además lo que de verdad hay escrito: unos
+        anchos guardados cuando la tabla vivía en media pantalla dejaban
+        «Intercam…» y «Temperat…» al mudarla a una pantalla entera. Se respeta
+        lo que el usuario haya arrastrado, pero nunca por debajo de lo legible.
         """
+        medidos = self._measure_columns() if self.topLevelItemCount() else []
         self._applying_widths = True
         try:
             for column, width in enumerate(widths):
                 if column >= len(self.COLUMNS) - 1:
                     break
-                floor = self.NAME_FLOOR if column == 0 else self.header().minimumSectionSize()
+                if column == 0:
+                    natural = medidos[0] + 46 if medidos else 0
+                    floor = min(max(self.NAME_FLOOR, natural), 460)
+                else:
+                    floor = self.header().minimumSectionSize()
                 self.setColumnWidth(column, max(floor, int(width)))
         finally:
             self._applying_widths = False
