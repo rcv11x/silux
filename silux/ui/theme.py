@@ -517,11 +517,15 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         outline: none;
         padding: 2px;
     }}
+    /* Sin `color` a propósito. Una hoja de estilos que lo declara aquí pisa
+       el que cada celda pide por su cuenta, y con él puesto no se veían ni el
+       rojo de un sensor pasado de vueltas ni el ámbar del que se está
+       acercando: el árbol salía entero del mismo gris. El color base lo pone
+       el propio árbol al montar cada fila. */
     QTreeWidget::item {{
         padding: {max(3, m.grid_vspace)}px {RELLENO_DE_CELDA}px;
         border: none;
         border-radius: 5px;
-        color: {p.ink_dim};
     }}
     QTreeWidget::item:selected {{ background: {p.accent_wash}; color: {p.accent}; }}
     QTreeWidget::item:hover {{ background: {p.surface_alt}; }}

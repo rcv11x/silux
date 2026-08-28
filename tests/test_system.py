@@ -715,3 +715,70 @@ class TestEtiquetasRepetidas(unittest.TestCase):
         arbol = self._arbol_con([self._sensor("it8688", "Temperatura 1"),
                                  self._sensor("it8688", "Temperatura 2")])
         self.assertEqual(self._nombres(arbol), ["Temperatura 1", "Temperatura 2"])
+
+
+class TestElColorDeLasCeldas(unittest.TestCase):
+    """Que una celda pida un color no significa que se pinte.
+
+    Una hoja de estilos que declara `color` para `QTreeWidget::item` pisa el
+    que cada celda pide por su cuenta, en silencio y sin error. Con él puesto
+    no llegaba a la pantalla ni el rojo de un sensor pasado de vueltas ni el
+    ámbar del que se está acercando: el árbol salía entero del mismo gris, y
+    el fallo llevaba ahí desde que existen los avisos.
+
+    Se comprueba en la hoja de estilos y no mirando píxeles: el árbol
+    renderizado por su cuenta, fuera de la ventana, no se pinta como dentro de
+    ella, así que una prueba de píxeles diría cosas que no pasan de verdad.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        from PySide6.QtWidgets import QApplication
+        cls.app = QApplication.instance() or QApplication([])
+
+    def test_la_hoja_de_estilos_no_declara_el_color_de_las_celdas(self):
+        import re as _re
+
+        from silux.ui import theme
+
+        for paleta in (theme.DARK, theme.LIGHT):
+            with self.subTest(tema=paleta.name if hasattr(paleta, "name") else "?"):
+                bloque = _re.search(r"QTreeWidget::item \{(.*?)\}",
+                                    theme.stylesheet(paleta), _re.S)
+                self.assertIsNotNone(bloque)
+                self.assertNotIn("color:", bloque.group(1))
+
+    def _arbol(self):
+        from silux.model import Sensor, SensorKind
+        from silux.ui import theme
+        from silux.ui.widgets import SensorTree
+
+        arbol = SensorTree(theme.DARK)
+        sensor = Sensor(key="t", chip="k", device="CPU", label="Tctl",
+                        kind=SensorKind.TEMPERATURE, value=50.0)
+        arbol.rebuild({"CPU": {"Temperaturas": [sensor]}})
+        return arbol
+
+    def _color(self, arbol, columna):
+        return arbol._rows["t"].foreground(columna).color().name()
+
+    def test_acercarse_al_umbral_cambia_el_color_de_la_celda(self):
+        arbol = self._arbol()
+        arbol.update_row("t", ["50.0 °C", "", "", ""], heat=0.0)
+        frio = self._color(arbol, 1)
+        arbol.update_row("t", ["80.9 °C", "", "", ""], heat=0.41)
+        self.assertNotEqual(self._color(arbol, 1), frio)
+
+    def test_el_maximo_se_tiñe_con_el_suyo_y_no_con_el_de_ahora(self):
+        """Quien lanza una prueba de dos minutos mira después, con el actual
+        ya frío: lo que sobrevive al pico es el máximo."""
+        arbol = self._arbol()
+        arbol.update_row("t", ["50.0 °C", "", "82.9", ""], heat=0.0, heat_max=0.47)
+        self.assertNotEqual(self._color(arbol, 3), self._color(arbol, 1))
+
+    def test_un_sensor_critico_pide_su_propio_color(self):
+        from silux.ui import theme
+
+        arbol = self._arbol()
+        arbol.update_row("t", ["99.0 °C", "", "", ""], alarm="crítico")
+        self.assertEqual(self._color(arbol, 1), theme.DARK.q("crit").name())
