@@ -285,3 +285,58 @@ class TestRenderTraduce(unittest.TestCase):
 
         avisos = self._en("disk_warnings", DiskHealth(critical_warning=0b1))
         self.assertEqual(avisos[0][0], "crítico")
+
+
+class TestNoQuedaTextoSuelto(unittest.TestCase):
+    """Ninguna página monta un widget con una cadena en español a pelo.
+
+    Es lo que no se ve hasta abrir la pantalla en el otro idioma: un título
+    que no pasó por `_()` sale en castellano en medio de una interfaz inglesa,
+    y ningún test de los normales lo nota.
+    """
+
+    PAGINAS = ("app.py", "pages/cpu.py", "pages/memory.py", "pages/monitor.py",
+               "pages/graphics.py", "pages/storage.py", "pages/settings.py",
+               "pages/performance.py")
+
+    def _sueltas(self, ruta):
+        import ast
+        import re
+
+        fuente = ruta.read_text(encoding="utf-8")
+        arbol = ast.parse(fuente)
+        docs = set()
+        for nodo in ast.walk(arbol):
+            if (isinstance(nodo, (ast.FunctionDef, ast.ClassDef, ast.Module))
+                    and nodo.body):
+                primero = nodo.body[0]
+                if (isinstance(primero, ast.Expr)
+                        and isinstance(primero.value, ast.Constant)):
+                    docs.add(id(primero.value))
+
+        # Los constructores que ponen texto en pantalla. Se comprueban estos y
+        # no todas las llamadas: un `subprocess.run(["pkexec", …])` lleva
+        # cadenas que no son texto de interfaz.
+        pintan = {"Card", "QLabel", "QPushButton", "QCheckBox", "Notice",
+                  "_Field", "StatTile"}
+        sueltas = []
+        for nodo in ast.walk(arbol):
+            if not isinstance(nodo, ast.Call):
+                continue
+            quien = nodo.func.id if isinstance(nodo.func, ast.Name) else None
+            if quien not in pintan:
+                continue
+            for arg in nodo.args:
+                if (isinstance(arg, ast.Constant) and isinstance(arg.value, str)
+                        and id(arg) not in docs
+                        and re.search(r"[a-záéíóúñ]{4}", arg.value)
+                        and not re.fullmatch(r"[a-zA-Z_.#]+", arg.value)):
+                    sueltas.append((arg.lineno, arg.value[:60]))
+        return sueltas
+
+    def test_ninguna_pagina_pinta_español_a_pelo(self):
+        raiz = pathlib.Path(__file__).resolve().parent.parent / "silux" / "ui"
+        for nombre in self.PAGINAS:
+            with self.subTest(archivo=nombre):
+                sueltas = self._sueltas(raiz / nombre)
+                self.assertEqual(sueltas, [], f"{nombre}: {sueltas}")

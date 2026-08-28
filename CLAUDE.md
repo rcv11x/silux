@@ -23,7 +23,7 @@ python3 tools/build_appimage.py --container   # el AppImage que se reparte
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **1023** y tardan unos cincuenta segundos. Si sale bastante
+Los tests son **1024** y tardan unos cincuenta segundos. Si sale bastante
 menos, falta algo por recoger.
 
 `--container` no es opcional para repartir: sin él se construye contra el
@@ -614,6 +614,12 @@ la interfaz en inglés.
 Se eligió JSON sobre gettext por quién escribe los archivos: un `.po` hay que
 compilarlo a binario antes de que sirva, y esto se corrige desde el navegador
 de GitHub y se lee en el diff línea a línea.
+
+La interfaz está entera en los dos idiomas: 427 claves, ninguna sin traducir.
+Hay un test que recorre el árbol de sintaxis de cada página buscando
+constructores de widget con una cadena española a pelo, porque eso es lo que
+no se ve hasta abrir la pantalla en el otro idioma y ningún test normal lo
+nota.
 
 `tools/gen_lang.py` los mantiene al día. Solo recoge lo que ya está envuelto
 en `_()`: adivinar qué cadena del código es texto de interfaz sale mal en
