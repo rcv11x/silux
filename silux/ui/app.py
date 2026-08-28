@@ -16,6 +16,7 @@ lectura ni el histórico de las gráficas.
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import time
 from typing import Optional
@@ -193,6 +194,9 @@ class MainWindow(QMainWindow):
         self.graphics_page.elevation_requested.connect(self._on_elevation_requested)
         self.storage_page = StoragePage(self._palette, self.prefs)
         self.storage_page.elevation_requested.connect(self._on_elevation_requested)
+        self.memory_page.permanent_requested.connect(self._on_permanent_requested)
+        self.storage_page.permanent_requested.connect(self._on_permanent_requested)
+        self._refrescar_botones_permanentes()
         self.network_page = NetworkPage(self._palette, self.prefs)
         self.network_page.unit_changed.connect(self._on_network_unit)
         self.system_page = SystemPage(self._palette, self.prefs)
@@ -502,6 +506,104 @@ class MainWindow(QMainWindow):
             boton.setEnabled(False)
             boton.setText("Esperando autorización…")
         self.sampler.request_elevation()
+
+    # -- permiso permanente -------------------------------------------------
+
+    def _botones_permanentes(self) -> list:
+        return [self.memory_page.permanent_button,
+                self.storage_page.permanent_button]
+
+    def _refrescar_botones_permanentes(self) -> None:
+        """Un botón que no hace nada es peor que ninguno: si ya está puesto,
+        se va."""
+        from ..privileged.client import PrivilegedClient
+
+        puesto = PrivilegedClient.instalado()
+        for boton in self._botones_permanentes():
+            boton.setVisible(not puesto)
+
+    def _on_permanent_requested(self) -> None:
+        """Instala el ayudante en el sistema con su propia acción de polkit.
+
+        Va por `pkexec` como todo lo demás, así que la contraseña se pide una
+        vez —esta— y a partir de ahí una por sesión en vez de una por arranque.
+        Se hace aquí y no en el hilo de muestreo porque esto no lee hardware:
+        copia dos archivos y termina, y el diálogo que abre es el mismo.
+        """
+        import subprocess
+
+        for boton in self._botones_permanentes():
+            boton.setEnabled(False)
+            boton.setText("Instalando…")
+        QApplication.processEvents()
+
+        try:
+            orden = self._orden_de_instalacion()
+            resultado = subprocess.run(
+                orden, capture_output=True, text=True, timeout=180,
+            )
+        except (OSError, subprocess.TimeoutExpired, RuntimeError) as exc:
+            self._aviso_permanente(f"No se pudo instalar: {exc}")
+            return
+
+        if resultado.returncode != 0:
+            # 126 y 127 son «el usuario canceló» y «no autorizado»: eso no es
+            # un fallo del que haya que informar como si algo se hubiera roto.
+            if resultado.returncode not in (126, 127):
+                self._aviso_permanente(
+                    (resultado.stderr or "").strip().splitlines()[-1:] or ["falló"])
+            self._restaurar_botones_permanentes()
+            return
+
+        self._refrescar_botones_permanentes()
+        self._status.set_full_text(
+            "Permisos instalados: la contraseña se pedirá una vez por sesión.")
+
+    def _orden_de_instalacion(self) -> list[str]:
+        """Lo que se le pasa a pkexec para instalar, según de dónde se ejecute.
+
+        Desde un AppImage nada de dentro sirve: el montaje va con `nosuid` —así
+        que pkexec no ejecuta nada de ahí— y es de FUSE y del usuario, así que
+        root ni siquiera puede leerlo. Se copian fuera el instalador y el
+        ayudante, y se usa un Python del sistema. Es el mismo camino que ya
+        recorre el cliente para lanzar el ayudante suelto.
+        """
+        import shutil
+        import sys as _sys
+        from pathlib import Path
+
+        from ..privileged.client import (HELPER, SYSTEM_PYTHON, PrivilegedClient,
+                                         _cache_dir)
+
+        instalador = Path(__file__).resolve().parent.parent.parent / "tools" / "install_helper.py"
+        if not PrivilegedClient.empaquetado():
+            return ["pkexec", _sys.executable, str(instalador)]
+
+        interprete = next((r for r in SYSTEM_PYTHON if os.path.exists(r)), None)
+        if interprete is None:
+            raise RuntimeError(
+                "no hay ningún Python del sistema con el que instalar")
+
+        destino = _cache_dir()
+        destino.mkdir(parents=True, exist_ok=True)
+        copia_instalador = destino / "install_helper.py"
+        copia_ayudante = destino / "helper.py"
+        shutil.copyfile(instalador, copia_instalador)
+        shutil.copyfile(HELPER, copia_ayudante)
+        return ["pkexec", interprete, str(copia_instalador),
+                "--from", str(copia_ayudante)]
+
+    def _restaurar_botones_permanentes(self) -> None:
+        for boton in self._botones_permanentes():
+            boton.setEnabled(True)
+            boton.setText("No volver a pedirla")
+
+    def _aviso_permanente(self, detalle) -> None:
+        from PySide6.QtWidgets import QMessageBox
+
+        texto = detalle if isinstance(detalle, str) else " ".join(detalle)
+        QMessageBox.warning(self, "Permisos permanentes", texto)
+        self._restaurar_botones_permanentes()
 
     def _on_columns_resized(self, widths: tuple) -> None:
         from dataclasses import replace

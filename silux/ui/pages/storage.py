@@ -21,7 +21,8 @@ from ...settings import Preferences
 from .. import theme
 from ..theme import Palette
 from ..widgets import (Card, ChipRow, InfoGrid, ResponsiveRow, StackedBar,
-                       StatTile, Table, clear_layout)
+                       StatTile, Table, boton_de_permiso_permanente,
+                       clear_layout)
 
 DISK_HEADERS = ("Unidad", "Modelo", "Tipo", "Capacidad", "Ocupado",
                 "Temperatura", "Leyendo", "Escribiendo")
@@ -47,6 +48,7 @@ class StoragePage(QScrollArea):
     # memoria. Sin un botón aquí, los campos aparecían vacíos y sin explicación
     # y no había forma de adivinar que la contraseña se pedía en otra pestaña.
     elevation_requested = Signal()
+    permanent_requested = Signal()
 
     def __init__(self, palette: Palette, prefs: Preferences, parent=None):
         super().__init__(parent)
@@ -148,8 +150,12 @@ class StoragePage(QScrollArea):
 
         self.elevation_button = QPushButton("Leer con permisos de administrador")
         self.elevation_button.clicked.connect(self.elevation_requested)
+        self.permanent_button = boton_de_permiso_permanente()
+        self.permanent_button.clicked.connect(self.permanent_requested)
+
         fila = QHBoxLayout()
         fila.addWidget(self.elevation_button)
+        fila.addWidget(self.permanent_button)
         fila.addStretch(1)
 
         card.body.addWidget(self.elevation_text)
