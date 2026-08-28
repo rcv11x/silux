@@ -1034,6 +1034,25 @@ class Notice(QFrame):
             layout.addLayout(fila)
 
 
+def boton_de_permiso_permanente() -> QPushButton:
+    """El botón que deja de pedir la contraseña en cada arranque.
+
+    Sale al lado del de elevar, que es donde está mirando quien acaba de
+    descubrir que le falta un permiso. Se esconde solo cuando ya está hecho:
+    un botón que no hace nada es peor que ninguno.
+    """
+    boton = QPushButton("No volver a pedirla")
+    boton.setObjectName("GhostButton")
+    boton.setToolTip(
+        "Instala el ayudante en el sistema con su propia autorización de "
+        "polkit.\n"
+        "Después la contraseña se pide una vez por sesión, no en cada "
+        "arranque.\n"
+        "Hace falta la contraseña una vez para instalarlo."
+    )
+    return boton
+
+
 def clear_layout(layout) -> None:
     """Vacía un layout, borrando también los sublayouts que contenga."""
     while layout.count():

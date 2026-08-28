@@ -37,6 +37,14 @@ from .protocol import (ACTION_GPU_PMU, ACTION_MSR, ACTION_PING, ACTION_SMART,
                        ACTION_SMBIOS, MAX_MESSAGE)
 
 HELPER = pathlib.Path(__file__).resolve().parent / "helper.py"
+
+# El ayudante instalado en el sistema, si alguien pulsó el botón de permisos
+# permanentes. Se prefiere al del repositorio porque trae su propia acción de
+# polkit: la contraseña se pide una vez por sesión en vez de en cada arranque.
+# Lo instala `tools/install_helper.py`, que es también quien explica por qué
+# tiene que vivir en un sitio que el usuario no pueda escribir.
+HELPER_INSTALADO = pathlib.Path("/usr/local/libexec/silux/silux-helper")
+
 DEFAULT_TIMEOUT = 15.0
 # Autenticarse puede tardar lo que el usuario tarde en teclear.
 CONNECT_TIMEOUT = 120.0
@@ -88,10 +96,10 @@ class PrivilegedClient:
                 "Falta pkexec. Se instala con el paquete polkit de la distribución."
             )
 
-        interprete, ayudante = self._preparar()
+        orden = self._orden()
         try:
             process = subprocess.Popen(
-                ["pkexec", interprete, str(ayudante)],
+                orden,
                 stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL, text=True, bufsize=1,
             )
@@ -116,6 +124,25 @@ class PrivilegedClient:
         if not reply.get("ok") or reply.get("uid") != 0:
             self.close()
             raise HelperError("el ayudante no arrancó con privilegios")
+
+    @staticmethod
+    def instalado() -> bool:
+        """Si el ayudante del sistema está puesto, con su acción de polkit."""
+        return (HELPER_INSTALADO.is_file()
+                and os.access(HELPER_INSTALADO, os.X_OK))
+
+    def _orden(self) -> list[str]:
+        """Lo que se le pasa a pkexec, en el orden de preferencia que toca.
+
+        El ayudante instalado va solo, sin intérprete delante: pkexec asocia la
+        autorización a la ruta del programa que ejecuta, así que con `python3`
+        por delante la acción quedaría colgada del intérprete y valdría para
+        cualquier script de la máquina.
+        """
+        if self.instalado():
+            return ["pkexec", str(HELPER_INSTALADO)]
+        interprete, ayudante = self._preparar()
+        return ["pkexec", interprete, str(ayudante)]
 
     def _preparar(self) -> tuple[str, pathlib.Path]:
         """El intérprete y el ayudante que pkexec puede llegar a ejecutar.

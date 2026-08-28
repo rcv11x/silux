@@ -492,6 +492,12 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         border-color: {p.crit};
     }}
     QPushButton#Danger:hover {{ background: {p.surface_alt}; }}
+    /* Para lo que acompaña a la acción principal sin competir con ella: el
+       de al lado es el que la gente ha venido a pulsar. */
+    QPushButton#GhostButton {{
+        color: {p.muted};
+        border-color: {p.line};
+    }}
     QPushButton:hover {{ border-color: {p.accent}; color: {p.accent}; }}
     QPushButton:pressed {{ background: {p.accent_wash}; }}
 

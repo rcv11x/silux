@@ -29,7 +29,7 @@ from .. import theme
 from ..theme import Palette, ui_font
 from ..widgets import (
     Card, ChipRow, InfoGrid, Notice, ResponsiveRow, StackedBar, Table,
-    clear_layout,
+    boton_de_permiso_permanente, clear_layout,
 )
 
 from ...model import Need
@@ -52,6 +52,7 @@ TIMING_HEADERS = ("Perfil", "Velocidad", "CL", "tRCD", "tRP", "tRAS", "tRC", "Vo
 
 class MemoryPage(QScrollArea):
     elevation_requested = Signal()
+    permanent_requested = Signal()
 
     def __init__(self, palette: Palette, prefs: Preferences, parent=None):
         super().__init__(parent)
@@ -141,9 +142,13 @@ class MemoryPage(QScrollArea):
         )
         self.elevation_button.clicked.connect(self.elevation_requested)
 
+        self.permanent_button = boton_de_permiso_permanente()
+        self.permanent_button.clicked.connect(self.permanent_requested)
+
         row = QHBoxLayout()
         row.setContentsMargins(0, 0, 0, 0)
         row.addWidget(self.elevation_button)
+        row.addWidget(self.permanent_button)
         row.addStretch(1)
 
         card.body.addWidget(self.elevation_text)

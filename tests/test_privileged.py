@@ -7,6 +7,7 @@ cliente por uno falso para probar el proveedor de punta a punta.
 
 import json
 import os
+import pathlib
 import struct
 import unittest
 from unittest import mock
@@ -268,3 +269,96 @@ class TestContadoresDeLaGrafica(unittest.TestCase):
         if not respuesta["ok"]:
             self.assertEqual(respuesta["error"], "unsupported")
             self.assertTrue(respuesta["message"])
+
+
+class TestInstaladorDelAyudante(unittest.TestCase):
+    """El instalador que deja de pedir la contraseña en cada arranque.
+
+    No hace falta root para probarlo: se le cambian las rutas de destino por
+    unas del directorio temporal.
+    """
+
+    def setUp(self):
+        import tempfile
+        from tools import install_helper
+
+        self.modulo = install_helper
+        self._tmp = tempfile.TemporaryDirectory()
+        raiz = pathlib.Path(self._tmp.name)
+        self.destino = raiz / "libexec" / "silux" / "silux-helper"
+        self.politica = raiz / "actions" / "org.silux.helper.policy"
+        self.politica.parent.mkdir(parents=True)
+
+        parches = [
+            mock.patch.object(install_helper, "DESTINO", self.destino),
+            mock.patch.object(install_helper, "POLITICA", self.politica),
+            # chown pide root; lo que importa aquí es el resto.
+            mock.patch.object(install_helper.os, "chown", lambda *a: None),
+        ]
+        for parche in parches:
+            parche.start()
+            self.addCleanup(parche.stop)
+        self.addCleanup(self._tmp.cleanup)
+
+    def instalar(self) -> None:
+        """El instalador informa por pantalla; aquí solo estorba."""
+        import contextlib
+        import io
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.modulo.instalar()
+
+    def test_instala_el_ayudante_y_su_politica(self):
+        self.instalar()
+        self.assertTrue(self.destino.is_file())
+        self.assertTrue(self.politica.is_file())
+
+    def test_el_ayudante_queda_ejecutable(self):
+        """pkexec ejecuta el archivo directamente, no `python3 archivo`."""
+        self.instalar()
+        self.assertTrue(os.access(self.destino, os.X_OK))
+        self.assertEqual(self.destino.stat().st_mode & 0o777, 0o755)
+
+    def test_el_shebang_apunta_a_un_python_del_sistema(self):
+        """El de `env python3` resuelve contra el PATH de quien lo ejecute, y
+        aquí lo ejecuta root a través de pkexec."""
+        self.instalar()
+        primera = self.destino.read_text(encoding="utf-8").splitlines()[0]
+        self.assertTrue(primera.startswith("#!/"), primera)
+        self.assertNotIn("env", primera)
+        self.assertTrue(os.path.exists(primera[2:]), primera)
+
+    def test_la_politica_apunta_al_ayudante_y_no_al_interprete(self):
+        """Si la acción colgara de `python3`, la autorización valdría para
+        cualquier script de Python de la máquina."""
+        self.instalar()
+        texto = self.politica.read_text(encoding="utf-8")
+        self.assertIn(f">{self.destino}<", texto)
+        self.assertNotIn("python3<", texto)
+
+    def test_no_se_pide_la_contrasena_para_siempre(self):
+        """`yes` dejaría la puerta abierta a cualquier proceso del usuario.
+        `auth_admin_keep` la pide una vez y la recuerda mientras dure la
+        sesión, que es lo que hacen los demás programas que leen hardware."""
+        self.instalar()
+        texto = self.politica.read_text(encoding="utf-8")
+        self.assertIn("<allow_active>auth_admin_keep</allow_active>", texto)
+        self.assertNotIn("<allow_active>yes</allow_active>", texto)
+        # Una sesión que no está delante del equipo —un SSH— no lee sensores.
+        self.assertIn("<allow_inactive>no</allow_inactive>", texto)
+
+    def test_desinstalar_lo_deja_como_estaba(self):
+        self.instalar()
+        import contextlib, io
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.modulo.desinstalar()
+        self.assertFalse(self.destino.exists())
+        self.assertFalse(self.politica.exists())
+
+    def test_el_cuerpo_del_ayudante_llega_entero(self):
+        """Se copia, no se enlaza: el original vive donde el usuario escribe."""
+        self.instalar()
+        original = self.modulo.ORIGEN.read_text(encoding="utf-8")
+        copia = self.destino.read_text(encoding="utf-8")
+        cuerpo = original.split("\n", 1)[1]
+        self.assertEqual(copia.split("\n", 1)[1], cuerpo)
