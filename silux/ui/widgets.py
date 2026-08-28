@@ -619,13 +619,26 @@ class Sparkline(QWidget):
         painter.setFont(ui_font(max(7, theme.METRICS.small_pt - 2)))
         metrica = painter.fontMetrics()
         ancho = metrica.horizontalAdvance(texto)
-        # La cifra va encima del punto, o debajo si arriba no cabe. Nunca se
-        # sale por los lados: en el borde derecho se pegaría media fuera.
-        x = min(max(punto.x() - ancho / 2, rect.left()), rect.right() - ancho)
-        arriba = punto.y() - 6 - metrica.height()
-        y = arriba if arriba >= rect.top() else punto.y() + 6
+        alto_texto = metrica.height()
+
+        # Encima del punto es donde se lee mejor, pero un pico está por
+        # definición cerca del techo y ahí casi nunca cabe. Debajo tapaba la
+        # curva justo en el tramo que se estaba mirando, así que el segundo
+        # sitio es al lado, a la altura del punto: a los lados del máximo la
+        # curva ya ha bajado y no hay nada que tapar.
+        arriba = punto.y() - 5 - alto_texto
+        if arriba >= rect.top():
+            x = min(max(punto.x() - ancho / 2, rect.left()), rect.right() - ancho)
+            y = arriba
+        else:
+            y = min(max(punto.y() - alto_texto / 2, rect.top()),
+                    rect.bottom() - alto_texto)
+            derecha = punto.x() + 6
+            x = (derecha if derecha + ancho <= rect.right()
+                 else punto.x() - 6 - ancho)
+
         painter.setPen(self._p.q("muted"))
-        painter.drawText(QRectF(x, y, ancho + 2, metrica.height()),
+        painter.drawText(QRectF(x, y, ancho + 2, alto_texto),
                          int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter),
                          texto)
 

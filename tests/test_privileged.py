@@ -280,9 +280,9 @@ class TestInstaladorDelAyudante(unittest.TestCase):
 
     def setUp(self):
         import tempfile
-        from tools import install_helper
+        from silux.privileged import instalar
 
-        self.modulo = install_helper
+        self.modulo = instalar
         self._tmp = tempfile.TemporaryDirectory()
         raiz = pathlib.Path(self._tmp.name)
         self.destino = raiz / "libexec" / "silux" / "silux-helper"
@@ -290,10 +290,10 @@ class TestInstaladorDelAyudante(unittest.TestCase):
         self.politica.parent.mkdir(parents=True)
 
         parches = [
-            mock.patch.object(install_helper, "DESTINO", self.destino),
-            mock.patch.object(install_helper, "POLITICA", self.politica),
+            mock.patch.object(instalar, "DESTINO", self.destino),
+            mock.patch.object(instalar, "POLITICA", self.politica),
             # chown pide root; lo que importa aquí es el resto.
-            mock.patch.object(install_helper.os, "chown", lambda *a: None),
+            mock.patch.object(instalar.os, "chown", lambda *a: None),
         ]
         for parche in parches:
             parche.start()
@@ -362,3 +362,36 @@ class TestInstaladorDelAyudante(unittest.TestCase):
         copia = self.destino.read_text(encoding="utf-8")
         cuerpo = original.split("\n", 1)[1]
         self.assertEqual(copia.split("\n", 1)[1], cuerpo)
+
+
+class TestElInstaladorViajaConElPaquete(unittest.TestCase):
+    """Vive dentro de `silux/` y no en `tools/`, y eso no es cosmético.
+
+    El AppImage copia `silux/` entero y no copia `tools/`, así que con el
+    instalador allí el botón de la interfaz se quedaba sin nada que lanzar en
+    la única forma del programa que se reparte.
+    """
+
+    def test_esta_dentro_del_paquete(self):
+        from silux.privileged import instalar
+
+        ruta = pathlib.Path(instalar.__file__).resolve()
+        paquete = pathlib.Path(__file__).resolve().parent.parent / "silux"
+        self.assertTrue(ruta.is_relative_to(paquete), ruta)
+
+    def test_no_importa_nada_de_silux(self):
+        """Se copia como archivo suelto fuera del punto de montaje del
+        AppImage, donde el resto del paquete no está."""
+        from silux.privileged import instalar
+
+        fuente = pathlib.Path(instalar.__file__).read_text(encoding="utf-8")
+        for linea in fuente.splitlines():
+            limpia = linea.strip()
+            if limpia.startswith(("import ", "from ")):
+                self.assertNotIn("silux", limpia, linea)
+                self.assertFalse(limpia.startswith("from ."), linea)
+
+    def test_encuentra_el_ayudante_a_su_lado(self):
+        from silux.privileged import instalar
+
+        self.assertTrue(instalar.ORIGEN.is_file(), instalar.ORIGEN)
