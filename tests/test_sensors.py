@@ -59,17 +59,20 @@ class TestArbol(unittest.TestCase):
     def test_agrupa_por_aparato_y_categoria(self):
         arbol = self._snapshot().sensor_tree()
         self.assertEqual(set(arbol), {"Placa", "CPU"})
-        self.assertEqual(set(arbol["CPU"]), {"Voltajes", "Temperaturas", "Potencias", "Uso"})
+        # Las categorías del árbol son claves de idioma: el nombre visible lo
+        # pone la interfaz al montarlo.
+        self.assertEqual(set(arbol["CPU"]),
+                         {"cat.voltage", "cat.temperature", "cat.power", "cat.usage"})
 
     def test_las_ramas_van_en_el_orden_de_hwmonitor(self):
         # Voltajes primero, luego temperaturas, ventiladores, potencias…
         self.assertEqual(
             list(self._snapshot().sensor_tree()["CPU"]),
-            ["Voltajes", "Temperaturas", "Potencias", "Uso"],
+            ["cat.voltage", "cat.temperature", "cat.power", "cat.usage"],
         )
 
     def test_dentro_de_una_rama_manda_el_campo_order(self):
-        uso = self._snapshot().sensor_tree()["CPU"]["Uso"]
+        uso = self._snapshot().sensor_tree()["CPU"]["cat.usage"]
         self.assertEqual([s.label for s in uso], ["Core #0", "Core #1"])
 
     def test_un_snapshot_sin_sensores_da_un_arbol_vacio(self):

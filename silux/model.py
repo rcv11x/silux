@@ -1006,25 +1006,29 @@ UNITS: dict[str, str] = {
 }
 
 # El nombre de la rama en la que cae cada tipo dentro del árbol de sensores.
+# La rama del árbol en la que cae cada tipo. Son claves y no texto: estos
+# nombres los inventa el programa para agrupar —el kernel no los da— así que
+# son interfaz y se traducen al montar el árbol.
 CATEGORIES: dict[str, str] = {
-    SensorKind.VOLTAGE: "Voltajes",
-    SensorKind.TEMPERATURE: "Temperaturas",
-    SensorKind.FAN: "Ventiladores",
-    SensorKind.POWER: "Potencias",
-    SensorKind.CURRENT: "Corrientes",
-    SensorKind.ENERGY: "Energía",
-    SensorKind.CLOCK: "Relojes",
-    SensorKind.USAGE: "Uso",
-    SensorKind.MEMORY: "Ocupación",
-    SensorKind.NETWORK: "Tráfico",
-    SensorKind.OTHER: "Otros",
+    SensorKind.VOLTAGE: "cat.voltage",
+    SensorKind.TEMPERATURE: "cat.temperature",
+    SensorKind.FAN: "cat.fan",
+    SensorKind.POWER: "cat.power",
+    SensorKind.CURRENT: "cat.current",
+    SensorKind.ENERGY: "cat.energy",
+    SensorKind.CLOCK: "cat.clock",
+    SensorKind.USAGE: "cat.usage",
+    SensorKind.MEMORY: "cat.memory",
+    SensorKind.NETWORK: "cat.network",
+    SensorKind.OTHER: "cat.other",
 }
 
 # Orden en que se enseñan las ramas: el mismo que usan HWMonitor y HWiNFO,
 # de lo que más se consulta a lo que menos.
 CATEGORY_ORDER: tuple[str, ...] = (
-    "Voltajes", "Temperaturas", "Ventiladores", "Potencias",
-    "Relojes", "Uso", "Ocupación", "Tráfico", "Corrientes", "Energía", "Otros",
+    "cat.voltage", "cat.temperature", "cat.fan", "cat.power",
+    "cat.clock", "cat.usage", "cat.memory", "cat.network",
+    "cat.current", "cat.energy", "cat.other",
 )
 
 

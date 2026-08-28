@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
 )
 
 from ... import render
+from ...i18n import _
 from ...model import Sensor, SensorKind, Snapshot
 import os
 
@@ -123,7 +124,7 @@ class MonitorPage(QScrollArea):
         row.setContentsMargins(2, 4, 2, 0)
         row.setSpacing(10)
 
-        title = QLabel("SENSORES")
+        title = QLabel(_("sensors.title"))
         title.setObjectName("CardTitle")
 
         self.count = QLabel("")
@@ -131,7 +132,7 @@ class MonitorPage(QScrollArea):
         self.count.setFont(ui_font(theme.METRICS.small_pt))
 
         self.search = QLineEdit()
-        self.search.setPlaceholderText("Buscar…")
+        self.search.setPlaceholderText(_("sensors.search.placeholder"))
         self.search.setClearButtonEnabled(True)
         self.search.setToolTip(
             "Filtra por el nombre del sensor o del aparato.\n"
@@ -140,7 +141,7 @@ class MonitorPage(QScrollArea):
         self.search.setFixedWidth(190)
         self.search.textChanged.connect(self._buscar)
 
-        self.record_button = QPushButton("Grabar a CSV")
+        self.record_button = QPushButton(_("sensors.record.button"))
         self.record_button.setToolTip(
             "Escribe una fila por muestreo con todos los sensores.\n"
             "Se abre en cualquier hoja de cálculo, y sirve para ver en qué\n"
@@ -148,7 +149,7 @@ class MonitorPage(QScrollArea):
         )
         self.record_button.clicked.connect(self._alternar_registro)
 
-        self.reset_button = QPushButton("Reiniciar mín/máx")
+        self.reset_button = QPushButton(_("sensors.reset.button"))
         self.reset_button.setToolTip(
             "Vuelve a empezar a contar los extremos desde este momento.\n"
             "Útil justo antes de lanzar una prueba de carga."
@@ -190,15 +191,19 @@ class MonitorPage(QScrollArea):
         activo = self._registro is not None and self._registro.activo
         pendiente = getattr(self, "_pendiente_abrir", False)
         if activo:
-            self.record_button.setText(
-                f"Detener ({self._registro.filas} "
-                f"{render.plural(self._registro.filas, 'fila', 'filas')})")
+            # El plural va dentro de la clave y no fuera: en otras lenguas
+            # no siempre son dos formas, y partir la frase para pegar el
+            # número deja al traductor sin poder mover el orden.
+            filas = self._registro.filas
+            clave = ("sensors.record.stop.one" if filas == 1
+                     else "sensors.record.stop.many")
+            self.record_button.setText(_(clave).format(n=filas))
             self.record_button.setObjectName("Danger")
         elif pendiente:
-            self.record_button.setText("Grabando…")
+            self.record_button.setText(_("sensors.record.starting"))
             self.record_button.setObjectName("Danger")
         else:
-            self.record_button.setText("Grabar a CSV")
+            self.record_button.setText(_("sensors.record.button"))
             self.record_button.setObjectName("")
         self.record_button.style().unpolish(self.record_button)
         self.record_button.style().polish(self.record_button)
@@ -216,9 +221,10 @@ class MonitorPage(QScrollArea):
         """Buscando cuenta lo que queda; parado, lo que hay."""
         if self.search.text().strip():
             visibles = self.tree.coincidencias()
-            self.count.setText(
-                f"· {visibles} {render.plural(visibles, 'coincidencia', 'coincidencias')}"
-                if visibles else "· ninguna coincidencia")
+            clave = ("sensors.matches.none" if not visibles
+                     else "sensors.matches.one" if visibles == 1
+                     else "sensors.matches.many")
+            self.count.setText(_(clave).format(n=visibles))
         else:
             self.count.setText(self._cuenta_completa)
 
@@ -272,8 +278,9 @@ class MonitorPage(QScrollArea):
             self.tree.rebuild(tree)
             self._structure = structure
             self._cuenta_completa = (
-                f"· {len(snapshot.sensors)} en {len(tree)} "
-                + ("dispositivo" if len(tree) == 1 else "dispositivos")
+                _("sensors.count.one" if len(tree) == 1
+                  else "sensors.count.many").format(
+                      n=len(snapshot.sensors), aparatos=len(tree))
             )
             self._actualizar_cuenta()
 
@@ -369,9 +376,9 @@ class MonitorPage(QScrollArea):
             # aviso del Super I/O manda a `sensors-detect` a propósito: cada
             # placa lleva un chip distinto y cargar el que no es lee basura, así
             # que ahí no hay nada que automatizar.
-            accion = ("Cargar y dejarlo puesto"
+            accion = (_("sensors.driver.button")
                       if cargar_modulo.se_puede(hint.module) else None)
-            aviso = Notice("Falta un driver de sensores", body, detail,
+            aviso = Notice(_("sensors.driver.title"), body, detail,
                            action=accion)
             if accion:
                 aviso.action_clicked.connect(
@@ -404,7 +411,7 @@ class MonitorPage(QScrollArea):
             return
         if boton is not None:
             boton.setEnabled(True)
-            boton.setText("Cargar y dejarlo puesto")
+            boton.setText(_("sensors.driver.button"))
         # 126 y 127 son «el usuario canceló» y «no autorizado»: eso no es un
         # fallo del que haya que informar como si algo se hubiera roto.
         if resultado.returncode not in (126, 127):
