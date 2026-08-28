@@ -159,9 +159,11 @@ class MonitorPage(QScrollArea):
 
         avisos: dict[str, list[str]] = {}
         for sensor in snapshot.sensors:
+            seguimiento = self._tracker.get(sensor.key)
             self.tree.update_row(
                 sensor.key, self._values(sensor), self._tooltip(sensor),
-                sensor.alarm_level
+                sensor.alarm_level,
+                seguimiento.history if seguimiento else None,
             )
             if sensor.alarm_level != "ok":
                 avisos.setdefault(sensor.device, []).append(sensor.alarm_level)

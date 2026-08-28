@@ -506,7 +506,7 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         padding: 2px;
     }}
     QTreeWidget::item {{
-        padding: {max(3, m.grid_vspace)}px 6px;
+        padding: {max(3, m.grid_vspace)}px 10px;
         border: none;
         border-radius: 5px;
         color: {p.ink_dim};
@@ -518,7 +518,12 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         color: {p.muted};
         border: none;
         border-bottom: 1px solid {p.line};
-        padding: 7px 6px;
+        /* El horizontal es generoso a propósito: las columnas de cifras van
+           alineadas a la derecha, así que el texto termina siempre pegado al
+           borde donde el propio widget dibuja la marca de arrastre. Ensanchar
+           la columna no lo arregla —ese hueco cae por la izquierda—, y solo el
+           relleno mete aire donde hace falta. */
+        padding: 7px 10px;
         font-size: {m.small_pt + 1}px;
         font-weight: 600;
         letter-spacing: 0.8px;

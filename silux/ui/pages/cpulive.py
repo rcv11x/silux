@@ -165,7 +165,7 @@ class CpuLiveSection(QWidget):
         if orden:
             reparto = render.core_quality_spread(snapshot.cpu.logical)
             self.calidad.setText(
-                f'<span style="color:{self._p.accent}">●</span> '
+                f'<span style="color:{self._p.accent}">&#9733;</span> '
                 f"{render.best_cores(snapshot.cpu.logical)}: los que mejor "
                 f"salieron de la oblea según el firmware, y a los que el "
                 f"planificador manda el trabajo de un hilo suelto. "

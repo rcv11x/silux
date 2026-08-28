@@ -183,9 +183,22 @@ class TestColumnasDelArbol(unittest.TestCase):
         tree = self._tree()
         tree.show()
         self.app.processEvents()
-        anchos = (300, 200, 190, 180, 170)
+        anchos = (300, 200, 190, 180, 170, 130)
         tree.set_column_widths(anchos)
         self.assertEqual(tree.column_widths(), anchos)
+
+    def test_unos_anchos_de_antes_de_la_curva_se_completan(self):
+        """Los guardados por una versión con una columna menos vienen cortos.
+
+        Sin completarlos, la columna nueva se queda con lo que Qt tuviera
+        puesto —cero hasta que alguien la mida— y la curva no se ve. Es el caso
+        de cualquiera que actualice sin borrar sus preferencias.
+        """
+        tree = self._tree()
+        tree.show()
+        self.app.processEvents()
+        tree.set_column_widths((268, 111, 64, 72, 73))
+        self.assertEqual(tree.columnWidth(tree.TREND_COLUMN), tree.TREND_WIDTH)
 
     def test_las_cifras_no_bajan_de_su_respiro(self):
         """Cuatro columnas de números alineados a la derecha y en

@@ -32,6 +32,7 @@ from PySide6.QtWidgets import (
     QMenu,
     QPushButton,
     QSizePolicy,
+    QStyledItemDelegate,
     QTreeWidget,
     QTreeWidgetItem,
     QVBoxLayout,
@@ -677,6 +678,29 @@ class StatTile(Card):
 # --------------------------------------------------------------------------
 
 
+def estrella(centro: QPointF, radio: float) -> QPainterPath:
+    """Una estrella de cinco puntas, apuntando hacia arriba.
+
+    Dentro de la celda se dibuja en vez de escribir «★»: ahí hace falta un
+    tamaño exacto —que crece con la letra— y un color que case con el fondo
+    pintado a mano, y el carácter sale del tamaño que la fuente quiera. En un
+    texto corrido el carácter vale y se usa.
+    """
+    import math
+
+    camino = QPainterPath()
+    for vertice in range(10):
+        # -90° para que la punta mire arriba; el radio interior de una
+        # estrella de cinco puntas es el exterior partido por phi².
+        angulo = math.radians(-90 + vertice * 36)
+        alcance = radio if vertice % 2 == 0 else radio * 0.382
+        punto = QPointF(centro.x() + alcance * math.cos(angulo),
+                        centro.y() + alcance * math.sin(angulo))
+        camino.lineTo(punto) if vertice else camino.moveTo(punto)
+    camino.closeSubpath()
+    return camino
+
+
 class CoreMatrix(QWidget):
     """Una celda por CPU lógica: barra de uso, frecuencia y temperatura.
 
@@ -752,18 +776,6 @@ class CoreMatrix(QWidget):
             painter.setBrush(QBrush(self._p.q("surface_alt")))
             painter.drawRoundedRect(cell.adjusted(0.5, 0.5, -0.5, -0.5), 5, 5)
 
-            # Un punto en la esquina para los núcleos que el firmware marca
-            # como los mejores de la pieza. Va aquí y no en una columna aparte
-            # porque el dato no cambia nunca: ocupar una fila entera con algo
-            # que se lee una vez en la vida sería caro para lo que dice.
-            if destacado:
-                radio = max(2.0, linea * 0.16)
-                painter.setPen(Qt.PenStyle.NoPen)
-                painter.setBrush(QBrush(self._p.q("accent")))
-                painter.drawEllipse(
-                    QPointF(cell.right() - radio * 3.0, cell.top() + radio * 3.0),
-                    radio, radio,
-                )
 
             inner = cell.adjusted(pad_h, pad_v, -pad_h, -pad_v)
             # La caja del texto la marca la fuente. Estaba fija en 12 px, y
@@ -772,11 +784,26 @@ class CoreMatrix(QWidget):
             # gráfica por arriba y quedaba un hueco por abajo.
             text_height = min(float(metrics.height()), inner.height() - pad_v * 2)
 
+            # La estrella de los núcleos que el firmware marca como los
+            # mejores de la pieza, delante del nombre. En la esquina de la
+            # celda no cabe: ahí termina la frecuencia, que está alineada a la
+            # derecha, y se pisaban.
+            sangria = 0.0
+            if destacado:
+                radio = max(3.0, text_height * 0.26)
+                sangria = radio * 2 + 4
+                painter.setPen(Qt.PenStyle.NoPen)
+                painter.setBrush(QBrush(self._p.q("accent")))
+                painter.drawPath(estrella(
+                    QPointF(inner.left() + radio, inner.top() + text_height / 2),
+                    radio,
+                ))
+
             name = core["name"]
             detail = core["detail"]
             # Si no cabe todo, se sacrifica primero la temperatura y luego el
             # detalle entero, pero nunca se recorta a mitad de una cifra.
-            name_width = metrics.horizontalAdvance(name) + 6
+            name_width = metrics.horizontalAdvance(name) + 6 + sangria
             if name_width + metrics.horizontalAdvance(detail) > inner.width():
                 detail = core.get("detail_short", detail)
             if name_width + metrics.horizontalAdvance(detail) > inner.width():
@@ -784,7 +811,8 @@ class CoreMatrix(QWidget):
 
             painter.setPen(self._p.q("muted"))
             painter.drawText(
-                QRectF(inner.left(), inner.top(), name_width, text_height),
+                QRectF(inner.left() + sangria, inner.top(),
+                       name_width - sangria, text_height),
                 int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter), name,
             )
             if detail:
@@ -1314,6 +1342,77 @@ class MiniStat(Card):
             self.setToolTip(tooltip)
 
 
+# Dónde guarda cada fila su serie reciente para que el delegate la pinte.
+ROL_SERIE = int(Qt.ItemDataRole.UserRole) + 1
+
+
+class SparklineDelegate(QStyledItemDelegate):
+    """Pinta la serie reciente de un sensor dentro de su propia celda.
+
+    Es un delegate y no un widget por fila: cien sensores serían cien widgets
+    a repintar cada segundo, que es justo lo que la regla de reutilizar
+    widgets existe para evitar. Un delegate no crea nada; Qt le pasa el
+    pincel y el rectángulo de la celda que toca dibujar.
+
+    La curva se escala contra su propio mínimo y máximo, no contra los del
+    sensor desde que arrancó el programa: lo que interesa aquí es la forma
+    del último minuto, y contra un máximo histórico lejano toda serie se
+    aplasta en una raya.
+    """
+
+    ALTO = 0.62          # fracción de la celda que ocupa la curva
+    MARGEN = 12          # aire entre la última cifra y el arranque de la curva
+    PLANO = 1e-9
+
+    def __init__(self, palette: Palette, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self._p = palette
+
+    def paint(self, painter: QPainter, option, index) -> None:
+        serie = index.data(ROL_SERIE)
+        if not serie or len(serie) < 2:
+            return
+
+        # El hueco de la izquierda separa la curva de la cifra de la columna
+        # anterior, que termina pegada a su borde derecho. Sin él la línea
+        # arranca del último dígito y parece salir de él.
+        rect = QRectF(option.rect)
+        alto = rect.height() * self.ALTO
+        caja = QRectF(rect.left() + self.MARGEN, rect.center().y() - alto / 2,
+                      max(1.0, rect.width() - self.MARGEN - 6), alto)
+
+        suelo, techo = min(serie), max(serie)
+        span = techo - suelo
+        paso = caja.width() / (len(serie) - 1)
+        if span < self.PLANO:
+            # Un sensor quieto es una recta por el medio, no una serie vacía:
+            # «lleva un minuto sin moverse» también es información.
+            puntos = [QPointF(caja.left() + i * paso, caja.center().y())
+                      for i in range(len(serie))]
+        else:
+            puntos = [
+                QPointF(caja.left() + i * paso,
+                        caja.bottom() - (valor - suelo) / span * caja.height())
+                for i, valor in enumerate(serie)
+            ]
+
+        camino = QPainterPath(puntos[0])
+        for punto in puntos[1:]:
+            camino.lineTo(punto)
+
+        painter.save()
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.setPen(QPen(self._p.q("accent", 0.85), 1.4))
+        painter.drawPath(camino)
+        # El último punto marcado: con cien filas iguales, saber dónde termina
+        # la línea es lo que deja leer la de al lado sin perderse de renglón.
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QBrush(self._p.q("accent")))
+        painter.drawEllipse(puntos[-1], 1.8, 1.8)
+        painter.restore()
+
+
 class ResizableHeader(QHeaderView):
     """Cabecera que enseña dónde se puede arrastrar.
 
@@ -1402,8 +1501,11 @@ class SensorTree(QTreeWidget):
     # Sin ella, la columna de nombres se estiraba hasta llenar la ventana y en
     # pantalla completa dejaba las cifras a un palmo de distancia del nombre,
     # que es justo lo que uno quiere comparar de un vistazo.
-    COLUMNS = ("Sensor", "Actual", "Mín", "Máx", "Media", "")
+    COLUMNS = ("Sensor", "Actual", "Mín", "Máx", "Media", "Último minuto", "")
     VALUE_COLUMNS = 4
+    # Dónde va la curva. Las cuatro de cifras son las que hay entre el nombre
+    # y esta.
+    TREND_COLUMN = 5
 
     columnsResized = Signal(tuple)
 
@@ -1421,9 +1523,11 @@ class SensorTree(QTreeWidget):
         header_item = self.headerItem()
         header_item.setTextAlignment(0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         for column in range(1, len(self.COLUMNS)):
-            header_item.setTextAlignment(
-                column, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-            )
+            # La de la curva se alinea con la curva, que arranca por la
+            # izquierda; las de cifras con sus cifras, que terminan a la derecha.
+            lado = (Qt.AlignmentFlag.AlignLeft if column == self.TREND_COLUMN
+                    else Qt.AlignmentFlag.AlignRight)
+            header_item.setTextAlignment(column, lado | Qt.AlignmentFlag.AlignVCenter)
         self.setAlternatingRowColors(True)
         self.setRootIsDecorated(True)
         self.setUniformRowHeights(True)
@@ -1443,6 +1547,9 @@ class SensorTree(QTreeWidget):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setHorizontalScrollMode(QTreeWidget.ScrollMode.ScrollPerPixel)
+
+        self._sparkline = SparklineDelegate(palette, self)
+        self.setItemDelegateForColumn(self.TREND_COLUMN, self._sparkline)
 
         self.setHeader(ResizableHeader(palette, self))
         header = self.header()
@@ -1505,6 +1612,10 @@ class SensorTree(QTreeWidget):
     # compacta lo pide también aquí.
     RESPIRO_EXTRA = 18
 
+    # Lo que se le da a la curva. Es ancho fijo y no medido porque no hay
+    # texto que medir: es el tramo de tiempo que se quiere ver de un vistazo.
+    TREND_WIDTH = 120
+
     @property
     def RESPIRO_CIFRAS(self) -> int:  # noqa: N802
         return theme.METRICS.grid_hspace + self.RESPIRO_EXTRA
@@ -1526,14 +1637,25 @@ class SensorTree(QTreeWidget):
         en monoespaciada, sin hueco entre ellas, se leen como un número largo.
         """
         medidos = self._measure_columns() if self.topLevelItemCount() else []
+        # Unos anchos guardados antes de que existiera una columna vienen
+        # cortos. Las que falten se calculan en vez de quedarse con lo que Qt
+        # tuviera puesto, que es cero hasta que alguien mide.
+        anchos = list(widths)
+        while len(anchos) < len(self.COLUMNS) - 1:
+            columna = len(anchos)
+            anchos.append(self.TREND_WIDTH if columna == self.TREND_COLUMN
+                          else self.header().minimumSectionSize())
+
         self._applying_widths = True
         try:
-            for column, width in enumerate(widths):
+            for column, width in enumerate(anchos):
                 if column >= len(self.COLUMNS) - 1:
                     break
                 if column == 0:
                     natural = medidos[0] + 46 if medidos else 0
                     floor = min(max(self.NAME_FLOOR, natural), 460)
+                elif column == self.TREND_COLUMN:
+                    floor = 60
                 elif medidos:
                     floor = min(medidos[column] + self.RESPIRO_CIFRAS, 220)
                 else:
@@ -1562,11 +1684,12 @@ class SensorTree(QTreeWidget):
             self.setColumnWidth(
                 0, max(self.NAME_FLOOR, min(widest[0] + breathing + 46, 460))
             )
-            for column in range(1, len(self.COLUMNS) - 1):
+            for column in range(1, 1 + self.VALUE_COLUMNS):
                 self.setColumnWidth(
                     column,
                     max(52, min(widest[column] + self.RESPIRO_CIFRAS, 220)),
                 )
+            self.setColumnWidth(self.TREND_COLUMN, self.TREND_WIDTH)
         finally:
             self._applying_widths = False
 
@@ -1682,7 +1805,7 @@ class SensorTree(QTreeWidget):
                            else self._p.q("ink"))
 
     def update_row(self, key: str, values: list[str], tooltip: str = "",
-                   alarm: str = "ok") -> None:
+                   alarm: str = "ok", history=None) -> None:
         item = self._rows.get(key)
         if item is None:
             return
@@ -1690,6 +1813,11 @@ class SensorTree(QTreeWidget):
             if item.text(column) != text:
                 item.setText(column, text)
                 self._ensanchar_para(column, text)
+        # La serie va como dato de la fila, no como texto: la pinta el
+        # delegate de esa columna. Se guarda una tupla y no el deque del
+        # seguidor para que la vista no dependa de algo que muta bajo sus pies.
+        if history is not None:
+            item.setData(self.TREND_COLUMN, ROL_SERIE, tuple(history))
         # Tres estados y no dos: «alto» es donde el fabricante empieza a
         # incomodarse y «crítico» donde el equipo se protege solo. Pintarlos
         # igual deja sin saber si hay que hacer algo ahora o solo mirarlo.
