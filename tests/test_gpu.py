@@ -15,7 +15,8 @@ import unittest
 from unittest import mock
 
 from silux import render
-from silux.model import Display, Gpu, GpuMemory, Need, Note, PcieLink
+from silux.model import (Display, Gpu, GpuClocks, GpuMemory, Need, Note,
+                         PcieLink)
 from silux.providers import drm
 from silux.providers.base import Draft
 from tests.test_edid import construir as construir_edid
@@ -1250,3 +1251,71 @@ class TestAnchoDeLasColumnas(unittest.TestCase):
         tabla = self._tabla()
         tabla.set_rows([("rcs0", "x" * 4000)])
         self.assertLess(tabla._anchos[1], 1000)
+
+
+class TestCuadrosDeLaGrafica(unittest.TestCase):
+    """Las seis cifras vivas de arriba de la página de Gráficos."""
+
+    def _seccion(self, gpu):
+        from PySide6.QtWidgets import QApplication
+        from silux.model import CpuInfo, Snapshot
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.graphics import GraphicsPage
+
+        app = QApplication.instance() or QApplication([])
+        # La página se guarda en la prueba: sin una referencia viva, el
+        # recolector se lleva los QLabel de dentro antes de mirarlos.
+        self.pagina = GraphicsPage(theme.palette_for(app, "dark"), Preferences())
+        self.pagina.apply(Snapshot(monotonic_ns=0, cpu=CpuInfo(), gpus=(gpu,)))
+        return self.pagina._sections[0]
+
+    def test_la_frecuencia_del_nucleo_sale_en_megahercios(self):
+        seccion = self._seccion(Gpu(
+            name="RX 9070 XT",
+            clocks=GpuClocks(core_hz=2_609_000_000, core_max_hz=3_000_000_000),
+        ))
+        self.assertEqual(seccion.tile_clock.value.text(), "2609")
+
+    def test_el_reloj_de_memoria_y_su_tasa_de_datos_no_son_lo_mismo(self):
+        """Una GDDR6 a 1258 MHz mueve 20 Gbps: dieciséis transferencias por
+        ciclo. En el detalle va la efectiva, que es la que se compara con lo
+        que anuncia el fabricante."""
+        seccion = self._seccion(Gpu(
+            name="RX 9070 XT",
+            clocks=GpuClocks(core_hz=2_609_000_000,
+                             memory_hz=1_258_000_000,
+                             memory_effective_hz=2_517_000_000),
+        ))
+        self.assertIn("2.52 GHz", seccion.tile_clock.detail.full_text())
+
+    def test_el_bus_de_memoria_no_es_la_vram_ocupada(self):
+        """Una tarjeta con la VRAM llena y el bus parado tiene datos cargados
+        y no los está tocando: son dos preguntas distintas."""
+        seccion = self._seccion(Gpu(
+            name="RX 9070 XT",
+            memory_busy_percent=21.0,
+            memory=GpuMemory(total_bytes=17_095_983_104,
+                             used_bytes=15_000_000_000,
+                             bandwidth_bytes=644_096_000_000),
+        ))
+        self.assertEqual(seccion.tile_membus.value.text(), "21")
+        self.assertEqual(seccion.tile_vram.value.text(), "88")
+
+    def test_el_porcentaje_del_bus_dice_contra_que_se_compara(self):
+        """Un 21 % a secas no dice si son megas o gigas por segundo."""
+        seccion = self._seccion(Gpu(
+            name="RX 9070 XT", memory_busy_percent=21.0,
+            memory=GpuMemory(bandwidth_bytes=644_096_000_000),
+        ))
+        self.assertIn("644", seccion.tile_membus.detail.full_text())
+
+    def test_una_grafica_que_no_publica_nada_no_inventa_ceros(self):
+        """Una Intel sin permisos deja los cuadros a «—», no a cero: no leer
+        un dato no es que valga cero."""
+        seccion = self._seccion(Gpu(name="UHD 630"))
+        for nombre in ("tile_clock", "tile_membus"):
+            with self.subTest(cuadro=nombre):
+                cuadro = getattr(seccion, nombre)
+                self.assertEqual(cuadro.value.text(), render.DASH)
+                self.assertFalse(cuadro.detail.isVisible())
