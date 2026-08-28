@@ -22,7 +22,7 @@ python3 tools/build_appimage.py --container   # el AppImage que se reparte
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **914** y tardan unos cincuenta segundos. Si sale bastante
+Los tests son **920** y tardan unos cincuenta segundos. Si sale bastante
 menos, falta algo por recoger.
 
 `--container` no es opcional para repartir: sin él se construye contra el
@@ -200,7 +200,10 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   la cadena hasta el puerto raíz.
 - **Enseñar el modo preferido del EDID como si fuera el máximo**: un OLED de
   240 Hz declara 60 como preferido. El rango real está en el descriptor 0xFD, y
-  por encima de 255 Hz hay que sumarle unos bits de acarreo.
+  por encima de 255 Hz hay que sumarle unos bits de acarreo. Pero ese
+  descriptor es opcional y los paneles de portátil casi nunca lo traen: sin
+  respaldo, el eDP de un ThinkPad salía sin refresco teniendo el dato en su
+  temporización detallada. Cuando no hay rango, el nativo es lo único que hay.
 - **Confundir el reloj de la memoria de vídeo con su tasa de datos**: una GDDR6
   a 1258 MHz mueve 20 Gbps, dieciséis transferencias por ciclo. Los dos números
   son ciertos y hay que enseñar los dos.
@@ -333,6 +336,10 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   derecha, ese hueco cae por la izquierda y la cifra sigue terminando pegada
   al borde, que es donde el árbol dibuja su marca de arrastre. El aire donde
   hace falta lo pone el relleno del propio renglón.
+- **Rellenar una rejilla con lo que quepa y ya**: dieciséis hilos salían doce
+  arriba y cuatro abajo. Se elige el reparto con menos huecos en la última
+  fila, y quitar columnas ensancha las celdas, así que hay suelo: el 60 % de
+  lo que cabía.
 - **Deduplicar las cachés por su nivel**: en un Ryzen de dos chiplets con
   V-Cache en uno solo hay dos L3 del mismo nivel y el mismo tipo con tamaños
   distintos —96 MB y 32—, y quedarse con la primera enseñaba la buena para

@@ -835,8 +835,32 @@ class CoreMatrix(QWidget):
         self.update()
 
     def _columns(self) -> int:
+        """Cuántas celdas por fila, repartidas para no dejar un renglón cojo.
+
+        Con lo que cabe a secas, dieciséis hilos salían doce arriba y cuatro
+        abajo, y ocho salían seis y dos. Se prueba a quitar columnas —nunca a
+        añadir, que no caben— buscando primero un reparto exacto: dieciséis en
+        dos filas de ocho se lee de un vistazo como los dos chiplets o los dos
+        hilos por núcleo que casi siempre son.
+
+        Se elige el reparto que deje menos huecos en la última fila, y a
+        igualdad de huecos el que use más columnas, que es el que aprovecha el
+        ancho. Quitar columnas ensancha las celdas, así que hay suelo: no se
+        baja del 60 % de lo que cabía.
+        """
+        import math
+
         usable = max(self.width(), self._cell_w)
-        return max(1, int((usable + self.GAP) // (self._cell_w + self.GAP)))
+        caben = max(1, int((usable + self.GAP) // (self._cell_w + self.GAP)))
+        total = len(self._cores)
+        if total <= caben or caben < 3:
+            return caben
+
+        suelo = max(2, math.ceil(caben * 0.6))
+        return min(
+            range(suelo, caben + 1),
+            key=lambda c: ((c - total % c) % c, -c),
+        )
 
     def sizeHint(self) -> QSize:  # noqa: N802
         if not self._cores:

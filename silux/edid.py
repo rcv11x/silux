@@ -112,6 +112,32 @@ class Edid:
         return f"{self.refresh_max_hz} Hz"
 
     @property
+    def refresh_summary(self) -> Optional[str]:
+        """El refresco que se enseña, venga de donde venga.
+
+        El rango del descriptor 0xFD es el bueno y manda: un OLED de 240 Hz
+        declara 60 como modo preferido, así que enseñar el preferido como si
+        fuera el techo se queda corto por mucho.
+
+        Pero ese descriptor es opcional y los paneles de portátil casi nunca
+        lo traen: el eDP de un ThinkPad salía sin refresco ninguno teniendo el
+        dato calculado desde su temporización detallada. Cuando no hay rango,
+        el modo nativo es lo único que hay y decirlo es mejor que callarse —
+        con la reserva de que es el preferido y no necesariamente el máximo,
+        que es lo que aclara el rótulo de al lado.
+        """
+        if self.refresh_range:
+            return self.refresh_range
+        if self.native_refresh_hz:
+            return f"{self.native_refresh_hz:g} Hz"
+        return None
+
+    @property
+    def refresh_is_native_only(self) -> bool:
+        """Si lo que se enseña es el modo preferido y no un rango declarado."""
+        return not self.refresh_range and bool(self.native_refresh_hz)
+
+    @property
     def made(self) -> Optional[str]:
         """«semana 16 de 2024», que es como lo fecha el propio estándar."""
         if not self.year:
