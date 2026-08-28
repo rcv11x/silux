@@ -47,19 +47,19 @@ DATOS_DE_TERCEROS = (
     ("hwdata", "pci.ids y pnp.ids del sistema"),
 )
 
-THEMES = (("Seguir al sistema", "system"), ("Claro", "light"), ("Oscuro", "dark"))
-UNITS = (("Celsius (°C)", "c"), ("Fahrenheit (°F)", "f"))
-DENSITIES = (("Amplia", "spacious"), ("Normal", "normal"), ("Compacta", "compact"))
+THEMES = (("opt.theme.system", "system"), ("opt.theme.light", "light"), ("opt.theme.dark", "dark"))
+UNITS = (("opt.temp.celsius", "c"), ("opt.temp.fahrenheit", "f"))
+DENSITIES = (("opt.density.spacious", "spacious"), ("opt.density.normal", "normal"), ("opt.density.compact", "compact"))
 # El tamaño de la letra va aparte de la densidad a propósito: son dos cosas
 # distintas. La densidad decide cuánto aire hay entre las filas; esto, cómo de
 # grande se lee lo que hay dentro. Quien necesita letra grande no tiene por qué
 # querer además que todo ocupe el doble.
-FONT_SCALES = (("Normal", "normal"), ("Grande", "grande"),
-               ("Mayor", "mayor"), ("Máximo", "máximo"))
-ACCENTS = (("Naranja", "naranja"), ("Azul", "azul"), ("Verde", "verde"),
-           ("Morado", "morado"), ("Rojo", "rojo"), ("Cian", "cian"))
-NETWORK_UNITS = (("Bytes por segundo (MB/s)", "bytes"),
-                 ("Bits por segundo (Mb/s)", "bits"))
+FONT_SCALES = (("opt.density.normal", "normal"), ("opt.font.large", "grande"),
+               ("opt.font.larger", "mayor"), ("opt.font.largest", "máximo"))
+ACCENTS = (("opt.accent.orange", "naranja"), ("opt.accent.blue", "azul"), ("opt.accent.green", "verde"),
+           ("opt.accent.purple", "morado"), ("opt.accent.red", "rojo"), ("opt.accent.cyan", "cian"))
+NETWORK_UNITS = (("opt.net.bytes", "bytes"),
+                 ("opt.net.bits", "bits"))
 
 
 # Para que la columna de controles quede recta de arriba abajo.
@@ -145,7 +145,7 @@ class SettingsPage(QScrollArea):
     # -- construcción -------------------------------------------------------
 
     def _build_sampling(self) -> Card:
-        card = Card(_("Muestreo"))
+        card = Card(_("settings.card.sampling"))
 
         self.interval = QDoubleSpinBox()
         self.interval.setRange(0.2, 10.0)
@@ -157,9 +157,8 @@ class SettingsPage(QScrollArea):
         self.interval.valueChanged.connect(self._emit)
 
         card.body.addWidget(_Field(
-            _("Refrescar cada"), self.interval,
-            _("Cada lectura recorre sysfs y hwmon. Por debajo de medio segundo el "
-            "coste empieza a notarse; por encima de dos, las gráficas pierden detalle.")
+            _("settings.interval.label"), self.interval,
+            _("settings.interval.help")
             ,
         ))
 
@@ -167,9 +166,8 @@ class SettingsPage(QScrollArea):
         self.all_features.setChecked(self._prefs.show_all_features)
         self.all_features.stateChanged.connect(self._emit)
         card.body.addWidget(_Field(
-            _("Mostrar todas las instrucciones"), self.all_features,
-            _("Por defecto solo se enseñan las banderas relevantes. Activado, "
-            "aparecen las 53 que devuelve CPUID en este equipo.")
+            _("settings.allflags.label"), self.all_features,
+            _("settings.allflags.help")
             ,
         ))
 
@@ -177,16 +175,14 @@ class SettingsPage(QScrollArea):
         self.fluid_charts.setChecked(self._prefs.fluid_charts)
         self.fluid_charts.stateChanged.connect(self._emit)
         card.body.addWidget(_Field(
-            _("Movimiento fluido de las gráficas"), self.fluid_charts,
-            _("Las líneas se deslizan en vez de avanzar a saltos. No cambia "
-            "ninguna cifra: solo se redibuja más veces, y cuesta un 2 % de un "
-            "núcleo. Con la barra espaciadora se congela lo que se ve.")
+            _("settings.fluid.label"), self.fluid_charts,
+            _("settings.fluid.help")
             ,
         ))
         return card
 
     def _build_appearance(self) -> Card:
-        card = Card(_("Apariencia"))
+        card = Card(_("settings.card.appearance"))
 
         # El idioma va el primero de la tarjeta: es lo que cambia todo lo
         # demás, y quien lo busca no viene a mirar el tema.
@@ -198,16 +194,15 @@ class SettingsPage(QScrollArea):
         self.language_box.setCurrentIndex(list(idiomas).index(actual))
         self.language_box.currentIndexChanged.connect(self._emit)
         card.body.addWidget(_Field(
-            _("Idioma"), self.language_box,
-            _("El español es el original: cuando una frase todavía no está "
-              "traducida, sale en español en vez de quedarse en blanco.")))
+            _("settings.language.label"), self.language_box,
+            _("settings.language.help")))
 
         self.theme_box = QComboBox()
         for label, value in THEMES:
             self.theme_box.addItem(_(label), value)
         self.theme_box.setCurrentIndex([v for _, v in THEMES].index(self._prefs.theme))
         self.theme_box.currentIndexChanged.connect(self._emit)
-        card.body.addWidget(_Field(_("Tema"), self.theme_box))
+        card.body.addWidget(_Field(_("settings.theme.label"), self.theme_box))
 
         self.density_box = QComboBox()
         for label, value in DENSITIES:
@@ -215,9 +210,8 @@ class SettingsPage(QScrollArea):
         self.density_box.setCurrentIndex([v for _, v in DENSITIES].index(self._prefs.density))
         self.density_box.currentIndexChanged.connect(self._emit)
         card.body.addWidget(_Field(
-            _("Densidad"), self.density_box,
-            _("Amplia deja más aire entre filas y columnas; compacta aprieta para "
-            "que quepa más en la misma pantalla.")
+            _("settings.density.label"), self.density_box,
+            _("settings.density.help")
             ,
         ))
 
@@ -228,9 +222,8 @@ class SettingsPage(QScrollArea):
             [v for _, v in FONT_SCALES].index(self._prefs.font_scale))
         self.font_box.currentIndexChanged.connect(self._emit)
         card.body.addWidget(_Field(
-            _("Tamaño de la letra"), self.font_box,
-            _("Agranda todo el texto de la interfaz. Las tarjetas y las columnas "
-            "crecen con él para que nada se recorte.")
+            _("settings.fontsize.label"), self.font_box,
+            _("settings.fontsize.help")
             ,
         ))
 
@@ -240,9 +233,8 @@ class SettingsPage(QScrollArea):
         self.accent_box.setCurrentIndex([v for _, v in ACCENTS].index(self._prefs.accent))
         self.accent_box.currentIndexChanged.connect(self._emit)
         card.body.addWidget(_Field(
-            _("Color de acento"), self.accent_box,
-            _("El color con el que se resaltan los datos, las gráficas y la "
-            "sección abierta.")
+            _("settings.accent.label"), self.accent_box,
+            _("settings.accent.help")
             ,
         ))
 
@@ -253,9 +245,8 @@ class SettingsPage(QScrollArea):
             [v for _, v in NETWORK_UNITS].index(self._prefs.network_unit))
         self.network_box.currentIndexChanged.connect(self._emit)
         card.body.addWidget(_Field(
-            _("Velocidad de red"), self.network_box,
-            _("Los mismos datos son 116 MB/s o 931 Mb/s. Los tests de velocidad y "
-            "los operadores usan bits; los gestores de descargas, bytes.")
+            _("settings.netunit.label"), self.network_box,
+            _("settings.netunit.help")
             ,
         ))
 
@@ -264,9 +255,9 @@ class SettingsPage(QScrollArea):
             self.unit_box.addItem(_(label), value)
         self.unit_box.setCurrentIndex([v for _, v in UNITS].index(self._prefs.temperature_unit))
         self.unit_box.currentIndexChanged.connect(self._emit)
-        card.body.addWidget(_Field(_("Unidad de temperatura"), self.unit_box))
+        card.body.addWidget(_Field(_("settings.tempunit.label"), self.unit_box))
 
-        informe = QPushButton(_("Guardar informe del equipo…"))
+        informe = QPushButton(_("settings.report.button"))
         informe.setToolTip(
             "Genera un archivo de texto con todo el hardware detectado y, sobre "
             "todo, con lo que no se ha podido leer y por qué. Es lo que hay que "
@@ -280,7 +271,7 @@ class SettingsPage(QScrollArea):
         fila_informe.addWidget(informe)
         card.body.addLayout(fila_informe)
 
-        reset = QPushButton(_("Restablecer valores por defecto"))
+        reset = QPushButton(_("settings.reset.button"))
         reset.clicked.connect(self._reset)
         row = QHBoxLayout()
         row.addStretch(1)
@@ -307,9 +298,9 @@ class SettingsPage(QScrollArea):
         card.body.addWidget(lema)
 
         fila = ResponsiveRow(min_item_width=250)
-        fila.add(self._bloque(_("Autoría"), AUTORIA))
-        fila.add(self._bloque(_("Construido con"), CONSTRUIDO_CON))
-        fila.add(self._bloque(_("Datos de terceros"), DATOS_DE_TERCEROS))
+        fila.add(self._bloque(_("about.credits"), AUTORIA))
+        fila.add(self._bloque(_("about.builtwith"), CONSTRUIDO_CON))
+        fila.add(self._bloque(_("about.thirdparty"), DATOS_DE_TERCEROS))
         card.body.addWidget(fila)
         return card
 

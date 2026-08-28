@@ -67,7 +67,11 @@ class TestVentana(unittest.TestCase):
 
         window = self._window()
         self.app.processEvents()
-        disponibles = [name for name, enabled in SECTIONS if enabled]
+        # Lo que enseña el selector es el nombre traducido; lo que hay en
+        # SECTIONS son las claves.
+        from silux.i18n import _
+
+        disponibles = [_(name) for name, enabled in SECTIONS if enabled]
         self.assertEqual(
             [window._compact_nav.itemText(i) for i in range(window._compact_nav.count())],
             disponibles,
