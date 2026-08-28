@@ -22,7 +22,7 @@ python3 tools/build_appimage.py --container   # el AppImage que se reparte
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **920** y tardan unos cincuenta segundos. Si sale bastante
+Los tests son **932** y tardan unos cincuenta segundos. Si sale bastante
 menos, falta algo por recoger.
 
 `--container` no es opcional para repartir: sin él se construye contra el
@@ -103,6 +103,7 @@ silux/
 ├─ benchmark.py    prueba de CPU que reporta en qué condiciones midió
 ├─ history.py      historial de pruebas de este equipo
 ├─ privacidad.py   qué se omite de un informe público y qué no
+├─ throttling.py  desde cuándo lleva frenándose algo, y por qué
 ├─ providers/      una fuente cada uno; ninguno conoce a los demás
 ├─ privileged/     ayudante root mínimo (helper.py) + cliente + SMBIOS.
 │                  Lee DMI, MSR, el SMART de los discos y el PMU de la iGPU
@@ -336,6 +337,11 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   derecha, ese hueco cae por la izquierda y la cifra sigue terminando pegada
   al borde, que es donde el árbol dibuja su marca de arrastre. El aire donde
   hace falta lo pone el relleno del propio renglón.
+- **Enseñar que algo recorta sin decir cuánto lleva**: medio segundo de límite
+  de potencia en un cambio de escena es el funcionamiento normal de cualquier
+  tarjeta; un minuto contra el límite térmico es un problema de refrigeración.
+  El motivo es el mismo y la conclusión es la contraria, así que hace falta la
+  duración, y por debajo de un segundo y medio no se dice nada.
 - **Rellenar una rejilla con lo que quepa y ya**: dieciséis hilos salían doce
   arriba y cuatro abajo. Se elige el reparto con menos huecos en la última
   fila, y quitar columnas ensancha las celdas, así que hay suelo: el 60 % de
