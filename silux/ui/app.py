@@ -69,18 +69,18 @@ from .widgets import ElidingLabel
 ROL_SECCION = int(Qt.ItemDataRole.UserRole) + 1
 
 SECTIONS = (
-    ("Inicio", True),
-    ("CPU", True),
-    ("Cachés", True),
-    ("Placa base", True),
-    ("Memoria", True),
-    ("Gráficos", True),
-    ("Almacenamiento", True),
-    ("Red", True),
-    ("Sistema", True),
-    ("Benchmark", True),
-    ("Sensores", True),
-    ("Ajustes", True),
+    ("nav.home", True),
+    ("nav.cpu", True),
+    ("nav.caches", True),
+    ("nav.board", True),
+    ("nav.memory", True),
+    ("nav.graphics", True),
+    ("nav.storage", True),
+    ("nav.network", True),
+    ("nav.system", True),
+    ("nav.benchmark", True),
+    ("nav.sensors", True),
+    ("nav.settings", True),
 )
 
 # Por debajo de este ancho la barra lateral estorba más de lo que ayuda.
@@ -272,7 +272,7 @@ class MainWindow(QMainWindow):
                 stack_index += 1
             else:
                 item.setFlags(Qt.ItemFlag.NoItemFlags)
-                item.setToolTip(_("Todavía no implementado"))
+                item.setToolTip(_("nav.notyet"))
             self.nav.addItem(item)
         self.nav.setCurrentRow(0)
         self.nav.currentRowChanged.connect(self._on_section)
@@ -322,8 +322,13 @@ class MainWindow(QMainWindow):
         buscado = name.lower()
         for row in range(self.nav.count()):
             item = self.nav.item(row)
-            nombres = {item.text().lower(),
-                       str(item.data(ROL_SECCION) or "").lower()}
+            clave = str(item.data(ROL_SECCION) or "")
+            # Los tres: lo que se ve, la clave interna y el nombre en español.
+            # El tercero es el que hace que `--page Sensores` siga valiendo con
+            # la interfaz en inglés, que es como está escrito en cualquier
+            # script o captura de antes.
+            nombres = {item.text().lower(), clave.lower(),
+                       i18n.en_español(clave).lower()}
             if buscado in nombres:
                 self.nav.setCurrentRow(row)
                 self._on_section(row)
@@ -501,23 +506,23 @@ class MainWindow(QMainWindow):
                       self.storage_page.elevation_button):
             if not boton.isEnabled():
                 boton.setEnabled(True)
-                boton.setText(_("Leer con permisos de administrador"))
+                boton.setText(_("perm.read.button"))
         self._distribute(snapshot)
 
         # La pista del atajo va aquí porque es donde se mira sin buscar. Un
         # atajo que no se ve en ningún sitio no existe para quien no lo sabe.
-        partes = [_("Se actualiza cada {n} s").format(n=f"{self.prefs.interval_s:g}"),
-                  _("espacio para congelar")]
+        partes = [_("status.refresh").format(n=f"{self.prefs.interval_s:g}"),
+                  _("status.freeze")]
         if bloqueados := sum(1 for n in snapshot.notes if n.need.value == "root"):
             # El plural va bien puesto: «1 dato(s)» delataba que nadie lo había
             # mirado, en un programa cuyo argumento es que los datos están
             # cuidados.
             partes.append(
-                _("{n} dato requiere permisos") if bloqueados == 1
-                else _("{n} datos requieren permisos"))
+                _("status.blocked.one") if bloqueados == 1
+                else _("status.blocked.many"))
             partes[-1] = partes[-1].format(n=bloqueados)
-        partes.append(_("{n} sensores").format(n=len(snapshot.sensors)))
-        partes.append(", ".join(sorted(snapshot.capabilities)) or _("sin fuentes"))
+        partes.append(_("status.sensors").format(n=len(snapshot.sensors)))
+        partes.append(", ".join(sorted(snapshot.capabilities)) or _("status.nosources"))
         self._status.set_full_text(" · ".join(partes))
 
     def _on_elevation_requested(self) -> None:
@@ -534,7 +539,7 @@ class MainWindow(QMainWindow):
                       self.storage_page.elevation_button,
                       *self.graphics_page.elevation_buttons]:
             boton.setEnabled(False)
-            boton.setText(_("Esperando autorización…"))
+            boton.setText(_("perm.waiting"))
         self.sampler.request_elevation()
 
     # -- permiso permanente -------------------------------------------------
@@ -564,7 +569,7 @@ class MainWindow(QMainWindow):
 
         for boton in self._botones_permanentes():
             boton.setEnabled(False)
-            boton.setText(_("Instalando…"))
+            boton.setText(_("perm.installing"))
         QApplication.processEvents()
 
         try:
@@ -587,7 +592,7 @@ class MainWindow(QMainWindow):
 
         self._refrescar_botones_permanentes()
         self._status.set_full_text(
-            _("Permisos instalados: la contraseña se pedirá una vez por sesión."))
+            _("perm.installed"))
 
     def _orden_de_instalacion(self) -> list[str]:
         """Lo que se le pasa a pkexec para instalar, según de dónde se ejecute.
@@ -626,13 +631,13 @@ class MainWindow(QMainWindow):
     def _restaurar_botones_permanentes(self) -> None:
         for boton in self._botones_permanentes():
             boton.setEnabled(True)
-            boton.setText(_("No volver a pedirla"))
+            boton.setText(_("perm.permanent.button"))
 
     def _aviso_permanente(self, detalle) -> None:
         from PySide6.QtWidgets import QMessageBox
 
         texto = detalle if isinstance(detalle, str) else " ".join(detalle)
-        QMessageBox.warning(self, _("Permisos permanentes"), texto)
+        QMessageBox.warning(self, _("perm.dialog.title"), texto)
         self._restaurar_botones_permanentes()
 
     def _on_branches_changed(self, plegadas: tuple) -> None:

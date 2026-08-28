@@ -20,20 +20,26 @@ class TestIdioma(unittest.TestCase):
     def setUp(self):
         self.addCleanup(i18n.set_language, "es")
 
-    def test_en_espanol_el_texto_sale_tal_cual(self):
+    def test_una_clave_da_el_español(self):
         i18n.set_language("es")
-        self.assertEqual(_("Apariencia"), "Apariencia")
+        self.assertEqual(_("settings.card.appearance"), "Apariencia")
 
-    def test_traduce_lo_que_esta_en_el_archivo(self):
+    def test_y_el_ingles_cuando_toca(self):
         i18n.set_language("en")
-        self.assertEqual(_("Apariencia"), "Appearance")
+        self.assertEqual(_("settings.card.appearance"), "Appearance")
 
-    def test_lo_que_falta_sale_en_español(self):
-        """Con claves simbólicas la pantalla enseñaría «settings.fluid.desc»;
-        con el español de original, enseña el español."""
+    def test_lo_que_falta_en_ingles_sale_en_español(self):
+        """El escalón que hace utilizable esto: una traducción a medias enseña
+        español entre inglés, que se lee, y no la clave pelada."""
         i18n.set_language("en")
-        self.assertEqual(_("Una frase que nadie ha traducido todavía"),
-                         "Una frase que nadie ha traducido todavía")
+        with mock.patch.dict(i18n._tabla, clear=False) as tabla:
+            i18n._tabla.pop("cpu.card.clocks", None)
+            self.assertEqual(_("cpu.card.clocks"), "Relojes")
+
+    def test_una_clave_que_no_existe_en_ningun_idioma_se_ve(self):
+        """Es lo que hace falta ver para ir a escribirla en las dos lenguas."""
+        i18n.set_language("en")
+        self.assertEqual(_("esto.no.existe"), "esto.no.existe")
 
     def test_un_idioma_que_no_existe_vuelve_al_español(self):
         """No es un error que deba parar el programa."""
@@ -51,23 +57,34 @@ class TestIdioma(unittest.TestCase):
         """Un archivo a medio traducir deja huecos, no líneas en blanco."""
         with tempfile.TemporaryDirectory() as tmp:
             carpeta = pathlib.Path(tmp)
+            (carpeta / "es.json").write_text(
+                json.dumps({"a.uno": "Uno", "a.dos": "Dos"}), encoding="utf-8")
             (carpeta / "xx.json").write_text(
-                json.dumps({"Tema": "", "Densidad": "Density"}), encoding="utf-8")
+                json.dumps({"a.uno": "", "a.dos": "Two"}), encoding="utf-8")
             with mock.patch.object(i18n, "CARPETA", carpeta):
+                i18n._base = {}
                 i18n.set_language("xx")
-                self.assertEqual(_("Tema"), "Tema")
-                self.assertEqual(_("Densidad"), "Density")
+                self.assertEqual(_("a.uno"), "Uno")
+                self.assertEqual(_("a.dos"), "Two")
+        i18n._base = {}
 
     def test_el_español_siempre_está_en_la_lista(self):
         self.assertIn("es", i18n.disponible())
 
-    def test_el_ingles_esta_completo(self):
-        """Un hueco en el archivo que se reparte es una frase en español en
-        medio de una interfaz en inglés."""
-        ruta = i18n.CARPETA / "en.json"
-        datos = json.loads(ruta.read_text(encoding="utf-8"))
-        vacias = [k for k, v in datos.items() if not v]
-        self.assertEqual(vacias, [], f"{len(vacias)} sin traducir")
+    def test_cada_clave_del_español_tiene_su_inglés(self):
+        """Un hueco es una frase en español en medio de una interfaz en
+        inglés: se lee, pero canta."""
+        es = json.loads((i18n.CARPETA / "es.json").read_text(encoding="utf-8"))
+        en = json.loads((i18n.CARPETA / "en.json").read_text(encoding="utf-8"))
+        faltan = [k for k in es if not en.get(k)]
+        self.assertEqual(faltan, [], f"{len(faltan)} sin traducir al inglés")
+
+    def test_las_claves_son_simbolos_y_no_frases(self):
+        """Si una clave es una frase, retocarla en el código deja su
+        traducción colgada: eso es lo que se dejó atrás."""
+        es = json.loads((i18n.CARPETA / "es.json").read_text(encoding="utf-8"))
+        frases = [k for k in es if " " in k or len(k) > 40]
+        self.assertEqual(frases, [])
 
     def test_cada_idioma_se_lee_en_su_propia_lengua(self):
         """Quien busca el suyo lo reconoce escrito como lo escribe él."""
@@ -162,7 +179,7 @@ class TestLaHerramientaNoBorraTrabajo(unittest.TestCase):
             "gen_lang", raiz / "tools" / "gen_lang.py")
         modulo = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(modulo)
-        self.assertIn("Sensores", modulo.cadenas_de_tablas())
+        self.assertIn("nav.sensors", modulo.cadenas_de_tablas())
 
 
 class TestCambiarElEspañol(unittest.TestCase):

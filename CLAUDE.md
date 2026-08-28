@@ -23,7 +23,7 @@ python3 tools/build_appimage.py --container   # el AppImage que se reparte
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **1016** y tardan unos cincuenta segundos. Si sale bastante
+Los tests son **1018** y tardan unos cincuenta segundos. Si sale bastante
 menos, falta algo por recoger.
 
 `--container` no es opcional para repartir: sin él se construye contra el
@@ -590,19 +590,21 @@ para cerrarles la puerta por una tilde.
 Los comentarios del código no siguen esa regla y van en el español del autor:
 no los ve nadie desde la ventana y no se traducen.
 
-**El español es el original, no una traducción más.** Las cadenas del código
-son español y `_()` las busca en `db/lang/<código>.json`; lo que no está sale
-en español, que es lo que el programa decía antes de que existiera esto. Con
-claves simbólicas, una traducción a medias enseñaría `settings.fluid.desc` en
-pantalla.
+**Las claves son símbolos** —`cpu.card.clocks`—, así que el español es un
+idioma más y vive en `db/lang/es.json`. Retocar una frase en castellano es
+cambiar un valor, no una clave: la traducción inglesa no se descuelga.
 
-Que la clave sea el español tiene un precio, y conviene saberlo antes de
-retocar una frase: cambiarla deja su traducción colgada de la versión vieja, y
-en la interfaz en inglés sale el español nuevo. `gen_lang.py` lo detecta por
-parecido y dice qué traducción huérfana podría ser de qué frase nueva, pero
-**no la arrastra sola**: «Frecuencia» y «Frecuencia máxima» se parecen un 88 %
-y no se traducen igual. Una traducción movida a la frase equivocada es peor
-que un hueco, porque el hueco se ve.
+Lo malo conocido de las claves simbólicas —que una traducción incompleta
+enseñe `cpu.card.clocks` en pantalla— aquí no pasa, porque `_()` tiene tres
+escalones: el idioma pedido, el español y por último la clave. Un `en.json` a
+medias enseña español entre inglés, que se lee; la clave solo asoma cuando la
+frase no está escrita en ninguna de las dos lenguas, y entonces es justo lo
+que hace falta ver.
+
+Los nombres de sección son claves (`nav.sensors`), así que `select_section`
+acepta tres cosas: lo que se ve, la clave y el nombre en español. Sin lo
+tercero, `--page Sensores` dejaría de funcionar en cuanto alguien se pusiera
+la interfaz en inglés.
 
 Se eligió JSON sobre gettext por quién escribe los archivos: un `.po` hay que
 compilarlo a binario antes de que sirva, y esto se corrige desde el navegador

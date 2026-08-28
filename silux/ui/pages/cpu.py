@@ -79,13 +79,13 @@ class TypeSection(QWidget):
             heading.setObjectName("Subhead")
             layout.addWidget(heading)
 
-        processor_card = Card(_("Procesador"))
+        processor_card = Card(_("cpu.card.processor"))
         self.processor = InfoGrid()
         for name in PROCESSOR_FIELDS:
             self.processor.add(name)
         processor_card.body.addWidget(self.processor)
 
-        clocks_card = Card(_("Relojes"))
+        clocks_card = Card(_("cpu.card.clocks"))
         self.clocks = InfoGrid()
         for name in CLOCK_FIELDS:
             self.clocks.add(_(name))
@@ -102,12 +102,12 @@ class TypeSection(QWidget):
         columns.add(clocks_card)
         layout.addWidget(columns)
 
-        cache_card = Card(_("Jerarquía de caché"))
+        cache_card = Card(_("cpu.card.cache"))
         self.caches = InfoGrid()
         cache_card.body.addWidget(self.caches)
         layout.addWidget(cache_card)
 
-        features_card = Card(_("Juego de instrucciones"))
+        features_card = Card(_("cpu.card.features"))
         self.chips = ChipRow()
         features_card.body.addWidget(self.chips)
         self.feature_count = QLabel("")
@@ -122,35 +122,35 @@ class TypeSection(QWidget):
 
     def apply(self, cpu_type: CpuType) -> None:
         p = self.processor.set  # noqa: E741
-        p(_("Fabricante"), cpu_type.vendor or render.DASH)
-        p(_("Especificación"), cpu_type.brand or render.DASH)
-        p(_("Nombre en clave"), cpu_type.codename or render.DASH)
-        p(_("Tecnología"), cpu_type.technology or render.DASH)
-        p(_("Encapsulado"), cpu_type.socket or render.DASH)
-        p(_("Arquitectura"), cpu_type.architecture or render.DASH)
-        p(_("Núcleos"), str(cpu_type.cores))
-        p(_("Hilos"), f"{cpu_type.threads}" + ("  (SMT activo)" if cpu_type.smt else ""))
-        p(_("Virtualización"), self._virtualization(cpu_type))
-        p(_("Familia"), render.hex_id(cpu_type.disp_family))
-        p(_("Modelo"), render.hex_id(cpu_type.disp_model))
-        p(_("Stepping"), render.dec(cpu_type.stepping))
-        p(_("Firma CPUID"), render.signature(cpu_type.signature),
+        p(_("cpu.field.vendor"), cpu_type.vendor or render.DASH)
+        p(_("cpu.field.spec"), cpu_type.brand or render.DASH)
+        p(_("cpu.field.codename"), cpu_type.codename or render.DASH)
+        p(_("cpu.field.process"), cpu_type.technology or render.DASH)
+        p(_("cpu.field.package"), cpu_type.socket or render.DASH)
+        p(_("cpu.field.arch"), cpu_type.architecture or render.DASH)
+        p(_("cpu.field.cores"), str(cpu_type.cores))
+        p(_("cpu.field.threads"), f"{cpu_type.threads}" + ("  (SMT activo)" if cpu_type.smt else ""))
+        p(_("cpu.field.virt"), self._virtualization(cpu_type))
+        p(_("cpu.field.family"), render.hex_id(cpu_type.disp_family))
+        p(_("cpu.field.model"), render.hex_id(cpu_type.disp_model))
+        p(_("cpu.field.stepping"), render.dec(cpu_type.stepping))
+        p(_("cpu.field.signature"), render.signature(cpu_type.signature),
           tooltip=render.signature_tooltip(cpu_type))
-        p(_("Microcódigo"), cpu_type.microcode or render.DASH)
+        p(_("cpu.field.microcode"), cpu_type.microcode or render.DASH)
 
         c = self.clocks.set
         clocks = cpu_type.clocks
-        c(_("Frecuencia"), render.hz(clocks.current_hz))
-        c(_("Multiplicador"), render.multiplier(clocks.multiplier))
-        c(_("Base"), f"{render.hz(clocks.base_hz)}  {render.multiplier(clocks.base_multiplier)}")
-        c(_("Mínima"), f"{render.hz(clocks.min_hz)}  {render.multiplier(clocks.min_multiplier)}")
-        c(_("Máxima (kernel)"), f"{render.hz(clocks.max_hz)}  {render.multiplier(clocks.max_multiplier)}")
-        c(_("Máxima (silicio)"), f"{render.hz(clocks.max_turbo_hz)}  {render.multiplier(clocks.max_turbo_multiplier)}")
-        c(_("Bus (BCLK)"), render.hz(clocks.bus_hz, 0))
-        c(_("Turbo"), {True: "activado", False: "desactivado", None: render.DASH}[clocks.turbo_enabled])
-        c(_("Driver"), clocks.driver or render.DASH)
-        c(_("Gobernador"), clocks.governor or render.DASH)
-        c(_("Preferencia de energía"), clocks.energy_preference or render.DASH)
+        c(_("cpu.clock.current"), render.hz(clocks.current_hz))
+        c(_("cpu.clock.multiplier"), render.multiplier(clocks.multiplier))
+        c(_("cpu.clock.base"), f"{render.hz(clocks.base_hz)}  {render.multiplier(clocks.base_multiplier)}")
+        c(_("cpu.clock.min"), f"{render.hz(clocks.min_hz)}  {render.multiplier(clocks.min_multiplier)}")
+        c(_("cpu.clock.maxkernel"), f"{render.hz(clocks.max_hz)}  {render.multiplier(clocks.max_multiplier)}")
+        c(_("cpu.clock.maxsilicon"), f"{render.hz(clocks.max_turbo_hz)}  {render.multiplier(clocks.max_turbo_multiplier)}")
+        c(_("cpu.clock.bus"), render.hz(clocks.bus_hz, 0))
+        c(_("cpu.clock.turbo"), {True: "activado", False: "desactivado", None: render.DASH}[clocks.turbo_enabled])
+        c(_("cpu.clock.driver"), clocks.driver or render.DASH)
+        c(_("cpu.clock.governor"), clocks.governor or render.DASH)
+        c(_("cpu.clock.epp"), clocks.energy_preference or render.DASH)
 
         if hint := render.turbo_note(clocks):
             self.turbo_hint.setText(hint)
@@ -250,7 +250,7 @@ class CpuPage(QScrollArea):
 
     def _build_header(self) -> QWidget:
         card = Card()
-        self.title = QLabel(_("Leyendo el procesador…"))
+        self.title = QLabel(_("cpu.loading"))
         self.title.setObjectName("Headline")
         self.title.setWordWrap(True)
         self.title.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)

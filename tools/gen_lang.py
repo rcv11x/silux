@@ -4,8 +4,10 @@
     python3 tools/gen_lang.py            # informe: qué falta y qué sobra
     python3 tools/gen_lang.py --write    # actualiza los .json
 
-Recorre el código buscando las llamadas a `_()` y compara lo que encuentra con
-lo que hay en `silux/db/lang/*.json`. Lo que falta se añade con la traducción
+Recorre el código buscando las llamadas a `_()` y compara las claves que
+encuentra con las que hay en `silux/db/lang/*.json`. El español es un archivo
+más: las claves son símbolos, así que `es.json` es el que dice qué frase
+castellana lleva cada una. Lo que falta se añade con la traducción
 vacía; lo que sobra —texto que se cambió o se quitó del programa— se saca a un
 bloque aparte al final del informe en vez de borrarse sin avisar, porque
 puede ser una cadena que solo cambió de sitio.
@@ -150,11 +152,6 @@ def actualizar(codigo: str, cadenas: dict[str, list[str]],
             encoding="utf-8")
 
     hechas = sum(1 for v in nuevo.values() if v)
-    faltan = [k for k in cadenas if not nuevo.get(k)]
-    for nueva, vieja, traduccion, parecido in emparejar(sobrantes, faltan):
-        print(f"    ¿«{nueva[:52]}»")
-        print(f"     es «{vieja[:52]}»?  ({parecido:.0%})")
-        print(f"     tenía: «{traduccion[:52]}»")
     return hechas, len(nuevo) - hechas, len(sobrantes)
 
 
@@ -173,7 +170,7 @@ def main(argv=None) -> int:
 
     idiomas = sorted(p.stem for p in LANG.glob("*.json")) if LANG.is_dir() else []
     if not idiomas:
-        idiomas = ["en"]
+        idiomas = ["es", "en"]
 
     for codigo in idiomas:
         hechas, faltan, sobran = actualizar(codigo, cadenas, args.write)

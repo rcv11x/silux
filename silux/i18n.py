@@ -1,16 +1,21 @@
 """El idioma de la interfaz.
 
-El original es el español y no una lista de claves simbólicas. La diferencia
-importa cuando falta una traducción: con claves, la pantalla enseña
-`settings.fluid.desc`; con el español de original, enseña el español, que es
-lo que el programa decía antes de que existiera esto.
+Las claves son símbolos —`cpu.card.clocks`— y no el texto español. Así,
+retocar una frase en castellano no deja su traducción inglesa colgada de la
+versión vieja: la clave no se mueve, y lo que cambia es el valor en `es.json`.
 
-Los idiomas son archivos JSON en `db/lang/`, un diccionario del español a la
-otra lengua. Se eligió JSON sobre gettext por quién los va a escribir: un
-`.po` hay que compilarlo a binario antes de que sirva, y esto se corrige desde
-el navegador de GitHub y se lee en el diff línea a línea.
+Lo malo conocido de las claves simbólicas es que una traducción incompleta
+enseña `cpu.card.clocks` en pantalla. Aquí no pasa, porque hay dos escalones:
+si el idioma pedido no tiene la clave se mira el español, y solo si tampoco
+está sale la clave. Un archivo a medio traducir enseña español entre inglés,
+que se lee; y la clave suelta queda como aviso de que falta escribirla en las
+dos lenguas, no en una.
 
-    _("Frecuencia")            → "Clock" en inglés, "Frecuencia" en español
+Los idiomas son archivos JSON en `db/lang/`. Se eligió sobre gettext por quién
+los va a escribir: un `.po` hay que compilarlo a binario antes de que sirva, y
+esto se corrige desde el navegador de GitHub y se lee en el diff línea a línea.
+
+    _("cpu.card.clocks")       → "Clocks" en inglés, "Relojes" en español
 
 Lo que **no** se traduce es lo que sale del propio equipo: el nombre del
 procesador, las etiquetas de los sensores que publica el kernel, los códigos
@@ -35,17 +40,32 @@ CARPETA = pathlib.Path(__file__).resolve().parent / "db" / "lang"
 
 _actual = "es"
 _tabla: dict[str, str] = {}
+# El español se tiene siempre cargado, sea cual sea el idioma elegido: es el
+# escalón intermedio entre una traducción que falta y la clave pelada.
+_base: dict[str, str] = {}
 _oyentes: list[Callable[[], None]] = []
 
 
 def disponible() -> dict[str, str]:
-    """Los idiomas con archivo, más el español, que es el original."""
-    idiomas = {"es": IDIOMAS["es"]}
+    """Los idiomas que tienen archivo."""
+    idiomas = {}
     for ruta in sorted(CARPETA.glob("*.json")) if CARPETA.is_dir() else ():
-        codigo = ruta.stem
-        if codigo != "es":
-            idiomas[codigo] = IDIOMAS.get(codigo, codigo)
-    return idiomas
+        idiomas[ruta.stem] = IDIOMAS.get(ruta.stem, ruta.stem)
+    return idiomas or {"es": IDIOMAS["es"]}
+
+
+def _cargar(codigo: str) -> dict[str, str]:
+    """Un archivo de idioma, o vacío si no está o está roto.
+
+    Se descarta lo que no sea texto por texto: un archivo a medio escribir no
+    tiene por qué tirar la interfaz abajo.
+    """
+    try:
+        datos = json.loads((CARPETA / f"{codigo}.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return {k: v for k, v in datos.items()
+            if isinstance(k, str) and isinstance(v, str) and v}
 
 
 def actual() -> str:
@@ -58,34 +78,48 @@ def set_language(codigo: Optional[str]) -> str:
     Un código que no existe no es un error que deba parar el programa: se
     vuelve al español, que siempre está.
     """
-    global _actual, _tabla
+    global _actual, _tabla, _base
+
+    if not _base:
+        _base = _cargar("es")
 
     codigo = (codigo or "es").lower()
     if codigo == "es":
         _actual, _tabla = "es", {}
-        _avisar()
-        return _actual
-
-    ruta = CARPETA / f"{codigo}.json"
-    try:
-        datos = json.loads(ruta.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        _actual, _tabla = "es", {}
-        _avisar()
-        return _actual
-
-    # Se descarta lo que no sea texto por texto: un archivo a medio escribir no
-    # tiene por qué tirar la interfaz abajo.
-    _tabla = {k: v for k, v in datos.items()
-              if isinstance(k, str) and isinstance(v, str) and v}
-    _actual = codigo
+    else:
+        cargado = _cargar(codigo)
+        _actual, _tabla = (codigo, cargado) if cargado else ("es", {})
     _avisar()
     return _actual
 
 
-def _(texto: str) -> str:
-    """El texto en el idioma de ahora, o tal cual si no está traducido."""
-    return _tabla.get(texto, texto)
+def _(clave: str) -> str:
+    """El texto de una clave en el idioma de ahora.
+
+    Tres escalones, y el orden es lo que hace utilizable esto: el idioma
+    pedido, el español, y por último la clave. Un `en.json` a medias enseña
+    español entre inglés, que se lee; solo cuando la frase no está escrita en
+    ninguna de las dos lenguas asoma la clave, y eso es lo que hace falta ver
+    para ir a escribirla.
+    """
+    if clave in _tabla:
+        return _tabla[clave]
+    if not _base:
+        set_language(_actual)
+    return _base.get(clave, clave)
+
+
+def en_español(clave: str) -> str:
+    """El texto castellano de una clave, aunque la interfaz esté en otro idioma.
+
+    Lo usa quien tiene que reconocer un nombre escrito en español venga de
+    donde venga: `--page Sensores` no puede dejar de funcionar porque alguien
+    se ponga la interfaz en inglés.
+    """
+    global _base
+    if not _base:
+        _base = _cargar("es")
+    return _base.get(clave, clave)
 
 
 def al_cambiar(callback: Callable[[], None]) -> None:

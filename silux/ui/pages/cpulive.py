@@ -16,6 +16,7 @@ from collections import defaultdict, deque
 from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 from ... import render
+from ...i18n import _
 from ...model import Snapshot
 from ...settings import Preferences
 from .. import theme
@@ -45,7 +46,7 @@ class CpuLiveSection(QWidget):
 
         column.addWidget(self._build_tiles())
 
-        cores_card = Card("Núcleos lógicos")
+        cores_card = Card(_("cpu.card.cores"))
         self.cores = CoreMatrix(palette)
         cores_card.body.addWidget(self.cores)
         # El punto de acento de las celdas no significa nada por sí solo. Esta
