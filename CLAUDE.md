@@ -28,7 +28,12 @@ menos, falta algo por recoger.
 `--container` no es opcional para repartir: sin él se construye contra el
 Python y el Qt de la máquina, y sale un AppImage que exige el juego de
 instrucciones y la glibc de quien lo compiló. Con contenedor sale
-`x86-64-baseline` y glibc 2.34. El paso final de comprobación recorre el
+`x86-64-baseline` (sin AVX; el suelo real es SSE4.2, o sea Nehalem de 2008) y
+glibc **2.35**, que es la de Ubuntu 22.04, la base del contenedor. Eso deja
+fuera Ubuntu 20.04, Debian 11, Mint 20 y RHEL 9, que se quedan en 2.31-2.34.
+El símbolo que más alto pide es `hypot@GLIBC_2.35` del propio intérprete: para
+bajar el suelo hay que construir sobre una base más antigua con Python 3.10
+puesto a mano, no basta con tocar una opción. El paso final de comprobación recorre el
 AppDir y avisa de lo que resuelve fuera. Si avisa de algo, hay que mirarlo:
 lo que sale ahí es una biblioteca que el programa espera encontrar puesta en
 la máquina ajena.
