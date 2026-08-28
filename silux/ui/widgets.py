@@ -780,6 +780,23 @@ class StatTile(Card):
 # --------------------------------------------------------------------------
 
 
+def _cifra(texto: str) -> float:
+    """La cifra que lleva dentro una celda, para poder ordenar por ella.
+
+    Las celdas traen su unidad pegada —«82.5 °C», «1470 RPM»— y algunas están
+    vacías. Lo que no tiene número se va al final ordene como ordene: un
+    sensor sin lectura no es ni el más alto ni el más bajo.
+    """
+    import math
+
+    for trozo in texto.replace(",", ".").split():
+        try:
+            return float(trozo)
+        except ValueError:
+            continue
+    return -math.inf
+
+
 def estrella(centro: QPointF, radio: float) -> QPainterPath:
     """Una estrella de cinco puntas, apuntando hacia arriba.
 
@@ -1708,9 +1725,13 @@ class SensorTree(QTreeWidget):
         header.setMinimumSectionSize(40)
         header.setSectionsMovable(False)
         header.setToolTip(
+            "Pulsa en una columna para ordenar por ella; otra vez para\n"
+            "volver al orden por aparato.\n"
             "Arrastra los separadores para ajustar el ancho.\n"
             "Botón derecho para volver a los anchos automáticos."
         )
+        header.setSectionsClickable(True)
+        header.sectionClicked.connect(self._ordenar_por)
         header.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         header.customContextMenuRequested.connect(self._header_menu)
         header.sectionResized.connect(self._on_section_resized)
@@ -1720,6 +1741,10 @@ class SensorTree(QTreeWidget):
         # `None` = no hay nada guardado todavía, que no es lo mismo que «no
         # había ninguna plegada»: en el primer caso se abren todas.
         self._plegadas_guardadas: Optional[set] = None
+        # (columna, ascendente) o None mientras se respete el orden natural.
+        self._orden: Optional[tuple[int, bool]] = None
+        # Cómo estaba cada categoría al montarse, para poder volver.
+        self._orden_natural: dict[int, tuple[str, ...]] = {}
 
         self._label_font = ui_font(theme.METRICS.small_pt)
         self._value_font = mono_font()
@@ -1923,6 +1948,77 @@ class SensorTree(QTreeWidget):
         self._preferred_widths = self.column_widths()
         self.columnsResized.emit(self._preferred_widths)
 
+    # -- ordenar ------------------------------------------------------------
+
+    def _ordenar_por(self, columna: int) -> None:
+        """Ordena las hojas de cada rama por una columna, o vuelve al orden
+        natural si ya estaba ordenado por ella.
+
+        Se ordena **dentro de cada aparato** y no la lista entera: sacar la
+        temperatura de un disco de debajo de su disco para ponerla entre las
+        de la placa deja de decir de quién es cada cosa, que es justo lo que
+        hace legible un árbol de noventa y nueve sensores.
+
+        La columna del nombre vuelve al orden de siempre, que ya es el suyo.
+        """
+        if columna >= 1 + self.VALUE_COLUMNS:
+            return
+        # Tres estados y no dos: de mayor a menor es lo que se quiere casi
+        # siempre («cuál está más caliente»), pero hay que poder volver al
+        # orden por aparato, que es el que dice de quién es cada sensor.
+        if columna == 0:
+            self._orden = None
+        elif self._orden is None or self._orden[0] != columna:
+            self._orden = (columna, False)          # de mayor a menor
+        elif self._orden[1] is False:
+            self._orden = (columna, True)           # de menor a mayor
+        else:
+            self._orden = None                      # como estaba
+        self._aplicar_orden()
+
+    def _aplicar_orden(self) -> None:
+        from PySide6.QtCore import Qt as _Qt
+
+        cabecera = self.header()
+        if self._orden is None:
+            cabecera.setSortIndicatorShown(False)
+            for _, categoria, hojas in self._recorrer():
+                # El orden natural es el que tenía al montarse, no el que
+                # tenga ahora: reinsertar lo que ya está ordenado lo deja
+                # exactamente igual.
+                natural = self._orden_natural.get(id(categoria))
+                if not natural:
+                    continue
+                for hoja in hojas:
+                    categoria.removeChild(hoja)
+                for clave in natural:
+                    if (hoja := self._rows.get(clave)) is not None:
+                        categoria.addChild(hoja)
+            return
+
+        columna, ascendente = self._orden
+        cabecera.setSortIndicatorShown(True)
+        cabecera.setSortIndicator(
+            columna, _Qt.SortOrder.AscendingOrder if ascendente
+            else _Qt.SortOrder.DescendingOrder)
+
+        for aparato, categoria, hojas in self._recorrer():
+            ordenadas = sorted(hojas, key=lambda h: _cifra(h.text(columna)),
+                               reverse=not ascendente)
+            for hoja in hojas:
+                categoria.removeChild(hoja)
+            for hoja in ordenadas:
+                categoria.addChild(hoja)
+
+    def _recorrer(self):
+        """Cada categoría con sus hojas, tal y como están montadas ahora."""
+        for i in range(self.topLevelItemCount()):
+            aparato = self.topLevelItem(i)
+            for j in range(aparato.childCount()):
+                categoria = aparato.child(j)
+                hojas = [categoria.child(k) for k in range(categoria.childCount())]
+                yield aparato, categoria, hojas
+
     def _header_menu(self, position) -> None:
         menu = QMenu(self)
         action = menu.addAction("Restablecer anchos automáticos")
@@ -1935,6 +2031,7 @@ class SensorTree(QTreeWidget):
         expanded = {key for key, item in self._rows.items() if item.isExpanded()}
         self.clear()
         self._rows.clear()
+        self._orden_natural.clear()
 
         for device, categories in tree.items():
             device_item = QTreeWidgetItem([device])
@@ -1990,6 +2087,8 @@ class SensorTree(QTreeWidget):
                     category_item.addChild(row)
                     self._rows[sensor.key] = row
 
+                self._orden_natural[id(category_item)] = tuple(
+                    s.key for s in sensors)
                 category_item.setExpanded(
                     self._nace_abierta(f"::{device}/{category}", expanded))
             device_item.setExpanded(self._nace_abierta(f"::{device}", expanded))
