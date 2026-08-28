@@ -111,6 +111,16 @@ STDLIB_FUERA = (
     "config-*", "__pycache__", "*.pyc",
 )
 
+# Módulos de extensión de la biblioteca estándar que este programa no usa y
+# que arrastran media distribución detrás: `nis` se lleva Kerberos entero,
+# `_curses` la terminfo, `_tkinter` medio Tcl. Se quitan para no copiar sus
+# dependencias, no por lo que ocupan ellos.
+DYNLOAD_FUERA = (
+    "nis", "ossaudiodev", "audioop", "spwd", "_dbm", "_gdbm", "_tkinter",
+    "_curses", "_curses_panel", "readline", "_sqlite3", "_ssl", "_crypt",
+    "_test", "_xx", "xx",
+)
+
 APPRUN = """#!/bin/sh
 # Punto de entrada del AppImage.
 AQUI="$(dirname "$(readlink -f "$0")")"
@@ -346,7 +356,20 @@ def copiar_python() -> set[str]:
 
     shutil.copytree(origen, destino, ignore=ignorar, symlinks=True,
                     ignore_dangling_symlinks=True)
-    return set(dependencias(destino_bin))
+
+    # Los módulos de extensión de la biblioteca estándar tienen sus propias
+    # dependencias, y hasta ahora solo se miraban las del ejecutable. Por eso
+    # `_hashlib` se quedaba sin `libcrypto` y `_lzma` sin `liblzma`: dos de las
+    # cinco cargas del benchmark reventaban en cualquier máquina que no las
+    # trajera puestas, y en las distribuciones con OpenSSL 1.1 eso es siempre.
+    dynload = destino / "lib-dynload"
+    bibliotecas = set(dependencias(destino_bin))
+    for modulo in sorted(dynload.glob("*.so")) if dynload.is_dir() else ():
+        if modulo.name.startswith(DYNLOAD_FUERA):
+            modulo.unlink()
+            continue
+        bibliotecas |= set(dependencias(modulo))
+    return bibliotecas
 
 
 def copiar_silux() -> None:
