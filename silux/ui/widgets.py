@@ -1938,9 +1938,20 @@ class SensorTree(QTreeWidget):
                 if sensors:
                     category_item.setIcon(0, self._icon(sensors[0].kind.value))
 
+                # Un aparato puede traer sus temperaturas por dos vías: una
+                # placa Gigabyte las publica por su Super I/O y otra vez por
+                # su interfaz WMI, y las dos se llaman «Temperatura 1». Sin
+                # decir de cuál es cada una, la lista tiene seis renglones
+                # repetidos y ninguna forma de saber cuál mirar.
+                repetidas = {etiqueta for etiqueta in
+                             (x.label for x in sensors)
+                             if sum(1 for y in sensors if y.label == etiqueta) > 1}
+
                 for sensor in sensors:
+                    nombre = (f"{sensor.label} ({sensor.chip})"
+                              if sensor.label in repetidas else sensor.label)
                     row = QTreeWidgetItem(
-                        [sensor.label] + ["—"] * self.VALUE_COLUMNS)
+                        [nombre] + ["—"] * self.VALUE_COLUMNS)
                     row.setFont(0, self._label_font)
                     row.setIcon(0, self._icon(sensor.kind.value))
                     for column in range(1, len(self.COLUMNS)):
@@ -2059,13 +2070,20 @@ class SensorTree(QTreeWidget):
                            else self._p.q("ink"))
 
     def _mezcla_calor(self, heat: float):
-        """Del color normal al de aviso, según lo cerca que esté del umbral."""
+        """Del color normal al de aviso, según lo cerca que esté del umbral.
+
+        La mezcla no es lineal. El ojo no ve el color así: entre el blanco de
+        las cifras y el ámbar, el primer tercio del recorrido no se distingue
+        de nada, y una CPU a 78 grados de 95 salía exactamente igual que una a
+        50. Con la raíz, ese primer tercio ya se ve.
+        """
+        avance = heat ** 0.5
         normal = self._p.q("ink")
         aviso = self._p.q("warn")
         return QColor(
-            round(normal.red() + (aviso.red() - normal.red()) * heat),
-            round(normal.green() + (aviso.green() - normal.green()) * heat),
-            round(normal.blue() + (aviso.blue() - normal.blue()) * heat),
+            round(normal.red() + (aviso.red() - normal.red()) * avance),
+            round(normal.green() + (aviso.green() - normal.green()) * avance),
+            round(normal.blue() + (aviso.blue() - normal.blue()) * avance),
         )
 
     def update_row(self, key: str, values: list[str], tooltip: str = "",
@@ -2125,8 +2143,10 @@ class SensorTree(QTreeWidget):
         """
         if not text:
             return
+        # El relleno de la celda va a los dos lados y no se contaba: la cifra
+        # cabía en la cuenta y no en la columna.
         necesario = (QFontMetrics(self._value_font).horizontalAdvance(text)
-                     + theme.METRICS.grid_hspace)
+                     + theme.RELLENO_DE_CELDA * 2 + theme.METRICS.grid_hspace)
         if necesario <= self.columnWidth(column):
             return
         self._applying_widths = True

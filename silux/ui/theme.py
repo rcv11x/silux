@@ -170,6 +170,12 @@ COMPACT = Metrics(
 METRICS: Metrics = NORMAL
 
 
+# Lo que el árbol de sensores deja a cada lado del texto de una celda. Vive
+# aquí y no dentro de la hoja de estilos porque hay que contarlo al medir si
+# una cifra cabe: escrito en los dos sitios, subirlo en uno dejó los relojes
+# de núcleo como «4374.4 …» hasta que alguien arrastraba la columna.
+RELLENO_DE_CELDA = 10
+
 DENSITIES: dict[str, Metrics] = {
     "spacious": SPACIOUS,
     "normal": NORMAL,
@@ -512,7 +518,7 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         padding: 2px;
     }}
     QTreeWidget::item {{
-        padding: {max(3, m.grid_vspace)}px 10px;
+        padding: {max(3, m.grid_vspace)}px {RELLENO_DE_CELDA}px;
         border: none;
         border-radius: 5px;
         color: {p.ink_dim};
@@ -529,7 +535,7 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
            borde donde el propio widget dibuja la marca de arrastre. Ensanchar
            la columna no lo arregla —ese hueco cae por la izquierda—, y solo el
            relleno mete aire donde hace falta. */
-        padding: 7px 10px;
+        padding: 7px {RELLENO_DE_CELDA}px;
         font-size: {m.small_pt + 1}px;
         font-weight: 600;
         letter-spacing: 0.8px;

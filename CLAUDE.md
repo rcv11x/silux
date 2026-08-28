@@ -22,7 +22,7 @@ python3 tools/build_appimage.py --container   # el AppImage que se reparte
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **978** y tardan unos cincuenta segundos. Si sale bastante
+Los tests son **982** y tardan unos cincuenta segundos. Si sale bastante
 menos, falta algo por recoger.
 
 `--container` no es opcional para repartir: sin él se construye contra el
@@ -350,6 +350,12 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   de tres maneras distintas y ninguna es obligatoria. Donde no lo dice se
   calla: en canal único la memoria rinde la mitad, y decirlo al revés manda a
   alguien a abrir el equipo para nada.
+- **Escribir el mismo relleno en la hoja de estilos y en quien mide**: se
+  desincronizan. Al subirlo de 6 a 10 px solo en el CSS, las cifras cabían en
+  la cuenta y no en la columna, y los relojes de núcleo salían «4374.4 …».
+- **Mezclar dos colores linealmente**: el ojo no los ve así. Entre el blanco
+  de las cifras y el ámbar, el primer tercio del recorrido no se distingue de
+  nada: una CPU a 78 grados de 95 salía igual que una a 50.
 - **Teñir solo el valor de ahora**: quien lanza una prueba de dos minutos va a
   mirar después, y para entonces la columna «Actual» ya se ha enfriado. Lo que
   sobrevive al pico es el máximo, y es el que hay que teñir también.
