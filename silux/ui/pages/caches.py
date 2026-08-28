@@ -63,9 +63,17 @@ class CachesPage(QScrollArea):
         self.subtitle = QLabel("")
         self.subtitle.setObjectName("Subhead")
         self.chips = ChipRow()
+        # Que la L3 no sea igual en todo el procesador es la razón de ser de un
+        # X3D de dos chiplets, y en una tabla de tamaños se lee como dos filas
+        # cualesquiera. Va escrito.
+        self.reparto = QLabel()
+        self.reparto.setObjectName("Muted")
+        self.reparto.setWordWrap(True)
+        self.reparto.hide()
         summary.body.addWidget(self.total)
         summary.body.addWidget(self.subtitle)
         summary.body.addWidget(self.chips)
+        summary.body.addWidget(self.reparto)
         layout.addWidget(summary)
 
         # -- mapa -----------------------------------------------------------
@@ -130,7 +138,7 @@ class CachesPage(QScrollArea):
         grouped = self._group(snapshot)
         signature = tuple(
             (level, kind, cache.size_bytes, cache.instances, key)
-            for (level, kind, key), cache in grouped.items()
+            for (level, kind, key, _), cache in grouped.items()
         )
         if signature == self._signature:
             return
@@ -142,10 +150,19 @@ class CachesPage(QScrollArea):
             f"{len(grouped)} cachés distintas sobre {cpu.total_cores} núcleos "
             f"y {cpu.total_threads} hilos"
         )
-        self.chips.set_chips(
+        etiquetas = [
             f"{self._label(level, kind, key, cpu.hybrid)} {render.size(cache.total_bytes)}"
-            for (level, kind, key), cache in grouped.items()
-        )
+            for (level, kind, key, _), cache in grouped.items()
+        ]
+        if (marca := render.vcache(cpu.types[0])):
+            etiquetas.insert(0, marca)
+        self.chips.set_chips(etiquetas)
+
+        if (reparto := render.l3_asimetrica(cpu.types[0])):
+            self.reparto.setText(reparto)
+            self.reparto.show()
+        else:
+            self.reparto.hide()
 
         self.map.set_data(cache_axis(snapshot), [
             {
@@ -154,7 +171,7 @@ class CachesPage(QScrollArea):
                 "instances": [(cpus, render.size(cache.size_bytes))
                               for cpus in cache.instance_cpus],
             }
-            for (level, kind, key), cache in grouped.items()
+            for (level, kind, key, _), cache in grouped.items()
             if cache.instance_cpus
         ])
 
@@ -170,7 +187,7 @@ class CachesPage(QScrollArea):
                     str(cache.sets or render.DASH),
                     f"{cache.shared_by} hilo{'s' if cache.shared_by != 1 else ''}",
                 ]
-                for (level, kind, key), cache in grouped.items()
+                for (level, kind, key, _), cache in grouped.items()
             ],
             tooltips=[
                 "CPUs por instancia: "
@@ -183,18 +200,27 @@ class CachesPage(QScrollArea):
 
     @staticmethod
     def _group(snapshot: Snapshot) -> dict[tuple, Cache]:
-        """Una entrada por nivel, tipo y (si la CPU es híbrida) tipo de núcleo.
+        """Una entrada por nivel, tipo, tamaño y (si es híbrida) tipo de núcleo.
 
         En una CPU homogénea todos los tipos de núcleo describen las mismas
         cachés, así que agrupar evita repetir cada fila.
+
+        El tamaño entra en la clave por los Ryzen de dos chiplets con V-Cache
+        en uno solo: un 7950X3D lleva 96 MB de L3 en la mitad de sus núcleos y
+        32 en la otra, las dos del mismo nivel y el mismo tipo. Sin el tamaño
+        se quedaba la primera que llegara y la página enseñaba 96 MB para todo
+        el procesador, que es justo el dato por el que alguien compra esa
+        pieza y justo la mitad del chip donde no es cierto.
         """
         grouped: dict[tuple, Cache] = {}
         hybrid = snapshot.cpu.hybrid
         for cpu_type in snapshot.cpu.types:
             for cache in cpu_type.caches:
-                key = (cache.level, cache.kind, cpu_type.key if hybrid else "")
+                key = (cache.level, cache.kind, cpu_type.key if hybrid else "",
+                       cache.size_bytes)
                 grouped.setdefault(key, cache)
-        return dict(sorted(grouped.items(), key=lambda item: (item[0][0], item[0][1])))
+        return dict(sorted(grouped.items(),
+                           key=lambda item: (item[0][0], item[0][1], -item[0][3])))
 
     @staticmethod
     def _label(level: int, kind: str, key: str, hybrid: bool) -> str:

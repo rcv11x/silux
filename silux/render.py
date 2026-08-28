@@ -456,6 +456,60 @@ def turbo_note(clocks: Clocks) -> Optional[str]:
     return None
 
 
+def _rango_de_cpus(cpus: tuple[int, ...]) -> str:
+    """«0-7» en vez de «0, 1, 2, 3, 4, 5, 6, 7» cuando son consecutivas."""
+    if not cpus:
+        return ""
+    if len(cpus) > 2 and list(cpus) == list(range(cpus[0], cpus[-1] + 1)):
+        return f"{cpus[0]}-{cpus[-1]}"
+    return ", ".join(str(c) for c in cpus)
+
+
+def l3_asimetrica(cpu_type) -> Optional[str]:
+    """Cuando la L3 no es igual en todo el procesador, qué le toca a cada cual.
+
+    Es lo que pasa en un Ryzen de dos chiplets con V-Cache en uno solo: un
+    7950X3D lleva 96 MB en la mitad de sus núcleos y 32 en la otra. La
+    diferencia no es un detalle de ficha técnica —es la razón de ser de la
+    pieza, y de qué chiplet coja el planificador depende que un juego rinda
+    como el modelo caro o como el barato.
+
+    Se describe lo que se lee y no se diagnostica: la asimetría es un hecho de
+    sysfs. Que sea V-Cache lo confirma el nombre comercial, y solo si lo trae.
+    """
+    ele3 = [c for c in cpu_type.caches if c.level == 3]
+    if len({c.size_bytes for c in ele3}) < 2:
+        return None
+
+    partes = []
+    for cache in sorted(ele3, key=lambda c: -c.size_bytes):
+        cpus = cache.instance_cpus[0] if cache.instance_cpus else ()
+        donde = _rango_de_cpus(cpus)
+        partes.append(f"{size(cache.size_bytes)} para {'las CPU ' + donde if donde else 'unos'}")
+    frase = "La L3 no es igual en todo el procesador: " + " y ".join(partes) + "."
+    if "3D" in (cpu_type.brand or "").upper():
+        frase += (" Es el V-Cache apilado sobre uno solo de los dos chiplets: "
+                  "al hilo que caiga en el grande le cunde más la memoria.")
+    return frase
+
+
+def vcache(cpu_type) -> Optional[str]:
+    """«3D V-Cache» cuando la pieza lo lleva, según su propio nombre.
+
+    El nombre comercial sale de CPUID y lo escribe el fabricante: un
+    «Ryzen 7 5800X3D» lo dice él. No se deduce del tamaño de la L3, que
+    también crece por otros motivos según la familia.
+    """
+    marca = (cpu_type.brand or "").upper()
+    if "X3D" not in marca:
+        return None
+    grande = max((c.size_bytes for c in cpu_type.caches if c.level == 3),
+                 default=None)
+    if grande is None:
+        return "3D V-Cache"
+    return f"3D V-Cache · {size(grande)} de L3"
+
+
 def core_quality_by_type(logical) -> dict[str, list[tuple[int, int, float]]]:
     """Por tipo de núcleo, los físicos ordenados de mejor a peor.
 
