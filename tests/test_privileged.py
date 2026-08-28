@@ -196,3 +196,75 @@ class TestPeticionDeElevacion(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestContadoresDeLaGrafica(unittest.TestCase):
+    """El PMU de la gráfica: lo único que el ayudante enumera él solo.
+
+    Es la única acción sin parámetros. El cliente no manda ni rutas ni nombres
+    de evento ni números: el ayudante mira qué PMU hay, filtra por patrón y
+    traduce el nombre a un `config` leyendo el propio sysfs del kernel.
+    """
+
+    def test_es_una_accion_del_contrato(self):
+        self.assertIn(protocol.ACTION_GPU_PMU, protocol.ACTIONS)
+
+    def test_los_patrones_del_contrato_y_del_ayudante_coinciden(self):
+        # Igual que con los MSR: si se separan, el cliente pediría cosas que
+        # el ayudante rechaza, o al revés.
+        self.assertEqual(protocol.PMU_GPU, helper.PMU_GPU.pattern)
+        self.assertEqual(protocol.PMU_EVENT, helper.PMU_EVENT.pattern)
+        self.assertEqual(protocol.PMU_ROOT, helper.PMU_ROOT)
+
+    def test_el_patron_del_pmu_no_deja_salirse_del_directorio(self):
+        for malo in ("..", "../../etc", "i915/../cpu", "cpu", "intel_pt",
+                     "tracepoint", "kprobe", "uncore_imc", "i915x"):
+            with self.subTest(nombre=malo):
+                self.assertIsNone(helper.PMU_GPU.match(malo))
+
+    def test_el_patron_admite_i915_y_el_nombre_con_ranura_de_xe(self):
+        self.assertTrue(helper.PMU_GPU.match("i915"))
+        self.assertTrue(helper.PMU_GPU.match("xe_0000_03_00.0"))
+
+    def test_solo_se_abren_contadores_de_ocupacion(self):
+        # Nada de muestreo, ni tracepoints, ni eventos de CPU.
+        for bueno in ("rcs0-busy", "vcs1-busy", "vecs0-busy", "ccs0-busy"):
+            with self.subTest(evento=bueno):
+                self.assertTrue(helper.PMU_EVENT.match(bueno))
+        for malo in ("rcs0-sema", "rcs0-wait", "interrupts", "actual-frequency",
+                     "rc6-residency", "software-gt-awake-time", "cycles"):
+            with self.subTest(evento=malo):
+                self.assertIsNone(helper.PMU_EVENT.match(malo))
+
+    def test_de_rapl_solo_el_plano_de_la_grafica(self):
+        # Los otros tres —paquete, núcleos y memoria— ya se leen por powercap
+        # sin privilegios, así que aquí no pintan nada.
+        self.assertTrue(helper.PMU_POWER_EVENT.match("energy-gpu"))
+        for malo in ("energy-pkg", "energy-cores", "energy-ram"):
+            with self.subTest(evento=malo):
+                self.assertIsNone(helper.PMU_POWER_EVENT.match(malo))
+
+    def test_el_evento_se_traduce_con_el_formato_que_publica_el_kernel(self):
+        # i915 escribe «config=0x2000» y RAPL «event=0x04», que no es lo
+        # mismo: el segundo va corrido a los bits que diga el formato del PMU.
+        with mock.patch("silux.privileged.helper.open",
+                        mock.mock_open(read_data="config:8-15")):
+            self.assertEqual(helper._pmu_campo("x", "event"), 8)
+        self.assertEqual(helper._pmu_campo("x", "config"), 0)
+
+    def test_un_formato_que_no_apunta_a_config_se_descarta(self):
+        with mock.patch("silux.privileged.helper.open",
+                        mock.mock_open(read_data="config1:0-7")):
+            self.assertIsNone(helper._pmu_campo("x", "event"))
+
+    def test_un_evento_con_parametros_de_sobra_no_se_toca(self):
+        with mock.patch("silux.privileged.helper.open",
+                        mock.mock_open(read_data="event=0x04,umask=0x01")):
+            self.assertIsNone(helper._pmu_config("power", "energy-gpu"))
+
+    def test_sin_privilegios_falla_diciendo_por_qué(self):
+        respuesta = helper.handle({"action": protocol.ACTION_GPU_PMU})
+        self.assertIn("ok", respuesta)
+        if not respuesta["ok"]:
+            self.assertEqual(respuesta["error"], "unsupported")
+            self.assertTrue(respuesta["message"])
