@@ -306,3 +306,71 @@ class TestEspacioLibre(unittest.TestCase):
         trozos = self._trozos(self._pagina(entera, 500 * self.GB))
         self.assertNotIn("Sin montar", trozos)
         self.assertEqual(trozos["Libre"], 300 * self.GB)
+
+
+class TestLaTemperaturaDelDiagnostico(unittest.TestCase):
+    """El SMART se lee de tarde en tarde; su temperatura tiene que quedarse.
+
+    El disco se reconstruye desde sysfs en cada muestreo, así que la
+    temperatura que vino con el diagnóstico se pierde salvo que se guarde y se
+    vuelva a poner. Sin esto salía un instante al desbloquear y en la muestra
+    siguiente volvía a «—».
+    """
+
+    def setUp(self):
+        self.cliente = mock.Mock()
+        self.cliente.connected.return_value = True
+        self.cliente.read_smart.return_value = (b"datos", "ata")
+        self.proveedor = storage.Disks(client=self.cliente)
+
+        self.salud = DiskHealth(power_on_hours=10)
+        parches = [
+            mock.patch.object(storage.smart_module, "parse",
+                              return_value=self.salud),
+            mock.patch.object(storage.smart_module, "ata_temperature",
+                              return_value=38.0),
+        ]
+        for parche in parches:
+            parche.start()
+            self.addCleanup(parche.stop)
+
+    def _muestra(self, temp_c=None):
+        draft = Draft()
+        draft.disks = [Disk(name="sda", temp_c=temp_c)]
+        self.proveedor._diagnostico(draft)
+        return draft.disks[0]
+
+    def test_la_primera_vez_la_trae_el_diagnostico(self):
+        self.assertEqual(self._muestra().temp_c, 38.0)
+
+    def test_y_sigue_ahi_en_la_muestra_siguiente(self):
+        self._muestra()
+        # Segunda vuelta: aún no toca releer el SMART, y aun así el dato está.
+        self.assertEqual(self._muestra().temp_c, 38.0)
+        self.assertEqual(self.cliente.read_smart.call_count, 1)
+
+    def test_lo_que_publique_hwmon_manda(self):
+        self._muestra()
+        # Se relee en cada muestreo, así que es más fresca que la del SMART.
+        self.assertEqual(self._muestra(temp_c=41.0).temp_c, 41.0)
+
+    def test_pasado_el_intervalo_se_vuelve_a_preguntar(self):
+        self._muestra()
+        self.proveedor._leido_en["sda"] -= storage.INTERVALO_SALUD + 1
+        self._muestra()
+        self.assertEqual(self.cliente.read_smart.call_count, 2)
+
+    def test_un_refresco_fallido_no_borra_lo_que_ya_se_sabia(self):
+        self._muestra()
+        self.proveedor._leido_en["sda"] -= storage.INTERVALO_SALUD + 1
+        self.cliente.read_smart.side_effect = OSError("el disco no contesta")
+        disco = self._muestra()
+        self.assertEqual(disco.health, self.salud)
+        self.assertEqual(disco.temp_c, 38.0)
+
+    def test_un_disco_que_nunca_contesto_se_da_por_mudo(self):
+        self.cliente.read_smart.side_effect = OSError("el disco no contesta")
+        self.assertEqual(self._muestra().health, DiskHealth())
+        self._muestra()
+        # Y no se le vuelve a preguntar en cada muestreo.
+        self.assertEqual(self.cliente.read_smart.call_count, 1)
