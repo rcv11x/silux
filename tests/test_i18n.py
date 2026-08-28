@@ -83,3 +83,83 @@ class TestLoQueNoSeTraduce(unittest.TestCase):
             with self.subTest(archivo=archivo.name):
                 self.assertNotIn("from ..i18n import",
                                  archivo.read_text(encoding="utf-8"))
+
+
+class TestElIdiomaLlegaALaInterfaz(unittest.TestCase):
+    """Traducir las cadenas no basta: hay que aplicarlas donde se montan."""
+
+    @classmethod
+    def setUpClass(cls):
+        from PySide6.QtWidgets import QApplication
+        cls.app = QApplication.instance() or QApplication([])
+
+    def setUp(self):
+        self.addCleanup(i18n.set_language, "es")
+
+    def _ventana(self, idioma):
+        from silux.settings import Preferences
+        from silux.ui.app import MainWindow
+
+        i18n.set_language(idioma)
+        self.ventana = MainWindow(Preferences(language=idioma).normalized())
+        return self.ventana
+
+    def _menu(self, ventana):
+        return [ventana.nav.item(i).text() for i in range(ventana.nav.count())]
+
+    def test_el_menu_se_traduce(self):
+        self.assertIn("Sensors", self._menu(self._ventana("en")))
+
+    def test_en_español_sigue_en_español(self):
+        self.assertIn("Sensores", self._menu(self._ventana("es")))
+
+    def test_una_seccion_se_pide_por_su_nombre_en_español(self):
+        """Un script escrito contra `--page Sensores` no puede dejar de
+        funcionar porque alguien se ponga la interfaz en inglés."""
+        ventana = self._ventana("en")
+        ventana.select_section("Sensores")
+        self.assertEqual(ventana.nav.currentItem().text(), "Sensors")
+
+    def test_y_tambien_por_el_traducido(self):
+        ventana = self._ventana("en")
+        ventana.select_section("Sensors")
+        self.assertEqual(ventana.nav.currentItem().text(), "Sensors")
+
+
+class TestLaHerramientaNoBorraTrabajo(unittest.TestCase):
+    """`gen_lang --write` reescribe los archivos, y lo que no encuentra el
+    extractor no puede desaparecer sin más: puede ser una cadena que se
+    traduce con una variable, y tirar el trabajo de alguien sin preguntar es
+    lo peor que puede hacer esta herramienta."""
+
+    def test_una_traduccion_que_el_extractor_no_ve_se_conserva(self):
+        import importlib.util
+
+        raiz = pathlib.Path(__file__).resolve().parent.parent
+        spec = importlib.util.spec_from_file_location(
+            "gen_lang", raiz / "tools" / "gen_lang.py")
+        modulo = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(modulo)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            carpeta = pathlib.Path(tmp)
+            (carpeta / "xx.json").write_text(
+                json.dumps({"Sensores": "Sensors"}), encoding="utf-8")
+            with mock.patch.object(modulo, "LANG", carpeta):
+                modulo.actualizar("xx", {"Tema": []}, escribir=True)
+            datos = json.loads((carpeta / "xx.json").read_text(encoding="utf-8"))
+
+        self.assertEqual(datos.get("Sensores"), "Sensors")
+        self.assertIn("Tema", datos)
+
+    def test_el_menu_esta_entre_lo_que_se_extrae(self):
+        """Se traduce con `_(name)` sobre una variable, así que hay que
+        declararlo: sin eso desapareció del archivo en la primera pasada."""
+        import importlib.util
+
+        raiz = pathlib.Path(__file__).resolve().parent.parent
+        spec = importlib.util.spec_from_file_location(
+            "gen_lang", raiz / "tools" / "gen_lang.py")
+        modulo = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(modulo)
+        self.assertIn("Sensores", modulo.cadenas_de_tablas())
