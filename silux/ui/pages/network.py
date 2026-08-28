@@ -17,6 +17,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (QHBoxLayout, QLabel, QPushButton, QScrollArea,
                                QVBoxLayout, QWidget)
 
+from ...i18n import _
 from ... import render
 from ...model import NetworkInterface, Snapshot
 from ...settings import Preferences
@@ -25,9 +26,9 @@ from ..theme import Palette
 from ..widgets import Card, ChipRow, InfoGrid, ResponsiveRow, StatTile, Table, clear_layout
 
 INTERFACE_FIELDS = (
-    "Estado", "Tipo", "Dirección IPv4", "Máscara", "Puerta de enlace",
-    "Dirección IPv6", "Dirección física", "Velocidad del enlace", "MTU",
-    "Controlador", "Modelo", "Ranura PCI",
+    _("gpu.sensor.state"), _("memory.field.type"), _("net.field.ipv4"), _("net.field.mask"), "net.field.gateway",
+    "net.field.ipv6", "net.field.mac", _("net.field.speed"), "MTU",
+    "Controlador", _("storage.col.model"), _("net.field.slot"),
 )
 
 TRAFFIC_HEADERS = ("Interfaz", "Bajando", "Subiendo", "Recibido", "Enviado",
@@ -70,9 +71,9 @@ class NetworkPage(QScrollArea):
         layout.addWidget(self._build_header())
         layout.addWidget(self._build_tiles())
 
-        traffic_card = Card("Tráfico por interfaz")
+        traffic_card = Card(_("net.card.traffic"))
         traffic_card.body.addLayout(self._build_unit_switch())
-        self.traffic = Table(TRAFFIC_HEADERS,
+        self.traffic = Table([_(h) for h in TRAFFIC_HEADERS],
                              numeric=(False, True, True, True, True, True, True))
         traffic_card.body.addWidget(self.traffic)
         layout.addWidget(traffic_card)
@@ -92,7 +93,7 @@ class NetworkPage(QScrollArea):
 
     def _build_header(self) -> QWidget:
         card = Card()
-        self.title = QLabel("Leyendo la red…")
+        self.title = QLabel(_("net.loading"))
         self.title.setObjectName("Headline")
         self.title.setWordWrap(True)
         self.title.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
@@ -111,8 +112,7 @@ class NetworkPage(QScrollArea):
         fila.setContentsMargins(0, 0, 0, 0)
         fila.setSpacing(6)
 
-        explicacion = QLabel("Los mismos datos son 116 MB/s o 931 Mb/s: "
-                             "los tests de velocidad usan bits.")
+        explicacion = QLabel(_("net.units.note"))
         explicacion.setObjectName("Muted")
         explicacion.setWordWrap(True)
         fila.addWidget(explicacion, 1)
@@ -173,8 +173,8 @@ class NetworkPage(QScrollArea):
 
     def _apply_header(self, principal, interfaces) -> None:
         if principal is None:
-            self.title.setText("Sin conexión")
-            self.subtitle.setText("Ninguna interfaz tiene salida a la red.")
+            self.title.setText(_("net.none"))
+            self.subtitle.setText(_("net.none.body"))
             return
         self.title.setText(principal.display_name)
         self.subtitle.setText(" · ".join(p for p in (
@@ -237,7 +237,7 @@ class NetworkPage(QScrollArea):
                 card = Card(interfaz.name)
                 grid = InfoGrid()
                 for campo in INTERFACE_FIELDS:
-                    grid.add(campo)
+                    grid.add(_(campo))
                 card.body.addWidget(grid)
                 fila.add(card)
                 self._grids[interfaz.name] = grid
@@ -250,16 +250,16 @@ class NetworkPage(QScrollArea):
             if grid is None:
                 continue
             f = grid.set
-            f("Estado", render.interface_state(interfaz))
-            f("Tipo", interfaz.kind)
-            f("Dirección IPv4", interfaz.ipv4 or d)
-            f("Máscara", interfaz.netmask or d)
-            f("Puerta de enlace", interfaz.gateway or d)
-            f("Dirección IPv6", interfaz.ipv6[0] if interfaz.ipv6 else d,
+            f(_("gpu.sensor.state"), render.interface_state(interfaz))
+            f(_("memory.field.type"), interfaz.kind)
+            f(_("net.field.ipv4"), interfaz.ipv4 or d)
+            f(_("net.field.mask"), interfaz.netmask or d)
+            f(_("net.field.gateway"), interfaz.gateway or d)
+            f(_("net.field.ipv6"), interfaz.ipv6[0] if interfaz.ipv6 else d,
               tooltip="\n".join(interfaz.ipv6) if len(interfaz.ipv6) > 1 else "")
-            f("Dirección física", interfaz.mac or d)
-            f("Velocidad del enlace", interfaz.link_summary or d)
+            f(_("net.field.mac"), interfaz.mac or d)
+            f(_("net.field.speed"), interfaz.link_summary or d)
             f("MTU", str(interfaz.mtu) if interfaz.mtu else d)
             f("Controlador", interfaz.driver or d)
-            f("Modelo", interfaz.model or d)
-            f("Ranura PCI", interfaz.pci_slot or d)
+            f(_("storage.col.model"), interfaz.model or d)
+            f(_("net.field.slot"), interfaz.pci_slot or d)

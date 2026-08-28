@@ -16,6 +16,7 @@ from typing import Optional
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QLabel, QScrollArea, QVBoxLayout, QWidget
 
+from ...i18n import _
 from ... import render
 from ...model import Snapshot
 from ...settings import Preferences
@@ -36,7 +37,7 @@ class _TarjetaResumen(Card):
         self._seccion = seccion
         self._p = palette
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setToolTip(f"Ir a {seccion}")
+        self.setToolTip(_("home.goto").format(seccion=seccion))
 
         m = theme.METRICS
         self.nombre = QLabel("—")
@@ -94,13 +95,13 @@ class HomePage(QScrollArea):
         layout.addWidget(self._cabecera())
 
         arriba = ResponsiveRow(min_item_width=300)
-        self.cpu = self._tarjeta(arriba, "Procesador", "CPU")
-        self.gpu = self._tarjeta(arriba, "Gráfica", "Gráficos")
+        self.cpu = self._tarjeta(arriba, _("home.card.cpu"), _("nav.cpu"))
+        self.gpu = self._tarjeta(arriba, _("home.card.gpu"), _("nav.graphics"))
         layout.addWidget(arriba)
 
         abajo = ResponsiveRow(min_item_width=300)
-        self.memoria = self._tarjeta(abajo, "Memoria", "Memoria", grafica=False)
-        self.discos = self._tarjeta(abajo, "Almacenamiento", "Almacenamiento",
+        self.memoria = self._tarjeta(abajo, _("nav.memory"), _("nav.memory"), grafica=False)
+        self.discos = self._tarjeta(abajo, _("nav.storage"), _("nav.storage"),
                                     grafica=False)
         layout.addWidget(abajo)
 
@@ -116,7 +117,7 @@ class HomePage(QScrollArea):
 
     def _cabecera(self) -> QWidget:
         card = Card()
-        self.title = QLabel("Leyendo el equipo…")
+        self.title = QLabel(_("home.loading"))
         self.title.setObjectName("Headline")
         self.title.setWordWrap(True)
         self.subtitle = QLabel("")
@@ -127,8 +128,7 @@ class HomePage(QScrollArea):
         # Quien abre esto por primera vez no sabe qué está mirando ni qué
         # puede esperar. Una línea al principio ahorra la pregunta.
         self.pitch = QLabel(
-            "Qué hardware llevas dentro y qué está haciendo ahora mismo. "
-            "Todo se lee del propio sistema: ningún dato sale de este equipo.")
+            _("home.tagline"))
         self.pitch.setObjectName("Muted")
         self.pitch.setWordWrap(True)
 
@@ -158,7 +158,8 @@ class HomePage(QScrollArea):
         if sistema.desktop:
             partes.append(f"{sistema.desktop} · {sistema.session_type or ''}".strip(" ·"))
         if sistema.uptime_seconds:
-            partes.append(f"encendido {format_uptime(sistema.uptime_seconds)}")
+            partes.append(_("home.uptime").format(
+                tiempo=format_uptime(sistema.uptime_seconds)))
         self.subtitle.setText(" · ".join(p for p in partes if p))
 
         chips = []
@@ -168,8 +169,8 @@ class HomePage(QScrollArea):
             chips.append(snapshot.cpu.types[0].architecture or "")
         pendientes = sum(1 for n in snapshot.notes if n.need.value == "root")
         if pendientes:
-            chips.append(f"{pendientes} "
-                         f"{render.plural(pendientes, 'dato', 'datos')} sin leer")
+            chips.append(_("home.unread.one" if pendientes == 1
+                           else "home.unread.many").format(n=pendientes))
 
         # Lo que está fuera de umbral se dice en la portada, que es donde se
         # entra. Enterarse de que la GPU va a 100 grados solo si se abre la
@@ -178,9 +179,11 @@ class HomePage(QScrollArea):
         if niveles:
             criticos = niveles.count("crítico")
             chips.append(
-                f"⚠ {criticos} en crítico" if criticos
-                else f"⚠ {len(niveles)} "
-                     f"{render.plural(len(niveles), 'sensor alto', 'sensores altos')}")
+                "⚠ " + (_("home.alarm.crit.one" if criticos == 1
+                          else "home.alarm.crit.many").format(n=criticos)
+                        if criticos else
+                        _("home.alarm.high.one" if len(niveles) == 1
+                          else "home.alarm.high.many").format(n=len(niveles))))
         chips = [c for c in chips if c]
         if tuple(chips) != self._chips:
             self._chips = tuple(chips)
@@ -194,8 +197,11 @@ class HomePage(QScrollArea):
         principal = cpu.types[0]
         nucleos = sum(t.cores for t in cpu.types)
         hilos = sum(t.threads for t in cpu.types)
-        detalle = (f"{nucleos} {render.plural(nucleos, 'núcleo', 'núcleos')} · "
-                   f"{hilos} {render.plural(hilos, 'hilo', 'hilos')}")
+        detalle = " · ".join((
+            _("home.cores.one" if nucleos == 1
+              else "home.cores.many").format(n=nucleos),
+            _("home.threads.one" if hilos == 1
+              else "home.threads.many").format(n=hilos)))
         if principal.codename:
             detalle += f" · {principal.codename}"
 
@@ -221,7 +227,7 @@ class HomePage(QScrollArea):
 
     def _grafica(self, snapshot: Snapshot) -> None:
         if not snapshot.gpus:
-            self.gpu.poner("Sin gráfica detectada", "", "")
+            self.gpu.poner(_("home.gpu.none"), "", "")
             return
         gpu = snapshot.gpus[0]
         detalle = " · ".join(p for p in (
@@ -251,8 +257,9 @@ class HomePage(QScrollArea):
         ) if p)
         usada = memoria.used_bytes
         self.memoria.poner(
-            f"{render.size(usada)} en uso", detalle,
-            f"{usada / memoria.total_bytes * 100:.0f} % ocupada")
+            _("home.mem.inuse").format(tam=render.size(usada)), detalle,
+            _("home.mem.used").format(
+                pct=f"{usada / memoria.total_bytes * 100:.0f}"))
         self.memoria.barra.set_segments(
             [("En uso", usada, "accent"),
              ("Caché", memoria.cache_bytes, "line"),
@@ -262,7 +269,7 @@ class HomePage(QScrollArea):
     def _almacenamiento(self, snapshot: Snapshot) -> None:
         discos = snapshot.disks
         if not discos:
-            self.discos.poner("Sin unidades", "", "")
+            self.discos.poner(_("home.storage.none"), "", "")
             return
         total = sum(d.size_bytes or 0 for d in discos)
         usado = sum(d.used_bytes or 0 for d in discos)
@@ -271,14 +278,16 @@ class HomePage(QScrollArea):
                  for k in ("NVMe", "SSD", "HDD")
                  if any(d.kind == k for d in discos)]
         self.discos.poner(
-            f"{render.size(total)} en {len(discos)} "
-            f"{render.plural(len(discos), 'unidad', 'unidades')}",
+            _("home.storage.total.one" if len(discos) == 1
+              else "home.storage.total").format(tam=render.size(total),
+                                                n=len(discos)),
             " · ".join(tipos),
-            f"{render.size(libre)} libres")
+            _("home.storage.free").format(tam=render.size(libre)))
         sin_montar = max(0, total - usado - libre)
-        segmentos = [("Ocupado", usado, "accent"), ("Libre", libre, "line")]
+        segmentos = [(_("home.bar.used"), usado, "accent"),
+                     (_("home.bar.free"), libre, "line")]
         if sin_montar:
-            segmentos.append(("Sin montar", sin_montar, "muted"))
+            segmentos.append((_("home.bar.unmounted"), sin_montar, "muted"))
         self.discos.barra.set_segments(segmentos, total=total,
                                        formatter=render.size)
 

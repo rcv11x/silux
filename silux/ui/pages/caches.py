@@ -14,6 +14,7 @@ from typing import Optional
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QLabel, QScrollArea, QVBoxLayout, QWidget
 
+from ...i18n import _
 from ... import render
 from ...model import Cache, Snapshot
 from ...settings import Preferences
@@ -77,11 +78,10 @@ class CachesPage(QScrollArea):
         layout.addWidget(summary)
 
         # -- mapa -----------------------------------------------------------
-        map_card = Card("Quién comparte qué")
+        map_card = Card(_("caches.card.map"))
         self.map = CacheMap(palette)
         legend = QLabel(
-            "Cada bloque es una instancia física de caché; su anchura son las "
-            "CPUs lógicas que la comparten."
+            _("caches.map.note")
         )
         legend.setObjectName("Muted")
         legend.setWordWrap(True)
@@ -91,9 +91,9 @@ class CachesPage(QScrollArea):
         layout.addWidget(map_card)
 
         # -- detalle --------------------------------------------------------
-        detail = Card("Detalle por nivel")
+        detail = Card(_("caches.card.detail"))
         self.table = Table(
-            ("Nivel", "Tamaño", "Nº", "Total", "Vías", "Línea", "Conjuntos", "Comparten"),
+            ("Nivel", "Tamaño", "Nº", "Total", "Vías", _("caches.col.line"), "Conjuntos", "Comparten"),
             numeric=(False, True, True, True, True, True, True, True),
         )
         detail.body.addWidget(self.table)
@@ -102,16 +102,12 @@ class CachesPage(QScrollArea):
         # -- explicación ----------------------------------------------------
         notes = ResponsiveRow(min_item_width=250)
         notes.add(self._glossary(
-            "Vías y conjuntos",
-            "Una caché de N vías guarda cada dirección en uno de N sitios "
-            "posibles. Más vías reducen los choques entre datos que compiten "
-            "por el mismo conjunto, a costa de una búsqueda más cara.",
+            _("caches.card.ways"),
+            _("caches.ways.note"),
         ))
         notes.add(self._glossary(
-            "Línea",
-            "La unidad mínima que viaja entre memoria y caché. Leer un solo "
-            "byte trae la línea entera, y por eso recorrer datos contiguos es "
-            "mucho más rápido que saltar por la memoria.",
+            _("caches.col.line"),
+            _("caches.line.note"),
         ))
         layout.addWidget(notes)
         layout.addStretch(1)

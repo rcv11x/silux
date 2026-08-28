@@ -295,9 +295,8 @@ class TestNoQuedaTextoSuelto(unittest.TestCase):
     y ningún test de los normales lo nota.
     """
 
-    PAGINAS = ("app.py", "pages/cpu.py", "pages/memory.py", "pages/monitor.py",
-               "pages/graphics.py", "pages/storage.py", "pages/settings.py",
-               "pages/performance.py")
+    # Se descubren solas. Con una lista escrita a mano, cinco páginas enteras
+    # se quedaron sin traducir y el test seguía en verde: no las miraba.
 
     def _sueltas(self, ruta):
         import ast
@@ -336,7 +335,9 @@ class TestNoQuedaTextoSuelto(unittest.TestCase):
 
     def test_ninguna_pagina_pinta_español_a_pelo(self):
         raiz = pathlib.Path(__file__).resolve().parent.parent / "silux" / "ui"
-        for nombre in self.PAGINAS:
-            with self.subTest(archivo=nombre):
-                sueltas = self._sueltas(raiz / nombre)
-                self.assertEqual(sueltas, [], f"{nombre}: {sueltas}")
+        archivos = sorted(raiz.rglob("*.py"))
+        self.assertGreater(len(archivos), 12, "no se están mirando las páginas")
+        for archivo in archivos:
+            with self.subTest(archivo=archivo.name):
+                sueltas = self._sueltas(archivo)
+                self.assertEqual(sueltas, [], f"{archivo.name}: {sueltas}")
