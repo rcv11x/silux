@@ -350,3 +350,61 @@ class TestNombresDeAlimentacion(unittest.TestCase):
 
         limites = _umbrales(SensorKind.VOLTAGE, 1.0, 1.5, 1.6, "nct6798")
         self.assertEqual(limites["high"], 1.5)
+
+
+class TestCalorDeUnSensor(unittest.TestCase):
+    """El degradado que tiñe la columna del valor actual.
+
+    Noventa y nueve renglones de cifras del mismo color se leen uno a uno; el
+    que se está acercando a su umbral tiene que encontrarse mirando.
+    """
+
+    def _temp(self, valor, high=None, crit=None):
+        from silux.model import Sensor, SensorKind
+
+        return Sensor(key="t", chip="c", device="d", label="l",
+                      kind=SensorKind.TEMPERATURE, value=valor,
+                      high=high, critical=crit)
+
+    def test_bien_lejos_del_umbral_no_se_tiñe(self):
+        """Un procesador a 45 grados de 90 no está «medio caliente»: está
+        bien, y darle un color intermedio convierte el color en decoración."""
+        self.assertEqual(self._temp(45.0, crit=90.0).heat, 0.0)
+
+    def test_acercarse_lo_va_subiendo(self):
+        tibio = self._temp(75.0, crit=90.0).heat
+        caliente = self._temp(85.0, crit=90.0).heat
+        self.assertGreater(tibio, 0.0)
+        self.assertGreater(caliente, tibio)
+        self.assertLessEqual(caliente, 1.0)
+
+    def test_en_el_umbral_llega_al_maximo(self):
+        self.assertEqual(self._temp(90.0, crit=90.0).heat, 1.0)
+
+    def test_pasarse_no_se_sale_de_la_escala(self):
+        self.assertEqual(self._temp(120.0, crit=90.0).heat, 1.0)
+
+    def test_sin_umbral_no_hay_escala(self):
+        """Solo siete de veintiocho temperaturas de un equipo corriente traen
+        umbral; el resto no se puede situar."""
+        self.assertIsNone(self._temp(60.0).heat)
+
+    def test_solo_las_temperaturas(self):
+        """Un voltaje a media escala no significa nada, y un ventilador a tope
+        es lo que se espera bajo carga."""
+        from silux.model import Sensor, SensorKind
+
+        for tipo in (SensorKind.VOLTAGE, SensorKind.FAN, SensorKind.POWER):
+            with self.subTest(tipo=tipo):
+                s = Sensor(key="k", chip="c", device="d", label="l",
+                           kind=tipo, value=50.0, critical=60.0)
+                self.assertIsNone(s.heat)
+
+    def test_manda_el_critico_sobre_el_alto(self):
+        """`high` es donde el fabricante se incomoda y `critical` donde el
+        equipo se apaga solo: la escala se mide contra el segundo."""
+        sensor = self._temp(80.0, high=70.0, crit=100.0)
+        self.assertLess(sensor.heat, 1.0)
+
+    def test_un_sensor_sin_lectura_no_tiene_calor(self):
+        self.assertIsNone(self._temp(None, crit=90.0).heat)

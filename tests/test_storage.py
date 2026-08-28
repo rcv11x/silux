@@ -374,3 +374,57 @@ class TestLaTemperaturaDelDiagnostico(unittest.TestCase):
         self._muestra()
         # Y no se le vuelve a preguntar en cada muestreo.
         self.assertEqual(self.cliente.read_smart.call_count, 1)
+
+
+class TestAvisosDeSalud(unittest.TestCase):
+    """Lo que un disco dice de sí mismo y no salía en ninguna parte."""
+
+    def _salud(self, **campos):
+        from silux.model import DiskHealth
+
+        return DiskHealth(**campos)
+
+    def test_un_disco_sano_no_dice_nada(self):
+        self.assertEqual(render.disk_warnings(
+            self._salud(critical_warning=0, percentage_used=12)), [])
+
+    def test_cada_bit_del_aviso_tiene_su_frase(self):
+        """Están definidos por la especificación y significan lo mismo en
+        todas las marcas."""
+        avisos = render.disk_warnings(self._salud(critical_warning=0b1001))
+        self.assertEqual(len(avisos), 2)
+        self.assertTrue(all(nivel == "crítico" for nivel, _ in avisos))
+        texto = " ".join(t for _, t in avisos)
+        self.assertIn("reserva", texto)
+        self.assertIn("solo lectura", texto)
+
+    def test_un_bit_que_no_conocemos_se_dice_igual(self):
+        """La especificación crece; callarse un aviso porque es nuevo sería lo
+        peor que se puede hacer con este campo."""
+        avisos = render.disk_warnings(self._salud(critical_warning=0b1000000))
+        self.assertEqual(len(avisos), 1)
+        self.assertIn("0x40", avisos[0][1])
+
+    def test_los_datos_ilegibles_se_avisan(self):
+        avisos = render.disk_warnings(
+            self._salud(critical_warning=0, media_errors=47))
+        self.assertEqual(avisos[0][0], "alto")
+        self.assertIn("47", avisos[0][1])
+
+    def test_la_vida_baja_se_avisa_antes_de_llegar_a_cero(self):
+        """Decirlo al 0 % no sirve de nada: el aviso existe para que dé tiempo
+        a hacer una copia."""
+        self.assertTrue(render.disk_warnings(
+            self._salud(critical_warning=0, percentage_used=95)))
+        self.assertFalse(render.disk_warnings(
+            self._salud(critical_warning=0, percentage_used=50)))
+
+    def test_los_apagones_bruscos_no_son_un_aviso(self):
+        """Cuentan cortes de luz y botones de reinicio: en un sobremesa son
+        normales."""
+        self.assertEqual(render.disk_warnings(
+            self._salud(critical_warning=0, unsafe_shutdowns=120)), [])
+
+    def test_sin_diagnostico_no_se_inventa_nada(self):
+        self.assertEqual(render.disk_warnings(self._salud()), [])
+        self.assertEqual(render.disk_warnings(None), [])
