@@ -578,3 +578,53 @@ class TestRepartoDeLaRejillaDeNucleos(unittest.TestCase):
 
     def test_una_ventana_estrechisima_sigue_dando_una_columna(self):
         self.assertGreaterEqual(self._matriz(16, 60)._columns(), 1)
+
+
+class TestOrdenDelArbolDeSensores(unittest.TestCase):
+    """Los aparatos salen como se buscan, no como los numeró el kernel.
+
+    Sin ordenarlos van en el orden de los directorios de hwmon, que es un
+    número arbitrario y cambia entre arranques: el procesador podía salir
+    debajo de la tarjeta de red.
+    """
+
+    def _snapshot(self, dispositivos):
+        from silux.model import (CpuInfo, CpuType, Disk, Gpu, Sensor,
+                                 SensorKind, Snapshot)
+
+        sensores = tuple(
+            Sensor(key=f"k{i}", chip="c", device=nombre, label="l",
+                   kind=SensorKind.TEMPERATURE, value=40.0)
+            for i, nombre in enumerate(dispositivos)
+        )
+        return Snapshot(
+            monotonic_ns=0,
+            cpu=CpuInfo(types=(CpuType(key="general", label="g",
+                                       brand="AMD Ryzen 7 5800X3D"),)),
+            gpus=(Gpu(index=0, name="Radeon RX 9070 XT"),),
+            disks=(Disk(name="nvme0n1", model="Samsung SSD 970"),),
+            sensors=sensores,
+        )
+
+    def test_el_procesador_va_primero_y_la_placa_detras(self):
+        crudo = ["Red (enp6s0)", "Samsung SSD 970", "Gigabyte X570",
+                 "AMD Ryzen 7 5800X3D", "Radeon RX 9070 XT", "Memoria"]
+        orden = list(self._snapshot(crudo).sensor_tree())
+        self.assertEqual(orden[0], "AMD Ryzen 7 5800X3D")
+        self.assertEqual(orden[1], "Gigabyte X570")
+
+    def test_la_red_va_al_final_y_los_discos_antes(self):
+        crudo = ["Red (enp6s0)", "Samsung SSD 970", "AMD Ryzen 7 5800X3D"]
+        orden = list(self._snapshot(crudo).sensor_tree())
+        self.assertLess(orden.index("Samsung SSD 970"), orden.index("Red (enp6s0)"))
+
+    def test_el_orden_no_depende_de_como_lleguen(self):
+        uno = ["AMD Ryzen 7 5800X3D", "Memoria", "Red (enp6s0)"]
+        otro = list(reversed(uno))
+        self.assertEqual(list(self._snapshot(uno).sensor_tree()),
+                         list(self._snapshot(otro).sensor_tree()))
+
+    def test_la_bateria_y_el_puerto_usbc_van_al_final(self):
+        crudo = ["Batería", "Puerto USB-C", "AMD Ryzen 7 5800X3D", "Memoria"]
+        orden = list(self._snapshot(crudo).sensor_tree())
+        self.assertEqual(orden[-2:], ["Batería", "Puerto USB-C"])

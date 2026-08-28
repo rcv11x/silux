@@ -2069,7 +2069,8 @@ class SensorTree(QTreeWidget):
         )
 
     def update_row(self, key: str, values: list[str], tooltip: str = "",
-                   alarm: str = "ok", history=None, heat: float = 0.0) -> None:
+                   alarm: str = "ok", history=None, heat: float = 0.0,
+                   heat_max: float = 0.0) -> None:
         item = self._rows.get(key)
         if item is None:
             return
@@ -2095,6 +2096,13 @@ class SensorTree(QTreeWidget):
             colour = (self._p.q("ink") if not heat
                       else self._mezcla_calor(heat))
         item.setForeground(1, colour)
+
+        # El máximo se tiñe con su propio calor y no con el de ahora. Es el
+        # dato que sobrevive al pico: quien lanza una prueba de dos minutos y
+        # va a mirar después encuentra la columna «Actual» ya fría, y lo que
+        # quiere ver es hasta dónde llegó.
+        item.setForeground(3, self._p.q("ink") if not heat_max
+                           else self._mezcla_calor(heat_max))
         if tooltip:
             for column in range(len(self.COLUMNS)):
                 item.setToolTip(column, tooltip)
@@ -2107,10 +2115,15 @@ class SensorTree(QTreeWidget):
         alguno ya no cabe: la columna del reloj enseñaba «800.0 M…» porque se
         midió antes de que hubiera ningún reloj que medir.
 
-        Solo ensancha, nunca encoge, o la tabla bailaría a cada muestreo. Y no
-        toca nada si el usuario ha puesto los anchos a mano.
+        Solo ensancha, nunca encoge, o la tabla bailaría a cada muestreo.
+
+        Ensancha también cuando el usuario ha puesto los anchos a mano, por el
+        mismo motivo que el suelo de la columna de nombres: se respeta lo que
+        arrastre, pero no hasta el punto de recortar una cifra. Con los anchos
+        guardados de una sesión anterior, los relojes de núcleo salían como
+        «3738.5 M…», y un ancho a medida no es una orden de esconder datos.
         """
-        if self._preferred_widths or not text:
+        if not text:
             return
         necesario = (QFontMetrics(self._value_font).horizontalAdvance(text)
                      + theme.METRICS.grid_hspace)

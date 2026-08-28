@@ -48,7 +48,12 @@ ALTERNATIVAS = ("_average",)
 
 # A qué aparato pertenece cada chip. El orden importa: gana la primera regla.
 CPU_CHIP = re.compile(r"^(coretemp|k10temp|k8temp|zenpower|cpu_thermal)$")
-BOARD_CHIP = re.compile(r"^(nct\d+|it\d+|w836\d+|f71\d+|smsc|lm\d+|nzxt|asus|acpitz|thermal)")
+# Los `*_wmi` son los sensores que el fabricante de la placa expone por su
+# propia interfaz: `gigabyte_wmi` salía en crudo en el árbol al lado de la
+# misma placa nombrada por su Super I/O.
+BOARD_CHIP = re.compile(
+    r"^(nct\d+|it\d+|w836\d+|f71\d+|smsc|lm\d+|nzxt|asus|acpitz|thermal"
+    r"|\w+_wmi)")
 DISK_CHIP = re.compile(r"^(drivetemp|nvme)")
 NET_CHIP = re.compile(r"^(r8\d+|e1000|igb|ixgbe|iwlwifi|mt79|ath\d+k?)")
 GPU_CHIP = re.compile(r"^(amdgpu|radeon|i915|xe|nouveau)")

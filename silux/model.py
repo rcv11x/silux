@@ -1166,13 +1166,43 @@ class Snapshot:
             tree.setdefault(sensor.device, {}).setdefault(sensor.category, []).append(sensor)
 
         ordered: dict[str, dict[str, tuple[Sensor, ...]]] = {}
-        for device, categories in tree.items():
+        for device in sorted(tree, key=self._puesto_del_aparato):
+            categories = tree[device]
             ordered[device] = {
                 name: tuple(sorted(categories[name], key=lambda s: (s.order, s.label)))
                 for name in CATEGORY_ORDER
                 if name in categories
             }
         return ordered
+
+    def _puesto_del_aparato(self, device: str) -> tuple[int, str]:
+        """En qué orden se dibuja cada aparato del árbol de sensores.
+
+        Sin esto salen en el orden en que los devuelve el kernel, que es el de
+        los directorios de hwmon: un número arbitrario que cambia entre
+        arranques. Se ordenan como se buscan —primero el procesador, luego la
+        placa— y no como los numeró el sistema.
+
+        Los aparatos se reconocen por su nombre porque es lo que el proveedor
+        de sensores ya resolvió: allí sabe si un chip es de la CPU, de la placa
+        o de un disco, y aquí solo queda ponerlos en fila.
+        """
+        if self.cpu.types and device == self.cpu.types[0].brand:
+            return (0, device)
+        if device in {g.display_name for g in self.gpus}:
+            return (3, device)
+        if device in {d.display_name for d in self.disks} or device == "Almacenamiento":
+            return (4, device)
+        if device.startswith("Red ("):
+            return (5, device)
+        if device == "Memoria":
+            return (2, device)
+        if device.split()[0] in ("Batería", "Adaptador", "Puerto"):
+            return (6, device)
+        # Lo que queda es la placa y lo que cuelga de ella. Va detrás del
+        # procesador porque es donde se miran los ventiladores y los voltajes,
+        # que es lo segundo que uno busca aquí.
+        return (1, device)
 
     def notes_for(self, prefix: str) -> tuple[Note, ...]:
         return tuple(n for n in self.notes if n.path.startswith(prefix))
