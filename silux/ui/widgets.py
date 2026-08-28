@@ -1854,8 +1854,15 @@ class SensorTree(QTreeWidget):
         self._repartir_sobrante()
 
     def _repartir_sobrante(self) -> None:
-        """Le da a la curva el hueco que iba a quedarse la columna vacía."""
-        if self._applying_widths or not self.isVisible():
+        """Le da a la curva el hueco que iba a quedarse la columna vacía.
+
+        Solo mientras el usuario no haya tocado los anchos. Al arrastrar la
+        columna para estrecharla volvía a estirarse sola en el muestreo
+        siguiente: cambiar los valores recalcula la altura del árbol, eso es
+        un `resizeEvent`, y aquí se repartía otra vez el sobrante como si
+        nadie hubiera dicho nada. Lo que se arrastra manda.
+        """
+        if self._applying_widths or self._preferred_widths or not self.isVisible():
             return
         ocupado = sum(self.columnWidth(c) for c in range(len(self.COLUMNS) - 1))
         sobra = self.viewport().width() - ocupado
@@ -1902,7 +1909,16 @@ class SensorTree(QTreeWidget):
         return widest
 
     def _on_section_resized(self, index: int, _old: int, _new: int) -> None:
-        if self._applying_widths or not self.isVisible():
+        """Se apunta el ancho solo cuando lo ha movido una persona.
+
+        La última columna es la que absorbe el sobrante, así que Qt la estira
+        sola cada vez que cambia el tamaño de la ventana. Eso llegaba aquí
+        igual que un arrastre y dejaba los anchos guardados como si alguien
+        los hubiera puesto a mano: bastaba con maximizar la ventana una vez
+        para que el árbol dejara de ajustarse solo nunca más.
+        """
+        if (self._applying_widths or not self.isVisible()
+                or index >= len(self.COLUMNS) - 1):
             return
         self._preferred_widths = self.column_widths()
         self.columnsResized.emit(self._preferred_widths)

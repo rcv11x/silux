@@ -22,7 +22,7 @@ python3 tools/build_appimage.py --container   # el AppImage que se reparte
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **986** y tardan unos cincuenta segundos. Si sale bastante
+Los tests son **991** y tardan unos cincuenta segundos. Si sale bastante
 menos, falta algo por recoger.
 
 `--container` no es opcional para repartir: sin él se construye contra el
@@ -351,6 +351,13 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   de tres maneras distintas y ninguna es obligatoria. Donde no lo dice se
   calla: en canal único la memoria rinde la mitad, y decirlo al revés manda a
   alguien a abrir el equipo para nada.
+- **Tomar por un arrastre lo que estira Qt**: la última columna absorbe el
+  sobrante, así que se redimensiona sola con la ventana y emite la misma señal
+  que un arrastre. Con eso, maximizar una vez dejaba los anchos guardados como
+  si alguien los hubiera puesto a mano y el árbol no volvía a ajustarse nunca.
+- **Reajustar anchos en el `resizeEvent`**: cambiar los valores recalcula la
+  altura del árbol, y eso es un resize. Una columna estrechada a mano volvía a
+  estirarse sola en el muestreo siguiente.
 - **Declarar `color` en `QTreeWidget::item`**: pisa el que cada celda pide con
   `setForeground`, en silencio y sin error. Con él puesto no llegaba a la
   pantalla ni el rojo de un sensor pasado de vueltas ni el ámbar del que se
