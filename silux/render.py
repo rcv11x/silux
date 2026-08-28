@@ -306,11 +306,15 @@ def pcie_note(link: PcieLink) -> Optional[str]:
 
 
 def gpu_memory_summary(memory: GpuMemory) -> str:
-    """«2.0 GB de 15.9 GB  (12 %)»."""
-    if memory.total_bytes is None:
+    """«2.0 GB de 15.9 GB  (12 %)», o nada si no se sabe cuánta se usa.
+
+    Antes, cuando el driver no publicaba la memoria ocupada, esto devolvía el
+    total. La página lo pintaba bajo el renglón «En uso» y el resultado era
+    que una integrada de Intel declaraba tener los 11,6 GB ocupados al
+    completo. Un dato que falta se dice que falta.
+    """
+    if memory.total_bytes is None or memory.used_bytes is None:
         return DASH
-    if memory.used_bytes is None:
-        return size(memory.total_bytes)
     return (f"{size(memory.used_bytes)} de {size(memory.total_bytes)}"
             f"   ({memory.used_percent:.0f} %)")
 
