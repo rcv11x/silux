@@ -22,7 +22,8 @@ python3 tools/build_appimage.py --container   # el AppImage que se reparte
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **582** y tardan quince segundos. Si sale otra cifra, falta algo.
+Los tests son **827** y tardan unos cincuenta segundos. Si sale bastante
+menos, falta algo por recoger.
 
 `--container` no es opcional para repartir: sin él se construye contra el
 Python y el Qt de la máquina, y sale un AppImage que exige el juego de
@@ -85,9 +86,11 @@ silux/
 ├─ model.py        dataclasses congeladas: Snapshot, CpuType, Sensor, Board…
 ├─ render.py       ÚNICO sitio donde un valor se convierte en texto
 ├─ collector.py    orquesta los proveedores; separa estático de dinámico
+├─ cli.py          volcado en terminal, JSON, sensores e informe
+├─ settings.py     preferencias del usuario en ~/.config/silux
 ├─ tracking.py     mínimos, máximos y medias por sensor
 ├─ rawcpuid.py     CPUID desde Python, sin root (mmap + ctypes)
-├─ gpuapi.py       OpenGL, Vulkan y OpenCL por ctypes, en un proceso aparte
+├─ gpuapi.py       OpenGL, Vulkan, OpenCL y VA-API por ctypes, en otro proceso
 ├─ amdgpu.py       ioctl DRM: tipo de VRAM, bus, unidades, ROP
 ├─ edid.py         la chapa del monitor, con sus extensiones CTA-861
 ├─ report.py       informe en Markdown para reportar fallos
@@ -98,6 +101,8 @@ silux/
 ├─ spd.py          decodifica el chip de identificación de la RAM (DDR4 y DDR5)
 ├─ smart.py        interpreta el diagnóstico de los discos, sin privilegios
 ├─ benchmark.py    prueba de CPU que reporta en qué condiciones midió
+├─ history.py      historial de pruebas de este equipo
+├─ privacidad.py   qué se omite de un informe público y qué no
 ├─ providers/      una fuente cada uno; ninguno conoce a los demás
 ├─ privileged/     ayudante root mínimo (helper.py) + cliente + SMBIOS
 ├─ db/             cpu_ids.json (generado; incluye la tabla de MIDR de ARM) +
@@ -116,7 +121,11 @@ Almacenamiento, Red, Sistema, Rendimiento, Sensores, Ajustes**.
 De Gráficos sale todo lo que publica el nodo DRM —identidad, VRAM, tabla DPM,
 enlace PCIe, sensores propios— más lo que solo da el ioctl de amdgpu (tipo de
 memoria, anchura del bus, ancho de banda, unidades de cómputo y ROP), las tres
-APIs y el EDID de cada monitor. Queda pendiente:
+APIs y el EDID de cada monitor. De las Intel, el uso por motor y los vatios
+salen del PMU de perf leído por el ayudante privilegiado (`gpu_pmu`), el
+reposo (RC6) y los motores con sus capacidades salen de sysfs sin permisos, y
+los códecs que acelera salen de VA-API atados a su nodo de render, y su
+temperatura no existe por ningún camino. Queda pendiente:
 
 - **Las versiones de `gpu_metrics` de la 1.4 en adelante**, que reordenaron los
   campos, y las 2.x de las APU. Hoy se reconocen y se dejan pasar en vez de
@@ -197,6 +206,54 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   abajo. Lo de dentro se mide contra la altura de línea de la fuente, que es
   lo único que crece cuando alguien pide letra grande.
 
+- **Buscar el consumo de una iGPU Intel en `/sys/class/powercap`**: ahí están
+  `package-0`, `core`, `uncore` y `dram`, y ninguno es la gráfica. El `uncore`
+  es el falso amigo: se queda clavado en 3,2 W mientras el motor gráfico va de
+  350 a 1050 MHz. El plano de la gráfica es RAPL PP1 y en estos Intel solo
+  asoma por el PMU de perf, como evento `energy-gpu`. Contrastado contra
+  `intel_gpu_top`, que enseña la misma cifra.
+- **Dar por sabido cómo un PMU escribe sus eventos**: i915 los publica como
+  `config=0x2000` y RAPL como `event=0x04`, que no es lo mismo. Cada PMU dice
+  en `format/` en qué bits de `config` va cada campo (`event -> config:0-7`).
+  Sin mirarlo, `energy-gpu` no se abre.
+- **Mandar al usuario a bajar `/proc/sys/kernel/perf_event_paranoid`**: es un
+  cerrojo de toda la máquina, no un permiso para este programa; a 0 —el único
+  valor que sirve, con 1 sigue denegado— cualquier proceso sin privilegios
+  puede perfilar el equipo entero. El ayudante privilegiado que ya pide la
+  contraseña una vez para los discos abre el contador sin que el usuario toque
+  nada del sistema. Hay un test que vigila que ningún aviso vuelva a nombrarlo.
+- **Llamar a una función de ctypes sin declararle `argtypes`**: libva devuelve
+  enteros en casi todo y perdona, pero `vaQueryConfigProfiles` escribe en
+  memoria de quien llama, y sin declarar los tipos el puntero del display se
+  trunca a 32 bits y el proceso se cae de golpe. Un SIGSEGV limpio, sin
+  excepción que atrapar.
+- **Volver a medir una columna con la tabla recién montada**: el fallo del
+  árbol de sensores, repetido en `Table`. «Uso» se quedaba con el ancho de su
+  cabecera y enseñaba «12…» en vez de «12.4 %». Se mide el texto que de verdad
+  lleva y se ensancha; nunca se encoge.
+- **Juntar decodificar y codificar en un «soporta AV1»**: casi todas las
+  tarjetas modernas lo leen y muy pocas lo escriben, así que esa frase sería
+  falsa la mitad de las veces. Van en dos columnas.
+- **Pintar todos los avisos del mismo color**: la banda de `Notice` era ámbar
+  para todo, así que «esta gráfica no trae sensor de temperatura» —que no va a
+  cambiar nunca— se leía igual de urgente que algo que sí se arregla. Va por
+  tono: ámbar lo accionable (`ROOT`, `DRIVER`, `DATABASE`), gris lo que es así
+  y ya está (`HARDWARE`, `PLATFORM`), rojo lo que es un fallo nuestro.
+- **Explicar que hace falta un permiso sin poner el botón al lado**: el aviso
+  de Gráficos decía «Requiere permisos» y el único botón estaba en Memoria y
+  en Almacenamiento. Quien lee por qué falta un dato es quien quiere
+  arreglarlo, así que el botón va dentro del propio aviso.
+- **Confundir el reposo con lo contrario del uso**: entre trabajar y dormir
+  hay un término medio —encendida y sin trabajo— que gasta y que no cuenta
+  como RC6. Un 40 % de uso no implica un 60 % de reposo.
+- **Colgarle a la gráfica el ancho de banda del IMC**: `intel_gpu_top` lo
+  enseña junto a la GPU porque en una integrada la RAM del sistema hace de
+  VRAM, pero es el controlador de memoria entero, con el tráfico de la CPU
+  dentro. Su sitio es la página de Memoria.
+- **Poner en una tabla estática un aviso que depende de los permisos**: el
+  de i915 vivía en `DRIVERS_CIEGOS`, que lee un proveedor `static`, o sea que
+  corre una vez. Seguía pidiendo permisos después de que el usuario los diera.
+  Lo que cambia a mitad de sesión lo pone un proveedor dinámico.
 - **Escalar la tipografía y los márgenes al mismo ritmo**: quien pide letra
   grande quiere leer mejor, no que quepa la mitad. Los márgenes crecen a mitad
   de paso que el texto (`_escalar` en `ui/theme.py`).
