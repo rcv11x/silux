@@ -186,6 +186,7 @@ class MainWindow(QMainWindow):
         self.cpu_page = CpuPage(self._palette, self.prefs)
         self.monitor_page = MonitorPage(self._palette, self.prefs, self._tracker)
         self.monitor_page.columns_resized.connect(self._on_columns_resized)
+        self.monitor_page.branches_changed.connect(self._on_branches_changed)
         self.caches_page = CachesPage(self._palette, self.prefs)
         self.board_page = BoardPage(self._palette, self.prefs)
         self.memory_page = MemoryPage(self._palette, self.prefs)
@@ -604,6 +605,12 @@ class MainWindow(QMainWindow):
         texto = detalle if isinstance(detalle, str) else " ".join(detalle)
         QMessageBox.warning(self, "Permisos permanentes", texto)
         self._restaurar_botones_permanentes()
+
+    def _on_branches_changed(self, plegadas: tuple) -> None:
+        from dataclasses import replace
+
+        if tuple(plegadas) != tuple(self.prefs.sensor_collapsed):
+            self.prefs = replace(self.prefs, sensor_collapsed=tuple(plegadas))
 
     def _on_columns_resized(self, widths: tuple) -> None:
         from dataclasses import replace

@@ -149,8 +149,9 @@ class TestColumnasDelArbol(unittest.TestCase):
         tree.rebuild(Collector().sample().sensor_tree())
         return tree
 
-    def test_la_ultima_columna_absorbe_el_ancho_sobrante(self):
-        """Es lo que mantiene las cifras pegadas al nombre en pantalla completa."""
+    def test_las_cifras_se_quedan_pegadas_al_nombre(self):
+        """En pantalla completa, estirar las columnas de datos mandaría las
+        cifras a un palmo del sensor que nombran. El sobrante va al final."""
         tree = self._tree()
         tree.resize(1800, 800)
         tree.show()
@@ -158,10 +159,28 @@ class TestColumnasDelArbol(unittest.TestCase):
 
         nombres = tree.columnWidth(0)
         cifras = sum(tree.columnWidth(c) for c in range(1, 1 + tree.VALUE_COLUMNS))
-        hueco = tree.columnWidth(len(tree.COLUMNS) - 1)
-
         self.assertLess(nombres + cifras, 700, "los datos deben quedarse a la izquierda")
-        self.assertGreater(hueco, 900, "el sobrante va a la columna vacía")
+
+    def test_la_curva_se_lleva_parte_del_sobrante(self):
+        """En una pantalla de 2560 quedaban mil píxeles vacíos a la derecha
+        mientras la curva se apretaba en ciento veinte. Crece hasta su tope y
+        el resto se queda en la columna vacía, que es lo que sigue empujando
+        las cifras hacia el nombre."""
+        tree = self._tree()
+        tree.resize(1800, 800)
+        tree.show()
+        self.app.processEvents()
+
+        self.assertEqual(tree.columnWidth(tree.TREND_COLUMN), tree.TREND_MAX)
+        self.assertGreater(tree.columnWidth(len(tree.COLUMNS) - 1), 400)
+
+    def test_en_una_ventana_estrecha_la_curva_no_se_come_nada(self):
+        """Solo se reparte lo que sobra: si no sobra, se queda como estaba."""
+        tree = self._tree()
+        tree.resize(700, 800)
+        tree.show()
+        self.app.processEvents()
+        self.assertLess(tree.columnWidth(tree.TREND_COLUMN), tree.TREND_WIDTH + 20)
 
     def test_todas_las_columnas_visibles_se_pueden_arrastrar(self):
         from PySide6.QtWidgets import QHeaderView
@@ -381,3 +400,119 @@ class TestReutilizacionDeWidgets(unittest.TestCase):
 
         self.assertLessEqual(despues - antes, 2,
                              f"cuarenta refrescos crearon {despues - antes} widgets")
+
+
+class TestBuscadorDeSensores(unittest.TestCase):
+    """El filtro del árbol. Con noventa y nueve sensores en ocho aparatos,
+    encontrar «el de la VRAM» era plegar y desplegar ramas hasta dar con él."""
+
+    @classmethod
+    def setUpClass(cls):
+        from PySide6.QtWidgets import QApplication
+        cls.app = QApplication.instance() or QApplication([])
+
+    def _tree(self):
+        from silux.collector import Collector
+        from silux.ui import theme
+        from silux.ui.widgets import SensorTree
+
+        arbol = SensorTree(theme.DARK)
+        arbol.rebuild(Collector().sample().sensor_tree())
+        arbol.show()
+        self.app.processEvents()
+        return arbol
+
+    def test_sin_texto_no_esconde_nada(self):
+        arbol = self._tree()
+        completos = arbol.coincidencias()
+        arbol.set_filter("")
+        self.assertEqual(arbol.coincidencias(), completos)
+
+    def test_filtrar_deja_menos_de_lo_que_habia(self):
+        arbol = self._tree()
+        completos = arbol.coincidencias()
+        arbol.set_filter("temperatura")
+        self.assertLess(arbol.coincidencias(), completos)
+        self.assertGreater(arbol.coincidencias(), 0)
+
+    def test_el_nombre_del_aparato_tambien_busca(self):
+        """La gente pide «los del 9070» tanto como «temperatura»."""
+        from silux.collector import Collector
+
+        arbol = self._tree()
+        aparatos = list(Collector().sample().sensor_tree())
+        if not aparatos:
+            self.skipTest("esta máquina no publica sensores")
+        arbol.set_filter(aparatos[0].split()[0].lower())
+        self.assertGreater(arbol.coincidencias(), 0)
+
+    def test_lo_que_no_casa_no_deja_nada_a_la_vista(self):
+        """Cero es un resultado, no un fallo: hay que poder decirlo."""
+        arbol = self._tree()
+        arbol.set_filter("zzzz-no-existe")
+        self.assertEqual(arbol.coincidencias(), 0)
+
+    def test_quitar_el_filtro_lo_devuelve_todo(self):
+        arbol = self._tree()
+        completos = arbol.coincidencias()
+        arbol.set_filter("temperatura")
+        arbol.set_filter("")
+        self.assertEqual(arbol.coincidencias(), completos)
+
+    def test_buscar_abre_las_ramas(self):
+        """Filtrar y dejar el resultado escondido dentro de una rama plegada
+        no encuentra nada."""
+        arbol = self._tree()
+        for indice in range(arbol.topLevelItemCount()):
+            arbol.topLevelItem(indice).setExpanded(False)
+        arbol.set_filter("temperatura")
+        visibles = [arbol.topLevelItem(i) for i in range(arbol.topLevelItemCount())]
+        conresultados = [a for a in visibles if not a.isHidden()]
+        self.assertTrue(conresultados)
+        self.assertTrue(all(a.isExpanded() for a in conresultados))
+
+
+class TestRamasRecordadas(unittest.TestCase):
+    """Lo que el usuario dejó plegado sobrevive a cerrar el programa."""
+
+    @classmethod
+    def setUpClass(cls):
+        from PySide6.QtWidgets import QApplication
+        cls.app = QApplication.instance() or QApplication([])
+
+    def _tree(self, plegadas=None):
+        from silux.collector import Collector
+        from silux.ui import theme
+        from silux.ui.widgets import SensorTree
+
+        arbol = SensorTree(theme.DARK)
+        arbol.set_collapsed(plegadas)
+        arbol.rebuild(Collector().sample().sensor_tree())
+        return arbol
+
+    def test_sin_nada_guardado_se_abren_todas(self):
+        """El primer arranque enseña de qué va la página sin tener que
+        tocarla."""
+        arbol = self._tree(None)
+        for indice in range(arbol.topLevelItemCount()):
+            self.assertTrue(arbol.topLevelItem(indice).isExpanded())
+
+    def test_una_rama_guardada_como_plegada_nace_plegada(self):
+        arbol = self._tree(None)
+        if not arbol.topLevelItemCount():
+            self.skipTest("esta máquina no publica sensores")
+        clave = f"::{arbol.topLevelItem(0).text(0)}"
+
+        otro = self._tree([clave])
+        self.assertFalse(otro.topLevelItem(0).isExpanded())
+        # Y las demás siguen abiertas: se guarda lo plegado, no lo abierto.
+        if otro.topLevelItemCount() > 1:
+            self.assertTrue(otro.topLevelItem(1).isExpanded())
+
+    def test_lo_plegado_se_puede_recuperar_para_guardarlo(self):
+        arbol = self._tree(None)
+        if not arbol.topLevelItemCount():
+            self.skipTest("esta máquina no publica sensores")
+        arbol.topLevelItem(0).setExpanded(False)
+        clave = f"::{arbol.topLevelItem(0).text(0)}"
+        self.assertIn(clave, arbol.collapsed())

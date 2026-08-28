@@ -53,6 +53,11 @@ class Preferences:
     # Ancho de la columna «Sensor» del árbol. 0 = calcularlo del contenido.
     # Ancho de cada columna del árbol de sensores. Vacío = calcularlo.
     sensor_columns: tuple[int, ...] = ()
+    # Las ramas del árbol de sensores que quedaron plegadas. Se guarda lo
+    # plegado y no lo abierto porque lo normal es tenerlo casi todo abierto:
+    # así una lista vacía significa «como estaba», que es lo que quiere quien
+    # nunca ha tocado nada.
+    sensor_collapsed: tuple[str, ...] = ()
     window_width: int = 900
     window_height: int = 680
 
@@ -73,6 +78,7 @@ class Preferences:
             network_unit="bits" if self.network_unit == "bits" else "bytes",
             show_all_features=bool(self.show_all_features),
             sensor_columns=tuple(min(900, max(30, int(w))) for w in (self.sensor_columns or ())),
+            sensor_collapsed=tuple(str(c) for c in (self.sensor_collapsed or ()))[:400],
             # El recorte aquí es solo un saneado grueso; el suelo de verdad lo
             # pone la ventana, que sabe qué densidad está activa.
             window_width=min(3840, max(380, int(self.window_width))),

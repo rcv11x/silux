@@ -1590,6 +1590,10 @@ class SensorTree(QTreeWidget):
         header.sectionResized.connect(self._on_section_resized)
         self._preferred_widths: tuple[int, ...] = ()
         self._applying_widths = False
+        self._filtro = ""
+        # `None` = no hay nada guardado todavía, que no es lo mismo que «no
+        # había ninguna plegada»: en el primer caso se abren todas.
+        self._plegadas_guardadas: Optional[set] = None
 
         self._label_font = ui_font(theme.METRICS.small_pt)
         self._value_font = mono_font()
@@ -1634,6 +1638,13 @@ class SensorTree(QTreeWidget):
     # Lo que se le da a la curva. Es ancho fijo y no medido porque no hay
     # texto que medir: es el tramo de tiempo que se quiere ver de un vistazo.
     TREND_WIDTH = 120
+    # Hasta dónde puede crecer cuando sobra sitio. En una pantalla de 2560 el
+    # hueco de la derecha era de más de mil píxeles vacíos mientras la curva
+    # se apretaba en ciento veinte, y una curva más ancha son más muestras
+    # distinguibles. El tope está para que no se estire hasta lo absurdo en
+    # una ultrapanorámica, y solo se reparte lo que sobra: las columnas de
+    # cifras no se tocan, que es lo que las mantiene pegadas al nombre.
+    TREND_MAX = 460
 
     @property
     def RESPIRO_CIFRAS(self) -> int:  # noqa: N802
@@ -1712,6 +1723,26 @@ class SensorTree(QTreeWidget):
         finally:
             self._applying_widths = False
 
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        self._repartir_sobrante()
+
+    def _repartir_sobrante(self) -> None:
+        """Le da a la curva el hueco que iba a quedarse la columna vacía."""
+        if self._applying_widths or not self.isVisible():
+            return
+        ocupado = sum(self.columnWidth(c) for c in range(len(self.COLUMNS) - 1))
+        sobra = self.viewport().width() - ocupado
+        actual = self.columnWidth(self.TREND_COLUMN)
+        objetivo = max(self.TREND_WIDTH, min(actual + sobra, self.TREND_MAX))
+        if objetivo == actual:
+            return
+        self._applying_widths = True
+        try:
+            self.setColumnWidth(self.TREND_COLUMN, objetivo)
+        finally:
+            self._applying_widths = False
+
     def _measure_columns(self) -> list[int]:
         """Mide el texto más ancho de cada columna, cabecera incluida.
 
@@ -1782,7 +1813,8 @@ class SensorTree(QTreeWidget):
                     category_item.setIcon(0, self._icon(sensors[0].kind.value))
 
                 for sensor in sensors:
-                    row = QTreeWidgetItem([sensor.label, "—", "—", "—", "—"])
+                    row = QTreeWidgetItem(
+                        [sensor.label] + ["—"] * self.VALUE_COLUMNS)
                     row.setFont(0, self._label_font)
                     row.setIcon(0, self._icon(sensor.kind.value))
                     for column in range(1, len(self.COLUMNS)):
@@ -1799,12 +1831,89 @@ class SensorTree(QTreeWidget):
                     category_item.addChild(row)
                     self._rows[sensor.key] = row
 
-                category_item.setExpanded(f"::{device}/{category}" not in self._rows
-                                          or f"::{device}/{category}" in expanded or not expanded)
-            device_item.setExpanded(f"::{device}" in expanded or not expanded)
+                category_item.setExpanded(
+                    self._nace_abierta(f"::{device}/{category}", expanded))
+            device_item.setExpanded(self._nace_abierta(f"::{device}", expanded))
 
         self._autosize_columns()
         self._fit_height()
+        if self._filtro:
+            self._aplicar_filtro()
+
+    # -- ramas plegadas -----------------------------------------------------
+
+    def _nace_abierta(self, clave: str, expandidas: set) -> bool:
+        """Si una rama arranca desplegada.
+
+        Manda lo que el usuario dejó en la sesión anterior. Solo cuando no hay
+        nada guardado —el primer arranque— se abren todas, que es lo que deja
+        ver de qué va la página sin tener que tocarla.
+        """
+        if self._plegadas_guardadas is not None:
+            return clave not in self._plegadas_guardadas
+        return clave in expandidas or not expandidas
+
+    def set_collapsed(self, claves) -> None:
+        """Las ramas que estaban plegadas al cerrar. Vacío = todas abiertas."""
+        self._plegadas_guardadas = set(claves) if claves is not None else None
+
+    def collapsed(self) -> tuple[str, ...]:
+        """Las que están plegadas ahora, para guardarlas."""
+        return tuple(sorted(clave for clave, item in self._rows.items()
+                            if clave.startswith("::") and not item.isExpanded()))
+
+    # -- filtro -------------------------------------------------------------
+
+    def set_filter(self, texto: str) -> None:
+        """Deja a la vista solo lo que casa. Vacío = todo.
+
+        Con noventa y nueve sensores en ocho aparatos, encontrar «el de la
+        VRAM» es plegar y desplegar ramas hasta dar con él. Se busca en el
+        nombre del sensor y también en el del aparato, que es como la gente lo
+        pide: «los del 9070» tanto como «temperatura».
+        """
+        nuevo = texto.strip().lower()
+        if nuevo == self._filtro:
+            return
+        self._filtro = nuevo
+        self._aplicar_filtro()
+
+    def _aplicar_filtro(self) -> None:
+        for indice in range(self.topLevelItemCount()):
+            aparato = self.topLevelItem(indice)
+            self._filtrar_rama(aparato, aparato.text(0).lower())
+        self._fit_height()
+
+    def _filtrar_rama(self, aparato, texto_aparato: str) -> None:
+        """Un aparato entero casa si su nombre casa; si no, decide cada hijo."""
+        aparato_casa = not self._filtro or self._filtro in texto_aparato
+        visibles_aparato = 0
+
+        for i in range(aparato.childCount()):
+            categoria = aparato.child(i)
+            casa_categoria = aparato_casa or self._filtro in categoria.text(0).lower()
+            visibles = 0
+            for j in range(categoria.childCount()):
+                fila = categoria.child(j)
+                visible = casa_categoria or self._filtro in fila.text(0).lower()
+                fila.setHidden(not visible)
+                visibles += visible
+            categoria.setHidden(visibles == 0)
+            # Buscando, las ramas se abren solas: filtrar y dejar el resultado
+            # escondido dentro de una rama plegada no encuentra nada.
+            if self._filtro and visibles:
+                categoria.setExpanded(True)
+            visibles_aparato += visibles
+
+        aparato.setHidden(visibles_aparato == 0)
+        if self._filtro and visibles_aparato:
+            aparato.setExpanded(True)
+
+    def coincidencias(self) -> int:
+        """Cuántos sensores quedan a la vista. Cero es un resultado, no un
+        fallo: hay que poder decirlo."""
+        return sum(1 for clave, item in self._rows.items()
+                   if not clave.startswith("::") and not item.isHidden())
 
     def marcar_aviso(self, device: str, cuantos: int, critico: bool) -> None:
         """Pone en la rama del aparato cuántos de sus sensores están fuera.
