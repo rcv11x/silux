@@ -40,6 +40,7 @@ from PySide6.QtWidgets import (
 )
 
 from .. import render
+from ..i18n import _
 from . import theme
 from .theme import Palette, mono_font, ui_font
 
@@ -1663,7 +1664,10 @@ class SensorTree(QTreeWidget):
     # Sin ella, la columna de nombres se estiraba hasta llenar la ventana y en
     # pantalla completa dejaba las cifras a un palmo de distancia del nombre,
     # que es justo lo que uno quiere comparar de un vistazo.
-    COLUMNS = ("Sensor", "Actual", "Mín", "Máx", "Media", "Último minuto", "")
+    # Claves, no texto: se traducen al montar la cabecera. Como constantes de
+    # clase se evaluarían al importar, cuando todavía no se sabe el idioma.
+    COLUMNS = ("sensors.col.name", "sensors.col.current", "sensors.col.min",
+               "sensors.col.max", "sensors.col.avg", "sensors.col.trend", "")
     VALUE_COLUMNS = 4
     # Dónde va la curva. Las cuatro de cifras son las que hay entre el nombre
     # y esta.
@@ -1678,7 +1682,7 @@ class SensorTree(QTreeWidget):
         self._structure: tuple = ()
 
         self.setColumnCount(len(self.COLUMNS))
-        self.setHeaderLabels(list(self.COLUMNS))
+        self.setHeaderLabels([_(c) if c else "" for c in self.COLUMNS])
         # La cabecera se alinea como los datos que hay debajo: el nombre a la
         # izquierda y las cifras a la derecha. Centrada (que es lo que hace Qt
         # por omisión) no cuadra con ninguna de las dos columnas.
@@ -1912,7 +1916,8 @@ class SensorTree(QTreeWidget):
         value_metrics = QFontMetrics(self._value_font)
         header_metrics = QFontMetrics(self.header().font())
 
-        widest = [header_metrics.horizontalAdvance(name) + 18 for name in self.COLUMNS]
+        widest = [header_metrics.horizontalAdvance(_(name) if name else "") + 18
+                  for name in self.COLUMNS]
 
         stack = [self.topLevelItem(i) for i in range(self.topLevelItemCount())]
         while stack:
@@ -2042,7 +2047,7 @@ class SensorTree(QTreeWidget):
             self._rows[f"::{device}"] = device_item
 
             for category, sensors in categories.items():
-                category_item = QTreeWidgetItem([category])
+                category_item = QTreeWidgetItem([_(category)])
                 category_item.setFont(0, self._label_font)
                 for column in range(len(self.COLUMNS)):
                     category_item.setForeground(column, self._p.q("muted"))

@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 )
 
 from ... import render
+from ...i18n import _
 from ...model import MemoryModule, Snapshot
 from ...settings import Preferences
 from .. import theme
@@ -43,11 +44,11 @@ NEED_TITLES = {
     Need.ERROR: "Falló al leerse",
 }
 
-MODULE_FIELDS = ("Fabricante", "Chips", "Referencia", "Tipo", "Capacidad",
-                 "Catalogado a", "Funcionando a", "Rangos", "Voltaje",
-                 "Formato", "Perfiles", "Fabricado", "Banco")
+MODULE_FIELDS = ("memory.field.vendor", "memory.field.chips", "memory.field.part", "memory.field.type", "memory.field.size",
+                 "memory.field.rated", "memory.field.running", "memory.field.ranks", "memory.field.voltage",
+                 "memory.field.form", "memory.field.profiles", "memory.field.made", "memory.field.bank")
 
-TIMING_HEADERS = ("Perfil", "Velocidad", "CL", "tRCD", "tRP", "tRAS", "tRC", "Voltaje")
+TIMING_HEADERS = ("memory.timing.profile", "memory.timing.speed", "memory.timing.cl", "memory.timing.trcd", "memory.timing.trp", "memory.timing.tras", "memory.timing.trc", "memory.field.voltage")
 
 
 class MemoryPage(QScrollArea):
@@ -78,8 +79,8 @@ class MemoryPage(QScrollArea):
         self._slots_host = ResponsiveRow(min_item_width=290)
         layout.addWidget(self._slots_host)
 
-        self.timings_card = Card("Perfiles y temporizaciones")
-        self.timings = Table(TIMING_HEADERS,
+        self.timings_card = Card(_("memory.card.timings"))
+        self.timings = Table([_(h) for h in TIMING_HEADERS],
                              numeric=(False, True, True, True, True, True, True, True))
         explanation = QLabel(
             "El SPD es un chip que lleva cada módulo con sus características. "
@@ -108,7 +109,7 @@ class MemoryPage(QScrollArea):
 
     def _build_header(self) -> QWidget:
         card = Card()
-        self.title = QLabel("Leyendo la memoria…")
+        self.title = QLabel(_("memory.loading"))
         self.title.setObjectName("Headline")
         self.subtitle = QLabel("")
         self.subtitle.setObjectName("Subhead")
@@ -130,7 +131,7 @@ class MemoryPage(QScrollArea):
         return card
 
     def _build_elevation(self) -> QWidget:
-        card = Card("Detalle de los módulos")
+        card = Card(_("memory.card.modules"))
 
         self.elevation_text = QLabel("")
         self.elevation_text.setObjectName("NoticeBody")
@@ -142,7 +143,7 @@ class MemoryPage(QScrollArea):
         self.elevation_hint.setWordWrap(True)
         self.elevation_hint.setFont(ui_font(theme.METRICS.small_pt))
 
-        self.elevation_button = QPushButton("Leer con permisos de administrador")
+        self.elevation_button = QPushButton(_("perm.read.button"))
         self.elevation_button.setToolTip(
             "Lanza un ayudante mínimo mediante polkit que solo sabe leer la "
             "tabla SMBIOS y unos registros del procesador.\n"
@@ -353,7 +354,7 @@ class MemoryPage(QScrollArea):
         for module in modules:
             card = Card(module.locator or "Zócalo")
             if not module.populated:
-                empty = QLabel("Vacío")
+                empty = QLabel(_("memory.slot.empty"))
                 empty.setObjectName("Muted")
                 empty.setFont(ui_font(theme.METRICS.small_pt))
                 card.body.addWidget(empty)
@@ -362,7 +363,7 @@ class MemoryPage(QScrollArea):
 
             grid = InfoGrid()
             for name in MODULE_FIELDS:
-                grid.add(name)
+                grid.add(_(name))
             card.body.addWidget(grid)
             self._fill(grid, module)
             self._slot_grids.append(grid)
@@ -373,21 +374,21 @@ class MemoryPage(QScrollArea):
         d = render.DASH
         spd = module.spd
 
-        grid.set("Fabricante", module.manufacturer or (spd.manufacturer if spd else None) or d)
-        grid.set("Chips", (spd.dram_manufacturer if spd else None) or d,
+        grid.set(_("memory.field.vendor"), module.manufacturer or (spd.manufacturer if spd else None) or d)
+        grid.set(_("memory.field.chips"), (spd.dram_manufacturer if spd else None) or d,
                  tooltip="Quién fabricó el silicio, que a menudo no es quien "
                          "vende el módulo. Lo dice el SPD, no la tabla SMBIOS.")
-        grid.set("Referencia", module.part_number or (spd.part_number if spd else None) or d)
-        grid.set("Tipo", module.type or (spd.dram_type if spd else None) or d)
+        grid.set(_("memory.field.part"), module.part_number or (spd.part_number if spd else None) or d)
+        grid.set(_("memory.field.type"), module.type or (spd.dram_type if spd else None) or d)
         # La capacidad sale de SMBIOS, que pide permisos, pero el SPD de DDR5
         # la trae en la densidad de sus chips y ese se lee sin pedir nada.
         capacidad = module.size_bytes or (spd.capacity_bytes if spd else None)
-        grid.set("Capacidad", render.size(capacidad) if capacidad else d,
+        grid.set(_("memory.field.size"), render.size(capacidad) if capacidad else d,
                  tooltip="Calculada desde el propio chip SPD del módulo."
                  if not module.size_bytes and capacidad else "")
 
         rated = module.rated_mts
-        grid.set("Catalogado a", f"{rated} MT/s" if rated else d,
+        grid.set(_("memory.field.rated"), f"{rated} MT/s" if rated else d,
                  tooltip="Lo que el módulo declara saber dar, según su propio "
                          "chip SPD." if spd else "")
 
@@ -395,7 +396,7 @@ class MemoryPage(QScrollArea):
         funcionando = f"{actual} MT/s" if actual else d
         if module.underclocked:
             funcionando += "   ⚠"
-        grid.set("Funcionando a", funcionando,
+        grid.set(_("memory.field.running"), funcionando,
                  tooltip=(f"Va a {actual} MT/s de los {rated} que admite. Puede "
                           "ser el perfil XMP sin activar, o el límite oficial "
                           "de memoria del procesador, que en muchos modelos "
@@ -405,24 +406,24 @@ class MemoryPage(QScrollArea):
         rangos = str(module.rank) if module.rank else d
         if module.has_ecc:
             rangos += "   con ECC"
-        grid.set("Rangos", rangos)
+        grid.set(_("memory.field.ranks"), rangos)
 
         voltaje = (f"{module.voltage_configured_mv / 1000:.2f} V"
                    if module.voltage_configured_mv
                    else (f"{spd.jedec.voltage_v:.2f} V" if spd and spd.jedec
                          and spd.jedec.voltage_v else d))
-        grid.set("Voltaje", voltaje)
-        grid.set("Formato", module.form_factor or (spd.module_type if spd else None) or d)
+        grid.set(_("memory.field.voltage"), voltaje)
+        grid.set(_("memory.field.form"), module.form_factor or (spd.module_type if spd else None) or d)
 
         perfiles = spd.overclock_profiles if spd else ()
-        grid.set("Perfiles", ", ".join(perfiles) if perfiles else d,
+        grid.set(_("memory.field.profiles"), ", ".join(perfiles) if perfiles else d,
                  tooltip="Temporizaciones que el fabricante garantiza por "
                          "encima de las de JEDEC. Se reconoce que están, pero "
                          "sus formatos no son públicos y sus cifras no se "
                          "interpretan: darlas a ojo sería inventarlas."
                  if perfiles else "")
-        grid.set("Fabricado", (spd.manufactured if spd else None) or d)
-        grid.set("Banco", module.bank or d)
+        grid.set(_("memory.field.made"), (spd.manufactured if spd else None) or d)
+        grid.set(_("memory.field.bank"), module.bank or d)
 
     def _apply_timings(self, modules: list[MemoryModule]) -> None:
         rows: list[list[str]] = []

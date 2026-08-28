@@ -601,6 +601,11 @@ medias enseña español entre inglés, que se lee; la clave solo asoma cuando la
 frase no está escrita en ninguna de las dos lenguas, y entonces es justo lo
 que hace falta ver.
 
+Las categorías del árbol de sensores también son claves. Esos nombres
+—«Temperaturas», «Ventiladores»— los inventa el programa para agrupar y no
+salen del kernel, así que son interfaz: la frontera no está en de dónde viene
+el dato sino en quién escribió la palabra.
+
 Los nombres de sección son claves (`nav.sensors`), así que `select_section`
 acepta tres cosas: lo que se ve, la clave y el nombre en español. Sin lo
 tercero, `--page Sensores` dejaría de funcionar en cuanto alguien se pusiera

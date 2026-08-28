@@ -43,6 +43,10 @@ TABLAS = {
     "silux/ui/pages/settings.py": ("THEMES", "UNITS", "DENSITIES",
                                    "FONT_SCALES", "ACCENTS", "NETWORK_UNITS"),
     "silux/ui/app.py": ("SECTIONS",),
+    "silux/model.py": ("CATEGORIES", "CATEGORY_ORDER"),
+    "silux/ui/pages/memory.py": ("MODULE_FIELDS", "TIMING_HEADERS"),
+    "silux/ui/pages/cpu.py": ("PROC_FIELDS", "CLOCK_FIELDS"),
+    "silux/ui/widgets.py": ("COLUMNS",),
 }
 
 
@@ -55,15 +59,32 @@ def cadenas_de_tablas() -> dict[str, list[str]]:
             continue
         arbol = ast.parse(ruta.read_text(encoding="utf-8"))
         for nodo in ast.walk(arbol):
-            if not (isinstance(nodo, ast.Assign)
-                    and any(isinstance(t, ast.Name) and t.id in nombres
-                            for t in nodo.targets)):
+            if isinstance(nodo, ast.Assign):
+                destinos = nodo.targets
+            elif isinstance(nodo, ast.AnnAssign):
+                destinos = [nodo.target]
+            else:
                 continue
-            for par in ast.walk(nodo.value):
-                if (isinstance(par, ast.Tuple) and par.elts
-                        and isinstance(par.elts[0], ast.Constant)
-                        and isinstance(par.elts[0].value, str)):
-                    encontradas.setdefault(par.elts[0].value, []).append(origen)
+            if not any(isinstance(t, ast.Name) and t.id in nombres
+                       for t in destinos) or nodo.value is None:
+                continue
+            for hijo in ast.walk(nodo.value):
+                if not isinstance(hijo, (ast.Tuple, ast.Dict)):
+                    continue
+                # Dos formas: tuplas de pares —(clave, valor)— y tuplas o
+                # diccionarios que son claves a secas.
+                elementos = (hijo.values if isinstance(hijo, ast.Dict)
+                             else hijo.elts)
+                pareja = (isinstance(hijo, ast.Tuple) and len(hijo.elts) == 2
+                          and all(isinstance(e, ast.Constant) for e in hijo.elts))
+                if pareja:
+                    elementos = hijo.elts[:1]
+                for elemento in elementos:
+                    if (isinstance(elemento, ast.Constant)
+                            and isinstance(elemento.value, str)
+                            and "." in elemento.value
+                            and " " not in elemento.value):
+                        encontradas.setdefault(elemento.value, []).append(origen)
     return encontradas
 
 
@@ -86,10 +107,17 @@ def cadenas_del_codigo() -> dict[str, list[str]]:
                         and nodo.func.id == "_"
                         and nodo.args):
                     continue
+                # La clave puede venir elegida con un condicional:
+                # `_("sensors.count.one" if n == 1 else "…many")`.
                 primero = nodo.args[0]
-                if isinstance(primero, ast.Constant) and isinstance(primero.value, str):
-                    relativo = str(archivo.relative_to(RAIZ))
-                    encontradas.setdefault(primero.value, []).append(relativo)
+                literales = ([primero] if isinstance(primero, ast.Constant)
+                             else [n for n in ast.walk(primero)
+                                   if isinstance(n, ast.Constant)]
+                             if isinstance(primero, ast.IfExp) else [])
+                relativo = str(archivo.relative_to(RAIZ))
+                for literal in literales:
+                    if isinstance(literal.value, str):
+                        encontradas.setdefault(literal.value, []).append(relativo)
     return encontradas
 
 
