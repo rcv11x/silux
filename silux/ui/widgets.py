@@ -574,9 +574,79 @@ class Sparkline(QWidget):
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawEllipse(points[-1], 2.6, 2.6)
 
+        self._dibujar_pico(painter, rect, points, values)
+
         if self._hover is not None and 0 <= self._hover < len(points):
             self._draw_hover(painter, rect, points[self._hover], values[self._hover])
         painter.end()
+
+    # Cuánto tiene que despegarse el máximo de la media para que marcarlo
+    # signifique algo. Sin este margen, una línea plana con una arruga de
+    # medio grado sale con su punto y su cifra como si hubiera pasado algo.
+    RELIEVE_MINIMO = 0.06
+
+    def _dibujar_pico(self, painter: QPainter, rect: QRectF,
+                      points: list, values: list) -> None:
+        """Marca el punto más alto del tramo que se está viendo.
+
+        Se ve que la temperatura subió, pero no a cuánto llegó ni cuándo: para
+        eso había que estar mirando en ese momento o pasar el ratón buscando a
+        ciegas. Es el mismo dato que la columna «Máx» del árbol de sensores,
+        puesto donde ocurrió.
+
+        No se marca si el máximo es el último punto —ese ya lleva el suyo, y
+        dos círculos juntos se leen como un error—, ni si la curva es
+        prácticamente plana.
+        """
+        indice = self._indice_del_pico()
+        if indice is None:
+            return
+
+        alto = values[indice]
+        punto = points[indice]
+        painter.setPen(Qt.PenStyle.NoPen)
+        # Hueco y no relleno: el punto lleno es «aquí estás ahora», y el pico
+        # es otra cosa. Con los dos iguales habría que adivinar cuál es cuál.
+        painter.setBrush(QBrush(self._p.q("surface")))
+        painter.drawEllipse(punto, 3.0, 3.0)
+        painter.setPen(QPen(self._p.q("accent", 0.75), 1.2))
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawEllipse(punto, 3.0, 3.0)
+
+        if self._formatter is None:
+            return
+        texto = self._formatter(alto)
+        painter.setFont(ui_font(max(7, theme.METRICS.small_pt - 2)))
+        metrica = painter.fontMetrics()
+        ancho = metrica.horizontalAdvance(texto)
+        # La cifra va encima del punto, o debajo si arriba no cabe. Nunca se
+        # sale por los lados: en el borde derecho se pegaría media fuera.
+        x = min(max(punto.x() - ancho / 2, rect.left()), rect.right() - ancho)
+        arriba = punto.y() - 6 - metrica.height()
+        y = arriba if arriba >= rect.top() else punto.y() + 6
+        painter.setPen(self._p.q("muted"))
+        painter.drawText(QRectF(x, y, ancho + 2, metrica.height()),
+                         int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter),
+                         texto)
+
+    def _indice_del_pico(self) -> Optional[int]:
+        """Dónde está el máximo del tramo visible, o nada si no hay uno claro.
+
+        Nada cuando aún hay pocas muestras —al arrancar, cualquier subida es
+        «el máximo hasta ahora»—, cuando el máximo es el último punto, que ya
+        lleva su propia marca, y cuando la curva es prácticamente plana.
+        """
+        valores = list(self._values)
+        if len(valores) < 5:
+            return None
+        indice = max(range(len(valores)), key=valores.__getitem__)
+        if indice >= len(valores) - 1:
+            return None
+        alto, bajo = valores[indice], min(valores)
+        escala = abs(alto) or 1.0
+        if (alto - bajo) / escala < self.RELIEVE_MINIMO:
+            return None
+        return indice
 
     def _draw_hover(self, painter: QPainter, rect: QRectF,
                     punto: QPointF, valor: float) -> None:

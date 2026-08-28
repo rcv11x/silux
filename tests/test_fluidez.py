@@ -321,3 +321,63 @@ class TestSinRebote(unittest.TestCase):
         equis, _ = self._equis(self._grafica(10), 1.0)
         self.assertGreater(equis[0], self.ANCHO / 2,
                            "con pocas muestras deben quedar a la derecha")
+
+
+class TestPicoDeLaGrafica(unittest.TestCase):
+    """La marca del punto más alto del tramo visible.
+
+    Se veía que la temperatura había subido, pero no a cuánto llegó ni cuándo:
+    había que estar mirando en ese momento o pasar el ratón a ciegas.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        from PySide6.QtWidgets import QApplication
+        cls.app = QApplication.instance() or QApplication([])
+
+    def _grafica(self, valores):
+        from silux.ui import theme
+        from silux.ui.widgets import Sparkline
+
+        g = Sparkline(theme.DARK)
+        g.resize(300, 40)
+        for v in valores:
+            g.push(v)
+        return g
+
+    def _pintar(self, grafica) -> None:
+        from PySide6.QtGui import QPixmap
+
+        grafica.render(QPixmap(300, 40))
+
+    def test_una_curva_con_pico_lo_marca(self):
+        pico = [10, 12, 11, 90, 13, 12, 11, 10]
+        g = self._grafica(pico)
+        self.assertEqual(g._indice_del_pico(), 3)
+
+    def test_el_ultimo_punto_no_se_marca_dos_veces(self):
+        """Ya lleva el suyo, y dos círculos juntos se leen como un error."""
+        g = self._grafica([10, 12, 11, 13, 12, 14, 20, 90])
+        self.assertIsNone(g._indice_del_pico())
+
+    def test_una_linea_plana_no_tiene_pico(self):
+        """Una arruga de medio grado en una recta no es un pico: marcarla
+        sugiere que pasó algo."""
+        g = self._grafica([50.0, 50.1, 50.0, 50.1, 50.0, 50.1, 50.0, 50.0])
+        self.assertIsNone(g._indice_del_pico())
+
+    def test_con_pocas_muestras_no_se_marca_nada(self):
+        """Al arrancar, cualquier subida es «el máximo hasta ahora»."""
+        g = self._grafica([10, 40, 20])
+        self.assertIsNone(g._indice_del_pico())
+
+    def test_pintar_con_pico_no_revienta(self):
+        self._pintar(self._grafica([10, 12, 11, 90, 13, 12, 11, 10]))
+
+    def test_el_pico_en_el_borde_no_saca_la_cifra_del_cuadro(self):
+        """Pegado al borde derecho, la etiqueta se pintaba media fuera."""
+        from silux import render
+
+        g = self._grafica([10, 11, 12, 13, 14, 90, 12])
+        g.set_formatter(render.percent, 1.0)
+        self._pintar(g)
