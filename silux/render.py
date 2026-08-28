@@ -382,6 +382,136 @@ def resizable_bar(memory: GpuMemory) -> str:
     return f"desactivado: la CPU solo alcanza {ventana}"
 
 
+# Los bits de `critical_warning` del registro de salud de NVMe, que es donde
+# un disco dice que tiene un problema. Están definidos por la especificación y
+# significan lo mismo en todas las marcas.
+# De dónde sacar en qué canal está un módulo. El firmware lo escribe de varias
+# maneras según quién haga la placa, y ninguna es obligatoria: «P0 CHANNEL A»
+# en el banco, «DIMM_A1» en el localizador, «ChannelA-DIMM0» en los portátiles.
+_CANAL = (
+    re.compile(r"CHANNEL[\s_-]*([A-H])\b", re.I),
+    re.compile(r"\bDIMM[\s_-]*([A-H])\d", re.I),
+    re.compile(r"\bCH([A-H])\b", re.I),
+)
+
+# Cómo se llama tener tantos canales poblados. Por encima de cuatro se dice el
+# número, que «óctuple canal» no lo usa nadie.
+NOMBRE_DE_CANALES = {1: "canal único", 2: "doble canal",
+                     3: "triple canal", 4: "cuádruple canal"}
+
+
+def _canal_de(modulo) -> Optional[str]:
+    """La letra del canal en el que está un módulo, si el firmware la dice."""
+    for texto in (modulo.bank, modulo.locator):
+        if not texto:
+            continue
+        for patron in _CANAL:
+            if (encaje := patron.search(texto)):
+                return encaje.group(1).upper()
+    return None
+
+
+def memory_channels(modulos) -> Optional[int]:
+    """Cuántos canales tienen al menos un módulo puesto.
+
+    Devuelve None cuando el firmware no dice en qué canal está cada zócalo, que
+    pasa en placas que numeran los bancos en vez de nombrarlos. Inventarse el
+    dato ahí sería peor que no darlo: en canal único la memoria rinde la mitad,
+    y decirlo al revés manda a alguien a abrir el equipo para nada.
+    """
+    poblados = [m for m in modulos if m.populated]
+    if not poblados:
+        return None
+    canales = {c for m in poblados if (c := _canal_de(m))}
+    return len(canales) or None
+
+
+def memory_channel_label(modulos) -> Optional[str]:
+    """«Doble canal», «canal único»… con cuántos módulos lo forman."""
+    cuantos = memory_channels(modulos)
+    if cuantos is None:
+        return None
+    nombre = NOMBRE_DE_CANALES.get(cuantos, f"{cuantos} canales")
+    puestos = sum(1 for m in modulos if m.populated)
+    return f"{nombre} · {puestos} {plural(puestos, 'módulo', 'módulos')}"
+
+
+def memory_channel_warning(modulos) -> Optional[str]:
+    """Cuándo la memoria está rindiendo por debajo de lo que podría.
+
+    Es de los pocos problemas de hardware que son a la vez muy comunes, muy
+    caros en rendimiento y completamente invisibles: nada en el sistema avisa
+    de que los dos módulos están en el mismo canal, y en un equipo con gráfica
+    integrada eso se lleva por delante la mitad de los fotogramas.
+    """
+    canales = memory_channels(modulos)
+    if canales is None or canales > 1:
+        return None
+    puestos = sum(1 for m in modulos if m.populated)
+    libres = sum(1 for m in modulos if not m.populated)
+    if puestos > 1:
+        return (f"Los {puestos} módulos están en el mismo canal. Repartidos "
+                f"entre dos, la memoria movería el doble de datos por segundo.")
+    if libres:
+        return ("Hay un solo módulo, así que la memoria trabaja a la mitad de "
+                "ancho de banda. Un segundo módulo igual en el otro canal lo "
+                "duplica; en un equipo con gráfica integrada se nota en los "
+                "fotogramas más que casi cualquier otra cosa.")
+    return None
+
+
+AVISOS_NVME = {
+    0: "el espacio de reserva ha bajado del umbral del fabricante",
+    1: "la temperatura está fuera del rango que admite",
+    2: "el disco ha degradado su propia fiabilidad",
+    3: "se ha puesto en modo de solo lectura",
+    4: "la memoria de respaldo ante cortes de luz ha fallado",
+    5: "su región de memoria persistente no es fiable",
+}
+
+# Por debajo de esto se avisa de que al SSD le queda poco. El fabricante
+# garantiza el disco hasta el 0 %, así que un 10 % no es una avería: es el
+# momento de ir pensando en la copia de seguridad, y decirlo antes es lo único
+# que sirve de algo.
+VIDA_BAJA_PCT = 10
+
+
+def disk_warnings(salud) -> list[tuple[str, str]]:
+    """Lo que un disco está diciendo de sí mismo, como `(nivel, frase)`.
+
+    El registro de salud se leía entero y no se enseñaba ni una línea de él:
+    `critical_warning` es el campo por el que un NVMe avisa de que va camino
+    de perder datos, y estaba ahí sin que lo mirara nadie.
+
+    Los apagones bruscos no son un aviso: cuentan los cortes de luz y los
+    botones de reinicio, y en un equipo de sobremesa son normales.
+    """
+    avisos: list[tuple[str, str]] = []
+    if salud is None:
+        return avisos
+
+    if salud.critical_warning:
+        for bit, texto in AVISOS_NVME.items():
+            if salud.critical_warning & (1 << bit):
+                avisos.append(("crítico", texto.capitalize() + "."))
+        if not avisos:                     # un bit que la especificación no cubre
+            avisos.append(("crítico",
+                           f"El disco avisa de un problema "
+                           f"(código {salud.critical_warning:#04x})."))
+
+    if salud.media_errors:
+        avisos.append(("alto",
+                       f"{salud.media_errors:n} "
+                       f"{plural(salud.media_errors, 'dato que no se pudo leer', 'datos que no se pudieron leer')}"
+                       " desde que salió de fábrica."))
+
+    vida = salud.life_left_percent
+    if vida is not None and vida <= VIDA_BAJA_PCT:
+        avisos.append(("alto", f"Le queda un {vida} % de vida según su propio "
+                               "contador de desgaste."))
+    return avisos
+
+
 def duracion(segundos: float) -> str:
     """«40 s», «2 min 10 s». Sin decimales: nadie mide un recorte en décimas."""
     if segundos < 60:

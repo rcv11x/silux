@@ -119,6 +119,14 @@ class MemoryPage(QScrollArea):
         card.body.addWidget(self.subtitle)
         card.body.addWidget(self.badges)
         card.body.addWidget(self.bar)
+        # Dos cosas que la gente no sabe que le pasan: la memoria en un solo
+        # canal y el perfil rápido sin activar. Las dos se calculaban ya y
+        # salían escondidas dentro de la ficha de un módulo, a dos clics.
+        self.avisos = QLabel()
+        self.avisos.setObjectName("NoticeHint")
+        self.avisos.setWordWrap(True)
+        self.avisos.hide()
+        card.body.addWidget(self.avisos)
         return card
 
     def _build_elevation(self) -> QWidget:
@@ -165,6 +173,7 @@ class MemoryPage(QScrollArea):
 
         self.title.setText(f"{render.size(memory.total_bytes)} de memoria")
         self.subtitle.setText(self._subtitle(snapshot))
+        self._apply_avisos(snapshot)
         self._apply_badges(snapshot)
 
         self.bar.set_segments(
@@ -202,6 +211,22 @@ class MemoryPage(QScrollArea):
                 Notice(NEED_TITLES.get(note.need, note.need.value), note.message, note.hint)
             )
 
+    def _apply_avisos(self, snapshot: Snapshot) -> None:
+        modulos = self._display_modules(snapshot)
+        lineas = []
+        if (canal := render.memory_channel_warning(snapshot.modules)):
+            lineas.append(canal)
+        lentos = [m for m in modulos if m.populated and m.underclocked]
+        if lentos:
+            actual = lentos[0].configured_mts or lentos[0].speed_mts
+            lineas.append(
+                f"La memoria va a {actual} MT/s de los {lentos[0].rated_mts} "
+                f"que declara admitir. Suele ser el perfil rápido —XMP o "
+                f"EXPO— sin activar en la BIOS, aunque también puede ser el "
+                f"límite oficial del procesador.")
+        self.avisos.setText("  ".join(lineas))
+        self.avisos.setVisible(bool(lineas))
+
     def _subtitle(self, snapshot: Snapshot) -> str:
         array = snapshot.memory_array
         modules = snapshot.modules
@@ -216,6 +241,10 @@ class MemoryPage(QScrollArea):
             return "El detalle por módulo necesita permisos de administrador"
         ocupados = sum(1 for m in modules if m.populated)
         partes = [f"{ocupados} de {len(modules)} zócalos ocupados"]
+        # En canal único la memoria rinde la mitad, y no lo dice nada en todo
+        # el sistema. Va en la primera línea, no en la ficha de un módulo.
+        if (canal := render.memory_channel_label(modules)):
+            partes.insert(0, canal)
         if array and array.max_capacity_bytes:
             partes.append(f"admite hasta {render.size(array.max_capacity_bytes)}")
         if array and array.error_correction:

@@ -22,7 +22,7 @@ python3 tools/build_appimage.py --container   # el AppImage que se reparte
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **942** y tardan unos cincuenta segundos. Si sale bastante
+Los tests son **965** y tardan unos cincuenta segundos. Si sale bastante
 menos, falta algo por recoger.
 
 `--container` no es opcional para repartir: sin él se construye contra el
@@ -338,6 +338,18 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   derecha, ese hueco cae por la izquierda y la cifra sigue terminando pegada
   al borde, que es donde el árbol dibuja su marca de arrastre. El aire donde
   hace falta lo pone el relleno del propio renglón.
+- **Leer el registro de salud de un disco y no enseñar ni una línea**:
+  `critical_warning` es el campo por el que un NVMe avisa de que va camino de
+  perder datos —reserva agotada, modo solo lectura, respaldo fallido— y estaba
+  ahí sin que lo mirara nadie. Los apagones bruscos, en cambio, no son un
+  aviso: cuentan cortes de luz y botones de reinicio.
+- **Adivinar en qué canal está un módulo de memoria**: el firmware lo escribe
+  de tres maneras distintas y ninguna es obligatoria. Donde no lo dice se
+  calla: en canal único la memoria rinde la mitad, y decirlo al revés manda a
+  alguien a abrir el equipo para nada.
+- **Teñir un valor por su fracción del umbral**: un procesador a 45 grados de
+  90 no está «medio caliente», está bien. Si el color empieza en el cero es
+  decoración; empezando a tres cuartos del límite, avisa.
 - **Enseñar que algo recorta sin decir cuánto lleva**: medio segundo de límite
   de potencia en un cambio de escena es el funcionamiento normal de cualquier
   tarjeta; un minuto contra el límite térmico es un problema de refrigeración.

@@ -281,6 +281,7 @@ class MonitorPage(QScrollArea):
                 sensor.key, self._values(sensor), self._tooltip(sensor),
                 sensor.alarm_level,
                 seguimiento.history if seguimiento else None,
+                sensor.heat or 0.0,
             )
             if sensor.alarm_level != "ok":
                 avisos.setdefault(sensor.device, []).append(sensor.alarm_level)

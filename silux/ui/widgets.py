@@ -2058,8 +2058,18 @@ class SensorTree(QTreeWidget):
                            else self._p.q("warn") if cuantos
                            else self._p.q("ink"))
 
+    def _mezcla_calor(self, heat: float):
+        """Del color normal al de aviso, según lo cerca que esté del umbral."""
+        normal = self._p.q("ink")
+        aviso = self._p.q("warn")
+        return QColor(
+            round(normal.red() + (aviso.red() - normal.red()) * heat),
+            round(normal.green() + (aviso.green() - normal.green()) * heat),
+            round(normal.blue() + (aviso.blue() - normal.blue()) * heat),
+        )
+
     def update_row(self, key: str, values: list[str], tooltip: str = "",
-                   alarm: str = "ok", history=None) -> None:
+                   alarm: str = "ok", history=None, heat: float = 0.0) -> None:
         item = self._rows.get(key)
         if item is None:
             return
@@ -2075,8 +2085,15 @@ class SensorTree(QTreeWidget):
         # Tres estados y no dos: «alto» es donde el fabricante empieza a
         # incomodarse y «crítico» donde el equipo se protege solo. Pintarlos
         # igual deja sin saber si hay que hacer algo ahora o solo mirarlo.
+        #
+        # Y por debajo del umbral, el color va subiendo con `heat`: en una
+        # lista de noventa y nueve renglones iguales, el que se está acercando
+        # se encuentra mirando, no leyendo uno a uno.
         colour = {"crítico": self._p.q("crit"),
-                  "alto": self._p.q("warn")}.get(alarm, self._p.q("ink"))
+                  "alto": self._p.q("warn")}.get(alarm)
+        if colour is None:
+            colour = (self._p.q("ink") if not heat
+                      else self._mezcla_calor(heat))
         item.setForeground(1, colour)
         if tooltip:
             for column in range(len(self.COLUMNS)):

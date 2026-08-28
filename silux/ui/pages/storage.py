@@ -20,9 +20,9 @@ from ...model import Disk, Snapshot
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette
-from ..widgets import (Card, ChipRow, InfoGrid, ResponsiveRow, StackedBar,
-                       StatTile, Table, boton_de_permiso_permanente,
-                       clear_layout)
+from ..widgets import (Card, ChipRow, InfoGrid, Notice, ResponsiveRow,
+                       StackedBar, StatTile, Table,
+                       boton_de_permiso_permanente, clear_layout)
 
 DISK_HEADERS = ("Unidad", "Modelo", "Tipo", "Capacidad", "Ocupado",
                 "Temperatura", "Leyendo", "Escribiendo")
@@ -72,6 +72,13 @@ class StoragePage(QScrollArea):
         layout.addWidget(self._build_tiles())
         layout.addWidget(self._build_elevation())
 
+        # Los avisos de los discos van antes que las tablas: un disco que dice
+        # que se está quedando sin reserva no puede salir por debajo de su
+        # temperatura y sus gigabytes libres.
+        self._avisos_host = QVBoxLayout()
+        self._avisos_host.setSpacing(6)
+        layout.addLayout(self._avisos_host)
+
         disk_card = Card("Unidades")
         self.disks = Table(DISK_HEADERS,
                            numeric=(False, False, False, True, True, True, True, True))
@@ -92,6 +99,7 @@ class StoragePage(QScrollArea):
         self._bars: dict[str, StackedBar] = {}
         self._orden_actual: tuple = ()
         self._chip_signature: tuple = ()
+        self._avisos_signature: tuple = ()
 
     # -- construcción -------------------------------------------------------
 
@@ -172,6 +180,7 @@ class StoragePage(QScrollArea):
         self._apply_tiles(discos)
         self._apply_tables(discos)
         self._apply_cards(discos)
+        self._apply_avisos(discos)
         # La tarjeta solo estorba cuando ya no hace falta.
         leidos = sum(1 for x in discos if x.health.power_on_hours is not None)
         self.elevation_card.setVisible(bool(discos) and leidos < len(discos))
@@ -180,6 +189,31 @@ class StoragePage(QScrollArea):
                 f"Leído el diagnóstico de {leidos} de {len(discos)} unidades. "
                 "Las que faltan no lo publican o no respondieron."
             )
+
+    def _apply_avisos(self, discos) -> None:
+        """Lo que cada disco dice de sí mismo, si es que dice algo.
+
+        El registro de salud se leía entero y no salía ni una línea: el campo
+        por el que un NVMe avisa de que va camino de perder datos estaba ahí
+        sin que lo mirara nadie.
+        """
+        filas = [(disco, nivel, texto)
+                 for disco in discos
+                 for nivel, texto in render.disk_warnings(disco.health)]
+        firma = tuple((d.name, n, t) for d, n, t in filas)
+        if firma == self._avisos_signature:
+            return
+        self._avisos_signature = firma
+
+        clear_layout(self._avisos_host)
+        for disco, nivel, texto in filas:
+            self._avisos_host.addWidget(Notice(
+                disco.display_name if hasattr(disco, "display_name") else disco.name,
+                texto,
+                hint="Lo dice el propio disco en su registro de diagnóstico. "
+                     "Conviene tener una copia de lo que haya dentro.",
+                tone="bad" if nivel == "crítico" else "warn",
+            ))
 
     def _apply_header(self, discos) -> None:
         d = render.DASH

@@ -1088,6 +1088,33 @@ class Sensor:
             return "alto"
         return "ok"
 
+    # Desde qué fracción del umbral se empieza a teñir. Por debajo de tres
+    # cuartos no se pinta nada: un procesador a 45 grados de 90 no está «medio
+    # caliente», está bien, y darle un color intermedio convierte el color en
+    # decoración y deja de avisar de nada.
+    TIBIO_DESDE = 0.75
+
+    @property
+    def heat(self) -> Optional[float]:
+        """Lo cerca que está de su umbral, de 0 a 1, o None si no hay umbral.
+
+        Solo para temperaturas: un voltaje a media escala no significa nada, y
+        un ventilador a tope es lo que se espera bajo carga.
+
+        Sirve para teñir una lista larga. Noventa y nueve renglones de cifras
+        del mismo color se leen uno a uno; con la que se está acercando en otro
+        color se sabe dónde mirar sin leerlos.
+        """
+        if self.kind is not SensorKind.TEMPERATURE or self.value is None:
+            return None
+        techo = self.critical if self.critical is not None else self.high
+        if not techo or techo <= 0:
+            return None
+        fraccion = self.value / techo
+        if fraccion <= self.TIBIO_DESDE:
+            return 0.0
+        return min(1.0, (fraccion - self.TIBIO_DESDE) / (1 - self.TIBIO_DESDE))
+
 
 @dataclass(frozen=True, slots=True)
 class DriverHint:
@@ -1195,7 +1222,7 @@ _COMPUTED: dict[str, tuple[str, ...]] = {
     "DiskHealth": ("life_left_percent", "healthy"),
     "Disk": ("display_name", "used_bytes", "mounted_partitions"),
     "CpuInfo": ("total_cores", "total_threads", "package_power_w"),
-    "Sensor": ("unit", "category", "alarm", "alarm_level"),
+    "Sensor": ("heat", "unit", "category", "alarm", "alarm_level"),
     "Board": ("display_name", "bios_summary"),
     "MemoryModule": ("has_ecc", "underclocked", "rated_mts"),
     "SpdInfo": ("rated_mts",),
