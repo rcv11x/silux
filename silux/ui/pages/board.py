@@ -15,6 +15,7 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QLabel, QScrollArea, QVBoxLayout, QWidget
 
+from ...i18n import _
 from ... import render
 from ...model import Board, Need, Snapshot
 from ...settings import Preferences
@@ -22,19 +23,19 @@ from .. import theme
 from ..theme import Palette
 from ..widgets import Card, ChipRow, InfoGrid, Notice, ResponsiveRow, clear_layout
 
-BOARD_FIELDS = ("Fabricante", "Modelo", "Revisión", "Chasis", "Fabricante del chasis")
-FIRMWARE_FIELDS = ("Tipo", "Fabricante", "Versión", "Fecha", "Revisión SMBIOS",
-                   "Arranque seguro", "TPM")
-CHIPSET_FIELDS = ("Chipset", "Identificación PCI", "Controlador de memoria")
-SYSTEM_FIELDS = ("Fabricante", "Modelo", "Versión", "Familia", "SKU")
+BOARD_FIELDS = (_("memory.field.vendor"), _("storage.col.model"), _("board.field.revision"), "Chasis", "board.field.chassis")
+FIRMWARE_FIELDS = (_("memory.field.type"), _("memory.field.vendor"), "sys.field.version", "Fecha", _("board.field.smbios"),
+                   _("board.field.secureboot"), "TPM")
+CHIPSET_FIELDS = ("Chipset", "board.field.pciid", "board.field.memctl")
+SYSTEM_FIELDS = (_("memory.field.vendor"), _("storage.col.model"), "sys.field.version", _("cpu.field.family"), "SKU")
 
 NEED_TITLES = {
-    Need.ROOT: "Hace falta elevar permisos",
-    Need.DATABASE: "Falta en la base de datos",
-    Need.HARDWARE: "Este equipo no lo expone",
-    Need.DRIVER: "Falta un módulo del kernel",
-    Need.PLATFORM: "No aplica a esta plataforma",
-    Need.ERROR: "Falló al leerse",
+    Need.ROOT: "note.needsroot",
+    Need.DATABASE: "note.database",
+    Need.HARDWARE: "note.hardware",
+    Need.DRIVER: "note.needsmodule",
+    Need.PLATFORM: "note.platform",
+    Need.ERROR: "note.failed",
 }
 
 
@@ -59,8 +60,8 @@ class BoardPage(QScrollArea):
         layout.addWidget(self._build_header())
 
         top = ResponsiveRow(min_item_width=270)
-        self.board = self._grid_card(top, "Placa base", BOARD_FIELDS)
-        self.firmware = self._grid_card(top, "Firmware", FIRMWARE_FIELDS)
+        self.board = self._grid_card(top, _("nav.board"), BOARD_FIELDS)
+        self.firmware = self._grid_card(top, _("storage.field.firmware"), FIRMWARE_FIELDS)
         layout.addWidget(top)
 
         bottom = ResponsiveRow(min_item_width=270)
@@ -81,14 +82,14 @@ class BoardPage(QScrollArea):
         card = Card(title)
         grid = InfoGrid()
         for name in fields:
-            grid.add(name)
+            grid.add(_(name))
         card.body.addWidget(grid)
         host.add(card)
         return grid
 
     def _build_header(self) -> QWidget:
         card = Card()
-        self.title = QLabel("Leyendo la placa…")
+        self.title = QLabel(_("board.loading"))
         self.title.setObjectName("Headline")
         self.title.setWordWrap(True)
         self.title.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
@@ -113,38 +114,38 @@ class BoardPage(QScrollArea):
 
         d = render.DASH
         b = self.board.set
-        b("Fabricante", board.vendor or d)
-        b("Modelo", board.name or d)
-        b("Revisión", board.version or d)
+        b(_("memory.field.vendor"), board.vendor or d)
+        b(_("storage.col.model"), board.name or d)
+        b(_("board.field.revision"), board.version or d)
         b("Chasis", board.chassis or d)
-        b("Fabricante del chasis", board.chassis_vendor or d)
+        b(_("board.field.chassis"), board.chassis_vendor or d)
 
         f = self.firmware.set
-        f("Tipo", board.firmware or d)
-        f("Fabricante", board.bios_vendor or d)
-        f("Versión", board.bios_version or d)
+        f(_("memory.field.type"), board.firmware or d)
+        f(_("memory.field.vendor"), board.bios_vendor or d)
+        f(_("sys.field.version"), board.bios_version or d)
         f("Fecha", board.bios_date or d)
-        f("Revisión SMBIOS", board.bios_release or d,
+        f(_("board.field.smbios"), board.bios_release or d,
           tooltip="El campo «System BIOS Release» de la tabla SMBIOS. No es la "
                   "versión que publica el fabricante, sino la que declara el "
                   "firmware, y a menudo no coinciden.")
-        f("Arranque seguro", self._secure_boot(board))
+        f(_("board.field.secureboot"), self._secure_boot(board))
         f("TPM", board.tpm_version or "no detectado")
 
         c = self.chipset.set
         c("Chipset", board.chipset or d)
-        c("Identificación PCI", board.chipset_full or d,
+        c(_("board.field.pciid"), board.chipset_full or d,
           tooltip="El nombre completo con el que pci.ids identifica al puente "
                   "LPC/eSPI del bus 0, que es lo que define al chipset.")
-        c("Controlador de memoria", board.host_bridge or d,
+        c(_("board.field.memctl"), board.host_bridge or d,
           tooltip="En los procesadores modernos va integrado en la propia CPU, "
                   "no en el chipset.")
 
         s = self.system.set
-        s("Fabricante", board.system_vendor or d)
-        s("Modelo", board.system_name or d)
-        s("Versión", board.system_version or d)
-        s("Familia", board.system_family or d)
+        s(_("memory.field.vendor"), board.system_vendor or d)
+        s(_("storage.col.model"), board.system_name or d)
+        s(_("sys.field.version"), board.system_version or d)
+        s(_("cpu.field.family"), board.system_family or d)
         s("SKU", board.system_sku or d)
 
         self._apply_notices(snapshot)
@@ -165,7 +166,7 @@ class BoardPage(QScrollArea):
             board.chipset,
             board.firmware,
             board.tpm_version,
-            "Arranque seguro" if board.secure_boot else None,
+            _("board.field.secureboot") if board.secure_boot else None,
         ) if x)
         if wanted == self._badge_signature:
             return

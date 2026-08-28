@@ -62,10 +62,10 @@ class CpuLiveSection(QWidget):
 
     def _build_tiles(self) -> QWidget:
         row = ResponsiveRow(min_item_width=150)
-        self.tile_freq = StatTile("Frecuencia", "GHz", self._p)
-        self.tile_usage = StatTile("Uso", "%", self._p)
-        self.tile_temp = StatTile("Temperatura", "°C", self._p)
-        self.tile_power = StatTile("Consumo", "W", self._p)
+        self.tile_freq = StatTile(_("gpu.tile.clock"), "GHz", self._p)
+        self.tile_usage = StatTile(_("gpu.tile.usage"), "%", self._p)
+        self.tile_temp = StatTile(_("gpu.tile.temp"), "°C", self._p)
+        self.tile_power = StatTile(_("gpu.tile.power"), "W", self._p)
 
         # Cada gráfica sabe escribir su propia cifra cuando se la señala.
         intervalo = self._prefs.interval_s

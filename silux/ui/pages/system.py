@@ -14,6 +14,7 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QLabel, QScrollArea, QVBoxLayout, QWidget
 
+from ...i18n import _
 from ... import render
 from ...model import Snapshot, System
 from ...settings import Preferences
@@ -21,11 +22,11 @@ from .. import theme
 from ..theme import Palette
 from ..widgets import Card, ChipRow, InfoGrid, ResponsiveRow, StackedBar
 
-OS_FIELDS = ("Distribución", "Versión", "Variante", "Identificador", "Nombre del equipo")
-KERNEL_FIELDS = ("Kernel", "Arquitectura", "Compilación", "Init", "Escritorio", "Sesión", "Shell")
-MEMORY_FIELDS = ("Total", "Usada", "Disponible", "Aplicaciones", "Caché",
-                 "Buffers", "Compartida", "Libre", "Intercambio", "Intercambio usado")
-ACTIVITY_FIELDS = ("Encendido desde", "Tiempo encendido", "Procesos", "Hilos", "Archivos abiertos")
+OS_FIELDS = ("sys.field.distro", "sys.field.version", "Variante", _("gpu.field.id"), _("sys.field.hostname"))
+KERNEL_FIELDS = ("Kernel", _("cpu.field.arch"), _("sys.field.build"), "Init", "Escritorio", "sys.field.session", "Shell")
+MEMORY_FIELDS = ("gpu.vram.total", "Usada", "Disponible", "Aplicaciones", "sys.field.cache",
+                 "Buffers", "Compartida", _("storage.col.free"), "Intercambio", "sys.field.swapused")
+ACTIVITY_FIELDS = ("sys.field.since", _("sys.field.uptime"), "Procesos", _("cpu.field.threads"), "sys.field.openfiles")
 
 
 def format_uptime(seconds: float) -> str:
@@ -61,24 +62,24 @@ class SystemPage(QScrollArea):
 
         layout.addWidget(self._build_header())
 
-        memory_card = Card("Memoria")
+        memory_card = Card(_("nav.memory"))
         self.bar = StackedBar(palette)
         self.memory = InfoGrid()
         for name in MEMORY_FIELDS:
-            self.memory.add(name)
+            self.memory.add(_(name))
         memory_card.body.addWidget(self.bar)
         memory_card.body.addWidget(self.memory)
         layout.addWidget(memory_card)
 
         row = ResponsiveRow(min_item_width=270)
-        self.os = self._grid_card(row, "Sistema operativo", OS_FIELDS)
-        self.kernel = self._grid_card(row, "Kernel y entorno", KERNEL_FIELDS)
+        self.os = self._grid_card(row, _("sys.card.os"), OS_FIELDS)
+        self.kernel = self._grid_card(row, _("sys.card.kernel"), KERNEL_FIELDS)
         layout.addWidget(row)
 
         activity_card = Card("Actividad")
         self.activity = InfoGrid()
         for name in ACTIVITY_FIELDS:
-            self.activity.add(name)
+            self.activity.add(_(name))
         activity_card.body.addWidget(self.activity)
         layout.addWidget(activity_card)
 
@@ -90,14 +91,14 @@ class SystemPage(QScrollArea):
         card = Card(title)
         grid = InfoGrid()
         for name in fields:
-            grid.add(name)
+            grid.add(_(name))
         card.body.addWidget(grid)
         host.add(card)
         return grid
 
     def _build_header(self) -> QWidget:
         card = Card()
-        self.title = QLabel("Leyendo el sistema…")
+        self.title = QLabel(_("sys.loading"))
         self.title.setObjectName("Headline")
         self.title.setWordWrap(True)
         self.subtitle = QLabel("")
@@ -128,16 +129,16 @@ class SystemPage(QScrollArea):
         self.bar.set_segments(
             [
                 ("Aplicaciones", memory.apps_bytes, "accent"),
-                ("Caché", memory.cache_bytes, "info"),
+                ("sys.field.cache", memory.cache_bytes, "info"),
                 ("Buffers", memory.buffers_bytes, "warn"),
-                ("Libre", memory.free_bytes, "line"),
+                (_("storage.col.free"), memory.free_bytes, "line"),
             ],
             total=memory.total_bytes,
             formatter=render.size,
         )
 
         m = self.memory.set
-        m("Total", render.size(memory.total_bytes))
+        m("gpu.vram.total", render.size(memory.total_bytes))
         m("Usada", f"{render.size(memory.used_bytes)}   ({memory.used_percent:.0f} %)",
           tooltip="Total menos disponible. No se resta solo la libre porque en "
                   "Linux el kernel usa como caché toda la que sobra y la "
@@ -147,43 +148,43 @@ class SystemPage(QScrollArea):
           tooltip="Total menos libre, buffers y caché recuperable. Sale algo "
                   "menor que «Usada» porque esa incluye la caché que el kernel "
                   "no puede devolver, como tmpfs y la memoria compartida.")
-        m("Caché", render.size(memory.cache_bytes),
+        m(_("sys.field.cache"), render.size(memory.cache_bytes),
           tooltip="Caché de disco recuperable: Cached + SReclaimable − Shmem.")
         m("Buffers", render.size(memory.buffers_bytes))
         m("Compartida", render.size(memory.shared_bytes))
-        m("Libre", render.size(memory.free_bytes))
+        m(_("storage.col.free"), render.size(memory.free_bytes))
         hay_swap = bool(memory.swap_total_bytes)
         m("Intercambio", render.size(memory.swap_total_bytes) if hay_swap else "sin swap")
         # Sin swap, «Intercambio usado: —» se lee como si faltara un dato. No
         # falta: es que no hay nada de lo que decir cuánto se usa.
-        self.memory.set_visible("Intercambio usado", hay_swap)
+        self.memory.set_visible(_("sys.field.swapused"), hay_swap)
         if hay_swap:
-            m("Intercambio usado",
+            m(_("sys.field.swapused"),
               f"{render.size(memory.swap_used_bytes)}   "
               f"({memory.swap_used_percent:.0f} %)")
 
         o = self.os.set
-        o("Distribución", system.distribution or d)
-        o("Versión", system.version_id or d)
+        o(_("sys.field.distro"), system.distribution or d)
+        o(_("sys.field.version"), system.version_id or d)
         o("Variante", system.variant or d)
-        o("Identificador", system.distribution_id or d)
-        o("Nombre del equipo", system.hostname or d)
+        o(_("gpu.field.id"), system.distribution_id or d)
+        o(_("sys.field.hostname"), system.hostname or d)
 
         k = self.kernel.set
         k("Kernel", system.kernel or d)
-        k("Arquitectura", system.architecture or d)
-        k("Compilación", system.kernel_build or d)
+        k(_("cpu.field.arch"), system.architecture or d)
+        k(_("sys.field.build"), system.kernel_build or d)
         k("Init", system.init or d)
         k("Escritorio", system.desktop or d)
-        k("Sesión", system.session_type or d)
+        k(_("sys.field.session"), system.session_type or d)
         k("Shell", system.shell or d)
 
         a = self.activity.set
-        a("Encendido desde", system.boot_time or d)
-        a("Tiempo encendido", format_uptime(system.uptime_seconds))
+        a(_("sys.field.since"), system.boot_time or d)
+        a(_("sys.field.uptime"), format_uptime(system.uptime_seconds))
         a("Procesos", f"{system.processes:,}".replace(",", " "))
-        a("Hilos", f"{system.threads:,}".replace(",", " "))
-        a("Archivos abiertos", f"{system.open_files:,}".replace(",", " "))
+        a(_("cpu.field.threads"), f"{system.threads:,}".replace(",", " "))
+        a(_("sys.field.openfiles"), f"{system.open_files:,}".replace(",", " "))
 
     def _apply_badges(self, system: System) -> None:
         session = None
