@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (QHBoxLayout, QLabel, QPushButton, QScrollArea,
                                QVBoxLayout, QWidget)
 
 from ... import render
+from ...i18n import _
 from ...model import Disk, Snapshot
 from ...settings import Preferences
 from .. import theme
@@ -24,14 +25,14 @@ from ..widgets import (Card, ChipRow, InfoGrid, Notice, ResponsiveRow,
                        StackedBar, StatTile, Table,
                        boton_de_permiso_permanente, clear_layout)
 
-DISK_HEADERS = ("Unidad", "Modelo", "Tipo", "Capacidad", "Ocupado",
-                "Temperatura", "Leyendo", "Escribiendo")
-PART_HEADERS = ("Partición", "Sistema", "Montada en", "Tamaño", "Usado", "Libre")
+DISK_HEADERS = ("storage.col.unit", "storage.col.model", "gpu.vram.type", "storage.col.size", "storage.col.used",
+                "gpu.sensor.temp", _("storage.tile.reading"), "storage.tile.writing")
+PART_HEADERS = ("storage.col.part", "storage.col.fs", "storage.col.mount", "storage.col.size2", "storage.col.used2", "storage.col.free")
 
-DISK_FIELDS = ("Modelo", "Fabricante", "Tipo", "Conexión", "Capacidad",
-               "Firmware", "Sector lógico", "Sector físico", "Planificador",
-               "Enlace", "Temperatura", "Horas encendido", "Escrito en total",
-               "Vida restante")
+DISK_FIELDS = ("storage.col.model", "gpu.field.vendor", "gpu.vram.type", "storage.field.bus", "storage.col.size",
+               "storage.field.firmware", "storage.field.logical", "storage.field.physical", "storage.field.scheduler",
+               "gpu.clock.link", "gpu.sensor.temp", "storage.field.hours", "storage.field.written",
+               "storage.field.life")
 
 # Los discos se ordenan por lo que le importa a quien mira: primero el que
 # lleva el sistema, luego por tipo y al final los que se pueden desenchufar.
@@ -79,14 +80,14 @@ class StoragePage(QScrollArea):
         self._avisos_host.setSpacing(6)
         layout.addLayout(self._avisos_host)
 
-        disk_card = Card("Unidades")
-        self.disks = Table(DISK_HEADERS,
+        disk_card = Card(_("storage.card.disks"))
+        self.disks = Table([_(h) for h in DISK_HEADERS],
                            numeric=(False, False, False, True, True, True, True, True))
         disk_card.body.addWidget(self.disks)
         layout.addWidget(disk_card)
 
-        part_card = Card("Particiones montadas")
-        self.parts = Table(PART_HEADERS, numeric=(False, False, False, True, True, True))
+        part_card = Card(_("storage.card.parts"))
+        self.parts = Table([_(h) for h in PART_HEADERS], numeric=(False, False, False, True, True, True))
         part_card.body.addWidget(self.parts)
         layout.addWidget(part_card)
 
@@ -105,7 +106,7 @@ class StoragePage(QScrollArea):
 
     def _build_header(self) -> QWidget:
         card = Card()
-        self.title = QLabel("Leyendo los discos…")
+        self.title = QLabel(_("storage.loading"))
         self.title.setObjectName("Headline")
         self.title.setWordWrap(True)
         self.subtitle = QLabel("")
@@ -121,10 +122,10 @@ class StoragePage(QScrollArea):
 
     def _build_tiles(self) -> QWidget:
         fila = ResponsiveRow(min_item_width=150)
-        self.tile_read = StatTile("Leyendo", "", self._p)
-        self.tile_write = StatTile("Escribiendo", "", self._p)
-        self.tile_free = StatTile("Espacio libre", "", self._p)
-        self.tile_temp = StatTile("Más caliente", "°C", self._p)
+        self.tile_read = StatTile(_("storage.tile.reading"), "", self._p)
+        self.tile_write = StatTile(_("storage.tile.writing"), "", self._p)
+        self.tile_free = StatTile(_("storage.tile.free"), "", self._p)
+        self.tile_temp = StatTile(_("storage.tile.hottest"), "°C", self._p)
         for tile in (self.tile_read, self.tile_write, self.tile_free, self.tile_temp):
             fila.add(tile)
         # El espacio libre no se mueve de un segundo a otro: su curva sería una
@@ -139,24 +140,20 @@ class StoragePage(QScrollArea):
 
     def _build_elevation(self) -> Card:
         """La tarjeta que explica qué falta y por qué, con su botón."""
-        card = Card("Estado de los discos")
+        card = Card(_("storage.card.health"))
         self.elevation_text = QLabel(
-            "Las horas de encendido, los terabytes escritos y el desgaste los "
-            "guarda cada disco en sus propios contadores de diagnóstico. El "
-            "kernel reserva esos comandos al administrador porque son los "
-            "mismos que sirven para borrar un disco."
+            _("storage.health.body")
         )
         self.elevation_text.setObjectName("NoticeBody")
         self.elevation_text.setWordWrap(True)
 
         detalle = QLabel(
-            "El ayudante que se lanza solo sabe pedir diagnóstico y leer unas "
-            "tablas del sistema: no ejecuta órdenes ni escribe nada."
+            _("storage.health.hint")
         )
         detalle.setObjectName("Muted")
         detalle.setWordWrap(True)
 
-        self.elevation_button = QPushButton("Leer con permisos de administrador")
+        self.elevation_button = QPushButton(_("perm.read.button"))
         self.elevation_button.clicked.connect(self.elevation_requested)
         self.permanent_button = boton_de_permiso_permanente()
         self.permanent_button.clicked.connect(self.permanent_requested)
@@ -218,7 +215,7 @@ class StoragePage(QScrollArea):
     def _apply_header(self, discos) -> None:
         d = render.DASH
         if not discos:
-            self.title.setText("Sin unidades de almacenamiento")
+            self.title.setText(_("storage.none"))
             self.subtitle.setText("")
             self.total_bar.hide()
             return
@@ -252,9 +249,10 @@ class StoragePage(QScrollArea):
             libre = sum(p.free_bytes or 0 for x in discos
                         for p in x.mounted_partitions)
             sin_montar = max(0, total - usado - libre)
-            segmentos = [("Ocupado", usado, "accent"), ("Libre", libre, "line")]
+            segmentos = [(_("storage.col.used"), usado, "accent"),
+                         (_("storage.col.free"), libre, "line")]
             if sin_montar:
-                segmentos.append(("Sin montar", sin_montar, "muted"))
+                segmentos.append((_("storage.bar.unmounted"), sin_montar, "muted"))
             self.total_bar.set_segments(
                 segmentos, total=total, formatter=render.size,
             )
@@ -355,8 +353,8 @@ class StoragePage(QScrollArea):
         usado = disco.used_bytes
         if disco.size_bytes and usado:
             barra.set_segments(
-                [("Ocupado", usado, "accent"),
-                 ("Libre", max(0, disco.size_bytes - usado), "line")],
+                [(_("storage.col.used"), usado, "accent"),
+                 (_("storage.col.free"), max(0, disco.size_bytes - usado), "line")],
                 total=disco.size_bytes, formatter=render.size,
             )
             barra.show()
@@ -364,31 +362,31 @@ class StoragePage(QScrollArea):
             barra.hide()
 
         f = grid.set
-        f("Modelo", disco.model or d)
-        f("Fabricante", disco.vendor or d)
-        f("Tipo", disco.kind or d,
+        f(_("storage.col.model"), disco.model or d)
+        f(_("gpu.field.vendor"), disco.vendor or d)
+        f(_("gpu.vram.type"), disco.kind or d,
           tooltip="No hay ningún campo que lo diga: se deduce de si el kernel "
                   "considera que el disco gira y de por qué bus va conectado.")
-        f("Conexión", (disco.transport or d).upper() if disco.transport else d)
-        f("Capacidad", render.size(disco.size_bytes))
-        f("Firmware", disco.firmware or d)
-        f("Sector lógico", f"{disco.logical_sector} B" if disco.logical_sector else d)
-        f("Sector físico", f"{disco.physical_sector} B" if disco.physical_sector else d,
+        f(_("storage.field.bus"), (disco.transport or d).upper() if disco.transport else d)
+        f(_("storage.col.size"), render.size(disco.size_bytes))
+        f(_("storage.field.firmware"), disco.firmware or d)
+        f(_("storage.field.logical"), f"{disco.logical_sector} B" if disco.logical_sector else d)
+        f(_("storage.field.physical"), f"{disco.physical_sector} B" if disco.physical_sector else d,
           tooltip="Los discos modernos trabajan en sectores de 4 KB por dentro "
                   "aunque le digan al sistema que son de 512 B.")
-        f("Planificador", disco.scheduler or d,
+        f(_("storage.field.scheduler"), disco.scheduler or d,
           tooltip="Cómo ordena el kernel las peticiones antes de mandarlas al "
                   "disco. En un NVMe suele estar desactivado porque el propio "
                   "disco lo hace mejor.")
-        f("Enlace", render.pcie_link(disco.link) if disco.link else d)
-        f("Temperatura", render.temperature(disco.temp_c, self._prefs.fahrenheit))
+        f(_("gpu.clock.link"), render.pcie_link(disco.link) if disco.link else d)
+        f(_("gpu.sensor.temp"), render.temperature(disco.temp_c, self._prefs.fahrenheit))
 
         salud = disco.health
-        f("Horas encendido", f"{salud.power_on_hours:n} h" if salud.power_on_hours else d)
-        f("Escrito en total", render.size(salud.written_bytes) if salud.written_bytes else d,
+        f(_("storage.field.hours"), f"{salud.power_on_hours:n} h" if salud.power_on_hours else d)
+        f(_("storage.field.written"), render.size(salud.written_bytes) if salud.written_bytes else d,
           tooltip="El TBW: cuántos datos se han escrito en este disco desde que "
                   "salió de fábrica. Es lo que consume la vida de un SSD.")
-        f("Vida restante",
+        f(_("storage.field.life"),
           f"{salud.life_left_percent} %" if salud.life_left_percent is not None else d,
           tooltip="Lo que el propio disco calcula que le queda, según su "
                   "contador de desgaste.")
