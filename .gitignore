@@ -16,3 +16,23 @@ dist/
 # sueltas, son las reglas que sostienen el diseño y la lista de lo que ya se
 # probó y no funcionó, que es lo que hace falta leer antes de tocar el código.
 RETOMAR.md
+
+# Lo que el propio programa genera al usarlo, que lleva datos de la máquina de
+# quien lo ejecute. El README y el CLAUDE.md mandan escribir justo estas dos
+# cosas en el directorio del proyecto, así que sin esto un `git add -A` acaba
+# subiendo el nombre del equipo, las IP y los números de serie de alguien.
+#
+# El informe omite los identificadores por defecto, pero con
+# `--with-identifiers` los incluye, y esa es la variante que se pide cuando
+# alguien está depurando un fallo de verdad.
+informe*.md
+*-report.md
+silux-report*.md
+
+# Capturas recién hechas. Las de `capturas/` sí van versionadas: están
+# saneadas a mano —seriales a ceros, IP en 192.0.2.x y MAC en 00:00:5e:…,
+# que son los rangos reservados para documentación— y hay que mantenerlas
+# así. Una captura nueva sale con los datos reales de la máquina.
+/*.png
+salida.png
+captura*.png
