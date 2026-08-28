@@ -44,6 +44,8 @@ LIB_VULKAN = ("libvulkan.so.1", "libvulkan.so")
 LIB_OPENCL = ("libOpenCL.so.1", "libOpenCL.so")
 LIB_EGL = ("libEGL.so.1", "libEGL.so")
 LIB_GL = ("libGL.so.1", "libGL.so")
+LIB_VA = ("libva.so.2", "libva.so.1", "libva.so")
+LIB_VA_DRM = ("libva-drm.so.2", "libva-drm.so.1", "libva-drm.so")
 
 
 class ApiError(RuntimeError):
@@ -394,11 +396,200 @@ def opengl() -> Optional[dict]:
                 egl.eglTerminate(pantalla)
 
 
+# -- VA-API: qué códecs acelera la tarjeta -----------------------------------
+#
+# Es lo que contesta `vainfo`, y es de lo más útil que se puede saber de una
+# gráfica: si el equipo va a decodificar un vídeo en el chip o a quemarle la
+# CPU. Vale para las tres marcas —Intel con iHD, AMD con radeonsi, NVIDIA con
+# el driver de VA-API— y, a diferencia de OpenGL, se abre sobre un nodo de
+# render concreto, así que **se sabe de qué tarjeta se está hablando**.
+
+# Perfiles de VA-API, agrupados por códec. El número es el valor del enum de
+# `va.h` y no se puede deducir del nombre, así que va escrito.
+VA_PERFILES: dict[int, tuple[str, str, Optional[int]]] = {
+    0:  ("MPEG-2", "Simple", 8),
+    1:  ("MPEG-2", "Main", 8),
+    2:  ("MPEG-4", "Simple", 8),
+    3:  ("MPEG-4", "Advanced Simple", 8),
+    4:  ("MPEG-4", "Main", 8),
+    5:  ("H.264", "Baseline", 8),
+    6:  ("H.264", "Main", 8),
+    7:  ("H.264", "High", 8),
+    8:  ("VC-1", "Simple", 8),
+    9:  ("VC-1", "Main", 8),
+    10: ("VC-1", "Advanced", 8),
+    11: ("H.263", "Baseline", 8),
+    12: ("JPEG", "Baseline", 8),
+    13: ("H.264", "Constrained Baseline", 8),
+    14: ("VP8", "Version 0.3", 8),
+    15: ("H.264", "Multiview High", 8),
+    16: ("H.264", "Stereo High", 8),
+    17: ("HEVC", "Main", 8),
+    18: ("HEVC", "Main 10", 10),
+    19: ("VP9", "Profile 0", 8),
+    20: ("VP9", "Profile 1", 8),
+    21: ("VP9", "Profile 2", 10),
+    22: ("VP9", "Profile 3", 10),
+    23: ("HEVC", "Main 12", 12),
+    24: ("HEVC", "Main 4:2:2 10", 10),
+    25: ("HEVC", "Main 4:2:2 12", 12),
+    26: ("HEVC", "Main 4:4:4", 8),
+    27: ("HEVC", "Main 4:4:4 10", 10),
+    28: ("HEVC", "Main 4:4:4 12", 12),
+    29: ("HEVC", "SCC Main", 8),
+    30: ("HEVC", "SCC Main 10", 10),
+    31: ("HEVC", "SCC Main 4:4:4", 8),
+    32: ("AV1", "Profile 0", 10),
+    33: ("AV1", "Profile 1", 10),
+    34: ("HEVC", "SCC Main 4:4:4 10", 10),
+    36: ("H.264", "High 10", 10),
+    37: ("VVC", "Main 10", 10),
+    38: ("VVC", "Multilayer Main 10", 10),
+}
+
+# Qué significa cada punto de entrada. Los que no están aquí —postproceso,
+# estadísticas, contenido protegido— no son ni decodificar ni codificar.
+VA_DECODIFICA = frozenset({1})                    # VLD
+VA_CODIFICA = frozenset({6, 7, 8, 11})            # EncSlice, EncPicture, LP, FEI
+
+# El orden en que se enseñan: primero lo que la gente busca.
+VA_ORDEN = ("AV1", "VVC", "HEVC", "H.264", "VP9", "VP8", "MPEG-2", "MPEG-4",
+            "VC-1", "H.263", "JPEG")
+
+
+def _nodos_de_render() -> list[str]:
+    try:
+        entradas = sorted(os.listdir("/dev/dri"))
+    except OSError:
+        return []
+    return [f"/dev/dri/{n}" for n in entradas if n.startswith("renderD")]
+
+
+def vaapi() -> list[dict]:
+    """Los códecs que acelera cada nodo de render, uno por uno.
+
+    Se abre cada nodo por separado a propósito: así el resultado va atado a
+    una tarjeta concreta y no hay que adivinar de cuál habla, que es el
+    problema que tienen OpenGL y OpenCL en un portátil híbrido.
+    """
+    lib = _cargar(LIB_VA)
+    drm = _cargar(LIB_VA_DRM)
+    if lib is None or drm is None:
+        return []
+
+    drm.vaGetDisplayDRM.restype = ctypes.c_void_p
+    drm.vaGetDisplayDRM.argtypes = [ctypes.c_int]
+    lib.vaInitialize.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_int),
+                                 ctypes.POINTER(ctypes.c_int)]
+    lib.vaTerminate.argtypes = [ctypes.c_void_p]
+    lib.vaMaxNumProfiles.argtypes = [ctypes.c_void_p]
+    lib.vaMaxNumEntrypoints.argtypes = [ctypes.c_void_p]
+    lib.vaQueryVendorString.restype = ctypes.c_char_p
+    lib.vaQueryVendorString.argtypes = [ctypes.c_void_p]
+    # Sin declarar estos dos, ctypes le pasa el puntero del display truncado a
+    # 32 bits y el proceso se cae de golpe. El resto de la biblioteca perdona
+    # porque devuelve entero; estas escriben en memoria del que llama.
+    lib.vaQueryConfigProfiles.argtypes = [
+        ctypes.c_void_p, ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int)]
+    lib.vaQueryConfigEntrypoints.argtypes = [
+        ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ctypes.c_int),
+        ctypes.POINTER(ctypes.c_int)]
+
+    salida = []
+    for ruta in _nodos_de_render():
+        datos = _vaapi_de(lib, drm, ruta)
+        if datos is not None:
+            salida.append(datos)
+    return salida
+
+
+def _vaapi_de(lib, drm, ruta: str) -> Optional[dict]:
+    """Abre un nodo de render, pregunta y lo cierra todo pase lo que pase."""
+    try:
+        descriptor = os.open(ruta, os.O_RDWR)
+    except OSError:
+        return None                      # sin permiso sobre el nodo, o no está
+
+    display = None
+    try:
+        with _sin_ruido():
+            display = drm.vaGetDisplayDRM(descriptor)
+            if not display:
+                return None
+            mayor, menor = ctypes.c_int(), ctypes.c_int()
+            if lib.vaInitialize(display, ctypes.byref(mayor),
+                                ctypes.byref(menor)) != 0:
+                return None
+
+            fabricante = lib.vaQueryVendorString(display)
+            codecs = _va_codecs(lib, display)
+        if not codecs:
+            return None
+        return {
+            "node": os.path.basename(ruta),
+            "version": f"{mayor.value}.{menor.value}",
+            "driver": (fabricante or b"").decode("utf-8", "replace").strip() or None,
+            "codecs": codecs,
+        }
+    except (OSError, AttributeError, ValueError):
+        return None
+    finally:
+        if display:
+            with _sin_ruido():
+                lib.vaTerminate(display)
+        os.close(descriptor)
+
+
+def _va_codecs(lib, display) -> list[dict]:
+    """Recorre los perfiles y agrupa por códec lo que sabe hacer cada uno."""
+    tope = lib.vaMaxNumProfiles(display)
+    if tope <= 0:
+        return []
+    perfiles = (ctypes.c_int * tope)()
+    cuantos = ctypes.c_int()
+    if lib.vaQueryConfigProfiles(display, perfiles,
+                                 ctypes.byref(cuantos)) != 0:
+        return []
+
+    tope_e = max(lib.vaMaxNumEntrypoints(display), 1)
+    puntos = (ctypes.c_int * tope_e)()
+    agrupado: dict[str, dict] = {}
+
+    for indice in range(min(cuantos.value, tope)):
+        conocido = VA_PERFILES.get(perfiles[indice])
+        if conocido is None:
+            continue                     # perfil nuevo que aún no está en la tabla
+        codec, perfil, bits = conocido
+        cuantos_e = ctypes.c_int()
+        if lib.vaQueryConfigEntrypoints(display, perfiles[indice], puntos,
+                                        ctypes.byref(cuantos_e)) != 0:
+            continue
+        entradas = {puntos[i] for i in range(min(cuantos_e.value, tope_e))}
+        decodifica = bool(entradas & VA_DECODIFICA)
+        codifica = bool(entradas & VA_CODIFICA)
+        if not (decodifica or codifica):
+            continue
+
+        entrada = agrupado.setdefault(codec, {"name": codec, "decode": False,
+                                              "encode": False, "bits": None,
+                                              "profiles": []})
+        entrada["decode"] = entrada["decode"] or decodifica
+        entrada["encode"] = entrada["encode"] or codifica
+        if bits is not None:
+            entrada["bits"] = max(entrada["bits"] or 0, bits)
+        entrada["profiles"].append(perfil)
+
+    orden = {nombre: i for i, nombre in enumerate(VA_ORDEN)}
+    return sorted(agrupado.values(),
+                  key=lambda c: (orden.get(c["name"], len(orden)), c["name"]))
+
+
 # -- las tres a la vez, en un proceso que se tira después ---------------------
 
 def en_este_proceso() -> dict[str, Any]:
     """Pregunta a las tres aquí mismo. Es lo que ejecuta el proceso hijo."""
-    return {"vulkan": vulkan(), "opencl": opencl(), "opengl": opengl()}
+    return {"vulkan": vulkan(), "opencl": opencl(), "opengl": opengl(),
+            "vaapi": vaapi()}
 
 
 def consultar() -> dict[str, Any]:
@@ -408,7 +599,8 @@ def consultar() -> dict[str, Any]:
     aquí: hacerlo funcionaría, pero dejaría el programa por encima de su
     presupuesto de memoria para siempre, y eso no se arregla luego.
     """
-    vacio: dict[str, Any] = {"vulkan": [], "opencl": [], "opengl": None}
+    vacio: dict[str, Any] = {"vulkan": [], "opencl": [], "opengl": None,
+                             "vaapi": []}
     # El directorio que contiene el paquete, para que el hijo lo encuentre esté
     # silux instalado o ejecutándose desde el código fuente.
     raiz = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

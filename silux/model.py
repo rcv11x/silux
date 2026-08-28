@@ -662,6 +662,39 @@ class Display:
 
 
 @dataclass(frozen=True, slots=True)
+class VideoCodec:
+    """Un códec y qué sabe hacer la tarjeta con él por hardware.
+
+    Es de lo más útil que se puede saber de una gráfica: decide si un vídeo se
+    va a decodificar en el chip, gastando un par de vatios, o a base de CPU. Y
+    la diferencia entre decodificar y codificar importa: casi todas leen AV1 y
+    muy pocas lo escriben.
+    """
+
+    name: str                             # H.264, HEVC, AV1…
+    decode: bool = False
+    encode: bool = False
+    max_bit_depth: Optional[int] = None   # 8, 10 o 12
+    profiles: tuple[str, ...] = ()        # los que da el driver, sin tocar
+
+
+@dataclass(frozen=True, slots=True)
+class GpuEngine:
+    """Un motor de la gráfica: qué sabe hacer y cuánto está ocupado.
+
+    Una tarjeta moderna no es un bloque que está «al 40 %»: son varias
+    unidades independientes —dibujo, copia, decodificación de video— y saber
+    cuál va cargada es la diferencia entre «la gráfica no da más» y «el
+    decodificador está saturado y el resto duerme».
+    """
+
+    name: str                       # rcs0, vcs0…, tal como lo llama el kernel
+    kind: Optional[str] = None      # render, copia, video, video-enhance
+    busy_percent: Optional[float] = None
+    capabilities: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
 class Gpu:
     """Una tarjeta gráfica: lo que sabe el kernel y lo que dicen las APIs."""
 
@@ -694,6 +727,12 @@ class Gpu:
     busy_percent: Optional[float] = None
     memory_busy_percent: Optional[float] = None
     video_busy_percent: Optional[float] = None
+    # Cuánto del intervalo ha pasado la gráfica dormida del todo. No es «100
+    # menos el uso»: entre estar ocupada y estar en reposo profundo hay un
+    # término medio, encendida y sin trabajo, que en consumo no es lo mismo.
+    sleep_percent: Optional[float] = None
+    engines: tuple[GpuEngine, ...] = ()
+    codecs: tuple[VideoCodec, ...] = ()
     temp_c: Optional[float] = None
     hotspot_c: Optional[float] = None
     memory_temp_c: Optional[float] = None
