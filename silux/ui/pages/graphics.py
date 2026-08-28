@@ -529,7 +529,7 @@ def _fila_de_salida(salida) -> tuple[str, ...]:
         salida.connector,
         render.monitor_name(monitor),
         salida.resolution or d,
-        monitor.refresh_range or d,
+        monitor.refresh_summary or d,
         f'{monitor.diagonal_inches}"' if monitor.diagonal_inches else d,
         render.monitor_color(monitor),
         monitor.made or d,

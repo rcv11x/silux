@@ -516,3 +516,65 @@ class TestRamasRecordadas(unittest.TestCase):
         arbol.topLevelItem(0).setExpanded(False)
         clave = f"::{arbol.topLevelItem(0).text(0)}"
         self.assertIn(clave, arbol.collapsed())
+
+
+class TestRepartoDeLaRejillaDeNucleos(unittest.TestCase):
+    """Cuántas celdas por fila. Con lo que cabe a secas, dieciséis hilos
+    salían doce arriba y cuatro abajo, y ocho salían seis y dos."""
+
+    @classmethod
+    def setUpClass(cls):
+        from PySide6.QtWidgets import QApplication
+        cls.app = QApplication.instance() or QApplication([])
+
+    def _matriz(self, hilos: int, ancho: int):
+        from silux.ui import theme
+        from silux.ui.widgets import CoreMatrix
+
+        matriz = CoreMatrix(theme.DARK)
+        matriz.set_cores([{"name": f"CPU {i}", "detail": "", "usage": 0.0}
+                          for i in range(hilos)])
+        matriz.resize(ancho, 400)
+        return matriz
+
+    def _reparto(self, hilos: int, ancho: int) -> list[int]:
+        columnas = self._matriz(hilos, ancho)._columns()
+        return [min(columnas, hilos - i * columnas)
+                for i in range((hilos + columnas - 1) // columnas)]
+
+    def test_dieciseis_hilos_no_dejan_una_fila_de_cuatro(self):
+        """Donde caben doce salían doce arriba y cuatro abajo. Dos filas de
+        ocho se leen de un vistazo como los dos hilos por núcleo que casi
+        siempre son."""
+        self.assertEqual(self._reparto(16, 2000), [8, 8])
+
+    def test_ocho_hilos_no_salen_seis_y_dos(self):
+        """Cuánto se baja depende de lo ancha que sea la ventana; lo que no
+        vale es dejar dos celdas sueltas debajo de seis."""
+        reparto = self._reparto(8, 1200)
+        self.assertGreaterEqual(reparto[-1] * 2, reparto[0], reparto)
+
+    def test_la_ultima_fila_nunca_queda_casi_vacia(self):
+        for hilos in (4, 6, 8, 12, 16, 20, 24, 32):
+            for ancho in (700, 1100, 1500, 2000):
+                with self.subTest(hilos=hilos, ancho=ancho):
+                    reparto = self._reparto(hilos, ancho)
+                    if len(reparto) > 1:
+                        self.assertGreaterEqual(reparto[-1] * 2, reparto[0],
+                                                f"{hilos} en {ancho}: {reparto}")
+
+    def test_no_se_estrecha_mas_de_la_cuenta(self):
+        """Quitar columnas ensancha las celdas: el reparto perfecto no vale a
+        cualquier precio."""
+        import math
+
+        matriz = self._matriz(16, 1500)
+        caben = max(1, int((matriz.width() + matriz.GAP)
+                           // (matriz._cell_w + matriz.GAP)))
+        self.assertGreaterEqual(matriz._columns(), math.ceil(caben * 0.6))
+
+    def test_si_caben_todos_van_en_una_fila(self):
+        self.assertEqual(self._reparto(4, 2400), [4])
+
+    def test_una_ventana_estrechisima_sigue_dando_una_columna(self):
+        self.assertGreaterEqual(self._matriz(16, 60)._columns(), 1)

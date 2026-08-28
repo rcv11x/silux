@@ -707,7 +707,21 @@ def _intel_hz(dispositivo: pathlib.Path, nodo: Optional[pathlib.Path],
     - i915 desde el kernel 6.2 las mete en `gt/gt0/` con el prefijo `rps_`,
       para poder tener más de un motor gráfico por tarjeta.
     - xe, el driver nuevo, usa otra jerarquía distinta.
+
+    Un cero se devuelve tal cual cuando es la frecuencia de ahora mismo: una
+    integrada en reposo profundo apaga el motor gráfico y marca 0, y eso es la
+    respuesta, no la falta de ella. Descartarlo dejaba «Núcleo —» en la ficha
+    de un ThinkPad mientras la curva de al lado sí tenía historial, que es la
+    contradicción por la que se vio. En un máximo o un mínimo sí es un campo
+    sin rellenar: nadie tiene un techo de 0 MHz.
     """
+    actual = cual in ("cur", "act")
+
+    def escalar(mhz: Optional[int]) -> Optional[int]:
+        if mhz is None or (mhz == 0 and not actual):
+            return None
+        return mhz * 1_000_000
+
     if nodo is not None:
         # `act` es la que va de verdad; `cur` es la que se ha pedido. Para el
         # máximo no hay tal distinción.
@@ -717,13 +731,13 @@ def _intel_hz(dispositivo: pathlib.Path, nodo: Optional[pathlib.Path],
                      f"{nodo}/gt_{medida}_freq_mhz",
                      f"{nodo}/gt_{cual}_freq_mhz"):
             if (mhz := read_int(ruta)) is not None:
-                return mhz * 1_000_000 if mhz else None
+                return escalar(mhz)
 
     mhz = read_int(f"{dispositivo}/gt_{cual}_freq_mhz")
     if mhz is None:
         # xe, el driver nuevo de Intel, las mueve dentro de la jerarquía de gt.
         mhz = read_int(f"{dispositivo}/tile0/gt0/freq0/{cual}_freq")
-    return mhz * 1_000_000 if mhz else None
+    return escalar(mhz)
 
 
 # -- hwmon de la propia tarjeta ---------------------------------------------

@@ -53,6 +53,11 @@ class TestPropiedadesExportadas(unittest.TestCase):
         # placa. El chasis del que sale ya va en el JSON, así que quien lo
         # lea puede decidir lo mismo por su cuenta.
         ("Board", "chassis_is_portable"),
+        # Dice de dónde salió el refresco que se enseña, para que la interfaz
+        # pueda aclarar que es el modo preferido y no un techo declarado. Los
+        # dos campos de los que sale ya van en el JSON, así que quien lo lea
+        # puede distinguirlo igual.
+        ("Edid", "refresh_is_native_only"),
     }
 
     def test_ninguna_propiedad_se_queda_fuera(self):
