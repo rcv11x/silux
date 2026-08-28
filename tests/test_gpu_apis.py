@@ -146,7 +146,10 @@ class TestConsultaEnOtroProceso(unittest.TestCase):
     el dato antes que pagar esa memoria para siempre.
     """
 
-    VACIO = {"vulkan": [], "opencl": [], "opengl": None}
+    # Cada API que se añada tiene que aparecer aquí vacía: si `consultar`
+    # devolviera un diccionario al que le falta una clave, quien la lea se
+    # llevaría un KeyError justo en el camino de «no se pudo preguntar».
+    VACIO = {"vulkan": [], "opencl": [], "opengl": None, "vaapi": []}
 
     def _con_subproceso(self, **resultado):
         completado = mock.Mock(**resultado)

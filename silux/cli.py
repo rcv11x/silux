@@ -150,7 +150,11 @@ def dump(snapshot: Snapshot, style: Style) -> str:
         if nota := render.pcie_note(gpu.link):
             lines.append(_row(style, "", style.dim(nota)))
 
-        lines.append(_row(style, "VRAM", render.gpu_memory_summary(gpu.memory)))
+        # Si no se sabe cuánta se usa, al menos se dice cuánta hay.
+        resumen = render.gpu_memory_summary(gpu.memory)
+        if resumen == render.DASH and gpu.memory.total_bytes:
+            resumen = render.size(gpu.memory.total_bytes)
+        lines.append(_row(style, "VRAM", resumen))
         detalle = " · ".join(p for p in (
             f"{render.vram_kind(gpu.memory)} · {render.vram_bus(gpu.memory)}"
             if gpu.memory.kind else None,
@@ -164,6 +168,25 @@ def dump(snapshot: Snapshot, style: Style) -> str:
         lines.append(_row(style, "Reloj de memoria", f"{render.hz(gpu.clocks.memory_hz)}"
                           f"  de {render.hz(gpu.clocks.memory_max_hz)}"))
         lines.append(_row(style, "Uso", render.percent(gpu.busy_percent)))
+        if gpu.sleep_percent is not None:
+            lines.append(_row(style, "En reposo", render.percent(gpu.sleep_percent)))
+        for motor in gpu.engines:
+            # El detalle por motor es lo que distingue «la tarjeta no da más»
+            # de «solo va cargado el decodificador de video».
+            detalle = " · ".join(p for p in (
+                motor.kind, ", ".join(motor.capabilities) or None) if p)
+            lines.append(_row(style, f"  {motor.name}",
+                              f"{render.percent(motor.busy_percent)}"
+                              + (f"  {style.dim(detalle)}" if detalle else "")))
+        if gpu.codecs:
+            lines.append(_row(style, "Códecs", ""))
+            for codec in gpu.codecs:
+                marcas = ("decodifica" if codec.decode else "") + \
+                         (" y codifica" if codec.encode and codec.decode
+                          else "codifica" if codec.encode else "")
+                if codec.max_bit_depth:
+                    marcas += f" · {codec.max_bit_depth} bits"
+                lines.append(_row(style, f"  {codec.name}", style.dim(marcas)))
         lines.append(_row(style, "Temperatura", render.temperature(gpu.temp_c)))
         if gpu.hotspot_c is not None:
             lines.append(_row(style, "", style.dim(

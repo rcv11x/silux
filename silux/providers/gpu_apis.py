@@ -16,13 +16,14 @@ completo porque incluye a quien montó la tarjeta.
 
 from __future__ import annotations
 
+import os
 import re
 from typing import Optional
 
-from .. import gpuapi
+from .. import amdgpu, gpuapi
 import dataclasses
 
-from ..model import GpuApi, GpuMemory, Need
+from ..model import GpuApi, GpuMemory, Need, VideoCodec
 from .base import Draft, Provider
 
 # «AMD Radeon RX 9070 XT (RADV GFX1201)» → el paréntesis es del driver, no del
@@ -55,8 +56,9 @@ class GpuApis(Provider):
         vulkan = datos.get("vulkan") or []
         opencl = datos.get("opencl") or []
         opengl = datos.get("opengl")
+        vaapi = datos.get("vaapi") or []
 
-        if not (vulkan or opencl or opengl):
+        if not (vulkan or opencl or opengl or vaapi):
             draft.note(
                 "gpus.apis", Need.DRIVER,
                 "No hay ninguna biblioteca de OpenGL, Vulkan ni OpenCL que preguntar.",
@@ -69,6 +71,7 @@ class GpuApis(Provider):
         principal = _principal(draft.gpus)
 
         for indice, gpu in enumerate(draft.gpus):
+            gpu["codecs"] = _codecs_de(gpu, vaapi)
             apis: list[GpuApi] = []
 
             if dispositivo := _vulkan_de(gpu, vulkan):
@@ -264,3 +267,33 @@ def _version_del_driver(dispositivo: dict) -> Optional[str]:
     if dispositivo.get("vendor_id") == 0x10DE:
         return f"{(crudo >> 22) & 0x3FF}.{(crudo >> 14) & 0xFF}.{(crudo >> 6) & 0xFF}"
     return f"{(crudo >> 22) & 0x7F}.{(crudo >> 12) & 0x3FF}.{crudo & 0xFFF}"
+
+
+def _codecs_de(gpu: dict, vaapi: list) -> tuple[VideoCodec, ...]:
+    """Los códecs del nodo de render de esta tarjeta, y solo de ese.
+
+    Aquí no hay que adivinar nada: VA-API se abre sobre un nodo concreto, y el
+    nodo cuelga del dispositivo PCI de la tarjeta. Es lo contrario de lo que
+    pasa con OpenGL, que no dice de quién habla.
+    """
+    ranura = gpu.get("pci_slot")
+    if not ranura:
+        return ()
+    nodo = amdgpu.render_node(f"/sys/bus/pci/devices/{ranura}")
+    if not nodo:
+        return ()
+    nombre = os.path.basename(nodo)
+    for entrada in vaapi:
+        if entrada.get("node") != nombre:
+            continue
+        return tuple(
+            VideoCodec(
+                name=str(c.get("name")),
+                decode=bool(c.get("decode")),
+                encode=bool(c.get("encode")),
+                max_bit_depth=c.get("bits"),
+                profiles=tuple(c.get("profiles") or ()),
+            )
+            for c in entrada.get("codecs") or []
+        )
+    return ()
