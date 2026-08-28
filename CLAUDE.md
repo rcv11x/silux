@@ -22,7 +22,7 @@ python3 tools/build_appimage.py --container   # el AppImage que se reparte
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **878** y tardan unos cincuenta segundos. Si sale bastante
+Los tests son **886** y tardan unos cincuenta segundos. Si sale bastante
 menos, falta algo por recoger.
 
 `--container` no es opcional para repartir: sin él se construye contra el
@@ -333,6 +333,14 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   derecha, ese hueco cae por la izquierda y la cifra sigue terminando pegada
   al borde, que es donde el árbol dibuja su marca de arrastre. El aire donde
   hace falta lo pone el relleno del propio renglón.
+- **Contar núcleos donde el usuario cuenta estrellas**: la leyenda decía
+  «núcleo 1 y núcleo 3» y en pantalla se veían cuatro marcas, porque cada
+  núcleo bueno marca sus dos hilos. Las dos cosas ciertas y ninguna evidente.
+- **Comparar temperaturas de dos momentos sin saber la ambiente**: ocho grados
+  entre febrero y agosto son normales y salen iguales que ocho de pasta seca.
+  Ningún sensor del equipo mide la habitación. Lo que sí se puede comparar es
+  la misma carga con la misma puntuación, y aun así el aviso dice lo que ve
+  —«más caliente para el mismo trabajo»— sin diagnosticar la causa.
 - **Poner una marca de color sin nada que la traduzca**: el punto que señala
   los mejores núcleos no significa nada por sí solo. Su leyenda va debajo de
   la propia rejilla, no en la ficha de al lado: separadas, el punto se queda

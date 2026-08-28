@@ -12,7 +12,7 @@ import threading
 import unittest
 from unittest import mock
 
-from silux import benchmark
+from silux import benchmark, history
 from silux.benchmark import Conditions, Medida, Result
 
 
@@ -338,3 +338,71 @@ class TestDuracionTotal(unittest.TestCase):
 
     def test_diez_porque_son_cinco_cargas_en_uno_y_en_todos(self):
         self.assertEqual(len(benchmark.CARGAS) * 2, 10)
+
+
+class TestDerivaTermica(unittest.TestCase):
+    """El aviso de «el mismo trabajo, más caliente».
+
+    Es lo que delata pasta seca o polvo antes de que la cifra baje: la
+    puntuación aguanta mientras el ventilador compensa.
+    """
+
+    def _prueba(self, ts, puntuacion, grados, segundos=3.0):
+        return history.Entry(
+            timestamp=ts, cpu="Ryzen 7 5800X3D", threads=16, seconds=segundos,
+            scores={"compresion/16": puntuacion}, temperature_peak_c=grados,
+        )
+
+    def _historial(self, grados=70.0, cuantas=5):
+        return [self._prueba(100 + i, 1000.0, grados + i * 0.3)
+                for i in range(cuantas)]
+
+    def test_calentarse_de_mas_se_avisa(self):
+        deriva = history.deriva_termica(self._prueba(500, 1000.0, 78.0),
+                                        self._historial())
+        self.assertIsNotNone(deriva)
+        grados, cuantas = deriva
+        self.assertGreater(grados, 6)
+        self.assertEqual(cuantas, 5)
+
+    def test_un_par_de_grados_es_ruido(self):
+        """La misma prueba dos veces seguidas ya varía según cómo estuviera el
+        equipo antes de empezar."""
+        self.assertIsNone(history.deriva_termica(self._prueba(500, 1000.0, 71.5),
+                                                 self._historial()))
+
+    def test_si_rindio_mas_la_temperatura_se_explica_sola(self):
+        """Un 40 % más de trabajo calienta más, y eso no es una avería."""
+        self.assertIsNone(history.deriva_termica(self._prueba(500, 1400.0, 80.0),
+                                                 self._historial()))
+
+    def test_con_una_sola_referencia_no_se_dice_nada(self):
+        """Con una prueba detrás no se distingue una tendencia de un día
+        raro."""
+        self.assertIsNone(history.deriva_termica(self._prueba(500, 1000.0, 80.0),
+                                                 self._historial(cuantas=2)))
+
+    def test_no_se_compara_contra_otra_duracion(self):
+        """Una medida de tres segundos coge el turbo entero y una de treinta
+        no: sus temperaturas no son la misma pregunta."""
+        largas = [self._prueba(100 + i, 1000.0, 70.0, segundos=30.0)
+                  for i in range(5)]
+        self.assertIsNone(history.deriva_termica(self._prueba(500, 1000.0, 80.0),
+                                                 largas))
+
+    def test_una_prueba_sin_temperatura_no_entra(self):
+        sin = [self._prueba(100 + i, 1000.0, None) for i in range(5)]
+        self.assertIsNone(history.deriva_termica(self._prueba(500, 1000.0, 80.0), sin))
+
+    def test_enfriarse_tambien_se_dice(self):
+        """Si acabas de limpiarlo, ahí se ve."""
+        deriva = history.deriva_termica(self._prueba(500, 1000.0, 62.0),
+                                        self._historial())
+        self.assertIsNotNone(deriva)
+        self.assertLess(deriva[0], 0)
+
+    def test_la_mediana_aguanta_una_prueba_rara(self):
+        """Una lanzada con el equipo ya caliente no debe mover la referencia."""
+        raras = self._historial() + [self._prueba(150, 1000.0, 95.0)]
+        self.assertIsNone(history.deriva_termica(self._prueba(500, 1000.0, 72.0),
+                                                 raras))
