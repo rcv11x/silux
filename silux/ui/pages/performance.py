@@ -99,6 +99,15 @@ class PerformancePage(QScrollArea):
         self.history_host = QVBoxLayout()
         self.history_host.setSpacing(0)
         self.history_card.body.addLayout(self.history_host)
+
+        # Va dentro de la tarjeta del historial y no en un aviso aparte: solo
+        # significa algo al lado de las pruebas de las que sale.
+        self.deriva_hint = QLabel()
+        self.deriva_hint.setObjectName("NoticeHint")
+        self.deriva_hint.setWordWrap(True)
+        self.deriva_hint.hide()
+        self.history_card.body.addWidget(self.deriva_hint)
+
         nota = QLabel(
             "Solo de este equipo y solo en el disco: no se envía a ninguna "
             "parte. Comparar con cifras de internet casi nunca sirve, porque "
@@ -466,6 +475,33 @@ class PerformancePage(QScrollArea):
                 self.history_card.set_title(
                     f"Pruebas anteriores de este equipo   ·   "
                     f"{signo}{cambio:.1f} % frente a la del {otra.when}")
+            self._avisar_de_la_deriva(actual, entradas)
+
+    def _avisar_de_la_deriva(self, actual, entradas) -> None:
+        """Lo que delata pasta seca o polvo: el mismo trabajo, más caliente.
+
+        La puntuación aguanta mientras el ventilador compensa, así que subir
+        de grados haciendo lo mismo se nota antes que bajar de cifra.
+        """
+        deriva = history.deriva_termica(actual, entradas)
+        if deriva is None:
+            self.deriva_hint.hide()
+            return
+        grados, cuantas = deriva
+        pruebas = render.plural(cuantas, "prueba", "pruebas")
+        if grados > 0:
+            texto = (f"Esta prueba ha llegado a {grados:.0f} °C más que la "
+                     f"mediana de las {cuantas} {pruebas} anteriores con la "
+                     f"misma puntuación. Suele ser polvo o pasta térmica seca "
+                     f"—o simplemente que hace más calor en la habitación, que "
+                     f"eso no lo mide ningún sensor del equipo.")
+        else:
+            texto = (f"Esta prueba ha llegado a {abs(grados):.0f} °C menos que "
+                     f"la mediana de las {cuantas} {pruebas} anteriores con la "
+                     f"misma puntuación. Si acabas de limpiarlo o de cambiar la "
+                     f"pasta, aquí se ve.")
+        self.deriva_hint.setText(texto)
+        self.deriva_hint.show()
 
     def _show(self, resultado: benchmark.Result) -> None:
         d = render.DASH

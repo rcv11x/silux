@@ -164,6 +164,74 @@ def comparar(actual: Entry, anteriores: list[Entry]) -> Optional[tuple[Entry, fl
     return None
 
 
+# Cuánto tienen que parecerse dos puntuaciones para que su diferencia de
+# temperatura signifique algo. Si el equipo rindió un 20 % más, que esté más
+# caliente se explica solo y no hay nada que avisar.
+CERCA_EN_PUNTUACION = 0.03
+
+# El salto térmico a partir del cual se dice algo. Por debajo es ruido: la
+# misma prueba dos veces seguidas ya varía un par de grados según cómo estuviera
+# el equipo antes de empezar.
+DERIVA_MINIMA_C = 4.0
+
+# Cuántas pruebas viejas hacen falta para tener una referencia. Con una sola no
+# se distingue una tendencia de un día raro.
+MINIMO_PARA_COMPARAR = 3
+
+
+def _mediana(valores: list[float]) -> float:
+    ordenados = sorted(valores)
+    mitad = len(ordenados) // 2
+    if len(ordenados) % 2:
+        return ordenados[mitad]
+    return (ordenados[mitad - 1] + ordenados[mitad]) / 2
+
+
+def deriva_termica(actual: Entry, anteriores: list[Entry]) -> Optional[tuple[float, int]]:
+    """Cuánto más caliente está el equipo haciendo el mismo trabajo.
+
+    Devuelve `(grados de diferencia, cuántas pruebas hay detrás)`, o None si
+    no hay con qué comparar. Es el dato que delata pasta seca o polvo: la
+    puntuación puede aguantar mientras el ventilador compensa, y lo que sube
+    antes es la temperatura para el mismo trabajo.
+
+    Se compara contra la mediana y no contra la última: una prueba suelta
+    lanzada con el equipo ya caliente sale alta y no significa nada. Y solo
+    entran las que puntuaron parecido, porque si el equipo rindió más, que
+    esté más caliente se explica solo.
+
+    Lo que esto no puede saber es la temperatura ambiente, que no la mide
+    ningún sensor de la máquina. Ocho grados entre febrero y agosto son
+    normales y aquí saldrían igual que ocho grados de pasta seca; por eso el
+    aviso dice lo que ve y no lo diagnostica.
+    """
+    if actual.temperature_peak_c is None:
+        return None
+    total = actual.total()
+    if not total:
+        return None
+
+    referencias = []
+    for otra in anteriores:
+        if otra.timestamp >= actual.timestamp or not otra.comparable_con(actual):
+            continue
+        if otra.temperature_peak_c is None:
+            continue
+        suya = otra.total()
+        if not suya:
+            continue
+        if abs(suya - total) / total > CERCA_EN_PUNTUACION:
+            continue
+        referencias.append(otra.temperature_peak_c)
+
+    if len(referencias) < MINIMO_PARA_COMPARAR:
+        return None
+    diferencia = actual.temperature_peak_c - _mediana(referencias)
+    if abs(diferencia) < DERIVA_MINIMA_C:
+        return None
+    return diferencia, len(referencias)
+
+
 def clear() -> bool:
     """Borra el historial entero. Devuelve si había algo que borrar."""
     try:
