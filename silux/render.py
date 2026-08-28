@@ -723,7 +723,7 @@ def best_core_ids(logical, cuantos: int = 2) -> set[int]:
         mejor = orden[0][1]
         # Los empatados con el mejor van todos: en muchas piezas hay dos, y
         # quedarse con uno por el orden del bucle sería inventar un desempate.
-        iguales = [core for core, nota, _ in orden if nota == mejor]
+        iguales = [core for core, nota, _fraccion in orden if nota == mejor]
         cabeza.update(iguales[:cuantos])
     return cabeza
 
@@ -750,7 +750,7 @@ def starred_cpus(logical) -> str:
     if not orden:
         return ""
     mejor = orden[0][1]
-    cabeza = {core for core, nota, _ in orden if nota == mejor}
+    cabeza = {core for core, nota, _fraccion in orden if nota == mejor}
     indices = sorted(c.index for c in logical if c.core_id in cabeza)
     if len(indices) <= len(cabeza):        # sin SMT no hay nada que aclarar
         return ""

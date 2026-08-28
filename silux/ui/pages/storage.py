@@ -183,8 +183,7 @@ class StoragePage(QScrollArea):
         self.elevation_card.setVisible(bool(discos) and leidos < len(discos))
         if leidos:
             self.elevation_text.setText(
-                f"Leído el diagnóstico de {leidos} de {len(discos)} unidades. "
-                "Las que faltan no lo publican o no respondieron."
+                _("storage.health.read").format(n=leidos, total=len(discos))
             )
 
     def _apply_avisos(self, discos) -> None:
@@ -207,8 +206,7 @@ class StoragePage(QScrollArea):
             self._avisos_host.addWidget(Notice(
                 disco.display_name if hasattr(disco, "display_name") else disco.name,
                 texto,
-                hint="Lo dice el propio disco en su registro de diagnóstico. "
-                     "Conviene tener una copia de lo que haya dentro.",
+                hint=_("storage.warn.hint"),
                 tone="bad" if nivel == "crítico" else "warn",
             ))
 
@@ -222,12 +220,13 @@ class StoragePage(QScrollArea):
 
         total = sum(x.size_bytes or 0 for x in discos)
         usado = sum(x.used_bytes or 0 for x in discos)
-        self.title.setText(f"{render.size(total)} en {len(discos)} "
-                           f"{render.plural(len(discos), 'unidad', 'unidades')}")
+        self.title.setText(_("storage.title.one" if len(discos) == 1
+                             else "storage.title").format(
+            tam=render.size(total), n=len(discos)))
         montadas = sum(len(x.mounted_partitions) for x in discos)
         self.subtitle.setText(
-            f"{render.size(usado)} ocupados en {montadas} "
-            f"{render.plural(montadas, 'partición montada', 'particiones montadas')}"
+            _("storage.subtitle.one" if montadas == 1
+              else "storage.subtitle").format(tam=render.size(usado), n=montadas)
         )
 
         chips = []
@@ -268,7 +267,8 @@ class StoragePage(QScrollArea):
         escritura = sum(x.io.write_rate_bps or 0 for x in discos) if discos else None
         self.tile_read.update_value(render.rate(lectura), lectura)
         self.tile_write.update_value(render.rate(escritura), escritura)
-        cuantos = f"suma de {len(discos)} {render.plural(len(discos), 'unidad', 'unidades')}"
+        cuantos = _("storage.tile.sum.one" if len(discos) == 1
+                    else "storage.tile.sum").format(n=len(discos))
         self.tile_read.set_detail(cuantos)
         self.tile_write.set_detail(cuantos)
 
@@ -276,8 +276,9 @@ class StoragePage(QScrollArea):
                   if p.free_bytes is not None]
         self.tile_free.update_value(render.size(sum(libres)) if libres else render.DASH)
         if libres:
-            self.tile_free.set_detail(f"en {len(libres)} "
-                                      f"{render.plural(len(libres), 'partición', 'particiones')}")
+            self.tile_free.set_detail(
+                _("storage.tile.inparts.one" if len(libres) == 1
+                  else "storage.tile.inparts").format(n=len(libres)))
 
         temperaturas = [(x.temp_c, x) for x in discos if x.temp_c is not None]
         if temperaturas:
@@ -293,7 +294,7 @@ class StoragePage(QScrollArea):
             self.tile_temp.set_detail(disco.name)
         else:
             self.tile_temp.update_value(render.DASH)
-            self.tile_temp.set_detail("ningún disco publica su temperatura")
+            self.tile_temp.set_detail(_("storage.notemp"))
 
     def _apply_tables(self, discos) -> None:
         d = render.DASH
@@ -312,7 +313,8 @@ class StoragePage(QScrollArea):
         filas = [
             (p.name, p.filesystem or d, p.mountpoint or d,
              render.size(p.size_bytes),
-             f"{render.size(p.used_bytes)}   ({p.used_percent:.0f} %)"
+             _("sys.value.pct").format(valor=render.size(p.used_bytes),
+                                       pct=f"{p.used_percent:.0f}")
              if p.used_percent is not None else d,
              render.size(p.free_bytes))
             for x in discos for p in x.mounted_partitions

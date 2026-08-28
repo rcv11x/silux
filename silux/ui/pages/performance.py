@@ -525,7 +525,7 @@ class PerformancePage(QScrollArea):
                                                        self._prefs.fahrenheit))
         f(_("bench.cond.maxtemp"), render.temperature(c.temperature_peak_c,
                                                    self._prefs.fahrenheit))
-        f("Gobernador", c.governor or d)
+        f(_("bench.cond.governor"), c.governor or d)
         f(_("bench.cond.epp"), c.energy_preference or d)
         f(_("bench.cond.load"), render.percent(c.background_load),
           tooltip=_("bench.cond.load.tip"))

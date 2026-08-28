@@ -22,11 +22,20 @@ from .. import theme
 from ..theme import Palette
 from ..widgets import Card, ChipRow, InfoGrid, ResponsiveRow, StackedBar
 
-OS_FIELDS = ("sys.field.distro", "sys.field.version", "Variante", _("gpu.field.id"), _("sys.field.hostname"))
-KERNEL_FIELDS = ("Kernel", _("cpu.field.arch"), _("sys.field.build"), "Init", "Escritorio", "sys.field.session", "Shell")
-MEMORY_FIELDS = ("gpu.vram.total", "Usada", "Disponible", "Aplicaciones", "sys.field.cache",
-                 "Buffers", "Compartida", _("storage.col.free"), "Intercambio", "sys.field.swapused")
-ACTIVITY_FIELDS = ("sys.field.since", _("sys.field.uptime"), "Procesos", _("cpu.field.threads"), "sys.field.openfiles")
+# Claves, no texto ni `_()`: estas tuplas se evalúan al importar el módulo,
+# cuando todavía no se sabe qué idioma quiere el usuario. La traducción ocurre
+# al montar cada rejilla.
+OS_FIELDS = ("sys.field.distro", "sys.field.version", "sys.os.variant",
+             "sys.os.id", "sys.field.hostname")
+KERNEL_FIELDS = ("sys.kernel.name", "sys.kernel.arch", "sys.field.build",
+                 "sys.kernel.init", "sys.kernel.desktop", "sys.field.session",
+                 "sys.kernel.shell")
+MEMORY_FIELDS = ("sys.mem.total", "sys.mem.used", "sys.mem.available",
+                 "sys.mem.apps", "sys.mem.cache", "sys.mem.buffers",
+                 "sys.mem.shared", "sys.mem.free", "sys.mem.swap",
+                 "sys.mem.swapused")
+ACTIVITY_FIELDS = ("sys.field.since", "sys.field.uptime", "sys.act.processes",
+                   "sys.act.threads", "sys.field.openfiles")
 
 
 def format_uptime(seconds: float) -> str:
@@ -36,10 +45,10 @@ def format_uptime(seconds: float) -> str:
     hours, rest = divmod(rest, 3600)
     minutes = rest // 60
     if days:
-        return f"{days} d {hours} h {minutes:02d} min"
+        return _("sys.uptime.dhm").format(d=days, h=hours, m=f"{minutes:02d}")
     if hours:
-        return f"{hours} h {minutes:02d} min"
-    return f"{minutes} min"
+        return _("sys.uptime.hm").format(h=hours, m=f"{minutes:02d}")
+    return _("sys.uptime.m").format(m=minutes)
 
 
 class SystemPage(QScrollArea):
@@ -119,7 +128,9 @@ class SystemPage(QScrollArea):
 
         self.title.setText(system.distribution or "Sistema desconocido")
         self.subtitle.setText(
-            f"{system.hostname or d} · encendido {format_uptime(system.uptime_seconds)}"
+            _("sys.subtitle").format(
+                equipo=system.hostname or d,
+                tiempo=format_uptime(system.uptime_seconds))
         )
         self._apply_badges(system)
 
@@ -128,62 +139,65 @@ class SystemPage(QScrollArea):
         # incluye caché no recuperable y haría que la barra se pasara.
         self.bar.set_segments(
             [
-                ("Aplicaciones", memory.apps_bytes, "accent"),
-                ("sys.field.cache", memory.cache_bytes, "info"),
-                ("Buffers", memory.buffers_bytes, "warn"),
-                (_("storage.col.free"), memory.free_bytes, "line"),
+                (_("sys.mem.apps"), memory.apps_bytes, "accent"),
+                (_("sys.mem.cache"), memory.cache_bytes, "info"),
+                (_("sys.mem.buffers"), memory.buffers_bytes, "warn"),
+                (_("sys.mem.free"), memory.free_bytes, "line"),
             ],
             total=memory.total_bytes,
             formatter=render.size,
         )
 
         m = self.memory.set
-        m("gpu.vram.total", render.size(memory.total_bytes))
-        m("Usada", f"{render.size(memory.used_bytes)}   ({memory.used_percent:.0f} %)",
+        m(_("sys.mem.total"), render.size(memory.total_bytes))
+        m(_("sys.mem.used"), _("sys.value.pct").format(
+            valor=render.size(memory.used_bytes),
+            pct=f"{memory.used_percent:.0f}"),
           tooltip="Total menos disponible. No se resta solo la libre porque en "
                   "Linux el kernel usa como caché toda la que sobra y la "
                   "devuelve en cuanto un programa la pide.")
-        m("Disponible", render.size(memory.available_bytes))
-        m("Aplicaciones", render.size(memory.apps_bytes),
+        m(_("sys.mem.available"), render.size(memory.available_bytes))
+        m(_("sys.mem.apps"), render.size(memory.apps_bytes),
           tooltip="Total menos libre, buffers y caché recuperable. Sale algo "
                   "menor que «Usada» porque esa incluye la caché que el kernel "
                   "no puede devolver, como tmpfs y la memoria compartida.")
-        m(_("sys.field.cache"), render.size(memory.cache_bytes),
-          tooltip="Caché de disco recuperable: Cached + SReclaimable − Shmem.")
-        m("Buffers", render.size(memory.buffers_bytes))
-        m("Compartida", render.size(memory.shared_bytes))
-        m(_("storage.col.free"), render.size(memory.free_bytes))
+        m(_("sys.mem.cache"), render.size(memory.cache_bytes),
+          tooltip=_("sys.tip.cache"))
+        m(_("sys.mem.buffers"), render.size(memory.buffers_bytes))
+        m(_("sys.mem.shared"), render.size(memory.shared_bytes))
+        m(_("sys.mem.free"), render.size(memory.free_bytes))
         hay_swap = bool(memory.swap_total_bytes)
-        m("Intercambio", render.size(memory.swap_total_bytes) if hay_swap else "sin swap")
+        m(_("sys.mem.swap"), render.size(memory.swap_total_bytes) if hay_swap else _("sys.noswap"))
         # Sin swap, «Intercambio usado: —» se lee como si faltara un dato. No
         # falta: es que no hay nada de lo que decir cuánto se usa.
-        self.memory.set_visible(_("sys.field.swapused"), hay_swap)
+        self.memory.set_visible(_("sys.mem.swapused"), hay_swap)
         if hay_swap:
-            m(_("sys.field.swapused"),
-              f"{render.size(memory.swap_used_bytes)}   "
-              f"({memory.swap_used_percent:.0f} %)")
+            m(_("sys.mem.swapused"),
+              _("sys.value.pct").format(
+                  valor=render.size(memory.swap_used_bytes),
+                  pct=f"{memory.swap_used_percent:.0f}"))
 
         o = self.os.set
         o(_("sys.field.distro"), system.distribution or d)
         o(_("sys.field.version"), system.version_id or d)
-        o("Variante", system.variant or d)
-        o(_("gpu.field.id"), system.distribution_id or d)
+        o(_("sys.os.variant"), system.variant or d)
+        o(_("sys.os.id"), system.distribution_id or d)
         o(_("sys.field.hostname"), system.hostname or d)
 
         k = self.kernel.set
-        k("Kernel", system.kernel or d)
-        k(_("cpu.field.arch"), system.architecture or d)
+        k(_("sys.kernel.name"), system.kernel or d)
+        k(_("sys.kernel.arch"), system.architecture or d)
         k(_("sys.field.build"), system.kernel_build or d)
-        k("Init", system.init or d)
-        k("Escritorio", system.desktop or d)
+        k(_("sys.kernel.init"), system.init or d)
+        k(_("sys.kernel.desktop"), system.desktop or d)
         k(_("sys.field.session"), system.session_type or d)
-        k("Shell", system.shell or d)
+        k(_("sys.kernel.shell"), system.shell or d)
 
         a = self.activity.set
         a(_("sys.field.since"), system.boot_time or d)
         a(_("sys.field.uptime"), format_uptime(system.uptime_seconds))
-        a("Procesos", f"{system.processes:,}".replace(",", " "))
-        a(_("cpu.field.threads"), f"{system.threads:,}".replace(",", " "))
+        a(_("sys.act.processes"), f"{system.processes:,}".replace(",", " "))
+        a(_("sys.act.threads"), f"{system.threads:,}".replace(",", " "))
         a(_("sys.field.openfiles"), f"{system.open_files:,}".replace(",", " "))
 
     def _apply_badges(self, system: System) -> None:
