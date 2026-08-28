@@ -226,3 +226,62 @@ class TestCambiarElEspañol(unittest.TestCase):
             datos = json.loads((carpeta / "xx.json").read_text(encoding="utf-8"))
         self.assertEqual(datos["Tema viejo retocado"], "")
         self.assertEqual(datos["Tema viejo"], "Old theme")
+
+
+class TestRenderTraduce(unittest.TestCase):
+    """La capa de presentación arma frases pegando texto a números, así que
+    traducirla no era envolver cadenas sino reescribir las plantillas."""
+
+    def setUp(self):
+        self.addCleanup(i18n.set_language, "es")
+
+    def _en(self, funcion, *args):
+        from silux import render
+
+        i18n.set_language("en")
+        return getattr(render, funcion)(*args)
+
+    def test_una_frase_con_numeros_se_arma_entera(self):
+        from silux.model import Clocks
+
+        frase = self._en("turbo_note", Clocks(turbo_enabled=False,
+                                              max_turbo_hz=4_550_000_000))
+        self.assertIn("silicon", frase)
+        self.assertIn("4.55 GHz", frase)
+
+    def test_las_unidades_no_se_traducen(self):
+        """«GHz» es «GHz» en cualquier idioma, y el punto decimal se queda:
+        es lo que espera quien lee una ficha técnica."""
+        from silux import render
+
+        for idioma in ("es", "en"):
+            with self.subTest(idioma=idioma):
+                i18n.set_language(idioma)
+                self.assertEqual(render.hz(4_550_000_000), "4.55 GHz")
+                self.assertEqual(render.temperature(82.5), "82.5 °C")
+
+    def test_el_plural_va_dentro_de_la_clave(self):
+        from silux.model import MemoryModule as M
+        from silux import render
+
+        uno = [M(locator="DIMM_A1", populated=True),
+               M(locator="DIMM_B1", populated=False)]
+        dos = [M(locator="DIMM_A1", populated=True),
+               M(locator="DIMM_B1", populated=True)]
+        i18n.set_language("en")
+        self.assertIn("1 module", render.memory_channel_label(uno))
+        self.assertIn("2 modules", render.memory_channel_label(dos))
+
+    def test_los_avisos_del_disco_se_traducen(self):
+        from silux.model import DiskHealth
+
+        avisos = self._en("disk_warnings", DiskHealth(critical_warning=0b1))
+        self.assertIn("spare", avisos[0][1].lower())
+
+    def test_el_nivel_del_aviso_sigue_siendo_interno(self):
+        """«crítico» decide el color, no se enseña: traducirlo rompería la
+        comparación que elige el rojo."""
+        from silux.model import DiskHealth
+
+        avisos = self._en("disk_warnings", DiskHealth(critical_warning=0b1))
+        self.assertEqual(avisos[0][0], "crítico")

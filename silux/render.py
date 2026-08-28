@@ -12,6 +12,7 @@ import re
 from typing import Optional
 
 from .features import pretty as pretty_feature
+from .i18n import _
 from .model import (Cache, Clocks, CpuType, Display, Edid, GpuApi, PcieLink,
                     GpuMemory, NetworkInterface, NetworkTraffic, Power)
 
@@ -110,14 +111,11 @@ def signature_tooltip(cpu_type: CpuType) -> str:
     if cpu_type.signature is None:
         return ""
     raw = cpu_type.signature
-    return (
-        f"EAX de la hoja 1 de CPUID = {signature(raw)}\n\n"
-        f"familia base {(raw >> 8) & 0xF}  +  familia extendida {(raw >> 20) & 0xFF}"
-        f"  →  familia {cpu_type.disp_family}\n"
-        f"modelo base {(raw >> 4) & 0xF}  +  modelo extendido {(raw >> 16) & 0xF} << 4"
-        f"  →  modelo {cpu_type.disp_model}\n"
-        f"stepping {raw & 0xF}"
-    )
+    return _("cpu.sig.tooltip").format(
+        eax=signature(raw),
+        fb=(raw >> 8) & 0xF, fe=(raw >> 20) & 0xFF, familia=cpu_type.disp_family,
+        mb=(raw >> 4) & 0xF, me=(raw >> 16) & 0xF, modelo=cpu_type.disp_model,
+        stepping=raw & 0xF)
 
 
 def load_average(values: tuple[float, ...], threads: int = 0) -> str:
@@ -125,7 +123,8 @@ def load_average(values: tuple[float, ...], threads: int = 0) -> str:
     if not values:
         return DASH
     text = " · ".join(f"{v:.2f}" for v in values)
-    return f"{text}  (de {threads} hilos)" if threads else text
+    return (_("cpu.load.threads").format(carga=text, n=threads)
+            if threads else text)
 
 
 def cache_summary(cache: Cache) -> str:
@@ -134,30 +133,28 @@ def cache_summary(cache: Cache) -> str:
     if cache.instances > 1:
         parts[0] = f"{cache.instances} × {parts[0]}"
     if cache.ways:
-        parts.append(f"{cache.ways} vías")
+        parts.append(_("cache.ways").format(n=cache.ways))
     return ", ".join(parts)
 
 
 def cache_label(cache: Cache) -> str:
-    kinds = {"data": "L%d datos", "instruction": "L%d instr.", "unified": "L%d"}
-    return kinds.get(cache.kind, "L%d") % cache.level
+    claves = {"data": "cache.label.data", "instruction": "cache.label.instr"}
+    return _(claves.get(cache.kind, "cache.label.unified")).format(n=cache.level)
 
 
 def core_type_label(cpu_type: CpuType, hybrid: bool) -> str:
     if not hybrid:
-        return "Procesador"
+        return _("cpu.type.generic")
     # «P» y «E» son como los llama Intel; ARM llama a lo mismo big.LITTLE.
     # El reparto es el mismo, el nombre no, y quien mira su teléfono no
     # reconoce «núcleo E» por ninguna parte.
     if (cpu_type.architecture or "").lower().startswith(("aarch64", "arm")):
-        return {
-            "performance": "Núcleos grandes (big)",
-            "efficiency": "Núcleos pequeños (LITTLE)",
-        }.get(cpu_type.key, f"Núcleos «{cpu_type.key}»")
-    return {
-        "performance": "Núcleos P (rendimiento)",
-        "efficiency": "Núcleos E (eficiencia)",
-    }.get(cpu_type.key, f"Núcleos «{cpu_type.key}»")
+        claves = {"performance": "core.type.big", "efficiency": "core.type.little"}
+    else:
+        claves = {"performance": "core.type.p", "efficiency": "core.type.e"}
+    if cpu_type.key in claves:
+        return _(claves[cpu_type.key])
+    return _("core.type.named").format(nombre=cpu_type.key)
 
 
 def instructions(cpu_type: CpuType, limit: int | None = None) -> str:
@@ -185,21 +182,21 @@ def power_headline(power: Power) -> str:
 def power_breakdown(power: Power) -> str:
     """El reparto por dominio, que es lo que explica un consumo en reposo bajo."""
     parts = [
-        (f"núcleos {watts(power.core_w)}", power.core_w),
-        (f"uncore {watts(power.uncore_w)}", power.uncore_w),
+        (f'{_("power.cores")} {watts(power.core_w)}', power.core_w),
+        (f'{_("power.uncore")} {watts(power.uncore_w)}', power.uncore_w),
         (f"DRAM {watts(power.dram_w)}", power.dram_w),
     ]
     return " · ".join(text for text, value in parts if value is not None)
 
 
 def power_tooltip(power: Power) -> str:
-    lines = [f"Paquete: {watts(power.package_w)}"]
+    lines = [f'{_("power.package")} {watts(power.package_w)}']
     if breakdown := power_breakdown(power):
         lines.append(breakdown.replace(" · ", "\n"))
     if power.limit_long_w:
-        lines.append(f"\nLímite sostenido (PL1): {watts(power.limit_long_w)}")
+        lines.append(f'\n{_("power.pl1")} {watts(power.limit_long_w)}')
     if power.limit_short_w:
-        lines.append(f"Límite de pico (PL2): {watts(power.limit_short_w)}")
+        lines.append(f'{_("power.pl2")} {watts(power.limit_short_w)}')
     return "\n".join(lines)
 
 
@@ -257,11 +254,12 @@ def interface_state(interface: NetworkInterface) -> str:
         # desenchufados.
         con_cable = interface.kind in ("ethernet", "wifi")
         if con_cable and interface.carrier is False:
-            return "sin señal" if interface.kind == "wifi" else "sin cable"
-        return "parada"
+            return _("net.state.nosignal" if interface.kind == "wifi"
+                     else "net.state.nocable")
+        return _("net.state.down")
     if interface.ipv4 or interface.ipv6:
-        return "activa"
-    return "sin dirección"
+        return _("net.state.up")
+    return _("net.state.noaddress")
 
 
 def rpm(value: Optional[int]) -> str:
@@ -308,7 +306,8 @@ def pcie_note(link: PcieLink) -> Optional[str]:
     """
     if not link.downgraded:
         return None
-    return f"Ahora a {pcie_link(link)}; la tarjeta y la ranura llegan a {pcie_link(link, maximum=True)}"
+    return _("pcie.now").format(actual=pcie_link(link),
+                                max=pcie_link(link, maximum=True))
 
 
 def gpu_memory_summary(memory: GpuMemory) -> str:
@@ -344,15 +343,16 @@ def vram_kind(memory: GpuMemory) -> str:
 
 def vram_bus(memory: GpuMemory) -> str:
     """La anchura del bus de memoria: «256 bits»."""
-    return f"{memory.bus_bits} bits" if memory.bus_bits else DASH
+    return (_("gpu.bus.bits").format(n=memory.bus_bits)
+            if memory.bus_bits else DASH)
 
 
 # Cada fabricante cuenta sus unidades de proceso de una forma y no son
 # equivalentes entre sí.
 UNIDADES_DE_PROCESO = {
-    "NVIDIA": "núcleos CUDA",
-    "AMD": "unidades de cómputo",
-    "Intel": "unidades de ejecución",
+    "NVIDIA": "gpu.units.cuda",
+    "AMD": "gpu.units.cu",
+    "Intel": "gpu.units.eu",
 }
 
 
@@ -360,8 +360,8 @@ def compute_units(gpu) -> str:
     """«64 unidades de cómputo», «2048 núcleos CUDA»."""
     if not gpu.compute_units:
         return DASH
-    nombre = UNIDADES_DE_PROCESO.get(gpu.vendor or "", "unidades de proceso")
-    return f"{gpu.compute_units} {nombre}"
+    clave = UNIDADES_DE_PROCESO.get(gpu.vendor or "", "gpu.units.generic")
+    return f"{gpu.compute_units} {_(clave)}"
 
 
 def compute_units_short(gpu) -> Optional[str]:
@@ -377,9 +377,9 @@ def resizable_bar(memory: GpuMemory) -> str:
     if memory.resizable_bar is None:
         return DASH
     if memory.resizable_bar:
-        return "activo"
+        return _("gpu.rebar.on")
     ventana = size(memory.visible_bytes) if memory.visible_bytes else DASH
-    return f"desactivado: la CPU solo alcanza {ventana}"
+    return _("gpu.rebar.off").format(ventana=ventana)
 
 
 # Los bits de `critical_warning` del registro de salud de NVMe, que es donde
@@ -396,8 +396,8 @@ _CANAL = (
 
 # Cómo se llama tener tantos canales poblados. Por encima de cuatro se dice el
 # número, que «óctuple canal» no lo usa nadie.
-NOMBRE_DE_CANALES = {1: "canal único", 2: "doble canal",
-                     3: "triple canal", 4: "cuádruple canal"}
+NOMBRE_DE_CANALES = {1: "mem.chan.1", 2: "mem.chan.2",
+                     3: "mem.chan.3", 4: "mem.chan.4"}
 
 
 def _canal_de(modulo) -> Optional[str]:
@@ -431,9 +431,12 @@ def memory_channel_label(modulos) -> Optional[str]:
     cuantos = memory_channels(modulos)
     if cuantos is None:
         return None
-    nombre = NOMBRE_DE_CANALES.get(cuantos, f"{cuantos} canales")
+    nombre = (_(NOMBRE_DE_CANALES[cuantos]) if cuantos in NOMBRE_DE_CANALES
+              else _("mem.chan.n").format(n=cuantos))
     puestos = sum(1 for m in modulos if m.populated)
-    return f"{nombre} · {puestos} {plural(puestos, 'módulo', 'módulos')}"
+    modulos_txt = _("mem.modules.one" if puestos == 1
+                    else "mem.modules.many").format(n=puestos)
+    return f"{nombre} · {modulos_txt}"
 
 
 def memory_channel_warning(modulos) -> Optional[str]:
@@ -450,23 +453,19 @@ def memory_channel_warning(modulos) -> Optional[str]:
     puestos = sum(1 for m in modulos if m.populated)
     libres = sum(1 for m in modulos if not m.populated)
     if puestos > 1:
-        return (f"Los {puestos} módulos están en el mismo canal. Repartidos "
-                f"entre dos, la memoria movería el doble de datos por segundo.")
+        return _("mem.channel.same").format(n=puestos)
     if libres:
-        return ("Hay un solo módulo, así que la memoria trabaja a la mitad de "
-                "ancho de banda. Un segundo módulo igual en el otro canal lo "
-                "duplica; en un equipo con gráfica integrada se nota en los "
-                "fotogramas más que casi cualquier otra cosa.")
+        return _("mem.channel.single")
     return None
 
 
 AVISOS_NVME = {
-    0: "el espacio de reserva ha bajado del umbral del fabricante",
-    1: "la temperatura está fuera del rango que admite",
-    2: "el disco ha degradado su propia fiabilidad",
-    3: "se ha puesto en modo de solo lectura",
-    4: "la memoria de respaldo ante cortes de luz ha fallado",
-    5: "su región de memoria persistente no es fiable",
+    0: "disk.warn.spare",
+    1: "disk.warn.temp",
+    2: "disk.warn.reliability",
+    3: "disk.warn.readonly",
+    4: "disk.warn.backup",
+    5: "disk.warn.pmr",
 }
 
 # Por debajo de esto se avisa de que al SSD le queda poco. El fabricante
@@ -491,33 +490,32 @@ def disk_warnings(salud) -> list[tuple[str, str]]:
         return avisos
 
     if salud.critical_warning:
-        for bit, texto in AVISOS_NVME.items():
+        for bit, clave in AVISOS_NVME.items():
             if salud.critical_warning & (1 << bit):
-                avisos.append(("crítico", texto.capitalize() + "."))
+                avisos.append(("crítico", _(clave).capitalize() + "."))
         if not avisos:                     # un bit que la especificación no cubre
-            avisos.append(("crítico",
-                           f"El disco avisa de un problema "
-                           f"(código {salud.critical_warning:#04x})."))
+            avisos.append(("crítico", _("disk.warn.unknown").format(
+                codigo=f"{salud.critical_warning:#04x}")))
 
     if salud.media_errors:
-        avisos.append(("alto",
-                       f"{salud.media_errors:n} "
-                       f"{plural(salud.media_errors, 'dato que no se pudo leer', 'datos que no se pudieron leer')}"
-                       " desde que salió de fábrica."))
+        clave = ("disk.warn.media.one" if salud.media_errors == 1
+                 else "disk.warn.media.many")
+        avisos.append(("alto", _(clave).format(n=f"{salud.media_errors:n}")))
 
     vida = salud.life_left_percent
     if vida is not None and vida <= VIDA_BAJA_PCT:
-        avisos.append(("alto", f"Le queda un {vida} % de vida según su propio "
-                               "contador de desgaste."))
+        avisos.append(("alto", _("disk.warn.life").format(pct=vida)))
     return avisos
 
 
 def duracion(segundos: float) -> str:
     """«40 s», «2 min 10 s». Sin decimales: nadie mide un recorte en décimas."""
     if segundos < 60:
-        return f"{segundos:.0f} s"
+        return _("time.seconds").format(n=f"{segundos:.0f}")
     minutos, resto = divmod(int(segundos), 60)
-    return f"{minutos} min {resto} s" if resto else f"{minutos} min"
+    if resto:
+        return _("time.minsec").format(m=minutos, s=resto)
+    return _("time.minutes").format(m=minutos)
 
 
 def throttle_episode(episodio, ahora_ns: int) -> Optional[str]:
@@ -532,10 +530,9 @@ def throttle_episode(episodio, ahora_ns: int) -> Optional[str]:
     if episodio is None:
         return None
     cuanto = duracion(episodio.duracion_s(ahora_ns))
-    motivos = ", ".join(sorted(episodio.motivos)) or "un motivo que no publica"
-    if episodio.en_curso():
-        return f"Lleva {cuanto} recortando por {motivos}."
-    return f"Ha estado {cuanto} recortando por {motivos}."
+    motivos = ", ".join(sorted(episodio.motivos)) or _("throttle.unknown")
+    clave = "throttle.ongoing" if episodio.en_curso() else "throttle.past"
+    return _(clave).format(tiempo=cuanto, motivos=motivos)
 
 
 def throttle_state(gpu) -> str:
@@ -543,10 +540,10 @@ def throttle_state(gpu) -> str:
     if gpu.throttled is None:
         return DASH
     if not gpu.throttled:
-        return "sin límites"
+        return _("gpu.throttle.none")
     if not gpu.throttle_reasons:
-        return "recortando rendimiento"
-    return "recortando por " + ", ".join(gpu.throttle_reasons)
+        return _("gpu.throttle.some")
+    return _("gpu.throttle.why").format(motivos=", ".join(gpu.throttle_reasons))
 
 
 def monitor_name(monitor: Optional[Edid]) -> str:
@@ -589,8 +586,8 @@ def display_summary(display: Display) -> str:
     más común no se enseña.
     """
     if not display.connected:
-        return "sin conectar"
-    return display.resolution or "conectada"
+        return _("display.unplugged")
+    return display.resolution or _("display.connected")
 
 
 def gpu_api_summary(api: GpuApi) -> str:
@@ -606,9 +603,10 @@ def gpu_api_summary(api: GpuApi) -> str:
 def turbo_note(clocks: Clocks) -> Optional[str]:
     """Una frase corta cuando el techo real no llega al del silicio."""
     if clocks.turbo_enabled is False and clocks.max_turbo_hz:
-        return f"Turbo desactivado: el silicio llegaría a {hz(clocks.max_turbo_hz)}"
+        return _("clock.turbo.off").format(max=hz(clocks.max_turbo_hz))
     if clocks.turbo_headroom_hz:
-        return f"El kernel limita a {hz(clocks.max_hz)} de los {hz(clocks.max_turbo_hz)} del silicio"
+        return _("clock.turbo.capped").format(
+            actual=hz(clocks.max_hz), max=hz(clocks.max_turbo_hz))
     return None
 
 
@@ -641,11 +639,12 @@ def l3_asimetrica(cpu_type) -> Optional[str]:
     for cache in sorted(ele3, key=lambda c: -c.size_bytes):
         cpus = cache.instance_cpus[0] if cache.instance_cpus else ()
         donde = _rango_de_cpus(cpus)
-        partes.append(f"{size(cache.size_bytes)} para {'las CPU ' + donde if donde else 'unos'}")
-    frase = "La L3 no es igual en todo el procesador: " + " y ".join(partes) + "."
+        partes.append(
+            _("cache.l3.part").format(tam=size(cache.size_bytes), donde=donde)
+            if donde else _("cache.l3.partsome").format(tam=size(cache.size_bytes)))
+    frase = _("cache.l3.uneven").format(reparto=_("core.join").join(partes))
     if "3D" in (cpu_type.brand or "").upper():
-        frase += (" Es el V-Cache apilado sobre uno solo de los dos chiplets: "
-                  "al hilo que caiga en el grande le cunde más la memoria.")
+        frase += _("cache.l3.vcache")
     return frase
 
 
@@ -662,8 +661,8 @@ def vcache(cpu_type) -> Optional[str]:
     grande = max((c.size_bytes for c in cpu_type.caches if c.level == 3),
                  default=None)
     if grande is None:
-        return "3D V-Cache"
-    return f"3D V-Cache · {size(grande)} de L3"
+        return _("cache.vcache.plain")
+    return _("cache.vcache.size").format(tam=size(grande))
 
 
 def core_quality_by_type(logical) -> dict[str, list[tuple[int, int, float]]]:
@@ -734,10 +733,10 @@ def best_cores(logical, cuantos: int = 2) -> str:
     cabeza = sorted(best_core_ids(logical, cuantos))
     if not cabeza:
         return DASH
-    nombres = [f"núcleo {core}" for core in cabeza]
+    nombres = [_("core.name").format(n=core) for core in cabeza]
     if len(nombres) == 1:
         return nombres[0].capitalize()
-    return (", ".join(nombres[:-1]) + " y " + nombres[-1]).capitalize()
+    return (", ".join(nombres[:-1]) + _("core.join") + nombres[-1]).capitalize()
 
 
 def starred_cpus(logical) -> str:
@@ -771,11 +770,8 @@ def core_quality_spread(logical) -> Optional[str]:
         return None
     orden = min(por_tipo.values(), key=lambda filas: filas[-1][2])
     peor = orden[-1]
-    return (f"el más flojo (núcleo {peor[0]}) se queda en el "
-            f"{peor[2] * 100:.0f} % del mejor de su tipo"
-            if len(por_tipo) > 1 else
-            f"el más flojo (núcleo {peor[0]}) se queda en el "
-            f"{peor[2] * 100:.0f} % del mejor")
+    clave = "core.spread.type" if len(por_tipo) > 1 else "core.spread"
+    return _(clave).format(n=peor[0], pct=f"{peor[2] * 100:.0f}")
 
 
 # Coletillas que los fabricantes meten en la cadena de marca y que no
