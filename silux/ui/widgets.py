@@ -446,10 +446,10 @@ class Sparkline(QWidget):
         cifra = self._formatter(valor) if self._formatter else f"{valor:g}"
         atras = (len(self._values) - 1 - indice) * self._interval_s
         if atras < 1:
-            return f"{cifra} · ahora"
+            return _("chart.now").format(cifra=cifra)
         if atras < 60:
-            return f"{cifra} · hace {atras:.0f} s"
-        return f"{cifra} · hace {atras / 60:.0f} min"
+            return _("chart.ago.s").format(cifra=cifra, n=f"{atras:.0f}")
+        return _("chart.ago.min").format(cifra=cifra, n=f"{atras / 60:.0f}")
 
     def push(self, value: Optional[float]) -> None:
         if value is not None:
@@ -1185,14 +1185,10 @@ def boton_de_permiso_permanente() -> QPushButton:
     descubrir que le falta un permiso. Se esconde solo cuando ya está hecho:
     un botón que no hace nada es peor que ninguno.
     """
-    boton = QPushButton("No volver a pedirla")
+    boton = QPushButton(_("perm.permanent.button"))
     boton.setObjectName("GhostButton")
     boton.setToolTip(
-        "Instala el ayudante en el sistema con su propia autorización de "
-        "polkit.\n"
-        "Después la contraseña se pide una vez por sesión, no en cada "
-        "arranque.\n"
-        "Hace falta la contraseña una vez para instalarlo."
+        _("perm.permanent.tip")
     )
     return boton
 
@@ -1456,7 +1452,7 @@ class CacheMap(QWidget):
             )
         painter.drawText(
             QRectF(0, axis_top, gutter, self.AXIS_H),
-            int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter), "CPU",
+            int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter), _("nav.cpu"),
         )
         painter.end()
 
@@ -1729,10 +1725,7 @@ class SensorTree(QTreeWidget):
         header.setMinimumSectionSize(40)
         header.setSectionsMovable(False)
         header.setToolTip(
-            "Pulsa en una columna para ordenar por ella; otra vez para\n"
-            "volver al orden por aparato.\n"
-            "Arrastra los separadores para ajustar el ancho.\n"
-            "Botón derecho para volver a los anchos automáticos."
+            _("sensors.header.tip")
         )
         header.setSectionsClickable(True)
         header.sectionClicked.connect(self._ordenar_por)
@@ -2026,7 +2019,7 @@ class SensorTree(QTreeWidget):
 
     def _header_menu(self, position) -> None:
         menu = QMenu(self)
-        action = menu.addAction("Restablecer anchos automáticos")
+        action = menu.addAction(_("sensors.header.reset"))
         action.triggered.connect(self.reset_column_widths)
         menu.exec(self.header().mapToGlobal(position))
 

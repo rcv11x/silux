@@ -281,7 +281,7 @@ class SettingsPage(QScrollArea):
 
     def _build_credits(self) -> Card:
         """Quién lo hace y sobre qué está construido."""
-        card = Card("Acerca de silux")
+        card = Card(_("about.card"))
         m = theme.METRICS
 
         titulo = QLabel(f"{EMOJI} Silux {VERSION}")
@@ -289,9 +289,7 @@ class SettingsPage(QScrollArea):
         card.body.addWidget(titulo)
 
         lema = QLabel(
-            "Perfilador de hardware para Linux. Lo que en Windows hacen "
-            "CPU-Z, GPU-Z y HWMonitor, en un solo programa nativo: qué equipo "
-            "tienes y qué está haciendo ahora mismo."
+            _("about.tagline")
         )
         lema.setObjectName("Subhead")
         lema.setWordWrap(True)
@@ -343,7 +341,7 @@ class SettingsPage(QScrollArea):
         return caja
 
     def _build_about(self) -> Card:
-        card = Card("Base de datos y configuración")
+        card = Card(_("about.storage"))
         m = theme.METRICS
 
         if db.available():

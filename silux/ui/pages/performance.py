@@ -20,29 +20,30 @@ from PySide6.QtWidgets import (QComboBox, QHBoxLayout, QLabel, QProgressBar,
                                QScrollArea, QVBoxLayout, QWidget)
 
 from ... import benchmark, history, render
+from ...i18n import _
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette
 from ..widgets import (Card, InfoGrid, Notice, ResponsiveRow, Table,
                        clear_layout, mono_font)
 
-RESULT_HEADERS = ("Carga", "Un hilo", "Todos los hilos", "Escala")
-HISTORY_HEADERS = ("Prueba", "Medida", "Puntuación", "Frecuencia media",
-                   "Temp. máxima")
-CONDITION_FIELDS = ("Frecuencia media", "Frecuencia máxima", "Frecuencia al final",
-                    "Temperatura al empezar", "Temperatura máxima",
-                    "Gobernador", "Preferencia de energía", "Carga de fondo")
+RESULT_HEADERS = ("bench.col.load", "bench.col.one", "bench.col.all", "bench.col.scale")
+HISTORY_HEADERS = ("bench.col.test", "bench.col.measure", "bench.col.score", "bench.col.avgfreq",
+                   "bench.col.maxtemp")
+CONDITION_FIELDS = ("bench.col.avgfreq", "bench.cond.maxfreq", "bench.cond.endfreq",
+                    "bench.cond.starttemp", "bench.cond.maxtemp",
+                    "bench.cond.governor", "bench.cond.epp", "bench.cond.load")
 
 
 # Lo que se puede pedir, y para qué sirve cada uno.
 DURACIONES = (
-    ("3 s · rápida", 3.0),
-    ("5 s · normal", 5.0),
-    ("15 s · sostenida", 15.0),
-    ("30 s · con el equipo caliente", 30.0),
-    ("2 min · resistencia", 120.0),
-    ("5 min · estabilidad", 300.0),
-    ("Otra duración…", None),
+    ("bench.dur.quick", 3.0),
+    ("bench.dur.normal", 5.0),
+    ("bench.dur.sustained", 15.0),
+    ("bench.dur.warm", 30.0),
+    ("bench.dur.endurance", 120.0),
+    ("bench.dur.stability", 300.0),
+    ("bench.dur.other", None),
 )
 
 
@@ -73,17 +74,17 @@ class PerformancePage(QScrollArea):
 
         self._layout.addWidget(self._build_header())
 
-        self.results_card = Card("Resultados")
-        self.results = Table(RESULT_HEADERS, numeric=(False, True, True, True))
+        self.results_card = Card(_("bench.card.results"))
+        self.results = Table([_(h) for h in RESULT_HEADERS], numeric=(False, True, True, True))
         self.results_card.body.addWidget(self.results)
         self.results_card.hide()
         self._layout.addWidget(self.results_card)
 
         fila = ResponsiveRow(min_item_width=300)
-        self.conditions_card = Card("Condiciones de la medida")
+        self.conditions_card = Card(_("bench.card.conditions"))
         self.conditions = InfoGrid()
         for campo in CONDITION_FIELDS:
-            self.conditions.add(campo)
+            self.conditions.add(_(campo))
         self.conditions_card.body.addWidget(self.conditions)
         fila.add(self.conditions_card)
         self.explain_card = self._build_explanation()
@@ -92,7 +93,7 @@ class PerformancePage(QScrollArea):
         self.columns.hide()
         self._layout.addWidget(fila)
 
-        self.history_card = Card("Pruebas anteriores de este equipo")
+        self.history_card = Card(_("bench.card.history"))
         # Rejilla propia y no una Table: cada fila lleva dos botones, y Table
         # solo sabe de texto. Se reconstruye al guardar o borrar, no en cada
         # muestreo, así que aquí no aplica la regla de reutilizar widgets.
@@ -109,19 +110,16 @@ class PerformancePage(QScrollArea):
         self.history_card.body.addWidget(self.deriva_hint)
 
         nota = QLabel(
-            "Solo de este equipo y solo en el disco: no se envía a ninguna "
-            "parte. Comparar con cifras de internet casi nunca sirve, porque "
-            "están medidas con otro gobernador y otra temperatura; compararse "
-            "con uno mismo sí dice si algo ha cambiado.")
+            _("bench.history.note"))
         nota.setObjectName("Muted")
         nota.setWordWrap(True)
         self.history_card.body.addWidget(nota)
 
         acciones = QHBoxLayout()
-        self.open_folder = QPushButton("Abrir la carpeta")
+        self.open_folder = QPushButton(_("bench.button.folder"))
         self.open_folder.setToolTip(str(history.history_path()))
         self.open_folder.clicked.connect(self._abrir_carpeta)
-        self.clear_history = QPushButton("Borrar el historial")
+        self.clear_history = QPushButton(_("bench.button.clear"))
         self.clear_history.clicked.connect(self._borrar_historial)
         acciones.addWidget(self.open_folder)
         acciones.addWidget(self.clear_history)
@@ -145,24 +143,19 @@ class PerformancePage(QScrollArea):
 
     def _build_header(self) -> Card:
         card = Card()
-        titulo = QLabel("Prueba de rendimiento")
+        titulo = QLabel(_("bench.card.title"))
         titulo.setObjectName("Headline")
         subtitulo = QLabel(
-            "Mide el procesador con cinco cargas distintas, primero en un solo "
-            "hilo y después en todos. Lo interesante no es solo la cifra: es "
-            "que cada carga escala de una forma, y ahí se ve qué aprovecha los "
-            "hilos y qué se queda esperando a la memoria. Mientras dura, el "
-            "equipo irá al máximo."
+            _("bench.intro")
         )
         subtitulo.setObjectName("Subhead")
         subtitulo.setWordWrap(True)
 
-        self.run_button = QPushButton("Ejecutar la prueba")
+        self.run_button = QPushButton(_("bench.button.run"))
         self.run_button.clicked.connect(lambda: self._start(quick=False))
-        self.quick_button = QPushButton("Prueba rápida")
+        self.quick_button = QPushButton(_("bench.button.quick"))
         self.quick_button.setToolTip(
-            "Ocho segundos en vez de veinte. Suficiente para hacerse una idea, "
-            "pero con menos margen para que el turbo se estabilice."
+            _("bench.quick.tip")
         )
         self.quick_button.clicked.connect(lambda: self._start(quick=True))
 
@@ -172,20 +165,17 @@ class PerformancePage(QScrollArea):
         # verdad pasa mientras se juega o se compila.
         self.duracion = QComboBox()
         for etiqueta, segundos in DURACIONES:
-            self.duracion.addItem(etiqueta, segundos)
+            self.duracion.addItem(_(etiqueta), segundos)
         self.duracion.setCurrentIndex(1)
         self.duracion.activated.connect(self._quizas_preguntar_duracion)
         self._duracion_libre: float | None = None
         self.duracion.setToolTip(
-            "Cuánto dura cada una de las diez medidas: cinco cargas, en un "
-            "hilo y en todos. La prueba entera tarda diez veces esto.\n\n"
-            "Las largas no dan más puntuación: dan la que se sostiene cuando "
-            "el equipo ya está caliente.")
+            _("bench.duration.tip"))
 
         # Con diez medidas y la duración a elegir, la prueba puede irse a
         # horas. Poder pararla no es un extra: es lo que hace que probar una
         # duración larga no dé miedo.
-        self.cancel_button = QPushButton("Cancelar")
+        self.cancel_button = QPushButton(_("bench.button.cancel"))
         self.cancel_button.setObjectName("Danger")
         self.cancel_button.clicked.connect(self._cancelar)
         self.cancel_button.hide()
@@ -195,7 +185,7 @@ class PerformancePage(QScrollArea):
         fila.addWidget(self.quick_button)
         fila.addWidget(self.cancel_button)
         fila.addSpacing(12)
-        fila.addWidget(QLabel("Cada medida:"))
+        fila.addWidget(QLabel(_("bench.label.each")))
         fila.addWidget(self.duracion)
         # Cuánto tarda la prueba entera. Son diez medidas, así que «30 s» son
         # cinco minutos: la cuenta la hace nadie de cabeza mientras elige.
@@ -218,16 +208,14 @@ class PerformancePage(QScrollArea):
         return card
 
     def _build_explanation(self) -> Card:
-        card = Card("Qué se mide")
+        card = Card(_("bench.card.what"))
         for carga in benchmark.CARGAS:
             etiqueta = QLabel(f"<b>{carga.name}</b><br>{carga.explanation}")
             etiqueta.setObjectName("Muted")
             etiqueta.setWordWrap(True)
             card.body.addWidget(etiqueta)
         nota = QLabel(
-            "<b>La escala</b><br>Cuánto multiplica el rendimiento al usar todos "
-            "los hilos. Nunca llega al número de hilos: los que comparten núcleo "
-            "se reparten las mismas unidades de cálculo."
+            _("bench.explain.scaling")
         )
         nota.setObjectName("Muted")
         nota.setWordWrap(True)
@@ -245,7 +233,7 @@ class PerformancePage(QScrollArea):
         self.quick_button.setEnabled(False)
         self.cancel_button.show()
         self.progress.setValue(0)
-        self.progress.setFormat("preparando…")
+        self.progress.setFormat(_("bench.state.preparing"))
         self.progress.show()
         clear_layout(self._warnings_host)
 
@@ -275,11 +263,11 @@ class PerformancePage(QScrollArea):
             return
         total = segundos * len(benchmark.CARGAS) * 2
         if total < 90:
-            texto = f"· la prueba entera, {total:.0f} s"
+            texto = _("bench.total.s").format(n=f"{total:.0f}")
         elif total < 3600:
-            texto = f"· la prueba entera, {total / 60:.0f} min"
+            texto = _("bench.total.min").format(n=f"{total / 60:.0f}")
         else:
-            texto = f"· la prueba entera, {total / 3600:.1f} h"
+            texto = _("bench.total.h").format(n=f"{total / 3600:.1f}")
         self.duracion_total.setText(texto)
 
     def _segundos_elegidos(self) -> float | None:
@@ -299,7 +287,7 @@ class PerformancePage(QScrollArea):
             self._duracion_libre = None
             return
         minutos, aceptado = QInputDialog.getDouble(
-            self, "Otra duración",
+            self, _("bench.dialog.duration"),
             "Cuántos minutos dura cada una de las diez medidas.\n\n"
             "La prueba entera tarda diez veces esto.",
             value=(self._duracion_libre or 600.0) / 60.0,
@@ -310,7 +298,8 @@ class PerformancePage(QScrollArea):
             self._duracion_libre = None
             return
         self._duracion_libre = minutos * 60.0
-        self.duracion.setItemText(indice, f"{minutos:g} min cada una")
+        self.duracion.setItemText(
+            indice, _("bench.dur.each").format(n=f"{minutos:g}"))
         self._pintar_total()
 
     def _pintar_filas(self, entradas) -> None:
@@ -324,7 +313,7 @@ class PerformancePage(QScrollArea):
         rejilla.setVerticalSpacing(theme.METRICS.grid_vspace + 3)
 
         for columna, titulo in enumerate(HISTORY_HEADERS):
-            etiqueta = QLabel(titulo.upper())
+            etiqueta = QLabel(_(titulo).upper())
             etiqueta.setObjectName("ColumnTitle")
             etiqueta.setAlignment(Qt.AlignmentFlag.AlignRight if columna in (2, 3, 4)
                                   else Qt.AlignmentFlag.AlignLeft)
@@ -352,11 +341,11 @@ class PerformancePage(QScrollArea):
 
             acciones = QHBoxLayout()
             acciones.setSpacing(4)
-            renombrar = QPushButton("Renombrar")
-            renombrar.setToolTip("Ponle un nombre: «con la pasta nueva», «verano»…")
+            renombrar = QPushButton(_("bench.button.rename"))
+            renombrar.setToolTip(_("bench.dialog.name.tip"))
             renombrar.clicked.connect(
                 lambda _=False, e=entrada: self._renombrar(e))
-            borrar = QPushButton("Borrar")
+            borrar = QPushButton(_("bench.button.delete"))
             borrar.setObjectName("Danger")
             borrar.clicked.connect(lambda _=False, e=entrada: self._borrar_una(e))
             acciones.addWidget(renombrar)
@@ -390,8 +379,8 @@ class PerformancePage(QScrollArea):
         from PySide6.QtWidgets import QInputDialog
 
         nombre, aceptado = QInputDialog.getText(
-            self, "Nombre de la prueba",
-            "Para acordarte de qué cambió entre una y otra:",
+            self, _("bench.dialog.name"),
+            _("bench.dialog.name.body"),
             text=entrada.label or "")
         if aceptado:
             self._pintar_historial(history.rename(entrada.timestamp, nombre))
@@ -401,8 +390,8 @@ class PerformancePage(QScrollArea):
 
         cual = entrada.label or entrada.when
         if QMessageBox.question(
-                self, "Borrar la prueba",
-                f"Se va a borrar «{cual}».\n\nNo se puede deshacer.",
+                self, _("bench.dialog.delete"),
+                _("bench.dialog.delete.body").format(nombre=cual),
                 QMessageBox.StandardButton.Cancel | QMessageBox.StandardButton.Yes,
                 QMessageBox.StandardButton.Cancel) != QMessageBox.StandardButton.Yes:
             return
@@ -415,7 +404,7 @@ class PerformancePage(QScrollArea):
         """Para la prueba en cuanto termine la medida que esté en curso."""
         self._parar.set()
         self.cancel_button.setEnabled(False)
-        self.progress.setFormat("cancelando…")
+        self.progress.setFormat(_("bench.state.cancelling"))
 
     def _abrir_carpeta(self) -> None:
         """Abre el gestor de archivos donde se guardan las pruebas.
@@ -437,10 +426,11 @@ class PerformancePage(QScrollArea):
         if not cuantas:
             return
         respuesta = QMessageBox.question(
-            self, "Borrar el historial",
-            f"Se van a borrar {cuantas} "
-            f"{render.plural(cuantas, 'prueba guardada', 'pruebas guardadas')} "
-            f"de este equipo.\n\nNo se puede deshacer.",
+            self, _("bench.button.clear"),
+            _("bench.dialog.clear.body").format(
+                n=cuantas,
+                plural=_("bench.saved.one" if cuantas == 1
+                         else "bench.saved.many")),
             QMessageBox.StandardButton.Cancel | QMessageBox.StandardButton.Yes,
             QMessageBox.StandardButton.Cancel)
         if respuesta == QMessageBox.StandardButton.Yes:
@@ -484,8 +474,8 @@ class PerformancePage(QScrollArea):
                 otra, cambio = comparacion
                 signo = "+" if cambio >= 0 else ""
                 self.history_card.set_title(
-                    f"Pruebas anteriores de este equipo   ·   "
-                    f"{signo}{cambio:.1f} % frente a la del {otra.when}")
+                    _("bench.compare.title").format(
+                        signo=signo, pct=f"{cambio:.1f}", fecha=otra.when))
             self._avisar_de_la_deriva(actual, entradas)
 
     def _avisar_de_la_deriva(self, actual, entradas) -> None:
@@ -499,18 +489,10 @@ class PerformancePage(QScrollArea):
             self.deriva_hint.hide()
             return
         grados, cuantas = deriva
-        pruebas = render.plural(cuantas, "prueba", "pruebas")
-        if grados > 0:
-            texto = (f"Esta prueba ha llegado a {grados:.0f} °C más que la "
-                     f"mediana de las {cuantas} {pruebas} anteriores con la "
-                     f"misma puntuación. Suele ser polvo o pasta térmica seca "
-                     f"—o simplemente que hace más calor en la habitación, que "
-                     f"eso no lo mide ningún sensor del equipo.")
-        else:
-            texto = (f"Esta prueba ha llegado a {abs(grados):.0f} °C menos que "
-                     f"la mediana de las {cuantas} {pruebas} anteriores con la "
-                     f"misma puntuación. Si acabas de limpiarlo o de cambiar la "
-                     f"pasta, aquí se ve.")
+        pruebas = _("bench.runs.one" if cuantas == 1 else "bench.runs.many")
+        clave = "bench.drift.hotter" if grados > 0 else "bench.drift.cooler"
+        texto = _(clave).format(grados=f"{abs(grados):.0f}", n=cuantas,
+                                pruebas=pruebas)
         self.deriva_hint.setText(texto)
         self.deriva_hint.show()
 
@@ -535,25 +517,23 @@ class PerformancePage(QScrollArea):
 
         c = resultado.conditions
         f = self.conditions.set
-        f("Frecuencia media", render.hz(c.frequency_avg_hz))
-        f("Frecuencia máxima", render.hz(c.frequency_peak_hz))
-        f("Frecuencia al final", render.hz(c.frequency_end_hz),
-          tooltip="La media del último tramo. Si es bastante menor que la "
-                  "máxima, el procesador no aguantó su tope durante la prueba.")
-        f("Temperatura al empezar", render.temperature(c.temperature_start_c,
+        f(_("bench.col.avgfreq"), render.hz(c.frequency_avg_hz))
+        f(_("bench.cond.maxfreq"), render.hz(c.frequency_peak_hz))
+        f(_("bench.cond.endfreq"), render.hz(c.frequency_end_hz),
+          tooltip=_("bench.cond.endfreq.tip"))
+        f(_("bench.cond.starttemp"), render.temperature(c.temperature_start_c,
                                                        self._prefs.fahrenheit))
-        f("Temperatura máxima", render.temperature(c.temperature_peak_c,
+        f(_("bench.cond.maxtemp"), render.temperature(c.temperature_peak_c,
                                                    self._prefs.fahrenheit))
         f("Gobernador", c.governor or d)
-        f("Preferencia de energía", c.energy_preference or d)
-        f("Carga de fondo", render.percent(c.background_load),
-          tooltip="Lo que estaba ocupando la máquina justo antes de empezar. "
-                  "Con carga de fondo el resultado no se puede comparar.")
+        f(_("bench.cond.epp"), c.energy_preference or d)
+        f(_("bench.cond.load"), render.percent(c.background_load),
+          tooltip=_("bench.cond.load.tip"))
 
         clear_layout(self._warnings_host)
         for aviso in resultado.warnings:
             self._warnings_host.addWidget(
-                Notice("Antes de comparar esta cifra", aviso))
+                Notice(_("bench.notice.compare"), aviso))
 
     def apply(self, snapshot) -> None:
         """La página no depende del muestreo, salvo para saber qué CPU es.

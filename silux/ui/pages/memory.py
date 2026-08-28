@@ -82,12 +82,7 @@ class MemoryPage(QScrollArea):
         self.timings_card = Card(_("memory.card.timings"))
         self.timings = Table([_(h) for h in TIMING_HEADERS],
                              numeric=(False, True, True, True, True, True, True, True))
-        explanation = QLabel(
-            "El SPD es un chip que lleva cada módulo con sus características. "
-            "Dice a qué velocidad puede ir, mientras que la BIOS decide a cuál "
-            "va de verdad: sin XMP activado se queda en los valores "
-            "conservadores de JEDEC."
-        )
+        explanation = QLabel(_("memory.spd.note"))
         explanation.setObjectName("Muted")
         explanation.setWordWrap(True)
         explanation.setFont(ui_font(theme.METRICS.small_pt))
