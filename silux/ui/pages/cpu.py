@@ -25,6 +25,7 @@ from ...model import CpuType, Need, Snapshot
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette, ui_font
+from .cpulive import CpuLiveSection
 from ..widgets import (
     Card,
     ChipRow,
@@ -223,6 +224,12 @@ class CpuPage(QScrollArea):
 
         self._layout.addWidget(self._build_header())
 
+        # Lo que el procesador está haciendo ahora, antes que sus fichas: aquí
+        # es donde se busca a cuánto va, y en Sensores dejaba el árbol —que es
+        # lo propio de esa página— reducido a una rendija.
+        self.live = CpuLiveSection(palette, prefs)
+        self._layout.addWidget(self.live)
+
         self._sections_host = QVBoxLayout()
         self._sections_host.setSpacing(m.section_gap)
         self._layout.addLayout(self._sections_host)
@@ -262,6 +269,7 @@ class CpuPage(QScrollArea):
     # -- actualización ------------------------------------------------------
 
     def apply(self, snapshot: Snapshot) -> None:
+        self.live.apply(snapshot)
         cpu = snapshot.cpu
         if not cpu.types:
             return

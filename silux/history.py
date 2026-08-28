@@ -47,6 +47,10 @@ class Entry:
     threads: int
     seconds: float                 # cuánto duró cada medida
     scores: dict[str, float]       # «compresion/1», «compresion/16» → op/s
+    # Un nombre que le pone el usuario: «con la pasta nueva», «verano», «tras
+    # subir el PBO». Sin él, una lista de fechas no dice qué cambió entre una
+    # y otra, que es justo lo que se quiere saber al comparar.
+    label: str = ""
     governor: Optional[str] = None
     temperature_peak_c: Optional[float] = None
     frequency_avg_hz: Optional[int] = None
@@ -167,3 +171,21 @@ def clear() -> bool:
         return True
     except OSError:
         return False
+
+
+def remove(timestamp: float) -> list[Entry]:
+    """Borra una prueba concreta por su marca de tiempo."""
+    quedan = [e for e in load() if e.timestamp != timestamp]
+    save(quedan)
+    return quedan
+
+
+def rename(timestamp: float, label: str) -> list[Entry]:
+    """Le pone (o le quita) el nombre a una prueba."""
+    entradas = []
+    for entrada in load():
+        if entrada.timestamp == timestamp:
+            entrada = dataclasses.replace(entrada, label=label.strip())
+        entradas.append(entrada)
+    save(entradas)
+    return entradas

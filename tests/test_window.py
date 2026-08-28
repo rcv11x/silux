@@ -256,26 +256,31 @@ class TestVentana(unittest.TestCase):
 
         window = self._window(temperature_unit="c")
         window._on_sample(Collector().sample())
-        self.assertEqual(window.monitor_page.tile_temp.unit.text(), "°C")
+        self.assertEqual(window.cpu_page.live.tile_temp.unit.text(), "°C")
 
         window._on_preferences(replace(window.prefs, temperature_unit="f"))
         window._on_sample(Collector().sample())
-        self.assertEqual(window.monitor_page.tile_temp.unit.text(), "°F")
+        self.assertEqual(window.cpu_page.live.tile_temp.unit.text(), "°F")
 
-    def test_la_identificacion_y_el_monitor_estan_separados(self):
-        """La página de CPU dice qué hay; Sensores dice qué está haciendo.
+    def test_lo_que_hace_el_procesador_esta_en_la_pagina_del_procesador(self):
+        """Las cifras vivas y la rejilla de núcleos viven en CPU, no en Sensores.
 
-        La separación se llevó hasta el final a petición del autor: CPU ya no
-        tiene ni las cuatro cifras vivas que le quedaban. Todo lo que cambia
-        —gráficas, matriz de núcleos, temperatura, consumo— vive en Sensores, y
-        tenerlo en dos sitios solo obligaba a mirar cuál de los dos iba primero.
+        Estuvieron en Sensores una temporada, con la idea de separar «qué hay»
+        de «qué está haciendo». En la práctica no funcionó: quien abre la ficha
+        del procesador quiere ver a cuánto va, y en Sensores ocupaban media
+        pantalla dejando el árbol —que es lo propio de esa página— en una
+        rendija.
+
+        Sensores se queda con lo suyo: todos los sensores del equipo, con sus
+        mínimos y máximos, que es lo que no cabe en ninguna otra parte.
         """
         window = self._window()
+        for vivo in ("tile_temp", "tile_freq", "cores"):
+            self.assertTrue(hasattr(window.cpu_page.live, vivo))
         for vivo in ("tile_temp", "cores"):
-            self.assertTrue(hasattr(window.monitor_page, vivo))
-            self.assertFalse(hasattr(window.cpu_page, vivo))
-        for cifra in ("stat_temp", "stat_freq", "stat_usage", "stat_power"):
-            self.assertFalse(hasattr(window.cpu_page, cifra))
+            self.assertFalse(hasattr(window.monitor_page, vivo),
+                             f"{vivo} sigue en Sensores")
+        self.assertTrue(hasattr(window.monitor_page, "tree"))
 
     def test_los_extremos_sobreviven_a_un_cambio_de_tema(self):
         """Perder mínimos y máximos por cambiar de tema sería inaceptable."""

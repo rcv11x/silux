@@ -15,17 +15,20 @@ from __future__ import annotations
 import threading
 
 from PySide6.QtCore import Qt, QTimer, Signal
-from PySide6.QtWidgets import (QComboBox,QHBoxLayout, QLabel, QProgressBar, QPushButton,
+from PySide6.QtWidgets import (QComboBox, QHBoxLayout, QLabel, QProgressBar,
+                               QPushButton, QWidget,
                                QScrollArea, QVBoxLayout, QWidget)
 
 from ... import benchmark, history, render
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette
-from ..widgets import Card, InfoGrid, Notice, ResponsiveRow, Table, clear_layout
+from ..widgets import (Card, InfoGrid, Notice, ResponsiveRow, Table,
+                       clear_layout, mono_font)
 
 RESULT_HEADERS = ("Carga", "Un hilo", "Todos los hilos", "Escala")
-HISTORY_HEADERS = ("Cuándo", "Puntuación", "Frecuencia media", "Temp. máxima")
+HISTORY_HEADERS = ("Prueba", "Medida", "Puntuación", "Frecuencia media",
+                   "Temp. máxima")
 CONDITION_FIELDS = ("Frecuencia media", "Frecuencia máxima", "Frecuencia al final",
                     "Temperatura al empezar", "Temperatura máxima",
                     "Gobernador", "Preferencia de energía", "Carga de fondo")
@@ -90,8 +93,12 @@ class PerformancePage(QScrollArea):
         self._layout.addWidget(fila)
 
         self.history_card = Card("Pruebas anteriores de este equipo")
-        self.history = Table(HISTORY_HEADERS, numeric=(False, True, True, True))
-        self.history_card.body.addWidget(self.history)
+        # Rejilla propia y no una Table: cada fila lleva dos botones, y Table
+        # solo sabe de texto. Se reconstruye al guardar o borrar, no en cada
+        # muestreo, así que aquí no aplica la regla de reutilizar widgets.
+        self.history_host = QVBoxLayout()
+        self.history_host.setSpacing(0)
+        self.history_card.body.addLayout(self.history_host)
         nota = QLabel(
             "Solo de este equipo y solo en el disco: no se envía a ninguna "
             "parte. Comparar con cifras de internet casi nunca sirve, porque "
@@ -297,6 +304,93 @@ class PerformancePage(QScrollArea):
         self.duracion.setItemText(indice, f"{minutos:g} min cada una")
         self._pintar_total()
 
+    def _pintar_filas(self, entradas) -> None:
+        """Una fila por prueba, con su nombre, sus cifras y sus dos botones."""
+        from PySide6.QtWidgets import QGridLayout
+
+        clear_layout(self.history_host)
+        rejilla = QGridLayout()
+        rejilla.setContentsMargins(0, 0, 0, 0)
+        rejilla.setHorizontalSpacing(theme.METRICS.grid_hspace)
+        rejilla.setVerticalSpacing(theme.METRICS.grid_vspace + 3)
+
+        for columna, titulo in enumerate(HISTORY_HEADERS):
+            etiqueta = QLabel(titulo.upper())
+            etiqueta.setObjectName("ColumnTitle")
+            etiqueta.setAlignment(Qt.AlignmentFlag.AlignRight if columna in (2, 3, 4)
+                                  else Qt.AlignmentFlag.AlignLeft)
+            rejilla.addWidget(etiqueta, 0, columna)
+
+        for fila, entrada in enumerate(entradas, start=1):
+            total = entrada.total()
+            celdas = (
+                entrada.label or entrada.when,
+                self._duracion_de(entrada),
+                f"{total:.0f}" if total else render.DASH,
+                render.hz(entrada.frequency_avg_hz),
+                render.temperature(entrada.temperature_peak_c, self._prefs.fahrenheit),
+            )
+            for columna, texto in enumerate(celdas):
+                etiqueta = QLabel(texto)
+                etiqueta.setObjectName("FieldValue" if columna == 0 else "FieldName")
+                if columna:
+                    etiqueta.setFont(mono_font())
+                etiqueta.setAlignment(Qt.AlignmentFlag.AlignRight if columna in (2, 3, 4)
+                                      else Qt.AlignmentFlag.AlignLeft)
+                if columna == 0 and entrada.label:
+                    etiqueta.setToolTip(entrada.when)
+                rejilla.addWidget(etiqueta, fila, columna)
+
+            acciones = QHBoxLayout()
+            acciones.setSpacing(4)
+            renombrar = QPushButton("Renombrar")
+            renombrar.setToolTip("Ponle un nombre: «con la pasta nueva», «verano»…")
+            renombrar.clicked.connect(
+                lambda _=False, e=entrada: self._renombrar(e))
+            borrar = QPushButton("Borrar")
+            borrar.setObjectName("Danger")
+            borrar.clicked.connect(lambda _=False, e=entrada: self._borrar_una(e))
+            acciones.addWidget(renombrar)
+            acciones.addWidget(borrar)
+            contenedor = QWidget()
+            contenedor.setLayout(acciones)
+            rejilla.addWidget(contenedor, fila, len(HISTORY_HEADERS))
+
+        rejilla.setColumnStretch(0, 1)
+        envoltorio = QWidget()
+        envoltorio.setLayout(rejilla)
+        self.history_host.addWidget(envoltorio)
+
+    def _duracion_de(self, entrada) -> str:
+        """Cómo se midió: es la mitad de lo que hace comparable una cifra."""
+        segundos = entrada.seconds
+        return f"{segundos:g} s" if segundos < 90 else f"{segundos / 60:g} min"
+
+    def _renombrar(self, entrada) -> None:
+        from PySide6.QtWidgets import QInputDialog
+
+        nombre, aceptado = QInputDialog.getText(
+            self, "Nombre de la prueba",
+            "Para acordarte de qué cambió entre una y otra:",
+            text=entrada.label or "")
+        if aceptado:
+            self._pintar_historial(history.rename(entrada.timestamp, nombre))
+
+    def _borrar_una(self, entrada) -> None:
+        from PySide6.QtWidgets import QMessageBox
+
+        cual = entrada.label or entrada.when
+        if QMessageBox.question(
+                self, "Borrar la prueba",
+                f"Se va a borrar «{cual}».\n\nNo se puede deshacer.",
+                QMessageBox.StandardButton.Cancel | QMessageBox.StandardButton.Yes,
+                QMessageBox.StandardButton.Cancel) != QMessageBox.StandardButton.Yes:
+            return
+        quedan = history.remove(entrada.timestamp)
+        self._pintar_historial(quedan)
+        if not quedan:
+            self.history_card.hide()
+
     def _cancelar(self) -> None:
         """Para la prueba en cuanto termine la medida que esté en curso."""
         self._parar.set()
@@ -361,16 +455,7 @@ class PerformancePage(QScrollArea):
         if not entradas:
             self.history_card.hide()
             return
-        filas = []
-        for e in entradas:
-            total = e.total()
-            filas.append([
-                e.when,
-                f"{total:.0f}" if total else render.DASH,
-                render.hz(e.frequency_avg_hz),
-                render.temperature(e.temperature_peak_c, self._prefs.fahrenheit),
-            ])
-        self.history.set_rows(filas)
+        self._pintar_filas(entradas)
         self.history_card.show()
 
         if actual is not None:

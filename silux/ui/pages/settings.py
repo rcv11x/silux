@@ -61,6 +61,10 @@ NETWORK_UNITS = (("Bytes por segundo (MB/s)", "bytes"),
                  ("Bits por segundo (Mb/s)", "bits"))
 
 
+# Para que la columna de controles quede recta de arriba abajo.
+ANCHO_DEL_CONTROL = 150
+
+
 class _Field(QWidget):
     """Una fila de ajuste: nombre, control y una línea de explicación."""
 
@@ -69,8 +73,8 @@ class _Field(QWidget):
         m = theme.METRICS
 
         column = QVBoxLayout(self)
-        column.setContentsMargins(0, 0, 0, 0)
-        column.setSpacing(2)
+        column.setContentsMargins(0, 0, 0, m.card_gap)
+        column.setSpacing(3)
 
         row = QHBoxLayout()
         row.setContentsMargins(0, 0, 0, 0)
@@ -81,15 +85,25 @@ class _Field(QWidget):
         label.setFont(ui_font(m.base_pt))
         label.setMinimumWidth(150)
 
+        # Los que llevan texto dentro, con el mismo ancho: sin esto cada
+        # desplegable mide lo que mida su opción más larga y el borde derecho
+        # queda en diente de sierra. Una casilla no: es un cuadradito, y
+        # reservarle ese ancho le come el nombre al ajuste.
+        if not isinstance(control, QCheckBox):
+            control.setMinimumWidth(ANCHO_DEL_CONTROL)
         row.addWidget(label, 1)
-        row.addWidget(control, 0)
+        row.addWidget(control, 0, Qt.AlignmentFlag.AlignRight)
         column.addLayout(row)
 
         if explanation:
             note = QLabel(explanation)
             note.setObjectName("Muted")
             note.setWordWrap(True)
-            note.setFont(ui_font(m.small_pt))
+            # Más pequeña que la etiqueta a propósito: la explicación acompaña
+            # al ajuste, no compite con él. Al mismo tamaño, un texto de cinco
+            # líneas se lee antes que el nombre de la opción que explica.
+            note.setFont(ui_font(max(7, m.small_pt - 1)))
+            note.setContentsMargins(0, 0, ANCHO_DEL_CONTROL // 2, 0)
             column.addWidget(note)
 
 
@@ -161,14 +175,9 @@ class SettingsPage(QScrollArea):
         self.fluid_charts.stateChanged.connect(self._emit)
         card.body.addWidget(_Field(
             "Movimiento fluido de las gráficas", self.fluid_charts,
-            "Las líneas se deslizan entre una muestra y la siguiente en vez de "
-            "avanzar a saltos. No lee nada más ni cambia ninguna cifra: solo "
-            "redibuja treinta veces por segundo en lugar de una, y únicamente "
-            "las gráficas que estén a la vista. Cuesta alrededor de un 2 % de "
-            "un núcleo; en un portátil con batería se nota más que en un "
-            "sobremesa. Con la barra espaciadora se congela lo que se ve, en "
-            "esta y en cualquier otra pantalla, para leer un pico antes de que "
-            "se vaya; las cifras se siguen recogiendo por debajo.",
+            "Las líneas se deslizan en vez de avanzar a saltos. No cambia "
+            "ninguna cifra: solo se redibuja más veces, y cuesta un 2 % de un "
+            "núcleo. Con la barra espaciadora se congela lo que se ve.",
         ))
         return card
 
@@ -291,16 +300,32 @@ class SettingsPage(QScrollArea):
         columna.setSpacing(3)
 
         encabezado = QLabel(titulo.upper())
-        encabezado.setObjectName("CardTitle")
+        # De columna, no de tarjeta: estos tres encabezados nombran una lista
+        # dentro de una tarjeta que ya tiene su propio título.
+        encabezado.setObjectName("ColumnTitle")
         columna.addWidget(encabezado)
+        columna.addSpacing(2)
 
         for nombre, detalle in lineas:
-            etiqueta = QLabel(f"<b>{nombre}</b><br>{detalle}" if detalle else f"<b>{nombre}</b>")
-            etiqueta.setObjectName("Muted")
-            etiqueta.setWordWrap(True)
-            etiqueta.setFont(ui_font(m.small_pt))
-            etiqueta.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-            columna.addWidget(etiqueta)
+            # El nombre y su para-qué en dos renglones alineados por la
+            # izquierda, en vez de un párrafo con negritas dentro: así las tres
+            # columnas se leen a la misma altura y se comparan de un vistazo.
+            titulo_linea = QLabel(nombre)
+            titulo_linea.setObjectName("FieldValue")
+            titulo_linea.setFont(ui_font(m.small_pt))
+            titulo_linea.setTextInteractionFlags(
+                Qt.TextInteractionFlag.TextSelectableByMouse)
+            columna.addWidget(titulo_linea)
+
+            if detalle:
+                pie = QLabel(detalle)
+                pie.setObjectName("Muted")
+                pie.setWordWrap(True)
+                pie.setFont(ui_font(max(7, m.small_pt - 1)))
+                pie.setContentsMargins(0, 0, 0, m.card_gap - 2)
+                pie.setTextInteractionFlags(
+                    Qt.TextInteractionFlag.TextSelectableByMouse)
+                columna.addWidget(pie)
         columna.addStretch(1)
         return caja
 
