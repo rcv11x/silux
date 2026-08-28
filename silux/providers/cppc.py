@@ -145,10 +145,12 @@ def _anotar_calidad(draft: Draft) -> None:
     núcleo que sus hermanos». Como cifra de frecuencia es una trampa; como nota
     comparativa es exactamente lo que dice.
 
-    Solo se anota si de verdad hay diferencias entre núcleos. Un firmware que
-    devuelve el mismo número dieciséis veces no está midiendo nada: está
-    rellenando el campo con la constante de la familia, y pintar dieciséis
-    núcleos «igual de buenos» daría a entender que se comprobó.
+    Solo se anota si de verdad hay diferencias entre núcleos, y **dentro de
+    cada tipo**. Un firmware que devuelve el mismo número dieciséis veces no
+    está midiendo nada: está rellenando el campo con la constante de la
+    familia. Y en un Intel híbrido siempre hay diferencia entre un P-core y un
+    E-core, pero esa no es la que interesa: un E-core no salió peor de la
+    oblea, es otro núcleo. La comparación vale entre piezas equivalentes.
     """
     notas: dict[int, int] = {}
     for indice in draft.logical:
@@ -161,11 +163,16 @@ def _anotar_calidad(draft: Draft) -> None:
         if nota:
             notas[indice] = nota
 
-    if len(set(notas.values())) < 2:
-        return
-    for indice, nota in notas.items():
-        draft.cpu(indice)["quality"] = nota
-    draft.capabilities.add("cppc-prefcore")
+    anotado = False
+    for entrada in draft.types.values():
+        suyas = {i: notas[i] for i in (entrada.get("cpus") or ()) if i in notas}
+        if len(set(suyas.values())) < 2:
+            continue
+        for indice, nota in suyas.items():
+            draft.cpu(indice)["quality"] = nota
+        anotado = True
+    if anotado:
+        draft.capabilities.add("cppc-prefcore")
 
 
 def _nominal_hz(cppc: dict[str, int]) -> Optional[int]:

@@ -22,7 +22,7 @@ python3 tools/build_appimage.py --container   # el AppImage que se reparte
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **899** y tardan unos cincuenta segundos. Si sale bastante
+Los tests son **907** y tardan unos cincuenta segundos. Si sale bastante
 menos, falta algo por recoger.
 
 `--container` no es opcional para repartir: sin él se construye contra el
@@ -333,6 +333,12 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   derecha, ese hueco cae por la izquierda y la cifra sigue terminando pegada
   al borde, que es donde el árbol dibuja su marca de arrastre. El aire donde
   hace falta lo pone el relleno del propio renglón.
+- **Comparar la nota de silicio entre tipos de núcleo distintos**: un E-core
+  con la mitad de nota que un P-core no salió peor de la oblea; es otro
+  núcleo, con otro tamaño y otro propósito, y la plataforma lo puntúa más bajo
+  por diseño. Un 12900K decía que su núcleo más flojo se quedaba en el 35 %
+  del mejor: cierto en el número y falso en lo que da a entender. La nota solo
+  compara piezas equivalentes, así que se agrupa por `type_key`.
 - **Contar núcleos donde el usuario cuenta estrellas**: la leyenda decía
   «núcleo 1 y núcleo 3» y en pantalla se veían cuatro marcas, porque cada
   núcleo bueno marca sus dos hilos. Las dos cosas ciertas y ninguna evidente.

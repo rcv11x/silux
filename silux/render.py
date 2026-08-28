@@ -456,41 +456,74 @@ def turbo_note(clocks: Clocks) -> Optional[str]:
     return None
 
 
-def core_quality(logical) -> list[tuple[int, int, float]]:
-    """Los núcleos físicos ordenados de mejor a peor, con su nota relativa.
+def core_quality_by_type(logical) -> dict[str, list[tuple[int, int, float]]]:
+    """Por tipo de núcleo, los físicos ordenados de mejor a peor.
 
-    Devuelve `(core_id, nota cruda, fracción del mejor)`. La fracción es lo
-    único comparable entre máquinas: la nota cruda es la escala de rendimiento
-    de CPPC de esta pieza y no significa lo mismo en otra.
+    Cada fila es `(core_id, nota cruda, fracción del mejor de su tipo)`. La
+    fracción es lo único comparable entre máquinas: la nota cruda es la escala
+    de rendimiento de CPPC de esta pieza y no significa lo mismo en otra.
 
-    Se agrupa por núcleo físico porque los dos hilos de un mismo núcleo comparten
-    silicio y traen por fuerza la misma nota; enseñarla dos veces sugeriría que
-    se midieron por separado.
+    Se separa por tipo porque en un Intel híbrido comparar un P-core con un
+    E-core no dice nada de la calidad del silicio. Un E-core con la mitad de
+    nota no «salió peor de la oblea»: es otro núcleo, con otro propósito y
+    otro tamaño, y la plataforma lo puntúa más bajo por diseño. Sin separarlos,
+    un 12900K decía que su núcleo más flojo se quedaba en el 35 % del mejor,
+    que es cierto en el número y falso en lo que da a entender.
+
+    Y se agrupa por núcleo físico porque los dos hilos de un mismo núcleo
+    comparten silicio y traen por fuerza la misma nota; enseñarla dos veces
+    sugeriría que se midieron por separado.
     """
-    por_nucleo: dict[int, int] = {}
+    por_tipo: dict[str, dict[int, int]] = {}
     for cpu in logical:
-        if cpu.quality and cpu.core_id not in por_nucleo:
-            por_nucleo[cpu.core_id] = cpu.quality
-    if len(set(por_nucleo.values())) < 2:
+        if not cpu.quality:
+            continue
+        nucleos = por_tipo.setdefault(cpu.type_key, {})
+        nucleos.setdefault(cpu.core_id, cpu.quality)
+
+    resultado = {}
+    for clave, nucleos in por_tipo.items():
+        # Un tipo cuyos núcleos traen todos la misma nota no se ha medido:
+        # el firmware ha rellenado el campo con la constante de la familia.
+        if len(set(nucleos.values())) < 2:
+            continue
+        mejor = max(nucleos.values())
+        resultado[clave] = sorted(
+            ((core, nota, nota / mejor) for core, nota in nucleos.items()),
+            key=lambda fila: (-fila[1], fila[0]),
+        )
+    return resultado
+
+
+def core_quality(logical) -> list[tuple[int, int, float]]:
+    """Como `core_quality_by_type`, aplanado, para una CPU de un solo tipo."""
+    por_tipo = core_quality_by_type(logical)
+    if len(por_tipo) != 1:
         return []
-    mejor = max(por_nucleo.values())
-    return sorted(
-        ((core, nota, nota / mejor) for core, nota in por_nucleo.items()),
-        key=lambda fila: (-fila[1], fila[0]),
-    )
+    return next(iter(por_tipo.values()))
+
+
+def best_core_ids(logical, cuantos: int = 2) -> set[int]:
+    """Los núcleos físicos que llevan estrella: los mejores de cada tipo.
+
+    De cada tipo por separado, porque el mejor P-core y el mejor E-core son dos
+    respuestas a la misma pregunta hecha sobre piezas distintas.
+    """
+    cabeza: set[int] = set()
+    for orden in core_quality_by_type(logical).values():
+        mejor = orden[0][1]
+        # Los empatados con el mejor van todos: en muchas piezas hay dos, y
+        # quedarse con uno por el orden del bucle sería inventar un desempate.
+        iguales = [core for core, nota, _ in orden if nota == mejor]
+        cabeza.update(iguales[:cuantos])
+    return cabeza
 
 
 def best_cores(logical, cuantos: int = 2) -> str:
     """«Núcleo 1 y núcleo 3», los que el firmware marca como los mejores."""
-    orden = core_quality(logical)
-    if not orden:
-        return "—"
-    mejor = orden[0][1]
-    # Los empatados con el mejor van todos: en muchas piezas hay dos, y quedarse
-    # con uno solo por el orden del bucle sería inventarse un desempate.
-    cabeza = [core for core, nota, _ in orden if nota == mejor]
-    if len(cabeza) > cuantos:
-        cabeza = cabeza[:cuantos]
+    cabeza = sorted(best_core_ids(logical, cuantos))
+    if not cabeza:
+        return DASH
     nombres = [f"núcleo {core}" for core in cabeza]
     if len(nombres) == 1:
         return nombres[0].capitalize()
@@ -517,12 +550,21 @@ def starred_cpus(logical) -> str:
 
 
 def core_quality_spread(logical) -> Optional[str]:
-    """Cuánto va del mejor núcleo al peor, que es lo que dice si importa."""
-    orden = core_quality(logical)
-    if not orden:
+    """Cuánto va del mejor núcleo al peor dentro de su propio tipo.
+
+    En un híbrido se dice del tipo con más recorrido, que es donde la
+    diferencia importa; comparar entre tipos daría una cifra grande y sin
+    significado. Ver `core_quality_by_type`.
+    """
+    por_tipo = core_quality_by_type(logical)
+    if not por_tipo:
         return None
+    orden = min(por_tipo.values(), key=lambda filas: filas[-1][2])
     peor = orden[-1]
     return (f"el más flojo (núcleo {peor[0]}) se queda en el "
+            f"{peor[2] * 100:.0f} % del mejor de su tipo"
+            if len(por_tipo) > 1 else
+            f"el más flojo (núcleo {peor[0]}) se queda en el "
             f"{peor[2] * 100:.0f} % del mejor")
 
 
