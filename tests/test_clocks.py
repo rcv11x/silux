@@ -12,6 +12,7 @@ import unittest
 from unittest import mock
 
 from silux.model import Clocks
+from silux import render
 from silux.providers import cppc
 from silux.providers.base import Draft
 
@@ -204,3 +205,82 @@ class TestVariosTiposDeNucleo(BancoDeRelojes):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestCalidadDeLosNucleos(BancoDeRelojes):
+    """El ranking de núcleos preferidos, tal y como lo publica un 5800X3D.
+
+    Las notas son las que este equipo tiene de verdad en
+    `/sys/devices/system/cpu/cpuN/acpi_cppc/highest_perf`: ocho núcleos
+    físicos con ocho notas distintas y sus dos hilos repitiéndolas.
+    """
+
+    NOTAS = (181, 196, 186, 196, 176, 191, 171, 166)
+
+    def _pieza(self, notas=None, campo="highest_perf") -> Draft:
+        notas = self.NOTAS if notas is None else notas
+        draft = Draft()
+        for indice in range(len(notas) * 2):
+            nucleo = indice % len(notas)
+            cpu = draft.cpu(indice)
+            cpu["core_id"] = nucleo
+            if campo == "highest_perf":
+                self.cppc(indice, highest_perf=notas[nucleo])
+            else:
+                self.cpufreq(indice, **{campo: notas[nucleo]})
+        entrada = draft.type_for("general")
+        entrada["cpus"] = list(range(len(notas) * 2))
+        entrada["architecture"] = "x86_64"
+        cppc.CppcClocks().collect(draft)
+        return draft
+
+    def _logicas(self, draft: Draft):
+        return draft.freeze().cpu.logical
+
+    def test_cada_hilo_hereda_la_nota_de_su_nucleo(self):
+        logicas = self._logicas(self._pieza())
+        self.assertEqual([c.quality for c in logicas], list(self.NOTAS) * 2)
+
+    def test_el_ranking_de_amd_pstate_vale_igual(self):
+        """Donde amd-pstate lo publica ya normalizado se prefiere ese."""
+        logicas = self._logicas(self._pieza(campo="amd_pstate_prefcore_ranking"))
+        self.assertEqual([c.quality for c in logicas], list(self.NOTAS) * 2)
+
+    def test_un_firmware_que_repite_la_misma_nota_no_dice_nada(self):
+        """Dieciséis veces el mismo número es la constante de la familia, no
+        una medida. Pintar dieciséis núcleos «igual de buenos» daría a entender
+        que se comprobó algo."""
+        draft = self._pieza(notas=(181,) * 8)
+        self.assertTrue(all(c.quality is None for c in self._logicas(draft)))
+        self.assertNotIn("cppc-prefcore", draft.capabilities)
+
+    def test_el_orden_va_del_mejor_al_peor_por_nucleo_fisico(self):
+        logicas = self._logicas(self._pieza())
+        orden = render.core_quality(logicas)
+        # Ocho núcleos físicos, no dieciséis hilos: el silicio es el mismo.
+        self.assertEqual(len(orden), 8)
+        self.assertEqual([fila[0] for fila in orden], [1, 3, 5, 2, 0, 4, 6, 7])
+        self.assertEqual(orden[0][2], 1.0)
+        self.assertAlmostEqual(orden[-1][2], 166 / 196, places=3)
+
+    def test_los_empatados_en_cabeza_salen_todos(self):
+        """Quedarse con uno por el orden del bucle sería inventar un desempate."""
+        self.assertEqual(render.best_cores(self._logicas(self._pieza())),
+                         "Núcleo 1 y núcleo 3")
+
+    def test_sin_notas_no_se_promete_nada(self):
+        self.assertEqual(render.best_cores(()), "—")
+        self.assertIsNone(render.core_quality_spread(()))
+
+    def test_la_nota_no_se_convierte_en_frecuencia(self):
+        """`highest_perf` por núcleo es el ranking, no el techo de la pieza.
+
+        Con la regla de tres que parece obvia —nominal_freq × highest ÷
+        nominal— este 5800X3D saldría a 4,96 GHz, y su boost son 4,55: el
+        número es creíble, comprobable y falso. El techo lo da amd-pstate.
+        """
+        self.cppc(nominal_freq=3401, nominal_perf=124, highest_perf=196)
+        self.cpufreq(amd_pstate_max_freq=4552952)
+        clocks, _ = self.recolectar()
+        self.assertEqual(clocks.max_turbo_hz, 4_552_952_000)
+        self.assertNotEqual(clocks.max_turbo_hz, int(3_401_000_000 * 196 / 124))

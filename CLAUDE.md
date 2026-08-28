@@ -22,7 +22,7 @@ python3 tools/build_appimage.py --container   # el AppImage que se reparte
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **827** y tardan unos cincuenta segundos. Si sale bastante
+Los tests son **844** y tardan unos cincuenta segundos. Si sale bastante
 menos, falta algo por recoger.
 
 `--container` no es opcional para repartir: sin él se construye contra el
@@ -114,6 +114,13 @@ silux/
 
 El orden de los proveedores en `collector.py` importa y está comentado ahí.
 
+`providers/cppc.py` saca de ACPI CPPC, además de los relojes, **lo bien que
+salió cada núcleo de la oblea**: los núcleos de una misma pieza no son
+iguales, el firmware lo publica y el planificador lo usa para mandar ahí el
+trabajo de un hilo suelto. Ryzen Master lo enseña en Windows con estrellitas;
+en Linux no lo enseñaba nadie. Sale en la rejilla de núcleos de la página de
+CPU y en el volcado del terminal.
+
 ## Estado
 
 Terminadas las once: **CPU, Cachés, Placa base, Memoria, Gráficos,
@@ -201,6 +208,19 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   veces y no siempre añadiendo al final. Interpretar una v1.4 con las
   posiciones de una v1.3 no falla, devuelve cifras creíbles y equivocadas. Cada
   versión tiene su tabla de posiciones o se descarta entera.
+- **Convertir el `highest_perf` de CPPC en una frecuencia**: la regla de tres
+  que parece obvia —`nominal_freq × highest_perf ÷ nominal_perf`— da 4,96 GHz
+  en un 5800X3D cuyo boost son 4,55. El número es creíble, comprobable y
+  falso. Donde la plataforma ordena sus núcleos, ese campo deja de significar
+  «hasta dónde llega la pieza» y pasa a ser el puesto de cada núcleo en el
+  ranking. El techo lo da `amd_pstate_max_freq`, que es el cálculo ya hecho
+  por quien conoce la curva.
+- **Enseñar la nota de silicio de un núcleo como si fuera comparable entre
+  máquinas**: 196 no significa nada por sí solo; es la escala de rendimiento
+  de esa pieza. Lo comparable es la fracción respecto al mejor núcleo de la
+  misma. Y si el firmware devuelve el mismo número para todos, no está
+  midiendo: está rellenando el campo con la constante de la familia, y pintar
+  ocho núcleos «igual de buenos» daría a entender que se comprobó algo.
 - **Medir en píxeles lo que va dentro de algo que se pinta a mano**: la caja
   del texto de cada núcleo estaba fija en 12 px. Con la letra al máximo las
   letras medían 18 y se comían la gráfica por arriba dejando un hueco por
@@ -309,6 +329,10 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   lento suelto no descoloque.
 - **Un atajo de teclado que no aparece en ninguna parte**: no existe para
   quien no lo sabe. La barra de estado es donde se mira sin buscar.
+- **Poner una marca de color sin nada que la traduzca**: el punto que señala
+  los mejores núcleos no significa nada por sí solo. Su leyenda va debajo de
+  la propia rejilla, no en la ficha de al lado: separadas, el punto se queda
+  sin explicar y la frase sin a qué referirse.
 
 - **Creer que los códigos de vídeo del EDID describen el panel**: los VIC de
   CTA-861 son códigos de TV y HDMI, y no llegan a 1440p a 240 Hz. El AORUS

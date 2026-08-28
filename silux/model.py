@@ -145,6 +145,10 @@ class LogicalCpu:
     freq_hz: Optional[int] = None
     temp_c: Optional[float] = None
     usage_percent: Optional[float] = None
+    # Lo bien que salió este núcleo de la oblea, en la escala de rendimiento de
+    # ACPI CPPC. No es una frecuencia ni se puede convertir en una: es una nota
+    # relativa entre los núcleos de esta pieza. Ver `providers/cppc.py`.
+    quality: Optional[int] = None
 
 
 @dataclass(frozen=True, slots=True)

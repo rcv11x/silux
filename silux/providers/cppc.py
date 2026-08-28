@@ -15,6 +15,12 @@ de fiabilidad:
 
 Nunca pisa lo que otra fuente ya dejó puesto: en un Intel moderno CPUID 0x16
 va primero y esto no toca nada.
+
+De paso saca de CPPC un dato que no es un reloj y que no publica ninguna otra
+herramienta de Linux: **lo bien que salió cada núcleo de la oblea**. Los
+núcleos de una misma pieza no son iguales, el firmware lo sabe y lo dice, y el
+planificador lo usa para mandar el trabajo de un hilo suelto al mejor. Ryzen
+Master lo enseña en Windows con estrellitas; aquí no lo enseñaba nadie.
 """
 
 from __future__ import annotations
@@ -94,6 +100,8 @@ class CppcClocks(Provider):
             falta_base = falta_base or base is None
             falta_bus = falta_bus or (bus is None and es_x86)
 
+        _anotar_calidad(draft)
+
         if falta_base:
             draft.note(
                 "cpu.clocks.base_hz", Need.HARDWARE,
@@ -126,6 +134,38 @@ def _leer_cppc(cpu_index: int) -> dict[str, int]:
         if valor:                      # un 0 es «el firmware no lo rellenó»
             valores[campo] = valor
     return valores
+
+
+def _anotar_calidad(draft: Draft) -> None:
+    """Reparte por CPU lógica la nota de silicio que publica el firmware.
+
+    Es el mismo `highest_perf` que arriba se descarta para calcular el techo, y
+    por el mismo motivo: cuando la plataforma ordena sus núcleos, ese campo deja
+    de valer «hasta dónde llega la pieza» y pasa a valer «cuánto mejor es este
+    núcleo que sus hermanos». Como cifra de frecuencia es una trampa; como nota
+    comparativa es exactamente lo que dice.
+
+    Solo se anota si de verdad hay diferencias entre núcleos. Un firmware que
+    devuelve el mismo número dieciséis veces no está midiendo nada: está
+    rellenando el campo con la constante de la familia, y pintar dieciséis
+    núcleos «igual de buenos» daría a entender que se comprobó.
+    """
+    notas: dict[int, int] = {}
+    for indice in draft.logical:
+        base = f"{SYS_CPU}/cpu{indice}"
+        # amd-pstate publica el ranking ya normalizado; donde no esté, el campo
+        # de CPPC del que sale. En un Intel con HWP este es el `highest_perf`
+        # de cada núcleo, que es la misma idea con otro nombre.
+        nota = (read_int(f"{base}/cpufreq/amd_pstate_prefcore_ranking")
+                or read_int(f"{base}/acpi_cppc/highest_perf"))
+        if nota:
+            notas[indice] = nota
+
+    if len(set(notas.values())) < 2:
+        return
+    for indice, nota in notas.items():
+        draft.cpu(indice)["quality"] = nota
+    draft.capabilities.add("cppc-prefcore")
 
 
 def _nominal_hz(cppc: dict[str, int]) -> Optional[int]:

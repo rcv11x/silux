@@ -13,13 +13,13 @@ from __future__ import annotations
 
 from collections import defaultdict, deque
 
-from PySide6.QtWidgets import QVBoxLayout, QWidget
+from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 from ... import render
 from ...model import Snapshot
 from ...settings import Preferences
 from .. import theme
-from ..theme import Palette
+from ..theme import Palette, ui_font
 from ..widgets import Card, CoreMatrix, ResponsiveRow, StatTile
 
 # Cuántas muestras guarda la curva de cada núcleo. Cuarenta a un segundo son
@@ -48,6 +48,15 @@ class CpuLiveSection(QWidget):
         cores_card = Card("Núcleos lógicos")
         self.cores = CoreMatrix(palette)
         cores_card.body.addWidget(self.cores)
+        # El punto de acento de las celdas no significa nada por sí solo. Esta
+        # línea es la que lo traduce, y por eso va debajo de la rejilla y no en
+        # la ficha de arriba: separadas, el punto se queda sin explicar.
+        self.calidad = QLabel()
+        self.calidad.setObjectName("Muted")
+        self.calidad.setFont(ui_font(max(7, m.small_pt - 1)))
+        self.calidad.setWordWrap(True)
+        self.calidad.hide()
+        cores_card.body.addWidget(self.calidad)
         column.addWidget(cores_card)
 
     def _build_tiles(self) -> QWidget:
@@ -130,6 +139,11 @@ class CpuLiveSection(QWidget):
             )
 
     def _apply_cores(self, snapshot: Snapshot) -> None:
+        # Los núcleos que el firmware marca como los mejores de la pieza. Se
+        # marcan los dos hilos del mismo núcleo porque el silicio es el mismo.
+        orden = render.core_quality(snapshot.cpu.logical)
+        cabeza = {core for core, nota, _ in orden if orden and nota == orden[0][1]}
+
         cells = []
         for logical in snapshot.cpu.logical:
             if logical.usage_percent is not None:
@@ -144,5 +158,19 @@ class CpuLiveSection(QWidget):
                 "detail_short": freq,
                 "usage": logical.usage_percent,
                 "history": tuple(self._core_history[logical.index]),
+                "starred": logical.core_id in cabeza,
             })
         self.cores.set_cores(cells)
+
+        if orden:
+            reparto = render.core_quality_spread(snapshot.cpu.logical)
+            self.calidad.setText(
+                f'<span style="color:{self._p.accent}">●</span> '
+                f"{render.best_cores(snapshot.cpu.logical)}: los que mejor "
+                f"salieron de la oblea según el firmware, y a los que el "
+                f"planificador manda el trabajo de un hilo suelto. "
+                f"{reparto[0].upper()}{reparto[1:]}."
+            )
+            self.calidad.show()
+        else:
+            self.calidad.hide()

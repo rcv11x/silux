@@ -450,6 +450,57 @@ def turbo_note(clocks: Clocks) -> Optional[str]:
     return None
 
 
+def core_quality(logical) -> list[tuple[int, int, float]]:
+    """Los núcleos físicos ordenados de mejor a peor, con su nota relativa.
+
+    Devuelve `(core_id, nota cruda, fracción del mejor)`. La fracción es lo
+    único comparable entre máquinas: la nota cruda es la escala de rendimiento
+    de CPPC de esta pieza y no significa lo mismo en otra.
+
+    Se agrupa por núcleo físico porque los dos hilos de un mismo núcleo comparten
+    silicio y traen por fuerza la misma nota; enseñarla dos veces sugeriría que
+    se midieron por separado.
+    """
+    por_nucleo: dict[int, int] = {}
+    for cpu in logical:
+        if cpu.quality and cpu.core_id not in por_nucleo:
+            por_nucleo[cpu.core_id] = cpu.quality
+    if len(set(por_nucleo.values())) < 2:
+        return []
+    mejor = max(por_nucleo.values())
+    return sorted(
+        ((core, nota, nota / mejor) for core, nota in por_nucleo.items()),
+        key=lambda fila: (-fila[1], fila[0]),
+    )
+
+
+def best_cores(logical, cuantos: int = 2) -> str:
+    """«Núcleo 1 y núcleo 3», los que el firmware marca como los mejores."""
+    orden = core_quality(logical)
+    if not orden:
+        return "—"
+    mejor = orden[0][1]
+    # Los empatados con el mejor van todos: en muchas piezas hay dos, y quedarse
+    # con uno solo por el orden del bucle sería inventarse un desempate.
+    cabeza = [core for core, nota, _ in orden if nota == mejor]
+    if len(cabeza) > cuantos:
+        cabeza = cabeza[:cuantos]
+    nombres = [f"núcleo {core}" for core in cabeza]
+    if len(nombres) == 1:
+        return nombres[0].capitalize()
+    return (", ".join(nombres[:-1]) + " y " + nombres[-1]).capitalize()
+
+
+def core_quality_spread(logical) -> Optional[str]:
+    """Cuánto va del mejor núcleo al peor, que es lo que dice si importa."""
+    orden = core_quality(logical)
+    if not orden:
+        return None
+    peor = orden[-1]
+    return (f"el más flojo (núcleo {peor[0]}) se queda en el "
+            f"{peor[2] * 100:.0f} % del mejor")
+
+
 # Coletillas que los fabricantes meten en la cadena de marca y que no
 # distinguen a un procesador de otro.
 _RELLENO_DE_MARCA = re.compile(
