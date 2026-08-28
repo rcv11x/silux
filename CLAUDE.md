@@ -17,12 +17,13 @@ python3 -m silux.cli --json             # API para otros programas
 python3 -m silux.cli --sensors          # el árbol de sensores
 python3 -m silux.cli --report FICHERO   # informe para adjuntar a un fallo
 python3 tools/gen_cpu_db.py            # regenerar la base de datos de CPUs
+python3 tools/gen_lang.py --write      # poner al día los archivos de idioma
 python3 tools/install_desktop.py       # icono y entrada de menú
 python3 tools/build_appimage.py --container   # el AppImage que se reparte
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **997** y tardan unos cincuenta segundos. Si sale bastante
+Los tests son **1007** y tardan unos cincuenta segundos. Si sale bastante
 menos, falta algo por recoger.
 
 `--container` no es opcional para repartir: sin él se construye contra el
@@ -109,6 +110,7 @@ silux/
 ├─ benchmark.py    prueba de CPU que reporta en qué condiciones midió
 ├─ history.py      historial de pruebas de este equipo
 ├─ privacidad.py   qué se omite de un informe público y qué no
+├─ i18n.py        el idioma de la interfaz; el original es el español
 ├─ throttling.py  desde cuándo lleva frenándose algo, y por qué
 ├─ registro.py    graba la sesión a un CSV, fila a fila
 ├─ providers/      una fuente cada uno; ninguno conoce a los demás
@@ -579,6 +581,22 @@ para cerrarles la puerta por una tilde.
 
 Los comentarios del código no siguen esa regla y van en el español del autor:
 no los ve nadie desde la ventana y no se traducen.
+
+**El español es el original, no una traducción más.** Las cadenas del código
+son español y `_()` las busca en `db/lang/<código>.json`; lo que no está sale
+en español, que es lo que el programa decía antes de que existiera esto. Con
+claves simbólicas, una traducción a medias enseñaría `settings.fluid.desc` en
+pantalla.
+
+Se eligió JSON sobre gettext por quién escribe los archivos: un `.po` hay que
+compilarlo a binario antes de que sirva, y esto se corrige desde el navegador
+de GitHub y se lee en el diff línea a línea.
+
+`tools/gen_lang.py` los mantiene al día. Solo recoge lo que ya está envuelto
+en `_()`: adivinar qué cadena del código es texto de interfaz sale mal en
+silencio, y un `"amdgpu"` traducido rompe la detección de la gráfica sin que
+nadie lo relacione con el idioma. **Nada de `providers/` se traduce**: lo que
+sale de ahí es el dato del equipo, no una frase del programa.
 
 ## Al reportar un fallo
 

@@ -52,6 +52,9 @@ class Preferences:
     show_all_features: bool = False
     # Ancho de la columna «Sensor» del árbol. 0 = calcularlo del contenido.
     # Ancho de cada columna del árbol de sensores. Vacío = calcularlo.
+    # El idioma de la interfaz. El español es el original y no una traducción
+    # más: es lo que sale cuando falta una cadena en cualquier otro.
+    language: str = "es"
     sensor_columns: tuple[int, ...] = ()
     # Las ramas del árbol de sensores que quedaron plegadas. Se guarda lo
     # plegado y no lo abierto porque lo normal es tenerlo casi todo abierto:
@@ -77,6 +80,7 @@ class Preferences:
             accent=self.accent if self.accent in ACCENT_NAMES else "azul",
             network_unit="bits" if self.network_unit == "bits" else "bytes",
             show_all_features=bool(self.show_all_features),
+            language=str(self.language or "es").lower()[:8],
             sensor_columns=tuple(min(900, max(30, int(w))) for w in (self.sensor_columns or ())),
             sensor_collapsed=tuple(str(c) for c in (self.sensor_collapsed or ()))[:400],
             # El recorte aquí es solo un saneado grueso; el suelo de verdad lo

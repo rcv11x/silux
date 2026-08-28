@@ -39,7 +39,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .. import EMOJI, __version__, settings as prefs_module
+from .. import EMOJI, __version__, i18n, settings as prefs_module
 from ..model import Snapshot
 from ..settings import ACCENT_NAMES, Preferences
 from ..tracking import Tracker
@@ -395,6 +395,13 @@ class MainWindow(QMainWindow):
         if prefs.fluid_charts != previous.fluid_charts:
             self._aplicar_fluidez()
 
+        if prefs.language != previous.language:
+            # Reconstruir la interfaz entera es lo que ya se hace al cambiar de
+            # tema o de densidad, y aquí resuelve lo mismo de una vez: los
+            # títulos y las etiquetas se ponen al montar cada página, así que
+            # no hay forma de retraducirlos sin volver a montarlas.
+            i18n.set_language(prefs.language)
+
         appearance_changed = ((prefs.theme, prefs.density, prefs.font_scale, prefs.accent)
                               != (previous.theme, previous.density, previous.font_scale,
                                   previous.accent))
@@ -414,7 +421,7 @@ class MainWindow(QMainWindow):
             self._palette = theme.apply(QApplication.instance(), prefs.theme,
                                         prefs.density, prefs.font_scale, prefs.accent)
             self._build_ui()
-        elif content_changed:
+        elif content_changed or prefs.language != previous.language:
             self._build_ui()
 
     def _aplicar_fluidez(self) -> None:
