@@ -1931,7 +1931,8 @@ class SensorTree(QTreeWidget):
             for category, sensors in categories.items():
                 category_item = QTreeWidgetItem([category])
                 category_item.setFont(0, self._label_font)
-                category_item.setForeground(0, self._p.q("muted"))
+                for column in range(len(self.COLUMNS)):
+                    category_item.setForeground(column, self._p.q("muted"))
                 device_item.addChild(category_item)
                 self._rows[f"::{device}/{category}"] = category_item
 
@@ -1962,6 +1963,11 @@ class SensorTree(QTreeWidget):
                             column,
                             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
                         )
+                    # El color base de la fila lo pone el árbol y no la hoja
+                    # de estilos: declararlo allí pisaría el de las celdas que
+                    # piden otro, que es justo lo que tiene que poder pasar.
+                    for column in range(len(self.COLUMNS)):
+                        row.setForeground(column, self._p.q("ink_dim"))
                     # La columna del valor actual va sobre una banda tenue: es
                     # la que se mira, y anclarla evita recorrer con el dedo.
                     row.setBackground(1, QBrush(self._p.q("accent", 0.09)))

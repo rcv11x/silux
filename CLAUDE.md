@@ -22,7 +22,7 @@ python3 tools/build_appimage.py --container   # el AppImage que se reparte
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **982** y tardan unos cincuenta segundos. Si sale bastante
+Los tests son **986** y tardan unos cincuenta segundos. Si sale bastante
 menos, falta algo por recoger.
 
 `--container` no es opcional para repartir: sin él se construye contra el
@@ -350,6 +350,15 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   de tres maneras distintas y ninguna es obligatoria. Donde no lo dice se
   calla: en canal único la memoria rinde la mitad, y decirlo al revés manda a
   alguien a abrir el equipo para nada.
+- **Declarar `color` en `QTreeWidget::item`**: pisa el que cada celda pide con
+  `setForeground`, en silencio y sin error. Con él puesto no llegaba a la
+  pantalla ni el rojo de un sensor pasado de vueltas ni el ámbar del que se
+  acerca: el árbol salía entero del mismo gris. El color base lo pone el árbol
+  al montar cada fila, no la hoja.
+- **Probar un color renderizando el widget suelto**: fuera de la ventana no se
+  pinta como dentro —el estilo no se aplica igual— y la prueba dice cosas que
+  no pasan de verdad. Lo que se vigila es la causa: que la hoja no declare ese
+  color.
 - **Escribir el mismo relleno en la hoja de estilos y en quien mide**: se
   desincronizan. Al subirlo de 6 a 10 px solo en el CSS, las cifras cabían en
   la cuenta y no en la columna, y los relojes de núcleo salían «4374.4 …».
