@@ -20,7 +20,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ... import EMOJI, db
+from ... import EMOJI, db, i18n
+from ...i18n import _
 from ...settings import Preferences, config_path
 from .. import theme
 from ..theme import ui_font
@@ -144,7 +145,7 @@ class SettingsPage(QScrollArea):
     # -- construcción -------------------------------------------------------
 
     def _build_sampling(self) -> Card:
-        card = Card("Muestreo")
+        card = Card(_("Muestreo"))
 
         self.interval = QDoubleSpinBox()
         self.interval.setRange(0.2, 10.0)
@@ -156,95 +157,116 @@ class SettingsPage(QScrollArea):
         self.interval.valueChanged.connect(self._emit)
 
         card.body.addWidget(_Field(
-            "Refrescar cada", self.interval,
-            "Cada lectura recorre sysfs y hwmon. Por debajo de medio segundo el "
-            "coste empieza a notarse; por encima de dos, las gráficas pierden detalle.",
+            _("Refrescar cada"), self.interval,
+            _("Cada lectura recorre sysfs y hwmon. Por debajo de medio segundo el "
+            "coste empieza a notarse; por encima de dos, las gráficas pierden detalle.")
+            ,
         ))
 
         self.all_features = QCheckBox()
         self.all_features.setChecked(self._prefs.show_all_features)
         self.all_features.stateChanged.connect(self._emit)
         card.body.addWidget(_Field(
-            "Mostrar todas las instrucciones", self.all_features,
-            "Por defecto solo se enseñan las banderas relevantes. Activado, "
-            "aparecen las 53 que devuelve CPUID en este equipo.",
+            _("Mostrar todas las instrucciones"), self.all_features,
+            _("Por defecto solo se enseñan las banderas relevantes. Activado, "
+            "aparecen las 53 que devuelve CPUID en este equipo.")
+            ,
         ))
 
         self.fluid_charts = QCheckBox()
         self.fluid_charts.setChecked(self._prefs.fluid_charts)
         self.fluid_charts.stateChanged.connect(self._emit)
         card.body.addWidget(_Field(
-            "Movimiento fluido de las gráficas", self.fluid_charts,
-            "Las líneas se deslizan en vez de avanzar a saltos. No cambia "
+            _("Movimiento fluido de las gráficas"), self.fluid_charts,
+            _("Las líneas se deslizan en vez de avanzar a saltos. No cambia "
             "ninguna cifra: solo se redibuja más veces, y cuesta un 2 % de un "
-            "núcleo. Con la barra espaciadora se congela lo que se ve.",
+            "núcleo. Con la barra espaciadora se congela lo que se ve.")
+            ,
         ))
         return card
 
     def _build_appearance(self) -> Card:
-        card = Card("Apariencia")
+        card = Card(_("Apariencia"))
+
+        # El idioma va el primero de la tarjeta: es lo que cambia todo lo
+        # demás, y quien lo busca no viene a mirar el tema.
+        self.language_box = QComboBox()
+        idiomas = i18n.disponible()
+        for codigo, nombre in idiomas.items():
+            self.language_box.addItem(nombre, codigo)
+        actual = self._prefs.language if self._prefs.language in idiomas else "es"
+        self.language_box.setCurrentIndex(list(idiomas).index(actual))
+        self.language_box.currentIndexChanged.connect(self._emit)
+        card.body.addWidget(_Field(
+            _("Idioma"), self.language_box,
+            _("El español es el original: cuando una frase todavía no está "
+              "traducida, sale en español en vez de quedarse en blanco.")))
 
         self.theme_box = QComboBox()
         for label, value in THEMES:
-            self.theme_box.addItem(label, value)
+            self.theme_box.addItem(_(label), value)
         self.theme_box.setCurrentIndex([v for _, v in THEMES].index(self._prefs.theme))
         self.theme_box.currentIndexChanged.connect(self._emit)
-        card.body.addWidget(_Field("Tema", self.theme_box))
+        card.body.addWidget(_Field(_("Tema"), self.theme_box))
 
         self.density_box = QComboBox()
         for label, value in DENSITIES:
-            self.density_box.addItem(label, value)
+            self.density_box.addItem(_(label), value)
         self.density_box.setCurrentIndex([v for _, v in DENSITIES].index(self._prefs.density))
         self.density_box.currentIndexChanged.connect(self._emit)
         card.body.addWidget(_Field(
-            "Densidad", self.density_box,
-            "Amplia deja más aire entre filas y columnas; compacta aprieta para "
-            "que quepa más en la misma pantalla.",
+            _("Densidad"), self.density_box,
+            _("Amplia deja más aire entre filas y columnas; compacta aprieta para "
+            "que quepa más en la misma pantalla.")
+            ,
         ))
 
         self.font_box = QComboBox()
         for label, value in FONT_SCALES:
-            self.font_box.addItem(label, value)
+            self.font_box.addItem(_(label), value)
         self.font_box.setCurrentIndex(
             [v for _, v in FONT_SCALES].index(self._prefs.font_scale))
         self.font_box.currentIndexChanged.connect(self._emit)
         card.body.addWidget(_Field(
-            "Tamaño de la letra", self.font_box,
-            "Agranda todo el texto de la interfaz. Las tarjetas y las columnas "
-            "crecen con él para que nada se recorte.",
+            _("Tamaño de la letra"), self.font_box,
+            _("Agranda todo el texto de la interfaz. Las tarjetas y las columnas "
+            "crecen con él para que nada se recorte.")
+            ,
         ))
 
         self.accent_box = QComboBox()
         for label, value in ACCENTS:
-            self.accent_box.addItem(label, value)
+            self.accent_box.addItem(_(label), value)
         self.accent_box.setCurrentIndex([v for _, v in ACCENTS].index(self._prefs.accent))
         self.accent_box.currentIndexChanged.connect(self._emit)
         card.body.addWidget(_Field(
-            "Color de acento", self.accent_box,
-            "El color con el que se resaltan los datos, las gráficas y la "
-            "sección abierta.",
+            _("Color de acento"), self.accent_box,
+            _("El color con el que se resaltan los datos, las gráficas y la "
+            "sección abierta.")
+            ,
         ))
 
         self.network_box = QComboBox()
         for label, value in NETWORK_UNITS:
-            self.network_box.addItem(label, value)
+            self.network_box.addItem(_(label), value)
         self.network_box.setCurrentIndex(
             [v for _, v in NETWORK_UNITS].index(self._prefs.network_unit))
         self.network_box.currentIndexChanged.connect(self._emit)
         card.body.addWidget(_Field(
-            "Velocidad de red", self.network_box,
-            "Los mismos datos son 116 MB/s o 931 Mb/s. Los tests de velocidad y "
-            "los operadores usan bits; los gestores de descargas, bytes.",
+            _("Velocidad de red"), self.network_box,
+            _("Los mismos datos son 116 MB/s o 931 Mb/s. Los tests de velocidad y "
+            "los operadores usan bits; los gestores de descargas, bytes.")
+            ,
         ))
 
         self.unit_box = QComboBox()
         for label, value in UNITS:
-            self.unit_box.addItem(label, value)
+            self.unit_box.addItem(_(label), value)
         self.unit_box.setCurrentIndex([v for _, v in UNITS].index(self._prefs.temperature_unit))
         self.unit_box.currentIndexChanged.connect(self._emit)
-        card.body.addWidget(_Field("Unidad de temperatura", self.unit_box))
+        card.body.addWidget(_Field(_("Unidad de temperatura"), self.unit_box))
 
-        informe = QPushButton("Guardar informe del equipo…")
+        informe = QPushButton(_("Guardar informe del equipo…"))
         informe.setToolTip(
             "Genera un archivo de texto con todo el hardware detectado y, sobre "
             "todo, con lo que no se ha podido leer y por qué. Es lo que hay que "
@@ -258,7 +280,7 @@ class SettingsPage(QScrollArea):
         fila_informe.addWidget(informe)
         card.body.addLayout(fila_informe)
 
-        reset = QPushButton("Restablecer valores por defecto")
+        reset = QPushButton(_("Restablecer valores por defecto"))
         reset.clicked.connect(self._reset)
         row = QHBoxLayout()
         row.addStretch(1)
@@ -285,9 +307,9 @@ class SettingsPage(QScrollArea):
         card.body.addWidget(lema)
 
         fila = ResponsiveRow(min_item_width=250)
-        fila.add(self._bloque("Autoría", AUTORIA))
-        fila.add(self._bloque("Construido con", CONSTRUIDO_CON))
-        fila.add(self._bloque("Datos de terceros", DATOS_DE_TERCEROS))
+        fila.add(self._bloque(_("Autoría"), AUTORIA))
+        fila.add(self._bloque(_("Construido con"), CONSTRUIDO_CON))
+        fila.add(self._bloque(_("Datos de terceros"), DATOS_DE_TERCEROS))
         card.body.addWidget(fila)
         return card
 
@@ -373,6 +395,7 @@ class SettingsPage(QScrollArea):
         return replace(
             self._prefs,
             interval_s=self.interval.value(),
+            language=self.language_box.currentData(),
             theme=self.theme_box.currentData(),
             temperature_unit=self.unit_box.currentData(),
             density=self.density_box.currentData(),
