@@ -402,6 +402,11 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         border-left: 3px solid {p.warn};
         border-radius: 6px;
     }}
+    /* Lo que el usuario puede arreglar va en ámbar; lo que es un hecho del
+       hardware, en gris. Con el mismo color, «esta gráfica no trae sensor de
+       temperatura» se lee como una avería permanente. */
+    QFrame#Notice[tone="idle"] {{ border-left-color: {p.muted}; }}
+    QFrame#Notice[tone="bad"]  {{ border-left-color: {p.crit}; }}
     QLabel#NoticeTitle {{ color: {p.ink}; font-weight: 600; }}
     QLabel#NoticeBody  {{ color: {p.ink_dim}; }}
     QLabel#NoticeHint  {{ color: {p.muted}; font-size: {m.small_pt + 2}px; }}

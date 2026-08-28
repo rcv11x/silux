@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QLabel, QScrollArea, QVBoxLayout, QWidget
 
 from ... import render
@@ -21,8 +21,23 @@ from ...model import Gpu, Need, Snapshot
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette
-from ..widgets import (Card, ChipRow, InfoGrid, Notice, ResponsiveRow, StackedBar,
+from ..widgets import (Card, ChipRow, Divider, InfoGrid, Notice, ResponsiveRow, StackedBar,
                        StatTile, Table, clear_layout)
+
+# Qué se puede arreglar y qué no. Lo primero va en ámbar y lleva botón cuando
+# lo hay; lo segundo, en gris: un hecho del hardware no es una avería.
+NEED_TONES = {
+    Need.ROOT: "warn",
+    Need.DRIVER: "warn",
+    Need.DATABASE: "warn",
+    Need.HARDWARE: "idle",
+    Need.PLATFORM: "idle",
+    Need.ERROR: "bad",
+}
+
+# Un aspa se lee de un vistazo; un «No» hay que leerlo.
+SI = "✓"
+NO = "·"
 
 NEED_TITLES = {
     Need.ROOT: "Requiere permisos",
@@ -53,6 +68,9 @@ SENSOR_FIELDS = ("Estado", "Temperatura", "Punto caliente", "Chips de memoria",
                  "Consumo", "Límite de consumo", "Ventilador",
                  "Voltaje", "Voltaje del SoC", "Voltaje de memoria", "Uso de video")
 
+ENGINE_HEADERS = ("Motor", "Función", "Uso", "Sabe hacer")
+CODEC_HEADERS = ("Códec", "Decodifica", "Codifica", "Profundidad", "Perfiles")
+
 API_HEADERS = ("API", "Versión", "Driver", "Detalle")
 DISPLAY_HEADERS = ("Salida", "Monitor", "Resolución", "Refresco", "Tamaño",
                    "Color y HDR", "Fabricado")
@@ -60,6 +78,11 @@ DISPLAY_HEADERS = ("Salida", "Monitor", "Resolución", "Refresco", "Tamaño",
 
 class GpuSection(QWidget):
     """El bloque completo de una tarjeta."""
+
+    # El uso y el consumo de una Intel salen de contadores del kernel que
+    # piden permisos. Sin botón aquí había que ir a Memoria o a
+    # Almacenamiento a darlos y volver, que es pedirle al usuario que adivine.
+    elevation_requested = Signal()
 
     def __init__(self, palette: Palette, prefs: Preferences, parent=None):
         super().__init__(parent)
@@ -74,6 +97,17 @@ class GpuSection(QWidget):
         layout.addWidget(self._build_header())
         layout.addWidget(self._build_tiles())
 
+        # Justo debajo de las fichas, que es donde se ve el hueco. Antes esto
+        # vivía al final de la página: para enterarse de por qué las cuatro
+        # fichas están vacías había que pasar por delante de todas las
+        # tarjetas vacías, así que en la práctica nadie lo leía.
+        self._notices_host = QVBoxLayout()
+        self._notices_host.setSpacing(6)
+        self._notices_host.setContentsMargins(0, 0, 0, 0)
+        layout.addLayout(self._notices_host)
+        self._notice_signature: tuple = ()
+        self.elevation_buttons: list = []
+
         fila = ResponsiveRow(min_item_width=280)
         self.card = self._grid_card(fila, "Tarjeta", CARD_FIELDS)
         fila.add(self._build_memory_card())
@@ -83,6 +117,32 @@ class GpuSection(QWidget):
         self.clocks = self._grid_card(fila, "Relojes y enlace", CLOCK_FIELDS)
         fila.add(self._build_sensor_card())
         layout.addWidget(fila)
+
+        # Una tarjeta moderna no es un bloque «al 40 %»: son varias unidades
+        # independientes, y saber cuál va cargada distingue «no da más» de
+        # «solo está saturado el decodificador de video».
+        self.engine_card = Card("Motores gráficos")
+        self.engine_summary = InfoGrid()
+        self.engine_summary.add("En reposo")
+        self.engines = Table(ENGINE_HEADERS, numeric=(False, False, True, False))
+        self.engine_card.body.addWidget(self.engine_summary)
+        # El reposo habla de la tarjeta entera y la tabla de cada motor: son
+        # dos cosas distintas. Pegadas, «En reposo» se leía como una fila más
+        # de la tabla, justo encima de su cabecera.
+        self.engine_card.body.addSpacing(theme.METRICS.card_gap)
+        self.engine_card.body.addWidget(Divider())
+        self.engine_card.body.addSpacing(theme.METRICS.card_gap)
+        self.engine_card.body.addWidget(self.engines)
+        layout.addWidget(self.engine_card)
+
+        # Lo que decide si un vídeo se ve gastando dos vatios o quemando la
+        # CPU. Y decodificar no es codificar: casi todas leen AV1 y muy pocas
+        # lo escriben.
+        self.codec_card = Card("Códecs de video por hardware")
+        self.codecs = Table(CODEC_HEADERS,
+                            numeric=(False, False, False, True, False))
+        self.codec_card.body.addWidget(self.codecs)
+        layout.addWidget(self.codec_card)
 
         api_card = Card("Bibliotecas gráficas")
         self.apis = Table(API_HEADERS, numeric=(False, True, False, False))
@@ -164,6 +224,26 @@ class GpuSection(QWidget):
         return card
 
     # -- actualización ------------------------------------------------------
+
+    def set_notes(self, notes) -> None:
+        signature = tuple((n.path, n.need) for n in notes)
+        if signature == self._notice_signature:
+            return
+        self._notice_signature = signature
+
+        clear_layout(self._notices_host)
+        self.elevation_buttons = []
+        for note in notes:
+            aviso = Notice(
+                NEED_TITLES.get(note.need, note.need.value), note.message, note.hint,
+                tone=NEED_TONES.get(note.need, "warn"),
+                action=("Leer con permisos de administrador"
+                        if note.need is Need.ROOT else None),
+            )
+            if aviso.action_button is not None:
+                aviso.action_clicked.connect(self.elevation_requested)
+                self.elevation_buttons.append(aviso.action_button)
+            self._notices_host.addWidget(aviso)
 
     def apply(self, gpu: Gpu) -> None:
         d = render.DASH
@@ -248,6 +328,8 @@ class GpuSection(QWidget):
           tooltip="Los motores de codificación y decodificación de video, que "
                   "trabajan aparte del resto de la GPU.")
 
+        self._apply_engines(gpu)
+        self._apply_codecs(gpu)
         self.apis.set_rows([
             (api.name, api.version or d, api.driver or d, api.extra or d)
             for api in gpu.apis
@@ -255,6 +337,43 @@ class GpuSection(QWidget):
 
         self.displays.set_rows([_fila_de_salida(salida) for salida in gpu.displays]
                                or [("Sin salidas de video", d, d, d, d, d)])
+
+    def _apply_engines(self, gpu: Gpu) -> None:
+        """Los motores de la tarjeta, si el driver los publica.
+
+        La tarjeta se esconde entera cuando no hay ninguno: en AMD y NVIDIA el
+        kernel no los enumera, y una tabla vacía no explica nada.
+        """
+        self.engine_card.setVisible(bool(gpu.engines))
+        if not gpu.engines:
+            return
+        self.engine_summary.set("En reposo", render.percent(gpu.sleep_percent))
+        self.engines.set_rows([
+            (motor.name,
+             motor.kind or render.DASH,
+             render.percent(motor.busy_percent),
+             ", ".join(motor.capabilities) or render.DASH)
+            for motor in gpu.engines
+        ])
+
+    def _apply_codecs(self, gpu: Gpu) -> None:
+        """Qué códecs acelera la tarjeta, y en qué sentido.
+
+        Se esconde entera si no hay VA-API que preguntar: una tabla vacía se
+        lee como «esta tarjeta no acelera nada», que es justo lo contrario de
+        lo que quiere decir.
+        """
+        self.codec_card.setVisible(bool(gpu.codecs))
+        if not gpu.codecs:
+            return
+        self.codecs.set_rows([
+            (codec.name,
+             SI if codec.decode else NO,
+             SI if codec.encode else NO,
+             f"{codec.max_bit_depth} bits" if codec.max_bit_depth else render.DASH,
+             ", ".join(codec.profiles) or render.DASH)
+            for codec in gpu.codecs
+        ])
 
     def _apply_badges(self, gpu: Gpu) -> None:
         chips = [c for c in (
@@ -296,7 +415,8 @@ class GpuSection(QWidget):
         porcentaje = gpu.memory.used_percent
         self.tile_vram.update_value(
             f"{porcentaje:.0f}" if porcentaje is not None else render.DASH, porcentaje)
-        self.tile_vram.set_detail(render.gpu_memory_summary(gpu.memory)
+        # La ficha ya enseña el porcentaje; aquí solo hace falta contra qué.
+        self.tile_vram.set_detail(f"de {render.size(gpu.memory.total_bytes)}"
                                   if gpu.memory.total_bytes else "")
 
     def _apply_memory(self, gpu: Gpu) -> None:
@@ -370,6 +490,8 @@ def _fila_de_salida(salida) -> tuple[str, ...]:
 
 
 class GraphicsPage(QScrollArea):
+    elevation_requested = Signal()
+
     def __init__(self, palette: Palette, prefs: Preferences, parent=None):
         super().__init__(parent)
         self._p = palette
@@ -414,6 +536,7 @@ class GraphicsPage(QScrollArea):
         # que se repinta cada segundo, rehacerlas dejaría widgets vivos a miles.
         while len(self._sections) < len(snapshot.gpus):
             seccion = GpuSection(self._p, self._prefs)
+            seccion.elevation_requested.connect(self.elevation_requested)
             self._sections.append(seccion)
             self._sections_host.addWidget(seccion)
         for sobrante in self._sections[len(snapshot.gpus):]:
@@ -425,15 +548,43 @@ class GraphicsPage(QScrollArea):
 
         self._apply_notices(snapshot)
 
+    @property
+    def elevation_buttons(self) -> list:
+        """Los botones de permisos que haya vivos ahora mismo en la página.
+
+        Se crean y se destruyen con los avisos, así que no vale guardarse uno:
+        hay que preguntarlo cada vez.
+        """
+        return [boton for seccion in self._sections
+                for boton in seccion.elevation_buttons]
+
     def _apply_notices(self, snapshot: Snapshot) -> None:
-        notes = snapshot.notes_for("gpus")
-        signature = tuple((n.path, n.need) for n in notes)
+        """Cada aviso, junto a la tarjeta de la que habla.
+
+        Los avisos vienen con la ruta «gpus.N», así que se pueden repartir. Los
+        que no llevan número —los que hablan de todas o de ninguna— se quedan
+        al pie de la página.
+        """
+        sueltos = []
+        por_seccion: dict[int, list] = {}
+        for note in snapshot.notes_for("gpus"):
+            resto = note.path[len("gpus"):].lstrip(".")
+            indice = int(resto.split(".")[0]) if resto.split(".")[0].isdigit() else None
+            if indice is not None and indice < len(self._sections):
+                por_seccion.setdefault(indice, []).append(note)
+            else:
+                sueltos.append(note)
+
+        for indice, seccion in enumerate(self._sections):
+            seccion.set_notes(por_seccion.get(indice, []))
+
+        signature = tuple((n.path, n.need) for n in sueltos)
         if signature == self._notice_signature:
             return
         self._notice_signature = signature
 
         clear_layout(self._notices_host)
-        for note in notes:
+        for note in sueltos:
             self._notices_host.addWidget(
                 Notice(NEED_TITLES.get(note.need, note.need.value), note.message, note.hint)
             )
