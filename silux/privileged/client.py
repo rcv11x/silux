@@ -33,8 +33,8 @@ def _cache_dir() -> pathlib.Path:
     base = os.environ.get("XDG_CACHE_HOME") or (pathlib.Path.home() / ".cache")
     return pathlib.Path(base) / "silux"
 
-from .protocol import (ACTION_MSR, ACTION_PING, ACTION_SMART, ACTION_SMBIOS,
-                       MAX_MESSAGE)
+from .protocol import (ACTION_GPU_PMU, ACTION_MSR, ACTION_PING, ACTION_SMART,
+                       ACTION_SMBIOS, MAX_MESSAGE)
 
 HELPER = pathlib.Path(__file__).resolve().parent / "helper.py"
 DEFAULT_TIMEOUT = 15.0
@@ -233,6 +233,42 @@ class PrivilegedClient:
             self._last_error = reply.get("message")
             raise HelperError(reply.get("message", "no se pudo leer el diagnóstico"))
         return base64.b64decode(reply.get("data", "")), reply.get("kind", "")
+
+    def gpu_pmu(self) -> tuple[int, dict[str, dict[str, int]], dict[str, dict[str, float]]]:
+        """Contadores de la gráfica, en crudo, con su reloj y sus escalas.
+
+        Los de ocupación son nanosegundos acumulados y los de energía llevan
+        la escala que publica el kernel. Restarlos y convertirlos en un
+        porcentaje o en vatios es cosa de quien llama: el ayudante no
+        interpreta nada.
+        """
+        reply = self.request({"action": ACTION_GPU_PMU})
+        if not reply.get("ok"):
+            self._last_error = reply.get("message")
+            mensaje = reply.get("message", "no se pudo leer el PMU de la gráfica")
+            if reply.get("error") == "unsupported":
+                raise PmuUnsupported(mensaje)
+            raise HelperError(mensaje)
+
+        reloj = reply.get("monotonic_ns")
+        motores = reply.get("engines")
+        if not isinstance(reloj, int) or not isinstance(motores, dict):
+            raise HelperError("el ayudante contestó algo que no encaja")
+        limpio = {
+            str(pmu): {str(e): v for e, v in eventos.items() if isinstance(v, int)}
+            for pmu, eventos in motores.items() if isinstance(eventos, dict)
+        }
+        crudas = reply.get("scales")
+        escalas = {
+            str(pmu): {str(e): float(v) for e, v in valores.items()
+                       if isinstance(v, (int, float))}
+            for pmu, valores in (crudas or {}).items() if isinstance(valores, dict)
+        }
+        return reloj, limpio, escalas
+
+
+class PmuUnsupported(HelperError):
+    """Esta máquina no tiene contadores de ocupación de gráfica que leer."""
 
 
 def already_root() -> bool:

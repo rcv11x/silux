@@ -17,6 +17,11 @@ corre con privilegios hay que poder auditarlo. De ahí tres decisiones:
 * **De los discos solo pide diagnóstico.** Los dos comandos SMART que manda
   son de lectura y están fijados aquí; no hay forma de pedirle uno de
   escritura ni de borrado, que van por el mismo camino.
+* **Del PMU solo cuenta, no muestrea.** Los eventos que abre son contadores
+  de ocupación del motor gráfico, agregados de toda la máquina y sin periodo
+  de muestreo: no hay búfer de muestras, ni pila de llamadas, ni nada de
+  ningún proceso concreto. Es lo mismo que enseña `intel_gpu_top`. Los
+  nombres los enumera el propio ayudante; el cliente no le pasa ninguno.
 
 Habla JSON por líneas: una petición por línea en la entrada, una respuesta
 por línea en la salida. Termina cuando la entrada se cierra.
@@ -32,6 +37,7 @@ import os
 import re
 import struct
 import sys
+import time
 
 VERSION = 1
 
@@ -67,6 +73,26 @@ MSR_ALLOWED = frozenset({
 })
 
 MAX_CPUS = 4096
+
+# El PMU de las gráficas Intel: la ocupación por motor, que ni i915 ni xe
+# publican en sysfs. El nombre del PMU y el de cada evento se enumeran aquí
+# dentro y se filtran contra estos patrones; no hay forma de pedir otro.
+PMU_ROOT = "/sys/bus/event_source/devices"
+PMU_GPU = re.compile(r"^(i915|xe_[0-9a-f]{4}_[0-9a-f]{2}_[0-9a-f]{2}\.[0-9a-f])$")
+PMU_EVENT = re.compile(r"^(rcs|bcs|vcs|vecs|ccs)\d+-busy$")
+
+# El plano de energía de la gráfica integrada, que en los Intel de escritorio
+# solo asoma por aquí: /sys/class/powercap publica package, core, uncore y
+# dram, y ninguno de los cuatro es la gráfica. Se admite este evento y ninguno
+# más del PMU de RAPL; los otros tres ya se leen por powercap sin privilegios.
+PMU_POWER = "power"
+PMU_POWER_EVENT = re.compile(r"^energy-gpu$")
+
+MAX_PMU_FDS = 32
+
+# perf_event_open no tiene envoltorio en libc: se invoca por número, y el
+# número depende de la arquitectura. Donde no se sepa, no se intenta.
+PERF_EVENT_OPEN = {"x86_64": 298, "aarch64": 241, "i686": 336, "armv7l": 364}
 
 
 def _fail(message: str, code: str = "error") -> dict:
@@ -259,6 +285,187 @@ def _smart_ata(descriptor: int):
     return buffer.raw
 
 
+class _PerfEventAttr(ctypes.Structure):
+    """`struct perf_event_attr`, tal cual la espera el kernel.
+
+    Se declara entera aunque solo se usen cuatro campos: el kernel comprueba
+    el campo `size` contra las versiones que conoce, así que no vale con
+    mandar un trozo. Todo lo demás va a cero, y eso es justo lo que interesa:
+    `sample_period` a cero significa que el evento **cuenta** y no muestrea,
+    o sea que no hay búfer, ni direcciones, ni registros de nadie.
+    """
+
+    _fields_ = [
+        ("type", ctypes.c_uint32), ("size", ctypes.c_uint32),
+        ("config", ctypes.c_uint64), ("sample_period", ctypes.c_uint64),
+        ("sample_type", ctypes.c_uint64), ("read_format", ctypes.c_uint64),
+        ("flags", ctypes.c_uint64), ("wakeup_events", ctypes.c_uint32),
+        ("bp_type", ctypes.c_uint32), ("config1", ctypes.c_uint64),
+        ("config2", ctypes.c_uint64), ("branch_sample_type", ctypes.c_uint64),
+        ("sample_regs_user", ctypes.c_uint64),
+        ("sample_stack_user", ctypes.c_uint32), ("clockid", ctypes.c_int32),
+        ("sample_regs_intr", ctypes.c_uint64), ("aux_watermark", ctypes.c_uint32),
+        ("sample_max_stack", ctypes.c_uint16), ("__reserved_2", ctypes.c_uint16),
+        ("aux_sample_size", ctypes.c_uint32), ("__reserved_3", ctypes.c_uint32),
+    ]
+
+
+# Descriptores abiertos del PMU, por PMU y evento. Se abren una sola vez y se
+# dejan vivos: los contadores son acumulativos desde que se abren, así que
+# cerrarlos y volver a abrirlos entre muestreos perdería la referencia.
+_PMU_FDS: dict[str, dict[str, int]] = {}
+_PMU_FALLO = ""
+
+
+def _pmu_campo(pmu: str, campo: str):
+    """En qué bit de `config` empieza un campo, según el propio kernel.
+
+    Cada PMU publica su formato: «config:0-7» quiere decir que ese campo son
+    los ocho bits bajos. i915 lo llama `i915_eventid` y RAPL `event`, y por
+    eso hay que mirarlo en vez de darlo por sabido.
+    """
+    if campo == "config":
+        return 0
+    try:
+        with open(f"{PMU_ROOT}/{pmu}/format/{campo}", encoding="ascii") as handle:
+            crudo = handle.read(32).strip()
+    except OSError:
+        return None
+    if not crudo.startswith("config:"):
+        return None
+    try:
+        return int(crudo[len("config:"):].split("-")[0])
+    except ValueError:
+        return None
+
+
+def _pmu_config(pmu: str, evento: str):
+    """El número de evento que el kernel publica, leído del propio sysfs.
+
+    El cliente manda nombres, nunca números: quien traduce de un nombre de la
+    lista a un `config` es este fichero del kernel. El contenido es
+    «config=0x2000» en i915 y «event=0x04» en RAPL, que no es lo mismo: el
+    segundo hay que colocarlo en los bits que diga el formato del PMU.
+    """
+    try:
+        with open(f"{PMU_ROOT}/{pmu}/events/{evento}", encoding="ascii") as handle:
+            crudo = handle.read(64).strip()
+    except OSError:
+        return None
+    if "," in crudo or "=" not in crudo:
+        return None            # si trae parámetros de sobra, no se toca
+    campo, _, valor = crudo.partition("=")
+    desplazamiento = _pmu_campo(pmu, campo.strip())
+    if desplazamiento is None:
+        return None
+    try:
+        return int(valor.strip(), 0) << desplazamiento
+    except ValueError:
+        return None
+
+
+def _abrir_pmu() -> None:
+    """Abre los contadores de ocupación de cada gráfica Intel que haya."""
+    global _PMU_FALLO
+    numero = PERF_EVENT_OPEN.get(os.uname().machine)
+    if numero is None:
+        _PMU_FALLO = f"perf_event_open no está mapeado en {os.uname().machine}"
+        return
+    try:
+        nombres = sorted(os.listdir(PMU_ROOT))
+    except OSError:
+        _PMU_FALLO = "este kernel no publica ningún PMU"
+        return
+
+    libc = ctypes.CDLL(None, use_errno=True)
+    abiertos = 0
+    for pmu in nombres:
+        if PMU_GPU.match(pmu):
+            patron = PMU_EVENT
+        elif pmu == PMU_POWER:
+            patron = PMU_POWER_EVENT
+        else:
+            continue
+        try:
+            with open(f"{PMU_ROOT}/{pmu}/type", encoding="ascii") as handle:
+                tipo = int(handle.read(16).strip())
+            eventos = sorted(os.listdir(f"{PMU_ROOT}/{pmu}/events"))
+        except (OSError, ValueError):
+            continue
+
+        for evento in eventos:
+            if not patron.match(evento) or abiertos >= MAX_PMU_FDS:
+                continue
+            config = _pmu_config(pmu, evento)
+            if config is None:
+                continue
+            attr = _PerfEventAttr()
+            attr.type = tipo
+            attr.size = ctypes.sizeof(_PerfEventAttr)
+            attr.config = config
+            # pid=-1 y cpu=0: es un PMU de dispositivo, no uno por núcleo, y
+            # cuenta lo que hace la gráfica entera. No se ata a ningún proceso.
+            descriptor = libc.syscall(numero, ctypes.byref(attr), -1, 0, -1, 0)
+            if descriptor < 0:
+                if not _PMU_FALLO:
+                    _PMU_FALLO = os.strerror(ctypes.get_errno())
+                continue
+            _PMU_FDS.setdefault(pmu, {})[evento] = descriptor
+            abiertos += 1
+
+    if not _PMU_FDS and not _PMU_FALLO:
+        _PMU_FALLO = "no hay ninguna gráfica con contadores de ocupación"
+
+
+def _pmu_escala(pmu: str, evento: str):
+    """El factor que el kernel publica para convertir el contador a su unidad.
+
+    Solo lo traen los de energía. Devolverlo es pasar un dato del kernel tal
+    cual; interpretarlo es cosa del proceso sin privilegios.
+    """
+    try:
+        with open(f"{PMU_ROOT}/{pmu}/events/{evento}.scale", encoding="ascii") as h:
+            return float(h.read(64).strip())
+    except (OSError, ValueError):
+        return None
+
+
+def read_gpu_pmu() -> dict:
+    """Los contadores de ocupación por motor, en crudo y con su reloj.
+
+    Devuelve nanosegundos acumulados desde que se abrió cada contador. Quién
+    los reste y los convierta en un porcentaje es el proceso sin privilegios;
+    aquí solo se leen ocho bytes por descriptor.
+    """
+    if not _PMU_FDS:
+        _abrir_pmu()
+    if not _PMU_FDS:
+        return _fail(f"no se pudo leer el PMU de la gráfica: {_PMU_FALLO}",
+                     "unsupported")
+
+    motores: dict[str, dict[str, int]] = {}
+    escalas: dict[str, dict[str, float]] = {}
+    for pmu, eventos in _PMU_FDS.items():
+        for evento, descriptor in eventos.items():
+            try:
+                # os.read y no os.pread: un descriptor de perf no es
+                # posicionable y pread devolvería ESPIPE.
+                crudo = os.read(descriptor, 8)
+            except OSError:
+                continue
+            if len(crudo) != 8:
+                continue
+            motores.setdefault(pmu, {})[evento] = struct.unpack("<Q", crudo)[0]
+            escala = _pmu_escala(pmu, evento)
+            if escala is not None:
+                escalas.setdefault(pmu, {})[evento] = escala
+
+    if not motores:
+        return _fail("los contadores dejaron de responder", "io")
+    return {"ok": True, "monotonic_ns": time.monotonic_ns(),
+            "engines": motores, "scales": escalas}
+
+
 def handle(request: dict) -> dict:
     action = request.get("action")
     if action == "ping":
@@ -269,6 +476,8 @@ def handle(request: dict) -> dict:
         return read_msr(request.get("cpu"), request.get("registers"))
     if action == "smart":
         return read_smart(request.get("device"))
+    if action == "gpu_pmu":
+        return read_gpu_pmu()
     return _fail(f"acción desconocida: {action!r}", "bad_request")
 
 

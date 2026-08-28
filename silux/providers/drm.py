@@ -25,11 +25,13 @@ import dataclasses
 import os
 import pathlib
 import re
+import time
 from typing import Optional
 
 from .. import amdgpu, edid, gpumetrics, pciids
-from ..model import (Display, GpuClockLevel, GpuClocks, PcieLink, GpuMemory,
+from ..model import (Display, GpuClockLevel, GpuClocks, GpuEngine, PcieLink, GpuMemory,
                       Need)
+from ..privileged.client import HelperError, PmuUnsupported, PrivilegedClient
 from .base import Draft, Provider, read_int, read_text
 
 SYS_DRM = "/sys/class/drm"
@@ -57,7 +59,61 @@ DRIVERS_CIEGOS = {
                 "NVIDIA —relojes, vatios, núcleos CUDA, recortes— sale de NVML, "
                 "que viene con el driver propietario. Con nouveau quedan la "
                 "temperatura, el enlace PCIe y la memoria que dice Vulkan."),
+    # i915 y xe no están aquí a propósito: su aviso lo pone GpuState, porque
+    # depende de si el usuario ha elevado permisos y eso cambia a mitad de
+    # sesión. Esta tabla la lee un proveedor estático, que corre una sola vez.
 }
+
+# Lo que una gráfica Intel no da por ningún camino. Comprobado contra una UHD
+# 630 con i915: el nodo DRM no tiene hwmon, y su PMU no publica ningún evento
+# de energía, así que ni temperatura ni vatios.
+#
+# Se probó además el atajo que parecía obvio —el dominio «uncore» de RAPL, que
+# en los Intel de sobremesa parecía ser el plano de la gráfica— y no lo es: se
+# queda clavado en 3,2 W mientras el reloj del motor gráfico va de 350 a
+# 1050 MHz. Habría sido un dato creíble y falso.
+INTEL_SIN_TEMPERATURA = "Esta gráfica Intel no publica su temperatura."
+
+# El uso y el consumo sí existen, pero solo como contadores del kernel. Los lee
+# el ayudante privilegiado, el mismo que ya pide permisos una vez para los
+# discos.
+#
+# Aquí NO se le dice al usuario que baje /proc/sys/kernel/perf_event_paranoid.
+# Es un cerrojo de todo el sistema —a 0 cualquier proceso sin privilegios puede
+# perfilar la máquina entera—, y bajarlo para ver un porcentaje no compensa.
+# Comprobado además que el valor intermedio, 1, tampoco sirve.
+INTEL_AVISOS = {
+    "root": ("El uso y el consumo de la gráfica los llevan contadores del "
+             f"kernel, que no se leen sin permisos. {INTEL_SIN_TEMPERATURA}",
+             "Con permisos aparecen el uso de cada motor y, en las integradas, "
+             "los vatios. La temperatura no sale de ninguna manera; las "
+             "frecuencias, los monitores y lo que declaran Vulkan y OpenGL sí "
+             "salen sin pedir nada."),
+    "driver": (INTEL_SIN_TEMPERATURA,
+               "El kernel tampoco publica contadores de ocupación para esta "
+               "gráfica, que es de donde sale el uso en las demás Intel. Las "
+               "frecuencias, los monitores y lo que declaran Vulkan y OpenGL "
+               "sí salen."),
+    "hardware": (INTEL_SIN_TEMPERATURA,
+                 "El nodo DRM no trae hwmon y su contador de rendimiento no "
+                 "tiene evento térmico, así que no hay de dónde sacarla. Lo "
+                 "que el kernel sí cuenta —el uso de cada motor y, en las "
+                 "integradas, los vatios— ya se está leyendo."),
+}
+
+# Cómo llama el kernel a cada motor y qué hace. El prefijo del nombre basta:
+# rcs0 es el de dibujo, vcs1 el segundo decodificador de video.
+MOTORES_INTEL = {
+    "rcs": "render",
+    "ccs": "cómputo",
+    "bcs": "copia",
+    "vcs": "video",
+    "vecs": "video-enhance",
+}
+
+# El plano de energía de la gráfica en RAPL. Es el de la integrada del
+# procesador, así que no se le cuelga a una dedicada aunque sea Intel.
+PMU_ENERGIA = ("power", "energy-gpu")
 
 # «0: 500Mhz », «1: 1150Mhz *»: el asterisco marca la frecuencia en uso.
 #
@@ -143,6 +199,8 @@ class DrmGpus(Provider):
             gpu["primary"] = read_int(f"{dispositivo}/boot_vga") == 1
 
             self._identidad(gpu, dispositivo)
+            if gpu["driver"] in ("i915", "xe"):
+                gpu["engines"] = _motores_intel(nodo)
             gpu["link"] = _enlace(dispositivo)
             gpu["memory"] = _memoria_total(dispositivo)
             gpu["displays"] = _salidas(nodo.name)
@@ -272,10 +330,25 @@ class GpuState(Provider):
     name = "gpu-state"
     provides = "gpus.load"
 
+    def __init__(self, client: Optional[PrivilegedClient] = None) -> None:
+        # El colector reparte un único cliente entre todos los que lo piden:
+        # dos serían dos diálogos de polkit para la misma contraseña. Si no
+        # llega ninguno, sencillamente no hay contadores que leer.
+        self.client = client
+        # (reloj, contadores) de la vuelta anterior, para restar. Los del PMU
+        # son acumulativos: un valor suelto no dice nada.
+        self._pmu_previo: Optional[tuple[int, dict]] = None
+        self._pmu_ok = False
+        self._pmu_mudo = False
+        # El contador de reposo es acumulativo, igual que los del PMU, pero
+        # este sale de sysfs y no cuesta permisos.
+        self._rc6: dict[str, tuple[float, int]] = {}
+
     def available(self) -> bool:
         return os.path.isdir(SYS_DRM)
 
     def collect(self, draft: Draft) -> None:
+        ocupacion, vatios = self._contadores()
         for indice, gpu in enumerate(draft.gpus):
             nodo = gpu.get("drm_node")
             if not nodo:
@@ -293,6 +366,170 @@ class GpuState(Provider):
             gpu["clocks"] = _relojes(dispositivo, raiz)
             _sensores(gpu, dispositivo)
             _telemetria(gpu, dispositivo)
+
+            if gpu.get("driver") in ("i915", "xe"):
+                gpu["sleep_percent"] = self._reposo(nodo, raiz)
+                _uso_intel(gpu, ocupacion)
+                # Solo a la integrada: el plano de energía es el que el
+                # procesador reserva para su gráfica, y colgárselo a una
+                # dedicada sería atribuirle el consumo de otra.
+                if vatios is not None and gpu.get("integrated"):
+                    gpu["power_w"] = vatios
+                self._avisar_de_intel(draft, indice)
+
+    # -- el contador de ocupación del kernel --------------------------------
+
+    def _contadores(self) -> tuple[Optional[dict[str, dict[str, float]]],
+                                   Optional[float]]:
+        """La ocupación de cada motor en tanto por ciento, y los vatios.
+
+        El ayudante devuelve contadores acumulados desde que los abrió; lo que
+        interesa sale de restar contra la vuelta anterior y dividir por lo que
+        ha durado la ventana. La primera lectura solo fija la referencia y
+        todavía no da número, igual que el uso de CPU.
+        """
+        cliente = self.client
+        if self._pmu_mudo or cliente is None or not cliente.connected():
+            return None, None
+
+        try:
+            reloj, crudo, escalas = cliente.gpu_pmu()
+        except PmuUnsupported:
+            # Esta máquina no tiene contadores de gráfica: no se vuelve a
+            # preguntar en cada muestreo por algo que no va a aparecer.
+            self._pmu_mudo = True
+            return None, None
+        except HelperError:
+            # Un fallo suelto no lo da por perdido: la tubería puede haberse
+            # cortado y el usuario volver a autorizar.
+            return None, None
+
+        self._pmu_ok = True
+        previo, self._pmu_previo = self._pmu_previo, (reloj, crudo)
+        if previo is None:
+            return None, None
+        reloj_previo, crudo_previo = previo
+        ventana = reloj - reloj_previo
+        if ventana <= 0:
+            return None, None
+
+        salida: dict[str, dict[str, float]] = {}
+        vatios = None
+        for pmu, eventos in crudo.items():
+            anteriores = crudo_previo.get(pmu, {})
+            for evento, valor in eventos.items():
+                antes = anteriores.get(evento)
+                if antes is None or valor < antes:
+                    continue                  # contador nuevo o reiniciado
+                if (pmu, evento) == PMU_ENERGIA:
+                    escala = escalas.get(pmu, {}).get(evento)
+                    if escala:
+                        # El contador va en julios una vez escalado, y un
+                        # vatio es un julio por segundo.
+                        vatios = (valor - antes) * escala * 1e9 / ventana
+                    continue
+                # Se recorta a 100: en ventanas muy cortas el contador y el
+                # reloj no arrancan alineados y sale algo más.
+                porcentaje = (valor - antes) * 100.0 / ventana
+                salida.setdefault(pmu, {})[evento] = min(100.0, max(0.0, porcentaje))
+        return salida, vatios
+
+    def _reposo(self, nodo: str, raiz: pathlib.Path) -> Optional[float]:
+        """Cuánto del intervalo ha estado la gráfica dormida del todo.
+
+        Es el RC6 de Intel, y sale de sysfs sin pedir permisos: un contador de
+        milisegundos acumulados que hay que restar contra la vuelta anterior.
+        No es «cien menos el uso»: entre trabajar y dormir hay un término
+        medio —encendida y esperando— que gasta y que aquí no cuenta.
+        """
+        acumulado = _primero(read_int(f"{raiz}/gt/gt0/rc6_residency_ms"),
+                             read_int(f"{raiz}/power/rc6_residency_ms"))
+        if acumulado is None:
+            return None
+        ahora = time.monotonic()
+        previo, self._rc6[nodo] = self._rc6.get(nodo), (ahora, acumulado)
+        if previo is None:
+            return None
+        antes, dormido = previo
+        ventana = (ahora - antes) * 1000.0
+        if ventana <= 0 or acumulado < dormido:
+            return None
+        return min(100.0, max(0.0, (acumulado - dormido) * 100.0 / ventana))
+
+    def _avisar_de_intel(self, draft: Draft, indice: int) -> None:
+        """Por qué esa tarjeta tiene huecos, según lo que se pueda leer hoy."""
+        if self._pmu_mudo:
+            clave = "driver"
+        elif self._pmu_ok:
+            clave = "hardware"
+        else:
+            clave = "root"
+        draft.note(f"gpus.{indice}", NEED_INTEL[clave], *INTEL_AVISOS[clave])
+
+
+NEED_INTEL = {"root": Need.ROOT, "driver": Need.DRIVER, "hardware": Need.HARDWARE}
+
+
+def _motores_intel(raiz: pathlib.Path) -> tuple[GpuEngine, ...]:
+    """Qué motores tiene la tarjeta y qué sabe hacer cada uno.
+
+    Sale de `engine/` en el nodo DRM y no cuesta permisos: es identidad, no
+    telemetría. Las capacidades importan —`hevc` dice que decodifica H.265 por
+    hardware y `sfc` que trae escalador—, y no salen por ningún otro sitio.
+    """
+    carpeta = raiz / "engine"
+    if not carpeta.is_dir():
+        return ()
+    motores = []
+    for nodo in sorted(carpeta.iterdir()):
+        nombre = nodo.name
+        familia = re.match(r"^([a-z]+)\d+$", nombre)
+        capacidades = (read_text(f"{nodo}/capabilities") or "").split()
+        motores.append(GpuEngine(
+            name=nombre,
+            kind=MOTORES_INTEL.get(familia.group(1)) if familia else None,
+            capabilities=tuple(capacidades),
+        ))
+    return tuple(motores)
+
+
+def _pmu_de(gpu: dict) -> Optional[str]:
+    """Con qué nombre publica el kernel el PMU de esta gráfica.
+
+    i915 solo admite una tarjeta y la registra con un nombre fijo. xe le pega
+    la ranura PCI detrás, con los dos puntos cambiados por guiones bajos.
+    """
+    driver = gpu.get("driver")
+    if driver == "i915":
+        return "i915"
+    if driver == "xe":
+        ranura = gpu.get("pci_slot")
+        return f"xe_{ranura.replace(':', '_')}" if ranura else None
+    return None
+
+
+def _uso_intel(gpu: dict, ocupacion: Optional[dict]) -> None:
+    """Reparte los motores del PMU en los porcentajes del modelo.
+
+    Para el resumen de arriba se coge el máximo y no la suma: con varios
+    motores del mismo tipo, sumar pasaría del 100 % sin que la tarjeta esté a
+    tope de nada. El detalle por motor se guarda aparte, que es donde se ve la
+    diferencia entre «la gráfica no da más» y «solo va cargado el vídeo».
+    """
+    motores = (ocupacion or {}).get(_pmu_de(gpu) or "")
+    if not motores:
+        return
+    render = [v for e, v in motores.items() if e.startswith(("rcs", "ccs"))]
+    video = [v for e, v in motores.items() if e.startswith(("vcs", "vecs"))]
+    if render:
+        gpu["busy_percent"] = max(render)
+    if video:
+        gpu["video_busy_percent"] = max(video)
+
+    gpu["engines"] = tuple(
+        dataclasses.replace(motor, busy_percent=motores.get(f"{motor.name}-busy"))
+        for motor in gpu.get("engines") or ()
+    )
 
 
 # -- lectura de campos -------------------------------------------------------
@@ -349,6 +586,11 @@ def _cadena_pcie(dispositivo: pathlib.Path) -> list[pathlib.Path]:
     return eslabones
 
 
+# Los únicos anchos de enlace que existen en PCIe. Cualquier otra cifra que
+# aparezca en sysfs es un centinela, no un dato.
+ANCHOS_PCIE = frozenset({1, 2, 4, 8, 12, 16, 32})
+
+
 def _enlace(dispositivo: pathlib.Path, previo: Optional[PcieLink] = None) -> PcieLink:
     def velocidad(nodo: pathlib.Path, nombre: str) -> Optional[float]:
         crudo = read_text(f"{nodo}/{nombre}")
@@ -362,7 +604,16 @@ def _enlace(dispositivo: pathlib.Path, previo: Optional[PcieLink] = None) -> Pci
                    if (v := leer(nodo, nombre)) is not None]
         return min(valores) if valores else None
 
-    ancho = lambda nodo, nombre: read_int(f"{nodo}/{nombre}")
+    def ancho(nodo: pathlib.Path, nombre: str) -> Optional[int]:
+        """El número de carriles, descartando lo que no es un número de carriles.
+
+        Un dispositivo que no cuelga de un bus PCIe de verdad —la gráfica
+        integrada, sin ir más lejos— publica los ficheros igualmente pero con
+        centinelas: 0 cuando no hay enlace y 255 (0xFF) cuando no se sabe. Sin
+        filtrarlos, una integrada declaraba un enlace de 255 carriles.
+        """
+        valor = read_int(f"{nodo}/{nombre}")
+        return valor if valor in ANCHOS_PCIE else None
     maxima = (previo.max_speed_gts if previo else None) or minimo("max_link_speed", velocidad)
     max_ancho = (previo.max_width if previo else None) or minimo("max_link_width", ancho)
     return PcieLink(

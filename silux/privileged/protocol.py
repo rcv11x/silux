@@ -14,7 +14,9 @@ ACTION_PING = "ping"
 ACTION_SMBIOS = "smbios"
 ACTION_MSR = "msr"
 ACTION_SMART = "smart"
-ACTIONS = frozenset({ACTION_PING, ACTION_SMBIOS, ACTION_MSR, ACTION_SMART})
+ACTION_GPU_PMU = "gpu_pmu"
+ACTIONS = frozenset({ACTION_PING, ACTION_SMBIOS, ACTION_MSR, ACTION_SMART,
+                     ACTION_GPU_PMU})
 
 # Rutas que el ayudante puede abrir. No hay ninguna forma de pedirle otra.
 DMI_TABLE = "/sys/firmware/dmi/tables/DMI"
@@ -49,6 +51,17 @@ MSR_ALLOWED: dict[int, str] = {
     0xC0010293: "AMD_MSR_CORE_ENERGY",   # energía por núcleo en AMD
     0xC0010299: "AMD_MSR_RAPL_UNIT",
 }
+
+# El PMU de las gráficas Intel. Es la única acción que no lleva parámetros: el
+# ayudante enumera él mismo los PMU y los eventos, y solo abre los que encajan
+# en estos dos patrones. El cliente no manda nombres ni números de evento.
+#
+# Los contadores de ocupación son agregados de la máquina entera y no llevan
+# periodo de muestreo, así que cuentan nanosegundos de motor ocupado y nada
+# más: ni pilas de llamadas, ni direcciones, ni actividad de ningún proceso.
+PMU_ROOT = "/sys/bus/event_source/devices"
+PMU_GPU = r"^(i915|xe_[0-9a-f]{4}_[0-9a-f]{2}_[0-9a-f]{2}\.[0-9a-f])$"
+PMU_EVENT = r"^(rcs|bcs|vcs|vecs|ccs)\d+-busy$"
 
 # Tamaño máximo de un mensaje, en bytes. Evita que un lado pueda hacer que el
 # otro reserve memoria sin límite.
