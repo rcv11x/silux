@@ -628,3 +628,90 @@ class TestOrdenDelArbolDeSensores(unittest.TestCase):
         crudo = ["Batería", "Puerto USB-C", "AMD Ryzen 7 5800X3D", "Memoria"]
         orden = list(self._snapshot(crudo).sensor_tree())
         self.assertEqual(orden[-2:], ["Batería", "Puerto USB-C"])
+
+
+class TestQueLasCifrasQuepan(unittest.TestCase):
+    """La columna se ensancha para lo que de verdad lleva escrito.
+
+    Los relojes de núcleo salían como «4374.4 …»: la medida contaba el respiro
+    entre columnas pero no el relleno de la celda, que va a los dos lados.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        from PySide6.QtWidgets import QApplication
+        cls.app = QApplication.instance() or QApplication([])
+
+    def _tree(self):
+        from silux.collector import Collector
+        from silux.ui import theme
+        from silux.ui.widgets import SensorTree
+
+        arbol = SensorTree(theme.DARK)
+        arbol.rebuild(Collector().sample().sensor_tree())
+        arbol.resize(1800, 900)
+        arbol.show()
+        self.app.processEvents()
+        return arbol
+
+    def test_una_cifra_larga_ensancha_su_columna(self):
+        from PySide6.QtGui import QFontMetrics
+
+        from silux.ui import theme
+
+        arbol = self._tree()
+        clave = next(k for k in arbol._rows if not k.startswith("::"))
+        texto = "4374.4 MHz"
+        arbol.update_row(clave, [texto, "", "", ""])
+
+        necesario = (QFontMetrics(arbol._value_font).horizontalAdvance(texto)
+                     + theme.RELLENO_DE_CELDA * 2)
+        self.assertGreaterEqual(arbol.columnWidth(1), necesario)
+
+    def test_el_relleno_de_la_hoja_de_estilos_es_el_que_se_mide(self):
+        """Escrito en dos sitios, subirlo en uno dejó las cifras cortadas."""
+        from silux.ui import theme
+
+        hoja = theme.stylesheet(theme.DARK)
+        self.assertIn(f"{theme.RELLENO_DE_CELDA}px", hoja)
+
+
+class TestEtiquetasRepetidas(unittest.TestCase):
+    """Una placa Gigabyte publica sus temperaturas por el Super I/O y otra vez
+    por su interfaz WMI, y las dos se llaman «Temperatura 1»."""
+
+    @classmethod
+    def setUpClass(cls):
+        from PySide6.QtWidgets import QApplication
+        cls.app = QApplication.instance() or QApplication([])
+
+    def _arbol_con(self, sensores):
+        from silux.ui import theme
+        from silux.ui.widgets import SensorTree
+
+        arbol = SensorTree(theme.DARK)
+        arbol.rebuild({"Placa": {"Temperaturas": tuple(sensores)}})
+        return arbol
+
+    def _sensor(self, chip, label, valor=40.0):
+        from silux.model import Sensor, SensorKind
+
+        return Sensor(key=f"{chip}/{label}", chip=chip, device="Placa",
+                      label=label, kind=SensorKind.TEMPERATURE, value=valor)
+
+    def _nombres(self, arbol):
+        categoria = arbol.topLevelItem(0).child(0)
+        return [categoria.child(i).text(0) for i in range(categoria.childCount())]
+
+    def test_las_repetidas_dicen_de_qué_chip_son(self):
+        arbol = self._arbol_con([self._sensor("it8688", "Temperatura 1"),
+                                 self._sensor("gigabyte_wmi", "Temperatura 1")])
+        self.assertEqual(self._nombres(arbol),
+                         ["Temperatura 1 (it8688)",
+                          "Temperatura 1 (gigabyte_wmi)"])
+
+    def test_las_que_no_se_repiten_se_quedan_como_estaban(self):
+        """El chip entre paréntesis en todas sería ruido."""
+        arbol = self._arbol_con([self._sensor("it8688", "Temperatura 1"),
+                                 self._sensor("it8688", "Temperatura 2")])
+        self.assertEqual(self._nombres(arbol), ["Temperatura 1", "Temperatura 2"])
