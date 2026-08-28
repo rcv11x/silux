@@ -746,9 +746,24 @@ class CoreMatrix(QWidget):
             cell = QRectF(col * (cell_width + self.GAP), row * (self._cell_h + self.GAP),
                           cell_width, self._cell_h)
 
-            painter.setPen(QPen(self._p.q("line_soft"), 1))
+            destacado = core.get("starred")
+            painter.setPen(QPen(self._p.q("accent", 0.55) if destacado
+                                else self._p.q("line_soft"), 1))
             painter.setBrush(QBrush(self._p.q("surface_alt")))
             painter.drawRoundedRect(cell.adjusted(0.5, 0.5, -0.5, -0.5), 5, 5)
+
+            # Un punto en la esquina para los núcleos que el firmware marca
+            # como los mejores de la pieza. Va aquí y no en una columna aparte
+            # porque el dato no cambia nunca: ocupar una fila entera con algo
+            # que se lee una vez en la vida sería caro para lo que dice.
+            if destacado:
+                radio = max(2.0, linea * 0.16)
+                painter.setPen(Qt.PenStyle.NoPen)
+                painter.setBrush(QBrush(self._p.q("accent")))
+                painter.drawEllipse(
+                    QPointF(cell.right() - radio * 3.0, cell.top() + radio * 3.0),
+                    radio, radio,
+                )
 
             inner = cell.adjusted(pad_h, pad_v, -pad_h, -pad_v)
             # La caja del texto la marca la fuente. Estaba fija en 12 px, y
@@ -1303,12 +1318,19 @@ class ResizableHeader(QHeaderView):
     """Cabecera que enseña dónde se puede arrastrar.
 
     Qt cambia el cursor al pasar por encima de un separador, pero eso solo se
-    descubre por accidente. Un par de rayitas en cada división dice «esto se
-    mueve» antes de que nadie pase el ratón, que es la diferencia entre una
-    función que existe y una que se usa.
+    descubre por accidente. Una marca en cada división dice «esto se mueve»
+    antes de que nadie pase el ratón, que es la diferencia entre una función
+    que existe y una que se usa.
+
+    La marca tiene dos formas. En reposo es una raya corta y tenue: ahí solo
+    tiene que separar dos columnas sin llamar la atención. Con el cursor
+    cerca se abre en dos rayitas del color de acento, que es cuando de verdad
+    dice «agárrame». Antes eran las dos siempre, y a la altura de las cifras
+    quedaban tan pegadas al texto que se leían como parte de él: «Actual |».
     """
 
     GRIP_HEIGHT = 9
+    GRIP_REPOSO = 5
     GRAB_MARGIN = 4
 
     def __init__(self, palette: Palette, parent: Optional[QWidget] = None):
@@ -1328,14 +1350,17 @@ class ResizableHeader(QHeaderView):
             return
 
         active = index == self._hovered
-        colour = self._p.q("accent" if active else "muted", 1.0 if active else 0.55)
         painter.save()
-        painter.setPen(QPen(colour, 1))
+        if active:
+            painter.setPen(QPen(self._p.q("accent", 1.0), 1))
+            alto, equis = self.GRIP_HEIGHT, (rect.right() - 3, rect.right())
+        else:
+            painter.setPen(QPen(self._p.q("muted", 0.28), 1))
+            alto, equis = self.GRIP_REPOSO, (rect.right() - 1,)
         middle = rect.center().y()
-        top = middle - self.GRIP_HEIGHT // 2
-        for offset in (-2, 1):
-            x = rect.right() + offset
-            painter.drawLine(x, top, x, top + self.GRIP_HEIGHT)
+        top = middle - alto // 2
+        for x in equis:
+            painter.drawLine(x, top, x, top + alto)
         painter.restore()
 
     def _divider_at(self, x: int) -> int:
@@ -1472,6 +1497,18 @@ class SensorTree(QTreeWidget):
 
     NAME_FLOOR = 150
 
+    # Lo que se deja entre una columna de cifras y la siguiente. Va aparte del
+    # respiro general porque estas columnas no tienen nada que las separe: el
+    # texto de todas termina en el mismo sitio, pegado al borde derecho, y sin
+    # este hueco la marca de arrastre de la cabecera cae encima del número.
+    # Se suma al de la densidad elegida en vez de sustituirlo, que quien pide
+    # compacta lo pide también aquí.
+    RESPIRO_EXTRA = 18
+
+    @property
+    def RESPIRO_CIFRAS(self) -> int:  # noqa: N802
+        return theme.METRICS.grid_hspace + self.RESPIRO_EXTRA
+
     def _apply_widths(self, widths) -> None:
         """Aplica anchos con un suelo en la columna de nombres.
 
@@ -1483,6 +1520,10 @@ class SensorTree(QTreeWidget):
         anchos guardados cuando la tabla vivía en media pantalla dejaban
         «Intercam…» y «Temperat…» al mudarla a una pantalla entera. Se respeta
         lo que el usuario haya arrastrado, pero nunca por debajo de lo legible.
+
+        Las de cifras tienen el mismo suelo por el mismo motivo, con el
+        respiro incluido: cuatro columnas de números alineados a la derecha y
+        en monoespaciada, sin hueco entre ellas, se leen como un número largo.
         """
         medidos = self._measure_columns() if self.topLevelItemCount() else []
         self._applying_widths = True
@@ -1493,6 +1534,8 @@ class SensorTree(QTreeWidget):
                 if column == 0:
                     natural = medidos[0] + 46 if medidos else 0
                     floor = min(max(self.NAME_FLOOR, natural), 460)
+                elif medidos:
+                    floor = min(medidos[column] + self.RESPIRO_CIFRAS, 220)
                 else:
                     floor = self.header().minimumSectionSize()
                 self.setColumnWidth(column, max(floor, int(width)))
@@ -1520,7 +1563,10 @@ class SensorTree(QTreeWidget):
                 0, max(self.NAME_FLOOR, min(widest[0] + breathing + 46, 460))
             )
             for column in range(1, len(self.COLUMNS) - 1):
-                self.setColumnWidth(column, max(52, min(widest[column] + breathing, 220)))
+                self.setColumnWidth(
+                    column,
+                    max(52, min(widest[column] + self.RESPIRO_CIFRAS, 220)),
+                )
         finally:
             self._applying_widths = False
 

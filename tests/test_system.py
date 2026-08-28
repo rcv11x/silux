@@ -179,11 +179,42 @@ class TestColumnasDelArbol(unittest.TestCase):
                          QHeaderView.ResizeMode.Stretch)
 
     def test_los_anchos_guardados_se_aplican(self):
+        """Lo que el usuario arrastró manda, siempre que quepa lo que hay."""
         tree = self._tree()
         tree.show()
         self.app.processEvents()
-        tree.set_column_widths((300, 90, 70, 70, 80))
-        self.assertEqual(tree.column_widths(), (300, 90, 70, 70, 80))
+        anchos = (300, 200, 190, 180, 170)
+        tree.set_column_widths(anchos)
+        self.assertEqual(tree.column_widths(), anchos)
+
+    def test_las_cifras_no_bajan_de_su_respiro(self):
+        """Cuatro columnas de números alineados a la derecha y en
+        monoespaciada, sin hueco entre ellas, se leen como un número largo, y
+        la marca de arrastre de la cabecera acaba encima del último dígito.
+        Los anchos guardados se respetan hacia arriba, nunca por debajo del
+        contenido más su respiro."""
+        tree = self._tree()
+        tree.show()
+        self.app.processEvents()
+        tree.set_column_widths((300, 41, 41, 41, 41))
+        for columna in range(1, 1 + tree.VALUE_COLUMNS):
+            with self.subTest(columna=tree.COLUMNS[columna]):
+                self.assertGreater(tree.columnWidth(columna), 41 + 10)
+
+    def test_el_respiro_de_las_cifras_sigue_a_la_densidad(self):
+        """Quien pide densidad compacta la pide también entre las cifras."""
+        from silux.ui import theme
+
+        tree = self._tree()
+        previo = theme.METRICS
+        try:
+            theme.set_density("compact")
+            estrecho = tree.RESPIRO_CIFRAS
+            theme.set_density("spacious")
+            ancho = tree.RESPIRO_CIFRAS
+        finally:
+            theme.METRICS = previo
+        self.assertLess(estrecho, ancho)
 
     def test_restablecer_vuelve_a_los_automaticos(self):
         tree = self._tree()
