@@ -782,3 +782,75 @@ class TestElColorDeLasCeldas(unittest.TestCase):
         arbol = self._arbol()
         arbol.update_row("t", ["99.0 °C", "", "", ""], alarm="crítico")
         self.assertEqual(self._color(arbol, 1), theme.DARK.q("crit").name())
+
+
+class TestArrastrarLasColumnas(unittest.TestCase):
+    """Lo que mueve una persona se queda donde lo deje.
+
+    La curva se estiraba sola otra vez en el muestreo siguiente: cambiar los
+    valores recalcula la altura del árbol, eso es un `resizeEvent`, y allí se
+    repartía el sobrante como si nadie hubiera dicho nada.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        from PySide6.QtWidgets import QApplication
+        cls.app = QApplication.instance() or QApplication([])
+
+    def setUp(self):
+        from silux.collector import Collector
+
+        self.foto = Collector().sample()
+
+    def _tree(self, ancho=1390):
+        from silux.ui import theme
+        from silux.ui.widgets import SensorTree
+
+        arbol = SensorTree(theme.DARK)
+        arbol.rebuild(self.foto.sensor_tree())
+        arbol.resize(ancho, 800)
+        arbol.show()
+        self.app.processEvents()
+        return arbol
+
+    def _muestreo(self, arbol):
+        for sensor in self.foto.sensors[:40]:
+            arbol.update_row(sensor.key, ["1.0", "1.0", "1.0", "1.0"])
+        arbol.refresh_height()
+        self.app.processEvents()
+
+    def test_una_columna_arrastrada_no_se_estira_sola(self):
+        arbol = self._tree()
+        arbol.header().resizeSection(arbol.TREND_COLUMN, 150)
+        self.app.processEvents()
+        self._muestreo(arbol)
+        self.assertEqual(arbol.columnWidth(arbol.TREND_COLUMN), 150)
+
+    def test_ni_al_cambiar_el_tamaño_de_la_ventana(self):
+        arbol = self._tree()
+        arbol.header().resizeSection(arbol.TREND_COLUMN, 150)
+        self.app.processEvents()
+        arbol.resize(1900, 800)
+        self.app.processEvents()
+        self.assertEqual(arbol.columnWidth(arbol.TREND_COLUMN), 150)
+
+    def test_sin_tocar_nada_sigue_aprovechando_el_hueco(self):
+        arbol = self._tree()
+        self.assertEqual(arbol.columnWidth(arbol.TREND_COLUMN), arbol.TREND_MAX)
+
+    def test_mover_la_ventana_no_cuenta_como_arrastrar(self):
+        """La última columna absorbe el sobrante, así que Qt la estira sola
+        cada vez que cambia el tamaño. Eso llegaba igual que un arrastre y
+        dejaba los anchos clavados con solo maximizar una vez."""
+        arbol = self._tree(1200)
+        arbol.resize(1900, 800)
+        self.app.processEvents()
+        self.assertFalse(arbol._preferred_widths)
+        self.assertEqual(arbol.columnWidth(arbol.TREND_COLUMN), arbol.TREND_MAX)
+
+    def test_arrastrar_una_de_cifras_tambien_se_respeta(self):
+        arbol = self._tree()
+        arbol.header().resizeSection(1, 200)
+        self.app.processEvents()
+        self._muestreo(arbol)
+        self.assertGreaterEqual(arbol.columnWidth(1), 200)
