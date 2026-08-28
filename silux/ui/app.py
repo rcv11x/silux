@@ -290,6 +290,9 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event) -> None:  # noqa: N802
         self.sampler.stop()
+        # El registro se cierra a mano: lo escrito ya está en el disco, pero
+        # dejar el descriptor abierto al salir deja la última fila a medias.
+        self.monitor_page.cerrar_registro()
         from dataclasses import replace
 
         prefs_module.save(replace(self.prefs,

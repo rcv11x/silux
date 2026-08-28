@@ -14,6 +14,7 @@ jugabas importa más que saber a cuánto está ahora.
 
 from __future__ import annotations
 
+import pathlib
 from collections import defaultdict, deque
 from typing import Optional
 
@@ -30,6 +31,7 @@ from PySide6.QtWidgets import (
 
 from ... import render
 from ...model import Sensor, SensorKind, Snapshot
+from ... import registro
 from ...settings import Preferences
 from ...tracking import Tracker
 from .. import theme
@@ -102,6 +104,8 @@ class MonitorPage(QScrollArea):
         self._core_history: dict[int, deque] = defaultdict(lambda: deque(maxlen=40))
         self._structure: tuple = ()
         self._cuenta_completa = ""
+        self._registro: Optional[registro.Registro] = None
+        self._pendiente_abrir = False
         self._hint_signature: tuple = ()
 
     # -- construcción -------------------------------------------------------
@@ -133,6 +137,14 @@ class MonitorPage(QScrollArea):
         self.search.setFixedWidth(190)
         self.search.textChanged.connect(self._buscar)
 
+        self.record_button = QPushButton("Grabar a CSV")
+        self.record_button.setToolTip(
+            "Escribe una fila por muestreo con todos los sensores.\n"
+            "Se abre en cualquier hoja de cálculo, y sirve para ver en qué\n"
+            "minuto pasó algo cuando ya no estabas mirando."
+        )
+        self.record_button.clicked.connect(self._alternar_registro)
+
         self.reset_button = QPushButton("Reiniciar mín/máx")
         self.reset_button.setToolTip(
             "Vuelve a empezar a contar los extremos desde este momento.\n"
@@ -144,8 +156,54 @@ class MonitorPage(QScrollArea):
         row.addWidget(self.count)
         row.addStretch(1)
         row.addWidget(self.search)
+        row.addWidget(self.record_button)
         row.addWidget(self.reset_button)
         return holder
+
+    # -- registro a CSV -----------------------------------------------------
+
+    def _alternar_registro(self) -> None:
+        from PySide6.QtWidgets import QFileDialog
+
+        if self._registro is not None and self._registro.activo:
+            self._registro.cerrar()
+            self._pintar_estado_registro()
+            return
+
+        carpeta = registro.carpeta()
+        carpeta.mkdir(parents=True, exist_ok=True)
+        ruta, _ = QFileDialog.getSaveFileName(
+            self, "Guardar el registro de sensores",
+            str(carpeta / registro.nombre_sugerido()),
+            "Valores separados por comas (*.csv)")
+        if not ruta:
+            return
+        self._registro = registro.Registro(pathlib.Path(ruta))
+        self._pendiente_abrir = True
+        self._pintar_estado_registro()
+
+    def _pintar_estado_registro(self) -> None:
+        """El botón dice qué hace ahora y, grabando, cuánto lleva."""
+        activo = self._registro is not None and self._registro.activo
+        pendiente = getattr(self, "_pendiente_abrir", False)
+        if activo:
+            self.record_button.setText(
+                f"Detener ({self._registro.filas} "
+                f"{render.plural(self._registro.filas, 'fila', 'filas')})")
+            self.record_button.setObjectName("Danger")
+        elif pendiente:
+            self.record_button.setText("Grabando…")
+            self.record_button.setObjectName("Danger")
+        else:
+            self.record_button.setText("Grabar a CSV")
+            self.record_button.setObjectName("")
+        self.record_button.style().unpolish(self.record_button)
+        self.record_button.style().polish(self.record_button)
+
+    def cerrar_registro(self) -> None:
+        """Al cerrar la ventana: el archivo se queda con lo que llevaba."""
+        if self._registro is not None:
+            self._registro.cerrar()
 
     def _buscar(self, texto: str) -> None:
         self.tree.set_filter(texto)
@@ -166,6 +224,31 @@ class MonitorPage(QScrollArea):
     def apply(self, snapshot: Snapshot) -> None:
         self._apply_sensors(snapshot)
         self._apply_hints(snapshot)
+        self._registrar(snapshot)
+
+    def _registrar(self, snapshot: Snapshot) -> None:
+        """La cabecera se escribe con el primer muestreo que llega después de
+        pulsar, no en el momento de pulsar: así las columnas salen de una foto
+        de verdad y no de la que hubiera cacheada."""
+        if self._registro is None:
+            return
+        try:
+            if self._pendiente_abrir:
+                self._registro.abrir(snapshot)
+                self._pendiente_abrir = False
+            self._registro.escribir(snapshot)
+        except OSError as error:
+            self._registro.cerrar()
+            self._registro = None
+            self._pendiente_abrir = False
+            self._aviso_de_registro(str(error))
+        self._pintar_estado_registro()
+
+    def _aviso_de_registro(self, detalle: str) -> None:
+        from PySide6.QtWidgets import QMessageBox
+
+        QMessageBox.warning(self, "Registro de sensores",
+                            f"Se ha parado la grabación: {detalle}")
 
     def _temp(self, celsius: float) -> float:
         return celsius * 9 / 5 + 32 if self._prefs.fahrenheit else celsius
