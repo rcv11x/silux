@@ -205,3 +205,46 @@ class TestContadoresDeFabricante(unittest.TestCase):
         # Los platos no se gastan por escribir, así que no publican el atributo.
         salud = smart.parse(tabla_ata([(9, 80, 13147), (241, 100, 1000)]), "ata")
         self.assertIsNone(salud.life_left_percent)
+
+
+class TestUnidadDeEscritura(unittest.TestCase):
+    """En qué unidades cuenta cada disco lo que lleva escrito.
+
+    El atributo 241 se llama «LBAs escritas» y casi todos cuentan sectores de
+    512 bytes, pero no es obligatorio. Kioxia cuenta bloques de 32 MiB: dando
+    por hecho los 512, un disco con 23 TiB escritos declaraba 367 MB.
+    """
+
+    def test_lo_normal_siguen_siendo_sectores(self):
+        # Lo que no esté en la tabla no cambia de comportamiento.
+        for fabricante, modelo in (("Crucial", "CT500MX500SSD1"),
+                                   ("Samsung", "SSD 870 EVO"),
+                                   ("WDC", "WD Blue SA510"),
+                                   (None, None)):
+            with self.subTest(fabricante=fabricante):
+                self.assertEqual(smart._unidad_escritura(fabricante, modelo),
+                                 smart.ATA_SECTOR)
+
+    def test_kioxia_cuenta_en_bloques_de_32_mib(self):
+        # Medido: escritos 4,09 GiB, el contador subió 133 → 31,5 MiB por unidad.
+        self.assertEqual(smart._unidad_escritura("Kioxia", "KIOXIA-EXCERIA S"),
+                         32 * 1024 * 1024)
+
+    def test_toshiba_tambien(self):
+        """Son los mismos discos antes del cambio de nombre de la división."""
+        self.assertEqual(smart._unidad_escritura(None, "TOSHIBA THNSNJ256GCSU"),
+                         32 * 1024 * 1024)
+
+    def test_da_igual_dónde_venga_el_nombre(self):
+        # Unos discos ponen la marca en el fabricante y otros solo en el modelo.
+        self.assertEqual(smart._unidad_escritura("KIOXIA", None), 32 * 1024 * 1024)
+        self.assertEqual(smart._unidad_escritura(None, "kioxia exceria"),
+                         32 * 1024 * 1024)
+
+    def test_el_disco_real_da_una_cifra_creible(self):
+        """752 881 unidades de un KIOXIA-EXCERIA son 23 TiB, no 367 MB."""
+        crudo = 752_881
+        escrito = crudo * smart._unidad_escritura("Kioxia", "KIOXIA-EXCERIA S")
+        self.assertAlmostEqual(escrito / 1024 ** 4, 23.0, places=1)
+        # Y con la cuenta de antes salía algo imposible para 3 834 horas.
+        self.assertLess(crudo * smart.ATA_SECTOR / 1024 ** 2, 400)

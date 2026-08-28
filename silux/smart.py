@@ -28,6 +28,43 @@ NVME_UNIDAD = 1000 * 512
 # Los sectores lógicos con los que SATA cuenta lo escrito.
 ATA_SECTOR = 512
 
+# Cuánto vale una unidad del atributo 241 según quién fabrique el disco.
+#
+# El atributo se llama «LBAs escritas» y casi todo el mundo cuenta sectores de
+# 512 bytes, pero no es obligatorio y algunos fabricantes cuentan bloques
+# mucho mayores. Kioxia usa bloques de 32 MiB: dando por hecho los 512 bytes,
+# un disco con 23 TiB escritos declaraba 367 MB, que son 65 536 veces menos.
+#
+# Ni siquiera las herramientas de referencia coinciden. `smartctl` etiqueta
+# ese atributo como «Lifetime_Writes_GiB» —que daría 735 TiB, más de lo que
+# el disco aguantaría— y libatasmart asume 32 MiB. Como no hay forma de
+# deducirlo del propio atributo, aquí solo se apunta lo que se ha medido
+# contra hardware real: se escribe una cantidad conocida y se mira cuánto
+# sube el contador.
+#
+# Lo que no esté en esta tabla se cuenta en sectores de 512 bytes, que es lo
+# que hace la inmensa mayoría y lo que el programa venía haciendo.
+ATA_UNIDAD_ESCRITURA: dict[str, int] = {
+    # Comprobado en un KIOXIA-EXCERIA SATA de 240 GB: escritos 4,09 GiB, el
+    # contador subió 133 unidades → 31,5 MiB por unidad, o sea 32 MiB.
+    "kioxia": 32 * 1024 * 1024,
+    # Toshiba vendía estos mismos discos antes de que la división de memorias
+    # pasara a llamarse Kioxia, y comparten firmware.
+    "toshiba": 32 * 1024 * 1024,
+}
+
+
+def _unidad_escritura(vendor: Optional[str], model: Optional[str]) -> int:
+    """Cuánto vale una unidad del contador de escritura en este disco."""
+    for texto in (vendor, model):
+        if not texto:
+            continue
+        minusculas = texto.lower()
+        for marca, unidad in ATA_UNIDAD_ESCRITURA.items():
+            if marca in minusculas:
+                return unidad
+    return ATA_SECTOR
+
 CERO_ABSOLUTO = 273.15
 
 
@@ -72,12 +109,19 @@ ATA_INCORREGIBLES = 198
 ATA_VIDA = (231, 233, 177, 202)
 
 
-def parse(data: bytes, kind: str) -> Optional[DiskHealth]:
-    """Devuelve None si los datos no tienen la pinta que deberían."""
+def parse(data: bytes, kind: str, vendor: Optional[str] = None,
+          model: Optional[str] = None) -> Optional[DiskHealth]:
+    """Devuelve None si los datos no tienen la pinta que deberían.
+
+    El fabricante y el modelo hacen falta solo en SATA, y solo para saber en
+    qué unidades cuenta el disco lo que lleva escrito. NVMe no los necesita:
+    su registro de salud está definido por la especificación y significa lo
+    mismo en cualquier disco.
+    """
     if kind == "nvme":
         return _parse_nvme(data)
     if kind == "ata":
-        return _parse_ata(data)
+        return _parse_ata(data, vendor, model)
     return None
 
 
@@ -151,7 +195,8 @@ def _atributos(data: bytes) -> dict[int, tuple[int, int]]:
     return encontrados
 
 
-def _parse_ata(data: bytes) -> Optional[DiskHealth]:
+def _parse_ata(data: bytes, vendor: Optional[str] = None,
+               model: Optional[str] = None) -> Optional[DiskHealth]:
     if len(data) < 362:
         return None
     tabla = _atributos(data)
@@ -177,11 +222,13 @@ def _parse_ata(data: bytes) -> Optional[DiskHealth]:
     if horas is not None and horas > HORAS_PLAUSIBLES:
         horas = None
 
+    unidad = _unidad_escritura(vendor, model)
+
     return DiskHealth(
         power_on_hours=horas,
         power_cycles=crudo(ATA_CICLOS),
-        written_bytes=escrito * ATA_SECTOR if escrito else None,
-        read_bytes=leido * ATA_SECTOR if leido else None,
+        written_bytes=escrito * unidad if escrito else None,
+        read_bytes=leido * unidad if leido else None,
         # El atributo guarda la vida que queda; el modelo la guarda gastada.
         percentage_used=100 - vida if vida is not None else None,
         # Un sector reasignado es un trozo de disco que ya se estropeó y se

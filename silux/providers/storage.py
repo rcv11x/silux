@@ -29,6 +29,10 @@ from ..model import Disk, DiskIo, Need, Partition, PcieLink
 from ..privileged.client import HelperError, PrivilegedClient
 from .base import Draft, Provider, read_int, read_text
 
+# Cada cuánto se le vuelve a pedir el diagnóstico a un disco, en segundos.
+# Las horas y lo escrito cambian despacio, pero la temperatura no.
+INTERVALO_SALUD = 30.0
+
 SYS_BLOCK = pathlib.Path("/sys/block")
 PROC_MOUNTS = "/proc/mounts"
 
@@ -63,6 +67,12 @@ class Disks(Provider):
         # terabytes escritos. Se lee una vez y se guarda.
         self._salud: dict[str, object] = {}
         self._sin_salud: set[str] = set()
+        # La temperatura que vino con el diagnóstico, guardada aparte. El
+        # disco se reconstruye desde sysfs en cada muestreo: sin guardarla,
+        # aparecía un instante al desbloquear y volvía a «—» en la siguiente.
+        self._temperatura: dict[str, float] = {}
+        # Cuándo se pidió el último diagnóstico de cada disco.
+        self._leido_en: dict[str, float] = {}
         # La pone el colector cuando el usuario pulsa el botón. Sin ella el
         # diagnóstico solo se lee si alguien elevó permisos por otra cosa.
         self.requested = False
@@ -113,28 +123,54 @@ class Disks(Provider):
             nombre = disco.name
             if nombre in self._sin_salud:
                 continue
-            if nombre not in self._salud:
+            if self._toca_releer(nombre):
                 try:
                     datos, familia = self.client.read_smart(nombre)
                 except (HelperError, OSError):
-                    self._sin_salud.add(nombre)
-                    continue
-                salud = smart_module.parse(datos, familia)
+                    datos = None
+                salud = (smart_module.parse(datos, familia, vendor=disco.vendor,
+                                            model=disco.model)
+                         if datos is not None else None)
+                self._leido_en[nombre] = time.monotonic()
+
                 if salud is None:
-                    self._sin_salud.add(nombre)
-                    continue
-                self._salud[nombre] = salud
-                # De paso, la temperatura de los discos que no la publican por
-                # hwmon: los SATA sin `drivetemp` cargado sí la traen aquí.
-                if disco.temp_c is None:
+                    # Un fallo al refrescar no borra lo que ya se sabía: se
+                    # deja el dato anterior y se reintenta al rato. Solo se da
+                    # el disco por mudo si nunca llegó a contestar.
+                    if nombre not in self._salud:
+                        self._sin_salud.add(nombre)
+                        continue
+                else:
+                    self._salud[nombre] = salud
+                    # De paso, la temperatura de los discos que no la publican
+                    # por hwmon: los SATA sin `drivetemp` cargado la traen aquí.
                     grados = (smart_module.nvme_temperature(datos)
                               if familia == "nvme"
                               else smart_module.ata_temperature(datos))
                     if grados is not None:
-                        draft.disks[indice] = dataclasses.replace(disco, temp_c=grados)
-                        disco = draft.disks[indice]
+                        self._temperatura[nombre] = grados
+
+            # Lo que publique hwmon manda, porque se relee en cada muestreo;
+            # la del diagnóstico solo rellena el hueco cuando no hay otra.
+            if disco.temp_c is None and nombre in self._temperatura:
+                disco = dataclasses.replace(disco, temp_c=self._temperatura[nombre])
             draft.disks[indice] = dataclasses.replace(
                 disco, health=self._salud[nombre])
+
+    def _toca_releer(self, nombre: str) -> bool:
+        """Si hay que volver a pedirle el diagnóstico a este disco.
+
+        Se relee de tanto en tanto en vez de una sola vez porque, aunque las
+        horas y los terabytes escritos cambian despacio, la temperatura no:
+        leerla una vez al desbloquear y no volver a mirarla dejaba un número
+        congelado con la etiqueta «Temperatura», que engaña más que el hueco.
+
+        El intervalo es largo a propósito. Cada lectura es un viaje al proceso
+        con privilegios y una orden al disco; hacerlo cada segundo no aportaría
+        nada porque el propio disco actualiza esos contadores despacio.
+        """
+        anterior = self._leido_en.get(nombre)
+        return anterior is None or (time.monotonic() - anterior) >= INTERVALO_SALUD
 
     # -- interno ------------------------------------------------------------
 
