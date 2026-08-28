@@ -382,6 +382,32 @@ def resizable_bar(memory: GpuMemory) -> str:
     return f"desactivado: la CPU solo alcanza {ventana}"
 
 
+def duracion(segundos: float) -> str:
+    """«40 s», «2 min 10 s». Sin decimales: nadie mide un recorte en décimas."""
+    if segundos < 60:
+        return f"{segundos:.0f} s"
+    minutos, resto = divmod(int(segundos), 60)
+    return f"{minutos} min {resto} s" if resto else f"{minutos} min"
+
+
+def throttle_episode(episodio, ahora_ns: int) -> Optional[str]:
+    """Cuánto lleva —o llevó— frenándose, y por qué.
+
+    «Recortando por temperatura del punto caliente» dice qué pasa ahora y no
+    dice lo que se quiere saber. Una tarjeta que toca su límite de potencia
+    medio segundo en cada cambio de escena funciona como se diseñó; una que
+    lleva un minuto contra el límite térmico tiene un problema de
+    refrigeración. El dato es el mismo y la conclusión es la contraria.
+    """
+    if episodio is None:
+        return None
+    cuanto = duracion(episodio.duracion_s(ahora_ns))
+    motivos = ", ".join(sorted(episodio.motivos)) or "un motivo que no publica"
+    if episodio.en_curso():
+        return f"Lleva {cuanto} recortando por {motivos}."
+    return f"Ha estado {cuanto} recortando por {motivos}."
+
+
 def throttle_state(gpu) -> str:
     """Si la tarjeta se está frenando, y por qué motivos."""
     if gpu.throttled is None:

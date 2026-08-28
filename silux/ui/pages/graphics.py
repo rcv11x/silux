@@ -19,6 +19,7 @@ from PySide6.QtWidgets import QLabel, QScrollArea, QVBoxLayout, QWidget
 from ... import render
 from ...model import Gpu, Need, Snapshot
 from ...settings import Preferences
+from ...throttling import SeguidorDeRecortes
 from .. import theme
 from ..theme import Palette
 from ..widgets import (Card, ChipRow, Divider, InfoGrid, Notice, ResponsiveRow, StackedBar,
@@ -182,6 +183,11 @@ class GpuSection(QWidget):
         card.body.addWidget(self.title)
         card.body.addWidget(self.subtitle)
         card.body.addWidget(self.badges)
+        self.recorte = QLabel()
+        self.recorte.setObjectName("NoticeHint")
+        self.recorte.setWordWrap(True)
+        self.recorte.hide()
+        card.body.addWidget(self.recorte)
         return card
 
     def _build_tiles(self) -> QWidget:
@@ -260,9 +266,14 @@ class GpuSection(QWidget):
                 self.elevation_buttons.append(aviso.action_button)
             self._notices_host.addWidget(aviso)
 
-    def apply(self, gpu: Gpu) -> None:
+    def apply(self, gpu: Gpu, recorte: str = "") -> None:
         d = render.DASH
         self.title.setText(gpu.display_name)
+        # Va arriba, debajo del nombre: es lo que explica por qué las cifras de
+        # al lado no llegan a donde deberían, y escondido en una fila de la
+        # ficha de sensores no lo lee quien no sabía que existía.
+        self.recorte.setText(recorte)
+        self.recorte.setVisible(bool(recorte))
         self.subtitle.setText(" · ".join(p for p in (
             gpu.subsystem_name, gpu.codename, render.pcie_link(gpu.link)) if p))
         self._apply_badges(gpu)
@@ -542,6 +553,9 @@ class GraphicsPage(QScrollArea):
     def __init__(self, palette: Palette, prefs: Preferences, parent=None):
         super().__init__(parent)
         self._p = palette
+        # Lleva la cuenta de cuánto tiempo lleva frenándose cada tarjeta. Es
+        # estado entre muestreos, así que vive en la página y no en el modelo.
+        self._recortes = SeguidorDeRecortes()
         self._prefs = prefs
         m = theme.METRICS
 
@@ -589,9 +603,15 @@ class GraphicsPage(QScrollArea):
         for sobrante in self._sections[len(snapshot.gpus):]:
             sobrante.hide()
 
+        ahora = snapshot.monotonic_ns
         for seccion, gpu in zip(self._sections, snapshot.gpus):
+            # La ranura PCI es lo único que no cambia entre muestreos: el
+            # índice se mueve si aparece o desaparece una tarjeta.
+            clave = gpu.pci_slot or f"gpu{gpu.index}"
+            self._recortes.update(clave, gpu.throttled, gpu.throttle_reasons, ahora)
             seccion.show()
-            seccion.apply(gpu)
+            seccion.apply(gpu, render.throttle_episode(
+                self._recortes.relevante(clave, ahora), ahora) or "")
 
         self._apply_notices(snapshot)
 
