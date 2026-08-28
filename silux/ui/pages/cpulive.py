@@ -141,8 +141,7 @@ class CpuLiveSection(QWidget):
     def _apply_cores(self, snapshot: Snapshot) -> None:
         # Los núcleos que el firmware marca como los mejores de la pieza. Se
         # marcan los dos hilos del mismo núcleo porque el silicio es el mismo.
-        orden = render.core_quality(snapshot.cpu.logical)
-        cabeza = {core for core, nota, _ in orden if orden and nota == orden[0][1]}
+        cabeza = render.best_core_ids(snapshot.cpu.logical)
 
         cells = []
         for logical in snapshot.cpu.logical:
@@ -162,7 +161,7 @@ class CpuLiveSection(QWidget):
             })
         self.cores.set_cores(cells)
 
-        if orden:
+        if cabeza:
             reparto = render.core_quality_spread(snapshot.cpu.logical)
             hilos = render.starred_cpus(snapshot.cpu.logical)
             # Con SMT las estrellas son el doble que los núcleos, y sin decirlo

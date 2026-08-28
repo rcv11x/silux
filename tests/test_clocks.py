@@ -284,3 +284,101 @@ class TestCalidadDeLosNucleos(BancoDeRelojes):
         clocks, _ = self.recolectar()
         self.assertEqual(clocks.max_turbo_hz, 4_552_952_000)
         self.assertNotEqual(clocks.max_turbo_hz, int(3_401_000_000 * 196 / 124))
+
+
+class TestCalidadEnUnHibrido(unittest.TestCase):
+    """En un Intel de 12ª en adelante la nota no cruza tipos de núcleo.
+
+    Un E-core con la mitad de nota que un P-core no «salió peor de la oblea»:
+    es otro núcleo, con otro tamaño y otro propósito, y la plataforma lo
+    puntúa más bajo por diseño. Compararlos daba un 35 % cierto en el número
+    y falso en lo que da a entender.
+    """
+
+    def _pieza(self, notas_p=(250, 251, 252, 255), notas_e=(90, 91, 92, 93)):
+        from silux.model import LogicalCpu
+
+        logicas = []
+        for nucleo, nota in enumerate(notas_p):
+            for _ in range(2):          # los P-cores llevan SMT
+                logicas.append(LogicalCpu(index=len(logicas), core_id=nucleo,
+                                          package_id=0, type_key="performance",
+                                          quality=nota))
+        for indice, nota in enumerate(notas_e):
+            nucleo = len(notas_p) + indice
+            logicas.append(LogicalCpu(index=len(logicas), core_id=nucleo,
+                                      package_id=0, type_key="efficiency",
+                                      quality=nota))
+        return logicas
+
+    def test_cada_tipo_se_ordena_por_su_cuenta(self):
+        por_tipo = render.core_quality_by_type(self._pieza())
+        self.assertEqual(set(por_tipo), {"performance", "efficiency"})
+        self.assertEqual(por_tipo["performance"][0][0], 3)
+        self.assertEqual(por_tipo["efficiency"][0][0], 7)
+
+    def test_la_fraccion_se_mide_contra_el_mejor_del_mismo_tipo(self):
+        por_tipo = render.core_quality_by_type(self._pieza())
+        # El peor E-core vale 90 de 93, no 90 de 255.
+        self.assertAlmostEqual(por_tipo["efficiency"][-1][2], 90 / 93, places=3)
+
+    def test_se_marca_el_mejor_de_cada_tipo(self):
+        """El mejor P-core y el mejor E-core son dos respuestas a la misma
+        pregunta hecha sobre piezas distintas."""
+        self.assertEqual(render.best_core_ids(self._pieza()), {3, 7})
+
+    def test_el_reparto_no_compara_un_e_core_con_un_p_core(self):
+        frase = render.core_quality_spread(self._pieza())
+        self.assertIn("de su tipo", frase)
+        self.assertNotIn("35 %", frase)
+
+    def test_un_tipo_sin_variacion_interna_no_se_marca(self):
+        """Si todos los E-cores traen la misma nota, el firmware no los midió:
+        rellenó el campo. Los P-cores sí se marcan."""
+        pieza = self._pieza(notas_e=(90, 90, 90, 90))
+        por_tipo = render.core_quality_by_type(pieza)
+        self.assertEqual(set(por_tipo), {"performance"})
+        self.assertEqual(render.best_core_ids(pieza), {3})
+
+    def test_una_cpu_de_un_solo_tipo_no_dice_de_su_tipo(self):
+        """En un Ryzen homogéneo la coletilla sobra."""
+        from silux.model import LogicalCpu
+
+        logicas = [LogicalCpu(index=i, core_id=i, package_id=0, quality=180 + i)
+                   for i in range(8)]
+        self.assertNotIn("de su tipo", render.core_quality_spread(logicas))
+
+
+class TestCalidadPorTipoEnElProveedor(BancoDeRelojes):
+    """El proveedor tampoco anota un tipo cuyos núcleos no se distinguen."""
+
+    def _draft_hibrido(self, notas_p, notas_e) -> Draft:
+        draft = Draft()
+        indice = 0
+        for clave, notas, hilos in (("performance", notas_p, 2),
+                                    ("efficiency", notas_e, 1)):
+            entrada = draft.type_for(clave)
+            entrada["architecture"] = "x86_64"
+            suyas = []
+            for nucleo, nota in enumerate(notas):
+                for _ in range(hilos):
+                    draft.cpu(indice)["core_id"] = nucleo
+                    self.cppc(indice, highest_perf=nota)
+                    suyas.append(indice)
+                    indice += 1
+            entrada["cpus"] = suyas
+        cppc.CppcClocks().collect(draft)
+        return draft
+
+    def test_solo_se_anota_el_tipo_que_varia(self):
+        draft = self._draft_hibrido((250, 251, 252), (90, 90, 90))
+        logicas = draft.freeze().cpu.logical
+        rendimiento = [c.quality for c in logicas if c.type_key == "performance"]
+        eficiencia = [c.quality for c in logicas if c.type_key == "efficiency"]
+        self.assertTrue(all(rendimiento))
+        self.assertTrue(all(q is None for q in eficiencia))
+
+    def test_si_ninguno_varia_no_se_anuncia_la_fuente(self):
+        """Entre tipos siempre hay diferencia; eso no es haber medido nada."""
+        draft = self._draft_hibrido((250, 250, 250), (90, 90, 90))
+        self.assertNotIn("cppc-prefcore", draft.capabilities)
