@@ -32,6 +32,39 @@ LANG = RAIZ / "silux" / "db" / "lang"
 FUENTES = ("silux/ui", "silux/render.py", "silux/cli.py", "silux/report.py")
 
 
+# Tablas de opciones cuyo texto se traduce al montar el desplegable, con
+# `_(label)` sobre una variable. El extractor solo ve literales, así que estas
+# se declaran aquí: sin ellas desaparecerían de los archivos en la siguiente
+# pasada y los desplegables volverían al español a mitad de una interfaz en
+# inglés.
+TABLAS = {
+    "silux/ui/pages/settings.py": ("THEMES", "UNITS", "DENSITIES",
+                                   "FONT_SCALES", "ACCENTS", "NETWORK_UNITS"),
+    "silux/ui/app.py": ("SECTIONS",),
+}
+
+
+def cadenas_de_tablas() -> dict[str, list[str]]:
+    """El primer elemento de cada par de las tablas de opciones."""
+    encontradas: dict[str, list[str]] = {}
+    for origen, nombres in TABLAS.items():
+        ruta = RAIZ / origen
+        if not ruta.is_file():
+            continue
+        arbol = ast.parse(ruta.read_text(encoding="utf-8"))
+        for nodo in ast.walk(arbol):
+            if not (isinstance(nodo, ast.Assign)
+                    and any(isinstance(t, ast.Name) and t.id in nombres
+                            for t in nodo.targets)):
+                continue
+            for par in ast.walk(nodo.value):
+                if (isinstance(par, ast.Tuple) and par.elts
+                        and isinstance(par.elts[0], ast.Constant)
+                        and isinstance(par.elts[0].value, str)):
+                    encontradas.setdefault(par.elts[0].value, []).append(origen)
+    return encontradas
+
+
 def cadenas_del_codigo() -> dict[str, list[str]]:
     """Cada cadena envuelta en `_()`, con los archivos donde aparece."""
     encontradas: dict[str, list[str]] = {}
@@ -70,6 +103,14 @@ def actualizar(codigo: str, cadenas: dict[str, list[str]],
     nuevo = {texto: actual.get(texto, "") for texto in sorted(cadenas)}
     sobrantes = {k: v for k, v in actual.items() if k not in cadenas and v}
 
+    # Lo que ya está traducido no se borra aunque el extractor no lo encuentre.
+    # Puede ser una cadena que cambió de sitio, o una que se traduce con una
+    # variable y aquí no se ve; en cualquier caso, tirar el trabajo de alguien
+    # sin preguntar es lo peor que puede hacer esta herramienta. Se queda y se
+    # dice cuántas son, para que quien mire decida.
+    nuevo.update(sobrantes)
+    nuevo = dict(sorted(nuevo.items()))
+
     if escribir:
         LANG.mkdir(parents=True, exist_ok=True)
         # `ensure_ascii=False` para que las tildes se lean en el diff de
@@ -89,7 +130,11 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
 
     cadenas = cadenas_del_codigo()
-    print(f"  {len(cadenas)} cadenas envueltas en _() en el código")
+    tablas = cadenas_de_tablas()
+    for texto, donde in tablas.items():
+        cadenas.setdefault(texto, []).extend(donde)
+    print(f"  {len(cadenas)} cadenas traducibles "
+          f"({len(tablas)} de tablas de opciones)")
 
     idiomas = sorted(p.stem for p in LANG.glob("*.json")) if LANG.is_dir() else []
     if not idiomas:
@@ -99,7 +144,8 @@ def main(argv=None) -> int:
         hechas, faltan, sobran = actualizar(codigo, cadenas, args.write)
         estado = f"  {codigo}: {hechas} traducidas, {faltan} sin traducir"
         if sobran:
-            estado += f", {sobran} que ya no están en el código"
+            estado += (f", {sobran} que el extractor no encuentra "
+                       "(se conservan)")
         print(estado)
 
     if not args.write:

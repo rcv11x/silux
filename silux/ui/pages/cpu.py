@@ -20,6 +20,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QLabel, QScrollArea, QVBoxLayout, QWidget
 
 from ... import render
+from ...i18n import _
 from ...features import para_arquitectura
 from ...model import CpuType, Need, Snapshot
 from ...settings import Preferences
@@ -78,16 +79,16 @@ class TypeSection(QWidget):
             heading.setObjectName("Subhead")
             layout.addWidget(heading)
 
-        processor_card = Card("Procesador")
+        processor_card = Card(_("Procesador"))
         self.processor = InfoGrid()
         for name in PROCESSOR_FIELDS:
             self.processor.add(name)
         processor_card.body.addWidget(self.processor)
 
-        clocks_card = Card("Relojes")
+        clocks_card = Card(_("Relojes"))
         self.clocks = InfoGrid()
         for name in CLOCK_FIELDS:
-            self.clocks.add(name)
+            self.clocks.add(_(name))
         clocks_card.body.addWidget(self.clocks)
         self.turbo_hint = QLabel("")
         self.turbo_hint.setObjectName("Accent")
@@ -101,12 +102,12 @@ class TypeSection(QWidget):
         columns.add(clocks_card)
         layout.addWidget(columns)
 
-        cache_card = Card("Jerarquía de caché")
+        cache_card = Card(_("Jerarquía de caché"))
         self.caches = InfoGrid()
         cache_card.body.addWidget(self.caches)
         layout.addWidget(cache_card)
 
-        features_card = Card("Juego de instrucciones")
+        features_card = Card(_("Juego de instrucciones"))
         self.chips = ChipRow()
         features_card.body.addWidget(self.chips)
         self.feature_count = QLabel("")
@@ -121,35 +122,35 @@ class TypeSection(QWidget):
 
     def apply(self, cpu_type: CpuType) -> None:
         p = self.processor.set  # noqa: E741
-        p("Fabricante", cpu_type.vendor or render.DASH)
-        p("Especificación", cpu_type.brand or render.DASH)
-        p("Nombre en clave", cpu_type.codename or render.DASH)
-        p("Tecnología", cpu_type.technology or render.DASH)
-        p("Encapsulado", cpu_type.socket or render.DASH)
-        p("Arquitectura", cpu_type.architecture or render.DASH)
-        p("Núcleos", str(cpu_type.cores))
-        p("Hilos", f"{cpu_type.threads}" + ("  (SMT activo)" if cpu_type.smt else ""))
-        p("Virtualización", self._virtualization(cpu_type))
-        p("Familia", render.hex_id(cpu_type.disp_family))
-        p("Modelo", render.hex_id(cpu_type.disp_model))
-        p("Stepping", render.dec(cpu_type.stepping))
-        p("Firma CPUID", render.signature(cpu_type.signature),
+        p(_("Fabricante"), cpu_type.vendor or render.DASH)
+        p(_("Especificación"), cpu_type.brand or render.DASH)
+        p(_("Nombre en clave"), cpu_type.codename or render.DASH)
+        p(_("Tecnología"), cpu_type.technology or render.DASH)
+        p(_("Encapsulado"), cpu_type.socket or render.DASH)
+        p(_("Arquitectura"), cpu_type.architecture or render.DASH)
+        p(_("Núcleos"), str(cpu_type.cores))
+        p(_("Hilos"), f"{cpu_type.threads}" + ("  (SMT activo)" if cpu_type.smt else ""))
+        p(_("Virtualización"), self._virtualization(cpu_type))
+        p(_("Familia"), render.hex_id(cpu_type.disp_family))
+        p(_("Modelo"), render.hex_id(cpu_type.disp_model))
+        p(_("Stepping"), render.dec(cpu_type.stepping))
+        p(_("Firma CPUID"), render.signature(cpu_type.signature),
           tooltip=render.signature_tooltip(cpu_type))
-        p("Microcódigo", cpu_type.microcode or render.DASH)
+        p(_("Microcódigo"), cpu_type.microcode or render.DASH)
 
         c = self.clocks.set
         clocks = cpu_type.clocks
-        c("Frecuencia", render.hz(clocks.current_hz))
-        c("Multiplicador", render.multiplier(clocks.multiplier))
-        c("Base", f"{render.hz(clocks.base_hz)}  {render.multiplier(clocks.base_multiplier)}")
-        c("Mínima", f"{render.hz(clocks.min_hz)}  {render.multiplier(clocks.min_multiplier)}")
-        c("Máxima (kernel)", f"{render.hz(clocks.max_hz)}  {render.multiplier(clocks.max_multiplier)}")
-        c("Máxima (silicio)", f"{render.hz(clocks.max_turbo_hz)}  {render.multiplier(clocks.max_turbo_multiplier)}")
-        c("Bus (BCLK)", render.hz(clocks.bus_hz, 0))
-        c("Turbo", {True: "activado", False: "desactivado", None: render.DASH}[clocks.turbo_enabled])
-        c("Driver", clocks.driver or render.DASH)
-        c("Gobernador", clocks.governor or render.DASH)
-        c("Preferencia de energía", clocks.energy_preference or render.DASH)
+        c(_("Frecuencia"), render.hz(clocks.current_hz))
+        c(_("Multiplicador"), render.multiplier(clocks.multiplier))
+        c(_("Base"), f"{render.hz(clocks.base_hz)}  {render.multiplier(clocks.base_multiplier)}")
+        c(_("Mínima"), f"{render.hz(clocks.min_hz)}  {render.multiplier(clocks.min_multiplier)}")
+        c(_("Máxima (kernel)"), f"{render.hz(clocks.max_hz)}  {render.multiplier(clocks.max_multiplier)}")
+        c(_("Máxima (silicio)"), f"{render.hz(clocks.max_turbo_hz)}  {render.multiplier(clocks.max_turbo_multiplier)}")
+        c(_("Bus (BCLK)"), render.hz(clocks.bus_hz, 0))
+        c(_("Turbo"), {True: "activado", False: "desactivado", None: render.DASH}[clocks.turbo_enabled])
+        c(_("Driver"), clocks.driver or render.DASH)
+        c(_("Gobernador"), clocks.governor or render.DASH)
+        c(_("Preferencia de energía"), clocks.energy_preference or render.DASH)
 
         if hint := render.turbo_note(clocks):
             self.turbo_hint.setText(hint)
@@ -249,7 +250,7 @@ class CpuPage(QScrollArea):
 
     def _build_header(self) -> QWidget:
         card = Card()
-        self.title = QLabel("Leyendo el procesador…")
+        self.title = QLabel(_("Leyendo el procesador…"))
         self.title.setObjectName("Headline")
         self.title.setWordWrap(True)
         self.title.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)

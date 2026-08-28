@@ -23,7 +23,7 @@ python3 tools/build_appimage.py --container   # el AppImage que se reparte
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **1007** y tardan unos cincuenta segundos. Si sale bastante
+Los tests son **1013** y tardan unos cincuenta segundos. Si sale bastante
 menos, falta algo por recoger.
 
 `--container` no es opcional para repartir: sin él se construye contra el
@@ -365,6 +365,14 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
 - **Reajustar anchos en el `resizeEvent`**: cambiar los valores recalcula la
   altura del árbol, y eso es un resize. Una columna estrechada a mano volvía a
   estirarse sola en el muestreo siguiente.
+- **Que una herramienta borre lo que no entiende**: `gen_lang --write`
+  reescribía los archivos de idioma solo con lo que su extractor veía, y el
+  menú lateral se traduce con `_(name)` sobre una variable. Se perdieron doce
+  traducciones en una pasada, sin aviso. Lo que ya está traducido se conserva
+  aunque no se encuentre.
+- **Aplicar una preferencia solo cuando cambia**: el idioma se cargaba al
+  tocarlo en Ajustes y no al arrancar, así que guardarlo y volver a abrir el
+  programa devolvía la interfaz al español.
 - **Declarar `color` en `QTreeWidget::item`**: pisa el que cada celda pide con
   `setForeground`, en silencio y sin error. Con él puesto no llegaba a la
   pantalla ni el rojo de un sensor pasado de vueltas ni el ámbar del que se
