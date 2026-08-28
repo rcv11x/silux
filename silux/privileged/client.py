@@ -41,7 +41,7 @@ HELPER = pathlib.Path(__file__).resolve().parent / "helper.py"
 # El ayudante instalado en el sistema, si alguien pulsó el botón de permisos
 # permanentes. Se prefiere al del repositorio porque trae su propia acción de
 # polkit: la contraseña se pide una vez por sesión en vez de en cada arranque.
-# Lo instala `tools/install_helper.py`, que es también quien explica por qué
+# Lo instala `silux/privileged/instalar.py`, que es también quien explica por qué
 # tiene que vivir en un sitio que el usuario no pueda escribir.
 HELPER_INSTALADO = pathlib.Path("/usr/local/libexec/silux/silux-helper")
 

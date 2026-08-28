@@ -17,11 +17,17 @@ Por lo mismo se instala como un ejecutable con shebang y no como un argumento
 de `python3`: si la acción apuntara al intérprete, la autorización valdría para
 cualquier script de Python de la máquina.
 
-    sudo python3 tools/install_helper.py
-    sudo python3 tools/install_helper.py --uninstall
+    sudo python3 -m silux.privileged.instalar
+    sudo python3 -m silux.privileged.instalar --uninstall
 
 La interfaz lo llama por su cuenta desde el aviso de permisos; a mano solo hace
 falta para instalarlo en un equipo sin entorno gráfico.
+
+Vive dentro del paquete y no en `tools/` porque lo ejecuta el usuario final,
+no quien desarrolla: `tools/` no entra en el AppImage, y allí el botón de la
+interfaz se quedaba sin instalador que lanzar. Por lo mismo no importa nada de
+`silux`: se copia como archivo suelto fuera del punto de montaje, donde el
+resto del paquete no está.
 """
 
 from __future__ import annotations
@@ -31,8 +37,7 @@ import os
 import pathlib
 import sys
 
-RAIZ = pathlib.Path(__file__).resolve().parent.parent
-ORIGEN = RAIZ / "silux" / "privileged" / "helper.py"
+ORIGEN = pathlib.Path(__file__).resolve().parent / "helper.py"
 
 DESTINO = pathlib.Path("/usr/local/libexec/silux/silux-helper")
 POLITICA = pathlib.Path("/usr/share/polkit-1/actions/org.silux.helper.policy")
@@ -148,7 +153,7 @@ def main(argv=None) -> int:
         raise SystemExit(
             "Hay que ejecutarlo como root: escribe en /usr/local/libexec y en "
             "/usr/share/polkit-1/actions.\n"
-            "  sudo python3 tools/install_helper.py"
+            "  sudo python3 -m silux.privileged.instalar"
         )
 
     if args.uninstall:

@@ -576,7 +576,7 @@ class MainWindow(QMainWindow):
         from ..privileged.client import (HELPER, SYSTEM_PYTHON, PrivilegedClient,
                                          _cache_dir)
 
-        instalador = Path(__file__).resolve().parent.parent.parent / "tools" / "install_helper.py"
+        instalador = Path(__file__).resolve().parent.parent / "privileged" / "instalar.py"
         if not PrivilegedClient.empaquetado():
             return ["pkexec", _sys.executable, str(instalador)]
 
@@ -587,7 +587,7 @@ class MainWindow(QMainWindow):
 
         destino = _cache_dir()
         destino.mkdir(parents=True, exist_ok=True)
-        copia_instalador = destino / "install_helper.py"
+        copia_instalador = destino / "instalar.py"
         copia_ayudante = destino / "helper.py"
         shutil.copyfile(instalador, copia_instalador)
         shutil.copyfile(HELPER, copia_ayudante)
