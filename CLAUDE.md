@@ -22,7 +22,7 @@ python3 tools/build_appimage.py --container   # el AppImage que se reparte
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **889** y tardan unos cincuenta segundos. Si sale bastante
+Los tests son **899** y tardan unos cincuenta segundos. Si sale bastante
 menos, falta algo por recoger.
 
 `--container` no es opcional para repartir: sin él se construye contra el
@@ -345,6 +345,20 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   `silux/` entero y no copia `tools/`, así que el botón de permisos permanentes
   se quedaba sin instalador que lanzar justo en la única forma del programa que
   se reparte. `tools/` es para quien desarrolla.
+- **Subir por sysfs hasta encontrar lo que se busca**: el sensor de una
+  tarjeta de red cuelga del bus MDIO, así que hay que subir; pero subiendo a
+  ciegas se llega a `/sys/devices/virtual`, que también tiene un `net/` dentro
+  —con el bucle local— y un ThinkPad enseñaba «Red (lo)» a 34 °C. No vale
+  parar donde se acaben los dispositivos: el propio bus MDIO es un contenedor
+  sin `uevent` y está en medio del camino bueno. Lo que se descarta es la rama
+  virtual.
+- **Avisar de un umbral en algo que se enchufa por fuera**: un puerto USB-C
+  sin nada conectado marca 0 V, y eso queda por debajo de cualquier mínimo que
+  declare el chip. Cero ahí no es una avería: es que no hay nada puesto. Lo
+  mismo que ya valía para los ventiladores.
+- **Pintar «sin dato» con la tipografía de las cifras**: el guion a treinta y
+  seis píxeles es una raya gruesa, y en una Intel con cuatro de los seis
+  cuadros vacíos la fila entera parecía tachada.
 - **Poner una marca de color sin nada que la traduzca**: el punto que señala
   los mejores núcleos no significa nada por sí solo. Su leyenda va debajo de
   la propia rejilla, no en la ficha de al lado: separadas, el punto se queda

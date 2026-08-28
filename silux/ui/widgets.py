@@ -39,6 +39,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .. import render
 from . import theme
 from .theme import Palette, mono_font, ui_font
 
@@ -637,10 +638,16 @@ class Sparkline(QWidget):
             x = (derecha if derecha + ancho <= rect.right()
                  else punto.x() - 6 - ancho)
 
-        painter.setPen(self._p.q("muted"))
-        painter.drawText(QRectF(x, y, ancho + 2, alto_texto),
-                         int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter),
-                         texto)
+        # La cifra cae sobre el relleno del área, y ahí un texto suelto se
+        # pierde: en tema claro el gris sobre el azul aguado no se lee. Lleva
+        # detrás el color del panel, igual que la etiqueta del cursor.
+        caja = QRectF(x - 3, y, ancho + 6, alto_texto)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QBrush(self._p.q("surface", 0.82)))
+        painter.drawRoundedRect(caja, 3, 3)
+
+        painter.setPen(self._p.q("ink_dim"))
+        painter.drawText(caja, int(Qt.AlignmentFlag.AlignCenter), texto)
 
     def _indice_del_pico(self) -> Optional[int]:
         """Dónde está el máximo del tramo visible, o nada si no hay uno claro.
@@ -753,6 +760,18 @@ class StatTile(Card):
     def update_value(self, text: str, series_value: Optional[float] = None) -> None:
         if self.value.text() != text:
             self.value.setText(text)
+            # El guion de «sin dato» a treinta y seis píxeles es una raya
+            # gruesa que no se lee como un guion: en una Intel, con cuatro de
+            # los seis cuadros vacíos, la fila parecía tachada. Se pinta al
+            # cuerpo del texto pequeño y en el gris de lo apagado, que es lo
+            # que ya dice «aquí no hay nada» en el resto del programa.
+            vacio = text == render.DASH
+            self.value.setFont(
+                ui_font(theme.METRICS.small_pt) if vacio
+                else mono_font(theme.METRICS.tile_value_pt, bold=True))
+            self.value.setObjectName("Muted" if vacio else "TileValue")
+            self.value.style().unpolish(self.value)
+            self.value.style().polish(self.value)
         self.chart.push(series_value)
 
 
