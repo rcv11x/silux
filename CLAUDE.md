@@ -22,7 +22,7 @@ python3 tools/build_appimage.py --container   # el AppImage que se reparte
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **965** y tardan unos cincuenta segundos. Si sale bastante
+Los tests son **978** y tardan unos cincuenta segundos. Si sale bastante
 menos, falta algo por recoger.
 
 `--container` no es opcional para repartir: sin él se construye contra el
@@ -107,7 +107,10 @@ silux/
 ├─ registro.py    graba la sesión a un CSV, fila a fila
 ├─ providers/      una fuente cada uno; ninguno conoce a los demás
 ├─ privileged/     ayudante root mínimo (helper.py) + cliente + SMBIOS.
-│                  Lee DMI, MSR, el SMART de los discos y el PMU de la iGPU
+│                  Lee DMI, MSR, el SMART de los discos y el PMU de la iGPU.
+│                  instalar.py le da su acción de polkit para no pedir la
+│                  contraseña en cada arranque; cargar_modulo.py carga un
+│                  driver de sensores de una lista blanca fija
 ├─ db/             cpu_ids.json (generado; incluye la tabla de MIDR de ARM) +
 │                  sockets.json y families.json (curados a mano; el segundo
 │                  cubre lo que libcpuid no tiene)
@@ -347,6 +350,13 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   de tres maneras distintas y ninguna es obligatoria. Donde no lo dice se
   calla: en canal único la memoria rinde la mitad, y decirlo al revés manda a
   alguien a abrir el equipo para nada.
+- **Teñir solo el valor de ahora**: quien lanza una prueba de dos minutos va a
+  mirar después, y para entonces la columna «Actual» ya se ha enfriado. Lo que
+  sobrevive al pico es el máximo, y es el que hay que teñir también.
+- **Dejar que el árbol de sensores salga en el orden del kernel**: es el de
+  los directorios de hwmon, un número arbitrario que cambia entre arranques.
+  El procesador puede acabar debajo de la tarjeta de red. Se ordenan como se
+  buscan: procesador, placa, memoria, gráficas, discos, red.
 - **Teñir un valor por su fracción del umbral**: un procesador a 45 grados de
   90 no está «medio caliente», está bien. Si el color empieza en el cero es
   decoración; empezando a tres cuartos del límite, avisa.

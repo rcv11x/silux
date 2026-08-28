@@ -31,7 +31,10 @@ from PySide6.QtWidgets import (
 
 from ... import render
 from ...model import Sensor, SensorKind, Snapshot
+import os
+
 from ... import registro
+from ...privileged import cargar_modulo
 from ...settings import Preferences
 from ...tracking import Tracker
 from .. import theme
@@ -282,6 +285,7 @@ class MonitorPage(QScrollArea):
                 sensor.alarm_level,
                 seguimiento.history if seguimiento else None,
                 sensor.heat or 0.0,
+                self._calor_del_maximo(sensor, seguimiento),
             )
             if sensor.alarm_level != "ok":
                 avisos.setdefault(sensor.device, []).append(sensor.alarm_level)
@@ -291,6 +295,19 @@ class MonitorPage(QScrollArea):
         for device in tree:
             niveles = avisos.get(device, [])
             self.tree.marcar_aviso(device, len(niveles), "crítico" in niveles)
+
+    @staticmethod
+    def _calor_del_maximo(sensor: Sensor, seguimiento) -> float:
+        """Lo cerca que llegó del umbral, que no es lo mismo que dónde está.
+
+        Se pregunta al propio sensor sustituyendo su lectura por el máximo:
+        así la escala y el umbral son los suyos y no hay que repetirlos aquí.
+        """
+        import dataclasses
+
+        if seguimiento is None or sensor.heat is None:
+            return 0.0
+        return dataclasses.replace(sensor, value=seguimiento.maximum).heat or 0.0
 
     def _values(self, sensor: Sensor) -> list[str]:
         digits = DECIMALS.get(sensor.kind, 1)
@@ -348,7 +365,72 @@ class MonitorPage(QScrollArea):
         for hint in snapshot.driver_hints:
             body = f"Cargando {hint.module} tendrías {hint.provides}."
             detail = hint.command + (f"\n{hint.caution}" if hint.caution else "")
-            self._hint_host.addWidget(Notice("Falta un driver de sensores", body, detail))
+            # El botón solo aparece donde hay un módulo concreto que cargar. El
+            # aviso del Super I/O manda a `sensors-detect` a propósito: cada
+            # placa lleva un chip distinto y cargar el que no es lee basura, así
+            # que ahí no hay nada que automatizar.
+            accion = ("Cargar y dejarlo puesto"
+                      if cargar_modulo.se_puede(hint.module) else None)
+            aviso = Notice("Falta un driver de sensores", body, detail,
+                           action=accion)
+            if accion:
+                aviso.action_clicked.connect(
+                    lambda _=False, m=hint.module, a=aviso: self._cargar_driver(m, a))
+            self._hint_host.addWidget(aviso)
+
+    def _cargar_driver(self, modulo: str, aviso) -> None:
+        """`modprobe` ahora y una línea en `/etc/modules-load.d` para después.
+
+        Lo segundo es la mitad que importa —un modprobe suelto se pierde al
+        reiniciar— y es también la que nadie recuerda.
+        """
+        import subprocess
+
+        boton = aviso.action_button
+        if boton is not None:
+            boton.setEnabled(False)
+            boton.setText("Cargando…")
+        try:
+            resultado = subprocess.run(self._orden_de_carga(modulo),
+                                       capture_output=True, text=True, timeout=120)
+        except (OSError, subprocess.TimeoutExpired, RuntimeError) as error:
+            self._aviso_de_registro(f"no se pudo cargar {modulo}: {error}")
+            return
+
+        if resultado.returncode == 0:
+            # El aviso desaparece solo en el muestreo siguiente, cuando el
+            # proveedor vea el chip nuevo. Forzar la firma lo repinta antes.
+            self._hint_signature = ()
+            return
+        if boton is not None:
+            boton.setEnabled(True)
+            boton.setText("Cargar y dejarlo puesto")
+        # 126 y 127 son «el usuario canceló» y «no autorizado»: eso no es un
+        # fallo del que haya que informar como si algo se hubiera roto.
+        if resultado.returncode not in (126, 127):
+            detalle = (resultado.stderr or resultado.stdout or "").strip()
+            self._aviso_de_registro(detalle.splitlines()[-1] if detalle else "falló")
+
+    def _orden_de_carga(self, modulo: str) -> list[str]:
+        """Lo mismo que hace el instalador de permisos: desde un AppImage nada
+        de dentro del montaje sirve, así que se copia fuera."""
+        import shutil
+        import sys as _sys
+
+        from ...privileged.client import SYSTEM_PYTHON, PrivilegedClient, _cache_dir
+
+        guion = pathlib.Path(cargar_modulo.__file__)
+        if not PrivilegedClient.empaquetado():
+            return ["pkexec", _sys.executable, str(guion), modulo]
+
+        interprete = next((r for r in SYSTEM_PYTHON if os.path.exists(r)), None)
+        if interprete is None:
+            raise RuntimeError("no hay ningún Python del sistema")
+        destino = _cache_dir()
+        destino.mkdir(parents=True, exist_ok=True)
+        copia = destino / "cargar_modulo.py"
+        shutil.copyfile(guion, copia)
+        return ["pkexec", interprete, str(copia), modulo]
 
     def _reset_extremes(self) -> None:
         self._tracker.reset()

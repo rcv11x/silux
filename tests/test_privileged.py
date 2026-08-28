@@ -395,3 +395,91 @@ class TestElInstaladorViajaConElPaquete(unittest.TestCase):
         from silux.privileged import instalar
 
         self.assertTrue(instalar.ORIGEN.is_file(), instalar.ORIGEN)
+
+
+class TestCargarUnModulo(unittest.TestCase):
+    """El botón que carga un driver de sensores y lo deja para el arranque.
+
+    Corre como root, así que lo que importa aquí es de dónde sale el nombre
+    del módulo: un ayudante que carga el que le digan carga cualquiera del
+    sistema, y eso no es lo que hace falta.
+    """
+
+    def setUp(self):
+        from silux.privileged import cargar_modulo
+
+        self.modulo = cargar_modulo
+
+    def test_los_que_el_programa_sugiere_se_cargan(self):
+        for nombre in ("drivetemp", "spd5118", "ee1004", "i2c-piix4"):
+            with self.subTest(modulo=nombre):
+                self.assertTrue(self.modulo.se_puede(nombre))
+
+    def test_cualquier_otro_modulo_no(self):
+        """La lista no es una comodidad: es lo que impide que esto sea un
+        «cargar lo que sea» con privilegios."""
+        for nombre in ("nvidia", "kvm", "overlay", "bluetooth", "usbcore"):
+            with self.subTest(modulo=nombre):
+                self.assertFalse(self.modulo.se_puede(nombre))
+
+    def test_un_nombre_que_no_es_un_nombre_se_rechaza(self):
+        for nombre in ("drivetemp; rm -rf /", "../../etc/passwd", "a" * 64,
+                       "-drivetemp", "DRIVETEMP", ""):
+            with self.subTest(nombre=nombre):
+                self.assertFalse(self.modulo.se_puede(nombre))
+
+    def test_cargar_algo_de_fuera_de_la_lista_falla_antes_de_tocar_nada(self):
+        with mock.patch.object(self.modulo.subprocess, "run") as corrido:
+            with self.assertRaises(SystemExit):
+                self.modulo.cargar("nvidia")
+        corrido.assert_not_called()
+
+    def test_el_aviso_del_super_io_no_lleva_boton(self):
+        """Cada placa lleva un chip distinto y cargar el que no es lee basura,
+        así que ahí se manda a `sensors-detect` a propósito."""
+        self.assertFalse(self.modulo.se_puede("(Super I/O)"))
+
+    def test_se_anota_para_el_arranque_siguiente(self):
+        """Un modprobe suelto se pierde al reiniciar, y esa es la mitad que
+        importa."""
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            destino = pathlib.Path(tmp) / "silux.conf"
+            with mock.patch.object(self.modulo, "DESTINO", destino):
+                self.modulo._fijar("drivetemp")
+            self.assertIn("drivetemp", destino.read_text(encoding="utf-8"))
+
+    def test_no_se_pisa_lo_que_ya_hubiera(self):
+        """Puede haber otro módulo puesto por una sesión anterior."""
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            destino = pathlib.Path(tmp) / "silux.conf"
+            destino.write_text("ee1004\n", encoding="utf-8")
+            with mock.patch.object(self.modulo, "DESTINO", destino):
+                self.modulo._fijar("drivetemp")
+            texto = destino.read_text(encoding="utf-8")
+            self.assertIn("ee1004", texto)
+            self.assertIn("drivetemp", texto)
+
+    def test_anotar_dos_veces_no_duplica(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            destino = pathlib.Path(tmp) / "silux.conf"
+            with mock.patch.object(self.modulo, "DESTINO", destino):
+                self.modulo._fijar("drivetemp")
+                self.modulo._fijar("drivetemp")
+            lineas = [x for x in destino.read_text(encoding="utf-8").splitlines()
+                      if x.strip() and not x.startswith("#")]
+            self.assertEqual(lineas, ["drivetemp"])
+
+    def test_no_importa_nada_de_silux(self):
+        """Desde un AppImage se copia suelto, fuera del punto de montaje."""
+        fuente = pathlib.Path(self.modulo.__file__).read_text(encoding="utf-8")
+        for linea in fuente.splitlines():
+            limpia = linea.strip()
+            if limpia.startswith(("import ", "from ")):
+                self.assertNotIn("silux", limpia, linea)
+                self.assertFalse(limpia.startswith("from ."), linea)
