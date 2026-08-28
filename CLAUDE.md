@@ -23,7 +23,7 @@ python3 tools/build_appimage.py --container   # el AppImage que se reparte
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **1013** y tardan unos cincuenta segundos. Si sale bastante
+Los tests son **1016** y tardan unos cincuenta segundos. Si sale bastante
 menos, falta algo por recoger.
 
 `--container` no es opcional para repartir: sin él se construye contra el
@@ -595,6 +595,14 @@ son español y `_()` las busca en `db/lang/<código>.json`; lo que no está sale
 en español, que es lo que el programa decía antes de que existiera esto. Con
 claves simbólicas, una traducción a medias enseñaría `settings.fluid.desc` en
 pantalla.
+
+Que la clave sea el español tiene un precio, y conviene saberlo antes de
+retocar una frase: cambiarla deja su traducción colgada de la versión vieja, y
+en la interfaz en inglés sale el español nuevo. `gen_lang.py` lo detecta por
+parecido y dice qué traducción huérfana podría ser de qué frase nueva, pero
+**no la arrastra sola**: «Frecuencia» y «Frecuencia máxima» se parecen un 88 %
+y no se traducen igual. Una traducción movida a la frase equivocada es peor
+que un hueco, porque el hueco se ve.
 
 Se eligió JSON sobre gettext por quién escribe los archivos: un `.po` hay que
 compilarlo a binario antes de que sirva, y esto se corrige desde el navegador
