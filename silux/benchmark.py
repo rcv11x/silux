@@ -27,6 +27,7 @@ efecto sería incluso mayor, porque son miles de rondas encadenadas.
 
 from __future__ import annotations
 
+import functools
 import hashlib
 import lzma
 import os
@@ -269,19 +270,51 @@ def run(quick: bool = False, on_progress: Optional[Callable[[str, float], None]]
 
 # -- ejecución ---------------------------------------------------------------
 
+# Unas vueltas que no se cuentan, antes de cada medida. La primera vez que una
+# carga corre en un proceso da una cifra distinta de todas las siguientes: la
+# compresión pesada da 1 780 operaciones por segundo la primera vez y 2 950 a
+# partir de la segunda. Lo que se paga ahí no es del procesador sino del
+# asignador, que sirve con `mmap` los búferes holgados que pide LZMA hasta que
+# glibc sube su umbral por su cuenta. Con cinco centésimas —unas ochenta
+# vueltas— ya está en régimen; se deja el triple por si el equipo es lento.
+SEGUNDOS_EN_VACIO = 0.15
+
+
+def _rodar_en_vacio(carga: "Carga", hilos: int) -> None:
+    """Deja la carga en régimen para que la medida no pague su arranque.
+
+    Como el orden es un hilo primero y todos después, ese arranque lo pagaba
+    siempre la medida de un hilo: la escala entre uno y todos salía en catorce
+    veces con un procesador de ocho núcleos.
+    """
+    parar = threading.Event()
+
+    def bucle() -> None:
+        trabajo = carga.work
+        while not parar.is_set():
+            trabajo()
+
+    obreros = [threading.Thread(target=bucle, daemon=True)
+               for _ in range(hilos)]
+    for obrero in obreros:
+        obrero.start()
+    time.sleep(SEGUNDOS_EN_VACIO)
+    parar.set()
+    for obrero in obreros:
+        obrero.join(timeout=10)
+
+
 def _medir(carga: Carga, hilos: int, duracion: float) -> Medida:
     """Cuenta cuántas veces cabe la carga en el tiempo dado.
 
     Se mide por tiempo y no por trabajo fijo porque una cantidad que en un
     Ryzen tarda un segundo, en un portátil de hace diez años tarda treinta.
     """
+    _rodar_en_vacio(carga, hilos)
     parar = threading.Event()
     cuenta = [0] * hilos
-    fijar = hilos == 1
 
     def bucle(indice: int) -> None:
-        if fijar:
-            _fijar_afinidad()
         vueltas = 0
         trabajo = carga.work
         while not parar.is_set():
@@ -304,36 +337,22 @@ def _medir(carga: Carga, hilos: int, duracion: float) -> Medida:
                   operations=sum(cuenta), seconds=transcurrido)
 
 
-def _fijar_afinidad() -> None:
-    """Ata el hilo a un solo núcleo para que la medida no baile.
-
-    Sin esto el planificador lo va moviendo, y cada salto tira la caché y
-    obliga al núcleo nuevo a subir de frecuencia desde abajo. Dos ejecuciones
-    seguidas pueden salir con un diez por ciento de diferencia por eso solo.
-    """
-    try:
-        os.sched_setaffinity(0, {_nucleo_preferido()})
-    except (OSError, AttributeError):
-        pass
-
-
-def _nucleo_preferido() -> int:
-    """El núcleo que el firmware considera mejor, si lo dice.
-
-    AMD publica un ranking por núcleo: los del silicio mejor conseguido llegan
-    más alto. Medir un hilo en el peor núcleo de un Ryzen puede costar un par
-    de cientos de megahercios.
-    """
-    mejor, ranking_mejor = 0, -1
-    for indice in range(os.cpu_count() or 1):
-        crudo = _leer(f"{SYS_CPU}/cpu{indice}/cpufreq/amd_pstate_prefcore_ranking")
-        try:
-            ranking = int(crudo) if crudo else -1
-        except ValueError:
-            ranking = -1
-        if ranking > ranking_mejor:
-            mejor, ranking_mejor = indice, ranking
-    return mejor
+# Aquí vivían `_fijar_afinidad` y `_nucleo_preferido`, que ataban el hilo de
+# la medida de un núcleo al que el firmware señala como mejor. La idea era
+# quitar ruido —un hilo que salta de núcleo tira la caché— y hacía justo lo
+# contrario: medida contra medida, atarlo cuesta un 40 % en la compresión
+# pesada y un 11 % en la derivación de clave, y la dispersión entre
+# repeticiones sale igual o peor que dejándolo suelto.
+#
+# Y como la afinidad solo se fijaba al medir con un hilo, esa penalización
+# caía siempre en la misma cifra. La prueba entera daba 1 771 operaciones por
+# segundo a un hilo y 24 842 a dieciséis: una escala de catorce veces en un
+# procesador de ocho núcleos, que no es posible. Sin atar nada sale 3 004 y
+# 24 099, ocho veces, que es lo que dan las otras cuatro cargas.
+#
+# Si algún día vuelve a hacer falta, que sea con una medición delante: la
+# dispersión sin atar, en este equipo y con el gobernador en «performance»,
+# fue del 1,3 % al 3,3 % según la carga.
 
 
 # -- contexto ----------------------------------------------------------------
