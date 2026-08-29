@@ -39,19 +39,27 @@ MODULE_TYPES = {0x01: "RDIMM", 0x02: "UDIMM", 0x03: "SODIMM", 0x04: "LRDIMM",
 # son cientos de entradas; aquí solo van las que se pueden justificar, porque
 # una tabla con códigos inventados es peor que no tener tabla: cuando falla,
 # el nombre que da la tabla SMBIOS sirve igual de bien.
+#
+# **Los códigos van sin el bit de paridad.** El SPD los guarda en ocho bits,
+# de los cuales el más alto es paridad impar: un módulo Crucial trae 0x9B y su
+# identificador es 0x1B. Como `_vendor` quita ese bit antes de buscar, la tabla
+# tiene que estar en la misma moneda. La mitad de esta lista estaba escrita con
+# el byte completo, tal y como aparece publicado —Samsung 0xCE, Kingston 0x98,
+# SK Hynix 0xAD—, y esas siete entradas no casaban nunca: justo las tres marcas
+# que más memoria venden salían sin fabricante. Hay un test que lo vigila.
 JEDEC_VENDORS = {
     (1, 0x2C): "Micron",
     (1, 0x4F): "Transcend",
-    (1, 0x98): "Kingston",
-    (1, 0xAD): "SK Hynix",
-    (1, 0xCE): "Samsung",
-    (1, 0xDA): "Winbond",
-    (2, 0xC1): "Infineon",
-    (2, 0xFE): "Elpida",
+    (1, 0x18): "Kingston",         # 0x98 con paridad
+    (1, 0x2D): "SK Hynix",         # 0xAD
+    (1, 0x4E): "Samsung",          # 0xCE
+    (1, 0x5A): "Winbond",          # 0xDA
+    (2, 0x41): "Infineon",         # 0xC1
+    (2, 0x7E): "Elpida",           # 0xFE
     (3, 0x0B): "Nanya",
     (5, 0x1F): "Apacer",
     (5, 0x51): "Qimonda",
-    (5, 0xCB): "ADATA",
+    (5, 0x4B): "ADATA",            # 0xCB
     (6, 0x1B): "Crucial",          # comprobado contra un módulo real
     (6, 0x04): "Netlist",
 }

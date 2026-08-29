@@ -169,6 +169,9 @@ class DrmGpus(Provider):
             return
 
         draft.capabilities.add("drm")
+        # Se enumera una vez y se van repartiendo: con dos tarjetas y ningún
+        # driver, la primera ficha se queda con la primera del bus.
+        sin_driver = _graficas_del_bus()
         for indice, nodo in enumerate(nodos):
             dispositivo = nodo / "device"
             gpu = draft.gpu(indice)
@@ -178,6 +181,8 @@ class DrmGpus(Provider):
             gpu["primary"] = read_int(f"{dispositivo}/boot_vga") == 1
 
             self._identidad(gpu, dispositivo)
+            if gpu["driver"] in FRAMEBUFFER_GENERICO or not gpu.get("vendor_id"):
+                self._identidad_del_bus(gpu, draft, indice, sin_driver)
             if gpu["driver"] in ("i915", "xe"):
                 gpu["engines"] = _motores_intel(nodo)
             gpu["link"] = _enlace(dispositivo)
@@ -192,6 +197,29 @@ class DrmGpus(Provider):
                            *(_(clave) for clave in aviso))
 
         _nombrar_monitores(draft.gpus)
+
+    def _identidad_del_bus(self, gpu: dict, draft: Draft, indice: int,
+                           candidatas: list) -> None:
+        """Quién es la tarjeta cuando el nodo DRM no lo sabe.
+
+        El framebuffer de respaldo cuelga de un dispositivo de plataforma, no
+        del PCI, así que no hay `vendor` ni `device` que leer y la ficha salía
+        entera a guiones: ni el nombre de la tarjeta, que es lo primero que uno
+        mira. El bus sí la enumera, con driver o sin él.
+        """
+        if not candidatas:
+            return
+        dispositivo = candidatas.pop(0)
+        self._identidad(gpu, dispositivo)
+        gpu["pci_slot"] = dispositivo.name
+        # El nodo DRM sigue siendo el del framebuffer; el enlace y la memoria
+        # se leen del dispositivo de verdad, que es quien los tiene.
+        gpu["link"] = _enlace(dispositivo)
+        gpu["integrated"] = _es_integrada(gpu)
+        draft.note(f"gpus.{indice}", Need.DRIVER,
+                   _("prov.drm.nodriver").format(
+                       tarjeta=gpu.get("name") or _("prov.drm.thiscard")),
+                   _("prov.drm.nodriver.hint"))
 
     @staticmethod
     def _preguntar_al_driver(gpu: dict, dispositivo: pathlib.Path) -> None:
@@ -535,6 +563,39 @@ def _ranura(dispositivo: pathlib.Path) -> Optional[str]:
         return dispositivo.resolve().name          # 0000:0c:00.0
     except OSError:
         return None
+
+
+# Los drivers que no son de ninguna tarjeta: el respaldo que pone el kernel
+# para tener imagen cuando el driver de verdad no está. No leen sensores, no
+# dan relojes y no saben qué chip hay debajo, así que una ficha suya sale
+# entera a guiones y parece que el programa esté roto.
+#
+# Aparecen al arrancar con `nomodeset`, con el driver sin instalar (lo típico
+# con una NVIDIA recién comprada) o con una tarjeta más nueva que el kernel.
+FRAMEBUFFER_GENERICO = frozenset({
+    "simple-framebuffer", "simpledrm", "vesafb", "efifb", "offb", "vga16fb",
+})
+
+# Clases PCI de una tarjeta gráfica: controlador VGA y controlador 3D. La
+# segunda es la de las dedicadas de portátil, que no llevan salida de video.
+CLASES_GRAFICAS = (0x030000, 0x030200)
+
+
+def _graficas_del_bus() -> list[pathlib.Path]:
+    """Las tarjetas que hay en el bus PCI, tenga o no driver cargado.
+
+    Es lo que permite decir «tienes una GeForce RTX 3050» en un equipo donde
+    el kernel se ha quedado en el framebuffer de respaldo: el bus enumera el
+    hardware aunque no haya nadie que sepa hablarle.
+    """
+    raiz = pathlib.Path("/sys/bus/pci/devices")
+    encontradas = []
+    for dispositivo in sorted(raiz.glob("*")) if raiz.is_dir() else ():
+        clase = _hex(dispositivo / "class")
+        if clase is not None and (clase & 0xFFFF00) in (
+                c & 0xFFFF00 for c in CLASES_GRAFICAS):
+            encontradas.append(dispositivo)
+    return encontradas
 
 
 def _driver(dispositivo: pathlib.Path) -> Optional[str]:

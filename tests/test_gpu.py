@@ -1330,3 +1330,42 @@ class TestCuadrosDeLaGrafica(unittest.TestCase):
                 cuadro = getattr(seccion, nombre)
                 self.assertEqual(cuadro.value.text(), render.DASH)
                 self.assertFalse(cuadro.detail.isVisible())
+
+
+class TestGraficaSinDriver(unittest.TestCase):
+    """Cuando el kernel se queda en el framebuffer de respaldo.
+
+    Salió de la captura de un usuario: una ficha titulada «Gráfica 0» con
+    driver `simple-framebuffer` y absolutamente todos los campos a un guion,
+    que se lee como que el programa está roto. No lo estaba: ese driver es el
+    respaldo que pone el kernel para tener imagen, no sabe nada del chip que
+    hay debajo, y la ficha no tenía de dónde sacar ni el nombre.
+
+    El bus PCI sí enumera la tarjeta aunque nadie sepa hablarle, y de ahí sale
+    al menos quién es.
+    """
+
+    def test_el_framebuffer_generico_no_se_confunde_con_un_driver(self):
+        from silux.providers.drm import FRAMEBUFFER_GENERICO
+
+        for falso in ("simple-framebuffer", "simpledrm", "efifb", "vesafb"):
+            self.assertIn(falso, FRAMEBUFFER_GENERICO)
+        for real in ("amdgpu", "i915", "nouveau", "nvidia", "xe", "radeon"):
+            self.assertNotIn(real, FRAMEBUFFER_GENERICO)
+
+    def test_una_grafica_del_bus_se_identifica_sin_driver(self):
+        """El bus da vendor y device; `pciids` los convierte en un nombre."""
+        from silux import pciids
+
+        # Los de una RTX 3050 Mobile, que es de las que llegaron en capturas.
+        nombres = pciids.lookup([(0x10DE, 0x25A2)])
+        marca, modelo = nombres[(0x10DE, 0x25A2)]
+        self.assertIn("NVIDIA", marca)
+        self.assertIn("3050", modelo)
+
+    def test_se_reconocen_las_dos_clases_pci_de_una_grafica(self):
+        """La 3D controller es la dedicada de un portátil, sin salida propia."""
+        from silux.providers.drm import CLASES_GRAFICAS
+
+        self.assertIn(0x030000, CLASES_GRAFICAS)
+        self.assertIn(0x030200, CLASES_GRAFICAS)

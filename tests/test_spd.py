@@ -389,3 +389,37 @@ class TestDiagnosticoDelBus(unittest.TestCase):
             (real / "name").write_text("SMBus PIIX4 adapter port 0")
             with mock.patch.object(spd, "SYS_I2C", raiz):
                 self.assertTrue(spd._hay_bus_de_memoria())
+
+
+class TestCodigosDeFabricante(unittest.TestCase):
+    """La tabla JEDEC guarda identificadores, no los bytes del SPD.
+
+    El byte que trae el módulo lleva paridad impar en el bit más alto: un
+    Crucial se presenta como 0x9B y su identificador es 0x1B. `_vendor` quita
+    ese bit antes de buscar, así que un código copiado tal y como se publica
+    —Samsung 0xCE, Kingston 0x98, SK Hynix 0xAD— no casa con nada y el módulo
+    sale sin fabricante. Pasó con siete de las catorce entradas, y entre ellas
+    estaban las tres marcas que más memoria venden.
+    """
+
+    def test_ninguno_lleva_el_bit_de_paridad(self):
+        from silux.spd import JEDEC_VENDORS
+
+        con_paridad = {f"0x{code:02X} ({nombre})"
+                       for (_banco, code), nombre in JEDEC_VENDORS.items()
+                       if code & 0x80}
+        self.assertEqual(con_paridad, set())
+
+    def test_las_marcas_mas_comunes_se_reconocen(self):
+        """Con los bytes tal y como los publica un módulo, paridad incluida."""
+        from silux.spd import _vendor
+
+        # (byte de banco, byte de identificador) -> quién es.
+        reales = {
+            (0x80, 0xCE): "Samsung", (0x80, 0x98): "Kingston",
+            (0x80, 0xAD): "SK Hynix", (0x80, 0x2C): "Micron",
+            (0x85, 0x9B): "Crucial", (0x84, 0xCB): "ADATA",
+        }
+        for (banco, code), quien in reales.items():
+            with self.subTest(marca=quien):
+                self.assertEqual(_vendor(banco, code), quien)
