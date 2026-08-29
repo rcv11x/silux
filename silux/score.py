@@ -82,15 +82,19 @@ def patron() -> dict:
     """Con qué equipo y en qué condiciones se tomó la escala."""
     return referencias().get("patron", {})
 
-def puntuar(scores: dict[str, float], hilos: int,
-            segundos: float) -> Optional[tuple[int, int]]:
-    """La puntuación de un hilo y la de todos, o None si no es comparable.
+def puntuar(scores: dict[str, float], hilos: int) -> Optional[tuple[int, int]]:
+    """La puntuación de un hilo y la de todos.
 
     `scores` es lo que guarda el historial: «compresion/1» y «compresion/16»
     con sus operaciones por segundo.
+
+    No mira la duración a propósito. Poner las cinco cargas en la misma escala
+    vale para cualquier prueba, y es mejor cifra que la suma en crudo también
+    dentro de un mismo equipo. Lo que la duración decide es otra cosa: si esta
+    cifra se puede poner al lado de la de otra máquina, y eso lo contesta
+    `comparable`. Antes se mezclaban las dos preguntas y en la misma pantalla
+    salían dos puntuaciones distintas de la misma prueba.
     """
-    if not comparable(segundos):
-        return None
     tabla = referencias()
     un_hilo = _combinar(scores, 1, tabla.get("un_hilo", {}))
     multi = _combinar(scores, hilos, tabla.get("multihilo", {}))
@@ -100,7 +104,13 @@ def puntuar(scores: dict[str, float], hilos: int,
 
 
 def comparable(segundos: float) -> bool:
-    """Si una prueba se hizo con la duración que hace comparables las cifras."""
+    """Si esta puntuación se puede poner al lado de la de otro equipo.
+
+    Tres segundos cogen el turbo entero y treinta lo pierden a mitad, así que
+    la misma pieza da cifras distintas según lo que se le pida. Dentro de un
+    mismo equipo eso no molesta —el historial ya exige la misma duración para
+    comparar—, pero entre dos equipos sí.
+    """
     return abs(segundos - SEGUNDOS_CANONICOS) <= TOLERANCIA_SEGUNDOS
 
 

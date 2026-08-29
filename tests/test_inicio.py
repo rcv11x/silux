@@ -279,11 +279,19 @@ class TestTarjetaDePuntuacion(unittest.TestCase):
         return history.Entry(timestamp=0, cpu=cpu, threads=hilos,
                              seconds=segundos, scores=scores)
 
-    def test_una_prueba_de_otra_duracion_no_ensena_puntuacion(self):
-        from silux import score
+    def test_una_prueba_de_otra_duracion_tiene_cifra_pero_no_barra(self):
+        """Una sola puntuación en pantalla, y se dice hasta dónde llega.
 
+        Antes salían dos cifras distintas de la misma prueba: la nueva arriba
+        y la suma vieja en el historial. Ahora la cifra es siempre la misma y
+        lo que cambia es con qué se puede comparar.
+        """
         self.pagina._pintar_puntuacion(self._prueba(30.0))
-        self.assertTrue(self.pagina.score_card.isHidden())
+        self.assertFalse(self.pagina.score_card.isHidden())
+        self.assertTrue(self.pagina.score_value.text())
+        self.assertIsNone(self.pagina.score_bar._comparacion)
+        self.assertTrue(self.pagina.score_range.text(),
+                        "tiene que decir por qué no hay barra")
 
     def test_con_la_duracion_canonica_sale_la_cifra(self):
         from silux import score
