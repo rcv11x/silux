@@ -105,6 +105,21 @@ ACCENTS: dict[str, dict[str, tuple[str, str, str]]] = {
 ACCENT_DEFAULT = "naranja"
 
 
+def con_alfa(color: str, alfa: float) -> str:
+    """El mismo color, translúcido, en la forma que entiende Qt.
+
+    Los lavados de la paleta están escritos a mano para cada acento, y añadir
+    uno por cada color que alguna vez necesite fondo suave sería una tabla que
+    mantener. Para un tinte sobre el fondo que ya hay, esto basta y no puede
+    desincronizarse de su color.
+    """
+    crudo = color.lstrip("#")
+    if len(crudo) != 6:
+        return color
+    r, g, b = (int(crudo[i:i + 2], 16) for i in (0, 2, 4))
+    return f"rgba({r}, {g}, {b}, {alfa:.2f})"
+
+
 def tinted(base: Palette, accent: str, dark: bool) -> Palette:
     """La misma paleta con otro color de acento."""
     tonos = ACCENTS.get(accent)
@@ -339,6 +354,12 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
 """.format()
     except Exception:                       # sin QGuiApplication todavía
         arrows = ""
+    # El rojo de peligro, apenas insinuado en el fondo al pasar el ratón y un
+    # poco más al pulsar. Sale del propio color y no de la paleta para que no
+    # haya que declarar un lavado por cada tema.
+    crit_wash = con_alfa(p.crit, 0.13)
+    crit_press = con_alfa(p.crit, 0.22)
+
     return f"""
     QMainWindow, QWidget#Root {{ background: {p.bg}; }}
     QWidget {{ color: {p.ink}; }}
@@ -508,13 +529,28 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         color: {p.crit};
         border-color: {p.crit};
     }}
-    QPushButton#Danger:hover {{ background: {p.surface_alt}; }}
+    /* Estos dos hover van escritos aparte y no les vale el de abajo. Un
+       selector con id gana a uno con pseudo-clase, así que `QPushButton#Danger`
+       le ganaba el color y el borde a `QPushButton:hover` y estos botones se
+       quedaban sin reaccionar al ratón. El único hover que tenían ponía el
+       fondo que ya tenían puesto, o sea, nada. */
+    QPushButton#Danger:hover {{
+        background: {crit_wash};
+        color: {p.crit};
+        border-color: {p.crit};
+    }}
+    QPushButton#Danger:pressed {{ background: {crit_press}; }}
     /* Para lo que acompaña a la acción principal sin competir con ella: el
        de al lado es el que la gente ha venido a pulsar. */
     QPushButton#GhostButton {{
         color: {p.muted};
         border-color: {p.line};
     }}
+    QPushButton#GhostButton:hover {{
+        border-color: {p.accent};
+        color: {p.accent};
+    }}
+    QPushButton#GhostButton:pressed {{ background: {p.accent_wash}; }}
     QPushButton:hover {{ border-color: {p.accent}; color: {p.accent}; }}
     QPushButton:pressed {{ background: {p.accent_wash}; }}
 
