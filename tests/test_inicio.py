@@ -249,3 +249,68 @@ class TestCopiarUnValor(unittest.TestCase):
         self._clic(tabla._cells[0][1])
         self.assertEqual(QApplication.clipboard().text(),
                          "WD_BLACK SN850X HS 1000GB")
+
+
+class TestTarjetaDePuntuacion(unittest.TestCase):
+    """La cifra comparable y su barra, en la página de Rendimiento.
+
+    Dos huecos distintos, y cada uno se explica en vez de dejar la tarjeta a
+    medias: una prueba que no se hizo con la duración canónica no tiene cifra,
+    y una pieza de la que no hay medidas no tiene con qué compararse.
+    """
+
+    def setUp(self):
+        from silux.settings import Preferences
+        from silux.ui.pages.performance import PerformancePage
+
+        theme.set_density("normal", "normal")
+        self.pagina = PerformancePage(
+            theme.palette_for(_app(), "dark"),
+            Preferences(font_scale="normal").normalized())
+
+    @staticmethod
+    def _prueba(segundos, cpu="Procesador de prueba"):
+        from silux import history, score
+
+        tabla = score.referencias()
+        hilos = tabla["patron"]["hilos"]
+        scores = {f"{c}/1": v for c, v in tabla["un_hilo"].items()}
+        scores |= {f"{c}/{hilos}": v for c, v in tabla["multihilo"].items()}
+        return history.Entry(timestamp=0, cpu=cpu, threads=hilos,
+                             seconds=segundos, scores=scores)
+
+    def test_una_prueba_de_otra_duracion_no_ensena_puntuacion(self):
+        from silux import score
+
+        self.pagina._pintar_puntuacion(self._prueba(30.0))
+        self.assertTrue(self.pagina.score_card.isHidden())
+
+    def test_con_la_duracion_canonica_sale_la_cifra(self):
+        from silux import score
+
+        self.pagina._pintar_puntuacion(self._prueba(score.SEGUNDOS_CANONICOS))
+        self.assertFalse(self.pagina.score_card.isHidden())
+        self.assertTrue(self.pagina.score_value.text())
+
+    def test_sin_medidas_de_esa_pieza_no_hay_barra_pero_sí_explicación(self):
+        from silux import score
+
+        self.pagina._pintar_puntuacion(self._prueba(score.SEGUNDOS_CANONICOS))
+        self.assertIsNone(self.pagina.score_bar._comparacion)
+        self.assertTrue(self.pagina.score_range.text(),
+                        "el hueco tiene que explicarse")
+
+    def test_con_medidas_suficientes_aparece_la_barra(self):
+        import unittest.mock as mock
+
+        from silux import score
+
+        tabla = dict(score.referencias())
+        tabla["piezas"] = {"Procesador de prueba": {
+            "hilos": tabla["patron"]["hilos"],
+            "un_hilo": [900, 1000, 1100], "multihilo": [900, 1000, 1100]}}
+        with mock.patch.object(score, "referencias", lambda: tabla):
+            self.pagina._pintar_puntuacion(
+                self._prueba(score.SEGUNDOS_CANONICOS))
+        self.assertIsNotNone(self.pagina.score_bar._comparacion)
+        self.assertEqual(self.pagina.score_bar._comparacion.muestras, 3)

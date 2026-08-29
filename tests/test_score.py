@@ -125,3 +125,53 @@ class TestLaEscalaSeDeclaraYSeVersiona(unittest.TestCase):
             self.skipTest("no hay escala medida")
         for campo in ("cpu", "hilos", "segundos", "carga_de_fondo"):
             self.assertIn(campo, patron)
+
+
+class TestDondeCaeUnaPuntuacion(unittest.TestCase):
+    """La comparación con otras medidas de la misma pieza."""
+
+    PIEZA = "Procesador de prueba"
+
+    def _con(self, muestras):
+        """Una tabla con esas medidas para la pieza de prueba."""
+        import unittest.mock as mock
+
+        tabla = dict(score.referencias())
+        tabla["piezas"] = {self.PIEZA: {"hilos": 8, "un_hilo": muestras,
+                                        "multihilo": muestras}}
+        return mock.patch.object(score, "referencias", lambda: tabla)
+
+    def test_con_menos_de_tres_medidas_no_se_dice_nada(self):
+        """Situar a alguien entre dos medidas sueltas es peor que callar."""
+        for muestras in ([], [1000], [900, 1100]):
+            with self.subTest(muestras=len(muestras)), self._con(muestras):
+                self.assertIsNone(score.comparar(self.PIEZA, 1000))
+
+    def test_una_pieza_desconocida_no_se_compara(self):
+        self.assertIsNone(score.comparar("Procesador que no existe", 1000))
+
+    def test_sitúa_la_puntuación_entre_los_extremos(self):
+        with self._con([800, 900, 1000, 1100, 1200]):
+            c = score.comparar(self.PIEZA, 1000)
+            self.assertEqual((c.minimo, c.maximo, c.mediana), (800, 1200, 1000))
+            self.assertEqual(c.muestras, 5)
+            self.assertAlmostEqual(c.fraccion, 0.5)
+
+    def test_lo_que_se_sale_del_rango_se_queda_en_el_borde(self):
+        """Una pieza mejor que todo lo registrado se ve al final, no fuera."""
+        with self._con([800, 900, 1000]):
+            self.assertAlmostEqual(score.comparar(self.PIEZA, 5000).fraccion, 1.0)
+            self.assertAlmostEqual(score.comparar(self.PIEZA, 10).fraccion, 0.0)
+
+    def test_cerca_de_la_mediana_es_lo_normal(self):
+        """Entre dos equipos con la misma CPU hay placa, RAM y disipador."""
+        with self._con([800, 900, 1000, 1100, 1200]):
+            self.assertTrue(score.comparar(self.PIEZA, 1000).normal)
+            self.assertTrue(score.comparar(self.PIEZA, 1050).normal)
+            self.assertFalse(score.comparar(self.PIEZA, 1300).normal)
+            self.assertFalse(score.comparar(self.PIEZA, 700).normal)
+
+    def test_el_signo_dice_si_va_por_encima_o_por_debajo(self):
+        with self._con([800, 900, 1000, 1100, 1200]):
+            self.assertGreater(score.comparar(self.PIEZA, 1300).desvio, 0)
+            self.assertLess(score.comparar(self.PIEZA, 700).desvio, 0)
