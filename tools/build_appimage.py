@@ -800,6 +800,11 @@ def sellar_build() -> None:
         print("  sin git: el paquete sale sin marca de construcción",
               file=sys.stderr)
         return
+    # Los dos paquetes salen del mismo commit, así que sin esto llevarían la
+    # misma marca y una captura no diría cuál de los dos se estaba ejecutando,
+    # que es justo para lo que sirve la marca.
+    if COMPAT:
+        marca += "-compat"
     (APPDIR / "usr" / "lib" / "python" / "silux" / "_build.txt").write_text(
         marca + "\n", encoding="utf-8")
     print(f"  {marca}")
