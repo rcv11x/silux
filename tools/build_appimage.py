@@ -29,6 +29,7 @@ tabulares, así que se queda.
 
 from __future__ import annotations
 
+import bisect
 import argparse
 import os
 import pathlib
@@ -194,6 +195,7 @@ def main() -> int:
     quitar_simbolos()
     print("· comprobación")
     comprobar_autocontenido()
+    comprobar_juego_de_instrucciones()
 
     total = sum(f.stat().st_size for f in APPDIR.rglob("*") if f.is_file())
     print(f"\nAppDir listo: {total / 1024**2:.0f} MB sin comprimir")
@@ -228,8 +230,18 @@ apt-get install -y -qq --no-install-recommends \
     libwayland-client0 libwayland-cursor0 libwayland-egl1 >/dev/null
 # El PySide6 de PyPI viene compilado para manylinux: glibc antigua y x86-64
 # básico. El de la distribución iría atado a la versión de Qt del sistema.
-pip3 install --quiet --break-system-packages 'PySide6>=6.6' 2>/dev/null || \
-    pip3 install --quiet 'PySide6>=6.6'
+#
+# El techo no es capricho. Qt 6.10 pasó a compilarse con `-march=x86-64-v2`, y
+# no en rutas aparte que se eligen mirando la CPU, sino en funciones normales:
+# `QString`, `QUtf8::convertToUnicode`, `QPainterPath::quadTo`. En un
+# procesador sin SSE4.1 el programa se cae con «Instrucción ilegal» antes de
+# pintar nada, y ni siquiera llega a salir el aviso que Qt trae para eso.
+# x86-64-v2 es Nehalem (2008) en Intel y Bulldozer (2011) en AMD: deja fuera
+# los Core 2, los Athlon II y los Phenom II, que es justo la clase de equipo
+# cuyo dueño quiere saber qué lleva dentro. 6.9 es la última serie que se
+# compila para x86-64 a secas.
+pip3 install --quiet --break-system-packages 'PySide6>=6.6,<6.10' 2>/dev/null || \
+    pip3 install --quiet 'PySide6>=6.6,<6.10'
 cd /fuente
 python3 tools/build_appimage.py "$@"
 """
@@ -472,6 +484,104 @@ def copiar_bibliotecas(rutas: set[str]) -> None:
             except OSError:
                 continue
         pendientes.extend(dependencias(copia, extra=sorted(origenes)))
+
+
+# Instrucciones que un x86-64 de 2003 no tiene. Están todas por encima de
+# SSE2, que es lo único que la arquitectura garantiza; el nivel «x86-64-v2»
+# las agrupa y equivale a un Intel de 2008 o un AMD de 2011.
+SOBRE_LA_BASE = re.compile(
+    r"\b(pblendw|blendvp[sd]|roundp?[sd]|pmovzx\w+|pmovsx\w+|ptest|pminu[dw]"
+    r"|pmaxu[dw]|pmulld|packusdw|insertps|extractps|mpsadbw|phminposuw|pshufb"
+    r"|palignr|phadd\w*|pmaddubsw|crc32|pcmpistr\w|pcmpestr\w|popcnt"
+    r"|movddup|movshdup|lddqu|v[a-z]\w+|tzcnt|lzcnt|bzhi|pdep|pext|mulx)\b")
+
+# Cómo se llama una función que el propio código elige después de preguntarle
+# a la CPU qué sabe hacer. Esas pueden llevar lo que quieran: no se ejecutan
+# si no toca. El resto no tiene escapatoria.
+CON_DESPACHO = re.compile(r"(sse\d|ssse3|avx\d*|fma|bmi\d?|neon|sve|_v[234]$"
+                          r"|dispatch|resolver)", re.IGNORECASE)
+
+
+def comprobar_juego_de_instrucciones() -> None:
+    """Avisa si algo del AppDir exige más de lo que garantiza un x86-64.
+
+    Esto se aprendió por el camino largo: alguien con un Athlon II X2 de 2009
+    ejecutó el AppImage y le salió «Instrucción ilegal» y un volcado. La causa
+    era Qt 6.10, que pasó a compilarse con `-march=x86-64-v2` sin que aquí lo
+    notara nadie, porque el `pip install` no tenía techo de versión y las dos
+    máquinas donde se probaba son modernas.
+
+    Lo que hace falta comprobar no es si la instrucción aparece —libcrypto y
+    zlib llevan AVX-512 y funcionan en cualquier sitio—, sino si aparece en
+    una función a la que se llega siempre. Las rutas que el código elige
+    mirando antes qué CPU hay se reconocen por el nombre, que lleva dentro el
+    juego que usan: `qt_convert_rgb888_to_rgb32_ssse3` no se ejecuta en un
+    procesador sin SSSE3. Los símbolos siguen ahí después del `strip` porque
+    `.dynsym` no se toca.
+    """
+    sospechosos: dict[str, list[str]] = {}
+    for objeto in sorted(APPDIR.resolve().rglob("*")):
+        if not objeto.is_file() or objeto.is_symlink():
+            continue
+        if ".so" not in objeto.name and not objeto.stat().st_mode & 0o111:
+            continue
+        malos = _simbolos_sin_escapatoria(objeto)
+        if malos:
+            sospechosos[objeto.name] = malos
+
+    if not sospechosos:
+        print("  x86-64 sin extras: arranca en cualquier procesador de 64 bits")
+        return
+    print("  aviso: esto no arrancará en un procesador anterior a 2008/2011.",
+          file=sys.stderr)
+    print("  Usan instrucciones de x86-64-v2 en funciones normales, no en "
+          "rutas elegidas por CPU:", file=sys.stderr)
+    for nombre, malos in sorted(sospechosos.items(),
+                                key=lambda x: (-len(x[1]), x[0])):
+        print(f"    {nombre}  ({len(malos)} símbolos, p. ej. {malos[0][:60]})",
+              file=sys.stderr)
+
+
+def _simbolos_sin_escapatoria(objeto: pathlib.Path) -> list[str]:
+    """Los símbolos exportados que usan instrucciones de más sin comprobar."""
+    try:
+        tabla = subprocess.run(["readelf", "-sW", "--dyn-syms", str(objeto)],
+                               capture_output=True, text=True,
+                               timeout=300).stdout
+        codigo = subprocess.run(["objdump", "-d", "--no-show-raw-insn",
+                                 str(objeto)], capture_output=True, text=True,
+                                timeout=600).stdout
+    except (OSError, subprocess.SubprocessError):
+        return []
+
+    funciones = []
+    for linea in tabla.splitlines():
+        campos = linea.split()
+        if len(campos) >= 8 and campos[3] == "FUNC":
+            try:
+                funciones.append((int(campos[1], 16), int(campos[2]), campos[7]))
+            except ValueError:
+                pass
+    if not funciones:
+        return []
+    funciones.sort()
+    inicios = [f[0] for f in funciones]
+
+    encontrados = set()
+    for linea in codigo.splitlines():
+        if not SOBRE_LA_BASE.search(linea):
+            continue
+        try:
+            direccion = int(linea.split(":", 1)[0].strip(), 16)
+        except (ValueError, IndexError):
+            continue
+        indice = bisect.bisect_right(inicios, direccion) - 1
+        if indice < 0:
+            continue
+        inicio, tam, nombre = funciones[indice]
+        if direccion < inicio + tam and not CON_DESPACHO.search(nombre):
+            encontrados.add(nombre)
+    return sorted(encontrados)
 
 
 def comprobar_autocontenido() -> None:
