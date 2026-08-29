@@ -83,6 +83,19 @@ def multiplier(value: Optional[float]) -> str:
     return DASH if _none(value) else f"× {float(value):.1f}"
 
 
+def clock_and_multiplier(frecuencia: Optional[int],
+                         factor: Optional[float]) -> str:
+    """«3.40 GHz  × 34.0», o solo la parte que se sepa.
+
+    Los dos van juntos en el mismo renglón, y unirlos a pelo dejaba a la vista
+    el hueco del que falta: un Broadwell sin multiplicador publicado salía
+    «1.60 GHz  —», y uno sin ninguno de los dos, «—  —». El guion marca un
+    dato ausente, y ahí se leía como un fallo de formato.
+    """
+    piezas = [p for p in (hz(frecuencia), multiplier(factor)) if p != DASH]
+    return "  ".join(piezas) or DASH
+
+
 def dec(value: Optional[int]) -> str:
     """Un entero tal cual. Existe para no escribir `x or DASH`: un stepping 0
     es un stepping de verdad, y con `or` se convertiría en un guion."""

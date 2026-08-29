@@ -142,12 +142,17 @@ class TypeSection(QWidget):
         clocks = cpu_type.clocks
         c(_("cpu.clock.current"), render.hz(clocks.current_hz))
         c(_("cpu.clock.multiplier"), render.multiplier(clocks.multiplier))
-        c(_("cpu.clock.base"), f"{render.hz(clocks.base_hz)}  {render.multiplier(clocks.base_multiplier)}")
-        c(_("cpu.clock.min"), f"{render.hz(clocks.min_hz)}  {render.multiplier(clocks.min_multiplier)}")
-        c(_("cpu.clock.maxkernel"), f"{render.hz(clocks.max_hz)}  {render.multiplier(clocks.max_multiplier)}")
-        c(_("cpu.clock.maxsilicon"), f"{render.hz(clocks.max_turbo_hz)}  {render.multiplier(clocks.max_turbo_multiplier)}")
+        c(_("cpu.clock.base"), render.clock_and_multiplier(
+            clocks.base_hz, clocks.base_multiplier))
+        c(_("cpu.clock.min"), render.clock_and_multiplier(
+            clocks.min_hz, clocks.min_multiplier))
+        c(_("cpu.clock.maxkernel"), render.clock_and_multiplier(
+            clocks.max_hz, clocks.max_multiplier))
+        c(_("cpu.clock.maxsilicon"), render.clock_and_multiplier(
+            clocks.max_turbo_hz, clocks.max_turbo_multiplier))
         c(_("cpu.clock.bus"), render.hz(clocks.bus_hz, 0))
-        c(_("cpu.clock.turbo"), {True: "activado", False: "desactivado", None: render.DASH}[clocks.turbo_enabled])
+        c(_("cpu.clock.turbo"), {True: _("board.on"), False: _("board.off"),
+                                 None: render.DASH}[clocks.turbo_enabled])
         c(_("cpu.clock.driver"), clocks.driver or render.DASH)
         c(_("cpu.clock.governor"), clocks.governor or render.DASH)
         c(_("cpu.clock.epp"), clocks.energy_preference or render.DASH)
