@@ -575,3 +575,53 @@ class TestNadieTraduceAlImportar(unittest.TestCase):
                         malos.append(f"{archivo.name}:{hijo.lineno} "
                                      f"{ast.unparse(hijo)}")
         self.assertEqual(malos, [], f"traducen al importar: {malos}")
+
+
+class TestLasFichasSeMontanConLoMismoQueSeRellenan(unittest.TestCase):
+    """Quien monta una fila y quien la rellena tienen que usar la misma clave.
+
+    `InfoGrid` guarda cada fila por el nombre con el que se creó, y `set` la
+    busca por ese mismo nombre. Si una parte pasa la clave —«storage.col.model»—
+    y la otra la traduce —«Modelo»—, no casan: la fila se monta con la clave
+    cruda a la vista y no se rellena nunca. En pantalla salen catorce renglones
+    diciendo «storage.field.firmware  —».
+
+    Pasó dos veces, en la ficha de procesador y en la de cada disco, y las dos
+    llegaron por una captura de un usuario. El bug no se ve en español, porque
+    ahí la clave sin traducir y la traducción son cosas distintas pero las dos
+    salen mal igual; se ve en cuanto alguien abre esa página.
+    """
+
+    def test_ninguna_pagina_monta_filas_con_la_clave_sin_traducir(self):
+        raiz = pathlib.Path(__file__).resolve().parent.parent / "silux" / "ui"
+        malos = []
+        for archivo in sorted(raiz.rglob("*.py")):
+            arbol = ast.parse(archivo.read_text(encoding="utf-8"))
+            # Las tuplas de campos del módulo: son listas de claves.
+            tablas = {objetivo.id for nodo in arbol.body
+                      if isinstance(nodo, ast.Assign)
+                      for objetivo in nodo.targets
+                      if isinstance(objetivo, ast.Name)
+                      and isinstance(nodo.value, (ast.Tuple, ast.List))
+                      and any(isinstance(e, ast.Constant)
+                              and isinstance(e.value, str) and "." in e.value
+                              for e in nodo.value.elts)}
+            if not tablas:
+                continue
+            # `for campo in TABLA: grid.add(campo)` sin pasar por `_()`.
+            for nodo in ast.walk(arbol):
+                if not (isinstance(nodo, ast.For)
+                        and isinstance(nodo.iter, ast.Name)
+                        and nodo.iter.id in tablas
+                        and isinstance(nodo.target, ast.Name)):
+                    continue
+                variable = nodo.target.id
+                for hijo in ast.walk(nodo):
+                    if (isinstance(hijo, ast.Call)
+                            and isinstance(hijo.func, ast.Attribute)
+                            and hijo.func.attr in ("add", "set") and hijo.args
+                            and isinstance(hijo.args[0], ast.Name)
+                            and hijo.args[0].id == variable):
+                        malos.append(f"{archivo.name}:{hijo.lineno} "
+                                     f"{ast.unparse(hijo)[:60]}")
+        self.assertEqual(malos, [], f"montan con la clave cruda: {malos}")

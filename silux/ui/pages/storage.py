@@ -334,7 +334,7 @@ class StoragePage(QScrollArea):
                 barra = StackedBar(self._p)
                 grid = InfoGrid()
                 for campo in DISK_FIELDS:
-                    grid.add(campo)
+                    grid.add(_(campo))
                 card.body.addWidget(barra)
                 card.body.addWidget(grid)
                 fila.add(card)

@@ -275,8 +275,13 @@ class GpuSection(QWidget):
         # ficha de sensores no lo lee quien no sabía que existía.
         self.recorte.setText(recorte)
         self.recorte.setVisible(bool(recorte))
-        self.subtitle.setText(" · ".join(p for p in (
-            gpu.subsystem_name, gpu.codename, render.pcie_link(gpu.link)) if p))
+        # `pcie_link` devuelve un guion cuando no hay enlace que contar, y una
+        # integrada no lo tiene: el subtítulo salía «Apple Inc. · —». Un guion
+        # entre dos datos se lee como si faltara algo en medio.
+        self.subtitle.setText(" · ".join(
+            p for p in (gpu.subsystem_name, gpu.codename,
+                        render.pcie_link(gpu.link))
+            if p and p != render.DASH))
         self._apply_badges(gpu)
         self._apply_tiles(gpu)
 
