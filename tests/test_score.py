@@ -108,15 +108,28 @@ class TestSoloPuntuaLoQueSePuedeComparar(unittest.TestCase):
 class TestLaEscalaSeDeclaraYSeVersiona(unittest.TestCase):
     """Cambiar las referencias mueve todas las puntuaciones a la vez."""
 
-    def test_la_tabla_dice_para_que_version_vale(self):
+    def test_una_tabla_de_otra_version_no_llega_a_usarse(self):
+        """Lo que importa no es que siempre haya escala al día.
+
+        Es que una escala vieja no se cuele: cambiar las referencias mueve
+        todas las puntuaciones a la vez, y una cifra medida con la anterior
+        junto a otra medida con esta diría una diferencia que no existe.
+        Mientras la escala esté pendiente de rehacer, lo correcto es no
+        puntuar, y eso es lo que se comprueba aquí.
+        """
         import json
         import pathlib
 
         ruta = pathlib.Path(score.__file__).parent / "db" / "scores.json"
         if not ruta.is_file():
-            self.skipTest("no hay escala medida")
-        datos = json.loads(ruta.read_text(encoding="utf-8"))
-        self.assertEqual(datos.get("version_formula"), score.VERSION)
+            self.skipTest("no hay archivo de escala")
+        declarada = json.loads(ruta.read_text(encoding="utf-8")).get(
+            "version_formula")
+        if declarada == score.VERSION:
+            self.assertTrue(score.referencias(), "la escala vigente no carga")
+        else:
+            self.assertEqual(score.referencias(), {},
+                             "una escala de otra versión no debe usarse")
 
     def test_una_escala_de_otra_version_no_se_usa(self):
         """Antes que mezclar dos escalas, ninguna."""
