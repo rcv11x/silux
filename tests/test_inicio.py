@@ -192,9 +192,9 @@ class TestCopiarUnValor(unittest.TestCase):
         from silux.ui.widgets import InfoGrid
 
         rejilla = InfoGrid()
-        etiqueta = rejilla.add("Identificador único", "0f1e2d3c4b5a6978")
+        etiqueta = rejilla.add("Identificador único", "0123456789abcdef")
         self._clic(etiqueta)
-        self.assertEqual(QApplication.clipboard().text(), "0f1e2d3c4b5a6978")
+        self.assertEqual(QApplication.clipboard().text(), "0123456789abcdef")
 
     def test_se_copia_entero_aunque_en_pantalla_salga_recortado(self):
         """Es justo el caso en el que copiar sirve para algo."""
