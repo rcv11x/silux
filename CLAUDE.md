@@ -18,6 +18,7 @@ python3 -m silux.cli --sensors          # el árbol de sensores
 python3 -m silux.cli --report FICHERO   # informe para adjuntar a un fallo
 python3 tools/gen_cpu_db.py            # regenerar la base de datos de CPUs
 python3 tools/gen_lang.py --write      # poner al día los archivos de idioma
+python3 tools/medir_referencia.py      # rehacer la escala de puntuación
 python3 tools/install_desktop.py       # icono y entrada de menú
 python3 tools/build_appimage.py --container   # el AppImage que se reparte
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
@@ -123,6 +124,7 @@ silux/
 ├─ smart.py        interpreta el diagnóstico de los discos, sin privilegios
 ├─ benchmark.py    prueba de CPU que reporta en qué condiciones midió
 ├─ history.py      historial de pruebas de este equipo
+├─ score.py        la puntuación comparable entre equipos, y su escala
 ├─ privacidad.py   qué se omite de un informe público y qué no
 ├─ i18n.py        el idioma de la interfaz; el original es el español
 ├─ throttling.py  desde cuándo lleva frenándose algo, y por qué
@@ -439,6 +441,18 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
 - **Contar núcleos donde el usuario cuenta estrellas**: la leyenda decía
   «núcleo 1 y núcleo 3» y en pantalla se veían cuatro marcas, porque cada
   núcleo bueno marca sus dos hilos. Las dos cosas ciertas y ninguna evidente.
+- **Sumar operaciones por segundo de cargas distintas para hacer una
+  puntuación**: en un 5800X3D la compresión pesada da 28 494 op/s y la
+  memoria 533, así que la primera pesaba el 82 % del total y las otras
+  cuatro eran decoración. La cifra era, en la práctica, una sola carga.
+  Cada una se divide por lo que da en la pieza patrón y así entran
+  valiendo lo mismo.
+- **Comparar dos pruebas de distinta duración**: tres segundos cogen el
+  turbo entero y treinta lo pierden a mitad, así que la misma pieza da dos
+  cifras muy distintas. Poder elegir la duración es lo que permite
+  preguntar cuánto aguanta un equipo; puntuar con cualquiera de ellas es
+  decir que uno es más lento cuando lo único que cambió fue la pregunta.
+  Solo puntúan las de quince segundos.
 - **Comparar temperaturas de dos momentos sin saber la ambiente**: ocho grados
   entre febrero y agosto son normales y salen iguales que ocho de pasta seca.
   Ningún sensor del equipo mide la habitación. Lo que sí se puede comparar es
