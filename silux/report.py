@@ -16,7 +16,7 @@ import platform
 import sys
 from typing import Iterable, Optional
 
-from . import __version__, render
+from . import __version__, build_id, render
 from .model import Need, Snapshot
 
 OCULTO = "«omitido»"
@@ -52,7 +52,8 @@ def _cabecera(snapshot: Snapshot, anonymous: bool) -> str:
     sistema = snapshot.system
     qt = _version_de_qt()
     lineas = [
-        f"# Informe de silux {__version__}",
+        f"# Informe de silux {__version__}"
+        + (f" ({build_id()})" if build_id() else ""),
         "",
         "| | |",
         "|---|---|",

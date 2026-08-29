@@ -13,6 +13,7 @@
   "about.storage": "Database and settings",
   "about.tagline": "A hardware profiler for Linux. What CPU-Z, GPU-Z and HWMonitor do on Windows, in one native program: what machine you have and what it is doing right now.",
   "about.thirdparty": "Third-party data",
+  "app.build.tip": "Which exact copy of the program this is: the date and the commit it was built from. It tells you whether a screenshot comes from an already-fixed version.",
   "app.db.count": "{n} processors in the database",
   "app.db.none": "no database",
   "app.frozen": "Frozen · press space to carry on",

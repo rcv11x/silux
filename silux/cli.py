@@ -16,7 +16,7 @@ import sys
 import time
 from typing import Optional
 
-from . import __version__, db, render, report
+from . import __version__, build_id, db, render, report
 from .collector import Collector
 from .model import Need, Snapshot, to_jsonable
 
@@ -293,7 +293,9 @@ def build_parser() -> argparse.ArgumentParser:
                         help="incluye en el informe lo que identifica al equipo "
                              "(nombre, IP, MAC, números de serie)")
     parser.add_argument("--db-info", action="store_true", help="de dónde salió la base de datos")
-    parser.add_argument("--version", action="version", version=f"silux {__version__}")
+    parser.add_argument("--version", action="version",
+                        version=f"silux {__version__}"
+                                + (f" ({build_id()})" if build_id() else ""))
     return parser
 
 

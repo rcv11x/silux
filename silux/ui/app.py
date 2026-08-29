@@ -39,7 +39,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .. import EMOJI, __version__, i18n, settings as prefs_module
+from .. import EMOJI, __version__, build_id, i18n, settings as prefs_module
 from ..i18n import _
 from ..model import Snapshot
 from ..settings import ACCENT_NAMES, Preferences
@@ -252,7 +252,17 @@ class MainWindow(QMainWindow):
         version = QLabel(_("app.version").format(v=__version__))
         version.setObjectName("Muted")
         version.setFont(ui_font(max(7, m.small_pt - 1)))
-        version.setContentsMargins(10, 0, 0, 4)
+        version.setContentsMargins(10, 0, 0, 0 if build_id() else 4)
+
+        # De qué copia exacta es esto. Sale en la barra lateral porque el sitio
+        # donde hace falta es una captura de pantalla ajena: sin esto, una foto
+        # de un fallo ya arreglado se investiga otra vez desde el principio.
+        self.build_label = QLabel(build_id())
+        self.build_label.setObjectName("Muted")
+        self.build_label.setFont(ui_font(max(7, m.small_pt - 1)))
+        self.build_label.setContentsMargins(10, 0, 0, 4)
+        self.build_label.setToolTip(_("app.build.tip"))
+        self.build_label.setVisible(bool(build_id()))
 
         self.nav = QListWidget()
         self.nav.setObjectName("Nav")
@@ -279,6 +289,7 @@ class MainWindow(QMainWindow):
 
         column.addWidget(wordmark)
         column.addWidget(version)
+        column.addWidget(self.build_label)
         column.addWidget(self.nav, 1)
         return panel
 
