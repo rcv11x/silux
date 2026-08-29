@@ -51,18 +51,18 @@ from .theme import Palette, mono_font, ui_font
 # --------------------------------------------------------------------------
 
 
-def avisar_copiado(cerca_de: QWidget, donde: Optional[QPoint] = None,
-                   texto: str = "") -> None:
+def avisar_copiado(cerca_de: QLabel, texto: str = "") -> None:
     """Un «copiado» pequeño donde acaba de hacer clic el usuario.
 
     Va flotando sobre la ventana y no en la barra de estado: quien acaba de
     hacer clic está mirando el valor, no el borde inferior de la pantalla, y
     un aviso que aparece donde no se está mirando no confirma nada.
 
-    La posición es la del ratón y no la del widget. Casi todas estas fichas
-    viven dentro de un área con scroll, y las coordenadas del widget no dicen
-    dónde se le está viendo: probándolo con una tarjeta fuera de la vista, el
-    aviso salió a media pantalla de distancia, encima de otra cosa.
+    Sale a la derecha del valor y a su misma altura, no bajo el cursor: así
+    aparece en el mismo sitio se pinche donde se pinche dentro de la fila, en
+    vez de bailar unos píxeles según dónde cayera el ratón. Y ahí no tapa lo
+    que se acaba de copiar, que es lo que uno mira para comprobar que copió
+    lo que quería.
 
     Se destruye solo. No se reutiliza uno guardado porque dos clics seguidos
     en dos filas distintas tienen que poder solaparse sin que el primero le
@@ -77,15 +77,18 @@ def avisar_copiado(cerca_de: QWidget, donde: Optional[QPoint] = None,
     globo.setAlignment(Qt.AlignmentFlag.AlignCenter)
     globo.adjustSize()
 
-    if donde is None:
-        donde = cerca_de.mapTo(ventana, QPoint(0, cerca_de.height()))
-    # Un poco arriba y a la derecha del cursor, que es donde no lo tapa la
-    # propia mano. Y siempre dentro de la ventana: pinchando el último valor
-    # de una esquina, el aviso se salía por el borde.
-    x = min(max(0, donde.x() + 12),
-            max(0, ventana.width() - globo.width() - 4))
-    y = min(max(0, donde.y() - globo.height() - 6),
-            max(0, ventana.height() - globo.height() - 4))
+    # El final del texto, no el del widget: la etiqueta ocupa toda la columna
+    # aunque el valor sea corto, y midiendo el widget el aviso aparecía a un
+    # palmo de «AMD».
+    esquina = cerca_de.mapTo(ventana, QPoint(0, 0))
+    ancho_texto = cerca_de.fontMetrics().horizontalAdvance(cerca_de.text())
+    x = esquina.x() + min(ancho_texto, cerca_de.width()) + 10
+    y = esquina.y() + (cerca_de.height() - globo.height()) // 2
+
+    # Siempre dentro de la ventana: en la columna de la derecha, o con la
+    # ventana estrecha, se salía por el borde.
+    x = min(max(0, x), max(0, ventana.width() - globo.width() - 4))
+    y = min(max(0, y), max(0, ventana.height() - globo.height() - 4))
     globo.move(x, y)
     globo.show()
     globo.raise_()
@@ -132,8 +135,7 @@ class ElidingLabel(QLabel):
             from PySide6.QtWidgets import QApplication
 
             QApplication.clipboard().setText(self._full)
-            avisar_copiado(self, self.mapTo(
-                self.window(), event.position().toPoint()))
+            avisar_copiado(self)
         super().mouseReleaseEvent(event)
 
     def set_full_text(self, text: str) -> None:
