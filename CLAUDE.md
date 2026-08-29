@@ -29,7 +29,7 @@ menos, falta algo por recoger.
 `--container` no es opcional para repartir: sin él se construye contra el
 Python y el Qt de la máquina, y sale un AppImage que exige el juego de
 instrucciones y la glibc de quien lo compiló. Con contenedor sale
-`x86-64-baseline` (sin AVX; el suelo real es SSE4.2, o sea Nehalem de 2008) y
+`x86-64` a secas —cualquier procesador de 64 bits, de 2003 en adelante— y
 glibc **2.35**, que es la de Ubuntu 22.04, la base del contenedor. Eso deja
 fuera Ubuntu 20.04, Debian 11, Mint 20 y RHEL 9, que se quedan en 2.31-2.34.
 El símbolo que más alto pide es `hypot@GLIBC_2.35` del propio intérprete: para
@@ -37,7 +37,21 @@ bajar el suelo hay que construir sobre una base más antigua con Python 3.10
 puesto a mano, no basta con tocar una opción. El paso final de comprobación recorre el
 AppDir y avisa de lo que resuelve fuera. Si avisa de algo, hay que mirarlo:
 lo que sale ahí es una biblioteca que el programa espera encontrar puesta en
-la máquina ajena.
+la máquina ajena. Después mira el juego de instrucciones, por lo mismo: que
+no se cuele un requisito de procesador que aquí no se nota.
+
+**PySide6 está topado en `<6.10`, y el motivo no es de estilo.** Qt 6.10 pasó
+a compilarse con `-march=x86-64-v2`, y no en rutas aparte que se eligen
+mirando la CPU, sino dentro de funciones normales: `QString`,
+`QUtf8::convertToUnicode`, `QPainterPath::quadTo`. En un procesador sin
+SSE4.1 eso es «Instrucción ilegal» y un volcado antes de pintar nada; Qt trae
+un aviso para ese caso —«Incompatible processor»— y ni siquiera llega a
+salir, porque revienta antes de imprimirlo. x86-64-v2 es Nehalem (2008) en
+Intel y Bulldozer (2011) en AMD, así que deja fuera los Core 2, los Athlon II
+y los Phenom II: justo la clase de equipo cuyo dueño quiere saber qué lleva
+dentro. Lo descubrió un Athlon II X2 250u ajeno, no una prueba de aquí. De
+6.9 a 6.11 no hay nada en QtCore, QtGui ni QtWidgets que este programa use,
+así que el techo no cuesta nada; lo que costaría es quitarlo sin mirar.
 
 Capturas sin pantalla: `python3 -m silux.ui.app --screenshot salida.png
 --page Sensores --dark --compact --size 900x680`. Acepta además `--accent` y
@@ -567,6 +581,17 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
 - **Tomar por normal un aviso del comprobador del AppImage**: decía que trece
   bibliotecas se cogían del sistema «y son normales», y dos de ellas hacían
   falta de verdad.
+- **Dar por hecho que una dependencia sigue donde estaba**: el `pip install`
+  del AppImage pedía `PySide6>=6.6`, sin techo, y durante un año eso fue
+  inofensivo. Qt 6.10 subió su mínimo a x86-64-v2 y el AppImage dejó de
+  arrancar en cualquier procesador anterior a 2008, sin que cambiara una línea
+  del programa. Lo que no se fija cambia solo, y lo hace en la máquina de otro.
+- **Contar instrucciones para saber si un binario es compatible**: libcrypto
+  lleva AVX-512 y funciona en un Pentium 4, porque pregunta antes. Lo que hay
+  que mirar es dónde caen: en una función con el juego en el nombre
+  —`qt_convert_rgb888_to_rgb32_ssse3`— no se ejecutan salvo que toque; en
+  `QString` no hay escapatoria. `.dynsym` sobrevive al `strip`, así que se
+  puede saber cuál es cuál.
 - **Fiarse de `ldd` en la máquina donde se construye**: resuelve contra lo que
   esa máquina tiene instalado, que es justo lo que se está empaquetando. Lo
   que no esté puesto no aparece como dependencia y se cae del paquete en
