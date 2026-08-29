@@ -101,3 +101,60 @@ class TestPagina(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestTarjetaDeGraficaEnLaPortada(unittest.TestCase):
+    """La ficha de la gráfica tiene que decir algo, aunque falte casi todo.
+
+    De una captura ajena: un portátil con una UHD Graphics G4 enseñaba el
+    nombre de la tarjeta y debajo un guion, nada más. No era un fallo de
+    lectura sino de qué se elige enseñar: en una Intel el uso y los vatios
+    salen de contadores del kernel que piden permisos, y la temperatura no
+    existe por ningún camino. Sin las tres, la ficha se quedaba vacía.
+
+    El reloj del motor gráfico sí está en sysfs y se lee sin pedir nada.
+    """
+
+    def setUp(self):
+        theme.set_density("normal", "normal")
+        self.pagina = HomePage(theme.palette_for(_app(), "dark"),
+                               Preferences(font_scale="normal").normalized())
+
+    @staticmethod
+    def _foto(**campos):
+        """Una foto con una sola gráfica, la que se quiera describir."""
+        import dataclasses
+
+        from silux.model import Gpu
+
+        base = Collector().snapshot()
+        return dataclasses.replace(base, gpus=(Gpu(**campos),))
+
+    def test_una_intel_sin_permisos_ensena_su_reloj(self):
+        from silux.model import GpuClocks
+
+        foto = self._foto(
+            name="UHD Graphics G4", vendor="Intel", integrated=True,
+            clocks=GpuClocks(core_hz=1_100_000_000, core_max_hz=1_300_000_000))
+        self.pagina.apply(foto)
+        cifras = self.pagina.gpu.cifras.text()
+        self.assertTrue(cifras, "la ficha se quedó sin ninguna cifra")
+        self.assertIn("Hz", cifras)
+
+    def test_y_dice_que_es_integrada_en_vez_de_dejar_el_hueco(self):
+        foto = self._foto(name="UHD Graphics G4", integrated=True)
+        self.pagina.apply(foto)
+        self.assertTrue(self.pagina.gpu.detalle.text())
+
+    def test_un_dato_que_falta_no_se_cuela_en_la_linea_de_detalle(self):
+        """«— · PCIe 1.0 × 16» se lee como si sobrara algo. Y sobraba."""
+        from silux.model import GpuMemory, PcieLink
+
+        foto = self._foto(
+            name="GeForce GTX 1660 Ti",
+            memory=GpuMemory(total_bytes=6 * 1024**3),   # sin tipo: NVML no lo da
+            link=PcieLink(current_speed_gts=2.5, current_width=16))
+        self.pagina.apply(foto)
+        detalle = self.pagina.gpu.detalle.text()
+        self.assertFalse(detalle.startswith(render.DASH), detalle)
+        self.assertNotIn(f"{render.DASH} ·", detalle)
