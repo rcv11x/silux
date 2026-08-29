@@ -230,10 +230,15 @@ class HomePage(QScrollArea):
             self.gpu.poner(_("home.gpu.none"), "", "")
             return
         gpu = snapshot.gpus[0]
+        # Un guion aquí no es un dato: es el hueco de uno que falta, y en una
+        # línea de tres piezas unidas por puntos se lee como si sobrara algo.
+        # Una GTX con la memoria sin identificar salía «— · PCIe 1.0 × 16».
         detalle = " · ".join(p for p in (
             render.vram_kind(gpu.memory) if gpu.memory.total_bytes else None,
             render.pcie_link(gpu.link) if gpu.link.current_speed_gts else None,
-        ) if p)
+        ) if p and p != render.DASH)
+        if not detalle and gpu.integrated:
+            detalle = _("gpu.chip.integrated")
 
         piezas = []
         if gpu.busy_percent is not None:
@@ -244,6 +249,16 @@ class HomePage(QScrollArea):
             piezas.append(render.temperature(gpu.temp_c, self._prefs.fahrenheit))
         if gpu.power_w is not None:
             piezas.append(render.watts(gpu.power_w))
+        if not piezas and gpu.clocks.core_hz:
+            # Una Intel sin permisos no da uso, ni temperatura, ni vatios: las
+            # tres salen del PMU del kernel y la primera no existe siquiera.
+            # La tarjeta se quedaba con el nombre y nada más, que parece un
+            # fallo del programa. El reloj del motor gráfico está en sysfs y se
+            # lee sin pedir nada, así que al menos se ve que la cosa se mueve.
+            piezas.append(render.hz(gpu.clocks.core_hz))
+            self.gpu.grafica.push(gpu.clocks.core_hz / 1e6)
+            if gpu.clocks.core_max_hz:
+                self.gpu.grafica.set_range(0.0, gpu.clocks.core_max_hz / 1e6)
         self.gpu.poner(gpu.display_name, detalle, "   ".join(piezas))
 
     def _memoria(self, snapshot: Snapshot) -> None:
