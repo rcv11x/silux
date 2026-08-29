@@ -200,7 +200,7 @@ export QT_QPA_PLATFORM_PLUGIN_PATH="$AQUI/usr/lib/qt/plugins/platforms"
 # que algo no le sale, y quien usa el AppImage no tiene otra forma de sacarlo.
 case "${1:-}" in
     --cli) shift; exec "$AQUI/usr/bin/python3" -m silux.cli "$@" ;;
-    --report|--json|--sensors|--watch|--db-info|--no-color|--with-identifiers)
+    --report|--json|--sensors|--watch|--db-info|--no-color|--with-identifiers|--version)
         exec "$AQUI/usr/bin/python3" -m silux.cli "$@" ;;
 esac
 exec "$AQUI/usr/bin/python3" -m silux.ui.app "$@"
@@ -322,6 +322,15 @@ python3 tools/build_appimage.py "$@"
 """
 
 
+def _marca_de_construccion() -> str:
+    """La marca de git, leída aquí fuera para pasársela al contenedor."""
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
+    from silux import _preguntar_a_git
+
+    return _preguntar_a_git()
+
+
 def construir_en_contenedor(imagen: str, compat: bool = False) -> int:
     """Repite la construcción dentro de una distribución antigua.
 
@@ -349,6 +358,7 @@ def construir_en_contenedor(imagen: str, compat: bool = False) -> int:
         "-v", f"{ROOT}:/fuente:z",
         "-w", "/fuente",
         "-e", f"PYSIDE={RANGO_PYSIDE[compat]}",
+        "-e", f"SILUX_BUILD={_marca_de_construccion()}",
         imagen, "bash", "-c", RECETA, "--", *dentro,
     ]
     resultado = subprocess.run(orden, check=False)
@@ -775,9 +785,17 @@ def sellar_build() -> None:
     mano, y a partir de ese momento el dato viaja con el programa: sale en la
     barra lateral, en `--version` y en la cabecera del informe.
     """
-    from silux import _preguntar_a_git
+    # Dentro del contenedor no hay git —y si lo hubiera se quejaría de que el
+    # repositorio es de otro usuario—, así que la marca la calcula quien lanza
+    # la construcción y viaja por entorno. Ejecutando este archivo a mano,
+    # quien está en el path es `tools/` y no la raíz, de ahí el apaño.
+    marca = os.environ.get("SILUX_BUILD", "")
+    if not marca:
+        if str(ROOT) not in sys.path:
+            sys.path.insert(0, str(ROOT))
+        from silux import _preguntar_a_git
 
-    marca = _preguntar_a_git()
+        marca = _preguntar_a_git()
     if not marca:
         print("  sin git: el paquete sale sin marca de construcción",
               file=sys.stderr)
