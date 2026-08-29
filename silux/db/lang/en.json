@@ -302,6 +302,8 @@
   "gpu.display.res": "Resolution",
   "gpu.display.size": "Size",
   "gpu.display.unknown": "unidentified",
+  "gpu.displays.free": "{n} free outputs: {salidas}",
+  "gpu.displays.free.one": "1 free output: {salidas}",
   "gpu.displays.none": "No video outputs",
   "gpu.engine.can": "Capabilities",
   "gpu.engine.name": "Engine",
