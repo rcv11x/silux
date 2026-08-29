@@ -120,9 +120,30 @@ class TestEjecucion(unittest.TestCase):
                           on_progress=lambda que, cuanto: pasos.append((que, cuanto)))
         self.assertEqual(pasos[-1][1], 1.0)
 
-    def test_el_nucleo_preferido_es_un_numero_valido(self):
+    def test_la_medida_de_un_hilo_no_paga_el_arranque_de_la_carga(self):
+        """La escala entre un hilo y todos tiene que ser creíble.
+
+        La primera vez que una carga corre en un proceso da una cifra distinta
+        de las siguientes —la compresión pesada, 1 780 operaciones por segundo
+        en vez de 2 950—, y como el orden es un hilo primero y todos después,
+        ese arranque lo pagaba siempre la medida de un hilo. La escala salía en
+        catorce veces con ocho núcleos, que no es posible; ninguna carga puede
+        escalar por encima del número de hilos.
+        """
         import os
-        self.assertIn(benchmark._nucleo_preferido(), range(os.cpu_count() or 1))
+
+        hilos = os.cpu_count() or 1
+        resultado = benchmark.run(seconds=1.0)
+        por_carga = {}
+        for medida in resultado.measures:
+            if medida.seconds:
+                por_carga.setdefault(medida.load, {})[medida.threads] = (
+                    medida.operations / medida.seconds)
+        for carga, medidas in por_carga.items():
+            if 1 in medidas and hilos in medidas and medidas[1]:
+                with self.subTest(carga=carga):
+                    self.assertLessEqual(medidas[hilos] / medidas[1], hilos,
+                                         "escala por encima del número de hilos")
 
 
 if __name__ == "__main__":

@@ -310,9 +310,14 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
 - **Escalar la tipografía y los márgenes al mismo ritmo**: quien pide letra
   grande quiere leer mejor, no que quepa la mitad. Los márgenes crecen a mitad
   de paso que el texto (`_escalar` en `ui/theme.py`).
-- **Medir un hilo sin fijarle la afinidad**: el planificador lo va moviendo, y
-  cada salto tira la caché y obliga al núcleo nuevo a subir de frecuencia desde
-  abajo. Dos ejecuciones seguidas salen con un 10 % de diferencia por eso solo.
+- **Atar la medida de un hilo al «mejor» núcleo**: se hizo para quitar ruido
+  —un hilo que salta de núcleo tira la caché— y hacía lo contrario. Medido
+  alternando: atarlo cuesta un 40 % en la compresión pesada y un 11 % en la
+  derivación de clave, y la dispersión entre repeticiones sale igual o peor
+  que dejándolo suelto. Como la afinidad solo se fijaba al medir con un hilo,
+  esa penalización caía siempre en la misma cifra y la escala entre uno y
+  todos salía en catorce veces con ocho núcleos. Sin atar nada: ocho veces,
+  como las demás cargas.
 - **Compilar la carga del benchmark al vuelo**: funciona desde el código fuente
   y no dentro de un AppImage, que no lleva compilador. `zlib` y `hashlib` dan
   la misma estabilidad y su bucle también está en C, ya compilado.
@@ -442,20 +447,15 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   «núcleo 1 y núcleo 3» y en pantalla se veían cuatro marcas, porque cada
   núcleo bueno marca sus dos hilos. Las dos cosas ciertas y ninguna evidente.
 - **Dar por bueno lo que mide la primera vuelta de una carga**: la compresión
-  pesada da 1 770 operaciones por segundo la primera vez que corre en un
-  proceso y 2 960 a partir de la segunda, un 65 % más, sin que cambie nada del
+  pesada da 1 780 operaciones por segundo la primera vez que corre en un
+  proceso y 2 950 a partir de la segunda, un 65 % más, sin que cambie nada del
   equipo. Lo que se paga ahí es del asignador: LZMA pide un búfer holgado en
   cada llamada y glibc lo sirve con `mmap` hasta que sube su umbral por su
-  cuenta. Como el orden de la prueba es un hilo primero y todos después, ese
-  arranque lo paga siempre la medida de un hilo: la puntuación de un solo
-  núcleo sale baja y la escala entre uno y todos sale en quince o dieciocho
-  veces, que en un procesador de ocho núcleos no es posible. **Sigue sin
-  arreglar.** Se probaron tres caminos y ninguno vale dentro de la prueba
-  entera, aunque los tres funcionan con la carga aislada: calentar dentro del
-  mismo hilo que va a medir, subir el umbral con `mallopt`, y una pasada de
-  descarte en un hilo aparte. glibc lleva sus cuentas por arena y cada medida
-  estrena hilos, así que lo que sirve en un proceso recién arrancado deja de
-  servir cuando ya han corrido dos cargas antes.
+  cuenta. Y como el orden es un hilo primero y todos después, ese arranque lo
+  pagaba siempre la medida de un hilo. Se arregla dejando rodar la carga unas
+  centésimas antes de contar (`_rodar_en_vacio`); con ochenta vueltas basta.
+  Ojo: por sí solo no bastaba, hacía falta quitar además la afinidad, y por
+  eso costó encontrarlo —cada arreglo por separado parecía no servir—.
 - **Sumar operaciones por segundo de cargas distintas para hacer una
   puntuación**: en un 5800X3D la compresión pesada da 28 494 op/s y la
   memoria 533, así que la primera pesaba el 82 % del total y las otras

@@ -37,7 +37,7 @@ from typing import Optional
 
 # Sube cuando cambien las referencias, las cargas o la forma de combinarlas.
 # Una puntuación de otra versión no se compara con esta.
-VERSION = 2
+VERSION = 3
 
 # Cuánto tiene que durar cada medida para que la prueba puntúe. Quince segundos
 # es el punto en el que la mayoría de los procesadores ya han dejado atrás el
