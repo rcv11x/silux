@@ -175,7 +175,8 @@ def power_headline(power: Power) -> str:
     if power.package_w is None:
         return ""
     if power.limit_long_w:
-        return f"{power.load_percent:.0f} % de {power.limit_long_w:g} W"
+        return _("cpu.power.headline").format(
+            pct=f"{power.load_percent:.0f}", w=f"{power.limit_long_w:g}")
     return ""
 
 
@@ -320,8 +321,9 @@ def gpu_memory_summary(memory: GpuMemory) -> str:
     """
     if memory.total_bytes is None or memory.used_bytes is None:
         return DASH
-    return (f"{size(memory.used_bytes)} de {size(memory.total_bytes)}"
-            f"   ({memory.used_percent:.0f} %)")
+    return (_("gpu.vram.of").format(usado=size(memory.used_bytes),
+                                    total=size(memory.total_bytes))
+            + f"   ({memory.used_percent:.0f} %)")
 
 
 def bandwidth(value: Optional[int]) -> str:
@@ -755,7 +757,7 @@ def starred_cpus(logical) -> str:
     if len(indices) <= len(cabeza):        # sin SMT no hay nada que aclarar
         return ""
     nombres = [f"CPU {i}" for i in indices]
-    return ", ".join(nombres[:-1]) + " y " + nombres[-1]
+    return ", ".join(nombres[:-1]) + _("core.join") + nombres[-1]
 
 
 def core_quality_spread(logical) -> Optional[str]:

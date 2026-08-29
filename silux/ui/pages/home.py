@@ -152,7 +152,7 @@ class HomePage(QScrollArea):
 
         sistema = snapshot.system
         equipo = snapshot.board.display_name if snapshot.board else None
-        self.title.setText(equipo or sistema.hostname or "Este equipo")
+        self.title.setText(equipo or sistema.hostname or _("home.thispc"))
 
         partes = [sistema.distribution, sistema.kernel]
         if sistema.desktop:
@@ -261,9 +261,10 @@ class HomePage(QScrollArea):
             _("home.mem.used").format(
                 pct=f"{usada / memoria.total_bytes * 100:.0f}"))
         self.memoria.barra.set_segments(
-            [("En uso", usada, "accent"),
-             ("Caché", memoria.cache_bytes, "line"),
-             ("Libre", max(0, memoria.total_bytes - usada - memoria.cache_bytes), "muted")],
+            [(_("home.mem.seg.inuse"), usada, "accent"),
+             (_("sys.mem.cache"), memoria.cache_bytes, "line"),
+             (_("sys.mem.free"),
+              max(0, memoria.total_bytes - usada - memoria.cache_bytes), "muted")],
             total=memoria.total_bytes, formatter=render.size)
 
     def _almacenamiento(self, snapshot: Snapshot) -> None:

@@ -21,6 +21,7 @@ import re
 from typing import Optional
 
 from .. import db
+from ..i18n import _
 from ..model import Need
 from .base import Draft, Provider, read_text
 
@@ -51,7 +52,7 @@ def _cpuinfo() -> list[dict[str, str]]:
             continue
         if ":" not in linea:
             continue
-        clave, _, valor = linea.partition(":")
+        clave, _sep, valor = linea.partition(":")
         actual[clave.strip()] = valor.strip()
     if actual:
         bloques.append(actual)
@@ -177,7 +178,9 @@ class ArmIdentity(Provider):
         )
         if nucleo is None and part is not None:
             entry["brand"] = " ".join(
-                p for p in (fabricante, f"núcleo 0x{part:03x}", paso) if p)
+                p for p in (fabricante,
+                            _("cpu.arm.core").format(id=f"0x{part:03x}"),
+                            paso) if p)
 
 
 def _banderas(bloque: dict[str, str]) -> tuple[str, ...]:

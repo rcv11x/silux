@@ -22,7 +22,7 @@ from .. import theme
 from ..theme import Palette, ui_font
 from ..widgets import CacheMap, Card, ChipRow, ResponsiveRow, Table
 
-KIND_LABELS = {"data": "datos", "instruction": "instrucciones", "unified": "unificada"}
+
 
 
 def cache_axis(snapshot: Snapshot) -> list[int]:
@@ -93,7 +93,9 @@ class CachesPage(QScrollArea):
         # -- detalle --------------------------------------------------------
         detail = Card(_("caches.card.detail"))
         self.table = Table(
-            ("Nivel", "Tamaño", "Nº", "Total", "Vías", _("caches.col.line"), "Conjuntos", "Comparten"),
+            (_("caches.col.level"), _("caches.col.size"), _("caches.col.count"),
+             _("caches.col.total"), _("caches.col.ways"), _("caches.col.line"),
+             _("caches.col.sets"), _("caches.col.shared")),
             numeric=(False, True, True, True, True, True, True, True),
         )
         detail.body.addWidget(self.table)
@@ -188,7 +190,7 @@ class CachesPage(QScrollArea):
                 for (level, kind, key, _tam), cache in grouped.items()
             ],
             tooltips=[
-                "CPUs por instancia: "
+                _("caches.tip.cpus")
                 + " | ".join(",".join(str(c) for c in group) for group in cache.instance_cpus)
                 for cache in grouped.values()
             ],

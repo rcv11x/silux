@@ -16,6 +16,7 @@ import re
 import time
 from typing import Optional
 
+from ..i18n import _
 from ..model import Memory, Need, Sensor, SensorKind, System
 from .base import Draft, Provider, read_text
 
@@ -146,7 +147,7 @@ class SystemState(Provider):
         if self.available():
             return None
         return ("system.memory", Need.PLATFORM,
-                "No hay /proc/meminfo en este sistema.", "")
+                _("prov.sys.nomeminfo"), "")
 
     def collect(self, draft: Draft) -> None:
         uptime = self._uptime()
@@ -169,7 +170,7 @@ class SystemState(Provider):
         try:
             with open(MEMINFO, encoding="ascii") as handle:
                 for line in handle:
-                    key, _, rest = line.partition(":")
+                    key, _sep, rest = line.partition(":")
                     field = _MEM_FIELDS.get(key)
                     if field is None:
                         continue
@@ -220,14 +221,14 @@ class SystemState(Provider):
         if not memory.total_bytes:
             return []
         sensors = [Sensor(
-            key="memory/ram", chip="meminfo", device="Memoria",
-            label="RAM usada", kind=SensorKind.USAGE,
+            key="memory/ram", chip="meminfo", device=_("sensor.mem"),
+            label=_("sensor.mem.ram"), kind=SensorKind.USAGE,
             value=memory.used_percent, order=0, high=90.0,
         )]
         if memory.swap_total_bytes:
             sensors.append(Sensor(
-                key="memory/swap", chip="meminfo", device="Memoria",
-                label="Intercambio usado", kind=SensorKind.USAGE,
+                key="memory/swap", chip="meminfo", device=_("sensor.mem"),
+                label=_("sensor.mem.swap"), kind=SensorKind.USAGE,
                 value=memory.swap_used_percent, order=1, high=80.0,
             ))
         return sensors

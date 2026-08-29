@@ -14,6 +14,7 @@ import pathlib
 
 from ..model import Cache, Clocks, Need
 from .base import Draft, Provider, mean, parse_cpu_list, parse_size, read_int, read_text
+from ..i18n import _
 
 SYS_CPU = "/sys/devices/system/cpu"
 
@@ -83,8 +84,7 @@ class SysfsTopology(Provider):
         if self.available():
             return None
         return ("cpu.topology", Need.PLATFORM,
-                "El kernel no expone /sys/devices/system/cpu.",
-                "Solo ocurre en sistemas que no son Linux.")
+                _("prov.cpu.nosysfs"), _("prov.cpu.nosysfs.hint"))
 
     def collect(self, draft: Draft) -> None:
         draft.capabilities.add("sysfs-cpu")
@@ -251,6 +251,5 @@ class SysfsClocks(Provider):
         if not any_read:
             draft.note(
                 "cpu.clocks.current_hz", Need.DRIVER,
-                "El kernel no expone la frecuencia actual por CPU.",
-                "Suele faltar en máquinas virtuales y con algunos gobernadores.",
+                _("prov.cpu.nofreq"), _("prov.cpu.nofreq.hint"),
             )

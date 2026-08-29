@@ -26,9 +26,10 @@ from ..theme import Palette
 from ..widgets import Card, ChipRow, InfoGrid, ResponsiveRow, StatTile, Table, clear_layout
 
 INTERFACE_FIELDS = (
-    _("gpu.sensor.state"), _("memory.field.type"), _("net.field.ipv4"), _("net.field.mask"), "net.field.gateway",
-    "net.field.ipv6", "net.field.mac", _("net.field.speed"), "MTU",
-    "Controlador", _("storage.col.model"), _("net.field.slot"),
+    "gpu.sensor.state", "memory.field.type", "net.field.ipv4",
+    "net.field.mask", "net.field.gateway", "net.field.ipv6",
+    "net.field.mac", "net.field.speed", "MTU", "gpu.field.driver",
+    "storage.col.model", "net.field.slot",
 )
 
 TRAFFIC_HEADERS = ("Interfaz", "Bajando", "Subiendo", "Recibido", "Enviado",
@@ -207,10 +208,12 @@ class NetworkPage(QScrollArea):
         if trafico:
             self.tile_rx.set_detail(_("net.packets2").format(
                 n=f"{trafico.rx_packets:n}"))
-            self.tile_tx.set_detail(f"{trafico.tx_packets:n} paquetes")
+            self.tile_tx.set_detail(_("net.packets2").format(
+                n=f"{trafico.tx_packets:n}"))
             perdidos = trafico.problems
             self.tile_down.set_detail(
-                f"{perdidos:n} paquetes perdidos" if perdidos else "sin pérdidas")
+                _("net.lost").format(n=f"{perdidos:n}") if perdidos
+                else _("net.nolost"))
 
     def _apply_traffic(self, interfaces) -> None:
         d = render.DASH
@@ -224,7 +227,7 @@ class NetworkPage(QScrollArea):
              f"{interfaz.traffic.problems:n}" if interfaz.traffic.problems else "—")
             for interfaz in interfaces
         ]
-        self.traffic.set_rows(filas or [("Sin interfaces", d, d, d, d, d, d)])
+        self.traffic.set_rows(filas or [(_("net.none"), d, d, d, d, d, d)])
 
     def _apply_cards(self, interfaces) -> None:
         # Una tarjeta por interfaz, creadas una vez y reescritas después: esta
@@ -262,6 +265,6 @@ class NetworkPage(QScrollArea):
             f(_("net.field.mac"), interfaz.mac or d)
             f(_("net.field.speed"), interfaz.link_summary or d)
             f("MTU", str(interfaz.mtu) if interfaz.mtu else d)
-            f("Controlador", interfaz.driver or d)
+            f(_("gpu.field.driver"), interfaz.driver or d)
             f(_("storage.col.model"), interfaz.model or d)
             f(_("net.field.slot"), interfaz.pci_slot or d)

@@ -30,21 +30,21 @@ from ..widgets import Card, ResponsiveRow
 VERSION = "0.1.0"
 
 AUTORIA = (
-    ("rcv11x", "autor: diseño, desarrollo, pruebas y documentación"),
+    ("rcv11x", "about.author"),
     ("Claude", ""),
 )
 
 CONSTRUIDO_CON = (
-    ("Python 3", "sin dependencias fuera de la biblioteca estándar"),
-    ("PySide6 / Qt 6", "solo para la interfaz"),
-    ("ctypes y mmap", "CPUID, ioctl de DRM y las bibliotecas gráficas"),
-    ("polkit", "el ayudante que lee la tabla SMBIOS"),
+    ("Python 3", "about.python"),
+    ("PySide6 / Qt 6", "about.qt"),
+    ("ctypes y mmap", "about.ctypes"),
+    ("polkit", "about.polkit"),
 )
 
 DATOS_DE_TERCEROS = (
-    ("libcpuid", "identificación de procesadores · BSD-2"),
-    ("CPU-X", "tabla de encapsulados · GPL-3.0"),
-    ("hwdata", "pci.ids y pnp.ids del sistema"),
+    ("libcpuid", "about.libcpuid"),
+    ("CPU-X", "about.cpux"),
+    ("hwdata", "about.hwdata"),
 )
 
 THEMES = (("opt.theme.system", "system"), ("opt.theme.light", "light"), ("opt.theme.dark", "dark"))
@@ -259,11 +259,7 @@ class SettingsPage(QScrollArea):
 
         informe = QPushButton(_("settings.report.button"))
         informe.setToolTip(
-            "Genera un archivo de texto con todo el hardware detectado y, sobre "
-            "todo, con lo que no se ha podido leer y por qué. Es lo que hay que "
-            "adjuntar al reportar un fallo.\n\n"
-            "No incluye el nombre del equipo, las direcciones IP y MAC ni los "
-            "números de serie."
+            _("settings.tip.report")
         )
         informe.clicked.connect(self.report_requested.emit)
         fila_informe = QHBoxLayout()
@@ -317,7 +313,8 @@ class SettingsPage(QScrollArea):
         columna.addWidget(encabezado)
         columna.addSpacing(2)
 
-        for nombre, detalle in lineas:
+        for nombre, clave in lineas:
+            detalle = _(clave) if clave else ""
             # El nombre y su para-qué en dos renglones alineados por la
             # izquierda, en vez de un párrafo con negritas dentro: así las tres
             # columnas se leen a la misma altura y se comparan de un vistazo.
@@ -348,18 +345,16 @@ class SettingsPage(QScrollArea):
             data = db.load()
             counts = data.get("counts", {})
             sources = data.get("sources", {})
-            text = (
-                f"{counts.get('x86_intel', 0)} procesadores Intel · "
-                f"{counts.get('x86_amd', 0)} AMD · {counts.get('arm_parts', 0)} piezas ARM · "
-                f"{counts.get('sockets', 0)} encapsulados.\n"
-                f"Generada de libcpuid {sources.get('libcpuid', {}).get('commit', '?')} "
-                f"({sources.get('libcpuid', {}).get('date', '?')}) y "
-                f"CPU-X {sources.get('cpu-x', {}).get('commit', '?')}.\n"
-                "Se actualiza con:  python3 tools/gen_cpu_db.py"
-            )
+            text = _("settings.db.counts").format(
+                intel=counts.get("x86_intel", 0),
+                amd=counts.get("x86_amd", 0),
+                arm=counts.get("arm_parts", 0),
+                sockets=counts.get("sockets", 0),
+                commit=sources.get("libcpuid", {}).get("commit", "?"),
+                fecha=sources.get("libcpuid", {}).get("date", "?"),
+                cpux=sources.get("cpu-x", {}).get("commit", "?"))
         else:
-            text = ("No hay base de datos generada, así que no se puede identificar el nombre "
-                    "en clave ni el encapsulado.\nGenérala con:  python3 tools/gen_cpu_db.py")
+            text = _("settings.db.none")
 
         info = QLabel(text)
         info.setObjectName("Muted")
@@ -368,7 +363,7 @@ class SettingsPage(QScrollArea):
         info.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         card.body.addWidget(info)
 
-        path = QLabel(f"Los ajustes se guardan en {config_path()}")
+        path = QLabel(_("settings.savedat").format(ruta=config_path()))
         path.setObjectName("Muted")
         path.setWordWrap(True)
         path.setFont(ui_font(m.small_pt))

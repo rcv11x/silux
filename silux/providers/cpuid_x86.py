@@ -18,6 +18,7 @@ from .. import db, features
 from ..model import Clocks, Need
 from ..rawcpuid import CpuidError, CpuidReader, is_supported, pinned
 from .base import Draft, Provider
+from ..i18n import _
 
 # Hoja 0x1A: tipo de núcleo nativo en las CPU híbridas de Intel.
 CORE_TYPE_ATOM = 0x20
@@ -62,11 +63,10 @@ class CpuidIdentity(Provider):
             return None
         if not is_supported():
             return ("cpu.identity", Need.PLATFORM,
-                    "CPUID es una instrucción de x86; esta máquina no lo es.",
-                    "En ARM la identidad se lee de /proc/cpuinfo.")
+                    _("prov.cpuid.notx86"), _("prov.cpuid.notx86.hint"))
         return ("cpu.identity", Need.PLATFORM,
-                f"No se pudo usar CPUID: {self._error}",
-                "El entorno prohíbe ejecutar memoria anónima. Se usará /proc/cpuinfo.")
+                _("prov.cpuid.failed").format(error=self._error),
+                _("prov.cpuid.failed.hint"))
 
     def collect(self, draft: Draft) -> None:
         reader = self._reader
@@ -129,7 +129,7 @@ class CpuidIdentity(Provider):
         """Hoja 0x16: reloj base, techo de turbo y BCLK. Skylake y posteriores."""
         if not reader.supports(0x16):
             return
-        base_mhz, max_mhz, bus_mhz, _ = reader(0x16)
+        base_mhz, max_mhz, bus_mhz, _resto = reader(0x16)
         if not any((base_mhz, max_mhz, bus_mhz)):
             return
 
@@ -148,8 +148,7 @@ class CpuidIdentity(Provider):
         if not db.available():
             draft.note(
                 "cpu.codename", Need.DATABASE,
-                "No hay base de datos de identificación generada.",
-                "Ejecuta:  python3 tools/gen_cpu_db.py",
+                _("prov.cpuid.nodb"), _("prov.cpuid.nodb.hint"),
             )
             return
 
@@ -176,15 +175,15 @@ class CpuidIdentity(Provider):
         else:
             draft.note(
                 "cpu.codename", Need.DATABASE,
-                f"Este procesador no está en la base de datos ({brand}).",
-                "Regenera la base con tools/gen_cpu_db.py o añade una entrada.",
+                _("prov.cpuid.unknown").format(marca=brand),
+                _("prov.cpuid.unknown.hint"),
             )
 
         if entry.get("socket") is None and ident.matched:
             draft.note(
                 "cpu.socket", Need.DATABASE,
-                f"No hay encapsulado catalogado para «{ident.codename}».",
-                "Se puede añadir una regla en silux/db/sockets.json.",
+                _("prov.cpuid.nosocket").format(nombre=ident.codename),
+                _("prov.cpuid.nosocket.hint"),
             )
 
 

@@ -40,7 +40,7 @@ NEED_TITLES = {
     Need.DATABASE: "note.database",
     Need.HARDWARE: "note.hardware",
     Need.DRIVER: "note.needsmodule",
-    Need.PLATFORM: "Todavía no está implementado",
+    Need.PLATFORM: "note.platform",
     Need.ERROR: "note.failed",
 }
 
@@ -140,9 +140,7 @@ class MemoryPage(QScrollArea):
 
         self.elevation_button = QPushButton(_("perm.read.button"))
         self.elevation_button.setToolTip(
-            "Lanza un ayudante mínimo mediante polkit que solo sabe leer la "
-            "tabla SMBIOS y unos registros del procesador.\n"
-            "No ejecuta órdenes ni escribe nada."
+            _("memory.tip.elevate")
         )
         self.elevation_button.clicked.connect(self.elevation_requested)
 
@@ -175,10 +173,10 @@ class MemoryPage(QScrollArea):
 
         self.bar.set_segments(
             [
-                ("Aplicaciones", memory.apps_bytes, "accent"),
-                ("Caché", memory.cache_bytes, "info"),
-                ("Buffers", memory.buffers_bytes, "warn"),
-                ("Libre", memory.free_bytes, "line"),
+                (_("sys.mem.apps"), memory.apps_bytes, "accent"),
+                (_("sys.mem.cache"), memory.cache_bytes, "info"),
+                (_("sys.mem.buffers"), memory.buffers_bytes, "warn"),
+                (_("sys.mem.free"), memory.free_bytes, "line"),
             ],
             total=memory.total_bytes,
             formatter=render.size,
@@ -205,7 +203,8 @@ class MemoryPage(QScrollArea):
         clear_layout(self._notices_host)
         for note in notes:
             self._notices_host.addWidget(
-                Notice(NEED_TITLES.get(note.need, note.need.value), note.message, note.hint)
+                Notice(_(NEED_TITLES.get(note.need, note.need.value)),
+                       note.message, note.hint)
             )
 
     def _apply_avisos(self, snapshot: Snapshot) -> None:
@@ -228,20 +227,23 @@ class MemoryPage(QScrollArea):
         if not modules:
             if snapshot.spd:
                 catalogados = {i.rated_mts for i in snapshot.spd if i.rated_mts}
-                velocidad = f" a {max(catalogados)} MT/s" if catalogados else ""
+                velocidad = (_("memory.spd.at").format(mts=max(catalogados))
+                             if catalogados else "")
                 cuantos = len(snapshot.spd)
-                return (f"{cuantos} {render.plural(cuantos, 'módulo', 'módulos')} "
-                        f"{render.plural(cuantos, 'leído', 'leídos')} de su chip SPD"
-                        f"{velocidad} · el zócalo y la capacidad necesitan permisos")
-            return "El detalle por módulo necesita permisos de administrador"
+                return (_("memory.spd.read.one" if cuantos == 1
+                          else "memory.spd.read.many").format(n=cuantos)
+                        + velocidad + _("memory.spd.needsroot"))
+            return _("memory.detail.needsroot")
         ocupados = sum(1 for m in modules if m.populated)
-        partes = [f"{ocupados} de {len(modules)} zócalos ocupados"]
+        partes = [_("memory.slots.used").format(
+            n=ocupados, total=len(modules))]
         # En canal único la memoria rinde la mitad, y no lo dice nada en todo
         # el sistema. Va en la primera línea, no en la ficha de un módulo.
         if (canal := render.memory_channel_label(modules)):
             partes.insert(0, canal)
         if array and array.max_capacity_bytes:
-            partes.append(f"admite hasta {render.size(array.max_capacity_bytes)}")
+            partes.append(_("memory.array.upto").format(
+                tam=render.size(array.max_capacity_bytes)))
         if array and array.error_correction:
             partes.append(f"ECC: {array.error_correction.lower()}")
         return " · ".join(partes)
@@ -256,7 +258,7 @@ class MemoryPage(QScrollArea):
             catalogadas.discard(None)
             wanted.extend(f"{v} MT/s" for v in sorted(catalogadas))
             if any(m.underclocked for m in modules):
-                wanted.append("por debajo de su velocidad")
+                wanted.append(_("memory.chip.underclocked"))
             if any(m.has_ecc for m in modules):
                 wanted.append("ECC")
         self.badges.set_chips(wanted, highlight_first=True)
@@ -270,40 +272,30 @@ class MemoryPage(QScrollArea):
         self.elevation.show()
         if state.already_root:
             self.elevation_text.setText(
-                "El programa ya corre como administrador pero la tabla SMBIOS "
-                "no se pudo leer."
+                _("memory.elev.alreadyroot")
             )
             self.elevation_button.hide()
         elif not state.supported:
             self.elevation_text.setText(
-                "No se encuentra pkexec, así que no hay forma de pedir permisos."
+                _("memory.elev.nopkexec")
             )
             self.elevation_hint.setText(
-                "Se instala con el paquete polkit de la distribución. "
-                "También funciona lanzando el programa entero como root."
+                _("memory.elev.nopkexec.hint")
             )
             self.elevation_button.hide()
         else:
             leidos = len(snapshot.spd)
             if leidos:
-                cabecera = ("El módulo de arriba sale" if leidos == 1
-                            else f"Los {leidos} módulos de arriba salen")
                 self.elevation_text.setText(
-                    f"{cabecera} de su propio chip SPD, que se lee sin permisos. "
-                    "La capacidad de cada uno, en qué zócalo va, cuántos quedan "
-                    "libres y a qué velocidad los ha puesto la BIOS están en la "
-                    "tabla SMBIOS, que el kernel reserva al administrador."
-                )
+                    _("memory.elev.spd.one" if leidos == 1
+                      else "memory.elev.spd.many").format(n=leidos))
             else:
                 self.elevation_text.setText(
-                    "El detalle de los módulos está en la tabla SMBIOS, que el "
-                    "kernel reserva al administrador porque junto a esos campos "
-                    "van los números de serie del equipo."
+                    _("memory.elev.smbios")
                 )
             self.elevation_hint.setText(
                 state.message or
-                "El ayudante que se lanza solo sabe leer esa tabla y unos "
-                "registros del procesador: no ejecuta órdenes ni escribe nada."
+                _("memory.elev.helper")
             )
             self.elevation_button.show()
 
@@ -320,7 +312,7 @@ class MemoryPage(QScrollArea):
             return list(snapshot.modules)
         return [
             MemoryModule(
-                locator=f"Zócalo {info.slot}",
+                locator=_("memory.slot.n").format(n=info.slot),
                 populated=True,
                 type=info.dram_type,
                 form_factor=info.module_type,
@@ -346,7 +338,7 @@ class MemoryPage(QScrollArea):
         self._slot_grids.clear()
 
         for module in modules:
-            card = Card(module.locator or "Zócalo")
+            card = Card(module.locator or _("memory.slot"))
             if not module.populated:
                 empty = QLabel(_("memory.slot.empty"))
                 empty.setObjectName("Muted")
@@ -370,36 +362,32 @@ class MemoryPage(QScrollArea):
 
         grid.set(_("memory.field.vendor"), module.manufacturer or (spd.manufacturer if spd else None) or d)
         grid.set(_("memory.field.chips"), (spd.dram_manufacturer if spd else None) or d,
-                 tooltip="Quién fabricó el silicio, que a menudo no es quien "
-                         "vende el módulo. Lo dice el SPD, no la tabla SMBIOS.")
+                 tooltip=_("memory.tip.chips"))
         grid.set(_("memory.field.part"), module.part_number or (spd.part_number if spd else None) or d)
         grid.set(_("memory.field.type"), module.type or (spd.dram_type if spd else None) or d)
         # La capacidad sale de SMBIOS, que pide permisos, pero el SPD de DDR5
         # la trae en la densidad de sus chips y ese se lee sin pedir nada.
         capacidad = module.size_bytes or (spd.capacity_bytes if spd else None)
         grid.set(_("memory.field.size"), render.size(capacidad) if capacidad else d,
-                 tooltip="Calculada desde el propio chip SPD del módulo."
+                 tooltip=_("memory.tip.size")
                  if not module.size_bytes and capacidad else "")
 
         rated = module.rated_mts
         grid.set(_("memory.field.rated"), f"{rated} MT/s" if rated else d,
-                 tooltip="Lo que el módulo declara saber dar, según su propio "
-                         "chip SPD." if spd else "")
+                 tooltip=_("memory.tip.rated") if spd else "")
 
         actual = module.configured_mts or module.speed_mts
         funcionando = f"{actual} MT/s" if actual else d
         if module.underclocked:
             funcionando += "   ⚠"
         grid.set(_("memory.field.running"), funcionando,
-                 tooltip=(f"Va a {actual} MT/s de los {rated} que admite. Puede "
-                          "ser el perfil XMP sin activar, o el límite oficial "
-                          "de memoria del procesador, que en muchos modelos "
-                          "está por debajo de lo que aguantan los módulos.")
+                 tooltip=_("memory.tip.running").format(
+                     actual=actual, rated=rated)
                  if module.underclocked else "")
 
         rangos = str(module.rank) if module.rank else d
         if module.has_ecc:
-            rangos += "   con ECC"
+            rangos += _("memory.ranks.ecc")
         grid.set(_("memory.field.ranks"), rangos)
 
         voltaje = (f"{module.voltage_configured_mv / 1000:.2f} V"
@@ -411,11 +399,7 @@ class MemoryPage(QScrollArea):
 
         perfiles = spd.overclock_profiles if spd else ()
         grid.set(_("memory.field.profiles"), ", ".join(perfiles) if perfiles else d,
-                 tooltip="Temporizaciones que el fabricante garantiza por "
-                         "encima de las de JEDEC. Se reconoce que están, pero "
-                         "sus formatos no son públicos y sus cifras no se "
-                         "interpretan: darlas a ojo sería inventarlas."
-                 if perfiles else "")
+                 tooltip=_("memory.tip.profiles") if perfiles else "")
         grid.set(_("memory.field.made"), (spd.manufactured if spd else None) or d)
         grid.set(_("memory.field.bank"), module.bank or d)
 

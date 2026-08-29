@@ -17,6 +17,7 @@ from typing import Optional
 from .. import spd as spd_module
 from ..model import DriverHint, MemoryModule, Need
 from .base import Draft, Provider
+from ..i18n import _
 
 
 class SpdModules(Provider):
@@ -50,9 +51,10 @@ class SpdModules(Provider):
             tipos = {r.dram_type for r in readings if not r.decoded and r.dram_type}
             draft.note(
                 "spd", Need.PLATFORM,
-                f"El SPD de {' y '.join(sorted(tipos)) or 'estos módulos'} "
-                "todavía no se sabe interpretar.",
-                "Están implementados los formatos de DDR4 y DDR5.",
+                _("prov.spd.unsupported").format(
+                    tipos=" y ".join(sorted(tipos))
+                          or _("prov.spd.thesemodules")),
+                _("prov.spd.unsupported.hint"),
             )
 
     @staticmethod

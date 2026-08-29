@@ -615,7 +615,24 @@ Se eligió JSON sobre gettext por quién escribe los archivos: un `.po` hay que
 compilarlo a binario antes de que sirva, y esto se corrige desde el navegador
 de GitHub y se lee en el diff línea a línea.
 
-La interfaz está entera en los dos idiomas: 618 claves, ninguna sin traducir.
+**Los proveedores también traducen, pero solo lo que se inventan**: el aviso
+que explica por qué falta un dato, el nombre que le ponen a un sensor —«Punto
+caliente» donde amdgpu dice `junction`—, la función de un motor gráfico. Lo
+que leen del equipo pasa entero y sin tocar. La línea se comprueba sin
+ejecutar nada: a `_()` solo puede llegar un literal escrito en el archivo o
+una variable que se rastree hasta una tabla declarada ahí mismo. Un
+`_(entry["label"])` traduciría un dato, y eso rompe la detección de una
+gráfica en cuanto alguien se pone la interfaz en inglés.
+
+**Nada de `_()` en una constante de módulo.** Se resuelve al importar, cuando
+todavía no se sabe qué idioma quiere nadie, así que se queda con el castellano
+para toda la sesión; y como quien monta la ficha vuelve a pasar cada entrada
+por `_()`, la segunda llamada recibe «Uso» —que no es una clave— y devuelve
+«Uso». Así salía la columna «LEYENDO» en medio de una tabla de discos en
+inglés: la tupla llevaba once claves y una traducción ya hecha, y era la única
+que no cambiaba de idioma. Hay un test que lo vigila.
+
+La interfaz está entera en los dos idiomas: 818 claves, ninguna sin traducir.
 Hay un test que recorre el árbol de sintaxis de cada página buscando
 constructores de widget con una cadena española a pelo, porque eso es lo que
 no se ve hasta abrir la pantalla en el otro idioma y ningún test normal lo

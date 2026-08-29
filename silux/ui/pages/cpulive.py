@@ -118,7 +118,7 @@ class CpuLiveSection(QWidget):
             self.tile_usage.update_value(f"{cpu.usage_percent:.0f}", cpu.usage_percent)
             self.tile_usage.chart.set_range(0.0, 100.0)
             if cpu.load_average:
-                self.tile_usage.set_detail(f"carga {cpu.load_average[0]:.2f}")
+                self.tile_usage.set_detail(_("cpu.tile.load").format(v=f"{cpu.load_average[0]:.2f}"))
 
         temperature = primary.temp_c if primary.temp_c is not None else cpu.package_temp_c
         unit = "°F" if self._prefs.fahrenheit else "°C"
@@ -128,7 +128,8 @@ class CpuLiveSection(QWidget):
             self.tile_temp.update_value(f"{shown:.0f}", shown)
             if cpu.package_temp_c is not None:
                 self.tile_temp.set_detail(
-                    f"paquete {self._temp(cpu.package_temp_c):.0f} {unit}")
+                    _("cpu.tile.package").format(
+                        v=f"{self._temp(cpu.package_temp_c):.0f} {unit}"))
 
         power = cpu.power
         if power.package_w is not None:
@@ -167,13 +168,14 @@ class CpuLiveSection(QWidget):
             hilos = render.starred_cpus(snapshot.cpu.logical)
             # Con SMT las estrellas son el doble que los núcleos, y sin decirlo
             # quien mira cuenta cuatro y lee dos.
-            aclaracion = f" — {hilos}, que son sus hilos" if hilos else ""
+            aclaracion = (_("cpu.best.threads").format(hilos=hilos)
+                          if hilos else "")
             self.calidad.setText(
                 f'<span style="color:{self._p.accent}">&#9733;</span> '
-                f"{render.best_cores(snapshot.cpu.logical)}{aclaracion}: los "
-                f"que mejor salieron de la oblea según el firmware, y a los "
-                f"que el planificador manda el trabajo de un hilo suelto. "
-                f"{reparto[0].upper()}{reparto[1:]}."
+                + _("cpu.best.legend").format(
+                    nucleos=render.best_cores(snapshot.cpu.logical),
+                    hilos=aclaracion,
+                    reparto=f"{reparto[0].upper()}{reparto[1:]}")
             )
             self.calidad.show()
         else:

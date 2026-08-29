@@ -23,11 +23,16 @@ from .. import theme
 from ..theme import Palette
 from ..widgets import Card, ChipRow, InfoGrid, Notice, ResponsiveRow, clear_layout
 
-BOARD_FIELDS = (_("memory.field.vendor"), _("storage.col.model"), _("board.field.revision"), "Chasis", "board.field.chassis")
-FIRMWARE_FIELDS = (_("memory.field.type"), _("memory.field.vendor"), "sys.field.version", "Fecha", _("board.field.smbios"),
-                   _("board.field.secureboot"), "TPM")
-CHIPSET_FIELDS = ("Chipset", "board.field.pciid", "board.field.memctl")
-SYSTEM_FIELDS = (_("memory.field.vendor"), _("storage.col.model"), "sys.field.version", _("cpu.field.family"), "SKU")
+BOARD_FIELDS = ("memory.field.vendor", "storage.col.model",
+                "board.field.revision", "board.field.chassistype",
+                "board.field.chassis")
+FIRMWARE_FIELDS = ("memory.field.type", "memory.field.vendor",
+                   "sys.field.version", "board.field.date",
+                   "board.field.smbios", "board.field.secureboot", "TPM")
+CHIPSET_FIELDS = ("board.field.chipset", "board.field.pciid",
+                  "board.field.memctl")
+SYSTEM_FIELDS = ("memory.field.vendor", "storage.col.model",
+                 "sys.field.version", "cpu.field.family", "SKU")
 
 NEED_TITLES = {
     Need.ROOT: "note.needsroot",
@@ -65,8 +70,10 @@ class BoardPage(QScrollArea):
         layout.addWidget(top)
 
         bottom = ResponsiveRow(min_item_width=270)
-        self.chipset = self._grid_card(bottom, "Chipset", CHIPSET_FIELDS)
-        self.system = self._grid_card(bottom, "Equipo", SYSTEM_FIELDS)
+        self.chipset = self._grid_card(bottom, _("board.field.chipset"),
+                                       CHIPSET_FIELDS)
+        self.system = self._grid_card(bottom, _("board.card.system"),
+                                      SYSTEM_FIELDS)
         layout.addWidget(bottom)
 
         self._notices_host = QVBoxLayout()
@@ -117,26 +124,24 @@ class BoardPage(QScrollArea):
         b(_("memory.field.vendor"), board.vendor or d)
         b(_("storage.col.model"), board.name or d)
         b(_("board.field.revision"), board.version or d)
-        b("Chasis", board.chassis or d)
+        b(_("board.field.chassistype"),
+          _(board.chassis) if board.chassis else d)
         b(_("board.field.chassis"), board.chassis_vendor or d)
 
         f = self.firmware.set
         f(_("memory.field.type"), board.firmware or d)
         f(_("memory.field.vendor"), board.bios_vendor or d)
         f(_("sys.field.version"), board.bios_version or d)
-        f("Fecha", board.bios_date or d)
+        f(_("board.field.date"), board.bios_date or d)
         f(_("board.field.smbios"), board.bios_release or d,
-          tooltip="El campo «System BIOS Release» de la tabla SMBIOS. No es la "
-                  "versión que publica el fabricante, sino la que declara el "
-                  "firmware, y a menudo no coinciden.")
+          tooltip=_("board.tip.bios"))
         f(_("board.field.secureboot"), self._secure_boot(board))
-        f("TPM", board.tpm_version or "no detectado")
+        f("TPM", board.tpm_version or _("board.notdetected"))
 
         c = self.chipset.set
-        c("Chipset", board.chipset or d)
+        c(_("board.field.chipset"), board.chipset or d)
         c(_("board.field.pciid"), board.chipset_full or d,
-          tooltip="El nombre completo con el que pci.ids identifica al puente "
-                  "LPC/eSPI del bus 0, que es lo que define al chipset.")
+          tooltip=_("board.tip.chipset"))
         c(_("board.field.memctl"), board.host_bridge or d,
           tooltip=_("board.tip.memctl"))
 
@@ -151,14 +156,14 @@ class BoardPage(QScrollArea):
 
     @staticmethod
     def _subtitle(board: Board) -> str:
-        parts = [board.chipset, board.firmware, board.chassis]
-        return " · ".join(p for p in parts if p) or "Sin información de firmware"
+        parts = [board.chipset, board.firmware,
+                 _(board.chassis) if board.chassis else None]
+        return " · ".join(p for p in parts if p) or _("board.nofirmware")
 
     @staticmethod
     def _secure_boot(board: Board) -> str:
-        return {True: "activado", False: "desactivado", None: "no se puede leer"}[
-            board.secure_boot
-        ]
+        return {True: _("board.on"), False: _("board.off"),
+                None: _("board.unreadable")}[board.secure_boot]
 
     def _apply_badges(self, board: Board) -> None:
         wanted = tuple(x for x in (
@@ -182,5 +187,6 @@ class BoardPage(QScrollArea):
         clear_layout(self._notices_host)
         for note in notes:
             self._notices_host.addWidget(
-                Notice(NEED_TITLES.get(note.need, note.need.value), note.message, note.hint)
+                Notice(_(NEED_TITLES.get(note.need, note.need.value)),
+                       note.message, note.hint)
             )
