@@ -24,7 +24,7 @@ python3 tools/build_appimage.py --container   # el AppImage que se reparte
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **1024** y tardan unos cincuenta segundos. Si sale bastante
+Los tests son **1077** y tardan poco más de un minuto. Si sale bastante
 menos, falta algo por recoger.
 
 `--container` no es opcional para repartir: sin él se construye contra el
@@ -53,6 +53,18 @@ y los Phenom II: justo la clase de equipo cuyo dueño quiere saber qué lleva
 dentro. Lo descubrió un Athlon II X2 250u ajeno, no una prueba de aquí. De
 6.9 a 6.11 no hay nada en QtCore, QtGui ni QtWidgets que este programa use,
 así que el techo no cuesta nada; lo que costaría es quitarlo sin mirar.
+
+Cada copia lleva dentro de qué commit salió: debajo de la versión, en
+`--version` y en la cabecera del informe. Lo escribe el empaquetador en
+`silux/_build.txt` —dentro del AppImage no hay repositorio al que preguntar— y
+desde el código fuente se lee de git en vivo. Un `+` al final avisa de que esa
+copia tenía cambios sin guardar. Nace de que las capturas que manda la gente no
+decían de qué versión eran, y un fallo ya corregido se investigaba dos veces.
+
+**Un clic en un valor lo copia**, en las fichas y en las tablas. Se copia el
+texto entero y no el que se ve: la fila que no cabe y sale con puntos
+suspensivos es justo la que hace falta copiar. Un guion no se copia, porque es
+la marca de un dato que falta.
 
 Capturas sin pantalla: `python3 -m silux.ui.app --screenshot salida.png
 --page Sensores --dark --compact --size 900x680`. Acepta además `--accent` y
@@ -219,6 +231,23 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
 - **Redondear al más cercano las latencias del SPD**: 16250 ps entre un ciclo
   de 357 son 45,5, y eso es un CL46: la memoria no puede responder antes de
   tiempo. Al más cercano sale un CL45 que no existe.
+- **Copiar un código JEDEC tal y como se publica**: el byte que trae el SPD
+  lleva paridad impar en el bit más alto, así que un módulo Crucial se presenta
+  como 0x9B siendo 0x1B. Como la búsqueda quita ese bit, la tabla tiene que
+  estar en la misma moneda; media lista estaba escrita con el byte completo
+  —Samsung 0xCE, Kingston 0x98, SK Hynix 0xAD— y esas siete entradas no
+  casaban nunca. Justo las tres marcas que más memoria venden salían sin
+  fabricante. Hay un test que no deja entrar un código con el bit puesto.
+- **Dar por perdida una gráfica porque su driver no diga nada**: con
+  `simple-framebuffer` —el respaldo que pone el kernel al arrancar con
+  nomodeset o sin driver instalado— la ficha salía entera a guiones, sin
+  siquiera el nombre de la tarjeta. Ese driver cuelga de un dispositivo de
+  plataforma y no de PCI, pero el bus sí la enumera aunque nadie sepa
+  hablarle: de ahí salen la marca, el modelo y el enlace.
+- **Dar una fila a cada conector vacío**: un MacBook Air de once pulgadas
+  enseñaba cuatro filas seguidas con los seis campos a guiones —DP-1, DP-2,
+  HDMI-A-1, HDMI-A-2— y solo la quinta, su pantalla, con datos. Son salidas
+  que el chip expone y esa carcasa no trae. Van juntas en una línea.
 - **Fiarse de `pci.ids` para el modelo exacto**: `7550` es «Radeon RX
   9070/9070 XT/9070 GRE», tres tarjetas. Quien desambigua es la línea de
   subsistema del propio fichero, y si no la hay, Vulkan.
@@ -686,7 +715,7 @@ por `_()`, la segunda llamada recibe «Uso» —que no es una clave— y devuelv
 inglés: la tupla llevaba once claves y una traducción ya hecha, y era la única
 que no cambiaba de idioma. Hay un test que lo vigila.
 
-La interfaz está entera en los dos idiomas: 818 claves, ninguna sin traducir.
+La interfaz está entera en los dos idiomas: 834 claves, ninguna sin traducir.
 Hay un test que recorre el árbol de sintaxis de cada página buscando
 constructores de widget con una cadena española a pelo, porque eso es lo que
 no se ve hasta abrir la pantalla en el otro idioma y ningún test normal lo
