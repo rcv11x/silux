@@ -1,32 +1,30 @@
 {
   "schema": 1,
-  "version_formula": 1,
+  "version_formula": 2,
   "about": "Lo que da cada carga en la pieza que sirve de patrón. Su único papel es poner las cinco en la misma escala: sumadas en crudo, la compresión pesada valía el 82 % de la puntuación y las otras cuatro eran decoración. Cambiar estos números mueve todas las puntuaciones a la vez, así que van atados a «version_formula».",
   "patron": {
     "cpu": "AMD Ryzen 7 5800X3D",
     "hilos": 16,
     "segundos": 15.0,
     "gobernador": "performance",
-    "carga_de_fondo": 11.2,
-    "temperatura_pico_c": 82.9,
-    "provisional": true,
-    "nota": "Tomada con un 11 % de carga de fondo, que el propio programa marca como no comparable con una máquina en reposo. Sirve para equilibrar las cinco cargas entre sí, que es para lo que está, pero conviene rehacerla en reposo antes de publicar puntuaciones: «python3 tools/medir_referencia.py»."
+    "carga_de_fondo": 0.4,
+    "temperatura_pico_c": 83.0,
+    "provisional": false
   },
   "un_hilo": {
-    "compresion": 198.55,
-    "compresion_dura": 1688.83,
-    "derivacion": 209.4,
-    "hash": 238.38,
-    "memoria": 94.43
+    "compresion": 203.65,
+    "compresion_dura": 1783.7,
+    "derivacion": 232.56,
+    "hash": 251.57,
+    "memoria": 104.78
   },
   "multihilo": {
-    "compresion": 1608.64,
-    "compresion_dura": 27918.09,
-    "derivacion": 1803.06,
-    "hash": 2085.86,
-    "memoria": 479.6
+    "compresion": 1711.47,
+    "compresion_dura": 27383.54,
+    "derivacion": 1949.51,
+    "hash": 2202.19,
+    "memoria": 813.22
   },
-  "piezas_about": "Las puntuaciones registradas de cada pieza, para poder decirle a alguien si la suya va como se espera. Hacen falta al menos tres para hablar de un rango; con menos no se enseña nada, porque situar a alguien respecto de dos medidas sueltas es peor que no decir nada. Se añaden con «tools/anadir_puntuacion.py» a partir de los informes que manda la gente.",
   "piezas": {
     "AMD Ryzen 7 5800X3D": {
       "hilos": 16,
