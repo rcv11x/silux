@@ -158,3 +158,94 @@ class TestTarjetaDeGraficaEnLaPortada(unittest.TestCase):
         detalle = self.pagina.gpu.detalle.text()
         self.assertFalse(detalle.startswith(render.DASH), detalle)
         self.assertNotIn(f"{render.DASH} ·", detalle)
+
+
+class TestCopiarUnValor(unittest.TestCase):
+    """Un clic en el valor lo deja en el portapapeles.
+
+    Los que uno copia todo el rato son los que no se pueden teclear de
+    memoria: la referencia de un módulo de memoria, el identificador único de
+    una gráfica, la firma CPUID. Seleccionarlos a mano dentro de una tarjeta
+    es incómodo justo en esos, que son los largos.
+    """
+
+    def setUp(self):
+        from PySide6.QtWidgets import QApplication
+
+        theme.set_density("normal", "normal")
+        _app()
+        QApplication.clipboard().clear()
+
+    @staticmethod
+    def _clic(widget):
+        from PySide6.QtCore import QPoint, Qt
+        from PySide6.QtGui import QMouseEvent
+
+        evento = QMouseEvent(QMouseEvent.Type.MouseButtonRelease,
+                             QPoint(2, 2), Qt.MouseButton.LeftButton,
+                             Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier)
+        widget.mouseReleaseEvent(evento)
+
+    def test_el_valor_de_una_ficha_se_copia(self):
+        from PySide6.QtWidgets import QApplication
+
+        from silux.ui.widgets import InfoGrid
+
+        rejilla = InfoGrid()
+        etiqueta = rejilla.add("Identificador único", "d718956bebe9d407")
+        self._clic(etiqueta)
+        self.assertEqual(QApplication.clipboard().text(), "d718956bebe9d407")
+
+    def test_se_copia_entero_aunque_en_pantalla_salga_recortado(self):
+        """Es justo el caso en el que copiar sirve para algo."""
+        from PySide6.QtWidgets import QApplication
+
+        from silux.ui.widgets import InfoGrid
+
+        largo = "Intel(R) Xeon(R) CPU E5-2650 v2 @ 2.60GHz"
+        rejilla = InfoGrid()
+        etiqueta = rejilla.add("Especificación", largo)
+        # `resize` es lo que dispara el recorte: el ancho disponible se mira
+        # en `resizeEvent`, no al asignar el texto.
+        # Sin pantalla no llega el `resizeEvent` que recorta, así que se
+        # reescribe el texto después de estrecharlo para forzar el cálculo.
+        etiqueta.resize(40, etiqueta.height())
+        etiqueta.set_full_text(largo + " ")
+        etiqueta.set_full_text(largo)
+        self.assertNotEqual(etiqueta.text(), largo,
+                            "no llegó a recortarse, la prueba no vale")
+        self._clic(etiqueta)
+        self.assertEqual(QApplication.clipboard().text(), largo)
+
+    def test_un_dato_que_falta_no_se_copia(self):
+        """Un guion en el portapapeles no le sirve a nadie."""
+        from PySide6.QtWidgets import QApplication
+
+        from silux.ui.widgets import InfoGrid
+
+        rejilla = InfoGrid()
+        self._clic(rejilla.add("Microcódigo", "—"))
+        self.assertEqual(QApplication.clipboard().text(), "")
+
+    def test_el_nombre_del_campo_no_se_copia_solo(self):
+        """Se copia el dato, no la palabra con la que se le llama."""
+        from PySide6.QtWidgets import QApplication
+
+        from silux.ui.widgets import InfoGrid
+
+        rejilla = InfoGrid()
+        rejilla.add("Fabricante", "AMD")
+        self._clic(rejilla._names["Fabricante"])
+        self.assertEqual(QApplication.clipboard().text(), "")
+
+    def test_las_celdas_de_una_tabla_tambien_se_copian(self):
+        """Ahí están los modelos de disco y las direcciones de red."""
+        from PySide6.QtWidgets import QApplication
+
+        from silux.ui.widgets import Table
+
+        tabla = Table(("Unidad", "Modelo"))
+        tabla.set_rows([("nvme0n1", "WD_BLACK SN850X HS 1000GB")])
+        self._clic(tabla._cells[0][1])
+        self.assertEqual(QApplication.clipboard().text(),
+                         "WD_BLACK SN850X HS 1000GB")

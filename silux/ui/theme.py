@@ -374,6 +374,17 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
     QLabel#Muted      {{ color: {p.muted}; }}
     QLabel#Accent     {{ color: {p.accent}; }}
 
+    /* El «copiado» que aparece un momento junto al valor. Va con el color de
+       acento porque confirma una acción del usuario, no un estado del
+       equipo, y esos dos no deben confundirse. */
+    QLabel#Toast {{
+        color: {p.accent};
+        background: {p.surface};
+        border: 1px solid {p.accent};
+        border-radius: 5px;
+        padding: 3px 9px;
+    }}
+
     QLabel#Headline {{ color: {p.ink}; font-size: {m.headline_px}px; font-weight: 600; }}
     QLabel#Subhead  {{ color: {p.ink_dim}; font-size: {m.small_pt + 3}px; }}
 

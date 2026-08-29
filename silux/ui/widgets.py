@@ -17,7 +17,8 @@ from __future__ import annotations
 from collections import deque
 from typing import Iterable, Optional, Sequence
 
-from PySide6.QtCore import QPointF, QRectF, QSize, Qt, Signal
+from PySide6.QtCore import (QPoint, QPointF, QRectF, QSize, Qt, QTimer,
+                            Signal)
 from PySide6.QtGui import (
     QBrush, QColor, QFont, QFontMetrics, QIcon, QLinearGradient, QPainter,
     QPainterPath, QPen,
@@ -50,6 +51,54 @@ from .theme import Palette, mono_font, ui_font
 # --------------------------------------------------------------------------
 
 
+def avisar_copiado(cerca_de: QWidget, donde: Optional[QPoint] = None,
+                   texto: str = "") -> None:
+    """Un «copiado» pequeño donde acaba de hacer clic el usuario.
+
+    Va flotando sobre la ventana y no en la barra de estado: quien acaba de
+    hacer clic está mirando el valor, no el borde inferior de la pantalla, y
+    un aviso que aparece donde no se está mirando no confirma nada.
+
+    La posición es la del ratón y no la del widget. Casi todas estas fichas
+    viven dentro de un área con scroll, y las coordenadas del widget no dicen
+    dónde se le está viendo: probándolo con una tarjeta fuera de la vista, el
+    aviso salió a media pantalla de distancia, encima de otra cosa.
+
+    Se destruye solo. No se reutiliza uno guardado porque dos clics seguidos
+    en dos filas distintas tienen que poder solaparse sin que el primero le
+    robe el sitio al segundo.
+    """
+    ventana = cerca_de.window()
+    if ventana is None:
+        return
+    globo = QLabel(texto or _("app.copied"), ventana)
+    globo.setObjectName("Toast")
+    globo.setFont(ui_font(theme.METRICS.small_pt))
+    globo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    globo.adjustSize()
+
+    if donde is None:
+        donde = cerca_de.mapTo(ventana, QPoint(0, cerca_de.height()))
+    # Un poco arriba y a la derecha del cursor, que es donde no lo tapa la
+    # propia mano. Y siempre dentro de la ventana: pinchando el último valor
+    # de una esquina, el aviso se salía por el borde.
+    x = min(max(0, donde.x() + 12),
+            max(0, ventana.width() - globo.width() - 4))
+    y = min(max(0, donde.y() - globo.height() - 6),
+            max(0, ventana.height() - globo.height() - 4))
+    globo.move(x, y)
+    globo.show()
+    globo.raise_()
+
+    QTimer.singleShot(MILISEGUNDOS_DEL_AVISO, globo.deleteLater)
+
+
+# Cuánto dura el «copiado». Lo justo para verlo sin que estorbe: por debajo de
+# un segundo no da tiempo a leerlo si uno mueve la vista, y por encima de dos
+# se queda ahí molestando cuando ya se ha entendido.
+MILISEGUNDOS_DEL_AVISO = 1400
+
+
 class ElidingLabel(QLabel):
     """Recorta con puntos suspensivos y deja el texto completo en el tooltip.
 
@@ -61,8 +110,31 @@ class ElidingLabel(QLabel):
     def __init__(self, text: str = "", parent: Optional[QWidget] = None):
         super().__init__(parent)
         self._full = ""
+        self._copiable = False
         self.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         self.set_full_text(text)
+
+    def hacer_copiable(self) -> None:
+        """Un clic deja el texto completo en el portapapeles.
+
+        Se copia lo entero y no lo que se ve: la gracia de esto es justo la
+        fila que no cabe y sale con puntos suspensivos, que es la que uno no
+        puede transcribir a mano.
+        """
+        self._copiable = True
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def mouseReleaseEvent(self, event) -> None:  # noqa: N802
+        # Un guion no es un valor: es la marca de uno que falta, y copiarlo
+        # deja en el portapapeles algo que no significa nada.
+        if (self._copiable and event.button() == Qt.MouseButton.LeftButton
+                and self._full and self._full != "—"):
+            from PySide6.QtWidgets import QApplication
+
+            QApplication.clipboard().setText(self._full)
+            avisar_copiado(self, self.mapTo(
+                self.window(), event.position().toPoint()))
+        super().mouseReleaseEvent(event)
 
     def set_full_text(self, text: str) -> None:
         if text == self._full:
@@ -249,6 +321,7 @@ class InfoGrid(QWidget):
         value_label = ElidingLabel(value)
         value_label.setObjectName("FieldValue")
         value_label.setFont(mono_font())
+        value_label.hacer_copiable()
 
         # Sin altura mínima, el layout comprime la tarjeta con más filas para
         # igualar la de al lado y las filas acaban solapándose.
@@ -1293,6 +1366,9 @@ class Table(QScrollArea):
                 label.setObjectName("FieldValue" if column == 0 else "FieldName")
                 label.setFont(mono_font() if column else ui_font(theme.METRICS.small_pt))
                 label.setMinimumHeight(label.fontMetrics().height())
+                # Aquí viven los modelos de disco, las direcciones y las
+                # referencias de los módulos: lo que uno pega en un buscador.
+                label.hacer_copiable()
                 if column < len(self._numeric) and self._numeric[column]:
                     label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 if tip:
