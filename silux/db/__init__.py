@@ -180,10 +180,13 @@ def identify_x86(
 
     best: Optional[dict] = None
     best_score = -1
+    empatadas: list[dict] = []
     for entry in table:
         value = _score(entry, probe, clean_brand)
         if value > best_score:
-            best, best_score = entry, value
+            best, best_score, empatadas = entry, value, [entry]
+        elif value == best_score:
+            empatadas.append(entry)
 
     if best is None:
         return Identification(codename=None, technology=None, score=0, matched=False)
@@ -191,8 +194,9 @@ def identify_x86(
     # libcpuid usa «Unknown …» como comodín para lo que no reconoce. Enseñarlo
     # como nombre en clave sería contestar «no lo sé» con cara de saberlo: mejor
     # dar el procesador por no identificado y que la sección lo explique.
-    nombre = best["name"]
-    reconocido = best_score > 0 and not nombre.lower().startswith("unknown")
+    nombre = _sin_desempatar_por_el_orden(best["name"], empatadas)
+    reconocido = (nombre is not None and best_score > 0
+                  and not nombre.lower().startswith("unknown"))
     if not reconocido:
         # La tabla por modelo no lo conoce. Antes de darse por vencido, la
         # tabla por rangos, que cubre las familias enteras.
@@ -209,6 +213,41 @@ def identify_x86(
         score=best_score,
         matched=reconocido,
     )
+
+
+# El nombre en clave de verdad, que varias entradas comparten: «Ryzen 5
+# (Cezanne)» y «Ryzen 9 PRO (Cezanne)» describen el mismo silicio y solo se
+# diferencian en a qué gama se vendió cada pieza.
+_ENTRE_PARENTESIS = re.compile(r"\(([^)]+)\)\s*$")
+
+
+def _sin_desempatar_por_el_orden(nombre: str,
+                                 empatadas: list[dict]) -> Optional[str]:
+    """Lo que se puede afirmar cuando varias entradas puntúan igual.
+
+    Las ocho entradas de Cezanne llevan el mismo silicio —familia, modelo y
+    extensiones idénticas— y solo se distinguen por el patrón de la cadena de
+    marca, que en todas termina en H o U: son las de portátil. Un 5600G, que
+    es de sobremesa y acaba en G, no casa con ninguna, así que las ocho quedan
+    empatadas con la puntuación del silicio y ganaba la primera del archivo.
+    Salía «Ryzen 9 PRO (Cezanne)» en un Ryzen 5 de sobremesa, y el orden de la
+    tabla no es un criterio: es el orden en que las escribió otro.
+
+    Lo único cierto cuando empatan es lo que todas dicen igual, que es el
+    nombre en clave entre paréntesis. Se devuelve ese a secas; y si ni en eso
+    coinciden —el mismo silicio se vendió como Cezanne y como Barceló—, se
+    devuelve `None` para que decida la tabla por rangos, que va por familia y
+    no por gama comercial.
+    """
+    if len(empatadas) < 2:
+        return nombre
+    nombres = {e["name"] for e in empatadas}
+    if len(nombres) == 1:
+        return nombre
+    claves = {m.group(1) for n in nombres if (m := _ENTRE_PARENTESIS.search(n))}
+    # Si no comparten uno solo, no hay nada que se pueda afirmar de todas a la
+    # vez, y quedarse con una sería volver a elegir por el orden del archivo.
+    return claves.pop() if len(claves) == 1 else None
 
 
 def identify_arm(implementer: int, part_num: int) -> Identification:

@@ -195,3 +195,56 @@ class TestTablaPorRangos(unittest.TestCase):
                 clave = (regla["vendor"], regla["family"], modelo)
                 self.assertNotIn(clave, vistos, f"solapan en {clave}")
                 vistos.add(clave)
+
+
+class TestEmpateEnLaTablaDeIdentificacion(unittest.TestCase):
+    """Cuando varias entradas puntúan igual, el orden del archivo no decide.
+
+    Salió de la captura de un usuario: un Ryzen 5 5600G identificado como
+    «Ryzen 9 PRO (Cezanne)». Las doce entradas de ese silicio —familia,
+    modelo y extensiones idénticas— solo se distinguen por el patrón de la
+    cadena de marca, y todos los de libcpuid terminan en H o en U, que son
+    los de portátil. Un 5600G es de sobremesa y acaba en G, así que no casa
+    con ninguno, las doce quedan empatadas con la puntuación del silicio y
+    ganaba la primera del archivo. El orden de la tabla no es un criterio:
+    es el orden en que las escribió otro.
+    """
+
+    # Los valores con los que se presenta un Cezanne por CPUID.
+    CEZANNE = dict(vendor_id="AuthenticAMD", family=15, model=0, stepping=0,
+                   ext_family=25, ext_model=80)
+
+    def _codename(self, brand: str, cores: int) -> str:
+        from silux import db
+
+        return db.identify_x86(**self.CEZANNE, cores=cores, brand=brand).codename
+
+    def test_un_5600g_no_se_convierte_en_un_ryzen_9_pro(self):
+        codename = self._codename("AMD Ryzen 5 5600G with Radeon Graphics", 6)
+        self.assertIsNotNone(codename)
+        self.assertNotIn("Ryzen 9", codename)
+        self.assertNotIn("PRO", codename)
+        self.assertIn("Cezanne", codename)
+
+    def test_toda_la_serie_de_sobremesa_da_el_nombre_del_chip(self):
+        """Sin gama comercial: es lo único que se puede afirmar de las doce."""
+        for marca, nucleos in (("AMD Ryzen 3 5300G with Radeon Graphics", 4),
+                               ("AMD Ryzen 5 5600G with Radeon Graphics", 6),
+                               ("AMD Ryzen 7 5700G with Radeon Graphics", 8)):
+            with self.subTest(marca=marca):
+                self.assertEqual(self._codename(marca, nucleos), "Cezanne")
+
+    def test_los_que_si_casan_por_marca_conservan_su_gama(self):
+        """El arreglo no puede quitar precisión donde ya la había."""
+        self.assertEqual(
+            self._codename("AMD Ryzen 9 5900HX with Radeon Graphics", 8),
+            "Ryzen 9 (Cezanne)")
+        self.assertEqual(
+            self._codename("AMD Ryzen 5 5600U with Radeon Graphics", 6),
+            "Ryzen 5 (Cezanne)")
+
+    def test_el_mismo_silicio_con_otro_nombre_sigue_saliendo(self):
+        """Barceló es este chip revendido, y su patrón sí casa."""
+        self.assertEqual(
+            self._codename("AMD Ryzen 7 5825U with Radeon Graphics", 8),
+            "Ryzen 7 (Barceló)")

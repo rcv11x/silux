@@ -3,38 +3,75 @@
   "about": "Microarquitecturas por rango de modelo, para lo que libcpuid todavía no cubre. Su tabla va por modelo concreto y tarda en incorporar los procesadores recién salidos; aquí una sola regla cubre un rango entero, que es como los documenta el propio fabricante. Se consulta solo cuando la tabla por modelo no encuentra nada, así que nunca pisa un dato mejor. Editable a mano: no se regenera.",
   "rules": [
     {
-      "vendor": "AuthenticAMD", "family": 25, "from": 16, "to": 31,
-      "name": "Vermeer", "tech": "TSMC N7FF",
+      "vendor": "AuthenticAMD",
+      "family": 25,
+      "from": 16,
+      "to": 31,
+      "name": "Vermeer",
+      "tech": "TSMC N7FF",
       "note": "Zen 3 de sobremesa"
     },
     {
-      "vendor": "AuthenticAMD", "family": 25, "from": 64, "to": 79,
-      "name": "Rembrandt", "tech": "TSMC N6",
+      "vendor": "AuthenticAMD",
+      "family": 25,
+      "from": 64,
+      "to": 79,
+      "name": "Rembrandt",
+      "tech": "TSMC N6",
       "note": "Zen 3+ móvil"
     },
     {
-      "vendor": "AuthenticAMD", "family": 25, "from": 96, "to": 111,
-      "name": "Raphael", "tech": "TSMC N5",
+      "vendor": "AuthenticAMD",
+      "family": 25,
+      "from": 80,
+      "to": 95,
+      "name": "Cezanne",
+      "tech": "TSMC N7FF",
+      "note": "Zen 3 con gráficos integrados: los 5000G de sobremesa y los 5000H/U de portátil. libcpuid solo trae los H y los U, con un patrón de marca que acaba en H o en U, así que un 5600G no casaba con ninguno y se quedaba con el nombre comercial de la primera entrada del archivo. Barceló (Ryzen 5x25U) es este mismo silicio"
+    },
+    {
+      "vendor": "AuthenticAMD",
+      "family": 25,
+      "from": 96,
+      "to": 111,
+      "name": "Raphael",
+      "tech": "TSMC N5",
       "note": "Zen 4 de sobremesa; Dragon Range es el mismo silicio en portátil"
     },
     {
-      "vendor": "AuthenticAMD", "family": 25, "from": 112, "to": 127,
-      "name": "Phoenix", "tech": "TSMC N4",
+      "vendor": "AuthenticAMD",
+      "family": 25,
+      "from": 112,
+      "to": 127,
+      "name": "Phoenix",
+      "tech": "TSMC N4",
       "note": "Zen 4 móvil con gráficos RDNA3. Cubre Hawk Point (Ryzen 8040), que comparte silicio y que libcpuid no distingue"
     },
     {
-      "vendor": "AuthenticAMD", "family": 26, "from": 0, "to": 15,
-      "name": "Granite Ridge", "tech": "TSMC N4",
+      "vendor": "AuthenticAMD",
+      "family": 26,
+      "from": 0,
+      "to": 15,
+      "name": "Granite Ridge",
+      "tech": "TSMC N4",
       "note": "Zen 5 de sobremesa"
     },
     {
-      "vendor": "AuthenticAMD", "family": 26, "from": 32, "to": 47,
-      "name": "Strix Point", "tech": "TSMC N4",
+      "vendor": "AuthenticAMD",
+      "family": 26,
+      "from": 32,
+      "to": 47,
+      "name": "Strix Point",
+      "tech": "TSMC N4",
       "note": "Zen 5 móvil"
     },
     {
-      "vendor": "AuthenticAMD", "family": 26, "from": 96, "to": 111,
-      "name": "Krackan Point", "tech": "TSMC N4",
+      "vendor": "AuthenticAMD",
+      "family": 26,
+      "from": 96,
+      "to": 111,
+      "name": "Krackan Point",
+      "tech": "TSMC N4",
       "note": "Zen 5 móvil recortado"
     }
   ]
