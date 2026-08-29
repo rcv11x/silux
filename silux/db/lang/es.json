@@ -14,6 +14,7 @@
   "about.tagline": "Perfilador de hardware para Linux. Lo que en Windows hacen CPU-Z, GPU-Z y HWMonitor, en un solo programa nativo: qué equipo tienes y qué está haciendo ahora mismo.",
   "about.thirdparty": "Datos de terceros",
   "app.build.tip": "De qué copia exacta es este programa: la fecha y el commit con el que se construyó. Sirve para saber si una captura es de una versión ya corregida.",
+  "app.copied": "copiado",
   "app.db.count": "{n} procesadores en la base",
   "app.db.none": "sin base de datos",
   "app.frozen": "Congelado · pulsa espacio para seguir",
