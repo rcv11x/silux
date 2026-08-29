@@ -22,6 +22,8 @@ import re
 from dataclasses import dataclass
 from typing import Iterator, Optional
 
+from .i18n import _
+
 I2C_DEVICES = pathlib.Path("/sys/bus/i2c/devices")
 # Un chip SPD por zócalo, en las direcciones 0x50 a 0x57 del bus.
 SPD_ADDRESS = re.compile(r"^\d+-00(5[0-7])$")
@@ -446,7 +448,7 @@ def decode(spd: bytes, address: str = "", slot: int = 0) -> SpdInfo:
 
 
 def available() -> bool:
-    return any(True for _ in _eeproms())
+    return any(True for _chip in _eeproms())
 
 
 # Clase PCI de un controlador SMBus, que es como se le reconoce sin depender
@@ -465,29 +467,18 @@ def diagnostico() -> tuple[str, str]:
     disponible y el problema es que no hay ningún bus donde buscar.
     """
     if not _hay_controlador_smbus():
-        return ("Esta placa no expone ningún controlador SMBus, que es el bus "
-                "por el que se leen los chips SPD de los módulos.",
-                "Pasa en portátiles y en placas donde el firmware lo reserva "
-                "para sí mismo. No hay forma de leerlo desde el sistema.")
+        return (_("spd.nosmbus"), _("spd.nosmbus.hint"))
 
     if not _hay_bus_de_memoria():
         # El caso más común en placas AMD: el firmware declara la región de
         # entrada/salida del SMBus como suya y el kernel no la toca por si
         # los dos escriben a la vez.
-        return ("El controlador SMBus existe pero el kernel no lo ha activado: "
-                "el firmware de la placa se reserva ese bus.",
-                "Se le puede pedir que ceda añadiendo acpi_enforce_resources=lax "
-                "a los parámetros de arranque del kernel. Es lo que hacen "
-                "lm-sensors y decode-dimms para lo mismo.")
+        return (_("spd.nobus"), _("spd.nobus.hint"))
 
     # Cada generación de memoria lleva un chip distinto y hace falta el driver
     # que le corresponde. Faltaba el de DDR3, y a una placa X79 con Xeon E5 v2
     # se le proponían los dos que no le sirven de nada.
-    return ("El bus está, pero los chips SPD no tienen driver que los lea.",
-            "Según la memoria que lleve el equipo:\n"
-            "  sudo modprobe spd5118    (DDR5)\n"
-            "  sudo modprobe ee1004     (DDR4)\n"
-            "  sudo modprobe at24       (DDR3 y anteriores)")
+    return (_("spd.nodriver"), _("spd.nodriver.hint"))
 
 
 def _hay_controlador_smbus() -> bool:

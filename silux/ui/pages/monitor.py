@@ -135,24 +135,20 @@ class MonitorPage(QScrollArea):
         self.search.setPlaceholderText(_("sensors.search.placeholder"))
         self.search.setClearButtonEnabled(True)
         self.search.setToolTip(
-            "Filtra por el nombre del sensor o del aparato.\n"
-            "«memoria», «9070», «ventilador»…"
+            _("sensors.tip.search")
         )
         self.search.setFixedWidth(190)
         self.search.textChanged.connect(self._buscar)
 
         self.record_button = QPushButton(_("sensors.record.button"))
         self.record_button.setToolTip(
-            "Escribe una fila por muestreo con todos los sensores.\n"
-            "Se abre en cualquier hoja de cálculo, y sirve para ver en qué\n"
-            "minuto pasó algo cuando ya no estabas mirando."
+            _("sensors.tip.record")
         )
         self.record_button.clicked.connect(self._alternar_registro)
 
         self.reset_button = QPushButton(_("sensors.reset.button"))
         self.reset_button.setToolTip(
-            "Vuelve a empezar a contar los extremos desde este momento.\n"
-            "Útil justo antes de lanzar una prueba de carga."
+            _("sensors.tip.reset")
         )
         self.reset_button.clicked.connect(self._reset_extremes)
 
@@ -177,7 +173,7 @@ class MonitorPage(QScrollArea):
         carpeta = registro.carpeta()
         carpeta.mkdir(parents=True, exist_ok=True)
         ruta, _filtro = QFileDialog.getSaveFileName(
-            self, "Guardar el registro de sensores",
+            self, _("csv.save.title"),
             str(carpeta / registro.nombre_sugerido()),
             _("csv.filter"))
         if not ruta:
@@ -256,8 +252,8 @@ class MonitorPage(QScrollArea):
     def _aviso_de_registro(self, detalle: str) -> None:
         from PySide6.QtWidgets import QMessageBox
 
-        QMessageBox.warning(self, "Registro de sensores",
-                            f"Se ha parado la grabación: {detalle}")
+        QMessageBox.warning(self, _("csv.title"),
+                            _("csv.stopped").format(detalle=detalle))
 
     def _temp(self, celsius: float) -> float:
         return celsius * 9 / 5 + 32 if self._prefs.fahrenheit else celsius
@@ -343,23 +339,22 @@ class MonitorPage(QScrollArea):
         lines = [f"{sensor.chip} · {sensor.key}"]
         limits = []
         if sensor.low is not None:
-            limits.append(f"mínimo declarado {sensor.low:g} {sensor.unit}")
+            limits.append(_("sensors.limit.low").format(
+                v=f"{sensor.low:g} {sensor.unit}"))
         if sensor.high is not None:
-            limits.append(f"máximo declarado {sensor.high:g} {sensor.unit}")
+            limits.append(_("sensors.limit.high").format(
+                v=f"{sensor.high:g} {sensor.unit}"))
         if sensor.critical is not None:
-            limits.append(f"crítico {sensor.critical:g} {sensor.unit}")
+            limits.append(_("sensors.limit.crit").format(
+                v=f"{sensor.critical:g} {sensor.unit}"))
         if limits:
             lines.append("\n".join(limits))
         if sensor.estimated_limits:
-            lines.append("Este sensor no publica sus límites: los de arriba los "
-                         "estima silux por el chip que es, y van del lado "
-                         "prudente.")
+            lines.append(_("sensors.limit.estimated"))
         if sensor.alarm_level == "crítico":
-            lines.append("⚠  Ha llegado al umbral crítico. Es donde el equipo "
-                         "empieza a protegerse solo.")
+            lines.append(_("sensors.alarm.crit"))
         elif sensor.alarm_level == "alto":
-            lines.append("⚠  Por encima del umbral alto. No es una avería, pero "
-                         "conviene saberlo.")
+            lines.append(_("sensors.alarm.high"))
         return "\n\n".join(lines)
 
     def _apply_hints(self, snapshot: Snapshot) -> None:
@@ -370,7 +365,8 @@ class MonitorPage(QScrollArea):
 
         clear_layout(self._hint_host)
         for hint in snapshot.driver_hints:
-            body = f"Cargando {hint.module} tendrías {hint.provides}."
+            body = _("sensors.driver.body").format(
+                modulo=hint.module, da=hint.provides)
             detail = hint.command + (f"\n{hint.caution}" if hint.caution else "")
             # El botón solo aparece donde hay un módulo concreto que cargar. El
             # aviso del Super I/O manda a `sensors-detect` a propósito: cada
@@ -401,7 +397,8 @@ class MonitorPage(QScrollArea):
             resultado = subprocess.run(self._orden_de_carga(modulo),
                                        capture_output=True, text=True, timeout=120)
         except (OSError, subprocess.TimeoutExpired, RuntimeError) as error:
-            self._aviso_de_registro(f"no se pudo cargar {modulo}: {error}")
+            self._aviso_de_registro(_("sensors.driver.failed").format(
+                modulo=modulo, error=error))
             return
 
         if resultado.returncode == 0:
@@ -416,7 +413,7 @@ class MonitorPage(QScrollArea):
         # fallo del que haya que informar como si algo se hubiera roto.
         if resultado.returncode not in (126, 127):
             detalle = (resultado.stderr or resultado.stdout or "").strip()
-            self._aviso_de_registro(detalle.splitlines()[-1] if detalle else "falló")
+            self._aviso_de_registro(detalle.splitlines()[-1] if detalle else _("perm.failed"))
 
     def _orden_de_carga(self, modulo: str) -> list[str]:
         """Lo mismo que hace el instalador de permisos: desde un AppImage nada
@@ -432,7 +429,7 @@ class MonitorPage(QScrollArea):
 
         interprete = next((r for r in SYSTEM_PYTHON if os.path.exists(r)), None)
         if interprete is None:
-            raise RuntimeError("no hay ningún Python del sistema")
+            raise RuntimeError(_("perm.nopython"))
         destino = _cache_dir()
         destino.mkdir(parents=True, exist_ok=True)
         copia = destino / "cargar_modulo.py"

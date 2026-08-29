@@ -85,7 +85,7 @@ class SystemPage(QScrollArea):
         self.kernel = self._grid_card(row, _("sys.card.kernel"), KERNEL_FIELDS)
         layout.addWidget(row)
 
-        activity_card = Card("Actividad")
+        activity_card = Card(_("sys.card.activity"))
         self.activity = InfoGrid()
         for name in ACTIVITY_FIELDS:
             self.activity.add(_(name))
@@ -153,14 +153,10 @@ class SystemPage(QScrollArea):
         m(_("sys.mem.used"), _("sys.value.pct").format(
             valor=render.size(memory.used_bytes),
             pct=f"{memory.used_percent:.0f}"),
-          tooltip="Total menos disponible. No se resta solo la libre porque en "
-                  "Linux el kernel usa como caché toda la que sobra y la "
-                  "devuelve en cuanto un programa la pide.")
+          tooltip=_("sys.tip.used"))
         m(_("sys.mem.available"), render.size(memory.available_bytes))
         m(_("sys.mem.apps"), render.size(memory.apps_bytes),
-          tooltip="Total menos libre, buffers y caché recuperable. Sale algo "
-                  "menor que «Usada» porque esa incluye la caché que el kernel "
-                  "no puede devolver, como tmpfs y la memoria compartida.")
+          tooltip=_("sys.tip.apps"))
         m(_("sys.mem.cache"), render.size(memory.cache_bytes),
           tooltip=_("sys.tip.cache"))
         m(_("sys.mem.buffers"), render.size(memory.buffers_bytes))

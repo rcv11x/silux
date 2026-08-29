@@ -17,6 +17,7 @@ import pathlib
 import time
 from typing import Optional
 
+from ..i18n import _
 from ..model import Need, Power
 from .base import Draft, Provider, read_int, read_text
 
@@ -83,11 +84,9 @@ class RaplPower(Provider):
             return None
         if _packages():
             return ("cpu.power", Need.ROOT,
-                    "El contador de energía RAPL existe pero no se puede leer.",
-                    "Muchas distribuciones lo restringen a root desde CVE-2020-8694.")
+                    _("prov.rapl.denied"), _("prov.rapl.denied.hint"))
         return ("cpu.power", Need.HARDWARE,
-                "Esta CPU no expone contadores de energía RAPL.",
-                "Es normal en AMD antiguos, en ARM y en máquinas virtuales.")
+                _("prov.rapl.none"), _("prov.rapl.none.hint"))
 
     def collect(self, draft: Draft) -> None:
         packages = _packages()

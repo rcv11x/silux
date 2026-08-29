@@ -14,7 +14,8 @@ import tempfile
 import unittest
 from unittest import mock
 
-from silux import render
+from silux import i18n, render
+from silux.i18n import _
 from silux.model import (Display, Gpu, GpuClocks, GpuMemory, Need, Note,
                          PcieLink)
 from silux.providers import drm
@@ -565,10 +566,12 @@ class TestAvisoDeIntel(unittest.TestCase):
         # trae hwmon y su PMU no tiene evento térmico.
         from silux.providers.drm import INTEL_AVISOS
 
+        # La tabla lleva claves, no frases: se traducen aquí, porque lo
+        # que hay que vigilar es lo que acaba leyendo el usuario.
         for clave, (mensaje, pista) in INTEL_AVISOS.items():
             with self.subTest(clave=clave):
-                self.assertIn("temperatura", mensaje)
-                self.assertTrue(pista)
+                self.assertIn("temperatura", _(mensaje))
+                self.assertTrue(_(pista))
 
     def test_solo_el_de_permisos_promete_uso_y_consumo(self):
         # Los otros dos se enseñan cuando ya hay permisos: prometer ahí lo que
@@ -576,8 +579,8 @@ class TestAvisoDeIntel(unittest.TestCase):
         # sería mentir.
         from silux.providers.drm import INTEL_AVISOS
 
-        self.assertIn("consumo", INTEL_AVISOS["root"][0])
-        self.assertNotIn("consumo", INTEL_AVISOS["driver"][0])
+        self.assertIn("consumo", _(INTEL_AVISOS["root"][0]))
+        self.assertNotIn("consumo", _(INTEL_AVISOS["driver"][0]))
 
     def test_ninguno_manda_al_usuario_a_tocar_el_kernel(self):
         """Bajar perf_event_paranoid afloja el cerrojo de toda la máquina.
@@ -589,12 +592,17 @@ class TestAvisoDeIntel(unittest.TestCase):
         """
         from silux.providers.drm import INTEL_AVISOS
 
-        for clave, textos in INTEL_AVISOS.items():
-            for texto in textos:
-                with self.subTest(clave=clave):
-                    self.assertNotIn("paranoid", texto)
-                    self.assertNotIn("CAP_PERFMON", texto)
-                    self.assertNotIn("sysctl", texto)
+        # En los dos idiomas: el aviso se escribe dos veces y basta con
+        # que se cuele en uno.
+        for idioma in ("es", "en"):
+            i18n.set_language(idioma)
+            for clave, textos in INTEL_AVISOS.items():
+                for texto in textos:
+                    with self.subTest(clave=clave, idioma=idioma):
+                        self.assertNotIn("paranoid", _(texto))
+                        self.assertNotIn("CAP_PERFMON", _(texto))
+                        self.assertNotIn("sysctl", _(texto))
+        i18n.set_language("es")
 
     def test_i915_y_xe_ya_no_van_por_la_tabla_estatica(self):
         # Su aviso depende de si el usuario ha elevado permisos, y eso cambia
@@ -892,9 +900,12 @@ class TestMotoresDeLaTarjeta(unittest.TestCase):
 
         for nombre in ("rcs0", "bcs0", "vcs0", "vecs0"):
             self._motor(nombre)
-        funciones = {m.name: m.kind for m in _motores_intel(self.raiz)}
+        # El modelo guarda la clave; el nombre de la función lo pone la
+        # interfaz al pintarla, para que salga en el idioma de quien mira.
+        funciones = {m.name: _(m.kind) for m in _motores_intel(self.raiz)}
         self.assertEqual(funciones, {"rcs0": "render", "bcs0": "copia",
-                                     "vcs0": "video", "vecs0": "video-enhance"})
+                                     "vcs0": "video",
+                                     "vecs0": "mejora de video"})
 
     def test_las_capacidades_no_salen_por_ningun_otro_sitio(self):
         # «hevc» dice que decodifica H.265 por hardware y «sfc» que trae

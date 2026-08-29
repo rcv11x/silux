@@ -26,7 +26,7 @@ from ..widgets import (Card, ChipRow, InfoGrid, Notice, ResponsiveRow,
                        boton_de_permiso_permanente, clear_layout)
 
 DISK_HEADERS = ("storage.col.unit", "storage.col.model", "gpu.vram.type", "storage.col.size", "storage.col.used",
-                "gpu.sensor.temp", _("storage.tile.reading"), "storage.tile.writing")
+                "gpu.sensor.temp", "storage.tile.reading", "storage.tile.writing")
 PART_HEADERS = ("storage.col.part", "storage.col.fs", "storage.col.mount", "storage.col.size2", "storage.col.used2", "storage.col.free")
 
 DISK_FIELDS = ("storage.col.model", "gpu.field.vendor", "gpu.vram.type", "storage.field.bus", "storage.col.size",
@@ -308,7 +308,7 @@ class StoragePage(QScrollArea):
              render.rate(x.io.read_rate_bps),
              render.rate(x.io.write_rate_bps))
             for x in discos
-        ] or [("Sin unidades", d, d, d, d, d, d, d)])
+        ] or [(_("storage.none"), d, d, d, d, d, d, d)])
 
         filas = [
             (p.name, p.filesystem or d, p.mountpoint or d,
@@ -367,28 +367,22 @@ class StoragePage(QScrollArea):
         f(_("storage.col.model"), disco.model or d)
         f(_("gpu.field.vendor"), disco.vendor or d)
         f(_("gpu.vram.type"), disco.kind or d,
-          tooltip="No hay ningún campo que lo diga: se deduce de si el kernel "
-                  "considera que el disco gira y de por qué bus va conectado.")
+          tooltip=_("storage.tip.kind"))
         f(_("storage.field.bus"), (disco.transport or d).upper() if disco.transport else d)
         f(_("storage.col.size"), render.size(disco.size_bytes))
         f(_("storage.field.firmware"), disco.firmware or d)
         f(_("storage.field.logical"), f"{disco.logical_sector} B" if disco.logical_sector else d)
         f(_("storage.field.physical"), f"{disco.physical_sector} B" if disco.physical_sector else d,
-          tooltip="Los discos modernos trabajan en sectores de 4 KB por dentro "
-                  "aunque le digan al sistema que son de 512 B.")
+          tooltip=_("storage.tip.physical"))
         f(_("storage.field.scheduler"), disco.scheduler or d,
-          tooltip="Cómo ordena el kernel las peticiones antes de mandarlas al "
-                  "disco. En un NVMe suele estar desactivado porque el propio "
-                  "disco lo hace mejor.")
+          tooltip=_("storage.tip.scheduler"))
         f(_("gpu.clock.link"), render.pcie_link(disco.link) if disco.link else d)
         f(_("gpu.sensor.temp"), render.temperature(disco.temp_c, self._prefs.fahrenheit))
 
         salud = disco.health
         f(_("storage.field.hours"), f"{salud.power_on_hours:n} h" if salud.power_on_hours else d)
         f(_("storage.field.written"), render.size(salud.written_bytes) if salud.written_bytes else d,
-          tooltip="El TBW: cuántos datos se han escrito en este disco desde que "
-                  "salió de fábrica. Es lo que consume la vida de un SSD.")
+          tooltip=_("storage.tip.written"))
         f(_("storage.field.life"),
           f"{salud.life_left_percent} %" if salud.life_left_percent is not None else d,
-          tooltip="Lo que el propio disco calcula que le queda, según su "
-                  "contador de desgaste.")
+          tooltip=_("storage.tip.life"))

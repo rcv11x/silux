@@ -25,20 +25,25 @@ from typing import Optional
 from .. import pciids
 from ..model import Board, Need, clean_dmi
 from .base import Draft, Provider, read_text
+from ..i18n import _
 
 SYS_DMI = "/sys/class/dmi/id"
 PCI_DEVICES = pathlib.Path("/sys/bus/pci/devices")
 EFI = pathlib.Path("/sys/firmware/efi")
 SECURE_BOOT = EFI / "efivars" / "SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c"
 
+# El número lo pone SMBIOS; el nombre lo pone este programa, así que va por
+# claves y se traduce al pintarlo.
 CHASSIS_TYPES = {
-    "1": "Otro", "2": "Desconocido", "3": "Sobremesa", "4": "Sobremesa bajo",
-    "5": "Pizza box", "6": "Mini torre", "7": "Torre", "8": "Portátil",
-    "9": "Portátil", "10": "Notebook", "11": "De mano", "12": "Base acoplable",
-    "13": "Todo en uno", "14": "Subportátil", "15": "Compacto",
-    "16": "Chasis lateral", "17": "Servidor en rack", "18": "Subchasis",
-    "23": "Servidor en rack", "24": "PC compacto", "30": "Tablet",
-    "31": "Convertible", "32": "Desmontable", "35": "Mini PC",
+    "1": "chassis.other", "2": "chassis.unknown", "3": "chassis.desktop",
+    "4": "chassis.lowdesktop", "5": "chassis.pizzabox", "6": "chassis.minitower",
+    "7": "chassis.tower", "8": "chassis.laptop", "9": "chassis.laptop",
+    "10": "chassis.notebook", "11": "chassis.handheld", "12": "chassis.dock",
+    "13": "chassis.aio", "14": "chassis.subnotebook", "15": "chassis.compact",
+    "16": "chassis.lunchbox", "17": "chassis.rack", "18": "chassis.expansion",
+    "23": "chassis.rack", "24": "chassis.smalldesktop", "30": "chassis.tablet",
+    "31": "chassis.convertible", "32": "chassis.detachable",
+    "35": "chassis.minipc",
 }
 
 CLASS_HOST_BRIDGE = 0x060000
@@ -69,8 +74,7 @@ class DmiBoard(Provider):
         if self.available():
             return None
         return ("board", Need.PLATFORM,
-                "Este equipo no expone información DMI.",
-                "Ocurre en máquinas virtuales sencillas y en muchos ARM.")
+                _("prov.dmi.none"), _("prov.dmi.none.hint"))
 
     def collect(self, draft: Draft) -> None:
         draft.capabilities.add("dmi")
@@ -107,8 +111,7 @@ class DmiBoard(Provider):
         if not draft.board.name:
             draft.note(
                 "board.name", Need.HARDWARE,
-                "La BIOS no publica el modelo de la placa.",
-                "Algunos fabricantes dejan el campo sin rellenar a propósito.",
+                _("prov.dmi.noboard"), _("prov.dmi.noboard.hint"),
             )
 
     # -- firmware -----------------------------------------------------------

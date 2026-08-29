@@ -5,6 +5,7 @@ una traducción, la pantalla enseña el español, que es lo que el programa dec�
 antes de que existiera esto.
 """
 
+import ast
 import json
 import pathlib
 import tempfile
@@ -92,14 +93,179 @@ class TestIdioma(unittest.TestCase):
 
 
 class TestLoQueNoSeTraduce(unittest.TestCase):
-    """Lo que sale del propio equipo no es texto del programa: es el dato."""
+    """Lo que sale del propio equipo no es texto del programa: es el dato.
 
-    def test_los_proveedores_no_llaman_a_la_traduccion(self):
+    Los proveedores traducen, pero solo lo que se inventan: el aviso que
+    explica por qué falta un dato, el nombre que le ponen a un sensor
+    —«Punto caliente» donde amdgpu dice `junction`—, la función de un motor
+    gráfico. Eso lo escribió el autor y se lee en pantalla.
+
+    Lo que leen del equipo pasa entero y sin tocar: el nombre del procesador,
+    la etiqueta que publica un chip de sensores, el modelo de un disco. La
+    línea que lo separa es verificable sin ejecutar nada: a `_()` solo puede
+    llegar un literal escrito en el archivo, o una variable que salga de una
+    tabla de claves declarada ahí mismo. Un `_(read_text(...))` o un
+    `_(entry["label"])` traduciría un dato, y eso es lo que rompe la
+    detección de una gráfica cuando alguien se pone la interfaz en inglés.
+    """
+
+    def test_los_proveedores_solo_traducen_lo_que_escriben_ellos(self):
         raiz = pathlib.Path(__file__).resolve().parent.parent
-        for archivo in (raiz / "silux" / "providers").rglob("*.py"):
+        for archivo in sorted((raiz / "silux" / "providers").rglob("*.py")):
+            fuente = archivo.read_text(encoding="utf-8")
+            if "i18n import _" not in fuente:
+                continue
+            arbol = ast.parse(fuente)
+            # Las tablas del módulo valen en todas partes; las variables de
+            # una función solo dentro de ella.
+            fuera = self._fuera_de_toda_funcion(arbol)
+            del_modulo = self._tablas_de_literales(fuera)
+            asignados_modulo = {n.targets[0].id: n.value for n in fuera.body
+                                if isinstance(n, ast.Assign)
+                                and len(n.targets) == 1
+                                and isinstance(n.targets[0], ast.Name)}
+            malas = []
+            for ambito in self._ambitos(arbol):
+                tablas = self._tablas_de_literales(
+                    ambito, asignados_modulo, del_modulo)
+                for nodo in ast.walk(ambito):
+                    if not (isinstance(nodo, ast.Call)
+                            and isinstance(nodo.func, ast.Name)
+                            and nodo.func.id == "_" and nodo.args):
+                        continue
+                    if not self._sale_del_propio_archivo(nodo.args[0], tablas):
+                        malas.append(f"{nodo.lineno}: {ast.unparse(nodo)}")
             with self.subTest(archivo=archivo.name):
-                self.assertNotIn("from ..i18n import",
-                                 archivo.read_text(encoding="utf-8"))
+                self.assertEqual(malas, [],
+                                 f"{archivo.name} traduce algo que no escribió: "
+                                 f"{malas}")
+
+    @staticmethod
+    def _fuera_de_toda_funcion(arbol: ast.AST) -> ast.Module:
+        """El módulo con lo que está escrito a su nivel, sin los cuerpos.
+
+        Recogiendo cualquier asignación del archivo se colaban las de dentro
+        de las funciones, que es exactamente lo que había que separar.
+        """
+        return ast.Module(
+            body=[n for n in arbol.body
+                  if not isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef,
+                                        ast.ClassDef))],
+            type_ignores=[])
+
+    @classmethod
+    def _ambitos(cls, arbol: ast.AST) -> list:
+        """Cada función del archivo por separado, y el módulo sin ellas."""
+        funciones = [n for n in ast.walk(arbol)
+                     if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]
+        return funciones + [cls._fuera_de_toda_funcion(arbol)]
+
+    @classmethod
+    def _tablas_de_literales(cls, arbol: ast.AST, heredado: dict = None,
+                             semilla: set = frozenset()) -> set:
+        """Los nombres cuyo valor sale de una cadena escrita en este archivo.
+
+        Se parte de las estructuras cuyas hojas son todas cadenas —las tablas
+        de claves— y se propaga por asignaciones y bucles hasta que no queda
+        nada nuevo: `INTEL_AVISOS` marca `aviso = DRIVERS_CIEGOS.get(driver)`,
+        y este a su vez marca la `clave` del bucle que lo recorre.
+
+        Los bucles sobre una tabla de tuplas se miran por columna. En
+        `for patron, clave in _ALIMENTACION` cada fila lleva una expresión
+        regular y una clave; `clave` es literal y `patron` no, y la diferencia
+        está en la posición, no en la fila entera.
+        """
+        # Las tablas del módulo llegan heredadas: un bucle dentro de una
+        # función recorre una tabla declarada arriba del archivo.
+        asignados: dict = dict(heredado or {})
+        for nodo in ast.walk(arbol):
+            if (isinstance(nodo, ast.Assign) and len(nodo.targets) == 1
+                    and isinstance(nodo.targets[0], ast.Name)):
+                asignados[nodo.targets[0].id] = nodo.value
+
+        def es_cadena(nodo) -> bool:
+            return isinstance(nodo, ast.Constant) and isinstance(nodo.value, str)
+
+        def sale_de(expresion, nombres: set) -> bool:
+            """Si esto es leer una tabla, y no llamar a algo que la menciona.
+
+            Vale `INTEL_AVISOS[clave]` y `DRIVERS_CIEGOS.get(driver)`, que
+            devuelven lo que hay dentro de la tabla. No vale
+            `read_int(str(entry / filename))`, que devuelve lo que diga el
+            equipo aunque el nombre del archivo salga de una: mirar solo si
+            «menciona» una tabla dejaba pasar justo eso.
+            """
+            objeto = expresion
+            if isinstance(objeto, ast.Call):
+                if not (isinstance(objeto.func, ast.Attribute)
+                        and objeto.func.attr in ("get", "pop")):
+                    return False
+                objeto = objeto.func.value
+            while isinstance(objeto, ast.Subscript):
+                objeto = objeto.value
+            return isinstance(objeto, ast.Name) and objeto.id in nombres
+
+        nombres: set = set(semilla)
+        creciendo = True
+        while creciendo:
+            antes = len(nombres)
+            # La semilla se rehace en cada vuelta: una tabla puede estar
+            # escrita con el nombre de otra dentro, como INTEL_AVISOS, que
+            # reutiliza INTEL_SIN_TEMPERATURA en dos de sus tres filas.
+            nombres |= {n for n, v in asignados.items()
+                        if isinstance(v, (ast.Dict, ast.Tuple, ast.List,
+                                          ast.Constant))
+                        and cls._todo_cadenas(v, nombres)}
+            for nombre, valor in asignados.items():
+                if sale_de(valor, nombres):
+                    nombres.add(nombre)
+            for nodo in ast.walk(arbol):
+                if not isinstance(nodo, (ast.For, ast.comprehension)):
+                    continue
+                objetivo, fuente = nodo.target, nodo.iter
+                if isinstance(objetivo, ast.Name):
+                    if (sale_de(fuente, nombres)
+                            or cls._todo_cadenas(fuente, nombres)):
+                        nombres.add(objetivo.id)
+                    continue
+                if not isinstance(objetivo, ast.Tuple):
+                    continue
+                # Por columnas, cuando se recorre una tabla directamente.
+                tabla = (asignados.get(fuente.id)
+                         if isinstance(fuente, ast.Name) else fuente)
+                filas = (tabla.values if isinstance(tabla, ast.Dict)
+                         else tabla.elts
+                         if isinstance(tabla, (ast.Tuple, ast.List)) else [])
+                for indice, parte in enumerate(objetivo.elts):
+                    if not isinstance(parte, ast.Name):
+                        continue
+                    celdas = [f.elts[indice] for f in filas
+                              if isinstance(f, ast.Tuple) and indice < len(f.elts)]
+                    if celdas and all(es_cadena(c) for c in celdas):
+                        nombres.add(parte.id)
+            creciendo = len(nombres) > antes
+        return nombres
+
+    @staticmethod
+    def _todo_cadenas(valor, conocidos: set = frozenset()) -> bool:
+        """Una estructura cuyas hojas son todas cadenas escritas a mano."""
+        hojas = [n for n in ast.walk(valor) if not isinstance(n, (
+            ast.Dict, ast.Tuple, ast.List, ast.expr_context))]
+        return bool(hojas) and all(
+            (isinstance(n, ast.Constant) and isinstance(n.value, str))
+            or (isinstance(n, ast.Name) and n.id in conocidos)
+            for n in hojas)
+
+    @classmethod
+    def _sale_del_propio_archivo(cls, nodo, tablas: set) -> bool:
+        """Si lo que se traduce está escrito aquí y no leído del equipo."""
+        if isinstance(nodo, ast.Constant):
+            return isinstance(nodo.value, str)
+        if isinstance(nodo, ast.IfExp):
+            return (cls._sale_del_propio_archivo(nodo.body, tablas)
+                    and cls._sale_del_propio_archivo(nodo.orelse, tablas))
+        return any(isinstance(hijo, ast.Name) and hijo.id in tablas
+                   for hijo in ast.walk(nodo))
 
 
 class TestElIdiomaLlegaALaInterfaz(unittest.TestCase):
@@ -299,7 +465,6 @@ class TestNoQuedaTextoSuelto(unittest.TestCase):
     # se quedaron sin traducir y el test seguía en verde: no las miraba.
 
     def _sueltas(self, ruta):
-        import ast
         import re
 
         fuente = ruta.read_text(encoding="utf-8")
@@ -356,7 +521,6 @@ class TestNadieSombreaLaTraduccion(unittest.TestCase):
     """
 
     def test_ningun_archivo_de_interfaz_usa_guion_bajo_de_descarte(self):
-        import ast
 
         raiz = pathlib.Path(__file__).resolve().parent.parent / "silux"
         malos = []
@@ -377,3 +541,37 @@ class TestNadieSombreaLaTraduccion(unittest.TestCase):
                             malos.append(
                                 f"{archivo.name}:{getattr(nodo, 'lineno', '?')}")
         self.assertEqual(malos, [], f"sombrean _(): {malos}")
+
+
+class TestNadieTraduceAlImportar(unittest.TestCase):
+    """Ninguna constante de módulo llama a `_()` en su valor.
+
+    Una tupla de campos escrita como `("cpu.field.vendor", _("gpu.tile.usage"))`
+    parece igual de correcta que la de al lado y no lo es: lo que va dentro de
+    `_()` se resuelve al importar el módulo, cuando todavía no se ha leído qué
+    idioma quiere el usuario, así que se queda con el castellano para toda la
+    sesión. Y como quien monta la ficha vuelve a pasar cada entrada por `_()`,
+    la segunda llamada recibe «Uso» —que no es una clave— y devuelve «Uso».
+
+    Así salía la columna «LEYENDO» en medio de una tabla de discos en inglés:
+    la tupla llevaba once claves y una traducción ya hecha, y era la única que
+    no cambiaba de idioma.
+    """
+
+    def test_las_constantes_llevan_claves_no_traducciones(self):
+        raiz = pathlib.Path(__file__).resolve().parent.parent / "silux"
+        malos = []
+        for archivo in sorted(raiz.rglob("*.py")):
+            arbol = ast.parse(archivo.read_text(encoding="utf-8"))
+            for nodo in arbol.body:          # solo el nivel de módulo
+                if not isinstance(nodo, (ast.Assign, ast.AnnAssign)):
+                    continue
+                if nodo.value is None:
+                    continue
+                for hijo in ast.walk(nodo.value):
+                    if (isinstance(hijo, ast.Call)
+                            and isinstance(hijo.func, ast.Name)
+                            and hijo.func.id == "_"):
+                        malos.append(f"{archivo.name}:{hijo.lineno} "
+                                     f"{ast.unparse(hijo)}")
+        self.assertEqual(malos, [], f"traducen al importar: {malos}")

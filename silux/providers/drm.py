@@ -33,6 +33,7 @@ from ..model import (Display, GpuClockLevel, GpuClocks, GpuEngine, PcieLink, Gpu
                       Need)
 from ..privileged.client import HelperError, PmuUnsupported, PrivilegedClient
 from .base import Draft, Provider, read_int, read_text
+from ..i18n import _
 
 SYS_DRM = "/sys/class/drm"
 
@@ -51,14 +52,8 @@ VENDORS = {
 
 # Los que no publican casi nada y conviene explicar por qué.
 DRIVERS_CIEGOS = {
-    "nvidia": ("El driver propietario de NVIDIA no publica los datos de la tarjeta "
-               "en sysfs.", "Se leen con NVML, la biblioteca que trae el propio driver."),
-    "nouveau": ("nouveau no publica en sysfs las frecuencias, el consumo ni el uso "
-                "de la tarjeta.",
-                "Es el driver libre: lo que enseña un programa como este de una "
-                "NVIDIA —relojes, vatios, núcleos CUDA, recortes— sale de NVML, "
-                "que viene con el driver propietario. Con nouveau quedan la "
-                "temperatura, el enlace PCIe y la memoria que dice Vulkan."),
+    "nvidia": ("prov.drm.nvidia", "prov.drm.nvidia.hint"),
+    "nouveau": ("prov.drm.nouveau", "prov.drm.nouveau.hint"),
     # i915 y xe no están aquí a propósito: su aviso lo pone GpuState, porque
     # depende de si el usuario ha elevado permisos y eso cambia a mitad de
     # sesión. Esta tabla la lee un proveedor estático, que corre una sola vez.
@@ -72,7 +67,7 @@ DRIVERS_CIEGOS = {
 # en los Intel de sobremesa parecía ser el plano de la gráfica— y no lo es: se
 # queda clavado en 3,2 W mientras el reloj del motor gráfico va de 350 a
 # 1050 MHz. Habría sido un dato creíble y falso.
-INTEL_SIN_TEMPERATURA = "Esta gráfica Intel no publica su temperatura."
+INTEL_SIN_TEMPERATURA = "prov.drm.inteltemp"
 
 # El uso y el consumo sí existen, pero solo como contadores del kernel. Los lee
 # el ayudante privilegiado, el mismo que ya pide permisos una vez para los
@@ -83,32 +78,19 @@ INTEL_SIN_TEMPERATURA = "Esta gráfica Intel no publica su temperatura."
 # perfilar la máquina entera—, y bajarlo para ver un porcentaje no compensa.
 # Comprobado además que el valor intermedio, 1, tampoco sirve.
 INTEL_AVISOS = {
-    "root": ("El uso y el consumo de la gráfica los llevan contadores del "
-             f"kernel, que no se leen sin permisos. {INTEL_SIN_TEMPERATURA}",
-             "Con permisos aparecen el uso de cada motor y, en las integradas, "
-             "los vatios. La temperatura no sale de ninguna manera; las "
-             "frecuencias, los monitores y lo que declaran Vulkan y OpenGL sí "
-             "salen sin pedir nada."),
-    "driver": (INTEL_SIN_TEMPERATURA,
-               "El kernel tampoco publica contadores de ocupación para esta "
-               "gráfica, que es de donde sale el uso en las demás Intel. Las "
-               "frecuencias, los monitores y lo que declaran Vulkan y OpenGL "
-               "sí salen."),
-    "hardware": (INTEL_SIN_TEMPERATURA,
-                 "El nodo DRM no trae hwmon y su contador de rendimiento no "
-                 "tiene evento térmico, así que no hay de dónde sacarla. Lo "
-                 "que el kernel sí cuenta —el uso de cada motor y, en las "
-                 "integradas, los vatios— ya se está leyendo."),
+    "root": ("prov.drm.intelroot", "prov.drm.intelroot.hint"),
+    "driver": (INTEL_SIN_TEMPERATURA, "prov.drm.inteldriver.hint"),
+    "hardware": (INTEL_SIN_TEMPERATURA, "prov.drm.intelhw.hint"),
 }
 
 # Cómo llama el kernel a cada motor y qué hace. El prefijo del nombre basta:
 # rcs0 es el de dibujo, vcs1 el segundo decodificador de video.
 MOTORES_INTEL = {
-    "rcs": "render",
-    "ccs": "cómputo",
-    "bcs": "copia",
-    "vcs": "video",
-    "vecs": "video-enhance",
+    "rcs": "engine.render",
+    "ccs": "engine.compute",
+    "bcs": "engine.copy",
+    "vcs": "engine.video",
+    "vecs": "engine.videoenhance",
 }
 
 # El plano de energía de la gráfica en RAPL. Es el de la integrada del
@@ -175,17 +157,14 @@ class DrmGpus(Provider):
         if self.available():
             return None
         return ("gpus", Need.PLATFORM,
-                "El kernel no expone /sys/class/drm.",
-                "Sin el subsistema DRM no hay forma de enumerar las gráficas.")
+                _("prov.drm.nosysfs"), _("prov.drm.nosysfs.hint"))
 
     def collect(self, draft: Draft) -> None:
         nodos = tarjetas()
         if not nodos:
             draft.note(
                 "gpus", Need.HARDWARE,
-                "No hay ninguna tarjeta gráfica registrada en el kernel.",
-                "Pasa en servidores sin salida de video y en máquinas virtuales "
-                "sin gráfica emulada.",
+                _("prov.drm.nogpu"), _("prov.drm.nogpu.hint"),
             )
             return
 
@@ -209,7 +188,8 @@ class DrmGpus(Provider):
 
             aviso = DRIVERS_CIEGOS.get(gpu["driver"] or "")
             if aviso:
-                draft.note(f"gpus.{indice}", Need.DRIVER, *aviso)
+                draft.note(f"gpus.{indice}", Need.DRIVER,
+                           *(_(clave) for clave in aviso))
 
         _nombrar_monitores(draft.gpus)
 
@@ -464,7 +444,8 @@ class GpuState(Provider):
             clave = "hardware"
         else:
             clave = "root"
-        draft.note(f"gpus.{indice}", NEED_INTEL[clave], *INTEL_AVISOS[clave])
+        draft.note(f"gpus.{indice}", NEED_INTEL[clave],
+                   *(_(k) for k in INTEL_AVISOS[clave]))
 
 
 NEED_INTEL = {"root": Need.ROOT, "driver": Need.DRIVER, "hardware": Need.HARDWARE}

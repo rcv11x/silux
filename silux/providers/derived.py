@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from typing import Optional
 
+from ..i18n import _
 from ..model import Sensor, SensorKind, short_brand
 from .base import Draft, Provider
 
@@ -98,40 +99,44 @@ class DerivedSensors(Provider):
         """
         sensors: list[Sensor] = []
         for gpu in draft.gpus:
-            device = gpu.get("name") or f"Gráfica {gpu.get('index', 0)}"
+            device = gpu.get("name") or _("sensor.dev.gpu").format(
+                n=gpu.get("index", 0))
             marca = f"gpu{gpu.get('index', 0)}"
             relojes = gpu.get("clocks")
             memoria = gpu.get("memory")
 
             campos: list[tuple[str, str, SensorKind, object, int]] = [
-                ("busy", "Uso del núcleo", SensorKind.USAGE, gpu.get("busy_percent"), 0),
-                ("mem_busy", "Uso de la memoria", SensorKind.USAGE,
+                ("busy", _("sensor.gpu.core"), SensorKind.USAGE,
+                 gpu.get("busy_percent"), 0),
+                ("mem_busy", _("sensor.gpu.mem"), SensorKind.USAGE,
                  gpu.get("memory_busy_percent"), 1),
-                ("video_busy", "Uso del motor de video", SensorKind.USAGE,
+                ("video_busy", _("sensor.gpu.video"), SensorKind.USAGE,
                  gpu.get("video_busy_percent"), 2),
-                ("vr_gfx", "Regulador gráfico", SensorKind.TEMPERATURE,
+                ("vr_gfx", _("sensor.gpu.vrgfx"), SensorKind.TEMPERATURE,
                  gpu.get("vr_gfx_c"), 10),
-                ("vr_soc", "Regulador del SoC", SensorKind.TEMPERATURE,
+                ("vr_soc", _("sensor.gpu.vrsoc"), SensorKind.TEMPERATURE,
                  gpu.get("vr_soc_c"), 11),
-                ("vr_mem", "Regulador de memoria", SensorKind.TEMPERATURE,
+                ("vr_mem", _("sensor.gpu.vrmem"), SensorKind.TEMPERATURE,
                  gpu.get("vr_memory_c"), 12),
                 ("v_soc", "SoC", SensorKind.VOLTAGE, gpu.get("voltage_soc_v"), 20),
-                ("v_mem", "Memoria", SensorKind.VOLTAGE, gpu.get("voltage_memory_v"), 21),
-                ("fan_pct", "Ventilador", SensorKind.USAGE, gpu.get("fan_percent"), 3),
+                ("v_mem", _("sensor.mem"), SensorKind.VOLTAGE,
+                 gpu.get("voltage_memory_v"), 21),
+                ("fan_pct", _("sensor.fan"), SensorKind.USAGE,
+                 gpu.get("fan_percent"), 3),
             ]
             if relojes is not None:
                 campos += [
                     ("clk_soc", "SoC", SensorKind.CLOCK, _mhz(relojes.soc_hz), 32),
-                    ("clk_mem_eff", "Memoria (efectiva)", SensorKind.CLOCK,
+                    ("clk_mem_eff", _("sensor.mem.effective"), SensorKind.CLOCK,
                      _mhz(relojes.memory_effective_hz), 31),
                 ]
             if memoria is not None:
                 campos += [
-                    ("vram_pct", "Memoria de video", SensorKind.USAGE,
+                    ("vram_pct", _("sensor.vram"), SensorKind.USAGE,
                      memoria.used_percent, 4),
-                    ("vram_mb", "Memoria de video", SensorKind.MEMORY,
+                    ("vram_mb", _("sensor.vram"), SensorKind.MEMORY,
                      _megas(memoria.used_bytes), 40),
-                    ("gtt_mb", "Memoria prestada al sistema", SensorKind.MEMORY,
+                    ("gtt_mb", _("sensor.gtt"), SensorKind.MEMORY,
                      _megas(memoria.gtt_used_bytes), 41),
                 ]
 
@@ -154,8 +159,8 @@ class DerivedSensors(Provider):
         if power is None:
             return []
         fields = (
-            ("package_w", "Paquete", 0),
-            ("core_w", "Núcleos", 1),
+            ("package_w", _("sensor.package"), 0),
+            ("core_w", _("sensor.cores"), 1),
             ("uncore_w", "Uncore", 2),
             ("dram_w", "DRAM", 3),
         )
@@ -195,7 +200,8 @@ class DerivedSensors(Provider):
         if total is not None:
             sensors.append(Sensor(
                 key="usage/total", chip="procfs", device=device,
-                label="Total", kind=SensorKind.USAGE, value=total, order=-1,
+                label=_("sensor.total"), kind=SensorKind.USAGE,
+                value=total, order=-1,
             ))
         for index, cpu in sorted(draft.logical.items()):
             value = cpu.get("usage_percent")

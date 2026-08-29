@@ -82,7 +82,7 @@ class TypeSection(QWidget):
         processor_card = Card(_("cpu.card.processor"))
         self.processor = InfoGrid()
         for name in PROCESSOR_FIELDS:
-            self.processor.add(name)
+            self.processor.add(_(name))
         processor_card.body.addWidget(self.processor)
 
         clocks_card = Card(_("cpu.card.clocks"))
@@ -129,7 +129,7 @@ class TypeSection(QWidget):
         p(_("cpu.field.package"), cpu_type.socket or render.DASH)
         p(_("cpu.field.arch"), cpu_type.architecture or render.DASH)
         p(_("cpu.field.cores"), str(cpu_type.cores))
-        p(_("cpu.field.threads"), f"{cpu_type.threads}" + ("  (SMT activo)" if cpu_type.smt else ""))
+        p(_("cpu.field.threads"), f"{cpu_type.threads}" + (_("cpu.smt.on") if cpu_type.smt else ""))
         p(_("cpu.field.virt"), self._virtualization(cpu_type))
         p(_("cpu.field.family"), render.hex_id(cpu_type.disp_family))
         p(_("cpu.field.model"), render.hex_id(cpu_type.disp_model))
@@ -164,9 +164,11 @@ class TypeSection(QWidget):
     @staticmethod
     def _virtualization(cpu_type: CpuType) -> str:
         if cpu_type.in_virtual_machine:
-            base = "dentro de una máquina virtual"
+            base = _("cpu.virt.inside")
             return f"{cpu_type.virtualization} · {base}" if cpu_type.virtualization else base
-        return f"{cpu_type.virtualization} (soportada)" if cpu_type.virtualization else "no soportada"
+        if cpu_type.virtualization:
+            return f"{cpu_type.virtualization} {_('cpu.virt.supported')}"
+        return _("cpu.virt.none")
 
     def _apply_caches(self, cpu_type: CpuType) -> None:
         labels = [render.cache_label(cache) for cache in cpu_type.caches]
@@ -179,8 +181,11 @@ class TypeSection(QWidget):
         for cache, label in zip(cpu_type.caches, labels):
             self.caches.set(
                 label,
-                f"{render.cache_summary(cache)}    línea {cache.line_bytes} B · {cache.shared_by} hilos",
-                tooltip=f"Total del paquete: {render.size(cache.total_bytes)}\nConjuntos: {cache.sets}",
+                render.cache_summary(cache) + "    "
+                + _("cpu.cache.line").format(b=cache.line_bytes,
+                                             hilos=cache.shared_by),
+                tooltip=_("cpu.cache.tip").format(
+                    total=render.size(cache.total_bytes), sets=cache.sets),
             )
 
     def _apply_features(self, cpu_type: CpuType) -> None:
@@ -200,8 +205,8 @@ class TypeSection(QWidget):
 
         rest = len(cpu_type.features) - len(shown)
         self.feature_count.setText(
-            f"{len(cpu_type.features)} banderas detectadas por CPUID"
-            + (f" · {rest} no destacadas" if rest > 0 else "")
+            _("cpu.flags.count").format(n=len(cpu_type.features))
+            + (_("cpu.flags.rest").format(n=rest) if rest > 0 else "")
         )
 
 
@@ -276,11 +281,13 @@ class CpuPage(QScrollArea):
             return
 
         primary = cpu.types[0]
-        self.title.setText(primary.brand or "Procesador desconocido")
+        self.title.setText(primary.brand or _("cpu.unknown"))
         self.subtitle.setText(
-            f"{cpu.total_cores} núcleos · {cpu.total_threads} hilos · "
-            f"{cpu.sockets} socket{'s' if cpu.sockets > 1 else ''}"
-            + (" · híbrida" if cpu.hybrid else "")
+            _("cpu.subtitle").format(
+                nucleos=cpu.total_cores, hilos=cpu.total_threads,
+                sockets=cpu.sockets,
+                s="s" if cpu.sockets > 1 else "")
+            + (_("cpu.subtitle.hybrid") if cpu.hybrid else "")
         )
         self._apply_badges(primary)
         self._apply_sections(snapshot)
@@ -326,5 +333,6 @@ class CpuPage(QScrollArea):
         clear_layout(self._notices_host)
         for note in notes:
             self._notices_host.addWidget(
-                Notice(NEED_TITLES.get(note.need, note.need.value), note.message, note.hint)
+                Notice(_(NEED_TITLES.get(note.need, note.need.value)),
+                       note.message, note.hint)
             )

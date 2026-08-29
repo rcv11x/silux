@@ -70,7 +70,7 @@ SENSOR_FIELDS = ("gpu.sensor.state", "gpu.sensor.temp", "gpu.sensor.hotspot", "g
                  "gpu.sensor.power", "gpu.sensor.powercap", "gpu.sensor.fan",
                  "gpu.sensor.voltage", "gpu.sensor.vsoc", "gpu.sensor.vmem", "gpu.sensor.videouse")
 
-ENGINE_HEADERS = ("gpu.engine.name", "gpu.engine.role", _("gpu.tile.usage"), "gpu.engine.can")
+ENGINE_HEADERS = ("gpu.engine.name", "gpu.engine.role", "gpu.tile.usage", "gpu.engine.can")
 CODEC_HEADERS = ("gpu.codec.name", "gpu.codec.decode", "gpu.codec.encode", "gpu.codec.depth", "gpu.codec.profiles")
 
 API_HEADERS = ("API", "gpu.api.version", "gpu.field.driver", "gpu.api.detail")
@@ -257,9 +257,9 @@ class GpuSection(QWidget):
         self.elevation_buttons = []
         for note in notes:
             aviso = Notice(
-                NEED_TITLES.get(note.need, note.need.value), note.message, note.hint,
+                _(NEED_TITLES.get(note.need, note.need.value)), note.message, note.hint,
                 tone=NEED_TONES.get(note.need, "warn"),
-                action=("Leer con permisos de administrador"
+                action=(_("perm.button.read")
                         if note.need is Need.ROOT else None),
             )
             if aviso.action_button is not None:
@@ -292,12 +292,9 @@ class GpuSection(QWidget):
         c(_("gpu.field.drm"), gpu.drm_node or d)
         c(_("gpu.field.vbios"), gpu.vbios or d)
         c(_("gpu.field.compute"), render.compute_units(gpu),
-          tooltip="Cada fabricante las cuenta a su manera y no son equivalentes: "
-                  "una unidad de cómputo de AMD agrupa decenas de núcleos como "
-                  "los que NVIDIA cuenta de uno en uno.")
+          tooltip=_("gpu.tip.compute"))
         c(_("gpu.field.rops"), str(gpu.rops) if gpu.rops else d,
-          tooltip="Los ROP, que son los que escriben los píxeles ya calculados "
-                  "en la imagen final.")
+          tooltip=_("gpu.tip.rops"))
         c(_("gpu.field.shaders"), str(gpu.shader_engines) if gpu.shader_engines else d)
         c(_("gpu.field.uuid"), gpu.unique_id or d)
 
@@ -308,9 +305,7 @@ class GpuSection(QWidget):
         k(_("gpu.clock.coremax"), render.hz(gpu.clocks.core_max_hz))
         k(_("gpu.clock.memory"), render.hz(gpu.clocks.memory_hz))
         k(_("gpu.clock.memeff"), render.hz(gpu.clocks.memory_effective_hz),
-          tooltip="El reloj al que viajan los datos, que es el que anuncian las "
-                  "fichas técnicas. La memoria mueve varias transferencias por "
-                  "cada ciclo de su reloj de comando.")
+          tooltip=_("gpu.tip.memeff"))
         k(_("gpu.clock.memmax"), render.hz(gpu.clocks.memory_max_hz))
         k("SoC", render.hz(gpu.clocks.soc_hz))
         k(_("gpu.clock.profile"), gpu.clocks.performance_level or d)
@@ -333,38 +328,33 @@ class GpuSection(QWidget):
         s = self.sensors.set
         fahrenheit = self._prefs.fahrenheit
         s(_("gpu.sensor.state"), render.throttle_state(gpu),
-          tooltip="Si el firmware está recortando el rendimiento y por qué. Es "
-                  "lo que explica que un juego rinda menos de lo que debería "
-                  "sin que la tarjeta parezca estar al límite.")
+          tooltip=_("gpu.tip.state"))
         s(_("gpu.sensor.temp"), render.temperature(gpu.temp_c, fahrenheit))
         s(_("gpu.sensor.hotspot"), render.temperature(gpu.hotspot_c, fahrenheit),
-          tooltip="El punto más caliente del chip, siempre por encima de la "
-                  "temperatura de borde. Es el que gobierna el ventilador.")
+          tooltip=_("gpu.tip.hotspot"))
         s(_("gpu.sensor.memtemp"), render.temperature(gpu.memory_temp_c, fahrenheit))
         s(_("gpu.sensor.power"), render.watts(gpu.power_w))
         s(_("gpu.sensor.powercap"), render.watts(gpu.power_cap_w))
         s(_("gpu.sensor.fan"), render.fan(gpu.fan_rpm, gpu.fan_percent))
         s(_("gpu.sensor.vrgfx"), render.temperature(gpu.vr_gfx_c, fahrenheit),
-          tooltip="Los reguladores que alimentan al chip. No están en hwmon: "
-                  "los cuenta el microcontrolador de la propia tarjeta.")
+          tooltip=_("gpu.tip.vr"))
         s(_("gpu.sensor.vrsoc"), render.temperature(gpu.vr_soc_c, fahrenheit))
         s(_("gpu.sensor.vrmem"), render.temperature(gpu.vr_memory_c, fahrenheit))
         s(_("gpu.sensor.voltage"), render.volts(gpu.voltage_v))
         s(_("gpu.sensor.vsoc"), render.volts(gpu.voltage_soc_v))
         s(_("gpu.sensor.vmem"), render.volts(gpu.voltage_memory_v))
         s(_("gpu.sensor.videouse"), render.percent(gpu.video_busy_percent),
-          tooltip="Los motores de codificación y decodificación de video, que "
-                  "trabajan aparte del resto de la GPU.")
+          tooltip=_("gpu.tip.videouse"))
 
         self._apply_engines(gpu)
         self._apply_codecs(gpu)
         self.apis.set_rows([
             (api.name, api.version or d, api.driver or d, api.extra or d)
             for api in gpu.apis
-        ] or [("Sin bibliotecas gráficas", d, d, d)])
+        ] or [(_("gpu.apis.none"), d, d, d)])
 
         self.displays.set_rows([_fila_de_salida(salida) for salida in gpu.displays]
-                               or [("Sin salidas de video", d, d, d, d, d)])
+                               or [(_("gpu.displays.none"), d, d, d, d, d)])
 
     def _apply_engines(self, gpu: Gpu) -> None:
         """Los motores de la tarjeta, si el driver los publica.
@@ -378,7 +368,7 @@ class GpuSection(QWidget):
         self.engine_summary.set(_("gpu.engines.idle"), render.percent(gpu.sleep_percent))
         self.engines.set_rows([
             (motor.name,
-             motor.kind or render.DASH,
+             _(motor.kind) if motor.kind else render.DASH,
              render.percent(motor.busy_percent),
              ", ".join(motor.capabilities) or render.DASH)
             for motor in gpu.engines
@@ -409,8 +399,8 @@ class GpuSection(QWidget):
             f"{gpu.driver} {gpu.driver_version}".strip() if gpu.driver else None,
             render.size(gpu.memory.total_bytes) if gpu.memory.total_bytes else None,
             render.compute_units_short(gpu),
-            "integrada" if gpu.integrated else None,
-            "principal" if gpu.primary else None,
+            _("gpu.chip.integrated") if gpu.integrated else None,
+            _("gpu.chip.primary") if gpu.primary else None,
         ) if c]
         firma = tuple(chips)
         if firma != self._chip_signature:
@@ -507,44 +497,35 @@ class GpuSection(QWidget):
         m(_("gpu.vram.type"), render.vram_kind(memoria))
         m(_("gpu.vram.bus"), render.vram_bus(memoria))
         m(_("gpu.vram.bandwidth"), render.bandwidth(memoria.bandwidth_bytes),
-          tooltip="Cuántos datos caben por el bus en un segundo: la tasa de la "
-                  "memoria por la anchura del bus. Es lo que limita a una "
-                  "gráfica antes que la propia potencia de cálculo.")
+          tooltip=_("gpu.tip.bandwidth"))
         m(_("gpu.vram.datarate"), f"{memoria.data_rate_hz / 1e9:.1f} Gbps"
           if memoria.data_rate_hz else d,
-          tooltip="La velocidad real a la que viajan los datos. No es el reloj: "
-                  "una GDDR6 a 1258 MHz mueve dieciséis transferencias por "
-                  "ciclo, o sea 20 Gbps.")
+          tooltip=_("gpu.tip.datarate"))
         m(_("gpu.vram.visible"), render.size(memoria.visible_bytes)
           if memoria.visible_bytes else d,
-          tooltip="Cuánta VRAM puede direccionar la CPU de una vez.")
+          tooltip=_("gpu.tip.visible"))
         m(_("gpu.vram.rebar"), render.resizable_bar(memoria),
-          tooltip="Con Resizable BAR la CPU ve toda la memoria de la tarjeta de "
-                  "una vez. Sin él solo alcanza una ventana de 256 MB y el "
-                  "driver tiene que ir moviéndola, que cuesta rendimiento. Se "
-                  "activa en la BIOS, y hace falta que la placa y la tarjeta lo "
-                  "admitan las dos.")
+          tooltip=_("gpu.tip.rebar"))
         m(_("gpu.vram.chips"), memoria.vendor or d)
         prestada = d
         if memoria.gtt_total_bytes:
             prestada = render.size(memoria.gtt_total_bytes)
             if memoria.gtt_used_bytes is not None:
-                prestada = f"{render.size(memoria.gtt_used_bytes)} de {prestada}"
+                prestada = _("gpu.vram.of").format(
+                    usado=render.size(memoria.gtt_used_bytes), total=prestada)
         m(_("gpu.vram.shared"), prestada,
-          tooltip="GTT: memoria RAM del equipo que el driver le presta a la "
-                  "tarjeta cuando la VRAM se queda corta. No es memoria de la "
-                  "gráfica, por eso va aparte.")
+          tooltip=_("gpu.tip.shared"))
 
 
 def _fila_de_salida(salida) -> tuple[str, ...]:
     """Una línea de la tabla de monitores; la mitad se queda vacía si no hay."""
     d = render.DASH
     if not salida.connected:
-        return (salida.connector, "libre", d, d, d, d, d)
+        return (salida.connector, _("gpu.display.free"), d, d, d, d, d)
     monitor = salida.monitor
     if monitor is None:
         # Conectada pero sin EDID legible: pasa con algunos adaptadores y KVM.
-        return (salida.connector, "sin identificar", salida.resolution or d,
+        return (salida.connector, _("gpu.display.unknown"), salida.resolution or d,
                 d, d, d, d)
     return (
         salida.connector,
@@ -663,5 +644,6 @@ class GraphicsPage(QScrollArea):
         clear_layout(self._notices_host)
         for note in sueltos:
             self._notices_host.addWidget(
-                Notice(NEED_TITLES.get(note.need, note.need.value), note.message, note.hint)
+                Notice(_(NEED_TITLES.get(note.need, note.need.value)),
+                       note.message, note.hint)
             )

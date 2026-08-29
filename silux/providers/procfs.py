@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from typing import Optional
 
+from ..i18n import _
 from ..model import Need
 from .base import Draft, Provider
 
@@ -35,7 +36,7 @@ class CpuUsage(Provider):
         if self.available():
             return None
         return ("cpu.usage_percent", Need.PLATFORM,
-                "No hay /proc/stat en este sistema.", "")
+                _("prov.procfs.nostat"), "")
 
     def collect(self, draft: Draft) -> None:
         current = self._read()

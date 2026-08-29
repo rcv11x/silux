@@ -29,6 +29,7 @@ from ..privileged.client import (
     already_root,
 )
 from .base import Draft, Provider
+from ..i18n import _
 
 
 def _module(raw: dict) -> MemoryModule:
@@ -89,13 +90,12 @@ class PrivilegedMemory(Provider):
             self.requested = False
             self._error = str(exc)
             draft.note("modules", Need.ROOT,
-                       "No se autorizó la lectura de los módulos de memoria.",
-                       "Se puede volver a intentar cuando quieras.")
+                       _("prov.mem.denied"), _("prov.mem.denied.hint"))
         except (HelperUnavailable, HelperError) as exc:
             self.requested = False
             self._error = str(exc)
             draft.note("modules", Need.ROOT,
-                       f"El ayudante privilegiado falló: {exc}", "")
+                       _("prov.mem.helperfail").format(error=exc), "")
 
         draft.privileged = PrivilegedState(
             supported=self.client.supported(),
@@ -141,11 +141,9 @@ class PrivilegedMemory(Provider):
             if result.returncode == 0 and result.stdout.strip():
                 yield DriverHint(
                     module=module,
-                    provides=(f"el SPD de los {len(candidates)} módulos: perfiles XMP, "
-                              "temporizaciones y a qué velocidad podrían ir"),
+                    provides=_("prov.hint.spd").format(n=len(candidates)),
                     command=f"sudo modprobe {module}",
-                    caution="Solo lee el chip de identificación del módulo; "
-                            "no cambia ninguna configuración.",
+                    caution=_("prov.hint.spd.caution"),
                 )
                 return
 
@@ -155,10 +153,7 @@ class PrivilegedMemory(Provider):
     def _explain(draft: Draft) -> None:
         draft.note(
             "modules", Need.ROOT,
-            "Los módulos de memoria están en la tabla SMBIOS, que el kernel "
-            "reserva al administrador.",
-            "Con permisos se ven fabricante, referencia, tipo, velocidad, "
-            "rangos, voltaje y cuántos zócalos quedan libres.",
+            _("prov.mem.smbios"), _("prov.mem.smbios.hint"),
         )
 
     def _read_directly(self, draft: Draft) -> None:
@@ -168,7 +163,7 @@ class PrivilegedMemory(Provider):
         except OSError as exc:
             self._error = str(exc)
             draft.note("modules", Need.HARDWARE,
-                       f"No se pudo leer la tabla SMBIOS: {exc}", "")
+                       _("prov.mem.smbiosfail").format(error=exc), "")
 
     @staticmethod
     def _parse(draft: Draft, table: bytes) -> None:

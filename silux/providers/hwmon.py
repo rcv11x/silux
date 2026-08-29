@@ -22,6 +22,7 @@ from typing import Iterator, Optional
 
 from ..model import DriverHint, Need, Sensor, SensorKind, short_brand
 from .base import Draft, Provider, mean, read_int, read_text
+from ..i18n import _
 
 HWMON = pathlib.Path("/sys/class/hwmon")
 POWER_SUPPLY = pathlib.Path("/sys/class/power_supply")
@@ -89,9 +90,9 @@ def device_for(chip: str, entry: pathlib.Path, cpu_name: str, board_name: str,
         # obliga igualmente a saber qué driver lleva.
         if nombre := (gpu_names or {}).get(_ranura_pci(entry) or ""):
             return nombre
-        return f"Gráfica ({chip})"
+        return _("sensor.dev.gpuchip").format(chip=chip)
     if NET_CHIP.match(chip):
-        return _net_name(entry) or f"Red ({chip})"
+        return _net_name(entry) or _("sensor.dev.net").format(chip=chip)
     if (energia := _nombre_de_alimentacion(chip)):
         return energia
     return chip
@@ -101,11 +102,11 @@ def device_for(chip: str, entry: pathlib.Path, cpu_name: str, board_name: str,
 # se traduce. `ucsi_source_psy_USBC000:001` es el nombre que el kernel le da al
 # puerto USB-C que negocia la carga, y en el árbol no lo reconoce nadie.
 _ALIMENTACION = (
-    (re.compile(r"^(?:BAT|CMB)(\d*)$", re.I), "Batería"),
-    (re.compile(r"^(?:AC|ADP)(\d*)$", re.I), "Adaptador de corriente"),
+    (re.compile(r"^(?:BAT|CMB)(\d*)$", re.I), "sensor.dev.battery"),
+    (re.compile(r"^(?:AC|ADP)(\d*)$", re.I), "sensor.dev.adapter"),
     # Sin número: lo que sigue a `USBC` es un identificador de ACPI, no el
     # puerto número tantos. «Puerto USB-C 2» en un portátil con uno solo.
-    (re.compile(r"^(ucsi)[-_].*$", re.I), "Puerto USB-C"),
+    (re.compile(r"^(ucsi)[-_].*$", re.I), "sensor.dev.usbc"),
 )
 
 
@@ -115,12 +116,12 @@ def _nombre_de_alimentacion(chip: str) -> Optional[str]:
     Se conserva el número cuando lo hay: un portátil con dos baterías las
     tiene que poder distinguir, y con una sola el número sobra.
     """
-    for patron, nombre in _ALIMENTACION:
+    for patron, clave in _ALIMENTACION:
         if (encaje := patron.match(chip)):
             sufijo = encaje.group(1)
             if sufijo.isdigit() and int(sufijo):
-                return f"{nombre} {int(sufijo) + 1}"
-            return nombre
+                return f"{_(clave)} {int(sufijo) + 1}"
+            return _(clave)
     return None
 
 
@@ -156,7 +157,7 @@ def _net_name(entry: pathlib.Path) -> Optional[str]:
         actual = (entry / "device").resolve()
     except OSError:
         return None
-    for _ in range(6):
+    for _nivel in range(6):
         red = actual / "net"
         if red.is_dir() and "/virtual/" not in f"{red}/":
             interfaces = sorted(p.name for p in red.iterdir())
@@ -180,23 +181,25 @@ def _disk_name(entry: pathlib.Path) -> Optional[str]:
 # Las etiquetas que pone amdgpu son las del firmware. Dicen algo si uno sabe
 # qué es un «sclk», y nada si no.
 ETIQUETAS_GPU = {
-    "sclk": "Núcleo", "mclk": "Memoria", "fclk": "Fabric", "socclk": "SoC",
-    "vddgfx": "Núcleo", "vddnb": "Northbridge", "vddc": "Núcleo",
-    "edge": "Borde", "junction": "Punto caliente", "mem": "Memoria",
-    "PPT": "Paquete",
+    "sclk": "sensor.core", "mclk": "sensor.mem", "fclk": "Fabric",
+    "socclk": "SoC", "vddgfx": "sensor.core", "vddnb": "Northbridge",
+    "vddc": "sensor.core", "edge": "sensor.edge",
+    "junction": "sensor.hotspot", "mem": "sensor.mem",
+    "PPT": "sensor.package",
 }
 
 
 def _friendly(chip: str, prefix: str, index: str, label: Optional[str]) -> str:
     if label:
         if GPU_CHIP.match(chip):
-            return ETIQUETAS_GPU.get(label, label)
+            return _(ETIQUETAS_GPU.get(label, label))
         return label
     fallback = {
-        "temp": "Temperatura", "in": "Tensión", "fan": "Ventilador",
-        "power": "Potencia", "curr": "Corriente", "energy": "Energía",
+        "temp": "sensor.temp", "in": "sensor.voltage", "fan": "sensor.fan",
+        "power": "sensor.power", "curr": "sensor.current",
+        "energy": "sensor.energy",
     }
-    return f"{fallback.get(prefix, prefix)} {index}"
+    return f"{_(fallback.get(prefix, prefix))} {index}"
 
 
 # Hasta dónde puede llegar razonablemente un umbral de cada tipo. Los chips
@@ -299,8 +302,7 @@ class HwmonSensors(Provider):
         if self.available():
             return None
         return ("sensors", Need.DRIVER,
-                "No hay ningún chip de sensores expuesto en /sys/class/hwmon.",
-                "En Intel se activa con el módulo coretemp; en AMD, k10temp.")
+                _("prov.hwmon.nochips"), _("prov.hwmon.nochips.hint"))
 
     def collect(self, draft: Draft) -> None:
         cpu_name = short_brand(draft.types[next(iter(draft.types), "")].get("brand")
@@ -308,7 +310,9 @@ class HwmonSensors(Provider):
         board_name = draft.board.display_name
         # Las gráficas ya están enumeradas cuando esto corre: el orden de los
         # proveedores en `collector.py` lo garantiza.
-        gpu_names = {gpu["pci_slot"]: (gpu.get("name") or f"Gráfica {gpu['index']}")
+        gpu_names = {gpu["pci_slot"]: (gpu.get("name")
+                                       or _("sensor.dev.gpu").format(
+                                           n=gpu["index"]))
                      for gpu in draft.gpus if gpu.get("pci_slot")}
 
         sensors = list(self._read_hwmon(cpu_name, board_name, gpu_names))
@@ -381,9 +385,9 @@ class HwmonSensors(Provider):
         if not POWER_SUPPLY.is_dir():
             return
         fields = (
-            ("voltage_now", SensorKind.VOLTAGE, 1_000_000.0, "Tensión"),
-            ("current_now", SensorKind.CURRENT, 1_000_000.0, "Corriente"),
-            ("power_now", SensorKind.POWER, 1_000_000.0, "Potencia"),
+            ("voltage_now", SensorKind.VOLTAGE, 1_000_000.0, "sensor.voltage"),
+            ("current_now", SensorKind.CURRENT, 1_000_000.0, "sensor.current"),
+            ("power_now", SensorKind.POWER, 1_000_000.0, "sensor.power"),
         )
         for entry in sorted(POWER_SUPPLY.iterdir()):
             name = entry.name
@@ -393,8 +397,8 @@ class HwmonSensors(Provider):
                     continue
                 yield Sensor(
                     key=f"power_supply/{name}/{filename}",
-                    chip=name, device=f"Alimentación · {name}",
-                    label=label, kind=kind,
+                    chip=name, device=_("sensor.dev.power").format(n=name),
+                    label=_(label), kind=kind,
                     value=round(abs(raw) / divisor, 3),
                 )
 
@@ -408,8 +412,9 @@ class HwmonSensors(Provider):
         chip = next((name for name in CPU_CHIPS if name in by_chip), None)
         if chip is None:
             draft.note("cpu.temp_c", Need.DRIVER,
-                       "Ningún chip de sensores parece corresponder a la CPU.",
-                       f"Se vieron: {', '.join(sorted(by_chip))}.")
+                       _("prov.hwmon.nocpu"),
+                       _("prov.hwmon.nocpu.hint").format(
+                           chips=", ".join(sorted(by_chip))))
         else:
             self._spread_temperatures(draft, by_chip[chip])
 
@@ -458,9 +463,7 @@ class HwmonSensors(Provider):
 
         draft.note(
             "cpu.voltage_v", Need.DRIVER,
-            "Ningún sensor de esta máquina publica el voltaje del núcleo.",
-            "Suele hacer falta el módulo del Super I/O de la placa "
-            "(nct6775, nct6683, it87…) o leer el VID por MSR, que exige root.",
+            _("prov.hwmon.novolt"), _("prov.hwmon.novolt.hint"),
         )
 
     # -- drivers que faltan -------------------------------------------------
@@ -479,17 +482,15 @@ class HwmonSensors(Provider):
         if not any(SUPERIO_CHIPS.match(chip) for chip in chips):
             yield DriverHint(
                 module="(Super I/O)",
-                provides="ventiladores, voltajes de la placa y temperaturas del chipset",
+                provides=_("prov.hint.superio"),
                 command="sudo sensors-detect",
-                caution="No conviene adivinar el módulo: cada placa lleva un chip "
-                        "distinto y cargar el que no es puede leer basura. "
-                        "sensors-detect lo identifica y dice cuál cargar.",
+                caution=_("prov.hint.superio.caution"),
             )
 
         if "drivetemp" not in chips and self._has_ata_disks() and self._module_exists("drivetemp"):
             yield DriverHint(
                 module="drivetemp",
-                provides="la temperatura de los discos SATA",
+                provides=_("prov.hint.drivetemp"),
                 command="sudo modprobe drivetemp",
                 caution="",
             )

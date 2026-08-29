@@ -288,8 +288,7 @@ class PerformancePage(QScrollArea):
             return
         minutos, aceptado = QInputDialog.getDouble(
             self, _("bench.dialog.duration"),
-            "Cuántos minutos dura cada una de las diez medidas.\n\n"
-            "La prueba entera tarda diez veces esto.",
+            _("bench.dialog.duration.body"),
             value=(self._duracion_libre or 600.0) / 60.0,
             minValue=benchmark.MINIMO_SEGUNDOS / 60.0,
             maxValue=benchmark.MAXIMO_SEGUNDOS / 60.0, decimals=1)

@@ -28,6 +28,7 @@ from .. import smart as smart_module
 from ..model import Disk, DiskIo, Need, Partition, PcieLink
 from ..privileged.client import HelperError, PrivilegedClient
 from .base import Draft, Provider, read_int, read_text
+from ..i18n import _
 
 # Cada cuánto se le vuelve a pedir el diagnóstico a un disco, en segundos.
 # Las horas y lo escrito cambian despacio, pero la temperatura no.
@@ -106,10 +107,7 @@ class Disks(Provider):
                 # el diagnóstico de los discos.
                 draft.note(
                     "disks.health", Need.ROOT,
-                    "El diagnóstico de los discos lo guarda cada unidad en sus "
-                    "propios contadores.",
-                    "Con permisos se ven las horas de encendido, los terabytes "
-                    "escritos y el desgaste de cada uno.",
+                    _("prov.disk.health"), _("prov.disk.health.hint"),
                 )
                 return
             try:
@@ -327,7 +325,7 @@ def _ranura(base: pathlib.Path) -> Optional[str]:
         actual = (base / "device").resolve()
     except OSError:
         return None
-    for _ in range(6):
+    for _nivel in range(6):
         if re.fullmatch(r"[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\.[0-9a-f]", actual.name):
             return actual.name
         if actual.parent == actual:

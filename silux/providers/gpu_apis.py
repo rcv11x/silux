@@ -25,6 +25,7 @@ import dataclasses
 
 from ..model import GpuApi, GpuMemory, Need, VideoCodec
 from .base import Draft, Provider
+from ..i18n import _
 
 # «AMD Radeon RX 9070 XT (RADV GFX1201)» → el paréntesis es del driver, no del
 # nombre de la tarjeta.
@@ -61,9 +62,7 @@ class GpuApis(Provider):
         if not (vulkan or opencl or opengl or vaapi):
             draft.note(
                 "gpus.apis", Need.DRIVER,
-                "No hay ninguna biblioteca de OpenGL, Vulkan ni OpenCL que preguntar.",
-                "Suele ser una máquina sin entorno gráfico instalado. Las trae el "
-                "driver: mesa, vulkan-radeon, vulkan-intel o el paquete de NVIDIA.",
+                _("prov.apis.none"), _("prov.apis.none.hint"),
             )
             return
 
@@ -251,7 +250,8 @@ def _mesa(texto: str) -> Optional[str]:
 
 def _unidades(dispositivo: dict) -> Optional[str]:
     unidades = dispositivo.get("compute_units")
-    return f"{unidades} unidades de cómputo" if unidades else None
+    return (_("gpu.units.count").format(n=unidades)
+            if unidades else None)
 
 
 def _version_del_driver(dispositivo: dict) -> Optional[str]:

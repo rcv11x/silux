@@ -25,13 +25,17 @@ import ast
 import json
 import pathlib
 import sys
+from typing import Iterable
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
 LANG = RAIZ / "silux" / "db" / "lang"
 
-# Dónde puede haber texto de interfaz. `providers/` no está: lo que sale de ahí
-# son datos del equipo, no frases del programa.
-FUENTES = ("silux/ui", "silux/render.py", "silux/cli.py", "silux/report.py")
+# Dónde puede haber texto de interfaz. `providers/` entra por los avisos: lo
+# que sale de ahí son datos del equipo, sí, pero la frase que explica por qué
+# falta un dato la escribió el autor y se lee en pantalla. Como aquí solo se
+# extrae lo que ya está envuelto en `_()`, los datos no corren peligro.
+FUENTES = ("silux/ui", "silux/render.py", "silux/cli.py", "silux/report.py",
+           "silux/providers", "silux/collector.py", "silux/spd.py")
 
 
 # Tablas de opciones cuyo texto se traduce al montar el desplegable, con
@@ -41,12 +45,17 @@ FUENTES = ("silux/ui", "silux/render.py", "silux/cli.py", "silux/report.py")
 # inglés.
 TABLAS = {
     "silux/ui/pages/settings.py": ("THEMES", "UNITS", "DENSITIES",
-                                   "FONT_SCALES", "ACCENTS", "NETWORK_UNITS"),
+                                   "FONT_SCALES", "ACCENTS", "NETWORK_UNITS",
+                                   "AUTORIA", "CONSTRUIDO_CON", "DATOS_DE_TERCEROS"),
     "silux/ui/app.py": ("SECTIONS",),
     "silux/model.py": ("CATEGORIES", "CATEGORY_ORDER"),
     "silux/ui/pages/memory.py": ("MODULE_FIELDS", "TIMING_HEADERS"),
-    "silux/ui/pages/cpu.py": ("PROC_FIELDS", "CLOCK_FIELDS"),
+    "silux/ui/pages/cpu.py": ("PROCESSOR_FIELDS", "CLOCK_FIELDS"),
     "silux/ui/widgets.py": ("COLUMNS",),
+    "silux/providers/dmi.py": ("CHASSIS_TYPES", "_ALIMENTACION"),
+    "silux/providers/hwmon.py": ("ETIQUETAS_GPU", "_ALIMENTACION"),
+    "silux/providers/drm.py": ("DRIVERS_CIEGOS", "INTEL_AVISOS", "MOTORES_INTEL",
+                              "INTEL_SIN_TEMPERATURA"),
 }
 
 
@@ -71,14 +80,13 @@ def cadenas_de_tablas() -> dict[str, list[str]]:
             for hijo in ast.walk(nodo.value):
                 if not isinstance(hijo, (ast.Tuple, ast.Dict)):
                     continue
-                # Dos formas: tuplas de pares —(clave, valor)— y tuplas o
-                # diccionarios que son claves a secas.
+                # De un par se coge el lado que parece clave, no el primero.
+                # Los dos órdenes existen y son igual de naturales: un
+                # desplegable es (etiqueta, valor guardado) y la ficha de
+                # créditos es (nombre propio, para-qué). Dando por hecha la
+                # posición, «Acerca de» salía con `about.author` en pantalla.
                 elementos = (hijo.values if isinstance(hijo, ast.Dict)
                              else hijo.elts)
-                pareja = (isinstance(hijo, ast.Tuple) and len(hijo.elts) == 2
-                          and all(isinstance(e, ast.Constant) for e in hijo.elts))
-                if pareja:
-                    elementos = hijo.elts[:1]
                 for elemento in elementos:
                     if (isinstance(elemento, ast.Constant)
                             and isinstance(elemento.value, str)
@@ -108,10 +116,14 @@ def cadenas_del_codigo() -> dict[str, list[str]]:
                         and nodo.args):
                     continue
                 # La clave puede venir elegida con un condicional:
-                # `_("sensors.count.one" if n == 1 else "…many")`.
+                # `_("sensors.count.one" if n == 1 else "…many")`. De ahí
+                # solo son claves las dos ramas: el literal de la
+                # comparación —`kind == "wifi"`— es un valor interno, y
+                # recogerlo metía «wifi» y «data» en los archivos de idioma.
                 primero = nodo.args[0]
                 literales = ([primero] if isinstance(primero, ast.Constant)
-                             else [n for n in ast.walk(primero)
+                             else [n for rama in (primero.body, primero.orelse)
+                                   for n in ast.walk(rama)
                                    if isinstance(n, ast.Constant)]
                              if isinstance(primero, ast.IfExp) else [])
                 relativo = str(archivo.relative_to(RAIZ))
@@ -151,8 +163,26 @@ def emparejar(huerfanas: dict[str, str],
     return sugerencias
 
 
-def actualizar(codigo: str, cadenas: dict[str, list[str]],
-               escribir: bool) -> tuple[int, int, int]:
+def sin_rastro_en_el_codigo(claves: Iterable[str]) -> list[str]:
+    """De las que el extractor no ve, cuáles no están escritas en ninguna parte.
+
+    Hay dos motivos para que una clave traducida no aparezca en la extracción,
+    y son opuestos. Uno es que se use con una variable —`_(NEED_TITLES[x])`—,
+    y esa hay que conservarla: borrarla dejaría un aviso en crudo en pantalla.
+    El otro es que ya no la use nadie, y esas se acumulan: al renombrar
+    `mem.slots.used` a `memory.slots.used` la vieja se queda con su traducción
+    puesta, indistinguible de una buena.
+
+    La diferencia se ve buscando la clave como texto en todo el paquete. Si no
+    está escrita en ningún archivo, no hay forma de que llegue a `_()`.
+    """
+    fuente = "\n".join(archivo.read_text(encoding="utf-8")
+                       for archivo in (RAIZ / "silux").rglob("*.py"))
+    return sorted(clave for clave in claves if clave not in fuente)
+
+
+def actualizar(codigo: str, cadenas: dict[str, list[str]], escribir: bool,
+               podar: Iterable[str] = ()) -> tuple[int, int, int]:
     """Sincroniza un idioma. Devuelve (traducidas, sin traducir, sobrantes)."""
     ruta = LANG / f"{codigo}.json"
     try:
@@ -160,8 +190,10 @@ def actualizar(codigo: str, cadenas: dict[str, list[str]],
     except (OSError, ValueError):
         actual = {}
 
+    podar = set(podar)
     nuevo = {texto: actual.get(texto, "") for texto in sorted(cadenas)}
-    sobrantes = {k: v for k, v in actual.items() if k not in cadenas and v}
+    sobrantes = {k: v for k, v in actual.items()
+                 if k not in cadenas and v and k not in podar}
 
     # Lo que ya está traducido no se borra aunque el extractor no lo encuentre.
     # Puede ser una cadena que cambió de sitio, o una que se traduce con una
@@ -187,6 +219,9 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--write", action="store_true",
                         help="escribe los cambios en los .json")
+    parser.add_argument("--podar", action="store_true",
+                        help="borra además las claves que ya no aparecen "
+                             "escritas en ninguna parte del código")
     args = parser.parse_args(argv)
 
     cadenas = cadenas_del_codigo()
@@ -200,13 +235,27 @@ def main(argv=None) -> int:
     if not idiomas:
         idiomas = ["es", "en"]
 
+    # Lo que sobra, separado en dos: lo que se usa con una variable y hay que
+    # conservar, y lo que ya no menciona nadie.
+    de_referencia = json.loads((LANG / "es.json").read_text(encoding="utf-8"))
+    muertas = sin_rastro_en_el_codigo(k for k in de_referencia
+                                      if k not in cadenas)
+
     for codigo in idiomas:
-        hechas, faltan, sobran = actualizar(codigo, cadenas, args.write)
+        hechas, faltan, sobran = actualizar(
+            codigo, cadenas, args.write, muertas if args.podar else ())
         estado = f"  {codigo}: {hechas} traducidas, {faltan} sin traducir"
         if sobran:
-            estado += (f", {sobran} que el extractor no encuentra "
+            estado += (f", {sobran} que se traducen con una variable "
                        "(se conservan)")
         print(estado)
+
+    if muertas:
+        print(f"\n  {len(muertas)} claves que ya no aparecen en el código:")
+        for clave in muertas:
+            print(f"    {clave}")
+        if not args.podar:
+            print("  (con --podar se borran)")
 
     if not args.write:
         print("\n  (informe; con --write se actualizan los archivos)")

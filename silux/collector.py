@@ -18,6 +18,7 @@ from typing import Iterable, Optional, Sequence
 
 from .model import Need, Snapshot
 from .privileged.client import PrivilegedClient
+from .i18n import _
 from .providers import (
     ArmIdentity,
     CppcClocks,
@@ -165,21 +166,21 @@ class Collector:
                 draft.note(
                     provider.provides or provider.name,
                     Need.ROOT,
-                    f"Sin permiso para leer {_ruta_de(exc)}.",
-                    "El sistema no deja acceder a esa ruta con este usuario.",
+                    _("prov.denied").format(ruta=_ruta_de(exc)),
+                    _("prov.denied.hint"),
                 )
             except (FileNotFoundError, NotADirectoryError) as exc:
                 draft.note(
                     provider.provides or provider.name,
                     Need.HARDWARE,
-                    f"Este equipo no publica {_ruta_de(exc)}.",
+                    _("prov.missing").format(ruta=_ruta_de(exc)),
                 )
             except Exception as exc:                      # noqa: BLE001
                 draft.note(
                     provider.provides or provider.name,
                     Need.ERROR,
-                    f"El proveedor «{provider.name}» falló: {exc}",
-                    "Es un fallo de silux, no de tu equipo. Merece un informe.",
+                    _("prov.crashed").format(nombre=provider.name, error=exc),
+                    _("prov.crashed.hint"),
                 )
         return draft
 

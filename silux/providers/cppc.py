@@ -32,6 +32,7 @@ from typing import Optional
 
 from ..model import Clocks, Need
 from .base import Draft, Provider, read_int, read_text
+from ..i18n import _
 
 SYS_CPU = "/sys/devices/system/cpu"
 
@@ -105,18 +106,12 @@ class CppcClocks(Provider):
         if falta_base:
             draft.note(
                 "cpu.clocks.base_hz", Need.HARDWARE,
-                "Esta máquina no publica su reloj base por ninguna vía.",
-                "La hoja 0x16 de CPUID es de Intel Skylake en adelante, ACPI CPPC "
-                "necesita que el firmware lo declare, y la cadena de marca de este "
-                "procesador no lleva la frecuencia.",
+                _("prov.cppc.nobase"), _("prov.cppc.nobase.hint"),
             )
         if falta_bus:
             draft.note(
                 "cpu.clocks.bus_hz", Need.HARDWARE,
-                "El reloj de referencia (BCLK) no se puede saber sin root.",
-                "Solo lo dan CPUID 0x16 en Intel moderno o los registros MSR del "
-                "procesador. Deducirlo del reloj base únicamente es fiable en "
-                "plataformas con ACPI CPPC, donde son 100 MHz.",
+                _("prov.cppc.nobclk"), _("prov.cppc.nobclk.hint"),
             )
 
 

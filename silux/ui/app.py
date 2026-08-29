@@ -249,7 +249,7 @@ class MainWindow(QMainWindow):
         wordmark.setObjectName("Headline")
         wordmark.setContentsMargins(10, 0, 0, 0)
 
-        version = QLabel(f"versión {__version__}")
+        version = QLabel(_("app.version").format(v=__version__))
         version.setObjectName("Muted")
         version.setFont(ui_font(max(7, m.small_pt - 1)))
         version.setContentsMargins(10, 0, 0, 4)
@@ -286,10 +286,10 @@ class MainWindow(QMainWindow):
         from .. import db
 
         if not db.available():
-            return "sin base de datos"
+            return _("app.db.none")
         counts = db.load().get("counts", {})
         total = counts.get("x86_intel", 0) + counts.get("x86_amd", 0)
-        return f"{total} procesadores en la base"
+        return _("app.db.count").format(n=total)
 
     # -- ciclo de vida ------------------------------------------------------
 
@@ -382,7 +382,7 @@ class MainWindow(QMainWindow):
 
         sugerido = str(pathlib.Path.home() / "informe-silux.md")
         destino, _filtro = QFileDialog.getSaveFileName(
-            self, "Guardar informe del equipo", sugerido, _("app.report.filter"))
+            self, _("app.report.title"), sugerido, _("app.report.filter"))
         if not destino:
             return
 
@@ -390,13 +390,12 @@ class MainWindow(QMainWindow):
             texto = report.build(self._last_snapshot, anonymous=True)
             pathlib.Path(destino).write_text(texto, encoding="utf-8")
         except OSError as error:
-            QMessageBox.warning(self, "Informe", f"No se pudo guardar:\n{error}")
+            QMessageBox.warning(self, _("app.report.card"),
+                                _("app.report.failed").format(error=error))
             return
         QMessageBox.information(
-            self, "Informe",
-            f"Guardado en {destino}\n\n"
-            "No incluye el nombre del equipo, las direcciones IP y MAC ni los "
-            "números de serie.",
+            self, _("app.report.card"),
+            _("app.report.saved").format(ruta=destino),
         )
 
     def _on_network_unit(self, unidad: str) -> None:
@@ -578,7 +577,8 @@ class MainWindow(QMainWindow):
                 orden, capture_output=True, text=True, timeout=180,
             )
         except (OSError, subprocess.TimeoutExpired, RuntimeError) as exc:
-            self._aviso_permanente(f"No se pudo instalar: {exc}")
+            self._aviso_permanente(
+                _("perm.install.failed").format(error=exc))
             return
 
         if resultado.returncode != 0:
@@ -586,7 +586,8 @@ class MainWindow(QMainWindow):
             # un fallo del que haya que informar como si algo se hubiera roto.
             if resultado.returncode not in (126, 127):
                 self._aviso_permanente(
-                    (resultado.stderr or "").strip().splitlines()[-1:] or ["falló"])
+                    (resultado.stderr or "").strip().splitlines()[-1:]
+                    or [_("perm.failed")])
             self._restaurar_botones_permanentes()
             return
 
@@ -616,8 +617,7 @@ class MainWindow(QMainWindow):
 
         interprete = next((r for r in SYSTEM_PYTHON if os.path.exists(r)), None)
         if interprete is None:
-            raise RuntimeError(
-                "no hay ningún Python del sistema con el que instalar")
+            raise RuntimeError(_("perm.nopython.install"))
 
         destino = _cache_dir()
         destino.mkdir(parents=True, exist_ok=True)
@@ -659,7 +659,8 @@ class MainWindow(QMainWindow):
             page.apply(snapshot)
 
     def _on_failure(self, message: str) -> None:
-        self._status.set_full_text(f"Fallo en el muestreo: {message}")
+        self._status.set_full_text(
+            _("app.sample.failed").format(msg=message))
 
 
 def _callar_el_portal() -> None:

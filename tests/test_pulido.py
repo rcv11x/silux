@@ -76,19 +76,19 @@ class TestNombreDelEquipo(unittest.TestCase):
     """
 
     def test_un_portatil_se_llama_por_su_nombre(self):
-        board = Board(vendor="LENOVO", name="LNVNB161216", chassis="Notebook",
+        board = Board(vendor="LENOVO", name="LNVNB161216", chassis="chassis.notebook",
                       system_vendor="LENOVO",
                       system_version="Lenovo ideapad 330-15ICH")
         self.assertEqual(board.display_name, "Lenovo ideapad 330-15ICH")
 
     def test_sin_repetir_la_marca_que_ya_viene_dentro(self):
-        board = Board(vendor="LENOVO", name="LNVNB161216", chassis="Notebook",
+        board = Board(vendor="LENOVO", name="LNVNB161216", chassis="chassis.notebook",
                       system_vendor="LENOVO",
                       system_version="Lenovo ideapad 330-15ICH")
         self.assertNotIn("Lenovo Lenovo", board.display_name)
 
     def test_y_poniendola_cuando_falta(self):
-        board = Board(vendor="ASUSTeK", name="FA506IHRB", chassis="Notebook",
+        board = Board(vendor="ASUSTeK", name="FA506IHRB", chassis="chassis.notebook",
                       system_vendor="ASUSTeK COMPUTER INC.",
                       system_version="TUF Gaming A15")
         self.assertEqual(board.display_name, "ASUS TUF Gaming A15")
@@ -96,12 +96,12 @@ class TestNombreDelEquipo(unittest.TestCase):
     def test_un_sobremesa_sigue_llamandose_por_su_placa(self):
         """Ahí el nombre bueno es el de la placa: es lo que se compró."""
         board = Board(vendor="Micro-Star International Co., Ltd.",
-                      name="H510M PRO-E (MS-7D23)", chassis="Sobremesa",
+                      name="H510M PRO-E (MS-7D23)", chassis="chassis.desktop",
                       system_vendor="Micro-Star", system_version="1.0")
         self.assertEqual(board.display_name, "MSI H510M PRO-E (MS-7D23)")
 
     def test_un_portatil_sin_nombre_de_equipo_tampoco_se_queda_sin_titulo(self):
-        board = Board(vendor="HP", name="8846", chassis="Notebook")
+        board = Board(vendor="HP", name="8846", chassis="chassis.notebook")
         self.assertEqual(board.display_name, "HP 8846")
 
     def test_y_una_placa_suelta_sin_nada(self):
