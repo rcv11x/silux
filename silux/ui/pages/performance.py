@@ -185,8 +185,16 @@ class PerformancePage(QScrollArea):
         # verdad pasa mientras se juega o se compila.
         self.duracion = QComboBox()
         for etiqueta, segundos in DURACIONES:
-            self.duracion.addItem(_(etiqueta), segundos)
-        self.duracion.setCurrentIndex(1)
+            # La que se puede comparar con otros equipos va marcada: sin esto,
+            # elegirla era cuestión de suerte y la barra de comparación no
+            # aparecía nunca sin que nada dijera por qué.
+            nombre = _(etiqueta)
+            if segundos == score.SEGUNDOS_CANONICOS:
+                nombre += _("bench.dur.comparable")
+            self.duracion.addItem(nombre, segundos)
+        self.duracion.setCurrentIndex(
+            next((i for i, (_e, s) in enumerate(DURACIONES)
+                  if s == score.SEGUNDOS_CANONICOS), 1))
         self.duracion.activated.connect(self._quizas_preguntar_duracion)
         self._duracion_libre: float | None = None
         self.duracion.setToolTip(
@@ -339,11 +347,14 @@ class PerformancePage(QScrollArea):
             rejilla.addWidget(etiqueta, 0, columna)
 
         for fila, entrada in enumerate(entradas, start=1):
-            total = entrada.total()
+            # La misma cifra que arriba. Antes esta columna traía la suma en
+            # crudo de operaciones por segundo, así que la misma prueba salía
+            # con dos números distintos en la misma pantalla.
+            puntos = score.puntuar(entrada.scores, entrada.threads)
             celdas = (
                 entrada.label or entrada.when,
                 self._duracion_de(entrada),
-                f"{total:.0f}" if total else render.DASH,
+                f"{puntos[1]:n}" if puntos else render.DASH,
                 render.hz(entrada.frequency_avg_hz),
                 render.temperature(entrada.temperature_peak_c, self._prefs.fahrenheit),
             )
@@ -490,7 +501,7 @@ class PerformancePage(QScrollArea):
         normal mientras la tabla esté vacía. Cada hueco se explica en vez de
         dejar la tarjeta a medias.
         """
-        puntos = score.puntuar(entrada.scores, entrada.threads, entrada.seconds)
+        puntos = score.puntuar(entrada.scores, entrada.threads)
         if puntos is None:
             self.score_card.hide()
             return
@@ -498,6 +509,15 @@ class PerformancePage(QScrollArea):
         self.score_value.setText(_("bench.score.value").format(n=f"{multi:n}"))
         self.score_detail.setText(_("bench.score.single").format(
             n=f"{un_hilo:n}", cpu=entrada.cpu, hilos=entrada.threads))
+
+        # Compararse con otros equipos pide la duración canónica; compararse
+        # consigo mismo, no. Son dos preguntas y se contestan por separado.
+        if not score.comparable(entrada.seconds):
+            self.score_bar.set_comparacion(None)
+            self.score_range.setText(_("bench.score.onlyown").format(
+                s=f"{score.SEGUNDOS_CANONICOS:.0f}"))
+            self.score_card.show()
+            return
 
         comparacion = score.comparar(entrada.cpu, multi)
         self.score_bar.set_comparacion(comparacion)

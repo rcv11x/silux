@@ -31,7 +31,7 @@ class TestLasCincoCargasPesanLoMismo(unittest.TestCase):
         scores = {f"{c}/1": v for c, v in tabla["un_hilo"].items()}
         scores |= {f"{c}/{hilos}": v for c, v in tabla["multihilo"].items()}
         self.assertEqual(
-            score.puntuar(scores, hilos, score.SEGUNDOS_CANONICOS),
+            score.puntuar(scores, hilos),
             (score.ESCALA, score.ESCALA))
 
     def test_ninguna_carga_decide_ella_sola(self):
@@ -45,8 +45,7 @@ class TestLasCincoCargasPesanLoMismo(unittest.TestCase):
             with self.subTest(carga=carga):
                 tocado = dict(base)
                 tocado[f"{carga}/{hilos}"] *= 2
-                _uno, multi = score.puntuar(tocado, hilos,
-                                            score.SEGUNDOS_CANONICOS)
+                _uno, multi = score.puntuar(tocado, hilos)
                 # Cinco cargas a partes iguales: doblar una sube un quinto.
                 self.assertAlmostEqual(multi / score.ESCALA, 1.2, delta=0.01)
 
@@ -55,7 +54,7 @@ class TestLasCincoCargasPesanLoMismo(unittest.TestCase):
         hilos = tabla["patron"]["hilos"]
         scores = {f"{c}/1": v * 2 for c, v in tabla["un_hilo"].items()}
         scores |= {f"{c}/{hilos}": v * 2 for c, v in tabla["multihilo"].items()}
-        self.assertEqual(score.puntuar(scores, hilos, score.SEGUNDOS_CANONICOS),
+        self.assertEqual(score.puntuar(scores, hilos),
                          (2 * score.ESCALA, 2 * score.ESCALA))
 
 
@@ -77,15 +76,24 @@ class TestSoloPuntuaLoQueSePuedeComparar(unittest.TestCase):
         self.scores |= {f"{c}/{self.hilos}": v
                         for c, v in tabla["multihilo"].items()}
 
-    def test_otra_duracion_no_puntua(self):
+    def test_cualquier_duracion_tiene_puntuacion(self):
+        """Poner las cinco cargas en la misma escala vale para toda prueba.
+
+        Es mejor cifra que la suma en crudo también dentro de un mismo equipo,
+        que es lo que compara el historial. Lo que la duración decide es otra
+        cosa, y se contesta aparte.
+        """
+        self.assertIsNotNone(score.puntuar(self.scores, self.hilos))
+
+    def test_pero_solo_una_se_compara_con_otras_maquinas(self):
         for segundos in (3.0, 5.0, 30.0, 120.0):
             with self.subTest(segundos=segundos):
-                self.assertIsNone(
-                    score.puntuar(self.scores, self.hilos, segundos))
+                self.assertFalse(score.comparable(segundos))
+        self.assertTrue(score.comparable(score.SEGUNDOS_CANONICOS))
 
     def test_la_duracion_canonica_admite_el_desvio_del_bucle(self):
         """No corta en mitad de una operación: 15 pedidos salen 15 y pico."""
-        self.assertIsNotNone(score.puntuar(self.scores, self.hilos, 15.4))
+        self.assertTrue(score.comparable(15.4))
         self.assertTrue(score.comparable(score.SEGUNDOS_CANONICOS + 1.0))
         self.assertFalse(score.comparable(score.SEGUNDOS_CANONICOS + 5.0))
 
@@ -94,7 +102,7 @@ class TestSoloPuntuaLoQueSePuedeComparar(unittest.TestCase):
         incompleta = {k: v for k, v in self.scores.items()
                       if not k.startswith("memoria/")}
         self.assertIsNone(
-            score.puntuar(incompleta, self.hilos, score.SEGUNDOS_CANONICOS))
+            score.puntuar(incompleta, self.hilos))
 
 
 class TestLaEscalaSeDeclaraYSeVersiona(unittest.TestCase):

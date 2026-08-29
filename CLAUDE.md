@@ -441,6 +441,21 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
 - **Contar núcleos donde el usuario cuenta estrellas**: la leyenda decía
   «núcleo 1 y núcleo 3» y en pantalla se veían cuatro marcas, porque cada
   núcleo bueno marca sus dos hilos. Las dos cosas ciertas y ninguna evidente.
+- **Dar por bueno lo que mide la primera vuelta de una carga**: la compresión
+  pesada da 1 770 operaciones por segundo la primera vez que corre en un
+  proceso y 2 960 a partir de la segunda, un 65 % más, sin que cambie nada del
+  equipo. Lo que se paga ahí es del asignador: LZMA pide un búfer holgado en
+  cada llamada y glibc lo sirve con `mmap` hasta que sube su umbral por su
+  cuenta. Como el orden de la prueba es un hilo primero y todos después, ese
+  arranque lo paga siempre la medida de un hilo: la puntuación de un solo
+  núcleo sale baja y la escala entre uno y todos sale en quince o dieciocho
+  veces, que en un procesador de ocho núcleos no es posible. **Sigue sin
+  arreglar.** Se probaron tres caminos y ninguno vale dentro de la prueba
+  entera, aunque los tres funcionan con la carga aislada: calentar dentro del
+  mismo hilo que va a medir, subir el umbral con `mallopt`, y una pasada de
+  descarte en un hilo aparte. glibc lleva sus cuentas por arena y cada medida
+  estrena hilos, así que lo que sirve en un proceso recién arrancado deja de
+  servir cuando ya han corrido dos cargas antes.
 - **Sumar operaciones por segundo de cargas distintas para hacer una
   puntuación**: en un 5800X3D la compresión pesada da 28 494 op/s y la
   memoria 533, así que la primera pesaba el 82 % del total y las otras
