@@ -22,7 +22,7 @@ from ...model import Gpu, Need, Snapshot
 from ...settings import Preferences
 from ...throttling import SeguidorDeRecortes
 from .. import theme
-from ..theme import Palette
+from ..theme import Palette, ui_font
 from ..widgets import (Card, ChipRow, Divider, InfoGrid, Notice, ResponsiveRow, StackedBar,
                        StatTile, Table, clear_layout)
 
@@ -155,6 +155,15 @@ class GpuSection(QWidget):
         self.displays = Table([_(h) for h in DISPLAY_HEADERS],
                               numeric=(False, False, True, True, True, False))
         display_card.body.addWidget(self.displays)
+        # Las salidas sin nada enchufado, en una línea. Un MacBook Air de 11"
+        # enseñaba cuatro filas seguidas —DP-1, DP-2, HDMI-A-1, HDMI-A-2— con
+        # los seis campos a guiones y solo la quinta con datos: cuatro quintas
+        # partes de la tabla eran conectores que esa carcasa ni siquiera trae.
+        self.displays_free = QLabel("")
+        self.displays_free.setObjectName("Muted")
+        self.displays_free.setWordWrap(True)
+        self.displays_free.setFont(ui_font(theme.METRICS.small_pt))
+        display_card.body.addWidget(self.displays_free)
         layout.addWidget(display_card)
 
         self._chip_signature: tuple = ()
@@ -358,8 +367,16 @@ class GpuSection(QWidget):
             for api in gpu.apis
         ] or [(_("gpu.apis.none"), d, d, d)])
 
-        self.displays.set_rows([_fila_de_salida(salida) for salida in gpu.displays]
+        conectadas = [s for s in gpu.displays if s.connected]
+        libres = [s.connector for s in gpu.displays if not s.connected]
+        self.displays.set_rows([_fila_de_salida(s) for s in conectadas]
                                or [(_("gpu.displays.none"), d, d, d, d, d)])
+        self.displays_free.setText(
+            _("gpu.displays.free.one" if len(libres) == 1
+              else "gpu.displays.free").format(n=len(libres),
+                                               salidas=", ".join(libres))
+            if libres else "")
+        self.displays_free.setVisible(bool(libres))
 
     def _apply_engines(self, gpu: Gpu) -> None:
         """Los motores de la tarjeta, si el driver los publica.

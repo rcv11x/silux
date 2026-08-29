@@ -302,6 +302,8 @@
   "gpu.display.res": "Resolución",
   "gpu.display.size": "Tamaño",
   "gpu.display.unknown": "sin identificar",
+  "gpu.displays.free": "{n} salidas libres: {salidas}",
+  "gpu.displays.free.one": "1 salida libre: {salidas}",
   "gpu.displays.none": "Sin salidas de video",
   "gpu.engine.can": "Sabe hacer",
   "gpu.engine.name": "Motor",

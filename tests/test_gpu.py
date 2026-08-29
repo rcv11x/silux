@@ -1369,3 +1369,106 @@ class TestGraficaSinDriver(unittest.TestCase):
 
         self.assertIn(0x030000, CLASES_GRAFICAS)
         self.assertIn(0x030200, CLASES_GRAFICAS)
+
+
+class TestNucleosCudaDeNvidia(unittest.TestCase):
+    """NVML no contesta lo mismo en todas las tarjetas.
+
+    Dos capturas de dos usuarios, el mismo día: una GTX 1660 Ti diciendo
+    «1536 núcleos CUDA», que son los suyos, y una RTX 4060 diciendo «24», que
+    son sus multiprocesadores —lleva 3072—. La función es la misma en las dos,
+    `nvmlDeviceGetNumGpuCores`, y lo que devuelve depende de la generación.
+    """
+
+    def test_lo_que_ya_son_nucleos_se_deja_como_esta(self):
+        from silux.providers.nvidia import _nucleos_cuda
+
+        self.assertEqual(_nucleos_cuda({"codename": "TU116"}, 1536), 1536)
+
+    def test_los_multiprocesadores_se_convierten_a_nucleos(self):
+        from silux.providers.nvidia import _nucleos_cuda
+
+        # RTX 4060: 24 multiprocesadores de Ada, 128 núcleos cada uno.
+        self.assertEqual(_nucleos_cuda({"codename": "AD107"}, 24), 3072)
+        # RTX 3050 Mobile: 16 de Ampere.
+        self.assertEqual(_nucleos_cuda({"codename": "GA107M"}, 16), 2048)
+
+    def test_una_arquitectura_desconocida_no_se_inventa(self):
+        """Antes que un número creíble y falso, ninguno."""
+        from silux.providers.nvidia import _nucleos_cuda
+
+        self.assertIsNone(_nucleos_cuda({"codename": "XX999"}, 24))
+        self.assertIsNone(_nucleos_cuda({}, 24))
+
+    def test_sin_dato_sigue_sin_haber_dato(self):
+        from silux.providers.nvidia import _nucleos_cuda
+
+        self.assertIsNone(_nucleos_cuda({"codename": "AD107"}, None))
+
+
+class TestSalidasLibres(unittest.TestCase):
+    """Los conectores sin nada enchufado no ocupan una fila cada uno.
+
+    Un MacBook Air de 11 pulgadas enseñaba cuatro filas seguidas —DP-1, DP-2,
+    HDMI-A-1, HDMI-A-2— con los seis campos a guiones, y solo la quinta, su
+    propia pantalla, con datos. Cuatro quintas partes de la tabla eran salidas
+    que el chip expone y esa carcasa no trae.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        from PySide6.QtWidgets import QApplication
+
+        cls.app = QApplication.instance() or QApplication([])
+
+    def _pagina(self, salidas):
+        import dataclasses
+
+        from silux.collector import Collector
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.graphics import GraphicsPage
+
+        theme.set_density("normal", "normal")
+        foto = Collector().sample()
+        if not foto.gpus:
+            self.skipTest("esta máquina no tiene ninguna gráfica")
+        gpu = dataclasses.replace(foto.gpus[0], displays=tuple(salidas))
+        pagina = GraphicsPage(theme.palette_for(self.app, "dark"),
+                              Preferences(font_scale="normal").normalized())
+        pagina.apply(dataclasses.replace(foto, gpus=(gpu,)))
+        return pagina
+
+    @staticmethod
+    def _linea_de_libres(pagina):
+        """La etiqueta vive en la tarjeta de cada gráfica, no en la página."""
+        from silux.ui.pages.graphics import GpuSection
+
+        bloque = pagina.findChildren(GpuSection)[0]
+        return bloque.displays_free
+
+    def test_las_libres_se_juntan_en_una_linea(self):
+        from silux.model import Display
+        from silux.ui.widgets import Table
+
+        pagina = self._pagina([
+            Display(connector="DP-1", connected=False),
+            Display(connector="DP-2", connected=False),
+            Display(connector="HDMI-A-1", connected=False),
+            Display(connector="eDP-1", connected=True, width=1366, height=768),
+        ])
+        tabla = pagina.findChildren(Table)[-1]
+        self.assertEqual(len(tabla._cells), 1, "solo la conectada va en la tabla")
+        self.assertEqual(tabla._cells[0][0].full_text(), "eDP-1")
+
+        etiqueta = self._linea_de_libres(pagina)
+        texto = etiqueta.text()
+        for suelta in ("DP-1", "DP-2", "HDMI-A-1"):
+            self.assertIn(suelta, texto)
+        self.assertNotIn("eDP-1", texto)
+
+    def test_sin_ninguna_libre_no_sobra_una_linea_vacia(self):
+        from silux.model import Display
+
+        pagina = self._pagina([Display(connector="DP-1", connected=True)])
+        self.assertEqual(self._linea_de_libres(pagina).text(), "")

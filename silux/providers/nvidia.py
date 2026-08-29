@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import dataclasses
 
+from typing import Optional
 from .. import nvml
 from ..model import GpuClocks, PcieLink, GpuMemory, Need
 from .base import Draft, Provider
@@ -63,13 +64,52 @@ class NvidiaGpus(Provider):
                                and "NVIDIA" in n.message)]
 
 
+# Cuántos núcleos CUDA lleva cada multiprocesador, por generación. Las dos
+# primeras letras del nombre en clave dicen cuál es —AD107 es Ada, TU116 es
+# Turing— y es un dato de la arquitectura, igual para toda la familia.
+NUCLEOS_POR_SM = {
+    "GP": 128,   # Pascal
+    "GV": 64,    # Volta
+    "TU": 64,    # Turing
+    "GA": 128,   # Ampere
+    "AD": 128,   # Ada Lovelace
+    "GB": 128,   # Blackwell
+}
+
+# Por debajo de esto no son núcleos. La tarjeta más modesta que habla NVML
+# ronda los 256 y ninguna GPU pasa de 200 multiprocesadores, así que entre las
+# dos magnitudes hay un hueco que no deja lugar a dudas.
+MINIMO_NUCLEOS = 200
+
+
+def _nucleos_cuda(gpu: dict, crudo: Optional[int]) -> Optional[int]:
+    """Los núcleos CUDA de verdad, que no siempre es lo que contesta NVML.
+
+    `nvmlDeviceGetNumGpuCores` devuelve una cosa distinta según la tarjeta: una
+    GTX 1660 Ti contesta 1536, que son sus núcleos, y una RTX 4060 contesta 24,
+    que son sus multiprocesadores —lleva 3072 núcleos—. Salían las dos juntas
+    en capturas de dos usuarios, «1536 CUDA» y «24 CUDA», y la segunda parece
+    un fallo del programa porque lo es.
+
+    Cuando el número es demasiado bajo para ser núcleos se multiplica por lo
+    que da cada multiprocesador en esa arquitectura. Si no se reconoce la
+    arquitectura no se inventa: se deja sin dato, que es preferible a una
+    cifra creíble y falsa.
+    """
+    if crudo is None or crudo >= MINIMO_NUCLEOS:
+        return crudo
+    clave = (gpu.get("codename") or "")[:2].upper()
+    factor = NUCLEOS_POR_SM.get(clave)
+    return crudo * factor if factor else None
+
+
 def _rellenar(gpu: dict, tarjeta: nvml.NvidiaGpu) -> None:
     directos = {
         "name": tarjeta.name,
         "vbios": tarjeta.vbios,
         "driver_version": tarjeta.driver_version,
         "unique_id": tarjeta.uuid,
-        "compute_units": tarjeta.cuda_cores,
+        "compute_units": _nucleos_cuda(gpu, tarjeta.cuda_cores),
         "busy_percent": tarjeta.busy_percent,
         "memory_busy_percent": tarjeta.memory_busy_percent,
         "temp_c": tarjeta.temp_c,
