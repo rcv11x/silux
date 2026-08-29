@@ -244,3 +244,84 @@ class TestJerarquiaVisual(unittest.TestCase):
         nombres = {e.objectName() for e in tabla.findChildren(QLabel)}
         self.assertIn("ColumnTitle", nombres)
         self.assertNotIn("CardTitle", nombres)
+
+
+class TestTodosLosBotonesReaccionanAlRaton(unittest.TestCase):
+    """Un botón que no responde al ratón parece desactivado.
+
+    Los de cancelar la prueba y borrar el historial se quedaban quietos, y el
+    motivo estaba en la especificidad de las hojas de Qt: un selector con id
+    —`QPushButton#Danger`— gana a uno con pseudo-clase —`QPushButton:hover`—,
+    así que el color y el borde del hover general nunca llegaban a ellos. El
+    único hover propio que tenía `#Danger` ponía el fondo que ya tenía puesto.
+
+    Se comprueba sobre la hoja y no sobre un widget pintado: fuera de una
+    ventana de verdad el estilo no se aplica igual, y esa prueba diría que
+    todo está bien pase lo que pase.
+    """
+
+    # Los nombres que llevan los botones con estilo propio.
+    CON_ESTILO_PROPIO = ("Danger", "GhostButton")
+
+    @staticmethod
+    def _bloque(hoja: str, selector: str) -> str:
+        """Lo que declara una regla, o cadena vacía si no está."""
+        import re
+
+        encaje = re.search(re.escape(selector) + r"\s*\{([^}]*)\}", hoja)
+        return encaje.group(1) if encaje else ""
+
+    def test_cada_boton_con_estilo_propio_tiene_su_hover(self):
+        from silux.ui import theme
+
+        for paleta in (theme.DARK, theme.LIGHT):
+            hoja = theme.stylesheet(paleta)
+            for nombre in self.CON_ESTILO_PROPIO:
+                with self.subTest(nombre=nombre, oscuro=paleta is theme.DARK):
+                    reglas = self._bloque(hoja, f"QPushButton#{nombre}:hover")
+                    self.assertTrue(reglas,
+                                    f"#{nombre} no declara ningún hover")
+
+    def test_y_ese_hover_cambia_algo_que_se_ve(self):
+        """Poner el fondo que ya tenía es no tener hover.
+
+        No basta con comparar las dos reglas: la mala declaraba `background` y
+        la normal `color`, así que eran distintas y aun así el botón se quedaba
+        igual. Lo que hay que mirar es cada propiedad del hover contra el valor
+        que ya tiene el botón, heredando del `QPushButton` de base lo que su
+        propia regla no diga.
+        """
+        from silux.ui import theme
+
+        for paleta in (theme.DARK, theme.LIGHT):
+            hoja = theme.stylesheet(paleta)
+            base = _declaraciones(self._bloque(hoja, "QPushButton"))
+            for nombre in self.CON_ESTILO_PROPIO:
+                with self.subTest(nombre=nombre, oscuro=paleta is theme.DARK):
+                    normal = base | _declaraciones(
+                        self._bloque(hoja, f"QPushButton#{nombre}"))
+                    encima = _declaraciones(
+                        self._bloque(hoja, f"QPushButton#{nombre}:hover"))
+                    cambian = [k for k, v in encima.items()
+                               if normal.get(k) != v]
+                    self.assertTrue(
+                        cambian,
+                        f"#{nombre} declara un hover que deja todo como estaba: "
+                        f"{encima}")
+
+    def test_el_boton_normal_sigue_teniendo_el_suyo(self):
+        from silux.ui import theme
+
+        reglas = self._bloque(theme.stylesheet(theme.DARK), "QPushButton:hover")
+        self.assertIn("border-color", reglas)
+        self.assertIn("color", reglas)
+
+
+def _declaraciones(bloque: str) -> dict:
+    """Las propiedades de una regla, para poder compararlas."""
+    salida = {}
+    for trozo in bloque.split(";"):
+        if ":" in trozo:
+            clave, valor = trozo.split(":", 1)
+            salida[clave.strip()] = valor.strip()
+    return salida
