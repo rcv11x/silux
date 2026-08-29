@@ -198,12 +198,22 @@ export QT_QPA_PLATFORM_PLUGIN_PATH="$AQUI/usr/lib/qt/plugins/platforms"
 # Con qué se arranca. La interfaz es lo normal, pero el volcado en terminal
 # tiene que estar a mano: «--report» es lo primero que se le pide a quien dice
 # que algo no le sale, y quien usa el AppImage no tiene otra forma de sacarlo.
+# `-m` mete el directorio desde el que se llama al principio de sys.path, así
+# que un `silux/` en la carpeta actual gana al que va dentro del paquete: el
+# AppImage ejecutaba código ajeno sin decir nada. Se ve lanzándolo desde una
+# copia del repositorio, donde enseñaba la versión del árbol de trabajo en vez
+# de la suya. Python 3.11 trae PYTHONSAFEPATH para esto, pero aquí dentro va
+# el 3.10 de Ubuntu 22.04, así que se quita a mano antes de importar nada.
+ARRANQUE='import sys, runpy
+sys.path.pop(0)
+runpy.run_module(sys.argv.pop(1), run_name="__main__", alter_sys=True)'
+
 case "${1:-}" in
-    --cli) shift; exec "$AQUI/usr/bin/python3" -m silux.cli "$@" ;;
+    --cli) shift; exec "$AQUI/usr/bin/python3" -c "$ARRANQUE" silux.cli "$@" ;;
     --report|--json|--sensors|--watch|--db-info|--no-color|--with-identifiers|--version)
-        exec "$AQUI/usr/bin/python3" -m silux.cli "$@" ;;
+        exec "$AQUI/usr/bin/python3" -c "$ARRANQUE" silux.cli "$@" ;;
 esac
-exec "$AQUI/usr/bin/python3" -m silux.ui.app "$@"
+exec "$AQUI/usr/bin/python3" -c "$ARRANQUE" silux.ui.app "$@"
 """
 
 DESKTOP = """[Desktop Entry]
