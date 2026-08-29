@@ -19,13 +19,13 @@ from PySide6.QtWidgets import (QComboBox, QHBoxLayout, QLabel, QProgressBar,
                                QPushButton, QWidget,
                                QScrollArea, QVBoxLayout, QWidget)
 
-from ... import benchmark, history, render
+from ... import benchmark, history, render, score
 from ...i18n import _
 from ...settings import Preferences
 from .. import theme
-from ..theme import Palette
-from ..widgets import (Card, InfoGrid, Notice, ResponsiveRow, Table,
-                       clear_layout, mono_font)
+from ..theme import Palette, ui_font
+from ..widgets import (Card, InfoGrid, Notice, ResponsiveRow, ScoreBar,
+                       Table, clear_layout, mono_font)
 
 RESULT_HEADERS = ("bench.col.load", "bench.col.one", "bench.col.all", "bench.col.scale")
 HISTORY_HEADERS = ("bench.col.test", "bench.col.measure", "bench.col.score", "bench.col.avgfreq",
@@ -73,6 +73,26 @@ class PerformancePage(QScrollArea):
         self._layout.setSpacing(m.section_gap)
 
         self._layout.addWidget(self._build_header())
+
+        # Antes que la tabla de medidas: es la cifra que se mira primero, y
+        # la única que significa algo fuera de este equipo.
+        self.score_card = Card(_("bench.card.score"))
+        self.score_value = QLabel("")
+        self.score_value.setObjectName("Headline")
+        self.score_value.setFont(ui_font(theme.METRICS.headline_px))
+        self.score_card.body.addWidget(self.score_value)
+        self.score_detail = QLabel("")
+        self.score_detail.setObjectName("Muted")
+        self.score_detail.setWordWrap(True)
+        self.score_card.body.addWidget(self.score_detail)
+        self.score_bar = ScoreBar(palette)
+        self.score_card.body.addWidget(self.score_bar)
+        self.score_range = QLabel("")
+        self.score_range.setObjectName("Muted")
+        self.score_range.setFont(ui_font(theme.METRICS.small_pt))
+        self.score_card.body.addWidget(self.score_range)
+        self.score_card.hide()
+        self._layout.addWidget(self.score_card)
 
         self.results_card = Card(_("bench.card.results"))
         self.results = Table([_(h) for h in RESULT_HEADERS], numeric=(False, True, True, True))
@@ -459,6 +479,40 @@ class PerformancePage(QScrollArea):
         entrada = history.from_result(resultado, self._cpu_actual, segundos)
         anteriores = history.append(entrada)
         self._pintar_historial(anteriores, entrada)
+        self._pintar_puntuacion(entrada)
+
+    def _pintar_puntuacion(self, entrada) -> None:
+        """La cifra comparable, y dónde cae entre las de su misma pieza.
+
+        Las dos cosas pueden faltar por separado. Sin la duración canónica no
+        hay cifra —una prueba de tres segundos y otra de treinta no se ponen
+        juntas—, y aun teniéndola puede no haber con qué compararla, que es lo
+        normal mientras la tabla esté vacía. Cada hueco se explica en vez de
+        dejar la tarjeta a medias.
+        """
+        puntos = score.puntuar(entrada.scores, entrada.threads, entrada.seconds)
+        if puntos is None:
+            self.score_card.hide()
+            return
+        un_hilo, multi = puntos
+        self.score_value.setText(_("bench.score.value").format(n=f"{multi:n}"))
+        self.score_detail.setText(_("bench.score.single").format(
+            n=f"{un_hilo:n}", cpu=entrada.cpu, hilos=entrada.threads))
+
+        comparacion = score.comparar(entrada.cpu, multi)
+        self.score_bar.set_comparacion(comparacion)
+        if comparacion is None:
+            self.score_range.setText(_("bench.score.alone"))
+        else:
+            clave = ("bench.score.normal" if comparacion.normal
+                     else "bench.score.above" if comparacion.desvio > 0
+                     else "bench.score.below")
+            self.score_range.setText(
+                _(clave).format(pct=f"{abs(comparacion.desvio) * 100:.0f}",
+                                min=f"{comparacion.minimo:n}",
+                                max=f"{comparacion.maximo:n}",
+                                n=comparacion.muestras))
+        self.score_card.show()
 
     def _pintar_historial(self, entradas, actual=None) -> None:
         if not entradas:

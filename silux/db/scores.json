@@ -25,5 +25,17 @@
     "derivacion": 1803.06,
     "hash": 2085.86,
     "memoria": 479.6
+  },
+  "piezas_about": "Las puntuaciones registradas de cada pieza, para poder decirle a alguien si la suya va como se espera. Hacen falta al menos tres para hablar de un rango; con menos no se enseña nada, porque situar a alguien respecto de dos medidas sueltas es peor que no decir nada. Se añaden con «tools/anadir_puntuacion.py» a partir de los informes que manda la gente.",
+  "piezas": {
+    "AMD Ryzen 7 5800X3D": {
+      "hilos": 16,
+      "un_hilo": [
+        1000
+      ],
+      "multihilo": [
+        1000
+      ]
+    }
   }
 }

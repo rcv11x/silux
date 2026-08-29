@@ -29,6 +29,7 @@ diría una diferencia que no existe.
 
 from __future__ import annotations
 
+import dataclasses
 import functools
 import json
 import pathlib
@@ -120,3 +121,79 @@ def _combinar(scores: dict[str, float], hilos: int,
             return None
         fracciones.append(medido / del_patron)
     return round(sum(fracciones) / len(fracciones) * ESCALA)
+
+
+# Cuántas medidas hacen falta para hablar de un rango. Con dos, los extremos
+# son las dos que hay y la barra diría que cualquier cosa es normal o que nada
+# lo es, según la suerte. Tres es poco y ya permite una mediana.
+MINIMO_MUESTRAS = 3
+
+# Cuánto se puede alejar la puntuación de la mediana de su pieza antes de que
+# merezca comentarse. Un 8 % arriba o abajo entra dentro de lo que separa a dos
+# equipos con la misma CPU: la placa, la memoria, el disipador y el gobernador.
+MARGEN_NORMAL = 0.08
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class Comparacion:
+    """Dónde cae una puntuación entre las de su misma pieza."""
+
+    puntuacion: int
+    minimo: int
+    maximo: int
+    mediana: int
+    muestras: int
+
+    @property
+    def fraccion(self) -> float:
+        """Dónde ponerla en la barra, de 0 a 1.
+
+        Se recorta a los extremos: una pieza que rinda por encima de todo lo
+        registrado tiene que verse al final de la barra, no fuera de ella.
+        """
+        if self.maximo <= self.minimo:
+            return 0.5
+        cruda = (self.puntuacion - self.minimo) / (self.maximo - self.minimo)
+        return max(0.0, min(1.0, cruda))
+
+    @property
+    def desvio(self) -> float:
+        """Cuánto se aparta de la mediana, en tanto por uno."""
+        return (self.puntuacion - self.mediana) / self.mediana if self.mediana else 0.0
+
+    @property
+    def normal(self) -> bool:
+        return abs(self.desvio) <= MARGEN_NORMAL
+
+
+def comparar(cpu: str, puntuacion: int,
+             multihilo: bool = True) -> Optional[Comparacion]:
+    """Dónde cae esta puntuación entre las conocidas de la misma pieza.
+
+    Devuelve `None` cuando no se sabe nada de esa CPU, que hoy es casi
+    siempre: la tabla arranca con lo poco que se ha medido y se llena con lo
+    que vaya llegando. Es mejor no decir nada que situar a alguien respecto de
+    dos medidas sueltas.
+    """
+    pieza = referencias().get("piezas", {}).get(cpu)
+    if not pieza:
+        return None
+    muestras = sorted(pieza.get("multihilo" if multihilo else "un_hilo", []))
+    if len(muestras) < MINIMO_MUESTRAS:
+        return None
+    mitad = len(muestras) // 2
+    mediana = (muestras[mitad] if len(muestras) % 2
+               else (muestras[mitad - 1] + muestras[mitad]) / 2)
+    return Comparacion(
+        puntuacion=puntuacion,
+        minimo=int(muestras[0]),
+        maximo=int(muestras[-1]),
+        mediana=int(round(mediana)),
+        muestras=len(muestras),
+    )
+
+
+def piezas_conocidas() -> int:
+    """Cuántas piezas tienen medidas suficientes para comparar."""
+    return sum(1 for p in referencias().get("piezas", {}).values()
+               if len(p.get("multihilo", [])) >= MINIMO_MUESTRAS)
