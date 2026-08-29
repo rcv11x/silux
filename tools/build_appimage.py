@@ -122,6 +122,67 @@ DYNLOAD_FUERA = (
     "_test", "_xx", "xx",
 )
 
+# Qué PySide6 se empaqueta. Sin `--compat` la última, que es la que trae los
+# arreglos de Qt —los de Wayland, sobre todo, que es donde más se mueve—. Con
+# `--compat`, la última serie que sigue compilándose para x86-64 a secas.
+RANGO_PYSIDE = {False: "PySide6>=6.6", True: "PySide6>=6.6,<6.10"}
+
+# Lo pone `main` al arrancar. Lo miran el nombre del archivo y la guarda.
+COMPAT = False
+
+# Lo que sigue lo escribe `tools/build_appimage.py` cuando el Qt empaquetado
+# pide más de lo que garantiza un x86-64. `%%JUEGOS%%` son los nombres tal y
+# como los publica `/proc/cpuinfo`.
+GUARDA = """
+# --- procesador ------------------------------------------------------------
+# Sin esto, un procesador al que le falte alguna de estas instrucciones se
+# lleva un «Instrucción ilegal» y un volcado en cuanto Qt toca una cadena, sin
+# nada que explique por qué. Qt trae un aviso para el caso y no da tiempo a
+# que salga: revienta antes de imprimirlo.
+FALTAN=""
+if [ -r /proc/cpuinfo ]; then
+    for BANDERA in %%JUEGOS%%; do
+        grep -qw "$BANDERA" /proc/cpuinfo || FALTAN="$FALTAN $BANDERA"
+    done
+fi
+if [ -n "$FALTAN" ]; then
+    case "${LANG:-}" in
+      es*) cat >&2 <<FIN
+A este procesador le faltan instrucciones que necesita la versión normal:$FALTAN
+
+Es lo que pide Qt 6.10 en adelante, y deja fuera a los Intel anteriores a 2008
+y a los AMD anteriores a 2011. No es un fallo del equipo.
+
+Hay una versión para estos procesadores, con el mismo programa dentro:
+
+    %%NOMBRE%%-compat.AppImage
+
+Mientras tanto, esto sí funciona y saca todo el hardware por la terminal:
+
+    $0 --report informe.md
+FIN
+      ;;
+      *) cat >&2 <<FIN
+This processor is missing instructions the normal build needs:$FALTAN
+
+Qt 6.10 and later require them, which leaves out Intel chips older than 2008
+and AMD chips older than 2011. Nothing is wrong with your machine.
+
+There is a build for these processors, with the same program inside:
+
+    %%NOMBRE%%-compat.AppImage
+
+In the meantime this works, and dumps all the hardware to the terminal:
+
+    $0 --report report.md
+FIN
+      ;;
+    esac
+    exit 1
+fi
+# --- fin procesador --------------------------------------------------------
+"""
+
 APPRUN = """#!/bin/sh
 # Punto de entrada del AppImage.
 AQUI="$(dirname "$(readlink -f "$0")")"
@@ -164,6 +225,10 @@ def main() -> int:
                         help="construye el árbol pero no lo empaqueta")
     parser.add_argument("--keep", action="store_true",
                         help="conserva el AppDir después de empaquetar")
+    parser.add_argument("--compat", action="store_true",
+                        help="empaqueta la última serie de Qt que se compila "
+                             "para x86-64 a secas, para procesadores "
+                             "anteriores a 2008 (Intel) o 2011 (AMD)")
     parser.add_argument("--container", metavar="IMAGEN", nargs="?",
                         const=IMAGEN_BASE,
                         help="construye dentro de un contenedor con una "
@@ -171,8 +236,11 @@ def main() -> int:
                              "funcione en procesadores y sistemas viejos")
     args = parser.parse_args()
 
+    global COMPAT
+    COMPAT = args.compat
+
     if args.container:
-        return construir_en_contenedor(args.container)
+        return construir_en_contenedor(args.container, args.compat)
 
     if APPDIR.exists():
         shutil.rmtree(APPDIR)
@@ -189,13 +257,17 @@ def main() -> int:
     bibliotecas |= copiar_plugins()
     print("· bibliotecas compartidas")
     copiar_bibliotecas(bibliotecas)
-    print("· metadatos")
-    escribir_metadatos()
     print("· strip")
     quitar_simbolos()
     print("· comprobación")
     comprobar_autocontenido()
-    comprobar_juego_de_instrucciones()
+    # Antes de escribir el AppRun: lo que salga de aquí decide si lleva guarda
+    # y qué banderas busca. Después del strip porque `.dynsym`, que es lo que
+    # mira, no se toca, y así se mide lo que se reparte de verdad.
+    banderas = comprobar_juego_de_instrucciones()
+    print("· metadatos")
+    escribir_metadatos(banderas)
+    sellar_build()
 
     total = sum(f.stat().st_size for f in APPDIR.rglob("*") if f.is_file())
     print(f"\nAppDir listo: {total / 1024**2:.0f} MB sin comprimir")
@@ -221,7 +293,7 @@ apt-get update -qq
 # `ldd` solo informa de lo que puede resolver, así que una biblioteca que no
 # esté en la imagen no aparece como dependencia y se queda fuera sin ruido.
 apt-get install -y -qq --no-install-recommends \
-    python3 python3-pip python3-venv file desktop-file-utils \
+    python3 python3-pip python3-venv file binutils desktop-file-utils \
     libgl1 libegl1 libdbus-1-3 libfontconfig1 \
     libxkbcommon0 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 \
     libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
@@ -230,6 +302,9 @@ apt-get install -y -qq --no-install-recommends \
     libwayland-client0 libwayland-cursor0 libwayland-egl1 >/dev/null
 # El PySide6 de PyPI viene compilado para manylinux: glibc antigua y x86-64
 # básico. El de la distribución iría atado a la versión de Qt del sistema.
+#
+# La versión la elige quien llama: `--compat` pone el techo, y sin él se coge
+# la última. Ver `RANGO_PYSIDE`.
 #
 # El techo no es capricho. Qt 6.10 pasó a compilarse con `-march=x86-64-v2`, y
 # no en rutas aparte que se eligen mirando la CPU, sino en funciones normales:
@@ -240,14 +315,14 @@ apt-get install -y -qq --no-install-recommends \
 # los Core 2, los Athlon II y los Phenom II, que es justo la clase de equipo
 # cuyo dueño quiere saber qué lleva dentro. 6.9 es la última serie que se
 # compila para x86-64 a secas.
-pip3 install --quiet --break-system-packages 'PySide6>=6.6,<6.10' 2>/dev/null || \
-    pip3 install --quiet 'PySide6>=6.6,<6.10'
+pip3 install --quiet --break-system-packages "$PYSIDE" 2>/dev/null || \
+    pip3 install --quiet "$PYSIDE"
 cd /fuente
 python3 tools/build_appimage.py "$@"
 """
 
 
-def construir_en_contenedor(imagen: str) -> int:
+def construir_en_contenedor(imagen: str, compat: bool = False) -> int:
     """Repite la construcción dentro de una distribución antigua.
 
     Un AppImage se lleva dentro los binarios de donde se construyó. Hecho en
@@ -265,11 +340,16 @@ def construir_en_contenedor(imagen: str) -> int:
 
     print(f"· construyendo dentro de {imagen} con {motor}")
     DIST.mkdir(parents=True, exist_ok=True)
+    # El `pip` de dentro no ve los argumentos de aquí, así que la versión va
+    # por entorno; la opción se repite para que el build de dentro sepa cómo
+    # llamar al archivo y qué guarda escribir.
+    dentro = ["--compat"] if compat else []
     orden = [
         motor, "run", "--rm",
         "-v", f"{ROOT}:/fuente:z",
         "-w", "/fuente",
-        imagen, "bash", "-c", RECETA,
+        "-e", f"PYSIDE={RANGO_PYSIDE[compat]}",
+        imagen, "bash", "-c", RECETA, "--", *dentro,
     ]
     resultado = subprocess.run(orden, check=False)
     if resultado.returncode != 0:
@@ -489,11 +569,43 @@ def copiar_bibliotecas(rutas: set[str]) -> None:
 # Instrucciones que un x86-64 de 2003 no tiene. Están todas por encima de
 # SSE2, que es lo único que la arquitectura garantiza; el nivel «x86-64-v2»
 # las agrupa y equivale a un Intel de 2008 o un AMD de 2011.
+# Cada juego con el nombre que le da `/proc/cpuinfo`, que es donde lo va a
+# buscar la guarda del AppRun. El orden importa: se prueba de arriba abajo y
+# gana el primero que casa, así que lo específico va antes que lo general.
+#
+# Solo están las de x86-64-v2, que es el escalón que decide si un equipo de
+# antes de 2008 arranca o no. AVX y BMI se probaron y hubo que quitarlas: un
+# compilador no las mete sin que se las pidan, así que donde aparecen es casi
+# siempre detrás de una pregunta a la CPU hecha dentro de la propia función
+# —Qt lo hace así en `QUtf8::convertToUnicode`, zstd en sus bloques—, y eso no
+# se ve leyendo el desensamblado. Con ellas dentro, la comprobación marcaba
+# igual el paquete bueno y el malo, que es no comprobar nada.
+JUEGOS = (
+    ("sse4_2", re.compile(r"\b(crc32|pcmpistr\w|pcmpestr\w)\b")),
+    ("popcnt", re.compile(r"\bpopcnt\b")),
+    ("sse4_1", re.compile(r"\b(pblendw|blendvp[sd]|roundp?[sd]|pmovzx\w+|"
+                          r"pmovsx\w+|ptest|pminu[dw]|pmaxu[dw]|pmulld|"
+                          r"packusdw|insertps|extractps|mpsadbw|phminposuw)\b")),
+    ("ssse3", re.compile(r"\b(pshufb|palignr|phadd\w*|phsub\w*|pmaddubsw|"
+                         r"pmulhrsw|psign[bwd]|pabs[bwd])\b")),
+    ("pni", re.compile(r"\b(addsubp[sd]|haddp[sd]|hsubp[sd]|lddqu|movddup|"
+                       r"movshdup|movsldup)\b")),
+)
+
+# Bibliotecas que eligen su camino dentro de la propia función, preguntando a
+# la CPU en tiempo de ejecución. Se sabe porque son las de siempre —compresión
+# y criptografía, donde media docena de instrucciones deciden el rendimiento— y
+# porque llevan décadas corriendo en cualquier procesador. Su `deflate` usa
+# CRC32 si lo hay y una tabla si no. Se anotan aparte en vez de esconderlas.
+DESPACHO_INTERNO = frozenset({
+    "libz.so.1", "libzstd.so.1", "liblz4.so.1", "liblzma.so.5",
+    "libcrypto.so.3", "libssl.so.3", "libgcrypt.so.20", "libpng16.so.16",
+    "libicuuc.so.73", "libicui18n.so.73", "libicudata.so.73", "libbsd.so.0",
+    "libk5crypto.so.3",
+})
+
 SOBRE_LA_BASE = re.compile(
-    r"\b(pblendw|blendvp[sd]|roundp?[sd]|pmovzx\w+|pmovsx\w+|ptest|pminu[dw]"
-    r"|pmaxu[dw]|pmulld|packusdw|insertps|extractps|mpsadbw|phminposuw|pshufb"
-    r"|palignr|phadd\w*|pmaddubsw|crc32|pcmpistr\w|pcmpestr\w|popcnt"
-    r"|movddup|movshdup|lddqu|v[a-z]\w+|tzcnt|lzcnt|bzhi|pdep|pext|mulx)\b")
+    "|".join(patron.pattern for _juego, patron in JUEGOS))
 
 # Cómo se llama una función que el propio código elige después de preguntarle
 # a la CPU qué sabe hacer. Esas pueden llevar lo que quieran: no se ejecutan
@@ -502,7 +614,7 @@ CON_DESPACHO = re.compile(r"(sse\d|ssse3|avx\d*|fma|bmi\d?|neon|sve|_v[234]$"
                           r"|dispatch|resolver)", re.IGNORECASE)
 
 
-def comprobar_juego_de_instrucciones() -> None:
+def comprobar_juego_de_instrucciones() -> set[str]:
     """Avisa si algo del AppDir exige más de lo que garantiza un x86-64.
 
     Esto se aprendió por el camino largo: alguien con un Athlon II X2 de 2009
@@ -519,31 +631,56 @@ def comprobar_juego_de_instrucciones() -> None:
     procesador sin SSSE3. Los símbolos siguen ahí después del `strip` porque
     `.dynsym` no se toca.
     """
+    faltan = [t for t in ("objdump", "readelf") if shutil.which(t) is None]
+    if faltan:
+        # Decir «arranca en cualquier sitio» sin haber podido mirar es peor
+        # que no decir nada: es justo la frase que hace que nadie lo revise.
+        print(f"  sin {' ni '.join(faltan)}: no se pudo comprobar qué "
+              "procesador exige el paquete", file=sys.stderr)
+        return set()
+
     sospechosos: dict[str, list[str]] = {}
+    conocidas: set[str] = set()
+    banderas: set[str] = set()
     for objeto in sorted(APPDIR.resolve().rglob("*")):
         if not objeto.is_file() or objeto.is_symlink():
             continue
         if ".so" not in objeto.name and not objeto.stat().st_mode & 0o111:
             continue
-        malos = _simbolos_sin_escapatoria(objeto)
-        if malos:
-            sospechosos[objeto.name] = malos
+        malos, juegos = _simbolos_sin_escapatoria(objeto)
+        if not malos:
+            continue
+        if objeto.name in DESPACHO_INTERNO:
+            conocidas.add(objeto.name)
+            continue
+        sospechosos[objeto.name] = malos
+        banderas |= juegos
 
     if not sospechosos:
         print("  x86-64 sin extras: arranca en cualquier procesador de 64 bits")
-        return
-    print("  aviso: esto no arrancará en un procesador anterior a 2008/2011.",
-          file=sys.stderr)
-    print("  Usan instrucciones de x86-64-v2 en funciones normales, no en "
-          "rutas elegidas por CPU:", file=sys.stderr)
+        if conocidas:
+            print(f"    ({len(conocidas)} bibliotecas eligen su camino "
+                  "mirando la CPU: " + ", ".join(sorted(conocidas)[:4]) + "…)")
+        return set()
+
+    print(f"  exige {' '.join(sorted(banderas))}: no arranca en un procesador "
+          "anterior a 2008 (Intel) o 2011 (AMD)")
     for nombre, malos in sorted(sospechosos.items(),
-                                key=lambda x: (-len(x[1]), x[0])):
-        print(f"    {nombre}  ({len(malos)} símbolos, p. ej. {malos[0][:60]})",
-              file=sys.stderr)
+                                key=lambda x: (-len(x[1]), x[0]))[:6]:
+        print(f"    {nombre}  ({len(malos)} símbolos, p. ej. {malos[0][:56]})")
+    if not COMPAT:
+        print("    → la guarda del AppRun lo dirá con palabras; el paquete "
+              "para esos equipos sale con --compat")
+    return banderas
 
 
-def _simbolos_sin_escapatoria(objeto: pathlib.Path) -> list[str]:
-    """Los símbolos exportados que usan instrucciones de más sin comprobar."""
+def _simbolos_sin_escapatoria(
+        objeto: pathlib.Path) -> tuple[list[str], set[str]]:
+    """Los símbolos exportados que usan instrucciones de más sin comprobar.
+
+    Devuelve además qué juegos hacen falta, con el nombre que les da
+    `/proc/cpuinfo`: es lo que la guarda del AppRun va a buscar allí.
+    """
     try:
         tabla = subprocess.run(["readelf", "-sW", "--dyn-syms", str(objeto)],
                                capture_output=True, text=True,
@@ -552,7 +689,7 @@ def _simbolos_sin_escapatoria(objeto: pathlib.Path) -> list[str]:
                                  str(objeto)], capture_output=True, text=True,
                                 timeout=600).stdout
     except (OSError, subprocess.SubprocessError):
-        return []
+        return [], set()
 
     funciones = []
     for linea in tabla.splitlines():
@@ -563,11 +700,12 @@ def _simbolos_sin_escapatoria(objeto: pathlib.Path) -> list[str]:
             except ValueError:
                 pass
     if not funciones:
-        return []
+        return [], set()
     funciones.sort()
     inicios = [f[0] for f in funciones]
 
-    encontrados = set()
+    encontrados: set[str] = set()
+    juegos: set[str] = set()
     for linea in codigo.splitlines():
         if not SOBRE_LA_BASE.search(linea):
             continue
@@ -581,7 +719,11 @@ def _simbolos_sin_escapatoria(objeto: pathlib.Path) -> list[str]:
         inicio, tam, nombre = funciones[indice]
         if direccion < inicio + tam and not CON_DESPACHO.search(nombre):
             encontrados.add(nombre)
-    return sorted(encontrados)
+            for juego, patron in JUEGOS:
+                if patron.search(linea):
+                    juegos.add(juego)
+                    break
+    return sorted(encontrados), juegos
 
 
 def comprobar_autocontenido() -> None:
@@ -625,10 +767,38 @@ def comprobar_autocontenido() -> None:
         print(f"    {nombre}  ({pide})", file=sys.stderr)
 
 
-def escribir_metadatos() -> None:
+def sellar_build() -> None:
+    """Deja dentro del paquete de qué copia salió.
+
+    El AppImage viaja sin repositorio, así que `silux.build()` no tiene a quién
+    preguntar una vez empaquetado. Se escribe aquí, donde git todavía está a
+    mano, y a partir de ese momento el dato viaja con el programa: sale en la
+    barra lateral, en `--version` y en la cabecera del informe.
+    """
+    from silux import _preguntar_a_git
+
+    marca = _preguntar_a_git()
+    if not marca:
+        print("  sin git: el paquete sale sin marca de construcción",
+              file=sys.stderr)
+        return
+    (APPDIR / "usr" / "lib" / "python" / "silux" / "_build.txt").write_text(
+        marca + "\n", encoding="utf-8")
+    print(f"  {marca}")
+
+
+def escribir_metadatos(banderas: set[str] = frozenset()) -> None:
     apprun = APPDIR / "AppRun"
     version = f"{sys.version_info.major}.{sys.version_info.minor}"
-    apprun.write_text(APPRUN.replace("python3", "python3", 1), encoding="utf-8")
+    guion = APPRUN
+    if banderas:
+        # Detrás de la línea del intérprete y delante de todo lo demás: si el
+        # procesador no da, no hay nada más que preparar.
+        cabecera, resto = guion.split("\n", 1)
+        relleno = (GUARDA.replace("%%JUEGOS%%", " ".join(sorted(banderas)))
+                         .replace("%%NOMBRE%%", f"{APP_ID}-x86_64"))
+        guion = f"{cabecera}\n{relleno}{resto}"
+    apprun.write_text(guion, encoding="utf-8")
     apprun.chmod(0o755)
 
     # El AppRun apunta a lib/python; la stdlib está en lib/pythonX.Y. Un enlace
@@ -647,6 +817,8 @@ def escribir_metadatos() -> None:
 def quitar_simbolos() -> None:
     """Los símbolos de depuración son la mitad del tamaño de algunas libs."""
     if shutil.which("strip") is None:
+        print("  sin strip: el paquete sale más grande de lo necesario",
+              file=sys.stderr)
         return
     for binario in list((APPDIR / "usr" / "lib").rglob("*.so*")):
         if binario.is_file() and not binario.is_symlink():
@@ -661,7 +833,8 @@ def empaquetar() -> pathlib.Path | None:
               "construye igualmente el árbol para empaquetarlo a mano.", file=sys.stderr)
         return None
 
-    destino = DIST / f"{APP_ID}-x86_64.AppImage"
+    sufijo = "-compat" if COMPAT else ""
+    destino = DIST / f"{APP_ID}-x86_64{sufijo}.AppImage"
     # appimagetool es a su vez un AppImage, así que necesita FUSE para
     # montarse a sí mismo. Dentro de un contenedor no lo hay, y en muchas
     # distribuciones modernas tampoco: ya solo traen FUSE 3 y estos piden el 2.

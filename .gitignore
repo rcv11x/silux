@@ -36,3 +36,4 @@ silux-report*.md
 /*.png
 salida.png
 captura*.png
+silux/_build.txt
