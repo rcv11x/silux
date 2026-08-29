@@ -664,9 +664,15 @@ class MainWindow(QMainWindow):
             self.prefs = replace(self.prefs, sensor_columns=tuple(widths))
 
     def _distribute(self, snapshot: Snapshot) -> None:
+        # La de rendimiento entra aunque no enseñe nada del muestreo: necesita
+        # saber contra qué procesador se está midiendo, y por quedarse fuera de
+        # esta lista guardaba todas las pruebas con «?» en vez del nombre. Eso
+        # dejaba el historial sin poder distinguir dos equipos y la puntuación
+        # sin pieza con la que compararse. Su `apply` solo mira una cadena.
         for page in (self.home_page, self.cpu_page, self.monitor_page, self.caches_page,
                      self.board_page, self.memory_page, self.system_page,
-                     self.graphics_page, self.network_page, self.storage_page):
+                     self.graphics_page, self.network_page, self.storage_page,
+                     self.performance_page):
             page.apply(snapshot)
 
     def _on_failure(self, message: str) -> None:

@@ -314,3 +314,55 @@ class TestTarjetaDePuntuacion(unittest.TestCase):
                 self._prueba(score.SEGUNDOS_CANONICOS))
         self.assertIsNotNone(self.pagina.score_bar._comparacion)
         self.assertEqual(self.pagina.score_bar._comparacion.muestras, 3)
+
+
+class TestTodasLasPaginasRecibenElMuestreo(unittest.TestCase):
+    """Una página fuera del reparto no se entera de nada, y no se nota.
+
+    La de rendimiento estaba fuera. No enseña cifras del muestreo, así que a
+    simple vista daba igual, pero de ahí sacaba una sola cosa: contra qué
+    procesador se está midiendo. Sin ella guardaba todas las pruebas con «?»
+    en vez del nombre, y eso deja el historial sin poder distinguir dos
+    equipos y la puntuación sin pieza con la que compararse.
+    """
+
+    def test_ninguna_pagina_se_queda_sin_snapshot(self):
+        import ast
+        import pathlib
+
+        fuente = (pathlib.Path(__file__).resolve().parent.parent
+                  / "silux" / "ui" / "app.py").read_text(encoding="utf-8")
+        arbol = ast.parse(fuente)
+
+        # Las páginas que la ventana construye…
+        construidas = {n.targets[0].attr for n in ast.walk(arbol)
+                       if isinstance(n, ast.Assign) and len(n.targets) == 1
+                       and isinstance(n.targets[0], ast.Attribute)
+                       and n.targets[0].attr.endswith("_page")}
+        # …y las que reciben el muestreo.
+        repartidas = set()
+        for nodo in ast.walk(arbol):
+            if (isinstance(nodo, ast.FunctionDef)
+                    and nodo.name == "_distribute"):
+                repartidas = {n.attr for n in ast.walk(nodo)
+                              if isinstance(n, ast.Attribute)
+                              and n.attr.endswith("_page")}
+        # Ajustes no enseña ni un dato del equipo: preferencias y poco más.
+        # Es la única que puede quedarse fuera, y se dice aquí para que
+        # añadir otra a la lista sea una decisión y no un descuido.
+        sin_datos_del_equipo = {"settings_page"}
+
+        self.assertTrue(construidas and repartidas)
+        self.assertEqual(construidas - repartidas - sin_datos_del_equipo, set(),
+                         "estas páginas no reciben el snapshot")
+
+    def test_la_pagina_de_rendimiento_sabe_de_que_cpu_habla(self):
+        from silux.collector import Collector
+        from silux.settings import Preferences
+        from silux.ui.pages.performance import PerformancePage
+
+        theme.set_density("normal", "normal")
+        pagina = PerformancePage(theme.palette_for(_app(), "dark"),
+                                 Preferences(font_scale="normal").normalized())
+        pagina.apply(Collector().sample())
+        self.assertNotEqual(pagina._cpu_actual, "?")
