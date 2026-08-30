@@ -58,8 +58,25 @@ jobs:
       - name: Instalar PySide6
         run: pip install "$(python tools/build_appimage.py --pyside-range)"
 
+      # Si fallan, cada fallo sale como anotación además de en el registro. El
+      # registro pide autenticación para leerse y las anotaciones no, así que
+      # esto es lo que permite saber qué se rompió sin abrir la web: el primer
+      # fallo de esta acción se persiguió a ciegas, reproduciendo el entorno
+      # cuatro veces, porque lo único que se podía leer desde fuera era
+      # «Process completed with exit code 1».
       - name: Pasar los tests
-        run: QT_QPA_PLATFORM=offscreen python -m unittest discover -s tests -t .
+        run: |
+          set -o pipefail
+          QT_QPA_PLATFORM=offscreen python -m unittest discover -s tests -t . \
+            2>&1 | tee /tmp/tests.log && exit 0
+          echo "::error::Los tests no pasan en $(python -V)"
+          grep -E '^(FAIL|ERROR):' /tmp/tests.log | while read -r linea; do
+            echo "::error::$linea"
+          done
+          grep -E '^(Ran |FAILED)' /tmp/tests.log | while read -r linea; do
+            echo "::error::$linea"
+          done
+          exit 1
 
       - name: Construir el AppImage
         run: python tools/build_appimage.py
