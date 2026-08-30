@@ -10,6 +10,7 @@ libres es la mitad de la razón por la que alguien abre esta pestaña.
 
 from __future__ import annotations
 
+import threading
 from typing import Optional
 
 from PySide6.QtCore import Qt, Signal
@@ -22,7 +23,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ... import render
+from ... import membench, render
 from ...i18n import _
 from ...model import MemoryModule, Snapshot
 from ...settings import Preferences
@@ -54,6 +55,9 @@ TIMING_HEADERS = ("memory.timing.profile", "memory.timing.speed", "memory.timing
 class MemoryPage(QScrollArea):
     elevation_requested = Signal()
     permanent_requested = Signal()
+    # La medida corre en otro hilo y en otro proceso; vuelve por aquí, que es
+    # la forma de tocar widgets desde fuera del hilo de la interfaz.
+    _bw_listo = Signal(object)
 
     def __init__(self, palette: Palette, prefs: Preferences, parent=None):
         super().__init__(parent)
@@ -79,6 +83,8 @@ class MemoryPage(QScrollArea):
         self._slots_host = ResponsiveRow(min_item_width=290)
         layout.addWidget(self._slots_host)
 
+        layout.addWidget(self._build_bandwidth())
+
         self.timings_card = Card(_("memory.card.timings"))
         self.timings = Table([_(h) for h in TIMING_HEADERS],
                              numeric=(False, True, True, True, True, True, True, True))
@@ -99,6 +105,8 @@ class MemoryPage(QScrollArea):
         self._module_signature: tuple = ()
         self._notice_signature: tuple = ()
         self._slot_grids: list[InfoGrid] = []
+        self._cache_mas_grande: Optional[int] = None
+        self._bw_listo.connect(self._pintar_ancho_de_banda)
 
     # -- construcción -------------------------------------------------------
 
@@ -158,6 +166,104 @@ class MemoryPage(QScrollArea):
         card.body.addLayout(row)
         return card
 
+    def _build_bandwidth(self) -> QWidget:
+        """Lo que la memoria mueve de verdad, medido a petición.
+
+        A petición y no al abrir la página: ocupa la máquina un instante y pide
+        un bloque más grande que la caché, así que quien mira la cifra tiene
+        que saber cuándo se tomó. Una medida que corre sola mientras el equipo
+        hace otra cosa sale peor y nadie sabe por qué.
+        """
+        card = Card(_("memory.card.bandwidth"))
+
+        self.bw_grid = InfoGrid()
+        self.bw_grid.add(_("memory.bw.ram"))
+        self.bw_grid.add(_("memory.bw.cache"))
+        self.bw_grid.setVisible(False)
+
+        self.bw_intro = QLabel(_("memory.bw.intro"))
+        self.bw_intro.setObjectName("Muted")
+        self.bw_intro.setWordWrap(True)
+        self.bw_intro.setFont(ui_font(theme.METRICS.small_pt))
+
+        self.bw_note = QLabel(_("memory.bw.note"))
+        self.bw_note.setObjectName("Muted")
+        self.bw_note.setWordWrap(True)
+        self.bw_note.setFont(ui_font(theme.METRICS.small_pt))
+        self.bw_note.setVisible(False)
+
+        self.bw_button = QPushButton(_("memory.bw.measure"))
+        self.bw_button.clicked.connect(self._medir_ancho_de_banda)
+
+        fila = QHBoxLayout()
+        fila.setContentsMargins(0, 0, 0, 0)
+        fila.addWidget(self.bw_button)
+        fila.addStretch(1)
+
+        card.body.addWidget(self.bw_intro)
+        card.body.addWidget(self.bw_grid)
+        card.body.addWidget(self.bw_note)
+        card.body.addLayout(fila)
+
+        self._bw_hilo = None
+        self._bw_modulos: tuple = ()
+        return card
+
+    # -- ancho de banda -----------------------------------------------------
+
+    def _medir_ancho_de_banda(self) -> None:
+        if self._bw_hilo is not None and self._bw_hilo.is_alive():
+            return
+        self.bw_button.setEnabled(False)
+        self.bw_button.setText(_("memory.bw.measuring"))
+        cache = self._cache_mas_grande
+
+        def trabajo() -> None:
+            # Fuera del hilo de la interfaz: son cien milisegundos, pero el
+            # hijo tiene un minuto de plazo y si algo va mal se comería la
+            # ventana entera.
+            self._bw_listo.emit(membench.consultar(cache))
+
+        self._bw_hilo = threading.Thread(target=trabajo, daemon=True)
+        self._bw_hilo.start()
+
+    def _pintar_ancho_de_banda(self, resultado) -> None:
+        self.bw_button.setEnabled(True)
+        self.bw_button.setText(_("memory.bw.again"))
+        self.bw_intro.setVisible(False)
+        self.bw_grid.setVisible(True)
+        self.bw_note.setVisible(True)
+
+        por_donde = {m.donde: m for m in resultado.medidas}
+        teorico = render.memory_theoretical_bandwidth(self._bw_modulos)
+
+        ram = por_donde.get("ram")
+        if ram is None:
+            motivos = {"sin_memoria": "memory.bw.nomem",
+                       "cache_enorme": "memory.bw.hugecache"}
+            self.bw_grid.set(_("memory.bw.ram"), render.DASH)
+            self.bw_note.setText(_(motivos.get(resultado.motivo,
+                                               "memory.bw.failed")))
+        else:
+            parte = render.memory_bandwidth_share(ram.bandwidth_bytes, teorico)
+            texto = render.bandwidth(ram.bandwidth_bytes)
+            if parte is not None:
+                texto += "   " + _("memory.bw.share").format(
+                    pct=f"{parte:.0f}", total=render.bandwidth(teorico))
+            self.bw_grid.set(_("memory.bw.ram"), texto)
+            self.bw_note.setText(_("memory.bw.note"))
+
+        cache = por_donde.get("cache")
+        if cache is None:
+            # Un procesador con poca caché no es un dato que falte.
+            self.bw_grid.set_visible(_("memory.bw.cache"), False)
+        else:
+            self.bw_grid.set_visible(_("memory.bw.cache"), True)
+            self.bw_grid.set(
+                _("memory.bw.cache"),
+                f"{render.bandwidth(cache.bandwidth_bytes)}   "
+                + _("memory.bw.block").format(size=render.size(cache.bytes_)))
+
     # -- actualización ------------------------------------------------------
 
     def apply(self, snapshot: Snapshot) -> None:
@@ -170,6 +276,14 @@ class MemoryPage(QScrollArea):
         self.subtitle.setText(self._subtitle(snapshot))
         self._apply_avisos(snapshot)
         self._apply_badges(snapshot)
+
+        # Para la medida: el tamaño de la caché más grande decide los bloques,
+        # y los módulos, el teórico con el que compararla. Se guardan en cada
+        # muestreo porque la medida la lanza el usuario cuando quiere.
+        self._cache_mas_grande = max(
+            (c.size_bytes for t in snapshot.cpu.types for c in t.caches
+             if c.size_bytes), default=None)
+        self._bw_modulos = modules
 
         self.bar.set_segments(
             [
