@@ -56,6 +56,11 @@ TABLAS = {
     "silux/providers/hwmon.py": ("ETIQUETAS_GPU", "_ALIMENTACION"),
     "silux/providers/drm.py": ("DRIVERS_CIEGOS", "INTEL_AVISOS", "MOTORES_INTEL",
                               "INTEL_SIN_TEMPERATURA"),
+    # Las frases de lo que no aplica a una tarjeta. El resto de claves de esa
+    # página se salvan solas porque además aparecen como literal al rellenar
+    # cada ficha; estas solo viven aquí y se traducen con `_(frase)`, así que
+    # sin declararlas la primera poda se las llevaba.
+    "silux/ui/pages/graphics.py": ("NA_SIN_VRAM", "NA_INTEGRADA"),
 }
 
 

@@ -335,6 +335,47 @@ class TestLaHerramientaNoBorraTrabajo(unittest.TestCase):
         self.assertEqual(datos.get("Sensores"), "Sensors")
         self.assertIn("Tema", datos)
 
+    def test_una_poda_de_verdad_no_se_lleva_ninguna_clave_viva(self):
+        """`--podar` borra a conciencia, así que conviene probarlo entero.
+
+        La red que lo sostiene es `sin_rastro_en_el_codigo`, que busca cada
+        clave como texto en todo el paquete: con eso da igual que se traduzca
+        con `_(variable)` desde una constante, porque escrita está. Lo que se
+        vigila aquí es esa red, no el extractor: se ejecuta la poda de verdad
+        sobre una copia y se comprueba que nada de lo que el código nombra
+        acaba fuera. Sin esto, un cambio en esa función se lleva por delante
+        traducciones sin que falle ningún test.
+        """
+        import importlib.util
+
+        raiz = pathlib.Path(__file__).resolve().parent.parent
+        spec = importlib.util.spec_from_file_location(
+            "gen_lang", raiz / "tools" / "gen_lang.py")
+        modulo = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(modulo)
+
+        antes = json.loads((raiz / "silux" / "db" / "lang" / "es.json")
+                           .read_text(encoding="utf-8"))
+        cadenas = dict(modulo.cadenas_del_codigo())
+        for clave, donde in modulo.cadenas_de_tablas().items():
+            cadenas.setdefault(clave, donde)
+        podar = modulo.sin_rastro_en_el_codigo(
+            [k for k in antes if k not in cadenas])
+
+        with tempfile.TemporaryDirectory() as tmp:
+            carpeta = pathlib.Path(tmp)
+            (carpeta / "es.json").write_text(
+                json.dumps(antes, ensure_ascii=False), encoding="utf-8")
+            with mock.patch.object(modulo, "LANG", carpeta):
+                modulo.actualizar("es", cadenas, escribir=True, podar=podar)
+            despues = json.loads((carpeta / "es.json").read_text(encoding="utf-8"))
+
+        fuente = "\n".join(a.read_text(encoding="utf-8")
+                           for a in (raiz / "silux").rglob("*.py"))
+        perdidas = [k for k in antes if k not in despues and k in fuente]
+        self.assertEqual(perdidas, [], "la poda se ha llevado claves que el "
+                                       "código sigue nombrando")
+
     def test_el_menu_esta_entre_lo_que_se_extrae(self):
         """Se traduce con `_(name)` sobre una variable, así que hay que
         declararlo: sin eso desapareció del archivo en la primera pasada."""
