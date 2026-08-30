@@ -36,6 +36,10 @@ from ..widgets import (
 
 from ...model import Need
 
+# A partir de esta fracción del techo de la herramienta, la cifra deja de
+# hablar solo de la memoria y hay que decirlo.
+CERCA_DEL_TECHO = 0.85
+
 NEED_TITLES = {
     Need.ROOT: "note.needsroot",
     Need.DATABASE: "note.database",
@@ -176,9 +180,11 @@ class MemoryPage(QScrollArea):
         """
         card = Card(_("memory.card.bandwidth"))
 
+        # Solo la RAM. El bloque que cabe en la caché se sigue midiendo, pero
+        # no como dato: ahí lo que limita no es la memoria sino esta forma de
+        # medir, y las tres cachés de este equipo daban la misma cifra.
         self.bw_grid = InfoGrid()
         self.bw_grid.add(_("memory.bw.ram"))
-        self.bw_grid.add(_("memory.bw.cache"))
         self.bw_grid.setVisible(False)
 
         self.bw_intro = QLabel(_("memory.bw.intro"))
@@ -236,6 +242,7 @@ class MemoryPage(QScrollArea):
 
         por_donde = {m.donde: m for m in resultado.medidas}
         teorico = render.memory_theoretical_bandwidth(self._bw_modulos)
+        techo = por_donde.get("techo")
 
         ram = por_donde.get("ram")
         if ram is None:
@@ -251,18 +258,15 @@ class MemoryPage(QScrollArea):
                 texto += "   " + _("memory.bw.share").format(
                     pct=f"{parte:.0f}", total=render.bandwidth(teorico))
             self.bw_grid.set(_("memory.bw.ram"), texto)
-            self.bw_note.setText(_("memory.bw.note"))
-
-        cache = por_donde.get("cache")
-        if cache is None:
-            # Un procesador con poca caché no es un dato que falte.
-            self.bw_grid.set_visible(_("memory.bw.cache"), False)
-        else:
-            self.bw_grid.set_visible(_("memory.bw.cache"), True)
-            self.bw_grid.set(
-                _("memory.bw.cache"),
-                f"{render.bandwidth(cache.bandwidth_bytes)}   "
-                + _("memory.bw.block").format(size=render.size(cache.bytes_)))
+            # Una memoria muy rápida puede chocar con el techo de esta forma de
+            # medir, y entonces la cifra habla de la herramienta. Decirlo es la
+            # diferencia entre una medida y un número bajo con cara de medida.
+            if (techo and ram.bandwidth_bytes
+                    > techo.bandwidth_bytes * CERCA_DEL_TECHO):
+                self.bw_note.setText(_("memory.bw.capped").format(
+                    techo=render.bandwidth(techo.bandwidth_bytes)))
+            else:
+                self.bw_note.setText(_("memory.bw.note"))
 
     # -- actualización ------------------------------------------------------
 

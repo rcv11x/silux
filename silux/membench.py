@@ -11,6 +11,19 @@ que copiar y la cifra sale de una lectura pura, que es la comparable. El bucle
 está en la libc, ya compilado, porque dentro de un AppImage no hay compilador
 con el que generar nada al vuelo.
 
+**Y la propia herramienta tiene un techo, que hay que medir.** `memchr` no pasa
+de unos 112 GB/s en el equipo donde se escribió esto, y ese número no lo pone
+la memoria: bloques de 1, 4, 16 y 48 MB —que caben en cachés distintas— dan
+los cuatro lo mismo, y hasta la L1 con el coste de la llamada descontado se
+queda ahí. Un bloque que quepa en la caché no mide la caché: mide hasta dónde
+llega esta forma de medir.
+
+Por eso se mide igualmente, pero como control y no como dato. Si el ancho de
+banda de la RAM se acerca a ese techo, la cifra está limitada por la
+herramienta y la memoria puede ser más rápida de lo que se enseña; eso pasa en
+un equipo con memoria muy rápida, y callarlo sería dar una cifra baja con cara
+de medida.
+
 **Lo que no se mide aquí, y por qué.** La latencia en nanosegundos no se puede
 sacar sin código nativo propio, y se probaron dos caminos antes de descartarla:
 
@@ -56,6 +69,16 @@ MAXIMO_BLOQUE = 512 * 1024 * 1024
 # motivo de que algo se vaya a la swap.
 MARGEN_LIBRE = 512 * 1024 * 1024
 
+# Cuánto tiempo se le dedica a cada bloque. Iba por número de vueltas y salían
+# tres para el bloque de RAM: con tan pocas basta que una tanda pille el equipo
+# ocupado para que la cifra salga un 15 % baja, y quien pulsa el botón ve un
+# número distinto cada vez sin que su memoria haya cambiado. Repartiendo por
+# tiempo, un bloque pequeño da cientos de vueltas y uno grande las que quepan,
+# y en los dos casos hay de dónde sacar un mínimo que signifique algo.
+PRESUPUESTO = 0.15
+MINIMO_VUELTAS = 5
+MAXIMO_VUELTAS = 500
+
 TIEMPO_MAXIMO = 60
 
 
@@ -65,8 +88,9 @@ class Medida:
 
     bytes_: int
     bandwidth_bytes: int
-    # Dónde cae ese bloque: dentro de la caché que se midió, o fuera de toda.
-    donde: str                       # "cache" | "ram"
+    # "ram" es el dato; "techo" es el control: un bloque que cabe en la caché,
+    # que no mide la caché sino lo más rápido que puede ir esta herramienta.
+    donde: str                       # "techo" | "ram"
 
 
 @dataclass(frozen=True)
@@ -83,25 +107,28 @@ def _libc():
     return libc
 
 
-def _leer(libc, puntero: int, n: int, vueltas: int) -> float:
+def _leer(libc, puntero: int, n: int) -> float:
     """El mejor tiempo de recorrer el bloque, en segundos.
 
-    El mejor y no la media: lo que se busca es lo que da el equipo cuando
-    nadie le estorba, y cualquier interrupción solo puede empeorar una vuelta.
+    El mejor y no la media: lo que se busca es lo que da el equipo cuando nadie
+    le estorba, y cualquier interrupción solo puede empeorar una vuelta. Por eso
+    hacen falta unas cuantas: con el mínimo de tres que había antes, una tanda
+    entera podía caer dentro de la interferencia y no había ninguna vuelta
+    limpia de la que fiarse.
     """
     libc.memchr(puntero, 0xFF, n)                 # calentar
     mejor = None
-    for _ in range(vueltas):
+    gastado = 0.0
+    vueltas = 0
+    while vueltas < MINIMO_VUELTAS or (gastado < PRESUPUESTO
+                                       and vueltas < MAXIMO_VUELTAS):
         arranque = time.perf_counter()
         libc.memchr(puntero, 0xFF, n)
         tardanza = time.perf_counter() - arranque
+        gastado += tardanza
+        vueltas += 1
         mejor = tardanza if mejor is None else min(mejor, tardanza)
     return mejor or 0.0
-
-
-def _vueltas(n: int) -> int:
-    """Pocas en los bloques grandes: uno de 200 MB ya tarda cinco milisegundos."""
-    return max(3, min(50, int(64 * 1024 * 1024 / n) + 3))
 
 
 def _memoria_disponible() -> Optional[int]:
@@ -121,14 +148,15 @@ def en_este_proceso(cache_bytes: Optional[int]) -> Resultado:
     medidas: list[Medida] = []
     disponible = _memoria_disponible()
 
-    # Dentro de la caché: la mitad de su tamaño, para que quepa con holgura
+    # El techo: un bloque que cabe de sobra en la caché, así que lo que limita
+    # ahí no es la memoria. La mitad de la caché, para que quepa con holgura
     # aunque el sistema esté usando una parte.
     if cache_bytes and cache_bytes // 2 >= MINIMO_FIABLE:
         n = cache_bytes // 2
         bloque = ctypes.create_string_buffer(n)
-        segundos = _leer(libc, ctypes.addressof(bloque), n, _vueltas(n))
+        segundos = _leer(libc, ctypes.addressof(bloque), n)
         if segundos > 0:
-            medidas.append(Medida(n, int(n / segundos), "cache"))
+            medidas.append(Medida(n, int(n / segundos), "techo"))
         del bloque
 
     # Fuera de toda caché, que es el ancho de banda de la RAM.
@@ -139,7 +167,7 @@ def en_este_proceso(cache_bytes: Optional[int]) -> Resultado:
     if disponible is not None and n + MARGEN_LIBRE > disponible:
         return Resultado(tuple(medidas), "sin_memoria")
     bloque = ctypes.create_string_buffer(n)
-    segundos = _leer(libc, ctypes.addressof(bloque), n, _vueltas(n))
+    segundos = _leer(libc, ctypes.addressof(bloque), n)
     if segundos > 0:
         medidas.append(Medida(n, int(n / segundos), "ram"))
     return Resultado(tuple(medidas))
