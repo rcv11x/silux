@@ -225,6 +225,8 @@ class MainWindow(QMainWindow):
         self.settings_page = SettingsPage(self.prefs)
         self.settings_page.changed.connect(self._on_preferences)
         self.settings_page.report_requested.connect(self._on_report_requested)
+        self.settings_page.share_copy_requested.connect(self._on_share_copy)
+        self.settings_page.share_save_requested.connect(self._on_share_save)
         for page in (self.home_page, self.cpu_page, self.caches_page, self.board_page,
                      self.memory_page, self.graphics_page, self.storage_page,
                      self.network_page, self.system_page, self.performance_page,
@@ -424,6 +426,51 @@ class MainWindow(QMainWindow):
             self, _("app.report.card"),
             _("app.report.saved").format(ruta=destino),
         )
+
+    def _tarjeta(self):
+        """La imagen del equipo, o None si todavía no hay lectura."""
+        from PySide6.QtWidgets import QMessageBox
+
+        from . import tarjeta
+
+        if self._last_snapshot is None:
+            QMessageBox.information(self, _("share.button.copy"),
+                                    _("app.noreading"))
+            return None
+        # Anónima siempre desde la ventana: esto se hace para pegarlo en un
+        # sitio público, y una casilla de «incluir mis datos» solo sirve para
+        # que alguien la deje marcada sin querer. Quien los necesite tiene el
+        # informe con `--with-identifiers`.
+        return tarjeta.dibujar(self._last_snapshot, self._palette)
+
+    def _on_share_copy(self) -> None:
+        """Al portapapeles, que es como acaba en un chat.
+
+        Guardar un archivo para luego buscarlo y arrastrarlo son tres pasos
+        para algo que se hace con un Ctrl+V.
+        """
+        imagen = self._tarjeta()
+        if imagen is None:
+            return
+        QApplication.clipboard().setPixmap(imagen)
+        self._status.set_full_text(_("share.copied"))
+
+    def _on_share_save(self) -> None:
+        from PySide6.QtWidgets import QFileDialog, QMessageBox
+
+        imagen = self._tarjeta()
+        if imagen is None:
+            return
+        sugerido = str(pathlib.Path.home() / "mi-equipo-silux.png")
+        destino, _filtro = QFileDialog.getSaveFileName(
+            self, _("share.dialog"), sugerido, "PNG (*.png)")
+        if not destino:
+            return
+        if not imagen.save(destino, "PNG"):
+            QMessageBox.warning(self, _("share.dialog"), _("share.failed"))
+            return
+        QMessageBox.information(self, _("share.dialog"),
+                                _("share.saved").format(ruta=destino))
 
     def _on_network_unit(self, unidad: str) -> None:
         """El conmutador de bytes/bits de la pestaña de Red."""
