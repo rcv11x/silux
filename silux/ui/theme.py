@@ -449,6 +449,20 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
     QLabel#NoticeBody  {{ color: {p.ink_dim}; }}
     QLabel#NoticeHint  {{ color: {p.muted}; font-size: {m.small_pt + 2}px; }}
 
+    /* El aviso de la barra de estado. Va en ámbar por lo mismo que la banda
+       de un Notice: es de lo que el usuario puede arreglar. Y con el subrayado
+       puesto, que en una barra llena de texto apagado nada dice que se pueda
+       pulsar salvo que se note. */
+    QPushButton#StatusAction {{
+        background: transparent;
+        border: none;
+        padding: 0 6px;
+        color: {p.warn};
+        text-decoration: underline;
+        font-size: {m.small_pt}px;
+    }}
+    QPushButton#StatusAction:hover {{ color: {p.ink}; }}
+
     QFrame#Divider {{ background: {p.line_soft}; max-height: 1px; border: none; }}
 
     QListWidget#Nav {{

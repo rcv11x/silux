@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QLabel, QScrollArea, QVBoxLayout, QWidget
 
 from ... import render
@@ -216,6 +216,11 @@ class TypeSection(QWidget):
 
 
 class CpuPage(QScrollArea):
+    # La pide la ventana para lanzar el ayudante, igual que Memoria, Gráficos
+    # y Almacenamiento. Todos los botones piden lo mismo y se lanza un solo
+    # ayudante, así que pulsar cualquiera desbloquea todo.
+    elevation_requested = Signal()
+
     def __init__(self, palette: Palette, prefs: Preferences, parent=None):
         super().__init__(parent)
         self._p = palette
@@ -343,7 +348,18 @@ class CpuPage(QScrollArea):
 
         clear_layout(self._notices_host)
         for note in notes:
-            self._notices_host.addWidget(
-                Notice(_(NEED_TITLES.get(note.need, note.need.value)),
-                       note.message, note.hint)
+            # Con el botón dentro, como en Gráficos. Quien lee por qué falta el
+            # consumo del procesador es quien quiere arreglarlo, y hasta ahora
+            # el aviso salía aquí y el botón estaba en Memoria, en Gráficos y
+            # en Almacenamiento. Lo trajo la captura de un usuario con los
+            # vatios en blanco: el aviso lo tenía delante y la salida en otra
+            # sección.
+            aviso = Notice(
+                _(NEED_TITLES.get(note.need, note.need.value)),
+                note.message, note.hint,
+                action=(_("perm.button.read")
+                        if note.need is Need.ROOT else None),
             )
+            if aviso.action_button is not None:
+                aviso.action_clicked.connect(self.elevation_requested)
+            self._notices_host.addWidget(aviso)
