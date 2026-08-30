@@ -19,12 +19,13 @@ python3 -m silux.cli --report FICHERO   # informe para adjuntar a un fallo
 python3 tools/gen_cpu_db.py            # regenerar la base de datos de CPUs
 python3 tools/gen_lang.py --write      # poner al día los archivos de idioma
 python3 tools/medir_referencia.py      # rehacer la escala de puntuación
+python3 tools/anadir_puntuacion.py INFORMES  # sumar medidas ajenas a la tabla
 python3 tools/install_desktop.py       # icono y entrada de menú
 python3 tools/build_appimage.py --container   # el AppImage que se reparte
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **1087** y tardan poco más de un minuto. Si sale bastante
+Los tests son **1094** y tardan poco más de un minuto. Si sale bastante
 menos, falta algo por recoger.
 
 `--container` no es opcional para repartir: sin él se construye contra el
