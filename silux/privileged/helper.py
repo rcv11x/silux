@@ -50,6 +50,12 @@ MAX_REQUEST_BYTES = 64 * 1024
 # Nombres de disco admitidos. Estricto a propósito: sin esto, un nombre como
 # «../../dev/mem» le haría abrir cualquier cosa.
 DISK_NAME = re.compile(r"^(nvme\d+n\d+|nvme\d+|sd[a-z]{1,2}|hd[a-z])$")
+
+# Las zonas de powercap que se dejan leer. El nombre lo pone el kernel y no
+# tiene rutas dentro: se comprueba igualmente, porque lo que llega viene del
+# proceso sin privilegios y aquí se es root.
+RAPL_ZONE = re.compile(r"^[a-z]+-rapl:\d+$")
+POWERCAP = "/sys/class/powercap"
 SMART_BYTES = 512
 
 # NVMe: ioctl de administración y el registro de salud.
@@ -466,6 +472,41 @@ def read_gpu_pmu() -> dict:
             "engines": motores, "scales": escalas}
 
 
+def read_rapl() -> dict:
+    """Los contadores de energía del procesador, en microjulios.
+
+    Desde el kernel 5.10 `energy_uj` no se lee sin privilegios: se restringió
+    porque muestrearlo a mucha frecuencia deja ver el patrón de consumo de otro
+    proceso. Leerlo una vez por segundo, que es lo que hace esta ventana, es lo
+    mismo que hacen `powertop` o `s-tui`.
+
+    Sin esto, en las máquinas donde el kernel lo restringe —AMD sobre todo— el
+    aviso de «requiere permisos» del consumo del procesador no se iba nunca:
+    el usuario daba los permisos, el ayudante arrancaba, y nadie leía esto.
+
+    Se devuelven los microjulios en crudo. Los vatios son su derivada y eso lo
+    calcula el proceso sin privilegios, que es quien guarda la lectura
+    anterior.
+    """
+    zonas = {}
+    try:
+        nombres = sorted(os.listdir(POWERCAP))
+    except OSError as error:
+        return _fail(f"no se pudo leer {POWERCAP}: {error.strerror}", "io_error")
+
+    for nombre in nombres:
+        if not RAPL_ZONE.match(nombre):
+            continue
+        try:
+            with open(f"{POWERCAP}/{nombre}/energy_uj", encoding="ascii") as fh:
+                zonas[nombre] = int(fh.read().strip())
+        except (OSError, ValueError):
+            continue
+    if not zonas:
+        return _fail("ninguna zona de powercap respondió", "io_error")
+    return {"ok": True, "zones": zonas}
+
+
 def handle(request: dict) -> dict:
     action = request.get("action")
     if action == "ping":
@@ -478,6 +519,8 @@ def handle(request: dict) -> dict:
         return read_smart(request.get("device"))
     if action == "gpu_pmu":
         return read_gpu_pmu()
+    if action == "rapl":
+        return read_rapl()
     return _fail(f"acción desconocida: {action!r}", "bad_request")
 
 

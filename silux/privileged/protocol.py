@@ -15,8 +15,9 @@ ACTION_SMBIOS = "smbios"
 ACTION_MSR = "msr"
 ACTION_SMART = "smart"
 ACTION_GPU_PMU = "gpu_pmu"
+ACTION_RAPL = "rapl"
 ACTIONS = frozenset({ACTION_PING, ACTION_SMBIOS, ACTION_MSR, ACTION_SMART,
-                     ACTION_GPU_PMU})
+                     ACTION_GPU_PMU, ACTION_RAPL})
 
 # Rutas que el ayudante puede abrir. No hay ninguna forma de pedirle otra.
 DMI_TABLE = "/sys/firmware/dmi/tables/DMI"

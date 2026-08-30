@@ -25,7 +25,7 @@ python3 tools/build_appimage.py --container   # el AppImage que se reparte
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **1148** y tardan poco más de un minuto. Si sale bastante
+Los tests son **1157** y tardan poco más de un minuto. Si sale bastante
 menos, falta algo por recoger.
 
 `--container` no es opcional para repartir: sin él se construye contra el
@@ -505,6 +505,16 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   pasaba. El modo rápido corre a menos GHz que el lento (4,29 contra 4,34) y
   calienta más porque hace más trabajo por ciclo. La temperatura era la
   consecuencia, no la causa, y con r = 0,98 nadie lo habría dudado.
+- **Poner un botón para arreglar algo que el ayudante no sabe arreglar**: el
+  aviso de que el consumo del procesador «requiere permisos» lo pone el
+  proveedor de RAPL, porque desde el kernel 5.10 `energy_uj` no se lee sin
+  privilegios. Pero el ayudante sabía leer SMBIOS, MSR, SMART y el PMU de la
+  gráfica, y no RAPL: el usuario daba los permisos, el ayudante arrancaba y
+  nadie leía eso, así que la nota no se iba nunca. Lo reportó alguien con un
+  Ryzen 7 7445HS —«le di permisos pero aún dice que 1 dato requiere permisos, y
+  al tocarlo no abre el polkit»— y lo segundo también encaja: ya estaba
+  conectado, no había nada que autorizar. Un contador de lo que falta solo vale
+  si lo que cuenta se puede resolver.
 - **Medir la carga de fondo solo antes de empezar**: `_carga_de_fondo` toma
   tres décimas y se acabó, y una prueba de quince segundos por carga dura dos
   minutos y medio. Quien la lanzaba y se iba a hacer otra cosa, o tenía una

@@ -33,8 +33,8 @@ def _cache_dir() -> pathlib.Path:
     base = os.environ.get("XDG_CACHE_HOME") or (pathlib.Path.home() / ".cache")
     return pathlib.Path(base) / "silux"
 
-from .protocol import (ACTION_GPU_PMU, ACTION_MSR, ACTION_PING, ACTION_SMART,
-                       ACTION_SMBIOS, MAX_MESSAGE)
+from .protocol import (ACTION_GPU_PMU, ACTION_MSR, ACTION_PING, ACTION_RAPL,
+                       ACTION_SMART, ACTION_SMBIOS, MAX_MESSAGE)
 
 HELPER = pathlib.Path(__file__).resolve().parent / "helper.py"
 
@@ -260,6 +260,24 @@ class PrivilegedClient:
             self._last_error = reply.get("message")
             raise HelperError(reply.get("message", "no se pudo leer el diagnóstico"))
         return base64.b64decode(reply.get("data", "")), reply.get("kind", "")
+
+    def rapl(self) -> dict[str, int]:
+        """Los contadores de energía en microjulios, por zona.
+
+        En crudo: los vatios son la derivada y eso lo calcula quien llama, que
+        es quien guarda la lectura anterior. Hace falta porque desde el kernel
+        5.10 `energy_uj` no se lee sin privilegios, y en las máquinas donde
+        pasa —AMD sobre todo— el consumo del procesador salía en blanco aunque
+        el usuario hubiera dado los permisos.
+        """
+        reply = self.request({"action": ACTION_RAPL})
+        if not reply.get("ok"):
+            self._last_error = reply.get("message")
+            raise HelperError(reply.get("message", "no se pudo leer RAPL"))
+        zonas = reply.get("zones")
+        if not isinstance(zonas, dict):
+            raise HelperError("el ayudante contestó algo que no encaja")
+        return {str(k): int(v) for k, v in zonas.items() if isinstance(v, int)}
 
     def gpu_pmu(self) -> tuple[int, dict[str, dict[str, int]], dict[str, dict[str, float]]]:
         """Contadores de la gráfica, en crudo, con su reloj y sus escalas.

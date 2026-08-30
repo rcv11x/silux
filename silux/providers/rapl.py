@@ -19,6 +19,7 @@ from typing import Optional
 
 from ..i18n import _
 from ..model import Need, Power
+from ..privileged.client import HelperError, PrivilegedClient
 from .base import Draft, Provider, read_int, read_text
 
 POWERCAP = pathlib.Path("/sys/class/powercap")
@@ -71,13 +72,27 @@ class RaplPower(Provider):
     name = "rapl"
     provides = "cpu.power"
 
-    def __init__(self) -> None:
+    def __init__(self, client: Optional[PrivilegedClient] = None) -> None:
         self._previous: dict[str, tuple[int, float]] = {}
         self._limits: Optional[tuple[Optional[float], Optional[float]]] = None
+        # El mismo ayudante que ya usan los discos y la memoria. Desde el
+        # kernel 5.10 `energy_uj` no se lee sin privilegios y en las máquinas
+        # donde eso pasa —AMD sobre todo— el consumo del procesador salía en
+        # blanco. Peor: la nota de «requiere permisos» no se iba nunca, porque
+        # el usuario los daba, el ayudante arrancaba y nadie leía esto.
+        self.client = client
+        self._por_el_ayudante = False
+        self._cache: dict[str, int] = {}
 
     def available(self) -> bool:
         packages = _packages()
-        return bool(packages) and read_int(str(packages[0] / "energy_uj")) is not None
+        if not packages:
+            return False
+        if read_int(str(packages[0] / "energy_uj")) is not None:
+            return True
+        # Con el ayudante conectado sí se puede, aunque el kernel se lo niegue
+        # a este proceso.
+        return bool(self.client and self.client.connected())
 
     def unavailable_reason(self):
         if self.available():
@@ -93,6 +108,8 @@ class RaplPower(Provider):
         if not packages:
             return
 
+        # Una sola petición al ayudante por muestreo, no una por zona.
+        self._cache: dict[str, int] = {}
         now = time.monotonic()
         totals: dict[str, float] = {}
 
@@ -126,9 +143,28 @@ class RaplPower(Provider):
     def _rounded(value: Optional[float]) -> Optional[float]:
         return None if value is None else round(value, 2)
 
+    def _por_ayudante(self, zona: str) -> Optional[int]:
+        """Los microjulios de una zona cuando el kernel no deja leerlos.
+
+        Se piden todas de una vez y se guardan: en un equipo con paquete,
+        núcleos y DRAM son cuatro lecturas por muestreo, y cada una por su
+        cuenta serían cuatro viajes al ayudante por segundo.
+        """
+        if not (self.client and self.client.connected()):
+            return None
+        if not self._cache:
+            try:
+                self._cache = self.client.rapl()
+                self._por_el_ayudante = True
+            except HelperError:
+                return None
+        return self._cache.get(zona)
+
     def _accumulate(self, zone: pathlib.Path, field: str, now: float,
                     totals: dict[str, float]) -> None:
         microjoules = read_int(str(zone / "energy_uj"))
+        if microjoules is None:
+            microjoules = self._por_ayudante(zone.name)
         if microjoules is None:
             return
 
