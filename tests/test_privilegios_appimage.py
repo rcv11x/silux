@@ -140,3 +140,86 @@ class TestPuntoDeEntrada(unittest.TestCase):
         # En el `case` van separadas por barras, no por espacios.
         faltan = {b for b in propias if b not in apprun}
         self.assertFalse(faltan, f"el AppRun no reparte: {sorted(faltan)}")
+
+
+class TestQueSeMiraAlComprobar(unittest.TestCase):
+    """A qué objetos del AppDir se les pregunta qué exigen.
+
+    El comprobador decía «exige glibc 2.34» de un paquete que exigía 2.35, y
+    esa equivocación solo cae hacia un lado: manda a alguien con RHEL 9 a
+    descargar algo que no le arranca. El motivo era que miraba nada más
+    `usr/lib/*.so*`, y encima las sesenta primeras, mientras que el intérprete
+    cuelga de `usr/bin` y los módulos de extensión de la biblioteca estándar
+    viven en `lib-dynload`. Justo `python3` era quien pedía el símbolo más
+    alto, `hypot@GLIBC_2.35`.
+
+    Es el mismo agujero por el que `_hashlib` se quedó sin `libcrypto`: dar por
+    hecho que lo que hay que mirar está todo en un directorio.
+    """
+
+    def _appdir_de_mentira(self, raiz: pathlib.Path) -> None:
+        (raiz / "usr" / "lib").mkdir(parents=True)
+        (raiz / "usr" / "bin").mkdir(parents=True)
+        (raiz / "usr" / "lib" / "python3.10" / "lib-dynload").mkdir(parents=True)
+        (raiz / "usr" / "lib" / "libcualquiera.so.1").write_bytes(b"\x7fELF")
+        interprete = raiz / "usr" / "bin" / "python3"
+        interprete.write_bytes(b"\x7fELF")
+        interprete.chmod(0o755)
+        (raiz / "usr" / "lib" / "python3.10" / "lib-dynload"
+         / "_bz2.cpython-310-x86_64-linux-gnu.so").write_bytes(b"\x7fELF")
+
+    def test_se_miran_las_tres_familias(self):
+        import tools.build_appimage as build
+
+        with tempfile.TemporaryDirectory() as tmp:
+            raiz = pathlib.Path(tmp) / "silux.AppDir"
+            self._appdir_de_mentira(raiz)
+            anterior = build.APPDIR
+            try:
+                build.APPDIR = raiz
+                nombres = {p.name for p in build.objetos_del_appdir()}
+            finally:
+                build.APPDIR = anterior
+
+        self.assertIn("libcualquiera.so.1", nombres, "no mira usr/lib")
+        self.assertIn("python3", nombres,
+                      "no mira el intérprete, que es quien pide más glibc")
+        self.assertIn("_bz2.cpython-310-x86_64-linux-gnu.so", nombres,
+                      "no mira lib-dynload, donde vive _bz2")
+
+    def test_no_se_recorta_la_lista(self):
+        """Un tope deja fuera justo al que más pide, y nadie se entera."""
+        import tools.build_appimage as build
+
+        with tempfile.TemporaryDirectory() as tmp:
+            raiz = pathlib.Path(tmp) / "silux.AppDir"
+            (raiz / "usr" / "lib").mkdir(parents=True)
+            for numero in range(120):
+                (raiz / "usr" / "lib" / f"lib{numero:03}.so.1").write_bytes(b"\x7fELF")
+            anterior = build.APPDIR
+            try:
+                build.APPDIR = raiz
+                cuantos = len(build.objetos_del_appdir())
+            finally:
+                build.APPDIR = anterior
+
+        self.assertEqual(cuantos, 120, "el comprobador se deja objetos sin mirar")
+
+    def test_las_dos_comprobaciones_recorren_lo_mismo(self):
+        """Que no vuelvan a divergir: una lista, y las dos la usan.
+
+        Cuando cada una recorría lo suyo, la del juego de instrucciones miraba
+        el AppDir entero y la de glibc un solo directorio, y la diferencia no
+        se veía hasta que alguien comparaba los dos avisos a mano.
+        """
+        import inspect
+
+        import tools.build_appimage as build
+
+        for funcion in (build._glibc_minima,
+                        build.comprobar_juego_de_instrucciones):
+            fuente = inspect.getsource(funcion)
+            with self.subTest(funcion=funcion.__name__):
+                self.assertIn("objetos_del_appdir()", fuente,
+                              "recorre el AppDir por su cuenta en vez de "
+                              "compartir la lista")

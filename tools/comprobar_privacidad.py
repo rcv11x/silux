@@ -53,6 +53,42 @@ def _de_esta_maquina() -> dict[str, str]:
     return datos
 
 
+# Lo que el programa escribe dentro del PNG al hacer una captura, diciendo si
+# tapó lo que identifica al equipo. Va como chunk `tEXt`, que en un PNG es
+# texto plano y se encuentra sin descomprimir nada.
+MARCA = b"silux-anonimo"
+ANONIMA = MARCA + b"\x00anonima"
+
+
+def _capturas_delatoras() -> list[str]:
+    """Imágenes publicadas que no se hicieron con `--anonimo`.
+
+    Lo de arriba busca texto, y una captura es un mapa de píxeles: la MAC que
+    se ve en pantalla no está escrita en ninguna parte del archivo. Así que
+    esta comprobación no mira lo que enseña la imagen sino cómo se hizo, que
+    es lo que sí se puede saber.
+
+    Nace de una que estuvo a punto de publicarse con la dirección física de
+    esta máquina y su IPv6 pública —un prefijo global, que dice de quién es la
+    conexión— mientras el comprobador decía que todo estaba bien.
+    """
+    avisos = []
+    for ruta in sorted(pathlib.Path("capturas").glob("*.png")):
+        try:
+            crudo = ruta.read_bytes()
+        except OSError:
+            continue
+        if ANONIMA in crudo:
+            continue
+        if MARCA in crudo:
+            avisos.append(f"{ruta}: hecha sin --anonimo")
+        else:
+            # Las de antes de que se escribiera la marca. No se puede afirmar
+            # que lleven nada, pero tampoco que no: hay que rehacerlas.
+            avisos.append(f"{ruta}: no dice cómo se hizo; rehacerla con --anonimo")
+    return avisos
+
+
 def _direcciones_sospechosas(texto: str) -> list[str]:
     """IP privadas que no sean de los rangos reservados para documentación."""
     encontradas = re.findall(
@@ -76,6 +112,8 @@ def main() -> int:
                 hallazgos.append(f"{ruta}: {que_es}")
         for direccion in _direcciones_sospechosas(texto):
             hallazgos.append(f"{ruta}: la dirección {direccion}")
+
+    hallazgos += _capturas_delatoras()
 
     autores = subprocess.run(
         ["git", "log", "--all", "--format=%ae%n%ce"],
