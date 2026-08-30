@@ -275,9 +275,13 @@ def run(quick: bool = False, on_progress: Optional[Callable[[str, float], None]]
 # compresión pesada da 1 780 operaciones por segundo la primera vez y 2 950 a
 # partir de la segunda. Lo que se paga ahí no es del procesador sino del
 # asignador, que sirve con `mmap` los búferes holgados que pide LZMA hasta que
-# glibc sube su umbral por su cuenta. Con cinco centésimas —unas ochenta
-# vueltas— ya está en régimen; se deja el triple por si el equipo es lento.
-SEGUNDOS_EN_VACIO = 0.15
+# glibc sube su umbral por su cuenta. Con unas ochenta vueltas ya está en régimen; se dejan ciento
+# veinte de margen.
+VUELTAS_EN_VACIO = 120
+
+# Tope por si la carga es lentísima en un equipo modesto: más vale medir con
+# el arranque a medio pagar que dejar la prueba colgada un minuto por carga.
+TOPE_EN_VACIO_S = 2.0
 
 
 def _rodar_en_vacio(carga: "Carga", hilos: int) -> None:
@@ -287,21 +291,25 @@ def _rodar_en_vacio(carga: "Carga", hilos: int) -> None:
     siempre la medida de un hilo: la escala entre uno y todos salía en catorce
     veces con un procesador de ocho núcleos.
     """
-    parar = threading.Event()
+    # Se cuentan vueltas y no segundos. Lo que hay que dejar atrás es el
+    # arranque de la carga, que son unas ochenta llamadas, y eso no dura lo
+    # mismo en un Ryzen que en un portátil de hace diez años: medio segundo
+    # aquí son cientos de vueltas y allí puede que ninguna.
+    fin = time.perf_counter() + TOPE_EN_VACIO_S
 
     def bucle() -> None:
         trabajo = carga.work
-        while not parar.is_set():
+        for _vuelta in range(VUELTAS_EN_VACIO):
+            if time.perf_counter() > fin:
+                break
             trabajo()
 
     obreros = [threading.Thread(target=bucle, daemon=True)
                for _ in range(hilos)]
     for obrero in obreros:
         obrero.start()
-    time.sleep(SEGUNDOS_EN_VACIO)
-    parar.set()
     for obrero in obreros:
-        obrero.join(timeout=10)
+        obrero.join(timeout=TOPE_EN_VACIO_S + 5)
 
 
 def _medir(carga: Carga, hilos: int, duracion: float) -> Medida:

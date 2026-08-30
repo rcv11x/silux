@@ -427,3 +427,34 @@ class TestDerivaTermica(unittest.TestCase):
         raras = self._historial() + [self._prueba(150, 1000.0, 95.0)]
         self.assertIsNone(history.deriva_termica(self._prueba(500, 1000.0, 72.0),
                                                  raras))
+
+
+class TestElRodajeNoDependeDeLoRapidoQueSeaElEquipo(unittest.TestCase):
+    """Lo que hay que dejar atrás son vueltas, no segundos.
+
+    La primera vez que una carga corre en un proceso paga su arranque, y hacen
+    falta unas ochenta llamadas para dejarlo atrás. Medio segundo aquí son
+    cientos de vueltas y en un portátil de hace diez años pueden ser ninguna,
+    así que contar tiempo dejaba el arreglo a medias justo en los equipos
+    modestos, que son los que menos margen tienen.
+    """
+
+    def test_se_cuentan_vueltas(self):
+        self.assertGreaterEqual(benchmark.VUELTAS_EN_VACIO, 80)
+
+    def test_pero_con_un_tope_para_no_colgar_la_prueba(self):
+        """Más vale medir con el arranque a medio pagar que no terminar."""
+        self.assertLessEqual(benchmark.TOPE_EN_VACIO_S, 5.0)
+
+    def test_una_carga_lentisima_no_alarga_la_prueba(self):
+        import time
+
+        class Lenta:
+            key = "lenta"
+            def work(self):
+                time.sleep(0.05)
+
+        inicio = time.perf_counter()
+        benchmark._rodar_en_vacio(Lenta(), 1)
+        self.assertLess(time.perf_counter() - inicio,
+                        benchmark.TOPE_EN_VACIO_S + 1.0)
