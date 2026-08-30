@@ -25,7 +25,7 @@ python3 tools/build_appimage.py --container   # el AppImage que se reparte
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **1166** y tardan poco más de un minuto. Si sale bastante
+Los tests son **1192** y tardan poco más de un minuto. Si sale bastante
 menos, falta algo por recoger.
 
 `--container` no es opcional para repartir: sin él se construye contra el
@@ -166,8 +166,10 @@ CPU y en el volcado del terminal.
 
 ## Estado
 
-Terminadas las once: **CPU, Cachés, Placa base, Memoria, Gráficos,
-Almacenamiento, Red, Sistema, Rendimiento, Sensores, Ajustes**.
+Terminadas las doce: **CPU, Cachés, Placa base, Memoria, Gráficos,
+Almacenamiento, Red, Batería, Sistema, Rendimiento, Sensores, Ajustes**. La de
+Batería solo aparece en los equipos que tienen una: un sobremesa no va a tener
+nunca, así que dejarla puesta para decirlo sería ruido permanente en el menú.
 
 De Gráficos sale todo lo que publica el nodo DRM —identidad, VRAM, tabla DPM,
 enlace PCIe, sensores propios— más lo que solo da el ioctl de amdgpu (tipo de
@@ -506,6 +508,19 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   pasaba. El modo rápido corre a menos GHz que el lento (4,29 contra 4,34) y
   calienta más porque hace más trabajo por ciclo. La temperatura era la
   consecuencia, no la causa, y con r = 0,98 nadie lo habría dudado.
+- **Creer que todo lo que dice ser una batería es la del equipo**:
+  `/sys/class/power_supply` mezcla el cargador, los puertos USB-C y cualquier
+  periférico con pila, y el ratón Logitech publica `hidpp_battery_0` con
+  `type=Battery`. Con mirar el tipo, este sobremesa —que no tiene batería
+  ninguna— declaraba una, y habría salido una ficha de batería en una torre.
+  Quien lo distingue es `scope`: los periféricos dicen «Device» y la del equipo
+  «System», o nada en los portátiles antiguos.
+- **Dar la capacidad de una batería en miliamperios-hora**: el kernel la
+  publica en `charge_*` (µAh) o en `energy_*` (µWh) según el firmware, y los
+  mAh no se pueden comparar entre equipos sin saber el voltaje de la celda:
+  4000 mAh a 7,6 V y 4000 mAh a 11,4 V son baterías muy distintas. Todo entra
+  en vatios-hora, y para convertir manda el voltaje de diseño y no el de ahora,
+  que sube y baja con la carga y daría otra capacidad en cada muestreo.
 - **Poner un botón para arreglar algo que el ayudante no sabe arreglar**: el
   aviso de que el consumo del procesador «requiere permisos» lo pone el
   proveedor de RAPL, porque desde el kernel 5.10 `energy_uj` no se lee sin
@@ -830,7 +845,7 @@ por `_()`, la segunda llamada recibe «Uso» —que no es una clave— y devuelv
 inglés: la tupla llevaba once claves y una traducción ya hecha, y era la única
 que no cambiaba de idioma. Hay un test que lo vigila.
 
-La interfaz está entera en los dos idiomas: 854 claves, ninguna sin traducir.
+La interfaz está entera en los dos idiomas: 891 claves, ninguna sin traducir.
 Hay un test que recorre el árbol de sintaxis de cada página buscando
 constructores de widget con una cadena española a pelo, porque eso es lo que
 no se ve hasta abrir la pantalla en el otro idioma y ningún test normal lo

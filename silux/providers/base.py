@@ -42,6 +42,7 @@ class Draft:
     gpus: list[dict[str, Any]] = field(default_factory=list)
     network: list = field(default_factory=list)
     disks: list = field(default_factory=list)
+    batteries: list = field(default_factory=list)
     privileged: PrivilegedState = field(default_factory=PrivilegedState)
     sensors: list[Sensor] = field(default_factory=list)
     driver_hints: list[DriverHint] = field(default_factory=list)
@@ -123,6 +124,7 @@ class Draft:
             memory_array=self.memory_array,
             network=tuple(self.network),
             disks=tuple(self.disks),
+            batteries=tuple(self.batteries),
             gpus=tuple(
                 Gpu(**{k: v for k, v in raw.items() if k in Gpu.__dataclass_fields__})
                 for raw in self.gpus

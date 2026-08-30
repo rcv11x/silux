@@ -41,6 +41,7 @@ def build(snapshot: Snapshot, anonymous: bool = True) -> str:
         _placa(snapshot, anonymous),
         _graficas(snapshot, anonymous),
         _almacenamiento(snapshot),
+        _bateria(snapshot),
         _red(snapshot, anonymous),
         _sensores(snapshot),
         _rendimiento(),
@@ -342,6 +343,62 @@ def _particiones(disco) -> str:
         resumen += (f" ({len(montadas)} {plural}, {render.size(libre)} libres"
                     + (f", {', '.join(sistemas)}" if sistemas else "") + ")")
     return resumen
+
+
+def _bateria(snapshot: Snapshot) -> str:
+    """La batería, que en un portátil es la pieza que peor envejece.
+
+    Sin sección si no hay ninguna: que un sobremesa no tenga batería no es una
+    carencia que haya que explicar.
+
+    El número de serie de la celda no se escribe, como el de los discos y el de
+    la gráfica.
+    """
+    if not snapshot.batteries:
+        return ""
+
+    lineas = ["", "## Batería", ""]
+    for bateria in snapshot.batteries:
+        titulo = " ".join(x for x in (bateria.manufacturer, bateria.model)
+                          if x) or bateria.name
+        lineas.append(f"**{titulo}**")
+        lineas.append("")
+        if (salud := bateria.health_percent) is not None:
+            lineas.append(
+                f"- Salud: {salud:.0f} % ({bateria.full_wh:.1f} Wh de "
+                f"{bateria.design_wh:.1f} Wh de diseño)")
+        if bateria.cycles:
+            lineas.append(f"- Ciclos de carga: {bateria.cycles}")
+        estado = []
+        if bateria.percent is not None:
+            estado.append(f"{bateria.percent:.0f} %")
+        if bateria.status:
+            estado.append(en_español(bateria.status).lower())
+        if bateria.power_w is not None:
+            estado.append(f"{bateria.power_w:.1f} W")
+        if estado:
+            lineas.append("- Estado: " + " · ".join(estado))
+        if bateria.technology:
+            lineas.append(f"- Tecnología: {bateria.technology}")
+        voltajes = []
+        if bateria.voltage_v:
+            voltajes.append(f"{bateria.voltage_v:.2f} V")
+        if bateria.design_voltage_v:
+            voltajes.append(f"nominal {bateria.design_voltage_v:.2f} V")
+        if voltajes:
+            lineas.append("- Tensión: " + " · ".join(voltajes))
+        # Los topes de carga solo si el portátil los trae: son de ASUS,
+        # Lenovo y poco más, y en los demás dos guiones darían a entender que
+        # falta algo.
+        if (bateria.charge_start_percent is not None
+                or bateria.charge_end_percent is not None):
+            lineas.append(
+                f"- Topes de carga: "
+                f"{bateria.charge_start_percent if bateria.charge_start_percent is not None else '—'}"
+                f" – "
+                f"{bateria.charge_end_percent if bateria.charge_end_percent is not None else '—'} %")
+        lineas.append("")
+    return "\n".join(lineas)
 
 
 def _red(snapshot: Snapshot, anonymous: bool) -> str:

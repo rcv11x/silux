@@ -20,6 +20,7 @@ from .model import Need, Snapshot
 from .privileged.client import PrivilegedClient
 from .i18n import _
 from .providers import (
+    Batteries,
     ArmIdentity,
     CppcClocks,
     CpuidIdentity,
@@ -71,6 +72,7 @@ DEFAULT_PROVIDERS: tuple[type[Provider], ...] = (
     GpuState,
     NetworkInterfaces,  # las interfaces y su ritmo, que se mide entre muestreos
     Disks,              # y los discos, con el suyo
+    Batteries,          # la batería, que en un portátil se degrada sola
     NvidiaGpus,
     SystemState,
     RaplPower,
