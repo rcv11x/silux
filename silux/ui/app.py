@@ -33,6 +33,7 @@ from PySide6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QMainWindow,
+    QPushButton,
     QStackedWidget,
     QStatusBar,
     QVBoxLayout,
@@ -135,6 +136,20 @@ class MainWindow(QMainWindow):
         self._status = ElidingLabel(_("app.sampling"))
         self._status.setObjectName("Muted")
         self.statusBar().addWidget(self._status, 1)
+        # Los datos bloqueados se contaban aquí como texto, y decirlo no
+        # servía de nada: quien lee «1 dato requiere permisos» es justo quien
+        # querría darlos, y el único botón para hacerlo estaba dentro de tres
+        # páginas concretas. Un usuario con el consumo del procesador en blanco
+        # tenía el aviso en la barra y el botón en otra sección.
+        self._blocked = QPushButton("")
+        self._blocked.setObjectName("StatusAction")
+        self._blocked.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._blocked.setToolTip(_("status.blocked.tip"))
+        self._blocked.setFlat(True)
+        self._blocked.clicked.connect(self._on_elevation_requested)
+        self._blocked.hide()
+        self.statusBar().addPermanentWidget(self._blocked)
+
         self._sources = ElidingLabel("")
         self._sources.setObjectName("Muted")
         self._sources.setMaximumWidth(220)
@@ -188,6 +203,7 @@ class MainWindow(QMainWindow):
         self.home_page = HomePage(self._palette, self.prefs)
         self.home_page.seccion_pedida.connect(self.select_section)
         self.cpu_page = CpuPage(self._palette, self.prefs)
+        self.cpu_page.elevation_requested.connect(self._on_elevation_requested)
         self.monitor_page = MonitorPage(self._palette, self.prefs, self._tracker)
         self.monitor_page.columns_resized.connect(self._on_columns_resized)
         self.monitor_page.branches_changed.connect(self._on_branches_changed)
@@ -523,14 +539,16 @@ class MainWindow(QMainWindow):
         # atajo que no se ve en ningún sitio no existe para quien no lo sabe.
         partes = [_("status.refresh").format(n=f"{self.prefs.interval_s:g}"),
                   _("status.freeze")]
-        if bloqueados := sum(1 for n in snapshot.notes if n.need.value == "root"):
-            # El plural va bien puesto: «1 dato(s)» delataba que nadie lo había
-            # mirado, en un programa cuyo argumento es que los datos están
-            # cuidados.
-            partes.append(
-                _("status.blocked.one") if bloqueados == 1
-                else _("status.blocked.many"))
-            partes[-1] = partes[-1].format(n=bloqueados)
+        # El plural va bien puesto: «1 dato(s)» delataba que nadie lo había
+        # mirado, en un programa cuyo argumento es que los datos están
+        # cuidados. Y ya no es texto suelto: el mismo renglón es el botón que
+        # los pide, porque quien lee que falta algo es quien quiere arreglarlo.
+        bloqueados = sum(1 for n in snapshot.notes if n.need.value == "root")
+        if bloqueados:
+            plantilla = (_("status.blocked.action") if bloqueados == 1
+                         else _("status.blocked.action.many"))
+            self._blocked.setText(plantilla.format(n=bloqueados))
+        self._blocked.setVisible(bool(bloqueados))
         partes.append(_("status.sensors").format(n=len(snapshot.sensors)))
         partes.append(", ".join(sorted(snapshot.capabilities)) or _("status.nosources"))
         self._status.set_full_text(" · ".join(partes))

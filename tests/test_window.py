@@ -305,3 +305,106 @@ class TestVentana(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestLaSalidaParaLosDatosBloqueados(unittest.TestCase):
+    """Decir que falta un dato por permisos y no ofrecer darlos.
+
+    La barra de estado ya contaba «1 dato requiere permisos», y eso era todo:
+    el único botón para darlos vivía dentro de Memoria, Gráficos y
+    Almacenamiento. Un usuario con el consumo del procesador en blanco tenía el
+    aviso delante y la salida en otra sección, que es la misma lección que ya
+    estaba escrita para el aviso de Gráficos y que aquí faltaba por aplicar.
+
+    Ahora el propio renglón es el botón, y la página de CPU lleva el suyo
+    dentro del aviso.
+    """
+
+    app = None
+
+    @classmethod
+    def setUpClass(cls):
+        cls.app = QApplication.instance() or QApplication([])
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        patch = mock.patch.dict(os.environ, {"XDG_CONFIG_HOME": self._tmp.name})
+        patch.start()
+        self.addCleanup(patch.stop)
+
+    def _snapshot(self, con_nota):
+        from silux.model import Need, Note, Snapshot
+
+        notas = ()
+        if con_nota:
+            notas = (Note(path="cpu.power_w", need=Need.ROOT,
+                          message="El consumo lo publica un registro del "
+                                  "procesador que el kernel reserva al "
+                                  "administrador.",
+                          hint=""),)
+        from silux.model import Board, Clocks, CpuInfo, CpuType, System
+
+        # Con un tipo de núcleo: la página se planta antes de pintar los
+        # avisos si no reconoce el procesador.
+        cpu = CpuInfo(types=(CpuType(key="general", label="general",
+                                     brand="AMD Ryzen 7 7445HS w/ Radeon 740M Graphics",
+                                     cores=6, threads=12,
+                                     clocks=Clocks(base_hz=3_200_000_000)),))
+        return Snapshot(monotonic_ns=0, notes=notas, cpu=cpu,
+                        board=Board(), system=System())
+
+    def _window(self):
+        from silux.settings import Preferences
+        from silux.ui.app import MainWindow
+
+        window = MainWindow(Preferences().normalized())
+        window.show()
+        self.addCleanup(window.close)
+        return window
+
+    def test_sin_nada_bloqueado_no_hay_boton(self):
+        window = self._window()
+        window._on_sample(self._snapshot(False))
+        self.app.processEvents()
+        self.assertFalse(window._blocked.isVisible())
+
+    def test_con_algo_bloqueado_sale_y_dice_cuantos(self):
+        window = self._window()
+        window._on_sample(self._snapshot(True))
+        self.app.processEvents()
+        self.assertTrue(window._blocked.isVisible())
+        self.assertIn("1", window._blocked.text())
+
+    def test_el_renglon_se_puede_pulsar_y_pide_los_permisos(self):
+        """Lo que lo distingue del texto de antes."""
+        window = self._window()
+        window._on_sample(self._snapshot(True))
+        self.app.processEvents()
+
+        with mock.patch.object(window, "_on_elevation_requested") as pedir:
+            window._blocked.clicked.disconnect()
+            window._blocked.clicked.connect(pedir)
+            window._blocked.click()
+        pedir.assert_called_once()
+
+    def test_la_pagina_de_cpu_puede_pedirlos_ella_sola(self):
+        """Quien lee por qué falta el consumo es quien quiere arreglarlo."""
+        window = self._window()
+        self.assertTrue(hasattr(window.cpu_page, "elevation_requested"),
+                        "la página de CPU no sabe pedir permisos")
+
+    def test_el_aviso_de_cpu_trae_su_boton(self):
+        from silux.model import Need
+
+        window = self._window()
+        window.cpu_page.apply(self._snapshot(True))
+        self.app.processEvents()
+
+        avisos = window.cpu_page._notices_host
+        botones = []
+        for indice in range(avisos.count()):
+            widget = avisos.itemAt(indice).widget()
+            if widget is not None and getattr(widget, "action_button", None):
+                botones.append(widget.action_button)
+        self.assertTrue(botones, "el aviso de permisos sale sin botón al lado")
