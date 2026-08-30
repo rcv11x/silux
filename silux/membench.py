@@ -24,8 +24,9 @@ herramienta y la memoria puede ser más rápida de lo que se enseña; eso pasa e
 un equipo con memoria muy rápida, y callarlo sería dar una cifra baja con cara
 de medida.
 
-**Lo que no se mide aquí, y por qué.** La latencia en nanosegundos no se puede
-sacar sin código nativo propio, y se probaron dos caminos antes de descartarla:
+**Lo que todavía no se mide aquí, y por qué.** La latencia en nanosegundos no
+sale con lo que trae la libc, y se probaron dos caminos antes de dejarla fuera
+de esta primera versión:
 
 - Con muchos accesos aleatorios sueltos sale plana —9.7 ns en 16 KB y 11.2 en
   256 MB— porque no dependen unos de otros y el procesador los solapa. La
@@ -35,9 +36,17 @@ sacar sin código nativo propio, y se probaron dos caminos antes de descartarla:
   número hay que suponer cuántos niveles del árbol están cacheados y descontar
   el coste de la llamada. Serían tres suposiciones sosteniendo una cifra.
 
-Y tampoco se miden la L1 ni la L2: una llamada cuesta 570 ns, y en un bloque
-de 32 KB eso es casi todo el tiempo. Desde un mega baja del 2 %, así que se
-mide de ahí hacia arriba y lo demás se deja sin medir en vez de inventarlo.
+Sí sale escribiendo el bucle en código máquina, que es lo que hace
+`rawcpuid.py` para llamar a CPUID: doce bytes persiguiendo punteros dan 0,9 ns
+en L1 y 76,1 en RAM en el equipo de casa. Está probado y pendiente de integrar,
+con una trampa apuntada: si se dan menos saltos que líneas tiene el array, la
+cadena recorrida cabe en la caché y se mide la caché creyendo que se mide la
+RAM.
+
+Y tampoco se miden la L1 ni la L2 por este camino: una llamada cuesta 570 ns, y
+en un bloque de 32 KB eso es casi todo el tiempo. Desde un mega baja del 2 %,
+así que se mide de ahí hacia arriba y lo demás se deja sin medir en vez de
+inventarlo.
 """
 
 from __future__ import annotations

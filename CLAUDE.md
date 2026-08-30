@@ -193,6 +193,31 @@ existe por ningún camino. Queda pendiente:
   Aquí sigue habiendo solo una v1.3, así que de la 1.4 en adelante y del resto
   de las 2.x no hay pieza a la que preguntar.
 
+De Memoria sale el detalle de cada módulo —lo que publica SMBIOS y, cuando el
+firmware suelta el bus i2c, el chip SPD entero— más el ancho de banda de
+lectura medido y su fracción del teórico. Queda pendiente:
+
+- **La latencia por nivel de caché**, que es la fila que separa esta pestaña
+  del Cache & Memory Benchmark de AIDA64. La prueba está hecha y sale bien; hay
+  una trampa apuntada arriba, en las lecciones: si se dan menos saltos que
+  líneas tiene el array, la cadena recorrida cabe en la caché y se mide la
+  caché creyendo que se mide la RAM. Salían 28 ns donde hay 76.
+- **El ancho de banda de las cachés**, que hoy topa en los 112 GB/s de `memchr`
+  cuando una L1 anda por los 1400. Pide el mismo camino que la latencia y no
+  está probado.
+- **La escritura y la copia**, medidas ya (25 y 41 GB/s) y sin enseñar: la
+  escritura sale la mitad que en AIDA64 sobre un equipo parecido, y hasta saber
+  si eso es la memoria o es cómo escribe `memset`, no se pone.
+- **El FCLK de los Ryzen**, que es de lo más mirado en esa plataforma —la
+  sincronía con el reloj de memoria— y no está por ningún lado. Y el contador
+  del IMC en los Intel, que no es una prueba sino un sensor: cuánto tráfico
+  está moviendo la memoria ahora mismo.
+- **En la ficha**: dos zócalos vacíos ocupan una tarjeta entera cada uno para
+  decir «Vacío», y eso cabe en una línea como ya se hizo con las salidas de
+  vídeo libres. Y con cuatro zócalos hay dos «DIMM 0» y dos «DIMM 1»: el
+  localizador se repite entre canales y hay que mirar el banco para saber cuál
+  es cuál.
+
 **ARM se identifica, sin dejar de ser un programa de x86.** Donde no hay
 CPUID, `providers/armcpu.py` lee el MIDR de `/proc/cpuinfo` —quién hizo el
 núcleo, cuál es y en qué revisión va— y lo cruza con `db.identify_arm`, que
@@ -618,17 +643,24 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   no sirve mientras la prueba ocupa el equipo entero: lo que se busca es la
   resta, lo ocupado menos lo del propio proceso. Cerrar programas ayuda; poder
   demostrar que estaban cerrados es lo que deja concluir algo.
-- **Dar una latencia de memoria medida desde Python**: no se puede, y se
-  probaron dos caminos antes de dejarlo. Con muchos accesos aleatorios sueltos
-  —`itemgetter` sobre un array— sale plana: 9,7 ns en 16 KB y 11,2 en 256 MB,
-  cuando lo real va de uno a ochenta. El motivo es que esos accesos no dependen
-  unos de otros, así que el procesador los solapa y la latencia se esconde
-  detrás del paralelismo; lo que se mide ahí es cuántos accesos caben a la vez,
-  no lo que tarda uno. Con búsqueda binaria sí hay dependencia y aparece la
-  señal (22 ns por salto dentro de la caché, 42 fuera), pero para sacar un
-  número hay que suponer cuántos niveles del árbol están cacheados y descontar
-  el coste de la llamada: tres suposiciones sosteniendo una cifra. Lo que sí se
-  mide es el ancho de banda, que responde a la misma pregunta práctica.
+- **Medir la latencia de memoria con lo que trae la libc**: no se llega, y se
+  probaron dos caminos. Con muchos accesos aleatorios sueltos —`itemgetter`
+  sobre un array— sale plana: 9,7 ns en 16 KB y 11,2 en 256 MB, cuando lo real
+  va de uno a ochenta. El motivo es que esos accesos no dependen unos de otros,
+  así que el procesador los solapa y la latencia se esconde detrás del
+  paralelismo; lo que se mide ahí es cuántos accesos caben a la vez, no lo que
+  tarda uno. Con búsqueda binaria sí hay dependencia y aparece la señal (22 ns
+  por salto dentro de la caché, 42 fuera), pero para sacar un número hay que
+  suponer cuántos niveles del árbol están cacheados y descontar el coste de la
+  llamada: tres suposiciones sosteniendo una cifra.
+
+  **Lo que sí funciona es escribir el bucle en código máquina**, que es lo que
+  este programa ya hace en `rawcpuid.py` desde el primer día. Doce bytes que
+  persiguen punteros —`mov rax,[rax]`, y cada lectura da la dirección de la
+  siguiente— dan 0,9 ns en L1, 2,8 en L2, 11,4 en L3 y 76,1 en RAM en el
+  5800X3D de casa, que es justo lo que tiene que salir en un Zen 3 con
+  DDR4-3200. Está probado y sin integrar; el módulo es `membench.py` y el sitio
+  del kernel, al lado del de CPUID.
 - **Medir un bloque más pequeño que el coste de pedirlo**: una llamada por
   ctypes cuesta 570 ns. En 32 KB —el tamaño de una L1— eso es casi todo el
   tiempo, así que la cifra hablaría de ctypes y no del equipo. Desde un mega
@@ -951,7 +983,7 @@ por `_()`, la segunda llamada recibe «Uso» —que no es una clave— y devuelv
 inglés: la tupla llevaba once claves y una traducción ya hecha, y era la única
 que no cambiaba de idioma. Hay un test que lo vigila.
 
-La interfaz está entera en los dos idiomas: 906 claves, ninguna sin traducir.
+La interfaz está entera en los dos idiomas: 905 claves, ninguna sin traducir.
 Hay un test que recorre el árbol de sintaxis de cada página buscando
 constructores de widget con una cadena española a pelo, porque eso es lo que
 no se ve hasta abrir la pantalla en el otro idioma y ningún test normal lo
