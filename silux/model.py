@@ -899,6 +899,76 @@ class Partition:
 
 
 @dataclass(frozen=True, slots=True)
+class Battery:
+    """La batería de un portátil, que es la pieza que más se degrada.
+
+    Todo en vatios-hora y en vatios, no en miliamperios-hora. El kernel usa
+    dos convenciones según el firmware —`charge_*` en µAh y `energy_*` en
+    µWh— y los mAh no se pueden comparar entre equipos sin saber el voltaje
+    de la celda: 4000 mAh a 7,6 V y 4000 mAh a 11,4 V son baterías muy
+    distintas. Se normaliza al entrar para que la ficha no tenga que elegir.
+    """
+
+    name: str = ""
+    present: bool = True
+    # Una clave, no el texto del kernel: «Discharging» se traduce, y quien
+    # mira la ficha no tiene por qué leer inglés.
+    status: Optional[str] = None
+    percent: Optional[float] = None
+
+    design_wh: Optional[float] = None
+    full_wh: Optional[float] = None
+    now_wh: Optional[float] = None
+
+    voltage_v: Optional[float] = None
+    design_voltage_v: Optional[float] = None
+    # Positivo siempre: si carga o descarga lo dice `status`, y un signo que
+    # cambia de sentido según el firmware no informa de nada.
+    power_w: Optional[float] = None
+    cycles: Optional[int] = None
+
+    manufacturer: Optional[str] = None
+    model: Optional[str] = None
+    technology: Optional[str] = None
+    serial: Optional[str] = None
+
+    # Los topes de carga que traen ASUS, Lenovo y algún otro. Cargar al 60 %
+    # alarga bastante la vida de la celda y casi nadie sabe que su portátil
+    # lo permite.
+    charge_start_percent: Optional[int] = None
+    charge_end_percent: Optional[int] = None
+
+    @property
+    def health_percent(self) -> Optional[float]:
+        """Lo que le queda de la capacidad con la que salió de fábrica.
+
+        Es el dato por el que se mira esta ficha: un «87 %» dice más que
+        cualquier otra cifra de aquí, porque es lo único que responde a «¿se
+        me está muriendo?».
+        """
+        if not self.design_wh or self.full_wh is None:
+            return None
+        return round(self.full_wh / self.design_wh * 100, 1)
+
+    @property
+    def seconds_left(self) -> Optional[int]:
+        """Cuánto aguanta al ritmo de ahora, o cuánto le falta para llenarse.
+
+        Al ritmo de ahora y no «en general»: con el equipo en reposo salen
+        nueve horas y compilando salen dos, y las dos cifras son ciertas. Por
+        eso se enseña al lado del consumo y no sola.
+        """
+        if not self.power_w or self.now_wh is None:
+            return None
+        if self.status == "bat.status.charging":
+            falta = (self.full_wh or self.design_wh or 0) - self.now_wh
+            return int(falta / self.power_w * 3600) if falta > 0 else None
+        if self.status == "bat.status.discharging":
+            return int(self.now_wh / self.power_w * 3600)
+        return None
+
+
+@dataclass(frozen=True, slots=True)
 class DiskIo:
     """Lo que ha pasado por el disco, y a qué ritmo pasa ahora."""
 
@@ -1166,6 +1236,7 @@ class Snapshot:
     gpus: tuple[Gpu, ...] = ()
     network: tuple[NetworkInterface, ...] = ()
     disks: tuple[Disk, ...] = ()
+    batteries: tuple[Battery, ...] = ()
     privileged: PrivilegedState = field(default_factory=PrivilegedState)
     sensors: tuple[Sensor, ...] = ()
     driver_hints: tuple[DriverHint, ...] = ()

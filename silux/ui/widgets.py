@@ -818,6 +818,17 @@ class StatTile(Card):
         if self.unit.text() != unit:
             self.unit.setText(unit)
 
+    def set_label(self, label: str) -> None:
+        """Cambia el nombre del recuadro.
+
+        Casi ninguno lo necesita, pero hay uno que mide dos cosas distintas
+        según el estado: en una batería, lo que queda de autonomía y lo que
+        falta para llenarse no son la misma cifra ni se llaman igual.
+        """
+        texto = label.upper()
+        if self.caption.text() != texto:
+            self.caption.setText(texto)
+
     def set_detail(self, text: str, tooltip: str = "") -> None:
         self.detail.set_full_text(text)
         self.detail.setVisible(bool(text))

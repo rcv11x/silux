@@ -13,6 +13,7 @@ from .nvidia import NvidiaGpus
 from .hwmon import HwmonSensors
 from .privileged_memory import PrivilegedMemory
 from .procfs import CpuUsage
+from .battery import Batteries
 from .rapl import RaplPower
 from .spd_modules import SpdModules
 from .storage import Disks
@@ -24,6 +25,7 @@ __all__ = [
     "Draft", "Provider",
     "SysfsTopology", "CpuidIdentity", "ArmIdentity", "CppcClocks", "DmiBoard", "TurboState",
     "SysfsClocks", "CpuUsage", "HwmonSensors", "RaplPower", "DerivedSensors",
+    "Batteries",
     "DrmGpus", "GpuState", "GpuApis", "NvidiaGpus", "NetworkInterfaces",
     "SystemIdentity", "SystemState", "PrivilegedMemory", "SpdModules", "Disks",
 ]

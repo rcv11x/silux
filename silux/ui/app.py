@@ -46,6 +46,7 @@ from ..model import Snapshot
 from ..settings import ACCENT_NAMES, Preferences
 from ..tracking import Tracker
 from . import theme
+from .pages.battery import BatteryPage
 from .pages.board import BoardPage
 from .pages.caches import CachesPage
 from .pages.cpu import CpuPage
@@ -78,6 +79,7 @@ SECTIONS = (
     ("nav.graphics", True),
     ("nav.storage", True),
     ("nav.network", True),
+    ("nav.battery", True),
     ("nav.system", True),
     ("nav.benchmark", True),
     ("nav.sensors", True),
@@ -219,6 +221,7 @@ class MainWindow(QMainWindow):
         self.storage_page.permanent_requested.connect(self._on_permanent_requested)
         self._refrescar_botones_permanentes()
         self.network_page = NetworkPage(self._palette, self.prefs)
+        self.battery_page = BatteryPage(self._palette, self.prefs)
         self.network_page.unit_changed.connect(self._on_network_unit)
         self.system_page = SystemPage(self._palette, self.prefs)
         self.performance_page = PerformancePage(self._palette, self.prefs)
@@ -230,7 +233,8 @@ class MainWindow(QMainWindow):
         self.settings_page.share_save_requested.connect(self._on_share_save)
         for page in (self.home_page, self.cpu_page, self.caches_page, self.board_page,
                      self.memory_page, self.graphics_page, self.storage_page,
-                     self.network_page, self.system_page, self.performance_page,
+                     self.network_page, self.battery_page, self.system_page,
+                     self.performance_page,
                      self.monitor_page, self.settings_page):
             self.stack.addWidget(page)
         layout.addWidget(self.stack, 1)
@@ -738,8 +742,36 @@ class MainWindow(QMainWindow):
         for page in (self.home_page, self.cpu_page, self.monitor_page, self.caches_page,
                      self.board_page, self.memory_page, self.system_page,
                      self.graphics_page, self.network_page, self.storage_page,
-                     self.performance_page):
+                     self.battery_page, self.performance_page):
             page.apply(snapshot)
+
+        self._ajustar_bateria(snapshot)
+
+    def _ajustar_bateria(self, snapshot: Snapshot) -> None:
+        """La sección de batería solo en los equipos que tienen una.
+
+        No es lo mismo que un dato que falta, que se explica y se deja a la
+        vista: un sobremesa no va a tener batería nunca, y dejar la entrada
+        puesta para decir «este equipo no tiene batería» es ruido permanente en
+        un menú que ya lleva doce. Se decide con la primera lectura y no se
+        vuelve a tocar, salvo que aparezca una: eso pasa de verdad con las
+        estaciones de acoplamiento y con un SAI enchufado a mitad de sesión.
+        """
+        fila = next((i for i, (clave, _hecha) in enumerate(SECTIONS)
+                     if clave == "nav.battery"), None)
+        if fila is None:
+            return
+        item = self.nav.item(fila)
+        if item is None:
+            return
+        sobra = not snapshot.batteries
+        if item.isHidden() != sobra:
+            item.setHidden(sobra)
+            # Si estábamos mirándola justo cuando desaparece, hay que irse a
+            # algún sitio: una página escondida y seleccionada deja la ventana
+            # en blanco sin nada seleccionado en el menú.
+            if sobra and self.nav.currentRow() == fila:
+                self.nav.setCurrentRow(0)
 
     def _on_failure(self, message: str) -> None:
         self._status.set_full_text(
