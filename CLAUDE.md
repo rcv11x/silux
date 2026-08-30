@@ -25,7 +25,7 @@ python3 tools/build_appimage.py --container   # el AppImage que se reparte
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **1212** y tardan poco más de un minuto. Si sale bastante
+Los tests son **1221** y tardan poco más de un minuto. Si sale bastante
 menos, falta algo por recoger.
 
 `--container` no es opcional para repartir: sin él se construye contra el
@@ -511,6 +511,21 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   pasaba. El modo rápido corre a menos GHz que el lento (4,29 contra 4,34) y
   calienta más porque hace más trabajo por ciclo. La temperatura era la
   consecuencia, no la causa, y con r = 0,98 nadie lo habría dudado.
+- **Leer el mismo aparato por dos caminos sin que ninguno lo sepa**: en un
+  portátil, la batería y los puertos USB-C cuelgan a la vez de `hwmon` y de
+  `/sys/class/power_supply`, con el mismo nombre de chip y los mismos valores.
+  Un ThinkPad enseñaba «Alimentación · BAT0» y «Batería» como dos aparatos
+  distintos con idénticas cifras, y los dos USB-C repetidos: seis sensores de
+  cincuenta y cinco contados dos veces. Se queda `power_supply`, que es donde
+  el kernel dice qué es cada archivo —sale «Tensión» y no «Tensión 0»—, y se
+  comprueba que publique algo antes de descartar el de hwmon: si no, saltárselo
+  perdería el dato en vez de deduplicarlo.
+- **Enseñar un rango entero como si fuera un límite**: un ThinkPad sin tope de
+  carga configurado publica 0 y 100, que es justamente no tener tope, y la
+  ficha decía «empieza a cargar por debajo de 0 %, deja de cargar en 100 %»
+  como si alguien lo hubiera puesto. Un Dell con 50 y 90 sí lo tiene, y ahí el
+  dato vale. Lo mismo con la autonomía: con la batería llena salía «— · a 0.0 W
+  de ahora», que es un ritmo de nada para una cuenta atrás que no existe.
 - **Tapar el nombre del equipo solo en su campo**: `privacidad.anonimizar`
   cambiaba `system.hostname` y ya, y el nombre no vive solo ahí. Una interfaz
   de Tailscale, de ZeroTier o un puente hecho a mano se llaman como la máquina,

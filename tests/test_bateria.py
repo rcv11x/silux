@@ -226,3 +226,44 @@ class TestLaBateriaEnElInforme(unittest.TestCase):
         foto = Snapshot(monotonic_ns=0, cpu=CpuInfo(), board=Board(),
                         system=System())
         self.assertNotIn("## Batería", report.build(foto))
+
+
+class TestLosTopesDeCargaQueNoSonTopes(unittest.TestCase):
+    """0 y 100 es el rango entero, o sea no tener límite.
+
+    Un ThinkPad sin límite configurado los publica así, y enseñar
+    «Empieza a cargar por debajo de 0 % · Deja de cargar en 100 %» hace creer
+    que hay algo puesto. Un Dell con 50 y 90 sí lo tiene, y ahí el dato vale.
+    """
+
+    def _hay(self, inicio, fin):
+        from silux.ui.pages.battery import _hay_topes
+
+        return _hay_topes(Battery(charge_start_percent=inicio,
+                                  charge_end_percent=fin))
+
+    def test_de_cero_a_cien_no_es_un_tope(self):
+        self.assertFalse(self._hay(0, 100))
+
+    def test_uno_de_verdad_sí(self):
+        self.assertTrue(self._hay(50, 90))
+
+    def test_sin_publicarlos_tampoco(self):
+        self.assertFalse(self._hay(None, None))
+
+    def test_solo_el_de_arriba_ya_cuenta(self):
+        self.assertTrue(self._hay(None, 80))
+
+    def test_el_informe_hace_lo_mismo(self):
+        from silux import report
+        from silux.model import Board, CpuInfo, Snapshot, System
+
+        def informe(inicio, fin):
+            bat = Battery(name="BAT0", design_wh=50.0, full_wh=43.5,
+                          charge_start_percent=inicio, charge_end_percent=fin)
+            return report.build(Snapshot(monotonic_ns=0, cpu=CpuInfo(),
+                                         board=Board(), system=System(),
+                                         batteries=(bat,)))
+
+        self.assertNotIn("Topes de carga", informe(0, 100))
+        self.assertIn("Topes de carga", informe(50, 90))

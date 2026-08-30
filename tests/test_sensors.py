@@ -2,12 +2,15 @@
 
 import os
 import pathlib
+import tempfile
 import unittest
+from unittest import mock
 
 from silux.model import (
     Board, CpuInfo, CpuType, Power, Sensor, SensorKind, Snapshot,
     short_brand, short_vendor,
 )
+from silux.providers import hwmon
 from silux.providers.base import Draft
 from silux.providers.derived import DerivedSensors
 from silux.tracking import HISTORIAL, Tracker
@@ -411,3 +414,49 @@ class TestCalorDeUnSensor(unittest.TestCase):
 
     def test_un_sensor_sin_lectura_no_tiene_calor(self):
         self.assertIsNone(self._temp(None, crit=90.0).heat)
+
+
+class TestLaBateriaNoSaleDosVeces(unittest.TestCase):
+    """En un portátil, la batería cuelga de hwmon y de power_supply.
+
+    Lo trajo un ThinkPad T14: el árbol enseñaba «Alimentación · BAT0» y
+    «Batería» como dos aparatos distintos con exactamente las mismas cifras
+    —11,384 V y 9,1 W— y los dos puertos USB-C repetidos igual. De 55 sensores,
+    seis estaban contados dos veces.
+
+    Se queda la lectura de `power_supply` porque ahí el kernel dice qué es cada
+    archivo: sale «Tensión» y no «Tensión 0», que es como lo nombra hwmon.
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.raiz = pathlib.Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+        parche = mock.patch.object(hwmon, "POWER_SUPPLY", self.raiz)
+        parche.start()
+        self.addCleanup(parche.stop)
+
+    def _energia(self, nombre, **campos):
+        carpeta = self.raiz / nombre
+        carpeta.mkdir(parents=True, exist_ok=True)
+        for clave, valor in campos.items():
+            (carpeta / clave).write_text(f"{valor}\n", encoding="utf-8")
+
+    def test_un_chip_que_también_está_en_power_supply_se_salta(self):
+        self._energia("BAT0", voltage_now=11_384_000, power_now=9_100_000)
+        self.assertTrue(hwmon._tambien_en_power_supply("BAT0"))
+
+    def test_un_chip_normal_no(self):
+        self.assertFalse(hwmon._tambien_en_power_supply("coretemp"))
+
+    def test_una_carpeta_sin_los_valores_no_cuenta(self):
+        """Si power_supply no publica nada legible, saltarse el chip de hwmon
+        perdería el dato en vez de deduplicarlo."""
+        self._energia("BAT9", capacity=80)
+        self.assertFalse(hwmon._tambien_en_power_supply("BAT9"))
+
+    def test_el_puerto_usbc_también_se_deduplica(self):
+        self._energia("ucsi-source-psy-USBC000:001", voltage_now=0,
+                      current_now=0)
+        self.assertTrue(
+            hwmon._tambien_en_power_supply("ucsi-source-psy-USBC000:001"))
