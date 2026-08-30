@@ -436,6 +436,15 @@ _CANAL = (
     re.compile(r"\bCH([A-H])\b", re.I),
 )
 
+# Y de qué controlador cuelga, cuando el firmware lo dice. Hace falta porque la
+# letra sola no identifica un canal: un ThinkPad con dos módulos los llama
+# «Controller0-ChannelA» y «Controller1-ChannelA-DIMM0», que son los dos
+# «canal A» y son dos canales distintos, uno por controlador. Contando solo
+# letras salía «canal único» en una máquina que va en doble canal, con el
+# agravante de que entonces aconseja repartir los módulos: repartidos ya
+# estaban.
+_CONTROLADOR = re.compile(r"CONTROLLER[\s_-]*(\d+)", re.I)
+
 # Cómo se llama tener tantos canales poblados. Por encima de cuatro se dice el
 # número, que «óctuple canal» no lo usa nadie.
 NOMBRE_DE_CANALES = {1: "mem.chan.1", 2: "mem.chan.2",
@@ -443,13 +452,20 @@ NOMBRE_DE_CANALES = {1: "mem.chan.1", 2: "mem.chan.2",
 
 
 def _canal_de(modulo) -> Optional[str]:
-    """La letra del canal en el que está un módulo, si el firmware la dice."""
+    """Qué canal ocupa un módulo, si el firmware lo dice.
+
+    No devuelve la letra sino algo que identifique el canal de verdad: cuando
+    el localizador nombra el controlador, la letra por sí sola se repite entre
+    ellos y dos módulos bien repartidos parecían estar en el mismo sitio.
+    """
     for texto in (modulo.bank, modulo.locator):
         if not texto:
             continue
         for patron in _CANAL:
             if (encaje := patron.search(texto)):
-                return encaje.group(1).upper()
+                letra = encaje.group(1).upper()
+                controlador = _CONTROLADOR.search(texto)
+                return f"{controlador.group(1)}:{letra}" if controlador else letra
     return None
 
 
