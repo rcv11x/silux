@@ -25,7 +25,7 @@ python3 tools/build_appimage.py --container   # el AppImage que se reparte
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **1249** y tardan poco más de un minuto. Si sale bastante
+Los tests son **1270** y tardan poco más de un minuto. Si sale bastante
 menos, falta algo por recoger.
 
 `--container` no es opcional para repartir: sin él se construye contra el
@@ -137,6 +137,7 @@ silux/
 ├─ spd.py          decodifica el chip de identificación de la RAM (DDR4 y DDR5)
 ├─ smart.py        interpreta el diagnóstico de los discos, sin privilegios
 ├─ benchmark.py    prueba de CPU que reporta en qué condiciones midió
+├─ membench.py     lo que la memoria mueve de verdad, medido en otro proceso
 ├─ history.py      historial de pruebas de este equipo
 ├─ score.py        la puntuación comparable entre equipos, y su escala
 ├─ privacidad.py   qué se omite de un informe público y qué no
@@ -617,6 +618,25 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   no sirve mientras la prueba ocupa el equipo entero: lo que se busca es la
   resta, lo ocupado menos lo del propio proceso. Cerrar programas ayuda; poder
   demostrar que estaban cerrados es lo que deja concluir algo.
+- **Dar una latencia de memoria medida desde Python**: no se puede, y se
+  probaron dos caminos antes de dejarlo. Con muchos accesos aleatorios sueltos
+  —`itemgetter` sobre un array— sale plana: 9,7 ns en 16 KB y 11,2 en 256 MB,
+  cuando lo real va de uno a ochenta. El motivo es que esos accesos no dependen
+  unos de otros, así que el procesador los solapa y la latencia se esconde
+  detrás del paralelismo; lo que se mide ahí es cuántos accesos caben a la vez,
+  no lo que tarda uno. Con búsqueda binaria sí hay dependencia y aparece la
+  señal (22 ns por salto dentro de la caché, 42 fuera), pero para sacar un
+  número hay que suponer cuántos niveles del árbol están cacheados y descontar
+  el coste de la llamada: tres suposiciones sosteniendo una cifra. Lo que sí se
+  mide es el ancho de banda, que responde a la misma pregunta práctica.
+- **Medir un bloque más pequeño que el coste de pedirlo**: una llamada por
+  ctypes cuesta 570 ns. En 32 KB —el tamaño de una L1— eso es casi todo el
+  tiempo, así que la cifra hablaría de ctypes y no del equipo. Desde un mega
+  baja al 2 %, y de ahí para arriba se mide. La L1 y la L2 se quedan sin medir
+  y se dice, en vez de dar un número que parece bueno.
+- **Suponer dos canales de memoria para calcular el teórico**: es la mitad de
+  las veces falso y el porcentaje saldría al doble. Sin saber los canales no se
+  calcula, que es la misma regla que ya valía para el aviso de al lado.
 - **Sumar operaciones por segundo de cargas distintas para hacer una
   puntuación**: en un 5800X3D la compresión pesada da 28 494 op/s y la
   memoria 533, así que la primera pesaba el 82 % del total y las otras
@@ -931,7 +951,7 @@ por `_()`, la segunda llamada recibe «Uso» —que no es una clave— y devuelv
 inglés: la tupla llevaba once claves y una traducción ya hecha, y era la única
 que no cambiaba de idioma. Hay un test que lo vigila.
 
-La interfaz está entera en los dos idiomas: 892 claves, ninguna sin traducir.
+La interfaz está entera en los dos idiomas: 906 claves, ninguna sin traducir.
 Hay un test que recorre el árbol de sintaxis de cada página buscando
 constructores de widget con una cadena española a pelo, porque eso es lo que
 no se ve hasta abrir la pantalla en el otro idioma y ningún test normal lo

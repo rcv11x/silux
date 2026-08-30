@@ -504,6 +504,36 @@ def memory_channel_label(modulos) -> Optional[str]:
     return f"{nombre} · {modulos_txt}"
 
 
+def memory_theoretical_bandwidth(modulos) -> Optional[int]:
+    """Lo que daría esta memoria si nada la frenara, en bytes por segundo.
+
+    Es una multiplicación, no una medida: las transferencias por segundo por
+    los ocho bytes que mueve cada una, por los canales que estén poblados. Vale
+    para poner al lado de lo medido y ver cuánto se aprovecha; sola no dice
+    gran cosa, porque ninguna máquina llega a su teórico.
+
+    Sin saber los canales no se calcula. Suponer dos es justo el error que ya
+    costó un aviso equivocado en la ficha de al lado: en canal único la memoria
+    rinde la mitad, y aquí saldría un porcentaje que dobla al de verdad.
+    """
+    canales = memory_channels(modulos)
+    if not canales:
+        return None
+    velocidades = [m.configured_mts or m.speed_mts for m in modulos
+                   if m.populated and (m.configured_mts or m.speed_mts)]
+    if not velocidades:
+        return None
+    # La más lenta: el controlador iguala a la baja lo que le pongan.
+    return min(velocidades) * 1_000_000 * 8 * canales
+
+
+def memory_bandwidth_share(medido: Optional[int], teorico: Optional[int]) -> Optional[float]:
+    """Qué fracción del teórico se está consiguiendo, en tanto por ciento."""
+    if not medido or not teorico:
+        return None
+    return round(medido / teorico * 100, 1)
+
+
 def memory_channel_warning(modulos) -> Optional[str]:
     """Cuándo la memoria está rindiendo por debajo de lo que podría.
 
