@@ -247,6 +247,22 @@ De Memoria sale el detalle de cada módulo —lo que publica SMBIOS y, cuando el
 firmware suelta el bus i2c, el chip SPD entero— más el ancho de banda de
 lectura medido y su fracción del teórico. Queda pendiente:
 
+Hay una referencia con la que contrastar, y es de la misma pieza que el equipo
+de casa: la captura del Cache & Memory Benchmark de AIDA64 de un 5800X3D ajeno
+—DDR4-3600 CL14 en una MSI B550, o sea otra memoria y otra placa— que trajo el
+autor. Da **L1 0,9 ns · L2 2,7 · L3 12,4 · RAM 66,1**, y **lectura 51,8 GB/s ·
+escritura 28,8 · copia 50,1**, con las cachés a 2192, 1111 y 623 GB/s de
+lectura. Las latencias de caché valen como comprobación directa porque
+dependen del silicio y del reloj y no de la memoria: el kernel de código
+máquina dio aquí 0,9, 2,8 y 11,4. Lo que cambia con la RAM —la latencia de
+memoria y los anchos de banda— solo sirve de orden de magnitud.
+
+De ahí sale además una duda resuelta: **la escritura a 25 GB/s que se midió
+aquí no era un artefacto de `memset`.** Ese 5800X3D da 28,8 escribiendo contra
+51,8 leyendo, así que en Zen 3 la escritura ronda la mitad de la lectura y la
+cifra es del hardware. Lo que despistaba era la comparación con un i7-8700K,
+donde escribir sale tan rápido como leer.
+
 - **La latencia por nivel de caché**, que es la fila que separa esta pestaña
   del Cache & Memory Benchmark de AIDA64. La prueba está hecha y sale bien; hay
   una trampa apuntada arriba, en las lecciones: si se dan menos saltos que
