@@ -286,7 +286,13 @@ class CpuPage(QScrollArea):
             return
 
         primary = cpu.types[0]
-        self.title.setText(primary.brand or _("cpu.unknown"))
+        # El titular va sin la coletilla, como en Inicio: «AMD Ryzen 7 7445HS»
+        # y no «AMD Ryzen 7 7445HS w/ Radeon 740M Graphics», que ocupa dos
+        # líneas para hablar de la gráfica en la página del procesador. La
+        # cadena entera sigue estando en «Especificación», que es el dato tal
+        # y como lo dice el silicio.
+        self.title.setText(render.cpu_short_name(primary.brand)
+                           if primary.brand else _("cpu.unknown"))
         self.subtitle.setText(
             _("cpu.subtitle").format(
                 nucleos=cpu.total_cores, hilos=cpu.total_threads,
