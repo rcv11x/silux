@@ -30,6 +30,19 @@ CELDA = ("bat.vendor", "bat.model", "bat.tech", "bat.voltage",
          "bat.voltage.design", "bat.capacity", "bat.design")
 
 
+def _hay_topes(bateria: Battery) -> bool:
+    """Si el portátil tiene un tope de carga puesto, no solo si los publica.
+
+    Un ThinkPad sin límite configurado publica 0 y 100, que es el rango
+    entero: eso es no tener tope. Un Dell con 50 y 90 sí lo tiene. Enseñar
+    «0 – 100 %» hacía creer que había algo configurado.
+    """
+    inicio, fin = bateria.charge_start_percent, bateria.charge_end_percent
+    if inicio is None and fin is None:
+        return False
+    return not ((inicio or 0) <= 0 and (fin if fin is not None else 100) >= 100)
+
+
 def _duracion(segundos: int) -> str:
     """«3 h 20 min». Sin segundos: en una batería no significan nada."""
     horas, resto = divmod(max(segundos, 0), 3600)
@@ -137,9 +150,11 @@ class _SeccionBateria(QWidget):
         # distintas y las dos son ciertas.
         self.autonomia.set_label(_("bat.tofull") if cargando else _("bat.left"))
         self.autonomia.update_value(_duracion(restante) if restante else d)
+        # El ritmo solo cuando hay cuenta atrás. Con la batería llena y a cero
+        # vatios salía «— · a 0.0 W de ahora», que no dice nada de nada.
         self.autonomia.set_detail(
             _("bat.atrate").format(w=f"{bateria.power_w:.1f}")
-            if bateria.power_w else "")
+            if restante and bateria.power_w else "")
 
         c = self.celda.set
         c(_("bat.vendor"), bateria.manufacturer or d)
@@ -154,10 +169,11 @@ class _SeccionBateria(QWidget):
         c(_("bat.design"), f"{bateria.design_wh:.1f} Wh"
           if bateria.design_wh else d)
 
-        # La tarjeta de límites solo si el portátil los trae: en los que no,
-        # dos guiones dan a entender que algo falta cuando no es el caso.
-        tiene = (bateria.charge_start_percent is not None
-                 or bateria.charge_end_percent is not None)
+        # La tarjeta de límites solo si el portátil los trae y están puestos.
+        # Un ThinkPad publica 0 y 100 cuando no hay tope configurado, y
+        # enseñarlo así da a entender que hay algo puesto: 0 y 100 es
+        # justamente no tener límite. Un Dell con 50 y 90 sí los tiene.
+        tiene = _hay_topes(bateria)
         self.limites_card.setVisible(tiene)
         if tiene:
             l = self.limites.set  # noqa: E741

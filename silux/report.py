@@ -387,11 +387,15 @@ def _bateria(snapshot: Snapshot) -> str:
             voltajes.append(f"nominal {bateria.design_voltage_v:.2f} V")
         if voltajes:
             lineas.append("- Tensión: " + " · ".join(voltajes))
-        # Los topes de carga solo si el portátil los trae: son de ASUS,
-        # Lenovo y poco más, y en los demás dos guiones darían a entender que
-        # falta algo.
-        if (bateria.charge_start_percent is not None
-                or bateria.charge_end_percent is not None):
+        # Los topes solo si están puestos. Un ThinkPad sin límite publica 0 y
+        # 100, que es el rango entero: eso es no tener tope, y escribirlo
+        # hacía creer que había algo configurado.
+        inicio = bateria.charge_start_percent
+        fin = bateria.charge_end_percent
+        puestos = ((inicio is not None or fin is not None)
+                   and not ((inicio or 0) <= 0
+                            and (fin if fin is not None else 100) >= 100))
+        if puestos:
             lineas.append(
                 f"- Topes de carga: "
                 f"{bateria.charge_start_percent if bateria.charge_start_percent is not None else '—'}"

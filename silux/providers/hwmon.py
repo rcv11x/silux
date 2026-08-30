@@ -110,6 +110,21 @@ _ALIMENTACION = (
 )
 
 
+def _tambien_en_power_supply(chip: str) -> bool:
+    """Si este chip de hwmon es el mismo aparato que una entrada de energía.
+
+    En un portátil, la batería y los puertos USB-C cuelgan de los dos sitios
+    con el mismo nombre. Se comprueba que exista la carpeta y que publique algo
+    que se vaya a leer: si `power_supply` no diera ninguno de esos tres
+    valores, saltarse el chip de hwmon perdería el dato en vez de deduplicarlo.
+    """
+    carpeta = POWER_SUPPLY / chip
+    if not carpeta.is_dir():
+        return False
+    return any((carpeta / campo).exists()
+               for campo in ("voltage_now", "current_now", "power_now"))
+
+
 def _nombre_de_alimentacion(chip: str) -> Optional[str]:
     """«Batería» en vez de «BAT0», «Puerto USB-C» en vez del nombre del kernel.
 
@@ -334,6 +349,15 @@ class HwmonSensors(Provider):
         for entry in sorted(HWMON.iterdir()):
             chip = read_text(str(entry / "name"))
             if not chip:
+                continue
+            # La batería y los puertos USB-C de un portátil salen por dos
+            # sitios: aquí y en `/sys/class/power_supply`, con el mismo nombre
+            # de chip y los mismos valores. Un ThinkPad enseñaba «Alimentación
+            # · BAT0» y «Batería» como dos aparatos distintos con las mismas
+            # cifras, y los dos puertos USB-C repetidos. Se queda la lectura de
+            # power_supply, que es la que trae etiquetas con nombre —«Tensión»
+            # y no «Tensión 0»— porque ahí el kernel dice qué es cada archivo.
+            if _tambien_en_power_supply(chip):
                 continue
             device = device_for(chip, entry, cpu_name, board_name, gpu_names)
             canales = sorted(entry.glob("*_input"))
