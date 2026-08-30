@@ -13,13 +13,36 @@ from silux import membench
 
 
 class TestVueltas(unittest.TestCase):
-    def test_muchas_en_los_bloques_pequeños_y_pocas_en_los_grandes(self):
-        self.assertGreater(membench._vueltas(1024 * 1024),
-                           membench._vueltas(256 * 1024 * 1024))
+    """Se reparte por tiempo y no por número de vueltas.
 
-    def test_nunca_menos_de_tres(self):
+    Con las tres que salían antes para el bloque de RAM, una tanda entera podía
+    caer dentro de una interferencia: la cifra se movía un 15 % entre pasadas
+    seguidas y quien pulsaba el botón veía otro número cada vez. Repartiendo
+    por tiempo baja al 3 %.
+    """
+
+    def test_da_muchas_mas_vueltas_en_un_bloque_pequeño(self):
+        libc = membench._libc()
+        bloque = __import__("ctypes").create_string_buffer(2 * 1024**2)
+        p = __import__("ctypes").addressof(bloque)
+        with mock.patch.object(membench, "PRESUPUESTO", 0.02):
+            with mock.patch.object(membench.time, "perf_counter",
+                                   wraps=membench.time.perf_counter) as reloj:
+                membench._leer(libc, p, 2 * 1024**2)
+                pequeño = reloj.call_count
+        self.assertGreater(pequeño, membench.MINIMO_VUELTAS * 2)
+
+    def test_nunca_menos_del_minimo(self):
         """Con una sola vuelta, el mejor tiempo es el único tiempo."""
-        self.assertGreaterEqual(membench._vueltas(2 * 1024**3), 3)
+        import ctypes
+        libc = membench._libc()
+        bloque = ctypes.create_string_buffer(4 * 1024**2)
+        with mock.patch.object(membench, "PRESUPUESTO", 0.0):
+            with mock.patch.object(membench.time, "perf_counter",
+                                   wraps=membench.time.perf_counter) as reloj:
+                membench._leer(libc, ctypes.addressof(bloque), 4 * 1024**2)
+        # Dos llamadas al reloj por vuelta.
+        self.assertGreaterEqual(reloj.call_count, membench.MINIMO_VUELTAS * 2)
 
 
 class TestMedidaDeVerdad(unittest.TestCase):
@@ -31,7 +54,7 @@ class TestMedidaDeVerdad(unittest.TestCase):
 
     def test_y_la_cache_cuando_es_bastante_grande(self):
         r = membench.en_este_proceso(cache_bytes=8 * 1024**2)
-        self.assertEqual([m.donde for m in r.medidas], ["cache", "ram"])
+        self.assertEqual([m.donde for m in r.medidas], ["techo", "ram"])
 
     def test_una_cache_diminuta_no_se_mide(self):
         """Por debajo de un mega la llamada pesa más que la memoria.
@@ -72,7 +95,7 @@ class TestCuandoNoSePuede(unittest.TestCase):
         with mock.patch.object(membench, "_memoria_disponible",
                                return_value=64 * 1024**2):
             r = membench.en_este_proceso(cache_bytes=8 * 1024**2)
-        self.assertEqual([m.donde for m in r.medidas], ["cache"])
+        self.assertEqual([m.donde for m in r.medidas], ["techo"])
 
     def test_si_no_se_puede_leer_meminfo_se_sigue(self):
         with mock.patch.object(membench, "_memoria_disponible", return_value=None):
@@ -87,7 +110,7 @@ class TestEnOtroProceso(unittest.TestCase):
     def test_el_hijo_devuelve_lo_mismo_que_medir_aqui(self):
         r = membench.consultar(8 * 1024**2)
         self.assertIsNone(r.motivo)
-        self.assertEqual([m.donde for m in r.medidas], ["cache", "ram"])
+        self.assertEqual([m.donde for m in r.medidas], ["techo", "ram"])
         self.assertTrue(all(m.bandwidth_bytes > 0 for m in r.medidas))
 
     def test_si_el_hijo_no_sale_adelante_se_dice(self):
