@@ -214,12 +214,13 @@ un sitio público. Con `--with-identifiers` se incluyen, si hacen falta para el
 caso.
 
 Desde el AppImage es `./silux-x86_64.AppImage --report informe.md`, que saca lo
-mismo. Y conviene dar antes los permisos —el botón que sale dentro del propio
-aviso, en Memoria, Gráficos o Almacenamiento—: sin ellos, el módulo de memoria
+mismo. Y conviene dar antes los permisos, con el botón que sale dentro del
+propio aviso en Memoria, Gráficos o Almacenamiento: sin ellos, el módulo de
+memoria
 y el diagnóstico de los discos salen como «requiere permisos» en vez de salir.
 
-Si lo que se ve mal es la ventana —texto cortado, columnas montadas, un color
-que no se lee—, eso no sale en el informe y hace falta una captura.
+Si lo que se ve mal es la ventana (texto cortado, columnas montadas, un color
+que no se lee), eso no sale en el informe y hace falta una captura.
 
 Lo que más falta por probar, porque aquí no hay hardware para ello: una AMD con
 dos CCD (7950X3D y parecidos), cualquier NVIDIA con el driver propietario, un

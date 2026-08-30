@@ -1,8 +1,8 @@
 # Cambios
 
 Lo que cambia en cada versión, contado para quien usa el programa: qué se ve
-distinto y qué deja de funcionar como funcionaba. El detalle técnico —por qué
-se hizo así y qué se probó antes— vive en los mensajes de commit y en
+distinto y qué deja de funcionar como funcionaba. El detalle técnico (por qué
+se hizo así y qué se probó antes) vive en los mensajes de commit y en
 `CLAUDE.md`, que son otra cosa y otro lector.
 
 Cada copia dice de qué versión y de qué commit salió: `silux --version`, la
@@ -11,7 +11,7 @@ que hace falta.
 
 ---
 
-## 0.2.0 — 30 de agosto de 2026
+## 0.2.0 (30 de agosto de 2026)
 
 Primera versión con número propio. Hasta aquí todo se llamó 0.1.0, así que
 esta entrada recoge lo que ha cambiado desde entonces.
