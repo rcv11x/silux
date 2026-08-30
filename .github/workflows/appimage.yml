@@ -30,6 +30,13 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Para adjuntar los paquetes a la release. El token de las acciones es de solo
+# lectura por omisión desde que GitHub cambió ese valor, así que sin esto el
+# último paso muere con «Resource not accessible by integration» después de
+# haber construido los dos AppImages, que es el sitio más caro para fallar.
+permissions:
+  contents: write
+
 jobs:
   build:
     # A propósito la más antigua con soporte: lo compilado contra una glibc
