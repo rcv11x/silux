@@ -81,6 +81,7 @@
   "bench.duration.tip": "Cuánto dura cada una de las diez medidas: cinco cargas, en un hilo y en todos. La prueba entera tarda diez veces esto.\n\nLas largas no dan más puntuación: dan la que se sostiene cuando el equipo ya está caliente.",
   "bench.explain.scaling": "<b>La escala</b><br>Cuánto multiplica el rendimiento al usar todos los hilos. Nunca llega al número de hilos: los que comparten núcleo se reparten las mismas unidades de cálculo.",
   "bench.history.note": "Solo de este equipo y solo en el disco: no se envía a ninguna parte. Comparar con cifras de internet casi nunca sirve, porque están medidas con otro gobernador y otra temperatura; compararse con uno mismo sí dice si algo ha cambiado.",
+  "bench.history.oldscale": "{n} de estas pruebas se midieron antes de arreglar el benchmark y con otra escala, así que se quedan sin puntuación: su cifra no diría lo mismo que las de ahora. Lo demás que guardaron sigue ahí.",
   "bench.intro": "Mide el procesador con cinco cargas distintas, primero en un solo hilo y después en todos. Lo interesante no es solo la cifra: es que cada carga escala de una forma, y ahí se ve qué aprovecha los hilos y qué se queda esperando a la memoria. Mientras dura, el equipo irá al máximo.",
   "bench.label.each": "Cada medida:",
   "bench.notice.compare": "Antes de comparar esta cifra",

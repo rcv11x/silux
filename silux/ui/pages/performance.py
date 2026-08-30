@@ -114,12 +114,16 @@ class PerformancePage(QScrollArea):
         self._layout.addWidget(fila)
 
         self.history_card = Card(_("bench.card.history"))
+        self.history_note = QLabel("")
+        self.history_note.setObjectName("Muted")
+        self.history_note.setWordWrap(True)
         # Rejilla propia y no una Table: cada fila lleva dos botones, y Table
         # solo sabe de texto. Se reconstruye al guardar o borrar, no en cada
         # muestreo, así que aquí no aplica la regla de reutilizar widgets.
         self.history_host = QVBoxLayout()
         self.history_host.setSpacing(0)
         self.history_card.body.addLayout(self.history_host)
+        self.history_card.body.addWidget(self.history_note)
 
         # Va dentro de la tarjeta del historial y no en un aviso aparte: solo
         # significa algo al lado de las pruebas de las que sale.
@@ -358,7 +362,7 @@ class PerformancePage(QScrollArea):
             celdas = (
                 entrada.label or entrada.when,
                 self._duracion_de(entrada),
-                f"{puntos[1]:n}" if puntos else _("bench.other.scale"),
+                f"{puntos[1]:n}" if puntos else render.DASH,
                 render.hz(entrada.frequency_avg_hz),
                 render.temperature(entrada.temperature_peak_c, self._prefs.fahrenheit),
             )
@@ -543,6 +547,12 @@ class PerformancePage(QScrollArea):
             self.history_card.hide()
             return
         self._pintar_filas(entradas)
+        # Trece filas repitiendo «otra escala» son ruido; el motivo es el
+        # mismo para todas y se dice una vez.
+        viejas = sum(1 for e in entradas if e.score_version != score.VERSION)
+        self.history_note.setText(
+            _("bench.history.oldscale").format(n=viejas) if viejas else "")
+        self.history_note.setVisible(bool(viejas))
         self.history_card.show()
 
         if actual is not None:
