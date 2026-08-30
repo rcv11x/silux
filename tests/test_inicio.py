@@ -377,3 +377,30 @@ class TestTodasLasPaginasRecibenElMuestreo(unittest.TestCase):
                                  Preferences(font_scale="normal").normalized())
         pagina.apply(Collector().sample())
         self.assertNotEqual(pagina._cpu_actual, "?")
+
+
+class TestLaFichaDeConsumoExplicaSuHueco(unittest.TestCase):
+    """«— W» y nada más se lee como que el programa no sabe leerlo.
+
+    El contador de energía existe en casi todos los procesadores, pero muchas
+    distribuciones lo reservan a root desde CVE-2020-8694. El motivo ya estaba
+    en su aviso, más abajo; faltaba la mitad que se ve sin bajar.
+    """
+
+    def test_sin_consumo_la_ficha_dice_por_que(self):
+        import dataclasses
+
+        from silux.collector import Collector
+        from silux.settings import Preferences
+        from silux.ui.pages.cpu import CpuPage
+
+        theme.set_density("normal", "normal")
+        foto = Collector().sample()
+        sin_rapl = dataclasses.replace(foto, cpu=dataclasses.replace(
+            foto.cpu, power=dataclasses.replace(foto.cpu.power,
+                                                package_w=None)))
+        pagina = CpuPage(theme.palette_for(_app(), "dark"),
+                         Preferences(font_scale="normal").normalized())
+        pagina.apply(sin_rapl)
+        detalle = pagina.live.tile_power.detail.text()
+        self.assertTrue(detalle, "la ficha se quedó muda")

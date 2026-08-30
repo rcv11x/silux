@@ -350,11 +350,15 @@ class PerformancePage(QScrollArea):
             # La misma cifra que arriba. Antes esta columna traía la suma en
             # crudo de operaciones por segundo, así que la misma prueba salía
             # con dos números distintos en la misma pantalla.
-            puntos = score.puntuar(entrada.scores, entrada.threads)
+            # Una prueba medida con otra escala no se pone al lado de estas:
+            # su cifra diría una diferencia que no existe.
+            de_esta_escala = entrada.score_version == score.VERSION
+            puntos = (score.puntuar(entrada.scores, entrada.threads)
+                      if de_esta_escala else None)
             celdas = (
                 entrada.label or entrada.when,
                 self._duracion_de(entrada),
-                f"{puntos[1]:n}" if puntos else render.DASH,
+                f"{puntos[1]:n}" if puntos else _("bench.other.scale"),
                 render.hz(entrada.frequency_avg_hz),
                 render.temperature(entrada.temperature_peak_c, self._prefs.fahrenheit),
             )

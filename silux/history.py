@@ -55,6 +55,11 @@ class Entry:
     temperature_peak_c: Optional[float] = None
     frequency_avg_hz: Optional[int] = None
     background_load: Optional[float] = None
+    # Con qué escala se calculó su puntuación. Sin esto, dos pruebas medidas
+    # con escalas distintas salen en la misma tabla como si se pudieran
+    # comparar, y la diferencia que se lee no existe: al rehacer la escala la
+    # cifra de un hilo se movió un 68 % sin que el equipo cambiara.
+    score_version: Optional[int] = None
 
     @property
     def when(self) -> str:
@@ -79,7 +84,8 @@ class Entry:
         único que cambió fue la pregunta.
         """
         return (self.cpu == otra.cpu and self.threads == otra.threads
-                and abs(self.seconds - otra.seconds) < 0.01)
+                and abs(self.seconds - otra.seconds) < 0.01
+                and self.score_version == otra.score_version)
 
 
 def from_result(resultado: Result, cpu: str, seconds: float) -> Entry:
@@ -87,7 +93,10 @@ def from_result(resultado: Result, cpu: str, seconds: float) -> Entry:
               for m in resultado.measures if m.seconds}
     condiciones = resultado.conditions
     hilos = max((m.threads for m in resultado.measures), default=1)
+    from . import score
+
     return Entry(
+        score_version=score.VERSION,
         timestamp=time.time(),
         cpu=cpu,
         threads=hilos,
