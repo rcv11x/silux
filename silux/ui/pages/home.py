@@ -14,7 +14,8 @@ from __future__ import annotations
 from typing import Optional
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QLabel, QScrollArea, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (QHBoxLayout, QLabel, QPushButton, QScrollArea,
+                               QVBoxLayout, QWidget)
 
 from ...i18n import _
 from ... import render
@@ -72,6 +73,9 @@ class _TarjetaResumen(Card):
 
 
 class HomePage(QScrollArea):
+    # La pide la ventana, que es quien tiene la foto y la paleta.
+    share_copy_requested = Signal()
+
     seccion_pedida = Signal(str)
 
     def __init__(self, palette: Palette, prefs: Preferences, parent=None):
@@ -136,6 +140,18 @@ class HomePage(QScrollArea):
         card.body.addWidget(self.subtitle)
         card.body.addWidget(self.badges)
         card.body.addWidget(self.pitch)
+
+        # Aquí y no solo en Ajustes: esta pantalla ya es el resumen del equipo,
+        # con las mismas cuatro tarjetas que acaban en la imagen, así que es
+        # donde alguien piensa «esto es lo que quiero enseñar». A Ajustes no se
+        # entra con ganas de compartir nada.
+        self.share = QPushButton(_("share.button.copy"))
+        self.share.setToolTip(_("share.tip"))
+        self.share.clicked.connect(self.share_copy_requested)
+        fila = QHBoxLayout()
+        fila.addStretch(1)
+        fila.addWidget(self.share)
+        card.body.addLayout(fila)
         return card
 
     # -- actualización ------------------------------------------------------
