@@ -1,17 +1,33 @@
-# Construye el AppImage en una distribución antigua, que es lo que lo hace
-# funcionar en máquinas que no son la del que compila.
+# Construye los dos AppImages en una distribución antigua, que es lo que los
+# hace funcionar en máquinas que no son la del que compila.
 #
 # Un AppImage se lleva dentro los binarios del sistema donde se construyó, con
 # sus exigencias: la versión de glibc y el nivel de instrucciones del
 # procesador. Construido en una distribución moderna deja fuera a quien tenga
 # un sistema o un procesador más viejos, y el error que ven no dice de qué se
 # trata. Construido en Ubuntu 22.04 funciona en las dos.
+#
+# Son dos paquetes y no uno porque Qt 6.10 pasó a compilarse con
+# `-march=x86-64-v2`, y no en rutas que se eligen mirando la CPU sino dentro de
+# funciones normales. En un procesador sin SSE4.1 eso es «Instrucción ilegal»
+# antes de pintar nada. El `-compat` lleva la última serie de Qt que se compila
+# para x86-64 a secas.
 
 name: AppImage
 
+# Corre en cada empujón a master y no solo al publicar. Estaba atado a los
+# tags, y como no hubo ninguno hasta la 0.2.0, la primera vez que se ejecutó
+# llevaba meses sin probarse y falló: los tests que aquí pasan se hacen en el
+# Python de quien desarrolla, no en el 3.10 que declara el README y que lleva
+# dentro el paquete. Enterarse el día que se publica es enterarse tarde.
+#
+# Se construye siempre, porque empaquetar es justo lo que se rompe solo; lo que
+# depende del tag es publicar.
 on:
   push:
+    branches: [master]
     tags: ["v*"]
+  pull_request:
   workflow_dispatch:
 
 jobs:
@@ -23,18 +39,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # `hwdata` trae `pci.ids`, que es de donde salen los nombres de los
+      # dispositivos: sin él, un test que busca una tarjeta por su
+      # identificador no la encuentra. Estaba saliendo bien porque el runner
+      # la trae de serie, que es una forma de decir que no se estaba pidiendo.
       - name: Instalar lo que Qt necesita para arrancar
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
             libgl1 libegl1 libxkbcommon-x11-0 libdbus-1-3 \
-            libfontconfig1 libfreetype6 file desktop-file-utils fuse
+            libfontconfig1 libfreetype6 libglib2.0-0 \
+            hwdata file desktop-file-utils fuse
 
+      # El rango se le pregunta al empaquetador en vez de repetirlo aquí. Lo
+      # que no se fija cambia solo, y lo hace en la máquina de otro: este paso
+      # decía «PySide6>=6.6» a secas y con eso el paquete compat habría salido
+      # con un Qt que no arranca en los procesadores para los que existe.
       - name: Instalar PySide6
-        # El de PyPI viene compilado para manylinux: glibc antigua y x86-64
-        # básico, sin extensiones que dejen fuera a los procesadores de hace
-        # diez años.
-        run: pip install 'PySide6>=6.6'
+        run: pip install "$(python tools/build_appimage.py --pyside-range)"
 
       - name: Pasar los tests
         run: QT_QPA_PLATFORM=offscreen python -m unittest discover -s tests -t .
@@ -48,13 +70,33 @@ jobs:
           APPIMAGE_EXTRACT_AND_RUN=1 QT_QPA_PLATFORM=offscreen \
             ./dist/silux-x86_64.AppImage --help
 
+      # El compat va después y con su propio Qt: `copiar_pyside` se lleva el
+      # que esté instalado, así que el techo hay que ponerlo antes de
+      # construir, no al construir.
+      - name: Instalar el PySide6 del paquete compatible
+        run: pip install "$(python tools/build_appimage.py --pyside-range --compat)"
+
+      - name: Construir el AppImage compatible
+        run: python tools/build_appimage.py --compat
+
+      - name: Comprobar que el compatible arranca
+        run: |
+          chmod +x dist/silux-x86_64-compat.AppImage
+          APPIMAGE_EXTRACT_AND_RUN=1 QT_QPA_PLATFORM=offscreen \
+            ./dist/silux-x86_64-compat.AppImage --help
+
       - uses: actions/upload-artifact@v4
         with:
-          name: silux-x86_64.AppImage
-          path: dist/silux-x86_64.AppImage
+          name: appimages
+          path: |
+            dist/silux-x86_64.AppImage
+            dist/silux-x86_64-compat.AppImage
 
-      - name: Publicarlo en la release
+      - name: Publicarlos en la release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/silux-x86_64.AppImage
+          body_path: CHANGELOG.md
+          files: |
+            dist/silux-x86_64.AppImage
+            dist/silux-x86_64-compat.AppImage

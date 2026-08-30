@@ -180,7 +180,7 @@ class DrmGpus(Provider):
             gpu["driver"] = _driver(dispositivo)
             gpu["primary"] = read_int(f"{dispositivo}/boot_vga") == 1
 
-            self._identidad(gpu, dispositivo)
+            self._identidad(gpu, dispositivo, draft)
             if gpu["driver"] in FRAMEBUFFER_GENERICO or not gpu.get("vendor_id"):
                 self._identidad_del_bus(gpu, draft, indice, sin_driver)
             if gpu["driver"] in ("i915", "xe"):
@@ -210,7 +210,7 @@ class DrmGpus(Provider):
         if not candidatas:
             return
         dispositivo = candidatas.pop(0)
-        self._identidad(gpu, dispositivo)
+        self._identidad(gpu, dispositivo, draft)
         gpu["pci_slot"] = dispositivo.name
         # El nodo DRM sigue siendo el del framebuffer; el enlace y la memoria
         # se leen del dispositivo de verdad, que es quien los tiene.
@@ -248,7 +248,14 @@ class DrmGpus(Provider):
         gpu["_is_apu"] = info.is_apu
 
     @staticmethod
-    def _identidad(gpu: dict, dispositivo: pathlib.Path) -> None:
+    def _identidad(gpu: dict, dispositivo: pathlib.Path, draft: Draft) -> None:
+        # `draft` hace falta al final, para preguntarle a la marca del
+        # procesador cómo se llama su integrada. Faltaba en la firma y se usaba
+        # igualmente: era un NameError esperando a que la condición de arriba
+        # no cortase antes, y solo no corta cuando el nombre de una AMD no
+        # lleva «Radeon» dentro. Eso es justo el caso de las APU (Renoir,
+        # Cezanne, Raphael) y el de cualquier equipo sin `pci.ids` instalado,
+        # así que reventaba fuera de aquí y aquí no.
         vendor_id = _hex(dispositivo / "vendor")
         device_id = _hex(dispositivo / "device")
         gpu["vendor_id"] = vendor_id

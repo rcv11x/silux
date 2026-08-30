@@ -665,6 +665,26 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
 - **Tomar por normal un aviso del comprobador del AppImage**: decía que trece
   bibliotecas se cogían del sistema «y son normales», y dos de ellas hacían
   falta de verdad.
+- **Dar por probado lo que el `and` nunca llega a evaluar**: `_identidad` en
+  `providers/drm.py` llamaba a `_igpu_de_la_cpu(draft)` sin tener `draft` en la
+  firma, o sea un `NameError` escrito y esperando. No saltaba nunca aquí porque
+  la condición de delante corta: solo se llega cuando una AMD **no** lleva
+  «Radeon» en el nombre, y eso pasa en las APU —a las que `pci.ids` llama por
+  su nombre en clave, «HawkPoint2»— y en cualquier equipo sin `hwdata`. Es
+  decir, reventaba justo en los equipos que ese código intentaba mejorar, y en
+  ninguno de los de casa. La suite lo cazaba, pero solo al ejecutarla donde
+  falta `pci.ids`.
+- **Tener el CI atado a los tags**: la acción del AppImage solo corría con
+  `v*`, y como no hubo tag hasta la 0.2.0, la primera vez que se ejecutó
+  llevaba meses sin probarse y falló entera. Enterarse el día que se publica es
+  enterarse tarde. Ahora corre en cada empujón a master; publicar sigue
+  dependiendo del tag.
+- **Probar en un contenedor que corre como root y sin `hwdata`**: al buscar por
+  qué fallaba el CI, cuatro de los fallos eran del entorno de pruebas y no del
+  programa. Como root, el proveedor de memoria lee la tabla DMI directamente en
+  vez de pedir permisos, así que sale `HARDWARE` donde el test espera `ROOT`; y
+  sin `pci.ids` no hay nombres de dispositivo que buscar. Reproducir el CI es
+  reproducir también quién lo ejecuta.
 - **Buscar texto dentro de una imagen**: `comprobar_privacidad.py` recorre lo
   versionado buscando el nombre del equipo y las MAC, y por eso daba por buenas
   las capturas: lo que se ve en pantalla no está escrito en el archivo. Publicó
