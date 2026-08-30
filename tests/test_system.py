@@ -141,12 +141,17 @@ class TestColumnasDelArbol(unittest.TestCase):
         cls.app = QApplication.instance() or QApplication([])
 
     def _tree(self):
-        from silux.collector import Collector
+        """Con sensores de muestra: estos tests miden cómo se reparte el
+        sobrante, y eso arranca de lo que mide la columna de nombres. Con el
+        árbol vacío de un equipo sin `hwmon` no sobra lo mismo y la curva se
+        queda con lo que aquí no le toca."""
         from silux.ui import theme
         from silux.ui.widgets import SensorTree
 
+        from . import muestras
+
         tree = SensorTree(theme.DARK)
-        tree.rebuild(Collector().sample().sensor_tree())
+        tree.rebuild(muestras.arbol_de_sensores())
         return tree
 
     def test_las_cifras_se_quedan_pegadas_al_nombre(self):
@@ -175,9 +180,18 @@ class TestColumnasDelArbol(unittest.TestCase):
         self.assertGreater(tree.columnWidth(len(tree.COLUMNS) - 1), 400)
 
     def test_en_una_ventana_estrecha_la_curva_no_se_come_nada(self):
-        """Solo se reparte lo que sobra: si no sobra, se queda como estaba."""
+        """Solo se reparte lo que sobra: si no sobra, se queda como estaba.
+
+        La ventana se estrecha por debajo de lo que piden las columnas, medido
+        sobre la marcha, en vez de a un ancho fijo. Con 700 px puestos a mano
+        esto dependía de cuántos sensores tuviera quien ejecutara el test: en
+        un equipo con noventa y nueve no sobra nada y pasa, y en uno con pocos
+        sobra sitio, la curva se lo queda y el test falla sin que nada esté
+        roto.
+        """
         tree = self._tree()
-        tree.resize(700, 800)
+        piden = sum(tree.columnWidth(c) for c in range(len(tree.COLUMNS)))
+        tree.resize(max(200, piden - 150), 800)
         tree.show()
         self.app.processEvents()
         self.assertLess(tree.columnWidth(tree.TREND_COLUMN), tree.TREND_WIDTH + 20)
