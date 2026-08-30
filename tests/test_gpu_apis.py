@@ -105,10 +105,24 @@ class TestVersiones(unittest.TestCase):
         versiones = {a.name: a.version for a in draft.gpus[0]["apis"]}
         self.assertEqual(versiones, {"OpenGL": "4.6", "OpenCL": "3.1"})
 
-    def test_las_unidades_de_computo_salen_de_opencl(self):
+    def test_las_unidades_de_opencl_no_van_al_campo_del_silicio(self):
+        """Aunque nadie lo haya llenado todavía, que es como llega de verdad.
+
+        OpenCL cuenta en su moneda —subslices en Intel, multiprocesadores en
+        NVIDIA— y este proveedor corre antes que NVML y que el ioctl de i915,
+        así que llenar el campo aquí era quedarse con la cifra mala: los que
+        sí cuentan el silicio ya no lo pisaban.
+        """
         draft = _recolectar([{"vendor_id": 0x1002, "device_id": 0x7550, "primary": True}],
                             opencl=[OPENCL])
-        self.assertEqual(draft.gpus[0]["compute_units"], 64)
+        self.assertIsNone(draft.gpus[0].get("compute_units"))
+
+    def test_pero_su_cifra_sigue_saliendo_en_la_tabla(self):
+        """No se pierde: en su renglón se entiende de qué está hablando."""
+        draft = _recolectar([{"vendor_id": 0x1002, "device_id": 0x7550, "primary": True}],
+                            opencl=[OPENCL])
+        opencl = [a for a in draft.gpus[0]["apis"] if a.name == "OpenCL"][0]
+        self.assertIn("64", opencl.extra)
 
 
 class TestCuandoFalta(unittest.TestCase):
@@ -214,8 +228,13 @@ if __name__ == "__main__":
 # NVIDIA. Los datos son los que se vieron en su captura.
 IGPU_AMD = {"vendor_id": 0x1002, "device_id": 0x1901, "vendor": "AMD",
             "name": "Radeon 740M", "primary": True}
+# Sin `compute_units`: cuando este proveedor corre, NVML todavía no ha pasado
+# —el orden es DrmGpus, GpuApis y mucho después NvidiaGpus—, así que la tarjeta
+# llega con el campo vacío. Ponerlo aquí ya relleno era montar un estado que la
+# ejecución real no produce nunca, y por eso el test daba verde mientras en la
+# máquina de un usuario salían «16 núcleos CUDA».
 DGPU_NVIDIA = {"vendor_id": 0x10DE, "device_id": 0x25A2, "vendor": "NVIDIA",
-               "name": "GeForce RTX 3050 Mobile", "compute_units": 2048}
+               "name": "GeForce RTX 3050 Mobile"}
 OPENGL_NVIDIA = {
     "version": "4.6.0 NVIDIA 610.57.04",
     "renderer": "NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2",
@@ -249,10 +268,16 @@ class TestPortatilHibrido(unittest.TestCase):
         draft = self._hibrido()
         self.assertIsNone(draft.gpus[0].get("compute_units"))
 
-    def test_ni_pisa_las_que_ya_se_sabian(self):
-        """2048 núcleos CUDA los dio NVML; OpenCL cuenta otra cosa."""
+    def test_ni_ocupa_el_campo_de_la_que_sí_es(self):
+        """Los 16 SM tampoco son los núcleos CUDA de la RTX 3050: son 2048.
+
+        Este es el que de verdad importaba. El campo tiene que llegar libre a
+        NVML, que es quien sabe multiplicar los multiprocesadores por lo que da
+        cada uno en Ampere; si OpenCL lo ocupa antes, NVML ya no lo escribe y
+        la ficha se queda con la cifra pequeña y la etiqueta grande.
+        """
         draft = self._hibrido()
-        self.assertEqual(draft.gpus[1]["compute_units"], 2048)
+        self.assertIsNone(draft.gpus[1].get("compute_units"))
 
 
 class TestQuienContesta(unittest.TestCase):

@@ -112,10 +112,20 @@ class GpuApis(Provider):
                     driver=dispositivo.get("driver_version"),
                     extra=_unidades(dispositivo),
                 ))
-                # Solo si nadie lo sabía ya: el ioctl de amdgpu y NVML cuentan
-                # el silicio, y OpenCL cuenta lo que expone su driver.
-                if dispositivo.get("compute_units") and not gpu.get("compute_units"):
-                    gpu["compute_units"] = dispositivo["compute_units"]
+                # Lo que OpenCL cuenta NO va a `compute_units`, ni siquiera
+                # cuando el campo está vacío. Sus «unidades de cómputo» son las
+                # de su modelo de programación y no las del silicio: los
+                # subslices de una Intel (5 en una Iris Xe de 80 EU) y los
+                # multiprocesadores de una NVIDIA (16 en una RTX 3050 de 2048
+                # núcleos). Puestas ahí salían con la etiqueta del fabricante
+                # —«5 EU», «16 núcleos CUDA»— y eso es falso en la unidad.
+                #
+                # Aquí llegaba antes que NVML y que el ioctl de i915, así que
+                # ocupaba el campo y los que sí saben ya no lo pisaban: el
+                # arreglo de `_nucleos_cuda` estaba escrito y no llegaba a
+                # aplicarse nunca. La cifra de OpenCL no se pierde, sigue en su
+                # renglón de la tabla de bibliotecas, que es donde se entiende
+                # de qué está hablando.
 
             if apis:
                 gpu["apis"] = tuple(apis)
@@ -140,6 +150,22 @@ def _memoria_de_vulkan(gpu: dict, dispositivo: dict) -> None:
         return
     memoria = gpu.get("memory") or GpuMemory()
     if memoria.total_bytes:
+        return
+    # En una integrada ese montón NO es memoria de la tarjeta: es la RAM del
+    # sistema que el driver le deja tomar. Una Iris Xe declara 11.5 GB en un
+    # equipo con 15.3 de RAM, y puesto como «Total» de la memoria de video
+    # salía en la insignia y en la imagen de compartir como «Iris Xe · 11.5
+    # GB», que se lee como una tarjeta con once giga y medio de VRAM. El
+    # modelo ya tiene el campo donde va eso, y dice en su comentario por qué
+    # va aparte: no es memoria de la tarjeta.
+    #
+    # Cuando no se ha podido decidir si es integrada, `integrated` es None y
+    # aquí se hace lo de siempre: inventar en la dirección contraria sería
+    # quitarle la VRAM a una dedicada.
+    if gpu.get("integrated"):
+        if memoria.gtt_total_bytes:
+            return
+        gpu["memory"] = dataclasses.replace(memoria, gtt_total_bytes=bytes_)
         return
     gpu["memory"] = dataclasses.replace(memoria, total_bytes=bytes_)
 

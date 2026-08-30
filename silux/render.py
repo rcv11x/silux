@@ -182,9 +182,16 @@ def cache_label(cache: Cache) -> str:
     return _(claves.get(cache.kind, "cache.label.unified")).format(n=cache.level)
 
 
-def core_type_label(cpu_type: CpuType, hybrid: bool) -> str:
+def core_type_label(cpu_type: CpuType, hybrid: bool, traducir=None) -> str:
+    """`traducir` deja pedir el castellano fijo desde fuera de la interfaz.
+
+    El informe va en español pase lo que pase, así que ahí entra `en_español`
+    en vez de `_`; con la función normal, el informe de alguien con la interfaz
+    en inglés mezclaría los dos idiomas en la misma página.
+    """
+    tr = traducir or _
     if not hybrid:
-        return _("cpu.type.generic")
+        return tr("cpu.type.generic")
     # «P» y «E» son como los llama Intel; ARM llama a lo mismo big.LITTLE.
     # El reparto es el mismo, el nombre no, y quien mira su teléfono no
     # reconoce «núcleo E» por ninguna parte.
@@ -193,8 +200,8 @@ def core_type_label(cpu_type: CpuType, hybrid: bool) -> str:
     else:
         claves = {"performance": "core.type.p", "efficiency": "core.type.e"}
     if cpu_type.key in claves:
-        return _(claves[cpu_type.key])
-    return _("core.type.named").format(nombre=cpu_type.key)
+        return tr(claves[cpu_type.key])
+    return tr("core.type.named").format(nombre=cpu_type.key)
 
 
 def instructions(cpu_type: CpuType, limit: int | None = None) -> str:

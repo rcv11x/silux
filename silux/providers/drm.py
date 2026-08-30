@@ -28,7 +28,7 @@ import re
 import time
 from typing import Optional
 
-from .. import amdgpu, edid, gpumetrics, pciids
+from .. import amdgpu, edid, gpumetrics, i915, pciids
 from ..model import (Display, GpuClockLevel, GpuClocks, GpuEngine, PcieLink, GpuMemory,
                       Need)
 from ..privileged.client import HelperError, PmuUnsupported, PrivilegedClient
@@ -223,7 +223,14 @@ class DrmGpus(Provider):
 
     @staticmethod
     def _preguntar_al_driver(gpu: dict, dispositivo: pathlib.Path) -> None:
-        """Lo que amdgpu solo suelta por ioctl: memoria, unidades y ROP."""
+        """Lo que cada driver solo suelta por ioctl.
+
+        De amdgpu, la memoria, las unidades y los ROP. De i915, las unidades de
+        ejecución, que no están en sysfs y que hasta ahora solo contestaba
+        OpenCL contando otra cosa.
+        """
+        if gpu.get("driver") == "i915":
+            DrmGpus._preguntar_a_i915(gpu, dispositivo)
         if gpu.get("driver") != "amdgpu":
             return
         nodo = amdgpu.render_node(dispositivo)
@@ -246,6 +253,23 @@ class DrmGpus(Provider):
         # Con guion bajo porque no es un campo del modelo: solo lo usa
         # _es_integrada y el congelado descarta lo que no reconoce.
         gpu["_is_apu"] = info.is_apu
+
+    @staticmethod
+    def _preguntar_a_i915(gpu: dict, dispositivo: pathlib.Path) -> None:
+        """Las unidades de ejecución de una gráfica Intel.
+
+        Es el único sitio donde está el número entero. OpenCL contesta los
+        subslices —cinco en una Iris Xe G7 de 80 EU—, así que rellenar el campo
+        con lo suyo daba una cifra dieciséis veces más pequeña con la etiqueta
+        de las grandes.
+        """
+        nodo = i915.render_node(dispositivo)
+        if not nodo:
+            return
+        info = i915.query(nodo, expected_device_id=gpu.get("device_id"))
+        if info is None or info.eu_total is None:
+            return
+        gpu["compute_units"] = info.eu_total
 
     @staticmethod
     def _identidad(gpu: dict, dispositivo: pathlib.Path, draft: Draft) -> None:
