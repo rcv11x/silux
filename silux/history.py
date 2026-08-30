@@ -55,6 +55,9 @@ class Entry:
     temperature_peak_c: Optional[float] = None
     frequency_avg_hz: Optional[int] = None
     background_load: Optional[float] = None
+    # Lo más que llegó a robarle otro programa mientras se medía. El de arriba
+    # se toma antes de empezar y no ve lo que pase después.
+    background_peak: Optional[float] = None
     # Con qué escala se calculó su puntuación. Sin esto, dos pruebas medidas
     # con escalas distintas salen en la misma tabla como si se pudieran
     # comparar, y la diferencia que se lee no existe: al rehacer la escala la
@@ -106,6 +109,7 @@ def from_result(resultado: Result, cpu: str, seconds: float) -> Entry:
         temperature_peak_c=condiciones.temperature_peak_c,
         frequency_avg_hz=condiciones.frequency_avg_hz,
         background_load=condiciones.background_load,
+        background_peak=condiciones.background_peak,
     )
 
 

@@ -380,7 +380,7 @@ class GpuState(Provider):
             gpu["link"] = _enlace(dispositivo, gpu.get("link") or PcieLink())
             gpu["clocks"] = _relojes(dispositivo, raiz)
             _sensores(gpu, dispositivo)
-            _telemetria(gpu, dispositivo)
+            _telemetria(gpu, dispositivo, draft, indice)
 
             if gpu.get("driver") in ("i915", "xe"):
                 gpu["sleep_percent"] = self._reposo(nodo, raiz)
@@ -849,7 +849,8 @@ def _sensores(gpu: dict, dispositivo: pathlib.Path) -> None:
     gpu["voltage_v"] = round(milivoltios / 1000, 3) if milivoltios is not None else None
 
 
-def _telemetria(gpu: dict, dispositivo: pathlib.Path) -> None:
+def _telemetria(gpu: dict, dispositivo: pathlib.Path,
+                draft: Draft, indice: int) -> None:
     """Lo que solo cuenta el firmware: por qué se frena y a cuánto va de verdad.
 
     Se aplica encima de lo leído en hwmon, no en lugar de ello: hwmon está en
@@ -858,6 +859,16 @@ def _telemetria(gpu: dict, dispositivo: pathlib.Path) -> None:
     """
     medidas = gpumetrics.read(dispositivo)
     if medidas is None:
+        # Una versión que no se sabe leer no es lo mismo que no tener tabla, y
+        # hasta ahora las dos acababan en el mismo silencio. Las v1.4 en
+        # adelante y las 2.x de las APU caen aquí: el usuario veía los motivos
+        # de recorte y los voltajes vacíos sin nada que lo explicara.
+        if (nueva := gpumetrics.sin_interpretar(dispositivo)) is not None:
+            version, _tamano = nueva
+            draft.note(f"gpus.{indice}.metrics", Need.DATABASE,
+                       _("prov.drm.metricsnew").format(version=version),
+                       _("prov.drm.metricsnew.hint"))
+            gpu["metrics_version"] = version
         return
 
     gpu["throttled"] = medidas.throttled

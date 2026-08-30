@@ -183,11 +183,39 @@ def parse(raw: bytes) -> Optional[Metrics]:
 
 def read(device: pathlib.Path | str) -> Optional[Metrics]:
     """Lee la tabla del nodo PCI de una tarjeta."""
+    crudo = raw_of(device)
+    return parse(crudo) if crudo else None
+
+
+def raw_of(device: pathlib.Path | str) -> Optional[bytes]:
+    """La tabla tal cual, sin interpretar."""
     try:
-        crudo = pathlib.Path(device, "gpu_metrics").read_bytes()
+        return pathlib.Path(device, "gpu_metrics").read_bytes() or None
     except OSError:
         return None
-    return parse(crudo) if crudo else None
+
+
+def sin_interpretar(device: pathlib.Path | str) -> Optional[tuple[str, int]]:
+    """La versión y el tamaño de una tabla que existe y no se sabe leer.
+
+    Devuelve None cuando no hay tabla o cuando sí se entiende. Sirve para dos
+    cosas que antes no pasaban: decirle al usuario que su tarjeta publica
+    telemetría que este programa todavía no interpreta —en vez de callarse, que
+    es lo que hacía— y llevarse la versión en el informe, que es de donde puede
+    salir la tabla de posiciones sin tener la pieza delante.
+
+    Las v1.4 en adelante reordenaron los campos y las 2.x son las de las APU.
+    Interpretarlas con las posiciones de una v1.3 no da error: da cifras
+    creíbles y equivocadas, así que hasta tener un volcado de verdad con el que
+    contrastar, se dice que no se leen y no se adivina.
+    """
+    crudo = raw_of(device)
+    if not crudo or len(crudo) < 4:
+        return None
+    tamano, formato, contenido = struct.unpack_from(CABECERA, crudo, 0)
+    if (formato, contenido) in VERSIONES:
+        return None
+    return f"{formato}.{contenido}", min(tamano, len(crudo))
 
 
 def version_of(raw: bytes) -> Optional[str]:

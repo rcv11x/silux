@@ -89,6 +89,10 @@ def main(argv=None) -> int:
         "un_hilo": {c: round(op[f"{c}/1"], 2) for c in cargas},
         "multihilo": {c: round(op[f"{c}/{hilos}"], 2) for c in cargas},
     }
+    # Lo que han medido otros equipos no lo produce esta herramienta y no se
+    # puede volver a tomar: se conserva salvo que cambie la versión.
+    if piezas := _piezas_que_siguen_valiendo():
+        tabla["piezas"] = piezas
 
     print(f"\n  {'carga':<18} {'1 hilo':>10} {str(hilos) + ' hilos':>12}")
     for c in cargas:
@@ -106,13 +110,44 @@ def main(argv=None) -> int:
     return 0
 
 
-def _leer_about() -> str:
-    """Conserva la explicación que ya tenga el archivo, si la tiene."""
+def _tabla_anterior() -> dict:
+    """Lo que hay guardado ahora mismo, o vacío si no hay nada legible."""
     try:
         with (RAIZ / "silux" / "db" / "scores.json").open(encoding="utf-8") as fh:
-            return json.load(fh).get("about", "")
+            return json.load(fh)
     except (OSError, ValueError):
-        return ""
+        return {}
+
+
+def _leer_about() -> str:
+    """Conserva la explicación que ya tenga el archivo, si la tiene."""
+    return _tabla_anterior().get("about", "")
+
+
+def _piezas_que_siguen_valiendo() -> dict:
+    """Las medidas de otros equipos, si la escala nueva es la misma versión.
+
+    `anadir_puntuacion.py` las va acumulando en «piezas», y esta herramienta
+    reescribía el archivo entero sin ellas: remedir la escala las borraba
+    todas. No se notó porque todavía no había ninguna, que es la única razón
+    por la que esto no ha costado ya un disgusto.
+
+    Cuando cambia la versión de la fórmula sí se descartan, y entonces es lo
+    correcto: una puntuación medida con la escala anterior no significa lo
+    mismo que una de ahora, y guardarlas juntas es justo lo que
+    `score.VERSION` existe para impedir.
+    """
+    anterior = _tabla_anterior()
+    if not anterior.get("piezas"):
+        return {}
+    if anterior.get("version_formula") != score.VERSION:
+        cuantas = len(anterior["piezas"])
+        print(f"  se descartan las medidas de {cuantas} "
+              f"{'pieza' if cuantas == 1 else 'piezas'}: eran de la escala "
+              f"v{anterior.get('version_formula')} y esta es la "
+              f"v{score.VERSION}", file=sys.stderr)
+        return {}
+    return anterior["piezas"]
 
 
 if __name__ == "__main__":

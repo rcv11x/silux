@@ -25,7 +25,7 @@ python3 tools/build_appimage.py --container   # el AppImage que se reparte
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **1128** y tardan poco más de un minuto. Si sale bastante
+Los tests son **1148** y tardan poco más de un minuto. Si sale bastante
 menos, falta algo por recoger.
 
 `--container` no es opcional para repartir: sin él se construye contra el
@@ -505,6 +505,25 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   pasaba. El modo rápido corre a menos GHz que el lento (4,29 contra 4,34) y
   calienta más porque hace más trabajo por ciclo. La temperatura era la
   consecuencia, no la causa, y con r = 0,98 nadie lo habría dudado.
+- **Medir la carga de fondo solo antes de empezar**: `_carga_de_fondo` toma
+  tres décimas y se acabó, y una prueba de quince segundos por carga dura dos
+  minutos y medio. Quien la lanzaba y se iba a hacer otra cosa, o tenía una
+  actualización en marcha sin saberlo, salía con «0 % de carga de fondo» y una
+  cifra baja sin explicación en ninguna parte. Ahora el vigilante muestrea
+  también mientras se mide, y se guarda el pico y no la media: algo que se
+  despierta a mitad se diluye promediado entre dos minutos.
+- **Que una herramienta reescriba entero un archivo que no llena ella sola**:
+  `medir_referencia.py` volcaba `scores.json` con lo que acababa de medir, y
+  las medidas de otros equipos que va acumulando `anadir_puntuacion.py` vivían
+  en ese mismo archivo. Remedir la escala las borraba todas, sin decirlo. No
+  llegó a costar nada porque cuando se vio todavía no había ninguna guardada.
+- **Callarse igual ante un dato que no existe y ante uno que no se sabe leer**:
+  las versiones de `gpu_metrics` que no están en la tabla se descartan a
+  propósito, y hasta ahora acababan en el mismo silencio que no tener
+  telemetría. En una APU —que publica las 2.x— los motivos de recorte y los
+  voltajes salían vacíos sin nada que lo explicara. Se descarta igual, pero se
+  dice cuál es y se lleva al informe, que es de donde puede salir su tabla de
+  posiciones sin tener la pieza delante.
 - **Buscar el ruido de fuera sin medir el de dentro**: con el navegador y el
   chat abiertos, lo ajeno se llevaba un 2,4 % de la máquina, pero de forma
   intermitente, que es lo que se confunde con una deriva. `/proc/stat` a secas
@@ -800,7 +819,7 @@ por `_()`, la segunda llamada recibe «Uso» —que no es una clave— y devuelv
 inglés: la tupla llevaba once claves y una traducción ya hecha, y era la única
 que no cambiaba de idioma. Hay un test que lo vigila.
 
-La interfaz está entera en los dos idiomas: 841 claves, ninguna sin traducir.
+La interfaz está entera en los dos idiomas: 843 claves, ninguna sin traducir.
 Hay un test que recorre el árbol de sintaxis de cada página buscando
 constructores de widget con una cadena española a pelo, porque eso es lo que
 no se ve hasta abrir la pantalla en el otro idioma y ningún test normal lo
