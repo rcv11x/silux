@@ -797,7 +797,18 @@ def main(argv: Optional[list[str]] = None) -> int:
         # área de desplazamiento necesitan asentarse antes de grabar.
         QTimer.singleShot(400, app.quit)
         app.exec()
-        window.grab().save(args.screenshot)
+        # La imagen se lleva dentro si se hizo anónima o no. Es lo único que
+        # deja comprobarlo después: `tools/comprobar_privacidad.py` busca texto
+        # y una captura es un mapa de píxeles, así que sin esta marca dio por
+        # buena una con la MAC y la IPv6 pública de esta máquina a la vista.
+        # El valor va sin tildes a propósito, y no por descuido del idioma: es
+        # un metadato que lee un script, no texto de ventana. Con «sí», Qt lo
+        # escribe en Latin-1 dentro del PNG —`s\xed`— y quien lo busque en
+        # UTF-8 no lo encuentra; en ASCII no hay dos formas de escribirlo.
+        imagen = window.grab().toImage()
+        imagen.setText("silux-anonimo",
+                       "anonima" if args.anonimo else "identificable")
+        imagen.save(args.screenshot)
         print(f"captura guardada en {args.screenshot}")
         return 0
 

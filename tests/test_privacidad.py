@@ -87,3 +87,54 @@ class TestLoQueNoSeToca(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestLaMarcaDeLasCapturas(unittest.TestCase):
+    """Una captura se publica igual que un informe, y no se puede leer igual.
+
+    El comprobador de privacidad busca texto en lo versionado, y eso no sirve
+    para un PNG: la dirección física que se ve en pantalla no está escrita en
+    ninguna parte del archivo. Estuvo dando por buena una captura con la MAC de
+    la máquina y su IPv6 pública a la vista.
+
+    Como no se puede leer lo que enseña la imagen, se comprueba cómo se hizo:
+    el programa escribe dentro del PNG si tapó los identificadores o no, y el
+    comprobador exige esa marca.
+    """
+
+    def _comprobador(self):
+        import importlib.util
+        import pathlib
+
+        ruta = pathlib.Path(__file__).resolve().parent.parent / "tools" / "comprobar_privacidad.py"
+        spec = importlib.util.spec_from_file_location("comprobar_privacidad", ruta)
+        modulo = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(modulo)
+        return modulo
+
+    def test_el_valor_de_la_marca_no_lleva_tildes(self):
+        """Con «sí», Qt lo escribe en Latin-1 y quien busque UTF-8 no lo ve.
+
+        Es un metadato que lee un script, no texto de ventana, así que en
+        ASCII no hay dos formas de escribirlo. La primera versión de esto
+        buscaba «sí» en UTF-8 y no encontraba nunca la marca que sí estaba.
+        """
+        self.assertTrue(self._comprobador().ANONIMA.isascii())
+
+    def test_quien_escribe_la_marca_y_quien_la_busca_dicen_lo_mismo(self):
+        """Si divergen, el comprobador avisa de todas o de ninguna."""
+        import pathlib
+
+        fuente = (pathlib.Path(__file__).resolve().parent.parent
+                  / "silux" / "ui" / "app.py").read_text(encoding="utf-8")
+        marca = self._comprobador().ANONIMA.decode("ascii")
+        clave, valor = marca.split("\x00")
+        self.assertIn(f'"{clave}"', fuente,
+                      "la captura no escribe la clave que el comprobador busca")
+        self.assertIn(f'"{valor}"', fuente,
+                      "la captura no escribe el valor que el comprobador busca")
+
+    def test_las_capturas_publicadas_estan_marcadas(self):
+        """Las del repositorio van al README, o sea a un sitio público."""
+        avisos = self._comprobador()._capturas_delatoras()
+        self.assertEqual(avisos, [], "hay capturas sin hacer con --anonimo")

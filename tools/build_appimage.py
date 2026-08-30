@@ -429,12 +429,42 @@ def _nivel_isa() -> Optional[str]:
     return None
 
 
+def objetos_del_appdir() -> list[pathlib.Path]:
+    """Todo lo que dentro del AppDir puede pedirle algo al sistema.
+
+    Es una sola lista y la comparten las dos comprobaciones a propósito. Cuando
+    cada una recorría lo suyo, la del juego de instrucciones miraba el AppDir
+    entero y la de glibc solo `usr/lib/*.so*`, y las sesenta primeras: el
+    intérprete cuelga de `usr/bin` y los módulos de extensión de la biblioteca
+    estándar viven en `lib-dynload`, así que la de glibc no veía ni a
+    `python3`, que es justo quien pide el símbolo más alto.
+
+    El criterio de qué es un binario es el mismo que ya usaba la de
+    instrucciones: o lleva `.so` en el nombre, o tiene el bit de ejecución.
+    """
+    objetos = []
+    for objeto in sorted(APPDIR.resolve().rglob("*")):
+        if not objeto.is_file() or objeto.is_symlink():
+            continue
+        if ".so" not in objeto.name and not objeto.stat().st_mode & 0o111:
+            continue
+        objetos.append(objeto)
+    return objetos
+
+
 def _glibc_minima() -> Optional[str]:
-    """La versión de glibc más alta que pide cualquiera de las bibliotecas."""
+    """La versión de glibc más alta que pide cualquier objeto del AppDir.
+
+    Sin tope de cuántos se miran y sin quedarse en un directorio. Equivocarse
+    aquí solo puede salir en una dirección —decir que hace falta menos glibc de
+    la que hace falta—, y esa es la que manda a alguien a descargar un paquete
+    que no le va a arrancar. Estuvo diciendo 2.34 cuando eran 2.35, que es la
+    diferencia entre que RHEL 9 valga o no valga.
+    """
     if not shutil.which("objdump"):
         return None
     mayor = (0, 0)
-    for binario in list((APPDIR / "usr" / "lib").glob("*.so*"))[:60]:
+    for binario in objetos_del_appdir():
         try:
             salida = subprocess.run(["objdump", "-T", str(binario)],
                                     capture_output=True, text=True, check=False).stdout
@@ -474,6 +504,9 @@ def copiar_python() -> set[str]:
     # `_hashlib` se quedaba sin `libcrypto` y `_lzma` sin `liblzma`: dos de las
     # cinco cargas del benchmark reventaban en cualquier máquina que no las
     # trajera puestas, y en las distribuciones con OpenSSL 1.1 eso es siempre.
+    # Desde la escala v4 la compresión pesada usa `_bz2`, así que `libbz2` está
+    # en la misma situación: sale sola por aquí mientras nadie meta `_bz2` en
+    # `DYNLOAD_FUERA`, y si alguien lo mete, la carga revienta fuera de casa.
     dynload = destino / "lib-dynload"
     bibliotecas = set(dependencias(destino_bin))
     for modulo in sorted(dynload.glob("*.so")) if dynload.is_dir() else ():
@@ -662,11 +695,7 @@ def comprobar_juego_de_instrucciones() -> set[str]:
     sospechosos: dict[str, list[str]] = {}
     conocidas: set[str] = set()
     banderas: set[str] = set()
-    for objeto in sorted(APPDIR.resolve().rglob("*")):
-        if not objeto.is_file() or objeto.is_symlink():
-            continue
-        if ".so" not in objeto.name and not objeto.stat().st_mode & 0o111:
-            continue
+    for objeto in objetos_del_appdir():
         malos, juegos = _simbolos_sin_escapatoria(objeto)
         if not malos:
             continue
