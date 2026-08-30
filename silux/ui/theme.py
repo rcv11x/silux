@@ -459,7 +459,13 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         padding: 0 6px;
         color: {p.warn};
         text-decoration: underline;
-        font-size: {m.small_pt}px;
+        /* Al tamaño del texto normal y no al de la letra pequeña del resto de
+           la barra: es lo único de ahí que se puede pulsar, y con `small_pt`
+           se quedaba en diez píxeles, que en un 27 pulgadas a 1440p se lee
+           con esfuerzo. Sube y baja con la escala que el usuario elija, como
+           todo lo demás. */
+        font-size: {m.base_pt}px;
+        font-weight: 600;
     }}
     QPushButton#StatusAction:hover {{ color: {p.ink}; }}
 
