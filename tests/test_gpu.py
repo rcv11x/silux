@@ -1512,35 +1512,59 @@ class TestLaIntegradaDeUnaApu(unittest.TestCase):
         draft.types["general"] = {"brand": marca}
         return draft
 
+    def _con_pciids(self, nombre):
+        """Fija lo que responde la base de datos de PCI.
+
+        Sin esto el test depende de qué `pci.ids` tenga puesto quien lo
+        ejecuta: el de Ubuntu 22.04 todavía no conoce el 1002:1901 y devuelve
+        nada, así que el nombre en clave salía vacío y el test fallaba en el
+        CI por lo mismo que este archivo está arreglando en otros sitios.
+        """
+        from unittest import mock
+
+        from silux.providers import drm
+
+        return mock.patch.object(drm.pciids, "lookup",
+                                 return_value={(0x1002, 0x1901): ("AMD", nombre)})
+
     def test_el_nombre_comercial_sale_de_la_marca_del_procesador(self):
         from silux.providers.drm import DrmGpus
 
         gpu = {}
         draft = self._draft("AMD Ryzen 7 7445HS w/ Radeon 740M Graphics")
-        DrmGpus._identidad(gpu, self._dispositivo(), draft)
+        with self._con_pciids("HawkPoint2"):
+            DrmGpus._identidad(gpu, self._dispositivo(), draft)
 
         self.assertEqual(gpu["name"], "Radeon 740M")
         self.assertEqual(gpu["codename"], "HawkPoint2")
 
     def test_una_dedicada_conserva_el_nombre_que_ya_tenia(self):
         """Si ya pone «Radeon» algo, ese nombre salió de pci.ids y es más
-        concreto que el de la cadena del procesador."""
+        concreto que el de la cadena del procesador.
+
+        El caso de verdad: un portátil con integrada y tarjeta aparte, donde
+        la marca del procesador nombra la suya y la dedicada no es esa.
+        """
         from silux.providers.drm import DrmGpus
 
         gpu = {}
-        draft = self._draft("AMD Ryzen 7 5800X3D 8-Core Processor")
-        DrmGpus._identidad(gpu, self._dispositivo(device=0x7550), draft)
+        draft = self._draft("AMD Ryzen 7 7445HS w/ Radeon 740M Graphics")
+        with self._con_pciids("Radeon RX 7600M XT"):
+            DrmGpus._identidad(gpu, self._dispositivo(), draft)
 
-        self.assertNotEqual(gpu.get("name"), "Radeon 740M")
+        self.assertEqual(gpu["name"], "Radeon RX 7600M XT")
 
     def test_un_procesador_sin_integrada_no_inventa_ninguna(self):
+        """Sin «w/ Radeon ... Graphics» en la marca no hay de dónde sacarlo,
+        y el nombre en clave se queda como está en vez de rellenarse."""
         from silux.providers.drm import DrmGpus
 
         gpu = {}
         draft = self._draft("AMD Ryzen 7 5800X3D 8-Core Processor")
-        DrmGpus._identidad(gpu, self._dispositivo(), draft)
+        with self._con_pciids("HawkPoint2"):
+            DrmGpus._identidad(gpu, self._dispositivo(), draft)
 
-        self.assertNotIn("740M", gpu.get("name") or "")
+        self.assertEqual(gpu["name"], "HawkPoint2")
 
     def test_identidad_recibe_el_draft_que_necesita(self):
         """La firma es lo que faltaba, así que se vigila la firma.
