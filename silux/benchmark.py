@@ -14,9 +14,9 @@ es comparable. Eso es lo que convierte una cifra en un diagnóstico.
 Sobre las cargas: son de la biblioteca estándar, y no por comodidad. Compilar
 un núcleo en C daría lo mismo (se probó: la misma estabilidad), pero dentro de
 un AppImage no hay compilador, y una prueba que solo funciona desde el código
-fuente no le sirve a quien descarga el programa. `zlib` y `hashlib` tienen su
-bucle en C igualmente, ya compilado, y liberan el intérprete mientras trabajan,
-así que reparten de verdad entre núcleos.
+fuente no le sirve a quien descarga el programa. `zlib`, `bz2` y `hashlib`
+tienen su bucle en C igualmente, ya compilado, y liberan el intérprete mientras
+trabajan, así que reparten de verdad entre núcleos.
 
 `SHA-512` y no `SHA-256` a propósito: la instrucción `sha_ni` acelera la
 segunda y no la primera, así que con SHA-256 un procesador que la tenga saldría
@@ -27,9 +27,9 @@ efecto sería incluso mayor, porque son miles de rondas encadenadas.
 
 from __future__ import annotations
 
+import bz2
 import functools
 import hashlib
-import lzma
 import os
 import pathlib
 import threading
@@ -43,8 +43,8 @@ SYS_CPU = "/sys/devices/system/cpu"
 # 4 MB con entropía media: ni tan repetido que la compresión sea trivial ni tan
 # aleatorio que no haya nada que comprimir.
 BLOQUE = bytes(range(256)) * 16384
-# Un trozo del anterior: LZMA es tan lenta que con los 4 MB enteros
-# cada operación tardaría más que la medida entera.
+# Un trozo del anterior: la compresión pesada es tan lenta que con los 4 MB
+# enteros cada operación tardaría más que la medida entera.
 MEDIO = BLOQUE[:65536]
 
 # Cuánto dura cada medida. Por debajo de tres segundos el resultado depende de
@@ -134,11 +134,12 @@ CARGAS: tuple[Carga, ...] = (
           "Enteros puros y sin instrucciones especializadas: mide el núcleo, "
           "no una aceleración concreta.",
           lambda: hashlib.sha512(BLOQUE).digest()),
+    # bzip2 y no LZMA, y no es indiferente: ver `POR QUÉ NO LZMA` más abajo.
     Carga("compresion_dura", "Compresión pesada",
-          "Lo mismo pero apretando de verdad: LZMA hace mucho más trabajo por "
-          "byte y se apoya en la caché, así que separa a un núcleo rápido de "
-          "uno que solo tiene muchos hermanos.",
-          lambda: lzma.compress(MEDIO, preset=0)),
+          "Lo mismo pero apretando de verdad: bzip2 ordena el bloque entero "
+          "antes de comprimirlo, así que hace mucho más trabajo por byte y "
+          "separa a un núcleo rápido de uno que solo tiene muchos hermanos.",
+          lambda: bz2.compress(MEDIO, 9)),
     Carga("derivacion", "Derivación de clave",
           "Miles de rondas encadenadas sin poder adelantar trabajo: es lo que "
           "hace un gestor de contraseñas al abrirse, y no lo acelera ninguna "
@@ -151,6 +152,30 @@ CARGAS: tuple[Carga, ...] = (
           "hilos: el camino hasta la memoria es uno y se comparte.",
           lambda: zlib.crc32(_bloque_grande())),
 )
+
+# POR QUÉ NO LZMA. La compresión pesada fue `lzma.compress(MEDIO, preset=0)`
+# hasta que se midió de qué venía la dispersión de la puntuación multihilo.
+# LZMA alterna entre dos velocidades —25 800 y 32 500 operaciones por segundo
+# en un 5800X3D, un 26 % de diferencia— según le llueva o no una tormenta de
+# fallos de página: 280 000 por segundo contra ninguno, de los búferes que
+# pide en cada llamada. El estado se decide por proceso, tarda entre cero y
+# más de veinticinco segundos en asentarse, y a veces no se asienta; dentro de
+# una misma medida es plano, así que alargarla no lo promedia, lo hereda. Con
+# eso, la puntuación entera dispersaba un 4,7 % entre repeticiones del mismo
+# equipo, y quitando esta carga, un 0,3 %: era ella sola.
+#
+# Se probó a domarla y no se pudo. Rodar más no basta porque a veces no se
+# calma nunca. `mallopt` con el umbral de `mmap` fijo lo empeora —a 256 KB
+# baja a 4 787 op/s— porque fijarlo apaga el ajuste dinámico de glibc, que es
+# justo lo que llevaba al estado bueno. Bajar el diccionario lo hunde a un
+# tercio y subirlo a 1 MB, a un octavo. Y no es el asignador y ya: con
+# `preset=1` los fallos casi desaparecen y sigue dispersando un 18 %, o sea
+# que LZMA tiene además otra fuente de inestabilidad que no se aisló.
+#
+# bzip2 no tiene ninguna de las dos: dispersa un 2,1 % en vez de un 20,6 % y
+# reparte igual de bien (×9.9 con dieciséis hilos, contra ×10.9). Es más lenta
+# en operaciones por segundo, y da igual: lo que se compara es contra el
+# patrón, no contra otra carga.
 
 # No hay carga de coma flotante, y no es un olvido. Todo lo que la haría en
 # Python sin dependencias —sumar, multiplicar listas— tiene el bucle en C pero
@@ -271,12 +296,20 @@ def run(quick: bool = False, on_progress: Optional[Callable[[str, float], None]]
 # -- ejecución ---------------------------------------------------------------
 
 # Unas vueltas que no se cuentan, antes de cada medida. La primera vez que una
-# carga corre en un proceso da una cifra distinta de todas las siguientes: la
-# compresión pesada da 1 780 operaciones por segundo la primera vez y 2 950 a
-# partir de la segunda. Lo que se paga ahí no es del procesador sino del
-# asignador, que sirve con `mmap` los búferes holgados que pide LZMA hasta que
-# glibc sube su umbral por su cuenta. Con unas ochenta vueltas ya está en régimen; se dejan ciento
-# veinte de margen.
+# carga corre en un proceso da una cifra distinta de todas las siguientes, y lo
+# que se paga ahí no es del procesador sino del asignador, que sirve con `mmap`
+# los búferes holgados hasta que glibc sube su umbral por su cuenta.
+#
+# Con la compresión pesada de entonces —LZMA— la diferencia era del 65 %:
+# 1 780 operaciones por segundo la primera vez y 2 950 a partir de la segunda.
+# Con bzip2 es del 2,7 % a un hilo (151,7 la primera y 156,0 después), porque
+# no pide en cada llamada un búfer que cruce el umbral. Sigue mereciendo la
+# pena: cuesta unas centésimas y quita un sesgo que caía siempre en la misma
+# cifra, la de un hilo, por medirse antes que las demás.
+#
+# Con unas ochenta vueltas ya está en régimen; se dejan ciento veinte de
+# margen. Lo que el rodaje no arregla es la inestabilidad de LZMA que la sacó
+# de aquí: esa no se calma en ningún número de vueltas.
 VUELTAS_EN_VACIO = 120
 
 # Tope por si la carga es lentísima en un equipo modesto: más vale medir con
