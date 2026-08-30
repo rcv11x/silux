@@ -973,6 +973,20 @@ Omite por defecto el nombre del equipo, las IP, las MAC y los números de serie
 —está pensado para pegarlo en un issue público— y lo dice al terminar. Con
 `--with-identifiers` se incluyen. Hay tests que vigilan que no se cuele nada.
 
+## Al trabajar en este repositorio
+
+**Los commits no llevan coautoría ni rastro de la herramienta.** Nada de
+`Co-Authored-By`, ni enlaces a una sesión, ni «generado con». El historial es
+del autor y se lee dentro de veinte años sin que nadie tenga que saber con qué
+se escribió cada línea. El mensaje explica el porqué del cambio y ya.
+
+**Nunca se empuja sin preguntar.** Commitear en local es reversible; publicar
+no, y menos con el CI atado a cada empujón a master. Se pregunta siempre,
+aunque el commit anterior se haya empujado hace un minuto.
+
+**Pocos commits y temáticos.** Uno por asunto, no uno por arreglo: cuatro
+correcciones que salen de la misma causa son un commit, no cuatro.
+
 ## Fuentes de datos y licencias
 
 - [libcpuid](https://github.com/anrieff/libcpuid) — BSD-2 — tablas de identificación de CPU
