@@ -9,6 +9,9 @@ Escrito en Python puro, sin más dependencia que Qt para la ventana.
 Estado: las once secciones terminadas. CPU, Cachés, Placa base, Memoria,
 Gráficos, Almacenamiento, Red, Sistema, Rendimiento, Sensores y Ajustes.
 
+Versión actual: **0.2.0** · qué trae y qué cambia al actualizar, en
+**[CHANGELOG.md](CHANGELOG.md)**.
+
 Escrito con ayuda de Claude.
 
 ![La pestaña de CPU](capturas/cpu.png)
@@ -205,9 +208,18 @@ hardware detectado y, sobre todo, con lo que **no** se ha podido leer y por
 qué: qué fuentes respondieron, qué módulos del kernel faltan y qué datos no
 están disponibles. Es lo que hay que adjuntar al abrir un issue.
 
-El informe **omite el nombre del equipo, las direcciones IP y MAC y los números
-de serie**, porque está pensado para pegarlo en un sitio público. Con
-`--with-identifiers` se incluyen, si hacen falta para el caso.
+El informe **omite el nombre del equipo, las direcciones IP y MAC, los números
+de serie y las rutas de las particiones**, porque está pensado para pegarlo en
+un sitio público. Con `--with-identifiers` se incluyen, si hacen falta para el
+caso.
+
+Desde el AppImage es `./silux-x86_64.AppImage --report informe.md`, que saca lo
+mismo. Y conviene dar antes los permisos —el botón que sale dentro del propio
+aviso, en Memoria, Gráficos o Almacenamiento—: sin ellos, el módulo de memoria
+y el diagnóstico de los discos salen como «requiere permisos» en vez de salir.
+
+Si lo que se ve mal es la ventana —texto cortado, columnas montadas, un color
+que no se lee—, eso no sale en el informe y hace falta una captura.
 
 Lo que más falta por probar, porque aquí no hay hardware para ello: una AMD con
 dos CCD (7950X3D y parecidos), cualquier NVIDIA con el driver propietario, un

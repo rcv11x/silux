@@ -17,6 +17,7 @@ import sys
 from typing import Iterable, Optional
 
 from . import __version__, build_id, render
+from .i18n import en_español
 from .model import Need, Snapshot
 
 OCULTO = "«omitido»"
@@ -39,6 +40,7 @@ def build(snapshot: Snapshot, anonymous: bool = True) -> str:
         _memoria(snapshot),
         _placa(snapshot, anonymous),
         _graficas(snapshot, anonymous),
+        _almacenamiento(snapshot),
         _red(snapshot, anonymous),
         _sensores(snapshot),
         _rendimiento(),
@@ -60,8 +62,12 @@ def _cabecera(snapshot: Snapshot, anonymous: bool) -> str:
         "|---|---|",
         f"| Distribución | {sistema.distribution or '?'} {sistema.version_id or ''} |",
         f"| Kernel | {sistema.kernel or '?'} |",
+        # Con qué se compiló el kernel: CachyOS usa clang y la mayoría gcc, y
+        # eso cambia a qué se parece un equipo cuando algo va raro.
+        f"| Compilado | {sistema.kernel_build or '?'} |",
         f"| Arquitectura | {sistema.architecture or '?'} |",
         f"| Escritorio | {sistema.desktop or '?'} · {sistema.session_type or '?'} |",
+        f"| Init | {sistema.init or '?'} |",
         f"| Python | {platform.python_version()} |",
         f"| Qt (PySide6) | {qt or 'no instalado'} |",
         f"| Fuentes activas | {', '.join(sorted(snapshot.capabilities)) or 'ninguna'} |",
@@ -115,6 +121,15 @@ def _memoria(snapshot: Snapshot) -> str:
     memoria = snapshot.system.memory
     lineas = ["", "## Memoria", "",
               f"- Total: {render.size(memoria.total_bytes)}"]
+    if (array := snapshot.memory_array) is not None:
+        detalle = [f"{array.slots} ranuras" if array.slots else ""]
+        if array.max_capacity_bytes:
+            detalle.append(f"hasta {render.size(array.max_capacity_bytes)}")
+        if array.error_correction:
+            detalle.append(array.error_correction)
+        if any(detalle):
+            lineas.append("- Placa: " + " · ".join(d for d in detalle if d))
+
     if snapshot.modules:
         for modulo in snapshot.modules:
             lineas.append(
@@ -124,6 +139,28 @@ def _memoria(snapshot: Snapshot) -> str:
             )
     else:
         lineas.append("- Detalle por módulo: no leído (requiere permisos)")
+
+    # El SPD es otra fuente que el DMI y dice cosas que aquel no: quién fabricó
+    # los chips además del módulo, los perfiles XMP y la semana de fabricación.
+    # Sale aparte porque cuando los dos están, no se contradicen sino que se
+    # completan, y cuál falta es en sí un dato para diagnosticar.
+    for spd in snapshot.spd:
+        partes = [f"- SPD {render.dec(spd.slot) if spd.slot is not None else '?'}:"]
+        partes.append(spd.dram_type or spd.module_type or "?")
+        if spd.capacity_bytes:
+            partes.append(render.size(spd.capacity_bytes))
+        for texto in (spd.manufacturer, spd.part_number):
+            if texto:
+                partes.append(texto)
+        if spd.dram_manufacturer and spd.dram_manufacturer != spd.manufacturer:
+            partes.append(f"chips {spd.dram_manufacturer}")
+        if spd.manufactured:
+            partes.append(f"fabricado {spd.manufactured}")
+        if spd.ranks:
+            partes.append(f"{spd.ranks} rangos")
+        if spd.overclock_profiles:
+            partes.append(f"{len(spd.overclock_profiles)} perfiles XMP/EXPO")
+        lineas.append(" ".join(partes))
     return "\n".join(lineas)
 
 
@@ -170,6 +207,133 @@ def _graficas(snapshot: Snapshot, anonymous: bool) -> str:
     return "\n".join(lineas)
 
 
+def _almacenamiento(snapshot: Snapshot) -> str:
+    """Los discos, que es de lo que más se equivoca el programa.
+
+    Faltaba entera, y era la única de las once páginas que no salía por aquí.
+    Se notaba al pedir informes: para revisar un disco había que pedir además
+    una captura, cuando el modelo exacto y los contadores de salud son texto y
+    caben aquí. Justo aquí se han corregido ya un fabricante que se sacaba del
+    prefijo del modelo y un TBW que salía 65 536 veces pequeño; ninguno de los
+    dos se ve sin la cifra delante.
+
+    El número de serie no se escribe: lo tapa `privacidad.anonimizar` antes de
+    llegar, como el de la gráfica.
+    """
+    if not snapshot.disks:
+        return "\n## Almacenamiento\n\nNo se detectó ningún disco.\n"
+
+    lineas = ["", "## Almacenamiento", ""]
+    for disco in snapshot.disks:
+        titulo = _titulo_del_disco(disco)
+        lineas.append(f"**{titulo}**")
+        lineas.append("")
+        tipo = " · ".join(p for p in (disco.kind, disco.transport) if p) or "—"
+        lineas.append(f"- Tipo: {tipo} · {render.size(disco.size_bytes)}")
+        if disco.firmware:
+            lineas.append(f"- Firmware: {disco.firmware}")
+        # El enlace solo lo tienen los NVMe: en SATA quien negocia es la
+        # controladora y la comparte con los demás discos del cable.
+        if disco.link:
+            lineas.append(f"- Enlace: {render.pcie_link(disco.link)}")
+        sectores = [f"lógico {disco.logical_sector}" if disco.logical_sector else "",
+                    f"físico {disco.physical_sector}" if disco.physical_sector else ""]
+        if any(sectores):
+            lineas.append("- Sectores: "
+                          + " · ".join(s for s in sectores if s) + " bytes")
+        if disco.scheduler:
+            lineas.append(f"- Planificador: {disco.scheduler}")
+        if disco.temp_c is not None:
+            lineas.append(f"- Temperatura: {render.temperature(disco.temp_c)}")
+        if (salud := disco.health) is not None:
+            lineas += _salud_del_disco(salud)
+        if disco.partitions:
+            lineas.append(f"- Particiones: {_particiones(disco)}")
+        lineas.append("")
+    return "\n".join(lineas)
+
+
+def _titulo_del_disco(disco) -> str:
+    """Fabricante y modelo sin decir dos veces lo mismo.
+
+    El fabricante se saca del propio modelo, porque sysfs dice «ATA» en SATA y
+    nada en NVMe. Así que en cuanto el modelo ya empieza por él, juntarlos da
+    «Samsung Samsung SSD 970 EVO Plus».
+    """
+    modelo = (disco.model or "").strip()
+    marca = (disco.vendor or "").strip()
+    if not modelo:
+        return marca or disco.name
+    if marca and not modelo.lower().startswith(marca.lower()):
+        return f"{marca} {modelo}"
+    return modelo
+
+
+def _salud_del_disco(salud) -> list[str]:
+    """Los contadores que dicen cuánta vida le queda a la unidad."""
+    lineas = []
+    gastado = []
+    if salud.percentage_used is not None:
+        gastado.append(f"{salud.percentage_used:.0f} % de vida consumida")
+    if salud.spare_percent is not None:
+        gastado.append(f"{salud.spare_percent:.0f} % de reserva")
+    if gastado:
+        lineas.append("- Desgaste: " + " · ".join(gastado))
+
+    uso = []
+    if salud.power_on_hours is not None:
+        uso.append(f"{salud.power_on_hours} h encendido")
+    if salud.power_cycles is not None:
+        uso.append(f"{salud.power_cycles} arranques")
+    if uso:
+        lineas.append("- Uso: " + " · ".join(uso))
+
+    trafico = []
+    if salud.written_bytes is not None:
+        trafico.append(f"{render.size(salud.written_bytes)} escritos")
+    if salud.read_bytes is not None:
+        trafico.append(f"{render.size(salud.read_bytes)} leídos")
+    if trafico:
+        lineas.append("- Total: " + " · ".join(trafico))
+
+    # Lo que de verdad hay que mirar. `critical_warning` es el campo por el que
+    # un NVMe avisa de que va camino de perder datos; los apagones bruscos, en
+    # cambio, cuentan cortes de luz y no son una avería.
+    avisos = []
+    if salud.critical_warning:
+        avisos.append(f"aviso crítico: {salud.critical_warning}")
+    if salud.media_errors:
+        avisos.append(f"{salud.media_errors} errores de medio")
+    if salud.unsafe_shutdowns:
+        avisos.append(f"{salud.unsafe_shutdowns} apagones bruscos")
+    if avisos:
+        lineas.append("- Avisos: " + " · ".join(avisos))
+    return lineas
+
+
+def _particiones(disco) -> str:
+    """Cuántas hay y cuánto queda libre de lo que está montado.
+
+    Sin puntos de montaje: una ruta puede llevar dentro el nombre de quien usa
+    el equipo —`/media/pepe/USB`—, y este archivo está pensado para pegarlo en
+    público. Lo que hace falta para diagnosticar es el reparto, no dónde
+    cuelga cada una.
+
+    Y lo montado se dice aparte de la capacidad a propósito: restarle lo
+    ocupado al total da por montado todo el disco, y con un Windows al lado
+    eso contaba como libre una partición ajena de 570 GB.
+    """
+    montadas = [p for p in disco.partitions if p.mountpoint]
+    resumen = f"{len(disco.partitions)}"
+    if montadas:
+        libre = sum(p.free_bytes for p in montadas if p.free_bytes is not None)
+        sistemas = sorted({p.filesystem for p in montadas if p.filesystem})
+        plural = "montada" if len(montadas) == 1 else "montadas"
+        resumen += (f" ({len(montadas)} {plural}, {render.size(libre)} libres"
+                    + (f", {', '.join(sistemas)}" if sistemas else "") + ")")
+    return resumen
+
+
 def _red(snapshot: Snapshot, anonymous: bool) -> str:
     if not snapshot.network:
         return ""
@@ -197,9 +361,25 @@ def _sensores(snapshot: Snapshot) -> str:
               f"{len(snapshot.sensors)} lecturas en {len(arbol)} dispositivos.", ""]
     for aparato, categorias in arbol.items():
         cuantos = sum(len(s) for s in categorias.values())
-        resumen = ", ".join(f"{nombre.lower()} ({len(s)})"
+        # Las categorías son claves —«cat.temperature»—, porque los nombres que
+        # agrupan los inventa el programa y son interfaz. Sin traducirlas, el
+        # informe enseñaba la clave cruda a quien lo abriera. Y va en español y
+        # no en el idioma de quien lo genera, como el resto del informe: si no,
+        # un informe en inglés saldría con «Procesador» y «temperatures» en la
+        # misma página.
+        resumen = ", ".join(f"{en_español(nombre).lower()} ({len(s)})"
                             for nombre, s in categorias.items())
         lineas.append(f"- **{aparato}**, {cuantos}: {resumen}")
+        # Y con sus nombres y valores. El recuento solo dice cuántos hay, y lo
+        # que se revisa de un equipo ajeno es justo lo otro: cómo se llama cada
+        # sensor y si el número es creíble. Un chip que bautiza sus entradas
+        # «temp1, temp2, temp3» y una placa que declara un mínimo de 127 grados
+        # se ven aquí y en ningún otro sitio de este archivo.
+        for nombre, sensores in categorias.items():
+            valores = " · ".join(
+                f"{s.label} {render.sensor_value(s.value, s.kind)} {s.unit}".strip()
+                for s in sensores)
+            lineas.append(f"  - {en_español(nombre).lower()}: {valores}")
     return "\n".join(lineas)
 
 

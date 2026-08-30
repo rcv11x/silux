@@ -25,7 +25,7 @@ python3 tools/build_appimage.py --container   # el AppImage que se reparte
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **1094** y tardan poco más de un minuto. Si sale bastante
+Los tests son **1119** y tardan poco más de un minuto. Si sale bastante
 menos, falta algo por recoger.
 
 `--container` no es opcional para repartir: sin él se construye contra el
@@ -477,15 +477,40 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   «núcleo 1 y núcleo 3» y en pantalla se veían cuatro marcas, porque cada
   núcleo bueno marca sus dos hilos. Las dos cosas ciertas y ninguna evidente.
 - **Dar por bueno lo que mide la primera vuelta de una carga**: la compresión
-  pesada da 1 780 operaciones por segundo la primera vez que corre en un
-  proceso y 2 950 a partir de la segunda, un 65 % más, sin que cambie nada del
-  equipo. Lo que se paga ahí es del asignador: LZMA pide un búfer holgado en
-  cada llamada y glibc lo sirve con `mmap` hasta que sube su umbral por su
+  pesada daba 1 780 operaciones por segundo la primera vez que corría en un
+  proceso y 2 950 a partir de la segunda, un 65 % más, sin que cambiara nada
+  del equipo. Lo que se paga ahí es del asignador: LZMA pedía un búfer holgado
+  en cada llamada y glibc lo servía con `mmap` hasta subir su umbral por su
   cuenta. Y como el orden es un hilo primero y todos después, ese arranque lo
   pagaba siempre la medida de un hilo. Se arregla dejando rodar la carga unas
   centésimas antes de contar (`_rodar_en_vacio`); con ochenta vueltas basta.
   Ojo: por sí solo no bastaba, hacía falta quitar además la afinidad, y por
-  eso costó encontrarlo —cada arreglo por separado parecía no servir—.
+  eso costó encontrarlo —cada arreglo por separado parecía no servir—. Con
+  bzip2, que es la carga desde la escala v4, el mismo efecto es del 2,7 %.
+- **Achacar al calor una dispersión que no es térmica**: la puntuación
+  multihilo se movía un 4,7 % entre repeticiones del mismo equipo sin tocar
+  nada, y el calor era la explicación evidente. No lo era. Enfriando hasta los
+  mismos grados antes de cada repetición seguía en un 4,2 %, así que la prueba
+  que parecía confirmarlo era la que había que hacer para descartarlo. Era una
+  sola carga: la compresión pesada con LZMA, que alterna entre 25 800 y 32 500
+  operaciones por segundo —un 26 %— según le llueva o no una tormenta de
+  fallos de página, 280 000 por segundo, de los búferes que pide en cada
+  llamada. Quitándola, las otras cuatro dispersan un 0,29 %. Lo térmico existe
+  y es de segundo orden: 1,74 % seguidas contra 0,29 % enfriando. El estado se
+  decide por proceso y dentro de una medida es plano, así que alargarla no lo
+  promedia: lo hereda entero.
+- **Creerse una correlación sin mirar hacia dónde apunta la flecha**: la
+  velocidad de esa misma carga correlacionaba con la temperatura a r = 0,98, y
+  la lectura obvia —el calor la frena— era justo la contraria de lo que
+  pasaba. El modo rápido corre a menos GHz que el lento (4,29 contra 4,34) y
+  calienta más porque hace más trabajo por ciclo. La temperatura era la
+  consecuencia, no la causa, y con r = 0,98 nadie lo habría dudado.
+- **Buscar el ruido de fuera sin medir el de dentro**: con el navegador y el
+  chat abiertos, lo ajeno se llevaba un 2,4 % de la máquina, pero de forma
+  intermitente, que es lo que se confunde con una deriva. `/proc/stat` a secas
+  no sirve mientras la prueba ocupa el equipo entero: lo que se busca es la
+  resta, lo ocupado menos lo del propio proceso. Cerrar programas ayuda; poder
+  demostrar que estaban cerrados es lo que deja concluir algo.
 - **Sumar operaciones por segundo de cargas distintas para hacer una
   puntuación**: en un 5800X3D la compresión pesada da 28 494 op/s y la
   memoria 533, así que la primera pesaba el 82 % del total y las otras
@@ -640,6 +665,28 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
 - **Tomar por normal un aviso del comprobador del AppImage**: decía que trece
   bibliotecas se cogían del sistema «y son normales», y dos de ellas hacían
   falta de verdad.
+- **Buscar texto dentro de una imagen**: `comprobar_privacidad.py` recorre lo
+  versionado buscando el nombre del equipo y las MAC, y por eso daba por buenas
+  las capturas: lo que se ve en pantalla no está escrito en el archivo. Publicó
+  su visto bueno a una que enseñaba la dirección física de esta máquina y su
+  IPv6 pública, que es un prefijo global y dice de quién es la conexión. Como
+  no se puede leer lo que enseña la imagen, se comprueba cómo se hizo: la
+  captura escribe dentro del PNG si tapó los identificadores, y el comprobador
+  exige esa marca. El valor va en ASCII, y tampoco es un descuido del idioma:
+  con «sí», Qt lo escribe en Latin-1 —`s\xed`— y quien lo busque en UTF-8 no
+  encuentra la marca que sí está.
+- **Dejar que cada comprobación recorra el AppDir por su cuenta**: la del juego
+  de instrucciones lo miraba entero y la de glibc solo `usr/lib/*.so*`, y de
+  esas, las sesenta primeras de sesenta y cinco. Así el informe decía «exige
+  glibc 2.34» de un paquete que exige 2.35, que es la diferencia entre que RHEL
+  9 valga o no valga: el símbolo más alto, `hypot@GLIBC_2.35`, lo pide el
+  propio `python3`, que cuelga de `usr/bin` y no se miraba. Los módulos de
+  extensión de `lib-dynload` tampoco, que es el mismo agujero por el que
+  `_hashlib` se quedó sin `libcrypto`. Equivocarse aquí solo cae hacia un lado
+  —decir que hace falta menos de lo que hace falta—, y es el lado que manda a
+  alguien a descargar algo que no le arranca. Ahora la lista es una,
+  `objetos_del_appdir()`, y hay tests que vigilan que las dos la compartan y
+  que nadie le vuelva a poner tope.
 - **Dar por hecho que una dependencia sigue donde estaba**: el `pip install`
   del AppImage pedía `PySide6>=6.6`, sin techo, y durante un año eso fue
   inofensivo. Qt 6.10 subió su mínimo a x86-64-v2 y el AppImage dejó de
@@ -707,6 +754,15 @@ ejecutar nada: a `_()` solo puede llegar un literal escrito en el archivo o
 una variable que se rastree hasta una tabla declarada ahí mismo. Un
 `_(entry["label"])` traduciría un dato, y eso rompe la detección de una
 gráfica en cuanto alguien se pone la interfaz en inglés.
+
+**Fuera de la interfaz, las claves no se traducen solas.** El informe agrupa
+los sensores por categoría, y esas categorías son claves porque el nombre lo
+inventa el programa. Como `report.py` no importaba nada de `i18n`, salían
+crudas: «cat.temperature (2), cat.power (2)» en el archivo que se le pide a
+quien reporta un fallo. Y la traducción que necesita ahí es `en_español` y no
+`_()`: el informe es castellano fijo —«Procesador», «Placa base»—, así que con
+la función normal, el de alguien con la interfaz en inglés mezclaría los dos
+idiomas en la misma página.
 
 **Nada de `_()` en una constante de módulo.** Se resuelve al importar, cuando
 todavía no se sabe qué idioma quiere nadie, así que se queda con el castellano

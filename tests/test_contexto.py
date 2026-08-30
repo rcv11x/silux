@@ -51,3 +51,48 @@ class TestLasCifrasDelContextoSiguenSiendoCiertas(unittest.TestCase):
         self.assertLessEqual(
             abs(real - dicho) / real, MARGEN,
             f"CLAUDE.md dice {dicho} claves y hay {real}")
+
+
+class TestLaVersionSeCuentaEnAlgunSitio(unittest.TestCase):
+    """Que subir la versión y no decir qué cambió no se pueda hacer sin querer.
+
+    La versión es lo único que un usuario puede comparar de un vistazo para
+    saber si va atrasado; el identificador de construcción sirve para otra cosa
+    y no se compara. Pero una versión nueva sin nota de qué trae es casi tan
+    poco útil como no cambiarla: quien la ve no sabe si le interesa actualizar.
+
+    Se comprueba lo único comprobable sin leer el contenido: que la versión que
+    declara el paquete tenga su entrada en el archivo de cambios.
+    """
+
+    def _changelog(self) -> str:
+        camino = RAIZ / "CHANGELOG.md"
+        if not camino.is_file():
+            self.fail("no hay CHANGELOG.md y la versión dice que debería")
+        return camino.read_text(encoding="utf-8")
+
+    def test_la_version_actual_esta_contada(self):
+        import silux
+
+        self.assertIn(f"## {silux.__version__}", self._changelog(),
+                      f"la versión {silux.__version__} no tiene entrada en "
+                      "CHANGELOG.md: subirla sin contar qué trae deja al que "
+                      "la ve sin saber si le interesa")
+
+    def test_las_entradas_van_de_la_mas_nueva_a_la_mas_vieja(self):
+        """La de arriba es la que se publica; si no, se copia la que no es."""
+        versiones = re.findall(r"^## (\d+)\.(\d+)\.(\d+)", self._changelog(),
+                               re.MULTILINE)
+        numeros = [tuple(int(p) for p in v) for v in versiones]
+        self.assertEqual(numeros, sorted(numeros, reverse=True),
+                         "las versiones del CHANGELOG no van de nueva a vieja")
+
+    def test_la_primera_entrada_es_la_version_que_se_publica(self):
+        import silux
+
+        versiones = re.findall(r"^## (\d+\.\d+\.\d+)", self._changelog(),
+                               re.MULTILINE)
+        self.assertTrue(versiones, "el CHANGELOG no tiene ninguna entrada")
+        self.assertEqual(versiones[0], silux.__version__,
+                         "la entrada de arriba del CHANGELOG no es la versión "
+                         "que declara el paquete")

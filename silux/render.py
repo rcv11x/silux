@@ -14,9 +14,36 @@ from typing import Optional
 from .features import pretty as pretty_feature
 from .i18n import _
 from .model import (Cache, Clocks, CpuType, Display, Edid, GpuApi, PcieLink,
-                    GpuMemory, NetworkInterface, NetworkTraffic, Power)
+                    GpuMemory, NetworkInterface, NetworkTraffic, Power,
+                    SensorKind)
 
 DASH = "—"
+
+# Cuántos decimales lleva cada magnitud de un sensor. Redondear todas igual
+# estropea la mitad: un voltaje a un decimal deja de ser un voltaje —0,845 V se
+# queda en 0,8 y ya no dice nada— y un ventilador con decimales no dice más.
+#
+# Vive aquí y no en la página de sensores porque ahora también la usa el
+# informe, y dos tablas iguales en dos archivos se desincronizan solas.
+SENSOR_DECIMALS = {
+    SensorKind.TEMPERATURE: 1,
+    SensorKind.VOLTAGE: 3,
+    SensorKind.FAN: 0,
+    SensorKind.POWER: 1,
+    SensorKind.CURRENT: 2,
+    SensorKind.ENERGY: 0,
+}
+
+
+def sensor_value(value: Optional[float], kind: SensorKind) -> str:
+    """El valor de un sensor con los decimales que le corresponden.
+
+    Sin unidad: quien la pone decide antes si la convierte, que es lo que hace
+    la pantalla con los grados Fahrenheit.
+    """
+    if value is None:
+        return DASH
+    return f"{value:.{SENSOR_DECIMALS.get(kind, 1)}f}"
 
 
 def _none(value: object) -> bool:
