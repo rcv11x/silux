@@ -24,7 +24,7 @@ python3 tools/build_appimage.py --container   # el AppImage que se reparte
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **1084** y tardan poco más de un minuto. Si sale bastante
+Los tests son **1087** y tardan poco más de un minuto. Si sale bastante
 menos, falta algo por recoger.
 
 `--container` no es opcional para repartir: sin él se construye contra el
@@ -746,6 +746,12 @@ cuando alguien dice que algo no le sale.
 Desde el AppImage es `./silux-x86_64.AppImage --report informe.md`: el punto de
 entrada reparte entre la interfaz y el volcado en terminal según con qué se le
 llame, porque quien lo usa así no tiene otra forma de sacarlo.
+
+Si hay alguna prueba de rendimiento medida con la escala vigente, el informe
+lleva también su puntuación y las condiciones en que se tomó. Es lo que permite
+juntar medidas de piezas que no están a mano: sin eso, quien manda un informe
+manda su hardware pero no lo que rinde, y la tabla de puntuaciones no se llena
+nunca.
 
 Omite por defecto el nombre del equipo, las IP, las MAC y los números de serie
 —está pensado para pegarlo en un issue público— y lo dice al terminar. Con

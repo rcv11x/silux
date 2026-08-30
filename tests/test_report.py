@@ -190,3 +190,45 @@ class TestMotivosDeFallo(unittest.TestCase):
         nota = Note("spd", Need.ERROR, "El proveedor «spd» falló: vaya")
         texto = report.build(_snapshot(notes=(nota,)))
         self.assertIn("falló al leerse", texto)
+
+
+class TestRendimientoEnElInforme(unittest.TestCase):
+    """El informe lleva la puntuación, que es lo que permite juntar medidas.
+
+    Sin ella, quien manda un informe manda su hardware pero no lo que rinde, y
+    la tabla de puntuaciones no se llena nunca.
+    """
+
+    def test_sin_pruebas_puntuables_no_sale_la_seccion(self):
+        from silux import report
+
+        with mock.patch("silux.history.load", return_value=[]):
+            self.assertNotIn("## Rendimiento", report.build(_snapshot()))
+
+    def test_una_prueba_de_otra_escala_tampoco_cuenta(self):
+        from silux import history, report, score
+
+        vieja = history.Entry(timestamp=1.0, cpu="x", threads=8, seconds=15.0,
+                              scores={}, score_version=score.VERSION - 1)
+        with mock.patch("silux.history.load", return_value=[vieja]):
+            self.assertNotIn("## Rendimiento", report.build(_snapshot()))
+
+    def test_con_una_prueba_buena_salen_las_condiciones(self):
+        from silux import history, report, score
+
+        tabla = score.referencias()
+        if not tabla:
+            self.skipTest("no hay escala medida")
+        hilos = tabla["patron"]["hilos"]
+        sc = {f"{c}/1": v for c, v in tabla["un_hilo"].items()}
+        sc |= {f"{c}/{hilos}": v for c, v in tabla["multihilo"].items()}
+        buena = history.Entry(
+            timestamp=1.0, cpu="x", threads=hilos, seconds=15.0, scores=sc,
+            governor="performance", temperature_peak_c=84.6,
+            score_version=score.VERSION)
+        with mock.patch("silux.history.load", return_value=[buena]):
+            texto = report.build(_snapshot())
+        self.assertIn("## Rendimiento", texto)
+        # Las condiciones son la mitad de lo que hace comparable una cifra.
+        for esperado in ("Escala", "Gobernador", "performance", "Hilos"):
+            self.assertIn(esperado, texto)

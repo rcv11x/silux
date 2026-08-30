@@ -41,6 +41,7 @@ def build(snapshot: Snapshot, anonymous: bool = True) -> str:
         _graficas(snapshot, anonymous),
         _red(snapshot, anonymous),
         _sensores(snapshot),
+        _rendimiento(),
         _diagnostico(snapshot),
     ]
     return "\n".join(parte for parte in partes if parte).strip() + "\n"
@@ -200,6 +201,52 @@ def _sensores(snapshot: Snapshot) -> str:
                             for nombre, s in categorias.items())
         lineas.append(f"- **{aparato}**, {cuantos}: {resumen}")
     return "\n".join(lineas)
+
+
+def _rendimiento() -> str:
+    """La última prueba que puntúa, si la hay.
+
+    Va en el informe porque es lo que permite juntar medidas de piezas que no
+    están a mano. Sin esto, quien manda un informe manda su hardware y no lo
+    que rinde, y la tabla de puntuaciones no se llena nunca.
+
+    Solo la última comparable: un historial entero es del equipo de quien lo
+    manda y aquí no aporta, y las de otra escala dirían una diferencia que no
+    existe.
+    """
+    from . import history, score
+
+    entradas = [e for e in history.load()
+                if e.score_version == score.VERSION and score.comparable(e.seconds)]
+    if not entradas:
+        return ""
+    ultima = max(entradas, key=lambda e: e.timestamp)
+    puntos = score.puntuar(ultima.scores, ultima.threads)
+    if puntos is None:
+        return ""
+    un_hilo, multi = puntos
+
+    lineas = [
+        "\n## Rendimiento\n",
+        "| | |",
+        "|---|---|",
+        f"| Puntuación (todos los hilos) | {multi} |",
+        f"| Puntuación (un hilo) | {un_hilo} |",
+        f"| Hilos | {ultima.threads} |",
+        f"| Escala | v{score.VERSION} |",
+    ]
+    # Las condiciones son la mitad de lo que hace comparable una cifra: sin
+    # ellas, dos puntuaciones distintas no se sabe si separan a dos equipos o
+    # a dos momentos del mismo.
+    if ultima.governor:
+        lineas.append(f"| Gobernador | {ultima.governor} |")
+    if ultima.frequency_avg_hz:
+        lineas.append(f"| Frecuencia media | {render.hz(ultima.frequency_avg_hz)} |")
+    if ultima.temperature_peak_c is not None:
+        lineas.append(f"| Temperatura máxima | {ultima.temperature_peak_c:.0f} °C |")
+    if ultima.background_load is not None:
+        lineas.append(f"| Carga de fondo | {ultima.background_load:.1f} % |")
+    return "\n".join(lineas) + "\n"
 
 
 def _diagnostico(snapshot: Snapshot) -> str:
