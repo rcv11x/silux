@@ -1472,3 +1472,87 @@ class TestSalidasLibres(unittest.TestCase):
 
         pagina = self._pagina([Display(connector="DP-1", connected=True)])
         self.assertEqual(self._linea_de_libres(pagina).text(), "")
+
+
+class TestLaIntegradaDeUnaApu(unittest.TestCase):
+    """«HawkPoint2» es un nombre en clave, no el nombre de una gráfica.
+
+    Lo trajo la captura de un usuario con un Ryzen 7 7445HS: su Radeon 740M
+    salía titulada «HawkPoint2» y con el nombre en clave vacío. `pci.ids` llama
+    así al 1002:1901, sin los corchetes donde suele poner el nombre comercial,
+    y de ahí no se puede sacar otra cosa.
+
+    Quien sí lo sabe es el procesador, que se llama «AMD Ryzen 7 7445HS w/
+    Radeon 740M Graphics». El código que lo aprovecha estaba escrito desde
+    hacía tiempo y no se ejecutó nunca: usaba `draft` sin recibirlo, o sea un
+    NameError, y como la condición de delante corta cuando el nombre lleva
+    «Radeon» dentro, en las máquinas con tarjeta dedicada no saltaba jamás.
+    Solo reventaba en las APU, que son justo las que ese código venía a
+    arreglar. No había test que recorriera ese camino; este es ese test.
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.raiz = pathlib.Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+
+    def _dispositivo(self, vendor=0x1002, device=0x1901):
+        """Un nodo PCI con lo justo para que `_identidad` lo lea."""
+        for nombre, valor in (("vendor", vendor), ("device", device),
+                              ("subsystem_vendor", 0x1043),
+                              ("subsystem_device", 0x1504),
+                              ("revision", 0xC1)):
+            (self.raiz / nombre).write_text(f"0x{valor:04x}\n", encoding="utf-8")
+        return self.raiz
+
+    def _draft(self, marca):
+        from silux.providers.base import Draft
+
+        draft = Draft()
+        draft.types["general"] = {"brand": marca}
+        return draft
+
+    def test_el_nombre_comercial_sale_de_la_marca_del_procesador(self):
+        from silux.providers.drm import DrmGpus
+
+        gpu = {}
+        draft = self._draft("AMD Ryzen 7 7445HS w/ Radeon 740M Graphics")
+        DrmGpus._identidad(gpu, self._dispositivo(), draft)
+
+        self.assertEqual(gpu["name"], "Radeon 740M")
+        self.assertEqual(gpu["codename"], "HawkPoint2")
+
+    def test_una_dedicada_conserva_el_nombre_que_ya_tenia(self):
+        """Si ya pone «Radeon» algo, ese nombre salió de pci.ids y es más
+        concreto que el de la cadena del procesador."""
+        from silux.providers.drm import DrmGpus
+
+        gpu = {}
+        draft = self._draft("AMD Ryzen 7 5800X3D 8-Core Processor")
+        DrmGpus._identidad(gpu, self._dispositivo(device=0x7550), draft)
+
+        self.assertNotEqual(gpu.get("name"), "Radeon 740M")
+
+    def test_un_procesador_sin_integrada_no_inventa_ninguna(self):
+        from silux.providers.drm import DrmGpus
+
+        gpu = {}
+        draft = self._draft("AMD Ryzen 7 5800X3D 8-Core Processor")
+        DrmGpus._identidad(gpu, self._dispositivo(), draft)
+
+        self.assertNotIn("740M", gpu.get("name") or "")
+
+    def test_identidad_recibe_el_draft_que_necesita(self):
+        """La firma es lo que faltaba, así que se vigila la firma.
+
+        Con `draft` fuera de ella el fallo no es un dato mal puesto: es un
+        NameError en mitad de la detección, y solo en los equipos que no
+        están aquí.
+        """
+        import inspect
+
+        from silux.providers.drm import DrmGpus
+
+        parametros = inspect.signature(DrmGpus._identidad).parameters
+        self.assertIn("draft", parametros,
+                      "_identidad usa draft; tiene que recibirlo")
