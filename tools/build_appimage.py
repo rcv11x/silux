@@ -244,7 +244,19 @@ def main() -> int:
                         help="construye dentro de un contenedor con una "
                              "distribución antigua, para que el resultado "
                              "funcione en procesadores y sistemas viejos")
+    parser.add_argument("--pyside-range", action="store_true",
+                        help="imprime qué PySide6 hace falta para lo que se "
+                             "va a construir, y no hace nada más")
     args = parser.parse_args()
+
+    # Quien construye sin `--container` se trae el PySide6 que tenga puesto,
+    # así que el techo hay que ponerlo antes de instalarlo y fuera de aquí. La
+    # acción de GitHub lo pregunta por esto en vez de repetir el rango: escrito
+    # a mano en los dos sitios es como se le quedó un «>=6.6» sin techo, y con
+    # él llegó un Qt que no arranca en los procesadores del paquete compat.
+    if args.pyside_range:
+        print(RANGO_PYSIDE[args.compat])
+        return 0
 
     global COMPAT
     COMPAT = args.compat
