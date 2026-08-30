@@ -287,6 +287,12 @@ class CpuPage(QScrollArea):
     def apply(self, snapshot: Snapshot) -> None:
         self.live.apply(snapshot)
         cpu = snapshot.cpu
+        # Los avisos van antes de rendirse: si no se reconoce el procesador,
+        # que es cuando más falta hace decir por qué, la página se plantaba y
+        # no pintaba ninguno. Justo el caso de un equipo raro o de un ARM sin
+        # entrada en la base de datos, donde el usuario se queda mirando una
+        # pantalla vacía sin nada que le explique qué ha pasado.
+        self._apply_notices(snapshot)
         if not cpu.types:
             return
 
@@ -307,7 +313,6 @@ class CpuPage(QScrollArea):
         )
         self._apply_badges(primary)
         self._apply_sections(snapshot)
-        self._apply_notices(snapshot)
 
     def _apply_badges(self, cpu_type: CpuType) -> None:
         wanted = tuple(x for x in (cpu_type.codename, cpu_type.socket,

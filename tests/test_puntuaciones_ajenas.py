@@ -61,3 +61,62 @@ class TestLecturaDeUnInforme(unittest.TestCase):
         datos, fallo = herramienta.leer(ruta)
         self.assertIn("rendimiento", fallo)
         ruta.unlink()
+
+
+class TestRemedirLaEscalaNoBorraLoAjeno(unittest.TestCase):
+    """Las medidas de otros equipos no se pueden volver a tomar.
+
+    `anadir_puntuacion.py` las acumula en «piezas» a partir de los informes que
+    manda la gente, y `medir_referencia.py` reescribía el archivo entero sin
+    esa clave: remedir la escala las borraba todas, sin decirlo. No se llegó a
+    notar porque cuando se encontró todavía no había ninguna guardada.
+
+    Cuando cambia la versión de la fórmula sí se descartan, y ahí es lo
+    correcto: una cifra medida con la escala anterior no significa lo mismo que
+    una de ahora.
+    """
+
+    def _herramienta(self):
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "medir_referencia", RAIZ / "tools" / "medir_referencia.py")
+        modulo = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(modulo)
+        return modulo
+
+    def _con_tabla(self, tabla):
+        import json
+        from unittest import mock
+
+        medir = self._herramienta()
+        datos = json.dumps(tabla)
+        abrir = mock.mock_open(read_data=datos)
+        return medir, mock.patch("pathlib.Path.open", abrir)
+
+    def test_con_la_misma_version_las_piezas_se_conservan(self):
+        piezas = {"AMD Ryzen 5 5600G": {"hilos": 12, "multihilo": [800, 810, 795]}}
+        medir, parche = self._con_tabla(
+            {"version_formula": score.VERSION, "piezas": piezas})
+        with parche:
+            self.assertEqual(medir._piezas_que_siguen_valiendo(), piezas)
+
+    def test_con_otra_version_se_descartan(self):
+        """Y se dice, que borrar en silencio es lo que hacía antes."""
+        medir, parche = self._con_tabla(
+            {"version_formula": score.VERSION - 1,
+             "piezas": {"Una CPU": {"hilos": 8, "multihilo": [500]}}})
+        with parche:
+            self.assertEqual(medir._piezas_que_siguen_valiendo(), {})
+
+    def test_sin_piezas_guardadas_no_inventa_la_clave(self):
+        medir, parche = self._con_tabla({"version_formula": score.VERSION})
+        with parche:
+            self.assertEqual(medir._piezas_que_siguen_valiendo(), {})
+
+    def test_un_archivo_ilegible_no_revienta_la_medida(self):
+        from unittest import mock
+
+        medir = self._herramienta()
+        with mock.patch("pathlib.Path.open", side_effect=OSError):
+            self.assertEqual(medir._piezas_que_siguen_valiendo(), {})

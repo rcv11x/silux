@@ -6,7 +6,9 @@ prueba de que una versión desconocida se rechaza: leerla con las posiciones de
 otra no da error, da números creíbles y falsos.
 """
 
+import pathlib
 import struct
+import tempfile
 import unittest
 
 from silux import gpumetrics
@@ -128,3 +130,51 @@ class TestVersiones(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestUnaVersionQueNoSeSabeLeer(unittest.TestCase):
+    """No es lo mismo no tener telemetría que no saber interpretarla.
+
+    Las v1.4 en adelante reordenaron los campos y las 2.x son las de las APU.
+    Se descartan a propósito —leerlas con las posiciones de una v1.3 no da
+    error, da cifras creíbles y equivocadas— pero eso acababa en el mismo
+    silencio que no tener tabla: el usuario veía los motivos de recorte y los
+    voltajes vacíos sin nada que lo explicara.
+
+    Ahora se dice, y la versión viaja en el informe, que es de donde puede
+    salir su tabla de posiciones sin tener la pieza delante.
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.raiz = pathlib.Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+
+    def _tabla(self, formato, contenido, tamano=120):
+        datos = bytearray(tamano)
+        struct.pack_into("<HBB", datos, 0, tamano, formato, contenido)
+        (self.raiz / "gpu_metrics").write_bytes(bytes(datos))
+        return self.raiz
+
+    def test_una_version_conocida_no_se_declara_ilegible(self):
+        self.assertIsNone(gpumetrics.sin_interpretar(self._tabla(1, 3)))
+
+    def test_una_v1_4_se_declara_y_dice_cual_es(self):
+        version, tamano = gpumetrics.sin_interpretar(self._tabla(1, 4))
+        self.assertEqual(version, "1.4")
+        self.assertEqual(tamano, 120)
+
+    def test_las_2_x_de_las_apu_también(self):
+        version, _tamano = gpumetrics.sin_interpretar(self._tabla(2, 1, 200))
+        self.assertEqual(version, "2.1")
+
+    def test_sin_tabla_no_hay_nada_que_declarar(self):
+        self.assertIsNone(gpumetrics.sin_interpretar(self.raiz))
+
+    def test_una_tabla_cortada_no_revienta(self):
+        (self.raiz / "gpu_metrics").write_bytes(b"\x02")
+        self.assertIsNone(gpumetrics.sin_interpretar(self.raiz))
+
+    def test_no_se_inventa_una_lectura_de_lo_que_no_entiende(self):
+        """Lo importante: sigue sin interpretarse, solo se dice que está."""
+        self.assertIsNone(gpumetrics.read(self._tabla(1, 4)))

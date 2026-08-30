@@ -458,3 +458,71 @@ class TestElRodajeNoDependeDeLoRapidoQueSeaElEquipo(unittest.TestCase):
         benchmark._rodar_en_vacio(Lenta(), 1)
         self.assertLess(time.perf_counter() - inicio,
                         benchmark.TOPE_EN_VACIO_S + 1.0)
+
+
+class TestLaCargaAjenaDuranteLaPrueba(unittest.TestCase):
+    """Lo que roba otro programa mientras se mide, no antes de empezar.
+
+    `background_load` se toma en tres décimas antes del primer paso, y una
+    prueba de quince segundos por carga dura dos minutos y medio: quien la
+    lanzaba y se iba a hacer otra cosa, o tenía una actualización en marcha sin
+    saberlo, salía con «0 % de carga de fondo» y una cifra baja que no tenía
+    explicación en ninguna parte del informe.
+    """
+
+    def test_se_mide_la_resta_y_no_lo_ocupado(self):
+        """La prueba ocupa el equipo entero: a secas, todo daría el 100 %."""
+        vigilante = benchmark._Vigilante()
+        # Dos lecturas seguidas donde todo lo ocupado es de este proceso.
+        with mock.patch.object(benchmark, "_jiffies",
+                               side_effect=[(1000, 0, 0), (2000, 0, 1000)]):
+            vigilante._cpu_antes = benchmark._jiffies()
+            self.assertEqual(vigilante._cuanto_roban(), 0.0)
+
+    def test_lo_que_consume_otro_sí_cuenta(self):
+        vigilante = benchmark._Vigilante()
+        # De mil jiffies, ninguno inactivo y solo la mitad nuestros.
+        with mock.patch.object(benchmark, "_jiffies",
+                               side_effect=[(1000, 0, 0), (2000, 0, 500)]):
+            vigilante._cpu_antes = benchmark._jiffies()
+            self.assertAlmostEqual(vigilante._cuanto_roban(), 50.0)
+
+    def test_lo_inactivo_no_es_de_nadie(self):
+        vigilante = benchmark._Vigilante()
+        with mock.patch.object(benchmark, "_jiffies",
+                               side_effect=[(1000, 0, 0), (2000, 1000, 0)]):
+            vigilante._cpu_antes = benchmark._jiffies()
+            self.assertEqual(vigilante._cuanto_roban(), 0.0)
+
+    def test_una_resta_negativa_es_cero_y_no_un_error(self):
+        """Los dos ficheros no se leen en el mismo instante."""
+        vigilante = benchmark._Vigilante()
+        with mock.patch.object(benchmark, "_jiffies",
+                               side_effect=[(1000, 0, 0), (2000, 0, 1200)]):
+            vigilante._cpu_antes = benchmark._jiffies()
+            self.assertEqual(vigilante._cuanto_roban(), 0.0)
+
+    def test_sin_poder_leer_no_se_inventa_una_cifra(self):
+        vigilante = benchmark._Vigilante()
+        with mock.patch.object(benchmark, "_jiffies", return_value=None):
+            self.assertIsNone(vigilante._cuanto_roban())
+
+    def test_el_pico_manda_sobre_la_media(self):
+        """Algo que se despierta a mitad se diluye si se promedia."""
+        vigilante = benchmark._Vigilante()
+        vigilante._ajeno = [0.1, 0.2, 45.0, 0.3]
+        self.assertEqual(vigilante.ajeno_pico(), 45.0)
+
+    def test_sin_muestras_no_hay_pico(self):
+        self.assertIsNone(benchmark._Vigilante().ajeno_pico())
+
+    def test_se_avisa_de_lo_que_pasó_durante_y_no_solo_de_lo_de_antes(self):
+        avisos = benchmark._avisos(benchmark.Conditions(
+            governor="performance", background_load=0.5, background_peak=40.0))
+        self.assertTrue(any("mientras se medía" in a for a in avisos),
+                        f"no se avisa del pico: {avisos}")
+
+    def test_un_pico_pequeño_no_es_para_avisar(self):
+        avisos = benchmark._avisos(benchmark.Conditions(
+            governor="performance", background_peak=2.0))
+        self.assertEqual(avisos, ())

@@ -716,6 +716,12 @@ class Gpu:
     codename: Optional[str] = None
     driver: Optional[str] = None
     driver_version: Optional[str] = None
+    # La versión de `gpu_metrics` cuando el firmware publica una que este
+    # programa todavía no sabe leer: las v1.4 en adelante reordenaron los
+    # campos y las 2.x son las de las APU. Se guarda para poder decirlo y para
+    # que salga en el informe, que es de donde puede salir su tabla de
+    # posiciones sin tener la pieza delante.
+    metrics_version: Optional[str] = None
     drm_node: Optional[str] = None      # card0, card1… no tiene por qué ir en orden
     pci_slot: Optional[str] = None
     vendor_id: Optional[int] = None

@@ -188,6 +188,16 @@ def _graficas(snapshot: Snapshot, anonymous: bool) -> str:
             f"{gpu.subsystem_name or '—'} · {gpu.codename or '—'}",
             f"- Identificador: {gpu.pci_id or '—'} · subsistema {gpu.subsystem_id or '—'}",
             f"- Driver: {gpu.driver or '—'} {gpu.driver_version or ''}".rstrip(),
+        ]
+        # La versión de la telemetría que el programa todavía no interpreta.
+        # Con esto y el modelo se puede escribir su tabla de posiciones sin
+        # tener la pieza delante, que es la única forma de añadirla sin
+        # adivinar: leerla con las posiciones de otra versión no da error, da
+        # cifras creíbles y equivocadas.
+        if gpu.metrics_version:
+            lineas.append(
+                f"- Telemetría sin interpretar: gpu_metrics v{gpu.metrics_version}")
+        lineas += [
             f"- BIOS de video: {gpu.vbios or '—'}",
             f"- Memoria: {render.size(gpu.memory.total_bytes)} "
             f"{render.vram_kind(gpu.memory)} · {render.vram_bus(gpu.memory)} · "
@@ -426,6 +436,9 @@ def _rendimiento() -> str:
         lineas.append(f"| Temperatura máxima | {ultima.temperature_peak_c:.0f} °C |")
     if ultima.background_load is not None:
         lineas.append(f"| Carga de fondo | {ultima.background_load:.1f} % |")
+    # El pico de lo ajeno explica una cifra baja que si no parece del equipo.
+    if ultima.background_peak is not None:
+        lineas.append(f"| Otro programa, como mucho | {ultima.background_peak:.1f} % |")
     return "\n".join(lineas) + "\n"
 
 

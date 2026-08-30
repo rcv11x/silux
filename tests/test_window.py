@@ -408,3 +408,26 @@ class TestLaSalidaParaLosDatosBloqueados(unittest.TestCase):
             if widget is not None and getattr(widget, "action_button", None):
                 botones.append(widget.action_button)
         self.assertTrue(botones, "el aviso de permisos sale sin botón al lado")
+
+    def test_los_avisos_salen_aunque_no_se_reconozca_el_procesador(self):
+        """Que es cuando más falta hace decir por qué falta algo.
+
+        La página se plantaba antes de pintarlos si `cpu.types` venía vacío, o
+        sea justo en un equipo raro o en un ARM sin entrada en la base de
+        datos: el usuario se quedaba mirando una pantalla vacía sin nada que
+        le explicara qué había pasado.
+        """
+        from silux.model import Board, CpuInfo, Need, Note, Snapshot, System
+
+        window = self._window()
+        sin_cpu = Snapshot(
+            monotonic_ns=0, cpu=CpuInfo(), board=Board(), system=System(),
+            notes=(Note(path="cpu", need=Need.DATABASE,
+                        message="Este procesador no está en la base de datos.",
+                        hint=""),))
+        window.cpu_page.apply(sin_cpu)
+        self.app.processEvents()
+
+        avisos = window.cpu_page._notices_host
+        self.assertGreater(avisos.count(), 0,
+                           "sin tipos de núcleo no se pinta ningún aviso")

@@ -202,6 +202,13 @@ class Medida:
 class Conditions:
     """En qué estado estaba la máquina mientras se medía."""
 
+    # Lo que ocupaba otro programa mientras se medía, no antes de empezar. Son
+    # dos preguntas distintas y la segunda es la que importa: una prueba de
+    # quince segundos por carga dura dos minutos y medio, y `background_load`
+    # se tomaba en tres décimas antes del primer paso. Con eso, alguien que
+    # abriera el navegador a mitad salía con «0 % de carga de fondo» y una
+    # cifra baja sin explicación.
+    background_peak: Optional[float] = None
     frequency_avg_hz: Optional[int] = None
     frequency_peak_hz: Optional[int] = None
     frequency_end_hz: Optional[int] = None
@@ -289,6 +296,7 @@ def run(quick: bool = False, on_progress: Optional[Callable[[str, float], None]]
         governor=_leer(f"{SYS_CPU}/cpu0/cpufreq/scaling_governor"),
         energy_preference=_leer(f"{SYS_CPU}/cpu0/cpufreq/energy_performance_preference"),
         background_load=fondo,
+        background_peak=vigilante.ajeno_pico(),
     )
     return Result(tuple(medidas), condiciones, _avisos(condiciones))
 
@@ -404,6 +412,8 @@ class _Vigilante:
     def __init__(self) -> None:
         self._frecuencias: list[int] = []
         self._temperaturas: list[float] = []
+        self._ajeno: list[float] = []
+        self._cpu_antes = _jiffies()
         self._parar = threading.Event()
         self._hilo: Optional[threading.Thread] = None
 
@@ -427,7 +437,32 @@ class _Vigilante:
                 self._frecuencias.append(max(validos) * 1000)
             if (grados := _temperatura()) is not None:
                 self._temperaturas.append(grados)
+            if (robado := self._cuanto_roban()) is not None:
+                self._ajeno.append(robado)
             self._parar.wait(0.25)
+
+    def _cuanto_roban(self) -> Optional[float]:
+        """Qué parte de la máquina se lleva otro programa, ahora mismo.
+
+        No vale mirar `/proc/stat` a secas mientras la prueba corre: la prueba
+        ocupa el equipo entero y todo saldría al cien por cien. Lo que se busca
+        es la resta, lo ocupado menos lo que consume este mismo proceso, que es
+        justo lo que le está quitando sitio a la medida.
+        """
+        ahora = _jiffies()
+        anterior, self._cpu_antes = self._cpu_antes, ahora
+        if ahora is None or anterior is None:
+            return None
+        total, inactivo, propio = ahora
+        total_antes, inactivo_antes, propio_antes = anterior
+        transcurrido = total - total_antes
+        if transcurrido <= 0:
+            return None
+        ocupado = transcurrido - (inactivo - inactivo_antes)
+        ajeno = ocupado - (propio - propio_antes)
+        # Puede salir negativo por unas centésimas: los dos ficheros no se leen
+        # en el mismo instante. Cero es la respuesta, no un error.
+        return max(0.0, ajeno / transcurrido * 100)
 
     def media(self) -> Optional[int]:
         return int(sum(self._frecuencias) / len(self._frecuencias)) if self._frecuencias else None
@@ -445,6 +480,15 @@ class _Vigilante:
     def temperatura_pico(self) -> Optional[float]:
         return max(self._temperaturas) if self._temperaturas else None
 
+    def ajeno_pico(self) -> Optional[float]:
+        """Lo más que llegó a robarle otro programa durante la prueba.
+
+        El pico y no la media: lo que estropea una medida es que algo se
+        despierte a mitad, y promediado entre dos minutos y medio eso se diluye
+        hasta parecer nada.
+        """
+        return round(max(self._ajeno), 1) if self._ajeno else None
+
 
 def _avisos(condiciones: Conditions) -> tuple[str, ...]:
     """Lo que hay que saber antes de comparar esta cifra con otra."""
@@ -454,6 +498,18 @@ def _avisos(condiciones: Conditions) -> tuple[str, ...]:
             f"Había un {condiciones.background_load:.0f} % de carga de fondo al "
             "empezar. El resultado no es comparable con el de una máquina en "
             "reposo."
+        )
+    # Lo de arriba mira cómo estaba el equipo antes de empezar; esto, lo que
+    # pasó mientras se medía. Son preguntas distintas y la segunda es la que
+    # estropea una prueba: quien la lanza y se va a hacer otra cosa, o quien
+    # tiene una actualización en marcha sin saberlo, salía con «0 % de carga de
+    # fondo» y una cifra baja que no tenía explicación en ninguna parte.
+    if (condiciones.background_peak
+            and condiciones.background_peak > CARGA_ACEPTABLE):
+        avisos.append(
+            f"Otro programa llegó a llevarse el "
+            f"{condiciones.background_peak:.0f} % de la máquina mientras se "
+            "medía. La cifra sale más baja de lo que da este equipo en reposo."
         )
     if condiciones.governor and condiciones.governor not in ("performance",):
         avisos.append(
@@ -468,6 +524,26 @@ def _avisos(condiciones: Conditions) -> tuple[str, ...]:
             "durante la prueba: el procesador no pudo sostener su máximo."
         )
     return tuple(avisos)
+
+
+def _jiffies() -> Optional[tuple[int, int, int]]:
+    """Del sistema: totales e inactivos; y lo que lleva gastado este proceso.
+
+    Los tres a la vez y del mismo instante, porque lo que se busca es la resta
+    entre ellos.
+    """
+    try:
+        with open("/proc/stat", encoding="utf-8") as fichero:
+            numeros = [int(x) for x in fichero.readline().split()[1:8]]
+        with open(f"/proc/{os.getpid()}/stat", encoding="utf-8") as fichero:
+            campos = fichero.read().rsplit(")", 1)[1].split()
+        # utime + stime, que es lo que este proceso ha consumido de CPU.
+        propio = int(campos[11]) + int(campos[12])
+    except (OSError, ValueError, IndexError):
+        return None
+    if len(numeros) < 5:
+        return None
+    return sum(numeros), numeros[3] + numeros[4], propio
 
 
 def _carga_de_fondo() -> Optional[float]:

@@ -603,6 +603,8 @@
   "prov.drm.intelroot": "El uso y el consumo de la gráfica los llevan contadores del kernel, que no se leen sin permisos. Esta gráfica Intel no publica su temperatura.",
   "prov.drm.intelroot.hint": "Con permisos aparecen el uso de cada motor y, en las integradas, los vatios. La temperatura no sale de ninguna manera; las frecuencias, los monitores y lo que declaran Vulkan y OpenGL sí salen sin pedir nada.",
   "prov.drm.inteltemp": "Esta gráfica Intel no publica su temperatura.",
+  "prov.drm.metricsnew": "Esta tarjeta publica telemetría en la versión {version}, que este programa todavía no interpreta.",
+  "prov.drm.metricsnew.hint": "Faltan por ahí los motivos de recorte, los voltajes y las temperaturas de los reguladores. El formato cambió de posiciones y leerlo con las de la versión anterior daría cifras creíbles y equivocadas, así que se prefiere no enseñarlas. La versión sale en el informe: con un volcado de un equipo como este se puede añadir.",
   "prov.drm.nodriver": "El kernel no tiene driver para {tarjeta}: está usando el framebuffer de respaldo.",
   "prov.drm.nodriver.hint": "La tarjeta se identifica por el bus PCI, pero sin driver no hay relojes, ni temperatura, ni consumo, ni memoria. Pasa al arrancar con nomodeset, con el driver sin instalar o con una tarjeta más nueva que el kernel.",
   "prov.drm.nogpu": "No hay ninguna tarjeta gráfica registrada en el kernel.",

@@ -603,6 +603,8 @@
   "prov.drm.intelroot": "Graphics usage and power are kept in kernel counters, which do not read without permissions. This Intel graphics does not publish its temperature.",
   "prov.drm.intelroot.hint": "With permissions you get per-engine usage and, on integrated parts, the watts. Temperature does not come out by any route; the clocks, the monitors and what Vulkan and OpenGL declare do come out without asking for anything.",
   "prov.drm.inteltemp": "This Intel graphics does not publish its temperature.",
+  "prov.drm.metricsnew": "This card reports telemetry in version {version}, which this program does not read yet.",
+  "prov.drm.metricsnew.hint": "Throttling reasons, voltages and regulator temperatures come from there. The layout moved between versions and reading it with the previous positions would give believable, wrong numbers, so they are left out. The version is in the report: with a dump from a machine like this one it can be added.",
   "prov.drm.nodriver": "The kernel has no driver for {tarjeta}: it is falling back to the basic framebuffer.",
   "prov.drm.nodriver.hint": "The card is identified through the PCI bus, but with no driver there are no clocks, no temperature, no power draw and no memory. This happens when booting with nomodeset, with the driver not installed, or with a card newer than the kernel.",
   "prov.drm.nogpu": "No graphics card is registered with the kernel.",
