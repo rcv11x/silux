@@ -116,6 +116,35 @@ class TestCasado(unittest.TestCase):
         self.assertFalse(draft.gpus[0]["integrated"])
 
 
+class TestNucleosCuda(unittest.TestCase):
+    """Las tres cifras vienen de capturas de tres equipos ajenos.
+
+    NVML contesta a `nvmlDeviceGetNumGpuCores` una cosa distinta según la
+    tarjeta: unas veces los núcleos y otras los multiprocesadores. Entre las
+    dos magnitudes hay un hueco enorme, que es lo que permite distinguirlas.
+    """
+
+    def test_una_3050_mobile_da_multiprocesadores(self):
+        gpu = {"codename": "GA107M"}
+        self.assertEqual(nvidia._nucleos_cuda(gpu, 16), 2048)
+
+    def test_una_4080_laptop_tambien(self):
+        gpu = {"codename": "AD104M"}
+        self.assertEqual(nvidia._nucleos_cuda(gpu, 58), 7424)
+
+    def test_una_1660_ti_da_los_nucleos_de_verdad(self):
+        """1536 ya son núcleos: no hay nada que multiplicar."""
+        gpu = {"codename": "TU116"}
+        self.assertEqual(nvidia._nucleos_cuda(gpu, 1536), 1536)
+
+    def test_una_arquitectura_que_no_se_reconoce_no_se_inventa(self):
+        gpu = {"codename": "XX999"}
+        self.assertIsNone(nvidia._nucleos_cuda(gpu, 16))
+
+    def test_sin_nombre_en_clave_tampoco(self):
+        self.assertIsNone(nvidia._nucleos_cuda({}, 16))
+
+
 class TestSinNvidia(unittest.TestCase):
     def test_sin_tarjetas_no_toca_nada(self):
         draft = recolectar([{"pci_slot": "0000:0c:00.0", "vendor": "AMD"}], tarjetas=())

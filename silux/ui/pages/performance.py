@@ -614,8 +614,16 @@ class PerformancePage(QScrollArea):
                                                    self._prefs.fahrenheit))
         f(_("bench.cond.governor"), c.governor or d)
         f(_("bench.cond.epp"), c.energy_preference or d)
+        # Las dos, y por separado. La de arriba se toma antes de empezar y la
+        # otra vigila durante los dos minutos y medio que dura la prueba, así
+        # que decían cosas distintas del mismo equipo: la ficha ponía «2.9 %»
+        # al lado de un aviso que hablaba de un 60 %, y eso se lee como una
+        # contradicción aunque las dos cifras sean ciertas. Van con la misma
+        # forma que la temperatura, que ya tenía este problema resuelto.
         f(_("bench.cond.load"), render.percent(c.background_load),
           tooltip=_("bench.cond.load.tip"))
+        f(_("bench.cond.maxload"), render.percent(c.background_peak),
+          tooltip=_("bench.cond.maxload.tip"))
 
         clear_layout(self._warnings_host)
         for aviso in resultado.warnings:

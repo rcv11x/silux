@@ -1580,3 +1580,138 @@ class TestLaIntegradaDeUnaApu(unittest.TestCase):
         parametros = inspect.signature(DrmGpus._identidad).parameters
         self.assertIn("draft", parametros,
                       "_identidad usa draft; tiene que recibirlo")
+
+
+class TestNoAplica(unittest.TestCase):
+    """Lo que en una integrada no está vacío: es que no existe.
+
+    La ficha de una Iris Xe salía con un dato de once en «Memoria de video» y
+    dos de catorce en «Sensores». Un guion dice «no lo sé», y ahí era falso
+    diez veces seguidas: no falta el tipo de memoria, es que no hay chip de
+    memoria del que decirlo.
+    """
+
+    def _iris_xe(self, **cambios):
+        base = dict(index=0, name="Iris Xe Graphics", vendor="Intel",
+                    driver="i915", integrated=True,
+                    memory=GpuMemory(gtt_total_bytes=11_500_000_000))
+        base.update(cambios)
+        return Gpu(**base)
+
+    def test_una_integrada_sin_memoria_propia_esconde_lo_que_no_tiene(self):
+        from silux.ui.pages.graphics import no_aplica
+
+        ocultos, _pies = no_aplica(self._iris_xe())
+        self.assertIn("gpu.vram.type", ocultos["memory"])
+        self.assertIn("gpu.vram.bus", ocultos["memory"])
+        self.assertIn("gpu.clock.memory", ocultos["clocks"])
+        self.assertIn("gpu.sensor.fan", ocultos["sensors"])
+
+    def test_pero_deja_lo_que_sí_es_suyo(self):
+        from silux.ui.pages.graphics import no_aplica
+
+        ocultos, _pies = no_aplica(self._iris_xe())
+        # La memoria que toma del sistema es justo lo que sí tiene.
+        self.assertNotIn("gpu.vram.shared", ocultos["memory"])
+        self.assertNotIn("gpu.clock.core", ocultos["clocks"])
+        self.assertNotIn("gpu.sensor.power", ocultos["sensors"])
+
+    def test_el_enlace_pcie_no_se_esconde_nunca(self):
+        """La Radeon 740M es integrada y publica «PCIe 4.0 × 16».
+
+        Ahí «integrada» no implica «sin enlace», así que un enlace vacío es un
+        dato que falta y le corresponde su guion.
+        """
+        from silux.ui.pages.graphics import no_aplica
+
+        ocultos, _pies = no_aplica(self._iris_xe())
+        self.assertNotIn("gpu.clock.link", ocultos["clocks"])
+        self.assertNotIn("gpu.clock.linkmax", ocultos["clocks"])
+
+    def test_una_integrada_con_memoria_propia_conserva_su_ficha(self):
+        """La 740M reserva 512 MB de DDR5 y los publica por el ioctl."""
+        from silux.ui.pages.graphics import no_aplica
+
+        radeon = Gpu(index=0, name="Radeon 740M", vendor="AMD", driver="amdgpu",
+                     integrated=True,
+                     memory=GpuMemory(total_bytes=512 * 1024**2, kind="DDR5",
+                                      bus_bits=64))
+        ocultos, _pies = no_aplica(radeon)
+        self.assertEqual(ocultos["memory"], set())
+        self.assertEqual(ocultos["clocks"], set())
+        # Lo suyo sigue sin ser suyo: no tiene ventilador propio.
+        self.assertIn("gpu.sensor.fan", ocultos["sensors"])
+
+    def test_una_dedicada_no_esconde_nada(self):
+        from silux.ui.pages.graphics import no_aplica
+
+        rx = Gpu(index=0, name="Radeon RX 9070 XT", vendor="AMD", integrated=False,
+                 memory=GpuMemory(total_bytes=16 * 1024**3))
+        ocultos, pies = no_aplica(rx)
+        self.assertEqual(ocultos, {"memory": set(), "clocks": set(), "sensors": set()})
+        self.assertEqual(set(pies.values()), {""})
+
+    def test_si_no_se_sabe_si_es_integrada_no_se_esconde_nada(self):
+        """Con nouveau no se lee la VRAM y una GTX 1050 acababa de integrada.
+
+        Quitarle la memoria a una dedicada sería peor que un guion de más.
+        """
+        from silux.ui.pages.graphics import no_aplica
+
+        dudosa = Gpu(index=0, name="GeForce GTX 1050", integrated=None)
+        ocultos, _pies = no_aplica(dudosa)
+        self.assertEqual(ocultos["memory"], set())
+
+    def test_lo_escondido_se_dice_al_pie(self):
+        """Nada desaparece en silencio: si a alguien le falta un campo que su
+        tarjeta sí tiene, lo lee ahí y lo puede reportar."""
+        from silux.ui.pages.graphics import no_aplica
+
+        _ocultos, pies = no_aplica(self._iris_xe())
+        self.assertIn("memoria propia", pies["memory"])
+        self.assertTrue(pies["sensors"])
+
+
+class TestNoAplicaEnPantalla(unittest.TestCase):
+    """Que las filas se escondan de verdad, no solo en la tabla de reglas."""
+
+    @classmethod
+    def setUpClass(cls):
+        from PySide6.QtWidgets import QApplication
+
+        cls.app = QApplication.instance() or QApplication([])
+
+    def _seccion(self, gpu):
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.graphics import GpuSection
+
+        theme.set_density("normal", "normal")
+        seccion = GpuSection(theme.palette_for(self.app, "dark"),
+                             Preferences(font_scale="normal").normalized())
+        seccion.apply(gpu)
+        return seccion
+
+    # Se mira `isHidden` y no `isVisible`: un widget cuya ventana no se ha
+    # mostrado nunca es invisible aunque nadie lo haya escondido, así que
+    # `isVisible` daría falso para todo y el test pasaría sin comprobar nada.
+    # `isHidden` dice si se le llamó a `setVisible(False)`, que es la causa.
+    def test_la_fila_del_bus_desaparece_en_una_iris_xe(self):
+        seccion = self._seccion(Gpu(
+            index=0, name="Iris Xe Graphics", vendor="Intel", driver="i915",
+            integrated=True, memory=GpuMemory(gtt_total_bytes=11_500_000_000)))
+        self.assertTrue(seccion.memory._values[_("gpu.vram.bus")].isHidden())
+        # Y la que sí es suya se queda.
+        self.assertFalse(seccion.memory._values[_("gpu.vram.shared")].isHidden())
+        self.assertTrue(seccion.memory_pie.text())
+
+    def test_y_vuelve_si_el_sitio_lo_ocupa_una_dedicada(self):
+        """Las secciones se reutilizan entre muestreos, no se recrean."""
+        seccion = self._seccion(Gpu(
+            index=0, name="Iris Xe Graphics", vendor="Intel", driver="i915",
+            integrated=True, memory=GpuMemory(gtt_total_bytes=11_500_000_000)))
+        seccion.apply(Gpu(index=0, name="Radeon RX 9070 XT", vendor="AMD",
+                          integrated=False,
+                          memory=GpuMemory(total_bytes=16 * 1024**3, bus_bits=256)))
+        self.assertFalse(seccion.memory._values[_("gpu.vram.bus")].isHidden())
+        self.assertTrue(seccion.memory_pie.isHidden())

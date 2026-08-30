@@ -84,10 +84,22 @@ def _procesador(snapshot: Snapshot) -> str:
     if not cpu.types:
         return ""
     lineas = ["", "## Procesador", ""]
+    # En un híbrido, cada tipo de núcleo es un bloque con la misma marca
+    # repetida, y así el informe de un i9-13980HX salía con dos apartados de
+    # «8 / 16» y «16 / 16» sin decir cuál era cuál ni cuántos hay en total. Los
+    # 24 núcleos y 32 hilos de esa pieza no aparecían en ninguna parte del
+    # archivo que se pide justamente para saber qué lleva dentro un equipo.
+    if cpu.hybrid:
+        lineas += [
+            f"**{cpu.types[0].brand or '?'}** — "
+            f"{cpu.total_cores} núcleos · {cpu.total_threads} hilos",
+            "",
+        ]
     for tipo in cpu.types:
         relojes = tipo.clocks
         lineas += [
-            f"**{tipo.brand or '?'}**",
+            f"**{render.core_type_label(tipo, cpu.hybrid, en_español)}**"
+            if cpu.hybrid else f"**{tipo.brand or '?'}**",
             "",
             f"- Nombre en clave: {tipo.codename or '—'} · {tipo.technology or '—'}",
             f"- Encapsulado: {tipo.socket or '—'}",

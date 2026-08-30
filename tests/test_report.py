@@ -177,6 +177,55 @@ class TestDatosAusentes(unittest.TestCase):
         self.assertIn("stepping 0", texto)
 
 
+class TestCpuHibrida(unittest.TestCase):
+    """El i9-13980HX de un probador: 8 P con SMT y 16 E sin él.
+
+    Su informe salía con dos apartados titulados igual, uno de «8 / 16» y otro
+    de «16 / 16», sin decir cuál era cuál. Y los 24 núcleos y 32 hilos de la
+    pieza no aparecían en ninguna parte, que es justo lo que quien lo manda
+    quiere que se vea.
+    """
+
+    def _hibrida(self):
+        marca = "13th Gen Intel(R) Core(TM) i9-13980HX"
+        return _snapshot(cpu=CpuInfo(hybrid=True, types=(
+            CpuType(key="performance", label="p", brand=marca, cores=8, threads=16,
+                    architecture="x86_64", clocks=Clocks(base_hz=2_200_000_000)),
+            CpuType(key="efficiency", label="e", brand=marca, cores=16, threads=16,
+                    architecture="x86_64", clocks=Clocks(base_hz=1_600_000_000)),
+        )))
+
+    def test_dice_cuantos_nucleos_e_hilos_hay_en_total(self):
+        texto = report.build(self._hibrida())
+        self.assertIn("24 núcleos · 32 hilos", texto)
+
+    def test_cada_bloque_dice_de_qué_núcleos_habla(self):
+        texto = report.build(self._hibrida())
+        self.assertIn("**Núcleos P (rendimiento)**", texto)
+        self.assertIn("**Núcleos E (eficiencia)**", texto)
+
+    def test_y_cada_uno_conserva_su_propio_reparto(self):
+        texto = report.build(self._hibrida())
+        self.assertIn("8 / 16", texto)
+        self.assertIn("16 / 16", texto)
+
+    def test_en_español_aunque_la_interfaz_esté_en_inglés(self):
+        """El informe es castellano fijo: con `_()` se mezclarían los idiomas."""
+        from silux import i18n
+        anterior = i18n.actual()
+        try:
+            i18n.set_language("en")
+            texto = report.build(self._hibrida())
+        finally:
+            i18n.set_language(anterior)
+        self.assertIn("**Núcleos P (rendimiento)**", texto)
+
+    def test_una_cpu_normal_sigue_titulando_con_su_marca(self):
+        texto = report.build(_snapshot())
+        self.assertIn("**AMD Ryzen 7 5800X3D**", texto)
+        self.assertNotIn("núcleos · ", texto.split("## Memoria")[0])
+
+
 class TestMotivosDeFallo(unittest.TestCase):
     """Por qué falta un dato, que no siempre es lo que parece."""
 

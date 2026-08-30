@@ -70,12 +70,79 @@ SENSOR_FIELDS = ("gpu.sensor.state", "gpu.sensor.temp", "gpu.sensor.hotspot", "g
                  "gpu.sensor.power", "gpu.sensor.powercap", "gpu.sensor.fan",
                  "gpu.sensor.voltage", "gpu.sensor.vsoc", "gpu.sensor.vmem", "gpu.sensor.videouse")
 
+# Lo que en algunas tarjetas no está vacío: es que no existe.
+#
+# Un guion dice «no lo sé», y en una integrada eso era falso diez veces
+# seguidas: no es que falte el tipo de memoria, es que no hay chip de memoria
+# del que decirlo. La ficha de una Iris Xe salía con un dato de once en
+# «Memoria de video» y dos de catorce en «Sensores», toda ella rayas.
+#
+# Aquí solo entra lo que se puede afirmar. Lo dudoso se queda en guion, que
+# para eso está: el enlace PCIe no aparece en esta tabla aunque la Iris Xe lo
+# tenga vacío, porque la Radeon 740M también es integrada y publica su
+# «PCIe 4.0 × 16». Ahí «integrada» no implica «sin enlace».
+#
+# Las claves van crudas y se traducen al usarlas: `_()` en una constante de
+# módulo se resuelve al importar, cuando todavía no se sabe qué idioma quiere
+# nadie.
+# Cada tarjeta lleva su propia frase: en «Relojes» lo que se esconde es el
+# reloj de memoria, no el bus, así que repetir ahí el texto de la memoria
+# nombraba campos que en esa tarjeta no estaban.
+NA_SIN_VRAM = {
+    "memory": (("gpu.vram.total", "gpu.vram.used", "gpu.vram.type", "gpu.vram.bus",
+                "gpu.vram.bandwidth", "gpu.vram.datarate", "gpu.vram.visible",
+                "gpu.vram.rebar", "gpu.vram.chips"), "gpu.na.novram"),
+    "clocks": (("gpu.clock.memory", "gpu.clock.memeff", "gpu.clock.memmax"),
+               "gpu.na.novram.clocks"),
+    "sensors": (("gpu.sensor.memtemp", "gpu.sensor.vmem"), "gpu.na.novram.sensors"),
+}
+
+# Los reguladores los cuenta el microcontrolador de una tarjeta, y el
+# ventilador es suyo. Una integrada se alimenta y se refrigera con el resto del
+# equipo, así que esos sensores no son que falten: no son de ella. En una
+# NVIDIA dedicada sí existen y NVML no los publica, y eso sigue siendo un
+# guion, que es lo que corresponde a «no lo sé».
+NA_INTEGRADA = {
+    "sensors": (("gpu.sensor.vrgfx", "gpu.sensor.vrsoc", "gpu.sensor.vrmem",
+                 "gpu.sensor.fan"), "gpu.na.integrated"),
+}
+
 ENGINE_HEADERS = ("gpu.engine.name", "gpu.engine.role", "gpu.tile.usage", "gpu.engine.can")
 CODEC_HEADERS = ("gpu.codec.name", "gpu.codec.decode", "gpu.codec.encode", "gpu.codec.depth", "gpu.codec.profiles")
 
 API_HEADERS = ("API", "gpu.api.version", "gpu.field.driver", "gpu.api.detail")
 DISPLAY_HEADERS = ("gpu.display.output", "gpu.display.monitor", "gpu.display.res", "gpu.display.refresh", "gpu.display.size",
                    "gpu.display.color", "gpu.display.made")
+
+
+def no_aplica(gpu: Gpu) -> tuple[dict[str, set[str]], dict[str, str]]:
+    """Qué campos no existen en esta tarjeta y con qué frase se explica.
+
+    Devuelve, por cada tarjeta de la ficha, las claves que hay que esconder y
+    el texto del pie. Se esconden en vez de marcarse una a una porque la queja
+    era que la ficha está vacía, y cambiar diez guiones por diez «no aplica» la
+    deja igual de vacía y con más letra. El pie es lo que evita que algo
+    desaparezca en silencio: si a alguien le falta un campo que su tarjeta sí
+    tiene, lo lee ahí y se puede reportar.
+
+    `integrated` es None cuando no se ha podido decidir —con nouveau no se lee
+    la VRAM y por ahí una GTX 1050 acababa marcada como integrada—, y entonces
+    no se esconde nada: quitarle la memoria a una dedicada sería peor que
+    dejar un guion de más.
+    """
+    reglas = []
+    if gpu.integrated and not gpu.memory.total_bytes:
+        reglas.append(NA_SIN_VRAM)
+    if gpu.integrated:
+        reglas.append(NA_INTEGRADA)
+
+    ocultos: dict[str, set[str]] = {"memory": set(), "clocks": set(), "sensors": set()}
+    frases: dict[str, list[str]] = {"memory": [], "clocks": [], "sensors": []}
+    for regla in reglas:
+        for tarjeta, (claves, frase) in regla.items():
+            ocultos[tarjeta].update(claves)
+            frases[tarjeta].append(frase)
+    return ocultos, {t: " ".join(_(f) for f in v) for t, v in frases.items()}
 
 
 class GpuSection(QWidget):
@@ -111,12 +178,13 @@ class GpuSection(QWidget):
         self.elevation_buttons: list = []
 
         fila = ResponsiveRow(min_item_width=280)
-        self.card = self._grid_card(fila, _("gpu.card.card"), CARD_FIELDS)
+        self.card, self.card_pie = self._grid_card(fila, _("gpu.card.card"), CARD_FIELDS)
         fila.add(self._build_memory_card())
         layout.addWidget(fila)
 
         fila = ResponsiveRow(min_item_width=280)
-        self.clocks = self._grid_card(fila, _("gpu.card.clocks"), CLOCK_FIELDS)
+        self.clocks, self.clocks_pie = self._grid_card(
+            fila, _("gpu.card.clocks"), CLOCK_FIELDS)
         fila.add(self._build_sensor_card())
         layout.addWidget(fila)
 
@@ -170,15 +238,16 @@ class GpuSection(QWidget):
 
     # -- construcción -------------------------------------------------------
 
-    @staticmethod
-    def _grid_card(host: ResponsiveRow, title: str, fields: tuple[str, ...]) -> InfoGrid:
+    def _grid_card(self, host: ResponsiveRow, title: str,
+                   fields: tuple[str, ...]) -> tuple[InfoGrid, QLabel]:
         card = Card(title)
         grid = InfoGrid()
         for name in fields:
             grid.add(_(name))
         card.body.addWidget(grid)
+        pie = self._pie(card)
         host.add(card)
-        return grid
+        return grid, pie
 
     def _build_header(self) -> QWidget:
         card = Card()
@@ -234,6 +303,21 @@ class GpuSection(QWidget):
             lambda v: render.temperature(v, False), intervalo)
         return fila
 
+    @staticmethod
+    def _pie(card: Card) -> QLabel:
+        """La línea que dice qué campos no aplican y por qué.
+
+        Misma forma que la de las salidas libres, que resuelve lo mismo un
+        poco más abajo en esta página.
+        """
+        etiqueta = QLabel("")
+        etiqueta.setObjectName("Muted")
+        etiqueta.setWordWrap(True)
+        etiqueta.setFont(ui_font(theme.METRICS.small_pt))
+        etiqueta.setVisible(False)
+        card.body.addWidget(etiqueta)
+        return etiqueta
+
     def _build_sensor_card(self) -> Card:
         card = Card(_("gpu.card.sensors"))
         self.power_bar = StackedBar(self._p)
@@ -242,6 +326,7 @@ class GpuSection(QWidget):
             self.sensors.add(_(name))
         card.body.addWidget(self.power_bar)
         card.body.addWidget(self.sensors)
+        self.sensors_pie = self._pie(card)
         return card
 
     def _build_memory_card(self) -> Card:
@@ -252,6 +337,7 @@ class GpuSection(QWidget):
             self.memory.add(_(name))
         card.body.addWidget(self.memory_bar)
         card.body.addWidget(self.memory)
+        self.memory_pie = self._pie(card)
         return card
 
     # -- actualización ------------------------------------------------------
@@ -360,6 +446,7 @@ class GpuSection(QWidget):
         s(_("gpu.sensor.videouse"), render.percent(gpu.video_busy_percent),
           tooltip=_("gpu.tip.videouse"))
 
+        self._apply_no_aplica(gpu)
         self._apply_engines(gpu)
         self._apply_codecs(gpu)
         self.apis.set_rows([
@@ -377,6 +464,34 @@ class GpuSection(QWidget):
                                                salidas=", ".join(libres))
             if libres else "")
         self.displays_free.setVisible(bool(libres))
+
+    def _apply_no_aplica(self, gpu: Gpu) -> None:
+        """Esconde lo que esta tarjeta no tiene y lo dice al pie.
+
+        Se recorren siempre todos los campos, no solo los que se esconden: una
+        sección se reutiliza entre muestreos y hay que volver a enseñar lo que
+        se ocultó si la tarjeta que ocupa ese sitio cambia.
+        """
+        ocultos, pies = no_aplica(gpu)
+
+        # Los dos cuadros de arriba que hablan de una memoria que no existe. Se
+        # deriva de lo que ya decidió `no_aplica` en vez de repetir aquí la
+        # condición, que es como se acaban desincronizando. Los otros cuatro se
+        # quedan: una integrada tiene uso, reloj y consumo, y su temperatura sí
+        # falta de verdad —Intel no la publica por ningún camino— y para eso ya
+        # hay un aviso que se quedaría sin nada a lo que referirse.
+        sin_vram = "gpu.vram.total" in ocultos["memory"]
+        self.tile_vram.setVisible(not sin_vram)
+        self.tile_membus.setVisible(not sin_vram)
+
+        for nombre, grid, campos, pie in (
+                ("memory", self.memory, MEMORY_FIELDS, self.memory_pie),
+                ("clocks", self.clocks, CLOCK_FIELDS, self.clocks_pie),
+                ("sensors", self.sensors, SENSOR_FIELDS, self.sensors_pie)):
+            for clave in campos:
+                grid.set_visible(_(clave), clave not in ocultos[nombre])
+            pie.setText(pies[nombre])
+            pie.setVisible(bool(pies[nombre]))
 
     def _apply_engines(self, gpu: Gpu) -> None:
         """Los motores de la tarjeta, si el driver los publica.

@@ -25,7 +25,7 @@ python3 tools/build_appimage.py --container   # el AppImage que se reparte
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **1221** y tardan poco más de un minuto. Si sale bastante
+Los tests son **1248** y tardan poco más de un minuto. Si sale bastante
 menos, falta algo por recoger.
 
 `--container` no es opcional para repartir: sin él se construye contra el
@@ -127,6 +127,7 @@ silux/
 ├─ rawcpuid.py     CPUID desde Python, sin root (mmap + ctypes)
 ├─ gpuapi.py       OpenGL, Vulkan, OpenCL y VA-API por ctypes, en otro proceso
 ├─ amdgpu.py       ioctl DRM: tipo de VRAM, bus, unidades, ROP
+├─ i915.py         ioctl DRM: las unidades de ejecución de una Intel
 ├─ edid.py         la chapa del monitor, con sus extensiones CTA-861
 ├─ report.py       informe en Markdown para reportar fallos
 ├─ gpumetrics.py   telemetría del firmware AMD: por qué se frena la tarjeta
@@ -185,21 +186,11 @@ existe por ningún camino. Queda pendiente:
   pasar en vez de interpretarlas mal, y ahora se dice cuál es y sale en el
   informe: con eso y el modelo se puede escribir su tabla sin tener la pieza.
   La 2.1 ya se lee, y salió así: la trajo la captura de un usuario con una
-  Radeon 740M donde el punto caliente y los recortes salían a guiones. Falta
-  validarla contra hardware: aquí solo hay una v1.3.
-- **Cuántas unidades de proceso tiene una gráfica Intel.** Un i5-1135G7 con
-  Iris Xe G7 sale con «5 unidades de ejecución» y esa gráfica tiene 80. Ese
-  cinco viene de otro sitio y está etiquetado como EU; hay que rastrear de
-  dónde sale antes de tocarlo, porque puede que lo correcto no sea corregir el
-  número sino dejar de llamarlo así: cada API cuenta a su manera y ya hay una
-  lección sobre eso más abajo.
-- **La ficha de una gráfica integrada es casi toda guiones.** En una Iris Xe,
-  «Relojes y enlace» sale con ocho de nueve campos vacíos y «Sensores» con diez
-  de trece: memoria de vídeo propia, enlace PCIe y reguladores no existen en
-  una integrada y no van a existir. No es un dato que falte, es que no aplica,
-  y la diferencia se nota en pantalla. Lo mismo en la imagen de compartir, que
-  enseña «Iris Xe · 11.5 GB» como si fuera VRAM cuando es la RAM del sistema
-  que puede usar.
+  Radeon 740M donde el punto caliente y los recortes salían a guiones. **Y ya
+  está validada contra hardware**: el 30 de agosto de 2026 esa misma 740M
+  enseñó punto caliente 31.4 °C y voltaje 0.755 V donde antes había guiones.
+  Aquí sigue habiendo solo una v1.3, así que de la 1.4 en adelante y del resto
+  de las 2.x no hay pieza a la que preguntar.
 
 **ARM se identifica, sin dejar de ser un programa de x86.** Donde no hay
 CPUID, `providers/armcpu.py` lee el MIDR de `/proc/cpuinfo` —quién hizo el
@@ -214,10 +205,12 @@ sysfs es igual en toda arquitectura.
 **NVIDIA ya está probada contra hardware.** Se escribió a ciegas siguiendo la
 API documentada, porque en esta máquina no hay ninguna GeForce, y el 26 de
 agosto de 2026 llegaron las capturas de dos equipos ajenos: una GTX 1660 Ti
-(TU116) y una RTX 3050 Mobile (GA107M). Acertó en todo lo comprobable —núcleos
-CUDA, anchura de bus, identificadores, UUID, el enlace bajado a PCIe 1.0 en
-reposo con su máximo bien leído, los motivos de recorte— así que `nvml.py` y
-`providers/nvidia.py` ya no son código de fe. Lo que sigue sin salir en NVIDIA
+(TU116) y una RTX 3050 Mobile (GA107M). Acertó en casi todo lo comprobable
+—anchura de bus, identificadores, UUID, el enlace bajado a PCIe 1.0 en reposo
+con su máximo bien leído, los motivos de recorte— así que `nvml.py` y
+`providers/nvidia.py` ya no son código de fe. En lo que no acertaba era en los
+núcleos CUDA, y se tardó en verlo porque el arreglo estaba escrito: la 3050
+seguía diciendo 16 y una RTX 4080 Laptop, 58. Están abajo, en las lecciones. Lo que sigue sin salir en NVIDIA
 es el tipo de memoria y las unidades de rasterizado: NVML no los publica.
 
 ⚠ **ARM no se ha ejecutado contra hardware.** Está probado contra
@@ -399,6 +392,27 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
 - **Contar en unidades de cómputo lo que cada fabricante cuenta a su manera**:
   64 CU de AMD y 2048 núcleos CUDA de NVIDIA no son la misma unidad, y bajo la
   misma etiqueta parece que una tarjeta tiene treinta veces más que la otra.
+- **Llenar con lo que cuenta una API un campo que describe el silicio**: las
+  «unidades de cómputo» de OpenCL son las de su modelo de programación, no las
+  del chip. En una Intel son los subslices —5 en una Iris Xe de 80 EU, que
+  agrupa dieciséis— y en una NVIDIA los multiprocesadores —16 en una RTX 3050
+  de 2048 núcleos, 58 en una RTX 4080 Laptop de 7424—. Puestas en
+  `compute_units`, `render` les pega la etiqueta del fabricante y salen «5 EU»
+  y «16 núcleos CUDA»: el número no es inventado y la frase es falsa. Y como
+  `GpuApis` corre justo detrás de `DrmGpus`, mucho antes que NVML y que el
+  ioctl de i915, ocupaba el campo y los que sí cuentan el silicio ya no lo
+  pisaban —solo escriben lo que está vacío—, así que el arreglo de
+  `_nucleos_cuda` llevaba escrito desde agosto sin llegar a aplicarse nunca.
+  Ese campo lo llena quien cuenta transistores: el ioctl de amdgpu, NVML y el
+  de i915. La cifra de OpenCL no se pierde, vive en su renglón de la tabla de
+  bibliotecas, que es donde se entiende de qué habla. En AMD las dos coinciden,
+  y por eso la máquina de casa no lo enseñaba.
+- **Montar un test sobre un estado que la ejecución real no produce**: el que
+  vigilaba justo esto le pasaba a `GpuApis` una NVIDIA con sus 2048 núcleos ya
+  puestos y comprobaba que OpenCL no los pisara. Verde siempre, y sin valor:
+  cuando ese proveedor corre de verdad, NVML todavía no ha pasado y el campo
+  está vacío, que es el único caso donde había algo que decidir. Un test que
+  fija a mano el estado de partida está eligiendo también qué rama se ejecuta.
 - **Decir «sin cable» de lo que no lleva cable**: un puente de máquinas
   virtuales apagado está parado, no desenchufado.
 - **Juntar un dato ausente con otro presente en el mismo renglón**: el
@@ -638,6 +652,31 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
 - **Pintar «sin dato» con la tipografía de las cifras**: el guion a treinta y
   seis píxeles es una raya gruesa, y en una Intel con cuatro de los seis
   cuadros vacíos la fila entera parecía tachada.
+- **Contestar con un guion a lo que no existe**: un guion dice «no lo sé», y en
+  la ficha de una integrada eso era falso diez veces seguidas. No falta el tipo
+  de memoria de una Iris Xe: es que no hay chip de memoria del que decirlo, y
+  no lo va a haber. Salía con un dato de once en «Memoria de video» y dos de
+  catorce en «Sensores», toda ella rayas. Son tres estados y no dos: hay dato,
+  no lo sé —guion— y sé que no existe, que se esconde y se nombra al pie de su
+  tarjeta, como ya se hacía con los conectores sin nada enchufado. Cambiar los
+  diez guiones por diez «no aplica» no valía: deja la ficha igual de vacía y
+  con más letra. Y el pie no es decoración, es lo que evita que algo
+  desaparezca en silencio: a quien le falte un campo que su tarjeta sí tiene,
+  lo lee ahí. En la tabla solo entra lo que se puede afirmar; el enlace PCIe se
+  queda con su guion porque la Radeon 740M también es integrada y publica su
+  «PCIe 4.0 × 16».
+- **Tomar por VRAM el montón de memoria que declara Vulkan**: en una integrada
+  ese montón es la RAM del sistema. Una Iris Xe declaraba 11.5 GB en un equipo
+  con 15.3 de RAM, y puesto como «Total» salía en la insignia y en la imagen de
+  compartir como «Iris Xe · 11.5 GB», que se lee como una tarjeta con once giga
+  y medio de VRAM. El modelo ya tenía el campo donde va —la GTT, que es RAM
+  prestada— y hasta el comentario que dice por qué va aparte. Con `integrated`
+  a None no se toca: quitarle la memoria a una dedicada es peor.
+- **Escribir una etiqueta al revés de su propia explicación**: la fila de la
+  GTT se llamaba «Prestada al sistema» y su ayuda decía «RAM del equipo que el
+  driver le presta a la tarjeta», que es lo contrario. Pasó desapercibido
+  mientras era una fila entre diez; en una integrada, donde es la única que
+  queda, se lee de golpe.
 - **Poner una marca de color sin nada que la traduzca**: el punto que señala
   los mejores núcleos no significa nada por sí solo. Su leyenda va debajo de
   la propia rejilla, no en la ficha de al lado: separadas, el punto se queda
@@ -892,7 +931,7 @@ por `_()`, la segunda llamada recibe «Uso» —que no es una clave— y devuelv
 inglés: la tupla llevaba once claves y una traducción ya hecha, y era la única
 que no cambiaba de idioma. Hay un test que lo vigila.
 
-La interfaz está entera en los dos idiomas: 891 claves, ninguna sin traducir.
+La interfaz está entera en los dos idiomas: 897 claves, ninguna sin traducir.
 Hay un test que recorre el árbol de sintaxis de cada página buscando
 constructores de widget con una cadena española a pelo, porque eso es lo que
 no se ve hasta abrir la pantalla en el otro idioma y ningún test normal lo
