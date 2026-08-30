@@ -138,3 +138,42 @@ class TestLaMarcaDeLasCapturas(unittest.TestCase):
         """Las del repositorio van al README, o sea a un sitio público."""
         avisos = self._comprobador()._capturas_delatoras()
         self.assertEqual(avisos, [], "hay capturas sin hacer con --anonimo")
+
+
+class TestElNombreDelEquipoSeColabaPorLaRed(unittest.TestCase):
+    """El nombre no vive solo en su campo.
+
+    Una interfaz de Tailscale, de ZeroTier o un puente hecho a mano se llaman
+    como la máquina. Tapando `system.hostname` el informe seguía enseñando
+    «alex_portatil (virtual)» en la lista de red, y eso es un archivo pensado
+    para pegar en público. Se vio en el primer informe de un portátil.
+    """
+
+    def _foto(self, equipo="alex_portatil", interfaz="alex_portatil"):
+        from silux.model import (Board, CpuInfo, NetworkInterface, Snapshot,
+                                 System)
+
+        return Snapshot(monotonic_ns=0, cpu=CpuInfo(), board=Board(),
+                        system=System(hostname=equipo),
+                        network=(NetworkInterface(name=interfaz, up=False),
+                                 NetworkInterface(name="wlan0", up=True)))
+
+    def test_la_interfaz_que_se_llama_como_el_equipo_se_tapa(self):
+        tapada = privacidad.anonimizar(self._foto())
+        self.assertNotIn("alex_portatil", [i.name for i in tapada.network])
+
+    def test_las_demas_conservan_su_nombre(self):
+        tapada = privacidad.anonimizar(self._foto())
+        self.assertIn("wlan0", [i.name for i in tapada.network])
+
+    def test_también_cuando_el_nombre_va_dentro(self):
+        """`docker-alex_portatil` o `br-alex_portatil-0`."""
+        tapada = privacidad.anonimizar(
+            self._foto(interfaz="br-alex_portatil-0"))
+        self.assertNotIn("alex_portatil", tapada.network[0].name)
+
+    def test_un_nombre_de_equipo_muy_corto_no_arrasa_con_todo(self):
+        """Con un equipo llamado «pc», tapar esas dos letras destrozaría
+        «enp5s0» y media lista sin motivo."""
+        tapada = privacidad.anonimizar(self._foto(equipo="pc", interfaz="pcie0"))
+        self.assertEqual(tapada.network[0].name, "pcie0")

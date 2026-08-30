@@ -34,9 +34,24 @@ def _tapar(valor: Optional[str], relleno: str = "0") -> Optional[str]:
     return relleno * len(valor)
 
 
+def _sin_el_equipo(texto: Optional[str], equipo: Optional[str]) -> Optional[str]:
+    """Quita el nombre del equipo de donde se haya colado.
+
+    Hace falta porque el nombre no vive solo en su campo. Una interfaz de
+    Tailscale, de ZeroTier o un puente creado a mano se llaman como la máquina,
+    y tapando `system.hostname` el informe seguía enseñando
+    «alex_portatil (virtual)» en la lista de red. Se vio en el primer informe
+    de un portátil, o sea a la primera que alguien lo usó donde tenía sentido.
+    """
+    if not texto or not equipo or len(equipo) < 3:
+        return texto
+    return texto.replace(equipo, EQUIPO) if equipo in texto else texto
+
+
 def anonimizar(snapshot: Snapshot) -> Snapshot:
     """La misma foto sin lo que señala a un equipo concreto."""
     cambios: dict = {}
+    equipo = snapshot.system.hostname if snapshot.system else None
 
     if snapshot.system and snapshot.system.hostname:
         cambios["system"] = dataclasses.replace(snapshot.system, hostname=EQUIPO)
@@ -51,6 +66,9 @@ def anonimizar(snapshot: Snapshot) -> Snapshot:
         cambios["network"] = tuple(
             dataclasses.replace(
                 i,
+                # El nombre también: las interfaces virtuales se llaman como
+                # la máquina más veces de lo que parece.
+                name=_sin_el_equipo(i.name, equipo) or i.name,
                 mac=MAC if i.mac else None,
                 ipv4=IPV4 if i.ipv4 else None,
                 ipv6=tuple(IPV6 for _ in i.ipv6),

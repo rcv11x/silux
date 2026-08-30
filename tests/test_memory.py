@@ -74,3 +74,51 @@ class TestCanalesDeMemoria(unittest.TestCase):
     def test_un_solo_modulo_sin_zocalos_libres_no_se_reprocha(self):
         """Si no hay dónde poner otro, el aviso solo sirve para fastidiar."""
         self.assertIsNone(render.memory_channel_warning([self._mod("DIMM_A1")]))
+
+
+class TestElCanalNoEsSoloLaLetra(unittest.TestCase):
+    """Dos canales pueden llamarse los dos «A».
+
+    Lo trajo un ThinkPad T14 con dos módulos bien repartidos: el firmware los
+    llama «Controller0-ChannelA» y «Controller1-ChannelA-DIMM0», que son dos
+    canales, uno por controlador. Contando solo la letra salía «canal único»
+    en una máquina que va en doble canal, y encima con el consejo de repartir
+    los módulos, que ya estaban repartidos.
+    """
+
+    class _Modulo:
+        def __init__(self, locator, bank=None, populated=True):
+            self.locator, self.bank, self.populated = locator, bank, populated
+
+    def test_dos_controladores_son_dos_canales(self):
+        from silux import render
+
+        modulos = [self._Modulo("Controller0-ChannelA"),
+                   self._Modulo("Controller1-ChannelA-DIMM0")]
+        self.assertEqual(render.memory_channels(modulos), 2)
+
+    def test_y_no_se_aconseja_repartir_lo_que_ya_está_repartido(self):
+        from silux import render
+
+        modulos = [self._Modulo("Controller0-ChannelA"),
+                   self._Modulo("Controller1-ChannelA-DIMM0")]
+        self.assertIsNone(render.memory_channel_warning(modulos))
+
+    def test_dos_en_el_mismo_controlador_siguen_siendo_uno(self):
+        from silux import render
+
+        modulos = [self._Modulo("ChannelA-DIMM0"),
+                   self._Modulo("ChannelA-DIMM1")]
+        self.assertEqual(render.memory_channels(modulos), 1)
+        self.assertIsNotNone(render.memory_channel_warning(modulos))
+
+    def test_el_sobremesa_de_toda_la_vida_no_cambia(self):
+        from silux import render
+
+        modulos = [self._Modulo("DIMM A1"), self._Modulo("DIMM B1")]
+        self.assertEqual(render.memory_channels(modulos), 2)
+
+    def test_sin_canal_en_el_localizador_se_sigue_callando(self):
+        from silux import render
+
+        self.assertIsNone(render.memory_channels([self._Modulo("BANK 0")]))

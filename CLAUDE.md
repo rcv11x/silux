@@ -25,7 +25,7 @@ python3 tools/build_appimage.py --container   # el AppImage que se reparte
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **1203** y tardan poco más de un minuto. Si sale bastante
+Los tests son **1212** y tardan poco más de un minuto. Si sale bastante
 menos, falta algo por recoger.
 
 `--container` no es opcional para repartir: sin él se construye contra el
@@ -511,6 +511,21 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   pasaba. El modo rápido corre a menos GHz que el lento (4,29 contra 4,34) y
   calienta más porque hace más trabajo por ciclo. La temperatura era la
   consecuencia, no la causa, y con r = 0,98 nadie lo habría dudado.
+- **Tapar el nombre del equipo solo en su campo**: `privacidad.anonimizar`
+  cambiaba `system.hostname` y ya, y el nombre no vive solo ahí. Una interfaz
+  de Tailscale, de ZeroTier o un puente hecho a mano se llaman como la máquina,
+  así que el informe seguía enseñando «alex_portatil (virtual)» en la lista de
+  red, en el archivo que se le pide a la gente para pegar en público. Se vio en
+  el primer informe de un portátil, o sea la primera vez que alguien lo usó
+  donde tenía sentido. Ojo al arreglarlo: si el equipo se llama «pc», sustituir
+  esas dos letras destroza «pcie0» y media lista, así que por debajo de tres
+  caracteres no se toca nada.
+- **Identificar un canal de memoria por su letra**: no es única. Un ThinkPad
+  T14 con los dos módulos bien repartidos los llama «Controller0-ChannelA» y
+  «Controller1-ChannelA-DIMM0»: dos canales, uno por controlador, y los dos «A».
+  Contando letras salía «canal único» en una máquina que va en doble canal, y
+  encima con el aviso de repartir los módulos, que ya estaban repartidos. El
+  canal es el par controlador–letra cuando el firmware nombra el controlador.
 - **Creer que todo lo que dice ser una batería es la del equipo**:
   `/sys/class/power_supply` mezcla el cargador, los puertos USB-C y cualquier
   periférico con pila, y el ratón Logitech publica `hidpp_battery_0` con
