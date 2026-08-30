@@ -665,6 +665,14 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
 - **Tomar por normal un aviso del comprobador del AppImage**: decía que trece
   bibliotecas se cogían del sistema «y son normales», y dos de ellas hacían
   falta de verdad.
+- **Que un test lea el hardware de quien lo ejecuta y además espere encontrar
+  algo**: los del buscador de sensores montaban el árbol con
+  `Collector().sample()` y luego exigían que filtrar por «temperatura» diera
+  más de cero. En una máquina sin `hwmon` no hay ninguna, así que el filtro
+  acierta al no devolver nada y el test lo llama fallo. Fallaba en el CI
+  siempre y aquí de vez en cuando, según lo que publicara el equipo en ese
+  momento, que es la peor mezcla: parece un fantasma. Comparar el árbol
+  consigo mismo sí puede leer la máquina; exigir un resultado concreto, no.
 - **Dar por probado lo que el `and` nunca llega a evaluar**: `_identidad` en
   `providers/drm.py` llamaba a `_igpu_de_la_cpu(draft)` sin tener `draft` en la
   firma, o sea un `NameError` escrito y esperando. No saltaba nunca aquí porque
