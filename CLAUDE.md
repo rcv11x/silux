@@ -25,7 +25,7 @@ python3 tools/build_appimage.py --container   # el AppImage que se reparte
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **1192** y tardan poco más de un minuto. Si sale bastante
+Los tests son **1203** y tardan poco más de un minuto. Si sale bastante
 menos, falta algo por recoger.
 
 `--container` no es opcional para repartir: sin él se construye contra el
@@ -181,8 +181,11 @@ códecs que acelera, de VA-API atada a su nodo de render. Su temperatura no
 existe por ningún camino. Queda pendiente:
 
 - **Las versiones de `gpu_metrics` de la 1.4 en adelante**, que reordenaron los
-  campos, y las 2.x de las APU. Hoy se reconocen y se dejan pasar en vez de
-  interpretarlas mal.
+  campos, y las 2.x de las APU a partir de la 2.1. Se reconocen y se dejan
+  pasar en vez de interpretarlas mal, y ahora se dice cuál es y sale en el
+  informe: con eso y el modelo se puede escribir su tabla sin tener la pieza.
+  La 2.1 ya se lee, y salió así: la trajo la captura de un usuario con una
+  Radeon 740M donde el punto caliente y los recortes salían a guiones.
 
 **ARM se identifica, sin dejar de ser un programa de x86.** Donde no hay
 CPUID, `providers/armcpu.py` lee el MIDR de `/proc/cpuinfo` —quién hizo el

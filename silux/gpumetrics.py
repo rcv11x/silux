@@ -71,12 +71,49 @@ _V1_3 = _V1_0 | {
     "throttle_independent": ("Q", 112),
 }
 
+# Las 2.x son las de las APU, y no son una 1.x con campos añadidos: la
+# estructura es otra. Salen de `gpu_metrics_v2_1` en
+# `drivers/gpu/drm/amd/include/kgd_pp_interface.h`, y los sitios están
+# calculados con las reglas de alineación de C —el `uint64` del reloj obliga a
+# alinear a ocho— para un total de 120 bytes, que es lo que declara la tabla.
+#
+# Lo que una APU no tiene no está: no hay VRAM propia que medir, ni
+# reguladores de voltaje aparte, ni enlace PCIe que negociar. En su lugar trae
+# lo suyo: la temperatura y el reloj de cada núcleo del procesador, y el
+# consumo repartido entre CPU, SoC y gráfica. De momento se leen los campos
+# que el modelo ya sabe enseñar.
+#
+# `fan_pwm` no se lee como `fan_rpm` a propósito: uno es un ciclo de trabajo de
+# 0 a 255 y el otro son revoluciones por minuto. Enseñar un PWM donde se espera
+# una velocidad daría un ventilador a 200 RPM que no existe.
+_V2_1 = {
+    "temp_edge": ("H", 4),           # temperature_gfx
+    "temp_hotspot": ("H", 6),        # temperature_soc
+    "gfx_activity": ("H", 28),
+    "video_activity": ("H", 30),     # average_mm_activity
+    "socket_power": ("H", 40),
+    "gfx_clock_average": ("H", 64),
+    "soc_clock_average": ("H", 66),
+    "memory_clock_average": ("H", 68),
+    "gfx_clock": ("H", 76),
+    "soc_clock": ("H", 78),
+    "memory_clock": ("H", 80),
+    "throttle_status": ("I", 108),
+}
+
 VERSIONES = {
     (1, 0): _V1_0,
     (1, 1): _V1_0,
     (1, 2): _V1_0,
     (1, 3): _V1_3,
+    (2, 1): _V2_1,
 }
+
+# Las versiones cuyas temperaturas vienen en centigrados y no en grados. El
+# driver copia lo que da el firmware sin convertirlo, mientras que las
+# funciones normales de sensores dividen por cien, así que en las 2.x un 44,1
+# llega como 4410.
+CENTIGRADOS = {(2, 1)}
 
 # Un campo a todo unos es «este chip no lo mide». Hay que descartarlo antes de
 # enseñar 65 535 grados o un reloj de cuatro mil millones.
@@ -136,7 +173,21 @@ def parse(raw: bytes) -> Optional[Metrics]:
         return None if valor == SIN_DATO[formato_campo] else valor
 
     mhz = lambda nombre: (lambda v: v * 1_000_000 if v else None)(leer(nombre))
-    grados = lambda nombre: (lambda v: float(v) if v is not None else None)(leer(nombre))
+    def grados(nombre: str) -> Optional[float]:
+        """Una temperatura, venga en grados o en centigrados.
+
+        La versión dice cuál esperar, pero además se comprueba el rango, y no
+        por desconfianza: es que un error aquí no se detecta solo. Una GPU va
+        entre 0 y 125 grados, así que un 4410 no puede ser grados y un 44 no
+        puede ser centigrados. Los dos casos se distinguen sin ambigüedad y sin
+        depender de acertar la versión.
+        """
+        valor = leer(nombre)
+        if valor is None:
+            return None
+        if valor > 200:                  # ninguna GPU llega a 200 grados
+            return round(valor / 100, 1)
+        return float(valor)
     voltios = lambda nombre: (lambda v: round(v / 1000, 3) if v else None)(leer(nombre))
     porcentaje = lambda nombre: (lambda v: float(v) if v is not None and v <= 100 else None)(leer(nombre))
 
