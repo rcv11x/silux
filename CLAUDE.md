@@ -185,7 +185,21 @@ existe por ningún camino. Queda pendiente:
   pasar en vez de interpretarlas mal, y ahora se dice cuál es y sale en el
   informe: con eso y el modelo se puede escribir su tabla sin tener la pieza.
   La 2.1 ya se lee, y salió así: la trajo la captura de un usuario con una
-  Radeon 740M donde el punto caliente y los recortes salían a guiones.
+  Radeon 740M donde el punto caliente y los recortes salían a guiones. Falta
+  validarla contra hardware: aquí solo hay una v1.3.
+- **Cuántas unidades de proceso tiene una gráfica Intel.** Un i5-1135G7 con
+  Iris Xe G7 sale con «5 unidades de ejecución» y esa gráfica tiene 80. Ese
+  cinco viene de otro sitio y está etiquetado como EU; hay que rastrear de
+  dónde sale antes de tocarlo, porque puede que lo correcto no sea corregir el
+  número sino dejar de llamarlo así: cada API cuenta a su manera y ya hay una
+  lección sobre eso más abajo.
+- **La ficha de una gráfica integrada es casi toda guiones.** En una Iris Xe,
+  «Relojes y enlace» sale con ocho de nueve campos vacíos y «Sensores» con diez
+  de trece: memoria de vídeo propia, enlace PCIe y reguladores no existen en
+  una integrada y no van a existir. No es un dato que falte, es que no aplica,
+  y la diferencia se nota en pantalla. Lo mismo en la imagen de compartir, que
+  enseña «Iris Xe · 11.5 GB» como si fuera VRAM cuando es la RAM del sistema
+  que puede usar.
 
 **ARM se identifica, sin dejar de ser un programa de x86.** Donde no hay
 CPUID, `providers/armcpu.py` lee el MIDR de `/proc/cpuinfo` —quién hizo el
