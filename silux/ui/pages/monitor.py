@@ -50,15 +50,10 @@ from ..widgets import (
     clear_layout,
 )
 
-# Cuántos decimales tiene sentido enseñar en cada magnitud.
-DECIMALS = {
-    SensorKind.TEMPERATURE: 1,
-    SensorKind.VOLTAGE: 3,
-    SensorKind.FAN: 0,
-    SensorKind.POWER: 1,
-    SensorKind.CURRENT: 2,
-    SensorKind.ENERGY: 0,
-}
+# Cuántos decimales tiene sentido enseñar en cada magnitud. La tabla está en
+# `render` porque el informe enseña los mismos sensores y tenerla dos veces es
+# tenerla mal la mitad de las veces.
+DECIMALS = render.SENSOR_DECIMALS
 
 
 class MonitorPage(QScrollArea):

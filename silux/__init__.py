@@ -16,7 +16,16 @@ La regla que sostiene todo el paquete: los proveedores leen *valores*
 El texto que ve el usuario se produce en `silux.render`, nunca antes.
 """
 
-__version__ = "0.1.0"
+# Sube cuando hay algo que el usuario nota. El número menor —de 0.1 a 0.2— se
+# reserva para cuando algo le cambia de verdad: una sección nueva, un dato que
+# antes no salía, o algo que deja de funcionar como funcionaba. El último
+# dígito, para arreglos que no obligan a leer nada.
+#
+# No es cosmético: sin esto, la única forma que tiene alguien de saber si va
+# atrasado es el identificador de construcción, y un hash no se compara de un
+# vistazo. Lo que cambia en cada versión está en CHANGELOG.md, y hay un test
+# que no deja subir este número sin escribirlo allí.
+__version__ = "0.2.0"
 
 
 def build_id() -> str:
@@ -28,8 +37,14 @@ def build_id() -> str:
 
     Nace de un problema concreto: la gente manda capturas de lo que le sale, y
     entre una y otra pasan arreglos. Sin esto, una captura de anteayer con un
-    fallo ya corregido se investiga otra vez desde cero, y la única pista es la
-    versión, que lleva meses siendo 0.1.0.
+    fallo ya corregido se investiga otra vez desde cero, y la versión sola no
+    basta: entre dos publicaciones hay decenas de commits y todos dicen lo
+    mismo.
+
+    No sustituye a `__version__` ni al revés, porque contestan a dos personas
+    distintas. Esto es para quien mantiene el programa: de qué commit exacto
+    salió esa copia. La versión es para quien lo usa: si va atrasado o no, que
+    es algo que un hash no dice.
 
     Tres sitios, en este orden. El archivo que escribe el empaquetador, que es
     el caso que importa porque el AppImage viaja sin repositorio. El propio git

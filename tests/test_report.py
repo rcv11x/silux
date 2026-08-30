@@ -10,9 +10,9 @@ import unittest
 from unittest import mock
 
 from silux import report
-from silux.model import (Board, Clocks, CpuInfo, CpuType, Gpu, GpuMemory, Need,
-                        NetworkInterface, Note, Sensor, SensorKind, Snapshot,
-                        System)
+from silux.model import (Board, Clocks, CpuInfo, CpuType, Disk, DiskHealth, Gpu,
+                        GpuMemory, Need, NetworkInterface, Note, Partition,
+                        PcieLink, Sensor, SensorKind, Snapshot, System)
 
 # Inventados a propósito, y de los rangos que existen para esto: 192.0.2.0/24
 # es la TEST-NET-1 de la RFC 5737 y 00:00:5E:00:53:xx el bloque que la RFC 7042
@@ -232,3 +232,175 @@ class TestRendimientoEnElInforme(unittest.TestCase):
         # Las condiciones son la mitad de lo que hace comparable una cifra.
         for esperado in ("Escala", "Gobernador", "performance", "Hilos"):
             self.assertIn(esperado, texto)
+
+
+class TestLasCategoriasSalenEnCastellano(unittest.TestCase):
+    """El informe no puede enseñar las claves de idioma en crudo.
+
+    La sección de sensores agrupa por categoría, y esas categorías son claves
+    —«cat.temperature»— porque los nombres que agrupan los inventa el programa
+    y son interfaz, no dato del equipo. Sin traducirlas, el informe decía
+    «cat.temperature (2), cat.power (2)» a todo el que lo abriera, que es
+    justo el archivo que se le pide a alguien cuando reporta un fallo.
+
+    Van en castellano y no en el idioma de quien lo genera, porque el resto del
+    informe es castellano fijo: «Procesador», «Placa base». Con `_()` normal,
+    un informe hecho con la interfaz en inglés mezclaría los dos idiomas en la
+    misma página.
+    """
+
+    def _con_varias_categorias(self) -> str:
+        sensores = (
+            Sensor(key="k/1", chip="k10temp", device="AMD Ryzen 7 5800X3D",
+                   label="Tctl", kind=SensorKind.TEMPERATURE, value=45.0),
+            Sensor(key="k/2", chip="k10temp", device="AMD Ryzen 7 5800X3D",
+                   label="Núcleo", kind=SensorKind.CLOCK, value=4_550.0),
+            Sensor(key="k/3", chip="nct6798", device="Gigabyte X570",
+                   label="Chasis", kind=SensorKind.FAN, value=900.0),
+        )
+        return report.build(_snapshot(sensors=sensores))
+
+    def test_no_se_cuela_ninguna_clave_cruda(self):
+        texto = self._con_varias_categorias()
+        self.assertNotIn("cat.", texto,
+                         "el informe enseña una clave de idioma sin traducir")
+
+    def test_y_lo_que_sale_es_el_nombre_castellano(self):
+        texto = self._con_varias_categorias()
+        for esperado in ("temperaturas", "relojes", "ventiladores"):
+            self.assertIn(esperado, texto,
+                          f"no aparece la categoría «{esperado}»")
+
+    def test_sigue_en_castellano_con_la_interfaz_en_ingles(self):
+        """Lo que rompería esto es cambiar `en_español` por `_`."""
+        from silux import i18n
+
+        anterior = i18n.actual()
+        try:
+            i18n.set_language("en")
+            texto = self._con_varias_categorias()
+        finally:
+            i18n.set_language(anterior)
+        self.assertIn("temperaturas", texto,
+                      "el informe cambió de idioma con la interfaz: se mezcla "
+                      "con el castellano fijo del resto")
+        self.assertNotIn("cat.", texto)
+
+
+def _disco(**cambios) -> Disk:
+    base = dict(
+        name="nvme0n1", model="SN850X 1000GB", vendor="WD_BLACK",
+        firmware="620361WD", serial=SERIE, size_bytes=1000 * 1000**3,
+        kind="NVMe", transport="nvme", temp_c=47.9,
+        link=PcieLink(current_speed_gts=16.0, current_width=4,
+                      max_speed_gts=16.0, max_width=4),
+        health=DiskHealth(power_on_hours=1200, written_bytes=45 * 1000**4,
+                          percentage_used=3, critical_warning="",
+                          unsafe_shutdowns=7),
+        partitions=(Partition(name="nvme0n1p1", size_bytes=500 * 1000**3,
+                              filesystem="btrfs", mountpoint="/media/pepe/copia",
+                              used_bytes=100 * 1000**3, free_bytes=400 * 1000**3),),
+    )
+    base.update(cambios)
+    return Disk(**base)
+
+
+class TestAlmacenamientoEnElInforme(unittest.TestCase):
+    """Los discos, que faltaban enteros.
+
+    Era la única de las once páginas que no salía en el informe, y se notaba al
+    pedirlo: para revisar un disco había que pedir además una captura. Aquí se
+    han corregido ya un fabricante mal sacado del modelo y un TBW 65 536 veces
+    pequeño, y ninguno de los dos se ve sin la cifra delante.
+    """
+
+    def test_hay_seccion_y_sale_el_disco(self):
+        texto = report.build(_snapshot(disks=(_disco(),)))
+        self.assertIn("## Almacenamiento", texto)
+        self.assertIn("SN850X 1000GB", texto)
+
+    def test_sin_discos_lo_dice_en_vez_de_callarse(self):
+        texto = report.build(_snapshot(disks=()))
+        self.assertIn("## Almacenamiento", texto)
+        self.assertIn("No se detectó ningún disco", texto)
+
+    def test_el_numero_de_serie_no_se_publica(self):
+        """Un disco lleva serie igual que una gráfica, y se tapa igual."""
+        texto = report.build(_snapshot(disks=(_disco(serial="WD-XYZ123456"),)))
+        self.assertNotIn("WD-XYZ123456", texto)
+
+    def test_no_se_dice_dos_veces_el_fabricante(self):
+        """El fabricante se saca del propio modelo: juntarlos duplica."""
+        texto = report.build(_snapshot(
+            disks=(_disco(vendor="Samsung", model="Samsung SSD 970 EVO Plus"),)))
+        self.assertNotIn("Samsung Samsung", texto)
+        self.assertIn("Samsung SSD 970 EVO Plus", texto)
+
+    def test_pero_se_pone_cuando_el_modelo_no_lo_trae(self):
+        texto = report.build(_snapshot(
+            disks=(_disco(vendor="Crucial", model="CT500MX500SSD1"),)))
+        self.assertIn("Crucial CT500MX500SSD1", texto)
+
+    def test_no_se_publican_los_puntos_de_montaje(self):
+        """Una ruta puede llevar dentro el nombre de quien usa el equipo."""
+        texto = report.build(_snapshot(disks=(_disco(),)))
+        self.assertNotIn("/media/pepe", texto)
+        self.assertNotIn("pepe", texto)
+
+    def test_la_salud_sale_con_sus_contadores(self):
+        texto = report.build(_snapshot(disks=(_disco(),)))
+        for esperado in ("1200 h encendido", "escritos", "vida consumida"):
+            self.assertIn(esperado, texto, f"falta «{esperado}»")
+
+    def test_los_apagones_bruscos_no_se_dan_por_avería(self):
+        """Cuentan cortes de luz y botones de reinicio, no un disco roto."""
+        texto = report.build(_snapshot(disks=(_disco(),)))
+        self.assertIn("7 apagones bruscos", texto)
+
+    def test_un_sata_no_finge_tener_enlace_propio(self):
+        """Quien negocia es su controladora, y la comparte con el cable."""
+        texto = report.build(_snapshot(
+            disks=(_disco(kind="HDD", transport="sata", link=None,
+                          health=None, partitions=()),)))
+        self.assertNotIn("Enlace:", texto.split("## Almacenamiento")[1])
+
+    def test_un_disco_pelado_no_revienta(self):
+        texto = report.build(_snapshot(disks=(Disk(name="sda"),)))
+        self.assertIn("## Almacenamiento", texto)
+
+
+class TestSensoresConDetalle(unittest.TestCase):
+    """El recuento decía cuántos hay; lo que se revisa es cómo se llaman."""
+
+    def test_sale_el_nombre_y_el_valor_de_cada_sensor(self):
+        sensores = (
+            Sensor(key="k/1", chip="k10temp", device="AMD Ryzen 7 5800X3D",
+                   label="Tctl", kind=SensorKind.TEMPERATURE, value=45.0),
+        )
+        texto = report.build(_snapshot(sensors=sensores))
+        self.assertIn("Tctl", texto)
+        self.assertIn("45.0", texto)
+
+    def test_un_voltaje_conserva_sus_decimales(self):
+        """A un decimal deja de ser un voltaje: 0,845 V se queda en 0,8."""
+        sensores = (
+            Sensor(key="v/1", chip="nct6798", device="Gigabyte X570",
+                   label="Vcore", kind=SensorKind.VOLTAGE, value=0.845),
+        )
+        texto = report.build(_snapshot(sensors=sensores))
+        self.assertIn("0.845", texto)
+
+
+class TestLaTablaDeDecimalesEsUna(unittest.TestCase):
+    """Dos tablas iguales en dos archivos se desincronizan solas.
+
+    La página de sensores tenía la suya y el informe habría necesitado otra.
+    Vive en `render`, que es donde el proyecto pone lo que convierte valores en
+    texto, y la página la toma de allí.
+    """
+
+    def test_la_pagina_de_sensores_usa_la_de_render(self):
+        from silux import render
+        from silux.ui.pages import monitor
+
+        self.assertIs(monitor.DECIMALS, render.SENSOR_DECIMALS)
