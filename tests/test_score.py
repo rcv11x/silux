@@ -196,3 +196,37 @@ class TestDondeCaeUnaPuntuacion(unittest.TestCase):
         with self._con([800, 900, 1000, 1100, 1200]):
             self.assertGreater(score.comparar(self.PIEZA, 1300).desvio, 0)
             self.assertLess(score.comparar(self.PIEZA, 700).desvio, 0)
+
+
+class TestNoSeMezclanEscalas(unittest.TestCase):
+    """Dos pruebas medidas con escalas distintas no se comparan.
+
+    Al rehacer la escala, la cifra de un hilo se movió un 68 % sin que el
+    equipo cambiara. Sin guardar con cuál se midió cada prueba, las viejas y
+    las nuevas salían en la misma tabla como si la diferencia fuera del
+    procesador.
+    """
+
+    def _entrada(self, version):
+        from silux import history
+
+        return history.Entry(timestamp=0, cpu="Una CPU", threads=8,
+                             seconds=15.0, scores={}, score_version=version)
+
+    def test_cada_prueba_guarda_con_que_escala_se_midio(self):
+        from silux import benchmark, history
+
+        vacio = benchmark.Result(measures=[], conditions=benchmark.Conditions(),
+                                 warnings=[])
+        entrada = history.from_result(vacio, "Una CPU", 15.0)
+        self.assertEqual(entrada.score_version, score.VERSION)
+
+    def test_dos_escalas_distintas_no_son_comparables(self):
+        vieja, nueva = self._entrada(score.VERSION - 1), self._entrada(score.VERSION)
+        self.assertFalse(nueva.comparable_con(vieja))
+        self.assertTrue(nueva.comparable_con(self._entrada(score.VERSION)))
+
+    def test_una_prueba_anterior_a_esto_tampoco_lo_es(self):
+        """Las guardadas antes no dicen con qué escala se midieron."""
+        self.assertFalse(self._entrada(score.VERSION).comparable_con(
+            self._entrada(None)))

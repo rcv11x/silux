@@ -139,6 +139,15 @@ class CpuLiveSection(QWidget):
                 render.power_headline(power) or render.power_breakdown(power),
                 render.power_tooltip(power),
             )
+        else:
+            # El contador de energía existe en casi todos los procesadores,
+            # pero muchas distribuciones lo reservan a root desde CVE-2020-8694.
+            # Sin esto la ficha se quedaba con «— W» y ni una palabra, que se
+            # lee como que el programa no sabe leerlo. El motivo ya está abajo,
+            # en su aviso; aquí va la mitad que se ve sin bajar.
+            self.tile_power.set_detail(
+                _("cpu.power.locked") if snapshot.privileged.supported
+                else _("cpu.power.none"))
 
     def _apply_cores(self, snapshot: Snapshot) -> None:
         # Los núcleos que el firmware marca como los mejores de la pieza. Se
