@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "version_formula": 3,
+  "version_formula": 4,
   "about": "Lo que da cada carga en la pieza que sirve de patrón. Su único papel es poner las cinco en la misma escala: sumadas en crudo, la compresión pesada valía el 82 % de la puntuación y las otras cuatro eran decoración. Cambiar estos números mueve todas las puntuaciones a la vez, así que van atados a «version_formula».",
   "patron": {
     "cpu": "AMD Ryzen 7 5800X3D",
@@ -8,21 +8,21 @@
     "segundos": 15.0,
     "gobernador": "performance",
     "carga_de_fondo": 0.8,
-    "temperatura_pico_c": 84.6,
+    "temperatura_pico_c": 88.0,
     "provisional": false
   },
   "un_hilo": {
-    "compresion": 203.06,
-    "compresion_dura": 3021.36,
-    "derivacion": 232.77,
-    "hash": 247.88,
-    "memoria": 104.37
+    "compresion": 203.08,
+    "compresion_dura": 156.81,
+    "derivacion": 227.66,
+    "hash": 248.83,
+    "memoria": 106.11
   },
   "multihilo": {
-    "compresion": 1712.91,
-    "compresion_dura": 32117.62,
-    "derivacion": 1957.42,
-    "hash": 2193.77,
-    "memoria": 796.06
+    "compresion": 1722.75,
+    "compresion_dura": 1561.3,
+    "derivacion": 1963.4,
+    "hash": 2195.32,
+    "memoria": 851.0
   }
 }
