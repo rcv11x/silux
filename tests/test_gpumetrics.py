@@ -106,7 +106,8 @@ class TestVersiones(unittest.TestCase):
         # Las v1.4 en adelante reordenaron los campos. Leerlas con las
         # posiciones de una v1.3 daría cifras creíbles y equivocadas.
         self.assertIsNone(gpumetrics.parse(tabla(version=(1, 4))))
-        self.assertIsNone(gpumetrics.parse(tabla(version=(2, 1))))
+        # La 2.1 se añadió con la captura de una Radeon 740M; la 2.4 aún no.
+        self.assertIsNone(gpumetrics.parse(tabla(version=(2, 4))))
 
     def test_pero_su_version_si_se_puede_saber(self):
         self.assertEqual(gpumetrics.version_of(tabla(version=(1, 4))), "1.4")
@@ -164,9 +165,10 @@ class TestUnaVersionQueNoSeSabeLeer(unittest.TestCase):
         self.assertEqual(version, "1.4")
         self.assertEqual(tamano, 120)
 
-    def test_las_2_x_de_las_apu_también(self):
-        version, _tamano = gpumetrics.sin_interpretar(self._tabla(2, 1, 200))
-        self.assertEqual(version, "2.1")
+    def test_una_2_x_que_todavía_no_está_también(self):
+        """La 2.1 ya se lee; las siguientes de las APU aún no."""
+        version, _tamano = gpumetrics.sin_interpretar(self._tabla(2, 4, 200))
+        self.assertEqual(version, "2.4")
 
     def test_sin_tabla_no_hay_nada_que_declarar(self):
         self.assertIsNone(gpumetrics.sin_interpretar(self.raiz))
@@ -178,3 +180,92 @@ class TestUnaVersionQueNoSeSabeLeer(unittest.TestCase):
     def test_no_se_inventa_una_lectura_de_lo_que_no_entiende(self):
         """Lo importante: sigue sin interpretarse, solo se dice que está."""
         self.assertIsNone(gpumetrics.read(self._tabla(1, 4)))
+
+
+class TestLaV2DeLasApu(unittest.TestCase):
+    """La telemetría de las gráficas integradas.
+
+    No es una 1.x con campos añadidos: la estructura es otra. Las posiciones
+    salen de `gpu_metrics_v2_1` en `kgd_pp_interface.h`, calculadas con las
+    reglas de alineación de C —el `uint64` del reloj obliga a alinear a ocho—
+    y dan 120 bytes, que es lo que declara la tabla.
+
+    La trajo la captura de un usuario con una Radeon 740M, donde el punto
+    caliente, los reguladores y el motivo de recorte salían a guiones.
+    """
+
+    def _tabla(self, **campos):
+        datos = bytearray(120)
+        struct.pack_into("<HBB", datos, 0, 120, 2, 1)
+        sitios = {
+            "temperature_gfx": ("H", 4), "temperature_soc": ("H", 6),
+            "gfx_activity": ("H", 28), "mm_activity": ("H", 30),
+            "socket_power": ("H", 40), "avg_gfxclk": ("H", 64),
+            "avg_socclk": ("H", 66), "avg_uclk": ("H", 68),
+            "gfxclk": ("H", 76), "socclk": ("H", 78), "uclk": ("H", 80),
+            "throttle": ("I", 108),
+        }
+        for nombre, valor in campos.items():
+            formato, sitio = sitios[nombre]
+            struct.pack_into("<" + formato, datos, sitio, valor)
+        return bytes(datos)
+
+    def test_la_estructura_mide_lo_que_dice_el_kernel(self):
+        """120 bytes: si no cuadran, algún desplazamiento está mal."""
+        self.assertEqual(len(self._tabla()), 120)
+
+    def test_se_reconoce_y_ya_no_se_descarta(self):
+        medidas = gpumetrics.parse(self._tabla(gfxclk=800))
+        self.assertIsNotNone(medidas)
+        self.assertEqual(medidas.version, "2.1")
+
+    def test_las_temperaturas_vienen_en_centigrados(self):
+        """El driver copia lo del firmware sin convertir, y ahí van ×100."""
+        medidas = gpumetrics.parse(self._tabla(temperature_gfx=4210))
+        self.assertAlmostEqual(medidas.temp_edge_c, 42.1)
+
+    def test_pero_una_temperatura_en_grados_también_se_entiende(self):
+        """Se decide por rango y no por fe: ninguna GPU llega a 200 grados,
+        así que 44 no puede ser centigrados ni 4410 puede ser grados."""
+        medidas = gpumetrics.parse(self._tabla(temperature_gfx=44))
+        self.assertAlmostEqual(medidas.temp_edge_c, 44.0)
+
+    def test_los_relojes_salen_en_hercios(self):
+        medidas = gpumetrics.parse(self._tabla(gfxclk=800, uclk=1000))
+        self.assertEqual(medidas.gfx_clock_hz, 800_000_000)
+        self.assertEqual(medidas.memory_clock_hz, 1_000_000_000)
+
+    def test_el_medio_y_el_de_ahora_son_distintos_campos(self):
+        medidas = gpumetrics.parse(self._tabla(gfxclk=800, avg_gfxclk=780))
+        self.assertEqual(medidas.gfx_clock_hz, 800_000_000)
+        self.assertEqual(medidas.gfx_clock_average_hz, 780_000_000)
+
+    def test_el_uso_del_motor_de_video_es_mm_activity(self):
+        medidas = gpumetrics.parse(self._tabla(mm_activity=35))
+        self.assertAlmostEqual(medidas.video_activity_percent, 35.0)
+
+    def test_el_recorte_se_lee(self):
+        self.assertTrue(gpumetrics.parse(self._tabla(throttle=1 << 2)).throttled)
+        self.assertFalse(gpumetrics.parse(self._tabla(throttle=0)).throttled)
+
+    def test_lo_que_una_apu_no_tiene_sale_vacio_y_no_inventado(self):
+        """Sin VRAM propia no hay temperatura de memoria ni reguladores
+        aparte, y sin enlace propio no hay ancho que enseñar."""
+        medidas = gpumetrics.parse(self._tabla(gfxclk=800))
+        self.assertIsNone(medidas.temp_memory_c)
+        self.assertIsNone(medidas.voltage_gfx_v)
+        self.assertIsNone(medidas.link_width)
+
+    def test_el_ventilador_no_se_saca_del_pwm(self):
+        """`fan_pwm` es un ciclo de trabajo de 0 a 255, no revoluciones: darlo
+        por RPM enseñaría un ventilador a 200 vueltas que no existe."""
+        self.assertNotIn("fan_rpm", gpumetrics.VERSIONES[(2, 1)])
+
+    def test_ya_no_se_declara_ilegible(self):
+        import pathlib
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            raiz = pathlib.Path(tmp)
+            (raiz / "gpu_metrics").write_bytes(self._tabla(gfxclk=800))
+            self.assertIsNone(gpumetrics.sin_interpretar(raiz))
