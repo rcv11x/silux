@@ -428,10 +428,45 @@ class TestBuscadorDeSensores(unittest.TestCase):
         arbol.set_filter("")
         self.assertEqual(arbol.coincidencias(), completos)
 
+    def _arbol_inventado(self):
+        """Un árbol que no depende de lo que tenga puesto quien ejecuta esto.
+
+        Los tests que solo se comparan consigo mismos pueden leer los sensores
+        de la máquina, pero los dos que exigen que un filtro encuentre algo,
+        no: en una máquina sin `hwmon` no hay ninguna temperatura que buscar y
+        el filtro acierta al no devolver nada. Fallaban en el CI, y aquí solo
+        de vez en cuando, según lo que publicara el equipo en ese momento.
+        """
+        from silux.model import Sensor, SensorKind
+        from silux.ui import theme
+        from silux.ui.widgets import SensorTree
+
+        sensores = {
+            "Procesador": {
+                "cat.temperature": (
+                    Sensor(key="k/1", chip="k10temp", device="Procesador",
+                           label="Tctl", kind=SensorKind.TEMPERATURE, value=45.0),),
+                "cat.clock": (
+                    Sensor(key="k/2", chip="k10temp", device="Procesador",
+                           label="Núcleo 0", kind=SensorKind.CLOCK, value=4000.0),),
+            },
+            "Placa base": {
+                "cat.fan": (
+                    Sensor(key="n/1", chip="nct6798", device="Placa base",
+                           label="Ventilador de caja", kind=SensorKind.FAN,
+                           value=900.0),),
+            },
+        }
+        arbol = SensorTree(theme.DARK)
+        arbol.rebuild(sensores)
+        arbol.show()
+        self.app.processEvents()
+        return arbol
+
     def test_filtrar_deja_menos_de_lo_que_habia(self):
-        arbol = self._tree()
+        arbol = self._arbol_inventado()
         completos = arbol.coincidencias()
-        arbol.set_filter("temperatura")
+        arbol.set_filter("tctl")
         self.assertLess(arbol.coincidencias(), completos)
         self.assertGreater(arbol.coincidencias(), 0)
 
@@ -462,10 +497,10 @@ class TestBuscadorDeSensores(unittest.TestCase):
     def test_buscar_abre_las_ramas(self):
         """Filtrar y dejar el resultado escondido dentro de una rama plegada
         no encuentra nada."""
-        arbol = self._tree()
+        arbol = self._arbol_inventado()
         for indice in range(arbol.topLevelItemCount()):
             arbol.topLevelItem(indice).setExpanded(False)
-        arbol.set_filter("temperatura")
+        arbol.set_filter("tctl")
         visibles = [arbol.topLevelItem(i) for i in range(arbol.topLevelItemCount())]
         conresultados = [a for a in visibles if not a.isHidden()]
         self.assertTrue(conresultados)
