@@ -113,6 +113,8 @@ class SettingsPage(QScrollArea):
     # La página de ajustes no tiene la foto del hardware; la pide y ya la
     # guarda la ventana, que sí la tiene.
     report_requested = Signal()
+    share_copy_requested = Signal()
+    share_save_requested = Signal()
 
     def __init__(self, prefs: Preferences, parent=None):
         super().__init__(parent)
@@ -262,8 +264,21 @@ class SettingsPage(QScrollArea):
             _("settings.tip.report")
         )
         informe.clicked.connect(self.report_requested.emit)
+
+        # Al lado del informe porque responden a la misma intención: sacar algo
+        # de aquí para enseñárselo a otro. El informe es para diagnosticar y
+        # esto es para presumir, y las dos cosas acaban pegadas en un chat.
+        copiar = QPushButton(_("share.button.copy"))
+        copiar.setToolTip(_("share.tip"))
+        copiar.clicked.connect(self.share_copy_requested.emit)
+        guardar = QPushButton(_("share.button.save"))
+        guardar.setToolTip(_("share.tip"))
+        guardar.clicked.connect(self.share_save_requested.emit)
+
         fila_informe = QHBoxLayout()
         fila_informe.addStretch(1)
+        fila_informe.addWidget(copiar)
+        fila_informe.addWidget(guardar)
         fila_informe.addWidget(informe)
         card.body.addLayout(fila_informe)
 

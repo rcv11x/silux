@@ -25,7 +25,7 @@ python3 tools/build_appimage.py --container   # el AppImage que se reparte
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **1157** y tardan poco más de un minuto. Si sale bastante
+Los tests son **1166** y tardan poco más de un minuto. Si sale bastante
 menos, falta algo por recoger.
 
 `--container` no es opcional para repartir: sin él se construye contra el
@@ -139,6 +139,7 @@ silux/
 ├─ history.py      historial de pruebas de este equipo
 ├─ score.py        la puntuación comparable entre equipos, y su escala
 ├─ privacidad.py   qué se omite de un informe público y qué no
+├─ ui/tarjeta.py  la imagen del equipo para pegar en un chat, ya anonimizada
 ├─ i18n.py        el idioma de la interfaz; el original es el español
 ├─ throttling.py  desde cuándo lleva frenándose algo, y por qué
 ├─ registro.py    graba la sesión a un CSV, fila a fila
@@ -829,7 +830,7 @@ por `_()`, la segunda llamada recibe «Uso» —que no es una clave— y devuelv
 inglés: la tupla llevaba once claves y una traducción ya hecha, y era la única
 que no cambiaba de idioma. Hay un test que lo vigila.
 
-La interfaz está entera en los dos idiomas: 843 claves, ninguna sin traducir.
+La interfaz está entera en los dos idiomas: 854 claves, ninguna sin traducir.
 Hay un test que recorre el árbol de sintaxis de cada página buscando
 constructores de widget con una cadena española a pelo, porque eso es lo que
 no se ve hasta abrir la pantalla en el otro idioma y ningún test normal lo
