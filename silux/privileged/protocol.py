@@ -40,6 +40,11 @@ SMART_DATA_BYTES = 512            # lo que ocupa la respuesta de los dos
 # Registros MSR permitidos, con lo que significan. La lista blanca existe
 # porque un MSR arbitrario puede exponer información sensible o depender de
 # efectos secundarios; estos son de solo lectura y bien documentados.
+# La versión del ayudante que este programa necesita. Vive aquí además de en
+# `helper.py` porque el ayudante viaja solo —por argv o como copia instalada—
+# y no puede importar nada de aquí; hay un test que no las deja separarse.
+VERSION_REQUERIDA = 2
+
 MSR_ALLOWED: dict[int, str] = {
     0x0198: "IA32_PERF_STATUS",          # voltaje y ratio actuales
     0x0199: "IA32_PERF_CTL",             # ratio solicitado

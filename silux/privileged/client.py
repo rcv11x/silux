@@ -23,6 +23,7 @@ import subprocess
 import sys
 from typing import Any, Optional
 
+from . import protocol
 from .protocol import (ACTION_GPU_PMU, ACTION_MSR, ACTION_PING, ACTION_RAPL,
                        ACTION_SMART, ACTION_SMBIOS, MAX_MESSAGE)
 
@@ -180,6 +181,11 @@ class PrivilegedClient:
     def __init__(self) -> None:
         self._process: Optional[subprocess.Popen] = None
         self._last_error: Optional[str] = None
+        # Se enciende cuando el ayudante instalado resulta ser de una versión
+        # anterior: a partir de ahí se usa el que viaja por argv, que siempre
+        # es el de este programa. Cuesta una contraseña por arranque, que es
+        # mejor que una función que no va y no dice por qué.
+        self._sin_el_instalado = False
 
     # -- estado -------------------------------------------------------------
 
@@ -242,6 +248,17 @@ class PrivilegedClient:
             self.close()
             raise HelperError("el ayudante no arrancó con privilegios")
 
+        # Y que sea el de esta versión. Instalar los permisos permanentes deja
+        # una copia en /usr/local/libexec que no la actualiza nadie: quien los
+        # diera hace meses seguiría hablando con aquel ayudante, y lo que este
+        # programa le pidiera de nuevo —una acción, un registro— saldría
+        # rechazado con un mensaje que no menciona la causa. Se cayó justo así
+        # al añadir los registros del voltaje del núcleo.
+        if reply.get("version", 0) < protocol.VERSION_REQUERIDA and self.instalado():
+            self.close()
+            self._sin_el_instalado = True
+            self.connect()
+
     @staticmethod
     def instalado() -> bool:
         """Si el ayudante del sistema está puesto, con su acción de polkit.
@@ -256,6 +273,44 @@ class PrivilegedClient:
                 and os.access(HELPER_INSTALADO, os.X_OK)
                 and POLITICA_INSTALADA.is_file())
 
+    @staticmethod
+    def _cuerpo(texto: str) -> str:
+        """El ayudante sin su primera línea.
+
+        El instalador cambia el shebang por el intérprete clavado, así que dos
+        copias del mismo ayudante difieren siempre en esa línea y solo en esa.
+        """
+        return texto.split("\n", 1)[1] if texto.startswith("#!") else texto
+
+    @classmethod
+    def al_dia(cls) -> bool:
+        """Si el ayudante instalado es el mismo que trae este programa.
+
+        Se compara el contenido y no un número de versión, y la diferencia
+        importa: un número hay que acordarse de subirlo, y los arreglos que no
+        cambian el contrato —los de seguridad, sobre todo— no lo tocan. El
+        contenido no se olvida de cambiar.
+        """
+        try:
+            instalado = HELPER_INSTALADO.read_text(encoding="utf-8")
+            actual = HELPER.read_text(encoding="utf-8")
+        except OSError:
+            return False
+        return cls._cuerpo(instalado) == cls._cuerpo(actual)
+
+    @classmethod
+    def necesita_reinstalar(cls) -> bool:
+        """Hay un ayudante puesto y no es el de este programa.
+
+        Lo que hay que hacer entonces no es solo dejar de usarlo: hay que
+        sustituirlo. El archivo se queda en /usr/local/libexec siendo de root y
+        con su acción de polkit apuntándole, así que sigue siendo ejecutable
+        con privilegios aunque este programa lo ignore. Y si se instaló con una
+        versión anterior a los arreglos de escalada, no hay ninguna garantía de
+        que lo que hay ahí sea lo que se quiso instalar.
+        """
+        return cls.instalado() and not cls.al_dia()
+
     def _orden(self) -> list[str]:
         """Lo que se le pasa a pkexec, en el orden de preferencia que toca.
 
@@ -269,7 +324,9 @@ class PrivilegedClient:
         reescribir**, y hay un test que lo comprueba en las tres órdenes de
         pkexec que construye el programa.
         """
-        if self.instalado():
+        # Solo se usa el instalado si es exactamente el de este programa.
+        if (self.instalado() and self.al_dia()
+                and not self._sin_el_instalado):
             return ["pkexec", str(HELPER_INSTALADO)]
         return ["pkexec", *en_linea(interprete(), "silux-helper.py",
                                     self._fuente_del_ayudante())]

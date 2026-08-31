@@ -173,7 +173,11 @@ class TestNingunaRutaEscribible(ComprobadorDeOrdenes):
             "escribible. Añádelo ahí y a `ordenes_de_pkexec`.")
 
     def test_tampoco_con_el_ayudante_instalado(self):
-        with mock.patch.object(PrivilegedClient, "instalado", return_value=True):
+        # `al_dia` también, porque ahora el instalado solo se usa si es
+        # exactamente el de este programa; en la máquina donde se ejecutan los
+        # tests puede haber uno de otra fecha.
+        with mock.patch.object(PrivilegedClient, "instalado", return_value=True), \
+             mock.patch.object(PrivilegedClient, "al_dia", return_value=True):
             orden = PrivilegedClient()._orden()
         self.assertEqual(orden, ["pkexec", str(client.HELPER_INSTALADO)])
         self.comprobar(orden, "cliente instalado")

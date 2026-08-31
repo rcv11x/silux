@@ -508,3 +508,90 @@ class TestCargarUnModulo(unittest.TestCase):
             if limpia.startswith(("import ", "from ")):
                 self.assertNotIn("silux", limpia, linea)
                 self.assertFalse(limpia.startswith("from ."), linea)
+
+
+class TestLaVersionDelAyudante(unittest.TestCase):
+    """Instalar los permisos permanentes deja una copia congelada.
+
+    Nadie la actualiza, así que quien los diera hace meses seguiría hablando
+    con aquel ayudante. Lo que este programa le pidiera de nuevo saldría
+    rechazado con un mensaje que no menciona la causa: pasó al añadir los
+    registros del voltaje del núcleo, y el usuario veía «registros no
+    permitidos» sin ninguna pista de que el ayudante fuera viejo.
+    """
+
+    def test_las_dos_versiones_van_juntas(self):
+        from silux.privileged import helper, protocol
+        self.assertEqual(helper.VERSION, protocol.VERSION_REQUERIDA)
+
+    def test_un_ayudante_viejo_se_deja_de_lado(self):
+        from silux.privileged import client
+        c = client.PrivilegedClient()
+        with mock.patch.object(client.PrivilegedClient, "instalado",
+                               return_value=True), \
+             mock.patch.object(client.PrivilegedClient, "al_dia",
+                               return_value=True):
+            self.assertEqual(c._orden()[1], str(client.HELPER_INSTALADO))
+            c._sin_el_instalado = True
+            # Sin él, el ayudante viaja por argv. Se mira el programa que se
+            # ejecuta y no la orden entera: la fuente del ayudante va dentro y
+            # menciona esa ruta en un comentario, así que buscar la cadena
+            # suelta encontraba el comentario y no el ejecutable.
+            self.assertNotEqual(c._orden()[1], str(client.HELPER_INSTALADO))
+            self.assertEqual(c._orden()[1], client.interprete())
+
+
+class TestElAyudanteDesfasado(unittest.TestCase):
+    """Un ayudante instalado no se actualiza solo, y eso es un problema de
+    seguridad y no de comodidad.
+
+    El de esta máquina es del 28 de agosto: anterior a los tres arreglos de
+    escalada de privilegios del 31. Mientras siguiera usándose, el programa
+    hablaría con un ayudante instalado por un camino que no garantizaba qué se
+    instalaba, y el archivo seguiría en /usr/local/libexec siendo de root con
+    su acción de polkit apuntándole.
+    """
+
+    def test_se_compara_el_contenido_y_no_un_numero_de_version(self):
+        """Un número hay que acordarse de subirlo; los arreglos que no cambian
+        el contrato no lo tocan. El contenido no se olvida de cambiar."""
+        from silux.privileged import client
+        import inspect
+        fuente = inspect.getsource(client.PrivilegedClient.al_dia)
+        self.assertIn("read_text", fuente)
+        self.assertNotIn("VERSION", fuente)
+
+    def test_el_shebang_no_cuenta_como_diferencia(self):
+        """El instalador lo cambia por el intérprete clavado, así que dos
+        copias del mismo ayudante difieren siempre en esa línea."""
+        from silux.privileged.client import PrivilegedClient as C
+        self.assertEqual(C._cuerpo("#!/usr/bin/python3\nhola"),
+                         C._cuerpo("#!/usr/bin/env python3\nhola"))
+
+    def test_uno_desfasado_no_se_ejecuta(self):
+        from silux.privileged import client
+        c = client.PrivilegedClient()
+        with mock.patch.object(client.PrivilegedClient, "instalado",
+                               return_value=True), \
+             mock.patch.object(client.PrivilegedClient, "al_dia",
+                               return_value=False):
+            self.assertNotEqual(c._orden()[1], str(client.HELPER_INSTALADO))
+
+    def test_y_se_pide_sustituirlo_en_vez_de_solo_ignorarlo(self):
+        """Ignorarlo deja el archivo en el sistema. Hay que reemplazarlo."""
+        from silux.privileged import client
+        with mock.patch.object(client.PrivilegedClient, "instalado",
+                               return_value=True), \
+             mock.patch.object(client.PrivilegedClient, "al_dia",
+                               return_value=False):
+            self.assertTrue(client.PrivilegedClient.necesita_reinstalar())
+
+    def test_el_que_esta_al_dia_se_sigue_usando(self):
+        from silux.privileged import client
+        c = client.PrivilegedClient()
+        with mock.patch.object(client.PrivilegedClient, "instalado",
+                               return_value=True), \
+             mock.patch.object(client.PrivilegedClient, "al_dia",
+                               return_value=True):
+            self.assertEqual(c._orden()[1], str(client.HELPER_INSTALADO))
+            self.assertFalse(client.PrivilegedClient.necesita_reinstalar())

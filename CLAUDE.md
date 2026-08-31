@@ -1160,6 +1160,26 @@ se escribió cada línea. El mensaje explica el porqué del cambio y ya.
 no, y menos con el CI atado a cada empujón a master. Se pregunta siempre,
 aunque el commit anterior se haya empujado hace un minuto.
 
+**Lo que toca privilegios se propone antes de escribirlo.** Si el cambio roza
+los permisos, la seguridad o un estado que sobrevive entre máquinas o entre
+versiones, primero va la propuesta —medida, con lo que se ha comprobado— y se
+espera respuesta. No se escribe código y luego se pregunta: para cuando hay un
+parche delante, la conversación ya empieza discutiendo el parche en vez de si
+el enfoque es el correcto.
+
+**Una comprobación que nadie ha visto fallar no es una comprobación.** Toda
+guarda nueva se ejecuta contra el caso concreto que pretende cazar, y se
+enseña que lo caza. Vale para los tests y vale para las validaciones del
+programa: si solo se ha visto pasar, lo único demostrado es que no estorba.
+
+**Y si depende de que alguien se acuerde de subir un número, tampoco lo es.**
+El ayudante privilegiado llevaba su `VERSION` para que el cliente detectara una
+copia instalada que se hubiera quedado atrás, y habría dejado pasar los tres
+arreglos de escalada de privilegios del 31 de agosto de 2026: ninguno de los
+tres tocó ese número, porque ninguno cambiaba el contrato. Se compara el
+contenido, que no se olvida de cambiar. Un número hay que acordarse de subirlo
+justo el día que más prisa hay.
+
 **Pocos commits y temáticos.** Uno por asunto, no uno por arreglo: cuatro
 correcciones que salen de la misma causa son un commit, no cuatro.
 

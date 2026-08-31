@@ -625,6 +625,7 @@
   "perm.permanent.button": "No volver a pedirla",
   "perm.permanent.tip": "Instala el ayudante en el sistema con su propia autorización de polkit.\nDespués la contraseña se pide una vez por sesión, no en cada arranque.\nHace falta la contraseña una vez para instalarlo.",
   "perm.read.button": "Leer con permisos de administrador",
+  "perm.replace.button": "Actualizar el ayudante del sistema",
   "perm.waiting": "Esperando autorización…",
   "power.cores": "núcleos",
   "power.package": "Paquete:",
