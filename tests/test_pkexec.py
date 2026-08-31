@@ -216,10 +216,14 @@ class TestElAyudanteViajaPorArgv(unittest.TestCase):
         hecho = subprocess.run(orden, input='{"action": "ping"}\n',
                                capture_output=True, text=True, timeout=60)
         respuesta = json.loads(hecho.stdout.splitlines()[0])
-        # Sin privilegios contesta que no es root, que es la respuesta correcta:
-        # significa que se compiló, arrancó y despachó la petición.
+        # Lo que se comprueba es que despachó: compiló, arrancó y contestó al
+        # protocolo. Qué contesta depende del euid de quien ejecute la suite
+        # —el contenedor del CI va como root— y eso no es lo que se mide aquí.
         self.assertIn("ok", respuesta)
-        self.assertEqual(respuesta.get("error"), "not_root")
+        if os.geteuid() == 0:
+            self.assertTrue(respuesta["ok"])
+        else:
+            self.assertEqual(respuesta.get("error"), "not_root")
 
 
 class TestElTracebackSigueDiciendoDeDondeEs(unittest.TestCase):
