@@ -28,7 +28,7 @@ python3 tools/probar_en_minimo.py --container # la suite en el Python del suelo
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **1332** y tardan cerca de dos minutos. Si sale bastante
+Los tests son **1352** y tardan cerca de dos minutos. Si sale bastante
 menos, falta algo por recoger.
 
 Que pasen aquí no dice que pasen en el mínimo. El suelo declarado es Python
@@ -190,7 +190,10 @@ silux/
 ├─ i18n.py        el idioma de la interfaz; el original es el español
 ├─ throttling.py  desde cuándo lleva frenándose algo, y por qué
 ├─ registro.py    graba la sesión a un CSV, fila a fila
-├─ providers/      una fuente cada uno; ninguno conoce a los demás
+├─ providers/      una fuente cada uno; ninguno conoce a los demás.
+│                  `msr_voltage.py` pregunta el voltaje del núcleo al propio
+│                  procesador, que es el único sitio donde está en cualquier
+│                  equipo: los sensores de placa lo publican sin etiquetar
 ├─ privileged/     ayudante root mínimo (helper.py) + cliente + SMBIOS.
 │                  Lee DMI, MSR, el SMART de los discos y el PMU de la iGPU.
 │                  instalar.py le da su acción de polkit para no pedir la
@@ -244,8 +247,13 @@ existe por ningún camino. Queda pendiente:
   de las 2.x no hay pieza a la que preguntar.
 
 De Memoria sale el detalle de cada módulo —lo que publica SMBIOS y, cuando el
-firmware suelta el bus i2c, el chip SPD entero— más el ancho de banda de
-lectura medido y su fracción del teórico. Queda pendiente:
+firmware suelta el bus i2c, el chip SPD entero—, el ancho de banda de lectura
+medido con su fracción del teórico, y **la latencia por nivel de caché y de la
+RAM**, que es la fila que separaba esta pestaña del Cache & Memory Benchmark de
+AIDA64. Sale de doce bytes de código máquina que persiguen punteros, la misma
+técnica que `rawcpuid.py` usa para CPUID desde el primer día: 0,9 · 2,7 · 12,3
+· 80,6 ns en el 5800X3D de casa contra los 0,9 · 2,7 · 12,4 · 66,1 de AIDA64 en
+esa misma pieza con memoria más rápida. Queda pendiente:
 
 Hay una referencia con la que contrastar, y es de la misma pieza que el equipo
 de casa: la captura del Cache & Memory Benchmark de AIDA64 de un 5800X3D ajeno
@@ -722,6 +730,24 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   0,9 · 2,7 · 12,4 · 66,1 que da AIDA64 en la misma pieza con memoria más
   rápida. Ya está integrado en `membench.py`, y la página ejecutable la monta
   `rawcpuid.pagina_ejecutable`, que es donde se aprendieron esos detalles.
+- **Dar por imposible lo que otro programa sí enseña**: la ficha decía que
+  ningún sensor publica el voltaje del núcleo, y era cierto por donde miraba
+  —`k10temp` no publica ninguno y el Super I/O de la placa publica nueve sin
+  etiquetar— pero no por donde había que mirar. El dato está en el propio
+  procesador: el VID del P-state activo en AMD y `IA32_PERF_STATUS` en Intel,
+  que llevaba permitido en la lista blanca del ayudante desde el principio y
+  sin que lo usara nadie. Cuando un programa que hace lo mismo enseña un dato
+  que aquí sale con su aviso, el aviso es lo primero que hay que revisar.
+- **Confiar en que una copia instalada se actualiza sola**: no se actualiza
+  nadie. El ayudante que dejan los permisos permanentes en `/usr/local/libexec`
+  se queda congelado en la fecha en que se instaló, de root y con su acción de
+  polkit apuntándole. En la máquina del autor era del 28 de agosto: le faltaba
+  `read_rapl` desde el 30 —o sea que el consumo del procesador no se leía por
+  mucho que se dieran permisos— y era anterior a los tres arreglos de escalada
+  del 31. Lo comprometido ahí no es un fallo dentro del archivo, que no cambió
+  ni una línea en esos tres commits, sino por qué camino llegó: el instalador
+  anterior aceptaba una ruta que el usuario puede escribir. Y no basta con
+  dejar de ejecutarlo, hay que sustituirlo, porque el archivo se queda puesto.
 - **Medir una caché con la mitad de su tamaño**: parece holgado y no lo es. La
   L3 de un Zen 3 es caché de víctimas —solo guarda lo que se expulsa de la L2—,
   así que recorrer 48 de sus 96 MB al azar da 66 ns donde tiene que dar 12. Con
@@ -1107,7 +1133,7 @@ por `_()`, la segunda llamada recibe «Uso» —que no es una clave— y devuelv
 inglés: la tupla llevaba once claves y una traducción ya hecha, y era la única
 que no cambiaba de idioma. Hay un test que lo vigila.
 
-La interfaz está entera en los dos idiomas: 917 claves, ninguna sin traducir.
+La interfaz está entera en los dos idiomas: 924 claves, ninguna sin traducir.
 Hay un test que recorre el árbol de sintaxis de cada página buscando
 constructores de widget con una cadena española a pelo, porque eso es lo que
 no se ve hasta abrir la pantalla en el otro idioma y ningún test normal lo
