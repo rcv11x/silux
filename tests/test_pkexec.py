@@ -100,11 +100,77 @@ class ComprobadorDeOrdenes(unittest.TestCase):
                     "por argv con `client.en_linea`.")
 
 
+# Los tres sitios del programa que construyen una orden de pkexec, con el
+# nombre de quien la construye. La lista está aquí para que se pueda recorrer
+# entera y para que un cuarto sitio no pase desapercibido: hay un test que
+# compara esto con lo que encuentra leyendo el código.
+CONSTRUCTORES = (
+    ("silux/privileged/client.py", "PrivilegedClient._orden"),
+    ("silux/ui/app.py", "MainWindow._orden_de_instalacion"),
+    ("silux/ui/pages/monitor.py", "MonitorPage._orden_de_carga"),
+)
+
+
+def ordenes_de_pkexec() -> dict[str, list[str]]:
+    """Las tres, construidas de verdad, para poder examinarlas."""
+    from silux.ui.app import MainWindow
+    from silux.ui.pages.monitor import MonitorPage
+
+    with mock.patch.object(PrivilegedClient, "instalado", return_value=False):
+        del_ayudante = PrivilegedClient()._orden()
+    return {
+        "el ayudante": del_ayudante,
+        "el instalador": MainWindow._orden_de_instalacion()[0],
+        "el cargador de módulos": MonitorPage._orden_de_carga("drivetemp"),
+    }
+
+
 class TestNingunaRutaEscribible(ComprobadorDeOrdenes):
+    @classmethod
+    def setUpClass(cls):
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        from PySide6.QtWidgets import QApplication
+
+        cls.app = QApplication.instance() or QApplication([])
+
     def test_ninguna_orden_lleva_una_ruta_escribible(self):
-        """El del ayudante, sin instalar: es el camino del AppImage."""
-        with mock.patch.object(PrivilegedClient, "instalado", return_value=False):
-            self.comprobar(PrivilegedClient()._orden(), "cliente sin instalar")
+        """El test que sostiene los tres arreglos.
+
+        Falla si alguien vuelve a dejar un guion en una carpeta del usuario y
+        se la pasa a pkexec, que es como se llegó aquí tres veces. Comprobado
+        contra las órdenes de antes: las caza.
+        """
+        for quien, orden in ordenes_de_pkexec().items():
+            self.comprobar(orden, quien)
+
+    def test_no_hay_mas_sitios_que_construyan_una_orden(self):
+        """Uno nuevo sin cubrir sería el cuarto agujero igual que los tres.
+
+        Se descubren leyendo el código y no de una lista escrita a mano: con la
+        lista, el sitio que nadie apunta se queda sin comprobar y el test sigue
+        en verde, que es exactamente lo que pasó con las traducciones.
+        """
+        import ast
+
+        encontrados = set()
+        for archivo in sorted((RAIZ / "silux").rglob("*.py")):
+            arbol = ast.parse(archivo.read_text(encoding="utf-8"))
+            for padre in ast.walk(arbol):
+                if not isinstance(padre, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    continue
+                for nodo in ast.walk(padre):
+                    if (isinstance(nodo, ast.List) and nodo.elts
+                            and isinstance(nodo.elts[0], ast.Constant)
+                            and nodo.elts[0].value == "pkexec"):
+                        encontrados.add(
+                            (str(archivo.relative_to(RAIZ)), padre.name))
+
+        esperados = {(ruta, nombre.split(".")[-1]) for ruta, nombre in CONSTRUCTORES}
+        self.assertEqual(
+            encontrados, esperados,
+            "hay un sitio que construye una orden de pkexec y no está en "
+            "CONSTRUCTORES, así que nadie comprueba que no lleve una ruta "
+            "escribible. Añádelo ahí y a `ordenes_de_pkexec`.")
 
     def test_tampoco_con_el_ayudante_instalado(self):
         with mock.patch.object(PrivilegedClient, "instalado", return_value=True):
@@ -328,6 +394,44 @@ class TestElInstaladorNoAceptaUnaRuta(unittest.TestCase):
              mock.patch.object(sys, "stdin", io.StringIO("   \n")):
             with self.assertRaises(SystemExit):
                 instalar.main(["--from-stdin"])
+
+
+class TestSeRecogeLoQueDejaronLasVersionesViejas(unittest.TestCase):
+    """Los guiones que se copiaban a ~/.cache/silux ya no los ejecuta nadie,
+    pero eran la superficie del agujero y no hay motivo para dejarlos ahí."""
+
+    def test_se_borran_los_tres_y_la_carpeta_si_queda_vacia(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as base:
+            with mock.patch.dict(os.environ, {"XDG_CACHE_HOME": base}):
+                carpeta = client._cache_dir()
+                carpeta.mkdir(parents=True)
+                for nombre in client.COPIAS_VIEJAS:
+                    (carpeta / nombre).write_text("# de antes\n", encoding="utf-8")
+                client.limpiar_copias_viejas()
+                self.assertFalse(carpeta.exists())
+
+    def test_no_se_lleva_por_delante_lo_que_no_es_suyo(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as base:
+            with mock.patch.dict(os.environ, {"XDG_CACHE_HOME": base}):
+                carpeta = client._cache_dir()
+                carpeta.mkdir(parents=True)
+                ajeno = carpeta / "algo-de-otro.json"
+                ajeno.write_text("{}", encoding="utf-8")
+                (carpeta / "helper.py").write_text("# de antes\n", encoding="utf-8")
+                client.limpiar_copias_viejas()
+                self.assertTrue(ajeno.is_file())
+                self.assertFalse((carpeta / "helper.py").exists())
+
+    def test_sin_carpeta_no_se_queja(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as base:
+            with mock.patch.dict(os.environ, {"XDG_CACHE_HOME": base}):
+                client.limpiar_copias_viejas()      # no debe lanzar nada
 
 
 if __name__ == "__main__":

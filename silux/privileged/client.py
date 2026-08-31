@@ -67,6 +67,27 @@ def en_linea(interprete: str, nombre: str, fuente: str,
     return [interprete, "-c", ARRANQUE, nombre, fuente, *argumentos]
 
 
+# Lo que dejaban en la caché las versiones que copiaban los guiones ahí para
+# lanzarlos con pkexec. Ya no las escribe nadie y no las ejecuta nadie, pero
+# eran la superficie del agujero y no hay motivo para dejarlas en el disco de
+# quien actualice.
+COPIAS_VIEJAS = ("helper.py", "instalar.py", "cargar_modulo.py")
+
+
+def limpiar_copias_viejas() -> None:
+    """Borra los guiones que las versiones anteriores dejaban en la caché."""
+    carpeta = _cache_dir()
+    for nombre in COPIAS_VIEJAS:
+        try:
+            (carpeta / nombre).unlink()
+        except OSError:
+            pass
+    try:
+        carpeta.rmdir()          # solo si no queda nada más dentro
+    except OSError:
+        pass
+
+
 def interprete() -> str:
     """Con qué Python se lanza por pkexec un guion que va por `argv`.
 
@@ -174,6 +195,9 @@ class PrivilegedClient:
         """Pide autorización y deja el ayudante escuchando. Bloquea."""
         if self.connected():
             return
+        # Aquí es donde las versiones anteriores escribían la copia, así que
+        # aquí es donde toca recogerla.
+        limpiar_copias_viejas()
         if not self.supported():
             raise HelperUnavailable(
                 "Falta pkexec. Se instala con el paquete polkit de la distribución."
