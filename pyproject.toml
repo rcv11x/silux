@@ -4,7 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "silux"
-version = "0.1.0"
+# La versión vive en `silux/__init__.py` y de ahí la lee setuptools. Escrita
+# aquí también se desincroniza: este archivo se toca al empaquetar y aquel al
+# publicar, y estuvo un tiempo diciendo 0.1.0 con el paquete ya en la 0.2.0.
+dynamic = ["version"]
 description = "Perfilador de hardware para Linux con interfaz Qt"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -30,6 +33,9 @@ silux = "silux.cli:main"
 
 [project.gui-scripts]
 silux-gui = "silux.ui.app:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "silux.__version__" }
 
 [tool.setuptools.packages.find]
 include = ["silux*"]

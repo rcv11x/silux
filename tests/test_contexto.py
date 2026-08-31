@@ -26,19 +26,35 @@ class TestLasCifrasDelContextoSiguenSiendoCiertas(unittest.TestCase):
             self.skipTest("no hay CLAUDE.md")
         return CONTEXTO.read_text(encoding="utf-8")
 
+    # Los dos archivos que dicen cuántos tests hay, cada uno con su forma de
+    # escribirlo. El README se quedó en 592 con la suite ya por encima de mil:
+    # solo se vigilaba CLAUDE.md, y quien lee el README es quien no conoce el
+    # proyecto y no tiene con qué contrastarlo.
+    CIFRAS_DE_TESTS = (
+        ("CLAUDE.md", r"Los tests son \*\*(\d+)\*\*"),
+        ("README.md", r"^Son (\d+) y tardan"),
+    )
+
     def test_el_numero_de_tests_es_el_que_hay(self):
         import unittest as ut
-
-        escrito = re.search(r"Los tests son \*\*(\d+)\*\*", self._texto())
-        self.assertIsNotNone(escrito, "no se encuentra la cifra en CLAUDE.md")
-        dicho = int(escrito.group(1))
 
         suite = ut.defaultTestLoader.discover(str(RAIZ / "tests"),
                                               top_level_dir=str(RAIZ))
         real = suite.countTestCases()
-        self.assertLessEqual(
-            abs(real - dicho) / real, MARGEN,
-            f"CLAUDE.md dice {dicho} tests y hay {real}")
+
+        for archivo, patron in self.CIFRAS_DE_TESTS:
+            with self.subTest(archivo=archivo):
+                camino = RAIZ / archivo
+                if not camino.is_file():
+                    self.skipTest(f"no hay {archivo}")
+                escrito = re.search(patron, camino.read_text(encoding="utf-8"),
+                                    re.MULTILINE)
+                self.assertIsNotNone(
+                    escrito, f"no se encuentra la cifra de tests en {archivo}")
+                dicho = int(escrito.group(1))
+                self.assertLessEqual(
+                    abs(real - dicho) / real, MARGEN,
+                    f"{archivo} dice {dicho} tests y hay {real}")
 
     def test_el_numero_de_claves_de_idioma_es_el_que_hay(self):
         escrito = re.search(r"(\d+) claves, ninguna sin traducir", self._texto())
@@ -96,3 +112,49 @@ class TestLaVersionSeCuentaEnAlgunSitio(unittest.TestCase):
         self.assertEqual(versiones[0], silux.__version__,
                          "la entrada de arriba del CHANGELOG no es la versión "
                          "que declara el paquete")
+
+
+class TestLaVersionSeEscribeUnaSolaVez(unittest.TestCase):
+    """Una versión copiada a mano en dos archivos se separa sola.
+
+    `pyproject.toml` se toca al empaquetar y `silux/__init__.py` al publicar,
+    así que llevaban un ciclo entero diciendo cosas distintas —0.1.0 y 0.2.0—
+    sin que nada fallara. Y la página de Ajustes tenía una tercera copia, que
+    es la única que el usuario ve: el rótulo del programa decía 0.1.0.
+    """
+
+    _LITERAL = re.compile(r"^\d+\.\d+(\.\d+)?$")
+
+    def test_pyproject_no_escribe_la_version(self):
+        texto = (RAIZ / "pyproject.toml").read_text(encoding="utf-8")
+        self.assertNotRegex(
+            texto, r'(?m)^\s*version\s*=\s*"\d',
+            "pyproject.toml declara la versión a mano: se desincroniza de "
+            "silux.__version__. Va con dynamic = [\"version\"]")
+        self.assertRegex(
+            texto, r'attr\s*=\s*"silux\.__version__"',
+            "pyproject.toml tiene que leer la versión del propio paquete")
+
+    def test_ningun_modulo_guarda_su_propia_version(self):
+        """Solo `silux/__init__.py` puede tener un número de versión suelto."""
+        import ast
+
+        for archivo in sorted((RAIZ / "silux").rglob("*.py")):
+            arbol = ast.parse(archivo.read_text(encoding="utf-8"))
+            for nodo in arbol.body:
+                if not isinstance(nodo, (ast.Assign, ast.AnnAssign)):
+                    continue
+                valor = nodo.value
+                if not (isinstance(valor, ast.Constant)
+                        and isinstance(valor.value, str)
+                        and self._LITERAL.match(valor.value)):
+                    continue
+                objetivos = (nodo.targets if isinstance(nodo, ast.Assign)
+                             else [nodo.target])
+                nombres = [t.id for t in objetivos if isinstance(t, ast.Name)]
+                with self.subTest(archivo=archivo.name, nombres=nombres):
+                    self.assertEqual(
+                        (archivo.name, nombres), ("__init__.py", ["__version__"]),
+                        f"{archivo.relative_to(RAIZ)} guarda «{valor.value}» "
+                        "en una constante: si es la versión del programa, va "
+                        "importada de silux.__version__")
