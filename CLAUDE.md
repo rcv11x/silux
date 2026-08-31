@@ -28,7 +28,7 @@ python3 tools/probar_en_minimo.py --container # la suite en el Python del suelo
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **1352** y tardan cerca de dos minutos. Si sale bastante
+Los tests son **1357** y tardan cerca de dos minutos. Si sale bastante
 menos, falta algo por recoger.
 
 Que pasen aquí no dice que pasen en el mínimo. El suelo declarado es Python
@@ -730,6 +730,12 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   0,9 · 2,7 · 12,4 · 66,1 que da AIDA64 en la misma pieza con memoria más
   rápida. Ya está integrado en `membench.py`, y la página ejecutable la monta
   `rawcpuid.pagina_ejecutable`, que es donde se aprendieron esos detalles.
+- **Escribir la fuente de un dato y no mirar si hay dónde pintarlo**: el
+  voltaje del núcleo se leía por MSR, llegaba al modelo y moría ahí, porque la
+  ficha de procesador terminaba en el microcódigo y no tenía fila. Con permisos
+  dados no salía ni el aviso —el proveedor no fallaba, así que no avisaba de
+  nada— y la pantalla quedaba sin fila, sin aviso y sin botón. La suite entera
+  en verde con el dato invisible.
 - **Dar por imposible lo que otro programa sí enseña**: la ficha decía que
   ningún sensor publica el voltaje del núcleo, y era cierto por donde miraba
   —`k10temp` no publica ninguno y el Super I/O de la placa publica nueve sin
@@ -1133,7 +1139,7 @@ por `_()`, la segunda llamada recibe «Uso» —que no es una clave— y devuelv
 inglés: la tupla llevaba once claves y una traducción ya hecha, y era la única
 que no cambiaba de idioma. Hay un test que lo vigila.
 
-La interfaz está entera en los dos idiomas: 924 claves, ninguna sin traducir.
+La interfaz está entera en los dos idiomas: 926 claves, ninguna sin traducir.
 Hay un test que recorre el árbol de sintaxis de cada página buscando
 constructores de widget con una cadena española a pelo, porque eso es lo que
 no se ve hasta abrir la pantalla en el otro idioma y ningún test normal lo
@@ -1205,6 +1211,18 @@ arreglos de escalada de privilegios del 31 de agosto de 2026: ninguno de los
 tres tocó ese número, porque ninguno cambiaba el contrato. Se compara el
 contenido, que no se olvida de cambiar. Un número hay que acordarse de subirlo
 justo el día que más prisa hay.
+
+**El commit del CLAUDE.md es el último antes de empujar.** Nunca uno
+intermedio: hoy se hizo en `096ace0` y el commit siguiente lo dejó atrasado
+otra vez, con una fila de la ficha de procesador que el archivo no mencionaba
+y dos cifras que ya no cuadraban. Se escribe cuando ya no va a entrar nada más.
+
+**Un dato nuevo no está terminado hasta que hay un test que lo ve en pantalla**,
+montando la página de verdad y comprobando la celda. Los 1352 tests pasaban con
+el voltaje del núcleo medido, guardado en el modelo y sin ninguna fila donde
+pintarlo: probaban el proveedor, la interpretación de los bits y el reparto de
+avisos, y ninguno miraba si eso se veía. Probar la fuente no es probar que se
+ve, y lo que no se ve no está hecho.
 
 **Pocos commits y temáticos.** Uno por asunto, no uno por arreglo: cuatro
 correcciones que salen de la misma causa son un commit, no cuatro.
