@@ -93,11 +93,26 @@ def _interprete() -> str:
     raise SystemExit("No hay ningún Python del sistema con el que ejecutar el ayudante.")
 
 
-def instalar(origen: pathlib.Path = ORIGEN) -> None:
-    if not origen.is_file():
-        raise SystemExit(f"No encuentro el ayudante en {origen}")
+def del_paquete() -> str:
+    """El ayudante que viene al lado, para cuando esto se ejecuta a mano."""
+    if not ORIGEN.is_file():
+        raise SystemExit(f"No encuentro el ayudante en {ORIGEN}")
+    return ORIGEN.read_text(encoding="utf-8")
 
-    cuerpo = origen.read_text(encoding="utf-8")
+
+def instalar(cuerpo: str) -> None:
+    """Deja el ayudante en el sistema con su acción de polkit.
+
+    Recibe el **texto** del ayudante y no una ruta, y eso es una decisión de
+    seguridad y no de estilo. Antes la interfaz le pasaba `--from` con una ruta
+    de ~/.cache, que escribe el usuario: cualquier proceso suyo podía cambiar
+    ese archivo mientras el usuario tecleaba la contraseña —segundos, no una
+    carrera— y lo que quedaba instalado, de root y con la acción de polkit
+    apuntándole, era lo del atacante. Un texto que llega por una tubería no
+    tiene nombre que sustituir.
+    """
+    if not cuerpo.strip():
+        raise SystemExit("No me han pasado ningún ayudante que instalar.")
     # El shebang que trae el archivo es `/usr/bin/env python3`, que resuelve
     # contra el PATH de quien lo ejecute. Aquí lo ejecuta root a través de
     # pkexec, así que se clava el intérprete y se deja de depender del entorno.
@@ -139,10 +154,14 @@ def main(argv=None) -> int:
                         help="quita el ayudante y su acción de polkit")
     parser.add_argument("--check", action="store_true",
                         help="dice si están instalados y sale")
-    parser.add_argument("--from", dest="origen", metavar="RUTA",
-                        help="de dónde copiar el ayudante; por omisión, el del "
-                             "repositorio. Desde un AppImage hace falta porque "
-                             "root no puede leer dentro del punto de montaje")
+    parser.add_argument("--from-stdin", action="store_true",
+                        help="lee el ayudante de la entrada estándar en vez de "
+                             "usar el del paquete. Es como lo instala la "
+                             "interfaz desde un AppImage, donde root no puede "
+                             "leer dentro del punto de montaje. No se acepta "
+                             "una ruta a propósito: la que había que dar era "
+                             "de una carpeta del usuario, y eso deja instalar "
+                             "como root lo que otro proceso ponga ahí")
     args = parser.parse_args(argv)
 
     if args.check:
@@ -159,7 +178,7 @@ def main(argv=None) -> int:
     if args.uninstall:
         desinstalar()
     else:
-        instalar(pathlib.Path(args.origen) if args.origen else ORIGEN)
+        instalar(sys.stdin.read() if args.from_stdin else del_paquete())
     return 0
 
 

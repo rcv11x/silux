@@ -103,7 +103,7 @@ class TestPreparacion(unittest.TestCase):
         with mock.patch.object(PrivilegedClient, "empaquetado", staticmethod(lambda: True)), \
              mock.patch.object(mod, "SYSTEM_PYTHON", ("/no/existe",)):
             with self.assertRaises(HelperUnavailable) as caso:
-                PrivilegedClient()._interprete()
+                mod.interprete()
         self.assertIn("Python del sistema", str(caso.exception))
 
 

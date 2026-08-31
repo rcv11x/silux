@@ -230,5 +230,105 @@ class TestElAyudanteInstaladoNecesitaSuPolitica(unittest.TestCase):
         self.assertEqual(client.POLITICA_INSTALADA, instalar.POLITICA)
 
 
+class TestLaOrdenDeInstalar(ComprobadorDeOrdenes):
+    """El botón de permisos permanentes, que era el peor de los tres.
+
+    Copiaba el instalador y el ayudante a ~/.cache y le pasaba las dos rutas a
+    pkexec. La ventana no era una carrera de microsegundos: iba desde la copia
+    hasta que root abría los archivos, con el diálogo de la contraseña en
+    medio. Y no se ganaba ejecutar una vez, se ganaba dejar instalado un
+    binario de root con su acción de polkit apuntándole.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        from PySide6.QtWidgets import QApplication
+
+        cls.app = QApplication.instance() or QApplication([])
+
+    def _orden(self):
+        from silux.ui.app import MainWindow
+
+        return MainWindow._orden_de_instalacion()
+
+    def test_ninguna_ruta_escribible(self):
+        orden, _entrada = self._orden()
+        self.comprobar(orden, "instalador")
+
+    def test_el_instalador_va_por_argv_y_el_ayudante_por_la_tuberia(self):
+        from silux.privileged import instalar
+
+        fuente = pathlib.Path(instalar.__file__).read_text(encoding="utf-8")
+        orden, entrada = self._orden()
+        self.assertIn(fuente, orden,
+                      "el instalador tiene que viajar por argv")
+        self.assertEqual(entrada, client.HELPER.read_text(encoding="utf-8"),
+                         "el ayudante tiene que ir por stdin, no por una ruta")
+        self.assertIn("--from-stdin", orden)
+
+    def test_no_se_escribe_nada_en_la_cache(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as carpeta:
+            with mock.patch.dict(os.environ, {"XDG_CACHE_HOME": carpeta}):
+                self._orden()
+            self.assertEqual(list(pathlib.Path(carpeta).rglob("*")), [])
+
+
+class TestElInstaladorNoAceptaUnaRuta(unittest.TestCase):
+    """Que no vuelva la bandera que hacía falta quitar.
+
+    `--from RUTA` solo tenía un usuario —la interfaz desde el AppImage— y era
+    justo el vulnerable. Aceptar una ruta es aceptar que otro proceso decida
+    qué se instala como root, así que la bandera no existe.
+    """
+
+    def test_ya_no_hay_bandera_que_reciba_una_ruta(self):
+        from silux.privileged import instalar
+
+        fuente = pathlib.Path(instalar.__file__).read_text(encoding="utf-8")
+        self.assertNotIn('"--from"', fuente)
+        self.assertNotIn("dest=\"origen\"", fuente)
+        self.assertIn('"--from-stdin"', fuente)
+
+    def test_instala_lo_que_llega_por_stdin(self):
+        import io
+        import tempfile
+
+        from silux.privileged import instalar
+
+        cuerpo = "#!/usr/bin/env python3\nprint('el ayudante')\n"
+        with tempfile.TemporaryDirectory() as tmp:
+            raiz = pathlib.Path(tmp)
+            destino = raiz / "libexec" / "silux" / "silux-helper"
+            politica = raiz / "acciones" / "org.silux.helper.policy"
+            politica.parent.mkdir(parents=True)
+            with mock.patch.object(instalar, "DESTINO", destino), \
+                 mock.patch.object(instalar, "POLITICA", politica), \
+                 mock.patch.object(instalar.os, "geteuid", lambda: 0), \
+                 mock.patch.object(instalar.os, "chown", lambda *a, **k: None), \
+                 mock.patch.object(sys, "stdin", io.StringIO(cuerpo)), \
+                 mock.patch.object(sys, "stdout", io.StringIO()):
+                self.assertEqual(instalar.main(["--from-stdin"]), 0)
+
+            self.assertIn("print('el ayudante')",
+                          destino.read_text(encoding="utf-8"))
+            self.assertEqual(destino.stat().st_mode & 0o777, 0o755)
+            # La acción clava la ruta del binario: es lo que impide que la
+            # autorización recordada valga para ejecutar otra cosa.
+            self.assertIn(str(destino), politica.read_text(encoding="utf-8"))
+
+    def test_sin_nada_por_stdin_no_instala_un_ayudante_vacio(self):
+        import io
+
+        from silux.privileged import instalar
+
+        with mock.patch.object(instalar.os, "geteuid", lambda: 0), \
+             mock.patch.object(sys, "stdin", io.StringIO("   \n")):
+            with self.assertRaises(SystemExit):
+                instalar.main(["--from-stdin"])
+
+
 if __name__ == "__main__":
     unittest.main()
