@@ -38,30 +38,43 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    # A propósito la más antigua con soporte: lo compilado contra una glibc
-    # vieja funciona en las nuevas, pero no al revés.
+  # Los dos extremos del rango declarado, y los dos hacen falta.
+  #
+  # Con solo el de abajo se escapa lo que se rompe en el nuevo; con solo el de
+  # arriba —que es lo que pasaba, porque aquí no había matriz y en la máquina
+  # del autor corre 3.14— se escapa lo que se rompe en el mínimo. Costó las dos
+  # cosas a la vez: `self.enterContext` es de 3.11 y se llevó once tests por
+  # delante, y un traceback perdía el texto de la línea porque hasta 3.12 quien
+  # pinta las excepciones no atrapadas es el escritor en C, que busca el código
+  # abriendo el archivo. Ninguna de las dos se ve leyendo el código.
+  #
+  # 22.04 en los dos porque es donde se construye el AppImage; el intérprete lo
+  # pone `setup-python` para que quede escrito cuál se prueba y no dependa de
+  # cuál traiga el runner ese mes.
+  tests:
     runs-on: ubuntu-22.04
+
+    strategy:
+      # Que una versión falle no cancela la otra: saber si falla en las dos o
+      # en una es la mitad del diagnóstico.
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.14"]
 
     steps:
       - uses: actions/checkout@v4
 
-      # `hwdata` trae `pci.ids`, que es de donde salen los nombres de los
-      # dispositivos: sin él, un test que busca una tarjeta por su
-      # identificador no la encuentra. Estaba saliendo bien porque el runner
-      # la trae de serie, que es una forma de decir que no se estaba pidiendo.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
       - name: Instalar lo que Qt necesita para arrancar
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
             libgl1 libegl1 libxkbcommon-x11-0 libdbus-1-3 \
-            libfontconfig1 libfreetype6 libglib2.0-0 \
-            hwdata file desktop-file-utils fuse
+            libfontconfig1 libfreetype6 libglib2.0-0 hwdata
 
-      # El rango se le pregunta al empaquetador en vez de repetirlo aquí. Lo
-      # que no se fija cambia solo, y lo hace en la máquina de otro: este paso
-      # decía «PySide6>=6.6» a secas y con eso el paquete compat habría salido
-      # con un Qt que no arranca en los procesadores para los que existe.
       - name: Instalar PySide6
         run: pip install "$(python tools/build_appimage.py --pyside-range)"
 
@@ -84,6 +97,36 @@ jobs:
             echo "::error::$linea"
           done
           exit 1
+
+  build:
+    # A propósito la más antigua con soporte: lo compilado contra una glibc
+    # vieja funciona en las nuevas, pero no al revés.
+    runs-on: ubuntu-22.04
+    # Empaquetar tarda y sube artefactos; si los tests no pasan, no hay nada
+    # que empaquetar.
+    needs: tests
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # `hwdata` trae `pci.ids`, que es de donde salen los nombres de los
+      # dispositivos: sin él, un test que busca una tarjeta por su
+      # identificador no la encuentra. Estaba saliendo bien porque el runner
+      # la trae de serie, que es una forma de decir que no se estaba pidiendo.
+      - name: Instalar lo que Qt necesita para arrancar
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libgl1 libegl1 libxkbcommon-x11-0 libdbus-1-3 \
+            libfontconfig1 libfreetype6 libglib2.0-0 \
+            hwdata file desktop-file-utils fuse
+
+      # El rango se le pregunta al empaquetador en vez de repetirlo aquí. Lo
+      # que no se fija cambia solo, y lo hace en la máquina de otro: este paso
+      # decía «PySide6>=6.6» a secas y con eso el paquete compat habría salido
+      # con un Qt que no arranca en los procesadores para los que existe.
+      - name: Instalar PySide6
+        run: pip install "$(python tools/build_appimage.py --pyside-range)"
 
       - name: Construir el AppImage
         run: python tools/build_appimage.py
