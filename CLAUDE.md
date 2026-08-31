@@ -55,18 +55,37 @@ que estrechar el clasificador no arreglaría nada —no hay dónde escribir ahí
 una versión de glibc— y perderlo sí cuesta: es por lo que se encuentra el
 paquete.
 
-**PySide6 está topado en `<6.10`, y el motivo no es de estilo.** Qt 6.10 pasó
-a compilarse con `-march=x86-64-v2`, y no en rutas aparte que se eligen
-mirando la CPU, sino dentro de funciones normales: `QString`,
+**El techo de PySide6 en `<6.10` es del AppImage `--compat`, y de nadie más.**
+Qt 6.10 pasó a compilarse con `-march=x86-64-v2`, y no en rutas aparte que se
+eligen mirando la CPU, sino dentro de funciones normales: `QString`,
 `QUtf8::convertToUnicode`, `QPainterPath::quadTo`. En un procesador sin
 SSE4.1 eso es «Instrucción ilegal» y un volcado antes de pintar nada; Qt trae
 un aviso para ese caso —«Incompatible processor»— y ni siquiera llega a
 salir, porque revienta antes de imprimirlo. x86-64-v2 es Nehalem (2008) en
 Intel y Bulldozer (2011) en AMD, así que deja fuera los Core 2, los Athlon II
 y los Phenom II: justo la clase de equipo cuyo dueño quiere saber qué lleva
-dentro. Lo descubrió un Athlon II X2 250u ajeno, no una prueba de aquí. De
-6.9 a 6.11 no hay nada en QtCore, QtGui ni QtWidgets que este programa use,
-así que el techo no cuesta nada; lo que costaría es quitarlo sin mirar.
+dentro. Lo descubrió un Athlon II X2 250u ajeno, no una prueba de aquí.
+
+Quién lo pone y quién no: `RANGO_PYSIDE`, en el empaquetador, se lo pone al
+`--compat` y no al normal, que se lleva la última serie a propósito —los
+arreglos de Qt, y sobre todo los de Wayland, están ahí—. `pyproject.toml`
+tampoco lo pone: no es su trabajo decidir qué Qt corre en la máquina de otro,
+y quien instala desde el código fuente casi siempre usa el PySide6 de su
+distribución, que no lee los extras del `pyproject`. Este repositorio se
+desarrolla con 6.11.
+
+Lo que sí hay en todas partes es la guarda, en dos versiones porque la
+pregunta se responde distinto según de dónde se arranque. En el AppImage está
+en el AppRun, en shell, y es **exacta**: el empaquetador lee el desensamblado
+de lo que acaba de meter y le pasa las banderas que encontró. Desde el código
+fuente está en `ui/guarda.py`, corre antes de importar Qt y es **una regla**,
+no una medida: de 6.10 en adelante se pide x86-64-v2, porque leer el ELF del
+Qt del sistema en cada arranque costaría más que arrancar. Como es una regla
+puede equivocarse —una distribución es libre de compilar su 6.10 para x86-64
+a secas—, así que `SILUX_SIN_GUARDA=1` la desactiva: equivocarse aquí tiene
+que costar una variable de entorno y no un programa que no abre. Las dos
+miran la misma lista de cinco banderas y hay un test que no las deja
+separarse.
 
 Cada copia lleva dentro de qué commit salió: debajo de la versión, en
 `--version` y en la cabecera del informe. Lo escribe el empaquetador en
@@ -155,6 +174,7 @@ silux/
 ├─ score.py        la puntuación comparable entre equipos, y su escala
 ├─ privacidad.py   qué se omite de un informe público y qué no
 ├─ ui/tarjeta.py  la imagen del equipo para pegar en un chat, ya anonimizada
+├─ ui/guarda.py   para antes de Qt: si el procesador no da, lo dice y no abre
 ├─ i18n.py        el idioma de la interfaz; el original es el español
 ├─ throttling.py  desde cuándo lleva frenándose algo, y por qué
 ├─ registro.py    graba la sesión a un CSV, fila a fila

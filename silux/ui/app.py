@@ -23,6 +23,13 @@ from typing import Optional
 
 import pathlib
 
+# Antes que Qt, y por eso está aquí en medio y no arriba con los demás: en un
+# procesador sin x86-64-v2 la línea siguiente es la que se lleva el programa
+# por delante, y desde dentro de ella ya no hay forma de explicar nada.
+from .guarda import comprobar as _comprobar_procesador
+
+_comprobar_procesador()
+
 from PySide6.QtCore import Qt, QElapsedTimer, QTimer
 from PySide6.QtGui import QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
