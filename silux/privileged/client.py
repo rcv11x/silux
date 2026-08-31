@@ -47,11 +47,21 @@ def _cache_dir() -> pathlib.Path:
 # primero que se le pide a quien reporta algo es justamente eso. Con ellos sale
 # «File "silux-helper.py", line 40» con su línea debajo, igual que si viniera
 # de un archivo.
+#
+# El `excepthook` es la otra mitad y hace falta hasta Python 3.12. Quien pinta
+# una excepción que nadie atrapa es, hasta esa versión, el escritor en C, y ese
+# busca el código abriendo el archivo por su nombre: como aquí no hay archivo,
+# se queda sin línea aunque `linecache` la tenga. El módulo `traceback` sí lo
+# consulta. En 3.13 el camino por defecto ya pasa por ahí y esto sobra, pero el
+# suelo declarado es 3.10 y es el Python que va dentro del AppImage.
+# `SystemExit` no pasa por el hook, así que los guiones que avisan con
+# `raise SystemExit("...")` siguen sacando su mensaje a secas.
 ARRANQUE = """\
-import linecache, sys
+import linecache, sys, traceback
 _nombre, _fuente = sys.argv[1], sys.argv[2]
 linecache.cache[_nombre] = (len(_fuente), None, _fuente.splitlines(True), _nombre)
 sys.argv = [_nombre] + sys.argv[3:]
+sys.excepthook = lambda *fallo: traceback.print_exception(*fallo)
 exec(compile(_fuente, _nombre, "exec"), {"__name__": "__main__", "__file__": _nombre})
 """
 

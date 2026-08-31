@@ -11,6 +11,7 @@ import os
 import pathlib
 import subprocess
 import sys
+import tempfile
 import unittest
 from unittest import mock
 
@@ -33,21 +34,30 @@ MODERNO = ("processor\t: 0\n"
 
 
 class BancoDeGuarda(unittest.TestCase):
-    """Le da a la guarda un procesador y un Qt inventados."""
+    """Le da a la guarda un procesador y un Qt inventados.
+
+    Los parches se arrancan a mano y se paran en `addCleanup` en vez de con
+    `self.enterContext`, que es de Python 3.11: el suelo declarado es el 3.10 y
+    es el que va dentro del AppImage.
+    """
+
+    def _con_cierre(self, parche):
+        parche.start()
+        self.addCleanup(parche.stop)
 
     def montar(self, cpuinfo=PHENOM_II, pyside=(6, 11), maquina="x86_64",
                entorno=None):
-        tmp = self.enterContext(
-            __import__("tempfile").TemporaryDirectory())
-        ruta = pathlib.Path(tmp) / "cpuinfo"
+        carpeta = tempfile.TemporaryDirectory()
+        self.addCleanup(carpeta.cleanup)
+        ruta = pathlib.Path(carpeta.name) / "cpuinfo"
         ruta.write_text(cpuinfo, encoding="utf-8")
-        self.enterContext(mock.patch.object(guarda, "CPUINFO", str(ruta)))
-        self.enterContext(mock.patch.object(
+
+        self._con_cierre(mock.patch.object(guarda, "CPUINFO", str(ruta)))
+        self._con_cierre(mock.patch.object(
             guarda.os, "uname", return_value=mock.Mock(machine=maquina)))
-        self.enterContext(mock.patch.object(
+        self._con_cierre(mock.patch.object(
             guarda, "version_de_pyside", return_value=pyside))
-        self.enterContext(mock.patch.dict(
-            os.environ, entorno or {}, clear=False))
+        self._con_cierre(mock.patch.dict(os.environ, entorno or {}, clear=False))
         if entorno is None:
             os.environ.pop(guarda.ESCAPE, None)
 
