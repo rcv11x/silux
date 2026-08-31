@@ -20,14 +20,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ... import EMOJI, db, i18n
+from ... import EMOJI, __version__, db, i18n
 from ...i18n import _
 from ...settings import Preferences, config_path
 from .. import theme
 from ..theme import ui_font
 from ..widgets import Card, ResponsiveRow
-
-VERSION = "0.1.0"
 
 AUTORIA = (
     ("rcv11x", "about.author"),
@@ -295,7 +293,7 @@ class SettingsPage(QScrollArea):
         card = Card(_("about.card"))
         m = theme.METRICS
 
-        titulo = QLabel(f"{EMOJI} Silux {VERSION}")
+        titulo = QLabel(f"{EMOJI} Silux {__version__}")
         titulo.setObjectName("Headline")
         card.body.addWidget(titulo)
 

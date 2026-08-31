@@ -130,8 +130,8 @@ sudo dnf install python3-pyside6 hwdata polkit
 # Debian, Ubuntu
 sudo apt install python3-pyside6 hwdata policykit-1
 
-git clone https://github.com/rcv11x/silux-linux
-cd silux-linux
+git clone https://github.com/rcv11x/silux
+cd silux
 python3 -m silux.ui.app
 ```
 
@@ -187,10 +187,10 @@ QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 python3 tools/comprobar_privacidad.py    # antes de publicar nada
 ```
 
-Son 592 y tardan quince segundos. Ninguno necesita hardware concreto: los
-proveedores se prueban contra árboles de sysfs sintéticos, el generador contra
-fragmentos de C, y los chips (SPD, EDID, SMART, `gpu_metrics`) contra volcados
-binarios de piezas reales guardados en `tests/fixtures`.
+Son 1272 y tardan cerca de dos minutos. Ninguno necesita hardware concreto:
+los proveedores se prueban contra árboles de sysfs sintéticos, el generador
+contra fragmentos de C, y los chips (SPD, EDID, SMART, `gpu_metrics`) contra
+volcados binarios de piezas reales guardados en `tests/fixtures`.
 
 Buena parte de ellos existe porque algo salió mal una vez: hay un test que
 comprueba que a un procesador ARM no se le atribuye una instrucción de Intel,
