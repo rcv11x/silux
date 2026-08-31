@@ -158,3 +158,39 @@ class TestLaVersionSeEscribeUnaSolaVez(unittest.TestCase):
                         f"{archivo.relative_to(RAIZ)} guarda «{valor.value}» "
                         "en una constante: si es la versión del programa, va "
                         "importada de silux.__version__")
+
+
+class TestLaSuiteSePuedeProbarEnElMinimo(unittest.TestCase):
+    """Que la herramienta y el `pyproject` no se separen.
+
+    `probar_en_minimo.py` promete ejecutar la suite en el Python más viejo que
+    el proyecto declara. Si el suelo sube y la herramienta se queda leyendo
+    otro sitio, seguiría diciendo que todo va bien después de probar contra una
+    versión que ya no es el mínimo, que es peor que no probar.
+    """
+
+    def _herramienta(self):
+        import importlib.util
+
+        ruta = RAIZ / "tools" / "probar_en_minimo.py"
+        spec = importlib.util.spec_from_file_location("probar_en_minimo", ruta)
+        modulo = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(modulo)
+        return modulo
+
+    def test_el_suelo_sale_del_pyproject_y_no_de_una_constante(self):
+        texto = (RAIZ / "pyproject.toml").read_text(encoding="utf-8")
+        declarado = re.search(r'requires-python\s*=\s*">=(\d+\.\d+)"', texto)
+        self.assertIsNotNone(declarado, "pyproject no declara requires-python")
+        self.assertEqual(self._herramienta().suelo_declarado(),
+                         declarado.group(1))
+
+    def test_las_herramientas_que_nombra_el_contexto_existen(self):
+        """CLAUDE.md es donde se buscan; una que no está manda a un callejón."""
+        texto = (RAIZ / "CLAUDE.md").read_text(encoding="utf-8")
+        nombradas = set(re.findall(r"python3 (tools/[\w.]+\.py)", texto))
+        self.assertGreater(len(nombradas), 3, "no se están encontrando")
+        for herramienta in sorted(nombradas):
+            with self.subTest(herramienta=herramienta):
+                self.assertTrue((RAIZ / herramienta).is_file(),
+                                f"CLAUDE.md nombra {herramienta} y no existe")
