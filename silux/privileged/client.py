@@ -23,18 +23,66 @@ import subprocess
 import sys
 from typing import Any, Optional
 
+from .protocol import (ACTION_GPU_PMU, ACTION_MSR, ACTION_PING, ACTION_RAPL,
+                       ACTION_SMART, ACTION_SMBIOS, MAX_MESSAGE)
+
 # Intérpretes del sistema con los que lanzar el ayudante cuando el del programa
 # no sirve. Al ayudante le basta la biblioteca estándar, así que vale cualquiera.
 SYSTEM_PYTHON = ("/usr/bin/python3", "/bin/python3", "/usr/local/bin/python3")
 
 
 def _cache_dir() -> pathlib.Path:
-    """Donde dejar la copia del ayudante, siguiendo la convención del sistema."""
+    """La carpeta de caché del programa, siguiendo la convención del sistema."""
     base = os.environ.get("XDG_CACHE_HOME") or (pathlib.Path.home() / ".cache")
     return pathlib.Path(base) / "silux"
 
-from .protocol import (ACTION_GPU_PMU, ACTION_MSR, ACTION_PING, ACTION_RAPL,
-                       ACTION_SMART, ACTION_SMBIOS, MAX_MESSAGE)
+
+# Lo que se le pasa a `python3 -c` para ejecutar un guion que no está en
+# ningún archivo. Recibe por argv el nombre con el que compilarlo y su fuente
+# entera, y deja en `sys.argv` lo que venga detrás, que es lo que espera quien
+# se ejecute.
+#
+# El nombre y el `linecache` no son adorno: sin ellos el traceback de un fallo
+# dice «File "<string>", line 40» y se queda sin el texto de la línea, y lo
+# primero que se le pide a quien reporta algo es justamente eso. Con ellos sale
+# «File "silux-helper.py", line 40» con su línea debajo, igual que si viniera
+# de un archivo.
+ARRANQUE = """\
+import linecache, sys
+_nombre, _fuente = sys.argv[1], sys.argv[2]
+linecache.cache[_nombre] = (len(_fuente), None, _fuente.splitlines(True), _nombre)
+sys.argv = [_nombre] + sys.argv[3:]
+exec(compile(_fuente, _nombre, "exec"), {"__name__": "__main__", "__file__": _nombre})
+"""
+
+
+def en_linea(interprete: str, nombre: str, fuente: str,
+             *argumentos: str) -> list[str]:
+    """La orden que ejecuta `fuente` sin que exista como archivo.
+
+    Es lo que evita que en la línea de `pkexec` aparezca una ruta que el
+    usuario pueda reescribir. Lo que va por `argv` queda fijado por el
+    `exec()` y nadie lo puede cambiar después; un archivo, sí.
+    """
+    return [interprete, "-c", ARRANQUE, nombre, fuente, *argumentos]
+
+
+def escribible_por_el_usuario(ruta) -> bool:
+    """Si este usuario puede cambiar lo que hay en esa ruta.
+
+    Mira también las carpetas de encima: poder escribir el directorio permite
+    sustituir el archivo entero aunque el archivo no se deje tocar.
+    """
+    if already_root():
+        # Como root todo es escribible y la pregunta no significa nada; y si
+        # somos root no hay pkexec de por medio que proteger.
+        return False
+    camino = pathlib.Path(ruta).resolve()
+    if camino.exists() and os.access(camino, os.W_OK):
+        return True
+    return any(os.access(padre, os.W_OK)
+               for padre in camino.parents if padre.exists())
+
 
 HELPER = pathlib.Path(__file__).resolve().parent / "helper.py"
 
@@ -44,6 +92,12 @@ HELPER = pathlib.Path(__file__).resolve().parent / "helper.py"
 # Lo instala `silux/privileged/instalar.py`, que es también quien explica por qué
 # tiene que vivir en un sitio que el usuario no pueda escribir.
 HELPER_INSTALADO = pathlib.Path("/usr/local/libexec/silux/silux-helper")
+# Su acción de polkit. Sin ella el ayudante instalado sigue ejecutándose,
+# pero por la acción genérica: contraseña en cada arranque en vez de una
+# por sesión. Las dos rutas las escribe `instalar.py` y hay un test que
+# vigila que no se separen de estas.
+POLITICA_INSTALADA = pathlib.Path(
+    "/usr/share/polkit-1/actions/org.silux.helper.policy")
 
 DEFAULT_TIMEOUT = 15.0
 # Autenticarse puede tardar lo que el usuario tarde en teclear.
@@ -127,9 +181,17 @@ class PrivilegedClient:
 
     @staticmethod
     def instalado() -> bool:
-        """Si el ayudante del sistema está puesto, con su acción de polkit."""
+        """Si el ayudante del sistema está puesto, con su acción de polkit.
+
+        La política cuenta: es lo que hace que la contraseña se pida una vez
+        por sesión y no en cada arranque, que es el motivo entero de instalar
+        nada. Sin ella el ayudante se ejecuta igual, pero el botón de permisos
+        permanentes se escondía diciendo que ya estaba hecho cuando faltaba la
+        mitad. `instalar.instalado()` ya miraba las dos.
+        """
         return (HELPER_INSTALADO.is_file()
-                and os.access(HELPER_INSTALADO, os.X_OK))
+                and os.access(HELPER_INSTALADO, os.X_OK)
+                and POLITICA_INSTALADA.is_file())
 
     def _orden(self) -> list[str]:
         """Lo que se le pasa a pkexec, en el orden de preferencia que toca.
@@ -138,53 +200,51 @@ class PrivilegedClient:
         autorización a la ruta del programa que ejecuta, así que con `python3`
         por delante la acción quedaría colgada del intérprete y valdría para
         cualquier script de la máquina.
+
+        Y si no está instalado, el ayudante viaja por `argv` y no como archivo.
+        **En esta lista no puede aparecer ninguna ruta que el usuario pueda
+        reescribir**, y hay un test que lo comprueba en las tres órdenes de
+        pkexec que construye el programa.
         """
         if self.instalado():
             return ["pkexec", str(HELPER_INSTALADO)]
-        interprete, ayudante = self._preparar()
-        return ["pkexec", interprete, str(ayudante)]
+        return ["pkexec", *en_linea(self._interprete(), "silux-helper.py",
+                                    self._fuente_del_ayudante())]
 
-    def _preparar(self) -> tuple[str, pathlib.Path]:
-        """El intérprete y el ayudante que pkexec puede llegar a ejecutar.
+    @staticmethod
+    def _fuente_del_ayudante() -> str:
+        try:
+            return HELPER.read_text(encoding="utf-8")
+        except OSError as exc:
+            raise HelperUnavailable(
+                f"no se pudo leer el ayudante: {exc}") from exc
 
-        Desde un AppImage no valen los de dentro, por dos motivos distintos y
-        los dos insalvables:
+    def _interprete(self) -> str:
+        """Con qué Python se lanza el ayudante.
+
+        Desde un AppImage el de dentro no vale, por dos motivos distintos y los
+        dos insalvables:
 
         * El punto de montaje va con `nosuid`, y pkexec se niega a ejecutar
           nada de un sistema de archivos así. Deniega antes de preguntar, que es
           por lo que no llegaba a salir el diálogo de la contraseña.
         * El montaje es de FUSE y pertenece al usuario, así que **root ni
-          siquiera puede leer dentro**. Aunque pkexec arrancara, no encontraría
-          el ayudante.
+          siquiera puede leer dentro**.
 
-        Así que se usa el intérprete del sistema —al ayudante le basta la
-        biblioteca estándar— y se deja una copia del propio ayudante fuera del
-        montaje. Fuera de un AppImage no se copia nada.
+        Así que se usa el del sistema, al que le basta la biblioteca estándar.
+        Fuera del AppImage vale el nuestro, pero solo si no lo puede reescribir
+        el usuario: el de un entorno virtual suyo lo es, y entonces la ruta que
+        recibe pkexec vuelve a ser sustituible, que es justo lo que se está
+        quitando de en medio.
         """
-        if not self.empaquetado():
-            return sys.executable, HELPER
-
-        interprete = next((ruta for ruta in SYSTEM_PYTHON if os.path.exists(ruta)),
-                          None)
-        if interprete is None:
-            raise HelperUnavailable(
-                "No hay ningún Python del sistema con el que lanzar el ayudante. "
-                "El que trae el AppImage no sirve: pkexec no ejecuta nada desde "
-                "su punto de montaje."
-            )
-
-        destino = _cache_dir() / "helper.py"
-        try:
-            destino.parent.mkdir(parents=True, exist_ok=True)
-            # Se reescribe siempre: si el AppImage se actualiza, la copia de
-            # una versión vieja del ayudante hablaría otro protocolo.
-            destino.write_bytes(HELPER.read_bytes())
-            destino.chmod(0o700)
-        except OSError as exc:
-            raise HelperUnavailable(
-                f"no se pudo preparar el ayudante fuera del AppImage: {exc}"
-            ) from exc
-        return interprete, destino
+        for ruta in SYSTEM_PYTHON:
+            if os.path.exists(ruta):
+                return ruta
+        if not self.empaquetado() and not escribible_por_el_usuario(sys.executable):
+            return sys.executable
+        raise HelperUnavailable(
+            "No hay ningún Python del sistema con el que lanzar el ayudante."
+        )
 
     def close(self) -> None:
         process, self._process = self._process, None
