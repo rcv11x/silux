@@ -194,3 +194,34 @@ class TestLaSuiteSePuedeProbarEnElMinimo(unittest.TestCase):
             with self.subTest(herramienta=herramienta):
                 self.assertTrue((RAIZ / herramienta).is_file(),
                                 f"CLAUDE.md nombra {herramienta} y no existe")
+
+
+class TestElBadgeApuntaADondeDice(unittest.TestCase):
+    """Un badge roto se ve verde en el sitio equivocado o no se ve.
+
+    Sale de la primera pantalla del README y es lo que se mira para saber si
+    algo está roto sin entrar en Actions, así que tiene que apuntar a un
+    workflow que exista y al repositorio que es. Renombrar el archivo del
+    workflow lo dejaría enseñando un aspa permanente sin que nadie lo
+    relacione.
+    """
+
+    def _readme(self) -> str:
+        return (RAIZ / "README.md").read_text(encoding="utf-8")
+
+    def test_el_workflow_del_badge_existe(self):
+        nombrados = set(re.findall(r"actions/workflows/([\w.-]+\.yml)",
+                                   self._readme()))
+        self.assertTrue(nombrados, "el README no enseña ningún badge de CI")
+        for archivo in sorted(nombrados):
+            with self.subTest(archivo=archivo):
+                self.assertTrue(
+                    (RAIZ / ".github" / "workflows" / archivo).is_file(),
+                    f"el badge apunta a {archivo} y ese workflow no existe")
+
+    def test_va_arriba_del_todo(self):
+        """Debajo del título; más abajo deja de cumplir su función."""
+        lineas = [l for l in self._readme().splitlines()[:5] if l.strip()]
+        self.assertTrue(
+            any("badge.svg" in l for l in lineas),
+            "el badge no está en las primeras líneas del README")
