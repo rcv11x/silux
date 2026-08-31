@@ -45,60 +45,65 @@ class TestDeteccion(unittest.TestCase):
 
 
 class TestPreparacion(unittest.TestCase):
+    """Cómo se lanza el ayudante desde el AppImage ahora que no hay copia.
+
+    Antes se dejaba una en `~/.cache/silux/helper.py` y se le pasaba esa ruta a
+    pkexec. Esa carpeta la escribe el usuario, así que cualquier proceso suyo
+    podía cambiar el archivo entre que silux lo escribía y que root lo abría, y
+    quedarse con ejecución como root. Ahora el ayudante viaja entero por `argv`
+    y no existe como archivo en ningún momento.
+    """
+
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
         self.cache = pathlib.Path(self._tmp.name)
         self.addCleanup(self._tmp.cleanup)
 
-    def test_sin_appimage_no_se_copia_nada(self):
-        cliente = PrivilegedClient()
-        with mock.patch.object(PrivilegedClient, "empaquetado", staticmethod(lambda: False)):
-            interprete, ayudante = cliente._preparar()
-        self.assertEqual(interprete, mod.sys.executable)
-        self.assertEqual(ayudante, mod.HELPER)
+    def _orden(self, empaquetado=True):
+        with mock.patch.object(PrivilegedClient, "empaquetado",
+                               staticmethod(lambda: empaquetado)), \
+             mock.patch.object(PrivilegedClient, "instalado",
+                               staticmethod(lambda: False)), \
+             mock.patch.object(mod, "_cache_dir", lambda: self.cache):
+            return PrivilegedClient()._orden()
+
+    def test_no_se_copia_nada_a_ninguna_parte(self):
+        for empaquetado in (True, False):
+            with self.subTest(empaquetado=empaquetado):
+                self._orden(empaquetado)
+                self.assertEqual(list(self.cache.rglob("*")), [])
 
     def test_con_appimage_se_usa_el_python_del_sistema(self):
-        cliente = PrivilegedClient()
-        with mock.patch.object(PrivilegedClient, "empaquetado", staticmethod(lambda: True)), \
-             mock.patch.object(mod, "_cache_dir", lambda: self.cache), \
-             mock.patch.object(mod, "SYSTEM_PYTHON", ("/usr/bin/python3",)):
-            interprete, ayudante = cliente._preparar()
-        self.assertEqual(interprete, "/usr/bin/python3")
+        with mock.patch.object(mod, "SYSTEM_PYTHON", ("/usr/bin/python3",)):
+            orden = self._orden()
+        self.assertEqual(orden[1], "/usr/bin/python3")
 
-    def test_el_ayudante_sale_del_montaje(self):
-        cliente = PrivilegedClient()
-        with mock.patch.object(PrivilegedClient, "empaquetado", staticmethod(lambda: True)), \
-             mock.patch.object(mod, "_cache_dir", lambda: self.cache):
-            _, ayudante = cliente._preparar()
-        self.assertNotIn("/.mount_", str(ayudante))
-        self.assertTrue(ayudante.is_file())
-        # Y es el mismo ayudante, no uno recortado.
-        self.assertEqual(ayudante.read_bytes(), mod.HELPER.read_bytes())
+    def test_el_ayudante_sale_del_montaje_sin_pasar_por_el_disco(self):
+        orden = self._orden()
+        # Ninguna ruta del montaje, que es lo que root no puede leer.
+        for pieza in orden:
+            if pieza.startswith("/"):
+                self.assertNotIn("/.mount_", pieza)
+        # Y va entero, no recortado: el ayudante se lee y se manda tal cual.
+        self.assertIn(mod.HELPER.read_text(encoding="utf-8"), orden)
 
-    def test_la_copia_se_rehace_en_cada_conexion(self):
-        # Si el AppImage se actualiza, una copia vieja hablaría otro protocolo.
-        cliente = PrivilegedClient()
-        destino = self.cache / "helper.py"
-        destino.parent.mkdir(parents=True, exist_ok=True)
-        destino.write_text("# versión antigua\n", encoding="utf-8")
-        with mock.patch.object(PrivilegedClient, "empaquetado", staticmethod(lambda: True)), \
-             mock.patch.object(mod, "_cache_dir", lambda: self.cache):
-            _, ayudante = cliente._preparar()
-        self.assertNotIn("versión antigua", ayudante.read_text(encoding="utf-8"))
-
-    def test_la_copia_no_queda_legible_para_otros(self):
-        cliente = PrivilegedClient()
-        with mock.patch.object(PrivilegedClient, "empaquetado", staticmethod(lambda: True)), \
-             mock.patch.object(mod, "_cache_dir", lambda: self.cache):
-            _, ayudante = cliente._preparar()
-        self.assertEqual(ayudante.stat().st_mode & 0o077, 0)
+    def test_una_actualizacion_no_deja_un_ayudante_viejo_detras(self):
+        """Antes la copia se reescribía en cada conexión por esto mismo: una
+        del AppImage anterior hablaría otro protocolo. Ahora se lee la fuente
+        en el momento de lanzar, así que no hay nada que pueda quedarse atrás,
+        pero sigue habiendo que comprobar que se lee y no se cachea."""
+        falso = self.cache / "helper.py"
+        falso.write_text("# el de antes\n", encoding="utf-8")
+        with mock.patch.object(mod, "HELPER", falso):
+            self.assertIn("# el de antes\n", self._orden())
+            falso.write_text("# el de ahora\n", encoding="utf-8")
+            self.assertIn("# el de ahora\n", self._orden())
 
     def test_sin_python_del_sistema_se_explica(self):
-        cliente = PrivilegedClient()
         with mock.patch.object(PrivilegedClient, "empaquetado", staticmethod(lambda: True)), \
              mock.patch.object(mod, "SYSTEM_PYTHON", ("/no/existe",)):
             with self.assertRaises(HelperUnavailable) as caso:
-                cliente._preparar()
+                PrivilegedClient()._interprete()
         self.assertIn("Python del sistema", str(caso.exception))
 
 
