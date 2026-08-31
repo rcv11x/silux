@@ -1,5 +1,7 @@
 # Silux
 
+[![Estado del CI](https://github.com/rcv11x/silux/actions/workflows/appimage.yml/badge.svg?branch=master)](https://github.com/rcv11x/silux/actions/workflows/appimage.yml)
+
 **Perfilador de hardware para Linux.** Lo que en Windows hacen CPU-Z, GPU-Z y
 HWMonitor, en un solo programa nativo: qué equipo tienes y qué está haciendo
 ahora mismo.
