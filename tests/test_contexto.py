@@ -225,3 +225,37 @@ class TestElBadgeApuntaADondeDice(unittest.TestCase):
         self.assertTrue(
             any("badge.svg" in l for l in lineas),
             "el badge no está en las primeras líneas del README")
+
+
+class TestLasSeccionesQueSeAnuncianSonLasQueHay(unittest.TestCase):
+    """La lista de secciones envejecía sola y nadie la miraba.
+
+    CLAUDE.md decía «las doce» sin contar Inicio y nombraba «Rendimiento»
+    cuando la sección se llamaba «Benchmark»; el README decía «las once» y se
+    dejaba además Batería. Quien lee eso cuenta mal, y `--page Rendimiento`
+    devolvía una captura de Inicio sin quejarse. Es comprobable, así que se
+    comprueba, igual que las otras dos cifras del contexto.
+    """
+
+    def _reales(self) -> set:
+        idioma = json.loads(
+            (RAIZ / "silux" / "db" / "lang" / "es.json").read_text(encoding="utf-8"))
+        return {v for k, v in idioma.items()
+                if k.startswith("nav.") and k != "nav.notyet"}
+
+    def test_el_contexto_las_nombra_todas_y_ninguna_de_más(self):
+        texto = (RAIZ / "CLAUDE.md").read_text(encoding="utf-8")
+        lista = re.search(r"Terminadas las \w+: \*\*(.+?)\*\*", texto, re.S)
+        self.assertIsNotNone(lista, "CLAUDE.md no lista las secciones")
+        nombradas = {n.strip() for n in
+                     lista.group(1).replace("\n", " ").split(",")}
+        self.assertEqual(nombradas, self._reales())
+
+    def test_el_readme_las_nombra_todas(self):
+        """Ahí van en prosa, así que se comprueba que estén, no el formato."""
+        texto = (RAIZ / "README.md").read_text(encoding="utf-8")
+        estado = re.search(r"Estado: las .+?\.\n\n", texto, re.S)
+        self.assertIsNotNone(estado, "el README no dice en qué estado está")
+        for seccion in sorted(self._reales()):
+            with self.subTest(seccion=seccion):
+                self.assertIn(seccion, estado.group(0))

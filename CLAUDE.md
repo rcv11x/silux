@@ -21,12 +21,14 @@ python3 tools/gen_lang.py --write      # poner al día los archivos de idioma
 python3 tools/medir_referencia.py      # rehacer la escala de puntuación
 python3 tools/anadir_puntuacion.py INFORMES  # sumar medidas ajenas a la tabla
 python3 tools/install_desktop.py       # icono y entrada de menú
+python3 tools/volcar_gpu.py            # lo que publica el kernel de cada gráfica
+python3 tools/comprobar_privacidad.py  # antes de publicar nada
 python3 tools/build_appimage.py --container   # el AppImage que se reparte
 python3 tools/probar_en_minimo.py --container # la suite en el Python del suelo
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **1270** y tardan poco más de un minuto. Si sale bastante
+Los tests son **1323** y tardan cerca de dos minutos. Si sale bastante
 menos, falta algo por recoger.
 
 Que pasen aquí no dice que pasen en el mínimo. El suelo declarado es Python
@@ -216,7 +218,7 @@ CPU y en el volcado del terminal.
 
 ## Estado
 
-Terminadas las doce: **CPU, Cachés, Placa base, Memoria, Gráficos,
+Terminadas las trece: **Inicio, CPU, Cachés, Placa base, Memoria, Gráficos,
 Almacenamiento, Red, Batería, Sistema, Rendimiento, Sensores, Ajustes**. La de
 Batería solo aparece en los equipos que tienen una: un sobremesa no va a tener
 nunca, así que dejarla puesta para decirlo sería ruido permanente en el menú.
@@ -972,7 +974,8 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
 
 - **Dejar que un nombre que no casa se vaya por el desagüe**: `select_section`
   recorría el menú, no encontraba la sección y volvía sin decirlo. Con
-  `--screenshot --page Rendimiento` —una sección que se llama «Benchmark»— eso
+  `--screenshot --page Rendimiento` —que entonces no era el nombre de ninguna,
+  porque la sección se llamaba «Benchmark»— eso
   es un PNG de la página de Inicio, escrito en disco, y un «captura guardada»
   en la salida. Una bandera que solo existe para automatizar capturas no puede
   entregar la equivocada en silencio: peor que fallar es fallar diciendo que
@@ -1082,7 +1085,7 @@ por `_()`, la segunda llamada recibe «Uso» —que no es una clave— y devuelv
 inglés: la tupla llevaba once claves y una traducción ya hecha, y era la única
 que no cambiaba de idioma. Hay un test que lo vigila.
 
-La interfaz está entera en los dos idiomas: 905 claves, ninguna sin traducir.
+La interfaz está entera en los dos idiomas: 912 claves, ninguna sin traducir.
 Hay un test que recorre el árbol de sintaxis de cada página buscando
 constructores de widget con una cadena española a pelo, porque eso es lo que
 no se ve hasta abrir la pantalla en el otro idioma y ningún test normal lo
