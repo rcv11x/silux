@@ -154,7 +154,7 @@ interfaz es lo único que lo necesita.
 | Jerarquía de caché | `/sys/devices/system/cpu/*/cache` | no |
 | Frecuencias, driver, gobernador, turbo | `cpufreq`, `intel_pstate` | no |
 | Preferencia de energía (EPP) | `cpufreq` | no |
-| Virtualización y si se corre dentro de una VM | `CPUID` | no |
+| Virtualización, si se corre dentro de una VM y en cuál | `CPUID` hojas 1 y 0x40000000 | no |
 | Carga media a 1, 5 y 15 minutos | `/proc/loadavg` | no |
 | Distribución, kernel, escritorio, sesión | `/etc/os-release`, `uname` | no |
 | Memoria, intercambio, procesos, hilos | `/proc/meminfo`, `/proc/loadavg` | no |
@@ -195,7 +195,7 @@ La última hace falta porque pasar en el Python de uno no dice nada del mínimo
 que declara el proyecto: corre la suite dentro de una Ubuntu 22.04, que es la
 misma en la que corre el CI y en la que se construye el AppImage.
 
-Son 1323 y tardan cerca de dos minutos. Ninguno necesita hardware concreto:
+Son 1377 y tardan cerca de dos minutos. Ninguno necesita hardware concreto:
 los proveedores se prueban contra árboles de sysfs sintéticos, el generador
 contra fragmentos de C, y los chips (SPD, EDID, SMART, `gpu_metrics`) contra
 volcados binarios de piezas reales guardados en `tests/fixtures`.
