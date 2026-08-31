@@ -22,7 +22,8 @@ import platform
 import struct
 from typing import Iterator
 
-__all__ = ["CpuidError", "CpuidReader", "pinned", "is_supported"]
+__all__ = ["CpuidError", "CpuidReader", "pinned", "is_supported",
+           "pagina_ejecutable"]
 
 # System V AMD64: rdi = puntero de salida, esi = hoja, edx = subhoja.
 _CODE_X86_64 = bytes(
@@ -41,6 +42,42 @@ _CODE_X86_64 = bytes(
 )
 
 _PROT_READ_EXEC = 0x1 | 0x4
+
+
+def pagina_ejecutable(codigo: bytes, error=RuntimeError):
+    """Una página con `codigo` dentro, lista para llamarse con ctypes.
+
+    Devuelve el `mmap` y la dirección. El `mmap` hay que guardarlo mientras se
+    use la función: si se recolecta, la dirección deja de ser válida y la
+    llamada siguiente se lleva el proceso por delante.
+
+    Vive aquí porque este módulo fue el primero que lo necesitó, para CPUID, y
+    ahora lo usa también el kernel que persigue punteros de `membench`. Los
+    detalles que tiene dentro se aprendieron una vez y no conviene repetirlos
+    en dos sitios para que se desincronicen.
+    """
+    mm = mmap.mmap(-1, mmap.PAGESIZE, prot=mmap.PROT_READ | mmap.PROT_WRITE)
+    mm.write(codigo)
+
+    # `CDLL(None)` es el propio proceso, que ya trae la libc cargada, y es
+    # lo que hacen los otros dos módulos que la piden. Buscarla con
+    # `find_library` no la encuentra mejor y sí lanza `ldconfig -p` para
+    # preguntar por algo que ya está abierto: un fork y un exec dentro del
+    # hilo de muestreo, y un fallo donde no haya ldconfig puesto.
+    libc = ctypes.CDLL(None, use_errno=True)
+    # La vista se crea y se descarta en la misma expresión: si se guardara,
+    # el mmap quedaría "exportado" y no se podría cerrar nunca. La dirección
+    # sigue siendo válida mientras viva `mm`.
+    address = ctypes.addressof(ctypes.c_char.from_buffer(mm))
+
+    if libc.mprotect(ctypes.c_void_p(address), mmap.PAGESIZE, _PROT_READ_EXEC) != 0:
+        errno = ctypes.get_errno()
+        mm.close()
+        raise error(
+            f"mprotect falló (errno {errno}). El entorno prohíbe ejecutar memoria "
+            "anónima; suele pasar bajo políticas SELinux estrictas o en sandboxes."
+        )
+    return mm, address
 
 
 class CpuidError(RuntimeError):
@@ -72,27 +109,7 @@ class CpuidReader:
         if not is_supported():
             raise CpuidError(f"CPUID solo está implementado para x86-64, no para {platform.machine()}")
 
-        self._mm = mmap.mmap(-1, mmap.PAGESIZE, prot=mmap.PROT_READ | mmap.PROT_WRITE)
-        self._mm.write(_CODE_X86_64)
-
-        # `CDLL(None)` es el propio proceso, que ya trae la libc cargada, y es
-        # lo que hacen los otros dos módulos que la piden. Buscarla con
-        # `find_library` no la encuentra mejor y sí lanza `ldconfig -p` para
-        # preguntar por algo que ya está abierto: un fork y un exec dentro del
-        # hilo de muestreo, y un fallo donde no haya ldconfig puesto.
-        libc = ctypes.CDLL(None, use_errno=True)
-        # La vista se crea y se descarta en la misma expresión: si se guardara,
-        # el mmap quedaría "exportado" y no se podría cerrar nunca. La dirección
-        # sigue siendo válida mientras viva `self._mm`.
-        address = ctypes.addressof(ctypes.c_char.from_buffer(self._mm))
-
-        if libc.mprotect(ctypes.c_void_p(address), mmap.PAGESIZE, _PROT_READ_EXEC) != 0:
-            errno = ctypes.get_errno()
-            self.close()
-            raise CpuidError(
-                f"mprotect falló (errno {errno}). El entorno prohíbe ejecutar memoria "
-                "anónima; suele pasar bajo políticas SELinux estrictas o en sandboxes."
-            )
+        self._mm, address = pagina_ejecutable(_CODE_X86_64, CpuidError)
 
         prototype = ctypes.CFUNCTYPE(None, ctypes.POINTER(ctypes.c_uint32), ctypes.c_uint32, ctypes.c_uint32)
         self._call = prototype(address)

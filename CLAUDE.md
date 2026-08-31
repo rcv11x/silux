@@ -28,7 +28,7 @@ python3 tools/probar_en_minimo.py --container # la suite en el Python del suelo
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **1323** y tardan cerca de dos minutos. Si sale bastante
+Los tests son **1332** y tardan cerca de dos minutos. Si sale bastante
 menos, falta algo por recoger.
 
 Que pasen aquí no dice que pasen en el mínimo. El suelo declarado es Python
@@ -263,11 +263,6 @@ aquí no era un artefacto de `memset`.** Ese 5800X3D da 28,8 escribiendo contra
 cifra es del hardware. Lo que despistaba era la comparación con un i7-8700K,
 donde escribir sale tan rápido como leer.
 
-- **La latencia por nivel de caché**, que es la fila que separa esta pestaña
-  del Cache & Memory Benchmark de AIDA64. La prueba está hecha y sale bien; hay
-  una trampa apuntada arriba, en las lecciones: si se dan menos saltos que
-  líneas tiene el array, la cadena recorrida cabe en la caché y se mide la
-  caché creyendo que se mide la RAM. Salían 28 ns donde hay 76.
 - **El ancho de banda de las cachés**, que hoy topa en los 112 GB/s de `memchr`
   cuando una L1 anda por los 1400. Pide el mismo camino que la latencia y no
   está probado.
@@ -721,12 +716,23 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   llamada: tres suposiciones sosteniendo una cifra.
 
   **Lo que sí funciona es escribir el bucle en código máquina**, que es lo que
-  este programa ya hace en `rawcpuid.py` desde el primer día. Doce bytes que
+  este programa ya hacía en `rawcpuid.py` desde el primer día. Doce bytes que
   persiguen punteros —`mov rax,[rax]`, y cada lectura da la dirección de la
-  siguiente— dan 0,9 ns en L1, 2,8 en L2, 11,4 en L3 y 76,1 en RAM en el
-  5800X3D de casa, que es justo lo que tiene que salir en un Zen 3 con
-  DDR4-3200. Está probado y sin integrar; el módulo es `membench.py` y el sitio
-  del kernel, al lado del de CPUID.
+  siguiente— dan 0,9 · 2,7 · 12,3 · 80,6 ns en el 5800X3D de casa, contra los
+  0,9 · 2,7 · 12,4 · 66,1 que da AIDA64 en la misma pieza con memoria más
+  rápida. Ya está integrado en `membench.py`, y la página ejecutable la monta
+  `rawcpuid.pagina_ejecutable`, que es donde se aprendieron esos detalles.
+- **Medir una caché con la mitad de su tamaño**: parece holgado y no lo es. La
+  L3 de un Zen 3 es caché de víctimas —solo guarda lo que se expulsa de la L2—,
+  así que recorrer 48 de sus 96 MB al azar da 66 ns donde tiene que dar 12. Con
+  4, 8 y 16 MB salen 11,9, 12,0 y 13,2: el escalón está muy por debajo de la
+  mitad, y el bloque lleva además un tope absoluto y no solo una fracción.
+- **Perseguir punteros por cientos de megas sin pedir páginas grandes**: el TLB
+  de datos guarda unas 2000 traducciones y 288 MB en páginas de 4 KB son 73728,
+  así que cada acceso pagaba también un recorrido de tablas. `madvise` con
+  `MADV_HUGEPAGE` baja de 94,7 a 82,1 ns, y para que el kernel pueda juntarlas
+  el bloque tiene que estar alineado a 2 MB, que es por lo que se pide con
+  `mmap` en vez de con un búfer de ctypes.
 - **Medir un bloque más pequeño que el coste de pedirlo**: una llamada por
   ctypes cuesta 570 ns. En 32 KB —el tamaño de una L1— eso es casi todo el
   tiempo, así que la cifra hablaría de ctypes y no del equipo. Desde un mega
@@ -1101,7 +1107,7 @@ por `_()`, la segunda llamada recibe «Uso» —que no es una clave— y devuelv
 inglés: la tupla llevaba once claves y una traducción ya hecha, y era la única
 que no cambiaba de idioma. Hay un test que lo vigila.
 
-La interfaz está entera en los dos idiomas: 912 claves, ninguna sin traducir.
+La interfaz está entera en los dos idiomas: 917 claves, ninguna sin traducir.
 Hay un test que recorre el árbol de sintaxis de cada página buscando
 constructores de widget con una cadena española a pelo, porque eso es lo que
 no se ve hasta abrir la pantalla en el otro idioma y ningún test normal lo

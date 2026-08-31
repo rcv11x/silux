@@ -110,6 +110,7 @@ class MemoryPage(QScrollArea):
         self._notice_signature: tuple = ()
         self._slot_grids: list[InfoGrid] = []
         self._cache_mas_grande: Optional[int] = None
+        self._niveles: list = []
         self._bw_listo.connect(self._pintar_ancho_de_banda)
 
     # -- construcción -------------------------------------------------------
@@ -192,6 +193,23 @@ class MemoryPage(QScrollArea):
         self.bw_intro.setWordWrap(True)
         self.bw_intro.setFont(ui_font(theme.METRICS.small_pt))
 
+        # Debajo del ancho de banda y en su propia rejilla: son dos preguntas
+        # distintas —cuánto cabe por el tubo y cuánto tarda en llegar lo
+        # primero— y juntas en una lista se leen como si fueran lo mismo.
+        self.lat_title = QLabel(_("memory.lat.title"))
+        self.lat_title.setObjectName("FieldName")
+        self.lat_title.setFont(ui_font(theme.METRICS.small_pt))
+        self.lat_title.setVisible(False)
+        self.lat_grid = InfoGrid()
+        for nivel in ("L1", "L2", "L3", "RAM"):
+            self.lat_grid.add(nivel)
+        self.lat_grid.setVisible(False)
+        self.lat_note = QLabel("")
+        self.lat_note.setObjectName("Muted")
+        self.lat_note.setWordWrap(True)
+        self.lat_note.setFont(ui_font(theme.METRICS.small_pt))
+        self.lat_note.setVisible(False)
+
         self.bw_note = QLabel(_("memory.bw.note"))
         self.bw_note.setObjectName("Muted")
         self.bw_note.setWordWrap(True)
@@ -209,6 +227,10 @@ class MemoryPage(QScrollArea):
         card.body.addWidget(self.bw_intro)
         card.body.addWidget(self.bw_grid)
         card.body.addWidget(self.bw_note)
+        card.body.addSpacing(theme.METRICS.card_gap)
+        card.body.addWidget(self.lat_title)
+        card.body.addWidget(self.lat_grid)
+        card.body.addWidget(self.lat_note)
         card.body.addLayout(fila)
 
         self._bw_hilo = None
@@ -223,12 +245,13 @@ class MemoryPage(QScrollArea):
         self.bw_button.setEnabled(False)
         self.bw_button.setText(_("memory.bw.measuring"))
         cache = self._cache_mas_grande
+        niveles = self._niveles
 
         def trabajo() -> None:
             # Fuera del hilo de la interfaz: son cien milisegundos, pero el
             # hijo tiene un minuto de plazo y si algo va mal se comería la
             # ventana entera.
-            self._bw_listo.emit(membench.consultar(cache))
+            self._bw_listo.emit(membench.consultar(cache, niveles))
 
         self._bw_hilo = threading.Thread(target=trabajo, daemon=True)
         self._bw_hilo.start()
@@ -240,6 +263,7 @@ class MemoryPage(QScrollArea):
         self.bw_grid.setVisible(True)
         self.bw_note.setVisible(True)
 
+        self._pintar_latencias(resultado)
         por_donde = {m.donde: m for m in resultado.medidas}
         teorico = render.memory_theoretical_bandwidth(self._bw_modulos)
         techo = por_donde.get("techo")
@@ -270,6 +294,30 @@ class MemoryPage(QScrollArea):
 
     # -- actualización ------------------------------------------------------
 
+    def _pintar_latencias(self, resultado) -> None:
+        """Cada nivel con lo que tarda un acceso suyo.
+
+        Los que no se hayan podido medir se esconden en vez de salir con un
+        guion: en un procesador sin L3 no falta el dato, es que no hay nivel.
+        """
+        por_nivel = {l.nivel: l for l in resultado.latencias}
+        hay = bool(por_nivel)
+        self.lat_title.setVisible(hay)
+        self.lat_grid.setVisible(hay)
+        for nivel in ("L1", "L2", "L3", "RAM"):
+            medida = por_nivel.get(nivel)
+            self.lat_grid.set_visible(nivel, medida is not None)
+            if medida is not None:
+                self.lat_grid.set(nivel, render.nanoseconds(medida.nanoseconds))
+
+        motivos = {"cadena_enorme": "memory.lat.partial",
+                   "no_x86": "memory.lat.nox86",
+                   "sin_ejecutable": "memory.lat.noexec"}
+        clave = motivos.get(resultado.motivo_latencias)
+        texto = _(clave) if clave else (_("memory.lat.note") if hay else "")
+        self.lat_note.setText(texto)
+        self.lat_note.setVisible(bool(texto))
+
     def apply(self, snapshot: Snapshot) -> None:
         memory = snapshot.system.memory
         array = snapshot.memory_array
@@ -288,6 +336,14 @@ class MemoryPage(QScrollArea):
             (c.size_bytes for t in snapshot.cpu.types for c in t.caches
              if c.size_bytes), default=None)
         self._bw_modulos = modules
+        # Un nivel por cada caché de datos o unificada, del más pequeño al
+        # mayor. Las de instrucciones no entran: por ellas no pasan los datos
+        # que persigue la medida.
+        self._niveles = [list(n) for n in sorted(
+            {(f"L{c.level}", c.size_bytes) for t in snapshot.cpu.types
+             for c in t.caches
+             if c.kind in ("data", "unified") and c.size_bytes},
+            key=lambda par: par[1])]
 
         self.bar.set_segments(
             [

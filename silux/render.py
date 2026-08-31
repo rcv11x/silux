@@ -504,6 +504,12 @@ def memory_channel_label(modulos) -> Optional[str]:
     return f"{nombre} · {modulos_txt}"
 
 
+def nanoseconds(value: Optional[float]) -> str:
+    """«0.9 ns». Un decimal: la L1 de cualquier procesador anda por ahí y con
+    cero decimales todas las cachés rápidas saldrían iguales."""
+    return DASH if _none(value) else f"{float(value):.1f} ns"
+
+
 def memory_theoretical_bandwidth(modulos) -> Optional[int]:
     """Lo que daría esta memoria si nada la frenara, en bytes por segundo.
 
