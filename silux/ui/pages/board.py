@@ -21,7 +21,8 @@ from ...model import Board, Need, Snapshot
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette
-from ..widgets import Card, ChipRow, InfoGrid, Notice, ResponsiveRow, clear_layout
+from ..widgets import (Card, ChipRow, InfoGrid, Notice, ResponsiveRow,
+                       clear_layout, tone_for)
 
 BOARD_FIELDS = ("memory.field.vendor", "storage.col.model",
                 "board.field.revision", "board.field.chassistype",
@@ -188,5 +189,5 @@ class BoardPage(QScrollArea):
         for note in notes:
             self._notices_host.addWidget(
                 Notice(_(NEED_TITLES.get(note.need, note.need.value)),
-                       note.message, note.hint)
+                       note.message, note.hint, tone=tone_for(note.need))
             )

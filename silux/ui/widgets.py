@@ -36,6 +36,7 @@ from PySide6.QtWidgets import (
 
 from .. import render
 from ..i18n import _
+from ..model import Need
 from . import theme
 from .theme import Palette, mono_font, ui_font
 
@@ -969,6 +970,27 @@ class ChipRow(QWidget):
                 reservar = getattr(padre, "_reservar_alto", None)
                 if reservar is not None:
                     reservar()
+
+
+# Qué se puede arreglar y qué no. Lo primero va en ámbar y lleva botón cuando
+# lo hay; lo segundo, en gris: un hecho del hardware no es una avería. Vive
+# aquí, al lado de `Notice`, porque la tabla estaba escrita solo en Gráficos y
+# las otras tres páginas que enseñan avisos pintaban de ámbar hasta lo que no
+# se puede arreglar: «el hipervisor no expone la frecuencia» salía tan urgente
+# como un permiso por dar.
+NEED_TONES = {
+    Need.ROOT: "warn",
+    Need.DRIVER: "warn",
+    Need.DATABASE: "warn",
+    Need.HARDWARE: "idle",
+    Need.PLATFORM: "idle",
+    Need.ERROR: "bad",
+}
+
+
+def tone_for(need) -> str:
+    """El color de la banda de un aviso, según se pueda hacer algo o no."""
+    return NEED_TONES.get(need, "warn")
 
 
 class Notice(QFrame):

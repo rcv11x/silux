@@ -184,6 +184,7 @@ class CpuType:
 
     virtualization: Optional[str] = None       # "VT-x", "AMD-V" o nada
     in_virtual_machine: bool = False
+    hypervisor: Optional[str] = None           # "VMware", "KVM"…: quién está debajo
 
     cores: int = 0
     threads: int = 0

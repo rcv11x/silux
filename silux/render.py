@@ -158,6 +158,21 @@ def signature_tooltip(cpu_type: CpuType) -> str:
         stepping=raw & 0xF)
 
 
+def virtual_machine(cpu_type: CpuType) -> Optional[str]:
+    """Quién está debajo, o nada si esto es hierro de verdad.
+
+    Vive aquí y no en cada página porque lo piden dos —Inicio y CPU— y porque
+    es justo lo que cambia cómo se lee todo lo demás: los núcleos, los
+    sockets y las cachés de una máquina virtual son los que le inventó el
+    hipervisor, no los de la pieza cuyo nombre sale en el titular.
+    """
+    if not cpu_type.in_virtual_machine:
+        return None
+    if cpu_type.hypervisor:
+        return _("cpu.vm.named").format(nombre=cpu_type.hypervisor)
+    return _("cpu.vm")
+
+
 def load_average(values: tuple[float, ...], threads: int = 0) -> str:
     """Carga a 1, 5 y 15 minutos, con el número de hilos como referencia."""
     if not values:

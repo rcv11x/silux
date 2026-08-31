@@ -183,6 +183,7 @@ class HomePage(QScrollArea):
             chips.append(sistema.hostname)
         if snapshot.cpu.types:
             chips.append(snapshot.cpu.types[0].architecture or "")
+            chips.append(render.virtual_machine(snapshot.cpu.types[0]) or "")
         pendientes = sum(1 for n in snapshot.notes if n.need.value == "root")
         if pendientes:
             chips.append(_("home.unread.one" if pendientes == 1

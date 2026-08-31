@@ -143,6 +143,23 @@ class CpuidReader:
         raw = b"".join(struct.pack("<IIII", *self(leaf)) for leaf in (0x8000_0002, 0x8000_0003, 0x8000_0004))
         return " ".join(raw.split(b"\x00")[0].decode("ascii", "replace").split())
 
+    def hypervisor_id(self) -> str:
+        """La firma de doce bytes que publica el hipervisor en la hoja 0x40000000.
+
+        No vale preguntar por `supports`: esa hoja está fuera del rango que
+        anuncia la hoja 0, y CPUID contesta a lo que no conoce con el
+        contenido de la hoja más alta que tenga, o sea con basura creíble.
+        Quien autoriza esta pregunta es el bit «hypervisor» de la hoja 1, y
+        comprobarlo es cosa de quien llama.
+        """
+        _eax, ebx, ecx, edx = self(0x4000_0000)
+        # Aquí el orden es EBX-ECX-EDX y no el EBX-EDX-ECX de la hoja 0: son
+        # dos cadenas distintas escritas por dos gentes distintas.
+        raw = struct.pack("<III", ebx, ecx, edx).split(b"\x00")[0]
+        if not raw or any(b < 0x20 or b > 0x7E for b in raw):
+            return ""
+        return raw.decode("ascii")
+
     def close(self) -> None:
         self._call = None  # type: ignore[assignment]
         mm = getattr(self, "_mm", None)

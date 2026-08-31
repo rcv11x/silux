@@ -1075,21 +1075,21 @@ class TestElColorDelAviso(unittest.TestCase):
     """
 
     def test_lo_que_se_arregla_va_en_ambar(self):
-        from silux.ui.pages.graphics import NEED_TONES
+        from silux.ui.widgets import NEED_TONES
 
         for need in (Need.ROOT, Need.DRIVER, Need.DATABASE):
             with self.subTest(need=need):
                 self.assertEqual(NEED_TONES[need], "warn")
 
     def test_lo_que_es_asi_y_ya_esta_va_en_gris(self):
-        from silux.ui.pages.graphics import NEED_TONES
+        from silux.ui.widgets import NEED_TONES
 
         for need in (Need.HARDWARE, Need.PLATFORM):
             with self.subTest(need=need):
                 self.assertEqual(NEED_TONES[need], "idle")
 
     def test_un_fallo_nuestro_se_nota(self):
-        from silux.ui.pages.graphics import NEED_TONES
+        from silux.ui.widgets import NEED_TONES
 
         self.assertEqual(NEED_TONES[Need.ERROR], "bad")
 
