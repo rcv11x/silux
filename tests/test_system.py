@@ -146,7 +146,7 @@ class TestColumnasDelArbol(unittest.TestCase):
         árbol vacío de un equipo sin `hwmon` no sobra lo mismo y la curva se
         queda con lo que aquí no le toca."""
         from silux.ui import theme
-        from silux.ui.widgets import SensorTree
+        from silux.ui.sensortree import SensorTree
 
         from . import muestras
 
@@ -303,7 +303,7 @@ class TestColumnasDelArbol(unittest.TestCase):
     def test_la_cabecera_avisa_de_que_se_puede_arrastrar(self):
         """Qt cambia el cursor sobre el separador, pero eso solo se descubre
         por accidente: hace falta una marca visible."""
-        from silux.ui.widgets import ResizableHeader
+        from silux.ui.sensortree import ResizableHeader
 
         tree = self._tree()
         tree.show()
@@ -433,7 +433,7 @@ class TestBuscadorDeSensores(unittest.TestCase):
     def _tree(self):
         from silux.collector import Collector
         from silux.ui import theme
-        from silux.ui.widgets import SensorTree
+        from silux.ui.sensortree import SensorTree
 
         arbol = SensorTree(theme.DARK)
         arbol.rebuild(Collector().sample().sensor_tree())
@@ -458,7 +458,7 @@ class TestBuscadorDeSensores(unittest.TestCase):
         """
         from silux.model import Sensor, SensorKind
         from silux.ui import theme
-        from silux.ui.widgets import SensorTree
+        from silux.ui.sensortree import SensorTree
 
         sensores = {
             "Procesador": {
@@ -537,7 +537,7 @@ class TestRamasRecordadas(unittest.TestCase):
     def _tree(self, plegadas=None):
         from silux.collector import Collector
         from silux.ui import theme
-        from silux.ui.widgets import SensorTree
+        from silux.ui.sensortree import SensorTree
 
         arbol = SensorTree(theme.DARK)
         arbol.set_collapsed(plegadas)
@@ -583,7 +583,7 @@ class TestRepartoDeLaRejillaDeNucleos(unittest.TestCase):
 
     def _matriz(self, hilos: int, ancho: int):
         from silux.ui import theme
-        from silux.ui.widgets import CoreMatrix
+        from silux.ui.corematrix import CoreMatrix
 
         matriz = CoreMatrix(theme.DARK)
         matriz.set_cores([{"name": f"CPU {i}", "detail": "", "usage": 0.0}
@@ -699,7 +699,7 @@ class TestQueLasCifrasQuepan(unittest.TestCase):
     def _tree(self):
         from silux.collector import Collector
         from silux.ui import theme
-        from silux.ui.widgets import SensorTree
+        from silux.ui.sensortree import SensorTree
 
         arbol = SensorTree(theme.DARK)
         arbol.rebuild(Collector().sample().sensor_tree())
@@ -741,7 +741,7 @@ class TestEtiquetasRepetidas(unittest.TestCase):
 
     def _arbol_con(self, sensores):
         from silux.ui import theme
-        from silux.ui.widgets import SensorTree
+        from silux.ui.sensortree import SensorTree
 
         arbol = SensorTree(theme.DARK)
         arbol.rebuild({"Placa": {"Temperaturas": tuple(sensores)}})
@@ -805,7 +805,7 @@ class TestElColorDeLasCeldas(unittest.TestCase):
     def _arbol(self):
         from silux.model import Sensor, SensorKind
         from silux.ui import theme
-        from silux.ui.widgets import SensorTree
+        from silux.ui.sensortree import SensorTree
 
         arbol = SensorTree(theme.DARK)
         sensor = Sensor(key="t", chip="k", device="CPU", label="Tctl",
@@ -858,7 +858,7 @@ class TestArrastrarLasColumnas(unittest.TestCase):
 
     def _tree(self, ancho=1390):
         from silux.ui import theme
-        from silux.ui.widgets import SensorTree
+        from silux.ui.sensortree import SensorTree
 
         arbol = SensorTree(theme.DARK)
         arbol.rebuild(self.foto.sensor_tree())
@@ -924,7 +924,7 @@ class TestOrdenarElArbol(unittest.TestCase):
     def _tree(self):
         from silux.collector import Collector
         from silux.ui import theme
-        from silux.ui.widgets import SensorTree
+        from silux.ui.sensortree import SensorTree
 
         arbol = SensorTree(theme.DARK)
         foto = Collector().sample()
@@ -946,7 +946,7 @@ class TestOrdenarElArbol(unittest.TestCase):
         self.skipTest("esta máquina no tiene ninguna categoría con varios sensores")
 
     def _valores(self, categoria):
-        from silux.ui.widgets import _cifra
+        from silux.ui.sensortree import _cifra
 
         return [_cifra(categoria.child(k).text(1))
                 for k in range(categoria.childCount())]
@@ -992,7 +992,7 @@ class TestOrdenarElArbol(unittest.TestCase):
 
     def test_un_sensor_sin_lectura_se_va_al_final(self):
         """No es ni el más alto ni el más bajo: es que no hay dato."""
-        from silux.ui.widgets import _cifra
+        from silux.ui.sensortree import _cifra
 
         self.assertLess(_cifra("—"), _cifra("0.0 °C"))
         self.assertEqual(_cifra("82.5 °C"), 82.5)

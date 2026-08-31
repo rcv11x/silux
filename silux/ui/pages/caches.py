@@ -20,7 +20,8 @@ from ...model import Cache, Snapshot
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette, ui_font
-from ..widgets import CacheMap, Card, ChipRow, ResponsiveRow, Table
+from ..cachemap import CacheMap
+from ..widgets import Card, ChipRow, ResponsiveRow, Table
 
 
 

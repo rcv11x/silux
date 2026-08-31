@@ -145,7 +145,7 @@ class TestNucleosConLetraGrande(unittest.TestCase):
     """
 
     def _celda(self, escala: str) -> int:
-        from silux.ui.widgets import CoreMatrix
+        from silux.ui.corematrix import CoreMatrix
         app = QApplication.instance() or QApplication([])
         theme.set_density("normal", escala)
         return CoreMatrix(theme.palette_for(app, "dark"))._cell_h

@@ -172,7 +172,7 @@ class TestWidgetDelArbol(unittest.TestCase):
 
     def _tree(self):
         from silux.ui import theme
-        from silux.ui.widgets import SensorTree
+        from silux.ui.sensortree import SensorTree
 
         return SensorTree(theme.DARK)
 
