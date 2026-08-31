@@ -1353,12 +1353,29 @@ class TestGraficaSinDriver(unittest.TestCase):
         for real in ("amdgpu", "i915", "nouveau", "nvidia", "xe", "radeon"):
             self.assertNotIn(real, FRAMEBUFFER_GENERICO)
 
+    # Un pci.ids recortado con lo justo. Preguntarle al del sistema hacía que
+    # el test dependiera de la versión de hwdata que tuviera puesta quien lo
+    # ejecuta: la 3050 Mobile es de 2021 y en una base anterior no está, así
+    # que la prueba reventaba con un KeyError que no dice nada de la gráfica
+    # ni del proveedor. Y donde no hay hwdata ninguna —el contenedor del CI—
+    # no está ninguna. Lo que se comprueba aquí es que del bus salga un
+    # nombre; de leer el fichero ya se ocupa test_pciids.
+    PCI_IDS = """\
+10de  NVIDIA Corporation
+\t25a2  GA107M [GeForce RTX 3050 Mobile]
+"""
+
     def test_una_grafica_del_bus_se_identifica_sin_driver(self):
         """El bus da vendor y device; `pciids` los convierte en un nombre."""
         from silux import pciids
 
-        # Los de una RTX 3050 Mobile, que es de las que llegaron en capturas.
-        nombres = pciids.lookup([(0x10DE, 0x25A2)])
+        with tempfile.TemporaryDirectory() as carpeta:
+            ruta = pathlib.Path(carpeta) / "pci.ids"
+            ruta.write_text(self.PCI_IDS, encoding="utf-8")
+            with mock.patch.object(pciids, "database_path", lambda: ruta):
+                # Los de una RTX 3050 Mobile, de las que llegaron en capturas.
+                nombres = pciids.lookup([(0x10DE, 0x25A2)])
+
         marca, modelo = nombres[(0x10DE, 0x25A2)]
         self.assertIn("NVIDIA", marca)
         self.assertIn("3050", modelo)

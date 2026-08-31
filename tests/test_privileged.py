@@ -124,7 +124,23 @@ class _FakeClient:
 
 
 class TestProveedorDeModulos(unittest.TestCase):
+    """Lo que hace el proveedor sin ser root, que es el caso normal.
+
+    Hay que decírselo: `collect()` empieza preguntando `already_root()` y, si
+    dice que sí, lee la tabla DMI él mismo y el cliente falso no llega a usarse
+    nunca. Ejecutada como root —el CI corre así— la clase entera medía otra
+    cosa: `Need.HARDWARE` donde estas pruebas esperan `Need.ROOT`, y el
+    proveedor sin marcar como conectado porque no había a quién conectarse. El
+    camino de root tiene su propio test y ahí se pide expresamente.
+    """
+
     TABLA = _memory_array(slots=2) + _memory_device() + _empty_slot() + _end()
+
+    def setUp(self):
+        parche = mock.patch(
+            "silux.providers.privileged_memory.already_root", return_value=False)
+        parche.start()
+        self.addCleanup(parche.stop)
 
     def test_sin_pedirlo_no_eleva_nada(self):
         """Un programa que pide la contraseña al arrancar es un programa que
@@ -172,6 +188,8 @@ class TestProveedorDeModulos(unittest.TestCase):
         self.assertFalse(draft.privileged.connected)
 
     def test_como_root_lee_directamente_sin_ayudante(self):
+        # Pisa el parche de setUp: aquí el euid que interesa es el contrario, y
+        # tampoco se lee de él —la tabla y el permiso son los dos fingidos—.
         cliente = _FakeClient(self.TABLA)
         proveedor = PrivilegedMemory(cliente)
         draft = Draft()
