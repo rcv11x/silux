@@ -24,8 +24,9 @@ from ...i18n import _
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette, ui_font
-from ..widgets import (Card, InfoGrid, Notice, ResponsiveRow, ScoreBar,
-                       Table, clear_layout, mono_font)
+from ..scorebar import ScoreBar
+from ..widgets import (Card, InfoGrid, Notice, ResponsiveRow, Table,
+                       clear_layout, mono_font)
 
 RESULT_HEADERS = ("bench.col.load", "bench.col.one", "bench.col.all", "bench.col.scale")
 HISTORY_HEADERS = ("bench.col.test", "bench.col.measure", "bench.col.score", "bench.col.avgfreq",

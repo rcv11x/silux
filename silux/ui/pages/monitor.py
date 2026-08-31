@@ -40,12 +40,11 @@ from ...settings import Preferences
 from ...tracking import Tracker
 from .. import theme
 from ..theme import Palette, ui_font
+from ..sensortree import SensorTree
 from ..widgets import (
     Card,
-    CoreMatrix,
     Notice,
     ResponsiveRow,
-    SensorTree,
     StatTile,
     clear_layout,
 )

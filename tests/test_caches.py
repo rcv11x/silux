@@ -51,7 +51,7 @@ class TestEje(unittest.TestCase):
         self.assertEqual(self.axis(_snapshot()), [0, 3, 1, 4, 2, 5])
 
     def test_cada_instancia_queda_contigua_en_el_eje(self):
-        from silux.ui.widgets import _contiguous_runs
+        from silux.ui.cachemap import _contiguous_runs
 
         eje = self.axis(_snapshot())
         posicion = {cpu: i for i, cpu in enumerate(eje)}

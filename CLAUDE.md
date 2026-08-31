@@ -187,7 +187,12 @@ silux/
 ├─ db/             cpu_ids.json (generado; incluye la tabla de MIDR de ARM) +
 │                  sockets.json y families.json (curados a mano; el segundo
 │                  cubre lo que libcpuid no tiene)
-└─ ui/             tema, hilo de muestreo, widgets, una página por sección
+└─ ui/             tema, hilo de muestreo, widgets, una página por sección.
+                   `widgets.py` son las primitivas —las que usan varias
+                   páginas—; el widget que solo monta una vive en su
+                   propio módulo (`sensortree`, `corematrix`, `cachemap`,
+                   `scorebar`), porque mezclados no se puede mirar la
+                   lista antes de escribir uno nuevo
 ```
 
 El orden de los proveedores en `collector.py` importa y está comentado ahí.

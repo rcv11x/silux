@@ -51,7 +51,7 @@ TABLAS = {
     "silux/model.py": ("CATEGORIES", "CATEGORY_ORDER"),
     "silux/ui/pages/memory.py": ("MODULE_FIELDS", "TIMING_HEADERS"),
     "silux/ui/pages/cpu.py": ("PROCESSOR_FIELDS", "CLOCK_FIELDS"),
-    "silux/ui/widgets.py": ("COLUMNS",),
+    "silux/ui/sensortree.py": ("COLUMNS",),
     "silux/providers/dmi.py": ("CHASSIS_TYPES", "_ALIMENTACION"),
     "silux/providers/hwmon.py": ("ETIQUETAS_GPU", "_ALIMENTACION"),
     "silux/providers/drm.py": ("DRIVERS_CIEGOS", "INTEL_AVISOS", "MOTORES_INTEL",
