@@ -74,9 +74,23 @@ def _cabecera(snapshot: Snapshot, anonymous: bool) -> str:
         f"| Fuentes activas | {', '.join(sorted(snapshot.capabilities)) or 'ninguna'} |",
         f"| Ejecutado desde | {_procedencia()} |",
     ]
+    # Va en la cabecera y no en el apartado del procesador porque no habla del
+    # procesador: cambia cómo se lee el archivo entero. Sin esta fila, un
+    # informe de una VM de VMware describe una placa 440BX y un i5-10500T de
+    # dos núcleos y dos sockets sin que nada avise de que no hay tal equipo.
+    if virt := _hipervisor(snapshot):
+        lineas.append(f"| Máquina virtual | {virt} |")
     if not anonymous and sistema.hostname:
         lineas.append(f"| Equipo | {sistema.hostname} |")
     return "\n".join(lineas)
+
+
+def _hipervisor(snapshot: Snapshot) -> str:
+    """Quién está debajo, para la cabecera. Vacío si esto es hierro."""
+    for tipo in snapshot.cpu.types:
+        if tipo.in_virtual_machine:
+            return tipo.hypervisor or "sí, hipervisor sin identificar"
+    return ""
 
 
 def _procesador(snapshot: Snapshot) -> str:

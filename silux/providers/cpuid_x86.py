@@ -38,6 +38,21 @@ VENDOR_NAMES = {
     "  Shanghai  ": "Zhaoxin",
 }
 
+# La firma de doce bytes de la hoja 0x40000000. Cada hipervisor eligió la suya
+# una vez y ya no la cambia, así que la tabla es corta y no envejece. Se busca
+# sin espacios de relleno porque varios los usan para llegar a doce.
+HYPERVISOR_NAMES = {
+    "VMwareVMware": "VMware",
+    "KVMKVMKVM": "KVM",
+    "TCGTCGTCGTCG": "QEMU",
+    "Microsoft Hv": "Hyper-V",
+    "VBoxVBoxVBox": "VirtualBox",
+    "XenVMMXenVMM": "Xen",
+    "prl hyperv": "Parallels",
+    "bhyve bhyve": "bhyve",
+    "ACRNACRNACRN": "ACRN",
+}
+
 
 class CpuidIdentity(Provider):
     """Rellena la identidad de cada tipo de núcleo a partir de CPUID."""
@@ -118,11 +133,25 @@ class CpuidIdentity(Provider):
             # lo enciende, así que es la señal más directa de estar dentro de
             # una máquina virtual.
             in_virtual_machine="hypervisor" in feats,
+            hypervisor=self._hipervisor(reader) if "hypervisor" in feats else None,
         )
 
         self._fill_frequencies(reader, entry)
         self._fill_identity(draft, entry, vendor_id, disp_family, disp_model,
                             family, model, stepping, brand)
+
+    @staticmethod
+    def _hipervisor(reader: CpuidReader) -> Optional[str]:
+        """Quién está debajo. Solo tiene sentido con el bit «hypervisor» puesto.
+
+        Una firma que no esté en la tabla se devuelve tal cual en vez de
+        perderse: identifica igual al hipervisor y llega al informe, que es de
+        donde puede salir la entrada que falta.
+        """
+        firma = reader.hypervisor_id().strip()
+        if not firma:
+            return None
+        return HYPERVISOR_NAMES.get(firma, firma)
 
     @staticmethod
     def _fill_frequencies(reader: CpuidReader, entry: dict) -> None:

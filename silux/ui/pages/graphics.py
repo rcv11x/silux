@@ -24,18 +24,7 @@ from ...throttling import SeguidorDeRecortes
 from .. import theme
 from ..theme import Palette, ui_font
 from ..widgets import (Card, ChipRow, Divider, InfoGrid, Notice, ResponsiveRow, StackedBar,
-                       StatTile, Table, clear_layout)
-
-# Qué se puede arreglar y qué no. Lo primero va en ámbar y lleva botón cuando
-# lo hay; lo segundo, en gris: un hecho del hardware no es una avería.
-NEED_TONES = {
-    Need.ROOT: "warn",
-    Need.DRIVER: "warn",
-    Need.DATABASE: "warn",
-    Need.HARDWARE: "idle",
-    Need.PLATFORM: "idle",
-    Need.ERROR: "bad",
-}
+                       StatTile, Table, clear_layout, tone_for)
 
 # Un aspa se lee de un vistazo; un «No» hay que leerlo.
 SI = "✓"
@@ -353,7 +342,7 @@ class GpuSection(QWidget):
         for note in notes:
             aviso = Notice(
                 _(NEED_TITLES.get(note.need, note.need.value)), note.message, note.hint,
-                tone=NEED_TONES.get(note.need, "warn"),
+                tone=tone_for(note.need),
                 action=(_("perm.button.read")
                         if note.need is Need.ROOT else None),
             )
@@ -782,5 +771,5 @@ class GraphicsPage(QScrollArea):
         for note in sueltos:
             self._notices_host.addWidget(
                 Notice(_(NEED_TITLES.get(note.need, note.need.value)),
-                       note.message, note.hint)
+                       note.message, note.hint, tone=tone_for(note.need))
             )

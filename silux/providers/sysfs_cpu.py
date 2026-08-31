@@ -249,7 +249,18 @@ class SysfsClocks(Provider):
             )
 
         if not any_read:
-            draft.note(
-                "cpu.clocks.current_hz", Need.DRIVER,
-                _("prov.cpu.nofreq"), _("prov.cpu.nofreq.hint"),
-            )
+            # Dentro de una máquina virtual no hay ningún módulo que cargar:
+            # el hipervisor no expone cpufreq porque no gobierna el reloj.
+            # Decirlo con Need.DRIVER lo pinta de ámbar y manda a buscar un
+            # driver que no existe, que es el mismo error que el botón de
+            # permisos puesto donde el ayudante no sabía arreglar nada.
+            if any(t.get("in_virtual_machine") for t in draft.types.values()):
+                draft.note(
+                    "cpu.clocks.current_hz", Need.HARDWARE,
+                    _("prov.cpu.nofreq.vm"), _("prov.cpu.nofreq.vm.hint"),
+                )
+            else:
+                draft.note(
+                    "cpu.clocks.current_hz", Need.DRIVER,
+                    _("prov.cpu.nofreq"), _("prov.cpu.nofreq.hint"),
+                )

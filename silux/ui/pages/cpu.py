@@ -32,6 +32,7 @@ from ..widgets import (
     ChipRow,
     InfoGrid,
     Notice,
+    tone_for,
     ResponsiveRow,
     clear_layout,
 )
@@ -320,7 +321,12 @@ class CpuPage(QScrollArea):
         self._apply_sections(snapshot)
 
     def _apply_badges(self, cpu_type: CpuType) -> None:
-        wanted = tuple(x for x in (cpu_type.codename, cpu_type.socket,
+        # La de máquina virtual va primera y se lleva el resaltado: sin ella,
+        # «2 núcleos · 2 hilos · 2 sockets» de un i5-10500T (que trae 6 y 12,
+        # y un solo socket) se lee como que el programa cuenta mal, cuando es
+        # la topología que le dio el hipervisor.
+        wanted = tuple(x for x in (render.virtual_machine(cpu_type),
+                                   cpu_type.codename, cpu_type.socket,
                                    cpu_type.technology, cpu_type.architecture) if x)
         if wanted == self._badge_signature:
             return
@@ -369,6 +375,7 @@ class CpuPage(QScrollArea):
                 note.message, note.hint,
                 action=(_("perm.button.read")
                         if note.need is Need.ROOT else None),
+                tone=tone_for(note.need),
             )
             if aviso.action_button is not None:
                 aviso.action_clicked.connect(self.elevation_requested)

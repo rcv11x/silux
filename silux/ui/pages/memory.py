@@ -31,7 +31,7 @@ from .. import theme
 from ..theme import Palette, ui_font
 from ..widgets import (
     Card, ChipRow, InfoGrid, Notice, ResponsiveRow, StackedBar, Table,
-    boton_de_permiso_permanente, clear_layout,
+    boton_de_permiso_permanente, clear_layout, tone_for,
 )
 
 from ...model import Need
@@ -378,7 +378,7 @@ class MemoryPage(QScrollArea):
         for note in notes:
             self._notices_host.addWidget(
                 Notice(_(NEED_TITLES.get(note.need, note.need.value)),
-                       note.message, note.hint)
+                       note.message, note.hint, tone=tone_for(note.need))
             )
 
     def _apply_avisos(self, snapshot: Snapshot) -> None:
