@@ -47,6 +47,11 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 # funciona en las nuevas, pero no al revés; y sus paquetes van para x86-64
 # básico, no para las extensiones que solo tienen los procesadores recientes.
 IMAGEN_BASE = "docker.io/library/ubuntu:22.04"
+
+# Se la pone `construir_en_contenedor` a la construcción de dentro, que si no
+# no tiene forma de saber dónde está. Sin ella el aviso final recomendaba
+# construir en un contenedor a quien acababa de hacerlo.
+EN_CONTENEDOR = "SILUX_EN_CONTENEDOR"
 DIST = ROOT / "dist"
 APPDIR = DIST / "silux.AppDir"
 APP_ID = "silux"
@@ -369,7 +374,10 @@ def construir_en_contenedor(imagen: str, compat: bool = False) -> int:
               "  sudo apt install podman      (Debian, Ubuntu)", file=sys.stderr)
         return 1
 
-    print(f"· construyendo dentro de {imagen} con {motor}")
+    # `flush` porque justo detrás va un proceso que escribe directo: sin él,
+    # esta línea se queda en el búfer y sale la última en cuanto la salida
+    # se canaliza a un archivo, que es cuando se quiere el registro.
+    print(f"· construyendo dentro de {imagen} con {motor}", flush=True)
     DIST.mkdir(parents=True, exist_ok=True)
     # El `pip` de dentro no ve los argumentos de aquí, así que la versión va
     # por entorno; la opción se repite para que el build de dentro sepa cómo
@@ -381,6 +389,14 @@ def construir_en_contenedor(imagen: str, compat: bool = False) -> int:
         "-w", "/fuente",
         "-e", f"PYSIDE={RANGO_PYSIDE[compat]}",
         "-e", f"SILUX_BUILD={_marca_de_construccion()}",
+        "-e", f"{EN_CONTENEDOR}=1",
+        # Sin esto la salida sale desordenada y no se puede leer: dentro del
+        # contenedor la stdout de Python no es un terminal, así que va por
+        # bloques y se vuelca entera al final, mientras appimagetool y pip
+        # escriben directos. Los pasos aparecían después de empaquetar, que
+        # ocurre al revés. Hoy solo confunde; el día que falle un paso, el
+        # registro no dirá en cuál.
+        "-e", "PYTHONUNBUFFERED=1",
         imagen, "bash", "-c", RECETA, "--", *dentro,
     ]
     resultado = subprocess.run(orden, check=False)
@@ -413,15 +429,42 @@ def avisar_de_compatibilidad() -> None:
     if not (nivel or glibc):
         return
 
+    dentro = bool(os.environ.get(EN_CONTENEDOR))
     print("\nCompatibilidad de lo construido:")
+
+    # Cuántos de los avisos son cosas que quien construye puede arreglar. La
+    # línea del final se contaba sola —decía «las dos cosas» hubiera salido una
+    # o dos— y encima recomendaba lo que se acababa de hacer.
+    pendientes = 0
+
     if nivel and nivel != "x86-64-baseline":
+        pendientes += 1
         print(f"  ⚠ Exige {nivel}: no arrancará en procesadores anteriores a "
               f"{'2013 (Haswell / Zen)' if nivel.endswith('v3') else '2009'}.")
         print("    El error que verán es «CPU ISA level is lower than required».")
-    if glibc:
+
+    if glibc and dentro:
+        # Construido en la imagen base, ese suelo es el que se buscaba y no un
+        # problema. Marcarlo con un aviso hace dudar de un paquete que está
+        # bien, que es justo lo contrario de para lo que existe este bloque.
+        print(f"  · Exige glibc {glibc}, la de la imagen base: es el suelo que")
+        print("    se buscaba construyendo aquí dentro. Para bajarlo hace falta")
+        print("    una base más antigua, no una opción.")
+    elif glibc:
+        pendientes += 1
         print(f"  ⚠ Exige glibc {glibc} o superior.")
-    print("  Las dos cosas se resuelven construyendo en un contenedor con una")
-    print("  distribución antigua; ver la sección «Compatibilidad» del README.")
+
+    if not pendientes:
+        return
+    if dentro:
+        # Que quede algo pendiente construyendo ya en la imagen antigua es la
+        # sorpresa que hay que contar: no lo arregla el contenedor.
+        print("  Y eso construyendo ya dentro del contenedor, así que no lo")
+        print("  arregla la imagen: lo pide algo de lo que se está empaquetando.")
+    else:
+        arreglo = "Se resuelve" if pendientes == 1 else "Las dos se resuelven"
+        print(f"  {arreglo} construyendo en un contenedor con una distribución")
+        print("  antigua; ver la sección «Compatibilidad» del README.")
 
 
 def _nivel_isa() -> Optional[str]:
