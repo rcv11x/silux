@@ -397,8 +397,13 @@ class TestReutilizacionDeWidgets(unittest.TestCase):
         ventana = MainWindow(Preferences(theme="dark"))
         ventana.show()
         self.addCleanup(ventana.close)
-        for seccion in ("Monitor", "Memoria", "Sistema"):
-            ventana.select_section(seccion)
+        # «Monitor» es el nombre de la clase de la página, no el de la
+        # sección, que se llama «Sensores». Como `select_section` se tragaba
+        # el que no existía, esta prueba de memoria llevaba visitando dos
+        # páginas y no tres, y justo se dejaba fuera la del árbol de sensores,
+        # que es la que más widgets monta. Ahora se comprueba que entra.
+        for seccion in ("Sensores", "Memoria", "Sistema"):
+            self.assertTrue(ventana.select_section(seccion), seccion)
         colector = Collector()
         colector.snapshot()
 

@@ -353,12 +353,20 @@ class MainWindow(QMainWindow):
         super().resizeEvent(event)
         self._sync_nav_visibility()
 
-    def select_section(self, name: str) -> None:
+    def select_section(self, name: str) -> bool:
         """Abre una sección por su nombre, en español o en el idioma de ahora.
 
         Los dos valen: un script escrito contra `--page Sensores` no puede
         dejar de funcionar porque alguien se ponga la interfaz en inglés, y
         quien la tiene en inglés espera que `--page Sensors` le sirva.
+
+        Devuelve si la encontró. Antes no devolvía nada y el nombre que no
+        casaba se iba por el desagüe sin dejar rastro: `--screenshot --page
+        Rendimiento` —cuando la sección se llama «Benchmark»— guardaba una
+        imagen de Inicio y decía «captura guardada». Qué hacer con el fallo lo
+        decide quien llama, que es el único que sabe si hay alguien delante:
+        desde el menú de Inicio la clave siempre existe, y desde la línea de
+        órdenes hay que parar.
         """
         buscado = name.lower()
         for row in range(self.nav.count()):
@@ -373,7 +381,17 @@ class MainWindow(QMainWindow):
             if buscado in nombres:
                 self.nav.setCurrentRow(row)
                 self._on_section(row)
-                return
+                return True
+        return False
+
+    def section_names(self) -> list[str]:
+        """Los nombres de sección tal y como se ven, para poder ofrecerlos.
+
+        Sin filtrar las escondidas a propósito: la de Batería se oculta con la
+        primera lectura y esto se pregunta antes de que haya ninguna, así que
+        filtrarlas aquí sería escribir código que no llega a hacer nada.
+        """
+        return [self.nav.item(row).text() for row in range(self.nav.count())]
 
     def _sync_nav_visibility(self) -> None:
         """En ventanas estrechas la barra lateral se lleva un tercio del ancho,
@@ -886,11 +904,21 @@ def _anonimizador(activo: bool):
 def main(argv: Optional[list[str]] = None) -> int:
     app, window, args = build_app(argv)
 
+    # Antes de las dos ramas y una sola vez. Un nombre que no existe se tragaba
+    # sin decir nada, y en la de la captura eso es peor que un fallo: el archivo
+    # se escribe, el programa dice «captura guardada» y dentro está la página
+    # que no era. Para una bandera cuyo único uso es automatizar capturas —para
+    # documentación, para un informe— entregar la equivocada en silencio es
+    # justo lo que no puede hacer.
+    if args.page and not window.select_section(args.page):
+        print(_("app.page.unknown").format(nombre=args.page), file=sys.stderr)
+        print(_("app.page.available").format(
+            lista=", ".join(window.section_names())), file=sys.stderr)
+        return 2
+
     if args.screenshot:
         from ..collector import Collector
 
-        if args.page:
-            window.select_section(args.page)
         window.show()
         collector = Collector()
         collector.snapshot()
@@ -916,9 +944,6 @@ def main(argv: Optional[list[str]] = None) -> int:
         imagen.save(args.screenshot)
         print(f"captura guardada en {args.screenshot}")
         return 0
-
-    if args.page:
-        window.select_section(args.page)
 
     window.show()
     window.start()

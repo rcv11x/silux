@@ -19,6 +19,8 @@
   "app.db.none": "no database",
   "app.frozen": "Frozen · press space to carry on",
   "app.noreading": "There is no reading of the machine yet.",
+  "app.page.available": "The ones there are: {lista}",
+  "app.page.unknown": "there is no section called “{nombre}”",
   "app.report.card": "Report",
   "app.report.failed": "Could not save:\n{error}",
   "app.report.filter": "Markdown (*.md);;Text (*.txt)",

@@ -1,18 +1,22 @@
 """Lo que decide el programa antes de que haya una ventana.
 
-Un Qt que el procesador no puede ejecutar acaba en «Instrucción ilegal» y un
-volcado, sin nada que explique de quién es la culpa. Aquí se le dan a la
-guarda procesadores y versiones de Qt inventados para ver qué decide con cada
-uno, en los dos sentidos: que avise donde hay que avisar, y sobre todo que no
-avise donde no lo sabe.
+Dos cosas que hasta ahora pasaban en silencio, y las dos acaban con alguien
+mirando una pantalla que no explica nada: un Qt que el procesador no puede
+ejecutar —«Instrucción ilegal» y un volcado— y un `--page` con un nombre que
+no existe, que guardaba la captura de la página que no era y decía que todo
+había ido bien.
 """
 
 import os
 import pathlib
+import subprocess
+import sys
 import unittest
 from unittest import mock
 
 from silux.ui import guarda
+
+RAIZ = pathlib.Path(__file__).resolve().parent.parent
 
 # Un Phenom II: llega hasta SSE3 y no tiene SSE4.1, SSE4.2 ni POPCNT. Es una
 # de las piezas que el techo de Qt deja fuera, y de las que el autor quiere
@@ -141,6 +145,106 @@ class TestLasDosGuardasMiranLoMismo(unittest.TestCase):
 
         del_empaquetador = {juego for juego, _patron in build.JUEGOS}
         self.assertEqual(set(guarda.JUEGOS_V2), del_empaquetador)
+
+
+class TestUnaSeccionQueNoExiste(unittest.TestCase):
+    """`--page` con un nombre que no está.
+
+    Se tragaba en silencio: `select_section` recorría la lista, no encontraba
+    nada y volvía sin decirlo, así que la ventana se quedaba donde estaba. En
+    la rama de la captura eso es peor que un fallo, porque el archivo se
+    escribe igual y el programa dice «captura guardada» con la página que no
+    era dentro.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        from PySide6.QtWidgets import QApplication
+
+        cls.app = QApplication.instance() or QApplication([])
+
+    def _ventana(self):
+        from silux.settings import Preferences
+        from silux.ui.app import MainWindow
+
+        ventana = MainWindow(Preferences())
+        self.addCleanup(ventana.close)
+        return ventana
+
+    def test_un_nombre_que_no_existe_se_dice(self):
+        ventana = self._ventana()
+        self.assertFalse(ventana.select_section("Berenjena"))
+
+    def test_y_no_mueve_la_seccion_abierta(self):
+        ventana = self._ventana()
+        ventana.select_section("Sensores")
+        antes = ventana.nav.currentRow()
+        ventana.select_section("Berenjena")
+        self.assertEqual(ventana.nav.currentRow(), antes)
+
+    def test_rendimiento_no_es_el_nombre_de_ninguna(self):
+        """El caso que lo destapó: la sección se llama «Benchmark», y
+        `--page Rendimiento` guardaba una captura de Inicio sin quejarse."""
+        ventana = self._ventana()
+        self.assertFalse(ventana.select_section("Rendimiento"))
+        self.assertTrue(ventana.select_section("Benchmark"))
+
+    def test_una_que_si_existe_se_encuentra(self):
+        ventana = self._ventana()
+        for nombre in ("Sensores", "nav.sensors", "CPU"):
+            with self.subTest(nombre=nombre):
+                self.assertTrue(ventana.select_section(nombre))
+
+    def test_se_pueden_ofrecer_los_nombres_que_hay(self):
+        """Decir que no existe sin decir cuáles existen es media respuesta."""
+        ventana = self._ventana()
+        nombres = ventana.section_names()
+        self.assertIn("Sensores", nombres)
+        self.assertIn("Benchmark", nombres)
+        self.assertNotIn("Rendimiento", nombres)
+
+
+class TestLaCapturaNoSaleDeLaPaginaEquivocada(unittest.TestCase):
+    """De punta a punta, porque es donde estaba el fallo.
+
+    En proceso no se puede: `build_app` construye su propia `QApplication` y
+    en esta suite ya hay una. Así que se lanza de verdad, que además es lo que
+    ejercita el camino real de `--screenshot`.
+    """
+
+    def _lanzar(self, *argumentos):
+        entorno = dict(os.environ, QT_QPA_PLATFORM="offscreen")
+        return subprocess.run(
+            [sys.executable, "-m", "silux.ui.app", *argumentos],
+            cwd=str(RAIZ), env=entorno, capture_output=True, text=True,
+            timeout=180)
+
+    def test_un_page_desconocido_falla_y_no_escribe_nada(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as carpeta:
+            destino = pathlib.Path(carpeta) / "no-deberia-existir.png"
+            hecho = self._lanzar("--screenshot", str(destino),
+                                 "--page", "Rendimiento", "--size", "400x300")
+
+        self.assertEqual(hecho.returncode, 2, hecho.stderr)
+        self.assertIn("Rendimiento", hecho.stderr)
+        self.assertNotIn("captura guardada", hecho.stdout,
+                         "dijo que la había guardado")
+        self.assertFalse(destino.exists(),
+                         "escribió una captura de la página que no era")
+
+    def test_y_dice_cuales_hay(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as carpeta:
+            destino = pathlib.Path(carpeta) / "x.png"
+            hecho = self._lanzar("--screenshot", str(destino),
+                                 "--page", "Berenjena", "--size", "400x300")
+
+        self.assertIn("Sensores", hecho.stderr)
+        self.assertIn("Benchmark", hecho.stderr)
 
 
 if __name__ == "__main__":
