@@ -228,3 +228,74 @@ class TestQueSeMiraAlComprobar(unittest.TestCase):
                 self.assertIn("objetos_del_appdir()", fuente,
                               "recorre el AppDir por su cuenta en vez de "
                               "compartir la lista")
+
+
+class TestElRegistroDeLaConstruccion(unittest.TestCase):
+    """Que el registro cuente lo que pasó.
+
+    Salía diciendo «las dos cosas» hubiera avisado de una o de dos, y
+    recomendaba construir en un contenedor a quien acababa de construir en un
+    contenedor. Y los pasos aparecían después de empaquetar, que ocurre al
+    revés, porque dentro del contenedor la stdout de Python no es un terminal
+    y se volcaba entera al final.
+    """
+
+    def _avisar(self, nivel=None, glibc=None, dentro=False):
+        import io
+        import os
+        from contextlib import redirect_stdout
+
+        import tools.build_appimage as build
+
+        entorno = {build.EN_CONTENEDOR: "1"} if dentro else {}
+        salida = io.StringIO()
+        with mock.patch.dict(os.environ, entorno, clear=False), \
+             mock.patch.object(build, "_nivel_isa", lambda: nivel), \
+             mock.patch.object(build, "_glibc_minima", lambda: glibc), \
+             redirect_stdout(salida):
+            if not dentro:
+                os.environ.pop(build.EN_CONTENEDOR, None)
+            build.avisar_de_compatibilidad()
+        return salida.getvalue()
+
+    def test_con_un_aviso_no_dice_dos(self):
+        texto = self._avisar(glibc="2.39")
+        self.assertIn("Se resuelve construyendo", texto)
+        self.assertNotIn("Las dos", texto)
+
+    def test_con_dos_avisos_si(self):
+        texto = self._avisar(nivel="x86-64-v3", glibc="2.39")
+        self.assertIn("Las dos se resuelven", texto)
+
+    def test_dentro_del_contenedor_el_glibc_no_es_un_aviso(self):
+        """Ese suelo es el resultado que se buscaba, no un problema; y el
+        consejo sería el que se acaba de seguir."""
+        texto = self._avisar(glibc="2.35", dentro=True)
+        self.assertIn("2.35", texto)
+        self.assertNotIn("⚠", texto)
+        self.assertNotIn("construyendo en un contenedor", texto)
+
+    def test_dentro_del_contenedor_una_isa_alta_sigue_siendo_un_aviso(self):
+        """Eso sí sorprende ahí dentro, y no lo arregla la imagen."""
+        texto = self._avisar(nivel="x86-64-v3", glibc="2.35", dentro=True)
+        self.assertIn("⚠", texto)
+        self.assertIn("no lo", texto)
+        self.assertNotIn("Se resuelve construyendo", texto)
+
+    def test_sin_nada_que_decir_no_dice_nada(self):
+        self.assertEqual(self._avisar(), "")
+
+    def test_la_orden_del_contenedor_pide_salida_sin_buffer(self):
+        """Es lo que pone los pasos en su orden. Sin esto el registro no sirve
+        para saber en qué paso falló una construcción."""
+        import tools.build_appimage as build
+
+        with mock.patch.object(build.shutil, "which", lambda _: "/usr/bin/podman"), \
+             mock.patch.object(build.subprocess, "run") as corrida:
+            corrida.return_value = mock.Mock(returncode=0)
+            build.construir_en_contenedor(build.IMAGEN_BASE)
+
+        orden = corrida.call_args[0][0]
+        self.assertIn("PYTHONUNBUFFERED=1", orden)
+        self.assertIn(f"{build.EN_CONTENEDOR}=1", orden,
+                      "la construcción de dentro no sabría que está dentro")
