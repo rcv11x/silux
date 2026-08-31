@@ -971,6 +971,46 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   —nombre de la clase, no de la sección— y llevaba tiempo visitando dos
   páginas de las tres que decía.
 
+- **Pasarle a `pkexec` la ruta de un guion que el usuario puede escribir**: lo
+  avisa su propio manual —«pkexec does no validation of the ARGUMENTS passed to
+  PROGRAM»— y aquí estaba hecho en tres sitios, todos copiando a
+  `~/.cache/silux` y lanzando desde ahí. Lo que se comprueba es el *programa*,
+  que era `/usr/bin/python3` y está bien; el guion es un argumento y no lo mira
+  nadie. Cualquier proceso del propio usuario —un navegador comprometido, un
+  paquete de pip con sorpresa— cambia el archivo antes de que root lo abra y se
+  queda con ejecución como root. El peor de los tres era el instalador, y no
+  por la carrera: la ventana iba desde la copia hasta que root leía, con el
+  diálogo de la contraseña en medio, o sea segundos; y lo que se ganaba no era
+  ejecutar una vez, era que `instalar.py` dejara *eso* en
+  `/usr/local/libexec`, de root y con una acción de polkit `auth_admin_keep`
+  apuntándole. Una puerta permanente que sobrevive a desinstalar el programa.
+  Lo que se pasa por `argv` queda fijado por el `exec()` y no se puede tocar
+  después, así que los guiones viajan enteros ahí (`client.en_linea`) y no
+  existen como archivo en ningún momento. El ayudante son 21 KB y el límite del
+  kernel por argumento son 128. Se paga que la fuente salga en `ps`, que es
+  código público, y que `-c` compile como `<string>`: eso segundo sí importaba,
+  porque deja los informes de fallo sin archivo ni línea, y se arregla
+  compilando con nombre y cebando `linecache`.
+
+- **Comprobar el hash de un archivo justo antes de ejecutarlo**: parece el
+  arreglo evidente de lo anterior y no cierra nada. Entre el hash y el `open()`
+  de quien lo ejecuta hay una ventana que controla quien ataca, y en el caso
+  del instalador la comprobación caería antes del diálogo de la contraseña y el
+  cambiazo durante. El fondo es que **nada que el usuario pueda escribir se
+  asegura comprobándolo desde un proceso del propio usuario**: no hay orden de
+  las operaciones que lo salve. Un directorio que solo escriba root sí valdría,
+  pero crearlo exige root, que es justo el momento atacado. La opción que
+  funciona es que no haya archivo. Ojo con esta: es barata de escribir y deja
+  el código con pinta de arreglado.
+
+- **Poner la defensa dentro de lo que se sustituye**: `cargar_modulo.py`
+  comprueba el nombre del módulo contra una lista cerrada, y su propia cabecera
+  explica por qué —«un ayudante que carga el módulo que le digan es un ayudante
+  que carga cualquier módulo del sistema»—. Pero la lista vivía dentro del
+  archivo que se copiaba a la carpeta del usuario, así que quien cambiara el
+  archivo se llevaba también la comprobación. Una validación solo cuenta si
+  está en el lado que no puede tocar quien ataca.
+
 ## El idioma
 
 La interfaz va en **español neutro**: `video` y no «vídeo», `archivo` y no
