@@ -42,6 +42,19 @@ lo que sale ahí es una biblioteca que el programa espera encontrar puesta en
 la máquina ajena. Después mira el juego de instrucciones, por lo mismo: que
 no se cuele un requisito de procesador que aquí no se nota.
 
+**Ese suelo es el del AppImage y no el del programa**, y conviene no juntarlos
+porque el `pyproject.toml` parece decir otra cosa. Su clasificador
+`Operating System :: POSIX :: Linux` es la casilla donde PyPI archiva Linux,
+taxonomía y no una promesa: ni dice que esto corra sobre cualquier POSIX —un
+BSD o un macOS son POSIX y ahí no hay sysfs, ni hwmon, ni ioctl de DRM que
+leer— ni sabe nada de glibc, que ni siquiera es lo que ese campo describe.
+Desde el código fuente los requisitos son los del README: Python 3.10, un
+kernel Linux y PySide6 para la ventana. La glibc 2.35 y el juego de
+instrucciones son de la copia que se reparte, porque se los lleva dentro. Así
+que estrechar el clasificador no arreglaría nada —no hay dónde escribir ahí
+una versión de glibc— y perderlo sí cuesta: es por lo que se encuentra el
+paquete.
+
 **PySide6 está topado en `<6.10`, y el motivo no es de estilo.** Qt 6.10 pasó
 a compilarse con `-march=x86-64-v2`, y no en rutas aparte que se eligen
 mirando la CPU, sino dentro de funciones normales: `QString`,
