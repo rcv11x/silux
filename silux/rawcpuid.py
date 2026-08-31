@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import contextlib
 import ctypes
-import ctypes.util
 import mmap
 import os
 import platform
@@ -76,7 +75,12 @@ class CpuidReader:
         self._mm = mmap.mmap(-1, mmap.PAGESIZE, prot=mmap.PROT_READ | mmap.PROT_WRITE)
         self._mm.write(_CODE_X86_64)
 
-        libc = ctypes.CDLL(ctypes.util.find_library("c"), use_errno=True)
+        # `CDLL(None)` es el propio proceso, que ya trae la libc cargada, y es
+        # lo que hacen los otros dos módulos que la piden. Buscarla con
+        # `find_library` no la encuentra mejor y sí lanza `ldconfig -p` para
+        # preguntar por algo que ya está abierto: un fork y un exec dentro del
+        # hilo de muestreo, y un fallo donde no haya ldconfig puesto.
+        libc = ctypes.CDLL(None, use_errno=True)
         # La vista se crea y se descarta en la misma expresión: si se guardara,
         # el mmap quedaría "exportado" y no se podría cerrar nunca. La dirección
         # sigue siendo válida mientras viva `self._mm`.
