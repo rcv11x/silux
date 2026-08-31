@@ -8,8 +8,9 @@ ahora mismo.
 
 Escrito en Python puro, sin más dependencia que Qt para la ventana.
 
-Estado: las once secciones terminadas. CPU, Cachés, Placa base, Memoria,
-Gráficos, Almacenamiento, Red, Sistema, Rendimiento, Sensores y Ajustes.
+Estado: las trece secciones terminadas. Inicio, CPU, Cachés, Placa base,
+Memoria, Gráficos, Almacenamiento, Red, Batería, Sistema, Rendimiento,
+Sensores y Ajustes. La de Batería solo aparece en los equipos que tienen una.
 
 Versión actual: **0.2.0** · qué trae y qué cambia al actualizar, en
 **[CHANGELOG.md](CHANGELOG.md)**.
@@ -194,7 +195,7 @@ La última hace falta porque pasar en el Python de uno no dice nada del mínimo
 que declara el proyecto: corre la suite dentro de una Ubuntu 22.04, que es la
 misma en la que corre el CI y en la que se construye el AppImage.
 
-Son 1272 y tardan cerca de dos minutos. Ninguno necesita hardware concreto:
+Son 1323 y tardan cerca de dos minutos. Ninguno necesita hardware concreto:
 los proveedores se prueban contra árboles de sysfs sintéticos, el generador
 contra fragmentos de C, y los chips (SPD, EDID, SMART, `gpu_metrics`) contra
 volcados binarios de piezas reales guardados en `tests/fixtures`.
