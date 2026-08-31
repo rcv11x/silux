@@ -130,3 +130,87 @@ class TestElAviso(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestQueLlegueALaPantalla(unittest.TestCase):
+    """Que el dato tenga dónde pintarse, que es lo que faltaba.
+
+    El proveedor se escribió, se probó y se dio por hecho, y la suite entera
+    pasaba con el voltaje llegando al modelo y muriendo ahí: la ficha de
+    procesador no tenía ninguna fila donde enseñarlo. Mil trescientos tests en
+    verde y el dato invisible. Probar el proveedor no basta si nadie comprueba
+    el camino hasta la ventana.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        from PySide6.QtWidgets import QApplication
+        cls.app = QApplication.instance() or QApplication([])
+
+    def _pagina(self, voltaje):
+        import dataclasses
+        from silux.collector import Collector
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.cpu import CpuPage
+
+        theme.set_density("normal", "normal")
+        foto = Collector().sample()
+        if not foto.cpu.types:
+            self.skipTest("esta máquina no identifica ningún procesador")
+        tipos = tuple(dataclasses.replace(t, voltage_v=voltaje)
+                      for t in foto.cpu.types)
+        pagina = CpuPage(theme.palette_for(self.app, "dark"),
+                         Preferences(font_scale="normal").normalized())
+        pagina.apply(dataclasses.replace(
+            foto, cpu=dataclasses.replace(foto.cpu, types=tipos)))
+        # Se guarda en la instancia: sin una referencia viva, Python recolecta
+        # la página al salir de aquí y Qt destruye los widgets por debajo. La
+        # celda que se devolvía apuntaba entonces a un objeto ya borrado.
+        self._viva = pagina
+        return pagina
+
+    @staticmethod
+    def _celda(pagina, clave):
+        from silux.i18n import _
+        from silux.ui.widgets import InfoGrid
+        for grid in pagina.findChildren(InfoGrid):
+            if _(clave) in grid._values:
+                return grid._values[_(clave)]
+        return None
+
+    def test_la_ficha_tiene_fila_de_voltaje(self):
+        self.assertIsNotNone(self._celda(self._pagina(None), "cpu.field.voltage"),
+                             "el voltaje no tiene dónde pintarse en la ficha")
+
+    def test_un_voltaje_medido_se_ve(self):
+        """1,1 V es lo que dio el 5800X3D del autor por MSR."""
+        celda = self._celda(self._pagina(1.1), "cpu.field.voltage")
+        self.assertIn("1.100", celda.text())
+
+    def test_sin_medida_sale_su_guion(self):
+        from silux import render
+        celda = self._celda(self._pagina(None), "cpu.field.voltage")
+        self.assertEqual(celda.text(), render.DASH)
+
+
+class TestSeAnunciaEnLaBarra(unittest.TestCase):
+    def test_al_leer_algo_se_apunta_en_las_fuentes(self):
+        """La barra de estado lista las fuentes que dieron algo, y sin esto el
+        proveedor leía el voltaje sin aparecer por ningún lado."""
+        cliente = mock.Mock()
+        cliente.connected.return_value = True
+        cliente.read_msr.return_value = {
+            msr_voltage.AMD_PSTATE_STATUS: 0,
+            msr_voltage.AMD_PSTATE_DEF: (1 << 63) | (72 << 14)}
+        draft = _draft()
+        msr_voltage.MsrVoltage(cliente).collect(draft)
+        self.assertIn("msr", draft.capabilities)
+
+    def test_si_no_lee_nada_no_se_anuncia(self):
+        cliente = mock.Mock()
+        cliente.connected.return_value = True
+        cliente.read_msr.return_value = {}
+        draft = _draft()
+        msr_voltage.MsrVoltage(cliente).collect(draft)
+        self.assertNotIn("msr", draft.capabilities)

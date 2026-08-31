@@ -53,6 +53,7 @@ PROCESSOR_FIELDS = (
     "cpu.field.vendor", "cpu.field.spec", "cpu.field.codename", "cpu.field.process",
     "cpu.field.package", "cpu.field.arch", "cpu.field.cores", "cpu.field.threads", "cpu.field.virt",
     "cpu.field.family", "cpu.field.model", "cpu.field.stepping", "cpu.field.signature", "cpu.field.microcode",
+    "cpu.field.voltage",
 )
 
 CLOCK_FIELDS = (
@@ -137,6 +138,10 @@ class TypeSection(QWidget):
         p(_("cpu.field.signature"), render.signature(cpu_type.signature),
           tooltip=render.signature_tooltip(cpu_type))
         p(_("cpu.field.microcode"), cpu_type.microcode or render.DASH)
+        # El voltaje va con los demás datos del silicio y no con los relojes:
+        # es lo que la pieza pide para sostener la frecuencia que tiene puesta.
+        p(_("cpu.field.voltage"), render.volts(cpu_type.voltage_v),
+          tooltip=_("cpu.tip.voltage"))
 
         c = self.clocks.set
         clocks = cpu_type.clocks

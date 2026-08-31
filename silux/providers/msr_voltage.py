@@ -151,3 +151,6 @@ class MsrVoltage(Provider):
 
         for entry in draft.types.values():
             entry["voltage_v"] = round(voltaje, 3)
+        # La barra de estado lista las fuentes que han dado algo, y sin esto
+        # el proveedor leía el voltaje sin aparecer en ninguna parte.
+        draft.capabilities.add("msr")
