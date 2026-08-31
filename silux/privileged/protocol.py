@@ -56,6 +56,10 @@ MSR_ALLOWED: dict[int, str] = {
     0x0606: "MSR_RAPL_POWER_UNIT",       # unidades para interpretar los de arriba
     0xC0010293: "AMD_MSR_CORE_ENERGY",   # energía por núcleo en AMD
     0xC0010299: "AMD_MSR_RAPL_UNIT",
+    0xC0010063: "MSR_PSTATE_STATUS",     # qué P-state está activo
+    0xC0010064: "MSR_PSTATE_0",          # y la definición de cada uno, que
+    0xC0010065: "MSR_PSTATE_1",          # lleva el VID del núcleo en 21:14
+    0xC0010066: "MSR_PSTATE_2",
 }
 
 # El PMU de las gráficas Intel. Es la única acción que no lleva parámetros: el

@@ -40,9 +40,9 @@ import sys
 import time
 
 # Sube cuando cambia lo que el ayudante sabe hacer: acciones nuevas, o
-# registros nuevos en la lista blanca. El cliente ya no se fía solo de esto
-# —compara el contenido— pero sigue valiendo cuando el archivo no se puede
-# leer.
+# registros nuevos en la lista blanca. El cliente la compara al conectar,
+# porque una copia instalada en /usr/local/libexec se queda congelada en la
+# fecha en que se instaló y no la actualiza nadie.
 VERSION = 2
 
 DMI_TABLE = "/sys/firmware/dmi/tables/DMI"
@@ -80,6 +80,11 @@ MSR_ALLOWED = frozenset({
     0x0198, 0x0199, 0x019C, 0x01A2, 0x01AD,
     0x00CE, 0x0610, 0x0606,
     0xC0010293, 0xC0010299,
+    # El voltaje del núcleo en AMD: qué P-state está activo y la definición de
+    # los tres primeros, que llevan el VID en los bits 21:14. En Intel ese dato
+    # va en 0x198, que ya estaba. Solo lectura y sin efectos, como los demás.
+    0xC0010063,
+    0xC0010064, 0xC0010065, 0xC0010066,
 })
 
 MAX_CPUS = 4096
