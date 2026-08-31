@@ -730,6 +730,15 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   0,9 · 2,7 · 12,4 · 66,1 que da AIDA64 en la misma pieza con memoria más
   rápida. Ya está integrado en `membench.py`, y la página ejecutable la monta
   `rawcpuid.pagina_ejecutable`, que es donde se aprendieron esos detalles.
+- **Llevar el voltaje del núcleo al árbol de sensores**: es un voltaje real y
+  parece que le toca, pero el árbol guarda mínimo, máximo y media, y eso
+  promete una medida continua. Lo que se lee por MSR es el VID del P-state
+  activo, que cambia a saltos —1,100, 1,000 y 0,900 en este 5800X3D, que son
+  sus tres escalones—, así que su historial saldría en escalera y el máximo
+  sería siempre el mismo. Se queda en la ficha de CPU. Al árbol solo van
+  voltajes que se midan de verdad; el del regulador de la placa lo sería, y ese
+  es justo el que no se puede atribuir al procesador porque el driver no
+  etiqueta sus canales.
 - **Escribir la fuente de un dato y no mirar si hay dónde pintarlo**: el
   voltaje del núcleo se leía por MSR, llegaba al modelo y moría ahí, porque la
   ficha de procesador terminaba en el microcódigo y no tenía fila. Con permisos
