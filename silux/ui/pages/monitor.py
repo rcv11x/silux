@@ -409,26 +409,32 @@ class MonitorPage(QScrollArea):
             detalle = (resultado.stderr or resultado.stdout or "").strip()
             self._aviso_de_registro(detalle.splitlines()[-1] if detalle else _("perm.failed"))
 
-    def _orden_de_carga(self, modulo: str) -> list[str]:
-        """Lo mismo que hace el instalador de permisos: desde un AppImage nada
-        de dentro del montaje sirve, así que se copia fuera."""
-        import shutil
-        import sys as _sys
+    @staticmethod
+    def _orden_de_carga(modulo: str) -> list[str]:
+        """Lo mismo que hace el instalador de permisos: el guion va por `argv`.
 
-        from ...privileged.client import SYSTEM_PYTHON, PrivilegedClient, _cache_dir
+        Antes se copiaba a ~/.cache/silux y se le pasaba esa ruta a pkexec.
+        Esa carpeta la escribe el usuario, así que cualquier proceso suyo podía
+        cambiar el archivo antes de que root lo abriera y quedarse con
+        ejecución como root. Y aquí picaba doble: la lista blanca de módulos
+        que impide que esto cargue cualquier cosa vive **dentro** del propio
+        guion, o sea que se iba con el cambiazo. La defensa no puede estar en
+        lo que se sustituye.
+
+        En esta orden no puede aparecer ninguna ruta que no sea de root; hay un
+        test que lo comprueba en las tres que construye el programa.
+        """
+        from ...privileged import client as _client
 
         guion = pathlib.Path(cargar_modulo.__file__)
-        if not PrivilegedClient.empaquetado():
-            return ["pkexec", _sys.executable, str(guion), modulo]
+        try:
+            interprete = _client.interprete()
+        except _client.HelperUnavailable:
+            raise RuntimeError(_("perm.nopython")) from None
 
-        interprete = next((r for r in SYSTEM_PYTHON if os.path.exists(r)), None)
-        if interprete is None:
-            raise RuntimeError(_("perm.nopython"))
-        destino = _cache_dir()
-        destino.mkdir(parents=True, exist_ok=True)
-        copia = destino / "cargar_modulo.py"
-        shutil.copyfile(guion, copia)
-        return ["pkexec", interprete, str(copia), modulo]
+        return ["pkexec", *_client.en_linea(
+            interprete, "silux-cargar-modulo.py",
+            guion.read_text(encoding="utf-8"), modulo)]
 
     def _reset_extremes(self) -> None:
         self._tracker.reset()
