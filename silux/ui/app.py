@@ -362,7 +362,7 @@ class MainWindow(QMainWindow):
 
         Devuelve si la encontró. Antes no devolvía nada y el nombre que no
         casaba se iba por el desagüe sin dejar rastro: `--screenshot --page
-        Rendimiento` —cuando la sección se llama «Benchmark»— guardaba una
+        Rendimiento` —que entonces no era el nombre de ninguna— guardaba una
         imagen de Inicio y decía «captura guardada». Qué hacer con el fallo lo
         decide quien llama, que es el único que sabe si hay alguien delante:
         desde el menú de Inicio la clave siempre existe, y desde la línea de

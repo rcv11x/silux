@@ -193,12 +193,14 @@ class TestUnaSeccionQueNoExiste(unittest.TestCase):
         ventana.select_section("Berenjena")
         self.assertEqual(ventana.nav.currentRow(), antes)
 
-    def test_rendimiento_no_es_el_nombre_de_ninguna(self):
-        """El caso que lo destapó: la sección se llama «Benchmark», y
-        `--page Rendimiento` guardaba una captura de Inicio sin quejarse."""
+    def test_el_nombre_que_no_esta_no_se_traga(self):
+        """El caso que lo destapó fue `--page Rendimiento` cuando la sección
+        se llamaba «Benchmark»: guardaba una captura de Inicio sin quejarse.
+        Aquel nombre ya existe —la barra lateral va en castellano—, así que lo
+        que se comprueba es lo de fondo: uno que no está se dice."""
         ventana = self._ventana()
-        self.assertFalse(ventana.select_section("Rendimiento"))
-        self.assertTrue(ventana.select_section("Benchmark"))
+        self.assertTrue(ventana.select_section("Rendimiento"))
+        self.assertFalse(ventana.select_section("Benchmarking"))
 
     def test_una_que_si_existe_se_encuentra(self):
         ventana = self._ventana()
@@ -211,8 +213,9 @@ class TestUnaSeccionQueNoExiste(unittest.TestCase):
         ventana = self._ventana()
         nombres = ventana.section_names()
         self.assertIn("Sensores", nombres)
-        self.assertIn("Benchmark", nombres)
-        self.assertNotIn("Rendimiento", nombres)
+        self.assertIn("Rendimiento", nombres)
+        self.assertNotIn("Benchmark", nombres,
+                         "la barra lateral va en castellano")
 
 
 class TestLaCapturaNoSaleDeLaPaginaEquivocada(unittest.TestCase):
@@ -233,13 +236,17 @@ class TestLaCapturaNoSaleDeLaPaginaEquivocada(unittest.TestCase):
     def test_un_page_desconocido_falla_y_no_escribe_nada(self):
         import tempfile
 
+        # El caso real fue «Rendimiento» cuando la sección se llamaba
+        # «Benchmark». Desde que el menú va entero en castellano ese nombre sí
+        # existe, así que aquí va uno que no puede existir: lo que se prueba es
+        # el camino, no aquel nombre.
         with tempfile.TemporaryDirectory() as carpeta:
             destino = pathlib.Path(carpeta) / "no-deberia-existir.png"
             hecho = self._lanzar("--screenshot", str(destino),
-                                 "--page", "Rendimiento", "--size", "400x300")
+                                 "--page", "Berenjena", "--size", "400x300")
 
         self.assertEqual(hecho.returncode, 2, hecho.stderr)
-        self.assertIn("Rendimiento", hecho.stderr)
+        self.assertIn("Berenjena", hecho.stderr)
         self.assertNotIn("captura guardada", hecho.stdout,
                          "dijo que la había guardado")
         self.assertFalse(destino.exists(),
@@ -254,7 +261,7 @@ class TestLaCapturaNoSaleDeLaPaginaEquivocada(unittest.TestCase):
                                  "--page", "Berenjena", "--size", "400x300")
 
         self.assertIn("Sensores", hecho.stderr)
-        self.assertIn("Benchmark", hecho.stderr)
+        self.assertIn("Rendimiento", hecho.stderr)
 
 
 if __name__ == "__main__":
