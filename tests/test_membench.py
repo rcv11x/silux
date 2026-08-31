@@ -182,3 +182,82 @@ class TestElTeorico(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestLatencias(unittest.TestCase):
+    """Lo que tarda un acceso que el procesador no puede adelantar.
+
+    Se mide con un fragmento de código máquina —doce bytes que persiguen
+    punteros— porque en Python el intérprete cuesta más que el propio acceso.
+    Las cifras de este equipo, un 5800X3D, salieron 0,9 · 2,7 · 12,3 · 80,6 ns
+    contra los 0,9 · 2,7 · 12,4 · 66,1 que da AIDA64 en la misma pieza con
+    memoria más rápida.
+    """
+
+    # Cachés de juguete: lo que se prueba es el reparto, no la máquina.
+    NIVELES = [("L1", 32 * 1024), ("L2", 256 * 1024), ("L3", 2 * 1024**2)]
+
+    @classmethod
+    def setUpClass(cls):
+        # Una sola medida para todos los que miran el mismo resultado: medir
+        # de verdad cuesta un segundo por tanda y eran siete tandas iguales.
+        cls.salidas, cls.motivo = membench.latencias(cls.NIVELES)
+
+    def test_mide_un_nivel_por_cada_cache_y_la_ram(self):
+        self.assertIsNone(self.motivo)
+        self.assertEqual([l.nivel for l in self.salidas],
+                         ["L1", "L2", "L3", "RAM"])
+
+    def test_todas_dan_un_tiempo_positivo(self):
+        self.assertTrue(all(l.nanoseconds > 0 for l in self.salidas))
+
+    def test_cada_nivel_tarda_mas_que_el_anterior(self):
+        """Es la comprobación que cazaría una medida falsa de raíz.
+
+        Si la cadena de la RAM cupiera en la caché, saldría más rápida que la
+        L3 y esto lo vería. Pasó: con menos saltos que líneas salían 28 ns
+        donde hay 76.
+        """
+        tiempos = [l.nanoseconds for l in self.salidas]
+        self.assertEqual(tiempos, sorted(tiempos),
+                         f"los niveles no van de menos a más: {tiempos}")
+
+    def test_el_bloque_de_la_ram_no_cabe_en_la_cache(self):
+        ram = [l for l in self.salidas if l.nivel == "RAM"][0]
+        mayor = max(tam for _, tam in self.NIVELES)
+        self.assertGreaterEqual(ram.bytes_, mayor * membench.VECES_FUERA_PARA_LATENCIA)
+
+    def test_el_bloque_de_una_cache_no_pasa_del_tope(self):
+        """La L3 de un Zen 3 es caché de víctimas: con la mitad de sus 96 MB
+        recorridos al azar da 66 ns donde tiene que dar 12.
+
+        Con el tope de eslabones a cero se salta la RAM, que para una caché de
+        96 MB pide un bloque de 192 y se lleva casi cuatro segundos: aquí lo
+        que se comprueba es el tamaño del bloque de la caché.
+        """
+        with mock.patch.object(membench, "MAXIMO_ESLABONES", 500_000):
+            salidas, _motivo = membench.latencias([("L3", 96 * 1024**2)])
+        l3 = [l for l in salidas if l.nivel == "L3"][0]
+        self.assertLessEqual(l3.bytes_, membench.MAXIMO_BLOQUE_DE_CACHE)
+
+    def test_una_cache_enorme_deja_sin_latencia_de_ram_y_lo_dice(self):
+        salidas, motivo = membench.latencias([("L3", 900 * 1024**2)])
+        self.assertEqual(motivo, "cadena_enorme")
+        self.assertNotIn("RAM", [l.nivel for l in salidas])
+
+    def test_fuera_de_x86_no_se_intenta(self):
+        with mock.patch.object(membench.rawcpuid, "is_supported",
+                               return_value=False):
+            salidas, motivo = membench.latencias(self.NIVELES)
+        self.assertEqual((salidas, motivo), ((), "no_x86"))
+
+    def test_si_el_sistema_prohibe_ejecutar_memoria_se_dice(self):
+        """Pasa bajo políticas SELinux estrictas y en algunos sandboxes."""
+        with mock.patch.object(membench.rawcpuid, "pagina_ejecutable",
+                               side_effect=RuntimeError("mprotect")):
+            salidas, motivo = membench.latencias(self.NIVELES)
+        self.assertEqual((salidas, motivo), ((), "sin_ejecutable"))
+
+    def test_sin_niveles_solo_mide_la_ram(self):
+        salidas, _motivo = membench.latencias([])
+        self.assertEqual([l.nivel for l in salidas], ["RAM"])

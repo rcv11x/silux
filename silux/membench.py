@@ -53,11 +53,15 @@ from __future__ import annotations
 
 import ctypes
 import json
+import mmap
+import random
 import os
 import subprocess
 import sys
 import time
 from dataclasses import asdict, dataclass
+
+from . import rawcpuid
 from typing import Optional
 
 # Por debajo de esto la llamada pesa más que la memoria y la cifra deja de
@@ -88,6 +92,59 @@ PRESUPUESTO = 0.15
 MINIMO_VUELTAS = 5
 MAXIMO_VUELTAS = 500
 
+# Persigue punteros: cada lectura da la dirección de la siguiente, así que el
+# procesador no puede adelantarse y lo que se cronometra es lo que tarda un
+# acceso. Es lo que no se puede escribir en Python, donde el intérprete cuesta
+# más que el propio acceso.
+#
+#   mov rax, rdi        48 89 f8     rdi = primer eslabón
+# bucle:
+#   mov rax, [rax]      48 8b 00     <- depende del resultado anterior
+#   dec rsi             48 ff ce     rsi = cuántos saltos
+#   jnz bucle           75 f8
+#   ret                 c3
+_CODIGO_PERSEGUIR = bytes((0x48, 0x89, 0xF8,
+                           0x48, 0x8B, 0x00,
+                           0x48, 0xFF, 0xCE,
+                           0x75, 0xF8,
+                           0xC3))
+
+# Una línea de caché. Se salta de una a otra porque leer dos veces la misma
+# línea sale de la misma lectura y no mide nada.
+LINEA = 64
+
+# Cuántos saltos se dan como mínimo, para que el coste de entrar y salir de la
+# llamada —570 ns— no pese: en la L1 un acceso son 0,9 ns, así que con pocos
+# saltos se estaría cronometrando ctypes otra vez.
+MINIMO_SALTOS = 200_000
+
+# Y un tope de eslabones, que es lo que cuesta tiempo de verdad: barajarlos y
+# enlazarlos son bucles de Python. Con seis millones se van cuatro segundos
+# antes de medir nada. Con este tope, un procesador de caché normal se prepara
+# en décimas y uno con una L3 enorme se queda sin la latencia de RAM y lo dice,
+# que es mejor que tener el botón parado cinco segundos.
+MAXIMO_ESLABONES = 4_000_000
+
+# Para la latencia basta con el doble de la caché: con dos, tres y cuatro veces
+# salen 80,0, 83,6 y 80,8 ns, o sea lo mismo, y cada vez que se dobla el bloque
+# se dobla el tiempo de preparar la cadena. Para el ancho de banda se usa el
+# triple porque allí no hay cadena que construir y no cuesta nada.
+VECES_FUERA_PARA_LATENCIA = 2
+
+# Un tope al bloque con el que se mide una caché, además de su fracción. La L3
+# de un Zen 3 es caché de víctimas —solo guarda lo que se expulsa de la L2—, así
+# que con la mitad de sus 96 MB recorridos al azar ya casi no retiene nada: da
+# 66 ns donde tiene que dar 12. Con 4, 8 y 16 MB sale 11,9, 12,0 y 13,2, así que
+# el escalón está bastante por debajo de la mitad y hay que quedarse abajo.
+MAXIMO_BLOQUE_DE_CACHE = 16 * 1024 * 1024
+
+# Páginas de 2 MB en vez de 4 KB. Perseguir punteros por 288 MB toca 73728
+# páginas y el TLB de datos guarda unas 2000, así que cada acceso pagaba además
+# un recorrido de tablas: 94,7 ns con páginas normales contra 82,1 con grandes.
+# Es un consejo, no una orden: si el sistema las tiene desactivadas no pasa nada.
+MADV_HUGEPAGE = 14
+PAGINA_GRANDE = 2 * 1024 * 1024
+
 TIEMPO_MAXIMO = 60
 
 
@@ -103,8 +160,21 @@ class Medida:
 
 
 @dataclass(frozen=True)
+class Latencia:
+    """Lo que tarda un acceso que no se puede adelantar, por nivel."""
+
+    nivel: str                       # "L1", "L2", "L3", "RAM"
+    bytes_: int
+    nanoseconds: float
+
+
+@dataclass(frozen=True)
 class Resultado:
     medidas: tuple[Medida, ...] = ()
+    latencias: tuple[Latencia, ...] = ()
+    # Por qué faltan latencias, que no es lo mismo que por qué falta el ancho
+    # de banda: se puede tener una cosa y no la otra.
+    motivo_latencias: Optional[str] = None
     # Por qué no se pudo medir algo, para poder decirlo en vez de callar.
     motivo: Optional[str] = None
 
@@ -151,8 +221,118 @@ def _memoria_disponible() -> Optional[int]:
     return None
 
 
-def en_este_proceso(cache_bytes: Optional[int]) -> Resultado:
-    """Mide de verdad. `cache_bytes` es la caché más grande del procesador."""
+def _reservar(tam: int):
+    """Un bloque alineado a 2 MB y con páginas grandes pedidas.
+
+    Se pide con `mmap` y no con un búfer de ctypes porque la alineación es lo
+    que el kernel exige para poder juntar las páginas, y un búfer normal cae
+    donde caiga.
+    """
+    try:
+        mapa = mmap.mmap(-1, tam + PAGINA_GRANDE,
+                         prot=mmap.PROT_READ | mmap.PROT_WRITE)
+    except (OSError, ValueError):
+        return None
+    cruda = ctypes.addressof(ctypes.c_char.from_buffer(mapa))
+    base = (cruda + PAGINA_GRANDE - 1) & ~(PAGINA_GRANDE - 1)
+    libc = ctypes.CDLL(None, use_errno=True)
+    libc.madvise.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.c_int]
+    libc.madvise(ctypes.c_void_p(base), tam, MADV_HUGEPAGE)
+    return mapa, base
+
+
+def _cadena(base: int, lineas: int) -> int:
+    """Enlaza `lineas` líneas del bloque en un ciclo aleatorio.
+
+    Devuelve la dirección del primer eslabón. El orden es aleatorio a propósito:
+    con un salto constante el prefetcher lo adivina y se mide lo que tarda en
+    llegar un dato que ya venía de camino, no lo que tarda un acceso.
+    """
+    orden = list(range(lineas))
+    random.shuffle(orden)
+    vista = (ctypes.c_uint64 * (lineas * LINEA // 8)).from_address(base)
+    siguientes = orden[1:]
+    siguientes.append(orden[0])
+    for actual, siguiente in zip(orden, siguientes):
+        vista[actual * (LINEA // 8)] = base + siguiente * LINEA
+    return base + orden[0] * LINEA
+
+
+def _latencia(perseguir, primero: int, saltos: int) -> float:
+    """Nanosegundos por acceso, del mejor intento."""
+    perseguir(primero, min(saltos, 100_000))          # calentar
+    mejor = None
+    for _ in range(3):
+        arranque = time.perf_counter()
+        perseguir(primero, saltos)
+        tardanza = time.perf_counter() - arranque
+        mejor = tardanza if mejor is None else min(mejor, tardanza)
+    return (mejor or 0.0) / saltos * 1e9
+
+
+def latencias(niveles: "list[tuple[str, int]]") -> tuple:
+    """Mide un nivel por cada caché, y la RAM detrás.
+
+    `niveles` son pares de nombre y tamaño, del más pequeño al más grande. De
+    cada uno se recorre la mitad, para que la cadena quepa de sobra dentro; de
+    la RAM, el triple de la caché mayor, para que no quepa de ninguna manera.
+    """
+    if not rawcpuid.is_supported():
+        return (), "no_x86"
+    try:
+        mm, direccion = rawcpuid.pagina_ejecutable(_CODIGO_PERSEGUIR)
+    except Exception:                                          # noqa: BLE001
+        # Un entorno que prohíbe ejecutar memoria anónima. Sin latencias, pero
+        # el resto de la medida sigue valiendo.
+        return (), "sin_ejecutable"
+
+    perseguir = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p,
+                                 ctypes.c_size_t)(direccion)
+    salidas = []
+    motivo = None
+    try:
+        mayor = max((tam for _, tam in niveles), default=0)
+        tramos = [(nombre, min(tam // 2, MAXIMO_BLOQUE_DE_CACHE))
+                  for nombre, tam in niveles if tam // 2 >= LINEA * 8]
+        tramos.append(("RAM", max(MINIMO_FIABLE * 64,
+                                  mayor * VECES_FUERA_PARA_LATENCIA)))
+        disponible = _memoria_disponible()
+        for nombre, tam in tramos:
+            lineas = tam // LINEA
+            if lineas > MAXIMO_ESLABONES:
+                # Preparar la cadena son bucles de Python: seis millones de
+                # eslabones se llevan cuatro segundos antes de medir nada.
+                motivo = motivo or "cadena_enorme"
+                continue
+            if disponible is not None and tam + MARGEN_LIBRE > disponible:
+                motivo = motivo or "sin_memoria"
+                continue
+            bloque = _reservar(tam)
+            if bloque is None:
+                motivo = motivo or "sin_memoria"
+                continue
+            mapa, base = bloque
+            primero = _cadena(base, lineas)
+            # Al menos dos vueltas al ciclo entero: con menos saltos que líneas,
+            # lo recorrido cabe en la caché y se mide la caché creyendo que se
+            # mide la RAM. Salían 28 ns donde hay 76.
+            saltos = max(MINIMO_SALTOS, lineas * 2)
+            salidas.append(Latencia(nombre, tam, round(
+                _latencia(perseguir, primero, saltos), 1)))
+            mapa.close()
+    finally:
+        mm.close()
+    return tuple(salidas), motivo
+
+
+def en_este_proceso(cache_bytes: Optional[int],
+                    niveles: "Optional[list]" = None) -> Resultado:
+    """Mide de verdad.
+
+    `cache_bytes` es la caché más grande, y decide los bloques del ancho de
+    banda. `niveles` son los pares de nombre y tamaño de cada caché, que es lo
+    que hace falta para las latencias; sin ellos se mide solo el ancho de banda.
+    """
     libc = _libc()
     medidas: list[Medida] = []
     disponible = _memoria_disponible()
@@ -171,18 +351,24 @@ def en_este_proceso(cache_bytes: Optional[int]) -> Resultado:
     # Fuera de toda caché, que es el ancho de banda de la RAM.
     n = max(MINIMO_FIABLE * 64,
             (cache_bytes or 0) * VECES_FUERA_DE_LA_CACHE)
-    if n > MAXIMO_BLOQUE:
-        return Resultado(tuple(medidas), "cache_enorme")
-    if disponible is not None and n + MARGEN_LIBRE > disponible:
-        return Resultado(tuple(medidas), "sin_memoria")
+    if n > MAXIMO_BLOQUE or (disponible is not None
+                             and n + MARGEN_LIBRE > disponible):
+        tiempos, porque = latencias(niveles or [])
+        return Resultado(tuple(medidas),
+                         tiempos, porque,
+                         motivo=("cache_enorme" if n > MAXIMO_BLOQUE
+                                 else "sin_memoria"))
     bloque = ctypes.create_string_buffer(n)
     segundos = _leer(libc, ctypes.addressof(bloque), n)
     if segundos > 0:
         medidas.append(Medida(n, int(n / segundos), "ram"))
-    return Resultado(tuple(medidas))
+    del bloque
+    tiempos, porque = latencias(niveles or [])
+    return Resultado(tuple(medidas), tiempos, porque)
 
 
-def consultar(cache_bytes: Optional[int]) -> Resultado:
+def consultar(cache_bytes: Optional[int],
+              niveles: "Optional[list]" = None) -> Resultado:
     """Mide en otro proceso, que es donde puede pedir cientos de megas.
 
     Para salirse de una caché de 96 MB hace falta un bloque de casi trescientos,
@@ -196,7 +382,8 @@ def consultar(cache_bytes: Optional[int]) -> Resultado:
     )
     try:
         completado = subprocess.run(
-            [sys.executable, "-m", "silux.membench", str(cache_bytes or 0)],
+            [sys.executable, "-m", "silux.membench", str(cache_bytes or 0),
+             json.dumps(niveles or [])],
             capture_output=True, timeout=TIEMPO_MAXIMO, env=entorno, check=False,
         )
     except (OSError, subprocess.SubprocessError):
@@ -207,6 +394,8 @@ def consultar(cache_bytes: Optional[int]) -> Resultado:
         leido = json.loads(completado.stdout)
         return Resultado(
             tuple(Medida(**m) for m in leido.get("medidas", ())),
+            tuple(Latencia(**l) for l in leido.get("latencias", ())),
+            leido.get("motivo_latencias"),
             leido.get("motivo"),
         )
     except (ValueError, TypeError):
@@ -217,7 +406,8 @@ def main() -> int:
     # La salida tiene que ser JSON limpio: cualquier otra cosa impresa aquí
     # rompería al padre.
     cache = int(sys.argv[1]) if len(sys.argv) > 1 else 0
-    json.dump(asdict(en_este_proceso(cache or None)), sys.stdout)
+    niveles = json.loads(sys.argv[2]) if len(sys.argv) > 2 else []
+    json.dump(asdict(en_este_proceso(cache or None, niveles)), sys.stdout)
     return 0
 
 
