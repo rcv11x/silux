@@ -67,6 +67,35 @@ def en_linea(interprete: str, nombre: str, fuente: str,
     return [interprete, "-c", ARRANQUE, nombre, fuente, *argumentos]
 
 
+def interprete() -> str:
+    """Con qué Python se lanza por pkexec un guion que va por `argv`.
+
+    Desde un AppImage el de dentro no vale, por dos motivos distintos y los dos
+    insalvables:
+
+    * El punto de montaje va con `nosuid`, y pkexec se niega a ejecutar nada de
+      un sistema de archivos así. Deniega antes de preguntar, que es por lo que
+      no llegaba a salir el diálogo de la contraseña.
+    * El montaje es de FUSE y pertenece al usuario, así que **root ni siquiera
+      puede leer dentro**.
+
+    Así que se usa el del sistema, al que le basta la biblioteca estándar.
+    Fuera del AppImage vale el nuestro, pero solo si no lo puede reescribir el
+    usuario: el de un entorno virtual suyo lo es, y entonces la ruta que recibe
+    pkexec vuelve a ser sustituible, que es justo lo que se está quitando de en
+    medio.
+    """
+    for ruta in SYSTEM_PYTHON:
+        if os.path.exists(ruta):
+            return ruta
+    if (not PrivilegedClient.empaquetado()
+            and not escribible_por_el_usuario(sys.executable)):
+        return sys.executable
+    raise HelperUnavailable(
+        "No hay ningún Python del sistema con el que lanzar el ayudante."
+    )
+
+
 def escribible_por_el_usuario(ruta) -> bool:
     """Si este usuario puede cambiar lo que hay en esa ruta.
 
@@ -208,7 +237,7 @@ class PrivilegedClient:
         """
         if self.instalado():
             return ["pkexec", str(HELPER_INSTALADO)]
-        return ["pkexec", *en_linea(self._interprete(), "silux-helper.py",
+        return ["pkexec", *en_linea(interprete(), "silux-helper.py",
                                     self._fuente_del_ayudante())]
 
     @staticmethod
@@ -219,32 +248,6 @@ class PrivilegedClient:
             raise HelperUnavailable(
                 f"no se pudo leer el ayudante: {exc}") from exc
 
-    def _interprete(self) -> str:
-        """Con qué Python se lanza el ayudante.
-
-        Desde un AppImage el de dentro no vale, por dos motivos distintos y los
-        dos insalvables:
-
-        * El punto de montaje va con `nosuid`, y pkexec se niega a ejecutar
-          nada de un sistema de archivos así. Deniega antes de preguntar, que es
-          por lo que no llegaba a salir el diálogo de la contraseña.
-        * El montaje es de FUSE y pertenece al usuario, así que **root ni
-          siquiera puede leer dentro**.
-
-        Así que se usa el del sistema, al que le basta la biblioteca estándar.
-        Fuera del AppImage vale el nuestro, pero solo si no lo puede reescribir
-        el usuario: el de un entorno virtual suyo lo es, y entonces la ruta que
-        recibe pkexec vuelve a ser sustituible, que es justo lo que se está
-        quitando de en medio.
-        """
-        for ruta in SYSTEM_PYTHON:
-            if os.path.exists(ruta):
-                return ruta
-        if not self.empaquetado() and not escribible_por_el_usuario(sys.executable):
-            return sys.executable
-        raise HelperUnavailable(
-            "No hay ningún Python del sistema con el que lanzar el ayudante."
-        )
 
     def close(self) -> None:
         process, self._process = self._process, None

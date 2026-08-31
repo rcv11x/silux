@@ -678,9 +678,12 @@ class MainWindow(QMainWindow):
         QApplication.processEvents()
 
         try:
-            orden = self._orden_de_instalacion()
+            orden, ayudante = self._orden_de_instalacion()
+            # El ayudante va por la tubería y no por una ruta: el porqué está
+            # en `instalar.instalar`, que es quien lo recibe.
             resultado = subprocess.run(
-                orden, capture_output=True, text=True, timeout=180,
+                orden, input=ayudante, capture_output=True, text=True,
+                timeout=180,
             )
         except (OSError, subprocess.TimeoutExpired, RuntimeError) as exc:
             self._aviso_permanente(
@@ -701,38 +704,42 @@ class MainWindow(QMainWindow):
         self._status.set_full_text(
             _("perm.installed"))
 
-    def _orden_de_instalacion(self) -> list[str]:
-        """Lo que se le pasa a pkexec para instalar, según de dónde se ejecute.
+    @staticmethod
+    def _orden_de_instalacion() -> tuple[list[str], str]:
+        """La orden de pkexec para instalar, y lo que se le manda por la tubería.
 
         Desde un AppImage nada de dentro sirve: el montaje va con `nosuid` —así
         que pkexec no ejecuta nada de ahí— y es de FUSE y del usuario, así que
-        root ni siquiera puede leerlo. Se copian fuera el instalador y el
-        ayudante, y se usa un Python del sistema. Es el mismo camino que ya
-        recorre el cliente para lanzar el ayudante suelto.
+        root ni siquiera puede leerlo.
+
+        Antes se copiaban fuera el instalador y el ayudante y se le pasaban las
+        dos rutas. Eran de ~/.cache, que escribe el usuario, y la ventana no era
+        una carrera de microsegundos: iba desde la copia hasta que root abría el
+        archivo, con el diálogo de la contraseña en medio. Y lo que quedaba
+        instalado —de root, con su acción de polkit apuntándole— era lo que
+        hubiera ahí al final, o sea que no era ejecutar una vez: era dejar
+        puesta una puerta.
+
+        Ahora el instalador va por `argv` y el ayudante por `stdin`. Ninguno de
+        los dos es un nombre que se pueda repuntar, y en la orden no queda
+        ninguna ruta que no sea de root. Es el mismo camino que recorre el
+        cliente para lanzar el ayudante suelto.
         """
-        import shutil
-        import sys as _sys
         from pathlib import Path
 
-        from ..privileged.client import (HELPER, SYSTEM_PYTHON, PrivilegedClient,
-                                         _cache_dir)
+        from ..privileged import client as _client
 
-        instalador = Path(__file__).resolve().parent.parent / "privileged" / "instalar.py"
-        if not PrivilegedClient.empaquetado():
-            return ["pkexec", _sys.executable, str(instalador)]
+        instalador = (Path(__file__).resolve().parent.parent
+                      / "privileged" / "instalar.py")
+        try:
+            interprete = _client.interprete()
+        except _client.HelperUnavailable:
+            raise RuntimeError(_("perm.nopython.install")) from None
 
-        interprete = next((r for r in SYSTEM_PYTHON if os.path.exists(r)), None)
-        if interprete is None:
-            raise RuntimeError(_("perm.nopython.install"))
-
-        destino = _cache_dir()
-        destino.mkdir(parents=True, exist_ok=True)
-        copia_instalador = destino / "instalar.py"
-        copia_ayudante = destino / "helper.py"
-        shutil.copyfile(instalador, copia_instalador)
-        shutil.copyfile(HELPER, copia_ayudante)
-        return ["pkexec", interprete, str(copia_instalador),
-                "--from", str(copia_ayudante)]
+        orden = ["pkexec", *_client.en_linea(
+            interprete, "silux-instalar.py",
+            instalador.read_text(encoding="utf-8"), "--from-stdin")]
+        return orden, _client.HELPER.read_text(encoding="utf-8")
 
     def _restaurar_botones_permanentes(self) -> None:
         for boton in self._botones_permanentes():

@@ -318,13 +318,20 @@ class TestInstaladorDelAyudante(unittest.TestCase):
             self.addCleanup(parche.stop)
         self.addCleanup(self._tmp.cleanup)
 
-    def instalar(self) -> None:
-        """El instalador informa por pantalla; aquí solo estorba."""
+    def instalar(self, cuerpo: str = None) -> None:
+        """El instalador informa por pantalla; aquí solo estorba.
+
+        Recibe el texto del ayudante y no su ruta: aceptar una ruta es aceptar
+        que otro proceso decida qué se instala como root, y por eso la bandera
+        que la pasaba ya no existe.
+        """
         import contextlib
         import io
 
+        if cuerpo is None:
+            cuerpo = self.modulo.del_paquete()
         with contextlib.redirect_stdout(io.StringIO()):
-            self.modulo.instalar()
+            self.modulo.instalar(cuerpo)
 
     def test_instala_el_ayudante_y_su_politica(self):
         self.instalar()
