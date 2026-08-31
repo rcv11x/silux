@@ -313,6 +313,47 @@ es el tipo de memoria y las unidades de rasterizado: NVML no los publica.
 esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
 `lscpu`.
 
+## Lo que trajo el ThinkCentre M80q
+
+Capturas del 1 de septiembre de 2026, de la misma persona que mandó la máquina
+virtual del día anterior y esta vez desde su equipo: un Lenovo ThinkCentre M80q
+—i5-10500T, UHD 630, 31 GB en dos SODIMM, Manjaro con XFCE— y con los permisos
+ya dados, así que es el equipo ajeno más completo que ha pasado por aquí: 45
+sensores y catorce fuentes activas, `msr`, `smbios`, `spd` y `rapl` incluidos.
+Tres fallos confirmados leyendo el código, y dos que necesitan su informe:
+
+- **El titular es el código de placa OEM y no el nombre del equipo**: sale
+  «Lenovo 316C» en la portada y en Placa base cuando eso es un ThinkCentre
+  M80q, y el nombre bueno está en la misma pantalla, en la tarjeta de equipo
+  (`Versión` y `Familia`). Es la lección del IdeaPad 330 sin terminar de
+  aprender: `Board.display_name` pregunta por `chassis_is_portable`, y un Mini
+  PC no lo es, así que cae al `vendor + name`. La frontera no era
+  portátil/sobremesa —una X570 AORUS ELITE se compró por su nombre y una 316C
+  no la ha visto nadie—, sino placa con nombre comercial contra código interno;
+  un chasis «Mini PC», «All in One» o «Notebook» ya delata al equipo de marca.
+- **El ⚠ «por debajo de su velocidad» salta por un redondeo**: un SK Hynix
+  catalogado a 2667 y funcionando a 2666 es el mismo grado JEDEC —DDR4-2666 son
+  1333,33 MHz, o sea 2666,67 MT/s, que unos redondean arriba y otros abajo— y
+  `MemoryModule.underclocked` compara `actual < rated` a pelo. Un MT/s de
+  diferencia enciende el aviso y el triángulo.
+- **Y el consejo manda a la BIOS a por algo imposible**: con un módulo de 3200
+  y otro de 2667, la frase «va a 2666 de los 3200 que declara admitir, suele ser
+  el perfil rápido sin activar» es falsa, porque el conjunto va al ritmo del más
+  lento y ese equipo no verá 3200 active lo que active. `_apply_avisos` toma
+  `lentos[0]` y usa su velocidad catalogada, así que el diagnóstico sale del
+  módulo rápido e ignora al que manda. Cuando los módulos son desparejos, eso
+  es lo que hay que decir.
+- **Por confirmar**: la insignia del hostname dice `none`, resaltada como si
+  fuera la identidad del equipo. El kernel usa `(none)` cuando nadie lo
+  configuró, y si es eso, es un «sin configurar» pintado como un nombre. Y en
+  «Perfiles y temporizaciones» solo sale el módulo A, aunque del B se leyó el
+  SPD entero.
+
+Lo que hay que pedirle, por orden: el informe con permisos; **la ficha de CPU
+bajada hasta la fila de Voltaje**, que en Intel sale por `IA32_PERF_STATUS` y
+no se ha probado nunca contra hardware —lo de ayer se validó en el 5800X3D de
+casa—; los sensores; y el almacenamiento, que sería el primer SMART ajeno.
+
 ## Cosas que ya se probaron y no funcionaron
 
 - **Reconstruir un dataclass congelado campo a campo** al actualizarlo: se
