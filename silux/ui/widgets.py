@@ -1562,34 +1562,6 @@ def _contiguous_runs(positions: Sequence[int]) -> list[tuple[int, int]]:
     return runs
 
 
-class MiniStat(Card):
-    """Etiqueta y valor en una línea, sin gráfica.
-
-    Es la versión de `StatTile` para cuando el dato acompaña pero no es el
-    protagonista: en la pestaña de identificación interesa ver el reloj actual
-    de reojo, no una serie temporal.
-    """
-
-    def __init__(self, label: str, parent: Optional[QWidget] = None):
-        super().__init__(parent=parent, flat=True)
-        self.body.setSpacing(1)
-
-        self.caption = QLabel(label.upper())
-        self.caption.setObjectName("TileLabel")
-
-        self.value = ElidingLabel("—")
-        self.value.setObjectName("FieldValue")
-        self.value.setFont(mono_font(theme.METRICS.mono_pt + 3, bold=True))
-
-        self.body.addWidget(self.caption)
-        self.body.addWidget(self.value)
-
-    def set_value(self, text: str, tooltip: str = "") -> None:
-        self.value.set_full_text(text)
-        if tooltip:
-            self.setToolTip(tooltip)
-
-
 # Dónde guarda cada fila su serie reciente para que el delegate la pinte.
 ROL_SERIE = int(Qt.ItemDataRole.UserRole) + 1
 
