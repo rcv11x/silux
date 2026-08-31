@@ -658,9 +658,17 @@ class MainWindow(QMainWindow):
         se va."""
         from ..privileged.client import PrivilegedClient
 
-        puesto = PrivilegedClient.instalado()
+        # Y vuelve cuando el que está puesto no es el de este programa: ahí
+        # el botón no sobra, es lo que sustituye un ayudante que se quedó
+        # atrás. Mientras no se pulse, el archivo viejo sigue en el sistema
+        # siendo de root y con su acción de polkit apuntándole.
+        hay_que_ponerlo = (not PrivilegedClient.instalado()
+                           or PrivilegedClient.necesita_reinstalar())
         for boton in self._botones_permanentes():
-            boton.setVisible(not puesto)
+            boton.setVisible(hay_que_ponerlo)
+            boton.setText(_("perm.replace.button")
+                          if PrivilegedClient.necesita_reinstalar()
+                          else _("perm.permanent.button"))
 
     def _on_permanent_requested(self) -> None:
         """Instala el ayudante en el sistema con su propia acción de polkit.

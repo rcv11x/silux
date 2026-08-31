@@ -39,7 +39,11 @@ import struct
 import sys
 import time
 
-VERSION = 1
+# Sube cuando cambia lo que el ayudante sabe hacer: acciones nuevas, o
+# registros nuevos en la lista blanca. El cliente ya no se fía solo de esto
+# —compara el contenido— pero sigue valiendo cuando el archivo no se puede
+# leer.
+VERSION = 2
 
 DMI_TABLE = "/sys/firmware/dmi/tables/DMI"
 DMI_ENTRY_POINT = "/sys/firmware/dmi/tables/smbios_entry_point"

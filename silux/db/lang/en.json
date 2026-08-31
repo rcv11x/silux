@@ -625,6 +625,7 @@
   "perm.permanent.button": "Stop asking",
   "perm.permanent.tip": "Installs the helper system-wide with its own polkit authorisation.\nAfter that the password is asked once per session, not on every launch.\nIt needs the password once to install it.",
   "perm.read.button": "Read with administrator permissions",
+  "perm.replace.button": "Update the system helper",
   "perm.waiting": "Waiting for authorisation…",
   "power.cores": "cores",
   "power.package": "Package:",
