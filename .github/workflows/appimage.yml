@@ -13,7 +13,15 @@
 # antes de pintar nada. El `-compat` lleva la última serie de Qt que se compila
 # para x86-64 a secas.
 
-name: AppImage
+# Se llama CI y no AppImage porque hace más que empaquetar: primero pasa la
+# suite en las dos puntas del rango declarado y solo después construye. Ese
+# nombre es el que sale en el badge del README.
+#
+# El archivo, en cambio, sigue siendo `appimage.yml` a propósito. La URL del
+# badge y el historial de ejecuciones van por el nombre del archivo, no por el
+# del workflow: renombrarlo dejaría el badge con un aspa permanente y las
+# ejecuciones anteriores colgando de un workflow que ya no existe.
+name: CI
 
 # Corre en cada empujón a master y no solo al publicar. Estaba atado a los
 # tags, y como no hubo ninguno hasta la 0.2.0, la primera vez que se ejecutó
