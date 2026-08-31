@@ -185,7 +185,12 @@ lugar de dejar el campo vacío o esconder la sección.
 ```bash
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 python3 tools/comprobar_privacidad.py    # antes de publicar nada
+python3 tools/probar_en_minimo.py --container   # en el Python 3.10 del suelo
 ```
+
+La última hace falta porque pasar en el Python de uno no dice nada del mínimo
+que declara el proyecto: corre la suite dentro de una Ubuntu 22.04, que es la
+misma en la que corre el CI y en la que se construye el AppImage.
 
 Son 1272 y tardan cerca de dos minutos. Ninguno necesita hardware concreto:
 los proveedores se prueban contra árboles de sysfs sintéticos, el generador

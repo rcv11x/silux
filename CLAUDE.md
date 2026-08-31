@@ -22,11 +22,21 @@ python3 tools/medir_referencia.py      # rehacer la escala de puntuación
 python3 tools/anadir_puntuacion.py INFORMES  # sumar medidas ajenas a la tabla
 python3 tools/install_desktop.py       # icono y entrada de menú
 python3 tools/build_appimage.py --container   # el AppImage que se reparte
+python3 tools/probar_en_minimo.py --container # la suite en el Python del suelo
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
 Los tests son **1270** y tardan poco más de un minuto. Si sale bastante
 menos, falta algo por recoger.
+
+Que pasen aquí no dice que pasen en el mínimo. El suelo declarado es Python
+3.10 y aquí se desarrolla en 3.14: `self.enterContext` es de 3.11 y se llevó
+once tests por delante en el CI estando todo verde en local, y el mismo día un
+traceback perdía el texto de la línea porque hasta 3.12 quien pinta las
+excepciones no atrapadas es el escritor en C. Ninguna de las dos se ve leyendo
+el código —se probó `vermin -t=3.10` y ni siquiera cazaba la primera—, así que
+la única comprobación que vale es ejecutar, y para eso está
+`probar_en_minimo.py --container`. El CI lleva matriz con las dos puntas.
 
 `--container` no es opcional para repartir: sin él se construye contra el
 Python y el Qt de la máquina, y sale un AppImage que exige el juego de
