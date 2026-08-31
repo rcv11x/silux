@@ -28,7 +28,7 @@ python3 tools/probar_en_minimo.py --container # la suite en el Python del suelo
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **1357** y tardan cerca de dos minutos. Si sale bastante
+Los tests son **1377** y tardan cerca de dos minutos. Si sale bastante
 menos, falta algo por recoger.
 
 Que pasen aquí no dice que pasen en el mínimo. El suelo declarado es Python
@@ -1087,6 +1087,45 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   archivo se llevaba también la comprobación. Una validación solo cuenta si
   está en el lado que no puede tocar quien ataca.
 
+- **Leer fielmente una máquina virtual y no decir que lo es**: un i5-10500T
+  salía con «2 núcleos · 2 hilos · 2 sockets», la L3 de 12 MB contada dos veces
+  y encapsulado LGA 1200. Todo cierto y nada de la máquina que hay delante:
+  VMware le había dado dos vCPU en dos sockets de un núcleo —la pieza de abajo
+  trae seis y doce, y un solo socket—, cada vCPU en su propio *package* hace
+  que sysfs presente dos L3 que en el silicio son una compartida, y el
+  encapsulado sale de la base de datos por familia y modelo, que el hipervisor
+  pasa tal cual del anfitrión. Quien mandó la captura estaba convencido de que
+  el programa contaba mal los núcleos, y era razonable pensarlo. El bit
+  «hypervisor» de CPUID se leía desde el primer día y salía solo en una fila de
+  la ficha, redactado como una capacidad del procesador —«VT-x · dentro de una
+  máquina virtual»—, y en el informe no salía nunca: el archivo que se pide
+  para diagnosticar describía una placa 440BX sin avisar de que no existe tal
+  placa. Un dato que cambia cómo se lee todo lo demás va pegado a lo que
+  contradice —la insignia delante del nombre en clave, la fila en la cabecera
+  del informe— y no en un renglón suyo más abajo. Los números no se tocaron:
+  son los que el kernel publica, y con la insignia al lado dejan de leerse como
+  un error.
+
+- **Preguntar por `supports()` si una hoja de CPUID existe**: la 0x40000000,
+  donde el hipervisor escribe su firma de doce bytes, queda fuera del rango que
+  anuncia la hoja 0, así que `supports` contesta que no. Y si se pregunta de
+  todas formas sin hipervisor debajo, CPUID responde con el contenido de la
+  hoja más alta que tenga: números creíbles donde se esperaba texto. Quien
+  autoriza esa pregunta es el bit «hypervisor» de la hoja 1, y el orden de los
+  registros tampoco es el de la hoja 0 —aquí es EBX-ECX-EDX y allí EBX-EDX-ECX—.
+  Una firma que no esté en la tabla se enseña tal cual: identifica igual al
+  hipervisor y llega al informe, que es de donde sale la entrada que falta.
+
+- **Escribir la regla del color en una sola de las cuatro páginas que la
+  aplican**: `NEED_TONES` vivía en `graphics.py`, así que CPU, Memoria y Placa
+  base nunca pasaban `tone` y caían en el `warn` por omisión de `Notice`. La
+  regla de que lo inarreglable va en gris llevaba escrita desde el día que se
+  decidió y solo se cumplía en una pantalla de cuatro. Se vio al reclasificar a
+  `HARDWARE` el aviso de que un hipervisor no expone la frecuencia y mirar el
+  píxel de la banda: seguía en (214,175,78), el mismo ámbar que un permiso por
+  dar. Lo que decide un color vive al lado de quien lo pinta, no en la primera
+  página que lo necesitó.
+
 ## El idioma
 
 La interfaz va en **español neutro**: `video` y no «vídeo», `archivo` y no
@@ -1148,7 +1187,7 @@ por `_()`, la segunda llamada recibe «Uso» —que no es una clave— y devuelv
 inglés: la tupla llevaba once claves y una traducción ya hecha, y era la única
 que no cambiaba de idioma. Hay un test que lo vigila.
 
-La interfaz está entera en los dos idiomas: 926 claves, ninguna sin traducir.
+La interfaz está entera en los dos idiomas: 930 claves, ninguna sin traducir.
 Hay un test que recorre el árbol de sintaxis de cada página buscando
 constructores de widget con una cadena española a pelo, porque eso es lo que
 no se ve hasta abrir la pantalla en el otro idioma y ningún test normal lo
