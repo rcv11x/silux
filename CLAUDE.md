@@ -955,6 +955,17 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
   decimal. Con 1024 los mismos datos salen 976 Mb/s donde un test de velocidad
   dice 931, y no hay forma de explicar la diferencia.
 
+- **Dejar que un nombre que no casa se vaya por el desagüe**: `select_section`
+  recorría el menú, no encontraba la sección y volvía sin decirlo. Con
+  `--screenshot --page Rendimiento` —una sección que se llama «Benchmark»— eso
+  es un PNG de la página de Inicio, escrito en disco, y un «captura guardada»
+  en la salida. Una bandera que solo existe para automatizar capturas no puede
+  entregar la equivocada en silencio: peor que fallar es fallar diciendo que
+  todo fue bien, porque lo que se rompe está en un documento que alguien mira
+  meses después. Lo mismo se comía un test de memoria que pedía «Monitor»
+  —nombre de la clase, no de la sección— y llevaba tiempo visitando dos
+  páginas de las tres que decía.
+
 ## El idioma
 
 La interfaz va en **español neutro**: `video` y no «vídeo», `archivo` y no
