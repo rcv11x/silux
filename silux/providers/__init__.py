@@ -14,6 +14,7 @@ from .hwmon import HwmonSensors
 from .privileged_memory import PrivilegedMemory
 from .procfs import CpuUsage
 from .battery import Batteries
+from .msr_voltage import MsrVoltage
 from .rapl import RaplPower
 from .spd_modules import SpdModules
 from .storage import Disks
@@ -24,7 +25,8 @@ from .turbo import TurboState
 __all__ = [
     "Draft", "Provider",
     "SysfsTopology", "CpuidIdentity", "ArmIdentity", "CppcClocks", "DmiBoard", "TurboState",
-    "SysfsClocks", "CpuUsage", "HwmonSensors", "RaplPower", "DerivedSensors",
+    "SysfsClocks", "CpuUsage", "HwmonSensors", "MsrVoltage",
+    "RaplPower", "DerivedSensors",
     "Batteries",
     "DrmGpus", "GpuState", "GpuApis", "NvidiaGpus", "NetworkInterfaces",
     "SystemIdentity", "SystemState", "PrivilegedMemory", "SpdModules", "Disks",

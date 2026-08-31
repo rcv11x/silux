@@ -484,11 +484,10 @@ class HwmonSensors(Provider):
                 for entry in draft.types.values():
                     entry["voltage_v"] = sensor.value
                 return
-
-        draft.note(
-            "cpu.voltage_v", Need.DRIVER,
-            _("prov.hwmon.novolt"), _("prov.hwmon.novolt.hint"),
-        )
+        # Y si no hay ninguno etiquetado, aquí no se avisa: el aviso lo pone
+        # `msr_voltage`, que corre detrás y sabe si se puede sacar del propio
+        # procesador. Poniéndolo aquí salían dos avisos de lo mismo, y el de
+        # aquí decía que no hay nada que hacer cuando sí lo hay.
 
     # -- drivers que faltan -------------------------------------------------
 

@@ -35,6 +35,7 @@ from .providers import (
     NetworkInterfaces,
     NvidiaGpus,
     HwmonSensors,
+    MsrVoltage,
     PrivilegedMemory,
     Provider,
     SpdModules,
@@ -77,6 +78,7 @@ DEFAULT_PROVIDERS: tuple[type[Provider], ...] = (
     SystemState,
     RaplPower,
     HwmonSensors,       # nombra los aparatos con lo que ya se sabe
+    MsrVoltage,         # y detrás: el voltaje que ningún sensor etiquetó
     DerivedSensors,     # el último: solo transforma lo recogido
 )
 
