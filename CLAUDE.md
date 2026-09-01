@@ -349,6 +349,178 @@ es el tipo de memoria y las unidades de rasterizado: NVML no los publica.
 esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
 `lscpu`.
 
+## Dónde está cada cosa ahora mismo
+
+**La rama `escala-v5` está empujada y esperando un dato.** Lleva el arreglo de
+la escala del benchmark: la carga que recorre un bloque grande lo dimensionaba
+con la caché de cada equipo y se contaba por operaciones, así que un procesador
+con poca caché sacaba un 42,8 % más sin mover un byte más por segundo. Ahora
+esa carga declara cuántos bytes recorre, se puntúa en bytes por segundo y se
+llama «Suma de verificación», porque no medía la memoria: el cuello lo pone el
+cálculo del CRC. `scores.json` está remedido y la escala sube a v5, así que las
+puntuaciones anteriores se quedan sin cifra.
+
+**Lo que falta para fusionarla es el informe del ThinkCentre M80q**, y lo que
+decide es una cosa concreta: si el factor de zlib es una constante o depende del
+procesador. Las cinco cargas se apoyan en bibliotecas del sistema, y la misma
+pieza da un 28 % menos con la zlib clásica que con zlib-ng; pero zlib-ng elige
+ruta mirando la CPU, así que el factor podría no ser el mismo en un Comet Lake
+que en un Zen 3. El M80q es la máquina que lo contesta porque es lo contrario
+del equipo de casa por los cuatro lados: Intel, L3 pequeña, doce hilos y una
+distribución con la zlib clásica.
+
+* **Si el factor es constante** → **Z1**: registrar la implementación y no
+  comparar entre distintas. Barato, no toca las cargas, la escala v5 sigue
+  valiendo y la rama se fusiona tal cual.
+* **Si varía con el procesador** → **Z3**: registrar no sirve de nada y hay que
+  cambiar las cargas que dependen de zlib. Eso rehace la escala, así que la
+  rama se remide antes de fusionar y nadie llega a ver una v5.
+
+Mientras tanto, la v5 ya registra con qué zlib y con qué extensiones
+(`vpclmulqdq`, `pclmulqdq`, `avx2`) se midió cada prueba, y lo saca en el
+informe. Ese es el dato que hace falta para decidir con más de una máquina.
+
+**Los tres informes de auditoría viven fuera del repositorio**, en la carpeta
+de encima (`../auditoria-fase-1.md`, `-2` y `-3`). Aquí abajo está solo el
+índice: qué falta, dónde y cómo de grave.
+Los pasos para reproducir cada cosa se quedan en los informes a propósito —el
+del enlace simbólico del instalador es una receta y este archivo es público.
+
+## Lo que queda por arreglar
+
+Sale de tres auditorías. **Nada de esto está arreglado**; lo que sí se arregló
+—la escala del benchmark— está en la rama de arriba.
+
+### Un dato, dos sitios que lo deciden, y uno lo hace mal
+
+Es el mismo fallo repetido: existe una función que decide algo y alguien la
+reimplementa al lado. La regla 1 lo dice para el formateo y vale igual para el
+resto.
+
+* `report.py` · **alta** · el informe «anónimo» publica el nombre del equipo
+  cuando aparece dentro del nombre de una interfaz de red o de un aparato del
+  árbol de sensores. `privacidad.anonimizar` ya resuelve el primer caso y el
+  informe no la usa; el segundo no lo cubre nadie.
+* `privacidad.py` · **media** · tampoco tapa el número de serie del monitor
+  (EDID) ni el de la batería, y el test que dice barrer «la foto entera» usa
+  una foto sin monitores, sin discos y sin batería.
+* `cli.py` · **baja** · `--json` vuelca todo sin anonimizar y sin avisar:
+  seriales, IPv6 pública y puntos de montaje. Es la única salida sin aviso.
+* `ui/pages/cpulive.py` · **media-alta** · compone los relojes a mano en vez de
+  con `render.hz`, y no da lo mismo: 576 MHz sale como «0.58 GHz», 999 MHz como
+  «1.00 GHz» y un bus de 100 MHz como «0.10 GHz».
+* `ui/pages/graphics.py` · **baja** · lo mismo con la tasa de datos de la VRAM.
+* `ui/pages/memory.py`, `ui/pages/battery.py` · **media** · cinco sitios
+  redondean voltajes a dos decimales en vez de pasar por `render.volts`, que
+  usa tres. Se pierde el decimal que distingue los escalones del VID.
+* `providers/derived.py` · **media** · el tráfico de red del árbol de sensores
+  va en potencias de 1024 y el de la página de Red en potencias de 1000: el
+  mismo dato, el mismo instante, dos cifras que se llevan un 2,4 %.
+* `spd.py` · **alta** · las latencias de DDR4 y las de los perfiles XMP se
+  redondean al más cercano; solo la ruta de DDR5 redondea hacia arriba. Un
+  módulo que necesita 13 875 ps con un ciclo de 625 sale como CL22 siendo CL23.
+
+### Una bandera que entrega lo que no era y dice que todo fue bien
+
+Es la lección que ya se arregló para los nombres de sección inexistentes, en
+los casos que quedaron fuera.
+
+* `ui/app.py` · **alta** · `--page` con una sección **oculta** —la de Batería en
+  cualquier sobremesa— pasa la validación, devuelve 0, dice «captura guardada»
+  y entrega el PNG de otra página. La validación corre antes del primer
+  muestreo, cuando la sección todavía no se ha ocultado.
+* `cli.py` · **baja** · `--report ''` ignora la bandera y hace el volcado normal
+  sin decir nada.
+* `cli.py` · **baja** · `--json`, `--sensors` y `--report` se pisan entre ellas
+  en silencio, y `--with-identifiers` sin `--report` no hace nada y no avisa.
+
+### Privilegios y privacidad
+
+* `privileged/instalar.py` · **alta, condicionada** · escribe el ayudante y su
+  acción de polkit sin comprobar que el destino no sea sustituible. La premisa
+  está en su propio docstring y no se verifica en ninguna parte. No es
+  explotable con `/usr/local` en su estado normal.
+* `privileged/helper.py`, `privileged/client.py` · **media** · los dos topes de
+  tamaño del protocolo se comprueban después de haber reservado la memoria, así
+  que no limitan nada: el ayudante llega a 449 MB con un tope de 64 KB.
+* `privileged/client.py` · **media** · el `timeout` de `request()` no acota la
+  llamada: `select` se satisface con el primer byte y la lectura que viene
+  detrás no tiene límite.
+* `tools/comprobar_privacidad.py` · **media** · solo busca lo que identifica a
+  la máquina donde corre, y es ciego a cualquier IPv6 —incluida la pública, que
+  es el caso que motivó la marca del PNG—, a los números de serie y a todo dato
+  de terceros, que es justo lo que llega en los informes ajenos. Además no está
+  enganchado a ningún hook ni al CI.
+* `ui/theme.py` · **media-baja** · cachea los iconos generados en un
+  `/tmp/silux-icons` de nombre fijo y usa lo que encuentre sin comprobar quién
+  lo puso.
+* `data/org.silux.helper.policy.in` · **baja** · diverge de la plantilla que
+  escribe `instalar.py` en `allow_inactive`, que es la que decide si una sesión
+  por SSH puede autenticarse. Nada vigila que no se separen.
+* `privileged/cargar_modulo.py` · **baja** · llama a `modprobe` sin ruta
+  absoluta. Por `pkexec` da igual; por `sudo` depende de la configuración.
+
+### Proveedores y modelo
+
+* `providers/hwmon.py` · **media-alta** · la clave de sensor no incluye de qué
+  nodo `hwmon` viene, así que colisiona entre dos aparatos con el mismo chip:
+  dos NVMe, dos gráficas del mismo fabricante, dos sockets. Con dos discos del
+  mismo modelo ni el desambiguador del árbol los separa: una fila se queda
+  vacía para siempre, el mín/máx es la unión de los dos y el CSV escribe el
+  dato de uno bajo el nombre del otro.
+* `spd.py` · **media** · `decode` revienta con `IndexError` si el chip devuelve
+  menos de 384 bytes, y `read_all` no lo atrapa: se pierden todos los módulos,
+  no solo el que vino corto. Esa ruta no la cubre ningún test.
+* `providers/` · **media** · siete proveedores declaran `available()` y no
+  `unavailable_reason()`, así que se callan cuando no pueden trabajar. Los dos
+  que más se notan son los de red y almacenamiento: sus páginas se quedan
+  vacías sin una línea que lo explique.
+* `providers/rapl.py` · **media-baja** · en un contenedor afirma que la CPU no
+  tiene contadores de energía sobre una que sí los tiene: distingue permiso de
+  hardware, pero no el tercer caso, que es que el directorio esté ahí sin sus
+  archivos.
+* `providers/network.py` · **baja** · el tipo de interfaz se pinta crudo y
+  mezcla los dos idiomas: `loopback`, `wifi`, `ethernet` en inglés y `puente`,
+  `virtual`, `otro` en español, y ninguno está en los archivos de idioma.
+* `providers/storage.py` · **baja** · el modelo de los discos SATA sale
+  truncado a 16 caracteres, que es el campo de sysfs; el completo está sin
+  permisos en `/dev/disk/by-id`.
+* `collector.py` · **baja** · `_clone` reconstruye el borrador campo a campo y
+  le faltan tres (`batteries`, `cpu_extra`, `memory_traffic`). Hoy no se pierde
+  nada porque los llenan proveedores dinámicos; el día que uno se haga estático,
+  su dato desaparece sin ruido.
+* `render.py` · **baja** · dos módulos en canales distintos pueden salir los dos
+  como «Canal A» en la misma pantalla que dice «doble canal».
+
+### Interfaz y línea de órdenes
+
+* `settings.py` · **media** · la ventana no arranca si `settings.json` es un
+  JSON válido que no sea un objeto: el error se cuela entre las dos redes que
+  ya hay. El CLI sí sigue funcionando, lo que despista.
+* `cli.py` · **baja** · `--sensors` enseña las categorías sin traducir
+  (`cat.temperature`); el informe sí las traduce.
+* `cli.py` · **baja** · `--report -` no dice que ha omitido nada, y con archivo
+  sí lo dice.
+* `report.py` · **baja** · `_placa` recibe el parámetro `anonymous` y no lo usa.
+* `ui/` · **baja** · `disk.pci_slot` y `net.vendor` están en el modelo y no se
+  pintan en ninguna página.
+* `db/lang/` · **baja** · cinco claves declaradas que ya no usa nadie;
+  `gen_lang.py` las detecta y `--podar` las borra.
+* `settings.py` · **baja** · el idioma guardado no se valida; el resto de
+  preferencias sí se acotan.
+* `registro.py` · **baja** · la hora del CSV va sin fecha, y las cabeceras de
+  columna se repiten cuando un aparato publica varias etiquetas iguales.
+
+### Fuera del programa
+
+* `.github/workflows/appimage.yml` · **baja** · `contents: write` se concede a
+  todo el workflow y no solo al paso que publica; la acción de terceros que
+  crea la release está anclada a una etiqueta móvil y no a un SHA; y la
+  comprobación de que el AppImage arranca es un `--help`, que no llega a cargar
+  el plugin de plataforma.
+* `tools/medir_referencia.py`, `history.py` · **hecho en `escala-v5`** · la
+  cuenta que decide qué se puntúa estaba escrita en cuatro sitios.
+
 ## Lo que trajo el ThinkCentre M80q
 
 Capturas del 1 de septiembre de 2026, de la misma persona que mandó la máquina
@@ -1395,7 +1567,7 @@ por `_()`, la segunda llamada recibe «Uso» —que no es una clave— y devuelv
 inglés: la tupla llevaba once claves y una traducción ya hecha, y era la única
 que no cambiaba de idioma. Hay un test que lo vigila.
 
-La interfaz está entera en los dos idiomas: 939 claves, ninguna sin traducir.
+La interfaz está entera en los dos idiomas: 956 claves, ninguna sin traducir.
 Hay un test que recorre el árbol de sintaxis de cada página buscando
 constructores de widget con una cadena española a pelo, porque eso es lo que
 no se ve hasta abrir la pantalla en el otro idioma y ningún test normal lo
