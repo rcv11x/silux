@@ -1081,6 +1081,65 @@ que era la mitad no probada de la misma función.
   cuatro eran decoración. La cifra era, en la práctica, una sola carga.
   Cada una se divide por lo que da en la pieza patrón y así entran
   valiendo lo mismo.
+- **Contar «operaciones» cuando una operación no es la misma cosa en dos
+  máquinas**: la carga que recorre un bloque grande lo dimensiona con la
+  caché de cada equipo —entre 64 y 192 MB—, y eso está bien para la carga y
+  era veneno para la puntuación. Con el mismo ancho de banda real, un
+  procesador con poca caché sacaba un **42,8 % más** solo por recorrer un
+  bloque más pequeño; medido en la misma máquina cambiando únicamente el
+  tamaño, las operaciones se multiplican por 3,14 y los bytes por segundo se
+  quedan en ×1,05. Es el mismo error que el de la duración, con otro eje: lo
+  que se compara tiene que ser trabajo, no vueltas de bucle. Ahora esa carga
+  declara cuántos bytes recorre y se puntúa en bytes por segundo. Y de paso
+  se descubrió que no medía lo que decía: con un bloque de 4 MB, que cabe de
+  sobra en la caché, da lo mismo que con 384 —21 GB/s en los dos—, porque el
+  cuello lo pone el cálculo del CRC y no la memoria (la RAM de esa pieza da
+  48,5 GB/s medidos con `membench`). Por eso ya no se llama «Memoria» sino
+  «Suma de verificación».
+- **Medir el procesador con la biblioteca estándar mide la biblioteca**: las
+  cinco cargas son `zlib`, `bz2` y `hashlib`, así que la cifra depende de qué
+  trae cada distribución. La misma pieza da un **28 % menos** con la zlib
+  clásica que con zlib-ng —medido alternando anfitrión y contenedor en la
+  misma CPU y el mismo Python: ×2,75 en la compresión y ×4,07 en el CRC,
+  mientras `hash` y `bz2` salían idénticos—, y el patrón está en el lado
+  minoritario: CachyOS y Fedora traen zlib-ng; Debian, Ubuntu, Arch y
+  openSUSE, la clásica. Peor aún, ese factor **no es una constante**:
+  `libz.so.1` lleva dentro 344 instrucciones `vpclmul` y cuatro `cpuid`, o
+  sea que elige ruta mirando el procesador, y la de 256 bits es de Ice Lake y
+  Zen 3 en adelante. De momento se registra con qué biblioteca y con qué
+  extensiones se midió cada prueba, que es lo que permitirá decidir con datos
+  de más de una máquina. **La salida buena es un kernel propio en
+  ensamblador**, reutilizando lo que `rawcpuid.py` ya hace para CPUID y
+  `membench.py` para perseguir punteros: código que no cambia de una máquina
+  a otra porque viaja dentro del programa. Iría **añadido a las cinco y no en
+  su lugar**: las que hay miden trabajo real y eso también vale; lo que falta
+  es una que mida solo la pieza. Se buscó sustituto en la biblioteca estándar
+  y no lo hay: `bytes.translate` y `bytes.count` no sueltan el GIL (escalan
+  ×1,0), `blake2b` sí lo suelta y es de CPython pero va a 0,6 GB/s contra los
+  48,5 de la RAM, y `adler32` —que parecía el candidato porque da 48,2 GB/s—
+  es aún peor, con un ×6,79 entre implementaciones.
+- **La misma cuenta escrita en cuatro sitios**: `operations / seconds` vivía
+  en `Medida`, en el historial, en `medir_referencia.py` y en un test. Tres de
+  las cuatro estaban de acuerdo, y la que no —la de la escala— dejó la
+  referencia en operaciones por segundo mientras las medidas ya iban en bytes:
+  el cociente habría salido dos millones de veces mayor. Cada copia parecía
+  correcta leyéndola sola, y no se vio hasta ejecutar la herramienta de verdad
+  y mirar la cifra. Es la regla 1 —el formateo en un solo sitio— aplicada a
+  las cuentas: la que decide qué se puntúa vive en `Medida` y en ningún otro
+  lado. Son dos y no una a propósito —`per_second` es lo que escala con los
+  hilos y lo que la interfaz etiqueta «op/s», `rate` es lo que se puntúa—, y
+  fundirlas haría mentir a una de las dos. Hay un test que recorre el árbol de
+  sintaxis de todo el repositorio y no deja escribir una quinta.
+- **Un estado intermedio que tapa tests es peor que uno que los rompe**: al
+  subir `score.VERSION` a 5 sin haber regenerado todavía `scores.json`,
+  `referencias()` devolvía vacío y `puntuar` contestaba `None` a todo. La
+  suite pasaba entera, 1478 en verde, y varios tests de puntuación no estaban
+  evaluando nada: el que comprueba que una prueba a la que le falta una carga
+  no puntúa pasaba porque no puntuaba ninguna. En cuanto la tabla volvió a
+  estar en la versión vigente, ese test empezó a mirar de verdad y cazó un
+  `memoria/` que se había quedado sin renombrar. Por eso `VERSION` y
+  `scores.json` van en el mismo commit: desparejados, la suite miente en
+  verde, que es la peor forma de mentir.
 - **Comparar dos pruebas de distinta duración**: tres segundos cogen el
   turbo entero y treinta lo pierden a mitad, así que la misma pieza da dos
   cifras muy distintas. Poder elegir la duración es lo que permite

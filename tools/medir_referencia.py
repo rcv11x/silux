@@ -69,7 +69,13 @@ def main(argv=None) -> int:
         return 1
 
     hilos = max((m.threads for m in resultado.measures), default=1)
-    op = {f"{m.load}/{m.threads}": m.operations / m.seconds
+    # `rate` y no `operations / seconds`, que es la misma cuenta que hace el
+    # historial: la tabla y las medidas que se dividen por ella tienen que
+    # estar en la misma unidad. Con la cuenta escrita a mano aquí, la carga
+    # que se puntúa en bytes por segundo quedaba en la referencia como
+    # operaciones por segundo, y el cociente salía dos millones de veces
+    # mayor. Hay un test que no deja que las dos rutas se separen.
+    op = {f"{m.load}/{m.threads}": m.rate
           for m in resultado.measures if m.seconds}
     cargas = sorted({k.split("/")[0] for k in op})
 
@@ -94,9 +100,14 @@ def main(argv=None) -> int:
     if piezas := _piezas_que_siguen_valiendo():
         tabla["piezas"] = piezas
 
-    print(f"\n  {'carga':<18} {'1 hilo':>10} {str(hilos) + ' hilos':>12}")
+    # Las cifras no son todas de la misma magnitud: las cargas de cómputo van
+    # en operaciones por segundo (cientos) y la que recorre un bloque grande
+    # en bytes por segundo (miles de millones). Con un ancho fijo, la segunda
+    # se salía de la columna y la tabla dejaba de leerse.
+    print(f"\n  {'carga':<18} {'1 hilo':>12} {str(hilos) + ' hilos':>14}")
     for c in cargas:
-        print(f"  {c:<18} {tabla['un_hilo'][c]:>10} {tabla['multihilo'][c]:>12}")
+        print(f"  {c:<18} {_cifra(tabla['un_hilo'][c]):>12} "
+              f"{_cifra(tabla['multihilo'][c]):>14}")
 
     if not args.write:
         print("\n  (con --write se guarda; acuérdate de subir score.VERSION)")
@@ -108,6 +119,19 @@ def main(argv=None) -> int:
     print(f"\n  guardada en {destino.relative_to(RAIZ)}")
     print("  sube score.VERSION: las puntuaciones anteriores ya no valen")
     return 0
+
+
+def _cifra(valor: float) -> str:
+    """Legible sin perder de vista la magnitud: «1727.09» o «20.69 G».
+
+    Solo se abrevia lo que no cabe. Las cargas de cómputo llegan a un par de
+    miles y esas se leen enteras: son las que se comparan de un vistazo entre
+    una escala y la siguiente.
+    """
+    for umbral, sufijo in ((1e9, " G"), (1e6, " M")):
+        if valor >= umbral:
+            return f"{valor / umbral:.2f}{sufijo}"
+    return f"{valor:.2f}"
 
 
 def _tabla_anterior() -> dict:

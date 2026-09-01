@@ -138,7 +138,7 @@ class TestEjecucion(unittest.TestCase):
         for medida in resultado.measures:
             if medida.seconds:
                 por_carga.setdefault(medida.load, {})[medida.threads] = (
-                    medida.operations / medida.seconds)
+                    medida.per_second)
         for carga, medidas in por_carga.items():
             if 1 in medidas and hilos in medidas and medidas[1]:
                 with self.subTest(carga=carga):
@@ -150,19 +150,27 @@ if __name__ == "__main__":
     unittest.main()
 
 
-class TestCargaDeMemoria(unittest.TestCase):
-    """La carga que sale a buscar datos fuera del núcleo.
+class TestCargaDeVerificacion(unittest.TestCase):
+    """La carga que recorre un bloque grande.
 
-    El bloque tiene que no caber en la caché, y cuánto es eso depende del
-    procesador: un 5800X3D lleva 96 MB de L3 y se traga entero un bloque de
-    64, con lo que la prueba mediría la caché y no la memoria. Medido aquí,
-    con el bloque pequeño escalaba ×8.3 —igual que las cargas de cómputo— y
-    con el bloque bien dimensionado baja a ×5, que es lo que se espera de un
-    camino a memoria que se comparte entre todos los núcleos.
+    El bloque se dimensiona con la caché de cada procesador, entre 64 y
+    192 MB. Eso está bien para la carga y era veneno para la puntuación: una
+    «operación» sobre 64 MB no es la misma que sobre 192, y contarlas le daba
+    un 42,8 % de ventaja a los procesadores con poca caché sin que movieran
+    un byte más por segundo. Por eso esta carga declara su tamaño y se puntúa
+    en bytes por segundo.
     """
 
     def test_esta_entre_las_cargas(self):
-        self.assertIn("memoria", [c.key for c in benchmark.CARGAS])
+        self.assertIn("verificacion", [c.key for c in benchmark.CARGAS])
+
+    def test_declara_cuantos_bytes_recorre_una_operacion(self):
+        """Es la única que lo declara, y por eso es la única que lo necesita:
+        las otras cuatro tienen una entrada del mismo tamaño en toda máquina."""
+        cargas = {c.key: c for c in benchmark.CARGAS}
+        self.assertIsNotNone(cargas["verificacion"].bytes_por_op)
+        for clave in ("compresion", "hash", "compresion_dura", "derivacion"):
+            self.assertIsNone(cargas[clave].bytes_por_op, clave)
 
     def test_el_bloque_se_dimensiona_con_la_cache(self):
         from unittest import mock
@@ -179,6 +187,49 @@ class TestCargaDeMemoria(unittest.TestCase):
         with mock.patch.object(benchmark, "_leer", return_value="512M"):
             self.assertEqual(benchmark._tamano_del_bloque(),
                              benchmark.BLOQUE_MAXIMO_MB)
+
+    def test_el_tamano_del_bloque_no_cambia_lo_que_se_puntua(self):
+        """El fallo que la suite no cazaba, y que aquí se mide de verdad.
+
+        Cambiar la forma de contar esta carga —de bytes por segundo a
+        operaciones por segundo— no rompía ni un test, y era la diferencia
+        entre una cifra comparable entre equipos y una que le regala un 42,8 %
+        al que tiene menos caché. Así que se mide con dos bloques de tamaños
+        muy distintos: lo que se puntúa tiene que salir parecido, y lo que se
+        contaba antes tiene que salir muy distinto. El segundo `assert` no
+        sobra: sin él, el test pasaría también con una medida que no
+        distinguiera nada.
+        """
+        pequeno = self._medir_con(8)
+        grande = self._medir_con(64)
+
+        proporcion = pequeno.rate / grande.rate
+        self.assertLess(abs(proporcion - 1), 0.35,
+                        f"los bytes por segundo cambian con el tamaño del "
+                        f"bloque: {pequeno.rate:.3g} contra {grande.rate:.3g}")
+
+        veces = pequeno.per_second / grande.per_second
+        self.assertGreater(veces, 4,
+                           "las operaciones por segundo deberían dispararse "
+                           "con el bloque pequeño; si no, esta medida no "
+                           "distingue nada y el assert de arriba no vale")
+
+    def _medir_con(self, megas, segundos=0.5):
+        """Una medida real de la carga con un bloque del tamaño que se diga.
+
+        Las páginas se calientan antes a propósito: reservar el bloque y
+        medirlo de seguido mide el asignador, que es la tormenta de fallos de
+        página que ya costó una escala entera con LZMA.
+        """
+        carga = next(c for c in benchmark.CARGAS if c.key == "verificacion")
+        benchmark._grande = benchmark.BLOQUE * (
+            megas * 1024 * 1024 // len(benchmark.BLOQUE))
+        try:
+            for _ in range(3):
+                carga.work()
+            return benchmark._medir(carga, 1, segundos)
+        finally:
+            benchmark._soltar_el_bloque()
 
     def test_el_bloque_se_suelta_al_terminar(self):
         """Son hasta 192 MB y el programa entero se mueve en 130."""
@@ -225,7 +276,7 @@ class TestCargasNuevas(unittest.TestCase):
     def test_estan_las_cinco(self):
         claves = [c.key for c in benchmark.CARGAS]
         self.assertEqual(claves, ["compresion", "hash", "compresion_dura",
-                                  "derivacion", "memoria"])
+                                  "derivacion", "verificacion"])
 
     def test_ninguna_usa_un_hash_que_acelere_sha_ni(self):
         """Vale para las dos que usan hash, no solo para la del resumen.

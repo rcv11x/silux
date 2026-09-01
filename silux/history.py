@@ -63,6 +63,14 @@ class Entry:
     # comparar, y la diferencia que se lee no existe: al rehacer la escala la
     # cifra de un hilo se movió un 68 % sin que el equipo cambiara.
     score_version: Optional[int] = None
+    # Con qué biblioteca de compresión se midió, y con qué extensiones del
+    # procesador. Van juntas porque por separado no dicen nada: dos de las
+    # cinco cargas son `zlib`, y la misma pieza da un 28 % menos con zlib
+    # clásico que con zlib-ng. Y la versión sola tampoco basta, porque
+    # zlib-ng elige ruta mirando la CPU —lleva dentro 344 instrucciones
+    # `vpclmul` y cuatro `cpuid`—, así que el factor depende de las dos cosas.
+    zlib_version: Optional[str] = None
+    zlib_simd: tuple[str, ...] = ()
 
     @property
     def when(self) -> str:
@@ -91,8 +99,40 @@ class Entry:
                 and self.score_version == otra.score_version)
 
 
+# Las banderas que deciden qué ruta usa zlib-ng. No es una lista de curiosidades:
+# la de 256 bits (`vpclmulqdq`) es de Ice Lake y Zen 3 en adelante, así que un
+# procesador anterior usa otra y rinde distinto con la misma biblioteca.
+EXTENSIONES = ("vpclmulqdq", "pclmulqdq", "avx2")
+
+
+def _zlib_version() -> Optional[str]:
+    """Qué biblioteca de compresión hay debajo, que no es la misma en todas
+    las distribuciones: CachyOS y Fedora traen zlib-ng, y Debian, Ubuntu,
+    Arch y openSUSE la clásica."""
+    try:
+        import zlib
+        return zlib.ZLIB_RUNTIME_VERSION
+    except Exception:                                  # noqa: BLE001
+        return None
+
+
+def _extensiones() -> tuple[str, ...]:
+    """Las de `EXTENSIONES` que tenga este procesador, en ese orden."""
+    try:
+        with open("/proc/cpuinfo", encoding="utf-8", errors="replace") as fh:
+            for linea in fh:
+                if linea.startswith(("flags", "Features")):
+                    tiene = set(linea.split(":", 1)[1].split())
+                    return tuple(f for f in EXTENSIONES if f in tiene)
+    except OSError:
+        pass
+    return ()
+
+
 def from_result(resultado: Result, cpu: str, seconds: float) -> Entry:
-    scores = {f"{m.load}/{m.threads}": m.operations / m.seconds
+    # `rate` y no `operations / seconds`: donde el tamaño de una operación
+    # cambia de una máquina a otra, lo comparable son los bytes por segundo.
+    scores = {f"{m.load}/{m.threads}": m.rate
               for m in resultado.measures if m.seconds}
     condiciones = resultado.conditions
     hilos = max((m.threads for m in resultado.measures), default=1)
@@ -100,6 +140,8 @@ def from_result(resultado: Result, cpu: str, seconds: float) -> Entry:
 
     return Entry(
         score_version=score.VERSION,
+        zlib_version=_zlib_version(),
+        zlib_simd=_extensiones(),
         timestamp=time.time(),
         cpu=cpu,
         threads=hilos,

@@ -75,6 +75,13 @@ class Carga:
     name: str
     explanation: str
     work: Callable[[], object]
+    # Cuántos bytes recorre una operación. Solo lo declara la carga cuyo
+    # bloque no mide lo mismo en todas las máquinas: contar «operaciones por
+    # segundo» de un bloque que se dimensiona con la caché de cada equipo
+    # premiaba a los procesadores con poca caché en un 42,8 %, porque una
+    # operación sobre 64 MB no es la misma que sobre 192. Es una función y no
+    # un número porque ese tamaño se decide al arrancar la prueba.
+    bytes_por_op: Optional[Callable[[], int]] = None
 
 
 # El bloque tiene que no caber en la caché, y cuánto es eso depende del
@@ -145,12 +152,19 @@ CARGAS: tuple[Carga, ...] = (
           "hace un gestor de contraseñas al abrirse, y no lo acelera ninguna "
           "instrucción especial.",
           lambda: hashlib.pbkdf2_hmac("sha512", b"silux", b"benchmark", 12_000)),
-    Carga("memoria", "Memoria",
-          "Recorre de una vez el doble de lo que cabe en la caché de este "
-          "procesador. Aquí no gana el que va más rápido sino el "
-          "que trae los datos antes, y por eso escala mucho peor con los "
-          "hilos: el camino hasta la memoria es uno y se comparte.",
-          lambda: zlib.crc32(_bloque_grande())),
+    # Se llamaba «Memoria» y prometía medir el camino hasta la RAM. No lo
+    # mide: con un bloque de 4 MB, que cabe de sobra en la caché, da lo mismo
+    # que con 384 —21 GB/s en los dos—, porque el cuello lo pone el cálculo
+    # del CRC y no la memoria (la RAM de esa misma máquina da 48,5 GB/s
+    # medidos con `membench`). Lo que sí es cierto es que de las cinco es la
+    # que menos gana con los hilos.
+    Carga("verificacion", "Suma de verificación",
+          "Recorre un bloque grande calculando una suma de comprobación. Es "
+          "la carga que menos gana con los hilos de las cinco, porque el "
+          "camino hasta la memoria es uno y se comparte; el cuello, en "
+          "cambio, lo pone el propio cálculo antes que la RAM.",
+          lambda: zlib.crc32(_bloque_grande()),
+          bytes_por_op=lambda: len(_bloque_grande())),
 )
 
 # POR QUÉ NO LZMA. La compresión pesada fue `lzma.compress(MEDIO, preset=0)`
@@ -192,10 +206,27 @@ class Medida:
     threads: int
     operations: int
     seconds: float
+    # Los bytes que recorrió cada operación, si la carga lo declara.
+    bytes_: Optional[int] = None
 
     @property
     def per_second(self) -> float:
         return self.operations / self.seconds if self.seconds else 0.0
+
+    @property
+    def rate(self) -> float:
+        """Lo que se puntúa: bytes por segundo donde el tamaño varía.
+
+        Es la cifra que no depende de cómo de grande sea el bloque en esta
+        máquina. Donde la carga tiene una entrada fija —las otras cuatro— las
+        dos formas son proporcionales y da lo mismo, así que se sigue contando
+        por operaciones y no hace falta declarar nada.
+        """
+        if not self.seconds:
+            return 0.0
+        if self.bytes_ is None:
+            return self.operations / self.seconds
+        return self.operations * self.bytes_ / self.seconds
 
 
 @dataclass(frozen=True, slots=True)
@@ -383,7 +414,8 @@ def _medir(carga: Carga, hilos: int, duracion: float) -> Medida:
     transcurrido = time.perf_counter() - inicio
 
     return Medida(load=carga.key, threads=hilos,
-                  operations=sum(cuenta), seconds=transcurrido)
+                  operations=sum(cuenta), seconds=transcurrido,
+                  bytes_=carga.bytes_por_op() if carga.bytes_por_op else None)
 
 
 # Aquí vivían `_fijar_afinidad` y `_nucleo_preferido`, que ataban el hilo de

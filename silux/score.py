@@ -43,7 +43,16 @@ from typing import Optional
 # de dispersión en la puntuación de un equipo consigo mismo, con lo que dos
 # piezas que se llevaran menos de eso salían indistinguibles. El motivo largo,
 # con las cifras y lo que se probó antes de rendirse, está en `benchmark.py`.
-VERSION = 4
+#
+# La 5 dejó de contar operaciones en la carga que recorre un bloque grande.
+# Ese bloque se dimensiona con la caché de cada equipo —entre 64 y 192 MB—,
+# así que una «operación» no era la misma cosa en dos máquinas: con el mismo
+# ancho de banda real, un procesador con poca caché sacaba un 42,8 % más solo
+# por recorrer un bloque más pequeño. Ahora esa carga se cuenta en bytes por
+# segundo, que no depende del tamaño (queda un 1 % residual, por debajo del
+# ruido de la propia medida, que ronda el 1,3 %). En el mismo paso, la carga
+# pasó a llamarse «verificación», porque no medía lo que su nombre decía.
+VERSION = 5
 
 # Cuánto tiene que durar cada medida para que la prueba puntúe. Quince segundos
 # es el punto en el que la mayoría de los procesadores ya han dejado atrás el
