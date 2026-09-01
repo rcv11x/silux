@@ -13,9 +13,9 @@ from typing import Optional
 
 from .features import pretty as pretty_feature
 from .i18n import _
-from .model import (Cache, Clocks, CpuType, Display, Edid, GpuApi, PcieLink,
-                    GpuMemory, NetworkInterface, NetworkTraffic, Power,
-                    SensorKind)
+from .model import (MARGEN_DE_REDONDEO, Cache, Clocks, CpuType, Display,
+                    Edid, GpuApi, PcieLink, GpuMemory, NetworkInterface,
+                    NetworkTraffic, Power, SensorKind)
 
 DASH = "—"
 
@@ -553,6 +553,37 @@ def memory_bandwidth_share(medido: Optional[int], teorico: Optional[int]) -> Opt
     if not medido or not teorico:
         return None
     return round(medido / teorico * 100, 1)
+
+
+def memory_speed_warning(modulos) -> Optional[str]:
+    """Por qué la memoria no va más rápido, cuando hay algo que decir.
+
+    El techo del conjunto no es el del módulo más rápido: es el del más lento,
+    porque todos van al mismo reloj. Con uno de 3200 y otro de 2667 el equipo
+    no verá 3200 active lo que active, así que prometerlo mandaba a alguien a
+    pelearse con la BIOS para nada. Lo trajo un ThinkCentre M80q, que además
+    llevaba los dos módulos desparejos.
+
+    Tres respuestas y no dos: hay margen de verdad —y entonces el perfil
+    rápido sin activar es la explicación de siempre—, no hay margen pero un
+    módulo declara más que otro —y eso es lo que hay que contar, porque si no
+    la cifra alta de la ficha no se entiende—, o no hay nada que decir.
+    """
+    puestos = [m for m in modulos if m.populated and m.rated_mts]
+    if not puestos:
+        return None
+    actual = max((m.configured_mts or m.speed_mts or 0) for m in puestos)
+    if not actual:
+        return None
+
+    techo = min(m.rated_mts for m in puestos)
+    mayor = max(m.rated_mts for m in puestos)
+
+    if actual < techo * (1 - MARGEN_DE_REDONDEO):
+        return _("mem.underclocked").format(actual=actual, rated=techo)
+    if mayor > techo * (1 + MARGEN_DE_REDONDEO):
+        return _("mem.mixed").format(actual=actual, lento=techo, rapido=mayor)
+    return None
 
 
 def memory_channel_warning(modulos) -> Optional[str]:

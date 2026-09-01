@@ -480,6 +480,7 @@
   "mem.chan.n": "{n} canales",
   "mem.channel.same": "Los {n} módulos están en el mismo canal. Repartidos entre dos, la memoria movería el doble de datos por segundo.",
   "mem.channel.single": "Hay un solo módulo, así que la memoria trabaja a la mitad de ancho de banda. Un segundo módulo igual en el otro canal lo duplica; en un equipo con gráfica integrada se nota en los fotogramas más que casi cualquier otra cosa.",
+  "mem.mixed": "La memoria va a {actual} MT/s y no puede pasar de {lento}, que es lo que da el módulo más lento. Que otro declare {rapido} no cambia nada: todos van al mismo reloj, así que el conjunto se queda en el del que menos da.",
   "mem.modules.many": "{n} módulos",
   "mem.modules.one": "{n} módulo",
   "mem.title": "{tam} de memoria",
