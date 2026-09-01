@@ -465,6 +465,12 @@ DMI_PLACEHOLDERS = frozenset({
 })
 
 
+# «1.0», «Rev 1.0», «01». Lo que una placa que se vende suelta deja en la
+# versión del sistema, y que no es el nombre de ningún equipo. Los rellenos con
+# letras —«Default string», «System Product Name»— ya los caza DMI_PLACEHOLDERS.
+_SOLO_UNA_VERSION = re.compile(r"(?:rev\.?\s*)?[\d.,\s]+", re.I)
+
+
 def clean_dmi(value: Optional[str]) -> Optional[str]:
     """Descarta los rellenos que dejan las BIOS sin configurar."""
     if not value:
@@ -501,17 +507,48 @@ class Board:
     chassis: Optional[str] = None
 
     @property
+    def system_display_name(self) -> Optional[str]:
+        """El nombre comercial del equipo, si lo hay.
+
+        Los OEM lo escriben en la versión o en la familia del sistema; una
+        placa que se vende suelta deja ahí un número de versión o uno de los
+        rellenos de fábrica. Lo segundo no es el nombre de nada, así que si no
+        queda ninguno de los dos, no hay equipo que nombrar y manda la placa.
+
+        No se mira `system_name`: en un OEM trae el código de producto
+        —«11DQS0KM00»— y en una placa suelta el código de la propia placa
+        —«MS-7D23»—, o sea que las dos veces es peor que lo que ya se tiene.
+        HP y Dell sí ponen ahí el nombre bueno, pero sin un informe de uno
+        delante no hay forma de distinguirlos del caso de arriba, y adivinar
+        aquí es romper lo que funciona.
+        """
+        for campo in (self.system_version, self.system_family):
+            nombre = clean_dmi(campo)
+            if nombre and not _SOLO_UNA_VERSION.fullmatch(nombre):
+                return nombre
+        return None
+
+    @property
     def display_name(self) -> str:
         """Cómo se llama esto en una frase: «MSI H510M PRO-E».
 
-        En un portátil la placa no tiene nombre comercial —un IdeaPad 330
-        lleva dentro una «LNVNB161216»— y quien mira no reconoce ese código
-        por ninguna parte. Ahí manda el nombre del equipo, que es el que
-        viene escrito en la pegatina.
+        La frontera no es portátil contra sobremesa, aunque lo pareciera: es
+        placa con nombre comercial contra código interno. Una X570 AORUS ELITE
+        se compró por su nombre; una «316C» o una «LNVNB161216» no las ha visto
+        nadie, y ahí manda el nombre del equipo, que es el de la pegatina.
+
+        Preguntar por el chasis era una aproximación a eso y falló dos veces:
+        primero con un IdeaPad 330 y luego con un ThinkCentre M80q, que es un
+        Mini PC y salía como «Lenovo 316C». Ampliar la lista de chasis no lo
+        habría cerrado —un ThinkCentre, un OptiPlex o un EliteDesk suelen
+        declararse «Desktop» a secas—, así que se pregunta lo que de verdad
+        decide: si el equipo tiene un nombre comercial. La señal está en el
+        propio dato, sin adivinar nada: en una placa suelta ese campo trae
+        «1.0» o «Default string», y en un equipo de marca trae su nombre.
         """
-        if self.chassis_is_portable and self.system_version:
+        if self.system_display_name:
             marca = short_vendor(self.system_vendor) or ""
-            nombre = self.system_version
+            nombre = self.system_display_name
             # Lenovo escribe «Lenovo ideapad 330-15ICH» ahí dentro, con la
             # marca incluida; anteponerla otra vez da «Lenovo Lenovo ideapad».
             equipo = (nombre if nombre.lower().startswith(marca.lower() or "\0")

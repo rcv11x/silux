@@ -53,6 +53,11 @@ class TestPropiedadesExportadas(unittest.TestCase):
         # placa. El chasis del que sale ya va en el JSON, así que quien lo
         # lea puede decidir lo mismo por su cuenta.
         ("Board", "chassis_is_portable"),
+        # Lo mismo, y es quien de verdad decide el titular desde que la
+        # frontera dejó de ser el chasis: dice si el equipo tiene un nombre
+        # comercial o solo un número de versión. Sale de `system_version` y
+        # `system_family`, que ya van en el JSON.
+        ("Board", "system_display_name"),
         # Dice de dónde salió el refresco que se enseña, para que la interfaz
         # pueda aclarar que es el modo preferido y no un techo declarado. Los
         # dos campos de los que sale ya van en el JSON, así que quien lo lea
