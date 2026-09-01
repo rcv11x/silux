@@ -739,6 +739,7 @@
   "sensor.dev.gpuchip": "Graphics ({chip})",
   "sensor.dev.net": "Network ({chip})",
   "sensor.dev.power": "Power · {n}",
+  "sensor.dev.storage": "Storage",
   "sensor.dev.usbc": "USB-C port",
   "sensor.edge": "Edge",
   "sensor.energy": "Energy",

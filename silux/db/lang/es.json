@@ -739,6 +739,7 @@
   "sensor.dev.gpuchip": "Gráfica ({chip})",
   "sensor.dev.net": "Red ({chip})",
   "sensor.dev.power": "Alimentación · {n}",
+  "sensor.dev.storage": "Almacenamiento",
   "sensor.dev.usbc": "Puerto USB-C",
   "sensor.edge": "Borde",
   "sensor.energy": "Energía",
