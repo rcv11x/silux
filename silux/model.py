@@ -401,6 +401,31 @@ class MemoryArray:
     error_correction: Optional[str] = None
 
 
+@dataclass(frozen=True, slots=True)
+class MemoryTraffic:
+    """Lo que el controlador de memoria está moviendo ahora mismo.
+
+    Es un sensor y no una prueba: nadie lo provoca, es el tráfico que hay. Por
+    eso vive aparte del ancho de banda que mide `membench`, que dice lo que la
+    memoria *puede* dar y para saberlo tiene que ocupar la máquina.
+
+    En bytes por segundo, como el teórico y como lo medido, para que las tres
+    cifras de la misma página se puedan comparar sin convertir nada. El
+    contador del kernel cuenta líneas de caché y la conversión ocurre en el
+    proveedor, que es quien tiene la escala al lado.
+    """
+
+    read_bytes_s: int = 0
+    write_bytes_s: int = 0
+    # Del total, lo que piden los núcleos. El resto lo mueven la gráfica
+    # integrada y los dispositivos por su cuenta, y esos dos no se separan:
+    # sus contadores marcan lo mismo parada la máquina que a plena carga.
+    cpu_bytes_s: Optional[int] = None
+
+    @property
+    def total_bytes_s(self) -> int:
+        return self.read_bytes_s + self.write_bytes_s
+
 
 @dataclass(frozen=True, slots=True)
 class PrivilegedState:
@@ -1115,6 +1140,10 @@ class SensorKind(str, Enum):
     USAGE = "usage"
     MEMORY = "memory"
     NETWORK = "network"
+    # Un ritmo de transferencia que no es de red: hoy, lo que mueve el
+    # controlador de memoria. Va aparte de NETWORK porque comparten forma
+    # y no significado, y juntos caerían en la misma rama del árbol.
+    BANDWIDTH = "bandwidth"
     OTHER = "other"
 
 
@@ -1129,6 +1158,7 @@ UNITS: dict[str, str] = {
     SensorKind.USAGE: "%",
     SensorKind.MEMORY: "MB",
     SensorKind.NETWORK: "KB/s",
+    SensorKind.BANDWIDTH: "MB/s",
     SensorKind.OTHER: "",
 }
 
@@ -1188,6 +1218,7 @@ CATEGORIES: dict[str, str] = {
     SensorKind.USAGE: "cat.usage",
     SensorKind.MEMORY: "cat.memory",
     SensorKind.NETWORK: "cat.network",
+    SensorKind.BANDWIDTH: "cat.bandwidth",
     SensorKind.OTHER: "cat.other",
 }
 
@@ -1195,7 +1226,7 @@ CATEGORIES: dict[str, str] = {
 # de lo que más se consulta a lo que menos.
 CATEGORY_ORDER: tuple[str, ...] = (
     "cat.voltage", "cat.temperature", "cat.fan", "cat.power",
-    "cat.clock", "cat.usage", "cat.memory", "cat.network",
+    "cat.clock", "cat.usage", "cat.memory", "cat.network", "cat.bandwidth",
     "cat.current", "cat.energy", "cat.other",
 )
 
@@ -1321,6 +1352,7 @@ class Snapshot:
     modules: tuple[MemoryModule, ...] = ()
     spd: tuple[SpdInfo, ...] = ()
     memory_array: Optional[MemoryArray] = None
+    memory_traffic: Optional[MemoryTraffic] = None
     gpus: tuple[Gpu, ...] = ()
     network: tuple[NetworkInterface, ...] = ()
     disks: tuple[Disk, ...] = ()

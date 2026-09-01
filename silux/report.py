@@ -148,6 +148,17 @@ def _memoria(snapshot: Snapshot) -> str:
     memoria = snapshot.system.memory
     lineas = ["", "## Memoria", "",
               f"- Total: {render.size(memoria.total_bytes)}"]
+
+    # El tráfico del controlador es de un instante y hay que decirlo: el
+    # informe se escribe con la máquina haciendo cualquier cosa, así que un
+    # número alto aquí no dice nada malo y uno bajo tampoco dice nada bueno.
+    if (trafico := snapshot.memory_traffic) is not None:
+        partes = [f"lectura {render.rate(trafico.read_bytes_s)}",
+                  f"escritura {render.rate(trafico.write_bytes_s)}"]
+        if trafico.cpu_bytes_s is not None:
+            partes.append(f"del procesador {render.rate(trafico.cpu_bytes_s)}")
+        lineas.append("- Tráfico del controlador en este instante: "
+                      + " · ".join(partes))
     if (array := snapshot.memory_array) is not None:
         detalle = [f"{array.slots} ranuras" if array.slots else ""]
         if array.max_capacity_bytes:

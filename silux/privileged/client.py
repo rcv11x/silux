@@ -21,11 +21,11 @@ import select
 import shutil
 import subprocess
 import sys
-from typing import Any, Optional
+from typing import Any, NamedTuple, Optional
 
 from . import protocol
-from .protocol import (ACTION_GPU_PMU, ACTION_MSR, ACTION_PING, ACTION_RAPL,
-                       ACTION_SMART, ACTION_SMBIOS, MAX_MESSAGE)
+from .protocol import (ACTION_GPU_PMU, ACTION_IMC, ACTION_MSR, ACTION_PING,
+                       ACTION_RAPL, ACTION_SMART, ACTION_SMBIOS, MAX_MESSAGE)
 
 # Intérpretes del sistema con los que lanzar el ayudante cuando el del programa
 # no sirve. Al ayudante le basta la biblioteca estándar, así que vale cualquiera.
@@ -465,9 +465,68 @@ class PrivilegedClient:
         }
         return reloj, limpio, escalas
 
+    def imc(self) -> LecturaImc:
+        """Cuánto tráfico lleva movido el controlador de memoria, en crudo.
+
+        Igual que los de la gráfica: contadores que solo suben, con el factor
+        y la unidad que publica el kernel al lado. Los bytes por segundo son
+        la derivada y los calcula quien llama, que es quien guarda la lectura
+        anterior.
+        """
+        reply = self.request({"action": ACTION_IMC})
+        if not reply.get("ok"):
+            self._last_error = reply.get("message")
+            mensaje = reply.get("message", "no se pudo leer el controlador de memoria")
+            if reply.get("error") == "unsupported":
+                raise PmuUnsupported(mensaje)
+            raise HelperError(mensaje)
+
+        reloj = reply.get("monotonic_ns")
+        contadores = reply.get("counters")
+        if not isinstance(reloj, int) or not isinstance(contadores, dict):
+            raise HelperError("el ayudante contestó algo que no encaja")
+        limpio = {
+            str(pmu): {str(e): v for e, v in eventos.items() if isinstance(v, int)}
+            for pmu, eventos in contadores.items() if isinstance(eventos, dict)
+        }
+        escalas = {
+            str(pmu): {str(e): float(v) for e, v in valores.items()
+                       if isinstance(v, (int, float))}
+            for pmu, valores in (reply.get("scales") or {}).items()
+            if isinstance(valores, dict)
+        }
+        unidades = {
+            str(pmu): {str(e): str(v) for e, v in valores.items() if isinstance(v, str)}
+            for pmu, valores in (reply.get("units") or {}).items()
+            if isinstance(valores, dict)
+        }
+        return LecturaImc(reloj, limpio, escalas, unidades,
+                          bool(reply.get("truncated")))
+
 
 class PmuUnsupported(HelperError):
-    """Esta máquina no tiene contadores de ocupación de gráfica que leer."""
+    """Esta máquina no publica los contadores que se le pedían.
+
+    No es un fallo ni un permiso que falte: es hardware que no los tiene. Sirve
+    para que quien pregunta deje de hacerlo en cada muestreo, y para que el
+    aviso salga en gris y no en ámbar.
+    """
+
+
+class LecturaImc(NamedTuple):
+    """Lo que el ayudante devuelve del controlador de memoria, sin interpretar.
+
+    `counters` son cuentas acumuladas desde que se abrió cada contador, y
+    `scales` y `units` es lo que el kernel publica para convertirlas. Se
+    guardan juntas porque separadas no significan nada: una cuenta sin su
+    escala no es un tamaño.
+    """
+
+    monotonic_ns: int
+    counters: dict[str, dict[str, int]]
+    scales: dict[str, dict[str, float]]
+    units: dict[str, dict[str, str]]
+    truncated: bool
 
 
 def already_root() -> bool:
