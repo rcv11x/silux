@@ -633,6 +633,23 @@ def slot_labels(locators: list[str]) -> dict[str, str]:
     return {}
 
 
+_BANCO_REDUNDANTE = re.compile(r"^bank[\s_-]*", re.I)
+
+
+def banco_de_memoria(bank: Optional[str]) -> Optional[str]:
+    """El banco sin repetir la palabra que ya lleva la fila.
+
+    El firmware escribe «BANK 0» y la fila se titula «Banco», así que se leía
+    «Banco: BANK 0». Solo se quita cuando el valor empieza por ahí y queda algo
+    detrás: los localizadores de banco que traen más cosas —«Node0_Bank0»— se
+    dejan enteros, porque ahí el resto sí distingue.
+    """
+    if not bank:
+        return bank
+    limpio = _BANCO_REDUNDANTE.sub("", bank.strip()).strip()
+    return limpio or bank
+
+
 def velocidad_de_memoria(mts: Optional[int]) -> Optional[int]:
     """El nombre del grado al que corresponde una velocidad del firmware.
 

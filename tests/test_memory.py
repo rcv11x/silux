@@ -571,3 +571,110 @@ class TestLosZocalosLibresNoOcupanUnaTarjeta(TestElTituloLlegaALaTarjeta):
 
 
 RAIZ_LANG = pathlib.Path(__file__).resolve().parent.parent / "silux" / "db" / "lang"
+
+
+class TestSinSmbiosNoSeAfirmaUnZocalo(TestElTituloLlegaALaTarjeta):
+    """La pantalla decía no saber el zócalo y titulaba con un número de zócalo.
+
+    El `slot` del SPD es la dirección del chip en el bus i2c —0x50 es 0 y 0x52
+    es 2—, no la posición en la placa. Titulando «Zócalo 0» y «Zócalo 2» se
+    contradecía el subtítulo de dos líneas más arriba, «el zócalo y la
+    capacidad necesitan permisos», y hacía pensar que el zócalo 1 estaba libre
+    cuando resulta que son el primero de cada canal.
+    """
+
+    def _pagina_desde_spd(self):
+        from silux.model import CpuInfo, CpuType, Snapshot
+        from silux.settings import Preferences
+        from silux.spd import SpdInfo
+        from silux.ui import theme
+        from silux.ui.pages.memory import MemoryPage
+
+        pagina = MemoryPage(theme.palette_for(self.app, "dark"), Preferences())
+        self.addCleanup(pagina.deleteLater)
+        pagina.apply(Snapshot(
+            monotonic_ns=0,
+            cpu=CpuInfo(types=(CpuType(key="g", label="g"),)),
+            modules=(),                       # sin permisos no hay SMBIOS
+            spd=(SpdInfo(address="10-0050", slot=0, decoded=True),
+                 SpdInfo(address="10-0052", slot=2, decoded=True)),
+        ))
+        self.app.processEvents()
+        return pagina
+
+    def _tarjetas(self, pagina):
+        from silux.ui.widgets import Card
+
+        return [c for c in pagina.findChildren(Card) if c._title_label]
+
+    def test_no_se_titula_con_un_numero_de_zocalo(self):
+        titulos = [c._title_label.text().lower()
+                   for c in self._tarjetas(self._pagina_desde_spd())]
+        self.assertNotIn("zócalo 0", titulos,
+                         "ese 0 es la dirección del chip, no el zócalo")
+        self.assertNotIn("zócalo 2", titulos)
+
+    def test_se_numeran_por_orden_de_lectura(self):
+        titulos = [c._title_label.text().lower()
+                   for c in self._tarjetas(self._pagina_desde_spd())]
+        self.assertIn("módulo 1", titulos)
+        self.assertIn("módulo 2", titulos)
+
+    def test_la_direccion_del_chip_no_se_pierde(self):
+        """Es el único dato de posición que hay, y sigue estando donde no
+        puede confundirse con el zócalo de la placa."""
+        pistas = [c.toolTip() for c in self._tarjetas(self._pagina_desde_spd())]
+        self.assertTrue(any("10-0050" in p for p in pistas), pistas)
+        self.assertTrue(any("10-0052" in p for p in pistas), pistas)
+
+    def test_con_smbios_manda_el_zocalo_de_verdad(self):
+        """Cuando el firmware sí lo dice, se usa el suyo y no un contador."""
+        titulos = [c._title_label.text().lower() for c in
+                   self._tarjetas(self._pagina_con_smbios())]
+        self.assertIn("canal a", titulos)
+        self.assertNotIn("módulo 1", titulos)
+
+    def _pagina_con_smbios(self):
+        from silux.model import CpuInfo, CpuType, MemoryModule, Snapshot
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.memory import MemoryPage
+
+        pagina = MemoryPage(theme.palette_for(self.app, "dark"), Preferences())
+        self.addCleanup(pagina.deleteLater)
+        pagina.apply(Snapshot(
+            monotonic_ns=0,
+            cpu=CpuInfo(types=(CpuType(key="g", label="g"),)),
+            modules=(MemoryModule(populated=True, locator="ChannelA-DIMM0",
+                                  size_bytes=8 << 30),
+                     MemoryModule(populated=True, locator="ChannelB-DIMM0",
+                                  size_bytes=8 << 30)),
+        ))
+        self.app.processEvents()
+        return pagina
+
+
+class TestElBancoNoSeDiceDosVeces(unittest.TestCase):
+    """La fila se titula «Banco» y el firmware escribe «BANK 0»."""
+
+    def test_se_quita_la_palabra_que_ya_lleva_la_fila(self):
+        from silux import render
+
+        for crudo, esperado in (("BANK 0", "0"), ("BANK 1", "1"),
+                                ("Bank0", "0"), ("bank_2", "2")):
+            with self.subTest(crudo=crudo):
+                self.assertEqual(render.banco_de_memoria(crudo), esperado)
+
+    def test_lo_que_trae_algo_más_se_deja_entero(self):
+        """En «Node0_Bank0» el resto sí distingue, y recortarlo perdería el
+        nodo. Solo se quita cuando la palabra va delante y sobra."""
+        from silux import render
+
+        for crudo in ("Node0_Bank0", "A1_BANK0", "BANK", ""):
+            with self.subTest(crudo=crudo):
+                self.assertEqual(render.banco_de_memoria(crudo), crudo)
+
+    def test_sin_banco_no_se_inventa(self):
+        from silux import render
+
+        self.assertIsNone(render.banco_de_memoria(None))
