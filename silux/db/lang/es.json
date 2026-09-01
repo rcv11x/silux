@@ -536,6 +536,8 @@
   "memory.slot.dimm": "DIMM {n}",
   "memory.slot.empty": "Vacío",
   "memory.slot.n": "Zócalo {n}",
+  "memory.slots.free": "{n} zócalos libres: {zocalos}",
+  "memory.slots.free.one": "1 zócalo libre: {zocalos}",
   "memory.slots.used": "{n} de {total} zócalos ocupados",
   "memory.spd.at": " a {mts} MT/s",
   "memory.spd.needsroot": " · el zócalo y la capacidad necesitan permisos",

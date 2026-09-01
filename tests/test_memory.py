@@ -504,4 +504,70 @@ class TestLaVelocidadQueEnsenaLaFicha(TestElTituloLlegaALaTarjeta):
         self.assertNotIn("2667", aviso)
 
 
+class TestLosZocalosLibresNoOcupanUnaTarjeta(TestElTituloLlegaALaTarjeta):
+    """Una tarjeta entera por zócalo vacío para poner «Vacío».
+
+    Con cuatro zócalos y dos módulos se llevaban la mitad del ancho, y
+    apretaban a las dos que sí tienen datos en un cuarto de pantalla cada una.
+    Con ocho zócalos serían tres cuartos. Es lo mismo que ya se resolvió en
+    Gráficos con las salidas de vídeo sin nada enchufado.
+    """
+
+    def _pagina(self):
+        from silux.model import CpuInfo, CpuType, MemoryModule, Snapshot
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.memory import MemoryPage
+
+        pagina = MemoryPage(theme.palette_for(self.app, "dark"), Preferences())
+        self.addCleanup(pagina.deleteLater)
+        puesto = lambda l: MemoryModule(populated=True, locator=l,
+                                        size_bytes=8 << 30)
+        vacio = lambda l: MemoryModule(populated=False, locator=l)
+        pagina.apply(Snapshot(
+            monotonic_ns=0,
+            cpu=CpuInfo(types=(CpuType(key="g", label="g"),)),
+            modules=(puesto("ChannelA-DIMM0"), vacio("ChannelA-DIMM1"),
+                     puesto("ChannelB-DIMM0"), vacio("ChannelB-DIMM1")),
+        ))
+        self.app.processEvents()
+        return pagina
+
+    def test_solo_hay_tarjeta_para_los_que_tienen_modulo(self):
+        from silux.ui.widgets import Card
+
+        pagina = self._pagina()
+        titulos = [c._title_label.text().lower()
+                   for c in pagina.findChildren(Card) if c._title_label]
+        self.assertIn("canal a · dimm 0", titulos)
+        self.assertNotIn("canal a · dimm 1", titulos,
+                         "un zócalo vacío no necesita una tarjeta entera")
+
+    def test_pero_se_dice_cuáles_están_libres(self):
+        """Cuántos hay ya lo dice el titular; esto añade cuáles, que es lo que
+        hace falta para saber dónde va el módulo nuevo."""
+        linea = self._pagina().slots_free.text()
+        self.assertIn("2", linea)
+        self.assertIn("Canal A · DIMM 1", linea)
+        self.assertIn("Canal B · DIMM 1", linea)
+
+    def test_sin_zocalos_libres_no_sale_la_línea(self):
+        from silux.model import CpuInfo, CpuType, MemoryModule, Snapshot
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.memory import MemoryPage
+
+        pagina = MemoryPage(theme.palette_for(self.app, "dark"), Preferences())
+        self.addCleanup(pagina.deleteLater)
+        pagina.apply(Snapshot(
+            monotonic_ns=0,
+            cpu=CpuInfo(types=(CpuType(key="g", label="g"),)),
+            modules=(MemoryModule(populated=True, locator="DIMM 0",
+                                  size_bytes=8 << 30),),
+        ))
+        self.app.processEvents()
+        self.assertFalse(pagina.slots_free.isVisible())
+        self.assertEqual(pagina.slots_free.text(), "")
+
+
 RAIZ_LANG = pathlib.Path(__file__).resolve().parent.parent / "silux" / "db" / "lang"

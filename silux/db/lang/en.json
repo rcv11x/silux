@@ -536,6 +536,8 @@
   "memory.slot.dimm": "DIMM {n}",
   "memory.slot.empty": "Empty",
   "memory.slot.n": "Slot {n}",
+  "memory.slots.free": "{n} free slots: {zocalos}",
+  "memory.slots.free.one": "1 free slot: {zocalos}",
   "memory.slots.used": "{n} of {total} slots populated",
   "memory.spd.at": " at {mts} MT/s",
   "memory.spd.needsroot": " · slot and capacity need permissions",
