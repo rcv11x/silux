@@ -13,6 +13,7 @@ from typing import Optional
 
 from .features import pretty as pretty_feature
 from .i18n import _
+from .spd import grado_jedec
 from .model import (MARGEN_DE_REDONDEO, Cache, Clocks, CpuType, Display,
                     Edid, GpuApi, PcieLink, GpuMemory, NetworkInterface,
                     NetworkTraffic, Power, SensorKind)
@@ -632,6 +633,24 @@ def slot_labels(locators: list[str]) -> dict[str, str]:
     return {}
 
 
+def velocidad_de_memoria(mts: Optional[int]) -> Optional[int]:
+    """El nombre del grado al que corresponde una velocidad del firmware.
+
+    La tabla SMBIOS trae lo que la BIOS haya escrito, y cada una redondea a su
+    manera los grados que llevan tercio: DDR4-2666 son 2666,67 MT/s y unas
+    ponen 2666 y otras 2667. Enseñar el crudo dejaba en la misma ficha dos
+    convenciones —«Catalogado a 3200» y «Funcionando a 2667»— cuando 2667 no es
+    el nombre de ninguna velocidad.
+
+    Se normaliza **al pintar** y no antes: el modelo sigue guardando lo que dijo
+    el firmware, que es lo que hace falta para contrastar con `dmidecode`, y de
+    eso se encarga el tooltip de la fila.
+    """
+    if not mts:
+        return mts
+    return grado_jedec(mts) or mts
+
+
 def memory_speed_warning(modulos) -> Optional[str]:
     """Por qué la memoria no va más rápido, cuando hay algo que decir.
 
@@ -649,7 +668,8 @@ def memory_speed_warning(modulos) -> Optional[str]:
     puestos = [m for m in modulos if m.populated and m.rated_mts]
     if not puestos:
         return None
-    actual = max((m.configured_mts or m.speed_mts or 0) for m in puestos)
+    actual = velocidad_de_memoria(
+        max((m.configured_mts or m.speed_mts or 0) for m in puestos))
     if not actual:
         return None
 

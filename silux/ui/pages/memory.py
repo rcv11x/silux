@@ -559,14 +559,19 @@ class MemoryPage(QScrollArea):
         grid.set(_("memory.field.rated"), f"{rated} MT/s" if rated else d,
                  tooltip=_("memory.tip.rated") if spd else "")
 
-        actual = module.configured_mts or module.speed_mts
+        crudo_mts = module.configured_mts or module.speed_mts
+        actual = render.velocidad_de_memoria(crudo_mts)
         funcionando = f"{actual} MT/s" if actual else d
         if module.underclocked:
             funcionando += "   ⚠"
-        grid.set(_("memory.field.running"), funcionando,
-                 tooltip=_("memory.tip.running").format(
-                     actual=actual, rated=rated)
+        # Si la BIOS escribió el otro redondeo del mismo grado, su número queda
+        # aquí: es el que sale en `dmidecode` y hace falta para contrastar.
+        pista = (_("memory.tip.running").format(actual=actual, rated=rated)
                  if module.underclocked else "")
+        if crudo_mts and crudo_mts != actual:
+            firmware = _("memory.tip.firmware").format(mts=crudo_mts)
+            pista = f"{pista}\n\n{firmware}" if pista else firmware
+        grid.set(_("memory.field.running"), funcionando, tooltip=pista)
 
         rangos = str(module.rank) if module.rank else d
         if module.has_ecc:

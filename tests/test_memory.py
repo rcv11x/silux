@@ -5,6 +5,7 @@ lo diga. Es de los pocos problemas de hardware a la vez muy comunes, muy caros
 en rendimiento y completamente invisibles.
 """
 
+import pathlib
 import unittest
 
 from silux import render
@@ -441,3 +442,66 @@ class TestLosDosPerfilesNoSeLlamanIgual(unittest.TestCase):
                     fila.lower(), tarjeta.lower().split()[0],
                     "la fila se llama igual que la primera palabra de la "
                     "tarjeta, que es como se leían la una contra la otra")
+
+
+class TestLaVelocidadQueEnsenaLaFicha(TestElTituloLlegaALaTarjeta):
+    """Dos convenciones en la misma ficha.
+
+    El «Catalogado a» sale del SPD y lo nombramos nosotros como grado —3200,
+    2666—; el «Funcionando a» venía crudo de la tabla SMBIOS, y cada BIOS
+    redondea a su manera el grado que lleva tercio. En un i5-10400 se leía
+    «Catalogado a 3200» y «Funcionando a 2667», y 2667 no es el nombre de
+    ninguna velocidad.
+    """
+
+    def _ficha(self, configurada):
+        from silux.model import CpuInfo, CpuType, MemoryModule, Snapshot
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.memory import MemoryPage
+
+        pagina = MemoryPage(theme.palette_for(self.app, "dark"), Preferences())
+        self.addCleanup(pagina.deleteLater)
+        pagina.apply(Snapshot(
+            monotonic_ns=0,
+            cpu=CpuInfo(types=(CpuType(key="g", label="g"),)),
+            modules=(MemoryModule(populated=True, locator="DIMM 0",
+                                  size_bytes=8 << 30, speed_mts=3200,
+                                  configured_mts=configurada),),
+        ))
+        self.app.processEvents()
+        from PySide6.QtWidgets import QLabel
+
+        return [w.text() for w in pagina.findChildren(QLabel)]
+
+    def test_el_2667_de_la_bios_se_ensena_como_su_grado(self):
+        textos = self._ficha(2667)
+        self.assertTrue(any("2666 MT/s" in t for t in textos), textos)
+        self.assertFalse(any("2667 MT/s" in t for t in textos),
+                         "2667 no es el nombre de ninguna velocidad")
+
+    def test_una_bios_que_ya_escribe_2666_sale_igual(self):
+        """Las dos convenciones tienen que llevar al mismo sitio."""
+        self.assertTrue(any("2666 MT/s" in t for t in self._ficha(2666)))
+
+    def test_el_numero_del_firmware_no_se_pierde(self):
+        """Es el que sale en dmidecode: hace falta para contrastar."""
+        from silux import render
+
+        self.assertEqual(render.velocidad_de_memoria(2667), 2666)
+        idioma = __import__("json").loads(
+            (RAIZ_LANG / "es.json").read_text(encoding="utf-8"))
+        self.assertIn("dmidecode", idioma["memory.tip.firmware"])
+
+    def test_el_aviso_dice_la_misma_cifra_que_la_ficha(self):
+        """Si la ficha dice 2666 y el aviso 2667, uno de los dos miente."""
+        from silux import render
+        from silux.model import MemoryModule
+
+        aviso = render.memory_speed_warning(
+            [MemoryModule(populated=True, speed_mts=3200, configured_mts=2667)])
+        self.assertIn("2666", aviso)
+        self.assertNotIn("2667", aviso)
+
+
+RAIZ_LANG = pathlib.Path(__file__).resolve().parent.parent / "silux" / "db" / "lang"

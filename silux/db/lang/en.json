@@ -551,6 +551,7 @@
   "memory.timing.trp": "tRP",
   "memory.tip.chips": "Who made the silicon, which is often not who sells the module. The SPD says it, not the SMBIOS table.",
   "memory.tip.elevate": "Launches a minimal helper through polkit that only knows how to read the SMBIOS table and a few processor registers.\nIt runs no commands and writes nothing.",
+  "memory.tip.firmware": "The BIOS writes it as {mts} MT/s; same grade, rounded the other way. That is the number dmidecode shows.",
   "memory.tip.profiles": "Timings the manufacturer guarantees above the JEDEC ones. They are detected, but their formats are not public and their figures are not decoded: guessing them would be making them up.",
   "memory.tip.rated": "What the module claims it can do, according to its own SPD chip.",
   "memory.tip.running": "Running at {actual} MT/s of the {rated} it supports. It may be an XMP profile left off, or the processor's official memory limit, which on many models sits below what the modules can take.",
