@@ -560,21 +560,6 @@ class Board:
         joined = " ".join(p for p in parts if p)
         return joined or "Placa base"
 
-    # Los chasis que se llevan encima. Se compara contra la clave y no contra
-    # el nombre porque el nombre cambia de idioma: la lista traía «portátil»
-    # y «laptop» para cubrir los dos, y con un idioma más habría que ampliarla
-    # cada vez. La clave no se mueve.
-    CHASIS_PORTATIL = frozenset({
-        "chassis.laptop", "chassis.notebook", "chassis.subnotebook",
-        "chassis.handheld", "chassis.tablet", "chassis.convertible",
-        "chassis.detachable",
-    })
-
-    @property
-    def chassis_is_portable(self) -> bool:
-        """Si el DMI dice que esto se lleva encima."""
-        return (self.chassis or "") in self.CHASIS_PORTATIL
-
     @property
     def bios_summary(self) -> str:
         parts = [short_vendor(self.bios_vendor), self.bios_version]
