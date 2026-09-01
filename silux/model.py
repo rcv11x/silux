@@ -401,6 +401,7 @@ class MemoryArray:
     error_correction: Optional[str] = None
 
 
+
 @dataclass(frozen=True, slots=True)
 class PrivilegedState:
     """Qué se sabe del ayudante privilegiado, para poder explicarlo."""
@@ -1131,6 +1132,47 @@ UNITS: dict[str, str] = {
     SensorKind.OTHER: "",
 }
 
+class DeviceKind(str, Enum):
+    """Qué clase de aparato publica un sensor: procesador, placa, disco…
+
+    Lo sabe quien lo lee, y hasta ahora lo tiraba. `hwmon.device_for` decide
+    que un chip es de la CPU precisamente para ponerle su nombre, y luego el
+    árbol volvía a deducirlo comparando ese nombre con otro compuesto en otro
+    sitio. No casaban: «Intel Core i5-10400» contra la cadena entera de CPUID,
+    y «ATA KIOXIA-EXCERIA S» contra el modelo sin el prefijo del bus. Los dos
+    caían al cajón de la placa, y entre iguales manda el alfabeto, así que el
+    árbol abría por el disco.
+
+    La otra mitad del fallo es que esos nombres son texto de interfaz: el
+    aparato de la memoria sale de `_("sensor.mem")`, así que en inglés dice
+    «Memory» y ninguna comparación contra «Memoria» podía acertar. Un orden no
+    se decide con cadenas que se traducen.
+    """
+
+    CPU = "cpu"
+    BOARD = "board"
+    MEMORY = "memory"
+    GPU = "gpu"
+    DISK = "disk"
+    NETWORK = "network"
+    POWER = "power"          # batería, adaptador, puertos que alimentan
+
+
+# El orden en que se dibujan los aparatos del árbol: como se buscan y no como
+# los numeró el kernel, que es el de los directorios de hwmon y cambia entre
+# arranques. Primero el procesador, luego la placa —donde se miran los
+# ventiladores y los voltajes— y detrás lo demás.
+DEVICE_ORDER: dict[str, int] = {
+    DeviceKind.CPU: 0,
+    DeviceKind.BOARD: 1,
+    DeviceKind.MEMORY: 2,
+    DeviceKind.GPU: 3,
+    DeviceKind.DISK: 4,
+    DeviceKind.NETWORK: 5,
+    DeviceKind.POWER: 6,
+}
+
+
 # El nombre de la rama en la que cae cada tipo dentro del árbol de sensores.
 # La rama del árbol en la que cae cada tipo. Son claves y no texto: estos
 # nombres los inventa el programa para agrupar —el kernel no los da— así que
@@ -1185,6 +1227,10 @@ class Sensor:
     # transferencia. Es la excepción, no la norma: si algo se repite, merece su
     # propio SensorKind.
     unit_override: Optional[str] = None
+    # Qué clase de aparato lo publica, para ponerlo en su sitio del árbol. Por
+    # omisión la placa, que es donde cuelga lo que no se reconoce: un Super I/O
+    # que no esté en ninguna lista sigue siendo un chip de la placa.
+    device_kind: str = DeviceKind.BOARD
 
     @property
     def unit(self) -> str:
@@ -1293,11 +1339,13 @@ class Snapshot:
         mirar «qué hace la placa» o «qué temperaturas hay» sin leerlo todo.
         """
         tree: dict[str, dict[str, list[Sensor]]] = {}
+        clases: dict[str, str] = {}
         for sensor in self.sensors:
             tree.setdefault(sensor.device, {}).setdefault(sensor.category, []).append(sensor)
+            clases.setdefault(sensor.device, sensor.device_kind)
 
         ordered: dict[str, dict[str, tuple[Sensor, ...]]] = {}
-        for device in sorted(tree, key=self._puesto_del_aparato):
+        for device in sorted(tree, key=lambda d: self._puesto_del_aparato(d, clases[d])):
             categories = tree[device]
             ordered[device] = {
                 name: tuple(sorted(categories[name], key=lambda s: (s.order, s.label)))
@@ -1306,7 +1354,8 @@ class Snapshot:
             }
         return ordered
 
-    def _puesto_del_aparato(self, device: str) -> tuple[int, str]:
+    @staticmethod
+    def _puesto_del_aparato(device: str, kind: str) -> tuple[int, str]:
         """En qué orden se dibuja cada aparato del árbol de sensores.
 
         Sin esto salen en el orden en que los devuelve el kernel, que es el de
@@ -1314,26 +1363,14 @@ class Snapshot:
         arranques. Se ordenan como se buscan —primero el procesador, luego la
         placa— y no como los numeró el sistema.
 
-        Los aparatos se reconocen por su nombre porque es lo que el proveedor
-        de sensores ya resolvió: allí sabe si un chip es de la CPU, de la placa
-        o de un disco, y aquí solo queda ponerlos en fila.
+        La clase la trae cada sensor porque es lo que el proveedor ya resolvió
+        al leerlo. Antes se deducía aquí comparando el nombre del aparato con
+        otro compuesto en otro sitio, y no casaba ninguno: el procesador y el
+        disco caían los dos en el cajón de la placa y el árbol abría por el
+        disco, en orden alfabético. Y no había forma de arreglarlo con
+        cadenas, porque la mitad de esos nombres se traducen.
         """
-        if self.cpu.types and device == self.cpu.types[0].brand:
-            return (0, device)
-        if device in {g.display_name for g in self.gpus}:
-            return (3, device)
-        if device in {d.display_name for d in self.disks} or device == "Almacenamiento":
-            return (4, device)
-        if device.startswith("Red ("):
-            return (5, device)
-        if device == "Memoria":
-            return (2, device)
-        if device.split()[0] in ("Batería", "Adaptador", "Puerto"):
-            return (6, device)
-        # Lo que queda es la placa y lo que cuelga de ella. Va detrás del
-        # procesador porque es donde se miran los ventiladores y los voltajes,
-        # que es lo segundo que uno busca aquí.
-        return (1, device)
+        return (DEVICE_ORDER.get(kind, DEVICE_ORDER[DeviceKind.BOARD]), device)
 
     def notes_for(self, prefix: str) -> tuple[Note, ...]:
         return tuple(n for n in self.notes if n.path.startswith(prefix))

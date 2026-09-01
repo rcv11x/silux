@@ -17,7 +17,7 @@ from __future__ import annotations
 from typing import Optional
 
 from ..i18n import _
-from ..model import Sensor, SensorKind, short_brand
+from ..model import DeviceKind, Sensor, SensorKind, short_brand
 from .base import Draft, Provider
 
 
@@ -65,7 +65,7 @@ class DerivedSensors(Provider):
         for interfaz in draft.network:
             if not interfaz.up or interfaz.kind == "loopback":
                 continue
-            device = f"Red ({interfaz.name})"
+            device = _("sensor.dev.net").format(chip=interfaz.name)
             trafico = interfaz.traffic
             campos = (
                 ("rx", "Bajada", SensorKind.NETWORK, trafico.rx_rate_bps, 0),
@@ -80,6 +80,7 @@ class DerivedSensors(Provider):
                     continue
                 sensors.append(Sensor(
                     key=f"net/{interfaz.name}/{clave}", chip="net", device=device,
+                    device_kind=DeviceKind.NETWORK,
                     label=etiqueta, kind=tipo,
                     value=round(float(valor) / (1024 if tipo is SensorKind.NETWORK else 1),
                                 DECIMALES.get(tipo, 1)),
@@ -145,6 +146,7 @@ class DerivedSensors(Provider):
                     continue
                 sensors.append(Sensor(
                     key=f"{marca}/{clave}", chip="drm", device=device,
+                    device_kind=DeviceKind.GPU,
                     label=etiqueta, kind=tipo,
                     value=round(float(valor), DECIMALES.get(tipo, 1)),
                     order=orden,
@@ -171,6 +173,7 @@ class DerivedSensors(Provider):
                 continue
             sensors.append(Sensor(
                 key=f"rapl/{attribute}", chip="intel-rapl", device=device,
+                device_kind=DeviceKind.CPU,
                 label=label, kind=SensorKind.POWER, value=value, order=order,
                 # El límite sostenido del propio chip es el umbral natural:
                 # pasarlo sostenidamente significa que va a bajar frecuencia.
@@ -188,6 +191,7 @@ class DerivedSensors(Provider):
                 continue
             sensors.append(Sensor(
                 key=f"clock/cpu{index}", chip="cpufreq", device=device,
+                device_kind=DeviceKind.CPU,
                 label=f"Core #{index}", kind=SensorKind.CLOCK,
                 value=round(frequency / 1e6, 1), order=index,
             ))
@@ -200,6 +204,7 @@ class DerivedSensors(Provider):
         if total is not None:
             sensors.append(Sensor(
                 key="usage/total", chip="procfs", device=device,
+                device_kind=DeviceKind.CPU,
                 label=_("sensor.total"), kind=SensorKind.USAGE,
                 value=total, order=-1,
             ))
@@ -209,6 +214,7 @@ class DerivedSensors(Provider):
                 continue
             sensors.append(Sensor(
                 key=f"usage/cpu{index}", chip="procfs", device=device,
+                device_kind=DeviceKind.CPU,
                 label=f"Core #{index}", kind=SensorKind.USAGE,
                 value=value, order=index,
             ))

@@ -643,13 +643,22 @@ class TestOrdenDelArbolDeSensores(unittest.TestCase):
     """
 
     def _snapshot(self, dispositivos):
+        """Cada aparato con la clase que le pone su proveedor.
+
+        Los nombres van a propósito como salen de verdad y no como cuadraban:
+        el del procesador es el corto que compone `short_brand` y no la cadena
+        de CPUID, y el del disco lleva delante el «ATA» que pone sysfs. La
+        versión anterior de estos tests los escribía casando, que es un estado
+        que la ejecución real no produce nunca, y por eso el árbol llevaba
+        abriéndose por el disco sin que ningún test se enterara.
+        """
         from silux.model import (CpuInfo, CpuType, Disk, Gpu, Sensor,
                                  SensorKind, Snapshot)
 
         sensores = tuple(
             Sensor(key=f"k{i}", chip="c", device=nombre, label="l",
-                   kind=SensorKind.TEMPERATURE, value=40.0)
-            for i, nombre in enumerate(dispositivos)
+                   kind=SensorKind.TEMPERATURE, value=40.0, device_kind=clase)
+            for i, (nombre, clase) in enumerate(dispositivos)
         )
         return Snapshot(
             monotonic_ns=0,
@@ -661,27 +670,71 @@ class TestOrdenDelArbolDeSensores(unittest.TestCase):
         )
 
     def test_el_procesador_va_primero_y_la_placa_detras(self):
-        crudo = ["Red (enp6s0)", "Samsung SSD 970", "Gigabyte X570",
-                 "AMD Ryzen 7 5800X3D", "Radeon RX 9070 XT", "Memoria"]
+        from silux.model import DeviceKind
+        crudo = [("Red (enp6s0)", DeviceKind.NETWORK),
+                 ("ATA Samsung SSD 970", DeviceKind.DISK),
+                 ("Gigabyte X570", DeviceKind.BOARD),
+                 ("AMD Ryzen 7 5800X3D", DeviceKind.CPU),
+                 ("Radeon RX 9070 XT", DeviceKind.GPU),
+                 ("Memoria", DeviceKind.MEMORY)]
         orden = list(self._snapshot(crudo).sensor_tree())
         self.assertEqual(orden[0], "AMD Ryzen 7 5800X3D")
         self.assertEqual(orden[1], "Gigabyte X570")
 
     def test_la_red_va_al_final_y_los_discos_antes(self):
-        crudo = ["Red (enp6s0)", "Samsung SSD 970", "AMD Ryzen 7 5800X3D"]
+        from silux.model import DeviceKind
+        crudo = [("Red (enp6s0)", DeviceKind.NETWORK),
+                 ("ATA Samsung SSD 970", DeviceKind.DISK),
+                 ("AMD Ryzen 7 5800X3D", DeviceKind.CPU)]
         orden = list(self._snapshot(crudo).sensor_tree())
-        self.assertLess(orden.index("Samsung SSD 970"), orden.index("Red (enp6s0)"))
+        self.assertLess(orden.index("ATA Samsung SSD 970"),
+                        orden.index("Red (enp6s0)"))
 
     def test_el_orden_no_depende_de_como_lleguen(self):
-        uno = ["AMD Ryzen 7 5800X3D", "Memoria", "Red (enp6s0)"]
+        from silux.model import DeviceKind
+        uno = [("AMD Ryzen 7 5800X3D", DeviceKind.CPU),
+               ("Memoria", DeviceKind.MEMORY),
+               ("Red (enp6s0)", DeviceKind.NETWORK)]
         otro = list(reversed(uno))
         self.assertEqual(list(self._snapshot(uno).sensor_tree()),
                          list(self._snapshot(otro).sensor_tree()))
 
     def test_la_bateria_y_el_puerto_usbc_van_al_final(self):
-        crudo = ["Batería", "Puerto USB-C", "AMD Ryzen 7 5800X3D", "Memoria"]
+        from silux.model import DeviceKind
+        crudo = [("Batería", DeviceKind.POWER),
+                 ("Puerto USB-C", DeviceKind.POWER),
+                 ("AMD Ryzen 7 5800X3D", DeviceKind.CPU),
+                 ("Memoria", DeviceKind.MEMORY)]
         orden = list(self._snapshot(crudo).sensor_tree())
         self.assertEqual(orden[-2:], ["Batería", "Puerto USB-C"])
+
+    def test_el_alfabeto_no_manda_cuando_los_nombres_no_casan(self):
+        """El fallo tal y como se veía: un KIOXIA por delante del procesador.
+
+        Los tres nombres son los que salen de verdad en la máquina donde se
+        vio —ninguno coincide con lo que había al otro lado de la
+        comparación— y antes de llevar la clase escrita los tres caían en el
+        mismo cajón, donde ordena el alfabeto: «ATA…», «Intel…», «MSI…».
+        """
+        from silux.model import DeviceKind
+        crudo = [("ATA KIOXIA-EXCERIA S", DeviceKind.DISK),
+                 ("Intel Core i5-10400", DeviceKind.CPU),
+                 ("MSI H510M PRO-E (MS-7D23)", DeviceKind.BOARD)]
+        self.assertEqual(list(self._snapshot(crudo).sensor_tree()),
+                         ["Intel Core i5-10400", "MSI H510M PRO-E (MS-7D23)",
+                          "ATA KIOXIA-EXCERIA S"])
+
+    def test_un_chip_que_no_se_reconoce_cuelga_de_la_placa(self):
+        """Un Super I/O que no esté en ninguna lista sigue siendo de la placa."""
+        from silux.model import CpuInfo, CpuType, Sensor, SensorKind, Snapshot
+        foto = Snapshot(
+            monotonic_ns=0,
+            cpu=CpuInfo(types=(CpuType(key="g", label="g"),)),
+            sensors=(Sensor(key="k", chip="nct6699", device="nct6699",
+                            label="l", kind=SensorKind.FAN, value=900.0),),
+        )
+        clase = foto.sensors[0].device_kind
+        self.assertEqual(foto._puesto_del_aparato("nct6699", clase)[0], 1)
 
 
 class TestQueLasCifrasQuepan(unittest.TestCase):

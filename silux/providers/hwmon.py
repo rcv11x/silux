@@ -20,7 +20,7 @@ import shutil
 import subprocess
 from typing import Iterator, Optional
 
-from ..model import DriverHint, Need, Sensor, SensorKind, short_brand
+from ..model import DeviceKind, DriverHint, Need, Sensor, SensorKind, short_brand
 from .base import Draft, Provider, mean, read_int, read_text
 from ..i18n import _
 
@@ -71,31 +71,37 @@ CPU_CHIPS = ("coretemp", "k10temp", "zenpower", "cpu_thermal", "k8temp", "acpitz
 
 
 def device_for(chip: str, entry: pathlib.Path, cpu_name: str, board_name: str,
-               gpu_names: Optional[dict[str, str]] = None) -> str:
-    """A qué aparato del árbol cuelga este chip.
+               gpu_names: Optional[dict[str, str]] = None) -> tuple[str, str]:
+    """A qué aparato del árbol cuelga este chip, y de qué clase es.
 
     El nombre importa: un árbol que dice "coretemp" y "nct6683" obliga a saber
     qué es cada cosa. Uno que dice "Intel Core i5-10400" y "MSI H510M PRO-E"
     se lee solo, que es lo que hacen HWMonitor y HWiNFO.
+
+    La clase sale de aquí también, y no es un extra: es la misma decisión. Se
+    devolvía solo el nombre y el árbol tenía que deducir la clase otra vez
+    comparando cadenas, con lo que el procesador y el disco acababan en el
+    cajón de la placa y el árbol se abría por el disco.
     """
     if CPU_CHIP.match(chip):
-        return cpu_name
+        return cpu_name, DeviceKind.CPU
     if BOARD_CHIP.match(chip):
-        return board_name
+        return board_name, DeviceKind.BOARD
     if DISK_CHIP.match(chip):
-        return _disk_name(entry) or "Almacenamiento"
+        return _disk_name(entry) or _("sensor.dev.storage"), DeviceKind.DISK
     if GPU_CHIP.match(chip):
         # El nombre de verdad si se sabe cuál es: un árbol que dice «amdgpu» no
         # sirve de nada en un equipo con dos gráficas, y en uno con una sola
         # obliga igualmente a saber qué driver lleva.
         if nombre := (gpu_names or {}).get(_ranura_pci(entry) or ""):
-            return nombre
-        return _("sensor.dev.gpuchip").format(chip=chip)
+            return nombre, DeviceKind.GPU
+        return _("sensor.dev.gpuchip").format(chip=chip), DeviceKind.GPU
     if NET_CHIP.match(chip):
-        return _net_name(entry) or _("sensor.dev.net").format(chip=chip)
+        return (_net_name(entry) or _("sensor.dev.net").format(chip=chip),
+                DeviceKind.NETWORK)
     if (energia := _nombre_de_alimentacion(chip)):
-        return energia
-    return chip
+        return energia, DeviceKind.POWER
+    return chip, DeviceKind.BOARD
 
 
 # Lo que un portátil publica como chip de sensores y que sale en crudo si no
@@ -177,7 +183,7 @@ def _net_name(entry: pathlib.Path) -> Optional[str]:
         if red.is_dir() and "/virtual/" not in f"{red}/":
             interfaces = sorted(p.name for p in red.iterdir())
             if interfaces:
-                return f"Red ({interfaces[0]})"
+                return _("sensor.dev.net").format(chip=interfaces[0])
         if actual.parent == actual:
             break
         actual = actual.parent
@@ -359,19 +365,20 @@ class HwmonSensors(Provider):
             # y no «Tensión 0»— porque ahí el kernel dice qué es cada archivo.
             if _tambien_en_power_supply(chip):
                 continue
-            device = device_for(chip, entry, cpu_name, board_name, gpu_names)
+            device, clase = device_for(chip, entry, cpu_name, board_name, gpu_names)
             canales = sorted(entry.glob("*_input"))
             vistos = {ruta.name.replace("_input", "") for ruta in canales}
             for sufijo in ALTERNATIVAS:
                 canales += [ruta for ruta in sorted(entry.glob(f"*{sufijo}"))
                             if ruta.name.replace(sufijo, "") not in vistos]
             for order, path in enumerate(canales):
-                sensor = self._parse(chip, device, path, order)
+                sensor = self._parse(chip, device, path, order, clase)
                 if sensor is not None:
                     yield sensor
 
     @staticmethod
-    def _parse(chip: str, device: str, path: pathlib.Path, order: int = 0) -> Optional[Sensor]:
+    def _parse(chip: str, device: str, path: pathlib.Path, order: int = 0,
+               clase: str = DeviceKind.BOARD) -> Optional[Sensor]:
         match = re.match(r"^([a-z]+)(\d+)_(?:input|average)$", path.name)
         if match is None:
             return None
@@ -393,6 +400,7 @@ class HwmonSensors(Provider):
             key=f"{chip}/{prefix}{index}",
             chip=chip,
             device=device,
+            device_kind=clase,
             label=_friendly(chip, prefix, index,
                             read_text(str(path).replace(sufijo, "_label"))),
             kind=kind,
@@ -422,6 +430,7 @@ class HwmonSensors(Provider):
                 yield Sensor(
                     key=f"power_supply/{name}/{filename}",
                     chip=name, device=_("sensor.dev.power").format(n=name),
+                    device_kind=DeviceKind.POWER,
                     label=_(label), kind=kind,
                     value=round(abs(raw) / divisor, 3),
                 )

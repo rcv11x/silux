@@ -17,7 +17,7 @@ import time
 from typing import Optional
 
 from ..i18n import _
-from ..model import Memory, Need, Sensor, SensorKind, System
+from ..model import DeviceKind, Memory, Need, Sensor, SensorKind, System
 from .base import Draft, Provider, read_text
 
 OS_RELEASE = "/etc/os-release"
@@ -222,12 +222,14 @@ class SystemState(Provider):
             return []
         sensors = [Sensor(
             key="memory/ram", chip="meminfo", device=_("sensor.mem"),
+            device_kind=DeviceKind.MEMORY,
             label=_("sensor.mem.ram"), kind=SensorKind.USAGE,
             value=memory.used_percent, order=0, high=90.0,
         )]
         if memory.swap_total_bytes:
             sensors.append(Sensor(
                 key="memory/swap", chip="meminfo", device=_("sensor.mem"),
+                device_kind=DeviceKind.MEMORY,
                 label=_("sensor.mem.swap"), kind=SensorKind.USAGE,
                 value=memory.swap_used_percent, order=1, high=80.0,
             ))
