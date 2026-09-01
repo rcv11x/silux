@@ -134,6 +134,46 @@ class SpdInfo:
         return max(candidatos) if candidatos else None
 
 
+# El paso de la rejilla de velocidades de memoria, en MT/s: 200/3, o sea
+# 66,666… Todas las que existen son múltiplos suyos, y en las tres
+# generaciones: DDR3-1066 son 1066,67; DDR4-2666, 2666,67; DDR5-6400, 6400
+# exactos. Los perfiles XMP tampoco se salen —3600, 3733,33, 4133,33, 6600—
+# porque el reloj de referencia va en tercios.
+PASO_JEDEC = (200, 3)
+
+
+def grado_jedec(mts: float) -> int:
+    """El nombre del grado al que corresponde una velocidad calculada.
+
+    Hace falta porque el tCK del SPD viene cuantizado a un picosegundo y la
+    división no cae redonda: un DDR4-2133 guarda 938 ps y `2000000/938` da
+    2132,2, no 2133,33. Antes esto se redondeaba a la centena más cercana, que
+    va bien con los grados redondos y mal con los que llevan tercio: DDR4-2666
+    salía «2700 MT/s», que no es una velocidad que exista, y con ella el módulo
+    parecía ir por debajo de lo suyo. Fallaban once de los veintiocho grados
+    conocidos de DDR3, DDR4, DDR5 y XMP.
+
+    Se busca el múltiplo de 200/3 más cercano y se trunca, que es como los
+    nombra JEDEC: 2666,67 es «DDR4-2666» y 1866,67 es «DDR3-1866». La cuenta va
+    en enteros —`n * 200 // 3`— para que el truncado no dependa de cómo caiga
+    un flotante.
+
+    Si el valor no se parece a ninguna velocidad de las que existen, se
+    devuelve lo medido: un SPD ilegible no tiene por qué salir con un número
+    bonito y falso. Y por debajo de la primera posición de la rejilla no hay
+    grado que dar, así que sale un cero, que es lo que el resto del módulo
+    entiende como «no hay dato».
+    """
+    paso, divisor = PASO_JEDEC
+    n = round(mts * divisor / paso)
+    if n <= 0:
+        return 0
+    grado = n * paso // divisor
+    if abs(grado - mts) > mts * 0.02:
+        return round(mts)
+    return grado
+
+
 # Densidad de cada chip, en gigabits. El índice es el valor del SPD, y cada
 # generación numera los suyos.
 DDR5_DENSIDADES = {1: 4, 2: 8, 3: 12, 4: 16, 5: 24, 6: 32, 7: 48, 8: 64}
@@ -185,7 +225,7 @@ def _decode_ddr4(spd: bytes, address: str, slot: int) -> SpdInfo:
     d = _Ddr4
     tck_ps = spd[d.TCK_MIN] * 125 + _signed(spd[d.FINE_TCK_MIN])
     # DDR4 transfiere dos veces por ciclo: de ahí el 2 000 000.
-    speed = round(2_000_000 / tck_ps / 100) * 100 if tck_ps else 0
+    speed = grado_jedec(2_000_000 / tck_ps) if tck_ps else 0
 
     tras = (((spd[d.TRAS_TRC_UPPER] & 0x0F) << 8) | spd[d.TRAS_LSB]) * 125
     trc = ((((spd[d.TRAS_TRC_UPPER] & 0xF0) >> 4) << 8) | spd[d.TRC_LSB]) * 125
@@ -281,7 +321,7 @@ def _decode_ddr5(spd: bytes, address: str, slot: int) -> SpdInfo:
     d = _Ddr5
     tck_ps = _u16(spd, d.TCK_MIN)
     # Como DDR4, dos transferencias por ciclo. Un tCK de 357 ps son 5600 MT/s.
-    speed = round(2_000_000 / tck_ps / 100) * 100 if tck_ps else 0
+    speed = grado_jedec(2_000_000 / tck_ps) if tck_ps else 0
 
     jedec = Timings(
         name="JEDEC",
@@ -421,7 +461,7 @@ def _xmp_profiles(spd: bytes) -> Iterator[Timings]:
         tck = spd[offset + 3] * 125
         if not tck:
             continue
-        speed = round(2_000_000 / tck / 100) * 100
+        speed = grado_jedec(2_000_000 / tck)
         profile = Timings(
             name=f"XMP {number}",
             speed_mts=speed,
