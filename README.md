@@ -206,10 +206,17 @@ La última hace falta porque pasar en el Python de uno no dice nada del mínimo
 que declara el proyecto: corre la suite dentro de una Ubuntu 22.04, que es la
 misma en la que corre el CI y en la que se construye el AppImage.
 
-Son 1476 y tardan cerca de dos minutos. Ninguno necesita hardware concreto:
-los proveedores se prueban contra árboles de sysfs sintéticos, el generador
-contra fragmentos de C, y los chips (SPD, EDID, SMART, `gpu_metrics`) contra
-volcados binarios de piezas reales guardados en `tests/fixtures`.
+Son 1476 y tardan cerca de dos minutos. Ninguno exige una pieza concreta: los
+proveedores se prueban contra árboles de sysfs sintéticos, el generador contra
+fragmentos de C, y el SPD y el EDID contra volcados binarios de piezas reales
+guardados en `tests/fixtures`. Algunos sí leen el hardware de quien los
+ejecuta, y entonces comparan el árbol consigo mismo en vez de exigir un
+resultado: pedirle a una máquina cualquiera que tenga un sensor concreto es un
+test que falla en el CI y aquí no.
+
+De SMART y de `gpu_metrics` no hay volcados guardados, y se nota: son los dos
+formatos binarios que más cambian entre equipos y los únicos que se prueban
+solo con lo que publique la máquina de turno.
 
 Buena parte de ellos existe porque algo salió mal una vez: hay un test que
 comprueba que a un procesador ARM no se le atribuye una instrucción de Intel,
