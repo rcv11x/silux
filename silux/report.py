@@ -200,6 +200,16 @@ def _placa(snapshot: Snapshot, anonymous: bool) -> str:
         f"- Chipset: {board.chipset_full or board.chipset or '—'}",
         f"- Firmware: {board.firmware or '—'} · arranque seguro: "
         f"{'sí' if board.secure_boot else 'no'} · TPM: {board.tpm_version or 'no'}",
+        # En crudo y los cinco, porque de aquí sale el titular de arriba y cada
+        # fabricante escribe el nombre del equipo donde le parece. Sin esto, un
+        # «me sale un nombre raro» obligaba a pedir un dmidecode aparte.
+        f"- DMI de la placa: {board.vendor or '—'} · {board.name or '—'}"
+        f" · versión {board.version or '—'}",
+        f"- DMI del sistema: {board.system_vendor or '—'}"
+        f" · nombre {board.system_name or '—'}"
+        f" · versión {board.system_version or '—'}"
+        f" · familia {board.system_family or '—'}",
+        f"- Chasis: {en_español(board.chassis) if board.chassis else '—'}",
     ])
 
 
