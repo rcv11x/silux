@@ -370,7 +370,10 @@ class MemoryPage(QScrollArea):
 
         display = self._display_modules(snapshot)
         self._apply_elevation(snapshot)
-        self._apply_modules(tuple(display), array)
+        # Sin SMBIOS las tarjetas se fabrican del SPD y su título es un
+        # contador nuestro, no el zócalo: hace falta saberlo para la pista.
+        self._apply_modules(tuple(display), array,
+                            del_spd=not snapshot.modules)
         self._apply_timings(display)
         self._apply_notices(snapshot)
 
@@ -495,9 +498,15 @@ class MemoryPage(QScrollArea):
         """
         if snapshot.modules:
             return list(snapshot.modules)
+        # Numerados por orden de lectura y no por el zócalo, que aquí no se
+        # sabe: el `slot` del SPD es la dirección del chip en el bus i2c —0x50
+        # es 0 y 0x52 es 2—, no la posición en la placa. Titular «Zócalo 0» y
+        # «Zócalo 2» afirmaba una numeración física que la propia pantalla
+        # admite no tener dos líneas más arriba, en «el zócalo y la capacidad
+        # necesitan permisos», y hacía pensar que el 1 estaba libre.
         return [
             MemoryModule(
-                locator=_("memory.slot.n").format(n=info.slot),
+                locator=_("memory.module.n").format(n=orden),
                 populated=True,
                 type=info.dram_type,
                 form_factor=info.module_type,
@@ -508,10 +517,11 @@ class MemoryPage(QScrollArea):
                 total_width=(info.bus_width or 0) + info.ecc_bits or None,
                 spd=info,
             )
-            for info in snapshot.spd
+            for orden, info in enumerate(snapshot.spd, start=1)
         ]
 
-    def _apply_modules(self, modules: tuple[MemoryModule, ...], array) -> None:
+    def _apply_modules(self, modules: tuple[MemoryModule, ...], array,
+                       del_spd: bool = False) -> None:
         signature = tuple((m.locator, m.part_number, m.size_bytes,
                            m.spd.address if m.spd else None) for m in modules)
         if signature == self._module_signature:
@@ -539,6 +549,11 @@ class MemoryPage(QScrollArea):
                 # Lo que puso el firmware no se pierde, solo deja de ser el
                 # titular: hace falta para hablar con quien reporta un fallo.
                 card.setToolTip(crudo)
+            elif del_spd and module.spd is not None:
+                # Sin SMBIOS el título es un contador, así que la dirección del
+                # chip —que es el único dato de posición que hay— va aquí.
+                card.setToolTip(_("memory.tip.module").format(
+                    address=module.spd.address or "0x50"))
 
             grid = InfoGrid()
             for name in MODULE_FIELDS:
@@ -606,7 +621,7 @@ class MemoryPage(QScrollArea):
         grid.set(_("memory.field.profiles"), ", ".join(perfiles) if perfiles else d,
                  tooltip=_("memory.tip.profiles") if perfiles else "")
         grid.set(_("memory.field.made"), (spd.manufactured if spd else None) or d)
-        grid.set(_("memory.field.bank"), module.bank or d)
+        grid.set(_("memory.field.bank"), render.banco_de_memoria(module.bank) or d)
 
     def _apply_timings(self, modules: list[MemoryModule]) -> None:
         rows: list[list[str]] = []
