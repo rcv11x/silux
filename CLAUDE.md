@@ -28,7 +28,7 @@ python3 tools/probar_en_minimo.py --container # la suite en el Python del suelo
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **1430** y tardan cerca de dos minutos. Si sale bastante
+Los tests son **1438** y tardan cerca de dos minutos. Si sale bastante
 menos, falta algo por recoger.
 
 Que pasen aquí no dice que pasen en el mínimo. El suelo declarado es Python
@@ -321,18 +321,14 @@ virtual del día anterior y esta vez desde su equipo: un Lenovo ThinkCentre M80q
 —i5-10500T, UHD 630, 31 GB en dos SODIMM, Manjaro con XFCE— y con los permisos
 ya dados, así que es el equipo ajeno más completo que ha pasado por aquí: 45
 sensores y catorce fuentes activas, `msr`, `smbios`, `spd` y `rapl` incluidos.
-Tres fallos confirmados leyendo el código —los dos de memoria ya arreglados,
-el del titular no— y dos que necesitan su informe:
+Tres fallos confirmados leyendo el código, los tres ya arreglados, y dos que
+necesitan su informe:
 
-- **El titular es el código de placa OEM y no el nombre del equipo**: sale
-  «Lenovo 316C» en la portada y en Placa base cuando eso es un ThinkCentre
-  M80q, y el nombre bueno está en la misma pantalla, en la tarjeta de equipo
-  (`Versión` y `Familia`). Es la lección del IdeaPad 330 sin terminar de
-  aprender: `Board.display_name` pregunta por `chassis_is_portable`, y un Mini
-  PC no lo es, así que cae al `vendor + name`. La frontera no era
-  portátil/sobremesa —una X570 AORUS ELITE se compró por su nombre y una 316C
-  no la ha visto nadie—, sino placa con nombre comercial contra código interno;
-  un chasis «Mini PC», «All in One» o «Notebook» ya delata al equipo de marca.
+- **El titular era el código de placa OEM y no el nombre del equipo**: salía
+  «Lenovo 316C» donde eso es un ThinkCentre M80q. **Hecho**, y la solución no
+  fue la que parecía: ampliar la lista de chasis no habría cerrado nada, porque
+  los sobremesas de marca suelen declararse «Desktop» a secas. Ver la lección
+  de abajo.
 - **El ⚠ «por debajo de su velocidad» salta por un redondeo**: un SK Hynix
   catalogado a 2667 y funcionando a 2666 es el mismo grado JEDEC —DDR4-2666 son
   1333,33 MHz, o sea 2666,67 MT/s, que unos redondean arriba y otros abajo— y
@@ -1092,6 +1088,42 @@ casa—; los sensores; y el almacenamiento, que sería el primer SMART ajeno.
   meses después. Lo mismo se comía un test de memoria que pedía «Monitor»
   —nombre de la clase, no de la sección— y llevaba tiempo visitando dos
   páginas de las tres que decía.
+
+- **Preguntar por el chasis para saber si el equipo tiene nombre**: eran dos
+  cosas distintas y la aproximación falló dos veces. `Board.display_name`
+  titulaba con el nombre del equipo si `chassis_is_portable`, así que un
+  IdeaPad 330 se arregló añadiendo portátiles y un ThinkCentre M80q volvió a
+  salir como «Lenovo 316C» por ser un Mini PC. Ampliar la lista otra vez
+  tampoco lo cerraba: los sobremesas de marca —ThinkCentre, OptiPlex,
+  EliteDesk— suelen declararse «Desktop» a secas. La frontera nunca fue
+  portátil contra sobremesa, sino placa con nombre comercial contra código
+  interno: una X570 AORUS ELITE se compró por su nombre y una «316C» no la ha
+  visto nadie. Y eso se responde con el propio dato, sin adivinar: una placa
+  que se vende suelta deja en la versión del sistema un «1.0» o un relleno de
+  fábrica, y un equipo de marca deja su nombre. Lo que protege al sobremesa
+  montado es justamente el caso vacío: sin nombre de equipo manda la placa, que
+  si no saldría «MSI 1.0».
+
+- **Mirar `system_name` para eso mismo**: parece el sitio natural y es el peor
+  de los tres. Trae el código de producto en un OEM —«11DQS0KM00»— y el de la
+  propia placa en una suelta —«MS-7D23»—, así que las dos veces empeora lo que
+  ya había. HP y Dell sí ponen ahí el nombre bueno, pero sin un informe de uno
+  delante no hay forma de distinguir los dos casos, y adivinarlo rompe lo que
+  funciona. Queda escrito en el código para cuando aparezca uno.
+
+- **Arreglar el nombre de un equipo sin poder ver de dónde salía**: el informe
+  no llevaba ni uno de los campos DMI del sistema, así que un «me sale un
+  nombre raro» obligaba a pedir un `dmidecode` aparte. Los cinco campos y el
+  chasis van en crudo, que es lo que convierte «esto puede volver a pasar» en
+  «si pasa, se ve en un paso». Con cadenas que escribe cada fabricante como
+  quiere, poder diagnosticar vale más que intentar acertar siempre.
+
+- **La raya de inciso en un texto de interfaz**: funciona en un párrafo largo y
+  estorba en una frase corta, sobre todo cuando el inciso solo enumera. Y hay
+  dos formas de que salga mal que no se ven al escribirla: pegar la raya de
+  cierre a una coma —«a secas—,»— y abrir un inciso en una cadena que se
+  concatena con otra, donde la raya se queda sin cerrar y el resto de la frase
+  llega en medio. Los paréntesis no tienen ninguno de los dos problemas.
 
 - **Redondear a la centena una velocidad de memoria**: los grados no van de cien
   en cien. El tCK del SPD viene en picosegundos enteros, así que la división no
