@@ -28,7 +28,7 @@ python3 tools/probar_en_minimo.py --container # la suite en el Python del suelo
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **1438** y tardan cerca de dos minutos. Si sale bastante
+Los tests son **1476** y tardan cerca de dos minutos. Si sale bastante
 menos, falta algo por recoger.
 
 Que pasen aquí no dice que pasen en el mínimo. El suelo declarado es Python
@@ -193,9 +193,13 @@ silux/
 ├─ providers/      una fuente cada uno; ninguno conoce a los demás.
 │                  `msr_voltage.py` pregunta el voltaje del núcleo al propio
 │                  procesador, que es el único sitio donde está en cualquier
-│                  equipo: los sensores de placa lo publican sin etiquetar
+│                  equipo: los sensores de placa lo publican sin etiquetar.
+│                  `imc.py` lee del PMU del uncore cuánto tráfico mueve la
+│                  memoria ahora mismo, que es un sensor y no una prueba
 ├─ privileged/     ayudante root mínimo (helper.py) + cliente + SMBIOS.
-│                  Lee DMI, MSR, el SMART de los discos y el PMU de la iGPU.
+│                  Lee DMI, MSR, el SMART de los discos y dos PMU: el de la
+│                  iGPU y el del controlador de memoria. Del PMU solo cuenta;
+│                  el cliente pide una familia y nunca un número de evento.
 │                  instalar.py le da su acción de polkit para no pedir la
 │                  contraseña en cada arranque; cargar_modulo.py carga un
 │                  driver de sensores de una lista blanca fija
@@ -278,9 +282,40 @@ donde escribir sale tan rápido como leer.
   escritura sale la mitad que en AIDA64 sobre un equipo parecido, y hasta saber
   si eso es la memoria o es cómo escribe `memset`, no se pone.
 - **El FCLK de los Ryzen**, que es de lo más mirado en esa plataforma —la
-  sincronía con el reloj de memoria— y no está por ningún lado. Y el contador
-  del IMC en los Intel, que no es una prueba sino un sensor: cuánto tráfico
-  está moviendo la memoria ahora mismo.
+  sincronía con el reloj de memoria— y no está por ningún lado. En las APU sí
+  hay por dónde, y es una tabla que ya se parsea: `gpu_metrics` v2.x lo trae en
+  `average_fclk_frequency` (offset 70) y `current_fclk` (82), al lado del
+  `current_uclk` que ya se lee como reloj de memoria. Son dos posiciones más en
+  `_V2_1`. En un sobremesa con gráfica dedicada no hay tabla del SoC a la que
+  preguntar y lo único que queda es `ryzen_smu`, que es un módulo fuera del
+  kernel: ahí no se llega.
+
+**El contador del IMC ya está**, que era la otra mitad de esa línea: cuánto
+tráfico mueve la memoria ahora mismo, en la ficha, en el árbol de sensores y en
+el informe. Sale del PMU del uncore por el ayudante privilegiado —los
+contadores de perf piden CAP_PERFMON y `perf_event_paranoid` viene a 2 en
+cualquier distribución—, y el nombre del PMU cambia con la generación:
+`uncore_imc` hasta Comet Lake, `uncore_imc_free_running_N` de Ice Lake en
+adelante y `uncore_imc_N` en los de servidor, que además llaman a sus eventos
+por el comando de la DRAM. Va en bytes por segundo para compartir con
+`membench` el porcentaje del teórico, que si no serían dos cifras de la misma
+página que no se pueden comparar. Se validó contra tráfico de tamaño conocido
+en el i5-10400: diez GiB leídos a propósito con `memchr` y diez escritos con
+`memset`, y el contador vio 9,95 y 10,30 descontando el fondo. En el árbol de
+sensores estrena la rama «Tráfico» y el aparato «Memoria», cuyo hueco llevaba
+reservado en `_puesto_del_aparato` desde que se escribió el orden, vacío.
+
+**Y es de Intel a propósito, no por falta de ganas.** De Zen 4 en adelante
+existe `amd_umc_N`, pero el kernel le registra `format` y no `events/`: los
+nombres viven en el JSON de la herramienta `perf` y no en sysfs, así que
+habría que escribir el número de evento a mano —`event=0x05` con su
+`rdwrmask`— y afirmar lo que significa sin ninguna pieza donde comprobarlo. De
+Zen 3 para atrás no hay ni eso: `amd_df` existe y sus eventos de DRAM no están
+documentados. Escribir ese camino sería dejarlo estrenándose en la máquina de
+otro, que es la forma exacta del `NameError` de `_identidad`. Así que en AMD
+sale el aviso gris de que este equipo no lo publica, y cuando aparezca un Zen 4
+al que preguntarle, lo que falta es una tabla de posiciones más.
+
 La ficha ya está: los zócalos vacíos van juntos en una línea como las salidas
 de vídeo libres, y el título de cada uno sale de `render.slot_labels`, que
 compone el mínimo que lo distingue —«Canal A», y el controlador o el DIMM solo
@@ -350,10 +385,15 @@ necesitan su informe:
   «Perfiles y temporizaciones» solo sale el módulo A, aunque del B se leyó el
   SPD entero.
 
-Lo que hay que pedirle, por orden: el informe con permisos; **la ficha de CPU
-bajada hasta la fila de Voltaje**, que en Intel sale por `IA32_PERF_STATUS` y
-no se ha probado nunca contra hardware —lo de ayer se validó en el 5800X3D de
-casa—; los sensores; y el almacenamiento, que sería el primer SMART ajeno.
+Lo que hay que pedirle, por orden: el informe con permisos; los sensores; y el
+almacenamiento, que sería el primer SMART ajeno.
+
+**El voltaje en Intel ya no hace falta pedirlo: está validado.** El 1 de
+septiembre de 2026, en el i5-10400 donde se escribió el contador del IMC:
+`IA32_PERF_STATUS` devolvió `0x00001bb800001d00`, cuyos bits 47:32 son 7096, y
+7096 ÷ 8192 = 0,8662 V, que es lo que enseña la ficha. Ese camino se había
+escrito a la vez que el de AMD y solo se había comprobado en el 5800X3D, así
+que era la mitad no probada de la misma función.
 
 ## Cosas que ya se probaron y no funcionaron
 
@@ -445,6 +485,26 @@ casa—; los sensores; y el almacenamiento, que sería el primer SMART ajeno.
   350 a 1050 MHz. El plano de la gráfica es RAPL PP1 y en estos Intel solo
   asoma por el PMU de perf, como evento `energy-gpu`. Contrastado contra
   `intel_gpu_top`, que enseña la misma cifra.
+- **Fiarse de un contador porque su suma cuadre**: los cinco del IMC de un
+  Comet Lake encajan entre sí al 99,8 % —`ia + gt + io` es `reads + writes`
+  visto por origen en vez de por dirección—, y de los tres de origen solo uno
+  se sostiene. `ia_requests` clava los diez GiB que movieron los núcleos;
+  `io_requests` marca 0,93 GiB/s idénticos en reposo y con la memoria a tope,
+  que no es lo que hace un contador de tráfico; y `gt_requests` marca 4,6 GiB/s
+  con una sola pantalla de 1080p conectada, diez veces lo que puede mover su
+  refresco. Que el reparto sume dice que está completo, no que las etiquetas
+  sean ciertas, y los dos que no se sostienen no se pintan.
+- **Dar por sabida la unidad de un contador del kernel y leer solo su escala**:
+  son dos datos y sysfs publica los dos, `.scale` y `.unit`. La escala sola no
+  dice de qué es factor, así que multiplicar por un mega lo que viniera en otra
+  cosa no daría un error: daría una cifra creíble. Se comprueba que ponga
+  «MiB» y, si algún día pone otra cosa, no se convierte.
+- **Un tope de descriptores que recorta sin que se note**: el ayudante abre un
+  número máximo de contadores, y en la gráfica eso se ve —falta un motor—
+  pero en el controlador de memoria no, porque los canales se suman: en un
+  servidor con más canales de los que caben, el total sale bajo y con toda la
+  pinta de ser correcto. El ayudante avisa de que la lista se quedó corta y
+  entonces no se publica nada.
 - **Dar por sabido cómo un PMU escribe sus eventos**: i915 los publica como
   `config=0x2000` y RAPL como `event=0x04`, que no es lo mismo. Cada PMU dice
   en `format/` en qué bits de `config` va cada campo (`event -> config:0-7`).
@@ -617,6 +677,25 @@ casa—; los sensores; y el almacenamiento, que sería el primer SMART ajeno.
   los directorios de hwmon, un número arbitrario que cambia entre arranques.
   El procesador puede acabar debajo de la tarjeta de red. Se ordenan como se
   buscan: procesador, placa, memoria, gráficas, discos, red.
+- **Y volver a deducir por el nombre lo que el proveedor ya había resuelto**:
+  ese orden estuvo un año escrito y sin cumplirse. `hwmon.device_for` decide
+  que un chip es de la CPU justamente para ponerle el nombre del procesador, y
+  tiraba esa decisión; el árbol la reconstruía comparando ese nombre con otro
+  compuesto en otro sitio, y no casaba ninguno: «Intel Core i5-10400» contra la
+  cadena entera de CPUID, «ATA KIOXIA-EXCERIA S» contra el modelo sin el
+  prefijo del bus. Los dos caían al cajón de la placa, y entre iguales manda el
+  alfabeto, así que el árbol abría por el disco. **Solo se ve en Intel**, y por
+  eso no lo vio nadie: `short_brand` deja «AMD Ryzen 7 5800X3D» igual que
+  viene y a un Intel le quita el «(R)», el «(TM)» y el « CPU @ 2.90GHz». En la
+  máquina de casa casaba. La clase la lleva escrita cada `Sensor` y no se
+  adivina; además la mitad de esos nombres se traducen, así que ninguna
+  comparación contra un literal español podía funcionar en inglés.
+- **Y un test que fabrica a mano los nombres que sí casan**: los cuatro del
+  orden construían los sensores con el `device` igual al `brand` de CPUID y al
+  modelo del disco sin prefijo, que es un estado que la ejecución real no
+  produce nunca. Verdes desde el primer día sobre el caso que no ocurre,
+  mientras el que sí ocurre llevaba un año mal. Es el mismo patrón que ya
+  costó el test de los núcleos CUDA de OpenCL.
 - **Teñir un valor por su fracción del umbral**: un procesador a 45 grados de
   90 no está «medio caliente», está bien. Si el color empieza en el cero es
   decoración; empezando a tres cuartos del límite, avisa.
