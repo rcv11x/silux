@@ -87,6 +87,18 @@ class MemoryPage(QScrollArea):
         self._slots_host = ResponsiveRow(min_item_width=290)
         layout.addWidget(self._slots_host)
 
+        # Los zócalos libres, en una línea. Una tarjeta entera por cada uno
+        # para poner «Vacío» se llevaba la mitad del ancho con cuatro zócalos y
+        # tres cuartos con ocho, apretando justo a las que sí tienen datos. Es
+        # lo mismo que ya se hizo en Gráficos con las salidas sin nada
+        # enchufado. Cuántos hay libres ya lo dice el titular; esto añade
+        # cuáles, que es lo que hace falta para saber dónde va el módulo nuevo.
+        self.slots_free = QLabel("")
+        self.slots_free.setObjectName("Muted")
+        self.slots_free.setWordWrap(True)
+        self.slots_free.setFont(ui_font(theme.METRICS.small_pt))
+        layout.addWidget(self.slots_free)
+
         layout.addWidget(self._build_bandwidth())
 
         self.timings_card = Card(_("memory.card.timings"))
@@ -515,20 +527,18 @@ class MemoryPage(QScrollArea):
         # en cada equipo y con cuatro zócalos salían dos «DIMM 0».
         etiquetas = render.slot_labels([m.locator or "" for m in modules])
 
+        libres = []
         for module in modules:
             crudo = module.locator or ""
-            card = Card(etiquetas.get(crudo) or crudo or _("memory.slot"))
+            nombre = etiquetas.get(crudo) or crudo or _("memory.slot")
+            if not module.populated:
+                libres.append(nombre)
+                continue
+            card = Card(nombre)
             if etiquetas.get(crudo):
                 # Lo que puso el firmware no se pierde, solo deja de ser el
                 # titular: hace falta para hablar con quien reporta un fallo.
                 card.setToolTip(crudo)
-            if not module.populated:
-                empty = QLabel(_("memory.slot.empty"))
-                empty.setObjectName("Muted")
-                empty.setFont(ui_font(theme.METRICS.small_pt))
-                card.body.addWidget(empty)
-                self._slots_host.add(card)
-                continue
 
             grid = InfoGrid()
             for name in MODULE_FIELDS:
@@ -537,6 +547,13 @@ class MemoryPage(QScrollArea):
             self._fill(grid, module)
             self._slot_grids.append(grid)
             self._slots_host.add(card)
+
+        self.slots_free.setText(
+            _("memory.slots.free.one" if len(libres) == 1
+              else "memory.slots.free").format(n=len(libres),
+                                               zocalos=", ".join(libres))
+            if libres else "")
+        self.slots_free.setVisible(bool(libres))
 
     @staticmethod
     def _fill(grid: InfoGrid, module: MemoryModule) -> None:
