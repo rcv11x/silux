@@ -373,3 +373,71 @@ class TestElTituloLlegaALaTarjeta(unittest.TestCase):
         titulos = self._titulos_en_pantalla("SODIMM", "SODIMM2")
         self.assertIn("sodimm", titulos)
         self.assertIn("sodimm2", titulos)
+
+
+class TestLaTarjetaDePermisos(TestElTituloLlegaALaTarjeta):
+    """La que se titulaba «Detalle de los módulos» y no traía ningún detalle.
+
+    Dentro solo hay la explicación de qué falta y los dos botones, y desaparece
+    en cuanto se dan los permisos: nunca llega a contener un detalle de nada.
+    El título nuevo dice lo que hay, y este test lo ata al comportamiento —si
+    algún día se quedara puesta con los módulos ya leídos, pasaría a mentir.
+    """
+
+    def _pagina(self, con_modulos):
+        from silux.model import CpuInfo, CpuType, MemoryModule, Snapshot
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.memory import MemoryPage
+
+        pagina = MemoryPage(theme.palette_for(self.app, "dark"), Preferences())
+        self.addCleanup(pagina.deleteLater)
+        modulos = ((MemoryModule(populated=True, locator="DIMM 0",
+                                 size_bytes=8 << 30),) if con_modulos else ())
+        pagina.apply(Snapshot(
+            monotonic_ns=0,
+            cpu=CpuInfo(types=(CpuType(key="general", label="g"),)),
+            modules=modulos,
+        ))
+        self.app.processEvents()
+        return pagina
+
+    def test_sale_solo_mientras_falten_los_modulos(self):
+        pagina = self._pagina(con_modulos=False)
+        self.assertFalse(pagina.elevation.isHidden(),
+                         "sin los módulos es cuando hay algo que pedir")
+
+    def test_y_desaparece_en_cuanto_se_leen(self):
+        pagina = self._pagina(con_modulos=True)
+        self.assertTrue(pagina.elevation.isHidden(),
+                        "con los módulos ya leídos la tarjeta sobra, y su "
+                        "título dejaría de ser cierto")
+
+
+class TestLosDosPerfilesNoSeLlamanIgual(unittest.TestCase):
+    """Arriba «Perfiles —» y abajo una tarjeta «Perfiles y temporizaciones»
+    con filas dentro: a la vista se contradecían.
+
+    Son cosas distintas. La fila cuenta los perfiles rápidos que trae el chip
+    —XMP o EXPO—, que este programa reconoce pero no interpreta; la tarjeta
+    enseña las temporizaciones, empezando por las de JEDEC, que existen
+    siempre. Con las dos llamándose «Perfiles» parecía que una desmentía a la
+    otra.
+    """
+
+    def test_la_fila_dice_de_qué_perfiles_habla(self):
+        import json
+        import pathlib as _p
+
+        for codigo in ("es", "en"):
+            idioma = json.loads(
+                (_p.Path("silux/db/lang") / f"{codigo}.json").read_text(
+                    encoding="utf-8"))
+            fila = idioma["memory.field.profiles"]
+            tarjeta = idioma["memory.card.timings"]
+            with self.subTest(idioma=codigo):
+                self.assertNotEqual(fila.lower(), tarjeta.lower())
+                self.assertNotEqual(
+                    fila.lower(), tarjeta.lower().split()[0],
+                    "la fila se llama igual que la primera palabra de la "
+                    "tarjeta, que es como se leían la una contra la otra")
