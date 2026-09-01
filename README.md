@@ -20,11 +20,20 @@ Escrito con ayuda de Claude.
 ![La pestaña de CPU](capturas/cpu.png)
 
 <p align="center">
-  <img src="capturas/graficos.png" width="49%" alt="Gráficos">
+  <img src="capturas/inicio.png" width="49%" alt="Inicio">
   <img src="capturas/sensores.png" width="49%" alt="Sensores">
+  <img src="capturas/memoria.png" width="49%" alt="Memoria">
+  <img src="capturas/graficos.png" width="49%" alt="Gráficos">
+  <img src="capturas/caches.png" width="49%" alt="Cachés">
+  <img src="capturas/placa-base.png" width="49%" alt="Placa base">
   <img src="capturas/almacenamiento.png" width="49%" alt="Almacenamiento">
-  <img src="capturas/red.png" width="49%" alt="Red">
 </p>
+
+Están tomadas con `--anonimo`, que cambia el nombre del equipo, las
+direcciones y los números de serie por otros de la misma pinta. Cada PNG lleva
+escrito dentro si se hizo así, porque `tools/comprobar_privacidad.py` busca
+texto y una captura es un mapa de píxeles: sin esa marca no habría forma de
+comprobarlo después.
 
 ## Qué es y qué no
 
@@ -167,6 +176,8 @@ interfaz es lo único que lo necesita.
 | Placa, BIOS, versión y fecha del firmware | `/sys/class/dmi/id` | no |
 | Módulos de RAM: fabricante, chips, referencia, fecha | SPD por SMBus | no |
 | Velocidad catalogada y temporizaciones JEDEC/XMP | SPD por SMBus | no |
+| Ancho de banda de la RAM y latencia por nivel de caché | medido en otro proceso | no |
+| Tráfico del controlador de memoria, ahora mismo | PMU del uncore (solo Intel) | sí |
 | UEFI o BIOS heredada, arranque seguro, TPM | `/sys/firmware`, `/sys/class/tpm` | no |
 | Chipset y controlador de memoria | bus PCI + `pci.ids` | no |
 | Umbrales de alarma de cada sensor | `hwmon` (`*_max`, `*_crit`) | no |
@@ -195,7 +206,7 @@ La última hace falta porque pasar en el Python de uno no dice nada del mínimo
 que declara el proyecto: corre la suite dentro de una Ubuntu 22.04, que es la
 misma en la que corre el CI y en la que se construye el AppImage.
 
-Son 1438 y tardan cerca de dos minutos. Ninguno necesita hardware concreto:
+Son 1476 y tardan cerca de dos minutos. Ninguno necesita hardware concreto:
 los proveedores se prueban contra árboles de sysfs sintéticos, el generador
 contra fragmentos de C, y los chips (SPD, EDID, SMART, `gpu_metrics`) contra
 volcados binarios de piezas reales guardados en `tests/fixtures`.
