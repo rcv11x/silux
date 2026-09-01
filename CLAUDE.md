@@ -28,7 +28,7 @@ python3 tools/probar_en_minimo.py --container # la suite en el Python del suelo
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **1377** y tardan cerca de dos minutos. Si sale bastante
+Los tests son **1430** y tardan cerca de dos minutos. Si sale bastante
 menos, falta algo por recoger.
 
 Que pasen aquí no dice que pasen en el mínimo. El suelo declarado es Python
@@ -281,11 +281,12 @@ donde escribir sale tan rápido como leer.
   sincronía con el reloj de memoria— y no está por ningún lado. Y el contador
   del IMC en los Intel, que no es una prueba sino un sensor: cuánto tráfico
   está moviendo la memoria ahora mismo.
-- **En la ficha**: dos zócalos vacíos ocupan una tarjeta entera cada uno para
-  decir «Vacío», y eso cabe en una línea como ya se hizo con las salidas de
-  vídeo libres. Y con cuatro zócalos hay dos «DIMM 0» y dos «DIMM 1»: el
-  localizador se repite entre canales y hay que mirar el banco para saber cuál
-  es cuál.
+La ficha ya está: los zócalos vacíos van juntos en una línea como las salidas
+de vídeo libres, y el título de cada uno sale de `render.slot_labels`, que
+compone el mínimo que lo distingue —«Canal A», y el controlador o el DIMM solo
+cuando sin ellos dos se llamarían igual—, así que se acabaron los dos «DIMM 0».
+Sin SMBIOS no hay zócalo que dar y se numeran «Módulo 1», «Módulo 2»: el `slot`
+del SPD es la dirección en el bus i2c y no la posición en la placa.
 
 **ARM se identifica, sin dejar de ser un programa de x86.** Donde no hay
 CPUID, `providers/armcpu.py` lee el MIDR de `/proc/cpuinfo` —quién hizo el
@@ -320,7 +321,8 @@ virtual del día anterior y esta vez desde su equipo: un Lenovo ThinkCentre M80q
 —i5-10500T, UHD 630, 31 GB en dos SODIMM, Manjaro con XFCE— y con los permisos
 ya dados, así que es el equipo ajeno más completo que ha pasado por aquí: 45
 sensores y catorce fuentes activas, `msr`, `smbios`, `spd` y `rapl` incluidos.
-Tres fallos confirmados leyendo el código, y dos que necesitan su informe:
+Tres fallos confirmados leyendo el código —los dos de memoria ya arreglados,
+el del titular no— y dos que necesitan su informe:
 
 - **El titular es el código de placa OEM y no el nombre del equipo**: sale
   «Lenovo 316C» en la portada y en Placa base cuando eso es un ThinkCentre
@@ -334,15 +336,18 @@ Tres fallos confirmados leyendo el código, y dos que necesitan su informe:
 - **El ⚠ «por debajo de su velocidad» salta por un redondeo**: un SK Hynix
   catalogado a 2667 y funcionando a 2666 es el mismo grado JEDEC —DDR4-2666 son
   1333,33 MHz, o sea 2666,67 MT/s, que unos redondean arriba y otros abajo— y
-  `MemoryModule.underclocked` compara `actual < rated` a pelo. Un MT/s de
-  diferencia enciende el aviso y el triángulo.
+  `MemoryModule.underclocked` comparaba `actual < rated` a pelo. **Hecho**:
+  margen del 1 %, que no puede confundir dos grados —los contiguos están a 133
+  MT/s en DDR4 y a 400 en DDR5— y absorbe el redondeo, que es de un MT/s.
 - **Y el consejo manda a la BIOS a por algo imposible**: con un módulo de 3200
   y otro de 2667, la frase «va a 2666 de los 3200 que declara admitir, suele ser
   el perfil rápido sin activar» es falsa, porque el conjunto va al ritmo del más
   lento y ese equipo no verá 3200 active lo que active. `_apply_avisos` toma
-  `lentos[0]` y usa su velocidad catalogada, así que el diagnóstico sale del
-  módulo rápido e ignora al que manda. Cuando los módulos son desparejos, eso
-  es lo que hay que decir.
+  `lentos[0]` y usaba su velocidad catalogada, así que el diagnóstico salía
+  del módulo rápido e ignoraba al que manda. **Hecho**: el techo es el mínimo
+  de los catalogados y hay tres respuestas donde había dos —hay margen, no hay
+  margen pero uno declara más, o no hay nada que decir—, en
+  `render.memory_speed_warning`.
 - **Por confirmar**: la insignia del hostname dice `none`, resaltada como si
   fuera la identidad del equipo. El kernel usa `(none)` cuando nadie lo
   configuró, y si es eso, es un «sin configurar» pintado como un nombre. Y en
@@ -1088,6 +1093,57 @@ casa—; los sensores; y el almacenamiento, que sería el primer SMART ajeno.
   —nombre de la clase, no de la sección— y llevaba tiempo visitando dos
   páginas de las tres que decía.
 
+- **Redondear a la centena una velocidad de memoria**: los grados no van de cien
+  en cien. El tCK del SPD viene en picosegundos enteros, así que la división no
+  cae redonda —un DDR4-2133 guarda 938 ps y `2000000/938` da 2132,2— y
+  redondeando a la centena salían once de los veintiocho grados conocidos mal:
+  DDR4-2666 se convertía en «2700 MT/s», que no existe. Y no era solo feo: con
+  el catalogado en 2700 y la BIOS poniendo 2667, el módulo parecía ir por
+  debajo de lo suyo y encendía el aviso. Todas las velocidades que existen son
+  múltiplos de 200/3 MT/s, en las tres generaciones y también en los XMP,
+  porque el reloj de referencia va en tercios; se busca el más cercano y se
+  trunca, que es como los nombra JEDEC. La cuenta va en enteros —`n * 200 // 3`—
+  para que el truncado no dependa de cómo caiga un flotante. La fórmula estaba
+  copiada tres veces y por eso el fallo era el mismo en las tres.
+
+- **Tapar con un margen un número que está mal de origen**: al aviso de
+  velocidad se le puso primero una tolerancia del 1 % para el redondeo del
+  firmware, y no bastaba. El catalogado salía 2700 contra un 2667 real, que es
+  un 1,2 %, así que se colaba igual. El margen estaba bien pero el problema no
+  era la comparación: era el número de partida. Un margen que hay que ensanchar
+  para que deje de fallar está tapando otra cosa.
+
+- **Enseñar el localizador del firmware como si fuera un título**:
+  «Controller0-ChannelA» son tres datos pegados sin espacios, y cada fabricante
+  lo escribe a su manera —«DIMM_A1», «ChannelA-DIMM0»—, así que la misma
+  pestaña se veía distinta en cada equipo. Con cuatro zócalos el nombre además
+  se repite entre canales y salían dos «DIMM 0». Lo que se enseña es el mínimo
+  que distingue un zócalo de otro en ese equipo, y lo que no se reconoce se
+  deja crudo: inventarse una posición a partir de algo que no se entiende es
+  peor que enseñar lo que puso el firmware.
+
+- **Titular con un número que no es el que parece**: sin permisos las tarjetas
+  de memoria salían como «Zócalo 0» y «Zócalo 2» mientras el subtítulo de dos
+  líneas más arriba admitía que «el zócalo y la capacidad necesitan permisos».
+  Ese número es la dirección del chip en el bus i2c —0x50 es 0 y 0x52 es 2—, no
+  la posición en la placa, así que encima hacía pensar que el zócalo 1 estaba
+  libre. Numerados por orden de lectura no afirman nada, y la dirección se va
+  al tooltip, donde no se confunde con un zócalo.
+
+- **Reutilizar un nombre de constante en un módulo de novecientas líneas**:
+  `render.py` ya tenía `_CANAL` y `_CONTROLADOR` para contar canales de
+  memoria, y la función que compone el título del zócalo los volvió a definir.
+  Se llevó por delante la otra: diecisiete tests en rojo. No se ve al
+  escribirlo, así que las dos lecturas del localizador llevan prefijo y hay un
+  test que comprueba que no se pisan.
+
+- **Restaurar un archivo con `cp` y fiarse de lo que sale**: Python cachea el
+  bytecode y decide si sirve por la fecha y el tamaño del fuente. Copiando de
+  ida y vuelta para comprobar que un test caza el fallo, el `.pyc` se quedó y
+  la ejecución siguiente midió el código anterior: se ve un resultado que ya no
+  corresponde a lo que hay en disco. Al hacer esas comprobaciones se borra
+  `__pycache__` en los dos sentidos.
+
 - **Pasarle a `pkexec` la ruta de un guion que el usuario puede escribir**: lo
   avisa su propio manual —«pkexec does no validation of the ARGUMENTS passed to
   PROGRAM»— y aquí estaba hecho en tres sitios, todos copiando a
@@ -1228,7 +1284,7 @@ por `_()`, la segunda llamada recibe «Uso» —que no es una clave— y devuelv
 inglés: la tupla llevaba once claves y una traducción ya hecha, y era la única
 que no cambiaba de idioma. Hay un test que lo vigila.
 
-La interfaz está entera en los dos idiomas: 930 claves, ninguna sin traducir.
+La interfaz está entera en los dos idiomas: 939 claves, ninguna sin traducir.
 Hay un test que recorre el árbol de sintaxis de cada página buscando
 constructores de widget con una cadena española a pelo, porque eso es lo que
 no se ve hasta abrir la pantalla en el otro idioma y ningún test normal lo
