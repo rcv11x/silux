@@ -320,6 +320,16 @@ class System:
     memory: Memory = field(default_factory=Memory)
 
 
+# Cuánto puede diferir la velocidad a la que va un módulo de la que declara
+# sin que sea un recorte de verdad. Es el redondeo del grado JEDEC y nada más:
+# unos firmwares escriben 2666 y otros 2667 para la misma memoria.
+#
+# El 1 % no puede confundir dos grados: los contiguos están separados por 133
+# MT/s como poco en DDR4 —2400, 2666, 2933— y por 400 en DDR5. Y absorbe de
+# sobra el redondeo, que como mucho es de un MT/s.
+MARGEN_DE_REDONDEO = 0.01
+
+
 @dataclass(frozen=True, slots=True)
 class MemoryModule:
     """Un zócalo de memoria, esté ocupado o no.
@@ -369,10 +379,19 @@ class MemoryModule:
 
     @property
     def underclocked(self) -> bool:
-        """El módulo va por debajo de lo que sabe dar."""
+        """El módulo va por debajo de lo que sabe dar.
+
+        Con margen, y no por prudencia: los grados JEDEC salen de un reloj que
+        cae en tercios —DDR4-2666 son 1333,33 MHz, o sea 2666,67 MT/s— y cada
+        firmware lo redondea a su manera. Un SK Hynix que el SPD cataloga a
+        2667 y la BIOS pone a 2666 es el mismo grado, y comparando a pelo
+        encendía el aviso y su triángulo por un MT/s.
+        """
         actual = self.configured_mts or self.speed_mts
         rated = self.rated_mts
-        return bool(actual and rated and actual < rated)
+        if not (actual and rated):
+            return False
+        return actual < rated * (1 - MARGEN_DE_REDONDEO)
 
 
 @dataclass(frozen=True, slots=True)

@@ -386,12 +386,11 @@ class MemoryPage(QScrollArea):
         lineas = []
         if (canal := render.memory_channel_warning(snapshot.modules)):
             lineas.append(canal)
-        lentos = [m for m in modulos if m.populated and m.underclocked]
-        if lentos:
-            actual = lentos[0].configured_mts or lentos[0].speed_mts
-            lineas.append(
-                _("mem.underclocked").format(
-                    actual=actual, rated=lentos[0].rated_mts))
+        # Decidirlo aquí era el fallo: se tomaba `lentos[0]` y se prometía su
+        # velocidad catalogada, que con módulos desparejos es la del que no
+        # manda. La regla vive en `render`, al lado de la del canal.
+        if (velocidad := render.memory_speed_warning(modulos)):
+            lineas.append(velocidad)
         self.avisos.setText("  ".join(lineas))
         self.avisos.setVisible(bool(lineas))
 

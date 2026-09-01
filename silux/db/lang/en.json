@@ -480,6 +480,7 @@
   "mem.chan.n": "{n} channels",
   "mem.channel.same": "All {n} modules sit on the same channel. Split across two, the memory would move twice as much per second.",
   "mem.channel.single": "There is only one module, so memory runs at half its bandwidth. A matching second module in the other channel doubles it; on a machine with integrated graphics that shows up in the frame rate more than almost anything else.",
+  "mem.mixed": "The memory runs at {actual} MT/s and cannot go past {lento}, which is what the slowest module gives. Another one claiming {rapido} changes nothing: they all share one clock, so the set settles at the slowest.",
   "mem.modules.many": "{n} modules",
   "mem.modules.one": "{n} module",
   "mem.title": "{tam} of memory",

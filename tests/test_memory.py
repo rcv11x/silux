@@ -122,3 +122,93 @@ class TestElCanalNoEsSoloLaLetra(unittest.TestCase):
         from silux import render
 
         self.assertIsNone(render.memory_channels([self._Modulo("BANK 0")]))
+
+
+def _modulo(catalogado, funcionando, poblado=True):
+    """Un módulo sin SPD, donde `rated_mts` cae en la velocidad de SMBIOS."""
+    from silux.model import MemoryModule
+
+    return MemoryModule(populated=poblado, speed_mts=catalogado,
+                        configured_mts=funcionando)
+
+
+class TestElRedondeoDeLosGradosJedec(unittest.TestCase):
+    """Un MT/s de diferencia no es un recorte.
+
+    Los grados JEDEC salen de un reloj que cae en tercios —DDR4-2666 son
+    1333,33 MHz, o sea 2666,67 MT/s— y cada firmware redondea a su manera: el
+    SPD de un SK Hynix dice 2667 y la BIOS pone 2666. Comparando a pelo, eso
+    encendía el aviso, la insignia «por debajo de su velocidad» y el triángulo
+    de la fila. Lo trajo un ThinkCentre M80q.
+    """
+
+    def test_un_mts_de_diferencia_no_marca_nada(self):
+        self.assertFalse(_modulo(2667, 2666).underclocked)
+
+    def test_ni_en_los_otros_grados_con_tercio(self):
+        for catalogado, funcionando in ((2134, 2133), (2934, 2933),
+                                        (3734, 3733), (1867, 1866)):
+            with self.subTest(grado=catalogado):
+                self.assertFalse(_modulo(catalogado, funcionando).underclocked)
+
+    def test_un_recorte_de_verdad_se_sigue_viendo(self):
+        """El margen no puede tragarse un grado entero: entre dos contiguos
+        hay 133 MT/s como poco en DDR4 y 400 en DDR5."""
+        for catalogado, funcionando in ((3200, 2666), (2666, 2400),
+                                        (5600, 4800), (2933, 2666)):
+            with self.subTest(de=catalogado, a=funcionando):
+                self.assertTrue(_modulo(catalogado, funcionando).underclocked)
+
+
+class TestElTechoDelConjuntoEsElDelMasLento(unittest.TestCase):
+    """El consejo mandaba a la BIOS a por algo imposible.
+
+    Se tomaba el primer módulo que fuera lento y se prometía su velocidad
+    catalogada. Con uno de 3200 y otro de 2667 eso decía «va a 2666 de los
+    3200 que declara admitir, suele ser el perfil rápido sin activar», y es
+    falso: todos los módulos van al mismo reloj, así que el conjunto se queda
+    en el del que menos da y ese equipo no verá 3200 active lo que active.
+    """
+
+    def _aviso(self, *pares):
+        from silux import render
+
+        return render.memory_speed_warning([_modulo(c, f) for c, f in pares])
+
+    def test_con_modulos_desparejos_ya_a_tope_no_se_promete_nada(self):
+        """El caso del M80q entero: 3200 y 2667 corriendo a 2666."""
+        aviso = self._aviso((3200, 2666), (2667, 2666))
+        self.assertIsNotNone(aviso, "callarse deja la cifra de 3200 sin explicar")
+        self.assertIn("2667", aviso)
+        self.assertNotIn("perfil rápido", aviso,
+                         "no hay perfil que activar: ya va a tope")
+
+    def test_y_se_dice_que_el_3200_no_cambia_nada(self):
+        aviso = self._aviso((3200, 2666), (2667, 2666))
+        self.assertIn("3200", aviso, "hay que nombrar al que declara más")
+        self.assertIn("2666", aviso)
+
+    def test_cuando_hay_margen_de_verdad_se_promete_el_techo_del_conjunto(self):
+        """Desparejos y los dos por debajo: lo alcanzable es 2667, no 3200."""
+        aviso = self._aviso((3200, 2133), (2667, 2133))
+        self.assertIn("2667", aviso)
+        self.assertNotIn("3200", aviso,
+                         "prometer 3200 manda a pelearse con la BIOS para nada")
+
+    def test_con_modulos_iguales_sigue_el_consejo_de_siempre(self):
+        aviso = self._aviso((3200, 2666), (3200, 2666))
+        self.assertIn("3200", aviso)
+        self.assertIn("XMP", aviso)
+
+    def test_todo_en_orden_no_dice_nada(self):
+        self.assertIsNone(self._aviso((3200, 3200), (3200, 3200)))
+
+    def test_el_redondeo_tampoco_dispara_el_aviso(self):
+        self.assertIsNone(self._aviso((2667, 2666), (2667, 2666)))
+
+    def test_sin_velocidades_no_se_inventa(self):
+        """Sin permisos no hay SMBIOS y no se sabe a cuánto va."""
+        from silux import render
+
+        self.assertIsNone(render.memory_speed_warning(
+            [_modulo(None, None), _modulo(None, None)]))
