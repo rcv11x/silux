@@ -99,6 +99,7 @@ class MemoryPage(QScrollArea):
         self.slots_free.setFont(ui_font(theme.METRICS.small_pt))
         layout.addWidget(self.slots_free)
 
+        layout.addWidget(self._build_traffic())
         layout.addWidget(self._build_bandwidth())
 
         self.timings_card = Card(_("memory.card.timings"))
@@ -181,6 +182,36 @@ class MemoryPage(QScrollArea):
         card.body.addWidget(self.elevation_text)
         card.body.addWidget(self.elevation_hint)
         card.body.addLayout(row)
+        return card
+
+    def _build_traffic(self) -> QWidget:
+        """Lo que la memoria mueve sin que nadie se lo pida.
+
+        Va pegada a la del ancho de banda y no dentro: son dos preguntas que
+        se responden en la misma unidad y significan cosas contrarias —lo que
+        la memoria está dando y lo que podría dar—, y en una sola lista se
+        leen como la misma cifra medida dos veces.
+        """
+        card = Card(_("memory.card.traffic"))
+
+        self.traffic_grid = InfoGrid()
+        self.traffic_grid.add(_("memory.traffic.now"))
+        self.traffic_grid.add(_("memory.traffic.read"))
+        self.traffic_grid.add(_("memory.traffic.write"))
+        # De dónde sale el resto va en la ayuda y no en una fila suya: son la
+        # gráfica integrada y los dispositivos, y sus contadores marcan lo
+        # mismo con la máquina parada que a plena carga, así que no se separan.
+        self.traffic_grid.add(_("memory.traffic.cpu"),
+                              tooltip=_("memory.traffic.cpu.tip"))
+
+        self.traffic_note = QLabel(_("memory.traffic.note"))
+        self.traffic_note.setObjectName("Muted")
+        self.traffic_note.setWordWrap(True)
+        self.traffic_note.setFont(ui_font(theme.METRICS.small_pt))
+
+        card.body.addWidget(self.traffic_grid)
+        card.body.addWidget(self.traffic_note)
+        self.traffic_card = card
         return card
 
     def _build_bandwidth(self) -> QWidget:
@@ -375,7 +406,37 @@ class MemoryPage(QScrollArea):
         self._apply_modules(tuple(display), array,
                             del_spd=not snapshot.modules)
         self._apply_timings(display)
+        self._apply_traffic(snapshot)
         self._apply_notices(snapshot)
+
+    def _apply_traffic(self, snapshot: Snapshot) -> None:
+        """El tráfico de ahora mismo, o la tarjeta escondida si no lo hay.
+
+        Escondida y no a guiones: sin el contador no es que falte la cifra, es
+        que este equipo no la publica, y una tarjeta con cuatro rayas se lee
+        como un dato que se ha perdido. Lo que queda dicho es la nota, que
+        explica cuál de las dos cosas pasa.
+        """
+        trafico = snapshot.memory_traffic
+        self.traffic_card.setVisible(trafico is not None)
+        if trafico is None:
+            return
+
+        teorico = render.memory_theoretical_bandwidth(snapshot.modules)
+        parte = render.memory_bandwidth_share(trafico.total_bytes_s, teorico)
+        texto = render.rate(trafico.total_bytes_s)
+        if parte is not None:
+            texto += "   " + _("memory.bw.share").format(
+                pct=f"{parte:.0f}", total=render.bandwidth(teorico))
+        self.traffic_grid.set(_("memory.traffic.now"), texto)
+        self.traffic_grid.set(_("memory.traffic.read"), render.rate(trafico.read_bytes_s))
+        self.traffic_grid.set(_("memory.traffic.write"), render.rate(trafico.write_bytes_s))
+
+        hay_nucleos = trafico.cpu_bytes_s is not None
+        self.traffic_grid.set_visible(_("memory.traffic.cpu"), hay_nucleos)
+        if hay_nucleos:
+            self.traffic_grid.set(_("memory.traffic.cpu"),
+                                  render.rate(trafico.cpu_bytes_s))
 
     def _apply_notices(self, snapshot: Snapshot) -> None:
         # La tarjeta de elevación ya explica lo de los permisos, así que aquí
@@ -383,7 +444,8 @@ class MemoryPage(QScrollArea):
         # interpretar todavía.
         notes = [n for n in snapshot.notes
                  if n.path.startswith("spd")
-                 or (n.path.startswith("modules") and snapshot.modules)]
+                 or (n.path.startswith("modules") and snapshot.modules)
+                 or (n.path == "memory.traffic" and n.need is not Need.ROOT)]
         signature = tuple((n.path, n.need) for n in notes)
         if signature == self._notice_signature:
             return

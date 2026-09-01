@@ -35,6 +35,7 @@ from .providers import (
     NetworkInterfaces,
     NvidiaGpus,
     HwmonSensors,
+    ImcTraffic,
     MsrVoltage,
     PrivilegedMemory,
     Provider,
@@ -77,6 +78,7 @@ DEFAULT_PROVIDERS: tuple[type[Provider], ...] = (
     NvidiaGpus,
     SystemState,
     RaplPower,
+    ImcTraffic,        # el tráfico de la memoria, que se mide entre muestreos
     HwmonSensors,       # nombra los aparatos con lo que ya se sabe
     MsrVoltage,         # y detrás: el voltaje que ningún sensor etiquetó
     DerivedSensors,     # el último: solo transforma lo recogido

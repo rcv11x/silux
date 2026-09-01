@@ -18,10 +18,12 @@ corre con privilegios hay que poder auditarlo. De ahí tres decisiones:
   son de lectura y están fijados aquí; no hay forma de pedirle uno de
   escritura ni de borrado, que van por el mismo camino.
 * **Del PMU solo cuenta, no muestrea.** Los eventos que abre son contadores
-  de ocupación del motor gráfico, agregados de toda la máquina y sin periodo
-  de muestreo: no hay búfer de muestras, ni pila de llamadas, ni nada de
-  ningún proceso concreto. Es lo mismo que enseña `intel_gpu_top`. Los
-  nombres los enumera el propio ayudante; el cliente no le pasa ninguno.
+  de ocupación del motor gráfico y de tráfico del controlador de memoria,
+  agregados de toda la máquina y sin periodo de muestreo: no hay búfer de
+  muestras, ni pila de llamadas, ni nada de ningún proceso concreto. Es lo
+  mismo que enseña `intel_gpu_top`. Los nombres los enumera el propio
+  ayudante; el cliente pide una familia —la gráfica o la memoria— y nunca un
+  nombre de PMU ni un número de evento.
 
 Habla JSON por líneas: una petición por línea en la entrada, una respuesta
 por línea en la salida. Termina cuando la entrada se cierra.
@@ -43,7 +45,7 @@ import time
 # registros nuevos en la lista blanca. El cliente la compara al conectar,
 # porque una copia instalada en /usr/local/libexec se queda congelada en la
 # fecha en que se instaló y no la actualiza nadie.
-VERSION = 2
+VERSION = 3
 
 DMI_TABLE = "/sys/firmware/dmi/tables/DMI"
 DMI_ENTRY_POINT = "/sys/firmware/dmi/tables/smbios_entry_point"
@@ -103,7 +105,31 @@ PMU_EVENT = re.compile(r"^(rcs|bcs|vcs|vecs|ccs)\d+-busy$")
 PMU_POWER = "power"
 PMU_POWER_EVENT = re.compile(r"^energy-gpu$")
 
+# El controlador de memoria, que publica cuánto tráfico mueve hacia la RAM.
+# Intel le cambia el nombre según la generación y hay que aceptar los tres:
+# `uncore_imc` de Sandy Bridge a Comet Lake, `uncore_imc_free_running_N` de
+# Ice Lake en adelante y `uncore_imc_N` en los de servidor, que además llaman
+# a sus eventos por el comando de la DRAM en vez de por la dirección.
+#
+# `ia_requests` es el mismo tráfico visto por origen —lo que piden los
+# núcleos— y está aquí porque se midió: contra 10 GiB leídos a propósito
+# marcó 9,92. Sus hermanos `gt_requests` e `io_requests` no están, y no por
+# falta de sitio: el segundo marca la misma cifra en reposo que bajo carga.
+PMU_IMC = re.compile(r"^uncore_imc(_free_running)?(_\d+)?$")
+PMU_IMC_EVENT = re.compile(
+    r"^(data_reads?|data_writes?|cas_count_read|cas_count_write|ia_requests)$")
+
+# Las dos familias que el cliente puede pedir. Son lo único que viaja por el
+# protocolo: dentro de cada una, qué PMU y qué evento se abre lo decide este
+# archivo.
+FAMILIA_GPU = "gpu"
+FAMILIA_IMC = "imc"
+
+# Cuántos descriptores se abren como mucho, por familia. El del IMC es más
+# alto porque un servidor tiene un PMU por canal de memoria y hay que abrirlos
+# todos: quedarse a medias no daría un error, daría una cifra corta y creíble.
 MAX_PMU_FDS = 32
+MAX_IMC_FDS = 64
 
 # perf_event_open no tiene envoltorio en libc: se invoca por número, y el
 # número depende de la arquitectura. Donde no se sepa, no se intenta.
@@ -325,11 +351,32 @@ class _PerfEventAttr(ctypes.Structure):
     ]
 
 
-# Descriptores abiertos del PMU, por PMU y evento. Se abren una sola vez y se
-# dejan vivos: los contadores son acumulativos desde que se abren, así que
-# cerrarlos y volver a abrirlos entre muestreos perdería la referencia.
-_PMU_FDS: dict[str, dict[str, int]] = {}
-_PMU_FALLO = ""
+# Descriptores abiertos del PMU, por familia, PMU y evento. Se abren una sola
+# vez y se dejan vivos: los contadores son acumulativos desde que se abren, así
+# que cerrarlos y volver a abrirlos entre muestreos perdería la referencia.
+_PMU_FDS: dict[str, dict[str, dict[str, int]]] = {}
+_PMU_FALLO: dict[str, str] = {}
+# Si el tope de descriptores dejó eventos sin abrir. Solo importa en el IMC,
+# donde los contadores se suman entre canales y faltar uno rebaja el total.
+_PMU_TRUNCADO: dict[str, bool] = {}
+
+
+def _pmu_admitido(familia: str, pmu: str):
+    """Qué eventos se dejan abrir en ese PMU, o None si no es de la familia.
+
+    Aquí está la lista entera de lo que este ayudante puede contar. El cliente
+    pide una familia y nada más: ni el nombre del PMU ni el número de evento
+    llegan nunca de fuera.
+    """
+    if familia == FAMILIA_GPU:
+        if PMU_GPU.match(pmu):
+            return PMU_EVENT
+        if pmu == PMU_POWER:
+            return PMU_POWER_EVENT
+    elif familia == FAMILIA_IMC:
+        if PMU_IMC.match(pmu):
+            return PMU_IMC_EVENT
+    return None
 
 
 def _pmu_campo(pmu: str, campo: str):
@@ -379,27 +426,31 @@ def _pmu_config(pmu: str, evento: str):
         return None
 
 
-def _abrir_pmu() -> None:
-    """Abre los contadores de ocupación de cada gráfica Intel que haya."""
-    global _PMU_FALLO
+def _abrir_pmu(familia: str) -> None:
+    """Abre los contadores de esa familia que esta máquina publique."""
+    tope = MAX_IMC_FDS if familia == FAMILIA_IMC else MAX_PMU_FDS
+    vacio = ("no hay ningún controlador de memoria con contadores"
+             if familia == FAMILIA_IMC
+             else "no hay ninguna gráfica con contadores de ocupación")
+    fds: dict[str, dict[str, int]] = {}
+    fallo = ""
+
     numero = PERF_EVENT_OPEN.get(os.uname().machine)
     if numero is None:
-        _PMU_FALLO = f"perf_event_open no está mapeado en {os.uname().machine}"
+        _PMU_FALLO[familia] = f"perf_event_open no está mapeado en {os.uname().machine}"
         return
     try:
         nombres = sorted(os.listdir(PMU_ROOT))
     except OSError:
-        _PMU_FALLO = "este kernel no publica ningún PMU"
+        _PMU_FALLO[familia] = "este kernel no publica ningún PMU"
         return
 
     libc = ctypes.CDLL(None, use_errno=True)
     abiertos = 0
+    truncado = False
     for pmu in nombres:
-        if PMU_GPU.match(pmu):
-            patron = PMU_EVENT
-        elif pmu == PMU_POWER:
-            patron = PMU_POWER_EVENT
-        else:
+        patron = _pmu_admitido(familia, pmu)
+        if patron is None:
             continue
         try:
             with open(f"{PMU_ROOT}/{pmu}/type", encoding="ascii") as handle:
@@ -409,7 +460,12 @@ def _abrir_pmu() -> None:
             continue
 
         for evento in eventos:
-            if not patron.match(evento) or abiertos >= MAX_PMU_FDS:
+            if not patron.match(evento):
+                continue
+            if abiertos >= tope:
+                # Quedarse a medias en el IMC no da un error, da una suma
+                # corta: se avisa para que nadie publique esa cifra.
+                truncado = True
                 continue
             config = _pmu_config(pmu, evento)
             if config is None:
@@ -419,17 +475,22 @@ def _abrir_pmu() -> None:
             attr.size = ctypes.sizeof(_PerfEventAttr)
             attr.config = config
             # pid=-1 y cpu=0: es un PMU de dispositivo, no uno por núcleo, y
-            # cuenta lo que hace la gráfica entera. No se ata a ningún proceso.
+            # cuenta lo que hace la máquina entera. No se ata a ningún proceso.
             descriptor = libc.syscall(numero, ctypes.byref(attr), -1, 0, -1, 0)
             if descriptor < 0:
-                if not _PMU_FALLO:
-                    _PMU_FALLO = os.strerror(ctypes.get_errno())
+                if not fallo:
+                    fallo = os.strerror(ctypes.get_errno())
                 continue
-            _PMU_FDS.setdefault(pmu, {})[evento] = descriptor
+            fds.setdefault(pmu, {})[evento] = descriptor
             abiertos += 1
 
-    if not _PMU_FDS and not _PMU_FALLO:
-        _PMU_FALLO = "no hay ninguna gráfica con contadores de ocupación"
+    if fds:
+        _PMU_FDS[familia] = fds
+        _PMU_TRUNCADO[familia] = truncado
+    if not fds and not fallo:
+        fallo = vacio
+    if fallo:
+        _PMU_FALLO[familia] = fallo
 
 
 def _pmu_escala(pmu: str, evento: str):
@@ -445,22 +506,36 @@ def _pmu_escala(pmu: str, evento: str):
         return None
 
 
-def read_gpu_pmu() -> dict:
-    """Los contadores de ocupación por motor, en crudo y con su reloj.
+def _pmu_unidad(pmu: str, evento: str):
+    """La unidad que el kernel publica para un contador, si publica alguna.
 
-    Devuelve nanosegundos acumulados desde que se abrió cada contador. Quién
-    los reste y los convierta en un porcentaje es el proceso sin privilegios;
-    aquí solo se leen ocho bytes por descriptor.
+    Va con la escala y por el mismo motivo: es un dato del kernel y aquí se
+    pasa tal cual. Que el contador del controlador de memoria cuente MiB y no
+    otra cosa lo comprueba el proceso sin privilegios, que es quien va a
+    convertirlo en bytes por segundo.
     """
-    if not _PMU_FDS:
-        _abrir_pmu()
-    if not _PMU_FDS:
-        return _fail(f"no se pudo leer el PMU de la gráfica: {_PMU_FALLO}",
-                     "unsupported")
+    try:
+        with open(f"{PMU_ROOT}/{pmu}/events/{evento}.unit", encoding="ascii") as h:
+            return h.read(32).strip()
+    except OSError:
+        return None
 
-    motores: dict[str, dict[str, int]] = {}
+
+def _leer_familia(familia: str, con_unidad: bool = False) -> dict:
+    """Lee de una vez todos los contadores abiertos de una familia.
+
+    Ocho bytes por descriptor y nada más. Restar contra la vuelta anterior y
+    convertir a porcentajes, vatios o bytes por segundo es cosa del proceso
+    sin privilegios: aquí no se interpreta ninguna cifra.
+
+    La unidad solo se busca donde hace falta. Los de la gráfica no la usan y
+    pedirla serían ocho aperturas de sysfs por segundo, como root, para tirar
+    lo leído.
+    """
+    contadores: dict[str, dict[str, int]] = {}
     escalas: dict[str, dict[str, float]] = {}
-    for pmu, eventos in _PMU_FDS.items():
+    unidades: dict[str, dict[str, str]] = {}
+    for pmu, eventos in _PMU_FDS.get(familia, {}).items():
         for evento, descriptor in eventos.items():
             try:
                 # os.read y no os.pread: un descriptor de perf no es
@@ -470,15 +545,58 @@ def read_gpu_pmu() -> dict:
                 continue
             if len(crudo) != 8:
                 continue
-            motores.setdefault(pmu, {})[evento] = struct.unpack("<Q", crudo)[0]
+            contadores.setdefault(pmu, {})[evento] = struct.unpack("<Q", crudo)[0]
             escala = _pmu_escala(pmu, evento)
             if escala is not None:
                 escalas.setdefault(pmu, {})[evento] = escala
+            unidad = _pmu_unidad(pmu, evento) if con_unidad else None
+            if unidad:
+                unidades.setdefault(pmu, {})[evento] = unidad
+    return {"counters": contadores, "scales": escalas, "units": unidades}
 
-    if not motores:
+
+def read_gpu_pmu() -> dict:
+    """Los contadores de ocupación por motor, en crudo y con su reloj.
+
+    Devuelve nanosegundos acumulados desde que se abrió cada contador. Quién
+    los reste y los convierta en un porcentaje es el proceso sin privilegios;
+    aquí solo se leen ocho bytes por descriptor.
+    """
+    if FAMILIA_GPU not in _PMU_FDS:
+        _abrir_pmu(FAMILIA_GPU)
+    if FAMILIA_GPU not in _PMU_FDS:
+        return _fail("no se pudo leer el PMU de la gráfica: "
+                     f"{_PMU_FALLO.get(FAMILIA_GPU, '')}", "unsupported")
+
+    leido = _leer_familia(FAMILIA_GPU)
+    if not leido["counters"]:
         return _fail("los contadores dejaron de responder", "io")
     return {"ok": True, "monotonic_ns": time.monotonic_ns(),
-            "engines": motores, "scales": escalas}
+            "engines": leido["counters"], "scales": leido["scales"]}
+
+
+def read_imc() -> dict:
+    """Cuánto tráfico mueve el controlador de memoria, en crudo.
+
+    Cada cuenta es una línea de caché movida entre el controlador y la RAM
+    desde que se abrió el contador; cuántos bytes son lo dice la escala que
+    publica el kernel, y por eso viaja al lado. Es lo mismo que enseña
+    `intel_gpu_top` junto a la gráfica, aunque el dato no sea de la gráfica:
+    es el controlador entero, con el tráfico del procesador dentro.
+    """
+    if FAMILIA_IMC not in _PMU_FDS:
+        _abrir_pmu(FAMILIA_IMC)
+    if FAMILIA_IMC not in _PMU_FDS:
+        return _fail("no se pudo leer el PMU del controlador de memoria: "
+                     f"{_PMU_FALLO.get(FAMILIA_IMC, '')}", "unsupported")
+
+    leido = _leer_familia(FAMILIA_IMC, con_unidad=True)
+    if not leido["counters"]:
+        return _fail("los contadores dejaron de responder", "io")
+    return {"ok": True, "monotonic_ns": time.monotonic_ns(),
+            "counters": leido["counters"], "scales": leido["scales"],
+            "units": leido["units"],
+            "truncated": _PMU_TRUNCADO.get(FAMILIA_IMC, False)}
 
 
 def read_rapl() -> dict:
@@ -528,6 +646,8 @@ def handle(request: dict) -> dict:
         return read_smart(request.get("device"))
     if action == "gpu_pmu":
         return read_gpu_pmu()
+    if action == "imc":
+        return read_imc()
     if action == "rapl":
         return read_rapl()
     return _fail(f"acción desconocida: {action!r}", "bad_request")

@@ -15,9 +15,10 @@ ACTION_SMBIOS = "smbios"
 ACTION_MSR = "msr"
 ACTION_SMART = "smart"
 ACTION_GPU_PMU = "gpu_pmu"
+ACTION_IMC = "imc"
 ACTION_RAPL = "rapl"
 ACTIONS = frozenset({ACTION_PING, ACTION_SMBIOS, ACTION_MSR, ACTION_SMART,
-                     ACTION_GPU_PMU, ACTION_RAPL})
+                     ACTION_GPU_PMU, ACTION_IMC, ACTION_RAPL})
 
 # Rutas que el ayudante puede abrir. No hay ninguna forma de pedirle otra.
 DMI_TABLE = "/sys/firmware/dmi/tables/DMI"
@@ -43,7 +44,7 @@ SMART_DATA_BYTES = 512            # lo que ocupa la respuesta de los dos
 # La versión del ayudante que este programa necesita. Vive aquí además de en
 # `helper.py` porque el ayudante viaja solo —por argv o como copia instalada—
 # y no puede importar nada de aquí; hay un test que no las deja separarse.
-VERSION_REQUERIDA = 2
+VERSION_REQUERIDA = 3
 
 MSR_ALLOWED: dict[int, str] = {
     0x0198: "IA32_PERF_STATUS",          # voltaje y ratio actuales
@@ -72,6 +73,19 @@ MSR_ALLOWED: dict[int, str] = {
 PMU_ROOT = "/sys/bus/event_source/devices"
 PMU_GPU = r"^(i915|xe_[0-9a-f]{4}_[0-9a-f]{2}_[0-9a-f]{2}\.[0-9a-f])$"
 PMU_EVENT = r"^(rcs|bcs|vcs|vecs|ccs)\d+-busy$"
+
+# El controlador de memoria, por los mismos dos patrones y con la misma regla:
+# el cliente pide «el controlador de memoria» y el ayudante decide qué abre.
+# Los contadores son acumulativos y agregados de la máquina entera —cuántas
+# líneas de caché han ido y venido de la RAM—, así que no dicen nada de ningún
+# proceso en concreto.
+#
+# Intel le cambia el nombre al PMU según la generación: `uncore_imc` hasta
+# Comet Lake, `uncore_imc_free_running_N` de Ice Lake en adelante y
+# `uncore_imc_N` en los de servidor, que llaman a sus eventos por el comando
+# de la DRAM en vez de por la dirección.
+PMU_IMC = r"^uncore_imc(_free_running)?(_\d+)?$"
+PMU_IMC_EVENT = r"^(data_reads?|data_writes?|cas_count_read|cas_count_write|ia_requests)$"
 
 # Tamaño máximo de un mensaje, en bytes. Evita que un lado pueda hacer que el
 # otro reserve memoria sin límite.

@@ -19,7 +19,8 @@ from typing import Any, Iterable, Optional
 from ..model import (
     Board, Cache, Clocks, CpuInfo, CpuType, DriverHint, Gpu, LogicalCpu,
     NetworkInterface,
-    Disk, MemoryArray, MemoryModule, Need, Note, Power, PrivilegedState, Sensor,
+    Disk, MemoryArray, MemoryModule, MemoryTraffic, Need, Note, Power,
+    PrivilegedState, Sensor,
     Snapshot, System,
 )
 
@@ -39,6 +40,7 @@ class Draft:
     modules: list[MemoryModule] = field(default_factory=list)
     spd: list = field(default_factory=list)
     memory_array: Optional[MemoryArray] = None
+    memory_traffic: Optional[MemoryTraffic] = None
     gpus: list[dict[str, Any]] = field(default_factory=list)
     network: list = field(default_factory=list)
     disks: list = field(default_factory=list)
@@ -122,6 +124,7 @@ class Draft:
             modules=tuple(self.modules),
             spd=tuple(self.spd),
             memory_array=self.memory_array,
+            memory_traffic=self.memory_traffic,
             network=tuple(self.network),
             disks=tuple(self.disks),
             batteries=tuple(self.batteries),
