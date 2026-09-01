@@ -201,6 +201,103 @@ class TestVelocidadReal(unittest.TestCase):
         self.assertFalse(modulo.underclocked)
 
 
+# Los grados que publica JEDEC, con el tCK ya cuantizado como lo guarda el SPD:
+# en picosegundos enteros, que es de donde viene todo el problema. Un DDR4-2133
+# no guarda 937,5 sino 938, y `2000000/938` da 2132,2.
+GRADOS = {
+    "DDR3": {800: 2500, 1066: 1875, 1333: 1500, 1600: 1250, 1866: 1071,
+             2133: 938},
+    "DDR4": {1600: 1250, 1866: 1071, 2133: 938, 2400: 833, 2666: 750,
+             2933: 682, 3200: 625},
+    "DDR5": {4000: 500, 4400: 455, 4800: 417, 5200: 385, 5600: 357, 6000: 333,
+             6400: 313, 6800: 294, 7200: 278},
+    # Perfiles del fabricante, que se salen de la tabla oficial pero no de la
+    # rejilla: el reloj de referencia va en tercios igual.
+    "XMP": {3600: 556, 3733: 536, 4133: 484, 4266: 469, 6600: 303, 7000: 286},
+}
+
+
+class TestElGradoDeCadaVelocidad(unittest.TestCase):
+    """Que un módulo no salga catalogado a una velocidad que no existe.
+
+    El tCK del SPD viene en picosegundos enteros, así que la división no cae
+    redonda. Antes se redondeaba a la centena más cercana, que va bien con los
+    grados redondos y mal con los que llevan tercio: un DDR4-2666 salía
+    «2700 MT/s». Y no era solo feo: con el catalogado en 2700 y el real en
+    2667, el módulo parecía ir por debajo de su velocidad y encendía el aviso.
+
+    Once de los veintiocho grados conocidos salían mal. No se veía porque la
+    máquina donde se desarrolla y el fixture del repositorio son DDR4-3200, que
+    es de los que caen redondos.
+    """
+
+    def test_todos_los_grados_salen_con_su_nombre(self):
+        from silux.spd import grado_jedec
+
+        for generacion, grados in GRADOS.items():
+            for nombre, tck in grados.items():
+                with self.subTest(generacion=generacion, grado=nombre):
+                    self.assertEqual(grado_jedec(2_000_000 / tck), nombre)
+
+    def test_la_formula_de_antes_fallaba_en_once(self):
+        """Para que el test valga: se ejecuta la de antes y se cuenta.
+
+        Sin esto no hay forma de saber si esta tabla estaba comprobando algo o
+        pasaba sola.
+        """
+        fallos = sum(round(2_000_000 / tck / 100) * 100 != nombre
+                     for grados in GRADOS.values()
+                     for nombre, tck in grados.items())
+        self.assertEqual(fallos, 11)
+
+    def test_una_velocidad_que_no_se_parece_a_nada_se_deja_como_está(self):
+        """Un SPD ilegible no tiene por qué salir con un número bonito."""
+        from silux.spd import grado_jedec
+
+        self.assertEqual(grado_jedec(50), 50,
+                         "50 MT/s no es un grado, y decir que son 66 sería "
+                         "maquillar un dato roto")
+
+    def test_por_debajo_de_la_rejilla_no_hay_grado_que_dar(self):
+        """Cero es lo que el resto del módulo entiende como «no hay dato»."""
+        from silux.spd import grado_jedec
+
+        for absurdo in (0, 7, -1):
+            with self.subTest(mts=absurdo):
+                self.assertEqual(grado_jedec(absurdo), 0)
+
+    def test_la_cuenta_va_en_enteros(self):
+        """Con flotantes, 12 × 266,666… puede dar 3199,9999 y truncar a 3199.
+
+        Se comprueba en toda la rejilla y no en un caso suelto: es el tipo de
+        fallo que aparece en un múltiplo cualquiera y no en el que se probó.
+        """
+        from silux.spd import grado_jedec
+
+        for n in range(3, 120):
+            exacto = n * 200 / 3
+            with self.subTest(n=n):
+                self.assertEqual(grado_jedec(exacto), n * 200 // 3)
+
+
+class TestLaFormulaNoSeCopiaEnVariosSitios(unittest.TestCase):
+    """Estaba escrita tres veces —DDR4, DDR5 y los perfiles— y por eso el
+    fallo era el mismo en las tres. Arreglar una y olvidar las otras es
+    exactamente lo que este test impide."""
+
+    def test_nadie_calcula_la_velocidad_por_su_cuenta(self):
+        import pathlib as _p
+        import re as _re
+
+        fuente = _p.Path("silux/spd.py").read_text(encoding="utf-8")
+        # Fuera de `grado_jedec`, nadie puede redondear una velocidad.
+        cuerpo = fuente.split("def grado_jedec")[1].split("\ndef ", 1)[1]
+        sospechosas = _re.findall(r"2_000_000\s*/\s*\w+\s*/\s*100", cuerpo)
+        self.assertEqual(sospechosas, [],
+                         "hay quien vuelve a redondear a la centena en vez de "
+                         "pasar por grado_jedec")
+
+
 if __name__ == "__main__":
     unittest.main()
 
