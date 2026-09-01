@@ -555,6 +555,83 @@ def memory_bandwidth_share(medido: Optional[int], teorico: Optional[int]) -> Opt
     return round(medido / teorico * 100, 1)
 
 
+# Los trozos que los firmwares pegan en el localizador de un zócalo. Salen así,
+# sin espacios y cada fabricante a su manera: «Controller0-ChannelA»,
+# «ChannelA-DIMM0», «DIMM_A1», «DIMM A», «DIMM 0».
+_ZOC_CONTROLADOR = re.compile(r"controller\s*[-_]?\s*(\d+)", re.I)
+_ZOC_CANAL = re.compile(r"chan(?:nel)?\s*[-_]?\s*([a-z])\b", re.I)
+# «DIMM_A1» lleva canal y número pegados; «DIMM 0» solo número; «DIMM A» solo
+# canal. El orden importa: el primero que casa gana.
+_ZOC_DIMM_CANAL_Y_NUM = re.compile(r"dimm\s*[-_]?\s*([a-z])\s*(\d+)", re.I)
+_ZOC_DIMM_NUM = re.compile(r"dimm\s*[-_]?\s*(\d+)", re.I)
+_ZOC_DIMM_CANAL = re.compile(r"dimm\s*[-_]?\s*([a-z])\b", re.I)
+
+
+def _piezas_del_zocalo(locator: str) -> dict:
+    """Qué dice el localizador de un zócalo, campo a campo.
+
+    Vacío si no se reconoce nada, y entonces quien llama deja el texto crudo:
+    inventarse una posición a partir de algo que no se entiende es peor que
+    enseñar lo que puso el firmware.
+    """
+    piezas: dict = {}
+    if (casa := _ZOC_CONTROLADOR.search(locator)):
+        piezas["controlador"] = casa.group(1)
+    if (casa := _ZOC_CANAL.search(locator)):
+        piezas["canal"] = casa.group(1).upper()
+
+    if (casa := _ZOC_DIMM_CANAL_Y_NUM.search(locator)):
+        piezas.setdefault("canal", casa.group(1).upper())
+        piezas["dimm"] = casa.group(2)
+    elif (casa := _ZOC_DIMM_NUM.search(locator)):
+        piezas["dimm"] = casa.group(1)
+    elif (casa := _ZOC_DIMM_CANAL.search(locator)):
+        piezas.setdefault("canal", casa.group(1).upper())
+    return piezas
+
+
+def slot_labels(locators: list[str]) -> dict[str, str]:
+    """Un título legible para cada zócalo, con lo mínimo que lo distingue.
+
+    El firmware pega tres datos sin espacios y cada uno a su manera, así que la
+    misma pestaña se ve distinta en cada equipo: «Controller0-ChannelA» aquí,
+    «DIMM_A1» allá. Y con cuatro zócalos el localizador se repite entre
+    canales, que es como salían dos «DIMM 0» y dos «DIMM 1».
+
+    La regla: **el canal sale siempre que se conozca**, porque es lo que decide
+    el rendimiento y es lo que se busca al abrir esto; el controlador y el
+    número de DIMM solo cuando hacen falta para que dos no se llamen igual.
+
+    Devuelve `{}` cuando no hay nada que mejorar: un solo zócalo sin datos que
+    sacar, ninguno reconocido, o todos idénticos. Quien llama deja el crudo.
+    """
+    utiles = [n for n in locators if n]
+    if not utiles:
+        return {}
+    piezas = {n: _piezas_del_zocalo(n) for n in dict.fromkeys(utiles)}
+    if not all(piezas.values()):
+        return {}                      # alguno no se entiende: no se toca nada
+
+    def etiqueta(nombre: str, campos: tuple) -> str:
+        p = piezas[nombre]
+        partes = []
+        if "controlador" in campos and "controlador" in p:
+            partes.append(_("memory.slot.controller").format(n=p["controlador"]))
+        if "canal" in p:
+            partes.append(_("memory.slot.channel").format(c=p["canal"]))
+        if "dimm" in campos and "dimm" in p:
+            partes.append(_("memory.slot.dimm").format(n=p["dimm"]))
+        return " · ".join(partes)
+
+    # De menos a más: se añade un campo solo si sin él dos zócalos se llamarían
+    # igual. Con el DIMM antes que el controlador, que es lo que la gente mira.
+    for campos in ((), ("dimm",), ("dimm", "controlador"), ("controlador",)):
+        salida = {n: etiqueta(n, campos) for n in piezas}
+        if all(salida.values()) and len(set(salida.values())) == len(salida):
+            return salida if salida != {n: n for n in salida} else {}
+    return {}
+
+
 def memory_speed_warning(modulos) -> Optional[str]:
     """Por qué la memoria no va más rápido, cuando hay algo que decir.
 
