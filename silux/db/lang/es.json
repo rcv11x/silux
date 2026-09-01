@@ -498,7 +498,7 @@
   "memory.bw.note": "Los MT/s dicen a qué velocidad está catalogado el módulo, y el teórico sale de una multiplicación. Esto es lo que la máquina consigue leyendo de verdad: ninguna llega a su teórico, y por debajo de la mitad suele haber un canal sin poblar.",
   "memory.bw.ram": "Lectura en RAM",
   "memory.bw.share": "{pct} % de {total} teóricos",
-  "memory.card.bandwidth": "Medido en este equipo",
+  "memory.card.bandwidth": "Ancho de banda y latencia",
   "memory.card.modules": "Detalle de los módulos",
   "memory.card.timings": "Perfiles y temporizaciones",
   "memory.chip.underclocked": "por debajo de su velocidad",

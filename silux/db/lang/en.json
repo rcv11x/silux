@@ -498,7 +498,7 @@
   "memory.bw.note": "MT/s tell you what the module is rated for, and the theoretical figure is a multiplication. This is what the machine actually achieves when reading: none reach their theoretical figure, and below half there is usually an unpopulated channel.",
   "memory.bw.ram": "Read from RAM",
   "memory.bw.share": "{pct} % of {total} theoretical",
-  "memory.card.bandwidth": "Measured on this machine",
+  "memory.card.bandwidth": "Bandwidth and latency",
   "memory.card.modules": "Module details",
   "memory.card.timings": "Profiles and timings",
   "memory.chip.underclocked": "below its rated speed",
