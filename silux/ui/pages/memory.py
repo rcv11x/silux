@@ -510,8 +510,18 @@ class MemoryPage(QScrollArea):
         self._slots_host._items.clear()
         self._slot_grids.clear()
 
+        # El firmware pega el controlador, el canal y el número sin espacios y
+        # cada fabricante a su manera, así que la misma pestaña se veía distinta
+        # en cada equipo y con cuatro zócalos salían dos «DIMM 0».
+        etiquetas = render.slot_labels([m.locator or "" for m in modules])
+
         for module in modules:
-            card = Card(module.locator or _("memory.slot"))
+            crudo = module.locator or ""
+            card = Card(etiquetas.get(crudo) or crudo or _("memory.slot"))
+            if etiquetas.get(crudo):
+                # Lo que puso el firmware no se pierde, solo deja de ser el
+                # titular: hace falta para hablar con quien reporta un fallo.
+                card.setToolTip(crudo)
             if not module.populated:
                 empty = QLabel(_("memory.slot.empty"))
                 empty.setObjectName("Muted")
@@ -583,8 +593,10 @@ class MemoryPage(QScrollArea):
         # y «Controller0-ChannelB»— y lo que los distingue está al final, que
         # es justo lo que se recorta cuando no cabe: las dos filas salían como
         # «Controller0-C…» y no había forma de saber cuál era cuál.
-        corto = _sin_el_prefijo_comun(
-            [m.locator or (m.spd.address if m.spd else "") for m in modules])
+        nombres = [m.locator or (m.spd.address if m.spd else "") for m in modules]
+        # El mismo título que las tarjetas de arriba; si no se reconoce el
+        # formato, el recorte del prefijo común, que al menos quita el ruido.
+        corto = render.slot_labels(nombres) or _sin_el_prefijo_comun(nombres)
         for module in modules:
             spd = module.spd
             if spd is None:

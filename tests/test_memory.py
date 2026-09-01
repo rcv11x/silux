@@ -212,3 +212,164 @@ class TestElTechoDelConjuntoEsElDelMasLento(unittest.TestCase):
 
         self.assertIsNone(render.memory_speed_warning(
             [_modulo(None, None), _modulo(None, None)]))
+
+
+class TestElTituloDeCadaZocalo(unittest.TestCase):
+    """El localizador del firmware no es un título.
+
+    Llega con el controlador, el canal y el número pegados y sin espacios, y
+    cada fabricante lo escribe a su manera: «Controller0-ChannelA» en un
+    Lenovo, «DIMM_A1» en una placa de escritorio. Así la misma pestaña se ve
+    distinta en cada equipo, y con cuatro zócalos el nombre se repite entre
+    canales: salían dos «DIMM 0» y dos «DIMM 1».
+
+    Los localizadores de aquí son todos de máquinas reales.
+    """
+
+    def _titulos(self, *locators):
+        from silux import render
+
+        salida = render.slot_labels(list(locators))
+        return [salida.get(l, l) for l in locators]
+
+    def test_el_canal_sale_siempre_que_se_conozca(self):
+        """Es lo que decide el rendimiento y a lo que se viene aquí."""
+        self.assertEqual(
+            self._titulos("Controller0-ChannelA", "Controller0-ChannelB"),
+            ["Canal A", "Canal B"])
+
+    def test_el_controlador_solo_cuando_hace_falta(self):
+        """Un ThinkPad T14 con los dos módulos en canal A de controladores
+        distintos: sin el controlador los dos se llamarían igual."""
+        self.assertEqual(
+            self._titulos("Controller0-ChannelA", "Controller1-ChannelA"),
+            ["Controlador 0 · Canal A", "Controlador 1 · Canal A"])
+
+    def test_con_cuatro_zocalos_ya_no_se_repiten(self):
+        self.assertEqual(
+            self._titulos("ChannelA-DIMM0", "ChannelA-DIMM1",
+                          "ChannelB-DIMM0", "ChannelB-DIMM1"),
+            ["Canal A · DIMM 0", "Canal A · DIMM 1",
+             "Canal B · DIMM 0", "Canal B · DIMM 1"])
+
+    def test_el_canal_pegado_al_numero_tambien_se_entiende(self):
+        """«DIMM_A1» y «DIMM A» son de placas de escritorio."""
+        self.assertEqual(self._titulos("DIMM_A1", "DIMM_B1"),
+                         ["Canal A", "Canal B"])
+        self.assertEqual(self._titulos("DIMM A", "DIMM B"),
+                         ["Canal A", "Canal B"])
+
+    def test_un_solo_modulo_tambien_se_limpia(self):
+        self.assertEqual(self._titulos("Controller0-ChannelA"), ["Canal A"])
+
+    def test_lo_que_no_se_entiende_se_deja_crudo(self):
+        """Inventarse una posición a partir de algo que no se reconoce es peor
+        que enseñar lo que puso el firmware."""
+        for crudos in (("A_RARO_1", "B_RARO_2"), ("Zócalo 0", "Zócalo 2"),
+                       ("SODIMM", "SODIMM2")):
+            with self.subTest(crudos=crudos):
+                self.assertEqual(self._titulos(*crudos), list(crudos))
+
+    def test_si_no_hay_nada_que_mejorar_no_se_toca(self):
+        """«DIMM 0» ya es el título que saldría, así que no se reescribe."""
+        from silux import render
+
+        self.assertEqual(render.slot_labels(["DIMM 0", "DIMM 1"]), {})
+
+    def test_nunca_deja_dos_zocalos_con_el_mismo_titulo(self):
+        """Es el fallo que venía a arreglar: dos tarjetas iguales no se
+        pueden distinguir, y entonces mejor el crudo."""
+        from silux import render
+
+        for locators in (["ChannelA-DIMM0", "ChannelA-DIMM1"],
+                         ["Controller0-ChannelA", "Controller1-ChannelA"],
+                         ["ChannelA-DIMM0", "ChannelB-DIMM0"],
+                         ["Controller0-ChannelA-DIMM1", "Controller1-ChannelA-DIMM0"]):
+            with self.subTest(locators=locators):
+                salida = render.slot_labels(locators)
+                titulos = [salida.get(l, l) for l in locators]
+                self.assertEqual(len(set(titulos)), len(titulos), titulos)
+
+
+class TestLasDosDetectorasDeCanalNoSePisan(unittest.TestCase):
+    """`render` tiene dos lecturas del localizador y son cosas distintas.
+
+    Una cuenta canales para saber si la memoria va en doble canal; la otra
+    compone el título del zócalo. Al escribir la segunda se reutilizaron los
+    nombres `_CANAL` y `_CONTROLADOR` de la primera y se la llevaron por
+    delante: diecisiete tests en rojo. En un módulo de novecientas líneas eso
+    no se ve al escribirlo.
+    """
+
+    def test_cada_una_tiene_sus_propios_patrones(self):
+        from silux import render
+
+        self.assertIsInstance(render._CANAL, tuple,
+                              "la de contar canales usa varios patrones")
+        self.assertTrue(hasattr(render, "_ZOC_CANAL"),
+                        "la del título tiene que llevar su propio prefijo")
+
+    def test_contar_canales_sigue_funcionando(self):
+        """La prueba de que no se pisan, ejecutada y no razonada."""
+        from silux import render
+        from silux.model import MemoryModule
+
+        modulos = [MemoryModule(populated=True, locator="Controller0-ChannelA"),
+                   MemoryModule(populated=True, locator="Controller1-ChannelA")]
+        self.assertEqual(render.memory_channels(modulos), 2)
+
+
+class TestElTituloLlegaALaTarjeta(unittest.TestCase):
+    """Probar la función no es probar que se vea.
+
+    La regla de la casa: un dato no está terminado hasta que hay un test que lo
+    mira en pantalla, montando la página de verdad. `slot_labels` puede estar
+    perfecta y la tarjeta seguir titulándose con el localizador crudo si nadie
+    la llama, que es como estaba antes.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        import os
+
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        from PySide6.QtWidgets import QApplication
+
+        cls.app = QApplication.instance() or QApplication([])
+
+    def _titulos_en_pantalla(self, *locators):
+        from silux.model import CpuInfo, CpuType, MemoryModule, Snapshot
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.memory import MemoryPage
+
+        pagina = MemoryPage(theme.palette_for(self.app, "dark"), Preferences())
+        self.addCleanup(pagina.deleteLater)
+        modulos = [MemoryModule(populated=True, locator=l, size_bytes=8 << 30)
+                   for l in locators]
+        pagina.apply(Snapshot(
+            monotonic_ns=0,
+            cpu=CpuInfo(types=(CpuType(key="general", label="g"),)),
+            modules=tuple(modulos),
+        ))
+        self.app.processEvents()
+
+        from silux.ui.widgets import Card
+
+        # En minúsculas: que el título se pinte en versalitas lo decide la
+        # hoja de estilos, y aquí se comprueba el dato, no el estilo.
+        return [c._title_label.text().lower() for c in pagina.findChildren(Card)
+                if c._title_label is not None]
+
+    def test_las_tarjetas_se_titulan_con_el_canal(self):
+        titulos = self._titulos_en_pantalla("Controller0-ChannelA",
+                                            "Controller0-ChannelB")
+        self.assertIn("canal a", titulos)
+        self.assertIn("canal b", titulos)
+        self.assertNotIn("controller0-channela", titulos,
+                         "la tarjeta sigue con el localizador crudo")
+
+    def test_y_lo_que_no_se_reconoce_se_queda_como_estaba(self):
+        titulos = self._titulos_en_pantalla("SODIMM", "SODIMM2")
+        self.assertIn("sodimm", titulos)
+        self.assertIn("sodimm2", titulos)
