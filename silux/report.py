@@ -547,6 +547,16 @@ def _rendimiento() -> str:
     # El pico de lo ajeno explica una cifra baja que si no parece del equipo.
     if ultima.background_peak is not None:
         lineas.append(f"| Otro programa, como mucho | {ultima.background_peak:.1f} % |")
+    # Con qué bibliotecas se midió, que es la otra mitad de por qué dos
+    # equipos iguales dan cifras distintas. Dos de las cinco cargas son
+    # `zlib`, y la misma pieza rinde un 28 % menos con la zlib clásica que
+    # con zlib-ng; y la versión sola no basta, porque zlib-ng elige ruta
+    # según las extensiones del procesador. Van en la misma fila porque por
+    # separado no se puede interpretar ninguna de las dos.
+    if ultima.zlib_version:
+        extensiones = " · ".join(ultima.zlib_simd) or "ninguna de las que usa"
+        lineas.append(f"| Bibliotecas | zlib {ultima.zlib_version}"
+                      f" · {extensiones} |")
     return "\n".join(lineas) + "\n"
 
 

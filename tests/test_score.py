@@ -4,6 +4,7 @@ Lo que se vigila aquí es que no vuelva a colarse una cifra que parece
 comparable y no lo es, que es exactamente lo que hacía la anterior.
 """
 
+import pathlib
 import unittest
 
 from silux import score
@@ -100,7 +101,7 @@ class TestSoloPuntuaLoQueSePuedeComparar(unittest.TestCase):
     def test_una_prueba_a_la_que_le_falte_una_carga_no_puntua(self):
         """Con cuatro de cinco, la cifra parecería igual de válida."""
         incompleta = {k: v for k, v in self.scores.items()
-                      if not k.startswith("memoria/")}
+                      if not k.startswith("verificacion/")}
         self.assertIsNone(
             score.puntuar(incompleta, self.hilos))
 
@@ -230,3 +231,128 @@ class TestNoSeMezclanEscalas(unittest.TestCase):
         """Las guardadas antes no dicen con qué escala se midieron."""
         self.assertFalse(self._entrada(score.VERSION).comparable_con(
             self._entrada(None)))
+
+
+class TestLaTablaYLasMedidasEnLaMismaUnidad(unittest.TestCase):
+    """La escala y lo que se divide por ella tienen que contar igual.
+
+    `medir_referencia.py` componía la tabla con `operations / seconds` escrito
+    a mano, mientras el historial ya guardaba `rate`. Con eso, la carga que se
+    puntúa en bytes por segundo quedaba en la referencia como operaciones por
+    segundo y el cociente salía dos millones de veces mayor. Ninguna de las
+    dos rutas estaba mal por separado: lo que estaba mal era que fueran dos.
+
+    Se ejecuta la herramienta de verdad y se lee el archivo que escribe, no lo
+    que imprime: escribir aquí la misma cuenta que se quiere vigilar daría un
+    test que se compara consigo mismo, y leer la tabla impresa lo ata al
+    formato de la pantalla, que ya rompió estos dos tests una vez.
+    """
+
+    BLOQUE = 192 * 1024 * 1024
+
+    def _resultado(self):
+        from silux.benchmark import Conditions, Medida, Result
+        medidas = []
+        for carga in ("compresion", "hash", "compresion_dura", "derivacion"):
+            for hilos in (1, 4):
+                medidas.append(Medida(load=carga, threads=hilos,
+                                      operations=100 * hilos, seconds=10.0))
+        for hilos in (1, 4):
+            medidas.append(Medida(load="verificacion", threads=hilos,
+                                  operations=100 * hilos, seconds=10.0,
+                                  bytes_=self.BLOQUE))
+        return Result(measures=tuple(medidas), conditions=Conditions(),
+                      warnings=())
+
+    def _tabla_escrita(self):
+        """Lo que la herramienta deja en `scores.json`, en un sitio de usar y tirar."""
+        import importlib.util
+        import io
+        import json
+        import tempfile
+        from contextlib import redirect_stdout
+        from unittest import mock
+
+        ruta = (pathlib.Path(__file__).resolve().parent.parent
+                / "tools" / "medir_referencia.py")
+        spec = importlib.util.spec_from_file_location("medir_referencia", ruta)
+        herramienta = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(herramienta)
+
+        raiz = pathlib.Path(tempfile.mkdtemp())
+        (raiz / "silux" / "db").mkdir(parents=True)
+        herramienta.RAIZ = raiz
+        with mock.patch.object(herramienta.benchmark, "run",
+                               return_value=self._resultado()), \
+             mock.patch.object(herramienta, "Collector") as coleccion, \
+             redirect_stdout(io.StringIO()):
+            coleccion.return_value.sample.return_value.cpu.types = ()
+            herramienta.main(["--write", "--igualmente"])
+        return json.loads((raiz / "silux" / "db" / "scores.json").read_text(
+            encoding="utf-8"))
+
+    def test_la_referencia_cuenta_como_el_historial(self):
+        from silux import history
+        tabla = self._tabla_escrita()
+        del_historial = history.from_result(self._resultado(), "CPU", 10.0).scores
+        for carga, valor in tabla["un_hilo"].items():
+            self.assertAlmostEqual(
+                valor, del_historial[f"{carga}/1"], delta=1.0,
+                msg=f"la escala y el historial cuentan distinto en «{carga}»")
+
+    def test_y_la_cifra_es_de_bytes_y_no_de_operaciones(self):
+        """El síntoma con el que se vio: 10 op/s se guardaban como 10."""
+        tabla = self._tabla_escrita()
+        self.assertGreater(
+            tabla["un_hilo"]["verificacion"], 1e9,
+            "la referencia sigue guardando operaciones por segundo")
+        # Y las que sí son operaciones siguen siéndolo, que es la otra mitad:
+        # el arreglo no puede convertir en bytes lo que no los tiene.
+        self.assertAlmostEqual(tabla["un_hilo"]["hash"], 10.0, delta=0.1)
+
+
+class TestLaCuentaViveEnUnSoloSitio(unittest.TestCase):
+    """Nadie divide operaciones entre segundos por su cuenta.
+
+    Llegó a estar escrita en cuatro sitios: `Medida`, el historial, la
+    herramienta de la escala y un test. Tres de las cuatro estaban de acuerdo,
+    y la que no lo estaba —la de la escala— dejó la referencia en operaciones
+    por segundo mientras las medidas iban en bytes. No se notó hasta ejecutar
+    la herramienta de verdad, porque cada copia por separado parecía correcta.
+
+    Son dos cuentas y no una, y por eso hay dos propiedades: `per_second` es
+    lo que escala con los hilos y lo que la interfaz etiqueta «op/s», y `rate`
+    es lo que se puntúa. Fundirlas haría mentir a una de las dos. Lo que no
+    puede haber es una tercera escrita a mano.
+    """
+
+    # Donde vive la cuenta, y el único archivo que puede escribirla.
+    DUENO = "silux/benchmark.py"
+
+    def _fuentes(self):
+        raiz = pathlib.Path(__file__).resolve().parent.parent
+        for carpeta in ("silux", "tools", "tests"):
+            for ruta in sorted((raiz / carpeta).rglob("*.py")):
+                if "__pycache__" in ruta.parts:
+                    continue
+                yield ruta.relative_to(raiz), ruta.read_text(encoding="utf-8")
+
+    def test_nadie_la_escribe_fuera_de_medida(self):
+        import ast
+
+        culpables = []
+        for relativa, fuente in self._fuentes():
+            if str(relativa) == self.DUENO:
+                continue
+            for nodo in ast.walk(ast.parse(fuente)):
+                # `algo.operations / algo.seconds`, escrito como sea.
+                if not (isinstance(nodo, ast.BinOp)
+                        and isinstance(nodo.op, ast.Div)):
+                    continue
+                izquierda = ast.dump(nodo.left)
+                derecha = ast.dump(nodo.right)
+                if "'operations'" in izquierda and "'seconds'" in derecha:
+                    culpables.append(f"{relativa}:{nodo.lineno}")
+        self.assertEqual(culpables, [],
+                         "la cuenta está escrita fuera de Medida: usa "
+                         "`per_second` o `rate` según lo que quieras contar")
