@@ -28,7 +28,7 @@ python3 tools/probar_en_minimo.py --container # la suite en el Python del suelo
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **1476** y tardan cerca de dos minutos. Si sale bastante
+Los tests son **1493** y tardan cerca de dos minutos. Si sale bastante
 menos, falta algo por recoger.
 
 Que pasen aquí no dice que pasen en el mínimo. El suelo declarado es Python
@@ -351,45 +351,51 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
 
 ## Dónde está cada cosa ahora mismo
 
-**La rama `escala-v5` está empujada y esperando un dato.** Lleva el arreglo de
-la escala del benchmark: la carga que recorre un bloque grande lo dimensionaba
-con la caché de cada equipo y se contaba por operaciones, así que un procesador
-con poca caché sacaba un 42,8 % más sin mover un byte más por segundo. Ahora
-esa carga declara cuántos bytes recorre, se puntúa en bytes por segundo y se
-llama «Suma de verificación», porque no medía la memoria: el cuello lo pone el
-cálculo del CRC. `scores.json` está remedido y la escala sube a v5, así que las
-puntuaciones anteriores se quedan sin cifra.
+**La escala del benchmark está cerrada y en master.** La rama `escala-v6`
+contestó la pregunta que dejó abierta la `escala-v5`: si el factor de zlib era
+una constante que se pudiera registrar o algo que había que quitar de en medio.
+No hizo falta esperar al informe del ThinkCentre M80q, que sigue sin llegar; lo
+contestó la máquina de la cuarta auditoría, un i5-10400, midiendo la misma
+pieza el mismo día con lo que trae cada distribución: 14,9 GB/s de
+verificación con la zlib-ng de Fedora, 3,9 con la de Debian, 2,0 con la de Arch
+y 1,5 con la de Ubuntu 22.04, que es la que va dentro del AppImage. Un ×9,7
+que no es del procesador, y `libz.so.1` elige ruta mirando el CPUID, así que
+registrar la implementación tampoco habría bastado.
 
-**Lo que falta para fusionarla es el informe del ThinkCentre M80q**, y lo que
-decide es una cosa concreta: si el factor de zlib es una constante o depende del
-procesador. Las cinco cargas se apoyan en bibliotecas del sistema, y la misma
-pieza da un 28 % menos con la zlib clásica que con zlib-ng; pero zlib-ng elige
-ruta mirando la CPU, así que el factor podría no ser el mismo en un Comet Lake
-que en un Zen 3. El M80q es la máquina que lo contesta porque es lo contrario
-del equipo de casa por los cuatro lados: Intel, L3 pequeña, doce hilos y una
-distribución con la zlib clásica.
+Así que **desde la v6 puntúan dos cargas de las cinco**: el resumen
+criptográfico —190,05 · 190,13 · 190,17 op/s en tres distribuciones y dos
+versiones mayores de OpenSSL— y la compresión pesada, que se mueve un 3 %. Las
+otras tres se siguen midiendo y enseñando con un asterisco y con la biblioteca
+que las midió al lado, porque son buen diagnóstico: son justamente las que
+delatan qué hay debajo. `scores.json` está remedido en el patrón y la escala
+sube a v6, así que las pruebas guardadas con la anterior se quedan sin cifra
+—y no llegó a haber ninguna v5 publicada—.
 
-* **Si el factor es constante** → **Z1**: registrar la implementación y no
-  comparar entre distintas. Barato, no toca las cargas, la escala v5 sigue
-  valiendo y la rama se fusiona tal cual.
-* **Si varía con el procesador** → **Z3**: registrar no sirve de nada y hay que
-  cambiar las cargas que dependen de zlib. Eso rehace la escala, así que la
-  rama se remide antes de fusionar y nadie llega a ver una v5.
+**La `escala-v5` no se fusiona**: quedó superada, y su único commit se replicó
+al poner la v6 encima de master. Las dos ramas se pueden borrar.
 
-Mientras tanto, la v5 ya registra con qué zlib y con qué extensiones
-(`vpclmulqdq`, `pclmulqdq`, `avx2`) se midió cada prueba, y lo saca en el
-informe. Ese es el dato que hace falta para decidir con más de una máquina.
-
-**Los tres informes de auditoría viven fuera del repositorio**, en la carpeta
-de encima (`../auditoria-fase-1.md`, `-2` y `-3`). Aquí abajo está solo el
+**Los cuatro informes de auditoría viven fuera del repositorio**, en la carpeta
+de encima (`../auditoria-fase-1.md` hasta `-4`). Aquí abajo está solo el
 índice: qué falta, dónde y cómo de grave.
 Los pasos para reproducir cada cosa se quedan en los informes a propósito —el
 del enlace simbólico del instalador es una receta y este archivo es público.
 
+**La cuarta cubrió lo que las tres primeras no habían tocado**: el AppImage
+construido de verdad y arrancado con pantalla, `ui/widgets.py` línea a línea, y
+la interfaz usada con clics y arrastres inyectados a nivel de ventana. Once
+fallos y diez observaciones, en un i5-10400 con Fedora 44, Wayland, SELinux en
+enforcing y el PySide6 del paquete de la distribución. De paso confirmó con
+herramienta propia dos cosas que este archivo afirma y que nadie había
+comprobado desde fuera: que el AppImage exige glibc 2.35 y que quien la pide es
+`hypot` del intérprete, y que el Qt 6.11 del paquete normal lleva SSE4.1 en
+funciones sin despacho —`qFuzzyCompare`, `qt_from_latin1`— mientras el 6.9.3
+del `--compat` solo lo lleva en rutas que se eligen mirando la CPU. La guarda
+del AppRun corta de verdad, probada con un `/proc/cpuinfo` sin esas banderas.
+
 ## Lo que queda por arreglar
 
-Sale de tres auditorías. **Nada de esto está arreglado**; lo que sí se arregló
-—la escala del benchmark— está en la rama de arriba.
+Sale de cuatro auditorías. **Nada de esto está arreglado**; lo que sí se
+arregló —la escala del benchmark— es lo de la sección de arriba.
 
 ### Un dato, dos sitios que lo deciden, y uno lo hace mal
 
@@ -433,6 +439,71 @@ los casos que quedaron fuera.
   sin decir nada.
 * `cli.py` · **baja** · `--json`, `--sensors` y `--report` se pisan entre ellas
   en silencio, y `--with-identifiers` sin `--report` no hace nada y no avisa.
+* `tools/build_appimage.py` · **baja** · `--container` solo reenvía `--compat`
+  al build de dentro, así que `--keep` y `--appdir-only` se aceptan, se pierden
+  y no se dice: el AppDir se borra igual. Para inspeccionar el árbol hay que
+  extraer el AppImage ya hecho.
+
+### El paquete que se reparte
+
+La cuarta auditoría lo construyó y lo ejecutó, que es lo que nunca se había
+hecho fuera del CI. Lo que se comprobó del empaquetado está bien —la glibc, el
+juego de instrucciones, lo que resuelve fuera, el arranque en Wayland, en X11 y
+sin pantalla—; lo que falla es lo que el paquete hace con quien no puede
+usarlo.
+
+* `tools/build_appimage.py` · **media** · la guarda del procesador del AppRun
+  corre antes del `case` que reparte entre interfaz y CLI, así que **bloquea
+  también el `--report` que su propio mensaje recomienda como salida**. Quien
+  tiene un Core 2 o un Phenom II lee «mientras tanto, esto sí funciona» y
+  recibe otra vez el mismo mensaje y ningún archivo. Y el CLI correría en ese
+  procesador, porque no importa Qt: con el mismo `/proc/cpuinfo` falso, llamando
+  al intérprete de dentro del paquete, el informe se escribe. Es justo el
+  archivo que se le pide a esa persona para poder ayudarla. De paso, la guarda
+  elige idioma solo por `$LANG`: con `LC_ALL=es_ES.UTF-8` y `LANG` sin poner
+  sale en inglés.
+
+### Las primitivas de `widgets.py`
+
+Seis fallos en el archivo que usan todas las páginas, y ninguno lo caza ningún
+test: los que hay prueban la transición que sí ocurre. Los dos primeros son el
+mismo caso, que además es el que menos se ve: un arreglo escrito dentro de una
+rama que solo se recorre cuando algo cambia, y que por eso no alcanza al estado
+con el que la cosa **nace**.
+
+* `ui/widgets.py` · **media** · `StatTile.update_value` solo cambia la
+  tipografía cuando el texto cambia, y la etiqueta nace con «—» a tamaño de
+  cifra. Una ficha que nunca recibe un valor se queda con la raya gruesa toda
+  la sesión, que es exactamente lo que la lección de los tres estados da por
+  arreglado: en una UHD 630 sin permisos son cinco —uso, temperatura, consumo,
+  VRAM ocupada y bus de memoria—, o sea la fila que parece tachada, que es
+  justo la imagen que motivó aquel arreglo. Como está en `update_value`, solo
+  alcanza a la ficha que tuvo un número y lo perdió.
+* `ui/widgets.py` · **media-baja** · `ElidingLabel._refresh` termina poniendo su
+  propio tooltip, y corre en cada `resizeEvent`, así que borra el que le pasaron
+  desde fuera. De 268 tooltips en nueve muestreos, 60 desaparecen con un solo
+  redimensionado; los de la ficha de CPU vuelven al siguiente porque la página
+  los repone, y los tres de cada módulo de memoria —«Chips», «Capacidad»,
+  «Catalogado a»— no vuelven nunca, porque se ponen una sola vez.
+* `ui/widgets.py` · **media-baja** · un `float` no finito en una gráfica
+  —`_rango_redondo` hace `log10` de la amplitud— lanza una excepción en cada
+  repintado, deja el `QPainter` abierto y al salir el proceso se va con un
+  SIGSEGV sin traceback. Hoy no hay proveedor que produzca un infinito; es la
+  primitiva la que no se defiende, y el fallo que causa no deja rastro.
+* `ui/widgets.py` · **baja-media** · el globo «copiado» es un `QLabel` sin
+  `WA_TransparentForMouseEvents` colocado a la derecha del valor, o sea encima
+  de la columna siguiente cuando es una `Table`. En Almacenamiento: se copia la
+  unidad, se va a copiar el modelo, y el segundo clic no hace nada durante 1,4 s
+  y sin decirlo.
+* `ui/widgets.py` · **baja** · la etiqueta es seleccionable con el ratón *y*
+  copia al soltar, así que arrastrar para seleccionar «Intel» de un nombre de
+  procesador copia el nombre entero y dice «copiado». Son dos gestos con el
+  mismo botón y el segundo pisa al primero; el Ctrl+C de después sí copia la
+  selección.
+* `ui/widgets.py` · **baja** · `Table.set_rows` indexa fuera de rango si una
+  fila trae más columnas que la anterior, y deja la celda sobrante con el valor
+  viejo si trae menos. Hoy ninguna página cambia el número de columnas de una
+  fila.
 
 ### Privilegios y privacidad
 
@@ -482,6 +553,11 @@ los casos que quedaron fuera.
 * `providers/network.py` · **baja** · el tipo de interfaz se pinta crudo y
   mezcla los dos idiomas: `loopback`, `wifi`, `ethernet` en inglés y `puente`,
   `virtual`, `otro` en español, y ninguno está en los archivos de idioma.
+* `providers/derived.py` · **baja** · «Core #0», «Core #1»… a pelo, 24 filas
+  de un árbol de sensores en español, y en el mismo archivo donde el sensor de
+  al lado va con `_("sensor.total")`. No es un dato del equipo: `coretemp`
+  etiqueta «Core 0», sin almohadilla. `sensor.core` («Núcleo») ya existe en los
+  dos idiomas. Es la misma familia que el `kind` de red de aquí arriba.
 * `providers/storage.py` · **baja** · el modelo de los discos SATA sale
   truncado a 16 caracteres, que es el campo de sysfs; el completo está sin
   permisos en `/dev/disk/by-id`.
@@ -501,6 +577,16 @@ los casos que quedaron fuera.
   (`cat.temperature`); el informe sí las traduce.
 * `cli.py` · **baja** · `--report -` no dice que ha omitido nada, y con archivo
   sí lo dice.
+* `ui/app.py` · **baja** · cambiar el tema, la densidad, la letra o el acento
+  reconstruye las páginas y las curvas de todas las gráficas vuelven a empezar
+  (126 muestras acumuladas → 30). El `Tracker` de mín/máx sí sobrevive, que es
+  para lo que se sacó a la ventana; el histórico que se ve, no. Quien está
+  mirando un pico de temperatura y cambia a tema claro para verlo mejor, lo
+  pierde.
+* `ui/app.py` · **baja** · no hay forma de cambiar de sección con el teclado: la
+  barra lateral es `NoFocus` y veinticinco tabuladores recorren tres widgets sin
+  llegar nunca al menú. Solo por debajo de 620 px, donde aparece el desplegable
+  compacto, se puede.
 * `report.py` · **baja** · `_placa` recibe el parámetro `anonymous` y no lo usa.
 * `ui/` · **baja** · `disk.pci_slot` y `net.vendor` están en el modelo y no se
   pintan en ninguna página.
@@ -518,8 +604,13 @@ los casos que quedaron fuera.
   crea la release está anclada a una etiqueta móvil y no a un SHA; y la
   comprobación de que el AppImage arranca es un `--help`, que no llega a cargar
   el plugin de plataforma.
-* `tools/medir_referencia.py`, `history.py` · **hecho en `escala-v5`** · la
-  cuenta que decide qué se puntúa estaba escrita en cuatro sitios.
+* `tools/build_appimage.py` · **baja** · `appimagetool` se descarga el runtime
+  de GitHub en cada construcción y nada fija el hash de lo que llega. Es la
+  misma familia que la etiqueta móvil de aquí arriba: código de terceros que
+  entra en el paquete que se reparte y que puede cambiar debajo sin que se
+  note. De paso, construir sin red falla en el último paso.
+* `tools/medir_referencia.py`, `history.py` · **hecho** · la cuenta que decide
+  qué se puntúa estaba escrita en cuatro sitios.
 
 ## Lo que trajo el ThinkCentre M80q
 
@@ -1106,9 +1197,12 @@ que era la mitad no probada de la misma función.
   openSUSE, la clásica. Peor aún, ese factor **no es una constante**:
   `libz.so.1` lleva dentro 344 instrucciones `vpclmul` y cuatro `cpuid`, o
   sea que elige ruta mirando el procesador, y la de 256 bits es de Ice Lake y
-  Zen 3 en adelante. De momento se registra con qué biblioteca y con qué
-  extensiones se midió cada prueba, que es lo que permitirá decidir con datos
-  de más de una máquina. **La salida buena es un kernel propio en
+  Zen 3 en adelante. Por eso no bastaba con registrar la implementación de cada
+  medida, que era el arreglo barato: desde la v6 esas tres no puntúan. Se
+  siguen midiendo y enseñando con su biblioteca al lado —son buen diagnóstico,
+  y son justamente las que delatan qué hay debajo—, pero no entran en una cifra
+  que se compara entre equipos. Cuáles quedan y con qué medidas se decidió,
+  en `score.PUNTUABLES`. **La salida buena sigue siendo un kernel propio en
   ensamblador**, reutilizando lo que `rawcpuid.py` ya hace para CPUID y
   `membench.py` para perseguir punteros: código que no cambia de una máquina
   a otra porque viaja dentro del programa. Iría **añadido a las cinco y no en
