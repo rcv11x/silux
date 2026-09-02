@@ -7,22 +7,22 @@
     "hilos": 16,
     "segundos": 15.0,
     "gobernador": "performance",
-    "carga_de_fondo": 0.8,
-    "temperatura_pico_c": 87.0,
+    "carga_de_fondo": 1.2,
+    "temperatura_pico_c": 83.0,
     "provisional": false
   },
   "un_hilo": {
-    "compresion": 202.81,
-    "compresion_dura": 156.43,
-    "derivacion": 232.49,
-    "hash": 249.17,
-    "verificacion": 20941725705.32
+    "compresion": 203.55,
+    "compresion_dura": 156.02,
+    "derivacion": 232.73,
+    "hash": 249.85,
+    "verificacion": 20872587650.01
   },
   "multihilo": {
-    "compresion": 1728.6,
-    "compresion_dura": 1585.02,
-    "derivacion": 1968.85,
-    "hash": 2204.79,
-    "verificacion": 166284966374.01
+    "compresion": 1735.79,
+    "compresion_dura": 1555.71,
+    "derivacion": 1982.43,
+    "hash": 2217.93,
+    "verificacion": 167096187777.19
   }
 }
