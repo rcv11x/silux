@@ -194,14 +194,25 @@ class TestCargaDeVerificacion(unittest.TestCase):
         Cambiar la forma de contar esta carga —de bytes por segundo a
         operaciones por segundo— no rompía ni un test, y era la diferencia
         entre una cifra comparable entre equipos y una que le regala un 42,8 %
-        al que tiene menos caché. Así que se mide con dos bloques de tamaños
-        muy distintos: lo que se puntúa tiene que salir parecido, y lo que se
-        contaba antes tiene que salir muy distinto. El segundo `assert` no
-        sobra: sin él, el test pasaría también con una medida que no
-        distinguiera nada.
+        al que tiene menos caché. Así que se mide con dos tamaños de bloque:
+        lo que se puntúa tiene que salir parecido, y lo que se contaba antes
+        tiene que salir muy distinto. El segundo `assert` no sobra: sin él, el
+        test pasaría también con una medida que no distinguiera nada.
+
+        Los dos tamaños son los extremos que la carga toma de verdad —64 y
+        192 MB, que es lo que `_tamano_del_bloque` puede devolver— y no un par
+        cualquiera. Estuvieron en 8 y 64, y 8 MB no lo produce ninguna
+        máquina: cabe dentro de la L3 de casi cualquier procesador, así que
+        esa medida salía de la caché y la de 64 de la memoria, y el test
+        comparaba dos cosas distintas. En un i5-10400 (12 MB de L3) eso daba
+        un desvío del 39 % contra un tope del 35 %, y encima a ratos: con el
+        mismo código y minutos después salía un 6,8 %, según lo que otro
+        programa tuviera ocupado de la L3 en ese momento. Con 64 y 192 el
+        desvío es del 1 % y sigue cazando lo que vigila: revirtiendo el
+        arreglo, la proporción se va al 207 %.
         """
-        pequeno = self._medir_con(8)
-        grande = self._medir_con(64)
+        pequeno = self._medir_con(64)
+        grande = self._medir_con(192)
 
         proporcion = pequeno.rate / grande.rate
         self.assertLess(abs(proporcion - 1), 0.35,
@@ -209,10 +220,18 @@ class TestCargaDeVerificacion(unittest.TestCase):
                         f"bloque: {pequeno.rate:.3g} contra {grande.rate:.3g}")
 
         veces = pequeno.per_second / grande.per_second
-        self.assertGreater(veces, 4,
-                           "las operaciones por segundo deberían dispararse "
-                           "con el bloque pequeño; si no, esta medida no "
-                           "distingue nada y el assert de arriba no vale")
+        # Lo que este assert vigila es que la medida no salga plana: si no
+        # distinguiera nada, la proporción sería 1 y el de arriba pasaría
+        # solo. El tope va holgado a propósito. El valor de libro es 3 —el
+        # bloque grande es tres veces el pequeño— y medido sale entre 2,4 y
+        # 3,1, porque en medio segundo caben unas veintisiete operaciones de
+        # 192 MB y contarlas enteras redondea. Un umbral pegado al valor
+        # bueno convierte esto en un test que falla a ratos, que es lo que se
+        # estaba arreglando.
+        self.assertGreater(veces, 2.0,
+                           "las operaciones por segundo tienen que caer con el "
+                           "bloque grande; si no, esta medida no distingue "
+                           "nada y el assert de arriba no vale")
 
     def _medir_con(self, megas, segundos=0.5):
         """Una medida real de la carga con un bloque del tamaño que se diga.
