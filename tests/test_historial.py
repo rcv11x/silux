@@ -128,6 +128,33 @@ if __name__ == "__main__":
     unittest.main()
 
 
+class TestConQueSeMidio(unittest.TestCase):
+    """Cada prueba guarda con qué bibliotecas se tomó.
+
+    Ya no deciden la puntuación —desde la v6 las cargas que dependen del
+    sistema no cuentan—, y siguen guardándose porque son lo único que permite
+    leer las cifras de esas cargas: la misma pieza da 14,9 GB/s en la
+    verificación con zlib-ng y 1,5 con la zlib de Ubuntu 22.04.
+    """
+
+    def test_se_guardan_las_dos_bibliotecas_y_las_banderas(self):
+        entrada = history.from_result(Result(), "CPU de prueba", 15.0)
+        self.assertTrue(entrada.zlib_version,
+                        "sin la versión de zlib no se pueden leer sus cargas")
+        self.assertTrue(entrada.openssl_version,
+                        "la derivación de clave se lleva un ×1,38 entre "
+                        "OpenSSL 3.0 y 3.5, así que hay que saber cuál era")
+        self.assertIsInstance(entrada.zlib_simd, tuple)
+
+    def test_una_entrada_vieja_se_lee_sin_ellas(self):
+        """El campo es nuevo: las pruebas de antes no lo traen y valen igual."""
+        vieja = {"timestamp": 1.0, "cpu": "x", "threads": 8, "seconds": 15.0,
+                 "scores": {}}
+        campos = {f.name for f in __import__("dataclasses").fields(history.Entry)}
+        entrada = history.Entry(**{k: v for k, v in vieja.items() if k in campos})
+        self.assertIsNone(entrada.openssl_version)
+
+
 class TestNombrarYBorrar(_ConCarpetaPropia):
     """Una lista de fechas no dice qué cambió entre una prueba y otra."""
 

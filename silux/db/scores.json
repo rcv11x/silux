@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "version_formula": 5,
-  "about": "Lo que da cada carga en la pieza que sirve de patrón. Su único papel es poner las cinco en la misma escala: sumadas en crudo, la compresión pesada valía el 82 % de la puntuación y las otras cuatro eran decoración. Cambiar estos números mueve todas las puntuaciones a la vez, así que van atados a «version_formula».",
+  "version_formula": 6,
+  "about": "Lo que da cada carga en la pieza que sirve de patrón. Su único papel es poner las cargas en la misma escala: sumadas en crudo, la compresión pesada valía el 82 % de la puntuación y las otras cuatro eran decoración. Están las cinco porque esto describe al patrón entero; cuáles entran en la cifra lo decide «score.PUNTUABLES», que desde la v6 son dos: las otras tres las mide una biblioteca del sistema y cambian con la distribución, no con el procesador. Cambiar estos números mueve todas las puntuaciones a la vez, así que van atados a «version_formula».",
   "patron": {
     "cpu": "AMD Ryzen 7 5800X3D",
     "hilos": 16,
