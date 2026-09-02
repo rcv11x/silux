@@ -10,6 +10,11 @@ así que sumarlas en crudo deja la puntuación en manos de una sola. La escala
 las pone a todas en la misma unidad: cada una vale lo que da en el equipo que
 sirve de patrón.
 
+Se miden y se guardan las cinco, porque la tabla describe al patrón entero.
+Cuáles entran en la puntuación lo decide `score.PUNTUABLES`, y se marca abajo
+al enseñarlas: desde la v6 son dos, y las otras tres se quedan fuera porque
+las calcula una biblioteca del sistema y su cifra cambia con la distribución.
+
 Rehacerla cambia la puntuación de todo el mundo a la vez, así que no es algo
 que se haga a menudo. Cuando se haga, tiene que subir `score.VERSION`: una
 cifra medida con una escala y otra medida con la siguiente no se pueden poner
@@ -106,8 +111,11 @@ def main(argv=None) -> int:
     # se salía de la columna y la tabla dejaba de leerse.
     print(f"\n  {'carga':<18} {'1 hilo':>12} {str(hilos) + ' hilos':>14}")
     for c in cargas:
+        # Cuál de las cinco entra en la cifra. Sin esto, quien remide la escala
+        # ve cinco columnas iguales y no sabe cuáles está moviendo de verdad.
+        marca = "" if score.puntua(c) else "   (no puntúa)"
         print(f"  {c:<18} {_cifra(tabla['un_hilo'][c]):>12} "
-              f"{_cifra(tabla['multihilo'][c]):>14}")
+              f"{_cifra(tabla['multihilo'][c]):>14}{marca}")
 
     if not args.write:
         print("\n  (con --write se guarda; acuérdate de subir score.VERSION)")

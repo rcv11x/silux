@@ -98,6 +98,14 @@ class PerformancePage(QScrollArea):
         self.results_card = Card(_("bench.card.results"))
         self.results = Table([_(h) for h in RESULT_HEADERS], numeric=(False, True, True, True))
         self.results_card.body.addWidget(self.results)
+        # La leyenda del asterisco de las cargas que no puntúan. Va debajo de
+        # la propia tabla y no en la tarjeta de al lado: separadas, la marca se
+        # queda sin explicar y la frase sin a qué referirse.
+        self.results_note = QLabel(_("bench.results.unscored"))
+        self.results_note.setObjectName("Muted")
+        self.results_note.setWordWrap(True)
+        self.results_note.setFont(ui_font(theme.METRICS.small_pt))
+        self.results_card.body.addWidget(self.results_note)
         self.results_card.hide()
         self._layout.addWidget(self.results_card)
 
@@ -589,17 +597,26 @@ class PerformancePage(QScrollArea):
         hilos = max((m.threads for m in resultado.measures), default=1)
 
         filas = []
+        fuera = False
         for carga in benchmark.CARGAS:
             uno = resultado.find(carga.key, 1)
             todos = resultado.find(carga.key, hilos)
             escala = resultado.scaling(carga.key, hilos)
+            # El asterisco marca las que se miden y no puntúan. La cifra sale
+            # igual: es de las buenas para diagnosticar, y esconderla dejaría
+            # a quien mira sin saber que se midió.
+            marca = "" if score.puntua(carga.key) else " *"
+            fuera = fuera or bool(marca)
             filas.append((
-                carga.name,
+                carga.name + marca,
                 f"{uno.per_second:.0f} op/s" if uno else d,
                 f"{todos.per_second:.0f} op/s" if todos else d,
                 f"×{escala}" if escala else d,
             ))
         self.results.set_rows(filas)
+        # Si algún día puntúan todas, la leyenda sobra y se va: un pie que
+        # explica una marca que no está es ruido permanente.
+        self.results_note.setVisible(fuera)
         self.results_card.show()
         self.columns.show()
 

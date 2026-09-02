@@ -12,7 +12,7 @@ import threading
 import unittest
 from unittest import mock
 
-from silux import benchmark, history
+from silux import benchmark, history, score
 from silux.benchmark import Conditions, Medida, Result
 
 
@@ -410,6 +410,63 @@ class TestDuracionTotal(unittest.TestCase):
 
     def test_diez_porque_son_cinco_cargas_en_uno_y_en_todos(self):
         self.assertEqual(len(benchmark.CARGAS) * 2, 10)
+
+
+class TestLoQueNoPuntuaSeVeQueNoPuntua(unittest.TestCase):
+    """Tres de las cinco cargas se miden y no entran en la cifra.
+
+    Enseñarlas sin decirlo dejaría a quien mira sumando cinco números para
+    entender una puntuación que sale de dos. La marca va en la propia fila y
+    su leyenda debajo de la tabla: separadas, el asterisco no significa nada y
+    la frase no tiene a qué referirse.
+    """
+
+    def _pagina(self):
+        from PySide6.QtWidgets import QApplication
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.performance import PerformancePage
+        app = QApplication.instance() or QApplication([])
+        theme.set_density("normal", "normal")
+        return PerformancePage(theme.palette_for(app, "dark"),
+                               Preferences(font_scale="normal").normalized())
+
+    def _resultado(self, hilos=8):
+        medidas = tuple(
+            benchmark.Medida(load=c.key, threads=n, operations=100 * n,
+                             seconds=15.0,
+                             bytes_=c.bytes_por_op() if c.bytes_por_op else None)
+            for c in benchmark.CARGAS for n in (1, hilos))
+        return benchmark.Result(measures=medidas)
+
+    def _nombres(self, pagina):
+        # El texto entero y no el que se ve: la celda lo elide si no cabe, que
+        # es justo lo que le pasaría a la marca, que va al final.
+        return [fila[0]._full for fila in pagina.results._cells]
+
+    def test_la_marca_está_en_las_que_no_puntúan_y_solo_en_ellas(self):
+        pagina = self._pagina()
+        pagina._show(self._resultado())
+        for carga, nombre in zip(benchmark.CARGAS, self._nombres(pagina)):
+            with self.subTest(carga=carga.key):
+                self.assertEqual(nombre.endswith("*"),
+                                 not score.puntua(carga.key))
+
+    def test_y_la_leyenda_que_la_explica_está_a_la_vista(self):
+        pagina = self._pagina()
+        pagina._show(self._resultado())
+        self.assertFalse(pagina.results_note.isHidden())
+
+    def test_si_puntuaran_todas_la_leyenda_se_va(self):
+        """Un pie que explica una marca que no está es ruido permanente."""
+        import unittest.mock as mock
+
+        pagina = self._pagina()
+        todas = tuple(c.key for c in benchmark.CARGAS)
+        with mock.patch.object(score, "PUNTUABLES", todas):
+            pagina._show(self._resultado())
+            self.assertTrue(pagina.results_note.isHidden())
+            self.assertEqual([n for n in self._nombres(pagina) if n.endswith("*")], [])
 
 
 class TestDerivaTermica(unittest.TestCase):

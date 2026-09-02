@@ -159,10 +159,10 @@ CARGAS: tuple[Carga, ...] = (
     # medidos con `membench`). Lo que sí es cierto es que de las cinco es la
     # que menos gana con los hilos.
     Carga("verificacion", "Suma de verificación",
-          "Recorre un bloque grande calculando una suma de comprobación. Es "
-          "la carga que menos gana con los hilos de las cinco, porque el "
-          "camino hasta la memoria es uno y se comparte; el cuello, en "
-          "cambio, lo pone el propio cálculo antes que la RAM.",
+          "Recorre un bloque grande calculando una suma de comprobación. El "
+          "cuello lo pone el propio cálculo y no la RAM, así que mide enteros "
+          "y no el camino hasta la memoria: de eso se encarga la página de "
+          "Memoria, que sí lo mide.",
           lambda: zlib.crc32(_bloque_grande()),
           bytes_por_op=lambda: len(_bloque_grande())),
 )
@@ -196,6 +196,51 @@ CARGAS: tuple[Carga, ...] = (
 # manejando objetos del intérprete, así que no suelta el GIL: medido aquí,
 # escala ×1.0 con dieciséis hilos. Una prueba multihilo que no reparte no mide
 # el procesador, mide el candado.
+
+# QUÉ SE PERDIÓ AL QUITAR ZLIB DE LA PUNTUACIÓN. Desde la v6 puntúan dos de
+# las cinco —el resumen y la compresión pesada—, que son las únicas cuya
+# implementación no cambia con la distribución. El porqué, con las cifras,
+# está en `score.PUNTUABLES`; aquí está lo que costó, que es lo que hay que
+# recuperar y no se ha recuperado.
+#
+# No se fueron «tres cargas»: se fue un perfil. De las cinco, las dos únicas
+# donde tener más hilos por núcleo *resta* estaban entre las que salieron.
+# Medido en un i5-10400, doce hilos contra sus seis núcleos físicos:
+#
+#     compresión           +0,5 %
+#     resumen              +4,0 %
+#     compresión pesada   +15,0 %
+#     derivación           −5,3 %
+#     verificación        −13,1 %
+#
+# Con las cinco, el SMT sale a +0,2 % neto y la puntuación dice que doce hilos
+# rinden como seis núcleos (481 contra 483). Con las dos que quedan sale a
+# +9,5 %. La cifra no deja de distinguir piezas por esto —las distancias
+# medidas entre cuatro configuraciones se mantienen o crecen—, pero premia el
+# SMT más de lo que el equipo da en un abanico de trabajos.
+#
+# La carga que taparía el hueco tiene que ser código máquina propio, como el
+# que `membench` ya usa: es lo único que no cambia de un entorno a otro. El
+# mismo kernel da 12,95 y 13,02 millones de saltos por segundo en Python 3.14
+# y en 3.10 (±0,7 %), donde el sha512 que CPython trae dentro se va al doble
+# entre esas dos versiones y zlib a un ×9,7 entre distribuciones.
+#
+# Y tiene dos condiciones más, las dos medidas y ninguna evidente:
+#
+# 1. **De lectura secuencial, no de latencia.** El kernel de persecución de
+#    punteros que ya existe no sirve para esto: escala ×12,24 con doce hilos,
+#    o sea premia el SMT todavía más que las dos que quedan, porque la
+#    latencia es justo lo que el SMT tapa. Lo que hace falta es saturar el
+#    bus: leyendo, un i5-10400 da 21-27 GB/s con un hilo, 32 con seis y 29 con
+#    doce, o sea ×0,89 al pasar de seis a doce. Más hilos estorban, que es el
+#    perfil que falta.
+#
+# 2. **Un bloque propio por hilo.** Con el bloque compartido —que es lo que
+#    hace la verificación con su `_bloque_grande()` global— los hilos recorren
+#    en fila el mismo camino y se sirven unos a otros desde la caché: doce
+#    hilos «miden» 131 GB/s en un equipo cuya RAM da 32. Ese es el fallo que
+#    no hay que repetir, y explica de paso por qué el ×5,96 de escalado de esa
+#    carga nunca fue el camino hasta la memoria.
 
 
 @dataclass(frozen=True, slots=True)

@@ -63,14 +63,27 @@ class Entry:
     # comparar, y la diferencia que se lee no existe: al rehacer la escala la
     # cifra de un hilo se movió un 68 % sin que el equipo cambiara.
     score_version: Optional[int] = None
-    # Con qué biblioteca de compresión se midió, y con qué extensiones del
-    # procesador. Van juntas porque por separado no dicen nada: dos de las
-    # cinco cargas son `zlib`, y la misma pieza da un 28 % menos con zlib
-    # clásico que con zlib-ng. Y la versión sola tampoco basta, porque
-    # zlib-ng elige ruta mirando la CPU —lleva dentro 344 instrucciones
-    # `vpclmul` y cuatro `cpuid`—, así que el factor depende de las dos cosas.
+    # Con qué bibliotecas se midió, y con qué extensiones del procesador. Ya
+    # no deciden la puntuación —desde la v6 las tres cargas que dependen del
+    # sistema no puntúan—, pero siguen guardándose, porque son lo que permite
+    # leer sus cifras: la misma pieza da 14,9 GB/s en la carga de verificación
+    # con zlib-ng y 1,5 con la zlib de Ubuntu 22.04, que es la que va dentro
+    # del AppImage.
+    #
+    # Las extensiones van al lado de la versión y no sueltas porque por sí
+    # solas no dicen nada: una zlib clásica no trae ni una instrucción
+    # `pclmulqdq` ni un solo `cpuid`, así que ejecuta el mismo camino en un
+    # Nehalem de 2009 que en un Zen 5 y las banderas dan igual. Solo importan
+    # cuando debajo hay zlib-ng, que sí despacha mirando la CPU.
     zlib_version: Optional[str] = None
     zlib_simd: tuple[str, ...] = ()
+    # Y con qué OpenSSL, que es la otra biblioteca de la que cuelgan cargas.
+    # Aquí el reparto es curioso y por eso se guarda: el resumen
+    # criptográfico da lo mismo en todas partes (190,05 · 190,13 · 190,17 op/s
+    # en tres distribuciones con dos versiones mayores), y la derivación de
+    # clave se lleva un ×1,38 entre la 3.0 y la 3.5, porque lo que cambió no
+    # es el algoritmo sino lo que cuesta cada una de sus doce mil vueltas.
+    openssl_version: Optional[str] = None
 
     @property
     def when(self) -> str:
@@ -102,6 +115,11 @@ class Entry:
 # Las banderas que deciden qué ruta usa zlib-ng. No es una lista de curiosidades:
 # la de 256 bits (`vpclmulqdq`) es de Ice Lake y Zen 3 en adelante, así que un
 # procesador anterior usa otra y rinde distinto con la misma biblioteca.
+#
+# Son las del procesador y no las que la biblioteca llegue a usar, que no es lo
+# mismo y conviene no leerlo mal: con una zlib clásica debajo no se usa
+# ninguna, porque no lleva ninguna dentro. Se guardan igualmente, y juntas con
+# la versión: la pareja se interpreta, cada mitad por su cuenta no.
 EXTENSIONES = ("vpclmulqdq", "pclmulqdq", "avx2")
 
 
@@ -113,6 +131,17 @@ def _zlib_version() -> Optional[str]:
         import zlib
         return zlib.ZLIB_RUNTIME_VERSION
     except Exception:                                  # noqa: BLE001
+        return None
+
+
+def _openssl_version() -> Optional[str]:
+    """Con qué OpenSSL se midió, de la que cuelgan dos de las cargas."""
+    try:
+        import ssl
+        return ssl.OPENSSL_VERSION
+    except Exception:                                  # noqa: BLE001
+        # Un Python compilado sin `ssl` sigue midiendo: `hashlib` cae a lo que
+        # trae CPython dentro. Lo que no hay entonces es de qué informar.
         return None
 
 
@@ -142,6 +171,7 @@ def from_result(resultado: Result, cpu: str, seconds: float) -> Entry:
         score_version=score.VERSION,
         zlib_version=_zlib_version(),
         zlib_simd=_extensiones(),
+        openssl_version=_openssl_version(),
         timestamp=time.time(),
         cpu=cpu,
         threads=hilos,

@@ -512,7 +512,7 @@ def _rendimiento() -> str:
     manda y aquí no aporta, y las de otra escala dirían una diferencia que no
     existe.
     """
-    from . import history, score
+    from . import benchmark, history, score
 
     entradas = [e for e in history.load()
                 if e.score_version == score.VERSION and score.comparable(e.seconds)]
@@ -532,6 +532,13 @@ def _rendimiento() -> str:
         f"| Puntuación (un hilo) | {un_hilo} |",
         f"| Hilos | {ultima.threads} |",
         f"| Escala | v{score.VERSION} |",
+        # Cuáles entran en la cifra. Sin esto, dos informes de escalas
+        # distintas se leen igual y la diferencia que se saca no existe: de la
+        # v5 a la v6 la puntuación de un mismo equipo se mueve sin que el
+        # equipo cambie, porque tres de las cinco cargas dejaron de contar.
+        ("| Cargas que puntúan | "
+         + " · ".join(c.name for c in benchmark.CARGAS if score.puntua(c.key))
+         + " |"),
     ]
     # Las condiciones son la mitad de lo que hace comparable una cifra: sin
     # ellas, dos puntuaciones distintas no se sabe si separan a dos equipos o
@@ -547,16 +554,28 @@ def _rendimiento() -> str:
     # El pico de lo ajeno explica una cifra baja que si no parece del equipo.
     if ultima.background_peak is not None:
         lineas.append(f"| Otro programa, como mucho | {ultima.background_peak:.1f} % |")
-    # Con qué bibliotecas se midió, que es la otra mitad de por qué dos
-    # equipos iguales dan cifras distintas. Dos de las cinco cargas son
-    # `zlib`, y la misma pieza rinde un 28 % menos con la zlib clásica que
-    # con zlib-ng; y la versión sola no basta, porque zlib-ng elige ruta
-    # según las extensiones del procesador. Van en la misma fila porque por
-    # separado no se puede interpretar ninguna de las dos.
-    if ultima.zlib_version:
-        extensiones = " · ".join(ultima.zlib_simd) or "ninguna de las que usa"
-        lineas.append(f"| Bibliotecas | zlib {ultima.zlib_version}"
-                      f" · {extensiones} |")
+    # Con qué bibliotecas se midió. Ya no explica la puntuación —para eso se
+    # quitaron de ella las cargas que dependen del sistema—, y sigue haciendo
+    # falta para leer las cifras de esas tres: la misma pieza rinde un ×9,7
+    # distinto en la verificación según qué zlib traiga la distribución.
+    # La versión y las extensiones van juntas porque por separado no se
+    # interpreta ninguna de las dos: una zlib clásica no usa ninguna bandera,
+    # así que ahí las de la CPU no dicen nada.
+    if ultima.zlib_version or ultima.openssl_version:
+        piezas = []
+        if ultima.zlib_version:
+            extensiones = " · ".join(ultima.zlib_simd) or "ninguna de las que usa"
+            piezas.append(f"zlib {ultima.zlib_version} ({extensiones})")
+        if ultima.openssl_version:
+            piezas.append(ultima.openssl_version)
+        lineas.append("| Bibliotecas | " + " · ".join(piezas) + " |")
+    # Y por qué son dos y no cinco, que si no la fila de arriba parece un
+    # recorte y es lo contrario: es lo que hace que la cifra sea del
+    # procesador de quien la manda y no de su distribución.
+    lineas.append(
+        "\nLas otras tres cargas se miden y se enseñan en el programa, pero no"
+        " entran en la puntuación: las calcula una biblioteca del sistema y"
+        " cambian con la distribución en vez de con el procesador.")
     return "\n".join(lineas) + "\n"
 
 

@@ -22,6 +22,13 @@ puntúan las pruebas hechas con la duración canónica. Lo que no cumple esas do
 condiciones no recibe puntuación: es preferible a dar una cifra que parece
 comparable y no lo es.
 
+Y hay una tercera condición, que llegó después y por el mismo motivo: **no
+toda carga puede puntuar**. Tres de las cinco se apoyan en una biblioteca que
+cada distribución compila a su manera, y ahí la cifra deja de ser del
+procesador —hasta un ×9,7 en la misma pieza según qué zlib traiga el sistema—.
+Se siguen midiendo y se enseñan, porque son buen diagnóstico; lo que no hacen
+es entrar en la puntuación. Cuáles y por qué, en `PUNTUABLES`.
+
 La fórmula lleva versión. Cambiar las referencias o las cargas cambia la
 escala de todas las puntuaciones a la vez, y una cifra vieja junto a una nueva
 diría una diferencia que no existe.
@@ -52,7 +59,52 @@ from typing import Optional
 # segundo, que no depende del tamaño (queda un 1 % residual, por debajo del
 # ruido de la propia medida, que ronda el 1,3 %). En el mismo paso, la carga
 # pasó a llamarse «verificación», porque no medía lo que su nombre decía.
-VERSION = 5
+#
+# La 6 dejó fuera de la cifra las tres cargas que dependen de una biblioteca
+# del sistema. No llegó a haber una v5 publicada: se vio antes de fusionarla,
+# midiendo la misma pieza —un i5-10400— con lo que trae cada distribución, el
+# mismo día y en el mismo equipo:
+#
+#     crc32 de 64 MiB   zlib-ng 1.3.1 (Fedora)    14,9 GB/s
+#                       zlib 1.3.1 (Debian)        3,9
+#                       zlib 1.3.2 (Arch)          2,0
+#                       zlib 1.2.11 (Ubuntu)       1,5   ← la del AppImage
+#
+# Un ×9,7 que no es del procesador. La compresión se lleva un ×2,75 por lo
+# mismo y la derivación un ×1,38 entre OpenSSL 3.0 y 3.5. Sumado: el mismo
+# equipo puntuaba 716 con la zlib de Fedora y 504 con la del AppImage, un
+# 30 % que decidía la distribución y no la pieza. Y no había forma de
+# arreglarlo fijando el entorno, porque el programa se reparte también en
+# paquetes de distribución, donde cada usuario se lleva la suya.
+VERSION = 6
+
+# Las cargas que entran en la puntuación. No son las mejores ni las más
+# bonitas: son las que miden el procesador y no la distribución.
+#
+# El criterio está medido, no supuesto. La misma pieza, tres distribuciones y
+# dos versiones mayores de OpenSSL:
+#
+#     resumen criptográfico   190,05 · 190,13 · 190,17 op/s   ±0,1 %
+#     compresión pesada        99,54 · 100,96 · 102,84        ±3 %
+#     derivación de clave      123,53 · 152,12 · 170,00       ×1,38
+#     compresión                 (zlib, arriba)               ×2,75
+#     verificación               (zlib, arriba)               ×9,7
+#
+# Las tres de fuera se siguen midiendo y enseñando, con la biblioteca que las
+# midió al lado: son buen diagnóstico, y son justamente las que delatan qué
+# hay debajo. Lo que no pueden es entrar en una cifra que se compara entre
+# equipos.
+#
+# Se probó a acercarlas usando lo que CPython trae dentro, y sale peor: su
+# sha512 interno da 55 op/s en 3.14 y 109 en 3.10 —cambió la implementación, y
+# hasta el nombre del módulo—, o sea el doble de dispersión que OpenSSL, que
+# es una sola upstream con su ensamblador y su despacho por CPUID. Y
+# `pbkdf2_hmac` ni siquiera tiene versión interna: sin OpenSSL desaparece de
+# `hashlib`, así que esa carga no se puede desatar del sistema.
+#
+# Lo que esto cuesta está escrito donde se paga: en `benchmark.py`, al lado de
+# la carga que se quedó sin sustituta.
+PUNTUABLES = ("hash", "compresion_dura")
 
 # Cuánto tiene que durar cada medida para que la prueba puntúe. Quince segundos
 # es el punto en el que la mayoría de los procesadores ya han dejado atrás el
@@ -72,9 +124,10 @@ ESCALA = 1000
 
 # Las operaciones por segundo del patrón viven en un archivo de datos y no
 # aquí: son medidas, no elegidas, y rehacerlas en otro equipo no debería
-# obligar a tocar código. Su único papel es poner las cinco cargas en la misma
-# escala; cambiarlas mueve todas las puntuaciones a la vez, y por eso el
-# archivo declara para qué versión de la fórmula vale.
+# obligar a tocar código. Guarda las cinco, porque describe al patrón entero;
+# su papel es poner en la misma escala a las que puntúan. Cambiarlas mueve
+# todas las puntuaciones a la vez, y por eso el archivo declara para qué
+# versión de la fórmula vale.
 _TABLA = pathlib.Path(__file__).parent / "db" / "scores.json"
 
 
@@ -129,18 +182,35 @@ def comparable(segundos: float) -> bool:
     return abs(segundos - SEGUNDOS_CANONICOS) <= TOLERANCIA_SEGUNDOS
 
 
+def puntua(carga: str) -> bool:
+    """Si esta carga entra en la puntuación.
+
+    Vive aquí y no en `benchmark.CARGAS` porque es una decisión de la escala y
+    no de la carga: la misma prueba, medida igual, entra o no entra según lo
+    que la fórmula sepa comparar. Poner la marca en cada carga la dejaría en
+    dos sitios, y el día que se separen no lo diría nadie.
+    """
+    return carga in PUNTUABLES
+
+
 def _combinar(scores: dict[str, float], hilos: int,
               referencia: dict[str, float]) -> Optional[int]:
-    """La media de las cargas, cada una medida contra su referencia.
+    """La media de las cargas puntuables, cada una contra su referencia.
 
-    Hace falta que estén las cinco: con cuatro, la que falta se llevaría por
-    delante la comparación con cualquier prueba completa, y la cifra parecería
-    igual de válida.
+    Recorre `PUNTUABLES` y no la tabla entera: la referencia guarda las cinco
+    cargas porque describe al patrón entero, y quién puntúa lo decide la
+    fórmula. Con la tabla mandando, añadir una medida al patrón cambiaría la
+    escala sin que nadie tocara la versión.
+
+    Hacen falta todas: con una menos, la que falta se llevaría por delante la
+    comparación con cualquier prueba completa, y la cifra parecería igual de
+    válida.
     """
     if not referencia:
         return None
     fracciones = []
-    for carga, del_patron in referencia.items():
+    for carga in PUNTUABLES:
+        del_patron = referencia.get(carga)
         medido = scores.get(f"{carga}/{hilos}")
         if medido is None or not del_patron:
             return None

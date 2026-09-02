@@ -283,6 +283,64 @@ class TestRendimientoEnElInforme(unittest.TestCase):
             self.assertIn(esperado, texto)
 
 
+    def test_dice_cuáles_puntúan_y_con_qué_bibliotecas_se_midió(self):
+        """Puntúan dos de las cinco, y desde el informe hay que poder saberlo.
+
+        Una cifra de la v6 al lado de una de la v5 se lee como una diferencia
+        del equipo, y no lo es: tres cargas dejaron de contar. Y las
+        bibliotecas siguen haciendo falta para leer las cifras de esas tres,
+        que son justamente las que cambian con la distribución: la misma pieza
+        da 14,9 GB/s en la verificación con zlib-ng y 1,5 con la zlib de
+        Ubuntu 22.04, que es la que va dentro del AppImage.
+        """
+        from silux import benchmark, history, report, score
+
+        tabla = score.referencias()
+        if not tabla:
+            self.skipTest("no hay escala medida")
+        hilos = tabla["patron"]["hilos"]
+        sc = {f"{c}/1": v for c, v in tabla["un_hilo"].items()}
+        sc |= {f"{c}/{hilos}": v for c, v in tabla["multihilo"].items()}
+        buena = history.Entry(
+            timestamp=1.0, cpu="x", threads=hilos, seconds=15.0, scores=sc,
+            score_version=score.VERSION, zlib_version="1.2.11",
+            zlib_simd=("pclmulqdq", "avx2"),
+            openssl_version="OpenSSL 3.0.2 15 Mar 2022")
+        with mock.patch("silux.history.load", return_value=[buena]):
+            texto = report.build(_snapshot())
+
+        # La fila entera y no un `in`: «Compresión» es subcadena de
+        # «Compresión pesada», así que buscar el nombre suelto da por presente
+        # a una carga que no está.
+        fila = next(l for l in texto.splitlines()
+                    if l.startswith("| Cargas que puntúan |"))
+        nombres = {n.strip() for n in fila.split("|")[2].split("·")}
+        self.assertEqual(nombres, {c.name for c in benchmark.CARGAS
+                                   if score.puntua(c.key)})
+        self.assertIn("zlib 1.2.11 (pclmulqdq · avx2)", texto)
+        self.assertIn("OpenSSL 3.0.2", texto)
+        # Y por qué son dos: sin esto la fila de arriba parece un recorte.
+        self.assertIn("no entran en la puntuación", texto)
+
+    def test_sin_bibliotecas_registradas_no_se_inventa_la_fila(self):
+        """Una prueba anterior a que esto se guardara no trae nada que decir."""
+        from silux import history, report, score
+
+        tabla = score.referencias()
+        if not tabla:
+            self.skipTest("no hay escala medida")
+        hilos = tabla["patron"]["hilos"]
+        sc = {f"{c}/1": v for c, v in tabla["un_hilo"].items()}
+        sc |= {f"{c}/{hilos}": v for c, v in tabla["multihilo"].items()}
+        antigua = history.Entry(timestamp=1.0, cpu="x", threads=hilos,
+                                seconds=15.0, scores=sc,
+                                score_version=score.VERSION)
+        with mock.patch("silux.history.load", return_value=[antigua]):
+            texto = report.build(_snapshot())
+        self.assertIn("## Rendimiento", texto)
+        self.assertNotIn("| Bibliotecas |", texto)
+
+
 class TestLasCategoriasSalenEnCastellano(unittest.TestCase):
     """El informe no puede enseñar las claves de idioma en crudo.
 

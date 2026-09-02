@@ -7,7 +7,7 @@ comparable y no lo es, que es exactamente lo que hacía la anterior.
 import pathlib
 import unittest
 
-from silux import score
+from silux import benchmark, score
 
 
 class TestLasCincoCargasPesanLoMismo(unittest.TestCase):
@@ -42,13 +42,14 @@ class TestLasCincoCargasPesanLoMismo(unittest.TestCase):
         base = {f"{c}/1": v for c, v in tabla["un_hilo"].items()}
         base |= {f"{c}/{hilos}": v for c, v in tabla["multihilo"].items()}
 
-        for carga in tabla["multihilo"]:
+        for carga in score.PUNTUABLES:
             with self.subTest(carga=carga):
                 tocado = dict(base)
                 tocado[f"{carga}/{hilos}"] *= 2
                 _uno, multi = score.puntuar(tocado, hilos)
-                # Cinco cargas a partes iguales: doblar una sube un quinto.
-                self.assertAlmostEqual(multi / score.ESCALA, 1.2, delta=0.01)
+                # A partes iguales: doblar una sube lo que valga una de ellas.
+                esperado = 1 + 1 / len(score.PUNTUABLES)
+                self.assertAlmostEqual(multi / score.ESCALA, esperado, delta=0.01)
 
     def test_ir_al_doble_en_todo_es_el_doble_de_puntuacion(self):
         tabla = self._referencia()
@@ -57,6 +58,63 @@ class TestLasCincoCargasPesanLoMismo(unittest.TestCase):
         scores |= {f"{c}/{hilos}": v * 2 for c, v in tabla["multihilo"].items()}
         self.assertEqual(score.puntuar(scores, hilos),
                          (2 * score.ESCALA, 2 * score.ESCALA))
+
+
+class TestSoloPuntuaLoQueMideElProcesador(unittest.TestCase):
+    """Tres de las cinco cargas medían la distribución, no la pieza.
+
+    La misma pieza —un i5-10400, el mismo día y el mismo equipo— da 14,9 GB/s
+    en la carga de verificación con la zlib-ng de Fedora, 3,9 con la de
+    Debian, 2,0 con la de Arch y 1,5 con la de Ubuntu 22.04, que es la que va
+    dentro del AppImage. Un ×9,7 que no es del procesador. Con las cinco
+    cargas puntuando, ese equipo sacaba 716 puntos en Fedora y 504 con la
+    zlib del AppImage.
+
+    Lo que se vigila aquí es que no vuelva a entrar en la cifra una carga que
+    dependa de una biblioteca del sistema.
+    """
+
+    # Lo que no puede aparecer en el código de una carga que puntúe. `zlib`
+    # porque hay dos implementaciones y cada distribución compila la suya;
+    # `pbkdf2_hmac` porque su coste por vuelta cambió entre OpenSSL 3.0 y 3.5
+    # y se lleva un ×1,38. `hashlib.sha512` no está en la lista y no es un
+    # descuido: da 190,05 · 190,13 · 190,17 op/s en tres distribuciones con
+    # dos versiones mayores de OpenSSL, o sea ±0,1 %.
+    DEL_SISTEMA = {"zlib", "pbkdf2_hmac"}
+
+    def _que_dependen(self, claves):
+        """De esas cargas, las que se apoyan en algo que cambia con la distro."""
+        return {c.key for c in benchmark.CARGAS if c.key in claves
+                and set(c.work.__code__.co_names) & self.DEL_SISTEMA}
+
+    def test_las_que_puntuan_existen_entre_las_cargas(self):
+        """Una clave mal escrita dejaría la escala sin esa carga y en silencio."""
+        self.assertTrue(set(score.PUNTUABLES)
+                        <= {c.key for c in benchmark.CARGAS})
+
+    def test_ninguna_de_las_que_puntuan_depende_del_sistema(self):
+        self.assertEqual(self._que_dependen(score.PUNTUABLES), set())
+
+    def test_y_la_comprobacion_caza_lo_que_dice_cazar(self):
+        """Una guarda que solo se ha visto pasar no ha demostrado nada.
+
+        Con las dos que se quitaron por esto dentro de la lista, tiene que
+        saltar; si no saltara, el test de arriba estaría en verde sin vigilar
+        nada.
+        """
+        self.assertEqual(
+            self._que_dependen(tuple(score.PUNTUABLES)
+                               + ("verificacion", "derivacion")),
+            {"verificacion", "derivacion"})
+
+    def test_la_escala_trae_la_referencia_de_cada_una(self):
+        tabla = score.referencias()
+        if not tabla:
+            self.skipTest("no hay escala medida")
+        for cual in ("un_hilo", "multihilo"):
+            for carga in score.PUNTUABLES:
+                with self.subTest(cual=cual, carga=carga):
+                    self.assertIn(carga, tabla[cual])
 
 
 class TestSoloPuntuaLoQueSePuedeComparar(unittest.TestCase):
@@ -99,11 +157,22 @@ class TestSoloPuntuaLoQueSePuedeComparar(unittest.TestCase):
         self.assertFalse(score.comparable(score.SEGUNDOS_CANONICOS + 5.0))
 
     def test_una_prueba_a_la_que_le_falte_una_carga_no_puntua(self):
-        """Con cuatro de cinco, la cifra parecería igual de válida."""
-        incompleta = {k: v for k, v in self.scores.items()
-                      if not k.startswith("verificacion/")}
-        self.assertIsNone(
-            score.puntuar(incompleta, self.hilos))
+        """Sin una de las que puntúan, la cifra parecería igual de válida."""
+        for carga in score.PUNTUABLES:
+            with self.subTest(carga=carga):
+                incompleta = {k: v for k, v in self.scores.items()
+                              if not k.startswith(f"{carga}/")}
+                self.assertIsNone(score.puntuar(incompleta, self.hilos))
+
+    def test_pero_sin_una_de_las_que_no_puntúan_sí(self):
+        """Son diagnóstico, no escala: su ausencia no invalida la cifra.
+
+        Y es lo que pasa de verdad en una máquina donde una carga no llegue a
+        medirse: la puntuación tiene que seguir saliendo.
+        """
+        sin_verificacion = {k: v for k, v in self.scores.items()
+                            if not k.startswith("verificacion/")}
+        self.assertIsNotNone(score.puntuar(sin_verificacion, self.hilos))
 
 
 class TestLaEscalaSeDeclaraYSeVersiona(unittest.TestCase):
