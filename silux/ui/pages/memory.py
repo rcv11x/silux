@@ -473,9 +473,14 @@ class MemoryPage(QScrollArea):
         if not modules:
             if snapshot.spd:
                 catalogados = {i.rated_mts for i in snapshot.spd if i.rated_mts}
-                velocidad = (_("memory.spd.at").format(mts=max(catalogados))
-                             if catalogados else "")
                 cuantos = len(snapshot.spd)
+                # «Catalogados a», no «a»: el SPD dice a cuánto pueden ir, y a
+                # cuánto van lo decide la BIOS y solo se sabe con permisos.
+                # «2 módulos… a 3200 MT/s» se leía como la velocidad real, y
+                # sin XMP activado van a 2133.
+                velocidad = (_("memory.spd.rated.one" if cuantos == 1
+                               else "memory.spd.rated.many").format(mts=max(catalogados))
+                             if catalogados else "")
                 return (_("memory.spd.read.one" if cuantos == 1
                           else "memory.spd.read.many").format(n=cuantos)
                         + velocidad + _("memory.spd.needsroot"))
