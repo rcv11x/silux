@@ -10,6 +10,7 @@ import unittest
 from unittest import mock
 
 from silux import report
+from tests.escala import tabla_de_la_escala
 from silux.model import (Board, Clocks, CpuInfo, CpuType, Disk, DiskHealth, Gpu,
                         GpuMemory, Need, NetworkInterface, Note, Partition,
                         PcieLink, Sensor, SensorKind, Snapshot, System)
@@ -265,9 +266,7 @@ class TestRendimientoEnElInforme(unittest.TestCase):
     def test_con_una_prueba_buena_salen_las_condiciones(self):
         from silux import history, report, score
 
-        tabla = score.referencias()
-        if not tabla:
-            self.skipTest("no hay escala medida")
+        tabla = tabla_de_la_escala(self)
         hilos = tabla["patron"]["hilos"]
         sc = {f"{c}/1": v for c, v in tabla["un_hilo"].items()}
         sc |= {f"{c}/{hilos}": v for c, v in tabla["multihilo"].items()}
@@ -295,9 +294,7 @@ class TestRendimientoEnElInforme(unittest.TestCase):
         """
         from silux import benchmark, history, report, score
 
-        tabla = score.referencias()
-        if not tabla:
-            self.skipTest("no hay escala medida")
+        tabla = tabla_de_la_escala(self)
         hilos = tabla["patron"]["hilos"]
         sc = {f"{c}/1": v for c, v in tabla["un_hilo"].items()}
         sc |= {f"{c}/{hilos}": v for c, v in tabla["multihilo"].items()}
@@ -326,9 +323,7 @@ class TestRendimientoEnElInforme(unittest.TestCase):
         """Una prueba anterior a que esto se guardara no trae nada que decir."""
         from silux import history, report, score
 
-        tabla = score.referencias()
-        if not tabla:
-            self.skipTest("no hay escala medida")
+        tabla = tabla_de_la_escala(self)
         hilos = tabla["patron"]["hilos"]
         sc = {f"{c}/1": v for c, v in tabla["un_hilo"].items()}
         sc |= {f"{c}/{hilos}": v for c, v in tabla["multihilo"].items()}

@@ -8,6 +8,7 @@ import pathlib
 import unittest
 
 from silux import benchmark, score
+from tests.escala import tabla_de_la_escala
 
 
 class TestLasCincoCargasPesanLoMismo(unittest.TestCase):
@@ -21,10 +22,7 @@ class TestLasCincoCargasPesanLoMismo(unittest.TestCase):
     """
 
     def _referencia(self):
-        tabla = score.referencias()
-        if not tabla:
-            self.skipTest("no hay escala medida")
-        return tabla
+        return tabla_de_la_escala(self)
 
     def test_el_patron_puntua_mil_por_definicion(self):
         tabla = self._referencia()
@@ -108,9 +106,7 @@ class TestSoloPuntuaLoQueMideElProcesador(unittest.TestCase):
             {"verificacion", "derivacion"})
 
     def test_la_escala_trae_la_referencia_de_cada_una(self):
-        tabla = score.referencias()
-        if not tabla:
-            self.skipTest("no hay escala medida")
+        tabla = tabla_de_la_escala(self)
         for cual in ("un_hilo", "multihilo"):
             for carga in score.PUNTUABLES:
                 with self.subTest(cual=cual, carga=carga):
@@ -127,9 +123,7 @@ class TestSoloPuntuaLoQueSePuedeComparar(unittest.TestCase):
     """
 
     def setUp(self):
-        tabla = score.referencias()
-        if not tabla:
-            self.skipTest("no hay escala medida")
+        tabla = tabla_de_la_escala(self)
         self.hilos = tabla["patron"]["hilos"]
         self.scores = {f"{c}/1": v for c, v in tabla["un_hilo"].items()}
         self.scores |= {f"{c}/{self.hilos}": v
@@ -178,28 +172,26 @@ class TestSoloPuntuaLoQueSePuedeComparar(unittest.TestCase):
 class TestLaEscalaSeDeclaraYSeVersiona(unittest.TestCase):
     """Cambiar las referencias mueve todas las puntuaciones a la vez."""
 
-    def test_una_tabla_de_otra_version_no_llega_a_usarse(self):
-        """Lo que importa no es que siempre haya escala al día.
+    def test_la_version_del_codigo_y_la_de_la_tabla_van_emparejadas(self):
+        """`score.VERSION` y la `version_formula` de `scores.json` coinciden.
 
-        Es que una escala vieja no se cuele: cambiar las referencias mueve
-        todas las puntuaciones a la vez, y una cifra medida con la anterior
-        junto a otra medida con esta diría una diferencia que no existe.
-        Mientras la escala esté pendiente de rehacer, lo correcto es no
-        puntuar, y eso es lo que se comprueba aquí.
+        Desparejados, `referencias()` sale vacía, no puntúa nada y la suite
+        lo daba por bueno: este test aceptaba las dos ramas, y diez tests más
+        se saltaban por falta de escala. Así se quedó la v5 un tiempo, en
+        verde, con el test que comprueba que una prueba incompleta no puntúa
+        pasando porque no puntuaba ninguna. Que una escala vieja no se use lo
+        vigila el test de abajo; aquí se exige que la vigente sea la del
+        código, que es lo que se olvida al subir el número.
         """
         import json
-        import pathlib
 
         ruta = pathlib.Path(score.__file__).parent / "db" / "scores.json"
-        if not ruta.is_file():
-            self.skipTest("no hay archivo de escala")
+        self.assertTrue(ruta.is_file(), f"falta {ruta}")
         declarada = json.loads(ruta.read_text(encoding="utf-8")).get(
             "version_formula")
-        if declarada == score.VERSION:
-            self.assertTrue(score.referencias(), "la escala vigente no carga")
-        else:
-            self.assertEqual(score.referencias(), {},
-                             "una escala de otra versión no debe usarse")
+        self.assertEqual(declarada, score.VERSION,
+                         "score.VERSION y db/scores.json van en el mismo commit")
+        self.assertTrue(score.referencias(), "la escala vigente no carga")
 
     def test_una_escala_de_otra_version_no_se_usa(self):
         """Antes que mezclar dos escalas, ninguna."""
@@ -211,9 +203,8 @@ class TestLaEscalaSeDeclaraYSeVersiona(unittest.TestCase):
         score.referencias.cache_clear()
 
     def test_la_escala_dice_en_que_condiciones_se_tomo(self):
+        tabla_de_la_escala(self)
         patron = score.patron()
-        if not patron:
-            self.skipTest("no hay escala medida")
         for campo in ("cpu", "hilos", "segundos", "carga_de_fondo"):
             self.assertIn(campo, patron)
 

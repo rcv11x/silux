@@ -14,6 +14,7 @@ from silux.collector import Collector
 from silux.settings import Preferences
 from silux.ui import theme
 from silux.ui.pages.home import HomePage
+from tests.escala import tabla_de_la_escala
 
 
 def _app():
@@ -271,9 +272,7 @@ class TestTarjetaDePuntuacion(unittest.TestCase):
     def _prueba(self, segundos, cpu="Procesador de prueba"):
         from silux import history, score
 
-        tabla = score.referencias()
-        if not tabla:
-            self.skipTest("la escala está pendiente de rehacer")
+        tabla = tabla_de_la_escala(self)
         hilos = tabla["patron"]["hilos"]
         scores = {f"{c}/1": v for c, v in tabla["un_hilo"].items()}
         scores |= {f"{c}/{hilos}": v for c, v in tabla["multihilo"].items()}
@@ -314,9 +313,7 @@ class TestTarjetaDePuntuacion(unittest.TestCase):
 
         from silux import score
 
-        tabla = dict(score.referencias())
-        if not tabla:
-            self.skipTest("la escala está pendiente de rehacer")
+        tabla = dict(tabla_de_la_escala(self))
         tabla["piezas"] = {"Procesador de prueba": {
             "hilos": tabla["patron"]["hilos"],
             "un_hilo": [900, 1000, 1100], "multihilo": [900, 1000, 1100]}}
