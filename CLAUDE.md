@@ -111,9 +111,21 @@ texto entero y no el que se ve: la fila que no cabe y sale con puntos
 suspensivos es justo la que hace falta copiar. Un guion no se copia, porque es
 la marca de un dato que falta.
 
-Capturas sin pantalla: `python3 -m silux.ui.app --screenshot salida.png
---page Sensores --dark --compact --size 900x680`. Acepta además `--accent` y
-`--font-scale` para forzar apariencia sin tocar los ajustes guardados.
+Capturas sin pantalla, siempre en `"$(xdg-user-dir PICTURES)/silux-test/"` y
+nunca dentro del repositorio:
+
+```bash
+mkdir -p "$(xdg-user-dir PICTURES)/silux-test"
+XDG_CONFIG_HOME="$(mktemp -d)" QT_QPA_PLATFORM=offscreen \
+  python3 -m silux.ui.app --screenshot "$(xdg-user-dir PICTURES)/silux-test/sensores.png" \
+  --page Sensores --dark --compact --size 900x680
+```
+
+Acepta además `--accent` y `--font-scale`. **El `XDG_CONFIG_HOME` temporal no
+es opcional** mientras siga abierto F-M1 de la quinta auditoría: al cerrar, la
+ventana guarda en `settings.json` lo que se le haya forzado por la línea de
+órdenes —tema, densidad, acento, letra y tamaño—, así que una captura sin él
+cambia las preferencias de quien la saca.
 
 ## Las reglas que sostienen el diseño
 
@@ -1764,10 +1776,24 @@ Omite por defecto el nombre del equipo, las IP, las MAC y los números de serie
 
 ## Al trabajar en este repositorio
 
-**Los commits no llevan coautoría ni rastro de la herramienta.** Nada de
-`Co-Authored-By`, ni enlaces a una sesión, ni «generado con». El historial es
-del autor y se lee dentro de veinte años sin que nadie tenga que saber con qué
-se escribió cada línea. El mensaje explica el porqué del cambio y ya.
+**Los commits siguen Conventional Commits, en español.** La primera línea es
+`tipo(zona): descripción`: el tipo es uno de los del estándar, sin traducir
+—`fix`, `feat`, `test`, `docs`, `refactor`, `perf`, `build`, `ci`, `chore`—,
+la zona es el módulo o la carpeta que se toca —`spd`, `providers/hwmon`,
+`ui/widgets`, `privileged`, `bench`, `report`, `cli`, `i18n`, `appimage`, `ci`,
+`tests`, `claude`— y la descripción va en minúscula y sin punto final. El
+cuerpo explica el porqué del cambio: qué fallaba, cómo se vio y qué se
+comprobó, incluido que el test se vio fallar antes del arreglo. El autor es el
+del repositorio, y cuando el commit se escribe con Claude lleva al final la
+línea `Co-Authored-By: Claude …` que corresponda al modelo.
+
+```
+fix(ui/widgets): la ficha que nace sin dato pinta el guion pequeño
+
+Cuerpo: el porqué.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+```
 
 **Nunca se empuja sin preguntar.** Commitear en local es reversible; publicar
 no, y menos con el CI atado a cada empujón a master. Se pregunta siempre,
@@ -1805,8 +1831,11 @@ pintarlo: probaban el proveedor, la interpretación de los bits y el reparto de
 avisos, y ninguno miraba si eso se veía. Probar la fuente no es probar que se
 ve, y lo que no se ve no está hecho.
 
-**Pocos commits y temáticos.** Uno por asunto, no uno por arreglo: cuatro
-correcciones que salen de la misma causa son un commit, no cuatro.
+**Un commit por cambio lógico.** Un cambio lógico es una causa, no un archivo
+ni un arreglo: cuatro correcciones que salen de la misma causa son un commit,
+no cuatro. El arreglo y el test que lo vigila van en el mismo commit, y lo que
+solo mueve código va en uno propio, para que `git log --follow` siga sirviendo.
+La suite queda en verde entre uno y otro.
 
 ## Fuentes de datos y licencias
 
