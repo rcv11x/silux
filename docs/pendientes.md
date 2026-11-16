@@ -169,11 +169,6 @@ con el que la cosa **nace**.
 * `providers/network.py` · **baja** · el tipo de interfaz se pinta crudo y
   mezcla los dos idiomas: `loopback`, `wifi`, `ethernet` en inglés y `puente`,
   `virtual`, `otro` en español, y ninguno está en los archivos de idioma.
-* `providers/derived.py` · **baja** · «Core #0», «Core #1»… a pelo, 24 filas
-  de un árbol de sensores en español, y en el mismo archivo donde el sensor de
-  al lado va con `_("sensor.total")`. No es un dato del equipo: `coretemp`
-  etiqueta «Core 0», sin almohadilla. `sensor.core` («Núcleo») ya existe en los
-  dos idiomas. Es la misma familia que el `kind` de red de aquí arriba.
 * `providers/storage.py` · **baja** · el modelo de los discos SATA sale
   truncado a 16 caracteres, que es el campo de sysfs; el completo está sin
   permisos en `/dev/disk/by-id`.
@@ -186,17 +181,9 @@ con el que la cosa **nace**.
 
 ### Interfaz y línea de órdenes
 
-* `ui/pages/graphics.py` · **media** · la tabla de monitores no cabe a 900 px
-  con un monitor de nombre largo: «GIGA-BYTE TECHNOLOGY CO., LTD. AORUS
-  FO27Q2» se lleva el ancho de la columna (el tope son 26 veces el cuerpo de
-  letra) y la resolución sale cortada, «2560 × 14…», con la barra de
-  desplazamiento debajo. Visto en el 5800X3D con dos monitores. Lo que hay
-  que decidir es de diseño: acortar el fabricante, o que la columna que cede
-  sea la del nombre y no las de cifras.
 * `ui/pages/settings.py` · **propuesta, sin escribir** · no hay forma de quitar
-  el ayudante instalado desde la interfaz: solo con
-  `sudo python3 -m silux.privileged.instalar --uninstall`, que es lo que dice
-  el diálogo «Qué hace esto». Un botón en Ajustes toca privilegios y va como
+  el ayudante instalado desde la interfaz: solo borrando sus dos archivos,
+  que es la orden que da el diálogo «Qué hace esto». Un botón en Ajustes toca privilegios y va como
   propuesta aparte.
 * `providers/cppc.py` · **media, sin comprobar** · con `acpi-cpufreq` el techo
   del silicio ya no sale inflado (4,96 GHz), pero el arreglo se hizo sin

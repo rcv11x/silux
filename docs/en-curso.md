@@ -183,10 +183,49 @@ El venv de pytest ya no hace falta: `uv sync --extra gui` deja uno en `.venv`.
      propuesta aparte**, que toca privilegios;
    - los dos botones de apartar valen para todas las páginas a la vez.
 
-   **El CI de `fase-1` no se ha lanzado**: en el equipo de casa no hay `gh`
-   ni token. La rama está empujada (por SSH); hay que pulsar «Run workflow»
-   en Actions con la rama `fase-1`, o instalar `github-cli`. `ui-permisos` no
-   se ha empujado.
+   **Segunda tanda, tras revisar el autor las capturas** (aprobada la
+   primera). Un commit por cambio, con su test, en `ui-permisos`:
+
+   | Qué | Cómo quedó |
+   |---|---|
+   | Sensores: «Core #N» | «CPU N», de `model.thread_name`, igual que en la página CPU |
+   | Sensores: «Tensión 0, 1, 2» | `it87` no las nombra (solo 3VSB y Vbat); `Sensor.unnamed` y un pie que lo dice |
+   | CPU: «núcleos» con Tctl | la línea solo sale si hay sensores por núcleo |
+   | Fecha de la BIOS | `render.bios_date`, «2025-10-28» |
+   | Identificador único a ceros | `render.unique_id`; la fila se esconde |
+   | Orden de desinstalar del diálogo | `sudo rm` de los dos archivos, que vale con paquete y con AppImage |
+   | `acpi_enforce_resources=lax` | el aviso dice el riesgo y que no merece la pena solo por ese dato |
+   | Rendimiento: pruebas de otra escala | la celda dice «escala v5» y por qué, no «—» |
+   | Inicio: el titular de Temperaturas | no cambia hasta que otra pieza le saca 2 °C |
+   | Gráficas a todo el ancho | `Sparkline._geometria` reparte las muestras mientras se llena |
+   | Red: interfaces virtuales | plegadas debajo de las físicas, en un renglón que se abre |
+   | Tabla de monitores | «Gigabyte AORUS FO27Q2», y las tablas miden con decimales |
+
+   Lo de las gráficas **cambia una decisión anterior**: con el paso fijo la
+   curva no se recolocaba al entrar cada muestra; ahora, hasta que se llena
+   (minuto y medio), cada muestra nueva la aprieta un poco. Si molesta, es
+   una función.
+
+   Capturas de esta tanda en `~/Imágenes/silux-test/ui-permisos-2/`,
+   `antes/` y `despues/`: nueve páginas a 1440×1300 y en compacto, más el
+   diálogo y `red-virtuales-abiertas.png`.
+
+   En el equipo de casa ya hay `gh`, pero el remoto sigue siendo HTTPS sin
+   credenciales: se empuja con la URL de SSH
+   (`git push git@github.com:rcv11x/silux.git RAMA:RAMA`).
+
+   **El primer CI de las dos ramas falló**, por dos cosas que aquí no se
+   veían y que están arregladas en `fase-1` (`ui-permisos` va rebasada
+   encima):
+   - el nombre de la gráfica del volcado salía del `pci.ids` de quien
+     ejecuta, y el de la Ubuntu del runner no trae la RX 9070 XT. Ahora se
+     graba en el volcado (`pciids` pasa por `sysroot`); el `5800x3d` se
+     volvió a volcar. Los del i5-10400 no lo llevan: otra razón para
+     rehacerlos en la oficina;
+   - con la tipografía del runner (DejaVu, más ancha) la cabecera de
+     Sensores pedía 643 px en una página de 640. El contador se corta.
+
+   **Nada ha pasado a `master`.**
 
    La lista original, un commit por cambio, con su test:
    - **F-M4 primero** (`pkexec` en el hilo de la interfaz), antes de hacer
