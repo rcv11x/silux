@@ -1,0 +1,270 @@
+{
+ "cpuid": {
+  "*:0:0": [
+   22,
+   1970169159,
+   1818588270,
+   1231384169
+  ],
+  "*:2147483648:0": [
+   2147483656,
+   0,
+   0,
+   0
+  ],
+  "0:1:0": [
+   656979,
+   1050624,
+   2147154879,
+   3219913727
+  ],
+  "0:2147483649:0": [
+   0,
+   0,
+   289,
+   739248128
+  ],
+  "0:2147483650:0": [
+   1702129225,
+   693250156,
+   1919894304,
+   1297360997
+  ],
+  "0:2147483651:0": [
+   896081961,
+   875573549,
+   1126182960,
+   1075860816
+  ],
+  "0:2147483652:0": [
+   959328800,
+   2051557168,
+   0,
+   0
+  ],
+  "0:22:0": [
+   2900,
+   4300,
+   100,
+   0
+  ],
+  "0:7:0": [
+   0,
+   43804591,
+   1073741824,
+   3154118144
+  ],
+  "0:7:1": [
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ "gpuapi": {
+  "consultar": {
+   "opencl": [],
+   "opengl": {
+    "egl_vendor": "Mesa Project",
+    "egl_version": "1.5",
+    "glsl": "4.60",
+    "renderer": "Mesa Intel(R) UHD Graphics 630 (CML GT2)",
+    "vendor": "Intel",
+    "version": "4.6 (Compatibility Profile) Mesa 26.2.6"
+   },
+   "vaapi": [
+    {
+     "codecs": [
+      {
+       "bits": 10,
+       "decode": true,
+       "encode": true,
+       "name": "HEVC",
+       "profiles": [
+        "Main",
+        "Main 10"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": true,
+       "name": "H.264",
+       "profiles": [
+        "Main",
+        "High",
+        "Constrained Baseline"
+       ]
+      },
+      {
+       "bits": 10,
+       "decode": true,
+       "encode": false,
+       "name": "VP9",
+       "profiles": [
+        "Profile 0",
+        "Profile 2"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": true,
+       "name": "VP8",
+       "profiles": [
+        "Version 0.3"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": true,
+       "name": "MPEG-2",
+       "profiles": [
+        "Simple",
+        "Main"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": false,
+       "name": "VC-1",
+       "profiles": [
+        "Simple",
+        "Main",
+        "Advanced"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": true,
+       "name": "JPEG",
+       "profiles": [
+        "Baseline"
+       ]
+      }
+     ],
+     "driver": "Intel iHD driver for Intel(R) Gen Graphics - 26.1.5 ()",
+     "node": "renderD128",
+     "version": "1.23"
+    }
+   ],
+   "vulkan": [
+    {
+     "api_version": "1.4.354",
+     "device_id": 39880,
+     "device_memory_bytes": 12424565760,
+     "driver_version": 109060102,
+     "instance_version": "1.4.341",
+     "kind": "integrada",
+     "name": "Intel(R) UHD Graphics 630 (CML GT2)",
+     "vendor_id": 32902
+    },
+    {
+     "api_version": "1.4.354",
+     "device_id": 0,
+     "device_memory_bytes": 16566087680,
+     "driver_version": 109060102,
+     "instance_version": "1.4.341",
+     "kind": "CPU",
+     "name": "llvmpipe (LLVM 22.1.8, 256 bits)",
+     "vendor_id": 65541
+    }
+   ]
+  }
+ },
+ "i915": {
+  "/dev/dri/renderD128": {
+   "chipset_id": 39880,
+   "eu_total": 23,
+   "subslices": 3
+  }
+ },
+ "ioctl_red": {
+  "br-138b9ec32a8c:0x8915": "192.0.2.11",
+  "br-138b9ec32a8c:0x891b": "255.255.240.0",
+  "br-20575bebc9a2:0x8915": "192.0.2.11",
+  "br-20575bebc9a2:0x891b": "255.255.0.0",
+  "br-2669d0055af1:0x8915": "192.0.2.11",
+  "br-2669d0055af1:0x891b": "255.255.0.0",
+  "br-306bbe48649e:0x8915": "192.0.2.11",
+  "br-306bbe48649e:0x891b": "255.255.0.0",
+  "br-67f9f8ed144d:0x8915": "192.0.2.11",
+  "br-67f9f8ed144d:0x891b": "255.255.0.0",
+  "br-78d3548ef7f3:0x8915": "192.0.2.11",
+  "br-78d3548ef7f3:0x891b": "255.255.240.0",
+  "br-81bba59f0f83:0x8915": "192.0.2.11",
+  "br-81bba59f0f83:0x891b": "255.255.0.0",
+  "br-894fee2254f6:0x8915": "192.0.2.11",
+  "br-894fee2254f6:0x891b": "255.255.0.0",
+  "br-8b2225f0203e:0x8915": "192.0.2.11",
+  "br-8b2225f0203e:0x891b": "255.255.0.0",
+  "br-8d4d123e59ef:0x8915": "192.0.2.11",
+  "br-8d4d123e59ef:0x891b": "255.255.0.0",
+  "br-908c223fae67:0x8915": "192.0.2.11",
+  "br-908c223fae67:0x891b": "255.255.240.0",
+  "br-91f9734d656e:0x8915": "192.0.2.11",
+  "br-91f9734d656e:0x891b": "255.255.0.0",
+  "br-97190ec1e0b0:0x8915": "192.0.2.11",
+  "br-97190ec1e0b0:0x891b": "255.255.240.0",
+  "br-9889824a3223:0x8915": "192.0.2.11",
+  "br-9889824a3223:0x891b": "255.255.0.0",
+  "br-c9467e0519c9:0x8915": "192.0.2.11",
+  "br-c9467e0519c9:0x891b": "255.255.240.0",
+  "br-caac27f8bc34:0x8915": "192.0.2.11",
+  "br-caac27f8bc34:0x891b": "255.255.0.0",
+  "br-cbd5a3bc25cf:0x8915": "192.0.2.11",
+  "br-cbd5a3bc25cf:0x891b": "255.255.0.0",
+  "br-d4a5c4158c5d:0x8915": "192.0.2.11",
+  "br-d4a5c4158c5d:0x891b": "255.255.0.0",
+  "br-dc7eae25a978:0x8915": "192.0.2.11",
+  "br-dc7eae25a978:0x891b": "255.255.240.0",
+  "br-e78dad01b1d3:0x8915": "192.0.2.11",
+  "br-e78dad01b1d3:0x891b": "255.255.0.0",
+  "docker0:0x8915": "192.0.2.11",
+  "docker0:0x891b": "255.255.0.0",
+  "enp1s0:0x8915": "192.0.2.11",
+  "enp1s0:0x891b": "255.255.255.0",
+  "lo:0x8915": "127.0.0.1",
+  "lo:0x891b": "255.0.0.0",
+  "tailscale0:0x8915": "192.0.2.11",
+  "tailscale0:0x891b": "255.255.255.255"
+ },
+ "plataforma": {
+  "entorno": {
+   "SHELL": "/usr/bin/zsh",
+   "XDG_CURRENT_DESKTOP": "KDE",
+   "XDG_SESSION_TYPE": "wayland"
+  },
+  "machine": "x86_64",
+  "uname": {
+   "machine": "x86_64",
+   "node": "equipo",
+   "processor": "",
+   "release": "7.3.3-200.fc44.x86_64",
+   "system": "Linux",
+   "version": "#1 SMP PREEMPT_DYNAMIC Fri Nov  6 20:34:09 UTC 2026"
+  }
+ },
+ "realpath": {
+  "/dev/sda1": "/dev/sda1",
+  "/dev/sda2": "/dev/sda2",
+  "/dev/sda3": "/dev/sda3"
+ },
+ "statvfs": {
+  "/": [
+   122891501568,
+   115461357568
+  ],
+  "/boot": [
+   526778368,
+   493924352
+  ],
+  "/boot/efi": [
+   21053440,
+   606822400
+  ]
+ }
+}

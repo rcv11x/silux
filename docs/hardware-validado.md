@@ -11,6 +11,7 @@ monta el Collector contra todos (`tests/test_equipos.py`).
 | Volcado | Procesador | Gráfica | Notas |
 |---|---|---|---|
 | `i5-10400` | Intel Core i5-10400 (Comet Lake-S) | UHD Graphics 630 | Fedora 44; volcado con el turbo apagado por el gestor de energía |
+| `i5-10400-turbo` | el mismo | el mismo | con carga, a los 5 s: `auto-cpufreq` ya había encendido el turbo (techo 4,3 GHz, los 12 hilos a 4,0) |
 
 Falta el del Ryzen 7 5800X3D. Hasta que esté, lo que se arregle en lo que lee
 el procesador o la gráfica queda comprobado solo en Intel, y se dice.
