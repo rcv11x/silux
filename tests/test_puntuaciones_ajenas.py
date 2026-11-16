@@ -20,7 +20,9 @@ from silux import score  # noqa: E402
 
 
 def _muestra(**cambios):
-    base = {"cpu": "Una CPU", "multihilo": 1000, "un_hilo": 200, "hilos": 16,
+    # Una pieza de dieciséis hilos que escala unas nueve veces, como el patrón:
+    # las dos cifras salen parecidas porque ya van divididas por las suyas.
+    base = {"cpu": "Una CPU", "multihilo": 955, "un_hilo": 1000, "hilos": 16,
             "escala": f"v{score.VERSION}", "gobernador": "performance",
             "carga": 0.5, "origen": "x.md"}
     return base | cambios
@@ -44,7 +46,28 @@ class TestLoQueEntraEnLaTabla(unittest.TestCase):
 
     def test_pero_una_escala_creible_sí(self):
         """Ocho núcleos con SMT dan del orden de ocho o nueve veces."""
-        self.assertEqual(herramienta.revisar(_muestra(multihilo=1700)), "")
+        self.assertEqual(herramienta.revisar(self._con_escala(9.0)), "")
+
+    def _con_escala(self, veces, hilos=16, un_hilo=1000):
+        """Una muestra cuyo equipo escala `veces` de un hilo a todos.
+
+        Las dos puntuaciones ya van divididas por las del patrón, así que su
+        cociente no es la escala del equipo: es la del equipo dividida entre
+        la del patrón. Se compone a partir de la del patrón para que el test
+        hable de la escala de verdad.
+        """
+        multihilo = round(un_hilo * veces / herramienta.escala_del_patron())
+        return _muestra(multihilo=multihilo, un_hilo=un_hilo, hilos=hilos)
+
+    def test_escalar_ochenta_veces_con_dieciseis_hilos_no_entra(self):
+        """1700 contra 200 parecía 8,5 veces y era unas ochenta, porque el
+        patrón ya escala nueve. La comprobación comparaba las cifras
+        normalizadas con el número de hilos y lo daba por bueno (F-M34)."""
+        self.assertIn("imposible", herramienta.revisar(
+            _muestra(multihilo=1700, un_hilo=200, hilos=16)))
+
+    def test_ni_escalar_un_poco_mas_que_los_hilos(self):
+        self.assertIn("imposible", herramienta.revisar(self._con_escala(17.5)))
 
     def test_sin_puntuacion_no_hay_nada_que_añadir(self):
         self.assertEqual(herramienta.revisar(_muestra(multihilo=None)),

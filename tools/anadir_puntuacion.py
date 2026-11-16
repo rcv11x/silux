@@ -50,6 +50,20 @@ CARGA_MAXIMA = 5.0
 MARGEN_DE_ESCALA = 1.05
 
 
+def escala_del_patron() -> float:
+    """Cuántas veces multiplica el patrón de un hilo a todos, en lo que puntúa.
+
+    Las dos puntuaciones de un informe ya van divididas por las del patrón,
+    así que su cociente no es la escala del equipo: es esa escala dividida
+    entre esta. Comparando el cociente con el número de hilos se admitían
+    escalados de hasta unas diez veces los hilos, porque el patrón escala
+    unas nueve.
+    """
+    tabla = score.referencias()
+    veces = [tabla["multihilo"][c] / tabla["un_hilo"][c] for c in score.PUNTUABLES]
+    return sum(veces) / len(veces)
+
+
 def leer(ruta: pathlib.Path) -> tuple[dict, str]:
     """Lo que trae un informe, o el motivo por el que no sirve."""
     try:
@@ -99,7 +113,7 @@ def revisar(datos: dict) -> str:
         return "no dice cuántos hilos"
     if datos["carga"] is not None and datos["carga"] > CARGA_MAXIMA:
         return f"medida con {datos['carga']:.0f} % de carga de fondo"
-    escala = datos["multihilo"] / max(datos["un_hilo"], 1)
+    escala = datos["multihilo"] / max(datos["un_hilo"], 1) * escala_del_patron()
     if escala > datos["hilos"] * MARGEN_DE_ESCALA:
         return (f"escala imposible: {escala:.1f}× con {datos['hilos']} hilos")
     return ""
