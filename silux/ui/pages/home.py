@@ -34,7 +34,8 @@ class _TarjetaResumen(Card):
     pulsada = Signal(str)
 
     def __init__(self, titulo: str, seccion: str, palette: Palette,
-                 con_grafica: bool = True, parent: Optional[QWidget] = None):
+                 cuerpo: Optional[str] = "grafica", parent: Optional[QWidget] = None):
+        """`cuerpo`: «grafica», «barra» o nada, que es lo que lleva debajo."""
         super().__init__(titulo, parent)
         self._seccion = seccion
         self._p = palette
@@ -57,20 +58,33 @@ class _TarjetaResumen(Card):
         self.body.addWidget(self.detalle)
         self.body.addWidget(self.cifras)
 
-        self.grafica = Sparkline(palette) if con_grafica else None
-        self.barra = None if con_grafica else StackedBar(palette)
-        self.body.addWidget(self.grafica or self.barra)
+        self.grafica = Sparkline(palette) if cuerpo == "grafica" else None
+        self.barra = StackedBar(palette) if cuerpo == "barra" else None
+        if (debajo := self.grafica or self.barra) is not None:
+            self.body.addWidget(debajo)
+
+        # Lo que esta pieza no tiene y por eso no sale arriba: se nombra aquí
+        # en vez de dejar un guion entre las cifras.
+        self.pie = QLabel("")
+        self.pie.setObjectName("Muted")
+        self.pie.setWordWrap(True)
+        self.pie.setFont(ui_font(m.small_pt))
+        self.pie.hide()
+        self.body.addWidget(self.pie)
 
     def mouseReleaseEvent(self, event) -> None:  # noqa: N802
         if event.button() == Qt.MouseButton.LeftButton:
             self.pulsada.emit(self._seccion)
         super().mouseReleaseEvent(event)
 
-    def poner(self, nombre: str, detalle: str, cifras: str) -> None:
+    def poner(self, nombre: str, detalle: str, cifras: str, pie: str = "") -> None:
         for etiqueta, texto in ((self.nombre, nombre), (self.detalle, detalle),
-                                (self.cifras, cifras)):
+                                (self.cifras, cifras), (self.pie, pie)):
             if etiqueta.text() != texto:
                 etiqueta.setText(texto)
+        # Una línea vacía también ocupa: las que no dicen nada no se montan.
+        for etiqueta in (self.detalle, self.cifras, self.pie):
+            etiqueta.setVisible(bool(etiqueta.text()))
 
 
 class HomePage(QScrollArea):
@@ -113,17 +127,26 @@ class HomePage(QScrollArea):
         layout.addWidget(arriba)
 
         abajo = ResponsiveRow(min_item_width=300)
-        self.memoria = self._tarjeta(abajo, _("nav.memory"), _("nav.memory"), grafica=False)
+        self.memoria = self._tarjeta(abajo, _("nav.memory"), _("nav.memory"), cuerpo="barra")
         self.discos = self._tarjeta(abajo, _("nav.storage"), _("nav.storage"),
-                                    grafica=False)
+                                    cuerpo="barra")
         layout.addWidget(abajo)
+
+        # Con la ventana grande quedaba media página vacía debajo de las
+        # cuatro. Tres más, de lo que se viene a mirar sin saber dónde está:
+        # qué va caliente, por dónde sale la red y qué placa es.
+        tercera = ResponsiveRow(min_item_width=240)
+        self.temperaturas = self._tarjeta(tercera, _("home.card.temps"), _("nav.sensors"))
+        self.red = self._tarjeta(tercera, _("nav.network"), _("nav.network"))
+        self.placa = self._tarjeta(tercera, _("nav.board"), _("nav.board"), cuerpo=None)
+        layout.addWidget(tercera)
 
         layout.addStretch(1)
         self._chips: tuple = ()
 
     def _tarjeta(self, host: ResponsiveRow, titulo: str, seccion: str,
-                 grafica: bool = True) -> _TarjetaResumen:
-        tarjeta = _TarjetaResumen(titulo, seccion, self._p, con_grafica=grafica)
+                 cuerpo: Optional[str] = "grafica") -> _TarjetaResumen:
+        tarjeta = _TarjetaResumen(titulo, seccion, self._p, cuerpo=cuerpo)
         tarjeta.pulsada.connect(self.seccion_pedida)
         host.add(tarjeta)
         return tarjeta
@@ -145,22 +168,25 @@ class HomePage(QScrollArea):
         self.pitch.setObjectName("Muted")
         self.pitch.setWordWrap(True)
 
-        card.body.addWidget(self.title)
-        card.body.addWidget(self.subtitle)
-        card.body.addWidget(self.badges)
-        card.body.addWidget(self.pitch)
-
         # Aquí y no solo en Ajustes: esta pantalla ya es el resumen del equipo,
         # con las mismas cuatro tarjetas que acaban en la imagen, así que es
         # donde alguien piensa «esto es lo que quiero enseñar». A Ajustes no se
         # entra con ganas de compartir nada.
+        #
+        # Va en la fila de las insignias, a la derecha: en una fila para él
+        # solo se llevaba un renglón entero de la cabecera.
         self.share = QPushButton(_("share.button.copy"))
         self.share.setToolTip(_("share.tip"))
         self.share.clicked.connect(self.share_copy_requested)
         fila = QHBoxLayout()
-        fila.addStretch(1)
-        fila.addWidget(self.share)
+        fila.setSpacing(max(6, theme.METRICS.card_gap))
+        fila.addWidget(self.badges, 1)
+        fila.addWidget(self.share, 0, Qt.AlignmentFlag.AlignTop)
+
+        card.body.addWidget(self.title)
+        card.body.addWidget(self.subtitle)
         card.body.addLayout(fila)
+        card.body.addWidget(self.pitch)
         return card
 
     # -- actualización ------------------------------------------------------
@@ -178,6 +204,9 @@ class HomePage(QScrollArea):
         self._grafica(snapshot)
         self._memoria(snapshot)
         self._almacenamiento(snapshot)
+        self._temperaturas(snapshot)
+        self._red(snapshot)
+        self._placa(snapshot)
 
     def _cabecera_con(self, snapshot: Snapshot) -> None:
         from .system import format_uptime
@@ -257,12 +286,17 @@ class HomePage(QScrollArea):
         # Un guion aquí no es un dato: es el hueco de uno que falta, y en una
         # línea de tres piezas unidas por puntos se lee como si sobrara algo.
         # Una GTX con la memoria sin identificar salía «— · PCIe 1.0 × 16».
+        #
+        # De la memoria solo el tipo, que es de la tarjeta. Cuánta RAM del
+        # equipo usa una integrada lo dice la página de Gráficos con su
+        # explicación al lado; aquí, suelto, «usa 11 GB de la RAM» era un
+        # susto y además no era lo que tiene cogido sino el tope.
         detalle = " · ".join(p for p in (
+            _("gpu.chip.integrated") if gpu.integrated else None,
             render.vram_kind(gpu.memory) if gpu.memory.total_bytes else None,
             render.pcie_link(gpu.link) if gpu.link.current_speed_gts else None,
+            render.compute_units(gpu) if gpu.compute_units else None,
         ) if p and p != render.DASH)
-        if not detalle and gpu.integrated:
-            detalle = _("gpu.chip.integrated")
 
         piezas = []
         if gpu.busy_percent is not None:
@@ -282,6 +316,9 @@ class HomePage(QScrollArea):
             piezas.append(render.hz(gpu.clocks.core_hz))
             self.gpu.grafica.push(gpu.clocks.core_hz / 1e6)
             if gpu.clocks.core_max_hz:
+                # Con su techo al lado: 350 MHz solos no dicen si es mucho.
+                piezas.append(_("home.gpu.ofmax").format(
+                    max=render.hz(gpu.clocks.core_max_hz)))
                 self.gpu.grafica.set_range(0.0, gpu.clocks.core_max_hz / 1e6)
         self.gpu.poner(gpu.display_name, detalle, "   ".join(piezas))
 
@@ -328,6 +365,70 @@ class HomePage(QScrollArea):
             segmentos.append((_("home.bar.unmounted"), sin_montar, "muted"))
         self.discos.barra.set_segments(segmentos, total=total,
                                        formatter=render.size)
+
+
+    def _temperaturas(self, snapshot: Snapshot) -> None:
+        """Lo más caliente del equipo, cada cifra con el nombre de lo que mide.
+
+        Tres números sueltos —«60 °C  51 °C  48 °C»— obligan a adivinar cuál
+        es cuál, y en un equipo sin sensor en la gráfica el segundo es otra
+        cosa. La más caliente va arriba, que es la que se viene a mirar.
+        """
+        lecturas = []
+        if (grados := snapshot.cpu.temperature_c) is not None:
+            lecturas.append((_("home.temp.cpu"), grados))
+        if snapshot.gpus and (grados := snapshot.gpus[0].temp_c) is not None:
+            lecturas.append((_("home.temp.gpu"), grados))
+        discos = [d.temp_c for d in snapshot.disks if d.temp_c is not None]
+        if discos:
+            lecturas.append((_("home.temp.disk"), max(discos)))
+
+        if not lecturas:
+            self.temperaturas.poner(_("home.temp.none"), "", "")
+            return
+        fahrenheit = self._prefs.fahrenheit
+        lecturas.sort(key=lambda par: -par[1])
+        (nombre, grados), resto = lecturas[0], lecturas[1:]
+        self.temperaturas.poner(
+            f"{nombre}  {render.temperature(grados, fahrenheit)}",
+            _("home.temp.hottest"),
+            " · ".join(f"{n} {render.temperature(g, fahrenheit)}" for n, g in resto))
+        self.temperaturas.grafica.push(grados)
+        self.temperaturas.grafica.set_range(20.0, 100.0)
+
+    def _red(self, snapshot: Snapshot) -> None:
+        from .network import main_interface
+
+        principal, _todas = main_interface(snapshot.network)
+        if principal is None:
+            self.red.poner(_("net.none"), _("net.none.body"), "")
+            return
+        bits = self._prefs.network_unit == "bits"
+        trafico = principal.traffic
+        cifras = "   ".join(
+            f"{flecha} {render.rate(ritmo, bits)}"
+            for flecha, ritmo in (("↓", trafico.rx_rate_bps), ("↑", trafico.tx_rate_bps))
+            if ritmo is not None)
+        self.red.poner(
+            principal.display_name,
+            " · ".join(p for p in (principal.name, render.link_summary(principal)) if p),
+            cifras)
+        if trafico.total_rate_bps is not None:
+            self.red.grafica.push(trafico.total_rate_bps)
+
+    def _placa(self, snapshot: Snapshot) -> None:
+        placa = snapshot.board
+        if placa is None or not placa.display_name:
+            self.placa.poner(_("home.board.none"), "", "")
+            return
+        bios = " · ".join(p for p in (
+            f"BIOS {placa.bios_version}" if placa.bios_version else None,
+            placa.bios_date) if p)
+        arranque = " · ".join(p for p in (
+            placa.firmware,
+            placa.tpm_version,
+            _("board.field.secureboot") if placa.secure_boot else None) if p)
+        self.placa.poner(placa.display_name, bios, arranque)
 
 
 def _tipo_de_memoria(snapshot: Snapshot) -> Optional[str]:

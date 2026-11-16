@@ -45,6 +45,18 @@ def _orden(interfaz: NetworkInterface) -> tuple:
             PRIORIDAD.get(interfaz.kind, 9), interfaz.name)
 
 
+def main_interface(interfaces) -> tuple:
+    """La interfaz que da servicio, y todas en su orden.
+
+    La que lleva la ruta por defecto; si ninguna, la primera con dirección.
+    Lo usan esta página y la tarjeta de Inicio, para que no digan dos cosas.
+    """
+    ordenadas = sorted(interfaces, key=_orden)
+    principal = next((i for i in ordenadas if i.default_route),
+                     next((i for i in ordenadas if i.active), None))
+    return principal, ordenadas
+
+
 class NetworkPage(QScrollArea):
     # La unidad se cambia desde aquí y no desde Ajustes: se decide mirando la
     # cifra, comparándola con lo que dice otro programa, y hacer ese viaje a
@@ -163,9 +175,7 @@ class NetworkPage(QScrollArea):
         for valor, boton in getattr(self, "_unit_buttons", {}).items():
             boton.setChecked(valor == self._prefs.network_unit)
         self._refresh_formatters()
-        interfaces = sorted(snapshot.network, key=_orden)
-        principal = next((i for i in interfaces if i.default_route),
-                         next((i for i in interfaces if i.active), None))
+        principal, interfaces = main_interface(snapshot.network)
 
         self._apply_header(principal, interfaces)
         self._apply_tiles(principal)
