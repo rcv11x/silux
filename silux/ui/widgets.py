@@ -614,9 +614,15 @@ class Sparkline(QWidget):
         cursor señalaba una muestra y la guía se dibujaba sobre otra.
         """
         ancho = max(1.0, self.width() - 1.0)
-        capacidad = self._values.maxlen or max(1, len(self._values))
-        paso = ancho / max(1, capacidad - 1)
-        origen = (0.5 + ancho) - (len(self._values) - 1) * paso
+        cuantas = len(self._values)
+        capacidad = self._values.maxlen or max(1, cuantas)
+        # La serie ocupa siempre todo el ancho. Mientras se llena, las
+        # muestras que hay se reparten por él; llena, cada una tiene su paso
+        # fijo y la curva se desplaza. Con el paso de la capacidad desde el
+        # principio, el primer minuto y medio la curva era un garabato en la
+        # esquina derecha de una ficha vacía, que es lo que se ve al abrir.
+        paso = ancho / max(1, min(capacidad, max(cuantas, 2)) - 1)
+        origen = (0.5 + ancho) - (cuantas - 1) * paso
         return origen, paso
 
     def _index_at(self, x: float) -> Optional[int]:
@@ -624,8 +630,6 @@ class Sparkline(QWidget):
             return None
         origen, paso = self._geometria()
         indice = round((x - origen) / paso)
-        # Mientras la gráfica se está llenando, la mitad izquierda está vacía
-        # y ahí no hay ninguna muestra que leer.
         if not 0 <= indice < len(self._values):
             return None
         return indice
@@ -728,17 +732,16 @@ class Sparkline(QWidget):
 
         low, high = self._escala_visible(values)
 
-        # El paso lo marca la capacidad, no cuántas muestras hay todavía. Si
-        # se reparte el ancho entre las que hay, cada muestra nueva estrecha
-        # el paso y toda la curva se recoloca: un salto de seis píxeles hasta
-        # que la cola se llena. Así la gráfica se llena desde la derecha con
-        # el paso definitivo desde el primer momento.
         origen, step = self._geometria()
         # Las muestras viejas se van hacia la izquierda y salen por ahí; la
         # nueva ya está dibujada en el borde derecho. Al revés —empujando
         # todo a la derecha— el relleno dejaba un hueco parpadeante en el
         # borde izquierdo, que es el rebote que se veía.
-        deslizamiento = -self._phase * step
+        # Solo se desliza la gráfica llena, que es la que pierde una muestra
+        # por la izquierda al entrar otra. Mientras se llena va sujeta por los
+        # dos extremos y lo que hace cada muestra nueva es apretarla.
+        llena = len(values) >= (self._values.maxlen or len(values))
+        deslizamiento = -self._phase * step if llena else 0.0
         if self._phase < 1.0:
             painter.setClipRect(self.rect())
 

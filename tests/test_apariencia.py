@@ -61,9 +61,8 @@ class TestLecturaDeGraficas(unittest.TestCase):
     def _grafica(self, valores, ancho=100, capacidad=None) -> Sparkline:
         """Por defecto, una gráfica ya llena: es como se usa el 99 % del rato.
 
-        La capacidad importa porque el ancho se reparte entre ella y no entre
-        las muestras que haya, para que la curva no se recoloque cada vez que
-        entra una. Mientras se llena, la serie ocupa solo la parte derecha.
+        Llena, cada muestra tiene su paso fijo y la curva se desplaza.
+        Mientras se llena, las que hay se reparten por todo el ancho.
         """
         chart = Sparkline(theme.DARK, capacity=capacidad or max(2, len(valores)))
         chart.resize(ancho, 30)
@@ -83,13 +82,53 @@ class TestLecturaDeGraficas(unittest.TestCase):
         self.assertIsNone(chart._index_at(-40))
         self.assertIsNone(chart._index_at(9999))
 
-    def test_sobre_el_hueco_de_una_grafica_a_medio_llenar_tampoco(self):
-        """Mientras se llena, la mitad izquierda está vacía: ahí no hay nada
-        que leer, y antes el cursor señalaba una muestra que estaba en el
-        otro extremo."""
+    def test_a_medio_llenar_la_serie_ocupa_todo_el_ancho(self):
+        """Tres muestras de noventa: la primera a la izquierda, la última a la
+        derecha y la otra en medio. Con el paso de la gráfica llena desde el
+        principio, el primer minuto y medio la curva era un garabato en la
+        esquina derecha de una ficha vacía."""
         chart = self._grafica([10, 20, 30], capacidad=90)
-        self.assertIsNone(chart._index_at(5))
+        origen, paso = chart._geometria()
+        self.assertAlmostEqual(origen, 0.5, places=3)
+        self.assertAlmostEqual(origen + 2 * paso, 99.5, places=3)
+        # Y el cursor señala la muestra que tiene debajo.
+        self.assertEqual(chart._index_at(5), 0)
+        self.assertEqual(chart._index_at(50), 1)
         self.assertEqual(chart._index_at(99), 2)
+
+    def test_llena_cada_muestra_tiene_su_paso_fijo(self):
+        chart = self._grafica(list(range(10)), capacidad=10)
+        _origen, lleno = chart._geometria()
+        chart.push(99)
+        self.assertEqual(chart._geometria()[1], lleno)
+
+    def test_lo_dibujado_llega_al_borde_izquierdo_desde_la_tercera_muestra(self):
+        from PySide6.QtGui import QImage
+
+        chart = self._grafica([10, 60, 30], capacidad=90)
+        chart.resize(200, 30)
+        imagen = QImage(200, 30, QImage.Format.Format_ARGB32)
+        imagen.fill(0)
+        chart.render(imagen)
+        pintadas = [x for x in range(200)
+                    if any(imagen.pixelColor(x, y).alpha() > 0 for y in range(30))]
+        self.assertLess(min(pintadas), 6)
+        self.assertGreater(max(pintadas), 193)
+
+    def test_a_medio_llenar_no_se_desliza_fuera(self):
+        # Deslizar es de la gráfica llena, que pierde una muestra por la
+        # izquierda. A medio llenar va sujeta por los dos extremos.
+        from PySide6.QtGui import QImage
+
+        chart = self._grafica([10, 60, 30], capacidad=90)
+        chart.resize(200, 30)
+        chart.advance(0.9)
+        imagen = QImage(200, 30, QImage.Format.Format_ARGB32)
+        imagen.fill(0)
+        chart.render(imagen)
+        pintadas = [x for x in range(200)
+                    if any(imagen.pixelColor(x, y).alpha() > 0 for y in range(30))]
+        self.assertGreater(max(pintadas), 193)
 
     def test_una_grafica_vacia_no_tiene_nada_que_señalar(self):
         self.assertIsNone(self._grafica([]) ._index_at(50))
