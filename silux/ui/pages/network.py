@@ -45,6 +45,17 @@ def _orden(interfaz: NetworkInterface) -> tuple:
             PRIORIDAD.get(interfaz.kind, 9), interfaz.name)
 
 
+def is_physical(interfaz: NetworkInterface) -> bool:
+    """Si detrás de la interfaz hay una tarjeta: de cable, wifi o en el bus PCI.
+
+    Lo demás lo crea un programa —los puentes de Docker y de libvirt, los
+    `veth` de cada contenedor, el túnel de Tailscale, el bucle local—. No
+    son hardware, que es de lo que va este programa, y en un equipo con
+    Docker son veinte.
+    """
+    return interfaz.kind in ("ethernet", "wifi") or bool(interfaz.pci_slot)
+
+
 def main_interface(interfaces) -> tuple:
     """La interfaz que da servicio, y todas en su orden.
 
@@ -95,11 +106,44 @@ class NetworkPage(QScrollArea):
         self._cards_host.setSpacing(m.section_gap)
         layout.addLayout(self._cards_host)
 
+        # Las virtuales, debajo de las físicas y plegadas: un renglón que dice
+        # cuántas hay y cuáles, y que se abre al pulsarlo.
+        self.virtual_toggle = QPushButton("")
+        self.virtual_toggle.setObjectName("TextButton")
+        self.virtual_toggle.setFlat(True)
+        self.virtual_toggle.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.virtual_toggle.clicked.connect(self._alternar_virtuales)
+        self.virtual_toggle.hide()
+        fila = QHBoxLayout()
+        fila.setContentsMargins(0, 0, 0, 0)
+        fila.addWidget(self.virtual_toggle)
+        fila.addStretch(1)
+        layout.addLayout(fila)
+
+        self.virtual_box = QWidget()
+        caja = QVBoxLayout(self.virtual_box)
+        caja.setContentsMargins(0, 0, 0, 0)
+        caja.setSpacing(m.section_gap)
+        virtual_card = Card(_("net.card.virtual"))
+        self.virtual_traffic = Table([_(h) for h in TRAFFIC_HEADERS],
+                                     numeric=(False, True, True, True, True, True, True))
+        virtual_card.body.addWidget(self.virtual_traffic)
+        caja.addWidget(virtual_card)
+        self._virtual_cards_host = QVBoxLayout()
+        self._virtual_cards_host.setSpacing(m.section_gap)
+        caja.addLayout(self._virtual_cards_host)
+        self.virtual_box.hide()
+        layout.addWidget(self.virtual_box)
+        self._virtuales_abiertas = False
+        self._virtuales: tuple = ()
+
         layout.addStretch(1)
 
         self._bits = prefs.network_unit == "bits"
         self._grids: dict[str, InfoGrid] = {}
         self._cards: dict[str, Card] = {}
+        # Qué interfaces tiene montadas cada grupo de tarjetas.
+        self._montadas: dict[str, tuple] = {}
         self._chip_signature: tuple = ()
 
     # -- construcción -------------------------------------------------------
@@ -177,10 +221,16 @@ class NetworkPage(QScrollArea):
         self._refresh_formatters()
         principal, interfaces = main_interface(snapshot.network)
 
-        self._apply_header(principal, interfaces)
+        # La cabecera cuenta las físicas: «4 de 24 activas» contaba los
+        # puentes de Docker, que no son de lo que se viene a mirar.
+        self._apply_header(principal, [i for i in interfaces if is_physical(i)]
+                           or interfaces)
         self._apply_tiles(principal)
-        self._apply_traffic(interfaces)
-        self._apply_cards(interfaces)
+        fisicas = [i for i in interfaces if is_physical(i)]
+        virtuales = [i for i in interfaces if not is_physical(i)]
+        self.traffic.set_rows(self._filas_de_trafico(fisicas))
+        self._apply_cards(fisicas, self._cards_host, "fisicas")
+        self._apply_virtuales(virtuales)
 
     def _apply_header(self, principal, interfaces) -> None:
         if principal is None:
@@ -225,7 +275,32 @@ class NetworkPage(QScrollArea):
                 _("net.lost").format(n=f"{perdidos:n}") if perdidos
                 else _("net.nolost"))
 
-    def _apply_traffic(self, interfaces) -> None:
+    def _alternar_virtuales(self) -> None:
+        self._virtuales_abiertas = not self._virtuales_abiertas
+        self._apply_virtuales(self._virtuales)
+
+    def _apply_virtuales(self, virtuales) -> None:
+        self._virtuales = tuple(virtuales)
+        self.virtual_toggle.setVisible(bool(virtuales))
+        if not virtuales:
+            self.virtual_box.hide()
+            return
+        nombres = ", ".join(i.name for i in virtuales[:4])
+        if len(virtuales) > 4:
+            nombres += "…"
+        clave = "net.virtual.one" if len(virtuales) == 1 else "net.virtual.many"
+        flecha = "▾" if self._virtuales_abiertas else "▸"
+        texto = f"{flecha}  " + _(clave).format(n=len(virtuales), nombres=nombres)
+        if self.virtual_toggle.text() != texto:
+            self.virtual_toggle.setText(texto)
+        self.virtual_box.setVisible(self._virtuales_abiertas)
+        if self._virtuales_abiertas:
+            # Solo se pintan abiertas: plegadas, veinte tarjetas que nadie ve
+            # no se montan ni se reescriben cada segundo.
+            self.virtual_traffic.set_rows(self._filas_de_trafico(virtuales))
+            self._apply_cards(virtuales, self._virtual_cards_host, "virtuales")
+
+    def _filas_de_trafico(self, interfaces) -> list:
         d = render.DASH
         filas = [
             (interfaz.name,
@@ -237,16 +312,15 @@ class NetworkPage(QScrollArea):
              f"{interfaz.traffic.problems:n}" if interfaz.traffic.problems else "—")
             for interfaz in interfaces
         ]
-        self.traffic.set_rows(filas or [(_("net.none"), d, d, d, d, d, d)])
+        return filas or [(_("net.none"), d, d, d, d, d, d)]
 
-    def _apply_cards(self, interfaces) -> None:
+    def _apply_cards(self, interfaces, host, grupo: str) -> None:
         # Una tarjeta por interfaz, creadas una vez y reescritas después: esta
         # página se repinta cada segundo como todas las demás.
         nombres = tuple(i.name for i in interfaces)
-        if nombres != tuple(self._cards):
-            clear_layout(self._cards_host)
-            self._grids.clear()
-            self._cards.clear()
+        if nombres != self._montadas.get(grupo):
+            self._montadas[grupo] = nombres
+            clear_layout(host)
             fila = ResponsiveRow(min_item_width=300)
             for interfaz in interfaces:
                 card = Card(interfaz.name)
@@ -257,7 +331,7 @@ class NetworkPage(QScrollArea):
                 fila.add(card)
                 self._grids[interfaz.name] = grid
                 self._cards[interfaz.name] = card
-            self._cards_host.addWidget(fila)
+            host.addWidget(fila)
 
         d = render.DASH
         for interfaz in interfaces:
