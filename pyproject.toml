@@ -46,6 +46,11 @@ version = { attr = "silux.__version__" }
 
 [tool.setuptools.packages.find]
 include = ["silux*"]
+# `include` decide qué se empaqueta, pero no dónde se busca: setuptools recorre
+# todo el árbol siguiendo enlaces, y los volcados de `tests/fixtures/equipos`
+# son /sys enteros con enlaces que dan la vuelta. Sin esto, construir el
+# paquete no termina nunca.
+exclude = ["tests*", "tools*", "docs*", "dist*", "build*"]
 
 [tool.setuptools.package-data]
 "silux.db" = ["*.json"]
