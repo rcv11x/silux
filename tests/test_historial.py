@@ -15,6 +15,7 @@ from unittest import mock
 
 from silux import history
 from silux.benchmark import Conditions, Medida, Result
+from tests import qt
 
 
 def _resultado(ops_por_hilo=100.0, hilos=8, gobernador="performance") -> Result:
@@ -145,7 +146,7 @@ class TestUnHistorialEstropeadoNoImpideArrancar(_ConCarpetaPropia):
         from silux.ui import theme
         from silux.ui.pages.performance import PerformancePage
 
-        app = QApplication.instance() or QApplication([])
+        app = qt.app()
         self._con(json.dumps([dict(self._buena(), timestamp="ayer"),
                               self._buena()]).encode())
         PerformancePage(theme.palette_for(app, "dark"), Preferences())

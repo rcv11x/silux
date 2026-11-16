@@ -13,6 +13,7 @@ import pathlib
 import unittest
 
 import tests
+from tests import qt
 
 
 class TestLaSuiteVaEnSuCaja(unittest.TestCase):
@@ -48,7 +49,7 @@ class TestLaSuiteVaEnSuCaja(unittest.TestCase):
         de_casa = pathlib.Path.home() / ".config" / "silux" / "settings.json"
         antes = de_casa.stat().st_mtime_ns if de_casa.exists() else None
 
-        QApplication.instance() or QApplication([])
+        qt.app()
         ventana = MainWindow(Preferences())
         ventana.close()
 

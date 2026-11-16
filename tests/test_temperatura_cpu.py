@@ -13,6 +13,7 @@ import unittest
 from unittest import mock
 
 from tests.test_equipos import EQUIPOS, foto, volcados
+from tests import qt
 
 try:
     from PySide6.QtWidgets import QApplication
@@ -25,7 +26,7 @@ class TestLaTemperaturaDeLaCpu(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.app = QApplication.instance() or QApplication([])
+        cls.app = qt.app()
         cls.fotos = {d.name: foto(d)[0] for d in volcados()}
 
     def setUp(self):
@@ -74,7 +75,7 @@ class TestElConsumoQueFaltaSeExplica(unittest.TestCase):
         from silux.settings import Preferences
         from silux.ui.app import MainWindow
 
-        app = QApplication.instance() or QApplication([])
+        app = qt.app()
         with tempfile.TemporaryDirectory() as tmp, \
                 mock.patch.dict(os.environ, {"XDG_CONFIG_HOME": tmp}):
             f = foto(EQUIPOS / "i5-10400")[0]

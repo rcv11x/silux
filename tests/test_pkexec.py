@@ -27,6 +27,7 @@ from unittest import mock
 
 from silux.privileged import client
 from silux.privileged.client import PrivilegedClient
+from tests import qt
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
 
@@ -131,7 +132,7 @@ class TestNingunaRutaEscribible(ComprobadorDeOrdenes):
         os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
         from PySide6.QtWidgets import QApplication
 
-        cls.app = QApplication.instance() or QApplication([])
+        cls.app = qt.app()
 
     def test_ninguna_orden_lleva_una_ruta_escribible(self):
         """El test que sostiene los tres arreglos.
@@ -319,7 +320,7 @@ class TestLaOrdenDeInstalar(ComprobadorDeOrdenes):
         os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
         from PySide6.QtWidgets import QApplication
 
-        cls.app = QApplication.instance() or QApplication([])
+        cls.app = qt.app()
 
     def _orden(self):
         from silux.ui.app import MainWindow

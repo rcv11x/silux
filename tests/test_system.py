@@ -9,6 +9,7 @@ from unittest import mock
 from silux.model import Memory, System
 from silux.providers import system as provider
 from silux.providers.base import Draft
+from tests import qt
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -138,7 +139,7 @@ class TestColumnasDelArbol(unittest.TestCase):
     def setUpClass(cls):
         from PySide6.QtWidgets import QApplication
 
-        cls.app = QApplication.instance() or QApplication([])
+        cls.app = qt.app()
 
     def _tree(self):
         """Con sensores de muestra: estos tests miden cómo se reparte el
@@ -346,7 +347,7 @@ class TestReutilizacionDeWidgets(unittest.TestCase):
     def setUpClass(cls):
         from PySide6.QtWidgets import QApplication
 
-        cls.app = QApplication.instance() or QApplication([])
+        cls.app = qt.app()
 
     def test_la_fila_de_insignias_reescribe_en_vez_de_recrear(self):
         from silux.ui.widgets import ChipRow
@@ -428,7 +429,7 @@ class TestBuscadorDeSensores(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         from PySide6.QtWidgets import QApplication
-        cls.app = QApplication.instance() or QApplication([])
+        cls.app = qt.app()
 
     def _tree(self):
         from silux.collector import Collector
@@ -532,7 +533,7 @@ class TestRamasRecordadas(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         from PySide6.QtWidgets import QApplication
-        cls.app = QApplication.instance() or QApplication([])
+        cls.app = qt.app()
 
     def _tree(self, plegadas=None):
         from silux.collector import Collector
@@ -579,7 +580,7 @@ class TestRepartoDeLaRejillaDeNucleos(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         from PySide6.QtWidgets import QApplication
-        cls.app = QApplication.instance() or QApplication([])
+        cls.app = qt.app()
 
     def _matriz(self, hilos: int, ancho: int):
         from silux.ui import theme
@@ -747,7 +748,7 @@ class TestQueLasCifrasQuepan(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         from PySide6.QtWidgets import QApplication
-        cls.app = QApplication.instance() or QApplication([])
+        cls.app = qt.app()
 
     def _tree(self):
         from silux.collector import Collector
@@ -790,7 +791,7 @@ class TestEtiquetasRepetidas(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         from PySide6.QtWidgets import QApplication
-        cls.app = QApplication.instance() or QApplication([])
+        cls.app = qt.app()
 
     def _arbol_con(self, sensores):
         from silux.ui import theme
@@ -841,7 +842,7 @@ class TestElColorDeLasCeldas(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         from PySide6.QtWidgets import QApplication
-        cls.app = QApplication.instance() or QApplication([])
+        cls.app = qt.app()
 
     def test_la_hoja_de_estilos_no_declara_el_color_de_las_celdas(self):
         import re as _re
@@ -902,7 +903,7 @@ class TestArrastrarLasColumnas(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         from PySide6.QtWidgets import QApplication
-        cls.app = QApplication.instance() or QApplication([])
+        cls.app = qt.app()
 
     def setUp(self):
         from silux.collector import Collector
@@ -972,7 +973,7 @@ class TestOrdenarElArbol(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         from PySide6.QtWidgets import QApplication
-        cls.app = QApplication.instance() or QApplication([])
+        cls.app = qt.app()
 
     def _tree(self):
         from silux.collector import Collector

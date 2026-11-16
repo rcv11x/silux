@@ -16,6 +16,7 @@ import unittest
 from unittest import mock
 
 from silux.ui import guarda
+from tests import qt
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
 
@@ -172,7 +173,7 @@ class TestUnaSeccionQueNoExiste(unittest.TestCase):
         os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
         from PySide6.QtWidgets import QApplication
 
-        cls.app = QApplication.instance() or QApplication([])
+        cls.app = qt.app()
 
     def _ventana(self):
         from silux.settings import Preferences
@@ -281,7 +282,7 @@ class TestUnaSeccionQueEsteEquipoNoTiene(unittest.TestCase):
         os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
         from PySide6.QtWidgets import QApplication
 
-        cls.app = QApplication.instance() or QApplication([])
+        cls.app = qt.app()
 
     def _ventana_con(self, baterias):
         from silux.model import Battery, CpuInfo, Snapshot
@@ -391,7 +392,7 @@ class TestLoQueSeFuerzaNoSeGuarda(unittest.TestCase):
         from silux.ui.app import MainWindow
 
         os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-        QApplication.instance() or QApplication([])
+        qt.app()
         with tempfile.TemporaryDirectory() as config, \
                 mock.patch.dict(os.environ, {"XDG_CONFIG_HOME": config}):
             forzadas = {"theme": ("light", "dark"), "density": ("normal", "compact")}

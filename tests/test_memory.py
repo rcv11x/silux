@@ -9,6 +9,7 @@ import pathlib
 import unittest
 
 from silux import render
+from tests import qt
 
 
 
@@ -336,7 +337,7 @@ class TestElTituloLlegaALaTarjeta(unittest.TestCase):
         os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
         from PySide6.QtWidgets import QApplication
 
-        cls.app = QApplication.instance() or QApplication([])
+        cls.app = qt.app()
 
     def _titulos_en_pantalla(self, *locators):
         from silux.model import CpuInfo, CpuType, MemoryModule, Snapshot

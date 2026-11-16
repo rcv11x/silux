@@ -15,6 +15,7 @@ import unittest
 from unittest import mock
 
 from tests.test_equipos import EQUIPOS, foto
+from tests import qt
 
 try:
     from PySide6.QtWidgets import QApplication
@@ -29,7 +30,7 @@ class TestLaGraficaDeFrecuencia(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.app = QApplication.instance() or QApplication([])
+        cls.app = qt.app()
         cls.fotos = {n: foto(EQUIPOS / n)[0] for n in (APAGADO, ENCENDIDO)}
 
     def setUp(self):
@@ -109,7 +110,7 @@ class TestLasPaginasDicenLoMismo(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.app = QApplication.instance() or QApplication([])
+        cls.app = qt.app()
         cls.fotos = {n: foto(EQUIPOS / n)[0] for n in (APAGADO, ENCENDIDO)}
 
     def setUp(self):

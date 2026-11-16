@@ -15,10 +15,11 @@ from silux.settings import Preferences
 from silux.ui import theme
 from silux.ui.pages.home import HomePage
 from tests.escala import tabla_de_la_escala
+from tests import qt
 
 
 def _app():
-    return QApplication.instance() or QApplication([])
+    return qt.app()
 
 
 class TestNombreCortoDeCpu(unittest.TestCase):

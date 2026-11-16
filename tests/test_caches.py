@@ -3,6 +3,7 @@
 import unittest
 
 from silux.model import Cache, CpuInfo, CpuType, LogicalCpu, Snapshot
+from tests import qt
 
 
 def _snapshot(hybrid: bool = False) -> Snapshot:
@@ -97,7 +98,7 @@ class TestTabla(unittest.TestCase):
         import os
         os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
         from PySide6.QtWidgets import QApplication
-        cls.app = QApplication.instance() or QApplication([])
+        cls.app = qt.app()
 
     def _table(self, filas: int):
         from silux.ui.widgets import Table

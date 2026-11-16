@@ -13,6 +13,7 @@ from silux.model import Need
 from silux.providers import msr_voltage
 from silux.providers.base import Draft
 from silux.privileged.client import HelperError
+from tests import qt
 
 
 def _draft(vendor="AMD", voltaje=None):
@@ -145,7 +146,7 @@ class TestQueLlegueALaPantalla(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         from PySide6.QtWidgets import QApplication
-        cls.app = QApplication.instance() or QApplication([])
+        cls.app = qt.app()
 
     def _pagina(self, voltaje):
         import dataclasses

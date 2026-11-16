@@ -14,6 +14,7 @@ from silux import render
 from silux.model import Disk, DiskHealth, DiskIo, Partition
 from silux.providers import storage
 from silux.providers.base import Draft
+from tests import qt
 
 
 def _write(path: pathlib.Path, value: str) -> None:
@@ -214,7 +215,7 @@ class TestLaCapturaAnonimaNoEnsenaDondeSeMonta(unittest.TestCase):
         from silux.ui import theme
         from silux.ui.pages.storage import StoragePage
 
-        app = QApplication.instance() or QApplication([])
+        app = qt.app()
         pagina = StoragePage(theme.palette_for(app, "dark"), Preferences())
         pagina.apply(foto)
         app.processEvents()
@@ -276,7 +277,7 @@ class TestDosDiscosIguales(unittest.TestCase):
         from silux.ui import theme
         from silux.ui.pages.storage import StoragePage
 
-        app = QApplication.instance() or QApplication([])
+        app = qt.app()
         discos = tuple(
             Disk(name=f"nvme{i}n1", model=f"Disco {i}", temp_c=t,
                  size_bytes=500 * 1000**3, kind="NVMe")
@@ -316,7 +317,7 @@ class TestEspacioLibre(unittest.TestCase):
         from silux.ui import theme
         from silux.ui.pages.storage import StoragePage
 
-        app = QApplication.instance() or QApplication([])
+        app = qt.app()
         # `used_bytes` y `mounted_partitions` son propiedades: salen de las
         # particiones, no se pasan.
         disco = Disk(name="sda", model="Samsung SSD 870", kind="SSD",

@@ -14,6 +14,7 @@ from silux.providers import hwmon
 from silux.providers.base import Draft
 from silux.providers.derived import DerivedSensors
 from silux.tracking import HISTORIAL, Tracker
+from tests import qt
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -168,7 +169,7 @@ class TestWidgetDelArbol(unittest.TestCase):
     def setUpClass(cls):
         from PySide6.QtWidgets import QApplication
 
-        cls.app = QApplication.instance() or QApplication([])
+        cls.app = qt.app()
 
     def _tree(self):
         from silux.ui import theme

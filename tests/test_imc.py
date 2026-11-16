@@ -17,6 +17,7 @@ from silux.privileged import helper, protocol
 from silux.privileged.client import HelperError, LecturaImc, PmuUnsupported
 from silux.providers.base import Draft
 from silux.providers.imc import ImcTraffic
+from tests import qt
 
 BYTES_POR_CUENTA = 64
 ESCALA = 6.103515625e-05          # MiB por cuenta, tal y como la publica el kernel
@@ -317,7 +318,7 @@ class TestElTraficoEnPantalla(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         from PySide6.QtWidgets import QApplication
-        cls.app = QApplication.instance() or QApplication([])
+        cls.app = qt.app()
 
     def _pagina(self, trafico, modulos=()):
         from silux.model import CpuInfo, CpuType, Snapshot
@@ -414,7 +415,7 @@ class TestElTraficoEnElArbolDeLaVentana(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         from PySide6.QtWidgets import QApplication
-        cls.app = QApplication.instance() or QApplication([])
+        cls.app = qt.app()
 
     def test_la_fila_sale_con_su_maximo_de_la_sesion(self):
         """El máximo es lo que aporta el árbol: el pico que llegó a moverse."""

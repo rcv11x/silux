@@ -23,6 +23,7 @@ from silux.providers import sysfs_cpu
 from silux.providers.base import Draft
 from silux.providers.cpuid_x86 import CpuidIdentity
 from silux.rawcpuid import CpuidReader
+from tests import qt
 
 
 def _registros(firma: bytes) -> tuple[int, int, int, int]:
@@ -120,7 +121,7 @@ class TestLaFichaLoEnseña(unittest.TestCase):
         from silux.ui.pages.cpu import CpuPage
         from silux.ui.pages.home import HomePage
 
-        app = QApplication.instance() or QApplication([])
+        app = qt.app()
         theme.set_density("normal", "normal")
         paleta = theme.palette_for(app, "dark")
         ajustes = Preferences(font_scale="normal").normalized()
@@ -209,7 +210,7 @@ class TestElColorDelAviso(unittest.TestCase):
         from silux.ui import theme
         from silux.ui.pages.cpu import CpuPage
 
-        app = QApplication.instance() or QApplication([])
+        app = qt.app()
         theme.set_density("normal", "normal")
         self.pagina = CpuPage(theme.palette_for(app, "dark"),
                               Preferences(font_scale="normal").normalized())

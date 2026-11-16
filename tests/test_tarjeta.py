@@ -14,6 +14,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from silux.model import (Board, Clocks, CpuInfo, CpuType, Disk, Gpu, GpuMemory,
                          Memory, NetworkInterface, Snapshot, System)
+from tests import qt
 
 # Inventados, de los rangos que existen para documentación —198.51.100.0/24 es
 # la TEST-NET-2 de la RFC 5737 y 00:00:5E:00:53:xx el bloque de la RFC 7042—,
@@ -137,7 +138,7 @@ def _paleta():
 
     from silux.ui import theme
 
-    QApplication.instance() or QApplication([])
+    qt.app()
     return theme.palette_for(QApplication.instance(), "dark", "azul")
 
 

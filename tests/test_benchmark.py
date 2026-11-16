@@ -14,6 +14,7 @@ from unittest import mock
 
 from silux import benchmark, history, score
 from silux.benchmark import Conditions, Medida, Result
+from tests import qt
 
 
 class TestMedidas(unittest.TestCase):
@@ -409,7 +410,7 @@ class TestDuracionTotal(unittest.TestCase):
         from silux.settings import Preferences
         from silux.ui import theme
         from silux.ui.pages.performance import PerformancePage
-        app = QApplication.instance() or QApplication([])
+        app = qt.app()
         theme.set_density("normal", "normal")
         return PerformancePage(theme.palette_for(app, "dark"),
                                Preferences(font_scale="normal").normalized())
@@ -445,7 +446,7 @@ class TestLoQueNoPuntuaSeVeQueNoPuntua(unittest.TestCase):
         from silux.settings import Preferences
         from silux.ui import theme
         from silux.ui.pages.performance import PerformancePage
-        app = QApplication.instance() or QApplication([])
+        app = qt.app()
         theme.set_density("normal", "normal")
         return PerformancePage(theme.palette_for(app, "dark"),
                                Preferences(font_scale="normal").normalized())

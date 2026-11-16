@@ -9,6 +9,7 @@ import os
 import tempfile
 import unittest
 from unittest import mock
+from tests import qt
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -25,7 +26,7 @@ class TestVentana(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.app = QApplication.instance() or QApplication([])
+        cls.app = qt.app()
 
     def setUp(self):
         from silux.ui import theme
@@ -324,7 +325,7 @@ class TestLaSalidaParaLosDatosBloqueados(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.app = QApplication.instance() or QApplication([])
+        cls.app = qt.app()
 
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()

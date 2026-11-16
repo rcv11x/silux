@@ -14,6 +14,7 @@ from unittest import mock
 
 from silux import i18n
 from silux.i18n import _
+from tests import qt
 
 
 class TestIdioma(unittest.TestCase):
@@ -274,7 +275,7 @@ class TestElIdiomaLlegaALaInterfaz(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         from PySide6.QtWidgets import QApplication
-        cls.app = QApplication.instance() or QApplication([])
+        cls.app = qt.app()
 
     def setUp(self):
         self.addCleanup(i18n.set_language, "es")

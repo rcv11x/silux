@@ -21,6 +21,7 @@ from silux.model import (Display, Gpu, GpuClocks, GpuMemory, Need, Note,
 from silux.providers import drm
 from silux.providers.base import Draft
 from tests.test_edid import construir as construir_edid
+from tests import qt
 
 
 def _write(path: pathlib.Path, value: str) -> None:
@@ -635,7 +636,7 @@ class TestDondeSePintanLosAvisos(unittest.TestCase):
         from silux.ui import theme
         from silux.ui.pages.graphics import GraphicsPage
 
-        app = QApplication.instance() or QApplication([])
+        app = qt.app()
         pagina = GraphicsPage(theme.palette_for(app, "dark"), Preferences())
         pagina.apply(Snapshot(monotonic_ns=0, cpu=CpuInfo(),
                               gpus=tuple(gpus), notes=tuple(notes)))
@@ -1028,7 +1029,7 @@ class TestElBotonDePermisos(unittest.TestCase):
         from silux.ui import theme
         from silux.ui.pages.graphics import GraphicsPage
 
-        app = QApplication.instance() or QApplication([])
+        app = qt.app()
         pagina = GraphicsPage(theme.palette_for(app, "dark"), Preferences())
         pagina.apply(Snapshot(monotonic_ns=0, cpu=CpuInfo(),
                               gpus=tuple(gpus or [Gpu(name="UHD 630")]),
@@ -1097,7 +1098,7 @@ class TestElColorDelAviso(unittest.TestCase):
         from PySide6.QtWidgets import QApplication
         from silux.ui.widgets import Notice
 
-        QApplication.instance() or QApplication([])
+        qt.app()
         self.assertEqual(Notice("t", "b", tone="idle").property("tone"), "idle")
         self.assertEqual(Notice("t", "b").property("tone"), "warn")
 
@@ -1105,7 +1106,7 @@ class TestElColorDelAviso(unittest.TestCase):
         from PySide6.QtWidgets import QApplication
         from silux.ui import theme
 
-        app = QApplication.instance() or QApplication([])
+        app = qt.app()
         hoja = theme.stylesheet(theme.palette_for(app, "dark"))
         self.assertIn('QFrame#Notice[tone="idle"]', hoja)
         self.assertIn('QFrame#Notice[tone="bad"]', hoja)
@@ -1241,7 +1242,7 @@ class TestAnchoDeLasColumnas(unittest.TestCase):
         from PySide6.QtWidgets import QApplication
         from silux.ui.widgets import Table
 
-        QApplication.instance() or QApplication([])
+        qt.app()
         return Table(("Motor", "Uso"), numeric=(False, True))
 
     def test_la_columna_se_ensancha_con_el_valor(self):
@@ -1274,7 +1275,7 @@ class TestCuadrosDeLaGrafica(unittest.TestCase):
         from silux.ui import theme
         from silux.ui.pages.graphics import GraphicsPage
 
-        app = QApplication.instance() or QApplication([])
+        app = qt.app()
         # La página se guarda en la prueba: sin una referencia viva, el
         # recolector se lleva los QLabel de dentro antes de mirarlos.
         self.pagina = GraphicsPage(theme.palette_for(app, "dark"), Preferences())
@@ -1436,7 +1437,7 @@ class TestSalidasLibres(unittest.TestCase):
     def setUpClass(cls):
         from PySide6.QtWidgets import QApplication
 
-        cls.app = QApplication.instance() or QApplication([])
+        cls.app = qt.app()
 
     def _pagina(self, salidas):
         import dataclasses
@@ -1696,7 +1697,7 @@ class TestNoAplicaEnPantalla(unittest.TestCase):
     def setUpClass(cls):
         from PySide6.QtWidgets import QApplication
 
-        cls.app = QApplication.instance() or QApplication([])
+        cls.app = qt.app()
 
     def _seccion(self, gpu):
         from silux.settings import Preferences

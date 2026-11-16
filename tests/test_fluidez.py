@@ -11,10 +11,11 @@ from PySide6.QtWidgets import QApplication
 from silux.settings import Preferences
 from silux.ui import theme
 from silux.ui.widgets import Sparkline
+from tests import qt
 
 
 def _app():
-    return QApplication.instance() or QApplication([])
+    return qt.app()
 
 
 class TestDeslizamiento(unittest.TestCase):
@@ -333,7 +334,7 @@ class TestPicoDeLaGrafica(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         from PySide6.QtWidgets import QApplication
-        cls.app = QApplication.instance() or QApplication([])
+        cls.app = qt.app()
 
     def _grafica(self, valores):
         from silux.ui import theme

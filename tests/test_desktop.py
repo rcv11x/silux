@@ -22,6 +22,7 @@ except ImportError:                                     # pragma: no cover
     HAS_QT_SVG = False
 
 import install_desktop as installer  # noqa: E402
+from tests import qt
 
 
 class TestPlantillaDesktop(unittest.TestCase):
@@ -106,7 +107,7 @@ class TestIconoDeLaVentana(unittest.TestCase):
         from PySide6.QtWidgets import QApplication
         from silux.ui import app as ui_app
 
-        QApplication.instance() or QApplication([])
+        qt.app()
         with mock.patch.object(QIcon, "fromTheme", return_value=QIcon()):
             icono = ui_app.application_icon()
         self.assertFalse(icono.isNull(), "debería recurrir al SVG del paquete")

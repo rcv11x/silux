@@ -28,6 +28,7 @@ from silux.collector import Collector
 from silux.model import Battery
 from silux.settings import Preferences
 from silux.ui import theme
+from tests import qt
 
 ANCHO, ALTO = 900, 680
 
@@ -40,7 +41,7 @@ BATERIA = Battery(
 
 
 def _app():
-    return QApplication.instance() or QApplication([])
+    return qt.app()
 
 
 def _asentar(app, veces=4):

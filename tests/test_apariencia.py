@@ -15,6 +15,7 @@ from silux import render
 from silux.settings import ACCENT_NAMES, Preferences
 from silux.ui import theme
 from silux.ui.widgets import Sparkline
+from tests import qt
 
 
 class TestAcento(unittest.TestCase):
@@ -55,7 +56,7 @@ class TestAcento(unittest.TestCase):
 class TestLecturaDeGraficas(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.app = QApplication.instance() or QApplication([])
+        cls.app = qt.app()
 
     def _grafica(self, valores, ancho=100, capacidad=None) -> Sparkline:
         """Por defecto, una gráfica ya llena: es como se usa el 99 % del rato.
@@ -146,7 +147,7 @@ class TestNucleosConLetraGrande(unittest.TestCase):
 
     def _celda(self, escala: str) -> int:
         from silux.ui.corematrix import CoreMatrix
-        app = QApplication.instance() or QApplication([])
+        app = qt.app()
         theme.set_density("normal", escala)
         return CoreMatrix(theme.palette_for(app, "dark"))._cell_h
 
@@ -231,14 +232,14 @@ class TestJerarquiaVisual(unittest.TestCase):
         las tablas acababan gritando tanto como las secciones que las
         contienen.
         """
-        app = QApplication.instance() or QApplication([])
+        app = qt.app()
         hoja = theme.stylesheet(theme.palette_for(app, "dark"))
         self.assertIn("QLabel#CardTitle", hoja)
         self.assertIn("QLabel#ColumnTitle", hoja)
 
     def test_la_tabla_usa_su_propio_estilo(self):
         from silux.ui.widgets import Table
-        app = QApplication.instance() or QApplication([])
+        app = qt.app()
         tabla = Table(("Uno", "Dos"), numeric=(False, True))
         from PySide6.QtWidgets import QLabel
         nombres = {e.objectName() for e in tabla.findChildren(QLabel)}
