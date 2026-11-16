@@ -113,6 +113,37 @@ class TestEquiposVolcados(unittest.TestCase):
                 with self.subTest(equipo=nombre, cpu=hilo.index):
                     self.assertEqual(hilo.freq_hz, int(media.read_text()) * 1000)
 
+    def test_sin_la_media_del_hardware_sale_la_siguiente_fuente(self):
+        # cpuinfo_avg_freq llegó con el kernel 6.14. En uno anterior el mismo
+        # equipo no la tiene, y la frecuencia de cada hilo tiene que salir de
+        # scaling_cur_freq: no quedarse en blanco ni pasarse del techo.
+        from silux.collector import Collector
+
+        for nombre, (carpeta, _f, _tocados) in self.equipos.items():
+            cpus = carpeta / "sys" / "devices" / "system" / "cpu"
+            if not list(cpus.glob("cpu*/cpufreq/scaling_cur_freq")):
+                continue        # volcado antes de que se guardaran las dos
+            with self.subTest(equipo=nombre), self.volcar.montado(carpeta) as raiz:
+                for media in (raiz / "sys/devices/system/cpu").glob(
+                        "cpu*/cpufreq/cpuinfo_avg_freq"):
+                    media.unlink()
+                recolector = Collector()
+                try:
+                    recolector.snapshot()
+                    f = recolector.snapshot()
+                finally:
+                    recolector.close()
+                self.assertTrue(f.cpu.logical)
+                for hilo in f.cpu.logical:
+                    pedida = cpus / f"cpu{hilo.index}" / "cpufreq" / "scaling_cur_freq"
+                    self.assertEqual(hilo.freq_hz, int(pedida.read_text()) * 1000, hilo.index)
+                for tipo in f.cpu.types:
+                    c = tipo.clocks
+                    techo = max(filter(None, (c.max_hz, c.max_turbo_hz)))
+                    self.assertTrue(c.current_hz)
+                    self.assertLessEqual(c.current_hz, techo * 1.02)
+                self.assertNotIn("cpu.clocks.current_hz", [n.path for n in f.notes])
+
     def test_un_contador_de_energia_parado_no_da_cero_vatios(self):
         # El consumo sale de restar dos lecturas del contador de RAPL. En un
         # volcado no avanza, y un paquete encendido siempre gasta: 0 W ahí es

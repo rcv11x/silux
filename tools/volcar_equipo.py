@@ -49,6 +49,7 @@ RAIZ = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 
 from silux import privacidad, sysroot  # noqa: E402
+from silux.providers.sysfs_cpu import FUENTES_DE_FRECUENCIA  # noqa: E402
 
 DESTINO = RAIZ / "tests" / "fixtures" / "equipos"
 VIGILADO = ("/sys/", "/proc/", "/etc/")
@@ -125,6 +126,20 @@ def _recoger():
         finally:
             recolector.close()
     return leidos, listados, mirados, sysroot.lo_grabado()
+
+
+def _alternativas(leidos: set[str]) -> set[str]:
+    """Las otras fuentes de un dato que el proveedor leyó de la primera.
+
+    La única excepción a que el Collector decida qué se copia: de la
+    frecuencia de cada hilo se queda con la primera fuente que contesta y no
+    abre las demás. Sin ellas, el volcado de un kernel que tiene
+    `cpuinfo_avg_freq` no sirve para ver qué sale en uno que no la tiene. La
+    lista es la del proveedor, no una escrita aquí.
+    """
+    return {os.path.join(os.path.dirname(camino), fuente)
+            for camino in leidos if os.path.basename(camino) in FUENTES_DE_FRECUENCIA
+            for fuente in FUENTES_DE_FRECUENCIA}
 
 
 # -- copiar ---------------------------------------------------------------------
@@ -580,6 +595,7 @@ def volcar(nombre: str, destino_base: pathlib.Path = DESTINO) -> pathlib.Path:
         raise SystemExit(f"{sysroot.VARIABLE} está puesta: esto vuelca el equipo de verdad")
 
     leidos, listados, mirados, grabado = _recoger()
+    leidos |= _alternativas(leidos)
     with tempfile.TemporaryDirectory(prefix="silux-volcado-") as tmp:
         trabajo = pathlib.Path(tmp) / nombre
         trabajo.mkdir()

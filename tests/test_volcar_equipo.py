@@ -134,6 +134,20 @@ class TestLasDireccionesDeProc(unittest.TestCase):
         self.assertIn("/dev/sdb1 /media/unidad1 ext4", salida)
 
 
+class TestLasFuentesAlternativas(unittest.TestCase):
+    """El proveedor se queda con la primera fuente de frecuencia que contesta,
+    y las demás no las abre: sin ellas en el volcado no se puede probar qué
+    pasa en un kernel que no tiene la primera."""
+
+    def test_con_una_fuente_van_las_demas_del_mismo_hilo(self):
+        from silux.providers.sysfs_cpu import FUENTES_DE_FRECUENCIA
+
+        carpeta = "/sys/devices/system/cpu/cpu3/cpufreq"
+        leidos = {f"{carpeta}/{FUENTES_DE_FRECUENCIA[0]}", "/proc/stat"}
+        self.assertEqual(volcar._alternativas(leidos),
+                         {f"{carpeta}/{fuente}" for fuente in FUENTES_DE_FRECUENCIA})
+
+
 class TestLasInterfacesEnSerie(unittest.TestCase):
     """Docker crea un puente por red y un `veth` por contenedor: con una de
     cada basta para ver cómo las trata la página de Red."""
