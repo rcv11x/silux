@@ -193,8 +193,24 @@ def puntua(carga: str) -> bool:
     return carga in PUNTUABLES
 
 
+def multihilo_exacta(scores: dict[str, float], hilos: int) -> Optional[float]:
+    """La puntuación a todos los hilos, sin redondear.
+
+    Es la cifra con que el historial compara dos pruebas del mismo equipo: el
+    redondeo de `puntuar` es para enseñarla, y al comparar movería una décima
+    las diferencias pequeñas.
+    """
+    return _fraccion(scores, hilos, referencias().get("multihilo", {}))
+
+
 def _combinar(scores: dict[str, float], hilos: int,
               referencia: dict[str, float]) -> Optional[int]:
+    fraccion = _fraccion(scores, hilos, referencia)
+    return None if fraccion is None else round(fraccion)
+
+
+def _fraccion(scores: dict[str, float], hilos: int,
+              referencia: dict[str, float]) -> Optional[float]:
     """La media de las cargas puntuables, cada una contra su referencia.
 
     Recorre `PUNTUABLES` y no la tabla entera: la referencia guarda las cinco
@@ -215,7 +231,7 @@ def _combinar(scores: dict[str, float], hilos: int,
         if medido is None or not del_patron:
             return None
         fracciones.append(medido / del_patron)
-    return round(sum(fracciones) / len(fracciones) * ESCALA)
+    return sum(fracciones) / len(fracciones) * ESCALA
 
 
 # Cuántas medidas hacen falta para hablar de un rango. Con dos, los extremos

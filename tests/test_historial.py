@@ -18,9 +18,12 @@ from silux.benchmark import Conditions, Medida, Result
 
 
 def _resultado(ops_por_hilo=100.0, hilos=8, gobernador="performance") -> Result:
+    """Una prueba con las cargas que guarda una de verdad: las dos que
+    puntúan y la verificación, que se mide en bytes y no en operaciones."""
     medidas = tuple(
-        Medida(load=carga, threads=n, operations=int(ops_por_hilo * n * 2), seconds=2.0)
-        for carga in ("compresion", "hash")
+        Medida(load=carga, threads=n, operations=int(ops_por_hilo * n * 2), seconds=2.0,
+               bytes_=64 * 1024**2 if carga == "verificacion" else None)
+        for carga in ("hash", "compresion_dura", "verificacion")
         for n in (1, hilos)
     )
     return Result(medidas,
@@ -182,11 +185,72 @@ class TestComparar(_ConCarpetaPropia):
         self.assertIsNone(history.comparar(vieja, [nueva, vieja]))
 
 
+
+class TestLaCifraConQueSeCompara(_ConCarpetaPropia):
+    """Comparar dos pruebas con la puntuación, no con la suma en crudo.
+
+    `Entry.total()` sumaba lo medido a todos los hilos de todas las cargas, y
+    la verificación va en bytes por segundo —unos 1,6·10¹¹ en el patrón—
+    mientras las demás van en operaciones: pesaba el 99,99999 % del total. Así
+    el «±X %» del historial y el filtro de la deriva térmica los decidía la
+    carga que no puntúa y que depende de la zlib de cada distribución. Con la
+    misma puntuación y otra zlib salía −50 %, y una prueba cancelada antes de
+    la verificación, −100 %. Los datos de aquí son los que guarda una prueba
+    de verdad: las cargas que puntúan y la verificación en bytes.
+    """
+
+    def _entrada(self, ts, puntua=1000.0, verifica=1.6e11, faltan=()):
+        from silux import score
+        medidas = {}
+        for carga in score.PUNTUABLES:
+            if carga not in faltan:
+                medidas[f"{carga}/8"] = puntua
+                medidas[f"{carga}/1"] = puntua / 8
+        if verifica:
+            medidas["verificacion/8"] = verifica
+        return history.Entry(timestamp=ts, cpu="CPU", threads=8, seconds=15.0,
+                             scores=medidas, score_version=score.VERSION)
+
+    def test_otra_zlib_no_cambia_la_comparacion(self):
+        antes = self._entrada(1)
+        despues = self._entrada(2, verifica=0.8e11)
+        _, cambio = history.comparar(despues, [despues, antes])
+        self.assertAlmostEqual(cambio, 0.0, places=1)
+
+    def test_lo_que_puntua_si_la_cambia(self):
+        antes = self._entrada(1)
+        despues = self._entrada(2, puntua=1100.0)
+        _, cambio = history.comparar(despues, [despues, antes])
+        self.assertAlmostEqual(cambio, 10.0, places=0)
+
+    def test_una_prueba_sin_la_verificacion_se_compara_igual(self):
+        antes = self._entrada(1)
+        despues = self._entrada(2, verifica=None)
+        _, cambio = history.comparar(despues, [despues, antes])
+        self.assertAlmostEqual(cambio, 0.0, places=1)
+
+    def test_a_una_que_le_falta_una_que_puntua_no_se_la_compara(self):
+        """Era el −100 % de una prueba cancelada a medias."""
+        from silux import score
+        antes = self._entrada(1)
+        despues = self._entrada(2, faltan=(score.PUNTUABLES[-1],))
+        self.assertIsNone(history.comparar(despues, [despues, antes]))
+
+    def test_la_deriva_termica_tampoco_mira_la_verificacion(self):
+        import dataclasses
+        viejas = [dataclasses.replace(self._entrada(10 + i), temperature_peak_c=70.0)
+                  for i in range(4)]
+        nueva = dataclasses.replace(self._entrada(100, verifica=0.8e11),
+                                    temperature_peak_c=80.0)
+        self.assertIsNotNone(history.deriva_termica(nueva, viejas))
+
+
 class TestPuntuacion(unittest.TestCase):
-    def test_suma_solo_las_medidas_a_todos_los_hilos(self):
+    def test_es_la_puntuacion_a_todos_los_hilos(self):
+        from silux import score
         entrada = history.from_result(_resultado(100.0, hilos=8), "CPU", 2.0)
-        # dos cargas × 8 hilos × 100 op/s
-        self.assertAlmostEqual(entrada.total(), 1600.0, places=1)
+        self.assertEqual(round(entrada.total()),
+                         score.puntuar(entrada.scores, 8)[1])
 
     def test_sin_medidas_no_hay_puntuación(self):
         vacia = history.from_result(Result((), Conditions(), ()), "CPU", 2.0)

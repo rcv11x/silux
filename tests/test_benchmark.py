@@ -496,9 +496,11 @@ class TestDerivaTermica(unittest.TestCase):
     """
 
     def _prueba(self, ts, puntuacion, grados, segundos=3.0):
+        from silux import score
         return history.Entry(
             timestamp=ts, cpu="Ryzen 7 5800X3D", threads=16, seconds=segundos,
-            scores={"compresion/16": puntuacion}, temperature_peak_c=grados,
+            scores={f"{carga}/16": puntuacion for carga in score.PUNTUABLES},
+            temperature_peak_c=grados,
         )
 
     def _historial(self, grados=70.0, cuantas=5):

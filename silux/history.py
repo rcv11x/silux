@@ -90,14 +90,18 @@ class Entry:
         return time.strftime("%d/%m/%Y %H:%M", time.localtime(self.timestamp))
 
     def total(self) -> Optional[float]:
-        """La suma de las medidas a todos los hilos, como cifra única.
+        """La cifra con que se comparan dos pruebas del mismo equipo.
 
-        No es una puntuación con unidades: es lo que permite ordenar dos
-        pruebas del mismo equipo. Compararla contra otro equipo no significa
-        nada y por eso no se enseña sola en ninguna parte.
+        Es la puntuación a todos los hilos, o sea, las cargas que puntúan, cada
+        una contra su referencia. Era la suma en crudo de todas las medidas, y
+        la de verificación va en bytes por segundo —cien mil millones contra
+        unos miles—, así que la comparación la decidía la carga que no puntúa
+        y que depende de la zlib de cada distribución. Sin todas las que
+        puntúan no hay cifra, y una prueba cancelada a medias no se compara.
         """
-        multihilo = [v for k, v in self.scores.items() if not k.endswith("/1")]
-        return sum(multihilo) if multihilo else None
+        from . import score
+
+        return score.multihilo_exacta(self.scores, self.threads)
 
     def comparable_con(self, otra: "Entry") -> bool:
         """Si dos pruebas se pueden poner una al lado de otra.
