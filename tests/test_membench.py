@@ -46,15 +46,20 @@ class TestVueltas(unittest.TestCase):
 
 
 class TestMedidaDeVerdad(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # Una medida con una caché de 8 MB, para los dos tests que miran su
+        # resultado desde un lado distinto. Las demás de esta clase cambian
+        # lo que se le pide, y cada una es la suya.
+        cls.con_cache = membench.en_este_proceso(cache_bytes=8 * 1024**2)
+
     def test_mide_la_ram_de_esta_maquina(self):
-        r = membench.en_este_proceso(cache_bytes=8 * 1024**2)
-        ram = [m for m in r.medidas if m.donde == "ram"]
+        ram = [m for m in self.con_cache.medidas if m.donde == "ram"]
         self.assertEqual(len(ram), 1)
         self.assertGreater(ram[0].bandwidth_bytes, 0)
 
     def test_y_la_cache_cuando_es_bastante_grande(self):
-        r = membench.en_este_proceso(cache_bytes=8 * 1024**2)
-        self.assertEqual([m.donde for m in r.medidas], ["techo", "ram"])
+        self.assertEqual([m.donde for m in self.con_cache.medidas], ["techo", "ram"])
 
     def test_una_cache_diminuta_no_se_mide(self):
         """Por debajo de un mega la llamada pesa más que la memoria.
