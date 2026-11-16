@@ -65,6 +65,25 @@ class TestLaTemperaturaDeLaCpu(unittest.TestCase):
                 if f.cpu.package_temp_c is not None:
                     self.assertEqual(f.cpu.temperature_c, f.cpu.package_temp_c)
 
+    def test_la_ficha_solo_dice_nucleos_donde_hay_sensores_por_nucleo(self):
+        # El i5-10400 tiene uno por núcleo y la ficha da su media debajo de
+        # la del encapsulado. El 5800X3D solo tiene Tctl: «núcleos 59 °C»
+        # debajo de «59 °C» era la misma cifra con un nombre que no es el suyo.
+        from silux.settings import Preferences
+        from silux.ui.app import MainWindow
+
+        for nombre, con_nucleos in (("i5-10400", True), ("5800x3d", False)):
+            with self.subTest(equipo=nombre):
+                f = self.fotos[nombre]
+                self.assertEqual(any(l.temp_c is not None for l in f.cpu.logical),
+                                 con_nucleos)
+                ventana = MainWindow(Preferences().normalized())
+                self.addCleanup(ventana.close)
+                ventana._on_sample(f)
+                ventana._on_sample(f)
+                detalle = ventana.cpu_page.live.tile_temp.detail.full_text()
+                self.assertEqual("núcleos" in detalle, con_nucleos, detalle)
+
     def test_en_amd_es_tctl_y_no_la_del_troquel_de_los_nucleos(self):
         # El 5800X3D publica Tctl y Tccd1. Sin desplazamiento, Tctl es la
         # del procesador; Tccd1 es la de uno de sus troqueles, y va por debajo.

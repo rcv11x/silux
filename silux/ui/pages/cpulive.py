@@ -132,10 +132,16 @@ class CpuLiveSection(QWidget):
         if temperature is not None:
             shown = self._temp(temperature)
             self.tile_temp.update_value(f"{shown:.0f}", shown)
-            if cpu.package_temp_c is not None and primary.temp_c is not None:
-                self.tile_temp.set_detail(
-                    _("cpu.tile.cores").format(
-                        v=f"{self._temp(primary.temp_c):.0f} {unit}"))
+            # La media de los núcleos, debajo de la del encapsulado, solo si
+            # hay sensores por núcleo. En AMD no los hay: `temp_c` del tipo es
+            # entonces la misma Tctl de arriba, y «núcleos 59 °C» la repetía
+            # con un nombre que no era el suyo.
+            por_nucleo = any(l.temp_c is not None for l in cpu.logical)
+            self.tile_temp.set_detail(
+                _("cpu.tile.cores").format(
+                    v=f"{self._temp(primary.temp_c):.0f} {unit}")
+                if por_nucleo and cpu.package_temp_c is not None
+                and primary.temp_c is not None else "")
 
         power = cpu.power
         if power.package_w is not None:
