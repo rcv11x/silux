@@ -78,15 +78,20 @@ def _tapar(valor: Optional[str], relleno: str = "0") -> Optional[str]:
 def _sin_el_equipo(texto: Optional[str], equipo: Optional[str]) -> Optional[str]:
     """Quita el nombre del equipo de donde se haya colado.
 
-    Hace falta porque el nombre no vive solo en su campo. Una interfaz de
-    Tailscale, de ZeroTier o un puente creado a mano se llaman como la máquina,
-    y tapando `system.hostname` el informe seguía enseñando
-    «alex_portatil (virtual)» en la lista de red. Se vio en el primer informe
-    de un portátil, o sea a la primera que alguien lo usó donde tenía sentido.
+    Hace falta porque el nombre no vive solo en su campo: una interfaz de
+    Tailscale, de ZeroTier o un puente creado a mano se llaman como la
+    máquina, y lo mismo el aparato de sensores que la nombra.
+
+    Se busca como nombre entero y sin distinguir mayúsculas, que es como lo
+    trata el propio sistema. Como subcadena exacta se escapaba
+    «PORTATIL-ANA» y, con un hostname corto, destrozaba lo que no tenía nada
+    que ver: «lan» convertía `wlan0` en `wequipo0`. Entero, un nombre de dos
+    letras ya no rompe nada, así que tampoco hay que dejar de taparlo.
     """
-    if not texto or not equipo or len(equipo) < 3:
+    if not texto or not equipo or len(equipo) < 2:
         return texto
-    return texto.replace(equipo, EQUIPO) if equipo in texto else texto
+    return re.sub(rf"(?<![0-9A-Za-z]){re.escape(equipo)}(?![0-9A-Za-z])",
+                  EQUIPO, texto, flags=re.IGNORECASE)
 
 
 def _limpiar(texto: Optional[str], equipo: Optional[str],
@@ -122,7 +127,10 @@ def anonimizar(snapshot: Snapshot) -> Snapshot:
                 i,
                 # El nombre también: las interfaces virtuales se llaman como
                 # la máquina más veces de lo que parece.
-                name=_limpiar(i.name, equipo, nombres) or i.name,
+                # Las del sistema se quedan como están, aunque el equipo se
+                # llame «lo» o «docker»; las demás, por su sustituto.
+                name=(i.name if de_sistema(i.name)
+                      else _limpiar(i.name, equipo, nombres) or i.name),
                 mac=MAC if i.mac else None,
                 ipv4=IPV4 if i.ipv4 else None,
                 ipv6=tuple(IPV6 for _direccion in i.ipv6),

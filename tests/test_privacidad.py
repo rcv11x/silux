@@ -177,3 +177,51 @@ class TestElNombreDelEquipoSeColabaPorLaRed(unittest.TestCase):
         «enp5s0» y media lista sin motivo."""
         tapada = privacidad.anonimizar(self._foto(equipo="pc", interfaz="enp5s0"))
         self.assertEqual(tapada.network[0].name, "enp5s0")
+
+
+class TestElNombreDelEquipoSeBuscaComoNombre(unittest.TestCase):
+    """Sin distinguir mayúsculas, y como palabra entera.
+
+    Se buscaba como subcadena exacta: «PORTATIL-ANA» se escapaba si el
+    hostname era «portatil-ana», que es lo mismo para cualquier persona y
+    para el propio sistema; y con un hostname de pocas letras se destrozaban
+    nombres que no tenían nada que ver: «lan» convertía `wlan0` en
+    `wequipo0`. Por debajo de tres letras ni se intentaba, así que un equipo
+    llamado «pc» no se tapaba en ninguna parte.
+    """
+
+    def _foto(self, equipo, *, red=(), aparato=None, aviso=None):
+        from silux.model import (CpuInfo, Need, NetworkInterface, Note, Sensor,
+                                 SensorKind, Snapshot, System)
+
+        return Snapshot(
+            monotonic_ns=0, cpu=CpuInfo(), system=System(hostname=equipo),
+            network=tuple(NetworkInterface(name=n, up=True) for n in red),
+            sensors=((Sensor(key="x/1", chip="acpitz", device=aparato,
+                             label="temp1", kind=SensorKind.TEMPERATURE,
+                             value=40.0),) if aparato else ()),
+            notes=((Note(path="x", need=Need.HARDWARE, message=aviso),)
+                   if aviso else ()))
+
+    def test_da_igual_como_vaya_escrito(self):
+        tapada = privacidad.anonimizar(self._foto(
+            "portatil-ana", aparato="PORTATIL-ANA-acpi",
+            aviso="El equipo Portatil-Ana no publica su ventilador."))
+        self.assertEqual(tapada.sensors[0].device, "equipo-acpi")
+        self.assertNotIn("ana", tapada.notes[0].message.lower())
+
+    def test_un_nombre_corto_no_se_come_trozos_de_otros(self):
+        tapada = privacidad.anonimizar(self._foto(
+            "lan", red=("wlan0",), aparato="Red (wlan0)",
+            aviso="La placa lanza un aviso."))
+        self.assertEqual(tapada.network[0].name, "wlan0")
+        self.assertEqual(tapada.sensors[0].device, "Red (wlan0)")
+        self.assertEqual(tapada.notes[0].message, "La placa lanza un aviso.")
+
+    def test_ni_el_de_una_interfaz_del_sistema(self):
+        tapada = privacidad.anonimizar(self._foto("dock", red=("docker0",)))
+        self.assertEqual(tapada.network[0].name, "docker0")
+
+    def test_pero_un_nombre_corto_entero_si_se_tapa(self):
+        tapada = privacidad.anonimizar(self._foto("pc", aparato="pc (ACPI)"))
+        self.assertEqual(tapada.sensors[0].device, "equipo (ACPI)")
