@@ -28,7 +28,7 @@ python3 tools/probar_en_minimo.py --container # la suite en el Python del suelo
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **1508** y tardan cerca de dos minutos. Si sale bastante
+Los tests son **1514** y tardan cerca de dos minutos. Si sale bastante
 menos, falta algo por recoger.
 
 Que pasen aquí no dice que pasen en el mínimo. El suelo declarado es Python
@@ -410,7 +410,10 @@ y cómo de grave. La quinta lleva además su propio plan por fases;
 la fase 0 de ese plan está hecha en la rama `fase-0` —el techo de PySide6, el
 CI construyendo en contenedor, el AppDir incompleto que ya no se empaqueta, la
 suite aislada de la carpeta personal, la escala que no puede desparejarse en
-verde y ninguna página que se salga a lo ancho en compacto—, y el resto de sus
+verde y ninguna página que se salga a lo ancho en compacto—, y detrás de ella
+el techo de PySide6 en el `pyproject` para 3.10 y 3.11 y la guarda del AppRun,
+que ya deja pasar el CLI, recomienda `$APPIMAGE` y elige idioma como POSIX
+—`LC_ALL`, `LC_MESSAGES`, `LANG`—, y el resto de sus
 hallazgos todavía no ha entrado en este índice.
 Los pasos para reproducir cada cosa se quedan en los informes a propósito —el
 del enlace simbólico del instalador es una receta y este archivo es público.
@@ -478,25 +481,6 @@ los casos que quedaron fuera.
   al build de dentro, así que `--keep` y `--appdir-only` se aceptan, se pierden
   y no se dice: el AppDir se borra igual. Para inspeccionar el árbol hay que
   extraer el AppImage ya hecho.
-
-### El paquete que se reparte
-
-La cuarta auditoría lo construyó y lo ejecutó, que es lo que nunca se había
-hecho fuera del CI. Lo que se comprobó del empaquetado está bien —la glibc, el
-juego de instrucciones, lo que resuelve fuera, el arranque en Wayland, en X11 y
-sin pantalla—; lo que falla es lo que el paquete hace con quien no puede
-usarlo.
-
-* `tools/build_appimage.py` · **media** · la guarda del procesador del AppRun
-  corre antes del `case` que reparte entre interfaz y CLI, así que **bloquea
-  también el `--report` que su propio mensaje recomienda como salida**. Quien
-  tiene un Core 2 o un Phenom II lee «mientras tanto, esto sí funciona» y
-  recibe otra vez el mismo mensaje y ningún archivo. Y el CLI correría en ese
-  procesador, porque no importa Qt: con el mismo `/proc/cpuinfo` falso, llamando
-  al intérprete de dentro del paquete, el informe se escribe. Es justo el
-  archivo que se le pide a esa persona para poder ayudarla. De paso, la guarda
-  elige idioma solo por `$LANG`: con `LC_ALL=es_ES.UTF-8` y `LANG` sin poner
-  sale en inglés.
 
 ### Las primitivas de `widgets.py`
 
