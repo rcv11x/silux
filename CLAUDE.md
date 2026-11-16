@@ -28,7 +28,7 @@ python3 tools/probar_en_minimo.py --container # la suite en el Python del suelo
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **1493** y tardan cerca de dos minutos. Si sale bastante
+Los tests son **1508** y tardan cerca de dos minutos. Si sale bastante
 menos, falta algo por recoger.
 
 Que pasen aquí no dice que pasen en el mínimo. El suelo declarado es Python
@@ -67,8 +67,8 @@ que estrechar el clasificador no arreglaría nada —no hay dónde escribir ahí
 una versión de glibc— y perderlo sí cuesta: es por lo que se encuentra el
 paquete.
 
-**El techo de PySide6 en `<6.10` es del AppImage `--compat`, y de nadie más.**
-Qt 6.10 pasó a compilarse con `-march=x86-64-v2`, y no en rutas aparte que se
+**PySide6 lleva dos techos en el empaquetador, y cada uno es por otra cosa.**
+El `<6.10` es del AppImage `--compat`, y de nadie más. Qt 6.10 pasó a compilarse con `-march=x86-64-v2`, y no en rutas aparte que se
 eligen mirando la CPU, sino dentro de funciones normales: `QString`,
 `QUtf8::convertToUnicode`, `QPainterPath::quadTo`. En un procesador sin
 SSE4.1 eso es «Instrucción ilegal» y un volcado antes de pintar nada; Qt trae
@@ -79,9 +79,16 @@ y los Phenom II: justo la clase de equipo cuyo dueño quiere saber qué lleva
 dentro. Lo descubrió un Athlon II X2 250u ajeno, no una prueba de aquí.
 
 Quién lo pone y quién no: `RANGO_PYSIDE`, en el empaquetador, se lo pone al
-`--compat` y no al normal, que se lleva la última serie a propósito —los
-arreglos de Qt, y sobre todo los de Wayland, están ahí—. `pyproject.toml`
-tampoco lo pone: no es su trabajo decidir qué Qt corre en la máquina de otro,
+`--compat`. El normal se lleva la última serie que funciona a propósito —los
+arreglos de Qt, y sobre todo los de Wayland, están ahí—, y por eso su techo
+es otro y por otro motivo: **`<6.12`, porque PySide6 6.12.0 tumba Python 3.10
+y 3.11.** Resta una referencia a `None` en cada método que devuelve `void`
+(`lineTo`, `setY`…); desde 3.12 `None` es inmortal y no se nota, pero en el
+3.10 que va dentro del AppImage el proceso muere con «Fatal Python error:
+none_dealloc» al pintar la primera gráfica. Se quita cuando una 6.12.x lo
+corrija y la suite pase en 3.10 con ella. Como el CI pregunta el rango a
+`--pyside-range`, ese techo alcanza también a sus tests. `pyproject.toml` no
+pone ninguno de los dos: no es su trabajo decidir qué Qt corre en la máquina de otro,
 y quien instala desde el código fuente casi siempre usa el PySide6 de su
 distribución, que no lee los extras del `pyproject`. Este repositorio se
 desarrolla con 6.11.
@@ -386,9 +393,15 @@ sube a v6, así que las pruebas guardadas con la anterior se quedan sin cifra
 **La `escala-v5` no se fusiona**: quedó superada, y su único commit se replicó
 al poner la v6 encima de master. Las dos ramas se pueden borrar.
 
-**Los cuatro informes de auditoría viven fuera del repositorio**, en la carpeta
-de encima (`../auditoria-fase-1.md` hasta `-4`). Aquí abajo está solo el
-índice: qué falta, dónde y cómo de grave.
+**Los informes de auditoría viven fuera del repositorio**, en la carpeta de
+encima: `../auditoria-fase-4.md` y `-5.md`. De las fases 1 a 3 no queda el
+informe, solo lo que se apuntó aquí. Aquí abajo va el índice: qué falta, dónde
+y cómo de grave. La quinta lleva además su propio plan por fases;
+la fase 0 de ese plan está hecha en la rama `fase-0` —el techo de PySide6, el
+CI construyendo en contenedor, el AppDir incompleto que ya no se empaqueta, la
+suite aislada de la carpeta personal, la escala que no puede desparejarse en
+verde y ninguna página que se salga a lo ancho en compacto—, y el resto de sus
+hallazgos todavía no ha entrado en este índice.
 Los pasos para reproducir cada cosa se quedan en los informes a propósito —el
 del enlace simbólico del instalador es una receta y este archivo es público.
 
@@ -406,8 +419,8 @@ del AppRun corta de verdad, probada con un `/proc/cpuinfo` sin esas banderas.
 
 ## Lo que queda por arreglar
 
-Sale de cuatro auditorías. **Nada de esto está arreglado**; lo que sí se
-arregló —la escala del benchmark— es lo de la sección de arriba.
+Sale de las cuatro primeras auditorías. **Nada de esto está arreglado**; lo
+que sí se arregló —la escala del benchmark— es lo de la sección de arriba.
 
 ### Un dato, dos sitios que lo deciden, y uno lo hace mal
 
@@ -1419,6 +1432,13 @@ que era la mitad no probada de la misma función.
 - **Tomar por normal un aviso del comprobador del AppImage**: decía que trece
   bibliotecas se cogían del sistema «y son normales», y dos de ellas hacían
   falta de verdad.
+- **Avisar en el registro de una construcción que termina bien**: el
+  comprobador sí veía las siete `libxcb-*` que le faltaban al AppImage de la
+  v0.2.0, y lo escribía en stderr mientras la construcción seguía y devolvía
+  cero. Así se publicó. Un aviso que no para nada no lo lee nadie: ahora el
+  empaquetador no empaqueta un AppDir al que le falta algo. Y ese paquete salía
+  del runner y no del contenedor, que era el que sí las llevaba: lo que se
+  reparte se construye con la receta que se prueba, o la receta no prueba nada.
 - **Que un test lea el hardware de quien lo ejecuta y además espere encontrar
   algo**: los del buscador de sensores montaban el árbol con
   `Collector().sample()` y luego exigían que filtrar por «temperatura» diera
@@ -1474,6 +1494,21 @@ que era la mitad no probada de la misma función.
   inofensivo. Qt 6.10 subió su mínimo a x86-64-v2 y el AppImage dejó de
   arrancar en cualquier procesador anterior a 2008, sin que cambiara una línea
   del programa. Lo que no se fija cambia solo, y lo hace en la máquina de otro.
+  **Y volvió a pasar**: el normal se quedó sin techo a propósito, PySide6
+  6.12.0 salió un mes después del último commit y rompía el Python 3.10 que va
+  dentro. Nadie lo habría visto hasta el siguiente empujón, porque aquí se
+  desarrolla con el PySide6 de la distribución.
+- **Dejar que la suite use la carpeta personal de quien la ejecuta**: dos
+  módulos montaban la ventana sin aislar `XDG_CONFIG_HOME`, la ventana guarda
+  sus preferencias al cerrarse y cada `unittest discover` reescribía las del
+  autor con los valores por defecto. Se aísla una vez en `tests/__init__.py`
+  para todos, no test a test, que es como se olvida.
+- **Elegir columnas sin preguntar a los hijos cuánto necesitan**:
+  `ResponsiveRow` repartía por su `min_item_width`, la rejilla exigía después
+  el mínimo real de cada tarjeta y la fila se ensanchaba para dárselo, por
+  fuera de la ventana. Un reparto vale si la suma de lo que pide cada columna
+  cabe; y la fila no puede pedirle a quien la contiene el ancho de la rejilla
+  montada, o su propia anchura le dirá siempre que caben.
 - **Contar instrucciones para saber si un binario es compatible**: libcrypto
   lleva AVX-512 y funciona en un Pentium 4, porque pregunta antes. Lo que hay
   que mirar es dónde caen: en una función con el juego en el nombre
