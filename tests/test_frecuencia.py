@@ -2,9 +2,9 @@
 
 Con los dos volcados del i5-10400: uno con el turbo apagado y otro con el
 turbo encendido, que es el vaivén real que hace `auto-cpufreq` en ese equipo
-en cuanto hay carga. Comprobado solo en Intel: el techo del silicio en AMD
-sale de CPPC (`providers/cppc.py`), y hasta que esté el volcado del 5800X3D
-no hay con qué mirarlo.
+en cuanto hay carga. Y con el del 5800X3D, donde el techo del silicio no sale
+de CPUID sino de CPPC (`providers/cppc.py`) y, con `amd-pstate` y el boost
+encendido, coincide con el que aplica el kernel.
 """
 
 import dataclasses
@@ -23,6 +23,7 @@ except ImportError:                                    # pragma: no cover
     QApplication = None
 
 APAGADO, ENCENDIDO = "i5-10400", "i5-10400-turbo"
+AMD = "5800x3d"
 
 
 @unittest.skipIf(QApplication is None, "sin PySide6")
@@ -31,7 +32,7 @@ class TestLaGraficaDeFrecuencia(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = qt.app()
-        cls.fotos = {n: foto(EQUIPOS / n)[0] for n in (APAGADO, ENCENDIDO)}
+        cls.fotos = {n: foto(EQUIPOS / n)[0] for n in (APAGADO, ENCENDIDO, AMD)}
 
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()
@@ -79,10 +80,23 @@ class TestLaGraficaDeFrecuencia(unittest.TestCase):
     def test_la_cifra_del_rango_es_la_del_eje(self):
         from silux import render
 
-        ficha, escalas = self._ficha([APAGADO] * 3)
+        for nombre in (APAGADO, AMD):
+            with self.subTest(equipo=nombre):
+                ficha, escalas = self._ficha([nombre] * 3)
+                suelo, techo = escalas[-1]
+                self.assertEqual(ficha.detail.full_text(),
+                                 f"{render.hz(suelo * 1e9)} – {render.hz(techo * 1e9)}")
+
+    def test_en_amd_el_eje_va_de_la_minima_al_techo_de_cppc(self):
+        # Sin hoja 0x16, el techo es el que amd-pstate calcula de CPPC: los
+        # 4,55 GHz del 5800X3D, no los 4,96 que saldrían del ranking.
+        relojes = self.fotos[AMD].cpu.types[0].clocks
+        self.assertEqual(relojes.max_turbo_hz, 4_552_952_000)
+        ficha, escalas = self._ficha([AMD] * 3)
         suelo, techo = escalas[-1]
-        self.assertEqual(ficha.detail.full_text(),
-                         f"{render.hz(suelo * 1e9)} – {render.hz(techo * 1e9)}")
+        self.assertAlmostEqual(suelo, relojes.min_hz / 1e9, places=3)
+        self.assertAlmostEqual(techo, 4.552952, places=3)
+        self.assertGreaterEqual(techo, max(ficha.chart._values))
 
 
 if __name__ == "__main__":
@@ -101,8 +115,8 @@ def _hz(texto: str) -> float:
 class TestLasPaginasDicenLoMismo(unittest.TestCase):
     """Con la misma foto, Inicio, CPU y Sensores no se contradicen.
 
-    Las tres leen hoy la misma fuente —`scaling_cur_freq`, por hilo—, y esto
-    vigila que siga así: una página que un día lea otra cosa, o se quede con
+    Las tres leen hoy la misma fuente —la de `FUENTES_DE_FRECUENCIA`, por
+    hilo—, y esto vigila que siga así: una página que un día lea otra cosa, o se quede con
     la foto anterior, sale aquí. Un desacuerdo entre pantallas vistas en
     momentos distintos no es un fallo: en el i5-10400 el turbo va y viene
     cada pocos segundos.
@@ -111,7 +125,7 @@ class TestLasPaginasDicenLoMismo(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = qt.app()
-        cls.fotos = {n: foto(EQUIPOS / n)[0] for n in (APAGADO, ENCENDIDO)}
+        cls.fotos = {n: foto(EQUIPOS / n)[0] for n in (APAGADO, ENCENDIDO, AMD)}
 
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()
@@ -136,7 +150,7 @@ class TestLasPaginasDicenLoMismo(unittest.TestCase):
 
         # La última foto es la que cuenta: la ventana viene de la otra, para
         # que una página que se quedara con la anterior se note.
-        for previa, ultima in ((APAGADO, ENCENDIDO), (ENCENDIDO, APAGADO)):
+        for previa, ultima in ((APAGADO, ENCENDIDO), (ENCENDIDO, APAGADO), (AMD, AMD)):
             ventana = self._ventana(previa, previa, ultima)
             f = self.fotos[ultima]
             tipo = f.cpu.types[0]
