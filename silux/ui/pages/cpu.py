@@ -240,11 +240,15 @@ class CpuPage(QScrollArea):
     # y Almacenamiento. Todos los botones piden lo mismo y se lanza un solo
     # ayudante, así que pulsar cualquiera desbloquea todo.
     elevation_requested = Signal()
+    # Los dos botones de apartar el aviso de permisos, que valen para todos.
+    permission_snoozed = Signal()
+    permission_dismissed = Signal()
 
     def __init__(self, palette: Palette, prefs: Preferences, parent=None):
         super().__init__(parent)
         self._p = palette
         self._prefs = prefs
+        self._sin_avisos_de_permisos = False
         m = theme.METRICS
 
         self.setWidgetResizable(True)
@@ -370,10 +374,18 @@ class CpuPage(QScrollArea):
                 section.apply(cpu_type)
                 section.lock_voltage(snapshot.permission_note("cpu.voltage_v"), self._p.warn)
 
+    def hide_permission_notices(self, ocultos: bool) -> None:
+        """Deja de enseñar los avisos de permisos, o los vuelve a enseñar."""
+        self._sin_avisos_de_permisos = ocultos
+
     def _apply_notices(self, snapshot: Snapshot) -> None:
         # Solo las de esta pestaña: la de los módulos de memoria salía aquí
         # porque se enseñaban todas, y no pinta nada junto al procesador.
         notes = snapshot.notes_for("cpu")
+        if self._sin_avisos_de_permisos:
+            # Apartados desde aquí o desde Inicio. Lo que falta sigue dicho en
+            # su sitio, con el candado, y en el enlace de la barra de estado.
+            notes = tuple(n for n in notes if n.need is not Need.ROOT)
         signature = tuple((n.path, n.need) for n in notes)
         if signature == self._notice_signature:
             return
@@ -393,7 +405,10 @@ class CpuPage(QScrollArea):
                 action=(_("perm.button.read")
                         if note.need is Need.ROOT else None),
                 tone=tone_for(note.need),
+                dismissible=note.need is Need.ROOT,
             )
             if aviso.action_button is not None:
                 aviso.action_clicked.connect(self.elevation_requested)
+                aviso.snoozed.connect(self.permission_snoozed)
+                aviso.dismissed.connect(self.permission_dismissed)
             self._notices_host.addWidget(aviso)

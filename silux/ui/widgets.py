@@ -1175,10 +1175,14 @@ class Notice(QFrame):
     """
 
     action_clicked = Signal()
+    snoozed = Signal()
+    dismissed = Signal()
 
     def __init__(self, title: str, body: str, hint: str = "",
                  parent: Optional[QWidget] = None, tone: str = "warn",
-                 action: Optional[str] = None):
+                 action: Optional[str] = None, dismissible: bool = False):
+        """`dismissible`: lleva además «Ahora no» y «No volver a mostrar».
+        Para los avisos de permisos, que son los que se pueden apartar."""
         super().__init__(parent)
         self.setObjectName("Notice")
         # Antes de que Qt aplique la hoja de estilos, para no tener que
@@ -1217,6 +1221,12 @@ class Notice(QFrame):
             fila.setContentsMargins(0, 6, 0, 0)
             fila.addWidget(self.action_button)
             fila.addStretch(1)
+            if dismissible:
+                self.snooze_button, self.dismiss_button = dismiss_buttons()
+                self.snooze_button.clicked.connect(self.snoozed)
+                self.dismiss_button.clicked.connect(self.dismissed)
+                fila.addWidget(self.snooze_button)
+                fila.addWidget(self.dismiss_button)
             layout.addLayout(fila)
 
 
@@ -1260,6 +1270,23 @@ class LockMark(QWidget):
         painter.drawRoundedRect(QRectF(lado * 0.14, lado * 0.42, lado * 0.72, lado * 0.52),
                                 lado * 0.1, lado * 0.1)
         painter.end()
+
+
+def dismiss_buttons() -> tuple[QPushButton, QPushButton]:
+    """«Ahora no» y «No volver a mostrar», los mismos en Inicio y en las páginas.
+
+    Dos botones de texto y no un aspa: un aspa no dice si es por ahora o para
+    siempre, y son dos cosas distintas. Quien los usa conecta cada uno.
+    """
+    luego = QPushButton(_("perm.notice.later"))
+    luego.setToolTip(_("perm.notice.later.tip"))
+    nunca = QPushButton(_("perm.notice.never"))
+    nunca.setToolTip(_("perm.notice.never.tip"))
+    for boton in (luego, nunca):
+        boton.setObjectName("TextButton")
+        boton.setFlat(True)
+        boton.setCursor(Qt.CursorShape.PointingHandCursor)
+    return luego, nunca
 
 
 class PermissionNotice(QFrame):
@@ -1313,18 +1340,9 @@ class PermissionNotice(QFrame):
         self.explain_button = QPushButton(_("perm.notice.explain"))
         self.explain_button.setObjectName("GhostButton")
         self.explain_button.clicked.connect(self.explain_requested)
-        # Dos botones de texto y no un aspa: un aspa no dice si es por ahora o
-        # para siempre, y son dos cosas distintas.
-        self.snooze_button = QPushButton(_("perm.notice.later"))
-        self.snooze_button.setToolTip(_("perm.notice.later.tip"))
+        self.snooze_button, self.dismiss_button = dismiss_buttons()
         self.snooze_button.clicked.connect(self.snoozed)
-        self.dismiss_button = QPushButton(_("perm.notice.never"))
-        self.dismiss_button.setToolTip(_("perm.notice.never.tip"))
         self.dismiss_button.clicked.connect(self.dismissed)
-        for boton in (self.snooze_button, self.dismiss_button):
-            boton.setObjectName("TextButton")
-            boton.setFlat(True)
-            boton.setCursor(Qt.CursorShape.PointingHandCursor)
 
         self.buttons = QHBoxLayout()
         self.buttons.setContentsMargins(0, 4, 0, 0)

@@ -23,7 +23,7 @@ from .. import theme
 from ..theme import Palette
 from ..widgets import (Card, ChipRow, InfoGrid, Notice, ResponsiveRow,
                        StackedBar, StatTile, Table,
-                       boton_de_permiso_permanente, clear_layout)
+                       boton_de_permiso_permanente, clear_layout, dismiss_buttons)
 
 DISK_HEADERS = ("storage.col.unit", "storage.col.model", "gpu.vram.type", "storage.col.size", "storage.col.used",
                 "gpu.sensor.temp", "storage.tile.reading", "storage.tile.writing")
@@ -50,6 +50,8 @@ class StoragePage(QScrollArea):
     # y no había forma de adivinar que la contraseña se pedía en otra pestaña.
     elevation_requested = Signal()
     permanent_requested = Signal()
+    permission_snoozed = Signal()
+    permission_dismissed = Signal()
 
     def __init__(self, palette: Palette, prefs: Preferences, parent=None):
         super().__init__(parent)
@@ -98,6 +100,7 @@ class StoragePage(QScrollArea):
 
         self._grids: dict[str, InfoGrid] = {}
         self._bars: dict[str, StackedBar] = {}
+        self._sin_avisos_de_permisos = False
         self._orden_actual: tuple = ()
         self._chip_signature: tuple = ()
         self._avisos_signature: tuple = ()
@@ -165,10 +168,17 @@ class StoragePage(QScrollArea):
         self.permanent_button = boton_de_permiso_permanente()
         self.permanent_button.clicked.connect(self.permanent_requested)
 
+        # Los mismos dos botones que el aviso de Inicio, y hacen lo mismo.
+        self.snooze_button, self.dismiss_button = dismiss_buttons()
+        self.snooze_button.clicked.connect(self.permission_snoozed)
+        self.dismiss_button.clicked.connect(self.permission_dismissed)
+
         fila = QHBoxLayout()
         fila.addWidget(self.elevation_button)
         fila.addWidget(self.permanent_button)
         fila.addStretch(1)
+        fila.addWidget(self.snooze_button)
+        fila.addWidget(self.dismiss_button)
 
         card.body.addWidget(self.elevation_text)
         card.body.addWidget(detalle)
@@ -177,6 +187,10 @@ class StoragePage(QScrollArea):
         return card
 
     # -- actualización ------------------------------------------------------
+
+    def hide_permission_notices(self, ocultos: bool) -> None:
+        """Deja de enseñar la tarjeta que pide permisos, o la vuelve a enseñar."""
+        self._sin_avisos_de_permisos = ocultos
 
     def apply(self, snapshot: Snapshot) -> None:
         discos = sorted(snapshot.disks, key=_orden)
@@ -187,7 +201,8 @@ class StoragePage(QScrollArea):
         self._apply_avisos(discos)
         # La tarjeta solo estorba cuando ya no hace falta.
         leidos = sum(1 for x in discos if x.health.power_on_hours is not None)
-        self.elevation_card.setVisible(bool(discos) and leidos < len(discos))
+        self.elevation_card.setVisible(bool(discos) and leidos < len(discos)
+                                       and not self._sin_avisos_de_permisos)
         if leidos:
             self.elevation_text.setText(
                 _("storage.health.read").format(n=leidos, total=len(discos))

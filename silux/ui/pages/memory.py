@@ -31,7 +31,7 @@ from .. import theme
 from ..theme import Palette, ui_font
 from ..widgets import (
     Card, ChipRow, InfoGrid, Notice, ResponsiveRow, StackedBar, Table,
-    memory_segments,
+    dismiss_buttons, memory_segments,
     boton_de_permiso_permanente, clear_layout, tone_for,
 )
 
@@ -60,6 +60,8 @@ TIMING_HEADERS = ("memory.timing.profile", "memory.timing.speed", "memory.timing
 class MemoryPage(QScrollArea):
     elevation_requested = Signal()
     permanent_requested = Signal()
+    permission_snoozed = Signal()
+    permission_dismissed = Signal()
     # La medida corre en otro hilo y en otro proceso; vuelve por aquí, que es
     # la forma de tocar widgets desde fuera del hilo de la interfaz.
     _bw_listo = Signal(object)
@@ -123,6 +125,7 @@ class MemoryPage(QScrollArea):
         self._module_signature: tuple = ()
         self._notice_signature: tuple = ()
         self._slot_grids: list[InfoGrid] = []
+        self._sin_avisos_de_permisos = False
         self._cache_mas_grande: Optional[int] = None
         self._niveles: list = []
         self._bw_listo.connect(self._pintar_ancho_de_banda)
@@ -174,11 +177,18 @@ class MemoryPage(QScrollArea):
         self.permanent_button = boton_de_permiso_permanente()
         self.permanent_button.clicked.connect(self.permanent_requested)
 
+        # Los mismos dos botones que el aviso de Inicio, y hacen lo mismo.
+        self.snooze_button, self.dismiss_button = dismiss_buttons()
+        self.snooze_button.clicked.connect(self.permission_snoozed)
+        self.dismiss_button.clicked.connect(self.permission_dismissed)
+
         row = QHBoxLayout()
         row.setContentsMargins(0, 0, 0, 0)
         row.addWidget(self.elevation_button)
         row.addWidget(self.permanent_button)
         row.addStretch(1)
+        row.addWidget(self.snooze_button)
+        row.addWidget(self.dismiss_button)
 
         card.body.addWidget(self.elevation_text)
         card.body.addWidget(self.elevation_hint)
@@ -516,9 +526,18 @@ class MemoryPage(QScrollArea):
                 wanted.append("ECC")
         self.badges.set_chips(wanted, highlight_first=True)
 
+    def hide_permission_notices(self, ocultos: bool) -> None:
+        """Deja de enseñar la tarjeta que pide permisos, o la vuelve a enseñar."""
+        self._sin_avisos_de_permisos = ocultos
+
     def _apply_elevation(self, snapshot: Snapshot) -> None:
         state = snapshot.privileged
-        if snapshot.modules:
+        # Apartada con sus dos botones, aquí o en Inicio, mientras lo que hay
+        # que hacer sea dar permisos: si no hay ayudante o ya se es root, la
+        # tarjeta explica otra cosa y se queda.
+        apartada = (self._sin_avisos_de_permisos and state.supported
+                    and not state.already_root)
+        if snapshot.modules or apartada:
             self.elevation.hide()
             return
 

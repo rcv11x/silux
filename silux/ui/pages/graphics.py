@@ -149,6 +149,8 @@ class GpuSection(QWidget):
     # piden permisos. Sin botón aquí había que ir a Memoria o a
     # Almacenamiento a darlos y volver, que es pedirle al usuario que adivine.
     elevation_requested = Signal()
+    permission_snoozed = Signal()
+    permission_dismissed = Signal()
 
     def __init__(self, palette: Palette, prefs: Preferences, parent=None):
         super().__init__(parent)
@@ -341,7 +343,10 @@ class GpuSection(QWidget):
 
     # -- actualización ------------------------------------------------------
 
-    def set_notes(self, notes) -> None:
+    def set_notes(self, notes, sin_permisos: bool = False) -> None:
+        """`sin_permisos`: los avisos de permisos están apartados."""
+        if sin_permisos:
+            notes = [n for n in notes if n.need is not Need.ROOT]
         signature = tuple((n.path, n.need) for n in notes)
         if signature == self._notice_signature:
             return
@@ -355,9 +360,12 @@ class GpuSection(QWidget):
                 tone=tone_for(note.need),
                 action=(_("perm.button.read")
                         if note.need is Need.ROOT else None),
+                dismissible=note.need is Need.ROOT,
             )
             if aviso.action_button is not None:
                 aviso.action_clicked.connect(self.elevation_requested)
+                aviso.snoozed.connect(self.permission_snoozed)
+                aviso.dismissed.connect(self.permission_dismissed)
                 self.elevation_buttons.append(aviso.action_button)
             self._notices_host.addWidget(aviso)
 
@@ -699,6 +707,8 @@ def _fila_de_salida(salida) -> tuple[str, ...]:
 
 class GraphicsPage(QScrollArea):
     elevation_requested = Signal()
+    permission_snoozed = Signal()
+    permission_dismissed = Signal()
 
     def __init__(self, palette: Palette, prefs: Preferences, parent=None):
         super().__init__(parent)
@@ -707,6 +717,7 @@ class GraphicsPage(QScrollArea):
         # estado entre muestreos, así que vive en la página y no en el modelo.
         self._recortes = SeguidorDeRecortes()
         self._prefs = prefs
+        self._sin_avisos_de_permisos = False
         m = theme.METRICS
 
         self.setWidgetResizable(True)
@@ -748,6 +759,8 @@ class GraphicsPage(QScrollArea):
         while len(self._sections) < len(snapshot.gpus):
             seccion = GpuSection(self._p, self._prefs)
             seccion.elevation_requested.connect(self.elevation_requested)
+            seccion.permission_snoozed.connect(self.permission_snoozed)
+            seccion.permission_dismissed.connect(self.permission_dismissed)
             self._sections.append(seccion)
             self._sections_host.addWidget(seccion)
         for sobrante in self._sections[len(snapshot.gpus):]:
@@ -767,6 +780,10 @@ class GraphicsPage(QScrollArea):
                 self._recortes.relevante(clave, ahora), ahora) or "")
 
         self._apply_notices(snapshot)
+
+    def hide_permission_notices(self, ocultos: bool) -> None:
+        """Deja de enseñar los avisos de permisos, o los vuelve a enseñar."""
+        self._sin_avisos_de_permisos = ocultos
 
     @property
     def elevation_buttons(self) -> list:
@@ -796,7 +813,8 @@ class GraphicsPage(QScrollArea):
                 sueltos.append(note)
 
         for indice, seccion in enumerate(self._sections):
-            seccion.set_notes(por_seccion.get(indice, []))
+            seccion.set_notes(por_seccion.get(indice, []),
+                              sin_permisos=self._sin_avisos_de_permisos)
 
         signature = tuple((n.path, n.need) for n in sueltos)
         if signature == self._notice_signature:

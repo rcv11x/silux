@@ -248,6 +248,12 @@ class MainWindow(QMainWindow):
         self.storage_page.elevation_requested.connect(self._on_elevation_requested)
         self.memory_page.permanent_requested.connect(self._on_permanent_requested)
         self.storage_page.permanent_requested.connect(self._on_permanent_requested)
+        # Los dos botones de apartar son los mismos en Inicio y en cada
+        # página, y valen para todas a la vez: apartar el aviso de Memoria y
+        # encontrárselo otra vez en Almacenamiento sería no haberlo apartado.
+        for pagina in self._paginas_con_aviso():
+            pagina.permission_snoozed.connect(self._posponer_aviso)
+            pagina.permission_dismissed.connect(self._quitar_aviso)
         self._refrescar_botones_permanentes()
         self.network_page = NetworkPage(self._palette, self.prefs)
         self.battery_page = BatteryPage(self._palette, self.prefs)
@@ -846,13 +852,15 @@ class MainWindow(QMainWindow):
         # esta lista guardaba todas las pruebas con «?» en vez del nombre. Eso
         # dejaba el historial sin poder distinguir dos equipos y la puntuación
         # sin pieza con la que compararse. Su `apply` solo mira una cadena.
+        # Antes de pintar: decide también si las páginas enseñan sus avisos
+        # de permisos, y eso lo aplican al pintarse.
+        self._poner_aviso_de_permisos(snapshot)
         for page in (self.home_page, self.cpu_page, self.monitor_page, self.caches_page,
                      self.board_page, self.memory_page, self.system_page,
                      self.graphics_page, self.network_page, self.storage_page,
                      self.battery_page, self.performance_page):
             page.apply(snapshot)
 
-        self._poner_aviso_de_permisos(snapshot)
         self._ajustar_bateria(snapshot)
 
     # -- el aviso de permisos de Inicio ---------------------------------------
@@ -873,8 +881,14 @@ class MainWindow(QMainWindow):
             return
         recaida = self._permisos_completos
         apartado = self._aviso_pospuesto or self.prefs.permission_notice_dismissed
-        self.home_page.set_permission_notice(
-            faltan if recaida or not apartado else (), recaida)
+        visible = recaida or not apartado
+        self.home_page.set_permission_notice(faltan if visible else (), recaida)
+        for pagina in self._paginas_con_aviso():
+            pagina.hide_permission_notices(not visible)
+
+    def _paginas_con_aviso(self) -> tuple:
+        """Las páginas que piden permisos por su cuenta."""
+        return (self.cpu_page, self.memory_page, self.graphics_page, self.storage_page)
 
     def _explicar_permisos(self) -> None:
         """«Qué hace esto», antes de pedir la contraseña."""
@@ -897,6 +911,13 @@ class MainWindow(QMainWindow):
         # vuelve a pasar, no mientras dure.
         self._permisos_completos = False
         self.home_page.set_permission_notice(())
+        for pagina in self._paginas_con_aviso():
+            pagina.hide_permission_notices(True)
+        # Las páginas lo aplican al pintar: se les da la última foto para que
+        # el aviso se vaya ahora y no con el muestreo siguiente.
+        if self._last_snapshot is not None and not self._congelado:
+            for pagina in self._paginas_con_aviso():
+                pagina.apply(self._last_snapshot)
 
     def _posponer_aviso(self) -> None:
         """«Ahora no»: hasta el próximo arranque."""
