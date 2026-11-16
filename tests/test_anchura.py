@@ -21,8 +21,8 @@ import unittest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtCore import QPoint
-from PySide6.QtWidgets import QApplication, QWidget
+from PySide6.QtCore import QPoint, Qt
+from PySide6.QtWidgets import QAbstractScrollArea, QApplication, QWidget
 
 from silux.collector import Collector
 from silux.model import Battery
@@ -83,12 +83,36 @@ class TestNadaSeSalePorLaDerecha(unittest.TestCase):
     def tearDownClass(cls):
         cls.ventana.close()
 
+    @staticmethod
+    def _se_alcanza_desplazando(widget: QWidget, pagina: QWidget) -> bool:
+        """Si lo que sobra de este widget se ve moviendo una barra horizontal.
+
+        `Table` va en su propia zona de desplazamiento para que una tabla
+        ancha no arrastre a la página: lo que queda a la derecha no está
+        cortado, está a un gesto. La página no tiene esa barra, y lo que se
+        salga de ella sí se pierde. Se mira que la barra exista de verdad y
+        no solo que pudiera: una zona que no se desplaza recorta igual.
+        """
+        padre = widget.parentWidget()
+        while padre is not None and padre is not pagina:
+            zona = padre.parentWidget()
+            if (isinstance(zona, QAbstractScrollArea) and zona is not pagina
+                    and padre is zona.viewport()
+                    and zona.horizontalScrollBarPolicy()
+                    != Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+                    and zona.horizontalScrollBar().maximum() > 0):
+                return True
+            padre = zona
+        return False
+
     def _desbordados(self) -> list[str]:
         ventana = self.ventana
         pagina = ventana.stack.currentWidget()
         fuera = []
         for widget in [pagina, *pagina.findChildren(QWidget)]:
             if not widget.isVisibleTo(ventana) or widget.width() <= 0:
+                continue
+            if self._se_alcanza_desplazando(widget, pagina):
                 continue
             izquierda = widget.mapTo(ventana, QPoint(0, 0)).x()
             derecha = izquierda + widget.width()
@@ -128,6 +152,36 @@ class TestNadaSeSalePorLaDerecha(unittest.TestCase):
             intruso.hide()
             intruso.setParent(None)
             intruso.deleteLater()
+            _asentar(self.app)
+
+
+    def test_una_tabla_ancha_se_desplaza_y_no_cuenta_como_cortada(self):
+        """Una tabla con más columnas de las que caben tiene su propia barra.
+
+        Se vio en un equipo con dos monitores: la tabla de pantallas de
+        Gráficos no cabe a 900 px, se desplaza, y sus celdas contaban como
+        salidas de la ventana. Sin barra, las mismas celdas sí cuentan.
+        """
+        from silux.ui.widgets import Table
+
+        self.ventana.nav.setCurrentRow(0)
+        _asentar(self.app)
+        pagina = self.ventana.stack.currentWidget()
+        tabla = Table([f"columna {n}" for n in range(12)], parent=pagina)
+        tabla.setGeometry(0, 0, 300, 80)
+        tabla.set_rows([[f"un valor bastante largo {n}" for n in range(12)]])
+        tabla.show()
+        _asentar(self.app)
+        try:
+            self.assertGreater(tabla.horizontalScrollBar().maximum(), 0)
+            self.assertFalse(any("un valor bastante largo" in f for f in self._desbordados()))
+            tabla.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            _asentar(self.app)
+            self.assertTrue(any("un valor bastante largo" in f for f in self._desbordados()))
+        finally:
+            tabla.hide()
+            tabla.setParent(None)
+            tabla.deleteLater()
             _asentar(self.app)
 
 
