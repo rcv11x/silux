@@ -1,0 +1,238 @@
+# Lo que queda por arreglar, con su detalle
+
+La tabla corta está en `CLAUDE.md`; aquí está cada punto con lo que se
+midió. De las auditorías 1 a 3 no queda el informe, así que esto es lo único
+que se conserva de ellas. La cuarta y la quinta están fuera del
+repositorio, en `../auditoria-fase-4.md` y `-5.md`, con los pasos para
+reproducir cada cosa.
+
+## De dónde sale
+
+**Los informes de auditoría viven fuera del repositorio**, en la carpeta de
+encima: `../auditoria-fase-4.md` y `-5.md`. De las fases 1 a 3 no queda el
+informe, solo lo que se apuntó aquí. Aquí abajo va el índice: qué falta, dónde
+y cómo de grave. La quinta lleva además su propio plan por fases;
+la fase 0 de ese plan está hecha en la rama `fase-0` —el techo de PySide6, el
+CI construyendo en contenedor, el AppDir incompleto que ya no se empaqueta, la
+suite aislada de la carpeta personal, la escala que no puede desparejarse en
+verde y ninguna página que se salga a lo ancho en compacto—, y detrás de ella
+el techo de PySide6 en el `pyproject` para 3.10 y 3.11 y la guarda del AppRun,
+que ya deja pasar el CLI, recomienda `$APPIMAGE` y elige idioma como POSIX
+—`LC_ALL`, `LC_MESSAGES`, `LANG`—. Y antes de publicar la 0.3.0, la fuga
+del informe anónimo (F-A1, F-M29): el informe pasa por
+`privacidad.anonimizar`, que ahora sustituye las interfaces con nombre puesto
+a mano, busca el hostname entero y sin mayúsculas, y tapa los puntos de
+montaje y los números de serie de monitores y baterías. El resto de sus
+hallazgos todavía no ha entrado en este índice.
+Los pasos para reproducir cada cosa se quedan en los informes a propósito —el
+del enlace simbólico del instalador es una receta y este archivo es público.
+
+**La cuarta cubrió lo que las tres primeras no habían tocado**: el AppImage
+construido de verdad y arrancado con pantalla, `ui/widgets.py` línea a línea, y
+la interfaz usada con clics y arrastres inyectados a nivel de ventana. Once
+fallos y diez observaciones, en un i5-10400 con Fedora 44, Wayland, SELinux en
+enforcing y el PySide6 del paquete de la distribución. De paso confirmó con
+herramienta propia dos cosas que este archivo afirma y que nadie había
+comprobado desde fuera: que el AppImage exige glibc 2.35 y que quien la pide es
+`hypot` del intérprete, y que el Qt 6.11 del paquete normal lleva SSE4.1 en
+funciones sin despacho —`qFuzzyCompare`, `qt_from_latin1`— mientras el 6.9.3
+del `--compat` solo lo lleva en rutas que se eligen mirando la CPU. La guarda
+del AppRun corta de verdad, probada con un `/proc/cpuinfo` sin esas banderas.
+
+## Lo que queda por arreglar
+
+Sale de las cuatro primeras auditorías. **Nada de esto está arreglado**; lo
+que sí se arregló —la escala del benchmark— es lo de la sección de arriba.
+
+### Un dato, dos sitios que lo deciden, y uno lo hace mal
+
+Es el mismo fallo repetido: existe una función que decide algo y alguien la
+reimplementa al lado. La regla 1 lo dice para el formateo y vale igual para el
+resto.
+
+* `cli.py` · **baja** · `--json` vuelca todo sin anonimizar y sin avisar:
+  seriales, IPv6 pública y puntos de montaje. Es la única salida sin aviso.
+* `ui/pages/cpulive.py` · **media-alta** · compone los relojes a mano en vez de
+  con `render.hz`, y no da lo mismo: 576 MHz sale como «0.58 GHz», 999 MHz como
+  «1.00 GHz» y un bus de 100 MHz como «0.10 GHz».
+* `ui/pages/graphics.py` · **baja** · lo mismo con la tasa de datos de la VRAM.
+* `ui/pages/memory.py`, `ui/pages/battery.py` · **media** · cinco sitios
+  redondean voltajes a dos decimales en vez de pasar por `render.volts`, que
+  usa tres. Se pierde el decimal que distingue los escalones del VID.
+* `providers/derived.py` · **media** · el tráfico de red del árbol de sensores
+  va en potencias de 1024 y el de la página de Red en potencias de 1000: el
+  mismo dato, el mismo instante, dos cifras que se llevan un 2,4 %.
+* `spd.py` · **alta** · las latencias de DDR4 y las de los perfiles XMP se
+  redondean al más cercano; solo la ruta de DDR5 redondea hacia arriba. Un
+  módulo que necesita 13 875 ps con un ciclo de 625 sale como CL22 siendo CL23.
+
+### Una bandera que entrega lo que no era y dice que todo fue bien
+
+Es la lección que ya se arregló para los nombres de sección inexistentes, en
+los casos que quedaron fuera.
+
+* `ui/app.py` · **alta** · `--page` con una sección **oculta** —la de Batería en
+  cualquier sobremesa— pasa la validación, devuelve 0, dice «captura guardada»
+  y entrega el PNG de otra página. La validación corre antes del primer
+  muestreo, cuando la sección todavía no se ha ocultado.
+* `cli.py` · **baja** · `--report ''` ignora la bandera y hace el volcado normal
+  sin decir nada.
+* `cli.py` · **baja** · `--json`, `--sensors` y `--report` se pisan entre ellas
+  en silencio, y `--with-identifiers` sin `--report` no hace nada y no avisa.
+* `tools/build_appimage.py` · **baja** · `--container` solo reenvía `--compat`
+  al build de dentro, así que `--keep` y `--appdir-only` se aceptan, se pierden
+  y no se dice: el AppDir se borra igual. Para inspeccionar el árbol hay que
+  extraer el AppImage ya hecho.
+
+### Las primitivas de `widgets.py`
+
+Seis fallos en el archivo que usan todas las páginas, y ninguno lo caza ningún
+test: los que hay prueban la transición que sí ocurre. Los dos primeros son el
+mismo caso, que además es el que menos se ve: un arreglo escrito dentro de una
+rama que solo se recorre cuando algo cambia, y que por eso no alcanza al estado
+con el que la cosa **nace**.
+
+* `ui/widgets.py` · **media** · `StatTile.update_value` solo cambia la
+  tipografía cuando el texto cambia, y la etiqueta nace con «—» a tamaño de
+  cifra. Una ficha que nunca recibe un valor se queda con la raya gruesa toda
+  la sesión, que es exactamente lo que la lección de los tres estados da por
+  arreglado: en una UHD 630 sin permisos son cinco —uso, temperatura, consumo,
+  VRAM ocupada y bus de memoria—, o sea la fila que parece tachada, que es
+  justo la imagen que motivó aquel arreglo. Como está en `update_value`, solo
+  alcanza a la ficha que tuvo un número y lo perdió.
+* `ui/widgets.py` · **media-baja** · `ElidingLabel._refresh` termina poniendo su
+  propio tooltip, y corre en cada `resizeEvent`, así que borra el que le pasaron
+  desde fuera. De 268 tooltips en nueve muestreos, 60 desaparecen con un solo
+  redimensionado; los de la ficha de CPU vuelven al siguiente porque la página
+  los repone, y los tres de cada módulo de memoria —«Chips», «Capacidad»,
+  «Catalogado a»— no vuelven nunca, porque se ponen una sola vez.
+* `ui/widgets.py` · **media-baja** · un `float` no finito en una gráfica
+  —`_rango_redondo` hace `log10` de la amplitud— lanza una excepción en cada
+  repintado, deja el `QPainter` abierto y al salir el proceso se va con un
+  SIGSEGV sin traceback. Hoy no hay proveedor que produzca un infinito; es la
+  primitiva la que no se defiende, y el fallo que causa no deja rastro.
+* `ui/widgets.py` · **baja-media** · el globo «copiado» es un `QLabel` sin
+  `WA_TransparentForMouseEvents` colocado a la derecha del valor, o sea encima
+  de la columna siguiente cuando es una `Table`. En Almacenamiento: se copia la
+  unidad, se va a copiar el modelo, y el segundo clic no hace nada durante 1,4 s
+  y sin decirlo.
+* `ui/widgets.py` · **baja** · la etiqueta es seleccionable con el ratón *y*
+  copia al soltar, así que arrastrar para seleccionar «Intel» de un nombre de
+  procesador copia el nombre entero y dice «copiado». Son dos gestos con el
+  mismo botón y el segundo pisa al primero; el Ctrl+C de después sí copia la
+  selección.
+* `ui/widgets.py` · **baja** · `Table.set_rows` indexa fuera de rango si una
+  fila trae más columnas que la anterior, y deja la celda sobrante con el valor
+  viejo si trae menos. Hoy ninguna página cambia el número de columnas de una
+  fila.
+
+### Privilegios y privacidad
+
+* `privileged/instalar.py` · **alta, condicionada** · escribe el ayudante y su
+  acción de polkit sin comprobar que el destino no sea sustituible. La premisa
+  está en su propio docstring y no se verifica en ninguna parte. No es
+  explotable con `/usr/local` en su estado normal.
+* `privileged/helper.py`, `privileged/client.py` · **media** · los dos topes de
+  tamaño del protocolo se comprueban después de haber reservado la memoria, así
+  que no limitan nada: el ayudante llega a 449 MB con un tope de 64 KB.
+* `privileged/client.py` · **media** · el `timeout` de `request()` no acota la
+  llamada: `select` se satisface con el primer byte y la lectura que viene
+  detrás no tiene límite.
+* `tools/comprobar_privacidad.py` · **media** · solo busca lo que identifica a
+  la máquina donde corre, y es ciego a cualquier IPv6 —incluida la pública, que
+  es el caso que motivó la marca del PNG—, a los números de serie y a todo dato
+  de terceros, que es justo lo que llega en los informes ajenos. Además no está
+  enganchado a ningún hook ni al CI.
+* `ui/theme.py` · **media-baja** · cachea los iconos generados en un
+  `/tmp/silux-icons` de nombre fijo y usa lo que encuentre sin comprobar quién
+  lo puso.
+* `data/org.silux.helper.policy.in` · **baja** · diverge de la plantilla que
+  escribe `instalar.py` en `allow_inactive`, y nada vigila que no se separen;
+  además no lo usa nadie. Ojo con lo que decide cada campo: una sesión por SSH
+  no es local y la gobierna `allow_any`, que está en `auth_admin` en los dos.
+  `allow_inactive` es para una sesión local que no está en primer plano, así
+  que el comentario de `instalar.py` y el test que lo citan como el cerrojo del
+  SSH afirman algo que esa línea no hace.
+* `privileged/cargar_modulo.py` · **baja** · llama a `modprobe` sin ruta
+  absoluta. Por `pkexec` da igual; por `sudo` depende de la configuración.
+
+### Proveedores y modelo
+
+* `providers/hwmon.py` · **media-alta** · la clave de sensor no incluye de qué
+  nodo `hwmon` viene, así que colisiona entre dos aparatos con el mismo chip:
+  dos NVMe, dos gráficas del mismo fabricante, dos sockets. Con dos discos del
+  mismo modelo ni el desambiguador del árbol los separa: una fila se queda
+  vacía para siempre, el mín/máx es la unión de los dos y el CSV escribe el
+  dato de uno bajo el nombre del otro.
+* `spd.py` · **media** · `decode` revienta con `IndexError` si el chip devuelve
+  menos de 384 bytes, y `read_all` no lo atrapa: se pierden todos los módulos,
+  no solo el que vino corto. Esa ruta no la cubre ningún test.
+* `providers/` · **media** · siete proveedores declaran `available()` y no
+  `unavailable_reason()`, así que se callan cuando no pueden trabajar. Los dos
+  que más se notan son los de red y almacenamiento: sus páginas se quedan
+  vacías sin una línea que lo explique.
+* `providers/rapl.py` · **media-baja** · en un contenedor afirma que la CPU no
+  tiene contadores de energía sobre una que sí los tiene: distingue permiso de
+  hardware, pero no el tercer caso, que es que el directorio esté ahí sin sus
+  archivos.
+* `providers/network.py` · **baja** · el tipo de interfaz se pinta crudo y
+  mezcla los dos idiomas: `loopback`, `wifi`, `ethernet` en inglés y `puente`,
+  `virtual`, `otro` en español, y ninguno está en los archivos de idioma.
+* `providers/derived.py` · **baja** · «Core #0», «Core #1»… a pelo, 24 filas
+  de un árbol de sensores en español, y en el mismo archivo donde el sensor de
+  al lado va con `_("sensor.total")`. No es un dato del equipo: `coretemp`
+  etiqueta «Core 0», sin almohadilla. `sensor.core` («Núcleo») ya existe en los
+  dos idiomas. Es la misma familia que el `kind` de red de aquí arriba.
+* `providers/storage.py` · **baja** · el modelo de los discos SATA sale
+  truncado a 16 caracteres, que es el campo de sysfs; el completo está sin
+  permisos en `/dev/disk/by-id`.
+* `collector.py` · **baja** · `_clone` reconstruye el borrador campo a campo y
+  le faltan tres (`batteries`, `cpu_extra`, `memory_traffic`). Hoy no se pierde
+  nada porque los llenan proveedores dinámicos; el día que uno se haga estático,
+  su dato desaparece sin ruido.
+* `render.py` · **baja** · dos módulos en canales distintos pueden salir los dos
+  como «Canal A» en la misma pantalla que dice «doble canal».
+
+### Interfaz y línea de órdenes
+
+* `settings.py` · **media** · la ventana no arranca si `settings.json` es un
+  JSON válido que no sea un objeto: el error se cuela entre las dos redes que
+  ya hay. El CLI sí sigue funcionando, lo que despista.
+* `cli.py` · **baja** · `--sensors` enseña las categorías sin traducir
+  (`cat.temperature`); el informe sí las traduce.
+* `cli.py` · **baja** · `--report -` no dice que ha omitido nada, y con archivo
+  sí lo dice.
+* `ui/app.py` · **baja** · cambiar el tema, la densidad, la letra o el acento
+  reconstruye las páginas y las curvas de todas las gráficas vuelven a empezar
+  (126 muestras acumuladas → 30). El `Tracker` de mín/máx sí sobrevive, que es
+  para lo que se sacó a la ventana; el histórico que se ve, no. Quien está
+  mirando un pico de temperatura y cambia a tema claro para verlo mejor, lo
+  pierde.
+* `ui/app.py` · **baja** · no hay forma de cambiar de sección con el teclado: la
+  barra lateral es `NoFocus` y veinticinco tabuladores recorren tres widgets sin
+  llegar nunca al menú. Solo por debajo de 620 px, donde aparece el desplegable
+  compacto, se puede.
+* `report.py` · **baja** · `_placa` recibe el parámetro `anonymous` y no lo usa.
+* `ui/` · **baja** · `disk.pci_slot` y `net.vendor` están en el modelo y no se
+  pintan en ninguna página.
+* `db/lang/` · **baja** · cinco claves declaradas que ya no usa nadie;
+  `gen_lang.py` las detecta y `--podar` las borra.
+* `settings.py` · **baja** · el idioma guardado no se valida; el resto de
+  preferencias sí se acotan.
+* `registro.py` · **baja** · la hora del CSV va sin fecha, y las cabeceras de
+  columna se repiten cuando un aparato publica varias etiquetas iguales.
+
+### Fuera del programa
+
+* `.github/workflows/appimage.yml` · **baja** · `contents: write` se concede a
+  todo el workflow y no solo al paso que publica; la acción de terceros que
+  crea la release está anclada a una etiqueta móvil y no a un SHA; y la
+  comprobación de que el AppImage arranca es un `--help`, que no llega a cargar
+  el plugin de plataforma.
+* `tools/build_appimage.py` · **baja** · `appimagetool` se descarga el runtime
+  de GitHub en cada construcción y nada fija el hash de lo que llega. Es la
+  misma familia que la etiqueta móvil de aquí arriba: código de terceros que
+  entra en el paquete que se reparte y que puede cambiar debajo sin que se
+  note. De paso, construir sin red falla en el último paso.
+* `tools/medir_referencia.py`, `history.py` · **hecho** · la cuenta que decide
+  qué se puntúa estaba escrita en cuatro sitios.
