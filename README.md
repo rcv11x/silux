@@ -12,7 +12,7 @@ Estado: las trece secciones terminadas. Inicio, CPU, Cachés, Placa base,
 Memoria, Gráficos, Almacenamiento, Red, Batería, Sistema, Rendimiento,
 Sensores y Ajustes. La de Batería solo aparece en los equipos que tienen una.
 
-Versión actual: **0.2.0** · qué trae y qué cambia al actualizar, en
+Versión actual: **0.3.0** · qué trae y qué cambia al actualizar, en
 **[CHANGELOG.md](CHANGELOG.md)**.
 
 Escrito con ayuda de Claude.

@@ -11,6 +11,111 @@ que hace falta.
 
 ---
 
+## 0.3.0 (sin publicar)
+
+### Ojo al actualizar
+
+- **Las pruebas de rendimiento guardadas con la 0.2.0 se quedan sin
+  puntuación.** La escala cambia otra vez (es la v6), así que su cifra no
+  diría lo mismo que una de ahora. Las pruebas siguen en el historial con sus
+  medidas y sus condiciones; para volver a tener puntuación hay que repetir la
+  prueba.
+- **La puntuación sale ahora de dos de las cinco cargas**: el resumen
+  criptográfico y la compresión pesada. Las otras tres dependen de qué versión
+  de zlib trae cada distribución —la misma pieza daba casi diez veces más en
+  Fedora que en Ubuntu— y medían la biblioteca, no el procesador. Se siguen
+  midiendo y enseñando, con la biblioteca que las midió al lado, pero no
+  cuentan para comparar equipos.
+- **Si diste permisos permanentes con la 0.2.0, pulsa «Actualizar el
+  ayudante del sistema».** El ayudante que se instala en el sistema no se
+  actualiza solo, y el de la 0.2.0 se instalaba por un camino que otro programa
+  del propio usuario podía aprovechar para colar algo como administrador. El
+  programa ya no usa esa copia y el botón la sustituye.
+- **La sección «Benchmark» se llama «Rendimiento».** Si tenías un guion con
+  `--page Benchmark`, cámbialo; ahora, un nombre de sección que no existe da
+  un error en vez de guardar en silencio la captura de otra página.
+
+### Nuevo
+
+- **El ancho de banda y la latencia de la memoria, medidos de verdad.** En
+  Memoria, el botón «Medir» da cuánto lee la RAM y lo que tarda en contestar
+  cada nivel de caché y la propia RAM, con cifras muy parecidas a las de
+  AIDA64 en la misma pieza.
+- **Cuánto tráfico mueve la memoria en este momento**, en los Intel: en la
+  ficha de Memoria, en el árbol de sensores y en el informe. Necesita permisos.
+- **El voltaje del núcleo** en la ficha de CPU, en AMD y en Intel, leído del
+  propio procesador. Necesita permisos.
+- **Una sección de Batería** en los portátiles: salud, ciclos, autonomía y los
+  topes de carga que algunos fabricantes permiten poner. En un sobremesa no
+  aparece.
+- **Una imagen del equipo para pegar en un chat**, desde Inicio o Ajustes, sin
+  el nombre del equipo, las direcciones ni los números de serie.
+- **Dentro de una máquina virtual, el programa lo dice**, con el nombre del
+  hipervisor, al lado de los datos que lo delatan y en el informe. Antes
+  enseñaba los núcleos y la placa virtuales como si fueran los de verdad.
+- **Más datos de las Radeon integradas recientes**, como la 740M: punto
+  caliente, voltajes y motivos de recorte, que salían a guiones. Si una tarjeta usa un
+  formato de telemetría que todavía no se sabe leer, ahora se dice cuál y va
+  al informe.
+- **El aviso de que falta un permiso lleva el botón para darlo**, en la misma
+  página. Y los avisos de lo que no tiene arreglo van en gris en todas las
+  páginas, no solo en Gráficos.
+- **La prueba de rendimiento vigila lo que hace el resto del equipo mientras
+  mide**, no solo antes de empezar, y lo dice si algo se despertó a mitad.
+- **El AppImage normal, en un procesador demasiado antiguo para él, explica
+  qué pasa** y qué versión descargar, en vez de cerrarse con «Instrucción
+  ilegal».
+
+### Arreglado
+
+- **El AppImage de la 0.2.0 no arrancaba en algunos escritorios X11**: le
+  faltaban siete bibliotecas gráficas (`libxcb-cursor` y otras) que muchas
+  distribuciones no traen instaladas. Ahora los dos paquetes se construyen en
+  el mismo entorno en que se prueban, y la construcción falla si falta algo en
+  vez de publicarlo así.
+- **Instalado con pip en Python 3.10 o 3.11, el programa se cerraba** al
+  pintar la primera gráfica con la versión más reciente de PySide6, la 6.12.0.
+  Ahora se instala la anterior en esas versiones de Python.
+- **En un procesador antiguo, el AppImage bloqueaba también `--report`**, que
+  es justo lo que su aviso recomendaba usar mientras tanto. El aviso además
+  mandaba a una ruta temporal que ya no existía y salía en inglés aunque el
+  sistema estuviera en español.
+- **La puntuación premiaba tener poca caché**: con la misma memoria, un
+  procesador con menos caché sacaba más de un 40 % de ventaja.
+- **Un equipo de marca se titulaba con un código interno de placa**: un
+  ThinkCentre M80q salía como «Lenovo 316C».
+- **La memoria salía con velocidades que no existen**, como «2700 MT/s» en un
+  módulo DDR4-2666, y eso encendía el aviso de que iba «por debajo de su
+  velocidad» sin ser cierto. Con módulos de dos velocidades, el consejo de
+  activar el perfil rápido en la BIOS pedía algo imposible.
+- **Los zócalos de memoria se titulaban mal**: dos módulos podían llamarse
+  igual («DIMM 0»), un zócalo vacío ocupaba una tarjeta entera, y sin permisos
+  se numeraban con un número que no era el de la placa.
+- **Un ThinkPad con dos módulos bien repartidos decía «canal único»** y
+  aconsejaba repartirlos.
+- **En los Intel, el árbol de sensores empezaba por el disco** en vez de por el
+  procesador.
+- **En los portátiles, la batería salía dos veces** en el árbol de sensores, y
+  un rango de carga de 0 a 100 % se enseñaba como si alguien hubiera puesto un
+  tope.
+- **Una RTX 3050 decía tener 16 núcleos CUDA**, y una gráfica integrada
+  enseñaba la memoria del sistema como si fuera VRAM propia.
+- **El consumo del procesador seguía pidiendo permisos después de darlos** en
+  los kernels que lo reservan al administrador.
+- **El informe anónimo y las capturas con `--anonimo` dejaban ver más de lo
+  que prometían.** El nombre del equipo se colaba cuando una interfaz de red o
+  un sensor lo llevaba dentro, aunque fuera en mayúsculas, y una interfaz con
+  un nombre puesto a mano —una de WireGuard con el nombre de alguien, por
+  ejemplo— salía tal cual. Ahora las interfaces cuyo nombre no lo pone el
+  sistema salen como «interfaz1», «interfaz2»… en los dos sitios. En las
+  capturas, además, se veían los números de serie de los monitores y de la
+  batería y los puntos de montaje de las memorias USB, que llevan el nombre
+  del usuario; ahora se tapan.
+- **Rendimiento y Ajustes se cortaban por la derecha** en una ventana
+  estrecha.
+
+---
+
 ## 0.2.0 (30 de agosto de 2026)
 
 Primera versión con número propio. Hasta aquí todo se llamó 0.1.0, así que

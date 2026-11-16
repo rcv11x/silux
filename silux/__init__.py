@@ -25,7 +25,7 @@ El texto que ve el usuario se produce en `silux.render`, nunca antes.
 # atrasado es el identificador de construcción, y un hash no se compara de un
 # vistazo. Lo que cambia en cada versión está en CHANGELOG.md, y hay un test
 # que no deja subir este número sin escribirlo allí.
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 
 def build_id() -> str:
