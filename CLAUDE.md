@@ -28,7 +28,7 @@ python3 tools/probar_en_minimo.py --container # la suite en el Python del suelo
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **1514** y tardan cerca de dos minutos. Si sale bastante
+Los tests son **1527** y tardan cerca de dos minutos. Si sale bastante
 menos, falta algo por recoger.
 
 Que pasen aquí no dice que pasen en el mínimo. El suelo declarado es Python
@@ -413,7 +413,11 @@ suite aislada de la carpeta personal, la escala que no puede desparejarse en
 verde y ninguna página que se salga a lo ancho en compacto—, y detrás de ella
 el techo de PySide6 en el `pyproject` para 3.10 y 3.11 y la guarda del AppRun,
 que ya deja pasar el CLI, recomienda `$APPIMAGE` y elige idioma como POSIX
-—`LC_ALL`, `LC_MESSAGES`, `LANG`—, y el resto de sus
+—`LC_ALL`, `LC_MESSAGES`, `LANG`—. Y antes de publicar la 0.3.0, la fuga
+del informe anónimo (F-A1, F-M29): el informe pasa por
+`privacidad.anonimizar`, que ahora sustituye las interfaces con nombre puesto
+a mano, busca el hostname entero y sin mayúsculas, y tapa los puntos de
+montaje y los números de serie de monitores y baterías. El resto de sus
 hallazgos todavía no ha entrado en este índice.
 Los pasos para reproducir cada cosa se quedan en los informes a propósito —el
 del enlace simbólico del instalador es una receta y este archivo es público.
@@ -441,13 +445,6 @@ Es el mismo fallo repetido: existe una función que decide algo y alguien la
 reimplementa al lado. La regla 1 lo dice para el formateo y vale igual para el
 resto.
 
-* `report.py` · **alta** · el informe «anónimo» publica el nombre del equipo
-  cuando aparece dentro del nombre de una interfaz de red o de un aparato del
-  árbol de sensores. `privacidad.anonimizar` ya resuelve el primer caso y el
-  informe no la usa; el segundo no lo cubre nadie.
-* `privacidad.py` · **media** · tampoco tapa el número de serie del monitor
-  (EDID) ni el de la batería, y el test que dice barrer «la foto entera» usa
-  una foto sin monitores, sin discos y sin batería.
 * `cli.py` · **baja** · `--json` vuelca todo sin anonimizar y sin avisar:
   seriales, IPv6 pública y puntos de montaje. Es la única salida sin aviso.
 * `ui/pages/cpulive.py` · **media-alta** · compone los relojes a mano en vez de
@@ -1058,9 +1055,14 @@ que era la mitad no probada de la misma función.
   así que el informe seguía enseñando «alex_portatil (virtual)» en la lista de
   red, en el archivo que se le pide a la gente para pegar en público. Se vio en
   el primer informe de un portátil, o sea la primera vez que alguien lo usó
-  donde tenía sentido. Ojo al arreglarlo: si el equipo se llama «pc», sustituir
-  esas dos letras destroza «pcie0» y media lista, así que por debajo de tres
-  caracteres no se toca nada.
+  donde tenía sentido. Ojo al arreglarlo: buscado como subcadena, un equipo
+  llamado «lan» convierte `wlan0` en `wequipo0`. Se busca como nombre entero y
+  sin mayúsculas, y así uno de dos letras se tapa sin romper nada.
+- **Tapar solo lo que se sabe que identifica**: una interfaz de WireGuard
+  llamada con el nombre de una persona no es el hostname, y ningún sustituto
+  del hostname la ve. Lo que se enumera es lo que se deja —los nombres que
+  pone el sistema, con patrones estrictos— y lo demás se sustituye. Con `en*`
+  a secas, «enrique-vpn» pasaría por una tarjeta de red.
 - **Identificar un canal de memoria por su letra**: no es única. Un ThinkPad
   T14 con los dos módulos bien repartidos los llama «Controller0-ChannelA» y
   «Controller1-ChannelA-DIMM0»: dos canales, uno por controlador, y los dos «A».
