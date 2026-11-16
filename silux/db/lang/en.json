@@ -288,7 +288,7 @@
   "cpu.subtitle": "{nucleos} cores · {hilos} threads · {sockets} socket{s}",
   "cpu.subtitle.hybrid": " · hybrid",
   "cpu.tile.load": "load {v}",
-  "cpu.tile.package": "package {v}",
+  "cpu.tile.cores": "cores {v}",
   "cpu.tip.voltage": "What the processor asks for in its current state. With turbo on, the chip's own microcontroller takes over and the real value goes above this; what actually arrives is measured by the board regulator, when its chip labels the channels.",
   "cpu.type.generic": "Processor",
   "cpu.unknown": "Unknown processor",

@@ -124,16 +124,18 @@ class CpuLiveSection(QWidget):
             if cpu.load_average:
                 self.tile_usage.set_detail(_("cpu.tile.load").format(v=f"{cpu.load_average[0]:.2f}"))
 
-        temperature = primary.temp_c if primary.temp_c is not None else cpu.package_temp_c
+        # La misma que Inicio: la decide el modelo. Debajo, la media de los
+        # núcleos cuando la cifra grande es la del encapsulado.
+        temperature = cpu.temperature_c
         unit = "°F" if self._prefs.fahrenheit else "°C"
         self.tile_temp.set_unit(unit)
         if temperature is not None:
             shown = self._temp(temperature)
             self.tile_temp.update_value(f"{shown:.0f}", shown)
-            if cpu.package_temp_c is not None:
+            if cpu.package_temp_c is not None and primary.temp_c is not None:
                 self.tile_temp.set_detail(
-                    _("cpu.tile.package").format(
-                        v=f"{self._temp(cpu.package_temp_c):.0f} {unit}"))
+                    _("cpu.tile.cores").format(
+                        v=f"{self._temp(primary.temp_c):.0f} {unit}"))
 
         power = cpu.power
         if power.package_w is not None:

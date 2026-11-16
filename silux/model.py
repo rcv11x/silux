@@ -234,6 +234,20 @@ class CpuInfo:
         return self.power.package_w
 
     @property
+    def temperature_c(self) -> Optional[float]:
+        """La temperatura del procesador: la del encapsulado si la hay.
+
+        Es el punto más caliente de la pieza y la que mira el control de los
+        ventiladores; la media de los núcleos esconde el que más calienta. Sin
+        sensor de encapsulado, la del primer tipo de núcleo. Inicio y la
+        página CPU la piden aquí: cada una decidía por su lado y, con la misma
+        foto de un i5-10400, una decía 33 °C y la otra 30.
+        """
+        if self.package_temp_c is not None:
+            return self.package_temp_c
+        return self.types[0].temp_c if self.types else None
+
+    @property
     def total_cores(self) -> int:
         return sum(t.cores for t in self.types)
 
@@ -1463,7 +1477,7 @@ _COMPUTED: dict[str, tuple[str, ...]] = {
     "DiskIo": ("total_rate_bps",),
     "DiskHealth": ("life_left_percent", "healthy"),
     "Disk": ("display_name", "used_bytes", "mounted_partitions"),
-    "CpuInfo": ("total_cores", "total_threads", "package_power_w"),
+    "CpuInfo": ("total_cores", "total_threads", "package_power_w", "temperature_c"),
     "Sensor": ("heat", "unit", "category", "alarm", "alarm_level"),
     "Board": ("display_name", "bios_summary"),
     "MemoryModule": ("has_ecc", "underclocked", "rated_mts"),

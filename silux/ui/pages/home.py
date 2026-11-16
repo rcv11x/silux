@@ -229,18 +229,10 @@ class HomePage(QScrollArea):
             self.cpu.grafica.set_range(0.0, 100.0)
         if principal.clocks.current_hz:
             piezas.append(render.hz(principal.clocks.current_hz))
-        if (temp := self._temperatura_cpu(snapshot)) is not None:
+        if (temp := cpu.temperature_c) is not None:
             piezas.append(render.temperature(temp, self._prefs.fahrenheit))
         self.cpu.poner(render.cpu_short_name(principal.brand), detalle,
                        "   ".join(piezas))
-
-    @staticmethod
-    def _temperatura_cpu(snapshot: Snapshot) -> Optional[float]:
-        for sensor in snapshot.sensors:
-            if sensor.kind.value == "temperature" and sensor.value is not None:
-                if "package" in (sensor.label or "").lower() or "tctl" in (sensor.label or "").lower():
-                    return sensor.value
-        return None
 
     def _grafica(self, snapshot: Snapshot) -> None:
         if not snapshot.gpus:
