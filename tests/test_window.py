@@ -461,3 +461,43 @@ class TestLaSalidaParaLosDatosBloqueados(unittest.TestCase):
         avisos = window.cpu_page._notices_host
         self.assertGreater(avisos.count(), 0,
                            "sin tipos de núcleo no se pinta ningún aviso")
+
+
+@unittest.skipUnless(HAS_QT, "PySide6 no está instalado")
+class TestLaCabeceraDeSensoresNoEnsanchaLaPagina(unittest.TestCase):
+    """El contador de la cabecera de Sensores cede, no empuja.
+
+    `test_el_contenido_cabe_en_el_suelo_sin_recortarse` falló en el CI por
+    tres píxeles: 643 de ancho mínimo en una página de 640. En esa cabecera
+    van el título, «· 186 en 29 dispositivos», el buscador y dos botones, y
+    con la tipografía del runner, que es más ancha, y un sensor más o menos
+    —el contador cambia de largo con el equipo—, no cabía. Lo único de esa
+    fila que puede cortarse sin perder nada es el contador.
+    """
+
+    def _ancho_minimo(self, contador=None):
+        from silux.settings import Preferences
+        from silux.tracking import Tracker
+        from silux.ui import theme
+        from silux.ui.pages.monitor import MonitorPage
+
+        app = qt.app()
+        theme.set_density("normal", "normal")
+        pagina = MonitorPage(theme.palette_for(app, "dark"),
+                             Preferences(font_scale="normal").normalized(), Tracker())
+        pagina.apply(muestras.foto_real())
+        if contador is not None:
+            pagina._cuenta_completa = contador
+            pagina._actualizar_cuenta()
+        pagina.show()
+        self.addCleanup(pagina.close)
+        for _vez in range(4):
+            app.processEvents()
+        return pagina, pagina.widget().minimumSizeHint().width()
+
+    def test_un_contador_largo_no_cambia_el_ancho_minimo(self):
+        _corta, normal = self._ancho_minimo()
+        larga, con_mas = self._ancho_minimo(
+            "· 1888 sensores en 288 dispositivos de este equipo, que son muchos")
+        self.assertEqual(con_mas, normal)
+        self.assertIn("1888", larga.count.full_text())

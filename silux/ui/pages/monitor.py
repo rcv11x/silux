@@ -43,6 +43,7 @@ from ..theme import Palette, ui_font
 from ..sensortree import SensorTree
 from ..widgets import (
     Card,
+    ElidingLabel,
     Notice,
     ResponsiveRow,
     StatTile,
@@ -121,7 +122,11 @@ class MonitorPage(QScrollArea):
         title = QLabel(_("sensors.title"))
         title.setObjectName("CardTitle")
 
-        self.count = QLabel("")
+        # Se corta si no cabe. Es lo único de esta fila que puede ceder: con
+        # una tipografía ancha y un equipo con muchos sensores, la cabecera
+        # pedía más ancho del que tiene la página en su tamaño mínimo y la
+        # recortaba por la derecha.
+        self.count = ElidingLabel("")
         self.count.setObjectName("Muted")
         self.count.setFont(ui_font(theme.METRICS.small_pt))
 
@@ -214,9 +219,9 @@ class MonitorPage(QScrollArea):
             clave = ("sensors.matches.none" if not visibles
                      else "sensors.matches.one" if visibles == 1
                      else "sensors.matches.many")
-            self.count.setText(_(clave).format(n=visibles))
+            self.count.set_full_text(_(clave).format(n=visibles))
         else:
-            self.count.setText(self._cuenta_completa)
+            self.count.set_full_text(self._cuenta_completa)
 
     # -- actualización ------------------------------------------------------
 
