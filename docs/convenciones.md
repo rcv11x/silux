@@ -21,7 +21,7 @@ fix(ui/widgets): la ficha que nace sin dato pinta el guion pequeño
 
 Cuerpo: el porqué.
 
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Co-Authored-By: <el modelo de la sesión> <noreply@anthropic.com>
 ```
 
 **Nunca se empuja sin preguntar.** Commitear en local es reversible; publicar

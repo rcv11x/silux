@@ -183,6 +183,11 @@ probó…» o «costó…» van al mensaje del commit o a `docs/lecciones.md`.
 - **Lo que depende de que alguien se acuerde de subir un número no es una
   comprobación.** Se compara el contenido.
 - **El commit del CLAUDE.md es el último antes de empujar.**
+- **Una rama por fase**, que sale de la anterior o de `master`. Las ramas no se
+  empujan salvo que se diga; el CI de una rama se lanza a mano con
+  `gh workflow run appimage.yml --ref RAMA` y se sigue con `gh run watch`.
+- **A `master` solo con `git merge --ff-only`**, y solo con el CI de esa rama
+  en verde. Si `master` avanzó, se rebasa la rama antes, no se fusiona.
 
 **Commits.** Conventional Commits con la descripción en español:
 
@@ -192,7 +197,7 @@ tipo(zona): descripción en minúscula y sin punto final
 Cuerpo: el porqué. Qué fallaba, cómo se vio, qué se comprobó, y que el
 test se vio fallar antes del arreglo.
 
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Co-Authored-By: <el modelo de la sesión> <noreply@anthropic.com>
 ```
 
 - Tipos del estándar, sin traducir: `fix`, `feat`, `test`, `docs`,
@@ -201,7 +206,8 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
   `privileged`, `bench`, `report`, `cli`, `i18n`, `appimage`, `ci`, `tests`,
   `claude`.
 - El autor es el del repositorio. Cuando el commit se escribe con Claude, lleva
-  al final la línea `Co-Authored-By` del modelo.
+  al final la línea `Co-Authored-By` del modelo con que se trabaja en esa
+  sesión, no uno fijo.
 - **Un commit por cambio lógico**: una causa, con su test en el mismo commit.
   Lo que solo mueve código va en uno propio. La suite queda en verde entre uno y
   otro.
@@ -273,9 +279,3 @@ código (F-…), que es por el que se buscan allí.
   contra qué pieza.
 - [docs/pendientes.md](docs/pendientes.md): lo pendiente, con su detalle.
 - [docs/historial/](docs/historial/): diarios de sesiones antiguas.
-
-## Fuentes de datos y licencias
-
-- [libcpuid](https://github.com/anrieff/libcpuid) — BSD-2 — tablas de identificación de CPU
-- [CPU-X](https://github.com/TheTumultuousUnicornOfDarkness/CPU-X) — GPL-3.0 — tabla de sockets
-- `pci.ids` del sistema (paquete hwdata) — nombres de dispositivos PCI
