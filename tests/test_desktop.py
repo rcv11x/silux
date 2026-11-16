@@ -47,6 +47,10 @@ class TestPlantillaDesktop(unittest.TestCase):
 @unittest.skipUnless(HAS_QT_SVG, "hace falta PySide6.QtSvg")
 class TestInstalacion(unittest.TestCase):
     def setUp(self):
+        # Antes de que el instalador cree su QGuiApplication: en un proceso
+        # solo cabe una, y los tests de interfaz que vengan detrás necesitan
+        # que sea la de widgets. Con esta ya creada, el instalador la reutiliza.
+        qt.app()
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         patch = mock.patch.dict(os.environ, {"XDG_DATA_HOME": self._tmp.name})
