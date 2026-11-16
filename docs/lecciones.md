@@ -1035,6 +1035,14 @@ apartado. El orden dentro de cada apartado es el cronológico.
   con «sí», Qt lo escribe en Latin-1 —`s\xed`— y quien lo busque en UTF-8 no
   encuentra la marca que sí está.
 
+- **Dar por limpio un volcado porque la foto lo está**: el primer volcado de
+  equipo pasó las dos comprobaciones —anonimizar no encontraba qué tapar en la
+  foto, y ningún identificador de `comprobar_privacidad` salía en los bytes— y
+  llevaba los números de serie de los dos módulos de RAM dentro del SPD. silux
+  no los decodifica, así que ninguna de las dos podía verlos. Un archivo
+  binario se limpia por posición conociendo su formato (SPD, EDID), y lo
+  quitado se busca después como bytes, no como texto.
+
 <a id="empaquetado"></a>
 
 ## Empaquetado y CI

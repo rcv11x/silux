@@ -3,6 +3,18 @@
 Lo que sale de cada fuente, qué se ha validado con una pieza delante y qué
 se escribió a ciegas, y lo que queda pendiente por plataforma.
 
+## Equipos volcados
+
+En `tests/fixtures/equipos/`, cada uno con su `manifiesto.json`. La suite
+monta el Collector contra todos (`tests/test_equipos.py`).
+
+| Volcado | Procesador | Gráfica | Notas |
+|---|---|---|---|
+| `i5-10400` | Intel Core i5-10400 (Comet Lake-S) | UHD Graphics 630 | Fedora 44; volcado con el turbo apagado por el gestor de energía |
+
+Falta el del Ryzen 7 5800X3D. Hasta que esté, lo que se arregle en lo que lee
+el procesador o la gráfica queda comprobado solo en Intel, y se dice.
+
 ## Por plataforma
 
 De Gráficos sale todo lo que publica el nodo DRM —identidad, VRAM, tabla DPM,

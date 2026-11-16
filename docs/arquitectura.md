@@ -437,6 +437,8 @@ silux/
 ├─ history.py      historial de pruebas de este equipo
 ├─ score.py        la puntuación comparable entre equipos, y su escala
 ├─ privacidad.py   qué se omite de un informe público y qué no
+├─ sysroot.py      leer /sys, /proc y /etc de un equipo volcado en vez del
+│                  de verdad, y repetir lo grabado al volcarlo (CPUID, ioctl)
 ├─ ui/tarjeta.py  la imagen del equipo para pegar en un chat, ya anonimizada
 ├─ ui/guarda.py   para antes de Qt: si el procesador no da, lo dice y no abre
 ├─ i18n.py        el idioma de la interfaz; el original es el español
@@ -474,6 +476,27 @@ iguales, el firmware lo publica y el planificador lo usa para mandar ahí el
 trabajo de un hilo suelto. Ryzen Master lo enseña en Windows con estrellitas;
 en Linux no lo enseñaba nadie. Sale en la rejilla de núcleos de la página de
 CPU y en el volcado del terminal.
+
+## Los equipos volcados
+
+Un arreglo no se da por bueno con lo que dice la máquina donde se escribe.
+`tools/volcar_equipo.py NOMBRE` copia en `tests/fixtures/equipos/NOMBRE/` lo
+que el Collector lee de `/sys`, `/proc` y `/etc` —lo decide el Collector
+ejecutándose, no una lista—, graba en `grabado.json` lo que no sale de un
+archivo y lo anonimiza. Con `SILUX_SYSROOT` apuntando ahí, todos los
+proveedores leen ese equipo: `sysroot.ruta` traduce cada camino y
+`sysroot.a_traves` devuelve lo grabado en vez de preguntar a la CPU, al
+driver o al proceso de las APIs.
+
+`tests/test_equipos.py` monta el Collector contra cada volcado y comprueba lo
+que vale para cualquier equipo; lo que solo vale para uno va en el test del
+arreglo, con el volcado donde se vio. `manifiesto.json` dice qué no se pudo
+grabar: NVML, lo que lee el ayudante privilegiado y el uso de cada hilo, que
+sale de restar dos lecturas de `/proc/stat` y el volcado guarda una.
+
+Un proveedor nuevo que lea el sistema sin pasar por `sysroot` lo caza
+`test_sysroot`: con una raíz vacía, el Collector no puede tocar ni un camino
+del equipo de verdad.
 
 ## Copiar un valor
 
