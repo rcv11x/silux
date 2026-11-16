@@ -196,6 +196,63 @@ class TestSalud(unittest.TestCase):
         self.assertIsNone(DiskHealth().healthy)
 
 
+
+class TestLaCapturaAnonimaNoEnsenaDondeSeMonta(unittest.TestCase):
+    """Un punto de montaje lleva el nombre de quien usa el equipo.
+
+    Una memoria USB se monta en `/run/media/<usuario>/<etiqueta>`, y una
+    partición de datos acaba a menudo en `/home/<usuario>/…`. El informe ya
+    no los escribía; la página de Almacenamiento sí, y una captura con
+    `--anonimo` los enseñaba igual. Los del sistema —`/`, `/boot/efi`,
+    `/home`— no dicen nada de nadie y se quedan: son los que hacen falta para
+    entender la tabla.
+    """
+
+    def _textos(self, foto):
+        from PySide6.QtWidgets import QApplication, QLabel
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.storage import StoragePage
+
+        app = QApplication.instance() or QApplication([])
+        pagina = StoragePage(theme.palette_for(app, "dark"), Preferences())
+        pagina.apply(foto)
+        app.processEvents()
+        textos = [w.text() for w in pagina.findChildren(QLabel)]
+        textos += [w.toolTip() for w in pagina.findChildren(QLabel)]
+        return "\n".join(textos)
+
+    def _foto(self):
+        from silux.model import CpuInfo, Disk, Partition, Snapshot, System
+
+        particiones = (
+            Partition(name="sda1", mountpoint="/boot/efi", filesystem="vfat",
+                      size_bytes=600 * 1000**2, used_bytes=20 * 1000**2),
+            Partition(name="sda2", mountpoint="/", filesystem="btrfs",
+                      size_bytes=200 * 1000**3, used_bytes=90 * 1000**3),
+            Partition(name="sdb1", mountpoint="/run/media/zoraida/FOTOS",
+                      filesystem="exfat", size_bytes=64 * 1000**3,
+                      used_bytes=10 * 1000**3),
+            Partition(name="sda3", mountpoint="/home/zoraida/datos",
+                      filesystem="ext4", size_bytes=100 * 1000**3,
+                      used_bytes=5 * 1000**3),
+        )
+        disco = Disk(name="sda", model="Samsung SSD 870", kind="SSD",
+                     size_bytes=500 * 1000**3, partitions=particiones)
+        return Snapshot(monotonic_ns=0, cpu=CpuInfo(), disks=(disco,),
+                        system=System(hostname="equipo-de-pruebas"))
+
+    def test_anonima_no_sale_el_usuario(self):
+        from silux import privacidad
+
+        texto = self._textos(privacidad.anonimizar(self._foto()))
+        self.assertNotIn("zoraida", texto)
+        self.assertIn("/boot/efi", texto)
+
+    def test_sin_anonimizar_sale_tal_cual(self):
+        self.assertIn("/run/media/zoraida/FOTOS", self._textos(self._foto()))
+
+
 if __name__ == "__main__":
     unittest.main()
 

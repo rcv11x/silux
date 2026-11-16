@@ -54,6 +54,17 @@ _DEL_SISTEMA = re.compile(r"""
 """, re.VERBOSE)
 
 
+# Los puntos de montaje que pone el sistema y no dicen nada de nadie. Los
+# demás llevan el nombre del usuario o la etiqueta que alguien le puso a un
+# disco: `/run/media/ana/FOTOS`, `/home/ana/datos`.
+_MONTAJES_DEL_SISTEMA = frozenset((
+    "/", "/boot", "/boot/efi", "/efi", "/home", "/root", "/usr", "/var",
+    "/var/log", "/var/lib", "/var/cache", "/opt", "/srv", "/tmp", "/nix",
+    "/gnu", "/snap", "/swap", "/recovery",
+))
+MONTAJE = "/media/unidad{}"
+
+
 def de_sistema(nombre: str) -> bool:
     """Si una interfaz se llama como la llama el sistema y no una persona."""
     return bool(_DEL_SISTEMA.fullmatch(nombre))
@@ -140,9 +151,18 @@ def anonimizar(snapshot: Snapshot) -> Snapshot:
         )
 
     if snapshot.disks:
+        montajes: dict[str, str] = {}
+
+        def _montaje(ruta: Optional[str]) -> Optional[str]:
+            if not ruta or ruta in _MONTAJES_DEL_SISTEMA:
+                return ruta
+            return montajes.setdefault(ruta, MONTAJE.format(len(montajes) + 1))
+
         cambios["disks"] = tuple(
-            dataclasses.replace(d, serial=_tapar(d.serial)) if hasattr(d, "serial")
-            else d
+            dataclasses.replace(
+                d, serial=_tapar(d.serial),
+                partitions=tuple(dataclasses.replace(p, mountpoint=_montaje(p.mountpoint))
+                                 for p in d.partitions))
             for d in snapshot.disks
         )
 
