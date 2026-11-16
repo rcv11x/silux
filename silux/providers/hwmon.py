@@ -458,6 +458,11 @@ class HwmonSensors(Provider):
     def _spread_temperatures(draft: Draft, sensors: list[Sensor]) -> None:
         per_core: dict[int, float] = {}
         package: list[float] = []
+        # `k10temp` solo publica Tdie donde Tctl lleva sumado un
+        # desplazamiento para el control de los ventiladores (20 °C en un
+        # 1800X, 27 en un Threadripper 1950X). Con las dos, la temperatura es
+        # Tdie; con Tctl sola, las dos son la misma.
+        die: list[float] = []
         unlabelled: list[float] = []
 
         for sensor in sensors:
@@ -465,11 +470,14 @@ class HwmonSensors(Provider):
                 continue
             if match := _CORE_LABEL.match(sensor.label):
                 per_core[int(match.group(1))] = sensor.value
+            elif sensor.label.lower() == "tdie":
+                die.append(sensor.value)
             elif _PACKAGE_LABEL.match(sensor.label):
                 package.append(sensor.value)
             else:
                 unlabelled.append(sensor.value)
 
+        package = die or package
         if not package and not per_core:
             package = unlabelled            # chips de un solo sensor, como acpitz
 

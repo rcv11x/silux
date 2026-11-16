@@ -17,6 +17,11 @@ monta el Collector contra todos (`tests/test_equipos.py`).
 Todos son sin permisos. Lo que se arregle en lo que lee el procesador o la
 gráfica se comprueba contra un volcado de Intel y contra el de AMD.
 
+Lo que en AMD se escribió sin la pieza delante: un `k10temp` que publique
+Tdie además de Tctl (los Ryzen con desplazamiento: 1700X, 1800X y los
+Threadripper de las dos primeras generaciones). Se enseña Tdie, por lo que
+dice la documentación del kernel; el 5800X3D solo tiene Tctl.
+
 ## Por plataforma
 
 De Gráficos sale todo lo que publica el nodo DRM —identidad, VRAM, tabla DPM,
