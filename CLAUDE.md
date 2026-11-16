@@ -31,11 +31,16 @@ python3 tools/volcar_equipo.py NOMBRE  # este equipo, anonimizado, a tests/fixtu
 python3 tools/comprobar_privacidad.py  # antes de publicar nada
 python3 tools/build_appimage.py --container   # el AppImage que se reparte
 python3 tools/probar_en_minimo.py --container # la suite en el Python del suelo
-QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
+uv sync --extra gui                    # el entorno de desarrollo: pytest y PySide6
+QT_QPA_PLATFORM=offscreen uv run pytest -n auto -m "not a_solas"  # la suite, en paralelo
+QT_QPA_PLATFORM=offscreen uv run pytest -m a_solas  # los tres que miden, solos
+QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .  # sin instalar nada
 ```
 
-Tardan cerca de dos minutos y medio. Cuántos son lo dice la suite al terminar
-(`Ran N tests`); no se apunta aquí a mano. Si sale bastante menos que en la
+En paralelo tardan medio minuto entre las dos pasadas; en serie, minuto y
+medio. Las dos pasadas son las del CI: tres tests comparan dos medidas de
+rendimiento y van solos (`tests/conftest.py`). Cuántos son lo dice la suite al
+terminar; no se apunta aquí a mano. Si sale bastante menos que en la
 última ejecución, falta algo por recoger. Corren en una carpeta temporal propia
 (`tests/__init__.py`): no tocan la configuración ni el historial de quien los
 ejecuta.
@@ -143,7 +148,8 @@ Ajustes**. La de Batería solo aparece en los equipos que tienen una.
   que no dependen de la zlib de cada distribución. `score.VERSION` y
   `db/scores.json` van siempre en el mismo commit. [docs/benchmark.md](docs/benchmark.md)
 - Qué se ha validado contra qué pieza y qué se escribió a ciegas (NVIDIA sí,
-  ARM no): [docs/hardware-validado.md](docs/hardware-validado.md).
+  ARM no): [docs/hardware-validado.md](docs/hardware-validado.md). Hay tres
+  equipos volcados para la suite: dos del i5-10400 y el Ryzen 7 5800X3D.
 - Las ramas `escala-v5` y `escala-v6` están superadas y se pueden borrar, pero
   no se borran sin que lo diga el autor.
 
@@ -153,7 +159,7 @@ Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); los comentarios, en el español del autor. Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-957 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+964 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
@@ -257,6 +263,8 @@ código (F-…), que es por el que se buscan allí.
 | `cli.py` | baja | `--json` sin aviso; `--report ''`; banderas que se pisan; `--with-identifiers` suelto; categorías sin traducir; `--report -` sin aviso |
 | `ui/app.py` | baja | cambiar el tema reinicia las gráficas; no hay navegación por teclado |
 | `ui/pages/graphics.py` | baja | tasa de datos de la VRAM compuesta a mano |
+| `ui/pages/graphics.py` | media | la tabla de monitores a 900 px corta la resolución si el nombre es largo |
+| `providers/cppc.py` | media, sin comprobar | el techo del silicio con `acpi-cpufreq`: falta el volcado con `amd_pstate=disable` |
 | `providers/network.py`, `derived.py` | baja | tipo de interfaz y «Core #N» sin traducir |
 | `providers/storage.py` | baja | modelo SATA cortado a 16 caracteres |
 | `collector.py` | baja | `_clone` sin `batteries`, `cpu_extra` ni `memory_traffic` |
