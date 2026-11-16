@@ -496,7 +496,11 @@ class TestLaCabeceraDeSensoresNoEnsanchaLaPagina(unittest.TestCase):
         return pagina, pagina.widget().minimumSizeHint().width()
 
     def test_un_contador_largo_no_cambia_el_ancho_minimo(self):
-        _corta, normal = self._ancho_minimo()
+        # Los dos contadores se escriben aquí. Con el del equipo que ejecuta
+        # la suite la comparación dependía de él: en el runner del CI, con
+        # tres sensores, el contador es más corto que el mínimo al que se
+        # corta, y la página medía cuatro píxeles menos.
+        _corta, normal = self._ancho_minimo("· 186 en 29 dispositivos")
         larga, con_mas = self._ancho_minimo(
             "· 1888 sensores en 288 dispositivos de este equipo, que son muchos")
         self.assertEqual(con_mas, normal)
