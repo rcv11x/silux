@@ -14,13 +14,14 @@ Ninguna de estas clases sabe leer hardware.
 
 from __future__ import annotations
 
+import math
 from collections import deque
 from typing import Iterable, Optional, Sequence
 
 from PySide6.QtCore import (QEvent, QPoint, QPointF, QRectF, QSize, Qt,
                             QTimer, Signal)
 from PySide6.QtGui import (
-    QBrush, QColor, QFontMetrics, QLinearGradient, QPainter, QPainterPath, QPen,
+    QBrush, QColor, QFontMetrics, QFontMetricsF, QLinearGradient, QPainter, QPainterPath, QPen,
 )
 from PySide6.QtWidgets import (
     QFrame,
@@ -1543,9 +1544,14 @@ class Table(QScrollArea):
             celda = self._cells[0][columna] if columna < len(self._cells[0]) else None
             if celda is None:
                 continue
-            metricas = celda.fontMetrics()
+            # Con decimales y redondeando hacia arriba. `QFontMetrics` da el
+            # avance en píxeles enteros, hacia abajo, y quien decide si el
+            # texto cabe trabaja con el de verdad: «2560 × 1440» medía 79 y
+            # ocupaba 79 y pico, la columna salía a 79 y la celda lo cortaba,
+            # «2560 × 14…», con sitio de sobra en la tabla.
+            metricas = QFontMetricsF(celda.font())
             ancho = max(
-                (metricas.horizontalAdvance(str(fila[columna]))
+                (math.ceil(metricas.horizontalAdvance(str(fila[columna]))) + 1
                  for fila in rows if columna < len(fila)),
                 default=0,
             )

@@ -50,5 +50,38 @@ class TestElNombreDelMonitor(unittest.TestCase):
         self.assertEqual(render.monitor_name(raro), "Acme Displays X1")
 
 
+@unittest.skipIf(QApplication is None, "sin PySide6")
+class TestLaTabla(unittest.TestCase):
+
+    def test_a_900_px_ninguna_cifra_sale_cortada(self):
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.app import MainWindow
+
+        app = qt.app()
+        f = foto(EQUIPOS / "5800x3d")[0]
+        prefs = Preferences(density="compact", window_width=900, window_height=680).normalized()
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.dict(os.environ, {"XDG_CONFIG_HOME": tmp}):
+            theme.apply(app, "dark", "compact", prefs.font_scale, prefs.accent)
+            self.addCleanup(theme.set_density, "normal", "normal")
+            ventana = MainWindow(prefs)
+            self.addCleanup(ventana.close)
+            ventana.resize(900, 680)
+            ventana.show()
+            # Dos muestras y a mirar, como al abrir el programa: la tabla no
+            # puede necesitar un tercer muestreo para medirse bien.
+            ventana._on_sample(f)
+            ventana._on_sample(f)
+            ventana.select_section("Gráficos")
+            for _vez in range(6):
+                app.processEvents()
+            tabla = ventana.graphics_page._sections[0].displays
+            self.assertEqual(len(tabla._cells), 2)
+            cortadas = [celda.full_text() for fila in tabla._cells for celda in fila[2:]
+                        if celda.text() != celda.full_text()]
+            self.assertEqual(cortadas, [])
+
+
 if __name__ == "__main__":
     unittest.main()
