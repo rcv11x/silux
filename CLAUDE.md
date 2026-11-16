@@ -1,5 +1,7 @@
 # silux — contexto del proyecto
 
+Si existe docs/en-curso.md, se lee lo primero.
+
 Perfilador de hardware para Linux en Python + PySide6: lo que en Windows hacen
 **CPU-Z, GPU-Z y HWMonitor**, en un solo programa nativo. Identificación del
 hardware y monitorización de sensores.
@@ -25,6 +27,7 @@ python3 tools/medir_referencia.py      # rehacer la escala de puntuación
 python3 tools/anadir_puntuacion.py INFORMES  # sumar medidas ajenas a la tabla
 python3 tools/install_desktop.py       # icono y entrada de menú
 python3 tools/volcar_gpu.py            # lo que publica el kernel de cada gráfica
+python3 tools/volcar_equipo.py NOMBRE  # este equipo, anonimizado, a tests/fixtures/equipos/
 python3 tools/comprobar_privacidad.py  # antes de publicar nada
 python3 tools/build_appimage.py --container   # el AppImage que se reparte
 python3 tools/probar_en_minimo.py --container # la suite en el Python del suelo
@@ -279,4 +282,6 @@ código (F-…), que es por el que se buscan allí.
 - [docs/hardware-validado.md](docs/hardware-validado.md): qué se ha probado
   contra qué pieza.
 - [docs/pendientes.md](docs/pendientes.md): lo pendiente, con su detalle.
+- [docs/en-curso.md](docs/en-curso.md): si existe, dónde se quedó la última
+  sesión y qué sigue.
 - [docs/historial/](docs/historial/): diarios de sesiones antiguas.
