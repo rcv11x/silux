@@ -208,6 +208,21 @@ class SysfsTopology(Provider):
         )
 
 
+# De dónde sale la frecuencia de cada hilo, de la más fiable a la menos, según
+# Documentation/admin-guide/pm/cpufreq.rst:
+#
+# - `cpuinfo_avg_freq`: la media que mide el hardware en unos milisegundos
+#   (APERF/MPERF en x86, AMU en ARM). Si no se puede medir, no existe; si el
+#   hilo lleva rato parado puede fallar (EAGAIN en ARM), y entonces se pasa
+#   a la siguiente.
+# - `scaling_cur_freq`: «en la mayoría de los casos, el último P-state que
+#   pidió el driver», que puede no ser a lo que va. En x86 el kernel lo
+#   acerca a lo real, y ahí las dos coinciden: 2 900 688 frente a 2 900 719
+#   kHz en el i5-10400. En AMD está sin comprobar contra la otra.
+# - `cpuinfo_cur_freq`: la del hardware, pero casi siempre solo la lee root.
+FUENTES_DE_FRECUENCIA = ("cpuinfo_avg_freq", "scaling_cur_freq", "cpuinfo_cur_freq")
+
+
 class SysfsClocks(Provider):
     """Frecuencia instantánea de cada CPU lógica, y el techo vigente."""
 
@@ -220,9 +235,10 @@ class SysfsClocks(Provider):
     def collect(self, draft: Draft) -> None:
         any_read = False
         for index, cpu in draft.logical.items():
-            khz = read_int(f"{SYS_CPU}/cpu{index}/cpufreq/scaling_cur_freq")
-            if khz is None:
-                khz = read_int(f"{SYS_CPU}/cpu{index}/cpufreq/cpuinfo_cur_freq")
+            khz = None
+            for fuente in FUENTES_DE_FRECUENCIA:
+                if (khz := read_int(f"{SYS_CPU}/cpu{index}/cpufreq/{fuente}")) is not None:
+                    break
             if khz is not None:
                 cpu["freq_hz"] = khz * 1000
                 any_read = True

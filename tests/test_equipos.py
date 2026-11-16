@@ -100,6 +100,19 @@ class TestEquiposVolcados(unittest.TestCase):
                             # pasa por unos kHz del techo.
                             self.assertLessEqual(hilo.freq_hz, techo * 1.02, hilo)
 
+    def test_la_frecuencia_de_cada_hilo_es_la_que_mide_el_hardware(self):
+        # cpuinfo_avg_freq es la media medida por el hardware; scaling_cur_freq,
+        # según la documentación del kernel, suele ser el último P-state pedido.
+        # Si el volcado tiene la primera, es la que tiene que salir.
+        for nombre, (carpeta, f, _tocados) in self.equipos.items():
+            cpus = carpeta / "sys" / "devices" / "system" / "cpu"
+            for hilo in f.cpu.logical:
+                media = cpus / f"cpu{hilo.index}" / "cpufreq" / "cpuinfo_avg_freq"
+                if not media.is_file():
+                    continue
+                with self.subTest(equipo=nombre, cpu=hilo.index):
+                    self.assertEqual(hilo.freq_hz, int(media.read_text()) * 1000)
+
     def test_el_reloj_de_cada_hilo_es_el_mismo_en_sensores(self):
         # La página CPU pinta `cpu.logical` y la de Sensores el árbol: con la
         # misma foto tienen que decir lo mismo de cada hilo.
