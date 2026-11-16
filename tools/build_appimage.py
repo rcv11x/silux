@@ -127,10 +127,17 @@ DYNLOAD_FUERA = (
     "_test", "_xx", "xx",
 )
 
-# Qué PySide6 se empaqueta. Sin `--compat` la última, que es la que trae los
-# arreglos de Qt —los de Wayland, sobre todo, que es donde más se mueve—. Con
-# `--compat`, la última serie que sigue compilándose para x86-64 a secas.
-RANGO_PYSIDE = {False: "PySide6>=6.6", True: "PySide6>=6.6,<6.10"}
+# Qué PySide6 se empaqueta. Sin `--compat` la última que funciona, que es la
+# que trae los arreglos de Qt —los de Wayland, sobre todo, que es donde más se
+# mueve—. Con `--compat`, la última serie que sigue compilándose para x86-64 a
+# secas.
+#
+# El `<6.12` del normal no es un cambio de criterio sino un fallo concreto: la
+# 6.12.0 resta una referencia a `None` en cada método que devuelve `void`, y
+# en el Python 3.10 que va dentro del paquete eso acaba en «Fatal Python
+# error: none_dealloc» al pintar la primera gráfica. Se quita cuando una 6.12.x
+# lo corrija y la suite pase en 3.10 con ella.
+RANGO_PYSIDE = {False: "PySide6>=6.6,<6.12", True: "PySide6>=6.6,<6.10"}
 
 # Lo pone `main` al arrancar. Lo miran el nombre del archivo y la guarda.
 COMPAT = False
@@ -330,8 +337,8 @@ apt-get install -y -qq --no-install-recommends \
 # El PySide6 de PyPI viene compilado para manylinux: glibc antigua y x86-64
 # básico. El de la distribución iría atado a la versión de Qt del sistema.
 #
-# La versión la elige quien llama: `--compat` pone el techo, y sin él se coge
-# la última. Ver `RANGO_PYSIDE`.
+# La versión la elige quien llama: `--compat` pone el techo de 6.10, y sin él
+# se coge la última que funciona. Ver `RANGO_PYSIDE`.
 #
 # El techo no es capricho. Qt 6.10 pasó a compilarse con `-march=x86-64-v2`, y
 # no en rutas aparte que se eligen mirando la CPU, sino en funciones normales:
