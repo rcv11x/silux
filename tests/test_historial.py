@@ -79,6 +79,75 @@ class TestGuardarYLeer(_ConCarpetaPropia):
         self.assertLessEqual(len(history.load()), history.MAXIMO)
 
 
+
+class TestUnHistorialEstropeadoNoImpideArrancar(_ConCarpetaPropia):
+    """El historial lo escribe el programa, pero vive en el disco de alguien.
+
+    Solo se atrapaban un archivo ilegible y un JSON mal formado. Un UTF-8
+    roto lanzaba `UnicodeDecodeError`, y una entrada con un campo del tipo
+    equivocado se leía sin rechistar y reventaba después: al ordenar si la
+    fecha era texto, al sumar si las medidas eran una lista. En los dos casos
+    la traza moría montando la página de Rendimiento, o sea, la ventana no
+    abría, y tampoco el `--report`, que lee el historial para su apartado.
+    """
+
+    def _con(self, contenido: bytes):
+        history.data_dir().mkdir(parents=True, exist_ok=True)
+        history.history_path().write_bytes(contenido)
+
+    def _buena(self) -> dict:
+        import dataclasses
+        entrada = history.from_result(_resultado(), "CPU", 2.0)
+        return {k: v for k, v in dataclasses.asdict(entrada).items()}
+
+    def _entradas(self, *malas):
+        import json
+        self._con(json.dumps([self._buena(), *malas]).encode())
+        return history.load()
+
+    def test_un_utf8_roto(self):
+        self._con(b'[{"cpu": "\xff\xfe"}]')
+        self.assertEqual(history.load(), [])
+
+    def test_una_fecha_que_es_texto(self):
+        mala = dict(self._buena(), timestamp="ayer")
+        self.assertEqual(len(self._entradas(mala)), 1)
+
+    def test_unas_medidas_que_son_una_lista(self):
+        mala = dict(self._buena(), scores=[1, 2, 3])
+        self.assertEqual(len(self._entradas(mala)), 1)
+
+    def test_una_duracion_vacia(self):
+        mala = dict(self._buena(), seconds=None)
+        self.assertEqual(len(self._entradas(mala)), 1)
+
+    def test_una_medida_que_no_es_un_numero(self):
+        mala = dict(self._buena(), scores={"compresion/8": "mucho"})
+        self.assertEqual(len(self._entradas(mala)), 1)
+
+    def test_lo_que_queda_se_puede_usar(self):
+        """Que no se cuele nada que reviente al ordenar, sumar o comparar."""
+        leidas = self._entradas(dict(self._buena(), timestamp="ayer"),
+                                dict(self._buena(), scores=[1]),
+                                dict(self._buena(), seconds=None))
+        for entrada in leidas:
+            entrada.total()
+            entrada.comparable_con(entrada)
+
+    def test_la_pagina_de_rendimiento_se_monta_igual(self):
+        import json
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        from PySide6.QtWidgets import QApplication
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.performance import PerformancePage
+
+        app = QApplication.instance() or QApplication([])
+        self._con(json.dumps([dict(self._buena(), timestamp="ayer"),
+                              self._buena()]).encode())
+        PerformancePage(theme.palette_for(app, "dark"), Preferences())
+
+
 class TestComparar(_ConCarpetaPropia):
     def test_dice_cuanto_ha_cambiado(self):
         antes = history.from_result(_resultado(100.0), "CPU", 2.0)

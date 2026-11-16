@@ -185,11 +185,39 @@ def from_result(resultado: Result, cpu: str, seconds: float) -> Entry:
     )
 
 
+def _numero(valor) -> bool:
+    # `bool` es un `int` para Python, y un `true` donde va una fecha no lo es.
+    return isinstance(valor, (int, float)) and not isinstance(valor, bool)
+
+
+def _bien_formada(fila: dict) -> bool:
+    """Si una entrada leída del disco se puede usar sin que reviente después.
+
+    El archivo lo escribe el programa, pero vive en el disco de alguien: una
+    entrada con un campo del tipo equivocado se leía sin rechistar y
+    reventaba más tarde, al ordenar o al sumar, montando la página de
+    Rendimiento. O sea, la ventana no abría.
+    """
+    medidas = fila.get("scores")
+    return (_numero(fila.get("timestamp"))
+            and isinstance(fila.get("cpu"), str)
+            and _numero(fila.get("threads")) and fila["threads"] > 0
+            and _numero(fila.get("seconds")) and fila["seconds"] > 0
+            and isinstance(medidas, dict)
+            and all(isinstance(k, str) and _numero(v) for k, v in medidas.items())
+            and isinstance(fila.get("label", ""), str)
+            and all(fila.get(campo) is None or _numero(fila[campo])
+                    for campo in ("temperature_peak_c", "frequency_avg_hz",
+                                  "background_load", "background_peak",
+                                  "score_version")))
+
+
 def load() -> list[Entry]:
     """Las pruebas guardadas, de la más reciente a la más antigua."""
     try:
         crudo = json.loads(history_path().read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except (OSError, ValueError):
+        # `ValueError` cubre el JSON mal formado y también un UTF-8 roto.
         return []
     if not isinstance(crudo, list):
         return []
@@ -197,7 +225,7 @@ def load() -> list[Entry]:
     entradas = []
     validos = {f.name for f in dataclasses.fields(Entry)}
     for fila in crudo:
-        if not isinstance(fila, dict):
+        if not isinstance(fila, dict) or not _bien_formada(fila):
             continue
         try:
             entradas.append(Entry(**{k: v for k, v in fila.items() if k in validos}))
