@@ -162,7 +162,7 @@ Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); los comentarios, en el español del autor. Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-999 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+1006 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
@@ -265,10 +265,9 @@ código (F-…), que es por el que se buscan allí.
 | `cli.py` | baja | `--json` sin aviso; `--report ''`; banderas que se pisan; `--with-identifiers` suelto; categorías sin traducir; `--report -` sin aviso |
 | `ui/app.py` | baja | cambiar el tema reinicia las gráficas; no hay navegación por teclado |
 | `ui/pages/graphics.py` | baja | tasa de datos de la VRAM compuesta a mano |
-| `ui/pages/graphics.py` | media | la tabla de monitores a 900 px corta la resolución si el nombre es largo |
 | `providers/cppc.py` | media, sin comprobar | el techo del silicio con `acpi-cpufreq`: falta el volcado con `amd_pstate=disable` |
 | `ui/pages/settings.py` | propuesta | no hay botón para quitar el ayudante instalado; toca privilegios |
-| `providers/network.py`, `derived.py` | baja | tipo de interfaz y «Core #N» sin traducir |
+| `providers/network.py` | baja | tipo de interfaz sin traducir |
 | `providers/storage.py` | baja | modelo SATA cortado a 16 caracteres |
 | `collector.py` | baja | `_clone` sin `batteries`, `cpu_extra` ni `memory_traffic` |
 | `render.py` | baja | dos canales distintos pueden llamarse «Canal A» |
