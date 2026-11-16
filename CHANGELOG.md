@@ -11,7 +11,7 @@ que hace falta.
 
 ---
 
-## 0.3.0 (sin publicar)
+## 0.3.0 (16 de noviembre de 2026)
 
 ### Ojo al actualizar
 
