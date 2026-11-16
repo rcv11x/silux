@@ -1364,9 +1364,12 @@ class Table(QScrollArea):
         for column, title in enumerate(self._headers):
             label = QLabel(title.upper())
             label.setObjectName("ColumnTitle")
+            # Abajo de su celda, pegado a las filas que titula. La celda mide
+            # lo que una fila y la letra es pequeña: con el texto arriba
+            # quedaba un hueco de fila vacía entre los títulos y los datos.
             label.setAlignment(
-                Qt.AlignmentFlag.AlignRight if self._numeric[column]
-                else Qt.AlignmentFlag.AlignLeft
+                (Qt.AlignmentFlag.AlignRight if self._numeric[column]
+                 else Qt.AlignmentFlag.AlignLeft) | Qt.AlignmentFlag.AlignBottom
             )
             self._grid.addWidget(label, 0, column)
 
