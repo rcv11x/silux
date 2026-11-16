@@ -1455,6 +1455,18 @@ class Snapshot:
             return ()
         return tuple(n for n in self.notes if n.need is Need.ROOT and n.what)
 
+    def permission_note(self, path: str) -> Optional[Note]:
+        """La nota de permisos que guarda ese campo, si lo guarda alguna.
+
+        Para pintar un candado donde iría el dato: la página pregunta por el
+        campo —`gpus.0.usage`— y la nota puede ser la suya o la de la pieza
+        entera, `gpus.0`. Lo que falta por otro motivo no tiene candado.
+        """
+        for nota in self.permission_notes:
+            if path == nota.path or path.startswith(nota.path + "."):
+                return nota
+        return None
+
 
 def to_jsonable(obj: Any) -> Any:
     """Convierte el modelo a estructuras que `json` sabe serializar.

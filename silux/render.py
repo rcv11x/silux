@@ -274,6 +274,14 @@ def plural(cantidad: int, singular: str, plural_: str) -> str:
     return singular if cantidad == 1 else plural_
 
 
+def lock_tooltip(nota) -> str:
+    """Lo que dice el candado de un dato que falta por permisos.
+
+    Por qué falta, con las palabras de la nota, y qué pasa al pulsarlo.
+    """
+    return f"{nota.message}\n\n{_('lock.tip')}"
+
+
 # Cómo llama el kernel al dúplex de un enlace, y con qué clave se dice aquí.
 # Lo que no esté en la tabla —«unknown», que es lo que da una interfaz sin
 # cable— no se pinta: no es un dúplex, es que no hay negociación.

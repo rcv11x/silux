@@ -120,7 +120,17 @@ class TypeSection(QWidget):
         features_card.body.addWidget(self.feature_count)
 
         self._cache_rows: list[str] = []
+        self._voltaje = None
         self._chip_signature: tuple = ()
+
+    def lock_voltage(self, nota, color: str) -> None:
+        """El voltaje falta por permisos (`nota`) o por otra cosa (None)."""
+        nombre = _("cpu.field.voltage")
+        if nota is not None and self._voltaje is None:
+            self.processor.set_locked(nombre, color, render.lock_tooltip(nota))
+        elif self.processor.is_locked(nombre):
+            self.processor.set(nombre, render.volts(self._voltaje),
+                               tooltip=_("cpu.tip.voltage"))
 
     def apply(self, cpu_type: CpuType) -> None:
         p = self.processor.set  # noqa: E741
@@ -141,8 +151,12 @@ class TypeSection(QWidget):
         p(_("cpu.field.microcode"), cpu_type.microcode or render.DASH)
         # El voltaje va con los demás datos del silicio y no con los relojes:
         # es lo que la pieza pide para sostener la frecuencia que tiene puesta.
-        p(_("cpu.field.voltage"), render.volts(cpu_type.voltage_v),
-          tooltip=_("cpu.tip.voltage"))
+        # Si falta por permisos lleva candado, que lo pone la página después:
+        # aquí solo se sabe del procesador, no de por qué falta algo.
+        self._voltaje = cpu_type.voltage_v
+        if self._voltaje is not None or not self.processor.is_locked(_("cpu.field.voltage")):
+            p(_("cpu.field.voltage"), render.volts(cpu_type.voltage_v),
+              tooltip=_("cpu.tip.voltage"))
 
         c = self.clocks.set
         clocks = cpu_type.clocks
@@ -345,6 +359,8 @@ class CpuPage(QScrollArea):
             for cpu_type in cpu.types:
                 title = render.core_type_label(cpu_type, cpu.hybrid) if cpu.hybrid else None
                 section = TypeSection(self._p, self._prefs, title)
+                # El candado del voltaje pide lo mismo que el botón del aviso.
+                section.processor.locked_clicked.connect(self.elevation_requested)
                 self._sections[cpu_type.key] = section
                 self._sections_host.addWidget(section)
             self._signature = signature
@@ -352,6 +368,7 @@ class CpuPage(QScrollArea):
         for cpu_type in cpu.types:
             if section := self._sections.get(cpu_type.key):
                 section.apply(cpu_type)
+                section.lock_voltage(snapshot.permission_note("cpu.voltage_v"), self._p.warn)
 
     def _apply_notices(self, snapshot: Snapshot) -> None:
         # Solo las de esta pestaña: la de los módulos de memoria salía aquí

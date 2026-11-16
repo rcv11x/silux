@@ -400,7 +400,9 @@ class MemoryPage(QScrollArea):
         # Sin SMBIOS las tarjetas se fabrican del SPD y su título es un
         # contador nuestro, no el zócalo: hace falta saberlo para la pista.
         self._apply_modules(tuple(display), array,
-                            del_spd=not snapshot.modules)
+                            del_spd=not snapshot.modules,
+                            candado=(snapshot.permission_note("modules")
+                                     if not snapshot.modules else None))
         self._apply_timings(display)
         self._apply_traffic(snapshot)
         self._apply_notices(snapshot)
@@ -584,9 +586,10 @@ class MemoryPage(QScrollArea):
         ]
 
     def _apply_modules(self, modules: tuple[MemoryModule, ...], array,
-                       del_spd: bool = False) -> None:
+                       del_spd: bool = False, candado=None) -> None:
         signature = tuple((m.locator, m.part_number, m.size_bytes,
-                           m.spd.address if m.spd else None) for m in modules)
+                           m.spd.address if m.spd else None) for m in modules
+                          ) + (candado is not None,)
         if signature == self._module_signature:
             return
         self._module_signature = signature
@@ -623,6 +626,14 @@ class MemoryPage(QScrollArea):
                 grid.add(_(name))
             card.body.addWidget(grid)
             self._fill(grid, module)
+            if candado is not None:
+                # Del SPD sale a cuánto puede ir el módulo, no a cuánto va ni
+                # en qué banco está: eso lo guarda la tabla del firmware. Con
+                # candado y no con guion, que es lo que lo distingue de lo que
+                # el SPD no trae.
+                for clave in ("memory.field.running", "memory.field.bank"):
+                    grid.set_locked(_(clave), self._p.warn, render.lock_tooltip(candado))
+                grid.locked_clicked.connect(self.elevation_requested)
             self._slot_grids.append(grid)
             self._slots_host.add(card)
 

@@ -320,7 +320,12 @@ class HomePage(QScrollArea):
                 piezas.append(_("home.gpu.ofmax").format(
                     max=render.hz(gpu.clocks.core_max_hz)))
                 self.gpu.grafica.set_range(0.0, gpu.clocks.core_max_hz / 1e6)
-        self.gpu.poner(gpu.display_name, detalle, "   ".join(piezas))
+        # El uso y el consumo, si faltan por permisos, se dicen: sin esto la
+        # tarjeta de una integrada parecía no tener nada más que un reloj.
+        pie = (_("home.gpu.locked")
+               if gpu.busy_percent is None and snapshot.permission_note("gpus.0.usage")
+               else "")
+        self.gpu.poner(gpu.display_name, detalle, "   ".join(piezas), pie)
 
     def _memoria(self, snapshot: Snapshot) -> None:
         memoria = snapshot.system.memory

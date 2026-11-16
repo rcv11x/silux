@@ -163,8 +163,13 @@ class TestQueLlegueALaPantalla(unittest.TestCase):
                       for t in foto.cpu.types)
         pagina = CpuPage(theme.palette_for(self.app, "dark"),
                          Preferences(font_scale="normal").normalized())
+        # Sin ayudante: lo que aquí se mira es el camino del dato hasta su
+        # celda. Con ayudante y sin permisos, donde falta va un candado, y eso
+        # lo prueba `test_candado` con los equipos volcados.
+        from silux.model import PrivilegedState
         pagina.apply(dataclasses.replace(
-            foto, cpu=dataclasses.replace(foto.cpu, types=tipos)))
+            foto, cpu=dataclasses.replace(foto.cpu, types=tipos),
+            privileged=PrivilegedState(supported=False)))
         # Se guarda en la instancia: sin una referencia viva, Python recolecta
         # la página al salir de aquí y Qt destruye los widgets por debajo. La
         # celda que se devolvía apuntaba entonces a un objeto ya borrado.

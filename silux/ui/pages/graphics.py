@@ -282,6 +282,8 @@ class GpuSection(QWidget):
         # llena y el bus parado tiene datos cargados y no los está tocando.
         self.tile_membus = StatTile(_("gpu.tile.membus"), "%", self._p)
 
+        for tile in (self.tile_usage, self.tile_power):
+            tile.locked_clicked.connect(self.elevation_requested)
         for tile in (self.tile_usage, self.tile_clock, self.tile_temp,
                      self.tile_power, self.tile_vram, self.tile_membus):
             fila.add(tile)
@@ -543,7 +545,23 @@ class GpuSection(QWidget):
             self._chip_signature = firma
             self.badges.set_chips(chips, highlight_first=True)
 
+    def set_lock(self, nota) -> None:
+        """La nota de permisos que guarda el uso y el consumo, o None.
+
+        La pone la página antes de `apply`, que es quien tiene la foto.
+        """
+        self._candado = nota
+
     def _apply_tiles(self, gpu: Gpu) -> None:
+        candado = getattr(self, "_candado", None)
+        if gpu.busy_percent is None and candado is not None:
+            # Con candado y no con guion: este dato está, y tiene arreglo.
+            self.tile_usage.set_locked(_("lock.detail"), render.lock_tooltip(candado))
+        else:
+            self._apply_usage(gpu)
+        self._apply_tiles_rest(gpu, candado)
+
+    def _apply_usage(self, gpu: Gpu) -> None:
         self.tile_usage.update_value(
             f"{gpu.busy_percent:.0f}" if gpu.busy_percent is not None else render.DASH,
             gpu.busy_percent)
@@ -553,6 +571,7 @@ class GpuSection(QWidget):
                 pct=render.percent(gpu.video_busy_percent))
             if gpu.video_busy_percent else "")
 
+    def _apply_tiles_rest(self, gpu: Gpu, candado) -> None:
         relojes = gpu.clocks
         nucleo_mhz = relojes.core_hz / 1e6 if relojes.core_hz is not None else None
         self.tile_clock.update_value(
@@ -598,11 +617,15 @@ class GpuSection(QWidget):
                 gpu.hotspot_c, self._prefs.fahrenheit))
             if gpu.hotspot_c is not None else "")
 
-        self.tile_power.update_value(
-            f"{gpu.power_w:.0f}" if gpu.power_w is not None else render.DASH, gpu.power_w)
-        self.tile_power.set_detail(
-            _("gpu.tile.of").format(valor=render.watts(gpu.power_cap_w))
-            if gpu.power_cap_w else "")
+        if gpu.power_w is None and candado is not None:
+            self.tile_power.set_locked(_("lock.detail"), render.lock_tooltip(candado))
+        else:
+            self.tile_power.update_value(
+                f"{gpu.power_w:.0f}" if gpu.power_w is not None else render.DASH,
+                gpu.power_w)
+            self.tile_power.set_detail(
+                _("gpu.tile.of").format(valor=render.watts(gpu.power_cap_w))
+                if gpu.power_cap_w else "")
 
         porcentaje = gpu.memory.used_percent
         self.tile_vram.update_value(
@@ -731,7 +754,10 @@ class GraphicsPage(QScrollArea):
             sobrante.hide()
 
         ahora = snapshot.monotonic_ns
-        for seccion, gpu in zip(self._sections, snapshot.gpus):
+        for indice, (seccion, gpu) in enumerate(zip(self._sections, snapshot.gpus)):
+            # Si el uso y el consumo de esta tarjeta faltan por permisos, sus
+            # fichas llevan candado en vez de guion.
+            seccion.set_lock(snapshot.permission_note(f"gpus.{indice}.usage"))
             # La ranura PCI es lo único que no cambia entre muestreos: el
             # índice se mueve si aparece o desaparece una tarjeta.
             clave = gpu.pci_slot or f"gpu{gpu.index}"

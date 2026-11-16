@@ -378,8 +378,13 @@ class InfoGrid(QWidget):
     """Filas de nombre y valor, con los valores en tipografía monoespaciada
     para que las cifras queden alineadas al refrescar."""
 
+    # Alguien ha pulsado el candado de un campo que falta por permisos.
+    locked_clicked = Signal()
+
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
+        self._filas: dict[str, int] = {}
+        self._candados: dict[str, "LockMark"] = {}
         m = theme.METRICS
         self._grid = QGridLayout(self)
         self._grid.setContentsMargins(0, 0, 0, 0)
@@ -414,13 +419,45 @@ class InfoGrid(QWidget):
         self._grid.addWidget(value_label, self._rows, 1)
         self._values[name] = value_label
         self._names[name] = name_label
+        self._filas[name] = self._rows
         self._rows += 1
         return value_label
+
+    def set_locked(self, name: str, color: str, tooltip: str = "") -> None:
+        """El cuarto estado de un campo: está, y lo guarda un permiso.
+
+        Los otros tres ya existían: el dato, el guion de «no lo sé» y el campo
+        escondido y nombrado al pie porque no existe. Un dato que falta por
+        permisos salía con el mismo guion que uno que no se pudo leer, y no
+        son lo mismo: este tiene arreglo, y el arreglo es pulsar aquí.
+        """
+        label = self._values.get(name)
+        if label is None:
+            return
+        candado = self._candados.get(name)
+        if candado is None:
+            candado = LockMark(color, max(10, label.fontMetrics().ascent()))
+            candado.hacer_pulsable()
+            candado.clicked.connect(self.locked_clicked)
+            self._grid.addWidget(candado, self._filas[name], 1,
+                                 Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+            self._candados[name] = candado
+        candado.setToolTip(tooltip)
+        candado.show()
+        label.set_full_text("")
+        label.hide()
+
+    def is_locked(self, name: str) -> bool:
+        candado = self._candados.get(name)
+        return candado is not None and not candado.isHidden()
 
     def set(self, name: str, value: str, tooltip: Optional[str] = None) -> None:
         label = self._values.get(name)
         if label is None:
             return
+        if (candado := self._candados.get(name)) is not None and not candado.isHidden():
+            candado.hide()
+            label.show()
         label.set_full_text(value)
         if tooltip:
             label.setToolTip(f"{value}\n\n{tooltip}" if value else tooltip)
@@ -855,6 +892,9 @@ class Sparkline(QWidget):
 class StatTile(Card):
     """Cifra grande con su unidad, una etiqueta y la serie reciente debajo."""
 
+    # Alguien ha pulsado el candado de una cifra que falta por permisos.
+    locked_clicked = Signal()
+
     def __init__(self, label: str, unit: str, palette: Palette, parent: Optional[QWidget] = None):
         super().__init__(parent=parent)
         self.body.setSpacing(3)
@@ -870,6 +910,14 @@ class StatTile(Card):
         self.unit = QLabel(unit)
         self.unit.setObjectName("TileUnit")
 
+        # El candado de cuando la cifra falta por permisos: a tamaño de
+        # cifra, en el sitio de la cifra.
+        self.lock = LockMark(palette.warn, theme.METRICS.tile_value_pt)
+        self.lock.hacer_pulsable()
+        self.lock.clicked.connect(self.locked_clicked)
+        self.lock.hide()
+
+        row.addWidget(self.lock)
         row.addWidget(self.value)
         row.addWidget(self.unit, 0, Qt.AlignmentFlag.AlignBottom)
         row.addStretch(1)
@@ -920,7 +968,26 @@ class StatTile(Card):
         self._series_tooltip = text
         self._refresh_tooltip()
 
+    def set_locked(self, detalle: str, tooltip: str = "") -> None:
+        """La cifra falta por permisos: candado en su sitio, sin unidad.
+
+        El detalle dice «con permisos» y no repite el porqué, que ya está en
+        el aviso de la página y en el tooltip.
+        """
+        self.value.hide()
+        self.unit.hide()
+        self.lock.setToolTip(tooltip)
+        self.lock.show()
+        self.set_detail(detalle)
+
+    def is_locked(self) -> bool:
+        return not self.lock.isHidden()
+
     def update_value(self, text: str, series_value: Optional[float] = None) -> None:
+        if not self.lock.isHidden():
+            self.lock.hide()
+            self.value.show()
+            self.unit.show()
         if self.value.text() != text:
             self.value.setText(text)
             # El guion de «sin dato» a treinta y seis píxeles es una raya
@@ -1161,10 +1228,22 @@ class LockMark(QWidget):
     diga, que es el ámbar de lo que tiene arreglo.
     """
 
+    clicked = Signal()
+
     def __init__(self, color: str, lado: int = 12, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self._color = QColor(color)
         self.setFixedSize(lado, lado)
+
+    def hacer_pulsable(self) -> None:
+        """Donde el candado es el dato que falta: pulsarlo pide los permisos."""
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._pulsable = True
+
+    def mouseReleaseEvent(self, event) -> None:  # noqa: N802
+        if getattr(self, "_pulsable", False) and event.button() == Qt.MouseButton.LeftButton:
+            self.clicked.emit()
+        super().mouseReleaseEvent(event)
 
     def paintEvent(self, event) -> None:  # noqa: N802
         lado = min(self.width(), self.height())
