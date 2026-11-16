@@ -63,6 +63,60 @@ class TestLecturaDeUnInforme(unittest.TestCase):
         ruta.unlink()
 
 
+
+class TestConUnInformeDeVerdad(unittest.TestCase):
+    """Los informes que se leen aquí los escribe `report.build`.
+
+    Los demás tests de este archivo usan nombres inventados y muestras ya
+    troceadas, y así no se veía lo que pasaba con un informe de verdad: la
+    herramienta guardaba la pieza con la marca entera que lleva el informe
+    —«Intel(R) Core(TM) i5-10400 CPU @ 2.90GHz»— y la interfaz la busca por
+    el nombre corto que pone `render.cpu_short_name` —«Intel Core
+    i5-10400»—, así que la barra de comparación no salía nunca, por muchas
+    muestras que hubiera (F-A6).
+    """
+
+    MARCA = "Intel(R) Core(TM) i5-10400 CPU @ 2.90GHz"
+
+    def _informe(self, **cambios) -> pathlib.Path:
+        import tempfile
+        from unittest import mock
+
+        from silux import history, report
+        from silux.model import CpuInfo, CpuType, Snapshot
+        from tests.escala import tabla_de_la_escala
+
+        tabla = tabla_de_la_escala(self)
+        hilos = tabla["patron"]["hilos"]
+        medidas = {f"{c}/1": v for c, v in tabla["un_hilo"].items()}
+        medidas |= {f"{c}/{hilos}": v for c, v in tabla["multihilo"].items()}
+        prueba = history.Entry(
+            timestamp=1.0, cpu="Intel Core i5-10400", threads=hilos, seconds=15.0,
+            scores=medidas, governor="performance", score_version=score.VERSION,
+            background_load=0.3, **cambios)
+        foto = Snapshot(monotonic_ns=0, cpu=CpuInfo(types=(
+            CpuType(key="general", label="general", brand=self.MARCA,
+                    cores=6, threads=12),)))
+        with mock.patch("silux.history.load", return_value=[prueba]):
+            texto = report.build(foto)
+        carpeta = pathlib.Path(tempfile.mkdtemp())
+        self.addCleanup(__import__("shutil").rmtree, carpeta)
+        ruta = carpeta / "informe.md"
+        ruta.write_text(texto, encoding="utf-8")
+        return ruta
+
+    def test_se_lee_entero(self):
+        datos, fallo = herramienta.leer(self._informe())
+        self.assertEqual(fallo, "")
+        self.assertEqual(herramienta.revisar(datos), "")
+
+    def test_la_pieza_se_guarda_con_el_nombre_que_busca_la_interfaz(self):
+        from silux import render
+
+        datos, _fallo = herramienta.leer(self._informe())
+        self.assertEqual(datos["cpu"], render.cpu_short_name(self.MARCA))
+
+
 class TestRemedirLaEscalaNoBorraLoAjeno(unittest.TestCase):
     """Las medidas de otros equipos no se pueden volver a tomar.
 

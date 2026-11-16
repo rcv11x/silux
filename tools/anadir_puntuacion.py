@@ -31,7 +31,7 @@ import sys
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 
-from silux import score  # noqa: E402
+from silux import render, score  # noqa: E402
 
 TABLA = RAIZ / "silux" / "db" / "scores.json"
 
@@ -74,7 +74,10 @@ def leer(ruta: pathlib.Path) -> tuple[dict, str]:
             return None
 
     datos = {
-        "cpu": cpu.group(1).strip(),
+        # El nombre corto, que es por el que la interfaz busca la pieza: el
+        # informe lleva la marca entera, «Intel(R) Core(TM) i5-10400 CPU @
+        # 2.90GHz», y guardada así la barra de comparación no salía nunca.
+        "cpu": render.cpu_short_name(cpu.group(1).strip()),
         "multihilo": numero("Puntuación (todos los hilos)"),
         "un_hilo": numero("Puntuación (un hilo)"),
         "hilos": numero("Hilos"),
