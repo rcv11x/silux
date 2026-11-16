@@ -113,16 +113,34 @@ class TestLasBarras(unittest.TestCase):
         # Con la muestra de color las insignias son más anchas y la leyenda de
         # la memoria pasa a dos filas en compacto. La de arriba se repartía
         # por todo el ancho: solo la última fila llevaba el muelle.
+        #
+        # La barra se monta sola y estrecha, para que las dos filas no
+        # dependan de la densidad que haya dejado puesta otro test.
         from PySide6.QtCore import QPoint
+        from PySide6.QtWidgets import QVBoxLayout, QWidget
 
-        ventana = self._ventana(density="compact", window_width=900, window_height=680)
-        barra = ventana.home_page.memoria.barra
+        from silux import render
+        from silux.ui import theme
+        from silux.ui.widgets import StackedBar, memory_segments
+
+        caja = QWidget()
+        self.addCleanup(caja.close)
+        barra = StackedBar(theme.palette_for(self.app, "dark"))
+        QVBoxLayout(caja).addWidget(barra)
+        caja.resize(300, 160)
+        caja.show()
+        memoria = self.foto.system.memory
+        barra.set_segments(memory_segments(memoria), total=memoria.total_bytes,
+                           formatter=render.size)
+        for _vez in range(5):
+            self.app.processEvents()
         leyenda = barra._legend
         self.assertGreater(leyenda.filas(), 1, "ya cabe en una fila: el test no mira nada")
         izquierdas = {}
         for insignia in leyenda._widgets:
             punto = insignia.mapTo(leyenda, QPoint(0, 0))
             izquierdas.setdefault(punto.y(), []).append(punto.x())
+        self.assertGreater(len(izquierdas), 1)
         for fila, equis in izquierdas.items():
             self.assertEqual(min(equis), 0, f"la fila de y={fila} no empieza a la izquierda")
 
