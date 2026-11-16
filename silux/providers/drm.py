@@ -186,6 +186,10 @@ class DrmGpus(Provider):
                 self._identidad_del_bus(gpu, draft, indice, sin_driver)
             if gpu["driver"] in ("i915", "xe"):
                 gpu["engines"] = _motores_intel(nodo)
+                # Ni hwmon, ni el PMU, ni un ioctl: estos drivers no dan la
+                # temperatura de la gráfica. Lo sabe quien conoce el driver, y
+                # lo dice aquí para que nadie tenga que deducirlo del nombre.
+                gpu["no_temperature_sensor"] = True
             gpu["link"] = _enlace(dispositivo)
             gpu["memory"] = _memoria_total(dispositivo)
             gpu["displays"] = _salidas(nodo.name)

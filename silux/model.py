@@ -861,6 +861,10 @@ class Gpu:
     engines: tuple[GpuEngine, ...] = ()
     codecs: tuple[VideoCodec, ...] = ()
     temp_c: Optional[float] = None
+    # La tarjeta no publica su temperatura por ningún camino: las Intel. No es
+    # lo mismo que no haberla podido leer, y se pinta distinto: lo que no
+    # existe se esconde y se nombra al pie, no se deja con un guion.
+    no_temperature_sensor: bool = False
     hotspot_c: Optional[float] = None
     memory_temp_c: Optional[float] = None
     power_w: Optional[float] = None

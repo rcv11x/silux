@@ -383,8 +383,13 @@ class HomePage(QScrollArea):
         if discos:
             lecturas.append((_("home.temp.disk"), max(discos)))
 
+        # La gráfica que no publica su temperatura no deja un hueco entre las
+        # cifras: se dice aquí abajo, que no es lo mismo que no haberla leído.
+        pie = (_("gpu.na.notemp") if snapshot.gpus
+               and snapshot.gpus[0].no_temperature_sensor
+               and snapshot.gpus[0].temp_c is None else "")
         if not lecturas:
-            self.temperaturas.poner(_("home.temp.none"), "", "")
+            self.temperaturas.poner(_("home.temp.none"), "", "", pie)
             return
         fahrenheit = self._prefs.fahrenheit
         lecturas.sort(key=lambda par: -par[1])
@@ -392,7 +397,8 @@ class HomePage(QScrollArea):
         self.temperaturas.poner(
             f"{nombre}  {render.temperature(grados, fahrenheit)}",
             _("home.temp.hottest"),
-            " · ".join(f"{n} {render.temperature(g, fahrenheit)}" for n, g in resto))
+            " · ".join(f"{n} {render.temperature(g, fahrenheit)}" for n, g in resto),
+            pie)
         self.temperaturas.grafica.push(grados)
         self.temperaturas.grafica.set_range(20.0, 100.0)
 

@@ -96,6 +96,12 @@ NA_INTEGRADA = {
                  "gpu.sensor.fan"), "gpu.na.integrated"),
 }
 
+# Una Intel no publica su temperatura por ningún camino. Un guion ahí se lee
+# como «no la he podido leer», y no va a poderse nunca.
+NA_SIN_TEMPERATURA = {
+    "sensors": (("gpu.sensor.temp", "gpu.sensor.hotspot"), "gpu.na.notemp"),
+}
+
 ENGINE_HEADERS = ("gpu.engine.name", "gpu.engine.role", "gpu.tile.usage", "gpu.engine.can")
 CODEC_HEADERS = ("gpu.codec.name", "gpu.codec.decode", "gpu.codec.encode", "gpu.codec.depth", "gpu.codec.profiles")
 
@@ -124,6 +130,8 @@ def no_aplica(gpu: Gpu) -> tuple[dict[str, set[str]], dict[str, str]]:
         reglas.append(NA_SIN_VRAM)
     if gpu.integrated:
         reglas.append(NA_INTEGRADA)
+    if gpu.no_temperature_sensor and gpu.temp_c is None:
+        reglas.append(NA_SIN_TEMPERATURA)
 
     ocultos: dict[str, set[str]] = {"memory": set(), "clocks": set(), "sensors": set()}
     frases: dict[str, list[str]] = {"memory": [], "clocks": [], "sensors": []}
@@ -465,13 +473,15 @@ class GpuSection(QWidget):
 
         # Los dos cuadros de arriba que hablan de una memoria que no existe. Se
         # deriva de lo que ya decidió `no_aplica` en vez de repetir aquí la
-        # condición, que es como se acaban desincronizando. Los otros cuatro se
-        # quedan: una integrada tiene uso, reloj y consumo, y su temperatura sí
-        # falta de verdad —Intel no la publica por ningún camino— y para eso ya
-        # hay un aviso que se quedaría sin nada a lo que referirse.
+        # condición, que es como se acaban desincronizando. Los de uso, reloj
+        # y consumo se quedan: una integrada los tiene.
         sin_vram = "gpu.vram.total" in ocultos["memory"]
         self.tile_vram.setVisible(not sin_vram)
         self.tile_membus.setVisible(not sin_vram)
+        # Y el de la temperatura, donde la tarjeta no la publica: una ficha
+        # grande con un guion para siempre era el hueco más visible de la
+        # página. Queda dicho al pie de los sensores.
+        self.tile_temp.setVisible("gpu.sensor.temp" not in ocultos["sensors"])
 
         for nombre, grid, campos, pie in (
                 ("memory", self.memory, MEMORY_FIELDS, self.memory_pie),

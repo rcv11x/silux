@@ -96,6 +96,15 @@ class MonitorPage(QScrollArea):
         self.tree.itemCollapsed.connect(self._rama_movida)
         self.tree.columnsResized.connect(self.columns_resized)
         sensors_card.body.addWidget(self.tree)
+        # Lo que este equipo no publica y por eso no tiene rama en el árbol.
+        # Sin esto, quien busca la temperatura de la gráfica entre los
+        # sensores no sabe si falta o si no la ha encontrado.
+        self.absent = QLabel("")
+        self.absent.setObjectName("Muted")
+        self.absent.setWordWrap(True)
+        self.absent.setFont(ui_font(theme.METRICS.small_pt))
+        self.absent.hide()
+        sensors_card.body.addWidget(self.absent)
         self._layout.addWidget(sensors_card)
 
         self._hint_host = QVBoxLayout()
@@ -236,8 +245,19 @@ class MonitorPage(QScrollArea):
 
     def apply(self, snapshot: Snapshot) -> None:
         self._apply_sensors(snapshot)
+        self._apply_absent(snapshot)
         self._apply_hints(snapshot)
         self._registrar(snapshot)
+
+    def _apply_absent(self, snapshot: Snapshot) -> None:
+        """Nombra al pie lo que no tiene rama porque el equipo no lo publica."""
+        faltan = [_("sensors.absent.gputemp").format(nombre=gpu.display_name)
+                  for gpu in snapshot.gpus
+                  if gpu.no_temperature_sensor and gpu.temp_c is None]
+        texto = " ".join(faltan)
+        if self.absent.text() != texto:
+            self.absent.setText(texto)
+        self.absent.setVisible(bool(texto))
 
     def _registrar(self, snapshot: Snapshot) -> None:
         """La cabecera se escribe con el primer muestreo que llega después de
