@@ -1,0 +1,229 @@
+{
+ "amdgpu": {
+  "/dev/dri/renderD128": {
+   "arrays_per_engine": 2,
+   "compute_units": 64,
+   "device_id": 30032,
+   "family": 152,
+   "is_apu": false,
+   "max_engine_hz": 2520000000,
+   "max_memory_hz": 1258000000,
+   "render_backends": 16,
+   "shader_engines": 4,
+   "vram_bits": 256,
+   "vram_type": "GDDR6"
+  }
+ },
+ "cpuid": {
+  "*:0:0": [
+   16,
+   1752462657,
+   1145913699,
+   1769238117
+  ],
+  "*:2147483648:0": [
+   2147483683,
+   1752462657,
+   1145913699,
+   1769238117
+  ],
+  "0:1:0": [
+   10620690,
+   1050624,
+   2130194955,
+   395049983
+  ],
+  "0:2147483649:0": [
+   10620690,
+   536870912,
+   1975662591,
+   802421759
+  ],
+  "0:2147483650:0": [
+   541347137,
+   1702525266,
+   540483694,
+   808466485
+  ],
+  "0:2147483651:0": [
+   541340504,
+   1866673464,
+   1344300402,
+   1701015410
+  ],
+  "0:2147483652:0": [
+   1919906675,
+   538976288,
+   538976288,
+   2105376
+  ],
+  "0:7:0": [
+   0,
+   563910569,
+   4195996,
+   16
+  ],
+  "0:7:1": [
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ "gpuapi": {
+  "consultar": {
+   "opencl": [
+    {
+     "compute_units": 64,
+     "driver_version": "26.2.6-arch3.1",
+     "global_memory_bytes": 17179869184,
+     "max_clock_mhz": 2520,
+     "name": "AMD Radeon RX 9070 XT (radeonsi, gfx1201, ACO, DRM 3.64, 7.3.4-1-cachyos)",
+     "platform": "rusticl",
+     "platform_version": "OpenCL 3.1",
+     "vendor": "AMD",
+     "version": "OpenCL 3.1"
+    }
+   ],
+   "opengl": {
+    "egl_vendor": "Mesa Project",
+    "egl_version": "1.5",
+    "glsl": "4.60",
+    "renderer": "AMD Radeon RX 9070 XT (radeonsi, gfx1201, ACO, DRM 3.64, 7.3.4-1-cachyos)",
+    "vendor": "AMD",
+    "version": "4.6 (Compatibility Profile) Mesa 26.2.6-arch3.1"
+   },
+   "vaapi": [
+    {
+     "codecs": [
+      {
+       "bits": 10,
+       "decode": true,
+       "encode": true,
+       "name": "AV1",
+       "profiles": [
+        "Profile 0"
+       ]
+      },
+      {
+       "bits": 10,
+       "decode": true,
+       "encode": true,
+       "name": "HEVC",
+       "profiles": [
+        "Main",
+        "Main 10"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": true,
+       "name": "H.264",
+       "profiles": [
+        "Constrained Baseline",
+        "Main",
+        "High"
+       ]
+      },
+      {
+       "bits": 10,
+       "decode": true,
+       "encode": false,
+       "name": "VP9",
+       "profiles": [
+        "Profile 0",
+        "Profile 2"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": false,
+       "name": "JPEG",
+       "profiles": [
+        "Baseline"
+       ]
+      }
+     ],
+     "driver": "Mesa Gallium driver 26.2.6-arch3.1 for AMD Radeon RX 9070 XT (radeonsi, gfx1201, ACO, DRM 3.64, 7.3.4-1-cachyos)",
+     "node": "renderD128",
+     "version": "1.24"
+    }
+   ],
+   "vulkan": [
+    {
+     "api_version": "1.4.354",
+     "device_id": 30032,
+     "device_memory_bytes": 17095983104,
+     "driver_version": 109060102,
+     "instance_version": "1.4.363",
+     "kind": "dedicada",
+     "name": "AMD Radeon RX 9070 XT (RADV GFX1201)",
+     "vendor_id": 4098
+    }
+   ]
+  }
+ },
+ "ioctl_red": {
+  "br-0e27aa78e95b:0x8915": "192.0.2.11",
+  "br-0e27aa78e95b:0x891b": "255.255.0.0",
+  "docker0:0x8915": "192.0.2.11",
+  "docker0:0x891b": "255.255.0.0",
+  "enp5s0:0x8915": null,
+  "enp5s0:0x891b": null,
+  "enp6s0:0x8915": "192.0.2.11",
+  "enp6s0:0x891b": "255.255.255.0",
+  "lo:0x8915": "127.0.0.1",
+  "lo:0x891b": "255.0.0.0",
+  "tailscale0:0x8915": "192.0.2.11",
+  "tailscale0:0x891b": "255.255.255.255",
+  "veth1bc4303:0x8915": null,
+  "veth1bc4303:0x891b": null,
+  "virbr0:0x8915": "192.0.2.11",
+  "virbr0:0x891b": "255.255.255.0"
+ },
+ "modinfo": {
+  "drivetemp": true
+ },
+ "plataforma": {
+  "entorno": {
+   "SHELL": "/usr/bin/zsh",
+   "XDG_CURRENT_DESKTOP": "KDE",
+   "XDG_SESSION_TYPE": "wayland"
+  },
+  "machine": "x86_64",
+  "uname": {
+   "machine": "x86_64",
+   "node": "equipo",
+   "processor": "",
+   "release": "7.3.4-1-cachyos",
+   "system": "Linux",
+   "version": "#1 SMP PREEMPT_DYNAMIC Fri, 13 Nov 2026 19:45:18 +0000"
+  }
+ },
+ "realpath": {
+  "/dev/nvme0n1p1": "/dev/nvme0n1p1",
+  "/dev/nvme0n1p2": "/dev/nvme0n1p2",
+  "/dev/nvme1n1p1": "/dev/nvme1n1p1",
+  "/dev/sdb1": "/dev/sdb1"
+ },
+ "statvfs": {
+  "/": [
+   435006140416,
+   560800980992
+  ],
+  "/boot": [
+   431886336,
+   3955159040
+  ],
+  "/media/unidad2": [
+   1046175965184,
+   921670033408
+  ],
+  "/media/unidad3": [
+   367397216256,
+   3569421590528
+  ]
+ }
+}

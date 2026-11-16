@@ -12,9 +12,10 @@ monta el Collector contra todos (`tests/test_equipos.py`).
 |---|---|---|---|
 | `i5-10400` | Intel Core i5-10400 (Comet Lake-S) | UHD Graphics 630 | Fedora 44; volcado con el turbo apagado por el gestor de energía |
 | `i5-10400-turbo` | el mismo | el mismo | con carga, a los 5 s: `auto-cpufreq` ya había encendido el turbo (techo 4,3 GHz, los 12 hilos a 4,0) |
+| `5800x3d` | AMD Ryzen 7 5800X3D (Zen 3, AM4) | Radeon RX 9070 XT | CachyOS, kernel 7.3; placa X570, dos monitores, cinco discos (dos montados fuera del sistema); en reposo. De las interfaces de Docker queda una de cada |
 
-Falta el del Ryzen 7 5800X3D. Hasta que esté, lo que se arregle en lo que lee
-el procesador o la gráfica queda comprobado solo en Intel, y se dice.
+Todos son sin permisos. Lo que se arregle en lo que lee el procesador o la
+gráfica se comprueba contra un volcado de Intel y contra el de AMD.
 
 ## Por plataforma
 
