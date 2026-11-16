@@ -37,12 +37,34 @@ class TestElDialogo(unittest.TestCase):
         self.assertIn("polkit", textos[3])
         self.assertIn("no la ve", textos[3])
 
-    def test_no_promete_un_boton_que_no_existe(self):
-        # La propuesta decía «se quita desde Ajustes», y en Ajustes no hay con
-        # qué. Se dice la orden que de verdad lo quita.
+    def test_la_orden_de_quitarlo_sirve_tambien_desde_el_appimage(self):
+        # Decía «sudo python3 -m silux.privileged.instalar --uninstall», que
+        # solo existe donde silux está instalado como paquete. Quien lo usa
+        # desde el AppImage no tiene ese módulo, y es quien instaló el
+        # ayudante desde la ventana. Borrar los dos archivos vale siempre.
+        from silux.privileged import instalar
+
         de_siempre = self._dialogo().paragraphs[2].text()
         self.assertNotIn("Ajustes", de_siempre)
-        self.assertIn("silux.privileged.instalar --uninstall", de_siempre)
+        self.assertNotIn("python3 -m", de_siempre)
+        self.assertNotIn("{orden}", de_siempre)
+        self.assertIn(f"sudo rm {instalar.DESTINO} {instalar.POLITICA}", de_siempre)
+
+    def test_la_orden_borra_justo_lo_que_borra_el_desinstalador(self):
+        import inspect
+
+        from silux.privileged import instalar
+
+        orden = instalar.orden_de_desinstalar().split()
+        self.assertEqual(orden[:2], ["sudo", "rm"])
+        self.assertEqual(set(orden[2:]), {str(instalar.DESTINO), str(instalar.POLITICA)})
+        # Y el desinstalador no borra ningún archivo más que esos dos.
+        fuente = inspect.getsource(instalar.desinstalar)
+        self.assertIn("for ruta in (POLITICA, DESTINO)", fuente)
+
+    def test_los_otros_parrafos_no_llevan_la_orden(self):
+        textos = [p.text() for p in self._dialogo().paragraphs]
+        self.assertEqual(sum("sudo rm" in t for t in textos), 1)
 
     def test_no_manda_a_tocar_cerrojos_del_sistema(self):
         todo = " ".join(p.text() for p in self._dialogo().paragraphs)

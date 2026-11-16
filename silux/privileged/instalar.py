@@ -138,6 +138,17 @@ def instalar(cuerpo: str) -> None:
     print("Listo. La contraseña se pedirá una vez por sesión, no en cada arranque.")
 
 
+def orden_de_desinstalar() -> str:
+    """La orden que quita el ayudante, valga como valga instalado silux.
+
+    Son dos archivos y se borran. `python3 -m silux.privileged.instalar
+    --uninstall` hace lo mismo, pero solo existe donde silux está instalado
+    como paquete: quien lo usa desde el AppImage no tiene ese módulo en su
+    Python, y es justo quien instaló el ayudante desde la ventana.
+    """
+    return f"sudo rm {DESTINO} {POLITICA}"
+
+
 def desinstalar() -> None:
     for ruta in (POLITICA, DESTINO):
         if ruta.exists():

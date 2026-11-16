@@ -651,7 +651,7 @@
   "pcie.now": "Running at {actual}; the card and the slot can do {max}",
   "perm.button.read": "Read with administrator permissions",
   "perm.dialog.title": "Permanent permissions",
-  "perm.explain.always": "For good: the helper is installed in /usr/local/libexec/silux with its own polkit rule. The password is asked once per session instead of once per launch. It is removed with “sudo python3 -m silux.privileged.instalar --uninstall”.",
+  "perm.explain.always": "For good: the helper is installed in /usr/local/libexec/silux with its own polkit rule. The password is asked once per session instead of once per launch. To remove it, delete its two files: {orden}",
   "perm.explain.close": "Close",
   "perm.explain.grant": "Grant permissions this time",
   "perm.explain.once": "This time: the helper lives while silux is open. It goes away when you close the program, and next time you will have to grant them again.",

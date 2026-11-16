@@ -44,8 +44,12 @@ class PermissionsDialog(QDialog):
         layout.addWidget(titulo)
 
         self.paragraphs: list[QLabel] = []
+        from ..privileged.instalar import orden_de_desinstalar
+
         for clave in PARRAFOS:
-            parrafo = QLabel(_(clave))
+            # La orden de quitarlo sale de donde están las rutas, no del
+            # texto: si un día cambian, el diálogo no se queda diciendo otra.
+            parrafo = QLabel(_(clave).format(orden=orden_de_desinstalar()))
             parrafo.setWordWrap(True)
             parrafo.setTextFormat(Qt.TextFormat.PlainText)
             parrafo.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
