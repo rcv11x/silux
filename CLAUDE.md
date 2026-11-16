@@ -85,7 +85,8 @@ No son preferencias de estilo: cada una viene de un problema concreto.
    ahí se fija la afinidad para CPUID y ahí se abre el diálogo de polkit.
 5. **Cuando falta un dato se explica.** Un `Note` con su motivo en vez de
    esconder la sección; cada página enseña solo sus notas. Y lo que no existe
-   en este hardware no se pinta con guion: se esconde y se nombra al pie.
+   en este hardware no se pinta con guion: se esconde y se nombra al pie. Lo
+   que falta por permisos lleva candado, que es otro estado: tiene arreglo.
 6. **Los widgets que se refrescan a menudo reutilizan.** `ChipRow` y `Table`
    reescriben el texto de lo que ya existe; hay tests que lo vigilan.
 7. **Presupuesto de memoria: 300 MB.** Ronda los 130 con todo abierto. La
@@ -133,7 +134,9 @@ silux/
 │                  scores.json (la escala) y lang/ (es.json, en.json)
 └─ ui/             tema, hilo de muestreo, una página por sección;
                    widgets.py son las primitivas que usan varias páginas,
-                   y el widget de una sola página vive en su módulo
+                   y el widget de una sola página vive en su módulo;
+                   background.py espera a pkexec fuera del hilo de la
+                   interfaz, y dialogs.py son los diálogos de la ventana
 ```
 
 Cada módulo, comentado: [docs/arquitectura.md](docs/arquitectura.md#el-reparto-comentado).
@@ -159,7 +162,7 @@ Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); los comentarios, en el español del autor. Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-964 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+999 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
@@ -238,7 +241,6 @@ código (F-…), que es por el que se buscan allí.
 | `providers/hwmon.py` | media-alta | la clave del sensor no incluye el nodo: dos discos iguales se pisan |
 | `ui/widgets.py` | media | `StatTile` nace con la raya gruesa, y el arreglo tampoco funciona al perder el dato (F-M2) |
 | `ui/sampler.py` | media | cerrar durante un muestreo largo aborta el proceso (F-M3) |
-| `ui/app.py`, `monitor.py` | media | `pkexec` en el hilo de la interfaz (F-M4) |
 | `ui/pages/performance.py` | media | cambiar el tema mata la prueba en curso (F-M5); «Borrar historial» falla (F-M6); la carga máxima no se ve (F-M7) |
 | varios | media | texto en español fijo con la interfaz en inglés (F-M8) |
 | `ui/widgets.py` | media | las etiquetas seleccionables cuestan 22 MB (F-M9) |
@@ -265,6 +267,7 @@ código (F-…), que es por el que se buscan allí.
 | `ui/pages/graphics.py` | baja | tasa de datos de la VRAM compuesta a mano |
 | `ui/pages/graphics.py` | media | la tabla de monitores a 900 px corta la resolución si el nombre es largo |
 | `providers/cppc.py` | media, sin comprobar | el techo del silicio con `acpi-cpufreq`: falta el volcado con `amd_pstate=disable` |
+| `ui/pages/settings.py` | propuesta | no hay botón para quitar el ayudante instalado; toca privilegios |
 | `providers/network.py`, `derived.py` | baja | tipo de interfaz y «Core #N» sin traducir |
 | `providers/storage.py` | baja | modelo SATA cortado a 16 caracteres |
 | `collector.py` | baja | `_clone` sin `batteries`, `cpu_extra` ni `memory_traffic` |
