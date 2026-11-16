@@ -240,6 +240,9 @@ Dos cosas más que salieron al medir:
 | al empezar (25 sin terminar) | 148-152 s | 62-64 s, con abortos |
 | 25 terminado | 150 s | 62-64 s |
 | 26 | 121 s | 27 s |
+| 27 | — | 27 s |
+| 28 y 29 | — | — |
+| 30 (dos pasadas) | 96 s | 19-21 s + 13 s |
 
 ## Cómo bajar de los dos minutos y medio sin perder cobertura
 
@@ -264,9 +267,12 @@ En este orden, cada uno un commit con su medida antes y después:
 29. **[cambia]** `test(membench): una medida en otro proceso por clase`
     (estimado: −6 s).
 30. **[cambia]** `build: pytest y pytest-xdist como dependencias de
-    desarrollo` — con el `uv` de la propuesta de entorno, y `pytest -n 4`
-    como orden recomendada; `unittest discover` sigue funcionando y es la del
-    CI hasta que se decida. Medido: la suite en 24-36 s según los procesos.
+    desarrollo` — con `uv`, y `pytest -n auto` como orden recomendada y como
+    la del CI, en el mismo commit (decidido por el autor el 16 de noviembre;
+    aquí ponía `-n 4` y que el CI siguiera con `unittest`). `unittest
+    discover` sigue funcionando: es la de `probar_en_minimo.py` y la de quien
+    no quiera instalar nada. Los tres tests que comparan dos medidas de
+    rendimiento van en una segunda pasada, solos.
 
 Con 25-29 la suite en serie quedaría en unos 85-95 s (los 127 medidos sin los
 dos tests lentos, menos lo estimado de 27-29); en paralelo, entre 24 y 36 s,

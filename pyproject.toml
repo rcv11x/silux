@@ -35,6 +35,16 @@ gui = [
     "PySide6>=6.6; python_version >= '3.12'",
 ]
 
+# Lo que hace falta para desarrollar y no para usar el programa. Es un grupo
+# y no un extra: un extra se publica con el paquete, y nadie que instale silux
+# necesita pytest. `uv sync --extra gui` lo instala junto a lo demás.
+[dependency-groups]
+dev = [
+    "pytest>=9.2,<10",
+    # Los tests en paralelo: la suite baja de dos minutos a medio.
+    "pytest-xdist>=3.8,<4",
+]
+
 [project.scripts]
 silux = "silux.cli:main"
 
@@ -57,3 +67,13 @@ exclude = ["tests*", "tools*", "docs*", "dist*", "build*"]
 # Carpeta a carpeta: la regla de `silux.db` no alcanza a la de dentro.
 "silux.db.lang" = ["*.json"]
 "silux.ui.assets" = ["*.svg"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Los volcados de equipo son árboles de /sys con enlaces que dan la vuelta:
+# si pytest entra a buscar tests ahí, no termina de recogerlos. Dieciséis
+# procesos estuvieron diez minutos al 100 % sin ejecutar ninguno.
+norecursedirs = ["fixtures"]
+markers = [
+    "a_solas: compara dos medidas de rendimiento y necesita el equipo para él (tests/conftest.py)",
+]

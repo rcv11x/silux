@@ -179,16 +179,25 @@ lugar de dejar el campo vacío o esconder la sección.
 ## Tests
 
 ```bash
-QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
+uv sync --extra gui                      # el entorno, con pytest y PySide6
+export QT_QPA_PLATFORM=offscreen
+uv run pytest -n auto -m "not a_solas"   # en paralelo: unos veinte segundos
+uv run pytest -m a_solas                 # los tres que miden, con el equipo para ellos
+python3 -m unittest discover -s tests -t .      # lo mismo sin instalar nada: dos minutos
 python3 tools/comprobar_privacidad.py    # antes de publicar nada
 python3 tools/probar_en_minimo.py --container   # en el Python 3.10 del suelo
 ```
+
+La suite es de `unittest` y pytest la ejecuta tal cual. Las dos primeras son
+las del CI. Van en dos pasadas porque tres tests comparan dos medidas de
+rendimiento y, repartidos con los demás, miden cuánto les dejan los otros
+procesos; cuáles son lo dice `tests/conftest.py`.
 
 La última hace falta porque pasar en el Python de uno no dice nada del mínimo
 que declara el proyecto: corre la suite dentro de una Ubuntu 22.04, que es la
 misma en la que corre el CI y en la que se construye el AppImage.
 
-Son unos 1500 y tardan cerca de dos minutos y medio. Ninguno exige una pieza concreta: los
+Son unos 1600 y tardan medio minuto en paralelo y minuto y medio en serie. Ninguno exige una pieza concreta: los
 proveedores se prueban contra árboles de sysfs sintéticos, el generador contra
 fragmentos de C, y el SPD y el EDID contra volcados binarios de piezas reales
 guardados en `tests/fixtures`. Algunos sí leen el hardware de quien los
