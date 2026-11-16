@@ -123,6 +123,14 @@ class RaplPower(Provider):
 
         if "package_w" not in totals:
             return                          # primera pasada: solo referencia
+        if totals["package_w"] == 0:
+            # Un paquete encendido siempre gasta algo: si su contador no ha
+            # avanzado en todo un muestreo, está parado, y 0 W sería un dato
+            # que parece bueno y no lo es. Los subdominios sí pueden quedarse
+            # quietos (la gráfica integrada apagada), el paquete no.
+            draft.note("cpu.power", Need.HARDWARE,
+                       _("prov.rapl.frozen"), _("prov.rapl.frozen.hint"))
+            return
 
         draft.capabilities.add("rapl")
         if self._limits is None:

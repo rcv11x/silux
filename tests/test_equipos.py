@@ -113,6 +113,20 @@ class TestEquiposVolcados(unittest.TestCase):
                 with self.subTest(equipo=nombre, cpu=hilo.index):
                     self.assertEqual(hilo.freq_hz, int(media.read_text()) * 1000)
 
+    def test_un_contador_de_energia_parado_no_da_cero_vatios(self):
+        # El consumo sale de restar dos lecturas del contador de RAPL. En un
+        # volcado no avanza, y un paquete encendido siempre gasta: 0 W ahí es
+        # un dato que parece bueno y no lo es. Que falte, y que se diga.
+        for nombre, (carpeta, f, _tocados) in self.equipos.items():
+            with self.subTest(equipo=nombre):
+                self.assertNotEqual(f.cpu.power.package_w, 0.0)
+                vatios = [s.key for s in f.sensors
+                          if s.kind == SensorKind.POWER and s.key.startswith("rapl/")]
+                self.assertEqual(vatios, [])
+                rapl = carpeta / "sys" / "class" / "powercap"
+                if f.cpu.power.package_w is None and rapl.is_dir():
+                    self.assertIn("cpu.power", [n.path for n in f.notes])
+
     def test_el_reloj_de_cada_hilo_es_el_mismo_en_sensores(self):
         # La página CPU pinta `cpu.logical` y la de Sensores el árbol: con la
         # misma foto tienen que decir lo mismo de cada hilo.

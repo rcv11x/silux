@@ -277,7 +277,8 @@
  "sin_grabar": [
   "NVML (NVIDIA propietaria)",
   "todo lo que lee el ayudante privilegiado",
-  "el uso de cada hilo: sale de restar dos lecturas de /proc/stat, y el volcado guarda una"
+  "el uso de cada hilo: sale de restar dos lecturas de /proc/stat, y el volcado guarda una",
+  "el consumo (RAPL): sale de restar dos lecturas del contador de energía, y el volcado guarda una"
  ],
  "cpu": "Intel(R) Core(TM) i5-10400 CPU @ 2.90GHz",
  "kernel": "Linux 7.3.3-200.fc44.x86_64",
@@ -292,7 +293,6 @@
   "gpu-apis",
   "hwmon",
   "network",
-  "rapl",
   "spd",
   "storage",
   "sysfs-cpu",

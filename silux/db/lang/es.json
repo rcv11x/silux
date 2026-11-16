@@ -740,6 +740,8 @@
   "prov.procfs.nostat": "No hay /proc/stat en este sistema.",
   "prov.rapl.denied": "El contador de energía RAPL existe pero no se puede leer.",
   "prov.rapl.denied.hint": "Muchas distribuciones lo restringen a root desde CVE-2020-8694.",
+  "prov.rapl.frozen": "El contador de energía del procesador no avanza",
+  "prov.rapl.frozen.hint": "El consumo sale de restar dos lecturas de ese contador, y entre las dos últimas no ha cambiado. Con el procesador encendido eso no puede ser cero, así que no se enseña un 0 W que no sería cierto.",
   "prov.rapl.none": "Esta CPU no expone contadores de energía RAPL.",
   "prov.rapl.none.hint": "Es normal en AMD antiguos, en ARM y en máquinas virtuales.",
   "prov.spd.thesemodules": "estos módulos",

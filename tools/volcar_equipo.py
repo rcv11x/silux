@@ -560,6 +560,8 @@ def volcar(nombre: str, destino_base: pathlib.Path = DESTINO) -> pathlib.Path:
                 "todo lo que lee el ayudante privilegiado",
                 "el uso de cada hilo: sale de restar dos lecturas de /proc/stat, "
                 "y el volcado guarda una",
+                "el consumo (RAPL): sale de restar dos lecturas del contador de "
+                "energía, y el volcado guarda una",
             ],
         }, ensure_ascii=False, indent=1) + "\n")
 

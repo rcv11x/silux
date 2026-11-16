@@ -740,6 +740,8 @@
   "prov.procfs.nostat": "There is no /proc/stat on this system.",
   "prov.rapl.denied": "The RAPL energy counter exists but cannot be read.",
   "prov.rapl.denied.hint": "Many distributions have restricted it to root since CVE-2020-8694.",
+  "prov.rapl.frozen": "The processor energy counter is not moving",
+  "prov.rapl.frozen.hint": "Power is worked out from two readings of that counter, and it did not change between the last two. With the processor running that cannot be zero, so a 0 W reading that would not be true is not shown.",
   "prov.rapl.none": "This CPU exposes no RAPL energy counters.",
   "prov.rapl.none.hint": "Normal on older AMD, on ARM and in virtual machines.",
   "prov.spd.thesemodules": "these modules",

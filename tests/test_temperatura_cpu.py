@@ -61,3 +61,27 @@ class TestLaTemperaturaDeLaCpu(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipIf(QApplication is None, "sin PySide6")
+class TestElConsumoQueFaltaSeExplica(unittest.TestCase):
+    """En un volcado el contador de RAPL no avanza: la página CPU lo dice."""
+
+    def test_la_pagina_cpu_ensena_por_que(self):
+        from PySide6.QtWidgets import QLabel
+
+        from silux.i18n import _
+        from silux.settings import Preferences
+        from silux.ui.app import MainWindow
+
+        app = QApplication.instance() or QApplication([])
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.dict(os.environ, {"XDG_CONFIG_HOME": tmp}):
+            f = foto(EQUIPOS / "i5-10400")[0]
+            ventana = MainWindow(Preferences().normalized())
+            self.addCleanup(ventana.close)
+            ventana._on_sample(f)
+            app.processEvents()
+            textos = [l.text() for l in ventana.cpu_page.findChildren(QLabel)]
+            self.assertIn(_("prov.rapl.frozen"), textos)
+            self.assertEqual(ventana.cpu_page.live.tile_power.value.text(), "—")
