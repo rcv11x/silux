@@ -186,6 +186,40 @@
  "modinfo": {
   "drivetemp": true
  },
+ "pciids": {
+  "1002:7550|1002:7550:148c:2435": {
+   "1002:7550": [
+    "Advanced Micro Devices, Inc. [AMD/ATI]",
+    "Navi 48 [Radeon RX 9070/9070 XT/9070 GRE]"
+   ],
+   "1002:7550:148c:2435": [
+    "Tul Corporation / PowerColor",
+    "Radeon RX 9070 XT 16GB"
+   ]
+  },
+  "1022:1480|1022:790e": {
+   "1022:1480": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "Starship/Matisse Root Complex"
+   ],
+   "1022:790e": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "FCH LPC Bridge"
+   ]
+  },
+  "10ec:8125": {
+   "10ec:8125": [
+    "Realtek Semiconductor Co., Ltd.",
+    "RTL8125 2.5GbE Controller"
+   ]
+  },
+  "8086:1539": {
+   "8086:1539": [
+    "Intel Corporation",
+    "I211 Gigabit Network Connection"
+   ]
+  }
+ },
  "plataforma": {
   "entorno": {
    "SHELL": "/usr/bin/zsh",
@@ -210,16 +244,16 @@
  },
  "statvfs": {
   "/": [
-   434807910400,
-   560999211008
+   438314319872,
+   557492801536
   ],
   "/boot": [
    431886336,
    3955159040
   ],
   "/media/unidad2": [
-   1046163136512,
-   921682862080
+   1046174670848,
+   921671327744
   ],
   "/media/unidad3": [
    367399264256,

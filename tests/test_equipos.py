@@ -67,6 +67,36 @@ class TestEquiposVolcados(unittest.TestCase):
                 self.assertEqual([g.name for g in f.gpus], manifiesto["gpus"])
                 self.assertEqual(sorted(f.capabilities), manifiesto["fuentes"])
 
+    def test_los_nombres_no_salen_del_pci_ids_de_quien_ejecuta(self):
+        # `pci.ids` es de la máquina que corre la suite y cambia con la
+        # distribución. En el CI, con el de una Ubuntu 22.04, la Radeon del
+        # 5800X3D dejaba de llamarse «Radeon RX 9070 XT 16GB». Un volcado que
+        # los grabó tiene que dar los mismos nombres sin ese archivo.
+        from unittest import mock
+
+        from silux import pciids
+        from silux.collector import Collector
+
+        grabaron = 0
+        for nombre, (carpeta, _f, _tocados) in self.equipos.items():
+            if "pciids" not in json.loads((carpeta / "grabado.json").read_text()):
+                continue        # volcado antes de que se grabaran
+            grabaron += 1
+            manifiesto = json.loads((carpeta / "manifiesto.json").read_text())
+            with self.subTest(equipo=nombre), self.volcar.montado(carpeta), \
+                    mock.patch.object(pciids, "database_path", lambda: None):
+                pciids._vendor_name.cache_clear()
+                self.addCleanup(pciids._vendor_name.cache_clear)
+                recolector = Collector()
+                try:
+                    recolector.snapshot()
+                    f = recolector.snapshot()
+                finally:
+                    recolector.close()
+                self.assertEqual([g.name for g in f.gpus], manifiesto["gpus"])
+                self.assertTrue(all(g.subsystem_name for g in f.gpus if not g.integrated))
+        self.assertGreater(grabaron, 0, "ningún volcado lleva los nombres grabados")
+
     def test_la_cpu_cuadra_consigo_misma(self):
         for nombre, (_carpeta, f, _tocados) in self.equipos.items():
             with self.subTest(equipo=nombre):

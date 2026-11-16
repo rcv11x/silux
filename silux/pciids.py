@@ -19,6 +19,8 @@ import functools
 import pathlib
 from typing import Iterable, Optional
 
+from . import sysroot
+
 CANDIDATE_PATHS = (
     "/usr/share/hwdata/pci.ids",
     "/usr/share/misc/pci.ids",
@@ -35,7 +37,34 @@ def database_path() -> Optional[pathlib.Path]:
     return None
 
 
+def _clave(numeros) -> str:
+    return ":".join(f"{n:04x}" for n in numeros)
+
+
 def lookup(
+    pairs: Iterable[tuple[int, int]],
+    subsystems: Iterable[tuple[int, int, int, int]] = (),
+) -> dict[tuple[int, int], tuple[str, str]]:
+    """Lo mismo que `_lookup`, pero contestando lo grabado en un equipo volcado.
+
+    `pci.ids` es de la máquina que ejecuta, no del equipo volcado, y cambia
+    con la distribución: la Radeon del 5800X3D se llama «Radeon RX 9070 XT
+    16GB» con el de CachyOS y «AMD Radeon RX 9070 XT» con el de una Ubuntu
+    22.04, que no trae esa tarjeta. El volcado guarda lo que contestó aquí.
+    """
+    pares = sorted({(int(v), int(d)) for v, d in pairs})
+    subs = sorted({tuple(int(n) for n in key) for key in subsystems})
+    if sysroot.activo() and not sysroot.grabo("pciids"):
+        return _lookup(pares, subs)             # un volcado de antes de grabarlo
+    pregunta = "|".join(_clave(k) for k in (*pares, *subs))
+    plano = sysroot.a_traves(
+        "pciids", pregunta,
+        lambda: {_clave(k): list(v) for k, v in _lookup(pares, subs).items()})
+    return {tuple(int(n, 16) for n in clave.split(":")): tuple(valor)
+            for clave, valor in (plano or {}).items()}
+
+
+def _lookup(
     pairs: Iterable[tuple[int, int]],
     subsystems: Iterable[tuple[int, int, int, int]] = (),
 ) -> dict[tuple[int, int], tuple[str, str]]:
@@ -123,8 +152,16 @@ def lookup(
     return found
 
 
-@functools.lru_cache(maxsize=64)
 def vendor_name(vendor: int) -> Optional[str]:
+    """El nombre de un fabricante, o el que se grabó en un equipo volcado."""
+    if sysroot.activo() and not sysroot.grabo("pciids"):
+        return _vendor_name(int(vendor))
+    return sysroot.a_traves("pciids_fabricante", f"{int(vendor):04x}",
+                            _vendor_name, int(vendor))
+
+
+@functools.lru_cache(maxsize=64)
+def _vendor_name(vendor: int) -> Optional[str]:
     """Solo el nombre de un fabricante, sin pedir ningún modelo.
 
     Hace falta para el «Ensamblada por» de una gráfica: pci.ids trae la línea

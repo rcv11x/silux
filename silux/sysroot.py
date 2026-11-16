@@ -94,6 +94,15 @@ def _grabado() -> dict:
     return _cache[base]
 
 
+def grabo(espacio: str) -> bool:
+    """Si el volcado activo llegó a grabar algo de ese espacio.
+
+    Para lo que se empezó a grabar después de hechos los primeros volcados:
+    en uno que no lo tiene, quien pregunta sigue como antes de grabarse.
+    """
+    return espacio in _grabado()
+
+
 def a_traves(espacio: str, clave: Any, funcion: Callable[..., T], *args,
              tipo: Optional[type] = None, **kwargs) -> Optional[T]:
     """Llama a `funcion`, o devuelve lo que contestó cuando se volcó el equipo.
