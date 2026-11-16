@@ -208,6 +208,21 @@ class _Ddr4:
     XMP_REVISION = 387
 
 
+def _ciclos_jedec(picosegundos: float, tck_ps: float) -> Optional[int]:
+    """Un tiempo pasado a ciclos de reloj, con el redondeo de JEDEC.
+
+    Hacia arriba, porque la memoria no puede responder antes de tiempo: 22,2
+    ciclos son un CL23, y al más cercano saldría un CL22 que no aguanta. Pero
+    con un margen del 2,6 %, que es el del algoritmo de JEDEC: el SPD guarda
+    el ciclo truncado a picosegundos —833 en DDR4-2400, que son 833,33—, y un
+    tiempo de justo 17 ciclos sale 17,006, que con el techo a secas subiría a
+    18. En enteros, para que no dependa de cómo caiga un flotante.
+    """
+    if not (tck_ps and picosegundos):
+        return None
+    return (int(picosegundos) * 1000 // int(tck_ps) + 974) // 1000 or None
+
+
 def _ddr4_timing(spd: bytes, medium: int, fine: int, tck_ps: float) -> Optional[int]:
     """Convierte un tiempo del SPD a ciclos de reloj.
 
@@ -218,7 +233,7 @@ def _ddr4_timing(spd: bytes, medium: int, fine: int, tck_ps: float) -> Optional[
     if not tck_ps:
         return None
     picoseconds = spd[medium] * 125 + _signed(spd[fine])
-    return round(picoseconds / tck_ps) or None
+    return _ciclos_jedec(picoseconds, tck_ps)
 
 
 def _decode_ddr4(spd: bytes, address: str, slot: int) -> SpdInfo:
@@ -237,8 +252,8 @@ def _decode_ddr4(spd: bytes, address: str, slot: int) -> SpdInfo:
         cl=_ddr4_timing(spd, d.TAA, d.FINE_TAA, tck_ps),
         trcd=_ddr4_timing(spd, d.TRCD, d.FINE_TRCD, tck_ps),
         trp=_ddr4_timing(spd, d.TRP, d.FINE_TRP, tck_ps),
-        tras=round(tras / tck_ps) if tck_ps else None,
-        trc=round(trc / tck_ps) if tck_ps else None,
+        tras=_ciclos_jedec(tras, tck_ps),
+        trc=_ciclos_jedec(trc, tck_ps),
         voltage_v=1.2,
     )
 
@@ -465,9 +480,9 @@ def _xmp_profiles(spd: bytes) -> Iterator[Timings]:
         profile = Timings(
             name=f"XMP {number}",
             speed_mts=speed,
-            cl=round(spd[offset + 9] * 125 / tck) or None,
-            trcd=round(spd[offset + 10] * 125 / tck) or None,
-            trp=round(spd[offset + 11] * 125 / tck) or None,
+            cl=_ciclos_jedec(spd[offset + 9] * 125, tck),
+            trcd=_ciclos_jedec(spd[offset + 10] * 125, tck),
+            trp=_ciclos_jedec(spd[offset + 11] * 125, tck),
             voltage_v=round(((spd[offset] >> 1) & 0x7F) * 0.01 + 
                             (0.005 if spd[offset] & 1 else 0), 3) or None,
         )

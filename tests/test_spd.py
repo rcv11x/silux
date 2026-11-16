@@ -43,8 +43,12 @@ class TestModuloReal(unittest.TestCase):
         self.assertEqual(self.info.jedec.cl, 22)
         self.assertEqual(self.info.jedec.trcd, 22)
         self.assertEqual(self.info.jedec.trp, 22)
-        self.assertEqual(self.info.jedec.tras, 51)
-        self.assertEqual(self.info.jedec.summary, "22-22-22-51")
+        # 32 000 ps entre un ciclo de 625 son 51,2: con 51 el módulo se
+        # quedaría en 31,875 ns, por debajo de lo que declara. Es 52, el tRAS
+        # de JEDEC para DDR4-3200AA; el 51 que había aquí era el redondeo al
+        # más cercano.
+        self.assertEqual(self.info.jedec.tras, 52)
+        self.assertEqual(self.info.jedec.summary, "22-22-22-52")
 
     def test_organizacion(self):
         self.assertEqual(self.info.ranks, 1)
@@ -296,6 +300,41 @@ class TestLaFormulaNoSeCopiaEnVariosSitios(unittest.TestCase):
         self.assertEqual(sospechosas, [],
                          "hay quien vuelve a redondear a la centena en vez de "
                          "pasar por grado_jedec")
+
+
+
+class TestLasLatenciasDeDdr4SeRedondeanComoJedec(unittest.TestCase):
+    """Un tiempo que no cae en un número entero de ciclos se redondea hacia
+    arriba: la memoria no puede responder antes de tiempo.
+
+    DDR4 y los perfiles XMP redondeaban al más cercano, y solo la ruta de
+    DDR5 subía. Un módulo que necesita 13 875 ps con un ciclo de 625 son 22,2
+    ciclos, o sea CL23, y salía CL22 (F-A2). Pero el techo a secas tampoco
+    vale aquí: el SPD guarda el ciclo truncado a picosegundos —833 en
+    DDR4-2400, que son 833,33—, y un tiempo de exactamente 17 ciclos sale
+    17,006 y subiría a 18. Por eso JEDEC redondea hacia arriba con un margen
+    del 2,6 %, y es lo que se hace.
+    """
+
+    def test_lo_que_no_cae_en_un_ciclo_entero_sube(self):
+        self.assertEqual(spd._ciclos_jedec(13_875, 625), 23)
+
+    def test_lo_que_cae_en_un_ciclo_entero_se_queda(self):
+        self.assertEqual(spd._ciclos_jedec(13_750, 625), 22)
+
+    def test_el_ciclo_truncado_no_hace_subir_de_mas(self):
+        self.assertEqual(spd._ciclos_jedec(14_166, 833), 17)
+        self.assertEqual(spd._ciclos_jedec(13_320, 833), 16)
+
+    def test_sin_ciclo_no_hay_latencia(self):
+        self.assertIsNone(spd._ciclos_jedec(13_875, 0))
+
+    def test_la_lectura_de_ddr4_lo_usa(self):
+        """Por el camino de verdad: un SPD con tAA de 111 × 125 ps."""
+        datos = bytearray(512)
+        datos[spd._Ddr4.TAA] = 111
+        self.assertEqual(spd._ddr4_timing(bytes(datos), spd._Ddr4.TAA,
+                                          spd._Ddr4.FINE_TAA, 625), 23)
 
 
 if __name__ == "__main__":
