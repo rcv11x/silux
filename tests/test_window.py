@@ -393,6 +393,13 @@ class TestLaSalidaParaLosDatosBloqueados(unittest.TestCase):
         self.addCleanup(window.close)
         return window
 
+    @staticmethod
+    def _sin_permisos():
+        """El 5800X3D volcado, que es sin permisos: le faltan tres datos."""
+        from tests.test_equipos import EQUIPOS, foto
+
+        return foto(EQUIPOS / "5800x3d")[0]
+
     def test_sin_nada_bloqueado_no_hay_boton(self):
         window = self._window()
         window._on_sample(self._snapshot(False))
@@ -401,15 +408,55 @@ class TestLaSalidaParaLosDatosBloqueados(unittest.TestCase):
 
     def test_con_algo_bloqueado_sale_y_dice_cuantos(self):
         window = self._window()
-        window._on_sample(self._snapshot(True))
+        f = self._sin_permisos()
+        window._on_sample(f)
         self.app.processEvents()
         self.assertTrue(window._blocked.isVisible())
-        self.assertIn("1", window._blocked.text())
+        self.assertIn(str(len(f.permission_notes)), window._blocked.text())
+        self.assertEqual(len(f.permission_notes), 3)
+
+    def test_cuenta_lo_mismo_que_el_aviso_de_inicio(self):
+        # Dos números distintos para lo mismo, uno arriba y otro abajo, es lo
+        # que había: la barra contaba todas las notas de permisos y prometía
+        # también las que el ayudante no sabe leer.
+        window = self._window()
+        f = self._sin_permisos()
+        window._on_sample(f)
+        self.app.processEvents()
+        aviso = window.home_page.permission_notice
+        self.assertIn(str(len(aviso.lines)), window._blocked.text())
+        self.assertIn(str(len(aviso.lines)), aviso.title.text())
+
+    def test_una_nota_que_el_ayudante_no_resuelve_no_se_cuenta(self):
+        # La de `_snapshot`: de permisos, pero sin nombre y sin ayudante.
+        window = self._window()
+        window._on_sample(self._snapshot(True))
+        self.app.processEvents()
+        self.assertFalse(window._blocked.isVisible())
+
+    def test_la_barra_no_lleva_jerga(self):
+        window = self._window()
+        f = self._sin_permisos()
+        window._on_sample(f)
+        texto = window._status.full_text()
+        for fuente in f.capabilities:
+            self.assertNotIn(fuente, texto)
+        self.assertNotIn("sensores", texto)
+        self.assertIn("espacio", texto)
+
+    def test_el_texto_no_empieza_pegado_al_borde(self):
+        window = self._window()
+        self.assertGreater(window._status.contentsMargins().left(), 0)
+
+    def test_inicio_no_repite_el_aviso_en_una_insignia(self):
+        window = self._window()
+        window._on_sample(self._sin_permisos())
+        self.assertFalse([c for c in window.home_page._chips if "dato" in c])
 
     def test_el_renglon_se_puede_pulsar_y_pide_los_permisos(self):
         """Lo que lo distingue del texto de antes."""
         window = self._window()
-        window._on_sample(self._snapshot(True))
+        window._on_sample(self._sin_permisos())
         self.app.processEvents()
 
         with mock.patch.object(window, "_on_elevation_requested") as pedir:

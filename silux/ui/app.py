@@ -154,6 +154,9 @@ class MainWindow(QMainWindow):
         # estado exigía 533 px y era lo que impedía encoger la ventana.
         self._status = ElidingLabel(_("app.sampling"))
         self._status.setObjectName("Muted")
+        # Con aire a la izquierda: el texto empezaba pegado al borde de la
+        # ventana, sin el margen que lleva todo lo de encima.
+        self._status.setContentsMargins(8, 0, 0, 0)
         self.statusBar().addWidget(self._status, 1)
         # Los datos bloqueados se contaban aquí como texto, y decirlo no
         # servía de nada: quien lee «1 dato requiere permisos» es justo quien
@@ -668,14 +671,19 @@ class MainWindow(QMainWindow):
         # mirado, en un programa cuyo argumento es que los datos están
         # cuidados. Y ya no es texto suelto: el mismo renglón es el botón que
         # los pide, porque quien lee que falta algo es quien quiere arreglarlo.
-        bloqueados = sum(1 for n in snapshot.notes if n.need.value == "root")
+        #
+        # Se cuenta lo mismo que en el aviso de Inicio: lo que el ayudante
+        # sabe leer en este equipo. El enlace sigue aquí aunque el aviso se
+        # haya quitado para siempre; es lo que queda para darlos después.
+        bloqueados = len(snapshot.permission_notes)
         if bloqueados:
             plantilla = (_("status.blocked.action") if bloqueados == 1
                          else _("status.blocked.action.many"))
             self._blocked.setText(plantilla.format(n=bloqueados))
         self._blocked.setVisible(bool(bloqueados))
-        partes.append(_("status.sensors").format(n=len(snapshot.sensors)))
-        partes.append(", ".join(sorted(snapshot.capabilities)) or _("status.nosources"))
+        # Ni la cuenta de sensores ni la lista de fuentes (`cppc, cpuid,
+        # dmi…`): es jerga del programa, se cortaba en compacto, y quien la
+        # necesita la tiene en el informe.
         self._status.set_full_text(" · ".join(partes))
 
     def _on_elevation_requested(self) -> None:

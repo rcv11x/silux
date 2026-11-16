@@ -200,10 +200,9 @@ class HomePage(QScrollArea):
         if snapshot.cpu.types:
             chips.append(snapshot.cpu.types[0].architecture or "")
             chips.append(render.virtual_machine(snapshot.cpu.types[0]) or "")
-        pendientes = sum(1 for n in snapshot.notes if n.need.value == "root")
-        if pendientes:
-            chips.append(_("home.unread.one" if pendientes == 1
-                           else "home.unread.many").format(n=pendientes))
+        # Lo que falta por permisos no va aquí: lo dice el aviso de arriba,
+        # con su lista y su botón, y el enlace de la barra de estado. Una
+        # insignia más, sin nada que pulsar, solo lo repetía.
 
         # Lo que está fuera de umbral se dice en la portada, que es donde se
         # entra. Enterarse de que la GPU va a 100 grados solo si se abre la
