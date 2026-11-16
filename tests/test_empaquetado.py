@@ -80,5 +80,41 @@ class TestElQtQueSeEmpaqueta(unittest.TestCase):
         self.assertFalse(_admite("PySide6>=6.6,!=6.12.0", "6.12.0"))
 
 
+class TestElCiConstruyeComoSeReparte(unittest.TestCase):
+    """El AppImage que se publica tiene que salir del contenedor.
+
+    El de la v0.2.0 se construyó en el runner, con el Python y las
+    bibliotecas que trajera ese día, y no con la receta del contenedor.
+    Salió sin siete `libxcb-*` —`cursor`, `icccm`, `image`, `keysyms`,
+    `render-util`, `shape` y `util`— que `libqxcb.so` declara en su
+    `NEEDED` y que el mismo paquete construido con `--container` sí lleva:
+    la receta las instala antes de empaquetar porque `ldd` solo informa de
+    lo que puede resolver. En un X11 sin `libxcb-cursor0` eso es un
+    programa que no abre.
+    """
+
+    def _construcciones(self) -> list[str]:
+        import pathlib
+        flujo = (pathlib.Path(__file__).resolve().parent.parent
+                 / ".github" / "workflows" / "appimage.yml").read_text()
+        ordenes = [linea.strip() for linea in flujo.splitlines()
+                   if "build_appimage.py" in linea
+                   and not linea.lstrip().startswith("#")]
+        return [o for o in ordenes if "--pyside-range" not in o]
+
+    def test_hay_algo_que_mirar(self):
+        # Que el flujo construya los dos paquetes; si se renombra el
+        # empaquetador, el test de abajo no puede quedarse en verde sin
+        # haber encontrado ninguna orden.
+        construcciones = self._construcciones()
+        self.assertEqual(len(construcciones), 2, construcciones)
+        self.assertEqual(sum("--compat" in o for o in construcciones), 1)
+
+    def test_las_dos_construcciones_van_dentro_del_contenedor(self):
+        for orden in self._construcciones():
+            with self.subTest(orden=orden):
+                self.assertIn("--container", orden)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -117,42 +117,38 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # `hwdata` trae `pci.ids`, que es de donde salen los nombres de los
-      # dispositivos: sin él, un test que busca una tarjeta por su
-      # identificador no la encuentra. Estaba saliendo bien porque el runner
-      # la trae de serie, que es una forma de decir que no se estaba pidiendo.
+      # Lo que hace falta en el runner es solo lo que pide arrancar el
+      # resultado para comprobarlo; lo que pide construirlo va dentro del
+      # contenedor.
       - name: Instalar lo que Qt necesita para arrancar
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
             libgl1 libegl1 libxkbcommon-x11-0 libdbus-1-3 \
-            libfontconfig1 libfreetype6 libglib2.0-0 \
-            hwdata file desktop-file-utils fuse
+            libfontconfig1 libfreetype6 libglib2.0-0
 
-      # El rango se le pregunta al empaquetador en vez de repetirlo aquí. Lo
-      # que no se fija cambia solo, y lo hace en la máquina de otro: este paso
-      # decía «PySide6>=6.6» a secas y con eso el paquete compat habría salido
-      # con un Qt que no arranca en los procesadores para los que existe.
-      - name: Instalar PySide6
-        run: pip install "$(python tools/build_appimage.py --pyside-range)"
-
+      # Dentro del contenedor y no en el runner. Construido aquí, el paquete
+      # se llevaba lo que trajera el runner ese día y no la receta: el de la
+      # v0.2.0 salió sin siete `libxcb-*` que `libqxcb.so` necesita y que la
+      # receta instala antes de empaquetar, porque `ldd` solo informa de lo
+      # que puede resolver. El PySide6 lo pone el propio contenedor con el
+      # rango de `RANGO_PYSIDE`, así que aquí no se instala ninguno.
       - name: Construir el AppImage
-        run: python tools/build_appimage.py
+        run: python3 tools/build_appimage.py --container
+
+      - name: Construir el AppImage compatible
+        run: python3 tools/build_appimage.py --container --compat
+
+      # Con docker los archivos salen de root; con podman sin privilegios, del
+      # usuario. Así da igual cuál de los dos haya encontrado el empaquetador.
+      - name: Recuperar la propiedad de lo construido
+        run: sudo chown -R "$(id -u):$(id -g)" dist
 
       - name: Comprobar que arranca
         run: |
           chmod +x dist/silux-x86_64.AppImage
           APPIMAGE_EXTRACT_AND_RUN=1 QT_QPA_PLATFORM=offscreen \
             ./dist/silux-x86_64.AppImage --help
-
-      # El compat va después y con su propio Qt: `copiar_pyside` se lleva el
-      # que esté instalado, así que el techo hay que ponerlo antes de
-      # construir, no al construir.
-      - name: Instalar el PySide6 del paquete compatible
-        run: pip install "$(python tools/build_appimage.py --pyside-range --compat)"
-
-      - name: Construir el AppImage compatible
-        run: python tools/build_appimage.py --compat
 
       - name: Comprobar que el compatible arranca
         run: |
