@@ -116,5 +116,100 @@ class TestElCiConstruyeComoSeReparte(unittest.TestCase):
                 self.assertIn("--container", orden)
 
 
+class TestUnPaqueteIncompletoNoSeEmpaqueta(unittest.TestCase):
+    """Si al AppDir le falta una biblioteca, la construcción falla.
+
+    `comprobar_autocontenido` lo veía y lo escribía en stderr, y la
+    construcción seguía y devolvía cero. Así se publicó la v0.2.0 sin siete
+    `libxcb-*`. Aquí se monta un AppDir de mentira y se le hace decir a `ldd`
+    lo que dijo en el runner: que `libqxcb.so` pide una `libxcb-cursor` que no
+    encuentra en ninguna parte.
+    """
+
+    def setUp(self):
+        import pathlib
+        import tempfile
+        from unittest import mock
+
+        import tools.build_appimage as build
+        self.build = build
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.appdir = pathlib.Path(self._tmp.name) / "silux.AppDir"
+        plataformas = self.appdir / "usr" / "plugins" / "platforms"
+        plataformas.mkdir(parents=True)
+        (plataformas / "libqxcb.so").write_bytes(b"\x7fELF")
+        (self.appdir / "usr" / "bin").mkdir(parents=True)
+        interprete = self.appdir / "usr" / "bin" / "python3"
+        interprete.write_bytes(b"\x7fELF")
+        interprete.chmod(0o755)
+
+        self.preguntados = []
+
+        def ldd(objeto, extra=None, ausentes=False):
+            self.preguntados.append(objeto.name)
+            if objeto.name == "libqxcb.so" and self.falta_cursor:
+                return [], ["libxcb-cursor.so.0"]
+            return [], []
+
+        self.falta_cursor = True
+        for nombre, valor in (("APPDIR", self.appdir), ("dependencias", ldd)):
+            parche = mock.patch.object(build, nombre, valor)
+            parche.start()
+            self.addCleanup(parche.stop)
+
+    def _construir(self):
+        """`main` entero, con los pasos que copian y empaquetan sustituidos."""
+        import contextlib
+        import io
+        import sys
+        from unittest import mock
+
+        build = self.build
+        vacio = mock.Mock(return_value=set())
+        pasos = {nombre: vacio for nombre in (
+            "copiar_python", "copiar_silux", "copiar_pyside",
+            "copiar_plugins", "copiar_bibliotecas", "quitar_simbolos",
+            "escribir_metadatos", "sellar_build", "avisar_de_compatibilidad")}
+        pasos["comprobar_juego_de_instrucciones"] = mock.Mock(return_value=[])
+        self.empaquetar = mock.Mock(return_value=None)
+        pasos["empaquetar"] = self.empaquetar
+        # `main` empieza borrando el AppDir y creando uno vacío; el de mentira
+        # se vuelve a montar justo después, cuando ya no lo va a tocar.
+        montado = self.appdir.parent / "montado"
+        import shutil
+        shutil.copytree(self.appdir, montado)
+
+        def copiar_python():
+            shutil.rmtree(self.appdir)
+            shutil.copytree(montado, self.appdir)
+            return set()
+        pasos["copiar_python"] = copiar_python
+        with mock.patch.multiple(build, **pasos), \
+             mock.patch.object(sys, "argv", ["build_appimage.py"]), \
+             contextlib.redirect_stdout(io.StringIO()), \
+             contextlib.redirect_stderr(io.StringIO()) as errores:
+            codigo = build.main()
+        return codigo, errores.getvalue()
+
+    def test_si_falta_una_biblioteca_sale_con_error_y_no_empaqueta(self):
+        codigo, errores = self._construir()
+        self.assertNotEqual(codigo, 0)
+        self.empaquetar.assert_not_called()
+        self.assertIn("libxcb-cursor.so.0", errores)
+
+    def test_si_no_falta_nada_empaqueta(self):
+        # La otra mitad: que la comprobación no lo pare todo por sistema.
+        self.falta_cursor = False
+        self._construir()
+        self.empaquetar.assert_called_once()
+
+    def test_se_pregunta_tambien_por_el_interprete(self):
+        self.falta_cursor = False
+        self.build.comprobar_autocontenido()
+        self.assertIn("python3", self.preguntados)
+        self.assertIn("libqxcb.so", self.preguntados)
+
+
 if __name__ == "__main__":
     unittest.main()

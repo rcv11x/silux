@@ -294,7 +294,14 @@ def main() -> int:
     print("· strip")
     quitar_simbolos()
     print("· comprobación")
-    comprobar_autocontenido()
+    if comprobar_autocontenido():
+        # No se empaqueta: un paquete al que le falta una biblioteca arranca
+        # aquí, donde está puesta, y no en la máquina de quien lo descarga.
+        # Así llegó a la v0.2.0 uno sin siete `libxcb-*`, con el aviso
+        # escrito en el registro y el código de salida a cero.
+        print(f"No se empaqueta: el AppDir queda en {APPDIR} para mirarlo.",
+              file=sys.stderr)
+        return 1
     # Antes de escribir el AppRun: lo que salga de aquí decide si lleva guarda
     # y qué banderas busca. Después del strip porque `.dynsym`, que es lo que
     # mira, no se toca, y así se mide lo que se reparte de verdad.
@@ -837,8 +844,13 @@ def _simbolos_sin_escapatoria(
     return sorted(encontrados), juegos
 
 
-def comprobar_autocontenido() -> None:
-    """Avisa si algo del AppDir depende de una biblioteca que no lleva dentro.
+def comprobar_autocontenido() -> dict[str, set[str]]:
+    """Lo que algo del AppDir pide y el AppDir no lleva dentro.
+
+    Devuelve cada biblioteca que falta con quién la pide, vacío si no falta
+    nada, y quien llama no empaqueta si falta algo: avisar sin más no basta,
+    porque un aviso en el registro de una construcción que termina bien no lo
+    lee nadie. El de la v0.2.0 avisaba de siete `libxcb-*` y salió igual.
 
     Vale la pena aunque parezca redundante: en la máquina donde se construye
     casi todo se resuelve solo, porque el sistema tiene puesto lo mismo que se
@@ -846,36 +858,39 @@ def comprobar_autocontenido() -> None:
     entonces ya se ha repartido. Aquí se mira una a una: si la resuelve algo de
     fuera del AppDir y no está en la lista de las que se dejan al anfitrión,
     falta por copiar.
+
+    Los objetos son los de `objetos_del_appdir`, la misma lista que usan las
+    comprobaciones de glibc y del juego de instrucciones: con un `*.so*` propio
+    no miraba `usr/bin/python3`.
     """
     raiz = APPDIR.resolve()
     dentro = sorted({p.parent for p in raiz.rglob("*.so*") if p.is_file()})
     faltan: dict[str, set[str]] = {}
-    for so in sorted(raiz.rglob("*.so*")):
-        if not so.is_file():
-            continue
-        resueltas, sin_resolver = dependencias(so, extra=dentro, ausentes=True)
+    for objeto in objetos_del_appdir():
+        resueltas, sin_resolver = dependencias(objeto, extra=dentro, ausentes=True)
         for nombre in sin_resolver:
             # Ni dentro ni en el sistema donde se construye. Esta es la peor
             # de las dos: al no resolverla, `ldd` tampoco la propone para
             # copiar, así que se cae del AppImage sin decir nada.
             if not nombre.startswith(DEL_SISTEMA):
-                faltan.setdefault(nombre, set()).add(so.name)
+                faltan.setdefault(nombre, set()).add(objeto.name)
         for resuelta in resueltas:
             nombre = os.path.basename(resuelta)
             if nombre.startswith(DEL_SISTEMA):
                 continue
             if pathlib.Path(resuelta).resolve().is_relative_to(raiz):
                 continue
-            faltan.setdefault(nombre, set()).add(so.name)
+            faltan.setdefault(nombre, set()).add(objeto.name)
 
     if not faltan:
         print("  todo resuelve dentro")
-        return
-    print(f"  aviso: {len(faltan)} bibliotecas se cogen del sistema y "
+        return faltan
+    print(f"  error: {len(faltan)} bibliotecas se cogen del sistema y "
           f"pueden no estar en otra máquina:", file=sys.stderr)
     for nombre, quienes in sorted(faltan.items()):
         pide = ", ".join(sorted(quienes)[:3])
         print(f"    {nombre}  ({pide})", file=sys.stderr)
+    return faltan
 
 
 def sellar_build() -> None:
