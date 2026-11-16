@@ -25,7 +25,17 @@ FIXTURES = pathlib.Path(__file__).parent / "fixtures" / "arm"
 def _con(nombre, arm=True):
     """Pone un /proc/cpuinfo de mentira y dice que la máquina es aarch64."""
     texto = (FIXTURES / nombre).read_text(encoding="utf-8")
-    return (mock.patch.object(pathlib.Path, "read_text", return_value=texto),
+    de_verdad = pathlib.Path.read_text
+
+    def leer(ruta, *args, **kwargs):
+        # Solo ese archivo. Con todas las lecturas sustituidas, el idioma, que
+        # se carga la primera vez que hace falta, leía un /proc/cpuinfo en vez
+        # de su JSON: el test dependía de que otro lo hubiera cargado antes.
+        if ruta.name == "cpuinfo":
+            return texto
+        return de_verdad(ruta, *args, **kwargs)
+
+    return (mock.patch.object(pathlib.Path, "read_text", leer),
             mock.patch("platform.machine",
                               return_value="aarch64" if arm else "x86_64"))
 
