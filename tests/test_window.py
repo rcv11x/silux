@@ -465,17 +465,21 @@ class TestLaSalidaParaLosDatosBloqueados(unittest.TestCase):
 
 @unittest.skipUnless(HAS_QT, "PySide6 no está instalado")
 class TestLaCabeceraDeSensoresNoEnsanchaLaPagina(unittest.TestCase):
-    """El contador de la cabecera de Sensores cede, no empuja.
+    """La cabecera de Sensores cabe en la página también con letra ancha.
 
     `test_el_contenido_cabe_en_el_suelo_sin_recortarse` falló en el CI por
     tres píxeles: 643 de ancho mínimo en una página de 640. En esa cabecera
     van el título, «· 186 en 29 dispositivos», el buscador y dos botones, y
-    con la tipografía del runner, que es más ancha, y un sensor más o menos
-    —el contador cambia de largo con el equipo—, no cabía. Lo único de esa
-    fila que puede cortarse sin perder nada es el contador.
+    con DejaVu, que es la tipografía del runner y es más ancha que la de
+    aquí, no cabía. Lo que puede ceder en esa fila es el contador, que se
+    corta, y el buscador, que encoge; los botones no.
+
+    La tipografía se pone a mano donde la hay: es lo que reproduce el fallo.
     """
 
-    def _ancho_minimo(self, contador=None):
+    ANCHA = "DejaVu Sans"
+
+    def _pagina(self, contador):
         from silux.settings import Preferences
         from silux.tracking import Tracker
         from silux.ui import theme
@@ -486,22 +490,35 @@ class TestLaCabeceraDeSensoresNoEnsanchaLaPagina(unittest.TestCase):
         pagina = MonitorPage(theme.palette_for(app, "dark"),
                              Preferences(font_scale="normal").normalized(), Tracker())
         pagina.apply(muestras.foto_real())
-        if contador is not None:
-            pagina._cuenta_completa = contador
-            pagina._actualizar_cuenta()
+        pagina._cuenta_completa = contador
+        pagina._actualizar_cuenta()
         pagina.show()
         self.addCleanup(pagina.close)
         for _vez in range(4):
             app.processEvents()
-        return pagina, pagina.widget().minimumSizeHint().width()
+        return pagina
 
-    def test_un_contador_largo_no_cambia_el_ancho_minimo(self):
-        # Los dos contadores se escriben aquí. Con el del equipo que ejecuta
-        # la suite la comparación dependía de él: en el runner del CI, con
-        # tres sensores, el contador es más corto que el mínimo al que se
-        # corta, y la página medía cuatro píxeles menos.
-        _corta, normal = self._ancho_minimo("· 186 en 29 dispositivos")
-        larga, con_mas = self._ancho_minimo(
-            "· 1888 sensores en 288 dispositivos de este equipo, que son muchos")
-        self.assertEqual(con_mas, normal)
-        self.assertIn("1888", larga.count.full_text())
+    def test_el_contador_y_el_buscador_ceden(self):
+        pagina = self._pagina("· 1888 sensores en 288 dispositivos de este equipo, que son muchos")
+        self.assertLessEqual(pagina.count.minimumSizeHint().width(), 48)
+        self.assertIn("1888", pagina.count.full_text())
+        self.assertLessEqual(pagina.search.minimumSizeHint().width(), 80)
+        self.assertLessEqual(pagina.search.maximumWidth(), 190)
+
+    def test_con_letra_ancha_cabe_en_el_suelo_de_la_ventana(self):
+        from PySide6.QtGui import QFont, QFontDatabase
+
+        app = qt.app()                  # antes de preguntar por las tipografías
+        if self.ANCHA not in QFontDatabase.families():
+            self.skipTest(f"no está instalada {self.ANCHA}")
+        # El tema entero, no solo la densidad: la hoja de estilos lleva el
+        # tamaño de letra, y la que haya dejado puesta otro test del mismo
+        # proceso cambia lo que mide la página.
+        from silux.ui import theme
+        theme.apply(app, "dark", "normal", "normal", "azul")
+        anterior = app.font()
+        app.setFont(QFont(self.ANCHA))
+        self.addCleanup(app.setFont, anterior)
+        pagina = self._pagina("· 186 en 29 dispositivos")
+        # 640 es lo que le queda a la página con la ventana en su mínimo.
+        self.assertLessEqual(pagina.widget().minimumSizeHint().width(), 640)

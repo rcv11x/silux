@@ -136,7 +136,12 @@ class MonitorPage(QScrollArea):
         self.search.setToolTip(
             _("sensors.tip.search")
         )
-        self.search.setFixedWidth(190)
+        # Hasta 190 px, y encoge si hace falta. Con el ancho fijo, esta fila
+        # pedía unos 650 px con una tipografía ancha (DejaVu, la del CI y la
+        # de muchas instalaciones) y la página tiene 640 en su tamaño mínimo:
+        # el botón de la derecha quedaba cortado. El contador solo no bastaba.
+        self.search.setMinimumWidth(60)
+        self.search.setMaximumWidth(190)
         self.search.textChanged.connect(self._buscar)
 
         self.record_button = QPushButton(_("sensors.record.button"))
