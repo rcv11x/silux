@@ -491,8 +491,9 @@ driver o al proceso de las APIs.
 `tests/test_equipos.py` monta el Collector contra cada volcado y comprueba lo
 que vale para cualquier equipo; lo que solo vale para uno va en el test del
 arreglo, con el volcado donde se vio. `manifiesto.json` dice qué no se pudo
-grabar: NVML, lo que lee el ayudante privilegiado y el uso de cada hilo, que
-sale de restar dos lecturas de `/proc/stat` y el volcado guarda una.
+grabar: NVML, lo que lee el ayudante privilegiado y lo que sale de restar dos
+lecturas —el uso de cada hilo y el consumo de RAPL—, porque el volcado guarda
+una.
 
 Un proveedor nuevo que lea el sistema sin pasar por `sysroot` lo caza
 `test_sysroot`: con una raíz vacía, el Collector no puede tocar ni un camino
