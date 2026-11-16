@@ -5,7 +5,7 @@ está hecho así, de dónde sale cada dato y qué se intentó antes que no sali�
 bien. Se puede leer entero o saltar a lo que interese.
 
 - [Arquitectura](#arquitectura)
-- [Por qué no hace falta C ni ensamblador](#por-qué-no-hace-falta-c-ni-ensamblador)
+- [Por qué no hace falta un compilador](#por-qué-no-hace-falta-un-compilador)
 - [El cuello de botella real de un monitor en Linux](#el-cuello-de-botella-real-de-un-monitor-en-linux)
 - [Familia, modelo y la firma CPUID](#familia-modelo-y-la-firma-cpuid)
 - [El SPD: a cuánto puede ir la memoria](#el-spd-a-cuánto-puede-ir-la-memoria)
@@ -14,7 +14,7 @@ bien. Se puede leer entero o saltar a lo que interese.
 - [Consumo](#consumo)
 - [Sobre el consumo](#sobre-el-consumo)
 - [Las dos formas de contar la memoria usada](#las-dos-formas-de-contar-la-memoria-usada)
-- [El ayudante privilegiado](#el-ayudante-privilegiado)
+- [El ayudante privilegiado](privilegios.md)
 - [La base de datos](#la-base-de-datos)
 - [Ajustes](#ajustes)
 - [Instalación en el escritorio](#instalación-en-el-escritorio)
@@ -296,34 +296,7 @@ segunda porque es la única con la que los segmentos cuadran al 0,000 %.
 
 ## El ayudante privilegiado
 
-Dos cosas necesitan root y no hay forma de evitarlo: la tabla SMBIOS completa
-(donde están los módulos de memoria) y los registros MSR del procesador. El
-programa **nunca corre como root**. Cuando el usuario pide esos datos, lanza
-por polkit un ayudante mínimo y le habla por una tubería.
-
-El ayudante está escrito para poder leerse de una sentada, y de ahí sus tres
-reglas:
-
-- **No importa nada del propio programa**, solo la biblioteca estándar. Un
-  fallo en cualquier otro módulo no puede llegar hasta él.
-- **No interpreta lo que lee.** Devuelve los bytes crudos de la tabla SMBIOS
-  y el análisis se hace sin privilegios. Analizar formatos binarios es de
-  donde salen la mayoría de los fallos de memoria, y hacerlo como root sería
-  regalar el problema.
-- **No acepta rutas ni órdenes.** Las dos rutas que abre son constantes en su
-  código, y los registros MSR admitidos son una lista cerrada de diez.
-
-Hay tests que comprueban que el ayudante no contiene `subprocess`, `eval`,
-`exec` ni importaciones del paquete, y que las dos listas blancas de MSR (la
-del contrato y la suya) no se han separado.
-
-Tampoco se pide nada al arrancar: la pestaña de Memoria enseña lo que sabe,
-explica qué falta y pone un botón. Un programa de diagnóstico que abre un
-diálogo de contraseña nada más abrirse es un programa que se desinstala.
-
-`data/org.silux.helper.policy.in` es la política de polkit para quien empaquete
-el programa. Es opcional: sin ella pkexec pide la contraseña igual, solo que
-con un mensaje genérico y sin recordar la autorización durante la sesión.
+Está en **[privilegios.md](privilegios.md)**.
 
 ## La base de datos
 

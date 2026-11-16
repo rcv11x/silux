@@ -292,7 +292,7 @@ Por qué el modelo guarda números y no texto, de dónde sale cada dato, cómo s
 lee el chip SPD de la memoria o el EDID del monitor, qué hace el ayudante
 privilegiado y qué se intentó antes que no salió bien:
 
-**[docs/como-funciona.md](docs/como-funciona.md)**
+**[docs/arquitectura.md](docs/arquitectura.md)**
 
 Y para quien vaya a tocar el código, [CLAUDE.md](CLAUDE.md): las reglas que
 sostienen el diseño, con el problema concreto del que salió cada una, y la
