@@ -134,7 +134,10 @@ class TestEjecucion(unittest.TestCase):
         import os
 
         hilos = os.cpu_count() or 1
-        resultado = benchmark.run(seconds=1.0)
+        # Con la carga en la que se vio: la compresión pesada. Las otras
+        # cuatro no dicen nada de esto y eran veinte segundos de la suite.
+        resultado = benchmark.run(seconds=1.0, loads=("compresion_dura",))
+        self.assertEqual({m.threads for m in resultado.measures}, {1, hilos})
         por_carga = {}
         for medida in resultado.measures:
             if medida.seconds:
@@ -261,8 +264,23 @@ class TestCargaDeVerificacion(unittest.TestCase):
 
 class TestDuracion(unittest.TestCase):
     def test_se_puede_pedir_cuanto_dura(self):
-        resultado = benchmark.run(seconds=benchmark.MINIMO_SEGUNDOS)
+        # Que a cada medida le llega lo pedido, con todas las cargas y sin
+        # ejecutarlas…
+        from unittest import mock
+        vistas = []
+        with mock.patch.object(benchmark, "_medir",
+                               side_effect=lambda c, h, d: vistas.append((c.key, d)) or
+                               benchmark.Medida(c.key, h, 1, d)):
+            benchmark.run(seconds=benchmark.MINIMO_SEGUNDOS)
+        self.assertEqual({c for c, _d in vistas}, {c.key for c in benchmark.CARGAS})
+        self.assertEqual({d for _c, d in vistas}, {benchmark.MINIMO_SEGUNDOS})
+
+    def test_y_la_medida_dura_lo_que_se_pidio(self):
+        # …y que una medida de verdad lo respeta: una carga, un hilo y todos.
+        resultado = benchmark.run(seconds=benchmark.MINIMO_SEGUNDOS, loads=("hash",))
+        self.assertEqual(len(resultado.measures), 2)
         for medida in resultado.measures:
+            self.assertGreaterEqual(medida.seconds, benchmark.MINIMO_SEGUNDOS * 0.9)
             self.assertLess(medida.seconds, benchmark.MINIMO_SEGUNDOS * 3)
 
     def test_no_se_acepta_una_barbaridad(self):
@@ -279,6 +297,23 @@ class TestDuracion(unittest.TestCase):
                                benchmark.Medida(c.key, h, 1, d)):
             benchmark.run(seconds=0.001)
         self.assertTrue(all(d >= benchmark.MINIMO_SEGUNDOS for d in vistas))
+
+    def test_se_puede_pedir_que_cargas_se_miden(self):
+        from unittest import mock
+        vistas = []
+        with mock.patch.object(benchmark, "_medir",
+                               side_effect=lambda c, h, d: vistas.append(c.key) or
+                               benchmark.Medida(c.key, h, 1, d)):
+            benchmark.run(quick=True, loads=("hash", "compresion"))
+            # En el orden de la prueba, no en el que se pidan.
+            self.assertEqual(vistas, ["compresion", "compresion", "hash", "hash"])
+            vistas.clear()
+            benchmark.run(quick=True)
+        self.assertEqual(len(vistas), len(benchmark.CARGAS) * 2)
+
+    def test_una_carga_que_no_existe_no_se_calla(self):
+        with self.assertRaises(ValueError):
+            benchmark.run(quick=True, loads=("hash", "lzma"))
 
     def test_sin_pedir_nada_manda_el_modo(self):
         from unittest import mock

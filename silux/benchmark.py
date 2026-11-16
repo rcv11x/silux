@@ -36,7 +36,7 @@ import threading
 import time
 import zlib
 from dataclasses import dataclass, field
-from typing import Callable, Optional
+from typing import Callable, Optional, Sequence
 
 SYS_CPU = "/sys/devices/system/cpu"
 
@@ -325,12 +325,16 @@ class Result:
 
 def run(quick: bool = False, on_progress: Optional[Callable[[str, float], None]] = None,
         stop: Optional[threading.Event] = None,
-        seconds: Optional[float] = None) -> Result:
+        seconds: Optional[float] = None,
+        loads: Optional[Sequence[str]] = None) -> Result:
     """Ejecuta la prueba entera. Bloquea: llámese desde un hilo aparte.
 
     `on_progress` recibe qué se está midiendo y cuánto se lleva, de 0 a 1.
     `stop` permite cancelar entre medidas.
     `seconds` fija cuánto dura cada medida; sin él manda `quick`.
+    `loads` son las claves de las cargas que se miden; sin él, todas. Van en
+    el orden de la prueba, no en el que se pidan. Un resultado con menos
+    cargas de las que puntúan no da puntuación: es para medir una cosa suelta.
 
     Alargar la prueba no cambia la cifra, cambia en qué condiciones se toma:
     a los cinco segundos el turbo ya subió y el disipador aún no se ha
@@ -340,12 +344,17 @@ def run(quick: bool = False, on_progress: Optional[Callable[[str, float], None]]
     duracion = (max(MINIMO_SEGUNDOS, min(MAXIMO_SEGUNDOS, float(seconds)))
                 if seconds else (SEGUNDOS_RAPIDO if quick else SEGUNDOS))
     hilos = os.cpu_count() or 1
+    cargas = CARGAS
+    if loads is not None:
+        if desconocidas := set(loads) - {carga.key for carga in CARGAS}:
+            raise ValueError(f"no hay ninguna carga llamada {sorted(desconocidas)}")
+        cargas = tuple(carga for carga in CARGAS if carga.key in loads)
     vigilante = _Vigilante()
 
     fondo = _carga_de_fondo()
     temperatura_inicial = _temperatura()
 
-    pasos = [(carga, n) for carga in CARGAS for n in (1, hilos)]
+    pasos = [(carga, n) for carga in cargas for n in (1, hilos)]
     medidas: list[Medida] = []
     vigilante.empezar()
     try:
