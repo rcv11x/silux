@@ -118,7 +118,10 @@ class TestEnLasTresPaginas(unittest.TestCase):
     def test_en_sensores_la_radeon_no_deja_nada_al_pie(self):
         ventana = self._ventana(AMD)
         ventana.select_section("Sensores")
-        self.assertFalse(ventana.monitor_page.absent.isVisible())
+        # Al pie puede haber otra cosa —las tensiones que el driver no
+        # nombra—, pero no la gráfica.
+        self.assertNotIn(self.fotos[AMD].gpus[0].display_name,
+                         ventana.monitor_page.absent.text())
 
 
 if __name__ == "__main__":

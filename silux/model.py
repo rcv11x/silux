@@ -503,6 +503,16 @@ def short_vendor(name: Optional[str]) -> Optional[str]:
 _BRAND_NOISE = re.compile(r"\((?:R|TM|tm|r)\)|\bCPU\b|\bProcessor\b|@.*$|\b\d+-Core\b")
 
 
+def thread_name(index: int) -> str:
+    """Cómo se llama un hilo del procesador: «CPU 3».
+
+    Como lo numera el kernel, y lo mismo en la rejilla de la página CPU que
+    en el árbol de sensores. En el árbol se llamaban «Core #3», que además
+    de ser otro nombre era otra cosa: un núcleo con SMT son dos de estos.
+    """
+    return f"CPU {index}"
+
+
 def short_brand(brand: Optional[str]) -> str:
     """"Intel(R) Core(TM) i5-10400 CPU @ 2.90GHz" -> "Intel Core i5-10400"."""
     if not brand:
@@ -1289,6 +1299,11 @@ class Sensor:
     # el chip que es. Se dice en la ventana: un límite estimado y uno que
     # declara el fabricante no merecen la misma confianza.
     estimated_limits: bool = False
+    # True cuando el driver no dice qué mide este canal y el nombre es un
+    # número puesto aquí: «Tensión 3». En un Super I/O (it87, nct67xx) qué
+    # llega a cada entrada lo decidió quien diseñó la placa, y el kernel no lo
+    # sabe. Se dice en la ventana en vez de inventar un nombre.
+    unnamed: bool = False
     # Para lo que no encaja en ningún tipo con unidad fija, como un ritmo de
     # transferencia. Es la excepción, no la norma: si algo se repite, merece su
     # propio SensorKind.

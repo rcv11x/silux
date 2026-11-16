@@ -397,13 +397,14 @@ class HwmonSensors(Provider):
             value = read_int(str(path).replace(sufijo, f"_{nombre}"))
             return None if value is None else value / divisor
 
+        etiqueta = read_text(str(path).replace(sufijo, "_label"))
         return Sensor(
             key=f"{chip}/{prefix}{index}",
             chip=chip,
             device=device,
             device_kind=clase,
-            label=_friendly(chip, prefix, index,
-                            read_text(str(path).replace(sufijo, "_label"))),
+            label=_friendly(chip, prefix, index, etiqueta),
+            unnamed=not etiqueta,
             kind=kind,
             value=round(raw / divisor, 3),
             **_umbrales(kind, threshold("min"), threshold("max"),

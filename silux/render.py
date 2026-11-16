@@ -16,7 +16,7 @@ from .i18n import _
 from .spd import grado_jedec
 from .model import (MARGEN_DE_REDONDEO, Cache, Clocks, CpuType, Display,
                     Edid, GpuApi, PcieLink, GpuMemory, NetworkInterface,
-                    NetworkTraffic, Power, SensorKind)
+                    NetworkTraffic, Power, SensorKind, thread_name)
 
 DASH = "—"
 
@@ -1045,7 +1045,7 @@ def starred_cpus(logical) -> str:
     indices = sorted(c.index for c in logical if c.core_id in cabeza)
     if len(indices) <= len(cabeza):        # sin SMT no hay nada que aclarar
         return ""
-    nombres = [f"CPU {i}" for i in indices]
+    nombres = [thread_name(i) for i in indices]
     return ", ".join(nombres[:-1]) + _("core.join") + nombres[-1]
 
 

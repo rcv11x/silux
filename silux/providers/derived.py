@@ -17,7 +17,7 @@ from __future__ import annotations
 from typing import Optional
 
 from ..i18n import _
-from ..model import DeviceKind, Sensor, SensorKind, short_brand
+from ..model import DeviceKind, Sensor, SensorKind, short_brand, thread_name
 from .base import Draft, Provider
 
 
@@ -192,7 +192,7 @@ class DerivedSensors(Provider):
             sensors.append(Sensor(
                 key=f"clock/cpu{index}", chip="cpufreq", device=device,
                 device_kind=DeviceKind.CPU,
-                label=f"Core #{index}", kind=SensorKind.CLOCK,
+                label=thread_name(index), kind=SensorKind.CLOCK,
                 value=round(frequency / 1e6, 1), order=index,
             ))
         return sensors
@@ -215,7 +215,7 @@ class DerivedSensors(Provider):
             sensors.append(Sensor(
                 key=f"usage/cpu{index}", chip="procfs", device=device,
                 device_kind=DeviceKind.CPU,
-                label=f"Core #{index}", kind=SensorKind.USAGE,
+                label=thread_name(index), kind=SensorKind.USAGE,
                 value=value, order=index,
             ))
         return sensors

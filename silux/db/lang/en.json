@@ -850,6 +850,7 @@
   "sensors.tip.reset": "Starts counting the extremes again from this moment.\nUseful right before launching a load test.",
   "sensors.tip.search": "Filters by sensor or device name.\n“memory”, “9070”, “fan”…",
   "sensors.title": "SENSORS",
+  "sensors.unnamed.voltages": "{chips}: the driver does not say what each numbered voltage measures. It depends on how the board maker wired it, and naming them by guesswork would be making it up.",
   "settings.accent.help": "The colour used to highlight values, charts and the open section.",
   "settings.accent.label": "Accent colour",
   "settings.allflags.help": "By default only the flags that matter are listed. Turned on, all 53 that CPUID reports on this machine show up.",

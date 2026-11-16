@@ -17,7 +17,7 @@ from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 from ... import render
 from ...i18n import _
-from ...model import Snapshot
+from ...model import Snapshot, thread_name
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette, ui_font
@@ -169,7 +169,7 @@ class CpuLiveSection(QWidget):
             if logical.temp_c is not None:
                 detail = f"{freq}  {self._temp(logical.temp_c):.0f}°"
             cells.append({
-                "name": f"CPU {logical.index}",
+                "name": thread_name(logical.index),
                 "detail": detail,
                 "detail_short": freq,
                 "usage": logical.usage_percent,

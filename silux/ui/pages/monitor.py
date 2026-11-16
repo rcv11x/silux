@@ -254,6 +254,13 @@ class MonitorPage(QScrollArea):
         faltan = [_("sensors.absent.gputemp").format(nombre=gpu.display_name)
                   for gpu in snapshot.gpus
                   if gpu.no_temperature_sensor and gpu.temp_c is None]
+        # Los canales que el driver no nombra: «Tensión 0, 1, 2…». No se les
+        # pone nombre aquí porque no se sabe: en un Super I/O, qué llega a cada
+        # entrada lo decidió quien diseñó la placa. Se dice de qué chip son.
+        sin_nombre = sorted({s.chip for s in snapshot.sensors
+                             if s.unnamed and s.kind is SensorKind.VOLTAGE})
+        if sin_nombre:
+            faltan.append(_("sensors.unnamed.voltages").format(chips=", ".join(sin_nombre)))
         texto = " ".join(faltan)
         if self.absent.text() != texto:
             self.absent.setText(texto)
