@@ -133,6 +133,14 @@ class TestConUnInformeDeVerdad(unittest.TestCase):
         self.assertEqual(fallo, "")
         self.assertEqual(herramienta.revisar(datos), "")
 
+    def test_una_prueba_con_un_pico_de_fondo_no_entra(self):
+        """La carga de fondo de antes de empezar son tres décimas; lo que
+        pase durante los dos minutos y medio lo mide el vigilante y va en otra
+        fila. La herramienta solo miraba la primera (F-M35)."""
+        datos, fallo = herramienta.leer(self._informe(background_peak=30.0))
+        self.assertEqual(fallo, "")
+        self.assertIn("carga de fondo", herramienta.revisar(datos))
+
     def test_la_pieza_se_guarda_con_el_nombre_que_busca_la_interfaz(self):
         from silux import render
 
@@ -197,3 +205,25 @@ class TestRemedirLaEscalaNoBorraLoAjeno(unittest.TestCase):
         medir = self._herramienta()
         with mock.patch("pathlib.Path.open", side_effect=OSError):
             self.assertEqual(medir._piezas_que_siguen_valiendo(), {})
+
+
+class TestLaReferenciaTampocoSeTomaConElEquipoOcupado(unittest.TestCase):
+    """`medir_referencia.py` miraba solo la carga de antes de empezar."""
+
+    def _herramienta(self):
+        spec = importlib.util.spec_from_file_location(
+            "medir_referencia", RAIZ / "tools" / "medir_referencia.py")
+        modulo = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(modulo)
+        return modulo
+
+    def test_cuenta_el_pico_de_durante(self):
+        from silux.benchmark import Conditions
+        herramienta_ref = self._herramienta()
+        self.assertEqual(herramienta_ref.carga_que_cuenta(
+            Conditions(background_load=0.4, background_peak=25.0)), 25.0)
+
+    def test_y_la_de_antes_si_es_mayor(self):
+        from silux.benchmark import Conditions
+        self.assertEqual(self._herramienta().carga_que_cuenta(
+            Conditions(background_load=12.0, background_peak=1.0)), 12.0)

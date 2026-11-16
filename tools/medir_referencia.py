@@ -45,6 +45,18 @@ from silux.collector import Collector  # noqa: E402
 CARGA_MAXIMA = 3.0
 
 
+def carga_que_cuenta(condiciones) -> float | None:
+    """La carga ajena que decide si la escala se tomó en reposo.
+
+    La de antes de empezar son tres décimas de segundo, y la prueba dura dos
+    minutos y medio: lo que se despierte a mitad solo lo ve el vigilante, que
+    guarda el pico. Cuenta la mayor de las dos.
+    """
+    cargas = [c for c in (condiciones.background_load, condiciones.background_peak)
+              if c is not None]
+    return max(cargas) if cargas else None
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--write", action="store_true",
@@ -65,7 +77,7 @@ def main(argv=None) -> int:
     for aviso in resultado.warnings:
         print(f"  aviso: {aviso}", file=sys.stderr)
 
-    carga = resultado.conditions.background_load
+    carga = carga_que_cuenta(resultado.conditions)
     sucia = carga is not None and carga > CARGA_MAXIMA
     if sucia and not args.igualmente:
         print(f"\n  Había un {carga:.0f} % de carga de fondo y la escala se "

@@ -98,6 +98,7 @@ def leer(ruta: pathlib.Path) -> tuple[dict, str]:
         "escala": campos.get("Escala", ""),
         "gobernador": campos.get("Gobernador", ""),
         "carga": numero("Carga de fondo", entero=False),
+        "pico": numero("Otro programa, como mucho", entero=False),
         "origen": ruta.name,
     }
     return datos, ""
@@ -111,8 +112,11 @@ def revisar(datos: dict) -> str:
         return f"otra escala ({datos['escala'] or 'sin declarar'})"
     if not datos["hilos"]:
         return "no dice cuántos hilos"
-    if datos["carga"] is not None and datos["carga"] > CARGA_MAXIMA:
-        return f"medida con {datos['carga']:.0f} % de carga de fondo"
+    # Lo de antes de empezar son tres décimas; lo que pase durante la prueba
+    # es el pico que guarda el vigilante, y es lo que más se escapa.
+    cargas = [c for c in (datos["carga"], datos.get("pico")) if c is not None]
+    if cargas and max(cargas) > CARGA_MAXIMA:
+        return f"medida con {max(cargas):.0f} % de carga de fondo"
     escala = datos["multihilo"] / max(datos["un_hilo"], 1) * escala_del_patron()
     if escala > datos["hilos"] * MARGEN_DE_ESCALA:
         return (f"escala imposible: {escala:.1f}× con {datos['hilos']} hilos")
