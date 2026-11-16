@@ -67,10 +67,6 @@ python3 -m silux.cli --report i.md      # informe para adjuntar a un fallo
 python3 -m silux.ui.app --anonimo       # oculta lo que identifica al equipo
 ```
 
-`--anonimo` cambia el nombre del equipo, las direcciones y los números de
-serie por otros de la misma pinta. Las capturas de aquí arriba están hechas
-así: el hardware es real y lo que señala a una máquina concreta, no.
-
 La ventana abre a 900×680 y recuerda el tamaño al cerrarla. El suelo depende
 de la densidad (470×400 en normal, 400×340 en compacta) y no es el mínimo
 técnico, que ronda los 270 px: es el punto por debajo del cual los nombres de
@@ -93,38 +89,22 @@ chmod +x silux-x86_64.AppImage
 ./silux-x86_64.AppImage
 ```
 
-Lleva dentro Python, Qt y las bibliotecas que necesita. Ocupa 51 MB, que es lo
-que queda después de podar: de PySide6 solo van QtCore, QtGui y QtWidgets (los
-otros treinta módulos sobran) y se dejan fuera la integración con el tema del
-escritorio (arrastra GTK y los iconos de Breeze, 40 MB, y el programa fija el
-estilo Fusion de todas formas) y los formatos de imagen que tiran de los
-códecs de video del sistema. Sin esa poda serían 561 MB.
-
-Se construye con:
-
-```bash
-python3 tools/build_appimage.py              # con lo que haya en esta máquina
-python3 tools/build_appimage.py --container  # en Ubuntu 22.04, para repartirlo
-```
+Lleva dentro Python, Qt y las bibliotecas que necesita, y ocupa unos 40 MB:
+de PySide6 solo van QtCore, QtGui y QtWidgets.
 
 ### Compatibilidad
 
-Un AppImage se lleva dentro los binarios del sistema donde se construyó, **con
-sus exigencias**, y hay dos que dejan fuera a mucha gente sin avisar:
+Funciona en cualquier distribución con **glibc 2.35 o posterior** (Ubuntu
+22.04, Debian 12, Fedora 36 y siguientes; no en Ubuntu 20.04, Debian 11 ni
+RHEL 9). Hay dos paquetes con el mismo programa dentro:
 
-**El nivel de instrucciones.** Algunas distribuciones compilan para
-`x86-64-v3`, que pide AVX2 y compañía: procesadores de 2013 en adelante.
-CachyOS lo hace por omisión. En una CPU anterior el sistema se niega a arrancar
-con un escueto `CPU ISA level is lower than required`, que no dice de quién es
-la culpa.
+- **`silux-x86_64.AppImage`**, el normal, para procesadores Intel de 2008 en
+  adelante y AMD de 2011 en adelante.
+- **`silux-x86_64-compat.AppImage`**, para los anteriores (Core 2, Athlon II,
+  Phenom II). Si abres el normal en uno de ellos, te lo dice y te manda aquí.
 
-**La versión de glibc.** Lo compilado contra una glibc nueva no arranca en un
-sistema con una más vieja, aunque al revés sí funcione.
-
-Las dos se resuelven igual: construyendo dentro de una distribución antigua y
-genérica, que es lo que hace `--container` y lo que hace la acción de GitHub en
-cada versión publicada. El script avisa al terminar de a quién está dejando
-fuera lo que acaba de construir.
+Por qué hay dos y cómo se construyen está en
+[docs/empaquetado.md](docs/empaquetado.md).
 
 ### Desde el código
 
@@ -248,9 +228,10 @@ y el diagnóstico de los discos salen como «requiere permisos» en vez de salir
 Si lo que se ve mal es la ventana (texto cortado, columnas montadas, un color
 que no se lee), eso no sale en el informe y hace falta una captura.
 
-Lo que más falta por probar, porque aquí no hay hardware para ello: una AMD con
-dos CCD (7950X3D y parecidos), cualquier NVIDIA con el driver propietario, un
-Intel híbrido con núcleos P y E, y una APU con gráficos integrados.
+Qué se ha probado contra hardware de verdad y qué falta está en
+[docs/hardware-validado.md](docs/hardware-validado.md). Lo que más se agradece
+recibir es justo lo que no hay aquí: una AMD con dos CCD (7950X3D y
+parecidos), un Intel híbrido con núcleos P y E, y un equipo ARM.
 
 ## El idioma de la interfaz
 
@@ -288,15 +269,18 @@ GPL-3.0.
 
 ## Cómo funciona por dentro
 
-Por qué el modelo guarda números y no texto, de dónde sale cada dato, cómo se
-lee el chip SPD de la memoria o el EDID del monitor, qué hace el ayudante
-privilegiado y qué se intentó antes que no salió bien:
-
-**[docs/arquitectura.md](docs/arquitectura.md)**
+- **[docs/arquitectura.md](docs/arquitectura.md)**: por qué el modelo guarda
+  números y no texto, de dónde sale cada dato y cómo se lee el SPD o el EDID.
+- **[docs/lecciones.md](docs/lecciones.md)**: lo que ya se intentó y no
+  funcionó, por temas.
+- **[docs/benchmark.md](docs/benchmark.md)**: cómo se puntúa y por qué así.
+- **[docs/privilegios.md](docs/privilegios.md)**: qué necesita permisos y cómo
+  se piden.
+- **[docs/empaquetado.md](docs/empaquetado.md)** y
+  **[docs/hardware-validado.md](docs/hardware-validado.md)**.
 
 Y para quien vaya a tocar el código, [CLAUDE.md](CLAUDE.md): las reglas que
-sostienen el diseño, con el problema concreto del que salió cada una, y la
-lista de lo que ya se intentó y no funcionó. Se llama así porque el proyecto
-se escribió con ayuda de Claude y es el archivo que lee al abrirlo, pero lo
-que hay dentro no va dirigido a una herramienta: es por qué el código está
-hecho como está.
+sostienen el diseño, las convenciones y lo que queda pendiente. Se llama así
+porque el proyecto se escribió con ayuda de Claude y es el archivo que lee al
+abrirlo, pero lo que hay dentro no va dirigido a una herramienta: es por qué
+el código está hecho como está.
