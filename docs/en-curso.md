@@ -3,9 +3,8 @@
 Para retomar sin el contexto de la sesión anterior. Se borra cuando lo de
 aquí esté hecho o pase a `docs/pendientes.md`.
 
-Última sesión: 16 de noviembre de 2026, en el i5-10400 de la oficina. Se
-cerró a mitad del punto 1 (los tests 25-30) para seguir en casa, en el
-5800X3D.
+Última sesión: 16 de noviembre de 2026, por la tarde-noche, en el 5800X3D de
+casa (CachyOS). La anterior fue ese mismo día en el i5-10400 de la oficina.
 
 ## Qué está hecho
 
@@ -30,7 +29,44 @@ F-A6, F-M34, F-M35, F-A8, `_ciclos_jedec`, documentación y plan de la fase 3
 | `50df0fd` | `test`: `tests/qt.py`, la QApplication que se guarda (test 25 del plan) |
 | después | este archivo y la línea de CLAUDE.md |
 
-Suite en serie en verde con todo: 1596 tests.
+En casa, en el 5800X3D (puntos 0 y «AMD» del mensaje, hechos):
+
+| Commit | Qué |
+|---|---|
+| `d767d0f` | `fix(tools)`: el volcado tapa los montajes donde están (`/proc/mounts` es un enlace) y solo deja las líneas de un dispositivo |
+| `931f22a` | `feat(tools)`: de las interfaces en serie (`br-<id>`, `veth`) queda una de cada |
+| `3638b05` | `test(equipos)`: el volcado `5800x3d` |
+| `ca21bf9` | `test(equipos)`: sin `cpuinfo_avg_freq` sale `scaling_cur_freq`; el volcado guarda las fuentes alternativas |
+| `bf87cf8` | `fix(providers/rapl)`: en AMD el dominio «core» es de un solo núcleo; no se enseña y se dice |
+| `37d9009` | `fix(providers/hwmon)`: con Tdie y Tctl, la temperatura es Tdie |
+| `d0057ea` | `fix(providers/cppc)`: sin amd-pstate, el ranking de núcleos no da un techo |
+| `e1b094e` | `test(ui)`: la frecuencia y su eje, también con el volcado de AMD |
+| después | `test(ui)`: lo que una tabla desplaza no cuenta como cortado; y el volcado rehecho con la nota de CPPC de cada núcleo |
+
+Suite en serie en verde con todo: 1618 tests.
+
+Lo que salió de comprobar AMD, en corto:
+
+- **Temperatura**: el 5800X3D da Tctl y Tccd1; sale Tctl, que ahí es la
+  buena, e Inicio y CPU coinciden. Tdie no existe en esta pieza: el caso
+  «las dos» está arreglado por la documentación del kernel, sin pieza.
+- **Frecuencia**: `amd-pstate-epp`, kernel 7.3. `cpuinfo_avg_freq` existe y
+  coincide con `scaling_cur_freq` (mediana 0,000 % en 320 pares). La caída
+  sin la primera está probada con el volcado.
+- **Consumo**: aquí `energy_uj` se lee sin permisos. El paquete está bien; el
+  dominio «core» no era la suma (ver `bf87cf8`).
+- **Eje de FRECUENCIA**: 576 MHz – 4,55 GHz, el techo de CPPC.
+
+**Queda sin poder comprobarse aquí** y hay que hacerlo con la pieza delante:
+
+- Arrancar el 5800X3D con `amd_pstate=disable` (driver `acpi-cpufreq`),
+  volcarlo como `5800x3d-acpi-cpufreq` y ver que «Máxima (silicio)» sale sin
+  dato y con su aviso, no a 4,96 GHz. `d0057ea` está hecho sin ese arranque.
+- Con el boost apagado (`echo 0 > /sys/devices/system/cpu/cpufreq/boost`,
+  pide root): que el eje siga hasta 4,55 y no baje a 3,4.
+- **Rehacer los dos volcados del i5-10400 en la oficina**
+  (`i5-10400` en reposo, `i5-10400-turbo` con carga): los de ahora no llevan
+  `scaling_cur_freq`, y el test de la caída (`ca21bf9`) los salta.
 
 ### `ui-permisos` (sale de `12486ee`, antes de lo de la tarde)
 
@@ -67,7 +103,7 @@ de tiempos.
 
 ## Lo que falta del mensaje de la tarde, en orden
 
-0. **El volcado del 5800X3D**, en cuanto se pueda:
+0. **HECHO** (arriba). Lo que decía: el volcado del 5800X3D, en cuanto se pueda:
    `python3 tools/volcar_equipo.py 5800x3d` en ese equipo, sin permisos
    concedidos, revisarlo, commit en `fase-1` con su fila en
    `docs/hardware-validado.md` (sección «Equipos volcados»). Si la
@@ -115,6 +151,10 @@ de tiempos.
    - Con permisos, la tarjeta de la GPU enseña el uso y los vatios.
    - Dos botones de texto, «Ahora no» y «No volver a mostrar», iguales en
      Inicio y en las páginas; sin X.
+   - **Propuesto en casa, sin aprobar todavía**: la tabla de monitores de
+     Gráficos a 900 px. El nombre («GIGA-BYTE TECHNOLOGY CO., LTD. AORUS…»)
+     se lleva el ancho y la resolución sale cortada, «2560 × 14…». Captura
+     en `~/Imágenes/silux-test/amd/graficos-900-pantallas.png` (casa).
    - Barras de Inicio, Memoria y Almacenamiento: la caché distinguible del
      fondo, leyenda con color en las tres, y los chips de Almacenamiento bien
      colocados en compacto.
