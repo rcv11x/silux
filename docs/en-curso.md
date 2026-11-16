@@ -33,14 +33,14 @@ En casa, en el 5800X3D (puntos 0 y «AMD» del mensaje, hechos):
 
 | Commit | Qué |
 |---|---|
-| `d767d0f` | `fix(tools)`: el volcado tapa los montajes donde están (`/proc/mounts` es un enlace) y solo deja las líneas de un dispositivo |
-| `931f22a` | `feat(tools)`: de las interfaces en serie (`br-<id>`, `veth`) queda una de cada |
-| `3638b05` | `test(equipos)`: el volcado `5800x3d` |
-| `ca21bf9` | `test(equipos)`: sin `cpuinfo_avg_freq` sale `scaling_cur_freq`; el volcado guarda las fuentes alternativas |
-| `bf87cf8` | `fix(providers/rapl)`: en AMD el dominio «core» es de un solo núcleo; no se enseña y se dice |
-| `37d9009` | `fix(providers/hwmon)`: con Tdie y Tctl, la temperatura es Tdie |
-| `d0057ea` | `fix(providers/cppc)`: sin amd-pstate, el ranking de núcleos no da un techo |
-| `e1b094e` | `test(ui)`: la frecuencia y su eje, también con el volcado de AMD |
+| `39df958` | `fix(tools)`: el volcado tapa los montajes donde están (`/proc/mounts` es un enlace) y solo deja las líneas de un dispositivo |
+| `9e9ae51` | `feat(tools)`: de las interfaces en serie (`br-<id>`, `veth`) queda una de cada |
+| `f9ce8b4` | `test(equipos)`: el volcado `5800x3d` |
+| `39396a6` | `test(equipos)`: sin `cpuinfo_avg_freq` sale `scaling_cur_freq`; el volcado guarda las fuentes alternativas |
+| `7ee762b` | `fix(providers/rapl)`: en AMD el dominio «core» es de un solo núcleo; no se enseña y se dice |
+| `60e354e` | `fix(providers/hwmon)`: con Tdie y Tctl, la temperatura es Tdie |
+| `35756d1` | `fix(providers/cppc)`: sin amd-pstate, el ranking de núcleos no da un techo |
+| `bb62022` | `test(ui)`: la frecuencia y su eje, también con el volcado de AMD |
 | después | `test(ui)`: lo que una tabla desplaza no cuenta como cortado; y el volcado rehecho con la nota de CPPC de cada núcleo |
 
 Suite en serie en verde con todo: 1618 tests.
@@ -54,19 +54,19 @@ Lo que salió de comprobar AMD, en corto:
   coincide con `scaling_cur_freq` (mediana 0,000 % en 320 pares). La caída
   sin la primera está probada con el volcado.
 - **Consumo**: aquí `energy_uj` se lee sin permisos. El paquete está bien; el
-  dominio «core» no era la suma (ver `bf87cf8`).
+  dominio «core» no era la suma (ver `7ee762b`).
 - **Eje de FRECUENCIA**: 576 MHz – 4,55 GHz, el techo de CPPC.
 
 **Queda sin poder comprobarse aquí** y hay que hacerlo con la pieza delante:
 
 - Arrancar el 5800X3D con `amd_pstate=disable` (driver `acpi-cpufreq`),
   volcarlo como `5800x3d-acpi-cpufreq` y ver que «Máxima (silicio)» sale sin
-  dato y con su aviso, no a 4,96 GHz. `d0057ea` está hecho sin ese arranque.
+  dato y con su aviso, no a 4,96 GHz. `35756d1` está hecho sin ese arranque.
 - Con el boost apagado (`echo 0 > /sys/devices/system/cpu/cpufreq/boost`,
   pide root): que el eje siga hasta 4,55 y no baje a 3,4.
 - **Rehacer los dos volcados del i5-10400 en la oficina**
   (`i5-10400` en reposo, `i5-10400-turbo` con carga): los de ahora no llevan
-  `scaling_cur_freq`, y el test de la caída (`ca21bf9`) los salta.
+  `scaling_cur_freq`, y el test de la caída (`39396a6`) los salta.
 
 ### `ui-permisos` (sale de `12486ee`, antes de lo de la tarde)
 
@@ -99,10 +99,10 @@ Lo que se espera: antes, «Fatal Python error: Aborted» en algún trabajador
 test 25 no está terminado. El resultado se apunta en el plan, junto a la tabla
 de tiempos.
 
-**Hecho en casa** (ver más abajo). **Siguiente paso**: el test 27.
+**Hecho en casa**, con los tests 26 a 30 (ver más abajo). **Siguiente
+paso**: el CI de `fase-1`, y después ui-permisos.
 
-Para medir con pytest hasta que llegue el test 30: `--ignore=tests/fixtures`
-siempre, o la recogida no termina (los volcados tienen enlaces en círculo).
+El venv de pytest ya no hace falta: `uv sync --extra gui` deja uno en `.venv`.
 
 ## Lo que falta del mensaje de la tarde, en orden
 
@@ -130,17 +130,18 @@ siempre, o la recogida no termina (los volcados tienen enlaces en círculo).
    - 25: **hecho**. La medida en paralelo destapó que no estaba terminado:
      tres commits más (`QGuiApplication` del instalador, `test_arm`, y la
      violación de segmento al salir). Tabla en el plan.
-   - 26: **hecho** (`d0a8ea0`): `benchmark.run(loads=…)`. Serie 150 → 121 s.
-   - 27: una foto real por proceso para los tests de interfaz que solo
-     necesitan una.
-   - 28: una ventana por clase en `test_window` donde no se cambia nada.
-   - 29: una medida de `membench` en otro proceso por clase.
-   - 30: **uv + pytest + pytest-xdist como dependencias de desarrollo, y el CI
-     pasa a `pytest -n auto` en el mismo commit** (decidido por el autor; el
-     plan todavía dice `-n 4` y que el CI siga con unittest: se corrige el
-     plan en ese commit).
+   - 26: **hecho** (`db6e0d0`): `benchmark.run(loads=…)`. Serie 150 → 121 s.
+   - 27: **hecho** (`e881db9`): `muestras.foto_real()`.
+   - 28: **hecho**: `TestVentanaQueSoloSeMira`. Aquí son 1,3 s, no 8.
+   - 29: **hecho**: solo dos tests compartían medida. 1,3 s, no 6.
+   - 30: **hecho** (`1b53d04`): `uv`, grupo `dev`, `uv.lock`,
+     `tests/conftest.py` y el CI en dos pasadas. De camino salieron dos
+     fallos del empaquetado, cada uno con su commit: `pip install .` no
+     terminaba desde que hay volcados, y la rueda salía sin los archivos de
+     idioma.
+   - La suite: de 150 s a 96 s en serie, y 20 s + 13 s con pytest.
    - Al acabar: empujar `fase-1`, `gh workflow run appimage.yml --ref
-     fase-1` y `gh run watch`.
+     fase-1` y `gh run watch`. **Es lo siguiente.**
 2. **ui-permisos**, aprobada con estos cambios del autor. Antes de empezar,
    rebasar `ui-permisos` sobre `fase-1`. Un commit por cambio, con su test:
    - **F-M4 primero** (`pkexec` en el hilo de la interfaz), antes de hacer

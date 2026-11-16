@@ -186,6 +186,18 @@ con el que la cosa **nace**.
 
 ### Interfaz y línea de órdenes
 
+* `ui/pages/graphics.py` · **media** · la tabla de monitores no cabe a 900 px
+  con un monitor de nombre largo: «GIGA-BYTE TECHNOLOGY CO., LTD. AORUS
+  FO27Q2» se lleva el ancho de la columna (el tope son 26 veces el cuerpo de
+  letra) y la resolución sale cortada, «2560 × 14…», con la barra de
+  desplazamiento debajo. Visto en el 5800X3D con dos monitores. Lo que hay
+  que decidir es de diseño: acortar el fabricante, o que la columna que cede
+  sea la del nombre y no las de cifras.
+* `providers/cppc.py` · **media, sin comprobar** · con `acpi-cpufreq` el techo
+  del silicio ya no sale inflado (4,96 GHz), pero el arreglo se hizo sin
+  arrancar el equipo con ese driver: falta un volcado con
+  `amd_pstate=disable`.
+
 * `settings.py` · **media** · la ventana no arranca si `settings.json` es un
   JSON válido que no sea un objeto: el error se cuela entre las dos redes que
   ya hay. El CLI sí sigue funcionando, lo que despista.

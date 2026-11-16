@@ -231,7 +231,7 @@ Dos cosas más que salieron al medir:
   test 30, no a la memoria de quien lance la suite.
 - En serie, `unittest discover` terminaba en verde y el proceso salía con una
   violación de segmento (código 139). Lo trajo el propio `50df0fd`, al dejar
-  la aplicación viva hasta el final; arreglado en `c86d183`.
+  la aplicación viva hasta el final; arreglado en `cb6a32e`.
 
 ### Lo medido después de cada test, en el 5800X3D
 
