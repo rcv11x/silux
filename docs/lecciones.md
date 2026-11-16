@@ -609,6 +609,13 @@ apartado. El orden dentro de cada apartado es el cronológico.
   estiman por chip conocido (k10temp, coretemp, nvme, drivetemp), del lado
   prudente, y se dice en la ventana que son estimados.
 
+- **Dar por bueno el dominio `core` de RAPL en cualquier procesador**: en
+  Intel es PP0, la suma de los núcleos. En AMD el kernel lo saca del contador
+  de energía de cada núcleo y lo lee en uno solo, el primero, y sale con el
+  mismo nombre. En el 5800X3D decía «núcleos 3,7 W» con el paquete en 64 W.
+  Se distingue cargando un hilo cada vez: el dominio sube con el núcleo 0 y no
+  se mueve con ningún otro. Donde eso pasa no se enseña, y se dice.
+
 <a id="benchmark"></a>
 
 ## Benchmark y puntuación

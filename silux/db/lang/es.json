@@ -744,6 +744,8 @@
   "prov.rapl.frozen.hint": "El consumo sale de restar dos lecturas de ese contador, y entre las dos últimas no ha cambiado. Con el procesador encendido eso no puede ser cero, así que no se enseña un 0 W que no sería cierto.",
   "prov.rapl.none": "Esta CPU no expone contadores de energía RAPL.",
   "prov.rapl.none.hint": "Es normal en AMD antiguos, en ARM y en máquinas virtuales.",
+  "prov.rapl.onecore": "El consumo de los núcleos no se enseña en este procesador",
+  "prov.rapl.onecore.hint": "En AMD ese contador es el de un solo núcleo, el primero, y no la suma de todos. El del paquete sí es el del procesador entero.",
   "prov.spd.thesemodules": "estos módulos",
   "prov.spd.unsupported": "El SPD de {tipos} todavía no se sabe interpretar.",
   "prov.spd.unsupported.hint": "Están implementados los formatos de DDR4 y DDR5.",

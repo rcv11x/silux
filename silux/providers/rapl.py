@@ -29,6 +29,18 @@ POWERCAP = pathlib.Path("/sys/class/powercap")
 SUBDOMAINS = {"core": "core_w", "uncore": "uncore_w", "dram": "dram_w"}
 
 
+# Donde el dominio `core` no es la suma de los núcleos. En Intel es PP0, un
+# contador del paquete. En AMD el kernel lo saca de `MSR_AMD_CORE_ENERGY_STATUS`,
+# que es de cada núcleo, y lo lee en uno solo: el primero del paquete. Medido
+# en un 5800X3D con una carga atada a un hilo: en el núcleo 0 el dominio sube
+# de 3,4 a 5,9 W, en el núcleo 5 no se mueve.
+NUCLEO_SUELTO = frozenset(("AuthenticAMD", "HygonGenuine"))
+
+
+def _core_es_de_un_nucleo(draft: Draft) -> bool:
+    return any(t.get("vendor_id") in NUCLEO_SUELTO for t in draft.types.values())
+
+
 # El framework se llama «intel-rapl» por su origen, pero AMD lo usa igual y
 # según la versión del kernel aparece como «amd-rapl». Buscar solo el primero
 # dejaba a las máquinas AMD sin lectura de consumo.
@@ -114,11 +126,15 @@ class RaplPower(Provider):
         now = time.monotonic()
         totals: dict[str, float] = {}
 
+        suelto = _core_es_de_un_nucleo(draft)
+        sin_nucleos = False
         for package in packages:
             self._accumulate(package, "package_w", now, totals)
             for child in sorted(package.glob(f"{package.name}:*")):
                 field = SUBDOMAINS.get(read_text(str(child / "name")) or "")
-                if field:
+                if field == "core_w" and suelto:
+                    sin_nucleos = True
+                elif field:
                     self._accumulate(child, field, now, totals)
 
         if "package_w" not in totals:
@@ -133,6 +149,9 @@ class RaplPower(Provider):
             return
 
         draft.capabilities.add("rapl")
+        if sin_nucleos:
+            draft.note("cpu.power.core_w", Need.HARDWARE,
+                       _("prov.rapl.onecore"), _("prov.rapl.onecore.hint"))
         if self._limits is None:
             self._limits = _limits(packages[0])
         long_term, short_term = self._limits
