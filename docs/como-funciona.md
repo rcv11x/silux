@@ -61,22 +61,29 @@ distintas. Asumir «una CPU, un juego de valores» obliga a reescribir el modelo
 entero más tarde; `tests/test_sysfs.py` monta un sysfs falso de un i7-12700K y
 verifica el reparto sin necesidad de tener uno delante.
 
-## Por qué no hace falta C ni ensamblador
+## Por qué no hace falta un compilador
 
 CPU-X necesita C++ porque se apoya en librerías de C (libcpuid, libpci,
 libprocps) y porque lleva embebido un benchmark de ancho de banda de memoria
 escrito en ensamblador. Pero el trabajo de fondo (leer archivos de sysfs y
 emparejar identificadores contra una tabla) no necesita nada de eso.
 
-El único punto que parecía exigir código nativo es la instrucción `CPUID`, y
-se resuelve en unas sesenta líneas: `silux/rawcpuid.py` escribe **20 bytes** de
-código máquina en una página anónima, la marca como ejecutable y la llama con
-`ctypes`. Es todo el ensamblador del proyecto, va comentado instrucción a
-instrucción, y no hace falta compilador para usarlo.
+Donde sí hace falta código nativo, va como bytes dentro del propio programa y
+no como algo que haya que compilar. Son dos sitios:
 
-Lo que sí queda fuera del alcance de Python es un benchmark de ancho de banda
-de memoria como el de CPU-X, que necesita bucles de carga y almacenamiento con
-SSE/AVX. Es una función que este proyecto no persigue.
+- **`CPUID`**, en `silux/rawcpuid.py`: veinte bytes de código máquina escritos
+  en una página anónima, marcada como ejecutable y llamada con `ctypes`.
+- **La latencia de la memoria**, en `silux/membench.py`: doce bytes que
+  persiguen punteros —cada lectura da la dirección de la siguiente—, montados
+  con la misma `rawcpuid.pagina_ejecutable`. Con lo que trae la biblioteca de
+  C no se llega: los accesos sueltos se solapan y la latencia se esconde
+  detrás del paralelismo.
+
+Los dos van comentados instrucción a instrucción, y ninguno necesita
+compilador, que es lo que permite que funcionen igual dentro de un AppImage.
+El ancho de banda de lectura de la RAM se mide con `memchr` de la biblioteca de
+C, en otro proceso; el de las cachés, que pediría un bucle propio como el de la
+latencia, sigue pendiente.
 
 ## El cuello de botella real de un monitor en Linux
 

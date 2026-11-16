@@ -286,7 +286,7 @@ RAM**, que es la fila que separaba esta pestaña del Cache & Memory Benchmark de
 AIDA64. Sale de doce bytes de código máquina que persiguen punteros, la misma
 técnica que `rawcpuid.py` usa para CPUID desde el primer día: 0,9 · 2,7 · 12,3
 · 80,6 ns en el 5800X3D de casa contra los 0,9 · 2,7 · 12,4 · 66,1 de AIDA64 en
-esa misma pieza con memoria más rápida. Queda pendiente:
+esa misma pieza con memoria más rápida.
 
 Hay una referencia con la que contrastar, y es de la misma pieza que el equipo
 de casa: la captura del Cache & Memory Benchmark de AIDA64 de un 5800X3D ajeno
@@ -304,12 +304,15 @@ aquí no era un artefacto de `memset`.** Ese 5800X3D da 28,8 escribiendo contra
 cifra es del hardware. Lo que despistaba era la comparación con un i7-8700K,
 donde escribir sale tan rápido como leer.
 
+Queda pendiente:
+
 - **El ancho de banda de las cachés**, que hoy topa en los 112 GB/s de `memchr`
   cuando una L1 anda por los 1400. Pide el mismo camino que la latencia y no
   está probado.
-- **La escritura y la copia**, medidas ya (25 y 41 GB/s) y sin enseñar: la
-  escritura sale la mitad que en AIDA64 sobre un equipo parecido, y hasta saber
-  si eso es la memoria o es cómo escribe `memset`, no se pone.
+- **La escritura y la copia**, medidas ya (25 y 41 GB/s) y sin enseñar. La
+  duda que las tenía apartadas —si la escritura a la mitad de la lectura era
+  del hardware o de cómo escribe `memset`— está resuelta arriba: es del
+  hardware. Solo falta pintarlas.
 - **El FCLK de los Ryzen**, que es de lo más mirado en esa plataforma —la
   sincronía con el reloj de memoria— y no está por ningún lado. En las APU sí
   hay por dónde, y es una tabla que ya se parsea: `gpu_metrics` v2.x lo trae en
@@ -401,7 +404,8 @@ sube a v6, así que las pruebas guardadas con la anterior se quedan sin cifra
 —y no llegó a haber ninguna v5 publicada—.
 
 **La `escala-v5` no se fusiona**: quedó superada, y su único commit se replicó
-al poner la v6 encima de master. Las dos ramas se pueden borrar.
+al poner la v6 encima de master. Las dos ramas se pueden borrar y
+no se han borrado todavía: siguen en local y en el remoto.
 
 **Los informes de auditoría viven fuera del repositorio**, en la carpeta de
 encima: `../auditoria-fase-4.md` y `-5.md`. De las fases 1 a 3 no queda el
@@ -542,8 +546,12 @@ con el que la cosa **nace**.
   `/tmp/silux-icons` de nombre fijo y usa lo que encuentre sin comprobar quién
   lo puso.
 * `data/org.silux.helper.policy.in` · **baja** · diverge de la plantilla que
-  escribe `instalar.py` en `allow_inactive`, que es la que decide si una sesión
-  por SSH puede autenticarse. Nada vigila que no se separen.
+  escribe `instalar.py` en `allow_inactive`, y nada vigila que no se separen;
+  además no lo usa nadie. Ojo con lo que decide cada campo: una sesión por SSH
+  no es local y la gobierna `allow_any`, que está en `auth_admin` en los dos.
+  `allow_inactive` es para una sesión local que no está en primer plano, así
+  que el comentario de `instalar.py` y el test que lo citan como el cerrojo del
+  SSH afirman algo que esa línea no hace.
 * `privileged/cargar_modulo.py` · **baja** · llama a `modprobe` sin ruta
   absoluta. Por `pkexec` da igual; por `sudo` depende de la configuración.
 
@@ -1244,7 +1252,10 @@ que era la mitad no probada de la misma función.
   lado. Son dos y no una a propósito —`per_second` es lo que escala con los
   hilos y lo que la interfaz etiqueta «op/s», `rate` es lo que se puntúa—, y
   fundirlas haría mentir a una de las dos. Hay un test que recorre el árbol de
-  sintaxis de todo el repositorio y no deja escribir una quinta.
+  sintaxis de todo el repositorio y no deja escribir una quinta, con un límite
+  que conviene saber: caza `m.operations / m.seconds` escrito así, y se le
+  escapan formas triviales de lo mismo —pasar por una variable, `sum(…) / t`,
+  `//`—.
 - **Un estado intermedio que tapa tests es peor que uno que los rompe**: al
   subir `score.VERSION` a 5 sin haber regenerado todavía `scores.json`,
   `referencias()` devolvía vacío y `puntuar` contestaba `None` a todo. La
@@ -1260,7 +1271,10 @@ que era la mitad no probada de la misma función.
   cifras muy distintas. Poder elegir la duración es lo que permite
   preguntar cuánto aguanta un equipo; puntuar con cualquiera de ellas es
   decir que uno es más lento cuando lo único que cambió fue la pregunta.
-  Solo puntúan las de quince segundos.
+  Por eso solo se **comparan** con otros equipos las de quince segundos; la
+  cifra se calcula para cualquier duración (`puntuar` no la mira, a
+  propósito), y lo que decide si se pone al lado de otra máquina es
+  `comparable`.
 - **Comparar temperaturas de dos momentos sin saber la ambiente**: ocho grados
   entre febrero y agosto son normales y salen iguales que ocho de pasta seca.
   Ningún sensor del equipo mide la habitación. Lo que sí se puede comparar es
@@ -1763,7 +1777,9 @@ por `_()`, la segunda llamada recibe «Uso» —que no es una clave— y devuelv
 inglés: la tupla llevaba once claves y una traducción ya hecha, y era la única
 que no cambiaba de idioma. Hay un test que lo vigila.
 
-La interfaz está entera en los dos idiomas: 956 claves, ninguna sin traducir.
+La interfaz está entera en los dos idiomas: 957 claves, ninguna sin traducir,
+y trece de ellas ya no las usa nadie (`gen_lang.py` solo ve cinco, ver lo
+pendiente).
 Hay un test que recorre el árbol de sintaxis de cada página buscando
 constructores de widget con una cadena española a pelo, porque eso es lo que
 no se ve hasta abrir la pantalla en el otro idioma y ningún test normal lo
