@@ -376,5 +376,45 @@ class TestLaGuardaDelAppRun(unittest.TestCase):
                 self.assertIn(espera, self._lanzar(**entorno).stderr)
 
 
+
+class TestLosDatosEntranEnElPaquete(unittest.TestCase):
+    """Lo que el programa lee de su propia carpeta va en lo que se instala.
+
+    `pip install` solo copia los archivos que no son Python si
+    `[tool.setuptools.package-data]` los nombra, carpeta a carpeta. Los de
+    idioma están en `silux/db/lang/` y la regla solo nombraba `silux.db`: la
+    rueda salía sin `es.json` ni `en.json`, y un silux instalado así enseña
+    las claves —`cpu.card.clocks`— en vez de las frases. El AppImage no lo
+    sufre porque copia la carpeta entera, y por eso no se vio.
+    """
+
+    RAIZ = __import__("pathlib").Path(__file__).resolve().parent.parent
+
+    def _reglas(self) -> dict:
+        texto = (self.RAIZ / "pyproject.toml").read_text(encoding="utf-8")
+        bloque = re.search(r"^\[tool\.setuptools\.package-data\]\n(.*?)(?=^\[|\Z)",
+                           texto, re.S | re.M).group(1)
+        return {paquete: re.findall(r'"([^"]+)"', patrones)
+                for paquete, patrones in re.findall(r'^"([^"]+)"\s*=\s*\[(.*?)\]',
+                                                    bloque, re.S | re.M)}
+
+    def test_cada_archivo_de_datos_tiene_su_regla(self):
+        import fnmatch
+
+        reglas = self._reglas()
+        self.assertTrue(reglas)
+        datos = [f for f in (self.RAIZ / "silux").rglob("*")
+                 if f.is_file() and f.suffix not in (".py", ".pyc")
+                 and "__pycache__" not in f.parts]
+        self.assertTrue(datos)
+        fuera = []
+        for archivo in datos:
+            paquete = ".".join(archivo.parent.relative_to(self.RAIZ).parts)
+            if not any(fnmatch.fnmatch(archivo.name, patron)
+                       for patron in reglas.get(paquete, ())):
+                fuera.append(str(archivo.relative_to(self.RAIZ)))
+        self.assertEqual(fuera, [], "no entrarían en el paquete instalado")
+
+
 if __name__ == "__main__":
     unittest.main()
