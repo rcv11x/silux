@@ -16,7 +16,7 @@ import platform
 import sys
 from typing import Iterable, Optional
 
-from . import __version__, build_id, render
+from . import __version__, build_id, privacidad, render
 from .i18n import en_español
 from .model import Need, Snapshot
 
@@ -33,7 +33,17 @@ MOTIVOS = {
 
 
 def build(snapshot: Snapshot, anonymous: bool = True) -> str:
-    """El informe entero. `anonymous` tapa lo que identifica al equipo."""
+    """El informe entero. `anonymous` tapa lo que identifica al equipo.
+
+    Anónimo, la foto pasa antes por `privacidad.anonimizar`, que es quien
+    decide qué identifica a alguien: el nombre del equipo no vive solo en su
+    campo, y repetir aquí al lado esa decisión es como se escapaba por los
+    nombres de red y por el árbol de sensores. Las marcas de «omitido» de cada
+    sección se quedan, porque dicen que algo se tapó en vez de enseñar un
+    valor de mentira.
+    """
+    if anonymous:
+        snapshot = privacidad.anonimizar(snapshot)
     partes = [
         _cabecera(snapshot, anonymous),
         _procesador(snapshot),

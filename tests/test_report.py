@@ -69,6 +69,52 @@ class TestPrivacidad(unittest.TestCase):
         self.assertIn(report.OCULTO, report.build(_snapshot()))
 
 
+
+class TestLoQueSeColaPorLosNombres(unittest.TestCase):
+    """El nombre del equipo y el de quien lo usa, dentro de otros nombres.
+
+    El informe anónimo tapaba el campo `hostname` y dejaba pasar el nombre
+    cuando venía dentro de otra cosa: una interfaz virtual que se llama como
+    la máquina, la rama del árbol de sensores que la red crea con el nombre de
+    cada interfaz, o una de WireGuard con el nombre de una persona, que no es
+    el del equipo y que ningún sustituto del hostname puede conocer. La quinta
+    auditoría encontró esa última en un informe anónimo de verdad. Las
+    interfaces que siguen un patrón del kernel se quedan como están, que son
+    las que hacen falta para diagnosticar; las demás se sustituyen.
+    """
+
+    EQUIPO = "portatil-de-zoraida"
+
+    def _foto(self):
+        red = (NetworkInterface(name="enp6s0", kind="ethernet", up=True),
+               NetworkInterface(name=self.EQUIPO, kind="virtual", up=True),
+               NetworkInterface(name="zoraida_wg0sv", kind="virtual", up=True),
+               NetworkInterface(name="br-0123456789ab", kind="puente"),
+               NetworkInterface(name="wg0", kind="virtual", up=True))
+        sensores = tuple(
+            Sensor(key=f"net/{i.name}/rx", chip="net", device=f"Red ({i.name})",
+                   label="Bajada", kind=SensorKind.NETWORK, value=0.0)
+            for i in red if i.up)
+        return _snapshot(
+            system=System(distribution="CachyOS", kernel="Linux 7.2.0",
+                          hostname=self.EQUIPO, desktop="KDE"),
+            network=red, sensors=sensores)
+
+    def test_el_informe_anonimo_no_lleva_ninguno(self):
+        texto = report.build(self._foto()).lower()
+        self.assertNotIn("zoraida", texto)
+
+    def test_las_interfaces_del_kernel_siguen_saliendo(self):
+        texto = report.build(self._foto())
+        for nombre in ("enp6s0", "br-0123456789ab", "wg0"):
+            self.assertIn(f"**{nombre}**", texto)
+        self.assertIn("Red (enp6s0)", texto)
+
+    def test_con_identificadores_salen_tal_cual(self):
+        texto = report.build(self._foto(), anonymous=False)
+        self.assertIn("zoraida_wg0sv", texto)
+        self.assertIn(f"Red ({self.EQUIPO})", texto)
+
 class TestContenido(unittest.TestCase):
     def test_lleva_lo_que_hace_falta_para_diagnosticar(self):
         texto = report.build(_snapshot())
