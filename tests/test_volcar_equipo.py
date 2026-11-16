@@ -134,6 +134,55 @@ class TestLasDireccionesDeProc(unittest.TestCase):
         self.assertIn("/dev/sdb1 /media/unidad1 ext4", salida)
 
 
+class TestLasInterfacesEnSerie(unittest.TestCase):
+    """Docker crea un puente por red y un `veth` por contenedor: con una de
+    cada basta para ver cómo las trata la página de Red."""
+
+    def test_queda_una_de_cada_familia_y_las_demas_enteras(self):
+        nombres = ["lo", "enp5s0", "enp6s0", "docker0", "virbr0", "tailscale0",
+                   "br-0123456789ab", "br-ba9876543210", "veth0a1b2c3", "veth4d5e6f7",
+                   "veth8091a2b"]
+        self.assertEqual(volcar._sobrantes(nombres),
+                         {"br-ba9876543210", "veth4d5e6f7", "veth8091a2b"})
+
+    def test_lo_que_sobra_desaparece_de_todas_partes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            raiz = pathlib.Path(tmp)
+            nombres = ("docker0", "br-0123456789ab", "br-ba9876543210",
+                       "veth0a1b2c3", "veth4d5e6f7")
+            (raiz / "sys/class/net").mkdir(parents=True)
+            for nombre in nombres:
+                carpeta = raiz / "sys/devices/virtual/net" / nombre
+                (carpeta / "statistics").mkdir(parents=True)
+                (carpeta / "mtu").write_text("1500\n")
+                (raiz / "sys/class/net" / nombre).symlink_to(
+                    f"../../devices/virtual/net/{nombre}")
+            red = raiz / "proc/self/net"
+            red.mkdir(parents=True)
+            (red / "route").write_text(
+                "Iface\tDestination\tGateway\n"
+                + "".join(f"{n}\t000011AC\t00000000\n" for n in nombres))
+            (red / "if_inet6").write_text(
+                "".join(f"fe80000000000000000000000000000{i} 0{i} 40 20 80 {n}\n"
+                        for i, n in enumerate(nombres)))
+            grabado = {"ioctl_red": {f"{n}:0x8915": "198.51.100.1" for n in nombres}}
+            limpio = volcar._Anonimizador(raiz, grabado)
+
+            self.assertEqual(limpio.en_serie(), 2)
+
+            quedan = {"docker0", "br-0123456789ab", "veth0a1b2c3"}
+            self.assertEqual({e.name for e in (raiz / "sys/class/net").iterdir()}, quedan)
+            self.assertEqual({e.name for e in (raiz / "sys/devices/virtual/net").iterdir()},
+                             quedan)
+            for archivo in ("route", "if_inet6"):
+                texto = (red / archivo).read_text()
+                self.assertNotIn("br-ba9876543210", texto)
+                self.assertNotIn("veth4d5e6f7", texto)
+                self.assertIn("veth0a1b2c3", texto)
+            self.assertIn("Iface", (red / "route").read_text())
+            self.assertEqual({c.partition(":")[0] for c in limpio.grabado["ioctl_red"]}, quedan)
+
+
 class TestLosMontajesEnLaComprobacionFinal(unittest.TestCase):
 
     @staticmethod

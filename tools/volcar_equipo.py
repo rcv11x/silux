@@ -284,6 +284,21 @@ def _spd_sin_serie(datos: bytes) -> tuple[bytes, bytes]:
     return datos[:inicio] + bytes(fin - inicio) + datos[fin:], datos[inicio:fin]
 
 
+# Las interfaces que una herramienta crea en serie: Docker, un puente por red
+# y un `veth` por contenedor en marcha. Dicen cuánto hay montado en la máquina
+# y no añaden nada al volcado: de cada familia se queda una.
+EN_SERIE = (re.compile(r"br-[0-9a-f]{12}"), re.compile(r"veth[0-9a-f]+"))
+
+
+def _sobrantes(nombres) -> set[str]:
+    """De cada familia de interfaces en serie, todas menos la primera."""
+    nombres = list(nombres)
+    sobran: set[str] = set()
+    for patron in EN_SERIE:
+        sobran.update(sorted(n for n in nombres if patron.fullmatch(n))[1:])
+    return sobran
+
+
 def _ipv4_hex(ip: str) -> str:
     """Una dirección como la escribe /proc/net/route: hexadecimal al revés."""
     return "".join(f"{int(x):02X}" for x in reversed(ip.split(".")))
@@ -310,6 +325,36 @@ class _Anonimizador:
             if not privacidad.de_sistema(entrada.name):
                 nombres[entrada.name] = privacidad.INTERFAZ.format(len(nombres) + 1)
         return nombres
+
+    def en_serie(self) -> int:
+        """Quita las interfaces en serie que sobran, y dice cuántas eran.
+
+        De todas partes: su carpeta, su enlace, sus líneas en las tablas de
+        `/proc/net` y lo que se grabó de ellas.
+        """
+        red = self.destino / "sys" / "class" / "net"
+        if not red.is_dir():
+            return 0
+        sobran = _sobrantes(e.name for e in red.iterdir())
+        for nombre in sobran:
+            enlace = red / nombre
+            carpeta = enlace.resolve()
+            if enlace.is_symlink():
+                enlace.unlink()
+            if carpeta.is_dir() and self.destino in carpeta.parents:
+                shutil.rmtree(carpeta)
+        for tabla in ("route", "if_inet6"):
+            for ruta in (self.destino / "proc").glob(f"*/net/{tabla}"):
+                if ruta.is_symlink() or not ruta.is_file():
+                    continue
+                lineas = ruta.read_text().splitlines()
+                ruta.write_text("".join(
+                    linea + "\n" for linea in lineas if not sobran.intersection(linea.split())))
+        direcciones = self.grabado.get("ioctl_red")
+        if isinstance(direcciones, dict):
+            for clave in [c for c in direcciones if c.partition(":")[0] in sobran]:
+                del direcciones[clave]
+        return len(sobran)
 
     def _cambiar_texto(self, texto: str) -> str:
         for viejo, nuevo in self.interfaces.items():
@@ -549,6 +594,7 @@ def volcar(nombre: str, destino_base: pathlib.Path = DESTINO) -> pathlib.Path:
                 copia.archivo(camino) if not os.path.isdir(camino) else copia.directorio(camino)
 
         limpio = _Anonimizador(trabajo, grabado)
+        quitadas = limpio.en_serie()
         limpio.contenidos()
         limpio.nombres()
         (trabajo / sysroot.GRABADO).write_text(
@@ -570,7 +616,8 @@ def volcar(nombre: str, destino_base: pathlib.Path = DESTINO) -> pathlib.Path:
                 "y el volcado guarda una",
                 "el consumo (RAPL): sale de restar dos lecturas del contador de "
                 "energía, y el volcado guarda una",
-            ],
+            ] + ([f"{quitadas} interfaces de red en serie (puentes de Docker y "
+                  "veth): queda una de cada"] if quitadas else []),
         }, ensure_ascii=False, indent=1) + "\n")
 
         foto = foto_de(trabajo)
