@@ -962,5 +962,11 @@
   "throttle.unknown": "a reason it does not report",
   "time.minsec": "{m} min {s} s",
   "time.minutes": "{m} min",
-  "time.seconds": "{n} s"
+  "time.seconds": "{n} s",
+  "what.cpu.power": "Processor power",
+  "what.cpu.voltage": "Processor voltage",
+  "what.disks.health": "Disk health",
+  "what.gpu.usage": "Graphics usage and power",
+  "what.memory.modules": "Memory module details",
+  "what.memory.traffic": "Memory traffic"
 }

@@ -109,6 +109,7 @@ class Disks(Provider):
                 draft.note(
                     "disks.health", Need.ROOT,
                     _("prov.disk.health"), _("prov.disk.health.hint"),
+                    _("what.disks.health"),
                 )
                 return
             try:

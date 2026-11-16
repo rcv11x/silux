@@ -95,7 +95,8 @@ class ImcTraffic(Provider):
             return None
         if hay_controlador() and not self._mudo:
             return ("memory.traffic", Need.ROOT,
-                    _("prov.imc.denied"), _("prov.imc.denied.hint"))
+                    _("prov.imc.denied"), _("prov.imc.denied.hint"),
+                    _("what.memory.traffic"))
         return ("memory.traffic", Need.HARDWARE,
                 _("prov.imc.none"), _("prov.imc.none.hint"))
 

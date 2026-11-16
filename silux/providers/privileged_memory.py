@@ -91,12 +91,14 @@ class PrivilegedMemory(Provider):
             self.requested = False
             self._error = str(exc)
             draft.note("modules", Need.ROOT,
-                       _("prov.mem.denied"), _("prov.mem.denied.hint"))
+                       _("prov.mem.denied"), _("prov.mem.denied.hint"),
+                       _("what.memory.modules"))
         except (HelperUnavailable, HelperError) as exc:
             self.requested = False
             self._error = str(exc)
             draft.note("modules", Need.ROOT,
-                       _("prov.mem.helperfail").format(error=exc), "")
+                       _("prov.mem.helperfail").format(error=exc), "",
+                       _("what.memory.modules"))
 
         draft.privileged = PrivilegedState(
             supported=self.client.supported(),
@@ -155,6 +157,7 @@ class PrivilegedMemory(Provider):
         draft.note(
             "modules", Need.ROOT,
             _("prov.mem.smbios"), _("prov.mem.smbios.hint"),
+            _("what.memory.modules"),
         )
 
     def _read_directly(self, draft: Draft) -> None:

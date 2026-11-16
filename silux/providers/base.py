@@ -72,8 +72,10 @@ class Draft:
             self.gpus.append({"index": len(self.gpus)})
         return self.gpus[index]
 
-    def note(self, path: str, need: Need, message: str, hint: str = "") -> None:
-        self.notes.append(Note(path=path, need=need, message=message, hint=hint))
+    def note(self, path: str, need: Need, message: str, hint: str = "",
+             what: str = "") -> None:
+        self.notes.append(Note(path=path, need=need, message=message, hint=hint,
+                               what=what))
 
     def resolve(self, path: str) -> None:
         """Retira las notas de un dato que otro proveedor sí ha conseguido.
@@ -155,8 +157,12 @@ class Provider:
     def available(self) -> bool:
         return True
 
-    def unavailable_reason(self) -> Optional[tuple[str, Need, str, str]]:
-        """(ruta, motivo, mensaje, pista) si no se puede usar. `None` si sí."""
+    def unavailable_reason(self) -> Optional[tuple]:
+        """(ruta, motivo, mensaje, pista) si no se puede usar. `None` si sí.
+
+        Con un quinto elemento, qué falta en corto, cuando es cosa de permisos
+        y el ayudante lo sabe leer (`Note.what`).
+        """
         return None
 
     def collect(self, draft: Draft) -> None:

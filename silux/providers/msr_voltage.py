@@ -119,7 +119,7 @@ class MsrVoltage(Provider):
             return ("cpu.voltage_v", Need.PLATFORM,
                     _("prov.msr.nox86"), _("prov.msr.nox86.hint"))
         return ("cpu.voltage_v", Need.ROOT,
-                _("prov.msr.novolt"), _("prov.msr.novolt.hint"))
+                _("prov.msr.novolt"), _("prov.msr.novolt.hint"), _("what.cpu.voltage"))
 
     def collect(self, draft: Draft) -> None:
         # Si hwmon ya encontró un sensor etiquetado, ese manda: mide lo que

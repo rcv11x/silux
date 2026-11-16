@@ -962,5 +962,11 @@
   "throttle.unknown": "un motivo que no publica",
   "time.minsec": "{m} min {s} s",
   "time.minutes": "{m} min",
-  "time.seconds": "{n} s"
+  "time.seconds": "{n} s",
+  "what.cpu.power": "Consumo del procesador",
+  "what.cpu.voltage": "Voltaje del procesador",
+  "what.disks.health": "Salud de los discos",
+  "what.gpu.usage": "Uso y consumo de la gráfica",
+  "what.memory.modules": "Detalle de los módulos de memoria",
+  "what.memory.traffic": "Tráfico de la memoria"
 }

@@ -509,7 +509,8 @@ class GpuState(Provider):
         else:
             clave = "root"
         draft.note(f"gpus.{indice}", NEED_INTEL[clave],
-                   *(_(k) for k in INTEL_AVISOS[clave]))
+                   *(_(k) for k in INTEL_AVISOS[clave]),
+                   what=_("what.gpu.usage") if clave == "root" else "")
 
 
 NEED_INTEL = {"root": Need.ROOT, "driver": Need.DRIVER, "hardware": Need.HARDWARE}

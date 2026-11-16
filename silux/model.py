@@ -38,6 +38,10 @@ class Note:
     need: Need
     message: str
     hint: str = ""     # qué puede hacer el usuario al respecto
+    # Qué es lo que falta, en tres palabras: «Salud de los discos». Lo pone el
+    # proveedor en las notas que el ayudante privilegiado sabe resolver, y es
+    # lo que permite listarlas juntas sin deducir nada de la ruta.
+    what: str = ""
 
 
 # --------------------------------------------------------------------------
@@ -1432,6 +1436,19 @@ class Snapshot:
 
     def notes_for(self, prefix: str) -> tuple[Note, ...]:
         return tuple(n for n in self.notes if n.path.startswith(prefix))
+
+    @property
+    def permission_notes(self) -> tuple[Note, ...]:
+        """Lo que falta y se arregla dando permisos, en el orden de la foto.
+
+        Solo lo que el ayudante sabe leer en este equipo: una nota de
+        permisos sin `what` es un archivo que no se deja abrir, y eso no lo
+        resuelve una contraseña; y sin ayudante no hay a quién pedírselo.
+        Contar de más aquí es poner un botón que no arregla lo que anuncia.
+        """
+        if not self.privileged.supported:
+            return ()
+        return tuple(n for n in self.notes if n.need is Need.ROOT and n.what)
 
 
 def to_jsonable(obj: Any) -> Any:

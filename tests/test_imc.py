@@ -288,9 +288,10 @@ class TestPorQueFaltaCuandoFalta(unittest.TestCase):
         self.addCleanup(setattr, modulo, "hay_controlador", original)
 
         proveedor = ImcTraffic(client=None)
-        ruta, motivo, _mensaje, _pista = proveedor.unavailable_reason()
+        ruta, motivo, _mensaje, _pista, falta = proveedor.unavailable_reason()
         self.assertEqual(ruta, "memory.traffic")
         self.assertEqual(motivo, Need.ROOT)
+        self.assertTrue(falta, "no dice qué es lo que falta")
 
     def test_sin_contador_no_se_pide_nada(self):
         """En un Ryzen, pedir la contraseña para no enseñar nada sería peor."""
