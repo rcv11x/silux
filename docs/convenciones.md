@@ -66,6 +66,24 @@ no cuatro. El arreglo y el test que lo vigila van en el mismo commit, y lo que
 solo mueve código va en uno propio, para que `git log --follow` siga sirviendo.
 La suite queda en verde entre uno y otro.
 
+## El CHANGELOG
+
+Cada versión es una entrada `## X.Y.Z (día de mes de año)`, de la más nueva a
+la más vieja, contada para quien usa el programa y no commit a commit. Dentro,
+un apartado por zona del programa y en este orden, omitiendo los vacíos:
+
+1. **Antes de actualizar**: lo que hay que saber antes de dar el paso (lo que
+   deja de valer, lo que hay que hacer a mano). Sin prefijo: no son cambios.
+2. **Memoria**, **Procesador**, **Gráficos**, **Batería**, **Rendimiento**,
+   **Interfaz**, **Privacidad** y **AppImage**.
+
+En cada zona, una línea por cambio, corta, que empieza por «Nuevo:» o
+«Arreglado:». Sin emojis. Lo que no encaja en ninguna zona va a la más
+cercana, no a una nueva: la lista corta es lo que deja encontrar lo suyo de un
+vistazo. La entrada se escribe como «sin publicar» y la fecha se pone al
+etiquetar; la de arriba tiene que ser la versión que declara el paquete, y
+hay un test que lo vigila.
+
 ## El idioma
 
 La interfaz va en **español neutro**: `video` y no «vídeo», `archivo` y no
