@@ -1138,6 +1138,7 @@ class PermissionNotice(QFrame):
     """
 
     grant_requested = Signal()
+    explain_requested = Signal()
     snoozed = Signal()
     dismissed = Signal()
 
@@ -1170,6 +1171,11 @@ class PermissionNotice(QFrame):
         self.grant_button = QPushButton(_("perm.notice.grant"))
         self.grant_button.setObjectName("Primary")
         self.grant_button.clicked.connect(self.grant_requested)
+        # Al lado del que pide la contraseña: quien duda si pulsarlo es quien
+        # quiere saber antes qué va a pasar.
+        self.explain_button = QPushButton(_("perm.notice.explain"))
+        self.explain_button.setObjectName("GhostButton")
+        self.explain_button.clicked.connect(self.explain_requested)
         # Dos botones de texto y no un aspa: un aspa no dice si es por ahora o
         # para siempre, y son dos cosas distintas.
         self.snooze_button = QPushButton(_("perm.notice.later"))
@@ -1186,6 +1192,7 @@ class PermissionNotice(QFrame):
         self.buttons = QHBoxLayout()
         self.buttons.setContentsMargins(0, 4, 0, 0)
         self.buttons.addWidget(self.grant_button)
+        self.buttons.addWidget(self.explain_button)
         self.buttons.addStretch(1)
         self.buttons.addWidget(self.snooze_button)
         self.buttons.addWidget(self.dismiss_button)

@@ -227,6 +227,7 @@ class MainWindow(QMainWindow):
         self.home_page.seccion_pedida.connect(self.select_section)
         aviso = self.home_page.permission_notice
         aviso.grant_requested.connect(self._on_elevation_requested)
+        aviso.explain_requested.connect(self._explicar_permisos)
         aviso.snoozed.connect(self._posponer_aviso)
         aviso.dismissed.connect(self._quitar_aviso)
         self.cpu_page = CpuPage(self._palette, self.prefs)
@@ -866,6 +867,22 @@ class MainWindow(QMainWindow):
         apartado = self._aviso_pospuesto or self.prefs.permission_notice_dismissed
         self.home_page.set_permission_notice(
             faltan if recaida or not apartado else (), recaida)
+
+    def _explicar_permisos(self) -> None:
+        """«Qué hace esto», antes de pedir la contraseña."""
+        from ..privileged.client import PrivilegedClient
+        from .dialogs import PermissionsDialog
+
+        dialogo = PermissionsDialog(
+            permanente=(not PrivilegedClient.instalado()
+                        or PrivilegedClient.necesita_reinstalar()),
+            parent=self)
+        dialogo.grant_requested.connect(self._on_elevation_requested)
+        dialogo.permanent_requested.connect(self._on_permanent_requested)
+        # `open` y no `exec`: es modal para la ventana pero no para el
+        # muestreo, que sigue pintando detrás.
+        self._dialogo_permisos = dialogo
+        dialogo.open()
 
     def _apartar_aviso(self) -> None:
         # Apartarlo también vale para el de la recaída: sale otra vez si
