@@ -142,8 +142,30 @@ El venv de pytest ya no hace falta: `uv sync --extra gui` deja uno en `.venv`.
    - La suite: de 150 s a 96 s en serie, y 20 s + 13 s con pytest.
    - Al acabar: empujar `fase-1`, `gh workflow run appimage.yml --ref
      fase-1` y `gh run watch`. **Es lo siguiente.**
-2. **ui-permisos**, aprobada con estos cambios del autor. Antes de empezar,
-   rebasar `ui-permisos` sobre `fase-1`. Un commit por cambio, con su test:
+2. **ui-permisos**, aprobada con estos cambios del autor. **En marcha** en la
+   rama `ui-permisos`, ya rebasada sobre `fase-1`. Hecho hasta ahora, cada
+   uno con su commit y su test:
+   - F-M4: `pkexec` fuera del hilo de la interfaz (`ui/background.py`).
+   - `Note.what` y `Snapshot.permission_notes` (en la propuesta, `que`).
+   - El aviso de Inicio (`PermissionNotice`), con «Ahora no» y «No volver a
+     mostrar» de texto y sin aspa; la preferencia es
+     `permission_notice_dismissed`.
+   - El diálogo «Qué hace esto» (`ui/dialogs.py`). No dice «se quita desde
+     Ajustes» porque en Ajustes no hay con qué: da la orden.
+   - La barra de estado sin jerga y la insignia de Inicio fuera.
+
+   Queda de la propuesta: el candado (punto 3) y las tres tarjetas nuevas de
+   Inicio (punto 5). Y de las correcciones, lo de esta lista menos F-M4 y los
+   dos botones de texto en Inicio (en las páginas faltan).
+
+   **El CI de `fase-1` no se ha lanzado**: en el equipo de casa no hay `gh`
+   ni token. La rama está empujada (por SSH); hay que pulsar «Run workflow»
+   en Actions con la rama `fase-1`, o instalar `github-cli`.
+
+   Capturas de «antes» de este equipo, sacadas de la rama antes de tocarla:
+   `~/Imágenes/silux-test/ui-permisos/antes/`.
+
+   La lista original, un commit por cambio, con su test:
    - **F-M4 primero** (`pkexec` en el hilo de la interfaz), antes de hacer
      más visible el botón.
    - Inicio no dice «usa 11.6 GB de la RAM»: lo que diga Gráficos, o nada.
