@@ -264,8 +264,8 @@ def _graficas(snapshot: Snapshot, anonymous: bool) -> str:
             f"- Enlace: {render.pcie_link(gpu.link)} (máx {render.pcie_link(gpu.link, True)})",
             f"- APIs: {', '.join(f'{a.name} {a.version}' for a in gpu.apis) or '—'}",
         ]
-        if not anonymous and gpu.unique_id:
-            lineas.append(f"- Identificador único: {gpu.unique_id}")
+        if not anonymous and render.unique_id(gpu.unique_id):
+            lineas.append(f"- Identificador único: {render.unique_id(gpu.unique_id)}")
         for salida in gpu.connected_displays:
             monitor = salida.monitor
             detalle = (f"{render.monitor_name(monitor)} · {render.display_mode(salida)}"

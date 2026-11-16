@@ -403,7 +403,12 @@ class GpuSection(QWidget):
         c(_("gpu.field.rops"), str(gpu.rops) if gpu.rops else d,
           tooltip=_("gpu.tip.rops"))
         c(_("gpu.field.shaders"), str(gpu.shader_engines) if gpu.shader_engines else d)
-        c(_("gpu.field.uuid"), gpu.unique_id or d)
+        # Un identificador todo a ceros no identifica nada: es lo que da un
+        # driver que no lo tiene, y lo que deja una captura anónima. La fila
+        # se va entera; con un guion parecería un dato que falta.
+        identificador = render.unique_id(gpu.unique_id)
+        c(_("gpu.field.uuid"), identificador or d)
+        self.card.set_visible(_("gpu.field.uuid"), identificador is not None)
 
         self._apply_memory(gpu)
 

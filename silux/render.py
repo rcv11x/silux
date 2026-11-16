@@ -275,6 +275,16 @@ def plural(cantidad: int, singular: str, plural_: str) -> str:
     return singular if cantidad == 1 else plural_
 
 
+def unique_id(crudo: Optional[str]) -> Optional[str]:
+    """El identificador único de una pieza, o nada si no identifica nada.
+
+    Todo ceros es la forma que tiene un driver de decir que no lo tiene.
+    """
+    if not crudo or not crudo.strip().strip("0"):
+        return None
+    return crudo.strip()
+
+
 _FECHA_DMI = re.compile(r"(\d{1,2})/(\d{1,2})/(\d{4})")
 
 
