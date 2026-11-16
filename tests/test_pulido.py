@@ -128,6 +128,28 @@ class TestElNombreDeUnEquipoDeMarca(unittest.TestCase):
                       system_family="ThinkCentre M80q")
         self.assertEqual(board.display_name, "Lenovo ThinkCentre M80q")
 
+    def test_una_gigabyte_suelta_se_llama_como_la_placa(self):
+        """Los rellenos de Gigabyte no son números ni «Default string».
+
+        En una X570 AORUS ELITE la versión del sistema es «-CF» y la familia
+        «X570 MB», y el equipo salía «Gigabyte -CF» en la cabecera de Inicio
+        y en el árbol de sensores. Los valores son los del volcado del
+        5800X3D.
+        """
+        board = Board(vendor="Gigabyte Technology Co., Ltd.", name="X570 AORUS ELITE",
+                      system_vendor="Gigabyte Technology Co., Ltd.",
+                      system_name="X570 AORUS ELITE", system_version="-CF",
+                      system_family="X570 MB")
+        self.assertIsNone(board.system_display_name)
+        self.assertEqual(board.display_name, "Gigabyte X570 AORUS ELITE")
+
+    def test_y_asi_sale_en_el_equipo_volcado(self):
+        from tests.test_equipos import EQUIPOS, foto
+
+        f = foto(EQUIPOS / "5800x3d")[0]
+        self.assertEqual(f.board.display_name, "Gigabyte X570 AORUS ELITE")
+        self.assertNotIn("Gigabyte -CF", {s.device for s in f.sensors})
+
     def test_y_tambien_si_se_declara_un_sobremesa_cualquiera(self):
         """Es lo que ampliar la lista de chasis no habría arreglado."""
         board = Board(vendor="LENOVO", name="316C", chassis="chassis.desktop",

@@ -525,6 +525,17 @@ DMI_PLACEHOLDERS = frozenset({
 # versión del sistema, y que no es el nombre de ningún equipo. Los rellenos con
 # letras —«Default string», «System Product Name»— ya los caza DMI_PLACEHOLDERS.
 _SOLO_UNA_VERSION = re.compile(r"(?:rev\.?\s*)?[\d.,\s]+", re.I)
+# Los otros dos rellenos que no son un nombre, vistos en una Gigabyte X570
+# AORUS ELITE: la versión del sistema es «-CF», un sufijo suelto, y la familia
+# «X570 MB», el chipset y «placa base». Con ellos el equipo salía «Gigabyte
+# -CF».
+_SOLO_UN_SUFIJO = re.compile(r"[^0-9a-z]\S{0,6}", re.I)
+_SOLO_LA_PLACA = re.compile(r".*\bMB", re.I)
+
+
+def _nombra_un_equipo(valor: str) -> bool:
+    return not (_SOLO_UNA_VERSION.fullmatch(valor) or _SOLO_UN_SUFIJO.fullmatch(valor)
+                or _SOLO_LA_PLACA.fullmatch(valor))
 
 
 def clean_dmi(value: Optional[str]) -> Optional[str]:
@@ -580,7 +591,7 @@ class Board:
         """
         for campo in (self.system_version, self.system_family):
             nombre = clean_dmi(campo)
-            if nombre and not _SOLO_UNA_VERSION.fullmatch(nombre):
+            if nombre and _nombra_un_equipo(nombre):
                 return nombre
         return None
 
