@@ -366,7 +366,7 @@ class _Anonimizador:
             if relativo.startswith("/proc/") and relativo.endswith("/net/if_inet6"):
                 ruta.write_text(self._ipv6(datos.decode()))
                 continue
-            if relativo == "/proc/mounts":
+            if relativo.startswith("/proc/") and relativo.endswith("/mounts"):
                 ruta.write_text(self._cambiar_texto(self._mounts(datos.decode())))
                 continue
             texto = _texto(ruta)
@@ -402,9 +402,17 @@ class _Anonimizador:
         return "\n".join(salida) + "\n"
 
     def _mounts(self, texto: str) -> str:
+        """Los montajes de los discos, con los puntos que puso alguien tapados.
+
+        Solo se quedan las líneas de un dispositivo, que son las que lee el
+        proveedor. Las demás no describen el equipo sino la sesión: el
+        AppImage abierto, los contenedores, la carpeta del usuario.
+        """
         salida = []
         for linea in texto.splitlines():
             campos = linea.split(" ")
+            if not campos[0].startswith("/dev/"):
+                continue
             if len(campos) > 1:
                 punto = campos[1].replace("\\040", " ")
                 nuevo = self._montaje(punto)
@@ -586,6 +594,22 @@ def volcar(nombre: str, destino_base: pathlib.Path = DESTINO) -> pathlib.Path:
 # Lo que `anonimizar` sustituye aunque no identifique a nadie: el bucle local
 # y una MAC a ceros. Que lo cambie no significa que el volcado se lo dejara.
 INOFENSIVOS = {"127.0.0.1", "::1", "00:00:00:00:00:00", None, ()}
+YA_SUSTITUIDO = re.compile(re.escape(privacidad.MONTAJE).replace(r"\{\}", r"\d+"))
+
+
+def _sin_numerar(discos):
+    """Los discos con los montajes ya sustituidos sin su número.
+
+    `anonimizar` numera por el orden de los discos y el volcado por el de
+    `/proc/mounts`: un `/media/unidad3` que pasa a `/media/unidad1` no es un
+    dato que quedara por tapar.
+    """
+    return tuple(
+        dataclasses.replace(d, partitions=tuple(
+            dataclasses.replace(p, mountpoint=privacidad.MONTAJE.format(""))
+            if p.mountpoint and YA_SUSTITUIDO.fullmatch(p.mountpoint) else p
+            for p in d.partitions))
+        for d in discos)
 
 
 def _lo_que_anonimizar_taparia(foto) -> list[str]:
@@ -609,6 +633,8 @@ def _lo_que_anonimizar_taparia(foto) -> list[str]:
                               if x not in INOFENSIVOS]
                     if a != b and restos:
                         quedan.append(f"network.{i.name}.{sub.name}")
+            continue
+        if campo.name == "disks" and _sin_numerar(antes) == _sin_numerar(despues):
             continue
         quedan.append(campo.name)
     return quedan

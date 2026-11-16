@@ -6,7 +6,7 @@ import tempfile
 import unittest
 
 from silux import privacidad
-from silux.model import CpuInfo, NetworkInterface, Snapshot
+from silux.model import CpuInfo, Disk, NetworkInterface, Partition, Snapshot
 
 
 def _herramienta():
@@ -110,6 +110,54 @@ class TestLasDireccionesDeProc(unittest.TestCase):
         self.assertIn(" / btrfs", salida)
         self.assertIn("/media/unidad1", salida)
         self.assertNotIn("ana", salida)
+
+    def test_de_los_montajes_solo_queda_lo_que_es_de_un_disco(self):
+        # Lo demás no lo lee nadie y lleva lo que hay abierto en la sesión:
+        # el AppImage que se está usando, los contenedores, el usuario.
+        texto = ("/dev/sda2 / btrfs rw 0 0\n"
+                 "tmpfs /run/user/1000 tmpfs rw,uid=1000 0 0\n"
+                 "Juego.AppImage /tmp/.mount_JuegoAbC fuse.Juego.AppImage ro,user_id=1000 0 0\n"
+                 "overlay /var/lib/docker/rootfs/overlayfs/0123abcd overlay rw 0 0\n")
+        self.assertEqual(self.limpio._mounts(texto), "/dev/sda2 / btrfs rw 0 0\n")
+
+    def test_los_montajes_se_tapan_donde_estan_de_verdad(self):
+        # /proc/mounts es un enlace a self/mounts: el archivo que se copia
+        # está en otro sitio, y hay que reconocerlo ahí.
+        proc = self.limpio.destino / "proc"
+        (proc / "self").mkdir(parents=True)
+        (proc / "self" / "mounts").write_text(
+            "/dev/sda2 / btrfs rw 0 0\n/dev/sdb1 /mnt/datos ext4 rw 0 0\n")
+        (proc / "mounts").symlink_to("self/mounts")
+        self.limpio.contenidos()
+        salida = (proc / "mounts").read_text()
+        self.assertNotIn("datos", salida)
+        self.assertIn("/dev/sdb1 /media/unidad1 ext4", salida)
+
+
+class TestLosMontajesEnLaComprobacionFinal(unittest.TestCase):
+
+    @staticmethod
+    def _foto(*puntos):
+        particiones = tuple(Partition(name=f"sda{n}", mountpoint=punto)
+                            for n, punto in enumerate(puntos, 1))
+        return Snapshot(monotonic_ns=0, cpu=CpuInfo(),
+                        disks=(Disk(name="sda", partitions=particiones),))
+
+    def test_un_montaje_de_alguien_no_pasa(self):
+        self.assertEqual(volcar._lo_que_anonimizar_taparia(self._foto("/", "/mnt/datos")),
+                         ["disks"])
+
+    def test_uno_ya_sustituido_pasa_lleve_el_numero_que_lleve(self):
+        # anonimizar numera por el orden de los discos y el volcado por el de
+        # /proc/mounts: que no coincidan no es que quede algo por tapar.
+        self.assertEqual(
+            volcar._lo_que_anonimizar_taparia(self._foto("/", "/media/unidad3", "/media/unidad2")),
+            [])
+
+    def test_un_numero_de_serie_sigue_sin_pasar(self):
+        foto = Snapshot(monotonic_ns=0, cpu=CpuInfo(),
+                        disks=(Disk(name="sda", serial="S4EWNX0M123456"),))
+        self.assertEqual(volcar._lo_que_anonimizar_taparia(foto), ["disks"])
 
 
 if __name__ == "__main__":
