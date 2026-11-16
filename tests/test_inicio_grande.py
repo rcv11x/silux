@@ -79,6 +79,47 @@ class TestInicioConLaVentanaGrande(unittest.TestCase):
         self.assertGreater(len(todas), 2)
         self.assertIn(render.temperature(max(todas), False), inicio.temperaturas.nombre.text())
 
+    def _con_temperaturas(self, cpu, gpu):
+        import dataclasses
+
+        f = self.fotos[AMD]
+        return dataclasses.replace(
+            f, cpu=dataclasses.replace(f.cpu, package_temp_c=cpu),
+            gpus=(dataclasses.replace(f.gpus[0], temp_c=gpu),) + f.gpus[1:])
+
+    def test_el_titular_no_salta_por_decimas(self):
+        # Procesador y gráfica casi iguales, cruzándose cada segundo: es lo
+        # que hacían en el 5800X3D, a 52,6 y 53,0.
+        from silux.i18n import _
+
+        ventana, inicio = self._inicio(AMD)
+        ventana._on_sample(self._con_temperaturas(60.0, 55.0))
+        self.assertIn(_("home.temp.cpu"), inicio.temperaturas.nombre.text())
+        titulares = []
+        for cpu, gpu in ((57.4, 57.9), (57.9, 57.5), (57.2, 58.4), (58.0, 57.1)):
+            ventana._on_sample(self._con_temperaturas(cpu, gpu))
+            titulares.append(inicio.temperaturas.nombre.text().split()[0])
+        self.assertEqual(set(titulares), {_("home.temp.cpu")}, titulares)
+
+    def test_pero_cambia_cuando_otra_se_separa_de_verdad(self):
+        from silux.i18n import _
+
+        ventana, inicio = self._inicio(AMD)
+        ventana._on_sample(self._con_temperaturas(60.0, 55.0))
+        ventana._on_sample(self._con_temperaturas(60.0, 71.0))
+        self.assertIn(_("home.temp.gpu"), inicio.temperaturas.nombre.text())
+        self.assertIn("71", inicio.temperaturas.nombre.text())
+
+    def test_las_demas_van_siempre_en_el_mismo_orden(self):
+        from silux.i18n import _
+
+        ventana, inicio = self._inicio(AMD)
+        ordenes = set()
+        for cpu, gpu in ((60.0, 40.0), (60.0, 30.0)):
+            ventana._on_sample(self._con_temperaturas(cpu, gpu))
+            ordenes.add(tuple(p.split()[0] for p in inicio.temperaturas.cifras.text().split(" · ")))
+        self.assertEqual(ordenes, {(_("home.temp.gpu"), _("home.temp.disk"))})
+
     def test_la_del_procesador_es_la_misma_que_en_su_tarjeta(self):
         f = self.fotos[INTEL]
         _ventana, inicio = self._inicio(INTEL)

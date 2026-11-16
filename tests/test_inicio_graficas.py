@@ -78,16 +78,28 @@ class TestLasGraficasDeInicio(unittest.TestCase):
         else:
             self.skipTest("el uso de la gráfica va y viene entre fotos")
 
-    def test_la_de_temperaturas_es_la_mas_caliente_de_cada_foto(self):
-        def mas_caliente(f):
-            todas = [f.cpu.temperature_c]
-            if f.gpus:
-                todas.append(f.gpus[0].temp_c)
-            todas.extend(d.temp_c for d in f.disks)
-            todas = [t for t in todas if t is not None]
-            return max(todas) if todas else None
+    def test_la_de_temperaturas_es_la_de_la_pieza_que_encabeza(self):
+        # La curva es de la misma pieza que la cifra grande de encima: la más
+        # caliente, que no cede el sitio por décimas (MARGEN_DEL_TITULAR).
+        from silux.ui.pages.home import MARGEN_DEL_TITULAR
 
-        self._comparar(self.inicio.temperaturas.grafica, [mas_caliente(f) for f in self.fotos])
+        def lecturas(f):
+            todas = {"cpu": f.cpu.temperature_c,
+                     "gpu": f.gpus[0].temp_c if f.gpus else None}
+            discos = [d.temp_c for d in f.disks if d.temp_c is not None]
+            todas["disco"] = max(discos) if discos else None
+            return {k: v for k, v in todas.items() if v is not None}
+
+        esperadas, titular = [], None
+        for f in self.fotos:
+            ahora = lecturas(f)
+            if not ahora:
+                self.skipTest("este equipo no publica temperaturas")
+            lider = max(ahora, key=ahora.get)
+            if titular not in ahora or ahora[lider] - ahora[titular] >= MARGEN_DEL_TITULAR:
+                titular = lider
+            esperadas.append(ahora[titular])
+        self._comparar(self.inicio.temperaturas.grafica, esperadas)
 
     def test_la_de_red_es_lo_que_mueve_la_interfaz_principal(self):
         from silux.ui.pages.network import main_interface

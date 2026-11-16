@@ -28,6 +28,11 @@ from ..widgets import (Card, ChipRow, PermissionNotice, ResponsiveRow, Sparkline
 from ..widgets import ui_font
 
 
+# Cuántos grados tiene que sacarle una pieza a la que encabeza la tarjeta de
+# temperaturas para quitarle el sitio.
+MARGEN_DEL_TITULAR = 2.0
+
+
 class _TarjetaResumen(Card):
     """Una pieza del equipo: qué es, cómo está y una curva de su historia."""
 
@@ -143,6 +148,7 @@ class HomePage(QScrollArea):
 
         layout.addStretch(1)
         self._chips: tuple = ()
+        self._titular_de_temperaturas: Optional[str] = None
 
     def _tarjeta(self, host: ResponsiveRow, titulo: str, seccion: str,
                  cuerpo: Optional[str] = "grafica") -> _TarjetaResumen:
@@ -397,8 +403,18 @@ class HomePage(QScrollArea):
             self.temperaturas.poner(_("home.temp.none"), "", "", pie)
             return
         fahrenheit = self._prefs.fahrenheit
-        lecturas.sort(key=lambda par: -par[1])
-        (nombre, grados), resto = lecturas[0], lecturas[1:]
+        # El titular no cambia por décimas. Con el procesador a 52,6 y la
+        # gráfica a 53,0 saltaba de uno a otro cada segundo, y la tarjeta
+        # entera bailaba. Quien está arriba se queda hasta que otro le saque
+        # MARGEN_DEL_TITULAR grados; las demás van siempre en el mismo orden.
+        por_nombre = dict(lecturas)
+        candidato = max(lecturas, key=lambda par: par[1])
+        actual = self._titular_de_temperaturas
+        if actual not in por_nombre or \
+                candidato[1] - por_nombre[actual] >= MARGEN_DEL_TITULAR:
+            actual = self._titular_de_temperaturas = candidato[0]
+        nombre, grados = actual, por_nombre[actual]
+        resto = [par for par in lecturas if par[0] != actual]
         self.temperaturas.poner(
             f"{nombre}  {render.temperature(grados, fahrenheit)}",
             _("home.temp.hottest"),
