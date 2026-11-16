@@ -87,11 +87,21 @@ y 3.11.** Resta una referencia a `None` en cada método que devuelve `void`
 3.10 que va dentro del AppImage el proceso muere con «Fatal Python error:
 none_dealloc» al pintar la primera gráfica. Se quita cuando una 6.12.x lo
 corrija y la suite pase en 3.10 con ella. Como el CI pregunta el rango a
-`--pyside-range`, ese techo alcanza también a sus tests. `pyproject.toml` no
-pone ninguno de los dos: no es su trabajo decidir qué Qt corre en la máquina de otro,
-y quien instala desde el código fuente casi siempre usa el PySide6 de su
-distribución, que no lee los extras del `pyproject`. Este repositorio se
-desarrolla con 6.11.
+`--pyside-range`, ese techo alcanza también a sus tests.
+
+`pyproject.toml` no le pone techo a PySide6: no es su trabajo decidir qué Qt
+corre en la máquina de otro, y quien instala desde el código fuente casi
+siempre usa el PySide6 de su distribución, que no lee los extras del
+`pyproject`. **Con una excepción, y es un cierre reproducido, no una
+preferencia de Qt:** el extra `gui` pide `PySide6<6.12` solo con
+`python_version < '3.12'`. Ahí la 6.12.0 tumba el proceso —lo de `None` de
+arriba, medido con 2000 llamadas a `lineTo`: −2001 con 6.12.0 y 0 con 6.11.3—,
+y quien hace `pip install silux[gui]` en un 3.10 recibiría un programa que se
+cae al pintar la primera gráfica. Desde 3.12 la 6.12 funciona y no se le quita
+a nadie. Un techo aquí solo entra con ese criterio: una versión concreta que se
+cae, reproducida, y limitado a donde se cae; el `<6.10` del `--compat`, que es
+de procesador y no de cierre, no entra. Este repositorio se desarrolla con
+6.11.
 
 Lo que sí hay en todas partes es la guarda, en dos versiones porque la
 pregunta se responde distinto según de dónde se arranque. En el AppImage está

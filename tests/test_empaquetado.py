@@ -80,6 +80,55 @@ class TestElQtQueSeEmpaqueta(unittest.TestCase):
         self.assertFalse(_admite("PySide6>=6.6,!=6.12.0", "6.12.0"))
 
 
+class TestQuienInstalaDesdeElCodigo(unittest.TestCase):
+    """El extra `gui` del `pyproject` no deja entrar la 6.12.0 donde se cae.
+
+    La regla es que `pyproject.toml` no pone techos a PySide6: no le toca
+    decidir qué Qt corre en la máquina de otro. Esta es la excepción, y solo
+    para Python 3.10 y 3.11, que es donde el fallo de `None` de la 6.12.0
+    tumba el proceso. Desde 3.12 `None` es inmortal y la 6.12 funciona, así
+    que ahí no se le quita a nadie.
+    """
+
+    def _requisitos(self) -> list[str]:
+        import pathlib
+        texto = (pathlib.Path(__file__).resolve().parent.parent
+                 / "pyproject.toml").read_text()
+        bloque = re.search(r"^gui\s*=\s*\[(.*?)\]", texto, re.S | re.M).group(1)
+        lineas = [l.split("#", 1)[0] for l in bloque.splitlines()]
+        return re.findall(r'"([^"]+)"', "\n".join(lineas))
+
+    def _rangos_para(self, python: str) -> list[str]:
+        """Los rangos de PySide6 que aplican en esa versión de Python."""
+        rangos = []
+        for requisito in self._requisitos():
+            rango, _, marcador = requisito.partition(";")
+            if marcador.strip():
+                operador, version = re.fullmatch(
+                    r"\s*python_version\s*(<|>=)\s*['\"]([\d.]+)['\"]\s*",
+                    marcador).groups()
+                if not _admite(f"x{operador}{version}", python):
+                    continue
+            rangos.append(rango.strip())
+        return rangos
+
+    def test_en_3_10_y_3_11_no_entra_la_6_12_0(self):
+        for python in ("3.10", "3.11"):
+            with self.subTest(python=python):
+                rangos = self._rangos_para(python)
+                self.assertTrue(rangos, f"en {python} no se pide ningún PySide6")
+                for rango in rangos:
+                    self.assertFalse(_admite(rango, "6.12.0"), rango)
+                    self.assertTrue(_admite(rango, "6.11.3"), rango)
+
+    def test_desde_3_12_no_se_le_pone_techo(self):
+        for python in ("3.12", "3.14"):
+            with self.subTest(python=python):
+                rangos = self._rangos_para(python)
+                self.assertEqual(len(rangos), 1, rangos)
+                self.assertTrue(_admite(rangos[0], "6.12.0"), rangos[0])
+
+
 class TestElCiConstruyeComoSeReparte(unittest.TestCase):
     """El AppImage que se publica tiene que salir del contenedor.
 
@@ -205,8 +254,12 @@ class TestUnPaqueteIncompletoNoSeEmpaqueta(unittest.TestCase):
         self.empaquetar.assert_called_once()
 
     def test_se_pregunta_tambien_por_el_interprete(self):
+        import contextlib
+        import io
+
         self.falta_cursor = False
-        self.build.comprobar_autocontenido()
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.build.comprobar_autocontenido()
         self.assertIn("python3", self.preguntados)
         self.assertIn("libqxcb.so", self.preguntados)
 

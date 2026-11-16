@@ -26,7 +26,14 @@ classifiers = [
 dependencies = []
 
 [project.optional-dependencies]
-gui = ["PySide6>=6.6"]
+gui = [
+    # El techo es la única excepción a no ponerle techo a PySide6 aquí, y solo
+    # donde se cae: la 6.12.0 resta una referencia a `None` en cada método que
+    # devuelve `void`, y en 3.10 y 3.11 el proceso muere con «none_dealloc» al
+    # pintar la primera gráfica. Desde 3.12 `None` es inmortal y funciona.
+    "PySide6>=6.6,<6.12; python_version < '3.12'",
+    "PySide6>=6.6; python_version >= '3.12'",
+]
 
 [project.scripts]
 silux = "silux.cli:main"
