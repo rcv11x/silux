@@ -323,6 +323,43 @@ class Badge(QLabel):
         super().__init__(text, parent)
         self.setObjectName("BadgeQuiet" if quiet else "Badge")
         self.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Maximum)
+        self._muestra: Optional[QColor] = None
+        self._borde: Optional[QColor] = None
+
+    def set_swatch(self, color: Optional[QColor], borde: Optional[QColor] = None) -> None:
+        """Un cuadrado de color delante del texto: de qué tramo habla.
+
+        En la leyenda de una barra, sin él hay que contar tramos para saber
+        cuál es «Caché». Lleva borde porque el tramo libre es del color del
+        fondo de la barra, y sin borde su cuadrado no se vería.
+        """
+        if color == self._muestra:
+            return
+        self._muestra, self._borde = color, borde
+        self.setIndent(self._lado() + 6 if color is not None else -1)
+        self.updateGeometry()
+        self.update()
+
+    def swatch(self) -> Optional[QColor]:
+        return self._muestra
+
+    def _lado(self) -> int:
+        return max(7, int(self.fontMetrics().ascent() * 0.8))
+
+    def paintEvent(self, event) -> None:  # noqa: N802
+        super().paintEvent(event)
+        if self._muestra is None:
+            return
+        lado = self._lado()
+        zona = self.contentsRect()
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setPen(QPen(self._borde, 1.0) if self._borde is not None
+                       else Qt.PenStyle.NoPen)
+        painter.setBrush(self._muestra)
+        painter.drawRoundedRect(
+            QRectF(zona.left() + 0.5, zona.center().y() - lado / 2 + 0.5, lado, lado), 2, 2)
+        painter.end()
 
 
 class Divider(QFrame):
@@ -928,15 +965,20 @@ class ChipRow(QWidget):
         self._column.setContentsMargins(0, 0, 0, 0)
         self._column.setSpacing(max(4, theme.METRICS.card_gap - 2))
         self._chips: list[tuple[str, bool]] = []
+        self._swatches: list = []
         self._widgets: list[Badge] = []
         self._laid_width = 0
         # El ancho mínimo lo marca la insignia más ancha, no la fila entera:
         # si no, una lista larga impide encoger la ventana.
         self.setMinimumWidth(64)
 
-    def set_chips(self, labels: Iterable[str], highlight_first: bool = False) -> None:
+    def set_chips(self, labels: Iterable[str], highlight_first: bool = False,
+                  swatches: Optional[Sequence] = None) -> None:
+        """Pone las insignias. `swatches`: un (color, borde) por insignia, o
+        nada; es lo que convierte la fila en la leyenda de una barra."""
         chips = [(str(text), highlight_first and i == 0)
                  for i, text in enumerate(labels)]
+        self._swatches = list(swatches) if swatches is not None else []
 
         # Si solo ha cambiado el texto (el caso normal: una leyenda que sigue a
         # unos valores vivos) se reescriben las insignias que ya existen. Crear
@@ -948,6 +990,7 @@ class ChipRow(QWidget):
             for widget, (text, _tono) in zip(self._widgets, chips):
                 if widget.text() != text:
                     widget.setText(text)
+            self._poner_muestras()
             return
 
         self._chips = chips
@@ -962,14 +1005,22 @@ class ChipRow(QWidget):
 
         row: Optional[QHBoxLayout] = None
         used = 0
-        for text, loud in self._chips:
+        for indice, (text, loud) in enumerate(self._chips):
             chip = Badge(text, quiet=not loud)
+            if indice < len(self._swatches):
+                # Antes de medirla: la muestra ensancha la insignia.
+                chip.set_swatch(*self._swatches[indice])
             self._widgets.append(chip)
             # El hueco entre insignias sigue a la densidad: pegadas unas a
             # otras, una leyenda de tres se lee como una sola etiqueta larga.
             hueco = max(6, theme.METRICS.card_gap)
             needed = chip.sizeHint().width() + hueco
             if row is None or (used and used + needed > width):
+                if row is not None:
+                    # Cada fila lleva su muelle, no solo la última: sin él,
+                    # las insignias de las filas llenas se repartían por todo
+                    # el ancho y solo la de abajo quedaba a la izquierda.
+                    row.addStretch(1)
                 row = QHBoxLayout()
                 row.setSpacing(hueco)
                 row.setContentsMargins(0, 0, 0, 0)
@@ -979,12 +1030,19 @@ class ChipRow(QWidget):
             used += needed
         if row is not None:
             row.addStretch(1)
+        self._poner_muestras()
 
         # Avisar al layout de arriba: al pasar de una fila a dos, esto mide
         # el doble, y si nadie se lo dice sigue repartiendo el sitio de antes.
         # Era lo que dejaba las insignias pintadas encima de la barra hasta
         # que se volvía a mover la ventana.
         self.updateGeometry()
+
+    def _poner_muestras(self) -> None:
+        for indice, widget in enumerate(self._widgets):
+            color, borde = (self._swatches[indice] if indice < len(self._swatches)
+                            else (None, None))
+            widget.set_swatch(color, borde)
 
     def filas(self) -> int:
         """Cuántas líneas de insignias hay montadas ahora mismo."""
@@ -1434,6 +1492,23 @@ class Table(QScrollArea):
 
 
 
+def memory_segments(memory) -> list[tuple[str, float, str]]:
+    """Los tramos de la barra de memoria: lo mismo en Inicio, Memoria y Sistema.
+
+    Los tres más el hueco del fondo suman el total, por eso van las
+    aplicaciones y no «en uso»: lo segundo incluye caché que no se devuelve y
+    haría que la barra se pasara. La caché va con su color y no con el del
+    fondo: en Inicio iba con el de la línea, que es el de la barra vacía, y no
+    se distinguía de lo libre.
+    """
+    return [
+        (_("sys.mem.apps"), memory.apps_bytes, "accent"),
+        (_("sys.mem.cache"), memory.cache_bytes, "info"),
+        (_("sys.mem.buffers"), memory.buffers_bytes, "warn"),
+        (_("sys.mem.free"), memory.free_bytes, "line"),
+    ]
+
+
 class StackedBar(QWidget):
     """Barra de segmentos con leyenda: cuánto ocupa cada cosa de un total.
 
@@ -1472,8 +1547,11 @@ class StackedBar(QWidget):
         self._total = total or 1.0
         if formatter is not None:
             self._formatter = formatter
+        visibles = [s for s in segments if s[1] > 0]
+        borde = self._p.q("muted", 0.6)
         self._legend.set_chips(
-            f"{label}  {self._formatter(value)}" for label, value, _descarte in segments if value > 0
+            (f"{label}  {self._formatter(value)}" for label, value, _token in visibles),
+            swatches=[(self._p.q(token), borde) for _label, _value, token in visibles],
         )
         self._reservar_alto()
         self.update()

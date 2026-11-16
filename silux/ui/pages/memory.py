@@ -31,6 +31,7 @@ from .. import theme
 from ..theme import Palette, ui_font
 from ..widgets import (
     Card, ChipRow, InfoGrid, Notice, ResponsiveRow, StackedBar, Table,
+    memory_segments,
     boton_de_permiso_permanente, clear_layout, tone_for,
 )
 
@@ -389,12 +390,7 @@ class MemoryPage(QScrollArea):
             key=lambda par: par[1])]
 
         self.bar.set_segments(
-            [
-                (_("sys.mem.apps"), memory.apps_bytes, "accent"),
-                (_("sys.mem.cache"), memory.cache_bytes, "info"),
-                (_("sys.mem.buffers"), memory.buffers_bytes, "warn"),
-                (_("sys.mem.free"), memory.free_bytes, "line"),
-            ],
+            memory_segments(memory),
             total=memory.total_bytes,
             formatter=render.size,
         )

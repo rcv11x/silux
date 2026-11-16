@@ -462,7 +462,6 @@
   "home.gpu.none": "No graphics card detected",
   "home.loading": "Reading the machine…",
   "home.mem.inuse": "{tam} in use",
-  "home.mem.seg.inuse": "In use",
   "home.mem.used": "{pct}% used",
   "home.storage.free": "{tam} free",
   "home.storage.none": "No drives",

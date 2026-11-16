@@ -462,7 +462,6 @@
   "home.gpu.none": "Sin gráfica detectada",
   "home.loading": "Leyendo el equipo…",
   "home.mem.inuse": "{tam} en uso",
-  "home.mem.seg.inuse": "En uso",
   "home.mem.used": "{pct} % ocupada",
   "home.storage.free": "{tam} libres",
   "home.storage.none": "Sin unidades",

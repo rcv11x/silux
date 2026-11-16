@@ -117,6 +117,13 @@ class StoragePage(QScrollArea):
         card.body.addWidget(self.title)
         card.body.addWidget(self.subtitle)
         card.body.addWidget(self.badges)
+        # Un hueco de verdad entre las insignias de tipo y la barra: en
+        # compacto quedaban a cinco píxeles y, con la leyenda debajo, la barra
+        # parecía una insignia más entre dos filas de insignias. Un widget y
+        # no un `addSpacing`, que Qt comprime cuando falta alto.
+        hueco = QWidget()
+        hueco.setFixedHeight(4)
+        card.body.addWidget(hueco)
         card.body.addWidget(self.total_bar)
         return card
 

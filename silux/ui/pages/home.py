@@ -24,7 +24,7 @@ from ...settings import Preferences
 from .. import theme
 from ..theme import Palette
 from ..widgets import (Card, ChipRow, PermissionNotice, ResponsiveRow, Sparkline,
-                       StackedBar)
+                       StackedBar, memory_segments)
 from ..widgets import ui_font
 
 
@@ -299,12 +299,10 @@ class HomePage(QScrollArea):
             _("home.mem.inuse").format(tam=render.size(usada)), detalle,
             _("home.mem.used").format(
                 pct=f"{usada / memoria.total_bytes * 100:.0f}"))
-        self.memoria.barra.set_segments(
-            [(_("home.mem.seg.inuse"), usada, "accent"),
-             (_("sys.mem.cache"), memoria.cache_bytes, "line"),
-             (_("sys.mem.free"),
-              max(0, memoria.total_bytes - usada - memoria.cache_bytes), "muted")],
-            total=memoria.total_bytes, formatter=render.size)
+        # Los mismos tramos y colores que la página de Memoria: aquí la caché
+        # iba con el color del fondo de la barra y no se veía dónde acababa.
+        self.memoria.barra.set_segments(memory_segments(memoria),
+                                        total=memoria.total_bytes, formatter=render.size)
 
     def _almacenamiento(self, snapshot: Snapshot) -> None:
         discos = snapshot.disks

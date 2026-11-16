@@ -20,7 +20,8 @@ from ...model import Snapshot, System
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette
-from ..widgets import Card, ChipRow, InfoGrid, ResponsiveRow, StackedBar
+from ..widgets import (Card, ChipRow, InfoGrid, ResponsiveRow, StackedBar,
+                       memory_segments)
 
 # Claves, no texto ni `_()`: estas tuplas se evalúan al importar el módulo,
 # cuando todavía no se sabe qué idioma quiere el usuario. La traducción ocurre
@@ -138,12 +139,7 @@ class SystemPage(QScrollArea):
         # total, por eso se usa `apps_bytes` y no `used_bytes`: la segunda
         # incluye caché no recuperable y haría que la barra se pasara.
         self.bar.set_segments(
-            [
-                (_("sys.mem.apps"), memory.apps_bytes, "accent"),
-                (_("sys.mem.cache"), memory.cache_bytes, "info"),
-                (_("sys.mem.buffers"), memory.buffers_bytes, "warn"),
-                (_("sys.mem.free"), memory.free_bytes, "line"),
-            ],
+            memory_segments(memory),
             total=memory.total_bytes,
             formatter=render.size,
         )
