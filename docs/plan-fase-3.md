@@ -207,6 +207,32 @@ Aborted», desde `Sparkline.__init__` en `test_fluidez`). En serie no se ve
 porque algún módulo anterior la deja creada; en paralelo, el orden cambia y
 salta. También pasa en uno que escribí hoy, `test_anchura`.
 
+### La medida del test 25, en el 5800X3D
+
+`pytest -n auto` (16 procesos), `--ignore=tests/fixtures`, tres commits:
+
+| | Resultado | Tiempo |
+|---|---|---:|
+| antes de `50df0fd` (dos veces) | 2 procesos abortados, 4 tests fallidos | 62-64 s |
+| con `50df0fd` (dos veces) | 2 procesos abortados, 4 tests fallidos | 63-64 s |
+| con los dos arreglos de después (tres veces) | 1620 pasan, ningún aborto | 62-64 s |
+
+Guardar la referencia no bastaba. Quedaban dos dependencias del orden, cada
+una con su commit: la `QGuiApplication` del instalador de iconos, que deja al
+proceso sin `QApplication` si `test_desktop` corre primero, y `test_arm`, que
+al sustituir `Path.read_text` se llevaba por delante la carga del idioma.
+
+Dos cosas más que salieron al medir:
+
+- **pytest no acaba de recoger los tests si entra en `tests/fixtures/`**: los
+  volcados de equipo son árboles de `/sys` con enlaces que dan la vuelta, y
+  dieciséis procesos se quedaron diez minutos al 100 % sin ejecutar nada. Con
+  `--ignore=tests/fixtures` recoge en un segundo. Va a la configuración en el
+  test 30, no a la memoria de quien lance la suite.
+- En serie, `unittest discover` termina en verde y escribe al salir
+  «corrupted double-linked list». Es del cierre del intérprete con Qt vivo;
+  no se ha investigado.
+
 ## Cómo bajar de los dos minutos y medio sin perder cobertura
 
 En este orden, cada uno un commit con su medida antes y después:
