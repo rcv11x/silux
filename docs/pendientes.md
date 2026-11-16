@@ -1,31 +1,22 @@
 # Lo que queda por arreglar, con su detalle
 
-La tabla corta está en `CLAUDE.md`; aquí está cada punto con lo que se
-midió. De las auditorías 1 a 3 no queda el informe, así que esto es lo único
-que se conserva de ellas. La cuarta y la quinta están fuera del
-repositorio, en `../auditoria-fase-4.md` y `-5.md`, con los pasos para
-reproducir cada cosa.
+La tabla corta está en `CLAUDE.md`; aquí está cada punto con lo que se midió.
+Este archivo es el registro completo: los informes de auditoría no viven en el
+repositorio y no se puede contar con ellos. De las auditorías 1 a 3 no queda
+otra cosa que lo apuntado aquí.
+
+Lo que toca privilegios se describe por su clase de problema y dónde está, sin
+los pasos para reproducirlo: este archivo es público.
 
 ## De dónde sale
 
-**Los informes de auditoría viven fuera del repositorio**, en la carpeta de
-encima: `../auditoria-fase-4.md` y `-5.md`. De las fases 1 a 3 no queda el
-informe, solo lo que se apuntó aquí. Aquí abajo va el índice: qué falta, dónde
-y cómo de grave. La quinta lleva además su propio plan por fases;
-la fase 0 de ese plan está hecha en la rama `fase-0` —el techo de PySide6, el
-CI construyendo en contenedor, el AppDir incompleto que ya no se empaqueta, la
-suite aislada de la carpeta personal, la escala que no puede desparejarse en
-verde y ninguna página que se salga a lo ancho en compacto—, y detrás de ella
-el techo de PySide6 en el `pyproject` para 3.10 y 3.11 y la guarda del AppRun,
-que ya deja pasar el CLI, recomienda `$APPIMAGE` y elige idioma como POSIX
-—`LC_ALL`, `LC_MESSAGES`, `LANG`—. Y antes de publicar la 0.3.0, la fuga
-del informe anónimo (F-A1, F-M29): el informe pasa por
-`privacidad.anonimizar`, que ahora sustituye las interfaces con nombre puesto
-a mano, busca el hostname entero y sin mayúsculas, y tapa los puntos de
-montaje y los números de serie de monitores y baterías. El resto de sus
-hallazgos todavía no ha entrado en este índice.
-Los pasos para reproducir cada cosa se quedan en los informes a propósito —el
-del enlace simbólico del instalador es una receta y este archivo es público.
+Cinco auditorías. La quinta trajo además un plan por fases; su fase 0 —el
+techo de PySide6, el CI construyendo en contenedor, el AppDir incompleto que
+ya no se empaqueta, la suite aislada de la carpeta personal, la escala que no
+puede desparejarse en verde, ninguna página que se salga a lo ancho, el techo
+del `pyproject` para 3.10 y 3.11, la guarda del AppRun y la fuga del informe
+anónimo— salió en la 0.3.0, y su fase 1 está en la rama `fase-1`. Lo que sigue
+abierto de ella está en el último apartado de este archivo, con su código F-….
 
 **La cuarta cubrió lo que las tres primeras no habían tocado**: el AppImage
 construido de verdad y arrancado con pantalla, `ui/widgets.py` línea a línea, y
@@ -236,3 +227,117 @@ con el que la cosa **nace**.
   note. De paso, construir sin red falla en el último paso.
 * `tools/medir_referencia.py`, `history.py` · **hecho** · la cuenta que decide
   qué se puntúa estaba escrita en cuatro sitios.
+
+## De la quinta auditoría
+
+Lo que sigue abierto, con el código que lleva en la tabla de `CLAUDE.md`. Los
+que ya estaban en los apartados de arriba (relojes de `cpulive`, voltajes,
+hwmon, `spd.decode`, proveedores mudos, red en 1024, la caché de iconos, el
+instalador, y F-M24 y F-M25 —los topes del protocolo del ayudante y el
+`timeout` que no acota— en «Privilegios y privacidad») no se repiten.
+
+### Altos
+
+* **F-A2 · `spd.py`** · el XMP de DDR4 calcula el ciclo con la parte gruesa
+  sola (`spd[offset+3] * 125`), sin la corrección fina. Un DDR4-3600 (555 ps)
+  no se puede representar así y sale «XMP 1 3200». Además, las posiciones de
+  los perfiles (`185, 220` con `- 176`) son las de XMP 1.x de DDR3, y el perfil
+  2 de DDR4 caería dentro del primero (leído). No hay ningún volcado con XMP en
+  `tests/fixtures`: **no se escribe sin uno real delante**. La mitad del
+  redondeo de las latencias ya está arreglada en `fase-1`.
+
+### Medios
+
+* **F-M2 · `ui/widgets.py`** · además de nacer con la raya gruesa, el arreglo
+  tampoco funciona al perder el dato: `style().unpolish()` restaura la fuente
+  de la hoja y deshace el `setFont` de justo antes, así que de «5» a «—» queda
+  `Muted` pero a 17 pt monoespaciada. No hay ni un test de `StatTile`.
+* **F-M3 · `ui/sampler.py`** · cerrar la ventana durante un muestreo largo
+  aborta el proceso con código 134: `stop()` espera 3 s, el `QThread` se
+  destruye en marcha y `collector.close()` no llega a ejecutarse. Es lo que
+  pasa con el diálogo de polkit abierto.
+* **F-M4 · `ui/app.py`, `ui/pages/monitor.py`** · `pkexec` se lanza con
+  `subprocess.run` en el hilo de la interfaz (timeouts de 180 y 120 s):
+  mientras alguien escribe la contraseña la ventana no repinta. Contra la
+  regla 4.
+* **F-M5 · `ui/pages/performance.py`** · cambiar tema, densidad, letra,
+  acento, idioma o unidades durante una prueba la mata sin decirlo: el hilo
+  emite sobre la página destruida y el resultado no llega al historial. Le
+  pasa lo mismo a la medida de memoria y a `SeguidorDeRecortes` (leído).
+* **F-M6 · `ui/pages/performance.py`** · «Borrar historial» llama a
+  `self.history.set_rows([])`, un atributo que no existe: el archivo se borra
+  y la tarjeta sigue con las filas viejas.
+* **F-M7 · `ui/pages/performance.py`** · la carga de fondo máxima no se ve:
+  `CONDITION_FIELDS` no incluye su fila e `InfoGrid.set` descarta en silencio
+  una fila que no existe.
+* **F-M8 · varios** · texto en español fijo con la interfaz en inglés: las
+  cargas del benchmark, «semana N de AAAA» de `spd.py` y `edid.py` (que además
+  guardan texto ya formateado en el modelo), «fija en … GHz», «Cargando…»,
+  «Informe», «captura guardada en», y en proveedores «Bajada/Subida»,
+  «BIOS heredada», «UEFI (64 bits)», «GLSL …», «Gráfica N». El test de cadenas
+  sueltas no ve f-strings, `setText` ni texto que viene de otro módulo.
+* **F-M9 · `ui/widgets.py`** · las 1299 etiquetas seleccionables con el ratón
+  cuestan 22 MB de RSS (151 MB frente a 129 sin selección): cada una crea su
+  `QTextDocument`. Quitar la selección arregla además que seleccionar copie el
+  valor entero.
+* **F-M12 · `settings.py`** · además del JSON que no es objeto: un solo campo
+  de tipo erróneo tira al valor por defecto todas las preferencias, y
+  `"fluid_charts": "false"` se lee como `True`.
+* **F-M16 · `providers/spd_modules.py`** · `_merge` casa por referencia y, si
+  no, «el primero pendiente» en una sola pasada: si la referencia del zócalo A
+  no casa, A se lleva el SPD de B y B el de A, con su velocidad catalogada y su
+  aviso. Encaja con el «solo sale el módulo A» del ThinkCentre M80q.
+* **F-M17 · `providers/drm.py`** · sin `pci.ids`, una AMD dedicada sin
+  «radeon» en el nombre recibe el de la integrada de la CPU: una Navi 33 sale
+  «Radeon 780M». No se comprueba que sea integrada.
+* **F-M18 · `smart.py`** · el atributo 202 cuenta como vida gastada sin mirar
+  si el disco es mecánico, y en un WD es otro atributo: sale vida al 200 %.
+* **F-M19 · `providers/storage.py`** · el estado de SMART va por nombre de
+  dispositivo: un USB enchufado como `sdb` hereda 30 s el SMART del anterior,
+  o se queda sin pedirlo.
+* **F-M20 · `gpumetrics.py`, `nvml.py`, `providers/derived.py`** · `if v` con
+  relojes y contadores: 0 MHz (GFXOFF) o 0 bytes llegan como `None`.
+* **F-M21 · `providers/drm.py`** · `_pmu_ok` no vuelve nunca a `False`: si el
+  ayudante muere, el aviso de Intel pasa a gris «no existe» y desaparece el
+  botón (leído).
+* **F-M26 · `privileged/client.py`** · tras una respuesta ilegible o que no es
+  un objeto no se cierra el canal, y desde ahí cada respuesta llega con una
+  petición de retraso.
+* **F-M27 · `privileged/helper.py`** · la cadencia de lectura de RAPL y del MSR
+  de energía por núcleo la decide el cliente y no el ayudante, que es el canal
+  lateral por el que el kernel cerró `energy_uj`. La lista blanca de MSR tiene
+  además nueve registros que no se usan. **Va como propuesta antes que
+  código.**
+* **F-M30 · `tools/comprobar_privacidad.py`** · además de ser ciego a IPv6 y
+  seriales: usa rutas relativas al directorio actual, y lanzado desde otro
+  sitio da su visto bueno sin haber mirado nada.
+* **F-M31 · `report.py`** · los zócalos vacíos salen como módulos
+  («DIMM_A1: 0 B   MT/s») y en una integrada «Memoria: — — · — · —».
+* **F-M32 · `cli.py`** · el valor de un sensor se formatea de tres maneras
+  —`--sensors`, el volcado y `render.sensor_value`—, con decimales distintos.
+* **F-M37 · `tools/probar_en_minimo.py`** · anuncia «la suite no pasa» ante
+  cualquier código que no sea 0 o 2 (apt sin red, pip, podman), y su
+  comentario «lo mismo que el CI» es falso: dentro del contenedor corre como
+  root.
+
+### Bajos
+
+* El ayudante muere con UTF-8 inválido y, en 3.10, con un JSON muy anidado;
+  `DISK_NAME` acepta un salto de línea final (hay que usar `fullmatch`); `cpu:
+  true` cuenta como CPU 1; `cargar_modulo` admite `i2c-dev`, que no es de solo
+  lectura.
+* `hwmon` lanza `modinfo` en cada muestreo; `pci.ids` sin caché; el estado
+  anterior de red y discos crece sin límite con cada `veth`; el hostname
+  `(none)` llega crudo; las salidas de vídeo no se actualizan al enchufar un
+  monitor; `power_supply` no filtra por `scope`; `alarm_level` dice «alto»
+  también por debajo del mínimo.
+* «DDR4-2667» en Inicio, la tarjeta y el informe frente a 2666 en Memoria; al
+  ordenar el árbol ascendente las celdas vacías salen primero; el CSV pierde
+  precisión con `{v:g}`; un fallo al cargar un driver se titula «Se ha parado
+  la grabación».
+* Cancelar no interrumpe una medida en curso (`time.sleep` de hasta 1800 s);
+  dos analizadores de `/proc/stat` con distinto «inactivo»; `mprotect` sin
+  `argtypes`; `history.save` con un `.tmp` fijo y sin cerrojo.
+* El paso de tests del CI solo busca `FAIL/ERROR/Ran`: un aborto sale sin la
+  causa.
+

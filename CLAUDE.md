@@ -212,7 +212,7 @@ El porqué de cada convención: [docs/convenciones.md](docs/convenciones.md).
 
 Una línea por punto; el detalle de cada uno, con lo que se midió, está en
 [docs/pendientes.md](docs/pendientes.md). Los de la quinta auditoría llevan su
-código (F-…) y su detalle en `../auditoria-fase-5.md`.
+código (F-…), que es por el que se buscan allí.
 
 | Dónde | Gravedad | Qué |
 |---|---|---|
