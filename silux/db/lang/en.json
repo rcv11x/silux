@@ -889,7 +889,7 @@
   "share.tip": "An image summarising this machine, ready to paste into a chat or a forum.\nIt carries no hostname, addresses or serial numbers.",
   "share.units": "{tam} across {n} drives",
   "spd.nobus": "The SMBus controller exists but the kernel has not enabled it: the board firmware keeps that bus to itself.",
-  "spd.nobus.hint": "It can be asked to give way by adding acpi_enforce_resources=lax to the kernel boot parameters. It is what lm-sensors and decode-dimms do for the same thing.",
+  "spd.nobus.hint": "The kernel enables it with acpi_enforce_resources=lax in its boot parameters, but there is a risk: the firmware and the kernel end up using the same chip without coordinating, and on some boards that gives false sensor readings or hangs. It is not worth it just to see this reading.",
   "spd.nodriver": "The bus is there, but the SPD chips have no driver to read them.",
   "spd.nodriver.hint": "Depending on the memory the machine carries:\n  sudo modprobe spd5118    (DDR5)\n  sudo modprobe ee1004     (DDR4)\n  sudo modprobe at24       (DDR3 and earlier)",
   "spd.nosmbus": "This board exposes no SMBus controller, which is the bus the modules' SPD chips are read over.",
