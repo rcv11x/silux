@@ -193,6 +193,11 @@ con el que la cosa **nace**.
   desplazamiento debajo. Visto en el 5800X3D con dos monitores. Lo que hay
   que decidir es de diseño: acortar el fabricante, o que la columna que cede
   sea la del nombre y no las de cifras.
+* `ui/pages/settings.py` · **propuesta, sin escribir** · no hay forma de quitar
+  el ayudante instalado desde la interfaz: solo con
+  `sudo python3 -m silux.privileged.instalar --uninstall`, que es lo que dice
+  el diálogo «Qué hace esto». Un botón en Ajustes toca privilegios y va como
+  propuesta aparte.
 * `providers/cppc.py` · **media, sin comprobar** · con `acpi-cpufreq` el techo
   del silicio ya no sale inflado (4,96 GHz), pero el arreglo se hizo sin
   arrancar el equipo con ese driver: falta un volcado con

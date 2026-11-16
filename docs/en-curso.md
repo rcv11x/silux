@@ -142,28 +142,51 @@ El venv de pytest ya no hace falta: `uv sync --extra gui` deja uno en `.venv`.
    - La suite: de 150 s a 96 s en serie, y 20 s + 13 s con pytest.
    - Al acabar: empujar `fase-1`, `gh workflow run appimage.yml --ref
      fase-1` y `gh run watch`. **Es lo siguiente.**
-2. **ui-permisos**, aprobada con estos cambios del autor. **En marcha** en la
-   rama `ui-permisos`, ya rebasada sobre `fase-1`. Hecho hasta ahora, cada
-   uno con su commit y su test:
-   - F-M4: `pkexec` fuera del hilo de la interfaz (`ui/background.py`).
-   - `Note.what` y `Snapshot.permission_notes` (en la propuesta, `que`).
-   - El aviso de Inicio (`PermissionNotice`), con «Ahora no» y «No volver a
-     mostrar» de texto y sin aspa; la preferencia es
-     `permission_notice_dismissed`.
-   - El diálogo «Qué hace esto» (`ui/dialogs.py`). No dice «se quita desde
-     Ajustes» porque en Ajustes no hay con qué: da la orden.
-   - La barra de estado sin jerga y la insignia de Inicio fuera.
+2. **ui-permisos: escrita entera, sin empujar, y parada ahí** a la espera de
+   que el autor mire las capturas. La rama `ui-permisos` sale de `fase-1`.
+   Un commit por cambio, cada uno con su test:
 
-   Queda de la propuesta: el candado (punto 3) y las tres tarjetas nuevas de
-   Inicio (punto 5). Y de las correcciones, lo de esta lista menos F-M4 y los
-   dos botones de texto en Inicio (en las páginas faltan).
+   | Qué | Dónde mirar |
+   |---|---|
+   | F-M4, `pkexec` fuera del hilo de la interfaz | `ui/background.py` |
+   | `Note.what` y `Snapshot.permission_notes` (en la propuesta, `que`) | `model.py` |
+   | El aviso de Inicio, con «Ahora no» y «No volver a mostrar» sin aspa | `PermissionNotice` |
+   | «Qué hace esto» | `ui/dialogs.py` |
+   | La barra de estado sin jerga; fuera la insignia de Inicio | `ui/app.py` |
+   | Las barras: leyenda con color y la caché distinguible | `StackedBar`, `memory_segments` |
+   | Red: «dúplex completo», no «full» | `render.link_summary` |
+   | «Gigabyte X570 AORUS ELITE», no «Gigabyte -CF» | `model.py` (salió al hacer la tarjeta de la placa) |
+   | Inicio: temperaturas con nombre, red y placa; copiar en la fila de insignias | `ui/pages/home.py` |
+   | La temperatura que la gráfica no publica, escondida y nombrada en los tres sitios | `Gpu.no_temperature_sensor` |
+   | Memoria: «catalogados a 3200 MT/s» | `ui/pages/memory.py` |
+   | Los títulos de las tablas pegados a sus filas | `Table` |
+   | Las gráficas de Inicio dibujan muestras reales (solo test: ya lo hacían) | `tests/test_inicio_graficas.py` |
+   | El candado: voltaje, uso y consumo de la gráfica, velocidad y banco de cada módulo | `set_locked`, `permission_note` |
+   | Los dos botones de apartar, iguales en las cuatro páginas que piden permisos | `dismiss_buttons` |
+
+   **Capturas** de este equipo (AMD con gráfica dedicada), en
+   `~/Imágenes/silux-test/ui-permisos/`: `antes/` y `despues/`, el mismo
+   juego —siete páginas a 1440×880 y en compacto a 900×680—, más
+   `despues/inicio-alto-1440.png` (la página entera), `cpu-alto-1440.png` (el
+   candado del voltaje) y `dialogo-que-hace-esto.png`. Lo que solo se ve en un
+   Intel —el candado en las fichas de Gráficos y en los módulos, la
+   temperatura de la gráfica nombrada al pie— está probado con el volcado del
+   i5-10400 pero **no tiene captura**: hay que sacarla en la oficina.
+
+   **Lo que se apartó de la propuesta**, para que no sorprenda:
+   - el campo es `Note.what` y la preferencia `permission_notice_dismissed`,
+     en inglés como el resto de la API;
+   - la nota de la gráfica no se partió en dos: `permission_note` contesta
+     por campo con la nota de la pieza;
+   - el diálogo no dice «se quita desde Ajustes», porque en Ajustes no hay
+     con qué: da la orden. **Un botón para quitar el ayudante sería una
+     propuesta aparte**, que toca privilegios;
+   - los dos botones de apartar valen para todas las páginas a la vez.
 
    **El CI de `fase-1` no se ha lanzado**: en el equipo de casa no hay `gh`
    ni token. La rama está empujada (por SSH); hay que pulsar «Run workflow»
-   en Actions con la rama `fase-1`, o instalar `github-cli`.
-
-   Capturas de «antes» de este equipo, sacadas de la rama antes de tocarla:
-   `~/Imágenes/silux-test/ui-permisos/antes/`.
+   en Actions con la rama `fase-1`, o instalar `github-cli`. `ui-permisos` no
+   se ha empujado.
 
    La lista original, un commit por cambio, con su test:
    - **F-M4 primero** (`pkexec` en el hilo de la interfaz), antes de hacer
