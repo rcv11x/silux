@@ -16,7 +16,8 @@ from .i18n import _
 from .spd import grado_jedec
 from .model import (MARGEN_DE_REDONDEO, Cache, Clocks, CpuType, Display,
                     Edid, GpuApi, PcieLink, GpuMemory, NetworkInterface,
-                    NetworkTraffic, Power, SensorKind, thread_name)
+                    NetworkTraffic, Power, SensorKind, short_vendor,
+                    thread_name)
 
 DASH = "—"
 
@@ -272,6 +273,35 @@ def plural(cantidad: int, singular: str, plural_: str) -> str:
     fiarse de las cifras, la concordancia es parte de fiarse.
     """
     return singular if cantidad == 1 else plural_
+
+
+_FECHA_DMI = re.compile(r"(\d{1,2})/(\d{1,2})/(\d{4})")
+
+
+def bios_date(crudo: Optional[str]) -> Optional[str]:
+    """La fecha de la BIOS sin ambigüedad: «2025-10-28».
+
+    El firmware la escribe como mes/día/año, a la americana, y pintada tal
+    cual «06/08/2023» se lee en España como el seis de agosto y es el ocho de
+    junio. Año-mes-día no se confunde con nada. Lo que no tenga esa forma se
+    deja como viene: es mejor que inventarle un orden.
+    """
+    if not crudo:
+        return None
+    partes = _FECHA_DMI.fullmatch(crudo.strip())
+    if partes is None:
+        return crudo.strip()
+    mes, dia, anno = (int(p) for p in partes.groups())
+    if not (1 <= mes <= 12 and 1 <= dia <= 31):
+        return crudo.strip()
+    return f"{anno:04d}-{mes:02d}-{dia:02d}"
+
+
+def bios_summary(board) -> str:
+    """«AMI 1.80 (2023-06-08)»: de quién es la BIOS, cuál y de cuándo."""
+    junto = " ".join(p for p in (short_vendor(board.bios_vendor), board.bios_version) if p)
+    fecha = bios_date(board.bios_date)
+    return f"{junto} ({fecha})" if junto and fecha else junto or DASH
 
 
 def lock_tooltip(nota) -> str:

@@ -637,11 +637,6 @@ class Board:
         joined = " ".join(p for p in parts if p)
         return joined or "Placa base"
 
-    @property
-    def bios_summary(self) -> str:
-        parts = [short_vendor(self.bios_vendor), self.bios_version]
-        joined = " ".join(p for p in parts if p)
-        return f"{joined} ({self.bios_date})" if joined and self.bios_date else joined or "—"
 
 
 # --------------------------------------------------------------------------
@@ -1528,7 +1523,7 @@ _COMPUTED: dict[str, tuple[str, ...]] = {
     "Disk": ("display_name", "used_bytes", "mounted_partitions"),
     "CpuInfo": ("total_cores", "total_threads", "package_power_w", "temperature_c"),
     "Sensor": ("heat", "unit", "category", "alarm", "alarm_level"),
-    "Board": ("display_name", "bios_summary"),
+    "Board": ("display_name",),
     "MemoryModule": ("has_ecc", "underclocked", "rated_mts"),
     "SpdInfo": ("rated_mts",),
     "Timings": ("summary",),

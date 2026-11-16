@@ -119,6 +119,9 @@ class TestInicioConLaVentanaGrande(unittest.TestCase):
                 _ventana, inicio = self._inicio(nombre)
                 self.assertEqual(inicio.placa.nombre.text(), f.board.display_name)
                 self.assertIn(f.board.bios_version, inicio.placa.detalle.text())
+                # La fecha, sin el orden americano del firmware.
+                self.assertIn(render.bios_date(f.board.bios_date), inicio.placa.detalle.text())
+                self.assertNotIn(f.board.bios_date, inicio.placa.detalle.text())
                 self.assertIn(f.board.firmware, inicio.placa.cifras.text())
                 self.assertNotIn("TPM TPM", inicio.placa.cifras.text())
 

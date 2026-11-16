@@ -133,7 +133,7 @@ class BoardPage(QScrollArea):
         f(_("memory.field.type"), board.firmware or d)
         f(_("memory.field.vendor"), board.bios_vendor or d)
         f(_("sys.field.version"), board.bios_version or d)
-        f(_("board.field.date"), board.bios_date or d)
+        f(_("board.field.date"), render.bios_date(board.bios_date) or d)
         f(_("board.field.smbios"), board.bios_release or d,
           tooltip=_("board.tip.bios"))
         f(_("board.field.secureboot"), self._secure_boot(board))

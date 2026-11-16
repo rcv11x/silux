@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from unittest import mock
 
+from silux import render
 from silux.model import Board, clean_dmi
 from silux.providers import dmi
 from silux.providers.base import Draft
@@ -35,13 +36,31 @@ class TestNombresDeLaPlaca(unittest.TestCase):
     def test_resumen_de_bios(self):
         board = Board(bios_vendor="American Megatrends International, LLC.",
                       bios_version="1.80", bios_date="06/08/2023")
-        self.assertEqual(board.bios_summary, "AMI 1.80 (06/08/2023)")
+        self.assertEqual(render.bios_summary(board), "AMI 1.80 (2023-06-08)")
 
     def test_resumen_sin_fecha(self):
-        self.assertEqual(Board(bios_vendor="AMI", bios_version="1.2").bios_summary, "AMI 1.2")
+        self.assertEqual(render.bios_summary(Board(bios_vendor="AMI", bios_version="1.2")),
+                         "AMI 1.2")
 
     def test_resumen_vacio(self):
-        self.assertEqual(Board().bios_summary, "—")
+        self.assertEqual(render.bios_summary(Board()), "—")
+
+    def test_la_fecha_de_la_bios_no_se_puede_leer_al_reves(self):
+        # El firmware la da mes/día/año. «10/28/2025» delata el orden, pero
+        # «06/08/2023» no: en España es el seis de agosto y es el ocho de junio.
+        self.assertEqual(render.bios_date("10/28/2025"), "2025-10-28")
+        self.assertEqual(render.bios_date("06/08/2023"), "2023-06-08")
+        self.assertIsNone(render.bios_date(None))
+
+    def test_una_fecha_con_otra_forma_se_deja_como_viene(self):
+        for rara in ("2023.06.08", "13/45/2023", "Default string"):
+            self.assertEqual(render.bios_date(rara), rara)
+
+    def test_el_modelo_guarda_la_del_firmware(self):
+        from tests.test_equipos import EQUIPOS, foto
+
+        f = foto(EQUIPOS / "5800x3d")[0]
+        self.assertEqual(f.board.bios_date, "10/28/2025")
 
 
 class TestFirmware(unittest.TestCase):

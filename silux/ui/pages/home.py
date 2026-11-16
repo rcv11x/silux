@@ -434,7 +434,7 @@ class HomePage(QScrollArea):
             return
         bios = " · ".join(p for p in (
             f"BIOS {placa.bios_version}" if placa.bios_version else None,
-            placa.bios_date) if p)
+            render.bios_date(placa.bios_date)) if p)
         arranque = " · ".join(p for p in (
             placa.firmware,
             placa.tpm_version,

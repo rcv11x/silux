@@ -87,7 +87,7 @@ def _fila(snapshot: Snapshot) -> list[tuple[str, str, str]]:
         filas.append((_("nav.memory"), render.size(memoria.total_bytes), detalle))
 
     if (nombre := snapshot.board.display_name):
-        filas.append((_("nav.board"), nombre, snapshot.board.bios_summary or ""))
+        filas.append((_("nav.board"), nombre, render.bios_summary(snapshot.board)))
 
     if snapshot.disks:
         total = sum(disco.size_bytes or 0 for disco in snapshot.disks)

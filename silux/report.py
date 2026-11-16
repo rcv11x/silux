@@ -217,7 +217,7 @@ def _placa(snapshot: Snapshot, anonymous: bool) -> str:
     return "\n".join([
         "", "## Placa base", "",
         f"- {board.display_name or '?'}",
-        f"- BIOS: {board.bios_summary or '?'}",
+        f"- BIOS: {render.bios_summary(board)}",
         f"- Chipset: {board.chipset_full or board.chipset or '—'}",
         f"- Firmware: {board.firmware or '—'} · arranque seguro: "
         f"{'sí' if board.secure_boot else 'no'} · TPM: {board.tpm_version or 'no'}",
