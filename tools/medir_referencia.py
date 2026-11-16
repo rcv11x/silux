@@ -16,9 +16,11 @@ al enseñarlas: desde la v6 son dos, y las otras tres se quedan fuera porque
 las calcula una biblioteca del sistema y su cifra cambia con la distribución.
 
 Rehacerla cambia la puntuación de todo el mundo a la vez, así que no es algo
-que se haga a menudo. Cuando se haga, tiene que subir `score.VERSION`: una
-cifra medida con una escala y otra medida con la siguiente no se pueden poner
-juntas, y nada en pantalla avisaría de eso.
+que se haga a menudo. Cuando se haga, **primero se sube `score.VERSION`** y
+después se mide: una cifra medida con una escala y otra medida con la
+siguiente no se pueden poner juntas, y nada en pantalla avisaría de eso. Con
+`--write` la herramienta se niega si la versión del código es la de la tabla
+guardada, y lo escrito y el código van en el mismo commit.
 
 **La máquina tiene que estar en reposo.** El propio benchmark avisa cuando hay
 carga de fondo, y una escala tomada con el navegador abierto arrastra ese error
@@ -45,6 +47,23 @@ from silux.collector import Collector  # noqa: E402
 CARGA_MAXIMA = 3.0
 
 
+def por_que_no_escribir(anterior: dict) -> str | None:
+    """Por qué no se puede guardar una escala nueva ahora, o `None`.
+
+    La tabla se escribe con el `score.VERSION` del código. Antes se escribía
+    igual y después se mandaba subir la versión, y siguiendo la instrucción la
+    tabla se quedaba en N con el código en N+1: `referencias()` salía vacía,
+    no puntuaba nada y la suite seguía en verde. Por eso la versión se sube
+    antes de medir, y aquí se comprueba que se ha subido.
+    """
+    guardada = anterior.get("version_formula")
+    if isinstance(guardada, int) and score.VERSION <= guardada:
+        return (f"score.VERSION es {score.VERSION} y la tabla guardada ya es de esa "
+                f"versión. Una escala nueva cambia todas las puntuaciones: sube "
+                f"primero score.VERSION a {guardada + 1} y vuelve a lanzar esto.")
+    return None
+
+
 def carga_que_cuenta(condiciones) -> float | None:
     """La carga ajena que decide si la escala se tomó en reposo.
 
@@ -65,6 +84,10 @@ def main(argv=None) -> int:
                         help="mide aunque la máquina no esté en reposo (la "
                              "escala queda marcada como provisional)")
     args = parser.parse_args(argv)
+    # Antes de medir, que son dos minutos y medio.
+    if args.write and (motivo := por_que_no_escribir(_tabla_anterior())):
+        print(f"  {motivo}", file=sys.stderr)
+        return 1
 
     foto = Collector().sample()
     cpu = (render.cpu_short_name(foto.cpu.types[0].brand)
@@ -130,14 +153,14 @@ def main(argv=None) -> int:
               f"{_cifra(tabla['multihilo'][c]):>14}{marca}")
 
     if not args.write:
-        print("\n  (con --write se guarda; acuérdate de subir score.VERSION)")
+        print(f"\n  (con --write se guarda como la versión {score.VERSION})")
         return 0
 
     destino = RAIZ / "silux" / "db" / "scores.json"
     destino.write_text(json.dumps(tabla, ensure_ascii=False, indent=2) + "\n",
                        encoding="utf-8")
     print(f"\n  guardada en {destino.relative_to(RAIZ)}")
-    print("  sube score.VERSION: las puntuaciones anteriores ya no valen")
+    print(f"  versión {score.VERSION}: score.VERSION y esta tabla van en el mismo commit")
     return 0
 
 

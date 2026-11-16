@@ -227,3 +227,36 @@ class TestLaReferenciaTampocoSeTomaConElEquipoOcupado(unittest.TestCase):
         from silux.benchmark import Conditions
         self.assertEqual(self._herramienta().carga_que_cuenta(
             Conditions(background_load=12.0, background_peak=1.0)), 12.0)
+
+
+class TestLaReferenciaNoSeEscribeConLaVersionVieja(unittest.TestCase):
+    """`medir_referencia.py --write` no puede dejar la escala desparejada.
+
+    Escribía `version_formula` con el `score.VERSION` de ese momento y después
+    decía «sube score.VERSION». Siguiendo la instrucción al pie de la letra,
+    la tabla quedaba en N y el código en N+1: `referencias()` salía vacía, no
+    puntuaba nada y la suite se quedaba en verde, que es justo el estado que
+    costó la v5 (F-A8). Ahora la versión se sube antes de medir, y la
+    herramienta se niega si no se ha subido.
+    """
+
+    def _herramienta(self):
+        spec = importlib.util.spec_from_file_location(
+            "medir_referencia", RAIZ / "tools" / "medir_referencia.py")
+        modulo = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(modulo)
+        return modulo
+
+    def test_con_la_version_de_la_tabla_se_niega_y_dice_a_cual_subir(self):
+        motivo = self._herramienta().por_que_no_escribir(
+            {"version_formula": score.VERSION})
+        self.assertIsNotNone(motivo)
+        self.assertIn(str(score.VERSION + 1), motivo)
+
+    def test_con_la_version_ya_subida_escribe(self):
+        self.assertIsNone(self._herramienta().por_que_no_escribir(
+            {"version_formula": score.VERSION - 1}))
+
+    def test_sin_tabla_anterior_escribe(self):
+        self.assertIsNone(self._herramienta().por_que_no_escribir({}))
+
