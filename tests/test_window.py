@@ -63,20 +63,6 @@ class TestVentana(unittest.TestCase):
         self.assertFalse(window.nav_panel.isVisible())
         self.assertTrue(window._compact_nav.isVisible())
 
-    def test_el_selector_compacto_ofrece_solo_secciones_reales(self):
-        from silux.ui.app import SECTIONS
-
-        window = self._window()
-        self.app.processEvents()
-        # Lo que enseña el selector es el nombre traducido; lo que hay en
-        # SECTIONS son las claves.
-        from silux.i18n import _
-
-        disponibles = [_(name) for name, enabled in SECTIONS if enabled]
-        self.assertEqual(
-            [window._compact_nav.itemText(i) for i in range(window._compact_nav.count())],
-            disponibles,
-        )
 
     def test_el_selector_compacto_cambia_de_seccion(self):
         window = self._window(window_width=470, window_height=620)
@@ -87,18 +73,6 @@ class TestVentana(unittest.TestCase):
         self.app.processEvents()
         self.assertIs(window.stack.currentWidget(), window.settings_page)
 
-    def test_todas_las_secciones_activas_tienen_pagina(self):
-        from silux.ui.app import SECTIONS
-
-        window = self._window()
-        activas = sum(1 for _, enabled in SECTIONS if enabled)
-        self.assertEqual(window.stack.count(), activas)
-        for row in range(window.nav.count()):
-            item = window.nav.item(row)
-            if item.flags():                            # solo las habilitadas
-                window.nav.setCurrentRow(row)
-                self.app.processEvents()
-                self.assertIsNotNone(window.stack.currentWidget())
 
     # -- ajustes en caliente ------------------------------------------------
 
@@ -197,22 +171,7 @@ class TestVentana(unittest.TestCase):
 
     # -- datos --------------------------------------------------------------
 
-    def test_una_muestra_real_llena_la_pagina(self):
 
-        window = self._window()
-        window._on_sample(muestras.foto_real())
-        self.app.processEvents()
-        self.assertNotEqual(window.cpu_page.title.text(), "Leyendo el procesador…")
-        self.assertIn("núcleos", window.cpu_page.subtitle.text())
-
-    def test_la_pagina_de_caches_se_llena(self):
-
-        window = self._window()
-        window._on_sample(muestras.foto_real())
-        self.app.processEvents()
-        page = window.caches_page
-        self.assertIn("caché en total", page.total.text())
-        self.assertGreater(page.table._rows, 0)
 
     def test_la_ventana_no_baja_del_suelo_de_su_densidad(self):
         from silux.ui import theme
@@ -263,25 +222,6 @@ class TestVentana(unittest.TestCase):
         window._on_sample(muestras.foto_real())
         self.assertEqual(window.cpu_page.live.tile_temp.unit.text(), "°F")
 
-    def test_lo_que_hace_el_procesador_esta_en_la_pagina_del_procesador(self):
-        """Las cifras vivas y la rejilla de núcleos viven en CPU, no en Sensores.
-
-        Estuvieron en Sensores una temporada, con la idea de separar «qué hay»
-        de «qué está haciendo». En la práctica no funcionó: quien abre la ficha
-        del procesador quiere ver a cuánto va, y en Sensores ocupaban media
-        pantalla dejando el árbol —que es lo propio de esa página— en una
-        rendija.
-
-        Sensores se queda con lo suyo: todos los sensores del equipo, con sus
-        mínimos y máximos, que es lo que no cabe en ninguna otra parte.
-        """
-        window = self._window()
-        for vivo in ("tile_temp", "tile_freq", "cores"):
-            self.assertTrue(hasattr(window.cpu_page.live, vivo))
-        for vivo in ("tile_temp", "cores"):
-            self.assertFalse(hasattr(window.monitor_page, vivo),
-                             f"{vivo} sigue en Sensores")
-        self.assertTrue(hasattr(window.monitor_page, "tree"))
 
     def test_los_extremos_sobreviven_a_un_cambio_de_tema(self):
         """Perder mínimos y máximos por cambiar de tema sería inaceptable."""
@@ -297,6 +237,100 @@ class TestVentana(unittest.TestCase):
         self.app.processEvents()
         self.assertIs(window.monitor_page._tracker, window._tracker)
         self.assertEqual(len(window._tracker), seguidos)
+
+
+
+@unittest.skipUnless(HAS_QT, "PySide6 no está instalado")
+class TestVentanaQueSoloSeMira(unittest.TestCase):
+    """Los tests que montan la ventana de siempre y no le cambian nada.
+
+    Comparten una, con las preferencias de fábrica y una muestra de este
+    equipo. Montar la ventana entera para leerle un título era lo que más
+    pesaba de este archivo. Quien cambie una preferencia, el tamaño o el tema
+    va en `TestVentana`, que monta la suya en cada test.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.app import MainWindow
+
+        cls.app = qt.app()
+        tmp = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(tmp.cleanup)
+        patch = mock.patch.dict(os.environ, {"XDG_CONFIG_HOME": tmp.name})
+        patch.start()
+        cls.addClassCleanup(patch.stop)
+        theme.set_density("normal")
+        cls.window = MainWindow(Preferences().normalized())
+        cls.window.show()
+        # Se apila la última, para que corra la primera: la ventana guarda sus
+        # preferencias al cerrarse, y tiene que ser en la carpeta temporal.
+        cls.addClassCleanup(cls.window.close)
+        cls.window._on_sample(muestras.foto_real())
+        cls.app.processEvents()
+
+    def test_el_selector_compacto_ofrece_solo_secciones_reales(self):
+        from silux.ui.app import SECTIONS
+
+        window = self.window
+        self.app.processEvents()
+        # Lo que enseña el selector es el nombre traducido; lo que hay en
+        # SECTIONS son las claves.
+        from silux.i18n import _
+
+        disponibles = [_(name) for name, enabled in SECTIONS if enabled]
+        self.assertEqual(
+            [window._compact_nav.itemText(i) for i in range(window._compact_nav.count())],
+            disponibles,
+        )
+
+    def test_todas_las_secciones_activas_tienen_pagina(self):
+        from silux.ui.app import SECTIONS
+
+        window = self.window
+        activas = sum(1 for _nombre, enabled in SECTIONS if enabled)
+        self.assertEqual(window.stack.count(), activas)
+        for row in range(window.nav.count()):
+            item = window.nav.item(row)
+            if item.flags():                            # solo las habilitadas
+                window.nav.setCurrentRow(row)
+                self.app.processEvents()
+                self.assertIsNotNone(window.stack.currentWidget())
+
+    def test_una_muestra_real_llena_la_pagina(self):
+        window = self.window
+        self.app.processEvents()
+        self.assertNotEqual(window.cpu_page.title.text(), "Leyendo el procesador…")
+        self.assertIn("núcleos", window.cpu_page.subtitle.text())
+
+    def test_la_pagina_de_caches_se_llena(self):
+        window = self.window
+        self.app.processEvents()
+        page = window.caches_page
+        self.assertIn("caché en total", page.total.text())
+        self.assertGreater(page.table._rows, 0)
+
+    def test_lo_que_hace_el_procesador_esta_en_la_pagina_del_procesador(self):
+        """Las cifras vivas y la rejilla de núcleos viven en CPU, no en Sensores.
+
+        Estuvieron en Sensores una temporada, con la idea de separar «qué hay»
+        de «qué está haciendo». En la práctica no funcionó: quien abre la ficha
+        del procesador quiere ver a cuánto va, y en Sensores ocupaban media
+        pantalla dejando el árbol —que es lo propio de esa página— en una
+        rendija.
+
+        Sensores se queda con lo suyo: todos los sensores del equipo, con sus
+        mínimos y máximos, que es lo que no cabe en ninguna otra parte.
+        """
+        window = self.window
+        for vivo in ("tile_temp", "tile_freq", "cores"):
+            self.assertTrue(hasattr(window.cpu_page.live, vivo))
+        for vivo in ("tile_temp", "cores"):
+            self.assertFalse(hasattr(window.monitor_page, vivo),
+                             f"{vivo} sigue en Sensores")
+        self.assertTrue(hasattr(window.monitor_page, "tree"))
 
 
 if __name__ == "__main__":
