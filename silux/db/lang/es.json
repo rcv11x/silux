@@ -584,6 +584,8 @@
   "net.active": "{n} de {total} activas",
   "net.active2": "{n} de {total} activas",
   "net.card.traffic": "Tráfico por interfaz",
+  "net.duplex.full": "dúplex completo",
+  "net.duplex.half": "semidúplex",
   "net.field.gateway": "Puerta de enlace",
   "net.field.ipv4": "Dirección IPv4",
   "net.field.ipv6": "Dirección IPv6",

@@ -274,6 +274,28 @@ def plural(cantidad: int, singular: str, plural_: str) -> str:
     return singular if cantidad == 1 else plural_
 
 
+# Cómo llama el kernel al dúplex de un enlace, y con qué clave se dice aquí.
+# Lo que no esté en la tabla —«unknown», que es lo que da una interfaz sin
+# cable— no se pinta: no es un dúplex, es que no hay negociación.
+DUPLEX = {"full": "net.duplex.full", "half": "net.duplex.half"}
+
+
+def link_summary(interfaz) -> Optional[str]:
+    """«2.5 Gb/s · dúplex completo»: cómo quedó negociado el enlace.
+
+    Estaba en el modelo, que lo componía con la palabra del kernel tal cual:
+    la página de Red decía «2.5 Gb/s · full» con la interfaz en español.
+    """
+    if not interfaz.speed_mbps:
+        return None
+    if interfaz.speed_mbps >= 1000:
+        velocidad = f"{interfaz.speed_mbps / 1000:g} Gb/s"
+    else:
+        velocidad = f"{interfaz.speed_mbps} Mb/s"
+    clave = DUPLEX.get((interfaz.duplex or "").lower())
+    return f"{velocidad} · {_(clave)}" if clave else velocidad
+
+
 def rate(value: Optional[float], bits: bool = False) -> str:
     """Un ritmo de transferencia: «2.1 MB/s» o «17.6 Mb/s», a elegir.
 

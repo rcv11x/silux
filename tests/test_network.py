@@ -88,7 +88,10 @@ class TestLectura(BancoDeRed):
         self.assertEqual(interfaz.name, "enp6s0")
         self.assertTrue(interfaz.up)
         self.assertEqual(interfaz.speed_mbps, 2500)
-        self.assertEqual(interfaz.link_summary, "2.5 Gb/s · full")
+        # El dúplex llega como lo escribe el kernel; cómo se dice es cosa de
+        # quien lo pinta.
+        self.assertEqual(interfaz.duplex, "full")
+        self.assertEqual(render.link_summary(interfaz), "2.5 Gb/s · dúplex completo")
         self.assertEqual(interfaz.mtu, 1500)
 
     def test_direccion_y_puerta_de_enlace(self):
@@ -220,11 +223,58 @@ class TestRender(unittest.TestCase):
                          .total_rate_bps, 150.0)
 
     def test_velocidades_del_enlace(self):
-        self.assertEqual(NetworkInterface(name="a", speed_mbps=100).link_summary,
-                         "100 Mb/s")
-        self.assertEqual(NetworkInterface(name="a", speed_mbps=2500,
-                                          duplex="full").link_summary, "2.5 Gb/s · full")
-        self.assertIsNone(NetworkInterface(name="a").link_summary)
+        resumen = render.link_summary
+        self.assertEqual(resumen(NetworkInterface(name="a", speed_mbps=100)), "100 Mb/s")
+        self.assertEqual(resumen(NetworkInterface(name="a", speed_mbps=2500, duplex="full")),
+                         "2.5 Gb/s · dúplex completo")
+        self.assertEqual(resumen(NetworkInterface(name="a", speed_mbps=100, duplex="half")),
+                         "100 Mb/s · semidúplex")
+        self.assertIsNone(resumen(NetworkInterface(name="a")))
+
+    def test_la_palabra_del_kernel_no_llega_a_la_pantalla(self):
+        # «2.5 Gb/s · full», con la interfaz en español. Y un dúplex que el
+        # kernel no sabe —«unknown», sin cable— no es un dúplex que enseñar.
+        for crudo in ("full", "half", "unknown"):
+            texto = render.link_summary(NetworkInterface(name="a", speed_mbps=1000,
+                                                         duplex=crudo))
+            self.assertNotIn(crudo, texto)
+
+    def test_y_en_ingles_se_dice_en_ingles(self):
+        from silux import i18n
+
+        i18n.set_language("en")
+        self.addCleanup(i18n.set_language, "es")
+        self.assertEqual(render.link_summary(NetworkInterface(name="a", speed_mbps=2500,
+                                                              duplex="full")),
+                         "2.5 Gb/s · full duplex")
+
+
+class TestElEnlaceEnLaPagina(unittest.TestCase):
+    """Con el volcado del 5800X3D, que tiene una interfaz a 2,5 Gb/s."""
+
+    def test_la_pagina_de_red_lo_dice_en_el_idioma_de_la_interfaz(self):
+        try:
+            from PySide6.QtWidgets import QLabel
+        except ImportError:                            # pragma: no cover
+            self.skipTest("sin PySide6")
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.network import NetworkPage
+        from tests import qt
+        from tests.test_equipos import EQUIPOS, foto
+
+        app = qt.app()
+        f = foto(EQUIPOS / "5800x3d")[0]
+        self.assertTrue([i for i in f.network if i.duplex == "full"],
+                        "el volcado ya no tiene un enlace con dúplex")
+        theme.set_density("normal", "normal")
+        pagina = NetworkPage(theme.palette_for(app, "dark"), Preferences().normalized())
+        pagina.apply(f)
+        pagina.apply(f)
+        textos = [e.text() for e in pagina.findChildren(QLabel)]
+        textos += [getattr(e, "_full", "") for e in pagina.findChildren(QLabel)]
+        self.assertTrue([t for t in textos if "dúplex completo" in t])
+        self.assertFalse([t for t in textos if "· full" in t])
 
 
 if __name__ == "__main__":

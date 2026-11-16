@@ -179,12 +179,12 @@ class NetworkPage(QScrollArea):
             return
         self.title.setText(principal.display_name)
         self.subtitle.setText(" · ".join(p for p in (
-            principal.name, principal.ipv4, principal.link_summary) if p))
+            principal.name, principal.ipv4, render.link_summary(principal)) if p))
 
         activas = sum(1 for i in interfaces if i.active)
         chips = [c for c in (
             principal.name,
-            principal.link_summary,
+            render.link_summary(principal),
             (_("net.gateway2").format(ip=principal.gateway)
              if principal.gateway else None),
             _("net.active2").format(n=activas, total=len(interfaces)),
@@ -263,7 +263,7 @@ class NetworkPage(QScrollArea):
             f(_("net.field.ipv6"), interfaz.ipv6[0] if interfaz.ipv6 else d,
               tooltip="\n".join(interfaz.ipv6) if len(interfaz.ipv6) > 1 else "")
             f(_("net.field.mac"), interfaz.mac or d)
-            f(_("net.field.speed"), interfaz.link_summary or d)
+            f(_("net.field.speed"), render.link_summary(interfaz) or d)
             f("MTU", str(interfaz.mtu) if interfaz.mtu else d)
             f(_("gpu.field.driver"), interfaz.driver or d)
             f(_("storage.col.model"), interfaz.model or d)

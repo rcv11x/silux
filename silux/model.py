@@ -962,16 +962,6 @@ class NetworkInterface:
         """Enchufada y con dirección: la que de verdad está dando servicio."""
         return self.up and bool(self.ipv4 or self.ipv6)
 
-    @property
-    def link_summary(self) -> Optional[str]:
-        """«2.5 Gb/s · full», que es como se lee la negociación del enlace."""
-        if not self.speed_mbps:
-            return None
-        if self.speed_mbps >= 1000:
-            velocidad = f"{self.speed_mbps / 1000:g} Gb/s"
-        else:
-            velocidad = f"{self.speed_mbps} Mb/s"
-        return f"{velocidad} · {self.duplex}" if self.duplex else velocidad
 
 
 @dataclass(frozen=True, slots=True)
@@ -1489,7 +1479,7 @@ _COMPUTED: dict[str, tuple[str, ...]] = {
     "VideoMode": ("label",),
     "Gpu": ("display_name", "pci_id", "subsystem_id", "connected_displays"),
     "NetworkTraffic": ("total_bytes", "total_rate_bps", "problems"),
-    "NetworkInterface": ("display_name", "active", "link_summary"),
+    "NetworkInterface": ("display_name", "active"),
     "Partition": ("used_percent", "mounted"),
     "DiskIo": ("total_rate_bps",),
     "DiskHealth": ("life_left_percent", "healthy"),

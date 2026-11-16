@@ -584,6 +584,8 @@
   "net.active": "{n} of {total} up",
   "net.active2": "{n} of {total} up",
   "net.card.traffic": "Traffic by interface",
+  "net.duplex.full": "full duplex",
+  "net.duplex.half": "half duplex",
   "net.field.gateway": "Gateway",
   "net.field.ipv4": "IPv4 address",
   "net.field.ipv6": "IPv6 address",

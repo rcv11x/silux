@@ -475,7 +475,7 @@ def _red(snapshot: Snapshot, anonymous: bool) -> str:
         mac = OCULTO if (anonymous and interfaz.mac) else (interfaz.mac or "—")
         lineas.append(
             f"- **{interfaz.name}** ({interfaz.kind}): "
-            f"{render.interface_state(interfaz)} · {interfaz.link_summary or '—'} · "
+            f"{render.interface_state(interfaz)} · {render.link_summary(interfaz) or '—'} · "
             f"{interfaz.model or interfaz.driver or '—'} · IP {direccion} · MAC {mac}"
         )
     return "\n".join(lineas)
