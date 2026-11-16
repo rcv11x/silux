@@ -99,7 +99,10 @@ Lo que se espera: antes, «Fatal Python error: Aborted» en algún trabajador
 test 25 no está terminado. El resultado se apunta en el plan, junto a la tabla
 de tiempos.
 
-**Siguiente paso**: esa medida, y luego el test 26.
+**Hecho en casa** (ver más abajo). **Siguiente paso**: el test 27.
+
+Para medir con pytest hasta que llegue el test 30: `--ignore=tests/fixtures`
+siempre, o la recogida no termina (los volcados tienen enlaces en círculo).
 
 ## Lo que falta del mensaje de la tarde, en orden
 
@@ -124,9 +127,10 @@ de tiempos.
    actualiza cuando lo estén en los dos.
 1. **Tests 25-30** del plan, en ese orden, en `fase-1`, un commit cada uno
    con su medida antes y después:
-   - 25: falta la medida en paralelo (arriba).
-   - 26: los dos tests de 22 s de `test_benchmark`; pide que
-     `benchmark.run` acepte qué cargas medir.
+   - 25: **hecho**. La medida en paralelo destapó que no estaba terminado:
+     tres commits más (`QGuiApplication` del instalador, `test_arm`, y la
+     violación de segmento al salir). Tabla en el plan.
+   - 26: **hecho** (`d0a8ea0`): `benchmark.run(loads=…)`. Serie 150 → 121 s.
    - 27: una foto real por proceso para los tests de interfaz que solo
      necesitan una.
    - 28: una ventana por clase en `test_window` donde no se cambia nada.

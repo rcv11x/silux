@@ -229,9 +229,17 @@ Dos cosas más que salieron al medir:
   dieciséis procesos se quedaron diez minutos al 100 % sin ejecutar nada. Con
   `--ignore=tests/fixtures` recoge en un segundo. Va a la configuración en el
   test 30, no a la memoria de quien lance la suite.
-- En serie, `unittest discover` termina en verde y escribe al salir
-  «corrupted double-linked list». Es del cierre del intérprete con Qt vivo;
-  no se ha investigado.
+- En serie, `unittest discover` terminaba en verde y el proceso salía con una
+  violación de segmento (código 139). Lo trajo el propio `50df0fd`, al dejar
+  la aplicación viva hasta el final; arreglado en `c86d183`.
+
+### Lo medido después de cada test, en el 5800X3D
+
+| | `unittest discover` | `pytest -n auto` (16) |
+|---|---:|---:|
+| al empezar (25 sin terminar) | 148-152 s | 62-64 s, con abortos |
+| 25 terminado | 150 s | 62-64 s |
+| 26 | 121 s | 27 s |
 
 ## Cómo bajar de los dos minutos y medio sin perder cobertura
 
