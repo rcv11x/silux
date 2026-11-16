@@ -659,6 +659,8 @@
   "prov.apis.none.hint": "Suele ser una máquina sin entorno gráfico instalado. Las trae el driver: mesa, vulkan-radeon, vulkan-intel o el paquete de NVIDIA.",
   "prov.bat.nosysfs": "El kernel no publica el estado de la alimentación.",
   "prov.bat.nosysfs.hint": "Falta /sys/class/power_supply, que es de donde sale la batería y el cargador.",
+  "prov.cppc.noceiling": "No se sabe hasta dónde llega este procesador",
+  "prov.cppc.noceiling.hint": "El firmware da a cada núcleo su puesto en el ranking en vez del máximo de la pieza, y de ahí no sale una frecuencia. Con el driver amd-pstate el kernel la publica ya calculada.",
   "prov.cppc.nobase": "Esta máquina no publica su reloj base por ninguna vía.",
   "prov.cppc.nobase.hint": "La hoja 0x16 de CPUID es de Intel Skylake en adelante, ACPI CPPC necesita que el firmware lo declare, y la cadena de marca de este procesador no lleva la frecuencia.",
   "prov.cppc.nobclk": "El reloj de referencia (BCLK) no se puede saber sin root.",

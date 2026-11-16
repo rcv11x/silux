@@ -67,6 +67,7 @@ class CppcClocks(Provider):
     def collect(self, draft: Draft) -> None:
         falta_base = False
         falta_bus = False
+        falta_techo = False
 
         for entry in draft.types.values():
             clocks: Clocks = entry.get("clocks") or Clocks()
@@ -89,7 +90,13 @@ class CppcClocks(Provider):
             if bus is None and nominal and es_x86:
                 bus = _reloj_de_referencia(nominal)
 
-            techo = clocks.max_turbo_hz or _techo_del_silicio(leader, cppc, nominal)
+            techo = clocks.max_turbo_hz
+            if techo is None:
+                if _hay_ranking(entry.get("cpus") or [leader]) \
+                        and not _techo_de_amd_pstate(leader):
+                    falta_techo = True
+                else:
+                    techo = _techo_del_silicio(leader, cppc, nominal)
             # Un techo por debajo de la base es un cálculo que salió mal.
             if techo and base and techo < base:
                 techo = None
@@ -113,6 +120,11 @@ class CppcClocks(Provider):
             draft.note(
                 "cpu.clocks.bus_hz", Need.HARDWARE,
                 _("prov.cppc.nobclk"), _("prov.cppc.nobclk.hint"),
+            )
+        if falta_techo:
+            draft.note(
+                "cpu.clocks.max_turbo_hz", Need.HARDWARE,
+                _("prov.cppc.noceiling"), _("prov.cppc.noceiling.hint"),
             )
 
 
@@ -177,23 +189,39 @@ def _nominal_hz(cppc: dict[str, int]) -> Optional[int]:
     return mhz * 1_000_000 if mhz else None
 
 
+def _techo_de_amd_pstate(cpu_index: int) -> Optional[int]:
+    """El techo que amd-pstate publica ya calculado, en hercios."""
+    khz = read_int(f"{SYS_CPU}/cpu{cpu_index}/cpufreq/amd_pstate_max_freq")
+    return khz * 1000 if khz else None
+
+
+def _hay_ranking(cpus) -> bool:
+    """Si el `highest_perf` de estos núcleos es un ranking y no una escala.
+
+    Con núcleos preferentes cada uno trae el suyo —181, 196, 186… en un
+    5800X3D— y ninguno es el rendimiento máximo de la pieza. `acpi_cppc/` lo
+    publica ACPI con cualquier driver, así que esto pasa también sin
+    amd-pstate, que es cuando no hay quien dé el techo ya calculado.
+    """
+    notas = {read_int(f"{SYS_CPU}/cpu{indice}/acpi_cppc/highest_perf") for indice in cpus}
+    return len(notas - {None, 0}) > 1
+
+
 def _techo_del_silicio(cpu_index: int, cppc: dict[str, int],
                        nominal_hz: Optional[int]) -> Optional[int]:
     """El boost máximo del silicio, distinto del techo que aplica el kernel."""
     # amd-pstate ya publica el cálculo hecho, y con boost desactivado sigue
     # enseñando el techo real mientras `cpuinfo_max_freq` baja: justo la
     # discrepancia que la tarjeta de Relojes existe para explicar.
-    khz = read_int(f"{SYS_CPU}/cpu{cpu_index}/cpufreq/amd_pstate_max_freq")
-    if khz:
-        return khz * 1000
+    if hz := _techo_de_amd_pstate(cpu_index):
+        return hz
 
     nominal_perf = cppc.get("nominal_perf")
     highest_perf = cppc.get("highest_perf")
     if not (nominal_hz and nominal_perf and highest_perf):
         return None
-    # Con núcleos preferentes, el `highest_perf` de CPPC lleva el ranking del
-    # mejor núcleo en vez del rendimiento máximo, y sale un techo inflado. Ese
-    # caso es siempre amd-pstate, que ya se resolvió arriba.
+    # Solo vale donde todos los núcleos traen la misma cifra: quien llama ya
+    # ha descartado el ranking (`_hay_ranking`).
     return int(nominal_hz * highest_perf / nominal_perf)
 
 

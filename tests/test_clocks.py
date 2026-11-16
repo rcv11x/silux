@@ -286,6 +286,35 @@ class TestCalidadDeLosNucleos(BancoDeRelojes):
         self.assertNotEqual(clocks.max_turbo_hz, int(3_401_000_000 * 196 / 124))
 
 
+class TestElTechoSinAmdPstate(BancoDeRelojes):
+    """El mismo 5800X3D arrancado con `acpi-cpufreq`.
+
+    `acpi_cppc/` lo publica ACPI y está con cualquier driver; lo que falta sin
+    amd-pstate es `amd_pstate_max_freq`. Las notas son las de la pieza. El
+    equipo no se ha arrancado así: lo que se sabe es qué archivos pone cada
+    driver, y que con estos la regla de tres da un techo que no existe.
+    """
+
+    def _relojes(self, notas=None):
+        self.cppc(nominal_freq=3401, lowest_freq=550, nominal_perf=124)
+        draft = TestCalidadDeLosNucleos._pieza(
+            self, TestCalidadDeLosNucleos.NOTAS if notas is None else notas)
+        return draft.types["general"]["clocks"], draft
+
+    def test_con_notas_distintas_no_hay_techo_que_calcular(self):
+        # Con la nota del primer núcleo saldrían 4,96 GHz; con la del segundo,
+        # 5,38. Ninguna es el boost, que son 4,55.
+        relojes, draft = self._relojes()
+        self.assertIsNone(relojes.max_turbo_hz)
+        self.assertEqual(relojes.base_hz, 3_401_000_000)
+        self.assertIn("cpu.clocks.max_turbo_hz", [n.path for n in draft.notes])
+
+    def test_con_la_misma_nota_en_todos_si_es_una_escala(self):
+        relojes, draft = self._relojes(notas=(166,) * 8)
+        self.assertEqual(relojes.max_turbo_hz, int(3_401_000_000 * 166 / 124))
+        self.assertNotIn("cpu.clocks.max_turbo_hz", [n.path for n in draft.notes])
+
+
 class TestCalidadEnUnHibrido(unittest.TestCase):
     """En un Intel de 12ª en adelante la nota no cruza tipos de núcleo.
 

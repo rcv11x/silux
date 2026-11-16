@@ -107,7 +107,10 @@ apartado. El orden dentro de cada apartado es el cronológico.
   falso. Donde la plataforma ordena sus núcleos, ese campo deja de significar
   «hasta dónde llega la pieza» y pasa a ser el puesto de cada núcleo en el
   ranking. El techo lo da `amd_pstate_max_freq`, que es el cálculo ya hecho
-  por quien conoce la curva.
+  por quien conoce la curva. Y no vale suponer que el ranking solo aparece
+  con amd-pstate: `acpi_cppc/` lo publica ACPI con cualquier driver, así que
+  con `acpi-cpufreq` están las notas y falta quien dé el techo. Si los
+  núcleos de un tipo traen notas distintas y nadie lo da hecho, no se calcula.
 - **Enseñar la nota de silicio de un núcleo como si fuera comparable entre
   máquinas**: 196 no significa nada por sí solo; es la escala de rendimiento
   de esa pieza. Lo comparable es la fracción respecto al mejor núcleo de la

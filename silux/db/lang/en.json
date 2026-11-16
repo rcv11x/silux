@@ -659,6 +659,8 @@
   "prov.apis.none.hint": "Usually a machine with no graphical environment installed. The driver brings them: mesa, vulkan-radeon, vulkan-intel or the NVIDIA package.",
   "prov.bat.nosysfs": "The kernel does not publish power supply state.",
   "prov.bat.nosysfs.hint": "/sys/class/power_supply is missing; that is where the battery and charger come from.",
+  "prov.cppc.noceiling": "The top frequency of this processor is not known",
+  "prov.cppc.noceiling.hint": "The firmware gives each core its place in the ranking rather than the maximum of the part, and no frequency comes out of that. With the amd-pstate driver the kernel publishes it already worked out.",
   "prov.cppc.nobase": "This machine does not publish its base clock by any route.",
   "prov.cppc.nobase.hint": "CPUID leaf 0x16 is Intel Skylake onwards, ACPI CPPC needs the firmware to declare it, and this processor's brand string carries no frequency.",
   "prov.cppc.nobclk": "The reference clock (BCLK) cannot be known without root.",
