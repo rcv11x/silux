@@ -6,6 +6,34 @@ aquí esté hecho o pase a `docs/pendientes.md`.
 Última sesión: 16 de noviembre de 2026, por la tarde-noche, en el 5800X3D de
 casa (CachyOS). La anterior fue ese mismo día en el i5-10400 de la oficina.
 
+## Estado y lo siguiente
+
+**Las dos ramas están empujadas y con el CI en verde** (tests en 3.10 y 3.14,
+y el AppImage): `fase-1` en `2f5cc9d` y `ui-permisos`, rebasada encima, en
+`3a7dfaa` más el commit de este archivo, que solo toca documentación y no ha
+pasado por el CI. **Nada ha pasado a `master`**, que sigue en `7609ea2`.
+
+**La siguiente tanda** sale de revisar el autor las capturas del AMD
+(`~/Imágenes/silux-test/ui-permisos-2/`). Un commit por cambio, con su test,
+en `ui-permisos`:
+
+- **Placa base en AMD**: el chipset sale «FCH LPC Bridge», que es un
+  dispositivo PCI, no el chipset (es un X570).
+- **`--anonimo`**: dos MAC distintas acaban siendo la misma falsa.
+- **Sensores**: las zonas `acpitz` clavadas a 16.8 °C salen sin marcar como
+  poco fiables; las de `gigabyte_wmi`, sin nombre y sin pie.
+- **Discos SATA**: la temperatura sale con «—» en vez de candado o aviso
+  (SMART o `drivetemp`).
+- **Diálogo de permisos**: la orden de quitar el ayudante se parte a mitad de
+  ruta; que vaya en un campo monoespaciado que se pueda copiar.
+- **Etiquetas de pico** montadas encima de la curva en las fichas.
+- **«NVME» → «NVMe»** en la ficha de cada disco.
+- **Rendimiento**: botón «Borrar las de otra escala».
+- **Gráficas de las fichas**: el eje vacío a todo el ancho, llenando desde la
+  derecha (deshace el reparto de `Sparkline._geometria` de la segunda tanda).
+- **Rehacer los dos volcados del i5-10400** en la oficina: `scaling_cur_freq`
+  y el nombre de la gráfica grabado.
+
 ## Qué está hecho
 
 ### `fase-1` (sale de `master`, que sigue en 7609ea2 con la 0.3.0)
@@ -223,9 +251,11 @@ El venv de pytest ya no hace falta: `uv sync --extra gui` deja uno en `.venv`.
      volvió a volcar. Los del i5-10400 no lo llevan: otra razón para
      rehacerlos en la oficina;
    - con la tipografía del runner (DejaVu, más ancha) la cabecera de
-     Sensores pedía 643 px en una página de 640. El contador se corta.
+     Sensores pedía 643 px en una página de 640. Cortar el contador no
+     bastaba: lo que empujaba era el buscador, fijo a 190 px, que ahora
+     encoge hasta 60. El test se reproduce aquí con DejaVu Sans.
 
-   **Nada ha pasado a `master`.**
+   Al cuarto intento, **las dos en verde**. Nada ha pasado a `master`.
 
    La lista original, un commit por cambio, con su test:
    - **F-M4 primero** (`pkexec` en el hilo de la interfaz), antes de hacer
