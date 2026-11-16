@@ -82,15 +82,16 @@ selector compacto en la barra de estado.
 
 ### AppImage
 
-Un solo archivo, sin instalar nada:
+Un solo archivo, sin instalar nada. Se descarga de la última versión publicada,
+en **[github.com/rcv11x/silux/releases/latest](https://github.com/rcv11x/silux/releases/latest)**:
 
 ```bash
 chmod +x silux-x86_64.AppImage
 ./silux-x86_64.AppImage
 ```
 
-Lleva dentro Python, Qt y las bibliotecas que necesita, y ocupa unos 40 MB:
-de PySide6 solo van QtCore, QtGui y QtWidgets.
+Lleva dentro Python, Qt y las bibliotecas que necesita, y ocupa unos 42 MB
+(40 MiB): de PySide6 solo van QtCore, QtGui y QtWidgets.
 
 ### Compatibilidad
 
@@ -154,8 +155,9 @@ interfaz es lo único que lo necesita.
 | Voltaje del núcleo | Super I/O por `hwmon`, o MSR | driver o root |
 | Todos los sensores del equipo | `hwmon` y `power_supply` | no |
 | Placa, BIOS, versión y fecha del firmware | `/sys/class/dmi/id` | no |
-| Módulos de RAM: fabricante, chips, referencia, fecha | SPD por SMBus | no |
-| Velocidad catalogada y temporizaciones JEDEC/XMP | SPD por SMBus | no |
+| Módulos de RAM: fabricante, chips, referencia, fecha | chip SPD, por `ee1004` o `spd5118` | no, con el driver cargado; cargarlo, sí |
+| Velocidad catalogada y temporizaciones JEDEC/XMP | chip SPD, por `ee1004` o `spd5118` | no, con el driver cargado; cargarlo, sí |
+| Zócalo, capacidad y velocidad a la que va cada módulo | tabla SMBIOS | sí |
 | Ancho de banda de la RAM y latencia por nivel de caché | medido en otro proceso | no |
 | Tráfico del controlador de memoria, ahora mismo | PMU del uncore (solo Intel) | sí |
 | UEFI o BIOS heredada, arranque seguro, TPM | `/sys/firmware`, `/sys/class/tpm` | no |
@@ -221,9 +223,9 @@ caso.
 
 Desde el AppImage es `./silux-x86_64.AppImage --report informe.md`, que saca lo
 mismo. Y conviene dar antes los permisos, con el botón que sale dentro del
-propio aviso en Memoria, Gráficos o Almacenamiento: sin ellos, el módulo de
-memoria
-y el diagnóstico de los discos salen como «requiere permisos» en vez de salir.
+propio aviso en Memoria, Gráficos o Almacenamiento: sin ellos, el zócalo y la
+velocidad de cada módulo de memoria y el diagnóstico de los discos salen como
+«requiere permisos» en vez de salir.
 
 Si lo que se ve mal es la ventana (texto cortado, columnas montadas, un color
 que no se lee), eso no sale en el informe y hace falta una captura.
