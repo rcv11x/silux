@@ -560,6 +560,29 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         border-color: {p.crit};
     }}
     QPushButton#Danger:pressed {{ background: {crit_press}; }}
+    /* La acción a la que lleva un aviso: la única con el borde y la letra
+       del acento en reposo, para que sea lo primero que se vea al lado de
+       los botones que solo lo apartan. */
+    QPushButton#Primary {{
+        color: {p.accent};
+        border-color: {p.accent};
+        font-weight: 600;
+    }}
+    QPushButton#Primary:hover {{
+        background: {p.accent_wash};
+        color: {p.accent};
+        border-color: {p.accent};
+    }}
+    QPushButton#Primary:disabled {{ color: {p.disabled}; border-color: {p.line}; }}
+    /* Un botón que es solo su texto: para apartar un aviso sin que el gesto
+       pese lo mismo que atenderlo. */
+    QPushButton#TextButton {{
+        background: transparent;
+        border: none;
+        padding: 5px 8px;
+        color: {p.muted};
+    }}
+    QPushButton#TextButton:hover {{ color: {p.ink}; text-decoration: underline; }}
     /* Para lo que acompaña a la acción principal sin competir con ella: el
        de al lado es el que la gente ha venido a pulsar. */
     QPushButton#GhostButton {{

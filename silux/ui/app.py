@@ -123,6 +123,10 @@ class MainWindow(QMainWindow):
         self._forzadas = dict(forzadas or {})
         # La instalación del ayudante mientras espera a pkexec, o None.
         self._instalacion = None
+        # El aviso de permisos de Inicio: apartado con «Ahora no», que dura lo
+        # que la sesión, y si en esta sesión llegó a leerse todo.
+        self._aviso_pospuesto = False
+        self._permisos_completos = False
         self.setWindowTitle("Silux")
         self.resize(prefs.window_width, prefs.window_height)
         self.setMinimumSize(theme.METRICS.min_window_w, theme.METRICS.min_window_h)
@@ -221,6 +225,10 @@ class MainWindow(QMainWindow):
         self.stack = QStackedWidget()
         self.home_page = HomePage(self._palette, self.prefs)
         self.home_page.seccion_pedida.connect(self.select_section)
+        aviso = self.home_page.permission_notice
+        aviso.grant_requested.connect(self._on_elevation_requested)
+        aviso.snoozed.connect(self._posponer_aviso)
+        aviso.dismissed.connect(self._quitar_aviso)
         self.cpu_page = CpuPage(self._palette, self.prefs)
         self.cpu_page.elevation_requested.connect(self._on_elevation_requested)
         self.monitor_page = MonitorPage(self._palette, self.prefs, self._tracker)
@@ -648,6 +656,7 @@ class MainWindow(QMainWindow):
             if not boton.isEnabled():
                 boton.setEnabled(True)
                 boton.setText(_("perm.read.button"))
+        self.home_page.permission_notice.set_waiting(False)
         self._distribute(snapshot)
 
         # La pista del atajo va aquí porque es donde se mira sin buscar. Un
@@ -683,6 +692,7 @@ class MainWindow(QMainWindow):
                       *self.graphics_page.elevation_buttons]:
             boton.setEnabled(False)
             boton.setText(_("perm.waiting"))
+        self.home_page.permission_notice.set_waiting(True)
         self.sampler.request_elevation()
 
     # -- permiso permanente -------------------------------------------------
@@ -833,7 +843,48 @@ class MainWindow(QMainWindow):
                      self.battery_page, self.performance_page):
             page.apply(snapshot)
 
+        self._poner_aviso_de_permisos(snapshot)
         self._ajustar_bateria(snapshot)
+
+    # -- el aviso de permisos de Inicio ---------------------------------------
+
+    def _poner_aviso_de_permisos(self, snapshot: Snapshot) -> None:
+        """Decide en cada muestreo si el aviso sale y con qué.
+
+        Sigue al estado, no a un botón: desaparece solo cuando ya no falta
+        nada. Y vuelve aunque se hubiera apartado si lo que falta es algo que
+        en esta sesión se estaba leyendo —un ayudante que se cae—: eso ya no
+        es «hay datos que podrías ver», es «has dejado de ver datos».
+        """
+        faltan = tuple(nota.what for nota in snapshot.permission_notes)
+        if not faltan:
+            if snapshot.privileged.connected:
+                self._permisos_completos = True
+            self.home_page.set_permission_notice(())
+            return
+        recaida = self._permisos_completos
+        apartado = self._aviso_pospuesto or self.prefs.permission_notice_dismissed
+        self.home_page.set_permission_notice(
+            faltan if recaida or not apartado else (), recaida)
+
+    def _apartar_aviso(self) -> None:
+        # Apartarlo también vale para el de la recaída: sale otra vez si
+        # vuelve a pasar, no mientras dure.
+        self._permisos_completos = False
+        self.home_page.set_permission_notice(())
+
+    def _posponer_aviso(self) -> None:
+        """«Ahora no»: hasta el próximo arranque."""
+        self._aviso_pospuesto = True
+        self._apartar_aviso()
+
+    def _quitar_aviso(self) -> None:
+        """«No volver a mostrar»: se guarda. El enlace de abajo sigue."""
+        from dataclasses import replace
+
+        self.prefs = replace(self.prefs, permission_notice_dismissed=True)
+        self._guardar(self.prefs)
+        self._apartar_aviso()
 
     def _ajustar_bateria(self, snapshot: Snapshot) -> None:
         """La sección de batería solo en los equipos que tienen una.

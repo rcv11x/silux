@@ -20,7 +20,7 @@ from typing import Iterable, Optional, Sequence
 from PySide6.QtCore import (QEvent, QPoint, QPointF, QRectF, QSize, Qt,
                             QTimer, Signal)
 from PySide6.QtGui import (
-    QBrush, QFontMetrics, QLinearGradient, QPainter, QPainterPath, QPen,
+    QBrush, QColor, QFontMetrics, QLinearGradient, QPainter, QPainterPath, QPen,
 )
 from PySide6.QtWidgets import (
     QFrame,
@@ -1093,6 +1093,143 @@ class Notice(QFrame):
             fila.addWidget(self.action_button)
             fila.addStretch(1)
             layout.addLayout(fila)
+
+
+class LockMark(QWidget):
+    """Un candado pequeño: «este dato está, y lo guarda un permiso».
+
+    Dibujado y no un carácter: el emoji del candado sale en color, con otra
+    altura y, según la tipografía instalada, no sale. Toma el color que se le
+    diga, que es el ámbar de lo que tiene arreglo.
+    """
+
+    def __init__(self, color: str, lado: int = 12, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self._color = QColor(color)
+        self.setFixedSize(lado, lado)
+
+    def paintEvent(self, event) -> None:  # noqa: N802
+        lado = min(self.width(), self.height())
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        # El arco, de trazo; el cuerpo, relleno.
+        pluma = QPen(self._color, max(1.2, lado * 0.13))
+        painter.setPen(pluma)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawArc(QRectF(lado * 0.27, lado * 0.06, lado * 0.46, lado * 0.62),
+                        0, 180 * 16)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(self._color)
+        painter.drawRoundedRect(QRectF(lado * 0.14, lado * 0.42, lado * 0.72, lado * 0.52),
+                                lado * 0.1, lado * 0.1)
+        painter.end()
+
+
+class PermissionNotice(QFrame):
+    """Lo que falta por permisos, junto, y el botón para darlos.
+
+    Cada página explica sus huecos donde están. Esto los junta en un sitio:
+    quien abre el programa por primera vez no ha entrado todavía en Memoria ni
+    en Almacenamiento, y no sabe que ahí falta nada.
+
+    La lista sale de las notas de la foto y no de un texto fijo: en un equipo
+    sin SMART no promete la salud de los discos. Se reescribe solo cuando
+    cambia lo que falta, que es casi nunca.
+    """
+
+    grant_requested = Signal()
+    snoozed = Signal()
+    dismissed = Signal()
+
+    def __init__(self, palette: "Palette", compact: bool = False,
+                 parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self.setObjectName("Notice")
+        self.setProperty("tone", "warn")
+        self._p = palette
+        self._compact = compact
+        self._nombres: tuple[str, ...] = ()
+        self._recaida = False
+        m = theme.METRICS
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(m.card_pad_h - 2, m.card_pad_v - 3,
+                                  m.card_pad_h - 2, m.card_pad_v - 3)
+        layout.setSpacing(4)
+
+        self.title = QLabel("")
+        self.title.setObjectName("NoticeTitle")
+        layout.addWidget(self.title)
+
+        self._lista = QVBoxLayout()
+        self._lista.setContentsMargins(0, 2, 0, 2)
+        self._lista.setSpacing(2)
+        layout.addLayout(self._lista)
+        self.lines: list[QLabel] = []
+
+        self.grant_button = QPushButton(_("perm.notice.grant"))
+        self.grant_button.setObjectName("Primary")
+        self.grant_button.clicked.connect(self.grant_requested)
+        # Dos botones de texto y no un aspa: un aspa no dice si es por ahora o
+        # para siempre, y son dos cosas distintas.
+        self.snooze_button = QPushButton(_("perm.notice.later"))
+        self.snooze_button.setToolTip(_("perm.notice.later.tip"))
+        self.snooze_button.clicked.connect(self.snoozed)
+        self.dismiss_button = QPushButton(_("perm.notice.never"))
+        self.dismiss_button.setToolTip(_("perm.notice.never.tip"))
+        self.dismiss_button.clicked.connect(self.dismissed)
+        for boton in (self.snooze_button, self.dismiss_button):
+            boton.setObjectName("TextButton")
+            boton.setFlat(True)
+            boton.setCursor(Qt.CursorShape.PointingHandCursor)
+
+        self.buttons = QHBoxLayout()
+        self.buttons.setContentsMargins(0, 4, 0, 0)
+        self.buttons.addWidget(self.grant_button)
+        self.buttons.addStretch(1)
+        self.buttons.addWidget(self.snooze_button)
+        self.buttons.addWidget(self.dismiss_button)
+        layout.addLayout(self.buttons)
+
+    def set_missing(self, nombres: Sequence[str], recaida: bool = False) -> None:
+        """Pone lo que falta. `recaida`: se tenía y ha dejado de leerse."""
+        nombres = tuple(nombres)
+        if nombres == self._nombres and recaida == self._recaida:
+            return
+        self._nombres, self._recaida = nombres, recaida
+        n = len(nombres)
+        if recaida:
+            clave = "perm.notice.lost.one" if n == 1 else "perm.notice.lost.many"
+        else:
+            clave = "perm.notice.title.one" if n == 1 else "perm.notice.title.many"
+        self.title.setText(_(clave).format(n=n))
+
+        # En compacto, una sola línea: cinco renglones se comían media página.
+        textos = [" · ".join(nombres)] if self._compact else list(nombres)
+        while len(self.lines) > len(textos):
+            fila = self._lista.takeAt(len(self.lines) - 1)
+            self.lines.pop()
+            clear_layout(fila.layout())
+        for indice, texto in enumerate(textos):
+            if indice < len(self.lines):
+                if self.lines[indice].text() != texto:
+                    self.lines[indice].setText(texto)
+                continue
+            fila = QHBoxLayout()
+            fila.setSpacing(6)
+            fila.addWidget(LockMark(self._p.warn, theme.METRICS.small_pt + 2))
+            etiqueta = QLabel(texto)
+            etiqueta.setObjectName("NoticeBody")
+            etiqueta.setWordWrap(self._compact)
+            fila.addWidget(etiqueta, 1)
+            self._lista.addLayout(fila)
+            self.lines.append(etiqueta)
+
+    def set_waiting(self, esperando: bool) -> None:
+        """Mientras polkit pregunta, el botón lo dice y no se puede repetir."""
+        self.grant_button.setEnabled(not esperando)
+        self.grant_button.setText(_("perm.waiting") if esperando
+                                  else _("perm.notice.grant"))
 
 
 def boton_de_permiso_permanente() -> QPushButton:

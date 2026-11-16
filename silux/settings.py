@@ -63,6 +63,9 @@ class Preferences:
     sensor_collapsed: tuple[str, ...] = ()
     window_width: int = 900
     window_height: int = 680
+    # El aviso de Inicio de que faltan datos por permisos, quitado con «No
+    # volver a mostrar». El enlace de la barra de estado sigue estando.
+    permission_notice_dismissed: bool = False
 
     # -- validación ---------------------------------------------------------
 
@@ -87,6 +90,7 @@ class Preferences:
             # pone la ventana, que sabe qué densidad está activa.
             window_width=min(3840, max(380, int(self.window_width))),
             window_height=min(2160, max(320, int(self.window_height))),
+            permission_notice_dismissed=bool(self.permission_notice_dismissed),
         )
 
     @property

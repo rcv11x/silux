@@ -23,7 +23,8 @@ from ...model import Snapshot
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette
-from ..widgets import Card, ChipRow, ResponsiveRow, Sparkline, StackedBar
+from ..widgets import (Card, ChipRow, PermissionNotice, ResponsiveRow, Sparkline,
+                       StackedBar)
 from ..widgets import ui_font
 
 
@@ -96,6 +97,14 @@ class HomePage(QScrollArea):
                                   m.page_margin, m.page_margin)
         layout.setSpacing(m.section_gap)
 
+        # Arriba del todo, y escondido hasta que la ventana diga que falta
+        # algo: es lo primero que tiene que ver quien abre el programa sin
+        # permisos, y lo último que quiere ver quien ya los dio.
+        self.permission_notice = PermissionNotice(palette,
+                                                  compact=prefs.density == "compact")
+        self.permission_notice.hide()
+        layout.addWidget(self.permission_notice)
+
         layout.addWidget(self._cabecera())
 
         arriba = ResponsiveRow(min_item_width=300)
@@ -155,6 +164,13 @@ class HomePage(QScrollArea):
         return card
 
     # -- actualización ------------------------------------------------------
+
+    def set_permission_notice(self, nombres, recaida: bool = False) -> None:
+        """Qué falta por permisos, o nada. Lo decide la ventana, que es quien
+        sabe si el aviso se apartó: esta página se rehace al cambiar de tema."""
+        if nombres:
+            self.permission_notice.set_missing(nombres, recaida)
+        self.permission_notice.setVisible(bool(nombres))
 
     def apply(self, snapshot: Snapshot) -> None:
         self._cabecera_con(snapshot)
