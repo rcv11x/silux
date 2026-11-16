@@ -144,7 +144,15 @@ COMPAT = False
 
 # Lo que sigue lo escribe `tools/build_appimage.py` cuando el Qt empaquetado
 # pide más de lo que garantiza un x86-64. `%%JUEGOS%%` son los nombres tal y
-# como los publica `/proc/cpuinfo`.
+# como los publica `/proc/cpuinfo`. Va justo antes de arrancar la interfaz y
+# no antes de repartir los argumentos: el CLI no importa Qt y corre en ese
+# procesador, y el `--report` que el mensaje recomienda es lo que se le pide a
+# quien no puede abrir el programa.
+#
+# El idioma se elige como lo elige cualquier programa: `LC_ALL` manda sobre
+# `LC_MESSAGES`, y los dos sobre `LANG`. Y la orden que se recomienda lleva
+# `$APPIMAGE`, que es el archivo que la persona descargó; `$0` es el AppRun
+# dentro del punto de montaje temporal, que desaparece al salir.
 GUARDA = """
 # --- procesador ------------------------------------------------------------
 # Sin esto, un procesador al que le falte alguna de estas instrucciones se
@@ -158,7 +166,8 @@ if [ -r /proc/cpuinfo ]; then
     done
 fi
 if [ -n "$FALTAN" ]; then
-    case "${LANG:-}" in
+    ESTE="${APPIMAGE:-$0}"
+    case "${LC_ALL:-${LC_MESSAGES:-${LANG:-}}}" in
       es*) cat >&2 <<FIN
 A este procesador le faltan instrucciones que necesita la versión normal:$FALTAN
 
@@ -171,7 +180,7 @@ Hay una versión para estos procesadores, con el mismo programa dentro:
 
 Mientras tanto, esto sí funciona y saca todo el hardware por la terminal:
 
-    $0 --report informe.md
+    $ESTE --report informe.md
 FIN
       ;;
       *) cat >&2 <<FIN
@@ -186,7 +195,7 @@ There is a build for these processors, with the same program inside:
 
 In the meantime this works, and dumps all the hardware to the terminal:
 
-    $0 --report report.md
+    $ESTE --report report.md
 FIN
       ;;
     esac
@@ -222,9 +231,10 @@ runpy.run_module(sys.argv.pop(1), run_name="__main__", alter_sys=True)'
 
 case "${1:-}" in
     --cli) shift; exec "$AQUI/usr/bin/python3" -c "$ARRANQUE" silux.cli "$@" ;;
-    --report|--json|--sensors|--watch|--db-info|--no-color|--with-identifiers|--version)
+    --report|--report=*|--json|--sensors|--watch|--db-info|--no-color|--with-identifiers|--version)
         exec "$AQUI/usr/bin/python3" -c "$ARRANQUE" silux.cli "$@" ;;
 esac
+# %%GUARDA%%
 exec "$AQUI/usr/bin/python3" -c "$ARRANQUE" silux.ui.app "$@"
 """
 
@@ -929,14 +939,13 @@ def sellar_build() -> None:
 def escribir_metadatos(banderas: set[str] = frozenset()) -> None:
     apprun = APPDIR / "AppRun"
     version = f"{sys.version_info.major}.{sys.version_info.minor}"
-    guion = APPRUN
+    # Después de repartir los argumentos y antes de arrancar la interfaz, que
+    # es lo único que necesita Qt: el CLI pasa siempre.
+    relleno = ""
     if banderas:
-        # Detrás de la línea del intérprete y delante de todo lo demás: si el
-        # procesador no da, no hay nada más que preparar.
-        cabecera, resto = guion.split("\n", 1)
         relleno = (GUARDA.replace("%%JUEGOS%%", " ".join(sorted(banderas)))
                          .replace("%%NOMBRE%%", f"{APP_ID}-x86_64"))
-        guion = f"{cabecera}\n{relleno}{resto}"
+    guion = APPRUN.replace("# %%GUARDA%%\n", relleno)
     apprun.write_text(guion, encoding="utf-8")
     apprun.chmod(0o755)
 

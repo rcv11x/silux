@@ -264,5 +264,86 @@ class TestUnPaqueteIncompletoNoSeEmpaqueta(unittest.TestCase):
         self.assertIn("libqxcb.so", self.preguntados)
 
 
+class TestLaGuardaDelAppRun(unittest.TestCase):
+    """Lo que hace el AppRun en un procesador al que le faltan instrucciones.
+
+    Se ejecuta el AppRun que escribe el empaquetador, con `sh`, contra un
+    `/proc/cpuinfo` sin SSE4.1 y con un `python3` de mentira que solo dice qué
+    módulo le pidieron arrancar. La guarda corría antes de mirar los
+    argumentos, así que bloqueaba también el `--report` que su propio mensaje
+    recomienda como salida: el CLI no importa Qt y correría en ese procesador,
+    y es justo el archivo que se le pide a esa persona. El mensaje mandaba
+    además a `$0`, que dentro de un AppImage es el punto de montaje temporal,
+    y elegía idioma solo por `LANG`.
+    """
+
+    def setUp(self):
+        import os
+        import pathlib
+        import tempfile
+        from unittest import mock
+
+        import tools.build_appimage as build
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        raiz = pathlib.Path(self._tmp.name)
+        appdir = raiz / "silux.AppDir"
+        (appdir / "usr" / "bin").mkdir(parents=True)
+        (appdir / "usr" / "lib").mkdir(parents=True)
+        python = appdir / "usr" / "bin" / "python3"
+        # `-c ARRANQUE MODULO argumentos…`: el módulo es el tercero.
+        python.write_text('#!/bin/sh\necho "arranca $3"\n')
+        python.chmod(0o755)
+        sin_sse = raiz / "cpuinfo"
+        sin_sse.write_text("processor\t: 0\nflags\t\t: fpu sse sse2\n")
+
+        with mock.patch.object(build, "APPDIR", appdir):
+            build.escribir_metadatos({"sse4_1"})
+        self.apprun = appdir / "AppRun"
+        guion = self.apprun.read_text()
+        self.assertIn("/proc/cpuinfo", guion)
+        self.apprun.write_text(guion.replace("/proc/cpuinfo", str(sin_sse)))
+        self.entorno_base = {"PATH": os.environ.get("PATH", "/usr/bin:/bin")}
+
+    def _lanzar(self, *argumentos, **entorno):
+        import subprocess
+        return subprocess.run(["sh", str(self.apprun), *argumentos],
+                              env={**self.entorno_base, **entorno},
+                              capture_output=True, text=True, timeout=30)
+
+    def test_la_interfaz_no_arranca_y_lo_explica(self):
+        hecho = self._lanzar()
+        self.assertEqual(hecho.returncode, 1)
+        self.assertNotIn("arranca", hecho.stdout)
+        self.assertIn("sse4_1", hecho.stderr)
+
+    def test_las_ordenes_del_cli_pasan(self):
+        for argumentos in (("--report", "informe.md"), ("--report=informe.md",),
+                           ("--json",), ("--sensors",), ("--version",),
+                           ("--cli", "--watch")):
+            with self.subTest(argumentos=argumentos):
+                hecho = self._lanzar(*argumentos)
+                self.assertEqual(hecho.returncode, 0, hecho.stderr)
+                self.assertIn("arranca silux.cli", hecho.stdout)
+
+    def test_recomienda_el_appimage_y_no_el_punto_de_montaje(self):
+        hecho = self._lanzar(APPIMAGE="/home/ana/Descargas/silux-x86_64.AppImage")
+        self.assertIn("/home/ana/Descargas/silux-x86_64.AppImage --report",
+                      hecho.stderr)
+        self.assertNotIn(str(self.apprun), hecho.stderr)
+
+    def test_el_idioma_sigue_el_orden_de_posix(self):
+        casos = (
+            ({"LANG": "es_ES.UTF-8"}, "A este procesador"),
+            ({"LC_ALL": "es_ES.UTF-8"}, "A este procesador"),
+            ({"LC_MESSAGES": "es_MX.UTF-8", "LANG": "C"}, "A este procesador"),
+            ({"LC_ALL": "C", "LANG": "es_ES.UTF-8"}, "This processor"),
+            ({}, "This processor"),
+        )
+        for entorno, espera in casos:
+            with self.subTest(entorno=entorno):
+                self.assertIn(espera, self._lanzar(**entorno).stderr)
+
+
 if __name__ == "__main__":
     unittest.main()
