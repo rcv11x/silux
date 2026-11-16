@@ -15,14 +15,15 @@ from silux.model import (Board, Clocks, CpuInfo, CpuType, Disk, DiskHealth, Gpu,
                         GpuMemory, Need, NetworkInterface, Note, Partition,
                         PcieLink, Sensor, SensorKind, Snapshot, System)
 
-# Inventados a propósito, y de los rangos que existen para esto: 192.0.2.0/24
-# es la TEST-NET-1 de la RFC 5737 y 00:00:5E:00:53:xx el bloque que la RFC 7042
-# reserva para documentación. Antes eran los del equipo del autor, que es una
-# forma curiosa de publicarlos desde el test que comprueba que no se publican.
-EQUIPO = "equipo-de-pruebas"
-DIRECCION = "192.0.2.11"
-MAC = "00:00:5e:00:53:af"
-SERIE = "0000000000000000"
+# Inventados, de los rangos que existen para documentación —198.51.100.0/24 es
+# la TEST-NET-2 de la RFC 5737 y 00:00:5E:00:53:xx el bloque de la RFC 7042—,
+# y distintos de lo que `privacidad` pone en su lugar. Eran justo esos
+# valores, y entonces tapado y sin tapar se escribían igual: un test que
+# comprueba que no sale la IP no podía fallar nunca.
+EQUIPO = "sobremesa-de-zoraida"
+DIRECCION = "198.51.100.23"
+MAC = "00:00:5e:00:53:42"
+SERIE = "S7DNNJ0X123456"
 
 
 def _snapshot(**cambios) -> Snapshot:
@@ -177,6 +178,15 @@ class TestCasosVacios(unittest.TestCase):
         texto = report.build(Snapshot(monotonic_ns=0, cpu=CpuInfo()))
         self.assertIn("# Informe de silux", texto)
 
+
+
+class TestLosDatosDePruebaNoSonLosDeSustitucion(unittest.TestCase):
+    def test_ninguno_coincide_con_lo_que_pone_privacidad(self):
+        from silux import privacidad
+        sustitutos = (privacidad.EQUIPO, privacidad.IPV4, privacidad.MAC,
+                      privacidad.PUERTA, "0" * len(SERIE))
+        for dato in (EQUIPO, DIRECCION, MAC, SERIE):
+            self.assertNotIn(dato, sustitutos)
 
 if __name__ == "__main__":
     unittest.main()

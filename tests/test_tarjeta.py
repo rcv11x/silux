@@ -15,10 +15,15 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from silux.model import (Board, Clocks, CpuInfo, CpuType, Disk, Gpu, GpuMemory,
                          Memory, NetworkInterface, Snapshot, System)
 
-EQUIPO = "equipo-de-pruebas"
-DIRECCION = "192.0.2.11"
-MAC = "00:00:5e:00:53:af"
-SERIE = "0000000000000000"
+# Inventados, de los rangos que existen para documentación —198.51.100.0/24 es
+# la TEST-NET-2 de la RFC 5737 y 00:00:5E:00:53:xx el bloque de la RFC 7042—,
+# y distintos de lo que `privacidad` pone en su lugar. Eran justo esos
+# valores, y entonces tapado y sin tapar se escribían igual: un test que
+# comprueba que no sale la IP no podía fallar nunca.
+EQUIPO = "sobremesa-de-zoraida"
+DIRECCION = "198.51.100.23"
+MAC = "00:00:5e:00:53:42"
+SERIE = "S7DNNJ0X123456"
 
 
 def _snapshot(**cambios) -> Snapshot:
@@ -134,3 +139,12 @@ def _paleta():
 
     QApplication.instance() or QApplication([])
     return theme.palette_for(QApplication.instance(), "dark", "azul")
+
+
+class TestLosDatosDePruebaNoSonLosDeSustitucion(unittest.TestCase):
+    def test_ninguno_coincide_con_lo_que_pone_privacidad(self):
+        from silux import privacidad
+        sustitutos = (privacidad.EQUIPO, privacidad.IPV4, privacidad.MAC,
+                      privacidad.PUERTA, "0" * len(SERIE))
+        for dato in (EQUIPO, DIRECCION, MAC, SERIE):
+            self.assertNotIn(dato, sustitutos)

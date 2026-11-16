@@ -12,22 +12,55 @@ cuidaba de esto desde el principio.
 import unittest
 
 from silux import privacidad
-from silux.model import (CpuInfo, Gpu, GpuMemory, NetworkInterface,
-                        Snapshot, System)
+from silux.model import (Battery, CpuInfo, Disk, Display, Edid, Gpu,
+                         GpuMemory, NetworkInterface, Partition, Sensor,
+                         SensorKind, Snapshot, System)
+
+# Lo que no puede quedar en ninguna parte de la foto anonimizada. Ninguno
+# coincide con lo que `privacidad` pone en su lugar: si coincidieran, el
+# barrido no distinguiría tapado de sin tapar.
+SECRETOS = ("portatil-de-ana", "fedcba9876543210", "203.0.113",
+            "00:00:5e:00:53:0b", "2001:db8:1::7", "MON7Q2X91",
+            "S5GXNX0R123456", "BAT998877", "/run/media/ana", "ana_wg0")
 
 
 def _foto() -> Snapshot:
+    """Una foto con todo lo que puede llevar algo de quien la saca.
+
+    La anterior traía el sistema, una gráfica y una interfaz, y el test que
+    dice barrer «la foto entera» no podía ver el número de serie de un
+    monitor, el de un disco, el de una batería, un punto de montaje ni una
+    interfaz con nombre propio, porque no venían.
+    """
+    monitor = Display(connector="DP-1", connected=True,
+                      monitor=Edid(manufacturer_id="GBT", model="FO27Q2",
+                                   serial="MON7Q2X91"))
     return Snapshot(
         monotonic_ns=0, cpu=CpuInfo(),
         system=System(distribution="CachyOS", kernel="Linux 7.2.0",
                       hostname="portatil-de-ana", desktop="KDE"),
         gpus=(Gpu(index=0, name="Radeon RX 9070 XT", vendor="AMD",
                   unique_id="fedcba9876543210",
-                  memory=GpuMemory(total_bytes=16 * 1024**3)),),
+                  memory=GpuMemory(total_bytes=16 * 1024**3),
+                  displays=(monitor,)),),
         network=(NetworkInterface(name="enp6s0", up=True, ipv4="203.0.113.7",
                                   ipv6=("2001:db8:1::7",),
                                   gateway="203.0.113.1",
-                                  mac="00:00:5e:00:53:0b", speed_mbps=2500),),
+                                  mac="00:00:5e:00:53:0b", speed_mbps=2500),
+                 NetworkInterface(name="ana_wg0", kind="virtual", up=True)),
+        disks=(Disk(name="nvme0n1", model="Samsung SSD 990 PRO",
+                    serial="S5GXNX0R123456",
+                    partitions=(Partition(name="nvme0n1p2", mountpoint="/"),
+                                Partition(name="sda1",
+                                          mountpoint="/run/media/ana/USB"))),),
+        batteries=(Battery(name="BAT0", serial="BAT998877",
+                           manufacturer="SMP", model="5B10W13930"),),
+        sensors=(Sensor(key="net/ana_wg0/rx", chip="net",
+                        device="Red (ana_wg0)", label="Bajada",
+                        kind=SensorKind.NETWORK, value=0.0),
+                 Sensor(key="acpitz/1", chip="acpitz",
+                        device="portatil-de-ana-acpi", label="temp1",
+                        kind=SensorKind.TEMPERATURE, value=40.0)),
     )
 
 
@@ -55,9 +88,14 @@ class TestLoQueSeTapa(unittest.TestCase):
     def test_no_queda_ni_un_rastro_en_la_foto_entera(self):
         """El barrido que se hizo a mano antes de publicar, automatizado."""
         texto = repr(self.limpia)
-        for real in ("portatil-de-ana", "fedcba9876543210", "203.0.113",
-                     "00:00:5e:00:53:0b", "2001:db8:1::7"):
+        for real in SECRETOS:
             self.assertNotIn(real, texto, f"se ha colado {real}")
+
+    def test_y_el_barrido_ve_lo_que_busca(self):
+        """Sin tapar, cada secreto está en la foto: si no, no se buscaba nada."""
+        texto = repr(_foto())
+        for real in SECRETOS:
+            self.assertIn(real, texto)
 
 
 class TestLoQueNoSeToca(unittest.TestCase):
@@ -83,10 +121,6 @@ class TestLoQueNoSeToca(unittest.TestCase):
         foto = Snapshot(monotonic_ns=0, cpu=CpuInfo(), network=(
             NetworkInterface(name="lo", up=True),))
         self.assertIsNone(privacidad.anonimizar(foto).network[0].ipv4)
-
-
-if __name__ == "__main__":
-    unittest.main()
 
 
 class TestLaMarcaDeLasCapturas(unittest.TestCase):
@@ -225,3 +259,7 @@ class TestElNombreDelEquipoSeBuscaComoNombre(unittest.TestCase):
     def test_pero_un_nombre_corto_entero_si_se_tapa(self):
         tapada = privacidad.anonimizar(self._foto("pc", aparato="pc (ACPI)"))
         self.assertEqual(tapada.sensors[0].device, "equipo (ACPI)")
+
+
+if __name__ == "__main__":
+    unittest.main()

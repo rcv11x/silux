@@ -127,10 +127,23 @@ def anonimizar(snapshot: Snapshot) -> Snapshot:
         cambios["system"] = dataclasses.replace(snapshot.system, hostname=EQUIPO)
 
     if snapshot.gpus:
+        # El monitor también lleva su número de serie, en el EDID: se enseña
+        # en la ficha de cada pantalla.
         cambios["gpus"] = tuple(
-            dataclasses.replace(g, unique_id=_tapar(g.unique_id))
+            dataclasses.replace(
+                g, unique_id=_tapar(g.unique_id),
+                displays=tuple(
+                    dataclasses.replace(d, monitor=dataclasses.replace(
+                        d.monitor, serial=_tapar(d.monitor.serial)))
+                    if d.monitor else d
+                    for d in g.displays))
             for g in snapshot.gpus
         )
+
+    if snapshot.batteries:
+        cambios["batteries"] = tuple(
+            dataclasses.replace(b, serial=_tapar(b.serial))
+            for b in snapshot.batteries)
 
     if snapshot.network:
         cambios["network"] = tuple(
@@ -168,7 +181,11 @@ def anonimizar(snapshot: Snapshot) -> Snapshot:
 
     if snapshot.sensors and (nombres or equipo):
         sensores = tuple(
-            dataclasses.replace(s, device=_limpiar(s.device, equipo, nombres),
+            # La clave también, aunque no se pinte: va en la foto y en lo que
+            # se exporte de ella. El cambio es el mismo en cada muestreo, así
+            # que los mínimos y máximos que cuelgan de ella no se pierden.
+            dataclasses.replace(s, key=_limpiar(s.key, equipo, nombres),
+                                device=_limpiar(s.device, equipo, nombres),
                                 label=_limpiar(s.label, equipo, nombres))
             for s in snapshot.sensors)
         if sensores != snapshot.sensors:
