@@ -368,6 +368,15 @@ class MainWindow(QMainWindow):
         desde el menú de Inicio la clave siempre existe, y desde la línea de
         órdenes hay que parar.
         """
+        row = self.section_row(name)
+        if row is None:
+            return False
+        self.nav.setCurrentRow(row)
+        self._on_section(row)
+        return True
+
+    def section_row(self, name: str) -> Optional[int]:
+        """La fila del menú de una sección, por cualquiera de sus nombres."""
         buscado = name.lower()
         for row in range(self.nav.count()):
             item = self.nav.item(row)
@@ -379,10 +388,8 @@ class MainWindow(QMainWindow):
             nombres = {item.text().lower(), clave.lower(),
                        i18n.en_español(clave).lower()}
             if buscado in nombres:
-                self.nav.setCurrentRow(row)
-                self._on_section(row)
-                return True
-        return False
+                return row
+        return None
 
     def section_names(self) -> list[str]:
         """Los nombres de sección tal y como se ven, para poder ofrecerlos.
@@ -818,6 +825,22 @@ class MainWindow(QMainWindow):
             _("app.sample.failed").format(msg=message))
 
 
+def seccion_que_falta(window: MainWindow, nombre: str) -> Optional[str]:
+    """Por qué no se puede capturar esa sección ahora, o `None` si se puede.
+
+    Existe por la de Batería: está en el menú desde el principio y se esconde
+    con la primera lectura en un equipo sin batería. `--page` se valida antes
+    de esa lectura, así que la daba por buena, y la captura salía después con
+    la ventana ya en Inicio. Se pregunta otra vez cuando ya hay datos.
+    """
+    fila = window.section_row(nombre)
+    if fila is None:
+        return _("app.page.unknown").format(nombre=nombre)
+    if window.nav.item(fila).isHidden():
+        return _("app.page.hidden").format(nombre=nombre)
+    return None
+
+
 def _callar_el_portal() -> None:
     """Silencia un aviso de Qt que no le dice nada a nadie.
 
@@ -941,6 +964,9 @@ def main(argv: Optional[list[str]] = None) -> int:
         for _paso in range(10):
             time.sleep(0.08)
             window._on_sample(preparar(collector.snapshot()))
+        if args.page and (motivo := seccion_que_falta(window, args.page)):
+            print(motivo, file=sys.stderr)
+            return 2
         # Una sola pasada de eventos no basta: los layouts anidados dentro del
         # área de desplazamiento necesitan asentarse antes de grabar.
         QTimer.singleShot(400, app.quit)

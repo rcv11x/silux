@@ -20,6 +20,7 @@
   "app.frozen": "Congelado · pulsa espacio para seguir",
   "app.noreading": "Todavía no hay ninguna lectura del equipo.",
   "app.page.available": "Las que hay: {lista}",
+  "app.page.hidden": "la sección «{nombre}» no está en este equipo",
   "app.page.unknown": "no hay ninguna sección que se llame «{nombre}»",
   "app.report.card": "Informe",
   "app.report.failed": "No se pudo guardar:\n{error}",

@@ -264,5 +264,82 @@ class TestLaCapturaNoSaleDeLaPaginaEquivocada(unittest.TestCase):
         self.assertIn("Rendimiento", hecho.stderr)
 
 
+
+class TestUnaSeccionQueEsteEquipoNoTiene(unittest.TestCase):
+    """`--page Batería` en un sobremesa.
+
+    La sección existe en la lista y se esconde con la primera lectura, cuando
+    se ve que el equipo no tiene batería. La validación de `--page` corría
+    antes de esa lectura, así que daba por buena la sección, la captura se
+    hacía después de esconderla —con la ventana ya en Inicio— y salía con
+    código 0 y «captura guardada». Es el mismo fallo que el de un nombre que
+    no existe, por otro camino.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        from PySide6.QtWidgets import QApplication
+
+        cls.app = QApplication.instance() or QApplication([])
+
+    def _ventana_con(self, baterias):
+        from silux.model import Battery, CpuInfo, Snapshot
+        from silux.settings import Preferences
+        from silux.ui.app import MainWindow
+
+        ventana = MainWindow(Preferences())
+        self.addCleanup(ventana.close)
+        self.assertTrue(ventana.select_section("Batería"))
+        foto = Snapshot(monotonic_ns=0, cpu=CpuInfo(),
+                        batteries=(Battery(name="BAT0", percent=80.0),) if baterias else ())
+        ventana._on_sample(foto)
+        return ventana
+
+    def test_sin_bateria_la_seccion_pedida_ya_no_esta(self):
+        from silux.ui.app import seccion_que_falta
+
+        ventana = self._ventana_con(baterias=False)
+        self.assertIsNotNone(seccion_que_falta(ventana, "Batería"))
+
+    def test_con_bateria_si_esta(self):
+        from silux.ui.app import seccion_que_falta
+
+        ventana = self._ventana_con(baterias=True)
+        self.assertIsNone(seccion_que_falta(ventana, "Batería"))
+
+    def test_de_punta_a_punta_en_un_equipo_sin_bateria(self):
+        """Con el programa de verdad. Solo donde no hay batería, que es donde
+        pasa: en un portátil la captura de Batería es correcta."""
+        import subprocess
+        import sys
+        import tempfile
+
+        from silux.providers.battery import Batteries
+
+        if Batteries().available() and _hay_bateria():
+            self.skipTest("este equipo tiene batería")
+        with tempfile.TemporaryDirectory() as carpeta:
+            destino = pathlib.Path(carpeta) / "bateria.png"
+            hecho = subprocess.run(
+                [sys.executable, "-m", "silux.ui.app", "--screenshot",
+                 str(destino), "--page", "Batería", "--size", "400x300"],
+                cwd=str(RAIZ), env=dict(os.environ, QT_QPA_PLATFORM="offscreen"),
+                capture_output=True, text=True, timeout=180)
+            self.assertEqual(hecho.returncode, 2, hecho.stdout + hecho.stderr)
+            self.assertNotIn("captura guardada", hecho.stdout)
+            self.assertFalse(destino.exists(), "guardó la captura de otra página")
+
+
+def _hay_bateria() -> bool:
+    from silux.collector import Collector
+
+    recolector = Collector()
+    try:
+        return bool(recolector.snapshot().batteries)
+    finally:
+        recolector.close()
+
+
 if __name__ == "__main__":
     unittest.main()
