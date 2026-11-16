@@ -113,15 +113,19 @@ class TestRitmo(BancoDeRed):
         self.assertEqual(interfaz.traffic.rx_bytes, 1000)
 
     def test_la_segunda_ya_da_velocidad(self):
+        # Con el reloj en la mano, como en el test de los discos: el de
+        # verdad con un margen falla cuando el equipo va cargado.
         proveedor = network.NetworkInterfaces()
-        self.interfaz("enp6s0", rx=1000, tx=500)
-        self.recolectar(proveedor)
-        # Un segundo después han entrado 100 KB más.
-        proveedor._previo["enp6s0"] = (proveedor._previo["enp6s0"][0] - 1.0, 1000, 500)
-        self.interfaz("enp6s0", rx=1000 + 102400, tx=500)
-        interfaz = self.recolectar(proveedor).freeze().network[0]
-        self.assertAlmostEqual(interfaz.traffic.rx_rate_bps, 102400, delta=2000)
-        self.assertAlmostEqual(interfaz.traffic.tx_rate_bps, 0, delta=100)
+        reloj = [1000.0]
+        with mock.patch.object(network.time, "monotonic", lambda: reloj[0]):
+            self.interfaz("enp6s0", rx=1000, tx=500)
+            self.recolectar(proveedor)
+            # Un segundo después han entrado 100 KB más.
+            reloj[0] += 1.0
+            self.interfaz("enp6s0", rx=1000 + 102400, tx=500)
+            interfaz = self.recolectar(proveedor).freeze().network[0]
+        self.assertEqual(interfaz.traffic.rx_rate_bps, 102400)
+        self.assertEqual(interfaz.traffic.tx_rate_bps, 0)
 
     def test_un_contador_que_se_reinicia_no_da_velocidad_negativa(self):
         # Pasa cuando la interfaz se cae y vuelve a levantarse.

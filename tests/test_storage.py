@@ -147,14 +147,18 @@ class TestRitmo(BancoDeDiscos):
         self.assertEqual(disco.io.read_bytes, 22384 * 512)
 
     def test_la_segunda_ya_da_velocidad(self):
+        # Con el reloj en la mano: entre una lectura y otra pasa un segundo
+        # justo. Con el de verdad y un margen, el test fallaba cuando el
+        # equipo iba cargado y entre las dos se colaban unos milisegundos.
         proveedor = storage.Disks()
-        self.disco("sda", stat="104 0 1000 0 50 0 500 0 0 0 0")
-        self.recolectar(proveedor)
-        proveedor._previo["sda"] = (proveedor._previo["sda"][0] - 1.0,
-                                    1000 * 512, 500 * 512)
-        self.disco("sda", stat="104 0 3000 0 50 0 500 0 0 0 0")
-        disco = self.recolectar(proveedor).freeze().disks[0]
-        self.assertAlmostEqual(disco.io.read_rate_bps, 2000 * 512, delta=5000)
+        reloj = [1000.0]
+        with mock.patch.object(storage.time, "monotonic", lambda: reloj[0]):
+            self.disco("sda", stat="104 0 1000 0 50 0 500 0 0 0 0")
+            self.recolectar(proveedor)
+            reloj[0] += 1.0
+            self.disco("sda", stat="104 0 3000 0 50 0 500 0 0 0 0")
+            disco = self.recolectar(proveedor).freeze().disks[0]
+        self.assertEqual(disco.io.read_rate_bps, 2000 * 512)
 
     def test_un_contador_reiniciado_no_da_ritmo_negativo(self):
         # Pasa al desconectar y volver a conectar un disco externo.
