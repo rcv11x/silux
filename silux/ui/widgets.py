@@ -17,8 +17,8 @@ from __future__ import annotations
 from collections import deque
 from typing import Iterable, Optional, Sequence
 
-from PySide6.QtCore import (QPoint, QPointF, QRectF, QSize, Qt, QTimer,
-                            Signal)
+from PySide6.QtCore import (QEvent, QPoint, QPointF, QRectF, QSize, Qt,
+                            QTimer, Signal)
 from PySide6.QtGui import (
     QBrush, QFontMetrics, QLinearGradient, QPainter, QPainterPath, QPen,
 )
@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QHBoxLayout,
     QLabel,
+    QLayout,
     QPushButton,
     QSizePolicy,
     QVBoxLayout,
@@ -187,6 +188,19 @@ class ResponsiveRow(QWidget):
 
     Con la ventana ancha, las cuatro fichas van en fila; al encogerla pasan a
     dos y luego a una, en vez de comprimirse hasta quedar ilegibles.
+
+    Una columna solo cabe si caben sus hijos. `min_item_width` es lo que quien
+    la monta cree que necesita cada uno, y no siempre acierta: en Ajustes la
+    tarjeta de Apariencia lleva una fila de tres botones que pide 529 px, y a
+    900×680 en compacto se repartía en dos columnas de 360. La rejilla exigía
+    entonces el doble de ese mínimo, la fila se ensanchaba para dárselo y el
+    área de desplazamiento, que no tiene barra horizontal, cortaba lo que
+    sobraba por la derecha sin avisar. Por eso un reparto solo vale si la suma
+    de lo que pide cada columna —lo que pide su hijo más ancho, y nunca menos
+    de `min_item_width`— cabe en el ancho de la fila. Y la fila no le pide a
+    quien la contiene más que el ancho de su hijo más ancho: si pidiera el de
+    la rejilla montada, su propia anchura le diría que caben dos columnas y
+    nunca bajaría a una.
     """
 
     def __init__(self, min_item_width: int = 200, parent: Optional[QWidget] = None):
@@ -201,6 +215,20 @@ class ResponsiveRow(QWidget):
         self._grid = QGridLayout(self)
         self._grid.setContentsMargins(0, 0, 0, 0)
         self._grid.setSpacing(theme.METRICS.section_gap)
+        # El mínimo lo decide `minimumSizeHint`, no la rejilla montada.
+        self._grid.setSizeConstraint(QLayout.SizeConstraint.SetNoConstraint)
+
+    def _anchos_minimos(self) -> list[int]:
+        return [self._min_item_width if w.isHidden()
+                else max(self._min_item_width, w.minimumSizeHint().width())
+                for w in self._items]
+
+    def _ancho_minimo_de_hijo(self) -> int:
+        return max(self._anchos_minimos(), default=self._min_item_width)
+
+    def minimumSizeHint(self) -> QSize:  # noqa: N802
+        alto = super().minimumSizeHint().height()
+        return QSize(self._ancho_minimo_de_hijo(), max(alto, 0))
 
     def add(self, widget: QWidget) -> None:
         self._items.append(widget)
@@ -212,9 +240,16 @@ class ResponsiveRow(QWidget):
         if not count:
             return 1
         gap = self._grid.spacing()
-        usable = max(self.width(), self._min_item_width)
+        anchos = self._anchos_minimos()
+        usable = max(self.width(), max(anchos))
         fits = int(max(1, (usable + gap) // (self._min_item_width + gap)))
-        return balanced_columns(count, fits)
+        for tope in range(fits, 0, -1):
+            columnas = balanced_columns(count, tope)
+            pide = sum(max(anchos[i] for i in range(columna, count, columnas))
+                       for columna in range(columnas))
+            if columnas == 1 or pide + gap * (columnas - 1) <= usable:
+                return columnas
+        return 1
 
     def _relayout(self, force: bool = False) -> None:
         columns = self._wanted_columns()
@@ -235,6 +270,15 @@ class ResponsiveRow(QWidget):
     def resizeEvent(self, event) -> None:  # noqa: N802
         super().resizeEvent(event)
         self._relayout()
+
+    def event(self, event) -> bool:  # noqa: N802
+        # Un hijo que crece con el dato nuevo —un nombre más largo— no cambia
+        # el ancho de la fila, así que no llega ningún `resizeEvent`; lo que
+        # llega es la petición de recolocar. Ahí se vuelve a mirar si caben.
+        resultado = super().event(event)
+        if event.type() == QEvent.Type.LayoutRequest:
+            self._relayout()
+        return resultado
 
 
 # --------------------------------------------------------------------------

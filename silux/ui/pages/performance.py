@@ -221,11 +221,16 @@ class PerformancePage(QScrollArea):
         self.cancel_button.clicked.connect(self._cancelar)
         self.cancel_button.hide()
 
+        # Dos filas y no una: los botones, el desplegable y el total juntos
+        # piden unos 760 px, y a 900×680 en compacto la página tiene menos.
+        # El área de desplazamiento no tiene barra horizontal, así que lo que
+        # no cabía se cortaba contra el borde.
+        botones = QHBoxLayout()
+        botones.addWidget(self.run_button)
+        botones.addWidget(self.quick_button)
+        botones.addWidget(self.cancel_button)
+        botones.addStretch(1)
         fila = QHBoxLayout()
-        fila.addWidget(self.run_button)
-        fila.addWidget(self.quick_button)
-        fila.addWidget(self.cancel_button)
-        fila.addSpacing(12)
         fila.addWidget(QLabel(_("bench.label.each")))
         fila.addWidget(self.duracion)
         # Cuánto tarda la prueba entera. Son diez medidas, así que «30 s» son
@@ -244,6 +249,7 @@ class PerformancePage(QScrollArea):
 
         card.body.addWidget(titulo)
         card.body.addWidget(subtitulo)
+        card.body.addLayout(botones)
         card.body.addLayout(fila)
         card.body.addWidget(self.progress)
         return card

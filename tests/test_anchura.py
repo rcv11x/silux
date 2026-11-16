@@ -1,0 +1,178 @@
+"""Ninguna página se sale por la derecha en la ventana compacta.
+
+A 900×680 con la densidad compacta —el tamaño de las capturas de la
+documentación y el de una ventana a media pantalla en un portátil—,
+Rendimiento y Ajustes pintaban sus botones y sus párrafos cortados contra el
+borde: alguna fila pedía más ancho mínimo del que había, el área de
+desplazamiento no tiene barra horizontal y lo que sobraba simplemente no se
+veía. Nada fallaba ni avisaba; solo se notaba mirando la captura.
+
+Aquí se monta la ventana de verdad, se le da una muestra, se recorren las
+trece secciones y se mide cada widget visible contra el borde de la ventana.
+La muestra es la del equipo que ejecuta la suite, que es lo que da nombres y
+listas de verdad, más una batería para que la sección de Batería exista
+también en un sobremesa. Lo que se exige —que nada se salga— vale para
+cualquier hardware: no depende de que haya algo concreto que encontrar.
+"""
+
+import dataclasses
+import os
+import unittest
+
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+from PySide6.QtCore import QPoint
+from PySide6.QtWidgets import QApplication, QWidget
+
+from silux.collector import Collector
+from silux.model import Battery
+from silux.settings import Preferences
+from silux.ui import theme
+
+ANCHO, ALTO = 900, 680
+
+BATERIA = Battery(
+    name="BAT0", status="bat.status.discharging", percent=76.0,
+    design_wh=57.0, full_wh=50.2, now_wh=38.1,
+    voltage_v=11.9, design_voltage_v=11.55, power_w=8.4, cycles=212,
+    manufacturer="SMP", model="5B10W13930", technology="Li-poly",
+    charge_start_percent=75, charge_end_percent=80)
+
+
+def _app():
+    return QApplication.instance() or QApplication([])
+
+
+def _asentar(app, veces=4):
+    # Los layouts anidados dentro del área de desplazamiento necesitan más de
+    # una pasada de eventos para asentarse, lo mismo que en `--screenshot`.
+    for _vuelta in range(veces):
+        app.processEvents()
+
+
+class TestNadaSeSalePorLaDerecha(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.app = _app()
+        prefs = Preferences(density="compact", window_width=ANCHO,
+                            window_height=ALTO).normalized()
+        theme.apply(cls.app, prefs.theme, prefs.density, prefs.font_scale,
+                    prefs.accent)
+
+        from silux.ui.app import SECTIONS, MainWindow
+
+        cls.secciones = SECTIONS
+        cls.ventana = MainWindow(prefs)
+        cls.ventana.resize(ANCHO, ALTO)
+        cls.ventana.show()
+
+        recolector = Collector()
+        try:
+            recolector.snapshot()
+            muestra = recolector.snapshot()
+        finally:
+            recolector.close()
+        muestra = dataclasses.replace(muestra, batteries=(BATERIA,))
+        for _vuelta in range(3):
+            cls.ventana._on_sample(muestra)
+            _asentar(cls.app)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.ventana.close()
+
+    def _desbordados(self) -> list[str]:
+        ventana = self.ventana
+        pagina = ventana.stack.currentWidget()
+        fuera = []
+        for widget in [pagina, *pagina.findChildren(QWidget)]:
+            if not widget.isVisibleTo(ventana) or widget.width() <= 0:
+                continue
+            izquierda = widget.mapTo(ventana, QPoint(0, 0)).x()
+            derecha = izquierda + widget.width()
+            if izquierda < 0 or derecha > ventana.width():
+                nombre = widget.objectName() or type(widget).__name__
+                texto = getattr(widget, "text", lambda: "")()
+                fuera.append(f"{nombre} «{str(texto)[:40]}» "
+                             f"x={izquierda}..{derecha}")
+        return fuera
+
+    def test_las_trece_secciones_caben_a_lo_ancho(self):
+        self.assertEqual(self.ventana.width(), ANCHO)
+        self.assertEqual(len(self.secciones), 13)
+        for fila, (clave, _activa) in enumerate(self.secciones):
+            with self.subTest(seccion=clave):
+                self.ventana.nav.setCurrentRow(fila)
+                _asentar(self.app)
+                self.assertIs(self.ventana.stack.currentWidget(),
+                              self.ventana.stack.widget(fila),
+                              f"la sección {clave} no se abrió")
+                fuera = self._desbordados()
+                self.assertEqual(fuera, [], f"{clave}: se sale por la derecha "
+                                            f"de {ANCHO} px:\n  " + "\n  ".join(fuera[:12]))
+
+    def test_la_comprobacion_ve_lo_que_se_sale(self):
+        """Sin esto, un `_desbordados` que no mirara nada daría verde."""
+        from PySide6.QtWidgets import QLabel
+
+        self.ventana.nav.setCurrentRow(0)
+        _asentar(self.app)
+        intruso = QLabel("ancho de más", self.ventana.stack.currentWidget())
+        intruso.setGeometry(0, 0, ANCHO * 2, 20)
+        intruso.show()
+        try:
+            self.assertTrue(any("ancho de más" in f for f in self._desbordados()))
+        finally:
+            intruso.hide()
+            intruso.setParent(None)
+            intruso.deleteLater()
+            _asentar(self.app)
+
+
+class TestLaFilaReparteSegunLoQuePidenSusHijos(unittest.TestCase):
+    """`ResponsiveRow` cuenta con el mínimo de cada hijo, no solo con el suyo.
+
+    Los números son los de Ajustes medidos en la ventana: la tarjeta de
+    Muestreo pide 340 px y la de Apariencia 540. A 1280×800 la fila mide 1055
+    y caben las dos (340 + 540 + el hueco); a 900×680 en compacto mide 713, no
+    caben, y repartirlas en dos columnas era lo que empujaba la página fuera
+    de la ventana.
+    """
+
+    class _Pide(QWidget):
+        def __init__(self, ancho):
+            super().__init__()
+            self._ancho = ancho
+
+        def minimumSizeHint(self):  # noqa: N802
+            from PySide6.QtCore import QSize
+            return QSize(self._ancho, 20)
+
+    def _fila(self, ancho):
+        from silux.ui.widgets import ResponsiveRow
+
+        _app()
+        fila = ResponsiveRow(min_item_width=110)
+        fila.add(self._Pide(340))
+        fila.add(self._Pide(540))
+        fila.resize(ancho, 200)
+        fila.show()
+        _asentar(QApplication.instance())
+        self.addCleanup(fila.close)
+        return fila
+
+    def test_si_caben_van_en_dos_columnas_aunque_no_midan_lo_mismo(self):
+        self.assertEqual(self._fila(1055)._columns, 2)
+
+    def test_si_no_caben_bajan_a_una(self):
+        self.assertEqual(self._fila(713)._columns, 1)
+
+    def test_y_no_le_pide_a_quien_la_contiene_mas_que_el_hijo_mas_ancho(self):
+        # Si pidiera el ancho de la rejilla en dos columnas, la ensancharían
+        # hasta él y su propia anchura le diría que caben.
+        self.assertEqual(self._fila(713).minimumSizeHint().width(), 540)
+
+
+if __name__ == "__main__":
+    unittest.main()
