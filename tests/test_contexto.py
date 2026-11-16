@@ -26,13 +26,13 @@ class TestLasCifrasDelContextoSiguenSiendoCiertas(unittest.TestCase):
             self.skipTest("no hay CLAUDE.md")
         return CONTEXTO.read_text(encoding="utf-8")
 
-    # Los dos archivos que dicen cuántos tests hay, cada uno con su forma de
-    # escribirlo. El README se quedó en 592 con la suite ya por encima de mil:
-    # solo se vigilaba CLAUDE.md, y quien lee el README es quien no conoce el
-    # proyecto y no tiene con qué contrastarlo.
+    # El README da una cifra aproximada —«unos 1500»— y se vigila con un margen
+    # ancho: se quedó en 592 con la suite ya por encima de mil, y quien lo lee
+    # es quien no conoce el proyecto y no tiene con qué contrastarlo. CLAUDE.md
+    # no lleva cifra: el número lo da la suite al terminar, y uno escrito a
+    # mano había que subirlo en cada commit que añadía un test.
     CIFRAS_DE_TESTS = (
-        ("CLAUDE.md", r"Los tests son \*\*(\d+)\*\*"),
-        ("README.md", r"^Son (\d+) y tardan"),
+        ("README.md", r"^Son unos (\d+) y tardan", 0.25),
     )
 
     def test_el_numero_de_tests_es_el_que_hay(self):
@@ -42,7 +42,7 @@ class TestLasCifrasDelContextoSiguenSiendoCiertas(unittest.TestCase):
                                               top_level_dir=str(RAIZ))
         real = suite.countTestCases()
 
-        for archivo, patron in self.CIFRAS_DE_TESTS:
+        for archivo, patron, margen in self.CIFRAS_DE_TESTS:
             with self.subTest(archivo=archivo):
                 camino = RAIZ / archivo
                 if not camino.is_file():
@@ -53,8 +53,12 @@ class TestLasCifrasDelContextoSiguenSiendoCiertas(unittest.TestCase):
                     escrito, f"no se encuentra la cifra de tests en {archivo}")
                 dicho = int(escrito.group(1))
                 self.assertLessEqual(
-                    abs(real - dicho) / real, MARGEN,
+                    abs(real - dicho) / real, margen,
                     f"{archivo} dice {dicho} tests y hay {real}")
+
+    def test_claude_md_no_lleva_el_numero_a_mano(self):
+        self.assertIsNone(re.search(r"Los tests son \*\*\d+\*\*", self._texto()),
+                          "el número de tests lo da la suite, no se escribe aquí")
 
     def test_el_numero_de_claves_de_idioma_es_el_que_hay(self):
         escrito = re.search(r"(\d+) claves, ninguna sin traducir", self._texto())

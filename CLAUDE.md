@@ -31,8 +31,9 @@ python3 tools/probar_en_minimo.py --container # la suite en el Python del suelo
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **1563** y tardan cerca de dos minutos y medio. Si sale bastante
-menos, falta algo por recoger. Corren en una carpeta temporal propia
+Tardan cerca de dos minutos y medio. Cuántos son lo dice la suite al terminar
+(`Ran N tests`); no se apunta aquí a mano. Si sale bastante menos que en la
+última ejecución, falta algo por recoger. Corren en una carpeta temporal propia
 (`tests/__init__.py`): no tocan la configuración ni el historial de quien los
 ejecuta.
 
