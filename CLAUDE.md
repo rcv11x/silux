@@ -31,7 +31,7 @@ python3 tools/probar_en_minimo.py --container # la suite en el Python del suelo
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .
 ```
 
-Los tests son **1527** y tardan cerca de dos minutos y medio. Si sale bastante
+Los tests son **1563** y tardan cerca de dos minutos y medio. Si sale bastante
 menos, falta algo por recoger. Corren en una carpeta temporal propia
 (`tests/__init__.py`): no tocan la configuración ni el historial de quien los
 ejecuta.
@@ -44,16 +44,19 @@ qué, los dos techos de PySide6 y las dos guardas del procesador:
 [docs/empaquetado.md](docs/empaquetado.md).
 
 Capturas sin pantalla, siempre en `"$(xdg-user-dir PICTURES)/silux-test/"` y
-nunca dentro del repositorio, y **con un `XDG_CONFIG_HOME` temporal** mientras
-siga abierto F-M1: la ventana guarda al cerrar lo que se le fuerza por la línea
-de órdenes, y una captura sin aislar cambia las preferencias de quien la saca.
+nunca dentro del repositorio. Lo que se fuerza por la línea de órdenes —tema,
+densidad, letra, acento, tamaño— vale solo para esa ejecución y no se guarda en
+`settings.json`.
 
 ```bash
 mkdir -p "$(xdg-user-dir PICTURES)/silux-test"
-XDG_CONFIG_HOME="$(mktemp -d)" QT_QPA_PLATFORM=offscreen \
-  python3 -m silux.ui.app --screenshot "$(xdg-user-dir PICTURES)/silux-test/sensores.png" \
+QT_QPA_PLATFORM=offscreen python3 -m silux.ui.app \
+  --screenshot "$(xdg-user-dir PICTURES)/silux-test/sensores.png" \
   --page Sensores --dark --compact --size 900x680
 ```
+
+Una sección que este equipo no tiene —Batería en un sobremesa— sale con código
+2 en vez de guardar otra página.
 
 Acepta además `--accent`, `--font-scale` y `--anonimo`.
 
@@ -213,17 +216,10 @@ código (F-…) y su detalle en `../auditoria-fase-5.md`.
 
 | Dónde | Gravedad | Qué |
 |---|---|---|
-| `spd.py` | alta | DDR4 y XMP redondean las latencias al más cercano: CL22 donde toca CL23 |
-| `spd.py` | alta | el XMP de DDR4 ignora la corrección fina del ciclo: un DDR4-3600 sale 3200 (F-A2) |
-| `ui/app.py` | alta | `--page` con una sección oculta entrega otra página y devuelve 0 |
-| `history.py` | alta | un historial corrupto impide abrir la ventana y el `--report` (F-A4) |
-| `history.py` | alta | `Entry.total()` suma op/s con B/s (F-A5) |
-| `tools/anadir_puntuacion.py` | alta | guarda las piezas con un nombre que la interfaz no busca (F-A6) |
+| `spd.py` | alta | el XMP de DDR4 ignora la corrección fina del ciclo: un DDR4-3600 sale 3200 (F-A2); pide un volcado real con XMP |
 | `privileged/instalar.py` | alta, condicionada | no comprueba que el destino no sea sustituible |
-| `tools/medir_referencia.py` | media-alta | escribe la versión actual y manda subirla a mano (F-A8) |
 | `ui/pages/cpulive.py` | media-alta | relojes compuestos a mano: 576 MHz sale «0.58 GHz» |
 | `providers/hwmon.py` | media-alta | la clave del sensor no incluye el nodo: dos discos iguales se pisan |
-| `ui/app.py` | media | las opciones de línea de órdenes se guardan en `settings.json` (F-M1) |
 | `ui/widgets.py` | media | `StatTile` nace con la raya gruesa, y el arreglo tampoco funciona al perder el dato (F-M2) |
 | `ui/sampler.py` | media | cerrar durante un muestreo largo aborta el proceso (F-M3) |
 | `ui/app.py`, `monitor.py` | media | `pkexec` en el hilo de la interfaz (F-M4) |
@@ -243,7 +239,6 @@ código (F-…) y su detalle en `../auditoria-fase-5.md`.
 | `privileged/helper.py` | media-baja | la cadencia de RAPL la decide el cliente (F-M27) |
 | `tools/comprobar_privacidad.py` | media | ciego a IPv6 y seriales; desde otro directorio da su visto bueno sin mirar (F-M30) |
 | `report.py`, `cli.py` | media | zócalos vacíos como módulos (F-M31); tres formateos del valor de un sensor (F-M32) |
-| `history.py`, `tools/` | media | misma duración con 0,01 s (F-M33); escala imposible laxa (F-M34); carga de fondo sin el pico (F-M35) |
 | `tools/probar_en_minimo.py` | media | cualquier fallo del contenedor se anuncia como «la suite no pasa» (F-M37) |
 | `ui/widgets.py` | media-baja | `ElidingLabel` borra el tooltip; un `float` no finito tumba la gráfica |
 | `ui/theme.py` | media-baja | caché de iconos en `/tmp/silux-icons` de nombre fijo |
