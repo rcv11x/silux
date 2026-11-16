@@ -38,6 +38,19 @@ def history_path() -> pathlib.Path:
     return data_dir() / "benchmarks.json"
 
 
+def misma_duracion(una: float, otra: float) -> bool:
+    """Si dos pruebas pidieron la misma duración por medida.
+
+    Lo guardado es lo que tardó la medida más larga: lo pedido más lo que
+    tarde en acabar la operación que estaba en vuelo, que va de unos
+    milisegundos a 128 con la zlib del AppImage. El margen cubre ese exceso y
+    se queda por debajo del segundo que separa las dos duraciones más
+    cercanas que se ofrecen, la rápida de 2 s y la de 3. No es el de
+    `score.comparable` a propósito: aquel, de 1,5 s, juntaría esas dos.
+    """
+    return abs(una - otra) <= max(0.25, 0.02 * max(una, otra))
+
+
 @dataclasses.dataclass(frozen=True, slots=True)
 class Entry:
     """Una prueba guardada, con lo justo para volver a interpretarla."""
@@ -112,7 +125,7 @@ class Entry:
         único que cambió fue la pregunta.
         """
         return (self.cpu == otra.cpu and self.threads == otra.threads
-                and abs(self.seconds - otra.seconds) < 0.01
+                and misma_duracion(self.seconds, otra.seconds)
                 and self.score_version == otra.score_version)
 
 

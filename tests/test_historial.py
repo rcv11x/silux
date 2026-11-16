@@ -245,6 +245,36 @@ class TestLaCifraConQueSeCompara(_ConCarpetaPropia):
         self.assertIsNotNone(history.deriva_termica(nueva, viejas))
 
 
+
+class TestLaMismaDuracion(unittest.TestCase):
+    """Lo que se guarda es lo que duró de verdad, no lo que se pidió.
+
+    `comparable_con` exigía que dos duraciones coincidieran con 0,01 s de
+    margen, sobre lo que tardó la medida más larga: el pedido más lo que tarde
+    en acabar la operación en vuelo. Son de 3 a 8 ms con la zlib-ng de Fedora
+    y hasta 128 ms con la del AppImage, así que dos pruebas de quince segundos
+    dejaban de compararse según la suerte (F-M33). El margen nuevo cubre ese
+    exceso y no junta las dos duraciones más cercanas que se ofrecen: la
+    prueba rápida de 2 s y la de 3.
+    """
+
+    def _entrada(self, segundos):
+        return history.Entry(timestamp=0, cpu="CPU", threads=8, seconds=segundos,
+                             scores={})
+
+    def test_quince_segundos_y_unos_milisegundos_son_quince(self):
+        self.assertTrue(self._entrada(15.004).comparable_con(self._entrada(15.016)))
+
+    def test_con_la_zlib_mas_lenta_tambien(self):
+        self.assertTrue(self._entrada(2.003).comparable_con(self._entrada(2.128)))
+
+    def test_pero_dos_y_tres_segundos_no_son_lo_mismo(self):
+        self.assertFalse(self._entrada(2.0).comparable_con(self._entrada(3.0)))
+
+    def test_ni_quince_y_treinta(self):
+        self.assertFalse(self._entrada(15.0).comparable_con(self._entrada(30.0)))
+
+
 class TestPuntuacion(unittest.TestCase):
     def test_es_la_puntuacion_a_todos_los_hilos(self):
         from silux import score
