@@ -36,12 +36,12 @@ el sensor del regulador.
 
 from __future__ import annotations
 
-import platform
 from typing import Optional
 
 from ..i18n import _
 from ..model import Need
 from ..privileged.client import HelperError, PrivilegedClient
+from .. import rawcpuid
 from .base import Draft, Provider
 
 # Qué P-state está corriendo ahora mismo (bits 2:0).
@@ -71,7 +71,7 @@ MAXIMO_V = 2.0
 
 
 def _es_x86() -> bool:
-    return platform.machine() in ("x86_64", "AMD64", "i686", "i386")
+    return rawcpuid.maquina() in ("x86_64", "AMD64", "i686", "i386")
 
 
 def _voltaje_amd(valores: dict) -> Optional[float]:

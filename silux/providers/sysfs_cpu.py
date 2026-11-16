@@ -15,6 +15,7 @@ import pathlib
 from ..model import Cache, Clocks, Need
 from .base import Draft, Provider, mean, parse_cpu_list, parse_size, read_int, read_text
 from ..i18n import _
+from .. import sysroot
 
 SYS_CPU = "/sys/devices/system/cpu"
 
@@ -34,7 +35,7 @@ def online_cpus() -> tuple[int, ...]:
         return cpus
     # Red de seguridad: si `online` no existe, cuenta los directorios cpuN.
     found = []
-    for entry in pathlib.Path(SYS_CPU).glob("cpu[0-9]*"):
+    for entry in pathlib.Path(sysroot.ruta(SYS_CPU)).glob("cpu[0-9]*"):
         if entry.name[3:].isdigit():
             found.append(int(entry.name[3:]))
     return tuple(sorted(found)) or (0,)
@@ -78,7 +79,7 @@ class SysfsTopology(Provider):
     static = True
 
     def available(self) -> bool:
-        return os.path.isdir(SYS_CPU)
+        return os.path.isdir(sysroot.ruta(SYS_CPU))
 
     def unavailable_reason(self):
         if self.available():
@@ -151,7 +152,7 @@ class SysfsTopology(Provider):
         # la comparten. Se deduplica por el conjunto de CPUs que la comparten.
         seen: dict[tuple, set[frozenset[int]]] = {}
         for index in cpus:
-            cache_dir = pathlib.Path(f"{SYS_CPU}/cpu{index}/cache")
+            cache_dir = pathlib.Path(sysroot.ruta(f"{SYS_CPU}/cpu{index}/cache"))
             if not cache_dir.is_dir():
                 continue
             for entry in sorted(cache_dir.glob("index*")):
@@ -214,7 +215,7 @@ class SysfsClocks(Provider):
     provides = "cpu.clocks.current_hz"
 
     def available(self) -> bool:
-        return os.path.isdir(SYS_CPU)
+        return os.path.isdir(sysroot.ruta(SYS_CPU))
 
     def collect(self, draft: Draft) -> None:
         any_read = False

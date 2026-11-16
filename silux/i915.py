@@ -25,6 +25,7 @@ import os
 import pathlib
 from dataclasses import dataclass
 from typing import Optional
+from . import sysroot
 
 # DRM_IOCTL_I915_GETPARAM = DRM_IOWR(DRM_COMMAND_BASE + DRM_I915_GETPARAM, …)
 DRM_COMMAND_BASE = 0x40
@@ -81,12 +82,12 @@ def query(node: str, expected_device_id: Optional[int] = None) -> Optional[Devic
 
 def render_node(device: pathlib.Path | str) -> Optional[str]:
     """El `/dev/dri/renderD*` de una tarjeta, a partir de su nodo PCI."""
-    directorio = pathlib.Path(device, "drm")
+    directorio = pathlib.Path(sysroot.ruta(device), "drm")
     if not directorio.is_dir():
         return None
     for entrada in sorted(directorio.glob("renderD*")):
         camino = f"/dev/dri/{entrada.name}"
-        if os.path.exists(camino):
+        if sysroot.activo() or os.path.exists(camino):
             return camino
     return None
 

@@ -20,6 +20,7 @@ import os
 import re
 from typing import Optional
 
+from .. import sysroot
 from .. import amdgpu, gpuapi
 import dataclasses
 
@@ -53,7 +54,7 @@ class GpuApis(Provider):
 
         # Una sola llamada: por dentro lanza un proceso aparte que carga los
         # drivers, contesta y muere. Ver el porqué en `silux.gpuapi`.
-        datos = _sin_reventar(gpuapi.consultar) or {}
+        datos = sysroot.a_traves("gpuapi", "consultar", _sin_reventar, gpuapi.consultar) or {}
         vulkan = datos.get("vulkan") or []
         opencl = datos.get("opencl") or []
         opengl = datos.get("opengl")

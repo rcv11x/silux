@@ -17,6 +17,7 @@ from __future__ import annotations
 import dataclasses
 
 from typing import Optional
+from .. import sysroot
 from .. import nvml
 from ..model import GpuClocks, PcieLink, GpuMemory, Need
 from .base import Draft, Provider
@@ -36,6 +37,10 @@ class NvidiaGpus(Provider):
         self.client = nvml.Nvml()
 
     def available(self) -> bool:
+        # Con un equipo volcado no se pregunta a la NVML de este: no está
+        # grabada todavía, y mezclaría las dos máquinas.
+        if sysroot.activo():
+            return False
         return self.client.open()
 
     def unavailable_reason(self):

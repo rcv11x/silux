@@ -30,6 +30,7 @@ from ..privileged.client import (
 )
 from .base import Draft, Provider
 from ..i18n import _
+from .. import sysroot
 
 
 def _module(raw: dict) -> MemoryModule:
@@ -120,7 +121,7 @@ class PrivilegedMemory(Provider):
         fabricante están en el chip SPD del propio módulo, al que se llega por
         el bus SMBus cuando está cargado el driver correspondiente.
         """
-        devices = pathlib.Path("/sys/bus/i2c/devices")
+        devices = pathlib.Path(sysroot.ruta("/sys/bus/i2c/devices"))
         if not devices.is_dir():
             return
 
@@ -158,7 +159,7 @@ class PrivilegedMemory(Provider):
 
     def _read_directly(self, draft: Draft) -> None:
         try:
-            with open("/sys/firmware/dmi/tables/DMI", "rb") as handle:
+            with open(sysroot.ruta("/sys/firmware/dmi/tables/DMI"), "rb") as handle:
                 self._parse(draft, handle.read())
         except OSError as exc:
             self._error = str(exc)

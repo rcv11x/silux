@@ -24,6 +24,7 @@ from typing import Optional
 from ..i18n import _
 from ..model import Battery, Need
 from .base import Draft, Provider, read_int, read_text
+from .. import sysroot
 
 POWER_SUPPLY = pathlib.Path("/sys/class/power_supply")
 
@@ -129,7 +130,7 @@ class Batteries(Provider):
     provides = "batteries"
 
     def available(self) -> bool:
-        return POWER_SUPPLY.is_dir()
+        return sysroot.ruta(POWER_SUPPLY).is_dir()
 
     def unavailable_reason(self):
         if self.available():
@@ -138,10 +139,10 @@ class Batteries(Provider):
                 _("prov.bat.nosysfs"), _("prov.bat.nosysfs.hint"))
 
     def collect(self, draft: Draft) -> None:
-        if not POWER_SUPPLY.is_dir():
+        if not sysroot.ruta(POWER_SUPPLY).is_dir():
             return
         encontradas = [_leer(entrada)
-                       for entrada in sorted(POWER_SUPPLY.iterdir())
+                       for entrada in sorted(sysroot.ruta(POWER_SUPPLY).iterdir())
                        if _es_bateria(entrada)]
         if not encontradas:
             # Sin nota: un sobremesa no tiene batería y decirlo cada vez sería

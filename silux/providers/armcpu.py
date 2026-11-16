@@ -16,20 +16,20 @@ from __future__ import annotations
 import dataclasses
 import os
 import pathlib
-import platform
 import re
 from typing import Optional
 
 from .. import db
 from ..i18n import _
 from ..model import Need
+from .. import rawcpuid, sysroot
 from .base import Draft, Provider, read_text
 
 CPUINFO = "/proc/cpuinfo"
 DEVICE_TREE = "/sys/firmware/devicetree/base"
 
 def es_arm() -> bool:
-    return platform.machine().lower().startswith(("aarch64", "arm"))
+    return rawcpuid.maquina().lower().startswith(("aarch64", "arm"))
 
 
 def _cpuinfo() -> list[dict[str, str]]:
@@ -40,7 +40,7 @@ def _cpuinfo() -> list[dict[str, str]]:
     núcleo es cada CPU.
     """
     try:
-        crudo = pathlib.Path(CPUINFO).read_text(encoding="utf-8", errors="replace")
+        crudo = pathlib.Path(sysroot.ruta(CPUINFO)).read_text(encoding="utf-8", errors="replace")
     except OSError:
         return []
     bloques, actual = [], {}
@@ -113,7 +113,7 @@ class ArmIdentity(Provider):
     static = True
 
     def available(self) -> bool:
-        return es_arm() and os.path.exists(CPUINFO)
+        return es_arm() and os.path.exists(sysroot.ruta(CPUINFO))
 
     def unavailable_reason(self):
         return None          # en x86 no falta nada: lo cubre CPUID
@@ -169,7 +169,7 @@ class ArmIdentity(Provider):
             brand=" ".join(p for p in (fabricante, nucleo, paso) if p) or None,
             codename=identidad.get("codename"),
             technology=identidad.get("technology"),
-            architecture=platform.machine(),
+            architecture=rawcpuid.maquina(),
             # El equivalente ARM de la firma de CPUID: los dos números que
             # identifican el silicio, sin inventarles una familia y un modelo
             # que aquí no significan lo mismo.

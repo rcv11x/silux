@@ -23,6 +23,7 @@ from typing import Iterator, Optional
 from ..model import DeviceKind, DriverHint, Need, Sensor, SensorKind, short_brand
 from .base import Draft, Provider, mean, read_int, read_text
 from ..i18n import _
+from .. import sysroot
 
 HWMON = pathlib.Path("/sys/class/hwmon")
 POWER_SUPPLY = pathlib.Path("/sys/class/power_supply")
@@ -124,7 +125,7 @@ def _tambien_en_power_supply(chip: str) -> bool:
     que se vaya a leer: si `power_supply` no diera ninguno de esos tres
     valores, saltarse el chip de hwmon perdería el dato en vez de deduplicarlo.
     """
-    carpeta = POWER_SUPPLY / chip
+    carpeta = sysroot.ruta(POWER_SUPPLY) / chip
     if not carpeta.is_dir():
         return False
     return any((carpeta / campo).exists()
@@ -317,7 +318,7 @@ class HwmonSensors(Provider):
     provides = "sensors"
 
     def available(self) -> bool:
-        return HWMON.is_dir()
+        return sysroot.ruta(HWMON).is_dir()
 
     def unavailable_reason(self):
         if self.available():
@@ -350,9 +351,9 @@ class HwmonSensors(Provider):
 
     def _read_hwmon(self, cpu_name: str, board_name: str,
                     gpu_names: Optional[dict[str, str]] = None) -> Iterator[Sensor]:
-        if not HWMON.is_dir():
+        if not sysroot.ruta(HWMON).is_dir():
             return
-        for entry in sorted(HWMON.iterdir()):
+        for entry in sorted(sysroot.ruta(HWMON).iterdir()):
             chip = read_text(str(entry / "name"))
             if not chip:
                 continue
@@ -414,14 +415,14 @@ class HwmonSensors(Provider):
     def _read_power_supplies() -> Iterator[Sensor]:
         """Baterías y adaptadores. En un sobremesa no hay ninguno; en un
         portátil son la mitad de lo interesante."""
-        if not POWER_SUPPLY.is_dir():
+        if not sysroot.ruta(POWER_SUPPLY).is_dir():
             return
         fields = (
             ("voltage_now", SensorKind.VOLTAGE, 1_000_000.0, "sensor.voltage"),
             ("current_now", SensorKind.CURRENT, 1_000_000.0, "sensor.current"),
             ("power_now", SensorKind.POWER, 1_000_000.0, "sensor.power"),
         )
-        for entry in sorted(POWER_SUPPLY.iterdir()):
+        for entry in sorted(sysroot.ruta(POWER_SUPPLY).iterdir()):
             name = entry.name
             for filename, kind, divisor, label in fields:
                 raw = read_int(str(entry / filename))
@@ -502,11 +503,13 @@ class HwmonSensors(Provider):
 
     @staticmethod
     def _module_exists(module: str) -> bool:
-        if not shutil.which("modinfo"):
-            return False
-        result = subprocess.run(["modinfo", "-F", "filename", module],
-                                capture_output=True, text=True)
-        return result.returncode == 0 and bool(result.stdout.strip())
+        def preguntar() -> bool:
+            if not shutil.which("modinfo"):
+                return False
+            result = subprocess.run(["modinfo", "-F", "filename", module],
+                                    capture_output=True, text=True)
+            return result.returncode == 0 and bool(result.stdout.strip())
+        return bool(sysroot.a_traves("modinfo", module, preguntar))
 
     def _missing_drivers(self, sensors: list[Sensor]) -> Iterator[DriverHint]:
         chips = {sensor.chip for sensor in sensors}
@@ -529,7 +532,7 @@ class HwmonSensors(Provider):
 
     @staticmethod
     def _has_ata_disks() -> bool:
-        block = pathlib.Path("/sys/class/block")
+        block = pathlib.Path(sysroot.ruta("/sys/class/block"))
         if not block.is_dir():
             return False
         return any("/ata" in str(entry.resolve()) for entry in block.glob("sd?"))

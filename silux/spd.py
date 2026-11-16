@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from typing import Iterator, Optional
 
 from .i18n import _
+from . import sysroot
 
 I2C_DEVICES = pathlib.Path("/sys/bus/i2c/devices")
 # Un chip SPD por zócalo, en las direcciones 0x50 a 0x57 del bus.
@@ -547,7 +548,7 @@ def diagnostico() -> tuple[str, str]:
 def _hay_controlador_smbus() -> bool:
     """Si la placa trae el bus por el que viven los chips SPD."""
     try:
-        for dispositivo in SYS_PCI.iterdir():
+        for dispositivo in sysroot.ruta(SYS_PCI).iterdir():
             crudo = (dispositivo / "class").read_text().strip()
             if int(crudo, 16) == CLASE_SMBUS:
                 return True
@@ -563,7 +564,7 @@ def _hay_bus_de_memoria() -> bool:
     con sus propios sensores, y no llevan a ninguna memoria.
     """
     try:
-        for bus in SYS_I2C.glob("i2c-*"):
+        for bus in sysroot.ruta(SYS_I2C).glob("i2c-*"):
             nombre = (bus / "name").read_text().strip().lower()
             if "amdgpu" not in nombre and "nvidia" not in nombre and "i915" not in nombre:
                 return True
@@ -573,9 +574,9 @@ def _hay_bus_de_memoria() -> bool:
 
 
 def _eeproms() -> Iterator[tuple[pathlib.Path, int]]:
-    if not I2C_DEVICES.is_dir():
+    if not sysroot.ruta(I2C_DEVICES).is_dir():
         return
-    for entry in sorted(I2C_DEVICES.iterdir()):
+    for entry in sorted(sysroot.ruta(I2C_DEVICES).iterdir()):
         match = SPD_ADDRESS.match(entry.name)
         if match and (entry / "eeprom").exists():
             yield entry, int(match.group(1), 16) - 0x50

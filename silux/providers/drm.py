@@ -34,6 +34,7 @@ from ..model import (Display, GpuClockLevel, GpuClocks, GpuEngine, PcieLink, Gpu
 from ..privileged.client import HelperError, PmuUnsupported, PrivilegedClient
 from .base import Draft, Provider, read_int, read_text
 from ..i18n import _
+from .. import sysroot
 
 SYS_DRM = "/sys/class/drm"
 
@@ -136,7 +137,7 @@ def _partir_nombre(texto: str) -> tuple[Optional[str], Optional[str]]:
 
 def tarjetas() -> list[pathlib.Path]:
     """Los nodos cardN, sin los conectores (que se llaman cardN-DP-1)."""
-    raiz = pathlib.Path(SYS_DRM)
+    raiz = pathlib.Path(sysroot.ruta(SYS_DRM))
     if not raiz.is_dir():
         return []
     encontradas = [p for p in raiz.glob("card*") if re.fullmatch(r"card\d+", p.name)]
@@ -151,7 +152,7 @@ class DrmGpus(Provider):
     static = True
 
     def available(self) -> bool:
-        return os.path.isdir(SYS_DRM)
+        return os.path.isdir(sysroot.ruta(SYS_DRM))
 
     def unavailable_reason(self):
         if self.available():
@@ -236,7 +237,9 @@ class DrmGpus(Provider):
         nodo = amdgpu.render_node(dispositivo)
         if not nodo:
             return
-        info = amdgpu.query(nodo, expected_device_id=gpu.get("device_id"))
+        info = sysroot.a_traves("amdgpu", nodo, amdgpu.query, nodo,
+                                expected_device_id=gpu.get("device_id"),
+                                tipo=amdgpu.DeviceInfo)
         if info is None:
             return
 
@@ -266,7 +269,9 @@ class DrmGpus(Provider):
         nodo = i915.render_node(dispositivo)
         if not nodo:
             return
-        info = i915.query(nodo, expected_device_id=gpu.get("device_id"))
+        info = sysroot.a_traves("i915", nodo, i915.query, nodo,
+                                expected_device_id=gpu.get("device_id"),
+                                tipo=i915.DeviceInfo)
         if info is None or info.eu_total is None:
             return
         gpu["compute_units"] = info.eu_total
@@ -384,7 +389,7 @@ class GpuState(Provider):
         self._rc6: dict[str, tuple[float, int]] = {}
 
     def available(self) -> bool:
-        return os.path.isdir(SYS_DRM)
+        return os.path.isdir(sysroot.ruta(SYS_DRM))
 
     def collect(self, draft: Draft) -> None:
         ocupacion, vatios = self._contadores()
@@ -392,7 +397,7 @@ class GpuState(Provider):
             nodo = gpu.get("drm_node")
             if not nodo:
                 continue
-            raiz = pathlib.Path(f"{SYS_DRM}/{nodo}")
+            raiz = pathlib.Path(sysroot.ruta(f"{SYS_DRM}/{nodo}"))
             dispositivo = raiz / "device"
             if not dispositivo.is_dir():
                 continue
@@ -619,7 +624,7 @@ def _graficas_del_bus() -> list[pathlib.Path]:
     el kernel se ha quedado en el framebuffer de respaldo: el bus enumera el
     hardware aunque no haya nadie que sepa hablarle.
     """
-    raiz = pathlib.Path("/sys/bus/pci/devices")
+    raiz = pathlib.Path(sysroot.ruta("/sys/bus/pci/devices"))
     encontradas = []
     for dispositivo in sorted(raiz.glob("*")) if raiz.is_dir() else ():
         clase = _hex(dispositivo / "class")
@@ -925,7 +930,7 @@ def _telemetria(gpu: dict, dispositivo: pathlib.Path,
 
 def _salidas(tarjeta: str) -> tuple[Display, ...]:
     """Los conectores de vídeo de esta tarjeta, enchufados o no."""
-    raiz = pathlib.Path(SYS_DRM)
+    raiz = pathlib.Path(sysroot.ruta(SYS_DRM))
     salidas = []
     for conector in sorted(raiz.glob(f"{tarjeta}-*")):
         nombre = conector.name[len(tarjeta) + 1:]

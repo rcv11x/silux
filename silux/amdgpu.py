@@ -23,6 +23,7 @@ import pathlib
 import struct
 from dataclasses import dataclass
 from typing import Optional
+from . import sysroot
 
 # DRM_IOCTL_AMDGPU_INFO = DRM_IOWR(DRM_COMMAND_BASE + DRM_AMDGPU_INFO, …)
 DRM_COMMAND_BASE = 0x40
@@ -122,12 +123,12 @@ class DeviceInfo:
 
 def render_node(device: pathlib.Path | str) -> Optional[str]:
     """El `/dev/dri/renderD*` de una tarjeta, a partir de su nodo PCI."""
-    directorio = pathlib.Path(device, "drm")
+    directorio = pathlib.Path(sysroot.ruta(device), "drm")
     if not directorio.is_dir():
         return None
     for entrada in sorted(directorio.glob("renderD*")):
         camino = f"/dev/dri/{entrada.name}"
-        if os.path.exists(camino):
+        if sysroot.activo() or os.path.exists(camino):
             return camino
     return None
 

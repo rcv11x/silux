@@ -24,6 +24,7 @@ from typing import Iterator, Optional
 from .. import pciids
 from ..model import NetworkInterface, NetworkTraffic
 from .base import Draft, Provider, read_int, read_text
+from .. import sysroot
 
 SYS_NET = "/sys/class/net"
 PROC_ROUTE = "/proc/net/route"
@@ -57,10 +58,10 @@ class NetworkInterfaces(Provider):
         self._previo: dict[str, tuple[float, int, int]] = {}
 
     def available(self) -> bool:
-        return os.path.isdir(SYS_NET)
+        return os.path.isdir(sysroot.ruta(SYS_NET))
 
     def collect(self, draft: Draft) -> None:
-        nombres = sorted(p.name for p in pathlib.Path(SYS_NET).iterdir())
+        nombres = sorted(p.name for p in pathlib.Path(sysroot.ruta(SYS_NET)).iterdir())
         if not nombres:
             return
 
@@ -80,7 +81,7 @@ class NetworkInterfaces(Provider):
 
     def _leer(self, nombre: str, rutas: dict[str, str], direcciones: "_Direcciones",
               ipv6: tuple[str, ...]) -> NetworkInterface:
-        base = pathlib.Path(SYS_NET, nombre)
+        base = pathlib.Path(sysroot.ruta(SYS_NET), nombre)
         tipo_crudo = read_int(str(base / "type"))
         velocidad = read_int(str(base / "speed"))
 
@@ -145,6 +146,10 @@ class _Direcciones:
         return self._preguntar(nombre, SIOCGIFNETMASK)
 
     def _preguntar(self, nombre: str, codigo: int) -> Optional[str]:
+        return sysroot.a_traves("ioctl_red", f"{nombre}:{codigo:#x}",
+                                self._preguntar_de_verdad, nombre, codigo)
+
+    def _preguntar_de_verdad(self, nombre: str, codigo: int) -> Optional[str]:
         if self._socket is None:
             return None
         try:
@@ -236,7 +241,7 @@ def _rutas_por_defecto() -> dict[str, str]:
     """
     encontradas: dict[str, str] = {}
     try:
-        with open(PROC_ROUTE, encoding="utf-8") as fichero:
+        with open(sysroot.ruta(PROC_ROUTE), encoding="utf-8") as fichero:
             next(fichero, None)
             for linea in fichero:
                 campos = linea.split()
@@ -256,7 +261,7 @@ def _ipv6_por_interfaz() -> dict[str, tuple[str, ...]]:
     """Las direcciones IPv6, que el kernel escribe sin los dos puntos."""
     encontradas: dict[str, list[str]] = {}
     try:
-        with open(PROC_IPV6, encoding="utf-8") as fichero:
+        with open(sysroot.ruta(PROC_IPV6), encoding="utf-8") as fichero:
             for linea in fichero:
                 campos = linea.split()
                 if len(campos) < 6:

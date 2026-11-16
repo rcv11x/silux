@@ -36,6 +36,7 @@ from ..model import DeviceKind, MemoryTraffic, Need, Sensor, SensorKind
 from ..privileged.client import HelperError, PmuUnsupported, PrivilegedClient
 from ..privileged.protocol import PMU_IMC, PMU_ROOT
 from .base import Draft, Provider
+from .. import sysroot
 
 _PMU_IMC = re.compile(PMU_IMC)
 
@@ -68,7 +69,7 @@ def hay_controlador() -> bool:
     contraseña para no enseñar nada.
     """
     try:
-        return any(_PMU_IMC.match(nombre) for nombre in os.listdir(PMU_ROOT))
+        return any(_PMU_IMC.match(nombre) for nombre in os.listdir(sysroot.ruta(PMU_ROOT)))
     except OSError:
         return False
 

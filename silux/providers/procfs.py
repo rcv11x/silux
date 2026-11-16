@@ -13,6 +13,7 @@ from typing import Optional
 from ..i18n import _
 from ..model import Need
 from .base import Draft, Provider
+from .. import sysroot
 
 # user nice system idle iowait irq softirq steal …
 _IDLE_FIELDS = (3, 4)          # idle, iowait
@@ -27,7 +28,7 @@ class CpuUsage(Provider):
 
     def available(self) -> bool:
         try:
-            with open("/proc/stat"):
+            with open(sysroot.ruta("/proc/stat")):
                 return True
         except OSError:
             return False
@@ -66,7 +67,7 @@ class CpuUsage(Provider):
         12 hilos, una carga de 12 significa saturación completa.
         """
         try:
-            with open("/proc/loadavg", encoding="ascii") as fh:
+            with open(sysroot.ruta("/proc/loadavg"), encoding="ascii") as fh:
                 return tuple(float(v) for v in fh.read().split()[:3])
         except (OSError, ValueError):
             return ()
@@ -77,7 +78,7 @@ class CpuUsage(Provider):
     def _read() -> dict[str, tuple[int, int]]:
         out: dict[str, tuple[int, int]] = {}
         try:
-            with open("/proc/stat", encoding="ascii") as fh:
+            with open(sysroot.ruta("/proc/stat"), encoding="ascii") as fh:
                 for line in fh:
                     if not line.startswith("cpu"):
                         break

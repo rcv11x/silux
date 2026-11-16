@@ -19,6 +19,7 @@ from typing import Optional
 from ..i18n import _
 from ..model import DeviceKind, Memory, Need, Sensor, SensorKind, System
 from .base import Draft, Provider, read_text
+from .. import sysroot
 
 OS_RELEASE = "/etc/os-release"
 MEMINFO = "/proc/meminfo"
@@ -57,7 +58,7 @@ def _desentrecomillar(valor: str) -> str:
 def _os_release() -> dict[str, str]:
     values: dict[str, str] = {}
     try:
-        with open(OS_RELEASE, encoding="utf-8") as handle:
+        with open(sysroot.ruta(OS_RELEASE), encoding="utf-8") as handle:
             for line in handle:
                 line = line.strip()
                 if line.startswith("#"):
@@ -78,7 +79,10 @@ class SystemIdentity(Provider):
 
     def collect(self, draft: Draft) -> None:
         release = _os_release()
-        uname = platform.uname()
+        uname = sysroot.a_traves("plataforma", "uname", lambda: platform.uname()._asdict())
+        entorno = sysroot.a_traves("plataforma", "entorno", lambda: {
+            clave: os.environ.get(clave)
+            for clave in ("XDG_CURRENT_DESKTOP", "XDG_SESSION_TYPE", "SHELL")})
 
         draft.capabilities.add("system")
         draft.system = System(
@@ -87,15 +91,15 @@ class SystemIdentity(Provider):
             version_id=release.get("VERSION_ID"),
             variant=release.get("VARIANT"),
 
-            kernel=f"{uname.system} {uname.release}",
+            kernel=f"{uname['system']} {uname['release']}",
             kernel_build=self._kernel_build(),
-            architecture=uname.machine,
+            architecture=uname["machine"],
 
-            hostname=read_text("/proc/sys/kernel/hostname") or uname.node,
+            hostname=read_text("/proc/sys/kernel/hostname") or uname["node"],
             init=self._init_system(),
-            desktop=os.environ.get("XDG_CURRENT_DESKTOP"),
-            session_type=os.environ.get("XDG_SESSION_TYPE"),
-            shell=os.path.basename(os.environ.get("SHELL", "")) or None,
+            desktop=entorno.get("XDG_CURRENT_DESKTOP"),
+            session_type=entorno.get("XDG_SESSION_TYPE"),
+            shell=os.path.basename(entorno.get("SHELL") or "") or None,
         )
 
     @staticmethod
@@ -129,7 +133,7 @@ class SystemIdentity(Provider):
     @staticmethod
     def _init_system() -> Optional[str]:
         try:
-            return os.path.basename(os.readlink("/proc/1/exe"))
+            return os.path.basename(os.readlink(sysroot.ruta("/proc/1/exe")))
         except OSError:
             return read_text("/proc/1/comm")
 
@@ -141,7 +145,7 @@ class SystemState(Provider):
     provides = "system.memory"
 
     def available(self) -> bool:
-        return os.path.exists(MEMINFO)
+        return os.path.exists(sysroot.ruta(MEMINFO))
 
     def unavailable_reason(self):
         if self.available():
@@ -156,7 +160,7 @@ class SystemState(Provider):
             memory=self._memory(),
             uptime_seconds=uptime,
             boot_time=self._boot_time(uptime),
-            processes=len(glob.glob("/proc/[0-9]*")),
+            processes=len(glob.glob(sysroot.ruta("/proc/[0-9]*"))),
             threads=self._threads(),
             open_files=self._open_files(),
         )
@@ -168,7 +172,7 @@ class SystemState(Provider):
     def _memory() -> Memory:
         values: dict[str, int] = {}
         try:
-            with open(MEMINFO, encoding="ascii") as handle:
+            with open(sysroot.ruta(MEMINFO), encoding="ascii") as handle:
                 for line in handle:
                     key, _sep, rest = line.partition(":")
                     field = _MEM_FIELDS.get(key)

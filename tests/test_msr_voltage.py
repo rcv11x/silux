@@ -114,7 +114,7 @@ class TestElAviso(unittest.TestCase):
         self.assertEqual((ruta, need), ("cpu.voltage_v", Need.ROOT))
 
     def test_fuera_de_x86_no_promete_nada(self):
-        with mock.patch.object(msr_voltage.platform, "machine",
+        with mock.patch("platform.machine",
                                return_value="aarch64"):
             _ruta, need, *_ = msr_voltage.MsrVoltage(None).unavailable_reason()
         self.assertEqual(need, Need.PLATFORM)

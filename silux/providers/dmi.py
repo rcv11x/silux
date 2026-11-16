@@ -26,6 +26,7 @@ from .. import pciids
 from ..model import Board, Need, clean_dmi
 from .base import Draft, Provider, read_text
 from ..i18n import _
+from .. import sysroot
 
 SYS_DMI = "/sys/class/dmi/id"
 PCI_DEVICES = pathlib.Path("/sys/bus/pci/devices")
@@ -68,7 +69,7 @@ class DmiBoard(Provider):
     static = True
 
     def available(self) -> bool:
-        return os.path.isdir(SYS_DMI)
+        return os.path.isdir(sysroot.ruta(SYS_DMI))
 
     def unavailable_reason(self):
         if self.available():
@@ -118,23 +119,23 @@ class DmiBoard(Provider):
 
     @staticmethod
     def _firmware() -> str:
-        if not EFI.is_dir():
+        if not sysroot.ruta(EFI).is_dir():
             return "BIOS heredada"
-        bits = read_text(str(EFI / "fw_platform_size"))
+        bits = read_text(str(sysroot.ruta(EFI) / "fw_platform_size"))
         return f"UEFI ({bits} bits)" if bits else "UEFI"
 
     @staticmethod
     def _secure_boot() -> Optional[bool]:
         """La variable EFI trae 4 bytes de atributos y luego el valor."""
         try:
-            data = SECURE_BOOT.read_bytes()
+            data = sysroot.ruta(SECURE_BOOT).read_bytes()
         except OSError:
             return None
         return bool(data[4]) if len(data) >= 5 else None
 
     @staticmethod
     def _tpm() -> Optional[str]:
-        for entry in sorted(pathlib.Path("/sys/class/tpm").glob("tpm*")):
+        for entry in sorted(pathlib.Path(sysroot.ruta("/sys/class/tpm")).glob("tpm*")):
             major = read_text(str(entry / "tpm_version_major"))
             if major:
                 return f"TPM {major}.0"
@@ -149,11 +150,11 @@ class DmiBoard(Provider):
     def _chipset() -> tuple[Optional[str], Optional[str], Optional[str]]:
         """El puente LPC/eSPI del bus 0 identifica al chipset; el host bridge,
         al controlador de memoria integrado en la CPU."""
-        if not PCI_DEVICES.is_dir():
+        if not sysroot.ruta(PCI_DEVICES).is_dir():
             return None, None, None
 
         candidates: dict[int, tuple[int, int]] = {}
-        for entry in sorted(PCI_DEVICES.iterdir()):
+        for entry in sorted(sysroot.ruta(PCI_DEVICES).iterdir()):
             if not entry.name.startswith("0000:00:"):
                 continue                      # el chipset siempre está en el bus 0
             try:

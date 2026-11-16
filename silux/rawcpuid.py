@@ -20,7 +20,9 @@ import mmap
 import os
 import platform
 import struct
-from typing import Iterator
+from typing import Iterator, Optional
+
+from . import sysroot
 
 __all__ = ["CpuidError", "CpuidReader", "pinned", "is_supported",
            "pagina_ejecutable"]
@@ -84,21 +86,45 @@ class CpuidError(RuntimeError):
     """CPUID no se puede usar en esta máquina o en este entorno."""
 
 
+# La CPU a la que está fijado el hilo, para la clave de lo que se graba: en un
+# híbrido, la hoja 4 de un núcleo P y la de uno E no contestan lo mismo.
+_cpu_fijada: Optional[int] = None
+
+
+def maquina() -> str:
+    """`platform.machine()`, o la del equipo volcado."""
+    return sysroot.a_traves("plataforma", "machine", platform.machine) or ""
+
+
 def is_supported() -> bool:
-    return platform.machine() in ("x86_64", "AMD64")
+    return maquina() in ("x86_64", "AMD64")
 
 
 @contextlib.contextmanager
 def pinned(cpu_index: int) -> Iterator[None]:
-    """Fija el hilo actual a una CPU lógica y restaura la máscara al salir."""
+    """Fija el hilo actual a una CPU lógica y restaura la máscara al salir.
+
+    Con un equipo volcado no se toca la afinidad: sus CPU no tienen por qué
+    existir en este, y lo que se pregunta ya está grabado CPU a CPU.
+    """
+    global _cpu_fijada
+    if sysroot.activo():
+        anterior, _cpu_fijada = _cpu_fijada, cpu_index
+        try:
+            yield
+        finally:
+            _cpu_fijada = anterior
+        return
     previous = os.sched_getaffinity(0)
     try:
         os.sched_setaffinity(0, {cpu_index})
     except OSError as exc:                      # cpu apagada, cgroup restrictivo…
         raise CpuidError(f"no se pudo fijar el hilo a la CPU {cpu_index}: {exc}") from exc
+    anterior, _cpu_fijada = _cpu_fijada, cpu_index
     try:
         yield
     finally:
+        _cpu_fijada = anterior
         os.sched_setaffinity(0, previous)
 
 
@@ -107,7 +133,7 @@ class CpuidReader:
 
     def __init__(self) -> None:
         if not is_supported():
-            raise CpuidError(f"CPUID solo está implementado para x86-64, no para {platform.machine()}")
+            raise CpuidError(f"CPUID solo está implementado para x86-64, no para {maquina()}")
 
         self._mm, address = pagina_ejecutable(_CODE_X86_64, CpuidError)
 
@@ -127,7 +153,16 @@ class CpuidReader:
         self.max_extended_leaf = self(0x8000_0000)[0]
 
     def __call__(self, leaf: int, subleaf: int = 0) -> tuple[int, int, int, int]:
-        """Devuelve (eax, ebx, ecx, edx) para una hoja y subhoja."""
+        """Devuelve (eax, ebx, ecx, edx) para una hoja y subhoja.
+
+        Pasa por `sysroot.a_traves`: al volcar un equipo se graba, y al leer
+        uno volcado se repite sin ejecutar la instrucción.
+        """
+        cpu = "*" if _cpu_fijada is None else _cpu_fijada
+        return sysroot.a_traves("cpuid", f"{cpu}:{leaf}:{subleaf}",
+                                self._preguntar, leaf, subleaf) or (0, 0, 0, 0)
+
+    def _preguntar(self, leaf: int, subleaf: int) -> tuple[int, int, int, int]:
         self._call(self._regs, leaf, subleaf)
         return tuple(self._regs)  # type: ignore[return-value]
 

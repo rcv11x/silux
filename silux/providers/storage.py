@@ -29,6 +29,7 @@ from ..model import Disk, DiskIo, Need, Partition, PcieLink
 from ..privileged.client import HelperError, PrivilegedClient
 from .base import Draft, Provider, read_int, read_text
 from ..i18n import _
+from .. import sysroot
 
 # Cada cuánto se le vuelve a pedir el diagnóstico a un disco, en segundos.
 # Las horas y lo escrito cambian despacio, pero la temperatura no.
@@ -79,10 +80,10 @@ class Disks(Provider):
         self.requested = False
 
     def available(self) -> bool:
-        return SYS_BLOCK.is_dir()
+        return sysroot.ruta(SYS_BLOCK).is_dir()
 
     def collect(self, draft: Draft) -> None:
-        nombres = [p.name for p in sorted(SYS_BLOCK.iterdir())
+        nombres = [p.name for p in sorted(sysroot.ruta(SYS_BLOCK).iterdir())
                    if not VIRTUALES.match(p.name)]
         if not nombres:
             return
@@ -173,7 +174,7 @@ class Disks(Provider):
     # -- interno ------------------------------------------------------------
 
     def _leer(self, nombre: str, montajes: dict[str, tuple[str, str]]) -> Disk:
-        base = SYS_BLOCK / nombre
+        base = sysroot.ruta(SYS_BLOCK) / nombre
         sectores = read_int(str(base / "size")) or 0
         rotatorio = read_int(str(base / "queue" / "rotational"))
         transporte = _transporte(base, nombre)
@@ -345,7 +346,7 @@ def _enlace(base: pathlib.Path) -> Optional[PcieLink]:
     ranura = _ranura(base)
     if not ranura:
         return None
-    nodo = pathlib.Path("/sys/bus/pci/devices") / ranura
+    nodo = pathlib.Path(sysroot.ruta("/sys/bus/pci/devices")) / ranura
     if not nodo.is_dir():
         return None
 
@@ -415,20 +416,24 @@ def _ocupacion(punto: str) -> tuple[Optional[int], Optional[int]]:
     disco: contarlo como libre haría que la suma no cuadrara con lo que enseña
     cualquier otra herramienta.
     """
-    try:
-        st = os.statvfs(punto)
-    except OSError:
-        return None, None
-    total = st.f_blocks * st.f_frsize
-    libre = st.f_bavail * st.f_frsize
-    return total - libre, libre
+    def medir() -> tuple[Optional[int], Optional[int]]:
+        try:
+            st = os.statvfs(punto)
+        except OSError:
+            return None, None
+        total = st.f_blocks * st.f_frsize
+        libre = st.f_bavail * st.f_frsize
+        return total - libre, libre
+
+    # Con un equipo volcado, lo grabado: el punto de montaje es de otra máquina.
+    return sysroot.a_traves("statvfs", punto, medir) or (None, None)
 
 
 def _montajes() -> dict[str, tuple[str, str]]:
     """Qué partición está montada dónde y con qué sistema de archivos."""
     encontrados: dict[str, tuple[str, str]] = {}
     try:
-        with open(PROC_MOUNTS, encoding="utf-8") as fichero:
+        with open(sysroot.ruta(PROC_MOUNTS), encoding="utf-8") as fichero:
             for linea in fichero:
                 campos = linea.split()
                 if len(campos) < 3:
@@ -436,7 +441,9 @@ def _montajes() -> dict[str, tuple[str, str]]:
                 origen, punto, sistema = campos[0], campos[1], campos[2]
                 if sistema in FS_VIRTUALES or not origen.startswith("/dev/"):
                     continue
-                nombre = os.path.basename(os.path.realpath(origen))
+                # Un /dev/mapper/… acaba en dm-N: se graba, porque /dev no se vuelca.
+                nombre = os.path.basename(
+                    sysroot.a_traves("realpath", origen, os.path.realpath, origen) or origen)
                 # El primer montaje gana: con subvolúmenes de btrfs la misma
                 # partición aparece muchas veces y la raíz es la que interesa.
                 encontrados.setdefault(nombre, (sistema, _sin_escapes(punto)))

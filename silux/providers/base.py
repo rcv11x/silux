@@ -16,6 +16,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Iterable, Optional
 
+from .. import sysroot
 from ..model import (
     Board, Cache, Clocks, CpuInfo, CpuType, DriverHint, Gpu, LogicalCpu,
     NetworkInterface,
@@ -169,7 +170,7 @@ class Provider:
 
 def read_text(path: str) -> Optional[str]:
     try:
-        with open(path, encoding="utf-8", errors="replace") as fh:
+        with open(sysroot.ruta(path), encoding="utf-8", errors="replace") as fh:
             return fh.read().strip()
     except (OSError, ValueError):
         return None

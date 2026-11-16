@@ -21,6 +21,7 @@ from ..i18n import _
 from ..model import Need, Power
 from ..privileged.client import HelperError, PrivilegedClient
 from .base import Draft, Provider, read_int, read_text
+from .. import sysroot
 
 POWERCAP = pathlib.Path("/sys/class/powercap")
 
@@ -35,13 +36,13 @@ RAPL_ZONES = ("intel-rapl:*", "amd-rapl:*", "*-rapl:*")
 
 
 def _packages() -> list[pathlib.Path]:
-    if not POWERCAP.is_dir():
+    if not sysroot.ruta(POWERCAP).is_dir():
         return []
 
     found: list[pathlib.Path] = []
     seen: set[str] = set()
     for pattern in RAPL_ZONES:
-        for entry in sorted(POWERCAP.glob(pattern)):
+        for entry in sorted(sysroot.ruta(POWERCAP).glob(pattern)):
             if entry.name in seen:
                 continue
             # Los subdominios (core, uncore, dram) llevan un segundo «:».

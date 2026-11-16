@@ -33,6 +33,7 @@ from typing import Optional
 from ..model import Clocks, Need
 from .base import Draft, Provider, read_int, read_text
 from ..i18n import _
+from .. import sysroot
 
 SYS_CPU = "/sys/devices/system/cpu"
 
@@ -61,7 +62,7 @@ class CppcClocks(Provider):
     static = True
 
     def available(self) -> bool:
-        return os.path.isdir(SYS_CPU)
+        return os.path.isdir(sysroot.ruta(SYS_CPU))
 
     def collect(self, draft: Draft) -> None:
         falta_base = False
@@ -120,7 +121,7 @@ class CppcClocks(Provider):
 def _leer_cppc(cpu_index: int) -> dict[str, int]:
     """Los enteros de acpi_cppc para una CPU. Vacío si el firmware no lo trae."""
     directorio = f"{SYS_CPU}/cpu{cpu_index}/acpi_cppc"
-    if not os.path.isdir(directorio):
+    if not os.path.isdir(sysroot.ruta(directorio)):
         return {}
     campos = ("nominal_freq", "lowest_freq", "nominal_perf", "highest_perf")
     valores = {}

@@ -13,6 +13,7 @@ import os
 
 from ..model import Clocks
 from .base import Draft, Provider, read_int
+from .. import sysroot
 
 INTEL_PSTATE_NO_TURBO = "/sys/devices/system/cpu/intel_pstate/no_turbo"
 CPUFREQ_BOOST = "/sys/devices/system/cpu/cpufreq/boost"
@@ -26,7 +27,7 @@ class TurboState(Provider):
     static = False
 
     def available(self) -> bool:
-        return os.path.exists(INTEL_PSTATE_NO_TURBO) or os.path.exists(CPUFREQ_BOOST)
+        return os.path.exists(sysroot.ruta(INTEL_PSTATE_NO_TURBO)) or os.path.exists(sysroot.ruta(CPUFREQ_BOOST))
 
     def collect(self, draft: Draft) -> None:
         enabled = None
