@@ -165,6 +165,37 @@ class TestElCiConstruyeComoSeReparte(unittest.TestCase):
                 self.assertIn("--container", orden)
 
 
+class TestLasAccionesDelCiCorrenEnNode24(unittest.TestCase):
+    """GitHub retira Node 20 de los runners y avisa en cada ejecución.
+
+    Las versiones de abajo son la primera de cada acción que declara
+    `using: node24` en su `action.yml`, preguntado a GitHub y no supuesto:
+    upload-artifact todavía iba en Node 20 en su v5. La de publicar la
+    release solo corre al etiquetar, así que su aviso no salía en las
+    ejecuciones normales, y es la que no puede fallar el día que toca.
+    """
+
+    PRIMERA_CON_NODE24 = {
+        "actions/checkout": 5,
+        "actions/setup-python": 6,
+        "actions/upload-artifact": 6,
+        "softprops/action-gh-release": 3,
+    }
+
+    def test_ninguna_se_queda_en_node_20(self):
+        import pathlib
+        flujo = (pathlib.Path(__file__).resolve().parent.parent
+                 / ".github" / "workflows" / "appimage.yml").read_text()
+        usadas = re.findall(r"^\s*-?\s*uses:\s*([\w.-]+/[\w.-]+)@v(\d+)",
+                            flujo, re.M)
+        self.assertEqual({a for a, _v in usadas}, set(self.PRIMERA_CON_NODE24),
+                         "el flujo usa una acción que este test no conoce")
+        for accion, version in usadas:
+            with self.subTest(accion=accion):
+                self.assertGreaterEqual(int(version),
+                                        self.PRIMERA_CON_NODE24[accion])
+
+
 class TestUnPaqueteIncompletoNoSeEmpaqueta(unittest.TestCase):
     """Si al AppDir le falta una biblioteca, la construcción falla.
 

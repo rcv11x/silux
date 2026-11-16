@@ -70,9 +70,9 @@ jobs:
         python: ["3.10", "3.14"]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
 
@@ -115,7 +115,7 @@ jobs:
     needs: tests
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # Lo que hace falta en el runner es solo lo que pide arrancar el
       # resultado para comprobarlo; lo que pide construirlo va dentro del
@@ -156,7 +156,7 @@ jobs:
           APPIMAGE_EXTRACT_AND_RUN=1 QT_QPA_PLATFORM=offscreen \
             ./dist/silux-x86_64-compat.AppImage --help
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: appimages
           path: |
@@ -165,7 +165,7 @@ jobs:
 
       - name: Publicarlos en la release
         if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           body_path: CHANGELOG.md
           files: |
