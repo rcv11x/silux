@@ -42,6 +42,17 @@ class TestElOrdenNoImporta(unittest.TestCase):
             "tests.test_gpu.TestAnchoDeLasColumnas")
         self.assertEqual(salida.returncode, 0, salida.stderr[-600:])
 
+    def test_el_proceso_sale_bien_con_ventanas_sin_cerrar(self):
+        # Los tests de la página de Rendimiento sueltan la página sin
+        # cerrarla. Pasaban, y el proceso salía con una violación de segmento
+        # la mitad de las veces: por eso se repite.
+        for vez in range(4):
+            salida = _en_otro_proceso("tests.test_benchmark.TestDuracionTotal",
+                                      "tests.test_benchmark.TestLoQueNoPuntuaSeVeQueNoPuntua")
+            self.assertEqual(salida.returncode, 0,
+                             f"a la {vez + 1}ª: código {salida.returncode}\n"
+                             + salida.stderr[-400:])
+
     def test_una_aplicacion_que_no_es_de_widgets_se_dice(self):
         # Quien pida la aplicación con otra ya creada tiene que enterarse ahí,
         # con una frase, y no tres tests más tarde con un aborto.

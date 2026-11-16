@@ -13,7 +13,37 @@ proceso, así que no se puede cambiar por la buena: se dice aquí, y quien usa
 algo que crea la suya pide antes esta (`test_desktop`).
 """
 
+import atexit
+
 _app = None
+
+
+def _cerrar():
+    """Borra las ventanas que quedaron vivas, mientras Python sigue entero.
+
+    Con la aplicación guardada, la suite terminaba en verde y el proceso
+    salía con una violación de segmento (código 139, a veces «corrupted
+    double-linked list»): al desmontarse el intérprete, PySide recorre los
+    objetos que le quedan para destruirlos, y entre las ventanas que los tests
+    sueltan sin cerrar encuentra alguno ya liberado. La traza acaba en
+    `PySide::destroyQCoreApplication`. Borradas aquí, una a una y con todo en
+    su sitio, no queda nada que recorrer.
+
+    `QApplication.shutdown()` no sirve para esto: hace ese mismo recorrido.
+    """
+    global _app
+    if _app is None:
+        return
+    import gc
+
+    import shiboken6
+    from PySide6.QtWidgets import QApplication
+
+    gc.collect()
+    for ventana in QApplication.topLevelWidgets():
+        if shiboken6.isValid(ventana):
+            shiboken6.delete(ventana)
+    _app = None
 
 
 def app():
@@ -21,6 +51,7 @@ def app():
     from PySide6.QtWidgets import QApplication
 
     if _app is None:
+        atexit.register(_cerrar)
         actual = QApplication.instance()
         if actual is not None and not isinstance(actual, QApplication):
             raise RuntimeError(
