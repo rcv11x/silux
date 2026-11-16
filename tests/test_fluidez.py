@@ -11,7 +11,7 @@ from PySide6.QtWidgets import QApplication
 from silux.settings import Preferences
 from silux.ui import theme
 from silux.ui.widgets import Sparkline
-from tests import qt
+from tests import muestras, qt
 
 
 def _app():
@@ -87,10 +87,9 @@ class TestCongelado(unittest.TestCase):
 
     def test_congelada_no_reparte_la_muestra(self):
         """Lo que se para es lo que se pinta, no lo que se recoge."""
-        from silux.collector import Collector
         ventana = self._ventana()
         ventana.alternar_congelado()
-        muestra = Collector().sample()
+        muestra = muestras.foto_real()
         repartidas = []
         ventana._distribute = lambda s: repartidas.append(s)
         ventana._on_sample(muestra)
@@ -99,10 +98,9 @@ class TestCongelado(unittest.TestCase):
                       "el dato tiene que llegar igual: los máximos no se pierden")
 
     def test_al_soltar_se_pone_al_dia(self):
-        from silux.collector import Collector
         ventana = self._ventana()
         ventana.alternar_congelado()
-        ventana._on_sample(Collector().sample())
+        ventana._on_sample(muestras.foto_real())
         repartidas = []
         ventana._distribute = lambda s: repartidas.append(s)
         ventana.alternar_congelado()
@@ -134,10 +132,9 @@ class TestRitmoReal(unittest.TestCase):
 
     def test_y_se_ajusta_a_lo_que_de_verdad_tarda(self):
         import time
-        from silux.collector import Collector
 
         ventana = self._ventana()
-        muestra = Collector().sample()
+        muestra = muestras.foto_real()
         ventana._on_sample(muestra)
         for _ in range(6):
             time.sleep(0.05)
@@ -148,11 +145,10 @@ class TestRitmoReal(unittest.TestCase):
     def test_una_pausa_larga_no_descoloca_el_ritmo(self):
         """Suspender el equipo no puede dejar la animación en horas."""
         from unittest import mock
-        from silux.collector import Collector
 
         ventana = self._ventana()
         antes = ventana._intervalo_real
-        muestra = Collector().sample()
+        muestra = muestras.foto_real()
         ventana._on_sample(muestra)
         # Como si el equipo hubiera estado dormido dos minutos.
         with mock.patch.object(ventana._desde_la_muestra, "restart",
@@ -165,12 +161,11 @@ class TestRitmoReal(unittest.TestCase):
 class TestElAtajoSeVe(unittest.TestCase):
     def test_la_barra_de_estado_lo_dice(self):
         """Un atajo que no aparece en ningún sitio no existe."""
-        from silux.collector import Collector
         from silux.ui.app import MainWindow
         _app()
         theme.set_density("normal", "normal")
         ventana = MainWindow(Preferences(font_scale="normal").normalized())
-        ventana._on_sample(Collector().sample())
+        ventana._on_sample(muestras.foto_real())
         self.assertIn("espacio", ventana._status.full_text().lower())
 
 

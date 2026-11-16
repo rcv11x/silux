@@ -21,7 +21,7 @@ from silux.model import (Display, Gpu, GpuClocks, GpuMemory, Need, Note,
 from silux.providers import drm
 from silux.providers.base import Draft
 from tests.test_edid import construir as construir_edid
-from tests import qt
+from tests import muestras, qt
 
 
 def _write(path: pathlib.Path, value: str) -> None:
@@ -1442,13 +1442,12 @@ class TestSalidasLibres(unittest.TestCase):
     def _pagina(self, salidas):
         import dataclasses
 
-        from silux.collector import Collector
         from silux.settings import Preferences
         from silux.ui import theme
         from silux.ui.pages.graphics import GraphicsPage
 
         theme.set_density("normal", "normal")
-        foto = Collector().sample()
+        foto = muestras.foto_real()
         if not foto.gpus:
             self.skipTest("esta máquina no tiene ninguna gráfica")
         gpu = dataclasses.replace(foto.gpus[0], displays=tuple(salidas))

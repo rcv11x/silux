@@ -24,11 +24,10 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtWidgets import QAbstractScrollArea, QApplication, QWidget
 
-from silux.collector import Collector
 from silux.model import Battery
 from silux.settings import Preferences
 from silux.ui import theme
-from tests import qt
+from tests import muestras, qt
 
 ANCHO, ALTO = 900, 680
 
@@ -68,13 +67,7 @@ class TestNadaSeSalePorLaDerecha(unittest.TestCase):
         cls.ventana.resize(ANCHO, ALTO)
         cls.ventana.show()
 
-        recolector = Collector()
-        try:
-            recolector.snapshot()
-            muestra = recolector.snapshot()
-        finally:
-            recolector.close()
-        muestra = dataclasses.replace(muestra, batteries=(BATERIA,))
+        muestra = dataclasses.replace(muestras.foto_real(), batteries=(BATERIA,))
         for _vuelta in range(3):
             cls.ventana._on_sample(muestra)
             _asentar(cls.app)

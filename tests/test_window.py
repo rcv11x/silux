@@ -9,7 +9,7 @@ import os
 import tempfile
 import unittest
 from unittest import mock
-from tests import qt
+from tests import muestras, qt
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -198,19 +198,17 @@ class TestVentana(unittest.TestCase):
     # -- datos --------------------------------------------------------------
 
     def test_una_muestra_real_llena_la_pagina(self):
-        from silux.collector import Collector
 
         window = self._window()
-        window._on_sample(Collector().sample())
+        window._on_sample(muestras.foto_real())
         self.app.processEvents()
         self.assertNotEqual(window.cpu_page.title.text(), "Leyendo el procesador…")
         self.assertIn("núcleos", window.cpu_page.subtitle.text())
 
     def test_la_pagina_de_caches_se_llena(self):
-        from silux.collector import Collector
 
         window = self._window()
-        window._on_sample(Collector().sample())
+        window._on_sample(muestras.foto_real())
         self.app.processEvents()
         page = window.caches_page
         self.assertIn("caché en total", page.total.text())
@@ -236,10 +234,9 @@ class TestVentana(unittest.TestCase):
         el fallo que se veía al encoger la ventana, y por eso se comprueba
         página a página y en las dos densidades.
         """
-        from silux.collector import Collector
         from silux.ui import theme
 
-        muestra = Collector().sample()
+        muestra = muestras.foto_real()
         for densidad, metrics in (("normal", theme.NORMAL), ("compact", theme.COMPACT)):
             theme.set_density(densidad, "normal")
             window = self._window(density=densidad, font_scale="normal")
@@ -257,14 +254,13 @@ class TestVentana(unittest.TestCase):
 
     def test_fahrenheit_cambia_la_unidad_de_la_ficha(self):
         from dataclasses import replace
-        from silux.collector import Collector
 
         window = self._window(temperature_unit="c")
-        window._on_sample(Collector().sample())
+        window._on_sample(muestras.foto_real())
         self.assertEqual(window.cpu_page.live.tile_temp.unit.text(), "°C")
 
         window._on_preferences(replace(window.prefs, temperature_unit="f"))
-        window._on_sample(Collector().sample())
+        window._on_sample(muestras.foto_real())
         self.assertEqual(window.cpu_page.live.tile_temp.unit.text(), "°F")
 
     def test_lo_que_hace_el_procesador_esta_en_la_pagina_del_procesador(self):
@@ -290,11 +286,10 @@ class TestVentana(unittest.TestCase):
     def test_los_extremos_sobreviven_a_un_cambio_de_tema(self):
         """Perder mínimos y máximos por cambiar de tema sería inaceptable."""
         from dataclasses import replace
-        from silux.collector import Collector
 
         window = self._window(theme="light")
-        window._on_sample(Collector().sample())
-        window._on_sample(Collector().sample())
+        window._on_sample(muestras.foto_real())
+        window._on_sample(muestras.foto_real())
         seguidos = len(window._tracker)
         self.assertGreater(seguidos, 0)
 

@@ -57,6 +57,33 @@ SENSORES = {
 }
 
 
+_foto_real = None
+
+
+def foto_real():
+    """La foto de este equipo. Se saca una vez por proceso y se reparte.
+
+    Para los tests que montan una página o la ventana con «lo que haya» y no
+    comprueban nada del muestreo: cada `Collector()` nuevo vuelve a preguntar
+    por CPUID, por las gráficas y por los discos, y eran treinta y tantos. La
+    foto es inmutable, así que compartirla no deja que un test le estropee el
+    estado a otro. Quien prueba el propio Collector sigue creando el suyo.
+
+    Es la de `sample()`: dos lecturas, para que el uso y los vatios, que son
+    derivadas, tengan valor.
+    """
+    global _foto_real
+    if _foto_real is None:
+        from silux.collector import Collector
+
+        recolector = Collector()
+        try:
+            _foto_real = recolector.sample()
+        finally:
+            recolector.close()
+    return _foto_real
+
+
 def arbol_de_sensores() -> dict:
     """Lo que devolvería `Snapshot.sensor_tree()` en un equipo con sensores."""
     return {aparato: dict(categorias) for aparato, categorias in SENSORES.items()}

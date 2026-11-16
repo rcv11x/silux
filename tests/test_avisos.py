@@ -108,8 +108,8 @@ class TestUmbralesEstimados(unittest.TestCase):
 class TestEsteEquipo(unittest.TestCase):
     def test_no_salta_ningun_aviso_en_reposo(self):
         """La prueba que de verdad importa: con el equipo tranquilo, silencio."""
-        from silux.collector import Collector
-        muestra = Collector().snapshot()
+        from tests import muestras
+        muestra = muestras.foto_real()
         falsos = [(s.device, s.label, s.value, s.high)
                   for s in muestra.sensors if s.alarm_level != "ok"]
         self.assertEqual(falsos, [], f"avisos falsos: {falsos}")

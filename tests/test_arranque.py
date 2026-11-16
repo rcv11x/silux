@@ -333,13 +333,9 @@ class TestUnaSeccionQueEsteEquipoNoTiene(unittest.TestCase):
 
 
 def _hay_bateria() -> bool:
-    from silux.collector import Collector
+    from tests import muestras
 
-    recolector = Collector()
-    try:
-        return bool(recolector.snapshot().batteries)
-    finally:
-        recolector.close()
+    return bool(muestras.foto_real().batteries)
 
 
 

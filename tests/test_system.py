@@ -9,7 +9,7 @@ from unittest import mock
 from silux.model import Memory, System
 from silux.providers import system as provider
 from silux.providers.base import Draft
-from tests import qt
+from tests import muestras, qt
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -432,12 +432,11 @@ class TestBuscadorDeSensores(unittest.TestCase):
         cls.app = qt.app()
 
     def _tree(self):
-        from silux.collector import Collector
         from silux.ui import theme
         from silux.ui.sensortree import SensorTree
 
         arbol = SensorTree(theme.DARK)
-        arbol.rebuild(Collector().sample().sensor_tree())
+        arbol.rebuild(muestras.foto_real().sensor_tree())
         arbol.show()
         self.app.processEvents()
         return arbol
@@ -492,10 +491,9 @@ class TestBuscadorDeSensores(unittest.TestCase):
 
     def test_el_nombre_del_aparato_tambien_busca(self):
         """La gente pide «los del 9070» tanto como «temperatura»."""
-        from silux.collector import Collector
 
         arbol = self._tree()
-        aparatos = list(Collector().sample().sensor_tree())
+        aparatos = list(muestras.foto_real().sensor_tree())
         if not aparatos:
             self.skipTest("esta máquina no publica sensores")
         arbol.set_filter(aparatos[0].split()[0].lower())
@@ -536,13 +534,12 @@ class TestRamasRecordadas(unittest.TestCase):
         cls.app = qt.app()
 
     def _tree(self, plegadas=None):
-        from silux.collector import Collector
         from silux.ui import theme
         from silux.ui.sensortree import SensorTree
 
         arbol = SensorTree(theme.DARK)
         arbol.set_collapsed(plegadas)
-        arbol.rebuild(Collector().sample().sensor_tree())
+        arbol.rebuild(muestras.foto_real().sensor_tree())
         return arbol
 
     def test_sin_nada_guardado_se_abren_todas(self):
@@ -751,12 +748,11 @@ class TestQueLasCifrasQuepan(unittest.TestCase):
         cls.app = qt.app()
 
     def _tree(self):
-        from silux.collector import Collector
         from silux.ui import theme
         from silux.ui.sensortree import SensorTree
 
         arbol = SensorTree(theme.DARK)
-        arbol.rebuild(Collector().sample().sensor_tree())
+        arbol.rebuild(muestras.foto_real().sensor_tree())
         arbol.resize(1800, 900)
         arbol.show()
         self.app.processEvents()
@@ -906,9 +902,8 @@ class TestArrastrarLasColumnas(unittest.TestCase):
         cls.app = qt.app()
 
     def setUp(self):
-        from silux.collector import Collector
 
-        self.foto = Collector().sample()
+        self.foto = muestras.foto_real()
 
     def _tree(self, ancho=1390):
         from silux.ui import theme
@@ -976,12 +971,11 @@ class TestOrdenarElArbol(unittest.TestCase):
         cls.app = qt.app()
 
     def _tree(self):
-        from silux.collector import Collector
         from silux.ui import theme
         from silux.ui.sensortree import SensorTree
 
         arbol = SensorTree(theme.DARK)
-        foto = Collector().sample()
+        foto = muestras.foto_real()
         arbol.rebuild(foto.sensor_tree())
         for sensor in foto.sensors:
             arbol.update_row(

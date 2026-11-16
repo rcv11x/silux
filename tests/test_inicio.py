@@ -15,7 +15,7 @@ from silux.settings import Preferences
 from silux.ui import theme
 from silux.ui.pages.home import HomePage
 from tests.escala import tabla_de_la_escala
-from tests import qt
+from tests import muestras, qt
 
 
 def _app():
@@ -54,11 +54,11 @@ class TestPagina(unittest.TestCase):
                                Preferences(font_scale="normal").normalized())
 
     def test_pinta_este_equipo_sin_reventar(self):
-        self.pagina.apply(Collector().sample())
+        self.pagina.apply(muestras.foto_real())
         self.assertTrue(self.pagina.title.text())
 
     def test_las_cuatro_tarjetas_dicen_algo(self):
-        self.pagina.apply(Collector().snapshot())
+        self.pagina.apply(muestras.foto_real())
         for tarjeta in (self.pagina.cpu, self.pagina.gpu,
                         self.pagina.memoria, self.pagina.discos):
             self.assertTrue(tarjeta.nombre.text(),
@@ -78,19 +78,19 @@ class TestPagina(unittest.TestCase):
 
     def test_un_equipo_sin_grafica_no_deja_la_tarjeta_muda(self):
         import dataclasses
-        muestra = dataclasses.replace(Collector().snapshot(), gpus=())
+        muestra = dataclasses.replace(muestras.foto_real(), gpus=())
         self.pagina.apply(muestra)
         self.assertIn("Sin gráfica", self.pagina.gpu.nombre.text())
 
     def test_ni_uno_sin_discos(self):
         import dataclasses
-        muestra = dataclasses.replace(Collector().snapshot(), disks=())
+        muestra = dataclasses.replace(muestras.foto_real(), disks=())
         self.pagina.apply(muestra)
         self.assertIn("Sin unidades", self.pagina.discos.nombre.text())
 
     def test_repintar_muchas_veces_no_crea_widgets(self):
         """La regla de siempre: se reescribe el texto, no se rehace la tarjeta."""
-        muestra = Collector().snapshot()
+        muestra = muestras.foto_real()
         self.pagina.apply(muestra)
         antes = len(self.pagina.findChildren(object))
         for _ in range(20):
@@ -129,7 +129,7 @@ class TestTarjetaDeGraficaEnLaPortada(unittest.TestCase):
 
         from silux.model import Gpu
 
-        base = Collector().snapshot()
+        base = muestras.foto_real()
         return dataclasses.replace(base, gpus=(Gpu(**campos),))
 
     def test_una_intel_sin_permisos_ensena_su_reloj(self):
@@ -366,14 +366,13 @@ class TestTodasLasPaginasRecibenElMuestreo(unittest.TestCase):
                          "estas páginas no reciben el snapshot")
 
     def test_la_pagina_de_rendimiento_sabe_de_que_cpu_habla(self):
-        from silux.collector import Collector
         from silux.settings import Preferences
         from silux.ui.pages.performance import PerformancePage
 
         theme.set_density("normal", "normal")
         pagina = PerformancePage(theme.palette_for(_app(), "dark"),
                                  Preferences(font_scale="normal").normalized())
-        pagina.apply(Collector().sample())
+        pagina.apply(muestras.foto_real())
         self.assertNotEqual(pagina._cpu_actual, "?")
 
 
@@ -388,12 +387,11 @@ class TestLaFichaDeConsumoExplicaSuHueco(unittest.TestCase):
     def test_sin_consumo_la_ficha_dice_por_que(self):
         import dataclasses
 
-        from silux.collector import Collector
         from silux.settings import Preferences
         from silux.ui.pages.cpu import CpuPage
 
         theme.set_density("normal", "normal")
-        foto = Collector().sample()
+        foto = muestras.foto_real()
         sin_rapl = dataclasses.replace(foto, cpu=dataclasses.replace(
             foto.cpu, power=dataclasses.replace(foto.cpu.power,
                                                 package_w=None)))
