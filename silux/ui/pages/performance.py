@@ -374,10 +374,19 @@ class PerformancePage(QScrollArea):
             de_esta_escala = entrada.score_version == score.VERSION
             puntos = (score.puntuar(entrada.scores, entrada.threads)
                       if de_esta_escala else None)
+            # Y lo dice en su celda: un guion ahí es «no lo sé», y sí se
+            # sabe por qué no hay cifra.
+            if puntos:
+                puntuacion = f"{puntos[1]:n}"
+            elif not de_esta_escala:
+                puntuacion = (_("bench.history.scale").format(n=entrada.score_version)
+                              if entrada.score_version else _("bench.history.scale.unknown"))
+            else:
+                puntuacion = render.DASH
             celdas = (
                 entrada.label or entrada.when,
                 self._duracion_de(entrada),
-                f"{puntos[1]:n}" if puntos else render.DASH,
+                puntuacion,
                 render.hz(entrada.frequency_avg_hz),
                 render.temperature(entrada.temperature_peak_c, self._prefs.fahrenheit),
             )
@@ -390,6 +399,9 @@ class PerformancePage(QScrollArea):
                                       else Qt.AlignmentFlag.AlignLeft)
                 if columna == 0 and entrada.label:
                     etiqueta.setToolTip(entrada.when)
+                if columna == 2 and not de_esta_escala:
+                    etiqueta.setToolTip(_("bench.history.scale.tip").format(
+                        nueva=score.VERSION))
                 rejilla.addWidget(etiqueta, fila, columna)
 
             acciones = QHBoxLayout()
