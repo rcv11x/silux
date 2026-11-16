@@ -881,7 +881,9 @@ def monitor_name(monitor: Optional[Edid]) -> str:
     """El modelo tal y como lo enseñaría la pegatina de detrás."""
     if monitor is None:
         return DASH
-    partes = [p for p in (monitor.manufacturer, monitor.model) if p]
+    # La marca, no la razón social: «GIGA-BYTE TECHNOLOGY CO., LTD. AORUS
+    # FO27Q2» se comía el ancho de la tabla de salidas.
+    partes = [p for p in (short_vendor(monitor.manufacturer), monitor.model) if p]
     return " ".join(partes) if partes else (monitor.manufacturer_id or DASH)
 
 

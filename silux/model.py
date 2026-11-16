@@ -478,6 +478,9 @@ VENDOR_ALIASES: dict[str, str] = {
     "micro-star international": "MSI",
     "asustek computer": "ASUS",
     "gigabyte technology": "Gigabyte",
+    # Así se escribe en el EDID de sus monitores, con guion y en mayúsculas.
+    "giga-byte technology": "Gigabyte",
+    "lg electronics": "LG",
     "american megatrends": "AMI",
     "hewlett-packard": "HP",
     "lenovo": "Lenovo",
