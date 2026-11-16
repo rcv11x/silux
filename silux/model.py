@@ -103,6 +103,18 @@ class Clocks:
         return self._mult(self.max_turbo_hz)
 
     @property
+    def highest_hz(self) -> Optional[int]:
+        """Lo más alto a lo que puede ir: el techo del silicio o el del kernel.
+
+        No `max_hz` a secas: ese es el techo que aplica el kernel ahora, y
+        cambia en caliente cuando un gestor de energía apaga y enciende el
+        turbo. Lo que se dibuje contra él cambia de escala con cada vaivén y
+        recorta lo medido antes del cambio. El del silicio no se mueve; el del
+        kernel se mira también porque hay equipos que pasan del de CPUID.
+        """
+        return max(filter(None, (self.max_hz, self.max_turbo_hz)), default=None)
+
+    @property
     def turbo_headroom_hz(self) -> Optional[int]:
         """Cuánta frecuencia deja sin usar el techo actual frente al del silicio."""
         if self.max_turbo_hz and self.max_hz and self.max_turbo_hz > self.max_hz:

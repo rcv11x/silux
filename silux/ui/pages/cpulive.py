@@ -99,21 +99,24 @@ class CpuLiveSection(QWidget):
         if clocks.current_hz:
             self.tile_freq.update_value(f"{clocks.current_hz / 1e9:.2f}",
                                         clocks.current_hz / 1e9)
-            self.tile_freq.chart.set_range(
-                (clocks.min_hz or 0) / 1e9,
-                (clocks.max_hz or clocks.max_turbo_hz or 0) / 1e9 or None,
-            )
+            # Hasta el techo del silicio, no hasta el que aplica el kernel: con
+            # el gobernador `performance` la frecuencia vive en ese techo, y la
+            # curva pegada arriba rellenaba todo el alto —una barra vertical
+            # mientras la gráfica se llenaba—. Y como el kernel lo mueve cuando
+            # se apaga y se enciende el turbo, las muestras de 4,0 GHz quedaban
+            # dibujadas a la altura de las de 2,9.
+            suelo = clocks.min_hz or clocks.base_hz
+            techo = clocks.highest_hz
+            self.tile_freq.chart.set_range((suelo or 0) / 1e9,
+                                           techo / 1e9 if techo else None)
             # El mismo rango que dibuja la gráfica de debajo, para que la cifra
             # y el trazo digan lo mismo. Con base y máximo se leía «2.60 – 2.60
             # GHz» en un Xeon con el turbo apagado: cierto y sin información.
-            suelo = clocks.min_hz or clocks.base_hz
-            techo = clocks.max_hz or clocks.max_turbo_hz
             if suelo and techo:
                 if abs(techo - suelo) < 1e7:          # menos de 10 MHz: es fijo
-                    self.tile_freq.set_detail(f"fija en {techo / 1e9:.2f} GHz")
+                    self.tile_freq.set_detail(f"fija en {render.hz(techo)}")
                 else:
-                    self.tile_freq.set_detail(
-                        f"{suelo / 1e9:.2f} – {techo / 1e9:.2f} GHz")
+                    self.tile_freq.set_detail(f"{render.hz(suelo)} – {render.hz(techo)}")
 
         if cpu.usage_percent is not None:
             self.tile_usage.update_value(f"{cpu.usage_percent:.0f}", cpu.usage_percent)

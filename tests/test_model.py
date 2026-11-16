@@ -58,6 +58,9 @@ class TestPropiedadesExportadas(unittest.TestCase):
         # dos campos de los que sale ya van en el JSON, así que quien lo lea
         # puede distinguirlo igual.
         ("Edid", "refresh_is_native_only"),
+        # Hasta dónde llega el eje de la gráfica de frecuencia: el mayor de
+        # `max_hz` y `max_turbo_hz`, que ya van los dos en el JSON.
+        ("Clocks", "highest_hz"),
     }
 
     def test_ninguna_propiedad_se_queda_fuera(self):
