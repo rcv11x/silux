@@ -268,10 +268,6 @@ instalador, y F-M24 y F-M25 —los topes del protocolo del ayudante y el
   aborta el proceso con código 134: `stop()` espera 3 s, el `QThread` se
   destruye en marcha y `collector.close()` no llega a ejecutarse. Es lo que
   pasa con el diálogo de polkit abierto.
-* **F-M4 · `ui/app.py`, `ui/pages/monitor.py`** · `pkexec` se lanza con
-  `subprocess.run` en el hilo de la interfaz (timeouts de 180 y 120 s):
-  mientras alguien escribe la contraseña la ventana no repinta. Contra la
-  regla 4.
 * **F-M5 · `ui/pages/performance.py`** · cambiar tema, densidad, letra,
   acento, idioma o unidades durante una prueba la mata sin decirlo: el hilo
   emite sobre la página destruida y el resultado no llega al historial. Le

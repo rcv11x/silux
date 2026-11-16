@@ -121,6 +121,8 @@ class MainWindow(QMainWindow):
         # Lo que se forzó por la línea de órdenes: campo -> (lo que había
         # guardado, lo que se forzó). Ver `_guardar`.
         self._forzadas = dict(forzadas or {})
+        # La instalación del ayudante mientras espera a pkexec, o None.
+        self._instalacion = None
         self.setWindowTitle("Silux")
         self.resize(prefs.window_width, prefs.window_height)
         self.setMinimumSize(theme.METRICS.min_window_w, theme.METRICS.min_window_h)
@@ -201,6 +203,10 @@ class MainWindow(QMainWindow):
         # El suelo depende de la densidad, así que se reajusta al reconstruir.
         self.setMinimumSize(m.min_window_w, m.min_window_h)
         current_row = getattr(self, "nav", None).currentRow() if hasattr(self, "nav") else 0
+        if hasattr(self, "monitor_page"):
+            # Una orden que espera a pkexec es hija de la página que se va a
+            # destruir, y un QThread destruido en marcha aborta el proceso.
+            self.monitor_page.cancelar_ordenes()
 
         central = QWidget()
         central.setObjectName("Root")
@@ -343,6 +349,11 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event) -> None:  # noqa: N802
         self.sampler.stop()
+        if self._instalacion is not None:
+            self._instalacion.done.disconnect(self._instalacion_terminada)
+            self._instalacion.cancel()
+            self._instalacion = None
+        self.monitor_page.cancelar_ordenes()
         # El registro se cierra a mano: lo escrito ya está en el disco, pero
         # dejar el descriptor abierto al salir deja la última fila a medias.
         self.monitor_page.cerrar_registro()
@@ -702,27 +713,37 @@ class MainWindow(QMainWindow):
 
         Va por `pkexec` como todo lo demás, así que la contraseña se pide una
         vez —esta— y a partir de ahí una por sesión en vez de una por arranque.
-        Se hace aquí y no en el hilo de muestreo porque esto no lee hardware:
-        copia dos archivos y termina, y el diálogo que abre es el mismo.
+        No va en el hilo de muestreo porque esto no lee hardware: copia dos
+        archivos y termina. Pero tampoco se espera aquí: mientras alguien
+        escribe la contraseña, la ventana tiene que seguir pintando.
         """
-        import subprocess
+        from .background import BackgroundCommand
 
+        if self._instalacion is not None:
+            return                          # ya hay un diálogo abierto
         for boton in self._botones_permanentes():
             boton.setEnabled(False)
             boton.setText(_("perm.installing"))
-        QApplication.processEvents()
 
         try:
             orden, ayudante = self._orden_de_instalacion()
-            # El ayudante va por la tubería y no por una ruta: el porqué está
-            # en `instalar.instalar`, que es quien lo recibe.
-            resultado = subprocess.run(
-                orden, input=ayudante, capture_output=True, text=True,
-                timeout=180,
-            )
-        except (OSError, subprocess.TimeoutExpired, RuntimeError) as exc:
+        except (OSError, RuntimeError) as exc:
             self._aviso_permanente(
                 _("perm.install.failed").format(error=exc))
+            return
+        # El ayudante va por la tubería y no por una ruta: el porqué está en
+        # `instalar.instalar`, que es quien lo recibe.
+        self._instalacion = BackgroundCommand(orden, stdin=ayudante, timeout=180)
+        self._instalacion.done.connect(self._instalacion_terminada)
+        self._instalacion.start()
+
+    def _instalacion_terminada(self, resultado) -> None:
+        orden, self._instalacion = self._instalacion, None
+        if orden is not None:
+            orden.wait()
+        if resultado.error is not None:
+            self._aviso_permanente(
+                _("perm.install.failed").format(error=resultado.error))
             return
 
         if resultado.returncode != 0:

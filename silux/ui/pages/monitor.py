@@ -18,6 +18,8 @@ import pathlib
 from collections import defaultdict, deque
 from typing import Optional
 
+import shiboken6
+
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QHBoxLayout,
@@ -67,6 +69,8 @@ class MonitorPage(QScrollArea):
         self._p = palette
         self._prefs = prefs
         self._tracker = tracker
+        # Las cargas de módulo que esperan a pkexec: qué módulo y qué botón.
+        self._cargas: dict = {}
         m = theme.METRICS
 
         self.setWidgetResizable(True)
@@ -391,18 +395,46 @@ class MonitorPage(QScrollArea):
         Lo segundo es la mitad que importa —un modprobe suelto se pierde al
         reiniciar— y es también la que nadie recuerda.
         """
-        import subprocess
+        from ..background import BackgroundCommand
 
         boton = aviso.action_button
         if boton is not None:
             boton.setEnabled(False)
             boton.setText("Cargando…")
         try:
-            resultado = subprocess.run(self._orden_de_carga(modulo),
-                                       capture_output=True, text=True, timeout=120)
-        except (OSError, subprocess.TimeoutExpired, RuntimeError) as error:
+            orden = self._orden_de_carga(modulo)
+        except (OSError, RuntimeError) as error:
             self._aviso_de_registro(_("sensors.driver.failed").format(
                 modulo=modulo, error=error))
+            return
+        # La espera a pkexec va en otro hilo: con el diálogo de la contraseña
+        # abierto, el árbol de sensores tiene que seguir actualizándose.
+        # Sin padre y guardada aquí: la referencia es lo que la mantiene, y
+        # se suelta cuando el hilo ha terminado. Colgada de la página, Qt la
+        # borraba con ella aunque siguiera en marcha.
+        carga = BackgroundCommand(orden, timeout=120)
+        self._cargas[carga] = (modulo, boton)
+        carga.done.connect(self._carga_terminada)
+        carga.start()
+
+    def cancelar_ordenes(self) -> None:
+        """Corta lo que esté esperando a pkexec. Al cerrar o rehacer la página."""
+        cargas, self._cargas = self._cargas, {}
+        for carga in cargas:
+            carga.done.disconnect(self._carga_terminada)
+            carga.cancel()
+
+    def _carga_terminada(self, resultado) -> None:
+        carga = self.sender()
+        if carga not in self._cargas:
+            return
+        modulo, boton = self._cargas.pop(carga)
+        carga.wait()
+        if boton is not None and not shiboken6.isValid(boton):
+            boton = None                    # el aviso se repintó mientras tanto
+        if resultado.error is not None:
+            self._aviso_de_registro(_("sensors.driver.failed").format(
+                modulo=modulo, error=resultado.error))
             return
 
         if resultado.returncode == 0:
