@@ -114,9 +114,13 @@ def application_icon() -> QIcon:
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, prefs: Preferences):
+    def __init__(self, prefs: Preferences,
+                 forzadas: Optional[dict[str, tuple]] = None):
         super().__init__()
         self.prefs = prefs
+        # Lo que se forzó por la línea de órdenes: campo -> (lo que había
+        # guardado, lo que se forzó). Ver `_guardar`.
+        self._forzadas = dict(forzadas or {})
         self.setWindowTitle("Silux")
         self.resize(prefs.window_width, prefs.window_height)
         self.setMinimumSize(theme.METRICS.min_window_w, theme.METRICS.min_window_h)
@@ -344,10 +348,26 @@ class MainWindow(QMainWindow):
         self.monitor_page.cerrar_registro()
         from dataclasses import replace
 
-        prefs_module.save(replace(self.prefs,
-                                  window_width=self.width(),
-                                  window_height=self.height()))
+        self._guardar(replace(self.prefs,
+                              window_width=self.width(),
+                              window_height=self.height()))
         super().closeEvent(event)
+
+    def _guardar(self, prefs: Preferences) -> None:
+        """Guarda las preferencias sin lo que se forzó para esta ejecución.
+
+        `--dark`, `--compact` o `--size` son para esta vez, y guardando las
+        preferencias en memoria tal cual se quedaban para siempre: una captura
+        con `--compact` dejaba la densidad compacta. Un campo que sigue con el
+        valor forzado vuelve al que había guardado; si alguien lo cambió
+        durante la sesión, lo que eligió es una preferencia y se guarda.
+        """
+        from dataclasses import replace
+
+        devolver = {campo: guardado
+                    for campo, (guardado, forzado) in self._forzadas.items()
+                    if getattr(prefs, campo) == forzado}
+        prefs_module.save(replace(prefs, **devolver) if devolver else prefs)
 
     def resizeEvent(self, event) -> None:  # noqa: N802
         super().resizeEvent(event)
@@ -520,7 +540,7 @@ class MainWindow(QMainWindow):
 
         previous = self.prefs
         self.prefs = prefs
-        prefs_module.save(prefs)
+        self._guardar(prefs)
 
         if prefs.interval_ms != previous.interval_ms and hasattr(self, "sampler"):
             self.sampler.set_interval(prefs.interval_ms)
@@ -548,7 +568,7 @@ class MainWindow(QMainWindow):
             # Los anchos guardados se midieron con otra tipografía y otro
             # espaciado; conservarlos deja columnas que no encajan.
             self.prefs = replace(self.prefs, sensor_columns=())
-            prefs_module.save(self.prefs)
+            self._guardar(self.prefs)
 
         if appearance_changed:
             self._palette = theme.apply(QApplication.instance(), prefs.theme,
@@ -887,7 +907,7 @@ def build_app(argv: Optional[list[str]] = None) -> tuple[QApplication, MainWindo
 
     from dataclasses import replace
 
-    prefs = prefs_module.load()
+    guardadas = prefs = prefs_module.load()
     if args.interval is not None:
         prefs = replace(prefs, interval_s=args.interval)
     if args.dark:
@@ -905,6 +925,12 @@ def build_app(argv: Optional[list[str]] = None) -> tuple[QApplication, MainWindo
         if width.isdigit() and height.isdigit():
             prefs = replace(prefs, window_width=int(width), window_height=int(height))
     prefs = prefs.normalized()
+    # Lo que la línea de órdenes cambió respecto a lo guardado, para que la
+    # ventana no lo guarde como si fuera una preferencia.
+    forzadas = {campo: (getattr(guardadas, campo), getattr(prefs, campo))
+                for campo in ("interval_s", "theme", "density", "font_scale",
+                              "accent", "window_width", "window_height")
+                if getattr(guardadas, campo) != getattr(prefs, campo)}
 
     _callar_el_portal()
     app = QApplication(sys.argv[:1])
@@ -923,7 +949,7 @@ def build_app(argv: Optional[list[str]] = None) -> tuple[QApplication, MainWindo
     i18n.set_language(prefs.language)
     theme.apply(app, prefs.theme, prefs.density, prefs.font_scale, prefs.accent)
 
-    return app, MainWindow(prefs), args
+    return app, MainWindow(prefs, forzadas=forzadas), args
 
 
 def _anonimizador(activo: bool):

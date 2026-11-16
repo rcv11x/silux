@@ -341,5 +341,69 @@ def _hay_bateria() -> bool:
         recolector.close()
 
 
+
+class TestLoQueSeFuerzaNoSeGuarda(unittest.TestCase):
+    """`--dark`, `--compact`, `--accent`, `--font-scale` y `--size` son para
+    esta ejecución, y la ventana los guardaba al cerrar.
+
+    `closeEvent` guarda las preferencias que tiene en memoria, y esas llevaban
+    dentro lo que se le había forzado. Una captura con `--compact` dejaba la
+    densidad compacta para siempre; la quinta auditoría lo vio cuando todas
+    sus capturas a 1280×800 empezaron a salir compactas a partir de la
+    primera que lo era.
+    """
+
+    GUARDADAS = {"theme": "light", "density": "normal", "font_scale": "normal",
+                 "accent": "azul", "window_width": 900, "window_height": 680}
+
+    def test_una_captura_no_cambia_las_preferencias(self):
+        import json
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as config:
+            ajustes = pathlib.Path(config) / "silux" / "settings.json"
+            ajustes.parent.mkdir()
+            ajustes.write_text(json.dumps(self.GUARDADAS))
+            hecho = subprocess.run(
+                [sys.executable, "-m", "silux.ui.app", "--screenshot",
+                 str(pathlib.Path(config) / "x.png"), "--page", "CPU",
+                 "--dark", "--compact", "--accent", "verde",
+                 "--font-scale", "grande", "--size", "700x500"],
+                cwd=str(RAIZ), capture_output=True, text=True, timeout=180,
+                env=dict(os.environ, QT_QPA_PLATFORM="offscreen",
+                         XDG_CONFIG_HOME=config))
+            self.assertEqual(hecho.returncode, 0, hecho.stderr)
+            despues = json.loads(ajustes.read_text())
+        for campo, valor in self.GUARDADAS.items():
+            with self.subTest(campo=campo):
+                self.assertEqual(despues.get(campo), valor)
+
+    def test_pero_lo_que_se_cambia_en_ajustes_si(self):
+        """Si durante la sesión alguien elige otro valor del que se forzó,
+        eso es una preferencia y se guarda."""
+        import json
+        import tempfile
+        from dataclasses import replace
+
+        from PySide6.QtWidgets import QApplication
+
+        from silux.settings import Preferences
+        from silux.ui.app import MainWindow
+
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        QApplication.instance() or QApplication([])
+        with tempfile.TemporaryDirectory() as config, \
+                mock.patch.dict(os.environ, {"XDG_CONFIG_HOME": config}):
+            forzadas = {"theme": ("light", "dark"), "density": ("normal", "compact")}
+            ventana = MainWindow(Preferences(theme="dark", density="compact"),
+                                 forzadas=forzadas)
+            ventana._on_preferences(replace(ventana.prefs, theme="system"))
+            ventana.close()
+            despues = json.loads(
+                (pathlib.Path(config) / "silux" / "settings.json").read_text())
+        self.assertEqual(despues["theme"], "system")
+        self.assertEqual(despues["density"], "normal")
+
+
 if __name__ == "__main__":
     unittest.main()
