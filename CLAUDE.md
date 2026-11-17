@@ -136,6 +136,8 @@ silux/
 └─ ui/             tema, hilo de muestreo, una página por sección;
                    widgets.py son las primitivas que usan varias páginas,
                    y el widget de una sola página vive en su módulo;
+                   icons.py dibuja los iconos de la barra lateral y la marca
+                   (el logo vive en ui/assets/ y es uno solo para todo);
                    background.py espera a pkexec fuera del hilo de la
                    interfaz, y dialogs.py son los diálogos de la ventana
 ```
@@ -167,7 +169,7 @@ Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); los comentarios, en el español del autor. Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-1024 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+1022 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
