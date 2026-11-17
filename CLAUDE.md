@@ -333,8 +333,9 @@ código (F-…), que es por el que se buscan allí.
 - [docs/pendientes.md](docs/pendientes.md): lo pendiente, con su detalle.
 - [docs/comprobar.md](docs/comprobar.md): el comando equivalente a cada dato,
   para verificarlo a mano.
-- `docs/propuesta-*.md`: lo propuesto y sin decidir (permisos, interfaz,
-  precisión, benchmark). No son el estado del programa.
+- `docs/propuesta-*.md`: lo propuesto (permisos, interfaz, precisión,
+  benchmark, datos, límites de AMD). La de datos está aplicada; la de
+  límites de AMD, sin decidir. No son el estado del programa.
 - [docs/en-curso.md](docs/en-curso.md): si existe, dónde se quedó la última
   sesión y qué sigue.
 - [docs/historial/](docs/historial/): diarios de sesiones antiguas.
