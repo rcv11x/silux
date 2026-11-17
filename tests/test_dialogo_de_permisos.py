@@ -159,6 +159,36 @@ class TestElDialogo(unittest.TestCase):
         self.assertEqual(pedidos, [])
         self.assertFalse(dialogo.isVisible())
 
+    def test_en_su_tamano_minimo_no_corta_ni_el_texto_ni_los_botones(self):
+        """En Wayland el diálogo abre con su tamaño mínimo, y el mínimo que
+        calcula Qt cuenta cada párrafo como una sola línea: 573x299 donde
+        hacían falta 425 de alto. Sin pantalla abre con el tamaño bueno, así
+        que aquí se le pone el mínimo a mano, que es lo que hace el
+        compositor."""
+        from silux.ui import theme
+        from silux.settings import Preferences
+
+        normales = Preferences().normalized()
+        self.addCleanup(theme.apply, self.app, normales.theme, normales.density,
+                        normales.font_scale, normales.accent)
+        for letra in ("normal", "grande", "máximo"):
+            for permanente in (True, False):
+                with self.subTest(letra=letra, permanente=permanente):
+                    theme.apply(self.app, normales.theme, normales.density, letra,
+                                normales.accent)
+                    dialogo = self._dialogo(permanente=permanente)
+                    dialogo.show()
+                    dialogo.resize(dialogo.minimumSize())
+                    for _vez in range(4):
+                        self.app.processEvents()
+                    cortados = [p.text()[:40] for p in dialogo.paragraphs
+                                if p.height() < p.heightForWidth(p.width())]
+                    self.assertEqual(cortados, [])
+                    for boton in (dialogo.grant_button, dialogo.close_button):
+                        self.assertLessEqual(boton.geometry().bottom(), dialogo.height())
+                        self.assertLessEqual(boton.geometry().right(), dialogo.width())
+                    dialogo.close()
+
     def test_con_el_ayudante_ya_instalado_no_ofrece_instalarlo(self):
         dialogo = self._dialogo(permanente=False)
         dialogo.show()

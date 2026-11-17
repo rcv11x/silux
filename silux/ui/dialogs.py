@@ -92,8 +92,19 @@ class PermissionsDialog(QDialog):
         pide = self.layout().minimumSize().width()
         # El mínimo también: uno puesto a mano manda sobre el del contenido,
         # y con él más bajo Qt deja el diálogo más estrecho que la orden.
-        self.setMinimumWidth(max(theme.METRICS.base_pt * 40, pide))
+        ancho = max(theme.METRICS.base_pt * 40, pide)
+        self.setMinimumWidth(ancho)
         self.setMaximumWidth(max(theme.METRICS.base_pt * 52, pide))
+        # Y el alto que piden los párrafos a ese ancho, que es el más
+        # estrecho y por tanto el más alto. El mínimo que calcula Qt cuenta
+        # cada párrafo como una línea: en Wayland la ventana abría con ese
+        # tamaño (573x299 donde hacían falta 425) y salían cortados los
+        # párrafos y los botones. Sin pantalla no pasa, y por eso no se veía
+        # en las capturas.
+        alto = self.layout().totalHeightForWidth(ancho)
+        self.setMinimumHeight(alto)
+        if self.height() < alto or not self.isVisible():
+            self.resize(max(self.width(), ancho), alto)
 
     def setVisible(self, visible: bool) -> None:  # noqa: N802
         if visible:
