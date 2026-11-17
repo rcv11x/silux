@@ -1267,10 +1267,15 @@ CATEGORIES: dict[str, str] = {
 
 # Orden en que se enseñan las ramas: el mismo que usan HWMonitor y HWiNFO,
 # de lo que más se consulta a lo que menos.
+# De lo que se viene a mirar a lo que se consulta: qué va caliente, cómo
+# giran los ventiladores y cuánto consume, antes que las tensiones y que un
+# reloj por hilo. Con las tensiones primero, la rama de la placa abría con
+# nueve voltajes sin nombre y la del procesador llevaba dieciséis relojes
+# entre sus temperaturas y su consumo.
 CATEGORY_ORDER: tuple[str, ...] = (
-    "cat.voltage", "cat.temperature", "cat.fan", "cat.power",
-    "cat.clock", "cat.usage", "cat.memory", "cat.network", "cat.bandwidth",
-    "cat.current", "cat.energy", "cat.other",
+    "cat.temperature", "cat.fan", "cat.power", "cat.usage",
+    "cat.voltage", "cat.current", "cat.clock",
+    "cat.memory", "cat.network", "cat.bandwidth", "cat.energy", "cat.other",
 )
 
 
@@ -1434,7 +1439,12 @@ class Snapshot:
         for device in sorted(tree, key=lambda d: self._puesto_del_aparato(d, clases[d])):
             categories = tree[device]
             ordered[device] = {
-                name: tuple(sorted(categories[name], key=lambda s: (s.order, s.label)))
+                # Por chip y, dentro, en su orden: una placa que publica las
+                # mismas sondas por dos caminos (su Super I/O y su interfaz
+                # WMI) las enseñaba intercaladas, «Temperatura 1» de uno,
+                # «Temperatura 1» del otro. Las de relleno, al final.
+                name: tuple(sorted(categories[name],
+                                   key=lambda s: (s.placeholder, s.chip, s.order, s.label)))
                 for name in CATEGORY_ORDER
                 if name in categories
             }

@@ -68,11 +68,12 @@ class TestArbol(unittest.TestCase):
         self.assertEqual(set(arbol["CPU"]),
                          {"cat.voltage", "cat.temperature", "cat.power", "cat.usage"})
 
-    def test_las_ramas_van_en_el_orden_de_hwmonitor(self):
-        # Voltajes primero, luego temperaturas, ventiladores, potencias…
+    def test_las_ramas_van_de_lo_que_se_mira_a_lo_que_se_consulta(self):
+        # Temperaturas, consumo y uso antes que las tensiones: con los
+        # voltajes primero, la rama de una placa abría con nueve sin nombre.
         self.assertEqual(
             list(self._snapshot().sensor_tree()["CPU"]),
-            ["cat.voltage", "cat.temperature", "cat.power", "cat.usage"],
+            ["cat.temperature", "cat.power", "cat.usage", "cat.voltage"],
         )
 
     def test_dentro_de_una_rama_manda_el_campo_order(self):

@@ -596,7 +596,13 @@ class SensorTree(QTreeWidget):
             self._rows[f"::{device}"] = device_item
 
             for category, sensors in categories.items():
-                category_item = QTreeWidgetItem([_(category)])
+                # Con cuántos lleva, si es de las largas: nace plegada, y sin
+                # la cuenta «Relojes» a secas no dice si dentro hay dos o
+                # treinta y dos.
+                titulo = _(category)
+                if len(sensors) > self.RAMA_LARGA:
+                    titulo = f"{titulo} · {len(sensors)}"
+                category_item = QTreeWidgetItem([titulo])
                 category_item.setFont(0, self._label_font)
                 for column in range(len(self.COLUMNS)):
                     category_item.setForeground(column, self._p.q("muted"))
@@ -644,7 +650,8 @@ class SensorTree(QTreeWidget):
                 self._orden_natural[id(category_item)] = tuple(
                     s.key for s in sensors)
                 category_item.setExpanded(
-                    self._nace_abierta(f"::{device}/{category}", expanded))
+                    self._nace_abierta(f"::{device}/{category}", expanded,
+                                       larga=len(sensors) > self.RAMA_LARGA))
             device_item.setExpanded(self._nace_abierta(f"::{device}", expanded))
 
         self._autosize_columns()
@@ -654,16 +661,24 @@ class SensorTree(QTreeWidget):
 
     # -- ramas plegadas -----------------------------------------------------
 
-    def _nace_abierta(self, clave: str, expandidas: set) -> bool:
+    # A partir de cuántas filas una rama nace plegada si nadie ha dicho otra
+    # cosa: un reloj o un uso por hilo, que en un procesador de dieciséis
+    # son dieciséis renglones iguales delante de todo lo demás.
+    RAMA_LARGA = 12
+
+    def _nace_abierta(self, clave: str, expandidas: set, larga: bool = False) -> bool:
         """Si una rama arranca desplegada.
 
         Manda lo que el usuario dejó en la sesión anterior. Solo cuando no hay
         nada guardado —el primer arranque— se abren todas, que es lo que deja
-        ver de qué va la página sin tener que tocarla.
+        ver de qué va la página sin tener que tocarla; todas menos las largas,
+        que con su título y su cuenta ya dicen qué hay dentro.
         """
         if self._plegadas_guardadas is not None:
             return clave not in self._plegadas_guardadas
-        return clave in expandidas or not expandidas
+        if not expandidas:
+            return not larga
+        return clave in expandidas
 
     def set_collapsed(self, claves) -> None:
         """Las ramas que estaban plegadas al cerrar. Vacío = todas abiertas."""
