@@ -500,8 +500,7 @@ class PerformancePage(QScrollArea):
             QMessageBox.StandardButton.Cancel)
         if respuesta == QMessageBox.StandardButton.Yes:
             history.clear()
-            self.history.set_rows([])
-            self.history_card.hide()
+            self._pintar_historial(history.load())
 
     def _on_finished(self, resultado: benchmark.Result) -> None:
         self._resultado = resultado

@@ -258,9 +258,6 @@ instalador, y F-M24 y F-M25 —los topes del protocolo del ayudante y el
   acento, idioma o unidades durante una prueba la mata sin decirlo: el hilo
   emite sobre la página destruida y el resultado no llega al historial. Le
   pasa lo mismo a la medida de memoria y a `SeguidorDeRecortes` (leído).
-* **F-M6 · `ui/pages/performance.py`** · «Borrar historial» llama a
-  `self.history.set_rows([])`, un atributo que no existe: el archivo se borra
-  y la tarjeta sigue con las filas viejas.
 * **F-M7 · `ui/pages/performance.py`** · la carga de fondo máxima no se ve:
   `CONDITION_FIELDS` no incluye su fila e `InfoGrid.set` descarta en silencio
   una fila que no existe.
