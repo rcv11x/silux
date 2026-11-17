@@ -154,7 +154,14 @@ class PerformancePage(QScrollArea):
         self.open_folder.clicked.connect(self._abrir_carpeta)
         self.clear_history = QPushButton(_("bench.button.clear"))
         self.clear_history.clicked.connect(self._borrar_historial)
+        # Solo mientras haya alguna: tras cambiar de escala el historial se
+        # queda con pruebas que no se comparan con nada, y quitarlas una a una
+        # es un diálogo por cada una.
+        self.clear_other_scales = QPushButton(_("bench.button.clearold"))
+        self.clear_other_scales.clicked.connect(self._borrar_las_de_otra_escala)
+        self.clear_other_scales.hide()
         acciones.addWidget(self.open_folder)
+        acciones.addWidget(self.clear_other_scales)
         acciones.addWidget(self.clear_history)
         acciones.addStretch(1)
         self.history_card.body.addLayout(acciones)
@@ -502,6 +509,22 @@ class PerformancePage(QScrollArea):
             history.clear()
             self._pintar_historial(history.load())
 
+    def _borrar_las_de_otra_escala(self) -> None:
+        """Quita de una vez las pruebas que no se midieron con esta escala."""
+        from PySide6.QtWidgets import QMessageBox
+
+        cuantas = sum(1 for e in history.load() if e.score_version != score.VERSION)
+        if not cuantas:
+            return
+        respuesta = QMessageBox.question(
+            self, _("bench.button.clearold"),
+            _("bench.dialog.clearold.body.one" if cuantas == 1
+              else "bench.dialog.clearold.body").format(n=cuantas, version=score.VERSION),
+            QMessageBox.StandardButton.Cancel | QMessageBox.StandardButton.Yes,
+            QMessageBox.StandardButton.Cancel)
+        if respuesta == QMessageBox.StandardButton.Yes:
+            self._pintar_historial(history.remove_other_scales(score.VERSION))
+
     def _on_finished(self, resultado: benchmark.Result) -> None:
         self._resultado = resultado
         self.run_button.setEnabled(True)
@@ -579,6 +602,7 @@ class PerformancePage(QScrollArea):
         self.history_note.setText(
             _("bench.history.oldscale").format(n=viejas) if viejas else "")
         self.history_note.setVisible(bool(viejas))
+        self.clear_other_scales.setVisible(bool(viejas))
         self.history_card.show()
 
         if actual is not None:

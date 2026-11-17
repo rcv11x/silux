@@ -378,6 +378,17 @@ def remove(timestamp: float) -> list[Entry]:
     return quedan
 
 
+def remove_other_scales(version: int) -> list[Entry]:
+    """Borra las pruebas medidas con otra escala que `version`.
+
+    También las que no dicen con cuál se midieron: son de antes de que la
+    escala tuviera número. Su cifra no se puede poner al lado de las de ahora.
+    """
+    quedan = [e for e in load() if e.score_version == version]
+    save(quedan)
+    return quedan
+
+
 def rename(timestamp: float, label: str) -> list[Entry]:
     """Le pone (o le quita) el nombre a una prueba."""
     entradas = []

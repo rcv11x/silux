@@ -58,5 +58,44 @@ class TestBorrarElHistorial(unittest.TestCase):
         self.assertTrue(self.pagina.history_card.isVisible())
 
 
+@unittest.skipIf(QApplication is None, "sin PySide6")
+class TestBorrarLasDeOtraEscala(TestBorrarElHistorial):
+    """Tras cambiar de escala, el historial se queda con pruebas que ya no
+    se pueden comparar con nada. Borrarlas una a una eran trece diálogos."""
+
+    def test_el_modulo_deja_solo_las_de_esta(self):
+        quedan = history.remove_other_scales(score.VERSION)
+        self.assertEqual([e.timestamp for e in quedan], [300])
+        self.assertEqual([e.timestamp for e in history.load()], [300])
+
+    def test_el_boton_esta_mientras_haya_alguna(self):
+        self.assertTrue(self.pagina.clear_other_scales.isVisible())
+        self.pagina._pintar_historial([prueba(300, score.VERSION)])
+        self.assertFalse(self.pagina.clear_other_scales.isVisible())
+
+    def test_pregunta_diciendo_cuantas_y_borra_solo_esas(self):
+        with self._contestando(QMessageBox.StandardButton.Yes) as pregunta:
+            self.pagina.clear_other_scales.click()
+        self.assertIn("2", pregunta.call_args.args[2])
+        self.assertEqual([e.timestamp for e in history.load()], [300])
+        # La tarjeta sigue, con la que queda, sin la nota y sin el botón.
+        self.assertTrue(self.pagina.history_card.isVisible())
+        self.assertFalse(self.pagina.history_note.isVisible())
+        self.assertFalse(self.pagina.clear_other_scales.isVisible())
+
+    def test_si_todas_eran_de_otra_escala_la_tarjeta_se_va(self):
+        history.save([prueba(200, score.VERSION - 1)])
+        self.pagina._pintar_historial(history.load())
+        with self._contestando(QMessageBox.StandardButton.Yes):
+            self.pagina.clear_other_scales.click()
+        self.assertEqual(history.load(), [])
+        self.assertFalse(self.pagina.history_card.isVisible())
+
+    def test_si_se_dice_que_no_se_quedan(self):
+        with self._contestando(QMessageBox.StandardButton.Cancel):
+            self.pagina.clear_other_scales.click()
+        self.assertEqual(len(history.load()), 3)
+
+
 if __name__ == "__main__":
     unittest.main()
