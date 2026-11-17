@@ -84,9 +84,9 @@ SENSOR_FIELDS = ("gpu.sensor.state",
 # «Memoria de video» y dos de catorce en «Sensores», toda ella rayas.
 #
 # Aquí solo entra lo que se puede afirmar. Lo dudoso se queda en guion, que
-# para eso está: el enlace PCIe no aparece en esta tabla aunque la Iris Xe lo
-# tenga vacío, porque la Radeon 740M también es integrada y publica su
-# «PCIe 4.0 × 16». Ahí «integrada» no implica «sin enlace».
+# para eso está: el enlace PCIe no se esconde por ser integrada, porque la
+# Radeon 740M lo es y publica su «PCIe 4.0 × 16». «Integrada» no implica «sin
+# enlace»; «integrada de Intel» sí (`NA_INTEL_INTEGRADA`).
 #
 # Las claves van crudas y se traducen al usarlas: `_()` en una constante de
 # módulo se resuelve al importar, cuando todavía no se sabe qué idioma quiere
@@ -111,6 +111,24 @@ NA_SIN_VRAM = {
 NA_INTEGRADA = {
     "sensors": (("gpu.sensor.vrgfx", "gpu.sensor.vrsoc", "gpu.sensor.vrmem",
                  "gpu.sensor.fan"), "gpu.na.integrated"),
+}
+
+# Lo que solo cuenta el driver de AMD, visto desde una integrada de Intel.
+# Las unidades de rasterizado y los motores de sombreado salen de una consulta
+# de `amdgpu`; el reloj del SoC, su voltaje y el perfil de rendimiento son de
+# la telemetría y del gestor de energía de ese driver; y el voltaje del
+# núcleo, en Intel, solo lo publican las dedicadas (Arc). En una UHD no son
+# datos que falten por leer: no hay de dónde. Tampoco el enlace: la integrada
+# de Intel es un dispositivo del propio procesador (00:02.0) y no cuelga de
+# ninguna ranura; la de AMD sí publica el suyo, y por eso esto no vale para
+# cualquier integrada. El estado de limitación no está
+# aquí a propósito: `i915` lo publica en algunas generaciones y silux aún no
+# lo lee, así que su guion sigue diciendo la verdad.
+NA_INTEL_INTEGRADA = {
+    "card": (("gpu.field.rops", "gpu.field.shaders"), "gpu.na.intel.card"),
+    "clocks": (("SoC", "gpu.clock.profile", "gpu.clock.link", "gpu.clock.linkmax"),
+               "gpu.na.intel.clocks"),
+    "sensors": (("gpu.sensor.voltage", "gpu.sensor.vsoc"), "gpu.na.intel.sensors"),
 }
 
 # Una Intel no publica su temperatura por ningún camino. Un guion ahí se lee
@@ -149,9 +167,18 @@ def no_aplica(gpu: Gpu) -> tuple[dict[str, set[str]], dict[str, str]]:
         reglas.append(NA_INTEGRADA)
     if gpu.no_temperature_sensor and gpu.temp_c is None:
         reglas.append(NA_SIN_TEMPERATURA)
+    if gpu.integrated and gpu.driver in ("i915", "xe"):
+        regla = dict(NA_INTEL_INTEGRADA)
+        if render.pcie_link(gpu.link) != render.DASH:
+            # Si alguna publicase un enlace de verdad, se enseña.
+            claves, frase = regla["clocks"]
+            regla["clocks"] = (tuple(c for c in claves if not c.startswith("gpu.clock.link")),
+                               "gpu.na.intel.clocks.link")
+        reglas.append(regla)
 
-    ocultos: dict[str, set[str]] = {"memory": set(), "clocks": set(), "sensors": set()}
-    frases: dict[str, list[str]] = {"memory": [], "clocks": [], "sensors": []}
+    tarjetas = ("card", "memory", "clocks", "sensors")
+    ocultos: dict[str, set[str]] = {tarjeta: set() for tarjeta in tarjetas}
+    frases: dict[str, list[str]] = {tarjeta: [] for tarjeta in tarjetas}
     for regla in reglas:
         for tarjeta, (claves, frase) in regla.items():
             ocultos[tarjeta].update(claves)
@@ -348,6 +375,7 @@ class GpuSection(QWidget):
         for name in SENSOR_FIELDS:
             self.sensors.add(_(name))
         card.body.addWidget(self.sensors)
+        self.sensors.locked_clicked.connect(self.elevation_requested)
         self.sensors_pie = self._pie(card)
         return card
 
@@ -464,8 +492,14 @@ class GpuSection(QWidget):
         s(_("gpu.sensor.voltage"), render.volts(gpu.voltage_v))
         s(_("gpu.sensor.vsoc"), render.volts(gpu.voltage_soc_v))
         s(_("gpu.sensor.vmem"), render.volts(gpu.voltage_memory_v))
-        s(_("gpu.sensor.videouse"), render.percent(gpu.video_busy_percent),
-          tooltip=_("gpu.tip.videouse"))
+        candado = getattr(self, "_candado", None)
+        if gpu.video_busy_percent is None and candado is not None:
+            # Sale del mismo contador que el uso: con candado, no con guion.
+            self.sensors.set_locked(_("gpu.sensor.videouse"), self._p.info,
+                                    render.lock_tooltip(candado))
+        else:
+            s(_("gpu.sensor.videouse"), render.percent(gpu.video_busy_percent),
+              tooltip=_("gpu.tip.videouse"))
 
         self._apply_no_aplica(gpu)
         self._apply_engines(gpu)
@@ -502,6 +536,7 @@ class GpuSection(QWidget):
         self.tile_temp.setVisible("gpu.sensor.hotspot" not in ocultos["sensors"])
 
         for nombre, grid, campos, pie in (
+                ("card", self.card, CARD_FIELDS, self.card_pie),
                 ("memory", self.memory, MEMORY_FIELDS, self.memory_pie),
                 ("clocks", self.clocks, CLOCK_FIELDS, self.clocks_pie),
                 ("sensors", self.sensors, SENSOR_FIELDS, self.sensors_pie)):

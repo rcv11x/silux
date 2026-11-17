@@ -1638,17 +1638,32 @@ class TestNoAplica(unittest.TestCase):
         self.assertNotIn("gpu.clock.core", ocultos["clocks"])
         self.assertNotIn("gpu.sensor.power", ocultos["sensors"])
 
-    def test_el_enlace_pcie_no_se_esconde_nunca(self):
+    def test_el_enlace_pcie_no_se_esconde_por_ser_integrada(self):
         """La Radeon 740M es integrada y publica «PCIe 4.0 × 16».
 
-        Ahí «integrada» no implica «sin enlace», así que un enlace vacío es un
+        «Integrada» no implica «sin enlace»: en una AMD, un enlace vacío es un
         dato que falta y le corresponde su guion.
         """
         from silux.ui.pages.graphics import no_aplica
 
-        ocultos, _pies = no_aplica(self._iris_xe())
+        radeon = Gpu(index=0, name="Radeon 740M", vendor="AMD", driver="amdgpu",
+                     integrated=True)
+        ocultos, _pies = no_aplica(radeon)
         self.assertNotIn("gpu.clock.link", ocultos["clocks"])
         self.assertNotIn("gpu.clock.linkmax", ocultos["clocks"])
+
+    def test_pero_la_de_intel_va_dentro_del_procesador_y_no_tiene_enlace(self):
+        import dataclasses
+        from silux.ui.pages.graphics import no_aplica
+
+        iris = dataclasses.replace(self._iris_xe(), driver="i915")
+        ocultos, pies = no_aplica(iris)
+        self.assertIn("gpu.clock.link", ocultos["clocks"])
+        self.assertIn("gpu.clock.linkmax", ocultos["clocks"])
+        self.assertIn("PCIe", pies["clocks"])
+        # Con el driver sin identificar no se afirma nada.
+        ocultos, _pies = no_aplica(dataclasses.replace(iris, driver=None))
+        self.assertNotIn("gpu.clock.link", ocultos["clocks"])
 
     def test_una_integrada_con_memoria_propia_conserva_su_ficha(self):
         """La 740M reserva 512 MB de DDR5 y los publica por el ioctl."""
@@ -1670,7 +1685,8 @@ class TestNoAplica(unittest.TestCase):
         rx = Gpu(index=0, name="Radeon RX 9070 XT", vendor="AMD", integrated=False,
                  memory=GpuMemory(total_bytes=16 * 1024**3))
         ocultos, pies = no_aplica(rx)
-        self.assertEqual(ocultos, {"memory": set(), "clocks": set(), "sensors": set()})
+        self.assertEqual(ocultos, {"card": set(), "memory": set(), "clocks": set(),
+                                   "sensors": set()})
         self.assertEqual(set(pies.values()), {""})
 
     def test_si_no_se_sabe_si_es_integrada_no_se_esconde_nada(self):

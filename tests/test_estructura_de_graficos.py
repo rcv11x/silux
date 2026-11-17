@@ -113,6 +113,67 @@ class TestLaPaginaDeGraficos(unittest.TestCase):
         self.assertIn(_("gpu.sensor.videouse"),
                       [e.text() for e in ficha.findChildren(QLabel) if e.isVisible()])
 
+    def test_una_integrada_de_intel_no_ensena_guiones_de_lo_que_solo_cuenta_amd(self):
+        """«Unidades de rasterizado —», «Motores de sombreado —», «SoC —»,
+        «Perfil de rendimiento —», «Voltaje —» y «Voltaje del SoC —»: seis
+        guiones de datos que en una UHD no existen. Se esconden y se nombran."""
+        ficha = self._ficha("i5-10400")
+        gpu = self.fotos["i5-10400"].gpus[0]
+        self.assertEqual((gpu.driver, gpu.integrated), ("i915", True))
+        for rejilla, pie, claves in (
+                (ficha.card, ficha.card_pie, ("gpu.field.rops", "gpu.field.shaders")),
+                (ficha.clocks, ficha.clocks_pie, ("SoC", "gpu.clock.profile",
+                                                  "gpu.clock.link", "gpu.clock.linkmax")),
+                (ficha.sensors, ficha.sensors_pie, ("gpu.sensor.voltage", "gpu.sensor.vsoc"))):
+            for clave in claves:
+                with self.subTest(campo=clave):
+                    self.assertFalse(rejilla._values[_(clave)].isVisible())
+                    self.assertFalse(rejilla._names[_(clave)].isVisible())
+            self.assertTrue(pie.isVisible())
+        self.assertIn(_("gpu.na.intel.card"), ficha.card_pie.text())
+        self.assertIn(_("gpu.na.intel.clocks"), ficha.clocks_pie.text())
+        self.assertIn(_("gpu.na.intel.sensors"), ficha.sensors_pie.text())
+        # Lo que sí tiene se sigue viendo: sus unidades de ejecución.
+        self.assertEqual(ficha.card._values[_("gpu.field.compute")].full_text(),
+                         render.compute_units(gpu))
+        self.assertIn("23", render.compute_units(gpu))
+        # Y ningún guion queda en la tarjeta ni en los relojes.
+        for rejilla in (ficha.card, ficha.clocks):
+            visibles = [v.full_text() for v in rejilla._values.values() if v.isVisible()]
+            self.assertNotIn(render.DASH, visibles)
+
+    def test_en_la_amd_esas_filas_siguen_con_su_dato(self):
+        ficha = self._ficha("5800x3d")
+        for rejilla, clave in ((ficha.card, "gpu.field.rops"), (ficha.card, "gpu.field.shaders"),
+                               (ficha.clocks, "SoC"), (ficha.clocks, "gpu.clock.profile"),
+                               (ficha.sensors, "gpu.sensor.voltage"),
+                               (ficha.sensors, "gpu.sensor.vsoc")):
+            with self.subTest(campo=clave):
+                valor = rejilla._values[_(clave)]
+                self.assertTrue(valor.isVisible())
+                self.assertNotEqual(valor.full_text(), render.DASH)
+        self.assertFalse(ficha.card_pie.isVisible())
+
+    def test_el_uso_del_motor_de_video_lleva_candado_si_falta_por_permisos(self):
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.graphics import GraphicsPage
+
+        foto = self.fotos["i5-10400"]
+        self.assertIsNotNone(foto.permission_note("gpus.0.usage"))
+        pagina = GraphicsPage(theme.palette_for(self.app, "dark"), Preferences().normalized())
+        self.addCleanup(pagina.deleteLater)
+        pagina.resize(1200, 900)
+        pagina.show()
+        pagina.apply(foto)
+        self.app.processEvents()
+        ficha = pagina._sections[0]
+        self.assertTrue(ficha.sensors.is_locked(_("gpu.sensor.videouse")))
+        pedidos = []
+        ficha.elevation_requested.connect(lambda: pedidos.append(1))
+        ficha.sensors._candados[_("gpu.sensor.videouse")].clicked.emit()
+        self.assertEqual(pedidos, [1])
+
     def test_ahora_mismo_junta_las_tres_barras_cada_una_con_su_nombre(self):
         ficha = self._ficha("5800x3d")
         gpu = self.fotos["5800x3d"].gpus[0]
