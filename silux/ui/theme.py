@@ -420,10 +420,10 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         font-size: {m.small_pt}px;
         font-weight: 600;
         letter-spacing: 1.1px;
-        border-bottom: 1px solid {p.line};
-        padding-bottom: 4px;
     }}
     QWidget#TableBody {{ background: transparent; }}
+    /* La raya bajo la cabecera de una tabla: una, de lado a lado. */
+    QFrame#TableRule {{ background: {p.line}; border: none; }}
     /* Un sí y un no en una tabla. Verde y un rojo suave: que una tarjeta no
        codifique AV1 no es una avería, así que no lleva el rojo de un fallo
        ni el amarillo de un estado del equipo. El símbolo es distinto en cada

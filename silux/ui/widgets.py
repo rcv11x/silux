@@ -1582,6 +1582,47 @@ def clear_layout(layout) -> None:
             child.deleteLater()
 
 
+class _CuerpoDeTabla(QWidget):
+    """El interior de una `Table`, con la raya que separa la cabecera.
+
+    La raya es una sola, de lado a lado, y va en mitad del hueco entre los
+    títulos y la primera fila. No es un borde de cada título: la rejilla deja
+    aire entre columnas y saldría a trozos. Tampoco ocupa una fila de la
+    rejilla, que alejaría la cabecera de sus datos; se coloca encima, cada vez
+    que la rejilla se recoloca.
+    """
+
+    def __init__(self, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self.setObjectName("TableBody")
+        self.raya = QFrame(self)
+        self.raya.setObjectName("TableRule")
+        self.raya.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._cabecera: Optional[QLabel] = None
+
+    def set_cabecera(self, etiqueta: QLabel) -> None:
+        self._cabecera = etiqueta
+        self._colocar()
+
+    def _colocar(self) -> None:
+        if self._cabecera is None or self.layout() is None:
+            return
+        hueco = self.layout().verticalSpacing()
+        y = self._cabecera.geometry().bottom() + 1 + max(0, (hueco - 1) // 2)
+        self.raya.setGeometry(0, y, self.width(), 1)
+        self.raya.raise_()
+
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        self._colocar()
+
+    def event(self, event) -> bool:  # noqa: N802
+        resultado = super().event(event)
+        if event.type() == QEvent.Type.LayoutRequest:
+            self._colocar()
+        return resultado
+
+
 class Table(QScrollArea):
     """Tabla ligera de cabecera y filas, sin el peso de un QTableWidget.
 
@@ -1610,8 +1651,7 @@ class Table(QScrollArea):
         # Con nombre propio y sin fondo: con el de la página («Root»), que es
         # más oscuro que la tarjeta, cada tabla era un bloque negro dentro de
         # la suya.
-        inner = QWidget()
-        inner.setObjectName("TableBody")
+        inner = _CuerpoDeTabla()
         self.setWidget(inner)
 
         self._grid = QGridLayout(inner)
@@ -1633,6 +1673,8 @@ class Table(QScrollArea):
                  else Qt.AlignmentFlag.AlignLeft) | Qt.AlignmentFlag.AlignBottom
             )
             self._grid.addWidget(label, 0, column)
+            if column == 0:
+                inner.set_cabecera(label)
 
         # El hueco sobrante va detrás de la última columna, no dentro de la
         # primera. Estirando la primera, en pantalla completa las cifras
