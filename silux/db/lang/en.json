@@ -952,6 +952,7 @@
   "storage.health.hint": "The helper that gets launched only knows how to ask for diagnostics and read a few system tables: it runs no commands and writes nothing.",
   "storage.health.read": "Diagnostics read from {n} of {total} drives. The rest do not publish them or did not answer.",
   "storage.loading": "Reading the disks…",
+  "storage.na.hdd.life": "A spinning disk has no “life left”: that is the wear of an SSD's cells.",
   "storage.none": "No drives",
   "storage.notemp": "no drive publishes its temperature",
   "storage.subtitle": "{tam} used across {n} mounted partitions",

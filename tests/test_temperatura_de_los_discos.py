@@ -70,7 +70,12 @@ class TestLaFichaDeCadaDisco(unittest.TestCase):
             rejilla = pagina._grids[disco.name]
             for clave in DEL_DIAGNOSTICO[1:]:
                 with self.subTest(disco=disco.name, campo=clave):
-                    self.assertTrue(rejilla.is_locked(_(clave)))
+                    # La vida restante es de los SSD: en un disco de platos
+                    # la fila no está (tests/test_estructura_de_almacenamiento.py).
+                    if clave == "storage.field.life" and disco.rotational:
+                        self.assertFalse(rejilla.is_locked(_(clave)))
+                    else:
+                        self.assertTrue(rejilla.is_locked(_(clave)))
 
     def test_el_candado_pide_los_permisos(self):
         pagina = self._pagina(self.amd)

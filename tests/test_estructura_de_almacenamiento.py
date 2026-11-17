@@ -56,6 +56,31 @@ class TestLaFichaDeUnDisco(unittest.TestCase):
             self.assertTrue(pagina._grids["nvme0n1"]._values[enlace].isVisible())
             self.assertIn("PCIe", pagina._grids["nvme0n1"]._values[enlace].full_text())
 
+    def test_un_disco_de_platos_no_tiene_vida_restante(self):
+        """«Vida restante» con candado en un HDD prometía un dato que, con
+        permisos, era un guion: el desgaste es de las celdas de un SSD."""
+        vida = _("storage.field.life")
+        platos = [d.name for d in self.foto.disks if d.rotational]
+        solidos = [d.name for d in self.foto.disks if d.rotational is False]
+        self.assertTrue(platos and solidos, (platos, solidos))
+        with pantalla.Ventana(self.foto) as ventana:
+            pagina = self._pagina(ventana)
+            for nombre in platos:
+                with self.subTest(disco=nombre):
+                    rejilla = pagina._grids[nombre]
+                    self.assertFalse(rejilla._names[vida].isVisible())
+                    self.assertFalse(rejilla._values[vida].isVisible())
+                    self.assertFalse(rejilla.is_locked(vida))
+                    self.assertTrue(pagina._pies[nombre].isVisible())
+                    self.assertEqual(pagina._pies[nombre].text(), _("storage.na.hdd.life"))
+                    # Lo demás del diagnóstico sigue con su candado.
+                    self.assertTrue(rejilla.is_locked(_("storage.field.hours")))
+            for nombre in solidos:
+                with self.subTest(disco=nombre):
+                    self.assertTrue(pagina._grids[nombre]._names[vida].isVisible())
+                    self.assertTrue(pagina._grids[nombre].is_locked(vida))
+                    self.assertFalse(pagina._pies[nombre].isVisible())
+
     def test_en_la_ficha_no_queda_un_guion_que_no_sea_no_lo_se(self):
         # Sin permisos, lo del diagnóstico lleva candado; lo demás tiene dato.
         with pantalla.Ventana(self.foto) as ventana:

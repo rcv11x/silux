@@ -952,6 +952,7 @@
   "storage.health.hint": "El ayudante que se lanza solo sabe pedir diagnóstico y leer unas tablas del sistema: no ejecuta órdenes ni escribe nada.",
   "storage.health.read": "Leído el diagnóstico de {n} de {total} unidades. Las que faltan no lo publican o no respondieron.",
   "storage.loading": "Leyendo los discos…",
+  "storage.na.hdd.life": "Un disco de platos no tiene «vida restante»: es el desgaste de las celdas de un SSD.",
   "storage.none": "Sin unidades",
   "storage.notemp": "ningún disco publica su temperatura",
   "storage.subtitle": "{tam} ocupados en {n} particiones montadas",

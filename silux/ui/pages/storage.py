@@ -20,7 +20,7 @@ from ...i18n import _
 from ...model import Disk, Snapshot
 from ...settings import Preferences
 from .. import theme
-from ..theme import Palette
+from ..theme import Palette, ui_font
 from ..widgets import (Plegable, Card, ChipRow, InfoGrid, Notice, ResponsiveRow,
                        StackedBar, StatTile, Table,
                        boton_de_permiso_permanente, clear_layout, dismiss_buttons)
@@ -68,6 +68,7 @@ class StoragePage(QScrollArea):
         self._candado = None
         self._details: dict = {}
         self._folds: dict = {}
+        self._pies: dict = {}
         self._prefs = prefs
         m = theme.METRICS
 
@@ -391,6 +392,14 @@ class StoragePage(QScrollArea):
                 card.body.addWidget(barra)
                 card.body.addWidget(grid)
                 grid.locked_clicked.connect(self.elevation_requested)
+                # Lo que este disco no tiene, dicho en vez de un guion.
+                pie = QLabel("")
+                pie.setObjectName("Muted")
+                pie.setWordWrap(True)
+                pie.setFont(ui_font(theme.METRICS.small_pt))
+                pie.hide()
+                card.body.addWidget(pie)
+                self._pies[disco.name] = pie
                 pliegue = Plegable(_("storage.card.details"))
                 detalle = InfoGrid()
                 for campo in DISK_DETAIL_FIELDS:
@@ -454,6 +463,13 @@ class StoragePage(QScrollArea):
         f(_("storage.field.life"),
           f"{salud.life_left_percent} %" if salud.life_left_percent is not None else d,
           tooltip=_("storage.tip.life"))
+        # La vida restante es el desgaste de las celdas de un SSD. Un disco
+        # de platos no lleva esa cuenta: ni guion ni candado, no existe.
+        de_platos = disco.rotational is True
+        grid.set_visible(_("storage.field.life"), not de_platos)
+        if (pie := self._pies.get(disco.name)) is not None:
+            pie.setText(_("storage.na.hdd.life") if de_platos else "")
+            pie.setVisible(de_platos)
         self._poner_candados(grid, disco)
 
     def _por_que_sin_temperatura(self, disco: Disk) -> str:
@@ -475,7 +491,8 @@ class StoragePage(QScrollArea):
             "gpu.sensor.temp": disco.temp_c is None,
             "storage.field.hours": True,
             "storage.field.written": not salud.written_bytes,
-            "storage.field.life": salud.life_left_percent is None,
+            "storage.field.life": salud.life_left_percent is None
+            and disco.rotational is not True,
         }
         for clave, falta in faltan.items():
             if falta:
