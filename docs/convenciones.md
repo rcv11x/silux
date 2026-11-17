@@ -60,6 +60,15 @@ pintarlo: probaban el proveedor, la interpretación de los bits y el reparto de
 avisos, y ninguno miraba si eso se veía. Probar la fuente no es probar que se
 ve, y lo que no se ve no está hecho.
 
+**Ningún cambio visual se da por hecho sin comprobarlo en la captura.** El
+commit `03ef40b` dice que la tabla lleva una raya bajo la cabecera y la tabla
+no la llevaba: la regla estaba escrita en la hoja de estilos, el test miraba
+la hoja y nadie miró la imagen. Lo que se ve se comprueba donde se ve: se saca
+la captura de después, se abre y se busca en ella lo que el cambio promete. Y
+**el mensaje del commit dice solo lo que se ve en esa captura**, no lo que el
+código pretende: un mensaje ya empujado no se reescribe, así que el que afirma
+algo que no pasa se queda mintiendo en el historial.
+
 **Un commit por cambio lógico.** Un cambio lógico es una causa, no un archivo
 ni un arreglo: cuatro correcciones que salen de la misma causa son un commit,
 no cuatro. El arreglo y el test que lo vigila van en el mismo commit, y lo que
@@ -90,6 +99,11 @@ La interfaz va en **español neutro**: `video` y no «vídeo», `archivo` y no
 «fichero», `dispositivo` y no «aparato», `equipo` y no «ordenador». Nueve de
 cada diez hispanohablantes están al otro lado del Atlántico y no hay motivo
 para cerrarles la puerta por una tilde.
+
+**El separador decimal es el punto y no se toca**: «31.3 GB», «4.55 GHz».
+No es un descuido que quede por arreglar. Si algún día se cambia, no será por
+una coma fija: seguirá el idioma del sistema, que es quien sabe cómo escribe
+los números quien está delante.
 
 Los comentarios del código no siguen esa regla y van en el español del autor:
 no los ve nadie desde la ventana y no se traducen.

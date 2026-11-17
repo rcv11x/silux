@@ -19,13 +19,13 @@ Por hacer, nada de esto está empezado:
 - **Sensores**: plegar por defecto las interfaces de red sin tráfico
   (`interfaz1`, `tailscale0`).
 - **Textos**: «Núcleo 0 MHz» con la gráfica en reposo → «en reposo»; «Uso de
-  video» en «Consumo y temperaturas» → «Uso del motor de vídeo».
+  video» en «Consumo y temperaturas» → «Uso del motor de video», sin tilde.
 - **AppImage con el logo y los iconos nuevos**: sin construir. Comprobar en
   el CI de `interfaz` que los iconos de la barra lateral salen dentro del
   paquete.
-- **Lo que ya había sin hacer**: la coma decimal, los estados vacíos de una
-  ficha, los identificadores en monoespaciada y medir el contraste de la
-  paleta.
+- **Lo que ya había sin hacer**: los estados vacíos de una ficha, los
+  identificadores en monoespaciada y medir el contraste de la paleta. (La
+  coma decimal no se toca: está en `docs/convenciones.md`.)
 
 El CI de `interfaz` no se ha lanzado: `gh workflow run appimage.yml --ref
 interfaz`. Las capturas están en `~/Imágenes/silux-test/interfaz/` de la
@@ -144,8 +144,10 @@ tabla):
 
 Lo que queda de este documento sin hacer:
 
-- **La coma decimal** y los decimales de las temperaturas en las cifras
-  grandes: son de `render.py` y de sus tests, no del estilo.
+- **Los decimales de las temperaturas** en las cifras grandes: son de
+  `render.py` y de sus tests, no del estilo. **La coma decimal, decidido
+  que no**: el punto se queda (`docs/convenciones.md`, «El idioma»); lo que
+  más abajo la propone ya no vale.
 - **Los estados vacíos de una ficha** (una raya y un hueco donde no hay
   dato): piden tocar `StatTile`, que tiene dos fallos abiertos (F-M2).
 - **Los valores que son identificadores** (`0000:0c:00.0`, `0xa201213`) van
