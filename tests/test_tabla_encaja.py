@@ -189,21 +189,46 @@ class TestLasPaginasCortasEnUnaVentanaGrande(unittest.TestCase):
                 self.assertLessEqual(max(anchos) - min(anchos), 2)
                 self.assertGreater(cajas[-1][0] + cajas[-1][2], pagina.viewport().width() * 0.95)
 
-    def test_en_compacto_a_900_van_de_dos_en_dos_y_la_que_sobra_a_lo_ancho(self):
-        ventana = self._ventana(900, 680, densidad="compact")
+    def _comprobar_compacto(self, ventana):
+        """De dos en dos con la que sobra a lo ancho, o de una en una.
+
+        Cuántas caben depende de la tipografía: con la del CI (DejaVu, más
+        ancha) a 900 px van de una en una, y con la de aquí de dos en dos.
+        Las dos cosas están bien; lo que no puede pasar es que una fila quede
+        a medias con un hueco a su derecha, ni que algo se salga.
+        """
         for seccion, rejillas in (("Placa base", ("board", "firmware", "chipset", "platform")),
                                   ("Sistema", ("os", "kernel", "activity"))):
             with self.subTest(seccion=seccion):
-                _pagina, cajas = self._tarjetas(ventana, seccion, rejillas)
-                (x1, y1, w1), (x2, y2, w2), (x3, y3, w3) = cajas[:3]
-                self.assertEqual(y1, y2)
-                self.assertGreater(y3, y1)
-                self.assertEqual(x3, x1)
-                if len(cajas) == 3:                 # la que sobra llena la fila
-                    self.assertAlmostEqual(w3, x2 + w2 - x1, delta=2)
-                else:                               # cuatro: dos filas de dos
-                    self.assertEqual(cajas[3][1], y3)
-                    self.assertAlmostEqual(w3, w1, delta=2)
+                pagina, cajas = self._tarjetas(ventana, seccion, rejillas)
+                filas: dict[int, list] = {}
+                for x, y, ancho in cajas:
+                    filas.setdefault(y, []).append((x, ancho))
+                self.assertGreater(len(filas), 1)       # a 900 no caben en una
+                borde = max(x + ancho for x, _y, ancho in cajas)
+                self.assertLessEqual(borde, pagina.viewport().width())
+                for y, fila in filas.items():
+                    fila.sort()
+                    # Cada fila llega al mismo borde derecho: ninguna a medias.
+                    self.assertAlmostEqual(fila[-1][0] + fila[-1][1], borde, delta=2, msg=str(filas))
+                    self.assertEqual(fila[0][0], min(x for x, _y, _a in cajas))
+
+    def test_en_compacto_a_900_ninguna_fila_queda_a_medias(self):
+        self._comprobar_compacto(self._ventana(900, 680, densidad="compact"))
+
+    def test_y_tampoco_con_la_letra_del_ci(self):
+        from PySide6.QtGui import QFont, QFontDatabase
+
+        app = qt.app()
+        ancha = "DejaVu Sans"
+        if ancha not in QFontDatabase.families():
+            self.skipTest(f"no está instalada {ancha}")
+        de_antes = app.font()
+        self.addCleanup(app.setFont, de_antes)
+        letra = QFont(de_antes)
+        letra.setFamily(ancha)
+        app.setFont(letra)
+        self._comprobar_compacto(self._ventana(900, 680, densidad="compact"))
 
 
 @unittest.skipIf(QApplication is None, "sin PySide6")
