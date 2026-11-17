@@ -81,6 +81,33 @@ def _limits(package: pathlib.Path) -> tuple[Optional[float], Optional[float]]:
     return long_term, short_term
 
 
+class PowerLimits(Provider):
+    """PL1 y PL2: los límites que el firmware programó, sin esperar al consumo.
+
+    Están al lado de los contadores de energía, pero no son lo mismo: los
+    contadores los reserva el kernel a root y los límites se leen con
+    cualquier usuario. `RaplPower` solo los ponía cuando conseguía medir, así
+    que sin permisos un Intel no decía sus límites teniéndolos a la vista.
+    Va delante de él; cuando hay consumo, `RaplPower` escribe la ficha entera.
+    """
+
+    name = "power-limits"
+    provides = "cpu.power.limits"
+
+    def __init__(self) -> None:
+        self._limites: Optional[tuple] = None
+
+    def available(self) -> bool:
+        return bool(_packages())
+
+    def collect(self, draft: Draft) -> None:
+        if self._limites is None:
+            self._limites = _limits(_packages()[0])
+        sostenido, pico = self._limites
+        if sostenido or pico:
+            draft.cpu_extra["power"] = Power(limit_long_w=sostenido, limit_short_w=pico)
+
+
 class RaplPower(Provider):
     name = "rapl"
     provides = "cpu.power"

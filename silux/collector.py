@@ -44,8 +44,10 @@ from .providers import (
     SysfsClocks,
     SysfsTopology,
     ConnectedDevices,
+    CpuIdle,
     PciDevices,
     PlatformInfo,
+    PowerLimits,
     SystemIdentity,
     SystemSecurity,
     SystemState,
@@ -77,6 +79,7 @@ DEFAULT_PROVIDERS: tuple[type[Provider], ...] = (
     SysfsClocks,
     TurboState,
     CpuUsage,
+    CpuIdle,            # y cuánto descansa cada hilo, que también se resta
     GpuState,
     NetworkInterfaces,  # las interfaces y su ritmo, que se mide entre muestreos
     Disks,              # y los discos, con el suyo
@@ -85,6 +88,7 @@ DEFAULT_PROVIDERS: tuple[type[Provider], ...] = (
     ConnectedDevices,   # lo enchufado: USB, sonido, cámaras y Bluetooth
     NvidiaGpus,
     SystemState,
+    PowerLimits,        # PL1 y PL2, que se leen sin permisos
     RaplPower,
     ImcTraffic,        # el tráfico de la memoria, que se mide entre muestreos
     HwmonSensors,       # nombra los aparatos con lo que ya se sabe

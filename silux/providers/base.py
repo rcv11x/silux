@@ -125,6 +125,7 @@ class Draft:
             package_temp_c=self.cpu_extra.get("package_temp_c"),
             power=self.cpu_extra.get("power") or Power(),
             load_average=tuple(self.cpu_extra.get("load_average") or ()),
+            idle_states=tuple(self.cpu_extra.get("idle_states") or ()),
         )
 
         return Snapshot(

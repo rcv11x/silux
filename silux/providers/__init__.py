@@ -16,10 +16,11 @@ from .procfs import CpuUsage
 from .battery import Batteries
 from .msr_voltage import MsrVoltage
 from .imc import ImcTraffic
-from .rapl import RaplPower
+from .rapl import RaplPower, PowerLimits
 from .spd_modules import SpdModules
 from .storage import Disks
 from .sysfs_cpu import SysfsClocks, SysfsTopology
+from .cpuidle import CpuIdle
 from .devices import ConnectedDevices
 from .pci import PciDevices, PlatformInfo
 from .system import SystemIdentity, SystemSecurity, SystemState
@@ -32,6 +33,6 @@ __all__ = [
     "RaplPower", "ImcTraffic", "DerivedSensors",
     "Batteries",
     "DrmGpus", "GpuState", "GpuApis", "NvidiaGpus", "NetworkInterfaces",
-    "ConnectedDevices", "PciDevices", "PlatformInfo",
+    "ConnectedDevices", "CpuIdle", "PowerLimits", "PciDevices", "PlatformInfo",
     "SystemIdentity", "SystemSecurity", "SystemState", "PrivilegedMemory", "SpdModules", "Disks",
 ]

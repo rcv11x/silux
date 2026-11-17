@@ -244,6 +244,33 @@ def power_headline(power: Power) -> str:
     return ""
 
 
+# Los tonos de la barra de reposo, del estado más ligero al más hondo: cuanto
+# más hondo duerme, más se parece al fondo. Lo que resalta es lo activo.
+_TONOS_DE_REPOSO = ("accent/0.6", "accent/0.4", "accent/0.25", "accent/0.15", "line")
+
+
+def idle_segments(estados) -> list[tuple[str, float, str]]:
+    """Los tramos de la barra de reposo: lo activo y cada estado, sobre 100."""
+    dormido = sum(e.percent for e in estados)
+    tramos = [(_("cpu.idle.active"), max(0.0, round(100.0 - dormido, 1)), "accent")]
+    con_tiempo = [e for e in estados if e.percent > 0]
+    for i, estado in enumerate(con_tiempo):
+        # El más hondo siempre con el tono del fondo.
+        tono = _TONOS_DE_REPOSO[-1] if i == len(con_tiempo) - 1 and len(con_tiempo) > 1 \
+            else _TONOS_DE_REPOSO[min(i, len(_TONOS_DE_REPOSO) - 2)]
+        tramos.append((estado.name, estado.percent, tono))
+    return tramos
+
+
+def idle_deepest(estados) -> Optional[str]:
+    """«C2, el reposo más hondo: entre el 54 % y el 73 % según el hilo.»"""
+    if not estados:
+        return None
+    hondo = estados[-1]
+    return _("cpu.idle.deepest").format(nombre=hondo.name, bajo=f"{hondo.low:.0f}",
+                                        alto=f"{hondo.high:.0f}")
+
+
 def power_breakdown(power: Power) -> str:
     """El reparto por dominio, que es lo que explica un consumo en reposo bajo."""
     parts = [

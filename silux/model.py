@@ -223,6 +223,23 @@ class CpuType:
 
 
 @dataclass(frozen=True, slots=True)
+class IdleState:
+    """Cuánto del último intervalo pasaron los hilos en un estado de reposo.
+
+    Es un dato que sale de restar dos lecturas, como el uso. `percent` es la
+    media de todos los hilos; `low` y `high`, el que menos y el que más.
+    Los nombres son los del kernel («C1», «C2», «C6», «C10»): cambian entre
+    fabricantes y no se traducen.
+    """
+
+    name: str
+    description: Optional[str] = None        # "ACPI FFH MWAIT 0x0"
+    percent: float = 0.0
+    low: float = 0.0
+    high: float = 0.0
+
+
+@dataclass(frozen=True, slots=True)
 class CpuInfo:
     sockets: int = 1
     hybrid: bool = False
@@ -232,6 +249,7 @@ class CpuInfo:
     package_temp_c: Optional[float] = None
     power: Power = field(default_factory=Power)
     load_average: tuple[float, ...] = ()       # 1, 5 y 15 minutos
+    idle_states: tuple[IdleState, ...] = ()
 
     @property
     def package_power_w(self) -> Optional[float]:

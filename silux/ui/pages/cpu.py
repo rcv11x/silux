@@ -35,6 +35,7 @@ from ..widgets import (
     Plegable,
     tone_for,
     ResponsiveRow,
+    StackedBar,
     clear_layout,
 )
 
@@ -51,6 +52,7 @@ NEED_TITLES = {
 # para depurar. Antes había cuatro filas de familia y modelo (dos de ellas
 # con los bits en crudo, que por sí solos no significan nada) y ahora se
 # enseñan los valores compuestos, con el desglose en el tooltip de la firma.
+LIMIT_FIELDS = ("cpu.limit.pl1", "cpu.limit.pl2")
 PROCESSOR_FIELDS = (
     "cpu.field.vendor", "cpu.field.spec", "cpu.field.codename", "cpu.field.process",
     "cpu.field.package", "cpu.field.arch", "cpu.field.cores", "cpu.field.threads", "cpu.field.virt",
@@ -286,6 +288,32 @@ class CpuPage(QScrollArea):
         self.live = CpuLiveSection(palette, prefs)
         self._layout.addWidget(self.live)
 
+        # Cuánto puede gastar y cuánto descansa: lo que explica un consumo en
+        # reposo alto o un procesador que no llega a su frecuencia.
+        self.energy_card = Card(_("cpu.card.energy"))
+        self.limits = InfoGrid()
+        for name in LIMIT_FIELDS:
+            self.limits.add(_(name))
+        self.energy_card.body.addWidget(self.limits)
+        self.idle_title = QLabel(_("cpu.idle.title"))
+        self.idle_title.setObjectName("FieldName")
+        self.idle_title.setFont(ui_font(theme.METRICS.small_pt))
+        self.energy_card.body.addWidget(self.idle_title)
+        self.idle_bar = StackedBar(palette)
+        self.energy_card.body.addWidget(self.idle_bar)
+        self.idle_note = QLabel("")
+        self.idle_note.setObjectName("Muted")
+        self.idle_note.setWordWrap(True)
+        self.idle_note.setFont(ui_font(theme.METRICS.small_pt))
+        self.energy_card.body.addWidget(self.idle_note)
+        self.energy_pie = QLabel("")
+        self.energy_pie.setObjectName("Muted")
+        self.energy_pie.setWordWrap(True)
+        self.energy_pie.setFont(ui_font(theme.METRICS.small_pt))
+        self.energy_card.body.addWidget(self.energy_pie)
+        self.energy_card.hide()
+        self._layout.addWidget(self.energy_card)
+
         self._sections_host = QVBoxLayout()
         self._sections_host.setSpacing(m.section_gap)
         self._layout.addLayout(self._sections_host)
@@ -333,6 +361,7 @@ class CpuPage(QScrollArea):
         # entrada en la base de datos, donde el usuario se queda mirando una
         # pantalla vacía sin nada que le explique qué ha pasado.
         self._apply_notices(snapshot)
+        self._apply_energy(snapshot)
         if not cpu.types:
             return
 
@@ -393,6 +422,29 @@ class CpuPage(QScrollArea):
     def hide_permission_notices(self, ocultos: bool) -> None:
         """Deja de enseñar los avisos de permisos, o los vuelve a enseñar."""
         self._sin_avisos_de_permisos = ocultos
+
+    def _apply_energy(self, snapshot: Snapshot) -> None:
+        """Los límites de potencia y el reposo. Lo que no hay no sale."""
+        cpu = snapshot.cpu
+        potencia, estados = cpu.power, cpu.idle_states
+        limites = (("cpu.limit.pl1", potencia.limit_long_w), ("cpu.limit.pl2", potencia.limit_short_w))
+        for clave, valor in limites:
+            self.limits.set(_(clave), render.watts(valor) if valor else render.DASH)
+            self.limits.set_visible(_(clave), bool(valor))
+        hay_limites = any(valor for _clave, valor in limites)
+        self.limits.setVisible(hay_limites)
+        # En AMD no faltan por leer: el kernel no los publica.
+        es_amd = bool(cpu.types) and cpu.types[0].vendor == "AMD"
+        self.energy_pie.setText(_("cpu.limit.amd") if es_amd and not hay_limites else "")
+        self.energy_pie.setVisible(bool(self.energy_pie.text()))
+
+        for widget in (self.idle_title, self.idle_bar, self.idle_note):
+            widget.setVisible(bool(estados))
+        if estados:
+            self.idle_bar.set_segments(render.idle_segments(estados), 100.0,
+                                       formatter=lambda v: f"{v:.0f} %")
+            self.idle_note.setText(render.idle_deepest(estados) or "")
+        self.energy_card.setVisible(hay_limites or bool(estados))
 
     def _apply_notices(self, snapshot: Snapshot) -> None:
         # Solo las de esta pestaña: la de los módulos de memoria salía aquí
