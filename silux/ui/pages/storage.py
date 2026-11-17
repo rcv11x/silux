@@ -21,7 +21,7 @@ from ...model import Disk, Snapshot
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette
-from ..widgets import (Card, ChipRow, InfoGrid, Notice, ResponsiveRow,
+from ..widgets import (Plegable, Card, ChipRow, InfoGrid, Notice, ResponsiveRow,
                        StackedBar, StatTile, Table,
                        boton_de_permiso_permanente, clear_layout, dismiss_buttons)
 
@@ -32,10 +32,15 @@ PART_HEADERS = ("storage.col.part", "storage.col.fs", "storage.col.mount", "stor
 # Dónde va la temperatura en la tabla de unidades (`DISK_HEADERS`).
 COLUMNA_TEMPERATURA = 5
 
-DISK_FIELDS = ("storage.col.model", "gpu.field.vendor", "gpu.vram.type", "storage.field.bus", "storage.col.size",
-               "storage.field.firmware", "storage.field.logical", "storage.field.physical", "storage.field.scheduler",
-               "gpu.clock.link", "gpu.sensor.temp", "storage.field.hours", "storage.field.written",
+# Qué disco es y cómo está: lo que se mira. La salud va detrás de la
+# identidad y no al final de catorce filas.
+DISK_FIELDS = ("storage.col.model", "gpu.field.vendor", "gpu.vram.type", "storage.field.bus",
+               "gpu.clock.link", "storage.col.size",
+               "gpu.sensor.temp", "storage.field.hours", "storage.field.written",
                "storage.field.life")
+# Cómo lo ve el kernel: se consulta una vez, si acaso. Va plegado.
+DISK_DETAIL_FIELDS = ("storage.field.firmware", "storage.field.logical",
+                      "storage.field.physical", "storage.field.scheduler")
 
 # Los discos se ordenan por lo que le importa a quien mira: primero el que
 # lleva el sistema, luego por tipo y al final los que se pueden desenchufar.
@@ -61,6 +66,8 @@ class StoragePage(QScrollArea):
         super().__init__(parent)
         self._p = palette
         self._candado = None
+        self._details: dict = {}
+        self._folds: dict = {}
         self._prefs = prefs
         m = theme.METRICS
 
@@ -367,6 +374,8 @@ class StoragePage(QScrollArea):
             self._orden_actual = nombres
             clear_layout(self._cards_host)
             self._grids.clear()
+            self._details.clear()
+            self._folds.clear()
             self._bars.clear()
             fila = ResponsiveRow(min_item_width=320)
             for disco in discos:
@@ -378,6 +387,14 @@ class StoragePage(QScrollArea):
                 card.body.addWidget(barra)
                 card.body.addWidget(grid)
                 grid.locked_clicked.connect(self.elevation_requested)
+                pliegue = Plegable(_("storage.card.details"))
+                detalle = InfoGrid()
+                for campo in DISK_DETAIL_FIELDS:
+                    detalle.add(_(campo))
+                pliegue.body.addWidget(detalle)
+                card.body.addWidget(pliegue)
+                self._details[disco.name] = detalle
+                self._folds[disco.name] = pliegue
                 fila.add(card)
                 self._grids[disco.name] = grid
                 self._bars[disco.name] = barra
@@ -411,13 +428,18 @@ class StoragePage(QScrollArea):
           tooltip=_("storage.tip.kind"))
         f(_("storage.field.bus"), render.disk_bus(disco.transport))
         f(_("storage.col.size"), render.size(disco.size_bytes))
-        f(_("storage.field.firmware"), disco.firmware or d)
-        f(_("storage.field.logical"), f"{disco.logical_sector} B" if disco.logical_sector else d)
-        f(_("storage.field.physical"), f"{disco.physical_sector} B" if disco.physical_sector else d,
-          tooltip=_("storage.tip.physical"))
-        f(_("storage.field.scheduler"), disco.scheduler or d,
-          tooltip=_("storage.tip.scheduler"))
+        # El enlace PCIe es del NVMe. Un SATA no tiene uno propio —negocia su
+        # controladora, que comparte con los demás—, así que ahí la fila no
+        # es un dato que falte: no existe, y no sale.
         f(_("gpu.clock.link"), render.pcie_link(disco.link) if disco.link else d)
+        grid.set_visible(_("gpu.clock.link"), bool(disco.link))
+        t = self._details[disco.name].set
+        t(_("storage.field.firmware"), disco.firmware or d)
+        t(_("storage.field.logical"), f"{disco.logical_sector} B" if disco.logical_sector else d)
+        t(_("storage.field.physical"), f"{disco.physical_sector} B" if disco.physical_sector else d,
+          tooltip=_("storage.tip.physical"))
+        t(_("storage.field.scheduler"), disco.scheduler or d,
+          tooltip=_("storage.tip.scheduler"))
         f(_("gpu.sensor.temp"), render.temperature(disco.temp_c, self._prefs.fahrenheit),
           tooltip=self._por_que_sin_temperatura(disco))
 

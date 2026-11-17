@@ -919,6 +919,7 @@
   "status.freeze": "space to freeze",
   "status.refresh": "Refreshing every {n} s",
   "storage.bar.unmounted": "Unmounted",
+  "storage.card.details": "Firmware and sectors",
   "storage.card.disks": "Drives",
   "storage.card.health": "Drive health",
   "storage.card.parts": "Mounted partitions",

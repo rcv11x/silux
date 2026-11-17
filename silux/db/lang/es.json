@@ -919,6 +919,7 @@
   "status.freeze": "espacio para congelar",
   "status.refresh": "Se actualiza cada {n} s",
   "storage.bar.unmounted": "Sin montar",
+  "storage.card.details": "Firmware y sectores",
   "storage.card.disks": "Unidades",
   "storage.card.health": "Estado de los discos",
   "storage.card.parts": "Particiones montadas",
