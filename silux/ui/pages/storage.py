@@ -230,10 +230,12 @@ class StoragePage(QScrollArea):
         leidos = sum(1 for x in discos if x.health.power_on_hours is not None)
         self.elevation_card.setVisible(bool(discos) and leidos < len(discos)
                                        and not self._sin_avisos_de_permisos)
-        if leidos:
-            self.elevation_text.setText(
-                _("storage.health.read").format(n=leidos, total=len(discos))
-            )
+        # En los dos sentidos: si el diagnóstico deja de estar (los permisos
+        # eran de esta sesión y el ayudante se fue), la tarjeta vuelve a decir
+        # lo del principio y no «leídos 2 de 5».
+        self.elevation_text.setText(
+            _("storage.health.read").format(n=leidos, total=len(discos)) if leidos
+            else _("storage.health.body"))
 
     def _apply_avisos(self, discos) -> None:
         """Lo que cada disco dice de sí mismo, si es que dice algo.

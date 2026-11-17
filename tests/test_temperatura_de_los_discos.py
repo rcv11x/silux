@@ -77,6 +77,19 @@ class TestLaFichaDeCadaDisco(unittest.TestCase):
                     else:
                         self.assertTrue(rejilla.is_locked(_(clave)))
 
+    def test_la_tarjeta_vuelve_a_su_texto_si_el_diagnostico_se_pierde(self):
+        """Con permisos de una sesión, al irse el ayudante la tarjeta seguía
+        diciendo «leídos 2 de 5» con todos los discos otra vez sin leer."""
+        pagina = self._pagina(self.amd)
+        de_antes = pagina.elevation_text.text()
+        a_medias = dataclasses.replace(self.amd, disks=tuple(
+            dataclasses.replace(d, health=DiskHealth(power_on_hours=1200)) if i < 2 else d
+            for i, d in enumerate(self.amd.disks)))
+        pagina.apply(a_medias)
+        self.assertNotEqual(pagina.elevation_text.text(), de_antes)
+        pagina.apply(self.amd)
+        self.assertEqual(pagina.elevation_text.text(), de_antes)
+
     def test_el_candado_pide_los_permisos(self):
         pagina = self._pagina(self.amd)
         pedidos = []
