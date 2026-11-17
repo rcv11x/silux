@@ -30,7 +30,7 @@ from ...settings import Preferences
 from .. import theme
 from ..theme import Palette, ui_font
 from ..widgets import (
-    Card, ChipRow, InfoGrid, Notice, ResponsiveRow, StackedBar, Table,
+    Card, ChipRow, InfoGrid, Notice, Plegable, ResponsiveRow, StackedBar, Table,
     dismiss_buttons, memory_segments,
     boton_de_permiso_permanente, clear_layout, tone_for,
 )
@@ -55,6 +55,14 @@ MODULE_FIELDS = ("memory.field.vendor", "memory.field.chips", "memory.field.part
                  "memory.field.form", "memory.field.profiles", "memory.field.made", "memory.field.bank")
 
 TIMING_HEADERS = ("memory.timing.profile", "memory.timing.speed", "memory.timing.cl", "memory.timing.trcd", "memory.timing.trp", "memory.timing.tras", "memory.timing.trc", "memory.field.voltage")
+
+
+# El desglose del uso, tal como lo cuenta el kernel. Va plegado en la
+# cabecera: la barra ya dice lo principal.
+USAGE_FIELDS = ("sys.mem.total", "sys.mem.used", "sys.mem.available",
+                "sys.mem.apps", "sys.mem.cache", "sys.mem.buffers",
+                "sys.mem.shared", "sys.mem.free", "sys.mem.swap",
+                "sys.mem.swapused")
 
 
 class MemoryPage(QScrollArea):
@@ -151,6 +159,20 @@ class MemoryPage(QScrollArea):
         card.body.addWidget(self.subtitle)
         card.body.addWidget(self.badges)
         card.body.addWidget(self.bar)
+        # Lo que la barra no dice, en un renglón: cuánta queda de verdad
+        # disponible y cómo va el intercambio. Y el desglose entero —que
+        # vivía en Sistema, repetido con esta misma barra— plegado debajo.
+        self.usage_line = QLabel("")
+        self.usage_line.setObjectName("Muted")
+        self.usage_line.setWordWrap(True)
+        self.usage_line.setFont(ui_font(theme.METRICS.small_pt))
+        card.body.addWidget(self.usage_line)
+        self.usage_fold = Plegable(_("memory.usage.fold"))
+        self.usage = InfoGrid()
+        for name in USAGE_FIELDS:
+            self.usage.add(_(name))
+        self.usage_fold.body.addWidget(self.usage)
+        card.body.addWidget(self.usage_fold)
         # Dos cosas que la gente no sabe que le pasan: la memoria en un solo
         # canal y el perfil rápido sin activar. Las dos se calculaban ya y
         # salían escondidas dentro de la ficha de un módulo, a dos clics.
@@ -160,6 +182,40 @@ class MemoryPage(QScrollArea):
         self.avisos.hide()
         card.body.addWidget(self.avisos)
         return card
+
+    def _apply_usage(self, memory) -> None:
+        hay_swap = bool(memory.swap_total_bytes)
+        self.usage_line.setText(
+            _("memory.usage.line").format(
+                disponible=render.size(memory.available_bytes),
+                usado=render.size(memory.swap_used_bytes),
+                total=render.size(memory.swap_total_bytes))
+            if hay_swap else
+            _("memory.usage.line.noswap").format(
+                disponible=render.size(memory.available_bytes)))
+        m = self.usage.set
+        m(_("sys.mem.total"), render.size(memory.total_bytes))
+        m(_("sys.mem.used"), _("sys.value.pct").format(
+            valor=render.size(memory.used_bytes),
+            pct=f"{memory.used_percent:.0f}"),
+          tooltip=_("sys.tip.used"))
+        m(_("sys.mem.available"), render.size(memory.available_bytes))
+        m(_("sys.mem.apps"), render.size(memory.apps_bytes),
+          tooltip=_("sys.tip.apps"))
+        m(_("sys.mem.cache"), render.size(memory.cache_bytes),
+          tooltip=_("sys.tip.cache"))
+        m(_("sys.mem.buffers"), render.size(memory.buffers_bytes))
+        m(_("sys.mem.shared"), render.size(memory.shared_bytes))
+        m(_("sys.mem.free"), render.size(memory.free_bytes))
+        m(_("sys.mem.swap"), render.size(memory.swap_total_bytes) if hay_swap else _("sys.noswap"))
+        # Sin swap, «Intercambio usado: —» se lee como si faltara un dato. No
+        # falta: es que no hay nada de lo que decir cuánto se usa.
+        self.usage.set_visible(_("sys.mem.swapused"), hay_swap)
+        if hay_swap:
+            m(_("sys.mem.swapused"),
+              _("sys.value.pct").format(
+                  valor=render.size(memory.swap_used_bytes),
+                  pct=f"{memory.swap_used_percent:.0f}"))
 
     def _build_elevation(self) -> QWidget:
         card = Card(_("memory.card.modules"))
@@ -416,6 +472,7 @@ class MemoryPage(QScrollArea):
             total=memory.total_bytes,
             formatter=render.size,
         )
+        self._apply_usage(memory)
 
         display = self._display_modules(snapshot)
         self._apply_elevation(snapshot)

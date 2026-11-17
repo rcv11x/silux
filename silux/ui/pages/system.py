@@ -19,9 +19,8 @@ from ... import render
 from ...model import Snapshot, System
 from ...settings import Preferences
 from .. import theme
-from ..theme import Palette
-from ..widgets import (Card, ChipRow, InfoGrid, ResponsiveRow, StackedBar,
-                       memory_segments)
+from ..theme import Palette, ui_font
+from ..widgets import Card, ChipRow, InfoGrid, ResponsiveRow
 
 # Claves, no texto ni `_()`: estas tuplas se evalúan al importar el módulo,
 # cuando todavía no se sabe qué idioma quiere el usuario. La traducción ocurre
@@ -31,10 +30,6 @@ OS_FIELDS = ("sys.field.distro", "sys.field.version", "sys.os.variant",
 KERNEL_FIELDS = ("sys.kernel.name", "sys.kernel.arch", "sys.field.build",
                  "sys.kernel.init", "sys.kernel.desktop", "sys.field.session",
                  "sys.kernel.shell")
-MEMORY_FIELDS = ("sys.mem.total", "sys.mem.used", "sys.mem.available",
-                 "sys.mem.apps", "sys.mem.cache", "sys.mem.buffers",
-                 "sys.mem.shared", "sys.mem.free", "sys.mem.swap",
-                 "sys.mem.swapused")
 ACTIVITY_FIELDS = ("sys.field.since", "sys.field.uptime", "sys.act.processes",
                    "sys.act.threads", "sys.field.openfiles")
 
@@ -72,17 +67,17 @@ class SystemPage(QScrollArea):
 
         layout.addWidget(self._build_header())
 
-        memory_card = Card(_("nav.memory"))
-        self.bar = StackedBar(palette)
-        self.memory = InfoGrid()
-        for name in MEMORY_FIELDS:
-            self.memory.add(_(name))
-        memory_card.body.addWidget(self.bar)
-        memory_card.body.addWidget(self.memory)
-        layout.addWidget(memory_card)
-
+        # La memoria no está aquí: tenía su barra y su tabla entera, las
+        # mismas que la página de Memoria, y era la tercera vez que salían.
+        # Esta página empieza por lo que es suyo: qué sistema es.
         row = ResponsiveRow(min_item_width=270)
         self.os = self._grid_card(row, _("sys.card.os"), OS_FIELDS)
+        self.os_pie = QLabel("")
+        self.os_pie.setObjectName("Muted")
+        self.os_pie.setWordWrap(True)
+        self.os_pie.setFont(ui_font(theme.METRICS.small_pt))
+        self.os_pie.hide()
+        self.os.parentWidget().body.addWidget(self.os_pie)
         self.kernel = self._grid_card(row, _("sys.card.kernel"), KERNEL_FIELDS)
         layout.addWidget(row)
 
@@ -135,44 +130,21 @@ class SystemPage(QScrollArea):
         )
         self._apply_badges(system)
 
-        # Los tres segmentos más el hueco del fondo suman exactamente el
-        # total, por eso se usa `apps_bytes` y no `used_bytes`: la segunda
-        # incluye caché no recuperable y haría que la barra se pasara.
-        self.bar.set_segments(
-            memory_segments(memory),
-            total=memory.total_bytes,
-            formatter=render.size,
-        )
-
-        m = self.memory.set
-        m(_("sys.mem.total"), render.size(memory.total_bytes))
-        m(_("sys.mem.used"), _("sys.value.pct").format(
-            valor=render.size(memory.used_bytes),
-            pct=f"{memory.used_percent:.0f}"),
-          tooltip=_("sys.tip.used"))
-        m(_("sys.mem.available"), render.size(memory.available_bytes))
-        m(_("sys.mem.apps"), render.size(memory.apps_bytes),
-          tooltip=_("sys.tip.apps"))
-        m(_("sys.mem.cache"), render.size(memory.cache_bytes),
-          tooltip=_("sys.tip.cache"))
-        m(_("sys.mem.buffers"), render.size(memory.buffers_bytes))
-        m(_("sys.mem.shared"), render.size(memory.shared_bytes))
-        m(_("sys.mem.free"), render.size(memory.free_bytes))
-        hay_swap = bool(memory.swap_total_bytes)
-        m(_("sys.mem.swap"), render.size(memory.swap_total_bytes) if hay_swap else _("sys.noswap"))
-        # Sin swap, «Intercambio usado: —» se lee como si faltara un dato. No
-        # falta: es que no hay nada de lo que decir cuánto se usa.
-        self.memory.set_visible(_("sys.mem.swapused"), hay_swap)
-        if hay_swap:
-            m(_("sys.mem.swapused"),
-              _("sys.value.pct").format(
-                  valor=render.size(memory.swap_used_bytes),
-                  pct=f"{memory.swap_used_percent:.0f}"))
-
         o = self.os.set
         o(_("sys.field.distro"), system.distribution or d)
+        # Una distribución de publicación continua no tiene versión, y casi
+        # ninguna declara variante: no es un dato que falte. La fila se va y
+        # se dice al pie cuál.
         o(_("sys.field.version"), system.version_id or d)
         o(_("sys.os.variant"), system.variant or d)
+        self.os.set_visible(_("sys.field.version"), bool(system.version_id))
+        self.os.set_visible(_("sys.os.variant"), bool(system.variant))
+        faltan = [_(clave).lower() for clave, valor in (
+            ("sys.field.version", system.version_id), ("sys.os.variant", system.variant))
+            if not valor]
+        self.os_pie.setText(_("sys.os.undeclared").format(campos=_("sys.and").join(faltan))
+                            if faltan else "")
+        self.os_pie.setVisible(bool(faltan))
         o(_("sys.os.id"), system.distribution_id or d)
         o(_("sys.field.hostname"), system.hostname or d)
 
@@ -196,9 +168,9 @@ class SystemPage(QScrollArea):
         session = None
         if system.desktop:
             session = f"{system.desktop} · {system.session_type}" if system.session_type else system.desktop
-        wanted = tuple(x for x in (
-            system.kernel, session, system.architecture, system.init,
-        ) if x)
+        # El kernel y la sesión, que es lo que se pregunta de un sistema. La
+        # arquitectura y el init están dos renglones más abajo, en su ficha.
+        wanted = tuple(x for x in (system.kernel, session) if x)
         if wanted == self._badge_signature:
             return
         self._badge_signature = wanted
