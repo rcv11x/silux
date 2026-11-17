@@ -177,6 +177,14 @@ que hace falta.
   avisos; ahora son tonos del acento.
 - Nuevo: `--samples N`, para que `--screenshot` capture con las gráficas
   llenas.
+- Arreglado: en Gráficos, una integrada de Intel dejaba un hueco entre
+  Frecuencia y Consumo, donde iría la temperatura que no publica.
+- Arreglado: en Inicio, el nombre de la tarjeta de red salía cortado por
+  abajo cuando ocupaba dos líneas.
+- Arreglado: las tablas llevan una raya fina bajo la cabecera.
+- Arreglado: con un ayudante de permisos de una versión anterior instalado,
+  Memoria y Almacenamiento salían cortadas por la derecha en una ventana
+  estrecha.
 
 ### Privacidad
 

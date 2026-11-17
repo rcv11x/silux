@@ -6,30 +6,35 @@ Decidido y **hecho** en la rama `interfaz`: el logo `5-chaflan-ambar`,
 Gráficos con el bloque «Ahora mismo», el estilo A y la tabla de códecs con
 «✓» y «✗».
 
-Por hacer, nada de esto está empezado:
+**Hecho en casa el 17 por la noche** (5800X3D), cada uno con su test y
+visto en su captura:
 
-- **Gráficos de la iGPU**: queda un hueco entre Frecuencia y Consumo por la
-  ficha de Temperatura que falta. Que la rejilla se ajuste a las fichas que
-  hay, o que la ficha diga «no publica temperatura».
-- **Inicio, tarjeta de Red**: el nombre largo de la tarjeta se corta en la
-  segunda línea, en claro y también en oscuro. Arreglarlo en los dos temas.
-- **Raya bajo la cabecera de las tablas**: no se ve. El commit `03ef40b` dice
-  que la lleva y no es verdad: corregir el código (o, si se quita, decirlo
-  en el commit que lo haga; el mensaje ya empujado no se reescribe).
+| Commit | Qué |
+|---|---|
+| `aff559c` | Gráficos de la iGPU: la ficha escondida ya no deja hueco (`ResponsiveRow` solo coloca lo que se ve) |
+| `3b3d693` | **Cachés reventaba al pintarse** desde el commit del estilo; no estaba en la lista, salió al sacar las capturas |
+| `e6960c8` | Inicio, tarjeta de Red: el nombre de dos líneas sale entero (era `ResponsiveRow`, no la tarjeta) |
+| `2bcd687` | La raya bajo la cabecera de las tablas, que ahora sí se ve |
+| `96efb41` | Con un ayudante atrasado instalado, Memoria y Almacenamiento se salían por la derecha en compacto; tampoco estaba en la lista |
+
+Por hacer:
+
 - **Sensores**: plegar por defecto las interfaces de red sin tráfico
   (`interfaz1`, `tailscale0`).
 - **Textos**: «Núcleo 0 MHz» con la gráfica en reposo → «en reposo»; «Uso de
   video» en «Consumo y temperaturas» → «Uso del motor de video», sin tilde.
-- **AppImage con el logo y los iconos nuevos**: sin construir. Comprobar en
-  el CI de `interfaz` que los iconos de la barra lateral salen dentro del
-  paquete.
+- **AppImage con el logo y los iconos nuevos**: el CI de `interfaz` lo
+  construye y arranca (run 44157236806, en verde). **Falta mirarlo**: el CI
+  solo comprueba que arranca, no que los iconos de la barra lateral salgan.
+- **Barra lateral en compacto**: «Almacenamien…» sale cortado a 900×680.
+  Visto en las capturas de esta sesión; no estaba en la lista.
 - **Lo que ya había sin hacer**: los estados vacíos de una ficha, los
   identificadores en monoespaciada y medir el contraste de la paleta. (La
   coma decimal no se toca: está en `docs/convenciones.md`.)
 
-El CI de `interfaz` no se ha lanzado: `gh workflow run appimage.yml --ref
-interfaz`. Las capturas están en `~/Imágenes/silux-test/interfaz/` de la
-oficina y no van al repositorio.
+Las capturas de la oficina están en `~/Imágenes/silux-test/interfaz/`; las
+de casa, en `~/Imágenes/silux-test/interfaz-casa/` (`antes/`, `despues/` y
+`comprobacion/`). No van al repositorio.
 
 ---
 

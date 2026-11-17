@@ -932,6 +932,29 @@ apartado. El orden dentro de cada apartado es el cronológico.
   píxel de la banda: seguía en (214,175,78), el mismo ámbar que un permiso por
   dar. Lo que decide un color vive al lado de quien lo pinta, no en la primera
   página que lo necesitó.
+- **Sacar a un widget de un layout con `takeAt` para volver a meterlo**:
+  desde Python `takeAt` no destruye la celda, y el widget sigue avisando de
+  sus cambios de tamaño a la primera que tuvo. La celda nueva se queda con la
+  altura que midió al nacer: en Inicio, un nombre de red que pasaba a dos
+  líneas salía cortado por abajo, y la fila medía 195 px cuando sus tarjetas
+  pedían 221. Se reproduce con una rejilla y una etiqueta. Para recolocar,
+  `removeWidget`, que sí la destruye.
+- **Dar por pintado lo que está en la hoja de estilos**: la raya bajo la
+  cabecera de las tablas era un `border-bottom` en `QLabel#ColumnTitle`. Qt
+  no la pintaba, y además sangraba 3 px cada etiqueta. Un test que mirase la
+  hoja habría pasado; el que vale pinta la ventana y busca el color en la
+  imagen. La raya es un `QFrame` colocado sobre la rejilla.
+- **Creer que la suite pinta**: sin pantalla Qt no llama a ningún
+  `paintEvent` hasta que alguien pide la imagen. El mapa de cachés reventaba
+  en cada repintado (`value_font = value_font(…)`, una local con el nombre de
+  la función) con mil novecientos tests en verde y el CI también. Lo vio
+  `--screenshot`. `tests/test_todo_se_pinta.py` pinta las trece secciones
+  con cada volcado.
+- **Contar con que en el equipo de quien ejecuta la suite no hay ayudante
+  instalado**: con uno de una versión anterior sale un botón más, y un test
+  que contaba botones y otro que medía anchos fallaban solo en esa máquina.
+  El segundo tenía razón: la página se salía. El primero fija ahora el
+  estado del que habla.
 
 <a id="idioma"></a>
 

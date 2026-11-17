@@ -3,9 +3,66 @@
 Para retomar sin el contexto de la sesión anterior. Se borra cuando lo de
 aquí esté hecho o pase a `docs/pendientes.md`.
 
-Última sesión: 17 de noviembre de 2026, en el i5-10400 de la oficina
-(Fedora). La anterior, el 16 por la tarde-noche en el 5800X3D de casa
-(CachyOS).
+Última sesión: 17 de noviembre de 2026 por la noche, en el 5800X3D de casa
+(CachyOS). La anterior, ese mismo día en el i5-10400 de la oficina (Fedora).
+
+## Sesión del 17 por la noche, en casa (rama `interfaz`)
+
+**Parada para revisar tras el punto 1.** La rama está empujada y con el CI
+lanzado; lo que sigue (punto 2) no se empieza hasta que el autor lo diga.
+
+El CI de `interfaz` sobre `aa9b332` (lo de la oficina) salió **en verde**:
+tests en 3.10 y 3.14 y el AppImage construido y arrancado.
+
+**Punto 1, hecho: lo más visible.** Un commit por arreglo, con su test visto
+fallar y su captura mirada:
+
+| Commit | Qué | Visto en |
+|---|---|---|
+| `45e7c30` | docs: lo visual se comprueba en la captura; el punto decimal se queda | — |
+| `aff559c` | Gráficos de la iGPU sin hueco entre Frecuencia y Consumo | volcado del i5-10400, oscuro y compacto |
+| `3b3d693` | **Cachés reventaba al pintarse** (`cachemap.py`, del commit del estilo) | este equipo, oscuro |
+| `e6960c8` | Inicio › Red: el nombre de dos líneas, entero | volcado del i5-10400, oscuro, claro y compacto |
+| `2bcd687` | La raya bajo la cabecera de las tablas | este equipo: Cachés en oscuro y claro, Almacenamiento en compacto |
+| `96efb41` | El botón «Actualizar el ayudante del sistema», en su renglón | este equipo, Memoria y Almacenamiento en compacto |
+
+Dos no estaban en la lista y salieron al sacar las capturas:
+
+- **Cachés**: la página moría al pintar el mapa desde `927cb8b`. La suite y
+  el CI pasaban porque sin pantalla nadie pinta. Ahora
+  `tests/test_todo_se_pinta.py` pinta las trece secciones con cada volcado.
+- **El ayudante atrasado**: en este equipo el ayudante instalado es de una
+  versión anterior, sale un quinto botón en la tarjeta de permisos y en
+  compacto la página se salía por la derecha. Eran cuatro tests en rojo solo
+  aquí. **El ayudante de este equipo sigue sin actualizar**: se actualiza
+  pulsando ese botón, y eso lo hace el autor.
+
+Y dos cosas que no eran lo que parecían:
+
+- El corte de Red y el hueco de Gráficos eran los dos de `ResponsiveRow`,
+  no de sus páginas (está en `docs/lecciones.md`, «Interfaz y Qt»).
+- La raya de las tablas estaba en la hoja de estilos y Qt no la pintaba. Al
+  quitar esa regla las columnas de todas las tablas quedan unos 3 px más
+  juntas: con ella Qt sangraba cada título.
+
+**Capturas** en `~/Imágenes/silux-test/interfaz-casa/` (casa): `antes/` y
+`despues/`, cada una con `5800x3d-este-equipo/` y `i5-10400-volcado/`, en
+`oscuro-1440/`, `claro-1440/` y `compacto-900/`, doce páginas, tras 65
+muestras a 1 s y con las preferencias por omisión (no las de este equipo,
+que tiene letra grande y acento azul). En `antes/` faltan las seis de
+Cachés: es el fallo. `comprobacion/` son las que se miraron para cada commit.
+
+**Visto de paso y sin tocar** (apuntado en `docs/propuesta-interfaz.md`):
+en compacto la barra lateral corta «Almacenamien…».
+
+**Punto 2, sin empezar**, en este orden: Sensores (plegar las interfaces de
+red sin tráfico), los dos textos («en reposo» y «Uso del motor de video»),
+mirar los iconos dentro del AppImage que construye el CI, y el resto de la
+lista. **Punto 3**, si sobra: estados vacíos de una ficha, identificadores
+en monoespaciada y el contraste de los colores nuevos en oscuro y claro.
+
+De «Para mirar esta noche en el 5800X3D» (más abajo) **no se ha mirado
+nada**: todo pide dar permisos o reiniciar, y lo hace el autor.
 
 ## Sesión del 17, en la oficina
 
