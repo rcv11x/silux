@@ -45,6 +45,21 @@ class TestSistemaYElUsoDeLaMemoria(unittest.TestCase):
             for clave in ("sys.kernel.name", "sys.field.distro", "sys.field.uptime"):
                 self.assertIn(_(clave), textos)
 
+    def test_encendido_desde_va_en_el_formato_de_la_fecha_de_la_bios(self):
+        """«17/11/2026 18:15» al lado de una BIOS del «2025-10-28»: dos
+        formatos de fecha en el mismo programa, y uno de ellos ambiguo."""
+        import re
+
+        for equipo, f in self.fotos.items():
+            with self.subTest(equipo=equipo), pantalla.Ventana(f) as ventana:
+                pagina = self._abrir(ventana, "Sistema")
+                desde = pagina.activity._values[_("sys.field.since")].full_text()
+                self.assertEqual(desde, f.system.boot_time)
+                self.assertRegex(desde, r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$")
+                # El mismo orden que la BIOS: año, mes, día.
+                bios = render.bios_date(f.board.bios_date)
+                self.assertTrue(re.match(r"^\d{4}-\d{2}-\d{2}$", bios), bios)
+
     def test_el_desglose_esta_en_memoria_plegado_y_completo(self):
         for equipo, f in self.fotos.items():
             with self.subTest(equipo=equipo), pantalla.Ventana(f) as ventana:

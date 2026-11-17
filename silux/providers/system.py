@@ -198,7 +198,9 @@ class SystemState(Provider):
     def _boot_time(uptime: float) -> Optional[str]:
         if uptime <= 0:
             return None
-        return time.strftime("%d/%m/%Y %H:%M", time.localtime(time.time() - uptime))
+        # Año-mes-día, como la fecha de la BIOS (`render.bios_date`): «06/08»
+        # se lee de dos maneras según quién lo mire, y esto de ninguna más.
+        return time.strftime("%Y-%m-%d %H:%M", time.localtime(time.time() - uptime))
 
     @staticmethod
     def _threads() -> int:
