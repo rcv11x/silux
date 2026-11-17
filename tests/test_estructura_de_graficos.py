@@ -51,6 +51,43 @@ class TestLaPaginaDeGraficos(unittest.TestCase):
                          [_(c) for c in ("gpu.tile.usage", "gpu.tile.clock",
                                          "gpu.tile.temp", "gpu.tile.power")])
 
+    def test_sin_ficha_de_temperatura_las_otras_tres_no_dejan_hueco(self):
+        """La integrada de Intel no publica temperatura y su ficha se esconde;
+        su celda se quedaba reservada, vacía, entre Frecuencia y Consumo."""
+        from silux.ui.widgets import StatTile
+
+        ficha = self._ficha("i5-10400")
+        self.assertFalse(ficha.tile_temp.isVisible())
+        fichas = sorted((f for f in ficha.findChildren(StatTile) if f.isVisible()),
+                        key=lambda f: f.mapTo(ficha, f.rect().topLeft()).x())
+        self.assertEqual([f.caption.text() for f in fichas],
+                         [_(c) for c in ("gpu.tile.usage", "gpu.tile.clock",
+                                         "gpu.tile.power")])
+        # En una fila, con el mismo hueco entre cada dos y hasta los bordes.
+        self.assertEqual(len({f.mapTo(ficha, f.rect().topLeft()).y() for f in fichas}), 1)
+        izquierdas = [f.mapTo(ficha, f.rect().topLeft()).x() for f in fichas]
+        derechas = [x + f.width() for x, f in zip(izquierdas, fichas)]
+        huecos = [b - a for a, b in zip(derechas, izquierdas[1:])]
+        self.assertEqual(len(set(huecos)), 1, huecos)
+        self.assertEqual(izquierdas[0], 0)
+        self.assertEqual(derechas[-1], ficha.width())
+        self.assertLessEqual(max(f.width() for f in fichas) - min(f.width() for f in fichas), 1)
+
+    def test_la_ficha_que_vuelve_recupera_su_sitio(self):
+        """La sección se reutiliza: tras una tarjeta sin temperatura puede
+        venir una que la tiene."""
+        from silux.ui.widgets import StatTile
+
+        ficha = self._ficha("i5-10400")
+        ficha.apply(self.fotos["5800x3d"].gpus[0])
+        self.app.processEvents()
+        fichas = sorted((f for f in ficha.findChildren(StatTile) if f.isVisible()),
+                        key=lambda f: f.mapTo(ficha, f.rect().topLeft()).x())
+        self.assertEqual([f.caption.text() for f in fichas],
+                         [_(c) for c in ("gpu.tile.usage", "gpu.tile.clock",
+                                         "gpu.tile.temp", "gpu.tile.power")])
+        self.assertEqual(len({f.mapTo(ficha, f.rect().topLeft()).y() for f in fichas}), 1)
+
     def test_ahora_mismo_junta_las_tres_barras_cada_una_con_su_nombre(self):
         ficha = self._ficha("5800x3d")
         gpu = self.fotos["5800x3d"].gpus[0]

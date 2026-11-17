@@ -220,6 +220,11 @@ class ResponsiveRow(QWidget):
     quien la contiene más que el ancho de su hijo más ancho: si pidiera el de
     la rejilla montada, su propia anchura le diría que caben dos columnas y
     nunca bajaría a una.
+
+    Un hijo escondido no ocupa celda. En la gráfica integrada de Intel la
+    ficha de la temperatura se esconde porque esa tarjeta no la publica, y
+    con su celda reservada quedaba un hueco del ancho de una ficha entre
+    Frecuencia y Consumo: las que hay se reparten el ancho entero.
     """
 
     def __init__(self, min_item_width: int = 200, parent: Optional[QWidget] = None):
@@ -230,6 +235,7 @@ class ResponsiveRow(QWidget):
         self._min_item_width = max(110, int(min_item_width * scale))
         self._items: list[QWidget] = []
         self._columns = 0
+        self._colocados: list[QWidget] = []
 
         self._grid = QGridLayout(self)
         self._grid.setContentsMargins(0, 0, 0, 0)
@@ -254,12 +260,17 @@ class ResponsiveRow(QWidget):
         widget.setParent(self)
         self._relayout(force=True)
 
+    def _a_la_vista(self) -> list[QWidget]:
+        return [w for w in self._items if not w.isHidden()]
+
     def _wanted_columns(self) -> int:
-        count = len(self._items)
+        visibles = self._a_la_vista()
+        count = len(visibles)
         if not count:
             return 1
         gap = self._grid.spacing()
-        anchos = self._anchos_minimos()
+        anchos = [max(self._min_item_width, w.minimumSizeHint().width())
+                  for w in visibles]
         usable = max(self.width(), max(anchos))
         fits = int(max(1, (usable + gap) // (self._min_item_width + gap)))
         for tope in range(fits, 0, -1):
@@ -272,16 +283,18 @@ class ResponsiveRow(QWidget):
 
     def _relayout(self, force: bool = False) -> None:
         columns = self._wanted_columns()
-        if columns == self._columns and not force:
+        visibles = self._a_la_vista()
+        if columns == self._columns and visibles == self._colocados and not force:
             return
         self._columns = columns
+        self._colocados = visibles
 
         while self._grid.count():
             self._grid.takeAt(0)
         for index in range(self._grid.columnCount()):
             self._grid.setColumnStretch(index, 0)
 
-        for index, widget in enumerate(self._items):
+        for index, widget in enumerate(visibles):
             self._grid.addWidget(widget, index // columns, index % columns)
         for column in range(columns):
             self._grid.setColumnStretch(column, 1)
@@ -290,10 +303,16 @@ class ResponsiveRow(QWidget):
         super().resizeEvent(event)
         self._relayout()
 
+    def showEvent(self, event) -> None:  # noqa: N802
+        # Lo que se escondió con la página cerrada no avisa a nadie.
+        super().showEvent(event)
+        self._relayout()
+
     def event(self, event) -> bool:  # noqa: N802
         # Un hijo que crece con el dato nuevo —un nombre más largo— no cambia
         # el ancho de la fila, así que no llega ningún `resizeEvent`; lo que
         # llega es la petición de recolocar. Ahí se vuelve a mirar si caben.
+        # Es también lo que llega cuando uno de ellos se esconde o vuelve.
         resultado = super().event(event)
         if event.type() == QEvent.Type.LayoutRequest:
             self._relayout()
