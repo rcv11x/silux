@@ -153,6 +153,10 @@ Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 - Qué se ha validado contra qué pieza y qué se escribió a ciegas (NVIDIA sí,
   ARM no): [docs/hardware-validado.md](docs/hardware-validado.md). Hay tres
   equipos volcados para la suite: dos del i5-10400 y el Ryzen 7 5800X3D.
+- Lo que se lee en la ventana no lleva rellenos del firmware, razones
+  sociales ni chips con su dirección: lo vigila `tests/test_nada_en_bruto.py`
+  con cada volcado. Una marca sale de `render.maker`; un chip, de
+  `render.chip_name`.
 - Las ramas `escala-v5` y `escala-v6` están superadas y se pueden borrar, pero
   no se borran sin que lo diga el autor.
 
@@ -162,7 +166,7 @@ Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); los comentarios, en el español del autor. Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-1006 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+1014 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
@@ -241,7 +245,7 @@ código (F-…), que es por el que se buscan allí.
 | `providers/hwmon.py` | media-alta | la clave del sensor no incluye el nodo: dos discos iguales se pisan |
 | `ui/widgets.py` | media | `StatTile` nace con la raya gruesa, y el arreglo tampoco funciona al perder el dato (F-M2) |
 | `ui/sampler.py` | media | cerrar durante un muestreo largo aborta el proceso (F-M3) |
-| `ui/pages/performance.py` | media | cambiar el tema mata la prueba en curso (F-M5); «Borrar historial» falla (F-M6); la carga máxima no se ve (F-M7) |
+| `ui/pages/performance.py` | media | cambiar el tema mata la prueba en curso (F-M5); la carga máxima no se ve (F-M7) |
 | varios | media | texto en español fijo con la interfaz en inglés (F-M8) |
 | `ui/widgets.py` | media | las etiquetas seleccionables cuestan 22 MB (F-M9) |
 | `ui/pages/memory.py`, `battery.py` | media | voltajes a dos decimales en vez de `render.volts` |
@@ -258,7 +262,9 @@ código (F-…), que es por el que se buscan allí.
 | `tools/comprobar_privacidad.py` | media | ciego a IPv6 y seriales; desde otro directorio da su visto bueno sin mirar (F-M30) |
 | `report.py`, `cli.py` | media | zócalos vacíos como módulos (F-M31); tres formateos del valor de un sensor (F-M32) |
 | `tools/probar_en_minimo.py` | media | cualquier fallo del contenedor se anuncia como «la suite no pasa» (F-M37) |
-| `ui/widgets.py` | media-baja | `ElidingLabel` borra el tooltip; un `float` no finito tumba la gráfica |
+| `ui/widgets.py` | media-baja | un `float` no finito tumba la gráfica |
+| `ui/widgets.py`, `ui/pages/storage.py` | media-baja | `Table` no pinta un candado en una celda: la temperatura de un SATA sigue con guion en la tabla de unidades |
+| `privacidad.py`, `tools/volcar_equipo.py` | media-baja | `--anonimo` da la misma IP a todas las interfaces; los volcados, la misma MAC |
 | `ui/theme.py` | media-baja | caché de iconos en `/tmp/silux-icons` de nombre fijo |
 | `providers/rapl.py` | media-baja | en un contenedor dice que la CPU no tiene contadores |
 | `ui/widgets.py` | baja | el globo «copiado» se come el clic; seleccionar copia el entero; `Table.set_rows` con columnas distintas |
