@@ -8,9 +8,84 @@ aquí esté hecho o pase a `docs/pendientes.md`.
 
 ## Madrugada del 18, en casa: trabajo sin supervisión (rama `interfaz`)
 
-El autor dejó cinco bloques y se fue a dormir. Se empuja `interfaz` al
-acabar cada uno. Lo que sigue se va rellenando bloque a bloque; el resumen
-para la oficina está al final de este apartado cuando todo acabe.
+El autor dejó cinco bloques y se fue a dormir. Se empujó `interfaz` al
+acabar cada uno.
+
+### Resumen para la oficina (18 de noviembre de 2026)
+
+**Los cinco bloques están hechos.** `interfaz` y `master` apuntan al mismo
+commit y están empujadas. `master` avanzó con `git merge --ff-only`, **sin
+etiqueta**: la 0.4.0 sigue «sin publicar» en el CHANGELOG.
+
+**El CI.** Dos intentos de esta madrugada:
+
+- El primero (run 44188932876, sobre `06d825f`) **falló en los dos Python**
+  por un test nuevo, `test_tabla_encaja.py::…en_compacto_a_900…`: con la
+  letra del runner (DejaVu) las tarjetas de Placa base y Sistema caben de
+  una en una a 900 px y el test exigía dos por fila. El fallo era del test,
+  no de la página. Arreglado en `d3ae5e4`, que además lo repite con DejaVu.
+- El segundo (run 44189790198, sobre `d3ae5e4`): **en verde**, tests en 3.10
+  y 3.14 y los dos AppImage. Abiertos con `--screenshot`: salen los catorce
+  iconos de la barra lateral, el de Dispositivos incluido
+  (`~/Imágenes/silux-test/interfaz-casa/comprobacion/ci3-barras.png`).
+- Este resumen es un commit posterior, solo de documentación; pasó su
+  propio CI antes de llegar a `master` (el número está en el mensaje del
+  commit siguiente si hubo que añadirlo, y en `gh run list`).
+
+La suite son 2060 tests; con Python 3.10 pasa también aquí
+(`uv run --python 3.10`).
+
+**Qué hay que hacer en la oficina, por orden:**
+
+1. **Rehacer los dos volcados del i5-10400.** Son de antes de los datos
+   nuevos y de eso no traen nada: en Intel está todo sin comprobar.
+   `rm -rf tests/fixtures/equipos/i5-10400 tests/fixtures/equipos/i5-10400-turbo`,
+   `python3 tools/volcar_equipo.py i5-10400` en reposo y
+   `python3 tools/volcar_equipo.py i5-10400-turbo` con el turbo encendido
+   (cómo, en «Decisiones de hoy», más abajo). Después la suite entera:
+   `tests/test_equipos_nuevo.py::TestElVolcadoDeAntes` espera que el del
+   i5-10400 **no** traiga USB ni vulnerabilidades y va a fallar; es la
+   señal de que hay que escribir para él lo que `TestElVolcadoNuevo`
+   comprueba para el 5800X3D. La herramienta quita la marca y el modelo de
+   lo enchufado por USB: si se niega a escribir, es que encontró algo de
+   esa máquina; se arregla la herramienta, no se fuerza.
+2. **Mirar en Intel**, con la aplicación abierta:
+   - CPU › «Potencia y reposo»: PL1 65 W y PL2 115 W, y la barra de reposo
+     con los estados de Intel (C1, C6…).
+   - Sistema: vulnerabilidades y sus mitigaciones (un Comet Lake tiene más
+     que un Zen 3; ninguna debería salir «sin mitigar»), intercambio, y el
+     arranque: con GRUB no hay tarjeta y sale una línea al pie.
+   - Placa base: la tabla PCIe (la integrada no es un dispositivo de
+     ranura) y la tarjeta Plataforma (VT-x).
+   - Dispositivos: enchufar y quitar un USB con la página abierta.
+   - Gráficos: lo de la tanda A (sin los guiones de lo que solo existe en
+     AMD; «Uso del motor de video» con candado).
+3. **Con permisos**, en cualquiera de las dos máquinas: dar permisos
+   **desde Memoria y desde Almacenamiento sin salir de la página** (el
+   fallo del bloque 1); la columna «Ranura» de Placa base, que está escrita
+   a ciegas; y el «Diagnóstico completo» de cada disco.
+4. **Decidir**: las cuatro preguntas del final de
+   `docs/propuesta-limites-amd.md`, y la maqueta de Ajustes
+   (`~/Imágenes/silux-test/ajustes/`, en casa).
+
+**Lo que se rompió y se arregló por el camino**, para que no sorprenda en
+el historial: el fallo de Memoria era del arreglo del hueco de Gráficos de
+esa misma noche (`aff559c`); el test general encontró dos más (una tarjeta
+de Almacenamiento que no volvía a su texto y una tabla que reventaba al
+volver un monitor).
+
+**Lo que no se hizo**: wifi, LUKS y secundarias del SPD (sin pieza); el
+tiempo de arranque del kernel; los estados vacíos de una ficha, los
+identificadores en monoespaciada y el contraste de la paleta (el «punto 3»
+de la lista del 17, que sigue pendiente).
+
+**En casa queda** (no está en el repositorio): las capturas de
+`~/Imágenes/silux-test/interfaz-casa/`, las maquetas de `datos-nuevos/` y
+de `ajustes/`, y el volcado anterior del 5800X3D solo en el historial de
+git. El ayudante de permisos de esa máquina es el de antes de esta
+madrugada: no cambió nada del ayudante, así que sigue al día.
+
+El detalle de cada bloque:
 
 ### Bloque 1, hecho: la página abierta se pone al día sola
 
