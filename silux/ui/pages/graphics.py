@@ -432,7 +432,9 @@ class GpuSection(QWidget):
         self._apply_memory(gpu)
 
         k = self.clocks.set
-        k(_("gpu.clock.core"), render.hz(gpu.clocks.core_hz))
+        # Parado no es una frecuencia: «0 MHz» se lee como un fallo de lectura.
+        k(_("gpu.clock.core"), _("gpu.clock.idle") if gpu.clocks.core_hz == 0
+          else render.hz(gpu.clocks.core_hz))
         k(_("gpu.clock.coremax"), render.hz(gpu.clocks.core_max_hz))
         k(_("gpu.clock.memory"), render.hz(gpu.clocks.memory_hz))
         k(_("gpu.clock.memeff"), render.hz(gpu.clocks.memory_effective_hz),
@@ -609,7 +611,7 @@ class GpuSection(QWidget):
             self.tile_clock.set_detail(_("gpu.tile.memclock").format(
                 valor=render.hz(relojes.memory_hz)))
         else:
-            self.tile_clock.set_detail("")
+            self.tile_clock.set_detail(_("gpu.clock.idle") if relojes.core_hz == 0 else "")
 
         temperatura = gpu.temp_c
         if self._prefs.fahrenheit and temperatura is not None:

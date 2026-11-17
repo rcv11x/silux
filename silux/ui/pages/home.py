@@ -319,6 +319,8 @@ class HomePage(QScrollArea):
                 piezas.append(_("home.gpu.ofmax").format(
                     max=render.hz(gpu.clocks.core_max_hz)))
                 self.gpu.grafica.set_range(0.0, gpu.clocks.core_max_hz / 1e6)
+        elif not piezas and gpu.clocks.core_hz == 0:
+            piezas.append(_("gpu.clock.idle"))
         # El uso y el consumo, si faltan por permisos, se dicen: sin esto la
         # tarjeta de una integrada parecía no tener nada más que un reloj.
         pie = (_("home.gpu.locked")

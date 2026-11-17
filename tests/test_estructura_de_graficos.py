@@ -88,6 +88,31 @@ class TestLaPaginaDeGraficos(unittest.TestCase):
                                          "gpu.tile.temp", "gpu.tile.power")])
         self.assertEqual(len({f.mapTo(ficha, f.rect().topLeft()).y() for f in fichas}), 1)
 
+    def test_el_motor_parado_dice_en_reposo_y_no_cero_megahercios(self):
+        """Una integrada de Intel en reposo profundo marca 0 MHz, y «Núcleo
+        0 MHz» se leía como una lectura rota."""
+        import dataclasses
+
+        ficha = self._ficha("i5-10400")
+        gpu = self.fotos["i5-10400"].gpus[0]
+        self.assertEqual(ficha.clocks._values[_("gpu.clock.core")].full_text(),
+                         render.hz(gpu.clocks.core_hz))
+        parada = dataclasses.replace(
+            gpu, clocks=dataclasses.replace(gpu.clocks, core_hz=0))
+        ficha.apply(parada)
+        self.app.processEvents()
+        self.assertEqual(ficha.clocks._values[_("gpu.clock.core")].full_text(), _("gpu.clock.idle"))
+        textos = [e.text() for e in ficha.findChildren(QLabel) if e.isVisible()]
+        self.assertNotIn("0 MHz", textos)
+        self.assertIn(_("gpu.clock.idle"), [e.text() for e in ficha.tile_clock.findChildren(QLabel)])
+
+    def test_el_uso_del_motor_de_video_se_llama_igual_que_en_sensores(self):
+        ficha = self._ficha("5800x3d")
+        self.assertEqual(_("gpu.sensor.videouse"), "Uso del motor de video")
+        self.assertEqual(_("gpu.sensor.videouse"), _("sensor.gpu.video"))
+        self.assertIn(_("gpu.sensor.videouse"),
+                      [e.text() for e in ficha.findChildren(QLabel) if e.isVisible()])
+
     def test_ahora_mismo_junta_las_tres_barras_cada_una_con_su_nombre(self):
         ficha = self._ficha("5800x3d")
         gpu = self.fotos["5800x3d"].gpus[0]
