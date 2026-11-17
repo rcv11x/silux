@@ -1,5 +1,38 @@
 # Propuesta: una interfaz más ordenada y más refinada
 
+## Pendiente para seguir en casa
+
+Decidido y **hecho** en la rama `interfaz`: el logo `5-chaflan-ambar`,
+Gráficos con el bloque «Ahora mismo», el estilo A y la tabla de códecs con
+«✓» y «✗».
+
+Por hacer, nada de esto está empezado:
+
+- **Gráficos de la iGPU**: queda un hueco entre Frecuencia y Consumo por la
+  ficha de Temperatura que falta. Que la rejilla se ajuste a las fichas que
+  hay, o que la ficha diga «no publica temperatura».
+- **Inicio, tarjeta de Red**: el nombre largo de la tarjeta se corta en la
+  segunda línea, en claro y también en oscuro. Arreglarlo en los dos temas.
+- **Raya bajo la cabecera de las tablas**: no se ve. El commit `03ef40b` dice
+  que la lleva y no es verdad: corregir el código (o, si se quita, decirlo
+  en el commit que lo haga; el mensaje ya empujado no se reescribe).
+- **Sensores**: plegar por defecto las interfaces de red sin tráfico
+  (`interfaz1`, `tailscale0`).
+- **Textos**: «Núcleo 0 MHz» con la gráfica en reposo → «en reposo»; «Uso de
+  video» en «Consumo y temperaturas» → «Uso del motor de vídeo».
+- **AppImage con el logo y los iconos nuevos**: sin construir. Comprobar en
+  el CI de `interfaz` que los iconos de la barra lateral salen dentro del
+  paquete.
+- **Lo que ya había sin hacer**: la coma decimal, los estados vacíos de una
+  ficha, los identificadores en monoespaciada y medir el contraste de la
+  paleta.
+
+El CI de `interfaz` no se ha lanzado: `gh workflow run appimage.yml --ref
+interfaz`. Las capturas están en `~/Imágenes/silux-test/interfaz/` de la
+oficina y no van al repositorio.
+
+---
+
 Sin código todavía. Lo que sigue sale de recorrer las trece páginas con este
 equipo (i5-10400, Fedora) y con el volcado del 5800X3D, en oscuro a 1440×900 y
 en compacto a 900×680, sobre la rama `ui-permisos` con la tercera tanda ya
