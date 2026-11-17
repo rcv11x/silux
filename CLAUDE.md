@@ -99,6 +99,12 @@ No son preferencias de estilo: cada una viene de un problema concreto.
 8. **Lo que cueste memoria de forma permanente, en otro proceso.** OpenGL,
    Vulkan y OpenCL se preguntan en un hijo (`gpuapi.consultar()`), que muere
    al contestar; un driver que revienta solo se lleva al hijo.
+9. **La interfaz responde al momento.** Lo que cambia (permisos, un disco
+   que se conecta, un dato que aparece o desaparece) se ve en la página
+   abierta sin salir y volver. Toda acción que el usuario hace desde una
+   página tiene su efecto visible en esa misma página. Lo comprueba
+   `tests/test_al_momento.py`: una página abierta con una foto que recibe
+   otra queda igual que montada directamente con la segunda.
 
 El porqué largo de cada una y el resto de la arquitectura:
 [docs/arquitectura.md](docs/arquitectura.md).
@@ -287,7 +293,7 @@ código (F-…), que es por el que se buscan allí.
 | `privacidad.py`, `tools/volcar_equipo.py` | media-baja | `--anonimo` da la misma IP a todas las interfaces; los volcados, la misma MAC |
 | `ui/theme.py` | media-baja | caché de iconos en `/tmp/silux-icons` de nombre fijo |
 | `providers/rapl.py` | media-baja | en un contenedor dice que la CPU no tiene contadores |
-| `ui/widgets.py` | baja | el globo «copiado» se come el clic; seleccionar copia el entero; `Table.set_rows` con columnas distintas |
+| `ui/widgets.py` | baja | el globo «copiado» se come el clic; seleccionar copia el entero |
 | `cli.py` | baja | `--json` sin aviso; `--report ''`; banderas que se pisan; `--with-identifiers` suelto; categorías sin traducir; `--report -` sin aviso |
 | `ui/app.py` | baja | cambiar el tema reinicia las gráficas; no hay navegación por teclado |
 | `ui/pages/graphics.py` | baja | tasa de datos de la VRAM compuesta a mano |
