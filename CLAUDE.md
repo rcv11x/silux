@@ -139,6 +139,8 @@ silux/
 ├─ history.py      historial de pruebas de este equipo
 ├─ score.py        la puntuación comparable entre equipos, y su escala
 ├─ providers/      una fuente cada uno; ninguno conoce a los demás
+│                  (pci.py, devices.py y cpuidle.py son los de los datos
+│                  nuevos; `devices.py` no abre nunca un número de serie)
 ├─ privileged/     el ayudante root mínimo, su cliente, el instalador y el
 │                  cargador de módulos de una lista blanca fija
 ├─ db/             cpu_ids.json (generado), sockets.json y families.json,
@@ -156,16 +158,18 @@ Cada módulo, comentado: [docs/arquitectura.md](docs/arquitectura.md#el-reparto-
 
 ## Estado
 
-Terminadas las trece: **Inicio, CPU, Cachés, Placa base, Memoria,
-Gráficos, Almacenamiento, Red, Batería, Sistema, Rendimiento, Sensores,
-Ajustes**. La de Batería solo aparece en los equipos que tienen una.
+Terminadas las catorce: **Inicio, CPU, Cachés, Placa base, Memoria,
+Gráficos, Almacenamiento, Red, Dispositivos, Batería, Sistema, Rendimiento,
+Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 
 - La escala del benchmark es la **v6**: puntúan dos cargas de las cinco, las
   que no dependen de la zlib de cada distribución. `score.VERSION` y
   `db/scores.json` van siempre en el mismo commit. [docs/benchmark.md](docs/benchmark.md)
 - Qué se ha validado contra qué pieza y qué se escribió a ciegas (NVIDIA sí,
   ARM no): [docs/hardware-validado.md](docs/hardware-validado.md). Hay tres
-  equipos volcados para la suite: dos del i5-10400 y el Ryzen 7 5800X3D.
+  equipos volcados para la suite: dos del i5-10400 y el Ryzen 7 5800X3D. El
+  del 5800X3D está rehecho con los datos nuevos; **los del i5-10400 no**, y
+  de lo nuevo no traen nada hasta que se rehagan en la oficina.
 - Lo que se lee en la ventana no lleva rellenos del firmware, razones
   sociales ni chips con su dirección: lo vigila `tests/test_nada_en_bruto.py`
   con cada volcado. Una marca sale de `render.maker`; un chip, de
@@ -179,7 +183,7 @@ Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); los comentarios, en el español del autor. Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-1032 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+1199 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
@@ -263,6 +267,8 @@ código (F-…), que es por el que se buscan allí.
 
 | Dónde | Gravedad | Qué |
 |---|---|---|
+| `tests/fixtures/equipos/i5-10400*` | alta | volcados de antes de los datos nuevos: rehacerlos en la oficina; hasta entonces lo nuevo no está comprobado en Intel |
+| `ui/pages/board.py` | media, sin comprobar | la columna «Ranura» (SMBIOS tipo 9) no se ha visto con la tabla de ninguna placa |
 | `spd.py` | alta | el XMP de DDR4 ignora la corrección fina del ciclo: un DDR4-3600 sale 3200 (F-A2); pide un volcado real con XMP |
 | `privileged/instalar.py` | alta, condicionada | no comprueba que el destino no sea sustituible |
 | `ui/pages/cpulive.py` | media-alta | relojes compuestos a mano: 576 MHz sale «0.58 GHz» |
