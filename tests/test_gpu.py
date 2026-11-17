@@ -1303,7 +1303,10 @@ class TestCuadrosDeLaGrafica(unittest.TestCase):
 
     def test_el_bus_de_memoria_no_es_la_vram_ocupada(self):
         """Una tarjeta con la VRAM llena y el bus parado tiene datos cargados
-        y no los está tocando: son dos preguntas distintas."""
+        y no los está tocando: son dos preguntas distintas. Las dos se
+        contestan en la tarjeta de la memoria, no en fichas aparte."""
+        from silux.i18n import _
+
         seccion = self._seccion(Gpu(
             name="RX 9070 XT",
             memory_busy_percent=21.0,
@@ -1311,22 +1314,24 @@ class TestCuadrosDeLaGrafica(unittest.TestCase):
                              used_bytes=15_000_000_000,
                              bandwidth_bytes=644_096_000_000),
         ))
-        self.assertEqual(seccion.tile_membus.value.text(), "21")
-        self.assertEqual(seccion.tile_vram.value.text(), "88")
+        self.assertIn("21.0 %", seccion.memory._values[_("gpu.vram.busy")].full_text())
+        self.assertIn("88 %", seccion.memory._values[_("gpu.vram.used")].full_text())
 
     def test_el_porcentaje_del_bus_dice_contra_que_se_compara(self):
         """Un 21 % a secas no dice si son megas o gigas por segundo."""
+        from silux.i18n import _
+
         seccion = self._seccion(Gpu(
             name="RX 9070 XT", memory_busy_percent=21.0,
             memory=GpuMemory(bandwidth_bytes=644_096_000_000),
         ))
-        self.assertIn("644", seccion.tile_membus.detail.full_text())
+        self.assertIn("644", seccion.memory._values[_("gpu.vram.busy")].full_text())
 
     def test_una_grafica_que_no_publica_nada_no_inventa_ceros(self):
         """Una Intel sin permisos deja los cuadros a «—», no a cero: no leer
         un dato no es que valga cero."""
         seccion = self._seccion(Gpu(name="UHD 630"))
-        for nombre in ("tile_clock", "tile_membus"):
+        for nombre in ("tile_clock", "tile_temp"):
             with self.subTest(cuadro=nombre):
                 cuadro = getattr(seccion, nombre)
                 self.assertEqual(cuadro.value.text(), render.DASH)

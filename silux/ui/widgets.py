@@ -381,6 +381,47 @@ class Badge(QLabel):
         painter.end()
 
 
+class Plegable(QWidget):
+    """Un bloque que nace cerrado: un renglón que lo nombra y lo abre.
+
+    Para lo que hay que tener y casi nadie mira —los identificadores PCI de
+    una gráfica, la firma CPUID—. Sigue estando a un clic, pero no se lleva
+    media tarjeta por delante de lo que sí se mira.
+    """
+
+    def __init__(self, titulo: str, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self._titulo = titulo
+        columna = QVBoxLayout(self)
+        columna.setContentsMargins(0, 0, 0, 0)
+        columna.setSpacing(theme.METRICS.grid_vspace)
+
+        self.boton = QPushButton("")
+        self.boton.setObjectName("TextButton")
+        self.boton.setFlat(True)
+        self.boton.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.boton.clicked.connect(lambda: self.set_abierto(not self.abierto()))
+        fila = QHBoxLayout()
+        fila.setContentsMargins(0, 0, 0, 0)
+        fila.addWidget(self.boton)
+        fila.addStretch(1)
+        columna.addLayout(fila)
+
+        self._caja = QWidget()
+        self.body = QVBoxLayout(self._caja)
+        self.body.setContentsMargins(0, 0, 0, 0)
+        columna.addWidget(self._caja)
+        self.set_abierto(False)
+
+    def abierto(self) -> bool:
+        return not self._caja.isHidden()
+
+    def set_abierto(self, abierto: bool) -> None:
+        self._caja.setVisible(abierto)
+        self.boton.setText(f"{'▾' if abierto else '▸'} {self._titulo}")
+        self.updateGeometry()
+
+
 class Divider(QFrame):
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)

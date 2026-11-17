@@ -77,7 +77,7 @@ class TestEnLasTresPaginas(unittest.TestCase):
 
         ficha = self._ficha_de_graficos(self._ventana(INTEL))
         self.assertFalse(ficha.tile_temp.isVisible())
-        self.assertFalse(ficha.sensors._values[_("gpu.sensor.temp")].isVisible())
+        self.assertFalse(ficha.sensors._values[_("gpu.sensor.hotspot")].isVisible())
         self.assertTrue(ficha.sensors_pie.isVisible())
         self.assertIn(_("gpu.na.notemp"), ficha.sensors_pie.text())
         # Las otras fichas de una integrada siguen: uso, reloj y consumo.

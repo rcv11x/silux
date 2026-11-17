@@ -51,9 +51,11 @@ class TestEnLaFicha(unittest.TestCase):
         self.ficha.show()
         self.addCleanup(self.ficha.close)
         self.ficha.apply(gpu)
+        # Los identificadores van plegados: se abren para mirar la fila.
+        self.ficha.inventory_fold.set_abierto(True)
         self.app.processEvents()
         campo = _("gpu.field.uuid")
-        return self.ficha.card._names[campo], self.ficha.card._values[campo]
+        return self.ficha.inventory._names[campo], self.ficha.inventory._values[campo]
 
     def test_el_del_volcado_esta_a_ceros_y_la_fila_no_sale(self):
         gpu = self.foto.gpus[0]
