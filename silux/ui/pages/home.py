@@ -116,13 +116,13 @@ class HomePage(QScrollArea):
                                   m.page_margin, m.page_margin)
         layout.setSpacing(m.section_gap)
 
-        # Arriba del todo, y escondido hasta que la ventana diga que falta
-        # algo: es lo primero que tiene que ver quien abre el programa sin
-        # permisos, y lo último que quiere ver quien ya los dio.
+        # Escondido hasta que la ventana diga que falta algo, y debajo de las
+        # tarjetas: lo primero de esta página es el equipo. Arriba del todo
+        # eran 130 px de aviso antes del primer dato, y lo que falta ya lo
+        # señalan el candado de cada tarjeta y el enlace de la barra de estado.
         self.permission_notice = PermissionNotice(palette,
                                                   compact=prefs.density == "compact")
         self.permission_notice.hide()
-        layout.addWidget(self.permission_notice)
 
         layout.addWidget(self._cabecera())
 
@@ -145,6 +145,7 @@ class HomePage(QScrollArea):
         self.red = self._tarjeta(tercera, _("nav.network"), _("nav.network"))
         self.placa = self._tarjeta(tercera, _("nav.board"), _("nav.board"), cuerpo=None)
         layout.addWidget(tercera)
+        layout.addWidget(self.permission_notice)
 
         layout.addStretch(1)
         self._chips: tuple = ()
@@ -167,13 +168,6 @@ class HomePage(QScrollArea):
         self.subtitle.setWordWrap(True)
         self.badges = ChipRow()
 
-        # Quien abre esto por primera vez no sabe qué está mirando ni qué
-        # puede esperar. Una línea al principio ahorra la pregunta.
-        self.pitch = QLabel(
-            _("home.tagline"))
-        self.pitch.setObjectName("Muted")
-        self.pitch.setWordWrap(True)
-
         # Aquí y no solo en Ajustes: esta pantalla ya es el resumen del equipo,
         # con las mismas cuatro tarjetas que acaban en la imagen, así que es
         # donde alguien piensa «esto es lo que quiero enseñar». A Ajustes no se
@@ -192,7 +186,6 @@ class HomePage(QScrollArea):
         card.body.addWidget(self.title)
         card.body.addWidget(self.subtitle)
         card.body.addLayout(fila)
-        card.body.addWidget(self.pitch)
         return card
 
     # -- actualización ------------------------------------------------------
@@ -232,8 +225,8 @@ class HomePage(QScrollArea):
         chips = []
         if sistema.hostname:
             chips.append(sistema.hostname)
+        # La arquitectura no: está en CPU y en Sistema, y aquí era la tercera.
         if snapshot.cpu.types:
-            chips.append(snapshot.cpu.types[0].architecture or "")
             chips.append(render.virtual_machine(snapshot.cpu.types[0]) or "")
         # Lo que falta por permisos no va aquí: lo dice el aviso de arriba,
         # con su lista y su botón, y el enlace de la barra de estado. Una
@@ -338,15 +331,17 @@ class HomePage(QScrollArea):
         if not memoria.total_bytes:
             self.memoria.poner("—", "", "")
             return
+        # Usado y total en el mismo renglón: en tres («8.9 GB en uso», «31.3
+        # GB», «28 % ocupada») había que juntarlos de cabeza.
+        usada = memoria.used_bytes
         detalle = " · ".join(p for p in (
-            render.size(memoria.total_bytes),
+            _("home.mem.used").format(pct=f"{usada / memoria.total_bytes * 100:.0f}"),
             _tipo_de_memoria(snapshot),
         ) if p)
-        usada = memoria.used_bytes
         self.memoria.poner(
-            _("home.mem.inuse").format(tam=render.size(usada)), detalle,
-            _("home.mem.used").format(
-                pct=f"{usada / memoria.total_bytes * 100:.0f}"))
+            _("home.mem.of").format(usada=render.size(usada),
+                                    total=render.size(memoria.total_bytes)),
+            detalle, "")
         # Los mismos tramos y colores que la página de Memoria: aquí la caché
         # iba con el color del fondo de la barra y no se veía dónde acababa.
         self.memoria.barra.set_segments(memory_segments(memoria),
@@ -455,7 +450,15 @@ class HomePage(QScrollArea):
             placa.firmware,
             placa.tpm_version,
             _("board.field.secureboot") if placa.secure_boot else None) if p)
-        self.placa.poner(placa.display_name, bios, arranque)
+        # Si la placa ya es el titular de la página, aquí no se repite: manda
+        # el chipset, que arriba no está. En un equipo de marca el titular es
+        # el equipo y la placa sí es un dato nuevo.
+        nombre = placa.display_name
+        if nombre == self.title.text():
+            nombre = placa.chipset or bios or nombre
+            if nombre == bios:
+                bios = ""
+        self.placa.poner(nombre, bios, arranque)
 
 
 def _tipo_de_memoria(snapshot: Snapshot) -> Optional[str]:

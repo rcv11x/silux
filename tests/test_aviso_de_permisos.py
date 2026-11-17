@@ -70,12 +70,23 @@ class TestElAvisoDeInicio(unittest.TestCase):
                 self.assertEqual([l.text() for l in aviso.lines],
                                  [n.what for n in f.permission_notes])
 
-    def test_va_antes_que_la_cabecera(self):
+    def test_va_debajo_de_las_tarjetas_y_no_delante_del_equipo(self):
+        # Arriba del todo eran 130 px de aviso antes del primer dato. Lo
+        # primero de Inicio es el equipo; lo que falta lo señalan además el
+        # candado de cada tarjeta y el enlace de la barra de estado.
         ventana = self._ventana()
         ventana._on_sample(self.fotos[AMD])
         self.app.processEvents()
-        self.assertLess(self._aviso(ventana).geometry().top(),
-                        ventana.home_page.title.parentWidget().geometry().top())
+        inicio = ventana.home_page
+        aviso = self._aviso(ventana)
+        self.assertFalse(aviso.isHidden())
+        raiz = inicio.widget()
+        def alto(widget):
+            return widget.mapTo(raiz, widget.rect().topLeft()).y()
+        self.assertEqual(alto(inicio.title.parentWidget()),
+                         raiz.layout().contentsMargins().top())
+        for tarjeta in (inicio.cpu, inicio.memoria, inicio.placa):
+            self.assertGreater(alto(aviso), alto(tarjeta))
 
     def test_con_todo_leido_no_sale(self):
         ventana = self._ventana()

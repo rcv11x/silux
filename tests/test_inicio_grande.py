@@ -158,13 +158,51 @@ class TestInicioConLaVentanaGrande(unittest.TestCase):
             with self.subTest(equipo=nombre):
                 f = self.fotos[nombre]
                 _ventana, inicio = self._inicio(nombre)
-                self.assertEqual(inicio.placa.nombre.text(), f.board.display_name)
+                # La placa ya es el titular de la página en un equipo
+                # montado: la tarjeta dice el chipset, que arriba no está.
+                self.assertEqual(inicio.title.text(), f.board.display_name)
+                self.assertEqual(inicio.placa.nombre.text(), f.board.chipset)
                 self.assertIn(f.board.bios_version, inicio.placa.detalle.text())
                 # La fecha, sin el orden americano del firmware.
                 self.assertIn(render.bios_date(f.board.bios_date), inicio.placa.detalle.text())
                 self.assertNotIn(f.board.bios_date, inicio.placa.detalle.text())
                 self.assertIn(f.board.firmware, inicio.placa.cifras.text())
                 self.assertNotIn("TPM TPM", inicio.placa.cifras.text())
+
+    def test_en_un_equipo_de_marca_la_tarjeta_si_nombra_la_placa(self):
+        # El titular es el equipo («ThinkCentre M80q») y la placa, un dato
+        # nuevo. Como lo deja el proveedor en un OEM: la versión del sistema
+        # trae el nombre comercial.
+        import dataclasses
+
+        f = self.fotos[AMD]
+        marca = dataclasses.replace(f, board=dataclasses.replace(
+            f.board, system_vendor="LENOVO", system_version="ThinkCentre M80q",
+            vendor="LENOVO", name="316C"))
+        ventana, inicio = self._inicio(AMD)
+        ventana._on_sample(marca)
+        self.assertNotEqual(marca.board.display_name, "")
+        self.assertEqual(inicio.title.text(), marca.board.display_name)
+        self.assertNotEqual(inicio.placa.nombre.text(), "")
+
+    def test_la_memoria_dice_usado_y_total_en_un_renglon(self):
+        for nombre in (INTEL, AMD):
+            with self.subTest(equipo=nombre):
+                memoria = self.fotos[nombre].system.memory
+                _ventana, inicio = self._inicio(nombre)
+                self.assertEqual(
+                    inicio.memoria.nombre.text(),
+                    f"{render.size(memoria.used_bytes)} de {render.size(memoria.total_bytes)}")
+                self.assertIn("% ocupada", inicio.memoria.detalle.text())
+                self.assertFalse(inicio.memoria.cifras.isVisible())
+
+    def test_la_cabecera_no_repite_lo_que_esta_en_otra_pagina(self):
+        from tests import pantalla
+
+        ventana, inicio = self._inicio(AMD)
+        cabecera = pantalla.textos_de(inicio.title.parentWidget())
+        self.assertNotIn("x86_64", cabecera)
+        self.assertFalse([t for t in cabecera if "ningún dato sale" in t])
 
     def test_las_tres_llevan_a_su_seccion(self):
         ventana, inicio = self._inicio(AMD)
