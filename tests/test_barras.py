@@ -70,7 +70,20 @@ class TestLasBarras(unittest.TestCase):
                     self.assertIn(etiqueta, insignia.text())
                     self.assertIsNotNone(insignia.swatch(), etiqueta)
                     self.assertEqual(insignia.swatch().name(),
-                                     barra._p.q(token).name(), etiqueta)
+                                     barra._color(token).name(), etiqueta)
+
+    def test_la_memoria_va_en_tonos_del_acento_y_no_en_colores_de_estado(self):
+        # El azul de «información» y el amarillo de «aviso» dentro de una
+        # barra de memoria se leían como si algo pasara.
+        ventana = self._ventana()
+        for nombre in ("Inicio, memoria", "Memoria"):
+            barra = self._barras(ventana)[nombre]
+            estados = {barra._p.q(n).name() for n in ("info", "warn", "crit", "ok")}
+            colores = [barra._color(t).name() for _e, v, t in barra._segments if v > 0]
+            with self.subTest(barra=nombre):
+                self.assertFalse(estados.intersection(colores))
+                self.assertEqual(len(set(colores)), len(colores), "dos tramos iguales")
+                self.assertEqual(colores[0], barra._p.q("accent").name())
 
     def test_dos_tramos_no_comparten_color(self):
         ventana = self._ventana()
@@ -87,7 +100,7 @@ class TestLasBarras(unittest.TestCase):
         cache = [token for etiqueta, valor, token in barra._segments
                  if etiqueta == _("sys.mem.cache")]
         self.assertEqual(len(cache), 1)
-        self.assertNotEqual(barra._p.q(cache[0]).name(), fondo)
+        self.assertNotEqual(barra._color(cache[0]).name(), fondo)
 
     def test_inicio_y_memoria_reparten_la_memoria_igual(self):
         ventana = self._ventana()

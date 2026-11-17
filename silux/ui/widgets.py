@@ -1748,11 +1748,16 @@ def memory_segments(memory) -> list[tuple[str, float, str]]:
     haría que la barra se pasara. La caché va con su color y no con el del
     fondo: en Inicio iba con el de la línea, que es el de la barra vacía, y no
     se distinguía de lo libre.
+
+    Los tres son tonos del acento, de más a menos lleno: lo que ocupan los
+    programas, lo que se devuelve si hace falta y lo que casi no cuenta. Con
+    el azul y el amarillo de los estados, una barra de memoria parecía llevar
+    un aviso dentro.
     """
     return [
         (_("sys.mem.apps"), memory.apps_bytes, "accent"),
-        (_("sys.mem.cache"), memory.cache_bytes, "info"),
-        (_("sys.mem.buffers"), memory.buffers_bytes, "warn"),
+        (_("sys.mem.cache"), memory.cache_bytes, "accent/0.5"),
+        (_("sys.mem.buffers"), memory.buffers_bytes, "accent/0.25"),
         (_("sys.mem.free"), memory.free_bytes, "line"),
     ]
 
@@ -1799,10 +1804,26 @@ class StackedBar(QWidget):
         borde = self._p.q("muted", 0.6)
         self._legend.set_chips(
             (f"{label}  {self._formatter(value)}" for label, value, _token in visibles),
-            swatches=[(self._p.q(token), borde) for _label, _value, token in visibles],
+            swatches=[(self._color(token), borde) for _label, _value, token in visibles],
         )
         self._reservar_alto()
         self.update()
+
+    def _color(self, token: str) -> QColor:
+        """El color de un tramo: uno de la paleta, o un tono suyo.
+
+        «accent/0.5» es el acento a medias con el fondo de la tarjeta. Mezclado
+        y no translúcido, para que el cuadradito de la leyenda —que va sobre
+        otro fondo— sea exactamente el de la barra.
+        """
+        nombre, _barra, cuanto = token.partition("/")
+        color = self._p.q(nombre)
+        if not cuanto:
+            return color
+        fondo, peso = self._p.q("surface"), float(cuanto)
+        return QColor(*(round(f + (c - f) * peso) for c, f in (
+            (color.red(), fondo.red()), (color.green(), fondo.green()),
+            (color.blue(), fondo.blue()))))
 
     def _reservar_alto(self) -> None:
         """Exige el alto de la barra más el de su leyenda, sin negociar.
@@ -1840,7 +1861,7 @@ class StackedBar(QWidget):
             if value <= 0:
                 continue
             width = rect.width() * value / self._total
-            painter.setBrush(QBrush(self._p.q(token)))
+            painter.setBrush(QBrush(self._color(token)))
             painter.drawRect(QRectF(offset, 0, width, self.BAR_HEIGHT))
             offset += width
         painter.end()
