@@ -90,6 +90,40 @@ Lo que la tanda deja a medias, apuntado en `docs/pendientes.md`:
   única excepción de la guarda, a propósito; si no se quiere, es una línea.
 - El **informe y el CLI** siguen dando fabricantes y chips en crudo.
 
+**Punto 3, a medias: el CI de `ui-permisos` NO está lanzado.** Las capturas
+sí. El empuje de la rama lo paró el control de permisos de la sesión de
+Claude, así que hay 18 commits locales por delante de `origin/ui-permisos`.
+Para lanzarlo:
+
+```bash
+git push origin ui-permisos
+gh workflow run appimage.yml --ref ui-permisos && gh run watch
+```
+
+En su lugar se pasó `tools/probar_en_minimo.py --container` y **no vale como
+sustituto**: dentro del contenedor la suite corre como root, y fallan 44
+tests que dependen de no serlo (los del aviso de permisos, el candado y las
+notas, de antes y de esta tanda, y el de la carpeta personal de los
+volcados). Es el F-M37 de pendientes. Lo que sí dice: los 1843 tests se
+importan y corren en Python 3.10 con PySide6 6.11.3, y ninguno falla por el
+lenguaje. La suite de aquí (3.14) está en verde en las dos pasadas.
+
+**Punto 4, hecho: la 0.4.0 preparada** (`08f7c9e`): `silux/__init__.py`, la
+línea del README y la entrada del CHANGELOG, como «sin publicar». Nada ha
+pasado a `master`.
+
+**Las propuestas, escritas y sin código**, a la espera de que el autor elija:
+
+| Documento | Lo que hay que decidir |
+|---|---|
+| `docs/propuesta-interfaz.md` | Dirección visual (A «instrumento» o B «tablero») y logo (cuatro conceptos). Maquetas y logos en `~/Imágenes/silux-test/propuesta-interfaz/` (oficina), con los guiones que los generan |
+| `docs/propuesta-precision.md` y `docs/comprobar.md` | Si se amplía el volcado con las salidas de otras herramientas, las invariantes, la procedencia y «Contribuir mi equipo». Trae discrepancias reales medidas en el i5-10400 |
+| `docs/propuesta-benchmark.md` | Si `7z b` pasa a ser la cifra comparable y el benchmark propio se queda como prueba del equipo, con la escala congelada en la v6 |
+
+Las dos últimas las escribieron agentes de Claude leyendo el repositorio y
+midiendo en esta máquina; lo que no pudieron comprobar lo dicen al final de
+cada una. **No están revisadas línea a línea.**
+
 ## Estado y lo siguiente
 
 **Las dos ramas están empujadas y con el CI en verde** (tests en 3.10 y 3.14,
