@@ -1,4 +1,4 @@
-# Silux
+# <img src="silux/ui/assets/silux.svg" width="44" align="top" alt="El logo de silux: una «S» dibujada como una pista de circuito entre dos vías, sobre una ficha ámbar"> Silux
 
 [![Estado del CI](https://github.com/rcv11x/silux/actions/workflows/appimage.yml/badge.svg?branch=master)](https://github.com/rcv11x/silux/actions/workflows/appimage.yml)
 

@@ -27,6 +27,7 @@ from .. import __version__, build_id, render
 from ..i18n import _
 from ..model import Snapshot
 from ..privacidad import anonimizar
+from . import theme
 from .theme import Palette
 
 # Fija y generosa: lo que se comparte en un chat se ve en miniatura hasta que
@@ -146,7 +147,16 @@ def _cabecera(pintor: QPainter, p: Palette, snapshot: Snapshot) -> None:
     fuente.setPointSize(20)
     fuente.setWeight(QFont.Weight.DemiBold)
     pintor.setFont(fuente)
-    pintor.drawText(MARGEN, MARGEN + 26, "silux")
+    # La marca delante del nombre: la misma de la barra lateral, para que la
+    # imagen se reconozca como de este programa donde acabe pegada.
+    from . import icons
+
+    marca = icons.mark(p.bg == theme.DARK.bg, 28)
+    desplazado = 0
+    if not marca.isNull():
+        pintor.drawPixmap(QRectF(MARGEN, MARGEN + 2, 28, 28), marca, QRectF(marca.rect()))
+        desplazado = 36
+    pintor.drawText(MARGEN + desplazado, MARGEN + 26, "silux")
 
     # Debajo, de qué equipo se está hablando en una línea. Sin el nombre de la
     # máquina: eso es justo lo que no se publica.
