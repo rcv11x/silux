@@ -29,6 +29,9 @@ DISK_HEADERS = ("storage.col.unit", "storage.col.model", "gpu.vram.type", "stora
                 "gpu.sensor.temp", "storage.tile.reading", "storage.tile.writing")
 PART_HEADERS = ("storage.col.part", "storage.col.fs", "storage.col.mount", "storage.col.size2", "storage.col.used2", "storage.col.free")
 
+# Dónde va la temperatura en la tabla de unidades (`DISK_HEADERS`).
+COLUMNA_TEMPERATURA = 5
+
 DISK_FIELDS = ("storage.col.model", "gpu.field.vendor", "gpu.vram.type", "storage.field.bus", "storage.col.size",
                "storage.field.firmware", "storage.field.logical", "storage.field.physical", "storage.field.scheduler",
                "gpu.clock.link", "gpu.sensor.temp", "storage.field.hours", "storage.field.written",
@@ -56,6 +59,7 @@ class StoragePage(QScrollArea):
     def __init__(self, palette: Palette, prefs: Preferences, parent=None):
         super().__init__(parent)
         self._p = palette
+        self._candado = None
         self._prefs = prefs
         m = theme.METRICS
 
@@ -194,6 +198,10 @@ class StoragePage(QScrollArea):
 
     def apply(self, snapshot: Snapshot) -> None:
         discos = sorted(snapshot.disks, key=_orden)
+        # El diagnóstico (SMART) lo guarda un permiso mientras exista esta
+        # nota; de él salen las horas, lo escrito, la vida y, en un SATA sin
+        # `drivetemp`, la temperatura.
+        self._candado = snapshot.permission_note("disks.health")
         self._apply_header(discos)
         self._apply_tiles(discos)
         self._apply_tables(discos)
@@ -331,6 +339,9 @@ class StoragePage(QScrollArea):
              render.rate(x.io.write_rate_bps))
             for x in discos
         ] or [(_("storage.none"), d, d, d, d, d, d, d)])
+        for fila, x in enumerate(discos):
+            self.disks.set_cell_tooltip(fila, COLUMNA_TEMPERATURA,
+                                        self._por_que_sin_temperatura(x))
 
         filas = [
             (p.name, p.filesystem or d, p.mountpoint or d,
@@ -359,6 +370,7 @@ class StoragePage(QScrollArea):
                     grid.add(_(campo))
                 card.body.addWidget(barra)
                 card.body.addWidget(grid)
+                grid.locked_clicked.connect(self.elevation_requested)
                 fila.add(card)
                 self._grids[disco.name] = grid
                 self._bars[disco.name] = barra
@@ -399,7 +411,8 @@ class StoragePage(QScrollArea):
         f(_("storage.field.scheduler"), disco.scheduler or d,
           tooltip=_("storage.tip.scheduler"))
         f(_("gpu.clock.link"), render.pcie_link(disco.link) if disco.link else d)
-        f(_("gpu.sensor.temp"), render.temperature(disco.temp_c, self._prefs.fahrenheit))
+        f(_("gpu.sensor.temp"), render.temperature(disco.temp_c, self._prefs.fahrenheit),
+          tooltip=self._por_que_sin_temperatura(disco))
 
         salud = disco.health
         f(_("storage.field.hours"), f"{salud.power_on_hours:n} h" if salud.power_on_hours else d)
@@ -408,3 +421,29 @@ class StoragePage(QScrollArea):
         f(_("storage.field.life"),
           f"{salud.life_left_percent} %" if salud.life_left_percent is not None else d,
           tooltip=_("storage.tip.life"))
+        self._poner_candados(grid, disco)
+
+    def _por_que_sin_temperatura(self, disco: Disk) -> str:
+        """Lo que explica el guion de un disco que no da su temperatura."""
+        if disco.temp_c is not None:
+            return ""
+        return _("storage.tip.notemp.nvme" if disco.kind == "NVMe" else "storage.tip.notemp")
+
+    def _poner_candados(self, grid: InfoGrid, disco: Disk) -> None:
+        """Candado, y no guion, en lo que el diagnóstico daría con permisos.
+
+        Mientras no se haya leído el de este disco: después, lo que siga
+        faltando es que el disco no lo cuenta, y eso sí es un guion.
+        """
+        if self._candado is None or disco.health.power_on_hours is not None:
+            return
+        salud = disco.health
+        faltan = {
+            "gpu.sensor.temp": disco.temp_c is None,
+            "storage.field.hours": True,
+            "storage.field.written": not salud.written_bytes,
+            "storage.field.life": salud.life_left_percent is None,
+        }
+        for clave, falta in faltan.items():
+            if falta:
+                grid.set_locked(_(clave), self._p.warn, render.lock_tooltip(self._candado))

@@ -947,6 +947,8 @@
   "storage.tile.writing": "Escribiendo",
   "storage.tip.kind": "No hay ningún campo que lo diga: se deduce de si el kernel considera que el disco gira y de por qué bus va conectado.",
   "storage.tip.life": "Lo que el propio disco calcula que le queda, según su contador de desgaste.",
+  "storage.tip.notemp": "Un disco SATA solo da su temperatura por dos caminos: su diagnóstico (SMART), que pide permisos, o el módulo drivetemp del kernel (sudo modprobe drivetemp).",
+  "storage.tip.notemp.nvme": "Este disco no publica su temperatura.",
   "storage.tip.physical": "Los discos modernos trabajan en sectores de 4 KB por dentro aunque le digan al sistema que son de 512 B.",
   "storage.tip.scheduler": "Cómo ordena el kernel las peticiones antes de mandarlas al disco. En un NVMe suele estar desactivado porque el propio disco lo hace mejor.",
   "storage.tip.written": "El TBW: cuántos datos se han escrito en este disco desde que salió de fábrica. Es lo que consume la vida de un SSD.",

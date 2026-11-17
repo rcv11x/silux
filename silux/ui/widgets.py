@@ -1505,6 +1505,13 @@ class Table(QScrollArea):
         # tabla bailaría a cada muestreo.
         self._anchos = [0] * len(self._headers)
 
+    def set_cell_tooltip(self, fila: int, columna: int, texto: str) -> None:
+        """La explicación de una celda concreta: por qué lleva un guion."""
+        if fila < len(self._cells) and columna < len(self._cells[fila]):
+            celda = self._cells[fila][columna]
+            if celda.toolTip() != texto and (texto or celda.toolTip() != celda.full_text()):
+                celda.setToolTip(texto)
+
     def set_rows(self, rows: Sequence[Sequence[str]], tooltips: Sequence[str] = ()) -> None:
         # Mientras la tabla tenga la misma forma se reescriben las celdas que
         # ya están. Rehacerlas en cada muestreo dejaba miles de etiquetas vivas.

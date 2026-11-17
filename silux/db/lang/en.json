@@ -947,6 +947,8 @@
   "storage.tile.writing": "Writing",
   "storage.tip.kind": "No field states it: it is worked out from whether the kernel considers the drive rotational and which bus it hangs off.",
   "storage.tip.life": "What the drive itself reckons it has left, according to its own wear counter.",
+  "storage.tip.notemp": "A SATA disk only gives its temperature two ways: its diagnostics (SMART), which need permissions, or the kernel's drivetemp module (sudo modprobe drivetemp).",
+  "storage.tip.notemp.nvme": "This disk does not publish its temperature.",
   "storage.tip.physical": "Modern drives work in 4 KB sectors internally even while telling the system they are 512 B.",
   "storage.tip.scheduler": "How the kernel orders requests before sending them to the drive. On an NVMe it is usually off because the drive itself does it better.",
   "storage.tip.written": "The TBW: how much data has been written to this drive since it left the factory. It is what consumes an SSD's life.",
