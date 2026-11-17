@@ -110,6 +110,9 @@ class ElidingLabel(QLabel):
     def __init__(self, text: str = "", parent: Optional[QWidget] = None):
         super().__init__(parent)
         self._full = ""
+        # El tooltip que puso quien usa la etiqueta: de dónde sale el dato,
+        # por qué falta. Manda sobre el del recorte.
+        self._explicacion = ""
         self._copiable = False
         self.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         self.set_full_text(text)
@@ -139,8 +142,23 @@ class ElidingLabel(QLabel):
         if text == self._full:
             return
         self._full = text
-        self.setToolTip(text if self._needs_elide() else "")
+        # La explicación era del valor anterior: quien cambia el valor pone
+        # después la suya, si la tiene.
+        self._explicacion = ""
         self._refresh()
+
+    def setToolTip(self, texto: str) -> None:  # noqa: N802
+        self._explicacion = texto or ""
+        self._poner_tooltip()
+
+    def _poner_tooltip(self) -> None:
+        """La explicación de fuera, o el texto entero si sale recortado.
+
+        `_refresh` corre en cada redimensionado: si pusiera aquí solo lo del
+        recorte, borraría la explicación en cuanto la ventana cambia de tamaño.
+        """
+        recortado = self.text() != self._full
+        super().setToolTip(self._explicacion or (self._full if recortado else ""))
 
     def full_text(self) -> str:
         return self._full
@@ -152,7 +170,7 @@ class ElidingLabel(QLabel):
         available = max(self.width(), 1)
         elided = self.fontMetrics().elidedText(self._full, Qt.TextElideMode.ElideRight, available)
         super().setText(elided)
-        self.setToolTip(self._full if elided != self._full else "")
+        self._poner_tooltip()
 
     def resizeEvent(self, event) -> None:  # noqa: N802
         super().resizeEvent(event)

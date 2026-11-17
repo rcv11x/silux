@@ -91,12 +91,6 @@ con el que la cosa **nace**.
   VRAM ocupada y bus de memoria—, o sea la fila que parece tachada, que es
   justo la imagen que motivó aquel arreglo. Como está en `update_value`, solo
   alcanza a la ficha que tuvo un número y lo perdió.
-* `ui/widgets.py` · **media-baja** · `ElidingLabel._refresh` termina poniendo su
-  propio tooltip, y corre en cada `resizeEvent`, así que borra el que le pasaron
-  desde fuera. De 268 tooltips en nueve muestreos, 60 desaparecen con un solo
-  redimensionado; los de la ficha de CPU vuelven al siguiente porque la página
-  los repone, y los tres de cada módulo de memoria —«Chips», «Capacidad»,
-  «Catalogado a»— no vuelven nunca, porque se ponen una sola vez.
 * `ui/widgets.py` · **media-baja** · un `float` no finito en una gráfica
   —`_rango_redondo` hace `log10` de la amplitud— lanza una excepción en cada
   repintado, deja el `QPainter` abierto y al salir el proceso se va con un
