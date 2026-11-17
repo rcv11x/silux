@@ -288,6 +288,7 @@ código (F-…), que es por el que se buscan allí.
 | `tools/probar_en_minimo.py` | media | cualquier fallo del contenedor se anuncia como «la suite no pasa» (F-M37) |
 | `ui/widgets.py` | media-baja | un `float` no finito tumba la gráfica |
 | `ui/widgets.py`, `ui/pages/storage.py` | media-baja | `Table` no pinta un candado en una celda: la temperatura de un SATA sigue con guion en la tabla de unidades |
+| `tests/test_benchmark.py` | media, para la fase del benchmark | un test pide ×1.8 de reparto y en el CI a veces da ×1.76; el umbral no se toca hasta entonces |
 | `providers/drm.py` | baja | no se lee el motivo de limitación de `i915` (`throttle_reason_*`): «Estado —» en una integrada de Intel |
 | `.github/workflows/appimage.yml` | media | el CI no mira si el AppImage pinta sus iconos; se comprobó a mano con `--screenshot` |
 | `privacidad.py`, `tools/volcar_equipo.py` | media-baja | `--anonimo` da la misma IP a todas las interfaces; los volcados, la misma MAC |
