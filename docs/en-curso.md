@@ -9,6 +9,13 @@ aquí esté hecho o pase a `docs/pendientes.md`.
 
 ## Sesión del 17, en la oficina
 
+**Cómo quedan las ramas (17, tarde).** `ui-permisos` acaba aquí y pasa a
+`master` con `--ff-only`, **sin etiqueta**: la 0.4.0 sigue «sin publicar» y
+no se publica nada sin que lo diga el autor (está en CLAUDE.md). El rediseño
+de la interfaz va en la rama **`interfaz`**, que sale de `ui-permisos`. Las
+dos se empujan a mano por el autor: a la sesión de Claude el `git push` se lo
+bloquea su control de permisos.
+
 **Punto 1, hecho: los dos volcados del i5-10400, rehechos** (`f59e55f`).
 Llevan `scaling_cur_freq` y el nombre de la gráfica grabado; el de reposo con
 `no_turbo` a 1 y 2,9 GHz, el de carga con `no_turbo` a 0 y 4,0 GHz.
