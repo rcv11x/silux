@@ -1023,6 +1023,10 @@ def build_app(argv: Optional[list[str]] = None) -> tuple[QApplication, MainWindo
                              "direcciones y números de serie")
     parser.add_argument("--screenshot", metavar="RUTA",
                         help="captura la ventana en un PNG y sale (útil sin pantalla)")
+    parser.add_argument("--samples", type=int, metavar="N", default=MUESTRAS_DE_CAPTURA,
+                        help="cuántas muestras tomar antes de la captura; con "
+                             "--interval, separadas ese tiempo (65 a 1 s: un "
+                             "minuto de gráficas)")
     parser.add_argument("--page", metavar="NOMBRE", help="sección a mostrar al abrir")
     args = parser.parse_args(argv)
 
@@ -1073,6 +1077,10 @@ def build_app(argv: Optional[list[str]] = None) -> tuple[QApplication, MainWindo
     return app, MainWindow(prefs, forzadas=forzadas), args
 
 
+# Cuántas muestras se toman antes de una captura si no se dice otra cosa.
+MUESTRAS_DE_CAPTURA = 10
+
+
 def _anonimizador(activo: bool):
     """Lo que se le hace a cada foto antes de pintarla, si se pidió.
 
@@ -1108,9 +1116,14 @@ def main(argv: Optional[list[str]] = None) -> int:
         collector = Collector()
         collector.snapshot()
         preparar = _anonimizador(args.anonimo)
-        for _paso in range(10):
-            time.sleep(0.08)
+        # Las justas para que haya cifras derivadas, o las que se pidan: con
+        # diez seguidas las gráficas de las fichas salen en una esquina, que
+        # está bien para ver una página y mal para enseñar cómo queda.
+        pausa = args.interval if args.interval and args.samples != MUESTRAS_DE_CAPTURA else 0.08
+        for _paso in range(max(2, args.samples)):
+            time.sleep(pausa)
             window._on_sample(preparar(collector.snapshot()))
+            app.processEvents()
         if args.page and (motivo := seccion_que_falta(window, args.page)):
             print(motivo, file=sys.stderr)
             return 2
