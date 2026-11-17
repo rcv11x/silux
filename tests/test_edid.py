@@ -14,7 +14,8 @@ from silux import edid
 def construir(*, fabricante="GBT", producto=10025, serie=0x01010101,
               semana=16, anno=2024, ancho_cm=59, alto_cm=33,
               nombre="AORUS FO27Q2", serie_texto=None,
-              nativo=(2560, 1440), refresco=(48, 240), cabecera=None) -> bytes:
+              nativo=(2560, 1440), refresco=(48, 240), cabecera=None,
+              medida_mm=None) -> bytes:
     """Un EDID 1.4 de mentira, con su suma de comprobación al final."""
     bloque = bytearray(128)
     bloque[0:8] = cabecera if cabecera is not None else edid.CABECERA
@@ -43,6 +44,12 @@ def construir(*, fabricante="GBT", producto=10025, serie=0x01010101,
         d[59] = v & 0xFF
         d[60] = vb & 0xFF
         d[61] = ((v >> 8) << 4) | (vb >> 8)
+        if medida_mm:
+            # El tamaño de la imagen, en milímetros, dentro del temporizador.
+            ancho_mm, alto_mm = medida_mm
+            d[66] = ancho_mm & 0xFF
+            d[67] = alto_mm & 0xFF
+            d[68] = ((ancho_mm >> 8) << 4) | (alto_mm >> 8)
 
     def descriptor(sitio: int, tipo: int, texto: str) -> None:
         bloque[sitio:sitio + 3] = b"\x00\x00\x00"
@@ -84,9 +91,45 @@ class TestLecturaNormal(unittest.TestCase):
         self.assertEqual((self.monitor.week, self.monitor.year), (16, 2024))
         self.assertEqual(self.monitor.made, "semana 16 de 2024")
 
-    def test_medidas_y_pulgadas(self):
+    def test_con_solo_centimetros_la_diagonal_es_aproximada(self):
+        """59 × 33 cm daban «26.6"» para un monitor de 27: medio centímetro
+        por lado mueve la diagonal un cuarto de pulgada."""
+        from silux import render
+
         self.assertEqual((self.monitor.width_mm, self.monitor.height_mm), (590, 330))
-        self.assertEqual(self.monitor.diagonal_inches, 26.6)
+        self.assertFalse(self.monitor.size_exact)
+        self.assertEqual(self.monitor.diagonal_inches, 27.0)
+        self.assertEqual(render.monitor_diagonal(self.monitor), '≈ 27"')
+
+    def test_con_los_milimetros_del_modo_nativo_sale_al_decimal(self):
+        """Las medidas son las de los dos monitores del 5800X3D."""
+        from silux import render
+
+        for cm, mm, pulgadas in (((59, 33), (590, 334), '26.7"'),     # AORUS FO27Q2
+                                 ((60, 34), (597, 336), '27.0"')):    # LG 27GL850
+            with self.subTest(mm=mm):
+                monitor = edid.parse(construir(ancho_cm=cm[0], alto_cm=cm[1], medida_mm=mm))
+                self.assertEqual((monitor.width_mm, monitor.height_mm), mm)
+                self.assertTrue(monitor.size_exact)
+                self.assertEqual(render.monitor_diagonal(monitor), pulgadas)
+
+    def test_unos_milimetros_que_no_cuadran_no_se_creen(self):
+        """Hay pantallas que ponen ahí la proporción, «16 × 9»."""
+        from silux import render
+
+        for mm in ((16, 9), (1600, 900), (590, 0)):
+            with self.subTest(mm=mm):
+                monitor = edid.parse(construir(medida_mm=mm))
+                self.assertEqual((monitor.width_mm, monitor.height_mm), (590, 330))
+                self.assertFalse(monitor.size_exact)
+                self.assertEqual(render.monitor_diagonal(monitor), '≈ 27"')
+
+    def test_sin_medida_no_hay_diagonal(self):
+        from silux import render
+
+        monitor = edid.parse(construir(ancho_cm=0, alto_cm=0, medida_mm=(16, 9)))
+        self.assertIsNone(monitor.diagonal_inches)
+        self.assertIsNone(render.monitor_diagonal(monitor))
 
     def test_modo_nativo(self):
         self.assertEqual((self.monitor.native_width, self.monitor.native_height),

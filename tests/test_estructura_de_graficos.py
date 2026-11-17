@@ -174,6 +174,15 @@ class TestLaPaginaDeGraficos(unittest.TestCase):
         ficha.sensors._candados[_("gpu.sensor.videouse")].clicked.emit()
         self.assertEqual(pedidos, [1])
 
+    def test_el_tamano_de_cada_monitor_sale_de_sus_milimetros(self):
+        """El AORUS de 27 salía «26.6"» y el LG «27.2"», de centímetros
+        enteros. El EDID de los dos trae la medida al milímetro."""
+        for equipo, esperado in (("5800x3d", ['26.7"', '27.0"']), ("i5-10400", ['21.5"'])):
+            with self.subTest(equipo=equipo):
+                ficha = self._ficha(equipo)
+                self.assertEqual([fila[4].full_text() for fila in ficha.displays._cells],
+                                 esperado)
+
     def test_ahora_mismo_junta_las_tres_barras_cada_una_con_su_nombre(self):
         ficha = self._ficha("5800x3d")
         gpu = self.fotos["5800x3d"].gpus[0]

@@ -69,6 +69,13 @@ class Edid:
     version: Optional[str] = None
     width_mm: Optional[int] = None
     height_mm: Optional[int] = None
+    # Si esas dos medidas vienen al milímetro. El bloque base del EDID las da
+    # en centímetros enteros, y de ahí salía «26.6"» para un monitor de 27:
+    # medio centímetro por lado mueve la diagonal un cuarto de pulgada. El
+    # temporizador del modo nativo las trae en milímetros; cuando no las trae
+    # o no cuadran con las otras, quedan las de centímetros y la diagonal se
+    # enseña como lo que es, aproximada.
+    size_exact: bool = False
     native_width: Optional[int] = None
     native_height: Optional[int] = None
     native_refresh_hz: Optional[float] = None
@@ -98,10 +105,12 @@ class Edid:
 
     @property
     def diagonal_inches(self) -> Optional[float]:
+        """La diagonal del panel. Con un decimal si las medidas son al
+        milímetro; redondeada a la pulgada si solo hay centímetros."""
         if not (self.width_mm and self.height_mm):
             return None
-        diagonal = (self.width_mm ** 2 + self.height_mm ** 2) ** 0.5
-        return round(diagonal / 25.4, 1)
+        diagonal = (self.width_mm ** 2 + self.height_mm ** 2) ** 0.5 / 25.4
+        return round(diagonal, 1) if self.size_exact else float(round(diagonal))
 
     @property
     def refresh_range(self) -> Optional[str]:
@@ -161,6 +170,7 @@ def parse(raw: bytes) -> Optional[Edid]:
         return None
 
     nombre, serie_texto = _de_los_descriptores(raw)
+    ancho_mm, alto_mm, al_milimetro = _medida_del_panel(raw)
     ancho, alto, refresco = _modo_preferido(raw)
     minimo, maximo = _rango_de_refresco(raw)
     serie_numero = int.from_bytes(raw[12:16], "little")
@@ -176,8 +186,9 @@ def parse(raw: bytes) -> Optional[Edid]:
         year=raw[17] + 1990 if raw[17] else None,
         week=raw[16] if 1 <= raw[16] <= 53 else None,
         version=f"{raw[18]}.{raw[19]}",
-        width_mm=raw[21] * 10 or None,
-        height_mm=raw[22] * 10 or None,
+        width_mm=ancho_mm,
+        height_mm=alto_mm,
+        size_exact=al_milimetro,
         native_width=ancho,
         native_height=alto,
         native_refresh_hz=refresco,
@@ -258,6 +269,26 @@ def _rango_de_refresco(raw: bytes) -> tuple[Optional[int], Optional[int]]:
         if maximo:
             return minimo or None, maximo
     return None, None
+
+
+def _medida_del_panel(raw: bytes) -> tuple[Optional[int], Optional[int], bool]:
+    """Ancho y alto de la imagen en milímetros, y si son al milímetro.
+
+    El bloque base los da en centímetros (bytes 21 y 22). El primer
+    temporizador detallado, el del modo nativo, los repite en milímetros. Se
+    toman esos cuando cuadran con los centímetros: hay pantallas que ponen ahí
+    la proporción («16 × 9») o un cero, y un proyector no tiene medida.
+    """
+    ancho_cm, alto_cm = raw[21], raw[22]
+    trozo = raw[54:72]
+    if int.from_bytes(trozo[0:2], "little"):            # es un temporizador
+        ancho = trozo[12] | ((trozo[14] >> 4) << 8)
+        alto = trozo[13] | ((trozo[14] & 0x0F) << 8)
+        cuadra = (abs(ancho - ancho_cm * 10) <= 10 and abs(alto - alto_cm * 10) <= 10
+                  if ancho_cm and alto_cm else False)
+        if ancho and alto and cuadra:
+            return ancho, alto, True
+    return ancho_cm * 10 or None, alto_cm * 10 or None, False
 
 
 def _modo_preferido(raw: bytes) -> tuple[Optional[int], Optional[int], Optional[float]]:

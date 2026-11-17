@@ -971,11 +971,24 @@ def monitor_name(monitor: Optional[Edid]) -> str:
     return " ".join(partes) if partes else (monitor.manufacturer_id or DASH)
 
 
+def monitor_diagonal(monitor: Optional[Edid]) -> Optional[str]:
+    """«26.7"», o «≈ 27"» cuando el monitor solo da centímetros enteros.
+
+    Con medio centímetro de error por lado la diagonal baila un cuarto de
+    pulgada: un decimal ahí es una precisión que el dato no tiene.
+    """
+    if monitor is None or not monitor.diagonal_inches:
+        return None
+    if monitor.size_exact:
+        return f'{monitor.diagonal_inches}"'
+    return f'≈ {monitor.diagonal_inches:.0f}"'
+
+
 def monitor_summary(monitor: Optional[Edid]) -> str:
-    """«26.6" · 590 × 330 mm · semana 16 de 2024»."""
+    """«26.7" · 590 × 334 mm · semana 16 de 2024»."""
     if monitor is None:
         return DASH
-    pulgadas = f'{monitor.diagonal_inches}"' if monitor.diagonal_inches else None
+    pulgadas = monitor_diagonal(monitor)
     medida = (f"{monitor.width_mm} × {monitor.height_mm} mm"
               if monitor.width_mm and monitor.height_mm else None)
     partes = [p for p in (pulgadas, medida, monitor.made) if p]
