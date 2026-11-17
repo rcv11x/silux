@@ -92,6 +92,20 @@ icono propio y la privacidad antes que la página).
 pieza); el tiempo de arranque del kernel y de los servicios (pide lanzar
 `systemd-analyze`).
 
+### Bloque 4, hecho: `docs/propuesta-limites-amd.md` (solo documento)
+
+PPT, TDC y EDC con `ryzen_smu`. **Recomendación: no ahora, y no entero.**
+Va contra «mejor un dato que falta que uno que parece bueno» (la tabla no
+está documentada y cambia con la BIOS), y haría que el ayudante dejara de
+ser «solo lee»: cada lectura de esa tabla manda una orden al firmware. Si
+aun así se quiere, en dos pasos: primero solo detectar el módulo, sin cifras
+y sin privilegios; después, experimental y con un único mapa, el del
+5800X3D, verificado en la pieza. **En este equipo `ryzen_smu` no está
+instalado**, así que nada de su tabla está comprobado: lo dice el documento.
+Lo que sí propone para ya, en Intel: las ventanas de tiempo de PL1 y PL2,
+PL4 donde exista y si los límites están bloqueados (el registro ya está en
+la lista del ayudante). **Hay cuatro decisiones del autor al final.**
+
 ## Sesión del 17 por la noche, en casa (rama `interfaz`)
 
 Dos tandas. La primera (el hueco de Gráficos, el corte de Red, la raya de
