@@ -40,7 +40,7 @@ from .. import render
 from ..i18n import _
 from ..model import Need
 from . import theme
-from .theme import Palette, mono_font, ui_font
+from .theme import Palette, value_font, ui_font
 
 
 # --------------------------------------------------------------------------
@@ -319,7 +319,9 @@ class Card(QFrame):
 
         self._title_label: Optional[QLabel] = None
         if title:
-            self._title_label = QLabel(title.upper())
+            # Como viene escrito, sin pasarlo a mayúsculas: «nvme0n1» y
+            # «enp6s0» son nombres, y «NVME0N1» no lo es de nada.
+            self._title_label = QLabel(title)
             self._title_label.setObjectName("CardTitle")
             outer.addWidget(self._title_label)
 
@@ -334,7 +336,7 @@ class Card(QFrame):
     def set_title(self, title: str) -> None:
         """Cambia el título de la tarjeta si la tenía."""
         if self._title_label is not None:
-            self._title_label.setText(title.upper())
+            self._title_label.setText(title)
 
 
 class Badge(QLabel):
@@ -463,7 +465,7 @@ class InfoGrid(QWidget):
 
         value_label = ElidingLabel(value)
         value_label.setObjectName("FieldValue")
-        value_label.setFont(mono_font())
+        value_label.setFont(value_font())
         value_label.hacer_copiable()
 
         # Sin altura mínima, el layout comprime la tarjeta con más filas para
@@ -1041,7 +1043,7 @@ class StatTile(Card):
 
         self.value = QLabel("—")
         self.value.setObjectName("TileValue")
-        self.value.setFont(mono_font(theme.METRICS.tile_value_pt, bold=True))
+        self.value.setFont(value_font(theme.METRICS.tile_value_pt, bold=True))
 
         self.unit = QLabel(unit)
         self.unit.setObjectName("TileUnit")
@@ -1058,7 +1060,7 @@ class StatTile(Card):
         row.addWidget(self.unit, 0, Qt.AlignmentFlag.AlignBottom)
         row.addStretch(1)
 
-        self.caption = QLabel(label.upper())
+        self.caption = QLabel(label)
         self.caption.setObjectName("TileLabel")
 
         # Línea opcional de contexto: sin ella, un "7 W" no dice si está bien.
@@ -1085,7 +1087,7 @@ class StatTile(Card):
         según el estado: en una batería, lo que queda de autonomía y lo que
         falta para llenarse no son la misma cifra ni se llaman igual.
         """
-        texto = label.upper()
+        texto = label
         if self.caption.text() != texto:
             self.caption.setText(texto)
 
@@ -1134,7 +1136,7 @@ class StatTile(Card):
             vacio = text == render.DASH
             self.value.setFont(
                 ui_font(theme.METRICS.small_pt) if vacio
-                else mono_font(theme.METRICS.tile_value_pt, bold=True))
+                else value_font(theme.METRICS.tile_value_pt, bold=True))
             self.value.setObjectName("Muted" if vacio else "TileValue")
             self.value.style().unpolish(self.value)
             self.value.style().polish(self.value)
@@ -1636,7 +1638,7 @@ class Table(QScrollArea):
                 # Un símbolo suelto en la letra de las cifras es un trazo fino
                 # que se pierde: va en la de la interfaz, más grande y gruesa.
                 celda.setFont(ui_font(theme.METRICS.base_pt + 2, QFont.Weight.Bold)
-                              if tono else mono_font())
+                              if tono else value_font())
                 celda.setMinimumHeight(celda.fontMetrics().height())
                 celda.style().unpolish(celda)
                 celda.style().polish(celda)
@@ -1675,7 +1677,7 @@ class Table(QScrollArea):
             for column, value in enumerate(values):
                 label = ElidingLabel(str(value))
                 label.setObjectName("FieldValue" if column == 0 else "FieldName")
-                label.setFont(mono_font() if column else ui_font(theme.METRICS.small_pt))
+                label.setFont(value_font() if column else ui_font(theme.METRICS.small_pt))
                 label.setMinimumHeight(label.fontMetrics().height())
                 # Aquí viven los modelos de disco, las direcciones y las
                 # referencias de los módulos: lo que uno pega en un buscador.
@@ -1737,7 +1739,7 @@ class Table(QScrollArea):
         # después de añadir filas devuelve el alto anterior y la tabla se
         # quedaba recortada a una sola línea.
         line = max(
-            QFontMetrics(mono_font()).height(),
+            QFontMetrics(value_font()).height(),
             QFontMetrics(ui_font(theme.METRICS.small_pt)).height(),
         ) + 2
         rows = self._rows + 1                       # las filas más la cabecera
@@ -1825,10 +1827,10 @@ class LevelList(QWidget):
         barra = LevelBar(self._p)
         cifra = QLabel("")
         cifra.setObjectName("FieldValue")
-        cifra.setFont(mono_font())
+        cifra.setFont(value_font())
         porcentaje = QLabel("")
         porcentaje.setObjectName("FieldValue")
-        porcentaje.setFont(mono_font(bold=True))
+        porcentaje.setFont(value_font(bold=True))
         for etiqueta in (cifra, porcentaje):
             etiqueta.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         # El hueco del «100 %» reservado: sin él la columna bailaba al pasar

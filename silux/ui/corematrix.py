@@ -18,7 +18,7 @@ from PySide6.QtCore import QPointF, QRectF, QSize, Qt
 from PySide6.QtGui import QBrush, QColor, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import QSizePolicy, QWidget
 from . import theme
-from .theme import Palette, mono_font
+from .theme import Palette, value_font
 from .widgets import curva_suave
 
 
@@ -123,7 +123,7 @@ class CoreMatrix(QWidget):
 
         columns = self._columns()
         cell_width = (self.width() - (columns - 1) * self.GAP) / columns
-        font = mono_font(max(7, theme.METRICS.mono_pt - 1))
+        font = value_font(max(7, theme.METRICS.mono_pt - 1))
         painter.setFont(font)
         metrics = painter.fontMetrics()
         # Todo lo de dentro se mide contra la altura de línea, que es lo único

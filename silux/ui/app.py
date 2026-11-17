@@ -30,7 +30,7 @@ from .guarda import comprobar as _comprobar_procesador
 
 _comprobar_procesador()
 
-from PySide6.QtCore import Qt, QElapsedTimer, QTimer
+from PySide6.QtCore import Qt, QElapsedTimer, QSize, QTimer
 from PySide6.QtGui import QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
@@ -47,12 +47,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .. import EMOJI, __version__, build_id, i18n, settings as prefs_module
+from .. import __version__, build_id, i18n, settings as prefs_module
 from ..i18n import _
 from ..model import Snapshot
 from ..settings import ACCENT_NAMES, Preferences
 from ..tracking import Tracker
-from . import theme
+from . import icons, theme
 from .pages.battery import BatteryPage
 from .pages.board import BoardPage
 from .pages.caches import CachesPage
@@ -305,9 +305,21 @@ class MainWindow(QMainWindow):
         column.setContentsMargins(2, 6, 2, 6)
         column.setSpacing(4)
 
-        wordmark = QLabel(f"{EMOJI} Silux")
+        # La marca y el nombre. La marca es la del logo, no un emoji: es el
+        # mismo dibujo que el icono de la ventana y el del menú.
+        oscuro = self._palette.bg == theme.DARK.bg
+        lado_marca = round(m.headline_px * 1.15)
+        self.brand_mark = QLabel()
+        self.brand_mark.setPixmap(icons.mark(oscuro, lado_marca))
+        self.brand_mark.setFixedSize(lado_marca, lado_marca)
+        wordmark = QLabel("Silux")
         wordmark.setObjectName("Headline")
-        wordmark.setContentsMargins(10, 0, 0, 0)
+        cabecera = QHBoxLayout()
+        cabecera.setContentsMargins(10, 4, 0, 6)
+        cabecera.setSpacing(8)
+        cabecera.addWidget(self.brand_mark)
+        cabecera.addWidget(wordmark)
+        cabecera.addStretch(1)
 
         version = QLabel(_("app.version").format(v=__version__))
         version.setObjectName("Muted")
@@ -330,9 +342,14 @@ class MainWindow(QMainWindow):
         self.nav.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.nav.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
+        # Un icono por sección, gris, y en ámbar el de la que está abierta.
+        lado_icono = max(14, m.base_pt + 7)
+        self.nav.setIconSize(QSize(lado_icono, lado_icono))
         stack_index = 0
         for name, enabled in SECTIONS:
             item = QListWidgetItem(_(name))
+            item.setIcon(icons.nav_icon(name, self._palette.muted,
+                                        self._palette.accent, lado_icono))
             # El nombre en español va aparte del que se ve: es la clave con la
             # que `--page` pide una sección, y un script que dice «Sensores»
             # tiene que seguir funcionando con la interfaz en inglés.
@@ -347,10 +364,12 @@ class MainWindow(QMainWindow):
         self.nav.setCurrentRow(0)
         self.nav.currentRowChanged.connect(self._on_section)
 
-        column.addWidget(wordmark)
+        # La versión y la copia, al pie: arriba eran dos renglones entre el
+        # nombre y la navegación, y son de lo que se mira una vez.
+        column.addLayout(cabecera)
+        column.addWidget(self.nav, 1)
         column.addWidget(version)
         column.addWidget(self.build_label)
-        column.addWidget(self.nav, 1)
         return panel
 
     def _sources_text(self) -> str:

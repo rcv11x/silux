@@ -48,8 +48,8 @@ class TestLaPaginaDeGraficos(unittest.TestCase):
         fichas = sorted((f for f in ficha.findChildren(StatTile) if f.isVisible()),
                         key=lambda f: f.mapTo(ficha, f.rect().topLeft()).x())
         self.assertEqual([f.caption.text() for f in fichas],
-                         [_(c).upper() for c in ("gpu.tile.usage", "gpu.tile.clock",
-                                                 "gpu.tile.temp", "gpu.tile.power")])
+                         [_(c) for c in ("gpu.tile.usage", "gpu.tile.clock",
+                                         "gpu.tile.temp", "gpu.tile.power")])
 
     def test_ahora_mismo_junta_las_tres_barras_cada_una_con_su_nombre(self):
         ficha = self._ficha("5800x3d")
@@ -80,8 +80,10 @@ class TestLaPaginaDeGraficos(unittest.TestCase):
         textos = [e.text() for e in ficha.findChildren(QLabel) if e.isVisible()]
         for repetido in ("En uso", "Límite de consumo"):
             self.assertNotIn(repetido, textos)
-        self.assertEqual(textos.count(_("gpu.now.power")), 1)
-        self.assertEqual(textos.count(_("gpu.now.vram")), 1)
+        # El consumo está en su ficha y en su barra, no otra vez en la tabla
+        # de debajo; y la memoria ocupada, solo en su barra.
+        self.assertNotIn(_("gpu.now.power"), ficha.sensors._values)
+        self.assertNotIn(_("gpu.now.vram"), ficha.memory._values)
         from silux.ui.widgets import StackedBar
         self.assertEqual([b for b in ficha.findChildren(StackedBar) if b.isVisible()], [])
         # Lo que no está en las barras sigue en su tarjeta.

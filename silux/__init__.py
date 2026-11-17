@@ -93,7 +93,3 @@ def _preguntar_a_git() -> str:
         return ""
     marca = commit.stdout.strip()
     return f"{marca}+" if marca and sucio.stdout.strip() else marca
-
-# El emoji del rótulo. Uno solo y en un sitio: en un programa que ya usa el
-# color para señalar lo importante, más de uno compite con los datos.
-EMOJI = "🔎"

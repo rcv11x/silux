@@ -26,7 +26,7 @@ from .. import theme
 from ..theme import Palette, ui_font
 from ..scorebar import ScoreBar
 from ..widgets import (Card, InfoGrid, Notice, ResponsiveRow, Table,
-                       clear_layout, mono_font)
+                       clear_layout, value_font)
 
 RESULT_HEADERS = ("bench.col.load", "bench.col.one", "bench.col.all", "bench.col.scale")
 HISTORY_HEADERS = ("bench.col.test", "bench.col.measure", "bench.col.score", "bench.col.avgfreq",
@@ -401,7 +401,7 @@ class PerformancePage(QScrollArea):
                 etiqueta = QLabel(texto)
                 etiqueta.setObjectName("FieldValue" if columna == 0 else "FieldName")
                 if columna:
-                    etiqueta.setFont(mono_font())
+                    etiqueta.setFont(value_font())
                 etiqueta.setAlignment(Qt.AlignmentFlag.AlignRight if columna in (2, 3, 4)
                                       else Qt.AlignmentFlag.AlignLeft)
                 if columna == 0 and entrada.label:

@@ -13,7 +13,7 @@ from PySide6.QtGui import QBrush, QPainter, QPen
 from PySide6.QtWidgets import QSizePolicy, QWidget
 from ..i18n import _
 from . import theme
-from .theme import Palette, mono_font, ui_font
+from .theme import Palette, value_font, ui_font
 
 
 def _contiguous_runs(positions: Sequence[int]) -> list[tuple[int, int]]:
@@ -82,7 +82,7 @@ class CacheMap(QWidget):
         position = {cpu: i for i, cpu in enumerate(self._axis)}
 
         label_font = ui_font(max(7, theme.METRICS.small_pt - 1))
-        value_font = mono_font(max(7, theme.METRICS.mono_pt - 1))
+        value_font = value_font(max(7, theme.METRICS.mono_pt - 1))
         max_level = max((row.get("level", 1) for row in self._rows), default=1)
 
         for index, row in enumerate(self._rows):

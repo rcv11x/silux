@@ -37,7 +37,7 @@ from PySide6.QtWidgets import (
 from .. import render
 from ..i18n import _
 from . import theme
-from .theme import Palette, mono_font, ui_font
+from .theme import Palette, value_font, ui_font
 
 
 def _cifra(texto: str) -> float:
@@ -300,7 +300,7 @@ class SensorTree(QTreeWidget):
         self._orden_natural: dict[int, tuple[str, ...]] = {}
 
         self._label_font = ui_font(theme.METRICS.small_pt)
-        self._value_font = mono_font()
+        self._value_font = value_font()
         self._branch_font = ui_font(theme.METRICS.small_pt, QFont.Weight.DemiBold)
         self._icons: dict[str, QIcon] = {}
         self.setIconSize(QSize(13, 13))

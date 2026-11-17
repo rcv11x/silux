@@ -60,21 +60,25 @@ class Palette:
         return color
 
 
+# Las superficies casi no llevan borde: lo que separa una tarjeta del fondo es
+# su tono, y `line_soft` es apenas un filo. Con un borde del mismo peso en
+# cada caja —cabecera, fichas, tarjetas, tablas— la página era una rejilla de
+# recuadros y no se veía qué mandaba. El acento es el ámbar del logo.
 LIGHT = Palette(
-    bg="#EDEFF3", surface="#FFFFFF", surface_alt="#F5F6F9",
-    line="#D2D7DF", line_soft="#E3E7ED",
-    ink="#161A21", ink_dim="#39414E", muted="#626C7B",
-    accent="#B4501B", accent_soft="#C0601F", accent_wash="#F7EAE1",
-    ok="#2A6E52", warn="#8A6408", crit="#93362E", info="#2A5F94",
+    bg="#F4F5F7", surface="#FFFFFF", surface_alt="#F0F2F5",
+    line="#E2E5EA", line_soft="#ECEEF2",
+    ink="#1B2028", ink_dim="#3A4250", muted="#667080",
+    accent="#C2570C", accent_soft="#D46A1C", accent_wash="#FBEBDD",
+    ok="#2A6E52", warn="#8A6408", crit="#93362E", info="#245F9E",
     disabled="#A7AEBA",
 )
 
 DARK = Palette(
-    bg="#0E1116", surface="#161A20", surface_alt="#1C2129",
-    line="#2B323C", line_soft="#232932",
-    ink="#E5E8ED", ink_dim="#BCC3CD", muted="#8C96A4",
-    accent="#E1834A", accent_soft="#F0A272", accent_wash="#2A1D14",
-    ok="#6FBF9A", warn="#D6AF4E", crit="#DE8078", info="#79A9D9",
+    bg="#0F1318", surface="#171C24", surface_alt="#1E242E",
+    line="#252C37", line_soft="#1D232C",
+    ink="#E8EBF0", ink_dim="#C2C8D2", muted="#8792A2",
+    accent="#F2994A", accent_soft="#F7B77D", accent_wash="#2B2017",
+    ok="#6FBF9A", warn="#D6AF4E", crit="#E0857D", info="#7FB2E5",
     disabled="#525C6A",
 )
 
@@ -89,8 +93,8 @@ DARK = Palette(
 # tono necesita valores distintos sobre un fondo oscuro que sobre uno claro, y
 # derivarlos automáticamente da o bien colores apagados o bien texto ilegible.
 ACCENTS: dict[str, dict[str, tuple[str, str, str]]] = {
-    "naranja": {"dark": ("#E1834A", "#F0A272", "#2A1D14"),
-                "light": ("#B4501B", "#C0601F", "#F7EAE1")},
+    "naranja": {"dark": ("#F2994A", "#F7B77D", "#2B2017"),
+                "light": ("#C2570C", "#D46A1C", "#FBEBDD")},
     "azul":    {"dark": ("#5AA9E6", "#85C3F0", "#12212E"),
                 "light": ("#1D6FB8", "#2782CE", "#E3EEF8")},
     "verde":   {"dark": ("#5FBF8B", "#8AD4AC", "#10241A"),
@@ -169,17 +173,19 @@ SPACIOUS = Metrics(
 )
 
 NORMAL = Metrics(
-    page_margin=12, section_gap=9, card_pad_h=13, card_pad_v=10, card_gap=7,
-    grid_vspace=4, grid_hspace=16, base_pt=10, small_pt=9, mono_pt=9,
-    headline_px=19, tile_value_pt=17, chart_height=30, cell_w=158, cell_h=40,
-    nav_width=146, min_window_w=460, min_window_h=380,
+    page_margin=14, section_gap=10, card_pad_h=15, card_pad_v=12, card_gap=8,
+    grid_vspace=5, grid_hspace=16, base_pt=10, small_pt=9, mono_pt=9,
+    headline_px=22, tile_value_pt=19, chart_height=30, cell_w=158, cell_h=40,
+    nav_width=166, min_window_w=480, min_window_h=380,
 )
 
+# La barra lateral es más ancha que antes en las tres densidades: cada
+# sección lleva su icono delante del nombre.
 COMPACT = Metrics(
-    page_margin=8, section_gap=6, card_pad_h=9, card_pad_v=7, card_gap=4,
+    page_margin=8, section_gap=6, card_pad_h=10, card_pad_v=8, card_gap=4,
     grid_vspace=2, grid_hspace=11, base_pt=9, small_pt=8, mono_pt=8,
-    headline_px=16, tile_value_pt=14, chart_height=22, cell_w=132, cell_h=34,
-    nav_width=120, min_window_w=390, min_window_h=330,
+    headline_px=18, tile_value_pt=15, chart_height=22, cell_w=132, cell_h=34,
+    nav_width=140, min_window_w=410, min_window_h=330,
 )
 
 METRICS: Metrics = NORMAL
@@ -245,11 +251,34 @@ def set_density(name: str, font_scale: str = "normal") -> Metrics:
 
 
 def mono_font(size: int | None = None, bold: bool = False) -> QFont:
+    """La monoespaciada de verdad: para una orden que se copia a un terminal.
+
+    Los valores de las fichas y las tablas no van aquí sino en `value_font`.
+    """
     font = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
     font.setPointSize(size if size is not None else METRICS.mono_pt)
     font.setBold(bold)
-    # Cifras de ancho fijo: sin esto las columnas de números bailan al refrescar.
     font.setStyleHint(QFont.StyleHint.Monospace)
+    return font
+
+
+def value_font(size: int | None = None, bold: bool = False) -> QFont:
+    """La letra de las cifras y los valores: la de la interfaz, con los
+    números de ancho fijo.
+
+    Con todos los valores en monoespaciada —también «activado», «PowerColor»
+    o «sin límites»— la ventana tenía aire de terminal. Lo que hace falta de
+    una monoespaciada es que las columnas de números no bailen al refrescar,
+    y eso lo dan las cifras tabulares (`tnum`) de la letra normal.
+    """
+    font = QFont()
+    font.setPointSize(size if size is not None else METRICS.mono_pt)
+    font.setBold(bold)
+    # `setFeature` existe desde Qt 6.7. Sin ella las cifras son las
+    # proporcionales de la tipografía, que en las del sistema ya suelen medir
+    # todas lo mismo.
+    if hasattr(font, "setFeature"):
+        font.setFeature(QFont.Tag("tnum"), 1)
     return font
 
 
@@ -366,21 +395,23 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
 
     QFrame#Card {{
         background: {p.surface};
-        border: 1px solid {p.line};
-        border-radius: {max(6, m.card_pad_v // 2 + 3)}px;
+        border: 1px solid {p.line_soft};
+        border-radius: {max(8, m.card_pad_v)}px;
     }}
     QFrame#CardFlat {{
         background: {p.surface_alt};
-        border: 1px solid {p.line_soft};
-        border-radius: 6px;
+        border: none;
+        border-radius: {max(6, m.card_pad_v - 3)}px;
     }}
 
+    /* El título de una tarjeta nombra, no manda: pequeño, tenue y en
+       minúscula. En mayúsculas espaciadas y a peso 700 competía con el
+       titular de la página y con las cifras. */
     QLabel#CardTitle {{
-        color: {p.ink_dim};
+        color: {p.muted};
         font-size: {m.small_pt + 4}px;
-        font-weight: 700;
-        letter-spacing: 1.4px;
-        padding-bottom: 2px;
+        font-weight: 600;
+        padding-bottom: 3px;
     }}
     /* La cabecera de una columna no es el título de una tarjeta: nombra un
        dato de la fila de abajo y tiene que quedarse por detrás de él. */
@@ -419,39 +450,40 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         padding: 3px 9px;
     }}
 
-    QLabel#Headline {{ color: {p.ink}; font-size: {m.headline_px}px; font-weight: 600; }}
+    QLabel#Headline {{ color: {p.ink}; font-size: {m.headline_px}px; font-weight: 650; }}
     QLabel#Subhead  {{ color: {p.ink_dim}; font-size: {m.small_pt + 3}px; }}
 
+    /* Pastillas sin borde: el borde las hacía parecer botones. */
     QLabel#Badge {{
         background: {p.accent_wash};
         color: {p.accent};
-        border: 1px solid {p.accent};
-        border-radius: 5px;
-        padding: 2px 9px;
+        border: none;
+        border-radius: 9px;
+        padding: 3px 10px;
         font-size: {m.small_pt + 1}px;
         font-weight: 600;
     }}
     QLabel#BadgeQuiet {{
         background: {p.surface_alt};
-        color: {p.muted};
-        border: 1px solid {p.line};
-        border-radius: 5px;
-        padding: 2px 9px;
+        color: {p.ink_dim};
+        border: none;
+        border-radius: 9px;
+        padding: 3px 10px;
         font-size: {m.small_pt + 1}px;
     }}
 
-    QLabel#TileValue {{ color: {p.ink}; font-weight: 600; }}
+    QLabel#TileValue {{ color: {p.ink}; font-weight: 650; }}
     QLabel#TileUnit  {{ color: {p.muted}; font-size: {m.small_pt + 3}px; }}
     QLabel#TileLabel {{
-        color: {p.muted}; font-size: {m.small_pt + 1}px;
-        font-weight: 600; letter-spacing: 1.1px;
+        color: {p.muted}; font-size: {m.small_pt + 3}px;
+        font-weight: 500;
     }}
 
     QFrame#Notice {{
         background: {p.surface};
-        border: 1px solid {p.line};
+        border: 1px solid {p.line_soft};
         border-left: 3px solid {p.warn};
-        border-radius: 6px;
+        border-radius: 8px;
     }}
     /* Lo que el usuario puede arreglar va en azul; lo que es un hecho del
        hardware, en gris; un fallo, en rojo. Con el mismo color, «esta gráfica
@@ -492,17 +524,18 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         background: transparent; border: none; outline: none; padding: 4px 4px;
     }}
     QListWidget#Nav::item {{
-        color: {p.muted};
-        padding: {max(5, m.card_pad_v - 5)}px 11px;
-        border-radius: 6px;
-        margin-bottom: 2px;
+        color: {p.ink_dim};
+        padding: {max(5, m.card_pad_v - 6)}px 9px;
+        border-radius: 8px;
+        margin-bottom: 1px;
     }}
-    /* La sección abierta con el color de acento: en una lista de doce, un
-       recuadro gris sobre fondo gris se busca, y este se encuentra. */
+    /* La sección abierta, sobre una pastilla del color de acento y con su
+       icono en ámbar: en una lista de trece se encuentra sin leer. Sin
+       borde, que la convertía en un recuadro más. */
     QListWidget#Nav::item:selected {{
         background: {p.accent_wash};
-        color: {p.accent};
-        border: 1px solid {p.accent};
+        color: {p.ink};
+        border: none;
         font-weight: 600;
     }}
     QListWidget#Nav::item:hover:!selected {{ background: {p.surface_alt}; color: {p.ink_dim}; }}
@@ -557,7 +590,7 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         background: {p.surface_alt};
         color: {p.ink_dim};
         border: 1px solid {p.line};
-        border-radius: 5px;
+        border-radius: 8px;
         padding: 5px 13px;
     }}
     /* Para lo que interrumpe o descarta: se tiene que distinguir del botón
@@ -577,20 +610,24 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         border-color: {p.crit};
     }}
     QPushButton#Danger:pressed {{ background: {crit_press}; }}
-    /* La acción a la que lleva un aviso: la única con el borde y la letra
-       del acento en reposo, para que sea lo primero que se vea al lado de
-       los botones que solo lo apartan. */
+    /* La acción a la que lleva un aviso: la única rellena con el acento,
+       para que sea lo primero que se vea al lado de los botones que solo lo
+       apartan. Es el único sitio, con la sección abierta y las curvas, donde
+       el ámbar ocupa superficie. */
     QPushButton#Primary {{
-        color: {p.accent};
-        border-color: {p.accent};
+        background: {p.accent};
+        color: {p.bg};
+        border: 1px solid {p.accent};
         font-weight: 600;
     }}
     QPushButton#Primary:hover {{
-        background: {p.accent_wash};
-        color: {p.accent};
-        border-color: {p.accent};
+        background: {p.accent_soft};
+        color: {p.bg};
+        border-color: {p.accent_soft};
     }}
-    QPushButton#Primary:disabled {{ color: {p.disabled}; border-color: {p.line}; }}
+    QPushButton#Primary:disabled {{
+        background: {p.surface_alt}; color: {p.disabled}; border-color: {p.line};
+    }}
     /* Un botón que es solo su texto: para apartar un aviso sin que el gesto
        pese lo mismo que atenderlo. */
     QPushButton#TextButton {{
