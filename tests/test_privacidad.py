@@ -9,6 +9,8 @@ foro o en un README igual que el informe de fallos, y el informe ya se
 cuidaba de esto desde el principio.
 """
 
+import dataclasses
+import re
 import unittest
 
 from silux import privacidad
@@ -81,6 +83,44 @@ class TestLoQueSeTapa(unittest.TestCase):
 
     def test_la_direccion_fisica(self):
         self.assertEqual(self.limpia.network[0].mac, "00:00:5e:00:53:af")
+
+    def test_dos_tarjetas_distintas_no_acaban_con_la_misma_direccion(self):
+        # Con la misma falsa en todas, la captura enseñaba dos tarjetas con
+        # una sola dirección física, que es justo lo que no puede pasar.
+        f = _foto()
+        red = (dataclasses.replace(f.network[0], name="enp5s0", mac="00:00:5e:00:53:0b"),
+               dataclasses.replace(f.network[0], name="enp6s0", mac="00:00:5e:00:53:0c"),
+               # Un puente lleva la de la tarjeta que tiene debajo: la misma
+               # de verdad sigue siendo la misma al taparla.
+               dataclasses.replace(f.network[0], name="br0", mac="00:00:5e:00:53:0b"),
+               dataclasses.replace(f.network[0], name="lo", mac="00:00:00:00:00:00"))
+        limpia = privacidad.anonimizar(dataclasses.replace(f, network=red))
+        macs = [i.mac for i in limpia.network]
+        self.assertEqual(macs[0], privacidad.MAC)
+        self.assertNotEqual(macs[0], macs[1])
+        self.assertEqual(macs[0], macs[2])
+        self.assertEqual(macs[3], "00:00:00:00:00:00")
+        for mac in macs[:3]:
+            self.assertRegex(mac, r"^00:00:5e:00:53:[0-9a-f]{2}$")
+            self.assertNotIn(mac, ("00:00:5e:00:53:0b", "00:00:5e:00:53:0c"))
+
+    def test_la_pagina_de_red_las_ensena_distintas(self):
+        from PySide6.QtWidgets import QLabel
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.network import NetworkPage
+        from tests import qt
+
+        app = qt.app()
+        f = _foto()
+        red = (dataclasses.replace(f.network[0], name="enp5s0", mac="00:00:5e:00:53:0b"),
+               dataclasses.replace(f.network[0], name="enp6s0", mac="00:00:5e:00:53:0c"))
+        pagina = NetworkPage(theme.palette_for(app, "dark"), Preferences().normalized())
+        self.addCleanup(pagina.deleteLater)
+        pagina.apply(privacidad.anonimizar(dataclasses.replace(f, network=red)))
+        app.processEvents()
+        texto = "\n".join(e.text() for e in pagina.findChildren(QLabel))
+        self.assertEqual(len(set(re.findall(r"00:00:5e:00:53:[0-9a-f]{2}", texto))), 2, texto)
 
     def test_y_la_ipv6(self):
         self.assertEqual(self.limpia.network[0].ipv6, ("2001:db8::11",))

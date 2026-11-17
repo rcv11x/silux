@@ -25,6 +25,8 @@ EQUIPO = "equipo"
 IPV4 = "192.0.2.11"
 IPV6 = "2001:db8::11"
 MAC = "00:00:5e:00:53:af"
+# La de una interfaz que no tiene: el bucle local. No es de nadie.
+SIN_MAC = "00:00:00:00:00:00"
 PUERTA = "192.0.2.1"
 # Lo que se pone en lugar de una interfaz con un nombre elegido por alguien.
 INTERFAZ = "interfaz{}"
@@ -77,6 +79,17 @@ def _cambiar_nombres(texto: Optional[str], cambios: dict[str, str]) -> Optional[
     for viejo, nuevo in cambios.items():
         texto = re.sub(rf"(?<![\w.-]){re.escape(viejo)}(?![\w.-])", nuevo, texto)
     return texto
+
+
+def _mac_falsa(orden: int) -> str:
+    """La dirección de documentación número `orden`, empezando por `MAC`.
+
+    El bloque que reserva la RFC 7042 tiene 256, y se da la vuelta: con más
+    tarjetas distintas que eso se repetiría alguna, que es mejor que salirse
+    de él.
+    """
+    prefijo, _sep, ultimo = MAC.rpartition(":")
+    return f"{prefijo}:{(int(ultimo, 16) + orden) % 256:02x}"
 
 
 def _tapar(valor: Optional[str], relleno: str = "0") -> Optional[str]:
@@ -146,6 +159,17 @@ def anonimizar(snapshot: Snapshot) -> Snapshot:
             for b in snapshot.batteries)
 
     if snapshot.network:
+        # Cada dirección física distinta, una falsa distinta: con la misma en
+        # todas, dos tarjetas salían con una sola dirección. Y la misma de
+        # verdad da la misma falsa, que es lo que pasa con un puente y la
+        # tarjeta que tiene debajo.
+        macs: dict[str, str] = {}
+
+        def _mac(real: Optional[str]) -> Optional[str]:
+            if not real or real == SIN_MAC:
+                return real
+            return macs.setdefault(real.lower(), _mac_falsa(len(macs)))
+
         cambios["network"] = tuple(
             dataclasses.replace(
                 i,
@@ -155,7 +179,7 @@ def anonimizar(snapshot: Snapshot) -> Snapshot:
                 # llame «lo» o «docker»; las demás, por su sustituto.
                 name=(i.name if de_sistema(i.name)
                       else _limpiar(i.name, equipo, nombres) or i.name),
-                mac=MAC if i.mac else None,
+                mac=_mac(i.mac),
                 ipv4=IPV4 if i.ipv4 else None,
                 ipv6=tuple(IPV6 for _direccion in i.ipv6),
                 gateway=PUERTA if i.gateway else None,
