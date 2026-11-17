@@ -331,6 +331,9 @@ class _Anonimizador:
         self.usuario = getpass.getuser()
         self.casa = str(pathlib.Path.home())
         self.interfaces = self._interfaces()
+        # El nombre que alguien le puso a una interfaz es suyo: además de
+        # sustituirlo donde se sabe que sale, se busca al final en cada byte.
+        self.secretos.update(self.interfaces)
         self.montajes: dict[str, str] = {}
 
     def _interfaces(self) -> dict[str, str]:
@@ -421,10 +424,10 @@ class _Anonimizador:
             # /proc/net es un enlace a self/net: el archivo de verdad acaba en
             # /proc/<pid>/net/, así que se reconoce por cómo termina.
             if relativo.startswith("/proc/") and relativo.endswith("/net/route"):
-                ruta.write_text(self._ruta_de_red(datos.decode()))
+                ruta.write_text(self._cambiar_texto(self._ruta_de_red(datos.decode())))
                 continue
             if relativo.startswith("/proc/") and relativo.endswith("/net/if_inet6"):
-                ruta.write_text(self._ipv6(datos.decode()))
+                ruta.write_text(self._cambiar_texto(self._ipv6(datos.decode())))
                 continue
             if relativo.startswith("/proc/") and relativo.endswith("/mounts"):
                 ruta.write_text(self._cambiar_texto(self._mounts(datos.decode())))

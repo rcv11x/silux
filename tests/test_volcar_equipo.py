@@ -197,6 +197,50 @@ class TestLasInterfacesEnSerie(unittest.TestCase):
             self.assertEqual({c.partition(":")[0] for c in limpio.grabado["ioctl_red"]}, quedan)
 
 
+class TestUnaInterfazConNombrePropio(unittest.TestCase):
+    """Una interfaz de WireGuard llamada como su dueño sale en más sitios que
+    su carpeta: también en las tablas de `/proc/net`."""
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.raiz = pathlib.Path(tmp.name)
+        (self.raiz / "sys/class/net").mkdir(parents=True)
+        for nombre in ("enp1s0", "AnaPC_wg0"):
+            carpeta = self.raiz / "sys/devices/virtual/net" / nombre
+            carpeta.mkdir(parents=True)
+            (carpeta / "mtu").write_text("1420\n")
+            (self.raiz / "sys/class/net" / nombre).symlink_to(
+                f"../../devices/virtual/net/{nombre}")
+        self.red = self.raiz / "proc/self/net"
+        self.red.mkdir(parents=True)
+        (self.red / "route").write_text(
+            "Iface\tDestination\tGateway\n"
+            "enp1s0\t00000000\t0100A8C0\n"
+            "AnaPC_wg0\t0000080A\t00000000\n")
+        (self.red / "if_inet6").write_text(
+            "fe800000000000000000000000000001 03 40 20 80 AnaPC_wg0\n")
+        self.limpio = volcar._Anonimizador(self.raiz, {})
+        self.limpio.contenidos()
+        self.limpio.nombres()
+
+    def test_no_queda_en_las_tablas_de_proc_net(self):
+        for tabla in ("route", "if_inet6"):
+            texto = (self.red / tabla).read_text()
+            self.assertNotIn("AnaPC_wg0", texto, tabla)
+            self.assertIn(privacidad.INTERFAZ.format(1), texto, tabla)
+        self.assertIn("enp1s0", (self.red / "route").read_text())
+
+    def test_y_la_comprobacion_final_lo_busca_en_cada_byte(self):
+        # Que un archivo nuevo lleve el nombre y nadie lo sustituya tiene que
+        # parar el volcado, no depender de que alguien se acuerde de taparlo.
+        self.assertEqual(volcar.comprobar(self.raiz, self.limpio.secretos), [])
+        (self.raiz / "proc/self/net/dev").write_text("AnaPC_wg0: 0 0\n")
+        hallazgos = volcar.comprobar(self.raiz, self.limpio.secretos)
+        self.assertEqual(len(hallazgos), 1, hallazgos)
+        self.assertIn("proc/self/net/dev", hallazgos[0])
+
+
 class TestLosMontajesEnLaComprobacionFinal(unittest.TestCase):
 
     @staticmethod
