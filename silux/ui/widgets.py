@@ -114,8 +114,21 @@ class ElidingLabel(QLabel):
         # por qué falta. Manda sobre el del recorte.
         self._explicacion = ""
         self._copiable = False
+        self._lineas = 1
         self.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         self.set_full_text(text)
+
+    def permitir_lineas(self, cuantas: int) -> None:
+        """Deja que el texto ocupe varias líneas antes de recortarlo.
+
+        Para lo que es una frase y no una cifra: la especificación de un
+        procesador («AMD Ryzen 7 5800X3D 8-Core Processor») salía cortada en
+        compacto con un renglón entero libre debajo.
+        """
+        self._lineas = max(1, cuantas)
+        self.setWordWrap(self._lineas > 1)
+        self._refresh()
+        self.updateGeometry()
 
     def hacer_copiable(self) -> None:
         """Un clic deja el texto completo en el portapapeles.
@@ -168,7 +181,20 @@ class ElidingLabel(QLabel):
 
     def _refresh(self) -> None:
         available = max(self.width(), 1)
-        elided = self.fontMetrics().elidedText(self._full, Qt.TextElideMode.ElideRight, available)
+        metricas = self.fontMetrics()
+        if self._lineas > 1:
+            # Entero si cabe en sus líneas partiendo por palabras; si no, se
+            # recorta lo que cabría en ellas, con algo de margen porque las
+            # líneas no se llenan hasta el borde.
+            alto = metricas.boundingRect(0, 0, available, 100000,
+                                         int(Qt.TextFlag.TextWordWrap), self._full).height()
+            if alto <= metricas.lineSpacing() * self._lineas + 1:
+                elided = self._full
+            else:
+                elided = metricas.elidedText(self._full, Qt.TextElideMode.ElideRight,
+                                             int(available * (self._lineas - 0.25)))
+        else:
+            elided = metricas.elidedText(self._full, Qt.TextElideMode.ElideRight, available)
         super().setText(elided)
         self._poner_tooltip()
 

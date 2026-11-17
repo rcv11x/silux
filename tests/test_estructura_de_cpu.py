@@ -73,5 +73,62 @@ class TestLaPaginaCpu(unittest.TestCase):
             self.assertLessEqual(leyenda.height(), 2 * leyenda.fontMetrics().lineSpacing())
 
 
+class TestLaEspecificacionEnCompacto(unittest.TestCase):
+    """En compacto a 900 px «Intel(R) Core(TM) i5-10400 CPU @ 2.90GHz» salía
+    cortada con puntos suspensivos; es una frase y pasa a dos líneas."""
+
+    def test_sale_entera_en_dos_lineas(self):
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.app import MainWindow
+
+        app = qt.app()
+        normales = Preferences().normalized()
+        self.addCleanup(theme.apply, app, normales.theme, normales.density,
+                        normales.font_scale, normales.accent)
+        # Con la letra por omisión, que es la «grande»: con la normal cabía.
+        prefs = Preferences(density="compact", window_width=900,
+                            window_height=680).normalized()
+        theme.apply(app, prefs.theme, prefs.density, prefs.font_scale, prefs.accent)
+        for equipo in ("i5-10400", "5800x3d"):
+            with self.subTest(equipo=equipo):
+                f = foto(EQUIPOS / equipo)[0]
+                ventana = MainWindow(prefs)
+                self.addCleanup(ventana.close)
+                ventana.resize(900, 680)
+                ventana.show()
+                for _vuelta in range(3):
+                    ventana._on_sample(f)
+                    for _vez in range(4):
+                        app.processEvents()
+                ventana.select_section("CPU")
+                for _vez in range(6):
+                    app.processEvents()
+                pagina = ventana.stack.currentWidget()
+                valor = next(e for e in pagina.findChildren(type(pagina.findChild(
+                    __import__("silux.ui.widgets", fromlist=["ElidingLabel"]).ElidingLabel)))
+                    if getattr(e, "full_text", lambda: "")() == f.cpu.types[0].brand)
+                self.assertEqual(valor.text(), valor.full_text())
+                self.assertGreaterEqual(valor.height(), valor.heightForWidth(valor.width()))
+                una = valor.fontMetrics().horizontalAdvance(valor.full_text())
+                if una > valor.width():                 # no cabe en una: son dos
+                    self.assertGreater(valor.height(), valor.fontMetrics().lineSpacing() * 1.5)
+
+    def test_y_si_ni_en_dos_cabe_se_recorta(self):
+        from silux.ui.widgets import ElidingLabel
+
+        app = qt.app()
+        etiqueta = ElidingLabel("una especificación larguísima que no cabe ni en dos líneas "
+                                "de una columna estrecha por mucho que se parta")
+        self.addCleanup(etiqueta.deleteLater)
+        etiqueta.permitir_lineas(2)
+        etiqueta.resize(120, 60)
+        etiqueta.show()
+        app.processEvents()
+        self.assertNotEqual(etiqueta.text(), etiqueta.full_text())
+        self.assertTrue(etiqueta.text().endswith("…"))
+        self.assertEqual(etiqueta.toolTip(), etiqueta.full_text())
+
+
 if __name__ == "__main__":
     unittest.main()
