@@ -352,13 +352,13 @@ class SensorTree(QTreeWidget):
     # Lo que se le da a la curva. Es ancho fijo y no medido porque no hay
     # texto que medir: es el tramo de tiempo que se quiere ver de un vistazo.
     TREND_WIDTH = 120
-    # Hasta dónde puede crecer cuando sobra sitio. En una pantalla de 2560 el
-    # hueco de la derecha era de más de mil píxeles vacíos mientras la curva
-    # se apretaba en ciento veinte, y una curva más ancha son más muestras
-    # distinguibles. El tope está para que no se estire hasta lo absurdo en
-    # una ultrapanorámica, y solo se reparte lo que sobra: las columnas de
-    # cifras no se tocan, que es lo que las mantiene pegadas al nombre.
-    TREND_MAX = 460
+    # Cuando sobra sitio, la curva se lo queda todo: en una pantalla de 2560
+    # el hueco de la derecha era de más de mil píxeles vacíos, y una curva
+    # más ancha son más muestras distinguibles. Tuvo un tope de 460 px y a
+    # esa anchura de ventana seguía quedando media tarjeta en blanco. Solo se
+    # reparte lo que sobra: las columnas de cifras no se tocan, que es lo que
+    # las mantiene pegadas al nombre. Detrás queda este margen.
+    TREND_MARGIN = 12
 
     @property
     def RESPIRO_CIFRAS(self) -> int:  # noqa: N802
@@ -455,7 +455,7 @@ class SensorTree(QTreeWidget):
         ocupado = sum(self.columnWidth(c) for c in range(len(self.COLUMNS) - 1))
         sobra = self.viewport().width() - ocupado
         actual = self.columnWidth(self.TREND_COLUMN)
-        objetivo = max(self.TREND_WIDTH, min(actual + sobra, self.TREND_MAX))
+        objetivo = max(self.TREND_WIDTH, actual + sobra - self.TREND_MARGIN)
         if objetivo == actual:
             return
         self._applying_widths = True

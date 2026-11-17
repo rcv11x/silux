@@ -169,16 +169,22 @@ class TestColumnasDelArbol(unittest.TestCase):
 
     def test_la_curva_se_lleva_parte_del_sobrante(self):
         """En una pantalla de 2560 quedaban mil píxeles vacíos a la derecha
-        mientras la curva se apretaba en ciento veinte. Crece hasta su tope y
-        el resto se queda en la columna vacía, que es lo que sigue empujando
-        las cifras hacia el nombre."""
+        mientras la curva se apretaba en ciento veinte. Se queda con todo lo
+        que sobra, y crece con la ventana; las columnas de cifras no se
+        mueven de al lado del nombre."""
         tree = self._tree()
         tree.resize(1800, 800)
         tree.show()
         self.app.processEvents()
+        cifras = [tree.columnWidth(c) for c in range(1, tree.TREND_COLUMN)]
+        a_1800 = tree.columnWidth(tree.TREND_COLUMN)
+        self.assertEqual(a_1800, tree.viewport().width() - tree.TREND_MARGIN
+                         - sum(tree.columnWidth(c) for c in range(tree.TREND_COLUMN)))
 
-        self.assertEqual(tree.columnWidth(tree.TREND_COLUMN), tree.TREND_MAX)
-        self.assertGreater(tree.columnWidth(len(tree.COLUMNS) - 1), 400)
+        tree.resize(2400, 800)
+        self.app.processEvents()
+        self.assertEqual(tree.columnWidth(tree.TREND_COLUMN), a_1800 + 600)
+        self.assertEqual([tree.columnWidth(c) for c in range(1, tree.TREND_COLUMN)], cifras)
 
     def test_en_una_ventana_estrecha_la_curva_no_se_come_nada(self):
         """Solo se reparte lo que sobra: si no sobra, se queda como estaba.
@@ -939,7 +945,7 @@ class TestArrastrarLasColumnas(unittest.TestCase):
 
     def test_sin_tocar_nada_sigue_aprovechando_el_hueco(self):
         arbol = self._tree()
-        self.assertEqual(arbol.columnWidth(arbol.TREND_COLUMN), arbol.TREND_MAX)
+        self.assertGreater(arbol.columnWidth(arbol.TREND_COLUMN), arbol.TREND_WIDTH)
 
     def test_mover_la_ventana_no_cuenta_como_arrastrar(self):
         """La última columna absorbe el sobrante, así que Qt la estira sola
@@ -949,7 +955,7 @@ class TestArrastrarLasColumnas(unittest.TestCase):
         arbol.resize(1900, 800)
         self.app.processEvents()
         self.assertFalse(arbol._preferred_widths)
-        self.assertEqual(arbol.columnWidth(arbol.TREND_COLUMN), arbol.TREND_MAX)
+        self.assertGreater(arbol.columnWidth(arbol.TREND_COLUMN), 900)
 
     def test_arrastrar_una_de_cifras_tambien_se_respeta(self):
         arbol = self._tree()
