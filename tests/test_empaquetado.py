@@ -295,6 +295,62 @@ class TestUnPaqueteIncompletoNoSeEmpaqueta(unittest.TestCase):
         self.assertIn("libqxcb.so", self.preguntados)
 
 
+class TestLosComplementosDeImagen(unittest.TestCase):
+    """El AppImage lleva `libqsvg.so`, que es con lo que se leen los iconos.
+
+    El empaquetador buscaba `qsvg.so` y el archivo se llama `libqsvg.so`: la
+    carpeta `imageformats` salía vacía y nadie se quejaba. Mientras el único
+    SVG fue el icono de la ventana no se notó; con la barra lateral nueva, el
+    AppImage arrancaba sin ningún icono ni la marca. Se vio abriendo el que
+    construyó el CI, que solo comprobaba que arrancase.
+    """
+
+    def setUp(self):
+        import pathlib
+        import tempfile
+        from unittest import mock
+
+        import tools.build_appimage as build
+        self.build = build
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        raiz = pathlib.Path(tmp.name)
+        self.plugins = raiz / "plugins"
+        self.appdir = raiz / "silux.AppDir"
+        # Como los trae PySide6: con `lib` delante y con más de los que hacen falta.
+        for carpeta, nombres in (
+                ("imageformats", ("libqsvg.so", "libqico.so", "libqjpeg.so",
+                                  "libqgif.so", "libqwebp.so", "libqtiff.so")),
+                ("iconengines", ("libqsvgicon.so",)),
+                ("platforms", ("libqxcb.so",))):
+            (self.plugins / carpeta).mkdir(parents=True)
+            for nombre in nombres:
+                (self.plugins / carpeta / nombre).write_bytes(b"\x7fELF")
+        for nombre, valor in (("APPDIR", self.appdir),
+                              ("plugins_de_qt", lambda: self.plugins),
+                              ("dependencias", lambda so, extra=None: []),
+                              ("qt_propio", lambda: None)):
+            parche = mock.patch.object(build, nombre, valor)
+            parche.start()
+            self.addCleanup(parche.stop)
+
+    def _copiados(self):
+        destino = self.appdir / "usr" / "lib" / "qt" / "plugins" / "imageformats"
+        return sorted(p.name for p in destino.iterdir())
+
+    def test_se_lleva_los_cuatro_y_ninguno_mas(self):
+        self.build.copiar_plugins()
+        self.assertEqual(self._copiados(),
+                         sorted(f"lib{base}.so" for base in self.build.IMAGEFORMATS))
+        self.assertIn("libqsvg.so", self._copiados())
+
+    def test_si_falta_uno_la_construccion_se_para(self):
+        (self.plugins / "imageformats" / "libqsvg.so").unlink()
+        with self.assertRaises(SystemExit) as salida:
+            self.build.copiar_plugins()
+        self.assertIn("libqsvg.so", str(salida.exception))
+
+
 class TestLaGuardaDelAppRun(unittest.TestCase):
     """Lo que hace el AppRun en un procesador al que le faltan instrucciones.
 

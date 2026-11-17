@@ -6,9 +6,9 @@ icono delante de cada uno deja encontrar la sección sin leer la lista.
 
 Van escritos aquí como trazados SVG y se pintan con el color del tema, en vez
 de viajar como trece archivos por color. Se leen con `QImageReader`, que usa
-el complemento `qsvg` de `imageformats`: el AppImage ya lo lleva para el
-icono de la ventana, y así no hace falta el módulo `QtSvg`, que no se
-empaqueta (`tools/build_appimage.py`, `QT_MODULES`).
+el complemento `qsvg` de `imageformats`, y así no hace falta el módulo
+`QtSvg`, que no se empaqueta (`tools/build_appimage.py`, `QT_MODULES`). El
+empaquetador se para si ese complemento no entra en el AppImage.
 """
 
 from __future__ import annotations

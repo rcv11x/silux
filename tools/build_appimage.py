@@ -661,9 +661,15 @@ def copiar_plugins() -> set[str]:
         destino = destino_raiz / nombre
         if nombre == "imageformats":
             destino.mkdir(parents=True)
+            # Los archivos se llaman `libqsvg.so`. Y el que no aparezca
+            # tumba la construcción: sin `qsvg` la interfaz arranca igual,
+            # pero sin un solo icono, y eso no lo ve nadie hasta abrirla.
             for base in IMAGEFORMATS:
-                for so in origen.glob(f"{base}.so"):
-                    shutil.copy2(so, destino / so.name)
+                so = origen / f"lib{base}.so"
+                if not so.is_file():
+                    raise SystemExit(
+                        f"falta el complemento de imágenes {so.name} en {origen}")
+                shutil.copy2(so, destino / so.name)
         else:
             shutil.copytree(origen, destino)
         for so in destino.rglob("*.so"):
