@@ -8,61 +8,91 @@ aquí esté hecho o pase a `docs/pendientes.md`.
 
 ## Sesión del 17 por la noche, en casa (rama `interfaz`)
 
-**Parada para revisar tras el punto 1.** La rama está empujada y con el CI
-lanzado; lo que sigue (punto 2) no se empieza hasta que el autor lo diga.
+Dos tandas. La primera (el hueco de Gráficos, el corte de Red, la raya de
+las tablas, Cachés que no se pintaba y el botón del ayudante atrasado) se
+empujó en `24cb4ef` con el CI en verde. **La segunda, la tanda A, está
+empujada con el CI lanzado**; el resultado del CI y lo que falte están al
+final de este apartado.
 
-El CI de `interfaz` sobre `aa9b332` (lo de la oficina) salió **en verde**:
-tests en 3.10 y 3.14 y el AppImage construido y arrancado.
-
-**Punto 1, hecho: lo más visible.** Un commit por arreglo, con su test visto
-fallar y su captura mirada:
+### Tanda A: un commit por arreglo, con su test y su captura
 
 | Commit | Qué | Visto en |
 |---|---|---|
-| `45e7c30` | docs: lo visual se comprueba en la captura; el punto decimal se queda | — |
-| `aff559c` | Gráficos de la iGPU sin hueco entre Frecuencia y Consumo | volcado del i5-10400, oscuro y compacto |
-| `3b3d693` | **Cachés reventaba al pintarse** (`cachemap.py`, del commit del estilo) | este equipo, oscuro |
-| `e6960c8` | Inicio › Red: el nombre de dos líneas, entero | volcado del i5-10400, oscuro, claro y compacto |
-| `2bcd687` | La raya bajo la cabecera de las tablas | este equipo: Cachés en oscuro y claro, Almacenamiento en compacto |
-| `96efb41` | El botón «Actualizar el ayudante del sistema», en su renglón | este equipo, Memoria y Almacenamiento en compacto |
+| `0d9b0a3` | test: el del diálogo fija que no hay ayudante instalado (leía el de quien ejecuta) | — |
+| `b800c61` | Sensores: ventiladores a 0 RPM y redes sin tráfico nacen plegados | este equipo |
+| `7d5055e` | «en reposo» en vez de «0 MHz»; «Uso del motor de video» | este equipo (lo segundo) |
+| `bc39c9a` | **El AppImage salía sin iconos ni marca**: `imageformats` vacío | los dos del CI, y uno reconstruido aquí |
+| `057cac3` | La barra lateral mide su nombre más largo | compacto, normal y letra máxima |
+| `6af4d7f` | Una tabla que no cabe cede su texto largo (`Table(cede=…)`) | Almacenamiento y Gráficos en compacto |
+| `0739dc4` | `tools/montar_equipo.py`: un volcado montado como en los tests | — |
+| `5cb84ff` | iGPU de Intel: escondido lo que solo existe en AMD; candado en el uso de video | volcado del i5-10400, oscuro y claro |
+| `519e86c` | «Encendido desde 2026-11-17 18:15» | este equipo |
+| `e06eeb5` | El diálogo de permisos abre con el alto de su contenido | **en la sesión real (Wayland)** |
+| `ad05880` | Zócalos de memoria con nombre único (`render.slot_names`) | página pintada con una tabla de prueba |
+| `91c0237` | Sin SPD, Chips, Perfiles rápidos y Fabricado se esconden y se nombran | ídem |
+| `e066d83` | De las ramas de Sensores solo se guarda lo hecho a mano (`sensor_expanded`) | configuración vacía |
+| `337078c` | `gigabyte_wmi` repite al IT8688: seis temperaturas, no doce | este equipo |
+| `e03f7e1` | Un HDD no enseña «Vida restante» | este equipo |
+| `6799467` | Ajustes: ni «las 53» ni «sin dependencias» | este equipo |
+| `244cd4b` | Pulgadas del monitor desde sus milímetros: 26.7" y 27.0" | este equipo |
+| `8ea9dc0` | Ventana grande: las tablas se reparten; Placa base y Sistema en una fila | 2560×1440, 1440×900 y compacto |
 
-Dos no estaban en la lista y salieron al sacar las capturas:
+**Lo que hay que mirar en la pieza, porque aquí no se pudo:**
 
-- **Cachés**: la página moría al pintar el mapa desde `927cb8b`. La suite y
-  el CI pasaban porque sin pantalla nadie pinta. Ahora
-  `tests/test_todo_se_pinta.py` pinta las trece secciones con cada volcado.
-- **El ayudante atrasado**: en este equipo el ayudante instalado es de una
-  versión anterior, sale un quinto botón en la tarjeta de permisos y en
-  compacto la página se salía por la derecha. Eran cuatro tests en rojo solo
-  aquí. **El ayudante de este equipo sigue sin actualizar**: se actualiza
-  pulsando ese botón, y eso lo hace el autor.
+1. **Con permisos, en el 5800X3D**: Memoria tiene que titular los módulos
+   «Canal A · DIMM 1» y «Canal B · DIMM 1», decir «2 zócalos libres: Canal A
+   · DIMM 0, Canal B · DIMM 0» y no enseñar Chips, Perfiles rápidos ni
+   Fabricado (los dice al pie). Está probado con una tabla de firmware de
+   prueba con las cadenas que el autor describió («DIMM 0/1», «P0 CHANNEL
+   A/B»), no con la de esa placa: no se piden permisos desde la sesión de
+   Claude. **Si sale otra cosa, mandar `sudo dmidecode -t 17`.**
+2. **Con permisos**, Almacenamiento: los HDD sin «Vida restante» y sin
+   guion en su sitio.
+3. **En la oficina (i5-10400)**: Gráficos sin «Unidades de rasterizado»,
+   «Motores de sombreado», «SoC», «Perfil de rendimiento», «Enlace»,
+   «Voltaje» ni «Voltaje del SoC»; con «23 unidades de ejecución»; «Uso del
+   motor de video» con candado. «Estado —» se queda a propósito. Y Sensores
+   con `interfaz1` y `tailscale0` plegadas.
+4. **«En reposo»** (el motor gráfico a 0 MHz) no tiene captura: ni esta
+   gráfica ni el volcado están a cero. Lo ve el test.
+5. **El AppImage compatible** no se reconstruyó aquí: los iconos se miran
+   en el del CI de esta tanda (abajo).
 
-Y dos cosas que no eran lo que parecían:
+**Decisiones de esta tanda que cambian algo anterior:**
 
-- El corte de Red y el hueco de Gráficos eran los dos de `ResponsiveRow`,
-  no de sus páginas (está en `docs/lecciones.md`, «Interfaz y Qt»).
-- La raya de las tablas estaba en la hoja de estilos y Qt no la pintaba. Al
-  quitar esa regla las columnas de todas las tablas quedan unos 3 px más
-  juntas: con ella Qt sangraba cada título.
+- **`sensor_collapsed` ya no es el estado entero del árbol**, sino lo que
+  el usuario cerró a mano; `sensor_expanded` es lo que abrió de entre lo
+  que nace cerrado. Quien tuviera «Relojes · 16» abierta la verá cerrada
+  una vez.
+- **El enlace PCIe sí se esconde en una integrada de Intel** (antes «no se
+  esconde nunca», por la Radeon 740M; para AMD sigue valiendo).
+- **Un volcado se monta con `tools/montar_equipo.py`**, no con
+  `SILUX_SYSROOT` a la carpeta: faltan las carpetas vacías. Las capturas del
+  i5-10400 de la primera tanda (`antes/` y `despues/`) están hechas con la
+  variable a pelo y por eso su Gráficos dice «Unidades de proceso —».
+- **La barra lateral es unos 15 px más ancha** en compacto y en normal.
+- **Las columnas de todas las tablas** quedan unos 3 px más juntas (de la
+  primera tanda) y, con sitio, se separan hasta un tope.
 
-**Capturas** en `~/Imágenes/silux-test/interfaz-casa/` (casa): `antes/` y
-`despues/`, cada una con `5800x3d-este-equipo/` y `i5-10400-volcado/`, en
-`oscuro-1440/`, `claro-1440/` y `compacto-900/`, doce páginas, tras 65
-muestras a 1 s y con las preferencias por omisión (no las de este equipo,
-que tiene letra grande y acento azul). En `antes/` faltan las seis de
-Cachés: es el fallo. `comprobacion/` son las que se miraron para cada commit.
+**Capturas** en `~/Imágenes/silux-test/interfaz-casa/` (casa):
 
-**Visto de paso y sin tocar** (apuntado en `docs/propuesta-interfaz.md`):
-en compacto la barra lateral corta «Almacenamien…».
+- `antes/` y `despues/`: la primera tanda.
+- `tanda-A/`: cómo queda todo. `5800x3d-este-equipo/` e `i5-10400-volcado/`
+  (montado con `montar_equipo.py`), en `oscuro-1440/`, `claro-1440/`,
+  `compacto-900/` y `oscuro-2560/`, doce páginas, tras 65 muestras a 1 s y
+  con las preferencias por omisión. Su «antes» es `despues/`.
+- `comprobacion/`: las que se miraron para cada commit, entre ellas
+  `dialogo-real-antes.png` y `dialogo-real-despues.png` (el diálogo abierto
+  en la sesión de verdad), `appimage-barras.png` (los AppImage del CI sin
+  iconos) y las `2k-antes-*` y `2k-despues-*`.
 
-**Punto 2, sin empezar**, en este orden: Sensores (plegar las interfaces de
-red sin tráfico), los dos textos («en reposo» y «Uso del motor de video»),
-mirar los iconos dentro del AppImage que construye el CI, y el resto de la
-lista. **Punto 3**, si sobra: estados vacíos de una ficha, identificadores
-en monoespaciada y el contraste de los colores nuevos en oscuro y claro.
+**Lo que sigue: B**, `docs/propuesta-datos.md` y sus maquetas. Solo
+documento. **Punto 3 de la lista anterior, sin hacer**: estados vacíos de
+una ficha, identificadores en monoespaciada y contraste de la paleta.
 
-De «Para mirar esta noche en el 5800X3D» (más abajo) **no se ha mirado
-nada**: todo pide dar permisos o reiniciar, y lo hace el autor.
+De «Para mirar esta noche en el 5800X3D» (más abajo) sigue sin mirarse lo
+que pide reiniciar; lo que pide permisos lo vio el autor esa noche y de ahí
+salió media tanda A.
 
 ## Sesión del 17, en la oficina
 

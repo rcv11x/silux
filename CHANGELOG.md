@@ -33,6 +33,11 @@ que hace falta.
 - Dar los permisos para siempre ya no tiene botón propio en Memoria y
   Almacenamiento («No volver a pedirla»): se ofrece dentro de «Qué hace
   esto».
+- «Encendido desde», en Sistema, y el campo `boot_time` del JSON pasan a
+  año-mes-día («2026-11-17 18:15»), como la fecha de la BIOS.
+- En Sensores, las ramas que nunca abriste o cerraste a mano vuelven a
+  seguir la regla: una rama larga que tuvieras abierta («Relojes · 16») nace
+  cerrada otra vez hasta que la abras.
 
 ### Memoria
 
@@ -49,6 +54,11 @@ que hace falta.
 - Arreglado: el aviso que proponía `acpi_enforce_resources=lax` para leer los
   módulos no decía el riesgo. Ahora lo dice, y que no merece la pena solo por
   ese dato.
+- Arreglado: en una placa que repite el nombre de sus zócalos (Gigabyte),
+  dos módulos salían como «DIMM 1» y dos huecos como «DIMM 0». Ahora «Canal
+  A · DIMM 1», «Canal B · DIMM 1».
+- Arreglado: cuando la placa no deja leer el SPD, Chips, Perfiles rápidos y
+  Fabricado ya no salen con guion: se dice al pie de dónde saldrían.
 
 ### Procesador
 
@@ -86,6 +96,12 @@ que hace falta.
 - Arreglado: el ensamblador de la tarjeta sale por su marca: «PowerColor» y
   no «Tul Corporation / PowerColor».
 - Arreglado: un identificador único todo a ceros ya no se enseña.
+- Arreglado: una integrada de Intel ya no enseña con guion lo que solo
+  existe en AMD (rasterizado, sombreado, SoC, perfil, voltajes, enlace).
+- Arreglado: «en reposo» en vez de «0 MHz» cuando el motor gráfico duerme.
+- Arreglado: el tamaño de cada monitor sale de sus milímetros: uno de 27
+  pulgadas ya no dice 26.6" ni 27.2". Si el monitor solo da centímetros,
+  «≈ 27"».
 
 ### Rendimiento
 
@@ -185,6 +201,22 @@ que hace falta.
 - Arreglado: con un ayudante de permisos de una versión anterior instalado,
   Memoria y Almacenamiento salían cortadas por la derecha en una ventana
   estrecha.
+- Nuevo: en Sensores, lo que no tiene actividad nace plegado: los
+  ventiladores a 0 RPM («Ventiladores parados · 3») y las interfaces de red
+  sin tráfico.
+- Nuevo: lo que dos drivers leen del mismo chip sale una vez. En una
+  Gigabyte, seis temperaturas de placa en vez de doce.
+- Nuevo: en una ventana grande, las tablas reparten sus columnas y Placa
+  base y Sistema ponen sus tarjetas en una fila.
+- Arreglado: la página Cachés no se pintaba.
+- Arreglado: «Qué pasa al dar permisos» abría demasiado pequeño y cortaba
+  el texto y los botones.
+- Arreglado: la barra lateral cortaba «Almacenamiento» en compacto.
+- Arreglado: en una ventana estrecha, la tabla de unidades se salía por la
+  derecha; ahora recorta el modelo del disco y deja las cifras.
+- Arreglado: un disco de platos ya no enseña «Vida restante».
+- Arreglado: Ajustes hablaba de «las 53» banderas cuando la página CPU
+  cuenta las de tu procesador.
 
 ### Privacidad
 
@@ -197,6 +229,8 @@ que hace falta.
   textos: la interfaz enseñaba claves como `cpu.card.clocks`.
 
 ---
+- Arreglado: el AppImage salía sin los iconos de la barra lateral ni la
+  marca.
 
 ## 0.3.0 (16 de noviembre de 2026)
 

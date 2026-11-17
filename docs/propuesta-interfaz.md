@@ -17,20 +17,17 @@ visto en su captura:
 | `2bcd687` | La raya bajo la cabecera de las tablas, que ahora sí se ve |
 | `96efb41` | Con un ayudante atrasado instalado, Memoria y Almacenamiento se salían por la derecha en compacto; tampoco estaba en la lista |
 
-Por hacer:
+**La lista del 17 por la noche (tanda A), hecha entera**, un commit por
+arreglo. La tabla con cada commit está en `docs/en-curso.md`.
 
-- **Sensores**: plegar por defecto las interfaces de red sin tráfico
-  (`interfaz1`, `tailscale0`).
-- **Textos**: «Núcleo 0 MHz» con la gráfica en reposo → «en reposo»; «Uso de
-  video» en «Consumo y temperaturas» → «Uso del motor de video», sin tilde.
-- **AppImage con el logo y los iconos nuevos**: el CI de `interfaz` lo
-  construye y arranca (run 44157236806, en verde). **Falta mirarlo**: el CI
-  solo comprueba que arranca, no que los iconos de la barra lateral salgan.
-- **Barra lateral en compacto**: «Almacenamien…» sale cortado a 900×680.
-  Visto en las capturas de esta sesión; no estaba en la lista.
-- **Lo que ya había sin hacer**: los estados vacíos de una ficha, los
-  identificadores en monoespaciada y medir el contraste de la paleta. (La
-  coma decimal no se toca: está en `docs/convenciones.md`.)
+Por hacer, de lo que este documento proponía:
+
+- **Los estados vacíos de una ficha**, **los identificadores en
+  monoespaciada** y **medir el contraste de la paleta** en oscuro y claro.
+  (La coma decimal no se toca: está en `docs/convenciones.md`.)
+- **El estado de limitación de una integrada de Intel**: `i915` lo publica
+  en algunas generaciones (`gt/gt0/throttle_reason_*`) y silux no lo lee;
+  por eso «Estado —» sigue con su guion. Va en `docs/propuesta-datos.md`.
 
 Las capturas de la oficina están en `~/Imágenes/silux-test/interfaz/`; las
 de casa, en `~/Imágenes/silux-test/interfaz-casa/` (`antes/`, `despues/` y

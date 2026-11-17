@@ -955,6 +955,25 @@ apartado. El orden dentro de cada apartado es el cronológico.
   que contaba botones y otro que medía anchos fallaban solo en esa máquina.
   El segundo tenía razón: la página se salía. El primero fija ahora el
   estado del que habla.
+- **Fiarse de la ventana sin pantalla para el tamaño con que abre un
+  diálogo**: en Wayland el compositor abre la ventana con su tamaño mínimo,
+  y el mínimo que calcula Qt cuenta cada párrafo como una línea. «Qué pasa
+  al dar permisos» abría a 573×299 donde hacían falta 425, y sin pantalla
+  abría bien. Un diálogo con párrafos fija como alto mínimo el que pide su
+  contenido a su ancho más estrecho. Se comprueba abriéndolo de verdad.
+- **Guardar como elección del usuario lo que el programa abre y cierra**:
+  al montar el árbol de sensores, `setExpanded` dispara las mismas señales
+  que un clic. Se guardaba el estado entero, así que tras el primer arranque
+  todas las ramas eran «del usuario» y una regla nueva (plegar lo inactivo)
+  no llegaba a nadie con preferencias. Se guarda solo lo que se aparta de la
+  regla, y montar o filtrar no apuntan nada.
+- **Montar un volcado apuntando `SILUX_SYSROOT` a su carpeta**: git no
+  guarda carpetas vacías y el volcado tiene muchas que cuentan. La captura
+  de la integrada salía sin sus unidades de ejecución y los tests las veían.
+  `tools/montar_equipo.py` monta como los tests.
+- **Un ancho escrito a mano para algo que lleva texto**: la barra lateral
+  medía 140 px en compacto y «Almacenamiento» no cabía. El número es un
+  suelo; el ancho lo pide el texto más largo, con su letra y su idioma.
 
 <a id="idioma"></a>
 
@@ -1088,6 +1107,11 @@ apartado. El orden dentro de cada apartado es el cronológico.
 
 ## Empaquetado y CI
 
+- **Dar por empaquetado lo que no hace ruido al faltar**: el empaquetador
+  copiaba de `imageformats` los archivos «qsvg.so» y se llaman
+  «libqsvg.so». La carpeta salía vacía sin aviso, y el AppImage arrancaba
+  sin un solo icono: el CI solo comprobaba `--help`. Lo que falta detiene la
+  construcción, y se abre el AppImage con `--screenshot` antes de fiarse.
 - **Dejar en `tools/` algo que ejecuta el usuario final**: el AppImage copia
   `silux/` entero y no copia `tools/`, así que el botón de permisos permanentes
   se quedaba sin instalador que lanzar justo en la única forma del programa que
