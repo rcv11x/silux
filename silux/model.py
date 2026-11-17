@@ -1313,6 +1313,12 @@ class Sensor:
     # El equipo lo publica, así que se enseña; pero se dice lo que es, no
     # lleva umbrales y no vale como temperatura de ninguna pieza.
     placeholder: bool = False
+    # El chip del que esta lectura es una repetición, o None. La interfaz WMI
+    # de una placa Gigabyte publica las mismas sondas que su Super I/O: son
+    # el mismo chip leído por dos drivers. La lectura sigue en la foto —la
+    # graba el CSV, sale en el JSON—, pero el árbol la enseña una sola vez,
+    # la del chip, y dice que el otro driver la repite.
+    mirror_of: Optional[str] = None
     # Para lo que no encaja en ningún tipo con unidad fija, como un ritmo de
     # transferencia. Es la excepción, no la norma: si algo se repite, merece su
     # propio SensorKind.
@@ -1432,6 +1438,8 @@ class Snapshot:
         tree: dict[str, dict[str, list[Sensor]]] = {}
         clases: dict[str, str] = {}
         for sensor in self.sensors:
+            if sensor.mirror_of:
+                continue                # la misma lectura por otro driver: una vez
             tree.setdefault(sensor.device, {}).setdefault(sensor.category, []).append(sensor)
             clases.setdefault(sensor.device, sensor.device_kind)
 

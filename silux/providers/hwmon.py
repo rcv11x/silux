@@ -57,6 +57,15 @@ CPU_CHIP = re.compile(r"^(coretemp|k10temp|k8temp|zenpower|cpu_thermal)$")
 BOARD_CHIP = re.compile(
     r"^(nct\d+|it\d+|w836\d+|f71\d+|smsc|lm\d+|nzxt|asus|acpitz|thermal"
     r"|\w+_wmi)")
+# Los drivers que no leen un chip propio sino el de otro driver, por otro
+# camino: `gigabyte_wmi` le pide al firmware de la placa las temperaturas de
+# su Super I/O, que `it87` ya lee directamente. Aquí solo entra lo que se
+# sabe; y aun así se confirma con las lecturas antes de darlas por repetidas.
+ESPEJOS = {"gigabyte_wmi": re.compile(r"^it8\d+")}
+# Cuánto pueden separarse dos lecturas del mismo sensor tomadas una detrás de
+# otra: el chip redondea a grados y entre una y otra pasan milisegundos.
+MARGEN_DE_ESPEJO = 2.0
+
 DISK_CHIP = re.compile(r"^(drivetemp|nvme)")
 NET_CHIP = re.compile(r"^(r8\d+|e1000|igb|ixgbe|iwlwifi|mt79|ath\d+k?)")
 GPU_CHIP = re.compile(r"^(amdgpu|radeon|i915|xe|nouveau)")
@@ -328,6 +337,8 @@ class HwmonSensors(Provider):
         super().__init__()
         # Las zonas de ACPI que se han visto marcar algo distinto del relleno.
         self._zonas_vivas: set[str] = set()
+        # Los pares (driver espejo, chip) ya confirmados como la misma lectura.
+        self._espejos: set[tuple[str, str]] = set()
 
     def available(self) -> bool:
         return sysroot.ruta(HWMON).is_dir()
@@ -350,6 +361,7 @@ class HwmonSensors(Provider):
                      for gpu in draft.gpus if gpu.get("pci_slot")}
 
         sensors = self._sin_relleno(self._read_hwmon(cpu_name, board_name, gpu_names))
+        sensors = self._sin_repetir(sensors)
         sensors += list(self._read_power_supplies())
         if not sensors:
             return
@@ -380,6 +392,50 @@ class HwmonSensors(Provider):
                                                  estimated_limits=False)
             salida.append(sensor)
         return salida
+
+    def _sin_repetir(self, sensores: list[Sensor]) -> list[Sensor]:
+        """Marca las temperaturas que un driver repite de otro (`ESPEJOS`).
+
+        En una Gigabyte X570 salían doce temperaturas de placa y eran seis:
+        las del IT8688 y las mismas otra vez por `gigabyte_wmi`. Se dan por
+        repetidas cuando los dos drivers publican el mismo número de sondas y
+        marcan lo mismo que su pareja, con el margen de dos lecturas seguidas
+        y perdonando una. Una vez confirmado se recuerda: bajo carga, entre leer un
+        driver y el otro una sonda puede moverse más que el margen, y el
+        árbol no puede ganar y perder seis filas a cada muestreo.
+        """
+        def temperaturas(chip: str) -> list[Sensor]:
+            return sorted((s for s in sensores if s.chip == chip
+                           and s.kind is SensorKind.TEMPERATURE), key=lambda s: s.order)
+
+        chips = list(dict.fromkeys(s.chip for s in sensores))
+        repetidas: dict[str, str] = {}
+        for espejo, patron in ESPEJOS.items():
+            suyas = temperaturas(espejo)
+            if not suyas:
+                continue
+            for chip in chips:
+                if not patron.match(chip):
+                    continue
+                otras = temperaturas(chip)
+                if len(otras) != len(suyas):
+                    continue
+                if (espejo, chip) not in self._espejos:
+                    # Todas menos una: la sonda del zócalo se mueve varios
+                    # grados por segundo, y entre leer un driver y el otro
+                    # puede no coincidir ni siendo la misma (41 y 47 °C en el
+                    # volcado de esta placa, con las otras cinco clavadas).
+                    lejos = sum(1 for a, b in zip(suyas, otras)
+                                if abs(a.value - b.value) > MARGEN_DE_ESPEJO)
+                    if lejos > (1 if len(suyas) >= 3 else 0):
+                        continue
+                    self._espejos.add((espejo, chip))
+                repetidas.update({s.key: chip for s in suyas})
+                break
+        if not repetidas:
+            return sensores
+        return [dataclasses.replace(s, mirror_of=repetidas[s.key])
+                if s.key in repetidas else s for s in sensores]
 
     def _read_hwmon(self, cpu_name: str, board_name: str,
                     gpu_names: Optional[dict[str, str]] = None) -> Iterator[Sensor]:

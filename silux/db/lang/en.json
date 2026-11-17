@@ -863,6 +863,7 @@
   "sensors.matches.many": "· {n} matches",
   "sensors.matches.none": "· no matches",
   "sensors.matches.one": "· {n} match",
+  "sensors.mirror": "{espejo} repeats the {n} temperatures of {chip}: it is the same chip read through another driver. They are shown once, as {chip}.",
   "sensors.placeholder": "{chip}: a steady {valor} is not a measurement. It is the number the firmware returns for a thermal zone it never wired to a sensor.",
   "sensors.record.button": "Record to CSV",
   "sensors.record.starting": "Recording…",

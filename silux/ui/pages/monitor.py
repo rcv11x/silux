@@ -266,11 +266,20 @@ class MonitorPage(QScrollArea):
         # llevan su propia explicación.
         numeradas: dict[str, int] = {}
         for s in snapshot.sensors:
-            if s.unnamed and s.kind is SensorKind.TEMPERATURE and not s.placeholder:
+            if (s.unnamed and s.kind is SensorKind.TEMPERATURE and not s.placeholder
+                    and not s.mirror_of):
                 chip = render.chip_name(s.chip)
                 numeradas[chip] = numeradas.get(chip, 0) + 1
         if varias := sorted(chip for chip, n in numeradas.items() if n > 1):
             faltan.append(_("sensors.unnamed.temps").format(chips=", ".join(varias)))
+        # Lo que un driver repite de otro: se enseña una vez y se dice cuál.
+        espejos: dict[tuple[str, str], int] = {}
+        for s in snapshot.sensors:
+            if s.mirror_of:
+                par = (render.chip_name(s.chip), render.chip_name(s.mirror_of))
+                espejos[par] = espejos.get(par, 0) + 1
+        for (espejo, chip), cuantas in sorted(espejos.items()):
+            faltan.append(_("sensors.mirror").format(espejo=espejo, chip=chip, n=cuantas))
         relleno: dict[str, set[float]] = {}
         for s in snapshot.sensors:
             if s.placeholder:
@@ -335,7 +344,8 @@ class MonitorPage(QScrollArea):
             self._cuenta_completa = (
                 _("sensors.count.one" if len(tree) == 1
                   else "sensors.count.many").format(
-                      n=len(snapshot.sensors), aparatos=len(tree))
+                      n=sum(1 for s in snapshot.sensors if not s.mirror_of),
+                      aparatos=len(tree))
             )
             self._actualizar_cuenta()
 
