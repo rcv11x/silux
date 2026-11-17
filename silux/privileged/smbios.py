@@ -212,3 +212,25 @@ def memory_arrays(structures: list[Structure]) -> list[dict]:
             "error_correction": ERROR_CORRECTION.get(structure.byte(0x06) or 0),
         })
     return arrays
+
+
+def system_slots(structures: list[Structure]) -> dict[str, str]:
+    """Las ranuras de la placa (tipo 9): dirección PCI → nombre de la ranura.
+
+    Solo las que traen dirección (SMBIOS 2.6 en adelante) y no la marcan como
+    desconocida. Los firmwares rellenan esta tabla regular: ranuras que no
+    existen, o todas con la misma dirección. Quien la usa solo se queda con
+    las que casan con un dispositivo que existe de verdad.
+    """
+    salida: dict[str, str] = {}
+    for structure in structures:
+        if structure.type != 9:
+            continue
+        nombre = structure.text(0x04)
+        segmento, bus, devfn = structure.word(0x0D), structure.byte(0x0F), structure.byte(0x10)
+        if not nombre or segmento is None or bus is None or devfn is None:
+            continue
+        if segmento == 0xFFFF or bus == 0xFF or devfn == 0xFF:
+            continue                         # «no se sabe», según la norma
+        salida[f"{segmento:04x}:{bus:02x}:{devfn >> 3:02x}.{devfn & 7:x}"] = nombre
+    return salida

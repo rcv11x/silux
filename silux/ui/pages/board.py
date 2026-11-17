@@ -21,7 +21,7 @@ from ...model import Board, Need, Snapshot
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette, ui_font
-from ..widgets import (Card, ChipRow, InfoGrid, Notice, ResponsiveRow,
+from ..widgets import (Card, ChipRow, InfoGrid, Notice, ResponsiveRow, Table,
                        clear_layout, tone_for)
 
 BOARD_FIELDS = ("memory.field.vendor", "storage.col.model",
@@ -44,6 +44,16 @@ NEED_TITLES = {
     Need.ERROR: "note.failed",
 }
 
+
+PCI_HEADERS = ("board.pci.kind", "board.pci.device", "gpu.clock.link", "board.pci.max",
+               "gpu.field.driver")
+PCI_KINDS = {
+    "gpu": "board.pci.kind.gpu", "nvme": "board.pci.kind.nvme", "sata": "board.pci.kind.sata",
+    "ethernet": "board.pci.kind.ethernet", "wifi": "board.pci.kind.wifi",
+    "usb": "board.pci.kind.usb", "audio": "board.pci.kind.audio",
+}
+PLATFORM_FIELDS = ("board.plat.iommu", "board.plat.virt", "board.plat.above4g",
+                   "board.plat.sensors", "board.plat.codec")
 
 # Cómo se nombra, en la frase del pie, cada campo que el firmware calla.
 NO_DICE = {
@@ -93,6 +103,27 @@ class BoardPage(QScrollArea):
                                       SYSTEM_FIELDS)
         self.system_card = self.system.parentWidget()
         layout.addWidget(bottom)
+
+        # Lo que cuelga del bus PCI: una sola tabla, con lo que va en una
+        # ranura primero y los controladores de la placa después.
+        self.pci_card = Card(_("board.card.pci"))
+        self.pci = Table([_(h) for h in PCI_HEADERS], cede=(1,))
+        self.pci_card.body.addWidget(self.pci)
+        self._pci_con_ranura = False
+        self.pci_pie = QLabel("")
+        self.pci_pie.setObjectName("Muted")
+        self.pci_pie.setWordWrap(True)
+        self.pci_pie.setFont(ui_font(theme.METRICS.small_pt))
+        self.pci_card.body.addWidget(self.pci_pie)
+        self.pci_card.hide()
+        layout.addWidget(self.pci_card)
+
+        self.platform_card = Card(_("board.card.platform"))
+        self.platform = InfoGrid()
+        for name in PLATFORM_FIELDS:
+            self.platform.add(_(name))
+        self.platform_card.body.addWidget(self.platform)
+        bottom.add(self.platform_card)
 
         self._notices_host = QVBoxLayout()
         self._notices_host.setSpacing(6)
@@ -194,7 +225,67 @@ class BoardPage(QScrollArea):
         self.board_pie.setText(" ".join(pie))
         self.board_pie.setVisible(bool(pie))
 
+        self._apply_pci(snapshot)
+        self._apply_platform(snapshot)
         self._apply_notices(snapshot)
+
+    def _apply_pci(self, snapshot: Snapshot) -> None:
+        dispositivos = snapshot.pci_devices
+        self.pci_card.setVisible(bool(dispositivos))
+        if not dispositivos:
+            return
+        # La columna «Ranura» solo existe cuando hay algún nombre que poner:
+        # sale de la tabla del firmware, que pide permisos. Sin ellos, una
+        # línea al pie en vez de una columna de guiones o de candados.
+        con_ranura = any(d.slot_name for d in dispositivos)
+        if con_ranura != self._pci_con_ranura:
+            self._pci_con_ranura = con_ranura
+            cabeceras = PCI_HEADERS + (("board.pci.slot",) if con_ranura else ())
+            nueva = Table([_(h) for h in cabeceras], cede=(1,))
+            self.pci_card.body.replaceWidget(self.pci, nueva)
+            self.pci.setParent(None)
+            self.pci.deleteLater()
+            self.pci = nueva
+        # El sonido que comparte tarjeta con una gráfica (misma dirección,
+        # otra función) es su salida HDMI: no está «en la placa».
+        de_graficas = {d.slot.rsplit(".", 1)[0] for d in dispositivos if d.kind == "gpu"}
+        filas, pistas = [], []
+        for d in dispositivos:
+            donde = (_("board.pci.ongpu") if d.slot.rsplit(".", 1)[0] in de_graficas
+                     else _("board.pci.onboard"))
+            fila = [_(PCI_KINDS[d.kind]), d.name or render.DASH,
+                    render.pcie_link(d.link) if d.link else donde,
+                    render.pcie_link(d.link, maximum=True) if d.link else "",
+                    d.driver or render.DASH]
+            if con_ranura:
+                fila.append(d.slot_name or "")
+            filas.append(fila)
+            pistas.append(_("board.pci.address").format(direccion=d.slot))
+        self.pci.set_rows(filas, tooltips=pistas)
+        if con_ranura:
+            pie = ""
+        elif snapshot.permission_notes:
+            pie = _("board.pci.slots.locked")
+        elif snapshot.privileged.connected:
+            pie = _("board.pci.slots.unknown")
+        else:
+            pie = ""
+        self.pci_pie.setText(pie)
+        self.pci_pie.setVisible(bool(pie))
+
+    def _apply_platform(self, snapshot: Snapshot) -> None:
+        plataforma = snapshot.platform
+        chip = render.chip_name(plataforma.sensor_chip).upper() if plataforma.sensor_chip else None
+        filas = (
+            ("board.plat.iommu", render.iommu(plataforma)),
+            ("board.plat.virt", render.virtualization(plataforma)),
+            ("board.plat.above4g", render.above_4g(plataforma)),
+            ("board.plat.sensors", chip),
+            ("board.plat.codec", plataforma.audio_codec),
+        )
+        for clave, valor in filas:
+            self.platform.set(_(clave), valor or render.DASH)
+            self.platform.set_visible(_(clave), bool(valor))
 
     @staticmethod
     def _subtitle(board: Board) -> str:

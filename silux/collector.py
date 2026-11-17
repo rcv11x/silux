@@ -43,6 +43,8 @@ from .providers import (
     RaplPower,
     SysfsClocks,
     SysfsTopology,
+    PciDevices,
+    PlatformInfo,
     SystemIdentity,
     SystemSecurity,
     SystemState,
@@ -68,6 +70,7 @@ DEFAULT_PROVIDERS: tuple[type[Provider], ...] = (
     GpuApis,            # y después les pregunta a OpenGL, Vulkan y OpenCL
     SystemIdentity,
     SystemSecurity,     # mitigaciones y arranque: una vez
+    PlatformInfo,       # IOMMU, virtualización y los chips de la placa
     PrivilegedMemory,   # espera a que el usuario lo pida
     SpdModules,         # después, para pegarse a lo que aquél haya leído
     SysfsClocks,
@@ -77,6 +80,7 @@ DEFAULT_PROVIDERS: tuple[type[Provider], ...] = (
     NetworkInterfaces,  # las interfaces y su ritmo, que se mide entre muestreos
     Disks,              # y los discos, con el suyo
     Batteries,          # la batería, que en un portátil se degrada sola
+    PciDevices,         # detrás de gráficas, discos y red: usa sus nombres
     NvidiaGpus,
     SystemState,
     RaplPower,
@@ -214,6 +218,8 @@ class Collector:
         draft.gpus = [dict(g) for g in static.gpus]
         draft.network = list(static.network)
         draft.disks = list(static.disks)
+        draft.platform = static.platform
+        draft.pci_slot_names = dict(static.pci_slot_names)
         draft.privileged = static.privileged
         draft.sensors = list(static.sensors)
         draft.driver_hints = list(static.driver_hints)

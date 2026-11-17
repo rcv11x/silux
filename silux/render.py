@@ -716,6 +716,34 @@ def _piezas_del_zocalo(locator: str) -> dict:
     return piezas
 
 
+def iommu(platform) -> str:
+    """«activa · 34 grupos» o «sin activar»."""
+    if not platform.iommu_groups:
+        return _("plat.iommu.off")
+    return _("plat.iommu.on").format(n=platform.iommu_groups)
+
+
+def virtualization(platform) -> Optional[str]:
+    """«activa (AMD-V), en uso por KVM», o que el procesador la tiene.
+
+    Que la bandera esté no dice que la BIOS la haya dejado encendida; que
+    exista `/dev/kvm` sí. Sin él no se sabe si es la BIOS o que falta el
+    módulo, y se dice justo eso.
+    """
+    if not platform.virtualization:
+        return None
+    clave = "plat.virt.active" if platform.virtualization == "active" else "plat.virt.present"
+    return _(clave).format(tipo=platform.virtualization_kind or "")
+
+
+def above_4g(platform) -> Optional[str]:
+    """«activo · 4 dispositivos lo usan». Sin ninguno no se afirma nada."""
+    if not platform.above_4g_devices:
+        return None
+    return _("plat.above4g.one" if platform.above_4g_devices == 1
+             else "plat.above4g.many").format(n=platform.above_4g_devices)
+
+
 def seconds(valor: Optional[float]) -> str:
     """«13.3 s»."""
     return DASH if _none(valor) else f"{float(valor):.1f} s"

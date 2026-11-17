@@ -194,4 +194,6 @@ class PrivilegedMemory(Provider):
                 max_capacity_bytes=first.get("max_capacity_bytes") or 0,
                 error_correction=_sabido(first.get("error_correction")),
             )
+        # De la misma tabla, cómo se llama cada ranura de la placa.
+        draft.pci_slot_names = smbios.system_slots(structures)
         draft.capabilities.add("smbios")

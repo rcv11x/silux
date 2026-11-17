@@ -177,29 +177,33 @@ class TestLasPaginasCortasEnUnaVentanaGrande(unittest.TestCase):
         return pagina, [(t.mapTo(pagina, QPoint(0, 0)).x(), t.mapTo(pagina, QPoint(0, 0)).y(),
                          t.width()) for t in tarjetas if t.isVisible()]
 
-    def test_a_2560_van_las_tres_en_una_fila(self):
+    def test_a_2560_van_todas_en_una_fila(self):
         ventana = self._ventana(2560, 1440)
-        for seccion, rejillas in (("Placa base", ("board", "firmware", "chipset")),
+        for seccion, rejillas in (("Placa base", ("board", "firmware", "chipset", "platform")),
                                   ("Sistema", ("os", "kernel", "activity"))):
             with self.subTest(seccion=seccion):
                 pagina, cajas = self._tarjetas(ventana, seccion, rejillas)
-                self.assertEqual(len(cajas), 3)
+                self.assertEqual(len(cajas), len(rejillas))
                 self.assertEqual(len({y for _x, y, _w in cajas}), 1, cajas)
                 anchos = [w for _x, _y, w in cajas]
                 self.assertLessEqual(max(anchos) - min(anchos), 2)
                 self.assertGreater(cajas[-1][0] + cajas[-1][2], pagina.viewport().width() * 0.95)
 
-    def test_en_compacto_a_900_dos_arriba_y_la_tercera_a_lo_ancho(self):
+    def test_en_compacto_a_900_van_de_dos_en_dos_y_la_que_sobra_a_lo_ancho(self):
         ventana = self._ventana(900, 680, densidad="compact")
-        for seccion, rejillas in (("Placa base", ("board", "firmware", "chipset")),
+        for seccion, rejillas in (("Placa base", ("board", "firmware", "chipset", "platform")),
                                   ("Sistema", ("os", "kernel", "activity"))):
             with self.subTest(seccion=seccion):
                 _pagina, cajas = self._tarjetas(ventana, seccion, rejillas)
-                (x1, y1, w1), (x2, y2, w2), (x3, y3, w3) = cajas
+                (x1, y1, w1), (x2, y2, w2), (x3, y3, w3) = cajas[:3]
                 self.assertEqual(y1, y2)
                 self.assertGreater(y3, y1)
                 self.assertEqual(x3, x1)
-                self.assertAlmostEqual(w3, x2 + w2 - x1, delta=2)
+                if len(cajas) == 3:                 # la que sobra llena la fila
+                    self.assertAlmostEqual(w3, x2 + w2 - x1, delta=2)
+                else:                               # cuatro: dos filas de dos
+                    self.assertEqual(cajas[3][1], y3)
+                    self.assertAlmostEqual(w3, w1, delta=2)
 
 
 @unittest.skipIf(QApplication is None, "sin PySide6")

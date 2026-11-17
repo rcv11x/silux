@@ -21,7 +21,7 @@ from ..model import (
     Board, Cache, Clocks, CpuInfo, CpuType, DriverHint, Gpu, LogicalCpu,
     NetworkInterface,
     Disk, MemoryArray, MemoryModule, MemoryTraffic, Need, Note, Power,
-    PrivilegedState, Sensor,
+    PciDevice, Platform, PrivilegedState, Sensor,
     Snapshot, System,
 )
 
@@ -46,6 +46,10 @@ class Draft:
     network: list = field(default_factory=list)
     disks: list = field(default_factory=list)
     batteries: list = field(default_factory=list)
+    pci_devices: list = field(default_factory=list)
+    platform: Platform = field(default_factory=Platform)
+    # Dirección PCI → nombre de la ranura, de la tabla del firmware (permisos).
+    pci_slot_names: dict = field(default_factory=dict)
     privileged: PrivilegedState = field(default_factory=PrivilegedState)
     sensors: list[Sensor] = field(default_factory=list)
     driver_hints: list[DriverHint] = field(default_factory=list)
@@ -131,6 +135,8 @@ class Draft:
             network=tuple(self.network),
             disks=tuple(self.disks),
             batteries=tuple(self.batteries),
+            pci_devices=tuple(self.pci_devices),
+            platform=self.platform,
             gpus=tuple(
                 Gpu(**{k: v for k, v in raw.items() if k in Gpu.__dataclass_fields__})
                 for raw in self.gpus

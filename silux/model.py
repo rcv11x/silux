@@ -324,6 +324,45 @@ class Memory:
 
 
 @dataclass(frozen=True, slots=True)
+class PciDevice:
+    """Algo que cuelga del bus PCI y merece nombrarse: una gráfica, un
+    disco, una tarjeta de red, un controlador USB, SATA o de sonido.
+
+    `name` es el nombre con que silux ya llama a esa pieza en su página (el
+    modelo del disco, la gráfica) cuando lo tiene; si no, el de `pci.ids`.
+    """
+
+    slot: str                                # "0000:01:00.0"
+    kind: str                                # "gpu" | "nvme" | "sata" | "ethernet" | "wifi" | "usb" | "audio"
+    name: Optional[str] = None
+    vendor: Optional[str] = None
+    driver: Optional[str] = None
+    # El enlace con el sistema, medido como en Gráficos: el eslabón más lento
+    # de la cadena hasta la raíz, no lo que diga el nodo del dispositivo.
+    # None en lo que no va en una ranura (USB, SATA, sonido de la placa).
+    link: Optional["PcieLink"] = None
+    # Cómo se llama la ranura en la placa, según la tabla del firmware. Solo
+    # con permisos, y solo si su dirección casa con este dispositivo.
+    slot_name: Optional[str] = None
+
+
+@dataclass(frozen=True, slots=True)
+class Platform:
+    """Lo que la placa y su firmware tienen activado."""
+
+    iommu_groups: Optional[int] = None       # None: sin IOMMU activa
+    # "active": en uso (existe /dev/kvm). "present": el procesador la tiene y
+    # no está en uso; puede ser la BIOS o que falte el módulo. None: no la hay.
+    virtualization: Optional[str] = None
+    virtualization_kind: Optional[str] = None      # "AMD-V" | "VT-x"
+    # Cuántos dispositivos tienen memoria asignada por encima de 4 GB. Uno
+    # basta para afirmar que la opción está activada; cero no demuestra nada.
+    above_4g_devices: int = 0
+    sensor_chip: Optional[str] = None        # "it8688"
+    audio_codec: Optional[str] = None        # "Realtek ALCS1200A"
+
+
+@dataclass(frozen=True, slots=True)
 class Vulnerability:
     """Una vulnerabilidad del procesador según el kernel que está corriendo.
 
@@ -1480,6 +1519,8 @@ class Snapshot:
     network: tuple[NetworkInterface, ...] = ()
     disks: tuple[Disk, ...] = ()
     batteries: tuple[Battery, ...] = ()
+    pci_devices: tuple[PciDevice, ...] = ()
+    platform: Platform = field(default_factory=Platform)
     privileged: PrivilegedState = field(default_factory=PrivilegedState)
     sensors: tuple[Sensor, ...] = ()
     driver_hints: tuple[DriverHint, ...] = ()
