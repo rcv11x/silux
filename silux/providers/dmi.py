@@ -59,6 +59,43 @@ _CHIPSET_MODEL = re.compile(
 )
 
 
+# En AM4 y AM5 el puente LPC del bus 0 es el FCH que va dentro del procesador
+# y se llama igual en todas las placas. Ahí el chipset lo dice el nombre de la
+# placa («B550M» es una B550 en microATX; «B650E-F», una B650E). La lista es
+# cerrada a propósito: una letra y tres cifras también es un portátil («Aspire
+# A515-45», «VivoBook X513EA»), y un chipset que falta se explica mejor que
+# uno inventado.
+_CHIPSETS_AMD = ("A320", "B350", "X370", "B450", "X470", "A520", "B550", "X570",
+                 "A620", "B650", "X670", "B840", "B850", "X870",
+                 "X399", "TRX40", "TRX50", "WRX80", "WRX90")
+_CHIPSET_EN_LA_PLACA = re.compile(rf"\b({'|'.join(_CHIPSETS_AMD)})(E\b)?")
+AMD = "Advanced Micro Devices"
+
+
+def chipset_de_la_placa(placa: Optional[str]) -> Optional[str]:
+    """El chipset de AMD que lleva escrito el nombre de una placa, si lo lleva."""
+    match = _CHIPSET_EN_LA_PLACA.search(placa or "")
+    return match.group(1) + (match.group(2) or "") if match else None
+
+
+def chipset(puente: Optional[tuple[str, str]], placa: Optional[str]) -> Optional[str]:
+    """«Intel H510», «AMD X570», o nada si no lo dice nadie.
+
+    `puente` es lo que `pci.ids` dice del puente LPC/eSPI: fabricante y
+    nombre. Si el de un AMD no trae modelo se mira la placa, y si tampoco, no
+    se da por chipset el nombre de un dispositivo PCI.
+    """
+    if puente is None:
+        return None
+    fabricante, nombre = puente
+    match = _CHIPSET_MODEL.search(nombre)
+    modelo = match.group(1) if match else None
+    if modelo is None and fabricante.startswith(AMD):
+        modelo = chipset_de_la_placa(placa)
+    marca = "AMD" if fabricante.startswith(AMD) else fabricante.split()[0]
+    return f"{marca} {modelo}" if modelo else None
+
+
 def _dmi(field: str) -> Optional[str]:
     return clean_dmi(read_text(f"{SYS_DMI}/{field}"))
 
@@ -79,7 +116,7 @@ class DmiBoard(Provider):
 
     def collect(self, draft: Draft) -> None:
         draft.capabilities.add("dmi")
-        chipset, chipset_full, host_bridge = self._chipset()
+        modelo, chipset_full, host_bridge = self._chipset(_dmi("board_name"))
 
         draft.board = Board(
             vendor=_dmi("board_vendor"),
@@ -95,7 +132,7 @@ class DmiBoard(Provider):
             secure_boot=self._secure_boot(),
             tpm_version=self._tpm(),
 
-            chipset=chipset,
+            chipset=modelo,
             chipset_full=chipset_full,
             host_bridge=host_bridge,
 
@@ -147,7 +184,7 @@ class DmiBoard(Provider):
     # -- chipset ------------------------------------------------------------
 
     @staticmethod
-    def _chipset() -> tuple[Optional[str], Optional[str], Optional[str]]:
+    def _chipset(placa: Optional[str] = None) -> tuple[Optional[str], Optional[str], Optional[str]]:
         """El puente LPC/eSPI del bus 0 identifica al chipset; el host bridge,
         al controlador de memoria integrado en la CPU."""
         if not sysroot.ruta(PCI_DEVICES).is_dir():
@@ -170,13 +207,11 @@ class DmiBoard(Provider):
 
         names = pciids.lookup(candidates.values())
 
-        chipset = chipset_full = host = None
+        modelo = chipset_full = host = None
         if (pair := candidates.get(CLASS_ISA_BRIDGE)) and pair in names:
-            vendor_name, chipset_full = names[pair]
-            match = _CHIPSET_MODEL.search(chipset_full)
-            short_vendor_name = vendor_name.split()[0]
-            chipset = f"{short_vendor_name} {match.group(1)}" if match else chipset_full
+            chipset_full = names[pair][1]
+            modelo = chipset(names[pair], placa)
         if (pair := candidates.get(CLASS_HOST_BRIDGE)) and pair in names:
             host = names[pair][1]
 
-        return chipset, chipset_full, host
+        return modelo, chipset_full, host

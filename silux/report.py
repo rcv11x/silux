@@ -218,7 +218,7 @@ def _placa(snapshot: Snapshot, anonymous: bool) -> str:
         "", "## Placa base", "",
         f"- {board.display_name or '?'}",
         f"- BIOS: {render.bios_summary(board)}",
-        f"- Chipset: {board.chipset_full or board.chipset or '—'}",
+        f"- Chipset: {_chipset(board)}",
         f"- Firmware: {board.firmware or '—'} · arranque seguro: "
         f"{'sí' if board.secure_boot else 'no'} · TPM: {board.tpm_version or 'no'}",
         # En crudo y los cinco, porque de aquí sale el titular de arriba y cada
@@ -232,6 +232,17 @@ def _placa(snapshot: Snapshot, anonymous: bool) -> str:
         f" · familia {board.system_family or '—'}",
         f"- Chasis: {en_español(board.chassis) if board.chassis else '—'}",
     ])
+
+
+def _chipset(board) -> str:
+    """El chipset y, al lado, lo que `pci.ids` dice del puente del bus 0.
+
+    Los dos, porque en un AMD el segundo es «FCH LPC Bridge» en todas las
+    placas y el primero sale del nombre de la placa: si falla, se ve de qué.
+    """
+    if board.chipset and board.chipset_full and board.chipset_full not in board.chipset:
+        return f"{board.chipset} ({board.chipset_full})"
+    return board.chipset or board.chipset_full or "—"
 
 
 def _graficas(snapshot: Snapshot, anonymous: bool) -> str:
