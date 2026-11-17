@@ -248,7 +248,7 @@ class ResponsiveRow(QWidget):
         self._grid.setSizeConstraint(QLayout.SizeConstraint.SetNoConstraint)
 
     def _anchos_minimos(self) -> list[int]:
-        return [self._min_item_width if w.isHidden()
+        return [self._min_item_width if self._escondido(w)
                 else max(self._min_item_width, w.minimumSizeHint().width())
                 for w in self._items]
 
@@ -264,8 +264,21 @@ class ResponsiveRow(QWidget):
         widget.setParent(self)
         self._relayout(force=True)
 
+    @staticmethod
+    def _escondido(widget: QWidget) -> bool:
+        """Si alguien lo escondió a propósito.
+
+        `isHidden` a secas no vale: un widget recién creado también lo está
+        hasta que se enseña por primera vez. Con la página ya abierta, las
+        tarjetas que nacían después (los módulos de memoria al dar permisos)
+        contaban como escondidas, no entraban en la rejilla y nadie las
+        enseñaba: no salían hasta cambiar de página y volver.
+        """
+        return widget.isHidden() and widget.testAttribute(
+            Qt.WidgetAttribute.WA_WState_ExplicitShowHide)
+
     def _a_la_vista(self) -> list[QWidget]:
-        return [w for w in self._items if not w.isHidden()]
+        return [w for w in self._items if not self._escondido(w)]
 
     def _wanted_columns(self) -> int:
         visibles = self._a_la_vista()
