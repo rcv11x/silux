@@ -653,18 +653,19 @@ class SensorTree(QTreeWidget):
                 if sensors:
                     category_item.setIcon(0, self._icon(sensors[0].kind.value))
 
-                # Un aparato puede traer sus temperaturas por dos vías: una
-                # placa Gigabyte las publica por su Super I/O y otra vez por
-                # su interfaz WMI, y las dos se llaman «Temperatura 1». Sin
-                # decir de cuál es cada una, la lista tiene seis renglones
-                # repetidos y ninguna forma de saber cuál mirar.
-                repetidas = {etiqueta for etiqueta in
-                             (x.label for x in sensors)
-                             if sum(1 for y in sensors if y.label == etiqueta) > 1}
+                # Cuando en una categoría dos lecturas se llaman igual
+                # («Temperatura 1» del Super I/O y «Temperatura 1» de ACPI),
+                # todas sus filas dicen de qué chip son. Todas o ninguna:
+                # marcando solo las repetidas, «Temperatura 1 (it8688)» iba
+                # seguida de «Temperatura 4» a secas, que era del mismo chip.
+                # Donde ningún nombre se repite, el chip sobra: en la gráfica
+                # «Borde (amdgpu)» no dice nada que «Borde» no diga.
+                nombres = [x.label for x in sensors]
+                varios_chips = len(set(nombres)) < len(nombres)
 
                 for sensor in sensors:
                     nombre = (f"{sensor.label} ({render.chip_name(sensor.chip)})"
-                              if sensor.label in repetidas else sensor.label)
+                              if varios_chips else sensor.label)
                     row = QTreeWidgetItem(
                         [nombre] + ["—"] * self.VALUE_COLUMNS)
                     row.setFont(0, self._label_font)

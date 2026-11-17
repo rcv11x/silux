@@ -121,6 +121,20 @@ class TestEnLaPaginaDeSensores(unittest.TestCase):
         for sensor in f.sensors:
             self.assertEqual(sensor.key in pagina.tree._rows, not sensor.mirror_of, sensor.key)
 
+        # El chip, en todas o en ninguna: las seis del Super I/O lo llevan,
+        # no solo las tres cuyo nombre coincide con una de ACPI.
+        self.assertEqual([n for n in nombres if "(" not in n], [])
+        self.assertEqual(sum(1 for n in nombres if n.endswith("(it8688)")), 6)
+        self.assertEqual(sum(1 for n in nombres if n.endswith("(acpitz)")), 3)
+        # Y donde solo hay un chip, ninguna.
+        ventiladores = pagina.tree._rows[f"::{placa}/cat.fan"]
+        self.assertFalse([ventiladores.child(i).text(0) for i in range(ventiladores.childCount())
+                          if "(" in ventiladores.child(i).text(0)])
+
+        grafica = pagina.tree._rows[f"::{f.gpus[0].name}/cat.temperature"]
+        self.assertFalse([grafica.child(i).text(0) for i in range(grafica.childCount())
+                          if "(" in grafica.child(i).text(0)])
+
         pie = pagina.absent.text()
         self.assertIn(_("sensors.mirror").format(espejo="gigabyte_wmi", chip="it8688", n=6), pie)
         # El que se esconde no sale además como «numera sin decir dónde».
