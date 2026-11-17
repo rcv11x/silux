@@ -61,8 +61,9 @@ class TestLecturaDeGraficas(unittest.TestCase):
     def _grafica(self, valores, ancho=100, capacidad=None) -> Sparkline:
         """Por defecto, una gráfica ya llena: es como se usa el 99 % del rato.
 
-        Llena, cada muestra tiene su paso fijo y la curva se desplaza.
-        Mientras se llena, las que hay se reparten por todo el ancho.
+        El paso lo marca la capacidad, no cuántas muestras hay: mientras se
+        llena, la serie ocupa la parte derecha de un eje que va de lado a
+        lado.
         """
         chart = Sparkline(theme.DARK, capacity=capacidad or max(2, len(valores)))
         chart.resize(ancho, 30)
@@ -82,19 +83,29 @@ class TestLecturaDeGraficas(unittest.TestCase):
         self.assertIsNone(chart._index_at(-40))
         self.assertIsNone(chart._index_at(9999))
 
-    def test_a_medio_llenar_la_serie_ocupa_todo_el_ancho(self):
-        """Tres muestras de noventa: la primera a la izquierda, la última a la
-        derecha y la otra en medio. Con el paso de la gráfica llena desde el
-        principio, el primer minuto y medio la curva era un garabato en la
-        esquina derecha de una ficha vacía."""
-        chart = self._grafica([10, 20, 30], capacidad=90)
+    def test_a_medio_llenar_se_llena_desde_la_derecha_con_el_paso_definitivo(self):
+        """Tres muestras de noventa: las tres pegadas al borde derecho, con el
+        paso de la gráfica llena. Repartidas por todo el ancho, cada muestra
+        nueva apretaba la curva entera y lo que se veía eran saltos."""
+        chart = self._grafica([10, 60, 30], capacidad=90)
         origen, paso = chart._geometria()
-        self.assertAlmostEqual(origen, 0.5, places=3)
+        self.assertAlmostEqual(paso, 99 / 89, places=3)
         self.assertAlmostEqual(origen + 2 * paso, 99.5, places=3)
-        # Y el cursor señala la muestra que tiene debajo.
-        self.assertEqual(chart._index_at(5), 0)
-        self.assertEqual(chart._index_at(50), 1)
+        # A la izquierda no hay ninguna muestra que leer.
+        self.assertIsNone(chart._index_at(5))
+        self.assertIsNone(chart._index_at(50))
         self.assertEqual(chart._index_at(99), 2)
+
+    def test_una_muestra_nueva_no_recoloca_las_que_habia(self):
+        chart = self._grafica([10, 60, 30], capacidad=90)
+        origen, paso = chart._geometria()
+        donde = [origen + i * paso for i in range(3)]
+        chart.push(40)
+        origen, despues = chart._geometria()
+        self.assertEqual(despues, paso)
+        # Cada una, justo un paso más a la izquierda.
+        for i, antes in enumerate(donde):
+            self.assertAlmostEqual(origen + i * despues, antes - paso, places=3)
 
     def test_llena_cada_muestra_tiene_su_paso_fijo(self):
         chart = self._grafica(list(range(10)), capacidad=10)
@@ -102,33 +113,50 @@ class TestLecturaDeGraficas(unittest.TestCase):
         chart.push(99)
         self.assertEqual(chart._geometria()[1], lleno)
 
-    def test_lo_dibujado_llega_al_borde_izquierdo_desde_la_tercera_muestra(self):
-        from PySide6.QtGui import QImage
+    def _columnas_pintadas(self, chart, filas):
+        from PySide6.QtCore import QPoint
+        from PySide6.QtGui import QImage, QRegion
+        from PySide6.QtWidgets import QWidget
 
-        chart = self._grafica([10, 60, 30], capacidad=90)
-        chart.resize(200, 30)
-        imagen = QImage(200, 30, QImage.Format.Format_ARGB32)
+        imagen = QImage(chart.width(), chart.height(), QImage.Format.Format_ARGB32)
         imagen.fill(0)
-        chart.render(imagen)
-        pintadas = [x for x in range(200)
-                    if any(imagen.pixelColor(x, y).alpha() > 0 for y in range(30))]
-        self.assertLess(min(pintadas), 6)
-        self.assertGreater(max(pintadas), 193)
+        # Sin el fondo del widget: `render` lo pinta por omisión y entonces
+        # todas las columnas salen pintadas, haya curva o no.
+        chart.render(imagen, QPoint(), QRegion(), QWidget.RenderFlag.DrawChildren)
+        return [x for x in range(chart.width())
+                if any(imagen.pixelColor(x, y).alpha() > 0 for y in filas)]
 
-    def test_a_medio_llenar_no_se_desliza_fuera(self):
-        # Deslizar es de la gráfica llena, que pierde una muestra por la
-        # izquierda. A medio llenar va sujeta por los dos extremos.
-        from PySide6.QtGui import QImage
-
+    def test_el_eje_va_de_lado_a_lado_aunque_la_curva_no_llegue(self):
+        """La ficha recién abierta no es un hueco con un garabato en una
+        esquina: tiene su eje entero, y la curva lo va ocupando."""
         chart = self._grafica([10, 60, 30], capacidad=90)
         chart.resize(200, 30)
+        eje = self._columnas_pintadas(chart, range(27, 30))
+        self.assertLess(min(eje), 3)
+        self.assertGreater(max(eje), 196)
+        # Y la curva, solo a la derecha.
+        curva = self._columnas_pintadas(chart, range(0, 24))
+        self.assertGreater(min(curva), 180)
+
+    def test_el_eje_esta_desde_antes_de_la_primera_muestra(self):
+        for valores in ([], [42]):
+            with self.subTest(muestras=len(valores)):
+                chart = self._grafica(valores, capacidad=90)
+                chart.resize(200, 30)
+                eje = self._columnas_pintadas(chart, range(27, 30))
+                self.assertTrue(eje)
+                self.assertLess(min(eje), 3)
+                self.assertGreater(max(eje), 196)
+
+    def test_a_medio_llenar_tambien_se_desliza(self):
+        # Entre muestra y muestra la curva avanza hacia la izquierda, llena o
+        # no: al entrar la siguiente, cada punto ya está donde le toca.
+        chart = self._grafica([10, 60, 30], capacidad=90)
+        chart.resize(200, 30)
+        quieta = self._columnas_pintadas(chart, range(0, 24))
         chart.advance(0.9)
-        imagen = QImage(200, 30, QImage.Format.Format_ARGB32)
-        imagen.fill(0)
-        chart.render(imagen)
-        pintadas = [x for x in range(200)
-                    if any(imagen.pixelColor(x, y).alpha() > 0 for y in range(30))]
-        self.assertGreater(max(pintadas), 193)
+        movida = self._columnas_pintadas(chart, range(0, 24))
+        self.assertLess(min(movida), min(quieta))
 
     def test_una_grafica_vacia_no_tiene_nada_que_señalar(self):
         self.assertIsNone(self._grafica([]) ._index_at(50))

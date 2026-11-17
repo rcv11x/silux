@@ -633,15 +633,14 @@ class Sparkline(QWidget):
         cursor señalaba una muestra y la guía se dibujaba sobre otra.
         """
         ancho = max(1.0, self.width() - 1.0)
-        cuantas = len(self._values)
-        capacidad = self._values.maxlen or max(1, cuantas)
-        # La serie ocupa siempre todo el ancho. Mientras se llena, las
-        # muestras que hay se reparten por él; llena, cada una tiene su paso
-        # fijo y la curva se desplaza. Con el paso de la capacidad desde el
-        # principio, el primer minuto y medio la curva era un garabato en la
-        # esquina derecha de una ficha vacía, que es lo que se ve al abrir.
-        paso = ancho / max(1, min(capacidad, max(cuantas, 2)) - 1)
-        origen = (0.5 + ancho) - (cuantas - 1) * paso
+        # El paso lo marca la capacidad, no cuántas muestras hay todavía. Si
+        # se reparte el ancho entre las que hay, cada muestra nueva estrecha
+        # el paso y toda la curva se recoloca, a saltos, hasta que se llena.
+        # Así se llena desde la derecha con el paso definitivo desde la
+        # primera, sobre un eje que sí va de lado a lado (`_dibujar_eje`).
+        capacidad = self._values.maxlen or max(1, len(self._values))
+        paso = ancho / max(1, capacidad - 1)
+        origen = (0.5 + ancho) - (len(self._values) - 1) * paso
         return origen, paso
 
     def _index_at(self, x: float) -> Optional[int]:
@@ -649,6 +648,8 @@ class Sparkline(QWidget):
             return None
         origen, paso = self._geometria()
         indice = round((x - origen) / paso)
+        # Mientras la gráfica se llena, a la izquierda solo está el eje: ahí
+        # no hay ninguna muestra que leer.
         if not 0 <= indice < len(self._values):
             return None
         return indice
@@ -739,37 +740,57 @@ class Sparkline(QWidget):
                                       max(techo, antes_techo))
         return self._escala
 
-    def paintEvent(self, event) -> None:  # noqa: N802
+    def _trazado(self) -> Optional[tuple[QRectF, list, list]]:
+        """El recuadro, los puntos de la curva y sus valores, o nada si no hay curva.
+
+        Aparte del dibujo para que quien coloca la cifra del pico —y quien lo
+        comprueba— use los mismos puntos que se pintan.
+        """
         if len(self._values) < 2:
-            return
-
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-
-        rect = QRectF(self.rect()).adjusted(0.5, 3.5, -0.5, -0.5)
+            return None
+        rect = self._recuadro()
         values = list(self._values)
-
         low, high = self._escala_visible(values)
-
         origen, step = self._geometria()
         # Las muestras viejas se van hacia la izquierda y salen por ahí; la
         # nueva ya está dibujada en el borde derecho. Al revés —empujando
         # todo a la derecha— el relleno dejaba un hueco parpadeante en el
         # borde izquierdo, que es el rebote que se veía.
-        # Solo se desliza la gráfica llena, que es la que pierde una muestra
-        # por la izquierda al entrar otra. Mientras se llena va sujeta por los
-        # dos extremos y lo que hace cada muestra nueva es apretarla.
-        llena = len(values) >= (self._values.maxlen or len(values))
-        deslizamiento = -self._phase * step if llena else 0.0
-        if self._phase < 1.0:
-            painter.setClipRect(self.rect())
+        deslizamiento = -self._phase * step
 
         def point(i: int, v: float) -> QPointF:
             y = rect.bottom() - (v - low) / (high - low) * rect.height()
             return QPointF(origen + i * step + deslizamiento,
                            max(rect.top(), min(rect.bottom(), y)))
 
-        points = [point(i, v) for i, v in enumerate(values)]
+        return rect, [point(i, v) for i, v in enumerate(values)], values
+
+    def _recuadro(self) -> QRectF:
+        return QRectF(self.rect()).adjusted(0.5, 3.5, -0.5, -0.5)
+
+    def _dibujar_eje(self, painter: QPainter, rect: QRectF) -> None:
+        """La línea de base, de lado a lado, haya las muestras que haya.
+
+        Recién abierta, una ficha tiene la curva en su esquina derecha y el
+        resto en blanco: con el eje entero se ve que eso es una gráfica que se
+        está llenando y no un hueco.
+        """
+        painter.setPen(QPen(self._p.q("muted", 0.35), 1.0))
+        y = rect.bottom() - 0.5
+        painter.drawLine(QPointF(rect.left(), y), QPointF(rect.right(), y))
+
+    def paintEvent(self, event) -> None:  # noqa: N802
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        self._dibujar_eje(painter, self._recuadro())
+
+        trazado = self._trazado()
+        if trazado is None:
+            painter.end()
+            return
+        rect, points, values = trazado
+        if self._phase < 1.0:
+            painter.setClipRect(self.rect())
 
         area = curva_suave(points, cerrar_en=rect.bottom())
 
@@ -833,32 +854,84 @@ class Sparkline(QWidget):
         ancho = metrica.horizontalAdvance(texto)
         alto_texto = metrica.height()
 
-        # Encima del punto es donde se lee mejor, pero un pico está por
-        # definición cerca del techo y ahí casi nunca cabe. Debajo tapaba la
-        # curva justo en el tramo que se estaba mirando, así que el segundo
-        # sitio es al lado, a la altura del punto: a los lados del máximo la
-        # curva ya ha bajado y no hay nada que tapar.
-        arriba = punto.y() - 5 - alto_texto
-        if arriba >= rect.top():
-            x = min(max(punto.x() - ancho / 2, rect.left()), rect.right() - ancho)
-            y = arriba
-        else:
-            y = min(max(punto.y() - alto_texto / 2, rect.top()),
-                    rect.bottom() - alto_texto)
-            derecha = punto.x() + 6
-            x = (derecha if derecha + ancho <= rect.right()
-                 else punto.x() - 6 - ancho)
+        caja = self._sitio_de_la_cifra(rect, points, indice, ancho + 6, alto_texto)
+        if caja is None:
+            # No hay dónde ponerla sin tapar la curva. El punto hueco sigue
+            # marcando dónde fue, y la cifra sale al pasar el ratón.
+            return
 
-        # La cifra cae sobre el relleno del área, y ahí un texto suelto se
-        # pierde: en tema claro el gris sobre el azul aguado no se lee. Lleva
-        # detrás el color del panel, igual que la etiqueta del cursor.
-        caja = QRectF(x - 3, y, ancho + 6, alto_texto)
+        # La cifra cae a veces sobre el relleno del área, y ahí un texto
+        # suelto se pierde: en tema claro el gris sobre el azul aguado no se
+        # lee. Lleva detrás el color del panel, igual que la etiqueta del
+        # cursor.
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(QBrush(self._p.q("surface", 0.82)))
         painter.drawRoundedRect(caja, 3, 3)
 
         painter.setPen(self._p.q("ink_dim"))
         painter.drawText(caja, int(Qt.AlignmentFlag.AlignCenter), texto)
+
+    # Lo que la cifra del pico se aparta de la línea, en píxeles.
+    AIRE_DEL_PICO = 3.0
+    # Y lo más lejos del punto que puede acabar: más allá ya no se lee como suya.
+    ALCANCE_DEL_PICO = 48
+
+    @staticmethod
+    def _curva_entre(points: list, izquierda: float, derecha: float) -> tuple[float, float]:
+        """Entre qué alturas pasa la curva en ese tramo horizontal.
+
+        Por tramos rectos entre muestra y muestra: la curva suavizada se
+        separa de ellos menos que el aire que se le deja a la cifra.
+        """
+        alturas = []
+        for a, b in zip(points, points[1:]):
+            if b.x() < izquierda or a.x() > derecha:
+                continue
+            for x in (max(a.x(), izquierda), min(b.x(), derecha)):
+                t = (x - a.x()) / (b.x() - a.x()) if b.x() != a.x() else 0.0
+                alturas.append(a.y() + (b.y() - a.y()) * t)
+        if not alturas:
+            return float("inf"), float("-inf")
+        return min(alturas), max(alturas)
+
+    def _sitio_de_la_cifra(self, rect: QRectF, points: list, indice: int,
+                           ancho: float, alto: float) -> Optional[QRectF]:
+        """Dónde cabe la cifra del pico sin montarse en la curva, o nada.
+
+        Encima del punto es donde se lee mejor, pero un pico está por
+        definición cerca del techo y ahí casi nunca cabe. Al lado, a su
+        altura, solo vale si el pico es una aguja: en una meseta la línea
+        sigue ahí y la cifra la tapaba. Así que se prueba cada sitio contra
+        la curva de verdad, por este orden: encima, arriba a un lado, al lado,
+        y debajo del pico, dentro del área. Si ninguno queda libre, no se pone.
+        `dentro` no deja que se salga del cuadro: lo que hace es arrimarla.
+        """
+        punto = points[indice]
+        aire = self.AIRE_DEL_PICO
+
+        def dentro(x: float, y: float) -> Optional[QRectF]:
+            x = min(max(x, rect.left()), rect.right() - ancho)
+            if y < rect.top() or y + alto > rect.bottom():
+                return None
+            return QRectF(x, y, ancho, alto)
+
+        def libre(caja: Optional[QRectF]) -> bool:
+            if caja is None:
+                return False
+            arriba, abajo = self._curva_entre(points, caja.left() - aire, caja.right() + aire)
+            # Toda por encima de la línea, o toda por debajo (sobre el área).
+            return caja.bottom() + aire <= arriba or caja.top() - aire >= abajo
+
+        candidatos = [dentro(punto.x() - ancho / 2, punto.y() - 5 - alto)]
+        # Arriba y a un lado, cada vez un poco más lejos: junto a una aguja
+        # la línea todavía está bajando.
+        for lejos in range(6, self.ALCANCE_DEL_PICO, 4):
+            candidatos += [dentro(punto.x() + lejos, rect.top()),
+                           dentro(punto.x() - lejos - ancho, rect.top())]
+        candidatos += [dentro(punto.x() + 6, punto.y() - alto / 2),
+                       dentro(punto.x() - 6 - ancho, punto.y() - alto / 2),
+                       dentro(punto.x() - ancho / 2, punto.y() + 6)]
+        return next((caja for caja in candidatos if libre(caja)), None)
 
     def _indice_del_pico(self) -> Optional[int]:
         """Dónde está el máximo del tramo visible, o nada si no hay uno claro.
