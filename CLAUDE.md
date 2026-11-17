@@ -28,6 +28,7 @@ python3 tools/anadir_puntuacion.py INFORMES  # sumar medidas ajenas a la tabla
 python3 tools/install_desktop.py       # icono y entrada de menú
 python3 tools/volcar_gpu.py            # lo que publica el kernel de cada gráfica
 python3 tools/volcar_equipo.py NOMBRE  # este equipo, anonimizado, a tests/fixtures/equipos/
+python3 tools/montar_equipo.py NOMBRE ORDEN…  # ejecutar algo con un volcado montado, como los tests
 python3 tools/comprobar_privacidad.py  # antes de publicar nada
 python3 tools/build_appimage.py --container   # el AppImage que se reparte
 python3 tools/probar_en_minimo.py --container # la suite en el Python del suelo
@@ -51,6 +52,9 @@ CI lleva las dos puntas. **El AppImage se construye siempre con `--container`**:
 sin él se lleva la glibc y el juego de instrucciones de quien lo compila. Por
 qué, los dos techos de PySide6 y las dos guardas del procesador:
 [docs/empaquetado.md](docs/empaquetado.md).
+
+Un volcado se monta con `tools/montar_equipo.py`, no apuntando
+`SILUX_SYSROOT` a su carpeta: git no guarda las carpetas vacías, y cuentan.
 
 Capturas sin pantalla, siempre en `"$(xdg-user-dir PICTURES)/silux-test/"` y
 nunca dentro del repositorio. Lo que se fuerza por la línea de órdenes —tema,
@@ -169,7 +173,7 @@ Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); los comentarios, en el español del autor. Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-1022 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+1032 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
@@ -210,6 +214,9 @@ probó…» o «costó…» van al mensaje del commit o a `docs/lecciones.md`.
   ha medido, y se espera respuesta.
 - **Lo que depende de que alguien se acuerde de subir un número no es una
   comprobación.** Se compara el contenido.
+- **Lo que se añade y lo que se quita se enseña en la terminal.** Tras cada
+  cambio, Claude escribe en su respuesta el diff de lo que ha tocado (líneas
+  con `+` y con `-`), no solo el resumen: el autor lo sigue por ahí.
 - **El commit del CLAUDE.md es el último antes de empujar.**
 - **Una rama por fase**, que sale de la anterior o de `master`. Las ramas no se
   empujan salvo que se diga; el CI de una rama se lanza a mano con
@@ -275,13 +282,14 @@ código (F-…), que es por el que se buscan allí.
 | `tools/probar_en_minimo.py` | media | cualquier fallo del contenedor se anuncia como «la suite no pasa» (F-M37) |
 | `ui/widgets.py` | media-baja | un `float` no finito tumba la gráfica |
 | `ui/widgets.py`, `ui/pages/storage.py` | media-baja | `Table` no pinta un candado en una celda: la temperatura de un SATA sigue con guion en la tabla de unidades |
+| `providers/drm.py` | baja | no se lee el motivo de limitación de `i915` (`throttle_reason_*`): «Estado —» en una integrada de Intel |
+| `.github/workflows/appimage.yml` | media | el CI no mira si el AppImage pinta sus iconos; se comprobó a mano con `--screenshot` |
 | `privacidad.py`, `tools/volcar_equipo.py` | media-baja | `--anonimo` da la misma IP a todas las interfaces; los volcados, la misma MAC |
 | `ui/theme.py` | media-baja | caché de iconos en `/tmp/silux-icons` de nombre fijo |
 | `providers/rapl.py` | media-baja | en un contenedor dice que la CPU no tiene contadores |
 | `ui/widgets.py` | baja | el globo «copiado» se come el clic; seleccionar copia el entero; `Table.set_rows` con columnas distintas |
 | `cli.py` | baja | `--json` sin aviso; `--report ''`; banderas que se pisan; `--with-identifiers` suelto; categorías sin traducir; `--report -` sin aviso |
 | `ui/app.py` | baja | cambiar el tema reinicia las gráficas; no hay navegación por teclado |
-| `ui/app.py` | baja | en compacto la barra lateral corta «Almacenamien…» |
 | `ui/pages/graphics.py` | baja | tasa de datos de la VRAM compuesta a mano |
 | `providers/cppc.py` | media, sin comprobar | el techo del silicio con `acpi-cpufreq`: falta el volcado con `amd_pstate=disable` |
 | `ui/pages/settings.py` | propuesta | no hay botón para quitar el ayudante instalado; toca privilegios |
