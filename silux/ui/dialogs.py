@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import Optional
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import (QDialog, QHBoxLayout, QLabel, QPushButton,
-                               QVBoxLayout, QWidget)
+from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtWidgets import (QApplication, QDialog, QHBoxLayout, QLabel,
+                               QPlainTextEdit, QPushButton, QVBoxLayout, QWidget)
 
 from ..i18n import _
 from . import theme
@@ -47,14 +47,14 @@ class PermissionsDialog(QDialog):
         from ..privileged.instalar import orden_de_desinstalar
 
         for clave in PARRAFOS:
-            # La orden de quitarlo sale de donde están las rutas, no del
-            # texto: si un día cambian, el diálogo no se queda diciendo otra.
-            parrafo = QLabel(_(clave).format(orden=orden_de_desinstalar()))
+            parrafo = QLabel(_(clave))
             parrafo.setWordWrap(True)
             parrafo.setTextFormat(Qt.TextFormat.PlainText)
             parrafo.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
             layout.addWidget(parrafo)
             self.paragraphs.append(parrafo)
+            if clave == "perm.explain.always":
+                layout.addLayout(self._orden(orden_de_desinstalar()))
 
         self.grant_button = QPushButton(_("perm.explain.grant"))
         self.grant_button.setObjectName("Primary")
@@ -79,8 +79,73 @@ class PermissionsDialog(QDialog):
         botones.addWidget(self.close_button)
         layout.addLayout(botones)
 
-        self.setMinimumWidth(m.base_pt * 40)
-        self.setMaximumWidth(m.base_pt * 52)
+        self._ajustar_tope()
+
+    def _ajustar_tope(self) -> None:
+        """El ancho máximo: el de leer a gusto, o lo que pida la orden.
+
+        Con un tope más estrecho que la orden, el campo se sale por la
+        derecha y los párrafos se quedan sin altura. Se vuelve a calcular
+        justo antes de enseñarse, que es cuando Qt decide el tamaño y cuando
+        el tema ya ha pasado por los botones.
+        """
+        pide = self.layout().minimumSize().width()
+        # El mínimo también: uno puesto a mano manda sobre el del contenido,
+        # y con él más bajo Qt deja el diálogo más estrecho que la orden.
+        self.setMinimumWidth(max(theme.METRICS.base_pt * 40, pide))
+        self.setMaximumWidth(max(theme.METRICS.base_pt * 52, pide))
+
+    def setVisible(self, visible: bool) -> None:  # noqa: N802
+        if visible:
+            self._ajustar_tope()
+        super().setVisible(visible)
+
+    def _orden(self, orden: str) -> QHBoxLayout:
+        """La orden de quitar el ayudante, en su campo y con cómo copiarla.
+
+        Dentro del párrafo, con ajuste de línea, se partía a mitad de una
+        ruta. Aquí va en letra de ancho fijo y partida donde lo haría quien la
+        escribe: una ruta por renglón, con la barra que la continúa, de modo
+        que seleccionada y pegada en un terminal sigue siendo una sola orden.
+        El botón copia la de un renglón. Sale de donde están las rutas, no del
+        texto: si un día cambian, el diálogo no se queda diciendo otra.
+        """
+        self.command_text = orden
+        verbo, *rutas = orden.split(" /")
+        renglones = (verbo + " /" + " \\\n    /".join(rutas)) if rutas else orden
+        self.command = QPlainTextEdit(renglones)
+        self.command.setObjectName("Command")
+        self.command.setReadOnly(True)
+        self.command.setFont(theme.mono_font(theme.METRICS.small_pt))
+        self.command.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+        self.command.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.command.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        medida = self.command.fontMetrics()
+        marco = 2 * (self.command.frameWidth() + int(self.command.document().documentMargin()))
+        lineas = renglones.split("\n")
+        self.command.setFixedHeight(medida.lineSpacing() * len(lineas) + marco + 2)
+        self.command.setMinimumWidth(
+            max(medida.horizontalAdvance(linea) for linea in lineas) + marco + 8)
+
+        self.copy_button = QPushButton(_("perm.explain.copy"))
+        self.copy_button.clicked.connect(self._copiar)
+
+        fila = QHBoxLayout()
+        fila.setContentsMargins(0, 0, 0, 0)
+        fila.addWidget(self.command, 1)
+        fila.addWidget(self.copy_button, 0, Qt.AlignmentFlag.AlignTop)
+        return fila
+
+    def _copiar(self) -> None:
+        QApplication.clipboard().setText(self.command_text)
+        self.copy_button.setText(_("app.copied"))
+        QTimer.singleShot(1400, self._restaurar_boton)
+
+    def _restaurar_boton(self) -> None:
+        import shiboken6
+
+        if shiboken6.isValid(self.copy_button):
+            self.copy_button.setText(_("perm.explain.copy"))
 
     def _dar(self) -> None:
         self.accept()

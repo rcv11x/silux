@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from unittest import mock
 
+from silux.i18n import _
 from tests import qt
 from tests.test_equipos import EQUIPOS, foto
 
@@ -44,11 +45,77 @@ class TestElDialogo(unittest.TestCase):
         # ayudante desde la ventana. Borrar los dos archivos vale siempre.
         from silux.privileged import instalar
 
-        de_siempre = self._dialogo().paragraphs[2].text()
+        dialogo = self._dialogo()
+        de_siempre = dialogo.paragraphs[2].text()
         self.assertNotIn("Ajustes", de_siempre)
         self.assertNotIn("python3 -m", de_siempre)
         self.assertNotIn("{orden}", de_siempre)
-        self.assertIn(f"sudo rm {instalar.DESTINO} {instalar.POLITICA}", de_siempre)
+        self.assertEqual(dialogo.command_text,
+                         f"sudo rm {instalar.DESTINO} {instalar.POLITICA}")
+        # Lo que se ve, pegado en un terminal, es esa misma orden: la barra
+        # al final del renglón la continúa.
+        visto = dialogo.command.toPlainText()
+        self.assertEqual(" ".join(visto.replace("\\\n", " ").split()), dialogo.command_text)
+
+    def test_la_orden_va_en_su_campo_entera_y_no_partida_en_el_parrafo(self):
+        # En el párrafo, con ajuste de línea, se partía a mitad de una ruta:
+        # ni se leía ni se podía copiar de un golpe.
+        dialogo = self._dialogo()
+        dialogo.show()
+        self.addCleanup(dialogo.close)
+        self.app.processEvents()
+        campo = dialogo.command
+        self.assertFalse([p for p in dialogo.paragraphs if "sudo" in p.text()])
+        self.assertTrue(campo.isReadOnly())
+        # De ancho fijo. Se mide: `QFontInfo.fixedPitch` dice que no de una
+        # «Noto Sans Mono» que sí lo es.
+        medida = campo.fontMetrics()
+        self.assertEqual(medida.horizontalAdvance("iiii"), medida.horizontalAdvance("MMMM"))
+        # Una ruta por renglón, y ninguna partida.
+        renglones = campo.toPlainText().split("\n")
+        self.assertEqual(len(renglones), 2)
+        self.assertTrue(renglones[0].endswith("silux-helper \\"))
+        self.assertTrue(renglones[1].strip().endswith(".policy"))
+        # Caben enteros, a lo ancho y a lo alto: nada que desplazar.
+        self.assertGreaterEqual(
+            campo.viewport().width(),
+            max(medida.horizontalAdvance(r) for r in renglones))
+        self.assertGreaterEqual(campo.viewport().height(), 2 * medida.lineSpacing())
+        # El diálogo se deja crecer hasta lo que pide: con un tope más
+        # estrecho que la orden, el campo se salía por la derecha y los
+        # párrafos se quedaban sin altura.
+        self.assertGreaterEqual(dialogo.maximumWidth(),
+                                dialogo.layout().minimumSize().width())
+        self.assertGreaterEqual(dialogo.width(), dialogo.layout().minimumSize().width())
+        for parrafo in dialogo.paragraphs:
+            self.assertGreaterEqual(parrafo.height(),
+                                    parrafo.heightForWidth(parrafo.width()))
+        # Y va justo debajo del párrafo que habla de quitarlo.
+        self.assertGreater(campo.mapTo(dialogo, campo.rect().topLeft()).y(),
+                           dialogo.paragraphs[2].mapTo(
+                               dialogo, dialogo.paragraphs[2].rect().topLeft()).y())
+        self.assertLess(campo.mapTo(dialogo, campo.rect().topLeft()).y(),
+                        dialogo.paragraphs[3].mapTo(
+                            dialogo, dialogo.paragraphs[3].rect().topLeft()).y())
+
+    def test_el_boton_la_copia(self):
+        from PySide6.QtWidgets import QApplication
+
+        dialogo = self._dialogo()
+        dialogo.show()
+        self.addCleanup(dialogo.close)
+        QApplication.clipboard().setText("otra cosa")
+        dialogo.copy_button.click()
+        self.assertEqual(QApplication.clipboard().text(), dialogo.command_text)
+        self.assertNotIn("\n", QApplication.clipboard().text())
+        self.assertEqual(dialogo.copy_button.text(), _("app.copied"))
+
+    def test_cabe_en_la_ventana_compacta(self):
+        dialogo = self._dialogo()
+        dialogo.show()
+        self.addCleanup(dialogo.close)
+        self.app.processEvents()
+        self.assertLessEqual(dialogo.width(), 760)
 
     def test_la_orden_borra_justo_lo_que_borra_el_desinstalador(self):
         import inspect
@@ -62,9 +129,9 @@ class TestElDialogo(unittest.TestCase):
         fuente = inspect.getsource(instalar.desinstalar)
         self.assertIn("for ruta in (POLITICA, DESTINO)", fuente)
 
-    def test_los_otros_parrafos_no_llevan_la_orden(self):
+    def test_ningun_parrafo_lleva_la_orden(self):
         textos = [p.text() for p in self._dialogo().paragraphs]
-        self.assertEqual(sum("sudo rm" in t for t in textos), 1)
+        self.assertEqual(sum("sudo rm" in t for t in textos), 0)
 
     def test_no_manda_a_tocar_cerrojos_del_sistema(self):
         todo = " ".join(p.text() for p in self._dialogo().paragraphs)
