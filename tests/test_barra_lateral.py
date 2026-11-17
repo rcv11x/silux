@@ -67,6 +67,27 @@ class TestLaBarraLateral(unittest.TestCase):
                     ventana = self._ventana(density=densidad, font_scale=letra)
                     self.assertEqual(self._sobra(ventana), [])
 
+    def test_y_con_la_letra_del_ci_que_es_mas_ancha(self):
+        """Con DejaVu, la del runner, faltaban 6 px con la letra al máximo:
+        el relleno de la lista no estaba en la cuenta, y con la tipografía de
+        aquí lo tapaba la holgura."""
+        from PySide6.QtGui import QFontDatabase
+
+        app = qt.app()
+        ancha = "DejaVu Sans"
+        if ancha not in QFontDatabase.families():
+            self.skipTest(f"no está instalada {ancha}")
+        de_antes = app.font()
+        self.addCleanup(app.setFont, de_antes)
+        letra = QFont(de_antes)
+        letra.setFamily(ancha)
+        app.setFont(letra)
+        for densidad in ("compact", "normal", "spacious"):
+            for tamano in ("normal", "máximo"):
+                with self.subTest(densidad=densidad, letra=tamano):
+                    ventana = self._ventana(density=densidad, font_scale=tamano)
+                    self.assertEqual(self._sobra(ventana), [])
+
     def test_y_con_la_interfaz_en_ingles(self):
         self.addCleanup(i18n.set_language, "es")
         i18n.set_language("en")

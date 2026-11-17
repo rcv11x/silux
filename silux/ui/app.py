@@ -394,7 +394,8 @@ class MainWindow(QMainWindow):
         engorde = max((gruesa.horizontalAdvance(n) - normal.horizontalAdvance(n)
                        for n in nombres), default=0)
         return (math.ceil(self.nav.sizeHintForColumn(0) + engorde)
-                + 2 * self.nav.frameWidth() + 2 * self.MARGEN_DE_LA_BARRA + 2)
+                + 2 * self.nav.frameWidth() + 2 * theme.NAV_PADDING
+                + 2 * self.MARGEN_DE_LA_BARRA + 2)
 
     def _sources_text(self) -> str:
         from .. import db

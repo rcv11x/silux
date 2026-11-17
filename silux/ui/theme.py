@@ -190,6 +190,10 @@ COMPACT = Metrics(
 
 METRICS: Metrics = NORMAL
 
+# El relleno de la lista de secciones. Lo usan la hoja de estilos y quien
+# mide el ancho de la barra lateral: escrito en los dos sitios, se separan.
+NAV_PADDING = 4
+
 
 # Lo que el árbol de sensores deja a cada lado del texto de una celda. Vive
 # aquí y no dentro de la hoja de estilos porque hay que contarlo al medir si
@@ -521,7 +525,8 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
     QFrame#Divider {{ background: {p.line_soft}; max-height: 1px; border: none; }}
 
     QListWidget#Nav {{
-        background: transparent; border: none; outline: none; padding: 4px 4px;
+        background: transparent; border: none; outline: none;
+        padding: {NAV_PADDING}px {NAV_PADDING}px;
     }}
     QListWidget#Nav::item {{
         color: {p.ink_dim};
