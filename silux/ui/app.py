@@ -245,6 +245,7 @@ class MainWindow(QMainWindow):
         self.board_page = BoardPage(self._palette, self.prefs)
         self.memory_page = MemoryPage(self._palette, self.prefs)
         self.memory_page.elevation_requested.connect(self._on_elevation_requested)
+        self.memory_page.latencies_measured.connect(self.caches_page.set_latencies)
         self.graphics_page = GraphicsPage(self._palette, self.prefs)
         self.graphics_page.elevation_requested.connect(self._on_elevation_requested)
         self.storage_page = StoragePage(self._palette, self.prefs)

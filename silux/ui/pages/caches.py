@@ -93,14 +93,21 @@ class CachesPage(QScrollArea):
 
         # -- detalle --------------------------------------------------------
         detail = Card(_("caches.card.detail"))
-        self.table = Table(
-            (_("caches.col.level"), _("caches.col.size"), _("caches.col.count"),
-             _("caches.col.total"), _("caches.col.ways"), _("caches.col.line"),
-             _("caches.col.sets"), _("caches.col.shared")),
-            numeric=(False, True, True, True, True, True, True, True),
-        )
+        self._detail = detail
+        self.table = self._tabla(con_latencia=False)
         detail.body.addWidget(self.table)
+        # De dónde sale la columna de latencia, cuando la hay.
+        self.latency_note = QLabel(_("caches.latency.note"))
+        self.latency_note.setObjectName("Muted")
+        self.latency_note.setWordWrap(True)
+        self.latency_note.setFont(ui_font(theme.METRICS.small_pt))
+        self.latency_note.hide()
+        detail.body.addWidget(self.latency_note)
         layout.addWidget(detail)
+        # La latencia medida en Memoria, por nivel («L1», «L2», «L3», «RAM»),
+        # en nanosegundos. Vacío hasta que alguien mide.
+        self._latencias: dict[str, float] = {}
+        self._ultima: Optional[Snapshot] = None
 
         # -- explicación ----------------------------------------------------
         notes = ResponsiveRow(min_item_width=250)
@@ -127,18 +134,51 @@ class CachesPage(QScrollArea):
         card.body.addWidget(text)
         return card
 
+    @staticmethod
+    def _tabla(con_latencia: bool) -> Table:
+        cabeceras = [_("caches.col.level"), _("caches.col.size"), _("caches.col.count"),
+                     _("caches.col.total"), _("caches.col.ways"), _("caches.col.line"),
+                     _("caches.col.sets"), _("caches.col.shared")]
+        if con_latencia:
+            cabeceras.append(_("caches.col.latency"))
+        return Table(cabeceras, numeric=(False,) + (True,) * (len(cabeceras) - 1))
+
     # -- actualización ------------------------------------------------------
+
+    def set_latencies(self, por_nivel: dict) -> None:
+        """Lo que tarda un acceso a cada nivel, recién medido en Memoria.
+
+        Pone cada cifra en la fila de su nivel, que es donde se compara con
+        el tamaño y las vías. Mientras no se haya medido la columna no
+        existe: nada de guiones.
+        """
+        nuevas = {nivel: ns for nivel, ns in (por_nivel or {}).items() if ns is not None}
+        if nuevas == self._latencias:
+            return
+        con_antes, con_ahora = bool(self._latencias), bool(nuevas)
+        self._latencias = nuevas
+        if con_antes != con_ahora:
+            nueva = self._tabla(con_ahora)
+            self._detail.body.replaceWidget(self.table, nueva)
+            self.table.setParent(None)
+            self.table.deleteLater()
+            self.table = nueva
+        self.latency_note.setVisible(con_ahora)
+        self._signature = ()
+        if self._ultima is not None:
+            self.apply(self._ultima)
 
     def apply(self, snapshot: Snapshot) -> None:
         cpu = snapshot.cpu
         if not cpu.types:
             return
+        self._ultima = snapshot
 
         grouped = self._group(snapshot)
         signature = tuple(
             (level, kind, cache.size_bytes, cache.instances, key)
             for (level, kind, key, _tam), cache in grouped.items()
-        )
+        ) + (tuple(sorted(self._latencias.items())),)
         if signature == self._signature:
             return
         self._signature = signature
@@ -175,21 +215,36 @@ class CachesPage(QScrollArea):
             if cache.instance_cpus
         ])
 
-        self.table.set_rows(
+        def latencia(level: int, kind: str) -> list[str]:
+            if not self._latencias:
+                return []
+            # La medida es de leer datos: no dice nada de la caché de
+            # instrucciones, y esa celda se queda vacía.
+            if "nstr" in (kind or ""):
+                return [""]
+            ns = self._latencias.get(f"L{level}")
+            return [render.nanoseconds(ns) if ns is not None else ""]
+
+        filas = [
             [
-                [
-                    self._label(level, kind, key, cpu.hybrid),
-                    render.size(cache.size_bytes),
-                    str(cache.instances),
-                    render.size(cache.total_bytes),
-                    str(cache.ways or render.DASH),
-                    f"{cache.line_bytes} B" if cache.line_bytes else render.DASH,
-                    str(cache.sets or render.DASH),
-                    _("caches.shared.one" if cache.shared_by == 1
-                      else "caches.shared.many").format(n=cache.shared_by),
-                ]
-                for (level, kind, key, _tam), cache in grouped.items()
-            ],
+                self._label(level, kind, key, cpu.hybrid),
+                render.size(cache.size_bytes),
+                str(cache.instances),
+                render.size(cache.total_bytes),
+                str(cache.ways or render.DASH),
+                f"{cache.line_bytes} B" if cache.line_bytes else render.DASH,
+                str(cache.sets or render.DASH),
+                _("caches.shared.one" if cache.shared_by == 1
+                  else "caches.shared.many").format(n=cache.shared_by),
+            ] + latencia(level, kind)
+            for (level, kind, key, _tam), cache in grouped.items()
+        ]
+        if self._latencias.get("RAM") is not None:
+            # Y debajo de la última caché, lo que cuesta salirse de todas.
+            filas.append([_("caches.row.ram"), "", "", "", "", "", "", "",
+                          render.nanoseconds(self._latencias["RAM"])])
+        self.table.set_rows(
+            filas,
             tooltips=[
                 _("caches.tip.cpus")
                 + " | ".join(",".join(str(c) for c in group) for group in cache.instance_cpus)

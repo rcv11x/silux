@@ -82,6 +82,9 @@ class MemoryPage(QScrollArea):
     # La medida corre en otro hilo y en otro proceso; vuelve por aquí, que es
     # la forma de tocar widgets desde fuera del hilo de la interfaz.
     _bw_listo = Signal(object)
+    # La latencia de cada nivel, recién medida: nivel → nanosegundos. La
+    # página de Cachés la pone en la fila de cada caché.
+    latencies_measured = Signal(dict)
 
     def __init__(self, palette: Palette, prefs: Preferences, parent=None):
         super().__init__(parent)
@@ -403,6 +406,7 @@ class MemoryPage(QScrollArea):
         self.bw_note.setVisible(True)
 
         self._pintar_latencias(resultado)
+        self.latencies_measured.emit({l.nivel: l.nanoseconds for l in resultado.latencias})
         por_donde = {m.donde: m for m in resultado.medidas}
         teorico = render.memory_theoretical_bandwidth(self._bw_modulos)
         techo = por_donde.get("techo")
