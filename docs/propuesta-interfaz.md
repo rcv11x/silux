@@ -10,74 +10,119 @@ Lo que no se toca: silux es un todo en uno. Los mejores núcleos, las
 temporizaciones de la RAM, los relojes de la gráfica, los sensores y el
 benchmark se quedan. Lo que se propone es ordenarlo mejor, no enseñar menos.
 
-## Estado tras la revisión del autor (17 de noviembre, tarde)
+## Estado (17 de noviembre de 2026, última vuelta)
 
-Decidido:
+Todo esto vive en la rama **`interfaz`**, que sale de `master`. Nada de aquí
+está en `master`.
+
+Decidido por el autor:
 
 - **Dirección A, «instrumento», con menos color.** Un solo acento, el ámbar,
-  para lo seleccionado, el botón principal y las curvas. Las barras, en tonos
-  del acento y grises. Los iconos de la barra lateral, grises, y el
-  seleccionado en ámbar: **sin color por sección** (lo que este documento
-  recomendaba tomar de la B queda descartado). Los avisos, en un color de
-  estado que no sea el de la marca.
-- **Logo: la traza.** Falta elegir variante.
+  para lo seleccionado, el botón principal y las curvas. Barras en tonos del
+  acento y grises. Iconos de la barra lateral grises, y el seleccionado en
+  ámbar; sin color por sección.
+- **Lo accionable y los candados, en azul**; lo que es así, en gris; un
+  fallo, en rojo. El ámbar es la marca y no puede ser también un aviso
+  (está en `docs/lecciones.md`).
+- **La estructura de las nueve páginas**, aprobada para las cuatro primeras
+  y hecha igual para las otras cinco.
+- **Logo: la traza.** Falta elegir entre cinco variantes.
 
-Hecho en la rama, con su test cada uno (la estructura, no el estilo):
+Hecho en la rama, un commit por cambio y con su test:
 
-| Commit | Página | Qué cambió |
-|---|---|---|
-| `71e5d0c` | Gráficos | Cuatro fichas; la VRAM entera en su tarjeta, con «Bus en uso»; «Consumo y temperaturas» sin repetir la del núcleo; identificadores plegados |
-| `f54780e` | Barras de memoria | Tonos del acento en vez de azul y amarillo (Inicio, Memoria, Sistema) |
-| `2c28d46` | Inicio | El equipo primero y el aviso de permisos al pie; cabecera sin frase fija ni arquitectura; «8.9 GB de 31.3 GB»; la tarjeta de la placa dice el chipset |
-| `256a8ec` | CPU | Identificación CPUID plegada; leyenda de los mejores núcleos en una frase |
-| `bc4c8fd` | Memoria | Módulos y temporizaciones antes de lo que pide permisos |
+| Commit | Qué |
+|---|---|
+| `2eb9a28` | refactor(ui/graphics): cuatro fichas, la memoria en su tarjeta y los identificadores plegados |
+| `4a405a3` | fix(ui/widgets): la barra de memoria va en tonos del acento, no en azul y amarillo |
+| `7bf9f62` | refactor(ui/inicio): el equipo primero, el aviso al pie y nada repetido |
+| `e5da48b` | refactor(ui/cpu): la identificación CPUID plegada y la leyenda de los núcleos en una frase |
+| `662d81e` | refactor(ui/memory): los módulos y sus temporizaciones primero, lo que falta al final |
+| `baf53cd` | chore(i18n): fuera las cinco claves que la estructura nueva dejó sin uso |
+| `ea44b96` | fix(ui): la tarjeta de permisos de Memoria y Almacenamiento, sin «No volver a pedirla» |
+| `8e39b85` | feat(ui/app): --samples, para capturar con las gráficas llenas |
+| `7bb4ac0` | feat(ui/theme): lo accionable y los candados en azul; el ámbar, acento por omisión |
+| `63aa648` | refactor(ui/system): Sistema empieza por lo suyo, y el uso de la memoria vive en Memoria |
+| `6ece4b9` | refactor(ui/board): sin columnas de guiones ni la tarjeta de un equipo que no hay |
+| `8689d1f` | refactor(ui/network): el titular es la conexión, y una interfaz sin enlace no enseña guiones |
+| `180c3fd` | refactor(ui/storage): en la ficha de un disco, la salud arriba y lo del kernel plegado |
+| `c6405b9` | refactor(sensores): lo que se mira primero, cada chip junto y las ramas largas plegadas |
 
-`Plegable` es la primitiva nueva (`ui/widgets.py`); la usan Gráficos y CPU.
-Capturas de antes y después, en los dos equipos, en
-`~/Imágenes/silux-test/interfaz/estructura/`.
+Cada página, en una línea:
 
-Lo que **no** se hizo de lo que este documento proponía para esas páginas, y
-por qué:
+- **Gráficos**: cuatro fichas; la VRAM entera en su tarjeta, con «Bus en
+  uso»; «Consumo y temperaturas» sin repetir la del núcleo; identificadores
+  plegados.
+- **Inicio**: el equipo primero, el aviso de permisos al pie, sin frase fija
+  ni arquitectura; «8.9 GB de 31.3 GB»; la tarjeta de la placa dice el
+  chipset; la de Red, la interfaz y su dirección.
+- **CPU**: identificación CPUID plegada; leyenda de los mejores núcleos en
+  una frase.
+- **Memoria**: módulos y temporizaciones antes de lo que pide permisos; el
+  desglose del uso (el que estaba en Sistema), plegado bajo la barra.
+- **Sistema**: sin la memoria repetida; lo que la distribución no declara se
+  esconde y se nombra.
+- **Placa base**: sin la tarjeta «Equipo» en una placa suelta; lo que el
+  firmware no rellena, al pie.
+- **Red**: titular con la interfaz y su dirección; una tarjeta sin cable no
+  enseña cinco guiones.
+- **Almacenamiento**: en la ficha de cada disco, la salud arriba y firmware
+  y sectores plegados; sin «Enlace —» en un SATA.
+- **Sensores**: temperaturas, ventiladores y consumo antes que tensiones y
+  relojes; cada chip junto; las ramas de más de doce filas nacen plegadas y
+  dicen cuántas llevan.
 
-- La fila «Frecuencia» de «Relojes» (CPU) se queda: en un híbrido hay una por
-  tipo de núcleo y la ficha de arriba es de todo el procesador.
-- «Tarjeta» de Gráficos conserva unidades de proceso, de rasterizado y
-  motores de sombreado a la vista: son de la tarjeta, no del inventario.
-- En Inicio las temperaturas siguen en la tercera fila: con el aviso al pie,
-  la página entera cabe a 1440×900 y ya no hace falta subirlas.
+`Plegable` es la primitiva nueva de `ui/widgets.py`; la usan Gráficos, CPU,
+Memoria y Almacenamiento.
 
-Pendiente de esta propuesta: Sensores, Almacenamiento, Red, Sistema y Placa
-base (apartados 1 y 2), y todo el estilo (apartados 3 a 5), que no se aplica
-hasta que se dé por buena la dirección.
+Lo que **no** se hizo de lo que este documento proponía, y por qué:
 
-**El color de los avisos.** El ámbar de la marca y el amarillo de «se puede
-arreglar» son casi el mismo color, y con el acento en ámbar un aviso y un
-botón se confunden. Propuesta: lo que se arregla (permisos, un módulo que
-cargar) y su candado pasan a **azul**; lo que es así y ya está sigue en gris;
-un fallo, en rojo. Las maquetas nuevas (`interfaz/maquetas/`) lo llevan así.
-Cambia una regla escrita en `docs/lecciones.md` («ámbar lo accionable»), y
-por eso no está aplicado.
+- La fila «Frecuencia» de «Relojes» (CPU) se queda: en un híbrido hay una
+  por tipo de núcleo.
+- En Almacenamiento, la tabla de unidades y las fichas siguen repitiendo
+  modelo, tipo y capacidad: la tabla es para comparar y la ficha para leer.
+- En Sensores no se han agrupado visualmente los chips con un subtítulo:
+  van juntos y con su nombre entre paréntesis cuando se repite la etiqueta.
+- En Placa base no se tocaron «Firmware» ni «Chipset».
 
-**El logo, construido.** Cuatro variantes de la traza en
-`~/Imágenes/silux-test/interfaz/logo/`, hechas por `traza.py`: rejilla de 96
-unidades, un solo grosor de pista, giros todos a 45° o todos del mismo radio,
-vías como círculos concéntricos con el final de la pista, y tres correcciones
+Pendiente de decidir:
+
+1. **La variante del logo**, entre las cinco de
+   `~/Imágenes/silux-test/interfaz/logo/` (`comparativa.png`). La quinta,
+   `5-chaflan-ambar`, es la forma de la 1 sobre la ficha ámbar de la 4, y
+   su hoja la enseña también en una barra de tareas oscura y en una clara.
+2. **Gráficos, con o sin bloque «Ahora mismo»**: las tres barras (memoria de
+   video, consumo, bus) juntas bajo las fichas, cada una con su nombre y su
+   cifra. Las dos versiones, en `interfaz/graficos-alternativa/`. Es una
+   maqueta: no está en la rama.
+
+Pendiente de hacer, cuando se elija el logo: el estilo de la dirección A
+(bordes, radios, títulos de tarjeta, la letra de las cifras, la barra
+lateral con iconos y logo). Hoy la rama tiene la estructura y los colores,
+no el estilo. Las maquetas de `interfaz/maquetas/` son de antes de las
+cinco últimas páginas.
+
+Capturas de antes y después de las nueve páginas, en los dos equipos, en
+`~/Imágenes/silux-test/interfaz/estructura/`. Las del i5-10400 son de la
+máquina, tras 65 muestras reales a un segundo. Las del 5800X3D salen de su
+volcado, que es una foto fija: para que las gráficas tengan forma se le da
+**movimiento simulado** a uso, temperaturas, consumo y frecuencias. Los
+datos fijos (qué pieza es, sus tablas) son los del volcado.
+
+**El logo, construido** (`interfaz/logo/traza.py`): rejilla de 96 unidades,
+un solo grosor de pista, giros todos a 45° o todos del mismo radio, vías
+como círculos concéntricos con el final de la pista, y tres correcciones
 ópticas (anillo un 12 % más fino que la pista, la pista muere dentro del
-anillo, la marca sube una unidad en la ficha). Cada una trae icono de
-aplicación con ficha (degradado, canto inferior y filo de luz), la marca
-suelta, versiones de 24 y 16 px dibujadas en su rejilla de píxeles, la
-simbólica monocroma y su hoja en contexto; `comparativa.png` las junta.
+anillo, la marca sube una unidad en la ficha). Cada variante trae icono con
+ficha (degradado, canto inferior y filo de luz), la marca suelta, versiones
+de 24 y 16 px en su rejilla de píxeles, la simbólica monocroma y su hoja.
 
 | Variante | Qué cambia |
 |---|---|
 | `1-chaflan` | Giros a 45°, vías en anillo, ámbar arriba, ficha grafito |
-| `2-curva` | Los mismos puntos con giros de radio 10: más letra, menos circuito |
-| `3-compacta` | Pista más gruesa, vías macizas con taladro pequeño, ámbar abajo, ficha clara |
-| `4-ambar` | La curva en blanco sobre ficha ámbar: el color es la ficha |
-
-Mi orden: `1-chaflan`. Es la que más dice «circuito», y la ficha grafito
-aguanta sobre fondo claro y oscuro. La `4-ambar` es la que más se ve en un
-menú, a cambio de perder el segundo tono.
+| `2-curva` | Los mismos puntos con giros de radio 10 |
+| `3-compacta` | Pista más gruesa, vías macizas, ámbar abajo, ficha clara |
+| `4-ambar` | La curva en blanco sobre ficha ámbar |
+| `5-chaflan-ambar` | La forma de la 1 sobre la ficha de la 4 |
 
 ## La propuesta, en corto
 

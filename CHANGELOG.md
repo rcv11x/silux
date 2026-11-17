@@ -26,6 +26,13 @@ que hace falta.
 - La orden para quitar el ayudante de permisos permanentes ha cambiado: es
   borrar sus dos archivos, y sirve también si usas el AppImage. Está en
   «Qué hace esto», lista para copiar.
+- El color de acento por omisión pasa de azul a ámbar. Si elegiste uno en
+  Ajustes, se conserva.
+- La página Sistema ya no enseña el uso de la memoria: está entero en
+  Memoria, en «Desglose del uso».
+- Dar los permisos para siempre ya no tiene botón propio en Memoria y
+  Almacenamiento («No volver a pedirla»): se ofrece dentro de «Qué hace
+  esto».
 
 ### Memoria
 
@@ -138,6 +145,27 @@ que hace falta.
   al cambiar la ventana de tamaño.
 - Arreglado: en una ventana estrecha, la cabecera de Sensores se salía por la
   derecha.
+- Nuevo: las páginas están reordenadas para que lo que se mira vaya arriba y
+  cada dato salga una vez. Inicio empieza por el equipo y cabe en una
+  pantalla; Gráficos tiene cuatro fichas y la memoria de video entera en su
+  tarjeta; en Memoria los módulos van antes de lo que pide permisos; Red se
+  titula con la interfaz y su dirección; Sensores empieza por temperaturas y
+  consumo, con cada chip junto.
+- Nuevo: lo que se consulta una vez va plegado y a un clic: los
+  identificadores de la gráfica, la identificación CPUID del procesador, el
+  firmware y los sectores de cada disco, el desglose del uso de memoria y,
+  en Sensores, las ramas largas como los relojes de cada hilo.
+- Nuevo: lo que tiene arreglo (un permiso, un módulo por cargar) y sus
+  candados van en azul; el ámbar queda para lo seleccionado y lo que se
+  pulsa.
+- Arreglado: las filas que no existen en tu equipo ya no salen con guion: el
+  enlace PCIe de un disco SATA, la versión de una distribución que no la
+  tiene, la dirección de una tarjeta de red sin cable, la tarjeta «Equipo»
+  en una placa suelta. Se dice al pie cuáles son.
+- Arreglado: las barras de memoria usaban azul y amarillo, que parecían
+  avisos; ahora son tonos del acento.
+- Nuevo: `--samples N`, para que `--screenshot` capture con las gráficas
+  llenas.
 
 ### Privacidad
 

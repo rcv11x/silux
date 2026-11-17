@@ -145,7 +145,7 @@ por `_()`, la segunda llamada recibe «Uso» —que no es una clave— y devuelv
 inglés: la tupla llevaba once claves y una traducción ya hecha, y era la única
 que no cambiaba de idioma. Hay un test que lo vigila.
 
-La interfaz está entera en los dos idiomas: 1017 claves, ninguna sin traducir,
+La interfaz está entera en los dos idiomas: 1024 claves, ninguna sin traducir,
 y trece de ellas ya no las usa nadie (`gen_lang.py` solo ve cinco, ver lo
 pendiente).
 Hay un test que recorre el árbol de sintaxis de cada página buscando

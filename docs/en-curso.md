@@ -131,17 +131,18 @@ Las dos últimas las escribieron agentes de Claude leyendo el repositorio y
 midiendo en esta máquina; lo que no pudieron comprobar lo dicen al final de
 cada una. **No están revisadas línea a línea.**
 
-**Segunda vuelta de la interfaz (17, tarde), parada para revisar.** El autor
-eligió la dirección A con menos color y el logo «traza». Hecho en la rama:
-la estructura de Gráficos, Inicio, CPU y Memoria y las barras de memoria en
-tonos del acento (cinco commits, `71e5d0c` a `bc4c8fd`), con capturas de
-antes y después de los dos equipos en
-`~/Imágenes/silux-test/interfaz/estructura/`. Fuera de la rama: cuatro
-variantes del logo en `interfaz/logo/` y las maquetas de estilo en
-`interfaz/maquetas/`. El detalle y lo que falta por decidir (variante del
-logo, color de los avisos) está arriba del todo en
-`docs/propuesta-interfaz.md`. **El estilo no está aplicado**, y las otras
-cinco páginas siguen con su estructura de antes.
+**La rama `interfaz` (17, última vuelta), parada para revisar.** Sale de
+`master` y lleva el rediseño: la estructura de las nueve páginas, las barras
+en tonos del acento, lo accionable en azul con el ámbar como acento por
+omisión, «Qué hace esto» en lugar de «No volver a pedirla», y `--samples`
+para capturar con las gráficas llenas. La lista de commits, lo que no se
+hizo y lo que falta por decidir (variante del logo; Gráficos con o sin
+«Ahora mismo») está arriba del todo en `docs/propuesta-interfaz.md`. **El
+estilo de la dirección A no está aplicado**: espera al logo. Sin empujar.
+
+Un test de la suite lee esta máquina y falla a veces cuando la suite corre
+en paralelo con carga (`test_avisos.py::test_no_salta_ningun_aviso_en_reposo`):
+solo, pasa. No es de esta rama.
 
 ## Estado y lo siguiente
 
