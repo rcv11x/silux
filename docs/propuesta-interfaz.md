@@ -10,6 +10,75 @@ Lo que no se toca: silux es un todo en uno. Los mejores núcleos, las
 temporizaciones de la RAM, los relojes de la gráfica, los sensores y el
 benchmark se quedan. Lo que se propone es ordenarlo mejor, no enseñar menos.
 
+## Estado tras la revisión del autor (17 de noviembre, tarde)
+
+Decidido:
+
+- **Dirección A, «instrumento», con menos color.** Un solo acento, el ámbar,
+  para lo seleccionado, el botón principal y las curvas. Las barras, en tonos
+  del acento y grises. Los iconos de la barra lateral, grises, y el
+  seleccionado en ámbar: **sin color por sección** (lo que este documento
+  recomendaba tomar de la B queda descartado). Los avisos, en un color de
+  estado que no sea el de la marca.
+- **Logo: la traza.** Falta elegir variante.
+
+Hecho en la rama, con su test cada uno (la estructura, no el estilo):
+
+| Commit | Página | Qué cambió |
+|---|---|---|
+| `71e5d0c` | Gráficos | Cuatro fichas; la VRAM entera en su tarjeta, con «Bus en uso»; «Consumo y temperaturas» sin repetir la del núcleo; identificadores plegados |
+| `f54780e` | Barras de memoria | Tonos del acento en vez de azul y amarillo (Inicio, Memoria, Sistema) |
+| `2c28d46` | Inicio | El equipo primero y el aviso de permisos al pie; cabecera sin frase fija ni arquitectura; «8.9 GB de 31.3 GB»; la tarjeta de la placa dice el chipset |
+| `256a8ec` | CPU | Identificación CPUID plegada; leyenda de los mejores núcleos en una frase |
+| `bc4c8fd` | Memoria | Módulos y temporizaciones antes de lo que pide permisos |
+
+`Plegable` es la primitiva nueva (`ui/widgets.py`); la usan Gráficos y CPU.
+Capturas de antes y después, en los dos equipos, en
+`~/Imágenes/silux-test/interfaz/estructura/`.
+
+Lo que **no** se hizo de lo que este documento proponía para esas páginas, y
+por qué:
+
+- La fila «Frecuencia» de «Relojes» (CPU) se queda: en un híbrido hay una por
+  tipo de núcleo y la ficha de arriba es de todo el procesador.
+- «Tarjeta» de Gráficos conserva unidades de proceso, de rasterizado y
+  motores de sombreado a la vista: son de la tarjeta, no del inventario.
+- En Inicio las temperaturas siguen en la tercera fila: con el aviso al pie,
+  la página entera cabe a 1440×900 y ya no hace falta subirlas.
+
+Pendiente de esta propuesta: Sensores, Almacenamiento, Red, Sistema y Placa
+base (apartados 1 y 2), y todo el estilo (apartados 3 a 5), que no se aplica
+hasta que se dé por buena la dirección.
+
+**El color de los avisos.** El ámbar de la marca y el amarillo de «se puede
+arreglar» son casi el mismo color, y con el acento en ámbar un aviso y un
+botón se confunden. Propuesta: lo que se arregla (permisos, un módulo que
+cargar) y su candado pasan a **azul**; lo que es así y ya está sigue en gris;
+un fallo, en rojo. Las maquetas nuevas (`interfaz/maquetas/`) lo llevan así.
+Cambia una regla escrita en `docs/lecciones.md` («ámbar lo accionable»), y
+por eso no está aplicado.
+
+**El logo, construido.** Cuatro variantes de la traza en
+`~/Imágenes/silux-test/interfaz/logo/`, hechas por `traza.py`: rejilla de 96
+unidades, un solo grosor de pista, giros todos a 45° o todos del mismo radio,
+vías como círculos concéntricos con el final de la pista, y tres correcciones
+ópticas (anillo un 12 % más fino que la pista, la pista muere dentro del
+anillo, la marca sube una unidad en la ficha). Cada una trae icono de
+aplicación con ficha (degradado, canto inferior y filo de luz), la marca
+suelta, versiones de 24 y 16 px dibujadas en su rejilla de píxeles, la
+simbólica monocroma y su hoja en contexto; `comparativa.png` las junta.
+
+| Variante | Qué cambia |
+|---|---|
+| `1-chaflan` | Giros a 45°, vías en anillo, ámbar arriba, ficha grafito |
+| `2-curva` | Los mismos puntos con giros de radio 10: más letra, menos circuito |
+| `3-compacta` | Pista más gruesa, vías macizas con taladro pequeño, ámbar abajo, ficha clara |
+| `4-ambar` | La curva en blanco sobre ficha ámbar: el color es la ficha |
+
+Mi orden: `1-chaflan`. Es la que más dice «circuito», y la ficha grafito
+aguanta sobre fondo claro y oscuro. La `4-ambar` es la que más se ve en un
+menú, a cambio de perder el segundo tono.
+
 ## La propuesta, en corto
 
 1. **Un solo orden para todas las páginas**: qué pieza es, cómo está ahora, su

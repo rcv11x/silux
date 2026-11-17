@@ -131,6 +131,18 @@ Las dos últimas las escribieron agentes de Claude leyendo el repositorio y
 midiendo en esta máquina; lo que no pudieron comprobar lo dicen al final de
 cada una. **No están revisadas línea a línea.**
 
+**Segunda vuelta de la interfaz (17, tarde), parada para revisar.** El autor
+eligió la dirección A con menos color y el logo «traza». Hecho en la rama:
+la estructura de Gráficos, Inicio, CPU y Memoria y las barras de memoria en
+tonos del acento (cinco commits, `71e5d0c` a `bc4c8fd`), con capturas de
+antes y después de los dos equipos en
+`~/Imágenes/silux-test/interfaz/estructura/`. Fuera de la rama: cuatro
+variantes del logo en `interfaz/logo/` y las maquetas de estilo en
+`interfaz/maquetas/`. El detalle y lo que falta por decidir (variante del
+logo, color de los avisos) está arriba del todo en
+`docs/propuesta-interfaz.md`. **El estilo no está aplicado**, y las otras
+cinco páginas siguen con su estructura de antes.
+
 ## Estado y lo siguiente
 
 **Las dos ramas están empujadas y con el CI en verde** (tests en 3.10 y 3.14,
