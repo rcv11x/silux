@@ -332,3 +332,28 @@ instalador, y F-M24 y F-M25 —los topes del protocolo del ayudante y el
 * El paso de tests del CI solo busca `FAIL/ERROR/Ran`: un aborto sale sin la
   causa.
 
+
+## De la tercera tanda de `ui-permisos` (17 de noviembre de 2026)
+
+Lo que salió al hacerla y no entraba en ella:
+
+* `ui/widgets.py`, `ui/pages/storage.py` · **media-baja** · `Table` solo
+  sabe de texto, así que en la tabla de unidades la temperatura de un disco
+  SATA sin `drivetemp` sigue con «—» aunque la ficha de ese mismo disco lleve
+  candado. La celda ya explica por qué al pasar el ratón
+  (`Table.set_cell_tooltip`); pintarle el candado es cosa de cuando se parta
+  `widgets.py`.
+* `privacidad.py` · **media-baja** · `anonimizar` da `192.0.2.11` y
+  `2001:db8::11` a todas las interfaces. Es el mismo fallo que el de las
+  direcciones físicas (arreglado en `4b38568`): dos tarjetas con la misma IP
+  delatan que la captura está tocada.
+* `tools/volcar_equipo.py` · **media-baja** · escribe `privacidad.MAC` en
+  todas las interfaces, así que en un volcado las tarjetas comparten
+  dirección física. Numerarlas como hace ya `anonimizar` pide volver a volcar
+  los tres equipos, y que la comprobación final acepte la serie entera.
+* `providers/dmi.py` · **baja** · la lista de chipsets de AMD
+  (`_CHIPSETS_AMD`) es cerrada a propósito y hay que añadirle cada generación
+  nueva. Solo está vista con una placa, la X570 AORUS ELITE.
+* `providers/hwmon.py` · **baja** · los valores de relleno de `acpitz`
+  (`VALORES_DE_RELLENO`: 16.8, 27.8 y 29.8 °C) son los tres que se conocen;
+  una placa que devuelva otro número fijo no se marca.

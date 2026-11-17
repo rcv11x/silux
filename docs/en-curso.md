@@ -30,6 +30,66 @@ Llevan `scaling_cur_freq` y el nombre de la gráfica grabado; el de reposo con
   del 5800X3D montado con `SILUX_SYSROOT`, en oscuro a 1440×900 y en compacto
   a 900×680.
 
+**Punto 2, hecho: la tercera tanda de `ui-permisos`**, un commit por cambio
+con su test (el orden es el de la lista de abajo):
+
+| Commit | Qué | Comprobado en |
+|---|---|---|
+| `013c098` | Placa base en AMD: «AMD X570», del nombre de la placa, no «FCH LPC Bridge» | volcado AMD e Intel |
+| `4b38568` | `--anonimo`: cada MAC distinta, una falsa distinta | foto de prueba y página de Red |
+| `f310582` | Sensores: las `acpitz` clavadas van apagadas y dicen lo que son (`Sensor.placeholder`); pie para las temperaturas sin nombre de `it87` y `gigabyte_wmi` | los dos volcados |
+| `2d52ddf` | `ElidingLabel` no borra el tooltip de fuera (estaba en pendientes, y bloqueaba lo siguiente) | — |
+| `85cd8cb` | Discos: temperatura, horas, escrito y vida con candado mientras no se lea el diagnóstico | volcado AMD |
+| `6b912a6` | «NVMe», no «NVME» (`render.disk_bus`) | volcado AMD |
+| `ca91750` | Diálogo de permisos: la orden en un campo de ancho fijo, una ruta por renglón, con «Copiar» | — |
+| `d31428d` | Gráficas: llenan desde la derecha sobre un eje entero; la cifra del pico no tapa la curva | — |
+| `e78f45a` | «Borrar el historial» vaciaba el archivo y no la tarjeta (F-M6) | — |
+| `ebd1a31` | Rendimiento: botón «Borrar las de otra escala» | — |
+| `3e36f9b` | «31.3 GB · Desconocido» en Inicio, y la guarda general: `tests/test_nada_en_bruto.py` | los tres volcados |
+
+Capturas de antes y después en `~/Imágenes/silux-test/tanda-3/` (oficina):
+`antes/` y `despues/`, cada una con `i5-10400-este-equipo/` y
+`5800x3d-volcado/`, en `oscuro-1440/` y `compacto-900/`, más
+`5800x3d-volcado/detalle/` con las páginas largas enteras y el diálogo.
+
+### Para mirar esta noche en el 5800X3D
+
+Lo que se arregló con su volcado y **no se ha visto en la pieza**:
+
+1. **Con permisos concedidos**, Inicio › Memoria: tiene que decir
+   «31.3 GB · DDR4-…» y no «Desconocido». El arreglo supone que el
+   «Desconocido» venía del primer zócalo, vacío (tipo «Unknown» en la tabla
+   del firmware); está probado con una tabla SMBIOS de prueba de cuatro
+   zócalos y dos módulos, no con la de esa placa. **Si sigue saliendo mal,
+   mandar `sudo dmidecode -t 17`.**
+2. **Con permisos**, Almacenamiento: los candados de temperatura, horas,
+   escrito y vida de cada disco se van y sale el dato; en los tres SATA, la
+   temperatura que trae el SMART. Si un SATA se queda sin temperatura, el
+   guion tiene que explicar lo de `drivetemp` al pasar el ratón.
+3. Placa base: «Chipset: AMD X570», y «Identificación PCI: FCH LPC Bridge».
+4. Sensores: las tres `acpitz` a 16.8 °C apagadas, con su renglón al pie; y
+   que no cambien de valor nunca (si alguna se mueve, deja de marcarse sola,
+   y entonces no era de relleno: apuntarlo).
+5. `python3 -m silux.ui.app --anonimo`, Red: las dos tarjetas con dirección
+   física distinta (`…:af` y `…:b0`).
+6. Lo que ya estaba pendiente de esa máquina: el arranque con
+   `amd_pstate=disable` y el boost apagado (más abajo).
+
+Lo que la tanda deja a medias, apuntado en `docs/pendientes.md`:
+
+- La **tabla de unidades** de Almacenamiento sigue con «—» en la temperatura
+  de un SATA (ahora con su explicación al pasar el ratón): `Table` no sabe
+  pintar un candado en una celda.
+- En los **volcados**, todas las interfaces comparten dirección física:
+  la iguala `volcar_equipo.py` al escribir. Numerarlas pide volver a volcar
+  los tres.
+- `--anonimo` da **la misma IPv4 y la misma IPv6** a todas las interfaces:
+  es el mismo fallo que el de las MAC y no estaba en la lista.
+- El campo **«Especificación»** de la página CPU enseña la cadena del
+  procesador tal cual («Intel(R) Core(TM) i5-10400 CPU @ 2.90GHz»). Es la
+  única excepción de la guarda, a propósito; si no se quiere, es una línea.
+- El **informe y el CLI** siguen dando fabricantes y chips en crudo.
+
 ## Estado y lo siguiente
 
 **Las dos ramas están empujadas y con el CI en verde** (tests en 3.10 y 3.14,
@@ -37,7 +97,7 @@ y el AppImage): `fase-1` en `2f5cc9d` y `ui-permisos`, rebasada encima, en
 `3a7dfaa` más el commit de este archivo, que solo toca documentación y no ha
 pasado por el CI. **Nada ha pasado a `master`**, que sigue en `7609ea2`.
 
-**La siguiente tanda** sale de revisar el autor las capturas del AMD
+**La tercera tanda (hecha el 17, ver arriba)** salió de revisar el autor las capturas del AMD
 (`~/Imágenes/silux-test/ui-permisos-2/`). Un commit por cambio, con su test,
 en `ui-permisos`:
 
