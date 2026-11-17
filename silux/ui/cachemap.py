@@ -82,7 +82,7 @@ class CacheMap(QWidget):
         position = {cpu: i for i, cpu in enumerate(self._axis)}
 
         label_font = ui_font(max(7, theme.METRICS.small_pt - 1))
-        value_font = value_font(max(7, theme.METRICS.mono_pt - 1))
+        letra_de_cifras = value_font(max(7, theme.METRICS.mono_pt - 1))
         max_level = max((row.get("level", 1) for row in self._rows), default=1)
 
         for index, row in enumerate(self._rows):
@@ -108,13 +108,13 @@ class CacheMap(QWidget):
                     painter.setBrush(QBrush(self._p.q("accent", weight)))
                     painter.drawRoundedRect(inner, 4, 4)
 
-                    painter.setFont(value_font)
+                    painter.setFont(letra_de_cifras)
                     if painter.fontMetrics().horizontalAdvance(text) + 10 <= inner.width():
                         painter.setPen(self._p.q("ink"))
                         painter.drawText(inner, int(Qt.AlignmentFlag.AlignCenter), text)
 
         axis_top = len(self._rows) * (self.ROW_H + self.ROW_GAP)
-        painter.setFont(value_font)
+        painter.setFont(letra_de_cifras)
         painter.setPen(self._p.q("muted"))
         step = max(1, round(len(self._axis) * 26 / max(plot_width, 1)))
         for i, cpu in enumerate(self._axis):
