@@ -324,6 +324,60 @@ class Memory:
 
 
 @dataclass(frozen=True, slots=True)
+class Vulnerability:
+    """Una vulnerabilidad del procesador según el kernel que está corriendo.
+
+    `status` es el texto del kernel, sin tocar: es lo que se pega en un
+    buscador. `state` es lo que silux saca de él para contar y avisar.
+    """
+
+    name: str                    # "spectre_v2"
+    status: str                  # "Mitigation: Retpolines; IBPB: conditional…"
+    state: str                   # "unaffected" | "mitigated" | "vulnerable" | "unknown"
+
+
+@dataclass(frozen=True, slots=True)
+class Swap:
+    """Un espacio de intercambio. Si es zram, con cómo comprime."""
+
+    device: str                              # "/dev/zram0", "/swapfile"
+    kind: str                                # "partition" | "file"
+    size_bytes: int = 0
+    used_bytes: int = 0
+    priority: Optional[int] = None
+    zram: bool = False
+    algorithm: Optional[str] = None          # "zstd"
+    original_bytes: Optional[int] = None     # lo guardado, antes de comprimir
+    compressed_bytes: Optional[int] = None   # lo que ocupa comprimido
+
+    @property
+    def ratio(self) -> Optional[float]:
+        if not self.original_bytes or not self.compressed_bytes:
+            return None
+        return round(self.original_bytes / self.compressed_bytes, 1)
+
+
+@dataclass(frozen=True, slots=True)
+class Boot:
+    """Con qué arrancó el equipo y cuánto tardó hasta entregar al kernel.
+
+    Lo publican los cargadores que siguen la interfaz de systemd
+    (systemd-boot, Limine); GRUB no, y entonces va todo vacío.
+    """
+
+    loader: Optional[str] = None             # "Limine 12.10.0"
+    entry: Optional[str] = None              # "CachyOS.linux-cachyos"
+    firmware_s: Optional[float] = None       # del encendido al cargador
+    loader_s: Optional[float] = None         # del cargador al kernel
+
+    @property
+    def total_s(self) -> Optional[float]:
+        if self.firmware_s is None or self.loader_s is None:
+            return None
+        return round(self.firmware_s + self.loader_s, 1)
+
+
+@dataclass(frozen=True, slots=True)
 class System:
     distribution: Optional[str] = None
     distribution_id: Optional[str] = None
@@ -348,6 +402,10 @@ class System:
     open_files: int = 0
 
     memory: Memory = field(default_factory=Memory)
+
+    vulnerabilities: tuple[Vulnerability, ...] = ()
+    swaps: tuple[Swap, ...] = ()
+    boot: Boot = field(default_factory=Boot)
 
 
 # Cuánto puede diferir la velocidad a la que va un módulo de la que declara

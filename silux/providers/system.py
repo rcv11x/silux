@@ -17,7 +17,8 @@ import time
 from typing import Optional
 
 from ..i18n import _
-from ..model import DeviceKind, Memory, Need, Sensor, SensorKind, System
+from ..model import (Boot, DeviceKind, Memory, Need, Sensor, SensorKind, Swap, System,
+                     Vulnerability)
 from .base import Draft, Provider, read_text
 from .. import sysroot
 
@@ -138,6 +139,105 @@ class SystemIdentity(Provider):
             return read_text("/proc/1/comm")
 
 
+VULNERABILIDADES = "/sys/devices/system/cpu/vulnerabilities"
+EFIVARS = "/sys/firmware/efi/efivars"
+# El identificador con que los cargadores publican sus variables (la interfaz
+# del cargador de arranque de systemd). De ahí solo se leen estas cuatro: las
+# demás llevan el UUID de la partición y una ficha del sistema, que no son
+# asunto de nadie.
+GUID_DEL_CARGADOR = "4a67b082-0a4c-41cf-b6c7-440b29bb8c4f"
+
+
+def estado_de(status: str) -> str:
+    """Qué dice el kernel de una vulnerabilidad, en una de cuatro palabras."""
+    if status.startswith("Not affected"):
+        return "unaffected"
+    if status.startswith("Vulnerable"):
+        return "vulnerable"
+    if "Mitigation" in status:
+        return "mitigated"
+    return "unknown"
+
+
+def _variable_efi(nombre: str) -> Optional[str]:
+    """El texto de una variable del cargador. Cuatro bytes de atributos y
+    después UTF-16."""
+    try:
+        with open(sysroot.ruta(f"{EFIVARS}/{nombre}-{GUID_DEL_CARGADOR}"), "rb") as archivo:
+            crudo = archivo.read(4096)
+    except OSError:
+        return None
+    return crudo[4:].decode("utf-16-le", "replace").strip("\x00 ") or None
+
+
+class SystemSecurity(Provider):
+    """Lo que no cambia en toda la sesión: mitigaciones y arranque."""
+
+    name = "system-security"
+    provides = "system.vulnerabilities"
+    static = True
+
+    def collect(self, draft: Draft) -> None:
+        draft.system = dataclasses.replace(
+            draft.system, vulnerabilities=self._vulnerabilidades(), boot=self._arranque())
+
+    @staticmethod
+    def _vulnerabilidades() -> tuple[Vulnerability, ...]:
+        salida = []
+        for camino in sorted(glob.glob(os.path.join(sysroot.ruta(VULNERABILIDADES), "*"))):
+            estado = read_text(sysroot.fuera(camino))
+            if estado:
+                salida.append(Vulnerability(name=os.path.basename(camino), status=estado,
+                                            state=estado_de(estado)))
+        return tuple(salida)
+
+    @staticmethod
+    def _arranque() -> Boot:
+        def segundos(nombre: str) -> Optional[float]:
+            valor = _variable_efi(nombre)
+            return int(valor) / 1e6 if valor and valor.isdigit() else None
+
+        hasta_el_cargador = segundos("LoaderTimeInitUSec")
+        hasta_el_kernel = segundos("LoaderTimeExecUSec")
+        cargador = (round(hasta_el_kernel - hasta_el_cargador, 1)
+                    if hasta_el_cargador is not None and hasta_el_kernel is not None
+                    and hasta_el_kernel >= hasta_el_cargador else None)
+        return Boot(
+            loader=_variable_efi("LoaderInfo"),
+            entry=_variable_efi("LoaderEntrySelected"),
+            firmware_s=round(hasta_el_cargador, 1) if hasta_el_cargador is not None else None,
+            loader_s=cargador)
+
+
+def leer_intercambio() -> tuple[Swap, ...]:
+    """Cada espacio de intercambio de `/proc/swaps`; el zram, con lo suyo."""
+    crudo = read_text("/proc/swaps") or ""
+    salida = []
+    for linea in crudo.splitlines()[1:]:
+        campos = linea.split()
+        if len(campos) < 5:
+            continue
+        try:
+            tamano, usado, prioridad = int(campos[2]) * 1024, int(campos[3]) * 1024, int(campos[4])
+        except ValueError:
+            continue
+        swap = Swap(device=campos[0], kind=campos[1], size_bytes=tamano, used_bytes=usado,
+                    priority=prioridad)
+        nombre = os.path.basename(campos[0])
+        if nombre.startswith("zram"):
+            algoritmos = read_text(f"/sys/block/{nombre}/comp_algorithm") or ""
+            elegido = next((a.strip("[]") for a in algoritmos.split() if a.startswith("[")), None)
+            estado = (read_text(f"/sys/block/{nombre}/mm_stat") or "").split()
+            try:
+                original, comprimido = int(estado[0]), int(estado[1])
+            except (ValueError, IndexError):
+                original = comprimido = None
+            swap = dataclasses.replace(swap, zram=True, algorithm=elegido,
+                                       original_bytes=original, compressed_bytes=comprimido)
+        salida.append(swap)
+    return tuple(salida)
+
+
 class SystemState(Provider):
     """Lo que cambia: memoria, tiempo encendido, procesos y descriptores."""
 
@@ -160,13 +260,25 @@ class SystemState(Provider):
             memory=self._memory(),
             uptime_seconds=uptime,
             boot_time=self._boot_time(uptime),
-            processes=len(glob.glob(sysroot.ruta("/proc/[0-9]*"))),
+            processes=self._procesos(),
+            swaps=leer_intercambio(),
             threads=self._threads(),
             open_files=self._open_files(),
         )
         draft.sensors.extend(self._sensors(draft.system))
 
     # -- interno ------------------------------------------------------------
+
+    @staticmethod
+    def _procesos() -> int:
+        """Cuántos procesos hay. Por `a_traves`: un volcado no copia `/proc`
+        entero, y contando sus carpetas el equipo volcado decía «Procesos: 1»
+        donde el de verdad tenía quinientos."""
+        cuenta = sysroot.a_traves(
+            "plataforma", "procesos", lambda: len(glob.glob("/proc/[0-9]*")))
+        if cuenta is None:                      # un volcado de antes de grabarlo
+            cuenta = len(glob.glob(sysroot.ruta("/proc/[0-9]*")))
+        return int(cuenta)
 
     @staticmethod
     def _memory() -> Memory:

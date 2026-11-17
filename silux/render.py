@@ -716,6 +716,66 @@ def _piezas_del_zocalo(locator: str) -> dict:
     return piezas
 
 
+def seconds(valor: Optional[float]) -> str:
+    """«13.3 s»."""
+    return DASH if _none(valor) else f"{float(valor):.1f} s"
+
+
+def boot_times(boot) -> Optional[str]:
+    """«Firmware 13.3 s · cargador 5.3 s · total 18.6 s».
+
+    Las tres cifras, para que no quede la duda de si una incluye a otra: el
+    cargador publica dos instantes contados desde el encendido, y enseñados
+    tal cual («13.3 s» y «18.6 s») no se sabe si el segundo suma al primero.
+    """
+    if boot.firmware_s is None or boot.loader_s is None:
+        return None
+    return _("sys.boot.times").format(firmware=seconds(boot.firmware_s),
+                                      cargador=seconds(boot.loader_s),
+                                      total=seconds(boot.total_s))
+
+
+def swap_summary(swap) -> str:
+    """«45.0 MB de 31.3 GB · zstd · comprime 2.1 a 1 · prioridad 100»."""
+    partes = [_("sys.swap.used").format(usado=size(swap.used_bytes), total=size(swap.size_bytes))]
+    if swap.zram:
+        if swap.algorithm:
+            partes.append(swap.algorithm)
+        if swap.ratio:
+            partes.append(_("sys.swap.ratio").format(n=f"{swap.ratio:.1f}"))
+    if swap.priority is not None:
+        partes.append(_("sys.swap.priority").format(n=swap.priority))
+    return " · ".join(partes)
+
+
+def swap_name(swap) -> str:
+    """«zram0 (en memoria)», «/swapfile (archivo)», «/dev/sda2 (partición)»."""
+    if swap.zram:
+        return _("sys.swap.zram").format(nombre=swap.device.rsplit("/", 1)[-1])
+    return _("sys.swap.file" if swap.kind == "file" else "sys.swap.partition").format(
+        nombre=swap.device)
+
+
+# Los drivers del kernel cuya parte de usuario es Mesa.
+_CON_MESA = ("amdgpu", "radeon", "i915", "xe", "nouveau")
+
+
+def graphics_stack(snapshot) -> Optional[str]:
+    """«Mesa 26.2.6», o «NVIDIA 570.86» con el driver propietario.
+
+    No se lee nada nuevo: con un driver libre, la versión que declara OpenGL
+    es la de Mesa («26.2.6-arch3.1», y aquí sin la coletilla del paquete).
+    """
+    for gpu in snapshot.gpus:
+        if gpu.driver in _CON_MESA:
+            for api in gpu.apis:
+                if api.name == "OpenGL" and api.driver:
+                    return f"Mesa {api.driver.split('-')[0]}"
+        elif gpu.driver == "nvidia" and gpu.driver_version:
+            return f"NVIDIA {gpu.driver_version}"
+    return None
+
+
 def enumeration(piezas, ultima: str = "list.and") -> str:
     """«el fabricante, los chips y la fecha»: una lista como se dice.
 

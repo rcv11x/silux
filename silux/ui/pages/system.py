@@ -20,7 +20,7 @@ from ...model import Snapshot, System
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette, ui_font
-from ..widgets import Card, ChipRow, InfoGrid, ResponsiveRow
+from ..widgets import Card, ChipRow, InfoGrid, Plegable, ResponsiveRow
 
 # Claves, no texto ni `_()`: estas tuplas se evalúan al importar el módulo,
 # cuando todavía no se sabe qué idioma quiere el usuario. La traducción ocurre
@@ -29,9 +29,12 @@ OS_FIELDS = ("sys.field.distro", "sys.field.version", "sys.os.variant",
              "sys.os.id", "sys.field.hostname")
 KERNEL_FIELDS = ("sys.kernel.name", "sys.kernel.arch", "sys.field.build",
                  "sys.kernel.init", "sys.kernel.desktop", "sys.field.session",
-                 "sys.kernel.shell")
+                 "sys.kernel.shell", "sys.kernel.graphics")
 ACTIVITY_FIELDS = ("sys.field.since", "sys.field.uptime", "sys.act.processes",
                    "sys.act.threads", "sys.field.openfiles")
+SECURITY_FIELDS = ("sys.vuln.known", "sys.vuln.unaffected", "sys.vuln.mitigated",
+                   "sys.vuln.open")
+BOOT_FIELDS = ("sys.boot.loader", "sys.boot.entry", "sys.boot.time")
 
 
 def format_uptime(seconds: float) -> str:
@@ -87,6 +90,42 @@ class SystemPage(QScrollArea):
         activity_card.body.addWidget(self.activity)
         row.add(activity_card)
         layout.addWidget(row)
+
+        # Las mitigaciones del procesador: el resumen a la vista y la lista,
+        # con el texto del kernel tal cual, plegada.
+        self.security_card = Card(_("sys.card.security"))
+        self.security = InfoGrid()
+        for name in SECURITY_FIELDS:
+            self.security.add(_(name))
+        self.security_card.body.addWidget(self.security)
+        self.vuln_fold = Plegable(_("sys.vuln.list"))
+        self.vulns = InfoGrid()
+        self.vuln_fold.body.addWidget(self.vulns)
+        self.security_card.body.addWidget(self.vuln_fold)
+        self.security_card.hide()
+        layout.addWidget(self.security_card)
+        self._vuln_signature: tuple = ()
+
+        abajo = ResponsiveRow(min_item_width=400, span_last=True)
+        self.swap_card = Card(_("sys.card.swap"))
+        self.swap = InfoGrid()
+        self.swap_card.body.addWidget(self.swap)
+        self._swap_signature: tuple = ()
+        abajo.add(self.swap_card)
+        self.boot_card = Card(_("sys.card.boot"))
+        self.boot = InfoGrid()
+        for name in BOOT_FIELDS:
+            self.boot.add(_(name))
+        self.boot_card.body.addWidget(self.boot)
+        abajo.add(self.boot_card)
+        layout.addWidget(abajo)
+        # Lo que este equipo no publica, dicho: el arranque de un GRUB.
+        self.extra_pie = QLabel("")
+        self.extra_pie.setObjectName("Muted")
+        self.extra_pie.setWordWrap(True)
+        self.extra_pie.setFont(ui_font(theme.METRICS.small_pt))
+        self.extra_pie.hide()
+        layout.addWidget(self.extra_pie)
 
         layout.addStretch(1)
         self._badge_signature: tuple = ()
@@ -156,6 +195,9 @@ class SystemPage(QScrollArea):
         k(_("sys.kernel.desktop"), system.desktop or d)
         k(_("sys.field.session"), system.session_type or d)
         k(_("sys.kernel.shell"), system.shell or d)
+        graficos = render.graphics_stack(snapshot)
+        k(_("sys.kernel.graphics"), graficos or d)
+        self.kernel.set_visible(_("sys.kernel.graphics"), bool(graficos))
 
         a = self.activity.set
         a(_("sys.field.since"), system.boot_time or d)
@@ -163,6 +205,74 @@ class SystemPage(QScrollArea):
         a(_("sys.act.processes"), f"{system.processes:,}".replace(",", " "))
         a(_("sys.act.threads"), f"{system.threads:,}".replace(",", " "))
         a(_("sys.field.openfiles"), f"{system.open_files:,}".replace(",", " "))
+
+        self._apply_security(system)
+        self._apply_swap(system)
+        self._apply_boot(system)
+
+    def _apply_security(self, system: System) -> None:
+        todas = system.vulnerabilities
+        self.security_card.setVisible(bool(todas))
+        if not todas:
+            return
+        cuenta = {estado: sum(1 for v in todas if v.state == estado)
+                  for estado in ("unaffected", "mitigated", "vulnerable")}
+        s = self.security.set
+        s(_("sys.vuln.known"), str(len(todas)))
+        s(_("sys.vuln.unaffected"), str(cuenta["unaffected"]))
+        s(_("sys.vuln.mitigated"), str(cuenta["mitigated"]))
+        s(_("sys.vuln.open"), str(cuenta["vulnerable"]) if cuenta["vulnerable"]
+          else _("sys.vuln.none"))
+        # En la lista, las que tienen algo que contar: las que no afectan a
+        # este procesador ya están contadas arriba.
+        firma = tuple((v.name, v.status) for v in todas if v.state != "unaffected")
+        if firma != self._vuln_signature:
+            self._vuln_signature = firma
+            self.vulns = self._rejilla_nueva(self.vuln_fold.body, self.vulns, firma, lineas=3)
+        self.vuln_fold.setVisible(bool(firma))
+
+    def _apply_swap(self, system: System) -> None:
+        filas = tuple((render.swap_name(s), render.swap_summary(s)) for s in system.swaps)
+        if not filas:
+            filas = ((_("sys.swap.label"), _("sys.swap.none")),)
+        nombres = tuple(n for n, _v in filas)
+        if nombres != self._swap_signature:
+            self._swap_signature = nombres
+            self.swap = self._rejilla_nueva(self.swap_card.body, self.swap, filas)
+        else:
+            for nombre, valor in filas:
+                self.swap.set(nombre, valor)
+
+    def _apply_boot(self, system: System) -> None:
+        arranque = system.boot
+        tiempos = render.boot_times(arranque)
+        hay = bool(arranque.loader or arranque.entry or tiempos)
+        self.boot_card.setVisible(hay)
+        self.extra_pie.setText("" if hay else _("sys.boot.unpublished"))
+        self.extra_pie.setVisible(not hay)
+        for clave, valor in (("sys.boot.loader", arranque.loader),
+                             ("sys.boot.entry", arranque.entry),
+                             ("sys.boot.time", tiempos)):
+            self.boot.set(_(clave), valor or render.DASH)
+            self.boot.set_visible(_(clave), bool(valor))
+
+    @staticmethod
+    def _rejilla_nueva(donde, vieja: InfoGrid, filas, lineas: int = 1) -> InfoGrid:
+        """Una rejilla con esas filas en el sitio de la que había.
+
+        Para las listas que cambian de forma: un intercambio que se activa,
+        una entrada que desaparece. Se rehace solo cuando cambian los nombres.
+        """
+        nueva = InfoGrid()
+        for nombre, valor in filas:
+            etiqueta = nueva.add(nombre)
+            if lineas > 1:
+                etiqueta.permitir_lineas(lineas)
+            nueva.set(nombre, valor)
+        donde.replaceWidget(vieja, nueva)
+        vieja.setParent(None)
+        vieja.deleteLater()
+        return nueva
 
     def _apply_badges(self, system: System) -> None:
         session = None

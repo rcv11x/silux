@@ -44,6 +44,7 @@ from .providers import (
     SysfsClocks,
     SysfsTopology,
     SystemIdentity,
+    SystemSecurity,
     SystemState,
     TurboState,
 )
@@ -66,6 +67,7 @@ DEFAULT_PROVIDERS: tuple[type[Provider], ...] = (
     DrmGpus,            # enumera las gráficas antes de que nadie las consulte
     GpuApis,            # y después les pregunta a OpenGL, Vulkan y OpenCL
     SystemIdentity,
+    SystemSecurity,     # mitigaciones y arranque: una vez
     PrivilegedMemory,   # espera a que el usuario lo pida
     SpdModules,         # después, para pegarse a lo que aquél haya leído
     SysfsClocks,

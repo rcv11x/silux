@@ -20,7 +20,7 @@ from .rapl import RaplPower
 from .spd_modules import SpdModules
 from .storage import Disks
 from .sysfs_cpu import SysfsClocks, SysfsTopology
-from .system import SystemIdentity, SystemState
+from .system import SystemIdentity, SystemSecurity, SystemState
 from .turbo import TurboState
 
 __all__ = [
@@ -30,5 +30,5 @@ __all__ = [
     "RaplPower", "ImcTraffic", "DerivedSensors",
     "Batteries",
     "DrmGpus", "GpuState", "GpuApis", "NvidiaGpus", "NetworkInterfaces",
-    "SystemIdentity", "SystemState", "PrivilegedMemory", "SpdModules", "Disks",
+    "SystemIdentity", "SystemSecurity", "SystemState", "PrivilegedMemory", "SpdModules", "Disks",
 ]
