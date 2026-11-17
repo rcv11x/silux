@@ -289,8 +289,12 @@ class ResponsiveRow(QWidget):
         self._columns = columns
         self._colocados = visibles
 
+        # `removeWidget` y no `takeAt`: desde Python el segundo no destruye
+        # la celda, y un widget avisa de que cambió de tamaño a la primera
+        # celda que tuvo. La nueva se quedaba con la altura de la primera
+        # medida, y un texto que después pasaba a dos líneas salía cortado.
         while self._grid.count():
-            self._grid.takeAt(0)
+            self._grid.removeWidget(self._grid.itemAt(0).widget())
         for index in range(self._grid.columnCount()):
             self._grid.setColumnStretch(index, 0)
 
