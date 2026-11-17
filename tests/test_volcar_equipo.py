@@ -267,5 +267,52 @@ class TestLosMontajesEnLaComprobacionFinal(unittest.TestCase):
         self.assertEqual(volcar._lo_que_anonimizar_taparia(foto), ["disks"])
 
 
+
+
+class TestMontarDesdeLaTerminal(unittest.TestCase):
+    """`tools/montar_equipo.py` monta el volcado como lo montan los tests.
+
+    Con `SILUX_SYSROOT` apuntando a la carpeta del repositorio faltan las
+    carpetas vacías, que git no guarda: la integrada del i5-10400 salía sin
+    sus unidades de ejecución en las capturas, y con ellas en los tests.
+    """
+
+    def _unidades(self, orden, entorno=None):
+        import json
+        import os
+        import subprocess
+        import sys
+
+        raiz = pathlib.Path(__file__).resolve().parent.parent
+        salida = subprocess.run(
+            [sys.executable, *orden, sys.executable, "-m", "silux.cli", "--json"],
+            cwd=raiz, capture_output=True, text=True, timeout=120,
+            env={**os.environ, **(entorno or {})})
+        self.assertEqual(salida.returncode, 0, salida.stderr[-400:])
+        return json.loads(salida.stdout)["gpus"][0]["compute_units"]
+
+    def test_la_orden_ve_lo_mismo_que_los_tests(self):
+        self.assertEqual(self._unidades(["tools/montar_equipo.py", "i5-10400"]), 23)
+
+    def test_que_es_justo_lo_que_la_variable_a_pelo_no_ve(self):
+        raiz = pathlib.Path(__file__).resolve().parent
+        carpeta = raiz / "fixtures" / "equipos" / "i5-10400"
+        if (carpeta / "sys/devices/pci0000:00/0000:00:02.0/drm/renderD128").exists():
+            self.skipTest("esta copia del repositorio conserva las carpetas vacías")
+        self.assertIsNone(self._unidades(["-c", "import subprocess, sys; "
+                                          "sys.exit(subprocess.run(sys.argv[1:]).returncode)"],
+                                         {"SILUX_SYSROOT": str(carpeta)}))
+
+    def test_sin_volcado_o_sin_orden_lo_dice(self):
+        import subprocess
+        import sys
+
+        raiz = pathlib.Path(__file__).resolve().parent.parent
+        for orden in (["no-existe", "true"], ["i5-10400"]):
+            salida = subprocess.run([sys.executable, "tools/montar_equipo.py", *orden],
+                                    cwd=raiz, capture_output=True, text=True, timeout=60)
+            self.assertEqual(salida.returncode, 2, orden)
+
+
 if __name__ == "__main__":
     unittest.main()

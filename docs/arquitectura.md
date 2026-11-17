@@ -488,6 +488,13 @@ proveedores leen ese equipo: `sysroot.ruta` traduce cada camino y
 `sysroot.a_traves` devuelve lo grabado en vez de preguntar a la CPU, al
 driver o al proceso de las APIs.
 
+**Desde la terminal un volcado se monta con `tools/montar_equipo.py NOMBRE
+ORDEN…`**, no apuntando la variable a la carpeta del repositorio: git no
+guarda carpetas vacías y un volcado tiene muchas que cuentan (el
+`drm/renderD128` de una gráfica). Con la variable a pelo, la integrada del
+i5-10400 sale sin sus 23 unidades de ejecución. La herramienta usa el mismo
+`montado()` que los tests.
+
 `tests/test_equipos.py` monta el Collector contra cada volcado y comprueba lo
 que vale para cualquier equipo; lo que solo vale para uno va en el test del
 arreglo, con el volcado donde se vio. `manifiesto.json` dice qué no se pudo
