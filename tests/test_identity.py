@@ -37,13 +37,15 @@ class TestFirmaCpuid(unittest.TestCase):
 
     def test_la_interfaz_enseña_los_valores_compuestos(self):
         try:
-            from silux.ui.pages.cpu import PROCESSOR_FIELDS
+            from silux.ui.pages.cpu import IDENTITY_FIELDS, PROCESSOR_FIELDS
         except ImportError:                                # pragma: no cover
             self.skipTest("PySide6 no está instalado")
         # Los campos son claves de idioma; el texto lo pone `_()` al montar.
-        self.assertIn("cpu.field.family", PROCESSOR_FIELDS)
-        self.assertIn("cpu.field.model", PROCESSOR_FIELDS)
-        self.assertIn("cpu.field.signature", PROCESSOR_FIELDS)
+        # Van en el bloque plegado de la identificación.
+        self.assertIn("cpu.field.family", IDENTITY_FIELDS)
+        self.assertIn("cpu.field.model", IDENTITY_FIELDS)
+        self.assertIn("cpu.field.signature", IDENTITY_FIELDS)
+        PROCESSOR_FIELDS = PROCESSOR_FIELDS + IDENTITY_FIELDS
         # Las filas con los bits en crudo ya no existen: confundían más de lo
         # que aportaban, y su contenido vive ahora en el tooltip de la firma.
         self.assertNotIn("cpu.field.dispmodel", PROCESSOR_FIELDS)

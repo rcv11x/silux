@@ -191,13 +191,17 @@ class CpuLiveSection(QWidget):
             # quien mira cuenta cuatro y lee dos.
             aclaracion = (_("cpu.best.threads").format(hilos=hilos)
                           if hilos else "")
+            # Una frase que diga qué es la estrella, y el porqué al pasar el
+            # ratón: entero eran dos renglones de letra pequeña a todo el ancho
+            # debajo de la rejilla.
             self.calidad.setText(
                 f'<span style="color:{self._p.accent}">&#9733;</span> '
-                + _("cpu.best.legend").format(
+                + _("cpu.best.short").format(
                     nucleos=render.best_cores(snapshot.cpu.logical),
-                    hilos=aclaracion,
-                    reparto=f"{reparto[0].upper()}{reparto[1:]}")
+                    hilos=aclaracion)
             )
+            self.calidad.setToolTip(_("cpu.best.tip").format(
+                reparto=f"{reparto[0].upper()}{reparto[1:]}"))
             self.calidad.show()
         else:
             self.calidad.hide()

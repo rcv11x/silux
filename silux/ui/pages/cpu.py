@@ -32,6 +32,7 @@ from ..widgets import (
     ChipRow,
     InfoGrid,
     Notice,
+    Plegable,
     tone_for,
     ResponsiveRow,
     clear_layout,
@@ -53,8 +54,13 @@ NEED_TITLES = {
 PROCESSOR_FIELDS = (
     "cpu.field.vendor", "cpu.field.spec", "cpu.field.codename", "cpu.field.process",
     "cpu.field.package", "cpu.field.arch", "cpu.field.cores", "cpu.field.threads", "cpu.field.virt",
-    "cpu.field.family", "cpu.field.model", "cpu.field.stepping", "cpu.field.signature", "cpu.field.microcode",
     "cpu.field.voltage",
+)
+# Con qué números se identifica el silicio. Hacen falta para un informe o
+# para buscar una errata, y casi nunca para otra cosa: van plegados.
+IDENTITY_FIELDS = (
+    "cpu.field.family", "cpu.field.model", "cpu.field.stepping", "cpu.field.signature",
+    "cpu.field.microcode",
 )
 
 CLOCK_FIELDS = (
@@ -86,6 +92,12 @@ class TypeSection(QWidget):
         for name in PROCESSOR_FIELDS:
             self.processor.add(_(name))
         processor_card.body.addWidget(self.processor)
+        self.identity_fold = Plegable(_("cpu.card.identity"))
+        self.identity = InfoGrid()
+        for name in IDENTITY_FIELDS:
+            self.identity.add(_(name))
+        self.identity_fold.body.addWidget(self.identity)
+        processor_card.body.addWidget(self.identity_fold)
 
         clocks_card = Card(_("cpu.card.clocks"))
         self.clocks = InfoGrid()
@@ -143,12 +155,13 @@ class TypeSection(QWidget):
         p(_("cpu.field.cores"), str(cpu_type.cores))
         p(_("cpu.field.threads"), f"{cpu_type.threads}" + (_("cpu.smt.on") if cpu_type.smt else ""))
         p(_("cpu.field.virt"), self._virtualization(cpu_type))
-        p(_("cpu.field.family"), render.hex_id(cpu_type.disp_family))
-        p(_("cpu.field.model"), render.hex_id(cpu_type.disp_model))
-        p(_("cpu.field.stepping"), render.dec(cpu_type.stepping))
-        p(_("cpu.field.signature"), render.signature(cpu_type.signature),
+        i = self.identity.set
+        i(_("cpu.field.family"), render.hex_id(cpu_type.disp_family))
+        i(_("cpu.field.model"), render.hex_id(cpu_type.disp_model))
+        i(_("cpu.field.stepping"), render.dec(cpu_type.stepping))
+        i(_("cpu.field.signature"), render.signature(cpu_type.signature),
           tooltip=render.signature_tooltip(cpu_type))
-        p(_("cpu.field.microcode"), cpu_type.microcode or render.DASH)
+        i(_("cpu.field.microcode"), cpu_type.microcode or render.DASH)
         # El voltaje va con los demás datos del silicio y no con los relojes:
         # es lo que la pieza pide para sostener la frecuencia que tiene puesta.
         # Si falta por permisos lleva candado, que lo pone la página después:
