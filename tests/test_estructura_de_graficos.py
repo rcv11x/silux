@@ -77,7 +77,7 @@ class TestLaPaginaDeGraficos(unittest.TestCase):
         leyenda = " ".join(e.text() for e in ficha.power_bar.findChildren(QLabel))
         self.assertIn(_("gpu.bar.power.now"), leyenda)
         self.assertIn(_("gpu.bar.power.room"), leyenda)
-        self.assertNotIn(_("gpu.bar.unused"), leyenda)
+        self.assertNotIn("Sin usar", leyenda)
         # El consumo es lo primero de su tarjeta, pegado a la barra.
         filas = ficha.sensors._filas
         self.assertEqual(filas[_("gpu.sensor.power")], min(filas.values()))
