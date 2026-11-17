@@ -517,6 +517,9 @@ def _sensores(snapshot: Snapshot) -> str:
         for nombre, sensores in categorias.items():
             valores = " · ".join(
                 f"{s.label} {render.sensor_value(s.value, s.kind)} {s.unit}".strip()
+                # Quien revisa un equipo ajeno mira justo si el número es
+                # creíble: que 16.8 °C lleve dicho lo que es.
+                + (" (relleno del firmware, no es una medida)" if s.placeholder else "")
                 for s in sensores)
             lineas.append(f"  - {en_español(nombre).lower()}: {valores}")
     return "\n".join(lineas)

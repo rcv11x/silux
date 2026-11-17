@@ -1302,6 +1302,12 @@ class Sensor:
     # llega a cada entrada lo decidió quien diseñó la placa, y el kernel no lo
     # sabe. Se dice en la ventana en vez de inventar un nombre.
     unnamed: bool = False
+    # True cuando lo que se lee no es una medida sino el número fijo que el
+    # firmware devuelve por una zona térmica que no conectó a ningún sensor:
+    # 16.8 o 27.8 °C clavados en las `acpitz` de muchas placas de sobremesa.
+    # El equipo lo publica, así que se enseña; pero se dice lo que es, no
+    # lleva umbrales y no vale como temperatura de ninguna pieza.
+    placeholder: bool = False
     # Para lo que no encaja en ningún tipo con unidad fija, como un ritmo de
     # transferencia. Es la excepción, no la norma: si algo se repite, merece su
     # propio SensorKind.

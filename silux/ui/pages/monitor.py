@@ -261,7 +261,26 @@ class MonitorPage(QScrollArea):
                              if s.unnamed and s.kind is SensorKind.VOLTAGE})
         if sin_nombre:
             faltan.append(_("sensors.unnamed.voltages").format(chips=", ".join(sin_nombre)))
-        texto = " ".join(faltan)
+        # Lo mismo con las temperaturas: «Temperatura 1…6» de un Super I/O o
+        # de la interfaz WMI de la placa no dicen dónde está cada sonda. Un
+        # chip con una sola no tiene nada que distinguir, y las de relleno
+        # llevan su propia explicación.
+        numeradas: dict[str, int] = {}
+        for s in snapshot.sensors:
+            if s.unnamed and s.kind is SensorKind.TEMPERATURE and not s.placeholder:
+                numeradas[s.chip] = numeradas.get(s.chip, 0) + 1
+        if varias := sorted(chip for chip, n in numeradas.items() if n > 1):
+            faltan.append(_("sensors.unnamed.temps").format(chips=", ".join(varias)))
+        relleno: dict[str, set[float]] = {}
+        for s in snapshot.sensors:
+            if s.placeholder:
+                relleno.setdefault(s.chip, set()).add(s.value)
+        for chip, valores in sorted(relleno.items()):
+            faltan.append(_("sensors.placeholder").format(
+                chip=chip, valor=", ".join(
+                    render.temperature(v, self._prefs.fahrenheit) for v in sorted(valores))))
+        # Cada explicación en su renglón: seguidas en un párrafo no se leen.
+        texto = "\n".join(faltan)
         if self.absent.text() != texto:
             self.absent.setText(texto)
         self.absent.setVisible(bool(texto))
@@ -324,6 +343,7 @@ class MonitorPage(QScrollArea):
                 seguimiento.history if seguimiento else None,
                 sensor.heat or 0.0,
                 self._calor_del_maximo(sensor, seguimiento),
+                apagada=sensor.placeholder,
             )
             if sensor.alarm_level != "ok":
                 avisos.setdefault(sensor.device, []).append(sensor.alarm_level)
@@ -386,6 +406,10 @@ class MonitorPage(QScrollArea):
             lines.append("\n".join(limits))
         if sensor.estimated_limits:
             lines.append(_("sensors.limit.estimated"))
+        if sensor.placeholder:
+            lines.append(_("sensors.placeholder").format(
+                chip=sensor.chip,
+                valor=render.temperature(sensor.value, self._prefs.fahrenheit)))
         if sensor.alarm_level == "crítico":
             lines.append(_("sensors.alarm.crit"))
         elif sensor.alarm_level == "alto":

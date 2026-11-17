@@ -14,6 +14,7 @@ decirlo vale más que cualquier sensor extra.
 
 from __future__ import annotations
 
+import dataclasses
 import pathlib
 import re
 import shutil
@@ -66,6 +67,12 @@ SUPERIO_CHIPS = re.compile(r"^(nct\d+|it\d+|w836\d+|f71\d+|smsc|nzxt|asus)")
 _CORE_LABEL = re.compile(r"^Core\s+(\d+)$", re.IGNORECASE)
 _PACKAGE_LABEL = re.compile(r"^(Package id \d+|Tdie|Tctl|CPU Temperature)$", re.IGNORECASE)
 _VCORE_LABEL = re.compile(r"(vcore|cpu\s*v(core|oltage)|vid)", re.IGNORECASE)
+
+# Lo que devuelve una zona térmica de ACPI que el firmware declara y no
+# conecta a nada: siempre el mismo número, que no ha medido nadie. Son décimas
+# de kelvin redondas escritas en la tabla (2900, 3010 y 3030).
+CHIP_DE_ZONAS_ACPI = "acpitz"
+VALORES_DE_RELLENO = frozenset((16.8, 27.8, 29.8))
 
 # Chips de la CPU, en orden de preferencia: los primeros miden el die.
 CPU_CHIPS = ("coretemp", "k10temp", "zenpower", "cpu_thermal", "k8temp", "acpitz")
@@ -317,6 +324,11 @@ class HwmonSensors(Provider):
     name = "hwmon"
     provides = "sensors"
 
+    def __init__(self) -> None:
+        super().__init__()
+        # Las zonas de ACPI que se han visto marcar algo distinto del relleno.
+        self._zonas_vivas: set[str] = set()
+
     def available(self) -> bool:
         return sysroot.ruta(HWMON).is_dir()
 
@@ -337,7 +349,7 @@ class HwmonSensors(Provider):
                                            n=gpu["index"]))
                      for gpu in draft.gpus if gpu.get("pci_slot")}
 
-        sensors = list(self._read_hwmon(cpu_name, board_name, gpu_names))
+        sensors = self._sin_relleno(self._read_hwmon(cpu_name, board_name, gpu_names))
         sensors += list(self._read_power_supplies())
         if not sensors:
             return
@@ -348,6 +360,26 @@ class HwmonSensors(Provider):
         draft.driver_hints.extend(self._missing_drivers(sensors))
 
     # -- lectura ------------------------------------------------------------
+
+    def _sin_relleno(self, sensores: Iterator[Sensor]) -> list[Sensor]:
+        """Marca las zonas de ACPI que dan el número fijo del firmware.
+
+        En un portátil esas zonas miden de verdad y pueden pasar por 27.8 °C
+        como por cualquier otro valor: la que se ha visto alguna vez en otro
+        número no se vuelve a marcar. Por eso se recuerda entre muestreos.
+        """
+        salida = []
+        for sensor in sensores:
+            if (sensor.chip == CHIP_DE_ZONAS_ACPI
+                    and sensor.kind is SensorKind.TEMPERATURE):
+                if sensor.value not in VALORES_DE_RELLENO:
+                    self._zonas_vivas.add(sensor.key)
+                elif sensor.key not in self._zonas_vivas:
+                    sensor = dataclasses.replace(sensor, placeholder=True, low=None,
+                                                 high=None, critical=None,
+                                                 estimated_limits=False)
+            salida.append(sensor)
+        return salida
 
     def _read_hwmon(self, cpu_name: str, board_name: str,
                     gpu_names: Optional[dict[str, str]] = None) -> Iterator[Sensor]:
@@ -444,14 +476,17 @@ class HwmonSensors(Provider):
         for sensor in sensors:
             by_chip.setdefault(sensor.chip, []).append(sensor)
 
-        chip = next((name for name in CPU_CHIPS if name in by_chip), None)
+        # Una zona que da el número de relleno no es la temperatura de nadie.
+        chip = next((name for name in CPU_CHIPS
+                     if any(not s.placeholder for s in by_chip.get(name, ()))), None)
         if chip is None:
             draft.note("cpu.temp_c", Need.DRIVER,
                        _("prov.hwmon.nocpu"),
                        _("prov.hwmon.nocpu.hint").format(
                            chips=", ".join(sorted(by_chip))))
         else:
-            self._spread_temperatures(draft, by_chip[chip])
+            self._spread_temperatures(
+                draft, [s for s in by_chip[chip] if not s.placeholder])
 
         self._pick_voltage(draft, sensors)
 

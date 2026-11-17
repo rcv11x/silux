@@ -762,7 +762,7 @@ class SensorTree(QTreeWidget):
 
     def update_row(self, key: str, values: list[str], tooltip: str = "",
                    alarm: str = "ok", history=None, heat: float = 0.0,
-                   heat_max: float = 0.0) -> None:
+                   heat_max: float = 0.0, apagada: bool = False) -> None:
         item = self._rows.get(key)
         if item is None:
             return
@@ -787,6 +787,10 @@ class SensorTree(QTreeWidget):
         if colour is None:
             colour = (self._p.q("ink") if not heat
                       else self._mezcla_calor(heat))
+        # Una lectura que no es una medida (`Sensor.placeholder`) no puede
+        # pesar en la lista lo mismo que las que sí.
+        if apagada:
+            colour = self._p.q("muted")
         item.setForeground(1, colour)
 
         # El máximo se tiñe con su propio calor y no con el de ahora. Es el
