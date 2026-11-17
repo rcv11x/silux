@@ -64,6 +64,10 @@ SERIALES = {"serial", "serial_number", "wwid", "vpd_pg80", "vpd_pg83",
             "unique_id", "product_uuid", "product_serial", "board_serial",
             "chassis_serial", "uuid", "eui", "nguid", "perm_addr"}
 DIRECCIONES = {"address", "perm_address"}
+# De un dispositivo USB, lo que dice de quién es y qué modelo.
+USB_QUE_IDENTIFICA = {"product", "manufacturer", "idVendor", "idProduct"}
+# Nombres que no señalan a nadie: los de un concentrador o un controlador.
+USB_GENERICO = re.compile(r"hub|host controller|usb\s*receiver", re.I)
 MAC = re.compile(r"\b(?:[0-9a-f]{2}:){5}[0-9a-f]{2}\b", re.I)
 UUID = re.compile(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", re.I)
 
@@ -305,6 +309,23 @@ def _spd_sin_serie(datos: bytes) -> tuple[bytes, bytes]:
 EN_SERIE = (re.compile(r"br-[0-9a-f]{12}"), re.compile(r"veth[0-9a-f]+"))
 
 
+def _tarjetas_sin_nombre(texto: str) -> str:
+    """`/proc/asound/cards` sin el nombre de los aparatos de sonido USB.
+
+    Cada tarjeta son dos renglones. De las USB se deja que lo son y por dónde
+    cuelgan, y se quita cómo se llaman; las de la placa y la gráfica se quedan
+    como están, que no identifican a nadie.
+    """
+    lineas = texto.splitlines()
+    salida = []
+    for primera, segunda in zip(lineas[::2], lineas[1::2]):
+        if "USB-Audio" in primera:
+            primera = primera.split("USB-Audio", 1)[0] + "USB-Audio - "
+            segunda = re.sub(r"^(\s*).*?( at usb-)", r"\1Audio USB\2", segunda)
+        salida += [primera, segunda]
+    return "\n".join(salida) + "\n"
+
+
 def _sobrantes(nombres) -> set[str]:
     """De cada familia de interfaces en serie, todas menos la primera."""
     nombres = list(nombres)
@@ -417,6 +438,29 @@ class _Anonimizador:
                 if datos.strip() and datos.strip() not in (b"00:00:00:00:00:00",):
                     self.secretos.add(datos.strip().decode(errors="replace"))
                     ruta.write_text(privacidad.MAC + "\n")
+                continue
+            # Lo enchufado. El inventario de alguien también lo señala: una
+            # llave de seguridad, un micrófono concreto. Del USB quedan la
+            # clase, la velocidad y de qué cuelga cada cosa, que es lo que
+            # los tests necesitan; la marca, el modelo y sus identificadores
+            # se quitan, y con ellos el nombre del adaptador Bluetooth, que
+            # sale del mismo archivo. Es lo mismo que hace
+            # `privacidad.anonimizar` con la foto, y por eso el archivo se
+            # borra en vez de rellenarse: el proveedor tiene que leer «nada».
+            if nombre in USB_QUE_IDENTIFICA and re.search(r"/usb\d+/", relativo):
+                texto_usb = datos.decode(errors="replace").strip()
+                if nombre in ("product", "manufacturer") and len(texto_usb) >= 6 \
+                        and not USB_GENERICO.search(texto_usb):
+                    self.secretos.add(texto_usb)
+                ruta.unlink()
+                continue
+            if relativo.startswith("/sys/") and "/video4linux/" in relativo and nombre == "name":
+                if len(datos.strip()) >= 6:
+                    self.secretos.add(datos.decode(errors="replace").strip().split(":")[0])
+                ruta.unlink()
+                continue
+            if relativo == "/proc/asound/cards":
+                ruta.write_text(_tarjetas_sin_nombre(datos.decode(errors="replace")))
                 continue
             if relativo == "/proc/sys/kernel/hostname":
                 ruta.write_text(privacidad.EQUIPO + "\n")
@@ -635,6 +679,13 @@ def volcar(nombre: str, destino_base: pathlib.Path = DESTINO) -> pathlib.Path:
                 "y el volcado guarda una",
                 "el consumo (RAPL): sale de restar dos lecturas del contador de "
                 "energía, y el volcado guarda una",
+                "la residencia en los estados de reposo (C-states): sale de restar "
+                "dos lecturas de cpuidle, y el volcado guarda una",
+                "de lo enchufado por USB: la marca, el modelo y sus identificadores; "
+                "y el nombre de las cámaras y de las tarjetas de sonido USB. "
+                "Quedan la clase, la velocidad y de qué cuelga cada cosa",
+                "las variables del cargador de arranque que no se leen "
+                "(LoaderDevicePartUUID, LoaderSystemToken)",
             ] + ([f"{quitadas} interfaces de red en serie (puentes de Docker y "
                   "veth): queda una de cada"] if quitadas else []),
         }, ensure_ascii=False, indent=1) + "\n")

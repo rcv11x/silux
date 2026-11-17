@@ -105,7 +105,7 @@ class ConnectedDevices(Provider):
         salida = []
         lineas = (read_text("/proc/asound/cards") or "").splitlines()
         for primera, segunda in zip(lineas[::2], lineas[1::2]):
-            encaje = re.match(r"\s*(\d+)\s+\[.*?\]:\s*(\S+)\s+-\s+(.*)", primera)
+            encaje = re.match(r"\s*(\d+)\s+\[.*?\]:\s*(\S+)\s+-\s*(.*)", primera)
             if not encaje:
                 continue
             indice, driver, nombre = encaje.group(1), encaje.group(2), encaje.group(3).strip()
@@ -116,7 +116,7 @@ class ConnectedDevices(Provider):
                 if (codec := linea.partition(":")[2].strip()):
                     codecs.append(codec)
             if "usb" in driver.lower() or "usb-" in segunda:
-                salida.append(SoundCard(name=nombre, kind="usb"))
+                salida.append(SoundCard(name=nombre or None, kind="usb"))
             elif codecs and all("HDMI" in c for c in codecs):
                 salida.append(SoundCard(kind="hdmi", codec=codecs[0]))
             elif codecs:

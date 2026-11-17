@@ -52,6 +52,11 @@ class CpuIdle(Provider):
         return estados
 
     def collect(self, draft: Draft) -> None:
+        # Un equipo volcado guarda una sola lectura de cada contador: restada
+        # consigo misma daría «0 % en todos los estados», que parece un dato
+        # y no lo es. Como el uso por hilo y el consumo, ahí no sale.
+        if sysroot.activo():
+            return
         if self._estados is None:
             self._estados = self._enumerar()
         ahora = time.monotonic()
