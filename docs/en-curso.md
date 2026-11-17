@@ -106,6 +106,24 @@ Lo que sí propone para ya, en Intel: las ventanas de tiempo de PL1 y PL2,
 PL4 donde exista y si los límites están bloqueados (el registro ya está en
 la lista del ayudante). **Hay cuatro decisiones del autor al final.**
 
+### Bloque 5, hecho: maqueta de Ajustes (sin aplicar)
+
+En `~/Imágenes/silux-test/ajustes/` (casa), con su guion
+`maqueta_ajustes.py`: la ventana real con una página nueva en el sitio de
+Ajustes, en oscuro y claro, a 1440×900, 2560×1440 y compacto a 900×680. Cada
+una tiene además su `-entera` (la página no cabe en esas alturas; a 1440 de
+ancho ni la entera llega al final de «Acerca de», que la ventana no pasa de
+2160 de alto).
+
+Una columna centrada con ancho máximo; cada opción en un renglón, texto a la
+izquierda y control a la derecha; seis grupos: General, Apariencia,
+Muestreo, Permisos, Compartir e informes y Acerca de (con «Restablecer» al
+final). **Nada de esto está en el programa.** Dos cosas son nuevas y hay que
+decidirlas: el grupo **Permisos** (en la maqueta dice el estado real del
+ayudante de este equipo; el botón «Quitar el ayudante…» sale apagado porque
+toca privilegios y es solo propuesta) y **la descripción de Claude** en
+Autoría, que lleva delante la palabra PROPUESTA con un texto para corregir.
+
 ## Sesión del 17 por la noche, en casa (rama `interfaz`)
 
 Dos tandas. La primera (el hueco de Gráficos, el corte de Red, la raya de
