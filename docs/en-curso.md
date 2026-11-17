@@ -92,7 +92,7 @@ Lo que la tanda deja a medias, apuntado en `docs/pendientes.md`:
 
 **Punto 3, a medias: el CI de `ui-permisos` NO está lanzado.** Las capturas
 sí. El empuje de la rama lo paró el control de permisos de la sesión de
-Claude, así que hay 18 commits locales por delante de `origin/ui-permisos`.
+Claude, así que hay commits locales por delante de `origin/ui-permisos`.
 Para lanzarlo:
 
 ```bash
