@@ -23,12 +23,13 @@ from ...settings import Preferences
 from ...throttling import SeguidorDeRecortes
 from .. import theme
 from ..theme import Palette, ui_font
-from ..widgets import (Plegable, Card, ChipRow, Divider, InfoGrid, Notice, ResponsiveRow, StackedBar,
+from ..widgets import (Plegable, Card, ChipRow, Divider, InfoGrid, LevelList, Notice, ResponsiveRow,
                        StatTile, Table, clear_layout, tone_for)
 
-# Un aspa se lee de un vistazo; un «No» hay que leerlo.
+# Un símbolo se lee de un vistazo; un «No» hay que leerlo. Los dos son
+# distintos por su forma, no solo por el color con que los pinta la tabla.
 SI = "✓"
-NO = "·"
+NO = "✗"
 
 NEED_TITLES = {
     Need.ROOT: "note.needsperm",
@@ -51,7 +52,13 @@ INVENTORY_FIELDS = (
     "gpu.field.uuid",
 )
 
-MEMORY_FIELDS = ("gpu.vram.total", "gpu.vram.used", "gpu.vram.busy", "gpu.vram.type", "gpu.vram.bus", "gpu.vram.bandwidth", "gpu.vram.datarate",
+# Lo que está pasando ahora, en una barra por medida: cuánta memoria de video
+# hay ocupada, cuánto consume de lo que puede y cuánto bus se mueve. Juntas
+# debajo de las fichas: repartidas por las tarjetas de abajo, cada una con su
+# leyenda, había que bajar a buscarlas.
+NOW_FIELDS = ("gpu.now.vram", "gpu.now.power", "gpu.now.bus")
+
+MEMORY_FIELDS = ("gpu.vram.total", "gpu.vram.type", "gpu.vram.bus", "gpu.vram.bandwidth", "gpu.vram.datarate",
                  "gpu.vram.visible", "gpu.vram.rebar", "gpu.vram.chips",
                  "gpu.vram.shared")
 
@@ -59,10 +66,11 @@ CLOCK_FIELDS = ("gpu.clock.core", "gpu.clock.coremax", "gpu.clock.memory", "gpu.
                 "gpu.clock.memmax", "SoC", "gpu.clock.profile",
                 "gpu.clock.link", "gpu.clock.linkmax")
 
-# El consumo primero, pegado a su barra; después las temperaturas de dentro de
-# la tarjeta. La del núcleo no está: es la de la ficha de arriba, y repetida
-# aquí eran dos cifras iguales en la misma pantalla.
-SENSOR_FIELDS = ("gpu.sensor.power", "gpu.sensor.powercap", "gpu.sensor.state",
+# El estado y las temperaturas de dentro de la tarjeta. La del núcleo no
+# está: es la de la ficha de arriba. Tampoco el consumo ni su límite, que
+# van en «Ahora mismo» con su barra: repetidos aquí eran la misma cifra dos
+# veces en la misma pantalla.
+SENSOR_FIELDS = ("gpu.sensor.state",
                  "gpu.sensor.hotspot", "gpu.sensor.memtemp",
                  "gpu.sensor.vrgfx", "gpu.sensor.vrsoc", "gpu.sensor.vrmem",
                  "gpu.sensor.fan",
@@ -87,7 +95,7 @@ SENSOR_FIELDS = ("gpu.sensor.power", "gpu.sensor.powercap", "gpu.sensor.state",
 # reloj de memoria, no el bus, así que repetir ahí el texto de la memoria
 # nombraba campos que en esa tarjeta no estaban.
 NA_SIN_VRAM = {
-    "memory": (("gpu.vram.total", "gpu.vram.used", "gpu.vram.busy", "gpu.vram.type", "gpu.vram.bus",
+    "memory": (("gpu.vram.total", "gpu.vram.type", "gpu.vram.bus",
                 "gpu.vram.bandwidth", "gpu.vram.datarate", "gpu.vram.visible",
                 "gpu.vram.rebar", "gpu.vram.chips"), "gpu.na.novram"),
     "clocks": (("gpu.clock.memory", "gpu.clock.memeff", "gpu.clock.memmax"),
@@ -183,6 +191,13 @@ class GpuSection(QWidget):
         self._notices_host.setContentsMargins(0, 0, 0, 0)
         layout.addLayout(self._notices_host)
         self._notice_signature: tuple = ()
+
+        self.now_card = Card(_("gpu.card.now"))
+        self.now = LevelList(self._p)
+        for name in NOW_FIELDS:
+            self.now.add(_(name))
+        self.now_card.body.addWidget(self.now)
+        layout.addWidget(self.now_card)
         self.elevation_buttons: list = []
 
         fila = ResponsiveRow(min_item_width=280)
@@ -328,22 +343,18 @@ class GpuSection(QWidget):
 
     def _build_sensor_card(self) -> Card:
         card = Card(_("gpu.card.sensors"))
-        self.power_bar = StackedBar(self._p)
         self.sensors = InfoGrid()
         for name in SENSOR_FIELDS:
             self.sensors.add(_(name))
-        card.body.addWidget(self.power_bar)
         card.body.addWidget(self.sensors)
         self.sensors_pie = self._pie(card)
         return card
 
     def _build_memory_card(self) -> Card:
         card = Card(_("gpu.card.vram"))
-        self.memory_bar = StackedBar(self._p)
         self.memory = InfoGrid()
         for name in MEMORY_FIELDS:
             self.memory.add(_(name))
-        card.body.addWidget(self.memory_bar)
         card.body.addWidget(self.memory)
         self.memory_pie = self._pie(card)
         return card
@@ -433,17 +444,7 @@ class GpuSection(QWidget):
           tooltip=render.pcie_note(gpu.link) or "")
         k(_("gpu.clock.linkmax"), render.pcie_link(gpu.link, maximum=True))
 
-        if gpu.power_w is not None and gpu.power_cap_w:
-            self.power_bar.set_segments(
-                [(_("gpu.bar.power.now"), gpu.power_w, "accent"),
-                 (_("gpu.bar.power.room"),
-                  max(0.0, gpu.power_cap_w - gpu.power_w), "line")],
-                total=gpu.power_cap_w,
-                formatter=render.watts,
-            )
-            self.power_bar.show()
-        else:
-            self.power_bar.hide()
+        self._apply_now(gpu)
 
         s = self.sensors.set
         fahrenheit = self._prefs.fahrenheit
@@ -452,8 +453,6 @@ class GpuSection(QWidget):
         s(_("gpu.sensor.hotspot"), render.temperature(gpu.hotspot_c, fahrenheit),
           tooltip=_("gpu.tip.hotspot"))
         s(_("gpu.sensor.memtemp"), render.temperature(gpu.memory_temp_c, fahrenheit))
-        s(_("gpu.sensor.power"), render.watts(gpu.power_w))
-        s(_("gpu.sensor.powercap"), render.watts(gpu.power_cap_w))
         s(_("gpu.sensor.fan"), render.fan(gpu.fan_rpm, gpu.fan_percent))
         s(_("gpu.sensor.vrgfx"), render.temperature(gpu.vr_gfx_c, fahrenheit),
           tooltip=_("gpu.tip.vr"))
@@ -544,6 +543,11 @@ class GpuSection(QWidget):
              ", ".join(codec.profiles) or render.DASH)
             for codec in gpu.codecs
         ])
+        for fila, codec in enumerate(gpu.codecs):
+            for columna, puede in ((1, codec.decode), (2, codec.encode)):
+                self.codecs.set_cell_tone(fila, columna, "yes" if puede else "no")
+                self.codecs.set_cell_tooltip(
+                    fila, columna, _("gpu.codec.yes" if puede else "gpu.codec.no"))
 
     def _apply_badges(self, gpu: Gpu) -> None:
         chips = [c for c in (
@@ -628,37 +632,44 @@ class GpuSection(QWidget):
                 _("gpu.tile.of").format(valor=render.watts(gpu.power_cap_w))
                 if gpu.power_cap_w else "")
 
+    def _apply_now(self, gpu: Gpu) -> None:
+        """Las tres barras de «Ahora mismo». La que no tiene dato no sale, y
+        sin ninguna se va la tarjeta: una integrada sin VRAM propia, sin
+        permisos, no tiene nada que poner aquí."""
+        de = _("gpu.now.of")
+        memoria = gpu.memory
+        if memoria.total_bytes and memoria.used_bytes is not None:
+            self.now.set(_("gpu.now.vram"), memoria.used_bytes / memoria.total_bytes,
+                         de.format(actual=render.size(memoria.used_bytes),
+                                   total=render.size(memoria.total_bytes)))
+        else:
+            self.now.set(_("gpu.now.vram"), None)
+        if gpu.power_w is not None and gpu.power_cap_w:
+            self.now.set(_("gpu.now.power"), gpu.power_w / gpu.power_cap_w,
+                         de.format(actual=render.watts(gpu.power_w),
+                                   total=render.watts(gpu.power_cap_w)))
+        else:
+            self.now.set(_("gpu.now.power"), None)
+        # Cuánta memoria se está moviendo, que no es cuánta hay ocupada: una
+        # tarjeta con la VRAM llena y el bus parado tiene datos cargados y no
+        # los toca. Y con contra qué se compara: un 21 % a secas no dice si
+        # son megas o gigas por segundo.
+        bus = gpu.memory_busy_percent
+        if bus is not None:
+            ancho = memoria.bandwidth_bytes
+            self.now.set(_("gpu.now.bus"), bus / 100,
+                         de.format(actual=render.bandwidth(int(ancho * bus / 100)),
+                                   total=render.bandwidth(ancho)) if ancho else "",
+                         tooltip=_("gpu.tip.busy"))
+        else:
+            self.now.set(_("gpu.now.bus"), None)
+        self.now_card.setVisible(bool(self.now.visible_rows()))
+
     def _apply_memory(self, gpu: Gpu) -> None:
         d = render.DASH
         memoria = gpu.memory
-        if memoria.total_bytes and memoria.used_bytes is not None:
-            self.memory_bar.set_segments(
-                [(_("gpu.bar.inuse"), memoria.used_bytes, "accent"),
-                 (_("gpu.bar.free"),
-                  memoria.total_bytes - memoria.used_bytes, "line")],
-                total=memoria.total_bytes,
-                formatter=render.size,
-            )
-            self.memory_bar.show()
-        else:
-            self.memory_bar.hide()
-
         m = self.memory.set
         m(_("gpu.vram.total"), render.size(memoria.total_bytes))
-        m(_("gpu.vram.used"), render.gpu_memory_summary(memoria) if memoria.total_bytes else d)
-        # Cuánta se está moviendo, que no es cuánta cabe: una tarjeta con la
-        # VRAM llena y el bus parado tiene datos cargados y no los toca. Y con
-        # contra qué se compara: un 21 % a secas no dice si son megas o gigas.
-        bus = gpu.memory_busy_percent
-        if bus is not None and memoria.bandwidth_bytes:
-            m(_("gpu.vram.busy"), _("gpu.vram.busy.of").format(
-                pct=render.percent(bus),
-                actual=render.bandwidth(int(memoria.bandwidth_bytes * bus / 100)),
-                max=render.bandwidth(memoria.bandwidth_bytes)),
-              tooltip=_("gpu.tip.busy"))
-        else:
-            m(_("gpu.vram.busy"), render.percent(bus) if bus is not None else d,
-              tooltip=_("gpu.tip.busy"))
         m(_("gpu.vram.type"), render.vram_kind(memoria))
         m(_("gpu.vram.bus"), render.vram_bus(memoria))
         m(_("gpu.vram.bandwidth"), render.bandwidth(memoria.bandwidth_bytes),

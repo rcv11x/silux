@@ -1314,8 +1314,8 @@ class TestCuadrosDeLaGrafica(unittest.TestCase):
                              used_bytes=15_000_000_000,
                              bandwidth_bytes=644_096_000_000),
         ))
-        self.assertIn("21.0 %", seccion.memory._values[_("gpu.vram.busy")].full_text())
-        self.assertIn("88 %", seccion.memory._values[_("gpu.vram.used")].full_text())
+        self.assertIn("21 %", seccion.now.text_of(_("gpu.now.bus")))
+        self.assertIn("88 %", seccion.now.text_of(_("gpu.now.vram")))
 
     def test_el_porcentaje_del_bus_dice_contra_que_se_compara(self):
         """Un 21 % a secas no dice si son megas o gigas por segundo."""
@@ -1325,7 +1325,7 @@ class TestCuadrosDeLaGrafica(unittest.TestCase):
             name="RX 9070 XT", memory_busy_percent=21.0,
             memory=GpuMemory(bandwidth_bytes=644_096_000_000),
         ))
-        self.assertIn("644", seccion.memory._values[_("gpu.vram.busy")].full_text())
+        self.assertIn("644", seccion.now.text_of(_("gpu.now.bus")))
 
     def test_una_grafica_que_no_publica_nada_no_inventa_ceros(self):
         """Una Intel sin permisos deja los cuadros a «—», no a cero: no leer

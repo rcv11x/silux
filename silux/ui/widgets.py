@@ -21,7 +21,7 @@ from typing import Iterable, Optional, Sequence
 from PySide6.QtCore import (QEvent, QPoint, QPointF, QRectF, QSize, Qt,
                             QTimer, Signal)
 from PySide6.QtGui import (
-    QBrush, QColor, QFontMetrics, QFontMetricsF, QLinearGradient, QPainter, QPainterPath, QPen,
+    QBrush, QColor, QFont, QFontMetrics, QFontMetricsF, QLinearGradient, QPainter, QPainterPath, QPen,
 )
 from PySide6.QtWidgets import (
     QFrame,
@@ -1582,8 +1582,11 @@ class Table(QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
+        # Con nombre propio y sin fondo: con el de la página («Root»), que es
+        # más oscuro que la tarjeta, cada tabla era un bloque negro dentro de
+        # la suya.
         inner = QWidget()
-        inner.setObjectName("Root")
+        inner.setObjectName("TableBody")
         self.setWidget(inner)
 
         self._grid = QGridLayout(inner)
@@ -1618,6 +1621,25 @@ class Table(QScrollArea):
         # valor la columna se ensancha si hace falta; nunca se encoge, o la
         # tabla bailaría a cada muestreo.
         self._anchos = [0] * len(self._headers)
+
+    def set_cell_tone(self, fila: int, columna: int, tono: str) -> None:
+        """El tono de una celda: «yes», «no» o ninguno.
+
+        Para un sí o un no que se lee de un vistazo. El color lo pone la hoja
+        de estilos; el símbolo lo pone quien llama, porque el color solo no
+        puede ser lo único que distinga una cosa de la otra.
+        """
+        if fila < len(self._cells) and columna < len(self._cells[fila]):
+            celda = self._cells[fila][columna]
+            if (celda.property("tone") or "") != tono:
+                celda.setProperty("tone", tono)
+                # Un símbolo suelto en la letra de las cifras es un trazo fino
+                # que se pierde: va en la de la interfaz, más grande y gruesa.
+                celda.setFont(ui_font(theme.METRICS.base_pt + 2, QFont.Weight.Bold)
+                              if tono else mono_font())
+                celda.setMinimumHeight(celda.fontMetrics().height())
+                celda.style().unpolish(celda)
+                celda.style().polish(celda)
 
     def set_cell_tooltip(self, fila: int, columna: int, texto: str) -> None:
         """La explicación de una celda concreta: por qué lleva un guion."""
@@ -1738,6 +1760,111 @@ class Table(QScrollArea):
 
 
 
+
+
+class LevelBar(QWidget):
+    """Una barra de un solo tramo: cuánto de un total, sin leyenda."""
+
+    HEIGHT = 8
+
+    def __init__(self, palette: Palette, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self._p = palette
+        self._fraccion = 0.0
+        self.setFixedHeight(self.HEIGHT)
+        self.setMinimumWidth(60)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+
+    def fraction(self) -> float:
+        return self._fraccion
+
+    def set_fraction(self, fraccion: float) -> None:
+        fraccion = max(0.0, min(1.0, fraccion))
+        if abs(fraccion - self._fraccion) > 1e-4:
+            self._fraccion = fraccion
+            self.update()
+
+    def paintEvent(self, event) -> None:  # noqa: N802
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setPen(Qt.PenStyle.NoPen)
+        rect = QRectF(self.rect())
+        camino = QPainterPath()
+        camino.addRoundedRect(rect, rect.height() / 2, rect.height() / 2)
+        painter.setClipPath(camino)
+        painter.setBrush(QBrush(self._p.q("line")))
+        painter.drawRect(rect)
+        painter.setBrush(QBrush(self._p.q("accent")))
+        painter.drawRect(QRectF(0, 0, rect.width() * self._fraccion, rect.height()))
+        painter.end()
+
+
+class LevelList(QWidget):
+    """Varias medidas de «tanto de tanto», una por renglón.
+
+    Cada una con su nombre a la izquierda, su barra, y a la derecha la cifra
+    y el porcentaje: se sabe qué es cada barra sin buscar una leyenda. Los
+    renglones se crean una vez y se reescriben, como en `InfoGrid`; el que no
+    tiene dato se esconde entero.
+    """
+
+    def __init__(self, palette: Palette, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self._p = palette
+        self._grid = QGridLayout(self)
+        self._grid.setContentsMargins(0, 0, 0, 0)
+        self._grid.setHorizontalSpacing(theme.METRICS.grid_hspace)
+        self._grid.setVerticalSpacing(theme.METRICS.grid_vspace + 1)
+        self._grid.setColumnStretch(1, 1)
+        self._rows: dict[str, tuple] = {}
+
+    def add(self, name: str) -> None:
+        fila = len(self._rows)
+        nombre = QLabel(name)
+        nombre.setObjectName("FieldName")
+        barra = LevelBar(self._p)
+        cifra = QLabel("")
+        cifra.setObjectName("FieldValue")
+        cifra.setFont(mono_font())
+        porcentaje = QLabel("")
+        porcentaje.setObjectName("FieldValue")
+        porcentaje.setFont(mono_font(bold=True))
+        for etiqueta in (cifra, porcentaje):
+            etiqueta.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        # El hueco del «100 %» reservado: sin él la columna bailaba al pasar
+        # de una cifra a dos.
+        porcentaje.setMinimumWidth(porcentaje.fontMetrics().horizontalAdvance("100 %"))
+        for columna, widget in enumerate((nombre, barra, cifra, porcentaje)):
+            self._grid.addWidget(widget, fila, columna)
+        self._rows[name] = (nombre, barra, cifra, porcentaje)
+
+    def set(self, name: str, fraction: Optional[float], text: str = "",
+            tooltip: str = "") -> None:
+        """Pone un renglón, o lo esconde si `fraction` es None."""
+        fila = self._rows.get(name)
+        if fila is None:
+            return
+        nombre, barra, cifra, porcentaje = fila
+        for widget in fila:
+            widget.setVisible(fraction is not None)
+        if fraction is None:
+            return
+        barra.set_fraction(fraction)
+        if cifra.text() != text:
+            cifra.setText(text)
+        pct = f"{fraction * 100:.0f} %"
+        if porcentaje.text() != pct:
+            porcentaje.setText(pct)
+        if nombre.toolTip() != tooltip:
+            nombre.setToolTip(tooltip)
+
+    def visible_rows(self) -> list[str]:
+        return [name for name, fila in self._rows.items() if not fila[0].isHidden()]
+
+    def text_of(self, name: str) -> str:
+        """Lo que se lee en un renglón: «2.6 GB de 15.9 GB · 16 %»."""
+        _nombre, _barra, cifra, porcentaje = self._rows[name]
+        return " · ".join(t for t in (cifra.text(), porcentaje.text()) if t)
 
 
 def memory_segments(memory) -> list[tuple[str, float, str]]:
