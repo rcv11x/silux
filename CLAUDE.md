@@ -298,6 +298,10 @@ código (F-…), que es por el que se buscan allí.
 - [docs/hardware-validado.md](docs/hardware-validado.md): qué se ha probado
   contra qué pieza.
 - [docs/pendientes.md](docs/pendientes.md): lo pendiente, con su detalle.
+- [docs/comprobar.md](docs/comprobar.md): el comando equivalente a cada dato,
+  para verificarlo a mano.
+- `docs/propuesta-*.md`: lo propuesto y sin decidir (permisos, interfaz,
+  precisión, benchmark). No son el estado del programa.
 - [docs/en-curso.md](docs/en-curso.md): si existe, dónde se quedó la última
   sesión y qué sigue.
 - [docs/historial/](docs/historial/): diarios de sesiones antiguas.
