@@ -109,11 +109,11 @@ class TestSinSpd(unittest.TestCase):
                 visibles = [v.full_text() for v in rejilla._values.values() if v.isVisible()]
                 self.assertNotIn(render.DASH, visibles)
             self.assertTrue(pagina.spd_missing.isVisible())
-            pie = pagina.spd_missing.text()
-            for clave in ("memory.field.chips", "memory.field.profiles", "memory.field.made"):
-                self.assertIn(_(clave), pie)
-            self.assertNotIn(_("memory.field.vendor"), pie)
-            self.assertIn("SPD", pie)
+            # Una frase, no una lista de nombres de campo.
+            self.assertEqual(
+                pagina.spd_missing.text(),
+                "Los chips, los perfiles rápidos y la fecha de fabricación salen del "
+                "chip SPD de cada módulo, y esta placa no deja leerlo.")
 
     def test_si_la_tabla_tampoco_dice_el_fabricante_tambien_se_esconde(self):
         import dataclasses
@@ -126,7 +126,8 @@ class TestSinSpd(unittest.TestCase):
         with pantalla.Ventana(f) as ventana:
             pagina = self._pagina(f, ventana)
             self.assertFalse(pagina._slot_grids[0]._values[_("memory.field.vendor")].isVisible())
-            self.assertIn(_("memory.field.vendor"), pagina.spd_missing.text())
+            self.assertTrue(pagina.spd_missing.text().startswith(
+                "El fabricante, los chips, los perfiles rápidos y la fecha de fabricación salen"))
 
     def test_con_spd_no_se_esconde_nada_ni_sale_el_pie(self):
         # En el i5-10400 el SPD se lee sin permisos: sus fichas salen de él.

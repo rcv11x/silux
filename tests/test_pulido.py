@@ -224,5 +224,20 @@ class TestElInformeDejaDiagnosticarElNombre(unittest.TestCase):
         self.assertIn("DMI del sistema:", texto)
 
 
+class TestEnumerar(unittest.TestCase):
+    """Las notas nombran lo que falta como se dice, no como una lista."""
+
+    def test_con_y_y_con_ni(self):
+        from silux import render
+
+        self.assertEqual(render.enumeration(["el fabricante", "los chips", "la fecha"]),
+                         "el fabricante, los chips y la fecha")
+        self.assertEqual(render.enumeration(["su revisión", "el fabricante del chasis"],
+                                            "list.nor"),
+                         "su revisión ni el fabricante del chasis")
+        self.assertEqual(render.enumeration(["su revisión"]), "su revisión")
+        self.assertEqual(render.enumeration([]), "")
+
+
 if __name__ == "__main__":
     unittest.main()

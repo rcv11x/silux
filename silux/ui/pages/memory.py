@@ -54,6 +54,14 @@ MODULE_FIELDS = ("memory.field.vendor", "memory.field.chips", "memory.field.part
                  "memory.field.rated", "memory.field.running", "memory.field.ranks", "memory.field.voltage",
                  "memory.field.form", "memory.field.profiles", "memory.field.made", "memory.field.bank")
 
+# Cómo se nombra, en la frase del pie, cada campo que solo trae el SPD.
+SOLO_DEL_SPD = {
+    "memory.field.vendor": "memory.na.vendor",
+    "memory.field.chips": "memory.na.chips",
+    "memory.field.profiles": "memory.na.profiles",
+    "memory.field.made": "memory.na.made",
+}
+
 TIMING_HEADERS = ("memory.timing.profile", "memory.timing.speed", "memory.timing.cl", "memory.timing.trcd", "memory.timing.trp", "memory.timing.tras", "memory.timing.trc", "memory.field.voltage")
 
 
@@ -747,8 +755,10 @@ class MemoryPage(QScrollArea):
             if libres else "")
         self.slots_free.setVisible(bool(libres))
         # Lo que no sale en las fichas y por qué, en el orden de la ficha.
-        self.spd_missing.setText(_("memory.na.nospd").format(campos=", ".join(
-            _(clave) for clave in MODULE_FIELDS if clave in sin_spd)) if sin_spd else "")
+        lista = render.enumeration(
+            [_(SOLO_DEL_SPD[clave]) for clave in MODULE_FIELDS if clave in sin_spd])
+        self.spd_missing.setText(
+            _("memory.na.nospd").format(campos=lista[:1].upper() + lista[1:]) if sin_spd else "")
         self.spd_missing.setVisible(bool(sin_spd))
 
     @staticmethod

@@ -45,6 +45,16 @@ NEED_TITLES = {
 }
 
 
+# Cómo se nombra, en la frase del pie, cada campo que el firmware calla.
+NO_DICE = {
+    "memory.field.vendor": "board.na.vendor",
+    "storage.col.model": "board.na.model",
+    "board.field.revision": "board.na.revision",
+    "board.field.chassistype": "board.na.chassistype",
+    "board.field.chassis": "board.na.chassis",
+}
+
+
 class BoardPage(QScrollArea):
     def __init__(self, palette: Palette, prefs: Preferences, parent=None):
         super().__init__(parent)
@@ -141,8 +151,9 @@ class BoardPage(QScrollArea):
             self.board.set(_(clave), valor or d)
             self.board.set_visible(_(clave), bool(valor))
             if not valor:
-                sin_rellenar.append(_(clave).lower())
-        pie = [_("board.unfilled").format(campos=", ".join(sin_rellenar))] if sin_rellenar else []
+                sin_rellenar.append(_(NO_DICE[clave]))
+        pie = ([_("board.unfilled").format(campos=render.enumeration(sin_rellenar, "list.nor"))]
+               if sin_rellenar else [])
 
         f = self.firmware.set
         f(_("memory.field.type"), board.firmware or d)

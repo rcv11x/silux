@@ -716,6 +716,20 @@ def _piezas_del_zocalo(locator: str) -> dict:
     return piezas
 
 
+def enumeration(piezas, ultima: str = "list.and") -> str:
+    """«el fabricante, los chips y la fecha»: una lista como se dice.
+
+    Para las notas que nombran lo que falta. Una lista de nombres de campo
+    separados por comas («Sin Chips, Perfiles rápidos, Fabricado») se lee
+    como un formulario; una frase no. `ultima` es la clave de la conjunción:
+    «y» por omisión, «ni» para lo que se niega.
+    """
+    piezas = [p for p in piezas if p]
+    if len(piezas) <= 1:
+        return "".join(piezas)
+    return f"{', '.join(piezas[:-1])} {_(ultima)} {piezas[-1]}"
+
+
 def slot_names(zocalos: list[tuple[Optional[str], Optional[str]]]) -> list[str]:
     """El nombre de cada zócalo, por orden: único, y que se entienda.
 

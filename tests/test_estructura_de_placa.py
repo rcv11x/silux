@@ -49,6 +49,10 @@ class TestLaPaginaDeLaPlaca(unittest.TestCase):
             pagina = self._pagina(ventana)
             self.assertFalse(pagina.board._values[_("board.field.revision")].isVisible())
             self.assertIn(_("board.field.revision").lower(), pagina.board_pie.text())
+            # Una frase, no «El firmware no rellena: revisión, fabricante del chasis».
+            self.assertTrue(pagina.board_pie.text().startswith(
+                "El firmware de esta placa no dice su revisión ni el fabricante del chasis."),
+                pagina.board_pie.text())
             self.assertTrue(pagina.board._values[_("storage.col.model")].isVisible())
             # Ni un guion en la tarjeta de la placa.
             self.assertFalse([e for e in pagina.board._values.values()
