@@ -231,8 +231,12 @@ class TestLosAvisosDeLasPaginas(unittest.TestCase):
         # tercera forma de quitar el aviso. Ahora está en «Qué hace esto».
         from PySide6.QtWidgets import QPushButton
         from silux.i18n import _
+        from silux.privileged.client import PrivilegedClient
 
-        ventana = self._ventana()
+        # Sin un ayudante atrasado en el sistema, que añade su botón: si
+        # quien ejecuta la suite tiene uno, este test no habla de eso.
+        with mock.patch.object(PrivilegedClient, "necesita_reinstalar", return_value=False):
+            ventana = self._ventana()
         for nombre, pagina in (("Memoria", ventana.memory_page),
                                ("Almacenamiento", ventana.storage_page)):
             ventana.select_section(nombre)
@@ -243,6 +247,43 @@ class TestLosAvisosDeLasPaginas(unittest.TestCase):
                 self.assertEqual(visibles, [_("perm.read.button"), _("perm.notice.explain"),
                                             _("perm.notice.later"), _("perm.notice.never")])
                 self.assertFalse([t for t in visibles if "pedirla" in t])
+
+    def test_con_un_ayudante_atrasado_su_boton_va_en_otro_renglon_y_cabe(self):
+        """En el 5800X3D, con el ayudante instalado de una versión anterior,
+        «Actualizar el ayudante del sistema» iba en la fila de los otros
+        cuatro botones: en compacto a 900 px la tarjeta pedía más ancho del
+        que hay y Memoria y Almacenamiento salían cortadas por la derecha."""
+        from PySide6.QtCore import QPoint
+        from silux.privileged.client import PrivilegedClient
+        from silux.ui import theme
+
+        from silux.settings import Preferences
+
+        normales = Preferences().normalized()
+        self.addCleanup(theme.apply, self.app, normales.theme, normales.density,
+                        normales.font_scale, normales.accent)
+        # La densidad se aplica antes de montar la ventana, como al arrancar.
+        theme.apply(self.app, normales.theme, "compact", normales.font_scale, normales.accent)
+        with mock.patch.object(PrivilegedClient, "necesita_reinstalar", return_value=True):
+            ventana = self._ventana(density="compact", window_width=900, window_height=680)
+            ventana.resize(900, 680)
+            for nombre, pagina in (("Memoria", ventana.memory_page),
+                                   ("Almacenamiento", ventana.storage_page)):
+                ventana.select_section(nombre)
+                for _vez in range(5):
+                    self.app.processEvents()
+                with self.subTest(pagina=nombre):
+                    boton = pagina.permanent_button
+                    self.assertTrue(boton.isVisible())
+                    def y(w):
+                        return w.mapTo(ventana, QPoint(0, 0)).y()
+                    self.assertGreater(y(boton), y(pagina.elevation_button))
+                    for b in (boton, pagina.dismiss_button):
+                        derecha = b.mapTo(ventana, QPoint(b.width(), 0)).x()
+                        self.assertLessEqual(derecha, ventana.width(), b.text())
+                    tarjeta = pagina.snooze_button.parentWidget()
+                    self.assertLessEqual(
+                        tarjeta.mapTo(ventana, QPoint(tarjeta.width(), 0)).x(), ventana.width())
 
     def test_que_hace_esto_abre_el_dialogo_desde_la_pagina(self):
         ventana = self._ventana()

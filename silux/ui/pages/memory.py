@@ -253,7 +253,6 @@ class MemoryPage(QScrollArea):
         row.setContentsMargins(0, 0, 0, 0)
         row.addWidget(self.elevation_button)
         row.addWidget(self.explain_button)
-        row.addWidget(self.permanent_button)
         row.addStretch(1)
         row.addWidget(self.snooze_button)
         row.addWidget(self.dismiss_button)
@@ -261,6 +260,10 @@ class MemoryPage(QScrollArea):
         card.body.addWidget(self.elevation_text)
         card.body.addWidget(self.elevation_hint)
         card.body.addLayout(row)
+        # El de sustituir un ayudante atrasado va en su renglón. Sale pocas
+        # veces, y en la fila de los otros cuatro no cabe: en compacto a
+        # 900 px la tarjeta se salía por la derecha y arrastraba la página.
+        card.body.addWidget(self.permanent_button, 0, Qt.AlignmentFlag.AlignLeft)
         return card
 
     def _build_traffic(self) -> QWidget:

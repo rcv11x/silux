@@ -193,7 +193,6 @@ class StoragePage(QScrollArea):
         fila = QHBoxLayout()
         fila.addWidget(self.elevation_button)
         fila.addWidget(self.explain_button)
-        fila.addWidget(self.permanent_button)
         fila.addStretch(1)
         fila.addWidget(self.snooze_button)
         fila.addWidget(self.dismiss_button)
@@ -201,6 +200,10 @@ class StoragePage(QScrollArea):
         card.body.addWidget(self.elevation_text)
         card.body.addWidget(detalle)
         card.body.addLayout(fila)
+        # El de sustituir un ayudante atrasado va en su renglón. Sale pocas
+        # veces, y en la fila de los otros cuatro no cabe: en compacto a
+        # 900 px la tarjeta se salía por la derecha y arrastraba la página.
+        card.body.addWidget(self.permanent_button, 0, Qt.AlignmentFlag.AlignLeft)
         self.elevation_card = card
         return card
 
