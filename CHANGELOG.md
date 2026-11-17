@@ -158,6 +158,17 @@ que hace falta.
 - Nuevo: lo que tiene arreglo (un permiso, un módulo por cargar) y sus
   candados van en azul; el ámbar queda para lo seleccionado y lo que se
   pulsa.
+- Nuevo: aspecto renovado. Tarjetas más limpias, títulos discretos, cifras en
+  la misma letra que el resto y una barra lateral con un icono por sección.
+- Nuevo: logo propio, una «S» dibujada como una pista de circuito sobre una
+  ficha ámbar. Es el icono de la ventana, del menú y del AppImage, y
+  sustituye al emoji de la barra lateral.
+- Nuevo: en Gráficos, el bloque «Ahora mismo» junta en tres barras la
+  memoria de video ocupada, el consumo y el uso del bus, cada una con su
+  cifra.
+- Arreglado: las tablas se veían como un bloque negro dentro de su tarjeta.
+  En la de códecs de video, lo que la tarjeta acelera lleva «✓» y lo que no,
+  «✗», y se distinguen sin depender del color.
 - Arreglado: las filas que no existen en tu equipo ya no salen con guion: el
   enlace PCIe de un disco SATA, la versión de una distribución que no la
   tiene, la dirección de una tarjeta de red sin cable, la tarjeta «Equipo»

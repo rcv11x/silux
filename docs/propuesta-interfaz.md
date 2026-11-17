@@ -46,6 +46,9 @@ Hecho en la rama, un commit por cambio y con su test:
 | `8689d1f` | refactor(ui/network): el titular es la conexión, y una interfaz sin enlace no enseña guiones |
 | `180c3fd` | refactor(ui/storage): en la ficha de un disco, la salud arriba y lo del kernel plegado |
 | `c6405b9` | refactor(sensores): lo que se mira primero, cada chip junto y las ramas largas plegadas |
+| `03ef40b` | feat(ui/graphics): el bloque «Ahora mismo», y la tabla de códecs con su sí y su no |
+| `927cb8b` | feat(ui): el estilo «instrumento» y el logo nuevo |
+| `c96ffb9` | feat(ui): el logo, también en la imagen para compartir y en el README |
 
 Cada página, en una línea:
 
@@ -84,22 +87,40 @@ Lo que **no** se hizo de lo que este documento proponía, y por qué:
   van juntos y con su nombre entre paréntesis cuando se repite la etiqueta.
 - En Placa base no se tocaron «Firmware» ni «Chipset».
 
-Pendiente de decidir:
+Lo último decidido, ya en la rama (los tres commits más recientes de la
+tabla):
 
-1. **La variante del logo**, entre las cinco de
-   `~/Imágenes/silux-test/interfaz/logo/` (`comparativa.png`). La quinta,
-   `5-chaflan-ambar`, es la forma de la 1 sobre la ficha ámbar de la 4, y
-   su hoja la enseña también en una barra de tareas oscura y en una clara.
-2. **Gráficos, con o sin bloque «Ahora mismo»**: las tres barras (memoria de
-   video, consumo, bus) juntas bajo las fichas, cada una con su nombre y su
-   cifra. Las dos versiones, en `interfaz/graficos-alternativa/`. Es una
-   maqueta: no está en la rama.
+1. **Logo: `5-chaflan-ambar`.** Es el icono del paquete
+   (`silux/ui/assets/silux.svg`), y con él el de la ventana, la entrada de
+   menú y el AppImage; la marca suelta va en la barra lateral y en la imagen
+   para compartir, y el README lo enseña junto al título. El emoji ya no
+   existe. Las otras cuatro variantes siguen en
+   `~/Imágenes/silux-test/interfaz/logo/` por si hay que volver.
+2. **Gráficos, con el bloque «Ahora mismo»** debajo de las cuatro fichas:
+   memoria de video, consumo y bus, cada barra con su nombre, su cifra y su
+   porcentaje. Las tarjetas de abajo pierden su barra y las filas que decían
+   lo mismo.
+3. **El estilo de la dirección A, aplicado**: tarjetas con filo y no con
+   borde, títulos en minúscula y tenues, cifras en la letra de la interfaz
+   con números de ancho fijo, insignias sin borde, botón principal relleno,
+   y la barra lateral con un icono por sección y la versión al pie.
+4. **La tabla de códecs**, y con ella todas las tablas: sin el bloque negro
+   de fondo, con raya bajo la cabecera, «✓» en verde para lo que la tarjeta
+   acelera y «✗» en rojo suave para lo que no, cada uno con su texto al
+   pasar el ratón.
 
-Pendiente de hacer, cuando se elija el logo: el estilo de la dirección A
-(bordes, radios, títulos de tarjeta, la letra de las cifras, la barra
-lateral con iconos y logo). Hoy la rama tiene la estructura y los colores,
-no el estilo. Las maquetas de `interfaz/maquetas/` son de antes de las
-cinco últimas páginas.
+Lo que queda de este documento sin hacer:
+
+- **La coma decimal** y los decimales de las temperaturas en las cifras
+  grandes: son de `render.py` y de sus tests, no del estilo.
+- **Los estados vacíos de una ficha** (una raya y un hueco donde no hay
+  dato): piden tocar `StatTile`, que tiene dos fallos abiertos (F-M2).
+- **Los valores que son identificadores** (`0000:0c:00.0`, `0xa201213`) van
+  en la misma letra que el resto: la propuesta los quería en monoespaciada,
+  y separarlos pide que cada página diga cuál es cuál.
+- **El contraste** de la paleta nueva no está medido contra WCAG.
+- **El tema claro** lleva la misma paleta de las maquetas, pero se ha
+  mirado menos que el oscuro.
 
 Capturas de antes y después de las nueve páginas, en los dos equipos, en
 `~/Imágenes/silux-test/interfaz/estructura/`. Las del i5-10400 son de la

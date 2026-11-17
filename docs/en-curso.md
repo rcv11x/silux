@@ -135,10 +135,21 @@ cada una. **No están revisadas línea a línea.**
 `master` y lleva el rediseño: la estructura de las nueve páginas, las barras
 en tonos del acento, lo accionable en azul con el ámbar como acento por
 omisión, «Qué hace esto» en lugar de «No volver a pedirla», y `--samples`
-para capturar con las gráficas llenas. La lista de commits, lo que no se
-hizo y lo que falta por decidir (variante del logo; Gráficos con o sin
-«Ahora mismo») está arriba del todo en `docs/propuesta-interfaz.md`. **El
-estilo de la dirección A no está aplicado**: espera al logo. Sin empujar.
+para capturar con las gráficas llenas. Y, tras la última revisión del autor:
+el bloque «Ahora mismo» de Gráficos, la tabla de códecs con «✓» y «✗» y sin
+fondo negro, **el estilo de la dirección A** (`value_font`, `ui/icons.py`,
+la paleta de las maquetas) **y el logo `5-chaflan-ambar`** en el paquete, la
+barra lateral, la imagen para compartir y el README. La lista de commits y
+lo que queda sin hacer está arriba del todo en `docs/propuesta-interfaz.md`.
+Sin empujar: el autor empuja a mano.
+
+Capturas con el estilo en `~/Imágenes/silux-test/interfaz/estilo/` (oficina):
+las nueve páginas en los dos equipos, y `claro/` con cuatro en tema claro.
+
+**El AppImage con el logo nuevo no se ha construido aquí.** Lo construye el
+CI al lanzarlo sobre `interfaz`; es donde se ve si los iconos de la barra
+lateral salen dentro del paquete (se leen con el complemento `qsvg`, que ya
+va dentro, y no con `QtSvg`, que no va).
 
 Un test de la suite lee esta máquina y falla a veces cuando la suite corre
 en paralelo con carga (`test_avisos.py::test_no_salta_ningun_aviso_en_reposo`):
