@@ -381,7 +381,7 @@ class GpuSection(QWidget):
         # integrada no lo tiene: el subtítulo salía «Apple Inc. · —». Un guion
         # entre dos datos se lee como si faltara algo en medio.
         self.subtitle.setText(" · ".join(
-            p for p in (gpu.subsystem_name, gpu.codename,
+            p for p in (render.maker(gpu.subsystem_name), gpu.codename,
                         render.pcie_link(gpu.link))
             if p and p != render.DASH))
         self._apply_badges(gpu)
@@ -389,7 +389,7 @@ class GpuSection(QWidget):
 
         c = self.card.set
         c(_("gpu.field.vendor"), gpu.vendor or d)
-        c(_("gpu.field.subsystem"), gpu.subsystem_name or d)
+        c(_("gpu.field.subsystem"), render.maker(gpu.subsystem_name) or d)
         c(_("gpu.field.codename"), gpu.codename or d)
         c(_("gpu.field.driver"), gpu.driver or d)
         c(_("gpu.field.driverver"), gpu.driver_version or d)

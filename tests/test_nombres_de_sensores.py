@@ -13,6 +13,7 @@ import tempfile
 import unittest
 from unittest import mock
 
+from silux import render
 from silux.model import SensorKind, thread_name
 from tests import qt
 from tests.test_equipos import EQUIPOS, foto, volcados
@@ -72,7 +73,9 @@ class TestLosCanalesSinNombre(unittest.TestCase):
             self.assertTrue(pie.isVisible())
             chip = next(s.chip for s in self.foto.sensors if s.unnamed
                         and s.kind is SensorKind.VOLTAGE)
-            self.assertIn(chip, pie.text())
+            # Por su nombre a secas, sin la dirección que le pega el kernel.
+            self.assertIn(render.chip_name(chip), pie.text())
+            self.assertNotIn(chip, pie.text())
 
     @unittest.skipIf(QApplication is None, "sin PySide6")
     def test_en_un_equipo_sin_canales_sin_nombre_no_dice_nada(self):

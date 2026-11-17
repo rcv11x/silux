@@ -420,6 +420,49 @@ def fan(rpm_value: Optional[int], percent_value: Optional[float]) -> str:
     return "   ".join(partes)
 
 
+# Lo que una razón social lleva detrás del nombre, y que nadie dice.
+_FORMA_JURIDICA = re.compile(
+    r"[,\s]+(?:Co\.?,?\s*Ltd\.?|Inc\.?|Corp(?:oration)?\.?|Ltd\.?|Limited|LLC|GmbH"
+    r"|S\.?A\.?|AG|B\.?V\.?)$", re.IGNORECASE)
+_MARCA_ENTRE_CORCHETES = re.compile(r"\[([^\]]+)\]\s*$")
+
+
+def maker(name: Optional[str]) -> Optional[str]:
+    """La marca de un fabricante, no su razón social.
+
+    «Micro-Star International Co., Ltd. [MSI]» es una MSI y «Tul Corporation
+    / PowerColor» una PowerColor. El firmware y `pci.ids` dan el nombre de la
+    empresa; aquí se deja el que lleva la caja. Primero los que se conocen
+    (`model.short_vendor`), después lo que el propio `pci.ids` marca como
+    nombre comercial —entre corchetes, o tras la barra— y, si no, se le quita
+    la forma jurídica del final.
+    """
+    if not name:
+        return None
+    conocido = short_vendor(name)
+    if conocido != name:
+        return conocido
+    if (corchetes := _MARCA_ENTRE_CORCHETES.search(name)):
+        return corchetes.group(1).split("/")[0]
+    if " / " in name:
+        return name.rsplit(" / ", 1)[1].strip()
+    limpio = name.strip()
+    while (corto := _FORMA_JURIDICA.sub("", limpio)) != limpio and corto:
+        limpio = corto
+    return limpio
+
+
+# El kernel le pega al nombre de algunos chips dónde los encontró: la
+# dirección del Super I/O («it8688_40050607») o el bus MDIO de la tarjeta de
+# red («r8169_0_600:00»). Sirve para distinguir dos iguales, no para leerlo.
+_DIRECCION_DEL_CHIP = re.compile(r"(?:_[0-9a-f]{6,}|_\d+_[0-9a-f]+:\d+)$")
+
+
+def chip_name(chip: str) -> str:
+    """El nombre de un chip de sensores sin la dirección que le pega el kernel."""
+    return _DIRECCION_DEL_CHIP.sub("", chip)
+
+
 # Cómo se escribe cada bus. El kernel los da en minúsculas, y pasarlos todos
 # a mayúsculas deja «NVME» al lado de un «NVMe» bien escrito.
 _BUSES = {"nvme": "NVMe"}

@@ -257,7 +257,9 @@ class MonitorPage(QScrollArea):
         # Los canales que el driver no nombra: «Tensión 0, 1, 2…». No se les
         # pone nombre aquí porque no se sabe: en un Super I/O, qué llega a cada
         # entrada lo decidió quien diseñó la placa. Se dice de qué chip son.
-        sin_nombre = sorted({s.chip for s in snapshot.sensors
+        # Los chips, por su nombre a secas: la dirección que les pega el
+        # kernel queda para el tooltip de cada fila.
+        sin_nombre = sorted({render.chip_name(s.chip) for s in snapshot.sensors
                              if s.unnamed and s.kind is SensorKind.VOLTAGE})
         if sin_nombre:
             faltan.append(_("sensors.unnamed.voltages").format(chips=", ".join(sin_nombre)))
@@ -268,13 +270,14 @@ class MonitorPage(QScrollArea):
         numeradas: dict[str, int] = {}
         for s in snapshot.sensors:
             if s.unnamed and s.kind is SensorKind.TEMPERATURE and not s.placeholder:
-                numeradas[s.chip] = numeradas.get(s.chip, 0) + 1
+                chip = render.chip_name(s.chip)
+                numeradas[chip] = numeradas.get(chip, 0) + 1
         if varias := sorted(chip for chip, n in numeradas.items() if n > 1):
             faltan.append(_("sensors.unnamed.temps").format(chips=", ".join(varias)))
         relleno: dict[str, set[float]] = {}
         for s in snapshot.sensors:
             if s.placeholder:
-                relleno.setdefault(s.chip, set()).add(s.value)
+                relleno.setdefault(render.chip_name(s.chip), set()).add(s.value)
         for chip, valores in sorted(relleno.items()):
             faltan.append(_("sensors.placeholder").format(
                 chip=chip, valor=", ".join(

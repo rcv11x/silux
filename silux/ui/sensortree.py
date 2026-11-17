@@ -34,6 +34,7 @@ from PySide6.QtWidgets import (
     QTreeWidgetItem,
     QWidget,
 )
+from .. import render
 from ..i18n import _
 from . import theme
 from .theme import Palette, mono_font, ui_font
@@ -615,7 +616,7 @@ class SensorTree(QTreeWidget):
                              if sum(1 for y in sensors if y.label == etiqueta) > 1}
 
                 for sensor in sensors:
-                    nombre = (f"{sensor.label} ({sensor.chip})"
+                    nombre = (f"{sensor.label} ({render.chip_name(sensor.chip)})"
                               if sensor.label in repetidas else sensor.label)
                     row = QTreeWidgetItem(
                         [nombre] + ["—"] * self.VALUE_COLUMNS)

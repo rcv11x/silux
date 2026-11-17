@@ -460,8 +460,10 @@ class HomePage(QScrollArea):
 
 def _tipo_de_memoria(snapshot: Snapshot) -> Optional[str]:
     """«DDR4-3200», si se sabe de qué son los módulos."""
+    # Solo de los zócalos ocupados: la tabla trae también los vacíos, y de
+    # uno vacío no se saca cómo es la memoria que hay puesta.
     for modulo in snapshot.modules:
-        if modulo.type:
+        if modulo.populated and modulo.type:
             return (f"{modulo.type}-{modulo.speed_mts}" if modulo.speed_mts
                     else modulo.type)
     return None

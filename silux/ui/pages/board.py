@@ -122,16 +122,16 @@ class BoardPage(QScrollArea):
 
         d = render.DASH
         b = self.board.set
-        b(_("memory.field.vendor"), board.vendor or d)
+        b(_("memory.field.vendor"), render.maker(board.vendor) or d)
         b(_("storage.col.model"), board.name or d)
         b(_("board.field.revision"), board.version or d)
         b(_("board.field.chassistype"),
           _(board.chassis) if board.chassis else d)
-        b(_("board.field.chassis"), board.chassis_vendor or d)
+        b(_("board.field.chassis"), render.maker(board.chassis_vendor) or d)
 
         f = self.firmware.set
         f(_("memory.field.type"), board.firmware or d)
-        f(_("memory.field.vendor"), board.bios_vendor or d)
+        f(_("memory.field.vendor"), render.maker(board.bios_vendor) or d)
         f(_("sys.field.version"), board.bios_version or d)
         f(_("board.field.date"), render.bios_date(board.bios_date) or d)
         f(_("board.field.smbios"), board.bios_release or d,
@@ -147,7 +147,7 @@ class BoardPage(QScrollArea):
           tooltip=_("board.tip.memctl"))
 
         s = self.system.set
-        s(_("memory.field.vendor"), board.system_vendor or d)
+        s(_("memory.field.vendor"), render.maker(board.system_vendor) or d)
         s(_("storage.col.model"), board.system_name or d)
         s(_("sys.field.version"), board.system_version or d)
         s(_("cpu.field.family"), board.system_family or d)
