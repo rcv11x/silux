@@ -402,7 +402,7 @@ class StoragePage(QScrollArea):
         f(_("gpu.field.vendor"), disco.vendor or d)
         f(_("gpu.vram.type"), disco.kind or d,
           tooltip=_("storage.tip.kind"))
-        f(_("storage.field.bus"), (disco.transport or d).upper() if disco.transport else d)
+        f(_("storage.field.bus"), render.disk_bus(disco.transport))
         f(_("storage.col.size"), render.size(disco.size_bytes))
         f(_("storage.field.firmware"), disco.firmware or d)
         f(_("storage.field.logical"), f"{disco.logical_sector} B" if disco.logical_sector else d)

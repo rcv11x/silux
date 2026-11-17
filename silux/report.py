@@ -307,7 +307,10 @@ def _almacenamiento(snapshot: Snapshot) -> str:
         titulo = _titulo_del_disco(disco)
         lineas.append(f"**{titulo}**")
         lineas.append("")
-        tipo = " · ".join(p for p in (disco.kind, disco.transport) if p) or "—"
+        # El bus solo cuando añade algo: en un NVMe es lo mismo que el tipo.
+        bus = render.disk_bus(disco.transport) if disco.transport else None
+        tipo = " · ".join(p for p in (disco.kind, bus if bus != disco.kind else None)
+                          if p) or "—"
         lineas.append(f"- Tipo: {tipo} · {render.size(disco.size_bytes)}")
         if disco.firmware:
             lineas.append(f"- Firmware: {disco.firmware}")

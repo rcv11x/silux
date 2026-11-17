@@ -420,6 +420,18 @@ def fan(rpm_value: Optional[int], percent_value: Optional[float]) -> str:
     return "   ".join(partes)
 
 
+# Cómo se escribe cada bus. El kernel los da en minúsculas, y pasarlos todos
+# a mayúsculas deja «NVME» al lado de un «NVMe» bien escrito.
+_BUSES = {"nvme": "NVMe"}
+
+
+def disk_bus(transport: Optional[str]) -> str:
+    """El bus de un disco como se escribe: «NVMe», «SATA», «USB»."""
+    if not transport:
+        return DASH
+    return _BUSES.get(transport, transport.upper())
+
+
 def pcie_link(link: PcieLink, maximum: bool = False) -> str:
     """«PCIe 5.0 × 16», que es como lo nombra todo el mundo menos sysfs."""
     generation = link.max_generation if maximum else link.generation

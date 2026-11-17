@@ -490,3 +490,42 @@ class TestAvisosDeSalud(unittest.TestCase):
     def test_sin_diagnostico_no_se_inventa_nada(self):
         self.assertEqual(render.disk_warnings(self._salud()), [])
         self.assertEqual(render.disk_warnings(None), [])
+
+
+class TestElNombreDelBus(unittest.TestCase):
+    """La ficha de cada disco pasaba a mayúsculas lo que da el kernel, y
+    «nvme» salía «NVME» al lado de un «Tipo: NVMe» bien escrito."""
+
+    def test_cada_bus_como_se_escribe(self):
+        casos = {"nvme": "NVMe", "sata": "SATA", "usb": "USB", "mmc": "MMC"}
+        for crudo, escrito in casos.items():
+            with self.subTest(bus=crudo):
+                self.assertEqual(render.disk_bus(crudo), escrito)
+        self.assertEqual(render.disk_bus(None), render.DASH)
+        # Uno que no esté en la tabla sale en mayúsculas, como hasta ahora.
+        self.assertEqual(render.disk_bus("sas"), "SAS")
+
+    def test_la_ficha_del_5800x3d_dice_nvme_bien_escrito(self):
+        from silux.i18n import _
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.storage import StoragePage
+        from tests.test_equipos import EQUIPOS, foto
+
+        app = qt.app()
+        f = foto(EQUIPOS / "5800x3d")[0]
+        pagina = StoragePage(theme.palette_for(app, "dark"), Preferences().normalized())
+        self.addCleanup(pagina.deleteLater)
+        pagina.apply(f)
+        conexion = _("storage.field.bus")
+        self.assertEqual(pagina._grids["nvme0n1"]._values[conexion].full_text(), "NVMe")
+        self.assertEqual(pagina._grids["sda"]._values[conexion].full_text(), "SATA")
+
+    def test_y_el_informe_no_lo_repite_ni_lo_deja_en_crudo(self):
+        from silux import report
+        from tests.test_equipos import EQUIPOS, foto
+
+        texto = report.build(foto(EQUIPOS / "5800x3d")[0])
+        self.assertIn("- Tipo: NVMe · 931.5 GB", texto)
+        self.assertIn("- Tipo: HDD · SATA · ", texto)
+        self.assertNotIn("· nvme", texto)
