@@ -20,7 +20,7 @@ from ... import render
 from ...model import Board, Need, Snapshot
 from ...settings import Preferences
 from .. import theme
-from ..theme import Palette
+from ..theme import Palette, ui_font
 from ..widgets import (Card, ChipRow, InfoGrid, Notice, ResponsiveRow,
                        clear_layout, tone_for)
 
@@ -73,8 +73,15 @@ class BoardPage(QScrollArea):
         bottom = ResponsiveRow(min_item_width=270)
         self.chipset = self._grid_card(bottom, _("board.field.chipset"),
                                        CHIPSET_FIELDS)
+        self.board_pie = QLabel("")
+        self.board_pie.setObjectName("Muted")
+        self.board_pie.setWordWrap(True)
+        self.board_pie.setFont(ui_font(theme.METRICS.small_pt))
+        self.board_pie.hide()
+        self.board.parentWidget().body.addWidget(self.board_pie)
         self.system = self._grid_card(bottom, _("board.card.system"),
                                       SYSTEM_FIELDS)
+        self.system_card = self.system.parentWidget()
         layout.addWidget(bottom)
 
         self._notices_host = QVBoxLayout()
@@ -121,13 +128,21 @@ class BoardPage(QScrollArea):
         self._apply_badges(board)
 
         d = render.DASH
-        b = self.board.set
-        b(_("memory.field.vendor"), render.maker(board.vendor) or d)
-        b(_("storage.col.model"), board.name or d)
-        b(_("board.field.revision"), board.version or d)
-        b(_("board.field.chassistype"),
-          _(board.chassis) if board.chassis else d)
-        b(_("board.field.chassis"), render.maker(board.chassis_vendor) or d)
+        # Lo que el firmware no rellena no es un dato por leer: no está. La
+        # fila se va y el pie de la tarjeta dice cuáles, en vez de una columna
+        # de guiones (regla 5).
+        sin_rellenar = []
+        for clave, valor in (
+                ("memory.field.vendor", render.maker(board.vendor)),
+                ("storage.col.model", board.name),
+                ("board.field.revision", board.version),
+                ("board.field.chassistype", _(board.chassis) if board.chassis else None),
+                ("board.field.chassis", render.maker(board.chassis_vendor))):
+            self.board.set(_(clave), valor or d)
+            self.board.set_visible(_(clave), bool(valor))
+            if not valor:
+                sin_rellenar.append(_(clave).lower())
+        pie = [_("board.unfilled").format(campos=", ".join(sin_rellenar))] if sin_rellenar else []
 
         f = self.firmware.set
         f(_("memory.field.type"), board.firmware or d)
@@ -146,12 +161,27 @@ class BoardPage(QScrollArea):
         c(_("board.field.memctl"), board.host_bridge or d,
           tooltip=_("board.tip.memctl"))
 
-        s = self.system.set
-        s(_("memory.field.vendor"), render.maker(board.system_vendor) or d)
-        s(_("storage.col.model"), board.system_name or d)
-        s(_("sys.field.version"), board.system_version or d)
-        s(_("cpu.field.family"), board.system_family or d)
-        s("SKU", board.system_sku or d)
+        # «Equipo» es para los de marca, donde el firmware dice qué equipo es
+        # («ThinkCentre M80q»). En una placa suelta esos campos son códigos de
+        # fábrica («-CF», «MS-7D23», «1.0») que repiten la placa o no dicen
+        # nada: la tarjeta se va y se dice por qué. En crudo siguen en el
+        # informe, que es donde sirven.
+        de_marca = bool(board.system_display_name)
+        self.system_card.setVisible(de_marca)
+        if de_marca:
+            for clave, valor in (
+                    ("memory.field.vendor", render.maker(board.system_vendor)),
+                    ("storage.col.model", board.system_name),
+                    ("sys.field.version", board.system_version),
+                    ("cpu.field.family", board.system_family),
+                    ("SKU", board.system_sku)):
+                nombre = _(clave) if clave != "SKU" else clave
+                self.system.set(nombre, valor or d)
+                self.system.set_visible(nombre, bool(valor))
+        else:
+            pie.append(_("board.nosystem"))
+        self.board_pie.setText(" ".join(pie))
+        self.board_pie.setVisible(bool(pie))
 
         self._apply_notices(snapshot)
 
