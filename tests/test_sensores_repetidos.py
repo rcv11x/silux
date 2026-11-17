@@ -64,14 +64,15 @@ class TestElProveedor(unittest.TestCase):
         self.assertEqual([s for s in salida if s.mirror_of], [])
 
     def test_una_sonda_que_se_mueve_entre_las_dos_lecturas_no_lo_impide(self):
-        """En el propio volcado la del zócalo marca 41 °C por un driver y 47
-        por el otro: son la misma, leída con un instante de diferencia."""
-        wmi = _temperaturas(self.foto.sensors, "gigabyte_wmi")
-        chip = _temperaturas(self.foto.sensors, "it8688")
-        lejos = [abs(a.value - b.value) for a, b in zip(wmi, chip)
-                 if abs(a.value - b.value) > 2]
-        self.assertEqual(len(lejos), 1, lejos)
-        self.assertTrue(all(s.mirror_of for s in wmi))
+        """La del zócalo se mueve varios grados por segundo: en el primer
+        volcado de esta placa marcaba 41 °C por un driver y 47 por el otro,
+        siendo la misma, con las otras cinco clavadas."""
+        tercera = sorted(x.order for x in self.foto.sensors if x.chip == "gigabyte_wmi")[2]
+        movida = [dataclasses.replace(s, value=s.value + 6.0)
+                  if s.chip == "gigabyte_wmi" and s.order == tercera else s
+                  for s in self._sin_marcar()]
+        salida = HwmonSensors()._sin_repetir(movida)
+        self.assertEqual(sum(1 for s in salida if s.mirror_of), 6)
 
     def test_si_no_son_las_mismas_sondas_tampoco(self):
         una_menos = self._sin_marcar()

@@ -1,0 +1,10 @@
+ 0 [HDMI           ]: HDA-Intel - HDA ATI HDMI
+                      HDA ATI HDMI at 0xfcda0000 irq 140
+ 1 [Generic        ]: HDA-Intel - HD-Audio Generic
+                      HD-Audio Generic at 0xfcc00000 irq 142
+ 2 [Pro            ]: USB-Audio - 
+                      Audio USB at usb-0000:0e:00.3-3, high spee
+ 3 [USB            ]: USB-Audio - 
+                      Audio USB at usb-0000:07:00.1-5, full speed
+ 4 [SE             ]: USB-Audio - 
+                      Audio USB at usb-0000:0e:00.3-4.1.4, high speed

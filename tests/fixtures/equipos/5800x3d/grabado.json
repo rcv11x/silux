@@ -178,8 +178,8 @@
   "lo:0x891b": "255.0.0.0",
   "tailscale0:0x8915": "192.0.2.11",
   "tailscale0:0x891b": "255.255.255.255",
-  "veth1bc4303:0x8915": null,
-  "veth1bc4303:0x891b": null,
+  "veth1fc4014:0x8915": null,
+  "veth1fc4014:0x891b": null,
   "virbr0:0x8915": "192.0.2.11",
   "virbr0:0x891b": "255.255.255.0"
  },
@@ -195,6 +195,44 @@
    "1002:7550:148c:2435": [
     "Tul Corporation / PowerColor",
     "Radeon RX 9070 XT 16GB"
+   ]
+  },
+  "1002:7550|1002:ab40|1022:1487|1022:149c|1022:7901|10ec:8125|144d:a808|15b7:5030|8086:1539": {
+   "1002:7550": [
+    "Advanced Micro Devices, Inc. [AMD/ATI]",
+    "Navi 48 [Radeon RX 9070/9070 XT/9070 GRE]"
+   ],
+   "1002:ab40": [
+    "Advanced Micro Devices, Inc. [AMD/ATI]",
+    "Navi 48 HDMI/DP Audio Controller"
+   ],
+   "1022:1487": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "Starship/Matisse HD Audio Controller"
+   ],
+   "1022:149c": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "Matisse USB 3.0 Host Controller"
+   ],
+   "1022:7901": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "FCH SATA Controller [AHCI mode]"
+   ],
+   "10ec:8125": [
+    "Realtek Semiconductor Co., Ltd.",
+    "RTL8125 2.5GbE Controller"
+   ],
+   "144d:a808": [
+    "Samsung Electronics Co Ltd",
+    "NVMe SSD Controller SM981/PM981/PM983"
+   ],
+   "15b7:5030": [
+    "Sandisk Corp",
+    "WD Black SN850X NVMe SSD"
+   ],
+   "8086:1539": [
+    "Intel Corporation",
+    "I211 Gigabit Network Connection"
    ]
   },
   "1022:1480|1022:790e": {
@@ -226,7 +264,9 @@
    "XDG_CURRENT_DESKTOP": "KDE",
    "XDG_SESSION_TYPE": "wayland"
   },
+  "kvm": true,
   "machine": "x86_64",
+  "procesos": 553,
   "uname": {
    "machine": "x86_64",
    "node": "equipo",
@@ -244,20 +284,20 @@
  },
  "statvfs": {
   "/": [
-   438314319872,
-   557492801536
+   446518390784,
+   549288730624
   ],
   "/boot": [
-   431886336,
-   3955159040
+   299900928,
+   4087144448
   ],
   "/media/unidad2": [
-   1046174670848,
-   921671327744
+   1042082648064,
+   925763350528
   ],
   "/media/unidad3": [
-   367399264256,
-   3569419542528
+   479360901120,
+   3457457905664
   ]
  }
 }
