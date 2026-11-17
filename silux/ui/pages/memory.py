@@ -692,17 +692,18 @@ class MemoryPage(QScrollArea):
         # El firmware pega el controlador, el canal y el número sin espacios y
         # cada fabricante a su manera, así que la misma pestaña se veía distinta
         # en cada equipo y con cuatro zócalos salían dos «DIMM 0».
-        etiquetas = render.slot_labels([m.locator or "" for m in modules])
+        # Por posición y no por localizador, que se repite: una Gigabyte
+        # llama «DIMM 1» a dos zócalos y pone el canal en el banco.
+        nombres = render.slot_names([(m.locator, m.bank) for m in modules])
 
         libres = []
-        for module in modules:
+        for nombre, module in zip(nombres, modules):
             crudo = module.locator or ""
-            nombre = etiquetas.get(crudo) or crudo or _("memory.slot")
             if not module.populated:
                 libres.append(nombre)
                 continue
             card = Card(nombre)
-            if etiquetas.get(crudo):
+            if crudo and nombre != crudo:
                 # Lo que puso el firmware no se pierde, solo deja de ser el
                 # titular: hace falta para hablar con quien reporta un fallo.
                 card.setToolTip(crudo)
@@ -795,16 +796,17 @@ class MemoryPage(QScrollArea):
         # y «Controller0-ChannelB»— y lo que los distingue está al final, que
         # es justo lo que se recorta cuando no cabe: las dos filas salían como
         # «Controller0-C…» y no había forma de saber cuál era cuál.
-        nombres = [m.locator or (m.spd.address if m.spd else "") for m in modules]
+        crudos = [m.locator or (m.spd.address if m.spd else "") for m in modules]
         # El mismo título que las tarjetas de arriba; si no se reconoce el
         # formato, el recorte del prefijo común, que al menos quita el ruido.
-        corto = render.slot_labels(nombres) or _sin_el_prefijo_comun(nombres)
-        for module in modules:
+        nombres = render.slot_names([(crudo, m.bank) for crudo, m in zip(crudos, modules)])
+        if nombres == crudos:
+            sin_prefijo = _sin_el_prefijo_comun(crudos)
+            nombres = [sin_prefijo.get(crudo, crudo) for crudo in crudos]
+        for etiqueta, module in zip(nombres, modules):
             spd = module.spd
             if spd is None:
                 continue
-            etiqueta = corto.get(module.locator or spd.address) or \
-                module.locator or spd.address
             for timing in (spd.jedec, *spd.profiles):
                 if timing is None:
                     continue

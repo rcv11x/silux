@@ -231,8 +231,7 @@ class TestElTituloDeCadaZocalo(unittest.TestCase):
     def _titulos(self, *locators):
         from silux import render
 
-        salida = render.slot_labels(list(locators))
-        return [salida.get(l, l) for l in locators]
+        return render.slot_names([(l, None) for l in locators])
 
     def test_el_canal_sale_siempre_que_se_conozca(self):
         """Es lo que decide el rendimiento y a lo que se viene aquí."""
@@ -276,7 +275,8 @@ class TestElTituloDeCadaZocalo(unittest.TestCase):
         """«DIMM 0» ya es el título que saldría, así que no se reescribe."""
         from silux import render
 
-        self.assertEqual(render.slot_labels(["DIMM 0", "DIMM 1"]), {})
+        self.assertEqual(render.slot_names([("DIMM 0", None), ("DIMM 1", None)]),
+                         ["DIMM 0", "DIMM 1"])
 
     def test_nunca_deja_dos_zocalos_con_el_mismo_titulo(self):
         """Es el fallo que venía a arreglar: dos tarjetas iguales no se
@@ -288,8 +288,7 @@ class TestElTituloDeCadaZocalo(unittest.TestCase):
                          ["ChannelA-DIMM0", "ChannelB-DIMM0"],
                          ["Controller0-ChannelA-DIMM1", "Controller1-ChannelA-DIMM0"]):
             with self.subTest(locators=locators):
-                salida = render.slot_labels(locators)
-                titulos = [salida.get(l, l) for l in locators]
+                titulos = render.slot_names([(l, None) for l in locators])
                 self.assertEqual(len(set(titulos)), len(titulos), titulos)
 
 
@@ -325,7 +324,7 @@ class TestElTituloLlegaALaTarjeta(unittest.TestCase):
     """Probar la función no es probar que se vea.
 
     La regla de la casa: un dato no está terminado hasta que hay un test que lo
-    mira en pantalla, montando la página de verdad. `slot_labels` puede estar
+    mira en pantalla, montando la página de verdad. `slot_names` puede estar
     perfecta y la tarjeta seguir titulándose con el localizador crudo si nadie
     la llama, que es como estaba antes.
     """

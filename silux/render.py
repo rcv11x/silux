@@ -716,46 +716,75 @@ def _piezas_del_zocalo(locator: str) -> dict:
     return piezas
 
 
-def slot_labels(locators: list[str]) -> dict[str, str]:
-    """Un título legible para cada zócalo, con lo mínimo que lo distingue.
+def slot_names(zocalos: list[tuple[Optional[str], Optional[str]]]) -> list[str]:
+    """El nombre de cada zócalo, por orden: único, y que se entienda.
 
-    El firmware pega tres datos sin espacios y cada uno a su manera, así que la
-    misma pestaña se ve distinta en cada equipo: «Controller0-ChannelA» aquí,
-    «DIMM_A1» allá. Y con cuatro zócalos el localizador se repite entre
-    canales, que es como salían dos «DIMM 0» y dos «DIMM 1».
+    Recibe el localizador y el banco de cada uno, como los da el firmware, y
+    devuelve un nombre por zócalo en el mismo orden. Es por posición y no por
+    localizador porque el localizador se repite: una Gigabyte X570 llama a
+    sus cuatro zócalos «DIMM 0», «DIMM 1», «DIMM 0», «DIMM 1» y pone el canal
+    en el banco («P0 CHANNEL A», «P0 CHANNEL B»). Con un diccionario por
+    localizador los dos módulos puestos se llamaban «DIMM 1» y los dos huecos
+    «DIMM 0».
 
-    La regla: **el canal sale siempre que se conozca**, porque es lo que decide
-    el rendimiento y es lo que se busca al abrir esto; el controlador y el
-    número de DIMM solo cuando hacen falta para que dos no se llamen igual.
+    Cada fabricante reparte el dato a su manera —ASUS «DIMM_A2», MSI
+    «DIMM_A1», los OEM «ChannelA-DIMM0», Lenovo «Controller0-ChannelA»—, así
+    que se junta lo que digan los dos campos. La regla: **el canal sale
+    siempre que se conozca**, porque es lo que decide el rendimiento y es lo
+    que se busca al abrir esto; el número de DIMM y el controlador solo
+    cuando sin ellos dos zócalos se llamarían igual.
 
-    Devuelve `{}` cuando no hay nada que mejorar: un solo zócalo sin datos que
-    sacar, ninguno reconocido, o todos idénticos. Quien llama deja el crudo.
+    Si alguno no se entiende se deja lo que puso el firmware, que es mejor que
+    inventar una posición; y si aun así dos coinciden, se les añade el banco
+    y, en último caso, su número de orden. Nunca salen dos iguales.
     """
-    utiles = [n for n in locators if n]
-    if not utiles:
-        return {}
-    piezas = {n: _piezas_del_zocalo(n) for n in dict.fromkeys(utiles)}
-    if not all(piezas.values()):
-        return {}                      # alguno no se entiende: no se toca nada
+    crudos = [(localizador or "").strip() for localizador, _banco in zocalos]
+    piezas = []
+    for localizador, banco in zocalos:
+        suyas = _piezas_del_zocalo(localizador or "")
+        # El banco completa lo que el localizador calla, y nunca lo corrige.
+        for campo, valor in _piezas_del_zocalo(banco or "").items():
+            if campo != "dimm":
+                suyas.setdefault(campo, valor)
+        piezas.append(suyas)
 
-    def etiqueta(nombre: str, campos: tuple) -> str:
-        p = piezas[nombre]
+    def etiqueta(suyas: dict, campos: tuple) -> str:
         partes = []
-        if "controlador" in campos and "controlador" in p:
-            partes.append(_("memory.slot.controller").format(n=p["controlador"]))
-        if "canal" in p:
-            partes.append(_("memory.slot.channel").format(c=p["canal"]))
-        if "dimm" in campos and "dimm" in p:
-            partes.append(_("memory.slot.dimm").format(n=p["dimm"]))
+        if "controlador" in campos and "controlador" in suyas:
+            partes.append(_("memory.slot.controller").format(n=suyas["controlador"]))
+        if "canal" in suyas:
+            partes.append(_("memory.slot.channel").format(c=suyas["canal"]))
+        if "dimm" in campos and "dimm" in suyas:
+            partes.append(_("memory.slot.dimm").format(n=suyas["dimm"]))
         return " · ".join(partes)
 
-    # De menos a más: se añade un campo solo si sin él dos zócalos se llamarían
-    # igual. Con el DIMM antes que el controlador, que es lo que la gente mira.
-    for campos in ((), ("dimm",), ("dimm", "controlador"), ("controlador",)):
-        salida = {n: etiqueta(n, campos) for n in piezas}
-        if all(salida.values()) and len(set(salida.values())) == len(salida):
-            return salida if salida != {n: n for n in salida} else {}
-    return {}
+    if piezas and all(piezas):
+        # De menos a más: se añade un campo solo si sin él dos zócalos se
+        # llamarían igual, y antes uno que dos.
+        for campos in ((), ("dimm",), ("controlador",), ("dimm", "controlador")):
+            nombres = [etiqueta(suyas, campos) for suyas in piezas]
+            if all(nombres) and len(set(nombres)) == len(nombres):
+                return nombres
+
+    # No se entiende, o ni con todo se distinguen: lo del firmware, y lo
+    # mínimo para que no haya dos iguales.
+    nombres = [crudo or _("memory.slot") for crudo in crudos]
+    if len(set(nombres)) < len(nombres):
+        repetidos = {n for n in nombres if nombres.count(n) > 1}
+        nombres = [f"{nombre} · {banco_de_memoria(banco)}"
+                   if nombre in repetidos and banco and banco.strip() else nombre
+                   for nombre, (_localizador, banco) in zip(nombres, zocalos)]
+    if len(set(nombres)) < len(nombres):
+        repetidos = {n for n in nombres if nombres.count(n) > 1}
+        vistos: dict[str, int] = {}
+        salida = []
+        for nombre in nombres:
+            if nombre in repetidos:
+                vistos[nombre] = vistos.get(nombre, 0) + 1
+                nombre = f"{nombre} ({vistos[nombre]})"
+            salida.append(nombre)
+        nombres = salida
+    return nombres
 
 
 _BANCO_REDUNDANTE = re.compile(r"^bank[\s_-]*", re.I)
