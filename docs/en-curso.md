@@ -6,6 +6,31 @@ aquí esté hecho o pase a `docs/pendientes.md`.
 Última sesión: 17 de noviembre de 2026 por la noche, en el 5800X3D de casa
 (CachyOS). La anterior, ese mismo día en el i5-10400 de la oficina (Fedora).
 
+## Madrugada del 18, en casa: trabajo sin supervisión (rama `interfaz`)
+
+El autor dejó cinco bloques y se fue a dormir. Se empuja `interfaz` al
+acabar cada uno. Lo que sigue se va rellenando bloque a bloque; el resumen
+para la oficina está al final de este apartado cuando todo acabe.
+
+### Bloque 1, hecho: la página abierta se pone al día sola
+
+| Commit | Qué |
+|---|---|
+| (storage) | La tarjeta de permisos de Almacenamiento vuelve a su texto si el diagnóstico se pierde |
+| (widgets) | Una fila de tabla con menos celdas que columnas no deja datos viejos ni revienta |
+| (widgets) | **Las tarjetas que nacen con la página abierta se ven sin salir y volver** (el fallo de Memoria) |
+
+El fallo de Memoria era del arreglo del hueco de Gráficos (`aff559c`), de
+esta misma noche: `ResponsiveRow` tomaba por escondido un widget recién
+creado. `tests/test_al_momento.py` es el test general (regla 9 de
+CLAUDE.md): trece secciones, cada volcado, cuatro sentidos (dar permisos,
+perderlos, quitar hardware, volver a ponerlo). **No cubre Batería** (ningún
+volcado tiene una) **ni un USB que se quita** (la sección Dispositivos no
+existía todavía; entra en el bloque 3 con su propia foto).
+
+**A probar en la pieza**: dar permisos desde Memoria y desde
+Almacenamiento sin salir de la página.
+
 ## Sesión del 17 por la noche, en casa (rama `interfaz`)
 
 Dos tandas. La primera (el hueco de Gráficos, el corte de Red, la raya de

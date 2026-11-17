@@ -974,6 +974,16 @@ apartado. El orden dentro de cada apartado es el cronológico.
 - **Un ancho escrito a mano para algo que lleva texto**: la barra lateral
   medía 140 px en compacto y «Almacenamiento» no cabía. El número es un
   suelo; el ancho lo pide el texto más largo, con su letra y su idioma.
+- **Preguntar `isHidden` para saber si alguien escondió un widget**: también
+  es cierto para uno recién creado que todavía no se ha enseñado. Con eso,
+  `ResponsiveRow` dejaba fuera de la rejilla las tarjetas que nacían con la
+  página ya abierta, y los módulos de memoria no salían al dar permisos
+  hasta cambiar de página. Escondido a propósito es `isHidden` y
+  `WA_WState_ExplicitShowHide`.
+- **Probar cada página solo recién montada**: es el único momento en que
+  crear las tarjetas y enseñarlas es lo mismo. Lo que se rompe es la
+  página que ya está abierta cuando llega el dato, y eso solo lo ve un test
+  que le da dos fotos seguidas (`tests/test_al_momento.py`).
 
 <a id="idioma"></a>
 
