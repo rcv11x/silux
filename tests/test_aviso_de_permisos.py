@@ -225,6 +225,34 @@ class TestLosAvisosDeLasPaginas(unittest.TestCase):
             self.app.processEvents()
         return ventana
 
+    def test_la_tarjeta_solo_tiene_dos_formas_de_apartarse(self):
+        # «No volver a pedirla» (instalar el ayudante para siempre) iba al
+        # lado de «Ahora no» y «No volver a mostrar» y se leía como una
+        # tercera forma de quitar el aviso. Ahora está en «Qué hace esto».
+        from PySide6.QtWidgets import QPushButton
+        from silux.i18n import _
+
+        ventana = self._ventana()
+        for nombre, pagina in (("Memoria", ventana.memory_page),
+                               ("Almacenamiento", ventana.storage_page)):
+            ventana.select_section(nombre)
+            self.app.processEvents()
+            tarjeta = pagina.snooze_button.parentWidget()
+            visibles = [b.text() for b in tarjeta.findChildren(QPushButton) if b.isVisible()]
+            with self.subTest(pagina=nombre):
+                self.assertEqual(visibles, [_("perm.read.button"), _("perm.notice.explain"),
+                                            _("perm.notice.later"), _("perm.notice.never")])
+                self.assertFalse([t for t in visibles if "pedirla" in t])
+
+    def test_que_hace_esto_abre_el_dialogo_desde_la_pagina(self):
+        ventana = self._ventana()
+        ventana.select_section("Memoria")
+        ventana.memory_page.explain_button.click()
+        self.assertTrue(ventana._dialogo_permisos.isVisible())
+        self.addCleanup(ventana._dialogo_permisos.close)
+        # Y ahí sigue estando darlos para siempre.
+        self.assertTrue(ventana._dialogo_permisos.permanent_button.isVisible())
+
     @staticmethod
     def _avisos_con_boton(host):
         avisos = []

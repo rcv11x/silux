@@ -247,6 +247,8 @@ class MainWindow(QMainWindow):
         self.storage_page = StoragePage(self._palette, self.prefs)
         self.storage_page.elevation_requested.connect(self._on_elevation_requested)
         self.memory_page.permanent_requested.connect(self._on_permanent_requested)
+        self.memory_page.explain_requested.connect(self._explicar_permisos)
+        self.storage_page.explain_requested.connect(self._explicar_permisos)
         self.storage_page.permanent_requested.connect(self._on_permanent_requested)
         # Los dos botones de apartar son los mismos en Inicio y en cada
         # página, y valen para todas a la vez: apartar el aviso de Memoria y
@@ -725,13 +727,14 @@ class MainWindow(QMainWindow):
         # el botón no sobra, es lo que sustituye un ayudante que se quedó
         # atrás. Mientras no se pulse, el archivo viejo sigue en el sistema
         # siendo de root y con su acción de polkit apuntándole.
-        hay_que_ponerlo = (not PrivilegedClient.instalado()
-                           or PrivilegedClient.necesita_reinstalar())
+        #
+        # Solo entonces. Darlos para siempre por primera vez se ofrece en
+        # «Qué hace esto», que es donde se explica: aquí el botón («No volver
+        # a pedirla») se leía como una tercera forma de apartar el aviso, al
+        # lado de «Ahora no» y «No volver a mostrar».
         for boton in self._botones_permanentes():
-            boton.setVisible(hay_que_ponerlo)
-            boton.setText(_("perm.replace.button")
-                          if PrivilegedClient.necesita_reinstalar()
-                          else _("perm.permanent.button"))
+            boton.setVisible(PrivilegedClient.necesita_reinstalar())
+            boton.setText(_("perm.replace.button"))
 
     def _on_permanent_requested(self) -> None:
         """Instala el ayudante en el sistema con su propia acción de polkit.
@@ -825,7 +828,7 @@ class MainWindow(QMainWindow):
     def _restaurar_botones_permanentes(self) -> None:
         for boton in self._botones_permanentes():
             boton.setEnabled(True)
-            boton.setText(_("perm.permanent.button"))
+            boton.setText(_("perm.replace.button"))
 
     def _aviso_permanente(self, detalle) -> None:
         from PySide6.QtWidgets import QMessageBox

@@ -60,6 +60,7 @@ TIMING_HEADERS = ("memory.timing.profile", "memory.timing.speed", "memory.timing
 class MemoryPage(QScrollArea):
     elevation_requested = Signal()
     permanent_requested = Signal()
+    explain_requested = Signal()
     permission_snoozed = Signal()
     permission_dismissed = Signal()
     # La medida corre en otro hilo y en otro proceso; vuelve por aquí, que es
@@ -181,6 +182,11 @@ class MemoryPage(QScrollArea):
 
         self.permanent_button = boton_de_permiso_permanente()
         self.permanent_button.clicked.connect(self.permanent_requested)
+        # «Qué hace esto», como en el aviso de Inicio: lo que pasa al dar
+        # permisos y cómo darlos para siempre se cuenta en un sitio solo.
+        self.explain_button = QPushButton(_("perm.notice.explain"))
+        self.explain_button.setObjectName("GhostButton")
+        self.explain_button.clicked.connect(self.explain_requested)
 
         # Los mismos dos botones que el aviso de Inicio, y hacen lo mismo.
         self.snooze_button, self.dismiss_button = dismiss_buttons()
@@ -190,6 +196,7 @@ class MemoryPage(QScrollArea):
         row = QHBoxLayout()
         row.setContentsMargins(0, 0, 0, 0)
         row.addWidget(self.elevation_button)
+        row.addWidget(self.explain_button)
         row.addWidget(self.permanent_button)
         row.addStretch(1)
         row.addWidget(self.snooze_button)

@@ -688,7 +688,6 @@
   "perm.notice.never.tip": "Quita este aviso para siempre. El enlace de la barra de abajo sigue estando.",
   "perm.notice.title.many": "Faltan {n} datos que este equipo sí tiene",
   "perm.notice.title.one": "Falta {n} dato que este equipo sí tiene",
-  "perm.permanent.button": "No volver a pedirla",
   "perm.permanent.tip": "Instala el ayudante en el sistema con su propia autorización de polkit.\nDespués la contraseña se pide una vez por sesión, no en cada arranque.\nHace falta la contraseña una vez para instalarlo.",
   "perm.read.button": "Leer con permisos de administrador",
   "perm.replace.button": "Actualizar el ayudante del sistema",

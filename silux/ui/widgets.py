@@ -1531,13 +1531,13 @@ class PermissionNotice(QFrame):
 
 
 def boton_de_permiso_permanente() -> QPushButton:
-    """El botón que deja de pedir la contraseña en cada arranque.
+    """El botón que sustituye un ayudante instalado que se quedó atrás.
 
-    Sale al lado del de elevar, que es donde está mirando quien acaba de
-    descubrir que le falta un permiso. Se esconde solo cuando ya está hecho:
-    un botón que no hace nada es peor que ninguno.
+    Sale al lado del de elevar y solo cuando hace falta: la ventana lo
+    esconde si no hay nada que actualizar. Instalarlo por primera vez se
+    ofrece en «Qué hace esto».
     """
-    boton = QPushButton(_("perm.permanent.button"))
+    boton = QPushButton(_("perm.replace.button"))
     boton.setObjectName("GhostButton")
     boton.setToolTip(
         _("perm.permanent.tip")

@@ -53,6 +53,7 @@ class StoragePage(QScrollArea):
     # y no había forma de adivinar que la contraseña se pedía en otra pestaña.
     elevation_requested = Signal()
     permanent_requested = Signal()
+    explain_requested = Signal()
     permission_snoozed = Signal()
     permission_dismissed = Signal()
 
@@ -171,6 +172,11 @@ class StoragePage(QScrollArea):
         self.elevation_button.clicked.connect(self.elevation_requested)
         self.permanent_button = boton_de_permiso_permanente()
         self.permanent_button.clicked.connect(self.permanent_requested)
+        # «Qué hace esto», como en el aviso de Inicio: lo que pasa al dar
+        # permisos y cómo darlos para siempre se cuenta en un sitio solo.
+        self.explain_button = QPushButton(_("perm.notice.explain"))
+        self.explain_button.setObjectName("GhostButton")
+        self.explain_button.clicked.connect(self.explain_requested)
 
         # Los mismos dos botones que el aviso de Inicio, y hacen lo mismo.
         self.snooze_button, self.dismiss_button = dismiss_buttons()
@@ -179,6 +185,7 @@ class StoragePage(QScrollArea):
 
         fila = QHBoxLayout()
         fila.addWidget(self.elevation_button)
+        fila.addWidget(self.explain_button)
         fila.addWidget(self.permanent_button)
         fila.addStretch(1)
         fila.addWidget(self.snooze_button)
