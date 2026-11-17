@@ -431,9 +431,13 @@ class HomePage(QScrollArea):
             f"{flecha} {render.rate(ritmo, bits)}"
             for flecha, ritmo in (("↓", trafico.rx_rate_bps), ("↑", trafico.tx_rate_bps))
             if ritmo is not None)
+        # Lo mismo que el titular de la página de Red: la conexión primero
+        # (interfaz y dirección) y la pieza debajo.
         self.red.poner(
-            principal.display_name,
-            " · ".join(p for p in (principal.name, render.link_summary(principal)) if p),
+            " · ".join(p for p in (principal.name, principal.ipv4) if p),
+            " · ".join(p for p in (
+                principal.display_name if principal.display_name != principal.name else None,
+                render.link_summary(principal)) if p),
             cifras)
         if trafico.total_rate_bps is not None:
             self.red.grafica.push(trafico.total_rate_bps)

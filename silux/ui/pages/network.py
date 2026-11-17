@@ -237,14 +237,17 @@ class NetworkPage(QScrollArea):
             self.title.setText(_("net.none"))
             self.subtitle.setText(_("net.none.body"))
             return
-        self.title.setText(principal.display_name)
+        # El titular es la conexión, no el chip: por qué interfaz se sale y
+        # con qué dirección. «RTL8125 2.5GbE Controller» arriba del todo era
+        # el nombre de una pieza donde se busca «¿tengo red?». La pieza y su
+        # enlace van debajo, y las insignias no repiten ni lo uno ni lo otro.
+        self.title.setText(" · ".join(p for p in (principal.name, principal.ipv4) if p))
         self.subtitle.setText(" · ".join(p for p in (
-            principal.name, principal.ipv4, render.link_summary(principal)) if p))
+            principal.display_name if principal.display_name != principal.name else None,
+            render.link_summary(principal)) if p))
 
         activas = sum(1 for i in interfaces if i.active)
         chips = [c for c in (
-            principal.name,
-            render.link_summary(principal),
             (_("net.gateway2").format(ip=principal.gateway)
              if principal.gateway else None),
             _("net.active2").format(n=activas, total=len(interfaces)),
@@ -348,6 +351,15 @@ class NetworkPage(QScrollArea):
               tooltip="\n".join(interfaz.ipv6) if len(interfaz.ipv6) > 1 else "")
             f(_("net.field.mac"), interfaz.mac or d)
             f(_("net.field.speed"), render.link_summary(interfaz) or d)
+            # Una interfaz sin enlace no tiene dirección, puerta ni velocidad:
+            # no son datos por leer. Cinco guiones seguidos no decían más que
+            # el «sin cable» de la primera fila.
+            for clave, valor in (("net.field.ipv4", interfaz.ipv4),
+                                 ("net.field.mask", interfaz.netmask),
+                                 ("net.field.gateway", interfaz.gateway),
+                                 ("net.field.ipv6", interfaz.ipv6),
+                                 ("net.field.speed", render.link_summary(interfaz))):
+                grid.set_visible(_(clave), bool(valor))
             f("MTU", str(interfaz.mtu) if interfaz.mtu else d)
             f(_("gpu.field.driver"), interfaz.driver or d)
             f(_("storage.col.model"), interfaz.model or d)
