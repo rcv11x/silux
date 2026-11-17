@@ -453,4 +453,4 @@ class StoragePage(QScrollArea):
         }
         for clave, falta in faltan.items():
             if falta:
-                grid.set_locked(_(clave), self._p.warn, render.lock_tooltip(self._candado))
+                grid.set_locked(_(clave), self._p.info, render.lock_tooltip(self._candado))

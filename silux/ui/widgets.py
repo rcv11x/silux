@@ -1048,7 +1048,7 @@ class StatTile(Card):
 
         # El candado de cuando la cifra falta por permisos: a tamaño de
         # cifra, en el sitio de la cifra.
-        self.lock = LockMark(palette.warn, theme.METRICS.tile_value_pt)
+        self.lock = LockMark(palette.info, theme.METRICS.tile_value_pt)
         self.lock.hacer_pulsable()
         self.lock.clicked.connect(self.locked_clicked)
         self.lock.hide()
@@ -1284,9 +1284,9 @@ class ChipRow(QWidget):
 # se puede arreglar: «el hipervisor no expone la frecuencia» salía tan urgente
 # como un permiso por dar.
 NEED_TONES = {
-    Need.ROOT: "warn",
-    Need.DRIVER: "warn",
-    Need.DATABASE: "warn",
+    Need.ROOT: "action",
+    Need.DRIVER: "action",
+    Need.DATABASE: "action",
     Need.HARDWARE: "idle",
     Need.PLATFORM: "idle",
     Need.ERROR: "bad",
@@ -1295,7 +1295,7 @@ NEED_TONES = {
 
 def tone_for(need) -> str:
     """El color de la banda de un aviso, según se pueda hacer algo o no."""
-    return NEED_TONES.get(need, "warn")
+    return NEED_TONES.get(need, "action")
 
 
 class Notice(QFrame):
@@ -1446,7 +1446,7 @@ class PermissionNotice(QFrame):
                  parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.setObjectName("Notice")
-        self.setProperty("tone", "warn")
+        self.setProperty("tone", "action")
         self._p = palette
         self._compact = compact
         self._nombres: tuple[str, ...] = ()
@@ -1515,7 +1515,7 @@ class PermissionNotice(QFrame):
                 continue
             fila = QHBoxLayout()
             fila.setSpacing(6)
-            fila.addWidget(LockMark(self._p.warn, theme.METRICS.small_pt + 2))
+            fila.addWidget(LockMark(self._p.info, theme.METRICS.small_pt + 2))
             etiqueta = QLabel(texto)
             etiqueta.setObjectName("NoticeBody")
             etiqueta.setWordWrap(self._compact)

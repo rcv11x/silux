@@ -227,9 +227,9 @@ class TestElColorDelAviso(unittest.TestCase):
         self.assertEqual(self._tono(Need.HARDWARE), "idle")
         self.assertEqual(self._tono(Need.PLATFORM), "idle")
 
-    def test_lo_accionable_sigue_en_ambar(self):
-        self.assertEqual(self._tono(Need.ROOT), "warn")
-        self.assertEqual(self._tono(Need.DRIVER), "warn")
+    def test_lo_accionable_va_en_azul(self):
+        self.assertEqual(self._tono(Need.ROOT), "action")
+        self.assertEqual(self._tono(Need.DRIVER), "action")
 
     def test_un_fallo_nuestro_va_en_rojo(self):
         self.assertEqual(self._tono(Need.ERROR), "bad")

@@ -797,8 +797,16 @@ apartado. El orden dentro de cada apartado es el cronológico.
 - **Pintar todos los avisos del mismo color**: la banda de `Notice` era ámbar
   para todo, así que «esta gráfica no trae sensor de temperatura» —que no va a
   cambiar nunca— se leía igual de urgente que algo que sí se arregla. Va por
-  tono: ámbar lo accionable (`ROOT`, `DRIVER`, `DATABASE`), gris lo que es así
+  tono: azul lo accionable (`ROOT`, `DRIVER`, `DATABASE`), gris lo que es así
   y ya está (`HARDWARE`, `PLATFORM`), rojo lo que es un fallo nuestro.
+- **Dar a lo accionable el color de la marca**: lo accionable y sus candados
+  fueron ámbar hasta que el ámbar pasó a ser el acento y el color del logo.
+  Con los dos iguales, la banda de un aviso, un candado y el botón principal
+  eran del mismo color, y un aviso del color de un botón no avisa de nada. El
+  ámbar es la marca y lo que se puede pulsar; lo que falta y tiene arreglo va
+  en azul (`Palette.info`, tono `action`). El amarillo (`warn`) se queda para
+  lo que es un estado del equipo y no una tarea del usuario: un disco que
+  avisa, una lectura cerca de su límite.
 - **Explicar que hace falta un permiso sin poner el botón al lado**: el aviso
   de Gráficos decía «Requiere permisos» y el único botón estaba en Memoria y
   en Almacenamiento. Quien lee por qué falta un dato es quien quiere

@@ -663,7 +663,7 @@ class MemoryPage(QScrollArea):
                 # candado y no con guion, que es lo que lo distingue de lo que
                 # el SPD no trae.
                 for clave in ("memory.field.running", "memory.field.bank"):
-                    grid.set_locked(_(clave), self._p.warn, render.lock_tooltip(candado))
+                    grid.set_locked(_(clave), self._p.info, render.lock_tooltip(candado))
                 grid.locked_clicked.connect(self.elevation_requested)
             self._slot_grids.append(grid)
             self._slots_host.add(card)

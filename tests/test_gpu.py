@@ -1075,12 +1075,12 @@ class TestElColorDelAviso(unittest.TestCase):
     permanente, igual de urgente que algo que sí se puede arreglar.
     """
 
-    def test_lo_que_se_arregla_va_en_ambar(self):
+    def test_lo_que_se_arregla_va_en_azul(self):
         from silux.ui.widgets import NEED_TONES
 
         for need in (Need.ROOT, Need.DRIVER, Need.DATABASE):
             with self.subTest(need=need):
-                self.assertEqual(NEED_TONES[need], "warn")
+                self.assertEqual(NEED_TONES[need], "action")
 
     def test_lo_que_es_asi_y_ya_esta_va_en_gris(self):
         from silux.ui.widgets import NEED_TONES

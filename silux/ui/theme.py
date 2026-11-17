@@ -440,16 +440,20 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         border-left: 3px solid {p.warn};
         border-radius: 6px;
     }}
-    /* Lo que el usuario puede arreglar va en ámbar; lo que es un hecho del
-       hardware, en gris. Con el mismo color, «esta gráfica no trae sensor de
-       temperatura» se lee como una avería permanente. */
+    /* Lo que el usuario puede arreglar va en azul; lo que es un hecho del
+       hardware, en gris; un fallo, en rojo. Con el mismo color, «esta gráfica
+       no trae sensor de temperatura» se lee como una avería permanente. Y no
+       en ámbar: el ámbar es la marca y el acento, y un aviso del color de un
+       botón no avisa. El amarillo queda para un estado del equipo: un disco
+       que avisa de algo, una lectura cerca de su límite. */
+    QFrame#Notice[tone="action"] {{ border-left-color: {p.info}; }}
     QFrame#Notice[tone="idle"] {{ border-left-color: {p.muted}; }}
     QFrame#Notice[tone="bad"]  {{ border-left-color: {p.crit}; }}
     QLabel#NoticeTitle {{ color: {p.ink}; font-weight: 600; }}
     QLabel#NoticeBody  {{ color: {p.ink_dim}; }}
     QLabel#NoticeHint  {{ color: {p.muted}; font-size: {m.small_pt + 2}px; }}
 
-    /* El aviso de la barra de estado. Va en ámbar por lo mismo que la banda
+    /* El aviso de la barra de estado. Va en azul por lo mismo que la banda
        de un Notice: es de lo que el usuario puede arreglar. Y con el subrayado
        puesto, que en una barra llena de texto apagado nada dice que se pueda
        pulsar salvo que se note. */
@@ -457,7 +461,7 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         background: transparent;
         border: none;
         padding: 0 6px;
-        color: {p.warn};
+        color: {p.info};
         text-decoration: underline;
         /* Al tamaño del texto normal y no al de la letra pequeña del resto de
            la barra: es lo único de ahí que se puede pulsar, y con `small_pt`

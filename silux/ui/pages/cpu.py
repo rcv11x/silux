@@ -385,7 +385,7 @@ class CpuPage(QScrollArea):
         for cpu_type in cpu.types:
             if section := self._sections.get(cpu_type.key):
                 section.apply(cpu_type)
-                section.lock_voltage(snapshot.permission_note("cpu.voltage_v"), self._p.warn)
+                section.lock_voltage(snapshot.permission_note("cpu.voltage_v"), self._p.info)
 
     def hide_permission_notices(self, ocultos: bool) -> None:
         """Deja de enseñar los avisos de permisos, o los vuelve a enseñar."""
