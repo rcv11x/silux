@@ -61,6 +61,11 @@ class Preferences:
     # así una lista vacía significa «como estaba», que es lo que quiere quien
     # nunca ha tocado nada.
     sensor_collapsed: tuple[str, ...] = ()
+    # Y las que abrió a mano de entre las que nacen cerradas: las largas
+    # («Relojes · 16») y las que no tienen actividad. Lo que no está en
+    # ninguna de las dos listas sigue la regla, y la regla puede cambiar de
+    # una versión a otra sin pisar lo que el usuario eligió.
+    sensor_expanded: tuple[str, ...] = ()
     window_width: int = 900
     window_height: int = 680
     # El aviso de Inicio de que faltan datos por permisos, quitado con «No
@@ -86,6 +91,7 @@ class Preferences:
             language=str(self.language or "es").lower()[:8],
             sensor_columns=tuple(min(900, max(30, int(w))) for w in (self.sensor_columns or ())),
             sensor_collapsed=tuple(str(c) for c in (self.sensor_collapsed or ()))[:400],
+            sensor_expanded=tuple(str(c) for c in (self.sensor_expanded or ()))[:400],
             # El recorte aquí es solo un saneado grueso; el suelo de verdad lo
             # pone la ventana, que sabe qué densidad está activa.
             window_width=min(3840, max(380, int(self.window_width))),

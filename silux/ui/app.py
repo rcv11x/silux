@@ -880,11 +880,13 @@ class MainWindow(QMainWindow):
         QMessageBox.warning(self, _("perm.dialog.title"), texto)
         self._restaurar_botones_permanentes()
 
-    def _on_branches_changed(self, plegadas: tuple) -> None:
+    def _on_branches_changed(self, plegadas: tuple, abiertas: tuple) -> None:
         from dataclasses import replace
 
-        if tuple(plegadas) != tuple(self.prefs.sensor_collapsed):
-            self.prefs = replace(self.prefs, sensor_collapsed=tuple(plegadas))
+        if (tuple(plegadas), tuple(abiertas)) != (tuple(self.prefs.sensor_collapsed),
+                                                 tuple(self.prefs.sensor_expanded)):
+            self.prefs = replace(self.prefs, sensor_collapsed=tuple(plegadas),
+                                 sensor_expanded=tuple(abiertas))
 
     def _on_columns_resized(self, widths: tuple) -> None:
         from dataclasses import replace

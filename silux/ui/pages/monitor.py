@@ -62,7 +62,7 @@ class MonitorPage(QScrollArea):
     # Lo emite el árbol cuando el usuario arrastra una columna; la ventana lo
     # guarda para que el ajuste sobreviva al cierre.
     columns_resized = Signal(tuple)
-    branches_changed = Signal(tuple)
+    branches_changed = Signal(tuple, tuple)
 
     def __init__(self, palette: Palette, prefs: Preferences, tracker: Tracker, parent=None):
         super().__init__(parent)
@@ -91,9 +91,10 @@ class MonitorPage(QScrollArea):
         sensors_card.body.addWidget(self._build_sensor_header())
         self.tree = SensorTree(palette)
         self.tree.set_column_widths(prefs.sensor_columns)
-        self.tree.set_collapsed(prefs.sensor_collapsed or None)
-        self.tree.itemExpanded.connect(self._rama_movida)
-        self.tree.itemCollapsed.connect(self._rama_movida)
+        self.tree.set_collapsed(prefs.sensor_collapsed, prefs.sensor_expanded)
+        self.tree.itemExpanded.connect(lambda _item: self.tree.refresh_height())
+        self.tree.itemCollapsed.connect(lambda _item: self.tree.refresh_height())
+        self.tree.branchesChanged.connect(self.branches_changed)
         self.tree.columnsResized.connect(self.columns_resized)
         sensors_card.body.addWidget(self.tree)
         # Lo que este equipo no publica y por eso no tiene rama en el árbol.
@@ -121,10 +122,6 @@ class MonitorPage(QScrollArea):
         self._hint_signature: tuple = ()
 
     # -- construcción -------------------------------------------------------
-
-    def _rama_movida(self, _item) -> None:
-        self.tree.refresh_height()
-        self.branches_changed.emit(self.tree.collapsed())
 
     def _build_sensor_header(self) -> QWidget:
         holder = QWidget()

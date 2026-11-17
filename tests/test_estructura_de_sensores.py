@@ -39,14 +39,17 @@ class TestElOrdenDelArbol(unittest.TestCase):
     def test_cada_chip_va_junto_y_los_de_relleno_al_final(self):
         placa = self.arbol[self.foto.board.display_name]["cat.temperature"]
         chips = [s.chip for s in placa]
-        self.assertGreater(len(set(chips)), 2)
+        # El Super I/O y las zonas de ACPI; lo que `gigabyte_wmi` repite del
+        # primero ya no entra en el árbol (tests/test_sensores_repetidos.py).
+        self.assertGreater(len(set(chips)), 1)
         cambios = sum(1 for a, b in zip(chips, chips[1:]) if a != b)
         self.assertEqual(cambios, len(set(chips)) - 1, chips)
         self.assertTrue(placa[-1].placeholder)
         self.assertFalse(placa[0].placeholder)
         # Y dentro de un chip, en su orden.
-        wmi = [s.label for s in placa if s.chip == "gigabyte_wmi"]
-        self.assertEqual(wmi, sorted(wmi))
+        del_chip = [s.label for s in placa if s.chip.startswith("it8688")]
+        self.assertEqual(len(del_chip), 6)
+        self.assertEqual(del_chip, sorted(del_chip))
 
 
 @unittest.skipIf(QApplication is None, "sin PySide6")
@@ -80,10 +83,52 @@ class TestLasRamasLargas(unittest.TestCase):
         self.assertTrue(arbol._rows[f"::{cpu}"].isExpanded())
 
     def test_lo_que_el_usuario_dejo_manda(self):
+        from silux.ui import theme
+        from silux.ui.sensortree import SensorTree
+
+        cpu = "AMD Ryzen 7 5800X3D"
+        arbol = SensorTree(theme.palette_for(self.app, "dark"))
+        self.addCleanup(arbol.deleteLater)
+        arbol.set_collapsed((f"::{cpu}/cat.temperature",), (f"::{cpu}/cat.clock",))
+        arbol.rebuild(self.foto.sensor_tree())
+        self.assertFalse(arbol._rows[f"::{cpu}/cat.temperature"].isExpanded())
+        self.assertTrue(arbol._rows[f"::{cpu}/cat.clock"].isExpanded())
+
+    def test_lo_que_no_eligio_sigue_la_regla_aunque_tenga_algo_guardado(self):
+        """Se guardaba el estado entero, y con una sola rama cerrada a mano
+        todas las demás quedaban «elegidas abiertas»: las largas incluidas, y
+        cualquier regla nueva no llegaba a quien ya tenía preferencias."""
         cpu = "AMD Ryzen 7 5800X3D"
         arbol = self._arbol(plegadas=(f"::{cpu}/cat.temperature",))
-        self.assertTrue(arbol._rows[f"::{cpu}/cat.clock"].isExpanded())
-        self.assertFalse(arbol._rows[f"::{cpu}/cat.temperature"].isExpanded())
+        self.assertFalse(arbol._rows[f"::{cpu}/cat.clock"].isExpanded())
+        self.assertTrue(arbol._rows[f"::{cpu}"].isExpanded())
+
+    def test_montar_el_arbol_no_es_una_eleccion_del_usuario(self):
+        arbol = self._arbol()
+        avisos = []
+        arbol.branchesChanged.connect(lambda c, a: avisos.append((c, a)))
+        arbol.rebuild(self.foto.sensor_tree())
+        arbol.set_filter("tctl")
+        arbol.set_filter("")
+        self.assertEqual(avisos, [])
+        self.assertEqual((arbol.collapsed(), arbol.expanded()), ((), ()))
+
+    def test_solo_se_apunta_lo_que_se_aparta_de_la_regla(self):
+        cpu = "AMD Ryzen 7 5800X3D"
+        arbol = self._arbol()
+        avisos = []
+        arbol.branchesChanged.connect(lambda c, a: avisos.append((c, a)))
+        temperaturas = arbol._rows[f"::{cpu}/cat.temperature"]
+        relojes = arbol._rows[f"::{cpu}/cat.clock"]
+
+        temperaturas.setExpanded(False)             # como un clic del usuario
+        self.assertEqual(avisos[-1], ((f"::{cpu}/cat.temperature",), ()))
+        temperaturas.setExpanded(True)              # y se arrepiente
+        self.assertEqual(avisos[-1], ((), ()))
+        relojes.setExpanded(True)                   # abre una de las largas
+        self.assertEqual(avisos[-1], ((), (f"::{cpu}/cat.clock",)))
+        relojes.setExpanded(False)
+        self.assertEqual(avisos[-1], ((), ()))
 
 
 @unittest.skipIf(QApplication is None, "sin PySide6")
@@ -97,14 +142,15 @@ class TestLoQueNoTieneActividadNacePlegado(unittest.TestCase):
     def setUpClass(cls):
         cls.app = qt.app()
 
-    def _pagina(self, equipo, plegadas=()):
+    def _pagina(self, equipo, plegadas=(), abiertas=()):
         from silux.settings import Preferences
         from silux.tracking import Tracker
         from silux.ui import theme
         from silux.ui.pages.monitor import MonitorPage
 
         self.foto = foto(EQUIPOS / equipo)[0]
-        prefs = Preferences(sensor_collapsed=tuple(plegadas)).normalized()
+        prefs = Preferences(sensor_collapsed=tuple(plegadas),
+                            sensor_expanded=tuple(abiertas)).normalized()
         pagina = MonitorPage(theme.palette_for(self.app, "dark"), prefs, Tracker())
         self.addCleanup(pagina.deleteLater)
         pagina.resize(1200, 900)
@@ -201,9 +247,36 @@ class TestLoQueNoTieneActividadNacePlegado(unittest.TestCase):
         self.assertTrue(pagina.tree._rows[f"::Red ({otra.name})"].isExpanded())
 
     def test_lo_que_el_usuario_dejo_manda_tambien_aqui(self):
-        pagina = self._pagina("5800x3d", plegadas=("::Memoria",))
-        placa = self.foto.board.display_name
+        placa = "Gigabyte X570 AORUS ELITE"
+        pagina = self._pagina("5800x3d", abiertas=(f"::{placa}/cat.fan/idle",))
+        self.assertEqual(placa, self.foto.board.display_name)
         self.assertTrue(pagina.tree._rows[f"::{placa}/cat.fan/idle"].isExpanded())
+
+    def test_con_las_preferencias_de_antes_lo_inactivo_tambien_se_pliega(self):
+        """Las del autor: tres ramas cerradas a mano, guardadas cuando se
+        guardaba el estado entero. Lo nuevo le tiene que llegar igual."""
+        cpu = "AMD Ryzen 7 5800X3D"
+        # (El consumo del procesador no está en el volcado: sale de restar
+        # dos lecturas. Que su rama esté guardada y no exista no rompe nada.)
+        pagina = self._pagina("5800x3d", plegadas=(
+            f"::{cpu}/cat.power", f"::{cpu}/cat.temperature", "::Red (enp6s0)/cat.network"))
+        placa = self.foto.board.display_name
+        filas = pagina.tree._rows
+        self.assertFalse(filas[f"::{placa}/cat.fan/idle"].isExpanded())
+        self.assertFalse(filas[f"::{cpu}/cat.temperature"].isExpanded())
+        self.assertFalse(filas["::Red (enp6s0)/cat.network"].isExpanded())
+        self.assertTrue(filas["::Red (enp6s0)"].isExpanded())
+        cerradas = [c for c in filas if c.startswith("::Red (") and c.count("/") == 0
+                    and not filas[c].isExpanded()]
+        self.assertTrue(cerradas)
+
+    def test_la_pagina_no_guarda_nada_por_montarse(self):
+        guardado = []
+        pagina = self._pagina("5800x3d")
+        pagina.branches_changed.connect(lambda c, a: guardado.append((c, a)))
+        pagina.apply(self.foto)
+        self.app.processEvents()
+        self.assertEqual(guardado, [])
 
 
 if __name__ == "__main__":

@@ -226,6 +226,7 @@ class SensorTree(QTreeWidget):
     TREND_COLUMN = 5
 
     columnsResized = Signal(tuple)
+    branchesChanged = Signal(tuple, tuple)
 
     def __init__(self, palette: Palette, parent: Optional[QWidget] = None):
         super().__init__(parent)
@@ -293,10 +294,16 @@ class SensorTree(QTreeWidget):
         self._filtro = ""
         # `None` = no hay nada guardado todavía, que no es lo mismo que «no
         # había ninguna plegada»: en el primer caso se abren todas.
-        self._plegadas_guardadas: Optional[set] = None
-        # Las que se cerraron solas la última vez por no tener actividad.
-        self._plegadas_por_inactivas: set = set()
-        self._nacimiento: tuple = (set(), set())
+        # Lo que el usuario cerró y abrió a mano. Lo demás sigue la regla.
+        self._cerradas_a_mano: set = set()
+        self._abiertas_a_mano: set = set()
+        # Cómo nace cada rama según la regla, para saber qué es una elección.
+        self._abierta_por_regla: dict[str, bool] = {}
+        # Mientras el árbol abre y cierra ramas por su cuenta (al montarse, al
+        # filtrar), eso no es una elección de nadie y no se apunta.
+        self._por_programa = False
+        self.itemExpanded.connect(lambda item: self._movida(item, True))
+        self.itemCollapsed.connect(lambda item: self._movida(item, False))
         # (columna, ascendente) o None mientras se respete el orden natural.
         self._orden: Optional[tuple[int, bool]] = None
         # Cómo estaba cada categoría al montarse, para poder volver.
@@ -598,9 +605,8 @@ class SensorTree(QTreeWidget):
         iban delante de las tensiones; con seis puentes de Docker, la página
         acababa en veinticuatro renglones de ceros.
         """
-        expanded = {key for key, item in self._rows.items() if item.isExpanded()}
-        por_inactivas_antes = self._plegadas_por_inactivas
-        self._plegadas_por_inactivas = set()
+        self._por_programa = True
+        self._abierta_por_regla.clear()
         self.clear()
         self._rows.clear()
         self._orden_natural.clear()
@@ -619,7 +625,6 @@ class SensorTree(QTreeWidget):
 
         for device, categories in partido.items():
             aparato_inactivo = all(inactiva for _s, _c, inactiva in categories.values())
-            self._nacimiento = (por_inactivas_antes, expanded)
             device_item = QTreeWidgetItem([device])
             device_item.setFont(0, self._branch_font)
             device_item.setForeground(0, self._p.q("ink"))
@@ -686,14 +691,15 @@ class SensorTree(QTreeWidget):
                 self._orden_natural[id(category_item)] = tuple(
                     s.key for s in sensors)
                 category_item.setExpanded(
-                    self._nace_abierta(f"::{device}/{category}", expanded,
+                    self._nace_abierta(f"::{device}/{category}",
                                        larga=len(sensors) > self.RAMA_LARGA,
                                        # Dentro de un aparato que ya nace
                                        # cerrado no hace falta cerrar más.
                                        inactiva=inactiva and not aparato_inactivo))
             device_item.setExpanded(self._nace_abierta(
-                f"::{device}", expanded, inactiva=aparato_inactivo))
+                f"::{device}", inactiva=aparato_inactivo))
 
+        self._por_programa = False
         self._autosize_columns()
         self._fit_height()
         if self._filtro:
@@ -706,39 +712,60 @@ class SensorTree(QTreeWidget):
     # son dieciséis renglones iguales delante de todo lo demás.
     RAMA_LARGA = 12
 
-    def _nace_abierta(self, clave: str, expandidas: set, larga: bool = False,
+    def _nace_abierta(self, clave: str, larga: bool = False,
                       inactiva: bool = False) -> bool:
         """Si una rama arranca desplegada.
 
-        Manda lo que el usuario dejó en la sesión anterior. Solo cuando no hay
-        nada guardado —el primer arranque— se abren todas, que es lo que deja
-        ver de qué va la página sin tener que tocarla; todas menos las largas,
-        que con su título y su cuenta ya dicen qué hay dentro, y menos las que
-        no tienen nada que enseñar.
+        Manda lo que el usuario hizo a mano con esa rama, en esta sesión o en
+        otra. Para las demás hay una regla: abiertas, que es lo que deja ver
+        de qué va la página sin tocarla; menos las largas, que con su título
+        y su cuenta ya dicen qué hay dentro, y menos las que no tienen nada
+        que enseñar.
 
-        La que se cerró sola por inactiva se vuelve a decidir cada vez que se
-        rehace el árbol: en la primera muestra ninguna interfaz de red tiene
-        todavía ritmo, y la que resulta tener tráfico en la segunda no puede
-        quedarse cerrada por eso.
+        La regla se vuelve a aplicar cada vez que se rehace el árbol: en la
+        primera muestra ninguna interfaz de red tiene todavía ritmo, y la que
+        resulta tener tráfico en la segunda no puede quedarse cerrada por eso.
         """
-        if self._plegadas_guardadas is not None:
-            return clave not in self._plegadas_guardadas
-        if inactiva:
-            self._plegadas_por_inactivas.add(clave)
-        if not expandidas:
-            return not (larga or inactiva)
-        if clave in self._nacimiento[0] and clave not in expandidas:
-            return not (larga or inactiva)
-        return clave in expandidas
+        self._abierta_por_regla[clave] = not (larga or inactiva)
+        if clave in self._cerradas_a_mano:
+            return False
+        if clave in self._abiertas_a_mano:
+            return True
+        return self._abierta_por_regla[clave]
 
-    def set_collapsed(self, claves) -> None:
-        """Las ramas que estaban plegadas al cerrar. Vacío = todas abiertas."""
-        self._plegadas_guardadas = set(claves) if claves is not None else None
+    def _movida(self, item, abierta: bool) -> None:
+        """Una rama abierta o cerrada. Solo cuenta si lo hizo el usuario.
+
+        Se apunta lo que se aparta de la regla y nada más: quien cierra una
+        rama y la vuelve a abrir no ha elegido nada, y así lo que queda
+        guardado no congela cómo nace el resto. Guardando el estado entero,
+        la primera vez que se montaba el árbol todas sus ramas pasaban a ser
+        «elección del usuario», y una regla nueva no llegaba a nadie.
+        """
+        if self._por_programa:
+            return
+        clave = next((c for c, fila in self._rows.items()
+                      if fila is item and c.startswith("::")), None)
+        if clave is None:
+            return
+        self._cerradas_a_mano.discard(clave)
+        self._abiertas_a_mano.discard(clave)
+        if abierta != self._abierta_por_regla.get(clave, True):
+            (self._abiertas_a_mano if abierta else self._cerradas_a_mano).add(clave)
+        self.branchesChanged.emit(self.collapsed(), self.expanded())
+
+    def set_collapsed(self, claves, abiertas=()) -> None:
+        """Lo que el usuario dejó cerrado y abierto a mano en otra sesión."""
+        self._cerradas_a_mano = set(claves or ())
+        self._abiertas_a_mano = set(abiertas or ()) - self._cerradas_a_mano
 
     def collapsed(self) -> tuple[str, ...]:
-        """Las que están plegadas ahora, para guardarlas."""
-        return tuple(sorted(clave for clave, item in self._rows.items()
-                            if clave.startswith("::") and not item.isExpanded()))
+        """Las que el usuario cerró a mano, para guardarlas."""
+        return tuple(sorted(self._cerradas_a_mano))
+
+    def expanded(self) -> tuple[str, ...]:
+        """Las que abrió a mano de entre las que nacen cerradas."""
+        return tuple(sorted(self._abiertas_a_mano))
 
     # -- filtro -------------------------------------------------------------
 
@@ -757,9 +784,12 @@ class SensorTree(QTreeWidget):
         self._aplicar_filtro()
 
     def _aplicar_filtro(self) -> None:
+        # Buscando, las ramas se abren solas: eso no lo ha elegido nadie.
+        self._por_programa = True
         for indice in range(self.topLevelItemCount()):
             aparato = self.topLevelItem(indice)
             self._filtrar_rama(aparato, aparato.text(0).lower())
+        self._por_programa = False
         self._fit_height()
 
     def _filtrar_rama(self, aparato, texto_aparato: str) -> None:
