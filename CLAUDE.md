@@ -195,6 +195,10 @@ probó…» o «costó…» van al mensaje del commit o a `docs/lecciones.md`.
 
 **Flujo de trabajo.**
 - **Nunca se empuja sin preguntar.** Commitear es reversible; publicar no.
+- **No se publica ninguna versión sin que lo diga el autor.** Ni etiqueta, ni
+  release, ni fecha en el CHANGELOG. Lo que entra en `master` se queda como
+  «sin publicar» en la entrada de arriba del CHANGELOG, que sigue acumulando
+  hasta que él decida cortarla.
 - **Lo que toca privilegios se propone antes de escribirlo**, con lo que se
   ha medido, y se espera respuesta.
 - **Lo que depende de que alguien se acuerde de subir un número no es una
