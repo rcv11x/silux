@@ -249,8 +249,9 @@ class GpuSection(QWidget):
         layout.addWidget(api_card)
 
         display_card = Card(_("gpu.card.displays"))
+        # Si no cabe, cede el nombre del monitor y no sus cifras.
         self.displays = Table([_(h) for h in DISPLAY_HEADERS],
-                              numeric=(False, False, True, True, True, False))
+                              numeric=(False, False, True, True, True, False), cede=(1,))
         display_card.body.addWidget(self.displays)
         # Las salidas sin nada enchufado, en una línea. Un MacBook Air de 11"
         # enseñaba cuatro filas seguidas —DP-1, DP-2, HDMI-A-1, HDMI-A-2— con

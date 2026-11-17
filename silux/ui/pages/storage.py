@@ -96,7 +96,8 @@ class StoragePage(QScrollArea):
 
         disk_card = Card(_("storage.card.disks"))
         self.disks = Table([_(h) for h in DISK_HEADERS],
-                           numeric=(False, False, False, True, True, True, True, True))
+                           numeric=(False, False, False, True, True, True, True, True),
+                           cede=(1,))      # el modelo, antes que cortar las cifras
         disk_card.body.addWidget(self.disks)
         layout.addWidget(disk_card)
 

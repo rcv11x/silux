@@ -1637,9 +1637,12 @@ class Table(QScrollArea):
     """
 
     def __init__(self, headers: Sequence[str], numeric: Sequence[bool] = (),
-                 parent: Optional[QWidget] = None):
+                 parent: Optional[QWidget] = None, cede: Sequence[int] = ()):
+        """`cede`: las columnas de texto que pueden salir recortadas, con
+        puntos suspensivos, cuando la tabla no cabe (`_encajar`)."""
         super().__init__(parent)
         self._headers = list(headers)
+        self._cede = tuple(cede)
         self._numeric = list(numeric) + [False] * (len(headers) - len(numeric))
 
         self.setWidgetResizable(True)
@@ -1786,7 +1789,56 @@ class Table(QScrollArea):
             ancho = min(ancho, tope)
             if ancho > self._anchos[columna]:
                 self._anchos[columna] = ancho
+        self._encajar()
+
+    def _encajar(self) -> None:
+        """Reparte los anchos; si la tabla no cabe, cede el texto más largo.
+
+        En compacto a 900 px la tabla de unidades pedía más de lo que hay y
+        su última columna, «Escribiendo», quedaba cortada contra el borde, a
+        un desplazamiento que nadie hace. Lo que sobra se le quita a las
+        columnas que quien monta la tabla dijo que pueden ceder (un modelo de
+        disco, un nombre de monitor), de la más ancha a la menos: salen con
+        puntos suspensivos y enteras al pasar el ratón. Las demás no se
+        tocan. Si ni así cabe, o ninguna cede, queda la barra de
+        desplazamiento.
+        """
+        if not self._cells:
+            return
+        columnas = len(self._headers)
+        anchos = list(self._anchos)
+        hueco = self._grid.horizontalSpacing() * (columnas - 1)
+        # Lo que ocupa cada columna es su dato o su título, lo que más pida.
+        ocupa = sum(max(ancho, self._ancho_de_cabecera(c)) for c, ancho in enumerate(anchos))
+        sobra = ocupa + hueco - self.viewport().width()
+        if sobra > 0 and self.viewport().width() > 0:
+            suelo = QFontMetrics(value_font()).averageCharWidth() * 10
+            suelos = {c: max(suelo, self._ancho_de_cabecera(c))
+                      for c in self._cede if c < columnas}
+            while sobra > 0:
+                cedibles = [c for c, minimo in suelos.items() if anchos[c] > minimo]
+                if not cedibles:
+                    break
+                ancha = max(cedibles, key=lambda c: anchos[c])
+                quita = min(sobra, anchos[ancha] - suelos[ancha], 8)
+                anchos[ancha] -= quita
+                sobra -= quita
+        for columna, ancho in enumerate(anchos):
+            if self._grid.columnMinimumWidth(columna) != ancho:
                 self._grid.setColumnMinimumWidth(columna, ancho)
+            recortada = ancho < self._anchos[columna]
+            for fila in self._cells:
+                if columna < len(fila):
+                    # Cedida, la celda no puede pedir más que su columna.
+                    fila[columna].setMaximumWidth(ancho if recortada else 16777215)
+
+    def _ancho_de_cabecera(self, columna: int) -> int:
+        item = self._grid.itemAtPosition(0, columna)
+        return item.widget().sizeHint().width() if item and item.widget() else 0
+
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        self._encajar()
 
     def _fit_height(self) -> None:
         """La tabla ocupa justo lo que necesita de alto; el ancho lo negocia
