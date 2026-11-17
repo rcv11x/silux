@@ -83,9 +83,13 @@ class MemoryPage(QScrollArea):
         layout.setContentsMargins(m.page_margin, m.page_margin, m.page_margin, m.page_margin)
         layout.setSpacing(m.section_gap)
 
+        # El orden de la página es el de lo que se viene a mirar: cuánta hay
+        # y cómo está ocupada, los módulos, sus temporizaciones, lo que se
+        # puede medir, y al final lo que falta y por qué. La tarjeta que pide
+        # permisos iba la segunda, y sin ellos no había un dato hasta el
+        # tercer bloque; lo que falta lo señala ya el candado de cada módulo.
         layout.addWidget(self._build_header())
         self.elevation = self._build_elevation()
-        layout.addWidget(self.elevation)
 
         self._slots_host = ResponsiveRow(min_item_width=290)
         layout.addWidget(self._slots_host)
@@ -102,9 +106,6 @@ class MemoryPage(QScrollArea):
         self.slots_free.setFont(ui_font(theme.METRICS.small_pt))
         layout.addWidget(self.slots_free)
 
-        layout.addWidget(self._build_traffic())
-        layout.addWidget(self._build_bandwidth())
-
         self.timings_card = Card(_("memory.card.timings"))
         self.timings = Table([_(h) for h in TIMING_HEADERS],
                              numeric=(False, True, True, True, True, True, True, True))
@@ -115,6 +116,10 @@ class MemoryPage(QScrollArea):
         self.timings_card.body.addWidget(self.timings)
         self.timings_card.body.addWidget(explanation)
         layout.addWidget(self.timings_card)
+
+        layout.addWidget(self._build_bandwidth())
+        layout.addWidget(self._build_traffic())
+        layout.addWidget(self.elevation)
 
         self._notices_host = QVBoxLayout()
         self._notices_host.setSpacing(6)
