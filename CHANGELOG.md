@@ -59,6 +59,8 @@ que hace falta.
   A · DIMM 1», «Canal B · DIMM 1».
 - Arreglado: cuando la placa no deja leer el SPD, Chips, Perfiles rápidos y
   Fabricado ya no salen con guion: se dice al pie de dónde saldrían.
+- Arreglado: al dar permisos desde Memoria, las tarjetas de los módulos no
+  aparecían hasta cambiar de página y volver.
 
 ### Procesador
 
@@ -81,6 +83,13 @@ que hace falta.
   tienen un sensor para todo el encapsulado.
 - Arreglado: sin sensor propio del procesador, su temperatura se tomaba de
   una zona del firmware que marca siempre lo mismo (27.8 °C).
+- Nuevo: cuánto descansa el procesador: qué parte del tiempo pasan sus hilos
+  en cada estado de reposo (C1, C2, C6…).
+- Nuevo: en Intel, los límites de potencia PL1 y PL2 a la vista, también sin
+  permisos.
+- Nuevo: en Cachés, la latencia de cada nivel, después de medirla en Memoria.
+- Arreglado: en una ventana estrecha, la especificación del procesador pasa
+  a dos líneas en vez de cortarse.
 
 ### Gráficos
 
@@ -217,11 +226,28 @@ que hace falta.
 - Arreglado: un disco de platos ya no enseña «Vida restante».
 - Arreglado: Ajustes hablaba de «las 53» banderas cuando la página CPU
   cuenta las de tu procesador.
+- Nuevo: sección Dispositivos, con lo enchufado por USB (en árbol, colgando
+  de su concentrador, con su velocidad), las tarjetas de sonido, las cámaras
+  y el adaptador Bluetooth.
+- Nuevo: en Placa base, los dispositivos PCIe con su enlace actual y máximo,
+  y lo que la plataforma tiene activado: IOMMU, virtualización, Above 4G
+  Decoding, chip de sensores y códec de sonido.
+- Nuevo: en Sistema, las vulnerabilidades del procesador y sus mitigaciones,
+  el intercambio (con lo que comprime zram), el gestor de arranque y lo que
+  tarda el arranque hasta el kernel, y la versión de Mesa.
+- Nuevo: en Almacenamiento, lo que se ve del TRIM de cada unidad y, con
+  permisos, el diagnóstico completo de cada disco.
+- Nuevo: en Sensores, la curva del último minuto ocupa todo el ancho.
+- Arreglado: la página abierta se pone al día sola cuando cambian los
+  permisos o se enchufa o se quita algo.
 
 ### Privacidad
 
 - Arreglado: con `--anonimo`, dos tarjetas de red distintas salían con la
   misma dirección física.
+- Nuevo: de lo enchufado por USB no se lee nunca el número de serie, ni la
+  dirección del adaptador Bluetooth. Con `--anonimo` y en el informe, cada
+  dispositivo dice qué clase de cosa es y a qué velocidad va, no su marca.
 
 ### AppImage
 

@@ -1,5 +1,26 @@
 # Propuesta: datos nuevos
 
+**Aprobada y aplicada el 18 de noviembre de 2026** en la rama `interfaz`,
+en el orden que proponía: Sistema, Placa base, Dispositivos, CPU, Cachés y
+Almacenamiento. Lo que sigue es la propuesta tal como se escribió; el estado
+de cada cosa está en `docs/en-curso.md` y en el CHANGELOG.
+
+Lo que **no** se hizo, a propósito: el wifi, LUKS y las secundarias del SPD
+(sin pieza), el tiempo de arranque del kernel y de los servicios, y PPT, TDC
+y EDC de AMD, que tienen su propia propuesta
+(`docs/propuesta-limites-amd.md`).
+
+Y lo que cambió al aplicarla, por las correcciones del autor a las
+maquetas: en Placa base es una sola tabla de dispositivos PCIe con los
+nombres de cada página; el USB es un árbol y los concentradores no cuentan;
+la velocidad USB se llama por su nombre y no por una versión; el sonido
+lleva nombres que se entienden; y el arranque da tres cifras («firmware ·
+cargador · total»).
+
+---
+
+Lo que se escribió entonces:
+
 Solo propuesta: nada de esto está escrito en la aplicación ni en la suite.
 No es el estado del programa.
 

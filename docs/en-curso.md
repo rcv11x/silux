@@ -48,6 +48,50 @@ Almacenamiento sin salir de la página.
 - **El test de benchmark de ×1.8**: apuntado en `docs/pendientes.md` y en
   CLAUDE.md para la fase del benchmark. El umbral no se ha tocado.
 
+### Bloque 3, hecho: los datos nuevos de `docs/propuesta-datos.md`
+
+| Commit | Qué | Visto en |
+|---|---|---|
+| `492c8b2` | Sistema: vulnerabilidades, intercambio, arranque, Mesa; procesos bien contados en un volcado | captura de este equipo |
+| `e5740a5` | Placa base: una tabla de dispositivos PCIe y la tarjeta Plataforma | captura de este equipo |
+| `a594a40` | **Sección nueva, Dispositivos** (la decimocuarta), con su privacidad | capturas normal y `--anonimo` |
+| `709e6c7` | CPU: residencia en C-states; PL1 y PL2 sin permisos | captura de este equipo (AMD) |
+| `3c7bc13` | Cachés: la latencia medida, en la fila de su nivel | captura midiendo de verdad |
+| `c598bca` | Almacenamiento: TRIM y diagnóstico completo | solo tests (ver abajo) |
+| `1c9b909` | `volcar_equipo.py` al día: tapa lo enchufado | — |
+| `531fd11` | **El volcado del 5800X3D, rehecho** | privacidad limpia |
+
+Las correcciones a las maquetas están todas aplicadas (una sola tabla PCIe
+con los nombres de cada página, el enlace de la gráfica como en Gráficos,
+«Ranura» solo con permisos, la dirección al pasar el ratón, «Above 4G
+Decoding»; zram en una fila, las tres cifras del arranque, las mitigaciones
+enteras; el USB en árbol sin contar concentradores, clases que dicen lo que
+es, «Velocidad completa · 12 Mb/s», sonido con nombres que se entienden,
+icono propio y la privacidad antes que la página).
+
+**Escrito a ciegas o sin ver, para probar:**
+
+1. **Todo en Intel.** El volcado del i5-10400 no trae nada de esto.
+   **Hay que rehacerlo en la oficina**: `rm -rf
+   tests/fixtures/equipos/i5-10400 tests/fixtures/equipos/i5-10400-turbo`
+   y `python3 tools/volcar_equipo.py i5-10400` (y el `-turbo` con carga,
+   como dice «Decisiones de hoy» más abajo). Después, la suite: los tests de
+   `test_equipos_nuevo.py` que hoy solo miran el 5800X3D son la plantilla
+   para mirar ese. Lo que más interesa ver allí: PL1 y PL2 en CPU (65 y
+   115 W), los C-states de Intel, GRUB sin tarjeta de Arranque y con su
+   línea al pie, y la tabla PCIe con la integrada.
+2. **La columna «Ranura»** de Placa base: sale de la tabla del firmware,
+   que pide permisos. Probada con una estructura fabricada según la norma,
+   no con la de ninguna placa. Dar permisos y mirar si los nombres casan.
+3. **El diagnóstico completo** de cada disco (Almacenamiento, plegado):
+   con permisos. Y el TRIM, dentro de «Firmware y sectores».
+4. **Dispositivos**: enchufar y quitar un USB con la página abierta; un
+   disco USB 3 en un puerto USB 2 tiene que salir con su aviso.
+
+**Lo que no se hizo, a propósito**: wifi, LUKS y secundarias del SPD (sin
+pieza); el tiempo de arranque del kernel y de los servicios (pide lanzar
+`systemd-analyze`).
+
 ## Sesión del 17 por la noche, en casa (rama `interfaz`)
 
 Dos tandas. La primera (el hueco de Gráficos, el corte de Red, la raya de

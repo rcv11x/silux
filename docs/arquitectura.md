@@ -533,3 +533,30 @@ nunca.
 Omite por defecto el nombre del equipo, las IP, las MAC y los números de serie
 —está pensado para pegarlo en un issue público— y lo dice al terminar. Con
 `--with-identifiers` se incluyen. Hay tests que vigilan que no se cuele nada.
+
+## Los proveedores de la noche del 18 de noviembre de 2026
+
+Los datos de `docs/propuesta-datos.md`. Todos sin permisos, salvo donde se
+dice.
+
+- `providers/system.py`, `SystemSecurity` (una vez): vulnerabilidades del
+  procesador y las cuatro variables del cargador de arranque que se leen de
+  efivars. `SystemState` añade el intercambio de `/proc/swaps` y cuenta los
+  procesos por `sysroot.a_traves`, para que un volcado guarde el número.
+- `providers/pci.py`: `PlatformInfo` (una vez: IOMMU, virtualización, BAR
+  por encima de 4 GB, chip de sensores, códec) y `PciDevices` (en cada
+  muestreo, porque el enlace cambia solo). Va detrás de gráficas, discos y
+  red para llamar a cada pieza como ya se llama en su página, y usa el
+  `_enlace` de `providers/drm.py`. El nombre de la ranura sale de la tabla
+  SMBIOS que ya se lee con permisos (`privileged/smbios.py`, tipo 9).
+- `providers/devices.py`, `ConnectedDevices`: USB, sonido, cámaras y
+  Bluetooth. No abre `serial` ni `address`.
+- `providers/cpuidle.py`, `CpuIdle`: residencia en C-states, restando dos
+  lecturas. En un equipo volcado no da nada.
+- `providers/rapl.py`, `PowerLimits`: PL1 y PL2 sin esperar al consumo.
+- `providers/storage.py`: descartes, `discard` en los montajes y
+  `fstrim.timer`. `smart.py` guarda la tabla de atributos de un SATA.
+
+Y en la interfaz: `ui/pages/devices.py` es la sección nueva; la latencia
+viaja de Memoria a Cachés por una señal (`latencies_measured`), no por el
+modelo: es una medida de la sesión, no una lectura del equipo.
