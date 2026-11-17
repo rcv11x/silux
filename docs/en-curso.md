@@ -31,6 +31,23 @@ existía todavía; entra en el bloque 3 con su propia foto).
 **A probar en la pieza**: dar permisos desde Memoria y desde
 Almacenamiento sin salir de la página.
 
+### Bloque 2, hecho: detalles de la tanda A
+
+- **Sensores, «Último minuto»**: la curva se queda con todo el ancho que
+  sobra (tenía un tope de 460 px). Visto a 2560×1440.
+- **Sensores, el chip entre paréntesis**: en todas las filas de la
+  categoría cuando hay nombres repetidos, en ninguna cuando no. La placa:
+  seis «(it8688)» y tres «(acpitz)»; la gráfica, ninguno.
+- **Notas como frases**: «Los chips, los perfiles rápidos y la fecha de
+  fabricación salen del chip SPD de cada módulo, y esta placa no deja
+  leerlo.» y «El firmware de esta placa no dice su revisión ni el fabricante
+  del chasis.» (`render.enumeration`).
+- **CPU en compacto**: la especificación en dos líneas
+  (`ElidingLabel.permitir_lineas`). Con la letra normal ya cabía; el corte
+  era con la letra por omisión, que es la «grande».
+- **El test de benchmark de ×1.8**: apuntado en `docs/pendientes.md` y en
+  CLAUDE.md para la fase del benchmark. El umbral no se ha tocado.
+
 ## Sesión del 17 por la noche, en casa (rama `interfaz`)
 
 Dos tandas. La primera (el hueco de Gráficos, el corte de Red, la raya de

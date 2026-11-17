@@ -357,3 +357,23 @@ Lo que salió al hacerla y no entraba en ella:
 * `providers/hwmon.py` · **baja** · los valores de relleno de `acpitz`
   (`VALORES_DE_RELLENO`: 16.8, 27.8 y 29.8 °C) son los tres que se conocen;
   una placa que devuelva otro número fijo no se marca.
+
+## De la noche del 17 al 18 de noviembre de 2026 (rama `interfaz`)
+
+- **Para la fase del benchmark: un test que mide y a veces no llega.**
+  `tests/test_benchmark.py::TestCargasNuevas::
+  test_todas_reparten_de_verdad_entre_hilos` pide que cada carga rinda más
+  de ×1.8 con varios hilos que con uno. En el CI, en el trabajo de Python
+  3.10, `compresion_dura` dio ×1.76 (run 44176463759); relanzado, pasó. No
+  es de ninguna rama: es ruido del runner contra un umbral fijo. El umbral
+  no se ha tocado, por decisión del autor. Lo que hay que decidir en esa
+  fase: si el umbral baja, si la medida se repite antes de fallar, o si ese
+  test deja de correr en el CI y se queda para la máquina de quien mide.
+  Es el segundo test de medida que falla solo (el otro,
+  `test_avisos.py::test_no_salta_ningun_aviso_en_reposo`, lee la máquina).
+- **El estado de limitación de una integrada de Intel** no se lee
+  (`gt/gt0/throttle_reason_*` de `i915`): «Estado —» en Gráficos.
+- **El CI no mira si el AppImage pinta sus iconos.** Se comprobó a mano
+  abriendo los dos con `--screenshot`. Un paso que lo haga y mire un píxel
+  de la barra lateral lo habría cazado.
+- **`tests/test_al_momento.py` no cubre Batería**: ningún volcado tiene una.
