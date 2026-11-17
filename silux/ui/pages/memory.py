@@ -114,6 +114,12 @@ class MemoryPage(QScrollArea):
         self.slots_free.setWordWrap(True)
         self.slots_free.setFont(ui_font(theme.METRICS.small_pt))
         layout.addWidget(self.slots_free)
+        self.spd_missing = QLabel("")
+        self.spd_missing.setObjectName("Muted")
+        self.spd_missing.setWordWrap(True)
+        self.spd_missing.setFont(ui_font(theme.METRICS.small_pt))
+        self.spd_missing.hide()
+        layout.addWidget(self.spd_missing)
 
         self.timings_card = Card(_("memory.card.timings"))
         self.timings = Table([_(h) for h in TIMING_HEADERS],
@@ -697,6 +703,7 @@ class MemoryPage(QScrollArea):
         nombres = render.slot_names([(m.locator, m.bank) for m in modules])
 
         libres = []
+        sin_spd: list[str] = []
         for nombre, module in zip(nombres, modules):
             crudo = module.locator or ""
             if not module.populated:
@@ -718,6 +725,10 @@ class MemoryPage(QScrollArea):
                 grid.add(_(name))
             card.body.addWidget(grid)
             self._fill(grid, module)
+            for clave in self._solo_del_spd(module):
+                grid.set_visible(_(clave), False)
+                if clave not in sin_spd:
+                    sin_spd.append(clave)
             if candado is not None:
                 # Del SPD sale a cuánto puede ir el módulo, no a cuánto va ni
                 # en qué banco está: eso lo guarda la tabla del firmware. Con
@@ -735,6 +746,26 @@ class MemoryPage(QScrollArea):
                                                zocalos=", ".join(libres))
             if libres else "")
         self.slots_free.setVisible(bool(libres))
+        # Lo que no sale en las fichas y por qué, en el orden de la ficha.
+        self.spd_missing.setText(_("memory.na.nospd").format(campos=", ".join(
+            _(clave) for clave in MODULE_FIELDS if clave in sin_spd)) if sin_spd else "")
+        self.spd_missing.setVisible(bool(sin_spd))
+
+    @staticmethod
+    def _solo_del_spd(module: MemoryModule) -> tuple[str, ...]:
+        """Los campos que este módulo no puede tener porque no se leyó su SPD.
+
+        Quién fabricó los chips, qué perfiles rápidos trae y cuándo se hizo
+        solo están en el chip de identificación del módulo; la tabla del
+        firmware no los lleva. Sin SPD no son datos que falten por leer mejor:
+        no hay de dónde, y cuatro guiones por módulo no dicen eso. Se esconden
+        y se nombran al pie. El fabricante sí suele venir en la tabla; solo se
+        esconde si tampoco está ahí.
+        """
+        if module.spd is not None:
+            return ()
+        return (() if module.manufacturer else ("memory.field.vendor",)) + (
+            "memory.field.chips", "memory.field.profiles", "memory.field.made")
 
     @staticmethod
     def _fill(grid: InfoGrid, module: MemoryModule) -> None:

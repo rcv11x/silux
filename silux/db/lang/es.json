@@ -557,6 +557,7 @@
   "memory.lat.title": "Latencia por nivel",
   "memory.loading": "Leyendo la memoria…",
   "memory.module.n": "Módulo {n}",
+  "memory.na.nospd": "Sin {campos}: salen del chip de identificación (SPD) de cada módulo, que este equipo no deja leer.",
   "memory.ranks.ecc": "   con ECC",
   "memory.slot": "Zócalo",
   "memory.slot.channel": "Canal {c}",

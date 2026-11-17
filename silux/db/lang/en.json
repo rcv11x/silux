@@ -557,6 +557,7 @@
   "memory.lat.title": "Latency by level",
   "memory.loading": "Reading memory…",
   "memory.module.n": "Module {n}",
+  "memory.na.nospd": "No {campos}: they come from each module's identification chip (SPD), which this machine does not let us read.",
   "memory.ranks.ecc": "   with ECC",
   "memory.slot": "Slot",
   "memory.slot.channel": "Channel {c}",

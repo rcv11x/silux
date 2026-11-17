@@ -7,6 +7,9 @@ con módulos leídos por SPD la tarjeta de permisos iba delante de ellos.
 
 import unittest
 
+from silux import render
+from silux.i18n import _
+
 from tests import pantalla, qt
 from tests.test_equipos import EQUIPOS, foto
 
@@ -67,6 +70,73 @@ class TestElOrdenDeMemoria(unittest.TestCase):
             avisos = [a for a in pagina.findChildren(Notice) if a.isVisible()]
             self.assertTrue(avisos)
             self.assertGreater(min(alto(a) for a in avisos), alto(pagina.elevation))
+
+
+
+
+@unittest.skipIf(QApplication is None, "sin PySide6")
+class TestSinSpd(unittest.TestCase):
+    """En el 5800X3D la placa no deja leer el SPD: con permisos, cada módulo
+    salía con «Chips —», «Perfiles rápidos —» y «Fabricado —», tres guiones
+    de datos que solo están en ese chip. Se esconden y se dice al pie."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.app = qt.app()
+
+    def _pagina(self, f, ventana):
+        ventana.select_section("Memoria")
+        for _vez in range(4):
+            self.app.processEvents()
+        return ventana.memory_page
+
+    def test_con_la_tabla_del_firmware_y_sin_spd(self):
+        from tests.test_nombres_de_zocalos import PLACAS, _con_la_tabla
+
+        base = foto(EQUIPOS / "5800x3d")[0]
+        f = _con_la_tabla(base, PLACAS["Gigabyte X570 (AM4)"][0], {1, 3})
+        self.assertTrue(all(m.spd is None for m in f.modules))
+        with pantalla.Ventana(f) as ventana:
+            pagina = self._pagina(f, ventana)
+            self.assertEqual(len(pagina._slot_grids), 2)
+            for rejilla in pagina._slot_grids:
+                for clave in ("memory.field.chips", "memory.field.profiles", "memory.field.made"):
+                    with self.subTest(campo=clave):
+                        self.assertFalse(rejilla._values[_(clave)].isVisible())
+                        self.assertFalse(rejilla._names[_(clave)].isVisible())
+                # El fabricante sí está en la tabla, y se queda.
+                self.assertTrue(rejilla._values[_("memory.field.vendor")].isVisible())
+                visibles = [v.full_text() for v in rejilla._values.values() if v.isVisible()]
+                self.assertNotIn(render.DASH, visibles)
+            self.assertTrue(pagina.spd_missing.isVisible())
+            pie = pagina.spd_missing.text()
+            for clave in ("memory.field.chips", "memory.field.profiles", "memory.field.made"):
+                self.assertIn(_(clave), pie)
+            self.assertNotIn(_("memory.field.vendor"), pie)
+            self.assertIn("SPD", pie)
+
+    def test_si_la_tabla_tampoco_dice_el_fabricante_tambien_se_esconde(self):
+        import dataclasses
+        from tests.test_nombres_de_zocalos import PLACAS, _con_la_tabla
+
+        base = foto(EQUIPOS / "5800x3d")[0]
+        f = _con_la_tabla(base, PLACAS["Gigabyte X570 (AM4)"][0], {1, 3})
+        f = dataclasses.replace(f, modules=tuple(
+            dataclasses.replace(m, manufacturer=None) for m in f.modules))
+        with pantalla.Ventana(f) as ventana:
+            pagina = self._pagina(f, ventana)
+            self.assertFalse(pagina._slot_grids[0]._values[_("memory.field.vendor")].isVisible())
+            self.assertIn(_("memory.field.vendor"), pagina.spd_missing.text())
+
+    def test_con_spd_no_se_esconde_nada_ni_sale_el_pie(self):
+        # En el i5-10400 el SPD se lee sin permisos: sus fichas salen de él.
+        f = foto(EQUIPOS / "i5-10400")[0]
+        with pantalla.Ventana(f) as ventana:
+            pagina = self._pagina(f, ventana)
+            self.assertTrue(pagina._slot_grids)
+            self.assertFalse(pagina.spd_missing.isVisible())
+            for rejilla in pagina._slot_grids:
+                self.assertTrue(rejilla._values[_("memory.field.chips")].isVisible())
 
 
 if __name__ == "__main__":
