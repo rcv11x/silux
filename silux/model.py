@@ -1286,6 +1286,9 @@ class DiskHealth:
     unsafe_shutdowns: Optional[int] = None
     media_errors: Optional[int] = None
     critical_warning: Optional[int] = None
+    # La tabla de atributos de un disco SATA, entera: (número, normalizado,
+    # en crudo). Los nombres dependen del fabricante; el número no.
+    attributes: tuple[tuple[int, int, int], ...] = ()
 
     @property
     def life_left_percent(self) -> Optional[int]:
@@ -1322,6 +1325,12 @@ class Disk:
     pci_slot: Optional[str] = None
     link: Optional[PcieLink] = None            # solo los NVMe
     temp_c: Optional[float] = None
+    # Si la unidad admite descartes (TRIM) y qué se ve de que se estén
+    # haciendo: alguna partición montada con `discard`, o el temporizador
+    # `fstrim.timer` activado. Lo segundo es una señal, no una garantía.
+    discard: Optional[bool] = None
+    discard_mounted: bool = False
+    fstrim_timer: bool = False
     partitions: tuple[Partition, ...] = ()
     io: DiskIo = field(default_factory=DiskIo)
     health: DiskHealth = field(default_factory=DiskHealth)

@@ -789,6 +789,61 @@ def sound_card(tarjeta) -> str:
     return tarjeta.name or _("sound.other")
 
 
+def trim(disco) -> Optional[str]:
+    """Lo que se ve del TRIM de una unidad, sin afirmar más de lo que se ve.
+
+    «Lo admite» es un hecho. Que se esté haciendo es una señal: la partición
+    montada con `discard`, o el temporizador `fstrim.timer` activado, que
+    puede no cubrir esa partición. Un disco de platos que admite descartes es
+    un SMR, y se dice así. El que no los admite no enseña la fila.
+    """
+    if not disco.discard:
+        return None
+    partes = [_("disk.trim.smr") if disco.rotational else _("disk.trim.yes")]
+    if disco.discard_mounted:
+        partes.append(_("disk.trim.mounted"))
+    if disco.fstrim_timer:
+        partes.append(_("disk.trim.timer"))
+    if len(partes) == 1 and not disco.rotational:
+        partes.append(_("disk.trim.unseen"))
+    return " · ".join(partes)
+
+
+# Los atributos SMART de un disco SATA que significan lo mismo en casi todos.
+# Los demás se enseñan con su número: su nombre depende del fabricante.
+SMART_COMUNES = {
+    1: "smart.attr.1", 5: "smart.attr.5", 9: "smart.attr.9", 12: "smart.attr.12",
+    187: "smart.attr.187", 188: "smart.attr.188", 194: "smart.attr.194",
+    197: "smart.attr.197", 198: "smart.attr.198", 199: "smart.attr.199",
+    241: "smart.attr.241", 242: "smart.attr.242",
+}
+
+
+def smart_rows(salud) -> list[tuple[str, str]]:
+    """El diagnóstico entero de un disco, en filas de nombre y valor.
+
+    Primero lo que tiene nombre fijo (lo de NVMe viene así de la norma) y
+    después, en un SATA, la tabla de atributos tal cual: número, nombre si es
+    de los comunes, valor normalizado y contador en crudo.
+    """
+    filas: list[tuple[str, str]] = []
+    for clave, valor in (
+            ("smart.cycles", salud.power_cycles), ("smart.unsafe", salud.unsafe_shutdowns),
+            ("smart.mediaerrors", salud.media_errors),
+            ("smart.spare", f"{salud.spare_percent} %" if salud.spare_percent is not None else None),
+            ("smart.read", size(salud.read_bytes) if salud.read_bytes else None),
+            ("smart.warning", None if salud.critical_warning is None
+             else _("smart.warning.none") if salud.critical_warning == 0
+             else f"0x{salud.critical_warning:02x}")):
+        if valor is not None:
+            filas.append((_(clave), f"{valor:n}" if isinstance(valor, int) else str(valor)))
+    for numero, normalizado, crudo in salud.attributes:
+        nombre = _(SMART_COMUNES[numero]) if numero in SMART_COMUNES else _("smart.attr.other")
+        filas.append((f"{numero} · {nombre}", _("smart.attr.value").format(
+            normalizado=normalizado, crudo=f"{crudo:n}")))
+    return filas
+
+
 def iommu(platform) -> str:
     """«activa · 34 grupos» o «sin activar»."""
     if not platform.iommu_groups:

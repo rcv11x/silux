@@ -236,6 +236,8 @@ def _parse_ata(data: bytes, vendor: Optional[str] = None,
         # crezcan con el tiempo sí.
         media_errors=(crudo(ATA_REASIGNADOS) or 0) + (crudo(ATA_PENDIENTES) or 0)
         + (crudo(ATA_INCORREGIBLES) or 0),
+        attributes=tuple((identificador, normalizado, en_crudo)
+                         for identificador, (normalizado, en_crudo) in sorted(tabla.items())),
     )
 
 

@@ -199,6 +199,10 @@ class Disks(Provider):
             pci_slot=_ranura(base) if transporte == "nvme" else None,
             link=_enlace(base) if transporte == "nvme" else None,
             temp_c=_temperatura(base),
+            discard=_admite_descartes(base),
+            discard_mounted=any(nombre_montado.startswith(nombre)
+                                for nombre_montado in _con_discard()),
+            fstrim_timer=_fstrim_activo(),
             partitions=tuple(_particiones(base, nombre, montajes)),
             io=self._trafico(nombre, base),
         )
@@ -428,6 +432,31 @@ def _ocupacion(punto: str) -> tuple[Optional[int], Optional[int]]:
 
     # Con un equipo volcado, lo grabado: el punto de montaje es de otra máquina.
     return sysroot.a_traves("statvfs", punto, medir) or (None, None)
+
+
+def _admite_descartes(base: pathlib.Path) -> Optional[bool]:
+    """Si la unidad acepta que le digan qué bloques ya no se usan (TRIM)."""
+    maximo = read_int(str(base / "queue" / "discard_max_bytes"))
+    return None if maximo is None else maximo > 0
+
+
+def _con_discard() -> set[str]:
+    """Las particiones montadas con la opción `discard`."""
+    encontradas: set[str] = set()
+    for linea in (read_text(PROC_MOUNTS) or "").splitlines():
+        campos = linea.split()
+        if len(campos) >= 4 and campos[0].startswith("/dev/") \
+                and "discard" in campos[3].replace("=", ",").split(","):
+            encontradas.add(campos[0][len("/dev/"):])
+    return encontradas
+
+
+# Dónde deja systemd el enlace de un temporizador activado.
+FSTRIM_ACTIVADO = "/etc/systemd/system/timers.target.wants/fstrim.timer"
+
+
+def _fstrim_activo() -> bool:
+    return os.path.lexists(sysroot.ruta(FSTRIM_ACTIVADO))
 
 
 def _montajes() -> dict[str, tuple[str, str]]:

@@ -40,7 +40,8 @@ DISK_FIELDS = ("storage.col.model", "gpu.field.vendor", "gpu.vram.type", "storag
                "storage.field.life")
 # Cómo lo ve el kernel: se consulta una vez, si acaso. Va plegado.
 DISK_DETAIL_FIELDS = ("storage.field.firmware", "storage.field.logical",
-                      "storage.field.physical", "storage.field.scheduler")
+                      "storage.field.physical", "storage.field.scheduler",
+                      "storage.field.trim")
 
 # Los discos se ordenan por lo que le importa a quien mira: primero el que
 # lleva el sistema, luego por tipo y al final los que se pueden desenchufar.
@@ -69,6 +70,8 @@ class StoragePage(QScrollArea):
         self._details: dict = {}
         self._folds: dict = {}
         self._pies: dict = {}
+        self._smart: dict = {}
+        self._smart_signature: dict = {}
         self._prefs = prefs
         m = theme.METRICS
 
@@ -410,6 +413,14 @@ class StoragePage(QScrollArea):
                 card.body.addWidget(pliegue)
                 self._details[disco.name] = detalle
                 self._folds[disco.name] = pliegue
+                # El diagnóstico entero, cuando se ha leído. Nace escondido:
+                # sin permisos no hay nada que plegar.
+                completo = Plegable(_("storage.card.smart"))
+                completo.body.addWidget(InfoGrid())
+                completo.hide()
+                card.body.addWidget(completo)
+                self._smart[disco.name] = completo
+                self._smart_signature[disco.name] = ()
                 fila.add(card)
                 self._grids[disco.name] = grid
                 self._bars[disco.name] = barra
@@ -455,6 +466,10 @@ class StoragePage(QScrollArea):
           tooltip=_("storage.tip.physical"))
         t(_("storage.field.scheduler"), disco.scheduler or d,
           tooltip=_("storage.tip.scheduler"))
+        descartes = render.trim(disco)
+        t(_("storage.field.trim"), descartes or d, tooltip=_("storage.tip.trim"))
+        self._details[disco.name].set_visible(_("storage.field.trim"), bool(descartes))
+        self._fill_smart(disco)
         f(_("gpu.sensor.temp"), render.temperature(disco.temp_c, self._prefs.fahrenheit),
           tooltip=self._por_que_sin_temperatura(disco))
 
@@ -473,6 +488,29 @@ class StoragePage(QScrollArea):
             pie.setText(_("storage.na.hdd.life") if de_platos else "")
             pie.setVisible(de_platos)
         self._poner_candados(grid, disco)
+
+    def _fill_smart(self, disco: Disk) -> None:
+        """La tabla entera del diagnóstico, plegada, cuando hay permisos."""
+        pliegue = self._smart.get(disco.name)
+        if pliegue is None:
+            return
+        filas = tuple(render.smart_rows(disco.health)) \
+            if disco.health.power_on_hours is not None else ()
+        pliegue.setVisible(bool(filas))
+        nombres = tuple(n for n, _v in filas)
+        vieja = pliegue.body.itemAt(0).widget()
+        if nombres != self._smart_signature.get(disco.name):
+            self._smart_signature[disco.name] = nombres
+            nueva = InfoGrid()
+            for nombre, valor in filas:
+                nueva.add(nombre)
+                nueva.set(nombre, valor)
+            pliegue.body.replaceWidget(vieja, nueva)
+            vieja.setParent(None)
+            vieja.deleteLater()
+        else:
+            for nombre, valor in filas:
+                vieja.set(nombre, valor)
 
     def _por_que_sin_temperatura(self, disco: Disk) -> str:
         """Lo que explica el guion de un disco que no da su temperatura."""
