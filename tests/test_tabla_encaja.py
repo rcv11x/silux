@@ -89,6 +89,24 @@ class TestLaTablaSuelta(unittest.TestCase):
 
 
 @unittest.skipIf(QApplication is None, "sin PySide6")
+class TestFilasCortas(TestLaTablaSuelta):
+    """«Ningún monitor conectado» traía seis valores para siete columnas."""
+
+    def test_una_fila_corta_no_deja_el_dato_de_la_anterior(self):
+        tabla = self._tabla(900)
+        tabla.set_rows([("nada", "—"), ("sda", "—"), ("sdb", "—")])
+        _asentar(self.app)
+        self.assertEqual([c.full_text() for c in tabla._cells[0]], ["nada", "—", "", "", ""])
+
+    def test_y_al_volver_la_fila_entera_cabe(self):
+        tabla = self._tabla(900)
+        tabla.set_rows([("nada", "—")])
+        tabla.set_rows([FILAS[0]])
+        _asentar(self.app)
+        self.assertEqual([c.full_text() for c in tabla._cells[0]], list(FILAS[0]))
+
+
+@unittest.skipIf(QApplication is None, "sin PySide6")
 class TestConSitioDeSobra(TestLaTablaSuelta):
     """En una ventana de 2560 px las tablas se quedaban en el tercio
     izquierdo de su tarjeta. Las columnas se separan, con tope."""

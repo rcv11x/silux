@@ -1725,6 +1725,12 @@ class Table(QScrollArea):
                 celda.setToolTip(texto)
 
     def set_rows(self, rows: Sequence[Sequence[str]], tooltips: Sequence[str] = ()) -> None:
+        # Todas las filas, con tantas celdas como columnas. Una fila corta
+        # («ningún monitor conectado» traía seis valores para siete columnas)
+        # dejaba en la última celda el dato de la fila anterior, y al volver
+        # la fila entera se salía de las celdas que había.
+        columnas = len(self._headers)
+        rows = [(list(fila) + [""] * columnas)[:columnas] for fila in rows]
         # Mientras la tabla tenga la misma forma se reescriben las celdas que
         # ya están. Rehacerlas en cada muestreo dejaba miles de etiquetas vivas.
         if len(rows) == self._rows and self._cells:
