@@ -3,8 +3,32 @@
 Para retomar sin el contexto de la sesión anterior. Se borra cuando lo de
 aquí esté hecho o pase a `docs/pendientes.md`.
 
-Última sesión: 16 de noviembre de 2026, por la tarde-noche, en el 5800X3D de
-casa (CachyOS). La anterior fue ese mismo día en el i5-10400 de la oficina.
+Última sesión: 17 de noviembre de 2026, en el i5-10400 de la oficina
+(Fedora). La anterior, el 16 por la tarde-noche en el 5800X3D de casa
+(CachyOS).
+
+## Sesión del 17, en la oficina
+
+**Punto 1, hecho: los dos volcados del i5-10400, rehechos** (`f59e55f`).
+Llevan `scaling_cur_freq` y el nombre de la gráfica grabado; el de reposo con
+`no_turbo` a 1 y 2,9 GHz, el de carga con `no_turbo` a 0 y 4,0 GHz.
+
+- Al rehacerlos salió **un fallo de privacidad de la herramienta**
+  (`ef8d8c3`): el nombre de una interfaz puesta a mano (una WireGuard nueva
+  en la oficina) se quedaba en `/proc/net/route` aunque su carpeta saliera
+  como `interfaz1`. Arreglado antes de commitear ningún volcado; el nombre
+  entra además en lo que la comprobación final busca en cada byte.
+- **El volcado del `5800x3d` ya publicado está limpio de eso**: sus ocho
+  interfaces (`enp5s0`, `enp6s0`, `docker0`, `virbr0`, `tailscale0`, un
+  `br-…`, un `veth…`, `lo`) son todas nombres que pone el sistema, y son las
+  mismas en `sys/class/net`, en `route`, en `if_inet6` y en lo grabado. No
+  hay que reescribir la rama. Lo que desde la oficina no se puede repetir es
+  la búsqueda byte a byte del nombre del equipo y las MAC de casa: esa la
+  hizo la herramienta allí al volcarlo.
+- **Las capturas de «antes» de la tanda** están en
+  `~/Imágenes/silux-test/tanda-3/antes/` (oficina): este equipo y el volcado
+  del 5800X3D montado con `SILUX_SYSROOT`, en oscuro a 1440×900 y en compacto
+  a 900×680.
 
 ## Estado y lo siguiente
 
@@ -31,8 +55,7 @@ en `ui-permisos`:
 - **Rendimiento**: botón «Borrar las de otra escala».
 - **Gráficas de las fichas**: el eje vacío a todo el ancho, llenando desde la
   derecha (deshace el reparto de `Sparkline._geometria` de la segunda tanda).
-- **Rehacer los dos volcados del i5-10400** en la oficina: `scaling_cur_freq`
-  y el nombre de la gráfica grabado.
+- ~~Rehacer los dos volcados del i5-10400~~: hecho el 17 (`f59e55f`).
 
 ## Qué está hecho
 
@@ -92,9 +115,8 @@ Lo que salió de comprobar AMD, en corto:
   dato y con su aviso, no a 4,96 GHz. `35756d1` está hecho sin ese arranque.
 - Con el boost apagado (`echo 0 > /sys/devices/system/cpu/cpufreq/boost`,
   pide root): que el eje siga hasta 4,55 y no baje a 3,4.
-- **Rehacer los dos volcados del i5-10400 en la oficina**
-  (`i5-10400` en reposo, `i5-10400-turbo` con carga): los de ahora no llevan
-  `scaling_cur_freq`, y el test de la caída (`39396a6`) los salta.
+- ~~Rehacer los dos volcados del i5-10400 en la oficina~~: hecho el 17; el
+  test de la caída (`39396a6`) ya corre contra los tres.
 
 ### `ui-permisos` (sale de `12486ee`, antes de lo de la tarde)
 
@@ -307,10 +329,13 @@ se apunta y se sigue con lo siguiente.
   (NVML, lo del ayudante, lo que sale de restar dos lecturas: uso por hilo y
   RAPL) lo dice el `manifiesto.json` de cada volcado.
 - **Un estado que cambia solo se vuelca dos veces.** En el i5-10400,
-  `auto-cpufreq` apaga el turbo en reposo y lo enciende a los 3 s de haber
-  carga; por eso hay `i5-10400` y `i5-10400-turbo`. El segundo se hizo con
-  once hilos ocupados (`python3 -c "while True: pass"`) y el turbo ya
-  encendido.
+  `auto-cpufreq` apaga el turbo en reposo y lo enciende cuando hay carga;
+  por eso hay `i5-10400` y `i5-10400-turbo`. **No lo enciende a un plazo
+  fijo**: el 17 tardó más de 40 s con once hilos al 100 %, y otra vez lo
+  encendió el propio volcado en reposo. No se espera un tiempo: se espera a
+  ver `/sys/devices/system/cpu/intel_pstate/no_turbo` en el estado buscado y
+  se comprueba después dentro del volcado. El segundo se hizo con once hilos
+  ocupados (`python3 -c "while True: pass"`) y el turbo ya encendido.
 - **`test_equipos` solo comprueba lo que vale para cualquier equipo.** Lo
   que vale para uno va en el test del arreglo, contra el volcado donde se vio.
 - **Lo de las tres frecuencias distintas no era un fallo de silux**: Inicio,
