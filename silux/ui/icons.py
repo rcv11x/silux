@@ -42,6 +42,10 @@ NAV = {
                     'M4 10 C4 11.5 7 12.5 10 12.5 C13 12.5 16 11.5 16 10"/>'),
     "nav.network": ('<circle cx="10" cy="10" r="7"/>'
                     '<path d="M3 10H17 M10 3 C7 5.5 7 14.5 10 17 M10 3 C13 5.5 13 14.5 10 17"/>'),
+    # Un conector USB visto de frente: lo que se enchufa.
+    "nav.devices": ('<path d="M10 2.5 V12 M7 5.5 L10 2.5 L13 5.5"/>'
+                    '<rect x="6.5" y="12" width="7" height="5.5" rx="1"/>'
+                    '<path d="M8.6 14.5H8.7 M11.3 14.5H11.4"/>'),
     "nav.battery": ('<rect x="2.5" y="6.5" width="13" height="7" rx="1.5"/>'
                     '<path d="M17.5 9V11 M5 9V11 M7.5 9V11"/>'),
     "nav.system": ('<rect x="2.5" y="4" width="15" height="12" rx="2"/>'

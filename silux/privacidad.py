@@ -153,6 +153,25 @@ def anonimizar(snapshot: Snapshot) -> Snapshot:
             for g in snapshot.gpus
         )
 
+    # Lo enchufado. El número de serie no se lee nunca, pero el inventario
+    # también señala: una llave de seguridad, un micrófono concreto, el
+    # modelo exacto de una cámara. Anónima, la foto dice qué clase de cosa es
+    # cada una y a qué velocidad va, que es lo que hace falta para un fallo,
+    # y no de qué marca.
+    if snapshot.usb_devices:
+        cambios["usb_devices"] = tuple(
+            dataclasses.replace(u, vendor=None, product=None, usb_id=None)
+            for u in snapshot.usb_devices)
+    if snapshot.sound_cards:
+        cambios["sound_cards"] = tuple(
+            dataclasses.replace(s, name=None) if s.kind == "usb" else s
+            for s in snapshot.sound_cards)
+    if snapshot.cameras:
+        cambios["cameras"] = tuple(dataclasses.replace(c, name=None) for c in snapshot.cameras)
+    if snapshot.bluetooth:
+        cambios["bluetooth"] = tuple(
+            dataclasses.replace(b, product=None) for b in snapshot.bluetooth)
+
     if snapshot.batteries:
         cambios["batteries"] = tuple(
             dataclasses.replace(b, serial=_tapar(b.serial))

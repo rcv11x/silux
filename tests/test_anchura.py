@@ -8,7 +8,7 @@ desplazamiento no tiene barra horizontal y lo que sobraba simplemente no se
 veía. Nada fallaba ni avisaba; solo se notaba mirando la captura.
 
 Aquí se monta la ventana de verdad, se le da una muestra, se recorren las
-trece secciones y se mide cada widget visible contra el borde de la ventana.
+catorce secciones y se mide cada widget visible contra el borde de la ventana.
 La muestra es la del equipo que ejecuta la suite, que es lo que da nombres y
 listas de verdad, más una batería para que la sección de Batería exista
 también en un sobremesa. Lo que se exige —que nada se salga— vale para
@@ -116,9 +116,9 @@ class TestNadaSeSalePorLaDerecha(unittest.TestCase):
                              f"x={izquierda}..{derecha}")
         return fuera
 
-    def test_las_trece_secciones_caben_a_lo_ancho(self):
+    def test_las_catorce_secciones_caben_a_lo_ancho(self):
         self.assertEqual(self.ventana.width(), ANCHO)
-        self.assertEqual(len(self.secciones), 13)
+        self.assertEqual(len(self.secciones), 14)
         for fila, (clave, _activa) in enumerate(self.secciones):
             with self.subTest(seccion=clave):
                 self.ventana.nav.setCurrentRow(fila)

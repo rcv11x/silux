@@ -8,9 +8,9 @@ ahora mismo.
 
 Escrito en Python puro, sin más dependencia que Qt para la ventana.
 
-Estado: las trece secciones terminadas. Inicio, CPU, Cachés, Placa base,
-Memoria, Gráficos, Almacenamiento, Red, Batería, Sistema, Rendimiento,
-Sensores y Ajustes. La de Batería solo aparece en los equipos que tienen una.
+Estado: las catorce secciones terminadas. Inicio, CPU, Cachés, Placa base,
+Memoria, Gráficos, Almacenamiento, Red, Dispositivos, Batería, Sistema,
+Rendimiento, Sensores y Ajustes. La de Batería solo aparece en los equipos que tienen una.
 
 Versión actual: **0.4.0** · qué trae y qué cambia al actualizar, en
 **[CHANGELOG.md](CHANGELOG.md)**.

@@ -716,6 +716,52 @@ def _piezas_del_zocalo(locator: str) -> dict:
     return piezas
 
 
+# Cómo se llama cada velocidad de USB. Es la negociada, no la versión del
+# dispositivo: un teclado USB 2.0 va a 12 Mb/s y está bien.
+_USB_VELOCIDADES = {1.5: "usb.speed.low", 12.0: "usb.speed.full", 480.0: "usb.speed.high",
+                    5000.0: "usb.speed.super", 10000.0: "usb.speed.superplus",
+                    20000.0: "usb.speed.superplus", 40000.0: "usb.speed.usb4"}
+USB_KINDS = {
+    "hub": "usb.kind.hub", "keyboard": "usb.kind.keyboard", "mouse": "usb.kind.mouse",
+    "keyboard_mouse": "usb.kind.keyboardmouse", "input": "usb.kind.input",
+    "audio": "usb.kind.audio", "video": "usb.kind.video", "storage": "usb.kind.storage",
+    "wireless": "usb.kind.wireless", "smartcard": "usb.kind.smartcard",
+    "comm": "usb.kind.comm", "printer": "usb.kind.printer", "vendor": "usb.kind.vendor",
+    "other": "usb.kind.other",
+}
+
+
+def usb_speed(mbps: Optional[float]) -> str:
+    """«Velocidad completa · 12 Mb/s», «SuperSpeed · 5 Gb/s»."""
+    if _none(mbps):
+        return DASH
+    cifra = f"{mbps / 1000:g} Gb/s" if mbps >= 1000 else f"{mbps:g} Mb/s"
+    clave = _USB_VELOCIDADES.get(float(mbps))
+    return f"{_(clave)} · {cifra}" if clave else cifra
+
+
+def usb_kind(dispositivo) -> str:
+    return _(USB_KINDS.get(dispositivo.kind, "usb.kind.other"))
+
+
+def usb_name(dispositivo) -> str:
+    """El nombre del dispositivo; si no lo trae (o la foto es anónima), lo que es."""
+    nombre = usb_kind(dispositivo)
+    return dispositivo.product or (nombre[:1].upper() + nombre[1:])
+
+
+def sound_card(tarjeta) -> str:
+    """«HDMI de la gráfica», «Placa base · Realtek ALCS1200A», o el nombre
+    del aparato USB. No los de ALSA («HDA ATI HDMI», «HD-Audio Generic»)."""
+    if tarjeta.kind == "hdmi":
+        return _("sound.hdmi")
+    if tarjeta.kind == "board":
+        return _("sound.board").format(codec=tarjeta.codec) if tarjeta.codec else _("sound.board.plain")
+    if tarjeta.kind == "usb":
+        return tarjeta.name or _("sound.usb")
+    return tarjeta.name or _("sound.other")
+
+
 def iommu(platform) -> str:
     """«activa · 34 grupos» o «sin activar»."""
     if not platform.iommu_groups:

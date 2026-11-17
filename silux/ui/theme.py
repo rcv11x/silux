@@ -671,6 +671,8 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
        rojo de un sensor pasado de vueltas ni el ámbar del que se está
        acercando: el árbol salía entero del mismo gris. El color base lo pone
        el propio árbol al montar cada fila. */
+    /* El árbol de dispositivos USB va siempre abierto: sin flechas. */
+    QTreeWidget#DeviceTree::branch {{ image: none; border-image: none; }}
     QTreeWidget::item {{
         padding: {max(3, m.grid_vspace)}px {RELLENO_DE_CELDA}px;
         border: none;

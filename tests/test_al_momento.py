@@ -72,7 +72,10 @@ def con_menos(f):
     particiones = tuple(p for p in f.partitions
                         if not any(p.device.startswith(nombre) for nombre in idos)) \
         if hasattr(f, "partitions") else None
-    cambios = dict(disks=discos, network=red, gpus=graficas, sensors=sensores)
+    cambios = dict(disks=discos, network=red, gpus=graficas, sensors=sensores,
+                   usb_devices=f.usb_devices[:-1], cameras=f.cameras[:-1],
+                   sound_cards=f.sound_cards[:-1], bluetooth=(),
+                   pci_devices=f.pci_devices[:-1])
     if particiones is not None:
         cambios["partitions"] = particiones
     return dataclasses.replace(f, **cambios)

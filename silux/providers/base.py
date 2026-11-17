@@ -48,6 +48,10 @@ class Draft:
     batteries: list = field(default_factory=list)
     pci_devices: list = field(default_factory=list)
     platform: Platform = field(default_factory=Platform)
+    usb_devices: list = field(default_factory=list)
+    sound_cards: list = field(default_factory=list)
+    cameras: list = field(default_factory=list)
+    bluetooth: list = field(default_factory=list)
     # Dirección PCI → nombre de la ranura, de la tabla del firmware (permisos).
     pci_slot_names: dict = field(default_factory=dict)
     privileged: PrivilegedState = field(default_factory=PrivilegedState)
@@ -137,6 +141,10 @@ class Draft:
             batteries=tuple(self.batteries),
             pci_devices=tuple(self.pci_devices),
             platform=self.platform,
+            usb_devices=tuple(self.usb_devices),
+            sound_cards=tuple(self.sound_cards),
+            cameras=tuple(self.cameras),
+            bluetooth=tuple(self.bluetooth),
             gpus=tuple(
                 Gpu(**{k: v for k, v in raw.items() if k in Gpu.__dataclass_fields__})
                 for raw in self.gpus

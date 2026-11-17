@@ -20,6 +20,7 @@ from .rapl import RaplPower
 from .spd_modules import SpdModules
 from .storage import Disks
 from .sysfs_cpu import SysfsClocks, SysfsTopology
+from .devices import ConnectedDevices
 from .pci import PciDevices, PlatformInfo
 from .system import SystemIdentity, SystemSecurity, SystemState
 from .turbo import TurboState
@@ -31,6 +32,6 @@ __all__ = [
     "RaplPower", "ImcTraffic", "DerivedSensors",
     "Batteries",
     "DrmGpus", "GpuState", "GpuApis", "NvidiaGpus", "NetworkInterfaces",
-    "PciDevices", "PlatformInfo",
+    "ConnectedDevices", "PciDevices", "PlatformInfo",
     "SystemIdentity", "SystemSecurity", "SystemState", "PrivilegedMemory", "SpdModules", "Disks",
 ]

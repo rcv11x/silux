@@ -43,6 +43,7 @@ from .providers import (
     RaplPower,
     SysfsClocks,
     SysfsTopology,
+    ConnectedDevices,
     PciDevices,
     PlatformInfo,
     SystemIdentity,
@@ -81,6 +82,7 @@ DEFAULT_PROVIDERS: tuple[type[Provider], ...] = (
     Disks,              # y los discos, con el suyo
     Batteries,          # la batería, que en un portátil se degrada sola
     PciDevices,         # detrás de gráficas, discos y red: usa sus nombres
+    ConnectedDevices,   # lo enchufado: USB, sonido, cámaras y Bluetooth
     NvidiaGpus,
     SystemState,
     RaplPower,

@@ -363,6 +363,60 @@ class Platform:
 
 
 @dataclass(frozen=True, slots=True)
+class UsbDevice:
+    """Algo enchufado por USB. Sin número de serie: no se lee nunca."""
+
+    port: str                                # "5-4.1.4": bus 5, puerto 4, y dos concentradores
+    vendor: Optional[str] = None
+    product: Optional[str] = None
+    usb_id: Optional[str] = None             # "046d:c54d"
+    kind: str = "other"                      # ver `providers/devices.py`, CLASES
+    speed_mbps: Optional[float] = None       # la negociada: 1.5, 12, 480, 5000…
+    version: Optional[str] = None            # la que declara el dispositivo: "2.00", "3.20"
+
+    @property
+    def parent(self) -> Optional[str]:
+        """El concentrador del que cuelga, o None si va a un puerto del equipo."""
+        return self.port.rsplit(".", 1)[0] if "." in self.port else None
+
+    @property
+    def is_hub(self) -> bool:
+        return self.kind == "hub"
+
+    @property
+    def slower_than_capable(self) -> bool:
+        """Un dispositivo de USB 3 negociando a 480 Mb/s o menos: suele ser
+        el cable o el puerto. Uno de USB 2 a 12 Mb/s no es nada: va a lo suyo."""
+        try:
+            capaz = float(self.version or 0) >= 3.0
+        except ValueError:
+            return False
+        return bool(capaz and self.speed_mbps and self.speed_mbps < 5000)
+
+
+@dataclass(frozen=True, slots=True)
+class SoundCard:
+    name: Optional[str] = None               # el del dispositivo, si es USB
+    kind: str = "other"                      # "hdmi" | "board" | "usb" | "other"
+    codec: Optional[str] = None              # "Realtek ALCS1200A"
+
+
+@dataclass(frozen=True, slots=True)
+class Camera:
+    name: Optional[str] = None
+    nodes: int = 1                           # un aparato crea varios /dev/video*
+    virtual: bool = False                    # no cuelga de ningún bus
+
+
+@dataclass(frozen=True, slots=True)
+class BluetoothAdapter:
+    name: str = "hci0"
+    product: Optional[str] = None
+    bus: Optional[str] = None                # "usb" | "board"
+    powered: Optional[bool] = None
+
+
+@dataclass(frozen=True, slots=True)
 class Vulnerability:
     """Una vulnerabilidad del procesador según el kernel que está corriendo.
 
@@ -1521,6 +1575,10 @@ class Snapshot:
     batteries: tuple[Battery, ...] = ()
     pci_devices: tuple[PciDevice, ...] = ()
     platform: Platform = field(default_factory=Platform)
+    usb_devices: tuple[UsbDevice, ...] = ()
+    sound_cards: tuple[SoundCard, ...] = ()
+    cameras: tuple[Camera, ...] = ()
+    bluetooth: tuple[BluetoothAdapter, ...] = ()
     privileged: PrivilegedState = field(default_factory=PrivilegedState)
     sensors: tuple[Sensor, ...] = ()
     driver_hints: tuple[DriverHint, ...] = ()

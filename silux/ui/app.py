@@ -55,6 +55,7 @@ from ..settings import ACCENT_NAMES, Preferences
 from ..tracking import Tracker
 from . import icons, theme
 from .pages.battery import BatteryPage
+from .pages.devices import DevicesPage
 from .pages.board import BoardPage
 from .pages.caches import CachesPage
 from .pages.cpu import CpuPage
@@ -87,6 +88,7 @@ SECTIONS = (
     ("nav.graphics", True),
     ("nav.storage", True),
     ("nav.network", True),
+    ("nav.devices", True),
     ("nav.battery", True),
     ("nav.system", True),
     ("nav.benchmark", True),
@@ -259,6 +261,7 @@ class MainWindow(QMainWindow):
             pagina.permission_dismissed.connect(self._quitar_aviso)
         self._refrescar_botones_permanentes()
         self.network_page = NetworkPage(self._palette, self.prefs)
+        self.devices_page = DevicesPage(self._palette, self.prefs)
         self.battery_page = BatteryPage(self._palette, self.prefs)
         self.network_page.unit_changed.connect(self._on_network_unit)
         self.system_page = SystemPage(self._palette, self.prefs)
@@ -271,8 +274,8 @@ class MainWindow(QMainWindow):
         self.settings_page.share_save_requested.connect(self._on_share_save)
         for page in (self.home_page, self.cpu_page, self.caches_page, self.board_page,
                      self.memory_page, self.graphics_page, self.storage_page,
-                     self.network_page, self.battery_page, self.system_page,
-                     self.performance_page,
+                     self.network_page, self.devices_page, self.battery_page,
+                     self.system_page, self.performance_page,
                      self.monitor_page, self.settings_page):
             self.stack.addWidget(page)
         layout.addWidget(self.stack, 1)
@@ -907,7 +910,7 @@ class MainWindow(QMainWindow):
         for page in (self.home_page, self.cpu_page, self.monitor_page, self.caches_page,
                      self.board_page, self.memory_page, self.system_page,
                      self.graphics_page, self.network_page, self.storage_page,
-                     self.battery_page, self.performance_page):
+                     self.devices_page, self.battery_page, self.performance_page):
             page.apply(snapshot)
 
         self._ajustar_bateria(snapshot)
