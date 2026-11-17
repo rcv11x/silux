@@ -227,8 +227,12 @@ class ResponsiveRow(QWidget):
     Frecuencia y Consumo: las que hay se reparten el ancho entero.
     """
 
-    def __init__(self, min_item_width: int = 200, parent: Optional[QWidget] = None):
+    def __init__(self, min_item_width: int = 200, parent: Optional[QWidget] = None,
+                 span_last: bool = False):
+        """`span_last`: si la última fila queda a medias, su último hijo se
+        estira hasta el borde en vez de dejar un hueco a su derecha."""
         super().__init__(parent)
+        self._span_last = span_last
         # El ancho mínimo se da en unidades de densidad normal y se escala con
         # la densidad activa, o en modo compacto sobrarían columnas vacías.
         scale = theme.METRICS.cell_w / theme.NORMAL.cell_w
@@ -299,7 +303,9 @@ class ResponsiveRow(QWidget):
             self._grid.setColumnStretch(index, 0)
 
         for index, widget in enumerate(visibles):
-            self._grid.addWidget(widget, index // columns, index % columns)
+            ultimo = index == len(visibles) - 1
+            ancho = (columns - index % columns) if (self._span_last and ultimo) else 1
+            self._grid.addWidget(widget, index // columns, index % columns, 1, ancho)
         for column in range(columns):
             self._grid.setColumnStretch(column, 1)
 
@@ -1811,6 +1817,16 @@ class Table(QScrollArea):
         # Lo que ocupa cada columna es su dato o su título, lo que más pida.
         ocupa = sum(max(ancho, self._ancho_de_cabecera(c)) for c, ancho in enumerate(anchos))
         sobra = ocupa + hueco - self.viewport().width()
+        if sobra < 0 and self.viewport().width() > 0:
+            # Con sitio de sobra, las columnas se separan: en una ventana
+            # grande la tabla se quedaba en el tercio izquierdo de su tarjeta.
+            # Con tope, porque separadas sin límite la cifra acaba a un palmo
+            # del nombre con el que hay que compararla; lo que aún sobre
+            # sigue yendo detrás de la última.
+            tope = QFontMetrics(value_font()).averageCharWidth() * self.HOLGURA_MAXIMA
+            holgura = min(-sobra // columnas, tope)
+            anchos = [max(ancho, self._ancho_de_cabecera(c)) + holgura
+                      for c, ancho in enumerate(anchos)]
         if sobra > 0 and self.viewport().width() > 0:
             suelo = QFontMetrics(value_font()).averageCharWidth() * 10
             suelos = {c: max(suelo, self._ancho_de_cabecera(c))
@@ -1826,11 +1842,14 @@ class Table(QScrollArea):
         for columna, ancho in enumerate(anchos):
             if self._grid.columnMinimumWidth(columna) != ancho:
                 self._grid.setColumnMinimumWidth(columna, ancho)
-            recortada = ancho < self._anchos[columna]
+            recortada = ancho < max(self._anchos[columna], 1) and columna in self._cede
             for fila in self._cells:
                 if columna < len(fila):
                     # Cedida, la celda no puede pedir más que su columna.
                     fila[columna].setMaximumWidth(ancho if recortada else 16777215)
+
+    # Cuánto puede separarse como mucho cada columna, en anchos de letra.
+    HOLGURA_MAXIMA = 14
 
     def _ancho_de_cabecera(self, columna: int) -> int:
         item = self._grid.itemAtPosition(0, columna)

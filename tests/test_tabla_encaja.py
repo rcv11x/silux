@@ -52,6 +52,13 @@ class TestLaTablaSuelta(unittest.TestCase):
         self.caja = caja
         return tabla
 
+    @staticmethod
+    def _justo(tabla) -> int:
+        """Lo que ocupa la tabla con sus columnas pegadas, sin holgura."""
+        columnas = len(tabla._headers)
+        return (sum(max(a, tabla._ancho_de_cabecera(c)) for c, a in enumerate(tabla._anchos))
+                + tabla._grid.horizontalSpacing() * (columnas - 1))
+
     def test_con_sitio_no_se_recorta_nada(self):
         tabla = self._tabla(900)
         for fila, valores in zip(tabla._cells, FILAS):
@@ -59,8 +66,7 @@ class TestLaTablaSuelta(unittest.TestCase):
 
     def test_sin_sitio_cede_el_modelo_y_no_las_cifras(self):
         tabla = self._tabla(900)
-        natural = tabla.widget().sizeHint().width()
-        self.caja.resize(natural - 40, 300)
+        self.caja.resize(self._justo(tabla) - 20, 300)
         _asentar(self.app)
         self.assertEqual(tabla.horizontalScrollBar().maximum(), 0)
         modelos = [fila[1] for fila in tabla._cells]
@@ -75,12 +81,107 @@ class TestLaTablaSuelta(unittest.TestCase):
 
     def test_al_volver_el_sitio_vuelve_el_texto(self):
         tabla = self._tabla(900)
-        natural = tabla.widget().sizeHint().width()
-        self.caja.resize(natural - 40, 300)
+        self.caja.resize(self._justo(tabla) - 20, 300)
         _asentar(self.app)
         self.caja.resize(900, 300)
         _asentar(self.app)
         self.assertEqual([c.text() for c in tabla._cells[1]], list(FILAS[1]))
+
+
+@unittest.skipIf(QApplication is None, "sin PySide6")
+class TestConSitioDeSobra(TestLaTablaSuelta):
+    """En una ventana de 2560 px las tablas se quedaban en el tercio
+    izquierdo de su tarjeta. Las columnas se separan, con tope."""
+
+    def _fin_de_la_ultima(self, tabla) -> int:
+        ultima = tabla._cells[0][-1]
+        return ultima.mapTo(tabla, QPoint(ultima.width(), 0)).x()
+
+    def test_las_columnas_se_separan_cuando_sobra(self):
+        tabla = self._tabla(900)
+        justo = self._justo(tabla)
+        self.assertGreater(self._fin_de_la_ultima(tabla), justo + 100)
+        self.assertLessEqual(self._fin_de_la_ultima(tabla), tabla.viewport().width())
+        self.assertEqual(tabla.horizontalScrollBar().maximum(), 0)
+
+    def test_pero_no_sin_limite(self):
+        from PySide6.QtGui import QFontMetrics
+        from silux.ui.theme import value_font
+
+        tabla = self._tabla(2400)
+        tope = QFontMetrics(value_font()).averageCharWidth() * tabla.HOLGURA_MAXIMA
+        columnas = len(tabla._headers)
+        self.assertLessEqual(self._fin_de_la_ultima(tabla),
+                             self._justo(tabla) + tope * columnas + columnas)
+        self.assertLess(self._fin_de_la_ultima(tabla), tabla.viewport().width() - 200)
+
+    def test_y_justa_de_sitio_no_cambia(self):
+        tabla = self._tabla(900)
+        self.caja.resize(self._justo(tabla) + 30, 300)
+        _asentar(self.app)
+        self.assertEqual(tabla.horizontalScrollBar().maximum(), 0)
+        for fila, valores in zip(tabla._cells, FILAS):
+            self.assertEqual([c.text() for c in fila], list(valores))
+
+
+@unittest.skipIf(QApplication is None, "sin PySide6")
+class TestLasPaginasCortasEnUnaVentanaGrande(unittest.TestCase):
+    """A 2560×1440, Placa base y Sistema eran dos tarjetas a medio llenar y
+    otra debajo, a todo lo ancho, con el resto de la ventana vacío."""
+
+    def _ventana(self, ancho, alto, densidad="normal"):
+        from silux.ui import theme
+        from silux.ui.app import MainWindow
+
+        app = qt.app()
+        normales = Preferences().normalized()
+        self.addCleanup(theme.apply, app, normales.theme, normales.density,
+                        normales.font_scale, normales.accent)
+        prefs = Preferences(density=densidad, font_scale="normal",
+                            window_width=ancho, window_height=alto).normalized()
+        theme.apply(app, prefs.theme, prefs.density, prefs.font_scale, prefs.accent)
+        ventana = MainWindow(prefs)
+        self.addCleanup(ventana.close)
+        ventana.resize(ancho, alto)
+        ventana.show()
+        muestra = foto(EQUIPOS / "5800x3d")[0]
+        for _vuelta in range(3):
+            ventana._on_sample(muestra)
+            _asentar(app)
+        self.app = app
+        return ventana
+
+    def _tarjetas(self, ventana, seccion, rejillas):
+        ventana.select_section(seccion)
+        _asentar(self.app)
+        pagina = ventana.stack.currentWidget()
+        tarjetas = [getattr(pagina, r).parentWidget() for r in rejillas]
+        return pagina, [(t.mapTo(pagina, QPoint(0, 0)).x(), t.mapTo(pagina, QPoint(0, 0)).y(),
+                         t.width()) for t in tarjetas if t.isVisible()]
+
+    def test_a_2560_van_las_tres_en_una_fila(self):
+        ventana = self._ventana(2560, 1440)
+        for seccion, rejillas in (("Placa base", ("board", "firmware", "chipset")),
+                                  ("Sistema", ("os", "kernel", "activity"))):
+            with self.subTest(seccion=seccion):
+                pagina, cajas = self._tarjetas(ventana, seccion, rejillas)
+                self.assertEqual(len(cajas), 3)
+                self.assertEqual(len({y for _x, y, _w in cajas}), 1, cajas)
+                anchos = [w for _x, _y, w in cajas]
+                self.assertLessEqual(max(anchos) - min(anchos), 2)
+                self.assertGreater(cajas[-1][0] + cajas[-1][2], pagina.viewport().width() * 0.95)
+
+    def test_en_compacto_a_900_dos_arriba_y_la_tercera_a_lo_ancho(self):
+        ventana = self._ventana(900, 680, densidad="compact")
+        for seccion, rejillas in (("Placa base", ("board", "firmware", "chipset")),
+                                  ("Sistema", ("os", "kernel", "activity"))):
+            with self.subTest(seccion=seccion):
+                _pagina, cajas = self._tarjetas(ventana, seccion, rejillas)
+                (x1, y1, w1), (x2, y2, w2), (x3, y3, w3) = cajas
+                self.assertEqual(y1, y2)
+                self.assertGreater(y3, y1)
+                self.assertEqual(x3, x1)
+                self.assertAlmostEqual(w3, x2 + w2 - x1, delta=2)
 
 
 @unittest.skipIf(QApplication is None, "sin PySide6")

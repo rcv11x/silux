@@ -65,12 +65,12 @@ class BoardPage(QScrollArea):
 
         layout.addWidget(self._build_header())
 
-        top = ResponsiveRow(min_item_width=270)
+        # Todas en una fila que se reparte sola: tres columnas cuando hay
+        # sitio, dos y la última a lo ancho cuando no. En dos filas fijas, a
+        # 2560 px la página era dos tarjetas medio vacías y otra debajo.
+        top = bottom = ResponsiveRow(min_item_width=400, span_last=True)
         self.board = self._grid_card(top, _("nav.board"), BOARD_FIELDS)
         self.firmware = self._grid_card(top, _("storage.field.firmware"), FIRMWARE_FIELDS)
-        layout.addWidget(top)
-
-        bottom = ResponsiveRow(min_item_width=270)
         self.chipset = self._grid_card(bottom, _("board.field.chipset"),
                                        CHIPSET_FIELDS)
         self.board_pie = QLabel("")

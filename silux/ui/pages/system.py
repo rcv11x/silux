@@ -70,7 +70,8 @@ class SystemPage(QScrollArea):
         # La memoria no está aquí: tenía su barra y su tabla entera, las
         # mismas que la página de Memoria, y era la tercera vez que salían.
         # Esta página empieza por lo que es suyo: qué sistema es.
-        row = ResponsiveRow(min_item_width=270)
+        # Las tres en una fila que se reparte sola (ver `BoardPage`).
+        row = ResponsiveRow(min_item_width=400, span_last=True)
         self.os = self._grid_card(row, _("sys.card.os"), OS_FIELDS)
         self.os_pie = QLabel("")
         self.os_pie.setObjectName("Muted")
@@ -79,14 +80,13 @@ class SystemPage(QScrollArea):
         self.os_pie.hide()
         self.os.parentWidget().body.addWidget(self.os_pie)
         self.kernel = self._grid_card(row, _("sys.card.kernel"), KERNEL_FIELDS)
-        layout.addWidget(row)
-
         activity_card = Card(_("sys.card.activity"))
         self.activity = InfoGrid()
         for name in ACTIVITY_FIELDS:
             self.activity.add(_(name))
         activity_card.body.addWidget(self.activity)
-        layout.addWidget(activity_card)
+        row.add(activity_card)
+        layout.addWidget(row)
 
         layout.addStretch(1)
         self._badge_signature: tuple = ()
