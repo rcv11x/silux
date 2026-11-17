@@ -11,6 +11,146 @@ que hace falta.
 
 ---
 
+## 0.4.0 (sin publicar)
+
+### Antes de actualizar
+
+- En Sensores, los relojes y el uso de cada hilo se llaman «CPU 0», «CPU 1»…
+  como en la página del procesador, y no «Core #0». Si tienes guiones que
+  leen el CSV grabado o `--sensors` por esos nombres, hay que cambiarlos.
+- `--page` con una sección que tu equipo no tiene (Batería en un sobremesa)
+  termina con código 2 en vez de guardar la captura de otra página.
+- Lo que se fuerza por la línea de órdenes (tema, densidad, tamaño de letra,
+  acento, tamaño de ventana) vale solo para esa vez: ya no se queda guardado
+  en tus preferencias.
+- La orden para quitar el ayudante de permisos permanentes ha cambiado: es
+  borrar sus dos archivos, y sirve también si usas el AppImage. Está en
+  «Qué hace esto», lista para copiar.
+
+### Memoria
+
+- Nuevo: sin permisos, la velocidad real y el banco de cada módulo llevan un
+  candado en vez de un guion: están, y se ven al dar permisos.
+- Arreglado: con permisos, la tarjeta de Memoria de Inicio decía «31.3 GB ·
+  Desconocido» si el primer zócalo de la placa estaba vacío. Ahora dice el
+  tipo de los módulos puestos («DDR4-3200») o, si el firmware no lo da, nada.
+- Arreglado: algunas latencias de DDR4 y de los perfiles XMP salían un ciclo
+  por debajo de la real (un CL23 como CL22).
+- Arreglado: sin permisos, la cabecera decía «a 3200 MT/s» como si fuera la
+  velocidad a la que va la memoria; es la del catálogo del módulo, y ahora lo
+  dice: «catalogados a 3200 MT/s».
+- Arreglado: el aviso que proponía `acpi_enforce_resources=lax` para leer los
+  módulos no decía el riesgo. Ahora lo dice, y que no merece la pena solo por
+  ese dato.
+
+### Procesador
+
+- Nuevo: sin permisos, el voltaje lleva un candado en vez de un guion.
+- Arreglado: la frecuencia de cada hilo es la que el procesador ha dado de
+  verdad en el último intervalo, no la última que pidió el sistema.
+- Arreglado: la gráfica de frecuencia se medía contra un techo equivocado y
+  se quedaba en una barra vertical o recortaba las muestras.
+- Arreglado: Inicio y la página CPU daban dos temperaturas distintas del
+  mismo procesador en el mismo momento (33 °C y 30 °C).
+- Arreglado: con el contador de energía parado, el consumo salía «0 W». Ahora
+  se explica por qué no hay cifra.
+- Arreglado: en AMD salía «núcleos 3,7 W» con el paquete a 64 W: ese contador
+  es de un solo núcleo. No se enseña, y se dice.
+- Arreglado: en los Ryzen que publican dos temperaturas (Tctl y Tdie) se
+  enseñaba la que lleva sumado un margen para los ventiladores; ahora, Tdie.
+- Arreglado: en AMD sin `amd-pstate`, «Máxima (silicio)» daba una frecuencia
+  que no era un techo de nada. Sale sin dato y con su aviso.
+- Arreglado: la ficha de temperatura decía «núcleos» en procesadores que solo
+  tienen un sensor para todo el encapsulado.
+- Arreglado: sin sensor propio del procesador, su temperatura se tomaba de
+  una zona del firmware que marca siempre lo mismo (27.8 °C).
+
+### Gráficos
+
+- Nuevo: sin permisos, el uso y el consumo de una gráfica Intel llevan un
+  candado, y pulsarlo pide los permisos.
+- Arreglado: la temperatura de una gráfica que no la publica salía con un
+  guion en Gráficos, en Sensores y en Inicio. Ahora se esconde y se dice al
+  pie que esa gráfica no la da.
+- Arreglado: Inicio decía que una gráfica integrada «usa 11.6 GB de la RAM».
+- Arreglado: el monitor se llama por su marca («Gigabyte AORUS FO27Q2») y no
+  por la razón social del fabricante, que además cortaba la resolución en la
+  tabla de pantallas.
+- Arreglado: el ensamblador de la tarjeta sale por su marca: «PowerColor» y
+  no «Tul Corporation / PowerColor».
+- Arreglado: un identificador único todo a ceros ya no se enseña.
+
+### Rendimiento
+
+- Nuevo: botón «Borrar las de otra escala», para quitar de una vez las
+  pruebas que ya no se pueden comparar con las de ahora.
+- Arreglado: una prueba medida con otra escala decía «—» donde va la
+  puntuación; ahora dice con qué escala se midió y por qué no puntúa.
+- Arreglado: «Borrar el historial» borraba el archivo y dejaba las pruebas a
+  la vista hasta reabrir el programa.
+- Arreglado: un historial estropeado impedía abrir la ventana y generar el
+  informe.
+- Arreglado: «mejor o peor que la vez anterior» comparaba la suma de las
+  medidas en crudo, no la puntuación que se ve.
+- Arreglado: dos pruebas de la misma duración podían darse por distintas,
+  según cuánto tardara en acabar la última operación.
+
+### Interfaz
+
+- Nuevo: Inicio avisa de lo que falta por permisos, con nombre («Salud de
+  los discos», «Voltaje del procesador»), y con cuatro salidas: «Dar
+  permisos», «Qué hace esto», «Ahora no» y «No volver a mostrar».
+- Nuevo: «Qué hace esto» cuenta, antes de pedir la contraseña, qué lee el
+  ayudante, que solo lee, cuánto dura y quién pide la contraseña.
+- Nuevo: un candado donde falta un dato por permisos, en vez del mismo guion
+  que lleva lo que no se sabe. Pulsarlo los pide. En Almacenamiento: la
+  temperatura de los discos SATA, las horas, lo escrito y la vida restante.
+- Nuevo: Inicio tiene tres tarjetas más: Temperaturas, con cada cifra junto a
+  lo que mide, Red y Placa base. Cada una lleva a su sección.
+- Nuevo: en Red, las interfaces virtuales (Docker, máquinas virtuales, VPN)
+  van plegadas debajo de las físicas.
+- Arreglado: la ventana se quedaba congelada mientras el sistema pedía la
+  contraseña.
+- Arreglado: la barra de estado decía una lista de fuentes internas y un
+  número de datos sin permisos que no coincidía con el de Inicio.
+- Arreglado: en las barras de Inicio, Memoria y Almacenamiento no se sabía
+  qué color era cada cosa, y la caché no se distinguía del fondo.
+- Arreglado: en una placa AMD, el chipset salía «FCH LPC Bridge». Ahora,
+  «AMD X570».
+- Arreglado: una placa Gigabyte suelta se titulaba «Gigabyte -CF».
+- Arreglado: la fecha de la BIOS salía en el orden del firmware, mes/día/año;
+  ahora «2025-10-28».
+- Arreglado: los fabricantes salen por su marca («MSI», «Gigabyte») y no por
+  su razón social, y ningún «Desconocido» del firmware llega a la pantalla.
+- Arreglado: en Sensores, las tensiones y temperaturas que el chip de la
+  placa numera sin decir qué miden lo dicen al pie, en vez de parecer
+  nombres; y las zonas del firmware que marcan siempre 16.8 °C o 27.8 °C van
+  apagadas y dicen que no son una medida.
+- Arreglado: en Red, el dúplex salía «full».
+- Arreglado: un NVMe decía «Conexión: NVME».
+- Arreglado: el titular de Temperaturas de Inicio cambiaba de pieza por
+  décimas de grado.
+- Arreglado: las gráficas de las fichas tienen su eje de lado a lado desde
+  que se abren, y la cifra del punto más alto ya no se monta sobre la curva.
+- Arreglado: las tablas cortaban con puntos suspensivos textos que cabían, y
+  sus títulos quedaban lejos de las filas.
+- Arreglado: la explicación que sale al pasar el ratón por un dato se perdía
+  al cambiar la ventana de tamaño.
+- Arreglado: en una ventana estrecha, la cabecera de Sensores se salía por la
+  derecha.
+
+### Privacidad
+
+- Arreglado: con `--anonimo`, dos tarjetas de red distintas salían con la
+  misma dirección física.
+
+### AppImage
+
+- Arreglado: fuera del AppImage, instalado con pip, el programa salía sin sus
+  textos: la interfaz enseñaba claves como `cpu.card.clocks`.
+
+---
+
 ## 0.3.0 (16 de noviembre de 2026)
 
 ### Antes de actualizar
