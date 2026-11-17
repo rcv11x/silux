@@ -16,6 +16,7 @@ lectura ni el histórico de las gráficas.
 from __future__ import annotations
 
 import argparse
+import math
 import os
 import sys
 import time
@@ -31,7 +32,7 @@ from .guarda import comprobar as _comprobar_procesador
 _comprobar_procesador()
 
 from PySide6.QtCore import Qt, QElapsedTimer, QSize, QTimer
-from PySide6.QtGui import QIcon, QKeySequence, QShortcut
+from PySide6.QtGui import QFont, QFontMetricsF, QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -296,13 +297,15 @@ class MainWindow(QMainWindow):
         if self._last_snapshot is not None:
             self._distribute(self._last_snapshot)
 
+    MARGEN_DE_LA_BARRA = 2
+
     def _build_nav(self) -> QWidget:
         m = theme.METRICS
         panel = QWidget()
         panel.setFixedWidth(m.nav_width)
 
         column = QVBoxLayout(panel)
-        column.setContentsMargins(2, 6, 2, 6)
+        column.setContentsMargins(self.MARGEN_DE_LA_BARRA, 6, self.MARGEN_DE_LA_BARRA, 6)
         column.setSpacing(4)
 
         # La marca y el nombre. La marca es la del logo, no un emoji: es el
@@ -363,6 +366,7 @@ class MainWindow(QMainWindow):
             self.nav.addItem(item)
         self.nav.setCurrentRow(0)
         self.nav.currentRowChanged.connect(self._on_section)
+        panel.setFixedWidth(max(m.nav_width, self._ancho_de_la_barra()))
 
         # La versión y la copia, al pie: arriba eran dos renglones entre el
         # nombre y la navegación, y son de lo que se mira una vez.
@@ -371,6 +375,26 @@ class MainWindow(QMainWindow):
         column.addWidget(version)
         column.addWidget(self.build_label)
         return panel
+
+    def _ancho_de_la_barra(self) -> int:
+        """Lo que pide el nombre de sección más largo, con su icono.
+
+        `nav_width` es un suelo, no la medida: en compacto «Almacenamiento»
+        salía «Almacenamien…», y lo que ocupa depende de la tipografía del
+        sistema, del tamaño de letra y del idioma. Se le pregunta a la lista,
+        que ya cuenta el icono y el relleno de la hoja de estilos, y se suma
+        lo que engorda el nombre de la sección abierta, que va en seminegrita.
+        """
+        self.nav.ensurePolished()
+        normal = QFontMetricsF(self.nav.font())
+        gruesa = QFont(self.nav.font())
+        gruesa.setWeight(QFont.Weight.DemiBold)
+        gruesa = QFontMetricsF(gruesa)
+        nombres = [self.nav.item(i).text() for i in range(self.nav.count())]
+        engorde = max((gruesa.horizontalAdvance(n) - normal.horizontalAdvance(n)
+                       for n in nombres), default=0)
+        return (math.ceil(self.nav.sizeHintForColumn(0) + engorde)
+                + 2 * self.nav.frameWidth() + 2 * self.MARGEN_DE_LA_BARRA + 2)
 
     def _sources_text(self) -> str:
         from .. import db
