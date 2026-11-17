@@ -11,8 +11,9 @@ aquí esté hecho o pase a `docs/pendientes.md`.
 Dos tandas. La primera (el hueco de Gráficos, el corte de Red, la raya de
 las tablas, Cachés que no se pintaba y el botón del ayudante atrasado) se
 empujó en `24cb4ef` con el CI en verde. **La segunda, la tanda A, está
-empujada con el CI lanzado**; el resultado del CI y lo que falte están al
-final de este apartado.
+empujada hasta `91512f7` con el CI en verde** (tests en 3.10 y 3.14 y los
+dos AppImage). Por delante de eso hay dos commits locales sin empujar: la
+propuesta de datos y este archivo.
 
 ### Tanda A: un commit por arreglo, con su test y su captura
 
@@ -55,8 +56,8 @@ final de este apartado.
    con `interfaz1` y `tailscale0` plegadas.
 4. **«En reposo»** (el motor gráfico a 0 MHz) no tiene captura: ni esta
    gráfica ni el volcado están a cero. Lo ve el test.
-5. **El AppImage compatible** no se reconstruyó aquí: los iconos se miran
-   en el del CI de esta tanda (abajo).
+5. Las capturas de `tanda-A/` son de `2d54c36`: la barra lateral sale en
+   ellas 8 px más estrecha que tras `91512f7`.
 
 **Decisiones de esta tanda que cambian algo anterior:**
 
@@ -86,9 +87,32 @@ final de este apartado.
   en la sesión de verdad), `appimage-barras.png` (los AppImage del CI sin
   iconos) y las `2k-antes-*` y `2k-despues-*`.
 
-**Lo que sigue: B**, `docs/propuesta-datos.md` y sus maquetas. Solo
-documento. **Punto 3 de la lista anterior, sin hacer**: estados vacíos de
-una ficha, identificadores en monoespaciada y contraste de la paleta.
+**El CI de la tanda A.** El primer intento (sobre `2d54c36`) falló en los
+dos Python por `test_barra_lateral`: con DejaVu, la letra del runner, a
+«Almacenamiento» le faltaban 6 px. Arreglado en `91512f7` (el relleno de la
+lista no estaba en la cuenta) con un test que pone DejaVu a mano. En el
+segundo (run 44176463759) pasó 3.14 y en 3.10 falló **un test que mide
+rendimiento y no es de esta rama**: `test_benchmark.py::TestCargasNuevas::
+test_todas_reparten_de_verdad_entre_hilos`, `compresion_dura` repartió ×1.76
+y pide ×1.8. Relanzado solo ese trabajo, pasó. Es ruido del runner, pero es
+la segunda vez que un test de medida falla solo: el umbral es cosa del
+autor. Con Python 3.10 la suite pasa también aquí (`uv run --python 3.10`).
+**Los dos AppImage de ese CI, abiertos con `--screenshot`: la barra lateral
+sale con sus trece iconos y la marca**, en el normal y en el compatible
+(`comprobacion/ci2-barras.png`). En los del CI anterior no salía ninguno
+(`comprobacion/appimage-barras.png`).
+
+**B, hecha y parada para revisar**: `docs/propuesta-datos.md` (`bd020e5`,
+**sin empujar**). Solo documento. Maquetas en
+`~/Imágenes/silux-test/datos-nuevos/` (casa), con su guion
+`maquetas_datos.py`: Placa base, Sistema y la sección Dispositivos, con los
+dos volcados, a 1440×900 y 2560×1440 (y `-entera` cuando la página no cabe).
+Las del 5800X3D llevan datos leídos en esa máquina sin permisos; **las del
+i5-10400 llevan valores de ejemplo en lo nuevo**, y lo dicen arriba: su
+volcado no trae nada de eso.
+
+**Punto 3 de la lista anterior, sin hacer**: estados vacíos de una ficha,
+identificadores en monoespaciada y contraste de la paleta.
 
 De «Para mirar esta noche en el 5800X3D» (más abajo) sigue sin mirarse lo
 que pide reiniciar; lo que pide permisos lo vio el autor esa noche y de ahí
