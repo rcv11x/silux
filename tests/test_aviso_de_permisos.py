@@ -286,9 +286,14 @@ class TestLosAvisosDeLasPaginas(unittest.TestCase):
                         tarjeta.mapTo(ventana, QPoint(tarjeta.width(), 0)).x(), ventana.width())
 
     def test_que_hace_esto_abre_el_dialogo_desde_la_pagina(self):
+        from silux.privileged.client import PrivilegedClient
+
         ventana = self._ventana()
         ventana.select_section("Memoria")
-        ventana.memory_page.explain_button.click()
+        # Sin ayudante instalado, que es cuando se ofrece: con uno al día en
+        # el equipo de quien ejecuta la suite el botón no sale, y está bien.
+        with mock.patch.object(PrivilegedClient, "instalado", return_value=False):
+            ventana.memory_page.explain_button.click()
         self.assertTrue(ventana._dialogo_permisos.isVisible())
         self.addCleanup(ventana._dialogo_permisos.close)
         # Y ahí sigue estando darlos para siempre.
