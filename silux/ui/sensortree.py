@@ -294,6 +294,9 @@ class SensorTree(QTreeWidget):
         # `None` = no hay nada guardado todavía, que no es lo mismo que «no
         # había ninguna plegada»: en el primer caso se abren todas.
         self._plegadas_guardadas: Optional[set] = None
+        # Las que se cerraron solas la última vez por no tener actividad.
+        self._plegadas_por_inactivas: set = set()
+        self._nacimiento: tuple = (set(), set())
         # (columna, ascendente) o None mientras se respete el orden natural.
         self._orden: Optional[tuple[int, bool]] = None
         # Cómo estaba cada categoría al montarse, para poder volver.
@@ -579,15 +582,44 @@ class SensorTree(QTreeWidget):
         action.triggered.connect(self.reset_column_widths)
         menu.exec(self.header().mapToGlobal(position))
 
-    def rebuild(self, tree: dict) -> None:
+    # Con qué nombre se aparta, dentro de una categoría, lo que no hace nada.
+    APARTADOS = {"cat.fan": "sensors.fans.stopped"}
+
+    def rebuild(self, tree: dict, inactivos=frozenset()) -> None:
         """Rehace la estructura. Solo se llama cuando cambia qué hay, no
-        cuánto vale."""
+        cuánto vale.
+
+        `inactivos` son las claves de los sensores que ahora mismo no miden
+        nada que mirar: un ventilador a 0 RPM, una interfaz de red por la que
+        no pasa tráfico. No se esconden, se pliegan: una rama que solo tiene
+        de esos nace cerrada, y los de una categoría que también tiene de los
+        otros se apartan en una rama propia, cerrada y con su cuenta. En una
+        placa con cinco conectores y dos ventiladores, tres renglones a cero
+        iban delante de las tensiones; con seis puentes de Docker, la página
+        acababa en veinticuatro renglones de ceros.
+        """
         expanded = {key for key, item in self._rows.items() if item.isExpanded()}
+        por_inactivas_antes = self._plegadas_por_inactivas
+        self._plegadas_por_inactivas = set()
         self.clear()
         self._rows.clear()
         self._orden_natural.clear()
 
+        partido: dict = {}
         for device, categories in tree.items():
+            partido[device] = {}
+            for category, sensors in categories.items():
+                quietos = [s for s in sensors if s.key in inactivos]
+                if quietos and len(quietos) < len(sensors):
+                    partido[device][category] = (
+                        [s for s in sensors if s.key not in inactivos], "", False)
+                    partido[device][f"{category}/idle"] = (quietos, category, True)
+                else:
+                    partido[device][category] = (sensors, "", bool(quietos))
+
+        for device, categories in partido.items():
+            aparato_inactivo = all(inactiva for _s, _c, inactiva in categories.values())
+            self._nacimiento = (por_inactivas_antes, expanded)
             device_item = QTreeWidgetItem([device])
             device_item.setFont(0, self._branch_font)
             device_item.setForeground(0, self._p.q("ink"))
@@ -595,13 +627,17 @@ class SensorTree(QTreeWidget):
             self.addTopLevelItem(device_item)
             self._rows[f"::{device}"] = device_item
 
-            for category, sensors in categories.items():
+            for category, (sensors, apartada_de, inactiva) in categories.items():
                 # Con cuántos lleva, si es de las largas: nace plegada, y sin
                 # la cuenta «Relojes» a secas no dice si dentro hay dos o
                 # treinta y dos.
-                titulo = _(category)
-                if len(sensors) > self.RAMA_LARGA:
-                    titulo = f"{titulo} · {len(sensors)}"
+                if apartada_de:
+                    titulo = _(self.APARTADOS.get(apartada_de, "sensors.branch.idle")).format(
+                        categoria=_(apartada_de), n=len(sensors))
+                else:
+                    titulo = _(category)
+                    if len(sensors) > self.RAMA_LARGA:
+                        titulo = f"{titulo} · {len(sensors)}"
                 category_item = QTreeWidgetItem([titulo])
                 category_item.setFont(0, self._label_font)
                 for column in range(len(self.COLUMNS)):
@@ -651,8 +687,12 @@ class SensorTree(QTreeWidget):
                     s.key for s in sensors)
                 category_item.setExpanded(
                     self._nace_abierta(f"::{device}/{category}", expanded,
-                                       larga=len(sensors) > self.RAMA_LARGA))
-            device_item.setExpanded(self._nace_abierta(f"::{device}", expanded))
+                                       larga=len(sensors) > self.RAMA_LARGA,
+                                       # Dentro de un aparato que ya nace
+                                       # cerrado no hace falta cerrar más.
+                                       inactiva=inactiva and not aparato_inactivo))
+            device_item.setExpanded(self._nace_abierta(
+                f"::{device}", expanded, inactiva=aparato_inactivo))
 
         self._autosize_columns()
         self._fit_height()
@@ -666,18 +706,29 @@ class SensorTree(QTreeWidget):
     # son dieciséis renglones iguales delante de todo lo demás.
     RAMA_LARGA = 12
 
-    def _nace_abierta(self, clave: str, expandidas: set, larga: bool = False) -> bool:
+    def _nace_abierta(self, clave: str, expandidas: set, larga: bool = False,
+                      inactiva: bool = False) -> bool:
         """Si una rama arranca desplegada.
 
         Manda lo que el usuario dejó en la sesión anterior. Solo cuando no hay
         nada guardado —el primer arranque— se abren todas, que es lo que deja
         ver de qué va la página sin tener que tocarla; todas menos las largas,
-        que con su título y su cuenta ya dicen qué hay dentro.
+        que con su título y su cuenta ya dicen qué hay dentro, y menos las que
+        no tienen nada que enseñar.
+
+        La que se cerró sola por inactiva se vuelve a decidir cada vez que se
+        rehace el árbol: en la primera muestra ninguna interfaz de red tiene
+        todavía ritmo, y la que resulta tener tráfico en la segunda no puede
+        quedarse cerrada por eso.
         """
         if self._plegadas_guardadas is not None:
             return clave not in self._plegadas_guardadas
+        if inactiva:
+            self._plegadas_por_inactivas.add(clave)
         if not expandidas:
-            return not larga
+            return not (larga or inactiva)
+        if clave in self._nacimiento[0] and clave not in expandidas:
+            return not (larga or inactiva)
         return clave in expandidas
 
     def set_collapsed(self, claves) -> None:

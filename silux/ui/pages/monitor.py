@@ -327,8 +327,13 @@ class MonitorPage(QScrollArea):
             for device, categories in tree.items()
             for category, sensors in categories.items()
         )
+        inactivos = self._inactivos(snapshot)
+        # Los ventiladores parados van aparte dentro de su categoría, así que
+        # cuál lo está es parte de la estructura; el tráfico de una interfaz
+        # no, que solo decide cómo nace su rama y cambia a cada segundo.
+        structure += (tuple(sorted(k for k in inactivos if not k.startswith("net/"))),)
         if structure != self._structure:
-            self.tree.rebuild(tree)
+            self.tree.rebuild(tree, inactivos)
             self._structure = structure
             self._cuenta_completa = (
                 _("sensors.count.one" if len(tree) == 1
@@ -356,6 +361,26 @@ class MonitorPage(QScrollArea):
         for device in tree:
             niveles = avisos.get(device, [])
             self.tree.marcar_aviso(device, len(niveles), "crítico" in niveles)
+
+    @staticmethod
+    def _inactivos(snapshot: Snapshot) -> frozenset:
+        """Los sensores que ahora no tienen nada que enseñar: se pliegan.
+
+        Un ventilador a 0 RPM —un conector de la placa sin nada enchufado, o
+        una gráfica con los suyos parados— y las interfaces de red por las
+        que no pasa tráfico y que no son la que da servicio.
+        """
+        from .network import main_interface
+
+        principal, _todas = main_interface(snapshot.network)
+        calladas = {
+            i.name for i in snapshot.network
+            if i is not principal
+            and not (i.traffic.rx_rate_bps or 0) and not (i.traffic.tx_rate_bps or 0)}
+        return frozenset(
+            s.key for s in snapshot.sensors
+            if (s.kind is SensorKind.FAN and s.value == 0)
+            or (s.key.startswith("net/") and s.key.split("/")[1] in calladas))
 
     @staticmethod
     def _calor_del_maximo(sensor: Sensor, seguimiento) -> float:
