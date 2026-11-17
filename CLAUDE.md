@@ -195,6 +195,10 @@ probó…» o «costó…» van al mensaje del commit o a `docs/lecciones.md`.
   eligiendo también qué rama se ejecuta.
 - Un test que lee el hardware de quien lo ejecuta no exige encontrar algo
   concreto: en el CI no está.
+- **Ningún cambio visual se da por hecho sin mirarlo en la captura**, y el
+  mensaje del commit dice solo lo que se ve en ella. La suite no pinta: lo
+  que se pinta lo vigilan `test_todo_se_pinta.py` y los tests que miran la
+  imagen.
 
 **Flujo de trabajo.**
 - **Nunca se empuja sin preguntar.** Commitear es reversible; publicar no.
@@ -277,6 +281,7 @@ código (F-…), que es por el que se buscan allí.
 | `ui/widgets.py` | baja | el globo «copiado» se come el clic; seleccionar copia el entero; `Table.set_rows` con columnas distintas |
 | `cli.py` | baja | `--json` sin aviso; `--report ''`; banderas que se pisan; `--with-identifiers` suelto; categorías sin traducir; `--report -` sin aviso |
 | `ui/app.py` | baja | cambiar el tema reinicia las gráficas; no hay navegación por teclado |
+| `ui/app.py` | baja | en compacto la barra lateral corta «Almacenamien…» |
 | `ui/pages/graphics.py` | baja | tasa de datos de la VRAM compuesta a mano |
 | `providers/cppc.py` | media, sin comprobar | el techo del silicio con `acpi-cpufreq`: falta el volcado con `amd_pstate=disable` |
 | `ui/pages/settings.py` | propuesta | no hay botón para quitar el ayudante instalado; toca privilegios |
