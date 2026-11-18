@@ -1211,6 +1211,27 @@ def throttle_episode(episodio, ahora_ns: int) -> Optional[str]:
     return _(clave).format(tiempo=cuanto, motivos=motivos)
 
 
+def gpu_clock_limits(relojes) -> Optional[str]:
+    """«350 MHz – 900 MHz», solo si alguien cambió los límites del motor.
+
+    De fábrica el mínimo y el máximo puestos son los del silicio (RPn y
+    RP0), y repetirlos sería decir lo mismo dos veces. Si no se saben los
+    del silicio no hay con qué comparar.
+    """
+    puestos = (relojes.core_min_hz, relojes.core_max_hz)
+    silicio = (relojes.silicon_min_hz, relojes.silicon_max_hz)
+    if None in puestos or None in silicio or puestos == silicio:
+        return None
+    return f"{hz(puestos[0])} – {hz(puestos[1])}"
+
+
+def gpu_sleep(gpu) -> str:
+    """Cuánto ha dormido la gráfica, o que no la dejan dormir."""
+    if gpu.sleep_enabled is False:
+        return _("gpu.engines.rc6off")
+    return percent(gpu.sleep_percent)
+
+
 def throttle_state(gpu) -> str:
     """Si la tarjeta se está frenando, y por qué motivos."""
     if gpu.throttled is None:

@@ -5,7 +5,7 @@ model		: 165
 model name	: Intel(R) Core(TM) i5-10400 CPU @ 2.90GHz
 stepping	: 3
 microcode	: 0x100
-cpu MHz		: 2900.020
+cpu MHz		: 2900.000
 cache size	: 12288 KB
 physical id	: 0
 siblings	: 12
@@ -61,7 +61,7 @@ model		: 165
 model name	: Intel(R) Core(TM) i5-10400 CPU @ 2.90GHz
 stepping	: 3
 microcode	: 0x100
-cpu MHz		: 2900.000
+cpu MHz		: 2899.960
 cache size	: 12288 KB
 physical id	: 0
 siblings	: 12
@@ -117,7 +117,7 @@ model		: 165
 model name	: Intel(R) Core(TM) i5-10400 CPU @ 2.90GHz
 stepping	: 3
 microcode	: 0x100
-cpu MHz		: 2900.055
+cpu MHz		: 2900.000
 cache size	: 12288 KB
 physical id	: 0
 siblings	: 12
@@ -173,7 +173,7 @@ model		: 165
 model name	: Intel(R) Core(TM) i5-10400 CPU @ 2.90GHz
 stepping	: 3
 microcode	: 0x100
-cpu MHz		: 2900.000
+cpu MHz		: 2900.007
 cache size	: 12288 KB
 physical id	: 0
 siblings	: 12
@@ -257,7 +257,7 @@ model		: 165
 model name	: Intel(R) Core(TM) i5-10400 CPU @ 2.90GHz
 stepping	: 3
 microcode	: 0x100
-cpu MHz		: 2897.867
+cpu MHz		: 2900.102
 cache size	: 12288 KB
 physical id	: 0
 siblings	: 12
@@ -285,7 +285,7 @@ model		: 165
 model name	: Intel(R) Core(TM) i5-10400 CPU @ 2.90GHz
 stepping	: 3
 microcode	: 0x100
-cpu MHz		: 2900.083
+cpu MHz		: 2899.977
 cache size	: 12288 KB
 physical id	: 0
 siblings	: 12
@@ -313,7 +313,7 @@ model		: 165
 model name	: Intel(R) Core(TM) i5-10400 CPU @ 2.90GHz
 stepping	: 3
 microcode	: 0x100
-cpu MHz		: 2900.000
+cpu MHz		: 2900.286
 cache size	: 12288 KB
 physical id	: 0
 siblings	: 12

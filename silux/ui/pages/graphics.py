@@ -62,7 +62,8 @@ MEMORY_FIELDS = ("gpu.vram.total", "gpu.vram.type", "gpu.vram.bus", "gpu.vram.ba
                  "gpu.vram.visible", "gpu.vram.rebar", "gpu.vram.chips",
                  "gpu.vram.shared")
 
-CLOCK_FIELDS = ("gpu.clock.core", "gpu.clock.coremax", "gpu.clock.memory", "gpu.clock.memeff",
+CLOCK_FIELDS = ("gpu.clock.core", "gpu.clock.coremax", "gpu.clock.silmax", "gpu.clock.efficient",
+                "gpu.clock.silmin", "gpu.clock.limits", "gpu.clock.memory", "gpu.clock.memeff",
                 "gpu.clock.memmax", "SoC", "gpu.clock.profile",
                 "gpu.clock.link", "gpu.clock.linkmax")
 
@@ -121,15 +122,25 @@ NA_INTEGRADA = {
 # datos que falten por leer: no hay de dónde. Tampoco el enlace: la integrada
 # de Intel es un dispositivo del propio procesador (00:02.0) y no cuelga de
 # ninguna ranura; la de AMD sí publica el suyo, y por eso esto no vale para
-# cualquier integrada. El estado de limitación no está
-# aquí a propósito: `i915` lo publica en algunas generaciones y silux aún no
-# lo lee, así que su guion sigue diciendo la verdad.
+# cualquier integrada. El estado de limitación va aparte
+# (`NA_INTEL_SIN_MOTIVOS`): `i915` lo publica en las generaciones recientes.
 NA_INTEL_INTEGRADA = {
     "card": (("gpu.field.rops", "gpu.field.shaders"), "gpu.na.intel.card"),
     "clocks": (("SoC", "gpu.clock.profile", "gpu.clock.link", "gpu.clock.linkmax"),
                "gpu.na.intel.clocks"),
     "sensors": (("gpu.sensor.voltage", "gpu.sensor.vsoc"), "gpu.na.intel.sensors"),
 }
+
+# Una Intel de las que no publican `throttle_reason_*` (un Comet Lake): no
+# dice si se frena ni por qué. Las recientes sí, y entonces se enseña.
+NA_INTEL_SIN_MOTIVOS = {
+    "sensors": (("gpu.sensor.state",), "gpu.na.intel.throttle"),
+}
+
+# Las frecuencias del silicio, que solo publica Intel. No pasan por
+# `no_aplica`: en una AMD no es que falten, es que su driver cuenta la
+# frecuencia por escalones, y eso ya lo dice «Núcleo (máximo)».
+SILICIO = ("gpu.clock.silmax", "gpu.clock.efficient", "gpu.clock.silmin")
 
 # Una Intel no publica su temperatura por ningún camino. Un guion ahí se lee
 # como «no la he podido leer», y no va a poderse nunca.
@@ -175,6 +186,8 @@ def no_aplica(gpu: Gpu) -> tuple[dict[str, set[str]], dict[str, str]]:
             regla["clocks"] = (tuple(c for c in claves if not c.startswith("gpu.clock.link")),
                                "gpu.na.intel.clocks.link")
         reglas.append(regla)
+        if gpu.throttled is None:
+            reglas.append(NA_INTEL_SIN_MOTIVOS)
 
     tarjetas = ("card", "memory", "clocks", "sensors")
     ocultos: dict[str, set[str]] = {tarjeta: set() for tarjeta in tarjetas}
@@ -465,6 +478,13 @@ class GpuSection(QWidget):
         k(_("gpu.clock.core"), _("gpu.clock.idle") if gpu.clocks.core_hz == 0
           else render.hz(gpu.clocks.core_hz))
         k(_("gpu.clock.coremax"), render.hz(gpu.clocks.core_max_hz))
+        k(_("gpu.clock.silmax"), render.hz(gpu.clocks.silicon_max_hz),
+          tooltip=_("gpu.tip.silmax"))
+        k(_("gpu.clock.efficient"), render.hz(gpu.clocks.efficient_hz),
+          tooltip=_("gpu.tip.efficient"))
+        k(_("gpu.clock.silmin"), render.hz(gpu.clocks.silicon_min_hz))
+        k(_("gpu.clock.limits"), render.gpu_clock_limits(gpu.clocks) or d,
+          tooltip=_("gpu.tip.limits"))
         k(_("gpu.clock.memory"), render.hz(gpu.clocks.memory_hz))
         k(_("gpu.clock.memeff"), render.hz(gpu.clocks.memory_effective_hz),
           tooltip=_("gpu.tip.memeff"))
@@ -545,6 +565,17 @@ class GpuSection(QWidget):
             pie.setText(pies[nombre])
             pie.setVisible(bool(pies[nombre]))
 
+        # Con las del silicio, el máximo puesto no va solo: si es el de
+        # fábrica ya lo dice «Máxima (silicio)», y si alguien lo cambió va en
+        # «Límites puestos», con el mínimo.
+        silicio = gpu.clocks.silicon_max_hz is not None
+        for clave in SILICIO:
+            self.clocks.set_visible(_(clave), silicio)
+        if silicio:
+            self.clocks.set_visible(_("gpu.clock.coremax"), False)
+        self.clocks.set_visible(_("gpu.clock.limits"),
+                                render.gpu_clock_limits(gpu.clocks) is not None)
+
     def _apply_engines(self, gpu: Gpu) -> None:
         """Los motores de la tarjeta, si el driver los publica.
 
@@ -554,7 +585,7 @@ class GpuSection(QWidget):
         self.engine_card.setVisible(bool(gpu.engines))
         if not gpu.engines:
             return
-        self.engine_summary.set(_("gpu.engines.idle"), render.percent(gpu.sleep_percent))
+        self.engine_summary.set(_("gpu.engines.idle"), render.gpu_sleep(gpu))
         self.engines.set_rows([
             (motor.name,
              _(motor.kind) if motor.kind else render.DASH,

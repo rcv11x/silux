@@ -270,6 +270,17 @@ class TestOtrosDrivers(BancoDrm):
         self.assertEqual(gpu.clocks.core_hz, 350_000_000)
         self.assertEqual(gpu.clocks.core_max_hz, 1_150_000_000)
 
+    def test_las_frecuencias_del_silicio_de_una_intel(self):
+        """RP0, RP1 y RPn, con los valores de la UHD 630 de la oficina."""
+        self.tarjeta(0, ranura="0000:00:02.0", vendor="0x8086", device="0x9bc8",
+                     gt_cur_freq_mhz="350", gt_max_freq_mhz="1100", gt_min_freq_mhz="350",
+                     gt_RP0_freq_mhz="1100", gt_RP1_freq_mhz="350", gt_RPn_freq_mhz="350")
+        relojes = self.recolectar().freeze().gpus[0].clocks
+        self.assertEqual((relojes.silicon_min_hz, relojes.efficient_hz, relojes.silicon_max_hz),
+                         (350_000_000, 350_000_000, 1_100_000_000))
+        self.assertEqual((relojes.core_min_hz, relojes.core_max_hz),
+                         (350_000_000, 1_100_000_000))
+
     def test_una_nvidia_propietaria_se_explica(self):
         dispositivo = self.tarjeta(0, vendor="0x10de", device="0x2684")
         (dispositivo / "driver").symlink_to(self.root / "nvidia")
@@ -946,6 +957,44 @@ class TestMotoresDeLaTarjeta(unittest.TestCase):
         gpu = {"driver": "i915", "engines": (GpuEngine(name="bcs0"),)}
         _uso_intel(gpu, {"i915": {"bcs0-busy": 0.0}})
         self.assertEqual(gpu["engines"][0].busy_percent, 0.0)
+
+
+class TestMotivosDeIntel(unittest.TestCase):
+    """`gt/gt0/throttle_reason_*` de i915.
+
+    Escrito con la documentación del kernel: la UHD 630 de la oficina no los
+    publica. Los archivos son los que nombra `intel_gt_sysfs_pm.c`, uno por
+    motivo con 0 o 1, y `throttle_reason_status` como resumen.
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.raiz = pathlib.Path(self._tmp.name)
+        (self.raiz / "gt" / "gt0").mkdir(parents=True)
+        self.addCleanup(self._tmp.cleanup)
+
+    def _motivos(self, **valores):
+        for nombre, valor in valores.items():
+            (self.raiz / "gt" / "gt0" / f"throttle_reason_{nombre}").write_text(f"{valor}\n")
+
+    def test_sin_los_archivos_no_se_sabe(self):
+        from silux.providers.drm import _limitacion_intel
+
+        self.assertEqual(_limitacion_intel(self.raiz), (None, ()))
+
+    def test_sin_frenar(self):
+        from silux.providers.drm import _limitacion_intel
+
+        self._motivos(status=0, pl1=0, pl2=0, thermal=0)
+        self.assertEqual(_limitacion_intel(self.raiz), (False, ()))
+
+    def test_frenando_por_dos_motivos(self):
+        from silux.i18n import _
+        from silux.providers.drm import _limitacion_intel
+
+        self._motivos(status=1, pl1=1, pl2=0, thermal=1, prochot=0)
+        self.assertEqual(_limitacion_intel(self.raiz),
+                         (True, (_("gpu.throttle.intel.pl1"), _("gpu.throttle.intel.thermal"))))
 
 
 class TestReposoDeLaGrafica(unittest.TestCase):

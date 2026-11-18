@@ -371,8 +371,11 @@ Lo que salió al hacerla y no entraba en ella:
   test deja de correr en el CI y se queda para la máquina de quien mide.
   Es el segundo test de medida que falla solo (el otro,
   `test_avisos.py::test_no_salta_ningun_aviso_en_reposo`, lee la máquina).
-- **El estado de limitación de una integrada de Intel** no se lee
-  (`gt/gt0/throttle_reason_*` de `i915`): «Estado —» en Gráficos.
+- **Los motivos de limitación de una Intel reciente** (`gt/gt0/throttle_reason_*`
+  de `i915`) se leen, pero escritos con la documentación del kernel: la UHD
+  630 de la oficina no los publica, y en ella «Estado» se esconde y se dice al
+  pie. Hay que verlos en una Iris Xe o una Arc. Lo mismo las rutas de `xe`
+  para RP0, RP1 y RPn (`freq0/rp0_freq`, `rpe_freq`, `rpn_freq`).
 - **El CI no mira si el AppImage pinta sus iconos.** Se comprobó a mano
   abriendo los dos con `--screenshot`. Un paso que lo haga y mire un píxel
   de la barra lateral lo habría cazado.

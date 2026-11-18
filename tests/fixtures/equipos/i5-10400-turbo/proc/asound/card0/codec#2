@@ -47,7 +47,7 @@ Node 0x04 [Audio Output] wcaps 0x6611: 8-Channels Digital
     bits [0x1a]: 16 24 32
     formats [0x5]: PCM AC3
   Power states:  D0 D3 EPSS
-  Power: setting=D3, actual=D3
+  Power: setting=D0, actual=D0
 Node 0x05 [Pin Complex] wcaps 0x40778d: 8-Channels Digital Amp-Out CP
   Amp-Out caps: ofs=0x00, nsteps=0x00, stepsize=0x00, mute=1
   Amp-Out vals:  [0x00 0x00]

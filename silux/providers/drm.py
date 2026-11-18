@@ -417,6 +417,10 @@ class GpuState(Provider):
 
             if gpu.get("driver") in ("i915", "xe"):
                 gpu["sleep_percent"] = self._reposo(nodo, raiz)
+                rc6 = _primero(read_int(f"{raiz}/gt/gt0/rc6_enable"),
+                               read_int(f"{raiz}/power/rc6_enable"))
+                gpu["sleep_enabled"] = None if rc6 is None else rc6 != 0
+                gpu["throttled"], gpu["throttle_reasons"] = _limitacion_intel(raiz)
                 _uso_intel(gpu, ocupacion)
                 # Solo a la integrada: el plano de energía es el que el
                 # procesador reserva para su gráfica, y colgárselo a una
@@ -770,11 +774,51 @@ def _relojes(dispositivo: pathlib.Path,
         memory_hz=_primero(frecuencias.get("mclk"), activo(memoria)),
         core_max_hz=_primero(max((n.hz for n in nucleo), default=None),
                              _intel_hz(dispositivo, nodo, "max")),
+        core_min_hz=_intel_hz(dispositivo, nodo, "min"),
+        silicon_min_hz=_intel_hz(dispositivo, nodo, "RPn"),
+        efficient_hz=_intel_hz(dispositivo, nodo, "RP1"),
+        silicon_max_hz=_intel_hz(dispositivo, nodo, "RP0"),
         memory_max_hz=max((n.hz for n in memoria), default=None),
         core_levels=nucleo,
         memory_levels=memoria,
         performance_level=read_text(f"{dispositivo}/power_dpm_force_performance_level"),
     )
+
+
+# Por qué se frena una Intel, como lo publica i915 en `gt/gt0/`: un archivo
+# por motivo, con 0 o 1. Solo en las generaciones recientes; un Comet Lake no
+# los tiene. Los nombres los pone silux, así que se traducen.
+MOTIVOS_INTEL = (
+    ("pl1", "gpu.throttle.intel.pl1"),
+    ("pl2", "gpu.throttle.intel.pl2"),
+    ("pl4", "gpu.throttle.intel.pl4"),
+    ("thermal", "gpu.throttle.intel.thermal"),
+    ("prochot", "gpu.throttle.intel.prochot"),
+    ("ratl", "gpu.throttle.intel.ratl"),
+    ("vr_thermalert", "gpu.throttle.intel.vrthermal"),
+    ("vr_tdc", "gpu.throttle.intel.vrtdc"),
+)
+
+
+def _limitacion_intel(nodo: pathlib.Path) -> tuple[Optional[bool], tuple[str, ...]]:
+    """Si la gráfica se está frenando y por qué, o (None, ()) si no lo dice.
+
+    `throttle_reason_status` es el resumen; los demás, cada motivo. Escrito
+    con la documentación del kernel: en la oficina (UHD 630) no existen.
+    """
+    base = f"{nodo}/gt/gt0/throttle_reason"
+    estado = read_int(f"{base}_status")
+    if estado is None:
+        return None, ()
+    motivos = []
+    for motivo, clave in MOTIVOS_INTEL:
+        if read_int(f"{base}_{motivo}"):
+            motivos.append(_(clave))
+    return bool(estado) or bool(motivos), tuple(motivos)
+
+
+# Cómo llama xe a las frecuencias del silicio, que i915 llama RP0, RP1 y RPn.
+_XE = {"RP0": "rp0", "RP1": "rpe", "RPn": "rpn"}
 
 
 def _intel_hz(dispositivo: pathlib.Path, nodo: Optional[pathlib.Path],
@@ -819,7 +863,7 @@ def _intel_hz(dispositivo: pathlib.Path, nodo: Optional[pathlib.Path],
     mhz = read_int(f"{dispositivo}/gt_{cual}_freq_mhz")
     if mhz is None:
         # xe, el driver nuevo de Intel, las mueve dentro de la jerarquía de gt.
-        mhz = read_int(f"{dispositivo}/tile0/gt0/freq0/{cual}_freq")
+        mhz = read_int(f"{dispositivo}/tile0/gt0/freq0/{_XE.get(cual, cual)}_freq")
     return escalar(mhz)
 
 

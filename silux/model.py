@@ -918,6 +918,14 @@ class GpuClocks:
     # técnicas: una GDDR6 con el reloj de comando a 1258 va a 2505 efectivos.
     memory_effective_hz: Optional[int] = None
     soc_hz: Optional[int] = None
+    # Lo que el silicio admite, en una Intel: RPn, la mínima; RP1, la más
+    # eficiente; RP0, la máxima sin pasarse. `core_max_hz` y `core_min_hz`
+    # son los límites puestos ahora, que salen de fábrica iguales a RP0 y RPn
+    # y cualquiera puede cambiar.
+    core_min_hz: Optional[int] = None
+    silicon_min_hz: Optional[int] = None
+    efficient_hz: Optional[int] = None
+    silicon_max_hz: Optional[int] = None
     core_levels: tuple[GpuClockLevel, ...] = ()
     memory_levels: tuple[GpuClockLevel, ...] = ()
     performance_level: Optional[str] = None   # auto, low, high, manual…
@@ -1035,6 +1043,9 @@ class Gpu:
     # menos el uso»: entre estar ocupada y estar en reposo profundo hay un
     # término medio, encendida y sin trabajo, que en consumo no es lo mismo.
     sleep_percent: Optional[float] = None
+    # Si el driver deja dormir a la gráfica (RC6 en Intel). Apagado, el
+    # reposo es siempre 0 % y gasta aunque no haga nada.
+    sleep_enabled: Optional[bool] = None
     engines: tuple[GpuEngine, ...] = ()
     codecs: tuple[VideoCodec, ...] = ()
     temp_c: Optional[float] = None
