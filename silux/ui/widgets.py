@@ -1755,6 +1755,8 @@ class Table(QScrollArea):
                 celda.setMinimumHeight(celda.fontMetrics().height())
                 celda.style().unpolish(celda)
                 celda.style().polish(celda)
+                # Con otra letra la fila mide otra cosa.
+                self._fit_height()
 
     def set_cell_tooltip(self, fila: int, columna: int, texto: str) -> None:
         """La explicación de una celda concreta: por qué lleva un guion."""
@@ -1923,10 +1925,20 @@ class Table(QScrollArea):
             QFontMetrics(value_font()).height(),
             QFontMetrics(ui_font(theme.METRICS.small_pt)).height(),
         ) + 2
+        # Cada fila, con la letra que llevan de verdad sus celdas: un «✓» o un
+        # «✗» (`set_cell_tone`) va en una mayor que las cifras, y medida con
+        # la de las cifras la tabla de códecs se quedaba corta y lo que
+        # sobraba se desplazaba dentro, con la cabecera fuera de la vista.
+        filas = sum(max([line] + [max(c.minimumHeight(), c.fontMetrics().height()) + 2
+                                  for c in fila])
+                    for fila in self._cells[:self._rows])
+        filas += line * max(0, self._rows - len(self._cells))
         rows = self._rows + 1                       # las filas más la cabecera
         spacing = self._grid.verticalSpacing()
         extra = self.horizontalScrollBar().sizeHint().height() + 4
-        self.setFixedHeight(rows * line + max(0, rows - 1) * spacing + extra)
+        alto = line + filas + max(0, rows - 1) * spacing + extra
+        if self.height() != alto or self.minimumHeight() != alto:
+            self.setFixedHeight(alto)
 
     def showEvent(self, event) -> None:  # noqa: N802
         super().showEvent(event)

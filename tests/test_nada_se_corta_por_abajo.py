@@ -126,5 +126,36 @@ class TestNadaSeCortaPorAbajo(unittest.TestCase):
                     self.assertEqual(self._cortadas(), [])
 
 
+    def _tablas_que_desplazan(self) -> list[str]:
+        """Las tablas cuyo contenido no cabe en su alto y se desplaza dentro.
+
+        En Gráficos, la de códecs: sus «✓» y «✗» van en una letra mayor que
+        la de las cifras, cada fila medía más de lo que la tabla había
+        calculado y lo que sobraba se desplazaba dentro de la tarjeta, con la
+        cabecera fuera de la vista.
+        """
+        from silux.ui.widgets import Table
+
+        pagina = self.ventana.stack.currentWidget()
+        malas = []
+        for tabla in pagina.findChildren(Table):
+            if not tabla.isVisibleTo(self.ventana) or not tabla._rows:
+                continue
+            barra = tabla.verticalScrollBar()
+            if barra.maximum() > 0:
+                malas.append(f"{tabla._headers[0]}: {barra.maximum()} px fuera de la vista")
+        return malas
+
+    def test_ninguna_tabla_se_desplaza_por_dentro(self):
+        for carpeta in volcados():
+            self._poner(carpeta.name)
+            for fila in range(self.ventana.nav.count()):
+                self.ventana.nav.setCurrentRow(fila)
+                _asentar(self.app)
+                pagina = type(self.ventana.stack.currentWidget()).__name__
+                with self.subTest(equipo=carpeta.name, pagina=pagina):
+                    self.assertEqual(self._tablas_que_desplazan(), [])
+
+
 if __name__ == "__main__":
     unittest.main()
