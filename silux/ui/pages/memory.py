@@ -817,7 +817,11 @@ class MemoryPage(QScrollArea):
         d = render.DASH
         spd = module.spd
 
-        grid.set(_("memory.field.vendor"), module.manufacturer or (spd.manufacturer if spd else None) or d)
+        # El del SPD primero: es el código JEDEC del propio módulo, y la tabla
+        # del firmware lo escribe a su manera («Crucial Technology»). Con el
+        # orden al revés, la misma pieza cambiaba de nombre al dar permisos.
+        grid.set(_("memory.field.vendor"),
+                 (spd.manufacturer if spd else None) or render.maker(module.manufacturer) or d)
         grid.set(_("memory.field.chips"), (spd.dram_manufacturer if spd else None) or d,
                  tooltip=_("memory.tip.chips"))
         grid.set(_("memory.field.part"), module.part_number or (spd.part_number if spd else None) or d)

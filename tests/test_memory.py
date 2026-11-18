@@ -818,3 +818,33 @@ class TestModulosSinPerfilesRapidos(unittest.TestCase):
         pagina = self._pagina()
         self.assertEqual(pagina.spd_note.text(), _("memory.spd.note.noxmp"))
         self.assertNotIn("activado", pagina.spd_note.text())
+
+
+class TestElFabricanteNoCambiaAlDarPermisos(unittest.TestCase):
+    """Sin permisos la ficha decía «Crucial» (del SPD) y con permisos
+    «Crucial Technology» (de la tabla del firmware): la misma pieza con dos
+    nombres según se hubiera metido la contraseña. Visto en la oficina."""
+
+    def test_con_spd_manda_el_del_spd(self):
+        import dataclasses
+        from silux.i18n import _
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.memory import MemoryPage
+        from silux.model import MemoryModule
+        from tests.test_equipos import EQUIPOS, foto
+
+        app = qt.app()
+        base = foto(EQUIPOS / "i5-10400")[0]
+        spd = base.spd[0]
+        self.assertEqual(spd.manufacturer, "Crucial")
+        # Lo que da `dmidecode -t 17` de esta máquina.
+        modulo = MemoryModule(populated=True, locator="Controller0-ChannelA", bank="BANK 0",
+                              type="DDR4", size_bytes=8 << 30, speed_mts=2667,
+                              configured_mts=2667, manufacturer="Crucial Technology", spd=spd)
+        pagina = MemoryPage(theme.palette_for(app, "dark"), Preferences())
+        self.addCleanup(pagina.deleteLater)
+        pagina.apply(dataclasses.replace(base, modules=(modulo,)))
+        app.processEvents()
+        self.assertEqual(pagina._slot_grids[0]._values[_("memory.field.vendor")].full_text(),
+                         "Crucial")
