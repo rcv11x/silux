@@ -25,7 +25,7 @@ python3 tools/gen_cpu_db.py            # regenerar la base de datos de CPUs
 python3 tools/gen_lang.py --write      # poner al día los archivos de idioma
 python3 tools/medir_referencia.py      # rehacer la escala de puntuación
 python3 tools/anadir_puntuacion.py INFORMES  # sumar medidas ajenas a la tabla
-python3 tools/install_desktop.py       # icono y entrada de menú
+python3 tools/install_desktop.py       # entrada de menú: «Silux (desarrollo)»
 python3 tools/volcar_gpu.py            # lo que publica el kernel de cada gráfica
 python3 tools/volcar_equipo.py NOMBRE  # este equipo, anonimizado, a tests/fixtures/equipos/
 python3 tools/montar_equipo.py NOMBRE ORDEN…  # ejecutar algo con un volcado montado, como los tests
@@ -119,6 +119,7 @@ silux/
 ├─ cli.py          volcado en terminal, JSON, sensores e informe
 ├─ report.py       informe en Markdown para reportar fallos
 ├─ privacidad.py   qué identifica a alguien: lo usan el informe y las capturas
+├─ desktop.py      la entrada de menú y sus iconos: la herramienta y Ajustes
 ├─ settings.py     preferencias en ~/.config/silux
 ├─ tracking.py     mínimos, máximos y medias por sensor
 ├─ throttling.py   desde cuándo lleva frenándose algo, y por qué
@@ -144,6 +145,7 @@ silux/
 ├─ privileged/     el ayudante root mínimo, su cliente, el instalador y el
 │                  cargador de módulos de una lista blanca fija
 ├─ db/             cpu_ids.json (generado), sockets.json y families.json,
+│                  memory_limits.json (el máximo de memoria por modelo),
 │                  scores.json (la escala) y lang/ (es.json, en.json)
 └─ ui/             tema, hilo de muestreo, una página por sección;
                    widgets.py son las primitivas que usan varias páginas,
@@ -167,9 +169,8 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
   `db/scores.json` van siempre en el mismo commit. [docs/benchmark.md](docs/benchmark.md)
 - Qué se ha validado contra qué pieza y qué se escribió a ciegas (NVIDIA sí,
   ARM no): [docs/hardware-validado.md](docs/hardware-validado.md). Hay tres
-  equipos volcados para la suite: dos del i5-10400 y el Ryzen 7 5800X3D. El
-  del 5800X3D está rehecho con los datos nuevos; **los del i5-10400 no**, y
-  de lo nuevo no traen nada hasta que se rehagan en la oficina.
+  equipos volcados para la suite, los tres con los datos nuevos: dos del
+  i5-10400 (en reposo y con turbo) y el Ryzen 7 5800X3D.
 - Lo que se lee en la ventana no lleva rellenos del firmware, razones
   sociales ni chips con su dirección: lo vigila `tests/test_nada_en_bruto.py`
   con cada volcado. Una marca sale de `render.maker`; un chip, de
@@ -183,7 +184,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); los comentarios, en el español del autor. Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-1199 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+1267 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
@@ -267,7 +268,6 @@ código (F-…), que es por el que se buscan allí.
 
 | Dónde | Gravedad | Qué |
 |---|---|---|
-| `tests/fixtures/equipos/i5-10400*` | alta | volcados de antes de los datos nuevos: rehacerlos en la oficina; hasta entonces lo nuevo no está comprobado en Intel |
 | `ui/pages/board.py` | media, sin comprobar | la columna «Ranura» (SMBIOS tipo 9) no se ha visto con la tabla de ninguna placa |
 | `spd.py` | alta | el XMP de DDR4 ignora la corrección fina del ciclo: un DDR4-3600 sale 3200 (F-A2); pide un volcado real con XMP |
 | `privileged/instalar.py` | alta, condicionada | no comprueba que el destino no sea sustituible |
@@ -295,7 +295,9 @@ código (F-…), que es por el que se buscan allí.
 | `ui/widgets.py` | media-baja | un `float` no finito tumba la gráfica |
 | `ui/widgets.py`, `ui/pages/storage.py` | media-baja | `Table` no pinta un candado en una celda: la temperatura de un SATA sigue con guion en la tabla de unidades |
 | `tests/test_benchmark.py` | media, para la fase del benchmark | un test pide ×1.8 de reparto y en el CI a veces da ×1.76; el umbral no se toca hasta entonces |
-| `providers/drm.py` | baja | no se lee el motivo de limitación de `i915` (`throttle_reason_*`): «Estado —» en una integrada de Intel |
+| `providers/drm.py` | baja, sin comprobar | los motivos de limitación de `i915` y las frecuencias del silicio de `xe`, escritos con la documentación: ver en una Iris Xe o una Arc |
+| `db/memory_limits.json` | media | solo Intel de sobremesa 10.ª y 11.ª: en AMD el máximo depende de cuántos módulos y rangos lleven |
+| `providers/` (AMD) | aplazado | PPT, TDC y EDC con `ryzen_smu`: el autor decidió no hacerlo ahora (`docs/propuesta-limites-amd.md`) |
 | `.github/workflows/appimage.yml` | media | el CI no mira si el AppImage pinta sus iconos; se comprobó a mano con `--screenshot` |
 | `privacidad.py`, `tools/volcar_equipo.py` | media-baja | `--anonimo` da la misma IP a todas las interfaces; los volcados, la misma MAC |
 | `ui/theme.py` | media-baja | caché de iconos en `/tmp/silux-icons` de nombre fijo |
