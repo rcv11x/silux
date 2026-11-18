@@ -591,7 +591,9 @@ class GpuSection(QWidget):
             (motor.name,
              _(motor.kind) if motor.kind else render.DASH,
              render.percent(motor.busy_percent),
-             ", ".join(motor.capabilities) or render.DASH)
+             # Vacía si el motor no tiene nada especial: no es un dato que
+             # falte, es que no hay nada que decir.
+             ", ".join(motor.capabilities))
             for motor in gpu.engines
         ])
         # El uso de cada motor sale del contador que piden los permisos: con

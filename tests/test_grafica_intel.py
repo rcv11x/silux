@@ -157,6 +157,16 @@ class TestLaTablaDeMotores(unittest.TestCase):
                 self.assertTrue(seccion.engines.is_cell_locked(fila, 2))
                 self.assertNotEqual(seccion.engines._cells[fila][2].full_text(), render.DASH)
 
+    def test_sabe_hacer_vacio_cuando_no_hay_nada(self):
+        """Un motor sin capacidades especiales no es un dato que falte: la
+        celda va vacía, no con «—». El de video sí dice las suyas."""
+        seccion = self._seccion(self.intel)
+        por_motor = {m.name: seccion.engines._cells[i][3].full_text()
+                     for i, m in enumerate(self.intel.gpus[0].engines)}
+        self.assertEqual(por_motor["rcs0"], "")
+        self.assertEqual(por_motor["bcs0"], "")
+        self.assertEqual(por_motor["vcs0"], "hevc, sfc")
+
     def test_con_permisos_el_candado_se_va_y_sale_la_cifra(self):
         seccion = self._seccion(self.intel)
         gpu = self.intel.gpus[0]
