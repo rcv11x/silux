@@ -684,12 +684,34 @@ class MainWindow(QMainWindow):
         from .widgets import Deslizador
         Deslizador.fluido = bool(self.prefs.fluid_charts)
         if self.prefs.fluid_charts and not self._congelado:
-            self._latido.start()
+            self._animables = self._graficas(solo_visibles=True)
+            self._latir_si_hace_falta()
         else:
             self._latido.stop()
             # Sin animación, cada gráfica se queda en su sitio definitivo.
             for grafica in self._graficas():
                 grafica.advance(1.0)
+
+    def _latir_si_hace_falta(self) -> None:
+        """El temporizador late solo si hay algo que mover y se ve.
+
+        En una página sin gráficas ni barras, o con la ventana minimizada o en
+        otro escritorio, latía treinta veces por segundo para nada: 1,8 puntos
+        de un núcleo en Placa base y uno escondida. Se vuelve a encender con
+        la muestra siguiente si hace falta.
+        """
+        hace_falta = (self.prefs.fluid_charts and not self._congelado
+                      and bool(self._animables) and self._expuesta())
+        if hace_falta and not self._latido.isActive():
+            self._latido.start()
+        elif not hace_falta and self._latido.isActive():
+            self._latido.stop()
+
+    def _expuesta(self) -> bool:
+        """Si algo de la ventana llega a la pantalla. Minimizada o en otro
+        escritorio, el compositor la deja de enseñar y Qt no pinta nada."""
+        ventana = self.windowHandle()
+        return ventana is not None and ventana.isExposed()
 
     def _graficas(self, solo_visibles: bool = False):
         """Lo que se desliza: las gráficas y las barras de la ventana; lo de
@@ -708,6 +730,9 @@ class MainWindow(QMainWindow):
 
     def _avanzar_graficas(self) -> None:
         if self._congelado or not self._desde_la_muestra.isValid():
+            return
+        if not self._expuesta():
+            self._latido.stop()
             return
         fase = self._desde_la_muestra.elapsed() / max(1.0, self._intervalo_real)
         # La lista se hace una vez por muestreo (`_on_sample`), no a cada
@@ -773,6 +798,7 @@ class MainWindow(QMainWindow):
         self._distribute(snapshot)
         self._animables = (self._graficas(solo_visibles=True)
                            if self.prefs.fluid_charts else [])
+        self._latir_si_hace_falta()
         if self._latido.isActive():
             # Las barras acaban de recibir su dato: los fotogramas siguientes,
             # al ritmo de la pantalla, que puede haber cambiado si la ventana

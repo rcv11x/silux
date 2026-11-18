@@ -335,6 +335,33 @@ class TestLaVentana(unittest.TestCase):
         self.assertEqual(ventana._latido.interval(), LATIDO_GRAFICAS_MS,
                          "quietas las barras, vuelve al ritmo de las gráficas")
 
+    def test_en_una_pagina_sin_nada_que_mover_no_late(self):
+        """Placa base no tiene gráficas ni barras: latir treinta veces por
+        segundo ahí era 1,8 puntos de un núcleo para nada."""
+        ventana = self.ventana("Placa base")
+        ventana._on_sample(self.foto)
+        self.assertFalse(ventana._latido.isActive())
+        ventana.select_section("Gráficos")
+        ventana._on_sample(self.foto)
+        self.assertTrue(ventana._latido.isActive(), "vuelve con la muestra siguiente")
+
+    def test_sin_verse_no_late(self):
+        """Minimizada o en otro escritorio no llega nada a la pantalla. Sin
+        pantalla, Qt solo deja de exponer una ventana escondida."""
+        ventana = self.ventana("Gráficos")
+        ventana._on_sample(self.foto)
+        self.assertTrue(ventana._latido.isActive())
+        ventana.hide()
+        self.app.processEvents()
+        ventana._avanzar_graficas()
+        self.assertFalse(ventana._latido.isActive())
+        ventana._on_sample(self.foto)
+        self.assertFalse(ventana._latido.isActive())
+        ventana.show()
+        self.app.processEvents()
+        ventana._on_sample(self.foto)
+        self.assertTrue(ventana._latido.isActive())
+
     def test_el_espacio_lo_congela(self):
         ventana = self.ventana("Gráficos")
         ventana._on_sample(self.foto)
