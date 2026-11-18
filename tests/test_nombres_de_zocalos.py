@@ -130,7 +130,7 @@ class TestEnLaPaginaDeMemoria(unittest.TestCase):
             pagina = ventana.memory_page
             titulos = [c._title_label.text() for c in pagina._slots_host.findChildren(Card)
                        if c._title_label is not None]
-            return titulos, pagina.slots_free.text(), pantalla.textos_de(pagina)
+            return titulos, pagina.subtitle.text(), pantalla.textos_de(pagina)
 
     def test_la_tabla_trae_el_caso(self):
         f = _con_la_tabla(self.fotos["5800x3d"], PLACAS["Gigabyte X570 (AM4)"][0], {1, 3})
@@ -140,10 +140,11 @@ class TestEnLaPaginaDeMemoria(unittest.TestCase):
 
     def test_la_gigabyte_con_dos_modulos_de_cuatro(self):
         f = _con_la_tabla(self.fotos["5800x3d"], PLACAS["Gigabyte X570 (AM4)"][0], {1, 3})
-        titulos, libres, _textos = self._titulos_y_libres(f)
+        titulos, subtitulo, textos = self._titulos_y_libres(f)
         self.assertEqual(titulos, ["Canal A · DIMM 1", "Canal B · DIMM 1"])
-        self.assertIn("Canal A · DIMM 0", libres)
-        self.assertIn("Canal B · DIMM 0", libres)
+        # Los vacíos no se cuentan ni se nombran: ver test_memory.
+        self.assertIn("2 módulos", subtitulo)
+        self.assertNotIn("Canal A · DIMM 0", " ".join(textos))
 
     def test_cada_placa_en_cada_volcado(self):
         for equipo, base in self.fotos.items():
@@ -152,12 +153,9 @@ class TestEnLaPaginaDeMemoria(unittest.TestCase):
                     puestos = set(range(len(zocalos))) - {0} if len(zocalos) > 2 \
                         else set(range(len(zocalos)))
                     f = _con_la_tabla(base, zocalos, puestos)
-                    titulos, libres, _textos = self._titulos_y_libres(f)
+                    titulos, _subtitulo, _textos = self._titulos_y_libres(f)
                     self.assertEqual(titulos, [n for i, n in enumerate(esperado) if i in puestos])
                     self.assertEqual(len(set(titulos)), len(titulos))
-                    for i, nombre in enumerate(esperado):
-                        if i not in puestos:
-                            self.assertIn(nombre, libres)
 
     def test_la_tabla_de_temporizaciones_usa_los_mismos_nombres(self):
         """Sin permisos, con lo que da el SPD del volcado: no cambia nada."""

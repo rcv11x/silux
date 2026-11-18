@@ -4,8 +4,9 @@ Sin permisos solo se sabe el total, así que la página no finge: enseña lo que
 puede y explica exactamente qué falta, cuánto se ganaría y con un botón para
 pedirlo. Nada de diálogos de contraseña al arrancar.
 
-Los zócalos vacíos se enseñan igual que los ocupados. Saber que quedan dos
-libres es la mitad de la razón por la que alguien abre esta pestaña.
+Cada módulo tiene su tarjeta; los zócalos vacíos no se enseñan ni se
+cuentan: la tabla del firmware declara ranuras que la placa no tiene, y no
+hay forma segura de distinguir una vacía de verdad de una fantasma.
 """
 
 from __future__ import annotations
@@ -119,17 +120,6 @@ class MemoryPage(QScrollArea):
         self._slots_host = ResponsiveRow(min_item_width=290)
         layout.addWidget(self._slots_host)
 
-        # Los zócalos libres, en una línea. Una tarjeta entera por cada uno
-        # para poner «Vacío» se llevaba la mitad del ancho con cuatro zócalos y
-        # tres cuartos con ocho, apretando justo a las que sí tienen datos. Es
-        # lo mismo que ya se hizo en Gráficos con las salidas sin nada
-        # enchufado. Cuántos hay libres ya lo dice el titular; esto añade
-        # cuáles, que es lo que hace falta para saber dónde va el módulo nuevo.
-        self.slots_free = QLabel("")
-        self.slots_free.setObjectName("Muted")
-        self.slots_free.setWordWrap(True)
-        self.slots_free.setFont(ui_font(theme.METRICS.small_pt))
-        layout.addWidget(self.slots_free)
         self.spd_missing = QLabel("")
         self.spd_missing.setObjectName("Muted")
         self.spd_missing.setWordWrap(True)
@@ -619,13 +609,17 @@ class MemoryPage(QScrollArea):
                           else "memory.spd.read.many").format(n=cuantos)
                         + velocidad + _("memory.spd.needsroot"))
             return _("memory.detail.needsroot")
-        ocupados = sum(1 for m in modules if m.populated)
-        partes = [_("memory.slots.used").format(
-            n=ocupados, total=len(modules))]
+        # Cuántos módulos, y no «2 de 4 zócalos»: la tabla del firmware
+        # declara ranuras que la placa no tiene (la H510M PRO-E de la oficina
+        # tiene dos y declara cuatro), y una vacía de verdad y una fantasma
+        # son idénticas ahí. Sin permisos se dice lo mismo, del SPD.
         # En canal único la memoria rinde la mitad, y no lo dice nada en todo
-        # el sistema. Va en la primera línea, no en la ficha de un módulo.
-        if (canal := render.memory_channel_label(modules)):
-            partes.insert(0, canal)
+        # el sistema. Va en la primera línea, no en la ficha de un módulo; y
+        # ya lleva cuántos módulos lo forman.
+        ocupados = sum(1 for m in modules if m.populated)
+        canal = render.memory_channel_label(modules)
+        partes = [canal or _("mem.modules.one" if ocupados == 1
+                             else "mem.modules.many").format(n=ocupados)]
         if array and array.max_capacity_bytes:
             partes.append(_("memory.array.upto").format(
                 tam=render.size(array.max_capacity_bytes)))
@@ -749,7 +743,6 @@ class MemoryPage(QScrollArea):
         # llama «DIMM 1» a dos zócalos y pone el canal en el banco.
         nombres = render.slot_names([(m.locator, m.bank) for m in modules])
 
-        libres = []
         sin_spd: list[str] = []
         # Los que se leyeron y no traen perfiles rápidos: el dato no falta,
         # es que esos módulos solo tienen el de JEDEC.
@@ -758,7 +751,6 @@ class MemoryPage(QScrollArea):
         for nombre, module in zip(nombres, modules):
             crudo = module.locator or ""
             if not module.populated:
-                libres.append(nombre)
                 continue
             card = Card(nombre)
             if crudo and nombre != crudo:
@@ -796,12 +788,8 @@ class MemoryPage(QScrollArea):
             self._slot_grids.append(grid)
             self._slots_host.add(card)
 
-        self.slots_free.setText(
-            _("memory.slots.free.one" if len(libres) == 1
-              else "memory.slots.free").format(n=len(libres),
-                                               zocalos=", ".join(libres))
-            if libres else "")
-        self.slots_free.setVisible(bool(libres))
+        # Los libres no se dicen: no hay forma segura de saber cuáles existen
+        # (ver `_subtitle`).
         # Lo que no sale en las fichas y por qué, en el orden de la ficha.
         lista = render.enumeration(
             [_(SOLO_DEL_SPD[clave]) for clave in MODULE_FIELDS if clave in sin_spd])

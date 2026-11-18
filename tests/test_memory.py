@@ -9,7 +9,7 @@ import pathlib
 import unittest
 
 from silux import render
-from tests import qt
+from tests import pantalla, qt
 
 
 
@@ -543,31 +543,16 @@ class TestLosZocalosLibresNoOcupanUnaTarjeta(TestElTituloLlegaALaTarjeta):
         self.assertNotIn("canal a · dimm 1", titulos,
                          "un zócalo vacío no necesita una tarjeta entera")
 
-    def test_pero_se_dice_cuáles_están_libres(self):
-        """Cuántos hay ya lo dice el titular; esto añade cuáles, que es lo que
-        hace falta para saber dónde va el módulo nuevo."""
-        linea = self._pagina().slots_free.text()
-        self.assertIn("2", linea)
-        self.assertIn("Canal A · DIMM 1", linea)
-        self.assertIn("Canal B · DIMM 1", linea)
-
-    def test_sin_zocalos_libres_no_sale_la_línea(self):
-        from silux.model import CpuInfo, CpuType, MemoryModule, Snapshot
-        from silux.settings import Preferences
-        from silux.ui import theme
-        from silux.ui.pages.memory import MemoryPage
-
-        pagina = MemoryPage(theme.palette_for(self.app, "dark"), Preferences())
-        self.addCleanup(pagina.deleteLater)
-        pagina.apply(Snapshot(
-            monotonic_ns=0,
-            cpu=CpuInfo(types=(CpuType(key="g", label="g"),)),
-            modules=(MemoryModule(populated=True, locator="DIMM 0",
-                                  size_bytes=8 << 30),),
-        ))
-        self.app.processEvents()
-        self.assertFalse(pagina.slots_free.isVisible())
-        self.assertEqual(pagina.slots_free.text(), "")
+    def test_no_se_dice_cuantos_hay_libres_ni_el_total(self):
+        """La H510M PRO-E de la oficina tiene dos ranuras y su firmware
+        declara cuatro: con permisos salía «2 de 4 zócalos» y dos libres
+        que no existen. Una vacía de verdad y una fantasma son iguales en
+        la tabla del firmware, así que no se dice ni lo uno ni lo otro."""
+        pagina = self._pagina()
+        self.assertFalse(hasattr(pagina, "slots_free"))
+        self.assertIn("2 módulos", pagina.subtitle.text())
+        self.assertNotIn("de 4", pagina.subtitle.text())
+        self.assertNotIn("libre", " ".join(pantalla.textos_de(pagina)))
 
 
 RAIZ_LANG = pathlib.Path(__file__).resolve().parent.parent / "silux" / "db" / "lang"
