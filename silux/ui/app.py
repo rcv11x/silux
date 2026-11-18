@@ -31,7 +31,7 @@ from .guarda import comprobar as _comprobar_procesador
 
 _comprobar_procesador()
 
-from PySide6.QtCore import QEvent, Qt, QElapsedTimer, QSize, QTimer
+from PySide6.QtCore import QEvent, Qt, QElapsedTimer, QSize, QThread, QTimer, Signal
 from PySide6.QtGui import QFont, QFontMetricsF, QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
@@ -48,7 +48,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .. import __version__, build_id, desktop, i18n, render, settings as prefs_module
+from .. import __version__, build_id, desktop, i18n, render, settings as prefs_module, updates
 from ..i18n import _
 from ..model import Snapshot
 from ..settings import Preferences
@@ -129,6 +129,36 @@ def application_icon() -> QIcon:
     return QIcon.fromTheme(DESKTOP_ID)
 
 
+class _TareaDeRed(QThread):
+    """Una llamada que sale a la red, fuera del hilo de la interfaz (regla 4).
+
+    Contesta con `done(resultado, error)`: uno de los dos es None.
+    """
+
+    done = Signal(object, object)
+
+    def __init__(self, funcion, parent=None) -> None:
+        super().__init__(parent)
+        self._funcion = funcion
+
+    def run(self) -> None:  # noqa: D102 - el de QThread
+        try:
+            resultado = self._funcion()
+        except Exception as error:                     # noqa: BLE001
+            self.done.emit(None, error)
+            return
+        self.done.emit(resultado, None)
+
+
+# Qué dice cada motivo de `updates.UpdateError`.
+ERRORES_DE_ACTUALIZACION = {
+    "network": "updates.err.network", "badreply": "updates.err.badreply",
+    "insecure": "updates.err.insecure", "noasset": "updates.err.noasset",
+    "nosums": "updates.err.nosums", "badhash": "updates.err.badhash",
+    "toolarge": "updates.err.toolarge", "write": "updates.err.write",
+}
+
+
 class MainWindow(QMainWindow):
     def __init__(self, prefs: Preferences,
                  forzadas: Optional[dict[str, tuple]] = None):
@@ -192,7 +222,17 @@ class MainWindow(QMainWindow):
         self._sources.setMaximumWidth(220)
         self.statusBar().addPermanentWidget(self._sources)
 
+        # Lo de buscar versiones: las funciones se pueden cambiar (los tests
+        # no salen a la red) y la versión nueva encontrada, si la hay.
+        self._buscar_version = updates.check
+        self._instalar_version = updates.install
+        self._version_nueva: Optional[updates.Release] = None
+        self._tarea_de_red: Optional[_TareaDeRed] = None
+
         self._build_ui()
+        if prefs.check_updates:
+            # Un poco después de abrir: lo primero es enseñar el equipo.
+            QTimer.singleShot(3000, self.buscar_actualizacion)
 
         self.sampler = Sampler(interval_ms=prefs.interval_ms)
         self.sampler.sampled.connect(self._on_sample)
@@ -297,6 +337,7 @@ class MainWindow(QMainWindow):
         self.performance_page = PerformancePage(self._palette, self.prefs)
         self.settings_page = SettingsPage(self.prefs, self._palette)
         self.settings_page.changed.connect(self._on_preferences)
+        self.settings_page.update_check_requested.connect(self.buscar_actualizacion)
         self.settings_page.elevation_requested.connect(self._on_elevation_requested)
         self.settings_page.explain_requested.connect(self._explicar_permisos)
         self.settings_page.permanent_requested.connect(self._on_permanent_requested)
@@ -412,6 +453,13 @@ class MainWindow(QMainWindow):
         column.addWidget(self.nav, 1)
         column.addWidget(version)
         column.addWidget(self.build_label)
+        # El aviso de versión nueva, junto a la versión. No sustituye nada
+        # hasta que se pulsa.
+        self.update_button = QPushButton()
+        self.update_button.setObjectName("Primary")
+        self.update_button.clicked.connect(self._actualizar)
+        column.addWidget(self.update_button)
+        self._pintar_version_nueva()
         return panel
 
     def _ancho_de_la_barra(self) -> int:
@@ -648,6 +696,80 @@ class MainWindow(QMainWindow):
         from dataclasses import replace
 
         self._on_preferences(replace(self.prefs, network_unit=unidad))
+
+    # -- actualizaciones -----------------------------------------------------
+
+    def buscar_actualizacion(self) -> None:
+        """Pregunta a GitHub por la última versión, fuera de este hilo."""
+        if self._tarea_de_red is not None and self._tarea_de_red.isRunning():
+            return
+        self.settings_page.set_update_status(_("updates.checking"), buscando=True)
+        self._lanzar(self._buscar_version, self._buscada)
+
+    def _lanzar(self, funcion, al_acabar) -> None:
+        tarea = _TareaDeRed(funcion, self)
+        tarea.done.connect(al_acabar)
+        self._tarea_de_red = tarea
+        tarea.start()
+
+    @staticmethod
+    def _motivo(error) -> str:
+        clave = ERRORES_DE_ACTUALIZACION.get(getattr(error, "code", ""), "updates.err.network")
+        return _("updates.error").format(motivo=_(clave))
+
+    def _buscada(self, release, error) -> None:
+        if error is not None:
+            self.settings_page.set_update_status(self._motivo(error))
+            return
+        if updates.is_newer(release):
+            self._version_nueva = release
+            self.settings_page.set_update_status(
+                _("updates.available").format(version=release.version_text))
+        else:
+            self.settings_page.set_update_status(
+                _("updates.latest").format(version=__version__))
+        self._pintar_version_nueva()
+
+    def _pintar_version_nueva(self) -> None:
+        nueva = getattr(self, "_version_nueva", None)
+        if nueva is not None:
+            self.update_button.setText(
+                _("updates.button").format(version=nueva.version_text))
+        self.update_button.setVisible(nueva is not None)
+
+    def _actualizar(self) -> None:
+        """«Actualizar»: si esta copia se puede sustituir, se baja y se cambia."""
+        from PySide6.QtWidgets import QMessageBox
+        nueva = self._version_nueva
+        if nueva is None:
+            return
+        ruta = updates.replaceable_path()
+        if ruta is None:
+            motivo = (_("updates.reason.readonly") if os.environ.get("APPIMAGE")
+                      else _("updates.reason.source"))
+            QMessageBox.information(self, _("settings.group.updates"),
+                                    _("updates.manual").format(motivo=motivo, url=nueva.url))
+            return
+        self.update_button.setEnabled(False)
+        self.update_button.setText(
+            _("updates.downloading").format(version=nueva.version_text))
+        self._lanzar(lambda: self._instalar_version(nueva, ruta), self._instalada)
+
+    def _instalada(self, ruta, error) -> None:
+        from PySide6.QtWidgets import QMessageBox
+        self.update_button.setEnabled(True)
+        if error is not None:
+            self._pintar_version_nueva()
+            QMessageBox.warning(self, _("settings.group.updates"), self._motivo(error))
+            return
+        nueva, self._version_nueva = self._version_nueva, None
+        self._pintar_version_nueva()
+        respuesta = QMessageBox.question(
+            self, _("updates.done.title"),
+            _("updates.done").format(version=nueva.version_text))
+        if respuesta == QMessageBox.StandardButton.Yes:
+            # El mismo camino: el acceso directo apunta a él y sigue valiendo.
+            os.execv(str(ruta), [str(ruta), *sys.argv[1:]])
 
     def _on_preferences(self, prefs: Preferences) -> None:
         from dataclasses import replace

@@ -46,6 +46,9 @@ class Preferences:
     # distintos: quien compara con un test de velocidad quiere bits.
     network_unit: str = "bytes"           # bytes | bits
     show_all_features: bool = False
+    # Buscar una versión nueva al abrir. Apagado de serie: el programa no se
+    # conecta a nada si nadie lo pide (docs/propuesta-actualizaciones.md).
+    check_updates: bool = False
     # Ancho de la columna «Sensor» del árbol. 0 = calcularlo del contenido.
     # Ancho de cada columna del árbol de sensores. Vacío = calcularlo.
     # El idioma de la interfaz. El español es el original y no una traducción
@@ -85,6 +88,7 @@ class Preferences:
                         else "grande"),
             network_unit="bits" if self.network_unit == "bits" else "bytes",
             show_all_features=_si_o_no(self.show_all_features, False),
+            check_updates=_si_o_no(self.check_updates, False),
             language=(str(self.language).lower()
                       if str(self.language).lower() in disponible() else "es"),
             sensor_columns=tuple(min(900, max(30, int(w))) for w in (self.sensor_columns or ())),

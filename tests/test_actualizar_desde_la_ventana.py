@@ -1,0 +1,98 @@
+"""La interfaz del actualizador, sin salir a la red.
+
+Las funciones de buscar e instalar se sustituyen por falsas: lo que se
+comprueba es lo que hace la ventana con lo que contestan.
+"""
+
+import dataclasses
+import os
+import unittest
+from unittest import mock
+
+from silux import __version__, updates
+from silux.i18n import _
+from tests import qt
+
+NUEVA = updates.Release(version=(99, 0, 0), tag="v99.0.0",
+                        url="https://github.com/rcv11x/silux/releases/tag/v99.0.0",
+                        assets={updates.NORMAL: "https://example.invalid/a"})
+
+
+class TestLaVentana(unittest.TestCase):
+    def ventana(self, **prefs):
+        from silux.settings import Preferences
+        from silux.ui.app import MainWindow
+        qt.app()
+        v = MainWindow(dataclasses.replace(Preferences(), **prefs).normalized())
+        self.addCleanup(v.deleteLater)
+        return v
+
+    def esperar(self, v):
+        v._tarea_de_red.wait(5000)
+        qt.app().processEvents()
+
+    def test_apagado_de_serie_y_sin_buscar_al_abrir(self):
+        from silux.settings import Preferences
+        self.assertFalse(Preferences().check_updates)
+        v = self.ventana()
+        self.assertTrue(v.settings_page.check_updates.isChecked() is False)
+        self.assertIsNone(v._tarea_de_red)
+        self.assertTrue(v.update_button.isHidden())
+
+    def test_buscar_ahora_con_version_nueva_pone_el_aviso(self):
+        v = self.ventana()
+        v._buscar_version = lambda: NUEVA
+        v.settings_page.update_now.click()
+        self.esperar(v)
+        self.assertFalse(v.update_button.isHidden())
+        self.assertIn("99.0.0", v.update_button.text())
+        self.assertIn("99.0.0", v.settings_page.update_status.text())
+
+    def test_sin_version_nueva_lo_dice_y_no_hay_aviso(self):
+        v = self.ventana()
+        actual = updates.Release(version=updates.parse_version(__version__), tag="x", url="u")
+        v._buscar_version = lambda: actual
+        v.buscar_actualizacion()
+        self.esperar(v)
+        self.assertTrue(v.update_button.isHidden())
+        self.assertEqual(v.settings_page.update_status.text(),
+                         _("updates.latest").format(version=__version__))
+
+    def test_un_error_de_red_se_dice(self):
+        v = self.ventana()
+        def falla():
+            raise updates.UpdateError("network", "sin red")
+        v._buscar_version = falla
+        v.buscar_actualizacion()
+        self.esperar(v)
+        self.assertIn(_("updates.err.network"), v.settings_page.update_status.text())
+
+    def test_desde_el_codigo_solo_avisa_y_no_baja_nada(self):
+        v = self.ventana()
+        v._version_nueva = NUEVA
+        v._instalar_version = mock.Mock(side_effect=AssertionError("no debía bajar nada"))
+        with mock.patch.dict(os.environ, {}, clear=False), \
+                mock.patch.object(updates, "replaceable_path", return_value=None), \
+                mock.patch("PySide6.QtWidgets.QMessageBox.information") as aviso:
+            os.environ.pop("APPIMAGE", None)
+            v._actualizar()
+        v._instalar_version.assert_not_called()
+        self.assertIn(NUEVA.url, aviso.call_args[0][2])
+
+    def test_desde_el_appimage_baja_y_ofrece_reiniciar(self):
+        v = self.ventana()
+        v._version_nueva = NUEVA
+        destino = "/tmp/silux-x86_64.AppImage"
+        v._instalar_version = mock.Mock(return_value=destino)
+        with mock.patch.object(updates, "replaceable_path", return_value=destino), \
+                mock.patch("PySide6.QtWidgets.QMessageBox.question",
+                           return_value=__import__("PySide6.QtWidgets", fromlist=["QMessageBox"]).QMessageBox.StandardButton.No) as pregunta:
+            v._actualizar()
+            self.esperar(v)
+        v._instalar_version.assert_called_once_with(NUEVA, destino)
+        pregunta.assert_called_once()
+        self.assertTrue(v.update_button.isHidden())
+
+
+if __name__ == "__main__":
+    unittest.main()

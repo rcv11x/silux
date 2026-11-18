@@ -308,6 +308,9 @@ class SettingsPage(QScrollArea):
     explain_requested = Signal()
     permanent_requested = Signal()
     remove_helper_requested = Signal()
+    # «Buscar ahora»: la ventana busca fuera del hilo de la interfaz y
+    # contesta con `set_update_status`.
+    update_check_requested = Signal()
 
     def __init__(self, prefs: Preferences, palette: Optional[Palette] = None, parent=None):
         super().__init__(parent)
@@ -346,6 +349,7 @@ class SettingsPage(QScrollArea):
         layout.addWidget(self._build_permissions())
         layout.addWidget(self._build_desktop())
         layout.addWidget(self._build_share())
+        layout.addWidget(self._build_updates())
         layout.addWidget(self._build_about())
         layout.addStretch(1)
         self._igualar_controles()
@@ -525,6 +529,30 @@ class SettingsPage(QScrollArea):
             _Renglon(_("settings.share.image"), imagen, _("settings.share.image.help")),
             _Renglon(_("settings.share.report"), informe, _("settings.share.report.help")),
         )
+
+    def _build_updates(self) -> Card:
+        """Buscar versiones nuevas: apagado de serie y a petición."""
+        self.check_updates = self._interruptor(self._prefs.check_updates)
+        self.update_now = QPushButton(_("settings.updates.now"))
+        self.update_now.clicked.connect(self.update_check_requested.emit)
+        self.update_status = QLabel("")
+        self.update_status.setObjectName("Muted")
+        self.update_status.setWordWrap(True)
+        self.update_status.hide()
+        card = self._grupo(
+            _("settings.group.updates"),
+            _Renglon(_("settings.updates.label"), self.check_updates,
+                     _("settings.updates.help")),
+            _Renglon(_("settings.updates.manual"), self.update_now),
+        )
+        card.body.addWidget(self.update_status)
+        return card
+
+    def set_update_status(self, texto: str, buscando: bool = False) -> None:
+        """Lo que contestó la última búsqueda, o que se está buscando."""
+        self.update_now.setEnabled(not buscando)
+        self.update_status.setText(texto)
+        self.update_status.setVisible(bool(texto))
 
     def _build_about(self) -> Card:
         """Quién lo hace, sobre qué está construido, y dónde guarda las cosas."""
@@ -803,6 +831,7 @@ class SettingsPage(QScrollArea):
             network_unit=self.network_box.currentData(),
             show_all_features=self.all_features.isChecked(),
             fluid_charts=self.fluid_charts.isChecked(),
+            check_updates=self.check_updates.isChecked(),
         ).normalized()
 
     def _emit(self, *_args) -> None:
