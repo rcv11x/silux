@@ -143,6 +143,14 @@ con el que la cosa **nace**.
 
 ### Proveedores y modelo
 
+* `providers/` (AMD) · **propuesta aplazada** · los límites de potencia de
+  AMD (PPT, TDC, EDC) con `ryzen_smu`. El autor decidió el 18 de noviembre de
+  2026 no hacerlo ahora: la tabla de `ryzen_smu` no está documentada, cambia
+  con la BIOS y leerla manda órdenes al firmware, lo que haría que el ayudante
+  dejara de solo leer. Si se retoma, en dos pasos: primero detectar el módulo
+  sin cifras ni privilegios; después, experimental, con el mapa del 5800X3D
+  verificado en la pieza. Todo, en `docs/propuesta-limites-amd.md`.
+
 * `providers/hwmon.py` · **media-alta** · la clave de sensor no incluye de qué
   nodo `hwmon` viene, así que colisiona entre dos aparatos con el mismo chip:
   dos NVMe, dos gráficas del mismo fabricante, dos sockets. Con dos discos del

@@ -3,6 +3,10 @@
 Solo propuesta: no hay código. Toca privilegios, así que se propone y se
 espera respuesta (`CLAUDE.md`, «Flujo de trabajo»).
 
+**Decidido el 18 de noviembre de 2026: no se hace ahora**, de acuerdo con la
+recomendación de abajo. Queda en `docs/pendientes.md`. Las otras tres
+preguntas del final siguen abiertas para cuando se retome.
+
 Lo que se pide valorar: enseñar en CPU, para AMD, el **límite y el uso** de
 PPT (potencia del paquete), TDC (corriente sostenida) y EDC (corriente de
 pico), como función experimental, leyendo `ryzen_smu`.
