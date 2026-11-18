@@ -90,8 +90,7 @@ chmod +x silux-x86_64.AppImage
 ./silux-x86_64.AppImage
 ```
 
-Lleva dentro Python, Qt y las bibliotecas que necesita, y ocupa unos 42 MB
-(40 MiB): de PySide6 solo van QtCore, QtGui y QtWidgets.
+Lleva dentro Python, Qt y las bibliotecas que necesita, y ocupa unos 43 MB: de PySide6 solo van QtCore, QtGui y QtWidgets.
 
 ### Compatibilidad
 
@@ -108,9 +107,10 @@ Por qué hay dos y cómo se construyen está en
 [docs/empaquetado.md](docs/empaquetado.md).
 
 El kernel, **Linux 5.15 o posterior**; se recomienda un LTS reciente o una
-distribución rolling. Algunos datos llegaron después —el uso del motor de
-video de una AMD, en 6.10; el SPD de la DDR5, en 6.11— y en un kernel anterior
-la página lo dice así, en vez de dar a entender que el equipo no los tiene.
+distribución rolling. Algunos datos llegaron después —el techo de frecuencia
+de un Ryzen con `amd-pstate`, en 5.17; el SPD de la DDR5, en 6.11— y en un
+kernel anterior la página lo dice así, en vez de dar a entender que el equipo
+no los tiene.
 Cuál es de cuándo, con su fuente: [docs/kernel.md](docs/kernel.md).
 
 ### Desde el código
@@ -149,6 +149,8 @@ interfaz es lo único que lo necesita.
 | Núcleos, hilos, topología, núcleos P/E | `/sys/devices/system/cpu/*/topology` | no |
 | Jerarquía de caché | `/sys/devices/system/cpu/*/cache` | no |
 | Frecuencias, driver, gobernador, turbo | `cpufreq`, `intel_pstate` | no |
+| Cuánto descansa cada hilo (C1, C6…) | `cpuidle` | no |
+| Vulnerabilidades del procesador y sus mitigaciones | `/sys/devices/system/cpu/vulnerabilities` | no |
 | Preferencia de energía (EPP) | `cpufreq` | no |
 | Virtualización, si se corre dentro de una VM y en cuál | `CPUID` hojas 1 y 0x40000000 | no |
 | Carga media a 1, 5 y 15 minutos | `/proc/loadavg` | no |
@@ -167,6 +169,9 @@ interfaz es lo único que lo necesita.
 | Ancho de banda de la RAM y latencia por nivel de caché | medido en otro proceso | no |
 | Tráfico del controlador de memoria, ahora mismo | PMU del uncore (solo Intel) | sí |
 | UEFI o BIOS heredada, arranque seguro, TPM | `/sys/firmware`, `/sys/class/tpm` | no |
+| Gestor de arranque y cuánto tarda cada fase | variables EFI del gestor, tabla FPDT del firmware y systemd | no |
+| Dispositivos PCIe, su enlace y la ranura | `/sys/bus/pci` + `pci.ids`; la ranura, de la tabla SMBIOS | no; la ranura, sí |
+| Lo enchufado por USB, sonido, cámaras, Bluetooth | `/sys/bus/usb`, `/proc/asound`, `/sys/class/video4linux`, `/sys/class/bluetooth` | no |
 | Chipset y controlador de memoria | bus PCI + `pci.ids` | no |
 | Umbrales de alarma de cada sensor | `hwmon` (`*_max`, `*_crit`) | no |
 | Gráfica: identidad, VRAM, tabla DPM, enlace PCIe | nodo DRM en `/sys/class/drm` | no |
@@ -174,6 +179,8 @@ interfaz es lo único que lo necesita.
 | Versiones de OpenGL, Vulkan y OpenCL | las bibliotecas, en otro proceso | no |
 | Monitor: modelo, tamaño, resolución y refresco | EDID del conector | no |
 | Por qué se frena la gráfica AMD | `gpu_metrics` del firmware | no |
+| Integrada Intel: frecuencias del silicio, RC6, por qué se frena | sysfs de `i915` | no |
+| Uso y consumo de una gráfica Intel, por motor | PMU de `i915` | sí |
 | Gráficas NVIDIA con el driver propietario | NVML | no |
 | Discos: modelo, tipo, enlace, particiones | `/sys/block`, `/proc/mounts` | no |
 | Horas de encendido, terabytes escritos, desgaste | SMART por `ioctl` (NVMe y SATA) | sí |
@@ -187,7 +194,7 @@ lugar de dejar el campo vacío o esconder la sección.
 ```bash
 uv sync --extra gui                      # el entorno, con pytest y PySide6
 export QT_QPA_PLATFORM=offscreen
-uv run pytest -n auto -m "not a_solas"   # en paralelo: unos veinte segundos
+uv run pytest -n auto -m "not a_solas"   # en paralelo: medio minuto
 uv run pytest -m a_solas                 # los tres que miden, con el equipo para ellos
 python3 -m unittest discover -s tests -t .      # lo mismo sin instalar nada: dos minutos
 python3 tools/comprobar_privacidad.py    # antes de publicar nada
@@ -203,17 +210,19 @@ La última hace falta porque pasar en el Python de uno no dice nada del mínimo
 que declara el proyecto: corre la suite dentro de una Ubuntu 22.04, que es la
 misma en la que corre el CI y en la que se construye el AppImage.
 
-Son unos 2100 y tardan medio minuto en paralelo y minuto y medio en serie. Ninguno exige una pieza concreta: los
-proveedores se prueban contra árboles de sysfs sintéticos, el generador contra
-fragmentos de C, y el SPD y el EDID contra volcados binarios de piezas reales
-guardados en `tests/fixtures`. Algunos sí leen el hardware de quien los
+Son unos 2200 y tardan medio minuto en paralelo y minuto y medio en serie.
+Ninguno exige una pieza concreta: los proveedores se prueban contra árboles de
+sysfs sintéticos y contra tres equipos reales volcados y anonimizados (un
+i5-10400 en reposo y con turbo, y un Ryzen 7 5800X3D con una Radeon RX 9070
+XT, en `tests/fixtures/equipos`); el generador contra fragmentos de C, y el
+SPD y el EDID contra volcados binarios de piezas reales. Algunos sí leen el hardware de quien los
 ejecuta, y entonces comparan el árbol consigo mismo en vez de exigir un
 resultado: pedirle a una máquina cualquiera que tenga un sensor concreto es un
 test que falla en el CI y aquí no.
 
-De SMART y de `gpu_metrics` no hay volcados guardados, y se nota: son los dos
-formatos binarios que más cambian entre equipos y los únicos que se prueban
-solo con lo que publique la máquina de turno.
+De SMART no hay volcados guardados (se lee con permisos, y un volcado no los
+tiene), y de `gpu_metrics` hay uno solo, el de la RX 9070 XT: son los dos
+formatos binarios que más cambian entre equipos.
 
 Buena parte de ellos existe porque algo salió mal una vez: hay un test que
 comprueba que a un procesador ARM no se le atribuye una instrucción de Intel,
@@ -237,10 +246,9 @@ un sitio público. Con `--with-identifiers` se incluyen, si hacen falta para el
 caso.
 
 Desde el AppImage es `./silux-x86_64.AppImage --report informe.md`, que saca lo
-mismo. Y conviene dar antes los permisos, con el botón que sale dentro del
-propio aviso en Memoria, Gráficos o Almacenamiento: sin ellos, el zócalo y la
-velocidad de cada módulo de memoria y el diagnóstico de los discos salen como
-«requiere permisos» en vez de salir.
+mismo. Y conviene dar antes los permisos, desde el aviso de Inicio o pulsando
+cualquier candado: sin ellos, el zócalo y la velocidad de cada módulo de
+memoria y el diagnóstico de los discos salen con un candado en vez de salir.
 
 Si lo que se ve mal es la ventana (texto cortado, columnas montadas, un color
 que no se lee), eso no sale en el informe y hace falta una captura.
@@ -248,7 +256,8 @@ que no se lee), eso no sale en el informe y hace falta una captura.
 Qué se ha probado contra hardware de verdad y qué falta está en
 [docs/hardware-validado.md](docs/hardware-validado.md). Lo que más se agradece
 recibir es justo lo que no hay aquí: una AMD con dos CCD (7950X3D y
-parecidos), un Intel híbrido con núcleos P y E, y un equipo ARM.
+parecidos), un Intel híbrido con núcleos P y E, una gráfica NVIDIA o Intel
+Arc, y un equipo ARM.
 
 ## El idioma de la interfaz
 
