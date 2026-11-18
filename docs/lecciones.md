@@ -446,6 +446,16 @@ apartado. El orden dentro de cada apartado es el cronológico.
   de al lado. Se casa por el fabricante que aparece en el texto, y lo que no
   se pueda atribuir no se atribuye.
 
+- **Leer el uso de una AMD una vez por muestra**: `gpu_busy_percent`,
+  `mem_busy_percent` y `vcn_busy_percent` son lo que midió el firmware en
+  sus últimos milisegundos. En la RX 9070 XT, una lectura suelta salta
+  entre 59 y 100 con la gráfica haciendo lo mismo, y la ficha «Uso» bajaba
+  de 85 a 42 jugando. MangoHud, que hace la media de muchas lecturas, daba
+  80-86. Se leen cada 100 ms entre muestra y muestra y la foto lleva la
+  media (`GpuState.between_samples`): 71-87 en la misma prueba. MangoHud
+  solo escribe su registro si el programa acaba solo (`vkcube --c N`): con
+  `timeout` lo mata antes.
+
 <a id="discos"></a>
 
 ## Discos

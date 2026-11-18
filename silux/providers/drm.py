@@ -414,12 +414,48 @@ class GpuState(Provider):
         # Lo último que se leyó de cada tarjeta despierta: cuándo y su
         # temperatura, para decirlo mientras duerme.
         self._despierta: dict[str, tuple[float, Optional[float]]] = {}
+        # Lo leído entre muestras de cada contador instantáneo, por tarjeta
+        # (`between_samples`), y de qué tarjetas despiertas leerlo.
+        self._lecturas: dict[tuple[pathlib.Path, str], list[float]] = {}
+        self._con_instantes: list[pathlib.Path] = []
 
     def available(self) -> bool:
         return os.path.isdir(sysroot.ruta(SYS_DRM))
 
+    def wants_between_samples(self) -> bool:
+        return bool(self._con_instantes)
+
+    def between_samples(self) -> None:
+        """Lee los contadores de uso que amdgpu da como un instante.
+
+        `gpu_busy_percent`, `mem_busy_percent` y `vcn_busy_percent` son lo
+        que midió el firmware en sus últimos milisegundos, no en el último
+        segundo: en la RX 9070 XT, una lectura suelta salta entre 59 y 100
+        con la gráfica haciendo lo mismo. MangoHud hace la media de muchas
+        lecturas; aquí, la de las de todo el intervalo (`_media`). Una
+        tarjeta dormida no se lee: leerla la despertaría.
+        """
+        for dispositivo in self._con_instantes:
+            if en_reposo(dispositivo):
+                continue
+            for campo, archivo in USO_INSTANTANEO:
+                valor = _porcentaje(dispositivo / archivo)
+                if valor is not None:
+                    self._lecturas.setdefault((dispositivo, campo), []).append(valor)
+
+    def _media(self, dispositivo: pathlib.Path, campo: str, archivo: str) -> Optional[float]:
+        """La lectura de ahora junto con las de entre muestras, en una media."""
+        lecturas = self._lecturas.pop((dispositivo, campo), [])
+        ahora = _porcentaje(dispositivo / archivo)
+        if ahora is not None:
+            lecturas.append(ahora)
+        if not lecturas:
+            return None
+        return round(sum(lecturas) / len(lecturas), 1)
+
     def collect(self, draft: Draft) -> None:
         ocupacion, vatios = self._contadores()
+        con_instantes = []
         for indice, gpu in enumerate(draft.gpus):
             nodo = gpu.get("drm_node")
             if not nodo:
@@ -436,9 +472,10 @@ class GpuState(Provider):
                 gpu["suspended"] = False
                 draft.static_stale = True
 
-            gpu["busy_percent"] = _porcentaje(dispositivo / "gpu_busy_percent")
-            gpu["memory_busy_percent"] = _porcentaje(dispositivo / "mem_busy_percent")
-            gpu["video_busy_percent"] = _porcentaje(dispositivo / "vcn_busy_percent")
+            for campo, archivo in USO_INSTANTANEO:
+                gpu[campo] = self._media(dispositivo, campo, archivo)
+            if (dispositivo / "gpu_busy_percent").exists():
+                con_instantes.append(dispositivo)
             gpu["memory"] = _memoria_usada(dispositivo, gpu.get("memory") or GpuMemory())
             gpu["link"] = _enlace(dispositivo, gpu.get("link") or PcieLink())
             gpu["clocks"] = _relojes(dispositivo, raiz)
@@ -475,6 +512,10 @@ class GpuState(Provider):
                                _("prov.drm.arcusage"), _("prov.drm.arcusage.hint"))
                 else:
                     self._avisar_de_intel(draft, indice)
+        self._con_instantes = con_instantes
+        # Las de una tarjeta que se fue a dormir o desapareció no esperan a
+        # que vuelva: serían de otro rato.
+        self._lecturas = {k: v for k, v in self._lecturas.items() if k[0] in con_instantes}
 
     def _dormida(self, gpu: dict, nodo: str) -> None:
         """Una tarjeta suspendida: no se le pregunta nada.
@@ -664,6 +705,13 @@ def _hex(ruta: pathlib.Path) -> Optional[int]:
         return int(crudo, 16)
     except ValueError:
         return None
+
+
+# Los contadores de uso de amdgpu, que dan un instante y no una media: el
+# campo del modelo y su archivo en el nodo PCI.
+USO_INSTANTANEO = (("busy_percent", "gpu_busy_percent"),
+                   ("memory_busy_percent", "mem_busy_percent"),
+                   ("video_busy_percent", "vcn_busy_percent"))
 
 
 def _porcentaje(ruta: pathlib.Path) -> Optional[float]:

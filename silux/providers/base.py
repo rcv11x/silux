@@ -187,6 +187,15 @@ class Provider:
     def collect(self, draft: Draft) -> None:
         raise NotImplementedError
 
+    def wants_between_samples(self) -> bool:
+        """Si quiere leer algo entre una muestra y la siguiente
+        (`between_samples`). Casi ninguno: cada lectura despierta el hilo."""
+        return False
+
+    def between_samples(self) -> None:
+        """Una lectura entre muestras, para lo que el hardware da como un
+        instante y se enseña como la media del intervalo."""
+
 
 # --------------------------------------------------------------------------
 # lectura de sysfs y procfs, tolerante a ficheros que no existen

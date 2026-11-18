@@ -141,6 +141,22 @@ class Collector:
         time.sleep(settle)
         return self.snapshot()
 
+    def wants_between_samples(self) -> bool:
+        """Si algún proveedor quiere leer entre muestras: si no, el hilo de
+        muestreo duerme el intervalo entero de una vez."""
+        return any(p.wants_between_samples() for p in self.providers if not p.static)
+
+    def between_samples(self) -> None:
+        """Las lecturas entre muestras. Un fallo aquí no se cuenta: la muestra
+        siguiente lee igual y, sin estas lecturas, se queda con su instante."""
+        for provider in self.providers:
+            if provider.static or not provider.wants_between_samples():
+                continue
+            try:
+                provider.between_samples()
+            except Exception:                             # noqa: BLE001
+                pass
+
     def request_elevation(self) -> None:
         """Marca que el usuario quiere los datos que exigen privilegios.
 

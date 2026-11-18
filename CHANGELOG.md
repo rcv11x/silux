@@ -193,6 +193,9 @@ publica se dice con la versión que lo trae.
 - Arreglado: una Arc con el driver `i915` junto a una integrada enseñaba el
   uso de la integrada. Con `xe`, decía que no publica su temperatura, y la
   publica.
+- Arreglado: el uso de una gráfica AMD saltaba de un segundo a otro (de 85 %
+  a 42 % jugando a lo mismo) porque era una lectura suelta. Ahora es la
+  media del intervalo, como la que da MangoHud.
 - Arreglado: la telemetría de AMD en su formato 1.0 se leía con las
   posiciones de otro, y salían cifras creíbles y falsas. Ahora se dice que
   ese formato no se interpreta.

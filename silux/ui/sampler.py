@@ -12,10 +12,18 @@ el límite entre hilos es seguro sin ningún cerrojo.
 
 from __future__ import annotations
 
+import time
+
 from PySide6.QtCore import QMutex, QThread, QWaitCondition, Signal
 
 from ..collector import Collector
 from ..model import Snapshot
+
+
+# Cada cuánto se leen, mientras se espera, los contadores que el hardware da
+# como un instante (el uso de una AMD, `GpuState.between_samples`): diez
+# lecturas por segundo es lo que hace falta para que su media no baile.
+ENTRE_LECTURAS_MS = 100
 
 
 class Sampler(QThread):
@@ -81,15 +89,43 @@ class Sampler(QThread):
             except Exception as exc:                    # noqa: BLE001
                 self.failed.emit(str(exc))
 
-            self._mutex.lock()
-            try:
-                if self._stopping:
-                    return
-                self._wake.wait(self._mutex, self._interval_ms)
-                if self._stopping:
-                    return
-            finally:
-                self._mutex.unlock()
+            if not self._esperar(collector):
+                return
+
+    def _esperar(self, collector) -> bool:
+        """Espera el intervalo; dice si hay que seguir.
+
+        Si algún proveedor lo pide, la espera va a trozos y entre trozo y
+        trozo se lee lo suyo (`Collector.between_samples`). Lo que despierta
+        antes de tiempo (parar, otro intervalo, pedir permisos) corta la
+        espera igual que antes.
+        """
+        trocear = collector.wants_between_samples()
+        self._mutex.lock()
+        try:
+            fin = time.monotonic() + self._interval_ms / 1000
+            while not self._stopping:
+                if self._elevate:
+                    # Pedido mientras se leía sin el cerrojo, cuando nadie
+                    # esperaba el aviso: no se hace esperar al intervalo.
+                    return True
+                queda_ms = int((fin - time.monotonic()) * 1000)
+                if queda_ms <= 0:
+                    return True
+                tramo = min(queda_ms, ENTRE_LECTURAS_MS) if trocear else queda_ms
+                if self._wake.wait(self._mutex, tramo):
+                    return not self._stopping
+                if trocear and not self._stopping:
+                    # Sin el cerrojo: quien quiera parar no tiene que esperar
+                    # a que acabe una lectura de sysfs.
+                    self._mutex.unlock()
+                    try:
+                        collector.between_samples()
+                    finally:
+                        self._mutex.lock()
+            return False
+        finally:
+            self._mutex.unlock()
 
     def __del__(self) -> None:
         pass
