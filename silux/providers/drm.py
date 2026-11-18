@@ -191,10 +191,15 @@ class DrmGpus(Provider):
                 self._identidad_del_bus(gpu, draft, indice, sin_driver)
             if gpu["driver"] in ("i915", "xe"):
                 gpu["engines"] = _motores_intel(nodo)
-                # Ni hwmon, ni el PMU, ni un ioctl: estos drivers no dan la
-                # temperatura de la gráfica. Lo sabe quien conoce el driver, y
-                # lo dice aquí para que nadie tenga que deducirlo del nombre.
-                gpu["no_temperature_sensor"] = True
+                # Una integrada de Intel no da su temperatura por ningún
+                # camino: i915 y xe solo registran hwmon en las dedicadas
+                # (i915_hwmon_register sale si !IS_DGFX; xe_hwmon, igual). Una
+                # Arc sí la da, por hwmon. Se mira si hay de dónde leerla en
+                # vez de suponerlo por el driver: listar la carpeta no
+                # despierta a nadie.
+                hwmon = _hwmon(dispositivo)
+                gpu["no_temperature_sensor"] = not (
+                    hwmon is not None and any(hwmon.glob("temp*_input")))
             gpu["displays"] = _salidas(nodo.name)
             if dormida:
                 draft.note(f"gpus.{indice}", Need.HARDWARE,
@@ -461,7 +466,15 @@ class GpuState(Provider):
                 # dedicada sería atribuirle el consumo de otra.
                 if vatios is not None and gpu.get("integrated"):
                     gpu["power_w"] = vatios
-                self._avisar_de_intel(draft, indice)
+                if gpu.get("integrated") is False:
+                    # Una Arc: el ayudante solo abre el contador de la
+                    # integrada, y los avisos de Intel hablan de ella (que no
+                    # hay temperatura, que con permisos sale el uso). Se dice
+                    # lo que de verdad pasa con esta.
+                    draft.note(f"gpus.{indice}.usage", Need.HARDWARE,
+                               _("prov.drm.arcusage"), _("prov.drm.arcusage.hint"))
+                else:
+                    self._avisar_de_intel(draft, indice)
 
     def _dormida(self, gpu: dict, nodo: str) -> None:
         """Una tarjeta suspendida: no se le pregunta nada.
@@ -603,10 +616,16 @@ def _pmu_de(gpu: dict) -> Optional[str]:
     la ranura PCI detrás, con los dos puntos cambiados por guiones bajos.
     """
     driver = gpu.get("driver")
+    ranura = gpu.get("pci_slot")
     if driver == "i915":
-        return "i915"
+        # El nombre corto es solo de la integrada; cualquier otra lleva su
+        # ranura (i915_pmu.c: `is_igp` es 0000:00:02.0, y si no, «i915_» y
+        # el dev_name con los dos puntos cambiados por guiones bajos). Con
+        # «i915» para todas, una Arc enseñaba el uso de la integrada.
+        if ranura in (None, "0000:00:02.0"):
+            return "i915"
+        return f"i915_{ranura.replace(':', '_')}"
     if driver == "xe":
-        ranura = gpu.get("pci_slot")
         return f"xe_{ranura.replace(':', '_')}" if ranura else None
     return None
 
@@ -973,7 +992,9 @@ def _sensores(gpu: dict, dispositivo: pathlib.Path) -> None:
 
     temperaturas = _etiquetadas(hwmon, "temp")
     mili = lambda v: round(v / 1000, 1) if v is not None else None
-    gpu["temp_c"] = mili(temperaturas.get("edge"))
+    # «edge» en amdgpu; «pkg» en xe, que es la del encapsulado de la gráfica
+    # (xe_hwmon.c etiqueta así el canal del paquete y «vram» el de la memoria).
+    gpu["temp_c"] = mili(_primero(temperaturas.get("edge"), temperaturas.get("pkg")))
     gpu["hotspot_c"] = mili(_primero(temperaturas.get("junction"),
                                      temperaturas.get("hotspot")))
     gpu["memory_temp_c"] = mili(_primero(temperaturas.get("mem"),

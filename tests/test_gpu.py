@@ -1847,3 +1847,54 @@ class TestElEnlaceDeUnaArc(BancoDrm):
         dispositivo = self.tarjeta(0, ranura="0000:00:02.0", vendor="0x8086",
                                    device="0x9bc8", **{"class": "0x030000"})
         self.assertFalse(drm._arc_tras_su_conmutador(dispositivo))
+
+
+class TestLasArc(BancoDrm):
+    """Una Arc no enseña lo de la integrada ni niega lo que sí publica.
+
+    - i915_pmu.c: el PMU se llama «i915» solo en la integrada (`is_igp`:
+      0000:00:02.0); cualquier otra, «i915_» con su dev_name y los dos puntos
+      cambiados por guiones bajos.
+    - xe_hwmon.c: la temperatura de una dedicada va en el canal del paquete,
+      etiquetado «pkg», y la de la memoria en «vram». i915 y xe solo
+      registran hwmon en las dedicadas.
+    """
+
+    def arc(self, driver: str, etiquetas=()):
+        dispositivo = self.tarjeta(1, ranura="0000:03:00.0", vendor="0x8086",
+                                   device="0xe20b", **{"class": "0x030000"})
+        (self.root / driver).mkdir(exist_ok=True)
+        (dispositivo / "driver").symlink_to(self.root / driver)
+        for nombre, valor in etiquetas:
+            _write(dispositivo / "hwmon" / "hwmon6" / nombre, valor)
+        return dispositivo
+
+    def test_el_pmu_de_una_arc_con_i915_es_el_suyo(self):
+        from silux.providers.drm import _pmu_de
+        self.assertEqual(_pmu_de({"driver": "i915", "pci_slot": "0000:03:00.0"}),
+                         "i915_0000_03_00.0")
+        self.assertEqual(_pmu_de({"driver": "i915", "pci_slot": "0000:00:02.0"}), "i915")
+
+    def test_no_se_lleva_el_uso_de_la_integrada(self):
+        from silux.providers.drm import _uso_intel
+        arc = {"driver": "i915", "pci_slot": "0000:03:00.0"}
+        _uso_intel(arc, {"i915": {"rcs0-busy": 37.0}})
+        self.assertIsNone(arc.get("busy_percent"))
+
+    def test_la_temperatura_de_xe_va_en_pkg(self):
+        self.arc("xe", (("temp2_label", "pkg"), ("temp2_input", "52000"),
+                        ("temp3_label", "vram"), ("temp3_input", "60000")))
+        draft = self.recolectar()
+        gpu = draft.freeze().gpus[0]
+        self.assertEqual(gpu.temp_c, 52.0)
+        self.assertEqual(gpu.memory_temp_c, 60.0)
+        self.assertFalse(gpu.no_temperature_sensor)
+        textos = " ".join(n.message for n in draft.notes)
+        self.assertNotIn(_("prov.drm.inteltemp"), textos)
+        self.assertNotIn("no publica su temperatura", textos)
+
+    def test_sin_hwmon_sigue_sin_temperatura(self):
+        self.tarjeta(0, ranura="0000:00:02.0", vendor="0x8086", device="0x9bc8")
+        (self.root / "i915").mkdir()
+        (self.root / "pci0000:00" / "0000:00:02.0" / "driver").symlink_to(self.root / "i915")
+        self.assertTrue(self.recolectar().freeze().gpus[0].no_temperature_sensor)

@@ -889,6 +889,8 @@
   "prov.dmi.noboard.hint": "Some manufacturers leave the field blank on purpose.",
   "prov.dmi.none": "This machine exposes no DMI information.",
   "prov.dmi.none.hint": "Happens on simple virtual machines and on many ARM boards.",
+  "prov.drm.arcusage": "This card's usage is not read yet: the permissions helper only opens the integrated graphics' counter.",
+  "prov.drm.arcusage.hint": "Reading an Arc's needs a change to the helper, proposed separately. Better no figure than the other card's usage.",
   "prov.drm.asleep": "The card is asleep and is not queried, so that it stays asleep.",
   "prov.drm.asleep.hint": "Its memory, link and what its driver knows appear when something uses it: reading them now would wake it up and drain the battery.",
   "prov.drm.inteldriver.hint": "The kernel does not publish occupancy counters for this graphics either, which is where usage comes from on other Intel parts. The clocks, the monitors and what Vulkan and OpenGL declare do come out.",

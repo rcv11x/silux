@@ -889,6 +889,8 @@
   "prov.dmi.noboard.hint": "Algunos fabricantes dejan el campo sin rellenar a propósito.",
   "prov.dmi.none": "Este equipo no expone información DMI.",
   "prov.dmi.none.hint": "Ocurre en máquinas virtuales sencillas y en muchos ARM.",
+  "prov.drm.arcusage": "El uso de esta gráfica todavía no se lee: el ayudante de permisos solo abre el contador de la integrada.",
+  "prov.drm.arcusage.hint": "Leer el de una Arc pide cambiar el ayudante, y eso está propuesto aparte. Mejor sin dato que con el uso de la otra gráfica.",
   "prov.drm.asleep": "La tarjeta está en reposo y no se le pregunta nada para no despertarla.",
   "prov.drm.asleep.hint": "Su memoria, su enlace y lo que sabe su driver salen cuando algo la use: leerlos ahora la sacaría del reposo y gastaría batería.",
   "prov.drm.inteldriver.hint": "El kernel tampoco publica contadores de ocupación para esta gráfica, que es de donde sale el uso en las demás Intel. Las frecuencias, los monitores y lo que declaran Vulkan y OpenGL sí salen.",
