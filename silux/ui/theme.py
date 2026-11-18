@@ -290,12 +290,16 @@ def _arrow_icon(color: str, direction: str) -> str:
     darle una imagen. Se genera aquí para que siga el color del tema en vez
     de arrastrar un PNG por el repositorio.
     """
+    # El triángulo ocupa diez de los dieciséis píxeles: con ocho, el selector
+    # de «Refrescar cada» enseñaba dos flechas de tres píxeles. Su forma va
+    # en el nombre del archivo, o la caché seguiría sirviendo la anterior.
+    size, scale = 16, 2                    # x2 para que no se vea dentado
+    half, height = 5.0, 3.2
     cache = pathlib.Path(tempfile.gettempdir()) / "silux-icons"
-    target = cache / f"arrow-{color.lstrip('#')}-{direction}.png"
+    target = cache / f"arrow-{color.lstrip('#')}-{direction}-{half:g}x{height:g}.png"
     if target.exists():
         return target.as_posix()
 
-    size, scale = 16, 2                    # x2 para que no se vea dentado
     pixmap = QPixmap(size * scale, size * scale)
     pixmap.fill(Qt.GlobalColor.transparent)
 
@@ -304,7 +308,7 @@ def _arrow_icon(color: str, direction: str) -> str:
     painter.setPen(Qt.PenStyle.NoPen)
     painter.setBrush(QColor(color))
 
-    half, mid, height = 4.0 * scale, size * scale / 2, 2.5 * scale
+    half, mid, height = half * scale, size * scale / 2, height * scale
     if direction == "right":
         points = [QPointF(mid - height, mid - half), QPointF(mid - height, mid + half),
                   QPointF(mid + height, mid)]
@@ -330,16 +334,16 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         arrow_down_hot = _arrow_icon(p.accent, "down")
         arrows = f"""
     QComboBox::down-arrow {{{{
-        image: url({arrow_down}); width: 9px; height: 9px; margin-right: 5px;
+        image: url({arrow_down}); width: 14px; height: 14px; margin-right: 4px;
     }}}}
     QComboBox::down-arrow:on, QComboBox::down-arrow:hover {{{{
         image: url({arrow_down_hot});
     }}}}
     QDoubleSpinBox::up-arrow, QSpinBox::up-arrow {{{{
-        image: url({arrow_up}); width: 8px; height: 8px;
+        image: url({arrow_up}); width: 14px; height: 14px;
     }}}}
     QDoubleSpinBox::down-arrow, QSpinBox::down-arrow {{{{
-        image: url({arrow_down}); width: 8px; height: 8px;
+        image: url({arrow_down}); width: 14px; height: 14px;
     }}}}
     QTreeView::branch:has-children:closed {{{{
         image: url({arrow_right}); width: 9px; height: 9px;
@@ -519,17 +523,22 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
 
     /* --- controles de la página de ajustes --- */
 
+    /* El borde de un control en reposo es `muted` y no `line`: es lo único
+       que dice dónde acaba, porque su relleno apenas se separa de la tarjeta
+       (1.1:1). Con `line` el contorno quedaba en 1.2:1 en oscuro y no se
+       veía; `muted` da 5.4:1 en oscuro y 5.0:1 en claro, por encima del 3:1
+       que pide un control (WCAG 1.4.11). Al pasar el ratón sube a `ink_dim`. */
     QComboBox, QDoubleSpinBox, QSpinBox {{
         background: {p.surface_alt};
         color: {p.ink};
-        border: 1px solid {p.line};
+        border: 1px solid {p.muted};
         border-radius: 5px;
         padding: 4px 8px;
         min-height: 20px;
     }}
-    QComboBox:hover, QDoubleSpinBox:hover, QSpinBox:hover {{ border-color: {p.muted}; }}
+    QComboBox:hover, QDoubleSpinBox:hover, QSpinBox:hover {{ border-color: {p.ink_dim}; }}
     QComboBox:focus, QDoubleSpinBox:focus, QSpinBox:focus {{ border-color: {p.accent}; }}
-    QComboBox::drop-down {{ border: none; width: 18px; }}
+    QComboBox::drop-down {{ border: none; width: 22px; }}
     QComboBox QAbstractItemView {{
         background: {p.surface};
         color: {p.ink};
@@ -541,23 +550,23 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
     }}
     QDoubleSpinBox::up-button, QSpinBox::up-button,
     QDoubleSpinBox::down-button, QSpinBox::down-button {{
-        background: transparent; border: none; width: 15px;
+        background: transparent; border: none; width: 20px;
     }}
 
     QCheckBox {{ color: {p.ink}; spacing: 8px; }}
     QCheckBox::indicator {{
         width: 15px; height: 15px;
-        border: 1px solid {p.line};
+        border: 1px solid {p.muted};
         border-radius: 4px;
         background: {p.surface_alt};
     }}
-    QCheckBox::indicator:hover {{ border-color: {p.muted}; }}
+    QCheckBox::indicator:hover {{ border-color: {p.ink_dim}; }}
     QCheckBox::indicator:checked {{ background: {p.accent}; border-color: {p.accent}; }}
 
     QPushButton {{
         background: {p.surface_alt};
         color: {p.ink_dim};
-        border: 1px solid {p.line};
+        border: 1px solid {p.muted};
         border-radius: 8px;
         padding: 5px 13px;
     }}
@@ -609,7 +618,7 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
        de al lado es el que la gente ha venido a pulsar. */
     QPushButton#GhostButton {{
         color: {p.muted};
-        border-color: {p.line};
+        border-color: {p.muted};
     }}
     QPushButton#GhostButton:hover {{
         border-color: {p.accent};

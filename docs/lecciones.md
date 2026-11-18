@@ -817,6 +817,13 @@ apartado. El orden dentro de cada apartado es el cronológico.
   en azul (`Palette.info`, tono `action`). El amarillo (`warn`) se queda para
   lo que es un estado del equipo y no una tarea del usuario: un disco que
   avisa, una lectura cerca de su límite.
+- **Bordear un control con el mismo filo que una tarjeta**: `line` separa
+  superficies que ya se distinguen por su tono, pero el relleno de un
+  desplegable apenas se aparta de la tarjeta (1.1:1), así que su borde es lo
+  único que dice dónde está. Con `line` quedaba en 1.2:1 en oscuro: en Ajustes
+  el interruptor apagado y el contorno de los desplegables casi no se veían.
+  Lo que dibuja un control en reposo va en `muted` (5.4:1 y 5.0:1), por
+  encima del 3:1 de WCAG 1.4.11; lo vigila `tests/test_contraste.py`.
 - **Explicar que hace falta un permiso sin poner el botón al lado**: el aviso
   de Gráficos decía «Requiere permisos» y el único botón estaba en Memoria y
   en Almacenamiento. Quien lee por qué falta un dato es quien quiere

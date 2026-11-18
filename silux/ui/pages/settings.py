@@ -125,19 +125,24 @@ class Interruptor(QAbstractButton):
         caja = QRectF(self.rect()).adjusted(1, 1, -1, -1)
         radio = caja.height() / 2
         encendido = self.isChecked()
+        # Apagado es un carril vacío con su contorno y la bola en `muted`,
+        # como el borde de un desplegable. Relleno de `line`, sobre la
+        # tarjeta en oscuro daba 1.2:1 y el interruptor no se veía.
         if not self.isEnabled():
-            fondo = self._p.q("disabled")
+            fondo, contorno, bola = self._p.q("disabled"), None, self._p.q("surface")
         elif encendido:
-            fondo = self._p.q("info")
+            fondo, contorno, bola = self._p.q("info"), None, self._p.q("surface")
         else:
-            fondo = self._p.q("line")
-        pintor.setPen(self._p.q("info") if self.hasFocus() else Qt.PenStyle.NoPen)
+            fondo, contorno, bola = self._p.q("surface_alt"), self._p.q("muted"), self._p.q("muted")
+        if self.hasFocus():
+            contorno = self._p.q("info")
+        pintor.setPen(contorno if contorno is not None else Qt.PenStyle.NoPen)
         pintor.setBrush(fondo)
         pintor.drawRoundedRect(caja, radio, radio)
         lado = caja.height() - 4
         x = caja.right() - lado - 2 if encendido else caja.left() + 2
         pintor.setPen(Qt.PenStyle.NoPen)
-        pintor.setBrush(self._p.q("surface"))
+        pintor.setBrush(bola)
         pintor.drawEllipse(QRectF(x, caja.top() + 2, lado, lado))
         pintor.end()
 
@@ -157,8 +162,12 @@ class Insignia(QLabel):
             return
         self.tono = tono
         self.setText(texto)
-        color = self._p.q(tono)
-        fondo = self._p.q(tono, 0.16)
+        # El gris de «Sin conceder» o «No está en el menú» se leía a 4.1:1
+        # sobre su propia pastilla; el texto sube a `ink_dim` y la pastilla
+        # se queda gris. El lavado, al 12 %: al 16 % el amarillo de un estado
+        # en el tema claro bajaba de 4.5:1.
+        color = self._p.q("ink_dim" if tono == "muted" else tono)
+        fondo = self._p.q(tono, 0.12)
         self.setStyleSheet(
             f"QLabel {{ color: {color.name()}; "
             f"background: rgba({fondo.red()}, {fondo.green()}, {fondo.blue()}, "
