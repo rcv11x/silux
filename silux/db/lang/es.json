@@ -668,8 +668,6 @@
   "memory.module.n": "Módulo {n}",
   "memory.na.chips": "los chips",
   "memory.na.made": "la fecha de fabricación",
-  "memory.na.noprofiles.all": "Estos módulos no traen perfiles rápidos (XMP): solo el de JEDEC, que es la velocidad que declaran.",
-  "memory.na.noprofiles.some": "{n} de los módulos no traen perfiles rápidos (XMP): solo el de JEDEC.",
   "memory.na.nospd": "{campos} salen del chip SPD de cada módulo, y no se ha podido leer.",
   "memory.na.nospd.kernel": "{campos} salen del chip SPD de cada módulo. {kernel} (Es el driver spd5118, el que lee el SPD de la DDR5.)",
   "memory.na.nospd.why": "{campos} salen del chip SPD de cada módulo, y no se puede leer: {motivo}",

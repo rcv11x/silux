@@ -789,8 +789,11 @@ class TestModulosSinPerfilesRapidos(unittest.TestCase):
         pagina = self._pagina()
         for ficha in pagina._slot_grids:
             self.assertFalse(ficha._values[_("memory.field.profiles")].isVisibleTo(pagina))
-        self.assertTrue(pagina.spd_missing.isVisibleTo(pagina))
-        self.assertIn(_("memory.na.noprofiles.all"), pagina.spd_missing.text())
+        # Una sola vez, en la nota de la tabla de perfiles: ni al pie de las
+        # fichas ni repetido en otro sitio de la página.
+        self.assertFalse(pagina.spd_missing.isVisibleTo(pagina))
+        textos = " ".join(pantalla.textos_de(pagina))
+        self.assertEqual(textos.count("no traen perfiles rápidos"), 1)
 
     def test_ningun_guion_en_las_fichas(self):
         from silux import render

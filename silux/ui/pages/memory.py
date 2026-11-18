@@ -747,10 +747,6 @@ class MemoryPage(QScrollArea):
         nombres = render.slot_names([(m.locator, m.bank) for m in modules])
 
         sin_spd: list[str] = []
-        # Los que se leyeron y no traen perfiles rápidos: el dato no falta,
-        # es que esos módulos solo tienen el de JEDEC.
-        sin_perfiles = 0
-        leidos = 0
         for nombre, module in zip(nombres, modules):
             crudo = module.locator or ""
             if not module.populated:
@@ -783,11 +779,9 @@ class MemoryPage(QScrollArea):
                 grid.set_visible(_(clave), False)
                 if clave not in sin_spd:
                     sin_spd.append(clave)
-            if module.spd is not None:
-                leidos += 1
-                if not module.spd.overclock_profiles:
-                    sin_perfiles += 1
-                    grid.set_visible(_("memory.field.profiles"), False)
+            if module.spd is not None and not module.spd.overclock_profiles:
+                # El dato no falta: esos módulos solo tienen el perfil de JEDEC.
+                grid.set_visible(_("memory.field.profiles"), False)
             if candado is not None:
                 # Del SPD sale a cuánto puede ir el módulo, no a cuánto va ni
                 # en qué banco está: eso lo guarda la tabla del firmware. Con
@@ -822,9 +816,9 @@ class MemoryPage(QScrollArea):
                 campos=campos, motivo=nota_spd.message[:1].lower() + nota_spd.message[1:])
                         if nota_spd is not None else
                         _("memory.na.nospd").format(campos=campos))
-        if sin_perfiles:
-            pies.append(_("memory.na.noprofiles.all") if sin_perfiles == leidos
-                        else _("memory.na.noprofiles.some").format(n=sin_perfiles))
+        # Que no traen perfiles rápidos se dice una vez, en la nota de la tabla
+        # de perfiles, que es donde se buscan (`_apply_timings`); la fila se
+        # esconde sin repetirlo aquí.
         self.spd_missing.setText(" ".join(pies))
         self.spd_missing.setVisible(bool(pies))
 

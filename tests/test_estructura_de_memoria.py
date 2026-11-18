@@ -139,7 +139,9 @@ class TestSinSpd(unittest.TestCase):
         with pantalla.Ventana(f) as ventana:
             pagina = self._pagina(f, ventana)
             self.assertTrue(pagina._slot_grids)
-            self.assertEqual(pagina.spd_missing.text(), _("memory.na.noprofiles.all"))
+            # Que no traen perfiles se dice una vez, en la nota de su tabla.
+            self.assertFalse(pagina.spd_missing.isVisible())
+            self.assertEqual(pagina.spd_note.text(), _("memory.spd.note.noxmp"))
             for rejilla in pagina._slot_grids:
                 self.assertTrue(rejilla._values[_("memory.field.chips")].isVisible())
                 self.assertTrue(rejilla._values[_("memory.field.made")].isVisible())
