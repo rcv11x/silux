@@ -270,12 +270,12 @@ class NetworkPage(QScrollArea):
 
         if trafico:
             self.tile_rx.set_detail(_("net.packets2").format(
-                n=f"{trafico.rx_packets:n}"))
+                n=render.thousands(trafico.rx_packets)))
             self.tile_tx.set_detail(_("net.packets2").format(
-                n=f"{trafico.tx_packets:n}"))
+                n=render.thousands(trafico.tx_packets)))
             perdidos = trafico.problems
             self.tile_down.set_detail(
-                _("net.lost").format(n=f"{perdidos:n}") if perdidos
+                _("net.lost").format(n=render.thousands(perdidos)) if perdidos
                 else _("net.nolost"))
 
     def _alternar_virtuales(self) -> None:
@@ -311,8 +311,8 @@ class NetworkPage(QScrollArea):
              render.rate(interfaz.traffic.tx_rate_bps, self._bits),
              render.size(interfaz.traffic.rx_bytes),
              render.size(interfaz.traffic.tx_bytes),
-             f"{interfaz.traffic.rx_packets + interfaz.traffic.tx_packets:n}",
-             f"{interfaz.traffic.problems:n}" if interfaz.traffic.problems else "—")
+             render.thousands(interfaz.traffic.rx_packets + interfaz.traffic.tx_packets),
+             render.thousands(interfaz.traffic.problems) if interfaz.traffic.problems else "—")
             for interfaz in interfaces
         ]
         return filas or [(_("net.none"), d, d, d, d, d, d)]

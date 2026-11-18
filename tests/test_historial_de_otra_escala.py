@@ -63,7 +63,7 @@ class TestElHistorial(unittest.TestCase):
         celdas = self._celdas([prueba(200, score.VERSION)])
         puntos = score.puntuar(prueba(200, score.VERSION).scores, 16)
         self.assertIsNotNone(puntos)
-        self.assertIn(f"{puntos[1]:n}", celdas)
+        self.assertIn(render.thousands(puntos[1]), celdas)
         self.assertFalse([t for t in celdas if t.startswith("escala v")])
 
     def test_la_nota_de_debajo_sigue(self):

@@ -203,9 +203,9 @@ class SystemPage(QScrollArea):
         a = self.activity.set
         a(_("sys.field.since"), system.boot_time or d)
         a(_("sys.field.uptime"), format_uptime(system.uptime_seconds))
-        a(_("sys.act.processes"), f"{system.processes:,}".replace(",", " "))
-        a(_("sys.act.threads"), f"{system.threads:,}".replace(",", " "))
-        a(_("sys.field.openfiles"), f"{system.open_files:,}".replace(",", " "))
+        a(_("sys.act.processes"), render.thousands(system.processes))
+        a(_("sys.act.threads"), render.thousands(system.threads))
+        a(_("sys.field.openfiles"), render.thousands(system.open_files))
 
         self._apply_security(system)
         self._apply_swap(system)

@@ -867,11 +867,11 @@ def smart_rows(salud) -> list[tuple[str, str]]:
              else _("smart.warning.none") if salud.critical_warning == 0
              else f"0x{salud.critical_warning:02x}")):
         if valor is not None:
-            filas.append((_(clave), f"{valor:n}" if isinstance(valor, int) else str(valor)))
+            filas.append((_(clave), thousands(valor) if isinstance(valor, int) else str(valor)))
     for numero, normalizado, crudo in salud.attributes:
         nombre = _(SMART_COMUNES[numero]) if numero in SMART_COMUNES else _("smart.attr.other")
         filas.append((f"{numero} · {nombre}", _("smart.attr.value").format(
-            normalizado=normalizado, crudo=f"{crudo:n}")))
+            normalizado=normalizado, crudo=thousands(crudo))))
     return filas
 
 
@@ -901,6 +901,20 @@ def above_4g(platform) -> Optional[str]:
         return None
     return _("plat.above4g.one" if platform.above_4g_devices == 1
              else "plat.above4g.many").format(n=platform.above_4g_devices)
+
+
+# El separador de miles: un espacio fino que no parte la línea (U+202F). Ni
+# punto ni coma, que cada idioma lee como decimal el del otro: «4.136 h»
+# parecían cuatro horas. Es lo que pide la norma (ISO 80000-1, el SI), y se
+# lee igual en español que en inglés.
+ESPACIO_DE_MILES = "\u202f"
+
+
+def thousands(valor: Optional[int]) -> str:
+    """«4 136»: un entero con los miles separados, igual en cualquier locale."""
+    if _none(valor):
+        return DASH
+    return f"{int(valor):,}".replace(",", ESPACIO_DE_MILES)
 
 
 def seconds(valor: Optional[float]) -> str:
@@ -1251,7 +1265,7 @@ def disk_warnings(salud) -> list[tuple[str, str]]:
     if salud.media_errors:
         clave = ("disk.warn.media.one" if salud.media_errors == 1
                  else "disk.warn.media.many")
-        avisos.append(("alto", _(clave).format(n=f"{salud.media_errors:n}")))
+        avisos.append(("alto", _(clave).format(n=thousands(salud.media_errors))))
 
     vida = salud.life_left_percent
     if vida is not None and vida <= VIDA_BAJA_PCT:

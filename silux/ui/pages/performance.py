@@ -384,7 +384,7 @@ class PerformancePage(QScrollArea):
             # Y lo dice en su celda: un guion ahí es «no lo sé», y sí se
             # sabe por qué no hay cifra.
             if puntos:
-                puntuacion = f"{puntos[1]:n}"
+                puntuacion = render.thousands(puntos[1])
             elif not de_esta_escala:
                 puntuacion = (_("bench.history.scale").format(n=entrada.score_version)
                               if entrada.score_version else _("bench.history.scale.unknown"))
@@ -563,9 +563,9 @@ class PerformancePage(QScrollArea):
             self.score_card.hide()
             return
         un_hilo, multi = puntos
-        self.score_value.setText(_("bench.score.value").format(n=f"{multi:n}"))
+        self.score_value.setText(_("bench.score.value").format(n=render.thousands(multi)))
         self.score_detail.setText(_("bench.score.single").format(
-            n=f"{un_hilo:n}", cpu=entrada.cpu, hilos=entrada.threads))
+            n=render.thousands(un_hilo), cpu=entrada.cpu, hilos=entrada.threads))
 
         # Compararse con otros equipos pide la duración canónica; compararse
         # consigo mismo, no. Son dos preguntas y se contestan por separado.
@@ -586,8 +586,8 @@ class PerformancePage(QScrollArea):
                      else "bench.score.below")
             self.score_range.setText(
                 _(clave).format(pct=f"{abs(comparacion.desvio) * 100:.0f}",
-                                min=f"{comparacion.minimo:n}",
-                                max=f"{comparacion.maximo:n}",
+                                min=render.thousands(comparacion.minimo),
+                                max=render.thousands(comparacion.maximo),
                                 n=comparacion.muestras))
         self.score_card.show()
 

@@ -474,7 +474,7 @@ class StoragePage(QScrollArea):
           tooltip=self._por_que_sin_temperatura(disco))
 
         salud = disco.health
-        f(_("storage.field.hours"), f"{salud.power_on_hours:n} h" if salud.power_on_hours else d)
+        f(_("storage.field.hours"), f"{render.thousands(salud.power_on_hours)} h" if salud.power_on_hours else d)
         f(_("storage.field.written"), render.size(salud.written_bytes) if salud.written_bytes else d,
           tooltip=_("storage.tip.written"))
         f(_("storage.field.life"),
