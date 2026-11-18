@@ -93,5 +93,34 @@ class TestLasPaginasEscondidas(unittest.TestCase):
         self.assertIs(llamadas[0], ventana._last_snapshot)
 
 
+class TestLaVentanaQueSeVa(unittest.TestCase):
+    """Al recibir un `Expose`, la ventana se pone al día un instante después.
+    Con `QTimer.singleShot(0, metodo)`, eso saltaba aunque la ventana ya se
+    hubiera borrado: «Internal C++ object (MainWindow) already deleted», y
+    en el CI, con PySide6 6.11, un `Segmentation fault` en otro test."""
+
+    def test_un_expose_justo_antes_de_borrarla_no_salta_despues(self):
+        import sys
+        from unittest import mock
+
+        import shiboken6
+        from PySide6.QtCore import QCoreApplication
+        from PySide6.QtGui import QExposeEvent, QRegion
+
+        from silux.settings import Preferences
+        from silux.ui.app import MainWindow
+        app = qt.app()
+        errores = []
+        with mock.patch.object(sys, "excepthook", lambda *e: errores.append(e[1])):
+            for _vez in range(5):
+                ventana = MainWindow(Preferences().normalized())
+                ventana.show()
+                app.processEvents()
+                QCoreApplication.sendEvent(ventana.windowHandle(), QExposeEvent(QRegion()))
+                shiboken6.delete(ventana)
+                app.processEvents()
+        self.assertEqual(errores, [])
+
+
 if __name__ == "__main__":
     unittest.main()

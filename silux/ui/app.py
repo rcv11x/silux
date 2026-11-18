@@ -217,6 +217,14 @@ class MainWindow(QMainWindow):
         self._latido.setInterval(LATIDO_GRAFICAS_MS)
         self._latido.timeout.connect(self._avanzar_graficas)
         self._fotograma_ms = LATIDO_GRAFICAS_MS
+        # Lo que se hace cuando la ventana vuelve a verse, después de que Qt
+        # la marque expuesta. Un temporizador hijo, que muere con la ventana:
+        # con `QTimer.singleShot(0, metodo)` saltaba aunque la ventana ya se
+        # hubiera borrado, y en el CI (PySide6 6.11) tumbaba el proceso.
+        self._al_exponer = QTimer(self)
+        self._al_exponer.setSingleShot(True)
+        self._al_exponer.setInterval(0)
+        self._al_exponer.timeout.connect(self._al_volver_a_verse)
         self._aplicar_fluidez()
 
         atajo = QShortcut(QKeySequence(Qt.Key.Key_Space), self)
@@ -707,7 +715,7 @@ class MainWindow(QMainWindow):
     def eventFilter(self, objeto, evento) -> bool:  # noqa: N802
         if evento.type() == QEvent.Type.Expose and objeto is self.windowHandle():
             # Después de que Qt la marque expuesta, no durante.
-            QTimer.singleShot(0, self._al_volver_a_verse)
+            self._al_exponer.start()
         return super().eventFilter(objeto, evento)
 
     def _al_volver_a_verse(self) -> None:
