@@ -1059,6 +1059,20 @@ apartado. El orden dentro de cada apartado es el cronológico.
   solo eso, una vez por foto (`record`), y las demás se ponen al día al
   abrirlas. Ojo con «escondida»: sin pantalla, una ventana recién enseñada
   todavía no está expuesta; escondida es la que se llegó a ver y ya no.
+- **Dejar un `QPainter` abierto sobre una imagen si algo falla al
+  pintarla**: el fondo de la matriz de núcleos se pinta en un `QPixmap`, y
+  un `KeyError` a mitad dejaba el pintor vivo. Con PySide6 6.11 y Python
+  3.10 tumbaba el proceso dos tests más tarde, con un `Segmentation fault`
+  sin un solo marco de silux; con 6.12 y 3.14, nada. Se cierra con
+  `try/finally`. Y el CI de las dos puntas es lo que lo vio: aquí se
+  reproduce con `uv run --python 3.10` (que rehace `.venv`; luego, `uv
+  sync --extra gui --python 3.14`).
+- **Fiarse de lo que se ve en la pantalla de una ventana lanzada desde la
+  terminal de Claude**: tras el primer fotograma no se repinta, aunque por
+  dentro tenga los datos; le pasa igual a una ventana de Qt de diez líneas.
+  Para saber si una ventana tiene sus datos, una sonda dentro (un
+  `sitecustomize` en `PYTHONPATH` que mira los widgets a los pocos
+  segundos); lo que se ve, lo mira el autor.
 
 <a id="idioma"></a>
 

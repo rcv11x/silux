@@ -9,9 +9,12 @@ anterior, la tarde del 18 en el i5-10400 de la oficina.
 
 ## Noche del 18, en casa (5800X3D): lo hecho y lo que queda
 
-Rama `oficina`, empujada al acabar (los números del CI, en `gh run list
---branch oficina --limit 2`). **`master` y el borrador de la 0.4 no se han
-tocado**, ni ninguna propuesta pendiente (polkit, uso de gráficas,
+Rama `oficina`, empujada al acabar, con el CI en verde (el número, en `gh
+run list --branch oficina --limit 1`). El primer CI se cayó en Python 3.10
+(PySide6 6.11) con un `Segmentation fault`: un pintor que se quedaba
+abierto si fallaba pintar el fondo de la matriz de núcleos, arreglado en
+`ba814e7`. La rama `actualizaciones`, con su CI en verde (tests y
+AppImage). **`master` y el borrador de la 0.4 no se han tocado**, ni ninguna propuesta pendiente (polkit, uso de gráficas,
 ayudante). La rama `actualizaciones`, con lo suyo, empujada en la suya.
 
 ### Lo que hay que mirar o decidir
