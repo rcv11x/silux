@@ -1067,6 +1067,12 @@ apartado. El orden dentro de cada apartado es el cronológico.
   `try/finally`. Y el CI de las dos puntas es lo que lo vio: aquí se
   reproduce con `uv run --python 3.10` (que rehace `.venv`; luego, `uv
   sync --extra gui --python 3.14`).
+- **`QTimer.singleShot(0, self.metodo)` en un widget que puede morir**: el
+  temporizador no muere con él. La ventana lo usaba al recibir un `Expose`,
+  y en la suite —que abre y borra muchas— saltaba sobre una ventana ya
+  borrada: «Internal C++ object (MainWindow) already deleted», y en el CI
+  con PySide6 6.11, de vez en cuando, un `Segmentation fault` en otro test.
+  Un `QTimer` hijo del widget sí muere con él.
 - **Fiarse de lo que se ve en la pantalla de una ventana lanzada desde la
   terminal de Claude**: tras el primer fotograma no se repinta, aunque por
   dentro tenga los datos; le pasa igual a una ventana de Qt de diez líneas.

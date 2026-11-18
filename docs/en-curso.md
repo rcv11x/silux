@@ -10,10 +10,13 @@ anterior, la tarde del 18 en el i5-10400 de la oficina.
 ## Noche del 18, en casa (5800X3D): lo hecho y lo que queda
 
 Rama `oficina`, empujada al acabar, con el CI en verde (el número, en `gh
-run list --branch oficina --limit 1`). El primer CI se cayó en Python 3.10
-(PySide6 6.11) con un `Segmentation fault`: un pintor que se quedaba
-abierto si fallaba pintar el fondo de la matriz de núcleos, arreglado en
-`ba814e7`. La rama `actualizaciones`, con su CI en verde (tests y
+run list --branch oficina --limit 1`). Dos CI se cayeron en Python 3.10
+(PySide6 6.11) con un `Segmentation fault`, por dos fallos de esta tarde: un
+pintor que se quedaba abierto si fallaba pintar el fondo de la matriz de
+núcleos (`ba814e7`), y un `singleShot` que saltaba sobre una ventana ya
+borrada (el commit siguiente). La suite pasa entera dos veces seguidas en
+3.10 aquí (`UV_PROJECT_ENVIRONMENT=… uv sync --python 3.10`, sin tocar
+`.venv`). La rama `actualizaciones`, con su CI en verde (tests y
 AppImage). **`master` y el borrador de la 0.4 no se han tocado**, ni ninguna propuesta pendiente (polkit, uso de gráficas,
 ayudante). La rama `actualizaciones`, con lo suyo, empujada en la suya.
 
