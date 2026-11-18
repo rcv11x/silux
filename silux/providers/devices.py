@@ -67,6 +67,17 @@ class ConnectedDevices(Provider):
     name = "devices"
     provides = "usb_devices"
 
+    def __init__(self) -> None:
+        # Lo leído de cada dispositivo USB, por su puerto y el inodo de su
+        # entrada en sysfs: una cosa que se quita y otra que se enchufa en el
+        # mismo puerto es otra entrada, con otro inodo. Mientras no cambie
+        # nada, cada muestreo solo lista la carpeta.
+        self._usb_leidos: dict[tuple[str, int], UsbDevice] = {}
+        # Y las tarjetas de sonido, por el texto de `/proc/asound/cards`: leer
+        # sus códecs cuesta, porque `codec#N` es el volcado entero del códec
+        # y el kernel lo genera al abrirlo.
+        self._sonido_leido: tuple[Optional[str], list[SoundCard]] = (None, [])
+
     def available(self) -> bool:
         return True
 
@@ -76,20 +87,29 @@ class ConnectedDevices(Provider):
         draft.cameras = self._camaras()
         draft.bluetooth = self._bluetooth()
 
-    @staticmethod
-    def _usb() -> list[UsbDevice]:
+    def _usb(self) -> list[UsbDevice]:
         salida = []
-        for camino in sorted(glob.glob(os.path.join(sysroot.ruta(USB), "*"))):
-            puerto = os.path.basename(camino)
+        vistos: dict[tuple[str, int], UsbDevice] = {}
+        try:
+            entradas = sorted(os.scandir(sysroot.ruta(USB)), key=lambda e: e.name)
+        except OSError:
+            entradas = []
+        for entrada in entradas:
+            puerto = entrada.name
             if not _PUERTO.fullmatch(puerto):
                 continue                 # las interfaces («1-3:1.0») y las raíces («usb1»)
-            nodo = sysroot.fuera(camino)
+            clave = (puerto, entrada.inode())
+            if (ya := self._usb_leidos.get(clave)) is not None:
+                vistos[clave] = ya
+                salida.append(ya)
+                continue
+            nodo = sysroot.fuera(entrada.path)
             fabricante, modelo = read_text(f"{nodo}/idVendor"), read_text(f"{nodo}/idProduct")
             try:
                 velocidad = float(read_text(f"{nodo}/speed") or "")
             except ValueError:
                 velocidad = None
-            salida.append(UsbDevice(
+            dispositivo = UsbDevice(
                 port=puerto,
                 vendor=read_text(f"{nodo}/manufacturer") or None,
                 product=read_text(f"{nodo}/product") or None,
@@ -97,13 +117,24 @@ class ConnectedDevices(Provider):
                 kind=_clase(nodo),
                 speed_mbps=velocidad,
                 version=(read_text(f"{nodo}/version") or "").strip() or None,
-            ))
+            )
+            vistos[clave] = dispositivo
+            salida.append(dispositivo)
+        self._usb_leidos = vistos
         return salida
 
+    def _sonido(self) -> list[SoundCard]:
+        tarjetas = read_text("/proc/asound/cards")
+        if tarjetas == self._sonido_leido[0]:
+            return list(self._sonido_leido[1])
+        salida = self._leer_sonido(tarjetas)
+        self._sonido_leido = (tarjetas, salida)
+        return list(salida)
+
     @staticmethod
-    def _sonido() -> list[SoundCard]:
+    def _leer_sonido(tarjetas: Optional[str]) -> list[SoundCard]:
         salida = []
-        lineas = (read_text("/proc/asound/cards") or "").splitlines()
+        lineas = (tarjetas or "").splitlines()
         for primera, segunda in zip(lineas[::2], lineas[1::2]):
             encaje = re.match(r"\s*(\d+)\s+\[.*?\]:\s*(\S+)\s+-\s*(.*)", primera)
             if not encaje:

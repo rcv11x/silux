@@ -7,6 +7,7 @@ propósito: el inventario de nadie va al repositorio.
 
 import dataclasses
 import unittest
+from unittest import mock
 
 from silux import privacidad, render
 from silux.i18n import _
@@ -118,6 +119,55 @@ class TestElProveedor(unittest.TestCase):
         draft = _leer({"/proc/uptime": "1 1\n"})
         self.assertEqual((draft.usb_devices, draft.sound_cards, draft.cameras, draft.bluetooth),
                          ([], [], [], []))
+
+
+class TestCadaMuestreoSoloMiraLoQueCambia(unittest.TestCase):
+    """El proveedor corre en cada muestreo para ver lo que se enchufa al
+    momento. Leer otra vez los nombres de cada USB y los códecs de sonido
+    (`codec#N` es el volcado entero del códec, que el kernel genera al
+    abrirlo) era el 10 % de lo que gastaba silux con la ventana escondida."""
+
+    def abiertos(self, proveedor, raiz):
+        import builtins
+        rutas = []
+        original = builtins.open
+
+        def abrir(ruta, *args, **kwargs):
+            rutas.append(str(ruta)[len(str(raiz)):])
+            return original(ruta, *args, **kwargs)
+
+        with mock.patch.object(builtins, "open", abrir):
+            draft = Draft()
+            proveedor.collect(draft)
+        return draft, rutas
+
+    def test_sin_cambios_no_se_vuelve_a_leer_nada_de_cada_aparato(self):
+        with arbol(EQUIPO) as raiz:
+            proveedor = ConnectedDevices()
+            primera, _rutas = self.abiertos(proveedor, raiz)
+            segunda, rutas = self.abiertos(proveedor, raiz)
+        self.assertEqual(primera.usb_devices, segunda.usb_devices)
+        self.assertEqual(primera.sound_cards, segunda.sound_cards)
+        self.assertEqual([r for r in rutas if "codec#" in r or r.endswith("/product")], [])
+
+    def test_lo_que_se_enchufa_y_se_quita_se_ve_igual(self):
+        import shutil
+        with arbol(EQUIPO) as raiz:
+            proveedor = ConnectedDevices()
+            proveedor.collect(Draft())
+            shutil.rmtree(raiz / "sys/bus/usb/devices/6-2")
+            for camino, texto in _usb("6-3", "00", "480", "2.00", "Pincho", "Acme",
+                                      [("08", "50")]).items():
+                destino = raiz / camino.lstrip("/")
+                destino.parent.mkdir(parents=True, exist_ok=True)
+                destino.write_text(texto)
+            (raiz / "proc/asound/cards").write_text(EQUIPO["/proc/asound/cards"].split(" 2 [")[0])
+            draft = Draft()
+            proveedor.collect(draft)
+        puertos = [u.port for u in draft.usb_devices]
+        self.assertNotIn("6-2", puertos)
+        self.assertIn("6-3", puertos)
+        self.assertEqual(len(draft.sound_cards), 2)
 
 
 class TestLosNombres(unittest.TestCase):
