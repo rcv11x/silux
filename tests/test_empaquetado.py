@@ -5,6 +5,7 @@ Estas pruebas no construyen nada: miran las decisiones que toma
 fallos que luego solo se ven en la máquina de otro.
 """
 
+import pathlib
 import re
 import unittest
 
@@ -194,6 +195,25 @@ class TestLasAccionesDelCiCorrenEnNode24(unittest.TestCase):
             with self.subTest(accion=accion):
                 self.assertGreaterEqual(int(version),
                                         self.PRIMERA_CON_NODE24[accion])
+
+
+class TestLaEtiquetaNoPisaLasNotas(unittest.TestCase):
+    """Las notas de una release son solo la entrada de su versión.
+
+    El autor las pone en el borrador. Publicarlo crea la etiqueta, la
+    etiqueta lanza el CI, y su paso de softprops/action-gh-release, con
+    `body_path: CHANGELOG.md`, las sustituía por el CHANGELOG entero, todas
+    las versiones: pasó con la 0.3.0. Sin body ni body_path, la acción deja
+    las de la release que ya existe.
+    """
+
+    def test_el_paso_de_la_release_no_lleva_cuerpo(self):
+        import re
+        flujo = (pathlib.Path(__file__).resolve().parent.parent
+                 / ".github" / "workflows" / "appimage.yml").read_text()
+        paso = flujo[flujo.index("softprops/action-gh-release"):]
+        paso = re.split(r"\n      - ", paso, maxsplit=1)[0]
+        self.assertNotRegex(paso, r"\n\s+body(_path)?:")
 
 
 class TestUnPaqueteIncompletoNoSeEmpaqueta(unittest.TestCase):

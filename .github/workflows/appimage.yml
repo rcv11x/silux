@@ -177,8 +177,10 @@ jobs:
       - name: Publicarlos en la release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v3
+        # Sin body ni body_path: las notas las pone el autor en el borrador,
+        # solo con la entrada de esa versión. Con `body_path: CHANGELOG.md`
+        # la etiqueta las pisaba con el CHANGELOG entero, todas las versiones.
         with:
-          body_path: CHANGELOG.md
           files: |
             dist/silux-x86_64.AppImage
             dist/silux-x86_64-compat.AppImage
