@@ -128,8 +128,9 @@ class TestEnLaPaginaDeMemoria(unittest.TestCase):
             for _vez in range(4):
                 self.app.processEvents()
             pagina = ventana.memory_page
-            titulos = [c._title_label.text() for c in pagina._slots_host.findChildren(Card)
-                       if c._title_label is not None]
+            # El nombre del zócalo va en su campo; el título es «Módulo N».
+            titulos = [g._values[_("memory.field.slot")].full_text()
+                       for g in pagina._slot_grids if g._values[_("memory.field.slot")].full_text()]
             return titulos, pagina.subtitle.text(), pantalla.textos_de(pagina)
 
     def test_la_tabla_trae_el_caso(self):

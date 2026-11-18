@@ -656,6 +656,7 @@
   "memory.field.rated": "Catalogado a",
   "memory.field.running": "Funcionando a",
   "memory.field.size": "Capacidad",
+  "memory.field.slot": "Zócalo",
   "memory.field.type": "Tipo",
   "memory.field.vendor": "Fabricante",
   "memory.field.voltage": "Voltaje",

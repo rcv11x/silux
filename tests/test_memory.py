@@ -355,12 +355,13 @@ class TestElTituloLlegaALaTarjeta(unittest.TestCase):
         ))
         self.app.processEvents()
 
-        from silux.ui.widgets import Card
+        from silux.i18n import _
 
-        # En minúsculas: que el título se pinte en versalitas lo decide la
-        # hoja de estilos, y aquí se comprueba el dato, no el estilo.
-        return [c._title_label.text().lower() for c in pagina.findChildren(Card)
-                if c._title_label is not None]
+        # El zócalo va en su campo de la ficha; el título es «Módulo N», el
+        # mismo con permisos y sin ellos. En minúsculas: aquí se comprueba el
+        # dato, no el estilo.
+        return [g._values[_("memory.field.slot")].full_text().lower()
+                for g in pagina._slot_grids]
 
     def test_las_tarjetas_se_titulan_con_el_canal(self):
         titulos = self._titulos_en_pantalla("Controller0-ChannelA",
@@ -536,11 +537,12 @@ class TestLosZocalosLibresNoOcupanUnaTarjeta(TestElTituloLlegaALaTarjeta):
     def test_solo_hay_tarjeta_para_los_que_tienen_modulo(self):
         from silux.ui.widgets import Card
 
+        from silux.i18n import _
+
         pagina = self._pagina()
-        titulos = [c._title_label.text().lower()
-                   for c in pagina.findChildren(Card) if c._title_label]
-        self.assertIn("canal a · dimm 0", titulos)
-        self.assertNotIn("canal a · dimm 1", titulos,
+        zocalos = [g._values[_("memory.field.slot")].full_text().lower()
+                   for g in pagina._slot_grids]
+        self.assertEqual(zocalos, ["canal a · dimm 0", "canal b · dimm 0"],
                          "un zócalo vacío no necesita una tarjeta entera")
 
     def test_no_se_dice_cuantos_hay_libres_ni_el_total(self):
@@ -612,12 +614,23 @@ class TestSinSmbiosNoSeAfirmaUnZocalo(TestElTituloLlegaALaTarjeta):
         self.assertTrue(any("10-0050" in p for p in pistas), pistas)
         self.assertTrue(any("10-0052" in p for p in pistas), pistas)
 
-    def test_con_smbios_manda_el_zocalo_de_verdad(self):
-        """Cuando el firmware sí lo dice, se usa el suyo y no un contador."""
-        titulos = [c._title_label.text().lower() for c in
-                   self._tarjetas(self._pagina_con_smbios())]
-        self.assertIn("canal a", titulos)
-        self.assertNotIn("módulo 1", titulos)
+    def test_con_smbios_el_zocalo_va_en_su_campo_y_el_titulo_no_cambia(self):
+        """Revisión del autor: las tarjetas se llaman igual con permisos y sin
+        ellos. Con el firmware el zócalo de verdad va en su campo."""
+        from silux.i18n import _
+
+        pagina = self._pagina_con_smbios()
+        titulos = [c._title_label.text().lower() for c in self._tarjetas(pagina)]
+        self.assertIn("módulo 1", titulos)
+        self.assertEqual(pagina._slot_grids[0]._values[_("memory.field.slot")].full_text(),
+                         "Canal A")
+
+    def test_sin_permisos_el_zocalo_no_se_afirma(self):
+        from silux.i18n import _
+
+        pagina = self._pagina_desde_spd()
+        campo = pagina._slot_grids[0]._values[_("memory.field.slot")]
+        self.assertFalse(campo.isVisibleTo(pagina) and campo.full_text())
 
     def _pagina_con_smbios(self):
         from silux.model import CpuInfo, CpuType, MemoryModule, Snapshot
@@ -1045,3 +1058,49 @@ class TestElFabricanteSiempreIgual(unittest.TestCase):
         app.processEvents()
         self.assertEqual(pagina._slot_grids[0]._values[_("memory.field.vendor")].full_text(),
                          "Crucial")
+
+
+class TestLasFichasSeLlamanIgualConYSinPermisos(unittest.TestCase):
+    """Revisión del autor: sin permisos «Módulo 1» y «Módulo 2»; con ellos
+    «Canal A» y «Canal B». La misma pieza, dos nombres."""
+
+    def test_en_el_i5_10400(self):
+        import dataclasses
+        from silux.model import MemoryModule
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.memory import MemoryPage
+        from silux.ui.widgets import Card
+        from tests.test_equipos import EQUIPOS, foto
+
+        app = qt.app()
+        sin = foto(EQUIPOS / "i5-10400")[0]
+        # Lo que da `dmidecode -t 17` en esta máquina con permisos.
+        modulos = tuple(MemoryModule(populated=puesto, locator=loc, bank=banco, type="DDR4"
+                                     if puesto else None, size_bytes=(8 << 30) if puesto else 0,
+                                     speed_mts=2667 if puesto else None,
+                                     configured_mts=2667 if puesto else None, rank=1)
+                        for loc, banco, puesto in (
+                            ("Controller0-ChannelA", "BANK 0", True),
+                            ("Controller0-ChannelA-DIMM1", "BANK 0", False),
+                            ("Controller0-ChannelB", "BANK 1", True),
+                            ("Controller0-ChannelB-DIMM1", "BANK 1", False)))
+        # El proveedor pega a cada módulo de la tabla su SPD, en orden.
+        spd = iter(sin.spd)
+        modulos = tuple(dataclasses.replace(m, spd=next(spd)) if m.populated else m
+                        for m in modulos)
+        con = dataclasses.replace(sin, modules=modulos)
+
+        def nombres(muestra):
+            pagina = MemoryPage(theme.palette_for(app, "dark"), Preferences())
+            self.addCleanup(pagina.deleteLater)
+            pagina.apply(muestra)
+            app.processEvents()
+            fichas = [c._title_label.text() for c in pagina._slots_host.findChildren(Card)
+                      if c._title_label is not None]
+            perfiles = [fila[0].full_text() for fila in pagina.timings._cells]
+            return fichas, perfiles
+
+        self.assertEqual(nombres(sin), nombres(con))
+        self.assertEqual(nombres(con)[0], ["Módulo 1", "Módulo 2"])
+        self.assertEqual(nombres(con)[1], ["Módulo 1 · JEDEC", "Módulo 2 · JEDEC"])

@@ -656,6 +656,7 @@
   "memory.field.rated": "Rated at",
   "memory.field.running": "Running at",
   "memory.field.size": "Capacity",
+  "memory.field.slot": "Slot",
   "memory.field.type": "Type",
   "memory.field.vendor": "Vendor",
   "memory.field.voltage": "Voltage",

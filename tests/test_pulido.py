@@ -8,7 +8,6 @@ import unittest
 
 from silux.model import Board
 from silux.providers.storage import _de_la_marca
-from silux.ui.pages.memory import _sin_el_prefijo_comun
 
 
 class TestFabricanteDelDisco(unittest.TestCase):
@@ -39,33 +38,6 @@ class TestFabricanteDelDisco(unittest.TestCase):
         self.assertIsNone(_de_la_marca("Disco Genérico 9000"))
         self.assertIsNone(_de_la_marca(""))
         self.assertIsNone(_de_la_marca(None))
-
-
-class TestNombreDeLosZocalos(unittest.TestCase):
-    """Dos zócalos que se llaman casi igual y se distinguen por el final."""
-
-    def test_quita_el_trozo_que_comparten(self):
-        corto = _sin_el_prefijo_comun(["Controller0-ChannelA",
-                                       "Controller0-ChannelB"])
-        self.assertEqual(corto["Controller0-ChannelA"], "ChannelA")
-        self.assertEqual(corto["Controller0-ChannelB"], "ChannelB")
-
-    def test_pero_no_toca_los_que_ya_caben(self):
-        """Dejar «Zócalo 0» en «0» quita contexto en vez de darlo."""
-        self.assertEqual(_sin_el_prefijo_comun(["Zócalo 0", "Zócalo 2"]), {})
-
-    def test_ni_los_que_no_comparten_principio(self):
-        self.assertEqual(
-            _sin_el_prefijo_comun(["ChannelA-DIMM0", "ChannelB-DIMM0"]), {})
-
-    def test_con_un_solo_modulo_no_hay_nada_que_comparar(self):
-        self.assertEqual(_sin_el_prefijo_comun(["Controller0-ChannelA"]), {})
-
-    def test_no_deja_ninguno_vacio(self):
-        """Si el prefijo era el nombre entero, mejor no tocar nada."""
-        corto = _sin_el_prefijo_comun(["Controller0-ChannelA",
-                                       "Controller0-ChannelA-DIMM1"])
-        self.assertTrue(all(corto.values()))
 
 
 class TestNombreDelEquipo(unittest.TestCase):

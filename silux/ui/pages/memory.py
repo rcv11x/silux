@@ -52,7 +52,7 @@ NEED_TITLES = {
     Need.KERNEL: "note.kernel",
 }
 
-MODULE_FIELDS = ("memory.field.vendor", "memory.field.chips", "memory.field.part", "memory.field.type", "memory.field.size",
+MODULE_FIELDS = ("memory.field.slot", "memory.field.vendor", "memory.field.chips", "memory.field.part", "memory.field.type", "memory.field.size",
                  "memory.field.rated", "memory.field.running", "memory.field.ranks", "memory.field.voltage",
                  "memory.field.form", "memory.field.profiles", "memory.field.made", "memory.field.bank")
 
@@ -747,18 +747,19 @@ class MemoryPage(QScrollArea):
         nombres = render.slot_names([(m.locator, m.bank) for m in modules])
 
         sin_spd: list[str] = []
+        numero = 0
         for nombre, module in zip(nombres, modules):
             crudo = module.locator or ""
             if not module.populated:
                 continue
-            card = Card(nombre)
-            if crudo and nombre != crudo:
-                # Lo que puso el firmware no se pierde, solo deja de ser el
-                # titular: hace falta para hablar con quien reporta un fallo.
-                card.setToolTip(crudo)
-            elif del_spd and module.spd is not None:
-                # Sin SMBIOS el título es un contador, así que la dirección del
-                # chip —que es el único dato de posición que hay— va aquí.
+            # El mismo título con permisos y sin ellos: «Módulo 1», en el
+            # orden de la tabla del firmware o del SPD, que es el mismo (el
+            # chip 0x50 va en el primer canal). Antes era «Canal A» con
+            # permisos y «Módulo 1» sin ellos: la misma pieza con dos nombres.
+            numero += 1
+            card = Card(_("memory.module.n").format(n=numero))
+            if del_spd and module.spd is not None:
+                # La dirección del chip es el único dato de posición que hay.
                 card.setToolTip(_("memory.tip.module").format(
                     address=module.spd.address or "0x50"))
 
@@ -767,6 +768,17 @@ class MemoryPage(QScrollArea):
                 grid.add(_(name))
             card.body.addWidget(grid)
             self._fill(grid, module, self._limite)
+            # El zócalo: con permisos, el de la tabla del firmware (y lo que
+            # puso tal cual, al pasar el ratón); sin ellos, candado.
+            if del_spd:
+                if candado is not None:
+                    grid.set_locked(_("memory.field.slot"), self._p.info,
+                                    render.lock_tooltip(candado))
+                else:
+                    grid.set_visible(_("memory.field.slot"), False)
+            else:
+                grid.set(_("memory.field.slot"), nombre,
+                         tooltip=crudo if crudo and crudo != nombre else None)
             nota_spd = getattr(self, "_nota_spd", None)
             for clave in self._solo_del_spd(module):
                 if nota_spd is not None and nota_spd.need is Need.DRIVER \
@@ -904,17 +916,11 @@ class MemoryPage(QScrollArea):
     def _apply_timings(self, modules: list[MemoryModule]) -> None:
         rows: list[list[str]] = []
         tooltips: list[str] = []
-        # Los zócalos de una placa se llaman casi igual —«Controller0-ChannelA»
-        # y «Controller0-ChannelB»— y lo que los distingue está al final, que
-        # es justo lo que se recorta cuando no cabe: las dos filas salían como
-        # «Controller0-C…» y no había forma de saber cuál era cuál.
-        crudos = [m.locator or (m.spd.address if m.spd else "") for m in modules]
-        # El mismo título que las tarjetas de arriba; si no se reconoce el
-        # formato, el recorte del prefijo común, que al menos quita el ruido.
-        nombres = render.slot_names([(crudo, m.bank) for crudo, m in zip(crudos, modules)])
-        if nombres == crudos:
-            sin_prefijo = _sin_el_prefijo_comun(crudos)
-            nombres = [sin_prefijo.get(crudo, crudo) for crudo in crudos]
+        # Con el mismo nombre que la ficha del módulo, «Módulo 1», con
+        # permisos y sin ellos.
+        puestos = [m for m in modules if m.populated]
+        nombres = [_("memory.module.n").format(n=n) for n in range(1, len(puestos) + 1)]
+        modules = puestos
         for etiqueta, module in zip(nombres, modules):
             spd = module.spd
             if spd is None:
@@ -940,30 +946,3 @@ class MemoryPage(QScrollArea):
         # «Sin XMP activado se queda en JEDEC» solo vale si hay XMP que activar.
         con_perfiles = any(m.spd.overclock_profiles for m in modules if m.spd is not None)
         self.spd_note.setText(_("memory.spd.note" if con_perfiles else "memory.spd.note.noxmp"))
-
-
-def _sin_el_prefijo_comun(nombres: list[str]) -> dict[str, str]:
-    """Quita a todos el trozo de nombre que comparten, si queda algo detrás.
-
-    Con un solo módulo no hay nada que comparar y se devuelve tal cual.
-    """
-    utiles = [n for n in nombres if n]
-    if len(utiles) < 2:
-        return {}
-    # Solo se toca lo que de verdad no cabe. «Zócalo 0» y «Zócalo 2» entran
-    # enteros, y dejarlos en «0» y «2» quitaría contexto en vez de darlo.
-    if max(len(n) for n in utiles) <= 14:
-        return {}
-    comun = utiles[0]
-    for nombre in utiles[1:]:
-        while not nombre.startswith(comun):
-            comun = comun[:-1]
-            if not comun:
-                return {}
-    # Se corta por el último separador, para no partir una palabra por la mitad.
-    corte = max(comun.rfind(c) for c in "-_ .") + 1
-    if corte <= 0:
-        return {}
-    recortados = {n: n[corte:] for n in utiles}
-    # Si alguno se queda sin nada, el prefijo era todo el nombre: mejor dejarlo.
-    return recortados if all(recortados.values()) else {}
