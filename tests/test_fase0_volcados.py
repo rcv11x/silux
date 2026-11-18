@@ -112,3 +112,15 @@ class TestLoQueSeCopiaDeMas(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestUnEnlaceQueNoSeDejaLeer(unittest.TestCase):
+    def test_no_tumba_el_volcado(self):
+        """`/proc/1/exe`: con Python 3.10, realpath deja escapar el
+        PermissionError de leer el enlace; el volcado entero se caía."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            copia = volcar_equipo._Copia(pathlib.Path(tmp))
+            with mock.patch.object(volcar_equipo.os.path, "realpath",
+                                   side_effect=PermissionError(13, "Permission denied")):
+                copia._de_fuera("/proc/1/exe")

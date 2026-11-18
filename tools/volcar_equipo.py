@@ -388,7 +388,12 @@ class _Copia:
         `/etc/os-release` apunta a `../usr/lib/os-release`. Copiar `/usr` no
         tiene sentido, así que en el sitio del enlace va el archivo.
         """
-        real = os.path.realpath(camino)
+        try:
+            real = os.path.realpath(camino)
+        except OSError:
+            # Python 3.10 deja escapar el error de leer un enlace que no se
+            # deja leer (`/proc/1/exe`); los posteriores lo tragan.
+            return
         if real.startswith(VIGILADO) or not os.path.isfile(real):
             return
         try:
