@@ -3,14 +3,16 @@
 Para retomar sin el contexto de la sesión anterior. Se borra cuando lo de
 aquí esté hecho o pase a `docs/pendientes.md`.
 
-Última sesión: 18 de noviembre de 2026, de las 18:30 a las 23:30, en el
-5800X3D de casa (CachyOS, KDE Plasma 6.8 en Wayland, RX 9070 XT). La
+Última sesión: 18 de noviembre de 2026, de las 18:30 a las 00:20 del 19,
+en el 5800X3D de casa (CachyOS, KDE Plasma 6.8 en Wayland, RX 9070 XT). La
 anterior, la tarde del 18 en el i5-10400 de la oficina.
 
 ## Noche del 18, en casa (5800X3D): lo hecho y lo que queda
 
-Rama `oficina`, empujada al acabar, con el CI en verde (el número, en `gh
-run list --branch oficina --limit 1`). Dos CI se cayeron en Python 3.10
+Rama `oficina`, empujada al acabar, con el CI en verde: el último con
+código, 44417500614 sobre `83f6055` (tests en 3.10 y 3.14, y los dos
+AppImage). Su artefacto «appimages» es la versión de prueba para el
+Discord (descargarlo pide sesión en GitHub). Dos CI se cayeron en Python 3.10
 (PySide6 6.11) con un `Segmentation fault`, por dos fallos de esta tarde: un
 pintor que se quedaba abierto si fallaba pintar el fondo de la matriz de
 núcleos (`ba814e7`), y un `singleShot` que saltaba sobre una ventana ya
@@ -27,7 +29,9 @@ ayudante).
    (`Exec=/usr/bin/python3 -m silux.ui.app`, que apuntaba a la carpeta
    `cpuz-linux`, ya inexistente: era el acceso que no abría) la arregló
    Ajustes desde el AppImage, que ahora vive en
-   `~/AppImages/silux-x86_64.AppImage` (de `39df74e`). KWin ve la ventana
+   `~/AppImages/silux-x86_64.AppImage`: el del CI de `83f6055`, con el
+   arreglo del parpadeo (el de `39df74e`, en `~/AppImages/anteriores/`).
+   KWin ve la ventana
    como `silux` con el logo nuevo. **Lo que no se pudo ver**: las ventanas
    que se lanzan desde la terminal de Claude no se repintan en la pantalla
    tras el primer fotograma, aunque por dentro tengan los datos. Le pasa
