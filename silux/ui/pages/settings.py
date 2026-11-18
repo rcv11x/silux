@@ -332,14 +332,12 @@ class SettingsPage(QScrollArea):
 
         self.unit_box = self._combo(UNITS, self._prefs.temperature_unit)
         self.network_box = self._combo(NETWORK_UNITS, self._prefs.network_unit)
-        self.all_features = self._interruptor(self._prefs.show_all_features)
         return self._grupo(
             _("settings.group.general"),
             _Renglon(_("settings.language.label"), self.language_box,
                      _("settings.language.help")),
             _Renglon(_("settings.tempunit.label"), self.unit_box),
             _Renglon(_("settings.netunit.label"), self.network_box, _("settings.netunit.help")),
-            _Renglon(_("settings.allflags.label"), self.all_features, _("settings.allflags.help")),
         )
 
     def _build_appearance(self) -> Card:
@@ -347,12 +345,16 @@ class SettingsPage(QScrollArea):
         self.density_box = self._combo(DENSITIES, self._prefs.density)
         self.font_box = self._combo(FONT_SCALES, self._prefs.font_scale)
         self.accent_box = self._combo(ACCENTS, self._prefs.accent)
+        # Las gráficas fluidas no cambian ninguna cifra, solo cómo se pintan:
+        # son apariencia.
+        self.fluid_charts = self._interruptor(self._prefs.fluid_charts)
         return self._grupo(
             _("settings.card.appearance"),
             _Renglon(_("settings.theme.label"), self.theme_box),
             _Renglon(_("settings.density.label"), self.density_box, _("settings.density.help")),
             _Renglon(_("settings.fontsize.label"), self.font_box, _("settings.fontsize.help")),
             _Renglon(_("settings.accent.label"), self.accent_box, _("settings.accent.help")),
+            _Renglon(_("settings.fluid.label"), self.fluid_charts, _("settings.fluid.help")),
         )
 
     def _build_sampling(self) -> Card:
@@ -367,11 +369,13 @@ class SettingsPage(QScrollArea):
         self.interval.setLocale(QLocale.c())
         self.interval.setValue(self._prefs.interval_s)
         self.interval.valueChanged.connect(self._emit)
-        self.fluid_charts = self._interruptor(self._prefs.fluid_charts)
+        # Qué se lee y cuánto se enseña de lo leído: las instrucciones de la
+        # CPU van con el muestreo, no con el idioma y las unidades.
+        self.all_features = self._interruptor(self._prefs.show_all_features)
         return self._grupo(
             _("settings.card.sampling"),
             _Renglon(_("settings.interval.label"), self.interval, _("settings.interval.help")),
-            _Renglon(_("settings.fluid.label"), self.fluid_charts, _("settings.fluid.help")),
+            _Renglon(_("settings.allflags.label"), self.all_features, _("settings.allflags.help")),
         )
 
     def _build_permissions(self) -> Card:

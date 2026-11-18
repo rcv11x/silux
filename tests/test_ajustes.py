@@ -75,6 +75,23 @@ class TestLaMaqueta(unittest.TestCase):
         pagina.all_features.click()
         self.assertTrue(recibidas[-1].show_all_features)
 
+    def test_cada_interruptor_en_su_grupo(self):
+        """Las gráficas fluidas son apariencia; las instrucciones de la CPU
+        van con el muestreo, no con el idioma y las unidades."""
+        from silux.ui.widgets import Card
+
+        pagina = _pagina(self.app)
+        self.addCleanup(pagina.deleteLater)
+
+        def grupo(control):
+            padre = control.parentWidget()
+            while not isinstance(padre, Card):
+                padre = padre.parentWidget()
+            return padre._title_label.text()
+
+        self.assertEqual(grupo(pagina.fluid_charts), _("settings.card.appearance"))
+        self.assertEqual(grupo(pagina.all_features), _("settings.card.sampling"))
+
     def test_el_intervalo_con_punto_aunque_el_sistema_vaya_en_español(self):
         anterior = QLocale()
         QLocale.setDefault(QLocale(QLocale.Language.Spanish, QLocale.Country.Spain))
