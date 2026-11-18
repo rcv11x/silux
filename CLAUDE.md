@@ -31,6 +31,7 @@ python3 tools/volcar_gpu.py            # lo que publica el kernel de cada gráfi
 python3 tools/volcar_equipo.py NOMBRE  # este equipo, anonimizado, a tests/fixtures/equipos/
 python3 tools/montar_equipo.py NOMBRE ORDEN…  # ejecutar algo con un volcado montado, como los tests
 python3 tools/comprobar_privacidad.py  # antes de publicar nada
+python3 tools/medir_consumo.py         # lo que gasta, contra sus objetivos (regla 7)
 python3 tools/build_appimage.py --container   # el AppImage que se reparte
 python3 tools/probar_en_minimo.py --container # la suite en el Python del suelo
 uv sync --extra gui                    # el entorno de desarrollo: pytest y PySide6
@@ -41,7 +42,7 @@ QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .  # sin inst
 
 En paralelo tardan medio minuto entre las dos pasadas; en serie, minuto y
 medio. **Nunca más de `-n 4`, en los dos equipos** (oficina, 16 GB; casa,
-igual): cada proceso carga Qt, y `-n auto` (12) con tres agentes de Claude a
+32 GB): cada proceso carga Qt, y `-n auto` (12) con tres agentes de Claude a
 la vez llenó los 16 GB de la oficina y congeló el equipo el 18 de noviembre.
 Por lo mismo, **en estos equipos no se lanzan agentes de Claude en
 paralelo**: las tareas van de una en una. Las dos pasadas son las del CI: tres tests comparan dos medidas de
@@ -99,8 +100,15 @@ No son preferencias de estilo: cada una viene de un problema concreto.
    que falta por permisos lleva candado, que es otro estado: tiene arreglo.
 6. **Los widgets que se refrescan a menudo reutilizan.** `ChipRow` y `Table`
    reescriben el texto de lo que ya existe; hay tests que lo vigilan.
-7. **Presupuesto de memoria: 300 MB.** Ronda los 130 con todo abierto. La
-   salida conocida si se acerca es construir las páginas al visitarlas.
+7. **Presupuesto: 300 MB de memoria, y de CPU, en el 5800X3D y para la
+   página que más gasta, 7 % de un núcleo a la vista sin movimiento fluido,
+   9 % con él y 5,5 % escondida.** Ronda los 160 MB y 5,7 / 7,2 / 4,5 %. Lo
+   comprueba `tools/medir_consumo.py`, que sale con 1 si algo se pasa; las
+   tablas, cómo se mide y qué se arregló, en
+   [docs/rendimiento.md](docs/rendimiento.md). Lo que no se ve no se pinta:
+   la foto entera va a la página abierta y las demás guardan su historia
+   (`record`). La salida conocida si la memoria se acerca es construir las
+   páginas al visitarlas.
 8. **Lo que cueste memoria de forma permanente, en otro proceso.** OpenGL,
    Vulkan y OpenCL se preguntan en un hijo (`gpuapi.consultar()`), que muere
    al contestar; un driver que revienta solo se lleva al hijo.
@@ -313,9 +321,11 @@ código (F-…), que es por el que se buscan allí.
 | `ui/pages/storage.py` | baja | «Vida restante —» en un SATA |
 | Gráficos, varios | media | de los 25 fallos de [docs/propuesta-graficas.md](docs/propuesta-graficas.md), arreglados los que mentían (1 a 7, 11, 12 y el 4); quedan los de datos que no se leen (`xe`, NVML, `radeon`, nouveau) y el 8 (framebuffer de respaldo), 9 y 10 (nouveau) |
 | `privileged/helper.py` | propuesta | el PMU de una Arc con `i915` y el de `xe`: [docs/propuesta-uso-de-graficas.md](docs/propuesta-uso-de-graficas.md), sin aplicar |
-| `privileged/instalar.py` | propuesta | la ventana de la contraseña enseña `python3 -c …` en inglés: [docs/propuesta-mensaje-de-polkit.md](docs/propuesta-mensaje-de-polkit.md), sin aplicar |
-| `tools/volcar_*.py` | media, sin comprobar | la fase 0 está hecha (no despiertan la tarjeta; graban NVML, `xe`, puentes y `event_source`), pero nada se ha visto con una NVIDIA, una Arc ni una Deck |
-| rama `actualizaciones` | a medias | propuesta, `silux/updates.py`, `SHA256SUMS` en el CI y la interfaz que diga `git log oficina..actualizaciones`; sale de `c01944d` y choca con `oficina` en el paso de la release del CI |
+| `privileged/instalar.py` | propuesta | la ventana de la contraseña enseña `python3 -c …` en inglés, y la regla instalada solo nombra memoria y discos: [docs/propuesta-mensaje-de-polkit.md](docs/propuesta-mensaje-de-polkit.md), con el texto del autor, sin aplicar |
+| `tools/volcar_*.py` | media, sin comprobar | la fase 0 está hecha y el volcado del 5800X3D, rehecho con ella; nada se ha visto con una NVIDIA, una Arc ni una Deck |
+| rama `actualizaciones` | lista para rebasar | probada de punta a punta sin publicar nada (`tools/probar_actualizador.py`): pasa tras dos arreglos (el AppImage no traía TLS; un corte a `http://` salía como falta de red). Sale de `c01944d` y choca con `oficina` en el paso de la release del CI; falta rebasarla, la prueba con el AppImage del CI y una vez a mano con los botones |
+| `nvml.py` | media, sin comprobar | el uso de NVENC y NVDEC (dos barras en «Ahora mismo»), escrito sin una NVIDIA delante: contrastar con `nvidia-smi dmon -s u` |
+| `ui/widgets.py` | baja | una gráfica transparente repinta la tarjeta y la página de detrás en cada fotograma (~145 widgets/s en Inicio con fluido): pintarla opaca con el color de su tarjeta (docs/rendimiento.md) |
 | `providers/` (AMD) | aplazado | PPT, TDC y EDC con `ryzen_smu`: el autor decidió no hacerlo ahora (`docs/propuesta-limites-amd.md`) |
 | `.github/workflows/appimage.yml` | media | el CI no mira si el AppImage pinta sus iconos; se comprobó a mano con `--screenshot` |
 | `privacidad.py`, `tools/volcar_equipo.py` | media-baja | `--anonimo` da la misma IP a todas las interfaces; los volcados, la misma MAC |
@@ -354,6 +364,11 @@ código (F-…), que es por el que se buscan allí.
 - [docs/pendientes.md](docs/pendientes.md): lo pendiente, con su detalle.
 - [docs/kernel.md](docs/kernel.md): desde qué versión del kernel existe cada
   dato, con su fuente. El mínimo es 5.15.
+- [docs/rendimiento.md](docs/rendimiento.md): lo que gasta silux, cómo se
+  mide (con perfilador y en la pantalla) y sus objetivos.
+- [docs/motores-de-graficas.md](docs/motores-de-graficas.md): qué motor de
+  cada gráfica se puede medir, de dónde sale en cada driver y cómo se saca
+  su uso medio.
 - [docs/comprobar.md](docs/comprobar.md): el comando equivalente a cada dato,
   para verificarlo a mano.
 - `docs/propuesta-*.md`: lo propuesto (permisos, interfaz, precisión,
