@@ -363,6 +363,11 @@ class PciDevice:
     # Cómo se llama la ranura en la placa, según la tabla del firmware. Solo
     # con permisos, y solo si su dirección casa con este dispositivo.
     slot_name: Optional[str] = None
+    # Lo que dice el propio dispositivo: con ellos se nombra lo que `pci.ids`
+    # aún no tiene («Intel, audio HD (8086:f0c8)»).
+    vendor_id: Optional[int] = None
+    device_id: Optional[int] = None
+    pci_class: Optional[str] = None          # clase y subclase: "0403"
 
 
 @dataclass(frozen=True, slots=True)

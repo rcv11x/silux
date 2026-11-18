@@ -259,8 +259,7 @@ class BoardPage(QScrollArea):
                 donde = _("board.pci.ongpu")
             else:
                 donde = _("board.pci.onboard")
-            nombre = d.name or (_("board.pci.unnamed").format(marca=render.maker(d.vendor))
-                                if d.vendor else render.DASH)
+            nombre = d.name or render.pci_unnamed(d) or render.DASH
             fila = [_(PCI_KINDS[d.kind]), nombre,
                     render.pcie_link(d.link) if d.link else donde,
                     render.pcie_link(d.link, maximum=True) if d.link else "",

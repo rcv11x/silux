@@ -161,12 +161,25 @@ class TestEnLaPagina(unittest.TestCase):
                              ["UHD Graphics 630", _("board.pci.oncpu"), ""])
 
     def test_un_dispositivo_que_no_esta_en_la_lista_pci_dice_de_quien_es(self):
-        """El audio del H510 (8086:f0c8) no está en el pci.ids de Fedora 44."""
+        """El audio del H510 (8086:f0c8) no está en el pci.ids de Fedora 44.
+
+        Revisión del autor: salía «Intel · no está en la lista de nombres
+        PCI», que dice por qué no hay nombre y no qué es. Con la clase del
+        dispositivo y su identificador, como lo buscaría quien lo reporte."""
         intel = foto(EQUIPOS / "i5-10400")[0]
+        audio = next(d for d in intel.pci_devices if d.kind == "audio")
+        self.assertEqual((audio.vendor_id, audio.device_id, audio.pci_class),
+                         (0x8086, 0xF0C8, "0403"))
         with pantalla.Ventana(intel) as ventana:
             filas = {f[0]: f for f in self._filas(self._pagina(ventana))}
-            self.assertEqual(filas["Sonido"][1],
-                             _("board.pci.unnamed").format(marca="Intel"))
+            self.assertEqual(filas["Sonido"][1], "Intel, audio HD (8086:f0c8)")
+
+    def test_sin_clase_conocida_quedan_la_marca_y_el_identificador(self):
+        from silux.model import PciDevice
+
+        raro = PciDevice(slot="0000:00:1f.3", kind="audio", vendor="Intel",
+                         vendor_id=0x8086, device_id=0xF0C8, pci_class="0480")
+        self.assertEqual(render.pci_unnamed(raro), "Intel (8086:f0c8)")
 
     def test_la_columna_ranura_solo_existe_con_permisos(self):
         with pantalla.Ventana(self.foto) as ventana:

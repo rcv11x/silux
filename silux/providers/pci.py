@@ -87,7 +87,8 @@ class PciDevices(Provider):
                 name=propios.get(fijo["slot"]) or fijo["name"],
                 vendor=fijo["vendor"], driver=fijo["driver"],
                 link=enlace,
-                slot_name=self._ranura(nodo, draft.pci_slot_names)))
+                slot_name=self._ranura(nodo, draft.pci_slot_names),
+                vendor_id=fijo["ids"][0], device_id=fijo["ids"][1], pci_class=fijo["clase"]))
         salida.sort(key=lambda d: (ORDEN.index(d.kind), d.slot))
         draft.pci_devices = salida
 
@@ -109,7 +110,7 @@ class PciDevices(Provider):
                 driver = enlace.resolve().name if enlace.exists() else None
             except OSError:
                 pass
-            crudos.append({"slot": slot, "kind": tipo, "driver": driver,
+            crudos.append({"slot": slot, "kind": tipo, "driver": driver, "clase": clase,
                            "ids": (_hex(f"{base}/vendor"), _hex(f"{base}/device"))})
         pares = [c["ids"] for c in crudos if None not in c["ids"]]
         nombres = pciids.lookup(pares) if pares else {}

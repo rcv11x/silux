@@ -908,6 +908,38 @@ def seconds(valor: Optional[float]) -> str:
     return DASH if _none(valor) else f"{float(valor):.1f} s"
 
 
+# Qué es un dispositivo PCI por su clase, para nombrar lo que `pci.ids` no
+# tiene. Las de `providers/pci.CLASES`: lo que la tabla de Placa enseña.
+CLASES_PCI = {
+    "0300": "board.pci.class.vga", "0302": "board.pci.class.3d",
+    "0380": "board.pci.class.display", "0108": "board.pci.class.nvme",
+    "0106": "board.pci.class.ahci", "0104": "board.pci.class.raid",
+    "0200": "board.pci.class.ethernet", "0280": "board.pci.class.network",
+    "0c03": "board.pci.class.usb", "0403": "board.pci.class.hda",
+    "0401": "board.pci.class.audio",
+}
+
+
+def pci_unnamed(device) -> Optional[str]:
+    """«Intel, audio HD (8086:f0c8)»: lo que no está en `pci.ids`, por lo que es.
+
+    La marca, la clase del dispositivo y su identificador, como lo busca quien
+    lo quiera reportar o encontrar. Decir solo que no está en la lista era
+    explicar el hueco sin decir qué hay.
+    """
+    marca = maker(device.vendor)
+    ids = (f"{device.vendor_id:04x}:{device.device_id:04x}"
+           if device.vendor_id is not None and device.device_id is not None else None)
+    clase = CLASES_PCI.get(device.pci_class or "")
+    if marca and clase:
+        texto = _("board.pci.unnamed").format(marca=marca, clase=_(clase))
+    else:
+        texto = marca or (_(clase) if clase else None)
+    if ids:
+        texto = f"{texto} ({ids})" if texto else ids
+    return texto
+
+
 # Las fases del arranque, en orden, con el campo de `Boot` de cada una.
 FASES_DE_ARRANQUE = (("sys.boot.phase.firmware", "firmware_s"),
                      ("sys.boot.phase.loader", "loader_s"),
