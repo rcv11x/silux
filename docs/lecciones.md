@@ -1034,6 +1034,31 @@ apartado. El orden dentro de cada apartado es el cronológico.
   MB»). Y se mide como mide la etiqueta, con `fontMetrics().size()`:
   `horizontalAdvance` se queda a veces un píxel corto, y ese píxel también
   movía la columna.
+- **Medir lo que gasta silux a ojo**: se sospechaba de las gráficas, y con
+  la ventana escondida y sin movimiento fluido silux seguía gastando el 7 %
+  de un núcleo. py-spy (`py-spy record --threads -f raw -- python …`; con
+  `ptrace_scope` a 1 tiene que lanzar él el proceso) lo repartió: el 69 %
+  era el hilo de muestreo, y de eso, recorrer `pci.ids` entero en cada
+  muestreo para nombrar la tarjeta de red, leer los códecs de sonido (el
+  kernel genera el volcado entero del códec al abrir `codec#N`), resolver
+  cuatro veces la cadena de puentes PCIe de cada tarjeta y leer una docena
+  de archivos de cada una de las 41 interfaces que crea Docker. Nada de eso
+  cambia de un segundo a otro.
+- **Rehacer en cada fotograma lo que solo cambia con cada muestra**: la
+  curva de una gráfica (`curva_suave`, en Python) se rehacía treinta veces
+  por segundo para correrla una décima de píxel, y las dieciséis curvas de
+  historial de la matriz de núcleos, en cada fotograma de sus barras. Se
+  calcula con la muestra y se mueve con `translate`. Y una gráfica
+  transparente repinta todo lo que tiene detrás: la barra de memoria
+  repintaba su leyenda entera (casi cien insignias por segundo en Inicio)
+  porque iba dentro del mismo widget; se repinta solo su franja.
+- **Pintar lo que no se ve**: cada foto se aplicaba entera a las catorce
+  páginas, y el temporizador del movimiento fluido latía treinta veces por
+  segundo en páginas sin nada que mover y con la ventana minimizada. La
+  foto entera va a la página que se ve; las que guardan historia reciben
+  solo eso, una vez por foto (`record`), y las demás se ponen al día al
+  abrirlas. Ojo con «escondida»: sin pantalla, una ventana recién enseñada
+  todavía no está expuesta; escondida es la que se llegó a ver y ya no.
 
 <a id="idioma"></a>
 
