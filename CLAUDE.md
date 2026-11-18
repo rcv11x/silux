@@ -180,9 +180,10 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 
 - La **0.4** (`0.4.0` por debajo; en pantalla, «0.4») está en borrador en
   GitHub, sin etiqueta. El borrador y `master` son de `c01944d`, y `oficina`
-  lleva por delante los arreglos de Gráficos del 18 por la tarde, que van
-  en la 0.4. La publica el autor después de probarla en el 5800X3D. Cómo,
-  en [docs/en-curso.md](docs/en-curso.md).
+  lleva por delante lo del 18 (los arreglos de Gráficos de la tarde; las
+  barras, el rendimiento y el parpadeo de la noche), que va en la 0.4. La
+  publica el autor después de probarla en el 5800X3D. Cómo, en
+  [docs/en-curso.md](docs/en-curso.md).
 
 - La escala del benchmark es la **v6**: puntúan dos cargas de las cinco, las
   que no dependen de la zlib de cada distribución. `score.VERSION` y
