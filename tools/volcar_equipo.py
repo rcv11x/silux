@@ -268,6 +268,48 @@ def _alternativas(leidos: set[str]) -> set[str]:
             for fuente in FUENTES_DE_FRECUENCIA}
 
 
+# Lo que se copia de cada gráfica despierta aunque el Collector no lo lea
+# todavía (fase 0 de docs/propuesta-graficas.md): sin ello no se pueden
+# escribir los arreglos de `xe`, de las Arc y de los contadores.
+#
+# - De `xe`, las frecuencias y el reposo cuelgan del nodo PCI y no del DRM
+#   (`tile*/gt*/freq0/`, con su `throttle/`, y `gtidle/`), y su hwmon tiene
+#   canales con nombre (`pkg`, `vram`) que no se leen hoy: el hwmon entero.
+# - De cada puente de su cadena hasta la raíz, el enlace y quién es: la Arc
+#   lleva un conmutador dentro y el enlace bueno es el de fuera (I1).
+# - De `/sys/bus/event_source/devices`, el tipo, el formato y los eventos de
+#   cada PMU: el nombre del de una Arc con i915 y los eventos de xe (I2, I9).
+#   Nada de esto identifica a nadie.
+EXTRAS_DE_GRAFICA = ("tile*/gt*/freq0/*", "tile*/gt*/freq0/throttle/*",
+                     "tile*/gt*/gtidle/*", "hwmon/hwmon*/*")
+EXTRAS_DE_PUENTE = ("vendor", "device", "class", "current_link_speed",
+                    "current_link_width", "max_link_speed", "max_link_width")
+EVENT_SOURCE = "/sys/bus/event_source/devices"
+
+
+def _extras_de_graficas() -> set[str]:
+    """Los caminos de `EXTRAS_DE_GRAFICA`, de los puentes y de event_source."""
+    import glob
+
+    def existentes(patron: str) -> set[str]:
+        return {sysroot.fuera(c) for c in glob.glob(sysroot.ruta(patron))
+                if os.path.isfile(c)}
+
+    caminos: set[str] = set()
+    for grafica in volcar_gpu.graficas():
+        if volcar_gpu.dormida(volcar_gpu.energia(grafica)):
+            continue
+        real = str(volcar_gpu._real(grafica))
+        for patron in EXTRAS_DE_GRAFICA:
+            caminos |= existentes(f"{real}/{patron}")
+        for puente in volcar_gpu.cadena(grafica):
+            for nombre in EXTRAS_DE_PUENTE:
+                caminos |= existentes(f"{sysroot.fuera(str(puente))}/{nombre}")
+    for patron in ("*/type", "*/format/*", "*/events/*"):
+        caminos |= existentes(f"{EVENT_SOURCE}/{patron}")
+    return caminos
+
+
 # -- copiar ---------------------------------------------------------------------
 
 class _Copia:
@@ -766,7 +808,7 @@ def volcar(nombre: str, destino_base: pathlib.Path = DESTINO) -> pathlib.Path:
     # Lo primero, antes de que nada la despierte: cómo está cada gráfica.
     dormidas = _Dormidas()
     leidos, listados, mirados, grabado = _recoger(dormidas)
-    leidos |= _alternativas(leidos) | dormidas.energia()
+    leidos |= _alternativas(leidos) | dormidas.energia() | _extras_de_graficas()
     # Copiar también es leer: lo de una gráfica dormida no pasa ni por aquí.
     leidos = {c for c in leidos if not dormidas.prohibido(c)}
     mirados = {c for c in mirados if not dormidas.prohibido(c)}
@@ -802,7 +844,7 @@ def volcar(nombre: str, destino_base: pathlib.Path = DESTINO) -> pathlib.Path:
             # Cómo estaba cada gráfica antes de leer nada, por su ranura.
             "energia_de_las_graficas": dormidas.estados,
             "sin_grabar": [
-                "NVML (NVIDIA propietaria)",
+                "de NVML, el número de serie de cada tarjeta",
                 "todo lo que lee el ayudante privilegiado",
                 "el uso de cada hilo: sale de restar dos lecturas de /proc/stat, "
                 "y el volcado guarda una",

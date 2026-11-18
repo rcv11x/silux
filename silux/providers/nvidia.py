@@ -39,23 +39,35 @@ class NvidiaGpus(Provider):
         self.client = nvml.Nvml()
 
     def available(self) -> bool:
-        # Con un equipo volcado no se pregunta a la NVML de este: no está
-        # grabada todavía, y mezclaría las dos máquinas.
+        # Con un equipo volcado se contesta lo grabado: abierta o no, y qué
+        # tarjetas dio (`sysroot.a_traves`). Nunca la NVML de esta máquina.
         if sysroot.activo():
-            return False
+            return bool(sysroot.a_traves("nvml", "abierta", self.client.open))
         if nvidias_dormidas():
             # NVML habla con todas las tarjetas a la vez: abrirla, o tenerla
             # abierta y preguntar, despierta la que duerme. Se suelta mientras
             # haya una suspendida y se vuelve a abrir cuando despierte.
             self.client.close()
             return False
-        return self.client.open()
+        return bool(sysroot.a_traves("nvml", "abierta", self.client.open))
+
+    def _tarjetas(self) -> list[nvml.NvidiaGpu]:
+        """Lo que contesta NVML, grabado para los volcados.
+
+        Se graba como diccionarios y sin el número de serie, que no se usa en
+        ninguna parte: un volcado no tiene por qué llevarlo.
+        """
+        def preguntar():
+            return [dict(dataclasses.asdict(t), serial=None) for t in self.client.devices()]
+        crudas = sysroot.a_traves("nvml", "tarjetas", preguntar) or ()
+        return [nvml.NvidiaGpu(**dict(c, throttle_reasons=tuple(c.get("throttle_reasons") or ())))
+                for c in crudas]
 
     def unavailable_reason(self):
         return None       # sin NVIDIA no falta nada; no hay nada que explicar
 
     def collect(self, draft: Draft) -> None:
-        tarjetas = self.client.devices()
+        tarjetas = self._tarjetas()
         if not tarjetas:
             return
         draft.capabilities.add("nvml")
