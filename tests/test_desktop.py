@@ -11,8 +11,6 @@ import tempfile
 import unittest
 from unittest import mock
 
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "tools"))
-
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 try:
@@ -21,13 +19,13 @@ try:
 except ImportError:                                     # pragma: no cover
     HAS_QT_SVG = False
 
-import install_desktop as installer  # noqa: E402
+from silux import desktop as installer  # noqa: E402
 from tests import qt
 
 
 class TestPlantillaDesktop(unittest.TestCase):
     def setUp(self):
-        self.texto = installer.DESKTOP_TEMPLATE.read_text(encoding="utf-8")
+        self.texto = installer.DESKTOP_TEMPLATE
 
     def test_claves_obligatorias(self):
         for clave in ("Type=Application", "Name=", "Exec=@EXEC@", "Icon=silux", "Categories="):
@@ -91,7 +89,7 @@ class TestInstalacion(unittest.TestCase):
     def test_desinstalar_lo_deja_limpio(self):
         installer.render_icons()
         installer.write_desktop()
-        installer.uninstall(quiet=True)
+        installer.uninstall()
         self.assertFalse(installer.desktop_path().exists())
         self.assertFalse(installer.scalable_path().exists())
         for size in installer.SIZES:
