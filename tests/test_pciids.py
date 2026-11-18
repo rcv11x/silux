@@ -55,6 +55,39 @@ class TestDispositivos(BancoPciIds):
         self.assertEqual(pciids.lookup([]), {})
 
 
+class TestUnaVezPorPregunta(BancoPciIds):
+    """Recorrer el fichero entero son milisegundos, y la red pregunta por su
+    tarjeta en cada muestreo: con la ventana escondida era el 7 % de lo que
+    gastaba silux. Lo contestado se recuerda mientras el fichero no cambie."""
+
+    def contar_lecturas(self, pregunta):
+        abiertos = []
+        original = pathlib.Path.open
+
+        def abrir(ruta, *args, **kwargs):
+            if ruta.name == "pci.ids":
+                abiertos.append(ruta)
+            return original(ruta, *args, **kwargs)
+
+        with mock.patch.object(pathlib.Path, "open", abrir):
+            for _vez in range(3):
+                resultado = pciids.lookup(pregunta)
+        return resultado, len(abiertos)
+
+    def test_la_misma_pregunta_no_vuelve_a_leer_el_fichero(self):
+        resultado, lecturas = self.contar_lecturas([(0x8086, 0x9BC4)])
+        self.assertIn("UHD Graphics", resultado[(0x8086, 0x9BC4)][1])
+        self.assertLessEqual(lecturas, 1)
+
+    def test_si_el_fichero_cambia_se_vuelve_a_leer(self):
+        self.assertEqual(pciids.lookup([(0x8086, 0x1234)]), {})
+        ruta = pciids.database_path()
+        ruta.write_text(FICHERO.replace("[UHD Graphics]\n", "[UHD Graphics]\n\t1234  Un modelo nuevo\n"),
+                        encoding="utf-8")
+        self.assertEqual(pciids.lookup([(0x8086, 0x1234)])[(0x8086, 0x1234)][1],
+                         "Un modelo nuevo")
+
+
 class TestSubsistemas(BancoPciIds):
     def test_resuelve_la_tarjeta_concreta(self):
         clave = (0x1002, 0x7550, 0x148C, 0x2435)

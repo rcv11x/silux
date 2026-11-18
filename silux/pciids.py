@@ -64,7 +64,35 @@ def lookup(
             for clave, valor in (plano or {}).items()}
 
 
+# Lo ya contestado, por pregunta y por versión del fichero (ruta, fecha y
+# tamaño). Recorrer pci.ids entero son milisegundos de Python, y la red
+# pregunta por el nombre de su tarjeta en cada muestreo: con la ventana
+# escondida era el 7 % de lo que gastaba silux.
+_contestado: dict[tuple, dict] = {}
+
+
 def _lookup(
+    pairs: Iterable[tuple[int, int]],
+    subsystems: Iterable[tuple[int, int, int, int]] = (),
+) -> dict[tuple[int, int], tuple[str, str]]:
+    """`_recorrer`, recordando lo contestado mientras el fichero no cambie."""
+    pares = tuple(sorted({(int(v), int(d)) for v, d in pairs}))
+    subs = tuple(sorted({tuple(int(n) for n in key) for key in subsystems}))
+    path = database_path()
+    if path is None:
+        return {}
+    try:
+        estado = path.stat()
+    except OSError:
+        return {}
+    clave = (str(path), estado.st_mtime_ns, estado.st_size, pares, subs)
+    if clave not in _contestado:
+        _contestado[clave] = _recorrer(path, pares, subs)
+    return dict(_contestado[clave])
+
+
+def _recorrer(
+    path: pathlib.Path,
     pairs: Iterable[tuple[int, int]],
     subsystems: Iterable[tuple[int, int, int, int]] = (),
 ) -> dict[tuple[int, int], tuple[str, str]]:
@@ -84,10 +112,6 @@ def _lookup(
     # cualquier otro, así que basta con pedir su sección al recorrer.
     wanted |= {(key[0], key[1]) for key in subs_wanted}
     if not wanted and not subs_wanted:
-        return {}
-
-    path = database_path()
-    if path is None:
         return {}
 
     vendors_wanted = {vendor for vendor, _ in wanted}
