@@ -295,9 +295,14 @@ class TestElEscritorio(unittest.TestCase):
 class TestEnLaVentana(unittest.TestCase):
 
     def test_la_ventana_le_da_la_foto_y_sus_botones_piden_permisos(self):
+        """Sin ayudante instalado, que es el estado del que habla: lo fija,
+        porque en un equipo con el ayudante puesto la página dice «installed»."""
+        from silux.privileged.client import PrivilegedClient
         app = qt.app()
         f = foto(EQUIPOS / "i5-10400")[0]
-        with pantalla.Ventana(f) as ventana:
+        with mock.patch.object(PrivilegedClient, "instalado", return_value=False), \
+             mock.patch.object(PrivilegedClient, "necesita_reinstalar", return_value=False), \
+             pantalla.Ventana(f) as ventana:
             ventana.select_section("Ajustes")
             for _vez in range(3):
                 app.processEvents()
