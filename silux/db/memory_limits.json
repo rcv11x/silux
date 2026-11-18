@@ -1,0 +1,91 @@
+{
+ "schema": 1,
+ "_": "El máximo oficial de memoria de cada procesador de sobremesa, por modelo y tipo de memoria, de la página del fabricante que dice cada fila. Solo modelos de sobremesa: los portátiles con el mismo número y otra letra (i5-10400H) son otro chip. AMD no está: su máximo depende de cuántos módulos y de cuántos rangos lleven, no del modelo.",
+ "cpus": [
+  {
+   "models": [
+    "i9-10900K",
+    "i9-10900KF",
+    "i9-10900",
+    "i9-10900F",
+    "i9-10900T",
+    "i9-10910",
+    "i9-10850K",
+    "i7-10700K",
+    "i7-10700KF",
+    "i7-10700",
+    "i7-10700F",
+    "i7-10700T"
+   ],
+   "types": {
+    "DDR4": 2933
+   },
+   "source": "https://www.intel.com/content/www/us/en/support/articles/000094585/processors.html"
+  },
+  {
+   "models": [
+    "i5-10400",
+    "i5-10400F",
+    "i5-10400T"
+   ],
+   "types": {
+    "DDR4": 2666
+   },
+   "source": "https://www.intel.com/content/www/us/en/products/sku/199271/intel-core-i510400-processor-12m-cache-up-to-4-30-ghz/specifications.html"
+  },
+  {
+   "models": [
+    "i5-10600K",
+    "i5-10600KF",
+    "i5-10600",
+    "i5-10600T",
+    "i5-10500",
+    "i5-10500T",
+    "i5-10505",
+    "i3-10100",
+    "i3-10100F",
+    "i3-10100T",
+    "i3-10105",
+    "i3-10105F",
+    "i3-10105T",
+    "i3-10300",
+    "i3-10300T",
+    "i3-10305",
+    "i3-10305T",
+    "i3-10320",
+    "i3-10325"
+   ],
+   "types": {
+    "DDR4": 2666
+   },
+   "source": "https://www.intel.com/content/www/us/en/support/articles/000094585/processors.html"
+  },
+  {
+   "models": [
+    "i9-11900K",
+    "i9-11900KF",
+    "i9-11900",
+    "i9-11900F",
+    "i9-11900T",
+    "i7-11700K",
+    "i7-11700KF",
+    "i7-11700",
+    "i7-11700F",
+    "i7-11700T",
+    "i5-11600K",
+    "i5-11600KF",
+    "i5-11600",
+    "i5-11600T",
+    "i5-11500",
+    "i5-11500T",
+    "i5-11400",
+    "i5-11400F",
+    "i5-11400T"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.intel.com/content/www/us/en/support/articles/000094585/processors.html"
+  }
+ ]
+}

@@ -349,3 +349,42 @@ def _por_familia(vendor_id: str, ext_family: int, ext_model: int) -> Optional[di
         if regla.get("from", 0) <= ext_model <= regla.get("to", -1):
             return regla
     return None
+
+
+# --------------------------------------------------------------------------
+# máximo oficial de memoria
+# --------------------------------------------------------------------------
+
+# El modelo dentro de la cadena de marca: «i5-10400» en «Intel(R) Core(TM)
+# i5-10400 CPU @ 2.90GHz». Entero, con su letra: «i5-10400H» es un portátil y
+# no puede casar con la fila del de sobremesa.
+_MODELO_INTEL = re.compile(r"\b(i[3579]-\d{4,5}[A-Z]{0,2})\b")
+
+
+@functools.lru_cache(maxsize=1)
+def _load_memory_limits() -> dict[str, dict]:
+    path = pathlib.Path(__file__).parent / "memory_limits.json"
+    try:
+        with path.open(encoding="utf-8") as fh:
+            filas = json.load(fh).get("cpus", [])
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+    return {modelo: fila for fila in filas for modelo in fila["models"]}
+
+
+def memory_limit(brand: str, memory_type: Optional[str]) -> Optional[tuple[str, int, str]]:
+    """(modelo, MT/s, de dónde sale) del máximo oficial de memoria, o None.
+
+    Solo lo que dice la tabla, para ese modelo exacto y ese tipo de memoria:
+    un procesador que no está, o un tipo que su fila no nombra, no tienen
+    máximo conocido, y quien llama sigue sin afirmar nada.
+    """
+    if not brand or not memory_type:
+        return None
+    encaje = _MODELO_INTEL.search(brand)
+    if not encaje:
+        return None
+    fila = _load_memory_limits().get(encaje.group(1))
+    if fila is None or memory_type not in fila["types"]:
+        return None
+    return encaje.group(1), fila["types"][memory_type], fila["source"]

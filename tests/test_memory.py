@@ -678,3 +678,90 @@ class TestElBancoNoSeDiceDosVeces(unittest.TestCase):
         from silux import render
 
         self.assertIsNone(render.banco_de_memoria(None))
+
+
+class TestElMaximoDelProcesador(unittest.TestCase):
+    """Un i5-10400 con módulos de 3200: va a 2666 porque es su máximo.
+
+    En la oficina, con permisos, Memoria decía «por debajo de su velocidad» y
+    mandaba a activar XMP. No hay perfil que activar: 2666 es lo que Intel
+    garantiza para ese procesador (tabla oficial de memoria por generación y
+    ficha del i5-10400), y los módulos de 3200 no lo cambian.
+    """
+
+    LIMITE = ("i5-10400", 2666, "https://www.intel.com/")
+
+    def test_la_tabla_lo_sabe(self):
+        from silux import db
+
+        self.assertEqual(db.memory_limit("Intel(R) Core(TM) i5-10400 CPU @ 2.90GHz", "DDR4")[:2],
+                         ("i5-10400", 2666))
+        # El de portátil con el mismo número es otro chip.
+        self.assertIsNone(db.memory_limit("Intel(R) Core(TM) i5-10400H CPU @ 2.60GHz", "DDR4"))
+        self.assertIsNone(db.memory_limit("Intel(R) Core(TM) i5-10400 CPU @ 2.90GHz", "DDR5"))
+        self.assertIsNone(db.memory_limit("AMD Ryzen 7 5800X3D 8-Core Processor", "DDR4"))
+
+    def test_al_maximo_del_procesador_no_se_sugiere_xmp(self):
+        from silux import render
+
+        aviso = render.memory_speed_warning([_modulo(3200, 2667), _modulo(3200, 2667)],
+                                            self.LIMITE)
+        self.assertIn("i5-10400", aviso)
+        self.assertIn("2666", aviso)
+        self.assertNotIn("XMP", aviso)
+        self.assertEqual(render.memory_module_verdict(_modulo(3200, 2667), self.LIMITE),
+                         "cpu_max")
+
+    def test_por_debajo_del_maximo_del_procesador_si(self):
+        from silux import render
+
+        aviso = render.memory_speed_warning([_modulo(3200, 2133)], self.LIMITE)
+        self.assertIn("XMP", aviso)
+        self.assertEqual(render.memory_module_verdict(_modulo(3200, 2133), self.LIMITE), "slow")
+
+    def test_sin_saber_el_maximo_sigue_como_antes(self):
+        from silux import render
+
+        self.assertIn("XMP", render.memory_speed_warning([_modulo(3200, 2667)]))
+        self.assertEqual(render.memory_module_verdict(_modulo(3200, 2667), None), "slow")
+        self.assertIsNone(render.memory_module_verdict(_modulo(3200, 3200), None))
+
+
+class TestElMaximoDelProcesadorEnPantalla(unittest.TestCase):
+    """Con el volcado del i5-10400 y los módulos como los da su firmware."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.app = qt.app()
+
+    def test_la_pagina_dice_que_es_el_maximo(self):
+        import dataclasses
+        from silux.i18n import _
+        from silux.model import MemoryModule
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.memory import MemoryPage
+        from tests.test_equipos import EQUIPOS, foto
+
+        base = foto(EQUIPOS / "i5-10400")[0]
+        # Lo que dice `dmidecode -t 17` de esta máquina con permisos: el
+        # módulo admite 3200 y la BIOS lo configura a 2667.
+        modulos = tuple(MemoryModule(populated=True, locator=f"DIMM {n}", type="DDR4",
+                                     size_bytes=8 << 30, speed_mts=3200, configured_mts=2667)
+                        for n in (1, 2))
+        pagina = MemoryPage(theme.palette_for(self.app, "dark"), Preferences())
+        self.addCleanup(pagina.deleteLater)
+        pagina.resize(1200, 900)
+        pagina.show()
+        pagina.apply(dataclasses.replace(base, modules=modulos))
+        self.app.processEvents()
+
+        self.assertIn("i5-10400", pagina.avisos.text())
+        self.assertNotIn("XMP", pagina.avisos.text())
+        chips = [texto for texto, _resaltada in pagina.badges._chips]
+        self.assertNotIn(_("memory.chip.underclocked"), chips)
+        self.assertIn(_("memory.chip.cpumax"), chips)
+        ficha = pagina._slot_grids[0]
+        funcionando = ficha._values[_("memory.field.running")]
+        self.assertNotIn("⚠", funcionando.full_text())
+        self.assertIn("i5-10400", funcionando.toolTip())

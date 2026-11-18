@@ -1083,7 +1083,22 @@ def velocidad_de_memoria(mts: Optional[int]) -> Optional[int]:
     return grado_jedec(mts) or mts
 
 
-def memory_speed_warning(modulos) -> Optional[str]:
+def memory_module_verdict(modulo, limite=None) -> Optional[str]:
+    """Si un módulo va más lento de lo que admite, y por qué.
+
+    None si va a lo suyo; «cpu_max» si va al máximo oficial del procesador
+    (`limite`, de `db.memory_limit`), que no es un fallo ni un perfil sin
+    activar; «slow» si va por debajo sin que eso lo explique.
+    """
+    if not modulo.underclocked:
+        return None
+    actual = velocidad_de_memoria(modulo.configured_mts or modulo.speed_mts)
+    if limite and actual and actual >= limite[1] * (1 - MARGEN_DE_REDONDEO):
+        return "cpu_max"
+    return "slow"
+
+
+def memory_speed_warning(modulos, limite=None) -> Optional[str]:
     """Por qué la memoria no va más rápido, cuando hay algo que decir.
 
     El techo del conjunto no es el del módulo más rápido: es el del más lento,
@@ -1109,6 +1124,10 @@ def memory_speed_warning(modulos) -> Optional[str]:
     mayor = max(m.rated_mts for m in puestos)
 
     if actual < techo * (1 - MARGEN_DE_REDONDEO):
+        # Al máximo del procesador no hay perfil que activar: es lo que su
+        # fabricante garantiza, y los módulos rápidos no lo cambian.
+        if limite and actual >= limite[1] * (1 - MARGEN_DE_REDONDEO):
+            return _("mem.cpumax").format(actual=actual, rated=techo, modelo=limite[0])
         return _("mem.underclocked").format(actual=actual, rated=techo)
     if mayor > techo * (1 + MARGEN_DE_REDONDEO):
         return _("mem.mixed").format(actual=actual, lento=techo, rapido=mayor)

@@ -23,7 +23,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ... import membench, render
+from ... import db, membench, render
 from ...i18n import _
 from ...model import MemoryModule, Snapshot
 from ...settings import Preferences
@@ -90,6 +90,8 @@ class MemoryPage(QScrollArea):
         super().__init__(parent)
         self._p = palette
         self._prefs = prefs
+        # El máximo oficial de memoria del procesador, si la tabla lo sabe.
+        self._limite = None
         m = theme.METRICS
 
         self.setWidgetResizable(True)
@@ -469,6 +471,7 @@ class MemoryPage(QScrollArea):
         self.title.setText(_("mem.title").format(
             tam=render.size(memory.total_bytes)))
         self.subtitle.setText(self._subtitle(snapshot))
+        self._limite = self._limite_del_procesador(snapshot)
         self._apply_avisos(snapshot)
         self._apply_badges(snapshot)
 
@@ -564,10 +567,21 @@ class MemoryPage(QScrollArea):
         # Decidirlo aquí era el fallo: se tomaba `lentos[0]` y se prometía su
         # velocidad catalogada, que con módulos desparejos es la del que no
         # manda. La regla vive en `render`, al lado de la del canal.
-        if (velocidad := render.memory_speed_warning(modulos)):
+        if (velocidad := render.memory_speed_warning(modulos, self._limite)):
             lineas.append(velocidad)
         self.avisos.setText("  ".join(lineas))
         self.avisos.setVisible(bool(lineas))
+
+    @staticmethod
+    def _limite_del_procesador(snapshot: Snapshot):
+        """El máximo oficial de memoria de este procesador, si se sabe.
+
+        Con un solo tipo de memoria puesto: es el que decide la fila.
+        """
+        tipos = {m.type for m in snapshot.modules if m.populated and m.type}
+        tipos |= {s.dram_type for s in snapshot.spd if s.dram_type}
+        marca = snapshot.cpu.types[0].brand if snapshot.cpu.types else ""
+        return db.memory_limit(marca, tipos.pop()) if len(tipos) == 1 else None
 
     def _subtitle(self, snapshot: Snapshot) -> str:
         array = snapshot.memory_array
@@ -610,8 +624,11 @@ class MemoryPage(QScrollArea):
             catalogadas = {m.rated_mts for m in modules}
             catalogadas.discard(None)
             wanted.extend(f"{v} MT/s" for v in sorted(catalogadas))
-            if any(m.underclocked for m in modules):
+            veredictos = {render.memory_module_verdict(m, self._limite) for m in modules}
+            if "slow" in veredictos:
                 wanted.append(_("memory.chip.underclocked"))
+            elif "cpu_max" in veredictos:
+                wanted.append(_("memory.chip.cpumax"))
             if any(m.has_ecc for m in modules):
                 wanted.append("ECC")
         self.badges.set_chips(wanted, highlight_first=True)
@@ -736,7 +753,7 @@ class MemoryPage(QScrollArea):
             for name in MODULE_FIELDS:
                 grid.add(_(name))
             card.body.addWidget(grid)
-            self._fill(grid, module)
+            self._fill(grid, module, self._limite)
             for clave in self._solo_del_spd(module):
                 grid.set_visible(_(clave), False)
                 if clave not in sin_spd:
@@ -782,7 +799,7 @@ class MemoryPage(QScrollArea):
             "memory.field.chips", "memory.field.profiles", "memory.field.made")
 
     @staticmethod
-    def _fill(grid: InfoGrid, module: MemoryModule) -> None:
+    def _fill(grid: InfoGrid, module: MemoryModule, limite=None) -> None:
         d = render.DASH
         spd = module.spd
 
@@ -805,12 +822,17 @@ class MemoryPage(QScrollArea):
         crudo_mts = module.configured_mts or module.speed_mts
         actual = render.velocidad_de_memoria(crudo_mts)
         funcionando = f"{actual} MT/s" if actual else d
-        if module.underclocked:
+        veredicto = render.memory_module_verdict(module, limite)
+        if veredicto == "slow":
             funcionando += "   ⚠"
         # Si la BIOS escribió el otro redondeo del mismo grado, su número queda
         # aquí: es el que sale en `dmidecode` y hace falta para contrastar.
-        pista = (_("memory.tip.running").format(actual=actual, rated=rated)
-                 if module.underclocked else "")
+        if veredicto == "cpu_max":
+            pista = _("memory.tip.cpumax").format(actual=actual, rated=rated, modelo=limite[0])
+        elif veredicto == "slow":
+            pista = _("memory.tip.running").format(actual=actual, rated=rated)
+        else:
+            pista = ""
         if crudo_mts and crudo_mts != actual:
             firmware = _("memory.tip.firmware").format(mts=crudo_mts)
             pista = f"{pista}\n\n{firmware}" if pista else firmware

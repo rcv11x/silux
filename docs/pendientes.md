@@ -371,6 +371,13 @@ Lo que salió al hacerla y no entraba en ella:
   test deja de correr en el CI y se queda para la máquina de quien mide.
   Es el segundo test de medida que falla solo (el otro,
   `test_avisos.py::test_no_salta_ningun_aviso_en_reposo`, lee la máquina).
+- **El máximo oficial de memoria en AMD** (`silux/db/memory_limits.json`).
+  La tabla solo tiene Intel de sobremesa de las generaciones 10 y 11: en AMD
+  el máximo no es por modelo, depende de los módulos. La ficha del 5800X3D
+  dice DDR4-3200 con dos módulos de uno o dos rangos, 2933 con cuatro de un
+  rango y 2667 con cuatro de dos. Pide una fila con esa forma y leer los
+  rangos (SPD o SMBIOS). Las generaciones 12 a 14 de Intel tienen dos cifras
+  por tipo de memoria (DDR4 y DDR5) y caben en el formato de ahora.
 - **Los motivos de limitación de una Intel reciente** (`gt/gt0/throttle_reason_*`
   de `i915`) se leen, pero escritos con la documentación del kernel: la UHD
   630 de la oficina no los publica, y en ella «Estado» se esconde y se dice al
