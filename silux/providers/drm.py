@@ -727,7 +727,30 @@ def _cadena_pcie(dispositivo: pathlib.Path) -> list[pathlib.Path]:
 ANCHOS_PCIE = frozenset({1, 2, 4, 8, 12, 16, 32})
 
 
+def _arc_tras_su_conmutador(dispositivo: pathlib.Path) -> bool:
+    """Una gráfica de Intel con puentes encima: una Arc dedicada.
+
+    Las Arc A y B llevan un conmutador PCIe dentro, y la GPU y el puerto
+    interno de bajada publican siempre 2.5 GT/s × 1 (Intel lo documenta en
+    su artículo 000094587, de la A380 a la B580); el enlace de verdad es el
+    del lado de fuera del conmutador con la placa. Cuál de los puentes es
+    ese lado no se sabe con seguridad sin ver un volcado: en una placa con
+    el puerto en el chipset hay otro puente de Intel en medio, y el puerto
+    raíz de un Core también es de Intel. Mejor sin enlace que «PCIe 1.0 × 1».
+
+    La integrada vive en 00:02.0, colgada de la raíz y sin puentes encima.
+    """
+    nodo = dispositivo.resolve()
+    if (read_text(f"{nodo}/vendor") or "").lower() != "0x8086":
+        return False
+    if not (read_text(f"{nodo}/class") or "").startswith("0x03"):
+        return False
+    return len(_cadena_pcie(dispositivo)) > 1
+
+
 def _enlace(dispositivo: pathlib.Path, previo: Optional[PcieLink] = None) -> PcieLink:
+    if _arc_tras_su_conmutador(dispositivo):
+        return PcieLink()
     def velocidad(nodo: pathlib.Path, nombre: str) -> Optional[float]:
         crudo = read_text(f"{nodo}/{nombre}")
         if not crudo:

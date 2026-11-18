@@ -168,6 +168,12 @@ NA_APU_AMD = {
     "sensors": (("gpu.sensor.hotspot", "gpu.tile.power"), "gpu.na.apu"),
 }
 
+# Una Arc: su enlace no se lee con seguridad (`_arc_tras_su_conmutador` en
+# el proveedor), así que no hay enlace que enseñar.
+NA_ARC_ENLACE = {
+    "clocks": (("gpu.clock.link", "gpu.clock.linkmax"), "gpu.na.arc.link"),
+}
+
 # Una Intel no publica su temperatura por ningún camino. Un guion ahí se lee
 # como «no la he podido leer», y no va a poderse nunca.
 NA_SIN_TEMPERATURA = {
@@ -206,6 +212,9 @@ def no_aplica(gpu: Gpu) -> tuple[dict[str, set[str]], dict[str, str]]:
         reglas.append(NA_SIN_TEMPERATURA)
     if gpu.integrated and gpu.vendor == "AMD":
         reglas.append(NA_APU_AMD)
+    if (gpu.integrated is False and gpu.driver in ("i915", "xe")
+            and render.pcie_link(gpu.link) == render.DASH):
+        reglas.append(NA_ARC_ENLACE)
     if gpu.integrated and gpu.driver in ("i915", "xe"):
         regla = dict(NA_INTEL_INTEGRADA)
         if render.pcie_link(gpu.link) != render.DASH:

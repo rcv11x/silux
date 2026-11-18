@@ -1802,3 +1802,48 @@ class TestNoAplicaEnPantalla(unittest.TestCase):
                           memory=GpuMemory(total_bytes=16 * 1024**3, bus_bits=256)))
         self.assertFalse(seccion.memory._values[_("gpu.vram.bus")].isHidden())
         self.assertTrue(seccion.memory_pie.isHidden())
+
+
+class TestElEnlaceDeUnaArc(BancoDrm):
+    """Una Arc no dice «PCIe 1.0 × 1».
+
+    La GPU y el puerto interno de bajada de su conmutador publican 2.5 GT/s
+    × 1 en todas las Arc A y B (Intel, artículo 000094587; en el foro de
+    openSUSE, una A380 con `LnkCap 2.5GT/s x1` detrás de un puerto raíz a
+    8 GT/s × 16). Todos los puentes son de Intel, igual que el puerto raíz
+    de un Core: no hay forma segura de saber cuál es el de fuera.
+    """
+
+    def montar(self):
+        destino = self.cadena_pcie(1, [
+            ("0000:00:01.0", "16.0", 16),   # puerto raíz del procesador
+            ("0000:01:00.0", "16.0", 16),   # conmutador de la tarjeta, lado de fuera
+            ("0000:02:01.0", "2.5", 1),     # conmutador, lado de dentro
+            ("0000:03:00.0", "2.5", 1),     # la GPU
+        ])
+        _write(destino / "vendor", "0x8086")
+        _write(destino / "device", "0x56a0")
+        _write(destino / "class", "0x030000")
+        (self.root / "card1" / "device").symlink_to(destino)
+        (self.root / "i915").mkdir()
+        (destino / "driver").symlink_to(self.root / "i915")
+
+    def test_sin_enlace_antes_que_uno_falso(self):
+        self.montar()
+        gpu = self.recolectar().freeze().gpus[0]
+        self.assertNotIn("1.0", render.pcie_link(gpu.link))
+        self.assertEqual(render.pcie_link(gpu.link), render.DASH)
+
+    def test_la_pagina_lo_esconde_y_lo_dice(self):
+        from silux.ui.pages.graphics import no_aplica
+        self.montar()
+        gpu = self.recolectar().freeze().gpus[0]
+        self.assertIs(gpu.integrated, False)
+        ocultos, pies = no_aplica(gpu)
+        self.assertIn("gpu.clock.link", ocultos["clocks"])
+        self.assertIn(_("gpu.na.arc.link"), pies["clocks"])
+
+    def test_la_integrada_no_cambia(self):
+        dispositivo = self.tarjeta(0, ranura="0000:00:02.0", vendor="0x8086",
+                                   device="0x9bc8", **{"class": "0x030000"})
+        self.assertFalse(drm._arc_tras_su_conmutador(dispositivo))
