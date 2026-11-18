@@ -623,6 +623,16 @@ apartado. El orden dentro de cada apartado es el cronológico.
 
 ## Benchmark y puntuación
 
+
+- **Comprobar que una carga suelta el GIL midiendo cuánto rinde con N hilos**:
+  mide también el hardware. Con cuatro hilos lógicos en dos núcleos con SMT,
+  que es lo que da un runner de GitHub, cuatro hilos rinden como 2,4
+  núcleos, y con la máquina compartida `compresion_dura` dio ×1,76 contra un
+  umbral de ×1,8: falló tres veces en el CI sin que la carga cambiara. Lo
+  que distingue «suelta el GIL» es el tiempo de CPU sumado de los hilos
+  entre el tiempo de reloj: ×1 con el GIL atrapado (los demás esperan sin
+  gastar CPU), ×N si no, haya SMT o no. Medido en el i5-10400 con `taskset`:
+  ×3,9 en 0,6,1,7 y en 0,1,2,3, y ×1,0 con una carga en Python puro.
 - **Atar la medida de un hilo al «mejor» núcleo**: se hizo para quitar ruido
   —un hilo que salta de núcleo tira la caché— y hacía lo contrario. Medido
   alternando: atarlo cuesta un 40 % en la compresión pesada y un 11 % en la

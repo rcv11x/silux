@@ -368,17 +368,10 @@ Lo que salió al hacerla y no entraba en ella:
 
 ## De la noche del 17 al 18 de noviembre de 2026 (rama `interfaz`)
 
-- **Para la fase del benchmark: un test que mide y a veces no llega.**
-  `tests/test_benchmark.py::TestCargasNuevas::
-  test_todas_reparten_de_verdad_entre_hilos` pide que cada carga rinda más
-  de ×1.8 con varios hilos que con uno. En el CI, en el trabajo de Python
-  3.10, `compresion_dura` dio ×1.76 (run 44176463759); relanzado, pasó. No
-  es de ninguna rama: es ruido del runner contra un umbral fijo. El umbral
-  no se ha tocado, por decisión del autor. Lo que hay que decidir en esa
-  fase: si el umbral baja, si la medida se repite antes de fallar, o si ese
-  test deja de correr en el CI y se queda para la máquina de quien mide.
-  Es el segundo test de medida que falla solo (el otro,
-  `test_avisos.py::test_no_salta_ningun_aviso_en_reposo`, lee la máquina).
+- **`test_avisos.py::test_no_salta_ningun_aviso_en_reposo`** lee la máquina
+  y falla a veces con la suite en paralelo. (El otro test de medida que
+  fallaba solo, el del reparto entre hilos del benchmark, se arregló el 18:
+  ahora mide tiempo de CPU y no rendimiento; ver `docs/lecciones.md`.)
 - **El máximo oficial de memoria en AMD** (`silux/db/memory_limits.json`).
   La tabla solo tiene Intel de sobremesa de las generaciones 10 y 11: en AMD
   el máximo no es por modelo, depende de los módulos. La ficha del 5800X3D

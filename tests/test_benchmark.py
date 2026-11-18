@@ -344,46 +344,78 @@ class TestCargasNuevas(unittest.TestCase):
         self.assertNotIn("sha256", fuente)
         self.assertNotIn("sha_256", fuente)
 
+    @staticmethod
+    def _paralelismo(trabajo, hilos: int, ventana: float = 0.4) -> float:
+        """Cuántos hilos estuvieron de verdad en la CPU a la vez, de media.
+
+        La suma del tiempo de CPU de cada hilo entre el tiempo de reloj. Una
+        carga que no suelta el GIL da ×1 por muchos hilos que se lancen: los
+        demás esperan el candado sin gastar CPU. Una que lo suelta, ×N.
+
+        No mide cuánto trabajo sale, y a propósito: eso depende del hardware.
+        Con cuatro hilos lógicos en dos núcleos con SMT —un runner de GitHub—
+        cuatro hilos rinden como 2,4 núcleos (en el i5-10400, con `taskset`
+        a 0,6,1,7: ×2,3–2,5 contra ×3,9 en cuatro núcleos), y con la máquina
+        compartida salía ×1,76: el test fallaba por el hardware del runner,
+        no por la carga. El tiempo de CPU daba ×3,9 en los dos casos.
+        """
+        import threading
+        import time
+
+        cpu = [0.0] * hilos
+        fin = time.perf_counter() + ventana
+
+        def bucle(i: int) -> None:
+            antes = time.thread_time()
+            while time.perf_counter() < fin:
+                trabajo()
+            cpu[i] = time.thread_time() - antes
+
+        inicio = time.perf_counter()
+        obreros = [threading.Thread(target=bucle, args=(i,)) for i in range(hilos)]
+        for o in obreros:
+            o.start()
+        for o in obreros:
+            o.join()
+        return sum(cpu) / (time.perf_counter() - inicio)
+
+    @staticmethod
+    def _hilos() -> int:
+        import os
+
+        return len(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") \
+            else (os.cpu_count() or 1)
+
     def test_todas_reparten_de_verdad_entre_hilos(self):
         """La condición para entrar: si no suelta el GIL, no mide la CPU.
 
         Se comprueba de verdad, ejecutándolas: una carga que escale ×1 con
         dieciséis hilos estaría midiendo el candado del intérprete y no el
-        procesador, y eso ya pasó con una candidata de coma flotante.
+        procesador, y eso ya pasó con una candidata de coma flotante. El
+        umbral queda a medio camino entre el ×1 de un GIL atrapado y el ×N
+        de un reparto de verdad (×3,9 con cuatro hilos).
         """
-        import os
-        import threading
-        import time
+        hilos = self._hilos()
+        if hilos < 4:
+            self.skipTest("hacen falta varios núcleos para ver el reparto")
+        for carga in benchmark.CARGAS:
+            with self.subTest(carga=carga.key):
+                paralelo = self._paralelismo(carga.work, hilos)
+                self.assertGreater(paralelo, 1.8,
+                                   f"{carga.key} no reparte: ×{paralelo:.2f} hilos en la CPU")
 
-        hilos = os.cpu_count() or 1
+    def test_la_medida_caza_una_carga_que_no_suelta_el_gil(self):
+        """El control: Python puro no suelta el GIL y tiene que dar ×1."""
+        hilos = self._hilos()
         if hilos < 4:
             self.skipTest("hacen falta varios núcleos para ver el reparto")
 
-        for carga in benchmark.CARGAS:
-            with self.subTest(carga=carga.key):
-                def cuantas(n: int) -> int:
-                    total = [0] * n
-                    fin = time.perf_counter() + 0.4
+        def puro() -> None:
+            x = 0
+            for i in range(200_000):
+                x += i * i
 
-                    def bucle(i: int) -> None:
-                        veces = 0
-                        while time.perf_counter() < fin:
-                            carga.work()
-                            veces += 1
-                        total[i] = veces
-
-                    obreros = [threading.Thread(target=bucle, args=(i,))
-                               for i in range(n)]
-                    for o in obreros:
-                        o.start()
-                    for o in obreros:
-                        o.join()
-                    return sum(total)
-
-                uno = max(1, cuantas(1))
-                escala = cuantas(hilos) / uno
-                self.assertGreater(escala, 1.8,
-                                   f"{carga.key} no reparte: ×{escala:.1f}")
+        self.assertLess(self._paralelismo(puro, hilos), 1.3)
 
     def test_cada_una_explica_qué_mide(self):
         for carga in benchmark.CARGAS:
