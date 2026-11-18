@@ -310,6 +310,8 @@ class GpuSection(QWidget):
         self.now.locked_clicked.connect(self.elevation_requested)
         self.now_card.body.addWidget(self.now)
         self.now_pie = self._pie(self.now_card)
+        # El tope con que se reservó el ancho de cada cifra (`_reservar`).
+        self._reservas: dict[str, float] = {}
         layout.addWidget(self.now_card)
         self.elevation_buttons: list = []
 
@@ -828,6 +830,9 @@ class GpuSection(QWidget):
         permisos, no tiene nada que poner aquí."""
         de = _("gpu.now.of")
         memoria = gpu.memory
+        self._reservar(_("gpu.now.vram"), memoria.total_bytes, render.size)
+        self._reservar(_("gpu.now.power"), gpu.power_cap_w, render.watts)
+        self._reservar(_("gpu.now.bus"), memoria.bandwidth_bytes, render.bandwidth)
         if memoria.total_bytes and memoria.used_bytes is not None:
             self.now.set(_("gpu.now.vram"), memoria.used_bytes / memoria.total_bytes,
                          de.format(actual=render.size(memoria.used_bytes),
@@ -862,6 +867,19 @@ class GpuSection(QWidget):
         # Sin barras pero con algo que decir de las que faltan, la tarjeta se
         # queda: es donde se busca el uso, y sin ella desaparecería en silencio.
         self.now_card.setVisible(bool(self.now.visible_rows()) or bool(pie))
+
+    def _reservar(self, nombre: str, tope, formato) -> None:
+        """El ancho de lo más largo que puede decir la cifra de esa barra
+        («1023.9 MB de 15.9 GB»), para que el fondo de las barras no cambie
+        de largo con los números. Se mide una vez por tope."""
+        if not tope:
+            return
+        if self._reservas.get(nombre) == tope:
+            return
+        self._reservas[nombre] = tope
+        de, total = _("gpu.now.of"), formato(tope)
+        self.now.reserve(nombre, [de.format(actual=t, total=total)
+                                  for t in render.possible_texts(formato, tope)])
 
     def _apply_engine_bars(self, gpu: Gpu) -> None:
         """Una barra por motor, debajo de las de memoria, consumo y bus.

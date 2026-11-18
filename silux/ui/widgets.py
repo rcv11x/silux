@@ -2175,7 +2175,7 @@ class LevelList(QWidget):
             etiqueta.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         # El hueco del «100 %» reservado: sin él la columna bailaba al pasar
         # de una cifra a dos.
-        porcentaje.setMinimumWidth(porcentaje.fontMetrics().horizontalAdvance("100 %"))
+        porcentaje.setMinimumWidth(self._ancho_de(porcentaje, "100 %"))
         for columna, widget in enumerate((nombre, barra, cifra, porcentaje)):
             self._grid.addWidget(widget, fila, columna)
         self._rows[name] = (nombre, barra, cifra, porcentaje)
@@ -2205,6 +2205,31 @@ class LevelList(QWidget):
             porcentaje.setText(pct)
         if nombre.toolTip() != tooltip:
             nombre.setToolTip(tooltip)
+
+    def reserve(self, name: str, texts: Iterable[str]) -> None:
+        """Reserva para la cifra de ese renglón el ancho del más largo de
+        `texts`, lo más largo que puede llegar a decir.
+
+        La columna de las cifras es una para todos los renglones y mide lo
+        que mida su texto más ancho: sin reserva, «97 GB/s de 644 GB/s»
+        frente a «116 GB/s de 644 GB/s» cambiaba su ancho, y con él el largo
+        del fondo de todas las barras. Las cifras son tabulares
+        (`value_font`), así que el texto más largo es el más ancho.
+        """
+        fila = self._rows.get(name)
+        if fila is None:
+            return
+        cifra = fila[2]
+        ancho = max((self._ancho_de(cifra, t) for t in texts), default=0)
+        if cifra.minimumWidth() != ancho:
+            cifra.setMinimumWidth(ancho)
+
+    @staticmethod
+    def _ancho_de(etiqueta: QLabel, texto: str) -> int:
+        """Lo que pide la etiqueta para ese texto, medido como lo mide ella:
+        `horizontalAdvance` se queda a veces un píxel corto, y ese píxel
+        movía la columna."""
+        return etiqueta.fontMetrics().size(0, texto).width()
 
     def has(self, name: str) -> bool:
         return name in self._rows

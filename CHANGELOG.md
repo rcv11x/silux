@@ -197,6 +197,9 @@ publica se dice con la versión que lo trae.
 - Arreglado: una Arc con el driver `i915` junto a una integrada enseñaba el
   uso de la integrada. Con `xe`, decía que no publica su temperatura, y la
   publica.
+- Arreglado: en «Ahora mismo», el fondo de las barras cambiaba de largo
+  según las cifras de la derecha. Ahora cada cifra tiene reservado el ancho
+  de lo más largo que puede decir, y nada se mueve.
 - Arreglado: el uso de una gráfica AMD saltaba de un segundo a otro (de 85 %
   a 42 % jugando a lo mismo) porque era una lectura suelta. Ahora es la
   media del intervalo, como la que da MangoHud.

@@ -1024,6 +1024,14 @@ apartado. El orden dentro de cada apartado es el cronológico.
   Una curva sí va con la fase, porque lo que se desliza es el tiempo; una
   barra es un valor y va por el reloj: 180 ms frenando al final, desde
   donde se ve (`Deslizador`). El 90 % del camino pasó de 990 ms a 89.
+- **Dejar que una columna de cifras mida lo que dice ahora**: en «Ahora
+  mismo», la columna de «4.6 GB de 15.9 GB» es una para todos los renglones,
+  y al pasar el bus de «97 GB/s» a «116 GB/s» el fondo de todas las barras
+  encogía 8 px. Cada renglón reserva lo más largo que puede llegar a decir
+  (`render.possible_texts`: justo antes de cada cambio de unidad, «1023.9
+  MB»). Y se mide como mide la etiqueta, con `fontMetrics().size()`:
+  `horizontalAdvance` se queda a veces un píxel corto, y ese píxel también
+  movía la columna.
 
 <a id="idioma"></a>
 

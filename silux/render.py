@@ -572,6 +572,30 @@ def gpu_memory_summary(memory: GpuMemory) -> str:
             + f"   ({memory.used_percent:.0f} %)")
 
 
+def possible_texts(formatter, top: float) -> list[str]:
+    """Lo que `formatter` puede escribir para un valor entre 0 y `top`.
+
+    Para reservar el ancho del más largo y que la columna no baile al
+    cambiar las cifras. Lo más largo sale justo antes de un cambio de unidad
+    o de un dígito más («1023.9 MB», «999.9 W»), así que se prueba ahí en
+    base 2 y en base 10, y un poco por encima del tope: un consumo puede
+    pasar un instante del suyo.
+    """
+    techo = float(top) * 1.1
+    pruebas = {0.0, float(top), techo}
+    for base in (2, 10):
+        potencia = 1.0
+        while potencia <= techo:
+            pruebas.add(potencia * (1 - 1e-4))
+            potencia *= base
+    textos = []
+    for valor in sorted(pruebas):
+        texto = formatter(valor)
+        if texto not in textos:
+            textos.append(texto)
+    return textos
+
+
 def bandwidth(value: Optional[int]) -> str:
     """El ancho de banda de la memoria, en las unidades de las fichas técnicas."""
     if _none(value):
