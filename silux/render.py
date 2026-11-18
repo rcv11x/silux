@@ -249,6 +249,16 @@ def power_headline(power: Power) -> str:
 _TONOS_DE_REPOSO = ("accent/0.6", "accent/0.4", "accent/0.25", "accent/0.15", "line")
 
 
+def idle_name(nombre: str) -> str:
+    """«C2», no «C2_ACPI».
+
+    `intel_idle` pone «_ACPI» detrás de los estados que toma de la tabla del
+    firmware cuando no tiene una propia para ese procesador (un Comet Lake-S,
+    por ejemplo). Dice de dónde salió el estado, no qué estado es.
+    """
+    return nombre[:-len("_ACPI")] if nombre.endswith("_ACPI") else nombre
+
+
 def idle_segments(estados) -> list[tuple[str, float, str]]:
     """Los tramos de la barra de reposo: lo activo y cada estado, sobre 100."""
     dormido = sum(e.percent for e in estados)
@@ -258,7 +268,7 @@ def idle_segments(estados) -> list[tuple[str, float, str]]:
         # El más hondo siempre con el tono del fondo.
         tono = _TONOS_DE_REPOSO[-1] if i == len(con_tiempo) - 1 and len(con_tiempo) > 1 \
             else _TONOS_DE_REPOSO[min(i, len(_TONOS_DE_REPOSO) - 2)]
-        tramos.append((estado.name, estado.percent, tono))
+        tramos.append((idle_name(estado.name), estado.percent, tono))
     return tramos
 
 
@@ -267,7 +277,7 @@ def idle_deepest(estados) -> Optional[str]:
     if not estados:
         return None
     hondo = estados[-1]
-    return _("cpu.idle.deepest").format(nombre=hondo.name, bajo=f"{hondo.low:.0f}",
+    return _("cpu.idle.deepest").format(nombre=idle_name(hondo.name), bajo=f"{hondo.low:.0f}",
                                         alto=f"{hondo.high:.0f}")
 
 

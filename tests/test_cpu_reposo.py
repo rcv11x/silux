@@ -98,6 +98,23 @@ class TestLaResidencia(unittest.TestCase):
                          "C2 es el reposo más hondo de este procesador: entre el 45 % y el "
                          "73 % del tiempo, según el hilo.")
 
+    def test_sin_la_etiqueta_que_el_kernel_pone_a_lo_que_saca_del_firmware(self):
+        """Así los publica el i5-10400 de la oficina (kernel 7.3).
+
+        `intel_idle` no tiene tabla propia para Comet Lake-S y toma los
+        estados de la del firmware (ACPI `_CST`), y a esos les pone
+        «_ACPI» detrás. En la barra salía «C2_ACPI».
+        """
+        estados = (IdleState("POLL", "CPUIDLE CORE POLL IDLE", 0.0, 0.0, 0.0),
+                   IdleState("C1_ACPI", "ACPI FFH MWAIT 0x0", 3.0, 1.0, 5.0),
+                   IdleState("C2_ACPI", "ACPI FFH MWAIT 0x33", 94.0, 66.0, 100.0))
+        self.assertEqual([n for n, _v, _t in render.idle_segments(estados)],
+                         [_("cpu.idle.active"), "C1", "C2"])
+        self.assertTrue(render.idle_deepest(estados).startswith("C2 es el reposo"))
+        # Lo que no es esa etiqueta se queda como está.
+        self.assertEqual(render.idle_name("C1E"), "C1E")
+        self.assertEqual(render.idle_name("C6"), "C6")
+
 
 @unittest.skipIf(QApplication is None, "sin PySide6")
 class TestEnLaPagina(unittest.TestCase):
