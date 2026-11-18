@@ -3,9 +3,108 @@
 Para retomar sin el contexto de la sesión anterior. Se borra cuando lo de
 aquí esté hecho o pase a `docs/pendientes.md`.
 
-Última sesión: 18 de noviembre de 2026 por la tarde (hasta las 18:00), en el
+Última sesión: 18 de noviembre de 2026 por la tarde (hasta pasadas las 18:00), en el
 i5-10400 de la oficina (Fedora 44, KDE Plasma 6.8 en Wayland). La anterior, la madrugada del
 18 en el 5800X3D de casa (CachyOS).
+
+## Para esta noche en casa (5800X3D), tras el cierre de la oficina del 18
+
+**El borrador de la 0.4 sigue como estaba.** Es de `c01944d`, con las notas
+de entonces y título «v0.4.0». `master` también está en `c01944d`.
+`oficina` va muy por delante y está empujada, con su CI en verde (el número,
+en `gh run list --branch oficina --limit 1`). **No se ha pasado nada a
+`master`**: se hará cuando la 0.4 esté lista para publicar, con los pasos de
+«3. Publicar» más abajo.
+
+### Qué probar en el 5800X3D (desde `oficina`: `uv run python -m silux.ui.app`)
+
+**La RX 9070 XT**, que no debe haber cambiado para mal:
+- El subtítulo con «PCIe 4.0 × 16».
+- Consumo, punto caliente, memoria, VR y ventilador.
+- «Ahora mismo» con VRAM, consumo y bus, y **sin** barras de motores: no es
+  integrada.
+- Ninguna nota de «en reposo»: es una dedicada de sobremesa, y su
+  `power/runtime_status` debería decir `active`. Si dijera `suspended` con
+  la tarjeta dibujando, el arreglo de la dedicada dormida estaría mal: mandar
+  `cat /sys/bus/pci/devices/*/power/runtime_status`.
+
+**Movimiento fluido** (Ajustes › Apariencia, ahora se llama así):
+- Encendido, las gráficas y las barras se deslizan: las de «Ahora mismo»,
+  la memoria en Inicio y en Memoria, los discos y el uso de cada hilo en
+  CPU.
+- Las cifras saltan al dato y no se animan.
+- La barra espaciadora lo congela todo.
+- Mirar el consumo con `top` (silux encendido y apagado). Aquí, sin
+  pantalla: en Gráficos, 6,6 % de un núcleo apagado y 9,8 % encendido; en
+  Inicio, 5,9 % y 16,5 %.
+
+**Permisos:**
+- «Qué pasa al dar permisos» con los permisos ya dados: sin «Dar permisos
+  esta vez», con la frase «Los permisos ya están concedidos en esta
+  sesión».
+- Memoria con permisos, abierta después de darlos: tiene que verse bien,
+  como en la oficina.
+- El ayudante permanente de esa máquina sigue al día: no ha cambiado.
+
+### Steam Deck: el primer volcado real de una APU
+
+En modo escritorio, sin instalar nada. SteamOS trae `python3` (3.11 o
+más) y `curl`; la herramienta solo usa la biblioteca estándar.
+
+1. Botón de encendido › «Cambiar a escritorio».
+2. Abrir **Konsole** (menú › Sistema).
+3. Bajar el código de la rama `oficina` y entrar:
+
+   ```bash
+   cd ~
+   curl -L -o silux.zip https://github.com/rcv11x/silux/archive/refs/heads/oficina.zip
+   python3 -m zipfile -e silux.zip .
+   cd silux-oficina
+   python3 -V          # tiene que ser 3.10 o más
+   ```
+
+4. Que la APU esté despierta y haciendo algo: un video de YouTube en el
+   navegador, en otra ventana. Volcar:
+
+   ```bash
+   python3 tools/volcar_equipo.py steamdeck
+   python3 tools/comprobar_privacidad.py
+   ```
+
+   La primera orden ya revisa la privacidad. Si encuentra algo de la Deck,
+   no escribe nada y dice qué: entonces se arregla la herramienta, no se
+   fuerza.
+5. Empaquetarlo y pasarlo al PC (por un USB, KDE Connect o subiéndolo):
+
+   ```bash
+   tar czf ~/steamdeck-volcado.tar.gz -C tests/fixtures/equipos steamdeck
+   ```
+
+6. En el PC, antes de commitear nada, se mira el contenido. Se quiere ver
+   sobre todo:
+   - `gpu_metrics`: la Deck (Van Gogh) da la versión 2.2, que silux
+     todavía no lee (fallo 14 de la propuesta de gráficas).
+   - El hwmon de amdgpu.
+   - `vcn_busy_percent`, si el kernel de SteamOS lo tiene.
+   - El ioctl con FUSION.
+
+   Después, la suite con el volcado nuevo.
+
+Si el `curl` falla por la red de la Deck, el zip se baja desde el navegador
+(«Code › Download ZIP» en la rama `oficina`) a `~/Descargas`, y se sigue
+desde el paso 3 con `cd ~/Descargas`.
+
+## Cierre de la oficina del 18 (17:20-18:00): lo que se hizo
+
+| Commit | Qué |
+|---|---|
+| `bbffa88` | 4. Con los permisos ya concedidos, el diálogo no ofrece «Dar permisos esta vez» |
+| `f8e8e42` | 2. «Movimiento fluido» desliza también las barras; las cifras no se animan; medido |
+| `552934d` | 3. `docs/propuesta-mensaje-de-polkit.md`: el texto de la ventana de la contraseña, sin aplicar |
+| `be52fae` | 5. Los volcados graban NVML, `xe`, los puentes PCIe y `event_source` |
+| `9b63a6e` | Un enlace que no se deja leer ya no tumba el volcado con Python 3.10 |
+
+El autor comprobó en una ventana de verdad que lo de Memoria (campos montados) y Gráficos (sin insignias) era solo de la captura. Las barras de motores de la UHD 630 se mueven con un video de YouTube.
 
 ## Tarde del 18 (16:00-18:00), en la oficina: lo que miente, arreglado
 
