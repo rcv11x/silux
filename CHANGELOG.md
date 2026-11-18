@@ -307,6 +307,10 @@ publica se dice con la versión que lo trae.
   cada dato salga una vez. Lo que se consulta una vez va plegado y a un clic:
   los identificadores de la gráfica, la identificación CPUID, el firmware y
   los sectores de cada disco, el desglose del uso de memoria.
+- Nuevo: con «Movimiento fluido» (Ajustes › Apariencia), también las
+  barras se mueven en vez de saltar: la de cada motor, la memoria, los
+  discos, el uso de cada hilo. Llegan a su dato en menos de dos décimas de
+  segundo desde donde estén, y la cifra de al lado cambia en el acto.
 - Nuevo: lo que tiene arreglo (un permiso, un módulo por cargar) y sus
   candados van en azul; el ámbar queda para lo seleccionado y lo que se
   pulsa.

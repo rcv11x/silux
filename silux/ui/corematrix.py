@@ -75,18 +75,27 @@ class CoreMatrix(QWidget):
         changed = len(cores) != len(self._cores)
         self._cores = list(cores)
         if changed:
-            self._usos = [Deslizador(c.get("usage") or 0.0) for c in self._cores]
+            # Uno por hilo, y solo cuando cambia cuántos hay: en cada muestra
+            # se reutilizan.
+            self._usos = [Deslizador(c.get("usage")) for c in self._cores]
         else:
+            a_la_vista = self.isVisible()
             for deslizador, core in zip(self._usos, self._cores):
-                if core.get("usage") is not None and core["usage"] != deslizador.destino():
-                    deslizador.fijar(core["usage"])
+                if core.get("usage") is not None:
+                    deslizador.fijar(core["usage"], animar=a_la_vista)
         if changed:
             self.setFixedHeight(self.sizeHint().height())
         self.update()
 
-    def advance(self, phase: float) -> None:
-        if any([d.avanzar(phase) for d in self._usos]):
+    def advance(self, phase: float) -> bool:
+        """Un fotograma; dice si alguna barra sigue moviéndose (`LevelBar.advance`)."""
+        if phase >= 1.0 and any(d.moviendose() for d in self._usos):
+            for uso in self._usos:
+                uso.terminar()
             self.update()
+        elif any([d.avanzar() for d in self._usos]):
+            self.update()
+        return any(d.moviendose() for d in self._usos)
 
     def _columns(self) -> int:
         """Cuántas celdas por fila, repartidas para no dejar un renglón cojo.

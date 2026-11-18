@@ -99,6 +99,17 @@ SECTIONS = (
 # Por debajo de este ancho la barra lateral estorba más de lo que ayuda.
 NAV_HIDE_BELOW = 620
 
+# Cada cuánto se mueven las gráficas de líneas con «Movimiento fluido». Una
+# curva avanza unos pocos píxeles por segundo, y a treinta fotogramas ya no
+# se ve el paso.
+LATIDO_GRAFICAS_MS = 33
+# Lo más deprisa que se anima una barra, aunque la pantalla dé más. Una barra
+# recorre en `Deslizador.DURACION` lo que una curva en todo el intervalo, y a
+# treinta por segundo su primer fotograma haría casi la mitad del camino de
+# golpe: se vería el salto. Por encima de esto el ojo no lo nota y el
+# procesador sí.
+FOTOGRAMA_MINIMO_MS = 7
+
 # El del icono del tema, si faltara el del paquete. El de la ventana depende
 # de cómo se ejecute: ver `desktop.current_launcher`.
 DESKTOP_ID = "silux"
@@ -199,9 +210,13 @@ class MainWindow(QMainWindow):
         # ahí el tirón al llegar.
         self._intervalo_real = float(prefs.interval_ms)
         self._animables: list = []
+        # Un solo temporizador con dos ritmos: el de las gráficas, y el de la
+        # pantalla mientras alguna barra va hacia su dato nuevo, que son los
+        # `Deslizador.DURACION` segundos después de cada muestra.
         self._latido = QTimer(self)
-        self._latido.setInterval(33)                  # unos 30 por segundo
+        self._latido.setInterval(LATIDO_GRAFICAS_MS)
         self._latido.timeout.connect(self._avanzar_graficas)
+        self._fotograma_ms = LATIDO_GRAFICAS_MS
         self._aplicar_fluidez()
 
         atajo = QShortcut(QKeySequence(Qt.Key.Key_Space), self)
@@ -698,8 +713,27 @@ class MainWindow(QMainWindow):
         # La lista se hace una vez por muestreo (`_on_sample`), no a cada
         # latido: buscar entre todos los widgets de la ventana treinta veces
         # por segundo costaba más que pintar.
+        barras_en_marcha = False
         for grafica in self._animables:
-            grafica.advance(fase)
+            if grafica.advance(fase):
+                barras_en_marcha = True
+        self._ritmo(barras_en_marcha)
+
+    def _ritmo(self, barras_en_marcha: bool) -> None:
+        """El de la pantalla mientras una barra se mueve; si no, el de las
+        gráficas, que piden mucho menos."""
+        intervalo = self._fotograma_ms if barras_en_marcha else LATIDO_GRAFICAS_MS
+        if self._latido.interval() != intervalo:
+            self._latido.setInterval(intervalo)
+
+    def _medir_fotograma(self) -> int:
+        """Lo que dura un fotograma de la pantalla donde está la ventana:
+        animar más deprisa de lo que la pantalla enseña es dibujar para nadie."""
+        pantalla = self.screen()
+        hercios = pantalla.refreshRate() if pantalla is not None else 0.0
+        if not hercios or hercios <= 1.0:
+            hercios = 60.0
+        return max(FOTOGRAMA_MINIMO_MS, round(1000.0 / hercios))
 
     def alternar_congelado(self) -> None:
         """Para lo que se pinta, para poder leer un pico antes de que se vaya.
@@ -739,6 +773,12 @@ class MainWindow(QMainWindow):
         self._distribute(snapshot)
         self._animables = (self._graficas(solo_visibles=True)
                            if self.prefs.fluid_charts else [])
+        if self._latido.isActive():
+            # Las barras acaban de recibir su dato: los fotogramas siguientes,
+            # al ritmo de la pantalla, que puede haber cambiado si la ventana
+            # pasó a otra.
+            self._fotograma_ms = self._medir_fotograma()
+            self._ritmo(True)
 
         # La pista del atajo va aquí porque es donde se mira sin buscar. Un
         # atajo que no se ve en ningún sitio no existe para quien no lo sabe.

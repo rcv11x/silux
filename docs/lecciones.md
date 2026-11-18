@@ -1005,6 +1005,15 @@ apartado. El orden dentro de cada apartado es el cronológico.
   crear las tarjetas y enseñarlas es lo mismo. Lo que se rompe es la
   página que ya está abierta cuando llega el dato, y eso solo lo ve un test
   que le da dos fotos seguidas (`tests/test_al_momento.py`).
+- **Animar una barra con la fase del muestreo**, la que mueve las gráficas
+  de 0 a 1 durante el intervalo: la barra llegaba a su dato justo cuando
+  venía el siguiente. Con un video en la RX 9070 XT, la cifra decía 38 % y
+  la barra se arrastraba un segundo entero hasta ahí, siempre por detrás. Y
+  como solo se avanzaban las barras a la vista, la de una página cerrada se
+  quedaba en el cero con que nació, y al abrir la página subía desde ahí.
+  Una curva sí va con la fase, porque lo que se desliza es el tiempo; una
+  barra es un valor y va por el reloj: 180 ms frenando al final, desde
+  donde se ve (`Deslizador`). El 90 % del camino pasó de 990 ms a 89.
 
 <a id="idioma"></a>
 

@@ -1,106 +1,281 @@
-"""Con «Movimiento fluido», las barras se deslizan; las cifras, no.
+"""Con «Movimiento fluido», las barras llegan a su dato en un momento; las
+cifras, en el acto.
 
-Cada barra va del largo que se ve al del dato nuevo durante el intervalo,
-movida por el mismo temporizador que las gráficas. La cifra de al lado salta
-al dato real. Apagado, la barra salta también. Con la barra espaciadora se
-congela todo: el temporizador se para.
+Cada barra sale del largo que se ve ahora y llega al dato nuevo en
+`Deslizador.DURACION` (entre 150 y 200 ms), frenando al final. Un dato que
+llega a media animación sigue desde donde esté la barra. El primer dato, y el
+de una barra que no está a la vista, se ponen sin animar. La cifra de al lado
+salta al dato real. Apagado, la barra salta también. Con la barra espaciadora
+se congela todo: el temporizador se para.
+
+El tiempo es un reloj de mentira que el test adelanta a mano
+(`Deslizador.reloj`): con el de verdad, el resultado dependería de lo
+cargada que esté la máquina.
 """
 
+import dataclasses
 import unittest
 
 from tests import qt
+
+
+class Reloj:
+    """Un reloj que solo avanza cuando se le dice."""
+
+    def __init__(self):
+        self.ahora = 1000.0
+
+    def __call__(self):
+        return self.ahora
+
+    def pasar(self, segundos):
+        self.ahora += segundos
+
+
+def con_reloj(test):
+    """Pone el reloj de mentira y el ajuste encendido, y los deja como
+    estaban al acabar."""
+    from silux.ui.widgets import Deslizador
+    reloj = Reloj()
+    test.addCleanup(setattr, Deslizador, "reloj", Deslizador.__dict__["reloj"])
+    test.addCleanup(setattr, Deslizador, "fluido", Deslizador.fluido)
+    Deslizador.reloj = staticmethod(reloj)
+    Deslizador.fluido = True
+    return reloj
 
 
 class TestElDeslizador(unittest.TestCase):
     def setUp(self):
         from silux.ui.widgets import Deslizador
         self.D = Deslizador
-        self.addCleanup(setattr, Deslizador, "fluido", Deslizador.fluido)
+        self.reloj = con_reloj(self)
+
+    def test_dura_lo_que_un_parpadeo(self):
+        self.assertGreaterEqual(self.D.DURACION, 0.15)
+        self.assertLessEqual(self.D.DURACION, 0.20)
 
     def test_apagado_salta(self):
         self.D.fluido = False
         d = self.D(0.2)
         d.fijar(0.8)
         self.assertAlmostEqual(d.valor(), 0.8)
+        self.assertFalse(d.moviendose())
 
-    def test_encendido_se_desliza_durante_el_intervalo(self):
-        self.D.fluido = True
+    def test_sale_de_donde_se_ve_y_no_de_cero(self):
         d = self.D(0.2)
         d.fijar(0.8)
         self.assertAlmostEqual(d.valor(), 0.2)
-        self.assertTrue(d.avanzar(0.5))
-        self.assertAlmostEqual(d.valor(), 0.5)
-        d.avanzar(1.0)
-        self.assertAlmostEqual(d.valor(), 0.8)
 
-    def test_un_dato_a_media_animacion_sale_de_donde_se_ve(self):
-        self.D.fluido = True
+    def test_frena_al_final(self):
+        """En la primera mitad del tiempo hace mucho más de la mitad del camino."""
         d = self.D(0.0)
         d.fijar(1.0)
-        d.avanzar(0.5)
+        self.reloj.pasar(self.D.DURACION / 2)
+        self.assertGreater(d.valor(), 0.8)
+        self.assertLess(d.valor(), 1.0)
+
+    def test_llega_y_se_para(self):
+        d = self.D(0.2)
+        d.fijar(0.8)
+        self.assertTrue(d.avanzar())
+        self.reloj.pasar(self.D.DURACION)
+        self.assertAlmostEqual(d.valor(), 0.8)
+        # Un último fotograma para pintarla en su sitio, y quieta.
+        self.assertTrue(d.avanzar())
+        self.assertFalse(d.moviendose())
+        self.assertFalse(d.avanzar())
+
+    def test_un_dato_a_media_animacion_sigue_desde_donde_esta(self):
+        d = self.D(0.0)
+        d.fijar(1.0)
+        self.reloj.pasar(self.D.DURACION / 3)
+        a_medias = d.valor()
+        self.assertTrue(0.0 < a_medias < 1.0)
         d.fijar(0.0)
-        self.assertAlmostEqual(d.valor(), 0.5)
+        self.assertAlmostEqual(d.valor(), a_medias)
+        self.reloj.pasar(self.D.DURACION)
+        self.assertAlmostEqual(d.valor(), 0.0)
+
+    def test_el_primer_dato_no_se_anima(self):
+        d = self.D()
+        d.fijar(0.6)
+        self.assertAlmostEqual(d.valor(), 0.6)
+        self.assertFalse(d.moviendose())
+
+    def test_fuera_de_la_vista_no_se_anima(self):
+        d = self.D(0.2)
+        d.fijar(0.6, animar=False)
+        self.assertAlmostEqual(d.valor(), 0.6)
+
+    def test_el_mismo_dato_no_reinicia_nada(self):
+        d = self.D(0.2)
+        d.fijar(0.8)
+        self.reloj.pasar(self.D.DURACION / 3)
+        antes = d.valor()
+        self.assertFalse(d.fijar(0.8))
+        self.assertAlmostEqual(d.valor(), antes)
 
 
 class TestLasBarrasDeVerdad(unittest.TestCase):
     def setUp(self):
         from silux.ui import theme
-        from silux.ui.widgets import Deslizador
         self.app = qt.app()
         self.paleta = theme.palette_for(self.app, "dark")
-        self.addCleanup(setattr, Deslizador, "fluido", Deslizador.fluido)
-        Deslizador.fluido = True
+        self.reloj = con_reloj(self)
 
-    def test_la_cifra_salta_y_la_barra_se_desliza(self):
-        from silux.ui.widgets import LevelList
-        lista = LevelList(self.paleta)
-        self.addCleanup(lista.deleteLater)
-        lista.add("Render")
+    def a_la_vista(self, widget):
+        self.addCleanup(widget.deleteLater)
+        widget.resize(400, 120)
+        widget.show()
+        self.app.processEvents()
+        return widget
+
+    def test_la_cifra_salta_y_la_barra_sale_de_donde_esta(self):
+        from silux.ui.widgets import Deslizador
+        lista = self.a_la_vista(lista_con(self.paleta, "Render"))
         lista.set("Render", 0.2)
-        lista._rows["Render"][1].advance(1.0)
-        lista.set("Render", 0.8)
         barra = lista._rows["Render"][1]
+        self.assertAlmostEqual(barra.shown_fraction(), 0.2, msg="el primer dato, sin animar")
+        lista.set("Render", 0.8)
         self.assertEqual(lista.text_of("Render"), "80 %")
         self.assertAlmostEqual(barra.fraction(), 0.8)
         self.assertAlmostEqual(barra.shown_fraction(), 0.2)
-        barra.advance(0.5)
-        self.assertAlmostEqual(barra.shown_fraction(), 0.5)
+        self.reloj.pasar(Deslizador.DURACION)
+        barra.advance(0.2)
+        self.assertFalse(barra.advance(0.2), "llegó: ya no pide fotogramas")
+        self.assertAlmostEqual(barra.shown_fraction(), 0.8)
+
+    def test_un_renglon_que_vuelve_no_se_desliza_desde_lo_que_ya_no_se_veia(self):
+        lista = self.a_la_vista(lista_con(self.paleta, "Consumo"))
+        lista.set("Consumo", 0.7)
+        lista.set("Consumo", None)
+        lista.set("Consumo", 0.1)
+        self.assertAlmostEqual(lista._rows["Consumo"][1].shown_fraction(), 0.1)
 
     def test_la_de_memoria_tambien(self):
         from silux.ui.widgets import StackedBar
-        barra = StackedBar(self.paleta)
-        self.addCleanup(barra.deleteLater)
+        barra = self.a_la_vista(StackedBar(self.paleta))
         barra.set_segments([("Aplicaciones", 2.0, "accent")], 10.0)
         barra.set_segments([("Aplicaciones", 6.0, "accent")], 10.0)
         self.assertAlmostEqual(barra._largos["Aplicaciones"].valor(), 0.2)
-        barra.advance(0.5)
-        self.assertAlmostEqual(barra._largos["Aplicaciones"].valor(), 0.4)
+        self.assertTrue(barra.advance(0.1))
+        self.reloj.pasar(1.0)
+        barra.advance(0.2)
+        self.assertAlmostEqual(barra._largos["Aplicaciones"].valor(), 0.6)
+        self.assertFalse(barra.advance(0.3))
 
     def test_la_de_cada_hilo_tambien(self):
         from silux.ui.corematrix import CoreMatrix
-        matriz = CoreMatrix(self.paleta)
-        self.addCleanup(matriz.deleteLater)
+        matriz = self.a_la_vista(CoreMatrix(self.paleta))
         matriz.set_cores([{"name": "CPU 0", "usage": 10.0, "history": ()}])
+        uso = matriz._usos[0]
         matriz.set_cores([{"name": "CPU 0", "usage": 90.0, "history": ()}])
-        self.assertAlmostEqual(matriz._usos[0].valor(), 10.0)
+        self.assertIs(matriz._usos[0], uso, "se reutiliza, no se recrea")
+        self.assertAlmostEqual(uso.valor(), 10.0)
+        self.reloj.pasar(1.0)
         matriz.advance(0.5)
-        self.assertAlmostEqual(matriz._usos[0].valor(), 50.0)
+        self.assertAlmostEqual(uso.valor(), 90.0)
+
+    def test_parar_el_movimiento_la_pone_en_su_sitio(self):
+        """Al congelar o apagar el ajuste, la ventana pide la fase 1: una barra
+        a medio camino no se queda ahí hasta la muestra siguiente."""
+        from silux.ui.widgets import StackedBar
+        barra = self.a_la_vista(StackedBar(self.paleta))
+        barra.set_segments([("Aplicaciones", 2.0, "accent")], 10.0)
+        barra.set_segments([("Aplicaciones", 6.0, "accent")], 10.0)
+        self.assertFalse(barra.advance(1.0))
+        self.assertAlmostEqual(barra._largos["Aplicaciones"].valor(), 0.6)
+
+
+def lista_con(paleta, *nombres):
+    from silux.ui.widgets import LevelList
+    lista = LevelList(paleta)
+    for nombre in nombres:
+        lista.add(nombre)
+    return lista
 
 
 class TestLaVentana(unittest.TestCase):
-    def test_el_ajuste_mueve_las_barras_y_el_espacio_las_congela(self):
-        import dataclasses
+    """La ventana entera, con el volcado del 5800X3D y su RX 9070 XT."""
+
+    @classmethod
+    def setUpClass(cls):
+        from tests.test_equipos import EQUIPOS, foto
+        cls.app = qt.app()
+        cls.foto = foto(EQUIPOS / "5800x3d")[0]
+
+    def setUp(self):
+        self.reloj = con_reloj(self)
+
+    def ventana(self, pagina):
         from silux.settings import Preferences
         from silux.ui.app import MainWindow
-        from silux.ui.widgets import Deslizador, LevelBar
-        qt.app()
-        self.addCleanup(setattr, Deslizador, "fluido", Deslizador.fluido)
         ventana = MainWindow(dataclasses.replace(Preferences(), fluid_charts=True).normalized())
         self.addCleanup(ventana.deleteLater)
-        self.assertTrue(Deslizador.fluido)
-        from tests import muestras
-        ventana._on_sample(muestras.foto_real())
-        self.assertTrue(any(isinstance(w, LevelBar) for w in ventana._graficas()))
+        ventana.resize(1440, 900)
+        ventana.show()
+        ventana.select_section(pagina)
+        self.app.processEvents()
+        return ventana
+
+    def con_consumo(self, vatios):
+        grafica = dataclasses.replace(self.foto.gpus[0], power_w=vatios)
+        return dataclasses.replace(self.foto, gpus=(grafica,) + self.foto.gpus[1:])
+
+    def barra_de_consumo(self, ventana):
+        from silux.i18n import _
+        return ventana.graphics_page._sections[0].now._rows[_("gpu.now.power")][1]
+
+    def test_la_animacion_empieza_en_el_valor_actual_y_no_en_cero(self):
+        from silux.ui.widgets import Deslizador
+        ventana = self.ventana("Gráficos")
+        tope = self.foto.gpus[0].power_cap_w
+        self.assertTrue(tope, "el volcado tiene el tope de consumo")
+        ventana._on_sample(self.con_consumo(tope * 0.30))
+        barra = self.barra_de_consumo(ventana)
+        self.assertAlmostEqual(barra.shown_fraction(), 0.30, places=3,
+                               msg="la primera muestra, en su sitio y no desde cero")
+        self.reloj.pasar(1.0)
+        ventana._on_sample(self.con_consumo(tope * 0.60))
+        self.assertIs(self.barra_de_consumo(ventana), barra, "la barra no se recrea")
+        self.assertAlmostEqual(barra.shown_fraction(), 0.30, places=3)
+        self.reloj.pasar(Deslizador.DURACION / 2)
+        self.assertGreater(barra.shown_fraction(), 0.30)
+        self.assertLess(barra.shown_fraction(), 0.60)
+        self.reloj.pasar(Deslizador.DURACION / 2)
+        self.assertAlmostEqual(barra.shown_fraction(), 0.60, places=3)
+
+    def test_la_de_una_pagina_que_se_abre_despues_esta_en_su_sitio(self):
+        """El dato llega con Inicio abierto; al abrir Gráficos, la barra ya
+        está donde dice su cifra, sin subir desde cero."""
+        ventana = self.ventana("Inicio")
+        tope = self.foto.gpus[0].power_cap_w
+        ventana._on_sample(self.con_consumo(tope * 0.30))
+        self.reloj.pasar(1.0)
+        ventana._on_sample(self.con_consumo(tope * 0.50))
+        ventana.select_section("Gráficos")
+        self.app.processEvents()
+        self.assertAlmostEqual(self.barra_de_consumo(ventana).shown_fraction(), 0.50, places=3)
+
+    def test_mientras_una_barra_se_mueve_va_al_ritmo_de_la_pantalla(self):
+        from silux.ui.app import LATIDO_GRAFICAS_MS
+        from silux.ui.widgets import Deslizador
+        ventana = self.ventana("Gráficos")
+        tope = self.foto.gpus[0].power_cap_w
+        ventana._on_sample(self.con_consumo(tope * 0.30))
+        self.reloj.pasar(1.0)
+        ventana._on_sample(self.con_consumo(tope * 0.60))
+        self.assertTrue(ventana._latido.isActive())
+        self.assertLess(ventana._latido.interval(), LATIDO_GRAFICAS_MS)
+        self.reloj.pasar(Deslizador.DURACION)
+        ventana._avanzar_graficas()
+        ventana._avanzar_graficas()
+        self.assertEqual(ventana._latido.interval(), LATIDO_GRAFICAS_MS,
+                         "quietas las barras, vuelve al ritmo de las gráficas")
+
+    def test_el_espacio_lo_congela(self):
+        ventana = self.ventana("Gráficos")
+        ventana._on_sample(self.foto)
         self.assertTrue(ventana._latido.isActive())
         ventana.alternar_congelado()
         self.assertFalse(ventana._latido.isActive())

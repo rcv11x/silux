@@ -15,6 +15,7 @@ Ninguna de estas clases sabe leer hardware.
 from __future__ import annotations
 
 import math
+import time
 from collections import deque
 from typing import Iterable, Optional, Sequence
 
@@ -2000,39 +2001,83 @@ class Table(QScrollArea):
 
 
 class Deslizador:
-    """Un largo de barra que va del que se ve al nuevo durante el intervalo.
+    """El largo que se ve de una barra, que llega al dato nuevo en un momento.
 
     Con «Movimiento fluido» encendido (`Deslizador.fluido`, lo pone la
-    ventana), una barra no salta al dato nuevo: se desliza hasta él mientras
-    llega el siguiente, al ritmo del mismo temporizador que mueve las
-    gráficas (`advance`). Apagado, el dato nuevo se pinta en el acto. Solo
-    el largo: la cifra de al lado salta al dato real, que es lo que se lee.
+    ventana), una barra no salta al dato nuevo: sale del largo que se ve en
+    ese instante y llega en `DURACION` segundos, frenando al final. Un dato
+    que llega a media animación sale de donde esté la barra entonces. Apagado,
+    el dato nuevo se pinta en el acto. Solo el largo: la cifra de al lado
+    salta al dato real, que es lo que se lee.
+
+    Va por el reloj y no por la fase del muestreo, que es lo que mueve las
+    gráficas: con la fase tardaría el intervalo entero en llegar e iría
+    siempre por detrás de su cifra. Y con el reloj, lo que se ve en cada
+    momento no depende de que alguien la haya ido avanzando: una barra de
+    una página cerrada, que nadie avanza, está en su sitio al abrirla.
+
+    El primer dato y el que llega a una barra que no está a la vista se
+    ponen en su sitio sin animar: no hay de dónde venir que se haya visto.
     """
 
     fluido = False
+    # Lo justo para que el ojo siga el cambio sin quedarse esperándolo.
+    DURACION = 0.18
+    reloj = staticmethod(time.monotonic)
 
-    def __init__(self, valor: float = 0.0) -> None:
-        self._desde = self._hasta = float(valor)
-        self._fase = 1.0
+    def __init__(self, valor: Optional[float] = None) -> None:
+        self._desde = self._hasta = 0.0 if valor is None else float(valor)
+        self._puesto = valor is not None
+        # Cuándo empezó la animación en curso; None si está quieta.
+        self._inicio: Optional[float] = None
 
-    def fijar(self, nuevo: float) -> None:
+    def fijar(self, nuevo: float, animar: bool = True) -> bool:
+        """Pone el dato nuevo; dice si cambió algo que haya que repintar.
+
+        `animar` lo decide la barra: falso si no está a la vista."""
         nuevo = float(nuevo)
-        if Deslizador.fluido:
-            self._desde, self._fase = self.valor(), 0.0
-        else:
-            self._desde, self._fase = nuevo, 1.0
-        self._hasta = nuevo
-
-    def avanzar(self, fase: float) -> bool:
-        """Mueve la barra a esa fase del intervalo; dice si hay que repintar."""
-        nueva = max(0.0, min(1.0, fase))
-        if abs(nueva - self._fase) < 0.01:
+        if self._puesto and abs(nuevo - self._hasta) < 1e-6:
             return False
-        self._fase = nueva
-        return self._desde != self._hasta
+        if Deslizador.fluido and animar and self._puesto:
+            ahora = self.reloj()
+            self._desde = self.valor(ahora)
+            self._inicio = ahora
+        else:
+            self._desde = nuevo
+            self._inicio = None
+        self._hasta = nuevo
+        self._puesto = True
+        return True
 
-    def valor(self) -> float:
-        return self._desde + (self._hasta - self._desde) * self._fase
+    def valor(self, ahora: Optional[float] = None) -> float:
+        if self._inicio is None:
+            return self._hasta
+        ahora = self.reloj() if ahora is None else ahora
+        recorrido = (ahora - self._inicio) / self.DURACION
+        if recorrido >= 1.0:
+            return self._hasta
+        # Frenando al final (cúbica): casi todo el camino se hace en el
+        # primer tercio, que es lo que lo hace parecer inmediato.
+        hecho = 1.0 - (1.0 - max(0.0, recorrido)) ** 3
+        return self._desde + (self._hasta - self._desde) * hecho
+
+    def avanzar(self) -> bool:
+        """Dice si la barra tiene que repintarse en este fotograma: mientras
+        se mueve, y una vez más al llegar, para pintarla en su sitio."""
+        if self._inicio is None:
+            return False
+        # Con su margen: una resta de segundos en coma flotante se queda a
+        # una millonésima de la duración y la barra pediría un fotograma más.
+        if self.reloj() - self._inicio >= self.DURACION - 1e-6:
+            self.terminar()
+        return True
+
+    def terminar(self) -> None:
+        """La lleva a su sitio sin esperar a que acabe la animación."""
+        self._desde, self._inicio = self._hasta, None
+
+    def moviendose(self) -> bool:
+        return self._inicio is not None
 
     def destino(self) -> float:
         return self._hasta
@@ -2046,7 +2091,7 @@ class LevelBar(QWidget):
     def __init__(self, palette: Palette, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self._p = palette
-        self._fraccion = Deslizador(0.0)
+        self._fraccion = Deslizador()
         self.setFixedHeight(self.HEIGHT)
         self.setMinimumWidth(60)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
@@ -2060,13 +2105,22 @@ class LevelBar(QWidget):
 
     def set_fraction(self, fraccion: float) -> None:
         fraccion = max(0.0, min(1.0, fraccion))
-        if abs(fraccion - self._fraccion.destino()) > 1e-4:
-            self._fraccion.fijar(fraccion)
+        if self._fraccion.fijar(fraccion, animar=self.isVisible()):
             self.update()
 
-    def advance(self, phase: float) -> None:
-        if self._fraccion.avanzar(phase):
+    def advance(self, phase: float) -> bool:
+        """Un fotograma; dice si sigue moviéndose.
+
+        La barra va por el reloj (`Deslizador`), no por la fase. La fase a 1
+        es lo que pide la ventana al parar el movimiento: entonces se pone en
+        su sitio, sin quedarse a medio camino hasta la muestra siguiente.
+        """
+        if phase >= 1.0 and self._fraccion.moviendose():
+            self._fraccion.terminar()
             self.update()
+        elif self._fraccion.avanzar():
+            self.update()
+        return self._fraccion.moviendose()
 
     def paintEvent(self, event) -> None:  # noqa: N802
         painter = QPainter(self)
@@ -2135,11 +2189,15 @@ class LevelList(QWidget):
         if (candado := self._candados.get(name)) is not None:
             candado.hide()
         nombre, barra, cifra, porcentaje = fila
-        for widget in fila:
-            widget.setVisible(fraction is not None)
         if fraction is None:
+            for widget in fila:
+                widget.hide()
             return
+        # Antes de enseñar el renglón: si estaba escondido, la barra se pone
+        # en su sitio en vez de deslizarse desde un dato que ya no se veía.
         barra.set_fraction(fraction)
+        for widget in fila:
+            widget.show()
         if cifra.text() != text:
             cifra.setText(text)
         pct = f"{fraction * 100:.0f} %"
@@ -2228,7 +2286,8 @@ class StackedBar(QWidget):
         self._segments: list[tuple[str, float, str]] = []   # (etiqueta, valor, token)
         self._total = 0.0
         # El largo que se ve de cada tramo, por su etiqueta: se desliza
-        # (`Deslizador`); la leyenda dice siempre el dato.
+        # (`Deslizador`); la leyenda dice siempre el dato. Se crean una vez
+        # por tramo y se reutilizan en cada muestra.
         self._largos: dict[str, Deslizador] = {}
         self._formatter = str
 
@@ -2251,12 +2310,13 @@ class StackedBar(QWidget):
                      formatter=None) -> None:
         self._segments = segments
         self._total = total or 1.0
+        a_la_vista = self.isVisible()
         for etiqueta, valor, _token in segments:
             fraccion = max(0.0, valor) / self._total
             if etiqueta not in self._largos:
                 self._largos[etiqueta] = Deslizador(fraccion)
-            elif abs(self._largos[etiqueta].destino() - fraccion) > 1e-6:
-                self._largos[etiqueta].fijar(fraccion)
+            else:
+                self._largos[etiqueta].fijar(fraccion, animar=a_la_vista)
         if formatter is not None:
             self._formatter = formatter
         visibles = [s for s in segments if s[1] > 0]
@@ -2268,9 +2328,15 @@ class StackedBar(QWidget):
         self._reservar_alto()
         self.update()
 
-    def advance(self, phase: float) -> None:
-        if any([d.avanzar(phase) for d in self._largos.values()]):
+    def advance(self, phase: float) -> bool:
+        """Un fotograma; dice si algún tramo sigue moviéndose (`LevelBar.advance`)."""
+        if phase >= 1.0 and any(d.moviendose() for d in self._largos.values()):
+            for largo in self._largos.values():
+                largo.terminar()
             self.update()
+        elif any([d.avanzar() for d in self._largos.values()]):
+            self.update()
+        return any(d.moviendose() for d in self._largos.values())
 
     def _color(self, token: str) -> QColor:
         """El color de un tramo: uno de la paleta, o un tono suyo.
