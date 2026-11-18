@@ -908,18 +908,25 @@ def seconds(valor: Optional[float]) -> str:
     return DASH if _none(valor) else f"{float(valor):.1f} s"
 
 
-def boot_times(boot) -> Optional[str]:
-    """«Firmware 13.3 s · cargador 5.3 s · total 18.6 s».
+# Las fases del arranque, en orden, con el campo de `Boot` de cada una.
+FASES_DE_ARRANQUE = (("sys.boot.phase.firmware", "firmware_s"),
+                     ("sys.boot.phase.loader", "loader_s"),
+                     ("sys.boot.phase.kernel", "kernel_s"),
+                     ("sys.boot.phase.initrd", "initrd_s"),
+                     ("sys.boot.phase.userspace", "userspace_s"),
+                     ("sys.boot.phase.total", "total_s"))
 
-    Las tres cifras, para que no quede la duda de si una incluye a otra: el
-    cargador publica dos instantes contados desde el encendido, y enseñados
-    tal cual («13.3 s» y «18.6 s») no se sabe si el segundo suma al primero.
+
+def boot_phases(boot) -> list[tuple[str, str]]:
+    """Cada fase que se sabe, con lo que tardó: [("sys.boot.phase.firmware", "5.2 s"), …].
+
+    Cada una por separado y el total aparte, para que no quede la duda de si
+    una incluye a otra: el cargador publica dos instantes contados desde el
+    encendido, y enseñados tal cual no se sabe si el segundo suma al primero.
+    Sin el firmware no hay total (`Boot.total_s`).
     """
-    if boot.firmware_s is None or boot.loader_s is None:
-        return None
-    return _("sys.boot.times").format(firmware=seconds(boot.firmware_s),
-                                      cargador=seconds(boot.loader_s),
-                                      total=seconds(boot.total_s))
+    return [(clave, seconds(getattr(boot, campo))) for clave, campo in FASES_DE_ARRANQUE
+            if getattr(boot, campo) is not None]
 
 
 def swap_summary(swap) -> str:

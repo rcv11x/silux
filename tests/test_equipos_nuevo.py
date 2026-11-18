@@ -133,9 +133,11 @@ class TestElVolcadoNuevoDeIntel(unittest.TestCase):
         # Un Comet Lake tiene mitigaciones que un Zen 3 no necesita.
         self.assertIn("mmio_stale_data", {v.name for v in s.vulnerabilities
                                           if v.state == "mitigated"})
-        # El GRUB de Fedora publica su nombre (módulo bli), no sus tiempos.
+        # El GRUB de Fedora publica su nombre (módulo bli), no sus tiempos; el
+        # firmware y el cargador salen de la FPDT, y el resto de systemd.
         self.assertEqual(s.boot.loader.split()[0], "GRUB")
-        self.assertIsNone(s.boot.firmware_s)
+        self.assertEqual((s.boot.firmware_s, s.boot.loader_s), (5.2, 7.1))
+        self.assertEqual(s.boot.total_s, 34.4)
         self.assertEqual([(x.zram, x.algorithm) for x in s.swaps], [(True, "lzo-rle")])
         self.assertRegex(render.graphics_stack(self.foto), r"^Mesa \d+")
 

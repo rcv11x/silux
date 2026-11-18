@@ -68,6 +68,8 @@ de una L1.
 | Puente raíz | el dispositivo `0000:00:00.0` | `lspci -s 00:00.0` | no |
 | UEFI o BIOS heredada | si existe `/sys/firmware/efi`, y `fw_platform_size` | `ls /sys/firmware/efi` | no |
 | Arranque seguro | la variable `SecureBoot-8be4df61-…` de `/sys/firmware/efi/efivars` | `mokutil --sb-state` | no |
+| Tiempos de arranque: firmware y cargador | las variables `LoaderTimeInitUSec` y `LoaderTimeExecUSec` del gestor (systemd-boot, Limine) y, si no están, la tabla FPDT: `/sys/firmware/acpi/fpdt/boot/bootloader_launch_ns` y `exitbootservice_end_ns` | `systemd-analyze` (lo saca de los mismos sitios) | no |
+| Tiempos de arranque: kernel, initrd y espacio de usuario | `systemctl show -p InitRDTimestampMonotonic -p UserspaceTimestampMonotonic -p FinishTimestampMonotonic` | `systemd-analyze` | no |
 | TPM | `/sys/class/tpm/tpm0/tpm_version_major` | `cat /sys/class/tpm/tpm0/tpm_version_major` | no |
 
 ## Memoria

@@ -13,13 +13,14 @@ import glob
 import os
 import platform
 import re
+import subprocess
 import time
 from typing import Optional
 
 from ..i18n import _
 from ..model import (Boot, DeviceKind, Memory, Need, Sensor, SensorKind, Swap, System,
                      Vulnerability)
-from .base import Draft, Provider, read_text
+from .base import Draft, Provider, read_int, read_text
 from .. import sysroot
 
 OS_RELEASE = "/etc/os-release"
@@ -170,6 +171,37 @@ def _variable_efi(nombre: str) -> Optional[str]:
     return crudo[4:].decode("utf-16-le", "replace").strip("\x00 ") or None
 
 
+# La tabla FPDT del firmware: cuándo lanzó al cargador y cuándo este le
+# devolvió el control al salir de los servicios de arranque, en ns desde el
+# encendido. Es de donde systemd saca firmware y cargador cuando el gestor no
+# publica sus variables (el GRUB de Fedora), y se lee sin permisos.
+FPDT = "/sys/firmware/acpi/fpdt/boot"
+
+# Lo que systemd sabe del arranque, en µs desde que arrancó el kernel. Por
+# D-Bus, sin permisos, con cualquier gestor de arranque.
+PROPIEDADES_DE_SYSTEMD = ("InitRDTimestampMonotonic", "UserspaceTimestampMonotonic",
+                          "FinishTimestampMonotonic")
+
+
+def _leer_systemctl(salida: str) -> Optional[dict[str, int]]:
+    valores = {}
+    for linea in salida.splitlines():
+        clave, _sep, valor = linea.partition("=")
+        if clave in PROPIEDADES_DE_SYSTEMD and valor.strip().isdigit():
+            valores[clave] = int(valor)
+    return valores or None
+
+
+def _tiempos_de_systemd() -> Optional[dict[str, int]]:
+    try:
+        hecho = subprocess.run(
+            ["systemctl", "show", *(f"--property={p}" for p in PROPIEDADES_DE_SYSTEMD)],
+            capture_output=True, text=True, timeout=3, env=dict(os.environ, LC_ALL="C"))
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return _leer_systemctl(hecho.stdout) if hecho.returncode == 0 else None
+
+
 class SystemSecurity(Provider):
     """Lo que no cambia en toda la sesión: mitigaciones y arranque."""
 
@@ -199,14 +231,34 @@ class SystemSecurity(Provider):
 
         hasta_el_cargador = segundos("LoaderTimeInitUSec")
         hasta_el_kernel = segundos("LoaderTimeExecUSec")
+        if hasta_el_cargador is None or hasta_el_kernel is None:
+            lanzado = read_int(f"{FPDT}/bootloader_launch_ns")
+            salida = read_int(f"{FPDT}/exitbootservice_end_ns")
+            if lanzado and salida:
+                hasta_el_cargador, hasta_el_kernel = lanzado / 1e9, salida / 1e9
         cargador = (round(hasta_el_kernel - hasta_el_cargador, 1)
                     if hasta_el_cargador is not None and hasta_el_kernel is not None
                     and hasta_el_kernel >= hasta_el_cargador else None)
+        if cargador is None:
+            hasta_el_cargador = None
+
+        systemd = sysroot.a_traves("systemd", "arranque", _tiempos_de_systemd) or {}
+        initrd = systemd.get("InitRDTimestampMonotonic", 0)
+        espacio = systemd.get("UserspaceTimestampMonotonic", 0)
+        fin = systemd.get("FinishTimestampMonotonic", 0)
+
+        def tramo(desde: int, hasta: int) -> Optional[float]:
+            return round((hasta - desde) / 1e6, 1) if hasta > desde else None
+
         return Boot(
             loader=_variable_efi("LoaderInfo"),
             entry=_variable_efi("LoaderEntrySelected"),
             firmware_s=round(hasta_el_cargador, 1) if hasta_el_cargador is not None else None,
-            loader_s=cargador)
+            loader_s=cargador,
+            # Sin initrd, el kernel llega hasta systemd.
+            kernel_s=tramo(0, initrd or espacio) if espacio else None,
+            initrd_s=tramo(initrd, espacio) if initrd else None,
+            userspace_s=tramo(espacio, fin) if espacio and fin else None)
 
 
 def leer_intercambio() -> tuple[Swap, ...]:

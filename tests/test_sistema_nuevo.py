@@ -5,6 +5,7 @@ Limine) el 17 de noviembre de 2026, sin permisos.
 """
 
 import dataclasses
+import json
 import unittest
 
 from silux import render
@@ -28,6 +29,21 @@ GUID = "4a67b082-0a4c-41cf-b6c7-440b29bb8c4f"
 def efi(texto: str) -> bytes:
     return b"\x06\x00\x00\x00" + texto.encode("utf-16-le") + b"\x00\x00"
 
+
+# Lo que da el i5-10400 de la oficina (MSI H510M, GRUB de Fedora) el 18 de
+# noviembre de 2026, sin permisos.
+FPDT_I5_10400 = {
+    "/sys/firmware/acpi/fpdt/boot/firmware_start_ns": "182920179\n",
+    "/sys/firmware/acpi/fpdt/boot/bootloader_load_ns": "5151336937\n",
+    "/sys/firmware/acpi/fpdt/boot/bootloader_launch_ns": "5174902848\n",
+    "/sys/firmware/acpi/fpdt/boot/exitbootservice_start_ns": "12319491606\n",
+    "/sys/firmware/acpi/fpdt/boot/exitbootservice_end_ns": "12319794851\n",
+}
+SYSTEMD_I5_10400 = {"InitRDTimestampMonotonic": 859939,
+                    "UserspaceTimestampMonotonic": 2606157,
+                    "FinishTimestampMonotonic": 22060289}
+# Como lo deja un volcado: lo que contestó `systemctl show`.
+GRABADO_SYSTEMD = {"/grabado.json": json.dumps({"systemd": {"arranque": SYSTEMD_I5_10400}})}
 
 EQUIPO = {
     VULN + "meltdown": "Not affected\n",
@@ -76,14 +92,54 @@ class TestElProveedor(unittest.TestCase):
         self.assertEqual(arranque, Boot(loader="Limine 12.10.0", entry="CachyOS.linux-cachyos",
                                         firmware_s=13.3, loader_s=5.3))
         self.assertEqual(arranque.total_s, 18.6)
-        self.assertEqual(render.boot_times(arranque),
-                         "Firmware 13.3 s · cargador 5.3 s · total 18.6 s")
+        self.assertEqual(render.boot_phases(arranque),
+                         [("sys.boot.phase.firmware", "13.3 s"),
+                          ("sys.boot.phase.loader", "5.3 s"),
+                          ("sys.boot.phase.total", "18.6 s")])
 
-    def test_con_grub_no_hay_nada_y_no_se_inventa(self):
+    def test_sin_gestor_ni_firmware_ni_systemd_no_hay_nada_y_no_se_inventa(self):
         sin = {k: v for k, v in EQUIPO.items() if "efivars" not in k}
         arranque = self._sistema(sin).boot
         self.assertEqual(arranque, Boot())
-        self.assertIsNone(render.boot_times(arranque))
+        self.assertEqual(render.boot_phases(arranque), [])
+
+    def test_con_grub_el_firmware_y_el_cargador_salen_de_la_fpdt(self):
+        """Revisión del autor: con GRUB no salía ningún tiempo. GRUB no
+        publica LoaderTimeInitUSec, pero el firmware sí: su tabla FPDT, que
+        el kernel deja en sysfs sin permisos y de la que systemd saca lo
+        mismo. Los números son los del i5-10400 el 18 de noviembre, con su
+        `systemd-analyze`: 5.174 s (firmware) + 7.144 s (loader) + 859 ms
+        (kernel) + 1.746 s (initrd) + 19.454 s (userspace) = 34.380 s."""
+        grub = {k: v for k, v in EQUIPO.items() if "efivars" not in k}
+        grub[f"/sys/firmware/efi/efivars/LoaderInfo-{GUID}"] = efi("GRUB 2.12")
+        grub.update(FPDT_I5_10400)
+        grub.update(GRABADO_SYSTEMD)
+        arranque = self._sistema(grub).boot
+        self.assertEqual((arranque.firmware_s, arranque.loader_s, arranque.kernel_s,
+                          arranque.initrd_s, arranque.userspace_s),
+                         (5.2, 7.1, 0.9, 1.7, 19.5))
+        self.assertEqual([texto for _clave, texto in render.boot_phases(arranque)],
+                         ["5.2 s", "7.1 s", "0.9 s", "1.7 s", "19.5 s", "34.4 s"])
+
+    def test_systemd_da_el_kernel_con_cualquier_gestor(self):
+        """Sin FPDT y sin variables del gestor: lo del kernel en adelante sí."""
+        sin = {k: v for k, v in EQUIPO.items() if "efivars" not in k}
+        sin.update(GRABADO_SYSTEMD)
+        arranque = self._sistema(sin).boot
+        self.assertEqual((arranque.firmware_s, arranque.loader_s), (None, None))
+        # Sin el firmware no hay total.
+        self.assertEqual(render.boot_phases(arranque),
+                         [("sys.boot.phase.kernel", "0.9 s"), ("sys.boot.phase.initrd", "1.7 s"),
+                          ("sys.boot.phase.userspace", "19.5 s")])
+
+    def test_lo_que_dice_systemctl(self):
+        from silux.providers.system import _leer_systemctl
+
+        self.assertEqual(_leer_systemctl("InitRDTimestampMonotonic=859939\n"
+                                         "UserspaceTimestampMonotonic=2606157\n"
+                                         "FinishTimestampMonotonic=22060289\n"),
+                         SYSTEMD_I5_10400)
+        self.assertIsNone(_leer_systemctl(""))
 
     def test_el_zram_es_una_sola_fila_con_como_comprime(self):
         (swap,) = self._sistema(EQUIPO).swaps
@@ -124,6 +180,13 @@ class TestEnLaPagina(unittest.TestCase):
         cls.sin_nada = dataclasses.replace(base, system=dataclasses.replace(
             base.system, vulnerabilities=(), boot=Boot(), swaps=()))
 
+    @staticmethod
+    def _fases(pagina):
+        """Las filas de tiempos que se ven, con su valor."""
+        return {_(clave): pagina.boot._values[_(clave)].full_text()
+                for clave, _campo in render.FASES_DE_ARRANQUE
+                if pagina.boot._values[_(clave)].isVisibleTo(pagina)}
+
     def _pagina(self, ventana):
         ventana.select_section("Sistema")
         for _vez in range(4):
@@ -154,11 +217,13 @@ class TestEnLaPagina(unittest.TestCase):
             self.assertEqual({n: e.full_text() for n, e in pagina.swap._values.items()},
                              {"zram0 (en memoria)":
                               "10.9 MB de 31.3 GB · zstd · comprime 3.4 a 1 · prioridad 100"})
-            self.assertEqual(pagina.boot._values[_("sys.boot.time")].full_text(),
-                             "Firmware 13.3 s · cargador 5.3 s · total 18.6 s")
+            self.assertEqual(self._fases(pagina),
+                             {"Firmware": "13.3 s", "Cargador": "5.3 s", "Total": "18.6 s"})
             self.assertEqual(pagina.boot._values[_("sys.boot.loader")].full_text(),
                              "Limine 12.10.0")
-            self.assertFalse(pagina.extra_pie.isVisible())
+            # Estos archivos no traen lo que contestó systemd: se dice eso, y nada
+            # del firmware, que sí está.
+            self.assertEqual(pagina.extra_pie.text(), _("sys.boot.nosystemd"))
 
     def test_lo_que_el_equipo_no_publica_se_esconde_y_se_dice(self):
         with pantalla.Ventana(self.sin_nada) as ventana:
@@ -170,22 +235,39 @@ class TestEnLaPagina(unittest.TestCase):
             self.assertEqual({n: e.full_text() for n, e in pagina.swap._values.items()},
                              {_("sys.swap.label"): _("sys.swap.none")})
 
-    def test_un_gestor_que_dice_su_nombre_pero_no_sus_tiempos(self):
-        """El GRUB de Fedora, con el volcado del i5-10400.
-
-        Fedora compila GRUB con el módulo que publica `LoaderInfo` y no los
-        tiempos: salía la tarjeta con «GRUB 2.12» y la fila de los tiempos
-        desaparecía sin que nada lo dijera.
-        """
+    def test_con_grub_salen_todos_los_tiempos(self):
+        """Revisión del autor: con el GRUB de Fedora la página decía que no
+        había tiempos. El firmware los publica (FPDT) y systemd da el resto
+        con cualquier gestor. Volcado del i5-10400, con su FPDT y lo que
+        contestó systemd."""
         intel = foto(EQUIPOS / "i5-10400")[0]
         with pantalla.Ventana(intel) as ventana:
             pagina = self._pagina(ventana)
-            self.assertTrue(pagina.boot_card.isVisible())
             self.assertEqual(pagina.boot._values[_("sys.boot.loader")].full_text(), "GRUB 2.12")
-            self.assertFalse(pagina.boot._values[_("sys.boot.time")].isVisible())
-            self.assertTrue(pagina.extra_pie.isVisible())
+            self.assertEqual(self._fases(pagina),
+                             {"Firmware": "5.2 s", "Cargador": "7.1 s", "Kernel": "0.9 s",
+                              "Initrd": "1.7 s", "Espacio de usuario": "19.5 s",
+                              "Total": "34.4 s"})
+            # Una fila por fase, entera: en una sola línea se cortaba.
+            for nombre in self._fases(pagina):
+                valor = pagina.boot._values[nombre]
+                self.assertEqual(valor.text(), valor.full_text(), nombre)
+            # No falta nada: ningún pie.
+            self.assertFalse(pagina.extra_pie.isVisible())
+
+    def test_sin_firmware_se_dice_solo_eso(self):
+        """El mismo GRUB en un equipo cuyo firmware no publica la FPDT (el
+        volcado del 5800X3D, que no la grabó), con systemd."""
+        intel = foto(EQUIPOS / "i5-10400")[0]
+        sin = dataclasses.replace(intel, system=dataclasses.replace(
+            intel.system, boot=dataclasses.replace(intel.system.boot,
+                                                   firmware_s=None, loader_s=None)))
+        with pantalla.Ventana(sin) as ventana:
+            pagina = self._pagina(ventana)
+            self.assertEqual(self._fases(pagina), {"Kernel": "0.9 s", "Initrd": "1.7 s",
+                                                   "Espacio de usuario": "19.5 s"})
             self.assertEqual(pagina.extra_pie.text(),
-                             _("sys.boot.notimes").format(gestor="GRUB 2.12"))
+                             _("sys.boot.nofirmware").format(gestor="GRUB 2.12"))
 
     def test_el_pie_no_dice_que_grub_no_publique_nada(self):
         """El de Fedora sí publica su nombre."""

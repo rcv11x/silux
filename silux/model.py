@@ -471,22 +471,29 @@ class Swap:
 
 @dataclass(frozen=True, slots=True)
 class Boot:
-    """Con qué arrancó el equipo y cuánto tardó hasta entregar al kernel.
+    """Con qué arrancó el equipo y cuánto tardó cada fase.
 
-    Lo publican los cargadores que siguen la interfaz de systemd
-    (systemd-boot, Limine); GRUB no, y entonces va todo vacío.
+    El firmware y el cargador los publican los gestores que siguen la
+    interfaz de systemd (systemd-boot, Limine) y, si el gestor no, la tabla
+    FPDT del firmware; el kernel, el initrd y el espacio de usuario, systemd,
+    con cualquier gestor.
     """
 
     loader: Optional[str] = None             # "Limine 12.10.0"
     entry: Optional[str] = None              # "CachyOS.linux-cachyos"
     firmware_s: Optional[float] = None       # del encendido al cargador
     loader_s: Optional[float] = None         # del cargador al kernel
+    kernel_s: Optional[float] = None         # del kernel al initrd (o a systemd)
+    initrd_s: Optional[float] = None         # None si arrancó sin initrd
+    userspace_s: Optional[float] = None      # None mientras no ha terminado
 
     @property
     def total_s(self) -> Optional[float]:
+        """Desde el encendido: sin el firmware y el cargador no hay total."""
         if self.firmware_s is None or self.loader_s is None:
             return None
-        return round(self.firmware_s + self.loader_s, 1)
+        return round(sum(f for f in (self.firmware_s, self.loader_s, self.kernel_s,
+                                     self.initrd_s, self.userspace_s) if f is not None), 1)
 
 
 @dataclass(frozen=True, slots=True)

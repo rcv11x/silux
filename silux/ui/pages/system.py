@@ -34,7 +34,8 @@ ACTIVITY_FIELDS = ("sys.field.since", "sys.field.uptime", "sys.act.processes",
                    "sys.act.threads", "sys.field.openfiles")
 SECURITY_FIELDS = ("sys.vuln.known", "sys.vuln.unaffected", "sys.vuln.mitigated",
                    "sys.vuln.open")
-BOOT_FIELDS = ("sys.boot.loader", "sys.boot.entry", "sys.boot.time")
+BOOT_FIELDS = ("sys.boot.loader", "sys.boot.entry") + tuple(
+    clave for clave, _campo in render.FASES_DE_ARRANQUE)
 
 
 def format_uptime(seconds: float) -> str:
@@ -245,22 +246,31 @@ class SystemPage(QScrollArea):
 
     def _apply_boot(self, system: System) -> None:
         arranque = system.boot
-        tiempos = render.boot_times(arranque)
-        hay = bool(arranque.loader or arranque.entry or tiempos)
+        fases = dict(render.boot_phases(arranque))
+        hay = bool(arranque.loader or arranque.entry or fases)
         self.boot_card.setVisible(hay)
-        # Lo que falta, dicho: nada, o los tiempos. El GRUB de Fedora publica
-        # su nombre y no cuánto tarda.
+        # Solo lo que falta de verdad. El GRUB de Fedora no publica sus
+        # tiempos, pero el firmware sí (FPDT), y lo del kernel en adelante lo
+        # da systemd con cualquier gestor: con él no falta nada.
+        pies = []
         if not hay:
-            pie = _("sys.boot.unpublished")
-        elif tiempos is None:
-            pie = _("sys.boot.notimes").format(gestor=arranque.loader or _("sys.boot.loader"))
+            pies.append(_("sys.boot.unpublished"))
         else:
-            pie = ""
+            if arranque.firmware_s is None:
+                pies.append(_("sys.boot.nofirmware").format(
+                    gestor=arranque.loader or _("sys.boot.loader")))
+            if arranque.kernel_s is None:
+                pies.append(_("sys.boot.nosystemd"))
+            elif arranque.userspace_s is None:
+                pies.append(_("sys.boot.unfinished"))
+        pie = " ".join(pies)
         self.extra_pie.setText(pie)
         self.extra_pie.setVisible(bool(pie))
-        for clave, valor in (("sys.boot.loader", arranque.loader),
-                             ("sys.boot.entry", arranque.entry),
-                             ("sys.boot.time", tiempos)):
+        # Una fila por fase: en una sola línea, las seis cifras no cabían en
+        # la tarjeta y se cortaban.
+        valores = {"sys.boot.loader": arranque.loader, "sys.boot.entry": arranque.entry, **fases}
+        for clave in BOOT_FIELDS:
+            valor = valores.get(clave)
             self.boot.set(_(clave), valor or render.DASH)
             self.boot.set_visible(_(clave), bool(valor))
 

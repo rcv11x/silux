@@ -277,5 +277,12 @@
    21053440,
    606822400
   ]
+ },
+ "systemd": {
+  "arranque": {
+   "FinishTimestampMonotonic": 22060289,
+   "InitRDTimestampMonotonic": 859939,
+   "UserspaceTimestampMonotonic": 2606157
+  }
  }
 }
