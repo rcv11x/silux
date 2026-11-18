@@ -29,8 +29,8 @@ Escrito con ayuda de Claude.
   <img src="capturas/almacenamiento.png" width="49%" alt="Almacenamiento">
 </p>
 
-Son de un i5-10400 con su gráfica integrada, sin permisos: lo que los pide
-sale con un candado, que es lo que se ve al abrirlo por primera vez.
+Son de un i5-10400 con su gráfica integrada, con permisos concedidos: sin
+ellos, lo que los pide sale con un candado, y se piden desde la propia página.
 
 Están tomadas con `--anonimo`, que cambia el nombre del equipo, las
 direcciones y los números de serie por otros de la misma pinta. Cada PNG lleva
