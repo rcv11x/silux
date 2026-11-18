@@ -248,9 +248,12 @@ class TestLaV2DeLasApu(unittest.TestCase):
         self.assertEqual(medidas.gfx_clock_hz, 800_000_000)
         self.assertEqual(medidas.gfx_clock_average_hz, 780_000_000)
 
-    def test_el_uso_del_motor_de_video_es_mm_activity(self):
-        medidas = gpumetrics.parse(self._tabla(mm_activity=35))
-        self.assertAlmostEqual(medidas.video_activity_percent, 35.0)
+    def test_la_actividad_no_se_lee_en_centesimas_como_porcentaje(self):
+        # En las APU llega en centésimas de punto: 45 es un 0,45 %. Salía
+        # «45 %». No se lee: el uso sale de gpu_busy_percent y vcn_busy_percent.
+        medidas = gpumetrics.parse(self._tabla(mm_activity=45, gfx_activity=1200))
+        self.assertIsNone(medidas.video_activity_percent)
+        self.assertIsNone(medidas.gfx_activity_percent)
 
     def test_el_recorte_se_lee(self):
         self.assertTrue(gpumetrics.parse(self._tabla(throttle=1 << 2)).throttled)
