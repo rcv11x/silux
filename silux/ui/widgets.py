@@ -1999,6 +1999,45 @@ class Table(QScrollArea):
 
 
 
+class Deslizador:
+    """Un largo de barra que va del que se ve al nuevo durante el intervalo.
+
+    Con «Movimiento fluido» encendido (`Deslizador.fluido`, lo pone la
+    ventana), una barra no salta al dato nuevo: se desliza hasta él mientras
+    llega el siguiente, al ritmo del mismo temporizador que mueve las
+    gráficas (`advance`). Apagado, el dato nuevo se pinta en el acto. Solo
+    el largo: la cifra de al lado salta al dato real, que es lo que se lee.
+    """
+
+    fluido = False
+
+    def __init__(self, valor: float = 0.0) -> None:
+        self._desde = self._hasta = float(valor)
+        self._fase = 1.0
+
+    def fijar(self, nuevo: float) -> None:
+        nuevo = float(nuevo)
+        if Deslizador.fluido:
+            self._desde, self._fase = self.valor(), 0.0
+        else:
+            self._desde, self._fase = nuevo, 1.0
+        self._hasta = nuevo
+
+    def avanzar(self, fase: float) -> bool:
+        """Mueve la barra a esa fase del intervalo; dice si hay que repintar."""
+        nueva = max(0.0, min(1.0, fase))
+        if abs(nueva - self._fase) < 0.01:
+            return False
+        self._fase = nueva
+        return self._desde != self._hasta
+
+    def valor(self) -> float:
+        return self._desde + (self._hasta - self._desde) * self._fase
+
+    def destino(self) -> float:
+        return self._hasta
+
+
 class LevelBar(QWidget):
     """Una barra de un solo tramo: cuánto de un total, sin leyenda."""
 
@@ -2007,18 +2046,26 @@ class LevelBar(QWidget):
     def __init__(self, palette: Palette, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self._p = palette
-        self._fraccion = 0.0
+        self._fraccion = Deslizador(0.0)
         self.setFixedHeight(self.HEIGHT)
         self.setMinimumWidth(60)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
     def fraction(self) -> float:
-        return self._fraccion
+        """El dato, no lo que se ve a media animación."""
+        return self._fraccion.destino()
+
+    def shown_fraction(self) -> float:
+        return self._fraccion.valor()
 
     def set_fraction(self, fraccion: float) -> None:
         fraccion = max(0.0, min(1.0, fraccion))
-        if abs(fraccion - self._fraccion) > 1e-4:
-            self._fraccion = fraccion
+        if abs(fraccion - self._fraccion.destino()) > 1e-4:
+            self._fraccion.fijar(fraccion)
+            self.update()
+
+    def advance(self, phase: float) -> None:
+        if self._fraccion.avanzar(phase):
             self.update()
 
     def paintEvent(self, event) -> None:  # noqa: N802
@@ -2032,7 +2079,7 @@ class LevelBar(QWidget):
         painter.setBrush(QBrush(self._p.q("line")))
         painter.drawRect(rect)
         painter.setBrush(QBrush(self._p.q("accent")))
-        painter.drawRect(QRectF(0, 0, rect.width() * self._fraccion, rect.height()))
+        painter.drawRect(QRectF(0, 0, rect.width() * self._fraccion.valor(), rect.height()))
         painter.end()
 
 
@@ -2180,6 +2227,9 @@ class StackedBar(QWidget):
         self._p = palette
         self._segments: list[tuple[str, float, str]] = []   # (etiqueta, valor, token)
         self._total = 0.0
+        # El largo que se ve de cada tramo, por su etiqueta: se desliza
+        # (`Deslizador`); la leyenda dice siempre el dato.
+        self._largos: dict[str, Deslizador] = {}
         self._formatter = str
 
         self._legend = ChipRow()
@@ -2201,6 +2251,12 @@ class StackedBar(QWidget):
                      formatter=None) -> None:
         self._segments = segments
         self._total = total or 1.0
+        for etiqueta, valor, _token in segments:
+            fraccion = max(0.0, valor) / self._total
+            if etiqueta not in self._largos:
+                self._largos[etiqueta] = Deslizador(fraccion)
+            elif abs(self._largos[etiqueta].destino() - fraccion) > 1e-6:
+                self._largos[etiqueta].fijar(fraccion)
         if formatter is not None:
             self._formatter = formatter
         visibles = [s for s in segments if s[1] > 0]
@@ -2211,6 +2267,10 @@ class StackedBar(QWidget):
         )
         self._reservar_alto()
         self.update()
+
+    def advance(self, phase: float) -> None:
+        if any([d.avanzar(phase) for d in self._largos.values()]):
+            self.update()
 
     def _color(self, token: str) -> QColor:
         """El color de un tramo: uno de la paleta, o un tono suyo.
@@ -2260,10 +2320,12 @@ class StackedBar(QWidget):
         painter.drawRect(rect)
 
         offset = 0.0
-        for _descarte, value, token in self._segments:
-            if value <= 0:
+        for etiqueta, value, token in self._segments:
+            largo = self._largos.get(etiqueta)
+            fraccion = largo.valor() if largo is not None else value / self._total
+            if fraccion <= 0:
                 continue
-            width = rect.width() * value / self._total
+            width = rect.width() * fraccion
             painter.setBrush(QBrush(self._color(token)))
             painter.drawRect(QRectF(offset, 0, width, self.BAR_HEIGHT))
             offset += width

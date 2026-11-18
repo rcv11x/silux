@@ -19,7 +19,7 @@ from PySide6.QtGui import QBrush, QColor, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import QSizePolicy, QWidget
 from . import theme
 from .theme import Palette, value_font
-from .widgets import curva_suave
+from .widgets import Deslizador, curva_suave
 
 
 def estrella(centro: QPointF, radio: float) -> QPainterPath:
@@ -60,6 +60,8 @@ class CoreMatrix(QWidget):
         super().__init__(parent)
         self._p = palette
         self._cores: list[dict] = []
+        # El largo que se ve de la barra de uso de cada hilo (`Deslizador`).
+        self._usos: list[Deslizador] = []
         self._cell_w = theme.METRICS.cell_w
         # La celda crece para dejar sitio al historial: una barra dice cómo
         # está el núcleo ahora, la curva dice si viene de estar cargado. Ese
@@ -73,8 +75,18 @@ class CoreMatrix(QWidget):
         changed = len(cores) != len(self._cores)
         self._cores = list(cores)
         if changed:
+            self._usos = [Deslizador(c.get("usage") or 0.0) for c in self._cores]
+        else:
+            for deslizador, core in zip(self._usos, self._cores):
+                if core.get("usage") is not None and core["usage"] != deslizador.destino():
+                    deslizador.fijar(core["usage"])
+        if changed:
             self.setFixedHeight(self.sizeHint().height())
         self.update()
+
+    def advance(self, phase: float) -> None:
+        if any([d.avanzar(phase) for d in self._usos]):
+            self.update()
 
     def _columns(self) -> int:
         """Cuántas celdas por fila, repartidas para no dejar un renglón cojo.
@@ -207,8 +219,10 @@ class CoreMatrix(QWidget):
 
             usage = core.get("usage")
             if usage is not None:
+                # El largo se desliza; el color va con el dato.
+                largo = self._usos[i].valor() if i < len(self._usos) else usage
                 filled = QRectF(track)
-                filled.setWidth(max(3.0, track.width() * min(100.0, max(0.0, usage)) / 100.0))
+                filled.setWidth(max(3.0, track.width() * min(100.0, max(0.0, largo)) / 100.0))
                 painter.setBrush(QBrush(self._colour_for(usage)))
                 painter.drawRoundedRect(filled, 2, 2)
 

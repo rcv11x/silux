@@ -198,6 +198,7 @@ class MainWindow(QMainWindow):
         # en el último tramo esperando un dato que aún no había llegado, y de
         # ahí el tirón al llegar.
         self._intervalo_real = float(prefs.interval_ms)
+        self._animables: list = []
         self._latido = QTimer(self)
         self._latido.setInterval(33)                  # unos 30 por segundo
         self._latido.timeout.connect(self._avanzar_graficas)
@@ -664,7 +665,9 @@ class MainWindow(QMainWindow):
             self._build_ui()
 
     def _aplicar_fluidez(self) -> None:
-        """Enciende o apaga el deslizamiento de las gráficas."""
+        """Enciende o apaga el deslizamiento de las gráficas y las barras."""
+        from .widgets import Deslizador
+        Deslizador.fluido = bool(self.prefs.fluid_charts)
         if self.prefs.fluid_charts and not self._congelado:
             self._latido.start()
         else:
@@ -674,20 +677,28 @@ class MainWindow(QMainWindow):
                 grafica.advance(1.0)
 
     def _graficas(self, solo_visibles: bool = False):
-        """Las gráficas de la ventana; las de las páginas cerradas no cuentan.
+        """Lo que se desliza: las gráficas y las barras de la ventana; lo de
+        las páginas cerradas no cuenta.
 
         Qt no repinta un widget oculto, así que avisarlas es gasto tonto: de
-        las dieciséis que hay montadas, en pantalla no llegan a cinco.
+        las dieciséis gráficas que hay montadas, en pantalla no llegan a cinco.
+        Una barra oculta se queda donde iba, y se pone en su sitio con la
+        muestra siguiente.
         """
-        from .widgets import Sparkline
-        graficas = self.findChildren(Sparkline)
+        from .corematrix import CoreMatrix
+        from .widgets import LevelBar, Sparkline, StackedBar
+        graficas = [w for clase in (Sparkline, LevelBar, StackedBar, CoreMatrix)
+                    for w in self.findChildren(clase)]
         return [g for g in graficas if g.isVisible()] if solo_visibles else graficas
 
     def _avanzar_graficas(self) -> None:
         if self._congelado or not self._desde_la_muestra.isValid():
             return
         fase = self._desde_la_muestra.elapsed() / max(1.0, self._intervalo_real)
-        for grafica in self._graficas(solo_visibles=True):
+        # La lista se hace una vez por muestreo (`_on_sample`), no a cada
+        # latido: buscar entre todos los widgets de la ventana treinta veces
+        # por segundo costaba más que pintar.
+        for grafica in self._animables:
             grafica.advance(fase)
 
     def alternar_congelado(self) -> None:
@@ -726,6 +737,8 @@ class MainWindow(QMainWindow):
                 boton.setText(_("perm.read.button"))
         self.home_page.permission_notice.set_waiting(False)
         self._distribute(snapshot)
+        self._animables = (self._graficas(solo_visibles=True)
+                           if self.prefs.fluid_charts else [])
 
         # La pista del atajo va aquí porque es donde se mira sin buscar. Un
         # atajo que no se ve en ningún sitio no existe para quien no lo sabe.
