@@ -81,7 +81,8 @@ class TestEnLasTresPaginas(unittest.TestCase):
         # En esta integrada «Consumo y temperaturas» no tiene nada propio y
         # se va: su explicación queda debajo de la fila de tarjetas.
         self.assertTrue(ficha.sensors_outside.isVisible())
-        self.assertIn(_("gpu.na.notemp"), ficha.sensors_outside.text())
+        self.assertIn(_("gpu.na.piece.temp"), ficha.sensors_outside.text())
+        self.assertIn(_("gpu.na.notemp"), ficha.sensors_outside.toolTip())
         # Las otras fichas de una integrada siguen: uso, reloj y consumo.
         self.assertTrue(ficha.tile_clock.isVisible())
 

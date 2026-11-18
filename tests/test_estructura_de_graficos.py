@@ -134,7 +134,7 @@ class TestLaPaginaDeGraficos(unittest.TestCase):
             self.assertTrue(pie.isVisible())
         self.assertIn(_("gpu.na.intel.card"), ficha.card_pie.text())
         self.assertIn(_("gpu.na.intel.clocks"), ficha.clocks_pie.text())
-        self.assertIn(_("gpu.na.intel.sensors"), ficha.sensors_outside.text())
+        self.assertIn(_("gpu.na.intel.sensors"), ficha.sensors_outside.toolTip())
         # Lo que sí tiene se sigue viendo: sus unidades de ejecución.
         self.assertEqual(ficha.card._values[_("gpu.field.compute")].full_text(),
                          render.compute_units(gpu))

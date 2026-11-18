@@ -77,8 +77,9 @@ class TestEnLaPagina(unittest.TestCase):
     def test_relojes_de_la_integrada(self):
         seccion = self._seccion(self.intel)
         relojes = seccion.clocks
+        # La eficiente vale lo mismo que la mínima: va en su globo
+        # (test_si_eficiente_y_minima_coinciden_sale_una).
         for clave, valor in (("gpu.clock.silmax", "1.10 GHz"),
-                             ("gpu.clock.efficient", "350 MHz"),
                              ("gpu.clock.silmin", "350 MHz")):
             with self.subTest(clave=clave):
                 self.assertTrue(self._visible(relojes, clave))
@@ -114,9 +115,44 @@ class TestEnLaPagina(unittest.TestCase):
         seccion = self._seccion(self.intel)
         self.assertFalse(seccion.sensor_card.isVisibleTo(seccion))
         self.assertTrue(seccion.sensors_outside.isVisibleTo(seccion))
-        self.assertIn(_("gpu.na.intel.throttle"), seccion.sensors_outside.text())
+        self.assertIn(_("gpu.na.intel.throttle"), seccion.sensors_outside.toolTip())
         video = [i for i, m in enumerate(self.intel.gpus[0].engines) if m.kind == "engine.video"]
         self.assertTrue(video, "el uso del video tiene que seguir en la tabla")
+
+    def test_lo_que_no_tiene_se_nombra_en_una_frase(self):
+        """Revisión del autor: el párrafo suelto sobre chips de memoria,
+        reguladores y ventilador sobraba. Lo escondido se nombra al pie en
+        una frase, sin explicar cada hueco; el porqué, al pasar el ratón."""
+        pie = self._seccion(self.intel).sensors_outside
+        self.assertEqual(pie.text(), " ".join((
+            _("gpu.na.sensors.absent").format(campos=render.enumeration(
+                [_("gpu.na.piece.vr"), _("gpu.na.piece.fan"), _("gpu.na.piece.soc"),
+                 _("gpu.na.piece.vram")], "list.nor")),
+            _("gpu.na.sensors.silent").format(campos=render.enumeration(
+                [_("gpu.na.piece.temp"), _("gpu.na.piece.voltage"), _("gpu.na.piece.state")],
+                "list.nor")))))
+        self.assertIn(_("gpu.na.intel.throttle"), pie.toolTip())
+
+    def test_en_una_intel_no_se_nombra_el_driver_de_amd(self):
+        from PySide6.QtWidgets import QLabel
+
+        seccion = self._seccion(self.intel)
+        textos = [e.text() for e in seccion.findChildren(QLabel) if e.isVisibleTo(seccion)]
+        self.assertFalse([t for t in textos if "AMD" in t], textos)
+
+    def test_si_eficiente_y_minima_coinciden_sale_una(self):
+        """RP1 = RPn = 350 MHz en esta UHD 630: la misma cifra dos veces."""
+        seccion = self._seccion(self.intel)
+        self.assertTrue(self._visible(seccion.clocks, "gpu.clock.silmin"))
+        self.assertFalse(self._visible(seccion.clocks, "gpu.clock.efficient"))
+        self.assertIn(_("gpu.tip.efficient"),
+                      seccion.clocks._values[_("gpu.clock.silmin")].toolTip())
+
+    def test_si_no_coinciden_salen_las_dos(self):
+        relojes = dataclasses.replace(self.intel.gpus[0].clocks, efficient_hz=700_000_000)
+        seccion = self._seccion(self._con_gpu(clocks=relojes))
+        self.assertTrue(self._visible(seccion.clocks, "gpu.clock.silmin"))
+        self.assertTrue(self._visible(seccion.clocks, "gpu.clock.efficient"))
 
     def test_con_algo_propio_la_tarjeta_vuelve(self):
         seccion = self._seccion(self._con_gpu(

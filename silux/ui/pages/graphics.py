@@ -115,11 +115,12 @@ NA_INTEGRADA = {
                  "gpu.sensor.fan"), "gpu.na.integrated"),
 }
 
-# Lo que solo cuenta el driver de AMD, visto desde una integrada de Intel.
-# Las unidades de rasterizado y los motores de sombreado salen de una consulta
-# de `amdgpu`; el reloj del SoC, su voltaje y el perfil de rendimiento son de
-# la telemetría y del gestor de energía de ese driver; y el voltaje del
-# núcleo, en Intel, solo lo publican las dedicadas (Arc). En una UHD no son
+# Lo que una integrada de Intel no tiene o i915 no cuenta. Las unidades de
+# rasterizado y los motores de sombreado salen de una consulta de `amdgpu`, y
+# el recuento de Intel son las unidades de ejecución; no tiene reloj de SoC ni
+# perfil de rendimiento; y el voltaje del núcleo, en Intel, solo lo publican
+# las dedicadas (Arc). Las frases del pie no nombran a AMD: quien mira una
+# Intel no tiene por qué saber qué cuenta otro driver. En una UHD no son
 # datos que falten por leer: no hay de dónde. Tampoco el enlace: la integrada
 # de Intel es un dispositivo del propio procesador (00:02.0) y no cuelga de
 # ninguna ranura; la de AMD sí publica el suyo, y por eso esto no vale para
@@ -142,6 +143,21 @@ NA_INTEL_SIN_MOTIVOS = {
 # `no_aplica`: en una AMD no es que falten, es que su driver cuenta la
 # frecuencia por escalones, y eso ya lo dice «Núcleo (máximo)».
 SILICIO = ("gpu.clock.silmax", "gpu.clock.efficient", "gpu.clock.silmin")
+
+# Cuando «Consumo y temperaturas» se va entera, lo escondido se nombra al pie
+# en una frase (regla 5) y el porqué de cada hueco va en el globo. Primero lo
+# que una integrada no tiene; después lo que esta no publica.
+SENSORES_AUSENTES = (
+    (("gpu.sensor.vrgfx", "gpu.sensor.vrsoc", "gpu.sensor.vrmem"), "gpu.na.piece.vr"),
+    (("gpu.sensor.fan",), "gpu.na.piece.fan"),
+    (("gpu.sensor.vsoc",), "gpu.na.piece.soc"),
+    (("gpu.sensor.memtemp", "gpu.sensor.vmem"), "gpu.na.piece.vram"),
+)
+SENSORES_CALLADOS = (
+    (("gpu.sensor.hotspot",), "gpu.na.piece.temp"),
+    (("gpu.sensor.voltage",), "gpu.na.piece.voltage"),
+    (("gpu.sensor.state",), "gpu.na.piece.state"),
+)
 
 # Una Intel no publica su temperatura por ningún camino. Un guion ahí se lee
 # como «no la he podido leer», y no va a poderse nunca.
@@ -198,6 +214,20 @@ def no_aplica(gpu: Gpu) -> tuple[dict[str, set[str]], dict[str, str]]:
             ocultos[tarjeta].update(claves)
             frases[tarjeta].append(frase)
     return ocultos, {t: " ".join(_(f) for f in v) for t, v in frases.items()}
+
+
+def pie_de_sensores(ocultos: set[str]) -> str:
+    """Lo que falta de «Consumo y temperaturas», nombrado en una frase."""
+    ausentes = [_(clave) for campos, clave in SENSORES_AUSENTES if ocultos & set(campos)]
+    callados = [_(clave) for campos, clave in SENSORES_CALLADOS if ocultos & set(campos)]
+    partes = []
+    if ausentes:
+        partes.append(_("gpu.na.sensors.absent").format(
+            campos=render.enumeration(ausentes, "list.nor")))
+    if callados:
+        partes.append(_("gpu.na.sensors.silent").format(
+            campos=render.enumeration(callados, "list.nor")))
+    return " ".join(partes)
 
 
 class GpuSection(QWidget):
@@ -493,7 +523,9 @@ class GpuSection(QWidget):
           tooltip=_("gpu.tip.silmax"))
         k(_("gpu.clock.efficient"), render.hz(gpu.clocks.efficient_hz),
           tooltip=_("gpu.tip.efficient"))
-        k(_("gpu.clock.silmin"), render.hz(gpu.clocks.silicon_min_hz))
+        k(_("gpu.clock.silmin"), render.hz(gpu.clocks.silicon_min_hz),
+          tooltip=(_("gpu.tip.silmin.efficient").format(eficiente=_("gpu.tip.efficient"))
+                   if gpu.clocks.efficient_hz == gpu.clocks.silicon_min_hz else None))
         k(_("gpu.clock.limits"), render.gpu_clock_limits(gpu.clocks) or d,
           tooltip=_("gpu.tip.limits"))
         k(_("gpu.clock.memory"), render.hz(gpu.clocks.memory_hz))
@@ -579,14 +611,16 @@ class GpuSection(QWidget):
         # En una integrada de Intel, de «Consumo y temperaturas» solo queda el
         # uso del motor de video, que ya es una fila de la tabla de motores:
         # una tarjeta para un dato repetido y un párrafo de lo que no hay. Se
-        # va, y el párrafo queda al pie de la fila. Vuelve en cuanto tenga
-        # algo suyo (el estado de una Intel reciente, o cualquier AMD).
+        # va, y lo que no hay se nombra al pie de la fila, en una frase; por
+        # qué falta cada cosa, en el globo. Vuelve en cuanto tenga algo suyo
+        # (el estado de una Intel reciente, o cualquier AMD).
         propios = [c for c in SENSOR_FIELDS
                    if c not in ocultos["sensors"] and c != "gpu.sensor.videouse"]
         solo_el_video = bool(gpu.engines) and not propios
         self.sensor_card.setVisible(not solo_el_video)
-        fuera = pies["sensors"] if solo_el_video else ""
+        fuera = pie_de_sensores(ocultos["sensors"]) if solo_el_video else ""
         self.sensors_outside.setText(fuera)
+        self.sensors_outside.setToolTip(pies["sensors"] if fuera else "")
         self.sensors_outside.setVisible(bool(fuera))
 
         # Con las del silicio, el máximo puesto no va solo: si es el de
@@ -597,6 +631,10 @@ class GpuSection(QWidget):
             self.clocks.set_visible(_(clave), silicio)
         if silicio:
             self.clocks.set_visible(_("gpu.clock.coremax"), False)
+        # La UHD 630 tiene la eficiente y la mínima en 350 MHz: la misma cifra
+        # dos veces. Queda la mínima, y lo de eficiente pasa a su globo.
+        if silicio and gpu.clocks.efficient_hz == gpu.clocks.silicon_min_hz:
+            self.clocks.set_visible(_("gpu.clock.efficient"), False)
         self.clocks.set_visible(_("gpu.clock.limits"),
                                 render.gpu_clock_limits(gpu.clocks) is not None)
 

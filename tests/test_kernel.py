@@ -158,8 +158,8 @@ class TestLosVolcadosEnUn515(unittest.TestCase):
         de gpu_metrics (5.10): con 5.15 sigue saliendo. Decir «tu kernel no
         lo publica» sería falso en los dos casos."""
         seccion = self._seccion(self.intel)
-        self.assertIn(_("gpu.na.intel.throttle"), seccion.sensors_outside.text())
-        self.assertNotIn("5.19", seccion.sensors_outside.text())
+        self.assertIn(_("gpu.na.intel.throttle"), seccion.sensors_outside.toolTip())
+        self.assertNotIn("5.19", seccion.sensors_outside.toolTip())
         self.assertIsNotNone(self.amd.gpus[0].video_busy_percent)
 
     def test_la_ddr5_sin_spd_lo_atribuye_al_kernel(self):
@@ -213,7 +213,7 @@ class TestLosVolcadosEnUn515(unittest.TestCase):
         """Los mismos volcados, con su kernel (7.3), no dicen nada de esto."""
         intel = foto(EQUIPOS / "i5-10400")[0]
         seccion = self._seccion(intel)
-        self.assertIn(_("gpu.na.intel.throttle"), seccion.sensors_outside.text())
+        self.assertIn(_("gpu.na.intel.throttle"), seccion.sensors_outside.toolTip())
         self.assertFalse([n for n in intel.notes if n.need is Need.KERNEL])
 
 
