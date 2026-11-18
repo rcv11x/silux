@@ -326,6 +326,8 @@ código (F-…), que es por el que se buscan allí.
 | rama `actualizaciones` | lista para rebasar | probada de punta a punta sin publicar nada (`tools/probar_actualizador.py`): pasa tras dos arreglos (el AppImage no traía TLS; un corte a `http://` salía como falta de red). Sale de `c01944d` y choca con `oficina` en el paso de la release del CI; falta rebasarla, la prueba con el AppImage del CI y una vez a mano con los botones |
 | `nvml.py` | media, sin comprobar | el uso de NVENC y NVDEC (dos barras en «Ahora mismo»), escrito sin una NVIDIA delante: contrastar con `nvidia-smi dmon -s u` |
 | `ui/widgets.py` | baja | una gráfica transparente repinta la tarjeta y la página de detrás en cada fotograma (~145 widgets/s en Inicio con fluido): pintarla opaca con el color de su tarjeta (docs/rendimiento.md) |
+| `ui/widgets.py` | baja | cada `setText` de un `ElidingLabel` recoloca la página sin mover nada: de 0,2 a 1,8 ms por muestra (docs/rendimiento.md) |
+| `ui/pages/cpulive.py` | baja, sin mirar | pintar CPU tras cada muestra cuesta 11,5 ms, frente a 2-4 en las demás páginas |
 | `providers/` (AMD) | aplazado | PPT, TDC y EDC con `ryzen_smu`: el autor decidió no hacerlo ahora (`docs/propuesta-limites-amd.md`) |
 | `.github/workflows/appimage.yml` | media | el CI no mira si el AppImage pinta sus iconos; se comprobó a mano con `--screenshot` |
 | `privacidad.py`, `tools/volcar_equipo.py` | media-baja | `--anonimo` da la misma IP a todas las interfaces; los volcados, la misma MAC |
