@@ -16,11 +16,13 @@ from __future__ import annotations
 
 import dataclasses
 
+import glob
+import os
 from typing import Optional
 from .. import sysroot
 from .. import nvml
 from ..model import GpuClocks, PcieLink, GpuMemory, Need
-from .base import Draft, Provider
+from .base import Draft, Provider, en_reposo, read_text
 
 # La velocidad de cada generación de PCIe, para traducir el número que da NVML.
 VELOCIDADES = {1: 2.5, 2: 5.0, 3: 8.0, 4: 16.0, 5: 32.0, 6: 64.0}
@@ -40,6 +42,12 @@ class NvidiaGpus(Provider):
         # Con un equipo volcado no se pregunta a la NVML de este: no está
         # grabada todavía, y mezclaría las dos máquinas.
         if sysroot.activo():
+            return False
+        if nvidias_dormidas():
+            # NVML habla con todas las tarjetas a la vez: abrirla, o tenerla
+            # abierta y preguntar, despierta la que duerme. Se suelta mientras
+            # haya una suspendida y se vuelve a abrir cuando despierte.
+            self.client.close()
             return False
         return self.client.open()
 
@@ -67,6 +75,28 @@ class NvidiaGpus(Provider):
         draft.notes = [n for n in draft.notes
                        if not (n.need is Need.DRIVER and n.path.startswith("gpus.")
                                and "NVIDIA" in n.message)]
+
+
+PCI = "/sys/bus/pci/devices"
+
+
+def nvidias_dormidas() -> list[str]:
+    """Las gráficas de NVIDIA que el kernel tiene suspendidas (D3).
+
+    Se mira en el bus y no en lo que enumeró DRM: con el driver propietario
+    sin `nvidia-drm.modeset` no hay nodo DRM, y la tarjeta duerme igual. El
+    portátil típico (Optimus con RTD3, de serie en Ampere y posteriores con
+    el driver 525 o más) la tiene así siempre que no se juega.
+    """
+    dormidas = []
+    for camino in sorted(glob.glob(os.path.join(sysroot.ruta(PCI), "*"))):
+        if (read_text(f"{camino}/vendor") or "").lower() != "0x10de":
+            continue
+        if not (read_text(f"{camino}/class") or "").startswith("0x03"):
+            continue
+        if en_reposo(camino):
+            dormidas.append(os.path.basename(camino))
+    return dormidas
 
 
 # Cuántos núcleos CUDA lleva cada multiprocesador, por generación. Las dos

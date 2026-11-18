@@ -51,6 +51,13 @@ class GpuApis(Provider):
     def collect(self, draft: Draft) -> None:
         if not draft.gpus:
             return
+        if any(gpu.get("suspended") for gpu in draft.gpus):
+            # Vulkan y OpenCL abren todas las tarjetas para enumerarlas, y
+            # abrir el nodo de una suspendida la despierta. Se pregunta cuando
+            # despierte: lo estático se vuelve a leer entonces.
+            draft.note("gpus.apis", Need.HARDWARE,
+                       _("prov.apis.asleep"), _("prov.apis.asleep.hint"))
+            return
 
         # Una sola llamada: por dentro lanza un proceso aparte que carga los
         # drivers, contesta y muere. Ver el porqué en `silux.gpuapi`.

@@ -124,6 +124,10 @@ class Collector:
 
         draft = self._clone(self._static)
         self._collect((p for p in self.providers if not p.static), into=draft)
+        if draft.static_stale:
+            # Algo que dormía al leer lo estático ha despertado: la próxima
+            # vuelta lo lee entero.
+            self.invalidate()
         return draft.freeze()
 
     def sample(self, settle: float = 0.25) -> Snapshot:

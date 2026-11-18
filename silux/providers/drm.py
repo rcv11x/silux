@@ -32,7 +32,7 @@ from .. import amdgpu, edid, gpumetrics, i915, pciids
 from ..model import (Display, GpuClockLevel, GpuClocks, GpuEngine, PcieLink, GpuMemory,
                       Need)
 from ..privileged.client import HelperError, PmuUnsupported, PrivilegedClient
-from .base import Draft, Provider, read_int, read_text
+from .base import Draft, Provider, en_reposo, read_int, read_text
 from ..i18n import _
 from .. import sysroot
 
@@ -180,8 +180,13 @@ class DrmGpus(Provider):
             gpu["pci_slot"] = _ranura(dispositivo)
             gpu["driver"] = _driver(dispositivo)
             gpu["primary"] = read_int(f"{dispositivo}/boot_vga") == 1
+            # Lo primero, antes de tocar nada que la despierte. La identidad
+            # (vendor, device, revisión) la guarda el kernel al enumerar y se
+            # lee sin despertarla; el enlace, la memoria y el driver, no.
+            dormida = en_reposo(dispositivo)
+            gpu["suspended"] = dormida
 
-            self._identidad(gpu, dispositivo, draft)
+            self._identidad(gpu, dispositivo, draft, dormida)
             if gpu["driver"] in FRAMEBUFFER_GENERICO or not gpu.get("vendor_id"):
                 self._identidad_del_bus(gpu, draft, indice, sin_driver)
             if gpu["driver"] in ("i915", "xe"):
@@ -190,10 +195,14 @@ class DrmGpus(Provider):
                 # temperatura de la gráfica. Lo sabe quien conoce el driver, y
                 # lo dice aquí para que nadie tenga que deducirlo del nombre.
                 gpu["no_temperature_sensor"] = True
-            gpu["link"] = _enlace(dispositivo)
-            gpu["memory"] = _memoria_total(dispositivo)
             gpu["displays"] = _salidas(nodo.name)
-            self._preguntar_al_driver(gpu, dispositivo)
+            if dormida:
+                draft.note(f"gpus.{indice}", Need.HARDWARE,
+                           _("prov.drm.asleep"), _("prov.drm.asleep.hint"))
+            else:
+                gpu["link"] = _enlace(dispositivo)
+                gpu["memory"] = _memoria_total(dispositivo)
+                self._preguntar_al_driver(gpu, dispositivo)
             gpu["integrated"] = _es_integrada(gpu)
 
             aviso = DRIVERS_CIEGOS.get(gpu["driver"] or "")
@@ -219,7 +228,8 @@ class DrmGpus(Provider):
         gpu["pci_slot"] = dispositivo.name
         # El nodo DRM sigue siendo el del framebuffer; el enlace y la memoria
         # se leen del dispositivo de verdad, que es quien los tiene.
-        gpu["link"] = _enlace(dispositivo)
+        if not en_reposo(dispositivo):
+            gpu["link"] = _enlace(dispositivo)
         gpu["integrated"] = _es_integrada(gpu)
         draft.note(f"gpus.{indice}", Need.DRIVER,
                    _("prov.drm.nodriver").format(
@@ -281,7 +291,8 @@ class DrmGpus(Provider):
         gpu["compute_units"] = info.eu_total
 
     @staticmethod
-    def _identidad(gpu: dict, dispositivo: pathlib.Path, draft: Draft) -> None:
+    def _identidad(gpu: dict, dispositivo: pathlib.Path, draft: Draft,
+                   dormida: bool = False) -> None:
         # `draft` hace falta al final, para preguntarle a la marca del
         # procesador cómo se llama su integrada. Faltaba en la firma y se usaba
         # igualmente: era un NameError esperando a que la condición de arriba
@@ -296,8 +307,12 @@ class DrmGpus(Provider):
         gpu["subsystem_vendor_id"] = _hex(dispositivo / "subsystem_vendor")
         gpu["subsystem_device_id"] = _hex(dispositivo / "subsystem_device")
         gpu["revision"] = _hex(dispositivo / "revision")
-        gpu["vbios"] = read_text(f"{dispositivo}/vbios_version")
-        gpu["unique_id"] = read_text(f"{dispositivo}/unique_id")
+        # Lo de arriba es del núcleo PCI, que lo guardó al enumerar
+        # (drivers/pci/pci-sysfs.c). Esto otro es del driver, y no se sabe si
+        # despierta: con la tarjeta dormida, mejor sin dato que despertarla.
+        if not dormida:
+            gpu["vbios"] = read_text(f"{dispositivo}/vbios_version")
+            gpu["unique_id"] = read_text(f"{dispositivo}/unique_id")
         gpu["vendor"] = VENDORS.get(vendor_id or -1)
 
         if vendor_id is None or device_id is None:
@@ -391,6 +406,9 @@ class GpuState(Provider):
         # El contador de reposo es acumulativo, igual que los del PMU, pero
         # este sale de sysfs y no cuesta permisos.
         self._rc6: dict[str, tuple[float, int]] = {}
+        # Lo último que se leyó de cada tarjeta despierta: cuándo y su
+        # temperatura, para decirlo mientras duerme.
+        self._despierta: dict[str, tuple[float, Optional[float]]] = {}
 
     def available(self) -> bool:
         return os.path.isdir(sysroot.ruta(SYS_DRM))
@@ -405,6 +423,13 @@ class GpuState(Provider):
             dispositivo = raiz / "device"
             if not dispositivo.is_dir():
                 continue
+            if en_reposo(dispositivo):
+                self._dormida(gpu, nodo)
+                continue
+            if gpu.get("suspended"):
+                # Lo estático se leyó con ella dormida y le falta media ficha.
+                gpu["suspended"] = False
+                draft.static_stale = True
 
             gpu["busy_percent"] = _porcentaje(dispositivo / "gpu_busy_percent")
             gpu["memory_busy_percent"] = _porcentaje(dispositivo / "mem_busy_percent")
@@ -414,6 +439,7 @@ class GpuState(Provider):
             gpu["clocks"] = _relojes(dispositivo, raiz)
             _sensores(gpu, dispositivo)
             _telemetria(gpu, dispositivo, draft, indice)
+            self._despierta[nodo] = (time.time(), gpu.get("temp_c"))
 
             if gpu.get("driver") in ("i915", "xe"):
                 gpu["sleep_percent"] = self._reposo(nodo, raiz)
@@ -428,6 +454,21 @@ class GpuState(Provider):
                 if vatios is not None and gpu.get("integrated"):
                     gpu["power_w"] = vatios
                 self._avisar_de_intel(draft, indice)
+
+    def _dormida(self, gpu: dict, nodo: str) -> None:
+        """Una tarjeta suspendida: no se le pregunta nada.
+
+        Ni el uso, ni los relojes, ni el hwmon, ni el enlace: cualquiera de
+        ellos la despierta, y cada muestreo la tendría despierta. El enlace
+        que se leyó al arrancar ya no es el de ahora, así que se quita lo
+        actual y se queda lo que la tarjeta admite.
+        """
+        gpu["suspended"] = True
+        enlace = gpu.get("link") or PcieLink()
+        gpu["link"] = dataclasses.replace(enlace, current_speed_gts=None,
+                                          current_width=None)
+        if (ultimo := self._despierta.get(nodo)) is not None:
+            gpu["last_awake_s"], gpu["last_temp_c"] = ultimo
 
     # -- el contador de ocupación del kernel --------------------------------
 

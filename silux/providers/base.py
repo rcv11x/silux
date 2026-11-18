@@ -59,6 +59,10 @@ class Draft:
     driver_hints: list[DriverHint] = field(default_factory=list)
     capabilities: set[str] = field(default_factory=set)
     notes: list[Note] = field(default_factory=list)
+    # Lo estático se leyó con algo dormido que ya no lo está: una gráfica
+    # suspendida no se lee entera para no despertarla, y cuando despierta hay
+    # que volver a por lo que faltó. Lo mira el colector al acabar la vuelta.
+    static_stale: bool = False
 
     # -- ayudas de escritura ------------------------------------------------
 
@@ -195,6 +199,20 @@ def read_text(path: str) -> Optional[str]:
             return fh.read().strip()
     except (OSError, ValueError):
         return None
+
+
+def en_reposo(dispositivo) -> bool:
+    """Si el kernel tiene ese dispositivo suspendido por el runtime PM (D3).
+
+    `power/runtime_status` lo publica el núcleo de gestión de energía, no el
+    driver: `runtime_status_show` (drivers/base/power/sysfs.c) devuelve el
+    estado guardado sin despertar el dispositivo
+    (Documentation/ABI/testing/sysfs-devices-power). Casi todo lo demás sí lo
+    despierta: el enlace PCIe desde Linux 6.18, el hwmon y los ioctl de
+    amdgpu, abrir el nodo de render, NVML. Quien pregunta saca a la tarjeta
+    de su reposo y después la mide despierta, que no es como estaba.
+    """
+    return read_text(f"{dispositivo}/power/runtime_status") in ("suspended", "suspending")
 
 
 def read_int(path: str) -> Optional[int]:

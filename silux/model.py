@@ -1056,6 +1056,13 @@ class Gpu:
     # integrada solo porque su memoria no se pudo contar.
     integrated: Optional[bool] = None
     primary: bool = False
+    # Suspendida por el runtime PM del kernel (D3): la dedicada de un portátil
+    # cuando nadie la usa. Leer de ella casi cualquier cosa la despierta, así
+    # que no se le pregunta nada y lo de abajo se queda sin dato. Lo último
+    # que se supo antes de dormirse: cuándo (`time.time()`) y su temperatura.
+    suspended: bool = False
+    last_awake_s: Optional[float] = None
+    last_temp_c: Optional[float] = None
 
     memory: GpuMemory = field(default_factory=GpuMemory)
     link: PcieLink = field(default_factory=PcieLink)

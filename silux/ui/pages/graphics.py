@@ -476,6 +476,8 @@ class GpuSection(QWidget):
         # Va arriba, debajo del nombre: es lo que explica por qué las cifras de
         # al lado no llegan a donde deberían, y escondido en una fila de la
         # ficha de sensores no lo lee quien no sabía que existía.
+        # Una tarjeta suspendida no se frena: duerme, y es lo que se dice.
+        recorte = render.gpu_asleep(gpu, self._prefs.fahrenheit) or recorte
         self.recorte.setText(recorte)
         self.recorte.setVisible(bool(recorte))
         # `pcie_link` devuelve un guion cuando no hay enlace que contar, y una

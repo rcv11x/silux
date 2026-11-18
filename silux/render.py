@@ -1283,6 +1283,27 @@ def duracion(segundos: float) -> str:
     return _("time.minutes").format(m=minutos)
 
 
+def gpu_asleep(gpu, fahrenheit: bool = False) -> str:
+    """Qué se dice de una gráfica suspendida, o "" si está despierta.
+
+    Sin cifras de ahora, que no se han leído, y con lo último que se supo y
+    de cuándo, si se llegó a ver despierta: una temperatura sin su hora se
+    leería como la de este momento.
+    """
+    if not getattr(gpu, "suspended", False):
+        return ""
+    texto = _("gpu.asleep")
+    if gpu.last_awake_s is not None:
+        import time
+        hora = time.strftime("%H:%M", time.localtime(gpu.last_awake_s))
+        if gpu.last_temp_c is not None:
+            texto += " " + _("gpu.asleep.lasttemp").format(
+                hora=hora, valor=temperature(gpu.last_temp_c, fahrenheit))
+        else:
+            texto += " " + _("gpu.asleep.last").format(hora=hora)
+    return texto
+
+
 def throttle_episode(episodio, ahora_ns: int) -> Optional[str]:
     """Cuánto lleva —o llevó— frenándose, y por qué.
 

@@ -21,7 +21,7 @@ from typing import Optional
 
 from .. import pciids, sysroot
 from ..model import PciDevice, Platform
-from .base import Draft, Provider, read_text
+from .base import Draft, Provider, en_reposo, read_text
 from .drm import VENDORS, _cadena_pcie, _enlace
 
 DISPOSITIVOS = "/sys/bus/pci/devices"
@@ -75,7 +75,10 @@ class PciDevices(Provider):
             # procesador: lo que publica su nodo es el enlace interno del
             # chipset, y enseñarlo («PCIe 4.0 × 4, máximo × 8») se leería
             # como una ranura que va a medias.
-            enlace = _enlace(nodo) if fijo["kind"] in EN_RANURA else None
+            # Una tarjeta suspendida no se pregunta: leer su enlace la saca
+            # del reposo desde Linux 6.18 (`en_reposo`).
+            enlace = (_enlace(nodo) if fijo["kind"] in EN_RANURA
+                      and not en_reposo(nodo) else None)
             # Una integrada de Intel no publica enlace: no cuelga de ninguno,
             # va dentro del procesador. Un enlace sin una sola cifra no es un
             # enlace del que no se sabe nada, es que no lo hay.
