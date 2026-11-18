@@ -289,6 +289,7 @@ código (F-…), que es por el que se buscan allí.
 
 | Dónde | Gravedad | Qué |
 |---|---|---|
+| `tests/`, `ui/app.py` | alta | en el CI con Python 3.10 (PySide6 6.11), `Segmentation fault` intermitente dentro de un `processEvents` de `test_nada_en_bruto`: tres CI de seis el 18; aquí no sale. Detalle en docs/en-curso.md |
 | `ui/pages/board.py` | media, sin comprobar | la columna «Ranura» (SMBIOS tipo 9) no se ha visto con la tabla de ninguna placa |
 | `spd.py` | alta | el XMP de DDR4 ignora la corrección fina del ciclo: un DDR4-3600 sale 3200 (F-A2); pide un volcado real con XMP |
 | `privileged/instalar.py` | alta, condicionada | no comprueba que el destino no sea sustituible |
