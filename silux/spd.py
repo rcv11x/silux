@@ -143,6 +143,31 @@ class SpdInfo:
 PASO_JEDEC = (200, 3)
 
 
+# Las velocidades con nombre de cada generación, como las nombra JEDEC. La
+# rejilla de 200/3 de arriba no basta para todas: DDR2-667 son 666,67 y JEDEC
+# la nombra redondeando, no truncando, y la LPDDR5/5X no cae en la rejilla
+# (5500 y 7500 están a media casilla). Fuentes: JESD79F (DDR), JESD79-2F
+# (DDR2), JESD79-3F (DDR3), JESD79-4D (DDR4), JESD79-5C (DDR5), JESD209-3C
+# (LPDDR3), JESD209-4D (LPDDR4/4X), JESD209-5C (LPDDR5/5X); 7467 es el grado
+# de LPDDR5X que usan Intel y Micron.
+VELOCIDADES_JEDEC = (
+    200, 266, 333, 400,                                   # DDR
+    533, 667, 800, 1066,                                  # DDR2
+    1333, 1600, 1866, 2133,                               # DDR3, LPDDR3
+    2400, 2666, 2933, 3200,                               # DDR4
+    3733, 4266,                                           # LPDDR4X
+    3600, 4000, 4400, 4800, 5200, 5600, 6000, 6400,       # DDR5
+    6800, 7200, 7600, 8000, 8400, 8800,
+    5500, 7467, 7500, 8533, 9600,                         # LPDDR5, LPDDR5X
+)
+
+# Cuánto se puede separar lo medido de su grado y seguir siendo ese grado: el
+# tCK del SPD va cuantizado a un picosegundo (un 0,1 % a 8800 MT/s), y el
+# firmware redondea los tercios a un lado o al otro (2666 o 2667). Con un
+# 0,5 % la casilla 7533 de la rejilla, que no es un grado, caía en 7500.
+TOLERANCIA_JEDEC = 0.003
+
+
 def grado_jedec(mts: float) -> int:
     """El nombre del grado al que corresponde una velocidad calculada.
 
@@ -154,8 +179,10 @@ def grado_jedec(mts: float) -> int:
     parecía ir por debajo de lo suyo. Fallaban once de los veintiocho grados
     conocidos de DDR3, DDR4, DDR5 y XMP.
 
-    Se busca el múltiplo de 200/3 más cercano y se trunca, que es como los
-    nombra JEDEC: 2666,67 es «DDR4-2666» y 1866,67 es «DDR3-1866». La cuenta va
+    Primero se busca el grado con nombre más cercano (`VELOCIDADES_JEDEC`), de
+    cualquier generación: 2666,67 es «DDR4-2666», 666,67 es «DDR2-667» y la
+    LPDDR5-5500 sigue siendo 5500. Lo que no es un grado de JEDEC —un perfil
+    XMP— va al múltiplo de 200/3 más cercano, truncado. La cuenta va
     en enteros —`n * 200 // 3`— para que el truncado no dependa de cómo caiga
     un flotante.
 
@@ -165,6 +192,12 @@ def grado_jedec(mts: float) -> int:
     grado que dar, así que sale un cero, que es lo que el resto del módulo
     entiende como «no hay dato».
     """
+    if mts > 0:
+        cercana = min(VELOCIDADES_JEDEC, key=lambda v: abs(v - mts))
+        if abs(cercana - mts) <= mts * TOLERANCIA_JEDEC:
+            return cercana
+    # Lo que no es un grado de JEDEC (un perfil XMP: 3600, 3733, 4133) sigue
+    # en la rejilla, porque el reloj de referencia va en tercios igual.
     paso, divisor = PASO_JEDEC
     n = round(mts * divisor / paso)
     if n <= 0:

@@ -374,8 +374,7 @@ Lo que salió al hacerla y no entraba en ella:
   ahora mide tiempo de CPU y no rendimiento; ver `docs/lecciones.md`.)
 - **Vistos el 18 con permisos de verdad, sin tocar**: el Kioxia SATA de la
   oficina enseña «Vida restante —» (su atributo SMART de desgaste no se
-  reconoce). Y el redondeo de grados JEDEC, pensado para DDR4 (2667 → 2666), convierte un DDR2-667 en
-  «666 MT/s».
+  reconoce).
 - **CPU, «Preferencia de energía —» con acpi-cpufreq**: ese driver no tiene
   EPP en ningún kernel, y la fila sale con guion en vez de esconderse y
   decirse (regla 5). Visto con el volcado del 5800X3D convertido a 5.15.

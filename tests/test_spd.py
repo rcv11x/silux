@@ -221,6 +221,46 @@ GRADOS = {
 }
 
 
+# Los grados que la rejilla de 200/3 no nombra bien (revisión del autor: un
+# DDR2-667 salía «666 MT/s»). JEDEC nombra DDR2-667 redondeando 666,67, y la
+# LPDDR5/5X no cae en esa rejilla: 5500 y 7500 están a media casilla y salían
+# 5466 y 7466. Los de DDR y DDR2, por su tCK en ps (JESD79F, JESD79-2F); los
+# de LPDDR, como los escribe el firmware en la tabla SMBIOS.
+GRADOS_FUERA_DE_LA_REJILLA = {
+    "DDR": {266: 7500, 333: 6000, 400: 5000},
+    "DDR2": {533: 3750, 667: 3000, 800: 2500, 1066: 1875},
+}
+LPDDR_DEL_FIRMWARE = {"LPDDR4X-4266": 4266, "LPDDR5-5500": 5500, "LPDDR5-6400": 6400,
+                      "LPDDR5X-7467": 7467, "LPDDR5X-7500": 7500, "LPDDR5X-8533": 8533}
+
+
+class TestLosGradosDeTodasLasGeneraciones(unittest.TestCase):
+
+    def test_ddr_y_ddr2_por_su_tck(self):
+        from silux.spd import grado_jedec
+
+        for generacion, grados in GRADOS_FUERA_DE_LA_REJILLA.items():
+            for nombre, tck in grados.items():
+                with self.subTest(generacion=generacion, grado=nombre):
+                    self.assertEqual(grado_jedec(2_000_000 / tck), nombre)
+
+    def test_lpddr_como_la_da_el_firmware(self):
+        from silux import render
+
+        for nombre, mts in LPDDR_DEL_FIRMWARE.items():
+            with self.subTest(grado=nombre):
+                self.assertEqual(render.velocidad_de_memoria(mts), int(nombre.split("-")[1]))
+
+    def test_el_firmware_que_redondea_al_otro_lado(self):
+        """2666 o 2667, 666 o 667: el mismo grado se nombra igual."""
+        from silux import render
+
+        for crudo, grado in ((2667, 2666), (2666, 2666), (666, 667), (667, 667),
+                             (1067, 1066), (1333, 1333)):
+            with self.subTest(crudo=crudo):
+                self.assertEqual(render.velocidad_de_memoria(crudo), grado)
+
+
 class TestElGradoDeCadaVelocidad(unittest.TestCase):
     """Que un módulo no salga catalogado a una velocidad que no existe.
 
@@ -278,10 +318,13 @@ class TestElGradoDeCadaVelocidad(unittest.TestCase):
         """
         from silux.spd import grado_jedec
 
+        # Dos casillas que JEDEC nombra redondeando y no truncando: 666,67 es
+        # DDR2-667 y 7466,67, LPDDR5X-7467 (TestLosGradosDeTodasLasGeneraciones).
+        redondeadas = {10: 667, 112: 7467}
         for n in range(3, 120):
             exacto = n * 200 / 3
             with self.subTest(n=n):
-                self.assertEqual(grado_jedec(exacto), n * 200 // 3)
+                self.assertEqual(grado_jedec(exacto), redondeadas.get(n, n * 200 // 3))
 
 
 class TestLaFormulaNoSeCopiaEnVariosSitios(unittest.TestCase):
