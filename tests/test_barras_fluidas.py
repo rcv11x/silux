@@ -207,6 +207,37 @@ class TestLasBarrasDeVerdad(unittest.TestCase):
             matriz.render(lienzo)
             self.assertEqual(curva.call_count, 8, "con la muestra nueva, dos por hilo")
 
+    def test_la_de_memoria_no_repinta_su_leyenda_en_cada_fotograma(self):
+        """La leyenda va debajo de la barra, dentro del mismo widget. Repintar
+        el widget entero repintaba sus insignias en cada fotograma: casi cien
+        por segundo en Inicio."""
+        from PySide6.QtCore import QEvent, QObject
+
+        from silux.ui.widgets import Badge, StackedBar
+        barra = self.a_la_vista(StackedBar(self.paleta))
+        barra.set_segments([("Aplicaciones", 2.0, "accent"), ("Libre", 8.0, "line")], 10.0)
+        self.app.processEvents()
+
+        class Contador(QObject):
+            pintados = 0
+
+            def eventFilter(self, objeto, evento):  # noqa: N802
+                if evento.type() == QEvent.Type.Paint and isinstance(objeto, Badge):
+                    Contador.pintados += 1
+                return False
+
+        contador = Contador()
+        self.app.installEventFilter(contador)
+        self.addCleanup(self.app.removeEventFilter, contador)
+        barra.set_segments([("Aplicaciones", 6.0, "accent"), ("Libre", 4.0, "line")], 10.0)
+        self.app.processEvents()
+        Contador.pintados = 0
+        for _vez in range(5):
+            self.reloj.pasar(0.03)
+            barra.advance(0.1)
+            self.app.processEvents()
+        self.assertEqual(Contador.pintados, 0)
+
     def test_parar_el_movimiento_la_pone_en_su_sitio(self):
         """Al congelar o apagar el ajuste, la ventana pide la fase 1: una barra
         a medio camino no se queda ahí hasta la muestra siguiente."""

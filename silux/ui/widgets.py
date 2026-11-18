@@ -2405,16 +2405,23 @@ class StackedBar(QWidget):
             swatches=[(self._color(token), borde) for _label, _value, token in visibles],
         )
         self._reservar_alto()
-        self.update()
+        self._repintar_la_barra()
+
+    def _repintar_la_barra(self) -> None:
+        """Solo la franja de la barra. La leyenda va debajo, dentro de este
+        mismo widget, y repintarlo entero repintaba también sus insignias en
+        cada fotograma de la animación: casi cien por segundo en Inicio. Sus
+        textos ya se repintan solos cuando cambian."""
+        self.update(0, 0, self.width(), self.BAR_HEIGHT)
 
     def advance(self, phase: float) -> bool:
         """Un fotograma; dice si algún tramo sigue moviéndose (`LevelBar.advance`)."""
         if phase >= 1.0 and any(d.moviendose() for d in self._largos.values()):
             for largo in self._largos.values():
                 largo.terminar()
-            self.update()
+            self._repintar_la_barra()
         elif any([d.avanzar() for d in self._largos.values()]):
-            self.update()
+            self._repintar_la_barra()
         return any(d.moviendose() for d in self._largos.values())
 
     def _color(self, token: str) -> QColor:
