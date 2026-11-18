@@ -46,13 +46,23 @@ cosa de silux.
 
 ### 1. «Para siempre»: nuestro texto, en cada idioma (cambio pequeño)
 
-La regla ya existe. Se cambia su texto por el que pide el autor, con una
-línea por idioma de la interfaz, y se añade al instalar:
+La regla ya existe. Hoy dice «Se necesita autorización para leer los
+módulos de memoria y el diagnóstico de los discos» (`instalar.PLANTILLA`;
+es lo que vio el autor en el 5800X3D el 18 por la noche, con la regla
+instalada el 17). Se lee bien, pero se queda corta: el mismo permiso sirve
+para todo lo que lee el ayudante —la tabla SMBIOS (memoria), el SMART
+(discos), los MSR (voltaje), RAPL (consumo) y los contadores del PMU (el uso
+de una gráfica Intel)—, y quien autoriza tiene que saberlo. El texto que
+pide el autor, con una línea por idioma de la interfaz:
 
 ```xml
-<message>Silux quiere leer datos del hardware que solo puede ver el administrador (memoria, discos, consumo). Solo lee, no cambia nada.</message>
-<message xml:lang="en">Silux wants to read hardware data that only the administrator can see (memory, disks, power). It only reads; it changes nothing.</message>
+<message>Silux necesita permiso para leer datos del hardware reservados al administrador: memoria, discos, voltaje y consumo. Solo lee, no cambia nada.</message>
+<message xml:lang="en">Silux needs permission to read hardware data reserved to the administrator: memory, disks, voltage and power. It only reads; it changes nothing.</message>
 ```
+
+Si se aplica la propuesta del uso de las gráficas (el PMU de una Arc y el de
+`xe`), la lista gana «y el uso de la gráfica»: lo que la ventana nombra
+tiene que ser todo lo que el permiso abre, ni más ni menos.
 
 - polkitd elige el `<message>` según el idioma de la sesión que pide
   (`xml:lang`). Si no hay de ese idioma, usa el que no lleva `xml:lang`.
