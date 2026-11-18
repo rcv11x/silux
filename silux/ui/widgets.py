@@ -1207,6 +1207,7 @@ class StatTile(Card):
 
         row.addWidget(self.lock)
         row.addWidget(self.value)
+        self._alinear()
         row.addWidget(self.unit, 0, Qt.AlignmentFlag.AlignBottom)
         row.addStretch(1)
 
@@ -1229,6 +1230,29 @@ class StatTile(Card):
     def set_unit(self, unit: str) -> None:
         if self.unit.text() != unit:
             self.unit.setText(unit)
+            self._alinear()
+
+    def reserve(self, texts: Iterable[str]) -> None:
+        """Reserva para la cifra el ancho de la más larga de `texts`, lo más
+        largo que puede llegar a decir.
+
+        Sin reserva, la cifra medía lo que su texto: de «9» a «10» se
+        ensanchaba y la unidad saltaba diecisiete píxeles cada vez que el uso
+        cruzaba una decena. Se mide con la letra de la cifra y no con la de la
+        etiqueta, que con un guion es la pequeña.
+        """
+        metricas = QFontMetrics(value_font(theme.METRICS.tile_value_pt, bold=True))
+        ancho = max((metricas.size(0, t).width() for t in texts), default=0)
+        if self.value.minimumWidth() != ancho:
+            self.value.setMinimumWidth(ancho)
+
+    def _alinear(self) -> None:
+        """La cifra, arrimada a su unidad: a la derecha si va aparte («9 %»),
+        y a la izquierda si va en el texto («1.4 MB/s»), que es por donde
+        empieza a leerse. Con el ancho reservado, lo que se mueve es la
+        cifra, y no lo que hay a su lado."""
+        lado = Qt.AlignmentFlag.AlignRight if self.unit.text() else Qt.AlignmentFlag.AlignLeft
+        self.value.setAlignment(lado | Qt.AlignmentFlag.AlignVCenter)
 
     def set_label(self, label: str) -> None:
         """Cambia el nombre del recuadro.

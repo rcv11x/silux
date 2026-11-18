@@ -67,6 +67,11 @@ class CpuLiveSection(QWidget):
         self.tile_usage = StatTile(_("gpu.tile.usage"), "%", self._p)
         self.tile_temp = StatTile(_("gpu.tile.temp"), "°C", self._p)
         self.tile_power = StatTile(_("gpu.tile.power"), "W", self._p)
+        # Lo más ancho que puede escribir cada una: «0.00» gigahercios y tres
+        # cifras para el uso, los grados (también en Fahrenheit) y los vatios.
+        self.tile_freq.reserve([render.figure(9.99, 2)])
+        for tile in (self.tile_usage, self.tile_temp, self.tile_power):
+            tile.reserve([render.figure(999)])
 
         # Cada gráfica sabe escribir su propia cifra cuando se la señala.
         intervalo = self._prefs.interval_s
@@ -97,7 +102,7 @@ class CpuLiveSection(QWidget):
         clocks = primary.clocks
 
         if clocks.current_hz:
-            self.tile_freq.update_value(f"{clocks.current_hz / 1e9:.2f}",
+            self.tile_freq.update_value(render.figure(clocks.current_hz / 1e9, 2),
                                         clocks.current_hz / 1e9)
             # Hasta el techo del silicio, no hasta el que aplica el kernel: con
             # el gobernador `performance` la frecuencia vive en ese techo, y la
@@ -119,7 +124,7 @@ class CpuLiveSection(QWidget):
                     self.tile_freq.set_detail(f"{render.hz(suelo)} – {render.hz(techo)}")
 
         if cpu.usage_percent is not None:
-            self.tile_usage.update_value(f"{cpu.usage_percent:.0f}", cpu.usage_percent)
+            self.tile_usage.update_value(render.figure(cpu.usage_percent), cpu.usage_percent)
             self.tile_usage.chart.set_range(0.0, 100.0)
             if cpu.load_average:
                 self.tile_usage.set_detail(_("cpu.tile.load").format(v=f"{cpu.load_average[0]:.2f}"))
@@ -131,7 +136,7 @@ class CpuLiveSection(QWidget):
         self.tile_temp.set_unit(unit)
         if temperature is not None:
             shown = self._temp(temperature)
-            self.tile_temp.update_value(f"{shown:.0f}", shown)
+            self.tile_temp.update_value(render.figure(shown), shown)
             # La media de los núcleos, debajo de la del encapsulado, solo si
             # hay sensores por núcleo. En AMD no los hay: `temp_c` del tipo es
             # entonces la misma Tctl de arriba, y «núcleos 59 °C» la repetía
@@ -145,7 +150,7 @@ class CpuLiveSection(QWidget):
 
         power = cpu.power
         if power.package_w is not None:
-            self.tile_power.update_value(f"{power.package_w:.0f}", power.package_w)
+            self.tile_power.update_value(render.figure(power.package_w), power.package_w)
             self.tile_power.chart.set_range(0.0, power.limit_long_w)
             self.tile_power.set_detail(
                 render.power_headline(power) or render.power_breakdown(power),

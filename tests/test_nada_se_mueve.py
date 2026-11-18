@@ -39,6 +39,71 @@ def dos_fotos(carpeta):
             recolector.close()
 
 
+def avanzar(raiz, ocupadas: int, octetos: int) -> None:
+    """Lo que pasa en un equipo entre dos muestras: los contadores suben.
+
+    Cada CPU, `ocupadas` milésimas del intervalo trabajando (el resto, en
+    reposo), y `octetos` más por cada interfaz y cada disco, en los dos
+    sentidos.
+    """
+    import pathlib
+
+    raiz = pathlib.Path(raiz)
+    estadistica = raiz / "proc" / "stat"
+    if estadistica.is_file():
+        lineas = []
+        for linea in estadistica.read_text().splitlines():
+            campos = linea.split()
+            if campos and campos[0].startswith("cpu"):
+                campos[1] = str(int(campos[1]) + ocupadas)
+                campos[4] = str(int(campos[4]) + 1000 - ocupadas)
+                linea = " ".join(campos)
+            lineas.append(linea)
+        estadistica.write_text("\n".join(lineas) + "\n")
+    dev = raiz / "proc" / "net" / "dev"
+    if dev.is_file():
+        lineas = dev.read_text().splitlines()
+        for i, linea in enumerate(lineas[2:], start=2):
+            nombre, _dos_puntos, resto = linea.partition(":")
+            numeros = resto.split()
+            numeros[0] = str(int(numeros[0]) + octetos)
+            numeros[8] = str(int(numeros[8]) + octetos)
+            lineas[i] = f"{nombre}: " + " ".join(numeros)
+        dev.write_text("\n".join(lineas) + "\n")
+    for contador in (*raiz.glob("sys/class/net/*/statistics/rx_bytes"),
+                     *raiz.glob("sys/class/net/*/statistics/tx_bytes")):
+        contador.write_text(f"{int(contador.read_text()) + octetos}\n")
+    for disco in raiz.glob("sys/block/*/stat"):
+        campos = disco.read_text().split()
+        if len(campos) >= 7:
+            campos[2] = str(int(campos[2]) + octetos // 512)      # sectores leídos
+            campos[6] = str(int(campos[6]) + octetos // 512)      # sectores escritos
+            disco.write_text(" ".join(campos) + "\n")
+
+
+def con_contadores_avanzando(carpeta):
+    """Dos muestras de un volcado con los mismos campos y otras cifras.
+
+    Antes de cada una los contadores avanzan (`avanzar`), para que las dos
+    tengan sus usos y sus ritmos: un volcado quieto no tiene ninguno, que
+    salen de restar dos lecturas. Entre la una y la otra, las CPU pasan del
+    5 % al 100 % y la red y los discos, de unos bytes a megas por segundo.
+    """
+    from silux.collector import Collector
+    from tests.test_volcar_equipo import _herramienta
+
+    with _herramienta().montado(carpeta) as raiz:
+        recolector = Collector()
+        try:
+            recolector.snapshot()
+            avanzar(raiz, ocupadas=50, octetos=1024)
+            segunda = recolector.snapshot()
+            avanzar(raiz, ocupadas=1000, octetos=50_000_000)
+            return segunda, recolector.snapshot()
+        finally:
+            recolector.close()
+
+
 def asentar() -> None:
     """Hasta que Qt haya recolocado todo lo que se le pidió."""
     for _vez in range(6):
@@ -131,6 +196,8 @@ class TestNadaSeMueve(unittest.TestCase):
     def setUpClass(cls):
         qt.app()
         cls.fotos = {carpeta.name: dos_fotos(carpeta) for carpeta in volcados()}
+        cls.avanzando = {carpeta.name: con_contadores_avanzando(carpeta)
+                         for carpeta in volcados()}
 
     def _sin_moverse(self, nombre: str, fotos: dict, como: str) -> None:
         primera, segunda = fotos[nombre]
@@ -150,6 +217,24 @@ class TestNadaSeMueve(unittest.TestCase):
         self.assertTrue(self.fotos)
         for nombre in self.fotos:
             self._sin_moverse(nombre, self.fotos, "iguales")
+
+    def test_con_las_cifras_cambiando_de_ancho(self):
+        # Una cifra que pasa de «0» a «100», o de «0 B/s» a megas, no mueve
+        # su unidad ni nada de al lado: cada ficha reserva lo más ancho que
+        # puede decir (`StatTile.reserve`).
+        for nombre in self.avanzando:
+            self._sin_moverse(nombre, self.avanzando, "con los contadores avanzando")
+
+    def test_avanzar_cambia_las_cifras(self):
+        # Si las dos muestras dijeran lo mismo, la prueba de arriba no
+        # probaría nada.
+        for nombre, (antes, despues) in self.avanzando.items():
+            with self.subTest(equipo=nombre):
+                self.assertLess(antes.cpu.usage_percent, 10.0)
+                self.assertGreater(despues.cpu.usage_percent, 99.0)
+                self.assertTrue(any(d.io.read_rate_bps for d in despues.disks))
+                self.assertTrue(any(i.traffic and i.traffic.rx_rate_bps
+                                    for i in despues.network))
 
     def test_la_guarda_ve_una_fila_que_se_enseña_y_se_esconde(self):
         # Si no cazara una página que se deshace y se rehace, no vigilaría

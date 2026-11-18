@@ -104,6 +104,17 @@ def watts(value: Optional[float]) -> str:
     return DASH if _none(value) else f"{float(value):.1f} W"
 
 
+def figure(value: Optional[float], decimals: int = 0) -> str:
+    """La cifra de una ficha grande, sin su unidad, que va aparte.
+
+    Con las cifras tabulares de la letra de los valores, lo que mide solo
+    depende de cuántas tiene: el ancho que reserva cada ficha
+    (`StatTile.reserve`) sale de aquí mismo, con el tope de lo que puede
+    llegar a decir.
+    """
+    return DASH if _none(value) else f"{float(value):.{decimals}f}"
+
+
 def percent(value: Optional[float]) -> str:
     return DASH if _none(value) else f"{float(value):.1f} %"
 

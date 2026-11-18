@@ -159,6 +159,13 @@ class StoragePage(QScrollArea):
         self.tile_temp = StatTile(_("storage.tile.hottest"), "°C", self._p)
         for tile in (self.tile_read, self.tile_write, self.tile_free, self.tile_temp):
             fila.add(tile)
+        # Lo más ancho que puede escribir cada una: un ritmo hasta lo de un
+        # NVMe de quinta generación, un espacio hasta petabytes y tres
+        # cifras de grados (también en Fahrenheit).
+        for tile in (self.tile_read, self.tile_write):
+            tile.reserve(render.possible_texts(render.rate, 16e9))
+        self.tile_free.reserve(render.possible_texts(render.size, 1024 ** 5))
+        self.tile_temp.reserve([render.figure(999)])
         # El espacio libre no se mueve de un segundo a otro: su curva sería una
         # recta que no dice nada.
         self.tile_free.chart.hide()
@@ -358,7 +365,7 @@ class StoragePage(QScrollArea):
             valor, disco = max(temperaturas, key=lambda par: par[0])
             mostrado = valor * 9 / 5 + 32 if self._prefs.fahrenheit else valor
             self.tile_temp.set_unit("°F" if self._prefs.fahrenheit else "°C")
-            self.tile_temp.update_value(f"{mostrado:.0f}", mostrado)
+            self.tile_temp.update_value(render.figure(mostrado), mostrado)
             self.tile_temp.set_detail(disco.name)
         else:
             self.tile_temp.update_value(render.DASH)

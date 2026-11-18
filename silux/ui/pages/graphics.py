@@ -440,6 +440,12 @@ class GpuSection(QWidget):
         # toda allí, con su barra.
         for tile in (self.tile_usage, self.tile_clock, self.tile_temp, self.tile_power):
             fila.add(tile)
+        # Lo más ancho que puede escribir cada una: tres cifras para el uso,
+        # los grados (también en Fahrenheit) y los vatios; cuatro para los
+        # megahercios.
+        for tile in (self.tile_usage, self.tile_temp, self.tile_power):
+            tile.reserve([render.figure(999)])
+        self.tile_clock.reserve([render.figure(9999)])
         self.tile_usage.chart.set_range(0, 100)
 
         intervalo = self._prefs.interval_s
@@ -781,9 +787,7 @@ class GpuSection(QWidget):
         self._apply_tiles_rest(gpu, candado)
 
     def _apply_usage(self, gpu: Gpu) -> None:
-        self.tile_usage.update_value(
-            f"{gpu.busy_percent:.0f}" if gpu.busy_percent is not None else render.DASH,
-            gpu.busy_percent)
+        self.tile_usage.update_value(render.figure(gpu.busy_percent), gpu.busy_percent)
         # El detalle del uso deja de repetir la memoria: ahora tiene su cuadro.
         self.tile_usage.set_detail(
             _("gpu.tile.video").format(
@@ -793,9 +797,7 @@ class GpuSection(QWidget):
     def _apply_tiles_rest(self, gpu: Gpu, candado) -> None:
         relojes = gpu.clocks
         nucleo_mhz = relojes.core_hz / 1e6 if relojes.core_hz is not None else None
-        self.tile_clock.update_value(
-            f"{nucleo_mhz:.0f}" if nucleo_mhz is not None else render.DASH,
-            nucleo_mhz)
+        self.tile_clock.update_value(render.figure(nucleo_mhz), nucleo_mhz)
         # La escala llega hasta el techo de la tabla DPM, que es lo que hace
         # que la curva diga «va al máximo» en vez de solo «va subiendo».
         if relojes.core_max_hz:
@@ -816,8 +818,7 @@ class GpuSection(QWidget):
         if self._prefs.fahrenheit and temperatura is not None:
             temperatura = temperatura * 9 / 5 + 32
         self.tile_temp.set_unit("°F" if self._prefs.fahrenheit else "°C")
-        self.tile_temp.update_value(
-            f"{temperatura:.0f}" if temperatura is not None else render.DASH, temperatura)
+        self.tile_temp.update_value(render.figure(temperatura), temperatura)
         self.tile_temp.set_detail(
             _("gpu.tile.hotspot").format(valor=render.temperature(
                 gpu.hotspot_c, self._prefs.fahrenheit))
@@ -827,7 +828,7 @@ class GpuSection(QWidget):
             self.tile_power.set_locked(_("lock.detail"), render.lock_tooltip(candado))
         else:
             self.tile_power.update_value(
-                f"{gpu.power_w:.0f}" if gpu.power_w is not None else render.DASH,
+                render.figure(gpu.power_w),
                 gpu.power_w)
             self.tile_power.set_detail(
                 _("gpu.tile.of").format(valor=render.watts(gpu.power_cap_w))

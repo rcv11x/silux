@@ -85,6 +85,12 @@ class _SeccionBateria(QWidget):
         self.autonomia.setToolTip(_("bat.left.hint"))
         for tile in (self.salud, self.carga, self.potencia, self.autonomia):
             self.tiles.add(tile)
+        # Lo más ancho que puede escribir cada una: tres cifras de porcentaje,
+        # tres de vatios con su decimal y casi cien horas de autonomía.
+        for tile in (self.salud, self.carga):
+            tile.reserve([render.figure(100)])
+        self.potencia.reserve([render.figure(199.9, 1)])
+        self.autonomia.reserve([_duracion(99 * 3600 + 59 * 60)])
         layout.addWidget(self.tiles)
 
         columnas = ResponsiveRow(min_item_width=280)
@@ -124,19 +130,17 @@ class _SeccionBateria(QWidget):
         self.badges.set_chips(insignias)
 
         salud = bateria.health_percent
-        self.salud.update_value(f"{salud:.0f}" if salud is not None else d)
+        self.salud.update_value(render.figure(salud))
         if salud is not None and bateria.full_wh and bateria.design_wh:
             self.salud.set_detail(_("bat.health.of").format(
                 full=f"{bateria.full_wh:.1f} Wh",
                 design=f"{bateria.design_wh:.1f} Wh"))
 
-        self.carga.update_value(f"{bateria.percent:.0f}"
-                             if bateria.percent is not None else d)
+        self.carga.update_value(render.figure(bateria.percent))
         if bateria.now_wh is not None:
             self.carga.set_detail(f"{bateria.now_wh:.1f} Wh")
 
-        self.potencia.update_value(f"{bateria.power_w:.1f}"
-                                if bateria.power_w is not None else d)
+        self.potencia.update_value(render.figure(bateria.power_w, 1))
         self.potencia.set_detail(_(bateria.status or "bat.status.unknown"))
 
         # La etiqueta cambia según lo que se esté midiendo: lo que queda de

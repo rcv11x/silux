@@ -199,6 +199,15 @@ class NetworkPage(QScrollArea):
         self.tile_tx = StatTile("Enviado", "", self._p)
         for tile in (self.tile_down, self.tile_up, self.tile_rx, self.tile_tx):
             fila.add(tile)
+        # Lo más ancho que puede escribir cada una: un ritmo hasta los cien
+        # gigabits, en bytes o en bits (se cambia desde esta misma página), y
+        # un total hasta petabytes.
+        ritmos = [texto for bits in (False, True) for texto in render.possible_texts(
+            lambda valor, bits=bits: render.rate(valor, bits), 1.25e10)]
+        for tile in (self.tile_down, self.tile_up):
+            tile.reserve(ritmos)
+        for tile in (self.tile_rx, self.tile_tx):
+            tile.reserve(render.possible_texts(render.size, 1024 ** 5))
         # Las dos de totales no llevan gráfica: son contadores que solo suben,
         # y su curva sería siempre la misma recta sin decir nada.
         self.tile_rx.chart.hide()
