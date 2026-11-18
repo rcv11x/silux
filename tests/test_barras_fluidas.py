@@ -386,6 +386,19 @@ class TestLaVentana(unittest.TestCase):
         ventana._on_sample(self.foto)
         self.assertTrue(ventana._latido.isActive())
 
+    def test_lo_que_se_mueve_se_busca_solo_en_la_pagina_abierta(self):
+        """Recorrer los casi dos mil widgets de la ventana en cada muestreo
+        eran 3 ms, dos tercios de lo que tarda en repartirse una foto."""
+        from silux.ui.app import MainWindow
+        ventana = self.ventana("Inicio")
+        ventana._on_sample(self.foto)
+        with mock.patch.object(MainWindow, "findChildren",
+                               side_effect=AssertionError("recorre la ventana entera")):
+            animables = ventana._graficas(solo_visibles=True)
+        self.assertTrue(animables)
+        pagina = ventana.stack.currentWidget()
+        self.assertTrue(all(pagina.isAncestorOf(w) for w in animables))
+
     def test_el_espacio_lo_congela(self):
         ventana = self.ventana("Gráficos")
         ventana._on_sample(self.foto)

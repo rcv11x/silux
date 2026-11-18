@@ -745,11 +745,20 @@ class MainWindow(QMainWindow):
         las dieciséis gráficas que hay montadas, en pantalla no llegan a cinco.
         Una barra oculta se queda donde iba, y se pone en su sitio con la
         muestra siguiente.
+
+        Las visibles se buscan solo en la página abierta, y ninguna con la
+        ventana escondida: recorrer los casi dos mil widgets de la ventana
+        eran 3 ms por muestreo, dos tercios de lo que tarda en repartirse.
         """
         from .corematrix import CoreMatrix
         from .widgets import LevelBar, Sparkline, StackedBar
+        donde = self
+        if solo_visibles:
+            if self._escondida() or self.stack.currentWidget() is None:
+                return []
+            donde = self.stack.currentWidget()
         graficas = [w for clase in (Sparkline, LevelBar, StackedBar, CoreMatrix)
-                    for w in self.findChildren(clase)]
+                    for w in donde.findChildren(clase)]
         return [g for g in graficas if g.isVisible()] if solo_visibles else graficas
 
     def _avanzar_graficas(self) -> None:
