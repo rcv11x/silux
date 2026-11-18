@@ -103,6 +103,85 @@ class TestInstalacion(unittest.TestCase):
 
 
 @unittest.skipUnless(HAS_QT_SVG, "hace falta PySide6.QtSvg")
+class TestReinstalar(unittest.TestCase):
+    """Reinstalar tiene que dejar lo mismo que instalar en limpio.
+
+    En casa, con silux ya instalado de antes del cambio de logo, la barra de
+    tareas seguía con el icono viejo; y en la oficina el menú conservaba la
+    entrada de cuando el proyecto se llamaba cpuz, que no abre nada.
+    """
+
+    def setUp(self):
+        qt.app()
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.casa = pathlib.Path(self._tmp.name)
+        patch = mock.patch.dict(os.environ, {"XDG_DATA_HOME": self._tmp.name})
+        patch.start()
+        self.addCleanup(patch.stop)
+        # Sin tocar el escritorio de quien ejecuta los tests.
+        sin_ordenes = mock.patch.object(installer.shutil, "which", return_value=None)
+        sin_ordenes.start()
+        self.addCleanup(sin_ordenes.stop)
+
+    def _escribir(self, relativa: str, texto: str = "x") -> pathlib.Path:
+        ruta = self.casa / relativa
+        ruta.parent.mkdir(parents=True, exist_ok=True)
+        ruta.write_text(texto)
+        return ruta
+
+    def test_quita_la_entrada_de_cuando_se_llamaba_cpuz(self):
+        entrada = self._escribir("applications/cpuz.desktop",
+                                 "[Desktop Entry]\nExec=/usr/bin/python3 -m cpuz.ui.app\n")
+        iconos = [self._escribir(f"icons/hicolor/{t}/apps/cpuz.png") for t in ("16x16", "48x48")]
+        iconos.append(self._escribir("icons/hicolor/scalable/apps/cpuz.svg"))
+        installer.install()
+        for ruta in (entrada, *iconos):
+            self.assertFalse(ruta.exists(), ruta)
+
+    def test_un_cpuz_que_no_es_nuestro_no_se_toca(self):
+        ajena = self._escribir("applications/cpuz.desktop",
+                               "[Desktop Entry]\nExec=wine cpuz_x64.exe\n")
+        icono = self._escribir("icons/hicolor/48x48/apps/cpuz.png")
+        installer.install()
+        self.assertTrue(ajena.exists())
+        self.assertTrue(icono.exists())
+
+    def test_no_queda_ningun_tamano_de_la_version_anterior(self):
+        viejo = self._escribir("icons/hicolor/1024x1024/apps/silux.png")
+        installer.install()
+        self.assertFalse(viejo.exists(), "un tamaño que ya no se genera se queda con el logo viejo")
+
+    def test_los_iconos_son_archivos_nuevos_y_no_reescritos(self):
+        installer.install()
+        antes = installer.icon_path(48).stat().st_ino
+        installer.install()
+        self.assertNotEqual(antes, installer.icon_path(48).stat().st_ino)
+
+    def test_avisa_a_plasma_de_que_hay_iconos_nuevos(self):
+        llamadas = []
+        with mock.patch.object(installer.shutil, "which", side_effect=lambda orden: f"/usr/bin/{orden}"), \
+             mock.patch.object(installer.subprocess, "run",
+                               side_effect=lambda orden, **_k: llamadas.append(orden)):
+            installer.install()
+        ordenes = [orden[0] for orden in llamadas]
+        self.assertIn("kbuildsycoca6", ordenes)
+        senal = [orden for orden in llamadas if orden[0] == "dbus-send"]
+        self.assertEqual(len(senal), 1, ordenes)
+        self.assertIn("/KIconLoader", senal[0])
+        self.assertIn("org.kde.KIconLoader.iconChanged", senal[0])
+
+    def test_desinstalar_quita_tambien_lo_viejo(self):
+        viejo = self._escribir("icons/hicolor/1024x1024/apps/silux.png")
+        cpuz = self._escribir("applications/cpuz.desktop", "Exec=python3 -m cpuz.ui.app\n")
+        installer.install()
+        self._escribir("icons/hicolor/1024x1024/apps/silux.png")
+        installer.uninstall()
+        self.assertFalse(viejo.exists())
+        self.assertFalse(cpuz.exists())
+
+
+@unittest.skipUnless(HAS_QT_SVG, "hace falta PySide6.QtSvg")
 class TestIconoDeLaVentana(unittest.TestCase):
     def test_hay_icono_aunque_no_este_instalado_en_el_tema(self):
         from PySide6.QtGui import QIcon

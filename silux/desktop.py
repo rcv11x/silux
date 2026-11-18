@@ -28,6 +28,13 @@ APP_ID = "silux"
 # usan en la práctica Plasma y GNOME para la barra de tareas.
 SIZES = (16, 22, 24, 32, 48, 64, 128, 256, 512)
 
+# El nombre que tuvo el proyecto antes de llamarse silux. Su instalador dejó
+# `cpuz.desktop` y su juego de iconos, y nada los quitaba: en la oficina seguía
+# en el menú una entrada que lanza un módulo que ya no existe desde una carpeta
+# que tampoco. Solo se quita si es nuestra; un CPU-Z bajo Wine es otra cosa.
+LEGACY_ID = "cpuz"
+LEGACY_MODULE = "cpuz.ui.app"
+
 # Las palabras con las que alguien buscaría esto en el lanzador. Van sin tildes
 # además de con ellas porque nadie teclea «caché» con acento al buscar, y sin
 # marcas registradas: el nombre se cambió justamente para no rozarlas.
@@ -76,6 +83,33 @@ def desktop_path() -> pathlib.Path:
     return data_home() / "applications" / f"{APP_ID}.desktop"
 
 
+def hicolor() -> pathlib.Path:
+    return data_home() / "icons" / "hicolor"
+
+
+def icon_files(app_id: str) -> list[pathlib.Path]:
+    """Todos los iconos con ese nombre en el tema, de cualquier tamaño.
+
+    No solo los de `SIZES`: un tamaño que una versión anterior generaba y
+    esta ya no se quedaría para siempre con el logo de entonces, y el
+    escritorio lo elige cuando es el que mejor le encaja.
+    """
+    if not hicolor().is_dir():
+        return []
+    return sorted(p for p in hicolor().glob(f"*/apps/{app_id}.*")
+                  if p.suffix in (".png", ".svg"))
+
+
+def legacy_files() -> list[pathlib.Path]:
+    """Lo que dejó el instalador de cuando el proyecto se llamaba cpuz."""
+    entrada = data_home() / "applications" / f"{LEGACY_ID}.desktop"
+    try:
+        nuestra = LEGACY_MODULE in entrada.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return []
+    return [entrada, *icon_files(LEGACY_ID)] if nuestra else []
+
+
 # --------------------------------------------------------------------------
 
 
@@ -91,6 +125,11 @@ def render_icons() -> list[pathlib.Path]:
     renderer = QSvgRenderer(str(SVG))
     if not renderer.isValid():
         raise SystemExit(f"el SVG no es válido: {SVG}")
+
+    # Fuera lo anterior antes de escribir: archivos nuevos y no reescritos
+    # encima, y ninguno de un tamaño que esta versión ya no genera.
+    for viejo in icon_files(APP_ID):
+        viejo.unlink()
 
     written = []
     for size in SIZES:
@@ -147,20 +186,37 @@ def write_desktop() -> pathlib.Path:
 
 
 def refresh_caches() -> None:
-    """Avisa al escritorio. Ambas órdenes son opcionales: si no están, Plasma
-    y GNOME acaban enterándose igual, solo que más tarde."""
+    """Avisa al escritorio de que hay iconos y entrada nuevos.
+
+    Todas las órdenes son opcionales: si no están, el escritorio acaba
+    enterándose igual, solo que más tarde. Pero en Plasma «más tarde» puede
+    ser «al reiniciar la sesión»: `plasmashell` guarda en memoria los iconos
+    que ya pintó, y cambiar el archivo no le basta. Escucha una señal de
+    D-Bus para volver a leerlos, la misma que manda Plasma al cambiar de tema
+    de iconos.
+    """
+    # Que la carpeta del tema parezca cambiada a quien compare fechas.
+    if hicolor().is_dir():
+        os.utime(hicolor())
     for command in (
         ["update-desktop-database", str(desktop_path().parent)],
-        ["gtk-update-icon-cache", "-f", "-t", str(data_home() / "icons" / "hicolor")],
+        ["gtk-update-icon-cache", "-f", "-t", str(hicolor())],
+        # Las entradas de menú de Plasma salen de su caché, no de la carpeta.
+        ["kbuildsycoca6"],
+        ["dbus-send", "--session", "--type=signal", "/KIconLoader",
+         "org.kde.KIconLoader.iconChanged", "int32:0"],
     ):
         if shutil.which(command[0]):
-            subprocess.run(command, check=False, capture_output=True)
+            try:
+                subprocess.run(command, check=False, capture_output=True, timeout=30)
+            except (OSError, subprocess.TimeoutExpired):
+                pass
 
 
 def uninstall() -> int:
     """Quita la entrada y los iconos; devuelve cuántos archivos quitó."""
     removed = 0
-    for path in [desktop_path(), scalable_path(), *(icon_path(s) for s in SIZES)]:
+    for path in [desktop_path(), *icon_files(APP_ID), *legacy_files()]:
         if path.exists():
             path.unlink()
             removed += 1
@@ -169,7 +225,13 @@ def uninstall() -> int:
 
 
 def install() -> tuple[list[pathlib.Path], pathlib.Path]:
-    """Instala los iconos y la entrada; devuelve los dos."""
+    """Instala los iconos y la entrada; devuelve los dos.
+
+    Reinstalar deja lo mismo que instalar en limpio: quita antes lo que dejó
+    una versión vieja.
+    """
+    for viejo in legacy_files():
+        viejo.unlink()
     icons = render_icons()
     entry = write_desktop()
     refresh_caches()
