@@ -818,6 +818,9 @@ def _arc_tras_su_conmutador(dispositivo: pathlib.Path) -> bool:
 def _enlace(dispositivo: pathlib.Path, previo: Optional[PcieLink] = None) -> PcieLink:
     if _arc_tras_su_conmutador(dispositivo):
         return PcieLink()
+    # Una vez por llamada y no una por cifra: resolver los enlaces de sysfs
+    # hasta la raíz es lo que más cuesta de leer un enlace.
+    cadena = _cadena_pcie(dispositivo)
     def velocidad(nodo: pathlib.Path, nombre: str) -> Optional[float]:
         crudo = read_text(f"{nodo}/{nombre}")
         if not crudo:
@@ -826,8 +829,7 @@ def _enlace(dispositivo: pathlib.Path, previo: Optional[PcieLink] = None) -> Pci
         return float(encaje.group(1)) if encaje else None
 
     def minimo(nombre: str, leer) -> Optional[float]:
-        valores = [v for nodo in _cadena_pcie(dispositivo)
-                   if (v := leer(nodo, nombre)) is not None]
+        valores = [v for nodo in cadena if (v := leer(nodo, nombre)) is not None]
         return min(valores) if valores else None
 
     def ancho(nodo: pathlib.Path, nombre: str) -> Optional[int]:

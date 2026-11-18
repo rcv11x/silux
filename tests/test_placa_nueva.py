@@ -225,3 +225,37 @@ class TestEnLaPagina(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestElEnlaceSinReleerLoQueNoCambia(unittest.TestCase):
+    """La tabla PCIe de Placa base se rellena en cada muestreo, porque el
+    enlace de una tarjeta cambia (baja de velocidad en reposo). Su máximo no:
+    se queda el ya leído, y la cadena de puentes se resuelve una vez por
+    tarjeta y no una por cifra."""
+
+    def test_la_segunda_vuelta_no_relee_el_maximo(self):
+        import builtins
+        from unittest import mock
+
+        from silux.providers.base import Draft
+        from silux.providers.pci import PciDevices
+        from tests.test_equipos import EQUIPOS, _herramienta
+
+        with _herramienta().montado(EQUIPOS / "5800x3d"):
+            proveedor = PciDevices()
+            primera = Draft()
+            proveedor.collect(primera)
+            abiertos = []
+            original = builtins.open
+
+            def abrir(ruta, *args, **kwargs):
+                abiertos.append(str(ruta))
+                return original(ruta, *args, **kwargs)
+
+            segunda = Draft()
+            with mock.patch.object(builtins, "open", abrir):
+                proveedor.collect(segunda)
+        self.assertEqual([d.link for d in primera.pci_devices],
+                         [d.link for d in segunda.pci_devices])
+        self.assertTrue(any(d.link for d in segunda.pci_devices))
+        self.assertEqual([r for r in abiertos if r.endswith(("max_link_speed", "max_link_width"))], [])

@@ -20,7 +20,7 @@ import re
 from typing import Optional
 
 from .. import pciids, sysroot
-from ..model import PciDevice, Platform
+from ..model import PciDevice, PcieLink, Platform
 from .base import Draft, Provider, en_reposo, read_text
 from .drm import VENDORS, _cadena_pcie, _enlace
 
@@ -59,6 +59,8 @@ class PciDevices(Provider):
     def __init__(self) -> None:
         # Qué hay no cambia mientras el programa está abierto; el enlace sí.
         self._fijos: Optional[list[dict]] = None
+        # El último enlace de cada ranura: su máximo no cambia y no se relee.
+        self._enlaces: dict[str, PcieLink] = {}
 
     def available(self) -> bool:
         return os.path.isdir(sysroot.ruta(DISPOSITIVOS))
@@ -77,8 +79,10 @@ class PciDevices(Provider):
             # como una ranura que va a medias.
             # Una tarjeta suspendida no se pregunta: leer su enlace la saca
             # del reposo desde Linux 6.18 (`en_reposo`).
-            enlace = (_enlace(nodo) if fijo["kind"] in EN_RANURA
-                      and not en_reposo(nodo) else None)
+            enlace = (_enlace(nodo, self._enlaces.get(fijo["slot"]))
+                      if fijo["kind"] in EN_RANURA and not en_reposo(nodo) else None)
+            if enlace is not None:
+                self._enlaces[fijo["slot"]] = enlace
             # Una integrada de Intel no publica enlace: no cuelga de ninguno,
             # va dentro del procesador. Un enlace sin una sola cifra no es un
             # enlace del que no se sabe nada, es que no lo hay.
