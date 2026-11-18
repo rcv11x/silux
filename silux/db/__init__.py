@@ -14,6 +14,7 @@ entre modelos de la misma generación.
 
 from __future__ import annotations
 
+import dataclasses
 import functools
 import json
 import pathlib
@@ -355,10 +356,40 @@ def _por_familia(vendor_id: str, ext_family: int, ext_model: int) -> Optional[di
 # máximo oficial de memoria
 # --------------------------------------------------------------------------
 
-# El modelo dentro de la cadena de marca: «i5-10400» en «Intel(R) Core(TM)
-# i5-10400 CPU @ 2.90GHz». Entero, con su letra: «i5-10400H» es un portátil y
-# no puede casar con la fila del de sobremesa.
+# El modelo de Intel dentro de la cadena de marca: «i5-10400» en «Intel(R)
+# Core(TM) i5-10400 CPU @ 2.90GHz». Entero, con su letra: «i5-10400H» es un
+# portátil y no puede casar con la fila del de sobremesa.
 _MODELO_INTEL = re.compile(r"\b(i[3579]-\d{4,5}[A-Z]{0,2})\b")
+# Lo que sobra alrededor del modelo de AMD, en la tabla del fabricante
+# («AMD Ryzen™ 7 5800X3D») y en la cadena de CPUID («AMD Ryzen 7 5800X3D
+# 8-Core Processor», «… with Radeon Graphics»).
+_RUIDO_AMD = re.compile(
+    r"\(R\)|\(TM\)|™|®|^AMD\s+|\s+\d+-Core Processor.*$|\s+(with|w/) Radeon.*$"
+    r"|\s*\(OEM Only\)|\s+Processor\b",
+    re.IGNORECASE)
+
+
+def normalize_cpu_model(name: str) -> str:
+    """El modelo por el que se busca en la tabla de máximos de memoria.
+
+    La misma función para la tabla (al generarla) y para la cadena de marca
+    del procesador (al buscar): «i5-10400» o «Ryzen 7 5800X3D».
+    """
+    if (encaje := _MODELO_INTEL.search(name or "")):
+        return encaje.group(1)
+    return " ".join(_RUIDO_AMD.sub("", name or "").split())
+
+
+@dataclasses.dataclass(frozen=True)
+class MemoryLimit:
+    """El máximo oficial de memoria de un procesador para estos módulos."""
+
+    model: str
+    mts: int
+    source: str
+    # La disposición con la que vale, en AMD: «2x1R» son dos módulos de un
+    # rango. None si el fabricante da una sola cifra.
+    layout: Optional[str] = None
 
 
 @functools.lru_cache(maxsize=1)
@@ -372,19 +403,37 @@ def _load_memory_limits() -> dict[str, dict]:
     return {modelo: fila for fila in filas for modelo in fila["models"]}
 
 
-def memory_limit(brand: str, memory_type: Optional[str]) -> Optional[tuple[str, int, str]]:
-    """(modelo, MT/s, de dónde sale) del máximo oficial de memoria, o None.
+def memory_layout(ranks: tuple[Optional[int], ...]) -> Optional[str]:
+    """«2x1R» para dos módulos de un rango; None si no se puede decir.
 
-    Solo lo que dice la tabla, para ese modelo exacto y ese tipo de memoria:
-    un procesador que no está, o un tipo que su fila no nombra, no tienen
+    `ranks`: los rangos de cada módulo puesto. Con rangos distintos, o alguno
+    sin saber, no hay disposición de la ficha de AMD que case.
+    """
+    rangos = set(ranks)
+    if not ranks or len(rangos) != 1 or None in rangos:
+        return None
+    return f"{len(ranks)}x{rangos.pop()}R"
+
+
+def memory_limit(brand: str, memory_type: Optional[str],
+                 ranks: tuple[Optional[int], ...] = ()) -> Optional[MemoryLimit]:
+    """El máximo oficial de memoria de este procesador con estos módulos, o None.
+
+    Solo lo que dice la tabla, para ese modelo exacto y ese tipo de memoria.
+    En AMD la cifra depende de la disposición de los módulos (`ranks`, los
+    rangos de cada módulo puesto): sin una que case con la ficha no hay
     máximo conocido, y quien llama sigue sin afirmar nada.
     """
     if not brand or not memory_type:
         return None
-    encaje = _MODELO_INTEL.search(brand)
-    if not encaje:
-        return None
-    fila = _load_memory_limits().get(encaje.group(1))
+    modelo = normalize_cpu_model(brand)
+    fila = _load_memory_limits().get(modelo)
     if fila is None or memory_type not in fila["types"]:
         return None
-    return encaje.group(1), fila["types"][memory_type], fila["source"]
+    cifra = fila["types"][memory_type]
+    if isinstance(cifra, int):
+        return MemoryLimit(modelo, cifra, fila["source"])
+    disposicion = memory_layout(tuple(ranks))
+    if disposicion is None or disposicion not in cifra:
+        return None
+    return MemoryLimit(modelo, cifra[disposicion], fila["source"], disposicion)

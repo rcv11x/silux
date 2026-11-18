@@ -574,14 +574,21 @@ class MemoryPage(QScrollArea):
 
     @staticmethod
     def _limite_del_procesador(snapshot: Snapshot):
-        """El máximo oficial de memoria de este procesador, si se sabe.
+        """El máximo oficial de memoria de este procesador con estos módulos.
 
-        Con un solo tipo de memoria puesto: es el que decide la fila.
+        Con un solo tipo de memoria puesto: es el que decide la fila. Los
+        rangos de cada módulo deciden la disposición en AMD; salen de la
+        tabla del firmware o, sin permisos, del SPD.
         """
         tipos = {m.type for m in snapshot.modules if m.populated and m.type}
         tipos |= {s.dram_type for s in snapshot.spd if s.dram_type}
         marca = snapshot.cpu.types[0].brand if snapshot.cpu.types else ""
-        return db.memory_limit(marca, tipos.pop()) if len(tipos) == 1 else None
+        puestos = [m for m in snapshot.modules if m.populated]
+        if puestos:
+            rangos = tuple(m.rank or (m.spd.ranks if m.spd else None) for m in puestos)
+        else:
+            rangos = tuple(s.ranks for s in snapshot.spd)
+        return db.memory_limit(marca, tipos.pop(), rangos) if len(tipos) == 1 else None
 
     def _subtitle(self, snapshot: Snapshot) -> str:
         array = snapshot.memory_array
@@ -846,7 +853,8 @@ class MemoryPage(QScrollArea):
         # Si la BIOS escribió el otro redondeo del mismo grado, su número queda
         # aquí: es el que sale en `dmidecode` y hace falta para contrastar.
         if veredicto == "cpu_max":
-            pista = _("memory.tip.cpumax").format(actual=actual, rated=rated, modelo=limite[0])
+            pista = _("memory.tip.cpumax").format(actual=actual, rated=rated,
+                                                  modelo=render.memory_limit_label(limite))
         elif veredicto == "slow":
             pista = _("memory.tip.running").format(actual=actual, rated=rated)
         else:

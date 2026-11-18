@@ -1,8 +1,9 @@
 {
- "schema": 1,
- "_": "El máximo oficial de memoria de cada procesador de sobremesa, por modelo y tipo de memoria, de la página del fabricante que dice cada fila. Solo modelos de sobremesa: los portátiles con el mismo número y otra letra (i5-10400H) son otro chip. AMD no está: su máximo depende de cuántos módulos y de cuántos rangos lleven, no del modelo.",
+ "schema": 2,
+ "_": "Generado por tools/gen_memory_limits.py; no se edita a mano. El máximo oficial de memoria de cada procesador de sobremesa, por tipo de memoria; en AMD, por disposición de módulos («2x1R»: dos módulos de un rango). Cada fila dice de qué página sale y si se generó o se escribió a mano.",
  "cpus": [
   {
+   "vendor": "Intel",
    "models": [
     "i9-10900K",
     "i9-10900KF",
@@ -20,9 +21,11 @@
    "types": {
     "DDR4": 2933
    },
-   "source": "https://www.intel.com/content/www/us/en/support/articles/000094585/processors.html"
+   "source": "https://www.intel.com/content/www/us/en/support/articles/000094585/processors.html",
+   "origin": "manual"
   },
   {
+   "vendor": "Intel",
    "models": [
     "i5-10400",
     "i5-10400F",
@@ -31,9 +34,11 @@
    "types": {
     "DDR4": 2666
    },
-   "source": "https://www.intel.com/content/www/us/en/products/sku/199271/intel-core-i510400-processor-12m-cache-up-to-4-30-ghz/specifications.html"
+   "source": "https://www.intel.com/content/www/us/en/products/sku/199271/intel-core-i510400-processor-12m-cache-up-to-4-30-ghz/specifications.html",
+   "origin": "manual"
   },
   {
+   "vendor": "Intel",
    "models": [
     "i5-10600K",
     "i5-10600KF",
@@ -58,9 +63,11 @@
    "types": {
     "DDR4": 2666
    },
-   "source": "https://www.intel.com/content/www/us/en/support/articles/000094585/processors.html"
+   "source": "https://www.intel.com/content/www/us/en/support/articles/000094585/processors.html",
+   "origin": "manual"
   },
   {
+   "vendor": "Intel",
    "models": [
     "i9-11900K",
     "i9-11900KF",
@@ -85,7 +92,2093 @@
    "types": {
     "DDR4": 3200
    },
-   "source": "https://www.intel.com/content/www/us/en/support/articles/000094585/processors.html"
+   "source": "https://www.intel.com/content/www/us/en/support/articles/000094585/processors.html",
+   "origin": "manual"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 PRO 5755GE"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 PRO 5650GE"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 PRO 5650G"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 PRO 5655GE"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 9 PRO 5945"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 PRO 5845"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 PRO 5755G"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 3 PRO 5350GE"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 3 PRO 5350G"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 PRO 5750GE"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 3 PRO 5355G"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 3 PRO 5355GE"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 PRO 5645"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 PRO 5750G"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 PRO 5655G"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 PRO 8500GE"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen-pro/8000-series/amd-ryzen-5-pro-8500ge.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 PRO 8600G"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen-pro/8000-series/amd-ryzen-5-pro-8600g.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 3 PRO 8300G"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen-pro/8000-series/amd-ryzen-3-pro-8300g.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 PRO 8505G"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen-pro/8000-series/amd-ryzen-5-pro-8505g.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 PRO 9645"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5600,
+     "2x2R": 5600,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen-pro/9000-series/amd-ryzen-5-pro-9645.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 9 PRO 9965"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5600,
+     "2x2R": 5600,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen-pro/9000-series/amd-ryzen-9-pro-9965.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 9 PRO 9955"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5600,
+     "2x2R": 5600,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen-pro/9000-series/amd-ryzen-9-pro-9955.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 9 PRO 9965X3D"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5600,
+     "2x2R": 5600,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen-pro/9000-series/amd-ryzen-9-pro-9965x3d.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 PRO 8705GE"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen-pro/8000-series/amd-ryzen-7-pro-8705ge.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 PRO 8700GE"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen-pro/8000-series/amd-ryzen-7-pro-8700ge.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 3 PRO 8305G"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen-pro/8000-series/amd-ryzen-3-pro-8305g.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 3 PRO 8305GE"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen-pro/8000-series/amd-ryzen-3-pro-8305ge.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 PRO 8705G"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen-pro/8000-series/amd-ryzen-7-pro-8705g.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 PRO 8605G"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen-pro/8000-series/amd-ryzen-5-pro-8605g.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 PRO 8700G"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen-pro/8000-series/amd-ryzen-7-pro-8700g.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 3 PRO 8300GE"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen-pro/8000-series/amd-ryzen-3-pro-8300ge.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 PRO 8500G"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen-pro/8000-series/amd-ryzen-5-pro-8500g.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 PRO 8605GE"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen-pro/8000-series/amd-ryzen-5-pro-8605ge.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 PRO 8600GE"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen-pro/8000-series/amd-ryzen-5-pro-8600ge.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 PRO 9755"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5600,
+     "2x2R": 5600,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen-pro/9000-series/amd-ryzen-7-pro-9755.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 PRO 9655"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5600,
+     "2x2R": 5600,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen-pro/9000-series/amd-ryzen-5-pro-9655.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 PRO 9755X3D"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5600,
+     "2x2R": 5600,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen-pro/9000-series/amd-ryzen-7-pro-9755x3d.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 PRO 8505GE"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen-pro/8000-series/amd-ryzen-5-pro-8505ge.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 PRO 3350G"
+   ],
+   "types": {
+    "DDR4": 2933
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 PRO 3400GE"
+   ],
+   "types": {
+    "DDR4": 2933
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 3 PRO 3200GE"
+   ],
+   "types": {
+    "DDR4": 2933
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 3 PRO 3200G"
+   ],
+   "types": {
+    "DDR4": 2933
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 PRO 4750GE"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 3 PRO 4350GE"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 PRO 4655GE"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 3 PRO 4355G"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 9 PRO 3900"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 PRO 3350GE"
+   ],
+   "types": {
+    "DDR4": 2933
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 PRO 3600"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 PRO 3700"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 PRO 4750G"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 PRO 4655G"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 3 PRO 4350G"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 PRO 4650G"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 PRO 3400G"
+   ],
+   "types": {
+    "DDR4": 2933
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 PRO 4650GE"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 3 PRO 4355GE"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 PRO 9745"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5600,
+     "2x2R": 5600,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen-pro/9000-series/amd-ryzen-7-pro-9745.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 9 PRO 9945"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5600,
+     "2x2R": 5600,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen-pro/9000-series/amd-ryzen-9-pro-9945.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 3 3200G"
+   ],
+   "types": {
+    "DDR4": 2933
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 4600GE"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 4700LE"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 4500"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 4700GE"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 3600"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 9 3900XT"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 9 3900X"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 3700X"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 3 3300X"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 4700G"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 3 4100"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 3 3100"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 3500"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 9 3900"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 4600G"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 3600XT"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 3 4300G"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 3 4300GE"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 5600G"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 5600X"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 9 5900XT"
+   ],
+   "types": {
+    "DDR4": {
+     "2x1R": 3200,
+     "2x2R": 3200,
+     "4x1R": 2933,
+     "4x2R": 2667
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/5000-series/amd-ryzen-9-5900xt.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 5705G"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 5600"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 5800X"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 5700X"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 5500"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 3 5300GE"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 5800XT"
+   ],
+   "types": {
+    "DDR4": {
+     "2x1R": 3200,
+     "2x2R": 3200,
+     "4x1R": 2933,
+     "4x2R": 2667
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/5000-series/amd-ryzen-7-5800xt.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 5600GE"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 5700GE"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 5605G"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 3 5300G"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 9 5950X"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 5600GT"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 5700G"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 5700"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 5600T"
+   ],
+   "types": {
+    "DDR4": {
+     "2x1R": 3200,
+     "2x2R": 3200,
+     "4x1R": 2933,
+     "4x2R": 2667
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/5000-series/amd-ryzen-5-5600t.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 3 5305GE"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 5600XT"
+   ],
+   "types": {
+    "DDR4": {
+     "2x1R": 3200,
+     "2x2R": 3200,
+     "4x1R": 2933,
+     "4x2R": 2667
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/5000-series/amd-ryzen-5-5600xt.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 5500F"
+   ],
+   "types": {
+    "DDR4": {
+     "2x1R": 3200,
+     "2x2R": 3200,
+     "4x1R": 2933,
+     "4x2R": 2667
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/5000-series/amd-ryzen-5-5500f.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 3 5305G"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 9 5900X"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 5605GE"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 9 5900"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 5800X3D"
+   ],
+   "types": {
+    "DDR4": {
+     "2x1R": 3200,
+     "2x2R": 3200,
+     "4x1R": 2933,
+     "4x2R": 2667
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/5000-series/amd-ryzen-7-5800x3d.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 5800"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 3800X"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 3600X"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 3800XT"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 3 8300GE"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/8000-series/amd-ryzen-3-8300ge.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 3 8305GE"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/8000-series/amd-ryzen-3-8305ge.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 8400F"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/8000-series/amd-ryzen-5-8400f.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 8700F"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/8000-series/amd-ryzen-7-8700f.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 3 8305G"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/8000-series/amd-ryzen-3-8305g.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 8700G"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/8000-series/amd-ryzen-7-8700g.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 7800X3D"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/7000-series/amd-ryzen-7-7800x3d.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 7600"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/7000-series/amd-ryzen-5-7600.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 7600X"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/7000-series/amd-ryzen-5-7600x.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 9 7900"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/7000-series/amd-ryzen-9-7900.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 7400"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/7000-series/amd-ryzen-5-7400.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 9 7900X3D"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/7000-series/amd-ryzen-9-7900x3d.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 5705GE"
+   ],
+   "types": {
+    "DDR4": 3200
+   },
+   "source": "https://www.amd.com/en/products/specifications/processors.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 5500X3D"
+   ],
+   "types": {
+    "DDR4": {
+     "2x1R": 3200,
+     "2x2R": 3200,
+     "4x1R": 2933,
+     "4x2R": 2667
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/5000-series/amd-ryzen-5-5500x3d.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 5600F"
+   ],
+   "types": {
+    "DDR4": {
+     "2x1R": 3200,
+     "2x2R": 3200,
+     "4x1R": 2933,
+     "4x2R": 2667
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/5000-series/amd-ryzen-5-5600f.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 7600X3D"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/7000-series/amd-ryzen-5-7600x3d.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 7500X3D"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/7000-series/amd-ryzen-5-7500x3d.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 7500F"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/7000-series/amd-ryzen-5-7500f.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 9 7950X3D"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/7000-series/amd-ryzen-9-7950x3d.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 7500"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/7000-series/amd-ryzen-5-7500.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 9 7900X"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/7000-series/amd-ryzen-9-7900x.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 9 7950X"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/7000-series/amd-ryzen-9-7950x.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 7400F"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/7000-series/amd-ryzen-5-7400f.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 7700X3D"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/7000-series/amd-ryzen-7-7700x3d.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 8500GE"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/8000-series/amd-ryzen-5-8500ge.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 8605G"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/8000-series/amd-ryzen-5-8605g.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 7700X"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/7000-series/amd-ryzen-7-7700x.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 7700"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/7000-series/amd-ryzen-7-7700.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 8505GE"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/8000-series/amd-ryzen-5-8505ge.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 8500G"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/8000-series/amd-ryzen-5-8500g.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 8600G"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/8000-series/amd-ryzen-5-8600g.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 9850X3D"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5600,
+     "2x2R": 5600,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/9000-series/amd-ryzen-7-9850x3d.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 9600X"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5600,
+     "2x2R": 5600,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/9000-series/amd-ryzen-5-9600x.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 9 9950X3D2 Dual Edition"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5600,
+     "2x2R": 5600,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/9000-series/amd-ryzen-9-9950x3d2-dual-edition.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 9500F"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5600,
+     "2x2R": 5600,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/9000-series/amd-ryzen-5-9500f.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 9700X"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5600,
+     "2x2R": 5600,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/9000-series/amd-ryzen-7-9700x.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 9 9900X3D"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5600,
+     "2x2R": 5600,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/9000-series/amd-ryzen-9-9900x3d.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 9700F"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5600,
+     "2x2R": 5600,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/9000-series/amd-ryzen-7-9700f.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 9600"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5600,
+     "2x2R": 5600,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/9000-series/amd-ryzen-5-9600.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 9 9950X"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5600,
+     "2x2R": 5600,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/9000-series/amd-ryzen-9-9950x.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 3 8300G"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/8000-series/amd-ryzen-3-8300g.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 8705G"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/8000-series/amd-ryzen-7-8705g.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 7 9800X3D"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5600,
+     "2x2R": 5600,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/9000-series/amd-ryzen-7-9800x3d.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 9 9950X3D"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5600,
+     "2x2R": 5600,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/9000-series/amd-ryzen-9-9950x3d.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 9 9900X"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5600,
+     "2x2R": 5600,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/9000-series/amd-ryzen-9-9900x.html",
+   "origin": "generated"
+  },
+  {
+   "vendor": "AMD",
+   "models": [
+    "Ryzen 5 8505G"
+   ],
+   "types": {
+    "DDR5": {
+     "2x1R": 5200,
+     "2x2R": 5200,
+     "4x1R": 3600,
+     "4x2R": 3600
+    }
+   },
+   "source": "https://www.amd.com/en/products/processors/desktops/ryzen/8000-series/amd-ryzen-5-8505g.html",
+   "origin": "generated"
   }
  ]
 }

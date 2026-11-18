@@ -689,16 +689,18 @@ class TestElMaximoDelProcesador(unittest.TestCase):
     ficha del i5-10400), y los módulos de 3200 no lo cambian.
     """
 
-    LIMITE = ("i5-10400", 2666, "https://www.intel.com/")
+    from silux.db import MemoryLimit
+    LIMITE = MemoryLimit("i5-10400", 2666, "https://www.intel.com/")
 
     def test_la_tabla_lo_sabe(self):
         from silux import db
 
-        self.assertEqual(db.memory_limit("Intel(R) Core(TM) i5-10400 CPU @ 2.90GHz", "DDR4")[:2],
-                         ("i5-10400", 2666))
+        limite = db.memory_limit("Intel(R) Core(TM) i5-10400 CPU @ 2.90GHz", "DDR4")
+        self.assertEqual((limite.model, limite.mts, limite.layout), ("i5-10400", 2666, None))
         # El de portátil con el mismo número es otro chip.
         self.assertIsNone(db.memory_limit("Intel(R) Core(TM) i5-10400H CPU @ 2.60GHz", "DDR4"))
         self.assertIsNone(db.memory_limit("Intel(R) Core(TM) i5-10400 CPU @ 2.90GHz", "DDR5"))
+        # En AMD hace falta saber los módulos: sin rangos no hay cifra.
         self.assertIsNone(db.memory_limit("AMD Ryzen 7 5800X3D 8-Core Processor", "DDR4"))
 
     def test_al_maximo_del_procesador_no_se_sugiere_xmp(self):
@@ -848,3 +850,50 @@ class TestElFabricanteNoCambiaAlDarPermisos(unittest.TestCase):
         app.processEvents()
         self.assertEqual(pagina._slot_grids[0]._values[_("memory.field.vendor")].full_text(),
                          "Crucial")
+
+
+class TestElMaximoDeAmdDependeDeLosModulos(unittest.TestCase):
+    """La ficha de AMD da una cifra por disposición: 5800X3D, DDR4-3200 con
+    dos módulos de uno o dos rangos, 2933 con cuatro de uno y 2667 con
+    cuatro de dos (generado de amd.com por tools/gen_memory_limits.py)."""
+
+    MARCA = "AMD Ryzen 7 5800X3D 8-Core Processor"
+
+    def test_cada_disposicion_su_cifra(self):
+        from silux import db
+
+        for rangos, cifra in (((1, 1), 3200), ((2, 2), 3200), ((1, 1, 1, 1), 2933),
+                              ((2, 2, 2, 2), 2667)):
+            with self.subTest(rangos=rangos):
+                limite = db.memory_limit(self.MARCA, "DDR4", rangos)
+                self.assertEqual(limite.mts, cifra)
+                self.assertTrue(limite.source.startswith("https://www.amd.com/"))
+
+    def test_lo_que_la_ficha_no_nombra_no_tiene_cifra(self):
+        from silux import db
+
+        self.assertIsNone(db.memory_limit(self.MARCA, "DDR4", (1, 1, 1)))
+        self.assertIsNone(db.memory_limit(self.MARCA, "DDR4", (1, 2)))
+        self.assertIsNone(db.memory_limit(self.MARCA, "DDR4", (None, None)))
+        self.assertIsNone(db.memory_limit(self.MARCA, "DDR5", (1, 1)))
+
+    def test_la_pagina_lo_dice_con_la_disposicion(self):
+        import dataclasses
+        from silux.model import MemoryModule
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.memory import MemoryPage
+        from tests.test_equipos import EQUIPOS, foto
+
+        app = qt.app()
+        base = foto(EQUIPOS / "5800x3d")[0]
+        self.assertIn("5800X3D", base.cpu.types[0].brand)
+        modulos = tuple(MemoryModule(populated=True, locator=f"DIMM {n}", type="DDR4",
+                                     size_bytes=16 << 30, speed_mts=3600, configured_mts=2667,
+                                     rank=2) for n in range(4))
+        pagina = MemoryPage(theme.palette_for(app, "dark"), Preferences())
+        self.addCleanup(pagina.deleteLater)
+        pagina.apply(dataclasses.replace(base, modules=modulos))
+        app.processEvents()
+        self.assertIn("Ryzen 7 5800X3D con 4 módulos de 2 rangos", pagina.avisos.text())
+        self.assertNotIn("XMP", pagina.avisos.text())
