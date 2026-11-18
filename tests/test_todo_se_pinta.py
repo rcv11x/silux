@@ -42,7 +42,7 @@ class TestTodoSePinta(unittest.TestCase):
 
         cls.app = qt.app()
         prefs = Preferences(window_width=1200, window_height=800).normalized()
-        theme.apply(cls.app, prefs.theme, prefs.density, prefs.font_scale, prefs.accent)
+        theme.apply(cls.app, prefs.theme, prefs.density, prefs.font_scale)
         cls.secciones = SECTIONS
         cls.ventana = MainWindow(prefs)
         cls.ventana.resize(1200, 800)

@@ -154,10 +154,10 @@ class TestLasPaginasCortasEnUnaVentanaGrande(unittest.TestCase):
         app = qt.app()
         normales = Preferences().normalized()
         self.addCleanup(theme.apply, app, normales.theme, normales.density,
-                        normales.font_scale, normales.accent)
+                        normales.font_scale)
         prefs = Preferences(density=densidad, font_scale="normal",
                             window_width=ancho, window_height=alto).normalized()
-        theme.apply(app, prefs.theme, prefs.density, prefs.font_scale, prefs.accent)
+        theme.apply(app, prefs.theme, prefs.density, prefs.font_scale)
         ventana = MainWindow(prefs)
         self.addCleanup(ventana.close)
         ventana.resize(ancho, alto)
@@ -241,9 +241,9 @@ class TestLasUnidadesEnCompacto(unittest.TestCase):
         app = qt.app()
         normales = Preferences().normalized()
         self.addCleanup(theme.apply, app, normales.theme, normales.density,
-                        normales.font_scale, normales.accent)
+                        normales.font_scale)
         prefs = Preferences(density="compact", window_width=900, window_height=680).normalized()
-        theme.apply(app, prefs.theme, prefs.density, prefs.font_scale, prefs.accent)
+        theme.apply(app, prefs.theme, prefs.density, prefs.font_scale)
         ventana = MainWindow(prefs)
         self.addCleanup(ventana.close)
         ventana.resize(900, 680)

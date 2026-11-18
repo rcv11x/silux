@@ -21,13 +21,14 @@ que hace falta.
 - `--page` con una sección que tu equipo no tiene (Batería en un sobremesa)
   termina con código 2 en vez de guardar la captura de otra página.
 - Lo que se fuerza por la línea de órdenes (tema, densidad, tamaño de letra,
-  acento, tamaño de ventana) vale solo para esa vez: ya no se queda guardado
+  tamaño de ventana) vale solo para esa vez: ya no se queda guardado
   en tus preferencias.
 - La orden para quitar el ayudante de permisos permanentes ha cambiado: es
   borrar sus dos archivos, y sirve también si usas el AppImage. Está en
   «Qué hace esto», lista para copiar.
-- El color de acento por omisión pasa de azul a ámbar. Si elegiste uno en
-  Ajustes, se conserva.
+- El color de acento es uno solo, el ámbar de la marca, y deja de estar en
+  Ajustes. Si habías elegido otro, la interfaz vuelve al ámbar. La opción
+  `--accent` desaparece: un guion que la pase termina con error.
 - La página Sistema ya no enseña el uso de la memoria: está entero en
   Memoria, en «Desglose del uso».
 - Dar los permisos para siempre ya no tiene botón propio en Memoria y

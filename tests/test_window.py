@@ -104,16 +104,10 @@ class TestVentana(unittest.TestCase):
         from dataclasses import replace
         from silux.ui import theme
 
-        # Contra la paleta ya teñida con el acento: comparar con theme.LIGHT
-        # a secas solo funcionaba mientras el color de serie fuese el mismo
-        # con el que están escritas las paletas base.
         window = self._window(theme="light")
-        acento = window.prefs.accent
-        self.assertEqual(window._palette,
-                         theme.tinted(theme.LIGHT, acento, dark=False))
+        self.assertEqual(window._palette, theme.LIGHT)
         window._on_preferences(replace(window.prefs, theme="dark"))
-        self.assertEqual(window._palette,
-                         theme.tinted(theme.DARK, acento, dark=True))
+        self.assertEqual(window._palette, theme.DARK)
 
     def test_las_preferencias_se_guardan_al_cambiarlas(self):
         from dataclasses import replace

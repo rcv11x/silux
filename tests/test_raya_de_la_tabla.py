@@ -36,7 +36,7 @@ class TestLaRayaDeLaTabla(unittest.TestCase):
 
         app = qt.app()
         prefs = Preferences(theme=tema, window_width=1200, window_height=800).normalized()
-        theme.apply(app, prefs.theme, prefs.density, prefs.font_scale, prefs.accent)
+        theme.apply(app, prefs.theme, prefs.density, prefs.font_scale)
         ventana = MainWindow(prefs)
         self.addCleanup(ventana.close)
         ventana.resize(1200, 800)

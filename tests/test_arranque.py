@@ -340,7 +340,7 @@ def _hay_bateria() -> bool:
 
 
 class TestLoQueSeFuerzaNoSeGuarda(unittest.TestCase):
-    """`--dark`, `--compact`, `--accent`, `--font-scale` y `--size` son para
+    """`--dark`, `--compact`, `--font-scale` y `--size` son para
     esta ejecución, y la ventana los guardaba al cerrar.
 
     `closeEvent` guarda las preferencias que tiene en memoria, y esas llevaban
@@ -351,7 +351,7 @@ class TestLoQueSeFuerzaNoSeGuarda(unittest.TestCase):
     """
 
     GUARDADAS = {"theme": "light", "density": "normal", "font_scale": "normal",
-                 "accent": "azul", "window_width": 900, "window_height": 680}
+                 "window_width": 900, "window_height": 680}
 
     def test_una_captura_no_cambia_las_preferencias(self):
         import json
@@ -364,7 +364,7 @@ class TestLoQueSeFuerzaNoSeGuarda(unittest.TestCase):
             hecho = subprocess.run(
                 [sys.executable, "-m", "silux.ui.app", "--screenshot",
                  str(pathlib.Path(config) / "x.png"), "--page", "CPU",
-                 "--dark", "--compact", "--accent", "verde",
+                 "--dark", "--compact",
                  "--font-scale", "grande", "--size", "700x500"],
                 cwd=str(RAIZ), capture_output=True, text=True, timeout=180,
                 env=dict(os.environ, QT_QPA_PLATFORM="offscreen",

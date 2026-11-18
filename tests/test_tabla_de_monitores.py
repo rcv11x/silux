@@ -63,7 +63,7 @@ class TestLaTabla(unittest.TestCase):
         prefs = Preferences(density="compact", window_width=900, window_height=680).normalized()
         with tempfile.TemporaryDirectory() as tmp, \
                 mock.patch.dict(os.environ, {"XDG_CONFIG_HOME": tmp}):
-            theme.apply(app, "dark", "compact", prefs.font_scale, prefs.accent)
+            theme.apply(app, "dark", "compact", prefs.font_scale)
             self.addCleanup(theme.set_density, "normal", "normal")
             ventana = MainWindow(prefs)
             self.addCleanup(ventana.close)

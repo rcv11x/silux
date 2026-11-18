@@ -83,37 +83,10 @@ DARK = Palette(
 )
 
 
-# --------------------------------------------------------------------------
-# color de acento
-# --------------------------------------------------------------------------
-
-# Cada acento son tres tonos y no uno: el color en sí, una variante más clara
-# para lo que se superpone, y un lavado casi negro (o casi blanco) para los
-# fondos de las insignias. Se eligen a mano y no por cálculo porque el mismo
-# tono necesita valores distintos sobre un fondo oscuro que sobre uno claro, y
-# derivarlos automáticamente da o bien colores apagados o bien texto ilegible.
-ACCENTS: dict[str, dict[str, tuple[str, str, str]]] = {
-    "naranja": {"dark": ("#F2994A", "#F7B77D", "#2B2017"),
-                "light": ("#C2570C", "#D46A1C", "#FBEBDD")},
-    "azul":    {"dark": ("#5AA9E6", "#85C3F0", "#12212E"),
-                "light": ("#1D6FB8", "#2782CE", "#E3EEF8")},
-    "verde":   {"dark": ("#5FBF8B", "#8AD4AC", "#10241A"),
-                "light": ("#1F7A4D", "#268A58", "#E2F2E9")},
-    "morado":  {"dark": ("#A98BE0", "#C0A9EC", "#201A2E"),
-                "light": ("#6A45B0", "#7A52C4", "#EDE7F8")},
-    "rojo":    {"dark": ("#E57373", "#F09999", "#2E1618"),
-                "light": ("#B23A3A", "#C44646", "#FAE7E7")},
-    "cian":    {"dark": ("#4FBFC4", "#7CD5D9", "#0E2426"),
-                "light": ("#10767C", "#14868C", "#E0F2F3")},
-}
-ACCENT_DEFAULT = "naranja"
-
-
 def con_alfa(color: str, alfa: float) -> str:
     """El mismo color, translúcido, en la forma que entiende Qt.
 
-    Los lavados de la paleta están escritos a mano para cada acento, y añadir
-    uno por cada color que alguna vez necesite fondo suave sería una tabla que
+    Los lavados de la paleta están escritos a mano, y añadir uno por cada color que alguna vez necesite fondo suave sería una tabla que
     mantener. Para un tinte sobre el fondo que ya hay, esto basta y no puede
     desincronizarse de su color.
     """
@@ -122,16 +95,6 @@ def con_alfa(color: str, alfa: float) -> str:
         return color
     r, g, b = (int(crudo[i:i + 2], 16) for i in (0, 2, 4))
     return f"rgba({r}, {g}, {b}, {alfa:.2f})"
-
-
-def tinted(base: Palette, accent: str, dark: bool) -> Palette:
-    """La misma paleta con otro color de acento."""
-    tonos = ACCENTS.get(accent)
-    if tonos is None or accent == ACCENT_DEFAULT:
-        return base
-    fuerte, suave, lavado = tonos["dark" if dark else "light"]
-    return dataclasses.replace(base, accent=fuerte, accent_soft=suave,
-                               accent_wash=lavado)
 
 
 # --------------------------------------------------------------------------
@@ -842,20 +805,18 @@ def _draw_sensor_glyph(painter: QPainter, kind: str, color: QColor, box: float) 
         painter.drawEllipse(QRectF(5 * unit, 5 * unit, 6 * unit, 6 * unit))
 
 
-def palette_for(app: QApplication, choice: str, accent: str = ACCENT_DEFAULT) -> Palette:
-    """El tema resuelto y ya teñido con el acento elegido.
+def palette_for(app: QApplication, choice: str) -> Palette:
+    """El tema resuelto. Es el único sitio del que se saca una paleta.
 
-    Es el único sitio del que se saca una paleta. Antes la ventana llamaba a
-    `resolve` por su cuenta y se quedaba con la paleta sin teñir, así que el
-    color elegido llegaba a la hoja de estilos pero no a lo que se pinta a
-    mano (las gráficas, las barras, la matriz de núcleos) y salía a medias.
+    El acento es uno, el ámbar de la marca, y va en la paleta de cada tema.
+    Hubo seis a elegir en Ajustes, y bastaba un «azul» guardado para que el
+    AppImage saliera de un color y las capturas de otro.
     """
-    base = resolve(app, choice)
-    return tinted(base, accent, dark=base.bg == DARK.bg)
+    return resolve(app, choice)
 
 
 def apply(app: QApplication, choice: str, density: str,
-          font_scale: str = "normal", accent: str = ACCENT_DEFAULT) -> Palette:
+          font_scale: str = "normal") -> Palette:
     """Deja la aplicación entera con el tema pedido y devuelve la paleta.
 
     El estilo Fusion se fija a propósito: es el único que se comporta igual en
@@ -863,7 +824,7 @@ def apply(app: QApplication, choice: str, density: str,
     estilos, la integración nativa aporta menos que la previsibilidad.
     """
     set_density(density, font_scale)
-    palette = palette_for(app, choice, accent)
+    palette = palette_for(app, choice)
     app.setStyle("Fusion")
     app.setPalette(qt_palette(palette))
     app.setStyleSheet(stylesheet(palette))

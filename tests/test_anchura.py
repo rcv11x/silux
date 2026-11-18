@@ -57,8 +57,7 @@ class TestNadaSeSalePorLaDerecha(unittest.TestCase):
         cls.app = _app()
         prefs = Preferences(density="compact", window_width=ANCHO,
                             window_height=ALTO).normalized()
-        theme.apply(cls.app, prefs.theme, prefs.density, prefs.font_scale,
-                    prefs.accent)
+        theme.apply(cls.app, prefs.theme, prefs.density, prefs.font_scale)
 
         from silux.ui.app import SECTIONS, MainWindow
 

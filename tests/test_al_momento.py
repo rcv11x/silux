@@ -122,7 +122,7 @@ class TestLaPaginaAbiertaSePoneAlDia(unittest.TestCase):
 
         cls.app = qt.app()
         prefs = Preferences(window_width=1300, window_height=900).normalized()
-        theme.apply(cls.app, prefs.theme, prefs.density, prefs.font_scale, prefs.accent)
+        theme.apply(cls.app, prefs.theme, prefs.density, prefs.font_scale)
         cls.prefs = prefs
 
     def _ventana(self):

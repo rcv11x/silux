@@ -74,7 +74,7 @@ class TestNadaSeCortaPorAbajo(unittest.TestCase):
 
         cls.app = qt.app()
         prefs = Preferences(window_width=1440, window_height=900).normalized()
-        theme.apply(cls.app, prefs.theme, prefs.density, prefs.font_scale, prefs.accent)
+        theme.apply(cls.app, prefs.theme, prefs.density, prefs.font_scale)
         cls.ventana = MainWindow(prefs)
         cls.ventana.resize(1440, 900)
         cls.ventana.show()

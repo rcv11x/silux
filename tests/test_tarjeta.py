@@ -139,7 +139,7 @@ def _paleta():
     from silux.ui import theme
 
     qt.app()
-    return theme.palette_for(QApplication.instance(), "dark", "azul")
+    return theme.palette_for(QApplication.instance(), "dark")
 
 
 class TestLosDatosDePruebaNoSonLosDeSustitucion(unittest.TestCase):

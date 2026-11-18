@@ -68,8 +68,6 @@ DENSITIES = (("opt.density.spacious", "spacious"), ("opt.density.normal", "norma
 # querer además que todo ocupe el doble.
 FONT_SCALES = (("opt.density.normal", "normal"), ("opt.font.large", "grande"),
                ("opt.font.larger", "mayor"), ("opt.font.largest", "máximo"))
-ACCENTS = (("opt.accent.orange", "naranja"), ("opt.accent.blue", "azul"), ("opt.accent.green", "verde"),
-           ("opt.accent.purple", "morado"), ("opt.accent.red", "rojo"), ("opt.accent.cyan", "cian"))
 NETWORK_UNITS = (("opt.net.bytes", "bytes"),
                  ("opt.net.bits", "bits"))
 
@@ -242,7 +240,7 @@ class SettingsPage(QScrollArea):
         from PySide6.QtWidgets import QApplication
 
         self._prefs = prefs
-        self._p = palette or theme.palette_for(QApplication.instance(), prefs.theme, prefs.accent)
+        self._p = palette or theme.palette_for(QApplication.instance(), prefs.theme)
         self._loading = True
         self._tarea: Optional[_Tarea] = None
         self._error_del_escritorio = ""
@@ -344,7 +342,6 @@ class SettingsPage(QScrollArea):
         self.theme_box = self._combo(THEMES, self._prefs.theme)
         self.density_box = self._combo(DENSITIES, self._prefs.density)
         self.font_box = self._combo(FONT_SCALES, self._prefs.font_scale)
-        self.accent_box = self._combo(ACCENTS, self._prefs.accent)
         # Las gráficas fluidas no cambian ninguna cifra, solo cómo se pintan:
         # son apariencia.
         self.fluid_charts = self._interruptor(self._prefs.fluid_charts)
@@ -353,7 +350,6 @@ class SettingsPage(QScrollArea):
             _Renglon(_("settings.theme.label"), self.theme_box),
             _Renglon(_("settings.density.label"), self.density_box, _("settings.density.help")),
             _Renglon(_("settings.fontsize.label"), self.font_box, _("settings.fontsize.help")),
-            _Renglon(_("settings.accent.label"), self.accent_box, _("settings.accent.help")),
             _Renglon(_("settings.fluid.label"), self.fluid_charts, _("settings.fluid.help")),
         )
 
@@ -704,7 +700,6 @@ class SettingsPage(QScrollArea):
             temperature_unit=self.unit_box.currentData(),
             density=self.density_box.currentData(),
             font_scale=self.font_box.currentData(),
-            accent=self.accent_box.currentData(),
             network_unit=self.network_box.currentData(),
             show_all_features=self.all_features.isChecked(),
             fluid_charts=self.fluid_charts.isChecked(),

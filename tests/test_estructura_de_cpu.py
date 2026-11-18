@@ -85,11 +85,11 @@ class TestLaEspecificacionEnCompacto(unittest.TestCase):
         app = qt.app()
         normales = Preferences().normalized()
         self.addCleanup(theme.apply, app, normales.theme, normales.density,
-                        normales.font_scale, normales.accent)
+                        normales.font_scale)
         # Con la letra por omisión, que es la «grande»: con la normal cabía.
         prefs = Preferences(density="compact", window_width=900,
                             window_height=680).normalized()
-        theme.apply(app, prefs.theme, prefs.density, prefs.font_scale, prefs.accent)
+        theme.apply(app, prefs.theme, prefs.density, prefs.font_scale)
         for equipo in ("i5-10400", "5800x3d"):
             with self.subTest(equipo=equipo):
                 f = foto(EQUIPOS / equipo)[0]

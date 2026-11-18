@@ -24,12 +24,6 @@ def config_path() -> pathlib.Path:
     return config_dir() / "settings.json"
 
 
-# Los nombres válidos de acento. Se repiten aquí en vez de importarlos de
-# `ui.theme` porque los ajustes no deben depender de que haya interfaz: el CLI
-# los lee igual y no carga Qt.
-ACCENT_NAMES = ("naranja", "azul", "verde", "morado", "rojo", "cian")
-
-
 @dataclass(frozen=True)
 class Preferences:
     interval_s: float = 1.0
@@ -44,7 +38,9 @@ class Preferences:
     # «grande» de salida: en un monitor de 27" a 1440p el tamaño base se
     # lee pequeño, y quien lo quiera más apretado lo baja en dos clics.
     font_scale: str = "grande"            # normal | grande | mayor | máximo
-    accent: str = "naranja"                  # ver ui/theme.ACCENTS
+    # Sin color de acento que elegir: es el ámbar de la marca, en todas las
+    # páginas. Un `settings.json` antiguo con «accent» se carga igual: `load`
+    # descarta las claves que no conoce.
     # En bytes por segundo o en bits por segundo. Los fabricantes miden los
     # enlaces en bits y los programas de descarga en bytes, y son ocho veces
     # distintos: quien compara con un test de velocidad quiere bits.
@@ -85,7 +81,6 @@ class Preferences:
             font_scale=(self.font_scale
                         if self.font_scale in ("normal", "grande", "mayor", "máximo")
                         else "grande"),
-            accent=self.accent if self.accent in ACCENT_NAMES else "naranja",
             network_unit="bits" if self.network_unit == "bits" else "bytes",
             show_all_features=bool(self.show_all_features),
             language=str(self.language or "es").lower()[:8],

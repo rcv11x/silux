@@ -33,9 +33,9 @@ class TestLaBarraLateral(unittest.TestCase):
         app = qt.app()
         normales = Preferences().normalized()
         self.addCleanup(theme.apply, app, normales.theme, normales.density,
-                        normales.font_scale, normales.accent)
+                        normales.font_scale)
         prefs = Preferences(**preferencias).normalized()
-        theme.apply(app, prefs.theme, prefs.density, prefs.font_scale, prefs.accent)
+        theme.apply(app, prefs.theme, prefs.density, prefs.font_scale)
         ventana = MainWindow(prefs)
         self.addCleanup(ventana.close)
         ventana.resize(900, 680)

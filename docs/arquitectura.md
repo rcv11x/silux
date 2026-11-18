@@ -333,7 +333,6 @@ En la sección **Ajustes**, que se guarda en `~/.config/silux/settings.json`:
 | Densidad | Amplia, normal o compacta: márgenes, tipografía, filas y columnas |
 | Unidad de temperatura | Celsius o Fahrenheit |
 | Tamaño de la letra | Normal, grande, mayor o máximo. Las tarjetas y columnas crecen con él |
-| Color de acento | Naranja, azul, verde, morado, rojo o cian |
 | Velocidad de red | Bytes o bits por segundo: los mismos datos son 116 MB/s o 931 Mb/s |
 
 En el árbol de sensores **todas las columnas se arrastran** y el ancho se

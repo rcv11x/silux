@@ -170,12 +170,11 @@ class TestElDialogo(unittest.TestCase):
 
         normales = Preferences().normalized()
         self.addCleanup(theme.apply, self.app, normales.theme, normales.density,
-                        normales.font_scale, normales.accent)
+                        normales.font_scale)
         for letra in ("normal", "grande", "máximo"):
             for permanente in (True, False):
                 with self.subTest(letra=letra, permanente=permanente):
-                    theme.apply(self.app, normales.theme, normales.density, letra,
-                                normales.accent)
+                    theme.apply(self.app, normales.theme, normales.density, letra)
                     dialogo = self._dialogo(permanente=permanente)
                     dialogo.show()
                     dialogo.resize(dialogo.minimumSize())

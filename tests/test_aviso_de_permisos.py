@@ -261,9 +261,9 @@ class TestLosAvisosDeLasPaginas(unittest.TestCase):
 
         normales = Preferences().normalized()
         self.addCleanup(theme.apply, self.app, normales.theme, normales.density,
-                        normales.font_scale, normales.accent)
+                        normales.font_scale)
         # La densidad se aplica antes de montar la ventana, como al arrancar.
-        theme.apply(self.app, normales.theme, "compact", normales.font_scale, normales.accent)
+        theme.apply(self.app, normales.theme, "compact", normales.font_scale)
         with mock.patch.object(PrivilegedClient, "necesita_reinstalar", return_value=True):
             ventana = self._ventana(density="compact", window_width=900, window_height=680)
             ventana.resize(900, 680)

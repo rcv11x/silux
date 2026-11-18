@@ -51,7 +51,7 @@ from PySide6.QtWidgets import (
 from .. import __version__, build_id, desktop, i18n, settings as prefs_module
 from ..i18n import _
 from ..model import Snapshot
-from ..settings import ACCENT_NAMES, Preferences
+from ..settings import Preferences
 from ..tracking import Tracker
 from . import icons, theme
 from .pages.battery import BatteryPage
@@ -137,8 +137,7 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(theme.METRICS.min_window_w, theme.METRICS.min_window_h)
 
         self._last_snapshot: Optional[Snapshot] = None
-        self._palette = theme.palette_for(QApplication.instance(), prefs.theme,
-                                          prefs.accent)
+        self._palette = theme.palette_for(QApplication.instance(), prefs.theme)
         # El seguimiento de mínimos y máximos vive en la ventana, no en la
         # página: cambiar de tema reconstruye las páginas, y perder por eso el
         # histórico de una sesión de pruebas sería inaceptable.
@@ -643,9 +642,8 @@ class MainWindow(QMainWindow):
             # no hay forma de retraducirlos sin volver a montarlas.
             i18n.set_language(prefs.language)
 
-        appearance_changed = ((prefs.theme, prefs.density, prefs.font_scale, prefs.accent)
-                              != (previous.theme, previous.density, previous.font_scale,
-                                  previous.accent))
+        appearance_changed = ((prefs.theme, prefs.density, prefs.font_scale)
+                              != (previous.theme, previous.density, previous.font_scale))
         content_changed = (prefs.temperature_unit, prefs.show_all_features,
                            prefs.network_unit) != (
             previous.temperature_unit, previous.show_all_features,
@@ -660,7 +658,7 @@ class MainWindow(QMainWindow):
 
         if appearance_changed:
             self._palette = theme.apply(QApplication.instance(), prefs.theme,
-                                        prefs.density, prefs.font_scale, prefs.accent)
+                                        prefs.density, prefs.font_scale)
             self._build_ui()
         elif content_changed or prefs.language != previous.language:
             self._build_ui()
@@ -1079,8 +1077,6 @@ def build_app(argv: Optional[list[str]] = None) -> tuple[QApplication, MainWindo
     parser.add_argument("--compact", action="store_true", help="fuerza la densidad compacta")
     parser.add_argument("--font-scale", metavar="TAMAÑO", choices=("normal", "grande", "mayor", "máximo"),
                         help="fuerza el tamaño de letra solo para esta ejecución")
-    parser.add_argument("--accent", metavar="COLOR", choices=ACCENT_NAMES,
-                        help="fuerza el color de acento solo para esta ejecución")
     parser.add_argument("--size", metavar="ANCHOxALTO", help="tamaño de ventana, p. ej. 820x620")
     parser.add_argument("--anonimo", action="store_true",
                         help="oculta lo que identifica al equipo: nombre, "
@@ -1107,8 +1103,6 @@ def build_app(argv: Optional[list[str]] = None) -> tuple[QApplication, MainWindo
         prefs = replace(prefs, density="compact")
     if args.font_scale:
         prefs = replace(prefs, font_scale=args.font_scale)
-    if args.accent:
-        prefs = replace(prefs, accent=args.accent)
     if args.size and "x" in args.size:
         width, _sep, height = args.size.partition("x")
         if width.isdigit() and height.isdigit():
@@ -1118,7 +1112,7 @@ def build_app(argv: Optional[list[str]] = None) -> tuple[QApplication, MainWindo
     # ventana no lo guarde como si fuera una preferencia.
     forzadas = {campo: (getattr(guardadas, campo), getattr(prefs, campo))
                 for campo in ("interval_s", "theme", "density", "font_scale",
-                              "accent", "window_width", "window_height")
+                              "window_width", "window_height")
                 if getattr(guardadas, campo) != getattr(prefs, campo)}
 
     _callar_el_portal()
@@ -1141,7 +1135,7 @@ def build_app(argv: Optional[list[str]] = None) -> tuple[QApplication, MainWindo
     # si el idioma llega después se quedan con el que hubiera. Guardarlo y
     # volver a abrir el programa devolvía la interfaz al español.
     i18n.set_language(prefs.language)
-    theme.apply(app, prefs.theme, prefs.density, prefs.font_scale, prefs.accent)
+    theme.apply(app, prefs.theme, prefs.density, prefs.font_scale)
 
     return app, MainWindow(prefs, forzadas=forzadas), args
 
