@@ -97,3 +97,41 @@ no lo lleva: es la primera que busca, y nunca se baja a sí misma.
   da o el error.
 - La ventana guarda el estado (sobrevive a cambiar de tema) y se lo pasa a
   Ajustes y a la barra lateral.
+
+## Cómo se prueba de punta a punta, sin publicar nada
+
+Los tests cambian la red por una falsa, y por eso no podían ver lo que
+falló la primera vez que se probó entero (18 de noviembre, en el 5800X3D):
+el Python del AppImage no traía `_ssl`, ninguna URL `https://` se abría y la
+ventana decía «no hay conexión con GitHub». La prueba de verdad es el
+AppImage construido, con su propio Python, contra un GitHub de mentira:
+
+```bash
+uv tool install mitmproxy
+python3 tools/build_appimage.py --container          # el viejo, con el actualizador
+gh release download v0.4.0 --pattern 'silux-x86_64.AppImage' -D /tmp/nuevo   # u otro cualquiera
+python3 tools/probar_actualizador.py dist/silux-x86_64.AppImage /tmp/nuevo/silux-x86_64.AppImage
+```
+
+`tools/actualizador/github_falso.py` (un complemento de mitmproxy) publica
+el segundo como una v0.4.1: contesta la lista de releases, el SHA256SUMS y
+la descarga, la pasa por una redirección a `objects.githubusercontent.com`
+como GitHub, y corta con un 403 todo lo demás. El certificado de mitmproxy
+se le da solo a ese proceso (`SSL_CERT_FILE`); no se instala en ningún sitio.
+`tools/actualizador/conductor.py` maneja la ventana sin pantalla dentro del
+AppImage: «Buscar ahora», «Actualizar» y «Reiniciar», contestando que sí.
+
+| Caso | Qué tiene que pasar | 18 de noviembre |
+|---|---|---|
+| bien | el nuevo en la misma ruta, ejecutable, sin temporales; es lo que corre tras reiniciar; la entrada de menú sigue apuntando ahí | bien |
+| sha-mal | «lo bajado no coincide con su suma SHA-256»; el viejo, intacto | bien |
+| http | «una redirección intentó salir de HTTPS»; el viejo, intacto | bien (antes decía «no hay conexión») |
+| solo-lectura | solo el enlace a la release; el viejo, intacto | bien |
+
+Por el proxy pasan cuatro peticiones, con `User-Agent: silux/0.4.0` y nada
+más: la lista, `SHA256SUMS`, la descarga y su redirección.
+
+**Lo que falta antes de meterlo en la 0.4**, ya con el CI: rebasar la rama
+sobre `oficina` (choca en el paso de la release del CI, que tocan las dos),
+pasar esta prueba con el AppImage que sale del CI, y una vez a mano en una
+ventana de verdad, con los botones.
