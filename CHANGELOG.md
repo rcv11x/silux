@@ -11,7 +11,15 @@ que hace falta.
 
 ---
 
-## 0.4.0 (sin publicar)
+## 0.4.0 (18 de noviembre de 2026)
+
+La versión de los permisos y del aspecto nuevo. Un candado donde falta un
+dato por permisos, y un aviso que explica qué se gana al darlos antes de
+pedir la contraseña. Una sección nueva, Dispositivos; Placa base y Sistema
+ganan datos nuevos, y las páginas se ordenan para que cada dato salga una
+vez.
+Funciona con Linux 5.15 o posterior, y lo que un kernel más antiguo no
+publica se dice con la versión que lo trae.
 
 ### Antes de actualizar
 
@@ -21,57 +29,66 @@ que hace falta.
 - `--page` con una sección que tu equipo no tiene (Batería en un sobremesa)
   termina con código 2 en vez de guardar la captura de otra página.
 - Lo que se fuerza por la línea de órdenes (tema, densidad, tamaño de letra,
-  tamaño de ventana) vale solo para esa vez: ya no se queda guardado
-  en tus preferencias.
-- La orden para quitar el ayudante de permisos permanentes ha cambiado: es
-  borrar sus dos archivos, y sirve también si usas el AppImage. Está en
-  «Qué hace esto», lista para copiar.
+  tamaño de ventana) vale solo para esa vez: ya no se queda guardado en tus
+  preferencias.
 - El color de acento es uno solo, el ámbar de la marca, y deja de estar en
   Ajustes. Si habías elegido otro, la interfaz vuelve al ámbar. La opción
   `--accent` desaparece: un guion que la pase termina con error.
-- La página Sistema ya no enseña el uso de la memoria: está entero en
-  Memoria, en «Desglose del uso».
+- La orden para quitar el ayudante de permisos permanentes ha cambiado: es
+  borrar sus dos archivos, y sirve también si usas el AppImage. Está en
+  «Qué hace esto», lista para copiar.
 - Dar los permisos para siempre ya no tiene botón propio en Memoria y
   Almacenamiento («No volver a pedirla»): se ofrece dentro de «Qué hace
   esto».
+- La página Sistema ya no enseña el uso de la memoria: está entero en
+  Memoria, en «Desglose del uso».
 - «Encendido desde», en Sistema, y el campo `boot_time` del JSON pasan a
   año-mes-día («2026-11-17 18:15»), como la fecha de la BIOS.
 - En Sensores, las ramas que nunca abriste o cerraste a mano vuelven a
   seguir la regla: una rama larga que tuvieras abierta («Relojes · 16») nace
   cerrada otra vez hasta que la abras.
 
-### Memoria
+### Permisos
 
-- Nuevo: sin permisos, la velocidad real y el banco de cada módulo llevan un
-  candado en vez de un guion: están, y se ven al dar permisos.
-- Arreglado: con permisos, la tarjeta de Memoria de Inicio decía «31.3 GB ·
-  Desconocido» si el primer zócalo de la placa estaba vacío. Ahora dice el
-  tipo de los módulos puestos («DDR4-3200») o, si el firmware no lo da, nada.
-- Arreglado: algunas latencias de DDR4 y de los perfiles XMP salían un ciclo
-  por debajo de la real (un CL23 como CL22).
-- Arreglado: sin permisos, la cabecera decía «a 3200 MT/s» como si fuera la
-  velocidad a la que va la memoria; es la del catálogo del módulo, y ahora lo
-  dice: «catalogados a 3200 MT/s».
-- Arreglado: el aviso que proponía `acpi_enforce_resources=lax` para leer los
-  módulos no decía el riesgo. Ahora lo dice, y que no merece la pena solo por
-  ese dato.
-- Arreglado: en una placa que repite el nombre de sus zócalos (Gigabyte),
-  dos módulos salían como «DIMM 1» y dos huecos como «DIMM 0». Ahora «Canal
-  A · DIMM 1», «Canal B · DIMM 1».
-- Arreglado: cuando la placa no deja leer el SPD, Chips, Perfiles rápidos y
-  Fabricado ya no salen con guion: se dice al pie de dónde saldrían.
-- Arreglado: al dar permisos desde Memoria, las tarjetas de los módulos no
-  aparecían hasta cambiar de página y volver.
+- Nuevo: un candado donde falta un dato por permisos, en vez del mismo guion
+  que lleva lo que no se sabe. Pulsarlo los pide.
+- Nuevo: Inicio avisa de lo que falta por permisos, con nombre («Salud de
+  los discos», «Voltaje del procesador»), y con cuatro salidas: «Dar
+  permisos», «Qué hace esto», «Ahora no» y «No volver a mostrar».
+- Nuevo: «Qué hace esto» cuenta, antes de pedir la contraseña, qué lee el
+  ayudante, que solo lee, cuánto dura y quién pide la contraseña.
+- Arreglado: la ventana se quedaba congelada mientras el sistema pedía la
+  contraseña.
+- Arreglado: la página abierta se pone al día sola cuando cambian los
+  permisos o se enchufa o se quita algo.
+- Arreglado: un dato que falta por otro motivo ya no dice «requiere
+  permisos», y ningún texto culpa al equipo de lo que es un permiso.
+
+### Inicio
+
+- Nuevo: tres tarjetas más: Temperaturas, con cada cifra junto a lo que
+  mide, Red y Placa base. Cada una lleva a su sección.
+- Arreglado: Inicio y la página CPU daban dos temperaturas distintas del
+  mismo procesador en el mismo momento (33 °C y 30 °C).
+- Arreglado: el titular de Temperaturas cambiaba de pieza por décimas de
+  grado.
+- Arreglado: con permisos, la tarjeta de Memoria decía «31.3 GB ·
+  Desconocido» si el primer zócalo de la placa estaba vacío.
+- Arreglado: decía que una gráfica integrada «usa 11.6 GB de la RAM».
+- Arreglado: el nombre de la tarjeta de red salía cortado por abajo cuando
+  ocupaba dos líneas.
 
 ### Procesador
 
+- Nuevo: cuánto descansa el procesador: qué parte del tiempo pasan sus hilos
+  en cada estado de reposo (C1, C2, C6…).
+- Nuevo: en Intel, los límites de potencia PL1 y PL2 a la vista, también sin
+  permisos.
 - Nuevo: sin permisos, el voltaje lleva un candado en vez de un guion.
 - Arreglado: la frecuencia de cada hilo es la que el procesador ha dado de
   verdad en el último intervalo, no la última que pidió el sistema.
 - Arreglado: la gráfica de frecuencia se medía contra un techo equivocado y
   se quedaba en una barra vertical o recortaba las muestras.
-- Arreglado: Inicio y la página CPU daban dos temperaturas distintas del
-  mismo procesador en el mismo momento (33 °C y 30 °C).
 - Arreglado: con el contador de energía parado, el consumo salía «0 W». Ahora
   se explica por qué no hay cifra.
 - Arreglado: en AMD salía «núcleos 3,7 W» con el paquete a 64 W: ese contador
@@ -79,39 +96,150 @@ que hace falta.
 - Arreglado: en los Ryzen que publican dos temperaturas (Tctl y Tdie) se
   enseñaba la que lleva sumado un margen para los ventiladores; ahora, Tdie.
 - Arreglado: en AMD sin `amd-pstate`, «Máxima (silicio)» daba una frecuencia
-  que no era un techo de nada. Sale sin dato y con su aviso.
+  que no era un techo de nada. Sale sin dato y con su aviso, que con un
+  kernel anterior al 5.17 dice que es por el kernel.
 - Arreglado: la ficha de temperatura decía «núcleos» en procesadores que solo
   tienen un sensor para todo el encapsulado.
 - Arreglado: sin sensor propio del procesador, su temperatura se tomaba de
   una zona del firmware que marca siempre lo mismo (27.8 °C).
-- Nuevo: cuánto descansa el procesador: qué parte del tiempo pasan sus hilos
-  en cada estado de reposo (C1, C2, C6…).
-- Nuevo: en Intel, los límites de potencia PL1 y PL2 a la vista, también sin
-  permisos.
-- Nuevo: en Cachés, la latencia de cada nivel, después de medirla en Memoria.
 - Arreglado: en una ventana estrecha, la especificación del procesador pasa
   a dos líneas en vez de cortarse.
 
+### Cachés
+
+- Nuevo: la latencia de cada nivel, después de medirla en Memoria.
+- Arreglado: la página no se pintaba.
+
+### Memoria
+
+- Nuevo: si los módulos van al máximo oficial de memoria del procesador, no
+  se avisa de que van «por debajo de su velocidad» ni se sugiere activar
+  XMP. El máximo sale de las fichas de AMD (de los Ryzen 3000 a los 9000,
+  según cuántos módulos y de cuántos rangos) y de las de Intel que hay en la
+  tabla (ver «Limitaciones conocidas»).
+- Nuevo: en un procesador anterior a Nehalem (2008), la página dice que la
+  velocidad de la memoria la decide el chipset.
+- Nuevo: sin permisos, la velocidad real, el banco y el zócalo de cada módulo
+  llevan un candado: están, y se ven al dar permisos.
+- Cambiado: las fichas se llaman «Módulo 1», «Módulo 2», con permisos y sin
+  ellos; el zócalo va en su campo. Y no se dice cuántos zócalos tiene la
+  placa ni cuántos quedan libres: el firmware de muchas placas declara
+  zócalos que no existen.
+- Arreglado: una velocidad de memoria sale con el nombre de su grado en todas
+  las generaciones: un DDR2-667 ya no sale «666 MT/s», ni una LPDDR5-5500
+  «5466 MT/s».
+- Arreglado: algunas latencias de DDR4 y de los perfiles XMP salían un ciclo
+  por debajo de la real (un CL23 como CL22).
+- Arreglado: sin permisos, la cabecera decía «a 3200 MT/s» como si fuera la
+  velocidad a la que va la memoria; es la del catálogo del módulo, y ahora lo
+  dice: «catalogados a 3200 MT/s».
+- Arreglado: cuando el SPD no se lee, se dice por qué: si es la placa, con
+  su motivo; si falta un driver, con candado, porque se arregla dando
+  permisos.
+- Arreglado: el aviso que proponía `acpi_enforce_resources=lax` para leer los
+  módulos no decía el riesgo. Ahora lo dice, y que no merece la pena solo por
+  ese dato.
+- Arreglado: el fabricante del módulo se llama igual venga del SPD o de la
+  tabla del firmware («Crucial», no «Crucial Technology»).
+- Arreglado: que los módulos no traen perfiles rápidos se decía tres veces.
+- Arreglado: en una placa que repite el nombre de sus zócalos (Gigabyte),
+  dos módulos salían como «DIMM 1» y dos huecos como «DIMM 0». Ahora «Canal
+  A · DIMM 1», «Canal B · DIMM 1».
+- Arreglado: al dar permisos desde Memoria, las tarjetas de los módulos no
+  aparecían hasta cambiar de página y volver.
+
 ### Gráficos
 
-- Nuevo: sin permisos, el uso y el consumo de una gráfica Intel llevan un
-  candado, y pulsarlo pide los permisos.
+- Nuevo: el bloque «Ahora mismo» junta en tres barras la memoria de video
+  ocupada, el consumo y el uso del bus, cada una con su cifra.
+- Nuevo: en una integrada de Intel, las frecuencias del silicio (máxima y
+  mínima), el reposo RC6, el uso de cada motor y, en las generaciones que lo
+  publican, por qué se frena.
+- Nuevo: la tabla de códecs de video marca lo que la tarjeta acelera y lo
+  que no, sin depender del color.
+- Nuevo: sin permisos, el uso y el consumo de una gráfica Intel, y el uso de
+  cada motor, llevan un candado.
+- Cambiado: lo que una integrada no tiene (memoria propia, reguladores,
+  ventilador) no sale con guion: se esconde y se nombra al pie en una frase.
+  Si a una integrada de Intel no le queda nada propio en «Consumo y
+  temperaturas», esa tarjeta se va.
 - Arreglado: la temperatura de una gráfica que no la publica salía con un
-  guion en Gráficos, en Sensores y en Inicio. Ahora se esconde y se dice al
-  pie que esa gráfica no la da.
-- Arreglado: Inicio decía que una gráfica integrada «usa 11.6 GB de la RAM».
+  guion en Gráficos, en Sensores y en Inicio.
 - Arreglado: el monitor se llama por su marca («Gigabyte AORUS FO27Q2») y no
   por la razón social del fabricante, que además cortaba la resolución en la
-  tabla de pantallas.
+  tabla de pantallas. Su tamaño sale de sus milímetros: uno de 27 pulgadas ya
+  no dice 26.6" ni 27.2".
 - Arreglado: el ensamblador de la tarjeta sale por su marca: «PowerColor» y
   no «Tul Corporation / PowerColor».
 - Arreglado: un identificador único todo a ceros ya no se enseña.
-- Arreglado: una integrada de Intel ya no enseña con guion lo que solo
-  existe en AMD (rasterizado, sombreado, SoC, perfil, voltajes, enlace).
 - Arreglado: «en reposo» en vez de «0 MHz» cuando el motor gráfico duerme.
-- Arreglado: el tamaño de cada monitor sale de sus milímetros: uno de 27
-  pulgadas ya no dice 26.6" ni 27.2". Si el monitor solo da centímetros,
-  «≈ 27"».
+
+### Almacenamiento
+
+- Nuevo: lo que se ve del TRIM de cada unidad y, con permisos, el
+  diagnóstico completo de cada disco.
+- Nuevo: sin permisos, la temperatura de los discos SATA, las horas, lo
+  escrito y la vida restante llevan un candado.
+- Arreglado: un disco de platos ya no enseña «Vida restante».
+- Arreglado: un NVMe decía «Conexión: NVME».
+- Arreglado: en una ventana estrecha, la tabla de unidades se salía por la
+  derecha; ahora recorta el modelo del disco y deja las cifras.
+
+### Red
+
+- Nuevo: las interfaces virtuales (Docker, máquinas virtuales, VPN) van
+  plegadas debajo de las físicas.
+- Arreglado: el dúplex salía «full».
+
+### Dispositivos
+
+- Nuevo: sección nueva con lo enchufado por USB (en árbol, colgando de su
+  concentrador, con su velocidad), las tarjetas de sonido, las cámaras y el
+  adaptador Bluetooth.
+
+### Placa base
+
+- Nuevo: los dispositivos PCIe, con su enlace actual y máximo, y lo que la
+  plataforma tiene activado: IOMMU, virtualización, Above 4G Decoding, chip
+  de sensores y códec de sonido.
+- Nuevo: un dispositivo que `pci.ids` aún no conoce se nombra por su marca,
+  su clase y su identificador: «Intel, audio HD (8086:f0c8)».
+- Arreglado: en una placa AMD, el chipset salía «FCH LPC Bridge». Ahora,
+  «AMD X570».
+- Arreglado: una placa Gigabyte suelta se titulaba «Gigabyte -CF».
+- Arreglado: la fecha de la BIOS salía en el orden del firmware, mes/día/año;
+  ahora «2025-10-28».
+- Arreglado: los fabricantes salen por su marca («MSI», «Gigabyte») y no por
+  su razón social, y ningún «Desconocido» del firmware llega a la pantalla.
+
+### Sistema
+
+- Nuevo: las vulnerabilidades del procesador y sus mitigaciones, el
+  intercambio (con lo que comprime zram), el gestor de arranque y la versión
+  de Mesa.
+- Nuevo: cuánto tarda cada fase del arranque (firmware, cargador, kernel,
+  initrd y espacio de usuario) y el total, con cualquier gestor de arranque:
+  con GRUB, el firmware y el cargador salen de la tabla del firmware y el
+  resto de systemd.
+- Nuevo: lo que falta porque el kernel es anterior al dato se dice así: «Tu
+  kernel (5.15) no publica esto; existe desde Linux 6.11».
+- Arreglado: los miles se separan con un espacio fino, igual en español que
+  en inglés: las horas de un disco ya no salen «4.136 h», que parecían
+  cuatro horas con decimales.
+
+### Sensores
+
+- Nuevo: lo que no tiene actividad nace plegado: los ventiladores a 0 RPM
+  («Ventiladores parados · 3») y las interfaces de red sin tráfico.
+- Nuevo: lo que dos drivers leen del mismo chip sale una vez. En una
+  Gigabyte, seis temperaturas de placa en vez de doce.
+- Nuevo: la curva del último minuto ocupa todo el ancho.
+- Arreglado: las tensiones y temperaturas que el chip de la placa numera sin
+  decir qué miden lo dicen al pie, en vez de parecer nombres; y las zonas del
+  firmware que marcan siempre 16.8 °C o 27.8 °C van apagadas y dicen que no
+  son una medida.
+- Arreglado: «Paquete» y «Núcleo N», no «Package id 0» y «Core N».
+- Arreglado: en una ventana estrecha, la cabecera se salía por la derecha.
 
 ### Rendimiento
 
@@ -128,136 +256,93 @@ que hace falta.
 - Arreglado: dos pruebas de la misma duración podían darse por distintas,
   según cuánto tardara en acabar la última operación.
 
-### Interfaz
+### Ajustes y escritorio
 
-- Nuevo: Inicio avisa de lo que falta por permisos, con nombre («Salud de
-  los discos», «Voltaje del procesador»), y con cuatro salidas: «Dar
-  permisos», «Qué hace esto», «Ahora no» y «No volver a mostrar».
-- Nuevo: «Qué hace esto» cuenta, antes de pedir la contraseña, qué lee el
-  ayudante, que solo lee, cuánto dura y quién pide la contraseña.
-- Nuevo: un candado donde falta un dato por permisos, en vez del mismo guion
-  que lleva lo que no se sabe. Pulsarlo los pide. En Almacenamiento: la
-  temperatura de los discos SATA, las horas, lo escrito y la vida restante.
-- Nuevo: Inicio tiene tres tarjetas más: Temperaturas, con cada cifra junto a
-  lo que mide, Red y Placa base. Cada una lleva a su sección.
-- Nuevo: en Red, las interfaces virtuales (Docker, máquinas virtuales, VPN)
-  van plegadas debajo de las físicas.
-- Arreglado: la ventana se quedaba congelada mientras el sistema pedía la
-  contraseña.
-- Arreglado: la barra de estado decía una lista de fuentes internas y un
-  número de datos sin permisos que no coincidía con el de Inicio.
-- Arreglado: en las barras de Inicio, Memoria y Almacenamiento no se sabía
-  qué color era cada cosa, y la caché no se distinguía del fondo.
-- Arreglado: en una placa AMD, el chipset salía «FCH LPC Bridge». Ahora,
-  «AMD X570».
-- Arreglado: una placa Gigabyte suelta se titulaba «Gigabyte -CF».
-- Arreglado: la fecha de la BIOS salía en el orden del firmware, mes/día/año;
-  ahora «2025-10-28».
-- Arreglado: los fabricantes salen por su marca («MSI», «Gigabyte») y no por
-  su razón social, y ningún «Desconocido» del firmware llega a la pantalla.
-- Arreglado: en Sensores, las tensiones y temperaturas que el chip de la
-  placa numera sin decir qué miden lo dicen al pie, en vez de parecer
-  nombres; y las zonas del firmware que marcan siempre 16.8 °C o 27.8 °C van
-  apagadas y dicen que no son una medida.
-- Arreglado: en Red, el dúplex salía «full».
-- Arreglado: un NVMe decía «Conexión: NVME».
-- Arreglado: el titular de Temperaturas de Inicio cambiaba de pieza por
-  décimas de grado.
-- Arreglado: las gráficas de las fichas tienen su eje de lado a lado desde
-  que se abren, y la cifra del punto más alto ya no se monta sobre la curva.
-- Arreglado: las tablas cortaban con puntos suspensivos textos que cabían, y
-  sus títulos quedaban lejos de las filas.
-- Arreglado: la explicación que sale al pasar el ratón por un dato se perdía
-  al cambiar la ventana de tamaño.
-- Arreglado: en una ventana estrecha, la cabecera de Sensores se salía por la
-  derecha.
-- Nuevo: las páginas están reordenadas para que lo que se mira vaya arriba y
-  cada dato salga una vez. Inicio empieza por el equipo y cabe en una
-  pantalla; Gráficos tiene cuatro fichas y la memoria de video entera en su
-  tarjeta; en Memoria los módulos van antes de lo que pide permisos; Red se
-  titula con la interfaz y su dirección; Sensores empieza por temperaturas y
-  consumo, con cada chip junto.
-- Nuevo: lo que se consulta una vez va plegado y a un clic: los
-  identificadores de la gráfica, la identificación CPUID del procesador, el
-  firmware y los sectores de cada disco, el desglose del uso de memoria y,
-  en Sensores, las ramas largas como los relojes de cada hilo.
-- Nuevo: lo que tiene arreglo (un permiso, un módulo por cargar) y sus
-  candados van en azul; el ámbar queda para lo seleccionado y lo que se
-  pulsa.
+- Nuevo: Ajustes reordenado en grupos (General, Apariencia, Muestreo,
+  Permisos, Integración con el escritorio, Compartir e informes, Acerca de),
+  con interruptores en vez de casillas.
+- Nuevo: «Integración con el escritorio» pone silux en el menú de
+  aplicaciones con su icono, y si quieres un acceso en el escritorio, sin
+  pedir permisos. Desde el AppImage, la entrada apunta al AppImage; desde el
+  código, va aparte, como «Silux (desarrollo)», para no pisar la otra.
+- Arreglado: la ventana se presentaba con el icono del tema y no con el del
+  programa.
+- Arreglado: Ajustes hablaba de «las 53» banderas cuando la página CPU
+  cuenta las de tu procesador.
+
+### Aspecto
+
 - Nuevo: aspecto renovado. Tarjetas más limpias, títulos discretos, cifras en
   la misma letra que el resto y una barra lateral con un icono por sección.
 - Nuevo: logo propio, una «S» dibujada como una pista de circuito sobre una
   ficha ámbar. Es el icono de la ventana, del menú y del AppImage, y
-  sustituye al emoji de la barra lateral.
-- Nuevo: en Gráficos, el bloque «Ahora mismo» junta en tres barras la
-  memoria de video ocupada, el consumo y el uso del bus, cada una con su
-  cifra.
-- Arreglado: las tablas se veían como un bloque negro dentro de su tarjeta.
-  En la de códecs de video, lo que la tarjeta acelera lleva «✓» y lo que no,
-  «✗», y se distinguen sin depender del color.
+  sustituye al dibujo de lupa de la barra lateral.
+- Nuevo: las páginas están reordenadas para que lo que se mira vaya arriba y
+  cada dato salga una vez. Lo que se consulta una vez va plegado y a un clic:
+  los identificadores de la gráfica, la identificación CPUID, el firmware y
+  los sectores de cada disco, el desglose del uso de memoria.
+- Nuevo: lo que tiene arreglo (un permiso, un módulo por cargar) y sus
+  candados van en azul; el ámbar queda para lo seleccionado y lo que se
+  pulsa.
+- Nuevo: en una ventana grande, las tablas reparten sus columnas y Placa
+  base y Sistema ponen sus tarjetas en una fila.
 - Arreglado: las filas que no existen en tu equipo ya no salen con guion: el
   enlace PCIe de un disco SATA, la versión de una distribución que no la
-  tiene, la dirección de una tarjeta de red sin cable, la tarjeta «Equipo»
-  en una placa suelta. Se dice al pie cuáles son.
-- Arreglado: las barras de memoria usaban azul y amarillo, que parecían
-  avisos; ahora son tonos del acento.
-- Nuevo: `--samples N`, para que `--screenshot` capture con las gráficas
-  llenas.
-- Arreglado: en Gráficos, una integrada de Intel dejaba un hueco entre
-  Frecuencia y Consumo, donde iría la temperatura que no publica.
-- Arreglado: en Inicio, el nombre de la tarjeta de red salía cortado por
-  abajo cuando ocupaba dos líneas.
-- Arreglado: las tablas llevan una raya fina bajo la cabecera.
+  tiene, la dirección de una tarjeta de red sin cable. Se dice al pie cuáles
+  son.
+- Arreglado: en las barras de Inicio, Memoria y Almacenamiento no se sabía
+  qué color era cada cosa, y la caché no se distinguía del fondo; usaban azul
+  y amarillo, que parecían avisos, y ahora son tonos del acento.
+- Arreglado: las tablas se veían como un bloque negro dentro de su tarjeta,
+  cortaban con puntos suspensivos textos que cabían y sus títulos quedaban
+  lejos de las filas.
+- Arreglado: las gráficas de las fichas tienen su eje de lado a lado desde
+  que se abren, y la cifra del punto más alto ya no se monta sobre la curva.
+- Arreglado: la explicación que sale al pasar el ratón por un dato se perdía
+  al cambiar la ventana de tamaño.
+- Arreglado: la barra de estado decía una lista de fuentes internas y un
+  número de datos sin permisos que no coincidía con el de Inicio.
+- Arreglado: la barra lateral cortaba «Almacenamiento» en compacto, y «Qué
+  pasa al dar permisos» abría demasiado pequeño.
 - Arreglado: con un ayudante de permisos de una versión anterior instalado,
   Memoria y Almacenamiento salían cortadas por la derecha en una ventana
   estrecha.
-- Nuevo: en Sensores, lo que no tiene actividad nace plegado: los
-  ventiladores a 0 RPM («Ventiladores parados · 3») y las interfaces de red
-  sin tráfico.
-- Nuevo: lo que dos drivers leen del mismo chip sale una vez. En una
-  Gigabyte, seis temperaturas de placa en vez de doce.
-- Nuevo: en una ventana grande, las tablas reparten sus columnas y Placa
-  base y Sistema ponen sus tarjetas en una fila.
-- Arreglado: la página Cachés no se pintaba.
-- Arreglado: «Qué pasa al dar permisos» abría demasiado pequeño y cortaba
-  el texto y los botones.
-- Arreglado: la barra lateral cortaba «Almacenamiento» en compacto.
-- Arreglado: en una ventana estrecha, la tabla de unidades se salía por la
-  derecha; ahora recorta el modelo del disco y deja las cifras.
-- Arreglado: un disco de platos ya no enseña «Vida restante».
-- Arreglado: Ajustes hablaba de «las 53» banderas cuando la página CPU
-  cuenta las de tu procesador.
-- Nuevo: sección Dispositivos, con lo enchufado por USB (en árbol, colgando
-  de su concentrador, con su velocidad), las tarjetas de sonido, las cámaras
-  y el adaptador Bluetooth.
-- Nuevo: en Placa base, los dispositivos PCIe con su enlace actual y máximo,
-  y lo que la plataforma tiene activado: IOMMU, virtualización, Above 4G
-  Decoding, chip de sensores y códec de sonido.
-- Nuevo: en Sistema, las vulnerabilidades del procesador y sus mitigaciones,
-  el intercambio (con lo que comprime zram), el gestor de arranque y lo que
-  tarda el arranque hasta el kernel, y la versión de Mesa.
-- Nuevo: en Almacenamiento, lo que se ve del TRIM de cada unidad y, con
-  permisos, el diagnóstico completo de cada disco.
-- Nuevo: en Sensores, la curva del último minuto ocupa todo el ancho.
-- Arreglado: la página abierta se pone al día sola cuando cambian los
-  permisos o se enchufa o se quita algo.
+
+### Línea de órdenes
+
+- Nuevo: `--samples N`, para que `--screenshot` capture con las gráficas
+  llenas.
 
 ### Privacidad
 
-- Arreglado: con `--anonimo`, dos tarjetas de red distintas salían con la
-  misma dirección física.
 - Nuevo: de lo enchufado por USB no se lee nunca el número de serie, ni la
   dirección del adaptador Bluetooth. Con `--anonimo` y en el informe, cada
   dispositivo dice qué clase de cosa es y a qué velocidad va, no su marca.
+- Arreglado: con `--anonimo`, dos tarjetas de red distintas salían con la
+  misma dirección física.
 
-### AppImage
+### AppImage y paquete
 
+- Arreglado: el AppImage salía sin los iconos de la barra lateral ni la
+  marca.
 - Arreglado: fuera del AppImage, instalado con pip, el programa salía sin sus
   textos: la interfaz enseñaba claves como `cpu.card.clocks`.
 
----
-- Arreglado: el AppImage salía sin los iconos de la barra lateral ni la
-  marca.
+### Limitaciones conocidas
+
+- El máximo oficial de memoria de cada procesador cubre los Ryzen de las
+  series 3000 a 9000 (salvo once que AMD no publica en ninguna ficha) y, de
+  Intel, solo las generaciones 10.ª y 11.ª y el i7-12700K. En los demás no se
+  compara la velocidad de la memoria con el máximo.
+- Los límites de potencia de AMD (PPT, TDC y EDC) no se leen.
+- Gráficos está probado con una Radeon dedicada (amdgpu) y una integrada
+  Intel (i915). NVIDIA, el driver `xe` de Intel, nouveau y `radeon` están
+  escritos sin haberlos visto en un equipo real.
+- En un procesador ARM, la página CPU está escrita sin haberla probado.
+- El perfil XMP de un módulo DDR4 puede salir un grado por debajo del suyo
+  (un DDR4-3600 como 3200).
+- Dos discos del mismo modelo pueden mezclar su temperatura en Sensores.
+- No hay navegación por teclado.
 
 ## 0.3.0 (16 de noviembre de 2026)
 
