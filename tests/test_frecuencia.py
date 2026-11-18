@@ -165,6 +165,7 @@ class TestLasPaginasDicenLoMismo(unittest.TestCase):
                 self.assertAlmostEqual(float(ficha) * 1e9, actual, delta=5e6, msg=ficha)
 
                 celdas = ventana.cpu_page.live.cores._cores
+                ventana.select_section("Sensores")     # se pinta al abrirla
                 arbol = ventana.monitor_page.tree._rows
                 for hilo, celda in zip(f.cpu.logical, celdas):
                     self.assertAlmostEqual(_hz(celda["detail_short"]), hilo.freq_hz,

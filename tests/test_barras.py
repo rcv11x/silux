@@ -53,6 +53,9 @@ class TestLasBarras(unittest.TestCase):
         return ventana
 
     def _barras(self, ventana):
+        # La ventana solo pinta la página que se ve: se abren antes de mirar.
+        for seccion in ("Memoria", "Almacenamiento", "Inicio"):
+            ventana.select_section(seccion)
         return {"Inicio, memoria": ventana.home_page.memoria.barra,
                 "Inicio, discos": ventana.home_page.discos.barra,
                 "Memoria": ventana.memory_page.bar,
@@ -104,6 +107,7 @@ class TestLasBarras(unittest.TestCase):
 
     def test_inicio_y_memoria_reparten_la_memoria_igual(self):
         ventana = self._ventana()
+        ventana.select_section("Memoria")      # se pinta al abrirla
         self.assertEqual(ventana.home_page.memoria.barra._segments,
                          ventana.memory_page.bar._segments)
 
@@ -111,7 +115,9 @@ class TestLasBarras(unittest.TestCase):
         # Es del color de la barra vacía: sin borde, su cuadrado no se vería.
         from silux.i18n import _
 
-        barra = self._ventana().memory_page.bar
+        ventana = self._ventana()
+        ventana.select_section("Memoria")      # se pinta al abrirla
+        barra = ventana.memory_page.bar
         libre = next(i for i in barra._legend._widgets if _("sys.mem.free") in i.text())
         self.assertIsNotNone(libre._borde)
 

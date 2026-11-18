@@ -69,6 +69,8 @@ class MonitorPage(QScrollArea):
         self._p = palette
         self._prefs = prefs
         self._tracker = tracker
+        # La última foto que ya se contó en el `Tracker` (`record`).
+        self._contada: Optional[Snapshot] = None
         # Las cargas de módulo que esperan a pkexec: qué módulo y qué botón.
         self._cargas: dict = {}
         m = theme.METRICS
@@ -241,9 +243,23 @@ class MonitorPage(QScrollArea):
     # -- actualización ------------------------------------------------------
 
     def apply(self, snapshot: Snapshot) -> None:
+        self.record(snapshot)
         self._apply_sensors(snapshot)
         self._apply_absent(snapshot)
         self._apply_hints(snapshot)
+
+    def record(self, snapshot: Snapshot) -> None:
+        """Lo que no puede esperar a que se abra la página: los mínimos,
+        máximos e historial de cada sensor, y la grabación a CSV.
+
+        Con la página cerrada, la ventana llama solo a esto; reescribir el
+        árbol que no se ve era lo que más gastaba silux escondido. Una vez por
+        foto: al abrir la página se le pasa la última, que ya se contó.
+        """
+        if snapshot is self._contada:
+            return
+        self._contada = snapshot
+        self._tracker.update_many((s.key, s.value) for s in snapshot.sensors)
         self._registrar(snapshot)
 
     def _apply_absent(self, snapshot: Snapshot) -> None:
@@ -323,7 +339,6 @@ class MonitorPage(QScrollArea):
 
     def _apply_sensors(self, snapshot: Snapshot) -> None:
         tree = snapshot.sensor_tree()
-        self._tracker.update_many((s.key, s.value) for s in snapshot.sensors)
 
         # La estructura solo cambia cuando aparece o desaparece hardware (al
         # cargar un módulo de sensores, por ejemplo), así que reconstruir es

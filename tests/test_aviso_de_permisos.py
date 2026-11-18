@@ -309,14 +309,22 @@ class TestLosAvisosDeLasPaginas(unittest.TestCase):
         return avisos
 
     def _de_permisos(self, ventana):
-        """Lo que cada página enseña para pedir permisos, visible o no."""
-        ficha = ventana.graphics_page._sections[0]
-        return {
-            "CPU": bool(self._avisos_con_boton(ventana.cpu_page._notices_host)),
-            "Gráficos": bool(self._avisos_con_boton(ficha._notices_host)),
-            "Memoria": not ventana.memory_page.elevation.isHidden(),
-            "Almacenamiento": not ventana.storage_page.elevation_card.isHidden(),
+        """Lo que cada página enseña para pedir permisos al abrirla.
+
+        Abriéndolas una a una, como quien las mira: la ventana solo pinta la
+        página que se ve, y las demás se ponen al día al abrirlas."""
+        leer = {
+            "CPU": lambda: bool(self._avisos_con_boton(ventana.cpu_page._notices_host)),
+            "Gráficos": lambda: bool(self._avisos_con_boton(
+                ventana.graphics_page._sections[0]._notices_host)),
+            "Memoria": lambda: not ventana.memory_page.elevation.isHidden(),
+            "Almacenamiento": lambda: not ventana.storage_page.elevation_card.isHidden(),
         }
+        visto = {}
+        for seccion, lectura in leer.items():
+            ventana.select_section(seccion)
+            visto[seccion] = lectura()
+        return visto
 
     def test_las_cuatro_paginas_piden_permisos_y_llevan_los_dos_botones(self):
         from silux.i18n import _

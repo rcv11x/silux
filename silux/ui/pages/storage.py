@@ -11,6 +11,8 @@ disco, y la pregunta «dónde está montado /home» no se hace por disco.
 
 from __future__ import annotations
 
+from typing import Optional
+
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (QHBoxLayout, QLabel, QPushButton, QScrollArea,
                                QVBoxLayout, QWidget)
@@ -67,6 +69,8 @@ class StoragePage(QScrollArea):
         super().__init__(parent)
         self._p = palette
         self._candado = None
+        # La última foto que ya pasó por las fichas (`record`).
+        self._contada: Optional[Snapshot] = None
         self._details: dict = {}
         self._folds: dict = {}
         self._pies: dict = {}
@@ -225,7 +229,7 @@ class StoragePage(QScrollArea):
         # `drivetemp`, la temperatura.
         self._candado = snapshot.permission_note("disks.health")
         self._apply_header(discos)
-        self._apply_tiles(discos)
+        self.record(snapshot)
         self._apply_tables(discos)
         self._apply_cards(discos)
         self._apply_avisos(discos)
@@ -239,6 +243,16 @@ class StoragePage(QScrollArea):
         self.elevation_text.setText(
             _("storage.health.read").format(n=leidos, total=len(discos)) if leidos
             else _("storage.health.body"))
+
+    def record(self, snapshot: Snapshot) -> None:
+        """Las fichas de arriba, que guardan la historia de la lectura y la
+        escritura: con la página cerrada, la ventana llama solo a esto, y las
+        tarjetas y tablas de cada disco se ponen al día al abrirla. Una vez
+        por foto, o la gráfica tendría el mismo punto dos veces."""
+        if snapshot is self._contada:
+            return
+        self._contada = snapshot
+        self._apply_tiles(sorted(snapshot.disks, key=_orden))
 
     def _apply_avisos(self, discos) -> None:
         """Lo que cada disco dice de sí mismo, si es que dice algo.

@@ -31,7 +31,7 @@ from .guarda import comprobar as _comprobar_procesador
 
 _comprobar_procesador()
 
-from PySide6.QtCore import Qt, QElapsedTimer, QSize, QTimer
+from PySide6.QtCore import QEvent, Qt, QElapsedTimer, QSize, QTimer
 from PySide6.QtGui import QFont, QFontMetricsF, QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
@@ -302,6 +302,8 @@ class MainWindow(QMainWindow):
                      self.system_page, self.performance_page,
                      self.monitor_page, self.settings_page):
             self.stack.addWidget(page)
+        self._atrasadas: set = set()
+        self.stack.currentChanged.connect(self._poner_al_dia)
         layout.addWidget(self.stack, 1)
 
         self.setCentralWidget(central)
@@ -692,6 +694,28 @@ class MainWindow(QMainWindow):
             for grafica in self._graficas():
                 grafica.advance(1.0)
 
+    def showEvent(self, event) -> None:  # noqa: N802
+        super().showEvent(event)
+        # El `QWindow` existe desde que se enseña: ahí llega cuándo el
+        # compositor vuelve a enseñarla (al restaurarla o al volver a su
+        # escritorio), y es cuando se pone al día lo que se dejó de pintar.
+        ventana = self.windowHandle()
+        if ventana is not None and not getattr(self, "_escucha_exposicion", False):
+            ventana.installEventFilter(self)
+            self._escucha_exposicion = True
+
+    def eventFilter(self, objeto, evento) -> bool:  # noqa: N802
+        if evento.type() == QEvent.Type.Expose and objeto is self.windowHandle():
+            # Después de que Qt la marque expuesta, no durante.
+            QTimer.singleShot(0, self._al_volver_a_verse)
+        return super().eventFilter(objeto, evento)
+
+    def _al_volver_a_verse(self) -> None:
+        if self._expuesta():
+            self._se_ha_visto = True
+            self._poner_al_dia()
+            self._latir_si_hace_falta()
+
     def _latir_si_hace_falta(self) -> None:
         """El temporizador late solo si hay algo que mover y se ve.
 
@@ -990,22 +1014,70 @@ class MainWindow(QMainWindow):
             self.prefs = replace(self.prefs, sensor_columns=tuple(widths))
 
     def _distribute(self, snapshot: Snapshot) -> None:
-        # La de rendimiento entra aunque no enseñe nada del muestreo: necesita
-        # saber contra qué procesador se está midiendo, y por quedarse fuera de
-        # esta lista guardaba todas las pruebas con «?» en vez del nombre. Eso
-        # dejaba el historial sin poder distinguir dos equipos y la puntuación
-        # sin pieza con la que compararse. Su `apply` solo mira una cadena.
+        """Da la foto a cada página: entera a la que se ve, y a las demás solo
+        lo que guarda historia.
+
+        Aplicarla entera a las catorce en cada muestreo reescribía tablas y
+        árboles que nadie miraba: con la ventana escondida era la tercera
+        parte de lo que gastaba silux. Las que guardan historia (gráficas, los
+        mínimos y máximos de Sensores, su grabación) la reciben siempre, para
+        que no se les pierda ningún punto; las que tienen un `record` reciben
+        solo eso. Las que se saltan quedan atrasadas y se ponen al día al
+        abrirlas o al volver a verse la ventana (`_poner_al_dia`): la regla 9.
+        """
         # Antes de pintar: decide también si las páginas enseñan sus avisos
         # de permisos, y eso lo aplican al pintarse.
         self._poner_aviso_de_permisos(snapshot)
+        a_la_vista = self._pagina_a_la_vista()
+        con_historia = self._paginas_con_historia()
         for page in (self.home_page, self.cpu_page, self.monitor_page, self.caches_page,
                      self.board_page, self.memory_page, self.system_page,
                      self.graphics_page, self.network_page, self.storage_page,
                      self.devices_page, self.battery_page, self.performance_page,
                      self.settings_page):
-            page.apply(snapshot)
+            if page is a_la_vista or (page in con_historia and not hasattr(page, "record")):
+                page.apply(snapshot)
+                self._atrasadas.discard(page)
+            else:
+                if page in con_historia:
+                    page.record(snapshot)
+                self._atrasadas.add(page)
 
         self._ajustar_bateria(snapshot)
+
+    def _paginas_con_historia(self) -> tuple:
+        """Las que necesitan cada muestra aunque no se vean.
+
+        Las de las gráficas, Sensores (sus mínimos y máximos, y lo que graba
+        a CSV) y Rendimiento: necesita saber contra qué procesador se mide, y
+        por quedarse fuera guardaba todas las pruebas con «?» en vez del
+        nombre. Su `apply` solo mira una cadena.
+        """
+        return (self.home_page, self.cpu_page, self.monitor_page, self.graphics_page,
+                self.network_page, self.storage_page, self.battery_page,
+                self.performance_page)
+
+    def _pagina_a_la_vista(self):
+        """La página abierta, o ninguna si la ventana se llegó a ver y ya no
+        se ve (minimizada o en otro escritorio). La que aún no ha llegado a la
+        pantalla cuenta como a la vista: es la que se acaba de abrir, la que
+        se monta para una captura o en un test."""
+        if self._escondida():
+            return None
+        return self.stack.currentWidget()
+
+    def _escondida(self) -> bool:
+        ventana = self.windowHandle()
+        return (getattr(self, "_se_ha_visto", False) and ventana is not None
+                and not ventana.isExposed())
+
+    def _poner_al_dia(self, *_args) -> None:
+        """La página que se acaba de abrir, o la de la ventana que vuelve a
+        verse, con la última foto si se quedó atrasada."""
+        pagina = self._pagina_a_la_vista()
+        if pagina in self._atrasadas and self._last_snapshot is not None:
+            self._atrasadas.discard(pagina)
+            pagina.apply(self._last_snapshot)
 
     # -- el aviso de permisos de Inicio ---------------------------------------
 

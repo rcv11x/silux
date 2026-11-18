@@ -301,6 +301,7 @@ class TestVentanaQueSoloSeMira(unittest.TestCase):
 
     def test_la_pagina_de_caches_se_llena(self):
         window = self.window
+        window.select_section("Cachés")         # se pinta al abrirla
         self.app.processEvents()
         page = window.caches_page
         self.assertIn("caché en total", page.total.text())
