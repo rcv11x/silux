@@ -22,7 +22,7 @@ from typing import Optional
 from .. import pciids, sysroot
 from ..model import PciDevice, Platform
 from .base import Draft, Provider, read_text
-from .drm import _cadena_pcie, _enlace
+from .drm import VENDORS, _cadena_pcie, _enlace
 
 DISPOSITIVOS = "/sys/bus/pci/devices"
 
@@ -76,6 +76,12 @@ class PciDevices(Provider):
             # chipset, y enseñarlo («PCIe 4.0 × 4, máximo × 8») se leería
             # como una ranura que va a medias.
             enlace = _enlace(nodo) if fijo["kind"] in EN_RANURA else None
+            # Una integrada de Intel no publica enlace: no cuelga de ninguno,
+            # va dentro del procesador. Un enlace sin una sola cifra no es un
+            # enlace del que no se sabe nada, es que no lo hay.
+            if enlace is not None and not any((enlace.current_speed_gts, enlace.max_speed_gts,
+                                               enlace.current_width, enlace.max_width)):
+                enlace = None
             salida.append(PciDevice(
                 slot=fijo["slot"], kind=fijo["kind"],
                 name=propios.get(fijo["slot"]) or fijo["name"],
@@ -109,7 +115,10 @@ class PciDevices(Provider):
         nombres = pciids.lookup(pares) if pares else {}
         for crudo in crudos:
             marca, modelo = nombres.get(crudo["ids"], (None, None))
-            crudo["vendor"], crudo["name"] = marca, modelo
+            # Un dispositivo que pci.ids aún no tiene (el audio del H510,
+            # 8086:f0c8, en el de Fedora 44) sigue siendo de alguien.
+            crudo["vendor"] = marca or VENDORS.get(crudo["ids"][0])
+            crudo["name"] = modelo
         return crudos
 
     @staticmethod

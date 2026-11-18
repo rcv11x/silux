@@ -251,9 +251,16 @@ class BoardPage(QScrollArea):
         de_graficas = {d.slot.rsplit(".", 1)[0] for d in dispositivos if d.kind == "gpu"}
         filas, pistas = [], []
         for d in dispositivos:
-            donde = (_("board.pci.ongpu") if d.slot.rsplit(".", 1)[0] in de_graficas
-                     else _("board.pci.onboard"))
-            fila = [_(PCI_KINDS[d.kind]), d.name or render.DASH,
+            if d.kind == "gpu":
+                # Una gráfica sin enlace es la integrada: va en el procesador.
+                donde = _("board.pci.oncpu")
+            elif d.slot.rsplit(".", 1)[0] in de_graficas:
+                donde = _("board.pci.ongpu")
+            else:
+                donde = _("board.pci.onboard")
+            nombre = d.name or (_("board.pci.unnamed").format(marca=render.maker(d.vendor))
+                                if d.vendor else render.DASH)
+            fila = [_(PCI_KINDS[d.kind]), nombre,
                     render.pcie_link(d.link) if d.link else donde,
                     render.pcie_link(d.link, maximum=True) if d.link else "",
                     d.driver or render.DASH]

@@ -146,6 +146,28 @@ class TestEnLaPagina(unittest.TestCase):
             self.assertEqual(filas["Starship/Matisse HD Audio Controller"][2],
                              _("board.pci.onboard"))
 
+    def test_la_integrada_de_intel_esta_en_el_procesador(self):
+        """Con el volcado del i5-10400: su nodo no publica enlace.
+
+        Salía con «—» en Enlace y en Máximo, como si fuera una ranura de la
+        que no se sabe nada. Va dentro del procesador.
+        """
+        intel = foto(EQUIPOS / "i5-10400")[0]
+        grafica = next(d for d in intel.pci_devices if d.kind == "gpu")
+        self.assertIsNone(grafica.link)
+        with pantalla.Ventana(intel) as ventana:
+            filas = {f[0]: f for f in self._filas(self._pagina(ventana))}
+            self.assertEqual(filas["Gráfica"][1:4],
+                             ["UHD Graphics 630", _("board.pci.oncpu"), ""])
+
+    def test_un_dispositivo_que_no_esta_en_la_lista_pci_dice_de_quien_es(self):
+        """El audio del H510 (8086:f0c8) no está en el pci.ids de Fedora 44."""
+        intel = foto(EQUIPOS / "i5-10400")[0]
+        with pantalla.Ventana(intel) as ventana:
+            filas = {f[0]: f for f in self._filas(self._pagina(ventana))}
+            self.assertEqual(filas["Sonido"][1],
+                             _("board.pci.unnamed").format(marca="Intel"))
+
     def test_la_columna_ranura_solo_existe_con_permisos(self):
         with pantalla.Ventana(self.foto) as ventana:
             pagina = self._pagina(ventana)
