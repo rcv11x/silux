@@ -125,7 +125,8 @@ class TestLaRed(unittest.TestCase):
             abiertas.append((peticion, timeout))
             return io.BytesIO(b"[]")
 
-        with mock.patch.object(updates._ABRIDOR, "open", abrir_falso):
+        falso = mock.Mock(open=abrir_falso)
+        with mock.patch.object(updates, "_abridor", return_value=falso):
             updates.check()
         peticion, espera = abiertas[0]
         self.assertEqual(peticion.get_header("User-agent"), f"silux/{__version__}")
@@ -135,7 +136,7 @@ class TestLaRed(unittest.TestCase):
     def test_nada_que_no_sea_https(self):
         # Con el abridor de verdad tapado: si la guarda faltara, el test no
         # puede acabar saliendo a la red.
-        with mock.patch.object(updates._ABRIDOR, "open", side_effect=AssertionError("salió")), \
+        with mock.patch.object(updates, "_abridor", side_effect=AssertionError("salió")), \
                 self.assertRaises(updates.UpdateError) as caso:
             updates.abrir("http://api.github.com/repos/rcv11x/silux/releases", 1)
         self.assertEqual(caso.exception.code, "insecure")
@@ -295,3 +296,39 @@ class TestElAccesoDirecto(_EnCasaFalsa):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestLaConexionSegura(unittest.TestCase):
+    """Lo que hace falta para hablar con GitHub por HTTPS, de verdad.
+
+    Probado de punta a punta con el AppImage del CI y un GitHub falso
+    (mitmproxy): el Python de dentro no traía `_ssl`, ninguna URL `https://`
+    se podía abrir y la ventana decía «no hay conexión con GitHub». Y el
+    OpenSSL de dentro, el de Ubuntu 22.04, busca los certificados donde solo
+    los pone Debian.
+    """
+
+    def setUp(self):
+        self.addCleanup(setattr, updates, "_abridor_hecho", None)
+        updates._abridor_hecho = None
+
+    def test_sin_ssl_se_dice_que_falta_tls_y_no_que_falta_red(self):
+        import sys
+        with mock.patch.dict(sys.modules, {"ssl": None}):
+            with self.assertRaises(updates.UpdateError) as error:
+                updates.abrir(updates.API_URL, 1.0)
+        self.assertEqual(error.exception.code, "notls")
+
+    def test_se_fia_de_los_certificados_del_sistema(self):
+        import os
+        import ssl
+        sistema = next((r for r in updates.CERTIFICADOS if os.path.isfile(r)), None)
+        if sistema is None:
+            self.skipTest("este equipo no tiene almacén de certificados en un sitio conocido")
+        vacio = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        with mock.patch.object(ssl, "create_default_context", return_value=vacio):
+            abridor = updates._abridor()
+        manejador = next(h for h in abridor.handlers
+                         if isinstance(h, __import__("urllib.request").request.HTTPSHandler))
+        self.assertIs(manejador._context, vacio)
+        self.assertGreater(vacio.cert_store_stats()["x509_ca"], 0)

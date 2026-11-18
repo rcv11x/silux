@@ -1378,6 +1378,7 @@
   "updates.err.network": "there is no connection to GitHub or it dropped",
   "updates.err.noasset": "the new version has no AppImage of this kind",
   "updates.err.nosums": "the new version does not publish its SHA256SUMS",
+  "updates.err.notls": "this copy lacks what secure connections need (TLS)",
   "updates.err.toolarge": "the file is over the size limit",
   "updates.err.write": "the AppImage folder could not be written",
   "updates.error": "It failed: {motivo}",

@@ -151,7 +151,44 @@ class _SoloHttps(urllib.request.HTTPRedirectHandler):
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
-_ABRIDOR = urllib.request.build_opener(_SoloHttps)
+# Dónde guarda cada familia de distribuciones los certificados en que
+# confía: Debian, Ubuntu y Arch; Fedora y RHEL; openSUSE; y el resto. El
+# OpenSSL que va dentro del AppImage es el de Ubuntu 22.04 y los busca en
+# `/usr/lib/ssl`, que solo existe en Debian y sus derivadas: en Fedora o en
+# Arch no encontraba ninguno y no podía verificar a GitHub.
+CERTIFICADOS = (
+    "/etc/ssl/certs/ca-certificates.crt",
+    "/etc/pki/tls/certs/ca-bundle.crt",
+    "/etc/ssl/ca-bundle.pem",
+    "/etc/pki/tls/cacert.pem",
+    "/etc/ssl/cert.pem",
+)
+
+_abridor_hecho = None
+
+
+def _abridor():
+    """El que abre las URL: solo HTTPS, verificando contra los certificados
+    del sistema. Se monta la primera vez, no al importar: sin el módulo
+    `ssl` (un Python sin OpenSSL) el error tiene que ser «no hay TLS» y no
+    un «no hay conexión» que manda a mirar el router."""
+    global _abridor_hecho
+    if _abridor_hecho is None:
+        try:
+            import ssl
+        except ImportError as error:
+            raise UpdateError("notls", str(error)) from error
+        # `create_default_context` ya mira `SSL_CERT_FILE` y lo que el
+        # OpenSSL de dentro tenga por defecto; a eso se suma el almacén del
+        # sistema que haya.
+        contexto = ssl.create_default_context()
+        for ruta in CERTIFICADOS:
+            if os.path.isfile(ruta):
+                contexto.load_verify_locations(cafile=ruta)
+                break
+        _abridor_hecho = urllib.request.build_opener(
+            _SoloHttps, urllib.request.HTTPSHandler(context=contexto))
+    return _abridor_hecho
 
 
 def user_agent() -> str:
@@ -167,7 +204,7 @@ def abrir(url: str, espera: float) -> BinaryIO:
         "User-Agent": user_agent(),
         "Accept": "application/vnd.github+json" if url.startswith(API_URL) else "*/*",
     })
-    return _ABRIDOR.open(peticion, timeout=espera)
+    return _abridor().open(peticion, timeout=espera)
 
 
 Abrir = Callable[[str, float], BinaryIO]

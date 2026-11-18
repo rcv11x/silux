@@ -709,3 +709,29 @@ class TestLosDatosEntranEnElPaquete(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestLoQueUsaSiluxNoSeQuita(unittest.TestCase):
+    """Un módulo de la biblioteca estándar que silux importa no puede estar en
+    `DYNLOAD_FUERA`: el AppImage arrancaría y fallaría al usarlo, lejos de
+    aquí. Le pasó a `_ssl`, fuera desde que el programa no salía a la red:
+    con el actualizador, ninguna URL `https://` se podía abrir."""
+
+    def test_ningun_import_de_silux_cae_en_lo_que_se_quita(self):
+        import ast
+        import pathlib
+
+        import tools.build_appimage as build_appimage
+        raiz = pathlib.Path(__file__).resolve().parent.parent
+        importados = set()
+        for archivo in (raiz / "silux").rglob("*.py"):
+            for nodo in ast.walk(ast.parse(archivo.read_text(encoding="utf-8"))):
+                if isinstance(nodo, ast.Import):
+                    importados |= {a.name.split(".")[0] for a in nodo.names}
+                elif isinstance(nodo, ast.ImportFrom) and nodo.module and not nodo.level:
+                    importados.add(nodo.module.split(".")[0])
+        # urllib.request solo abre https:// si puede importar ssl.
+        if "urllib" in importados:
+            importados.add("ssl")
+        quitados = {m.lstrip("_") for m in build_appimage.DYNLOAD_FUERA}
+        self.assertEqual(sorted(importados & quitados), [])

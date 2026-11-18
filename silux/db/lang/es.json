@@ -1378,6 +1378,7 @@
   "updates.err.network": "no hay conexión con GitHub o se cortó",
   "updates.err.noasset": "la versión nueva no trae el AppImage de este tipo",
   "updates.err.nosums": "la versión nueva no publica su SHA256SUMS",
+  "updates.err.notls": "esta copia no trae lo necesario para conexiones seguras (TLS)",
   "updates.err.toolarge": "el archivo pasa del tope de tamaño",
   "updates.err.write": "no se pudo escribir en la carpeta del AppImage",
   "updates.error": "No se pudo: {motivo}",
