@@ -123,3 +123,52 @@ class TestEnLaPagina(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipIf(QApplication is None, "sin PySide6")
+class TestLaTablaDeMotores(unittest.TestCase):
+    """Revisión del autor: el uso que falta por permisos lleva candado."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.app = qt.app()
+        cls.intel = foto(EQUIPOS / "i5-10400")[0]
+
+    def _seccion(self, muestra):
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.graphics import GraphicsPage
+
+        pagina = GraphicsPage(theme.palette_for(self.app, "dark"), Preferences().normalized())
+        self.addCleanup(pagina.deleteLater)
+        pagina.resize(1200, 900)
+        pagina.show()
+        pagina.apply(muestra)
+        self.app.processEvents()
+        return pagina._sections[0]
+
+    def test_sin_permisos_el_uso_de_cada_motor_lleva_candado(self):
+        self.assertTrue(self.intel.permission_note("gpus.0"))
+        seccion = self._seccion(self.intel)
+        motores = self.intel.gpus[0].engines
+        self.assertTrue(motores)
+        for fila in range(len(motores)):
+            with self.subTest(motor=motores[fila].name):
+                self.assertTrue(seccion.engines.is_cell_locked(fila, 2))
+                self.assertNotEqual(seccion.engines._cells[fila][2].full_text(), render.DASH)
+
+    def test_con_permisos_el_candado_se_va_y_sale_la_cifra(self):
+        seccion = self._seccion(self.intel)
+        gpu = self.intel.gpus[0]
+        motores = tuple(dataclasses.replace(m, busy_percent=12.0) for m in gpu.engines)
+        con = dataclasses.replace(self.intel, gpus=(dataclasses.replace(gpu, engines=motores),),
+                                  notes=tuple(n for n in self.intel.notes
+                                              if not n.path.startswith("gpus")))
+        pagina = seccion.parentWidget()
+        while not hasattr(pagina, "apply"):
+            pagina = pagina.parentWidget()
+        pagina.apply(con)
+        self.app.processEvents()
+        self.assertFalse(seccion.engines.is_cell_locked(0, 2))
+        self.assertEqual(seccion.engines._cells[0][2].full_text(), "12.0 %")
+        self.assertTrue(seccion.engines._cells[0][2].isVisibleTo(seccion))

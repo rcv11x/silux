@@ -264,6 +264,7 @@ class GpuSection(QWidget):
         self.engine_summary = InfoGrid()
         self.engine_summary.add(_("gpu.engines.idle"))
         self.engines = Table([_(h) for h in ENGINE_HEADERS], numeric=(False, False, True, False))
+        self.engines.locked_clicked.connect(self.elevation_requested)
         self.engine_card.body.addWidget(self.engine_summary)
         # El reposo habla de la tarjeta entera y la tabla de cada motor: son
         # dos cosas distintas. Pegadas, «En reposo» se leía como una fila más
@@ -593,6 +594,14 @@ class GpuSection(QWidget):
              ", ".join(motor.capabilities) or render.DASH)
             for motor in gpu.engines
         ])
+        # El uso de cada motor sale del contador que piden los permisos: con
+        # candado, como en la ficha de arriba, y no con guion.
+        candado = getattr(self, "_candado", None)
+        if candado is not None:
+            for fila, motor in enumerate(gpu.engines):
+                if motor.busy_percent is None:
+                    self.engines.set_cell_locked(fila, 2, self._p.info,
+                                                 render.lock_tooltip(candado))
 
     def _apply_codecs(self, gpu: Gpu) -> None:
         """Qué códecs acelera la tarjeta, y en qué sentido.

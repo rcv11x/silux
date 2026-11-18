@@ -1681,12 +1681,17 @@ class Table(QScrollArea):
     con ella y el contenido se recortaba por el lado derecho.
     """
 
+    # Alguien ha pulsado el candado de una celda: quiere los permisos.
+    locked_clicked = Signal()
+
     def __init__(self, headers: Sequence[str], numeric: Sequence[bool] = (),
                  parent: Optional[QWidget] = None, cede: Sequence[int] = ()):
         """`cede`: las columnas de texto que pueden salir recortadas, con
         puntos suspensivos, cuando la tabla no cabe (`_encajar`)."""
         super().__init__(parent)
         self._headers = list(headers)
+        # (fila, columna) → su candado, para las celdas que lo han tenido.
+        self._candados: dict[tuple[int, int], "LockMark"] = {}
         self._cede = tuple(cede)
         self._numeric = list(numeric) + [False] * (len(headers) - len(numeric))
 
@@ -1758,6 +1763,38 @@ class Table(QScrollArea):
                 # Con otra letra la fila mide otra cosa.
                 self._fit_height()
 
+    def set_cell_locked(self, fila: int, columna: int, color: str, tooltip: str = "") -> None:
+        """La celda falta por permisos: candado en su sitio, como en
+        `InfoGrid.set_locked`. Dura hasta el siguiente `set_rows`, que es
+        cuando quien la monta vuelve a decidir con la foto nueva."""
+        if not (fila < len(self._cells) and columna < len(self._cells[fila])):
+            return
+        celda = self._cells[fila][columna]
+        candado = self._candados.get((fila, columna))
+        if candado is None:
+            candado = LockMark(color, max(10, celda.fontMetrics().ascent()))
+            candado.hacer_pulsable()
+            candado.clicked.connect(self.locked_clicked)
+            lado = (Qt.AlignmentFlag.AlignRight if self._numeric[columna]
+                    else Qt.AlignmentFlag.AlignLeft)
+            self._grid.addWidget(candado, fila + 1, columna, lado | Qt.AlignmentFlag.AlignVCenter)
+            self._candados[(fila, columna)] = candado
+        candado.setToolTip(tooltip)
+        candado.show()
+        celda.set_full_text("")
+        celda.hide()
+
+    def is_cell_locked(self, fila: int, columna: int) -> bool:
+        candado = self._candados.get((fila, columna))
+        return candado is not None and not candado.isHidden()
+
+    def _quitar_candados(self) -> None:
+        for (fila, columna), candado in self._candados.items():
+            if not candado.isHidden():
+                candado.hide()
+                if fila < len(self._cells) and columna < len(self._cells[fila]):
+                    self._cells[fila][columna].show()
+
     def set_cell_tooltip(self, fila: int, columna: int, texto: str) -> None:
         """La explicación de una celda concreta: por qué lleva un guion."""
         if fila < len(self._cells) and columna < len(self._cells[fila]):
@@ -1775,6 +1812,7 @@ class Table(QScrollArea):
         # Mientras la tabla tenga la misma forma se reescriben las celdas que
         # ya están. Rehacerlas en cada muestreo dejaba miles de etiquetas vivas.
         if len(rows) == self._rows and self._cells:
+            self._quitar_candados()
             for index, values in enumerate(rows):
                 tip = tooltips[index] if index < len(tooltips) else ""
                 for column, value in enumerate(values):
@@ -1791,6 +1829,8 @@ class Table(QScrollArea):
                 widget.setParent(None)
                 widget.deleteLater()
         self._cells.clear()
+        # Los candados iban en la rejilla y se han ido con ella.
+        self._candados.clear()
 
         for index, values in enumerate(rows):
             fila: list[ElidingLabel] = []
