@@ -10,8 +10,8 @@ monta el Collector contra todos (`tests/test_equipos.py`).
 
 | Volcado | Procesador | Gráfica | Notas |
 |---|---|---|---|
-| `i5-10400` | Intel Core i5-10400 (Comet Lake-S) | UHD Graphics 630 | Fedora 44, kernel 7.3; en reposo, con el turbo apagado por el gestor de energía (los 12 hilos a 2,9 GHz). Lleva `scaling_cur_freq` y el nombre de la gráfica grabado. De los puentes de Docker queda uno; una interfaz con nombre puesto a mano sale como `interfaz1` |
-| `i5-10400-turbo` | el mismo | el mismo | con once hilos ocupados y el turbo ya encendido por `auto-cpufreq` (techo 4,3 GHz, los 12 hilos a 4,0). Cuánto tarda en encenderlo no es fijo: se espera a ver `no_turbo` a 0 y se comprueba dentro del volcado |
+| `i5-10400` | Intel Core i5-10400 (Comet Lake-S) | UHD Graphics 630 | Fedora 44, kernel 7.3; en reposo, con el turbo apagado por el gestor de energía (los 12 hilos a 2,9 GHz). Lleva `scaling_cur_freq` y el nombre de la gráfica grabado. De los puentes de Docker queda uno; una interfaz con nombre puesto a mano sale como `interfaz1`. Rehecho el 18 de noviembre con los datos nuevos (reposo, USB, sonido, vulnerabilidades, intercambio, arranque, PCIe); el volcado en reposo enciende a veces el turbo él solo, así que se repite hasta que dentro diga `no_turbo` 1 |
+| `i5-10400-turbo` | el mismo | el mismo | con once hilos ocupados y el turbo ya encendido por `auto-cpufreq` (techo 4,3 GHz, los 12 hilos a 4,0). Cuánto tarda en encenderlo no es fijo: se espera a ver `no_turbo` a 0 y se comprueba dentro del volcado. Rehecho el 18 de noviembre, a la vez que el de reposo |
 | `5800x3d` | AMD Ryzen 7 5800X3D (Zen 3, AM4) | Radeon RX 9070 XT | CachyOS, kernel 7.3; placa X570, dos monitores, cinco discos (dos montados fuera del sistema); en reposo. De las interfaces de Docker queda una de cada. **Rehecho el 18 de noviembre de 2026** con los datos nuevos (PCI, plataforma, vulnerabilidades, arranque, intercambio, lo enchufado sin marcas ni modelos, TRIM) |
 
 Todos son sin permisos. Lo que se arregle en lo que lee el procesador o la

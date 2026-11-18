@@ -155,7 +155,7 @@
     {
      "api_version": "1.4.354",
      "device_id": 39880,
-     "device_memory_bytes": 12424565760,
+     "device_memory_bytes": 12424562688,
      "driver_version": 109060102,
      "instance_version": "1.4.341",
      "kind": "integrada",
@@ -165,7 +165,7 @@
     {
      "api_version": "1.4.354",
      "device_id": 0,
-     "device_memory_bytes": 16566087680,
+     "device_memory_bytes": 16566083584,
      "driver_version": 109060102,
      "instance_version": "1.4.341",
      "kind": "CPU",
@@ -203,6 +203,24 @@
     "RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller"
    ]
   },
+  "10ec:8168|8086:43d2|8086:43ed|8086:9bc8|8086:f0c8": {
+   "10ec:8168": [
+    "Realtek Semiconductor Co., Ltd.",
+    "RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller"
+   ],
+   "8086:43d2": [
+    "Intel Corporation",
+    "500 Series Chipset Family SATA Controller (AHCI) (Server/Desktop)"
+   ],
+   "8086:43ed": [
+    "Intel Corporation",
+    "500 Series Chipset Family USB 3.2 Gen 2x2 (20 Gbs) xHCI Host Controller"
+   ],
+   "8086:9bc8": [
+    "Intel Corporation",
+    "CometLake-S GT2 [UHD Graphics 630]"
+   ]
+  },
   "8086:4388|8086:9b53": {
    "8086:4388": [
     "Intel Corporation",
@@ -229,7 +247,9 @@
    "XDG_CURRENT_DESKTOP": "KDE",
    "XDG_SESSION_TYPE": "wayland"
   },
+  "kvm": true,
   "machine": "x86_64",
+  "procesos": 375,
   "uname": {
    "machine": "x86_64",
    "node": "equipo",
@@ -246,8 +266,8 @@
  },
  "statvfs": {
   "/": [
-   123442737152,
-   114910121984
+   124185415680,
+   114167443456
   ],
   "/boot": [
    526778368,

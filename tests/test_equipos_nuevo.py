@@ -1,12 +1,13 @@
-"""Los datos nuevos, leídos del volcado del 5800X3D por los proveedores.
+"""Los datos nuevos, leídos de los volcados por los proveedores.
 
 `tests/test_placa_nueva.py`, `test_sistema_nuevo.py` y los demás prueban las
 páginas con datos puestos a mano o con archivos sueltos. Aquí es el Collector
 entero leyendo el equipo volcado: lo que comprueba es que lo que cada
 proveedor abre está en el volcado, y que el volcado no lleva lo que no debe.
 
-El del i5-10400 es de antes de estos proveedores y no trae nada de esto: se
-rehace en la oficina. Hasta entonces solo se le exige que no reviente.
+Lo que se comprueba de cada volcado es lo que se vio en esa pieza: el
+5800X3D en casa (Limine, zstd, concentradores USB) y el i5-10400 en la
+oficina (GRUB, lzo-rle, solo teclado y ratón).
 """
 
 import pathlib
@@ -99,14 +100,79 @@ class TestElVolcadoNuevo(unittest.TestCase):
         self.assertEqual(self.foto.cpu.idle_states, ())
 
 
-class TestElVolcadoDeAntes(unittest.TestCase):
-    """El i5-10400, volcado antes de que existieran estos proveedores."""
+class TestElVolcadoNuevoDeIntel(unittest.TestCase):
+    """El i5-10400, volcado de nuevo el 18 de noviembre con todo lo de arriba."""
 
-    def test_no_revienta_y_lo_que_no_trae_queda_vacio(self):
-        f = foto(EQUIPOS / "i5-10400")[0]
-        self.assertEqual(f.usb_devices, ())
-        self.assertEqual(f.system.vulnerabilities, ())
-        self.assertEqual((f.cpu.power.limit_long_w, f.cpu.power.limit_short_w), (65.0, 115.0))
+    @classmethod
+    def setUpClass(cls):
+        cls.foto = foto(EQUIPOS / "i5-10400")[0]
+
+    def test_los_dispositivos_pci_con_el_nombre_de_su_pagina(self):
+        por_tipo = {}
+        for d in self.foto.pci_devices:
+            por_tipo.setdefault(d.kind, []).append(d)
+        self.assertEqual([d.name for d in por_tipo["gpu"]], [self.foto.gpus[0].name])
+        self.assertEqual(por_tipo["gpu"][0].slot, "0000:00:02.0")
+        for clase in ("ethernet", "sata", "usb", "audio"):
+            self.assertTrue(por_tipo.get(clase), clase)
+        self.assertEqual(len({d.slot for d in self.foto.pci_devices}),
+                         len(self.foto.pci_devices))
+        ethernet = por_tipo["ethernet"][0]
+        self.assertEqual(render.pcie_link(ethernet.link), "PCIe 1.0 × 1")
+
+    def test_la_plataforma(self):
+        p = self.foto.platform
+        self.assertEqual((p.virtualization, p.virtualization_kind), ("active", "VT-x"))
+        self.assertEqual(p.audio_codec, "Realtek ALC892")
+
+    def test_el_sistema(self):
+        s = self.foto.system
+        self.assertGreater(s.processes, 100)
+        self.assertGreater(len(s.vulnerabilities), 10)
+        self.assertFalse([v for v in s.vulnerabilities if v.state == "vulnerable"])
+        # Un Comet Lake tiene mitigaciones que un Zen 3 no necesita.
+        self.assertIn("mmio_stale_data", {v.name for v in s.vulnerabilities
+                                          if v.state == "mitigated"})
+        # El GRUB de Fedora publica su nombre (módulo bli), no sus tiempos.
+        self.assertEqual(s.boot.loader.split()[0], "GRUB")
+        self.assertIsNone(s.boot.firmware_s)
+        self.assertEqual([(x.zram, x.algorithm) for x in s.swaps], [(True, "lzo-rle")])
+        self.assertRegex(render.graphics_stack(self.foto), r"^Mesa \d+")
+
+    def test_lo_enchufado_sin_marcas_ni_modelos(self):
+        usb = self.foto.usb_devices
+        self.assertEqual(sorted(u.kind for u in usb), ["keyboard", "mouse"])
+        self.assertEqual({(u.vendor, u.product, u.usb_id) for u in usb}, {(None, None, None)})
+        self.assertTrue(all(s.name is None for s in self.foto.sound_cards))
+        anonima = privacidad.anonimizar(self.foto)
+        self.assertEqual(anonima.usb_devices, usb)
+
+    def test_en_el_volcado_no_hay_archivos_que_digan_de_quien_es_cada_cosa(self):
+        for nombre in ("i5-10400", "i5-10400-turbo"):
+            raiz = EQUIPOS / nombre
+            with self.subTest(volcado=nombre):
+                delatores = [str(p.relative_to(raiz)) for p in raiz.rglob("*")
+                             if p.name in ("product", "manufacturer", "idVendor", "idProduct")
+                             and "/usb" in str(p)]
+                self.assertEqual(delatores, [])
+                self.assertFalse([p for p in raiz.rglob("serial") if "/usb" in str(p)])
+
+    def test_el_trim_del_disco(self):
+        disco = {d.name: d for d in self.foto.disks}["sda"]
+        self.assertTrue(disco.discard and disco.discard_mounted and disco.fstrim_timer)
+
+    def test_los_limites_de_potencia(self):
+        p = self.foto.cpu.power
+        self.assertEqual((p.limit_long_w, p.limit_short_w), (65.0, 115.0))
+
+    def test_el_reposo_no_sale_de_una_sola_lectura(self):
+        self.assertEqual(self.foto.cpu.idle_states, ())
+
+    def test_el_turbo_de_cada_volcado(self):
+        """Uno con el turbo apagado y otro encendido: auto-cpufreq lo cambia."""
+        for nombre, apagado in (("i5-10400", "1"), ("i5-10400-turbo", "0")):
+            ruta = EQUIPOS / nombre / "sys/devices/system/cpu/intel_pstate/no_turbo"
+            self.assertEqual(ruta.read_text().strip(), apagado, nombre)
 
 
 if __name__ == "__main__":
