@@ -3,9 +3,77 @@
 Para retomar sin el contexto de la sesión anterior. Se borra cuando lo de
 aquí esté hecho o pase a `docs/pendientes.md`.
 
-Última sesión: 18 de noviembre de 2026 por la tarde (hasta las 16:00), en el
+Última sesión: 18 de noviembre de 2026 por la tarde (hasta las 18:00), en el
 i5-10400 de la oficina (Fedora 44, KDE Plasma 6.8 en Wayland). La anterior, la madrugada del
 18 en el 5800X3D de casa (CachyOS).
+
+## Tarde del 18 (16:00-18:00), en la oficina: lo que miente, arreglado
+
+Rama `oficina`, sin pasar a `master` (el autor: «no toques el borrador ni
+master»). Un commit por cambio, con su test visto fallar.
+
+**A las 16:25 el equipo se congeló.** Había tres agentes de Claude en
+paralelo y `pytest -n auto` (12 procesos con Qt) en 16 GB, y el autor lo
+apagó a lo bruto. El repositorio quedó sano: `git fsck --full` sin errores,
+sin `.lock` ni procesos colgados. Desde entonces:
+
+- **nada de agentes en paralelo** en estos equipos;
+- **`pytest -n 4` como máximo**, en los dos equipos.
+
+Está en CLAUDE.md. Lo que dejaron los agentes se revisó, se terminó en la
+sesión principal y se quitaron sus worktrees.
+
+| Commit | Qué |
+|---|---|
+| `56d67e6` | **1a.** Una gráfica suspendida (`power/runtime_status`) no se lee: ni enlace, ni hwmon, ni ioctl, ni NVML, ni las API. Se dice «En reposo» con lo último que se supo. Al despertar se relee lo estático |
+| `bd9c255` | **1f.** Inicio, su temperatura y la imagen para compartir usan la gráfica que trabaja (`Snapshot.working_gpu`) |
+| `48d19b7` | **1b.** APU de AMD: sin el consumo del encapsulado ni la temperatura del SoC como de la gráfica; se dice al pie |
+| `92ae5eb` | **1c.** Arc: sin enlace PCIe en vez de «PCIe 1.0 × 1» |
+| `b0113b9` | **1d.** Arc: con `i915` pide su propio PMU (sin uso, y con nota, hasta cambiar el ayudante); con `xe`, la temperatura de `pkg` |
+| `be8c988` | **1e.** `gpu_metrics` 1.0 no se lee; se dice que no se interpreta |
+| `b4bd118` | Fallo 4: la actividad de una APU en `gpu_metrics` 2.1, que viene en centésimas, no se lee |
+| `883afd3` | **9.** Una barra por motor en «Ahora mismo» de una integrada; candado sin permisos |
+| `ac2dd32` | **5.** Las ocho capturas del README, con permisos |
+| `a4fb777` | **6.** La versión se enseña «0.4»; el CHANGELOG titula `## 0.4` |
+| `59eddd6` | **4.** El CI no pisa las notas de la release |
+| `562fd1d` | **4.** Lo de hoy, en la entrada de la 0.4 |
+| `d52f28c` | **3 y 9.** `docs/propuesta-uso-de-graficas.md`: los dos cambios del ayudante, sin aplicar, y el uso por programa de DRM fdinfo |
+| `7052f2d` | **2.** Los volcados no despiertan una gráfica dormida (fase 0, primera parte) |
+| `831d2d4`, `710366f` | **10.** Contraste de los controles en reposo, en los dos temas; el interruptor encendido en ámbar |
+
+Para el número exacto de cada commit: `git log --oneline c01944d..oficina`.
+
+**Sin hacer:**
+
+- **2, el resto de la fase 0.** Grabar NVML, ver los archivos de `xe` en el
+  nodo PCI, recorrer la cadena de puentes y grabar `event_source`. Sin eso,
+  un volcado de una NVIDIA o de una Arc llega cojo.
+- **7.** Rama `actualizaciones`, sin empujar, y sale de `c01944d`:
+  - La propuesta, `silux/updates.py` (buscar, bajar, comprobar el SHA-256
+    y sustituir) y el paso del CI que publica `SHA256SUMS`, con sus tests.
+  - **Falta toda la interfaz:** el interruptor y el botón de Ajustes, y el
+    aviso junto a la versión.
+  - Al rebasarla sobre `oficina` chocará en el paso de la release del CI,
+    porque los dos lo tocan.
+- **8.** Solo la estimación, en la respuesta de la sesión: no cabe en la
+  0.4.
+
+**Para mirar en una ventana de verdad, con permisos.** Pasó al capturar y
+sin ventana real no se sabe si es de la captura:
+
+- Memoria abierta *después* de dar permisos sale con los campos de los
+  módulos montados unos encima de otros. Con la página abierta desde el
+  principio sale bien.
+- La cabecera de Gráficos sale sin las insignias.
+
+Las dos son de una página que se pinta escondida.
+
+**Capturas** en `~/Imágenes/silux-test/oficina-18/`:
+
+- `readme-permisos/`: las del README.
+- `motores/`: antes y después, con y sin permisos.
+- `contraste/`: antes y después, en los dos temas.
+- `version-corta.png`.
 
 ## Para casa: probar la 0.4.0 en el 5800X3D y publicarla
 
@@ -81,42 +149,52 @@ release upload v0.4.0 … --clobber`).
 
 ### 3. Publicar
 
-**Antes, una decisión:** al publicar, GitHub crea la etiqueta `v0.4.0`, y
-ese empujón de etiqueta lanza el CI. Su último paso
-(`softprops/action-gh-release`, `.github/workflows/appimage.yml:177`):
+**El borrador está atrasado.** Se creó desde `c01944d` a las 15:30, y por
+la tarde entraron en `oficina` once arreglos que deben ir en la 0.4. Antes
+de publicar, por orden:
 
-- **Pone como notas el CHANGELOG entero** (`body_path: CHANGELOG.md`): todas
-  las versiones, como pasó con la 0.3.0. Las notas del borrador, que son
-  solo la entrada de la 0.4.0, se pierden.
-- Vuelve a subir los dos AppImage, construidos desde el mismo commit.
-
-Dos salidas:
-
-- **Aceptarlo:** las notas quedan como las de la 0.3.0.
-- **Evitarlo:** antes de publicar, en `master`, un commit que quite
-  `body_path: CHANGELOG.md` de ese paso. Sin `body`, la acción no toca las
-  notas de una release que ya existe. Es un cambio de CI: con su CI en
-  verde, y la etiqueta se crea sobre ese commit. **Dudoso**: comprobar en la
-  documentación de `softprops/action-gh-release` v3 que sin `body` deja las
-  notas como estaban.
-
-Después, para publicar:
+1. `oficina` a `master` con `--ff-only`, con su CI en verde. **No está
+   hecho**: el autor dijo «no toques el borrador ni master».
+2. Sustituir los AppImage del borrador por los de esa ejecución del CI de
+   `master`:
+   `gh run download RUN -n appimages -D /tmp/ai` y después
+   `gh release upload v0.4.0 /tmp/ai/*.AppImage --clobber`.
+3. Las notas y el título, con la versión corta («0.4»; por debajo sigue
+   siendo `v0.4.0`):
 
 ```bash
-# Si se publica otro día, la fecha: en CHANGELOG.md («## 0.4.0 (DÍA de
-# noviembre de 2026)»), commit docs(changelog) en master, y las notas:
-awk '/^## 0.4.0 /{f=1; next} /^## 0.3.0 /{f=0} f' CHANGELOG.md > /tmp/notas.md
-gh release edit v0.4.0 --notes-file /tmp/notas.md
+awk '/^## 0\.4 /{f=1; next} /^## 0\.3 /{f=0} f' CHANGELOG.md > /tmp/notas.md
+gh release edit v0.4.0 --title "0.4" --notes-file /tmp/notas.md
+# Si se publica otro día, antes la fecha en CHANGELOG.md («## 0.4 (DÍA de
+# noviembre de 2026)»), con su commit en master.
+```
 
-# Publicar: crea la etiqueta v0.4.0 sobre el commit de los AppImage (o el
-# del cambio del CI, si se hace)
+4. Publicar. Esto crea la etiqueta `v0.4.0` sobre `master`:
+
+```bash
 gh release edit v0.4.0 --draft=false --latest --target "$(git rev-parse origin/master)"
 gh run watch     # el CI de la etiqueta
 ```
 
-Y después de publicar, en el CHANGELOG, empezar la entrada «## 0.4.1 (sin
-publicar)» o «## 0.5.0 (sin publicar)», y quitar de CLAUDE.md y de
+**Las notas ya no se pisan.** El paso de la release del CI ya no lleva
+`body_path` (`59eddd6`). Según el código de `softprops/action-gh-release`,
+sin cuerpo deja el de la release que existe. Ese CI vuelve a subir los dos
+AppImage del mismo commit. **Comprobar en la release, después de
+publicar**, que las notas son solo las de la 0.4.
+
+Después de publicar, empezar en el CHANGELOG la entrada «## 0.4.1 (sin
+publicar)» o «## 0.5 (sin publicar)», y quitar de CLAUDE.md y de
 `docs/pendientes.md` lo que ya no esté pendiente.
+
+**Probar también en casa** lo que entró por la tarde:
+
+- Gráficos de la RX 9070 XT: no debe cambiar nada.
+  - Con `integrated=False` no hay barras de motores.
+  - El consumo y el punto caliente siguen saliendo.
+- Ajustes en los dos temas:
+  - Los controles apagados se ven.
+  - El interruptor encendido es ámbar.
+- «versión 0.4» abajo a la izquierda.
 
 ## Tarde del 18, en la oficina: la 0.4.0 preparada y la propuesta de gráficas
 
