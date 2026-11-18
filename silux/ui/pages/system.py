@@ -248,8 +248,16 @@ class SystemPage(QScrollArea):
         tiempos = render.boot_times(arranque)
         hay = bool(arranque.loader or arranque.entry or tiempos)
         self.boot_card.setVisible(hay)
-        self.extra_pie.setText("" if hay else _("sys.boot.unpublished"))
-        self.extra_pie.setVisible(not hay)
+        # Lo que falta, dicho: nada, o los tiempos. El GRUB de Fedora publica
+        # su nombre y no cuánto tarda.
+        if not hay:
+            pie = _("sys.boot.unpublished")
+        elif tiempos is None:
+            pie = _("sys.boot.notimes").format(gestor=arranque.loader or _("sys.boot.loader"))
+        else:
+            pie = ""
+        self.extra_pie.setText(pie)
+        self.extra_pie.setVisible(bool(pie))
         for clave, valor in (("sys.boot.loader", arranque.loader),
                              ("sys.boot.entry", arranque.entry),
                              ("sys.boot.time", tiempos)):

@@ -170,6 +170,27 @@ class TestEnLaPagina(unittest.TestCase):
             self.assertEqual({n: e.full_text() for n, e in pagina.swap._values.items()},
                              {_("sys.swap.label"): _("sys.swap.none")})
 
+    def test_un_gestor_que_dice_su_nombre_pero_no_sus_tiempos(self):
+        """El GRUB de Fedora, con el volcado del i5-10400.
+
+        Fedora compila GRUB con el módulo que publica `LoaderInfo` y no los
+        tiempos: salía la tarjeta con «GRUB 2.12» y la fila de los tiempos
+        desaparecía sin que nada lo dijera.
+        """
+        intel = foto(EQUIPOS / "i5-10400")[0]
+        with pantalla.Ventana(intel) as ventana:
+            pagina = self._pagina(ventana)
+            self.assertTrue(pagina.boot_card.isVisible())
+            self.assertEqual(pagina.boot._values[_("sys.boot.loader")].full_text(), "GRUB 2.12")
+            self.assertFalse(pagina.boot._values[_("sys.boot.time")].isVisible())
+            self.assertTrue(pagina.extra_pie.isVisible())
+            self.assertEqual(pagina.extra_pie.text(),
+                             _("sys.boot.notimes").format(gestor="GRUB 2.12"))
+
+    def test_el_pie_no_dice_que_grub_no_publique_nada(self):
+        """El de Fedora sí publica su nombre."""
+        self.assertNotIn("GRUB no", _("sys.boot.unpublished"))
+
     def test_un_intercambio_que_aparece_con_la_pagina_abierta(self):
         with pantalla.Ventana(self.sin_nada) as ventana:
             pagina = self._pagina(ventana)
