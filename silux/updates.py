@@ -146,8 +146,10 @@ class _SoloHttps(urllib.request.HTTPRedirectHandler):
     """GitHub redirige los adjuntos a otro dominio; a `http://`, nunca."""
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):
+        # Un `UpdateError` y no un `URLError`: este último es un `OSError`, y
+        # quien abre lo tomaba por un corte de red y decía «no hay conexión».
         if not newurl.lower().startswith("https://"):
-            raise urllib.error.URLError(f"redirección fuera de HTTPS: {newurl}")
+            raise UpdateError("insecure", newurl)
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 

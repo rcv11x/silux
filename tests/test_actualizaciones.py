@@ -142,8 +142,28 @@ class TestLaRed(unittest.TestCase):
         self.assertEqual(caso.exception.code, "insecure")
 
     def test_una_redireccion_a_http_se_corta(self):
-        with self.assertRaises(urllib.error.URLError):
+        with self.assertRaises(updates.UpdateError) as caso:
             updates._SoloHttps().redirect_request(None, None, 302, "", {}, "http://ejemplo.org/x")
+        self.assertEqual(caso.exception.code, "insecure")
+
+    def test_y_se_dice_por_que_y_no_que_falta_red(self):
+        """Con el GitHub falso de la prueba de punta a punta, una descarga
+        redirigida a http:// salía «no hay conexión con GitHub»."""
+        release = updates.Release((9, 0, 0), "v9.0.0", "u", {
+            updates.NORMAL: "https://github.com/a", updates.SUMS: "https://github.com/s"})
+
+        def abrir(url, espera):
+            if url.endswith("/s"):
+                return io.BytesIO(f"{'0' * 64}  {updates.NORMAL}\n".encode())
+            return updates._SoloHttps().redirect_request(None, None, 302, "", {}, "http://x/a")
+
+        with tempfile.TemporaryDirectory() as carpeta:
+            destino = pathlib.Path(carpeta, updates.NORMAL)
+            destino.write_bytes(b"viejo")
+            with self.assertRaises(updates.UpdateError) as caso:
+                updates.install(release, destino, updates.NORMAL, abrir_url=abrir)
+            self.assertEqual(caso.exception.code, "insecure")
+            self.assertEqual(destino.read_bytes(), b"viejo")
 
     def test_sin_red_es_un_error_con_su_motivo(self):
         red = Red({updates.API_URL: urllib.error.URLError("sin red")})
