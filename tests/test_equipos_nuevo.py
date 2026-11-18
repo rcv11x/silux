@@ -58,7 +58,12 @@ class TestElVolcadoNuevo(unittest.TestCase):
         self.assertGreater(len(s.vulnerabilities), 10)
         self.assertFalse([v for v in s.vulnerabilities if v.state == "vulnerable"])
         self.assertEqual(s.boot.loader.split()[0], "Limine")
-        self.assertAlmostEqual(s.boot.total_s, s.boot.firmware_s + s.boot.loader_s, places=1)
+        # Con lo que contestó systemd al volcarlo, las cinco fases; el total
+        # es su suma, y no solo la de Limine.
+        fases = (s.boot.firmware_s, s.boot.loader_s, s.boot.kernel_s, s.boot.initrd_s,
+                 s.boot.userspace_s)
+        self.assertNotIn(None, fases)
+        self.assertAlmostEqual(s.boot.total_s, sum(fases), places=1)
         self.assertEqual([(x.zram, x.algorithm) for x in s.swaps], [(True, "zstd")])
         self.assertRegex(render.graphics_stack(self.foto), r"^Mesa \d+")
 
