@@ -516,6 +516,10 @@ class InfoGrid(QWidget):
         super().__init__(parent)
         self._filas: dict[str, int] = {}
         self._candados: dict[str, "LockMark"] = {}
+        # Dos estados de cada fila, y de los dos sale qué se ve (`_mostrar`):
+        # si está escondida entera y si su valor lo guarda un permiso.
+        self._ocultas: set[str] = set()
+        self._bloqueadas: set[str] = set()
         m = theme.METRICS
         self._grid = QGridLayout(self)
         self._grid.setContentsMargins(0, 0, 0, 0)
@@ -570,25 +574,25 @@ class InfoGrid(QWidget):
             candado = LockMark(color, max(10, label.fontMetrics().ascent()))
             candado.hacer_pulsable()
             candado.clicked.connect(self.locked_clicked)
+            candado.hide()
             self._grid.addWidget(candado, self._filas[name], 1,
                                  Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
             self._candados[name] = candado
         candado.setToolTip(tooltip)
-        candado.show()
+        self._bloqueadas.add(name)
         label.set_full_text("")
-        label.hide()
+        self._mostrar(name)
 
     def is_locked(self, name: str) -> bool:
-        candado = self._candados.get(name)
-        return candado is not None and not candado.isHidden()
+        return name in self._bloqueadas
 
     def set(self, name: str, value: str, tooltip: Optional[str] = None) -> None:
         label = self._values.get(name)
         if label is None:
             return
-        if (candado := self._candados.get(name)) is not None and not candado.isHidden():
-            candado.hide()
-            label.show()
+        if name in self._bloqueadas:
+            self._bloqueadas.discard(name)
+            self._mostrar(name)
         label.set_full_text(value)
         if tooltip:
             label.setToolTip(f"{value}\n\n{tooltip}" if value else tooltip)
@@ -597,16 +601,39 @@ class InfoGrid(QWidget):
         """Esconde o enseña una fila entera, nombre incluido.
 
         Se ocultan, no se destruyen: crear widgets en cada muestreo es lo que
-        hacía crecer la memoria medio megabyte por minuto.
+        hacía crecer la memoria medio megabyte por minuto. Y el candado se
+        va con la fila: escondida, no queda suelto en la tarjeta.
         """
-        for mapa in (self._values, self._names):
-            if (label := mapa.get(name)) is not None:
-                label.setVisible(visible)
+        if name not in self._names:
+            return
+        if visible:
+            self._ocultas.discard(name)
+        else:
+            self._ocultas.add(name)
+        self._mostrar(name)
+
+    def _mostrar(self, name: str) -> None:
+        """Lo que se ve de la fila, sacado de sus dos estados.
+
+        Cada widget se toca solo si cambia (`setVisible` no hace nada si ya
+        está así): quien rellena la tarjeta en cada muestreo no la recoloca
+        si nada ha cambiado.
+        """
+        fila = name not in self._ocultas
+        bloqueada = name in self._bloqueadas
+        self._names[name].setVisible(fila)
+        self._values[name].setVisible(fila and not bloqueada)
+        if (candado := self._candados.get(name)) is not None:
+            candado.setVisible(fila and bloqueada)
 
     def reset(self) -> None:
         clear_layout(self._grid)
         self._values.clear()
         self._names.clear()
+        self._filas.clear()
+        self._candados.clear()
+        self._ocultas.clear()
+        self._bloqueadas.clear()
         self._rows = 0
 
 
@@ -1845,12 +1872,18 @@ class Table(QScrollArea):
         candado = self._candados.get((fila, columna))
         return candado is not None and not candado.isHidden()
 
-    def _quitar_candados(self) -> None:
+    def _quitar_candados(self, salvo=()) -> None:
+        """Quita los candados de las celdas que ya no lo llevan.
+
+        Los que siguen (`salvo`) no se tocan: quitarlo y volverlo a poner en
+        la misma muestra recolocaba la tabla entera cada segundo.
+        """
         for (fila, columna), candado in self._candados.items():
-            if not candado.isHidden():
-                candado.hide()
-                if fila < len(self._cells) and columna < len(self._cells[fila]):
-                    self._cells[fila][columna].show()
+            if (fila, columna) in salvo or candado.isHidden():
+                continue
+            candado.hide()
+            if fila < len(self._cells) and columna < len(self._cells[fila]):
+                self._cells[fila][columna].show()
 
     def set_cell_tooltip(self, fila: int, columna: int, texto: str) -> None:
         """La explicación de una celda concreta: por qué lleva un guion."""
@@ -1859,7 +1892,12 @@ class Table(QScrollArea):
             if celda.toolTip() != texto and (texto or celda.toolTip() != celda.full_text()):
                 celda.setToolTip(texto)
 
-    def set_rows(self, rows: Sequence[Sequence[str]], tooltips: Sequence[str] = ()) -> None:
+    def set_rows(self, rows: Sequence[Sequence[str]], tooltips: Sequence[str] = (),
+                 locked: Optional[dict[tuple[int, int], tuple[str, str]]] = None) -> None:
+        """`locked`: las celdas que faltan por permisos, (fila, columna) →
+        (color, globo). Llevan candado en vez de su texto, y las que lo
+        llevaban y ya no están ahí lo pierden."""
+        locked = locked or {}
         # Todas las filas, con tantas celdas como columnas. Una fila corta
         # («ningún monitor conectado» traía seis valores para siete columnas)
         # dejaba en la última celda el dato de la fila anterior, y al volver
@@ -1869,14 +1907,17 @@ class Table(QScrollArea):
         # Mientras la tabla tenga la misma forma se reescriben las celdas que
         # ya están. Rehacerlas en cada muestreo dejaba miles de etiquetas vivas.
         if len(rows) == self._rows and self._cells:
-            self._quitar_candados()
+            self._quitar_candados(salvo=locked)
             for index, values in enumerate(rows):
                 tip = tooltips[index] if index < len(tooltips) else ""
                 for column, value in enumerate(values):
+                    if (index, column) in locked:
+                        continue
                     cell = self._cells[index][column]
                     cell.set_full_text(str(value))
                     if tip:
                         cell.setToolTip(tip)
+            self._poner_candados(locked)
             self._ajustar_anchos(rows)
             return
 
@@ -1908,8 +1949,13 @@ class Table(QScrollArea):
                 fila.append(label)
             self._cells.append(fila)
         self._rows = len(rows)
+        self._poner_candados(locked)
         self._ajustar_anchos(rows)
         self._fit_height()
+
+    def _poner_candados(self, locked: dict[tuple[int, int], tuple[str, str]]) -> None:
+        for (fila, columna), (color, globo) in locked.items():
+            self.set_cell_locked(fila, columna, color, globo)
 
     def _ajustar_anchos(self, rows: Sequence[Sequence[str]]) -> None:
         """Que cada columna quepa, midiendo el texto que de verdad lleva.

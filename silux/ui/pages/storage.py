@@ -484,14 +484,25 @@ class StoragePage(QScrollArea):
         t(_("storage.field.trim"), descartes or d, tooltip=_("storage.tip.trim"))
         self._details[disco.name].set_visible(_("storage.field.trim"), bool(descartes))
         self._fill_smart(disco)
-        f(_("gpu.sensor.temp"), render.temperature(disco.temp_c, self._prefs.fahrenheit),
+        # Cada campo lleva su dato o su candado, no los dos en la misma
+        # muestra: quitarlo y volverlo a poner recolocaba la página entera
+        # cada segundo.
+        bloqueados = self._candados_de(disco)
+
+        def g(clave: str, valor: str, tooltip: Optional[str] = None) -> None:
+            if clave in bloqueados:
+                grid.set_locked(_(clave), self._p.info, render.lock_tooltip(self._candado))
+            else:
+                grid.set(_(clave), valor, tooltip=tooltip)
+
+        g("gpu.sensor.temp", render.temperature(disco.temp_c, self._prefs.fahrenheit),
           tooltip=self._por_que_sin_temperatura(disco))
 
         salud = disco.health
-        f(_("storage.field.hours"), f"{render.thousands(salud.power_on_hours)} h" if salud.power_on_hours else d)
-        f(_("storage.field.written"), render.size(salud.written_bytes) if salud.written_bytes else d,
+        g("storage.field.hours", f"{render.thousands(salud.power_on_hours)} h" if salud.power_on_hours else d)
+        g("storage.field.written", render.size(salud.written_bytes) if salud.written_bytes else d,
           tooltip=_("storage.tip.written"))
-        f(_("storage.field.life"),
+        g("storage.field.life",
           f"{salud.life_left_percent} %" if salud.life_left_percent is not None else d,
           tooltip=_("storage.tip.life"))
         # La vida restante es el desgaste de las celdas de un SSD. Un disco
@@ -501,7 +512,6 @@ class StoragePage(QScrollArea):
         if (pie := self._pies.get(disco.name)) is not None:
             pie.setText(_("storage.na.hdd.life") if de_platos else "")
             pie.setVisible(de_platos)
-        self._poner_candados(grid, disco)
 
     def _fill_smart(self, disco: Disk) -> None:
         """La tabla entera del diagnóstico, plegada, cuando hay permisos."""
@@ -532,14 +542,15 @@ class StoragePage(QScrollArea):
             return ""
         return _("storage.tip.notemp.nvme" if disco.kind == "NVMe" else "storage.tip.notemp")
 
-    def _poner_candados(self, grid: InfoGrid, disco: Disk) -> None:
-        """Candado, y no guion, en lo que el diagnóstico daría con permisos.
+    def _candados_de(self, disco: Disk) -> set[str]:
+        """Los campos que llevan candado, y no guion: lo que el diagnóstico
+        daría con permisos.
 
         Mientras no se haya leído el de este disco: después, lo que siga
         faltando es que el disco no lo cuenta, y eso sí es un guion.
         """
         if self._candado is None or disco.health.power_on_hours is not None:
-            return
+            return set()
         salud = disco.health
         faltan = {
             "gpu.sensor.temp": disco.temp_c is None,
@@ -548,6 +559,4 @@ class StoragePage(QScrollArea):
             "storage.field.life": salud.life_left_percent is None
             and disco.rotational is not True,
         }
-        for clave, falta in faltan.items():
-            if falta:
-                grid.set_locked(_(clave), self._p.info, render.lock_tooltip(self._candado))
+        return {clave for clave, falta in faltan.items() if falta}

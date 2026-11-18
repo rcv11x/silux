@@ -637,6 +637,16 @@ class GpuSection(QWidget):
         se ocultó si la tarjeta que ocupa ese sitio cambia.
         """
         ocultos, pies = no_aplica(gpu)
+        # Lo que tampoco se enseña, sin ser algo que la tarjeta no tenga: va
+        # en el mismo conjunto para que cada fila se decida una sola vez.
+        # Enseñarla y esconderla después, en la misma muestra, recolocaba la
+        # página entera cada segundo, y con ella desplazada saltaba todo.
+        escondidos = {nombre: set(claves) for nombre, claves in ocultos.items()}
+        escondidos["clocks"] |= self._relojes_de_mas(gpu)
+        # El uso del motor de video ya es una barra de «Ahora mismo» (o su
+        # candado): repetido aquí, el mismo dato salía dos veces.
+        if any(clave == "engine.video" for clave, _v in render.engine_levels(gpu)):
+            escondidos["sensors"].add("gpu.sensor.videouse")
 
         # La ficha de la temperatura, donde la tarjeta no la publica: una
         # ficha grande con un guion para siempre era el hueco más visible de
@@ -651,7 +661,7 @@ class GpuSection(QWidget):
                 ("clocks", self.clocks, CLOCK_FIELDS, self.clocks_pie),
                 ("sensors", self.sensors, SENSOR_FIELDS, self.sensors_pie)):
             for clave in campos:
-                grid.set_visible(_(clave), clave not in ocultos[nombre])
+                grid.set_visible(_(clave), clave not in escondidos[nombre])
             pie.setText(pies[nombre])
             pie.setVisible(bool(pies[nombre]))
 
@@ -661,10 +671,6 @@ class GpuSection(QWidget):
         # va, y lo que no hay se nombra al pie de la fila, en una frase; por
         # qué falta cada cosa, en el globo. Vuelve en cuanto tenga algo suyo
         # (el estado de una Intel reciente, o cualquier AMD).
-        # El uso del motor de video ya es una barra de «Ahora mismo» (o su
-        # candado): repetido aquí, el mismo dato salía dos veces.
-        if any(clave == "engine.video" for clave, _v in render.engine_levels(gpu)):
-            self.sensors.set_visible(_("gpu.sensor.videouse"), False)
         propios = [c for c in SENSOR_FIELDS
                    if c not in ocultos["sensors"] and c != "gpu.sensor.videouse"]
         solo_el_video = bool(gpu.engines) and not propios
@@ -674,20 +680,25 @@ class GpuSection(QWidget):
         self.sensors_outside.setToolTip(pies["sensors"] if fuera else "")
         self.sensors_outside.setVisible(bool(fuera))
 
+    @staticmethod
+    def _relojes_de_mas(gpu: Gpu) -> set[str]:
+        """Las filas de relojes que esta tarjeta tiene pero sobran."""
+        sobran = set()
         # Con las del silicio, el máximo puesto no va solo: si es el de
         # fábrica ya lo dice «Máxima (silicio)», y si alguien lo cambió va en
         # «Límites puestos», con el mínimo.
         silicio = gpu.clocks.silicon_max_hz is not None
-        for clave in SILICIO:
-            self.clocks.set_visible(_(clave), silicio)
         if silicio:
-            self.clocks.set_visible(_("gpu.clock.coremax"), False)
+            sobran.add("gpu.clock.coremax")
+        else:
+            sobran.update(SILICIO)
         # La UHD 630 tiene la eficiente y la mínima en 350 MHz: la misma cifra
         # dos veces. Queda la mínima, y lo de eficiente pasa a su globo.
         if silicio and gpu.clocks.efficient_hz == gpu.clocks.silicon_min_hz:
-            self.clocks.set_visible(_("gpu.clock.efficient"), False)
-        self.clocks.set_visible(_("gpu.clock.limits"),
-                                render.gpu_clock_limits(gpu.clocks) is not None)
+            sobran.add("gpu.clock.efficient")
+        if render.gpu_clock_limits(gpu.clocks) is None:
+            sobran.add("gpu.clock.limits")
+        return sobran
 
     def _apply_engines(self, gpu: Gpu) -> None:
         """Los motores de la tarjeta, si el driver los publica.
@@ -699,6 +710,12 @@ class GpuSection(QWidget):
         if not gpu.engines:
             return
         self.engine_summary.set(_("gpu.engines.idle"), render.gpu_sleep(gpu))
+        # El uso de cada motor sale del contador que piden los permisos: con
+        # candado, como en la ficha de arriba, y no con guion.
+        candado = getattr(self, "_candado", None)
+        bloqueadas = {} if candado is None else {
+            (fila, 2): (self._p.info, render.lock_tooltip(candado))
+            for fila, motor in enumerate(gpu.engines) if motor.busy_percent is None}
         self.engines.set_rows([
             (motor.name,
              _(motor.kind) if motor.kind else render.DASH,
@@ -707,15 +724,7 @@ class GpuSection(QWidget):
              # falte, es que no hay nada que decir.
              ", ".join(motor.capabilities))
             for motor in gpu.engines
-        ])
-        # El uso de cada motor sale del contador que piden los permisos: con
-        # candado, como en la ficha de arriba, y no con guion.
-        candado = getattr(self, "_candado", None)
-        if candado is not None:
-            for fila, motor in enumerate(gpu.engines):
-                if motor.busy_percent is None:
-                    self.engines.set_cell_locked(fila, 2, self._p.info,
-                                                 render.lock_tooltip(candado))
+        ], locked=bloqueadas)
 
     def _apply_codecs(self, gpu: Gpu) -> None:
         """Qué códecs acelera la tarjeta, y en qué sentido.
