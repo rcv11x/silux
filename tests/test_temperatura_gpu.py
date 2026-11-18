@@ -78,8 +78,10 @@ class TestEnLasTresPaginas(unittest.TestCase):
         ficha = self._ficha_de_graficos(self._ventana(INTEL))
         self.assertFalse(ficha.tile_temp.isVisible())
         self.assertFalse(ficha.sensors._values[_("gpu.sensor.hotspot")].isVisible())
-        self.assertTrue(ficha.sensors_pie.isVisible())
-        self.assertIn(_("gpu.na.notemp"), ficha.sensors_pie.text())
+        # En esta integrada «Consumo y temperaturas» no tiene nada propio y
+        # se va: su explicación queda debajo de la fila de tarjetas.
+        self.assertTrue(ficha.sensors_outside.isVisible())
+        self.assertIn(_("gpu.na.notemp"), ficha.sensors_outside.text())
         # Las otras fichas de una integrada siguen: uso, reloj y consumo.
         self.assertTrue(ficha.tile_clock.isVisible())
 
