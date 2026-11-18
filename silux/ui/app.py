@@ -48,7 +48,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .. import __version__, build_id, desktop, i18n, settings as prefs_module
+from .. import __version__, build_id, desktop, i18n, render, settings as prefs_module
 from ..i18n import _
 from ..model import Snapshot
 from ..settings import Preferences
@@ -335,7 +335,7 @@ class MainWindow(QMainWindow):
         cabecera.addWidget(wordmark)
         cabecera.addStretch(1)
 
-        version = QLabel(_("app.version").format(v=__version__))
+        version = QLabel(_("app.version").format(v=render.version(__version__)))
         version.setObjectName("Muted")
         version.setFont(ui_font(max(7, m.small_pt - 1)))
         version.setContentsMargins(10, 0, 0, 0 if build_id() else 4)

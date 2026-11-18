@@ -94,26 +94,29 @@ class TestLaVersionSeCuentaEnAlgunSitio(unittest.TestCase):
     def test_la_version_actual_esta_contada(self):
         import silux
 
-        self.assertIn(f"## {silux.__version__}", self._changelog(),
+        from silux import render
+        # Con la versión como se enseña: «## 0.4 (…)», no «## 0.4.0».
+        self.assertIn(f"## {render.version(silux.__version__)} ", self._changelog(),
                       f"la versión {silux.__version__} no tiene entrada en "
                       "CHANGELOG.md: subirla sin contar qué trae deja al que "
                       "la ve sin saber si le interesa")
 
     def test_las_entradas_van_de_la_mas_nueva_a_la_mas_vieja(self):
         """La de arriba es la que se publica; si no, se copia la que no es."""
-        versiones = re.findall(r"^## (\d+)\.(\d+)\.(\d+)", self._changelog(),
+        versiones = re.findall(r"^## (\d+)\.(\d+)(?:\.(\d+))? ", self._changelog(),
                                re.MULTILINE)
-        numeros = [tuple(int(p) for p in v) for v in versiones]
+        numeros = [tuple(int(p or 0) for p in v) for v in versiones]
         self.assertEqual(numeros, sorted(numeros, reverse=True),
                          "las versiones del CHANGELOG no van de nueva a vieja")
 
     def test_la_primera_entrada_es_la_version_que_se_publica(self):
         import silux
 
-        versiones = re.findall(r"^## (\d+\.\d+\.\d+)", self._changelog(),
+        from silux import render
+        versiones = re.findall(r"^## (\d+\.\d+(?:\.\d+)?) ", self._changelog(),
                                re.MULTILINE)
         self.assertTrue(versiones, "el CHANGELOG no tiene ninguna entrada")
-        self.assertEqual(versiones[0], silux.__version__,
+        self.assertEqual(versiones[0], render.version(silux.__version__),
                          "la entrada de arriba del CHANGELOG no es la versión "
                          "que declara el paquete")
 

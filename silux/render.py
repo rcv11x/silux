@@ -1283,6 +1283,20 @@ def duracion(segundos: float) -> str:
     return _("time.minutes").format(m=minutos)
 
 
+def version(completa: str) -> str:
+    """La versión como se enseña: «0.4» y no «0.4.0»; «0.4.1» en un arreglo.
+
+    Por debajo siempre es x.y.z (pyproject, la etiqueta, el informe y
+    `--version`, que son para máquinas y para reportar fallos). A quien mira
+    la ventana, el tercer número solo le dice algo cuando no es cero: es la
+    versión de arreglos de esa.
+    """
+    partes = completa.split(".")
+    if len(partes) == 3 and partes[2] == "0":
+        return ".".join(partes[:2])
+    return completa
+
+
 # El orden de las barras de motores, del que más se mira al que menos.
 ORDEN_DE_MOTORES = ("engine.render", "engine.compute", "engine.video",
                     "engine.videoenhance", "engine.copy")

@@ -11,7 +11,7 @@ que hace falta.
 
 ---
 
-## 0.4.0 (18 de noviembre de 2026)
+## 0.4 (18 de noviembre de 2026)
 
 La versión de los permisos y del aspecto nuevo. Un candado donde falta un
 dato por permisos, y un aviso que explica qué se gana al darlos antes de
@@ -344,7 +344,7 @@ publica se dice con la versión que lo trae.
 - Dos discos del mismo modelo pueden mezclar su temperatura en Sensores.
 - No hay navegación por teclado.
 
-## 0.3.0 (16 de noviembre de 2026)
+## 0.3 (16 de noviembre de 2026)
 
 ### Antes de actualizar
 
@@ -440,7 +440,7 @@ publica se dice con la versión que lo trae.
 
 ---
 
-## 0.2.0 (30 de agosto de 2026)
+## 0.2 (30 de agosto de 2026)
 
 Primera versión con número propio. Hasta aquí todo se llamó 0.1.0, así que
 esta entrada recoge lo que ha cambiado desde entonces.

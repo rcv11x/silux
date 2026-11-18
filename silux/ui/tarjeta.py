@@ -220,7 +220,7 @@ def _pie(pintor: QPainter, p: Palette, alto: int) -> None:
     fuente.setPointSize(9)
     pintor.setFont(fuente)
     pintor.setPen(QColor(p.muted))
-    marca = f"silux {__version__}"
+    marca = f"silux {render.version(__version__)}"
     if build_id():
         marca += f" · {build_id()}"
     pintor.drawText(MARGEN, alto - MARGEN + 6, marca)

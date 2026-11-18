@@ -34,7 +34,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ... import __version__, db, desktop, i18n
+from ... import __version__, db, desktop, i18n, render
 from ...i18n import _
 from ...settings import Preferences, config_path
 from .. import theme
@@ -450,7 +450,7 @@ class SettingsPage(QScrollArea):
         card = Card(_("about.card"))
         m = theme.METRICS
 
-        titulo = QLabel(f"Silux {__version__}")
+        titulo = QLabel(f"Silux {render.version(__version__)}")
         titulo.setObjectName("Headline")
         card.body.addWidget(titulo)
         lema = QLabel(_("about.tagline"))
