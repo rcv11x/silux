@@ -124,7 +124,9 @@ class TestLaPaginaDeGraficos(unittest.TestCase):
                 (ficha.card, ficha.card_pie, ("gpu.field.rops", "gpu.field.shaders")),
                 (ficha.clocks, ficha.clocks_pie, ("SoC", "gpu.clock.profile",
                                                   "gpu.clock.link", "gpu.clock.linkmax")),
-                (ficha.sensors, ficha.sensors_pie, ("gpu.sensor.voltage", "gpu.sensor.vsoc"))):
+                # «Consumo y temperaturas» se va entera en esta pieza (no le
+                # queda nada propio) y su pie pasa debajo de la fila.
+                (ficha.sensors, ficha.sensors_outside, ("gpu.sensor.voltage", "gpu.sensor.vsoc"))):
             for clave in claves:
                 with self.subTest(campo=clave):
                     self.assertFalse(rejilla._values[_(clave)].isVisible())
@@ -132,7 +134,7 @@ class TestLaPaginaDeGraficos(unittest.TestCase):
             self.assertTrue(pie.isVisible())
         self.assertIn(_("gpu.na.intel.card"), ficha.card_pie.text())
         self.assertIn(_("gpu.na.intel.clocks"), ficha.clocks_pie.text())
-        self.assertIn(_("gpu.na.intel.sensors"), ficha.sensors_pie.text())
+        self.assertIn(_("gpu.na.intel.sensors"), ficha.sensors_outside.text())
         # Lo que sí tiene se sigue viendo: sus unidades de ejecución.
         self.assertEqual(ficha.card._values[_("gpu.field.compute")].full_text(),
                          render.compute_units(gpu))

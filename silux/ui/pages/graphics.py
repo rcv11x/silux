@@ -256,6 +256,14 @@ class GpuSection(QWidget):
             fila, _("gpu.card.clocks"), CLOCK_FIELDS)
         fila.add(self._build_sensor_card())
         layout.addWidget(fila)
+        # Lo que explicaría «Consumo y temperaturas» cuando esa tarjeta no
+        # tiene nada propio que enseñar y se va (`_apply_no_aplica`).
+        self.sensors_outside = QLabel("")
+        self.sensors_outside.setObjectName("Muted")
+        self.sensors_outside.setWordWrap(True)
+        self.sensors_outside.setFont(ui_font(theme.METRICS.small_pt))
+        self.sensors_outside.setVisible(False)
+        layout.addWidget(self.sensors_outside)
 
         # Una tarjeta moderna no es un bloque «al 40 %»: son varias unidades
         # independientes, y saber cuál va cargada distingue «no da más» de
@@ -391,6 +399,7 @@ class GpuSection(QWidget):
         card.body.addWidget(self.sensors)
         self.sensors.locked_clicked.connect(self.elevation_requested)
         self.sensors_pie = self._pie(card)
+        self.sensor_card = card
         return card
 
     def _build_memory_card(self) -> Card:
@@ -565,6 +574,19 @@ class GpuSection(QWidget):
                 grid.set_visible(_(clave), clave not in ocultos[nombre])
             pie.setText(pies[nombre])
             pie.setVisible(bool(pies[nombre]))
+
+        # En una integrada de Intel, de «Consumo y temperaturas» solo queda el
+        # uso del motor de video, que ya es una fila de la tabla de motores:
+        # una tarjeta para un dato repetido y un párrafo de lo que no hay. Se
+        # va, y el párrafo queda al pie de la fila. Vuelve en cuanto tenga
+        # algo suyo (el estado de una Intel reciente, o cualquier AMD).
+        propios = [c for c in SENSOR_FIELDS
+                   if c not in ocultos["sensors"] and c != "gpu.sensor.videouse"]
+        solo_el_video = bool(gpu.engines) and not propios
+        self.sensor_card.setVisible(not solo_el_video)
+        fuera = pies["sensors"] if solo_el_video else ""
+        self.sensors_outside.setText(fuera)
+        self.sensors_outside.setVisible(bool(fuera))
 
         # Con las del silicio, el máximo puesto no va solo: si es el de
         # fábrica ya lo dice «Máxima (silicio)», y si alguien lo cambió va en

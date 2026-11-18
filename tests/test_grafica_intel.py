@@ -107,6 +107,23 @@ class TestEnLaPagina(unittest.TestCase):
                          _("gpu.throttle.why").format(motivos=_("gpu.throttle.intel.pl1")))
         self.assertNotIn(_("gpu.na.intel.throttle"), seccion.sensors_pie.text())
 
+    def test_sin_nada_propio_consumo_y_temperaturas_se_va(self):
+        """Revisión del autor: en la iGPU esa tarjeta se quedaba con el uso
+        del motor de video, que ya está en la tabla de motores, y un párrafo
+        de lo que no hay. Se va y el párrafo queda al pie."""
+        seccion = self._seccion(self.intel)
+        self.assertFalse(seccion.sensor_card.isVisibleTo(seccion))
+        self.assertTrue(seccion.sensors_outside.isVisibleTo(seccion))
+        self.assertIn(_("gpu.na.intel.throttle"), seccion.sensors_outside.text())
+        video = [i for i, m in enumerate(self.intel.gpus[0].engines) if m.kind == "engine.video"]
+        self.assertTrue(video, "el uso del video tiene que seguir en la tabla")
+
+    def test_con_algo_propio_la_tarjeta_vuelve(self):
+        seccion = self._seccion(self._con_gpu(
+            throttled=True, throttle_reasons=(_("gpu.throttle.intel.pl1"),)))
+        self.assertTrue(seccion.sensor_card.isVisibleTo(seccion))
+        self.assertFalse(seccion.sensors_outside.isVisibleTo(seccion))
+
     def test_rc6_apagado(self):
         seccion = self._seccion(self._con_gpu(sleep_enabled=False, sleep_percent=0.0))
         self.assertEqual(seccion.engine_summary._values[_("gpu.engines.idle")].full_text(),
@@ -119,6 +136,8 @@ class TestEnLaPagina(unittest.TestCase):
                       "gpu.clock.limits"):
             self.assertFalse(self._visible(seccion.clocks, clave), clave)
         self.assertTrue(self._visible(seccion.sensors, "gpu.sensor.state"))
+        self.assertTrue(seccion.sensor_card.isVisibleTo(seccion))
+        self.assertFalse(seccion.sensors_outside.isVisibleTo(seccion))
 
 
 if __name__ == "__main__":
