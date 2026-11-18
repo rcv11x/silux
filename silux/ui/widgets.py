@@ -1360,6 +1360,8 @@ NEED_TONES = {
     Need.HARDWARE: "idle",
     Need.PLATFORM: "idle",
     Need.ERROR: "bad",
+    # Tiene arreglo, pero no desde aquí: actualizar el kernel.
+    Need.KERNEL: "idle",
 }
 
 

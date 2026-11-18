@@ -42,6 +42,7 @@ NEED_TITLES = {
     Need.DRIVER: "note.needsmodule",
     Need.PLATFORM: "note.platform",
     Need.ERROR: "note.failed",
+    Need.KERNEL: "note.kernel",
 }
 
 

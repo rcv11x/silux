@@ -38,6 +38,7 @@ NEED_TITLES = {
     Need.DATABASE: "note.database",
     Need.PLATFORM: "note.platform",
     Need.ERROR: "note.failed",
+    Need.KERNEL: "note.kernel",
 }
 
 # Qué tarjeta es y con qué driver va: lo que se mira.

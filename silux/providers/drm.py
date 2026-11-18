@@ -831,7 +831,7 @@ def _intel_hz(dispositivo: pathlib.Path, nodo: Optional[pathlib.Path],
     - i915 clásico las pone sueltas en el nodo DRM, no en el nodo PCI. Eso es
       lo que las dejaba sin leer: se buscaban en `device/`, que es el enlace
       al dispositivo PCI, y ahí no están.
-    - i915 desde el kernel 6.2 las mete en `gt/gt0/` con el prefijo `rps_`,
+    - i915 desde el kernel 5.19 las mete en `gt/gt0/` con el prefijo `rps_`,
       para poder tener más de un motor gráfico por tarjeta.
     - xe, el driver nuevo, usa otra jerarquía distinta.
 

@@ -28,6 +28,7 @@ class Need(str, Enum):
     DRIVER = "driver"        # haría falta cargar un módulo del kernel
     PLATFORM = "platform"    # no aplica a esta arquitectura
     ERROR = "error"          # falló al leerse; esto es un fallo nuestro
+    KERNEL = "kernel"        # el kernel de este equipo es anterior al dato
 
 
 @dataclass(frozen=True, slots=True)

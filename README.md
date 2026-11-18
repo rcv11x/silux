@@ -107,6 +107,12 @@ RHEL 9). Hay dos paquetes con el mismo programa dentro:
 Por qué hay dos y cómo se construyen está en
 [docs/empaquetado.md](docs/empaquetado.md).
 
+El kernel, **Linux 5.15 o posterior**; se recomienda un LTS reciente o una
+distribución rolling. Algunos datos llegaron después —el uso del motor de
+video de una AMD, en 6.10; el SPD de la DDR5, en 6.11— y en un kernel anterior
+la página lo dice así, en vez de dar a entender que el equipo no los tiene.
+Cuál es de cuándo, con su fuente: [docs/kernel.md](docs/kernel.md).
+
 ### Desde el código
 
 Hace falta Python 3.10 o superior y PySide6. La base de datos de CPU y los

@@ -23,7 +23,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ... import db, membench, render
+from ... import db, kernel, membench, render
 from ...i18n import _
 from ...model import MemoryModule, Snapshot
 from ...settings import Preferences
@@ -48,6 +48,7 @@ NEED_TITLES = {
     Need.DRIVER: "note.needsmodule",
     Need.PLATFORM: "note.platform",
     Need.ERROR: "note.failed",
+    Need.KERNEL: "note.kernel",
 }
 
 MODULE_FIELDS = ("memory.field.vendor", "memory.field.chips", "memory.field.part", "memory.field.type", "memory.field.size",
@@ -92,6 +93,8 @@ class MemoryPage(QScrollArea):
         self._prefs = prefs
         # El máximo oficial de memoria del procesador, si la tabla lo sabe.
         self._limite = None
+        # La versión del kernel de la foto, (6, 11).
+        self._kernel = None
         m = theme.METRICS
 
         self.setWidgetResizable(True)
@@ -472,6 +475,7 @@ class MemoryPage(QScrollArea):
             tam=render.size(memory.total_bytes)))
         self.subtitle.setText(self._subtitle(snapshot))
         self._limite = self._limite_del_procesador(snapshot)
+        self._kernel = kernel.version(snapshot.system.kernel)
         self._apply_avisos(snapshot)
         self._apply_badges(snapshot)
 
@@ -802,7 +806,14 @@ class MemoryPage(QScrollArea):
         lista = render.enumeration(
             [_(SOLO_DEL_SPD[clave]) for clave in MODULE_FIELDS if clave in sin_spd])
         pies = []
-        if sin_spd:
+        # El SPD de la DDR5 lo lee el driver spd5118, de Linux 6.11: con un
+        # kernel anterior no es la placa la que no deja, es que no hay driver.
+        ddr5 = any(m.type == "DDR5" for m in modules if m.populated)
+        viejo = kernel.too_old("spd5118", getattr(self, "_kernel", None)) if ddr5 else None
+        if sin_spd and viejo:
+            pies.append(_("memory.na.nospd.kernel").format(
+                campos=lista[:1].upper() + lista[1:], kernel=viejo))
+        elif sin_spd:
             pies.append(_("memory.na.nospd").format(campos=lista[:1].upper() + lista[1:]))
         if sin_perfiles:
             pies.append(_("memory.na.noprofiles.all") if sin_perfiles == leidos

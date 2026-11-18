@@ -33,7 +33,7 @@ from typing import Optional
 from ..model import Clocks, Need
 from .base import Draft, Provider, read_int, read_text
 from ..i18n import _
-from .. import sysroot
+from .. import kernel, sysroot
 
 SYS_CPU = "/sys/devices/system/cpu"
 
@@ -122,9 +122,14 @@ class CppcClocks(Provider):
                 _("prov.cppc.nobclk"), _("prov.cppc.nobclk.hint"),
             )
         if falta_techo:
+            # Sin amd-pstate el techo no se publica; si es porque el kernel es
+            # anterior al driver, eso es lo que hay que decir.
+            viejo = kernel.too_old("amd_pstate")
             draft.note(
-                "cpu.clocks.max_turbo_hz", Need.HARDWARE,
-                _("prov.cppc.noceiling"), _("prov.cppc.noceiling.hint"),
+                "cpu.clocks.max_turbo_hz", Need.KERNEL if viejo else Need.HARDWARE,
+                _("prov.cppc.noceiling"),
+                f"{viejo} {_('prov.cppc.noceiling.hint')}" if viejo
+                else _("prov.cppc.noceiling.hint"),
             )
 
 

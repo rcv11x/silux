@@ -378,6 +378,14 @@ Lo que salió al hacerla y no entraba en ella:
   cuando en Sistema los millares van con espacio («1 348»). Y el redondeo de
   grados JEDEC, pensado para DDR4 (2667 → 2666), convierte un DDR2-667 en
   «666 MT/s».
+- **CPU, «Preferencia de energía —» con acpi-cpufreq**: ese driver no tiene
+  EPP en ningún kernel, y la fila sale con guion en vez de esconderse y
+  decirse (regla 5). Visto con el volcado del 5800X3D convertido a 5.15.
+- **El comentario de `privileged/helper.py`** dice que `uncore_imc_free_running`
+  es «de Ice Lake en adelante», y Ice Lake de cliente y Rocket Lake siguen con
+  `uncore_imc` (`docs/kernel.md`). La expresión acepta los dos nombres y
+  funciona; el comentario no se ha tocado porque cambiar el ayudante obliga a
+  reinstalarlo. Va con el próximo cambio que haya que hacerle.
 - **El máximo oficial de memoria en AMD** (`silux/db/memory_limits.json`).
   La tabla solo tiene Intel de sobremesa de las generaciones 10 y 11: en AMD
   el máximo no es por modelo, depende de los módulos. La ficha del 5800X3D
