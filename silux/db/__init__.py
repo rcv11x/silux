@@ -359,7 +359,13 @@ def _por_familia(vendor_id: str, ext_family: int, ext_model: int) -> Optional[di
 # El modelo de Intel dentro de la cadena de marca: «i5-10400» en «Intel(R)
 # Core(TM) i5-10400 CPU @ 2.90GHz». Entero, con su letra: «i5-10400H» es un
 # portátil y no puede casar con la fila del de sobremesa.
-_MODELO_INTEL = re.compile(r"\b(i[3579]-\d{4,5}[A-Z]{0,2})\b")
+_MODELO_INTEL = re.compile(r"\b(i[3579]-\d{3,5}[A-Z]{0,2}\d?)\b")
+# La primera generación escribe el modelo de otra forma en CPUID: «Core(TM)
+# i7 CPU 920», «i5 CPU M 520» (portátil), y su ficha «i7-920», «i5-520M».
+_MODELO_INTEL_1 = re.compile(r"\b(i[3579]) CPU\s+(?:([A-Z]{1,2})\s+)?(\d{3})\b")
+# Las Core Ultra y las Core 3/5/7, sin guion: «Core(TM) Ultra 7 155H».
+_MODELO_INTEL_SIN_I = re.compile(
+    r"\bCore(?:\(TM\)|™)?\s+(Ultra\s+)?([3579])\s+(?:Processor\s+)?(\d{3}[A-Z]{0,2})\b")
 # Lo que sobra alrededor del modelo de AMD, en la tabla del fabricante
 # («AMD Ryzen™ 7 5800X3D») y en la cadena de CPUID («AMD Ryzen 7 5800X3D
 # 8-Core Processor», «… with Radeon Graphics»).
@@ -375,9 +381,16 @@ def normalize_cpu_model(name: str) -> str:
     La misma función para la tabla (al generarla) y para la cadena de marca
     del procesador (al buscar): «i5-10400» o «Ryzen 7 5800X3D».
     """
-    if (encaje := _MODELO_INTEL.search(name or "")):
+    nombre = name or ""
+    if (encaje := _MODELO_INTEL.search(nombre)):
         return encaje.group(1)
-    return " ".join(_RUIDO_AMD.sub("", name or "").split())
+    if (encaje := _MODELO_INTEL_1.search(nombre)):
+        gama, letra, numero = encaje.groups()
+        return f"{gama}-{numero}{letra or ''}"
+    if (encaje := _MODELO_INTEL_SIN_I.search(nombre)):
+        ultra, gama, numero = encaje.groups()
+        return f"Core {'Ultra ' if ultra else ''}{gama} {numero}"
+    return " ".join(_RUIDO_AMD.sub("", nombre).split())
 
 
 @dataclasses.dataclass(frozen=True)

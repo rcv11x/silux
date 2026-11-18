@@ -30,6 +30,47 @@ class TestLaFicha(unittest.TestCase):
         self.assertEqual(gen.disposiciones("<html><dt>Max. Memory</dt><dd>128 GB</dd></html>"), {})
 
 
+class TestLasFichasDeIntelGuardadas(unittest.TestCase):
+    """`--intel-desde`: fichas de ark.intel.com guardadas desde el navegador.
+
+    PROVISIONAL: aún no hay una ficha guardada de verdad en el repositorio.
+    Esta lleva solo lo que se sabe que enseña la del i5-10400 (su título y
+    «Memory Types: DDR4-2666», vistos en los resultados de búsqueda) y una
+    dirección canónica. Se cambia por la ficha real en cuanto el autor la
+    guarde en ~/Descargas/intel-ark.
+    """
+
+    FICHA = ("<html><head><title>Intel® Core™ i5-10400 Processor (12M Cache, up to 4.30 GHz)"
+             " - Product Specifications | Intel</title>"
+             '<link rel="canonical" href="https://www.intel.com/content/www/us/en/products/'
+             'sku/199271/intel-core-i510400-processor-12m-cache-up-to-4-30-ghz/'
+             'specifications.html"></head><body>'
+             "<div>Max Memory Size (dependent on memory type)</div><div>128 GB</div>"
+             "<div>Memory Types</div><div>DDR4-2666</div>"
+             "<div>Max # of Memory Channels</div><div>2</div></body></html>")
+
+    def test_lee_modelo_memoria_y_fuente(self):
+        fila = gen.ficha_intel(self.FICHA)
+        self.assertEqual(fila["models"], ["i5-10400"])
+        self.assertEqual(fila["types"], {"DDR4": 2666})
+        self.assertIn("/sku/199271/", fila["source"])
+        self.assertEqual(fila["origin"], "saved-page")
+
+    def test_una_pagina_que_no_es_una_ficha_no_da_fila(self):
+        self.assertIsNone(gen.ficha_intel("<html><title>Intel</title><body>hola</body></html>"))
+
+    def test_una_ficha_guardada_sustituye_a_la_fila_a_mano(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as carpeta:
+            pathlib.Path(carpeta, "i5-10400.html").write_text(self.FICHA)
+            filas, ilegibles = gen.filas_intel(pathlib.Path(carpeta))
+        self.assertEqual(ilegibles, [])
+        por_modelo = {m: f for f in filas for m in f["models"]}
+        self.assertEqual(por_modelo["i5-10400"]["origin"], "saved-page")
+        self.assertEqual(por_modelo["i5-10400F"]["origin"], "manual")
+
+
 class TestLaTablaGenerada(unittest.TestCase):
 
     def test_dice_que_es_generada(self):
@@ -41,8 +82,8 @@ class TestLaTablaGenerada(unittest.TestCase):
                 dominio = {"AMD": "https://www.amd.com/", "Intel": "https://www.intel.com/"}
                 self.assertTrue(fila["source"].startswith(dominio[fila["vendor"]]))
                 # Intel no se puede descargar: lo dice cada fila suya.
-                self.assertEqual(fila["origin"], "manual" if fila["vendor"] == "Intel"
-                                 else "generated")
+                self.assertEqual(fila["origin"] in ("manual", "saved-page"),
+                                 fila["vendor"] == "Intel")
 
     def test_las_cifras_son_de_memoria_de_verdad(self):
         for fila in TABLA["cpus"]:

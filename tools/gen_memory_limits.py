@@ -16,10 +16,15 @@ la ficha de cada modelo, «Max Memory Speed», con una línea por disposición
 («2x1R DDR4-3200», «4x2R DDR4-2667»). La fila guarda eso tal cual.
 
 **Intel** no se descarga: intel.com rechaza a los clientes que no son un
-navegador (403), y esta herramienta no intenta saltárselo. Sus filas salen
-de `tools/memory_limits_intel.json`, escrito a mano con la página de Intel de
-cada una, hasta que se decida de dónde generarlas. Lo dice cada fila
-(`"origin": "manual"`).
+navegador (403), y esta herramienta no intenta saltárselo. Las fichas de
+ark.intel.com se guardan desde el navegador en una carpeta y se leen de ahí:
+
+    python3 tools/gen_memory_limits.py --intel-desde ~/Descargas/intel-ark
+
+De cada ficha sale el modelo (del título), «Memory Types» y la dirección
+de la página (la canónica que lleva dentro), que es la fuente de la fila.
+Lo que no venga en una ficha guardada sale de `tools/memory_limits_intel.json`,
+escrito a mano con la ficha oficial de cada fila (`"origin": "manual"`).
 
 Pide cerca de un minuto: una petición a la tabla y otra por cada ficha que
 haga falta, con un segundo entre una y otra.
@@ -150,19 +155,79 @@ def filas_amd(cache: Optional[pathlib.Path]) -> tuple[list[dict], list[str]]:
     return filas, fuera
 
 
-def filas_intel() -> list[dict]:
+_TITULO = re.compile(r"<title>(.*?)</title>", re.S | re.I)
+_CANONICA = re.compile(r'<link[^>]+rel="canonical"[^>]+href="([^"]+)"|'
+                       r'<meta[^>]+property="og:url"[^>]+content="([^"]+)"', re.I)
+_MEMORIA_INTEL = re.compile(r"\b(DDR[345]L?|LPDDR[345]X?)-(\d{3,4})\b")
+# Las etiquetas que vienen después de «Memory Types» en la ficha: donde
+# empiezan, se acabó el valor.
+_SIGUIENTE = re.compile(r"^(Max # of Memory Channels|Max Memory Bandwidth|ECC Memory"
+                        r"|Max Memory Size)", re.I)
+
+
+def ficha_intel(texto_html: str) -> Optional[dict]:
+    """Una ficha de ark.intel.com guardada: modelo, memoria por tipo y fuente.
+
+    Se lee el texto, no el marcado: el marcado de ARK cambia y el texto que
+    enseña («Memory Types», «DDR4-2666») es lo que la página promete. Con
+    varios grados del mismo tipo («DDR4-2933, DDR4-2666», según el modelo de
+    placa o de configuración) se queda el más alto, que es el máximo.
+    """
+    from silux.db import normalize_cpu_model
+
+    titulo = _TITULO.search(texto_html)
+    if not titulo:
+        return None
+    modelo = normalize_cpu_model(html.unescape(titulo.group(1)))
+    texto = html.unescape(re.sub(r"<[^>]+>", "\n", texto_html))
+    lineas = [l.strip() for l in texto.splitlines() if l.strip()]
+    try:
+        inicio = next(i for i, l in enumerate(lineas) if l.lower() == "memory types")
+    except StopIteration:
+        return None
+    tipos: dict[str, int] = {}
+    for linea in lineas[inicio + 1:inicio + 8]:
+        if _SIGUIENTE.match(linea):
+            break
+        for tipo, mts in _MEMORIA_INTEL.findall(linea):
+            tipos[tipo] = max(tipos.get(tipo, 0), int(mts))
+    canonica = _CANONICA.search(texto_html)
+    fuente = (canonica.group(1) or canonica.group(2)) if canonica else None
+    if not tipos or not fuente or "intel.com" not in fuente:
+        return None
+    return {"vendor": "Intel", "models": [modelo], "types": tipos,
+            "source": fuente, "origin": "saved-page"}
+
+
+def filas_intel(carpeta: Optional[pathlib.Path]) -> tuple[list[dict], list[str]]:
+    """Las de las fichas guardadas, y para lo demás las escritas a mano."""
+    guardadas, ilegibles = {}, []
+    if carpeta is not None:
+        for archivo in sorted(carpeta.rglob("*.htm*")):
+            fila = ficha_intel(archivo.read_text(encoding="utf-8", errors="replace"))
+            if fila is None:
+                ilegibles.append(archivo.name)
+            else:
+                guardadas[fila["models"][0]] = fila
     datos = json.loads(INTEL.read_text(encoding="utf-8"))
-    return [{"vendor": "Intel", **fila, "origin": "manual"} for fila in datos["cpus"]]
+    manuales = []
+    for fila in datos["cpus"]:
+        resto = [m for m in fila["models"] if m not in guardadas]
+        if resto:
+            manuales.append({"vendor": "Intel", **fila, "models": resto, "origin": "manual"})
+    return list(guardadas.values()) + manuales, ilegibles
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--cache", type=pathlib.Path,
                         help="carpeta donde guardar lo descargado y reutilizarlo")
+    parser.add_argument("--intel-desde", type=pathlib.Path, metavar="CARPETA",
+                        help="fichas de ark.intel.com guardadas desde el navegador")
     args = parser.parse_args()
 
     amd, fuera = filas_amd(args.cache)
-    intel = filas_intel()
+    intel, ilegibles = filas_intel(args.intel_desde)
     datos = {
         "schema": 2,
         "_": ("Generado por tools/gen_memory_limits.py; no se edita a mano. "
@@ -177,7 +242,11 @@ def main() -> int:
     por_ficha = sum(1 for f in amd if "/products/processors/" in f["source"])
     print(f"AMD:   {modelos_amd} modelos ({por_ficha} con disposición de módulos, "
           f"{modelos_amd - por_ficha} con la cifra plana de la tabla)")
-    print(f"Intel: {sum(len(f['models']) for f in intel)} modelos, a mano")
+    de_fichas = sum(len(f["models"]) for f in intel if f["origin"] == "saved-page")
+    print(f"Intel: {de_fichas} modelos de fichas guardadas, "
+          f"{sum(len(f['models']) for f in intel) - de_fichas} a mano")
+    for nombre in ilegibles:
+        print(f"ilegible: {nombre} (no es una ficha de ARK o no dice «Memory Types»)")
     for linea in fuera:
         print(f"fuera: {linea}")
     print(f"escrito {DESTINO}")
