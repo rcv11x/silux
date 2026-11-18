@@ -112,10 +112,18 @@ class TestVersiones(unittest.TestCase):
     def test_pero_su_version_si_se_puede_saber(self):
         self.assertEqual(gpumetrics.version_of(tabla(version=(1, 4))), "1.4")
 
-    def test_una_v1_0_no_llega_a_los_voltajes(self):
-        m = gpumetrics.parse(tabla(version=(1, 0), tamano=80))
+    def test_una_v1_1_no_llega_a_los_voltajes(self):
+        m = gpumetrics.parse(tabla(version=(1, 1), tamano=96))
         self.assertEqual(m.temp_edge_c, 56.0)
         self.assertIsNone(m.voltage_gfx_v)
+
+    def test_la_v1_0_no_se_lee_con_las_posiciones_de_la_1_1(self):
+        # En gpu_metrics_v1_0 (kgd_pp_interface.h) lo primero tras la
+        # cabecera es el uint64_t system_clock_counter: sus temperaturas no
+        # están en el byte 4. Mejor decir que no se lee que sacar cifras del
+        # contador de tiempo.
+        self.assertIsNone(gpumetrics.parse(tabla(version=(1, 0), tamano=80)))
+        self.assertEqual(gpumetrics.version_of(tabla(version=(1, 0))), "1.0")
 
     def test_una_tabla_cortada_no_lee_de_mas(self):
         # El firmware dice 120 bytes pero solo llegan 40: lo que hay detrás no

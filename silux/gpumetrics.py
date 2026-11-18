@@ -106,8 +106,14 @@ _V2_1 = {
     "throttle_status": ("I", 108),
 }
 
+# La 1.0 no está, a propósito. En `gpu_metrics_v1_0` (kgd_pp_interface.h)
+# lo primero tras la cabecera es el `uint64_t system_clock_counter`, y el
+# kernel avisa de que esa estructura «is not naturally aligned»: sus campos
+# no están donde los de la 1.1. Leída con estas posiciones salían
+# temperaturas y relojes sacados de los bytes del contador de tiempo, cifras
+# creíbles y falsas. Pasa por `sin_interpretar`, que lo dice, hasta tener un
+# volcado con el que contrastar su tabla.
 VERSIONES = {
-    (1, 0): _V1_0,
     (1, 1): _V1_0,
     (1, 2): _V1_0,
     (1, 3): _V1_3,
