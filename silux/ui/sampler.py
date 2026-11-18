@@ -21,9 +21,11 @@ from ..model import Snapshot
 
 
 # Cada cuánto se leen, mientras se espera, los contadores que el hardware da
-# como un instante (el uso de una AMD, `GpuState.between_samples`): diez
-# lecturas por segundo es lo que hace falta para que su media no baile.
-ENTRE_LECTURAS_MS = 100
+# como un instante (el uso de una AMD, `GpuState.between_samples`). Medido en
+# la RX 9070 XT contra MangoHud (mediana 83 %): con cuatro por segundo la
+# media sale igual (83) y baila poco más que con diez (desviación 3,6 y 2,8;
+# una suelta, 10). Cuestan 0,24 puntos de un núcleo; diez, 0,56.
+ENTRE_LECTURAS_MS = 250
 
 
 class Sampler(QThread):

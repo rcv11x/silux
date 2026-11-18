@@ -451,8 +451,10 @@ apartado. El orden dentro de cada apartado es el cronológico.
   sus últimos milisegundos. En la RX 9070 XT, una lectura suelta salta
   entre 59 y 100 con la gráfica haciendo lo mismo, y la ficha «Uso» bajaba
   de 85 a 42 jugando. MangoHud, que hace la media de muchas lecturas, daba
-  80-86. Se leen cada 100 ms entre muestra y muestra y la foto lleva la
-  media (`GpuState.between_samples`): 71-87 en la misma prueba. MangoHud
+  80-86. Se leen cuatro veces por segundo entre muestra y muestra y la
+  foto lleva la media (`GpuState.between_samples`). A diez por segundo daba
+  71-87; a cuatro, la mediana es la misma y cuesta la mitad (0,24 puntos de
+  un núcleo frente a 0,56). MangoHud
   solo escribe su registro si el programa acaba solo (`vkcube --c N`): con
   `timeout` lo mata antes.
 

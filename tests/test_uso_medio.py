@@ -4,7 +4,7 @@
 el firmware en sus últimos milisegundos. En la RX 9070 XT, diez lecturas
 dentro del mismo segundo van de 59 a 100 con la gráfica haciendo lo mismo, y
 la ficha «Uso» saltaba de 85 a 42; MangoHud, que hace la media, daba 80-86.
-El hilo de muestreo las lee cada 100 ms mientras espera
+El hilo de muestreo las lee cada 250 ms mientras espera
 (`Collector.between_samples`) y la foto lleva la media.
 """
 
@@ -92,7 +92,7 @@ class _Contador(Provider):
 
 
 class TestElHiloDeMuestreo(unittest.TestCase):
-    def esperar(self, quiere, intervalo_ms=450):
+    def esperar(self, quiere, intervalo_ms=1100):
         from silux.ui.sampler import Sampler
         proveedor = _Contador(quiere)
         muestreador = Sampler(interval_ms=intervalo_ms)
@@ -104,7 +104,7 @@ class TestElHiloDeMuestreo(unittest.TestCase):
         proveedor, sigue, tardo = self.esperar(True)
         self.assertTrue(sigue)
         self.assertGreaterEqual(proveedor.lecturas, 3)
-        self.assertGreaterEqual(tardo, 0.44)
+        self.assertGreaterEqual(tardo, 1.09)
 
     def test_si_nadie_lo_pide_duerme_de_una_vez(self):
         proveedor, sigue, _tardo = self.esperar(False)

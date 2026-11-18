@@ -68,9 +68,13 @@ eso:
 - **AMD**: `gpu_busy_percent`, `mem_busy_percent` y `vcn_busy_percent` son lo
   que midió el firmware en sus últimos milisegundos. En la RX 9070 XT, una
   lectura suelta salta entre 59 y 100 con la gráfica haciendo lo mismo. El
-  hilo de muestreo los lee varias veces entre muestra y muestra
-  (`GpuState.between_samples`) y la foto lleva la media. Solo despierta el
-  hilo si hay una AMD despierta, y nunca lee una tarjeta dormida. Es lo que
+  hilo de muestreo los lee cuatro veces por segundo entre muestra y muestra
+  (`GpuState.between_samples`, `ENTRE_LECTURAS_MS`) y la foto lleva la
+  media. Solo despierta el hilo si hay una AMD despierta, y nunca lee una
+  tarjeta dormida. Hacen falta también con la ventana escondida: el
+  historial de las gráficas de uso sigue guardándose, y sin ellas ese tramo
+  saldría con el ruido de una lectura suelta. Cuestan 0,24 puntos de un
+  núcleo (diez por segundo, 0,56). Es lo que
   hace MangoHud: con vkcube, MangoHud dio 80-86 % y la media de silux lo
   mismo, cuando una lectura por segundo iba de 15 a 93.
 - **Intel**: el PMU del kernel da contadores acumulados (nanosegundos de
