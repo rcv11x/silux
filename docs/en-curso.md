@@ -25,6 +25,24 @@ ayudante).
 
 ### Lo que hay que mirar o decidir
 
+0. **Lo primero: un reventón intermitente en el CI con Python 3.10.** El
+   último CI (44419430358, sobre `9aa14ab`, que solo cambia documentos)
+   cayó en 3.10 con `Fatal Python error: Segmentation fault`. Dos procesos,
+   los dos dentro de un `processEvents` de `tests/pantalla.py` (`recorrer`),
+   en `test_nada_en_bruto`, sin un marco de silux. Es el mismo de
+   44409114356: `5e8830b` (el `singleShot` sobre una ventana borrada) quitó
+   una causa, pero no todas. Esta noche cayeron tres CI de seis en 3.10
+   (44407519687, 44409114356, 44419430358) y pasaron 44411531475 y
+   44417500614. 3.14 nunca. Aquí la suite pasó entera tres veces en 3.10
+   (PySide6 6.11.3, `UV_PROJECT_ENVIRONMENT=… uv sync --python 3.10`). Para
+   reproducirlo, repetir `test_nada_en_bruto` en bucle en 3.10, con `-n 4`
+   y sin él. Pistas sin comprobar: lo que salta después de borrar una
+   ventana (los `QTimer.singleShot` que quedan en `widgets.py:94`,
+   `dialogs.py:162` y `app.py:1371`; las señales conectadas a lambdas), y
+   que `pantalla.Ventana` deje sus ventanas para el recolector en vez de
+   borrarlas. Hasta que se arregle, un CI rojo en 3.10 con ese reventón no
+   dice nada del commit.
+
 1. **Abrir «Silux» desde el menú** y ver que se mueve. La entrada vieja
    (`Exec=/usr/bin/python3 -m silux.ui.app`, que apuntaba a la carpeta
    `cpuz-linux`, ya inexistente: era el acceso que no abría) la arregló
