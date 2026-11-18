@@ -29,6 +29,7 @@ from .. import sysroot
 SYS_NET = "/sys/class/net"
 PROC_ROUTE = "/proc/net/route"
 PROC_IPV6 = "/proc/net/if_inet6"
+PROC_DEV = "/proc/net/dev"
 
 # Los de <linux/sockios.h>. Piden un socket abierto, pero no permisos.
 SIOCGIFADDR = 0x8915
@@ -56,6 +57,12 @@ class NetworkInterfaces(Provider):
     def __init__(self) -> None:
         # Contadores de la vuelta anterior, para poder restar.
         self._previo: dict[str, tuple[float, int, int]] = {}
+        # Lo que no cambia de una interfaz mientras existe —qué es, su driver
+        # y su tarjeta—, por su nombre y su `ifindex`: una que se borra y se
+        # vuelve a crear con el mismo nombre trae otro índice. Docker crea un
+        # puente y un `veth` por red y por contenedor, y con cuarenta
+        # interfaces releerlo todo eran unas mil llamadas por muestreo.
+        self._fijos: dict[tuple[str, Optional[int]], tuple[str, Optional[str], dict]] = {}
 
     def available(self) -> bool:
         return os.path.isdir(sysroot.ruta(SYS_NET))
@@ -69,9 +76,13 @@ class NetworkInterfaces(Provider):
         rutas = _rutas_por_defecto()
         direcciones = _Direcciones()
         ipv6 = _ipv6_por_interfaz()
+        contadores = _contadores_de_todas()
+        fijos = self._fijos
+        self._fijos = {}
         try:
             draft.network = [
-                self._leer(nombre, rutas, direcciones, ipv6.get(nombre, ()))
+                self._leer(nombre, rutas, direcciones, ipv6.get(nombre, ()),
+                           contadores.get(nombre), fijos)
                 for nombre in nombres
             ]
         finally:
@@ -80,14 +91,20 @@ class NetworkInterfaces(Provider):
     # -- interno ------------------------------------------------------------
 
     def _leer(self, nombre: str, rutas: dict[str, str], direcciones: "_Direcciones",
-              ipv6: tuple[str, ...]) -> NetworkInterface:
+              ipv6: tuple[str, ...], contadores: Optional[dict[str, int]],
+              fijos: dict) -> NetworkInterface:
         base = pathlib.Path(sysroot.ruta(SYS_NET), nombre)
-        tipo_crudo = read_int(str(base / "type"))
+        clave = (nombre, read_int(str(base / "ifindex")))
+        if (ya := fijos.get(clave)) is None:
+            ya = (_clase(nombre, base, read_int(str(base / "type"))),
+                  _driver(base), _identidad_pci(base))
+        self._fijos[clave] = ya
+        clase, driver, identidad = ya
         velocidad = read_int(str(base / "speed"))
 
         return NetworkInterface(
             name=nombre,
-            kind=_clase(nombre, base, tipo_crudo),
+            kind=clase,
             up=_activa(read_text(str(base / "operstate")), base),
             carrier=_bandera(base / "carrier"),
             mac=read_text(str(base / "address")) or None,
@@ -100,14 +117,15 @@ class NetworkInterfaces(Provider):
             speed_mbps=velocidad if velocidad and velocidad > 0 else None,
             duplex=read_text(str(base / "duplex")) or None,
             mtu=read_int(str(base / "mtu")),
-            driver=_driver(base),
-            traffic=self._trafico(nombre, base),
-            **_identidad_pci(base),
+            driver=driver,
+            traffic=self._trafico(nombre, base, contadores),
+            **identidad,
         )
 
-    def _trafico(self, nombre: str, base: pathlib.Path) -> NetworkTraffic:
-        valores = {campo: read_int(str(base / "statistics" / campo)) or 0
-                   for campo in CONTADORES}
+    def _trafico(self, nombre: str, base: pathlib.Path,
+                 contadores: Optional[dict[str, int]] = None) -> NetworkTraffic:
+        valores = contadores or {campo: read_int(str(base / "statistics" / campo)) or 0
+                                 for campo in CONTADORES}
         ahora = time.monotonic()
         subida = bajada = None
 
@@ -123,6 +141,33 @@ class NetworkInterfaces(Provider):
         self._previo[nombre] = (ahora, valores["rx_bytes"], valores["tx_bytes"])
 
         return NetworkTraffic(**valores, rx_rate_bps=bajada, tx_rate_bps=subida)
+
+
+def _contadores_de_todas() -> dict[str, dict[str, int]]:
+    """Los ocho contadores de cada interfaz, de una sola lectura.
+
+    `/proc/net/dev` los trae todos juntos; de sysfs son ocho archivos por
+    interfaz y muestreo. Las columnas son las de `dev_seq_printf_stats`
+    (net/core/net-procfs.c): recibido bytes, paquetes, errores y descartes,
+    y cuatro más; enviado igual. El descarte de recepción suma `rx_dropped` y
+    `rx_missed_errors`. Lo que no esté aquí (un volcado que no lo trae) se
+    lee de sysfs como siempre.
+    """
+    salida = {}
+    for linea in (read_text(PROC_DEV) or "").splitlines():
+        nombre, separador, resto = linea.partition(":")
+        campos = resto.split()
+        if not separador or len(campos) < 16:
+            continue                       # las dos líneas de cabecera
+        try:
+            n = [int(c) for c in campos[:16]]
+        except ValueError:
+            continue
+        salida[nombre.strip()] = {
+            "rx_bytes": n[0], "rx_packets": n[1], "rx_errors": n[2], "rx_dropped": n[3],
+            "tx_bytes": n[8], "tx_packets": n[9], "tx_errors": n[10], "tx_dropped": n[11],
+        }
+    return salida
 
 
 class _Direcciones:

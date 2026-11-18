@@ -35,6 +35,10 @@ class BancoDeRed(unittest.TestCase):
             mock.patch.object(network, "SYS_NET", str(self.root)),
             mock.patch.object(network, "PROC_ROUTE", str(self.root / "route")),
             mock.patch.object(network, "PROC_IPV6", str(self.root / "if_inet6")),
+            # Sin él, los contadores salían de las interfaces del equipo que
+            # ejecuta la suite, que también puede tener un enp6s0. Fuera de la
+            # carpeta de las interfaces, o se leería como una más.
+            mock.patch.object(network, "PROC_DEV", str(self.root) + "-proc-net-dev"),
             # Las direcciones IPv4 vienen de un ioctl, no de un fichero.
             mock.patch.object(network._Direcciones, "ip", lambda self, n: self._falsas.get(n)),
             mock.patch.object(network._Direcciones, "mascara", lambda self, n: "255.255.255.0"),
@@ -138,6 +142,59 @@ class TestRitmo(BancoDeRed):
         self.interfaz("enp6s0", rx=12, tx=8)
         interfaz = self.recolectar(proveedor).freeze().network[0]
         self.assertIsNone(interfaz.traffic.rx_rate_bps)
+
+
+class TestContadoresDeUnaVez(BancoDeRed):
+    """Con cuarenta interfaces (Docker crea un puente y un `veth` por red y
+    por contenedor), leer de sysfs los ocho contadores de cada una eran 328
+    archivos por muestreo. `/proc/net/dev` los trae todos en uno."""
+
+    PROC = ("Inter-|   Receive                                                |  Transmit\n"
+            " face |bytes    packets errs drop fifo frame compressed multicast|bytes    "
+            "packets errs drop fifo colls carrier compressed\n"
+            "enp6s0: 5000 40 1 2 0 0 0 0 3000 30 3 4 0 0 0 0\n")
+
+    def test_salen_de_proc_net_dev_sin_abrir_sysfs(self):
+        import builtins
+        self.interfaz("enp6s0", rx=1, tx=1)
+        _write(pathlib.Path(network.PROC_DEV), self.PROC)
+        self.addCleanup(pathlib.Path(network.PROC_DEV).unlink)
+        abiertos = []
+        original = builtins.open
+
+        def abrir(ruta, *args, **kwargs):
+            abiertos.append(str(ruta))
+            return original(ruta, *args, **kwargs)
+
+        with mock.patch.object(builtins, "open", abrir):
+            trafico = self.recolectar().freeze().network[0].traffic
+        self.assertEqual((trafico.rx_bytes, trafico.rx_packets, trafico.rx_errors,
+                          trafico.rx_dropped), (5000, 40, 1, 2))
+        self.assertEqual((trafico.tx_bytes, trafico.tx_packets, trafico.tx_errors,
+                          trafico.tx_dropped), (3000, 30, 3, 4))
+        self.assertEqual([r for r in abiertos if "/statistics/" in r], [])
+
+    def test_lo_que_no_esta_ahi_sale_de_sysfs(self):
+        self.interfaz("enp6s0", rx=1234, tx=99)
+        trafico = self.recolectar().freeze().network[0].traffic
+        self.assertEqual((trafico.rx_bytes, trafico.tx_bytes), (1234, 99))
+
+    def test_lo_fijo_de_cada_interfaz_no_se_relee(self):
+        import builtins
+        proveedor = network.NetworkInterfaces()
+        self.interfaz("enp6s0")
+        _write(self.root / "enp6s0" / "ifindex", "2")
+        self.recolectar(proveedor)
+        abiertos = []
+        original = builtins.open
+
+        def abrir(ruta, *args, **kwargs):
+            abiertos.append(str(ruta))
+            return original(ruta, *args, **kwargs)
+
+        with mock.patch.object(builtins, "open", abrir):
+            self.recolectar(proveedor)
+        self.assertEqual([r for r in abiertos if r.endswith("/type")], [])
 
 
 class TestClases(BancoDeRed):
