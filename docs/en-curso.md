@@ -7,6 +7,59 @@ aquí esté hecho o pase a `docs/pendientes.md`.
 oficina (Fedora 44, KDE Plasma 6.8 en Wayland). La anterior, la madrugada del
 18 en el 5800X3D de casa (CachyOS).
 
+## Tarde del 18, en la oficina (rama `oficina`, segunda tanda)
+
+Tras revisar el autor las capturas de la mañana. Un commit por cambio, con
+su test visto fallar y su captura. **Empujada y con el CI lanzado al acabar;
+parada ahí.** Nada ha pasado a `master`.
+
+| Commit | Qué |
+|---|---|
+| `65ff4bf` | Ajustes: fluidas en Apariencia, instrucciones en Muestreo. El desplegable cortado era una captura vieja |
+| `4a842fd` | `Table.set_cell_locked`: candado en el uso de cada motor de la iGPU |
+| `3316e89` | «Sabe hacer» vacío, no «—» |
+| `d6a0cf8` | iGPU: sin «Consumo y temperaturas»; su explicación debajo de la fila |
+| `881ee7a` | Memoria: sin «Perfiles rápidos —» en módulos sin XMP; la nota del SPD ya no habla de activarlo |
+| `b3e81e3` | Memoria: el fabricante del SPD («Crucial»), no el de SMBIOS («Crucial Technology») |
+| `a414181` | **Benchmark: el reparto se mide con tiempo de CPU** (el ×1.76 era el SMT del runner) |
+| `0cf232f` | **`tools/gen_memory_limits.py`**: 155 Ryzen desde amd.com, con el máximo por disposición de módulos |
+| `22425d2` | `--intel-desde CARPETA`: fichas de ARK guardadas desde el navegador |
+| `0158bea` | Antes de Nehalem la memoria es del chipset, y Memoria lo dice |
+| `11219c7` | **`docs/kernel.md`, `silux/kernel.py`**: «Tu kernel (5.15) no publica esto; existe desde Linux X.Y»; mínimo 5.15 en el README |
+| `62b0a7b` | La nota de amd-pstate solo en un AMD |
+| `b8c9816` | Un test que `d6a0cf8` dejó atrás (la suite estuvo roja en medio, sin empujar) |
+
+**Memoria con permisos de verdad**: el autor metió la contraseña dos veces.
+Este equipo da 2 de 4 zócalos, SPD de los dos módulos, 2666 configurados de
+3200 y «al máximo del procesador». La foto que leyó el ayudante se guardó en
+el scratchpad de la sesión (no sobrevive) y con ella se hicieron las
+capturas de después, en `~/Imágenes/silux-test/oficina-18/memoria-permisos/`.
+De paso: Placa base no saca la columna «Ranura» (el firmware de esta MSI no
+lo dice) y Almacenamiento enseña «Vida restante —» en el Kioxia (pendientes).
+
+**El test del benchmark**: con `taskset` a 0,6,1,7 (dos núcleos con SMT, como
+un runner de 4 vCPU) la escala de `compresion_dura` da ×2,3–2,5 y en cuatro
+núcleos ×3,9; el tiempo de CPU sumado da ×3,9 en los dos y ×1,0 con Python
+puro. Lección en `docs/lecciones.md`.
+
+**La tabla de memoria**. AMD: 76 modelos con disposición (2x1R, 2x2R, 4x1R,
+4x2R) y 79 con la cifra plana de la tabla; fuera 11 que AMD no tiene en
+ninguna ficha (5700X3D, 5600X3D, 3950X, 5500GT, 3400G, dos GE, cuatro PRO
+7x45). Intel: no se descarga (403 a un cliente que no es un navegador; no se
+intenta saltar). Siguen las 53 filas a mano de 10.ª y 11.ª, cada una con su
+ficha. **Pendiente del autor**: guardar las fichas de ARK en
+`~/Descargas/intel-ark/` y avisar (la lista está en la respuesta de esta
+sesión); antes, una muestra de tres páginas para confirmar el formato.
+`ficha_intel` está escrita sin haber visto una ficha guardada de verdad, y
+su test lo dice.
+
+**El kernel**: la investigación la hizo un agente mirando el código de cada
+etiqueta de mainline, con los commits comprobados. Dos de los tres primeros
+ganchos se quitaron por falsos (el «Estado» de i915 depende de la
+generación; el uso de video de AMD sale también de `gpu_metrics`); quedan el
+techo de AMD (amd-pstate, 5.17) y el SPD de DDR5 (spd5118, 6.11). Probado
+convirtiendo los dos volcados a 5.15; sin un equipo con 5.15 de verdad.
+
 ## Mañana del 18, en la oficina (rama `oficina`)
 
 Sale de `master` en `67aa368`. Cinco puntos del autor; un commit por cambio,
