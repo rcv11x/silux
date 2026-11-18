@@ -194,6 +194,21 @@ class TestLosVolcadosEnUn515(unittest.TestCase):
         self.assertIs(nota.need, Need.KERNEL)
         self.assertIn(kernel.too_old("amd_pstate", (5, 15)), nota.hint)
 
+    def test_en_intel_el_techo_no_se_atribuye_a_amd_pstate(self):
+        from silux.providers.base import Draft
+        from silux.providers.cppc import CppcClocks
+        from unittest import mock
+
+        draft = Draft()
+        draft.types["general"] = {"vendor": "Intel", "cpus": [0], "architecture": "x86_64"}
+        with mock.patch("silux.providers.cppc._hay_ranking", return_value=True), \
+             mock.patch("silux.providers.cppc._techo_de_amd_pstate", return_value=None), \
+             mock.patch("silux.providers.cppc._leer_cppc", return_value={}), \
+             mock.patch("silux.kernel.running", return_value=(5, 15)):
+            CppcClocks().collect(draft)
+        nota = next(n for n in draft.notes if n.path == "cpu.clocks.max_turbo_hz")
+        self.assertIs(nota.need, Need.HARDWARE)
+
     def test_con_el_kernel_de_verdad_no_se_culpa_al_kernel(self):
         """Los mismos volcados, con su kernel (7.3), no dicen nada de esto."""
         intel = foto(EQUIPOS / "i5-10400")[0]

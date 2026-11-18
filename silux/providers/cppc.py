@@ -68,6 +68,9 @@ class CppcClocks(Provider):
         falta_base = False
         falta_bus = False
         falta_techo = False
+        # Solo un AMD puede deber el techo a amd-pstate: en un Intel sin
+        # CPUID 0x16 también puede faltar, y no es cosa de ese driver.
+        techo_de_amd = False
 
         for entry in draft.types.values():
             clocks: Clocks = entry.get("clocks") or Clocks()
@@ -95,6 +98,7 @@ class CppcClocks(Provider):
                 if _hay_ranking(entry.get("cpus") or [leader]) \
                         and not _techo_de_amd_pstate(leader):
                     falta_techo = True
+                    techo_de_amd = techo_de_amd or entry.get("vendor") == "AMD"
                 else:
                     techo = _techo_del_silicio(leader, cppc, nominal)
             # Un techo por debajo de la base es un cálculo que salió mal.
@@ -124,7 +128,7 @@ class CppcClocks(Provider):
         if falta_techo:
             # Sin amd-pstate el techo no se publica; si es porque el kernel es
             # anterior al driver, eso es lo que hay que decir.
-            viejo = kernel.too_old("amd_pstate")
+            viejo = kernel.too_old("amd_pstate") if techo_de_amd else None
             draft.note(
                 "cpu.clocks.max_turbo_hz", Need.KERNEL if viejo else Need.HARDWARE,
                 _("prov.cppc.noceiling"),
