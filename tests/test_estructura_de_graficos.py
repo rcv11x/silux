@@ -107,11 +107,17 @@ class TestLaPaginaDeGraficos(unittest.TestCase):
         self.assertIn(_("gpu.clock.idle"), [e.text() for e in ficha.tile_clock.findChildren(QLabel)])
 
     def test_el_uso_del_motor_de_video_se_llama_igual_que_en_sensores(self):
-        ficha = self._ficha("5800x3d")
         self.assertEqual(_("gpu.sensor.videouse"), "Uso del motor de video")
         self.assertEqual(_("gpu.sensor.videouse"), _("sensor.gpu.video"))
-        self.assertIn(_("gpu.sensor.videouse"),
-                      [e.text() for e in ficha.findChildren(QLabel) if e.isVisible()])
+
+    def test_el_uso_del_video_sale_una_vez_y_es_una_barra(self):
+        """En «Ahora mismo», con lo que cuenta en el nombre; la fila de
+        «Consumo y temperaturas» que decía lo mismo se va."""
+        from silux.ui.pages.graphics import BARRAS_DE_MOTOR
+        ficha = self._ficha("5800x3d")
+        visibles = [e.text() for e in ficha.findChildren(QLabel) if e.isVisible()]
+        self.assertNotIn(_("gpu.sensor.videouse"), visibles)
+        self.assertEqual(visibles.count(_(BARRAS_DE_MOTOR["engine.video"])), 1)
 
     def test_una_integrada_de_intel_no_ensena_guiones_de_lo_que_solo_cuenta_amd(self):
         """«Unidades de rasterizado —», «Motores de sombreado —», «SoC —»,
@@ -185,12 +191,15 @@ class TestLaPaginaDeGraficos(unittest.TestCase):
                 self.assertEqual([fila[4].full_text() for fila in ficha.displays._cells],
                                  esperado)
 
-    def test_ahora_mismo_junta_las_tres_barras_cada_una_con_su_nombre(self):
+    def test_ahora_mismo_junta_las_barras_cada_una_con_su_nombre(self):
+        """Las tres de la memoria y el consumo, y debajo las de los motores
+        que esta tarjeta deja medir (test_barras_de_motores)."""
         ficha = self._ficha("5800x3d")
         gpu = self.fotos["5800x3d"].gpus[0]
         self.assertTrue(ficha.now_card.isVisible())
         self.assertEqual(ficha.now.visible_rows(),
-                         [_("gpu.now.vram"), _("gpu.now.power"), _("gpu.now.bus")])
+                         [_("gpu.now.vram"), _("gpu.now.power"), _("gpu.now.bus"),
+                          _("gpu.now.engine.render"), _("gpu.now.engine.video")])
         vram = ficha.now.text_of(_("gpu.now.vram"))
         self.assertIn(f"{gpu.memory.used_percent:.0f} %", vram)
         self.assertIn(render.size(gpu.memory.total_bytes), vram)
@@ -254,7 +263,8 @@ class TestLaPaginaDeGraficos(unittest.TestCase):
         for clave in ("gpu.now.vram", "gpu.now.power", "gpu.now.bus"):
             self.assertNotIn(_(clave), ficha.now.visible_rows())
         self.assertEqual(ficha.now.visible_rows(),
-                         ["Render", "Video", "Mejora de video", "Copia"])
+                         ["Render / 3D", "Video (codificar y decodificar)",
+                          "Mejora de video", "Copia"])
         self.assertFalse(ficha.tile_temp.isVisible())
         self.assertTrue(ficha.tile_usage.isVisible())
 

@@ -160,9 +160,13 @@ publica se dice con la versión que lo trae.
   publican, por qué se frena.
 - Nuevo: la tabla de códecs de video marca lo que la tarjeta acelera y lo
   que no, sin depender del color.
-- Nuevo: en una integrada (Intel o APU de AMD), «Ahora mismo» tiene una
-  barra por motor: render, video, mejora de video y copia. En Intel, sin
-  permisos llevan un candado; con permisos se mueven con cada muestreo.
+- Nuevo: en «Ahora mismo», cada gráfica tiene una barra por motor que deja
+  medir, integrada o dedicada: «Render / 3D» y el video. En AMD el video es
+  una sola barra, «Video (codificar y decodificar)», porque ver y grabar van
+  por el mismo motor y el driver da una cifra; en NVIDIA, decodificar y
+  codificar van aparte; en Intel, además, mejora de video y copia, con un
+  candado sin permisos. Lo que el driver de tu gráfica no publica se dice
+  al pie.
 - Cambiado: la dedicada de un portátil que está en reposo no se despierta
   para leerla. Gráficos dice «En reposo» y lo último que se supo, y no se le
   pregunta nada (ni su enlace, ni sus sensores, ni NVML) hasta que algo la

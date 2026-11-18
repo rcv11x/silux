@@ -1070,7 +1070,13 @@ class Gpu:
 
     busy_percent: Optional[float] = None
     memory_busy_percent: Optional[float] = None
+    # El motor de video entero, codificar y decodificar juntos: en AMD es un
+    # solo motor (VCN) con una sola cifra (docs/motores-de-graficas.md).
     video_busy_percent: Optional[float] = None
+    # Por separado, donde son motores distintos y el driver los mide aparte:
+    # NVENC y NVDEC en NVIDIA.
+    encode_busy_percent: Optional[float] = None
+    decode_busy_percent: Optional[float] = None
     # Cuánto del intervalo ha pasado la gráfica dormida del todo. No es «100
     # menos el uso»: entre estar ocupada y estar en reposo profundo hay un
     # término medio, encendida y sin trabajo, que en consumo no es lo mismo.

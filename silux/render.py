@@ -1299,20 +1299,28 @@ def version(completa: str) -> str:
 
 # El orden de las barras de motores, del que más se mira al que menos.
 ORDEN_DE_MOTORES = ("engine.render", "engine.compute", "engine.video",
-                    "engine.videoenhance", "engine.copy")
+                    "engine.decode", "engine.encode", "engine.videoenhance",
+                    "engine.copy")
 
 
 def engine_levels(gpu) -> list[tuple[str, Optional[float]]]:
-    """Las barras de uso por motor de una integrada: (clave, porcentaje).
+    """Las barras de uso por motor de una gráfica: (clave, porcentaje).
 
-    Una por tipo de motor, con el más ocupado de cada tipo: dos decodificadores
-    a medias no son un video al cien. Con None, el motor está y su uso no se
-    ha podido leer (en Intel lo guarda un permiso). En una APU de AMD el
-    kernel no enumera motores: son el uso de la gráfica (`gpu_busy_percent`)
-    y el del video (`vcn_busy_percent`, Linux 6.10), si lo hay. Una dedicada
-    no tiene estas barras: tiene las suyas.
+    Solo los motores que esta gráfica deja medir, cada uno de donde lo da su
+    driver (docs/motores-de-graficas.md):
+
+    - Intel (i915, xe) enumera sus motores: una barra por tipo, con el más
+      ocupado de cada tipo, porque dos decodificadores a medias no son un
+      video al cien. Con None, el motor está y su uso lo guarda un permiso.
+    - AMD no enumera motores: el uso de la gráfica y el de su motor de video
+      (VCN), que codifica y decodifica con una sola cifra. Desde el VCN 4
+      decodificar también va por la cola de codificar, así que no hay forma
+      de separarlos: una barra, no dos con un dato repartido.
+    - NVIDIA tiene NVENC y NVDEC aparte, y NVML los mide aparte: dos barras.
+
+    Una gráfica dormida no tiene barras: no se ha leído nada de ella.
     """
-    if not gpu.integrated:
+    if getattr(gpu, "suspended", False):
         return []
     if gpu.engines:
         por_tipo: dict[str, list] = {}
@@ -1326,11 +1334,36 @@ def engine_levels(gpu) -> list[tuple[str, Optional[float]]]:
                 salida.append((clave, max(leidos) if leidos else None))
         return salida
     if gpu.vendor == "AMD":
-        salida = [("engine.render", gpu.busy_percent)]
-        if gpu.video_busy_percent is not None:
-            salida.append(("engine.video", gpu.video_busy_percent))
-        return [(k, v) for k, v in salida if v is not None]
-    return []
+        salida = [("engine.render", gpu.busy_percent),
+                  ("engine.video", gpu.video_busy_percent)]
+    elif gpu.vendor == "NVIDIA":
+        salida = [("engine.render", gpu.busy_percent),
+                  ("engine.decode", gpu.decode_busy_percent),
+                  ("engine.encode", gpu.encode_busy_percent)]
+    else:
+        return []
+    return [(k, v) for k, v in salida if v is not None]
+
+
+def engine_gaps(gpu) -> list[str]:
+    """Los motores que toda gráfica tiene y esta no deja medir.
+
+    Toda gráfica tiene un motor gráfico y uno de video; en NVIDIA, el de
+    video son dos. Lo que su driver no publica no lleva barra y se nombra al
+    pie, que es lo que evita que desaparezca en silencio. Lo que está y
+    guarda un permiso no es esto: lleva candado (`engine_levels` con None).
+    """
+    if getattr(gpu, "suspended", False):
+        return []
+    if gpu.driver == "xe":
+        # xe sí publica el uso de sus motores, con un PMU que silux todavía
+        # no lee (docs/propuesta-uso-de-graficas.md, A2): decir que la
+        # gráfica no lo da sería falso. Lo cuenta su aviso.
+        return []
+    esperados = (("engine.render", "engine.decode", "engine.encode")
+                 if gpu.vendor == "NVIDIA" else ("engine.render", "engine.video"))
+    medidos = {clave for clave, _valor in engine_levels(gpu)}
+    return [clave for clave in esperados if clave not in medidos]
 
 
 def gpu_asleep(gpu, fahrenheit: bool = False) -> str:

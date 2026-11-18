@@ -159,6 +159,8 @@ def _rellenar(gpu: dict, tarjeta: nvml.NvidiaGpu) -> None:
         "compute_units": _nucleos_cuda(gpu, tarjeta.cuda_cores),
         "busy_percent": tarjeta.busy_percent,
         "memory_busy_percent": tarjeta.memory_busy_percent,
+        "encode_busy_percent": tarjeta.encode_busy_percent,
+        "decode_busy_percent": tarjeta.decode_busy_percent,
         "temp_c": tarjeta.temp_c,
         "power_w": tarjeta.power_w,
         "power_cap_w": tarjeta.power_cap_w,

@@ -59,6 +59,26 @@ INVENTORY_FIELDS = (
 # leyenda, había que bajar a buscarlas.
 NOW_FIELDS = ("gpu.now.vram", "gpu.now.power", "gpu.now.bus")
 
+# El nombre de la barra de cada motor en «Ahora mismo» (render.engine_levels).
+# Cada una dice qué cuenta: «Video» a secas no decía si era ver o grabar, y
+# en AMD son las dos cosas en una sola cifra.
+BARRAS_DE_MOTOR = {
+    "engine.render": "gpu.now.engine.render",
+    "engine.compute": "gpu.now.engine.compute",
+    "engine.video": "gpu.now.engine.video",
+    "engine.decode": "gpu.now.engine.decode",
+    "engine.encode": "gpu.now.engine.encode",
+    "engine.videoenhance": "gpu.now.engine.videoenhance",
+    "engine.copy": "gpu.now.engine.copy",
+}
+# Y cómo se nombra al pie el que la gráfica no deja medir (render.engine_gaps).
+MOTORES_AL_PIE = {
+    "engine.render": "gpu.now.gap.render",
+    "engine.video": "gpu.now.gap.video",
+    "engine.decode": "gpu.now.gap.decode",
+    "engine.encode": "gpu.now.gap.encode",
+}
+
 MEMORY_FIELDS = ("gpu.vram.total", "gpu.vram.type", "gpu.vram.bus", "gpu.vram.bandwidth", "gpu.vram.datarate",
                  "gpu.vram.visible", "gpu.vram.rebar", "gpu.vram.chips",
                  "gpu.vram.shared")
@@ -289,6 +309,7 @@ class GpuSection(QWidget):
             self.now.add(_(name))
         self.now.locked_clicked.connect(self.elevation_requested)
         self.now_card.body.addWidget(self.now)
+        self.now_pie = self._pie(self.now_card)
         layout.addWidget(self.now_card)
         self.elevation_buttons: list = []
 
@@ -638,6 +659,10 @@ class GpuSection(QWidget):
         # va, y lo que no hay se nombra al pie de la fila, en una frase; por
         # qué falta cada cosa, en el globo. Vuelve en cuanto tenga algo suyo
         # (el estado de una Intel reciente, o cualquier AMD).
+        # El uso del motor de video ya es una barra de «Ahora mismo» (o su
+        # candado): repetido aquí, el mismo dato salía dos veces.
+        if any(clave == "engine.video" for clave, _v in render.engine_levels(gpu)):
+            self.sensors.set_visible(_("gpu.sensor.videouse"), False)
         propios = [c for c in SENSOR_FIELDS
                    if c not in ocultos["sensors"] and c != "gpu.sensor.videouse"]
         solo_el_video = bool(gpu.engines) and not propios
@@ -829,19 +854,26 @@ class GpuSection(QWidget):
         else:
             self.now.set(_("gpu.now.bus"), None)
         self._apply_engine_bars(gpu)
-        self.now_card.setVisible(bool(self.now.visible_rows()))
+        huecos = [_(MOTORES_AL_PIE[clave]) for clave in render.engine_gaps(gpu)]
+        pie = (_("gpu.now.gap").format(motores=render.enumeration(huecos, "list.nor"))
+               if huecos else "")
+        self.now_pie.setText(pie)
+        self.now_pie.setVisible(bool(pie))
+        # Sin barras pero con algo que decir de las que faltan, la tarjeta se
+        # queda: es donde se busca el uso, y sin ella desaparecería en silencio.
+        self.now_card.setVisible(bool(self.now.visible_rows()) or bool(pie))
 
     def _apply_engine_bars(self, gpu: Gpu) -> None:
-        """Una barra por motor en una integrada, como las de arriba.
+        """Una barra por motor, debajo de las de memoria, consumo y bus.
 
-        Lo que la tarjeta no tiene no sale; lo que tiene y guarda un permiso
-        sale con candado, y con permisos se mueve con cada muestreo.
+        Solo los que esta gráfica deja medir (`render.engine_levels`); lo que
+        tiene y guarda un permiso sale con candado, y con permisos se mueve
+        con cada muestreo. Lo que su driver no publica se nombra al pie.
         """
         candado = getattr(self, "_candado", None)
         presentes = set()
         for clave, valor in render.engine_levels(gpu):
-            nombre = _(clave)
-            nombre = nombre[:1].upper() + nombre[1:]
+            nombre = _(BARRAS_DE_MOTOR[clave])
             presentes.add(nombre)
             if not self.now.has(nombre):
                 self.now.add(nombre)

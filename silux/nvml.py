@@ -83,6 +83,8 @@ class NvidiaGpu:
     memory_bus_bits: Optional[int] = None
     busy_percent: Optional[float] = None
     memory_busy_percent: Optional[float] = None
+    encode_busy_percent: Optional[float] = None
+    decode_busy_percent: Optional[float] = None
     temp_c: Optional[float] = None
     power_w: Optional[float] = None
     power_cap_w: Optional[float] = None
@@ -186,6 +188,24 @@ class Nvml:
             return None
         return valor.value
 
+    def _utilizacion(self, nombre: str, asa) -> Optional[float]:
+        """El uso de NVENC o NVDEC, en %.
+
+        `nvmlDeviceGet{Encoder,Decoder}Utilization` escriben dos enteros, el
+        uso y el periodo en que se midió: con un solo puntero, como en
+        `_entero`, la biblioteca escribiría el segundo en memoria de nadie.
+        """
+        funcion = self._sim(nombre)
+        if funcion is None:
+            return None
+        uso, periodo_us = ctypes.c_uint(), ctypes.c_uint()
+        try:
+            if funcion(asa, ctypes.byref(uso), ctypes.byref(periodo_us)) != NVML_SUCCESS:
+                return None
+        except (ctypes.ArgumentError, OSError):
+            return None
+        return float(uso.value)
+
     def _cadena(self, nombre: str, asa, longitud: int = LONGITUD_NOMBRE) -> Optional[str]:
         funcion = self._sim(nombre)
         if funcion is None:
@@ -250,6 +270,8 @@ class Nvml:
             memory_bus_bits=self._entero("nvmlDeviceGetMemoryBusWidth", asa),
             busy_percent=float(uso.gpu) if uso else None,
             memory_busy_percent=float(uso.memory) if uso else None,
+            encode_busy_percent=self._utilizacion("nvmlDeviceGetEncoderUtilization", asa),
+            decode_busy_percent=self._utilizacion("nvmlDeviceGetDecoderUtilization", asa),
             temp_c=(lambda v: float(v) if v is not None else None)(
                 self._entero("nvmlDeviceGetTemperature", asa, ctypes.c_uint(TEMPERATURA_GPU))),
             power_w=milis("nvmlDeviceGetPowerUsage", asa),
