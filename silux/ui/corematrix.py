@@ -62,6 +62,11 @@ class CoreMatrix(QWidget):
         self._cores: list[dict] = []
         # El largo que se ve de la barra de uso de cada hilo (`Deslizador`).
         self._usos: list[Deslizador] = []
+        # Las curvas de historial ya trazadas, por hilo y recuadro. Solo
+        # cambian con cada muestra (`set_cores`); las barras se mueven entre
+        # medias, y rehacer dieciséis curvas en cada fotograma de una barra
+        # era la mitad de lo que gastaba la página CPU.
+        self._curvas: dict[tuple, tuple[QPainterPath, QPainterPath]] = {}
         self._cell_w = theme.METRICS.cell_w
         # La celda crece para dejar sitio al historial: una barra dice cómo
         # está el núcleo ahora, la curva dice si viene de estar cargado. Ese
@@ -74,6 +79,7 @@ class CoreMatrix(QWidget):
     def set_cores(self, cores: Sequence[dict]) -> None:
         changed = len(cores) != len(self._cores)
         self._cores = list(cores)
+        self._curvas.clear()
         if changed:
             # Uno por hilo, y solo cuando cambia cuántos hay: en cada muestra
             # se reutilizan.
@@ -218,7 +224,7 @@ class CoreMatrix(QWidget):
                     inner.left(), inner.top() + text_height + 1,
                     inner.width(),
                     max(8.0, inner.height() - text_height - grosor - 3),
-                ), history)
+                ), history, i)
 
             track = QRectF(inner.left(), inner.bottom() - grosor,
                            inner.width(), grosor)
@@ -237,20 +243,22 @@ class CoreMatrix(QWidget):
 
         painter.end()
 
-    def _draw_history(self, painter: QPainter, rect: QRectF, values) -> None:
+    def _draw_history(self, painter: QPainter, rect: QRectF, values, hilo: int) -> None:
         """Curva de uso reciente, siempre en escala 0-100 para que las celdas
         se puedan comparar entre sí de un vistazo."""
-        points = []
-        step = rect.width() / (len(values) - 1)
-        for i, value in enumerate(values):
-            ratio = min(100.0, max(0.0, float(value))) / 100.0
-            points.append(QPointF(rect.left() + i * step, rect.bottom() - ratio * rect.height()))
-
-        area = curva_suave(points, cerrar_en=rect.bottom())
+        clave = (hilo, rect.x(), rect.y(), rect.width(), rect.height())
+        if (caminos := self._curvas.get(clave)) is None:
+            points = []
+            step = rect.width() / (len(values) - 1)
+            for i, value in enumerate(values):
+                ratio = min(100.0, max(0.0, float(value))) / 100.0
+                points.append(QPointF(rect.left() + i * step, rect.bottom() - ratio * rect.height()))
+            caminos = (curva_suave(points, cerrar_en=rect.bottom()), curva_suave(points))
+            self._curvas[clave] = caminos
+        area, line = caminos
         painter.setPen(Qt.PenStyle.NoPen)
         painter.fillPath(area, QBrush(self._p.q("accent", 0.16)))
 
-        line = curva_suave(points)
         painter.setPen(QPen(self._p.q("accent", 0.75), 1.1))
         painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawPath(line)

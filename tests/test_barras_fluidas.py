@@ -15,6 +15,7 @@ cargada que esté la máquina.
 
 import dataclasses
 import unittest
+from unittest import mock
 
 from tests import qt
 
@@ -175,6 +176,36 @@ class TestLasBarrasDeVerdad(unittest.TestCase):
         self.reloj.pasar(1.0)
         matriz.advance(0.5)
         self.assertAlmostEqual(uso.valor(), 90.0)
+
+    def test_mientras_se_mueven_las_barras_no_se_rehace_el_historial(self):
+        """Las curvas de cada hilo cambian con cada muestra; las barras, entre
+        medias. Rehacer dieciséis curvas en cada fotograma de una barra era la
+        mitad de lo que gastaba la página CPU con el movimiento fluido."""
+        from PySide6.QtGui import QPixmap
+
+        from silux.ui import corematrix
+        from silux.ui.corematrix import CoreMatrix
+        matriz = self.a_la_vista(CoreMatrix(self.paleta))
+        historia = tuple(float(v % 50) for v in range(30))
+
+        def hilos(uso, historia):
+            # Lo que manda la página CPU (cpulive.py) para cada hilo.
+            return [{"name": f"CPU {n}", "detail": "4.45 GHz  52°", "detail_short": "4.45 GHz",
+                     "usage": uso, "history": historia, "starred": False} for n in range(4)]
+
+        matriz.set_cores(hilos(10.0, historia))
+        matriz.set_cores(hilos(90.0, historia))
+        lienzo = QPixmap(matriz.size())
+        matriz.render(lienzo)
+        with mock.patch.object(corematrix, "curva_suave", wraps=corematrix.curva_suave) as curva:
+            for _vez in range(5):
+                self.reloj.pasar(0.03)
+                matriz.advance(0.1)
+                matriz.render(lienzo)
+            self.assertEqual(curva.call_count, 0)
+            matriz.set_cores(hilos(50.0, historia + (5.0,)))
+            matriz.render(lienzo)
+            self.assertEqual(curva.call_count, 8, "con la muestra nueva, dos por hilo")
 
     def test_parar_el_movimiento_la_pone_en_su_sitio(self):
         """Al congelar o apagar el ajuste, la ventana pide la fase 1: una barra
