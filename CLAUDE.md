@@ -166,6 +166,10 @@ Terminadas las catorce: **Inicio, CPU, Cachés, Placa base, Memoria,
 Gráficos, Almacenamiento, Red, Dispositivos, Batería, Sistema, Rendimiento,
 Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 
+- La **0.4.0** está en `master` y en borrador en GitHub, sin etiqueta: la
+  publica el autor después de probarla en el 5800X3D. Cómo, en
+  [docs/en-curso.md](docs/en-curso.md).
+
 - La escala del benchmark es la **v6**: puntúan dos cargas de las cinco, las
   que no dependen de la zlib de cada distribución. `score.VERSION` y
   `db/scores.json` van siempre en el mismo commit. [docs/benchmark.md](docs/benchmark.md)
@@ -300,7 +304,8 @@ código (F-…), que es por el que se buscan allí.
 | `db/memory_limits.json` | media, espera al autor | Intel, solo 10.ª y 11.ª a mano: falta generarlas de las fichas de ARK guardadas (`--intel-desde`), de la 1.ª en adelante; once Ryzen sin ficha en amd.com |
 | `ui/pages/cpu.py` | media-baja | «Preferencia de energía —» con acpi-cpufreq, que no tiene EPP |
 | `privileged/helper.py` | baja | un comentario dice que `uncore_imc_free_running` es de Ice Lake en adelante; no lo es (`docs/kernel.md`) |
-| `ui/pages/storage.py`, `render.py` | baja | «Vida restante —» en un SATA; horas con punto de millares; DDR2-667 sale «666 MT/s» |
+| `ui/pages/storage.py` | baja | «Vida restante —» en un SATA |
+| Gráficos, varios | alta, sin empezar | lo que se rompe o miente con las gráficas no probadas (APU, Arc, `xe`, NVIDIA, dos gráficas): 25 fallos y un plan en [docs/propuesta-graficas.md](docs/propuesta-graficas.md) |
 | `providers/` (AMD) | aplazado | PPT, TDC y EDC con `ryzen_smu`: el autor decidió no hacerlo ahora (`docs/propuesta-limites-amd.md`) |
 | `.github/workflows/appimage.yml` | media | el CI no mira si el AppImage pinta sus iconos; se comprobó a mano con `--screenshot` |
 | `privacidad.py`, `tools/volcar_equipo.py` | media-baja | `--anonimo` da la misma IP a todas las interfaces; los volcados, la misma MAC |
@@ -342,8 +347,9 @@ código (F-…), que es por el que se buscan allí.
 - [docs/comprobar.md](docs/comprobar.md): el comando equivalente a cada dato,
   para verificarlo a mano.
 - `docs/propuesta-*.md`: lo propuesto (permisos, interfaz, precisión,
-  benchmark, datos, límites de AMD). La de datos está aplicada; la de
-  límites de AMD, sin decidir. No son el estado del programa.
+  benchmark, datos, límites de AMD, gráficas). La de datos está aplicada; la
+  de límites de AMD y la de gráficas, sin decidir. No son el estado del
+  programa.
 - [docs/en-curso.md](docs/en-curso.md): si existe, dónde se quedó la última
   sesión y qué sigue.
 - [docs/historial/](docs/historial/): diarios de sesiones antiguas.
