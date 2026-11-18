@@ -1073,6 +1073,23 @@ apartado. El orden dentro de cada apartado es el cronológico.
   borrada: «Internal C++ object (MainWindow) already deleted», y en el CI
   con PySide6 6.11, de vez en cuando, un `Segmentation fault` en otro test.
   Un `QTimer` hijo del widget sí muere con él.
+- **Enseñar una fila y esconderla después en la misma muestra**: al final
+  queda igual, pero Qt recoloca la página entera dos veces, y el área de
+  desplazamiento la mide en medio. Gráficos crecía de 1740 a 1763 px y
+  volvía, cada segundo: parpadeo y letras que se mueven, solo con la ventana
+  de verdad. Lo mismo poner un dato y luego su candado. Cada fila se decide
+  una vez (un conjunto de lo que se esconde, un estado de candado) y se
+  aplica en una pasada. Lo vigila `tests/test_nada_se_mueve.py`.
+- **Una cifra grande sin ancho reservado**: la unidad de al lado salta con
+  cada dígito, y si la ficha está en una `ResponsiveRow`, la fila entera se
+  reparte de nuevo. `StatTile.reserve` con lo más largo que puede decir,
+  como `LevelList.reserve`.
+- **Buscar un parpadeo en las capturas de final de muestra**: salen todas
+  iguales, porque lo que parpadea es un estado intermedio. Se ve con un
+  filtro de eventos: los `Show`/`Hide` de la página mientras se aplica una
+  muestra, y una captura (`grab`) cada vez que la página cambia de tamaño.
+  Con un volcado quieto las cifras no cambian de ancho: el test hace avanzar
+  sus contadores (`avanzar`).
 - **Fiarse de lo que se ve en la pantalla de una ventana lanzada desde la
   terminal de Claude**: tras el primer fotograma no se repinta, aunque por
   dentro tenga los datos; le pasa igual a una ventana de Qt de diez líneas.

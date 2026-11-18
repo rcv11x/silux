@@ -158,6 +158,28 @@ Cada uno en su commit, con lo medido en el mensaje:
 | `b3ccf00` | El temporizador late solo si hay algo que mover y la ventana se ve | 1,8 puntos en Placa base con fluido |
 | `648a417` | La foto entera, solo a la página que se ve; las demás guardan su historia (`record`) | 35 % del suelo |
 | `4443931` | Lo que se mueve se busca solo en la página abierta (3 ms → 0,04 ms por muestreo) | 0,7 puntos escondida con fluido |
+| `4bf4ca5` | Una muestra con los mismos campos no enseña ni esconde nada | Gráficos, de 18,3 a 6-8 ms por muestra |
+| `61d98f4` | Las fichas grandes reservan el ancho de su cifra | la unidad y la fila de fichas se movían |
+
+## Lo que se recoloca con cada muestra
+
+Lo que cuesta al hilo de la interfaz recibir una muestra con la página
+abierta, sin pantalla y con las preferencias del autor (letra grande,
+1607×942), en el 5800X3D: CPU del hilo (`time.thread_time`), mediana de diez
+muestras. «Aplicar» es `apply`; «después», lo que Qt hace a continuación
+(recolocar y pintar).
+
+| Página | Aplicar | Después | Pintados | Show/Hide |
+|---|---|---|---|---|
+| Gráficos, antes | 5,8 ms | 12,5 ms | 297 | 20 |
+| Gráficos, después | 3,4-3,6 ms | 2,5-4,1 ms | 31-45 | 0 |
+| Almacenamiento, antes | 10,0 ms | 3,9 ms | 38 | 74 |
+| Almacenamiento, después | 4,7-5,0 ms | 3,0-3,7 ms | 25-35 | 0 |
+
+Antes había además ~10 Show/Hide por muestra en cualquier otra página: los
+de Gráficos, que recibe la muestra entera aunque no se vea. Las
+recolocaciones que quedan (de 4 a 19 por muestra, de `setText`) no mueven
+nada y cuestan de 0,2 a 1,8 ms por muestra.
 
 ## Lo que queda
 
@@ -167,6 +189,12 @@ Cada uno en su commit, con lo medido en el mensaje:
 - **Los fotogramas de las barras**: mientras una barra va hacia su dato
   (180 ms), el temporizador va al ritmo de la pantalla, hasta uno cada
   7 ms. En los 240 Hz de casa son 143 por segundo durante ese rato.
+- **Cada `setText` recoloca hacia arriba**: `ElidingLabel` toma su tamaño
+  del texto, y Qt recoloca la tarjeta y la página aunque nada cambie de
+  sitio. Son de 0,2 a 1,8 ms por muestra (CPU, la que más); quitarlo pide
+  cambiar cómo mide esa etiqueta en toda la aplicación.
+- **Pintar CPU después de cada muestra**: 11,5 ms, frente a 2-4 en las
+  demás. Sin mirar todavía de qué.
 - **Lo que hay detrás de una gráfica transparente**: al repintarla, Qt
   repinta también la tarjeta y la página de detrás (en Inicio, ~145 widgets
   por segundo). Pintarla opaca con el color de su tarjeta lo quitaría.

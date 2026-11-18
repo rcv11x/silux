@@ -200,6 +200,10 @@ publica se dice con la versión que lo trae.
 - Arreglado: en «Ahora mismo», el fondo de las barras cambiaba de largo
   según las cifras de la derecha. Ahora cada cifra tiene reservado el ancho
   de lo más largo que puede decir, y nada se mueve.
+- Arreglado: la página parpadeaba cada segundo y se movía todo lo que hay
+  por debajo de «Relojes y enlace»: unas filas que no tocan se enseñaban y
+  se volvían a esconder con cada muestra. Ahora una muestra nueva solo
+  cambia las cifras, y la página gasta menos de la mitad al recibirla.
 - Arreglado: el uso de una gráfica AMD saltaba de un segundo a otro (de 85 %
   a 42 % jugando a lo mismo) porque era una lectura suelta. Ahora es la
   media del intervalo, como la que da MangoHud.
@@ -340,6 +344,12 @@ publica se dice con la versión que lo trae.
   que se abren, y la cifra del punto más alto ya no se monta sobre la curva.
 - Arreglado: la explicación que sale al pasar el ratón por un dato se perdía
   al cambiar la ventana de tamaño.
+- Arreglado: en las fichas grandes, la unidad saltaba a un lado cada vez que
+  la cifra ganaba o perdía un dígito («9 %» a «10 %»), y a veces la fila de
+  fichas entera. Ahora cada cifra tiene reservado su ancho y va pegada a su
+  unidad.
+- Arreglado: en Almacenamiento, los candados de lo que falta por permisos se
+  quitaban y se volvían a poner cada segundo.
 - Arreglado: la barra de estado decía una lista de fuentes internas y un
   número de datos sin permisos que no coincidía con el de Inicio.
 - Arreglado: la barra lateral cortaba «Almacenamiento» en compacto, y «Qué

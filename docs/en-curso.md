@@ -17,8 +17,9 @@ núcleos (`ba814e7`), y un `singleShot` que saltaba sobre una ventana ya
 borrada (el commit siguiente). La suite pasa entera dos veces seguidas en
 3.10 aquí (`UV_PROJECT_ENVIRONMENT=… uv sync --python 3.10`, sin tocar
 `.venv`). La rama `actualizaciones`, con su CI en verde (tests y
-AppImage). **`master` y el borrador de la 0.4 no se han tocado**, ni ninguna propuesta pendiente (polkit, uso de gráficas,
-ayudante). La rama `actualizaciones`, con lo suyo, empujada en la suya.
+AppImage), empujada en la suya. **`master` y el borrador de la 0.4 no se
+han tocado**, ni ninguna propuesta pendiente (polkit, uso de gráficas,
+ayudante).
 
 ### Lo que hay que mirar o decidir
 
@@ -41,6 +42,13 @@ ayudante). La rama `actualizaciones`, con lo suyo, empujada en la suya.
    de la release del CI) y probarlo una vez a mano con los botones.
 4. **La 0.4**: lo de hoy va en ella (CHANGELOG al día). Publicarla sigue
    los pasos de «3. Publicar», más abajo.
+5. **Gráficos ya no parpadea** (`4bf4ca5`, `61d98f4`): hay que verlo en la
+   pantalla, reiniciando la ventana que tienes abierta desde la terminal
+   (es de antes del arreglo). Y mirar si las cifras de las fichas te gustan
+   arrimadas a su unidad, con el hueco a la izquierda: «0 MHz» de la
+   gráfica parada lleva tres cifras de hueco. Capturas en
+   `~/Imágenes/silux-test/casa-18/parpadeo/` (`antes.gif` con el estado
+   intermedio, `despues.gif`, y las diferencias) y `fichas/`.
 
 ### Lo hecho, por puntos
 
@@ -56,6 +64,8 @@ ayudante). La rama `actualizaciones`, con lo suyo, empujada en la suya.
 | `39df74e` | **4.** El volcado del 5800X3D, rehecho con la fase 0 y revisado a mano (sin WireGuard, usuario, equipo ni IP) |
 | `da00a98` | El texto de polkit del autor, en la propuesta |
 | `6b89508` | La medida final en la pantalla; lo validado en la RX 9070 XT |
+| `4bf4ca5` | **Gráficos parpadeaba**: cuatro filas de relojes se enseñaban y se escondían en cada muestra, y la página crecía 23 px y volvía; Almacenamiento hacía lo mismo con sus candados. Gráficos, de 18,3 a 6-8 ms por muestra. `tests/test_nada_se_mueve.py`, en todas las páginas |
+| `61d98f4` | Las fichas grandes reservan el ancho de su cifra: «9 %» → «10 %» ya no mueve la unidad ni la fila |
 
 **Rendimiento en la pantalla** (DP-1, la página que más gasta / la media,
 en % de un núcleo): a la vista sin fluido, 9,3 / 7,6 → 6,2 / 4,3; con
