@@ -3,11 +3,85 @@
 Para retomar sin el contexto de la sesión anterior. Se borra cuando lo de
 aquí esté hecho o pase a `docs/pendientes.md`.
 
-Última sesión: 18 de noviembre de 2026 por la tarde (hasta pasadas las 18:00), en el
-i5-10400 de la oficina (Fedora 44, KDE Plasma 6.8 en Wayland). La anterior, la madrugada del
-18 en el 5800X3D de casa (CachyOS).
+Última sesión: 18 de noviembre de 2026, de las 18:30 a las 23:30, en el
+5800X3D de casa (CachyOS, KDE Plasma 6.8 en Wayland, RX 9070 XT). La
+anterior, la tarde del 18 en el i5-10400 de la oficina.
+
+## Noche del 18, en casa (5800X3D): lo hecho y lo que queda
+
+Rama `oficina`, empujada al acabar (los números del CI, en `gh run list
+--branch oficina --limit 2`). **`master` y el borrador de la 0.4 no se han
+tocado**, ni ninguna propuesta pendiente (polkit, uso de gráficas,
+ayudante). La rama `actualizaciones`, con lo suyo, empujada en la suya.
+
+### Lo que hay que mirar o decidir
+
+1. **Abrir «Silux» desde el menú** y ver que se mueve. La entrada vieja
+   (`Exec=/usr/bin/python3 -m silux.ui.app`, que apuntaba a la carpeta
+   `cpuz-linux`, ya inexistente: era el acceso que no abría) la arregló
+   Ajustes desde el AppImage, que ahora vive en
+   `~/AppImages/silux-x86_64.AppImage` (de `39df74e`). KWin ve la ventana
+   como `silux` con el logo nuevo. **Lo que no se pudo ver**: las ventanas
+   que se lanzan desde la terminal de Claude no se repintan en la pantalla
+   tras el primer fotograma, aunque por dentro tengan los datos. Le pasa
+   igual a una ventana de Qt de diez líneas y al AppImage del borrador, así
+   que no es de silux, pero hay que verlo con los ojos.
+2. **El texto de polkit**: el que leíste viene de la regla instalada el 17
+   (`instalar.PLANTILLA`), no de la propuesta. Tu texto para que nombre
+   todo lo que abre el permiso está en
+   `docs/propuesta-mensaje-de-polkit.md`, sin aplicar.
+3. **El actualizador** (`actualizaciones`): probado de punta a punta, ver
+   abajo. Falta decidir cuándo se rebasa sobre `oficina` (choca en el paso
+   de la release del CI) y probarlo una vez a mano con los botones.
+4. **La 0.4**: lo de hoy va en ella (CHANGELOG al día). Publicarla sigue
+   los pasos de «3. Publicar», más abajo.
+
+### Lo hecho, por puntos
+
+| Commit | Qué |
+|---|---|
+| `bd747ca` | Un test de Ajustes leía el ayudante instalado de quien ejecuta |
+| `8577e57` | **1. Barras fluidas**: llegan a su dato en 180 ms frenando, desde donde están y nunca desde cero; ritmo de la pantalla mientras se mueven. Con un video en la RX 9070 XT, el 90 % del camino pasó de 990 ms a 89 |
+| `a02a4e6` | El uso de una AMD es la media del intervalo (MangoHud daba 80-86 %, una lectura suelta 15-93) |
+| `4f766bc` | **Barras de motores en todas las gráficas**: AMD «Render / 3D» y una sola de video (el VCN unificado: decodificar va por la cola de codificar); NVIDIA, NVDEC y NVENC aparte; lo que el driver no da, al pie. `docs/motores-de-graficas.md` |
+| `e0f83c8` | El fondo de las barras de «Ahora mismo» no cambia de largo con las cifras |
+| `bf74fd0` … `4443931` | **2. Rendimiento**, once commits medidos con py-spy (`docs/rendimiento.md`) |
+| `18887c1` | `tools/medir_consumo.py` y los objetivos (7 % sin fluido, 9 % con él, 5,5 % escondida, 300 MB) |
+| `39df74e` | **4.** El volcado del 5800X3D, rehecho con la fase 0 y revisado a mano (sin WireGuard, usuario, equipo ni IP) |
+| `da00a98` | El texto de polkit del autor, en la propuesta |
+| `6b89508` | La medida final en la pantalla; lo validado en la RX 9070 XT |
+
+**Rendimiento en la pantalla** (DP-1, la página que más gasta / la media,
+en % de un núcleo): a la vista sin fluido, 9,3 / 7,6 → 6,2 / 4,3; con
+fluido, 31,3 / 13,0 → 9,4 / 5,3; escondida, ~8 → ~4,3, igual con fluido
+que sin él. Inicio con fluido, 15,3 → 6,6 (en la oficina eran 16,5).
+
+**3. Comprobado en este equipo**: Gráficos de la RX 9070 XT sin cambios a
+peor (`active`, PCIe 4.0 × 16, `gpu_metrics` 1.3 casa con hwmon), barras
+con un video y con un juego (lo jugó el autor); CPU, Memoria y Sensores
+sin permisos y con ellos (contraseña del autor, en
+`~/Imágenes/silux-test/casa-18/comprobacion/`): voltaje con candado y
+luego 1.100 V, «Módulo 1/2» con su zócalo, el SPD con su motivo, sin
+sugerir XMP; «Qué pasa al dar permisos» con ellos dados, sin «esta vez»;
+Ajustes en los dos temas con los controles a la vista y el interruptor
+ámbar.
+
+**5. El actualizador, de punta a punta sin publicar nada**: el AppImage de
+la rama contra un GitHub de mentira (mitmproxy), con su propio Python.
+Encontró dos fallos que los tests no podían ver: **el AppImage no traía
+`_ssl`**, así que no podía abrir ninguna URL `https://` y decía «no hay
+conexión con GitHub» (`de60ed1`, que además se fía del almacén de
+certificados del sistema), y un corte a `http://` también salía como falta
+de red (`f3c8721`). Con los dos: bien, SHA malo, `http://` y solo lectura,
+los cuatro como deben (`tools/probar_actualizador.py`, `91f6a0f`).
+
+Capturas en `~/Imágenes/silux-test/casa-18/`: `barras-fluidas/` (tiras de
+fotogramas antes y después), `graficos/`, `motores/` (reposo, YouTube,
+grabando, las dos cosas), `fondo-fijo/` y `comprobacion/`.
 
 ## Para esta noche en casa (5800X3D), tras el cierre de la oficina del 18
+
+Hecho la noche del 18: ver el apartado de arriba.
 
 **El borrador de la 0.4 sigue como estaba.** Es de `c01944d`, con las notas
 de entonces y título «v0.4.0». `master` también está en `c01944d`.
@@ -147,11 +221,13 @@ Para el número exacto de cada commit: `git log --oneline c01944d..oficina`.
 - **2, el resto de la fase 0.** Grabar NVML, ver los archivos de `xe` en el
   nodo PCI, recorrer la cadena de puentes y grabar `event_source`. Sin eso,
   un volcado de una NVIDIA o de una Arc llega cojo.
-- **7.** Rama `actualizaciones`, sin empujar, y sale de `c01944d`:
+- **7.** Rama `actualizaciones`, sale de `c01944d` (el estado de la noche
+  del 18, más arriba):
   - La propuesta, `silux/updates.py` (buscar, bajar, comprobar el SHA-256
     y sustituir) y el paso del CI que publica `SHA256SUMS`, con sus tests.
-  - **Falta toda la interfaz:** el interruptor y el botón de Ajustes, y el
-    aviso junto a la versión.
+  - **La interfaz está hecha** (`3d363d8`): el interruptor «Buscar
+    actualizaciones al iniciar» (apagado) y «Buscar ahora» en Ajustes, y
+    «Actualizar a X» bajo la versión de la barra lateral.
   - Al rebasarla sobre `oficina` chocará en el paso de la release del CI,
     porque los dos lo tocan.
 - **8.** Solo la estimación, en la respuesta de la sesión: no cabe en la
