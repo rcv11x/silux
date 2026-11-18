@@ -105,15 +105,16 @@ BUNDLED_ICON = pathlib.Path(__file__).parent / "assets" / "silux.svg"
 
 
 def application_icon() -> QIcon:
-    """El icono del tema si está instalado; si no, el que viaja en el paquete.
+    """El icono que viaja en el paquete; el del tema solo si ese falta.
 
-    Así la ventana tiene icono aunque se ejecute desde el código fuente sin
-    haber pasado por tools/install_desktop.py.
+    El del paquete es siempre el de esta versión. El del tema es el de la
+    última vez que alguien instaló la entrada de menú, que puede ser de otro
+    logo: con él delante, la barra de tareas enseñaba el icono viejo y la
+    barra lateral el nuevo.
     """
-    icon = QIcon.fromTheme(DESKTOP_ID)
-    if not icon.isNull():
-        return icon
-    return QIcon(str(BUNDLED_ICON)) if BUNDLED_ICON.exists() else QIcon()
+    if BUNDLED_ICON.exists():
+        return QIcon(str(BUNDLED_ICON))
+    return QIcon.fromTheme(DESKTOP_ID)
 
 
 class MainWindow(QMainWindow):

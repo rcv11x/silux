@@ -114,6 +114,26 @@ class TestIconoDeLaVentana(unittest.TestCase):
             icono = ui_app.application_icon()
         self.assertFalse(icono.isNull(), "debería recurrir al SVG del paquete")
 
+    def test_el_icono_del_tema_no_gana_al_del_paquete(self):
+        """Un icono «silux» instalado en el tema puede ser de una versión vieja.
+
+        En casa la barra de tareas de Plasma enseñaba el logo anterior con la
+        aplicación nueva abierta: la ventana se presentaba con el icono que
+        encontraba en el tema, el de la última instalación, mientras la barra
+        lateral pintaba el del paquete. El del paquete es siempre el de esta
+        versión.
+        """
+        from PySide6.QtGui import QIcon, QPixmap
+        from silux.ui import app as ui_app
+
+        qt.app()
+        viejo = QPixmap(16, 16)
+        viejo.fill()
+        with mock.patch.object(QIcon, "fromTheme", return_value=QIcon(viejo)) as tema:
+            icono = ui_app.application_icon()
+        tema.assert_not_called()
+        self.assertFalse(icono.isNull())
+
 
 if __name__ == "__main__":
     unittest.main()
