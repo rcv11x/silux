@@ -3,9 +3,56 @@
 Para retomar sin el contexto de la sesión anterior. Se borra cuando lo de
 aquí esté hecho o pase a `docs/pendientes.md`.
 
-Última sesión: 18 de noviembre de 2026 por la mañana, en el i5-10400 de la
+Última sesión: 18 de noviembre de 2026 por la tarde, en el i5-10400 de la
 oficina (Fedora 44, KDE Plasma 6.8 en Wayland). La anterior, la madrugada del
 18 en el 5800X3D de casa (CachyOS).
+
+## Tarde del 18, en la oficina (rama `oficina`, tercera tanda)
+
+Tras revisar el autor `comprobacion/`, `kernel/`, `memoria-permisos/` y
+`appimage-2/`. Un commit por cambio, con su test visto fallar y capturas
+antes y después en `~/Imágenes/silux-test/oficina-18/tanda-3/` (el número
+del principio es el punto de la revisión).
+
+| Commit | Qué |
+|---|---|
+| `32d69c8` | `gen_memory_limits.py` lee las comparaciones de ARK: una página por serie |
+| `c5ae87c` | 1. Memoria no dice cuántos zócalos hay ni cuántos quedan libres |
+| `bab1456` | 6. La ficha de consumo solo dice «permisos» si faltan permisos |
+| `6f7da14` | 2. Sin SPD no se culpa a la placa: el motivo del diagnóstico, y candado si es un driver |
+| `b8546c5` | 7. «No traen perfiles rápidos», una vez |
+| `2688d85` | 7. El fabricante de memoria, igual venga del SPD o de SMBIOS («Crucial») |
+| `9b26b93` | 7. Las fichas se llaman «Módulo N» con y sin permisos; el zócalo, en su campo |
+| `8209325` | 3. **Un solo acento, el ámbar**: fuera de Ajustes, de las preferencias y `--accent` |
+| `f5b00d8` | 4. iGPU: lo que no tiene, nombrado al pie en una frase; sin el driver de AMD; eficiente = mínima, una fila |
+| `52f799c` | 5. **Tiempos de arranque con GRUB**: firmware y cargador de la FPDT, el resto de systemd |
+| `4b7aeb9` | 8. «Intel, audio HD (8086:f0c8)» en vez de «no está en la lista de nombres PCI» |
+
+**Los zócalos (1)**. El «2 de 4» con permisos sale de SMBIOS: la tabla del
+tipo 17 de esta MSI H510M PRO-E trae cuatro entradas, dos «No Module
+Installed» (`…ChannelA-DIMM1`, `…ChannelB-DIMM1`), y la placa tiene dos
+ranuras. El «2 de 2» sin permisos era de una captura montada a mano. Nada
+de la tabla distingue una ranura fantasma de una vacía de verdad, así que
+no se dice ninguna de las dos cifras.
+
+**El acento (3)**. El `settings.json` de la oficina tenía `"accent": "azul"`,
+y lo leen el AppImage y `--screenshot`; lo montado con las preferencias de
+serie salía ámbar. Al cerrar la ventana se guardó sin la clave.
+
+**El arranque (5)**. Los dos volcados del i5-10400 ganan la FPDT y lo que
+contestó `systemctl show`, de este equipo el 18. El del 5800X3D no los tiene:
+volcarlo de nuevo en casa los grabaría (lo hace `volcar_equipo.py` solo).
+
+**Lo que se rompió en medio**: dos commits (6 y 2) dejaban un test atrás
+cada uno porque antes de commitear se pasó solo una parte de la suite; se
+arreglaron dentro de su commit con un `fixup`. Desde ahí, suite entera antes
+de cada commit.
+
+**ARK**: la comparación de la serie 10.ª i5 trae los 23 modelos de su página
+de serie (sin tope visto) con la memoria de cada uno; la página de serie no
+la trae. La exportación no llegó a guardarse y no hace falta. Lo que tiene
+que guardar el autor es una comparación por serie (lista en la respuesta de
+la sesión).
 
 ## Tarde del 18, en la oficina (rama `oficina`, segunda tanda)
 
