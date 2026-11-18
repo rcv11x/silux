@@ -34,13 +34,17 @@ python3 tools/comprobar_privacidad.py  # antes de publicar nada
 python3 tools/build_appimage.py --container   # el AppImage que se reparte
 python3 tools/probar_en_minimo.py --container # la suite en el Python del suelo
 uv sync --extra gui                    # el entorno de desarrollo: pytest y PySide6
-QT_QPA_PLATFORM=offscreen uv run pytest -n auto -m "not a_solas"  # la suite, en paralelo
+QT_QPA_PLATFORM=offscreen uv run pytest -n 4 -m "not a_solas"  # la suite, en paralelo (nunca más de 4)
 QT_QPA_PLATFORM=offscreen uv run pytest -m a_solas  # los tres que miden, solos
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .  # sin instalar nada
 ```
 
 En paralelo tardan medio minuto entre las dos pasadas; en serie, minuto y
-medio. Las dos pasadas son las del CI: tres tests comparan dos medidas de
+medio. **Nunca más de `-n 4`, en los dos equipos** (oficina, 16 GB; casa,
+igual): cada proceso carga Qt, y `-n auto` (12) con tres agentes de Claude a
+la vez llenó los 16 GB de la oficina y congeló el equipo el 18 de noviembre.
+Por lo mismo, **en estos equipos no se lanzan agentes de Claude en
+paralelo**: las tareas van de una en una. Las dos pasadas son las del CI: tres tests comparan dos medidas de
 rendimiento y van solos (`tests/conftest.py`). Cuántos son lo dice la suite al
 terminar; no se apunta aquí a mano. Si sale bastante menos que en la
 última ejecución, falta algo por recoger. Corren en una carpeta temporal propia
@@ -166,9 +170,11 @@ Terminadas las catorce: **Inicio, CPU, Cachés, Placa base, Memoria,
 Gráficos, Almacenamiento, Red, Dispositivos, Batería, Sistema, Rendimiento,
 Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 
-- La **0.4.0** está en `master` y en borrador en GitHub, sin etiqueta: la
-  publica el autor después de probarla en el 5800X3D. Cómo, en
-  [docs/en-curso.md](docs/en-curso.md).
+- La **0.4** (`0.4.0` por debajo; en pantalla, «0.4») está en borrador en
+  GitHub, sin etiqueta. El borrador y `master` son de `c01944d`, y `oficina`
+  lleva por delante los arreglos de Gráficos del 18 por la tarde, que van
+  en la 0.4. La publica el autor después de probarla en el 5800X3D. Cómo,
+  en [docs/en-curso.md](docs/en-curso.md).
 
 - La escala del benchmark es la **v6**: puntúan dos cargas de las cinco, las
   que no dependen de la zlib de cada distribución. `score.VERSION` y
@@ -190,7 +196,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); los comentarios, en el español del autor. Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-1293 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+1305 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
@@ -305,7 +311,11 @@ código (F-…), que es por el que se buscan allí.
 | `ui/pages/cpu.py` | media-baja | «Preferencia de energía —» con acpi-cpufreq, que no tiene EPP |
 | `privileged/helper.py` | baja | un comentario dice que `uncore_imc_free_running` es de Ice Lake en adelante; no lo es (`docs/kernel.md`) |
 | `ui/pages/storage.py` | baja | «Vida restante —» en un SATA |
-| Gráficos, varios | alta, sin empezar | lo que se rompe o miente con las gráficas no probadas (APU, Arc, `xe`, NVIDIA, dos gráficas): 25 fallos y un plan en [docs/propuesta-graficas.md](docs/propuesta-graficas.md) |
+| Gráficos, varios | media | de los 25 fallos de [docs/propuesta-graficas.md](docs/propuesta-graficas.md), arreglados los que mentían (1 a 7, 11, 12 y el 4); quedan los de datos que no se leen (`xe`, NVML, `radeon`, nouveau) y el 8 (framebuffer de respaldo), 9 y 10 (nouveau) |
+| `privileged/helper.py` | propuesta | el PMU de una Arc con `i915` y el de `xe`: [docs/propuesta-uso-de-graficas.md](docs/propuesta-uso-de-graficas.md), sin aplicar |
+| `tools/volcar_*.py` | alta | fase 0 a medias: ya no despiertan la tarjeta; falta grabar NVML, ver `xe` en el nodo PCI, los puentes y `event_source` |
+| `ui/pages/memory.py`, `graphics.py` | media, sin comprobar | con permisos, Memoria abierta después sale con los campos montados y Gráficos sin insignias: visto al capturar, falta verlo en una ventana real |
+| rama `actualizaciones` | a medias | propuesta, `silux/updates.py` y `SHA256SUMS` en el CI; falta la interfaz. Sale de `c01944d` |
 | `providers/` (AMD) | aplazado | PPT, TDC y EDC con `ryzen_smu`: el autor decidió no hacerlo ahora (`docs/propuesta-limites-amd.md`) |
 | `.github/workflows/appimage.yml` | media | el CI no mira si el AppImage pinta sus iconos; se comprobó a mano con `--screenshot` |
 | `privacidad.py`, `tools/volcar_equipo.py` | media-baja | `--anonimo` da la misma IP a todas las interfaces; los volcados, la misma MAC |
@@ -347,8 +357,9 @@ código (F-…), que es por el que se buscan allí.
 - [docs/comprobar.md](docs/comprobar.md): el comando equivalente a cada dato,
   para verificarlo a mano.
 - `docs/propuesta-*.md`: lo propuesto (permisos, interfaz, precisión,
-  benchmark, datos, límites de AMD, gráficas). La de datos está aplicada; la
-  de límites de AMD y la de gráficas, sin decidir. No son el estado del
+  benchmark, datos, límites de AMD, gráficas, uso de gráficas). La de datos
+  está aplicada; la de gráficas, en parte (lo que mentía); la de límites de
+  AMD y la del uso de gráficas, sin decidir. No son el estado del
   programa.
 - [docs/en-curso.md](docs/en-curso.md): si existe, dónde se quedó la última
   sesión y qué sigue.
