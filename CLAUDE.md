@@ -196,7 +196,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); los comentarios, en el español del autor. Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-1305 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+1306 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
@@ -313,9 +313,9 @@ código (F-…), que es por el que se buscan allí.
 | `ui/pages/storage.py` | baja | «Vida restante —» en un SATA |
 | Gráficos, varios | media | de los 25 fallos de [docs/propuesta-graficas.md](docs/propuesta-graficas.md), arreglados los que mentían (1 a 7, 11, 12 y el 4); quedan los de datos que no se leen (`xe`, NVML, `radeon`, nouveau) y el 8 (framebuffer de respaldo), 9 y 10 (nouveau) |
 | `privileged/helper.py` | propuesta | el PMU de una Arc con `i915` y el de `xe`: [docs/propuesta-uso-de-graficas.md](docs/propuesta-uso-de-graficas.md), sin aplicar |
-| `tools/volcar_*.py` | alta | fase 0 a medias: ya no despiertan la tarjeta; falta grabar NVML, ver `xe` en el nodo PCI, los puentes y `event_source` |
-| `ui/pages/memory.py`, `graphics.py` | media, sin comprobar | con permisos, Memoria abierta después sale con los campos montados y Gráficos sin insignias: visto al capturar, falta verlo en una ventana real |
-| rama `actualizaciones` | a medias | propuesta, `silux/updates.py` y `SHA256SUMS` en el CI; falta la interfaz. Sale de `c01944d` |
+| `privileged/instalar.py` | propuesta | la ventana de la contraseña enseña `python3 -c …` en inglés: [docs/propuesta-mensaje-de-polkit.md](docs/propuesta-mensaje-de-polkit.md), sin aplicar |
+| `tools/volcar_*.py` | media, sin comprobar | la fase 0 está hecha (no despiertan la tarjeta; graban NVML, `xe`, puentes y `event_source`), pero nada se ha visto con una NVIDIA, una Arc ni una Deck |
+| rama `actualizaciones` | a medias | propuesta, `silux/updates.py`, `SHA256SUMS` en el CI y la interfaz que diga `git log oficina..actualizaciones`; sale de `c01944d` y choca con `oficina` en el paso de la release del CI |
 | `providers/` (AMD) | aplazado | PPT, TDC y EDC con `ryzen_smu`: el autor decidió no hacerlo ahora (`docs/propuesta-limites-amd.md`) |
 | `.github/workflows/appimage.yml` | media | el CI no mira si el AppImage pinta sus iconos; se comprobó a mano con `--screenshot` |
 | `privacidad.py`, `tools/volcar_equipo.py` | media-baja | `--anonimo` da la misma IP a todas las interfaces; los volcados, la misma MAC |
