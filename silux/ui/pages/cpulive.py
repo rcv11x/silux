@@ -157,9 +157,17 @@ class CpuLiveSection(QWidget):
             # Sin esto la ficha se quedaba con «— W» y ni una palabra, que se
             # lee como que el programa no sabe leerlo. El motivo ya está abajo,
             # en su aviso; aquí va la mitad que se ve sin bajar.
-            self.tile_power.set_detail(
-                _("cpu.power.locked") if snapshot.privileged.supported
-                else _("cpu.power.none"))
+            # Un dato, un motivo: el candado solo si lo que falta es un
+            # permiso. Si el motivo es otro, ya lo dice su aviso, y aquí no
+            # se da uno distinto.
+            nota = snapshot.permission_note("cpu.power")
+            if nota is not None:
+                self.tile_power.set_locked(_("lock.detail"), render.lock_tooltip(nota))
+            else:
+                # Sin nota no hay motivo que dar: es la primera vuelta (el
+                # consumo sale de restar dos lecturas) o un equipo volcado.
+                self.tile_power.update_value(render.DASH, None)
+                self.tile_power.set_detail("")
 
     def _apply_cores(self, snapshot: Snapshot) -> None:
         # Los núcleos que el firmware marca como los mejores de la pieza. Se

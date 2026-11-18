@@ -331,8 +331,6 @@
   "cpu.load.threads": "{carga}  (de {n} hilos)",
   "cpu.loading": "Leyendo el procesador…",
   "cpu.power.headline": "{pct} % de {w} W",
-  "cpu.power.locked": "requiere permisos",
-  "cpu.power.none": "este equipo no lo publica",
   "cpu.sig.tooltip": "EAX de la hoja 1 de CPUID = {eax}\n\nfamilia base {fb}  +  familia extendida {fe}  →  familia {familia}\nmodelo base {mb}  +  modelo extendido {me} << 4  →  modelo {modelo}\nstepping {stepping}",
   "cpu.smt.on": "  (SMT activo)",
   "cpu.subtitle": "{nucleos} núcleos · {hilos} hilos · {sockets} socket{s}",

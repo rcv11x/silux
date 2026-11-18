@@ -331,8 +331,6 @@
   "cpu.load.threads": "{carga}  (of {n} threads)",
   "cpu.loading": "Reading the processor…",
   "cpu.power.headline": "{pct} % of {w} W",
-  "cpu.power.locked": "needs permissions",
-  "cpu.power.none": "this machine does not publish it",
   "cpu.sig.tooltip": "CPUID leaf 1, EAX = {eax}\n\nbase family {fb}  +  extended family {fe}  →  family {familia}\nbase model {mb}  +  extended model {me} << 4  →  model {modelo}\nstepping {stepping}",
   "cpu.smt.on": "  (SMT on)",
   "cpu.subtitle": "{nucleos} cores · {hilos} threads · {sockets} socket{s}",

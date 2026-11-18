@@ -390,11 +390,20 @@ class TestLaFichaDeConsumoExplicaSuHueco(unittest.TestCase):
         from silux.settings import Preferences
         from silux.ui.pages.cpu import CpuPage
 
+        from silux.i18n import _
+        from silux.model import Need, Note, PrivilegedState
+
         theme.set_density("normal", "normal")
         foto = muestras.foto_real()
-        sin_rapl = dataclasses.replace(foto, cpu=dataclasses.replace(
-            foto.cpu, power=dataclasses.replace(foto.cpu.power,
-                                                package_w=None)))
+        # Lo que deja RaplPower cuando energy_uj es de root: sin el dato y con
+        # su nota. Sin nota la ficha no inventa un motivo (test_rapl_nucleos).
+        nota = Note("cpu.power", Need.ROOT, _("prov.rapl.denied"),
+                    _("prov.rapl.denied.hint"), _("what.cpu.power"))
+        sin_rapl = dataclasses.replace(
+            foto, cpu=dataclasses.replace(
+                foto.cpu, power=dataclasses.replace(foto.cpu.power, package_w=None)),
+            notes=tuple(n for n in foto.notes if n.path != "cpu.power") + (nota,),
+            privileged=PrivilegedState(supported=True))
         pagina = CpuPage(theme.palette_for(_app(), "dark"),
                          Preferences(font_scale="normal").normalized())
         pagina.apply(sin_rapl)

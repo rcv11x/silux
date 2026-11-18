@@ -129,3 +129,52 @@ class TestEnLaFicha(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipIf(QApplication is None, "sin PySide6")
+class TestUnDatoUnMotivo(unittest.TestCase):
+    """Revisión del autor: con el 5800X3D en un 5.15, la ficha de Consumo
+    decía «requiere permisos» y el aviso de abajo «el contador no avanza»:
+    dos motivos para el mismo dato. La ficha solo pone candado si el motivo
+    es un permiso; si es otro, no da uno suyo."""
+
+    @classmethod
+    def setUpClass(cls):
+        from tests.test_equipos import foto
+
+        cls.app = qt.app()
+        cls.parado = foto(EQUIPOS / AMD)[0]     # volcado: el contador no avanza
+
+    def _ficha(self, muestra):
+        from silux.settings import Preferences
+        from silux.ui.app import MainWindow
+
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.dict(os.environ, {"XDG_CONFIG_HOME": tmp}):
+            ventana = MainWindow(Preferences().normalized())
+            self.addCleanup(ventana.close)
+            ventana._on_sample(muestra)
+            return ventana.cpu_page.live.tile_power
+
+    def test_con_el_contador_parado_no_dice_permisos(self):
+        from silux.i18n import _
+
+        self.assertIn("cpu.power", [n.path for n in self.parado.notes])
+        self.assertIsNone(self.parado.permission_note("cpu.power"))
+        ficha = self._ficha(self.parado)
+        self.assertFalse(ficha.is_locked())
+        self.assertNotIn(_("lock.detail"), ficha.detail.text())
+
+    def test_sin_permisos_para_leerlo_es_candado(self):
+        """La nota que deja RaplPower cuando energy_uj es de root (desde 5.10)."""
+        import dataclasses
+        from silux.i18n import _
+        from silux.model import Need, Note, PrivilegedState
+
+        nota = Note("cpu.power", Need.ROOT, _("prov.rapl.denied"), _("prov.rapl.denied.hint"),
+                    _("what.cpu.power"))
+        sin = dataclasses.replace(
+            self.parado, notes=tuple(n for n in self.parado.notes if n.path != "cpu.power")
+            + (nota,), privileged=PrivilegedState(supported=True))
+        self.assertIs(sin.permission_note("cpu.power"), nota)
+        self.assertTrue(self._ficha(sin).is_locked())
