@@ -34,6 +34,7 @@ import argparse
 import builtins
 import contextlib
 import dataclasses
+import errno
 import getpass
 import importlib.util
 import io
@@ -50,6 +51,7 @@ sys.path.insert(0, str(RAIZ))
 
 from silux import privacidad, sysroot  # noqa: E402
 from silux.providers.sysfs_cpu import FUENTES_DE_FRECUENCIA  # noqa: E402
+from tools import volcar_gpu  # noqa: E402
 
 DESTINO = RAIZ / "tests" / "fixtures" / "equipos"
 VIGILADO = ("/sys/", "/proc/", "/etc/")
@@ -81,6 +83,9 @@ def _vigilado(camino) -> str | None:
         return None
     if isinstance(texto, bytes):
         texto = texto.decode(errors="replace")
+    # Con una raíz puesta (los tests), el camino se apunta como lo vería el
+    # sistema: es el que se copia después.
+    texto = sysroot.fuera(texto)
     return texto if texto.startswith(VIGILADO) else None
 
 
@@ -117,12 +122,129 @@ def _apuntando():
             setattr(modulo, nombre, funcion)
 
 
-def _recoger():
+class _Dormidas:
+    """Las gráficas que el sistema tiene dormidas, y lo que no se toca de ellas.
+
+    Volcar un portátil con la dedicada dormida no puede despertarla: se
+    grabaría una tarjeta encendida solo porque la herramienta la ha
+    encendido, que es justo lo que el volcado tiene que dejar ver (B-1 de
+    `docs/propuesta-graficas.md`). De cada una dormida solo se lee
+    `volcar_gpu.SIN_DESPERTAR`; lo mismo de las otras funciones de su ranura
+    (el audio HDMI duerme con ella) y de los puentes de su cadena, que en
+    D3cold tienen la ranura sin corriente. Tampoco se abren sus nodos de
+    `/dev/dri` (los ioctl), ni NVML si es una NVIDIA, ni las API gráficas,
+    que enumeran todas las tarjetas.
+    """
+
+    def __init__(self) -> None:
+        self.estados: dict[str, dict[str, str]] = {}
+        self.dormidas: list[str] = []
+        self.nodos: list[str] = []
+        self.dev: set[str] = set()
+        self.nvidia = False
+        for grafica in volcar_gpu.graficas():
+            estado = volcar_gpu.energia(grafica)
+            ranura = grafica.rsplit("/", 1)[1]
+            self.estados[ranura] = estado
+            if not volcar_gpu.dormida(estado):
+                continue
+            self.dormidas.append(ranura)
+            real = volcar_gpu._real(grafica)
+            hermanas = [f"{real.parent}/{h.name}"
+                        for h in pathlib.Path(sysroot.ruta(str(real.parent))).iterdir()
+                        if h.name.rsplit(".", 1)[0] == ranura.rsplit(".", 1)[0]]
+            self.nodos += hermanas + [str(p) for p in volcar_gpu.cadena(grafica)]
+            drm = pathlib.Path(sysroot.ruta(f"{real}/drm"))
+            if drm.is_dir():
+                self.dev.update(f"/dev/dri/{n.name}" for n in drm.iterdir()
+                                if n.name.startswith(("card", "renderD")))
+            if volcar_gpu._leer(f"{grafica}/vendor") == "0x10de":
+                self.nvidia = True
+        # El más largo primero: la gráfica cuelga de sus puentes.
+        self.nodos = sorted(set(self.nodos), key=len, reverse=True)
+
+    def __bool__(self) -> bool:
+        return bool(self.dormidas)
+
+    def energia(self) -> set[str]:
+        """Los archivos de energía de cada gráfica, dormida o no, para el volcado."""
+        return {f"{volcar_gpu.SYS_PCI}/{ranura}/{nombre}"
+                for ranura, estado in self.estados.items() for nombre in estado}
+
+    def prohibido(self, camino) -> bool:
+        if not self:
+            return False
+        texto = os.fspath(camino)
+        if isinstance(texto, bytes):
+            texto = texto.decode(errors="replace")
+        texto = sysroot.fuera(texto)
+        if texto in self.dev:
+            return True
+        if not texto.startswith("/sys/"):
+            return False
+        real = sysroot.fuera(os.path.realpath(sysroot.ruta(texto)))
+        for nodo in self.nodos:
+            if real.startswith(nodo + "/"):
+                return real[len(nodo) + 1:] not in volcar_gpu.SIN_DESPERTAR
+        return False
+
+    def sin_grabar(self) -> list[str]:
+        if not self:
+            return []
+        lineas = [f"de las gráficas dormidas ({', '.join(self.dormidas)}), todo menos "
+                  "su identidad y su estado de energía, y lo mismo de las otras "
+                  "funciones de su ranura y de sus puentes: leerlo las despierta",
+                  "lo que contestan OpenGL, Vulkan, OpenCL y VA-API: enumeran todas "
+                  "las tarjetas, también la dormida"]
+        if self.nvidia:
+            lineas.append("NVML: abrirla despierta la NVIDIA dormida")
+        return lineas
+
+
+@contextlib.contextmanager
+def _sin_despertar(dormidas: _Dormidas | None):
+    """Que el Collector no lea lo que despierta una gráfica dormida.
+
+    Lo que se le niega lo recibe como un archivo que no existe, que es como
+    lo verá al leer el volcado.
+    """
+    if not dormidas:
+        yield
+        return
+    from silux import gpuapi, nvml
+
+    def guardar(funcion):
+        def envuelta(camino, *args, **kwargs):
+            if dormidas.prohibido(camino):
+                raise FileNotFoundError(errno.ENOENT, "gráfica dormida: no se lee",
+                                        os.fspath(camino))
+            return funcion(camino, *args, **kwargs)
+        return envuelta
+
+    parches = {
+        (builtins, "open"): guardar(builtins.open),
+        (io, "open"): guardar(io.open),
+        (os, "open"): guardar(os.open),
+        (gpuapi, "consultar"): lambda *a, **k: {},
+    }
+    if dormidas.nvidia:
+        parches[(nvml.Nvml, "open")] = lambda self: False
+    originales = {clave: getattr(*clave) for clave in parches}
+    try:
+        for (modulo, nombre), funcion in parches.items():
+            setattr(modulo, nombre, funcion)
+        yield
+    finally:
+        for (modulo, nombre), funcion in originales.items():
+            setattr(modulo, nombre, funcion)
+
+
+def _recoger(dormidas: _Dormidas | None = None):
     """Ejecuta el Collector de verdad, apuntando y grabando lo que pregunta."""
     from silux.collector import Collector
 
     sysroot.empezar_a_grabar()
-    with _apuntando() as (leidos, listados, mirados):
+    with _apuntando() as (leidos, listados, mirados), _sin_despertar(dormidas):
         recolector = Collector()
         try:
             recolector.snapshot()
@@ -641,8 +763,13 @@ def volcar(nombre: str, destino_base: pathlib.Path = DESTINO) -> pathlib.Path:
     if sysroot.activo():
         raise SystemExit(f"{sysroot.VARIABLE} está puesta: esto vuelca el equipo de verdad")
 
-    leidos, listados, mirados, grabado = _recoger()
-    leidos |= _alternativas(leidos)
+    # Lo primero, antes de que nada la despierte: cómo está cada gráfica.
+    dormidas = _Dormidas()
+    leidos, listados, mirados, grabado = _recoger(dormidas)
+    leidos |= _alternativas(leidos) | dormidas.energia()
+    # Copiar también es leer: lo de una gráfica dormida no pasa ni por aquí.
+    leidos = {c for c in leidos if not dormidas.prohibido(c)}
+    mirados = {c for c in mirados if not dormidas.prohibido(c)}
     with tempfile.TemporaryDirectory(prefix="silux-volcado-") as tmp:
         trabajo = pathlib.Path(tmp) / nombre
         trabajo.mkdir()
@@ -672,6 +799,8 @@ def volcar(nombre: str, destino_base: pathlib.Path = DESTINO) -> pathlib.Path:
             "herramienta": 1,
             "vacios": vacios,
             "ilegibles": sorted(limpio._cambiar_texto(c) for c in copia.ilegibles),
+            # Cómo estaba cada gráfica antes de leer nada, por su ranura.
+            "energia_de_las_graficas": dormidas.estados,
             "sin_grabar": [
                 "NVML (NVIDIA propietaria)",
                 "todo lo que lee el ayudante privilegiado",
@@ -686,7 +815,7 @@ def volcar(nombre: str, destino_base: pathlib.Path = DESTINO) -> pathlib.Path:
                 "Quedan la clase, la velocidad y de qué cuelga cada cosa",
                 "las variables del cargador de arranque que no se leen "
                 "(LoaderDevicePartUUID, LoaderSystemToken)",
-            ] + ([f"{quitadas} interfaces de red en serie (puentes de Docker y "
+            ] + dormidas.sin_grabar() + ([f"{quitadas} interfaces de red en serie (puentes de Docker y "
                   "veth): queda una de cada"] if quitadas else []),
         }, ensure_ascii=False, indent=1) + "\n")
 

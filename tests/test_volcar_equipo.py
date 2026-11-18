@@ -1,5 +1,6 @@
 """Lo que tapa `tools/volcar_equipo.py` y cómo se da cuenta de lo que no."""
 
+import contextlib
 import importlib.util
 import pathlib
 import tempfile
@@ -7,6 +8,7 @@ import unittest
 
 from silux import privacidad
 from silux.model import CpuInfo, Disk, NetworkInterface, Partition, Snapshot
+from tests.arbol import arbol
 
 
 def _herramienta():
@@ -267,6 +269,130 @@ class TestLosMontajesEnLaComprobacionFinal(unittest.TestCase):
         self.assertEqual(volcar._lo_que_anonimizar_taparia(foto), ["disks"])
 
 
+
+
+# Una RX 9070 XT tal como la publica el 5800X3D volcado: el puerto raíz, el
+# conmutador que lleva la tarjeta dentro (subida y bajada), la gráfica y su
+# audio HDMI en la misma ranura. Los valores son los de ese volcado. Lo que
+# cambia es el estado de energía, que vale lo que el kernel escribe cuando la
+# tarjeta duerme: `suspended` (Documentation/ABI/testing/sysfs-devices-power)
+# y `D3cold` (Documentation/ABI/testing/sysfs-bus-pci, `power_state`, 5.11).
+PUERTO = "/sys/devices/pci0000:00/0000:00:03.1"
+SUBIDA = f"{PUERTO}/0000:0a:00.0"
+BAJADA = f"{SUBIDA}/0000:0b:00.0"
+GRAFICA = f"{BAJADA}/0000:0c:00.0"
+AUDIO = f"{BAJADA}/0000:0c:00.1"
+
+
+def _equipo_con_dedicada(estado: str, power_state: str):
+    archivos = {}
+    for puente in (PUERTO, SUBIDA, BAJADA):
+        archivos.update({f"{puente}/class": "0x060400\n",
+                         f"{puente}/current_link_speed": "16.0 GT/s PCIe\n",
+                         f"{puente}/current_link_width": "16\n"})
+    archivos.update({
+        f"{GRAFICA}/vendor": "0x1002\n", f"{GRAFICA}/device": "0x7550\n",
+        f"{GRAFICA}/class": "0x030000\n",
+        f"{GRAFICA}/power/runtime_status": f"{estado}\n",
+        f"{GRAFICA}/power_state": f"{power_state}\n",
+        f"{GRAFICA}/power/control": "auto\n",
+        f"{GRAFICA}/current_link_speed": "32.0 GT/s PCIe\n",
+        f"{GRAFICA}/current_link_width": "16\n",
+        f"{GRAFICA}/max_link_speed": "32.0 GT/s PCIe\n",
+        f"{GRAFICA}/gpu_busy_percent": "0\n",
+        f"{GRAFICA}/hwmon/hwmon3/name": "amdgpu\n",
+        f"{GRAFICA}/hwmon/hwmon3/temp1_input": "38000\n",
+        f"{AUDIO}/vendor": "0x1002\n", f"{AUDIO}/class": "0x040300\n",
+        f"{AUDIO}/current_link_speed": "32.0 GT/s PCIe\n",
+    })
+    return archivos
+
+
+@contextlib.contextmanager
+def _montado(estado="suspended", power_state="D3cold"):
+    with arbol(_equipo_con_dedicada(estado, power_state),
+               carpetas=[f"{GRAFICA}/drm/card1", f"{GRAFICA}/drm/renderD128"]) as raiz:
+        # Los enlaces que pone el núcleo de dispositivos: el del bus
+        # (drivers/base/bus.c, `bus_add_device`), el de cada clase y el
+        # `device` de vuelta (drivers/base/core.c, `device_add_class_symlinks`).
+        enlaces = {
+            "/sys/class/drm/card1": f"../..{GRAFICA[4:]}/drm/card1",
+            f"{GRAFICA}/drm/card1/device": "../../../0000:0c:00.0",
+            "/sys/class/hwmon/hwmon3": f"../..{GRAFICA[4:]}/hwmon/hwmon3",
+            f"{GRAFICA}/hwmon/hwmon3/device": "../../../0000:0c:00.0",
+        }
+        for ranura, carpeta in (("0000:00:03.1", PUERTO), ("0000:0a:00.0", SUBIDA),
+                                ("0000:0b:00.0", BAJADA), ("0000:0c:00.0", GRAFICA),
+                                ("0000:0c:00.1", AUDIO)):
+            enlaces[f"/sys/bus/pci/devices/{ranura}"] = f"../../..{carpeta[4:]}"
+        for enlace, destino in enlaces.items():
+            camino = raiz / enlace.lstrip("/")
+            camino.parent.mkdir(parents=True, exist_ok=True)
+            camino.symlink_to(destino)
+        yield raiz
+
+
+class TestUnaGraficaDormidaSeQuedaDormida(unittest.TestCase):
+    """B-1: volcar un portátil no puede despertar la dedicada que duerme.
+
+    Desde 6.18 leer `current_link_speed` la saca de D3cold
+    (`pci_config_pm_runtime_get()`), y el volcado grabaría una tarjeta
+    encendida por la herramienta.
+    """
+
+    def test_se_ve_dormida_por_cualquiera_de_los_dos_archivos(self):
+        for estado, power_state in (("suspended", "D3cold"), ("suspended", "D0"),
+                                    ("active", "D3hot")):
+            with self.subTest(estado=estado, power_state=power_state), \
+                    _montado(estado, power_state):
+                self.assertEqual(volcar._Dormidas().dormidas, ["0000:0c:00.0"])
+        with _montado("active", "D0"):
+            self.assertFalse(volcar._Dormidas())
+
+    def test_de_ella_su_ranura_y_sus_puentes_solo_quien_es_y_como_esta(self):
+        with _montado():
+            dormidas = volcar._Dormidas()
+            for permitido in (f"{GRAFICA}/vendor", f"{GRAFICA}/class",
+                              "/sys/bus/pci/devices/0000:0c:00.0/power/runtime_status",
+                              f"{GRAFICA}/power_state", f"{AUDIO}/class"):
+                self.assertFalse(dormidas.prohibido(permitido), permitido)
+            for prohibido in (f"{GRAFICA}/current_link_speed",
+                              "/sys/bus/pci/devices/0000:0c:00.0/gpu_busy_percent",
+                              "/sys/class/hwmon/hwmon3/temp1_input",
+                              f"{AUDIO}/current_link_speed",
+                              f"{PUERTO}/current_link_speed",
+                              "/dev/dri/renderD128", "/dev/dri/card1"):
+                self.assertTrue(dormidas.prohibido(prohibido), prohibido)
+            # Lo que no es de ella se lee como siempre.
+            self.assertFalse(dormidas.prohibido("/proc/cpuinfo"))
+
+    @staticmethod
+    def _leidos_de_verdad(estado="suspended", power_state="D3cold"):
+        """Lo que abre el Collector, con los enlaces resueltos."""
+        import os
+
+        from silux import sysroot
+
+        with _montado(estado, power_state):
+            dormidas = volcar._Dormidas()
+            leidos = volcar._recoger(dormidas)[0]
+            return dormidas, {sysroot.fuera(os.path.realpath(sysroot.ruta(c))) for c in leidos}
+
+    def test_el_collector_de_verdad_no_la_toca(self):
+        _dormidas, leidos = self._leidos_de_verdad()
+        suyos = {c for c in leidos if c.startswith(PUERTO)}
+        # La encontró: sin esto, no tocarla no diría nada.
+        self.assertIn(f"{GRAFICA}/vendor", suyos)
+        seguros = {"vendor", "device", "class", "runtime_status", "power_state",
+                   "subsystem_vendor", "subsystem_device", "revision", "control"}
+        self.assertEqual(sorted(c for c in suyos if c.rsplit("/", 1)[-1] not in seguros), [])
+
+    def test_despierta_se_lee_entera(self):
+        dormidas, leidos = self._leidos_de_verdad("active", "D0")
+        self.assertIn(f"{GRAFICA}/current_link_speed", leidos)
+        self.assertEqual(dormidas.energia(), {
+            f"/sys/bus/pci/devices/0000:0c:00.0/{nombre}"
+            for nombre in ("power/runtime_status", "power_state", "power/control")})
 
 
 class TestMontarDesdeLaTerminal(unittest.TestCase):

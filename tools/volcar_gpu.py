@@ -9,15 +9,46 @@ máquina no hay forma de adivinar cuál de las rutas tiene.
 
     python3 tools/volcar_gpu.py > gpu.txt
 
-No lee nada que necesite permisos y no incluye números de serie.
+No lee nada que necesite permisos y no incluye números de serie. Una gráfica
+que el sistema tiene dormida se queda dormida: de ella solo se lee quién es y
+su estado de energía (ver `SIN_DESPERTAR`).
 """
 
 from __future__ import annotations
 
 import pathlib
+import re
 import sys
 
-SYS_DRM = pathlib.Path("/sys/class/drm")
+RAIZ = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(RAIZ))
+
+from silux import sysroot  # noqa: E402
+
+SYS_DRM = "/sys/class/drm"
+SYS_PCI = "/sys/bus/pci/devices"
+
+# Lo que se puede leer de una gráfica dormida sin despertarla:
+# - `power/runtime_status` y `power/control` son del núcleo de PM y devuelven
+#   lo que el kernel ya tiene guardado (`drivers/base/power/sysfs.c`;
+#   `Documentation/ABI/testing/sysfs-devices-power`).
+# - `power_state` es `pdev->current_state`, guardado también
+#   (`drivers/pci/pci-sysfs.c`; `Documentation/ABI/testing/sysfs-bus-pci`,
+#   desde 5.11).
+# - La identidad: `pci_config_attr` (`drivers/pci/pci-sysfs.c`) imprime los
+#   campos de `struct pci_dev` que se leyeron al enumerar el bus, sin volver
+#   al espacio de configuración. `driver` es un enlace: no se abre.
+# Lo demás se da por peligroso. El enlace (`current_link_*`) llama a
+# `pci_config_pm_runtime_get()` desde 6.18 y saca la tarjeta de D3cold; el
+# hwmon de amdgpu la despertaba antes de `amdgpu_pm_get_access_if_active()`;
+# NVML, según el README de NVIDIA (cap. 22, RTD3), la pone activa al abrirse.
+IDENTIDAD = ("vendor", "device", "subsystem_vendor", "subsystem_device",
+             "revision", "class")
+ENERGIA = ("power/runtime_status", "power_state", "power/control")
+SIN_DESPERTAR = IDENTIDAD + ENERGIA
+# `runtime_status` y `power_state` cuando la tarjeta duerme.
+DORMIDA = ("suspended",)
+APAGADA = ("D3hot", "D3cold")
 
 # Lo que se busca en cada nodo. Las rutas con barra se prueban tal cual.
 INTERESAN = (
@@ -31,7 +62,7 @@ INTERESAN = (
     "tile0/gt0/freq0/max_freq", "tile0/gt0/freq0/min_freq",
 )
 EN_EL_NODO_PCI = (
-    "vendor", "device", "subsystem_vendor", "subsystem_device", "revision",
+    "subsystem_vendor", "subsystem_device", "revision",
     "gpu_busy_percent", "mem_busy_percent", "vcn_busy_percent",
     "mem_info_vram_total", "mem_info_vram_used", "mem_info_vis_vram_total",
     "mem_info_gtt_total", "mem_info_gtt_used",
@@ -42,19 +73,59 @@ EN_EL_NODO_PCI = (
 )
 
 
-def _leer(ruta: pathlib.Path) -> str | None:
+def _leer(ruta) -> str | None:
     try:
-        return ruta.read_text(encoding="utf-8", errors="replace").strip()
+        return pathlib.Path(sysroot.ruta(str(ruta))).read_text(
+            encoding="utf-8", errors="replace").strip()
     except OSError:
         return None
 
 
-def _volcar(titulo: str, base: pathlib.Path, nombres) -> None:
+def _real(ruta) -> pathlib.Path:
+    """El camino sin enlaces, como lo vería el sistema."""
+    return pathlib.Path(sysroot.fuera(pathlib.Path(sysroot.ruta(str(ruta))).resolve()))
+
+
+def energia(dispositivo) -> dict[str, str]:
+    """El estado de energía de un dispositivo PCI. No lo despierta."""
+    return {nombre: valor for nombre in ENERGIA
+            if (valor := _leer(f"{dispositivo}/{nombre}")) is not None}
+
+
+def dormida(estado: dict[str, str]) -> bool:
+    return (estado.get("power/runtime_status") in DORMIDA
+            or estado.get("power_state") in APAGADA)
+
+
+def graficas() -> list[str]:
+    """Las gráficas del bus PCI (clase 0x03), tengan driver o no."""
+    try:
+        nombres = sorted(p.name for p in pathlib.Path(sysroot.ruta(SYS_PCI)).iterdir())
+    except OSError:
+        return []
+    return [f"{SYS_PCI}/{n}" for n in nombres
+            if (_leer(f"{SYS_PCI}/{n}/class") or "").startswith("0x03")]
+
+
+def cadena(dispositivo) -> list[pathlib.Path]:
+    """Los puentes por los que pasa el dispositivo hasta la raíz, sin él.
+
+    La misma cuenta que `providers.drm._cadena_pcie`: se sube mientras la
+    carpeta tenga forma de dirección PCI.
+    """
+    actual = _real(dispositivo).parent
+    eslabones = []
+    while re.fullmatch(r"[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\.[0-9a-f]", actual.name):
+        eslabones.append(actual)
+        actual = actual.parent
+    return eslabones
+
+
+def _volcar(titulo: str, base, nombres) -> None:
     print(f"\n  [{titulo}]")
     vistos = 0
     for nombre in nombres:
-        ruta = base / nombre
-        valor = _leer(ruta)
+        valor = _leer(f"{base}/{nombre}")
         if valor is None:
             continue
         vistos += 1
@@ -69,44 +140,53 @@ def _volcar(titulo: str, base: pathlib.Path, nombres) -> None:
 
 
 def main() -> int:
-    if not SYS_DRM.is_dir():
+    drm = pathlib.Path(sysroot.ruta(SYS_DRM))
+    if not drm.is_dir():
         print("Este equipo no expone /sys/class/drm.", file=sys.stderr)
         return 1
 
-    print(f"kernel: {_leer(pathlib.Path('/proc/sys/kernel/osrelease'))}")
+    print(f"kernel: {_leer('/proc/sys/kernel/osrelease')}")
 
-    tarjetas = sorted(p for p in SYS_DRM.glob("card*") if p.name[4:].isdigit())
+    tarjetas = sorted(p.name for p in drm.glob("card*") if p.name[4:].isdigit())
     if not tarjetas:
         print("No hay ninguna tarjeta registrada.", file=sys.stderr)
         return 1
 
-    for nodo in tarjetas:
-        dispositivo = nodo / "device"
-        driver = None
-        try:
-            driver = (dispositivo / "driver").resolve().name
-        except OSError:
-            pass
+    for tarjeta in tarjetas:
+        nodo = f"{SYS_DRM}/{tarjeta}"
+        dispositivo = f"{nodo}/device"
+        enlace = pathlib.Path(sysroot.ruta(f"{dispositivo}/driver"))
+        driver = _real(enlace).name if enlace.exists() else None
         print(f"\n{'=' * 62}")
-        print(f"{nodo.name}  ·  driver {driver or '?'}")
+        print(f"{tarjeta}  ·  driver {driver or '?'}")
         try:
-            print(f"  ranura: {dispositivo.resolve().name}")
+            print(f"  ranura: {_real(dispositivo).name}")
         except OSError:
             pass
+
+        # Lo primero, antes de tocar nada que la despierte.
+        estado = energia(dispositivo)
+        _volcar("energía", dispositivo, ENERGIA)
+        _volcar("identidad", dispositivo, ("vendor", "device", "class"))
+        if dormida(estado):
+            print("\n  La tarjeta está dormida: no se lee nada más de ella para no "
+                  "despertarla. Para volcarla entera, que la use un programa "
+                  "(o `power/control` a `on`) y se repite.")
+            continue
 
         _volcar("nodo DRM: frecuencias", nodo, INTERESAN)
         _volcar("nodo PCI", dispositivo, EN_EL_NODO_PCI)
 
         # Qué hay dentro de gt/, que es donde el kernel moderno las guarda.
         for jerarquia in ("gt", "tile0"):
-            directorio = nodo / jerarquia
+            directorio = pathlib.Path(sysroot.ruta(f"{nodo}/{jerarquia}"))
             if directorio.is_dir():
                 print(f"\n  [árbol de {jerarquia}/]")
                 for hijo in sorted(directorio.rglob("*")):
                     if hijo.is_file():
-                        print(f"    {hijo.relative_to(nodo)}")
+                        print(f"    {hijo.relative_to(directorio.parent)}")
 
-        hwmon = dispositivo / "hwmon"
+        hwmon = pathlib.Path(sysroot.ruta(f"{dispositivo}/hwmon"))
         if hwmon.is_dir():
             for chip in sorted(hwmon.iterdir()):
                 print(f"\n  [hwmon: {_leer(chip / 'name')}]")
