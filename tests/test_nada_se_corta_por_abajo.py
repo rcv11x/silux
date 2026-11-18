@@ -144,6 +144,17 @@ class TestNadaSeCortaPorAbajo(unittest.TestCase):
             barra = tabla.verticalScrollBar()
             if barra.maximum() > 0:
                 malas.append(f"{tabla._headers[0]}: {barra.maximum()} px fuera de la vista")
+        # Los árboles que se miden a mano, como el del USB. El de Sensores
+        # ocupa la página y se desplaza a propósito.
+        from PySide6.QtWidgets import QTreeWidget
+        from silux.ui.sensortree import SensorTree
+
+        for arbol in pagina.findChildren(QTreeWidget):
+            if isinstance(arbol, SensorTree) or not arbol.isVisibleTo(self.ventana):
+                continue
+            if arbol.verticalScrollBar().maximum() > 0:
+                malas.append(f"{arbol.headerItem().text(0)}: "
+                             f"{arbol.verticalScrollBar().maximum()} filas fuera de la vista")
         return malas
 
     def test_ninguna_tabla_se_desplaza_por_dentro(self):
