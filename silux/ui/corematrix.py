@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from typing import Optional, Sequence
 from PySide6.QtCore import QPointF, QRectF, QSize, Qt
-from PySide6.QtGui import QBrush, QColor, QPainter, QPainterPath, QPen
+from PySide6.QtGui import QBrush, QColor, QPainter, QPainterPath, QPen, QPixmap
 from PySide6.QtWidgets import QSizePolicy, QWidget
 from . import theme
 from .theme import Palette, value_font
@@ -67,6 +67,11 @@ class CoreMatrix(QWidget):
         # medias, y rehacer dieciséis curvas en cada fotograma de una barra
         # era la mitad de lo que gastaba la página CPU.
         self._curvas: dict[tuple, tuple[QPainterPath, QPainterPath]] = {}
+        # La imagen de lo que no se mueve entre muestra y muestra
+        # (`_fondo_al_dia`), con la versión de los datos y el tamaño con que se
+        # pintó. `_version` cambia con cada `set_cores`.
+        self._version = 0
+        self._fondo: Optional[tuple] = None
         self._cell_w = theme.METRICS.cell_w
         # La celda crece para dejar sitio al historial: una barra dice cómo
         # está el núcleo ahora, la curva dice si viene de estar cargado. Ese
@@ -80,6 +85,7 @@ class CoreMatrix(QWidget):
         changed = len(cores) != len(self._cores)
         self._cores = list(cores)
         self._curvas.clear()
+        self._version += 1
         if changed:
             # Uno por hilo, y solo cuando cambia cuántos hay: en cada muestra
             # se reutilizan.
@@ -143,11 +149,51 @@ class CoreMatrix(QWidget):
         super().resizeEvent(event)
 
     def paintEvent(self, event) -> None:  # noqa: N802
+        """Lo fijo, de una imagen; encima, el relleno de cada barra.
+
+        Mientras las barras van hacia su dato (`advance`), cada fotograma
+        repintaba las dieciséis celdas enteras —su nombre, su curva, su
+        estrella— para mover dieciséis rellenos: con el movimiento fluido era
+        un tercio de lo que gastaba la página CPU. Lo que no se mueve se pinta
+        una vez por muestra y por tamaño (`_fondo_al_dia`).
+        """
         if not self._cores:
             return
+        fondo, pistas = self._fondo_al_dia()
         painter = QPainter(self)
+        painter.drawPixmap(0, 0, fondo)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setPen(Qt.PenStyle.NoPen)
+        for i, track in pistas:
+            usage = self._cores[i].get("usage")
+            if usage is None:
+                continue
+            # El largo se desliza; el color va con el dato.
+            largo = self._usos[i].valor() if i < len(self._usos) else usage
+            filled = QRectF(track)
+            filled.setWidth(max(3.0, track.width() * min(100.0, max(0.0, largo)) / 100.0))
+            painter.setBrush(QBrush(self._colour_for(usage)))
+            painter.drawRoundedRect(filled, 2, 2)
+        painter.end()
 
+    def _fondo_al_dia(self) -> tuple[QPixmap, list[tuple[int, QRectF]]]:
+        """La imagen de lo que no se mueve entre muestra y muestra, y dónde va
+        la barra de cada hilo."""
+        escala = self.devicePixelRatioF()
+        clave = (self._version, self.width(), self.height(), escala)
+        if self._fondo is not None and self._fondo[0] == clave:
+            return self._fondo[1], self._fondo[2]
+        imagen = QPixmap(max(1, round(self.width() * escala)), max(1, round(self.height() * escala)))
+        imagen.setDevicePixelRatio(escala)
+        imagen.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(imagen)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        pistas = self._pintar_fondo(painter)
+        painter.end()
+        self._fondo = (clave, imagen, pistas)
+        return imagen, pistas
+
+    def _pintar_fondo(self, painter: QPainter) -> list[tuple[int, QRectF]]:
         columns = self._columns()
         cell_width = (self.width() - (columns - 1) * self.GAP) / columns
         font = value_font(max(7, theme.METRICS.mono_pt - 1))
@@ -159,6 +205,7 @@ class CoreMatrix(QWidget):
         pad_h = max(5.0, linea * 0.45)
         pad_v = max(4.0, linea * 0.35)
         grosor = max(3.0, round(linea * 0.28))
+        pistas: list[tuple[int, QRectF]] = []
 
         for i, core in enumerate(self._cores):
             col, row = i % columns, i // columns
@@ -231,17 +278,8 @@ class CoreMatrix(QWidget):
             painter.setPen(Qt.PenStyle.NoPen)
             painter.setBrush(QBrush(self._p.q("line")))
             painter.drawRoundedRect(track, 2, 2)
-
-            usage = core.get("usage")
-            if usage is not None:
-                # El largo se desliza; el color va con el dato.
-                largo = self._usos[i].valor() if i < len(self._usos) else usage
-                filled = QRectF(track)
-                filled.setWidth(max(3.0, track.width() * min(100.0, max(0.0, largo)) / 100.0))
-                painter.setBrush(QBrush(self._colour_for(usage)))
-                painter.drawRoundedRect(filled, 2, 2)
-
-        painter.end()
+            pistas.append((i, track))
+        return pistas
 
     def _draw_history(self, painter: QPainter, rect: QRectF, values, hilo: int) -> None:
         """Curva de uso reciente, siempre en escala 0-100 para que las celdas

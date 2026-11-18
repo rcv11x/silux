@@ -207,6 +207,30 @@ class TestLasBarrasDeVerdad(unittest.TestCase):
             matriz.render(lienzo)
             self.assertEqual(curva.call_count, 8, "con la muestra nueva, dos por hilo")
 
+    def test_la_de_cada_hilo_no_repinta_lo_fijo_en_cada_fotograma(self):
+        """Celdas, nombres, curvas y estrellas se pintan una vez por muestra;
+        en cada fotograma, solo el relleno de las barras."""
+        from PySide6.QtGui import QPixmap
+
+        from silux.ui.corematrix import CoreMatrix
+        matriz = self.a_la_vista(CoreMatrix(self.paleta))
+        hilos = lambda uso: [{"name": f"CPU {n}", "detail": "4.45 GHz", "detail_short": "4.45 GHz",
+                              "usage": uso, "history": (1.0, 5.0, 3.0), "starred": n == 0}
+                             for n in range(8)]
+        matriz.set_cores(hilos(10.0))
+        matriz.set_cores(hilos(90.0))
+        lienzo = QPixmap(matriz.size())
+        matriz.render(lienzo)
+        with mock.patch.object(matriz, "_pintar_fondo", wraps=matriz._pintar_fondo) as fondo:
+            for _vez in range(5):
+                self.reloj.pasar(0.03)
+                matriz.advance(0.1)
+                matriz.render(lienzo)
+            self.assertEqual(fondo.call_count, 0)
+            matriz.set_cores(hilos(40.0))
+            matriz.render(lienzo)
+            self.assertEqual(fondo.call_count, 1, "con la muestra nueva, una vez")
+
     def test_la_de_memoria_no_repinta_su_leyenda_en_cada_fotograma(self):
         """La leyenda va debajo de la barra, dentro del mismo widget. Repintar
         el widget entero repintaba sus insignias en cada fotograma: casi cien
