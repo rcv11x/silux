@@ -815,6 +815,7 @@
   "perm.explain.close": "Close",
   "perm.explain.copy": "Copy",
   "perm.explain.grant": "Grant permissions this time",
+  "perm.explain.granted": "Permissions are already granted for this session.",
   "perm.explain.once": "This time: the helper lives while silux is open. It goes away when you close the program, and next time you will have to grant them again.",
   "perm.explain.permanent": "For good…",
   "perm.explain.polkit": "The password is asked by polkit, the system component that authorises these things, in its own window. silux does not see it or store it.",

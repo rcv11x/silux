@@ -28,7 +28,8 @@ class PermissionsDialog(QDialog):
     grant_requested = Signal()
     permanent_requested = Signal()
 
-    def __init__(self, permanente: bool = True, parent: Optional[QWidget] = None):
+    def __init__(self, permanente: bool = True, concedidos: bool = False,
+                 parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.setWindowTitle(_("perm.explain.title"))
         self.setModal(True)
@@ -60,6 +61,13 @@ class PermissionsDialog(QDialog):
         self.grant_button.setObjectName("Primary")
         self.grant_button.setDefault(True)
         self.grant_button.clicked.connect(self._dar)
+        # Con los permisos ya concedidos, «Dar permisos esta vez» no hace
+        # nada: no se ofrece. Se dice que ya están, y queda «para siempre»
+        # si el ayudante no está instalado.
+        self.grant_button.setVisible(not concedidos)
+        self.granted_label = QLabel(_("perm.explain.granted"))
+        self.granted_label.setObjectName("FieldName")
+        self.granted_label.setVisible(concedidos)
         # Con los puntos suspensivos: abre otro diálogo, el de polkit, y no
         # es lo mismo que el de al lado.
         self.permanent_button = QPushButton(_("perm.explain.permanent"))
@@ -74,6 +82,7 @@ class PermissionsDialog(QDialog):
         botones = QHBoxLayout()
         botones.setContentsMargins(0, 6, 0, 0)
         botones.addWidget(self.grant_button)
+        botones.addWidget(self.granted_label)
         botones.addWidget(self.permanent_button)
         botones.addStretch(1)
         botones.addWidget(self.close_button)

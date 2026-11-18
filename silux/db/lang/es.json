@@ -815,6 +815,7 @@
   "perm.explain.close": "Cerrar",
   "perm.explain.copy": "Copiar",
   "perm.explain.grant": "Dar permisos esta vez",
+  "perm.explain.granted": "Los permisos ya están concedidos en esta sesión.",
   "perm.explain.once": "Esta vez: el ayudante vive mientras silux está abierto. Al cerrar el programa se va con él, y la próxima vez habrá que volver a darlos.",
   "perm.explain.permanent": "Para siempre…",
   "perm.explain.polkit": "La contraseña la pide polkit, el componente del sistema que autoriza estas cosas, en su propia ventana. silux no la ve ni la guarda.",

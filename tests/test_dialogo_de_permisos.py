@@ -247,3 +247,32 @@ class TestDesdeElAviso(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestConLosPermisosYaConcedidos(unittest.TestCase):
+    """Con el ayudante ya conectado, «Dar permisos esta vez» no hace nada."""
+
+    def setUp(self):
+        qt.app()
+
+    def test_no_se_ofrece(self):
+        from silux.ui.dialogs import PermissionsDialog
+        dialogo = PermissionsDialog(permanente=True, concedidos=True)
+        self.addCleanup(dialogo.deleteLater)
+        self.assertTrue(dialogo.grant_button.isHidden())
+        self.assertFalse(dialogo.granted_label.isHidden())
+        self.assertFalse(dialogo.permanent_button.isHidden())
+
+    def test_la_ventana_lo_sabe_por_la_foto(self):
+        import dataclasses
+        from silux.settings import Preferences
+        from silux.ui.app import MainWindow
+        from tests import muestras
+        ventana = MainWindow(Preferences().normalized())
+        self.addCleanup(ventana.deleteLater)
+        foto = muestras.foto_real()
+        ventana._last_snapshot = dataclasses.replace(
+            foto, privileged=dataclasses.replace(foto.privileged, connected=True))
+        ventana._explicar_permisos()
+        self.addCleanup(ventana._dialogo_permisos.deleteLater)
+        self.assertTrue(ventana._dialogo_permisos.grant_button.isHidden())

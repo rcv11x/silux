@@ -963,6 +963,7 @@ class MainWindow(QMainWindow):
         dialogo = PermissionsDialog(
             permanente=(not PrivilegedClient.instalado()
                         or PrivilegedClient.necesita_reinstalar()),
+            concedidos=self._permisos_concedidos(),
             parent=self)
         dialogo.grant_requested.connect(self._on_elevation_requested)
         dialogo.permanent_requested.connect(self._on_permanent_requested)
@@ -970,6 +971,13 @@ class MainWindow(QMainWindow):
         # muestreo, que sigue pintando detrás.
         self._dialogo_permisos = dialogo
         dialogo.open()
+
+    def _permisos_concedidos(self) -> bool:
+        """Si esta sesión ya lee con permisos: el ayudante conectado, o root."""
+        foto = self._last_snapshot
+        if foto is None:
+            return False
+        return bool(foto.privileged.connected or foto.privileged.already_root)
 
     def _apartar_aviso(self) -> None:
         # Apartarlo también vale para el de la recaída: sale otra vez si
