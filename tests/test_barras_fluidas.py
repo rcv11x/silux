@@ -168,9 +168,13 @@ class TestLasBarrasDeVerdad(unittest.TestCase):
     def test_la_de_cada_hilo_tambien(self):
         from silux.ui.corematrix import CoreMatrix
         matriz = self.a_la_vista(CoreMatrix(self.paleta))
-        matriz.set_cores([{"name": "CPU 0", "usage": 10.0, "history": ()}])
+        # Lo que manda la página CPU (cpulive.py) para cada hilo: con una
+        # clave de menos, la matriz no se puede pintar.
+        hilo = {"name": "CPU 0", "detail": "4.45 GHz", "detail_short": "4.45 GHz",
+                "history": (), "starred": False}
+        matriz.set_cores([dict(hilo, usage=10.0)])
         uso = matriz._usos[0]
-        matriz.set_cores([{"name": "CPU 0", "usage": 90.0, "history": ()}])
+        matriz.set_cores([dict(hilo, usage=90.0)])
         self.assertIs(matriz._usos[0], uso, "se reutiliza, no se recrea")
         self.assertAlmostEqual(uso.valor(), 10.0)
         self.reloj.pasar(1.0)
@@ -230,6 +234,30 @@ class TestLasBarrasDeVerdad(unittest.TestCase):
             matriz.set_cores(hilos(40.0))
             matriz.render(lienzo)
             self.assertEqual(fondo.call_count, 1, "con la muestra nueva, una vez")
+
+    def test_si_pintar_el_fondo_falla_el_pintor_se_cierra(self):
+        """Un pintor que se queda abierto sobre la imagen del fondo tumbaba
+        el proceso dos tests después, con PySide6 6.11 y Python 3.10 (el CI):
+        `Segmentation fault` lejos de lo que lo causó."""
+        from silux.ui import corematrix
+        from silux.ui.corematrix import CoreMatrix
+        matriz = CoreMatrix(self.paleta)
+        self.addCleanup(matriz.deleteLater)
+        matriz.resize(300, 100)
+        matriz.set_cores([{"name": "CPU 0", "detail": "", "detail_short": "", "usage": 5.0,
+                           "history": (), "starred": False}])
+        cerrados = []
+        original = corematrix.QPainter.end
+
+        def end(pintor):
+            cerrados.append(pintor)
+            return original(pintor)
+
+        with mock.patch.object(matriz, "_pintar_fondo", side_effect=RuntimeError("al pintar")), \
+                mock.patch.object(corematrix.QPainter, "end", end):
+            with self.assertRaises(RuntimeError):
+                matriz._fondo_al_dia()
+        self.assertEqual(len(cerrados), 1)
 
     def test_la_de_memoria_no_repinta_su_leyenda_en_cada_fotograma(self):
         """La leyenda va debajo de la barra, dentro del mismo widget. Repintar

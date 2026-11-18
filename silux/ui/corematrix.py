@@ -188,8 +188,13 @@ class CoreMatrix(QWidget):
         imagen.fill(Qt.GlobalColor.transparent)
         painter = QPainter(imagen)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        pistas = self._pintar_fondo(painter)
-        painter.end()
+        # Cerrado pase lo que pase: un pintor que se queda abierto sobre una
+        # imagen que se destruye tumba el proceso más tarde, lejos de aquí
+        # (con PySide6 6.11 y Python 3.10, en el CI).
+        try:
+            pistas = self._pintar_fondo(painter)
+        finally:
+            painter.end()
         self._fondo = (clave, imagen, pistas)
         return imagen, pistas
 
