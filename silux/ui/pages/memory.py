@@ -96,6 +96,7 @@ class MemoryPage(QScrollArea):
         self._limite = None
         # La versión del kernel de la foto, (6, 11).
         self._kernel = None
+        self._nota_spd = None
         m = theme.METRICS
 
         self.setWidgetResizable(True)
@@ -466,6 +467,8 @@ class MemoryPage(QScrollArea):
         self.subtitle.setText(self._subtitle(snapshot))
         self._limite = self._limite_del_procesador(snapshot)
         self._kernel = kernel.version(snapshot.system.kernel)
+        # Por qué no se lee el SPD, si no se lee: lo diagnostica el proveedor.
+        self._nota_spd = next((n for n in snapshot.notes if n.path == "spd"), None)
         self._apply_avisos(snapshot)
         self._apply_badges(snapshot)
 
@@ -768,7 +771,15 @@ class MemoryPage(QScrollArea):
                 grid.add(_(name))
             card.body.addWidget(grid)
             self._fill(grid, module, self._limite)
+            nota_spd = getattr(self, "_nota_spd", None)
             for clave in self._solo_del_spd(module):
+                if nota_spd is not None and nota_spd.need is Need.DRIVER \
+                        and clave != "memory.field.vendor":
+                    # El SPD está y se lee cargando su driver: candado, no
+                    # «no hay de dónde».
+                    grid.set_locked(_(clave), self._p.info,
+                                    f"{nota_spd.message}\n\n{_('memory.tip.spddriver')}")
+                    continue
                 grid.set_visible(_(clave), False)
                 if clave not in sin_spd:
                     sin_spd.append(clave)
@@ -802,7 +813,15 @@ class MemoryPage(QScrollArea):
             pies.append(_("memory.na.nospd.kernel").format(
                 campos=lista[:1].upper() + lista[1:], kernel=viejo))
         elif sin_spd:
-            pies.append(_("memory.na.nospd").format(campos=lista[:1].upper() + lista[1:]))
+            # La causa, si el proveedor la sabe (sin bus, o bus reservado por
+            # el firmware); si no, se dice que no se pudo leer, sin culpar a
+            # la placa de lo que puede ser un permiso o un driver.
+            nota_spd = getattr(self, "_nota_spd", None)
+            campos = lista[:1].upper() + lista[1:]
+            pies.append(_("memory.na.nospd.why").format(
+                campos=campos, motivo=nota_spd.message[:1].lower() + nota_spd.message[1:])
+                        if nota_spd is not None else
+                        _("memory.na.nospd").format(campos=campos))
         if sin_perfiles:
             pies.append(_("memory.na.noprofiles.all") if sin_perfiles == leidos
                         else _("memory.na.noprofiles.some").format(n=sin_perfiles))

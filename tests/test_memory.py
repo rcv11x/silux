@@ -932,3 +932,78 @@ class TestAntesDeNehalemLaMemoriaEsDelChipset(unittest.TestCase):
         texto = pagina.avisos.text()
         self.assertIn(_("mem.chipset"), texto)
         self.assertNotIn("procesador", texto.replace(_("mem.chipset"), ""))
+
+
+class TestSinSpdNoSeCulpaALaPlaca(unittest.TestCase):
+    """«… salen del chip SPD de cada módulo, y esta placa no deja leerlo» se
+    decía siempre que faltaba el SPD, sin mirar el porqué. El proveedor lo
+    diagnostica: sin bus o con el bus reservado por el firmware es la placa;
+    con el bus y sin driver, el SPD está y se lee cargándolo, con permisos:
+    candado, no culpa de la placa."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.app = qt.app()
+
+    def _pagina(self, muestra):
+        import dataclasses
+        from silux.model import MemoryModule
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.memory import MemoryPage
+
+        # Los módulos como los da la tabla del firmware con permisos.
+        modulos = tuple(MemoryModule(populated=True, locator=f"DIMM {n}", bank=f"BANK {n}",
+                                     type="DDR4", size_bytes=8 << 30, speed_mts=3200,
+                                     configured_mts=3200, manufacturer="Kingston", rank=1)
+                        for n in (0, 1))
+        pagina = MemoryPage(theme.palette_for(self.app, "dark"), Preferences())
+        self.addCleanup(pagina.deleteLater)
+        pagina.resize(1200, 900)
+        pagina.show()
+        pagina.apply(dataclasses.replace(muestra, modules=modulos, spd=()))
+        self.app.processEvents()
+        return pagina
+
+    def test_con_el_bus_reservado_lo_dice_el_diagnostico(self):
+        from silux.i18n import _
+        from tests.test_equipos import EQUIPOS, foto
+
+        pagina = self._pagina(foto(EQUIPOS / "5800x3d")[0])
+        texto = pagina.spd_missing.text()
+        # Aquí sí es de la placa, y se dice por qué.
+        self.assertIn(_("spd.nobus")[1:40], texto)
+        self.assertNotIn("esta placa no deja", texto)
+
+    def test_sin_driver_es_candado(self):
+        """La nota es la que deja el proveedor en un equipo con el bus y sin
+        ee1004 cargado (spd.diagnostico: «nodriver», Need.DRIVER). No sale
+        de una copia del volcado: el volcado guardó lo que se leyó, y al
+        encontrar el SPD nadie miró la lista de buses."""
+        import dataclasses
+        from silux.i18n import _
+        from silux.model import Need, Note
+        from tests.test_equipos import EQUIPOS, foto
+
+        base = foto(EQUIPOS / "i5-10400")[0]
+        nota = Note("spd", Need.DRIVER, _("spd.nodriver"), _("spd.nodriver.hint"))
+        pagina = self._pagina(dataclasses.replace(base, notes=base.notes + (nota,)))
+        ficha = pagina._slot_grids[0]
+        for clave in ("memory.field.chips", "memory.field.profiles", "memory.field.made"):
+            with self.subTest(campo=clave):
+                self.assertTrue(ficha.is_locked(_(clave)))
+        self.assertFalse(pagina.spd_missing.isVisibleTo(pagina))
+
+    def test_el_proveedor_distingue_driver_de_placa(self):
+        from unittest import mock
+        from silux.i18n import _
+        from silux.model import Need
+        from silux.providers.spd_modules import SpdModules
+
+        proveedor = SpdModules()
+        for motivo, need in ((_("spd.nodriver"), Need.DRIVER), (_("spd.nobus"), Need.HARDWARE),
+                             (_("spd.nosmbus"), Need.HARDWARE)):
+            with self.subTest(motivo=motivo[:30]), \
+                    mock.patch.object(SpdModules, "available", return_value=False), \
+                    mock.patch("silux.spd.diagnostico", return_value=(motivo, "")):
+                self.assertIs(proveedor.unavailable_reason()[1], need)

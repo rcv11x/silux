@@ -185,7 +185,7 @@ class TestLosVolcadosEnUn515(unittest.TestCase):
                 self.app.processEvents()
                 texto = pagina.spd_missing.text()
                 self.assertEqual(kernel.too_old("spd5118", (5, 15)) in texto, culpa_al_kernel)
-                self.assertEqual("esta placa no deja" in texto, not culpa_al_kernel)
+                self.assertNotIn("esta placa no deja", texto)
 
     def test_amd_el_techo_lo_atribuye_al_kernel(self):
         nota = self.amd.note_for("cpu.clocks.max_turbo_hz") if hasattr(self.amd, "note_for") \

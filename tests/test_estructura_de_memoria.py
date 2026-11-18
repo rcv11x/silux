@@ -110,10 +110,13 @@ class TestSinSpd(unittest.TestCase):
                 self.assertNotIn(render.DASH, visibles)
             self.assertTrue(pagina.spd_missing.isVisible())
             # Una frase, no una lista de nombres de campo.
+            # Con el porqué que diagnostica el proveedor: en esta placa el
+            # firmware se reserva el bus. No «esta placa no deja», a secas.
             self.assertEqual(
                 pagina.spd_missing.text(),
                 "Los chips, los perfiles rápidos y la fecha de fabricación salen del "
-                "chip SPD de cada módulo, y esta placa no deja leerlo.")
+                "chip SPD de cada módulo, y no se puede leer: el controlador SMBus existe "
+                "pero el kernel no lo ha activado: el firmware de la placa se reserva ese bus.")
 
     def test_si_la_tabla_tampoco_dice_el_fabricante_tambien_se_esconde(self):
         import dataclasses

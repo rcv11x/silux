@@ -27,8 +27,9 @@ class TestElAvisoDelSmbus(unittest.TestCase):
         return notas[0]
 
     def test_el_volcado_tiene_el_caso(self):
+        # Es la placa, no un permiso ni un driver que cargar: sin candado.
         nota = self._nota("es")
-        self.assertIs(nota.need, Need.DRIVER)
+        self.assertIs(nota.need, Need.HARDWARE)
         self.assertIn("SMBus", nota.message)
 
     def test_si_nombra_el_parametro_dice_el_riesgo(self):
