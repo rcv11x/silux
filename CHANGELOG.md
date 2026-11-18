@@ -77,6 +77,9 @@ publica se dice con la versión que lo trae.
 - Arreglado: decía que una gráfica integrada «usa 11.6 GB de la RAM».
 - Arreglado: el nombre de la tarjeta de red salía cortado por abajo cuando
   ocupaba dos líneas.
+- Arreglado: la tarjeta Gráfica enseña la que está trabajando (la dedicada
+  en un equipo para jugar) y no la primera de la lista, que en un portátil
+  suele ser la integrada. Lo mismo la temperatura y la imagen para compartir.
 
 ### Procesador
 
@@ -157,6 +160,13 @@ publica se dice con la versión que lo trae.
   publican, por qué se frena.
 - Nuevo: la tabla de códecs de video marca lo que la tarjeta acelera y lo
   que no, sin depender del color.
+- Nuevo: en una integrada (Intel o APU de AMD), «Ahora mismo» tiene una
+  barra por motor: render, video, mejora de video y copia. En Intel, sin
+  permisos llevan un candado; con permisos se mueven con cada muestreo.
+- Cambiado: la dedicada de un portátil que está en reposo no se despierta
+  para leerla. Gráficos dice «En reposo» y lo último que se supo, y no se le
+  pregunta nada (ni su enlace, ni sus sensores, ni NVML) hasta que algo la
+  use.
 - Nuevo: sin permisos, el uso y el consumo de una gráfica Intel, y el uso de
   cada motor, llevan un candado.
 - Cambiado: lo que una integrada no tiene (memoria propia, reguladores,
@@ -173,6 +183,19 @@ publica se dice con la versión que lo trae.
   no «Tul Corporation / PowerColor».
 - Arreglado: un identificador único todo a ceros ya no se enseña.
 - Arreglado: «en reposo» en vez de «0 MHz» cuando el motor gráfico duerme.
+- Arreglado: en una APU de AMD, el consumo de todo el procesador salía
+  como el de la gráfica, y la temperatura del SoC como «Punto caliente».
+  Ahora no se enseñan, y se dice por qué al pie.
+- Arreglado: en una APU de AMD con un kernel anterior al 6.10, el uso del
+  video salía cien veces mayor (0,45 % como 45 %).
+- Arreglado: cualquier Arc decía «PCIe 1.0 × 1». Su enlace no se puede leer
+  con seguridad y no se enseña.
+- Arreglado: una Arc con el driver `i915` junto a una integrada enseñaba el
+  uso de la integrada. Con `xe`, decía que no publica su temperatura, y la
+  publica.
+- Arreglado: la telemetría de AMD en su formato 1.0 se leía con las
+  posiciones de otro, y salían cifras creíbles y falsas. Ahora se dice que
+  ese formato no se interpreta.
 
 ### Almacenamiento
 
@@ -261,6 +284,9 @@ publica se dice con la versión que lo trae.
 - Nuevo: Ajustes reordenado en grupos (General, Apariencia, Muestreo,
   Permisos, Integración con el escritorio, Compartir e informes, Acerca de),
   con interruptores en vez de casillas.
+- Cambiado: la versión se enseña «0.4»; el tercer número sale solo en una
+  versión de arreglos («0.4.1»). `--version` y el informe la siguen dando
+  entera.
 - Nuevo: «Integración con el escritorio» pone silux en el menú de
   aplicaciones con su icono, y si quieres un acceso en el escritorio, sin
   pedir permisos. Desde el AppImage, la entrada apunta al AppImage; desde el
@@ -338,6 +364,10 @@ publica se dice con la versión que lo trae.
 - Gráficos está probado con una Radeon dedicada (amdgpu) y una integrada
   Intel (i915). NVIDIA, el driver `xe` de Intel, nouveau y `radeon` están
   escritos sin haberlos visto en un equipo real.
+- Una Arc no enseña su enlace PCIe y, con `i915`, tampoco su uso: leer su
+  contador pide un cambio en el ayudante de permisos que está propuesto.
+- Que la dedicada de un portátil no se despierte está escrito con el código
+  del kernel, sin un portátil con dos gráficas delante.
 - En un procesador ARM, la página CPU está escrita sin haberla probado.
 - El perfil XMP de un módulo DDR4 puede salir un grado por debajo del suyo
   (un DDR4-3600 como 3200).
