@@ -245,6 +245,29 @@ class TestSustituir(unittest.TestCase):
                          {updates.NORMAL: "a" * 64, updates.COMPAT: "b" * 64})
 
 
+class TestElCiPublicaLasSumas(unittest.TestCase):
+    """Sin `SHA256SUMS` en la release, el programa no se actualiza: lo tiene
+    que subir el CI, con los dos AppImage y con los nombres que se buscan."""
+
+    def setUp(self):
+        self.flujo = (pathlib.Path(__file__).resolve().parent.parent
+                      / ".github" / "workflows" / "appimage.yml").read_text()
+
+    def test_las_sumas_cubren_los_dos_appimage(self):
+        orden = [linea for linea in self.flujo.splitlines()
+                 if "sha256sum" in linea and not linea.lstrip().startswith("#")]
+        self.assertEqual(len(orden), 1, orden)
+        self.assertIn(updates.NORMAL, orden[0])
+        self.assertIn(updates.COMPAT, orden[0])
+        self.assertTrue(orden[0].rstrip().endswith("> " + updates.SUMS), orden[0])
+
+    def test_se_publican_en_la_release(self):
+        publicar = self.flujo[self.flujo.index("action-gh-release"):]
+        self.assertIn(f"dist/{updates.SUMS}", publicar)
+        for nombre in (updates.NORMAL, updates.COMPAT):
+            self.assertIn(f"dist/{nombre}", publicar)
+
+
 @unittest.skipUnless(HAS_SVG, "hace falta el complemento qsvg de Qt")
 class TestElAccesoDirecto(_EnCasaFalsa):
     """La entrada de menú apunta a `$APPIMAGE`; el nuevo ocupa esa ruta."""
