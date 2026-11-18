@@ -22,6 +22,7 @@ python3 -m silux.cli --json             # API para otros programas
 python3 -m silux.cli --sensors          # el árbol de sensores
 python3 -m silux.cli --report FICHERO   # informe para adjuntar a un fallo
 python3 tools/gen_cpu_db.py            # regenerar la base de datos de CPUs
+python3 tools/gen_memory_limits.py --intel-desde DIR  # el máximo de memoria por modelo
 python3 tools/gen_lang.py --write      # poner al día los archivos de idioma
 python3 tools/medir_referencia.py      # rehacer la escala de puntuación
 python3 tools/anadir_puntuacion.py INFORMES  # sumar medidas ajenas a la tabla
@@ -120,6 +121,7 @@ silux/
 ├─ report.py       informe en Markdown para reportar fallos
 ├─ privacidad.py   qué identifica a alguien: lo usan el informe y las capturas
 ├─ desktop.py      la entrada de menú y sus iconos: la herramienta y Ajustes
+├─ kernel.py       qué dato es de qué versión del kernel (docs/kernel.md)
 ├─ settings.py     preferencias en ~/.config/silux
 ├─ tracking.py     mínimos, máximos y medias por sensor
 ├─ throttling.py   desde cuándo lleva frenándose algo, y por qué
@@ -184,7 +186,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); los comentarios, en el español del autor. Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-1267 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+1278 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
@@ -293,10 +295,12 @@ código (F-…), que es por el que se buscan allí.
 | `report.py`, `cli.py` | media | zócalos vacíos como módulos (F-M31); tres formateos del valor de un sensor (F-M32) |
 | `tools/probar_en_minimo.py` | media | cualquier fallo del contenedor se anuncia como «la suite no pasa» (F-M37) |
 | `ui/widgets.py` | media-baja | un `float` no finito tumba la gráfica |
-| `ui/widgets.py`, `ui/pages/storage.py` | media-baja | `Table` no pinta un candado en una celda: la temperatura de un SATA sigue con guion en la tabla de unidades |
-| `tests/test_benchmark.py` | media, para la fase del benchmark | un test pide ×1.8 de reparto y en el CI a veces da ×1.76; el umbral no se toca hasta entonces |
+| `ui/pages/storage.py` | media-baja | la temperatura de un SATA sigue con guion en la tabla de unidades: `Table.set_cell_locked` ya existe y falta usarlo ahí |
 | `providers/drm.py` | baja, sin comprobar | los motivos de limitación de `i915` y las frecuencias del silicio de `xe`, escritos con la documentación: ver en una Iris Xe o una Arc |
-| `db/memory_limits.json` | media | solo Intel de sobremesa 10.ª y 11.ª: en AMD el máximo depende de cuántos módulos y rangos lleven |
+| `db/memory_limits.json` | media, espera al autor | Intel, solo 10.ª y 11.ª a mano: falta generarlas de las fichas de ARK guardadas (`--intel-desde`), de la 1.ª en adelante; once Ryzen sin ficha en amd.com |
+| `ui/pages/cpu.py` | media-baja | «Preferencia de energía —» con acpi-cpufreq, que no tiene EPP |
+| `privileged/helper.py` | baja | un comentario dice que `uncore_imc_free_running` es de Ice Lake en adelante; no lo es (`docs/kernel.md`) |
+| `ui/pages/storage.py`, `render.py` | baja | «Vida restante —» en un SATA; horas con punto de millares; DDR2-667 sale «666 MT/s» |
 | `providers/` (AMD) | aplazado | PPT, TDC y EDC con `ryzen_smu`: el autor decidió no hacerlo ahora (`docs/propuesta-limites-amd.md`) |
 | `.github/workflows/appimage.yml` | media | el CI no mira si el AppImage pinta sus iconos; se comprobó a mano con `--screenshot` |
 | `privacidad.py`, `tools/volcar_equipo.py` | media-baja | `--anonimo` da la misma IP a todas las interfaces; los volcados, la misma MAC |
@@ -333,6 +337,8 @@ código (F-…), que es por el que se buscan allí.
 - [docs/hardware-validado.md](docs/hardware-validado.md): qué se ha probado
   contra qué pieza.
 - [docs/pendientes.md](docs/pendientes.md): lo pendiente, con su detalle.
+- [docs/kernel.md](docs/kernel.md): desde qué versión del kernel existe cada
+  dato, con su fuente. El mínimo es 5.15.
 - [docs/comprobar.md](docs/comprobar.md): el comando equivalente a cada dato,
   para verificarlo a mano.
 - `docs/propuesta-*.md`: lo propuesto (permisos, interfaz, precisión,
