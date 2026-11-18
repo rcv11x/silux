@@ -1111,7 +1111,7 @@ def memory_limit_label(limite) -> str:
         modelo=limite.model, n=cuantos, r=rangos)
 
 
-def memory_speed_warning(modulos, limite=None) -> Optional[str]:
+def memory_speed_warning(modulos, limite=None, chipset: bool = False) -> Optional[str]:
     """Por qué la memoria no va más rápido, cuando hay algo que decir.
 
     El techo del conjunto no es el del módulo más rápido: es el del más lento,
@@ -1142,7 +1142,10 @@ def memory_speed_warning(modulos, limite=None) -> Optional[str]:
         if limite and actual >= limite.mts * (1 - MARGEN_DE_REDONDEO):
             return _("mem.cpumax").format(actual=actual, rated=techo,
                                           modelo=memory_limit_label(limite))
-        return _("mem.underclocked").format(actual=actual, rated=techo)
+        # Con el controlador en el chipset el límite es de la placa, no del
+        # procesador.
+        return _("mem.underclocked.chipset" if chipset else "mem.underclocked").format(
+            actual=actual, rated=techo)
     if mayor > techo * (1 + MARGEN_DE_REDONDEO):
         return _("mem.mixed").format(actual=actual, lento=techo, rapido=mayor)
     return None

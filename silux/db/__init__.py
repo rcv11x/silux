@@ -450,3 +450,24 @@ def memory_limit(brand: str, memory_type: Optional[str],
     if disposicion is None or disposicion not in cifra:
         return None
     return MemoryLimit(modelo, cifra[disposicion], fila["source"], disposicion)
+
+
+# Los Intel de antes de Nehalem (2008) que llevan el controlador de memoria
+# en el chipset de la placa (el northbridge) y no en el procesador: los
+# Pentium 4 y Pentium D de 64 bits (familia 15) y los Core 2 de familia 6
+# —Merom y Conroe (0x0F), Merom-L (0x16), Penryn, Wolfdale y Yorkfield
+# (0x17), Dunnington (0x1D)—. Los Atom de entonces no entran: Diamondville
+# lo tiene en el chipset y Pineview ya integrado, con modelos que se cruzan.
+_CONTROLADOR_EN_EL_CHIPSET = {0x0F, 0x16, 0x17, 0x1D}
+
+
+def memory_controller_in_chipset(cpu_type) -> bool:
+    """Si la memoria de este equipo la controla el chipset y no el procesador.
+
+    Entonces no hay «máximo del procesador» del que hablar: hasta dónde llega
+    la memoria lo decide la placa.
+    """
+    if getattr(cpu_type, "vendor", "") != "Intel":
+        return False
+    familia, modelo = cpu_type.disp_family, cpu_type.disp_model
+    return familia == 15 or (familia == 6 and modelo in _CONTROLADOR_EN_EL_CHIPSET)

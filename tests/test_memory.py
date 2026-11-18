@@ -897,3 +897,51 @@ class TestElMaximoDeAmdDependeDeLosModulos(unittest.TestCase):
         app.processEvents()
         self.assertIn("Ryzen 7 5800X3D con 4 módulos de 2 rangos", pagina.avisos.text())
         self.assertNotIn("XMP", pagina.avisos.text())
+
+
+class TestAntesDeNehalemLaMemoriaEsDelChipset(unittest.TestCase):
+    """Decisión del autor: en un Core 2 el controlador de memoria va en el
+    chipset de la placa; no se habla del máximo del procesador, y la página
+    lo dice. Un Core 2 Duo E8400 es Wolfdale: familia 6, modelo 0x17."""
+
+    def _foto(self, familia, modelo, marca):
+        import dataclasses
+        from silux.model import MemoryModule
+        from tests.test_equipos import EQUIPOS, foto
+
+        base = foto(EQUIPOS / "i5-10400")[0]
+        tipo = dataclasses.replace(base.cpu.types[0], brand=marca, disp_family=familia,
+                                   disp_model=modelo, codename=None)
+        cpu = dataclasses.replace(base.cpu, types=(tipo,))
+        modulos = tuple(MemoryModule(populated=True, locator=f"DIMM{n}", type="DDR2",
+                                     size_bytes=2 << 30, speed_mts=800, configured_mts=667)
+                        for n in range(2))
+        return dataclasses.replace(base, cpu=cpu, modules=modulos, spd=())
+
+    def test_la_regla(self):
+        from silux import db
+        from silux.model import CpuType
+
+        for familia, modelo, chipset in ((6, 0x17, True), (6, 0x0F, True), (15, 0x06, True),
+                                         (6, 0x1A, False), (6, 0xA5, False)):
+            with self.subTest(familia=familia, modelo=hex(modelo)):
+                tipo = CpuType(key="g", label="g", vendor="Intel",
+                               disp_family=familia, disp_model=modelo)
+                self.assertIs(db.memory_controller_in_chipset(tipo), chipset)
+        amd = CpuType(key="g", label="g", vendor="AMD", disp_family=15, disp_model=0x6B)
+        self.assertFalse(db.memory_controller_in_chipset(amd))
+
+    def test_la_pagina_lo_dice_y_no_habla_del_procesador(self):
+        from silux.i18n import _
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.memory import MemoryPage
+
+        app = qt.app()
+        pagina = MemoryPage(theme.palette_for(app, "dark"), Preferences())
+        self.addCleanup(pagina.deleteLater)
+        pagina.apply(self._foto(6, 0x17, "Intel(R) Core(TM)2 Duo CPU     E8400  @ 3.00GHz"))
+        app.processEvents()
+        texto = pagina.avisos.text()
+        self.assertIn(_("mem.chipset"), texto)
+        self.assertNotIn("procesador", texto.replace(_("mem.chipset"), ""))

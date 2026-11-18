@@ -372,6 +372,12 @@ Lo que salió al hacerla y no entraba en ella:
   y falla a veces con la suite en paralelo. (El otro test de medida que
   fallaba solo, el del reparto entre hilos del benchmark, se arregló el 18:
   ahora mide tiempo de CPU y no rendimiento; ver `docs/lecciones.md`.)
+- **Vistos el 18 con permisos de verdad, sin tocar**: el Kioxia SATA de la
+  oficina enseña «Vida restante —» (su atributo SMART de desgaste no se
+  reconoce), y las horas encendido salen «4.136 h», con punto de millares,
+  cuando en Sistema los millares van con espacio («1 348»). Y el redondeo de
+  grados JEDEC, pensado para DDR4 (2667 → 2666), convierte un DDR2-667 en
+  «666 MT/s».
 - **El máximo oficial de memoria en AMD** (`silux/db/memory_limits.json`).
   La tabla solo tiene Intel de sobremesa de las generaciones 10 y 11: en AMD
   el máximo no es por modelo, depende de los módulos. La ficha del 5800X3D

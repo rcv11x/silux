@@ -567,8 +567,13 @@ class MemoryPage(QScrollArea):
         # Decidirlo aquí era el fallo: se tomaba `lentos[0]` y se prometía su
         # velocidad catalogada, que con módulos desparejos es la del que no
         # manda. La regla vive en `render`, al lado de la del canal.
-        if (velocidad := render.memory_speed_warning(modulos, self._limite)):
+        chipset = bool(snapshot.cpu.types) and db.memory_controller_in_chipset(
+            snapshot.cpu.types[0])
+        if (velocidad := render.memory_speed_warning(modulos, self._limite, chipset)):
             lineas.append(velocidad)
+        if chipset:
+            # Antes de Nehalem: no hay «máximo del procesador» del que hablar.
+            lineas.append(_("mem.chipset"))
         self.avisos.setText("  ".join(lineas))
         self.avisos.setVisible(bool(lineas))
 
@@ -580,6 +585,8 @@ class MemoryPage(QScrollArea):
         rangos de cada módulo deciden la disposición en AMD; salen de la
         tabla del firmware o, sin permisos, del SPD.
         """
+        if snapshot.cpu.types and db.memory_controller_in_chipset(snapshot.cpu.types[0]):
+            return None
         tipos = {m.type for m in snapshot.modules if m.populated and m.type}
         tipos |= {s.dram_type for s in snapshot.spd if s.dram_type}
         marca = snapshot.cpu.types[0].brand if snapshot.cpu.types else ""
