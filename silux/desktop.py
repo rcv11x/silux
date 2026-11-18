@@ -333,12 +333,130 @@ def refresh_caches() -> None:
                 pass
 
 
+def desktop_dir() -> pathlib.Path:
+    """La carpeta del escritorio del usuario («Escritorio» en español).
+
+    Se lee de `user-dirs.dirs`, que es lo que hace `xdg-user-dir`, sin lanzar
+    nada: esto se pregunta desde la interfaz.
+    """
+    casa = pathlib.Path.home()
+    config = pathlib.Path(os.environ.get("XDG_CONFIG_HOME") or casa / ".config")
+    try:
+        for linea in (config / "user-dirs.dirs").read_text(encoding="utf-8").splitlines():
+            if linea.startswith("XDG_DESKTOP_DIR="):
+                valor = linea.split("=", 1)[1].strip().strip('"')
+                return pathlib.Path(valor.replace("$HOME", str(casa)))
+    except OSError:
+        pass
+    return casa / "Desktop"
+
+
+def shortcut_path(app_id: str = APP_ID) -> pathlib.Path:
+    return desktop_dir() / f"{app_id}.desktop"
+
+
+def _write_shortcut(launcher: Launcher) -> pathlib.Path:
+    """La misma entrada, en el escritorio. Ejecutable, que es lo que piden
+    Plasma y GNOME para lanzarla; GNOME además quiere que se marque como de
+    confianza, y `gio` lo hace si está."""
+    destino = shortcut_path(launcher.app_id)
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    destino.write_text(entry_text(launcher), encoding="utf-8")
+    destino.chmod(0o755)
+    if shutil.which("gio"):
+        try:
+            subprocess.run(["gio", "set", str(destino), "metadata::trusted", "true"],
+                           check=False, capture_output=True, timeout=10)
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+    return destino
+
+
+# -- el estado ----------------------------------------------------------------
+
+@dataclass(frozen=True)
+class DesktopStatus:
+    """Cómo está la entrada de menú de esta copia de silux.
+
+    `state`: «unsupported» (no se puede instalar: un AppImage que no dice
+    dónde está su archivo), «missing», «current», «elsewhere» (abre otra
+    copia que existe), «broken» (abre algo que ya no existe) u «outdated»
+    (abre esta, pero la entrada, los iconos o lo que dejó una versión vieja
+    no son los de ahora).
+    """
+
+    state: str
+    launcher: Launcher
+    # A qué apunta la entrada instalada, para decirlo: la orden, o la carpeta
+    # si es la del repositorio.
+    target: str = ""
+    on_desktop: bool = False
+
+
+def _instalado(texto: str) -> tuple[tuple[str, ...], str]:
+    """La orden y la carpeta de una entrada instalada."""
+    orden, carpeta = (), ""
+    for linea in texto.splitlines():
+        if linea.startswith("Exec="):
+            orden = parse_exec(linea[len("Exec="):])
+        elif linea.startswith("Path="):
+            carpeta = linea[len("Path="):]
+    return orden, carpeta
+
+
+def _existe(orden: tuple[str, ...], carpeta: str) -> bool:
+    if not orden:
+        return False
+    programa = orden[0]
+    encontrado = (os.path.isfile(programa) and os.access(programa, os.X_OK)) \
+        if os.sep in programa else shutil.which(programa) is not None
+    return encontrado and (not carpeta or os.path.isdir(carpeta))
+
+
+def _iconos_al_dia(app_id: str) -> bool:
+    try:
+        if scalable_path(app_id).read_bytes() != SVG.read_bytes():
+            return False
+    except OSError:
+        return False
+    return all(icon_path(tamano, app_id).is_file() for tamano in SIZES)
+
+
+def status(launcher: Optional[Launcher] = None) -> DesktopStatus:
+    """Lo que hay instalado comparado con lo que se instalaría ahora.
+
+    Se compara el contenido —la entrada entera y el SVG—, no un número de
+    versión que alguien tendría que acordarse de subir.
+    """
+    launcher = launcher or current_launcher()
+    en_escritorio = shortcut_path(launcher.app_id).is_file()
+    if not launcher.command:
+        return DesktopStatus("unsupported", launcher, on_desktop=en_escritorio)
+    texto = _read(desktop_path(launcher.app_id))
+    if texto is None:
+        return DesktopStatus("missing", launcher, on_desktop=en_escritorio)
+    orden, carpeta = _instalado(texto)
+    destino = carpeta or (orden[0] if orden else "")
+    if (orden, carpeta) != (launcher.command, launcher.working_dir):
+        estado = "elsewhere" if _existe(orden, carpeta) else "broken"
+        return DesktopStatus(estado, launcher, destino, en_escritorio)
+    al_dia = (texto == entry_text(launcher) and _iconos_al_dia(launcher.app_id)
+              and not legacy_files(launcher))
+    if en_escritorio and _read(shortcut_path(launcher.app_id)) != entry_text(launcher):
+        al_dia = False
+    return DesktopStatus("current" if al_dia else "outdated", launcher, destino, en_escritorio)
+
+
+# -- instalar y quitar -------------------------------------------------------
+
+
 def uninstall(launcher: Optional[Launcher] = None) -> int:
-    """Quita la entrada y los iconos; devuelve cuántos archivos quitó."""
+    """Quita la entrada, los iconos y el acceso del escritorio; devuelve
+    cuántos archivos quitó."""
     launcher = launcher or current_launcher()
     removed = 0
     for path in [desktop_path(launcher.app_id), *icon_files(launcher.app_id),
-                 *legacy_files(launcher)]:
+                 *legacy_files(launcher), shortcut_path(launcher.app_id)]:
         if path.exists():
             path.unlink()
             removed += 1
@@ -346,11 +464,13 @@ def uninstall(launcher: Optional[Launcher] = None) -> int:
     return removed
 
 
-def install(launcher: Optional[Launcher] = None) -> tuple[list[pathlib.Path], pathlib.Path]:
+def install(launcher: Optional[Launcher] = None,
+            on_desktop: Optional[bool] = None) -> tuple[list[pathlib.Path], pathlib.Path]:
     """Instala los iconos y la entrada; devuelve los dos.
 
     Reinstalar deja lo mismo que instalar en limpio: quita antes lo que dejó
-    una versión vieja.
+    una versión vieja. `on_desktop` pone o quita el acceso del escritorio;
+    con None se deja como esté, al día si existe.
     """
     launcher = launcher or current_launcher()
     if not launcher.command:
@@ -359,5 +479,12 @@ def install(launcher: Optional[Launcher] = None) -> tuple[list[pathlib.Path], pa
         viejo.unlink()
     icons = render_icons(launcher.app_id)
     entry = write_desktop(launcher)
+    acceso = shortcut_path(launcher.app_id)
+    if on_desktop is None:
+        on_desktop = acceso.is_file()
+    if on_desktop:
+        _write_shortcut(launcher)
+    elif acceso.is_file():
+        acceso.unlink()
     refresh_caches()
     return icons, entry

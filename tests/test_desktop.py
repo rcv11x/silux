@@ -274,6 +274,89 @@ class TestReinstalar(_EnCasaFalsa):
         self.assertIn(APPIMAGE, installer.desktop_path("silux").read_text())
 
 
+@unittest.skipUnless(HAS_SVG, "hace falta el complemento qsvg de Qt")
+class TestElEstado(_EnCasaFalsa):
+    """Lo que enseña Ajustes: qué hay instalado y qué botón toca."""
+
+    def setUp(self):
+        super().setUp()
+        config = self.casa / "config"
+        config.mkdir()
+        (config / "user-dirs.dirs").write_text(f'XDG_DESKTOP_DIR="{self.casa}/Escritorio"\n')
+        patch = mock.patch.dict(os.environ, {"XDG_CONFIG_HOME": str(config)})
+        patch.start()
+        self.addCleanup(patch.stop)
+
+    def _estado(self, lanzador=DEL_APPIMAGE):
+        return installer.status(lanzador).state
+
+    def _cambiar_exec(self, orden):
+        entrada = installer.desktop_path()
+        texto = "\n".join(f"Exec={orden}" if l.startswith("Exec=") else l
+                          for l in entrada.read_text().splitlines()) + "\n"
+        entrada.write_text(texto)
+
+    def test_sin_instalar(self):
+        self.assertEqual(self._estado(), "missing")
+
+    def test_recien_instalado_esta_al_dia(self):
+        installer.install(DEL_APPIMAGE)
+        self.assertEqual(self._estado(), "current")
+
+    def test_desde_el_codigo_dice_donde_esta_el_repositorio(self):
+        lanzador = del_repositorio()
+        installer.install(lanzador)
+        estado = installer.status(lanzador)
+        self.assertEqual(estado.state, "current")
+        self.assertEqual(pathlib.Path(estado.target), installer.ROOT)
+
+    def test_un_appimage_que_no_dice_donde_esta(self):
+        lanzador = installer.Launcher("appimage", "silux", "Silux", "Silux", ())
+        self.assertEqual(self._estado(lanzador), "unsupported")
+
+    def test_otra_copia_que_existe(self):
+        installer.install(DEL_APPIMAGE)
+        otra = self.casa / "Otra.AppImage"
+        otra.write_text("")
+        otra.chmod(0o755)
+        self._cambiar_exec(str(otra))
+        estado = installer.status(DEL_APPIMAGE)
+        self.assertEqual((estado.state, estado.target), ("elsewhere", str(otra)))
+
+    def test_una_copia_que_ya_no_existe(self):
+        """Lo que se vio en casa: un acceso que no abre nada."""
+        installer.install(DEL_APPIMAGE)
+        self._cambiar_exec("/home/ana/AppImages/Silux-vieja.AppImage")
+        self.assertEqual(self._estado(), "broken")
+
+    def test_los_iconos_de_otra_version(self):
+        installer.install(DEL_APPIMAGE)
+        installer.scalable_path().write_text("<svg>el logo de antes</svg>")
+        self.assertEqual(self._estado(), "outdated")
+
+    def test_lo_que_dejo_una_version_vieja_tambien_cuenta(self):
+        installer.install(DEL_APPIMAGE)
+        self._escribir("applications/cpuz.desktop", "Exec=python3 -m cpuz.ui.app\n")
+        self.assertEqual(self._estado(), "outdated")
+        installer.install(DEL_APPIMAGE)
+        self.assertEqual(self._estado(), "current")
+
+    def test_el_acceso_del_escritorio(self):
+        installer.install(DEL_APPIMAGE, on_desktop=True)
+        acceso = self.casa / "Escritorio" / "silux.desktop"
+        self.assertTrue(acceso.is_file())
+        self.assertTrue(os.access(acceso, os.X_OK))
+        self.assertTrue(installer.status(DEL_APPIMAGE).on_desktop)
+        # Reinstalar sin decir nada lo conserva, y al día.
+        installer.install(DEL_APPIMAGE)
+        self.assertTrue(acceso.is_file())
+        installer.install(DEL_APPIMAGE, on_desktop=False)
+        self.assertFalse(acceso.exists())
+        installer.install(DEL_APPIMAGE, on_desktop=True)
+        installer.uninstall(DEL_APPIMAGE)
+        self.assertFalse(acceso.exists())
+
+
 class TestAvisoAlEscritorio(unittest.TestCase):
     def test_avisa_a_plasma_de_que_hay_iconos_nuevos(self):
         llamadas = []
