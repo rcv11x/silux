@@ -659,6 +659,18 @@ VENDOR_ALIASES: dict[str, str] = {
     "biostar": "Biostar",
     "supermicro": "Supermicro",
     "acer": "Acer",
+    # Los de memoria, como los escribe la tabla del firmware. El SPD los da
+    # por su código JEDEC («Crucial», «Micron», «SK Hynix») y un módulo no
+    # puede cambiar de nombre al dar permisos.
+    "crucial technology": "Crucial",
+    "micron technology": "Micron",
+    "kingston": "Kingston",
+    "sk hynix": "SK Hynix",
+    "hynix semiconductor": "SK Hynix",
+    "samsung": "Samsung",
+    "g skill": "G.Skill",
+    "g.skill": "G.Skill",
+    "corsair": "Corsair",
     "notebook": "",
 }
 

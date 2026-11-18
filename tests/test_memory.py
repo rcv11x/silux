@@ -1010,3 +1010,38 @@ class TestSinSpdNoSeCulpaALaPlaca(unittest.TestCase):
                     mock.patch.object(SpdModules, "available", return_value=False), \
                     mock.patch("silux.spd.diagnostico", return_value=(motivo, "")):
                 self.assertIs(proveedor.unavailable_reason()[1], need)
+
+
+class TestElFabricanteSiempreIgual(unittest.TestCase):
+    """Revisión del autor: con el SPD «Crucial», sin él «Crucial
+    Technology» (lo que escribe la tabla del firmware). Una marca, un nombre."""
+
+    def test_venga_de_donde_venga(self):
+        from silux import render
+
+        for crudo, marca in (("Crucial Technology", "Crucial"), ("Crucial", "Crucial"),
+                             ("Micron Technology", "Micron"), ("Kingston", "Kingston"),
+                             ("SK Hynix", "SK Hynix"), ("Hynix Semiconductor", "SK Hynix"),
+                             ("G Skill Intl", "G.Skill"), ("Samsung", "Samsung")):
+            with self.subTest(crudo=crudo):
+                self.assertEqual(render.maker(crudo), marca)
+
+    def test_en_la_ficha_sin_spd(self):
+        import dataclasses
+        from silux.i18n import _
+        from silux.model import MemoryModule
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.memory import MemoryPage
+        from tests.test_equipos import EQUIPOS, foto
+
+        app = qt.app()
+        base = foto(EQUIPOS / "i5-10400")[0]
+        modulo = MemoryModule(populated=True, locator="Controller0-ChannelA", type="DDR4",
+                              size_bytes=8 << 30, manufacturer="Crucial Technology")
+        pagina = MemoryPage(theme.palette_for(app, "dark"), Preferences())
+        self.addCleanup(pagina.deleteLater)
+        pagina.apply(dataclasses.replace(base, modules=(modulo,), spd=()))
+        app.processEvents()
+        self.assertEqual(pagina._slot_grids[0]._values[_("memory.field.vendor")].full_text(),
+                         "Crucial")
