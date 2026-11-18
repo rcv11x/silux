@@ -44,6 +44,17 @@ existe por ningún camino. Queda pendiente:
   Aquí sigue habiendo solo una v1.3, así que de la 1.4 en adelante y del resto
   de las 2.x no hay pieza a la que preguntar.
 
+**Los motores de la RX 9070 XT, validados el 18 de noviembre de 2026**
+(docs/motores-de-graficas.md): «Render / 3D» coincide con la ficha «Uso» y,
+desde ese día, con MangoHud (80-86 %), porque es la media del intervalo y no
+una lectura suelta. Una sola barra de video, «Video (codificar y
+decodificar)»: en el VCN 5.0 decodificar también va por la cola de codificar
+(lo dice el `fdinfo` de mpv decodificando por VA-API), y la cifra de la
+tarjeta es una. Con Big Buck Bunny de YouTube en AV1 4K, 18 %; grabando la
+pantalla con gpu-screen-recorder (HEVC), 76 %; con las dos cosas, 100 %. La
+`gpu_metrics` 1.3 de esta tarjeta casa con hwmon (borde, unión y memoria, y
+el consumo a 4 W). NVENC y NVDEC, escritos sin una NVIDIA delante.
+
 **El contador del IMC ya está**, que era la otra mitad de esa línea: cuánto
 tráfico mueve la memoria ahora mismo, en la ficha, en el árbol de sensores y en
 el informe. Sale del PMU del uncore por el ayudante privilegiado —los

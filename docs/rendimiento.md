@@ -15,7 +15,7 @@ medidos con `tools/medir_consumo.py` (sin pantalla):
 | A la vista, sin movimiento fluido | 7 % | 5,7 % (Gráficos) |
 | A la vista, con movimiento fluido | 9 % | 7,2 % (Gráficos) |
 | Minimizada o en otro escritorio | 5,5 % | 4,5 % |
-| Memoria (RSS) | 300 MB | 159 MB |
+| Memoria (RSS) | 300 MB | 159 MB (176 MB en la pantalla) |
 
 ```bash
 python3 tools/medir_consumo.py                 # unos 6 minutos; código 1 si algo se pasa
@@ -64,55 +64,59 @@ el escritorio en uso para atribuirle nada.
 
 «Mañana» es `41dab81` (el código con que se midió en la oficina: Inicio, 5,9
 y 16,5 %); «antes», `e0f83c8`, con las barras de las 17:00 ya arregladas;
-«después», `648a417`. Los dos últimos arreglos (la matriz de núcleos desde
-una imagen y buscar lo que se mueve solo en la página abierta) son
-posteriores a esta medida: sin pantalla bajaron la página CPU con fluido de
-11,7 a 7,3 %.
+«después», `39df74e`, con todo lo de esta pasada. Medido el 18 por la noche
+en DP-1 (240 Hz), con nadie tocando ese monitor. Memoria máxima, 176 MB.
+
+| | Sin fluido, antes → después | Con fluido, antes → después |
+|---|---|---|
+| A la vista, la que más gasta / la media | 9,3 / 7,6 → **6,2 / 4,3** | 31,3 / 13,0 → **9,4 / 5,3** |
+| En otro escritorio | 8,4 / 7,2 → **4,2 / 3,8** | 8,8 / 7,8 → **4,1 / 3,7** |
+| Minimizada | 8,3 / 7,4 → **4,6 / 4,1** | 8,7 / 8,2 → **4,8 / 4,2** |
 
 | Estado | Página | Sin fluido: mañana · antes · después | Con fluido: mañana · antes · después | Fotogramas/s con fluido: antes · después |
 |---|---|---|---|---|
-| a la vista | Inicio | 6,4 · 7,1 · **4,5** | 13,8 · 15,3 · **7,3** | 47 · 40 |
-| a la vista | CPU | 7,9 · 8,0 · **5,1** | 40,5 · 31,3 · **19,5** | 42 · 35 |
-| a la vista | Cachés | 7,5 · 7,7 · **4,2** | 7,1 · 9,0 · **3,8** | 1 · 0 |
-| a la vista | Placa base | 7,6 · 7,1 · **3,8** | 6,9 · 8,9 · **4,6** | 0 · 0 |
-| a la vista | Memoria | 7,2 · 7,5 · **4,3** | 10,2 · 9,4 · **5,2** | 24 · 26 |
-| a la vista | Gráficos | 7,5 · 9,3 · **5,8** | 23,9 · 25,9 · **9,9** | 48 · 33 |
-| a la vista | Almacenamiento | 7,2 · 7,7 · **5,6** | 19,6 · 18,8 · **7,2** | 34 · 14 |
-| a la vista | Red | 7,5 · 7,4 · **4,5** | 21,6 · 17,6 · **7,3** | 33 · 12 |
-| a la vista | Dispositivos | 6,4 · 8,1 · **4,4** | 7,6 · 7,9 · **4,5** | 0 · 0 |
-| a la vista | Batería | 7,7 · 6,9 · **4,1** | 7,1 · 7,5 · **4,3** | 0 · 0 |
-| a la vista | Sistema | 6,5 · 7,3 · **4,0** | 7,2 · 7,5 · **4,6** | 1 · 1 |
-| a la vista | Rendimiento | 6,5 · 7,2 · **4,7** | 7,1 · 7,3 · **4,0** | 0 · 0 |
-| a la vista | Sensores | 7,1 · 7,7 · **5,0** | 7,9 · 8,1 · **6,0** | 1 · 1 |
-| a la vista | Ajustes | 6,5 · 7,5 · **4,2** | 7,5 · 7,4 · **4,0** | 0 · 0 |
-| otro escritorio | Inicio | — · 7,4 · **3,8** | — · 8,0 · **4,4** | 0 · 0 |
-| otro escritorio | CPU | — · 7,3 · **4,4** | — · 7,6 · **4,2** | 0 · 0 |
-| otro escritorio | Cachés | — · 6,9 · **3,6** | — · 7,4 · **4,6** | 0 · 0 |
-| otro escritorio | Placa base | — · 6,9 · **4,2** | — · 7,3 · **4,1** | 0 · 0 |
-| otro escritorio | Memoria | — · 7,1 · **3,5** | — · 7,3 · **4,6** | 0 · 0 |
-| otro escritorio | Gráficos | — · 7,2 · **4,7** | — · 8,2 · **4,7** | 0 · 0 |
-| otro escritorio | Almacenamiento | — · 8,4 · **4,0** | — · 8,8 · **5,1** | 0 · 0 |
-| otro escritorio | Red | — · 7,0 · **4,3** | — · 7,5 · **4,9** | 0 · 0 |
-| otro escritorio | Dispositivos | — · 6,9 · **4,0** | — · 7,5 · **4,7** | 0 · 0 |
-| otro escritorio | Batería | — · 6,8 · **3,7** | — · 7,4 · **5,0** | 0 · 0 |
-| otro escritorio | Sistema | — · 6,9 · **4,1** | — · 8,1 · **4,5** | 0 · 0 |
-| otro escritorio | Rendimiento | — · 6,9 · **3,6** | — · 7,7 · **4,9** | 0 · 0 |
-| otro escritorio | Sensores | — · 7,8 · **4,1** | — · 8,3 · **4,5** | 0 · 0 |
-| otro escritorio | Ajustes | — · 7,0 · **3,6** | — · 7,8 · **5,0** | 0 · 0 |
-| minimizada | Inicio | — · 6,8 · **3,9** | — · 8,4 · **4,6** | 0 · 0 |
-| minimizada | CPU | — · 7,2 · **3,7** | — · 8,5 · **5,2** | 0 · 0 |
-| minimizada | Cachés | — · 6,9 · **4,0** | — · 8,4 · **4,9** | 0 · 0 |
-| minimizada | Placa base | — · 6,7 · **3,6** | — · 8,7 · **4,5** | 0 · 0 |
-| minimizada | Memoria | — · 7,7 · **4,2** | — · 7,9 · **5,0** | 0 · 0 |
-| minimizada | Gráficos | — · 7,2 · **4,0** | — · 8,2 · **4,6** | 0 · 0 |
-| minimizada | Almacenamiento | — · 7,4 · **4,1** | — · 8,6 · **5,1** | 0 · 0 |
-| minimizada | Red | — · 7,4 · **3,9** | — · 7,8 · **4,3** | 0 · 0 |
-| minimizada | Dispositivos | — · 7,0 · **4,1** | — · 8,5 · **5,0** | 0 · 0 |
-| minimizada | Batería | — · 7,8 · **4,0** | — · 7,7 · **4,8** | 0 · 0 |
-| minimizada | Sistema | — · 7,8 · **4,0** | — · 7,7 · **4,8** | 0 · 0 |
-| minimizada | Rendimiento | — · 7,5 · **4,0** | — · 8,3 · **4,9** | 0 · 0 |
-| minimizada | Sensores | — · 8,3 · **3,6** | — · 7,6 · **4,4** | 0 · 0 |
-| minimizada | Ajustes | — · 7,4 · **4,1** | — · 8,2 · **5,0** | 0 · 0 |
+| a la vista | Inicio | 6,4 · 7,1 · **4,6** | 13,8 · 15,3 · **6,6** | 47 · 40 |
+| a la vista | CPU | 7,9 · 8,0 · **5,2** | 40,5 · 31,3 · **8,5** | 42 · 36 |
+| a la vista | Cachés | 7,5 · 7,7 · **4,0** | 7,1 · 9,0 · **3,5** | 1 · 0 |
+| a la vista | Placa base | 7,6 · 7,1 · **4,0** | 6,9 · 8,9 · **4,1** | 0 · 0 |
+| a la vista | Memoria | 7,2 · 7,5 · **4,0** | 10,2 · 9,4 · **4,8** | 24 · 26 |
+| a la vista | Gráficos | 7,5 · 9,3 · **6,2** | 23,9 · 25,9 · **9,4** | 48 · 34 |
+| a la vista | Almacenamiento | 7,2 · 7,7 · **4,8** | 19,6 · 18,8 · **5,6** | 34 · 10 |
+| a la vista | Red | 7,5 · 7,4 · **4,4** | 21,6 · 17,6 · **6,1** | 33 · 12 |
+| a la vista | Dispositivos | 6,4 · 8,1 · **3,4** | 7,6 · 7,9 · **3,6** | 0 · 0 |
+| a la vista | Batería | 7,7 · 6,9 · **3,8** | 7,1 · 7,5 · **4,0** | 0 · 0 |
+| a la vista | Sistema | 6,5 · 7,3 · **3,6** | 7,2 · 7,5 · **4,0** | 1 · 1 |
+| a la vista | Rendimiento | 6,5 · 7,2 · **3,9** | 7,1 · 7,3 · **3,9** | 0 · 0 |
+| a la vista | Sensores | 7,1 · 7,7 · **4,6** | 7,9 · 8,1 · **5,9** | 1 · 1 |
+| a la vista | Ajustes | 6,5 · 7,5 · **3,8** | 7,5 · 7,4 · **4,0** | 0 · 0 |
+| otro escritorio | Inicio | — · 7,4 · **3,6** | — · 8,0 · **3,6** | 0 · 0 |
+| otro escritorio | CPU | — · 7,3 · **4,0** | — · 7,6 · **3,9** | 0 · 0 |
+| otro escritorio | Cachés | — · 6,9 · **3,4** | — · 7,4 · **3,8** | 0 · 0 |
+| otro escritorio | Placa base | — · 6,9 · **3,9** | — · 7,3 · **3,4** | 0 · 0 |
+| otro escritorio | Memoria | — · 7,1 · **3,5** | — · 7,3 · **3,8** | 0 · 0 |
+| otro escritorio | Gráficos | — · 7,2 · **4,2** | — · 8,2 · **3,7** | 0 · 0 |
+| otro escritorio | Almacenamiento | — · 8,4 · **3,4** | — · 8,8 · **3,9** | 0 · 0 |
+| otro escritorio | Red | — · 7,0 · **3,9** | — · 7,5 · **3,5** | 0 · 0 |
+| otro escritorio | Dispositivos | — · 6,9 · **3,4** | — · 7,5 · **3,9** | 0 · 0 |
+| otro escritorio | Batería | — · 6,8 · **4,1** | — · 7,4 · **3,5** | 0 · 0 |
+| otro escritorio | Sistema | — · 6,9 · **3,5** | — · 8,1 · **4,0** | 0 · 0 |
+| otro escritorio | Rendimiento | — · 6,9 · **4,0** | — · 7,7 · **3,5** | 0 · 0 |
+| otro escritorio | Sensores | — · 7,8 · **3,7** | — · 8,3 · **4,1** | 0 · 0 |
+| otro escritorio | Ajustes | — · 7,0 · **4,1** | — · 7,8 · **3,5** | 0 · 0 |
+| minimizada | Inicio | — · 6,8 · **4,0** | — · 8,4 · **3,9** | 0 · 0 |
+| minimizada | CPU | — · 7,2 · **4,3** | — · 8,5 · **3,6** | 0 · 0 |
+| minimizada | Cachés | — · 6,9 · **4,4** | — · 8,4 · **4,5** | 0 · 0 |
+| minimizada | Placa base | — · 6,7 · **3,9** | — · 8,7 · **4,0** | 0 · 0 |
+| minimizada | Memoria | — · 7,7 · **4,4** | — · 7,9 · **4,6** | 0 · 0 |
+| minimizada | Gráficos | — · 7,2 · **4,2** | — · 8,2 · **4,8** | 0 · 0 |
+| minimizada | Almacenamiento | — · 7,4 · **4,4** | — · 8,6 · **4,1** | 0 · 0 |
+| minimizada | Red | — · 7,4 · **3,8** | — · 7,8 · **4,5** | 0 · 0 |
+| minimizada | Dispositivos | — · 7,0 · **4,6** | — · 8,5 · **3,9** | 0 · 0 |
+| minimizada | Batería | — · 7,8 · **4,0** | — · 7,7 · **4,4** | 0 · 0 |
+| minimizada | Sistema | — · 7,8 · **4,0** | — · 7,7 · **3,8** | 0 · 0 |
+| minimizada | Rendimiento | — · 7,5 · **4,0** | — · 8,3 · **4,3** | 0 · 0 |
+| minimizada | Sensores | — · 8,3 · **3,8** | — · 7,6 · **3,8** | 0 · 0 |
+| minimizada | Ajustes | — · 7,4 · **3,8** | — · 8,2 · **4,5** | 0 · 0 |
 
 ## Antes y después, sin pantalla
 
