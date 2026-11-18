@@ -159,6 +159,15 @@ SENSORES_CALLADOS = (
     (("gpu.sensor.state",), "gpu.na.piece.state"),
 )
 
+# Una APU de AMD: el consumo que publica su driver es el del encapsulado
+# entero, con los núcleos del procesador, y la segunda temperatura de su
+# telemetría es la del SoC. Ninguna de las dos es de la gráfica, así que no
+# se enseñan como suyas, y el pie lo dice. «gpu.tile.power» no es un campo de
+# la ficha: es la de arriba, la del consumo.
+NA_APU_AMD = {
+    "sensors": (("gpu.sensor.hotspot", "gpu.tile.power"), "gpu.na.apu"),
+}
+
 # Una Intel no publica su temperatura por ningún camino. Un guion ahí se lee
 # como «no la he podido leer», y no va a poderse nunca.
 NA_SIN_TEMPERATURA = {
@@ -195,6 +204,8 @@ def no_aplica(gpu: Gpu) -> tuple[dict[str, set[str]], dict[str, str]]:
         reglas.append(NA_INTEGRADA)
     if gpu.no_temperature_sensor and gpu.temp_c is None:
         reglas.append(NA_SIN_TEMPERATURA)
+    if gpu.integrated and gpu.vendor == "AMD":
+        reglas.append(NA_APU_AMD)
     if gpu.integrated and gpu.driver in ("i915", "xe"):
         regla = dict(NA_INTEL_INTEGRADA)
         if render.pcie_link(gpu.link) != render.DASH:
@@ -598,7 +609,8 @@ class GpuSection(QWidget):
         # ficha grande con un guion para siempre era el hueco más visible de
         # la página. Queda dicho al pie de «Consumo y temperaturas». Se deriva
         # de lo que ya decidió `no_aplica` en vez de repetir aquí la condición.
-        self.tile_temp.setVisible("gpu.sensor.hotspot" not in ocultos["sensors"])
+        self.tile_temp.setVisible(not (gpu.no_temperature_sensor and gpu.temp_c is None))
+        self.tile_power.setVisible("gpu.tile.power" not in ocultos["sensors"])
 
         for nombre, grid, campos, pie in (
                 ("card", self.card, CARD_FIELDS, self.card_pie),

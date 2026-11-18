@@ -439,6 +439,14 @@ class GpuState(Provider):
             gpu["clocks"] = _relojes(dispositivo, raiz)
             _sensores(gpu, dispositivo)
             _telemetria(gpu, dispositivo, draft, indice)
+            if gpu.get("vendor") == "AMD" and gpu.get("integrated"):
+                # En una APU, el `power1` de hwmon es el PPT del encapsulado:
+                # procesador y gráfica juntos (amdgpu_pm.c lo etiqueta «PPT» y
+                # lo lee de AMDGPU_PP_SENSOR_GPU_INPUT_POWER, que en las APU
+                # devuelve el SocketPower del SMU). Su tope, igual. No es el
+                # consumo de la gráfica, y no se enseña como si lo fuera.
+                gpu["power_w"] = None
+                gpu["power_cap_w"] = None
             self._despierta[nodo] = (time.time(), gpu.get("temp_c"))
 
             if gpu.get("driver") in ("i915", "xe"):

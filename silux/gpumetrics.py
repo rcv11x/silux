@@ -86,12 +86,17 @@ _V1_3 = _V1_0 | {
 # `fan_pwm` no se lee como `fan_rpm` a propósito: uno es un ciclo de trabajo de
 # 0 a 255 y el otro son revoluciones por minuto. Enseñar un PWM donde se espera
 # una velocidad daría un ventilador a 200 RPM que no existe.
+#
+# Lo que está y no se lee, a propósito, porque no es lo que parece:
+# `temperature_soc` (sitio 6) es la del SoC, no un punto caliente de la
+# gráfica; y `average_socket_power` (sitio 40) es el consumo del encapsulado
+# entero, núcleos del procesador incluidos (smu_v13_0_4_get_gpu_metrics y
+# yellow_carp_get_gpu_metrics lo copian de `metrics.SocketPower`). Pintados
+# como «Punto caliente» y «Consumo» de la gráfica, mentían.
 _V2_1 = {
     "temp_edge": ("H", 4),           # temperature_gfx
-    "temp_hotspot": ("H", 6),        # temperature_soc
     "gfx_activity": ("H", 28),
     "video_activity": ("H", 30),     # average_mm_activity
-    "socket_power": ("H", 40),
     "gfx_clock_average": ("H", 64),
     "soc_clock_average": ("H", 66),
     "memory_clock_average": ("H", 68),

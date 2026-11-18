@@ -493,6 +493,7 @@
   "gpu.field.vbios": "BIOS de video",
   "gpu.field.vendor": "Fabricante",
   "gpu.loading": "Leyendo la gráfica…",
+  "gpu.na.apu": "En una APU, el consumo que da el driver es el del procesador entero y su segunda temperatura es la del SoC: ninguna de las dos es de la gráfica.",
   "gpu.na.integrated": "Los reguladores de voltaje y el ventilador son de una tarjeta aparte: esta se alimenta y se refrigera con el resto del equipo.",
   "gpu.na.intel.card": "i915 no cuenta unidades de rasterizado ni motores de sombreado: el recuento de Intel son las unidades de ejecución.",
   "gpu.na.intel.clocks": "No tiene reloj de SoC ni perfil de rendimiento, y va dentro del procesador: no cuelga de un enlace PCIe.",

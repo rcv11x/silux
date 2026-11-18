@@ -493,6 +493,7 @@
   "gpu.field.vbios": "Video BIOS",
   "gpu.field.vendor": "Vendor",
   "gpu.loading": "Reading the graphics card…",
+  "gpu.na.apu": "On an APU, the power the driver reports is that of the whole processor and its second temperature is the SoC's: neither belongs to the graphics.",
   "gpu.na.integrated": "Voltage regulators and the fan belong to a separate card: this one is powered and cooled along with the rest of the machine.",
   "gpu.na.intel.card": "i915 does not count render output units or shader engines: Intel counts execution units.",
   "gpu.na.intel.clocks": "It has no SoC clock or performance profile, and it lives inside the processor: it does not hang off a PCIe link.",
