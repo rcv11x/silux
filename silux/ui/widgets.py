@@ -710,6 +710,12 @@ class Sparkline(QWidget):
         # La escala vertical que se está usando ahora mismo, que no siempre es
         # la que piden los datos: ver _escala_visible.
         self._escala: Optional[tuple[float, float]] = None
+        # Lo que se dibuja, calculado una vez por muestra y por tamaño
+        # (`_base`): con «Movimiento fluido», rehacer la curva en cada
+        # fotograma para moverla una décima de píxel era la mitad de lo que
+        # gastaba la ventana. `_version` cambia con cada dato.
+        self._version = 0
+        self._cache: Optional[tuple] = None
         self.setMinimumHeight(theme.METRICS.chart_height)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setMouseTracking(True)
@@ -717,12 +723,14 @@ class Sparkline(QWidget):
 
     def set_range(self, floor: Optional[float], ceiling: Optional[float]) -> None:
         self._floor, self._ceiling = floor, ceiling
+        self._version += 1
 
     def set_formatter(self, formatter, interval_s: float = 1.0) -> None:
         """Cómo escribir el valor que se lee bajo el cursor, y cada cuánto se
         toma una muestra, para poder decir hace cuánto ocurrió."""
         self._formatter = formatter
         self._interval_s = max(0.05, interval_s)
+        self._version += 1
 
     # -- lectura con el ratón ----------------------------------------------
 
@@ -778,8 +786,14 @@ class Sparkline(QWidget):
     def push(self, value: Optional[float]) -> None:
         if value is not None:
             self._values.append(float(value))
+            self._version += 1
             self._phase = 0.0
             self.update()
+
+    # Lo que tiene que moverse la curva para que valga la pena repintarla.
+    # Un cuarto de píxel no se ve; repintar por él, en una gráfica estrecha
+    # que avanza tres píxeles por segundo, eran treinta fotogramas para nada.
+    PASO_VISIBLE_PX = 0.25
 
     def advance(self, phase: float) -> None:
         """Coloca la gráfica entre la muestra anterior y la siguiente.
@@ -789,7 +803,10 @@ class Sparkline(QWidget):
         su cuenta cuestan más que lo que se dibuja.
         """
         nueva = max(0.0, min(1.0, phase))
-        if abs(nueva - self._phase) < 0.01:
+        _origen, paso = self._geometria()
+        if abs(nueva - self._phase) * paso < self.PASO_VISIBLE_PX and nueva < 1.0:
+            return
+        if nueva == self._phase:
             return
         self._phase = nueva
         self.update()
@@ -797,6 +814,7 @@ class Sparkline(QWidget):
     def clear(self) -> None:
         self._values.clear()
         self._escala = None
+        self._version += 1
         self.update()
 
     def stats(self) -> Optional[tuple[float, float, float]]:
@@ -852,30 +870,60 @@ class Sparkline(QWidget):
                                       max(techo, antes_techo))
         return self._escala
 
-    def _trazado(self) -> Optional[tuple[QRectF, list, list]]:
-        """El recuadro, los puntos de la curva y sus valores, o nada si no hay curva.
+    def _base(self) -> Optional[dict]:
+        """Lo que se dibuja, en su sitio de cuando llega la muestra.
 
-        Aparte del dibujo para que quien coloca la cifra del pico —y quien lo
-        comprueba— use los mismos puntos que se pintan.
+        Se calcula una vez por muestra y por tamaño, no en cada fotograma: la
+        curva, el área, el pico y dónde va su cifra. Mientras se desliza hacia
+        la siguiente muestra, todo eso se dibuja corrido a la izquierda
+        (`_desplazamiento`), que es moverlo, no rehacerlo. La escala también se
+        decide aquí, una vez por muestra: así se estrecha al mismo ritmo con
+        el movimiento fluido que sin él.
         """
         if len(self._values) < 2:
             return None
+        clave = (self._version, self.width(), self.height())
+        if self._cache is not None and self._cache[0] == clave:
+            return self._cache[1]
         rect = self._recuadro()
         values = list(self._values)
-        low, high = self._escala_visible(values)
+        if self._cache is not None and self._cache[0][0] == self._version:
+            low, high = self._cache[1]["escala"]       # el mismo dato, otro tamaño
+        else:
+            low, high = self._escala_visible(values)
         origen, step = self._geometria()
-        # Las muestras viejas se van hacia la izquierda y salen por ahí; la
-        # nueva ya está dibujada en el borde derecho. Al revés —empujando
-        # todo a la derecha— el relleno dejaba un hueco parpadeante en el
-        # borde izquierdo, que es el rebote que se veía.
-        deslizamiento = -self._phase * step
 
         def point(i: int, v: float) -> QPointF:
             y = rect.bottom() - (v - low) / (high - low) * rect.height()
-            return QPointF(origen + i * step + deslizamiento,
-                           max(rect.top(), min(rect.bottom(), y)))
+            return QPointF(origen + i * step, max(rect.top(), min(rect.bottom(), y)))
 
-        return rect, [point(i, v) for i, v in enumerate(values)], values
+        points = [point(i, v) for i, v in enumerate(values)]
+        base = {"rect": rect, "points": points, "values": values, "escala": (low, high),
+                "area": curva_suave(points, cerrar_en=rect.bottom()),
+                "linea": curva_suave(points), "pico": self._pico(rect, points, values)}
+        self._cache = (clave, base)
+        return base
+
+    def _desplazamiento(self) -> float:
+        """Cuánto se ha corrido la curva hacia la muestra siguiente.
+
+        Las muestras viejas se van hacia la izquierda y salen por ahí; la
+        nueva ya está dibujada en el borde derecho. Al revés —empujando todo
+        a la derecha— el relleno dejaba un hueco parpadeante en el borde
+        izquierdo, que es el rebote que se veía.
+        """
+        return -self._phase * self._geometria()[1]
+
+    def _trazado(self) -> Optional[tuple[QRectF, list, list]]:
+        """El recuadro, los puntos de la curva tal como se ven y sus valores,
+        o nada si no hay curva. Los mismos que se pintan, para quien coloca la
+        cifra del pico y quien lo comprueba."""
+        base = self._base()
+        if base is None:
+            return None
+        dx = self._desplazamiento()
+        return (base["rect"], [QPointF(p.x() + dx, p.y()) for p in base["points"]],
+                base["values"])
 
     def _recuadro(self) -> QRectF:
         return QRectF(self.rect()).adjusted(0.5, 3.5, -0.5, -0.5)
@@ -896,30 +944,29 @@ class Sparkline(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         self._dibujar_eje(painter, self._recuadro())
 
-        trazado = self._trazado()
-        if trazado is None:
+        base = self._base()
+        if base is None:
             painter.end()
             return
-        rect, points, values = trazado
+        rect, points, values = base["rect"], base["points"], base["values"]
         if self._phase < 1.0:
             painter.setClipRect(self.rect())
-
-        area = curva_suave(points, cerrar_en=rect.bottom())
+        dx = self._desplazamiento()
+        painter.translate(dx, 0)
 
         gradient = QLinearGradient(0, rect.top(), 0, rect.bottom())
         gradient.setColorAt(0.0, self._p.q("accent", 0.28))
         gradient.setColorAt(1.0, self._p.q("accent", 0.02))
-        painter.fillPath(area, QBrush(gradient))
+        painter.fillPath(base["area"], QBrush(gradient))
 
-        line = curva_suave(points)
         painter.setPen(QPen(self._p.q("accent"), 1.6))
-        painter.drawPath(line)
+        painter.drawPath(base["linea"])
 
         painter.setBrush(QBrush(self._p.q("accent")))
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawEllipse(points[-1], 2.6, 2.6)
 
-        self._dibujar_pico(painter, rect, points, values)
+        self._dibujar_pico(painter, points, base["pico"])
 
         if self._hover is not None and 0 <= self._hover < len(points):
             self._draw_hover(painter, rect, points[self._hover], values[self._hover])
@@ -930,9 +977,8 @@ class Sparkline(QWidget):
     # medio grado sale con su punto y su cifra como si hubiera pasado algo.
     RELIEVE_MINIMO = 0.06
 
-    def _dibujar_pico(self, painter: QPainter, rect: QRectF,
-                      points: list, values: list) -> None:
-        """Marca el punto más alto del tramo que se está viendo.
+    def _pico(self, rect: QRectF, points: list, values: list) -> Optional[dict]:
+        """El punto más alto del tramo que se está viendo, y dónde va su cifra.
 
         Se ve que la temperatura subió, pero no a cuánto llegó ni cuándo: para
         eso había que estar mirando en ese momento o pasar el ratón buscando a
@@ -941,14 +987,32 @@ class Sparkline(QWidget):
 
         No se marca si el máximo es el último punto —ese ya lleva el suyo, y
         dos círculos juntos se leen como un error—, ni si la curva es
-        prácticamente plana.
+        prácticamente plana. Se decide con cada muestra (`_base`), no en cada
+        fotograma: buscar sitio a la cifra recorre la curva entera.
         """
         indice = self._indice_del_pico()
         if indice is None:
-            return
+            return None
+        pico = {"indice": indice, "texto": None, "caja": None}
+        if self._formatter is None:
+            return pico
+        texto = self._formatter(values[indice])
+        letra = ui_font(max(7, theme.METRICS.small_pt - 2))
+        # Enteras, como las del pintor: con las de coma flotante la caja
+        # quedaba medio píxel corrida.
+        metrica = QFontMetrics(letra)
+        caja = self._sitio_de_la_cifra(rect, points, indice,
+                                       metrica.horizontalAdvance(texto) + 6, metrica.height())
+        # Sin sitio donde no tape la curva, no se pone: el punto hueco sigue
+        # marcando dónde fue, y la cifra sale al pasar el ratón.
+        if caja is not None:
+            pico.update(texto=texto, caja=caja, letra=letra)
+        return pico
 
-        alto = values[indice]
-        punto = points[indice]
+    def _dibujar_pico(self, painter: QPainter, points: list, pico: Optional[dict]) -> None:
+        if pico is None:
+            return
+        punto = points[pico["indice"]]
         painter.setPen(Qt.PenStyle.NoPen)
         # Hueco y no relleno: el punto lleno es «aquí estás ahora», y el pico
         # es otra cosa. Con los dos iguales habría que adivinar cuál es cuál.
@@ -958,20 +1022,9 @@ class Sparkline(QWidget):
         painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawEllipse(punto, 3.0, 3.0)
 
-        if self._formatter is None:
-            return
-        texto = self._formatter(alto)
-        painter.setFont(ui_font(max(7, theme.METRICS.small_pt - 2)))
-        metrica = painter.fontMetrics()
-        ancho = metrica.horizontalAdvance(texto)
-        alto_texto = metrica.height()
-
-        caja = self._sitio_de_la_cifra(rect, points, indice, ancho + 6, alto_texto)
+        caja = pico["caja"]
         if caja is None:
-            # No hay dónde ponerla sin tapar la curva. El punto hueco sigue
-            # marcando dónde fue, y la cifra sale al pasar el ratón.
             return
-
         # La cifra cae a veces sobre el relleno del área, y ahí un texto
         # suelto se pierde: en tema claro el gris sobre el azul aguado no se
         # lee. Lleva detrás el color del panel, igual que la etiqueta del
@@ -980,8 +1033,9 @@ class Sparkline(QWidget):
         painter.setBrush(QBrush(self._p.q("surface", 0.82)))
         painter.drawRoundedRect(caja, 3, 3)
 
+        painter.setFont(pico["letra"])
         painter.setPen(self._p.q("ink_dim"))
-        painter.drawText(caja, int(Qt.AlignmentFlag.AlignCenter), texto)
+        painter.drawText(caja, int(Qt.AlignmentFlag.AlignCenter), pico["texto"])
 
     # Lo que la cifra del pico se aparta de la línea, en píxeles.
     AIRE_DEL_PICO = 3.0

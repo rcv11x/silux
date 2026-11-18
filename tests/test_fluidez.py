@@ -46,6 +46,29 @@ class TestDeslizamiento(unittest.TestCase):
         self.grafica.advance(0.505)
         self.assertEqual(self.grafica._phase, antes)
 
+    def test_deslizarse_no_rehace_la_curva(self):
+        """La curva se calcula con cada muestra y se mueve en cada fotograma.
+        Rehacerla treinta veces por segundo para correrla una décima de píxel
+        era la mitad de lo que gastaba la ventana con el movimiento fluido."""
+        from unittest import mock
+
+        from PySide6.QtGui import QPixmap
+
+        from silux.ui import widgets
+        self.grafica.resize(300, 40)
+        for valor in range(20):
+            self.grafica.push(float(valor % 7))
+        lienzo = QPixmap(300, 40)
+        self.grafica.render(lienzo)
+        with mock.patch.object(widgets, "curva_suave", wraps=widgets.curva_suave) as curva:
+            for fase in (0.2, 0.4, 0.6, 0.8, 1.0):
+                self.grafica.advance(fase)
+                self.grafica.render(lienzo)
+            self.assertEqual(curva.call_count, 0)
+            self.grafica.push(3.0)
+            self.grafica.render(lienzo)
+            self.assertEqual(curva.call_count, 2, "con el dato nuevo, línea y área")
+
     def test_dibujar_no_revienta_a_medio_recorrido(self):
         from PySide6.QtGui import QPixmap
         self.grafica.resize(200, 40)
@@ -223,13 +246,28 @@ class TestEscalaVertical(unittest.TestCase):
         self.assertGreater(tras_una_pintada, 1500.0, "ha bajado de golpe")
 
     def test_y_acaba_llegando(self):
+        """Muestra a muestra, que es lo que pasa el tiempo. Repintar sin datos
+        nuevos no lo mueve: con el movimiento fluido se repinta treinta veces
+        por segundo, y la escala bajaba treinta veces más deprisa que sin él."""
         g = self._grafica([800.0] * 5 + [3400.0])
         self._pintar(g)
         for _ in range(100):
             g.push(800.0)
         for _ in range(80):
+            g.push(800.0)
             self._pintar(g)
         self.assertLess(g._escala[1], 1000.0, "se ha quedado a medias")
+
+    def test_repintar_sin_datos_no_mueve_la_escala(self):
+        g = self._grafica([800.0] * 5 + [3400.0])
+        self._pintar(g)
+        for _ in range(100):
+            g.push(800.0)
+        tras_la_muestra = self._pintar(g)
+        for _ in range(30):
+            g.advance(0.5)
+            self._pintar(g)
+        self.assertEqual(self._pintar(g), tras_la_muestra)
 
     def test_ningun_valor_se_sale_de_la_escala(self):
         """Lo que se dibuja tiene que caber, siempre."""
