@@ -3,33 +3,47 @@
 No guarda nada por su cuenta: emite las preferencias nuevas y quien la usa
 decide qué hacer con ellas. Así la página no sabe si el cambio se persiste,
 se aplica en caliente o las dos cosas.
+
+Una columna de grupos, cada opción en un renglón: su nombre y para qué sirve
+a la izquierda, el control a la derecha. La columna va pegada a la izquierda
+con un ancho máximo: centrada, en una pantalla de 2560 dejaba un hueco a cada
+lado y el control quedaba a un palmo de lo que explica.
+
+Dos grupos dicen un estado además de guardar preferencias: Permisos, con lo
+que sabe la ventana del ayudante, y la integración con el escritorio, con lo
+que dice `desktop.status`. Los dos se repintan con cada foto (regla 9): si
+alguien instala la entrada desde la terminal con la página abierta, se ve.
 """
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, Signal
+from typing import Callable, Optional
+
+from PySide6.QtCore import QLocale, QRectF, QSize, Qt, QThread, Signal
+from PySide6.QtGui import QFontMetrics, QPainter
 from PySide6.QtWidgets import (
-    QCheckBox,
+    QAbstractButton,
     QComboBox,
     QDoubleSpinBox,
     QHBoxLayout,
     QLabel,
     QPushButton,
     QScrollArea,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
 
-from ... import __version__, db, i18n
+from ... import __version__, db, desktop, i18n
 from ...i18n import _
 from ...settings import Preferences, config_path
 from .. import theme
-from ..theme import ui_font
-from ..widgets import Card, ResponsiveRow
+from ..theme import Palette, ui_font
+from ..widgets import Card, Divider, ResponsiveRow
 
 AUTORIA = (
     ("rcv11x", "about.author"),
-    ("Claude", ""),
+    ("Claude", "about.claude"),
 )
 
 CONSTRUIDO_CON = (
@@ -59,51 +73,155 @@ ACCENTS = (("opt.accent.orange", "naranja"), ("opt.accent.blue", "azul"), ("opt.
 NETWORK_UNITS = (("opt.net.bytes", "bytes"),
                  ("opt.net.bits", "bits"))
 
+# El ancho mínimo de los desplegables; todos acaban midiendo lo que pida el
+# más ancho (`_igualar_controles`), para que la columna quede recta.
+ANCHO_DEL_CONTROL = 170
+# El ancho de la columna, en anchos de letra: crece con el tamaño de la letra.
+COLUMNA_EN_LETRAS = 120
 
-# Para que la columna de controles quede recta de arriba abajo.
-ANCHO_DEL_CONTROL = 150
+# El estado de la entrada de menú: su insignia, su explicación y su color.
+ESTADOS_DEL_MENU = {
+    "missing": ("settings.desktop.missing", "settings.desktop.missing.help", "muted"),
+    "current": ("settings.desktop.current", "settings.desktop.current.help", "ok"),
+    "elsewhere": ("settings.desktop.elsewhere", "settings.desktop.elsewhere.help", "warn"),
+    "broken": ("settings.desktop.broken", "settings.desktop.broken.help", "crit"),
+    "outdated": ("settings.desktop.outdated", "settings.desktop.outdated.help", "warn"),
+    "unsupported": ("settings.desktop.unsupported", "settings.desktop.unsupported.help", "muted"),
+}
+
+# Lo mismo para los permisos.
+ESTADOS_DE_PERMISOS = {
+    "root": ("settings.perm.root", "settings.perm.root.help", "ok"),
+    "connected": ("settings.perm.connected", "settings.perm.connected.help", "ok"),
+    "notneeded": ("settings.perm.notneeded", "settings.perm.notneeded.help", "ok"),
+    "unsupported": ("settings.perm.unsupported", "settings.perm.unsupported.help", "muted"),
+    "outdated": ("settings.perm.outdated", "settings.perm.outdated.help", "warn"),
+    "installed": ("settings.perm.installed", "settings.perm.installed.help", "info"),
+    "none": ("settings.perm.none", "settings.perm.none.help", "muted"),
+}
 
 
-class _Field(QWidget):
-    """Una fila de ajuste: nombre, control y una línea de explicación."""
+class Interruptor(QAbstractButton):
+    """Un interruptor de encendido y apagado, en vez de una casilla.
 
-    def __init__(self, name: str, control: QWidget, explanation: str = "", parent=None):
+    Se pinta a mano: Qt no trae uno, y una casilla dentro de un renglón cuyo
+    control va a la derecha se leía como una viñeta suelta. Encendido va en
+    el color de lo accionable, igual que los botones.
+    """
+
+    def __init__(self, palette: Palette, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self._p = palette
+        self.setCheckable(True)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+
+    def sizeHint(self) -> QSize:  # noqa: N802
+        alto = max(18, QFontMetrics(self.font()).height() + 2)
+        return QSize(alto * 2 - 2, alto)
+
+    def paintEvent(self, _event) -> None:  # noqa: N802
+        pintor = QPainter(self)
+        pintor.setRenderHint(QPainter.RenderHint.Antialiasing)
+        caja = QRectF(self.rect()).adjusted(1, 1, -1, -1)
+        radio = caja.height() / 2
+        encendido = self.isChecked()
+        if not self.isEnabled():
+            fondo = self._p.q("disabled")
+        elif encendido:
+            fondo = self._p.q("info")
+        else:
+            fondo = self._p.q("line")
+        pintor.setPen(self._p.q("info") if self.hasFocus() else Qt.PenStyle.NoPen)
+        pintor.setBrush(fondo)
+        pintor.drawRoundedRect(caja, radio, radio)
+        lado = caja.height() - 4
+        x = caja.right() - lado - 2 if encendido else caja.left() + 2
+        pintor.setPen(Qt.PenStyle.NoPen)
+        pintor.setBrush(self._p.q("surface"))
+        pintor.drawEllipse(QRectF(x, caja.top() + 2, lado, lado))
+        pintor.end()
+
+
+class Insignia(QLabel):
+    """Un estado en una pastilla de color: «En el menú», «Sin conceder»."""
+
+    def __init__(self, palette: Palette, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self._p = palette
+        self.tono = ""
+        self.setFont(ui_font(theme.METRICS.small_pt))
+        self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+
+    def poner(self, texto: str, tono: str) -> None:
+        if (self.text(), self.tono) == (texto, tono):
+            return
+        self.tono = tono
+        self.setText(texto)
+        color = self._p.q(tono)
+        fondo = self._p.q(tono, 0.16)
+        self.setStyleSheet(
+            f"QLabel {{ color: {color.name()}; "
+            f"background: rgba({fondo.red()}, {fondo.green()}, {fondo.blue()}, "
+            f"{fondo.alphaF():.2f}); border-radius: 9px; padding: 2px 10px; }}")
+
+
+class _Renglon(QWidget):
+    """Un ajuste: su nombre y para qué sirve a la izquierda, el control a la
+    derecha, centrado en vertical con el texto."""
+
+    def __init__(self, nombre: str, control: Optional[QWidget], explicacion: str = "",
+                 parent: Optional[QWidget] = None):
         super().__init__(parent)
         m = theme.METRICS
+        fila = QHBoxLayout(self)
+        fila.setContentsMargins(0, 2, 0, 2)
+        fila.setSpacing(24)
 
-        column = QVBoxLayout(self)
-        column.setContentsMargins(0, 0, 0, m.card_gap)
-        column.setSpacing(3)
+        textos = QVBoxLayout()
+        textos.setSpacing(2)
+        self.nombre = QLabel(nombre)
+        self.nombre.setObjectName("FieldValue")
+        self.nombre.setFont(ui_font(m.base_pt))
+        textos.addWidget(self.nombre)
+        self.explicacion = QLabel(explicacion)
+        self.explicacion.setObjectName("Muted")
+        self.explicacion.setWordWrap(True)
+        # Más pequeña que el nombre: acompaña al ajuste, no compite con él.
+        self.explicacion.setFont(ui_font(max(7, m.small_pt - 1)))
+        self.explicacion.setVisible(bool(explicacion))
+        textos.addWidget(self.explicacion)
+        fila.addLayout(textos, 1)
 
-        row = QHBoxLayout()
-        row.setContentsMargins(0, 0, 0, 0)
-        row.setSpacing(12)
+        if control is not None:
+            # Los que llevan texto dentro, con el mismo ancho: sin esto el
+            # borde derecho de la columna queda en diente de sierra.
+            if isinstance(control, (QComboBox, QDoubleSpinBox)):
+                control.setMinimumWidth(ANCHO_DEL_CONTROL)
+            fila.addWidget(control, 0, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 
-        label = QLabel(name)
-        label.setObjectName("FieldValue")
-        label.setFont(ui_font(m.base_pt))
-        label.setMinimumWidth(150)
 
-        # Los que llevan texto dentro, con el mismo ancho: sin esto cada
-        # desplegable mide lo que mida su opción más larga y el borde derecho
-        # queda en diente de sierra. Una casilla no: es un cuadradito, y
-        # reservarle ese ancho le come el nombre al ajuste.
-        if not isinstance(control, QCheckBox):
-            control.setMinimumWidth(ANCHO_DEL_CONTROL)
-        row.addWidget(label, 1)
-        row.addWidget(control, 0, Qt.AlignmentFlag.AlignRight)
-        column.addLayout(row)
+class _Tarea(QThread):
+    """Lo que toca el escritorio, fuera del hilo de la interfaz.
 
-        if explanation:
-            note = QLabel(explanation)
-            note.setObjectName("Muted")
-            note.setWordWrap(True)
-            # Más pequeña que la etiqueta a propósito: la explicación acompaña
-            # al ajuste, no compite con él. Al mismo tamaño, un texto de cinco
-            # líneas se lee antes que el nombre de la opción que explica.
-            note.setFont(ui_font(max(7, m.small_pt - 1)))
-            note.setContentsMargins(0, 0, ANCHO_DEL_CONTROL // 2, 0)
-            column.addWidget(note)
+    Instalar dibuja diez iconos y avisa a Plasma (`kbuildsycoca6` tarda su
+    segundo): con la ventana esperando, el botón se quedaba pulsado.
+    """
+
+    terminada = Signal(str)          # el error, o "" si fue bien
+
+    def __init__(self, trabajo: Callable[[], object], parent=None):
+        super().__init__(parent)
+        self._trabajo = trabajo
+
+    def run(self) -> None:
+        try:
+            self._trabajo()
+        except (OSError, desktop.DesktopError) as error:
+            self.terminada.emit(str(error) or type(error).__name__)
+            return
+        self.terminada.emit("")
 
 
 class SettingsPage(QScrollArea):
@@ -113,11 +231,21 @@ class SettingsPage(QScrollArea):
     report_requested = Signal()
     share_copy_requested = Signal()
     share_save_requested = Signal()
+    # Los permisos los pide la ventana, que es quien sabe hacerlo; la página
+    # solo enseña el botón que toca según el estado.
+    elevation_requested = Signal()
+    explain_requested = Signal()
+    permanent_requested = Signal()
 
-    def __init__(self, prefs: Preferences, parent=None):
+    def __init__(self, prefs: Preferences, palette: Optional[Palette] = None, parent=None):
         super().__init__(parent)
+        from PySide6.QtWidgets import QApplication
+
         self._prefs = prefs
+        self._p = palette or theme.palette_for(QApplication.instance(), prefs.theme, prefs.accent)
         self._loading = True
+        self._tarea: Optional[_Tarea] = None
+        self._error_del_escritorio = ""
         m = theme.METRICS
 
         self.setWidgetResizable(True)
@@ -127,65 +255,73 @@ class SettingsPage(QScrollArea):
         root.setObjectName("Root")
         self.setWidget(root)
 
-        layout = QVBoxLayout(root)
-        layout.setContentsMargins(m.page_margin, m.page_margin, m.page_margin, m.page_margin)
+        fuera = QHBoxLayout(root)
+        fuera.setContentsMargins(m.page_margin, m.page_margin, m.page_margin, m.page_margin)
+        self.columna = QWidget()
+        ancho = QFontMetrics(ui_font(m.base_pt)).averageCharWidth() * COLUMNA_EN_LETRAS
+        self.columna.setMaximumWidth(ancho)
+        fuera.addWidget(self.columna, 1)
+        # Lo que sobra va a la derecha: la columna se queda a la izquierda,
+        # donde empieza la lectura, y no centrada con un hueco a cada lado.
+        fuera.addStretch(0)
+
+        layout = QVBoxLayout(self.columna)
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(m.section_gap)
-
-        columns = ResponsiveRow(min_item_width=280)
-        columns.add(self._build_sampling())
-        columns.add(self._build_appearance())
-        layout.addWidget(columns)
-
-        layout.addWidget(self._build_credits())
+        layout.addWidget(self._build_general())
+        layout.addWidget(self._build_appearance())
+        layout.addWidget(self._build_sampling())
+        layout.addWidget(self._build_permissions())
+        layout.addWidget(self._build_desktop())
+        layout.addWidget(self._build_share())
         layout.addWidget(self._build_about())
         layout.addStretch(1)
+        self._igualar_controles()
 
         self._loading = False
+        self.refresh_desktop()
+
+    def _igualar_controles(self) -> None:
+        """Todos los desplegables, al ancho del que más pide.
+
+        Con un ancho fijo, «Bytes por segundo (MB/s)» salía cortado; cada uno
+        a su medida, el borde derecho de la columna quedaba en diente de
+        sierra.
+        """
+        controles = self.columna.findChildren(QComboBox) + self.columna.findChildren(QDoubleSpinBox)
+        ancho = max([ANCHO_DEL_CONTROL] + [c.sizeHint().width() for c in controles])
+        for control in controles:
+            control.setFixedWidth(ancho)
 
     # -- construcción -------------------------------------------------------
 
-    def _build_sampling(self) -> Card:
-        card = Card(_("settings.card.sampling"))
-
-        self.interval = QDoubleSpinBox()
-        self.interval.setRange(0.2, 10.0)
-        self.interval.setSingleStep(0.1)
-        self.interval.setDecimals(1)
-        self.interval.setSuffix(" s")
-        self.interval.setValue(self._prefs.interval_s)
-        self.interval.setFixedWidth(96)
-        self.interval.valueChanged.connect(self._emit)
-
-        card.body.addWidget(_Field(
-            _("settings.interval.label"), self.interval,
-            _("settings.interval.help")
-            ,
-        ))
-
-        self.all_features = QCheckBox()
-        self.all_features.setChecked(self._prefs.show_all_features)
-        self.all_features.stateChanged.connect(self._emit)
-        card.body.addWidget(_Field(
-            _("settings.allflags.label"), self.all_features,
-            _("settings.allflags.help")
-            ,
-        ))
-
-        self.fluid_charts = QCheckBox()
-        self.fluid_charts.setChecked(self._prefs.fluid_charts)
-        self.fluid_charts.stateChanged.connect(self._emit)
-        card.body.addWidget(_Field(
-            _("settings.fluid.label"), self.fluid_charts,
-            _("settings.fluid.help")
-            ,
-        ))
+    @staticmethod
+    def _grupo(titulo: str, *renglones: QWidget) -> Card:
+        card = Card(titulo)
+        for i, renglon in enumerate(renglones):
+            if i:
+                card.body.addWidget(Divider())
+            card.body.addWidget(renglon)
         return card
 
-    def _build_appearance(self) -> Card:
-        card = Card(_("settings.card.appearance"))
+    def _combo(self, opciones, actual: str) -> QComboBox:
+        caja = QComboBox()
+        for etiqueta, valor in opciones:
+            caja.addItem(_(etiqueta), valor)
+        valores = [v for _etiqueta, v in opciones]
+        caja.setCurrentIndex(valores.index(actual) if actual in valores else 0)
+        caja.currentIndexChanged.connect(self._emit)
+        return caja
 
-        # El idioma va el primero de la tarjeta: es lo que cambia todo lo
-        # demás, y quien lo busca no viene a mirar el tema.
+    def _interruptor(self, encendido: bool) -> Interruptor:
+        boton = Interruptor(self._p)
+        boton.setChecked(encendido)
+        boton.toggled.connect(self._emit)
+        return boton
+
+    def _build_general(self) -> Card:
+        # El idioma va el primero: es lo que cambia todo lo demás, y quien lo
+        # busca no viene a mirar el tema.
         self.language_box = QComboBox()
         idiomas = i18n.disponible()
         for codigo, nombre in idiomas.items():
@@ -193,123 +329,180 @@ class SettingsPage(QScrollArea):
         actual = self._prefs.language if self._prefs.language in idiomas else "es"
         self.language_box.setCurrentIndex(list(idiomas).index(actual))
         self.language_box.currentIndexChanged.connect(self._emit)
-        card.body.addWidget(_Field(
-            _("settings.language.label"), self.language_box,
-            _("settings.language.help")))
 
-        self.theme_box = QComboBox()
-        for label, value in THEMES:
-            self.theme_box.addItem(_(label), value)
-        self.theme_box.setCurrentIndex([v for _descarte, v in THEMES].index(self._prefs.theme))
-        self.theme_box.currentIndexChanged.connect(self._emit)
-        card.body.addWidget(_Field(_("settings.theme.label"), self.theme_box))
-
-        self.density_box = QComboBox()
-        for label, value in DENSITIES:
-            self.density_box.addItem(_(label), value)
-        self.density_box.setCurrentIndex([v for _descarte, v in DENSITIES].index(self._prefs.density))
-        self.density_box.currentIndexChanged.connect(self._emit)
-        card.body.addWidget(_Field(
-            _("settings.density.label"), self.density_box,
-            _("settings.density.help")
-            ,
-        ))
-
-        self.font_box = QComboBox()
-        for label, value in FONT_SCALES:
-            self.font_box.addItem(_(label), value)
-        self.font_box.setCurrentIndex(
-            [v for _descarte, v in FONT_SCALES].index(self._prefs.font_scale))
-        self.font_box.currentIndexChanged.connect(self._emit)
-        card.body.addWidget(_Field(
-            _("settings.fontsize.label"), self.font_box,
-            _("settings.fontsize.help")
-            ,
-        ))
-
-        self.accent_box = QComboBox()
-        for label, value in ACCENTS:
-            self.accent_box.addItem(_(label), value)
-        self.accent_box.setCurrentIndex([v for _descarte, v in ACCENTS].index(self._prefs.accent))
-        self.accent_box.currentIndexChanged.connect(self._emit)
-        card.body.addWidget(_Field(
-            _("settings.accent.label"), self.accent_box,
-            _("settings.accent.help")
-            ,
-        ))
-
-        self.network_box = QComboBox()
-        for label, value in NETWORK_UNITS:
-            self.network_box.addItem(_(label), value)
-        self.network_box.setCurrentIndex(
-            [v for _descarte, v in NETWORK_UNITS].index(self._prefs.network_unit))
-        self.network_box.currentIndexChanged.connect(self._emit)
-        card.body.addWidget(_Field(
-            _("settings.netunit.label"), self.network_box,
-            _("settings.netunit.help")
-            ,
-        ))
-
-        self.unit_box = QComboBox()
-        for label, value in UNITS:
-            self.unit_box.addItem(_(label), value)
-        self.unit_box.setCurrentIndex([v for _descarte, v in UNITS].index(self._prefs.temperature_unit))
-        self.unit_box.currentIndexChanged.connect(self._emit)
-        card.body.addWidget(_Field(_("settings.tempunit.label"), self.unit_box))
-
-        informe = QPushButton(_("settings.report.button"))
-        informe.setToolTip(
-            _("settings.tip.report")
+        self.unit_box = self._combo(UNITS, self._prefs.temperature_unit)
+        self.network_box = self._combo(NETWORK_UNITS, self._prefs.network_unit)
+        self.all_features = self._interruptor(self._prefs.show_all_features)
+        return self._grupo(
+            _("settings.group.general"),
+            _Renglon(_("settings.language.label"), self.language_box,
+                     _("settings.language.help")),
+            _Renglon(_("settings.tempunit.label"), self.unit_box),
+            _Renglon(_("settings.netunit.label"), self.network_box, _("settings.netunit.help")),
+            _Renglon(_("settings.allflags.label"), self.all_features, _("settings.allflags.help")),
         )
-        informe.clicked.connect(self.report_requested.emit)
 
-        # Al lado del informe porque responden a la misma intención: sacar algo
-        # de aquí para enseñárselo a otro. El informe es para diagnosticar y
-        # esto es para presumir, y las dos cosas acaban pegadas en un chat.
+    def _build_appearance(self) -> Card:
+        self.theme_box = self._combo(THEMES, self._prefs.theme)
+        self.density_box = self._combo(DENSITIES, self._prefs.density)
+        self.font_box = self._combo(FONT_SCALES, self._prefs.font_scale)
+        self.accent_box = self._combo(ACCENTS, self._prefs.accent)
+        return self._grupo(
+            _("settings.card.appearance"),
+            _Renglon(_("settings.theme.label"), self.theme_box),
+            _Renglon(_("settings.density.label"), self.density_box, _("settings.density.help")),
+            _Renglon(_("settings.fontsize.label"), self.font_box, _("settings.fontsize.help")),
+            _Renglon(_("settings.accent.label"), self.accent_box, _("settings.accent.help")),
+        )
+
+    def _build_sampling(self) -> Card:
+        self.interval = QDoubleSpinBox()
+        self.interval.setRange(0.2, 10.0)
+        self.interval.setSingleStep(0.1)
+        self.interval.setDecimals(1)
+        self.interval.setSuffix(" s")
+        # «1.0 s» y no «1,0 s»: con la configuración regional del sistema la
+        # coma salía aquí y el punto en el resto del programa, que escribe
+        # todas las cifras con punto.
+        self.interval.setLocale(QLocale.c())
+        self.interval.setValue(self._prefs.interval_s)
+        self.interval.valueChanged.connect(self._emit)
+        self.fluid_charts = self._interruptor(self._prefs.fluid_charts)
+        return self._grupo(
+            _("settings.card.sampling"),
+            _Renglon(_("settings.interval.label"), self.interval, _("settings.interval.help")),
+            _Renglon(_("settings.fluid.label"), self.fluid_charts, _("settings.fluid.help")),
+        )
+
+    def _build_permissions(self) -> Card:
+        self.permission_badge = Insignia(self._p)
+        self.permission_row = _Renglon(_("settings.perm.state"), self.permission_badge)
+
+        self.permission_button = QPushButton(_("perm.read.button"))
+        self.permission_button.setObjectName("Primary")
+        self.permission_button.clicked.connect(self._on_permission_button)
+        self.explain_button = QPushButton(_("perm.notice.explain"))
+        self.explain_button.clicked.connect(self.explain_requested.emit)
+        botones = QWidget()
+        fila = QHBoxLayout(botones)
+        fila.setContentsMargins(0, 0, 0, 0)
+        fila.addStretch(1)
+        fila.addWidget(self.explain_button)
+        fila.addWidget(self.permission_button)
+        self._accion_de_permisos = "grant"
+        card = self._grupo(_("settings.group.permissions"), self.permission_row, botones)
+        self.set_privileges(None)
+        return card
+
+    def _build_desktop(self) -> Card:
+        self.desktop_badge = Insignia(self._p)
+        self.desktop_row = _Renglon(_("settings.desktop.state"), self.desktop_badge)
+
+        self.desktop_shortcut = Interruptor(self._p)
+        self.desktop_shortcut.toggled.connect(self._on_shortcut_toggled)
+        self.shortcut_row = _Renglon(_("settings.desktop.shortcut"), self.desktop_shortcut,
+                                     _("settings.desktop.shortcut.help"))
+
+        self.desktop_add = QPushButton(_("settings.desktop.add"))
+        self.desktop_add.setObjectName("Primary")
+        self.desktop_add.clicked.connect(lambda: self._instalar(self.desktop_shortcut.isChecked()))
+        self.desktop_fix = QPushButton(_("settings.desktop.fix"))
+        self.desktop_fix.setObjectName("Primary")
+        self.desktop_fix.clicked.connect(lambda: self._instalar(None))
+        self.desktop_remove = QPushButton(_("settings.desktop.remove"))
+        self.desktop_remove.clicked.connect(self._quitar)
+        botones = QWidget()
+        fila = QHBoxLayout(botones)
+        fila.setContentsMargins(0, 0, 0, 0)
+        fila.addStretch(1)
+        for boton in (self.desktop_remove, self.desktop_fix, self.desktop_add):
+            fila.addWidget(boton)
+        return self._grupo(_("settings.group.desktop"), self.desktop_row,
+                           self.shortcut_row, botones)
+
+    def _build_share(self) -> Card:
+        # Juntos porque responden a la misma intención: sacar algo de aquí
+        # para enseñárselo a otro. El informe es para diagnosticar y la
+        # imagen para presumir, y las dos cosas acaban pegadas en un chat.
         copiar = QPushButton(_("share.button.copy"))
         copiar.setToolTip(_("share.tip"))
         copiar.clicked.connect(self.share_copy_requested.emit)
         guardar = QPushButton(_("share.button.save"))
         guardar.setToolTip(_("share.tip"))
         guardar.clicked.connect(self.share_save_requested.emit)
+        imagen = QWidget()
+        fila = QHBoxLayout(imagen)
+        fila.setContentsMargins(0, 0, 0, 0)
+        fila.addWidget(copiar)
+        fila.addWidget(guardar)
 
-        fila_informe = QHBoxLayout()
-        fila_informe.addStretch(1)
-        fila_informe.addWidget(copiar)
-        fila_informe.addWidget(guardar)
-        fila_informe.addWidget(informe)
-        card.body.addLayout(fila_informe)
+        informe = QPushButton(_("settings.report.button"))
+        informe.setToolTip(_("settings.tip.report"))
+        informe.clicked.connect(self.report_requested.emit)
+        return self._grupo(
+            _("settings.group.share"),
+            _Renglon(_("settings.share.image"), imagen, _("settings.share.image.help")),
+            _Renglon(_("settings.share.report"), informe, _("settings.share.report.help")),
+        )
 
-        reset = QPushButton(_("settings.reset.button"))
-        reset.clicked.connect(self._reset)
-        row = QHBoxLayout()
-        row.addStretch(1)
-        row.addWidget(reset)
-        card.body.addLayout(row)
-        return card
-
-    def _build_credits(self) -> Card:
-        """Quién lo hace y sobre qué está construido."""
+    def _build_about(self) -> Card:
+        """Quién lo hace, sobre qué está construido, y dónde guarda las cosas."""
         card = Card(_("about.card"))
         m = theme.METRICS
 
         titulo = QLabel(f"Silux {__version__}")
         titulo.setObjectName("Headline")
         card.body.addWidget(titulo)
-
-        lema = QLabel(
-            _("about.tagline")
-        )
+        lema = QLabel(_("about.tagline"))
         lema.setObjectName("Subhead")
         lema.setWordWrap(True)
         card.body.addWidget(lema)
 
-        fila = ResponsiveRow(min_item_width=250)
+        fila = ResponsiveRow(min_item_width=220)
         fila.add(self._bloque(_("about.credits"), AUTORIA))
         fila.add(self._bloque(_("about.builtwith"), CONSTRUIDO_CON))
         fila.add(self._bloque(_("about.thirdparty"), DATOS_DE_TERCEROS))
         card.body.addWidget(fila)
+        card.body.addWidget(Divider())
+
+        self.db_info = QLabel(self._texto_de_la_base())
+        self.db_info.setObjectName("Muted")
+        self.db_info.setWordWrap(True)
+        self.db_info.setFont(ui_font(m.small_pt))
+        self.db_info.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        card.body.addWidget(self.db_info)
+
+        path = QLabel(_("settings.savedat").format(ruta=config_path()))
+        path.setObjectName("Muted")
+        path.setWordWrap(True)
+        path.setFont(ui_font(m.small_pt))
+        path.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        card.body.addWidget(path)
+
+        # Al final de todo: es lo único de la página que deshace lo demás.
+        reset = QPushButton(_("settings.reset.button"))
+        reset.clicked.connect(self._reset)
+        abajo = QHBoxLayout()
+        abajo.addStretch(1)
+        abajo.addWidget(reset)
+        card.body.addLayout(abajo)
         return card
+
+    @staticmethod
+    def _texto_de_la_base() -> str:
+        if not db.available():
+            return _("settings.db.none")
+        data = db.load()
+        counts = data.get("counts", {})
+        sources = data.get("sources", {})
+        return _("settings.db.counts").format(
+            intel=counts.get("x86_intel", 0),
+            amd=counts.get("x86_amd", 0),
+            arm=counts.get("arm_parts", 0),
+            sockets=counts.get("sockets", 0),
+            commit=sources.get("libcpuid", {}).get("commit", "?"),
+            fecha=sources.get("libcpuid", {}).get("date", "?"),
+            cpux=sources.get("cpu-x", {}).get("commit", "?"))
 
     def _bloque(self, titulo: str, lineas: tuple[tuple[str, str], ...]) -> QWidget:
         """Una columna de «cosa, para qué», con su encabezado."""
@@ -320,69 +513,179 @@ class SettingsPage(QScrollArea):
         columna.setSpacing(3)
 
         encabezado = QLabel(titulo.upper())
-        # De columna, no de tarjeta: estos tres encabezados nombran una lista
-        # dentro de una tarjeta que ya tiene su propio título.
         encabezado.setObjectName("ColumnTitle")
         columna.addWidget(encabezado)
         columna.addSpacing(2)
 
         for nombre, clave in lineas:
-            detalle = _(clave) if clave else ""
             # El nombre y su para-qué en dos renglones alineados por la
-            # izquierda, en vez de un párrafo con negritas dentro: así las tres
-            # columnas se leen a la misma altura y se comparan de un vistazo.
+            # izquierda: así las tres columnas se leen a la misma altura.
             titulo_linea = QLabel(nombre)
             titulo_linea.setObjectName("FieldValue")
             titulo_linea.setFont(ui_font(m.small_pt))
-            titulo_linea.setTextInteractionFlags(
-                Qt.TextInteractionFlag.TextSelectableByMouse)
+            titulo_linea.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
             columna.addWidget(titulo_linea)
-
-            if detalle:
-                pie = QLabel(detalle)
-                pie.setObjectName("Muted")
-                pie.setWordWrap(True)
-                pie.setFont(ui_font(max(7, m.small_pt - 1)))
-                pie.setContentsMargins(0, 0, 0, m.card_gap - 2)
-                pie.setTextInteractionFlags(
-                    Qt.TextInteractionFlag.TextSelectableByMouse)
-                columna.addWidget(pie)
+            pie = QLabel(_(clave))
+            pie.setObjectName("Muted")
+            pie.setWordWrap(True)
+            pie.setFont(ui_font(max(7, m.small_pt - 1)))
+            pie.setContentsMargins(0, 0, 0, m.card_gap - 2)
+            pie.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+            columna.addWidget(pie)
         columna.addStretch(1)
         return caja
 
-    def _build_about(self) -> Card:
-        card = Card(_("about.storage"))
-        m = theme.METRICS
+    # -- permisos -------------------------------------------------------------
 
-        if db.available():
-            data = db.load()
-            counts = data.get("counts", {})
-            sources = data.get("sources", {})
-            text = _("settings.db.counts").format(
-                intel=counts.get("x86_intel", 0),
-                amd=counts.get("x86_amd", 0),
-                arm=counts.get("arm_parts", 0),
-                sockets=counts.get("sockets", 0),
-                commit=sources.get("libcpuid", {}).get("commit", "?"),
-                fecha=sources.get("libcpuid", {}).get("date", "?"),
-                cpux=sources.get("cpu-x", {}).get("commit", "?"))
+    def set_privileges(self, snapshot) -> None:
+        """El estado del ayudante y el botón que toca: no se ofrece lo que ya
+        está. Con None, antes de la primera foto, como si no hubiera nada."""
+        from ...privileged.client import PrivilegedClient
+
+        privilegios = snapshot.privileged if snapshot is not None else None
+        faltan = bool(snapshot.permission_notes) if snapshot is not None else True
+        instalado = PrivilegedClient.instalado()
+        boton, explicar = None, False
+        if privilegios is not None and privilegios.already_root:
+            estado = "root"
+        elif privilegios is not None and privilegios.connected:
+            estado = "connected"
+            # Concedidos para esta sesión: lo único que queda por ofrecer es
+            # que no se vuelvan a pedir, y eso se explica en «Qué hace esto».
+            explicar = not instalado
+        elif privilegios is not None and not privilegios.supported:
+            # Antes que «no hacen falta»: sin pkexec la foto no cuenta nada
+            # como pendiente de permisos, y eso no es que no falte nada.
+            estado = "unsupported"
+        elif not faltan:
+            estado = "notneeded"
+        elif PrivilegedClient.necesita_reinstalar():
+            estado, boton = "outdated", ("replace", "perm.replace.button")
+        elif instalado:
+            estado, boton = "installed", ("grant", "perm.read.button")
         else:
-            text = _("settings.db.none")
+            estado, boton, explicar = "none", ("grant", "perm.read.button"), True
 
-        info = QLabel(text)
-        info.setObjectName("Muted")
-        info.setWordWrap(True)
-        info.setFont(ui_font(m.small_pt))
-        info.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        card.body.addWidget(info)
+        self.permission_state = estado
+        insignia, ayuda, tono = ESTADOS_DE_PERMISOS[estado]
+        self.permission_badge.poner(_(insignia), tono)
+        self.permission_row.explicacion.setText(_(ayuda))
+        self.permission_row.explicacion.setVisible(True)
+        if boton is None:
+            self.permission_button.hide()
+        else:
+            self._accion_de_permisos = boton[0]
+            # Mientras espera la contraseña lo lleva la ventana; aquí solo se
+            # pone el texto de su estado cuando no está esperando.
+            if self.permission_button.isEnabled():
+                self.permission_button.setText(_(boton[1]))
+            self.permission_button.show()
+        self.explain_button.setVisible(explicar)
 
-        path = QLabel(_("settings.savedat").format(ruta=config_path()))
-        path.setObjectName("Muted")
-        path.setWordWrap(True)
-        path.setFont(ui_font(m.small_pt))
-        path.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        card.body.addWidget(path)
-        return card
+    def _on_permission_button(self) -> None:
+        if self._accion_de_permisos == "replace":
+            self.permanent_requested.emit()
+        else:
+            self.elevation_requested.emit()
+
+    # -- integración con el escritorio ----------------------------------------
+
+    def refresh_desktop(self) -> None:
+        """Lee cómo está la entrada de menú y pone la insignia y los botones.
+
+        Son unas pocas lecturas de archivos pequeños de ~/.local/share, no de
+        hardware: se hace aquí, al construir, tras cada acción y con cada foto.
+        """
+        if self._tarea is not None:
+            return
+        estado = desktop.status()
+        self.desktop_state = estado.state
+        clave, ayuda, tono = ESTADOS_DEL_MENU[estado.state]
+        self.desktop_badge.poner(_(clave), tono)
+        lanzador = estado.launcher
+        if self._error_del_escritorio:
+            detalle = _("settings.desktop.failed").format(error=self._error_del_escritorio)
+        elif estado.state in ("elsewhere", "broken"):
+            detalle = _(ayuda).format(destino=estado.target)
+        elif lanzador.mode == "development":
+            detalle = _("settings.desktop.dev").format(ruta=lanzador.working_dir)
+            if estado.state != "current":
+                detalle += " " + _(ayuda)
+        elif lanzador.mode == "appimage" and lanzador.command:
+            detalle = _("settings.desktop.appimage").format(ruta=lanzador.command[0])
+            if estado.state != "current":
+                detalle += " " + _(ayuda)
+        else:
+            detalle = _(ayuda)
+        self.desktop_row.explicacion.setText(detalle)
+        self.desktop_row.explicacion.setVisible(bool(detalle))
+
+        instalada = estado.state not in ("missing", "unsupported")
+        self.desktop_add.setVisible(estado.state == "missing")
+        self.desktop_fix.setVisible(estado.state in ("elsewhere", "broken", "outdated"))
+        self.desktop_remove.setVisible(instalada)
+        for boton in (self.desktop_add, self.desktop_fix, self.desktop_remove):
+            boton.setEnabled(True)
+        self.desktop_add.setText(_("settings.desktop.add"))
+        self.desktop_fix.setText(_("settings.desktop.fix"))
+        self.desktop_remove.setText(_("settings.desktop.remove"))
+        self.shortcut_row.setVisible(estado.state != "unsupported")
+        if instalada:
+            self.desktop_shortcut.blockSignals(True)
+            self.desktop_shortcut.setChecked(estado.on_desktop)
+            self.desktop_shortcut.blockSignals(False)
+
+    def _en_segundo_plano(self, trabajo: Callable[[], object], boton: QPushButton,
+                          texto: str) -> None:
+        if self._tarea is not None:
+            return
+        for otro in (self.desktop_add, self.desktop_fix, self.desktop_remove):
+            otro.setEnabled(False)
+        boton.setText(_(texto))
+        self._error_del_escritorio = ""
+        self._tarea = _Tarea(trabajo, self)
+        self._tarea.terminada.connect(self._tarea_terminada)
+        self._tarea.start()
+
+    def _tarea_terminada(self, error: str) -> None:
+        tarea, self._tarea = self._tarea, None
+        if tarea is not None:
+            tarea.wait()
+            tarea.deleteLater()
+        self._error_del_escritorio = error
+        self.refresh_desktop()
+
+    def _instalar(self, en_escritorio: Optional[bool]) -> None:
+        boton = self.desktop_add if self.desktop_add.isVisible() else self.desktop_fix
+        self._en_segundo_plano(lambda: desktop.install(on_desktop=en_escritorio),
+                               boton, "settings.desktop.working")
+
+    def _quitar(self) -> None:
+        self._en_segundo_plano(desktop.uninstall, self.desktop_remove,
+                               "settings.desktop.working")
+
+    def _on_shortcut_toggled(self, encendido: bool) -> None:
+        # Sin entrada instalada es solo la opción para cuando se añada.
+        if desktop.status().state in ("missing", "unsupported"):
+            return
+        self._en_segundo_plano(lambda: desktop.install(on_desktop=encendido),
+                               self.desktop_fix, "settings.desktop.working")
+
+    def wait_for_tasks(self) -> None:
+        """Para cerrar la ventana sin dejar un hilo a medias."""
+        if self._tarea is not None:
+            self._tarea.wait()
+
+    # -- lo que llega de la ventana ---------------------------------------------
+
+    def apply(self, snapshot) -> None:
+        self.set_privileges(snapshot)
+        if self.isVisible():
+            self.refresh_desktop()
+
+    def showEvent(self, event) -> None:  # noqa: N802
+        super().showEvent(event)
+        self.refresh_desktop()
 
     # -- señales ------------------------------------------------------------
 

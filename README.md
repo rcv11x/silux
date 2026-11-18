@@ -197,7 +197,7 @@ La última hace falta porque pasar en el Python de uno no dice nada del mínimo
 que declara el proyecto: corre la suite dentro de una Ubuntu 22.04, que es la
 misma en la que corre el CI y en la que se construye el AppImage.
 
-Son unos 1600 y tardan medio minuto en paralelo y minuto y medio en serie. Ninguno exige una pieza concreta: los
+Son unos 2100 y tardan medio minuto en paralelo y minuto y medio en serie. Ninguno exige una pieza concreta: los
 proveedores se prueban contra árboles de sysfs sintéticos, el generador contra
 fragmentos de C, y el SPD y el EDID contra volcados binarios de piezas reales
 guardados en `tests/fixtures`. Algunos sí leen el hardware de quien los

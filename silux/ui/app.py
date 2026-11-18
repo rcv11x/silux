@@ -219,6 +219,9 @@ class MainWindow(QMainWindow):
             # Una orden que espera a pkexec es hija de la página que se va a
             # destruir, y un QThread destruido en marcha aborta el proceso.
             self.monitor_page.cancelar_ordenes()
+        if hasattr(self, "settings_page"):
+            # Lo mismo con la entrada de menú que se está instalando.
+            self.settings_page.wait_for_tasks()
 
         central = QWidget()
         central.setObjectName("Root")
@@ -269,8 +272,11 @@ class MainWindow(QMainWindow):
         self.network_page.unit_changed.connect(self._on_network_unit)
         self.system_page = SystemPage(self._palette, self.prefs)
         self.performance_page = PerformancePage(self._palette, self.prefs)
-        self.settings_page = SettingsPage(self.prefs)
+        self.settings_page = SettingsPage(self.prefs, self._palette)
         self.settings_page.changed.connect(self._on_preferences)
+        self.settings_page.elevation_requested.connect(self._on_elevation_requested)
+        self.settings_page.explain_requested.connect(self._explicar_permisos)
+        self.settings_page.permanent_requested.connect(self._on_permanent_requested)
         self.settings_page.report_requested.connect(self._on_report_requested)
         self.settings_page.share_copy_requested.connect(self._on_share_copy)
         self.home_page.share_copy_requested.connect(self._on_share_copy)
@@ -424,6 +430,7 @@ class MainWindow(QMainWindow):
             self._instalacion.cancel()
             self._instalacion = None
         self.monitor_page.cancelar_ordenes()
+        self.settings_page.wait_for_tasks()
         # El registro se cierra a mano: lo escrito ya está en el disco, pero
         # dejar el descriptor abierto al salir deja la última fila a medias.
         self.monitor_page.cerrar_registro()
@@ -714,7 +721,8 @@ class MainWindow(QMainWindow):
             # por mirar. Lo que se para es lo que se pinta.
             return
         for boton in (self.memory_page.elevation_button,
-                      self.storage_page.elevation_button):
+                      self.storage_page.elevation_button,
+                      self.settings_page.permission_button):
             if not boton.isEnabled():
                 boton.setEnabled(True)
                 boton.setText(_("perm.read.button"))
@@ -756,6 +764,7 @@ class MainWindow(QMainWindow):
         # del aviso y nacen y mueren con él, así que se preguntan cada vez.
         for boton in [self.memory_page.elevation_button,
                       self.storage_page.elevation_button,
+                      self.settings_page.permission_button,
                       *self.graphics_page.elevation_buttons]:
             boton.setEnabled(False)
             boton.setText(_("perm.waiting"))
@@ -835,6 +844,8 @@ class MainWindow(QMainWindow):
             return
 
         self._refrescar_botones_permanentes()
+        if self._last_snapshot is not None:
+            self.settings_page.set_privileges(self._last_snapshot)
         self._status.set_full_text(
             _("perm.installed"))
 
@@ -913,7 +924,8 @@ class MainWindow(QMainWindow):
         for page in (self.home_page, self.cpu_page, self.monitor_page, self.caches_page,
                      self.board_page, self.memory_page, self.system_page,
                      self.graphics_page, self.network_page, self.storage_page,
-                     self.devices_page, self.battery_page, self.performance_page):
+                     self.devices_page, self.battery_page, self.performance_page,
+                     self.settings_page):
             page.apply(snapshot)
 
         self._ajustar_bateria(snapshot)
