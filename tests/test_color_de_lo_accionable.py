@@ -79,6 +79,31 @@ class TestElColorDeLoAccionable(unittest.TestCase):
         regla = hoja.split("QPushButton#StatusAction {")[1].split("}")[0]
         self.assertIn(f"color: {ventana._palette.info};", regla)
 
+    def test_el_interruptor_encendido_va_en_el_acento_y_no_en_azul(self):
+        # Encendido es algo que el usuario ha elegido, como una casilla
+        # marcada o la sección abierta: ámbar. El azul dice que falta algo
+        # que tiene arreglo, y un interruptor encendido no le falta nada.
+        from PySide6.QtGui import QPixmap
+        from PySide6.QtWidgets import QWidget
+
+        from silux.ui import theme
+        from silux.ui.pages.settings import Interruptor
+
+        for paleta in (theme.DARK, theme.LIGHT):
+            interruptor = Interruptor(paleta)
+            self.addCleanup(interruptor.deleteLater)
+            interruptor.setChecked(True)
+            interruptor.resize(interruptor.sizeHint())
+            lienzo = QPixmap(interruptor.size())
+            lienzo.fill(paleta.q("surface"))
+            interruptor.render(lienzo, renderFlags=QWidget.RenderFlag.DrawChildren)
+            imagen = lienzo.toImage()
+            colores = {imagen.pixelColor(x, y).name().lower()
+                       for x in range(imagen.width()) for y in range(imagen.height())}
+            with self.subTest(acento=paleta.accent):
+                self.assertIn(paleta.accent.lower(), colores)
+                self.assertNotIn(paleta.info.lower(), colores)
+
     def test_un_aviso_de_un_disco_sigue_siendo_un_aviso(self):
         # Eso no es una tarea del usuario: es un estado del equipo.
         from silux.ui.widgets import Notice

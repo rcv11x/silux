@@ -816,7 +816,11 @@ apartado. El orden dentro de cada apartado es el cronológico.
   ámbar es la marca y lo que se puede pulsar; lo que falta y tiene arreglo va
   en azul (`Palette.info`, tono `action`). El amarillo (`warn`) se queda para
   lo que es un estado del equipo y no una tarea del usuario: un disco que
-  avisa, una lectura cerca de su límite.
+  avisa, una lectura cerca de su límite. El interruptor de Ajustes nació
+  azul porque «lo accionable» se leyó como «lo que se pulsa», y quedaba
+  azul al lado de un botón principal ámbar. Encendido es una elección del
+  usuario, como una casilla marcada: va en el acento. El azul es de lo que
+  falta, no de los controles.
 - **Bordear un control con el mismo filo que una tarjeta**: `line` separa
   superficies que ya se distinguen por su tono, pero el relleno de un
   desplegable apenas se aparta de la tarjeta (1.1:1), así que su borde es lo

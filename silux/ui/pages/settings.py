@@ -103,8 +103,14 @@ class Interruptor(QAbstractButton):
     """Un interruptor de encendido y apagado, en vez de una casilla.
 
     Se pinta a mano: Qt no trae uno, y una casilla dentro de un renglón cuyo
-    control va a la derecha se leía como una viñeta suelta. Encendido va en
-    el color de lo accionable, igual que los botones.
+    control va a la derecha se leía como una viñeta suelta.
+
+    Encendido va en el acento, como una casilla marcada, la sección abierta
+    o el botón principal: es algo que el usuario ha elegido. No en azul: el
+    azul dice que falta un dato y tiene arreglo (candados, avisos de
+    permisos), y a un interruptor encendido no le falta nada. Con el azul,
+    Ajustes enseñaba dos colores para lo mismo, uno en el interruptor y otro
+    en el botón de al lado.
     """
 
     def __init__(self, palette: Palette, parent: Optional[QWidget] = None):
@@ -131,11 +137,11 @@ class Interruptor(QAbstractButton):
         if not self.isEnabled():
             fondo, contorno, bola = self._p.q("disabled"), None, self._p.q("surface")
         elif encendido:
-            fondo, contorno, bola = self._p.q("info"), None, self._p.q("surface")
+            fondo, contorno, bola = self._p.q("accent"), None, self._p.q("surface")
         else:
             fondo, contorno, bola = self._p.q("surface_alt"), self._p.q("muted"), self._p.q("muted")
         if self.hasFocus():
-            contorno = self._p.q("info")
+            contorno = self._p.q("accent")
         pintor.setPen(contorno if contorno is not None else Qt.PenStyle.NoPen)
         pintor.setBrush(fondo)
         pintor.drawRoundedRect(caja, radio, radio)
