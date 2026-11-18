@@ -3,9 +3,144 @@
 Para retomar sin el contexto de la sesión anterior. Se borra cuando lo de
 aquí esté hecho o pase a `docs/pendientes.md`.
 
-Última sesión: 18 de noviembre de 2026 por la tarde, en el i5-10400 de la
-oficina (Fedora 44, KDE Plasma 6.8 en Wayland). La anterior, la madrugada del
+Última sesión: 18 de noviembre de 2026 por la tarde (hasta las 16:00), en el
+i5-10400 de la oficina (Fedora 44, KDE Plasma 6.8 en Wayland). La anterior, la madrugada del
 18 en el 5800X3D de casa (CachyOS).
+
+## Para casa: probar la 0.4.0 en el 5800X3D y publicarla
+
+La 0.4.0 está preparada y **sin publicar**:
+
+- `oficina` pasó a `master` con `--ff-only`: el último commit es el del
+  CLAUDE.md de esta tanda («docs(claude): la 0.4.0 en borrador…»).
+- El CI de `master` está en verde: la ejecución de ese commit. Se ve con
+  `gh run list --branch master --limit 1`.
+- Existe la release **v0.4.0 en borrador**, con las notas de la entrada
+  0.4.0 del CHANGELOG y los dos AppImage de esa ejecución.
+- La etiqueta **no existe todavía**: la crea GitHub al publicar.
+- La fecha del CHANGELOG es el 18 de noviembre.
+
+### 1. Bajar los AppImage del borrador
+
+```bash
+mkdir -p ~/silux-0.4.0 && cd ~/silux-0.4.0
+gh release download v0.4.0 --repo rcv11x/silux --pattern '*.AppImage'
+chmod +x silux-x86_64*.AppImage
+./silux-x86_64.AppImage --version     # 0.4.0 y el commit de master
+git -C ~/Documentos/Coding/silux rev-parse --short origin/master   # tiene que coincidir
+```
+
+### 2. Qué probar antes de publicar
+
+**Permisos:**
+- Inicio avisa de lo que falta.
+- «Qué hace esto» se lee entero.
+- «Dar permisos» pide la contraseña sin congelar la ventana, y los candados
+  desaparecen en la página abierta, sin cambiar de página.
+- Si el ayudante permanente de una versión anterior está instalado, el
+  botón para actualizarlo.
+- Pulsar un candado también los pide.
+
+**Memoria (X570, Gigabyte):**
+- Las fichas se llaman «Módulo 1», «Módulo 2»…, con y sin permisos, y el
+  zócalo («Canal A · DIMM 1») va en su campo.
+- No se dice cuántos zócalos hay ni cuántos quedan libres.
+- Sin SPD (el firmware se reserva el SMBus), el pie da ese motivo y no
+  culpa a «la placa» sin más.
+- El fabricante, «Crucial» o el que sea, sale igual con y sin permisos.
+- El máximo del procesador según la disposición de los módulos (2x2R o
+  4x1R): si van a ese máximo, no se sugiere XMP.
+
+**Gráficos (RX 9070 XT):**
+- Que no haya cambiado nada para mal: «Ahora mismo», sensores (punto
+  caliente, memoria, VR, ventilador), códecs y motores.
+- Todo en ámbar, ni rastro de azul salvo candados e interruptores.
+- Los cambios de la integrada (pie en una frase, sin AMD en los textos) no
+  deberían tocar a una dedicada; mirarlo igual.
+
+**Acceso directo (Ajustes, «Integración con el escritorio»):**
+- Desde el AppImage: «Añadir al menú» pone «Silux» con el icono nuevo y
+  apunta al AppImage.
+- El acceso en el escritorio, si se marca.
+- Quitarlo lo quita.
+- Desde el código, «Silux (desarrollo)» va aparte y no pisa la otra
+  entrada.
+
+**De paso:**
+- Sistema con Limine: las cinco fases del arranque y el total, sin pie.
+- Los miles con espacio fino.
+- `--report` y `--json` sin errores.
+- Si se puede, volcar el 5800X3D otra vez (`tools/volcar_equipo.py
+  5800x3d`): ahora grabaría la FPDT y lo que contesta systemd. Eso va en un
+  commit aparte, después de la versión.
+
+Si algo sale mal: se arregla en una rama desde `master`, con su test y el CI
+en verde, `--ff-only` a `master`. Después se borra el borrador y se crea
+otra vez desde la ejecución nueva (o se sustituyen los AppImage con `gh
+release upload v0.4.0 … --clobber`).
+
+### 3. Publicar
+
+**Antes, una decisión:** al publicar, GitHub crea la etiqueta `v0.4.0`, y
+ese empujón de etiqueta lanza el CI. Su último paso
+(`softprops/action-gh-release`, `.github/workflows/appimage.yml:177`):
+
+- **Pone como notas el CHANGELOG entero** (`body_path: CHANGELOG.md`): todas
+  las versiones, como pasó con la 0.3.0. Las notas del borrador, que son
+  solo la entrada de la 0.4.0, se pierden.
+- Vuelve a subir los dos AppImage, construidos desde el mismo commit.
+
+Dos salidas:
+
+- **Aceptarlo:** las notas quedan como las de la 0.3.0.
+- **Evitarlo:** antes de publicar, en `master`, un commit que quite
+  `body_path: CHANGELOG.md` de ese paso. Sin `body`, la acción no toca las
+  notas de una release que ya existe. Es un cambio de CI: con su CI en
+  verde, y la etiqueta se crea sobre ese commit. **Dudoso**: comprobar en la
+  documentación de `softprops/action-gh-release` v3 que sin `body` deja las
+  notas como estaban.
+
+Después, para publicar:
+
+```bash
+# Si se publica otro día, la fecha: en CHANGELOG.md («## 0.4.0 (DÍA de
+# noviembre de 2026)»), commit docs(changelog) en master, y las notas:
+awk '/^## 0.4.0 /{f=1; next} /^## 0.3.0 /{f=0} f' CHANGELOG.md > /tmp/notas.md
+gh release edit v0.4.0 --notes-file /tmp/notas.md
+
+# Publicar: crea la etiqueta v0.4.0 sobre el commit de los AppImage (o el
+# del cambio del CI, si se hace)
+gh release edit v0.4.0 --draft=false --latest --target "$(git rev-parse origin/master)"
+gh run watch     # el CI de la etiqueta
+```
+
+Y después de publicar, en el CHANGELOG, empezar la entrada «## 0.4.1 (sin
+publicar)» o «## 0.5.0 (sin publicar)», y quitar de CLAUDE.md y de
+`docs/pendientes.md` lo que ya no esté pendiente.
+
+## Tarde del 18, en la oficina: la 0.4.0 preparada y la propuesta de gráficas
+
+| Commit | Qué |
+|---|---|
+| `34370c8` | Los miles con espacio fino (U+202F) en toda la app; una guarda contra `:n` y `:,` |
+| `04ae63c` | Cada velocidad de memoria con su grado JEDEC en todas las generaciones (DDR2-667, LPDDR5-5500, LPDDR5X-7467/7500) |
+| `3b34004` | CHANGELOG de la 0.4.0 por zonas, con fecha y limitaciones conocidas |
+| `f2e0657`, `c8617c7` | README al día y sus ocho capturas, sin permisos |
+| `f114c85` | **`docs/propuesta-graficas.md`**: las gráficas no probadas, 25 fallos por gravedad, plan en seis fases y los volcados que hacen falta |
+
+**Las capturas del README van sin permisos**: el autor no estaba para meter
+la contraseña. Para rehacerlas con permisos, como las de septiembre, hay que
+usar la ventana de verdad (`--screenshot` no eleva): abrir el AppImage, dar
+permisos y capturar cada página a 1000×760 con `--anonimo`. Este equipo
+o el 5800X3D: el de casa enseñaría la RX 9070 XT, que luce más que la UHD.
+
+**La propuesta de gráficas** sale de cuatro investigaciones en paralelo
+(AMD, Intel, NVIDIA, y dos gráficas más la revisión del código), con los
+fallos más graves vueltos a mirar en el código. Lo primero de su plan es la
+fase 0 (que las herramientas de volcado no despierten la tarjeta, graben
+NVML y vean `xe`), y lo más urgente para quien usa el programa, el fallo 1:
+silux despierta la dedicada dormida de un portátil en cada muestreo. Nada
+de esto se ha empezado: espera a que el autor la lea.
 
 ## Tarde del 18, en la oficina (rama `oficina`, tercera tanda)
 
