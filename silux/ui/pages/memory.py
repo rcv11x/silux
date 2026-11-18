@@ -137,12 +137,12 @@ class MemoryPage(QScrollArea):
         self.timings_card = Card(_("memory.card.timings"))
         self.timings = Table([_(h) for h in TIMING_HEADERS],
                              numeric=(False, True, True, True, True, True, True, True))
-        explanation = QLabel(_("memory.spd.note"))
-        explanation.setObjectName("Muted")
-        explanation.setWordWrap(True)
-        explanation.setFont(ui_font(theme.METRICS.small_pt))
+        self.spd_note = QLabel(_("memory.spd.note"))
+        self.spd_note.setObjectName("Muted")
+        self.spd_note.setWordWrap(True)
+        self.spd_note.setFont(ui_font(theme.METRICS.small_pt))
         self.timings_card.body.addWidget(self.timings)
-        self.timings_card.body.addWidget(explanation)
+        self.timings_card.body.addWidget(self.spd_note)
         layout.addWidget(self.timings_card)
 
         layout.addWidget(self._build_bandwidth())
@@ -733,6 +733,10 @@ class MemoryPage(QScrollArea):
 
         libres = []
         sin_spd: list[str] = []
+        # Los que se leyeron y no traen perfiles rápidos: el dato no falta,
+        # es que esos módulos solo tienen el de JEDEC.
+        sin_perfiles = 0
+        leidos = 0
         for nombre, module in zip(nombres, modules):
             crudo = module.locator or ""
             if not module.populated:
@@ -758,6 +762,11 @@ class MemoryPage(QScrollArea):
                 grid.set_visible(_(clave), False)
                 if clave not in sin_spd:
                     sin_spd.append(clave)
+            if module.spd is not None:
+                leidos += 1
+                if not module.spd.overclock_profiles:
+                    sin_perfiles += 1
+                    grid.set_visible(_("memory.field.profiles"), False)
             if candado is not None:
                 # Del SPD sale a cuánto puede ir el módulo, no a cuánto va ni
                 # en qué banco está: eso lo guarda la tabla del firmware. Con
@@ -778,9 +787,14 @@ class MemoryPage(QScrollArea):
         # Lo que no sale en las fichas y por qué, en el orden de la ficha.
         lista = render.enumeration(
             [_(SOLO_DEL_SPD[clave]) for clave in MODULE_FIELDS if clave in sin_spd])
-        self.spd_missing.setText(
-            _("memory.na.nospd").format(campos=lista[:1].upper() + lista[1:]) if sin_spd else "")
-        self.spd_missing.setVisible(bool(sin_spd))
+        pies = []
+        if sin_spd:
+            pies.append(_("memory.na.nospd").format(campos=lista[:1].upper() + lista[1:]))
+        if sin_perfiles:
+            pies.append(_("memory.na.noprofiles.all") if sin_perfiles == leidos
+                        else _("memory.na.noprofiles.some").format(n=sin_perfiles))
+        self.spd_missing.setText(" ".join(pies))
+        self.spd_missing.setVisible(bool(pies))
 
     @staticmethod
     def _solo_del_spd(module: MemoryModule) -> tuple[str, ...]:
@@ -892,6 +906,9 @@ class MemoryPage(QScrollArea):
         self.timings_card.setVisible(bool(rows))
         if rows:
             self.timings.set_rows(rows, tooltips=tooltips)
+        # «Sin XMP activado se queda en JEDEC» solo vale si hay XMP que activar.
+        con_perfiles = any(m.spd.overclock_profiles for m in modules if m.spd is not None)
+        self.spd_note.setText(_("memory.spd.note" if con_perfiles else "memory.spd.note.noxmp"))
 
 
 def _sin_el_prefijo_comun(nombres: list[str]) -> dict[str, str]:

@@ -129,15 +129,17 @@ class TestSinSpd(unittest.TestCase):
             self.assertTrue(pagina.spd_missing.text().startswith(
                 "El fabricante, los chips, los perfiles rápidos y la fecha de fabricación salen"))
 
-    def test_con_spd_no_se_esconde_nada_ni_sale_el_pie(self):
+    def test_con_spd_solo_se_esconde_lo_que_esos_modulos_no_traen(self):
         # En el i5-10400 el SPD se lee sin permisos: sus fichas salen de él.
+        # Sus Crucial no traen XMP: eso, y solo eso, va al pie.
         f = foto(EQUIPOS / "i5-10400")[0]
         with pantalla.Ventana(f) as ventana:
             pagina = self._pagina(f, ventana)
             self.assertTrue(pagina._slot_grids)
-            self.assertFalse(pagina.spd_missing.isVisible())
+            self.assertEqual(pagina.spd_missing.text(), _("memory.na.noprofiles.all"))
             for rejilla in pagina._slot_grids:
                 self.assertTrue(rejilla._values[_("memory.field.chips")].isVisible())
+                self.assertTrue(rejilla._values[_("memory.field.made")].isVisible())
 
 
 if __name__ == "__main__":

@@ -765,3 +765,56 @@ class TestElMaximoDelProcesadorEnPantalla(unittest.TestCase):
         funcionando = ficha._values[_("memory.field.running")]
         self.assertNotIn("⚠", funcionando.full_text())
         self.assertIn("i5-10400", funcionando.toolTip())
+
+
+class TestModulosSinPerfilesRapidos(unittest.TestCase):
+    """Los Crucial del i5-10400 no traen XMP: «Perfiles rápidos —» era un
+    guion para un dato que no existe (regla 5), y la nota del SPD hablaba de
+    «XMP sin activar» en unos módulos que no lo tienen. Visto con permisos
+    de verdad en la oficina; el volcado lee el mismo SPD sin ellos."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.app = qt.app()
+
+    def _pagina(self):
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.memory import MemoryPage
+        from tests.test_equipos import EQUIPOS, foto
+
+        f = foto(EQUIPOS / "i5-10400")[0]
+        self.assertTrue(f.spd)
+        self.assertFalse([s for s in f.spd if s.overclock_profiles])
+        pagina = MemoryPage(theme.palette_for(self.app, "dark"), Preferences())
+        self.addCleanup(pagina.deleteLater)
+        pagina.resize(1200, 900)
+        pagina.show()
+        pagina.apply(f)
+        self.app.processEvents()
+        return pagina
+
+    def test_la_fila_se_esconde_y_se_dice_al_pie(self):
+        from silux.i18n import _
+
+        pagina = self._pagina()
+        for ficha in pagina._slot_grids:
+            self.assertFalse(ficha._values[_("memory.field.profiles")].isVisibleTo(pagina))
+        self.assertTrue(pagina.spd_missing.isVisibleTo(pagina))
+        self.assertIn(_("memory.na.noprofiles.all"), pagina.spd_missing.text())
+
+    def test_ningun_guion_en_las_fichas(self):
+        from silux import render
+
+        pagina = self._pagina()
+        for ficha in pagina._slot_grids:
+            visibles = {n: v.full_text() for n, v in ficha._values.items()
+                        if v.isVisibleTo(pagina)}
+            self.assertNotIn(render.DASH, visibles.values(), visibles)
+
+    def test_la_nota_no_habla_de_activar_xmp(self):
+        from silux.i18n import _
+
+        pagina = self._pagina()
+        self.assertEqual(pagina.spd_note.text(), _("memory.spd.note.noxmp"))
+        self.assertNotIn("activado", pagina.spd_note.text())
