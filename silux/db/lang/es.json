@@ -900,7 +900,7 @@
   "prov.spd.unsupported": "El SPD de {tipos} todavía no se sabe interpretar.",
   "prov.spd.unsupported.hint": "Están implementados los formatos de DDR4 y DDR5.",
   "prov.sys.nomeminfo": "No hay /proc/meminfo en este sistema.",
-  "sensor.core": "Núcleo",
+  "sensor.core": "Núcleo {n}",
   "sensor.cores": "Núcleos",
   "sensor.current": "Corriente",
   "sensor.dev.adapter": "Adaptador de corriente",

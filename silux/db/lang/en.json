@@ -900,7 +900,7 @@
   "prov.spd.unsupported": "The SPD of {tipos} cannot be decoded yet.",
   "prov.spd.unsupported.hint": "The DDR4 and DDR5 formats are implemented.",
   "prov.sys.nomeminfo": "There is no /proc/meminfo on this system.",
-  "sensor.core": "Core",
+  "sensor.core": "Core {n}",
   "sensor.cores": "Cores",
   "sensor.current": "Current",
   "sensor.dev.adapter": "Power adapter",

@@ -249,6 +249,27 @@ def power_headline(power: Power) -> str:
 _TONOS_DE_REPOSO = ("accent/0.6", "accent/0.4", "accent/0.25", "accent/0.15", "line")
 
 
+_CORETEMP_PAQUETE = re.compile(r"^Package id (\d+)$")
+_CORETEMP_NUCLEO = re.compile(r"^Core (\d+)$")
+
+
+def sensor_label(sensor) -> str:
+    """El nombre de un sensor en el árbol, en el idioma de la interfaz.
+
+    Solo las etiquetas que `coretemp` publica en inglés: «Package id 0» es
+    «Paquete» y «Core 3», «Núcleo 3». El modelo las guarda tal cual, que es
+    lo que quieren el informe y el CSV; las de los demás chips son las que
+    puso el fabricante y no se tocan.
+    """
+    if sensor.chip == "coretemp":
+        if (encaje := _CORETEMP_PAQUETE.match(sensor.label)):
+            numero = int(encaje.group(1))
+            return _("sensor.package") if numero == 0 else f'{_("sensor.package")} {numero}'
+        if (encaje := _CORETEMP_NUCLEO.match(sensor.label)):
+            return _("sensor.core").format(n=int(encaje.group(1)))
+    return sensor.label
+
+
 def idle_name(nombre: str) -> str:
     """«C2», no «C2_ACPI».
 

@@ -94,5 +94,42 @@ class TestLosCanalesSinNombre(unittest.TestCase):
         self.assertEqual(pagina.absent.text(), "")
 
 
+@unittest.skipIf(QApplication is None, "sin PySide6")
+class TestLosDeCoretemp(unittest.TestCase):
+    """«Package id 0» y «Core 0…5» del i5-10400, en el árbol de Sensores.
+
+    Son las etiquetas que `coretemp` publica en inglés; el modelo las guarda
+    tal cual (el informe y el CSV las quieren así) y el árbol las dice en el
+    idioma de la interfaz.
+    """
+
+    def test_en_el_arbol(self):
+        from silux.i18n import _
+        from silux.settings import Preferences
+        from silux.tracking import Tracker
+        from silux.ui import theme
+        from silux.ui.pages.monitor import MonitorPage
+
+        app = qt.app()
+        f = foto(EQUIPOS / "i5-10400")[0]
+        self.assertEqual({s.label for s in f.sensors if s.chip == "coretemp"} & {"Package id 0"},
+                         {"Package id 0"})
+        pagina = MonitorPage(theme.palette_for(app, "dark"), Preferences().normalized(), Tracker())
+        self.addCleanup(pagina.deleteLater)
+        pagina.apply(f)
+        app.processEvents()
+        filas = pagina.tree._rows
+        self.assertEqual(filas["coretemp/temp1"].text(0), _("sensor.package"))
+        self.assertEqual(filas["coretemp/temp2"].text(0), _("sensor.core").format(n=0))
+        self.assertEqual(filas["coretemp/temp7"].text(0), _("sensor.core").format(n=5))
+
+    def test_lo_que_no_es_de_coretemp_no_se_toca(self):
+        from silux.model import Sensor
+
+        ajeno = Sensor(key="nct6775/temp1", chip="nct6775", device="Placa", label="Core 0",
+                       kind=SensorKind.TEMPERATURE, value=30.0)
+        self.assertEqual(render.sensor_label(ajeno), "Core 0")
+
+
 if __name__ == "__main__":
     unittest.main()

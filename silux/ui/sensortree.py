@@ -660,12 +660,12 @@ class SensorTree(QTreeWidget):
                 # seguida de «Temperatura 4» a secas, que era del mismo chip.
                 # Donde ningún nombre se repite, el chip sobra: en la gráfica
                 # «Borde (amdgpu)» no dice nada que «Borde» no diga.
-                nombres = [x.label for x in sensors]
+                nombres = [render.sensor_label(x) for x in sensors]
                 varios_chips = len(set(nombres)) < len(nombres)
 
-                for sensor in sensors:
-                    nombre = (f"{sensor.label} ({render.chip_name(sensor.chip)})"
-                              if varios_chips else sensor.label)
+                for sensor, etiqueta in zip(sensors, nombres):
+                    nombre = (f"{etiqueta} ({render.chip_name(sensor.chip)})"
+                              if varios_chips else etiqueta)
                     row = QTreeWidgetItem(
                         [nombre] + ["—"] * self.VALUE_COLUMNS)
                     row.setFont(0, self._label_font)
