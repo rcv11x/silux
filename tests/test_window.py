@@ -556,7 +556,7 @@ class TestLaCabeceraDeSensoresNoEnsanchaLaPagina(unittest.TestCase):
         # tamaño de letra, y la que haya dejado puesta otro test del mismo
         # proceso cambia lo que mide la página.
         from silux.ui import theme
-        theme.apply(app, "dark", "normal", "normal", "azul")
+        theme.apply(app, "dark", "normal", "normal")
         anterior = app.font()
         app.setFont(QFont(self.ANCHA))
         self.addCleanup(app.setFont, anterior)
