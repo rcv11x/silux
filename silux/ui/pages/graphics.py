@@ -287,6 +287,7 @@ class GpuSection(QWidget):
         self.now = LevelList(self._p)
         for name in NOW_FIELDS:
             self.now.add(_(name))
+        self.now.locked_clicked.connect(self.elevation_requested)
         self.now_card.body.addWidget(self.now)
         layout.addWidget(self.now_card)
         self.elevation_buttons: list = []
@@ -827,7 +828,32 @@ class GpuSection(QWidget):
                          tooltip=_("gpu.tip.busy"))
         else:
             self.now.set(_("gpu.now.bus"), None)
+        self._apply_engine_bars(gpu)
         self.now_card.setVisible(bool(self.now.visible_rows()))
+
+    def _apply_engine_bars(self, gpu: Gpu) -> None:
+        """Una barra por motor en una integrada, como las de arriba.
+
+        Lo que la tarjeta no tiene no sale; lo que tiene y guarda un permiso
+        sale con candado, y con permisos se mueve con cada muestreo.
+        """
+        candado = getattr(self, "_candado", None)
+        presentes = set()
+        for clave, valor in render.engine_levels(gpu):
+            nombre = _(clave)
+            nombre = nombre[:1].upper() + nombre[1:]
+            presentes.add(nombre)
+            if not self.now.has(nombre):
+                self.now.add(nombre)
+            if valor is not None:
+                self.now.set(nombre, valor / 100)
+            elif candado is not None:
+                self.now.set_locked(nombre, self._p.info, render.lock_tooltip(candado))
+            else:
+                self.now.set(nombre, None)
+        for nombre in getattr(self, "_barras_de_motor", set()) - presentes:
+            self.now.set(nombre, None)
+        self._barras_de_motor = presentes
 
     def _apply_memory(self, gpu: Gpu) -> None:
         d = render.DASH

@@ -1283,6 +1283,42 @@ def duracion(segundos: float) -> str:
     return _("time.minutes").format(m=minutos)
 
 
+# El orden de las barras de motores, del que más se mira al que menos.
+ORDEN_DE_MOTORES = ("engine.render", "engine.compute", "engine.video",
+                    "engine.videoenhance", "engine.copy")
+
+
+def engine_levels(gpu) -> list[tuple[str, Optional[float]]]:
+    """Las barras de uso por motor de una integrada: (clave, porcentaje).
+
+    Una por tipo de motor, con el más ocupado de cada tipo: dos decodificadores
+    a medias no son un video al cien. Con None, el motor está y su uso no se
+    ha podido leer (en Intel lo guarda un permiso). En una APU de AMD el
+    kernel no enumera motores: son el uso de la gráfica (`gpu_busy_percent`)
+    y el del video (`vcn_busy_percent`, Linux 6.10), si lo hay. Una dedicada
+    no tiene estas barras: tiene las suyas.
+    """
+    if not gpu.integrated:
+        return []
+    if gpu.engines:
+        por_tipo: dict[str, list] = {}
+        for motor in gpu.engines:
+            if motor.kind:
+                por_tipo.setdefault(motor.kind, []).append(motor.busy_percent)
+        salida = []
+        for clave in ORDEN_DE_MOTORES:
+            if clave in por_tipo:
+                leidos = [v for v in por_tipo[clave] if v is not None]
+                salida.append((clave, max(leidos) if leidos else None))
+        return salida
+    if gpu.vendor == "AMD":
+        salida = [("engine.render", gpu.busy_percent)]
+        if gpu.video_busy_percent is not None:
+            salida.append(("engine.video", gpu.video_busy_percent))
+        return [(k, v) for k, v in salida if v is not None]
+    return []
+
+
 def gpu_asleep(gpu, fahrenheit: bool = False) -> str:
     """Qué se dice de una gráfica suspendida, o "" si está despierta.
 

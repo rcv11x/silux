@@ -248,10 +248,13 @@ class TestLaPaginaDeGraficos(unittest.TestCase):
 
     def test_en_la_integrada_no_queda_nada_de_una_memoria_que_no_tiene(self):
         ficha = self._ficha("i5-10400")
-        # Sin VRAM propia y sin permisos no hay nada que medir «ahora
-        # mismo»: la tarjeta entera no sale.
-        self.assertEqual(ficha.now.visible_rows(), [])
-        self.assertFalse(ficha.now_card.isVisible())
+        # Sin VRAM propia no hay nada de la memoria «ahora mismo»: ni VRAM,
+        # ni consumo de la tarjeta, ni bus. Lo que queda son los motores, una
+        # barra cada uno, con candado sin permisos (test_barras_de_motores).
+        for clave in ("gpu.now.vram", "gpu.now.power", "gpu.now.bus"):
+            self.assertNotIn(_(clave), ficha.now.visible_rows())
+        self.assertEqual(ficha.now.visible_rows(),
+                         ["Render", "Video", "Mejora de video", "Copia"])
         self.assertFalse(ficha.tile_temp.isVisible())
         self.assertTrue(ficha.tile_usage.isVisible())
 

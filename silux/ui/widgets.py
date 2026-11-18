@@ -2042,12 +2042,16 @@ class LevelList(QWidget):
     Cada una con su nombre a la izquierda, su barra, y a la derecha la cifra
     y el porcentaje: se sabe qué es cada barra sin buscar una leyenda. Los
     renglones se crean una vez y se reescriben, como en `InfoGrid`; el que no
-    tiene dato se esconde entero.
+    tiene dato se esconde entero, y el que lo tiene guardado por un permiso
+    lleva un candado en el sitio de la cifra (`set_locked`).
     """
+
+    locked_clicked = Signal()
 
     def __init__(self, palette: Palette, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self._p = palette
+        self._candados: dict[str, "LockMark"] = {}
         self._grid = QGridLayout(self)
         self._grid.setContentsMargins(0, 0, 0, 0)
         self._grid.setHorizontalSpacing(theme.METRICS.grid_hspace)
@@ -2081,6 +2085,8 @@ class LevelList(QWidget):
         fila = self._rows.get(name)
         if fila is None:
             return
+        if (candado := self._candados.get(name)) is not None:
+            candado.hide()
         nombre, barra, cifra, porcentaje = fila
         for widget in fila:
             widget.setVisible(fraction is not None)
@@ -2094,6 +2100,39 @@ class LevelList(QWidget):
             porcentaje.setText(pct)
         if nombre.toolTip() != tooltip:
             nombre.setToolTip(tooltip)
+
+    def has(self, name: str) -> bool:
+        return name in self._rows
+
+    def set_locked(self, name: str, color: str, tooltip: str = "") -> None:
+        """El renglón está, y su cifra la guarda un permiso: el nombre, la
+        barra vacía y un candado donde iría el porcentaje. Pulsarlo los pide.
+        Dura hasta el siguiente `set` de ese renglón."""
+        fila = self._rows.get(name)
+        if fila is None:
+            return
+        nombre, barra, cifra, porcentaje = fila
+        candado = self._candados.get(name)
+        if candado is None:
+            candado = LockMark(color, max(10, porcentaje.fontMetrics().ascent()))
+            candado.hacer_pulsable()
+            candado.clicked.connect(self.locked_clicked)
+            indice = self._grid.indexOf(porcentaje)
+            fila_grid = self._grid.getItemPosition(indice)[0]
+            self._grid.addWidget(candado, fila_grid, 3,
+                                 Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            self._candados[name] = candado
+        nombre.show()
+        barra.set_fraction(0.0)
+        barra.show()
+        cifra.hide()
+        porcentaje.hide()
+        candado.setToolTip(tooltip)
+        candado.show()
+
+    def is_locked(self, name: str) -> bool:
+        candado = self._candados.get(name)
+        return candado is not None and not candado.isHidden()
 
     def visible_rows(self) -> list[str]:
         return [name for name, fila in self._rows.items() if not fila[0].isHidden()]
