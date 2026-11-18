@@ -243,10 +243,14 @@ class TestReinstalar(_EnCasaFalsa):
         self.assertFalse(viejo.exists(), "un tamaño que ya no se genera se queda con el logo viejo")
 
     def test_los_iconos_son_archivos_nuevos_y_no_reescritos(self):
+        """Con un enlace duro al viejo, y no comparando números de inodo: el
+        sistema de archivos puede dar al nuevo el número que quedó libre (en
+        el runner del CI pasó). Con el enlace vivo, ese inodo no se libera."""
         installer.install(DEL_APPIMAGE)
-        antes = installer.icon_path(48).stat().st_ino
+        viejo = self.casa / "icono-viejo.png"
+        os.link(installer.icon_path(48), viejo)
         installer.install(DEL_APPIMAGE)
-        self.assertNotEqual(antes, installer.icon_path(48).stat().st_ino)
+        self.assertFalse(os.path.samefile(installer.icon_path(48), viejo))
 
     def test_desinstalar_quita_tambien_lo_viejo(self):
         viejo = self._escribir("icons/hicolor/1024x1024/apps/silux.png")
