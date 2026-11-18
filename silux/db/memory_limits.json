@@ -5,6 +5,280 @@
   {
    "vendor": "Intel",
    "models": [
+    "i5-10400"
+   ],
+   "types": {
+    "DDR4": 2666
+   },
+   "source": "https://www.intel.com/content/www/us/en/products/sku/199271/intel-core-i510400-processor-12m-cache-up-to-4-30-ghz/specifications.html",
+   "origin": "saved-page"
+  },
+  {
+   "vendor": "Intel",
+   "models": [
+    "i7-12700K"
+   ],
+   "types": {
+    "DDR5": 4800,
+    "DDR4": 3200
+   },
+   "source": "https://www.intel.com/content/www/us/en/products/sku/134594/intel-core-i712700k-processor-25m-cache-up-to-5-00-ghz/specifications.html",
+   "origin": "saved-page"
+  },
+  {
+   "vendor": "Intel",
+   "models": [
+    "i5-10210U"
+   ],
+   "types": {
+    "DDR4": 2666,
+    "LPDDR3": 2133,
+    "LPDDR4": 2933
+   },
+   "source": "https://www.intel.com/content/www/us/en/products/sku/195436/intel-core-i510210u-processor-6m-cache-up-to-4-20-ghz/specifications.html",
+   "origin": "saved-page"
+  },
+  {
+   "vendor": "Intel",
+   "models": [
+    "i5-10310Y"
+   ],
+   "types": {
+    "LPDDR3": 2133,
+    "DDR3": 1600
+   },
+   "source": "https://www.intel.com/content/www/us/en/products/sku/196453/intel-core-i510310y-processor-6m-cache-up-to-4-10-ghz/specifications.html",
+   "origin": "saved-page"
+  },
+  {
+   "vendor": "Intel",
+   "models": [
+    "i5-10210Y"
+   ],
+   "types": {
+    "LPDDR3": 2133,
+    "DDR3": 1600
+   },
+   "source": "https://www.intel.com/content/www/us/en/products/sku/196454/intel-core-i510210y-processor-6m-cache-up-to-4-00-ghz/specifications.html",
+   "origin": "saved-page"
+  },
+  {
+   "vendor": "Intel",
+   "models": [
+    "i5-1035G4"
+   ],
+   "types": {
+    "DDR4": 3200,
+    "LPDDR4": 3733
+   },
+   "source": "https://www.intel.com/content/www/us/en/products/sku/196591/intel-core-i51035g4-processor-6m-cache-up-to-3-70-ghz/specifications.html",
+   "origin": "saved-page"
+  },
+  {
+   "vendor": "Intel",
+   "models": [
+    "i5-1035G7"
+   ],
+   "types": {
+    "DDR4": 3200,
+    "LPDDR4": 3733
+   },
+   "source": "https://www.intel.com/content/www/us/en/products/sku/196592/intel-core-i51035g7-processor-6m-cache-up-to-3-70-ghz/specifications.html",
+   "origin": "saved-page"
+  },
+  {
+   "vendor": "Intel",
+   "models": [
+    "i5-1035G1"
+   ],
+   "types": {
+    "DDR4": 3200,
+    "LPDDR4": 3733
+   },
+   "source": "https://www.intel.com/content/www/us/en/products/sku/196603/intel-core-i51035g1-processor-6m-cache-up-to-3-60-ghz/specifications.html",
+   "origin": "saved-page"
+  },
+  {
+   "vendor": "Intel",
+   "models": [
+    "i5-10600"
+   ],
+   "types": {
+    "DDR4": 2666
+   },
+   "source": "https://www.intel.com/content/www/us/en/products/sku/199273/intel-core-i510600-processor-12m-cache-up-to-4-80-ghz/specifications.html",
+   "origin": "saved-page"
+  },
+  {
+   "vendor": "Intel",
+   "models": [
+    "i5-10500T"
+   ],
+   "types": {
+    "DDR4": 2666
+   },
+   "source": "https://www.intel.com/content/www/us/en/products/sku/199275/intel-core-i510500t-processor-12m-cache-up-to-3-80-ghz/specifications.html",
+   "origin": "saved-page"
+  },
+  {
+   "vendor": "Intel",
+   "models": [
+    "i5-10400T"
+   ],
+   "types": {
+    "DDR4": 2666
+   },
+   "source": "https://www.intel.com/content/www/us/en/products/sku/199276/intel-core-i510400t-processor-12m-cache-up-to-3-60-ghz/specifications.html",
+   "origin": "saved-page"
+  },
+  {
+   "vendor": "Intel",
+   "models": [
+    "i5-10500"
+   ],
+   "types": {
+    "DDR4": 2666
+   },
+   "source": "https://www.intel.com/content/www/us/en/products/sku/199277/intel-core-i510500-processor-12m-cache-up-to-4-50-ghz/specifications.html",
+   "origin": "saved-page"
+  },
+  {
+   "vendor": "Intel",
+   "models": [
+    "i5-10400F"
+   ],
+   "types": {
+    "DDR4": 2666
+   },
+   "source": "https://www.intel.com/content/www/us/en/products/sku/199278/intel-core-i510400f-processor-12m-cache-up-to-4-30-ghz/specifications.html",
+   "origin": "saved-page"
+  },
+  {
+   "vendor": "Intel",
+   "models": [
+    "i5-10600T"
+   ],
+   "types": {
+    "DDR4": 2666
+   },
+   "source": "https://www.intel.com/content/www/us/en/products/sku/199279/intel-core-i510600t-processor-12m-cache-up-to-4-00-ghz/specifications.html",
+   "origin": "saved-page"
+  },
+  {
+   "vendor": "Intel",
+   "models": [
+    "i5-10600K"
+   ],
+   "types": {
+    "DDR4": 2666
+   },
+   "source": "https://www.intel.com/content/www/us/en/products/sku/199311/intel-core-i510600k-processor-12m-cache-up-to-4-80-ghz/specifications.html",
+   "origin": "saved-page"
+  },
+  {
+   "vendor": "Intel",
+   "models": [
+    "i5-10600KF"
+   ],
+   "types": {
+    "DDR4": 2666
+   },
+   "source": "https://www.intel.com/content/www/us/en/products/sku/199315/intel-core-i510600kf-processor-12m-cache-up-to-4-80-ghz/specifications.html",
+   "origin": "saved-page"
+  },
+  {
+   "vendor": "Intel",
+   "models": [
+    "i5-10300H"
+   ],
+   "types": {
+    "DDR4": 2933
+   },
+   "source": "https://www.intel.com/content/www/us/en/products/sku/201839/intel-core-i510300h-processor-8m-cache-up-to-4-50-ghz/specifications.html",
+   "origin": "saved-page"
+  },
+  {
+   "vendor": "Intel",
+   "models": [
+    "i5-10505"
+   ],
+   "types": {
+    "DDR4": 2666
+   },
+   "source": "https://www.intel.com/content/www/us/en/products/sku/201891/intel-core-i510505-processor-12m-cache-up-to-4-60-ghz/specifications.html",
+   "origin": "saved-page"
+  },
+  {
+   "vendor": "Intel",
+   "models": [
+    "i5-10310U"
+   ],
+   "types": {
+    "DDR4": 2666,
+    "LPDDR3": 2133,
+    "LPDDR4": 2933
+   },
+   "source": "https://www.intel.com/content/www/us/en/products/sku/201892/intel-core-i510310u-processor-6m-cache-up-to-4-40-ghz/specifications.html",
+   "origin": "saved-page"
+  },
+  {
+   "vendor": "Intel",
+   "models": [
+    "i5-10400H"
+   ],
+   "types": {
+    "DDR4": 2933
+   },
+   "source": "https://www.intel.com/content/www/us/en/products/sku/201895/intel-core-i510400h-processor-8m-cache-up-to-4-60-ghz/specifications.html",
+   "origin": "saved-page"
+  },
+  {
+   "vendor": "Intel",
+   "models": [
+    "i5-10500H"
+   ],
+   "types": {
+    "DDR4": 2933
+   },
+   "source": "https://www.intel.com/content/www/us/en/products/sku/201905/intel-core-i510500h-processor-12m-cache-up-to-4-50-ghz/specifications.html",
+   "origin": "saved-page"
+  },
+  {
+   "vendor": "Intel",
+   "models": [
+    "i5-10500TE"
+   ],
+   "types": {
+    "DDR4": 2666
+   },
+   "source": "https://www.intel.com/content/www/us/en/products/sku/203891/intel-core-i510500te-processor-12m-cache-up-to-3-70-ghz/specifications.html",
+   "origin": "saved-page"
+  },
+  {
+   "vendor": "Intel",
+   "models": [
+    "i5-10500E"
+   ],
+   "types": {
+    "DDR4": 2666
+   },
+   "source": "https://www.intel.com/content/www/us/en/products/sku/203893/intel-core-i510500e-processor-12m-cache-up-to-4-20-ghz/specifications.html",
+   "origin": "saved-page"
+  },
+  {
+   "vendor": "Intel",
+   "models": [
+    "i5-10200H"
+   ],
+   "types": {
+    "DDR4": 2933
+   },
+   "source": "https://www.intel.com/content/www/us/en/products/sku/208016/intel-core-i510200h-processor-8m-cache-up-to-4-10-ghz/specifications.html",
+   "origin": "saved-page"
+  },
+  {
+   "vendor": "Intel",
+   "models": [
     "i9-10900K",
     "i9-10900KF",
     "i9-10900",
@@ -27,26 +301,6 @@
   {
    "vendor": "Intel",
    "models": [
-    "i5-10400",
-    "i5-10400F",
-    "i5-10400T"
-   ],
-   "types": {
-    "DDR4": 2666
-   },
-   "source": "https://www.intel.com/content/www/us/en/products/sku/199271/intel-core-i510400-processor-12m-cache-up-to-4-30-ghz/specifications.html",
-   "origin": "manual"
-  },
-  {
-   "vendor": "Intel",
-   "models": [
-    "i5-10600K",
-    "i5-10600KF",
-    "i5-10600",
-    "i5-10600T",
-    "i5-10500",
-    "i5-10500T",
-    "i5-10505",
     "i3-10100",
     "i3-10100F",
     "i3-10100T",

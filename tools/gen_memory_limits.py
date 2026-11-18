@@ -156,9 +156,24 @@ def filas_amd(cache: Optional[pathlib.Path]) -> tuple[list[dict], list[str]]:
 
 
 _TITULO = re.compile(r"<title>(.*?)</title>", re.S | re.I)
-_CANONICA = re.compile(r'<link[^>]+rel="canonical"[^>]+href="([^"]+)"|'
-                       r'<meta[^>]+property="og:url"[^>]+content="([^"]+)"', re.I)
-_MEMORIA_INTEL = re.compile(r"\b(DDR[345]L?|LPDDR[345]X?)-(\d{3,4})\b")
+# La dirección de la ficha: la canónica, y si no, la de `og:url`, que en ARK
+# va antes en la página y con http.
+_CANONICA = re.compile(r'<link[^>]+rel="canonical"[^>]+href="([^"]+)"', re.I)
+_OG_URL = re.compile(r'<meta[^>]+property="og:url"[^>]+content="([^"]+)"', re.I)
+# «DDR4-2666» en las fichas hasta la 11.ª; «Up to DDR5 4800 MT/s» desde la
+# 12.ª. DDR3L es DDR3 de bajo voltaje: la tabla del firmware de un módulo
+# DDR3L dice «DDR3», y así se guarda.
+_MEMORIA_INTEL = re.compile(r"\b(LPDDR[345]X?|DDR[345]L?)[- ](\d{3,4})\b")
+
+
+def _tipos_de_memoria(texto: str, tipos: Optional[dict] = None) -> dict[str, int]:
+    """{tipo: MT/s} de un texto de ARK; con varios grados del mismo tipo,
+    el más alto, que es el máximo."""
+    tipos = {} if tipos is None else tipos
+    for tipo, mts in _MEMORIA_INTEL.findall(texto):
+        tipo = "DDR3" if tipo == "DDR3L" else tipo
+        tipos[tipo] = max(tipos.get(tipo, 0), int(mts))
+    return tipos
 # Las etiquetas que vienen después de «Memory Types» en la ficha: donde
 # empiezan, se acabó el valor.
 _SIGUIENTE = re.compile(r"^(Max # of Memory Channels|Max Memory Bandwidth|ECC Memory"
@@ -189,14 +204,51 @@ def ficha_intel(texto_html: str) -> Optional[dict]:
     for linea in lineas[inicio + 1:inicio + 8]:
         if _SIGUIENTE.match(linea):
             break
-        for tipo, mts in _MEMORIA_INTEL.findall(linea):
-            tipos[tipo] = max(tipos.get(tipo, 0), int(mts))
-    canonica = _CANONICA.search(texto_html)
-    fuente = (canonica.group(1) or canonica.group(2)) if canonica else None
+        _tipos_de_memoria(linea, tipos)
+    encaje = _CANONICA.search(texto_html) or _OG_URL.search(texto_html)
+    fuente = re.sub(r"^http://", "https://", encaje.group(1)) if encaje else None
     if not tipos or not fuente or "intel.com" not in fuente:
         return None
     return {"vendor": "Intel", "models": [modelo], "types": tipos,
             "source": fuente, "origin": "saved-page"}
+
+
+_ENLACE_DE_MODELO = re.compile(
+    r'<a[^>]+href="([^"]*/products/sku/(\d+)/[^"]*)"[^>]*>(.*?)</a>', re.S)
+
+
+def comparacion_intel(texto_html: str) -> list[dict]:
+    """Las filas de una comparación de ARK guardada: una por modelo.
+
+    Es la forma corta de cubrir una serie entera: desde su página se marcan
+    todos los modelos y «Compare», y la comparación lleva la fila «Memory
+    Types» de cada uno, en el orden de sus enlaces de cabecera. Cada fila
+    toma como fuente la ficha de su modelo.
+    """
+    from silux.db import normalize_cpu_model
+
+    modelos: list[tuple[str, str]] = []
+    vistos = set()
+    for url, sku, nombre in _ENLACE_DE_MODELO.findall(texto_html):
+        if sku not in vistos:
+            vistos.add(sku)
+            modelos.append((url, html.unescape(re.sub(r"<[^>]+>", "", nombre)).strip()))
+    for inicio in (m.start() for m in re.finditer(r'<tr class="MemoryTypes"', texto_html)):
+        fila = texto_html[inicio:texto_html.find("</tr>", inicio)]
+        celdas = [html.unescape(re.sub(r"<[^>]+>", " ", c))
+                  for c in re.findall(r"<td[^>]*>(.*?)</td>", fila, re.S)][1:]
+        if len(celdas) == len(modelos) and modelos:
+            break
+    else:
+        return []
+    salida = []
+    for (url, nombre), celda in zip(modelos, celdas):
+        tipos = _tipos_de_memoria(celda)
+        if tipos:
+            fuente = url if url.startswith("http") else f"https://www.intel.com{url}"
+            salida.append({"vendor": "Intel", "models": [normalize_cpu_model(nombre)],
+                           "types": tipos, "source": fuente, "origin": "saved-page"})
+    return salida
 
 
 def filas_intel(carpeta: Optional[pathlib.Path]) -> tuple[list[dict], list[str]]:
@@ -204,10 +256,12 @@ def filas_intel(carpeta: Optional[pathlib.Path]) -> tuple[list[dict], list[str]]
     guardadas, ilegibles = {}, []
     if carpeta is not None:
         for archivo in sorted(carpeta.rglob("*.htm*")):
-            fila = ficha_intel(archivo.read_text(encoding="utf-8", errors="replace"))
-            if fila is None:
+            texto = archivo.read_text(encoding="utf-8", errors="replace")
+            filas = comparacion_intel(texto) if 'class="MemoryTypes"' in texto \
+                else [f for f in [ficha_intel(texto)] if f]
+            if not filas:
                 ilegibles.append(archivo.name)
-            else:
+            for fila in filas:
                 guardadas[fila["models"][0]] = fila
     datos = json.loads(INTEL.read_text(encoding="utf-8"))
     manuales = []
@@ -246,7 +300,8 @@ def main() -> int:
     print(f"Intel: {de_fichas} modelos de fichas guardadas, "
           f"{sum(len(f['models']) for f in intel) - de_fichas} a mano")
     for nombre in ilegibles:
-        print(f"ilegible: {nombre} (no es una ficha de ARK o no dice «Memory Types»)")
+        print(f"sin memoria: {nombre} (no lleva «Memory Types»: una página de serie no la "
+              f"trae, hace falta su comparación)")
     for linea in fuera:
         print(f"fuera: {linea}")
     print(f"escrito {DESTINO}")

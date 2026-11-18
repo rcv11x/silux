@@ -697,8 +697,10 @@ class TestElMaximoDelProcesador(unittest.TestCase):
 
         limite = db.memory_limit("Intel(R) Core(TM) i5-10400 CPU @ 2.90GHz", "DDR4")
         self.assertEqual((limite.model, limite.mts, limite.layout), ("i5-10400", 2666, None))
-        # El de portátil con el mismo número es otro chip.
-        self.assertIsNone(db.memory_limit("Intel(R) Core(TM) i5-10400H CPU @ 2.60GHz", "DDR4"))
+        # El de portátil con el mismo número es otro chip, con su propia cifra
+        # (DDR4-2933 en su ficha de ARK).
+        portatil = db.memory_limit("Intel(R) Core(TM) i5-10400H CPU @ 2.60GHz", "DDR4")
+        self.assertEqual((portatil.model, portatil.mts), ("i5-10400H", 2933))
         self.assertIsNone(db.memory_limit("Intel(R) Core(TM) i5-10400 CPU @ 2.90GHz", "DDR5"))
         # En AMD hace falta saber los módulos: sin rangos no hay cifra.
         self.assertIsNone(db.memory_limit("AMD Ryzen 7 5800X3D 8-Core Processor", "DDR4"))

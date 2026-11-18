@@ -30,45 +30,48 @@ class TestLaFicha(unittest.TestCase):
         self.assertEqual(gen.disposiciones("<html><dt>Max. Memory</dt><dd>128 GB</dd></html>"), {})
 
 
-class TestLasFichasDeIntelGuardadas(unittest.TestCase):
-    """`--intel-desde`: fichas de ark.intel.com guardadas desde el navegador.
+class TestLasPaginasDeArkGuardadas(unittest.TestCase):
+    """`--intel-desde`: páginas de ark.intel.com guardadas desde el navegador.
 
-    PROVISIONAL: aún no hay una ficha guardada de verdad en el repositorio.
-    Esta lleva solo lo que se sabe que enseña la del i5-10400 (su título y
-    «Memory Types: DDR4-2666», vistos en los resultados de búsqueda) y una
-    dirección canónica. Se cambia por la ficha real en cuanto el autor la
-    guarde en ~/Descargas/intel-ark.
+    Los dos fixtures son recortes de páginas que el autor guardó el 18 de
+    noviembre de 2026: la comparación de los Core i5 de 10.ª (las cabeceras
+    de los tres primeros modelos y su fila «Memory Types») y la ficha del
+    i7-12700K, que escribe la memoria de otra forma («Up to DDR5 4800 MT/s»).
     """
 
-    FICHA = ("<html><head><title>Intel® Core™ i5-10400 Processor (12M Cache, up to 4.30 GHz)"
-             " - Product Specifications | Intel</title>"
-             '<link rel="canonical" href="https://www.intel.com/content/www/us/en/products/'
-             'sku/199271/intel-core-i510400-processor-12m-cache-up-to-4-30-ghz/'
-             'specifications.html"></head><body>'
-             "<div>Max Memory Size (dependent on memory type)</div><div>128 GB</div>"
-             "<div>Memory Types</div><div>DDR4-2666</div>"
-             "<div>Max # of Memory Channels</div><div>2</div></body></html>")
+    COMPARACION = (RAIZ / "tests" / "fixtures" / "intel-ark-comparacion.html").read_text()
+    FICHA = (RAIZ / "tests" / "fixtures" / "intel-ark-12700k.html").read_text()
 
-    def test_lee_modelo_memoria_y_fuente(self):
+    def test_la_comparacion_da_una_fila_por_modelo_con_su_ficha(self):
+        filas = gen.comparacion_intel(self.COMPARACION)
+        self.assertEqual([f["models"][0] for f in filas], ["i5-10210U", "i5-10310Y", "i5-10210Y"])
+        self.assertEqual(filas[0]["types"], {"DDR4": 2666, "LPDDR3": 2133, "LPDDR4": 2933})
+        # DDR3L es DDR3 para la tabla del firmware.
+        self.assertEqual(filas[1]["types"], {"LPDDR3": 2133, "DDR3": 1600})
+        self.assertTrue(all("/products/sku/" in f["source"] and f["source"].startswith(
+            "https://www.intel.com/") for f in filas))
+
+    def test_la_ficha_de_un_hibrido_con_dos_tipos(self):
         fila = gen.ficha_intel(self.FICHA)
-        self.assertEqual(fila["models"], ["i5-10400"])
-        self.assertEqual(fila["types"], {"DDR4": 2666})
-        self.assertIn("/sku/199271/", fila["source"])
-        self.assertEqual(fila["origin"], "saved-page")
+        self.assertEqual(fila["models"], ["i7-12700K"])
+        self.assertEqual(fila["types"], {"DDR5": 4800, "DDR4": 3200})
+        self.assertIn("/sku/134594/", fila["source"])
 
-    def test_una_pagina_que_no_es_una_ficha_no_da_fila(self):
+    def test_una_pagina_que_no_trae_memoria_no_da_fila(self):
         self.assertIsNone(gen.ficha_intel("<html><title>Intel</title><body>hola</body></html>"))
+        self.assertEqual(gen.comparacion_intel("<html><body>hola</body></html>"), [])
 
-    def test_una_ficha_guardada_sustituye_a_la_fila_a_mano(self):
+    def test_lo_guardado_sustituye_a_lo_escrito_a_mano(self):
         import tempfile
 
         with tempfile.TemporaryDirectory() as carpeta:
-            pathlib.Path(carpeta, "i5-10400.html").write_text(self.FICHA)
+            pathlib.Path(carpeta, "comparacion.html").write_text(self.COMPARACION)
+            pathlib.Path(carpeta, "12700k.html").write_text(self.FICHA)
             filas, ilegibles = gen.filas_intel(pathlib.Path(carpeta))
         self.assertEqual(ilegibles, [])
         por_modelo = {m: f for f in filas for m in f["models"]}
-        self.assertEqual(por_modelo["i5-10400"]["origin"], "saved-page")
-        self.assertEqual(por_modelo["i5-10400F"]["origin"], "manual")
+        self.assertEqual(por_modelo["i7-12700K"]["origin"], "saved-page")
+        self.assertEqual(por_modelo["i5-10400"]["origin"], "manual")
 
 
 class TestLaTablaGenerada(unittest.TestCase):
@@ -89,7 +92,7 @@ class TestLaTablaGenerada(unittest.TestCase):
         for fila in TABLA["cpus"]:
             for tipo, cifra in fila["types"].items():
                 with self.subTest(modelos=fila["models"][:1], tipo=tipo):
-                    self.assertRegex(tipo, r"^DDR[45]$")
+                    self.assertRegex(tipo, r"^(LP)?DDR[345]X?$")
                     cifras = cifra.values() if isinstance(cifra, dict) else [cifra]
                     for disposicion in (cifra if isinstance(cifra, dict) else {}):
                         self.assertRegex(disposicion, r"^[24]x[12]R$")
