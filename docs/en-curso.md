@@ -3,8 +3,95 @@
 Para retomar sin el contexto de la sesión anterior. Se borra cuando lo de
 aquí esté hecho o pase a `docs/pendientes.md`.
 
-Última sesión: 17 de noviembre de 2026 por la noche, en el 5800X3D de casa
-(CachyOS). La anterior, ese mismo día en el i5-10400 de la oficina (Fedora).
+Última sesión: 18 de noviembre de 2026 por la mañana, en el i5-10400 de la
+oficina (Fedora 44, KDE Plasma 6.8 en Wayland). La anterior, la madrugada del
+18 en el 5800X3D de casa (CachyOS).
+
+## Mañana del 18, en la oficina (rama `oficina`)
+
+Sale de `master` en `67aa368`. Cinco puntos del autor; un commit por cambio,
+con su test visto fallar y su captura. **Empujada y con el CI lanzado al
+acabar el punto 4, y parada ahí** a la espera de que el autor mire las
+capturas. Nada ha pasado a `master`.
+
+| Commit | Qué |
+|---|---|
+| `3703b7d` | La instalación del menú pasa al paquete (`silux/desktop.py`); solo mueve código |
+| `d3af27f` | **La ventana se presenta con el icono del paquete**, no con el del tema (el logo viejo en la barra de tareas) |
+| `37ef079` | Reinstalar quita lo de `cpuz`, los tamaños viejos, y avisa a Plasma (`kbuildsycoca6` y `org.kde.KIconLoader.iconChanged`) |
+| `d27a7bf` | Cada forma de ejecutar tiene su entrada: AppImage → `$APPIMAGE`; código → «Silux (desarrollo)», `silux-dev.desktop`, con su `app_id`; `Exec=` con comillas |
+| `d7e1c43` | Los dos volcados del i5-10400, rehechos (lista de archivos aprobada por el autor) |
+| `41f88b8` | Reposo: «C2», no «C2_ACPI» |
+| `36feac5` | Sistema: «GRUB 2.12 no publica cuánto tarda el arranque» al pie |
+| `60c8c70` | Placa base: la integrada «en el procesador»; el audio sin nombre, «Intel · no está en la lista de nombres PCI» |
+| `25911fa` | Sensores: «Paquete» y «Núcleo N» |
+| `e82238d` | La tabla de códecs no se desplaza por dentro; guarda general para todas las tablas |
+| `09296d6` | La guarda mira también los árboles medidos a mano (USB) |
+| `041a84f` | i915: RP0, RP1 y RPn; RC6 desactivado; motivos de limitación donde existan (volcados rehechos otra vez para llevar esos archivos) |
+| `68ff3f3` | Memoria: al máximo oficial del procesador no se sugiere XMP (`silux/db/memory_limits.json`) |
+| `ed87010` | Pendientes: los límites de AMD, aplazados |
+| `3108f0e` | `desktop.status()` y el acceso en el escritorio |
+| `2fabe76` | **Ajustes con la maqueta aplicada** y el grupo «Integración con el escritorio» |
+
+### El acceso directo que no abría y el icono viejo (punto 1)
+
+Tres causas, las tres arregladas. Lo que pasaba en casa no se ha visto, así
+que no se sabe cuál de las tres era:
+
+1. `application_icon()` prefería el icono del tema al del paquete: con los PNG
+   de una instalación anterior al logo nuevo, la ventana se presentaba al
+   compositor con el viejo y la barra lateral pintaba el nuevo.
+2. `plasmashell` guarda los iconos en memoria; sobrescribir el PNG no basta.
+3. Lo de versiones viejas no se quitaba: en la oficina había un
+   `cpuz.desktop` que lanzaba `python3 -m cpuz.ui.app` desde una carpeta
+   que ya no existe. La instalación de aquí lo ha quitado.
+
+**Probado aquí**: `uv run python tools/install_desktop.py` instaló
+«Silux (desarrollo)»; lanzado con `gtk-launch silux-dev`, KWin ve la ventana
+con `desktopFile: silux-dev` y `resourceClass: silux-dev`, y la barra de
+tareas pinta el logo nuevo (captura recortada, no guardada).
+
+**En casa**, desde el repositorio en la rama `oficina`:
+
+```bash
+uv run python tools/install_desktop.py --estado    # cómo está, sin tocar nada
+grep -l -i -e silux -e cpuz ~/.local/share/applications/*.desktop ~/Escritorio/*.desktop 2>/dev/null
+uv run python tools/install_desktop.py             # instala «Silux (desarrollo)»
+```
+
+Con `uv run` y no con `python3` a secas: la entrada apunta al intérprete con
+el que se instala, y tiene que ser uno con PySide6. Si el `grep` enseña una
+entrada de AppManager (Exec a `~/AppImages/…`) es la del AppImage: se arregla
+abriendo el AppImage nuevo, Ajustes › «Arreglar». Si la barra de tareas
+sigue con el logo viejo tras todo esto, mandar la salida de las dos primeras
+órdenes.
+
+### Intel, comprobado en la pieza (punto 2)
+
+PL1 65 W y PL2 115 W; reposo C1/C2 (tras el arreglo); 19 vulnerabilidades,
+10 mitigadas, ninguna sin mitigar; zram con `lzo-rle`; GRUB 2.12 con su pie;
+VT-x en uso por KVM, Above 4G y ALC892; la tabla PCIe (tras los arreglos);
+Gráficos sin nada de AMD, «23 unidades de ejecución», candado en el uso de
+video; Dispositivos con teclado y ratón. **Sin hacer: enchufar y quitar un
+USB con la página abierta**, que pide manos.
+
+### Lo que queda escrito a ciegas o sin ver
+
+- Los motivos de limitación de i915 (`throttle_reason_*`): esta pieza no los
+  tiene. Y las rutas de `xe` para RP0, RP1 y RPn.
+- El máximo de memoria con permisos de verdad: la captura monta los módulos
+  a mano. Dar permisos en la oficina y mirar Memoria.
+- El botón de Ajustes desde el AppImage: lo construye el CI; hay que abrirlo
+  y pulsar «Añadir».
+- AMD en la tabla de memoria (su máximo depende de los módulos), en
+  pendientes.
+
+### Capturas
+
+En `~/Imágenes/silux-test/oficina-18/` (oficina): `intel/` (las páginas de
+este equipo antes de los arreglos), `comprobacion/` (la de cada commit) y
+`ajustes/` (oscuro y claro a 1440, oscuro a 2560, compacto a 900 y la
+página entera).
 
 ## Madrugada del 18, en casa: trabajo sin supervisión (rama `interfaz`)
 
@@ -35,7 +122,8 @@ etiqueta**: la 0.4.0 sigue «sin publicar» en el CHANGELOG.
 La suite son 2060 tests; con Python 3.10 pasa también aquí
 (`uv run --python 3.10`).
 
-**Qué hay que hacer en la oficina, por orden:**
+**Qué había que hacer en la oficina, por orden** (hecho el 18 por la mañana,
+salvo enchufar un USB y lo que pide permisos; ver arriba):
 
 1. **Rehacer los dos volcados del i5-10400.** Son de antes de los datos
    nuevos y de eso no traen nada: en Intel está todo sin comprobar.
