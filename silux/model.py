@@ -1719,6 +1719,36 @@ class Snapshot:
             return ()
         return tuple(n for n in self.notes if n.need is Need.ROOT and n.what)
 
+    @property
+    def working_gpu(self) -> Optional[int]:
+        """El índice de la gráfica que está trabajando, la que se resume.
+
+        No la primera de la lista: el orden es el de `cardN`, y en un portátil
+        para jugar la integrada suele ser `card0`, así que Inicio decía que el
+        equipo «tiene» una UHD. Tampoco solo `boot_vga`, que es con la que
+        arrancó el firmware y en un portátil es la integrada.
+
+        La dedicada despierta, si la hay: es la que dibuja en un sobremesa y
+        la que se usa cuando se juega. Si la dedicada duerme, la que está
+        despierta, que es la que trabaja. Si duermen todas o no se sabe, la
+        de arranque, y si no, la primera.
+        """
+        if not self.gpus:
+            return None
+        despiertas = [i for i, g in enumerate(self.gpus) if not g.suspended]
+        for i in despiertas:
+            if self.gpus[i].integrated is False:
+                return i
+        for i in despiertas:
+            if self.gpus[i].primary:
+                return i
+        if despiertas:
+            return despiertas[0]
+        for i, g in enumerate(self.gpus):
+            if g.primary:
+                return i
+        return 0
+
     def permission_note(self, path: str) -> Optional[Note]:
         """La nota de permisos que guarda ese campo, si lo guarda alguna.
 

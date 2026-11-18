@@ -281,7 +281,8 @@ class HomePage(QScrollArea):
         if not snapshot.gpus:
             self.gpu.poner(_("home.gpu.none"), "", "")
             return
-        gpu = snapshot.gpus[0]
+        indice = snapshot.working_gpu
+        gpu = snapshot.gpus[indice]
         # Un guion aquí no es un dato: es el hueco de uno que falta, y en una
         # línea de tres piezas unidas por puntos se lee como si sobrara algo.
         # Una GTX con la memoria sin identificar salía «— · PCIe 1.0 × 16».
@@ -298,7 +299,10 @@ class HomePage(QScrollArea):
         ) if p and p != render.DASH)
 
         piezas = []
-        if gpu.busy_percent is not None:
+        if gpu.suspended:
+            # Solo si duermen todas: la que trabaja es la despierta.
+            piezas.append(_("gpu.asleep.short"))
+        elif gpu.busy_percent is not None:
             piezas.append(render.percent(gpu.busy_percent))
             self.gpu.grafica.push(gpu.busy_percent)
             self.gpu.grafica.set_range(0.0, 100.0)
@@ -324,7 +328,8 @@ class HomePage(QScrollArea):
         # El uso y el consumo, si faltan por permisos, se dicen: sin esto la
         # tarjeta de una integrada parecía no tener nada más que un reloj.
         pie = (_("home.gpu.locked")
-               if gpu.busy_percent is None and snapshot.permission_note("gpus.0.usage")
+               if gpu.busy_percent is None and not gpu.suspended
+               and snapshot.permission_note(f"gpus.{indice}.usage")
                else "")
         self.gpu.poner(gpu.display_name, detalle, "   ".join(piezas), pie)
 
@@ -385,7 +390,8 @@ class HomePage(QScrollArea):
         lecturas = []
         if (grados := snapshot.cpu.temperature_c) is not None:
             lecturas.append((_("home.temp.cpu"), grados))
-        if snapshot.gpus and (grados := snapshot.gpus[0].temp_c) is not None:
+        grafica = (snapshot.gpus[snapshot.working_gpu] if snapshot.gpus else None)
+        if grafica is not None and (grados := grafica.temp_c) is not None:
             lecturas.append((_("home.temp.gpu"), grados))
         discos = [d.temp_c for d in snapshot.disks if d.temp_c is not None]
         if discos:
@@ -393,9 +399,9 @@ class HomePage(QScrollArea):
 
         # La gráfica que no publica su temperatura no deja un hueco entre las
         # cifras: se dice aquí abajo, que no es lo mismo que no haberla leído.
-        pie = (_("gpu.na.notemp") if snapshot.gpus
-               and snapshot.gpus[0].no_temperature_sensor
-               and snapshot.gpus[0].temp_c is None else "")
+        pie = (_("gpu.na.notemp") if grafica is not None
+               and grafica.no_temperature_sensor
+               and grafica.temp_c is None else "")
         if not lecturas:
             self.temperaturas.poner(_("home.temp.none"), "", "", pie)
             return

@@ -164,7 +164,7 @@ def _cabecera(pintor: QPainter, p: Palette, snapshot: Snapshot) -> None:
     if snapshot.cpu.types:
         resumen.append(render.cpu_short_name(snapshot.cpu.types[0].brand))
     if snapshot.gpus:
-        resumen.append(snapshot.gpus[0].display_name)
+        resumen.append(snapshot.gpus[snapshot.working_gpu].display_name)
     pintor.setPen(QColor(p.ink_dim))
     pequena = QFont()
     pequena.setPointSize(11)
