@@ -48,7 +48,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .. import __version__, build_id, i18n, settings as prefs_module
+from .. import __version__, build_id, desktop, i18n, settings as prefs_module
 from ..i18n import _
 from ..model import Snapshot
 from ..settings import ACCENT_NAMES, Preferences
@@ -99,7 +99,8 @@ SECTIONS = (
 # Por debajo de este ancho la barra lateral estorba más de lo que ayuda.
 NAV_HIDE_BELOW = 620
 
-# Debe coincidir con el nombre del fichero .desktop instalado, sin extensión.
+# El del icono del tema, si faltara el del paquete. El de la ventana depende
+# de cómo se ejecute: ver `desktop.current_launcher`.
 DESKTOP_ID = "silux"
 BUNDLED_ICON = pathlib.Path(__file__).parent / "assets" / "silux.svg"
 
@@ -1109,14 +1110,19 @@ def build_app(argv: Optional[list[str]] = None) -> tuple[QApplication, MainWindo
                 if getattr(guardadas, campo) != getattr(prefs, campo)}
 
     _callar_el_portal()
-    app = QApplication(sys.argv[:1])
-    app.setApplicationName("silux")
+    # El identificador de la entrada de menú que abre esta copia: `silux`, o
+    # `silux-dev` desde el repositorio. En Wayland el compositor no adivina
+    # qué ventana pertenece a qué entrada: lo saca de `setDesktopFileName`, y
+    # sin él la barra de tareas de Plasma enseña un icono genérico aunque el
+    # .desktop esté bien instalado. En X11 se compara `StartupWMClass` con la
+    # clase de la ventana, que Qt forma con el nombre del programa (el primer
+    # argumento) y el de la aplicación: los dos, el identificador.
+    identificador = desktop.current_launcher().app_id
+    app = QApplication([identificador])
+    app.setApplicationName(identificador)
     app.setApplicationDisplayName("Silux")
     app.setApplicationVersion(__version__)
-    # En Wayland el compositor no adivina qué ventana pertenece a qué entrada
-    # de menú: lo saca de aquí. Sin esta línea, la barra de tareas de Plasma
-    # enseña un icono genérico aunque el .desktop esté bien instalado.
-    app.setDesktopFileName(DESKTOP_ID)
+    app.setDesktopFileName(identificador)
     app.setWindowIcon(application_icon())
 
     # Antes de montar nada: las páginas traducen sus títulos al construirse, y

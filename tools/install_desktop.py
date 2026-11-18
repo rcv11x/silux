@@ -4,8 +4,9 @@
     python3 tools/install_desktop.py            # instalar
     python3 tools/install_desktop.py --uninstall
 
-Lo que hace está en `silux/desktop.py`, que es lo mismo que usa el botón de
-Ajustes: una sola implementación para los dos.
+Desde el repositorio instala «Silux (desarrollo)», `silux-dev.desktop`, que
+no pisa la entrada del AppImage. Lo que hace está en `silux/desktop.py`, que
+es lo mismo que usa el botón de Ajustes: una sola implementación para los dos.
 """
 
 from __future__ import annotations
@@ -25,17 +26,22 @@ def main() -> int:
     parser.add_argument("--uninstall", action="store_true", help="quitar icono y entrada de menú")
     args = parser.parse_args()
 
+    lanzador = desktop.current_launcher()
     if args.uninstall:
-        print(f"Eliminados {desktop.uninstall()} ficheros.")
+        print(f"Eliminados {desktop.uninstall(lanzador)} ficheros.")
         return 0
 
-    icons, entry = desktop.install()
-    print(f"Iconos:  {len(icons)} ficheros en {desktop.data_home() / 'icons' / 'hicolor'}")
-    print(f"Entrada: {entry}")
-    print(f"Lanzar:  {desktop.resolve_exec()[0]}")
-    print("\nSi el lanzador no lo enseña todavía, cierra y vuelve a abrir la sesión.")
+    try:
+        icons, entry = desktop.install(lanzador)
+    except desktop.DesktopError as error:
+        print(f"No se pudo instalar: {error}", file=sys.stderr)
+        return 1
+    print(f"Entrada: {entry} («{lanzador.name}»)")
+    print(f"Iconos:  {len(icons)} ficheros en {desktop.hicolor()}")
+    print(f"Lanzar:  {desktop.exec_line(lanzador.command)}")
+    if lanzador.working_dir:
+        print(f"Desde:   {lanzador.working_dir}")
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

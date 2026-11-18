@@ -238,17 +238,20 @@ esac
 exec "$AQUI/usr/bin/python3" -c "$ARRANQUE" silux.ui.app "$@"
 """
 
-DESKTOP = """[Desktop Entry]
-Type=Application
-Name=silux
-GenericName=Perfilador de hardware
-Comment=Identificación del equipo y monitorización de sensores
-Exec=silux
-Icon=silux
-Categories=System;Monitor;
-Terminal=false
-StartupWMClass=silux
-"""
+def entrada_de_menu() -> str:
+    """La entrada que lleva dentro el AppImage, de donde la copian los
+    gestores como AppManager o AppImageLauncher al integrarlo en el menú.
+
+    Sale de `silux/desktop.py`, la misma que escribe el botón de Ajustes: a
+    mano en dos sitios se separan, y esta se había quedado sin las palabras
+    de búsqueda y con el nombre en minúscula. `Exec=silux` es lo que pide la
+    norma del AppImage; cada gestor lo cambia por la ruta del archivo.
+    """
+    sys.path.insert(0, str(ROOT))
+    from silux import desktop
+
+    return desktop.entry_text(desktop.Launcher(
+        "appimage", desktop.APP_ID, "Silux", "Silux", (APP_ID,)))
 
 
 def main() -> int:
@@ -959,7 +962,7 @@ def escribir_metadatos(banderas: set[str] = frozenset()) -> None:
     # deja las dos rutas donde el intérprete las busca.
     (APPDIR / "usr" / "lib" / "python").mkdir(exist_ok=True)
 
-    (APPDIR / f"{APP_ID}.desktop").write_text(DESKTOP, encoding="utf-8")
+    (APPDIR / f"{APP_ID}.desktop").write_text(entrada_de_menu(), encoding="utf-8")
     icono = ROOT / "silux" / "ui" / "assets" / "silux.svg"
     if icono.exists():
         shutil.copy2(icono, APPDIR / f"{APP_ID}.svg")
