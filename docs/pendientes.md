@@ -76,14 +76,6 @@ sin los pasos para reproducirlo: este archivo es público.
   contadores de energía.
 * `providers/cppc.py` · media, sin comprobar · el techo del silicio con
   `acpi-cpufreq`: falta un volcado con `amd_pstate=disable`.
-* `providers/cpuid_x86.py`, `ui/pages/cpu.py` · media · con un procesador
-  que la tabla no conoce, lo del CPUID sale entero y no se inventa nada
-  (comprobado con el volcado del 5800X3D sin su fila), pero «Nombre en
-  clave», «Tecnología» y «Encapsulado» salen con «—» en vez de esconderse y
-  nombrarse al pie, y la nota dice «Regenera la base con
-  tools/gen_cpu_db.py», que no sirve a quien usa el AppImage: tiene que decir
-  que ese dato no está en esta versión y pedir el informe. Con un test que
-  quite la fila del volcado y mire la página.
 * `ui/pages/cpu.py` · media-baja · «Preferencia de energía —» con
   `acpi-cpufreq`, que no tiene EPP: la fila tendría que esconderse y decirse.
 * `providers/storage.py` · baja · el modelo de los discos SATA sale cortado a

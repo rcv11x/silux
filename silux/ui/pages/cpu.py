@@ -154,9 +154,9 @@ class TypeSection(QWidget):
         p = self.processor.set  # noqa: E741
         p(_("cpu.field.vendor"), cpu_type.vendor or render.DASH)
         p(_("cpu.field.spec"), cpu_type.brand or render.DASH)
-        p(_("cpu.field.codename"), cpu_type.codename or render.DASH)
-        p(_("cpu.field.process"), cpu_type.technology or render.DASH)
-        p(_("cpu.field.package"), cpu_type.socket or render.DASH)
+        p(_("cpu.field.codename"), render.from_cpu_table(cpu_type.codename))
+        p(_("cpu.field.process"), render.from_cpu_table(cpu_type.technology))
+        p(_("cpu.field.package"), render.from_cpu_table(cpu_type.socket))
         p(_("cpu.field.arch"), cpu_type.architecture or render.DASH)
         p(_("cpu.field.cores"), str(cpu_type.cores))
         p(_("cpu.field.threads"), f"{cpu_type.threads}" + (_("cpu.smt.on") if cpu_type.smt else ""))

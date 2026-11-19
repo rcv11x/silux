@@ -210,6 +210,17 @@ def cache_label(cache: Cache) -> str:
     return _(claves.get(cache.kind, "cache.label.unified")).format(n=cache.level)
 
 
+def from_cpu_table(valor: Optional[str], traducir=None) -> str:
+    """Un dato que sale de la tabla de procesadores y no del propio silicio.
+
+    El nombre en clave, el nodo y el encapsulado no se leen del procesador:
+    están en una tabla que es una foto del día en que se hizo, y uno que
+    salga después no está. Se dice así y no con un guion, que se lee como
+    «este equipo no lo tiene». `traducir`, como en `core_type_label`.
+    """
+    return valor or (traducir or _)("cpu.notintable")
+
+
 def core_type_label(cpu_type: CpuType, hybrid: bool, traducir=None) -> str:
     """`traducir` deja pedir el castellano fijo desde fuera de la interfaz.
 

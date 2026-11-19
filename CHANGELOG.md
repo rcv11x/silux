@@ -101,6 +101,11 @@ publica se dice con la versión que lo trae.
 - Nuevo: en Intel, los límites de potencia PL1 y PL2 a la vista, también sin
   permisos.
 - Nuevo: sin permisos, el voltaje lleva un candado en vez de un guion.
+- Cambiado: con un procesador que la tabla de esta versión no conoce, el
+  nombre en clave, el nodo y el encapsulado dicen «no está en la tabla de
+  esta versión» en vez de un guion, y el aviso pide el informe en vez de
+  mandar a regenerar la base de datos. Todo lo que da el propio procesador
+  sale igual.
 - Arreglado: la frecuencia de cada hilo es la que el procesador ha dado de
   verdad en el último intervalo, no la última que pidió el sistema.
 - Arreglado: la gráfica de frecuencia se medía contra un techo equivocado y

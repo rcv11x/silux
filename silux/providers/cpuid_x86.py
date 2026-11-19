@@ -208,11 +208,19 @@ class CpuidIdentity(Provider):
                 _("prov.cpuid.unknown.hint"),
             )
 
-        if entry.get("socket") is None and ident.matched:
+        # Con el procesador reconocido puede faltar igual uno de los dos: la
+        # tabla trae filas sin nodo, y el encapsulado sale de otra tabla.
+        if ident.matched and entry.get("technology") is None:
+            draft.note(
+                "cpu.technology", Need.DATABASE,
+                _("prov.cpuid.notech").format(nombre=ident.codename),
+                _("prov.cpuid.sendreport"),
+            )
+        if ident.matched and entry.get("socket") is None:
             draft.note(
                 "cpu.socket", Need.DATABASE,
                 _("prov.cpuid.nosocket").format(nombre=ident.codename),
-                _("prov.cpuid.nosocket.hint"),
+                _("prov.cpuid.sendreport"),
             )
 
 

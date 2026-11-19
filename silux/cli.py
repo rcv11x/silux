@@ -23,7 +23,7 @@ from .model import Need, Snapshot, to_jsonable
 
 NEED_LABELS = {
     Need.ROOT: "requiere root",
-    Need.DATABASE: "falta en la base de datos",
+    Need.DATABASE: "esta versión no lo conoce todavía",
     Need.HARDWARE: "no lo expone este hardware",
     Need.DRIVER: "falta un driver",
     Need.PLATFORM: "no aplica aquí",
@@ -66,9 +66,9 @@ def dump(snapshot: Snapshot, style: Style) -> str:
         lines.append(style.bold(style.accent(f"┌─ {title}")))
         lines.append(_row(style, "Fabricante", cpu_type.vendor or render.DASH))
         lines.append(_row(style, "Especificación", cpu_type.brand or render.DASH))
-        lines.append(_row(style, "Nombre en clave", cpu_type.codename or render.DASH))
-        lines.append(_row(style, "Tecnología", cpu_type.technology or render.DASH))
-        lines.append(_row(style, "Encapsulado", cpu_type.socket or render.DASH))
+        lines.append(_row(style, "Nombre en clave", render.from_cpu_table(cpu_type.codename)))
+        lines.append(_row(style, "Tecnología", render.from_cpu_table(cpu_type.technology)))
+        lines.append(_row(style, "Encapsulado", render.from_cpu_table(cpu_type.socket)))
         lines.append(_row(style, "Arquitectura", cpu_type.architecture or render.DASH))
         lines.append(_row(style, "Núcleos / hilos", f"{cpu_type.cores} / {cpu_type.threads}"))
         lines.append(_row(style, "Familia", render.hex_id(cpu_type.disp_family)))

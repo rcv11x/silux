@@ -24,7 +24,7 @@ OCULTO = "«omitido»"
 
 MOTIVOS = {
     Need.ROOT: "requiere permisos de administrador",
-    Need.DATABASE: "falta en la base de datos",
+    Need.DATABASE: "esta versión no lo conoce todavía",
     Need.HARDWARE: "este equipo no lo expone",
     Need.DRIVER: "falta un módulo del kernel",
     Need.PLATFORM: "no aplica a esta plataforma",
@@ -125,8 +125,9 @@ def _procesador(snapshot: Snapshot) -> str:
             f"**{render.core_type_label(tipo, cpu.hybrid, en_español)}**"
             if cpu.hybrid else f"**{tipo.brand or '?'}**",
             "",
-            f"- Nombre en clave: {tipo.codename or '—'} · {tipo.technology or '—'}",
-            f"- Encapsulado: {tipo.socket or '—'}",
+            f"- Nombre en clave: {render.from_cpu_table(tipo.codename, en_español)}"
+            f" · {render.from_cpu_table(tipo.technology, en_español)}",
+            f"- Encapsulado: {render.from_cpu_table(tipo.socket, en_español)}",
             f"- Núcleos / hilos: {tipo.cores} / {tipo.threads}",
             f"- Familia {render.dec(tipo.disp_family)} · "
             f"modelo {render.dec(tipo.disp_model)} · "
