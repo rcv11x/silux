@@ -33,7 +33,9 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 DEFAULT_CACHE = pathlib.Path.home() / ".cache" / "silux" / "sources"
 
 REPOS = {
-    "libcpuid": "https://github.com/anrieff/libcpuid.git",
+    # El fork del autor y no el original: el original lleva desde septiembre
+    # de 2026 sin actividad, y quien más lo mantenía archivó CPU-X.
+    "libcpuid": "https://github.com/rcv11x/libcpuid.git",
     "cpu-x": "https://github.com/TheTumultuousUnicornOfDarkness/CPU-X.git",
 }
 
@@ -201,6 +203,9 @@ def ensure_source(name: str, cache: pathlib.Path, offline: bool) -> pathlib.Path
         if not offline:
             print(f"  actualizando {name}…", file=sys.stderr)
             try:
+                # La caché puede venir de cuando la fuente era otra: que
+                # apunte siempre a la de `REPOS`.
+                git("remote", "set-url", "origin", REPOS[name], cwd=path)
                 git("fetch", "--depth", "1", "origin", cwd=path)
                 git("reset", "--hard", "FETCH_HEAD", cwd=path)
             except subprocess.CalledProcessError as exc:

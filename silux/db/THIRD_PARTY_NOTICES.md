@@ -8,7 +8,8 @@ pip y dentro de cada AppImage.
 
 ## libcpuid
 
-<https://github.com/anrieff/libcpuid>
+<https://github.com/anrieff/libcpuid>, y su fork
+<https://github.com/rcv11x/libcpuid>, que es de donde se genera ahora.
 
 De sus tablas de reconocimiento (`libcpuid/recog_intel.c`,
 `libcpuid/recog_amd.c` y `libcpuid/recog_arm.c`) salen los nombres en clave,
