@@ -179,10 +179,10 @@ Gráficos, Almacenamiento, Red, Dispositivos, Batería, Sistema, Rendimiento,
 Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 
 - La **0.4** (`0.4.0` por debajo; en pantalla, «0.4») está en borrador en
-  GitHub, sin etiqueta. El borrador y `master` son de `c01944d`, y `oficina`
-  lleva por delante lo del 18 (los arreglos de Gráficos de la tarde; las
-  barras, el rendimiento y el parpadeo de la noche), que va en la 0.4. La
-  publica el autor después de probarla en el 5800X3D. Cómo, en
+  GitHub, sin etiqueta. El borrador es de `c01944d`; `master` lleva por
+  delante lo del 18 (los arreglos de Gráficos de la tarde; las barras, el
+  rendimiento y el parpadeo de la noche), que va en la 0.4. La publica el
+  autor después de probarla en el 5800X3D. Cómo, en
   [docs/en-curso.md](docs/en-curso.md).
 
 - La escala del benchmark es la **v6**: puntúan dos cargas de las cinco, las
@@ -250,11 +250,15 @@ probó…» o «costó…» van al mensaje del commit o a `docs/lecciones.md`.
   cambio, Claude escribe en su respuesta el diff de lo que ha tocado (líneas
   con `+` y con `-`), no solo el resumen: el autor lo sigue por ahí.
 - **El commit del CLAUDE.md es el último antes de empujar.**
-- **Una rama por fase**, que sale de la anterior o de `master`. Las ramas no se
-  empujan salvo que se diga; el CI de una rama se lanza a mano con
+- **Una rama por tema** (`contribuir`, `graficas`, `rendimiento`…), que sale
+  de `master`; no hay una rama de trabajo fija por equipo. Un tema terminado
+  y con su CI en verde pasa a `master` enseguida: tandas pequeñas, no una
+  rama que acumula días. Las ramas no se empujan salvo que se diga; el CI
+  de una rama se lanza a mano con
   `gh workflow run appimage.yml --ref RAMA` y se sigue con `gh run watch`.
 - **A `master` solo con `git merge --ff-only`**, y solo con el CI de esa rama
-  en verde. Si `master` avanzó, se rebasa la rama antes, no se fusiona.
+  en verde. Si `master` avanzó, se rebasa la rama antes, no se fusiona. Pasar
+  a `master` no es publicar: ni etiqueta ni release.
 
 **Commits.** Conventional Commits con la descripción en español:
 
