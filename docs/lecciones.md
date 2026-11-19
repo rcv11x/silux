@@ -1316,3 +1316,7 @@ apartado. El orden dentro de cada apartado es el cronológico.
   día que salió (el actualizador) el AppImage decía «no hay red». Los tests
   no lo veían: cambian la red por una falsa. Ahora cada construcción arranca
   el Python del AppDir y le pide un contexto TLS.
+- **Llevar los `.py` sin compilar a un montaje de solo lectura**: Python no
+  puede escribir sus `.pyc` dentro de un AppImage, así que cada arranque
+  compilaba silux entero y media biblioteca estándar. `--version` gastaba
+  180 de sus 270 ms en eso. Ahora van compilados, en modo `unchecked-hash`.

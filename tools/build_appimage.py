@@ -352,6 +352,11 @@ def main() -> int:
     print("· metadatos")
     escribir_metadatos(banderas)
     sellar_build()
+    print("· bytecode")
+    if not compilar_bytecode():
+        print(f"No se empaqueta: el AppDir queda en {APPDIR} para mirarlo.",
+              file=sys.stderr)
+        return 1
 
     total = sum(f.stat().st_size for f in APPDIR.rglob("*") if f.is_file())
     print(f"\nAppDir listo: {total / 1024**2:.0f} MB sin comprimir")
@@ -989,6 +994,39 @@ def comprobar_autocontenido() -> dict[str, set[str]]:
         pide = ", ".join(sorted(quienes)[:3])
         print(f"    {nombre}  ({pide})", file=sys.stderr)
     return faltan
+
+
+def compilar_bytecode() -> bool:
+    """Los `.pyc` de todo lo que va dentro, compilados con el Python de dentro.
+
+    El punto de montaje es de solo lectura, así que sin ellos cada arranque
+    compilaba otra vez la biblioteca estándar que usa y silux entero: 180 ms
+    de los 270 de `--version`, y 330 de la ventana. Van en modo
+    `unchecked-hash`, que no mira la fecha ni el contenido de la fuente: dentro
+    de un AppImage la fuente no puede cambiar, y comprobarla es pagar lo mismo
+    en cada importación.
+    """
+    python = APPDIR / "usr" / "bin" / "python3"
+    entorno = {"PYTHONHOME": str(APPDIR / "usr"), "PYTHONNOUSERSITE": "1",
+               "LD_LIBRARY_PATH": str(APPDIR / "usr" / "lib"),
+               "PATH": os.environ.get("PATH", "")}
+    arboles = [str(d) for d in sorted((APPDIR / "usr" / "lib").glob("python*"))
+               if d.is_dir()]
+    orden = [str(python), "-s", "-m", "compileall", "-q", "-j", "0",
+             "--invalidation-mode", "unchecked-hash", *arboles]
+    try:
+        hecho = subprocess.run(orden, capture_output=True, text=True,
+                               env=entorno, check=False, timeout=600)
+    except (OSError, subprocess.SubprocessError) as error:
+        print(f"  error: no se pudo compilar: {error}", file=sys.stderr)
+        return False
+    if hecho.returncode != 0:
+        print("  error: hay archivos que no compilan:", file=sys.stderr)
+        print(hecho.stdout + hecho.stderr, file=sys.stderr)
+        return False
+    total = sum(1 for _ in (APPDIR / "usr" / "lib").rglob("*.pyc"))
+    print(f"  {total} archivos")
+    return True
 
 
 def sellar_build() -> None:

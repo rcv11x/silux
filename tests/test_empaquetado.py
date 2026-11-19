@@ -318,6 +318,63 @@ class TestLaEtiquetaNoPisaLasNotas(unittest.TestCase):
         self.assertNotRegex(paso, r"\n\s+body(_path)?:")
 
 
+class TestElBytecodeVaDentro(unittest.TestCase):
+    """Los `.pyc` van compilados dentro del paquete y no se miran al importar.
+
+    El punto de montaje del AppImage es de solo lectura: sin ellos, cada
+    arranque compilaba silux entero y la parte de la biblioteca estándar que
+    usa. Con ellos, `--version` pasó de 270 a 92 ms y la ventana ganó 330.
+    Se compila con un Python de verdad, el de quien ejecuta los tests, puesto
+    donde el empaquetador busca el de dentro.
+    """
+
+    def setUp(self):
+        import pathlib
+        import sys
+        import tempfile
+        from unittest import mock
+
+        import tools.build_appimage as build
+        self.build = build
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.appdir = pathlib.Path(tmp.name) / "silux.AppDir"
+        (self.appdir / "usr" / "bin").mkdir(parents=True)
+        self.paquete = self.appdir / "usr" / "lib" / "python" / "silux"
+        self.paquete.mkdir(parents=True)
+        (self.paquete / "modulo.py").write_text("VALOR = 1\n")
+        python = self.appdir / "usr" / "bin" / "python3"
+        # El AppDir de mentira no trae biblioteca estándar: el de quien
+        # ejecuta usa la suya y no el PYTHONHOME que le pone el empaquetador.
+        python.write_text(f'#!/bin/sh\nunset PYTHONHOME\nexec "{sys.executable}" "$@"\n')
+        python.chmod(0o755)
+        parche = mock.patch.object(build, "APPDIR", self.appdir)
+        parche.start()
+        self.addCleanup(parche.stop)
+
+    def _compilar(self):
+        import contextlib
+        import io
+        with contextlib.redirect_stdout(io.StringIO()), \
+             contextlib.redirect_stderr(io.StringIO()) as errores:
+            return self.build.compilar_bytecode(), errores.getvalue()
+
+    def test_compila_sin_mirar_la_fuente(self):
+        hecho, errores = self._compilar()
+        self.assertTrue(hecho, errores)
+        compilados = list((self.paquete / "__pycache__").glob("modulo.*.pyc"))
+        self.assertEqual(len(compilados), 1)
+        cabecera = compilados[0].read_bytes()[:16]
+        # PEP 552: banderas 0b01 = por hash y sin comprobar la fuente.
+        self.assertEqual(int.from_bytes(cabecera[4:8], "little"), 0b01)
+
+    def test_un_archivo_que_no_compila_para_la_construccion(self):
+        (self.paquete / "roto.py").write_text("def (:\n")
+        hecho, errores = self._compilar()
+        self.assertFalse(hecho)
+        self.assertIn("roto.py", errores)
+
+
 class TestUnPaqueteIncompletoNoSeEmpaqueta(unittest.TestCase):
     """Si al AppDir le falta una biblioteca, la construcción falla.
 
@@ -375,6 +432,7 @@ class TestUnPaqueteIncompletoNoSeEmpaqueta(unittest.TestCase):
             "escribir_metadatos", "sellar_build", "avisar_de_compatibilidad")}
         pasos["comprobar_juego_de_instrucciones"] = mock.Mock(return_value=[])
         pasos["comprobar_tls"] = mock.Mock(return_value=True)
+        pasos["compilar_bytecode"] = mock.Mock(return_value=True)
         self.empaquetar = mock.Mock(return_value=None)
         pasos["empaquetar"] = self.empaquetar
         # `main` empieza borrando el AppDir y creando uno vacío; el de mentira
