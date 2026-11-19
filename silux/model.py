@@ -495,6 +495,9 @@ class Boot:
     kernel_s: Optional[float] = None         # del kernel al initrd (o a systemd)
     initrd_s: Optional[float] = None         # None si arrancó sin initrd
     userspace_s: Optional[float] = None      # None mientras no ha terminado
+    # The kernel command line, parameter by parameter, with what identifies
+    # the machine already hidden (privacidad.hide_cmdline_identifiers).
+    cmdline: tuple[str, ...] = ()
 
     @property
     def total_s(self) -> Optional[float]:
@@ -528,6 +531,8 @@ class System:
     processes: int = 0
     threads: int = 0
     open_files: int = 0
+    # /proc/sys/kernel/tainted, the bit mask; None when it can't be read.
+    tainted: Optional[int] = None
 
     memory: Memory = field(default_factory=Memory)
 

@@ -29,13 +29,13 @@ OS_FIELDS = ("sys.field.distro", "sys.field.version", "sys.os.variant",
              "sys.os.id", "sys.field.hostname")
 KERNEL_FIELDS = ("sys.kernel.name", "sys.kernel.arch", "sys.field.build",
                  "sys.kernel.init", "sys.kernel.desktop", "sys.field.session",
-                 "sys.kernel.shell", "sys.kernel.graphics")
+                 "sys.kernel.shell", "sys.kernel.graphics", "sys.kernel.tainted")
 ACTIVITY_FIELDS = ("sys.field.since", "sys.field.uptime", "sys.act.processes",
                    "sys.act.threads", "sys.field.openfiles")
 SECURITY_FIELDS = ("sys.vuln.known", "sys.vuln.unaffected", "sys.vuln.mitigated",
                    "sys.vuln.open")
 BOOT_FIELDS = ("sys.boot.loader", "sys.boot.entry") + tuple(
-    clave for clave, _campo in render.FASES_DE_ARRANQUE)
+    clave for clave, _campo in render.FASES_DE_ARRANQUE) + ("sys.boot.cmdline",)
 
 
 def format_uptime(seconds: float) -> str:
@@ -116,7 +116,10 @@ class SystemPage(QScrollArea):
         self.boot_card = Card(_("sys.card.boot"))
         self.boot = InfoGrid()
         for name in BOOT_FIELDS:
-            self.boot.add(_(name))
+            label = self.boot.add(_(name))
+            if name == "sys.boot.cmdline":
+                # The whole line: it's what gets compared with a forum post.
+                label.permitir_lineas(4)
         self.boot_card.body.addWidget(self.boot)
         abajo.add(self.boot_card)
         layout.addWidget(abajo)
@@ -199,6 +202,9 @@ class SystemPage(QScrollArea):
         graficos = render.graphics_stack(snapshot)
         k(_("sys.kernel.graphics"), graficos or d)
         self.kernel.set_visible(_("sys.kernel.graphics"), bool(graficos))
+        k(_("sys.kernel.tainted"), render.tainted(system.tainted),
+          tooltip=_("sys.taint.tip").format(mask=system.tainted or 0))
+        self.kernel.set_visible(_("sys.kernel.tainted"), system.tainted is not None)
 
         a = self.activity.set
         a(_("sys.field.since"), system.boot_time or d)
@@ -247,7 +253,7 @@ class SystemPage(QScrollArea):
     def _apply_boot(self, system: System) -> None:
         arranque = system.boot
         fases = dict(render.boot_phases(arranque))
-        hay = bool(arranque.loader or arranque.entry or fases)
+        hay = bool(arranque.loader or arranque.entry or fases or arranque.cmdline)
         self.boot_card.setVisible(hay)
         # Solo lo que falta de verdad. El GRUB de Fedora no publica sus
         # tiempos, pero el firmware sí (FPDT), y lo del kernel en adelante lo
@@ -268,7 +274,8 @@ class SystemPage(QScrollArea):
         self.extra_pie.setVisible(bool(pie))
         # Una fila por fase: en una sola línea, las seis cifras no cabían en
         # la tarjeta y se cortaban.
-        valores = {"sys.boot.loader": arranque.loader, "sys.boot.entry": arranque.entry, **fases}
+        valores = {"sys.boot.loader": arranque.loader, "sys.boot.entry": arranque.entry, **fases,
+                   "sys.boot.cmdline": " ".join(arranque.cmdline)}
         for clave in BOOT_FIELDS:
             valor = valores.get(clave)
             self.boot.set(_(clave), valor or render.DASH)

@@ -21,7 +21,7 @@ from ..i18n import _
 from ..model import (Boot, DeviceKind, Memory, Need, Sensor, SensorKind, Swap, System,
                      Vulnerability)
 from .base import Draft, Provider, read_int, read_text
-from .. import sysroot
+from .. import privacidad, sysroot
 
 OS_RELEASE = "/etc/os-release"
 MEMINFO = "/proc/meminfo"
@@ -258,7 +258,8 @@ class SystemSecurity(Provider):
             # Sin initrd, el kernel llega hasta systemd.
             kernel_s=tramo(0, initrd or espacio) if espacio else None,
             initrd_s=tramo(initrd, espacio) if initrd else None,
-            userspace_s=tramo(espacio, fin) if espacio and fin else None)
+            userspace_s=tramo(espacio, fin) if espacio and fin else None,
+            cmdline=privacidad.hide_cmdline_identifiers(read_text("/proc/cmdline") or ""))
 
 
 def leer_intercambio() -> tuple[Swap, ...]:
@@ -316,6 +317,8 @@ class SystemState(Provider):
             swaps=leer_intercambio(),
             threads=self._threads(),
             open_files=self._open_files(),
+            # Can change during the session: loading a module taints it.
+            tainted=read_int("/proc/sys/kernel/tainted"),
         )
         draft.sensors.extend(self._sensors(draft.system))
 

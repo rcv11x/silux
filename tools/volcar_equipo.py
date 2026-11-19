@@ -634,6 +634,11 @@ class _Anonimizador:
             if relativo == "/proc/sys/kernel/hostname":
                 ruta.write_text(privacidad.EQUIPO + "\n")
                 continue
+            if relativo == "/proc/cmdline":
+                # The disks' UUIDs, an encrypted volume, the machine's name.
+                ruta.write_text(" ".join(privacidad.hide_cmdline_identifiers(
+                    datos.decode(errors="replace"))) + "\n")
+                continue
             # /proc/net es un enlace a self/net: el archivo de verdad acaba en
             # /proc/<pid>/net/, así que se reconoce por cómo termina.
             if relativo.startswith("/proc/") and relativo.endswith("/net/route"):

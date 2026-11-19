@@ -76,6 +76,33 @@ _MONTAJES_DEL_SISTEMA = frozenset((
 MONTAJE = "/media/unidad{}"
 
 
+# Kernel parameters whose value names this machine: a disk, an encrypted
+# volume, the machine itself or its address.
+_IDENTIFYING_PARAMETERS = {
+    "root", "resume", "cryptdevice", "cryptkey", "rd.luks.uuid", "rd.luks.name",
+    "luks.uuid", "luks.name", "rd.md.uuid", "rd.lvm.lv", "ip", "hostname",
+    "systemd.hostname", "systemd.machine_id", "netroot", "nfsroot",
+}
+_TAGGED = re.compile(r"\b(UUID|PARTUUID|LABEL|PARTLABEL)=[^\s,:]+")
+_UUID = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
+
+
+def hide_cmdline_identifiers(cmdline: str) -> tuple[str, ...]:
+    """The kernel command line, parameter by parameter, without what names
+    the machine: every parameter stays, with its name, but the value of the
+    ones above, and any UUID or label, become «…». Done when it is read, so
+    neither the window, nor a report, nor a dump ever holds it."""
+    hidden = []
+    for parameter in cmdline.split():
+        key, separator, _value = parameter.partition("=")
+        if separator and key in _IDENTIFYING_PARAMETERS:
+            parameter = f"{key}=…"
+        else:
+            parameter = _UUID.sub("…", _TAGGED.sub(lambda m: f"{m.group(1)}=…", parameter))
+        hidden.append(parameter)
+    return tuple(hidden)
+
+
 def de_sistema(nombre: str) -> bool:
     """Si una interfaz se llama como la llama el sistema y no una persona."""
     return bool(_DEL_SISTEMA.fullmatch(nombre))

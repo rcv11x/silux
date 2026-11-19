@@ -300,6 +300,11 @@ publica se dice con la versión que lo trae.
 
 ### Sistema
 
+- Nuevo: si el kernel está «contaminado» (tainted) y por qué: un módulo de
+  fuera del kernel, uno sin firmar, un aviso, un OOPS…
+- Nuevo: la línea de arranque del kernel, con lo que identifica al equipo
+  tapado (los UUID de los discos, los volúmenes cifrados, el nombre o la
+  dirección): no llega ni a la ventana, ni al informe, ni a un volcado.
 - Nuevo: las vulnerabilidades del procesador y sus mitigaciones, el
   intercambio (con lo que comprime zram), el gestor de arranque y la versión
   de Mesa.

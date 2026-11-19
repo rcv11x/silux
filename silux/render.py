@@ -1043,6 +1043,28 @@ FASES_DE_ARRANQUE = (("sys.boot.phase.firmware", "firmware_s"),
                      ("sys.boot.phase.total", "total_s"))
 
 
+# Bit by bit, as Documentation/admin-guide/tainted-kernels.rst lists them.
+TAINT_BITS = 20
+
+
+def taint_reasons(mask: int) -> list[str]:
+    """Why the kernel is tainted, one translated reason per bit set."""
+    return [_(f"sys.taint.{bit}") for bit in range(TAINT_BITS) if mask >> bit & 1]
+
+
+def tainted(mask: int | None) -> str:
+    """«no», or the reasons: «módulo de fuera del kernel · módulo sin firmar»."""
+    if mask is None:
+        return DASH
+    if not mask:
+        return _("sys.taint.no")
+    reasons = taint_reasons(mask)
+    unknown = mask >> TAINT_BITS
+    if unknown:
+        reasons.append(_("sys.taint.other").format(mask=mask))
+    return " · ".join(reasons)
+
+
 def boot_phases(boot) -> list[tuple[str, str]]:
     """Cada fase que se sabe, con lo que tardó: [("sys.boot.phase.firmware", "5.2 s"), …].
 
