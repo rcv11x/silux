@@ -11,9 +11,10 @@ de índice: se mira, se elige y se entra.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, Sequence
 
 from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QFontMetrics
 from PySide6.QtWidgets import (QHBoxLayout, QLabel, QPushButton, QScrollArea,
                                QVBoxLayout, QWidget)
 
@@ -31,6 +32,31 @@ from ..widgets import ui_font
 # Cuántos grados tiene que sacarle una pieza a la que encabeza la tarjeta de
 # temperaturas para quitarle el sitio.
 MARGEN_DEL_TITULAR = 2.0
+
+
+# Lo más ancho que puede escribir cada cifra, de `render.possible_texts`,
+# como las fichas grandes. La tarjeta reserva ese ancho: sin reserva medía lo
+# que el texto de cada muestra, y al ensancharse una tarjeta se repartía de
+# nuevo la fila entera (lo cazó `test_nada_se_mueve` en el CI, con DejaVu y
+# un ritmo de red que dependía de lo rápido que fuera el runner).
+def _porcentajes() -> list[str]:
+    return render.possible_texts(render.percent, 100.0)
+
+
+def _relojes() -> list[str]:
+    return render.possible_texts(render.hz, 10e9)
+
+
+def _grados(fahrenheit: bool) -> list[str]:
+    return render.possible_texts(lambda v: render.temperature(v, fahrenheit), 200.0)
+
+
+def _vatios() -> list[str]:
+    return render.possible_texts(render.watts, 1000.0)
+
+
+def _ritmos(bits: bool) -> list[str]:
+    return render.possible_texts(lambda v: render.rate(v, bits), 1.25e10)
 
 
 class _TarjetaResumen(Card):
@@ -81,6 +107,24 @@ class _TarjetaResumen(Card):
         if event.button() == Qt.MouseButton.LeftButton:
             self.pulsada.emit(self._seccion)
         super().mouseReleaseEvent(event)
+
+    def reservar(self, piezas: Sequence[Sequence[str]], separador: str = "   ") -> None:
+        """Reserva para las cifras el ancho de lo más largo que pueden decir.
+
+        `piezas`, las mismas que se van a pintar y en el mismo orden; de cada
+        una, todo lo que puede llegar a poner. Se mide con la letra que la
+        etiqueta tiene de verdad, después de la hoja de estilos.
+        """
+        self.cifras.ensurePolished()
+        metricas = QFontMetrics(self.cifras.font())
+        anchos = [max(metricas.horizontalAdvance(t) for t in opciones)
+                  for opciones in piezas if opciones]
+        ancho = sum(anchos) + metricas.horizontalAdvance(separador) * max(len(anchos) - 1, 0)
+        # No encoge: una pieza que falta un momento (la gráfica que se duerme)
+        # también movería la fila al volver.
+        ancho = max(ancho, self.cifras.minimumWidth())
+        if self.cifras.minimumWidth() != ancho:
+            self.cifras.setMinimumWidth(ancho)
 
     def poner(self, nombre: str, detalle: str, cifras: str, pie: str = "") -> None:
         for etiqueta, texto in ((self.nombre, nombre), (self.detalle, detalle),
@@ -265,15 +309,20 @@ class HomePage(QScrollArea):
         if principal.codename:
             detalle += f" · {principal.codename}"
 
-        piezas = []
+        piezas, moldes = [], []
+        fahrenheit = self._prefs.fahrenheit
         if cpu.usage_percent is not None:
             piezas.append(render.percent(cpu.usage_percent))
+            moldes.append(_porcentajes())
             self.cpu.grafica.push(cpu.usage_percent)
             self.cpu.grafica.set_range(0.0, 100.0)
         if principal.clocks.current_hz:
             piezas.append(render.hz(principal.clocks.current_hz))
+            moldes.append(_relojes())
         if (temp := cpu.temperature_c) is not None:
-            piezas.append(render.temperature(temp, self._prefs.fahrenheit))
+            piezas.append(render.temperature(temp, fahrenheit))
+            moldes.append(_grados(fahrenheit))
+        self.cpu.reservar(moldes)
         self.cpu.poner(render.cpu_short_name(principal.brand), detalle,
                        "   ".join(piezas))
 
@@ -298,18 +347,23 @@ class HomePage(QScrollArea):
             render.compute_units(gpu) if gpu.compute_units else None,
         ) if p and p != render.DASH)
 
-        piezas = []
+        piezas, moldes = [], []
+        fahrenheit = self._prefs.fahrenheit
         if gpu.suspended:
             # Solo si duermen todas: la que trabaja es la despierta.
             piezas.append(_("gpu.asleep.short"))
+            moldes.append((piezas[-1],))
         elif gpu.busy_percent is not None:
             piezas.append(render.percent(gpu.busy_percent))
+            moldes.append(_porcentajes())
             self.gpu.grafica.push(gpu.busy_percent)
             self.gpu.grafica.set_range(0.0, 100.0)
         if gpu.temp_c is not None:
-            piezas.append(render.temperature(gpu.temp_c, self._prefs.fahrenheit))
+            piezas.append(render.temperature(gpu.temp_c, fahrenheit))
+            moldes.append(_grados(fahrenheit))
         if gpu.power_w is not None:
             piezas.append(render.watts(gpu.power_w))
+            moldes.append(_vatios())
         if not piezas and gpu.clocks.core_hz:
             # Una Intel sin permisos no da uso, ni temperatura, ni vatios: las
             # tres salen del PMU del kernel y la primera no existe siquiera.
@@ -317,14 +371,18 @@ class HomePage(QScrollArea):
             # fallo del programa. El reloj del motor gráfico está en sysfs y se
             # lee sin pedir nada, así que al menos se ve que la cosa se mueve.
             piezas.append(render.hz(gpu.clocks.core_hz))
+            moldes.append(_relojes())
             self.gpu.grafica.push(gpu.clocks.core_hz / 1e6)
             if gpu.clocks.core_max_hz:
                 # Con su techo al lado: 350 MHz solos no dicen si es mucho.
                 piezas.append(_("home.gpu.ofmax").format(
                     max=render.hz(gpu.clocks.core_max_hz)))
+                moldes.append((piezas[-1],))
                 self.gpu.grafica.set_range(0.0, gpu.clocks.core_max_hz / 1e6)
         elif not piezas and gpu.clocks.core_hz == 0:
             piezas.append(_("gpu.clock.idle"))
+            moldes.append((piezas[-1], *_relojes()))
+        self.gpu.reservar(moldes)
         # El uso y el consumo, si faltan por permisos, se dicen: sin esto la
         # tarjeta de una integrada parecía no tener nada más que un reloj.
         pie = (_("home.gpu.locked")
@@ -435,10 +493,12 @@ class HomePage(QScrollArea):
             return
         bits = self._prefs.network_unit == "bits"
         trafico = principal.traffic
-        cifras = "   ".join(
-            f"{flecha} {render.rate(ritmo, bits)}"
-            for flecha, ritmo in (("↓", trafico.rx_rate_bps), ("↑", trafico.tx_rate_bps))
-            if ritmo is not None)
+        presentes = [(flecha, ritmo) for flecha, ritmo
+                     in (("↓", trafico.rx_rate_bps), ("↑", trafico.tx_rate_bps))
+                     if ritmo is not None]
+        cifras = "   ".join(f"{flecha} {render.rate(ritmo, bits)}" for flecha, ritmo in presentes)
+        self.red.reservar([tuple(f"{flecha} {texto}" for texto in _ritmos(bits))
+                           for flecha, _ritmo in presentes])
         # Lo mismo que el titular de la página de Red: la conexión primero
         # (interfaz y dirección) y la pieza debajo.
         self.red.poner(
