@@ -320,7 +320,6 @@ código (F-…), que es por el que se buscan allí.
 | `settings.py` | media | un JSON que no es objeto impide arrancar; un campo malo tira todas las preferencias |
 | `privileged/` | media | topes de tamaño después de reservar; el `timeout` no acota; el cliente se desincroniza (F-M24-26) |
 | `privileged/helper.py` | media-baja | la cadencia de RAPL la decide el cliente (F-M27) |
-| `tools/comprobar_privacidad.py` | media | ciego a IPv6 y seriales; desde otro directorio da su visto bueno sin mirar (F-M30) |
 | `report.py`, `cli.py` | media | zócalos vacíos como módulos (F-M31); tres formateos del valor de un sensor (F-M32) |
 | `tools/probar_en_minimo.py` | media | cualquier fallo del contenedor se anuncia como «la suite no pasa» (F-M37) |
 | `ui/widgets.py` | media-baja | un `float` no finito tumba la gráfica |
