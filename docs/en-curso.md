@@ -77,6 +77,28 @@ que añadió a media mañana (historial, informe completo, ayuda).
   entra; 3) con un reproductor mínimo, abrir el fallo en bugreports.qt.io.
   Sin reintentos ni esconderlo.
 
+### Decisiones del autor al irse (13:55)
+
+- **PySide6 y el reventón**: en vez de bajar PySide6, estudiar el AppImage
+  normal con **Python 3.14 dentro** (python-build-standalone vía `uv`) y el
+  PySide6 más nuevo que funcione, construido igual sobre Ubuntu 22.04 para
+  no perder distros antiguas; el compatible se queda con lo que necesite
+  para sus CPU. Hay que decirle qué gana (velocidad, el fallo de 3.10
+  fuera), cuánto pesa más, qué riesgo tiene, y proponer la versión mínima
+  de Python que soporta el código. **Si no da tiempo antes de la prueba1,
+  entonces sí `PySide6<6.11` para 3.10.** En cualquier caso, comprobar si
+  el doble borrado pasa en la app de verdad. El aviso a bugreports.qt.io,
+  cuando haya tiempo.
+- **Historial: opción 2**, borrar el repositorio y crearlo de nuevo con el
+  historial limpio, conservando autores, fechas y `Co-Authored-By`
+  (filter-repo los respeta: solo cambia el contenido). Esta tarde en casa,
+  con el autor; nada en GitHub hasta entonces. Al recrearlo: volver a
+  subir v0.2.0 y v0.3.0 con sus notas y sus AppImage (las notas están en el
+  espejo y en `gh release view`; los AppImage, bajarlos antes de borrar), y
+  el borrador de la 0.4.
+- Los dos stash de la mañana, tirados. Las imágenes de podman
+  (`silux-ci:22.04`, `silux-ci:asan`) se quedan en la oficina.
+
 ### La reescritura del historial (esta tarde, una sola vez)
 
 Decidido por el autor: que no quede nada de los datos viejos, ni en GitHub ni
