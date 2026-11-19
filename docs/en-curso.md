@@ -31,10 +31,12 @@ que añadió a media mañana (historial, informe completo, ayuda).
 - **Inicio se recolocaba con las cifras** (el rojo intermitente de 3.14):
   las tarjetas reservan el ancho de su cifra; `render.possible_texts` cuenta
   «1000.0 MB/s».
-- Todo eso va en `privacidad`, empujada con su CI (el número en
-  `gh run list --branch privacidad --limit 1`). Pasa a `master` en cuanto
-  salga en verde; si el rojo es el reventón de 3.10, no dice nada del commit
-  y se relanza solo ese trabajo para comprobarlo, nunca para darlo por bueno.
+- Todo eso va en `privacidad`, empujada. **No ha pasado a `master`**: su CI
+  (44524215683) sale rojo en 3.10 por el reventón, dentro de `recorrer`
+  como siempre. El de 3.14 cayó porque el runner no pudo bajar paquetes de
+  Ubuntu y se relanzó solo ese trabajo, para que sus tests corrieran. El de
+  3.10 no se relanza hasta que salga verde: o se arregla el reventón, o el
+  autor decide pasarla con ese rojo.
 
 ### El reventón de 3.10: lo averiguado
 
