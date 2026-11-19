@@ -53,6 +53,9 @@ publica se dice con la versión que lo trae.
 
 ### Permisos
 
+- Cambiado: «Qué pasa al dar permisos» dice lo mismo en cuatro frases cortas.
+- Nuevo: «Quitar el ayudante…» en Ajustes, si lo instalaste para siempre.
+  Antes había que copiar una orden `sudo rm`.
 - Nuevo: un candado donde falta un dato por permisos, en vez del mismo guion
   que lleva lo que no se sabe. Pulsarlo los pide.
 - Nuevo: Inicio avisa de lo que falta por permisos, con nombre («Salud de
@@ -167,6 +170,8 @@ publica se dice con la versión que lo trae.
 
 ### Gráficos
 
+- Arreglado: en una integrada de Intel, «Tomada del sistema 11.6 GB» era lo
+  que el driver podría tomar, no lo que toma. Ahora dice «hasta 11.6 GB».
 - Nuevo: el bloque «Ahora mismo» junta en tres barras la memoria de video
   ocupada, el consumo y el uso del bus, cada una con su cifra.
 - Nuevo: en una integrada de Intel, las frecuencias del silicio (máxima y
@@ -238,12 +243,19 @@ publica se dice con la versión que lo trae.
 
 ### Red
 
+- Arreglado: la tarjeta de red empieza por su marca («Realtek RTL8111…»),
+  también en Inicio y en Placa base.
+- Arreglado: el tipo de interfaz sale traducido; la tabla dice 0 perdidos en
+  vez de un guion; y se ve cuál de MB/s y Mb/s está elegido.
 - Nuevo: las interfaces virtuales (Docker, máquinas virtuales, VPN) van
   plegadas debajo de las físicas.
 - Arreglado: el dúplex salía «full».
 
 ### Dispositivos
 
+- Arreglado: el micrófono de una cámara se llama así en Sonido, en vez de
+  ser un «Audio USB» más.
+- Arreglado: la cabecera del árbol USB es como la de las demás tablas.
 - Nuevo: sección nueva con lo enchufado por USB (en árbol, colgando de su
   concentrador, con su velocidad), las tarjetas de sonido, las cámaras y el
   adaptador Bluetooth.
@@ -294,6 +306,8 @@ publica se dice con la versión que lo trae.
 
 ### Rendimiento
 
+- Arreglado: «Renombrar» y «Borrar» del historial son pequeños y van a la
+  altura de su fila.
 - Nuevo: botón «Borrar las de otra escala», para quitar de una vez las
   pruebas que ya no se pueden comparar con las de ahora.
 - Arreglado: una prueba medida con otra escala decía «—» donde va la
@@ -330,6 +344,7 @@ publica se dice con la versión que lo trae.
 
 ### Aspecto
 
+- Cambiado: el nombre es siempre «Silux», con mayúscula.
 - Cambiado: la cifra de las fichas grandes empieza a la izquierda, donde su
   etiqueta, con la unidad pegada detrás.
 - Nuevo: aspecto renovado. Tarjetas más limpias, títulos discretos, cifras en
