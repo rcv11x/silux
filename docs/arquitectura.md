@@ -19,6 +19,7 @@ entero o saltar a lo que interese.
 - [Los equipos volcados](#los-equipos-volcados)
 - [El informe de fallos](#el-informe-de-fallos)
 - [Instalación en el escritorio](#instalación-en-el-escritorio)
+- [El actualizador](#el-actualizador)
 
 Los permisos y el ayudante tienen su propio documento,
 [privilegios.md](privilegios.md); el AppImage, [empaquetado.md](empaquetado.md).
@@ -428,6 +429,47 @@ piezas que no están a mano.
 Omite el nombre del equipo, las direcciones y los números de serie —está
 pensado para pegarlo en un issue público— y lo dice al terminar. Con
 `--with-identifiers` se incluyen.
+
+## El actualizador
+
+`silux/updates.py` es lo único del programa que sale a la red, y solo cuando
+alguien lo pide.
+
+**Lo que no hace nunca:**
+
+- Conectarse sin que nadie lo pida: «Buscar actualizaciones al iniciar»
+  viene apagado, y sin él ni «Buscar ahora» no se abre ni un socket.
+- Sustituir nada sin un clic: una versión nueva solo pinta un aviso.
+- Mandar datos del equipo: la petición lleva una sola cabecera propia,
+  `User-Agent: silux/<versión>`.
+- Ejecutar algo que no coincide con lo publicado: lo bajado se compara con el
+  SHA-256 de `SHA256SUMS` de la misma release; si no está o no coincide, se
+  borra y el AppImage queda como estaba.
+
+**A quién se conecta**, solo por HTTPS, también en las redirecciones:
+
+| Paso | URL | Tope |
+|---|---|---|
+| Buscar | `https://api.github.com/repos/rcv11x/silux/releases` | 1 MB |
+| Sumas | el `SHA256SUMS` de esa release | 64 kB |
+| Bajar | el AppImage del mismo tipo que el que corre (normal o `-compat`) | 400 MB |
+
+**Qué cuenta como nuevo:** solo las releases publicadas, nunca los borradores
+ni las versiones de prueba. Una de prueba va por debajo de su final
+(`0.4.0rc1` < `0.4.0`), así que quien tiene la 0.4-prueba1 recibe la 0.4.
+
+**Cómo se sustituye:** se baja a un temporal en la misma carpeta, se
+comprueba la suma, y `os.replace` lo pone en la ruta de `$APPIMAGE`, que es a
+donde apunta la entrada de menú. «Reiniciar» lanza el nuevo. Desde el código,
+o si la carpeta no se puede escribir, solo se avisa con el enlace a la
+release.
+
+**Cómo se prueba de punta a punta sin publicar nada:**
+`tools/probar_actualizador.py VIEJO.AppImage NUEVO.AppImage` lanza el AppImage
+viejo, con su propio Python, contra un GitHub de mentira
+(`tools/actualizador/github_falso.py`, un complemento de mitmproxy) que
+publica el nuevo como versión siguiente. Pasa cuatro casos: bien, una suma
+que no coincide, una redirección a `http://` y una carpeta de solo lectura.
 
 ## Instalación en el escritorio
 

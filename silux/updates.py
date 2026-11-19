@@ -2,7 +2,7 @@
 
 Es lo único del programa que sale a la red, y solo cuando alguien lo pide: el
 ajuste de buscar al iniciar viene apagado y el botón «Buscar ahora» se pulsa a
-mano. A quién se conecta y por qué así: `docs/propuesta-actualizaciones.md`.
+mano. A quién se conecta y por qué así: `docs/arquitectura.md#el-actualizador`.
 
 Sin Qt: la interfaz llama a esto desde un hilo. La red pasa por `abrir`, que
 los tests sustituyen por uno falso; ninguno sale a GitHub.

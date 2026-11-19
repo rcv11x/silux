@@ -47,7 +47,7 @@ class Preferences:
     network_unit: str = "bytes"           # bytes | bits
     show_all_features: bool = False
     # Buscar una versión nueva al abrir. Apagado de serie: el programa no se
-    # conecta a nada si nadie lo pide (docs/propuesta-actualizaciones.md).
+    # conecta a nada si nadie lo pide (docs/arquitectura.md#el-actualizador).
     check_updates: bool = False
     # Ancho de la columna «Sensor» del árbol. 0 = calcularlo del contenido.
     # Ancho de cada columna del árbol de sensores. Vacío = calcularlo.
