@@ -30,6 +30,20 @@ funciones sin despacho —`qFuzzyCompare`, `qt_from_latin1`— mientras el 6.9.3
 del `--compat` solo lo lleva en rutas que se eligen mirando la CPU. La guarda
 del AppRun corta de verdad, probada con un `/proc/cpuinfo` sin esas banderas.
 
+## El cierre del `QScrollBar` con PySide6 6.11 en Python 3.10 y 3.11
+
+Qt libera dos veces la llamada encolada con que un `QScrollBar` avisa de su
+rango, y el proceso muere. En la app pasa al cambiar de forma la ventana (dar
+permisos, conectar un disco): `tools/agitar_ventana.py` tumba tres ventanas
+de seis en diez minutos con 3.10 o 3.11 y 6.11.3, y ninguna con 3.14 o con
+6.9. Lo afecta la 0.3 y el borrador de la 0.4; los AppImage nuevos, no. El
+`pyproject` pide `<6.11` en Python < 3.12. En los tests sale también, más
+raro, con 3.14 + 6.12.0 (1 vuelta de 12 de la suite entera en un contenedor):
+un rojo del CI con ese reventón en el trabajo del normal se relanza a mano y
+se apunta aquí. Lo descartado y cómo se mide, en
+[empaquetado.md](empaquetado.md#el-cierre-del-qscrollbar-pyside6-611-en-python-310-y-311).
+Falta la causa y un reproductor sin silux para bugreports.qt.io.
+
 ## Lo que queda por arreglar
 
 Sale de las cuatro primeras auditorías. **Nada de esto está arreglado**; lo
