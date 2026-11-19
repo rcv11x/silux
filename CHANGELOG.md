@@ -190,6 +190,9 @@ publica se dice con la versión que lo trae.
 
 ### Gráficos
 
+- Nuevo: en «Consumo y temperaturas», el límite de consumo de fábrica de la
+  tarjeta y entre qué valores se puede poner (amdgpu); si el de ahora está
+  por encima, el globo dice que alguien lo ha subido.
 - Arreglado: en una integrada de Intel, «Tomada del sistema 11.6 GB» era lo
   que el driver podría tomar, no lo que toma. Ahora dice «hasta 11.6 GB».
 - Nuevo: el bloque «Ahora mismo» junta en tres barras la memoria de video

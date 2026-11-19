@@ -1059,6 +1059,10 @@ def _sensores(gpu: dict, dispositivo: pathlib.Path) -> None:
     gpu["power_w"] = round(micro / 1_000_000, 1) if micro is not None else None
     tope = read_int(f"{hwmon}/power1_cap")
     gpu["power_cap_w"] = round(tope / 1_000_000, 1) if tope is not None else None
+    for key, name in (("power_cap_default_w", "power1_cap_default"),
+                      ("power_cap_min_w", "power1_cap_min"), ("power_cap_max_w", "power1_cap_max")):
+        micro = read_int(f"{hwmon}/{name}")
+        gpu[key] = round(micro / 1_000_000, 1) if micro is not None else None
 
     gpu["fan_rpm"] = read_int(f"{hwmon}/fan1_input")
     pwm = read_int(f"{hwmon}/pwm1")

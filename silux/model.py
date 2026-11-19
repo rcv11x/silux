@@ -1110,6 +1110,10 @@ class Gpu:
     memory_temp_c: Optional[float] = None
     power_w: Optional[float] = None
     power_cap_w: Optional[float] = None
+    # The limit the card ships with, and the range the driver accepts.
+    power_cap_default_w: Optional[float] = None
+    power_cap_min_w: Optional[float] = None
+    power_cap_max_w: Optional[float] = None
     fan_rpm: Optional[int] = None
     fan_percent: Optional[float] = None
     voltage_v: Optional[float] = None

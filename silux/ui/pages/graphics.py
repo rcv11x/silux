@@ -92,7 +92,7 @@ CLOCK_FIELDS = ("gpu.clock.core", "gpu.clock.coremax", "gpu.clock.silmax", "gpu.
 # está: es la de la ficha de arriba. Tampoco el consumo ni su límite, que
 # van en «Ahora mismo» con su barra: repetidos aquí eran la misma cifra dos
 # veces en la misma pantalla.
-SENSOR_FIELDS = ("gpu.sensor.state",
+SENSOR_FIELDS = ("gpu.sensor.state", "gpu.sensor.powercap",
                  "gpu.sensor.hotspot", "gpu.sensor.memtemp",
                  "gpu.sensor.vrgfx", "gpu.sensor.vrsoc", "gpu.sensor.vrmem",
                  "gpu.sensor.fan",
@@ -599,6 +599,8 @@ class GpuSection(QWidget):
         s(_("gpu.sensor.hotspot"), render.temperature(gpu.hotspot_c, fahrenheit),
           tooltip=_("gpu.tip.hotspot"))
         s(_("gpu.sensor.memtemp"), render.temperature(gpu.memory_temp_c, fahrenheit))
+        s(_("gpu.sensor.powercap"), render.gpu_factory_power_limit(gpu),
+          tooltip=render.gpu_power_limit_tip(gpu))
         s(_("gpu.sensor.fan"), render.fan(gpu.fan_rpm, gpu.fan_percent))
         s(_("gpu.sensor.vrgfx"), render.temperature(gpu.vr_gfx_c, fahrenheit),
           tooltip=_("gpu.tip.vr"))
@@ -653,6 +655,9 @@ class GpuSection(QWidget):
         # candado): repetido aquí, el mismo dato salía dos veces.
         if any(clave == "engine.video" for clave, _v in render.engine_levels(gpu)):
             escondidos["sensors"].add("gpu.sensor.videouse")
+        # Only cards whose driver publishes a factory limit have one to show.
+        if gpu.power_cap_default_w is None and gpu.power_cap_max_w is None:
+            escondidos["sensors"].add("gpu.sensor.powercap")
 
         # La ficha de la temperatura, donde la tarjeta no la publica: una
         # ficha grande con un guion para siempre era el hueco más visible de
@@ -678,7 +683,7 @@ class GpuSection(QWidget):
         # qué falta cada cosa, en el globo. Vuelve en cuanto tenga algo suyo
         # (el estado de una Intel reciente, o cualquier AMD).
         propios = [c for c in SENSOR_FIELDS
-                   if c not in ocultos["sensors"] and c != "gpu.sensor.videouse"]
+                   if c not in escondidos["sensors"] and c != "gpu.sensor.videouse"]
         solo_el_video = bool(gpu.engines) and not propios
         self.sensor_card.setVisible(not solo_el_video)
         fuera = pie_de_sensores(ocultos["sensors"]) if solo_el_video else ""

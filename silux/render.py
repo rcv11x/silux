@@ -1043,6 +1043,27 @@ FASES_DE_ARRANQUE = (("sys.boot.phase.firmware", "firmware_s"),
                      ("sys.boot.phase.total", "total_s"))
 
 
+def gpu_factory_power_limit(gpu) -> str:
+    """«330.0 W · admite 231.0–340.0 W». The current cap isn't here: it
+    is already in the power bar of «Right now»."""
+    parts = []
+    if gpu.power_cap_default_w is not None:
+        parts.append(watts(gpu.power_cap_default_w))
+    if gpu.power_cap_min_w is not None and gpu.power_cap_max_w is not None:
+        parts.append(_("gpu.power.range").format(desde=figure(gpu.power_cap_min_w, 1),
+                                                  hasta=watts(gpu.power_cap_max_w)))
+    return " · ".join(parts) or DASH
+
+
+def gpu_power_limit_tip(gpu) -> str:
+    """The current cap, and whether someone raised it above the factory one."""
+    tip = _("gpu.tip.powercap").format(ahora=watts(gpu.power_cap_w))
+    if (gpu.power_cap_w is not None and gpu.power_cap_default_w is not None
+            and gpu.power_cap_w > gpu.power_cap_default_w):
+        tip += " " + _("gpu.power.raised")
+    return tip
+
+
 # Bit by bit, as Documentation/admin-guide/tainted-kernels.rst lists them.
 TAINT_BITS = 20
 
