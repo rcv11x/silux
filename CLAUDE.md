@@ -8,6 +8,8 @@ hardware y monitorización de sensores.
 
 **Lo que este programa no es: un administrador de tareas.** Los procesos son
 software, no hardware, y Linux ya tiene buenos monitores de procesos.
+Decidido por el autor el 19 de noviembre: tampoco el uso de la gráfica ni de
+nada por programa (DRM `fdinfo` incluido), aunque se lea sin permisos.
 
 Este archivo es corto a propósito: se carga en cada sesión. El detalle vive en
 `docs/` (índice al final). Antes de tocar una zona, se lee su apartado de
