@@ -63,7 +63,9 @@ class DevicesPage(QScrollArea):
         self.usb = QTreeWidget()
         self.usb.setObjectName("DeviceTree")
         self.usb.setColumnCount(len(USB_HEADERS))
-        self.usb.setHeaderLabels([_(h) for h in USB_HEADERS])
+        # En mayúsculas pequeñas, como los títulos de columna de las demás
+        # tablas de la página (`QLabel#ColumnTitle`).
+        self.usb.setHeaderLabels([_(h).upper() for h in USB_HEADERS])
         # Sin flechas: el árbol va siempre abierto. Lo que cuelga de un
         # concentrador se ve por el sangrado, y plegarlo no ahorra nada.
         self.usb.setRootIsDecorated(False)

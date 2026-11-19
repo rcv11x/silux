@@ -423,6 +423,10 @@ class SoundCard:
     name: Optional[str] = None               # el del dispositivo, si es USB
     kind: str = "other"                      # "hdmi" | "board" | "usb" | "other"
     codec: Optional[str] = None              # "Realtek ALCS1200A"
+    # La tarjeta USB es el micrófono de una cámara: su aparato tiene también
+    # una interfaz de video. En el árbol USB sale como la cámara, no como
+    # un aparato de audio, y sin esto la tabla de sonido tenía uno más.
+    camera: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -683,6 +687,12 @@ VENDOR_ALIASES: dict[str, str] = {
     "g skill": "G.Skill",
     "g.skill": "G.Skill",
     "corsair": "Corsair",
+    # Los de red y sonido, como los escribe `pci.ids`: la marca que va en la
+    # caja es la primera palabra.
+    "realtek semiconductor": "Realtek",
+    "mediatek": "MediaTek",
+    "qualcomm atheros": "Qualcomm Atheros",
+    "broadcom inc": "Broadcom",
     "notebook": "",
 }
 

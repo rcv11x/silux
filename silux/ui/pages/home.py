@@ -504,7 +504,7 @@ class HomePage(QScrollArea):
         self.red.poner(
             " · ".join(p for p in (principal.name, principal.ipv4) if p),
             " · ".join(p for p in (
-                principal.display_name if principal.display_name != principal.name else None,
+                render.network_name(principal) if principal.model else None,
                 render.link_summary(principal)) if p),
             cifras)
         if trafico.total_rate_bps is not None:

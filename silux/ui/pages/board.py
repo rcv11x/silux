@@ -260,6 +260,8 @@ class BoardPage(QScrollArea):
             else:
                 donde = _("board.pci.onboard")
             nombre = d.name or render.pci_unnamed(d) or render.DASH
+            if d.kind in ("ethernet", "wifi") and d.name:
+                nombre = render.with_maker(d.vendor, d.name)
             fila = [_(PCI_KINDS[d.kind]), nombre,
                     render.pcie_link(d.link) if d.link else donde,
                     render.pcie_link(d.link, maximum=True) if d.link else "",

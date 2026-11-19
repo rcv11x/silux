@@ -521,6 +521,37 @@ def maker(name: Optional[str]) -> Optional[str]:
     return limpio
 
 
+def with_maker(vendor: Optional[str], model: Optional[str]) -> Optional[str]:
+    """El nombre de un producto empezando por su marca.
+
+    `pci.ids` da el modelo sin el fabricante: «RTL8111/8168/8211/8411 PCI
+    Express Gigabit Ethernet Controller» no dice que es una Realtek, y es
+    lo primero que se busca. Si el modelo ya empieza por la marca, no se
+    repite.
+    """
+    if not model:
+        return None
+    marca = maker(vendor)
+    if not marca or model.lower().startswith(marca.lower()):
+        return model
+    return f"{marca} {model}"
+
+
+def network_kind(clase: Optional[str]) -> str:
+    """El tipo de una interfaz, dicho en el idioma de la interfaz: «Ethernet»,
+    «Wi-Fi», «Puente». El proveedor guarda la clave y no el texto."""
+    if not clase:
+        return DASH
+    texto = _(f"net.kind.{clase}")
+    return clase if texto == f"net.kind.{clase}" else texto
+
+
+def network_name(interfaz) -> str:
+    """Cómo se llama una tarjeta de red: su modelo con la marca, o el nombre
+    de la interfaz si no se sabe el modelo."""
+    return with_maker(interfaz.vendor, interfaz.model) or interfaz.name
+
+
 # El kernel le pega al nombre de algunos chips dónde los encontró: la
 # dirección del Super I/O («it8688_40050607») o el bus MDIO de la tarjeta de
 # red («r8169_0_600:00»). Sirve para distinguir dos iguales, no para leerlo.
@@ -854,7 +885,7 @@ def sound_card(tarjeta) -> str:
     if tarjeta.kind == "board":
         return _("sound.board").format(codec=tarjeta.codec) if tarjeta.codec else _("sound.board.plain")
     if tarjeta.kind == "usb":
-        return tarjeta.name or _("sound.usb")
+        return tarjeta.name or _("sound.usb.camera" if tarjeta.camera else "sound.usb")
     return tarjeta.name or _("sound.other")
 
 

@@ -935,10 +935,14 @@ class GpuSection(QWidget):
         m(_("gpu.vram.chips"), memoria.vendor or d)
         prestada = d
         if memoria.gtt_total_bytes:
-            prestada = render.size(memoria.gtt_total_bytes)
+            # El total es lo que el driver podría tomar, no lo que toma: sin
+            # lo usado, «11.6 GB» a secas se leía como 11.6 GB ya tomados.
+            total = render.size(memoria.gtt_total_bytes)
             if memoria.gtt_used_bytes is not None:
                 prestada = _("gpu.vram.of").format(
-                    usado=render.size(memoria.gtt_used_bytes), total=prestada)
+                    usado=render.size(memoria.gtt_used_bytes), total=total)
+            else:
+                prestada = _("gpu.vram.shared.upto").format(total=total)
         m(_("gpu.vram.shared"), prestada,
           tooltip=_("gpu.tip.shared"))
 

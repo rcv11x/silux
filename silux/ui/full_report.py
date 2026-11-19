@@ -205,14 +205,21 @@ def _celda(item, raiz) -> str:
     return " ".join(l.strip() for l in lineas if l.strip() and not _TITULO.match(l))
 
 
-def _filas(rejilla, raiz) -> list[list[str]]:
-    """Las celdas con algo que decir de una rejilla, fila a fila."""
+def _filas(rejilla, raiz, columnas: bool = False) -> list[list[str]]:
+    """Las celdas con algo que decir de una rejilla, fila a fila.
+
+    Con `columnas`, cada celda en su columna aunque esté vacía: en una tabla,
+    quitar un hueco corre las de la derecha bajo otra cabecera."""
     filas: dict[int, dict[int, str]] = {}
     for i in range(rejilla.count()):
         fila, columna, _alto, _ancho = rejilla.getItemPosition(i)
         texto = _celda(rejilla.itemAt(i), raiz)
         if texto:
             filas.setdefault(fila, {})[columna] = texto
+    if columnas:
+        ancho = max((c for celdas in filas.values() for c in celdas), default=-1) + 1
+        return [[celdas.get(c, "") for c in range(ancho)]
+                for _f, celdas in sorted(filas.items()) if celdas]
     return [[celdas[c] for c in sorted(celdas)] for _f, celdas in sorted(filas.items())
             if celdas]
 
@@ -269,7 +276,7 @@ def _lineas(widget, raiz) -> list[str]:
         return [("- " + ": ".join(f)) if len(f) == 2 else "- " + " · ".join(f)
                 for f in _filas(widget._grid, raiz)]
     if isinstance(widget, Table):
-        return _tabla(_filas(widget._grid, raiz))
+        return _tabla(_filas(widget._grid, raiz, columnas=True))
     if isinstance(widget, QTreeWidget):
         return _arbol(widget)
     if isinstance(widget, QLabel):

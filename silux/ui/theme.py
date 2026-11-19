@@ -627,6 +627,20 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
     QPushButton#GhostButton:pressed {{ background: {p.accent_wash}; }}
     QPushButton:hover {{ border-color: {p.accent}; color: {p.accent}; }}
     QPushButton:pressed {{ background: {p.accent_wash}; }}
+    /* Los de una fila de una tabla (Renombrar y Borrar en Rendimiento): del
+       alto del texto de la fila, no del de un botón suelto. */
+    QPushButton[compacto="true"] {{
+        padding: 1px 8px;
+        border-radius: 6px;
+    }}
+    /* El que se queda pulsado (MB/s o Mb/s en Red): el elegido, con el
+       acento, para que se vea cuál está puesto sin tener que pulsar. */
+    QPushButton:checked {{
+        background: {p.accent_wash};
+        border-color: {p.accent};
+        color: {p.accent};
+        font-weight: 600;
+    }}
 
     /* --- árbol de sensores --- */
 
@@ -668,6 +682,27 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         letter-spacing: 0.8px;
     }}
     QHeaderView::section:first {{ padding-left: 8px; }}
+    /* El árbol de Dispositivos va entre tablas, y su cabecera tiene que ser
+       como la de ellas (`QLabel#ColumnTitle`): sin fondo, pequeña y con la
+       raya debajo. La del árbol de sensores sí lleva fondo: es una lista
+       que se ordena y se redimensiona. */
+    QTreeWidget#DeviceTree {{
+        background: transparent;
+        border: none;
+        padding: 0;
+    }}
+    QTreeWidget#DeviceTree QHeaderView {{ background: transparent; border: none; }}
+    QTreeWidget#DeviceTree QHeaderView::section {{
+        background: transparent;
+        color: {p.muted};
+        border: none;
+        border-bottom: 1px solid {p.line};
+        padding: 0 {RELLENO_DE_CELDA}px 3px {RELLENO_DE_CELDA}px;
+        font-size: {m.small_pt}px;
+        font-weight: 600;
+        letter-spacing: 1.1px;
+    }}
+    QTreeWidget#DeviceTree::item:hover {{ background: transparent; }}
 
     QToolTip {{
         background: {p.surface}; color: {p.ink};

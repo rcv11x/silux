@@ -490,7 +490,7 @@ def _red(snapshot: Snapshot, anonymous: bool) -> str:
         lineas.append(
             f"- **{interfaz.name}** ({interfaz.kind}): "
             f"{render.interface_state(interfaz)} · {render.link_summary(interfaz) or '—'} · "
-            f"{interfaz.model or interfaz.driver or '—'} · IP {direccion} · MAC {mac}"
+            f"{render.with_maker(interfaz.vendor, interfaz.model) or interfaz.driver or '—'} · IP {direccion} · MAC {mac}"
         )
     return "\n".join(lineas)
 

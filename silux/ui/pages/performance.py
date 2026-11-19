@@ -402,8 +402,9 @@ class PerformancePage(QScrollArea):
                 etiqueta.setObjectName("FieldValue" if columna == 0 else "FieldName")
                 if columna:
                     etiqueta.setFont(value_font())
-                etiqueta.setAlignment(Qt.AlignmentFlag.AlignRight if columna in (2, 3, 4)
-                                      else Qt.AlignmentFlag.AlignLeft)
+                etiqueta.setAlignment((Qt.AlignmentFlag.AlignRight if columna in (2, 3, 4)
+                                       else Qt.AlignmentFlag.AlignLeft)
+                                      | Qt.AlignmentFlag.AlignVCenter)
                 if columna == 0 and entrada.label:
                     etiqueta.setToolTip(entrada.when)
                 if columna == 2 and not de_esta_escala:
@@ -411,20 +412,27 @@ class PerformancePage(QScrollArea):
                         nueva=score.VERSION))
                 rejilla.addWidget(etiqueta, fila, columna)
 
+            # Pequeños y a la altura del texto de su fila: con los márgenes
+            # de serie del contenedor y el relleno de un botón normal, cada
+            # fila crecía y los botones quedaban por debajo de sus cifras.
             acciones = QHBoxLayout()
+            acciones.setContentsMargins(0, 0, 0, 0)
             acciones.setSpacing(4)
             renombrar = QPushButton(_("bench.button.rename"))
             renombrar.setToolTip(_("bench.dialog.name.tip"))
             renombrar.clicked.connect(
-                lambda _=False, e=entrada: self._renombrar(e))
+                lambda _pulsado=False, e=entrada: self._renombrar(e))
             borrar = QPushButton(_("bench.button.delete"))
             borrar.setObjectName("Danger")
-            borrar.clicked.connect(lambda _=False, e=entrada: self._borrar_una(e))
-            acciones.addWidget(renombrar)
-            acciones.addWidget(borrar)
+            borrar.clicked.connect(lambda _pulsado=False, e=entrada: self._borrar_una(e))
+            for boton in (renombrar, borrar):
+                boton.setProperty("compacto", True)
+                boton.setFont(ui_font(theme.METRICS.small_pt))
+                acciones.addWidget(boton)
             contenedor = QWidget()
             contenedor.setLayout(acciones)
-            rejilla.addWidget(contenedor, fila, len(HISTORY_HEADERS))
+            rejilla.addWidget(contenedor, fila, len(HISTORY_HEADERS),
+                              Qt.AlignmentFlag.AlignVCenter)
 
         # El sobrante va detrás de los botones y no a la columna del nombre.
         # Estirando la primera, en pantalla completa quedaba un palmo entre la

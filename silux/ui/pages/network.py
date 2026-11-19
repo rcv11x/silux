@@ -252,7 +252,7 @@ class NetworkPage(QScrollArea):
         # enlace van debajo, y las insignias no repiten ni lo uno ni lo otro.
         self.title.setText(" · ".join(p for p in (principal.name, principal.ipv4) if p))
         self.subtitle.setText(" · ".join(p for p in (
-            principal.display_name if principal.display_name != principal.name else None,
+            render.network_name(principal) if principal.model else None,
             render.link_summary(principal)) if p))
 
         activas = sum(1 for i in interfaces if i.active)
@@ -321,7 +321,7 @@ class NetworkPage(QScrollArea):
              render.size(interfaz.traffic.rx_bytes),
              render.size(interfaz.traffic.tx_bytes),
              render.thousands(interfaz.traffic.rx_packets + interfaz.traffic.tx_packets),
-             render.thousands(interfaz.traffic.problems) if interfaz.traffic.problems else "—")
+             render.thousands(interfaz.traffic.problems))
             for interfaz in interfaces
         ]
         return filas or [(_("net.none"), d, d, d, d, d, d)]
@@ -352,7 +352,7 @@ class NetworkPage(QScrollArea):
                 continue
             f = grid.set
             f(_("gpu.sensor.state"), render.interface_state(interfaz))
-            f(_("memory.field.type"), interfaz.kind)
+            f(_("memory.field.type"), render.network_kind(interfaz.kind))
             f(_("net.field.ipv4"), interfaz.ipv4 or d)
             f(_("net.field.mask"), interfaz.netmask or d)
             f(_("net.field.gateway"), interfaz.gateway or d)
@@ -371,5 +371,5 @@ class NetworkPage(QScrollArea):
                 grid.set_visible(_(clave), bool(valor))
             f("MTU", str(interfaz.mtu) if interfaz.mtu else d)
             f(_("gpu.field.driver"), interfaz.driver or d)
-            f(_("storage.col.model"), interfaz.model or d)
+            f(_("storage.col.model"), render.with_maker(interfaz.vendor, interfaz.model) or d)
             f(_("net.field.slot"), interfaz.pci_slot or d)

@@ -147,7 +147,8 @@ class ConnectedDevices(Provider):
                 if (codec := linea.partition(":")[2].strip()):
                     codecs.append(codec)
             if "usb" in driver.lower() or "usb-" in segunda:
-                salida.append(SoundCard(name=nombre or None, kind="usb"))
+                salida.append(SoundCard(name=nombre or None, kind="usb",
+                                        camera=_de_una_camara(segunda)))
             elif codecs and all("HDMI" in c for c in codecs):
                 salida.append(SoundCard(kind="hdmi", codec=codecs[0]))
             elif codecs:
@@ -198,3 +199,30 @@ class ConnectedDevices(Provider):
             salida.append(BluetoothAdapter(name=nombre, product=producto,
                                            bus="usb" if por_usb else "board", powered=estado))
         return salida
+
+
+# Clase USB de video (USB-IF): la de una cámara.
+CLASE_VIDEO = "0e"
+
+
+def _de_una_camara(linea: str) -> bool:
+    """Si una tarjeta de sonido USB es el micrófono de una cámara.
+
+    `/proc/asound/cards` dice dónde cuelga: «… at usb-0000:0e:00.3-4.1.4, high
+    speed», el controlador y el camino de puertos. El aparato de ese camino,
+    en el bus de ese controlador, es una cámara si alguna de sus interfaces
+    es de video.
+    """
+    encaje = re.search(r"usb-([0-9a-fA-F:.]+)-([\d.]+)", linea)
+    if not encaje:
+        return False
+    controlador, puertos = encaje.groups()
+    for bus in glob.glob(os.path.join(sysroot.ruta("/sys/bus/usb/devices"), "usb*")):
+        if controlador not in os.path.realpath(bus):
+            continue
+        numero = os.path.basename(bus)[3:]
+        aparato = os.path.join(os.path.dirname(bus), f"{numero}-{puertos}")
+        for interfaz in glob.glob(aparato + ":*"):
+            if (read_text(sysroot.fuera(os.path.join(interfaz, "bInterfaceClass"))) or "").strip() == CLASE_VIDEO:
+                return True
+    return False
