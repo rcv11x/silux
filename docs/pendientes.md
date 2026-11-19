@@ -95,6 +95,24 @@ sin los pasos para reproducirlo: este archivo es público.
   frecuencias de `xe`; el uso de NVENC y NVDEC de `nvml.py` (contrastar con
   `nvidia-smi dmon -s u`); los volcados de una NVIDIA, una Arc y una Steam
   Deck con `tools/volcar_equipo.py`. Ver [equipos-probados.md](equipos-probados.md).
+* **Datos baratos que faltan** (de la lista de la noche del 19; ya están el
+  kernel contaminado, la línea de arranque, el límite de fábrica de la
+  gráfica y los errores PCIe de la gráfica):
+  - **CPU, solo Intel**: la ventana de PL1 (`constraint_0_time_window_us`
+    de RAPL) y los frenos por temperatura
+    (`/sys/devices/system/cpu/cpu*/thermal_throttle/*_throttle_count`). En el
+    5800X3D no existen y los volcados del i5-10400 no los traen (el volcado
+    guarda solo lo que se leyó): se escriben en la oficina, con un volcado
+    nuevo.
+  - **Placa base**: los errores AER de los puertos raíz
+    (`aer_rootport_total_err_cor`, `_fatal` y `_nonfatal`). Son un número
+    suelto, no las líneas `TOTAL_ERR_*` de los `aer_dev_*` que lee
+    `drm._aer`. En el 5800X3D solo los publican los puertos internos 00:07.1
+    y 00:08.1, no el de la gráfica (00:03.1). Falta decidir dónde se
+    enseñan.
+  - **Cachés**: la TLB, de CPUID (0x80000005/6 y 0x80000019 en AMD; 0x18
+    en Intel, y la hoja 2 en los viejos). `grabado.json` guarda solo las
+    hojas que se leyeron, así que hay que volver a volcar los tres equipos.
 
 ## Interfaz
 
