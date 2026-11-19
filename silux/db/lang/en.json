@@ -1180,7 +1180,7 @@
   "settings.tempunit.label": "Temperature unit",
   "settings.theme.label": "Theme",
   "settings.tip.report": "Generates a text file with all the detected hardware and, above all, with what could not be read and why. It is what to attach when reporting a bug.\n\nIt leaves out the machine name, the IP and MAC addresses and the serial numbers.",
-  "settings.updates.help": "Off by default: silux connects to nothing unless you ask. When on, it asks GitHub (api.github.com, the rcv11x/silux repository) for the latest version at startup, without sending anything about this computer. It never updates until you press «Update».",
+  "settings.updates.help": "Off by default: Silux connects to nothing unless you ask. When on, it asks GitHub (api.github.com, the rcv11x/silux repository) for the latest version at startup, without sending anything about this computer. It never updates until you press «Update».",
   "settings.updates.label": "Check for updates at startup",
   "settings.updates.manual": "Check whether there is a new version",
   "settings.updates.now": "Check now",

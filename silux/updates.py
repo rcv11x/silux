@@ -66,15 +66,31 @@ class Release:
 
 # -- versiones ----------------------------------------------------------------
 
-_VERSION = re.compile(r"v?(\d+)\.(\d+)\.(\d+)")
+# «0.4.0rc1» es la 0.4-prueba1: se entiende para saber qué va por delante,
+# pero no se ofrece nunca como versión a la que actualizar.
+_VERSION = re.compile(r"v?(\d+)\.(\d+)\.(\d+)(?:rc(\d+))?")
 
 
 def parse_version(texto: str) -> Optional[tuple[int, int, int]]:
     """«v0.5.0» o «0.5.0» como tres números; None si no es eso exactamente."""
     encontrada = _VERSION.fullmatch((texto or "").strip())
+    if encontrada is None or encontrada.group(4) is not None:
+        return None
+    return tuple(int(n) for n in encontrada.groups()[:3])  # type: ignore[return-value]
+
+
+def _orden(texto: str) -> Optional[tuple[int, ...]]:
+    """Para comparar: una versión de prueba va por debajo de su final.
+
+    0.4.0rc1 < 0.4.0rc2 < 0.4.0 < 0.4.1. Sin esto, la versión que corre en la
+    0.4-prueba1 no se entendía y nunca había nada más nuevo.
+    """
+    encontrada = _VERSION.fullmatch((texto or "").strip())
     if encontrada is None:
         return None
-    return tuple(int(n) for n in encontrada.groups())  # type: ignore[return-value]
+    base = tuple(int(n) for n in encontrada.groups()[:3])
+    prueba = encontrada.group(4)
+    return base + ((0, int(prueba)) if prueba is not None else (1, 0))
 
 
 def latest(releases: object) -> Optional[Release]:
@@ -104,8 +120,9 @@ def latest(releases: object) -> Optional[Release]:
 
 def is_newer(release: Optional[Release], current: str = __version__) -> bool:
     """Si la release va por delante de esta versión, comparada entera."""
-    actual = parse_version(current)
-    return release is not None and actual is not None and release.version > actual
+    actual = _orden(current)
+    return (release is not None and actual is not None
+            and tuple(release.version) + (1, 0) > actual)
 
 
 # -- qué copia es esta --------------------------------------------------------

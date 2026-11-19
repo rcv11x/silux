@@ -1180,7 +1180,7 @@
   "settings.tempunit.label": "Unidad de temperatura",
   "settings.theme.label": "Tema",
   "settings.tip.report": "Genera un archivo de texto con todo el hardware detectado y, sobre todo, con lo que no se ha podido leer y por qué. Es lo que hay que adjuntar al reportar un fallo.\n\nNo incluye el nombre del equipo, las direcciones IP y MAC ni los números de serie.",
-  "settings.updates.help": "Apagado de serie: silux no se conecta a nada si no lo pides. Encendido, al abrirse pregunta a GitHub (api.github.com, el repositorio rcv11x/silux) cuál es la última versión, sin mandar nada del equipo. Nunca se actualiza sin que pulses «Actualizar».",
+  "settings.updates.help": "Apagado de serie: Silux no se conecta a nada si no lo pides. Encendido, al abrirse pregunta a GitHub (api.github.com, el repositorio rcv11x/silux) cuál es la última versión, sin mandar nada del equipo. Nunca se actualiza sin que pulses «Actualizar».",
   "settings.updates.label": "Buscar actualizaciones al iniciar",
   "settings.updates.manual": "Comprobar si hay una versión nueva",
   "settings.updates.now": "Buscar ahora",

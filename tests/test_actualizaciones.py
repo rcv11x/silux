@@ -80,6 +80,34 @@ class TestLasVersiones(unittest.TestCase):
         self.assertFalse(updates.is_newer(None, "0.4.0"))
 
 
+class TestLaVersionDePrueba(unittest.TestCase):
+    """La 0.4-prueba1 es 0.4.0rc1 por debajo, y quien la instale tiene que
+    recibir la 0.4.0 final con un clic. `parse_version` no entendía «rc»: la
+    versión que corría salía None, y para `is_newer` nunca había nada más
+    nuevo. La ventana lo enseñaba: «Buscar ahora» no ponía el aviso."""
+
+    def test_la_final_va_por_delante_de_su_prueba(self):
+        final = updates.latest([_release("v0.4.0")])
+        self.assertTrue(updates.is_newer(final, "0.4.0rc1"))
+        self.assertTrue(updates.is_newer(final, "0.4.0rc2"))
+        self.assertFalse(updates.is_newer(final, "0.4.0"))
+        self.assertTrue(updates.is_newer(updates.latest([_release("v0.4.1")]), "0.4.0rc1"))
+        self.assertFalse(updates.is_newer(updates.latest([_release("v0.3.0")]), "0.4.0rc1"))
+
+    def test_la_version_que_corre_se_entiende(self):
+        # Contra la versión de verdad del paquete, no un caso escrito: si un
+        # día cambia de forma, esto falla en vez de dejar de avisar callado.
+        mas_nueva = updates.Release(version=(99, 0, 0), tag="v99.0.0", url="u")
+        self.assertTrue(updates.is_newer(mas_nueva))
+
+    def test_una_prueba_no_se_ofrece(self):
+        lista = [_release("v0.3.0"), _release("0.4.0rc1", prerelease=True)]
+        self.assertEqual(updates.latest(lista).version, (0, 3, 0))
+        # Ni aunque alguien la publique sin marcarla como prerelease.
+        lista = [_release("v0.3.0"), _release("0.4.0rc1")]
+        self.assertEqual(updates.latest(lista).version, (0, 3, 0))
+
+
 class TestQueCopiaEs(unittest.TestCase):
     def test_el_compatible_baja_el_compatible(self):
         self.assertEqual(updates.asset_name("20261118.c01944d-compat"), updates.COMPAT)

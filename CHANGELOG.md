@@ -330,6 +330,12 @@ publica se dice con la versión que lo trae.
 
 ### Ajustes y escritorio
 
+- Nuevo: el AppImage se actualiza solo, con un clic. Apagado de serie: Silux
+  no se conecta a nada si no lo pides. En Ajustes, «Buscar ahora» o «Buscar
+  actualizaciones al iniciar»; si hay una versión nueva, el botón «Actualizar
+  a …» la baja de GitHub, comprueba su suma SHA-256 y sustituye el AppImage.
+  Solo ofrece versiones publicadas, no las de prueba: quien tenga la
+  0.4-prueba1 recibirá la 0.4.
 - Arreglado: un `settings.json` que no es un objeto JSON impedía abrir la
   ventana, y un solo campo con un valor raro devolvía todas las
   preferencias a las de serie. `"fluid_charts": "false"` encendía el

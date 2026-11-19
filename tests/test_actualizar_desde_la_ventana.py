@@ -50,8 +50,10 @@ class TestLaVentana(unittest.TestCase):
 
     def test_sin_version_nueva_lo_dice_y_no_hay_aviso(self):
         v = self.ventana()
-        actual = updates.Release(version=updates.parse_version(__version__), tag="x", url="u")
-        v._buscar_version = lambda: actual
+        # Una más antigua que cualquiera: la que corre puede ser de prueba
+        # (0.4.0rc1), y una de prueba no es una release que se ofrezca.
+        antigua = updates.Release(version=(0, 0, 0), tag="v0.0.0", url="u")
+        v._buscar_version = lambda: antigua
         v.buscar_actualizacion()
         self.esperar(v)
         self.assertTrue(v.update_button.isHidden())
