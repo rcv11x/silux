@@ -590,14 +590,17 @@ def possible_texts(formatter, top: float) -> list[str]:
     cambiar las cifras. Lo más largo sale justo antes de un cambio de unidad
     o de un dígito más («1023.9 MB», «999.9 W»), así que se prueba ahí en
     base 2 y en base 10, y un poco por encima del tope: un consumo puede
-    pasar un instante del suyo.
+    pasar un instante del suyo. Y más cerca todavía, donde el redondeo ya
+    sube y la unidad aún no ha cambiado: 999,96 MB/s se escribe «1000.0
+    MB/s», una cifra más que «999.9».
     """
     techo = float(top) * 1.1
     pruebas = {0.0, float(top), techo}
     for base in (2, 10):
         potencia = 1.0
         while potencia <= techo:
-            pruebas.add(potencia * (1 - 1e-4))
+            for margen in (1e-4, 1e-6):
+                pruebas.add(potencia * (1 - margen))
             potencia *= base
     textos = []
     for valor in sorted(pruebas):

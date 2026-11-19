@@ -225,6 +225,29 @@ class TestNadaSeMueve(unittest.TestCase):
         for nombre in self.avanzando:
             self._sin_moverse(nombre, self.avanzando, "con los contadores avanzando")
 
+    def test_con_las_cifras_en_sus_extremos(self):
+        # Lo de arriba depende de lo rápido que vaya la máquina: los ritmos
+        # salen de 50 MB divididos por el tiempo real entre dos lecturas. En
+        # el CI, con DejaVu, una tarjeta de Inicio se ensanchó 21 px y se
+        # repartió la fila entera. Aquí las cifras van a sus extremos a
+        # propósito, de «1 B/s» a «1000.0 MB/s» y del 1 % al 100 %.
+        import dataclasses
+
+        def con(foto, ritmo, uso):
+            red = tuple(dataclasses.replace(i, traffic=dataclasses.replace(
+                i.traffic, rx_rate_bps=ritmo, tx_rate_bps=ritmo)) if i.traffic else i
+                for i in foto.network)
+            discos = tuple(dataclasses.replace(d, io=dataclasses.replace(
+                d.io, read_rate_bps=ritmo, write_rate_bps=ritmo)) if d.io else d
+                for d in foto.disks)
+            return dataclasses.replace(foto, network=red, disks=discos,
+                                       cpu=dataclasses.replace(foto.cpu, usage_percent=uso))
+
+        extremos = {nombre: (con(despues, 1.0, 1.0), con(despues, 999_960_000.0, 100.0))
+                    for nombre, (_antes, despues) in self.avanzando.items()}
+        for nombre in extremos:
+            self._sin_moverse(nombre, extremos, "con las cifras en sus extremos")
+
     def test_avanzar_cambia_las_cifras(self):
         # Si las dos muestras dijeran lo mismo, la prueba de arriba no
         # probaría nada.
