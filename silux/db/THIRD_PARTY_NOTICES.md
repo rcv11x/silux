@@ -2,7 +2,7 @@
 
 Silux es software libre bajo la GPL-3.0 o posterior; el texto completo está
 en `LICENSE`. La tabla con que identifica los procesadores,
-`silux/db/cpu_ids.json`, se generó con los datos de dos proyectos. Sus avisos
+`silux/db/cpu_ids.json`, se generó con los datos de tres proyectos. Sus avisos
 van aquí tal como piden sus licencias, en el repositorio, en el paquete de
 pip y dentro de cada AppImage.
 
@@ -44,6 +44,16 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
+
+## Linux
+
+<https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git>
+
+De `arch/x86/include/asm/intel-family.h`, en la etiqueta que dice
+`silux/db/cpu_ids.json` (`sources.linux`), salen la familia y el modelo de
+cada microarquitectura de Intel y su nombre: la tabla los mira cuando la de
+libcpuid no reconoce un procesador. Se toman los números y los nombres, que
+son datos, no código. El archivo es del kernel Linux, bajo la GPL-2.0.
 
 ## CPU-X
 

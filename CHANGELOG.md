@@ -101,6 +101,13 @@ publica se dice con la versión que lo trae.
 - Nuevo: en Intel, los límites de potencia PL1 y PL2 a la vista, también sin
   permisos.
 - Nuevo: sin permisos, el voltaje lleva un candado en vez de un guion.
+- Nuevo: los Intel que la tabla de libcpuid todavía no tiene (Panther Lake,
+  Wildcat Lake, Nova Lake, Diamond Rapids) salen con su nombre en clave, que
+  se toma del kernel Linux. El nodo y el encapsulado siguen diciendo que no
+  están en la tabla de esta versión.
+- Arreglado: un procesador nuevo podía salir con el nombre de uno antiguo
+  que solo compartía la familia y el modelo base: un Panther Lake salía
+  «Atom (Cedarview)».
 - Cambiado: con un procesador que la tabla de esta versión no conoce, el
   nombre en clave, el nodo y el encapsulado dicen «no está en la tabla de
   esta versión» en vez de un guion, y el aviso pide el informe en vez de

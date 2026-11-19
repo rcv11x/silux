@@ -8,6 +8,7 @@
   "about.ctypes": "CPUID, ioctl de DRM y las bibliotecas gráficas",
   "about.hwdata": "nombres de dispositivos PCI y de fabricantes de monitores: pci.ids y pnp.ids del sistema",
   "about.libcpuid": "nombres en clave, nodos y patrones para reconocer cada procesador · © 2008 Veselin Georgiev · BSD-2",
+  "about.linux": "la microarquitectura de los Intel que libcpuid no tiene: intel-family.h · GPL-2.0",
   "about.notices.button": "Avisos de licencia",
   "about.notices.missing": "Esta copia de Silux no trae el archivo de avisos (THIRD_PARTY_NOTICES.md).",
   "about.polkit": "el ayudante que lee la tabla SMBIOS",

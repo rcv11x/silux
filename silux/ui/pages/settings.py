@@ -59,6 +59,7 @@ CONSTRUIDO_CON = (
 DATOS_DE_TERCEROS = (
     ("libcpuid", "about.libcpuid"),
     ("CPU-X", "about.cpux"),
+    ("Linux", "about.linux"),
     ("hwdata", "about.hwdata"),
 )
 

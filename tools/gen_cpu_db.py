@@ -229,6 +229,104 @@ def provenance(path: pathlib.Path, url: str) -> dict:
 
 
 # --------------------------------------------------------------------------
+# intel-family.h del kernel: familia y modelo -> microarquitectura
+# --------------------------------------------------------------------------
+
+# Una etiqueta fija y no `master`: lo que se genera tiene que poder repetirse.
+# Una generación nueva de Intel es subir esto y volver a generar.
+KERNEL_TAG = "v7.3"
+KERNEL_REPO = "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git"
+INTEL_FAMILY = "arch/x86/include/asm/intel-family.h"
+
+_IFM = re.compile(r"^#define\s+INTEL_(\w+)\s+IFM\(\s*(\d+)\s*,\s*(0x[0-9A-Fa-f]+|\d+)\s*\)"
+                  r"\s*(?:/\*\s*(.*?)\s*\*/)?", re.M)
+# El segmento de mercado que el kernel pone al final del nombre: `_L` portátil,
+# `_X` servidor… No es parte del nombre en clave.
+_SEGMENTOS = {"L", "G", "X", "D", "EP", "EX", "H", "U", "M", "P", "S", "R", "N", "NNPI"}
+# Prefijos de familia: de «CORE2_MEROM» el nombre es «Merom».
+_PREFIJOS = ("PENTIUM_III_", "PENTIUM_II_", "PENTIUM_M_", "PENTIUM_", "CORE2_", "CORE_", "P4_")
+# Solo se parte por estas palabras, y solo al final: «HASWELL» no es «Has Well»
+# ni «LAKEFIELD» es «Lake Field».
+_PALABRA_FINAL = re.compile(r"^(.+?)(LAKE|BRIDGE|RAPIDS|FOREST)$")
+# Los que Intel escribe de otra forma.
+_COMO_SE_ESCRIBEN = {"SKYLAKE": "Skylake", "P4_CEDARMILL": "Cedar Mill",
+                     "P4_PRESCOTT_2M": "Prescott-2M"}
+# El kernel usa el mismo modelo para varias plataformas: 0x9E es Kaby Lake,
+# Coffee Lake y Coffee Lake Refresh; 0x8E, también Whiskey y Amber Lake; 0x55,
+# Skylake-SP y Cascade Lake. Con ese nombre se acertaría la mitad de las
+# veces, así que no se usa.
+_COMPARTIDOS = {"KABYLAKE", "KABYLAKE_L", "SKYLAKE_X"}
+# Antes de Nehalem el kernel nombra el núcleo y no la plataforma: 0x0F es
+# «Merom» también en un Conroe de sobremesa, y 0x17 «Penryn» en un Wolfdale.
+# Todo eso lo tiene libcpuid con su nombre de verdad.
+_ANTERIORES = ("PENTIUM_", "CORE_", "CORE2_", "P4_")
+
+
+def nombre_de_intel(simbolo: str) -> tuple[str, str]:
+    """«PANTHERLAKE_L» -> («Panther Lake», «L»); «CORE2_MEROM» -> («Merom», «»)."""
+    partes = simbolo.split("_")
+    segmento = ""
+    if simbolo in _COMO_SE_ESCRIBEN:
+        return _COMO_SE_ESCRIBEN[simbolo], ""
+    if len(partes) > 1 and partes[-1] in _SEGMENTOS:
+        segmento = partes.pop()
+    base = "_".join(partes)
+    for prefijo in _PREFIJOS:
+        if base.startswith(prefijo) and base != prefijo.rstrip("_"):
+            base = base[len(prefijo):]
+            break
+    palabras = []
+    for trozo in base.split("_"):
+        if encaje := _PALABRA_FINAL.match(trozo):
+            palabras += [encaje.group(1).capitalize(), encaje.group(2).capitalize()]
+        else:
+            palabras.append(trozo.capitalize() if not trozo[:1].isdigit() else trozo)
+    nombre = " ".join(palabras) if palabras else simbolo
+    return _COMO_SE_ESCRIBEN.get(base, nombre), segmento
+
+
+def parse_intel_family(source: str) -> list[dict]:
+    """Los núcleos grandes de `intel-family.h`, con su microarquitectura.
+
+    Fuera los Atom y los Xeon Phi: el kernel los nombra por el núcleo
+    («GRACEMONT») y no por la plataforma, y eso no es un nombre en clave que
+    se pueda poner junto a «Comet Lake» sin confundir.
+    """
+    filas = []
+    for simbolo, familia, modelo, comentario in _IFM.findall(source):
+        if (simbolo.startswith(("ATOM_", "XEON_PHI_", *_ANTERIORES))
+                or simbolo.endswith(("_START", "_LAST"))
+                or simbolo in _COMPARTIDOS or int(familia) < 6):
+            continue
+        nombre, segmento = nombre_de_intel(simbolo)
+        filas.append({"family": int(familia), "model": int(modelo, 0), "name": nombre,
+                      "segment": segmento, "cores": comentario or None,
+                      "define": f"INTEL_{simbolo}"})
+    if not filas:
+        raise LookupError("intel-family.h salió vacío; ¿cambió el formato?")
+    return filas
+
+
+def kernel_file(path: str, cache: pathlib.Path, offline: bool) -> str:
+    """Un archivo del kernel en `KERNEL_TAG`, guardado en la caché."""
+    import urllib.request
+    destino = cache / "linux" / KERNEL_TAG / path
+    if destino.is_file():
+        return destino.read_text(encoding="utf-8")
+    if offline:
+        raise SystemExit(f"no hay copia de {path} ({KERNEL_TAG}) en {destino} y se pidió --offline")
+    url = f"{KERNEL_REPO}/plain/{path}?h={KERNEL_TAG}"
+    print(f"  bajando {path} de {KERNEL_TAG}…", file=sys.stderr)
+    # kernel.org contesta 403 al User-Agent de serie de urllib.
+    pedido = urllib.request.Request(url, headers={"User-Agent": "silux-gen-cpu-db"})
+    with urllib.request.urlopen(pedido, timeout=60) as respuesta:
+        texto = respuesta.read().decode("utf-8")
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    destino.write_text(texto, encoding="utf-8")
+    return texto
+
+
+# --------------------------------------------------------------------------
 
 
 def main() -> int:
@@ -250,6 +348,7 @@ def main() -> int:
     amd_src = (libcpuid / "libcpuid" / "recog_amd.c").read_text(encoding="utf-8")
     arm_src = (libcpuid / "libcpuid" / "recog_arm.c").read_text(encoding="utf-8")
     databases_src = (cpux / "src" / "core" / "databases.h").read_text(encoding="utf-8")
+    intel_family = parse_intel_family(kernel_file(INTEL_FAMILY, args.cache, args.offline))
 
     x86 = {
         "GenuineIntel": parse_x86_table(intel_src, "match_entry_t cpudb_intel[]"),
@@ -266,6 +365,7 @@ def main() -> int:
         "sources": {
             "libcpuid": provenance(libcpuid, REPOS["libcpuid"]),
             "cpu-x": provenance(cpux, REPOS["cpu-x"]),
+            "linux": {"repo": KERNEL_REPO, "tag": KERNEL_TAG, "file": INTEL_FAMILY},
         },
         "counts": {
             "x86_intel": len(x86["GenuineIntel"]),
@@ -273,10 +373,15 @@ def main() -> int:
             "arm_implementers": len(arm),
             "arm_parts": sum(len(v["parts"]) for v in arm.values()),
             "sockets": sum(len(v) for v in sockets.values()),
+            "intel_family": len(intel_family),
         },
         "x86": x86,
         "arm": arm,
         "sockets": sockets,
+        # Lo que libcpuid no tiene todavía: la microarquitectura de Intel por
+        # familia y modelo, del kernel. `silux/db` la mira solo cuando la
+        # tabla de libcpuid no reconoce el procesador.
+        "intel_family": intel_family,
     }
 
     args.out.parent.mkdir(parents=True, exist_ok=True)

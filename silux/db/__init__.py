@@ -136,6 +136,21 @@ class Identification(dict):
 _DISCRIMINANTES = ("f", "xf", "xm")
 
 
+def _casa_la_marca(entry: dict, brand: str) -> bool:
+    pattern, pattern_score = entry.get("bp"), entry.get("bs", 0)
+    return bool(pattern and pattern_score > 0 and _compile_pattern(pattern).search(brand))
+
+
+def _del_kernel(vendor_id: str, ext_family: int, ext_model: int) -> Optional[dict]:
+    """La microarquitectura de Intel por familia y modelo, de `intel-family.h`."""
+    if vendor_id != "GenuineIntel":
+        return None
+    for fila in load().get("intel_family", ()):
+        if fila["family"] == ext_family and fila["model"] == ext_model:
+            return fila
+    return None
+
+
 def _score(entry: dict, probe: dict, brand: str) -> int:
     for key in _DISCRIMINANTES:
         declarado = entry.get(key, -1)
@@ -148,9 +163,8 @@ def _score(entry: dict, probe: dict, brand: str) -> int:
         if expected >= 0 and expected == probe.get(key):
             total += weight
 
-    pattern, pattern_score = entry.get("bp"), entry.get("bs", 0)
-    if pattern and pattern_score > 0 and _compile_pattern(pattern).search(brand):
-        total += pattern_score
+    if _casa_la_marca(entry, brand):
+        total += entry["bs"]
     return total
 
 
@@ -198,6 +212,17 @@ def identify_x86(
     nombre = _sin_desempatar_por_el_orden(best["name"], empatadas)
     reconocido = (nombre is not None and best_score > 0
                   and not nombre.lower().startswith("unknown"))
+    # Una fila sin modelo extendido es de los procesadores que no lo tienen
+    # (el extendido y el base coinciden: un Dothan, un Presler). Si este sí
+    # lo tiene y la marca tampoco casa, la fila solo ha acertado la familia y
+    # el modelo base, que no dicen qué procesador es: un Panther Lake (6,
+    # 0xCC) salía «Atom (Cedarview)» por la fila de familia 6 y modelo 12. Si
+    # el kernel conoce ese modelo, manda él.
+    if (reconocido and best["xm"] < 0 and ext_model != model
+            and not _casa_la_marca(best, clean_brand)):
+        if (fila := _del_kernel(vendor_id, ext_family, ext_model)) is not None:
+            return Identification(codename=fila["name"], technology=None,
+                                  score=1, matched=True)
     if not reconocido:
         # La tabla por modelo no lo conoce. Antes de darse por vencido, la
         # tabla por rangos, que cubre las familias enteras.
@@ -208,6 +233,11 @@ def identify_x86(
                 score=1,
                 matched=True,
             )
+        # Y después, la de Intel del kernel, que va por delante de libcpuid.
+        # Da el nombre en clave y nada más: el nodo no sale de ahí.
+        if (fila := _del_kernel(vendor_id, ext_family, ext_model)) is not None:
+            return Identification(codename=fila["name"], technology=None,
+                                  score=1, matched=True)
     return Identification(
         codename=nombre if reconocido else None,
         technology=best.get("tech") if reconocido else None,
