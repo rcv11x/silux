@@ -123,6 +123,9 @@ publica se dice con la versión que lo trae.
 
 ### Memoria
 
+- Nuevo: el título dice la memoria instalada y la utilizable: «16 GB
+  instalados · 15.4 GB utilizables». La instalada sale de los módulos; sin
+  permisos, de su SPD si se lee.
 - Nuevo: si los módulos van al máximo oficial de memoria del procesador, no
   se avisa de que van «por debajo de su velocidad» ni se sugiere activar
   XMP. El máximo sale de las fichas de AMD (de los Ryzen 3000 a los 9000,
@@ -303,6 +306,10 @@ publica se dice con la versión que lo trae.
 
 ### Ajustes y escritorio
 
+- Arreglado: un `settings.json` que no es un objeto JSON impedía abrir la
+  ventana, y un solo campo con un valor raro devolvía todas las
+  preferencias a las de serie. `"fluid_charts": "false"` encendía el
+  movimiento fluido.
 - Nuevo: Ajustes reordenado en grupos (General, Apariencia, Muestreo,
   Permisos, Integración con el escritorio, Compartir e informes, Acerca de),
   con interruptores en vez de casillas.
@@ -320,6 +327,8 @@ publica se dice con la versión que lo trae.
 
 ### Aspecto
 
+- Cambiado: la cifra de las fichas grandes empieza a la izquierda, donde su
+  etiqueta, con la unidad pegada detrás.
 - Nuevo: aspecto renovado. Tarjetas más limpias, títulos discretos, cifras en
   la misma letra que el resto y una barra lateral con un icono por sección.
 - Nuevo: logo propio, una «S» dibujada como una pista de circuito sobre una
@@ -368,6 +377,18 @@ publica se dice con la versión que lo trae.
 
 ### Línea de órdenes
 
+- Nuevo: `--report` escribe el informe completo: todo lo que enseña cada
+  página, tal y como lo enseña, sin el nombre del equipo, ni direcciones, ni
+  números de serie. Pide los permisos al empezar (`--without-permissions`
+  para no pedirlos). `--sections cpu,board` lo limita a esas páginas y
+  `--short` da el corto de antes. En un procesador donde Qt no arranca sale
+  el corto, y lo dice.
+- Nuevo: `--help` en el idioma de la interfaz, con ejemplos. Con el AppImage,
+  `--help` explica también cómo usar la terminal y el informe.
+- Cambiado: las opciones van en inglés, cada una con su versión en español
+  que también vale (`--informe`, `--sensores`, `--anonimo`…). La de la
+  ventana `--anonimo` se llama ahora `--anonymous`, y los tamaños de letra
+  de `--font-scale` son normal, large, larger y largest.
 - Nuevo: `--samples N`, para que `--screenshot` capture con las gráficas
   llenas.
 
