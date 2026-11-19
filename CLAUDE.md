@@ -1,6 +1,7 @@
-# silux — contexto del proyecto
+# Silux — contexto del proyecto
 
-Si existe docs/en-curso.md, se lee lo primero.
+Si existe `../silux-notas/` (las notas privadas del autor, clonadas al lado),
+se leen lo primero su `en-curso.md` y su `claude.md`.
 
 Perfilador de hardware para Linux en Python + PySide6: lo que en Windows hacen
 **CPU-Z, GPU-Z y HWMonitor**, en un solo programa nativo. Identificación del
@@ -8,12 +9,13 @@ hardware y monitorización de sensores.
 
 **Lo que este programa no es: un administrador de tareas.** Los procesos son
 software, no hardware, y Linux ya tiene buenos monitores de procesos.
-Decidido por el autor el 19 de noviembre: tampoco el uso de la gráfica ni de
-nada por programa (DRM `fdinfo` incluido), aunque se lea sin permisos.
+Tampoco el uso de la gráfica ni de nada por programa (DRM `fdinfo` incluido),
+aunque se lea sin permisos.
 
 Este archivo es corto a propósito: se carga en cada sesión. El detalle vive en
-`docs/` (índice al final). Antes de tocar una zona, se lee su apartado de
-[docs/lecciones.md](docs/lecciones.md).
+`docs/` (índice al final). Antes de tocar una zona, se lee lo suyo en
+[docs/pendientes.md](docs/pendientes.md) y, si están las notas, en
+`../silux-notas/lecciones.md`.
 
 ## Cómo se ejecuta
 
@@ -34,6 +36,7 @@ python3 tools/volcar_equipo.py NOMBRE  # este equipo, anonimizado, a tests/fixtu
 python3 tools/montar_equipo.py NOMBRE ORDEN…  # ejecutar algo con un volcado montado, como los tests
 python3 tools/comprobar_privacidad.py  # antes de publicar nada
 python3 tools/medir_consumo.py         # lo que gasta, contra sus objetivos (regla 7)
+python3 tools/capturas_readme.py       # las capturas del README, con permisos
 python3 tools/build_appimage.py --container   # el AppImage que se reparte
 python3 tools/probar_en_minimo.py --container # la suite en el Python del suelo
 python3 tools/agitar_ventana.py --ventanas 6  # cierres de Qt con la ventana cambiando de forma
@@ -46,11 +49,8 @@ QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .  # sin inst
 En paralelo tardan medio minuto entre las dos pasadas; en serie, minuto y
 medio. **`-n auto` cuando la suite es lo único pesado que corre** (sin
 agentes en paralelo, sin un contenedor, sin otra suite a la vez); **`-n 4` si
-hay algo más corriendo**. En los dos equipos (oficina, 16 GB; casa, 32 GB).
-Cada proceso carga Qt, y el 18 de noviembre tres agentes de Claude con
-cuatro suites a la vez llenaron los 16 GB de la oficina y congelaron el
-equipo: no fue una suite sola. Por lo mismo, **en estos equipos no se lanzan
-agentes de Claude en paralelo**: las tareas van de una en una. Las dos pasadas son las del CI: tres tests comparan dos medidas de
+hay algo más corriendo**: cada proceso carga Qt, y varias suites a la vez
+llenan 16 GB. Las dos pasadas son las del CI: tres tests comparan dos medidas de
 rendimiento y van solos (`tests/conftest.py`). Cuántos son lo dice la suite al
 terminar; no se apunta aquí a mano. Si sale bastante menos que en la
 última ejecución, falta algo por recoger. Corren en una carpeta temporal propia
@@ -71,9 +71,8 @@ Un volcado se monta con `tools/montar_equipo.py`, no apuntando
 
 Capturas sin pantalla, siempre en `"$(xdg-user-dir PICTURES)/silux-test/"` y
 nunca dentro del repositorio. **Nunca se captura la ventana activa ni la
-pantalla a ciegas**: solo la ventana de silux, buscada por su título o su
-identificador. El 19 una captura de «la ventana activa» se llevó otras
-ventanas del autor. Lo que se fuerza por la línea de órdenes —tema,
+pantalla a ciegas**: solo la ventana de Silux, buscada por su título o su
+identificador; la ventana activa puede ser cualquier otra. Lo que se fuerza por la línea de órdenes —tema,
 densidad, letra, acento, tamaño— vale solo para esa ejecución y no se guarda en
 `settings.json`.
 
@@ -188,24 +187,17 @@ Terminadas las catorce: **Inicio, CPU, Cachés, Placa base, Memoria,
 Gráficos, Almacenamiento, Red, Dispositivos, Batería, Sistema, Rendimiento,
 Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 
-- La **0.4** está en borrador en GitHub, sin etiqueta, de `c01944d`. Antes
-  sale la **0.4-prueba1** (`0.4.0rc1` por debajo; en pantalla,
-  «0.4-prueba1»), como pre-release y sin publicar hasta que lo diga el
-  autor. Dónde se quedó, en [docs/en-curso.md](docs/en-curso.md).
-
 - La escala del benchmark es la **v6**: puntúan dos cargas de las cinco, las
   que no dependen de la zlib de cada distribución. `score.VERSION` y
   `db/scores.json` van siempre en el mismo commit. [docs/benchmark.md](docs/benchmark.md)
 - Qué se ha validado contra qué pieza y qué se escribió a ciegas (NVIDIA sí,
-  ARM no): [docs/hardware-validado.md](docs/hardware-validado.md). Hay tres
+  ARM no): [docs/equipos-probados.md](docs/equipos-probados.md). Hay tres
   equipos volcados para la suite, los tres con los datos nuevos: dos del
   i5-10400 (en reposo y con turbo) y el Ryzen 7 5800X3D.
 - Lo que se lee en la ventana no lleva rellenos del firmware, razones
   sociales ni chips con su dirección: lo vigila `tests/test_nada_en_bruto.py`
   con cada volcado. Una marca sale de `render.maker`; un chip, de
   `render.chip_name`.
-- Las ramas `escala-v5` y `escala-v6` están superadas y se pueden borrar, pero
-  no se borran sin que lo diga el autor.
 
 ## Convenciones
 
@@ -213,7 +205,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); los comentarios, en el español del autor. Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-1381 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+1383 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
@@ -228,7 +220,7 @@ dominio del programa, en español. Nunca las dos en el mismo identificador ni
 en la misma familia. Se aplica a lo nuevo y al tocar cada archivo.
 
 **Comentarios.** Explican por qué el código es así ahora. «Antes…», «se
-probó…» o «costó…» van al mensaje del commit o a `docs/lecciones.md`.
+probó…» o «costó…» van al mensaje del commit o a las lecciones de las notas.
 
 **Tests.**
 - Una comprobación que nadie ha visto fallar no es una comprobación: todo test
@@ -295,100 +287,33 @@ El porqué de cada convención: [docs/convenciones.md](docs/convenciones.md).
 
 ## Lo que queda por arreglar
 
-Una línea por punto; el detalle de cada uno, con lo que se midió, está en
-[docs/pendientes.md](docs/pendientes.md). Los de la quinta auditoría llevan su
-código (F-…), que es por el que se buscan allí.
-
-| Dónde | Gravedad | Qué |
-|---|---|---|
-| Qt, `tests/` | alta | PySide6 6.11 en Python 3.10/3.11 cierra la ventana al cambiar de forma (la 0.3 lo tiene; los AppImage nuevos y el `pyproject`, no). En los tests sale también, raro, con 3.14 + 6.12: sin explicar. docs/pendientes.md |
-| `ui/pages/board.py` | media, sin comprobar | la columna «Ranura» (SMBIOS tipo 9) no se ha visto con la tabla de ninguna placa |
-| `spd.py` | alta | el XMP de DDR4 ignora la corrección fina del ciclo: un DDR4-3600 sale 3200 (F-A2); pide un volcado real con XMP |
-| `privileged/instalar.py` | alta, condicionada | no comprueba que el destino no sea sustituible |
-| `ui/pages/cpulive.py` | media-alta | relojes compuestos a mano: 576 MHz sale «0.58 GHz» |
-| `providers/hwmon.py` | media-alta | la clave del sensor no incluye el nodo: dos discos iguales se pisan |
-| `ui/widgets.py` | media | `StatTile` nace con la raya gruesa, y el arreglo tampoco funciona al perder el dato (F-M2) |
-| `ui/sampler.py` | media | cerrar durante un muestreo largo aborta el proceso (F-M3) |
-| `ui/pages/performance.py` | media | cambiar el tema mata la prueba en curso (F-M5); la carga máxima no se ve (F-M7) |
-| varios | media | texto en español fijo con la interfaz en inglés (F-M8) |
-| `ui/widgets.py` | media | las etiquetas seleccionables cuestan 22 MB (F-M9) |
-| `ui/pages/memory.py`, `battery.py` | media | voltajes a dos decimales en vez de `render.volts` |
-| `providers/derived.py` | media | el tráfico de red del árbol va en potencias de 1024 |
-| `spd.py` | media | `decode` revienta con menos de 384 bytes y se pierden todos los módulos |
-| `providers/spd_modules.py` | media | casar por referencia puede cruzar los módulos (F-M16) |
-| `providers/drm.py` | media | sin `pci.ids`, una dedicada AMD toma el nombre de la integrada (F-M17); `_pmu_ok` no vuelve a `False` (F-M21) |
-| `smart.py`, `providers/storage.py` | media | vida negativa en un HDD (F-M18); el estado va por nombre de dispositivo (F-M19) |
-| `gpumetrics.py`, `nvml.py`, `derived.py` | media | `if v` con relojes: 0 MHz llega como `None` (F-M20) |
-| `providers/` | media | siete proveedores sin `unavailable_reason()` |
-| `privileged/` | media | topes de tamaño después de reservar; el `timeout` no acota; el cliente se desincroniza (F-M24-26) |
-| `privileged/helper.py` | media-baja | la cadencia de RAPL la decide el cliente (F-M27) |
-| `report.py`, `cli.py` | media | zócalos vacíos como módulos (F-M31); tres formateos del valor de un sensor (F-M32) |
-| `tools/probar_en_minimo.py` | media | cualquier fallo del contenedor se anuncia como «la suite no pasa» (F-M37) |
-| `ui/widgets.py` | media-baja | un `float` no finito tumba la gráfica |
-| `ui/pages/storage.py` | media-baja | la temperatura de un SATA sigue con guion en la tabla de unidades: `Table.set_cell_locked` ya existe y falta usarlo ahí |
-| `providers/drm.py` | baja, sin comprobar | los motivos de limitación de `i915` y las frecuencias del silicio de `xe`, escritos con la documentación: ver en una Iris Xe o una Arc |
-| `db/memory_limits.json` | media, espera al autor | Intel, solo 10.ª y 11.ª a mano: falta generarlas de las fichas de ARK guardadas (`--intel-desde`), de la 1.ª en adelante; once Ryzen sin ficha en amd.com |
-| `ui/pages/cpu.py` | media-baja | «Preferencia de energía —» con acpi-cpufreq, que no tiene EPP |
-| `privileged/helper.py` | baja | un comentario dice que `uncore_imc_free_running` es de Ice Lake en adelante; no lo es (`docs/kernel.md`) |
-| `ui/pages/storage.py` | baja | «Vida restante —» en un SATA |
-| Gráficos, varios | media | de los 25 fallos de [docs/propuesta-graficas.md](docs/propuesta-graficas.md), arreglados los que mentían (1 a 7, 11, 12 y el 4); quedan los de datos que no se leen (`xe`, NVML, `radeon`, nouveau) y el 8 (framebuffer de respaldo), 9 y 10 (nouveau) |
-| `privileged/helper.py` | propuesta | el PMU de una Arc con `i915` y el de `xe`: [docs/propuesta-uso-de-graficas.md](docs/propuesta-uso-de-graficas.md), sin aplicar |
-| `tools/volcar_*.py` | media, sin comprobar | la fase 0 está hecha y el volcado del 5800X3D, rehecho con ella; nada se ha visto con una NVIDIA, una Arc ni una Deck |
-| rama `actualizaciones` | lista para rebasar | probada de punta a punta sin publicar nada (`tools/probar_actualizador.py`): pasa tras dos arreglos (el AppImage no traía TLS; un corte a `http://` salía como falta de red). Sale de `c01944d` y choca con `oficina` en el paso de la release del CI; falta rebasarla, la prueba con el AppImage del CI y una vez a mano con los botones |
-| `nvml.py` | media, sin comprobar | el uso de NVENC y NVDEC (dos barras en «Ahora mismo»), escrito sin una NVIDIA delante: contrastar con `nvidia-smi dmon -s u` |
-| `ui/widgets.py` | baja | una gráfica transparente repinta la tarjeta y la página de detrás en cada fotograma (~145 widgets/s en Inicio con fluido): pintarla opaca con el color de su tarjeta (docs/rendimiento.md) |
-| `ui/widgets.py` | baja | cada `setText` de un `ElidingLabel` recoloca la página sin mover nada: de 0,2 a 1,8 ms por muestra (docs/rendimiento.md) |
-| `ui/pages/cpulive.py` | baja, sin mirar | pintar CPU tras cada muestra cuesta 11,5 ms, frente a 2-4 en las demás páginas |
-| `providers/` (AMD) | aplazado | PPT, TDC y EDC con `ryzen_smu`: el autor decidió no hacerlo ahora (`docs/propuesta-limites-amd.md`) |
-| `.github/workflows/appimage.yml` | media | el CI no mira si el AppImage pinta sus iconos; se comprobó a mano con `--screenshot` |
-| `privacidad.py`, `tools/volcar_equipo.py` | media-baja | `--anonimo` da la misma IP a todas las interfaces; los volcados, la misma MAC |
-| `ui/theme.py` | media-baja | caché de iconos en `/tmp/silux-icons` de nombre fijo |
-| `providers/rapl.py` | media-baja | en un contenedor dice que la CPU no tiene contadores |
-| `ui/widgets.py` | baja | el globo «copiado» se come el clic; seleccionar copia el entero |
-| `cli.py` | baja | `--json` sin aviso; `--report ''`; banderas que se pisan; `--with-identifiers` suelto; categorías sin traducir; `--report -` sin aviso |
-| `ui/app.py` | baja | cambiar el tema reinicia las gráficas; no hay navegación por teclado |
-| `ui/pages/graphics.py` | baja | tasa de datos de la VRAM compuesta a mano |
-| `providers/cppc.py` | media, sin comprobar | el techo del silicio con `acpi-cpufreq`: falta el volcado con `amd_pstate=disable` |
-| `ui/pages/settings.py` | propuesta | no hay botón para quitar el ayudante instalado; toca privilegios |
-| `providers/network.py` | baja | tipo de interfaz sin traducir |
-| `providers/storage.py` | baja | modelo SATA cortado a 16 caracteres |
-| `collector.py` | baja | `_clone` sin `batteries`, `cpu_extra` ni `memory_traffic` |
-| `render.py` | baja | dos canales distintos pueden llamarse «Canal A» |
-| `db/lang/` | baja | trece claves muertas; `gen_lang.py` compara por subcadena y solo ve cinco |
-| `registro.py`, `report.py`, `ui/` | baja | CSV sin fecha; `_placa(anonymous)`; `disk.pci_slot` y `net.vendor` sin pintar |
-| `data/…policy.in`, `cargar_modulo.py` | baja | plantilla huérfana y divergente; `modprobe` sin ruta |
-| `tools/build_appimage.py` | baja | `--container` se traga `--keep` y `--appdir-only`; `appimagetool` sin hash |
-| `.github/workflows/appimage.yml` | baja | `contents: write` global; acciones por etiqueta y no por SHA; arranque comprobado con `--help` |
+En [docs/pendientes.md](docs/pendientes.md), una sola lista por zonas con lo
+que se midió; lo más grave, arriba. Los de la quinta auditoría llevan su
+código (F-…), que es por el que se buscan. Lo que se arregla se quita de ahí
+en el mismo commit; lo que se encuentra y no se arregla, se apunta.
 
 ## Dónde está cada cosa en docs/
 
-- [docs/lecciones.md](docs/lecciones.md): lo que ya se probó y no funcionó,
-  por temas. **Se lee el apartado de la zona antes de tocarla.**
-- [docs/convenciones.md](docs/convenciones.md): el porqué de cada convención y
-  todo lo del idioma.
-- [docs/arquitectura.md](docs/arquitectura.md): cómo funciona por dentro, el
-  reparto comentado y el informe de fallos.
+- [docs/arquitectura.md](docs/arquitectura.md): cómo viaja un dato, el reparto
+  comentado, las reglas con su porqué y cómo se ejecuta cada cosa.
+- [docs/convenciones.md](docs/convenciones.md): cómo contribuir, el porqué de
+  cada convención y todo lo del idioma.
+- [docs/pendientes.md](docs/pendientes.md): lo que falta, con su detalle.
 - [docs/empaquetado.md](docs/empaquetado.md): el suelo, el AppImage, los
   techos de PySide6 y las guardas.
-- [docs/benchmark.md](docs/benchmark.md): la escala y la medida de la memoria.
 - [docs/privilegios.md](docs/privilegios.md): el ayudante, pkexec y polkit.
-- [docs/hardware-validado.md](docs/hardware-validado.md): qué se ha probado
-  contra qué pieza.
-- [docs/pendientes.md](docs/pendientes.md): lo pendiente, con su detalle.
+- [docs/equipos-probados.md](docs/equipos-probados.md): qué se ha probado
+  contra qué pieza, y los equipos volcados.
 - [docs/kernel.md](docs/kernel.md): desde qué versión del kernel existe cada
   dato, con su fuente. El mínimo es 5.15.
-- [docs/rendimiento.md](docs/rendimiento.md): lo que gasta silux, cómo se
-  mide (con perfilador y en la pantalla) y sus objetivos.
+- [docs/rendimiento.md](docs/rendimiento.md): lo que gasta Silux, cómo se
+  mide y sus objetivos.
+- [docs/benchmark.md](docs/benchmark.md): la escala y la medida de la memoria.
 - [docs/motores-de-graficas.md](docs/motores-de-graficas.md): qué motor de
-  cada gráfica se puede medir, de dónde sale en cada driver y cómo se saca
-  su uso medio.
+  cada gráfica se puede medir y de dónde sale en cada driver.
 - [docs/comprobar.md](docs/comprobar.md): el comando equivalente a cada dato,
   para verificarlo a mano.
-- `docs/propuesta-*.md`: lo propuesto (permisos, interfaz, precisión,
-  benchmark, datos, límites de AMD, gráficas, uso de gráficas). La de datos
-  está aplicada; la de gráficas, en parte (lo que mentía); la de límites de
-  AMD y la del uso de gráficas, sin decidir. No son el estado del
-  programa.
-- [docs/en-curso.md](docs/en-curso.md): si existe, dónde se quedó la última
-  sesión y qué sigue.
-- [docs/historial/](docs/historial/): diarios de sesiones antiguas.
+
+Las notas de trabajo —dónde se quedó cada sesión, las lecciones, las
+propuestas y el historial— están en el repositorio privado
+`rcv11x/silux-notas`, no aquí.
