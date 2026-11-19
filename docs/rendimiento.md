@@ -193,8 +193,20 @@ nada y cuestan de 0,2 a 1,8 ms por muestra.
   del texto, y Qt recoloca la tarjeta y la página aunque nada cambie de
   sitio. Son de 0,2 a 1,8 ms por muestra (CPU, la que más); quitarlo pide
   cambiar cómo mide esa etiqueta en toda la aplicación.
-- **Pintar CPU después de cada muestra**: 11,5 ms, frente a 2-4 en las
-  demás. Sin mirar todavía de qué.
+- **Pintar CPU después de cada muestra**: 13,7 ms, frente a 2-7 en las
+  demás (medido el 20 de noviembre de 2026 con muestras de verdad, ventana
+  de 1607×942, perfil con `cProfile` del `processEvents` de después). Es la
+  matriz de núcleos: `_pintar_fondo` repinta el fondo entero y
+  `_draw_history` la curva de cada uno de los dieciséis hilos, y
+  `curva_suave` sola se lleva unos 4 ms por muestra. Aplicar la muestra a la
+  página cuesta 5,4 ms, como Inicio.
+- **Páginas que se aplican sin verse**: con CPU a la vista, `home.apply` y
+  `graphics.apply` se ejecutan en cada muestra, porque tienen gráficas y no
+  `record`. Unos 3 ms por muestra.
+- **Python 3.14 + PySide6 6.12 frente a 3.10 + 6.9** (`tools/medir_consumo.py`,
+  el mismo código, el 20 de noviembre): la CPU, igual dentro del ruido de
+  medir ocho segundos (Inicio 4,6 frente a 4,5 %, CPU 5,1 frente a 4,9 %,
+  con fluido 6,8 frente a 6,9 %); la memoria máxima, 164 frente a 154 MB.
 - **Lo que hay detrás de una gráfica transparente**: al repintarla, Qt
   repinta también la tarjeta y la página de detrás (en Inicio, ~145 widgets
   por segundo). Pintarla opaca con el color de su tarjeta lo quitaría.

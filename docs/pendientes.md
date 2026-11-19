@@ -19,6 +19,12 @@ sin los pasos para reproducirlo: este archivo es público.
   suite entera en un contenedor. Falta la causa y un reproductor sin Silux
   para bugreports.qt.io. Lo descartado y cómo se mide, en
   [empaquetado.md](empaquetado.md#el-cierre-del-qscrollbar-pyside6-611-en-python-310-y-311).
+  El 20 de noviembre de 2026 salió en el CI (3.14 + 6.12) con otra firma:
+  `abort` dentro de un `realloc` de `QTreeView.expandAll()` del árbol de USB
+  de Dispositivos, en `test_al_momento.py::test_y_al_perderlos`, que pasa
+  fotos de equipos distintos por la misma ventana. Un `realloc` que aborta
+  dice que el montón ya estaba roto de antes: es el mismo daño, visto en
+  otro sitio.
 * **F-A2 · `spd.py`** · alta · el XMP de DDR4 calcula el ciclo con la parte
   gruesa sola (`spd[offset+3] * 125`), sin la corrección fina: un DDR4-3600
   (555 ps) sale «XMP 1 3200». Las posiciones de los perfiles son las de XMP
@@ -124,8 +130,13 @@ sin los pasos para reproducirlo: este archivo es público.
 * `ui/widgets.py` · baja · una gráfica transparente repinta su tarjeta y la
   página de detrás en cada fotograma; y cada `setText` de un `ElidingLabel`
   recoloca la página (de 0,2 a 1,8 ms por muestra). [rendimiento.md](rendimiento.md)
-* `ui/pages/cpulive.py` · baja, sin mirar · pintar CPU tras cada muestra
-  cuesta 11,5 ms, frente a 2-4 en las demás páginas.
+* `ui/corematrix.py` · baja · pintar CPU tras cada muestra cuesta 13,7 ms
+  (aplicarla, 5,4, como las demás): la matriz de núcleos repinta su fondo
+  entero y la curva suave de los dieciséis hilos (`curva_suave`, unos 4 ms
+  por muestra). Pintar solo lo que cambia lo bajaría. [rendimiento.md](rendimiento.md)
+* `ui/app.py` · baja · Inicio y Gráficos reciben la foto entera en cada
+  muestra aunque no se vean: tienen gráficas y no tienen `record`, así que
+  `_distribute` les hace `apply`. Son unos 3 ms por muestra tirados.
 * `ui/app.py` · baja · cambiar el tema reconstruye las páginas y las gráficas
   vuelven a empezar.
 * `ui/app.py` · baja · no se puede cambiar de sección con el teclado.
@@ -136,10 +147,9 @@ sin los pasos para reproducirlo: este archivo es público.
 ## Línea de órdenes, informe y registro
 
 * `cli.py` · baja · `--json` vuelca todo sin anonimizar y sin avisar.
-* `cli.py` · baja · `--report ''` hace el volcado normal sin decir nada;
-  `--json`, `--sensors` y `--report` se pisan en silencio; `--report -` no
-  dice que ha omitido nada; `--with-identifiers` sin `--report` no hace nada
-  y no avisa.
+* `cli.py` · baja · `--json`, `--sensors` y `--report` se pisan en silencio;
+  `--report -` no dice que ha omitido nada; `--with-identifiers` sin
+  `--report` no hace nada y no avisa.
 * **F-M31 · `report.py`** · media · en el informe corto, los zócalos vacíos
   salen como módulos y en una integrada «Memoria: — — · — · —».
 * **F-M32 · `cli.py`** · media · el valor de un sensor se formatea de tres
@@ -215,6 +225,34 @@ De la quinta auditoría, sin comprobar uno a uno si siguen igual:
   `argtypes`; `history.save` con un `.tmp` fijo y sin cerrojo.
 
 ## Propuestas sin aplicar
+
+* **Grabar una sesión** (después de la 0.4): empezar, pausar y parar, por
+  ejemplo mientras se juega, con un resumen al final: máximos, medias y si
+  algo se frenó por temperatura. Hoy `registro.py` graba a CSV sin resumen.
+* **Un benchmark de gráfica** (después de la 0.4).
+* **Diagramas que salen de datos reales**, no decorativos: el mapa de
+  núcleos de la CPU (CCD, núcleos P y E, hilos hermanos, mejores núcleos) y
+  la jerarquía de cachés dibujada. Nada de dibujos inventados del hardware.
+* **Bienvenida la primera vez** (cuando aún no hay `settings.json`): una
+  ventana pequeña con idioma, tema y tamaño de letra, que se vean cambiar en
+  el momento, y «Empezar» para guardarlos. El idioma por defecto ya sigue al
+  del sistema.
+* **Escritorios**. Probado aquí (KDE Plasma): los dos AppImage abren por
+  Wayland y por X11 (`QT_QPA_PLATFORM=xcb`, XWayland) y pintan bien; llevan
+  los plugins de plataforma de los dos y los de Wayland (decoraciones, shell).
+  En KDE, `styleHints().colorScheme()` dice «oscuro» por los dos. Falta una
+  máquina virtual con GNOME (Wayland: la barra de título la pinta Qt), con
+  Cinnamon y con XFCE (X11 de verdad, no XWayland). Propuesta: que el tema
+  «sistema» lea `QStyleHints.colorScheme()` (Qt 6.5 o posterior, que sigue el
+  portal de apariencia de GNOME) en vez de deducirlo del color de la paleta,
+  y que se repinte con `colorSchemeChanged` (regla 9).
+* **Sensores: las interfaces virtuales**. Con Docker, el árbol y el informe
+  llevan veinte bloques «Red (veth…)» a cero. Red las enseña a propósito,
+  después y marcadas; en Sensores podrían ir plegadas en un grupo o fuera.
+  Decisión del autor.
+* **Fabricantes de memoria y marcas de disco**: la tabla JEP106 (14 marcas)
+  desde `decode-dimms` de i2c-tools, y la marca de un NVMe por el `pci.ids` de
+  su controladora. Detalle en las notas (`revision-memoria-discos-placas.md`).
 
 * **El código, en inglés (después de la 0.4).** Los nombres de funciones,
   variables, parámetros, atributos y clases, y los comentarios y docstrings,
