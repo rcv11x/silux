@@ -129,8 +129,13 @@ No es un descuido que quede por arreglar. Si algún día se cambia, no será por
 una coma fija: seguirá el idioma del sistema, que es quien sabe cómo escribe
 los números quien está delante.
 
-Los comentarios del código no siguen esa regla y van en el español del autor:
-no los ve nadie desde la ventana y no se traducen.
+El código va aparte. Lo nuevo se escribe en inglés y con el estilo de PEP 8
+(`snake_case` para funciones, variables y módulos, `CamelCase` solo para
+clases, constantes en mayúsculas), con comentarios en inglés que dicen el
+porqué y no repiten el código. Gran parte del código de antes está en
+español y se pasará en un proyecto propio después de la 0.4: hasta entonces
+no se renombra nada al pasar, pero tampoco se añade nada nuevo en español.
+Mezclar las dos lenguas en un mismo nombre no vale nunca.
 
 **Las claves son símbolos** —`cpu.card.clocks`—, así que el español es un
 idioma más y vive en `db/lang/es.json`. Retocar una frase en castellano es
