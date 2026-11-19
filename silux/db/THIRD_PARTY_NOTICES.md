@@ -2,7 +2,7 @@
 
 Silux es software libre bajo la GPL-3.0 o posterior; el texto completo está
 en `LICENSE`. La tabla con que identifica los procesadores,
-`silux/db/cpu_ids.json`, se generó con los datos de tres proyectos y de AMD. Sus avisos
+`silux/db/cpu_ids.json`, se generó con los datos de cuatro proyectos y de AMD. Sus avisos
 van aquí tal como piden sus licencias, en el repositorio, en el paquete de
 pip y dentro de cada AppImage.
 
@@ -64,6 +64,27 @@ encapsulado y el nodo de cada modelo que lista (`amd_models` en
 `silux/db/cpu_ids.json`), con la página de cada uno como fuente. Son datos
 de AMD, no código: la tabla los usa cuando libcpuid no reconoce un
 procesador o no sabe su nodo o su encapsulado.
+
+## cpuid
+
+<https://etallen.com/cpuid.html>
+
+De las tablas de microarquitectura de `cpuid.c` (`decode_uarch_intel` y
+`decode_uarch_amd`), en la versión que dice `sources.cpuid` de
+`silux/db/cpu_ids.json`, sale el nodo de fabricación por familia y modelo
+(`cpuid_nodes`): la tabla lo usa cuando ninguna otra fuente da el nodo de un
+procesador. Se toman los datos, no el código.
+
+```
+cpuid dumps CPUID information for each CPU.
+Copyright 2003,2004,2005,2006,2010,2011,2012,2013,2014,2015,2016,2017,2018,
+2020,2021,2022,2023,2024,2025,2026 by Todd Allen.
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+```
 
 ## CPU-X
 

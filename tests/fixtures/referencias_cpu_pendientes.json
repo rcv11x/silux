@@ -91,20 +91,10 @@
     ""
    ]
   },
-  "amd/k5/amd-k5-pr100.test": {
-   "libcpuid": [
-    "K5 (SSA/5)",
-    "unknown"
-   ],
-   "silux": [
-    "K5 (SSA/5)",
-    ""
-   ]
-  },
   "amd/k5/amd-k5-pr75.test": {
    "libcpuid": [
     "K5 (SSA/5)",
-    "unknown"
+    ""
    ],
    "silux": [
     "",
@@ -128,16 +118,6 @@
    ],
    "silux": [
     "",
-    ""
-   ]
-  },
-  "amd/k8/dual-core-amd-opteron-processor-165.test": {
-   "libcpuid": [
-    "Opteron (Dual Core)",
-    "unknown"
-   ],
-   "silux": [
-    "Opteron (Dual Core)",
     ""
    ]
   },

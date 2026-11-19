@@ -30,8 +30,9 @@ class TestLoQueLibcpuidNoTiene(unittest.TestCase):
                 ident = _identificar(familia, modelo)
                 self.assertTrue(ident.matched)
                 self.assertEqual(ident.codename, nombre)
-                # El kernel no dice el nodo: no se inventa.
-                self.assertIsNone(ident.technology)
+                # The kernel doesn't say the node; cpuid's table does, and
+                # nothing is made up: it's that table's row or nothing.
+                self.assertEqual(ident.technology, db.cpuid_node("GenuineIntel", familia, modelo))
 
     def test_no_pisa_lo_que_libcpuid_ya_sabe(self):
         # Arrow Lake-S está en libcpuid con su gama y su nodo; el kernel diría

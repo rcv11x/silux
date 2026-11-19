@@ -42,7 +42,7 @@ def identificar(cpu: dict) -> tuple[str, str]:
 
 def esperado(cpu: dict) -> tuple[str, str]:
     # libcpuid escribe «Unknown» cuando su fila no trae nodo; Silux, nada.
-    nodo = "" if cpu["technology"] == "Unknown" else cpu["technology"]
+    nodo = "" if cpu["technology"].lower() == "unknown" else cpu["technology"]
     return cpu["codename"], nodo
 
 
@@ -60,7 +60,13 @@ class TestLasReferencias(unittest.TestCase):
             if cpu["vendor"] not in CON_TABLA or cpu["source"] in pendientes:
                 continue
             with self.subTest(cpu=cpu["source"]):
-                self.assertEqual(identificar(cpu), esperado(cpu))
+                codename, node = identificar(cpu)
+                expected_codename, expected_node = esperado(cpu)
+                self.assertEqual(codename, expected_codename)
+                # Where libcpuid has no node, another source may give one:
+                # knowing more isn't worse.
+                if expected_node:
+                    self.assertEqual(node, expected_node)
 
     def test_los_pendientes_siguen_dando_lo_apuntado(self):
         """Si uno empieza a salir bien, se quita de la lista; si da otra cosa
@@ -71,8 +77,9 @@ class TestLasReferencias(unittest.TestCase):
                 self.assertIn(fuente, referencias)
                 cpu = referencias[fuente]
                 hoy = identificar(cpu)
-                self.assertNotEqual(hoy, esperado(cpu),
-                                    "ya sale bien: quítalo de referencias_cpu_pendientes.json")
+                codename, node = esperado(cpu)
+                self.assertFalse(hoy[0] == codename and (not node or hoy[1] == node),
+                                 "ya sale bien: quítalo de referencias_cpu_pendientes.json")
                 self.assertEqual(list(hoy), apuntado["silux"])
 
 

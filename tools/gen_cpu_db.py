@@ -401,6 +401,84 @@ def parse_amd_specs(page: str) -> list[dict]:
 
 
 # --------------------------------------------------------------------------
+# cpuid by Todd Allen: process node by family and model
+# --------------------------------------------------------------------------
+
+# A fixed release, so what is generated can be repeated; a new one is
+# raising this and regenerating.
+CPUID_VERSION = "20260503"
+CPUID_URL = "https://etallen.com/cpuid.html"
+CPUID_TARBALL = f"https://etallen.com/cpuid/cpuid-{CPUID_VERSION}.src.tar.gz"
+
+# One line of `decode_uarch_intel` / `decode_uarch_amd`:
+#   FMQ (    0, 6, 12,12,     Ha, *u = "Cougar Cove", ...  *p = "Intel 18A");
+_UARCH_LINE = re.compile(
+    r"^\s*(FMS|FMm|FM|FMSQ|FMmQ|FMQ)\s*\(\s*([^*]*?)\s*,\s*\*u\s*=\s*\"([^\"]*)\"(.*?)\);", re.M)
+_PROCESS = re.compile(r"\*p\s*=\s*\"([^\"]*)\"")
+
+
+def fetch_cpuid_source(cache: pathlib.Path, offline: bool) -> str:
+    """cpuid.c of the pinned release, from its tarball."""
+    import io
+    import tarfile
+    import urllib.request
+
+    path = cache / "cpuid" / CPUID_VERSION / "cpuid.c"
+    if path.is_file():
+        return path.read_text(encoding="utf-8", errors="replace")
+    if offline:
+        raise SystemExit(f"no hay copia de cpuid {CPUID_VERSION} en {path} y se pidió --offline")
+    print(f"  bajando cpuid {CPUID_VERSION}…", file=sys.stderr)
+    request = urllib.request.Request(CPUID_TARBALL, headers={"User-Agent": "silux-gen-cpu-db"})
+    with urllib.request.urlopen(request, timeout=60) as response:
+        archive = tarfile.open(fileobj=io.BytesIO(response.read()), mode="r:gz")
+    member = next(m for m in archive.getmembers() if m.name.endswith("/cpuid.c"))
+    text = archive.extractfile(member).read().decode("utf-8", errors="replace")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+    return text
+
+
+def _function_body(source: str, name: str) -> str:
+    start = source.index(f"\n{name}(")
+    end = source.index("\n}\n", start)
+    return source[start:end]
+
+
+def parse_cpuid_nodes(source: str) -> list[dict]:
+    """Process node by vendor, family and model, from cpuid's uarch tables.
+
+    Only what doesn't depend on more than family, model and stepping: the
+    qualified rows (hybrid core type, brand) agree on the node for a model,
+    and when they don't, the model is left out.
+    """
+    found: dict[tuple, set] = {}
+    for vendor, function in (("GenuineIntel", "decode_uarch_intel"),
+                             ("AuthenticAMD", "decode_uarch_amd")):
+        for macro, args, _uarch, rest in _UARCH_LINE.findall(_function_body(source, function)):
+            process = _PROCESS.search(rest)
+            numbers = [a.strip() for a in args.split(",")]
+            if process is None or len(numbers) < 4 or not all(n.isdigit() for n in numbers[:4]):
+                continue
+            xf, f, xm, m = (int(n) for n in numbers[:4])
+            stepping = int(numbers[4]) if macro.startswith("FMS") else -1
+            family = f + xf if f == 15 else f
+            first = (xm << 4) + (m & 0x8 if macro.startswith("FMm") else m)
+            last = first + 7 if macro.startswith("FMm") else first
+            # «939-pin, 90nm»: the old AMD rows mix the socket in; the node is
+            # the part after the comma.
+            node = process.group(1).split(",")[-1].strip()
+            found.setdefault((vendor, family, first, last, stepping), set()).add(node)
+    rows = [{"vendor": vendor, "family": family, "model_from": first, "model_to": last,
+             "stepping": stepping, "node": nodes.pop()}
+            for (vendor, family, first, last, stepping), nodes in sorted(found.items())
+            if len(nodes) == 1]
+    if len(rows) < 50:
+        raise LookupError(f"las tablas de cpuid dieron {len(rows)} filas: ¿ha cambiado el formato?")
+    return rows
+
+
+# --------------------------------------------------------------------------
 
 
 def main() -> int:
@@ -424,6 +502,7 @@ def main() -> int:
     databases_src = (cpux / "src" / "core" / "databases.h").read_text(encoding="utf-8")
     intel_family = parse_intel_family(kernel_file(INTEL_FAMILY, args.cache, args.offline))
     amd_models = parse_amd_specs(fetch_amd_specs(args.cache, args.offline))
+    cpuid_nodes = parse_cpuid_nodes(fetch_cpuid_source(args.cache, args.offline))
 
     x86 = {
         "GenuineIntel": parse_x86_table(intel_src, "match_entry_t cpudb_intel[]"),
@@ -442,6 +521,7 @@ def main() -> int:
             "cpu-x": provenance(cpux, REPOS["cpu-x"]),
             "linux": {"repo": KERNEL_REPO, "tag": KERNEL_TAG, "file": INTEL_FAMILY},
             "amd.com": {"repo": AMD_SPECS_URL},
+            "cpuid": {"repo": CPUID_URL, "version": CPUID_VERSION},
         },
         "counts": {
             "x86_intel": len(x86["GenuineIntel"]),
@@ -451,6 +531,7 @@ def main() -> int:
             "sockets": sum(len(v) for v in sockets.values()),
             "intel_family": len(intel_family),
             "amd_models": len(amd_models),
+            "cpuid_nodes": len(cpuid_nodes),
         },
         "x86": x86,
         "arm": arm,
@@ -462,6 +543,10 @@ def main() -> int:
         # AMD's own specifications, by model: they fill in what libcpuid
         # doesn't know and name the chips it doesn't have.
         "amd_models": amd_models,
+        # cpuid's process node by family and model: for chips the other
+        # sources name but don't give a node for (Panther Lake, from the
+        # kernel).
+        "cpuid_nodes": cpuid_nodes,
     }
 
     args.out.parent.mkdir(parents=True, exist_ok=True)

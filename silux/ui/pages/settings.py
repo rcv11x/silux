@@ -61,6 +61,7 @@ DATOS_DE_TERCEROS = (
     ("CPU-X", "about.cpux"),
     ("Linux", "about.linux"),
     ("AMD", "about.amdcom"),
+    ("cpuid", "about.cpuid"),
     ("hwdata", "about.hwdata"),
 )
 

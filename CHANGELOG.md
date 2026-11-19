@@ -101,6 +101,9 @@ publica se dice con la versión que lo trae.
 - Nuevo: en Intel, los límites de potencia PL1 y PL2 a la vista, también sin
   permisos.
 - Nuevo: sin permisos, el voltaje lleva un candado en vez de un guion.
+- Nuevo: el nodo de fabricación de los procesadores que las demás tablas
+  nombran sin nodo (un Panther Lake, «Intel 18A») sale de las tablas del
+  programa `cpuid` de Todd Allen.
 - Nuevo: el nombre en clave, el nodo y el encapsulado de los AMD que libcpuid
   no tiene salen de la tabla oficial de amd.com (744 modelos), y de ahí
   también el nodo o el encapsulado que libcpuid no sabe.

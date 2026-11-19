@@ -4,6 +4,7 @@
   "about.builtwith": "Built with",
   "about.card": "About Silux",
   "about.claude": "Anthropic's AI assistant: writes much of the code, tests and documentation, under the author's direction and review",
+  "about.cpuid": "the node the other tables don't give · © Todd Allen · GPL-2.0 or later",
   "about.cpux": "the package of each processor · © 2014-2025 The Tumultuous Unicorn Of Darkness · GPL-3.0 or later",
   "about.credits": "Credits",
   "about.ctypes": "CPUID, DRM ioctls and the graphics libraries",

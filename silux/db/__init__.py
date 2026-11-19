@@ -168,7 +168,35 @@ def _score(entry: dict, probe: dict, brand: str) -> int:
     return total
 
 
-def identify_x86(
+def identify_x86(**probe) -> Identification:
+    """Busca el procesador en la tabla del fabricante y devuelve el mejor match.
+
+    When the chip is named but no source gives its node, cpuid's table by
+    family and model fills it in (Panther Lake, named by the kernel).
+    """
+    ident = _identify_x86(**probe)
+    if ident.matched and ident.technology is None:
+        node = cpuid_node(probe["vendor_id"], probe["ext_family"], probe["ext_model"],
+                          probe.get("stepping", -1))
+        if node is not None:
+            return Identification(codename=ident.codename, technology=node,
+                                  score=ident.score, matched=True)
+    return ident
+
+
+def cpuid_node(vendor_id: str, ext_family: int, ext_model: int,
+               stepping: int = -1) -> Optional[str]:
+    """The process node cpuid (Todd Allen) gives for this family and model,
+    preferring a row for this exact stepping."""
+    rows = [row for row in load().get("cpuid_nodes", ())
+            if row["vendor"] == vendor_id and row["family"] == ext_family
+            and row["model_from"] <= ext_model <= row["model_to"]
+            and row["stepping"] in (-1, stepping)]
+    rows.sort(key=lambda row: row["stepping"] == -1)
+    return rows[0]["node"] if rows else None
+
+
+def _identify_x86(
     *,
     vendor_id: str,
     family: int,
@@ -181,7 +209,6 @@ def identify_x86(
     l2_kb: int = -1,
     l3_kb: int = -1,
 ) -> Identification:
-    """Busca el procesador en la tabla del fabricante y devuelve el mejor match."""
     table = load()["x86"].get(vendor_id)
     if not table:
         return Identification(codename=None, technology=None, score=0, matched=False)
