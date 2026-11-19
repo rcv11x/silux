@@ -1,4 +1,5 @@
 {
+  "about.amdcom": "codename, socket and node of each AMD chip, from its specifications table",
   "about.author": "author: design, development, testing and documentation",
   "about.builtwith": "Built with",
   "about.card": "About Silux",

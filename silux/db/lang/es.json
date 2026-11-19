@@ -1,4 +1,5 @@
 {
+  "about.amdcom": "nombre en clave, encapsulado y nodo de cada AMD, de su tabla de especificaciones",
   "about.author": "autor: diseño, desarrollo, pruebas y documentación",
   "about.builtwith": "Construido con",
   "about.card": "Acerca de Silux",

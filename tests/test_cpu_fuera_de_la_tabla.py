@@ -36,6 +36,8 @@ def _tabla_sin_amd():
     tabla = copy.deepcopy(db.load())
     tabla["x86"]["AuthenticAMD"] = [e for e in tabla["x86"]["AuthenticAMD"]
                                     if e["name"].lower().startswith("unknown")]
+    # Nor in AMD's own table: a chip newer than both.
+    tabla["amd_models"] = []
     return tabla
 
 

@@ -101,6 +101,12 @@ publica se dice con la versión que lo trae.
 - Nuevo: en Intel, los límites de potencia PL1 y PL2 a la vista, también sin
   permisos.
 - Nuevo: sin permisos, el voltaje lleva un candado en vez de un guion.
+- Nuevo: el nombre en clave, el nodo y el encapsulado de los AMD que libcpuid
+  no tiene salen de la tabla oficial de amd.com (744 modelos), y de ahí
+  también el nodo o el encapsulado que libcpuid no sabe.
+- Arreglado: el encapsulado de algunos AMD salía mal: un Ryzen 5 2400G o un
+  Ryzen 7 8700G de sobremesa salían con uno de portátil, y los Threadripper
+  con el del servidor. Ahora manda la ficha de AMD de ese modelo.
 - Nuevo: los Intel que la tabla de libcpuid todavía no tiene (Panther Lake,
   Wildcat Lake, Nova Lake, Diamond Rapids) salen con su nombre en clave, que
   se toma del kernel Linux. El nodo y el encapsulado siguen diciendo que no

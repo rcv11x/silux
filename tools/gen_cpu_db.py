@@ -327,6 +327,80 @@ def kernel_file(path: str, cache: pathlib.Path, offline: bool) -> str:
 
 
 # --------------------------------------------------------------------------
+# amd.com: the official specifications table
+# --------------------------------------------------------------------------
+
+AMD_SPECS_URL = "https://www.amd.com/en/products/specifications/processors.html"
+# amd.com uses these as the "former codename" of whole families: they don't
+# name a chip, and showing them would read as if they did.
+_AMD_NOT_A_CODENAME = {"", "none", "[]", "athlon legacy", "fx legacy", "phenom",
+                       "sempron", "threadripper"}
+_TRADEMARKS = re.compile(r"\s*(™|®|\(TM\)|\(R\))\s*", re.IGNORECASE)
+
+
+def fetch_amd_specs(cache: pathlib.Path, offline: bool) -> str:
+    """The amd.com table, as the page that carries it in a JSON attribute."""
+    import urllib.request
+
+    path = cache / "amd" / "processors.html"
+    if offline:
+        if not path.is_file():
+            raise SystemExit(f"no hay copia de la tabla de amd.com en {path} y se pidió --offline")
+        return path.read_text(encoding="utf-8")
+    print("  bajando la tabla de amd.com…", file=sys.stderr)
+    request = urllib.request.Request(AMD_SPECS_URL, headers={"User-Agent": "Mozilla/5.0 silux-gen-cpu-db"})
+    with urllib.request.urlopen(request, timeout=60) as response:
+        page = response.read().decode("utf-8")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(page, encoding="utf-8")
+    return page
+
+
+def _amd_value(item: dict, key: str):
+    field = item.get("elements", {}).get(key)
+    value = None if field is None else field.get("value", field.get("values"))
+    if isinstance(value, list):
+        value = value[0] if len(value) == 1 else (", ".join(map(str, value)) or None)
+    return str(value).strip() if value not in (None, "") else None
+
+
+def parse_amd_specs(page: str) -> list[dict]:
+    """One row per model: codename, socket and node as amd.com gives them."""
+    import html as html_lib
+    sys.path.insert(0, str(ROOT))
+    from silux.db import amd_model_key
+
+    raw = re.search(r'data-json="([^"]*)"', page)
+    if raw is None:
+        raise LookupError("la tabla de amd.com no trae su JSON: ha cambiado de forma")
+    rows: dict[str, dict] = {}
+    for item in json.loads(html_lib.unescape(raw.group(1))).get("items", []):
+        name = _amd_value(item, "name")
+        if not name:
+            continue
+        codename = _amd_value(item, "formerCodename")
+        if codename and codename.lower() in _AMD_NOT_A_CODENAME:
+            codename = None
+        if codename:
+            # «Granite Ridge AM5»: the socket goes in its own field.
+            codename = re.sub(r"\s+AM[45]$", "", codename)
+        key = amd_model_key(name)
+        # The same model is listed twice for a few APUs (boxed and tray):
+        # the first one is enough.
+        rows.setdefault(key, {
+            "model": key,
+            "name": " ".join(_TRADEMARKS.sub(" ", name).split()),
+            "codename": codename,
+            "socket": _amd_value(item, "cpuSocket"),
+            "node": _amd_value(item, "processorTechnologyForCpuCores"),
+            "source": (item.get("productPages") or {}).get("en") or AMD_SPECS_URL,
+        })
+    if len(rows) < 100:
+        raise LookupError(f"la tabla de amd.com trae solo {len(rows)} modelos: ¿ha cambiado de forma?")
+    return sorted(rows.values(), key=lambda row: row["model"])
+
+
+# --------------------------------------------------------------------------
 
 
 def main() -> int:
@@ -349,6 +423,7 @@ def main() -> int:
     arm_src = (libcpuid / "libcpuid" / "recog_arm.c").read_text(encoding="utf-8")
     databases_src = (cpux / "src" / "core" / "databases.h").read_text(encoding="utf-8")
     intel_family = parse_intel_family(kernel_file(INTEL_FAMILY, args.cache, args.offline))
+    amd_models = parse_amd_specs(fetch_amd_specs(args.cache, args.offline))
 
     x86 = {
         "GenuineIntel": parse_x86_table(intel_src, "match_entry_t cpudb_intel[]"),
@@ -366,6 +441,7 @@ def main() -> int:
             "libcpuid": provenance(libcpuid, REPOS["libcpuid"]),
             "cpu-x": provenance(cpux, REPOS["cpu-x"]),
             "linux": {"repo": KERNEL_REPO, "tag": KERNEL_TAG, "file": INTEL_FAMILY},
+            "amd.com": {"repo": AMD_SPECS_URL},
         },
         "counts": {
             "x86_intel": len(x86["GenuineIntel"]),
@@ -374,6 +450,7 @@ def main() -> int:
             "arm_parts": sum(len(v["parts"]) for v in arm.values()),
             "sockets": sum(len(v) for v in sockets.values()),
             "intel_family": len(intel_family),
+            "amd_models": len(amd_models),
         },
         "x86": x86,
         "arm": arm,
@@ -382,6 +459,9 @@ def main() -> int:
         # familia y modelo, del kernel. `silux/db` la mira solo cuando la
         # tabla de libcpuid no reconoce el procesador.
         "intel_family": intel_family,
+        # AMD's own specifications, by model: they fill in what libcpuid
+        # doesn't know and name the chips it doesn't have.
+        "amd_models": amd_models,
     }
 
     args.out.parent.mkdir(parents=True, exist_ok=True)

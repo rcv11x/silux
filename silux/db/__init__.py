@@ -223,7 +223,14 @@ def identify_x86(
         if (fila := _del_kernel(vendor_id, ext_family, ext_model)) is not None:
             return Identification(codename=fila["name"], technology=None,
                                   score=1, matched=True)
+    official = amd_model(brand) if vendor_id == "AuthenticAMD" else None
     if not reconocido:
+        # Not in libcpuid: the official amd.com row for this exact model
+        # first, then the per-family ranges.
+        if official is not None and official.get("codename"):
+            return Identification(codename=official["codename"],
+                                  technology=official.get("node"),
+                                  score=1, matched=True)
         # La tabla por modelo no lo conoce. Antes de darse por vencido, la
         # tabla por rangos, que cubre las familias enteras.
         if regla := _por_familia(vendor_id, ext_family, ext_model):
@@ -238,9 +245,13 @@ def identify_x86(
         if (fila := _del_kernel(vendor_id, ext_family, ext_model)) is not None:
             return Identification(codename=fila["name"], technology=None,
                                   score=1, matched=True)
+    technology = best.get("tech") if reconocido else None
+    if reconocido and technology is None and official is not None:
+        # libcpuid knew the chip but not its node; amd.com says it.
+        technology = official.get("node")
     return Identification(
         codename=nombre if reconocido else None,
-        technology=best.get("tech") if reconocido else None,
+        technology=technology,
         score=best_score,
         matched=reconocido,
     )
@@ -318,14 +329,31 @@ def find_socket(vendor_id: str, codename: Optional[str], brand: str) -> Optional
     if not codename and not brand:
         return None
 
-    for entry in load().get("sockets", {}).get(vendor_id, ()):
+    # From the most precise to the least: a CPU-X row for this very model, the
+    # one amd.com lists for it, a CPU-X row for the whole codename, and then
+    # the rules. A codename-wide row said «FP7/FP8» for every Phoenix where
+    # amd.com says «FP7, FP7r2» for the 7445HS.
+    filas = load().get("sockets", {}).get(vendor_id, ())
+    for entry in filas:
         wants_codename = entry["codename"] is not None
-        wants_model = entry["model"] is not None
+        model_ok = entry["model"] is not None and entry["model"] in brand
         codename_ok = wants_codename and codename is not None and entry["codename"] in codename
-        model_ok = wants_model and entry["model"] in brand
-
-        if (codename_ok and model_ok) or (codename_ok and not wants_model) or (not wants_codename and model_ok):
+        if model_ok and (codename_ok or not wants_codename):
             return entry["socket"]
+
+    wide = next((entry["socket"] for entry in filas
+                 if entry["model"] is None and entry["codename"] is not None
+                 and codename is not None and entry["codename"] in codename), None)
+    official = amd_model(brand) if vendor_id == "AuthenticAMD" else None
+    if official is not None and official.get("socket"):
+        # CPU-X's «AM4 (PGA-1331)» says what amd.com's «AM4» says, and more;
+        # anything else that disagrees loses: it said «FP5» for a desktop
+        # 2200G.
+        if wide is not None and wide.startswith(official["socket"] + " ("):
+            return wide
+        return official["socket"]
+    if wide is not None:
+        return wide
 
     if not codename:
         return None
@@ -340,6 +368,35 @@ def find_socket(vendor_id: str, codename: Optional[str], brand: str) -> Optional
         if marker in codename:
             return "BGA (soldado)"
 
+    return None
+
+
+# What a CPUID brand string carries on top of the model amd.com names:
+# «64-Cores», «Eight-Core», «APU», «Radeon R7, 12 Compute Cores 4C+8G».
+_AMD_EXTRA = re.compile(
+    r"\s+\d+-Cores?\b.*$|\s+(Dual|Triple|Quad|Six|Eight|Twelve|Sixteen)-Core\b.*$"
+    r"|\s+APU\b.*$|,?\s+(Radeon\s+)?R\d+E?,\s+\d+\s+Compute Cores.*$|\s+Radeon\s+R\d.*$",
+    re.IGNORECASE)
+
+
+def amd_model_key(name: str) -> str:
+    """The model an amd.com row and a CPUID brand string share.
+
+    «AMD Ryzen™ 7 5800X3D» and «AMD Ryzen 7 5800X3D 8-Core Processor» are
+    both «RYZEN 7 5800X3D». The same function builds the table and looks
+    it up, so the two can't drift apart.
+    """
+    return " ".join(_AMD_EXTRA.sub("", normalize_cpu_model(name or "")).split()).upper()
+
+
+def amd_model(brand: str) -> Optional[dict]:
+    """The amd.com row for this processor's exact model, if AMD lists it."""
+    key = amd_model_key(brand)
+    if not key:
+        return None
+    for row in load().get("amd_models", ()):
+        if row["model"] == key:
+            return row
     return None
 
 

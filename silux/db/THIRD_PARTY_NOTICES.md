@@ -2,7 +2,7 @@
 
 Silux es software libre bajo la GPL-3.0 o posterior; el texto completo está
 en `LICENSE`. La tabla con que identifica los procesadores,
-`silux/db/cpu_ids.json`, se generó con los datos de tres proyectos. Sus avisos
+`silux/db/cpu_ids.json`, se generó con los datos de tres proyectos y de AMD. Sus avisos
 van aquí tal como piden sus licencias, en el repositorio, en el paquete de
 pip y dentro de cada AppImage.
 
@@ -54,6 +54,16 @@ De `arch/x86/include/asm/intel-family.h`, en la etiqueta que dice
 cada microarquitectura de Intel y su nombre: la tabla los mira cuando la de
 libcpuid no reconoce un procesador. Se toman los números y los nombres, que
 son datos, no código. El archivo es del kernel Linux, bajo la GPL-2.0.
+
+## amd.com
+
+<https://www.amd.com/en/products/specifications/processors.html>
+
+De la tabla de especificaciones de AMD salen el nombre en clave, el
+encapsulado y el nodo de cada modelo que lista (`amd_models` en
+`silux/db/cpu_ids.json`), con la página de cada uno como fuente. Son datos
+de AMD, no código: la tabla los usa cuando libcpuid no reconoce un
+procesador o no sabe su nodo o su encapsulado.
 
 ## CPU-X
 

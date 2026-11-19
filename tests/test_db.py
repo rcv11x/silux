@@ -155,11 +155,14 @@ class TestTablaPorRangos(unittest.TestCase):
     """
 
     def test_cubre_un_modelo_que_la_tabla_por_modelo_no_tiene(self):
-        resultado = db.identify_x86(
-            vendor_id="AuthenticAMD", family=15, model=12, stepping=0,
-            ext_family=25, ext_model=124, cores=6, brand="AMD Ryzen 7 7445HS",
-            l2_kb=1024, l3_kb=16384,
-        )
+        from unittest import mock
+        # One AMD doesn't list either: amd.com's row would come first.
+        with mock.patch.object(db, "amd_model", return_value=None):
+            resultado = db.identify_x86(
+                vendor_id="AuthenticAMD", family=15, model=12, stepping=0,
+                ext_family=25, ext_model=124, cores=6, brand="AMD Ryzen 7 7445HS",
+                l2_kb=1024, l3_kb=16384,
+            )
         self.assertEqual(resultado.codename, "Phoenix")
         self.assertEqual(resultado.technology, "TSMC N4")
 
@@ -174,8 +177,12 @@ class TestTablaPorRangos(unittest.TestCase):
         self.assertIn("Vermeer", resultado.codename)
 
     def test_de_ahí_sale_también_el_encapsulado(self):
-        self.assertEqual(db.find_socket("AuthenticAMD", "Phoenix",
-                                        "AMD Ryzen 7 7445HS"), "FP7/FP8")
+        from unittest import mock
+        # For a model AMD doesn't list; for one it does, its own row wins
+        # (test_amd_table).
+        with mock.patch.object(db, "amd_model", return_value=None):
+            self.assertEqual(db.find_socket("AuthenticAMD", "Phoenix",
+                                            "AMD Ryzen 7 7445HS"), "FP7/FP8")
 
     def test_una_familia_que_no_está_en_ninguna_tabla(self):
         resultado = db.identify_x86(
