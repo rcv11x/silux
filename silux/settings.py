@@ -71,10 +71,12 @@ class Preferences:
     # -- validación ---------------------------------------------------------
 
     def normalized(self) -> "Preferences":
+        from .i18n import disponible
+
         return replace(
             self,
             interval_s=min(10.0, max(0.2, float(self.interval_s))),
-            fluid_charts=bool(self.fluid_charts),
+            fluid_charts=_si_o_no(self.fluid_charts, False),
             theme=self.theme if self.theme in ("system", "light", "dark") else "system",
             temperature_unit="f" if self.temperature_unit == "f" else "c",
             density=self.density if self.density in ("spacious", "normal", "compact") else "normal",
@@ -82,8 +84,9 @@ class Preferences:
                         if self.font_scale in ("normal", "grande", "mayor", "máximo")
                         else "grande"),
             network_unit="bits" if self.network_unit == "bits" else "bytes",
-            show_all_features=bool(self.show_all_features),
-            language=str(self.language or "es").lower()[:8],
+            show_all_features=_si_o_no(self.show_all_features, False),
+            language=(str(self.language).lower()
+                      if str(self.language).lower() in disponible() else "es"),
             sensor_columns=tuple(min(900, max(30, int(w))) for w in (self.sensor_columns or ())),
             sensor_collapsed=tuple(str(c) for c in (self.sensor_collapsed or ()))[:400],
             sensor_expanded=tuple(str(c) for c in (self.sensor_expanded or ()))[:400],
@@ -91,7 +94,7 @@ class Preferences:
             # pone la ventana, que sabe qué densidad está activa.
             window_width=min(3840, max(380, int(self.window_width))),
             window_height=min(2160, max(320, int(self.window_height))),
-            permission_notice_dismissed=bool(self.permission_notice_dismissed),
+            permission_notice_dismissed=_si_o_no(self.permission_notice_dismissed, False),
         )
 
     @property
@@ -103,16 +106,46 @@ class Preferences:
         return int(round(self.interval_s * 1000))
 
 
+def _si_o_no(valor: Any, defecto: bool) -> bool:
+    """Un sí o un no, sin tomar por sí cualquier cosa que no esté vacía.
+
+    `bool("false")` es `True`: un `settings.json` editado a mano con
+    `"fluid_charts": "false"` encendía el movimiento fluido.
+    """
+    if isinstance(valor, bool):
+        return valor
+    if isinstance(valor, (int, float)) and valor in (0, 1):
+        return bool(valor)
+    if isinstance(valor, str) and valor.strip().lower() in ("true", "false"):
+        return valor.strip().lower() == "true"
+    return defecto
+
+
 def load() -> Preferences:
+    """Las preferencias guardadas, campo a campo.
+
+    Un archivo que no se lee o que no es un objeto JSON da las de serie: con
+    una lista o un número, la ventana no llegaba a abrir. Y un campo malo se
+    queda con su valor de serie sin llevarse a los demás: antes, un solo
+    tamaño escrito como texto tiraba todas las preferencias.
+    """
     try:
-        raw: dict[str, Any] = json.loads(config_path().read_text(encoding="utf-8"))
+        raw: Any = json.loads(config_path().read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return Preferences()
-    known = {f.name for f in fields(Preferences)}
-    try:
-        return Preferences(**{k: v for k, v in raw.items() if k in known}).normalized()
-    except (TypeError, ValueError):
+    if not isinstance(raw, dict):
         return Preferences()
+    base = Preferences()
+    buenos: dict[str, Any] = {}
+    for campo in fields(Preferences):
+        if campo.name not in raw:
+            continue
+        try:
+            replace(base, **{campo.name: raw[campo.name]}).normalized()
+        except (TypeError, ValueError, OverflowError):
+            continue
+        buenos[campo.name] = raw[campo.name]
+    return Preferences(**buenos).normalized()
 
 
 def save(preferences: Preferences) -> bool:

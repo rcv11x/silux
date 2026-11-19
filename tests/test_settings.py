@@ -46,6 +46,41 @@ class TestPreferencias(unittest.TestCase):
         settings.config_path().write_text("{esto no es json", encoding="utf-8")
         self.assertEqual(settings.load(), settings.Preferences())
 
+    def test_un_json_que_no_es_un_objeto_da_las_de_serie(self):
+        # Con una lista o un número la ventana no llegaba a abrir.
+        for contenido in ("[]", "5", '"hola"', "null"):
+            with self.subTest(contenido=contenido):
+                settings.config_dir().mkdir(parents=True, exist_ok=True)
+                settings.config_path().write_text(contenido, encoding="utf-8")
+                self.assertEqual(settings.load(), settings.Preferences())
+
+    def test_un_campo_malo_no_se_lleva_a_los_demas(self):
+        settings.config_dir().mkdir(parents=True, exist_ok=True)
+        settings.config_path().write_text(json.dumps({
+            "window_width": "ancho", "theme": "dark", "density": "compact",
+            "sensor_columns": 7}), encoding="utf-8")
+        prefs = settings.load()
+        self.assertEqual(prefs.theme, "dark")
+        self.assertEqual(prefs.density, "compact")
+        self.assertEqual(prefs.window_width, settings.Preferences().window_width)
+        self.assertEqual(prefs.sensor_columns, ())
+
+    def test_un_no_escrito_como_texto_es_un_no(self):
+        settings.config_dir().mkdir(parents=True, exist_ok=True)
+        settings.config_path().write_text(json.dumps({
+            "fluid_charts": "false", "show_all_features": "true",
+            "permission_notice_dismissed": "quizá"}), encoding="utf-8")
+        prefs = settings.load()
+        self.assertFalse(prefs.fluid_charts)
+        self.assertTrue(prefs.show_all_features)
+        self.assertFalse(prefs.permission_notice_dismissed)
+
+    def test_un_idioma_que_no_existe_es_el_espanol(self):
+        settings.config_dir().mkdir(parents=True, exist_ok=True)
+        settings.config_path().write_text(json.dumps({"language": "klingon"}),
+                                          encoding="utf-8")
+        self.assertEqual(settings.load().language, "es")
+
     def test_claves_desconocidas_se_ignoran(self):
         settings.config_dir().mkdir(parents=True, exist_ok=True)
         settings.config_path().write_text(

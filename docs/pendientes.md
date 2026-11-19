@@ -206,9 +206,6 @@ con el que la cosa **nace**.
   arrancar el equipo con ese driver: falta un volcado con
   `amd_pstate=disable`.
 
-* `settings.py` · **media** · la ventana no arranca si `settings.json` es un
-  JSON válido que no sea un objeto: el error se cuela entre las dos redes que
-  ya hay. El CLI sí sigue funcionando, lo que despista.
 * `cli.py` · **baja** · `--sensors` enseña las categorías sin traducir
   (`cat.temperature`); el informe sí las traduce.
 * `cli.py` · **baja** · `--report -` no dice que ha omitido nada, y con archivo
@@ -228,8 +225,6 @@ con el que la cosa **nace**.
   pintan en ninguna página.
 * `db/lang/` · **baja** · cinco claves declaradas que ya no usa nadie;
   `gen_lang.py` las detecta y `--podar` las borra.
-* `settings.py` · **baja** · el idioma guardado no se valida; el resto de
-  preferencias sí se acotan.
 * `registro.py` · **baja** · la hora del CSV va sin fecha, y las cabeceras de
   columna se repiten cuando un aparato publica varias etiquetas iguales.
 
@@ -293,9 +288,6 @@ instalador, y F-M24 y F-M25 —los topes del protocolo del ayudante y el
   cuestan 22 MB de RSS (151 MB frente a 129 sin selección): cada una crea su
   `QTextDocument`. Quitar la selección arregla además que seleccionar copie el
   valor entero.
-* **F-M12 · `settings.py`** · además del JSON que no es objeto: un solo campo
-  de tipo erróneo tira al valor por defecto todas las preferencias, y
-  `"fluid_charts": "false"` se lee como `True`.
 * **F-M16 · `providers/spd_modules.py`** · `_merge` casa por referencia y, si
   no, «el primero pendiente» en una sola pasada: si la referencia del zócalo A
   no casa, A se lleva el SPD de B y B el de A, con su velocidad catalogada y su
