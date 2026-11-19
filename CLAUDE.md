@@ -36,6 +36,7 @@ python3 tools/comprobar_privacidad.py  # antes de publicar nada
 python3 tools/medir_consumo.py         # lo que gasta, contra sus objetivos (regla 7)
 python3 tools/build_appimage.py --container   # el AppImage que se reparte
 python3 tools/probar_en_minimo.py --container # la suite en el Python del suelo
+python3 tools/agitar_ventana.py --ventanas 6  # cierres de Qt con la ventana cambiando de forma
 uv sync --extra gui                    # el entorno de desarrollo: pytest y PySide6
 QT_QPA_PLATFORM=offscreen uv run pytest -n 4 -m "not a_solas"  # la suite, en paralelo (nunca más de 4)
 QT_QPA_PLATFORM=offscreen uv run pytest -m a_solas  # los tres que miden, solos
@@ -56,7 +57,9 @@ ejecuta.
 
 **El suelo es Python 3.10** y aquí se desarrolla en 3.14: que pase aquí no dice
 que pase en el mínimo, y lo que rompe el suelo no se ve leyendo el código. El
-CI lleva las dos puntas. **El AppImage se construye siempre con `--container`**:
+AppImage normal lleva 3.14 (python-build-standalone) y PySide6 6.12; el
+compat, el 3.10 de Ubuntu 22.04 y PySide6 6.9. El CI pasa la suite con esas
+dos parejas. **El AppImage se construye siempre con `--container`**:
 sin él se lleva la glibc y el juego de instrucciones de quien lo compila. Por
 qué, los dos techos de PySide6 y las dos guardas del procesador:
 [docs/empaquetado.md](docs/empaquetado.md).
@@ -295,7 +298,7 @@ código (F-…), que es por el que se buscan allí.
 
 | Dónde | Gravedad | Qué |
 |---|---|---|
-| `tests/`, `ui/app.py` | alta | en el CI con Python 3.10 (PySide6 6.11), `Segmentation fault` intermitente dentro de un `processEvents` de `test_nada_en_bruto`: tres CI de seis el 18; aquí no sale. Detalle en docs/en-curso.md |
+| Qt, `tests/` | media | PySide6 6.11 en Python 3.10/3.11 cierra la ventana al cambiar de forma (la 0.3 lo tiene; los AppImage nuevos y el `pyproject`, no). En los tests sale también, raro, con 3.14 + 6.12: un rojo así en el CI se relanza a mano. Falta la causa: docs/pendientes.md |
 | `ui/pages/board.py` | media, sin comprobar | la columna «Ranura» (SMBIOS tipo 9) no se ha visto con la tabla de ninguna placa |
 | `spd.py` | alta | el XMP de DDR4 ignora la corrección fina del ciclo: un DDR4-3600 sale 3200 (F-A2); pide un volcado real con XMP |
 | `privileged/instalar.py` | alta, condicionada | no comprueba que el destino no sea sustituible |
