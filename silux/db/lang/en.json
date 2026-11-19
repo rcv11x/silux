@@ -1046,6 +1046,7 @@
   "sensor.gpu.vrgfx": "Graphics regulator",
   "sensor.gpu.vrmem": "Memory regulator",
   "sensor.gpu.vrsoc": "SoC regulator",
+  "sensor.gpucore": "Core",
   "sensor.gtt": "Memory lent to the system",
   "sensor.hotspot": "Hotspot",
   "sensor.imc.read": "Memory read",

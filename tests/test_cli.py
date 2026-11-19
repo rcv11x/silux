@@ -152,5 +152,18 @@ class TestVigilarLosSensores(unittest.TestCase):
         self.assertIn(primera, texto)
 
 
+class TestElArbolDeSensoresEnLaTerminal(unittest.TestCase):
+    """`--sensors` decía «cat.temperature» y «Núcleo {n}» en la gráfica."""
+
+    def test_sin_claves_ni_huecos_sin_rellenar(self):
+        from silux import cli
+        from silux.collector import Collector
+        from tests.test_equipos import EQUIPOS, foto
+        for f in (foto(EQUIPOS / "5800x3d")[0], Collector().snapshot()):
+            texto = cli.sensors_text(f, cli.Style(enabled=False))
+            self.assertNotIn("cat.", texto)
+            self.assertNotIn("{", texto)
+
+
 if __name__ == "__main__":
     unittest.main()

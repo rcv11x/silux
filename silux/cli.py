@@ -263,7 +263,9 @@ def sensors_text(snapshot: Snapshot, style: Style) -> str:
     for device, categories in snapshot.sensor_tree().items():
         lineas.append(style.bold(device))
         for category, sensors in categories.items():
-            lineas.append(f"  {style.dim(category)}")
+            # La categoría es una clave («cat.temperature»): se traduce, como
+            # en la ventana y en el informe.
+            lineas.append(f"  {style.dim(_(category))}")
             for sensor in sensors:
                 digits = 3 if sensor.kind.value == "voltage" else 1
                 mark = style.warn(" ⚠") if sensor.alarm else ""

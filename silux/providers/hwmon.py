@@ -219,9 +219,9 @@ def _disk_name(entry: pathlib.Path) -> Optional[str]:
 # Las etiquetas que pone amdgpu son las del firmware. Dicen algo si uno sabe
 # qué es un «sclk», y nada si no.
 ETIQUETAS_GPU = {
-    "sclk": "sensor.core", "mclk": "sensor.mem", "fclk": "Fabric",
-    "socclk": "SoC", "vddgfx": "sensor.core", "vddnb": "Northbridge",
-    "vddc": "sensor.core", "edge": "sensor.edge",
+    "sclk": "sensor.gpucore", "mclk": "sensor.mem", "fclk": "Fabric",
+    "socclk": "SoC", "vddgfx": "sensor.gpucore", "vddnb": "Northbridge",
+    "vddc": "sensor.gpucore", "edge": "sensor.edge",
     "junction": "sensor.hotspot", "mem": "sensor.mem",
     "PPT": "sensor.package",
 }
