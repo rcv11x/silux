@@ -25,7 +25,7 @@ python3 -m silux.cli                    # volcado en terminal
 python3 -m silux.cli --json             # API para otros programas
 python3 -m silux.cli --sensors          # el árbol de sensores
 python3 -m silux.cli --report FICHERO   # el informe completo, de las páginas (--short, el corto)
-python3 tools/gen_cpu_db.py            # regenerar la base de datos de CPUs (del fork rcv11x/libcpuid)
+python3 tools/gen_cpu_db.py            # regenerar la base de datos de CPUs (fork rcv11x/libcpuid y kernel)
 python3 tools/gen_referencias_cpu.py --libcpuid DIR  # las 411 CPU de referencia de sus volcados
 python3 tools/gen_memory_limits.py --intel-desde DIR  # el máximo de memoria por modelo
 python3 tools/gen_lang.py --write      # poner al día los archivos de idioma
@@ -208,6 +208,9 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
   AppImage; `tests/test_avisos_de_terceros.py` lo compara con las fuentes que
   declara la tabla. Un procesador que no está en ella dice «no está en la
   tabla de esta versión»: no se inventa ni se pinta con guion.
+- Lo que libcpuid no tiene de Intel sale de `intel-family.h` del kernel, en
+  una etiqueta fija (`KERNEL_TAG` en `tools/gen_cpu_db.py`): una generación
+  nueva es subirla y regenerar.
 - La tabla se comprueba con 411 procesadores de verdad
   (`tests/test_referencias_cpu.py`); lo que hoy no sale como en libcpuid
   está en `tests/fixtures/referencias_cpu_pendientes.json`, que solo puede
@@ -220,7 +223,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); los comentarios, en el español del autor. Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-1388 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+1414 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
