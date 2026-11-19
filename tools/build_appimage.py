@@ -239,6 +239,8 @@ export QT_QPA_PLATFORM_PLUGIN_PATH="$AQUI/usr/lib/qt/plugins/platforms"
 # Con qué se arranca. La interfaz es lo normal, pero el volcado en terminal
 # tiene que estar a mano: «--report» es lo primero que se le pide a quien dice
 # que algo no le sale, y quien usa el AppImage no tiene otra forma de sacarlo.
+# Las opciones del CLI van también con su alias en español. `--help` es el de
+# la interfaz, que explica cómo usar la terminal y el informe.
 # `-m` mete el directorio desde el que se llama al principio de sys.path, así
 # que un `silux/` en la carpeta actual gana al que va dentro del paquete: el
 # AppImage ejecutaba código ajeno sin decir nada. Se ve lanzándolo desde una
@@ -251,7 +253,8 @@ runpy.run_module(sys.argv.pop(1), run_name="__main__", alter_sys=True)'
 
 case "${1:-}" in
     --cli) shift; exec "$AQUI/usr/bin/python3" -c "$ARRANQUE" silux.cli "$@" ;;
-    --report|--report=*|--json|--sensors|--watch|--db-info|--no-color|--with-identifiers|--version)
+    --report|--report=*|--json|--sensors|--watch|--db-info|--no-color|--with-identifiers|--version|\
+    --informe|--informe=*|--sensores|--vigilar|--base-de-datos|--sin-color|--con-identificadores)
         exec "$AQUI/usr/bin/python3" -c "$ARRANQUE" silux.cli "$@" ;;
 esac
 # %%GUARDA%%

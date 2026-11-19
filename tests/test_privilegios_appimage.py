@@ -141,7 +141,7 @@ class TestPuntoDeEntrada(unittest.TestCase):
         apprun = self._apprun()
         parser = cli.build_parser()
         propias = {a for accion in parser._actions for a in accion.option_strings
-                   if a.startswith("--") and a not in ("--help", "--version")}
+                   if a.startswith("--") and a not in ("--help", "--ayuda", "--version")}
         # En el `case` van separadas por barras, no por espacios.
         faltan = {b for b in propias if b not in apprun}
         self.assertFalse(faltan, f"el AppRun no reparte: {sorted(faltan)}")

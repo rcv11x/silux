@@ -18,6 +18,7 @@ from typing import Optional
 
 from . import __version__, build_id, db, render, report
 from .collector import Collector
+from .i18n import _
 from .model import Need, Snapshot, to_jsonable
 
 NEED_LABELS = {
@@ -275,31 +276,42 @@ def build_parser() -> argparse.ArgumentParser:
 
     Aparte para que se puedan enumerar sin ejecutar nada: el AppImage reparte
     entre la interfaz y esto según con qué se le llame, y hay un test que
-    comprueba contra esta lista que no se quede ninguna sin repartir.
+    comprueba contra esta lista que no se quede ninguna sin repartir. Los
+    alias en español tampoco.
+
+    Los textos salen del idioma de la interfaz: quien llama lo pone antes
+    (`main`, con las preferencias guardadas).
     """
-    parser = argparse.ArgumentParser(
-        prog="silux", description="Perfilador de hardware para Linux."
-    )
-    parser.add_argument("--json", action="store_true", help="salida en JSON para otros programas")
-    parser.add_argument("--sensors", action="store_true",
-                        help="solo el árbol de sensores, como hace HWMonitor")
-    parser.add_argument("--watch", nargs="?", type=float, const=1.0, metavar="SEGUNDOS",
-                        help="refresca de forma continua (por defecto cada segundo)")
-    parser.add_argument("--no-color", action="store_true", help="sin colores ANSI")
-    parser.add_argument("--report", nargs="?", const="-", metavar="ARCHIVO",
-                        help="informe en Markdown para pegar en un issue; "
-                             "sin archivo, lo escribe por pantalla")
-    parser.add_argument("--with-identifiers", action="store_true",
-                        help="incluye en el informe lo que identifica al equipo "
-                             "(nombre, IP, MAC, números de serie)")
-    parser.add_argument("--db-info", action="store_true", help="de dónde salió la base de datos")
-    parser.add_argument("--version", action="version",
+    from .options import Parser, epilog_for_cli, how_to_call
+
+    _ventana, terminal = how_to_call()
+    parser = Parser(prog=terminal, description=_("cli.description"),
+                    epilog=epilog_for_cli())
+    parser.add_argument("--report", nargs="?", const="-", metavar=_("cli.metavar.file"),
+                        help=_("cli.opt.report"))
+    parser.add_argument("--json", action="store_true", help=_("cli.opt.json"))
+    parser.add_argument("--sensors", action="store_true", help=_("cli.opt.sensors"))
+    parser.add_argument("--watch", nargs="?", type=float, const=1.0,
+                        metavar=_("cli.metavar.seconds"), help=_("cli.opt.watch"))
+    parser.add_argument("--no-color", action="store_true", help=_("cli.opt.nocolor"))
+    parser.add_argument("--with-identifiers", action="store_true", help=_("cli.opt.ids"))
+    parser.add_argument("--db-info", action="store_true", help=_("cli.opt.dbinfo"))
+    parser.add_argument("--version", action="version", help=_("cli.version"),
                         version=f"silux {__version__}"
                                 + (f" ({build_id()})" if build_id() else ""))
+    for espanol, ingles in (("--informe", "--report"), ("--sensores", "--sensors"),
+                            ("--vigilar", "--watch"), ("--sin-color", "--no-color"),
+                            ("--con-identificadores", "--with-identifiers"),
+                            ("--base-de-datos", "--db-info")):
+        parser.alias(espanol, de=ingles)
     return parser
 
 
 def main(argv: Optional[list[str]] = None) -> int:
+    # El idioma de la interfaz, el que se eligió en Ajustes: la ayuda y el
+    # informe salen en ese.
+    from . import i18n, settings
+    i18n.set_language(settings.load().language)
     parser = build_parser()
     args = parser.parse_args(argv)
 

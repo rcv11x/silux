@@ -1260,26 +1260,45 @@ def _callar_el_portal() -> None:
     qInstallMessageHandler(filtro)
 
 
-def build_app(argv: Optional[list[str]] = None) -> tuple[QApplication, MainWindow, argparse.Namespace]:
-    parser = argparse.ArgumentParser(prog="silux-gui", description="Perfilador de hardware.")
-    parser.add_argument("--interval", type=float, metavar="SEGUNDOS",
-                        help="anula el intervalo guardado solo para esta ejecución")
-    parser.add_argument("--dark", action="store_true", help="fuerza el tema oscuro")
-    parser.add_argument("--light", action="store_true", help="fuerza el tema claro")
-    parser.add_argument("--compact", action="store_true", help="fuerza la densidad compacta")
-    parser.add_argument("--font-scale", metavar="TAMAÑO", choices=("normal", "grande", "mayor", "máximo"),
-                        help="fuerza el tamaño de letra solo para esta ejecución")
-    parser.add_argument("--size", metavar="ANCHOxALTO", help="tamaño de ventana, p. ej. 820x620")
-    parser.add_argument("--anonimo", action="store_true",
-                        help="oculta lo que identifica al equipo: nombre, "
-                             "direcciones y números de serie")
-    parser.add_argument("--screenshot", metavar="RUTA",
-                        help="captura la ventana en un PNG y sale (útil sin pantalla)")
+def build_parser():
+    """Las opciones de la ventana, en inglés y con su alias en español.
+
+    Aparte de `build_app` para poder leerlas sin crear la aplicación. Los
+    textos salen del idioma que haya puesto quien llama.
+    """
+    from ..options import Parser, epilog_for_terminal, how_to_call
+
+    ventana, _terminal = how_to_call()
+    parser = Parser(prog=ventana, description=_("gui.description"),
+                    epilog=epilog_for_terminal())
+    parser.add_argument("--interval", type=float, metavar=_("cli.metavar.seconds"),
+                        help=_("gui.opt.interval"))
+    parser.add_argument("--dark", action="store_true", help=_("gui.opt.dark"))
+    parser.add_argument("--light", action="store_true", help=_("gui.opt.light"))
+    parser.add_argument("--compact", action="store_true", help=_("gui.opt.compact"))
+    parser.add_argument("--font-scale", metavar=_("gui.metavar.size"),
+                        choices=(*TAMANOS_DE_LETRA, *TAMANOS_DE_LETRA.values()),
+                        help=_("gui.opt.fontscale"))
+    parser.add_argument("--size", metavar=_("gui.metavar.window"), help=_("gui.opt.size"))
+    parser.add_argument("--anonymous", action="store_true", help=_("gui.opt.anonymous"))
+    parser.add_argument("--screenshot", metavar=_("cli.metavar.file"),
+                        help=_("gui.opt.screenshot"))
     parser.add_argument("--samples", type=int, metavar="N", default=MUESTRAS_DE_CAPTURA,
-                        help="cuántas muestras tomar antes de la captura; con "
-                             "--interval, separadas ese tiempo (65 a 1 s: un "
-                             "minuto de gráficas)")
-    parser.add_argument("--page", metavar="NOMBRE", help="sección a mostrar al abrir")
+                        help=_("gui.opt.samples"))
+    parser.add_argument("--page", metavar=_("gui.metavar.page"), help=_("gui.opt.page"))
+    for espanol, ingles in (("--intervalo", "--interval"), ("--oscuro", "--dark"),
+                            ("--claro", "--light"), ("--compacto", "--compact"),
+                            ("--letra", "--font-scale"), ("--tamano", "--size"),
+                            ("--anonimo", "--anonymous"), ("--captura", "--screenshot"),
+                            ("--muestras", "--samples"), ("--pagina", "--page")):
+        parser.alias(espanol, de=ingles)
+    return parser
+
+
+def build_app(argv: Optional[list[str]] = None) -> tuple[QApplication, MainWindow, argparse.Namespace]:
+    # El idioma antes de las opciones: la ayuda sale en el de la interfaz.
+    i18n.set_language(prefs_module.load().language)
+    parser = build_parser()
     args = parser.parse_args(argv)
 
     from dataclasses import replace
@@ -1294,7 +1313,8 @@ def build_app(argv: Optional[list[str]] = None) -> tuple[QApplication, MainWindo
     if args.compact:
         prefs = replace(prefs, density="compact")
     if args.font_scale:
-        prefs = replace(prefs, font_scale=args.font_scale)
+        prefs = replace(prefs, font_scale=TAMANOS_DE_LETRA.get(args.font_scale,
+                                                              args.font_scale))
     if args.size and "x" in args.size:
         width, _sep, height = args.size.partition("x")
         if width.isdigit() and height.isdigit():
@@ -1335,6 +1355,11 @@ def build_app(argv: Optional[list[str]] = None) -> tuple[QApplication, MainWindo
 # Cuántas muestras se toman antes de una captura si no se dice otra cosa.
 MUESTRAS_DE_CAPTURA = 10
 
+# Los tamaños de letra de `--font-scale`, en inglés como las opciones, y el
+# valor que guardan las preferencias. Los de las preferencias valen también.
+TAMANOS_DE_LETRA = {"normal": "normal", "large": "grande", "larger": "mayor",
+                    "largest": "máximo"}
+
 
 def _anonimizador(activo: bool):
     """Lo que se le hace a cada foto antes de pintarla, si se pidió.
@@ -1370,7 +1395,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         window.show()
         collector = Collector()
         collector.snapshot()
-        preparar = _anonimizador(args.anonimo)
+        preparar = _anonimizador(args.anonymous)
         # Las justas para que haya cifras derivadas, o las que se pidan: con
         # diez seguidas las gráficas de las fichas salen en una esquina, que
         # está bien para ver una página y mal para enseñar cómo queda.
@@ -1396,7 +1421,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         # UTF-8 no lo encuentra; en ASCII no hay dos formas de escribirlo.
         imagen = window.grab().toImage()
         imagen.setText("silux-anonimo",
-                       "anonima" if args.anonimo else "identificable")
+                       "anonima" if args.anonymous else "identificable")
         imagen.save(args.screenshot)
         print(f"captura guardada en {args.screenshot}")
         return 0
