@@ -13,7 +13,11 @@ código y recompilar.
 
 Fuentes y licencias:
   · libcpuid  ( BSD 2 cláusulas ) https://github.com/anrieff/libcpuid
-  · CPU-X     ( GPL-3.0         ) https://github.com/TheTumultuousUnicornOfDarkness/CPU-X
+  · CPU-X     ( GPL-3.0 o posterior ) https://github.com/TheTumultuousUnicornOfDarkness/CPU-X
+
+Sus avisos van en `silux/db/THIRD_PARTY_NOTICES.md`, en el paquete y dentro
+de cada AppImage. Una fuente nueva necesita el suyo ahí:
+`tests/test_avisos_de_terceros.py` lo compara con `sources` de la tabla.
 """
 
 from __future__ import annotations

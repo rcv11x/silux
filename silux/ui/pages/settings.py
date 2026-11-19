@@ -17,19 +17,22 @@ alguien instala la entrada desde la terminal con la página abierta, se ve.
 
 from __future__ import annotations
 
+import pathlib
 from typing import Callable, Optional
 
 from PySide6.QtCore import QLocale, QRectF, QSize, Qt, QThread, Signal
-from PySide6.QtGui import QFontMetrics, QPainter
+from PySide6.QtGui import QColor, QFontMetrics, QPainter, QTextCursor, QTextDocument
 from PySide6.QtWidgets import (
     QAbstractButton,
     QComboBox,
+    QDialog,
     QDoubleSpinBox,
     QHBoxLayout,
     QLabel,
     QPushButton,
     QScrollArea,
     QSizePolicy,
+    QTextBrowser,
     QVBoxLayout,
     QWidget,
 )
@@ -58,6 +61,61 @@ DATOS_DE_TERCEROS = (
     ("CPU-X", "about.cpux"),
     ("hwdata", "about.hwdata"),
 )
+
+AVISOS = pathlib.Path(db.__file__).parent / "THIRD_PARTY_NOTICES.md"
+
+
+def _colorear_enlaces(documento: QTextDocument, color: str) -> None:
+    """Los enlaces, del color del acento.
+
+    El azul de serie no se lee sobre el fondo oscuro. Con Markdown, Qt fija
+    el color de cada enlace al importar el texto, y ni la paleta del widget
+    ni una hoja de estilo del documento lo cambian después: hay que tocar
+    cada fragmento.
+    """
+    bloque = documento.begin()
+    while bloque.isValid():
+        trozo = bloque.begin()
+        while not trozo.atEnd():
+            fragmento = trozo.fragment()
+            formato = fragmento.charFormat()
+            if formato.isAnchor():
+                cursor = QTextCursor(documento)
+                cursor.setPosition(fragmento.position())
+                cursor.setPosition(fragmento.position() + fragmento.length(),
+                                   QTextCursor.MoveMode.KeepAnchor)
+                formato.setForeground(QColor(color))
+                cursor.setCharFormat(formato)
+            trozo += 1
+        bloque = bloque.next()
+
+
+class _DialogoDeAvisos(QDialog):
+    """Los avisos de licencia de lo que Silux lleva de otros, enteros."""
+
+    def __init__(self, palette: Palette, parent: Optional[QWidget] = None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle(_("about.notices.button"))
+        m = theme.METRICS
+        capa = QVBoxLayout(self)
+        capa.setContentsMargins(m.page_margin, m.page_margin, m.page_margin, m.page_margin)
+        capa.setSpacing(m.card_gap)
+        self.texto = QTextBrowser()
+        self.texto.setOpenExternalLinks(True)
+        try:
+            self.texto.setMarkdown(AVISOS.read_text(encoding="utf-8"))
+            _colorear_enlaces(self.texto.document(), palette.accent)
+        except OSError:
+            self.texto.setPlainText(_("about.notices.missing"))
+        capa.addWidget(self.texto)
+        cerrar = QPushButton(_("perm.explain.close"))
+        cerrar.clicked.connect(self.close)
+        abajo = QHBoxLayout()
+        abajo.addStretch(1)
+        abajo.addWidget(cerrar)
+        capa.addLayout(abajo)
+        self.resize(760, 640)
+
 
 THEMES = (("opt.theme.system", "system"), ("opt.theme.light", "light"), ("opt.theme.dark", "dark"))
 UNITS = (("opt.temp.celsius", "c"), ("opt.temp.fahrenheit", "f"))
@@ -495,6 +553,18 @@ class SettingsPage(QScrollArea):
         self.db_info.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         card.body.addWidget(self.db_info)
 
+        # Los avisos enteros, como piden las licencias de lo que va dentro: en
+        # un AppImage el archivo está en un montaje temporal, así que una ruta
+        # no le sirve a nadie.
+        self.notices_button = QPushButton(_("about.notices.button"))
+        self.notices_button.setObjectName("GhostButton")
+        self.notices_button.clicked.connect(self._ver_avisos)
+        self._dialogo_avisos: Optional[_DialogoDeAvisos] = None
+        avisos = QHBoxLayout()
+        avisos.addWidget(self.notices_button)
+        avisos.addStretch(1)
+        card.body.addLayout(avisos)
+
         path = QLabel(_("settings.savedat").format(ruta=config_path()))
         path.setObjectName("Muted")
         path.setWordWrap(True)
@@ -510,6 +580,12 @@ class SettingsPage(QScrollArea):
         abajo.addWidget(reset)
         card.body.addLayout(abajo)
         return card
+
+    def _ver_avisos(self) -> None:
+        if self._dialogo_avisos is None:
+            self._dialogo_avisos = _DialogoDeAvisos(self._p, self)
+        self._dialogo_avisos.show()
+        self._dialogo_avisos.raise_()
 
     @staticmethod
     def _texto_de_la_base() -> str:

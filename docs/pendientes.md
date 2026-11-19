@@ -24,15 +24,6 @@ sin los pasos para reproducirlo: este archivo es público.
   (555 ps) sale «XMP 1 3200». Las posiciones de los perfiles son las de XMP
   1.x de DDR3, y el perfil 2 de DDR4 caería dentro del primero. No hay ningún
   volcado con XMP en `tests/fixtures`: no se escribe sin uno real delante.
-* **Los avisos de autoría de libcpuid y CPU-X** · alta · `silux/db/cpu_ids.json`
-  sale de las tablas de libcpuid (BSD-2: nombres en clave, nodos, patrones de
-  marca y las piezas ARM) y de la de encapsulados de CPU-X (GPL-3.0 o
-  posterior). BSD-2 pide conservar su copyright, sus condiciones y su renuncia
-  de garantía con el código y reproducirlos en la documentación del binario;
-  hoy solo se los nombra (Ajustes, `--db-info`, `tools/gen_cpu_db.py`). Falta
-  también la línea de copyright de CPU-X, y el AppImage no lleva ni el
-  `LICENSE` de Silux. Arreglo: los avisos completos en un archivo, copiado al
-  AppImage y enlazado desde Ajustes.
 * **`privileged/instalar.py`** · alta, condicionada · escribe el ayudante y
   su regla de polkit sin comprobar que el destino no sea sustituible. No es
   explotable con `/usr/local` en su estado normal.

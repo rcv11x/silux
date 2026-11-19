@@ -68,4 +68,4 @@ Silux se escribe con ayuda de Claude, el asistente de IA de Anthropic.
 
 ## Licencia
 
-GPL-3.0 o posterior: [LICENSE](LICENSE).
+GPL-3.0 o posterior: [LICENSE](LICENSE). La tabla de procesadores lleva datos de libcpuid y CPU-X; sus avisos, en [THIRD_PARTY_NOTICES.md](silux/db/THIRD_PARTY_NOTICES.md).

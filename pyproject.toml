@@ -12,7 +12,7 @@ description = "Perfilador de hardware para Linux con interfaz Qt"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "GPL-3.0-or-later"
-license-files = ["LICENSE"]
+license-files = ["LICENSE", "silux/db/THIRD_PARTY_NOTICES.md"]
 authors = [{ name = "rcv11x" }]
 keywords = ["hardware", "sensores", "cpu", "gpu", "monitorización", "linux"]
 classifiers = [
@@ -66,7 +66,7 @@ include = ["silux*"]
 exclude = ["tests*", "tools*", "docs*", "dist*", "build*"]
 
 [tool.setuptools.package-data]
-"silux.db" = ["*.json"]
+"silux.db" = ["*.json", "*.md"]
 # Carpeta a carpeta: la regla de `silux.db` no alcanza a la de dentro.
 "silux.db.lang" = ["*.json"]
 "silux.ui.assets" = ["*.svg"]

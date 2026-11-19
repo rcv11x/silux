@@ -439,6 +439,10 @@ publica se dice con la versión que lo trae.
 - Cambiado: los dos AppImage dejan fuera el plugin de Qt para servir la
   ventana por VNC, que se llevaba dentro una pieza de glibc (`libresolv`).
   Pesan 1,4 MB menos.
+- Arreglado: los AppImage y el paquete llevan la licencia de Silux y los
+  avisos de libcpuid y CPU-X, de donde sale la tabla de procesadores, como
+  piden sus licencias. En Ajustes, «Acerca de» dice qué datos son de cada uno
+  y el botón «Avisos de licencia» los enseña enteros.
 - Arreglado: el AppImage salía sin los iconos de la barra lateral ni la
   marca.
 - Arreglado: fuera del AppImage, instalado con pip, el programa salía sin sus

@@ -667,6 +667,15 @@ def copiar_silux() -> None:
     destino = APPDIR / "usr" / "lib" / "python" / "silux"
     shutil.copytree(ROOT / "silux", destino,
                     ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+    # La GPL pide que el binario vaya con su licencia, y la BSD-2 de libcpuid
+    # que su aviso vaya en lo que acompaña al binario. Los avisos ya van
+    # dentro del paquete, junto a la tabla, que es de donde los lee «Acerca
+    # de»; aquí, además, donde se buscan en cualquier sistema.
+    doc = APPDIR / "usr" / "share" / "doc" / APP_ID
+    doc.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(ROOT / "LICENSE", doc / "LICENSE")
+    shutil.copy2(ROOT / "silux" / "db" / "THIRD_PARTY_NOTICES.md",
+                 doc / "THIRD_PARTY_NOTICES.md")
 
 
 def qt_propio() -> list[pathlib.Path]:
