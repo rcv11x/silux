@@ -115,5 +115,42 @@ class TestElInformePidePermisosAlEmpezar(unittest.TestCase):
         self._lanzar("--short").request_elevation.assert_not_called()
 
 
+class TestVigilarLosSensores(unittest.TestCase):
+    """`--sensors --watch` repite el árbol de sensores, no el volcado entero:
+    es el ejemplo que da la ayuda («los sensores, cada segundo»)."""
+
+    class _Basta(Exception):
+        """Corta el bucle tras una vuelta. No `KeyboardInterrupt`: pytest
+        lo toma como que se ha interrumpido la suite entera."""
+
+    def _una_vuelta(self, *argumentos):
+        import contextlib
+        import io
+        from unittest import mock
+        from silux import cli
+        salida = io.StringIO()
+        with mock.patch.object(cli.time, "sleep", side_effect=self._Basta), \
+             contextlib.redirect_stdout(salida), self.assertRaises(self._Basta):
+            cli.main([*argumentos, "--watch", "1", "--no-color"])
+        return salida.getvalue()
+
+    def test_con_sensors_solo_los_sensores(self):
+        from silux import cli
+        from silux.collector import Collector
+        texto = self._una_vuelta("--sensors")
+        foto = Collector().snapshot()
+        volcado = cli.dump(foto, cli.Style(enabled=False))
+        primera_del_volcado = volcado.strip().splitlines()[0]
+        self.assertNotIn(primera_del_volcado, texto)
+
+    def test_sin_sensors_el_volcado(self):
+        from silux import cli
+        from silux.collector import Collector
+        texto = self._una_vuelta()
+        foto = Collector().snapshot()
+        primera = cli.dump(foto, cli.Style(enabled=False)).strip().splitlines()[0]
+        self.assertIn(primera, texto)
+
+
 if __name__ == "__main__":
     unittest.main()

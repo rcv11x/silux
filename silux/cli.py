@@ -257,12 +257,31 @@ def dump(snapshot: Snapshot, style: Style) -> str:
     return "\n".join(lines)
 
 
-def watch(collector: Collector, style: Style, interval: float) -> int:
+def sensors_text(snapshot: Snapshot, style: Style) -> str:
+    """El árbol de sensores, como lo enseña `--sensors`."""
+    lineas = []
+    for device, categories in snapshot.sensor_tree().items():
+        lineas.append(style.bold(device))
+        for category, sensors in categories.items():
+            lineas.append(f"  {style.dim(category)}")
+            for sensor in sensors:
+                digits = 3 if sensor.kind.value == "voltage" else 1
+                mark = style.warn(" ⚠") if sensor.alarm else ""
+                lineas.append(f"    {sensor.label:<24} "
+                              f"{sensor.value:>10.{digits}f} {sensor.unit}{mark}")
+    return "\n".join(lineas)
+
+
+def watch(collector: Collector, style: Style, interval: float,
+          solo_sensores: bool = False) -> int:
+    """Lo repite cada `interval` segundos. Con `--sensors`, solo el árbol de
+    sensores: la ayuda lo pone de ejemplo («los sensores, cada segundo») y
+    salía el volcado entero."""
     print("\033[?25l", end="")            # oculta el cursor
     try:
         while True:
             snapshot = collector.snapshot()
-            body = dump(snapshot, style)
+            body = sensors_text(snapshot, style) if solo_sensores else dump(snapshot, style)
             print("\033[H\033[J" + body, flush=True)
             time.sleep(interval)
     except KeyboardInterrupt:
@@ -375,7 +394,7 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     if args.watch is not None:
         collector.snapshot()
-        return watch(collector, style, max(0.1, args.watch))
+        return watch(collector, style, max(0.1, args.watch), solo_sensores=args.sensors)
 
     if args.report and not args.short and not args.without_permissions:
         # El informe es para entender un fallo, y lo que solo ve el
@@ -388,15 +407,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     snapshot = collector.sample()
 
     if args.sensors:
-        for device, categories in snapshot.sensor_tree().items():
-            print(style.bold(device))
-            for category, sensors in categories.items():
-                print(f"  {style.dim(category)}")
-                for sensor in sensors:
-                    digits = 3 if sensor.kind.value == "voltage" else 1
-                    mark = style.warn(" ⚠") if sensor.alarm else ""
-                    print(f"    {sensor.label:<24} "
-                          f"{sensor.value:>10.{digits}f} {sensor.unit}{mark}")
+        print(sensors_text(snapshot, style))
         return 0
 
     if args.report:
