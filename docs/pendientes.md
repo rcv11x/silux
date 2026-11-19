@@ -321,9 +321,6 @@ instalador, y F-M24 y F-M25 —los topes del protocolo del ayudante y el
   lateral por el que el kernel cerró `energy_uj`. La lista blanca de MSR tiene
   además nueve registros que no se usan. **Va como propuesta antes que
   código.**
-* **F-M30 · `tools/comprobar_privacidad.py`** · además de ser ciego a IPv6 y
-  seriales: usa rutas relativas al directorio actual, y lanzado desde otro
-  sitio da su visto bueno sin haber mirado nada.
 * **F-M31 · `report.py`** · los zócalos vacíos salen como módulos
   («DIMM_A1: 0 B   MT/s») y en una integrada «Memoria: — — · — · —».
 * **F-M32 · `cli.py`** · el valor de un sensor se formatea de tres maneras
