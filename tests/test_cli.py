@@ -84,5 +84,36 @@ class TestLaAyudaDeLaVentana(unittest.TestCase):
         self.assertEqual(ingles.page, espanol.page)
 
 
+class TestElInformePidePermisosAlEmpezar(unittest.TestCase):
+    """`--report` pide los permisos antes de leer: lo que solo ve el
+    administrador (la memoria, la salud de los discos) es a menudo lo que
+    hace falta para entender un fallo."""
+
+    def _lanzar(self, *argumentos):
+        import contextlib
+        import io
+        import tempfile
+        from unittest import mock
+        from silux import cli
+        recolector = mock.MagicMock()
+        with tempfile.TemporaryDirectory() as carpeta, \
+             mock.patch.object(cli, "Collector", return_value=recolector), \
+             mock.patch.object(cli.report, "build", return_value="informe\n"), \
+             mock.patch.object(cli, "qt_can_start", return_value=False), \
+             mock.patch("silux.privileged.client.already_root", return_value=False), \
+             contextlib.redirect_stdout(io.StringIO()), \
+             contextlib.redirect_stderr(io.StringIO()):
+            cli.main(["--report", f"{carpeta}/informe.md", *argumentos])
+        return recolector
+
+    def test_los_pide(self):
+        self._lanzar().request_elevation.assert_called_once()
+
+    def test_no_los_pide_si_se_dice(self):
+        self._lanzar("--without-permissions").request_elevation.assert_not_called()
+        self._lanzar("--sin-permisos").request_elevation.assert_not_called()
+        self._lanzar("--short").request_elevation.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()

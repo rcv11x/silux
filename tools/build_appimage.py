@@ -254,7 +254,9 @@ runpy.run_module(sys.argv.pop(1), run_name="__main__", alter_sys=True)'
 case "${1:-}" in
     --cli) shift; exec "$AQUI/usr/bin/python3" -c "$ARRANQUE" silux.cli "$@" ;;
     --report|--report=*|--json|--sensors|--watch|--db-info|--no-color|--with-identifiers|--version|\
-    --informe|--informe=*|--sensores|--vigilar|--base-de-datos|--sin-color|--con-identificadores)
+    --short|--sections|--sections=*|--without-permissions|\
+    --informe|--informe=*|--sensores|--vigilar|--base-de-datos|--sin-color|--con-identificadores|\
+    --corto|--secciones|--secciones=*|--sin-permisos)
         exec "$AQUI/usr/bin/python3" -c "$ARRANQUE" silux.cli "$@" ;;
 esac
 # %%GUARDA%%

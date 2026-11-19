@@ -271,6 +271,37 @@ def watch(collector: Collector, style: Style, interval: float) -> int:
         print("\033[?25h", end="")        # y lo devuelve
 
 
+def _secciones() -> list[str]:
+    """Las secciones que se pueden pedir en el informe completo. Escritas
+    aquí y no importadas de la interfaz: la ayuda sale sin Qt."""
+    return ["home", "cpu", "caches", "board", "memory", "graphics", "storage",
+            "network", "devices", "battery", "system", "benchmark", "sensors"]
+
+
+def qt_can_start() -> bool:
+    """Si Qt puede arrancar aquí, para el informe completo, que monta la
+    ventana sin pantalla.
+
+    En un procesador sin x86-64-v2, Qt 6.10 o posterior revienta con
+    «Instrucción ilegal» al cargarse, sin dejar decir nada. Dentro del
+    AppImage la guarda de Python no sabe qué PySide6 lleva (va copiado, no
+    instalado), así que se mira la marca de la copia: el `-compat` lleva un
+    Qt que arranca en cualquier x86-64.
+    """
+    import importlib.util
+
+    if importlib.util.find_spec("PySide6") is None:
+        return False
+    from .ui import guarda
+
+    if not guarda.banderas_que_faltan():
+        return True
+    if (build_id() or "").endswith("-compat"):
+        return True
+    version = guarda.version_de_pyside()
+    return version is not None and version < (6, 10)
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Las opciones del volcado en terminal.
 
@@ -289,6 +320,12 @@ def build_parser() -> argparse.ArgumentParser:
                     epilog=epilog_for_cli())
     parser.add_argument("--report", nargs="?", const="-", metavar=_("cli.metavar.file"),
                         help=_("cli.opt.report"))
+    parser.add_argument("--short", action="store_true", help=_("cli.opt.short"))
+    parser.add_argument("--sections", metavar=_("cli.metavar.sections"),
+                        help=_("cli.opt.sections").format(
+                            lista=", ".join(_secciones())))
+    parser.add_argument("--without-permissions", action="store_true",
+                        help=_("cli.opt.withoutperms"))
     parser.add_argument("--json", action="store_true", help=_("cli.opt.json"))
     parser.add_argument("--sensors", action="store_true", help=_("cli.opt.sensors"))
     parser.add_argument("--watch", nargs="?", type=float, const=1.0,
@@ -302,9 +339,17 @@ def build_parser() -> argparse.ArgumentParser:
     for espanol, ingles in (("--informe", "--report"), ("--sensores", "--sensors"),
                             ("--vigilar", "--watch"), ("--sin-color", "--no-color"),
                             ("--con-identificadores", "--with-identifiers"),
-                            ("--base-de-datos", "--db-info")):
+                            ("--base-de-datos", "--db-info"), ("--corto", "--short"),
+                            ("--secciones", "--sections"),
+                            ("--sin-permisos", "--without-permissions")):
         parser.alias(espanol, de=ingles)
     return parser
+
+
+def _lista(texto: Optional[str]) -> Optional[list[str]]:
+    if not texto:
+        return None
+    return [s.strip() for s in texto.split(",") if s.strip()]
 
 
 def main(argv: Optional[list[str]] = None) -> int:
@@ -332,6 +377,14 @@ def main(argv: Optional[list[str]] = None) -> int:
         collector.snapshot()
         return watch(collector, style, max(0.1, args.watch))
 
+    if args.report and not args.short and not args.without_permissions:
+        # El informe es para entender un fallo, y lo que solo ve el
+        # administrador (la memoria, la salud de los discos) es a menudo lo
+        # que hace falta. Se piden al empezar, como en la ventana.
+        from .privileged.client import already_root
+        if not already_root():
+            print(_("cli.report.asking"), file=sys.stderr)
+            collector.request_elevation()
     snapshot = collector.sample()
 
     if args.sensors:
@@ -347,7 +400,15 @@ def main(argv: Optional[list[str]] = None) -> int:
         return 0
 
     if args.report:
-        texto = report.build(snapshot, anonymous=not args.with_identifiers)
+        completo = not args.short and qt_can_start()
+        if not args.short and not completo:
+            print(_("cli.report.noqt"), file=sys.stderr)
+        if completo:
+            from .ui import full_report
+            texto = full_report.build(snapshot, sections=_lista(args.sections),
+                                      anonymous=not args.with_identifiers)
+        else:
+            texto = report.build(snapshot, anonymous=not args.with_identifiers)
         if args.report == "-":
             sys.stdout.write(texto)
         else:
