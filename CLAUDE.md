@@ -220,7 +220,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 ## Convenciones
 
 **Idioma.** La interfaz va en **español neutro** (`video`, `archivo`,
-`dispositivo`, `equipo`); los comentarios, en el español del autor. Las claves
+`dispositivo`, `equipo`); el código nuevo, en inglés (ver «Código»). Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
 1414 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
@@ -232,13 +232,21 @@ clave. La interfaz está entera en los dos idiomas:
   tal cual. A `_()` solo llega un literal o una variable de una tabla del
   mismo archivo.
 
-**Nombres.** La API —módulos, clases, métodos públicos, campos del modelo,
-claves del JSON y banderas del CLI— en inglés; lo interno que nombra algo del
-dominio del programa, en español. Nunca las dos en el mismo identificador ni
-en la misma familia. Se aplica a lo nuevo y al tocar cada archivo.
+**Código (desde el 20 de noviembre de 2026).** Todo lo nuevo, en inglés y con
+el estilo de PEP 8: `snake_case` para funciones, métodos, variables,
+parámetros, atributos, módulos y tests; `CamelCase` solo para clases;
+constantes en `MAYÚSCULAS`. También dentro de un módulo que siga en español,
+y nunca las dos lenguas en el mismo nombre.
 
-**Comentarios.** Explican por qué el código es así ahora. «Antes…», «se
-probó…» o «costó…» van al mensaje del commit o a las lecciones de las notas.
+Los comentarios y docstrings nuevos, en inglés, cortos y útiles: dicen por
+qué el código es así, no repiten lo que ya se lee en él, y nada de relleno.
+«Antes…», «se probó…» o «costó…» van al mensaje del commit o a las lecciones
+de las notas.
+
+Lo que ya existe no se renombra al pasar: va en el proyecto de después de la
+0.4 (`docs/pendientes.md`), módulo a módulo y con los tests como red. Siguen
+en español los textos de la interfaz (`silux/db/lang/`, el original) y los
+mensajes de commit.
 
 **Tests.**
 - Una comprobación que nadie ha visto fallar no es una comprobación: todo test
