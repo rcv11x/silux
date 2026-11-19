@@ -109,6 +109,9 @@ sin los pasos para reproducirlo: este archivo es público.
   heredada», «UEFI (64 bits)», «Gráfica N».
 * **F-M9 · `ui/widgets.py`** · media · las etiquetas seleccionables con el
   ratón cuestan 22 MB: cada una crea su `QTextDocument`.
+* `ui/pages/memory.py` · baja · «Banco: P0 CHANNEL A» sale en bruto del
+  firmware (el «Bank Locator» de SMBIOS). Al lado de «Zócalo», que ya dice
+  «Canal A · DIMM 1», no aporta nada: o se lee mejor, o no sale.
 * `ui/widgets.py` · media-baja · un `float` no finito en una gráfica lanza
   una excepción en cada repintado y deja el `QPainter` abierto.
 * `ui/widgets.py`, `ui/pages/storage.py` · media-baja · la temperatura de un
@@ -212,6 +215,24 @@ De la quinta auditoría, sin comprobar uno a uno si siguen igual:
   `argtypes`; `history.save` con un `.tmp` fijo y sin cerrojo.
 
 ## Propuestas sin aplicar
+
+* **El código, en inglés (después de la 0.4).** Los nombres de funciones,
+  variables, parámetros, atributos y clases, y los comentarios y docstrings,
+  pasan a inglés en un proyecto propio, módulo a módulo y con los tests como
+  red: un módulo por commit, sin cambiar nada de lo que hace. Cómo está el 19
+  de noviembre de 2026, contado con los propios archivos de idioma como
+  vocabulario (`es.json` frente a `en.json`); lo «neutro» son siglas y
+  palabras que valen en los dos:
+
+  | | Nombres | En español | En inglés | Mezclados | Neutros | Comentarios y docstrings en español |
+  |---|---|---|---|---|---|---|
+  | `silux/` | 7918 | 29 % | 35 % | 1 % | 35 % | 99 % de 4648 |
+  | `tests/` (sin el `test_` de unittest) | 7659 | 66 % | 6 % | 1 % | 27 % | 96 % de 2192 |
+  | `tools/` | 960 | 46 % | 6 % | 0 % | 48 % | 98 % de 487 |
+
+  En `silux/`, las clases van sobre todo en inglés (67 %) y las variables,
+  mitad y mitad. Los textos de la interfaz no se tocan: viven en
+  `silux/db/lang/` y el original sigue siendo el español.
 
 * **Identificar procesadores sin depender de nadie.** Hoy el nombre en clave,
   el nodo y el encapsulado salen de una tabla generada una vez (26 de agosto
