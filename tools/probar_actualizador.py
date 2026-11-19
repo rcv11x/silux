@@ -5,7 +5,7 @@
 
 VIEJO es el AppImage que se actualiza (uno con el actualizador: el de
 `build_appimage.py --container` o el del CI); NUEVO, cualquier otro AppImage
-de silux, que se publica como una v0.4.1 de mentira. Hace falta mitmproxy
+de silux, que se publica como una v0.4.0 de mentira. Hace falta mitmproxy
 (`uv tool install mitmproxy`), que hace de GitHub (`actualizador/github_falso.py`):
 contesta la lista de releases, el SHA256SUMS y la descarga, la pasa por una
 redirección a objects.githubusercontent.com como GitHub, y corta con un 403
@@ -127,7 +127,7 @@ def main(argv=None) -> int:
     subprocess.run([str(args.viejo.resolve()), "--appimage-extract"], cwd=trabajo,
                    capture_output=True)
     raiz = trabajo / "squashfs-root"
-    print(f"viejo: {version(args.viejo)}   nuevo (como v0.4.1): {version(args.nuevo)}")
+    print(f"viejo: {version(args.viejo)}   nuevo (como v0.4.0): {version(args.nuevo)}")
     fallos = 0
     for nombre in args.casos.split(","):
         bien, detalle = caso(nombre, args.viejo.resolve(), args.nuevo.resolve(), raiz, confdir)
