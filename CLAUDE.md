@@ -22,7 +22,7 @@ python3 -m silux.ui.app                 # interfaz
 python3 -m silux.cli                    # volcado en terminal
 python3 -m silux.cli --json             # API para otros programas
 python3 -m silux.cli --sensors          # el árbol de sensores
-python3 -m silux.cli --report FICHERO   # informe para adjuntar a un fallo
+python3 -m silux.cli --report FICHERO   # el informe completo, de las páginas (--short, el corto)
 python3 tools/gen_cpu_db.py            # regenerar la base de datos de CPUs
 python3 tools/gen_memory_limits.py --intel-desde DIR  # el máximo de memoria por modelo
 python3 tools/gen_lang.py --write      # poner al día los archivos de idioma
@@ -87,7 +87,7 @@ QT_QPA_PLATFORM=offscreen python3 -m silux.ui.app \
 Una sección que este equipo no tiene —Batería en un sobremesa— sale con código
 2 en vez de guardar otra página.
 
-Acepta además `--font-scale`, `--anonimo` y `--samples N` (con
+Acepta además `--font-scale`, `--anonymous` y `--samples N` (con
 `--interval 1`, `--samples 65` captura tras un minuto de gráficas).
 
 ## Las reglas que sostienen el diseño
@@ -322,7 +322,6 @@ código (F-…), que es por el que se buscan allí.
 | `smart.py`, `providers/storage.py` | media | vida negativa en un HDD (F-M18); el estado va por nombre de dispositivo (F-M19) |
 | `gpumetrics.py`, `nvml.py`, `derived.py` | media | `if v` con relojes: 0 MHz llega como `None` (F-M20) |
 | `providers/` | media | siete proveedores sin `unavailable_reason()` |
-| `settings.py` | media | un JSON que no es objeto impide arrancar; un campo malo tira todas las preferencias |
 | `privileged/` | media | topes de tamaño después de reservar; el `timeout` no acota; el cliente se desincroniza (F-M24-26) |
 | `privileged/helper.py` | media-baja | la cadencia de RAPL la decide el cliente (F-M27) |
 | `report.py`, `cli.py` | media | zócalos vacíos como módulos (F-M31); tres formateos del valor de un sensor (F-M32) |
@@ -358,7 +357,7 @@ código (F-…), que es por el que se buscan allí.
 | `collector.py` | baja | `_clone` sin `batteries`, `cpu_extra` ni `memory_traffic` |
 | `render.py` | baja | dos canales distintos pueden llamarse «Canal A» |
 | `db/lang/` | baja | trece claves muertas; `gen_lang.py` compara por subcadena y solo ve cinco |
-| `settings.py`, `registro.py`, `report.py`, `ui/` | baja | idioma sin validar; CSV sin fecha; `_placa(anonymous)`; `disk.pci_slot` y `net.vendor` sin pintar |
+| `registro.py`, `report.py`, `ui/` | baja | CSV sin fecha; `_placa(anonymous)`; `disk.pci_slot` y `net.vendor` sin pintar |
 | `data/…policy.in`, `cargar_modulo.py` | baja | plantilla huérfana y divergente; `modprobe` sin ruta |
 | `tools/build_appimage.py` | baja | `--container` se traga `--keep` y `--appdir-only`; `appimagetool` sin hash |
 | `.github/workflows/appimage.yml` | baja | `contents: write` global; acciones por etiqueta y no por SHA; arranque comprobado con `--help` |
