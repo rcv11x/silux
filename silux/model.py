@@ -905,6 +905,10 @@ class PcieLink:
     current_width: Optional[int] = None
     max_speed_gts: Optional[float] = None
     max_width: Optional[int] = None
+    # What the device's own AER counted since boot; None without AER.
+    correctable_errors: Optional[int] = None
+    nonfatal_errors: Optional[int] = None
+    fatal_errors: Optional[int] = None
 
     @staticmethod
     def _generation(gts: Optional[float]) -> Optional[int]:

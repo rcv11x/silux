@@ -190,6 +190,8 @@ publica se dice con la versión que lo trae.
 
 ### Gráficos
 
+- Nuevo: en «Relojes y enlace», los errores que ha contado el enlace PCIe de
+  la tarjeta desde el arranque (AER): corregidos, no fatales y fatales.
 - Nuevo: en «Consumo y temperaturas», el límite de consumo de fábrica de la
   tarjeta y entre qué valores se puede poner (amdgpu); si el de ahora está
   por encima, el globo dice que alguien lo ha subido.

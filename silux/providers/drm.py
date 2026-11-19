@@ -815,9 +815,27 @@ def _arc_tras_su_conmutador(dispositivo: pathlib.Path) -> bool:
     return len(_cadena_pcie(dispositivo)) > 1
 
 
+_AER_FILES = (("correctable_errors", "aer_dev_correctable", "TOTAL_ERR_COR"),
+              ("nonfatal_errors", "aer_dev_nonfatal", "TOTAL_ERR_NONFATAL"),
+              ("fatal_errors", "aer_dev_fatal", "TOTAL_ERR_FATAL"))
+
+
+def _aer(dispositivo: pathlib.Path) -> dict[str, Optional[int]]:
+    """The device's AER totals. Counters, so they are read on every sample:
+    an error in the middle of a session has to show up then."""
+    errors: dict[str, Optional[int]] = {}
+    for key, name, total in _AER_FILES:
+        errors[key] = None
+        for line in (read_text(f"{dispositivo}/{name}") or "").splitlines():
+            label, _space, value = line.partition(" ")
+            if label == total and value.strip().isdigit():
+                errors[key] = int(value)
+    return errors
+
+
 def _enlace(dispositivo: pathlib.Path, previo: Optional[PcieLink] = None) -> PcieLink:
     if _arc_tras_su_conmutador(dispositivo):
-        return PcieLink()
+        return PcieLink(**_aer(dispositivo))
     # Una vez por llamada y no una por cifra: resolver los enlaces de sysfs
     # hasta la raíz es lo que más cuesta de leer un enlace.
     cadena = _cadena_pcie(dispositivo)
@@ -850,6 +868,7 @@ def _enlace(dispositivo: pathlib.Path, previo: Optional[PcieLink] = None) -> Pci
         # El techo no cambia; en el remuestreo se conserva el que ya se leyó.
         max_speed_gts=maxima,
         max_width=int(max_ancho) if max_ancho is not None else None,
+        **_aer(dispositivo),
     )
 
 

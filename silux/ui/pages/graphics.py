@@ -86,7 +86,7 @@ MEMORY_FIELDS = ("gpu.vram.total", "gpu.vram.type", "gpu.vram.bus", "gpu.vram.ba
 CLOCK_FIELDS = ("gpu.clock.core", "gpu.clock.coremax", "gpu.clock.silmax", "gpu.clock.efficient",
                 "gpu.clock.silmin", "gpu.clock.limits", "gpu.clock.memory", "gpu.clock.memeff",
                 "gpu.clock.memmax", "SoC", "gpu.clock.profile",
-                "gpu.clock.link", "gpu.clock.linkmax")
+                "gpu.clock.link", "gpu.clock.linkmax", "gpu.clock.linkerrors")
 
 # El estado y las temperaturas de dentro de la tarjeta. La del núcleo no
 # está: es la de la ficha de arriba. Tampoco el consumo ni su límite, que
@@ -589,6 +589,7 @@ class GpuSection(QWidget):
         k(_("gpu.clock.link"), render.pcie_link(gpu.link),
           tooltip=render.pcie_note(gpu.link) or "")
         k(_("gpu.clock.linkmax"), render.pcie_link(gpu.link, maximum=True))
+        k(_("gpu.clock.linkerrors"), render.pcie_errors(gpu.link), tooltip=_("pcie.errors.tip"))
 
         self._apply_now(gpu)
 
@@ -655,6 +656,9 @@ class GpuSection(QWidget):
         # candado): repetido aquí, el mismo dato salía dos veces.
         if any(clave == "engine.video" for clave, _v in render.engine_levels(gpu)):
             escondidos["sensors"].add("gpu.sensor.videouse")
+        # Without AER (an integrated GPU, a kernel without it) there's no count.
+        if gpu.link is None or gpu.link.correctable_errors is None:
+            escondidos["clocks"].add("gpu.clock.linkerrors")
         # Only cards whose driver publishes a factory limit have one to show.
         if gpu.power_cap_default_w is None and gpu.power_cap_max_w is None:
             escondidos["sensors"].add("gpu.sensor.powercap")

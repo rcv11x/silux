@@ -1043,6 +1043,19 @@ FASES_DE_ARRANQUE = (("sys.boot.phase.firmware", "firmware_s"),
                      ("sys.boot.phase.total", "total_s"))
 
 
+def pcie_errors(link) -> str:
+    """«ninguno desde el arranque», or «3 corregidos · 1 fatal»."""
+    if link is None or link.correctable_errors is None:
+        return DASH
+    parts = []
+    for count, key in ((link.correctable_errors, "pcie.errors.correctable"),
+                       (link.nonfatal_errors, "pcie.errors.nonfatal"),
+                       (link.fatal_errors, "pcie.errors.fatal")):
+        if count:
+            parts.append(_(key + (".one" if count == 1 else "")).format(n=thousands(count)))
+    return " · ".join(parts) or _("pcie.errors.none")
+
+
 def gpu_factory_power_limit(gpu) -> str:
     """«330.0 W · admite 231.0–340.0 W». The current cap isn't here: it
     is already in the power bar of «Right now»."""
