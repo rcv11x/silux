@@ -37,6 +37,13 @@ import subprocess
 import sys
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(RAIZ))
+from silux import privacidad  # noqa: E402  (lo que pone el anonimizado)
+
+# Lo que el anonimizado pone en lugar de lo de cada uno: parece de verdad a
+# propósito, y por eso se nombra. Cualquier otra IPv4 privada es de alguien.
+_SUSTITUTOS = {privacidad.IPV4, privacidad.PUERTA}
+_NOMBRES_DE_EQUIPO_FALSOS = {"", privacidad.EQUIPO, *privacidad.SUSTITUTOS_ANTERIORES}
 
 RANGOS_DE_DOCUMENTACION = (
     re.compile(r"^192\.0\.2\."), re.compile(r"^198\.51\.100\."),
@@ -244,6 +251,8 @@ def _en_el_texto(texto: str) -> list[tuple[int, str]]:
 
     hallazgos = []
     for m in _IPV4_PRIVADA.finditer(texto):
+        if m.group() in _SUSTITUTOS:
+            continue
         if not any(r.match(m.group()) for r in RANGOS_DE_DOCUMENTACION):
             hallazgos.append((linea(m.start()), "una dirección IPv4 privada"))
     for m in _MAC.finditer(texto):
@@ -291,8 +300,8 @@ def _en_un_volcado(ruta: pathlib.Path, relativa: str) -> list[str]:
         if valor.strip("0-: \n"):
             return [f"un {nombre} sin poner a cero"]
     if nombre == "hostname" and relativa.endswith("kernel/hostname"):
-        if _leer(ruta) not in ("", "equipo"):
-            return ["un nombre de equipo que no es «equipo»"]
+        if _leer(ruta) not in _NOMBRES_DE_EQUIPO_FALSOS:
+            return [f"un nombre de equipo que no es «{privacidad.EQUIPO}»"]
     return []
 
 
@@ -336,7 +345,8 @@ def _capturas_delatoras(rutas: list[pathlib.Path] | None = None) -> list[str]:
 def _direcciones_sospechosas(texto: str) -> list[str]:
     """IP privadas que no sean de los rangos reservados para documentación."""
     return [d for d in _IPV4_PRIVADA.findall(texto)
-            if not any(r.match(d) for r in RANGOS_DE_DOCUMENTACION)]
+            if d not in _SUSTITUTOS
+            and not any(r.match(d) for r in RANGOS_DE_DOCUMENTACION)]
 
 
 def revisar(rutas: list[pathlib.Path], propios: dict[str, str]) -> list[str]:

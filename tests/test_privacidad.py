@@ -71,15 +71,15 @@ class TestLoQueSeTapa(unittest.TestCase):
         self.limpia = privacidad.anonimizar(_foto())
 
     def test_el_nombre_del_equipo(self):
-        self.assertEqual(self.limpia.system.hostname, "equipo")
+        self.assertEqual(self.limpia.system.hostname, "silux-pc")
 
     def test_el_numero_de_serie_de_la_grafica(self):
         self.assertNotEqual(self.limpia.gpus[0].unique_id, "fedcba9876543210")
 
     def test_la_direccion_ip_y_la_puerta_de_enlace(self):
         interfaz = self.limpia.network[0]
-        self.assertEqual(interfaz.ipv4, "192.0.2.11")
-        self.assertEqual(interfaz.gateway, "192.0.2.1")
+        self.assertEqual(interfaz.ipv4, "192.168.1.120")
+        self.assertEqual(interfaz.gateway, "192.168.1.1")
 
     def test_la_direccion_fisica(self):
         self.assertEqual(self.limpia.network[0].mac, "00:00:5e:00:53:af")
@@ -281,7 +281,7 @@ class TestElNombreDelEquipoSeBuscaComoNombre(unittest.TestCase):
         tapada = privacidad.anonimizar(self._foto(
             "portatil-ana", aparato="PORTATIL-ANA-acpi",
             aviso="El equipo Portatil-Ana no publica su ventilador."))
-        self.assertEqual(tapada.sensors[0].device, "equipo-acpi")
+        self.assertEqual(tapada.sensors[0].device, f"{privacidad.EQUIPO}-acpi")
         self.assertNotIn("ana", tapada.notes[0].message.lower())
 
     def test_un_nombre_corto_no_se_come_trozos_de_otros(self):
@@ -296,9 +296,16 @@ class TestElNombreDelEquipoSeBuscaComoNombre(unittest.TestCase):
         tapada = privacidad.anonimizar(self._foto("dock", red=("docker0",)))
         self.assertEqual(tapada.network[0].name, "docker0")
 
+    def test_un_nombre_ya_tapado_no_se_vuelve_a_buscar(self):
+        # Los volcados de antes del 19 de noviembre se llaman «equipo», que es
+        # además una palabra: se tapaba «Este equipo no publica…».
+        aviso = "Este equipo no publica su ventilador."
+        tapada = privacidad.anonimizar(self._foto("equipo", aviso=aviso))
+        self.assertEqual(tapada.notes[0].message, aviso)
+
     def test_pero_un_nombre_corto_entero_si_se_tapa(self):
         tapada = privacidad.anonimizar(self._foto("pc", aparato="pc (ACPI)"))
-        self.assertEqual(tapada.sensors[0].device, "equipo (ACPI)")
+        self.assertEqual(tapada.sensors[0].device, f"{privacidad.EQUIPO} (ACPI)")
 
 
 if __name__ == "__main__":

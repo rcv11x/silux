@@ -19,15 +19,24 @@ from typing import Optional
 
 from .model import Snapshot
 
-EQUIPO = "equipo"
-# De la TEST-NET-1 (RFC 5737) y del bloque que la RFC 7042 reserva para
-# documentación. Son direcciones que no encaminan a ninguna parte.
-IPV4 = "192.0.2.11"
+# Lo que se pone en lugar de lo de cada uno. El nombre y la IPv4 parecen de
+# una casa cualquiera a propósito (decisión del autor, 19 de noviembre de
+# 2026): una red 192.168.1.x con su puerta en .1 es la más común que hay, y
+# quien lee un informe no se para en ella. `tools/comprobar_privacidad.py` las
+# acepta por ser estas; cualquier otra privada la da por real.
+EQUIPO = "silux-pc"
+IPV4 = "192.168.1.120"
+PUERTA = "192.168.1.1"
+# Del bloque que la RFC 3849 y la RFC 7042 reservan para documentación: no
+# encaminan a ninguna parte.
 IPV6 = "2001:db8::11"
 MAC = "00:00:5e:00:53:af"
 # La de una interfaz que no tiene: el bucle local. No es de nadie.
 SIN_MAC = "00:00:00:00:00:00"
-PUERTA = "192.0.2.1"
+# Lo que se ponía hasta el 19 de noviembre de 2026, tan inventado como lo de
+# ahora: los volcados de antes lo llevan. «equipo» además es una palabra, y
+# tomarlo por el nombre de la máquina tapaba «Este equipo no publica…».
+SUSTITUTOS_ANTERIORES = frozenset({"equipo", "192.0.2.11", "192.0.2.1"})
 # Lo que se pone en lugar de una interfaz con un nombre elegido por alguien.
 INTERFAZ = "interfaz{}"
 
@@ -114,6 +123,8 @@ def _sin_el_equipo(texto: Optional[str], equipo: Optional[str]) -> Optional[str]
     """
     if not texto or not equipo or len(equipo) < 2:
         return texto
+    if equipo == EQUIPO or equipo in SUSTITUTOS_ANTERIORES:
+        return texto            # ya está tapado
     return re.sub(rf"(?<![0-9A-Za-z]){re.escape(equipo)}(?![0-9A-Za-z])",
                   EQUIPO, texto, flags=re.IGNORECASE)
 

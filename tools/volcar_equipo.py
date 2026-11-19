@@ -923,11 +923,14 @@ def _lo_que_anonimizar_taparia(foto) -> list[str]:
                 for sub in dataclasses.fields(i):
                     a, b = getattr(i, sub.name), getattr(j, sub.name)
                     restos = [x for x in (a if isinstance(a, tuple) else (a,))
-                              if x not in INOFENSIVOS]
+                              if x not in INOFENSIVOS and x not in privacidad.SUSTITUTOS_ANTERIORES]
                     if a != b and restos:
                         quedan.append(f"network.{i.name}.{sub.name}")
             continue
         if campo.name == "disks" and _sin_numerar(antes) == _sin_numerar(despues):
+            continue
+        if (campo.name == "system" and antes.hostname in privacidad.SUSTITUTOS_ANTERIORES
+                and dataclasses.replace(antes, hostname=despues.hostname) == despues):
             continue
         quedan.append(campo.name)
     return quedan

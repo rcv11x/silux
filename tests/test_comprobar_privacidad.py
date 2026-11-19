@@ -108,6 +108,15 @@ class TestLoDeEstaMaquina(unittest.TestCase):
         self.assertFalse(relleno.search("MON7Q2X91"))
 
 
+class TestLosSustitutos(unittest.TestCase):
+
+    def test_lo_que_pone_el_anonimizado_pasa(self):
+        from silux import privacidad
+        self.assertEqual(_que(f"{privacidad.IPV4} por {privacidad.PUERTA}"), [])
+        # Y otra de la misma red no: sería de alguien.
+        self.assertTrue(_que("192.168.1." + "77"))
+
+
 class TestLosVolcados(unittest.TestCase):
 
     def _en(self, nombre: str, contenido: bytes, carpeta: str = "sys/x") -> list[str]:
