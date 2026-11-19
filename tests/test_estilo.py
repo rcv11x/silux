@@ -140,14 +140,6 @@ class TestElEstilo(unittest.TestCase):
         anchos = {medida.horizontalAdvance(str(n) * 4) for n in range(10)}
         self.assertEqual(len(anchos), 1, anchos)
 
-    def test_la_orden_del_dialogo_sigue_en_monoespaciada(self):
-        from silux.ui.dialogs import PermissionsDialog
-
-        dialogo = PermissionsDialog()
-        self.addCleanup(dialogo.deleteLater)
-        medida = dialogo.command.fontMetrics()
-        self.assertEqual(medida.horizontalAdvance("iiii"), medida.horizontalAdvance("MMMM"))
-
     def test_las_tarjetas_no_llevan_un_borde_que_pese(self):
         from silux.ui import theme
 

@@ -4,16 +4,16 @@ from __future__ import annotations
 
 from typing import Optional
 
-from PySide6.QtCore import Qt, QTimer, Signal
-from PySide6.QtWidgets import (QApplication, QDialog, QHBoxLayout, QLabel,
-                               QPlainTextEdit, QPushButton, QVBoxLayout, QWidget)
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtWidgets import (QDialog, QHBoxLayout, QLabel, QPushButton,
+                               QVBoxLayout, QWidget)
 
 from ..i18n import _
 from . import theme
 
 # Los cuatro párrafos, en este orden: qué lee, qué pasa si se dan esta vez,
-# qué pasa si se dan para siempre y quién pide la contraseña. Sin la regla de
-# polkit puesta va un quinto: qué dirá la ventana de la contraseña.
+# qué pasa si se dan para siempre y quién pide la contraseña. Cortos: se leen
+# justo antes de teclear una contraseña.
 PARRAFOS = ("perm.explain.reads", "perm.explain.once", "perm.explain.always",
             "perm.explain.polkit")
 
@@ -46,30 +46,27 @@ class PermissionsDialog(QDialog):
         layout.addWidget(titulo)
 
         self.paragraphs: list[QLabel] = []
-        from ..privileged.instalar import orden_de_desinstalar
-
-        claves = list(PARRAFOS)
-        if permanente:
-            # Sin la regla puesta, la ventana de polkit enseña la orden de un
-            # intérprete con código dentro, y no se puede cambiar: pkexec elige
-            # su texto por la ruta del programa (docs/privilegios.md). Se dice
-            # aquí antes, con lo que dirá cuando la regla esté puesta.
-            claves.append("perm.explain.window")
-        for clave in claves:
-            texto = _(clave)
-            if clave == "perm.explain.window":
-                texto = texto.format(mensaje=_("perm.polkit.message"))
-            parrafo = QLabel(texto)
+        for clave in PARRAFOS:
+            parrafo = QLabel(_(clave))
             parrafo.setWordWrap(True)
             parrafo.setTextFormat(Qt.TextFormat.PlainText)
             parrafo.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
             layout.addWidget(parrafo)
             self.paragraphs.append(parrafo)
-            if clave == "perm.explain.always":
-                layout.addLayout(self._orden(orden_de_desinstalar()))
 
         self.grant_button = QPushButton(_("perm.explain.grant"))
         self.grant_button.clicked.connect(self._dar)
+        # Sin la regla de polkit, la ventana de la contraseña enseña la orden
+        # de `python3` con código dentro, y no se puede cambiar: pkexec elige
+        # su texto por la ruta del programa (docs/privilegios.md). Se dice en
+        # pequeño debajo de los botones y en el globo del de «esta vez».
+        self.window_note = QLabel(_("perm.explain.window"))
+        self.window_note.setObjectName("Muted")
+        self.window_note.setWordWrap(True)
+        self.window_note.setFont(theme.ui_font(theme.METRICS.small_pt))
+        self.window_note.setVisible(permanente)
+        if permanente:
+            self.grant_button.setToolTip(_("perm.explain.window"))
         # Con los permisos ya concedidos, «Dar permisos esta vez» no hace
         # nada: no se ofrece. Se dice que ya están, y queda «para siempre»
         # si el ayudante no está instalado.
@@ -102,6 +99,7 @@ class PermissionsDialog(QDialog):
         botones.addStretch(1)
         botones.addWidget(self.close_button)
         layout.addLayout(botones)
+        layout.addWidget(self.window_note)
 
         self._ajustar_tope()
 
@@ -134,53 +132,6 @@ class PermissionsDialog(QDialog):
         if visible:
             self._ajustar_tope()
         super().setVisible(visible)
-
-    def _orden(self, orden: str) -> QHBoxLayout:
-        """La orden de quitar el ayudante, en su campo y con cómo copiarla.
-
-        Dentro del párrafo, con ajuste de línea, se partía a mitad de una
-        ruta. Aquí va en letra de ancho fijo y partida donde lo haría quien la
-        escribe: una ruta por renglón, con la barra que la continúa, de modo
-        que seleccionada y pegada en un terminal sigue siendo una sola orden.
-        El botón copia la de un renglón. Sale de donde están las rutas, no del
-        texto: si un día cambian, el diálogo no se queda diciendo otra.
-        """
-        self.command_text = orden
-        verbo, *rutas = orden.split(" /")
-        renglones = (verbo + " /" + " \\\n    /".join(rutas)) if rutas else orden
-        self.command = QPlainTextEdit(renglones)
-        self.command.setObjectName("Command")
-        self.command.setReadOnly(True)
-        self.command.setFont(theme.mono_font(theme.METRICS.small_pt))
-        self.command.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
-        self.command.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.command.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        medida = self.command.fontMetrics()
-        marco = 2 * (self.command.frameWidth() + int(self.command.document().documentMargin()))
-        lineas = renglones.split("\n")
-        self.command.setFixedHeight(medida.lineSpacing() * len(lineas) + marco + 2)
-        self.command.setMinimumWidth(
-            max(medida.horizontalAdvance(linea) for linea in lineas) + marco + 8)
-
-        self.copy_button = QPushButton(_("perm.explain.copy"))
-        self.copy_button.clicked.connect(self._copiar)
-
-        fila = QHBoxLayout()
-        fila.setContentsMargins(0, 0, 0, 0)
-        fila.addWidget(self.command, 1)
-        fila.addWidget(self.copy_button, 0, Qt.AlignmentFlag.AlignTop)
-        return fila
-
-    def _copiar(self) -> None:
-        QApplication.clipboard().setText(self.command_text)
-        self.copy_button.setText(_("app.copied"))
-        QTimer.singleShot(1400, self._restaurar_boton)
-
-    def _restaurar_boton(self) -> None:
-        import shiboken6
-
-        if shiboken6.isValid(self.copy_button):
-            self.copy_button.setText(_("perm.explain.copy"))
 
     def _dar(self) -> None:
         self.accept()

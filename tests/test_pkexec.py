@@ -108,12 +108,13 @@ class ComprobadorDeOrdenes(unittest.TestCase):
 CONSTRUCTORES = (
     ("silux/privileged/client.py", "PrivilegedClient._orden"),
     ("silux/ui/app.py", "MainWindow._orden_de_instalacion"),
+    ("silux/ui/app.py", "MainWindow._orden_de_desinstalacion"),
     ("silux/ui/pages/monitor.py", "MonitorPage._orden_de_carga"),
 )
 
 
 def ordenes_de_pkexec() -> dict[str, list[str]]:
-    """Las tres, construidas de verdad, para poder examinarlas."""
+    """Las cuatro, construidas de verdad, para poder examinarlas."""
     from silux.ui.app import MainWindow
     from silux.ui.pages.monitor import MonitorPage
 
@@ -122,6 +123,7 @@ def ordenes_de_pkexec() -> dict[str, list[str]]:
     return {
         "el ayudante": del_ayudante,
         "el instalador": MainWindow._orden_de_instalacion()[0],
+        "el desinstalador": MainWindow._orden_de_desinstalacion(),
         "el cargador de módulos": MonitorPage._orden_de_carga("drivetemp"),
     }
 

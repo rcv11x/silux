@@ -114,8 +114,31 @@ class TestLaMaqueta(unittest.TestCase):
         textos = _textos(pagina)
         self.assertFalse([t for t in textos if "PROPUESTA" in t.upper()])
         self.assertIn(_("about.claude"), textos)
-        # Quitar el ayudante no se enseña hasta que se decida.
-        self.assertFalse([t for t in textos if "Quitar el ayudante" in t])
+
+    def test_quitar_el_ayudante_solo_si_esta_instalado(self):
+        """Antes solo se quitaba copiando una orden `sudo rm` del diálogo de
+        permisos. Ahora es un botón, y solo sale si hay algo que quitar."""
+        from silux.privileged.client import PrivilegedClient
+        for instalado in (False, True):
+            with self.subTest(instalado=instalado), \
+                 mock.patch.object(PrivilegedClient, "instalado", return_value=instalado), \
+                 mock.patch.object(PrivilegedClient, "necesita_reinstalar", return_value=False):
+                pagina = _pagina(self.app)
+                self.addCleanup(pagina.deleteLater)
+                pagina.set_privileges(None)
+                self.assertEqual(not pagina.remove_helper_button.isHidden(), instalado)
+                if instalado:
+                    pedidos = []
+                    pagina.remove_helper_requested.connect(lambda: pedidos.append(1))
+                    pagina.remove_helper_button.click()
+                    self.assertEqual(pedidos, [1])
+
+    def test_la_orden_de_quitarlo_es_el_desinstalador(self):
+        from silux.ui.app import MainWindow
+        orden = MainWindow._orden_de_desinstalacion()
+        self.assertEqual(orden[0], "pkexec")
+        self.assertEqual(orden[-1], "--uninstall")
+        self.assertIn("silux-instalar.py", orden)
 
     def test_a_2560_la_columna_va_pegada_a_la_izquierda(self):
         from silux.ui import theme

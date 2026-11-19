@@ -300,6 +300,7 @@ class MainWindow(QMainWindow):
         self.settings_page.elevation_requested.connect(self._on_elevation_requested)
         self.settings_page.explain_requested.connect(self._explicar_permisos)
         self.settings_page.permanent_requested.connect(self._on_permanent_requested)
+        self.settings_page.remove_helper_requested.connect(self._quitar_ayudante)
         self.settings_page.report_requested.connect(self._on_report_requested)
         self.settings_page.share_copy_requested.connect(self._on_share_copy)
         self.home_page.share_copy_requested.connect(self._on_share_copy)
@@ -982,6 +983,70 @@ class MainWindow(QMainWindow):
             self.settings_page.set_privileges(self._last_snapshot)
         self._status.set_full_text(
             _("perm.installed"))
+
+    def _quitar_ayudante(self) -> None:
+        """Borra el ayudante instalado y su regla, como root, tras preguntar.
+
+        Es `instalar.py --uninstall` por la misma vía que la instalación:
+        el guion por `argv`, sin ninguna ruta que el usuario pueda reescribir.
+        Lo que ya esté leyendo con permisos sigue hasta cerrar Silux.
+        """
+        from PySide6.QtWidgets import QMessageBox
+
+        from .background import BackgroundCommand
+
+        if self._instalacion is not None:
+            return
+        if QMessageBox.question(
+                self, _("settings.perm.remove.title"), _("settings.perm.remove.ask"),
+                QMessageBox.StandardButton.Cancel | QMessageBox.StandardButton.Yes,
+                QMessageBox.StandardButton.Cancel) != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            orden = self._orden_de_desinstalacion()
+        except (OSError, RuntimeError) as exc:
+            self._aviso_permanente(_("perm.install.failed").format(error=exc))
+            return
+        self.settings_page.remove_helper_button.setEnabled(False)
+        self._instalacion = BackgroundCommand(orden, timeout=180)
+        self._instalacion.done.connect(self._desinstalacion_terminada)
+        self._instalacion.start()
+
+    def _desinstalacion_terminada(self, resultado) -> None:
+        orden, self._instalacion = self._instalacion, None
+        if orden is not None:
+            orden.wait()
+        self.settings_page.remove_helper_button.setEnabled(True)
+        if resultado.error is not None:
+            self._aviso_permanente(_("perm.install.failed").format(error=resultado.error))
+            return
+        if resultado.returncode != 0:
+            if resultado.returncode not in (126, 127):
+                self._aviso_permanente(
+                    (resultado.stderr or "").strip().splitlines()[-1:] or [_("perm.failed")])
+            return
+        self._refrescar_botones_permanentes()
+        if self._last_snapshot is not None:
+            self.settings_page.set_privileges(self._last_snapshot)
+        self._status.set_full_text(_("settings.perm.removed"))
+
+    @staticmethod
+    def _orden_de_desinstalacion() -> list[str]:
+        """La orden de pkexec para quitar el ayudante: el instalador con
+        `--uninstall`, por `argv`, como al instalarlo."""
+        from pathlib import Path
+
+        from ..privileged import client as _client
+
+        instalador = (Path(__file__).resolve().parent.parent
+                      / "privileged" / "instalar.py")
+        try:
+            interprete = _client.interprete()
+        except _client.HelperUnavailable:
+            raise RuntimeError(_("perm.nopython.install")) from None
+        return ["pkexec", *_client.en_linea(
+            interprete, "silux-instalar.py",
+            instalador.read_text(encoding="utf-8"), "--uninstall")]
 
     @staticmethod
     def _orden_de_instalacion() -> tuple[list[str], str]:

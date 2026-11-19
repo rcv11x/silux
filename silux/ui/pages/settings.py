@@ -249,6 +249,7 @@ class SettingsPage(QScrollArea):
     elevation_requested = Signal()
     explain_requested = Signal()
     permanent_requested = Signal()
+    remove_helper_requested = Signal()
 
     def __init__(self, prefs: Preferences, palette: Optional[Palette] = None, parent=None):
         super().__init__(parent)
@@ -398,9 +399,16 @@ class SettingsPage(QScrollArea):
         self.permission_button.clicked.connect(self._on_permission_button)
         self.explain_button = QPushButton(_("perm.notice.explain"))
         self.explain_button.clicked.connect(self.explain_requested.emit)
+        # Quitar lo instalado para siempre: borra sus dos archivos, como root.
+        # Antes solo se podía copiando una orden `sudo rm` del diálogo.
+        self.remove_helper_button = QPushButton(_("settings.perm.remove"))
+        self.remove_helper_button.setObjectName("GhostButton")
+        self.remove_helper_button.setToolTip(_("settings.perm.remove.tip"))
+        self.remove_helper_button.clicked.connect(self.remove_helper_requested.emit)
         botones = QWidget()
         fila = QHBoxLayout(botones)
         fila.setContentsMargins(0, 0, 0, 0)
+        fila.addWidget(self.remove_helper_button)
         fila.addStretch(1)
         fila.addWidget(self.explain_button)
         fila.addWidget(self.permission_button)
@@ -596,6 +604,7 @@ class SettingsPage(QScrollArea):
                 self.permission_button.setText(_(boton[1]))
             self.permission_button.show()
         self.explain_button.setVisible(explicar)
+        self.remove_helper_button.setVisible(instalado)
 
     def _on_permission_button(self) -> None:
         if self._accion_de_permisos == "replace":
