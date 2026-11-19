@@ -208,6 +208,7 @@ silux/
 ├─ benchmark.py    prueba de CPU que dice en qué condiciones midió
 ├─ membench.py     ancho de banda y latencia de la memoria, en otro proceso
 ├─ history.py      historial de pruebas de este equipo
+├─ updates.py      buscar una versión nueva y sustituir el AppImage
 ├─ score.py        la puntuación comparable entre equipos, y su escala
 ├─ providers/      una fuente cada uno; ninguno conoce a los demás
 ├─ privileged/     el ayudante root mínimo, su cliente, el instalador y el
