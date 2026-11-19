@@ -304,7 +304,6 @@ código (F-…), que es por el que se buscan allí.
 | Dónde | Gravedad | Qué |
 |---|---|---|
 | Qt, `tests/` | alta | PySide6 6.11 en Python 3.10/3.11 cierra la ventana al cambiar de forma (la 0.3 lo tiene; los AppImage nuevos y el `pyproject`, no). En los tests sale también, raro, con 3.14 + 6.12: sin explicar. docs/pendientes.md |
-| `privileged/`, `ui/dialogs.py` | alta, aprobada | polkit «esta vez» enseña `python3 -c …`: opción (a) del autor, avisar antes y ofrecer «Para siempre» con el texto nuevo, que nombra también el uso de la gráfica. Antes de la prueba1 |
 | `ui/pages/board.py` | media, sin comprobar | la columna «Ranura» (SMBIOS tipo 9) no se ha visto con la tabla de ninguna placa |
 | `spd.py` | alta | el XMP de DDR4 ignora la corrección fina del ciclo: un DDR4-3600 sale 3200 (F-A2); pide un volcado real con XMP |
 | `privileged/instalar.py` | alta, condicionada | no comprueba que el destino no sea sustituible |
@@ -337,7 +336,6 @@ código (F-…), que es por el que se buscan allí.
 | `ui/pages/storage.py` | baja | «Vida restante —» en un SATA |
 | Gráficos, varios | media | de los 25 fallos de [docs/propuesta-graficas.md](docs/propuesta-graficas.md), arreglados los que mentían (1 a 7, 11, 12 y el 4); quedan los de datos que no se leen (`xe`, NVML, `radeon`, nouveau) y el 8 (framebuffer de respaldo), 9 y 10 (nouveau) |
 | `privileged/helper.py` | propuesta | el PMU de una Arc con `i915` y el de `xe`: [docs/propuesta-uso-de-graficas.md](docs/propuesta-uso-de-graficas.md), sin aplicar |
-| `privileged/instalar.py` | propuesta | la ventana de la contraseña enseña `python3 -c …` en inglés, y la regla instalada solo nombra memoria y discos: [docs/propuesta-mensaje-de-polkit.md](docs/propuesta-mensaje-de-polkit.md), con el texto del autor, sin aplicar |
 | `tools/volcar_*.py` | media, sin comprobar | la fase 0 está hecha y el volcado del 5800X3D, rehecho con ella; nada se ha visto con una NVIDIA, una Arc ni una Deck |
 | rama `actualizaciones` | lista para rebasar | probada de punta a punta sin publicar nada (`tools/probar_actualizador.py`): pasa tras dos arreglos (el AppImage no traía TLS; un corte a `http://` salía como falta de red). Sale de `c01944d` y choca con `oficina` en el paso de la release del CI; falta rebasarla, la prueba con el AppImage del CI y una vez a mano con los botones |
 | `nvml.py` | media, sin comprobar | el uso de NVENC y NVDEC (dos barras en «Ahora mismo»), escrito sin una NVIDIA delante: contrastar con `nvidia-smi dmon -s u` |
