@@ -3,9 +3,143 @@
 Para retomar sin el contexto de la sesión anterior. Se borra cuando lo de
 aquí esté hecho o pase a `docs/pendientes.md`.
 
-Última sesión: 18 de noviembre de 2026, de las 18:30 a las 00:20 del 19,
-en el 5800X3D de casa (CachyOS, KDE Plasma 6.8 en Wayland, RX 9070 XT). La
-anterior, la tarde del 18 en el i5-10400 de la oficina.
+Última sesión: la mañana del 19 de noviembre de 2026 en el i5-10400 de la
+oficina (Fedora 44, KDE). La anterior, la noche del 18 en el 5800X3D de casa.
+
+## 19 de noviembre, mañana en la oficina (i5-10400): dónde se quedó
+
+Para la tarde en casa. Orden del autor: los puntos 0-10 de la mañana más lo
+que añadió a media mañana (historial, informe completo, ayuda).
+
+### Hecho
+
+- **Ramas**: `oficina` pasó a `master` y se borró. Ya no hay rama fija por
+  equipo: una por tema (CLAUDE.md). Borradas también `fase-1`, `fase-2`,
+  `interfaz`, `ui-permisos`, `contraste`, `escala-v6` y `volcados` (lo suyo
+  estaba en `master` con otro hash). Quedan `master`, `privacidad` y
+  `actualizaciones`.
+- **Auditoría de privacidad**: gitleaks limpio en los 562 commits de todas
+  las ramas; nada de claves, tokens, WireGuard ni SSH. En el estado actual
+  había media IPv6 de enlace de la oficina en un test: arreglado. En el
+  historial, y solo ahí, quedan datos de un equipo del autor en tests y en
+  una captura de agosto (el detalle no se escribe aquí: sería publicarlo
+  otra vez). `tools/comprobar_privacidad.py` nuevo (F-M30): IPv6 y medias
+  IPv6, números de serie, volcados, claves, correos; dice archivo y línea,
+  nunca el dato; el CI lo pasa siempre; lee de `.privado` (ignorado por git)
+  lo que no puede escribirse en el repositorio.
+- **El anonimizado pone `silux-pc` y `192.168.1.120`** (puerta `.1`).
+- **Inicio se recolocaba con las cifras** (el rojo intermitente de 3.14):
+  las tarjetas reservan el ancho de su cifra; `render.possible_texts` cuenta
+  «1000.0 MB/s».
+- Todo eso va en `privacidad`, empujada con su CI (el número en
+  `gh run list --branch privacidad --limit 1`). Pasa a `master` en cuanto
+  salga en verde; si el rojo es el reventón de 3.10, no dice nada del commit
+  y se relanza solo ese trabajo para comprobarlo, nunca para darlo por bueno.
+
+### El reventón de 3.10: lo averiguado
+
+- **Se reproduce** en un contenedor Ubuntu 22.04 como el runner (Python
+  3.10.12, PySide6 6.11.3, DejaVu): una de cada dos o tres vueltas de la
+  suite entera con `-n 4`. En Fedora no sale nunca; en serie, tampoco.
+  La imagen se rehace así (podman, sin root):
+  `podman run --name base docker.io/library/ubuntu:22.04 sh -c 'apt-get update && apt-get install -y python3 python3-venv python3-dbg gdb libgl1 libegl1 libxkbcommon-x11-0 libdbus-1-3 libfontconfig1 libfreetype6 libglib2.0-0 hwdata fonts-dejavu-core libasan6 && useradd -m runner && su runner -c "python3 -m venv ~/v && ~/v/bin/pip install \"PySide6>=6.6,<6.12\" pytest==9.2.* pytest-xdist==3.8.*"'`
+  y `podman commit base silux-ci:22.04`. Se monta el repositorio en `/src`
+  de solo lectura y se copia dentro antes de correr.
+- **La pila** (core por `systemd-coredump`, con `--ulimit core=-1` y como
+  root del contenedor para poder leerlo): en el hilo de la interfaz,
+  `processEvents` → `sendPostedEvents` → `~QQueuedMetaCallEvent` →
+  `~QAbstractMetaCallEvent` decrementa un puntero basura. El emisor del
+  evento es un **`QScrollBar`**: es la llamada encolada con que
+  `QAbstractScrollArea` enseña o esconde sus barras al cambiar su rango. El
+  evento estaba ya liberado: un doble borrado.
+- **Descartado, medido con una sonda** (un plugin de pytest fuera del
+  repositorio): ningún `QThread` ni hilo de Qt en el trabajador que revienta;
+  el recolector de Python no estaba en marcha; vaciar los `deleteLater()`
+  en los tests no lo quita (revienta igual en la segunda vuelta).
+- **Otro reventón distinto, al salir**: `shiboken6.delete` de la aplicación
+  en `tests/qt.py` (`_cerrar`), puntero nulo en `releaseWrapper`. Lo vio ASan
+  dos veces; no tumba tests porque pasa al acabar el trabajador.
+- **Lo siguiente** (el autor lo pidió así): 1) si el doble borrado puede
+  pasar en la app de verdad, no solo en los tests; 2) buscar en el gestor
+  de errores de Qt/PySide (bugreports.qt.io) un fallo conocido de 6.11 con
+  Python 3.10 y probar otras versiones dentro de `<6.12` en el mismo
+  contenedor. Sin reintentos ni esconderlo.
+
+### La reescritura del historial (esta tarde, una sola vez)
+
+Decidido por el autor: que no quede nada de los datos viejos, ni en GitHub ni
+en cachés, conservando el historial. **No se toca nada en GitHub sin su OK.**
+
+- **Hecho**: 0 forks, 1 estrella, 0 issues, 0 PR, ningún `refs/pull`; 89
+  ejecuciones del CI guardadas; descargas: v0.2.0, 5 + 1; v0.3.0, 4 + 1;
+  borrador v0.4.0, 2 + 0. Clones en 14 días: 514 (87 únicos), casi todos del
+  propio CI. Lo que alguien clonó ya no se puede borrar con ninguna opción.
+- **Copias**: espejo de GitHub en `~/Documentos/silux-espejo-20261119-1141.git`
+  y el `.git` local en `~/Documentos/silux-git-local-20261119-1141.tar.gz`
+  (en la oficina). En casa, antes de nada, un espejo nuevo: `git clone
+  --mirror git@github.com:rcv11x/silux.git ~/silux-espejo-$(date +%F).git`.
+- **Qué se sustituye** (los valores no se escriben aquí; están en los tests
+  de agosto, commits `3131aec` a `99abf22`, y en `pestana-sistema.png` de
+  `60cc5ff`): el nombre de la oficina → `silux-pc`; la IP de agosto →
+  `192.168.1.120` y su puerta → `192.168.1.1` (también el prefijo de red
+  suelto, sin el último número); la MAC → `00:00:5e:00:53:21`; la serie →
+  `0f1e2d3c4b5a6978`; la IPv6 de enlace (completa y su primer grupo) →
+  `fe80::21`; la `fe80` hexadecimal de `test_volcar_equipo.py` →
+  `fe800000000000000000000000000001`; y lo de `.privado` (el nombre del
+  equipo de casa) → `silux-pc`. Con `git filter-repo --replace-text REGLAS
+  --replace-message REGLAS` sobre un clon `--mirror`, y la captura con
+  `--blob-callback` que cambia el blob de `pestana-sistema.png` por una
+  tapada (ImageMagick: rellenar con `rgb(22,26,32)` los rectángulos
+  150,48-332,66 y 261,434-335,451, y escribir «silux-pc · encendido 2 h 38
+  min» y «silux-pc» en Noto Sans 12,5 y Noto Sans Mono 12). En la oficina el
+  guion y la captura están en `~/Documentos/silux-reescritura/`.
+- **Probado en la oficina, sin empujar**: 561 commits (uno queda vacío),
+  cero restos, gitleaks limpio; el árbol de `master` solo cambia en esa
+  línea de la IPv6 y los de `v0.2.0` y `v0.3.0` quedan idénticos.
+- **Las dos opciones**, para que decida el autor:
+  1. *Reescribir y forzar*: force-push de las ramas y las etiquetas; las
+     releases siguen colgadas de su etiqueta (el nombre no cambia) con sus
+     AppImage y sus descargas; se conservan la estrella, el CI y su
+     historial. Pero los commits viejos siguen accesibles en GitHub por su
+     hash hasta que su soporte los purgue: formulario de datos sensibles
+     («Remove sensitive data», docs.github.com), que además quita las vistas
+     en caché. Sin plazo garantizado. Las ejecuciones viejas del CI apuntan a
+     hashes que ya no existen.
+  2. *Borrar y crear de nuevo* con el mismo nombre y el historial limpio: lo
+     viejo deja de servirse en el acto, sin depender del soporte. Se pierden
+     la estrella, las 89 ejecuciones del CI con sus registros y artefactos y
+     las cifras de descarga; las releases y sus AppImage se vuelven a subir
+     (y el borrador de la 0.4). El actualizador busca por nombre de
+     repositorio, así que no le afecta.
+  Recomendación de la sesión: la 2, porque es la única que garantiza «nada
+  en GitHub» sin esperar a nadie, y lo que se pierde es poco. Lo decide él.
+- **Después, en los dos equipos**: `git fetch --all` y `git reset --hard
+  origin/RAMA` en cada rama (o volver a clonar), borrar los stashes viejos
+  y `git reflog expire --expire=now --all && git gc --prune=now`. La copia
+  `.tar.gz` de la oficina y los espejos llevan lo viejo: se guardan fuera
+  de cualquier sitio que se sincronice, o se borran cuando todo esté bien.
+
+### Polkit (antes de la prueba1)
+
+Opción (a) del autor: seguir con `python3 -c` (un archivo con nombre reabre
+el agujero de `docs/lecciones.md`), avisar antes de abrir la ventana de qué
+va a pedir y por qué, y ofrecer «Para siempre» como la forma recomendada.
+Texto de la regla: «Silux necesita permiso para leer datos del hardware
+reservados al administrador: memoria, discos, voltaje, consumo y uso de la
+gráfica. Solo lee, no cambia nada.» y en inglés. La regla la escribe root
+sin poder leer el AppImage: el texto va copiado en `instalar.py` con un test
+que lo compara con `es.json` y `en.json`. Captura del antes y el después
+sin la regla instalada. **Sin empezar.**
+
+### Sin empezar
+
+4 (lo pequeño de 3d), 5 (datos baratos), 6 (referencias por volcado), 7
+(actualizaciones, con la versión de prueba `0.4.0rc1`, «0.4-prueba1» en
+pantalla), 8 (el informe completo desde la descripción de páginas, con
+`--short`, secciones y anonimizado siempre), la ayuda en español con las
+opciones en inglés y alias ocultos, 9 (prueba1) y 10 (medidor). Las
+capturas con permisos las hace el autor.
+
 
 ## Noche del 18, en casa (5800X3D): lo hecho y lo que queda
 
