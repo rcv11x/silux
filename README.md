@@ -17,12 +17,14 @@ Silux identifica el hardware de un equipo con Linux y vigila sus sensores: lo qu
 
 ## Descargar
 
-Cada [versión](https://github.com/rcv11x/silux/releases) trae dos AppImage:
+Cada [versión](https://github.com/rcv11x/silux/releases) trae dos AppImage. Los dos funcionan en casi cualquier distribución de 2022 en adelante.
 
-| Archivo | Procesador | Distribución |
-|---|---|---|
-| `silux-x86_64.AppImage` | Intel desde 2008, AMD desde 2011 | glibc 2.34 o posterior: RHEL 9, Ubuntu 22.04, Debian 12 y más nuevas |
-| `silux-x86_64-compat.AppImage` | cualquier procesador de 64 bits | glibc 2.35 o posterior: Ubuntu 22.04, Debian 12 y más nuevas |
+| Archivo | Para quién |
+|---|---|
+| `silux-x86_64.AppImage` | El normal: para casi todos los PCs (Intel desde 2008, AMD desde 2011). |
+| `silux-x86_64-compat.AppImage` | Solo si tu PC es muy antiguo (Core 2, Athlon II, Phenom II…). Si el normal no vale para tu procesador, te lo dice al abrirlo. |
+
+<sub>Para quien lo necesite: el normal pide glibc 2.34 o posterior (RHEL 9, Ubuntu 22.04, Debian 12 y posteriores) y un procesador x86-64-v2; el compat, glibc 2.35 o posterior y cualquier procesador de 64 bits.</sub>
 
 ```
 chmod +x silux-x86_64.AppImage
