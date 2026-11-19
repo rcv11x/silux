@@ -25,7 +25,8 @@ python3 -m silux.cli                    # volcado en terminal
 python3 -m silux.cli --json             # API para otros programas
 python3 -m silux.cli --sensors          # el árbol de sensores
 python3 -m silux.cli --report FICHERO   # el informe completo, de las páginas (--short, el corto)
-python3 tools/gen_cpu_db.py            # regenerar la base de datos de CPUs
+python3 tools/gen_cpu_db.py            # regenerar la base de datos de CPUs (del fork rcv11x/libcpuid)
+python3 tools/gen_referencias_cpu.py --libcpuid DIR  # las 411 CPU de referencia de sus volcados
 python3 tools/gen_memory_limits.py --intel-desde DIR  # el máximo de memoria por modelo
 python3 tools/gen_lang.py --write      # poner al día los archivos de idioma
 python3 tools/medir_referencia.py      # rehacer la escala de puntuación
@@ -207,6 +208,11 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
   AppImage; `tests/test_avisos_de_terceros.py` lo compara con las fuentes que
   declara la tabla. Un procesador que no está en ella dice «no está en la
   tabla de esta versión»: no se inventa ni se pinta con guion.
+- La tabla se comprueba con 411 procesadores de verdad
+  (`tests/test_referencias_cpu.py`); lo que hoy no sale como en libcpuid
+  está en `tests/fixtures/referencias_cpu_pendientes.json`, que solo puede
+  encoger. `.github/workflows/tabla-cpu.yml` la regenera el día 1 de cada
+  mes y abre un PR si cambia.
 
 ## Convenciones
 
