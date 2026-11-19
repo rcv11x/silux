@@ -1177,6 +1177,71 @@ class Sparkline(QWidget):
         painter.drawText(caja, Qt.AlignmentFlag.AlignCenter, texto)
 
 
+class _Cifra(QLabel):
+    """La cifra de una ficha grande, con su unidad pintada detrás.
+
+    La cifra va a la izquierda, como la etiqueta de debajo, y la unidad
+    pegada a ella, en pequeño y en gris. Va pintada y no en otra etiqueta
+    para que nada cambie de sitio cuando cambia la cifra: con dos etiquetas,
+    o la unidad se movía a cada decena o se quedaba lejos, al otro lado del
+    hueco reservado. `text()` es solo la cifra.
+    """
+
+    HUECO = 4
+
+    def __init__(self) -> None:
+        super().__init__("—")
+        self._unidad = ""
+        self._fuente_unidad = QFont()
+        self._color_unidad = QColor()
+
+    def set_unidad(self, unidad: str, fuente: QFont, color: QColor) -> None:
+        self._unidad = unidad
+        self._fuente_unidad = fuente
+        self._color_unidad = color
+        self.updateGeometry()
+        self.update()
+
+    def _con_unidad(self) -> bool:
+        return bool(self._unidad) and self.text() != render.DASH
+
+    def ancho_de_la_unidad(self) -> int:
+        if not self._unidad:
+            return 0
+        return self.HUECO + QFontMetrics(self._fuente_unidad).horizontalAdvance(self._unidad)
+
+    def sizeHint(self) -> QSize:  # noqa: N802
+        base = super().sizeHint()
+        if self._con_unidad():
+            base.setWidth(base.width() + self.ancho_de_la_unidad())
+        return base
+
+    def minimumSizeHint(self) -> QSize:  # noqa: N802
+        base = super().minimumSizeHint()
+        if self._con_unidad():
+            base.setWidth(base.width() + self.ancho_de_la_unidad())
+        return base
+
+    def paintEvent(self, event) -> None:  # noqa: N802
+        if not self._con_unidad():
+            super().paintEvent(event)
+            return
+        pintor = QPainter(self)
+        try:
+            medida = QFontMetrics(self.font())
+            caja = self.contentsRect()
+            linea = caja.top() + (caja.height() - medida.height()) // 2 + medida.ascent()
+            pintor.setFont(self.font())
+            pintor.setPen(self.palette().color(self.foregroundRole()))
+            pintor.drawText(caja.left(), linea, self.text())
+            x = caja.left() + medida.horizontalAdvance(self.text()) + self.HUECO
+            pintor.setFont(self._fuente_unidad)
+            pintor.setPen(self._color_unidad)
+            pintor.drawText(x, linea, self._unidad)
+        finally:
+            pintor.end()
+
+
 class StatTile(Card):
     """Cifra grande con su unidad, una etiqueta y la serie reciente debajo."""
 
@@ -1191,12 +1256,18 @@ class StatTile(Card):
         row.setSpacing(4)
         row.setContentsMargins(0, 0, 0, 0)
 
-        self.value = QLabel("—")
+        self.value = _Cifra()
         self.value.setObjectName("TileValue")
         self.value.setFont(value_font(theme.METRICS.tile_value_pt, bold=True))
+        self.value.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
 
-        self.unit = QLabel(unit)
+        # La unidad la pinta la cifra (`_Cifra`). Esta etiqueta no se enseña:
+        # guarda el texto, y su letra y su color salen de la hoja de estilo.
+        self.unit = QLabel(unit, self)
         self.unit.setObjectName("TileUnit")
+        self.unit.hide()
+        self._paleta = palette
+        self._reservados: tuple[str, ...] = ()
 
         # El candado de cuando la cifra falta por permisos: a tamaño de
         # cifra, en el sitio de la cifra.
@@ -1207,9 +1278,8 @@ class StatTile(Card):
 
         row.addWidget(self.lock)
         row.addWidget(self.value)
-        self._alinear()
-        row.addWidget(self.unit, 0, Qt.AlignmentFlag.AlignBottom)
         row.addStretch(1)
+        self._pasar_unidad()
 
         self.caption = QLabel(label)
         self.caption.setObjectName("TileLabel")
@@ -1230,29 +1300,36 @@ class StatTile(Card):
     def set_unit(self, unit: str) -> None:
         if self.unit.text() != unit:
             self.unit.setText(unit)
-            self._alinear()
+            self._pasar_unidad()
+            if self._reservados:
+                self.reserve(self._reservados)
+
+    def _pasar_unidad(self) -> None:
+        """La unidad, con la letra y el color que le da la hoja de estilo
+        (`QLabel#TileUnit`), a la cifra que la pinta."""
+        self.unit.ensurePolished()
+        # Con el peso de la letra normal a mano: la cifra va en negrita y el
+        # pintor se lo pasaba a la unidad.
+        fuente = QFont(self.unit.font())
+        fuente.setWeight(QFont.Weight.Normal)
+        self.value.set_unidad(self.unit.text(), fuente,
+                              self.unit.palette().color(self.unit.foregroundRole()))
 
     def reserve(self, texts: Iterable[str]) -> None:
         """Reserva para la cifra el ancho de la más larga de `texts`, lo más
-        largo que puede llegar a decir.
+        largo que puede llegar a decir, y el de su unidad.
 
         Sin reserva, la cifra medía lo que su texto: de «9» a «10» se
-        ensanchaba y la unidad saltaba diecisiete píxeles cada vez que el uso
-        cruzaba una decena. Se mide con la letra de la cifra y no con la de la
-        etiqueta, que con un guion es la pequeña.
+        ensanchaba y lo de al lado saltaba diecisiete píxeles cada vez que el
+        uso cruzaba una decena. Se mide con la letra de la cifra y no con la
+        de la etiqueta, que con un guion es la pequeña.
         """
+        self._reservados = tuple(texts)
         metricas = QFontMetrics(value_font(theme.METRICS.tile_value_pt, bold=True))
-        ancho = max((metricas.size(0, t).width() for t in texts), default=0)
+        ancho = max((metricas.size(0, t).width() for t in self._reservados), default=0)
+        ancho += self.value.ancho_de_la_unidad()
         if self.value.minimumWidth() != ancho:
             self.value.setMinimumWidth(ancho)
-
-    def _alinear(self) -> None:
-        """La cifra, arrimada a su unidad: a la derecha si va aparte («9 %»),
-        y a la izquierda si va en el texto («1.4 MB/s»), que es por donde
-        empieza a leerse. Con el ancho reservado, lo que se mueve es la
-        cifra, y no lo que hay a su lado."""
-        lado = Qt.AlignmentFlag.AlignRight if self.unit.text() else Qt.AlignmentFlag.AlignLeft
-        self.value.setAlignment(lado | Qt.AlignmentFlag.AlignVCenter)
 
     def set_label(self, label: str) -> None:
         """Cambia el nombre del recuadro.
@@ -1287,7 +1364,6 @@ class StatTile(Card):
         el aviso de la página y en el tooltip.
         """
         self.value.hide()
-        self.unit.hide()
         self.lock.setToolTip(tooltip)
         self.lock.show()
         self.set_detail(detalle)
@@ -1299,7 +1375,6 @@ class StatTile(Card):
         if not self.lock.isHidden():
             self.lock.hide()
             self.value.show()
-            self.unit.show()
         if self.value.text() != text:
             self.value.setText(text)
             # El guion de «sin dato» a treinta y seis píxeles es una raya

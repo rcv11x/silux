@@ -51,6 +51,30 @@ class TestLaPaginaDeGraficos(unittest.TestCase):
                          [_(c) for c in ("gpu.tile.usage", "gpu.tile.clock",
                                          "gpu.tile.temp", "gpu.tile.power")])
 
+    def test_la_cifra_empieza_donde_su_etiqueta_y_lleva_la_unidad_pegada(self):
+        """La cifra iba arrimada a su unidad por la derecha, con el hueco
+        reservado delante: «0 MHz» de la gráfica parada empezaba tres cifras
+        más allá que su etiqueta. Ahora empieza en el borde de la etiqueta, y
+        el hueco queda detrás de la unidad."""
+        from PySide6.QtGui import QFontMetrics
+        from silux.ui import theme
+        from silux.ui.widgets import StatTile
+
+        ficha = self._ficha("5800x3d")
+        for tile in (f for f in ficha.findChildren(StatTile) if f.isVisible()):
+            with self.subTest(ficha=tile.caption.text()):
+                cifra = tile.value.mapTo(tile, tile.value.contentsRect().topLeft()).x()
+                etiqueta = tile.caption.mapTo(tile, tile.caption.contentsRect().topLeft()).x()
+                self.assertEqual(cifra, etiqueta)
+                from PySide6.QtCore import Qt
+                self.assertTrue(tile.value.alignment() & Qt.AlignmentFlag.AlignLeft)
+                # El ancho reservado lleva la unidad: lo que cabe detrás.
+                numero = QFontMetrics(tile.value.font()).horizontalAdvance(tile.value.text())
+                self.assertGreaterEqual(tile.value.width(),
+                                        numero + tile.value.ancho_de_la_unidad())
+                self.assertTrue(tile.unit.text())
+                self.assertTrue(tile.unit.isHidden(), "la unidad la pinta la cifra")
+
     def test_sin_ficha_de_temperatura_las_otras_tres_no_dejan_hueco(self):
         """La integrada de Intel no publica temperatura y su ficha se esconde;
         su celda se quedaba reservada, vacía, entre Frecuencia y Consumo."""
