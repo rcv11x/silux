@@ -38,17 +38,19 @@ python3 tools/build_appimage.py --container   # el AppImage que se reparte
 python3 tools/probar_en_minimo.py --container # la suite en el Python del suelo
 python3 tools/agitar_ventana.py --ventanas 6  # cierres de Qt con la ventana cambiando de forma
 uv sync --extra gui                    # el entorno de desarrollo: pytest y PySide6
-QT_QPA_PLATFORM=offscreen uv run pytest -n 4 -m "not a_solas"  # la suite, en paralelo (nunca más de 4)
+QT_QPA_PLATFORM=offscreen uv run pytest -n auto -m "not a_solas"  # la suite, en paralelo (-n 4 si corre algo más)
 QT_QPA_PLATFORM=offscreen uv run pytest -m a_solas  # los tres que miden, solos
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .  # sin instalar nada
 ```
 
 En paralelo tardan medio minuto entre las dos pasadas; en serie, minuto y
-medio. **Nunca más de `-n 4`, en los dos equipos** (oficina, 16 GB; casa,
-32 GB): cada proceso carga Qt, y `-n auto` (12) con tres agentes de Claude a
-la vez llenó los 16 GB de la oficina y congeló el equipo el 18 de noviembre.
-Por lo mismo, **en estos equipos no se lanzan agentes de Claude en
-paralelo**: las tareas van de una en una. Las dos pasadas son las del CI: tres tests comparan dos medidas de
+medio. **`-n auto` cuando la suite es lo único pesado que corre** (sin
+agentes en paralelo, sin un contenedor, sin otra suite a la vez); **`-n 4` si
+hay algo más corriendo**. En los dos equipos (oficina, 16 GB; casa, 32 GB).
+Cada proceso carga Qt, y el 18 de noviembre tres agentes de Claude con
+cuatro suites a la vez llenaron los 16 GB de la oficina y congelaron el
+equipo: no fue una suite sola. Por lo mismo, **en estos equipos no se lanzan
+agentes de Claude en paralelo**: las tareas van de una en una. Las dos pasadas son las del CI: tres tests comparan dos medidas de
 rendimiento y van solos (`tests/conftest.py`). Cuántos son lo dice la suite al
 terminar; no se apunta aquí a mano. Si sale bastante menos que en la
 última ejecución, falta algo por recoger. Corren en una carpeta temporal propia
@@ -68,7 +70,10 @@ Un volcado se monta con `tools/montar_equipo.py`, no apuntando
 `SILUX_SYSROOT` a su carpeta: git no guarda las carpetas vacías, y cuentan.
 
 Capturas sin pantalla, siempre en `"$(xdg-user-dir PICTURES)/silux-test/"` y
-nunca dentro del repositorio. Lo que se fuerza por la línea de órdenes —tema,
+nunca dentro del repositorio. **Nunca se captura la ventana activa ni la
+pantalla a ciegas**: solo la ventana de silux, buscada por su título o su
+identificador. El 19 una captura de «la ventana activa» se llevó otras
+ventanas del autor. Lo que se fuerza por la línea de órdenes —tema,
 densidad, letra, acento, tamaño— vale solo para esa ejecución y no se guarda en
 `settings.json`.
 
@@ -298,7 +303,8 @@ código (F-…), que es por el que se buscan allí.
 
 | Dónde | Gravedad | Qué |
 |---|---|---|
-| Qt, `tests/` | media | PySide6 6.11 en Python 3.10/3.11 cierra la ventana al cambiar de forma (la 0.3 lo tiene; los AppImage nuevos y el `pyproject`, no). En los tests sale también, raro, con 3.14 + 6.12: un rojo así en el CI se relanza a mano. Falta la causa: docs/pendientes.md |
+| Qt, `tests/` | alta | PySide6 6.11 en Python 3.10/3.11 cierra la ventana al cambiar de forma (la 0.3 lo tiene; los AppImage nuevos y el `pyproject`, no). En los tests sale también, raro, con 3.14 + 6.12: sin explicar. docs/pendientes.md |
+| `privileged/`, `ui/dialogs.py` | alta, aprobada | polkit «esta vez» enseña `python3 -c …`: opción (a) del autor, avisar antes y ofrecer «Para siempre» con el texto nuevo, que nombra también el uso de la gráfica. Antes de la prueba1 |
 | `ui/pages/board.py` | media, sin comprobar | la columna «Ranura» (SMBIOS tipo 9) no se ha visto con la tabla de ninguna placa |
 | `spd.py` | alta | el XMP de DDR4 ignora la corrección fina del ciclo: un DDR4-3600 sale 3200 (F-A2); pide un volcado real con XMP |
 | `privileged/instalar.py` | alta, condicionada | no comprueba que el destino no sea sustituible |
