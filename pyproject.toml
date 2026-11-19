@@ -28,10 +28,13 @@ dependencies = []
 [project.optional-dependencies]
 gui = [
     # El techo es la única excepción a no ponerle techo a PySide6 aquí, y solo
-    # donde se cae: la 6.12.0 resta una referencia a `None` en cada método que
-    # devuelve `void`, y en 3.10 y 3.11 el proceso muere con «none_dealloc» al
-    # pintar la primera gráfica. Desde 3.12 `None` es inmortal y funciona.
-    "PySide6>=6.6,<6.12; python_version < '3.12'",
+    # donde se cae. En 3.10 y 3.11, la 6.12.0 resta una referencia a `None` en
+    # cada método que devuelve `void` y el proceso muere con «none_dealloc» al
+    # pintar la primera gráfica; y la 6.11 libera dos veces la llamada encolada
+    # de un `QScrollBar` cuando la ventana cambia de forma (al dar permisos, al
+    # conectar un disco): `tools/agitar_ventana.py`, tres ventanas de seis en
+    # diez minutos. Desde 3.12 las dos funcionan.
+    "PySide6>=6.6,<6.11; python_version < '3.12'",
     "PySide6>=6.6; python_version >= '3.12'",
 ]
 

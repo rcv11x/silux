@@ -184,13 +184,14 @@ class TestElPaqueteTraeTls(unittest.TestCase):
 
 
 class TestQuienInstalaDesdeElCodigo(unittest.TestCase):
-    """El extra `gui` del `pyproject` no deja entrar la 6.12.0 donde se cae.
+    """El extra `gui` del `pyproject` no deja entrar la 6.11 ni la 6.12 donde
+    se caen.
 
     La regla es que `pyproject.toml` no pone techos a PySide6: no le toca
     decidir qué Qt corre en la máquina de otro. Esta es la excepción, y solo
-    para Python 3.10 y 3.11, que es donde el fallo de `None` de la 6.12.0
-    tumba el proceso. Desde 3.12 `None` es inmortal y la 6.12 funciona, así
-    que ahí no se le quita a nadie.
+    para Python 3.10 y 3.11: ahí la 6.12.0 muere con «none_dealloc» y la 6.11
+    revienta cuando la ventana cambia de forma (`tools/agitar_ventana.py`).
+    Desde 3.12 las dos funcionan, así que ahí no se le quita a nadie.
     """
 
     def _requisitos(self) -> list[str]:
@@ -215,14 +216,16 @@ class TestQuienInstalaDesdeElCodigo(unittest.TestCase):
             rangos.append(rango.strip())
         return rangos
 
-    def test_en_3_10_y_3_11_no_entra_la_6_12_0(self):
+    def test_en_3_10_y_3_11_no_entran_la_6_11_ni_la_6_12(self):
         for python in ("3.10", "3.11"):
             with self.subTest(python=python):
                 rangos = self._rangos_para(python)
                 self.assertTrue(rangos, f"en {python} no se pide ningún PySide6")
                 for rango in rangos:
                     self.assertFalse(_admite(rango, "6.12.0"), rango)
-                    self.assertTrue(_admite(rango, "6.11.3"), rango)
+                    self.assertFalse(_admite(rango, "6.11.3"), rango)
+                    self.assertFalse(_admite(rango, "6.11.0"), rango)
+                    self.assertTrue(_admite(rango, "6.10.3"), rango)
 
     def test_desde_3_12_no_se_le_pone_techo(self):
         for python in ("3.12", "3.14"):
