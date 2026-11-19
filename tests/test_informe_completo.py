@@ -41,9 +41,10 @@ def _visibles(pagina) -> list[str]:
                 fila += 1
     for etiqueta in pagina.findChildren(QLabel):
         if etiqueta.isVisibleTo(pagina):
-            texto = _texto_de_etiqueta(etiqueta)
-            if texto and texto.strip():
-                textos.append(texto)
+            # Line by line: a multi-line label keeps its lines in the report,
+            # and inside a notice each one is quoted.
+            textos += [line for line in _texto_de_etiqueta(etiqueta).splitlines()
+                       if line.strip()]
     return textos
 
 

@@ -152,7 +152,7 @@ def _texto_de_etiqueta(etiqueta) -> str:
         documento = QTextDocument()
         documento.setHtml(texto)
         texto = documento.toPlainText()
-    return " ".join(texto.split())
+    return "\n".join(" ".join(line.split()) for line in texto.splitlines() if line.strip())
 
 
 def _es_hoja(widget) -> bool:
@@ -238,8 +238,8 @@ def _tabla(filas: list[list[str]]) -> list[str]:
 
 
 def _lineas(widget, raiz) -> list[str]:
-    from PySide6.QtWidgets import (QAbstractButton, QLabel, QScrollArea, QTreeWidget,
-                                   QTreeWidgetItemIterator)
+    from PySide6.QtWidgets import (QAbstractButton, QComboBox, QLabel, QScrollArea,
+                                   QTreeWidget)
 
     from .. import render
     from .corematrix import CoreMatrix
@@ -281,7 +281,11 @@ def _lineas(widget, raiz) -> list[str]:
         return _arbol(widget)
     if isinstance(widget, QLabel):
         texto = _texto_de_etiqueta(widget)
-        return [texto] if texto else []
+        return texto.splitlines() if texto else []
+    if isinstance(widget, QComboBox):
+        return [widget.currentText()] if widget.currentText() else []
+    if widget.objectName() == "Notice":
+        return _notice(widget, raiz)
 
     lineas: list[str] = []
     if isinstance(widget, Card):
@@ -299,21 +303,46 @@ def _lineas(widget, raiz) -> list[str]:
     return lineas
 
 
+def _notice(notice, root) -> list[str]:
+    """A notice as a quote with its title in bold, so it doesn't read as part
+    of the text above it."""
+    from PySide6.QtWidgets import QLabel
+
+    texts = [_texto_de_etiqueta(label) for label in notice.findChildren(QLabel)
+             if label.isVisibleTo(root) and label.text().strip()]
+    if not texts:
+        return []
+    title, *rest = texts
+    return ["", f"> **{title}**", *(f"> {line}" for text in rest
+                                     for line in text.splitlines()), ""]
+
+
 def _arbol(arbol) -> list[str]:
     from PySide6.QtWidgets import QTreeWidgetItemIterator
 
-    filas = []
+    # What the window hides doesn't go in, and columns with nothing in them
+    # (the trend line, the stretch) don't either.
+    columns = [c for c in range(arbol.columnCount()) if not arbol.isColumnHidden(c)]
+    rows = []
     iterador = QTreeWidgetItemIterator(arbol)
     while iterador.value() is not None:
         fila = iterador.value()
-        celdas = [fila.text(c).strip() for c in range(arbol.columnCount())]
         nivel, padre = 0, fila.parent()
         while padre is not None:
             nivel, padre = nivel + 1, padre.parent()
-        if any(celdas):
-            filas.append("  " * nivel + "- " + " · ".join(c for c in celdas if c))
+        rows.append((nivel, {c: fila.text(c).strip() for c in columns}))
         iterador += 1
-    return filas
+    used = [c for c in columns if any(cells[c] for _level, cells in rows)]
+    lines = []
+    if not arbol.isHeaderHidden():
+        names = [arbol.headerItem().text(c).strip() for c in used]
+        if any(names):
+            lines.append("*" + " · ".join(n for n in names if n) + "*")
+    for level, cells in rows:
+        texts = [cells[c] for c in used if cells[c]]
+        if texts:
+            lines.append("  " * level + "- " + " · ".join(texts))
+    return lines
 
 
 def _solo_hijos():
