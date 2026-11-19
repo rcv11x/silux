@@ -658,7 +658,7 @@ class _Anonimizador:
             campos = linea.split("\t")
             if len(campos) > 2:
                 if campos[1] != "00000000":
-                    campos[1] = _ipv4_hex("192.0.2.0")
+                    campos[1] = _ipv4_hex(privacidad.PUERTA.rsplit(".", 1)[0] + ".0")
                 if campos[2] != "00000000":
                     self.secretos.add(campos[2])
                     campos[2] = _ipv4_hex(privacidad.PUERTA)
