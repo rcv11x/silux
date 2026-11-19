@@ -462,8 +462,12 @@ class MemoryPage(QScrollArea):
         array = snapshot.memory_array
         modules = snapshot.modules
 
-        self.title.setText(_("mem.title").format(
-            tam=render.size(memory.total_bytes)))
+        instalada = snapshot.installed_memory_bytes
+        if instalada:
+            self.title.setText(_("mem.title.installed").format(
+                instalada=render.size(instalada), util=render.size(memory.total_bytes)))
+        else:
+            self.title.setText(_("mem.title").format(util=render.size(memory.total_bytes)))
         self.subtitle.setText(self._subtitle(snapshot))
         self._limite = self._limite_del_procesador(snapshot)
         self._kernel = kernel.version(snapshot.system.kernel)

@@ -64,5 +64,55 @@ class TestLaCabeceraDeMemoria(unittest.TestCase):
         self.assertNotIn("catalogados", pagina.subtitle.text())
 
 
+@unittest.skipIf(QApplication is None, "sin PySide6")
+class TestInstaladaYUtilizable(unittest.TestCase):
+    """El título dice la memoria instalada y la que queda para usar.
+
+    Decía «15.4 GB de memoria» en un equipo con dos módulos de 8 GB: es
+    `MemTotal`, lo instalado menos lo que se quedan el firmware y el kernel,
+    y parecía que faltaba memoria. La instalada sale de los módulos o del SPD;
+    sin ninguno de los dos no se adivina.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.app = qt.app()
+
+    def _titulo(self, carpeta):
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.memory import MemoryPage
+
+        f = foto(EQUIPOS / carpeta)[0]
+        theme.set_density("normal", "normal")
+        self.pagina = MemoryPage(theme.palette_for(self.app, "dark"),
+                                 Preferences().normalized())
+        self.pagina.apply(f)
+        return f, self.pagina.title.text()
+
+    def test_con_el_spd_dice_las_dos(self):
+        from silux import render
+        f, titulo = self._titulo("i5-10400")
+        self.assertEqual(titulo, "16 GB instalados · "
+                         f"{render.size(f.system.memory.total_bytes)} utilizables")
+        self.assertEqual(render.size(f.system.memory.total_bytes), "15.4 GB")
+
+    def test_sin_modulos_ni_spd_solo_la_utilizable(self):
+        from silux import render
+        f, titulo = self._titulo("5800x3d")
+        self.assertEqual((f.modules, f.spd), ((), ()))
+        self.assertEqual(titulo, f"{render.size(f.system.memory.total_bytes)} utilizables")
+
+    def test_con_la_tabla_del_firmware_manda_la_suma_de_los_modulos(self):
+        import dataclasses
+        from silux.model import MemoryModule
+        f, _titulo = self._titulo("i5-10400")
+        modulos = (MemoryModule(populated=True, size_bytes=16 * 1024**3),
+                   MemoryModule(populated=True, size_bytes=16 * 1024**3),
+                   MemoryModule(populated=False))
+        self.assertEqual(dataclasses.replace(f, modules=modulos).installed_memory_bytes,
+                         32 * 1024**3)
+
+
 if __name__ == "__main__":
     unittest.main()

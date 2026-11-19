@@ -1726,6 +1726,23 @@ class Snapshot:
         return tuple(n for n in self.notes if n.need is Need.ROOT and n.what)
 
     @property
+    def installed_memory_bytes(self) -> Optional[int]:
+        """La memoria instalada: la suma de los módulos, no lo que ve el kernel.
+
+        `system.memory.total_bytes` es la utilizable (`MemTotal`), que es lo
+        instalado menos lo que se quedan el firmware, el kernel y la gráfica
+        integrada. Sale de la tabla del firmware (con permisos) o, si no, del
+        SPD. Sin ninguno de los dos no se sabe, y no se adivina: la memoria
+        por bloques de `/sys/devices/system/memory` deja fuera lo que reserva
+        una integrada.
+        """
+        modulos = [m.size_bytes for m in self.modules if m.populated and m.size_bytes]
+        if modulos:
+            return sum(modulos)
+        spd = [i.capacity_bytes for i in self.spd if i.capacity_bytes]
+        return sum(spd) if spd else None
+
+    @property
     def working_gpu(self) -> Optional[int]:
         """El índice de la gráfica que está trabajando, la que se resume.
 
