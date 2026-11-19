@@ -169,7 +169,8 @@ silux/
 │                  cargador de módulos de una lista blanca fija
 ├─ db/             cpu_ids.json (generado), sockets.json y families.json,
 │                  memory_limits.json (el máximo de memoria por modelo),
-│                  scores.json (la escala) y lang/ (es.json, en.json)
+│                  scores.json (la escala), lang/ (es.json, en.json) y
+│                  THIRD_PARTY_NOTICES.md, los avisos de lo que es de otros
 └─ ui/             tema, hilo de muestreo, una página por sección;
                    widgets.py son las primitivas que usan varias páginas,
                    y el widget de una sola página vive en su módulo;
@@ -198,6 +199,11 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
   sociales ni chips con su dirección: lo vigila `tests/test_nada_en_bruto.py`
   con cada volcado. Una marca sale de `render.maker`; un chip, de
   `render.chip_name`.
+- Lo que se toma de otro proyecto (hoy, las tablas de libcpuid y CPU-X) lleva
+  su aviso en `silux/db/THIRD_PARTY_NOTICES.md`, que va en pip y en los
+  AppImage; `tests/test_avisos_de_terceros.py` lo compara con las fuentes que
+  declara la tabla. Un procesador que no está en ella dice «no está en la
+  tabla de esta versión»: no se inventa ni se pinta con guion.
 
 ## Convenciones
 
@@ -205,7 +211,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); los comentarios, en el español del autor. Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-1383 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+1388 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
