@@ -35,6 +35,7 @@ python3 tools/install_desktop.py       # entrada de menú: «Silux (desarrollo)�
 python3 tools/volcar_gpu.py            # lo que publica el kernel de cada gráfica
 python3 tools/volcar_equipo.py NOMBRE  # este equipo, anonimizado, a tests/fixtures/equipos/
 python3 tools/montar_equipo.py NOMBRE ORDEN…  # ejecutar algo con un volcado montado, como los tests
+python3 tools/update_screen_references.py  # rehacer lo que enseña cada volcado (y revisar el diff)
 python3 tools/comprobar_privacidad.py  # antes de publicar nada
 python3 tools/medir_consumo.py         # lo que gasta, contra sus objetivos (regla 7)
 python3 tools/capturas_readme.py       # las capturas del README, con permisos
@@ -199,6 +200,10 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
   ARM no): [docs/equipos-probados.md](docs/equipos-probados.md). Hay tres
   equipos volcados para la suite, los tres con los datos nuevos: dos del
   i5-10400 (en reposo y con turbo) y el Ryzen 7 5800X3D.
+- Lo que enseña cada volcado, página a página, está en
+  `tests/fixtures/screens/`: un cambio que lo altera falla en
+  `test_screen_references` hasta que se rehace con
+  `tools/update_screen_references.py`, y el diff se revisa en el commit.
 - Lo que se lee en la ventana no lleva rellenos del firmware, razones
   sociales ni chips con su dirección: lo vigila `tests/test_nada_en_bruto.py`
   con cada volcado. Una marca sale de `render.maker`; un chip, de
