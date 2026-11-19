@@ -1,75 +1,255 @@
-# Cómo funciona Silux
+# Cómo está hecho Silux
 
-Lo que no cabe en el README sin convertirlo en un libro: por qué el programa
-está hecho así, de dónde sale cada dato y qué se intentó antes que no salió
-bien. Se puede leer entero o saltar a lo que interese.
+Qué hace cada parte, cómo viaja un dato desde el kernel hasta la pantalla,
+las reglas que sostienen el diseño y cómo se ejecuta cada cosa. Se puede leer
+entero o saltar a lo que interese.
 
-- [Arquitectura](#arquitectura)
+- [Cómo se ejecuta cada cosa](#cómo-se-ejecuta-cada-cosa)
+- [Cómo viaja un dato](#cómo-viaja-un-dato)
+- [Las reglas, con su porqué](#las-reglas-con-su-porqué)
+- [El reparto, comentado](#el-reparto-comentado)
 - [Por qué no hace falta un compilador](#por-qué-no-hace-falta-un-compilador)
-- [El cuello de botella real de un monitor en Linux](#el-cuello-de-botella-real-de-un-monitor-en-linux)
+- [Los drivers que faltan](#los-drivers-que-faltan)
 - [Familia, modelo y la firma CPUID](#familia-modelo-y-la-firma-cpuid)
 - [El SPD: a cuánto puede ir la memoria](#el-spd-a-cuánto-puede-ir-la-memoria)
-- [La pestaña de placa base](#la-pestaña-de-placa-base)
+- [La placa base y el chipset](#la-placa-base-y-el-chipset)
 - [El árbol de sensores](#el-árbol-de-sensores)
-- [Consumo](#consumo)
-- [Sobre el consumo](#sobre-el-consumo)
 - [Las dos formas de contar la memoria usada](#las-dos-formas-de-contar-la-memoria-usada)
-- [El ayudante privilegiado](privilegios.md)
-- [La base de datos](#la-base-de-datos)
-- [Ajustes](#ajustes)
+- [La base de datos de procesadores](#la-base-de-datos-de-procesadores)
+- [Los equipos volcados](#los-equipos-volcados)
+- [El informe de fallos](#el-informe-de-fallos)
 - [Instalación en el escritorio](#instalación-en-el-escritorio)
 
-## Arquitectura
+Los permisos y el ayudante tienen su propio documento,
+[privilegios.md](privilegios.md); el AppImage, [empaquetado.md](empaquetado.md).
+
+## Cómo se ejecuta cada cosa
+
+El entorno de desarrollo se monta con [uv](https://docs.astral.sh/uv/), que
+trae Python, PySide6 y pytest:
+
+```bash
+uv sync --extra gui
+uv run python -m silux.ui.app           # la interfaz
+uv run python -m silux.cli              # el volcado en terminal
+uv run python -m silux.cli --json       # todo en JSON, para otros programas
+uv run python -m silux.cli --sensors    # el árbol de sensores
+uv run python -m silux.cli --report FICHERO   # el informe para un fallo
+```
+
+La suite, en dos pasadas como en el CI: tres tests comparan dos medidas de
+rendimiento y van solos.
+
+```bash
+QT_QPA_PLATFORM=offscreen uv run pytest -n auto -m "not a_solas"
+QT_QPA_PLATFORM=offscreen uv run pytest -m a_solas
+QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .   # sin instalar nada
+```
+
+Cada proceso de la suite carga Qt: con poca memoria, mejor `-n 4` que
+`-n auto`. Los tests corren en una carpeta temporal propia y no tocan la
+configuración ni el historial de quien los ejecuta.
+
+Capturas sin pantalla, con lo que se fuerce por la línea de órdenes solo para
+esa ejecución (no se guarda en los ajustes):
+
+```bash
+QT_QPA_PLATFORM=offscreen python3 -m silux.ui.app \
+  --screenshot sensores.png --page Sensores --dark --compact --size 900x680
+```
+
+Acepta además `--font-scale`, `--anonymous` y `--samples N` (con
+`--interval 1`, `--samples 65` captura tras un minuto de gráficas). Una
+sección que el equipo no tiene —Batería en un sobremesa— sale con código 2.
+
+Las herramientas de `tools/`:
+
+```bash
+python3 tools/gen_cpu_db.py            # regenerar la base de datos de procesadores
+python3 tools/gen_memory_limits.py     # el máximo de memoria por modelo
+python3 tools/gen_lang.py --write      # poner al día los archivos de idioma
+python3 tools/medir_referencia.py      # rehacer la escala de puntuación
+python3 tools/anadir_puntuacion.py INFORMES   # sumar medidas ajenas a la tabla
+python3 tools/install_desktop.py       # entrada de menú del código fuente
+python3 tools/volcar_gpu.py            # lo que publica el kernel de cada gráfica
+python3 tools/volcar_equipo.py NOMBRE  # este equipo, anonimizado, a tests/fixtures/equipos/
+python3 tools/montar_equipo.py NOMBRE ORDEN…   # ejecutar algo con un volcado montado
+python3 tools/comprobar_privacidad.py  # antes de publicar nada
+python3 tools/medir_consumo.py         # lo que gasta, contra sus objetivos
+python3 tools/capturas_readme.py       # las capturas del README, con permisos
+python3 tools/build_appimage.py --container    # el AppImage que se reparte
+python3 tools/probar_en_minimo.py --container  # la suite en Python 3.10
+python3 tools/agitar_ventana.py --ventanas 6   # la ventana cambiando de forma sin parar
+```
+
+## Cómo viaja un dato
+
+```
+kernel (/sys, /proc, ioctl, CPUID)       ayudante root (SMBIOS, MSR, SMART, PMU)
+          │                                        │ por un socket, tras pkexec
+          ▼                                        ▼
+   providers/*  ──── escriben en un Draft mutable ─────
+          │
+   Collector.snapshot()   lo estático se lee una vez y se clona;
+          │               lo dinámico, en cada muestra
+          ▼
+   Snapshot congelado     números, nunca texto
+          │
+   ui/sampler.py          un QThread: nada se lee en el hilo de la interfaz
+          │  señal `sampled`
+          ▼
+   MainWindow._on_sample → _distribute
+          │                   la página a la vista: `apply(foto)`
+          │                   las demás con gráficas: `record(foto)`
+          ▼
+   render.py              el único sitio donde un número se vuelve texto
+```
+
+Cada proveedor (`providers/`) lee una fuente y no conoce a los demás. Declara
+si es estático (el modelo del procesador) o dinámico (su temperatura), y si
+no puede trabajar dice por qué con un `Note`. El `Collector` los llama en un
+orden que importa y que está comentado en `collector.py`: algunos completan
+lo que dejó otro.
+
+La foto que sale (`Snapshot`) es inmutable. La ventana guarda la última y la
+pasa a la página abierta, que compara y repinta lo que cambió. Las páginas
+que no se ven no se pintan: solo guardan su historia para que la gráfica esté
+llena al volver.
+
+Lo que cuesta memoria de forma permanente va en otro proceso que muere al
+contestar: OpenGL, Vulkan, OpenCL y VA-API se preguntan en un hijo
+(`gpuapi.consultar()`), y la medida de la memoria corre en otro
+(`membench.py`).
+
+Lo que solo puede leer el administrador lo lee un ayudante mínimo que se
+lanza con `pkexec` y habla con el programa por un socket; cómo y por qué, en
+[privilegios.md](privilegios.md).
+
+## Las reglas, con su porqué
+
+No son preferencias de estilo. Cada una viene de un problema concreto:
+
+1. **El modelo guarda números, no texto.** `freq_hz: int`, nunca
+   `"2.90 GHz"`. Todo el formateo vive en `silux/render.py` y ocurre al
+   pintar. De ahí salen gratis la salida JSON, las gráficas y unos tests que
+   comparan cifras. Vale igual para cualquier decisión: si ya hay una función
+   que decide algo, no se reimplementa al lado.
+
+2. **`Snapshot` es inmutable.** Los proveedores escriben en un `Draft`
+   mutable y este se congela. La interfaz compara fotos y repinta lo que
+   cambió.
+
+3. **`cpu.types` es una lista desde el primer commit.** Cualquier Intel de
+   12.ª en adelante tiene núcleos P y E con cachés y frecuencias distintas.
+   Asumir «una CPU, un juego de valores» obliga a reescribirlo todo después;
+   `tests/test_sysfs.py` monta un sysfs falso de un i7-12700K y comprueba el
+   reparto.
+
+4. **Nada se lee en el hilo de la interfaz.** `silux/ui/sampler.py` es un
+   QThread; ahí dentro se fija la afinidad para CPUID y ahí se abre el
+   diálogo de polkit, que bloquea.
+
+5. **Cuando falta un dato se explica.** Un `Note` con su motivo —permisos,
+   driver, base de datos, hardware— en vez de esconder la sección, y cada
+   página enseña solo sus notas. Lo que no existe en ese hardware no se pinta
+   con guion: se esconde y se nombra al pie. Lo que falta por permisos lleva
+   un candado, que es otro estado: tiene arreglo.
+
+6. **Los widgets que se refrescan a menudo reutilizan.** Crear widgets en
+   cada muestreo dejaba miles vivos y hacía crecer la memoria medio megabyte
+   por minuto. `ChipRow` y `Table` reescriben el texto de lo que ya existe;
+   hay tests que lo vigilan.
+
+7. **Presupuesto: 300 MB de memoria y unos pocos por ciento de un núcleo.**
+   Las cifras, cómo se miden y qué se arregló para llegar, en
+   [rendimiento.md](rendimiento.md); las comprueba `tools/medir_consumo.py`.
+   Lo que no se ve no se pinta.
+
+8. **Lo que cueste memoria de forma permanente, en otro proceso.** Preguntar
+   a OpenGL, Vulkan y OpenCL carga sus drivers: 118 MB de residente, de los
+   que 83 son de rusticl arrastrando LLVM entero para decir «OpenCL 3.1». De
+   regalo, un driver que revienta solo se lleva al hijo.
+
+9. **La interfaz responde al momento.** Lo que cambia —permisos, un disco que
+   se conecta, un dato que aparece o desaparece— se ve en la página abierta
+   sin salir y volver. Lo comprueba `tests/test_al_momento.py`: una página
+   abierta que recibe una foto queda igual que montada directamente con ella.
+
+## El reparto, comentado
 
 ```
 silux/
-├─ model.py        dataclasses congeladas: valores tipados, nunca texto
+├─ model.py        dataclasses congeladas: Snapshot, CpuType, Sensor, Board…
 ├─ render.py       ÚNICO sitio donde un valor se convierte en texto
-├─ collector.py    orquesta los proveedores; separa lo estático de lo dinámico
-├─ tracking.py     mínimos, máximos y medias por sensor a lo largo de la sesión
+├─ collector.py    orquesta los proveedores; su orden importa y está comentado
+├─ cli.py          volcado en terminal, JSON, sensores e informe
+├─ options.py      la ayuda de la línea de órdenes, traducida
+├─ report.py       el informe corto en Markdown
+├─ privacidad.py   qué identifica a alguien: lo usan el informe y las capturas
+├─ desktop.py      la entrada de menú y sus iconos
+├─ kernel.py       qué dato es de qué versión del kernel (kernel.md)
+├─ settings.py     preferencias en ~/.config/silux
+├─ tracking.py     mínimos, máximos y medias por sensor
+├─ throttling.py   desde cuándo lleva frenándose algo, y por qué
+├─ registro.py     graba la sesión a un CSV
+├─ i18n.py         el idioma de la interfaz; el original es el español
+├─ sysroot.py      leer un equipo volcado en vez del de verdad
 ├─ rawcpuid.py     CPUID desde Python, sin root (mmap + ctypes)
-├─ features.py     tabla declarativa de banderas: hoja, registro, bit, nombre
-├─ gpuapi.py       OpenGL, Vulkan y OpenCL por ctypes, en un proceso aparte
-├─ amdgpu.py       ioctl DRM: tipo de VRAM, bus, unidades de cómputo, ROP
-├─ gpumetrics.py   telemetría del firmware AMD: por qué se frena la tarjeta
+├─ features.py     tabla declarativa de banderas de CPUID
+├─ gpuapi.py       OpenGL, Vulkan, OpenCL y VA-API, en otro proceso
+├─ amdgpu.py, i915.py   ioctl DRM de cada fabricante
 ├─ nvml.py         NVIDIA propietaria, que no publica nada en sysfs
-├─ edid.py         decodifica la chapa de identificación del monitor
-├─ spd.py          decodifica el chip de identificación de la RAM (DDR4 y DDR5)
-├─ smart.py        interpreta el diagnóstico de los discos
+├─ gpumetrics.py   telemetría del firmware AMD: por qué se frena la tarjeta
+├─ edid.py         la chapa del monitor, con sus extensiones CTA-861
+├─ spd.py          el chip de identificación de la RAM (DDR4 y DDR5)
+├─ smart.py        el diagnóstico de los discos
 ├─ pciids.py       nombres de dispositivos PCI desde la base del sistema
-├─ benchmark.py    prueba de CPU que reporta en qué condiciones midió
-├─ report.py       informe en Markdown para reportar fallos
+├─ benchmark.py    prueba de CPU que dice en qué condiciones midió
+├─ membench.py     ancho de banda y latencia de la memoria, en otro proceso
+├─ history.py      historial de pruebas de este equipo
+├─ score.py        la puntuación comparable entre equipos, y su escala
 ├─ providers/      una fuente cada uno; ninguno conoce a los demás
-├─ privileged/     ayudante root mínimo (helper.py) + cliente + SMBIOS
-├─ db/             cpu_ids.json (generado, con la tabla de MIDR de ARM)
-│                  + sockets.json y families.json, curados a mano
-├─ cli.py          volcado, JSON, informe y modo continuo
-└─ ui/             Qt: tema, hilo de muestreo, widgets y una página por sección
+├─ privileged/     el ayudante root mínimo, su cliente, el instalador y el
+│                  cargador de módulos de una lista blanca fija
+├─ db/             cpu_ids.json (generado), sockets.json y families.json,
+│                  memory_limits.json, scores.json (la escala) y lang/
+└─ ui/             tema, hilo de muestreo, una página por sección
 ```
 
-Dos decisiones sostienen el resto:
+Algunos proveedores, por lo que no es obvio de su nombre:
 
-**El modelo guarda números, no cadenas.** `freq_hz: int`, no `"2.90 GHz"`. El
-formateo ocurre al pintar. De ahí salen gratis la salida JSON, las gráficas y
-unos tests que comparan números en vez de texto. Es justo donde CPU-X se ató
-las manos: su modelo guarda cadenas ya formateadas, y por eso su `--dump` es
-texto plano y no una interfaz para otros programas.
+- `msr_voltage.py` pregunta el voltaje del núcleo al propio procesador, que
+  es el único sitio donde está en cualquier equipo: los sensores de placa lo
+  publican sin etiquetar.
+- `imc.py` lee del PMU del controlador de memoria cuánto tráfico mueve ahora
+  mismo. Es un sensor, no una prueba.
+- `cppc.py` saca de ACPI CPPC, además de los relojes, **lo bien que salió
+  cada núcleo de la oblea**: el firmware lo publica y el planificador lo usa
+  para mandar ahí el trabajo de un hilo suelto. Sale con estrellas en la
+  rejilla de núcleos de la página de CPU.
+- `pci.py` da la plataforma (IOMMU, virtualización, BAR por encima de 4 GB) y
+  el enlace de cada pieza PCIe, que se lee en cada muestra porque cambia solo.
+- `devices.py` lista USB, sonido, cámaras y Bluetooth. No abre nunca un
+  número de serie ni una dirección.
+- `cpuidle.py` da el tiempo en cada estado de reposo, restando dos lecturas.
 
-**`Snapshot.cpu.types` es una lista desde el primer commit.** Cualquier Intel
-de 12ª generación en adelante tiene núcleos P y E con cachés y frecuencias
-distintas. Asumir «una CPU, un juego de valores» obliga a reescribir el modelo
-entero más tarde; `tests/test_sysfs.py` monta un sysfs falso de un i7-12700K y
-verifica el reparto sin necesidad de tener uno delante.
+En `ui/`, `widgets.py` son las primitivas que usan varias páginas; el widget
+que solo monta una vive en su propio módulo (`sensortree`, `corematrix`,
+`cachemap`, `scorebar`), porque mezclados no se puede mirar la lista antes de
+escribir uno nuevo. `full_report.py` monta las páginas sin pantalla para
+sacar de ellas el informe; `guarda.py` corre antes de cargar Qt y, si el
+procesador no da para él, lo dice y no abre; `tarjeta.py` es la imagen del
+equipo para pegar en un chat, ya anonimizada.
+
+**Un clic en un valor lo copia**, en las fichas y en las tablas. Se copia el
+texto entero y no el que se ve: la fila que no cabe y sale con puntos
+suspensivos es justo la que hace falta copiar. Un guion no se copia.
 
 ## Por qué no hace falta un compilador
 
-CPU-X necesita C++ porque se apoya en librerías de C (libcpuid, libpci,
-libprocps) y porque lleva embebido un benchmark de ancho de banda de memoria
-escrito en ensamblador. Pero el trabajo de fondo (leer archivos de sysfs y
-emparejar identificadores contra una tabla) no necesita nada de eso.
-
-Donde sí hace falta código nativo, va como bytes dentro del propio programa y
-no como algo que haya que compilar. Son dos sitios:
+Casi todo es leer archivos de `/sys` y emparejar identificadores contra una
+tabla, y eso no necesita nada nativo. Donde sí hace falta, va como bytes
+dentro del propio programa y no como algo que haya que compilar:
 
 - **`CPUID`**, en `silux/rawcpuid.py`: veinte bytes de código máquina escritos
   en una página anónima, marcada como ejecutable y llamada con `ctypes`.
@@ -81,67 +261,43 @@ no como algo que haya que compilar. Son dos sitios:
 
 Los dos van comentados instrucción a instrucción, y ninguno necesita
 compilador, que es lo que permite que funcionen igual dentro de un AppImage.
-El ancho de banda de lectura de la RAM se mide con `memchr` de la biblioteca de
-C, en otro proceso; el de las cachés, que pediría un bucle propio como el de la
-latencia, sigue pendiente.
+El ancho de banda de lectura de la RAM se mide con `memchr` de la biblioteca
+de C, en otro proceso.
 
-## El cuello de botella real de un monitor en Linux
+## Los drivers que faltan
 
-No es lo que el programa sepa leer: es qué módulos tenga cargados el kernel.
-Una placa sin su driver de Super I/O no publica ni un ventilador ni un
-voltaje, por muy bien que se lea `/sys/class/hwmon`.
+El límite de un monitor en Linux no es lo que el programa sepa leer: es qué
+módulos tenga cargados el kernel. Una placa sin su driver de Super I/O no
+publica ni un ventilador ni un voltaje, por muy bien que se lea
+`/sys/class/hwmon`.
 
-Por eso el Monitor no se limita a enseñar lo que hay: **detecta lo que falta**.
-En el equipo de desarrollo, una MSI H510M PRO-E, pasa de 8 sensores a poder
-tener fácilmente el triple con dos módulos que ya están en el sistema:
-
-```
-Falta un driver de sensores
-  (Super I/O) → ventiladores, voltajes de la placa, temperaturas del chipset
-  sudo sensors-detect
-  No conviene adivinar el módulo: cada placa lleva un chip distinto.
-
-Falta un driver de sensores
-  drivetemp → la temperatura de los discos SATA
-  sudo modprobe drivetemp
-```
-
-Para el Super I/O se remite a `sensors-detect` en vez de proponer un módulo
-concreto: cargar el que no es puede devolver lecturas falsas, y eso es peor
-que no dar ninguna.
+Por eso Silux no se limita a enseñar lo que hay: **detecta lo que falta** y
+dice cómo cargarlo (`drivetemp` para la temperatura de los discos SATA, por
+ejemplo). Para el Super I/O remite a `sensors-detect` en vez de proponer un
+módulo concreto: cargar el que no es puede devolver lecturas falsas, y eso es
+peor que no dar ninguna.
 
 ## Familia, modelo y la firma CPUID
 
 CPUID reparte la familia y el modelo entre un campo base y otro extendido:
 cuando los cuatro bits del campo original se agotaron, se añadieron los
-extendidos y hay que recomponerlos. Por eso el i5-10400 tiene un "modelo
-base" de 5 que por sí solo no significa nada, mientras Intel lo llama
+extendidos y hay que recomponerlos. Por eso un i5-10400 tiene un «modelo
+base» de 5 que por sí solo no significa nada, mientras Intel lo llama
 modelo 165.
 
-La primera versión de la interfaz enseñaba las dos formas en cuatro filas, y
-confundía. Ahora se enseña lo que publica el fabricante (familia 6,
-modelo 165 (0xA5)) y una fila con la firma en crudo, `0x000A0653`, cuyo
-tooltip desglosa de dónde sale cada valor.
+Se enseña lo que publica el fabricante —familia 6, modelo 165 (0xA5)— y una
+fila con la firma en crudo, `0x000A0653`, cuyo globo desglosa de dónde sale
+cada valor.
 
 ## El SPD: a cuánto puede ir la memoria
 
 La tabla SMBIOS dice a qué velocidad **va** la memoria. El chip SPD que lleva
-cada módulo pegado al circuito dice a cuánto **puede** ir. Son datos distintos
-y la diferencia es lo que la gente busca:
-
-```
-Zócalo 0   Crucial · chips de Micron · CT8G4DFRA32A.M8FR
-           DDR4 UDIMM · 1 rango × 8 bits · fabricado la semana 37 de 2023
-           Catalogado a  3200 MT/s
-           Funcionando a 2667 MT/s  ⚠
-
-PERFIL              VELOCIDAD   CL  tRCD  tRP  tRAS  tRC   VOLTAJE
-Zócalo 0 · JEDEC    3200 MT/s   22    22   22    51   73   1.20 V
-```
+cada módulo dice a cuánto **puede** ir. Son datos distintos, y la diferencia
+es lo que la gente busca: un módulo catalogado a 3200 que funciona a 2667.
 
 Se lee **sin permisos**: en cuanto el kernel carga `ee1004` (DDR4) o
 `spd5118` (DDR5), el chip queda accesible en el bus SMBus. Si no está cargado,
-el Monitor lo avisa como cualquier otro driver que falte.
+se avisa como cualquier otro driver que falte.
 
 Dos detalles del formato que es fácil leer mal, y que por eso tienen test:
 
@@ -153,409 +309,137 @@ Dos detalles del formato que es fácil leer mal, y que por eso tienen test:
 
 La estructura de los perfiles XMP no la publica JEDEC y lo que circula viene
 de ingeniería inversa, así que todo perfil decodificado pasa un filtro de
-plausibilidad: si la velocidad o la latencia salen absurdas se descarta en
-silencio. Es preferible no enseñar un perfil a enseñar uno inventado.
+plausibilidad: si la velocidad o la latencia salen absurdas, se descarta. Es
+preferible no enseñar un perfil a enseñar uno inventado.
 
-Los tests usan el volcado real de un módulo (con el número de serie a cero)
-en `tests/fixtures/`. Un volcado de verdad vale más que cualquier tabla
+Los tests usan volcados reales de módulos (con el número de serie a cero) en
+`tests/fixtures/`. Un volcado de verdad vale más que cualquier tabla
 sintética: los desplazamientos de este formato no fallan cuando se leen mal,
 solo enseñan otra cifra.
 
-## La pestaña de placa base
-
-Veinte campos, todos de archivos que el kernel expone sin permisos:
-
-```
-MSI H510M PRO-E (MS-7D23)
-Intel H510 · UEFI (64 bits) · Sobremesa
-
-PLACA BASE                          FIRMWARE
-  Fabricante   Micro-Star …           Tipo             UEFI (64 bits)
-  Modelo       H510M PRO-E            Fabricante       American Megatrends …
-  Revisión     1.0                    Versión          1.80
-  Chasis       Sobremesa              Fecha            06/08/2023
-                                      Revisión SMBIOS  5.19
-CHIPSET                               Arranque seguro  desactivado
-  Chipset      Intel H510             TPM              TPM 2.0
-  Ident. PCI   H510 Chipset eSPI Controller
-  Contr. mem.  Comet Lake-S 6c Host Bridge/DRAM Controller
-```
+## La placa base y el chipset
 
 El chipset no sale de ninguna base de datos propia: **el puente LPC/eSPI del
 bus 0 es el chipset**, y `pci.ids` (que ya está instalado en cualquier
 distribución) le pone nombre. De «H510 Chipset eSPI Controller» se extrae
-«Intel H510», que es como lo llama todo el mundo.
+«Intel H510», que es como lo llama todo el mundo. En AMD el puente no lo
+dice, y `providers/dmi.py` lleva una lista de chipsets por generación.
 
 Los fabricantes dejan campos SMBIOS sin rellenar con textos de fábrica:
 «Default string», «To be filled by O.E.M.», «System manufacturer». Se
-filtran. Enseñarlos como si fueran datos es peor que dejar el hueco vacío, y
-esta misma placa trae tres.
+filtran: enseñarlos como si fueran datos es peor que no enseñar nada. Lo
+vigila `tests/test_nada_en_bruto.py` con cada volcado, junto con las razones
+sociales («Micro-Star International Co., Ltd.» sale «MSI»).
 
 ## El árbol de sensores
 
-La página de Monitor presenta los sensores como lo hacen HWMonitor y HWiNFO:
-un árbol por aparato, cada rama una magnitud, y las columnas que importan.
+La página de Sensores los presenta como HWMonitor y HWiNFO: un árbol por
+aparato, cada rama una magnitud, y las columnas que importan (actual, mínimo,
+máximo, media y el último minuto).
 
-```
-▼ MSI H510M PRO-E (MS-7D23)
-  ▼ Temperaturas          Actual      Mín      Máx    Media
-      Temperatura 1      27.8 °C     27.8     28.3     27.9
-▼ Intel Core i5-10400
-  ▼ Temperaturas
-      Package id 0       37.0 °C     34.0     40.0     35.1
-      Core 0 … Core 5
-  ▼ Potencias
-      Paquete            11.0 W      10.5     32.4     14.3
-      Núcleos · Uncore · DRAM
-  ▼ Relojes
-      Core #0 … Core #11
-  ▼ Uso
-      Total · Core #0 … Core #11
-```
-
-La última columna del árbol está vacía a propósito: absorbe el ancho
-sobrante. Sin ella la columna de nombres se estiraba hasta llenar la ventana
-y, en pantalla completa, dejaba las cifras a un palmo del nombre que uno
-quiere comparar. La columna de nombres se arrastra a gusto y el ancho elegido
-se recuerda entre sesiones.
-
-Los nodos se llaman como el aparato, no como el chip: «Intel Core i5-10400»
-en vez de «coretemp», «MSI H510M PRO-E» en vez de «nct6683». Un árbol que
+Los nodos se llaman como el aparato, no como el chip: «AMD Ryzen 7 5800X3D»
+en vez de «k10temp», el modelo de la placa en vez de «it8688». Un árbol que
 obliga a saber qué es cada driver no se lee.
 
-Bajo el procesador conviven sensores de tres orígenes distintos (el chip de
-temperaturas, los contadores RAPL y `cpufreq`) porque en un monitor lo que
-importa no es de dónde sale el dato sino a qué pertenece. Es lo mismo que
-hace HWiNFO.
-
-## Consumo
-
-Medido con la ventana abierta y muestreo cada 300 ms:
-
-```
-intérprete Python            9,7 MB
-+ PySide6                   40,9 MB     ← el coste fijo de Qt
-+ silux (7 secciones)        53,4 MB
-+ ventana construida        84,4 MB
-+ las 7 secciones visitadas 89,3 MB
-estabilizado                98,1 MB
-```
-
-Unos 98 MB con todas las secciones abiertas y muestreando cada 250 ms. Dos
-quintas partes son el coste fijo de cargar Qt. La medición es en modo
-*offscreen*: con una ventana real en Wayland hay que sumarle los búferes de la
-superficie.
-
-**Estable, no creciente.** Es la diferencia que importa, y se vigila con un
-soak de tres minutos que mide la media de RSS por tramos de treinta segundos:
-
-```
-    0-30  s   97,8 MB
-   30-60  s   98,1 MB  (+0,23)   ← se llenan las colas de las gráficas
-   60-90  s   98,1 MB  (+0,05)
-   90-180 s   98,1 MB  (+0,01)   ← plano
-```
-
-Antes de encontrarla, una fuga hacía subir esa cifra 0,31 MB cada treinta
-segundos **sin aplanarse nunca** (unos 37 MB por hora). La causa: la fila de
-insignias y la tabla simple creaban widgets nuevos en cada muestreo en vez de
-reescribir los que ya tenían, y dejaban miles de etiquetas vivas. Ahora ambas
-reutilizan, y hay tests que comprueban que cuarenta refrescos seguidos no
-crean ni un widget.
-
-## Sobre el consumo
-
-El vatiaje se lee del contador de energía RAPL y se desglosa por dominio,
-junto con los límites que declara el propio procesador. Un número suelto no
-deja saber si está bien; con el contexto, sí:
-
-```
-paquete 7,9 W  ·  12 % de 65 W sostenidos
-núcleos 6,9 W · uncore 0,3 W · DRAM 0,8 W
-límites: 65 W sostenido (PL1) · 115 W de pico (PL2)
-```
-
-Cifras bajas en reposo son normales, no un error de medición: un procesador
-de escritorio moderno con estados C activos baja a un dígito de vatios sin
-carga. Bajo `stress-ng --cpu 12` este mismo equipo sube a 57 W, justo por
-debajo de su PL1. Coincide con lo que reporta Mission Center.
+Bajo el procesador conviven sensores de tres orígenes (el chip de
+temperaturas, los contadores RAPL y `cpufreq`), porque en un monitor lo que
+importa no es de dónde sale el dato sino a qué pertenece.
 
 ## Las dos formas de contar la memoria usada
 
 Hay dos, y mezclarlas produce barras que mienten:
 
-- **Usada** = total − disponible. Es la definición de `free` y la de cualquier
-  monitor: «cuánta no podría recuperar aunque quisiera». Incluye la parte de
-  la caché que no es recuperable, como tmpfs y la memoria compartida.
+- **Usada** = total − disponible. Es la definición de `free`: «cuánta no
+  podría recuperar aunque quisiera». Incluye la parte de la caché que no es
+  recuperable, como tmpfs y la memoria compartida.
 - **Aplicaciones** = total − libre − buffers − caché recuperable. Es la que
   permite dibujar una barra cuyos trozos suman exactamente el total.
 
 La primera sale siempre algo mayor. La diferencia no es un error: es la caché
 que el kernel no puede devolver. La página enseña las dos, y la barra usa la
-segunda porque es la única con la que los segmentos cuadran al 0,000 %.
+segunda.
 
-## El ayudante privilegiado
-
-Está en **[privilegios.md](privilegios.md)**.
-
-## La base de datos
+## La base de datos de procesadores
 
 Ni el nombre en clave, ni el nodo de fabricación, ni el socket se pueden
-deducir del hardware: son tablas que alguien mantiene. Este proyecto no las
-escribe a mano, las **genera**:
+deducir del hardware: son tablas que alguien mantiene. Silux no las escribe a
+mano, las **genera**:
 
 ```bash
-python3 tools/gen_cpu_db.py          # clona/actualiza libcpuid y CPU-X y regenera
+python3 tools/gen_cpu_db.py          # clona o actualiza libcpuid y CPU-X y regenera
 python3 tools/gen_cpu_db.py --offline
-python3 -m silux.cli --db-info        # de qué commit salieron los datos
+python3 -m silux.cli --db-info       # de qué commit salieron los datos
 ```
 
-`silux/db/cpu_ids.json` sale de las tablas de identificación de libcpuid (517
-filas de Intel, 371 de AMD, 198 piezas ARM) y de la tabla de sockets de CPU-X.
-El algoritmo de emparejado (puntuar cada fila por cuántos campos coinciden y
-quedarse con la mejor) está reimplementado en `silux/db/__init__.py` con los
-mismos pesos que libcpuid.
+`silux/db/cpu_ids.json` sale de las tablas de identificación de libcpuid y de
+la tabla de sockets de CPU-X. El emparejado (puntuar cada fila por cuántos
+campos coinciden y quedarse con la mejor) está reimplementado en
+`silux/db/__init__.py` con los mismos pesos que libcpuid.
 
-`silux/db/sockets.json` es tabla propia y **se edita a mano**. Cubre por
-microarquitectura en vez de por modelo concreto, así que una regla vale para
-una generación entera: donde la tabla heredada de CPU-X tiene 125 entradas de
-modelos sueltos, aquí bastan 49 reglas para cubrir mucho más.
-
-## Ajustes
-
-En la sección **Ajustes**, que se guarda en `~/.config/silux/settings.json`:
-
-| Ajuste | Qué hace |
-| --- | --- |
-| Refrescar cada | 0,2 a 10 s. Se aplica en caliente, sin reiniciar el muestreo |
-| Mostrar todas las instrucciones | Todas las banderas de CPUID en vez de solo las relevantes |
-| Tema | Seguir al sistema, claro u oscuro |
-| Densidad | Amplia, normal o compacta: márgenes, tipografía, filas y columnas |
-| Unidad de temperatura | Celsius o Fahrenheit |
-| Tamaño de la letra | Normal, grande, mayor o máximo. Las tarjetas y columnas crecen con él |
-| Velocidad de red | Bytes o bits por segundo: los mismos datos son 116 MB/s o 931 Mb/s |
-
-En el árbol de sensores **todas las columnas se arrastran** y el ancho se
-recuerda entre sesiones. Con el botón derecho sobre la cabecera se vuelve a
-los anchos automáticos, que se calculan midiendo el texto real de cada columna
-y añadiendo un margen que sigue a la densidad elegida.
-
-Cada separador lleva un par de rayitas que se iluminan al pasar por encima.
-Qt ya cambia el cursor ahí, pero eso solo se descubre por accidente: una marca
-visible es la diferencia entre una función que existe y una que se usa.
-
-Cambiar tema o densidad reconstruye la interfaz en lugar de repintarla pieza
-a pieza. Es cosa de milisegundos, solo pasa cuando el usuario toca un ajuste,
-y evita el fallo clásico de que algún widget se quede con el color anterior.
-El hilo de muestreo no se toca: no se pierde ni una lectura ni el histórico
-de las gráficas.
-
-## Instalación en el escritorio
-
-```bash
-python3 tools/install_desktop.py              # icono + entrada de menú
-python3 tools/install_desktop.py --uninstall
-```
-
-Todo va a `~/.local/share`, sin root y sin tocar nada del sistema. Genera los
-PNG del icono a los nueve tamaños que pide freedesktop rasterizando el SVG con
-Qt, así que no hacen falta ni `rsvg-convert` ni Inkscape.
-
-Un detalle que cuesta encontrar: en Wayland el compositor no adivina qué
-ventana corresponde a qué entrada de menú. Si la aplicación no llama a
-`setDesktopFileName()`, la barra de tareas de Plasma enseña un icono genérico
-por muy bien instalado que esté el `.desktop`.
-
-## Las reglas, con su porqué
-
-Estas no son preferencias de estilo. Cada una viene de un problema concreto:
-
-1. **El modelo guarda números, no texto.** `freq_hz: int`, nunca `"2.90 GHz"`.
-   Todo el formateo vive en `silux/render.py` y ocurre al pintar. De ahí salen
-   gratis la salida JSON, las gráficas y unos tests que comparan cifras. Es
-   donde CPU-X se ató las manos.
-
-2. **`Snapshot` es inmutable.** Los proveedores escriben en un `Draft`
-   mutable y este se congela. La interfaz compara fotos y repinta lo que
-   cambió.
-
-3. **`cpu.types` es una lista desde el primer commit.** Cualquier Intel de
-   12ª en adelante tiene núcleos P y E con cachés y frecuencias distintas.
-   Asumir «una CPU, un juego de valores» obliga a reescribirlo todo después.
-
-4. **Nada se lee en el hilo de la interfaz.** `silux/ui/sampler.py` es un
-   QThread; ahí dentro se fija la afinidad para CPUID y ahí se abre el
-   diálogo de polkit, que bloquea.
-
-5. **Cuando falta un dato se explica.** Un `Note` con su motivo —root,
-   driver, base de datos, hardware— en vez de esconder la sección. Cada
-   página enseña solo sus propias notas (`snapshot.notes_for("cpu")`).
-
-6. **Los widgets que se refrescan a menudo reutilizan.** Crear widgets en
-   cada muestreo dejaba miles vivos y hacía crecer la memoria medio megabyte
-   por minuto. `ChipRow` y `Table` reescriben el texto de lo que ya existe;
-   hay tests que lo vigilan.
-
-7. **Presupuesto de memoria: 300 MB.** Era de 100 y lo subió el autor a la
-   vista de que la máquina de escritorio va sobrada: entre gastar memoria y
-   enseñar un dato más, gana el dato. Ahora ronda los 130 MB con las ocho
-   secciones y el árbol de sensores entero desplegado. Sigue sin ser excusa
-   para malgastarla: el techo está para que alguien lo mire de vez en cuando,
-   y la salida conocida es construir las páginas solo cuando se visitan.
-
-8. **Lo que cueste memoria de forma permanente, en otro proceso.** Preguntar
-   a OpenGL, Vulkan y OpenCL carga sus drivers: 118 MB de residente, de los
-   que 83 son de rusticl arrastrando LLVM entero para decir «OpenCL 3.1».
-   `gpuapi.consultar()` lanza `python3 -m silux.gpuapi`, lee el JSON y lo deja
-   morir. De regalo, un driver que revienta ya solo se lleva al hijo.
-
-## El reparto, comentado
-
-```
-silux/
-├─ model.py        dataclasses congeladas: Snapshot, CpuType, Sensor, Board…
-├─ render.py       ÚNICO sitio donde un valor se convierte en texto
-├─ collector.py    orquesta los proveedores; separa estático de dinámico
-├─ cli.py          volcado en terminal, JSON, sensores e informe
-├─ settings.py     preferencias del usuario en ~/.config/silux
-├─ tracking.py     mínimos, máximos y medias por sensor
-├─ rawcpuid.py     CPUID desde Python, sin root (mmap + ctypes)
-├─ gpuapi.py       OpenGL, Vulkan, OpenCL y VA-API por ctypes, en otro proceso
-├─ amdgpu.py       ioctl DRM: tipo de VRAM, bus, unidades, ROP
-├─ i915.py         ioctl DRM: las unidades de ejecución de una Intel
-├─ edid.py         la chapa del monitor, con sus extensiones CTA-861
-├─ report.py       informe en Markdown para reportar fallos
-├─ gpumetrics.py   telemetría del firmware AMD: por qué se frena la tarjeta
-├─ nvml.py         NVIDIA propietaria, que no publica nada en sysfs
-├─ features.py     tabla declarativa de banderas de CPUID
-├─ pciids.py       nombres de dispositivos PCI desde la base del sistema
-├─ spd.py          decodifica el chip de identificación de la RAM (DDR4 y DDR5)
-├─ smart.py        interpreta el diagnóstico de los discos, sin privilegios
-├─ benchmark.py    prueba de CPU que reporta en qué condiciones midió
-├─ membench.py     lo que la memoria mueve de verdad, medido en otro proceso
-├─ history.py      historial de pruebas de este equipo
-├─ score.py        la puntuación comparable entre equipos, y su escala
-├─ privacidad.py   qué se omite de un informe público y qué no
-├─ sysroot.py      leer /sys, /proc y /etc de un equipo volcado en vez del
-│                  de verdad, y repetir lo grabado al volcarlo (CPUID, ioctl)
-├─ ui/tarjeta.py  la imagen del equipo para pegar en un chat, ya anonimizada
-├─ ui/guarda.py   para antes de Qt: si el procesador no da, lo dice y no abre
-├─ i18n.py        el idioma de la interfaz; el original es el español
-├─ throttling.py  desde cuándo lleva frenándose algo, y por qué
-├─ registro.py    graba la sesión a un CSV, fila a fila
-├─ providers/      una fuente cada uno; ninguno conoce a los demás.
-│                  `msr_voltage.py` pregunta el voltaje del núcleo al propio
-│                  procesador, que es el único sitio donde está en cualquier
-│                  equipo: los sensores de placa lo publican sin etiquetar.
-│                  `imc.py` lee del PMU del uncore cuánto tráfico mueve la
-│                  memoria ahora mismo, que es un sensor y no una prueba
-├─ privileged/     ayudante root mínimo (helper.py) + cliente + SMBIOS.
-│                  Lee DMI, MSR, el SMART de los discos y dos PMU: el de la
-│                  iGPU y el del controlador de memoria. Del PMU solo cuenta;
-│                  el cliente pide una familia y nunca un número de evento.
-│                  instalar.py le da su acción de polkit para no pedir la
-│                  contraseña en cada arranque; cargar_modulo.py carga un
-│                  driver de sensores de una lista blanca fija
-├─ db/             cpu_ids.json (generado; incluye la tabla de MIDR de ARM) +
-│                  sockets.json y families.json (curados a mano; el segundo
-│                  cubre lo que libcpuid no tiene)
-└─ ui/             tema, hilo de muestreo, widgets, una página por sección.
-                   `widgets.py` son las primitivas —las que usan varias
-                   páginas—; el widget que solo monta una vive en su
-                   propio módulo (`sensortree`, `corematrix`, `cachemap`,
-                   `scorebar`), porque mezclados no se puede mirar la
-                   lista antes de escribir uno nuevo
-```
-
-El orden de los proveedores en `collector.py` importa y está comentado ahí.
-
-`providers/cppc.py` saca de ACPI CPPC, además de los relojes, **lo bien que
-salió cada núcleo de la oblea**: los núcleos de una misma pieza no son
-iguales, el firmware lo publica y el planificador lo usa para mandar ahí el
-trabajo de un hilo suelto. Ryzen Master lo enseña en Windows con estrellitas;
-en Linux no lo enseñaba nadie. Sale en la rejilla de núcleos de la página de
-CPU y en el volcado del terminal.
+`silux/db/sockets.json` y `families.json` se editan a mano. Cubren por
+microarquitectura en vez de por modelo, así que una regla vale para una
+generación entera.
 
 ## Los equipos volcados
 
 Un arreglo no se da por bueno con lo que dice la máquina donde se escribe.
 `tools/volcar_equipo.py NOMBRE` copia en `tests/fixtures/equipos/NOMBRE/` lo
-que el Collector lee de `/sys`, `/proc` y `/etc` —lo decide el Collector
+que el `Collector` lee de `/sys`, `/proc` y `/etc` —lo decide el `Collector`
 ejecutándose, no una lista—, graba en `grabado.json` lo que no sale de un
-archivo y lo anonimiza. Con `SILUX_SYSROOT` apuntando ahí, todos los
-proveedores leen ese equipo: `sysroot.ruta` traduce cada camino y
-`sysroot.a_traves` devuelve lo grabado en vez de preguntar a la CPU, al
-driver o al proceso de las APIs.
+archivo (CPUID, ioctl, las APIs gráficas) y lo anonimiza. Con
+`SILUX_SYSROOT` apuntando ahí, todos los proveedores leen ese equipo:
+`sysroot.ruta` traduce cada camino y `sysroot.a_traves` devuelve lo grabado.
 
-**Desde la terminal un volcado se monta con `tools/montar_equipo.py NOMBRE
+**Desde la terminal, un volcado se monta con `tools/montar_equipo.py NOMBRE
 ORDEN…`**, no apuntando la variable a la carpeta del repositorio: git no
 guarda carpetas vacías y un volcado tiene muchas que cuentan (el
-`drm/renderD128` de una gráfica). Con la variable a pelo, la integrada del
-i5-10400 sale sin sus 23 unidades de ejecución. La herramienta usa el mismo
-`montado()` que los tests.
+`drm/renderD128` de una gráfica). La herramienta usa el mismo `montado()` que
+los tests.
 
-`tests/test_equipos.py` monta el Collector contra cada volcado y comprueba lo
-que vale para cualquier equipo; lo que solo vale para uno va en el test del
-arreglo, con el volcado donde se vio. `manifiesto.json` dice qué no se pudo
-grabar: NVML, lo que lee el ayudante privilegiado y lo que sale de restar dos
-lecturas —el uso de cada hilo y el consumo de RAPL—, porque el volcado guarda
-una.
+`tests/test_equipos.py` monta el `Collector` contra cada volcado y comprueba
+lo que vale para cualquier equipo; lo que solo vale para uno va en el test
+del arreglo, con el volcado donde se vio. `manifiesto.json` dice qué no se
+pudo grabar: NVML, lo que lee el ayudante y lo que sale de restar dos
+lecturas. Qué equipos hay volcados, en [equipos-probados.md](equipos-probados.md).
 
 Un proveedor nuevo que lea el sistema sin pasar por `sysroot` lo caza
-`test_sysroot`: con una raíz vacía, el Collector no puede tocar ni un camino
-del equipo de verdad.
-
-## Copiar un valor
-
-**Un clic en un valor lo copia**, en las fichas y en las tablas. Se copia el
-texto entero y no el que se ve: la fila que no cabe y sale con puntos
-suspensivos es justo la que hace falta copiar. Un guion no se copia, porque es
-la marca de un dato que falta.
+`test_sysroot`: con una raíz vacía, el `Collector` no puede tocar ni un
+camino del equipo de verdad.
 
 ## El informe de fallos
 
-`python3 -m silux.cli --report informe.md` recoge el hardware detectado y, sobre
-todo, la sección de diagnóstico: qué fuentes respondieron, qué módulos del
-kernel faltan y qué datos no se pudieron leer. Es lo primero que hay que pedir
-cuando alguien dice que algo no le sale.
+```bash
+./silux-x86_64.AppImage --report informe.md
+python3 -m silux.cli --report informe.md
+```
 
-Desde el AppImage es `./silux-x86_64.AppImage --report informe.md`: el punto de
-entrada reparte entre la interfaz y el volcado en terminal según con qué se le
-llame, porque quien lo usa así no tiene otra forma de sacarlo.
+Es lo primero que se pide cuando a alguien algo no le sale. Pide los permisos
+al empezar (salvo con `--without-permissions`) y monta las páginas sin
+pantalla para copiar de ellas lo que se ve, sección a sección: el informe dice
+lo mismo que la ventana, y un test lo compara. Al final van las fuentes que
+respondieron, los drivers que faltan y los datos que no se pudieron leer.
+`--sections` elige secciones y `--short` saca el informe corto, que no monta
+las páginas.
 
-Si hay alguna prueba de rendimiento medida con la escala vigente, el informe
-lleva también su puntuación y las condiciones en que se tomó. Es lo que permite
-juntar medidas de piezas que no están a mano: sin eso, quien manda un informe
-manda su hardware pero no lo que rinde, y la tabla de puntuaciones no se llena
-nunca.
+Si hay una prueba de rendimiento medida con la escala vigente, lleva también
+su puntuación y las condiciones en que se tomó: así se juntan medidas de
+piezas que no están a mano.
 
-Omite por defecto el nombre del equipo, las IP, las MAC y los números de serie
-—está pensado para pegarlo en un issue público— y lo dice al terminar. Con
-`--with-identifiers` se incluyen. Hay tests que vigilan que no se cuele nada.
+Omite el nombre del equipo, las direcciones y los números de serie —está
+pensado para pegarlo en un issue público— y lo dice al terminar. Con
+`--with-identifiers` se incluyen.
 
-## Los proveedores de la noche del 18 de noviembre de 2026
+## Instalación en el escritorio
 
-Los datos de `docs/propuesta-datos.md`. Todos sin permisos, salvo donde se
-dice.
+```bash
+python3 tools/install_desktop.py              # icono y entrada de menú
+python3 tools/install_desktop.py --uninstall
+```
 
-- `providers/system.py`, `SystemSecurity` (una vez): vulnerabilidades del
-  procesador y las cuatro variables del cargador de arranque que se leen de
-  efivars. `SystemState` añade el intercambio de `/proc/swaps` y cuenta los
-  procesos por `sysroot.a_traves`, para que un volcado guarde el número.
-- `providers/pci.py`: `PlatformInfo` (una vez: IOMMU, virtualización, BAR
-  por encima de 4 GB, chip de sensores, códec) y `PciDevices` (en cada
-  muestreo, porque el enlace cambia solo). Va detrás de gráficas, discos y
-  red para llamar a cada pieza como ya se llama en su página, y usa el
-  `_enlace` de `providers/drm.py`. El nombre de la ranura sale de la tabla
-  SMBIOS que ya se lee con permisos (`privileged/smbios.py`, tipo 9).
-- `providers/devices.py`, `ConnectedDevices`: USB, sonido, cámaras y
-  Bluetooth. No abre `serial` ni `address`.
-- `providers/cpuidle.py`, `CpuIdle`: residencia en C-states, restando dos
-  lecturas. En un equipo volcado no da nada.
-- `providers/rapl.py`, `PowerLimits`: PL1 y PL2 sin esperar al consumo.
-- `providers/storage.py`: descartes, `discard` en los montajes y
-  `fstrim.timer`. `smart.py` guarda la tabla de atributos de un SATA.
+Todo va a `~/.local/share`, sin root. Los PNG del icono a los tamaños que pide
+freedesktop salen de rasterizar el SVG con Qt, así que no hacen falta ni
+`rsvg-convert` ni Inkscape. El AppImage hace lo mismo desde Ajustes.
 
-Y en la interfaz: `ui/pages/devices.py` es la sección nueva; la latencia
-viaja de Memoria a Cachés por una señal (`latencies_measured`), no por el
-modelo: es una medida de la sesión, no una lectura del equipo.
+En Wayland el compositor no adivina qué ventana corresponde a qué entrada de
+menú: si la aplicación no llama a `setDesktopFileName()`, la barra de tareas
+enseña un icono genérico por muy bien instalado que esté el `.desktop`.

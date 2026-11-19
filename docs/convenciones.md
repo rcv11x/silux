@@ -1,7 +1,31 @@
-# Convenciones, con su porqué
+# Cómo contribuir
 
-`CLAUDE.md` las resume en una línea cada una; aquí está el motivo de cada
-una, que casi siempre es algo que salió mal.
+Lo que hace falta para trabajar en Silux y las convenciones del repositorio,
+con el motivo de cada una, que casi siempre es algo que salió mal. `CLAUDE.md`
+las resume en una línea cada una.
+
+## Antes de empezar
+
+El entorno se monta con [uv](https://docs.astral.sh/uv/), y la suite corre
+sin pantalla:
+
+```bash
+uv sync --extra gui
+QT_QPA_PLATFORM=offscreen uv run pytest -n auto -m "not a_solas"
+QT_QPA_PLATFORM=offscreen uv run pytest -m a_solas
+```
+
+Son unos 2400 y tardan medio minuto en paralelo. Cómo se ejecuta todo lo demás, en
+[arquitectura.md](arquitectura.md#cómo-se-ejecuta-cada-cosa). El suelo es
+Python 3.10: lo que pasa en un Python reciente no dice que pase en 3.10, y
+`tools/probar_en_minimo.py --container` pasa la suite en el del suelo.
+
+Un fallo se reporta con el informe (`--report informe.md`) en un
+[issue](https://github.com/rcv11x/silux/issues). Un cambio, con un pull
+request desde una rama que sale de `master`, una por tema.
+
+Lo que toca privilegios —el ayudante, polkit, lo que se lee como root— se
+propone en un issue antes de escribirlo.
 
 ## Al trabajar en este repositorio
 
@@ -49,19 +73,19 @@ contenido, que no se olvida de cambiar. Un número hay que acordarse de subirlo
 justo el día que más prisa hay.
 
 **El commit del CLAUDE.md es el último antes de empujar.** Nunca uno
-intermedio: hoy se hizo en `096ace0` y el commit siguiente lo dejó atrasado
-otra vez, con una fila de la ficha de procesador que el archivo no mencionaba
-y dos cifras que ya no cuadraban. Se escribe cuando ya no va a entrar nada más.
+intermedio: el commit siguiente lo deja atrasado otra vez, con una fila que
+el archivo no menciona y cifras que ya no cuadran. Se escribe cuando ya no va
+a entrar nada más.
 
 **Un dato nuevo no está terminado hasta que hay un test que lo ve en pantalla**,
-montando la página de verdad y comprobando la celda. Los 1352 tests pasaban con
-el voltaje del núcleo medido, guardado en el modelo y sin ninguna fila donde
+montando la página de verdad y comprobando la celda. Más de mil tests pasaban
+con el voltaje del núcleo medido, guardado en el modelo y sin ninguna fila donde
 pintarlo: probaban el proveedor, la interpretación de los bits y el reparto de
 avisos, y ninguno miraba si eso se veía. Probar la fuente no es probar que se
 ve, y lo que no se ve no está hecho.
 
-**Ningún cambio visual se da por hecho sin comprobarlo en la captura.** El
-commit `03ef40b` dice que la tabla lleva una raya bajo la cabecera y la tabla
+**Ningún cambio visual se da por hecho sin comprobarlo en la captura.** Un
+commit dijo una vez que la tabla llevaba una raya bajo la cabecera y la tabla
 no la llevaba: la regla estaba escrita en la hoja de estilos, el test miraba
 la hoja y nadie miró la imagen. Lo que se ve se comprueba donde se ve: se saca
 la captura de después, se abre y se busca en ella lo que el cambio promete. Y
@@ -159,10 +183,8 @@ por `_()`, la segunda llamada recibe «Uso» —que no es una clave— y devuelv
 inglés: la tupla llevaba once claves y una traducción ya hecha, y era la única
 que no cambiaba de idioma. Hay un test que lo vigila.
 
-La interfaz está entera en los dos idiomas: 1199 claves, ninguna sin traducir,
-y trece de ellas ya no las usa nadie (`gen_lang.py` solo ve cinco, ver lo
-pendiente).
-Hay un test que recorre el árbol de sintaxis de cada página buscando
+La interfaz está entera en los dos idiomas, y un test vigila que no quede
+ninguna clave sin traducir. Hay otro que recorre el árbol de sintaxis de cada página buscando
 constructores de widget con una cadena española a pelo, porque eso es lo que
 no se ve hasta abrir la pantalla en el otro idioma y ningún test normal lo
 nota. **Descubre los archivos solo**: con la lista escrita a mano se quedaron
