@@ -80,6 +80,8 @@ class TestDetalles(unittest.TestCase):
     def test_la_cabecera_del_arbol_usb_va_como_las_de_las_tablas(self):
         from silux.ui import theme
         with pantalla.Ventana(self.amd) as ventana:
+            ventana.select_section("nav.devices")
+            QApplication.processEvents()
             arbol = ventana.devices_page.usb
             cabecera = arbol.headerItem()
             textos = [cabecera.text(c) for c in range(arbol.columnCount())]
@@ -87,6 +89,34 @@ class TestDetalles(unittest.TestCase):
         hoja = theme.stylesheet(theme.palette_for(qt.app(), "dark"))
         regla = hoja.split("QTreeWidget#DeviceTree QHeaderView::section {")[1].split("}")[0]
         self.assertIn("background: transparent", regla)
+
+    def test_cada_cifra_de_dispositivos_cuenta_lo_que_dice(self):
+        # «9 dispositivos USB · 5 de sonido» se leía como cinco de sonido
+        # por USB, y cuenta también la HDMI y la de la placa.
+        with pantalla.Ventana(self.amd) as ventana:
+            ventana.select_section("nav.devices")
+            QApplication.processEvents()
+            subtitulo = ventana.devices_page.subtitle.text()
+        self.assertIn(f"{len(self.amd.sound_cards)} tarjetas de sonido", subtitulo)
+
+    def test_el_arbol_usb_no_ensena_columnas_que_no_dicen_nada(self):
+        # Sin marcas ni modelos (la foto anónima, o un volcado), el fabricante
+        # quedaba vacío y «Qué es» repetía el nombre: «Teclado / teclado».
+        import dataclasses
+        with pantalla.Ventana(self.amd) as ventana:
+            ventana.select_section("nav.devices")
+            QApplication.processEvents()
+            arbol = ventana.devices_page.usb
+            self.assertTrue(arbol.isColumnHidden(1))
+            self.assertTrue(arbol.isColumnHidden(2))
+            # Con el nombre y la marca que da un aparato de verdad, salen.
+            primero = dataclasses.replace(self.amd.usb_devices[0], product="G502 HERO",
+                                          vendor="Logitech")
+            con_nombre = dataclasses.replace(
+                self.amd, usb_devices=(primero, *self.amd.usb_devices[1:]))
+            ventana._on_sample(con_nombre)
+            self.assertFalse(arbol.isColumnHidden(1))
+            self.assertFalse(arbol.isColumnHidden(2))
 
     def test_los_botones_del_historial_son_pequenos_y_van_en_su_fila(self):
         # Renombrar y Borrar quedaban más bajos que el texto de su fila, y

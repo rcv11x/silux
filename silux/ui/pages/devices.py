@@ -137,8 +137,9 @@ class DevicesPage(QScrollArea):
         self.title.setText(_("dev.title.none") if not n else
                            _("dev.title.one" if n == 1 else "dev.title.many").format(n=n))
         camaras = len(snapshot.cameras)
+        tarjetas = len(snapshot.sound_cards)
         self.subtitle.setText(_("dev.subtitle").format(
-            sonido=len(snapshot.sound_cards),
+            sonido=_("dev.sound.one" if tarjetas == 1 else "dev.sound.many").format(n=tarjetas),
             camaras=_("dev.cameras.one" if camaras == 1 else "dev.cameras.many").format(n=camaras),
             bluetooth=_("dev.bt.one").format(n=len(snapshot.bluetooth)) if snapshot.bluetooth
             else _("dev.bt.none")))
@@ -200,6 +201,12 @@ class DevicesPage(QScrollArea):
             else:
                 self.usb.addTopLevelItem(fila)
             nodos[dispositivo.port] = fila
+        # Lo que no dice nada en ninguna fila no se enseña (regla 5). Pasa con
+        # la foto anónima, que no lleva marcas ni modelos de lo enchufado: el
+        # fabricante se queda vacío y «Qué es» repite el nombre («Teclado /
+        # teclado»), porque el nombre ya es lo que es.
+        self.usb.setColumnHidden(1, not any(u.vendor for u in usb))
+        self.usb.setColumnHidden(2, not any(u.product for u in usb))
         self.usb.expandAll()
         self._ajustar_alto()
 
