@@ -308,8 +308,13 @@ class TestEnLaVentana(unittest.TestCase):
                 app.processEvents()
             pagina = ventana.settings_page
             self.assertEqual(pagina.permission_state, "none")
+            # Sin la regla de polkit puesta, antes se cuenta lo que dirá la
+            # ventana de la contraseña; desde ahí se piden.
+            pagina.permission_button.click()
+            dialogo = ventana._dialogo_permisos
+            self.assertTrue(dialogo.isVisible())
             with mock.patch.object(ventana.sampler, "request_elevation") as pedir:
-                pagina.permission_button.click()
+                dialogo.grant_button.click()
             pedir.assert_called_once()
             self.assertFalse(pagina.permission_button.isEnabled())
 

@@ -12,7 +12,8 @@ from ..i18n import _
 from . import theme
 
 # Los cuatro párrafos, en este orden: qué lee, qué pasa si se dan esta vez,
-# qué pasa si se dan para siempre y quién pide la contraseña.
+# qué pasa si se dan para siempre y quién pide la contraseña. Sin la regla de
+# polkit puesta va un quinto: qué dirá la ventana de la contraseña.
 PARRAFOS = ("perm.explain.reads", "perm.explain.once", "perm.explain.always",
             "perm.explain.polkit")
 
@@ -47,8 +48,18 @@ class PermissionsDialog(QDialog):
         self.paragraphs: list[QLabel] = []
         from ..privileged.instalar import orden_de_desinstalar
 
-        for clave in PARRAFOS:
-            parrafo = QLabel(_(clave))
+        claves = list(PARRAFOS)
+        if permanente:
+            # Sin la regla puesta, la ventana de polkit enseña la orden de un
+            # intérprete con código dentro, y no se puede cambiar: pkexec elige
+            # su texto por la ruta del programa (docs/privilegios.md). Se dice
+            # aquí antes, con lo que dirá cuando la regla esté puesta.
+            claves.append("perm.explain.window")
+        for clave in claves:
+            texto = _(clave)
+            if clave == "perm.explain.window":
+                texto = texto.format(mensaje=_("perm.polkit.message"))
+            parrafo = QLabel(texto)
             parrafo.setWordWrap(True)
             parrafo.setTextFormat(Qt.TextFormat.PlainText)
             parrafo.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
@@ -58,8 +69,6 @@ class PermissionsDialog(QDialog):
                 layout.addLayout(self._orden(orden_de_desinstalar()))
 
         self.grant_button = QPushButton(_("perm.explain.grant"))
-        self.grant_button.setObjectName("Primary")
-        self.grant_button.setDefault(True)
         self.grant_button.clicked.connect(self._dar)
         # Con los permisos ya concedidos, «Dar permisos esta vez» no hace
         # nada: no se ofrece. Se dice que ya están, y queda «para siempre»
@@ -74,6 +83,12 @@ class PermissionsDialog(QDialog):
         self.permanent_button.clicked.connect(self._para_siempre)
         # Si el ayudante ya está instalado, «para siempre» ya está hecho.
         self.permanent_button.setVisible(permanente)
+        # «Para siempre» es la forma recomendada: desde la segunda vez, la
+        # ventana de la contraseña dice con nuestras palabras qué se lee. Si
+        # ya está hecho, el principal es dar los permisos.
+        principal = self.permanent_button if permanente else self.grant_button
+        principal.setObjectName("Primary")
+        principal.setDefault(True)
         self.close_button = QPushButton(_("perm.explain.close"))
         self.close_button.setObjectName("TextButton")
         self.close_button.setFlat(True)

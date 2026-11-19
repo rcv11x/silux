@@ -873,6 +873,22 @@ class MainWindow(QMainWindow):
     def _on_elevation_requested(self) -> None:
         """El usuario ha pedido los datos que exigen privilegios.
 
+        Con el ayudante y su regla puestos y al día, la ventana de la
+        contraseña dice con nuestras palabras qué se lee, y se piden sin más.
+        Sin ellos, polkit enseña la orden de `python3` con código dentro, y
+        eso no se le pone delante a nadie sin avisar: antes se abre «Qué pasa
+        al dar permisos», que lo cuenta y ofrece «Para siempre».
+        """
+        from ..privileged.client import PrivilegedClient
+
+        if PrivilegedClient.instalado() and PrivilegedClient.al_dia():
+            self._elevar()
+        else:
+            self._explicar_permisos()
+
+    def _elevar(self) -> None:
+        """Pide los permisos ya, sin más avisos.
+
         Solo se deja la petición apuntada: el diálogo de autenticación lo abre
         el hilo de muestreo, que puede bloquear sin congelar la ventana. Se le
         da un toque para que no haya que esperar al siguiente intervalo.
@@ -1133,7 +1149,7 @@ class MainWindow(QMainWindow):
                         or PrivilegedClient.necesita_reinstalar()),
             concedidos=self._permisos_concedidos(),
             parent=self)
-        dialogo.grant_requested.connect(self._on_elevation_requested)
+        dialogo.grant_requested.connect(self._elevar)
         dialogo.permanent_requested.connect(self._on_permanent_requested)
         # `open` y no `exec`: es modal para la ventana pero no para el
         # muestreo, que sigue pintando detrás.

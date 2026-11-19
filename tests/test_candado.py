@@ -112,9 +112,12 @@ class TestElCandadoEnLasPaginas(unittest.TestCase):
     def test_pulsarlo_pide_los_permisos(self):
         from silux.i18n import _
 
+        from silux.privileged.client import PrivilegedClient
         ventana = self._ventana(self.fotos[AMD])
         rejilla = self._rejilla_del_procesador(ventana)
-        with mock.patch.object(ventana.sampler, "request_elevation") as pedir:
+        with mock.patch.object(PrivilegedClient, "instalado", return_value=True), \
+             mock.patch.object(PrivilegedClient, "al_dia", return_value=True), \
+             mock.patch.object(ventana.sampler, "request_elevation") as pedir:
             rejilla._candados[_("cpu.field.voltage")].clicked.emit()
         pedir.assert_called_once()
 
@@ -171,9 +174,12 @@ class TestElCandadoEnLasPaginas(unittest.TestCase):
             self.assertTrue(tile.value.isVisible())
 
     def test_el_candado_de_la_ficha_pide_los_permisos(self):
+        from silux.privileged.client import PrivilegedClient
         ventana = self._ventana(self.fotos[INTEL])
         ficha = self._ficha(ventana)
-        with mock.patch.object(ventana.sampler, "request_elevation") as pedir:
+        with mock.patch.object(PrivilegedClient, "instalado", return_value=True), \
+             mock.patch.object(PrivilegedClient, "al_dia", return_value=True), \
+             mock.patch.object(ventana.sampler, "request_elevation") as pedir:
             ficha.tile_usage.lock.clicked.emit()
         pedir.assert_called_once()
 

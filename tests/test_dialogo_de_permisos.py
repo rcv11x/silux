@@ -30,13 +30,32 @@ class TestElDialogo(unittest.TestCase):
         return dialogo
 
     def test_cuenta_las_cuatro_cosas(self):
-        textos = [p.text() for p in self._dialogo().paragraphs]
+        textos = [p.text() for p in self._dialogo(permanente=False).paragraphs]
         self.assertEqual(len(textos), 4)
         self.assertIn("Solo lee", textos[0])
         self.assertIn("mientras silux está abierto", textos[1])
         self.assertIn("/usr/local/libexec/silux", textos[2])
         self.assertIn("polkit", textos[3])
         self.assertIn("no la ve", textos[3])
+
+    def test_sin_la_regla_dice_antes_lo_que_dira_la_ventana(self):
+        """Sin la regla de polkit, la ventana de la contraseña enseña
+        `python3 -c import linecache…`, y no se puede cambiar. Se dice aquí,
+        con lo que dirá cuando esté puesta, y «Para siempre» es el botón
+        principal: es la forma de que diga lo que se lee."""
+        dialogo = self._dialogo(permanente=True)
+        textos = [p.text() for p in dialogo.paragraphs]
+        self.assertEqual(len(textos), 5)
+        self.assertIn("python3", textos[4])
+        self.assertIn(_("perm.polkit.message"), textos[4])
+        self.assertNotIn("{mensaje}", textos[4])
+        self.assertTrue(dialogo.permanent_button.isDefault())
+        self.assertFalse(dialogo.grant_button.isDefault())
+
+    def test_con_la_regla_puesta_no_lo_cuenta(self):
+        dialogo = self._dialogo(permanente=False)
+        self.assertNotIn("python3", " ".join(p.text() for p in dialogo.paragraphs))
+        self.assertTrue(dialogo.grant_button.isDefault())
 
     def test_la_orden_de_quitarlo_sirve_tambien_desde_el_appimage(self):
         # Decía «sudo python3 -m silux.privileged.instalar --uninstall», que
@@ -232,6 +251,31 @@ class TestDesdeElAviso(unittest.TestCase):
         with mock.patch.object(ventana.sampler, "request_elevation") as pedir:
             ventana._dialogo_permisos.grant_button.click()
         pedir.assert_called_once()
+
+    def test_sin_la_regla_dar_permisos_abre_antes_el_aviso(self):
+        from silux.privileged.client import PrivilegedClient
+        for instalado, al_dia in ((False, False), (True, False)):
+            with self.subTest(instalado=instalado, al_dia=al_dia):
+                ventana = self._ventana()
+                with mock.patch.object(PrivilegedClient, "instalado", return_value=instalado), \
+                     mock.patch.object(PrivilegedClient, "al_dia", return_value=al_dia), \
+                     mock.patch.object(ventana.sampler, "request_elevation") as pedir:
+                    ventana.home_page.permission_notice.grant_button.click()
+                    pedir.assert_not_called()
+                    dialogo = ventana._dialogo_permisos
+                    self.assertTrue(dialogo.isVisible())
+                    dialogo.grant_button.click()
+                pedir.assert_called_once()
+
+    def test_con_la_regla_al_dia_los_pide_sin_mas(self):
+        from silux.privileged.client import PrivilegedClient
+        ventana = self._ventana()
+        with mock.patch.object(PrivilegedClient, "instalado", return_value=True), \
+             mock.patch.object(PrivilegedClient, "al_dia", return_value=True), \
+             mock.patch.object(ventana.sampler, "request_elevation") as pedir:
+            ventana.home_page.permission_notice.grant_button.click()
+        pedir.assert_called_once()
+        self.assertIsNone(getattr(ventana, "_dialogo_permisos", None))
 
     def test_para_siempre_lanza_la_instalacion(self):
         ventana = self._ventana()

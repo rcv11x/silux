@@ -57,6 +57,14 @@ publica se dice con la versión que lo trae.
   permisos», «Qué hace esto», «Ahora no» y «No volver a mostrar».
 - Nuevo: «Qué hace esto» cuenta, antes de pedir la contraseña, qué lee el
   ayudante, que solo lee, cuánto dura y quién pide la contraseña.
+- Nuevo: sin el ayudante instalado, dar permisos abre antes «Qué pasa al dar
+  permisos», que avisa de que la ventana de la contraseña dirá que se va a
+  ejecutar `python3` como administrador, y recomienda «Para siempre».
+- Cambiado: con el ayudante instalado, la ventana de la contraseña dice
+  «Silux necesita permiso para leer datos del hardware reservados al
+  administrador: memoria, discos, voltaje, consumo y uso de la gráfica. Solo
+  lee, no cambia nada.», en español o en inglés. Si lo instalaste antes, el
+  programa ofrece actualizarlo.
 - Arreglado: la ventana se quedaba congelada mientras el sistema pedía la
   contraseña.
 - Arreglado: la página abierta se pone al día sola cuando cambian los

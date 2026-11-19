@@ -116,9 +116,14 @@ class TestElAvisoDeInicio(unittest.TestCase):
             self.assertIn(nota.what, lineas[0])
 
     def test_dar_permisos_los_pide(self):
+        # Con el ayudante y su regla al día; sin ellos, antes sale el aviso
+        # de lo que dirá la ventana de la contraseña (test_dialogo_de_permisos).
+        from silux.privileged.client import PrivilegedClient
         ventana = self._ventana()
         ventana._on_sample(self.fotos[AMD])
-        with mock.patch.object(ventana.sampler, "request_elevation") as pedir:
+        with mock.patch.object(PrivilegedClient, "instalado", return_value=True), \
+             mock.patch.object(PrivilegedClient, "al_dia", return_value=True), \
+             mock.patch.object(ventana.sampler, "request_elevation") as pedir:
             self._aviso(ventana).grant_button.click()
         pedir.assert_called_once()
         # Mientras polkit pregunta no se puede pulsar otra vez…

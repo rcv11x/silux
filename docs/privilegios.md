@@ -36,6 +36,40 @@ diálogo de contraseña nada más abrirse es un programa que se desinstala.
 el programa. Es opcional: sin ella pkexec pide la contraseña igual, solo que
 con un mensaje genérico y sin recordar la autorización durante la sesión.
 
+## La ventana de la contraseña
+
+La pide polkit, y lo que dice depende de qué se ejecute:
+
+| Caso | Orden | Lo que dice la ventana |
+|---|---|---|
+| «Dar permisos esta vez» | `pkexec /usr/bin/python3 -c …` | la frase genérica de polkit, con la orden: «… run `/usr/bin/python3 -c import linecache…` as the super user» |
+| «Para siempre», al instalar | `pkexec python3 -c … instalar.py` | la misma |
+| Con el ayudante instalado | `pkexec /usr/local/libexec/silux/silux-helper` | la nuestra: «Silux necesita permiso para leer datos del hardware reservados al administrador: memoria, discos, voltaje, consumo y uso de la gráfica. Solo lee, no cambia nada.» |
+
+Los dos primeros no se pueden cambiar. pkexec elige la acción por la ruta del
+programa y quien llama no puede pasarle un texto. Una acción con nuestro texto
+tiene que estar en `/usr/share/polkit-1/actions`, que es de root. Apuntarla a
+`/usr/bin/python3` serviría para cualquier script del equipo. Lanzar un archivo
+en vez de `python3 -c` reabre el agujero de la copia sustituible, y desde el
+AppImage root ni siquiera puede leerlo. `run0` y `systemd-run` piden
+«gestionar servicios del sistema», que asusta más.
+
+Así que se avisa antes (decisión del autor, 19 de noviembre): sin la regla
+puesta y al día, cualquier botón de dar permisos abre primero «Qué pasa al dar
+permisos», que dice lo que enseñará la ventana y ofrece «Para siempre» como lo
+recomendado. Con la regla al día se piden sin más.
+
+El texto de la regla va en `instalar.MENSAJES`, en español y en inglés, porque
+la escribe root sin poder leer el AppImage; `tests/test_privileged.py` lo
+compara con `perm.polkit.message` de `es.json` y `en.json`. polkit elige el
+`<message>` por el idioma de la sesión, y sin uno de ese idioma usa el que no
+lleva `xml:lang`, el español. `PrivilegedClient.al_dia()` compara también la
+regla instalada, así que cambiar el texto ofrece actualizar el ayudante a
+quien ya lo tenía.
+
+Para cuando haya paquetes de distribución, su regla y su ayudante van dentro
+del paquete y nunca se pasa por `python3 -c`.
+
 ## Lo que este modelo no cierra
 
 Desde el código fuente, el guion que viaja por `argv` a `pkexec` se lee del
