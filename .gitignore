@@ -37,3 +37,7 @@ silux-report*.md
 salida.png
 captura*.png
 silux/_build.txt
+
+# Datos de quien trabaja aquí que tools/comprobar_privacidad.py busca y que
+# no pueden escribirse en el repositorio (un dato por línea).
+.privado

@@ -108,13 +108,21 @@ class TestLoDeEstaMaquina(unittest.TestCase):
         self.assertFalse(relleno.search("MON7Q2X91"))
 
 
-class TestLosSustitutos(unittest.TestCase):
+class TestLosSustitutosYLoPrivado(unittest.TestCase):
 
     def test_lo_que_pone_el_anonimizado_pasa(self):
         from silux import privacidad
         self.assertEqual(_que(f"{privacidad.IPV4} por {privacidad.PUERTA}"), [])
         # Y otra de la misma red no: sería de alguien.
         self.assertTrue(_que("192.168.1." + "77"))
+
+    def test_lo_de_privado_se_busca_sin_escribirlo(self):
+        from unittest import mock
+        dato = "otro" + "-equipo-" + "de-prueba"
+        with mock.patch.dict("os.environ", {"SILUX_PRIVADO": dato}):
+            propios = _comprobador()._de_esta_maquina()
+        self.assertIn(dato, propios)
+        self.assertNotIn(dato, propios[dato])
 
 
 class TestLosVolcados(unittest.TestCase):

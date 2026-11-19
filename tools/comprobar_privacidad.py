@@ -181,9 +181,23 @@ def _series_de_edid(edid: bytes) -> list[str]:
     return series
 
 
+def _privados() -> dict[str, str]:
+    """Lo que alguien no quiere publicado y no está en esta máquina.
+
+    El nombre de otro equipo suyo, por ejemplo. No puede escribirse en el
+    repositorio, que es justo donde se busca, así que sale de `.privado`
+    (ignorado por git; un dato por línea) o de `SILUX_PRIVADO` (separados por
+    comas).
+    """
+    datos: list[str] = os.environ.get("SILUX_PRIVADO", "").split(",")
+    datos += _leer(RAIZ / ".privado").splitlines()
+    return {d.strip(): "un dato de .privado" for d in datos if len(d.strip()) >= 4}
+
+
 def _de_esta_maquina() -> dict[str, str]:
     """Lo que identifica al equipo donde se está trabajando ahora mismo."""
     datos = {socket.gethostname(): "el nombre de este equipo"}
+    datos.update(_privados())
     for ruta in pathlib.Path("/sys/class/net").glob("*/address"):
         mac = _leer(ruta)
         if mac and not mac.startswith("00:00:00"):
