@@ -179,6 +179,9 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(theme.METRICS.min_window_w, theme.METRICS.min_window_h)
 
         self._last_snapshot: Optional[Snapshot] = None
+        # The report preview, and how many permission notes its text had.
+        self._report_preview = None
+        self._report_missing: Optional[int] = None
         self._palette = theme.palette_for(QApplication.instance(), prefs.theme)
         # El seguimiento de mínimos y máximos vive en la ventana, no en la
         # página: cambiar de tema reconstruye las páginas, y perder por eso el
@@ -619,25 +622,46 @@ class MainWindow(QMainWindow):
         self._sync_compact_selection()
 
     def _on_report_requested(self) -> None:
-        """Guarda el informe que se adjunta al reportar un fallo."""
-        from PySide6.QtWidgets import QFileDialog, QMessageBox
+        """The full report, shown before it is saved."""
+        from PySide6.QtWidgets import QMessageBox
 
-        from .. import report
+        from .report_preview import ReportPreviewDialog
 
         if self._last_snapshot is None:
-            QMessageBox.information(self, "Informe",
-                                    _("app.noreading"))
+            QMessageBox.information(self, _("app.report.card"), _("app.noreading"))
             return
+        if self._report_preview is None:
+            self._report_preview = ReportPreviewDialog(self)
+            self._report_preview.save_requested.connect(self._save_report)
+            self._report_preview.permissions_requested.connect(self._on_elevation_requested)
+        self._report_missing = None
+        self._refresh_report_preview(self._last_snapshot)
+        self._report_preview.show()
+        self._report_preview.raise_()
+
+    def _refresh_report_preview(self, snapshot: Snapshot) -> None:
+        """Rebuild the open preview when what needs permissions changed: the
+        full report is too expensive to redo on every sample."""
+        dialog = self._report_preview
+        if dialog is None or not (dialog.isVisible() or self._report_missing is None):
+            return
+        missing = len(snapshot.permission_notes)
+        if missing == self._report_missing:
+            return
+        from . import full_report
+        self._report_missing = missing
+        dialog.set_report(full_report.build(snapshot, anonymous=True, inside_app=True), missing)
+
+    def _save_report(self) -> None:
+        from PySide6.QtWidgets import QFileDialog, QMessageBox
 
         sugerido = str(pathlib.Path.home() / "informe-silux.md")
         destino, _filtro = QFileDialog.getSaveFileName(
             self, _("app.report.title"), sugerido, _("app.report.filter"))
         if not destino:
             return
-
         try:
-            texto = report.build(self._last_snapshot, anonymous=True)
-            pathlib.Path(destino).write_text(texto, encoding="utf-8")
+            pathlib.Path(destino).write_text(self._report_preview.report(), encoding="utf-8")
         except OSError as error:
             QMessageBox.warning(self, _("app.report.card"),
                                 _("app.report.failed").format(error=error))
@@ -961,6 +985,7 @@ class MainWindow(QMainWindow):
                 boton.setText(_("perm.read.button"))
         self.home_page.permission_notice.set_waiting(False)
         self._distribute(snapshot)
+        self._refresh_report_preview(snapshot)
         self._animables = (self._graficas(solo_visibles=True)
                            if self.prefs.fluid_charts else [])
         self._latir_si_hace_falta()

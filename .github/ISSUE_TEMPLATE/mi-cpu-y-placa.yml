@@ -1,0 +1,47 @@
+name: Mi CPU y placa
+description: Manda el informe de tu equipo para que Silux lo reconozca mejor.
+title: "Mi equipo: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Gracias por mandar tu equipo. Genera el informe completo, con permisos:
+
+        ```
+        ./silux-x86_64.AppImage --report informe.md
+        ```
+
+        o en Silux, Ajustes › «Ver y guardar el informe…». No lleva el nombre del
+        equipo, ni direcciones, ni números de serie, pero revísalo antes de
+        adjuntarlo.
+  - type: input
+    id: cpu
+    attributes:
+      label: Procesador
+      placeholder: AMD Ryzen 7 9800X3D
+    validations:
+      required: true
+  - type: input
+    id: board
+    attributes:
+      label: Placa base, o modelo del portátil
+      placeholder: MSI MAG B650 TOMAHAWK WIFI
+  - type: textarea
+    id: report
+    attributes:
+      label: El informe
+      description: Arrastra aquí informe.md, o pega lo que tiene dentro.
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Algo que salga mal o que falte
+      description: Un dato que no sale, que sale mal o que esperabas ver.
+  - type: checkboxes
+    id: checked
+    attributes:
+      label: Antes de mandarlo
+      options:
+        - label: He revisado el informe y no lleva nada que no quiera publicar.
+          required: true

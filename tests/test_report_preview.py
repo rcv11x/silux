@@ -1,0 +1,112 @@
+"""«View and save the report» in Settings: the full report, seen first.
+
+The button saved the short report, not the full one people are asked to
+send, and without showing it. Now it opens a preview of the full report,
+asks for the missing permissions right there and refreshes the text when
+they arrive (rule 9), and saves exactly what it shows.
+"""
+
+import dataclasses
+import os
+import pathlib
+import tempfile
+import unittest
+from unittest import mock
+
+from silux.i18n import _
+from tests import qt
+from tests.test_equipos import EQUIPOS, foto
+
+try:
+    from PySide6.QtWidgets import QApplication
+except ImportError:                                    # pragma: no cover
+    QApplication = None
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+
+
+@unittest.skipIf(QApplication is None, "no PySide6")
+class TestReportPreview(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.app = qt.app()
+        cls.snapshot = foto(EQUIPOS / "5800x3d")[0]
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.tmp = pathlib.Path(tmp.name)
+        patch = mock.patch.dict(os.environ, {"XDG_CONFIG_HOME": tmp.name})
+        patch.start()
+        self.addCleanup(patch.stop)
+        from silux.settings import Preferences
+        from silux.ui.app import MainWindow
+        self.window = MainWindow(Preferences().normalized())
+        self.addCleanup(self.window.deleteLater)
+        self.window.show()
+        self.window._on_sample(self.snapshot)
+
+    def open_preview(self):
+        self.window.settings_page.report_requested.emit()
+        self.app.processEvents()
+        dialog = self.window._report_preview
+        self.addCleanup(dialog.close)
+        return dialog
+
+    def test_it_is_the_full_report(self):
+        dialog = self.open_preview()
+        self.assertTrue(dialog.isVisible())
+        text = dialog.report()
+        for heading in ("## CPU", "### Núcleos lógicos", "## Dispositivos"):
+            with self.subTest(heading=heading):
+                self.assertIn(heading, text)
+        # Anonymous, like the one the terminal writes.
+        from silux import privacidad
+        self.assertIn(privacidad.EQUIPO, text)
+
+    def test_it_does_not_restyle_the_app_or_show_another_window(self):
+        before = self.app.styleSheet()
+        visible = {w for w in self.app.topLevelWidgets() if w.isVisible()}
+        dialog = self.open_preview()
+        self.assertEqual(self.app.styleSheet(), before)
+        now = {w for w in self.app.topLevelWidgets() if w.isVisible()}
+        self.assertEqual(now - visible, {dialog})
+
+    def test_missing_permissions_are_asked_for_and_the_text_follows(self):
+        dialog = self.open_preview()
+        self.assertTrue(self.snapshot.permission_notes)
+        self.assertTrue(dialog.grant_button.isVisible())
+        with mock.patch.object(self.window.sampler, "request_elevation") as ask, \
+             mock.patch("silux.privileged.client.PrivilegedClient.instalado", return_value=True), \
+             mock.patch("silux.privileged.client.PrivilegedClient.al_dia", return_value=True):
+            dialog.grant_button.click()
+        ask.assert_called_once()
+        granted = dataclasses.replace(
+            self.snapshot, notes=tuple(n for n in self.snapshot.notes
+                                       if n not in self.snapshot.permission_notes))
+        self.window._on_sample(granted)
+        self.app.processEvents()
+        self.assertFalse(dialog.grant_button.isVisible())
+
+    def test_it_saves_what_it_shows(self):
+        dialog = self.open_preview()
+        target = self.tmp / "informe.md"
+        with mock.patch("PySide6.QtWidgets.QFileDialog.getSaveFileName",
+                        return_value=(str(target), "")), \
+             mock.patch("PySide6.QtWidgets.QMessageBox.information"):
+            dialog.save_button.click()
+        self.assertEqual(target.read_text(encoding="utf-8"), dialog.report())
+
+
+class TestIssueTemplate(unittest.TestCase):
+
+    def test_my_cpu_and_board(self):
+        text = (ROOT / ".github" / "ISSUE_TEMPLATE" / "mi-cpu-y-placa.yml").read_text()
+        self.assertIn("name: Mi CPU y placa", text)
+        self.assertIn("--report informe.md", text)
+        self.assertIn(_("settings.report.button"), text)
+
+
+if __name__ == "__main__":
+    unittest.main()

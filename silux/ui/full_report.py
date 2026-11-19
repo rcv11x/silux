@@ -65,7 +65,7 @@ def unknown_sections(sections: Optional[Iterable[str]]) -> list[str]:
 
 
 def build(snapshot, sections: Optional[Iterable[str]] = None,
-          anonymous: bool = True) -> str:
+          anonymous: bool = True, inside_app: bool = False) -> str:
     """El informe en Markdown, anonimizado salvo que se pida lo contrario.
     `sections` limita las páginas.
 
@@ -87,9 +87,16 @@ def build(snapshot, sections: Optional[Iterable[str]] = None,
 
     aplicacion = QApplication.instance() or QApplication(["silux"])
     preferencias = Preferences(window_width=1400, window_height=1000).normalized()
-    theme.apply(aplicacion, "dark", preferencias.density, "normal")
+    # From the open window (`inside_app`), the user's theme stays: applying
+    # one would restyle the whole application.
+    if not inside_app:
+        theme.apply(aplicacion, "dark", preferencias.density, "normal")
     foto = privacidad.anonimizar(snapshot) if anonymous else snapshot
     ventana = MainWindow(preferencias)
+    if inside_app:
+        # Laid out and painted, but never on screen.
+        from PySide6.QtCore import Qt
+        ventana.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, True)
     try:
         ventana.resize(1400, 1000)
         ventana.show()

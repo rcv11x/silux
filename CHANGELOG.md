@@ -346,6 +346,11 @@ publica se dice con la versión que lo trae.
 
 ### Ajustes y escritorio
 
+- Nuevo: «Ver y guardar el informe…» en Ajustes enseña el informe completo
+  antes de guardarlo, el mismo que `--report`, y pide ahí los permisos que
+  falten; el texto se pone al día al darlos. Antes guardaba el corto, sin
+  enseñarlo. Y en GitHub, la plantilla de issue «Mi CPU y placa» para
+  mandarlo.
 - Cambiado: la primera vez Silux sale en el idioma del sistema: en español
   si el sistema está en español, y en inglés en cualquier otro caso. Antes
   salía siempre en español. Lo elegido en Ajustes sigue mandando.
