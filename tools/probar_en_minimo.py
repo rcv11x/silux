@@ -104,14 +104,16 @@ def motor_de_contenedores() -> str:
 
 
 def rango_de_pyside() -> str:
-    """El mismo que usan el CI y el empaquetador, preguntándoselo a él.
+    """El del paquete que lleva el Python del suelo, preguntándoselo al
+    empaquetador: es el `--compat`, con el 3.10 de Ubuntu 22.04.
 
     Repetirlo aquí sería tener dos sitios donde dice qué Qt se prueba, y el que
     nadie mira se queda atrás. Ya pasó con el paso del CI, que decía
     «PySide6>=6.6» a secas.
     """
     hecho = subprocess.run(
-        [sys.executable, str(RAIZ / "tools" / "build_appimage.py"), "--pyside-range"],
+        [sys.executable, str(RAIZ / "tools" / "build_appimage.py"),
+         "--pyside-range", "--compat"],
         capture_output=True, text=True, check=True)
     return hecho.stdout.strip()
 

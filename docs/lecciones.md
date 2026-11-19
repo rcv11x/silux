@@ -1305,3 +1305,14 @@ apartado. El orden dentro de cada apartado es el cronológico.
   el sistema también descartaba `libxcb-cursor` y las nueve auxiliares que el
   plugin xcb necesita y que muchas distribuciones no traen. Se comparan por
   principio de nombre.
+- **Repartir el Python de la imagen base**: el normal llevaba el 3.10 de
+  Ubuntu 22.04, y cada PySide6 nueva lo tumbaba de otra forma: la 6.12.0 con
+  «none_dealloc», la 6.11 con un doble borrado en la cola de eventos de Qt.
+  Bajar PySide6 en ese Python solo esperaba al siguiente. Ahora el normal
+  lleva el 3.14 de python-build-standalone (vía `uv`), y el 3.10 queda para
+  el compat, cuya PySide6 6.9 ya no se mueve.
+- **Dar por buena una pila de dependencias sin probar su conexión segura**:
+  el empaquetador quitaba `_ssl` porque el programa no salía a la red, y el
+  día que salió (el actualizador) el AppImage decía «no hay red». Los tests
+  no lo veían: cambian la red por una falsa. Ahora cada construcción arranca
+  el Python del AppDir y le pide un contexto TLS.

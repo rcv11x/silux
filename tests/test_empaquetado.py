@@ -37,39 +37,40 @@ def _admite(rango: str, version: str) -> bool:
 
 
 class TestElQtQueSeEmpaqueta(unittest.TestCase):
-    """PySide6 6.12.0 deja de llevar bien la cuenta de las referencias a `None`.
+    """Cada paquete lleva un PySide6 que funciona con el Python que va dentro.
 
-    Cada llamada a un método que devuelve `void` —`lineTo`, `setY`,
-    `cubicTo`…— le quita una. Desde Python 3.12 `None` es inmortal y no se
-    nota; en 3.10 y 3.11 la cuenta llega a cero y el proceso muere con
-    «Fatal Python error: none_dealloc». El AppImage normal lleva el Python
-    3.10 de Ubuntu 22.04, así que con un rango sin techo el próximo que se
-    construyera abortaría al pintar la primera gráfica. Con 6.11.3 el
-    balance es cero y la suite entera pasa en 3.10.
+    PySide6 6.12.0 le quita una referencia a `None` en cada método que
+    devuelve `void` —`lineTo`, `setY`, `cubicTo`…—. Desde Python 3.12 `None`
+    es inmortal y no se nota; en 3.10 y 3.11 la cuenta llega a cero y el
+    proceso muere con «Fatal Python error: none_dealloc» al pintar la
+    primera gráfica. El normal lleva 3.14 y se lleva la última; el compat
+    lleva el 3.10 de Ubuntu 22.04 y no puede llevarla.
 
-    El CI pregunta el rango a `--pyside-range`, así que este mismo techo
-    alcanza a los tests en 3.10 y a la construcción, dentro o fuera del
-    contenedor.
+    El CI pregunta el rango a `--pyside-range`, así que lo mismo alcanza a
+    los tests de cada pareja y a la construcción.
     """
 
-    def _rangos(self):
+    def _build(self):
         import tools.build_appimage as build
-        return build.RANGO_PYSIDE
+        return build
 
-    def test_ningun_paquete_se_lleva_el_pyside_que_rompe_python_3_10(self):
-        for compat, rango in self._rangos().items():
-            with self.subTest(compat=compat, rango=rango):
+    def test_ningun_paquete_con_python_viejo_se_lleva_la_6_12(self):
+        build = self._build()
+        for compat, rango in build.RANGO_PYSIDE.items():
+            python = build.PYTHON[compat]
+            if _version(python) >= (3, 12):
+                continue
+            with self.subTest(compat=compat, python=python, rango=rango):
                 self.assertFalse(_admite(rango, "6.12.0"),
-                                 "este rango deja entrar PySide6 6.12.0, que "
-                                 "aborta en el Python 3.10 del AppImage")
+                                 f"este rango deja entrar PySide6 6.12.0, que "
+                                 f"aborta en el Python {python} del paquete")
 
-    def test_pero_el_normal_sigue_llevandose_la_ultima_que_funciona(self):
-        # El techo es por un fallo concreto, no un cambio de criterio: el
-        # paquete normal sigue llevándose la serie más nueva que arranca.
-        rangos = self._rangos()
-        self.assertTrue(_admite(rangos[False], "6.11.3"))
-        self.assertTrue(_admite(rangos[True], "6.9.3"))
-        self.assertFalse(_admite(rangos[True], "6.10.0"),
+    def test_el_normal_se_lleva_la_ultima_y_el_compat_la_6_9(self):
+        build = self._build()
+        self.assertEqual(_version(build.PYTHON[False])[:2], (3, 14))
+        self.assertTrue(_admite(build.RANGO_PYSIDE[False], "6.12.0"))
+        self.assertTrue(_admite(build.RANGO_PYSIDE[True], "6.9.3"))
+        self.assertFalse(_admite(build.RANGO_PYSIDE[True], "6.10.0"),
                          "el compat no puede llevar un Qt de x86-64-v2")
 
     def test_el_comparador_de_rangos_sabe_decir_que_no(self):
@@ -79,6 +80,107 @@ class TestElQtQueSeEmpaqueta(unittest.TestCase):
         self.assertFalse(_admite("PySide6>=6.6,<6.12", "6.12.0"))
         self.assertTrue(_admite("PySide6>=6.6,<6.12", "6.11.3"))
         self.assertFalse(_admite("PySide6>=6.6,!=6.12.0", "6.12.0"))
+
+
+class TestElCiPruebaLoQueSeReparte(unittest.TestCase):
+    """Los tests del CI corren con el Python y el PySide6 de cada paquete.
+
+    Si la matriz dijera 3.12 y el paquete llevara 3.14, el verde del CI no
+    diría nada del programa que se descarga. Se lee la matriz del flujo y se
+    compara con la tabla del empaquetador, sin que nadie tenga que acordarse
+    de cambiar los dos sitios.
+    """
+
+    def _matriz(self) -> list[dict[str, str]]:
+        import pathlib
+        flujo = (pathlib.Path(__file__).resolve().parent.parent
+                 / ".github" / "workflows" / "appimage.yml").read_text()
+        bloque = flujo[flujo.index("include:"):flujo.index("steps:")]
+        entradas = []
+        for trozo in re.split(r"\n\s*- ", bloque)[1:]:
+            campos = dict(re.findall(r'(\w+):\s*"?([^"\n]*)"?', trozo))
+            entradas.append(campos)
+        return entradas
+
+    def test_una_pareja_por_paquete_y_con_su_python(self):
+        import tools.build_appimage as build
+        matriz = self._matriz()
+        self.assertEqual(sorted(e["paquete"] for e in matriz),
+                         ["compat", "normal"], matriz)
+        for entrada in matriz:
+            compat = entrada["paquete"] == "compat"
+            with self.subTest(paquete=entrada["paquete"]):
+                self.assertEqual(entrada["python"], build.PYTHON[compat])
+
+    def test_cada_pareja_instala_el_pyside_de_su_paquete(self):
+        import pathlib
+        flujo = (pathlib.Path(__file__).resolve().parent.parent
+                 / ".github" / "workflows" / "appimage.yml").read_text()
+        instala = [l for l in flujo.splitlines()
+                   if "--pyside-range" in l and not l.lstrip().startswith("#")]
+        self.assertEqual(len(instala), 1, instala)
+        self.assertIn("matrix.paquete == 'compat' && '--compat'", instala[0])
+
+
+class TestElPaqueteTraeTls(unittest.TestCase):
+    """Sin `_ssl`, el AppImage no abre ninguna URL `https://`.
+
+    El empaquetador lo quitaba por no usarse, y el actualizador decía que no
+    había red. Ahora no se quita, y la construcción arranca el Python del
+    AppDir y le pide un contexto TLS antes de empaquetar.
+    """
+
+    def setUp(self):
+        import pathlib
+        import tempfile
+        from unittest import mock
+
+        import tools.build_appimage as build
+        self.build = build
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.appdir = pathlib.Path(tmp.name) / "silux.AppDir"
+        (self.appdir / "usr" / "bin").mkdir(parents=True)
+        parche = mock.patch.object(build, "APPDIR", self.appdir)
+        parche.start()
+        self.addCleanup(parche.stop)
+
+    def _python(self, guion: str) -> None:
+        python = self.appdir / "usr" / "bin" / "python3"
+        python.write_text("#!/bin/sh\n" + guion)
+        python.chmod(0o755)
+
+    def _comprobar(self):
+        import contextlib
+        import io
+        with contextlib.redirect_stdout(io.StringIO()) as salida, \
+             contextlib.redirect_stderr(io.StringIO()) as errores:
+            hecho = self.build.comprobar_tls()
+        return hecho, salida.getvalue() + errores.getvalue()
+
+    def test_no_se_quita_ssl(self):
+        self.assertFalse(any(m.startswith(("_ssl", "_hashlib"))
+                             for m in self.build.DYNLOAD_FUERA))
+
+    def test_sin_ssl_la_construccion_se_para(self):
+        # Lo que dice el Python de Ubuntu 22.04 con `_ssl` quitado.
+        self._python('echo "ModuleNotFoundError: No module named \'_ssl\'" >&2\n'
+                     "exit 1\n")
+        hecho, texto = self._comprobar()
+        self.assertFalse(hecho)
+        self.assertIn("_ssl", texto)
+
+    def test_con_ssl_sigue_y_dice_cual(self):
+        self._python('echo "OpenSSL 3.5.9 29 Sep 2026"\n')
+        hecho, texto = self._comprobar()
+        self.assertTrue(hecho)
+        self.assertIn("OpenSSL 3.5.9", texto)
+
+    def test_arranca_con_su_propia_biblioteca(self):
+        # Como el AppRun: PYTHONHOME dentro del AppDir, no el de quien construye.
+        self._python('echo "$PYTHONHOME"\n')
+        _hecho, texto = self._comprobar()
+        self.assertIn(str(self.appdir / "usr"), texto)
 
 
 class TestQuienInstalaDesdeElCodigo(unittest.TestCase):
@@ -272,6 +374,7 @@ class TestUnPaqueteIncompletoNoSeEmpaqueta(unittest.TestCase):
             "copiar_plugins", "copiar_bibliotecas", "quitar_simbolos",
             "escribir_metadatos", "sellar_build", "avisar_de_compatibilidad")}
         pasos["comprobar_juego_de_instrucciones"] = mock.Mock(return_value=[])
+        pasos["comprobar_tls"] = mock.Mock(return_value=True)
         self.empaquetar = mock.Mock(return_value=None)
         pasos["empaquetar"] = self.empaquetar
         # `main` empieza borrando el AppDir y creando uno vacío; el de mentira

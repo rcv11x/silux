@@ -22,6 +22,12 @@ Lo que se hace para que quepa:
   Python, tkinter, idlelib y compañía suman bastante y no pintan nada aquí.
 - **`strip` a todo binario** y compresión zstd del resultado.
 
+El Python de dentro no es el mismo en los dos paquetes. El normal lleva el
+3.14 de python-build-standalone, que `uv` baja ya compilado: un binario con
+la biblioteca estándar en C y OpenSSL dentro, que solo pide glibc 2.17. El
+`--compat` lleva el 3.10 de Ubuntu 22.04, porque su PySide6 6.9 es de antes
+de que existiera el 3.14.
+
 Lo que más pesa y no se puede quitar es ICU, la tabla de internacionalización
 de la que depende Qt: 38 MB en disco. Comprime a una fracción porque son datos
 tabulares, así que se queda.
@@ -90,8 +96,9 @@ IMAGEFORMATS = ("qsvg", "qico", "qjpeg", "qgif")
 # levanta ventana: «xcb-cursor0 or libxcb-cursor0 is needed».
 DEL_SISTEMA = (
     # El tiempo de ejecución de C y C++, que tiene que ser el del sistema.
+    # `libutil` también es de glibc: la pide el Python de python-build-standalone.
     "libc.so", "libm.so", "libpthread.so", "libdl.so", "librt.so",
-    "ld-linux", "libgcc_s.so", "libstdc++.so",
+    "libutil.so", "ld-linux", "libgcc_s.so", "libstdc++.so",
     # Aceleración gráfica: esto es el driver de la tarjeta que haya puesta.
     "libGL.so", "libGLX.so", "libGLdispatch.so", "libEGL.so", "libOpenGL.so",
     "libdrm.so", "libgbm.so",
@@ -120,10 +127,14 @@ STDLIB_FUERA = (
 # Módulos de extensión de la biblioteca estándar que este programa no usa y
 # que arrastran media distribución detrás: `nis` se lleva Kerberos entero,
 # `_curses` la terminfo, `_tkinter` medio Tcl. Se quitan para no copiar sus
-# dependencias, no por lo que ocupan ellos.
+# dependencias, no por lo que ocupan ellos. `_ssl` no está: sin él no se abre
+# ninguna URL `https://`, y el actualizador habla con GitHub. Lo comprueba
+# `comprobar_tls` en cada construcción. En el 3.14 casi todos van dentro del
+# intérprete y no se pueden quitar, pero tampoco arrastran nada: van enlazados
+# estáticamente.
 DYNLOAD_FUERA = (
     "nis", "ossaudiodev", "audioop", "spwd", "_dbm", "_gdbm", "_tkinter",
-    "_curses", "_curses_panel", "readline", "_sqlite3", "_ssl", "_crypt",
+    "_curses", "_curses_panel", "readline", "_sqlite3", "_crypt",
     "_test", "_xx", "xx",
 )
 
@@ -132,12 +143,21 @@ DYNLOAD_FUERA = (
 # mueve—. Con `--compat`, la última serie que sigue compilándose para x86-64 a
 # secas.
 #
-# El `<6.12` del normal no es un cambio de criterio sino un fallo concreto: la
-# 6.12.0 resta una referencia a `None` en cada método que devuelve `void`, y
-# en el Python 3.10 que va dentro del paquete eso acaba en «Fatal Python
-# error: none_dealloc» al pintar la primera gráfica. Se quita cuando una 6.12.x
-# lo corrija y la suite pase en 3.10 con ella.
-RANGO_PYSIDE = {False: "PySide6>=6.6,<6.12", True: "PySide6>=6.6,<6.10"}
+# El normal no lleva techo porque lleva Python 3.14. La 6.12.0 resta una
+# referencia a `None` en cada método que devuelve `void`; desde 3.12 `None` es
+# inmortal y no se nota, pero en 3.10 el proceso muere con «none_dealloc» al
+# pintar la primera gráfica. Y la 6.11 en 3.10 libera dos veces la llamada
+# encolada de un `QScrollBar` (docs/empaquetado.md). Con 3.14 dentro, ninguna
+# de las dos llega al paquete.
+RANGO_PYSIDE = {False: "PySide6>=6.12", True: "PySide6>=6.6,<6.10"}
+
+# Qué Python va dentro de cada paquete. El del normal es una petición a `uv`
+# —la variante `x86_64` a secas, no la v2 ni la v3, para no exigirle al
+# procesador más que Qt—; el del `--compat` es el de la imagen base, el único
+# que hay en Ubuntu 22.04. El CI pasa la suite con estas dos parejas, y
+# `tests/test_empaquetado.py` compara su matriz con esta tabla.
+PYTHON = {False: "3.14", True: "3.10"}
+PYTHON_STANDALONE = "cpython-{version}-linux-x86_64-gnu"
 
 # Lo pone `main` al arrancar. Lo miran el nombre del archivo y la guarda.
 COMPAT = False
@@ -223,8 +243,8 @@ export QT_QPA_PLATFORM_PLUGIN_PATH="$AQUI/usr/lib/qt/plugins/platforms"
 # que un `silux/` en la carpeta actual gana al que va dentro del paquete: el
 # AppImage ejecutaba código ajeno sin decir nada. Se ve lanzándolo desde una
 # copia del repositorio, donde enseñaba la versión del árbol de trabajo en vez
-# de la suya. Python 3.11 trae PYTHONSAFEPATH para esto, pero aquí dentro va
-# el 3.10 de Ubuntu 22.04, así que se quita a mano antes de importar nada.
+# de la suya. Python 3.11 trae PYTHONSAFEPATH para esto, pero el `--compat`
+# lleva el 3.10 de Ubuntu 22.04, así que se quita a mano antes de importar nada.
 ARRANQUE='import sys, runpy
 sys.path.pop(0)
 runpy.run_module(sys.argv.pop(1), run_name="__main__", alter_sys=True)'
@@ -272,6 +292,9 @@ def main() -> int:
     parser.add_argument("--pyside-range", action="store_true",
                         help="imprime qué PySide6 hace falta para lo que se "
                              "va a construir, y no hace nada más")
+    parser.add_argument("--python-version", action="store_true",
+                        help="imprime qué Python va dentro de lo que se va a "
+                             "construir, y no hace nada más")
     args = parser.parse_args()
 
     # Quien construye sin `--container` se trae el PySide6 que tenga puesto,
@@ -281,6 +304,9 @@ def main() -> int:
     # él llegó un Qt que no arranca en los procesadores del paquete compat.
     if args.pyside_range:
         print(RANGO_PYSIDE[args.compat])
+        return 0
+    if args.python_version:
+        print(PYTHON[args.compat])
         return 0
 
     global COMPAT
@@ -307,6 +333,10 @@ def main() -> int:
     print("· strip")
     quitar_simbolos()
     print("· comprobación")
+    if not comprobar_tls():
+        print(f"No se empaqueta: el AppDir queda en {APPDIR} para mirarlo.",
+              file=sys.stderr)
+        return 1
     if comprobar_autocontenido():
         # No se empaqueta: un paquete al que le falta una biblioteca arranca
         # aquí, donde está puesta, y no en la máquina de quien lo descarga.
@@ -348,6 +378,7 @@ apt-get update -qq
 # esté en la imagen no aparece como dependencia y se queda fuera sin ruido.
 apt-get install -y -qq --no-install-recommends \
     python3 python3-pip python3-venv file binutils desktop-file-utils \
+    ca-certificates \
     libgl1 libegl1 libdbus-1-3 libfontconfig1 \
     libxkbcommon0 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 \
     libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
@@ -369,10 +400,23 @@ apt-get install -y -qq --no-install-recommends \
 # los Core 2, los Athlon II y los Phenom II, que es justo la clase de equipo
 # cuyo dueño quiere saber qué lleva dentro. 6.9 es la última serie que se
 # compila para x86-64 a secas.
-pip3 install --quiet --break-system-packages "$PYSIDE" 2>/dev/null || \
-    pip3 install --quiet "$PYSIDE"
+#
+# El normal no usa el Python de la imagen sino el de python-build-standalone,
+# que baja `uv`: ya compilado, con OpenSSL dentro y glibc 2.17 como suelo, así
+# que no sube el de la imagen. Lo de dentro del entorno virtual lo copia luego
+# `copiar_python`, que sigue el enlace hasta el intérprete de verdad.
+if [ -n "${SILUX_PYTHON:-}" ]; then
+    pip3 install --quiet "uv>=0.13,<0.14"
+    uv venv --quiet --managed-python --python "$SILUX_PYTHON" /opt/silux-python
+    uv pip install --quiet --python /opt/silux-python/bin/python "$PYSIDE"
+    PYTHON=/opt/silux-python/bin/python
+else
+    pip3 install --quiet --break-system-packages "$PYSIDE" 2>/dev/null || \
+        pip3 install --quiet "$PYSIDE"
+    PYTHON=python3
+fi
 cd /fuente
-python3 tools/build_appimage.py "$@"
+"$PYTHON" tools/build_appimage.py "$@"
 """
 
 
@@ -415,6 +459,9 @@ def construir_en_contenedor(imagen: str, compat: bool = False) -> int:
         "-v", f"{ROOT}:/fuente:z",
         "-w", "/fuente",
         "-e", f"PYSIDE={RANGO_PYSIDE[compat]}",
+        # Vacío en el `--compat`, que usa el Python de la imagen.
+        "-e", "SILUX_PYTHON=" + ("" if compat else
+                                 PYTHON_STANDALONE.format(version=PYTHON[compat])),
         "-e", f"SILUX_BUILD={_marca_de_construccion()}",
         "-e", f"{EN_CONTENEDOR}=1",
         # Sin esto la salida sale desordenada y no se puede leer: dentro del
@@ -863,6 +910,38 @@ def _simbolos_sin_escapatoria(
     return sorted(encontrados), juegos
 
 
+def comprobar_tls() -> bool:
+    """Que el Python de dentro sepa abrir una conexión segura.
+
+    Sin `_ssl`, `urllib` no abre ninguna URL `https://` y el actualizador
+    dice que no hay red: así salió un AppImage que lo quitaba por no usarse.
+    Se arranca el intérprete del AppDir con su propia biblioteca y nada de la
+    máquina, como lo arranca el AppRun, y se le pide un contexto con los
+    certificados por defecto: lo que falta sale aquí y no en la máquina ajena.
+    Los certificados de cada distribución no se miran aquí, porque son de la
+    máquina donde corre; eso lo hace el actualizador al abrir la conexión.
+    """
+    python = APPDIR / "usr" / "bin" / "python3"
+    entorno = {"PYTHONHOME": str(APPDIR / "usr"), "PYTHONNOUSERSITE": "1",
+               "LD_LIBRARY_PATH": str(APPDIR / "usr" / "lib"),
+               "PATH": os.environ.get("PATH", "")}
+    orden = [str(python), "-s", "-c",
+             "import ssl; ssl.create_default_context(); print(ssl.OPENSSL_VERSION)"]
+    try:
+        hecho = subprocess.run(orden, capture_output=True, text=True,
+                               env=entorno, check=False, timeout=60)
+    except (OSError, subprocess.SubprocessError) as error:
+        print(f"  error: el Python de dentro no arranca: {error}", file=sys.stderr)
+        return False
+    if hecho.returncode != 0:
+        ultima = (hecho.stderr.strip().splitlines() or ["sin salida"])[-1]
+        print(f"  error: el Python de dentro no trae TLS: {ultima}",
+              file=sys.stderr)
+        return False
+    print(f"  TLS: {hecho.stdout.strip()}")
+    return True
+
+
 def comprobar_autocontenido() -> dict[str, set[str]]:
     """Lo que algo del AppDir pide y el AppDir no lleva dentro.
 
@@ -972,12 +1051,18 @@ def escribir_metadatos(banderas: set[str] = frozenset()) -> None:
 
 
 def quitar_simbolos() -> None:
-    """Los símbolos de depuración son la mitad del tamaño de algunas libs."""
+    """Los símbolos de depuración son la mitad del tamaño de algunas libs.
+
+    El intérprete también: el de python-build-standalone llega con ellos, y
+    son más de la mitad de sus 31 MB.
+    """
     if shutil.which("strip") is None:
         print("  sin strip: el paquete sale más grande de lo necesario",
               file=sys.stderr)
         return
-    for binario in list((APPDIR / "usr" / "lib").rglob("*.so*")):
+    binarios = list((APPDIR / "usr" / "lib").rglob("*.so*"))
+    binarios.append(APPDIR / "usr" / "bin" / "python3")
+    for binario in binarios:
         if binario.is_file() and not binario.is_symlink():
             subprocess.run(["strip", "--strip-unneeded", str(binario)],
                            capture_output=True, check=False)

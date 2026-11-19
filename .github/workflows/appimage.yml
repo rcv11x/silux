@@ -46,20 +46,22 @@ permissions:
   contents: write
 
 jobs:
-  # Los dos extremos del rango declarado, y los dos hacen falta.
+  # Cada paquete con el Python y el PySide6 que lleva dentro: el normal, 3.14
+  # y la última PySide6; el compat, el 3.10 de Ubuntu 22.04 y la 6.9. El 3.10
+  # es además el suelo del código, porque es lo que lleva el compat.
   #
-  # Con solo el de abajo se escapa lo que se rompe en el nuevo; con solo el de
-  # arriba —que es lo que pasaba, porque aquí no había matriz y en la máquina
-  # del autor corre 3.14— se escapa lo que se rompe en el mínimo. Costó las dos
-  # cosas a la vez: `self.enterContext` es de 3.11 y se llevó once tests por
-  # delante, y un traceback perdía el texto de la línea porque hasta 3.12 quien
-  # pinta las excepciones no atrapadas es el escritor en C, que busca el código
-  # abriendo el archivo. Ninguna de las dos se ve leyendo el código.
+  # Las dos parejas hacen falta. Con solo la de arriba se escapa lo que se
+  # rompe en el mínimo: `self.enterContext` es de 3.11 y se llevó once tests
+  # por delante, y un traceback perdía el texto de la línea porque hasta 3.12
+  # quien pinta las excepciones no atrapadas es el escritor en C. Ninguna de
+  # las dos se ve leyendo el código. `tests/test_empaquetado.py` compara esta
+  # matriz con la tabla `PYTHON` del empaquetador.
   #
-  # 22.04 en los dos porque es donde se construye el AppImage; el intérprete lo
+  # 22.04 en las dos porque es donde se construye el AppImage; el intérprete lo
   # pone `setup-python` para que quede escrito cuál se prueba y no dependa de
   # cuál traiga el runner ese mes.
   tests:
+    name: tests (${{ matrix.paquete }}, Python ${{ matrix.python }})
     runs-on: ubuntu-22.04
 
     strategy:
@@ -67,7 +69,11 @@ jobs:
       # en una es la mitad del diagnóstico.
       fail-fast: false
       matrix:
-        python: ["3.10", "3.14"]
+        include:
+          - paquete: normal
+            python: "3.14"
+          - paquete: compat
+            python: "3.10"
 
     steps:
       - uses: actions/checkout@v5
@@ -83,13 +89,14 @@ jobs:
             libgl1 libegl1 libxkbcommon-x11-0 libdbus-1-3 \
             libfontconfig1 libfreetype6 libglib2.0-0 hwdata
 
-      # PySide6 con el rango del AppImage, que es el que se reparte; pytest y
-      # xdist, del grupo `dev` de `pyproject.toml`, para que la versión esté
-      # escrita en un solo sitio. `--group` es de pip 25.1.
+      # PySide6 con el rango del paquete de esa pareja, que es el que se
+      # reparte; pytest y xdist, del grupo `dev` de `pyproject.toml`, para que
+      # la versión esté escrita en un solo sitio. `--group` es de pip 25.1.
       - name: Instalar PySide6 y lo de desarrollo
         run: |
           python -m pip install --upgrade pip
-          pip install --group dev "$(python tools/build_appimage.py --pyside-range)"
+          pip install --group dev "$(python tools/build_appimage.py --pyside-range ${{ matrix.paquete == 'compat' && '--compat' || '' }})"
+          python -c 'import PySide6, sys; print("Python", sys.version.split()[0], "· PySide6", PySide6.__version__)'
 
       # Si fallan, cada fallo sale como anotación además de en el registro. El
       # registro pide autenticación para leerse y las anotaciones no, así que
