@@ -37,9 +37,8 @@ publica se dice con la versión que lo trae.
 - El color de acento es uno solo, el ámbar de la marca, y deja de estar en
   Ajustes. Si habías elegido otro, la interfaz vuelve al ámbar. La opción
   `--accent` desaparece: un guion que la pase termina con error.
-- La orden para quitar el ayudante de permisos permanentes ha cambiado: es
-  borrar sus dos archivos, y sirve también si usas el AppImage. Está en
-  «Qué hace esto», lista para copiar.
+- El ayudante de permisos permanentes se quita desde Ajustes, con «Quitar
+  el ayudante…», y sirve también si usas el AppImage.
 - Dar los permisos para siempre ya no tiene botón propio en Memoria y
   Almacenamiento («No volver a pedirla»): se ofrece dentro de «Qué hace
   esto».
@@ -336,7 +335,7 @@ publica se dice con la versión que lo trae.
 - Cambiado: la versión se enseña «0.4»; el tercer número sale solo en una
   versión de arreglos («0.4.1»). `--version` y el informe la siguen dando
   entera.
-- Nuevo: «Integración con el escritorio» pone silux en el menú de
+- Nuevo: «Integración con el escritorio» pone Silux en el menú de
   aplicaciones con su icono, y si quieres un acceso en el escritorio, sin
   pedir permisos. Desde el AppImage, la entrada apunta al AppImage; desde el
   código, va aparte, como «Silux (desarrollo)», para no pisar la otra.
@@ -416,9 +415,9 @@ publica se dice con la versión que lo trae.
 ### Privacidad
 
 - Nuevo: de lo enchufado por USB no se lee nunca el número de serie, ni la
-  dirección del adaptador Bluetooth. Con `--anonimo` y en el informe, cada
+  dirección del adaptador Bluetooth. Con `--anonymous` y en el informe, cada
   dispositivo dice qué clase de cosa es y a qué velocidad va, no su marca.
-- Arreglado: con `--anonimo`, dos tarjetas de red distintas salían con la
+- Arreglado: con `--anonymous`, dos tarjetas de red distintas salían con la
   misma dirección física.
 
 ### AppImage y paquete
