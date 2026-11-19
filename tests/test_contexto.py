@@ -26,13 +26,14 @@ class TestLasCifrasDelContextoSiguenSiendoCiertas(unittest.TestCase):
             self.skipTest("no hay CLAUDE.md")
         return CONTEXTO.read_text(encoding="utf-8")
 
-    # El README da una cifra aproximada —«unos 1500»— y se vigila con un margen
-    # ancho: se quedó en 592 con la suite ya por encima de mil, y quien lo lee
-    # es quien no conoce el proyecto y no tiene con qué contrastarlo. CLAUDE.md
+    # La guía para contribuir da una cifra aproximada —«unos 2400»— y se
+    # vigila con un margen ancho: en el README se quedó en 592 con la suite ya
+    # por encima de mil, y quien lo lee es quien no conoce el proyecto y no
+    # tiene con qué contrastarlo. CLAUDE.md
     # no lleva cifra: el número lo da la suite al terminar, y uno escrito a
     # mano había que subirlo en cada commit que añadía un test.
     CIFRAS_DE_TESTS = (
-        ("README.md", r"^Son unos (\d+) y tardan", 0.25),
+        ("docs/convenciones.md", r"^Son unos (\d+) y tardan", 0.25),
     )
 
     def test_el_numero_de_tests_es_el_que_hay(self):
@@ -259,11 +260,3 @@ class TestLasSeccionesQueSeAnuncianSonLasQueHay(unittest.TestCase):
                      lista.group(1).replace("\n", " ").split(",")}
         self.assertEqual(nombradas, self._reales())
 
-    def test_el_readme_las_nombra_todas(self):
-        """Ahí van en prosa, así que se comprueba que estén, no el formato."""
-        texto = (RAIZ / "README.md").read_text(encoding="utf-8")
-        estado = re.search(r"Estado: las .+?\.\n\n", texto, re.S)
-        self.assertIsNotNone(estado, "el README no dice en qué estado está")
-        for seccion in sorted(self._reales()):
-            with self.subTest(seccion=seccion):
-                self.assertIn(seccion, estado.group(0))

@@ -1,315 +1,71 @@
-# <img src="silux/ui/assets/silux.svg" width="44" align="top" alt="El logo de silux: una «S» dibujada como una pista de circuito entre dos vías, sobre una ficha ámbar"> Silux
+# <img src="silux/ui/assets/silux.svg" width="40" align="top" alt=""> Silux
 
-[![Estado del CI](https://github.com/rcv11x/silux/actions/workflows/appimage.yml/badge.svg?branch=master)](https://github.com/rcv11x/silux/actions/workflows/appimage.yml)
+[![CI](https://github.com/rcv11x/silux/actions/workflows/appimage.yml/badge.svg)](https://github.com/rcv11x/silux/actions/workflows/appimage.yml)
 
-**Perfilador de hardware para Linux.** Lo que en Windows hacen CPU-Z, GPU-Z y
-HWMonitor, en un solo programa nativo: qué equipo tienes y qué está haciendo
-ahora mismo.
+*Hardware profiler for Linux. The interface is in Spanish and English.*
 
-Escrito en Python puro, sin más dependencia que Qt para la ventana.
+Silux identifica el hardware de un equipo con Linux y vigila sus sensores: lo que en Windows hacen CPU-Z, GPU-Z y HWMonitor, en un solo programa. Cuando no puede leer un dato, dice por qué.
 
-Estado: las catorce secciones terminadas. Inicio, CPU, Cachés, Placa base,
-Memoria, Gráficos, Almacenamiento, Red, Dispositivos, Batería, Sistema,
-Rendimiento, Sensores y Ajustes. La de Batería solo aparece en los equipos que tienen una.
+![Inicio](capturas/inicio.png)
 
-Versión actual: **0.4.0** · qué trae y qué cambia al actualizar, en
-**[CHANGELOG.md](CHANGELOG.md)**.
-
-Escrito con ayuda de Claude.
-
-![La pestaña de CPU](capturas/cpu.png)
-
-<p align="center">
-  <img src="capturas/inicio.png" width="49%" alt="Inicio">
-  <img src="capturas/sensores.png" width="49%" alt="Sensores">
-  <img src="capturas/memoria.png" width="49%" alt="Memoria">
+<p>
+  <img src="capturas/cpu.png" width="49%" alt="CPU">
   <img src="capturas/graficos.png" width="49%" alt="Gráficos">
-  <img src="capturas/caches.png" width="49%" alt="Cachés">
-  <img src="capturas/placa-base.png" width="49%" alt="Placa base">
-  <img src="capturas/almacenamiento.png" width="49%" alt="Almacenamiento">
+  <img src="capturas/memoria.png" width="49%" alt="Memoria">
+  <img src="capturas/sensores.png" width="49%" alt="Sensores">
 </p>
 
-Son de un i5-10400 con su gráfica integrada, con permisos concedidos: sin
-ellos, lo que los pide sale con un candado, y se piden desde la propia página.
+## Descargar
 
-Están tomadas con `--anonimo`, que cambia el nombre del equipo, las
-direcciones y los números de serie por otros de la misma pinta. Cada PNG lleva
-escrito dentro si se hizo así, porque `tools/comprobar_privacidad.py` busca
-texto y una captura es un mapa de píxeles: sin esa marca no habría forma de
-comprobarlo después.
+Cada [versión](https://github.com/rcv11x/silux/releases) trae dos AppImage:
 
-## Qué es y qué no
+| Archivo | Procesador | Distribución |
+|---|---|---|
+| `silux-x86_64.AppImage` | Intel desde 2008, AMD desde 2011 | glibc 2.34 o posterior: RHEL 9, Ubuntu 22.04, Debian 12 y más nuevas |
+| `silux-x86_64-compat.AppImage` | cualquier procesador de 64 bits | glibc 2.35 o posterior: Ubuntu 22.04, Debian 12 y más nuevas |
 
-Dos preguntas, y solo dos:
-
-- **Qué hardware es este.** Procesador, cachés, placa base, memoria, gráfica.
-  Es el terreno de CPU-Z, y en Linux está mal cubierto.
-- **Qué está haciendo ahora.** Todos los sensores del equipo con sus mínimos,
-  máximos y medias. Es el terreno de HWMonitor y HWiNFO64, y en Linux está
-  peor cubierto todavía.
-
-Las dos son la misma pregunta sobre el mismo hardware, leyendo las mismas
-fuentes, y por eso viven en el mismo programa: HWiNFO64 lleva años
-demostrándolo.
-
-**Lo que este programa no es: un administrador de tareas.** Los procesos son
-software, no hardware; se leen de otro sitio, se presentan de otra forma y
-(a diferencia de todo lo que hay aquí) exigen actuar sobre el sistema y no
-solo leerlo. Además Linux ya tiene buenos administradores de tareas. El hueco
-está en el otro lado.
-
-```bash
-python3 -m silux.ui.app                 # interfaz gráfica
-python3 -m silux.cli --sensors          # solo el árbol de sensores
-python3 -m silux.ui.app --compact       # densidad compacta
-python3 -m silux.ui.app --size 700x520  # tamaño concreto para esta ejecución
-python3 -m silux.cli                    # volcado en el terminal
-python3 -m silux.cli --json             # el mismo dato, para otros programas
-python3 -m silux.cli --watch            # refresco continuo en texto
-python3 -m silux.cli --report i.md      # informe para adjuntar a un fallo
-python3 -m silux.ui.app --anonimo       # oculta lo que identifica al equipo
 ```
-
-La ventana abre a 900×680 y recuerda el tamaño al cerrarla. El suelo depende
-de la densidad (470×400 en normal, 400×340 en compacta) y no es el mínimo
-técnico, que ronda los 270 px: es el punto por debajo del cual los nombres de
-campo se recortan tanto que dejan de identificar nada.
-
-Para llegar hasta ahí sin romperse: las filas de tarjetas se reparten en
-menos columnas, los textos largos se recortan con puntos suspensivos (el
-completo queda en el tooltip), la tabla de cachés se desplaza dentro de su
-propia tarjeta, y por debajo de 620 px la barra lateral se cambia por un
-selector compacto en la barra de estado.
-
-## Probarlo
-
-### AppImage
-
-Un solo archivo, sin instalar nada. Se descarga de la última versión publicada,
-en **[github.com/rcv11x/silux/releases/latest](https://github.com/rcv11x/silux/releases/latest)**:
-
-```bash
 chmod +x silux-x86_64.AppImage
 ./silux-x86_64.AppImage
 ```
 
-Lleva dentro Python, Qt y las bibliotecas que necesita, y ocupa unos 43 MB: de PySide6 solo van QtCore, QtGui y QtWidgets.
+Funciona con [Linux 5.15](docs/kernel.md) o posterior. Algunos datos, como los módulos de memoria, la salud de los discos o el voltaje, solo los puede leer el administrador: Silux los pide al pulsar un candado, explica antes qué va a leer, y no cambia nada en el equipo.
 
-### Compatibilidad
+Desde el código, con [uv](https://docs.astral.sh/uv/), que trae Python 3.10 o posterior y PySide6:
 
-Funciona en cualquier distribución con **glibc 2.35 o posterior** (Ubuntu
-22.04, Debian 12, Fedora 36 y siguientes; no en Ubuntu 20.04, Debian 11 ni
-RHEL 9). Hay dos paquetes con el mismo programa dentro:
-
-- **`silux-x86_64.AppImage`**, el normal, para procesadores Intel de 2008 en
-  adelante y AMD de 2011 en adelante.
-- **`silux-x86_64-compat.AppImage`**, para los anteriores (Core 2, Athlon II,
-  Phenom II). Si abres el normal en uno de ellos, te lo dice y te manda aquí.
-
-Por qué hay dos y cómo se construyen está en
-[docs/empaquetado.md](docs/empaquetado.md).
-
-El kernel, **Linux 5.15 o posterior**; se recomienda un LTS reciente o una
-distribución rolling. Algunos datos llegaron después —el techo de frecuencia
-de un Ryzen con `amd-pstate`, en 5.17; el SPD de la DDR5, en 6.11— y en un
-kernel anterior la página lo dice así, en vez de dar a entender que el equipo
-no los tiene.
-Cuál es de cuándo, con su fuente: [docs/kernel.md](docs/kernel.md).
-
-### Desde el código
-
-Hace falta Python 3.10 o superior y PySide6. La base de datos de CPU y los
-nombres de dispositivos vienen del paquete `hwdata`, que ya está en casi
-cualquier distribución.
-
-```bash
-# Arch, CachyOS, Manjaro
-sudo pacman -S --needed python-pyside6 hwdata polkit
-
-# Fedora
-sudo dnf install python3-pyside6 hwdata polkit
-
-# Debian, Ubuntu
-sudo apt install python3-pyside6 hwdata policykit-1
-
-git clone https://github.com/rcv11x/silux
-cd silux
-python3 -m silux.ui.app
+```
+git clone https://github.com/rcv11x/silux.git && cd silux
+uv run --extra gui python -m silux.ui.app
 ```
 
-Sin PySide6 el volcado en terminal (`python3 -m silux.cli`) funciona igual: la
-interfaz es lo único que lo necesita.
+## En la terminal
 
-## Qué se lee y de dónde
-
-| Dato | Fuente | ¿Permisos? |
-| --- | --- | --- |
-| Fabricante, marca, familia, modelo, stepping | `CPUID` en espacio de usuario | no |
-| Juego de instrucciones | `CPUID` hojas 1, 7, 0x80000001 | no |
-| Nombre en clave, nodo de fabricación | `CPUID` + base de datos | no |
-| Encapsulado (socket) | base de datos por microarquitectura | no |
-| BCLK, reloj base, techo de turbo del silicio | `CPUID` hoja 0x16 | no |
-| Núcleos, hilos, topología, núcleos P/E | `/sys/devices/system/cpu/*/topology` | no |
-| Jerarquía de caché | `/sys/devices/system/cpu/*/cache` | no |
-| Frecuencias, driver, gobernador, turbo | `cpufreq`, `intel_pstate` | no |
-| Cuánto descansa cada hilo (C1, C6…) | `cpuidle` | no |
-| Vulnerabilidades del procesador y sus mitigaciones | `/sys/devices/system/cpu/vulnerabilities` | no |
-| Preferencia de energía (EPP) | `cpufreq` | no |
-| Virtualización, si se corre dentro de una VM y en cuál | `CPUID` hojas 1 y 0x40000000 | no |
-| Carga media a 1, 5 y 15 minutos | `/proc/loadavg` | no |
-| Distribución, kernel, escritorio, sesión | `/etc/os-release`, `uname` | no |
-| Memoria, intercambio, procesos, hilos | `/proc/meminfo`, `/proc/loadavg` | no |
-| Uso total y por núcleo | `/proc/stat` | no |
-| Temperaturas | `hwmon` (coretemp, k10temp…) | no |
-| Consumo en vatios, por dominio | `powercap` / RAPL | según distribución |
-| Límites de potencia PL1 y PL2 | `powercap` / RAPL | no |
-| Voltaje del núcleo | Super I/O por `hwmon`, o MSR | driver o root |
-| Todos los sensores del equipo | `hwmon` y `power_supply` | no |
-| Placa, BIOS, versión y fecha del firmware | `/sys/class/dmi/id` | no |
-| Módulos de RAM: fabricante, chips, referencia, fecha | chip SPD, por `ee1004` o `spd5118` | no, con el driver cargado; cargarlo, sí |
-| Velocidad catalogada y temporizaciones JEDEC/XMP | chip SPD, por `ee1004` o `spd5118` | no, con el driver cargado; cargarlo, sí |
-| Zócalo, capacidad y velocidad a la que va cada módulo | tabla SMBIOS | sí |
-| Ancho de banda de la RAM y latencia por nivel de caché | medido en otro proceso | no |
-| Tráfico del controlador de memoria, ahora mismo | PMU del uncore (solo Intel) | sí |
-| UEFI o BIOS heredada, arranque seguro, TPM | `/sys/firmware`, `/sys/class/tpm` | no |
-| Gestor de arranque y cuánto tarda cada fase | variables EFI del gestor, tabla FPDT del firmware y systemd | no |
-| Dispositivos PCIe, su enlace y la ranura | `/sys/bus/pci` + `pci.ids`; la ranura, de la tabla SMBIOS | no; la ranura, sí |
-| Lo enchufado por USB, sonido, cámaras, Bluetooth | `/sys/bus/usb`, `/proc/asound`, `/sys/class/video4linux`, `/sys/class/bluetooth` | no |
-| Chipset y controlador de memoria | bus PCI + `pci.ids` | no |
-| Umbrales de alarma de cada sensor | `hwmon` (`*_max`, `*_crit`) | no |
-| Gráfica: identidad, VRAM, tabla DPM, enlace PCIe | nodo DRM en `/sys/class/drm` | no |
-| Tipo de VRAM, anchura del bus, unidades de cómputo | ioctl `AMDGPU_INFO` | no |
-| Versiones de OpenGL, Vulkan y OpenCL | las bibliotecas, en otro proceso | no |
-| Monitor: modelo, tamaño, resolución y refresco | EDID del conector | no |
-| Por qué se frena la gráfica AMD | `gpu_metrics` del firmware | no |
-| Integrada Intel: frecuencias del silicio, RC6, por qué se frena | sysfs de `i915` | no |
-| Uso y consumo de una gráfica Intel, por motor | PMU de `i915` | sí |
-| Gráficas NVIDIA con el driver propietario | NVML | no |
-| Discos: modelo, tipo, enlace, particiones | `/sys/block`, `/proc/mounts` | no |
-| Horas de encendido, terabytes escritos, desgaste | SMART por `ioctl` (NVMe y SATA) | sí |
-| Interfaces de red, direcciones y tráfico | `/sys/class/net`, `/proc/net/dev` | no |
-
-Cuando algo no se puede leer, la aplicación **lo dice y explica por qué** en
-lugar de dejar el campo vacío o esconder la sección.
-
-## Tests
-
-```bash
-uv sync --extra gui                      # el entorno, con pytest y PySide6
-export QT_QPA_PLATFORM=offscreen
-uv run pytest -n auto -m "not a_solas"   # en paralelo: medio minuto
-uv run pytest -m a_solas                 # los tres que miden, con el equipo para ellos
-python3 -m unittest discover -s tests -t .      # lo mismo sin instalar nada: dos minutos
-python3 tools/comprobar_privacidad.py    # antes de publicar nada
-python3 tools/probar_en_minimo.py --container   # en el Python 3.10 del suelo
+```
+./silux-x86_64.AppImage --cli                 # todo el hardware, por pantalla
+./silux-x86_64.AppImage --sensors --watch     # los sensores, cada segundo
+./silux-x86_64.AppImage --json                # todo en JSON
+./silux-x86_64.AppImage --cli --help          # todas las opciones
 ```
 
-La suite es de `unittest` y pytest la ejecuta tal cual. Las dos primeras son
-las del CI. Van en dos pasadas porque tres tests comparan dos medidas de
-rendimiento y, repartidos con los demás, miden cuánto les dejan los otros
-procesos; cuáles son lo dice `tests/conftest.py`.
+Desde el código, lo mismo con `uv run python -m silux.cli`.
 
-La última hace falta porque pasar en el Python de uno no dice nada del mínimo
-que declara el proyecto: corre la suite dentro de una Ubuntu 22.04, que es la
-misma en la que corre el CI y en la que se construye el AppImage.
+## Si algo falla
 
-Son unos 2200 y tardan medio minuto en paralelo y minuto y medio en serie.
-Ninguno exige una pieza concreta: los proveedores se prueban contra árboles de
-sysfs sintéticos y contra tres equipos reales volcados y anonimizados (un
-i5-10400 en reposo y con turbo, y un Ryzen 7 5800X3D con una Radeon RX 9070
-XT, en `tests/fixtures/equipos`); el generador contra fragmentos de C, y el
-SPD y el EDID contra volcados binarios de piezas reales. Algunos sí leen el hardware de quien los
-ejecuta, y entonces comparan el árbol consigo mismo en vez de exigir un
-resultado: pedirle a una máquina cualquiera que tenga un sensor concreto es un
-test que falla en el CI y aquí no.
-
-De SMART no hay volcados guardados (se lee con permisos, y un volcado no los
-tiene), y de `gpu_metrics` hay uno solo, el de la RX 9070 XT: son los dos
-formatos binarios que más cambian entre equipos.
-
-Buena parte de ellos existe porque algo salió mal una vez: hay un test que
-comprueba que a un procesador ARM no se le atribuye una instrucción de Intel,
-y otro que vigila que las unidades de cómputo de una gráfica no acaben en la
-ficha de la de al lado.
-
-## Si algo no sale bien
-
-```bash
-python3 -m silux.cli --report informe.md
+```
+./silux-x86_64.AppImage --report informe.md
 ```
 
-O el botón **Guardar informe del equipo…** en Ajustes. Genera un archivo con el
-hardware detectado y, sobre todo, con lo que **no** se ha podido leer y por
-qué: qué fuentes respondieron, qué módulos del kernel faltan y qué datos no
-están disponibles. Es lo que hay que adjuntar al abrir un issue.
+Pide la contraseña para leer también lo que solo ve el administrador. El informe no lleva el nombre del equipo, ni direcciones, ni números de serie: revísalo y adjúntalo en un [issue](https://github.com/rcv11x/silux/issues) o en el canal #silux-pruebas del Discord de UniversoLinux.
 
-El informe **omite el nombre del equipo, las direcciones IP y MAC, los números
-de serie y las rutas de las particiones**, porque está pensado para pegarlo en
-un sitio público. Con `--with-identifiers` se incluyen, si hacen falta para el
-caso.
+## Más
 
-Desde el AppImage es `./silux-x86_64.AppImage --report informe.md`, que saca lo
-mismo. Y conviene dar antes los permisos, desde el aviso de Inicio o pulsando
-cualquier candado: sin ellos, el zócalo y la velocidad de cada módulo de
-memoria y el diagnóstico de los discos salen con un candado en vez de salir.
+- [Arquitectura](docs/arquitectura.md): cómo está hecho y cómo ejecutar cada cosa.
+- [Convenciones](docs/convenciones.md): cómo contribuir.
+- [Equipos probados](docs/equipos-probados.md) y [lo que falta](docs/pendientes.md).
+- [Cambios de cada versión](CHANGELOG.md).
 
-Si lo que se ve mal es la ventana (texto cortado, columnas montadas, un color
-que no se lee), eso no sale en el informe y hace falta una captura.
-
-Qué se ha probado contra hardware de verdad y qué falta está en
-[docs/hardware-validado.md](docs/hardware-validado.md). Lo que más se agradece
-recibir es justo lo que no hay aquí: una AMD con dos CCD (7950X3D y
-parecidos), un Intel híbrido con núcleos P y E, una gráfica NVIDIA o Intel
-Arc, y un equipo ARM.
-
-## El idioma de la interfaz
-
-**Español neutro**, no de España. La diferencia son cuatro palabras y se
-resuelven así:
-
-| En vez de | Se escribe |
-| --- | --- |
-| vídeo | video |
-| fichero | archivo |
-| aparato | dispositivo |
-| ordenador | equipo |
-
-El motivo es de alcance: nueve de cada diez hispanohablantes están al otro lado
-del Atlántico, y «BIOS de vídeo» o «ficheros abiertos» les suenan a traducción
-ajena. Neutro no significa insípido (el resto del texto mantiene su voz) sino
-no cerrarle la puerta a nadie por una tilde.
-
-Los comentarios del código van en el español del autor y no siguen esta regla:
-no los ve el usuario, no se traducen y no hay razón para uniformarlos.
+Silux se escribe con ayuda de Claude, el asistente de IA de Anthropic.
 
 ## Licencia
 
-GPL-3.0 o posterior. El texto completo está en [LICENSE](LICENSE).
-
-Es la GPL y no una licencia permisiva porque la base de datos de identificación
-que se distribuye incluye la tabla de encapsulados heredada de CPU-X, que es
-GPL-3.0.
-
-### Fuentes de datos
-
-- [libcpuid](https://github.com/anrieff/libcpuid) · BSD 2 cláusulas · tablas de identificación
-- [CPU-X](https://github.com/TheTumultuousUnicornOfDarkness/CPU-X) · GPL-3.0 · tabla de sockets
-- `pci.ids` y `pnp.ids` del sistema (paquete hwdata) · nombres de dispositivos y de monitores
-
-## Cómo funciona por dentro
-
-- **[docs/arquitectura.md](docs/arquitectura.md)**: por qué el modelo guarda
-  números y no texto, de dónde sale cada dato y cómo se lee el SPD o el EDID.
-- **[docs/lecciones.md](docs/lecciones.md)**: lo que ya se intentó y no
-  funcionó, por temas.
-- **[docs/benchmark.md](docs/benchmark.md)**: cómo se puntúa y por qué así.
-- **[docs/privilegios.md](docs/privilegios.md)**: qué necesita permisos y cómo
-  se piden.
-- **[docs/empaquetado.md](docs/empaquetado.md)** y
-  **[docs/hardware-validado.md](docs/hardware-validado.md)**.
-
-Y para quien vaya a tocar el código, [CLAUDE.md](CLAUDE.md): las reglas que
-sostienen el diseño, las convenciones y lo que queda pendiente. Se llama así
-porque el proyecto se escribió con ayuda de Claude y es el archivo que lee al
-abrirlo, pero lo que hay dentro no va dirigido a una herramienta: es por qué
-el código está hecho como está.
+GPL-3.0 o posterior: [LICENSE](LICENSE).
