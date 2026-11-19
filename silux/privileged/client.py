@@ -284,19 +284,27 @@ class PrivilegedClient:
 
     @classmethod
     def al_dia(cls) -> bool:
-        """Si el ayudante instalado es el mismo que trae este programa.
+        """Si el ayudante instalado y su regla son los que trae este programa.
 
         Se compara el contenido y no un número de versión, y la diferencia
         importa: un número hay que acordarse de subirlo, y los arreglos que no
         cambian el contrato —los de seguridad, sobre todo— no lo tocan. El
         contenido no se olvida de cambiar.
+
+        La regla también: es lo que dice la ventana de la contraseña, y una
+        regla vieja nombraba solo la memoria y los discos cuando el permiso
+        abre además el voltaje, el consumo y el uso de la gráfica.
         """
+        from . import instalar
+
         try:
             instalado = HELPER_INSTALADO.read_text(encoding="utf-8")
             actual = HELPER.read_text(encoding="utf-8")
+            regla = POLITICA_INSTALADA.read_text(encoding="utf-8")
         except OSError:
             return False
-        return cls._cuerpo(instalado) == cls._cuerpo(actual)
+        return (cls._cuerpo(instalado) == cls._cuerpo(actual)
+                and regla == instalar.politica())
 
     @classmethod
     def necesita_reinstalar(cls) -> bool:

@@ -44,6 +44,20 @@ POLITICA = pathlib.Path("/usr/share/polkit-1/actions/org.silux.helper.policy")
 
 ACCION = "org.silux.helper"
 
+# Lo que dice la ventana de la contraseña con la regla puesta, en cada idioma
+# de la interfaz: todo lo que abre el permiso, ni más ni menos. Va copiado
+# aquí y no leído de `db/lang` porque la regla la escribe root, y root no
+# puede leer dentro del AppImage del usuario. `tests/test_privileged.py` lo
+# compara con la clave `perm.polkit.message` de `es.json` y `en.json`.
+MENSAJES = {
+    "es": ("Silux necesita permiso para leer datos del hardware reservados al "
+           "administrador: memoria, discos, voltaje, consumo y uso de la "
+           "gráfica. Solo lee, no cambia nada."),
+    "en": ("Silux needs permission to read hardware data reserved to the "
+           "administrator: memory, disks, voltage, power and graphics usage. "
+           "It only reads; it changes nothing."),
+}
+
 # `auth_admin_keep` y no `yes`: se pide una vez y polkit la recuerda mientras
 # dure la sesión, en vez de dejar la puerta abierta para siempre. Es lo que
 # hacen LACT y kdiskmark, que necesitan lo mismo que esto.
@@ -61,8 +75,8 @@ PLANTILLA = """<?xml version="1.0" encoding="UTF-8"?>
   <action id="{accion}">
     <description>Leer la identificación y los sensores del hardware</description>
     <description xml:lang="en">Read hardware identification and sensors</description>
-    <message>Se necesita autorización para leer los módulos de memoria y el diagnóstico de los discos</message>
-    <message xml:lang="en">Authentication is required to read memory modules and disk health</message>
+    <message>{mensaje_es}</message>
+    <message xml:lang="en">{mensaje_en}</message>
     <defaults>
       <allow_any>auth_admin</allow_any>
       <allow_inactive>no</allow_inactive>
@@ -73,6 +87,16 @@ PLANTILLA = """<?xml version="1.0" encoding="UTF-8"?>
   </action>
 </policyconfig>
 """
+
+
+def politica() -> str:
+    """La regla tal y como se escribe, para instalarla y para compararla.
+
+    El cliente la compara con la instalada: cambiar el texto de la ventana
+    tiene que llegar también a quien ya la tenía puesta.
+    """
+    return PLANTILLA.format(accion=ACCION, destino=DESTINO,
+                            mensaje_es=MENSAJES["es"], mensaje_en=MENSAJES["en"])
 
 
 def instalado() -> bool:
@@ -128,8 +152,7 @@ def instalar(cuerpo: str) -> None:
     os.chown(DESTINO, 0, 0)
     os.chmod(DESTINO, 0o755)
 
-    POLITICA.write_text(
-        PLANTILLA.format(accion=ACCION, destino=DESTINO), encoding="utf-8")
+    POLITICA.write_text(politica(), encoding="utf-8")
     os.chown(POLITICA, 0, 0)
     os.chmod(POLITICA, 0o644)
 

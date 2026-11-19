@@ -586,6 +586,44 @@ class TestElAyudanteDesfasado(unittest.TestCase):
                                return_value=False):
             self.assertTrue(client.PrivilegedClient.necesita_reinstalar())
 
+    def _instalados(self, carpeta, regla: str):
+        """El ayudante de este programa y una regla, puestos donde se miran."""
+        import pathlib
+        from silux.privileged import client
+        binario = pathlib.Path(carpeta) / "silux-helper"
+        binario.write_text("#!/usr/bin/python3\n" + client.PrivilegedClient._cuerpo(
+            client.HELPER.read_text(encoding="utf-8")), encoding="utf-8")
+        binario.chmod(0o755)
+        politica = pathlib.Path(carpeta) / "org.silux.helper.policy"
+        politica.write_text(regla, encoding="utf-8")
+        return (mock.patch.object(client, "HELPER_INSTALADO", binario),
+                mock.patch.object(client, "POLITICA_INSTALADA", politica))
+
+    def test_una_regla_con_el_texto_viejo_pide_sustituirlo(self):
+        """La regla es lo que dice la ventana de la contraseña. La que se
+        instalaba hasta el 19 de noviembre nombraba solo la memoria y los
+        discos; quien la tenga puesta tiene que enterarse de que hay otra."""
+        import tempfile
+        from silux.privileged import client, instalar
+        vieja = instalar.politica().replace(
+            instalar.MENSAJES["es"],
+            "Se necesita autorización para leer los módulos de memoria y el "
+            "diagnóstico de los discos")
+        with tempfile.TemporaryDirectory() as carpeta:
+            uno, otro = self._instalados(carpeta, vieja)
+            with uno, otro:
+                self.assertTrue(client.PrivilegedClient.instalado())
+                self.assertFalse(client.PrivilegedClient.al_dia())
+                self.assertTrue(client.PrivilegedClient.necesita_reinstalar())
+
+    def test_con_la_regla_de_ahora_esta_al_dia(self):
+        import tempfile
+        from silux.privileged import client, instalar
+        with tempfile.TemporaryDirectory() as carpeta:
+            uno, otro = self._instalados(carpeta, instalar.politica())
+            with uno, otro:
+                self.assertTrue(client.PrivilegedClient.al_dia())
+
     def test_el_que_esta_al_dia_se_sigue_usando(self):
         from silux.privileged import client
         c = client.PrivilegedClient()
@@ -595,3 +633,36 @@ class TestElAyudanteDesfasado(unittest.TestCase):
                                return_value=True):
             self.assertEqual(c._orden()[1], str(client.HELPER_INSTALADO))
             self.assertFalse(client.PrivilegedClient.necesita_reinstalar())
+
+
+class TestElTextoDeLaVentanaDeLaContrasena(unittest.TestCase):
+    """Lo que dice polkit con la regla puesta.
+
+    Lo escribe root, que no puede leer dentro del AppImage del usuario, así
+    que el texto va copiado en `instalar.py`. Copiado, se separa de la
+    interfaz en cuanto alguien cambia uno de los dos: aquí se comparan.
+    """
+
+    def test_es_el_de_la_interfaz_en_cada_idioma(self):
+        import json
+        import pathlib
+        from silux.privileged import instalar
+        carpeta = pathlib.Path(instalar.__file__).resolve().parent.parent / "db" / "lang"
+        for idioma, texto in instalar.MENSAJES.items():
+            with self.subTest(idioma=idioma):
+                tabla = json.loads((carpeta / f"{idioma}.json").read_text(encoding="utf-8"))
+                self.assertEqual(texto, tabla["perm.polkit.message"])
+
+    def test_la_regla_lleva_los_dos_y_el_ingles_marcado(self):
+        from silux.privileged import instalar
+        regla = instalar.politica()
+        self.assertIn(f"<message>{instalar.MENSAJES['es']}</message>", regla)
+        self.assertIn(f'<message xml:lang="en">{instalar.MENSAJES["en"]}</message>', regla)
+
+    def test_nombra_todo_lo_que_abre_el_permiso(self):
+        # SMBIOS (memoria), SMART (discos), MSR (voltaje), RAPL (consumo) y
+        # los contadores del PMU (el uso de la gráfica).
+        from silux.privileged import instalar
+        for palabra in ("memoria", "discos", "voltaje", "consumo", "uso de la gráfica",
+                        "Solo lee"):
+            self.assertIn(palabra, instalar.MENSAJES["es"])

@@ -850,6 +850,7 @@
   "perm.notice.title.many": "{n} readings this computer does have are missing",
   "perm.notice.title.one": "{n} reading this computer does have is missing",
   "perm.permanent.tip": "Installs the helper system-wide with its own polkit authorisation.\nAfter that the password is asked once per session, not on every launch.\nIt needs the password once to install it.",
+  "perm.polkit.message": "Silux needs permission to read hardware data reserved to the administrator: memory, disks, voltage, power and graphics usage. It only reads; it changes nothing.",
   "perm.read.button": "Read with administrator permissions",
   "perm.replace.button": "Update the system helper",
   "perm.waiting": "Waiting for authorisation…",
