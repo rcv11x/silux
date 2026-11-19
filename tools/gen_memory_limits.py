@@ -217,37 +217,58 @@ _ENLACE_DE_MODELO = re.compile(
     r'<a[^>]+href="([^"]*/products/sku/(\d+)/[^"]*)"[^>]*>(.*?)</a>', re.S)
 
 
+def _comparison_row(page: str, css_class: str) -> list[str]:
+    """The cells of a comparison row, without its title or the empty ones at
+    the end: ARK pads the table with a blank last column."""
+    longest: list[str] = []
+    for match in re.finditer(rf'<tr class="{css_class}(?: [a-z]+)?"[^>]*>(.*?)</tr>', page, re.S):
+        cells = [" ".join(html.unescape(re.sub(r"<[^>]+>", " ", c)).split())
+                 for c in re.findall(r"<td[^>]*>(.*?)</td>", match.group(1), re.S)]
+        if len(cells) > len(longest):
+            longest = cells
+    cells = longest[1:]
+    while cells and not cells[-1]:
+        cells.pop()
+    return cells
+
+
 def comparacion_intel(texto_html: str) -> list[dict]:
     """Las filas de una comparación de ARK guardada: una por modelo.
 
     Es la forma corta de cubrir una serie entera: desde su página se marcan
     todos los modelos y «Compare», y la comparación lleva la fila «Memory
-    Types» de cada uno, en el orden de sus enlaces de cabecera. Cada fila
-    toma como fuente la ficha de su modelo.
+    Types» de cada uno. The models come from the «Processor Number» row when
+    the page has it, and each one takes its own page (the link that ends
+    with its number) as the source.
     """
     from silux.db import normalize_cpu_model
 
-    modelos: list[tuple[str, str]] = []
+    enlaces: list[tuple[str, str]] = []
     vistos = set()
     for url, sku, nombre in _ENLACE_DE_MODELO.findall(texto_html):
         if sku not in vistos:
             vistos.add(sku)
-            modelos.append((url, html.unescape(re.sub(r"<[^>]+>", "", nombre)).strip()))
-    for inicio in (m.start() for m in re.finditer(r'<tr class="MemoryTypes"', texto_html)):
-        fila = texto_html[inicio:texto_html.find("</tr>", inicio)]
-        celdas = [html.unescape(re.sub(r"<[^>]+>", " ", c))
-                  for c in re.findall(r"<td[^>]*>(.*?)</td>", fila, re.S)][1:]
-        if len(celdas) == len(modelos) and modelos:
-            break
-    else:
+            completa = url if url.startswith("http") else f"https://www.intel.com{url}"
+            enlaces.append((completa, html.unescape(re.sub(r"<[^>]+>", "", nombre)).strip()))
+    memoria = _comparison_row(texto_html, "MemoryTypes")
+    modelos = _comparison_row(texto_html, "ProcessorNumber") or [n for _u, n in enlaces]
+    if not modelos or len(memoria) < len(modelos):
         return []
+
+    def fuente(modelo: str, posicion: int) -> str:
+        numero = modelo.split("-")[-1]
+        for url, nombre in enlaces:
+            if nombre.endswith(numero):
+                return url
+        return enlaces[posicion][0] if posicion < len(enlaces) else ""
+
     salida = []
-    for (url, nombre), celda in zip(modelos, celdas):
+    for posicion, (modelo, celda) in enumerate(zip(modelos, memoria)):
         tipos = _tipos_de_memoria(celda)
-        if tipos:
-            fuente = url if url.startswith("http") else f"https://www.intel.com{url}"
-            salida.append({"vendor": "Intel", "models": [normalize_cpu_model(nombre)],
-                           "types": tipos, "source": fuente, "origin": "saved-page"})
+        url = fuente(modelo, posicion)
+        if modelo and tipos and url:
+            salida.append({"vendor": "Intel", "models": [normalize_cpu_model(modelo)],
+                           "types": tipos, "source": url, "origin": "saved-page"})
     return salida
 
 

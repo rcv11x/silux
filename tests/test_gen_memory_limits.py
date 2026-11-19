@@ -112,3 +112,28 @@ class TestLaTablaGenerada(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestTheFourteenthGenComparison(unittest.TestCase):
+    """A comparison saved from ARK (Core i5, 14th gen) gave no row: its table
+    has an empty last column, so 16 cells for 15 models, and the reader
+    wanted as many cells as model links. The models now come from the
+    «Processor Number» row."""
+
+    PAGE = (RAIZ / "tests" / "fixtures" / "intel-ark-comparacion-14-i5.html").read_text()
+
+    def rows(self):
+        return {row["models"][0]: row for row in gen.comparacion_intel(self.PAGE)}
+
+    def test_one_row_per_model(self):
+        rows = self.rows()
+        self.assertEqual(len(rows), 15)
+        for model in ("i5-14600K", "i5-14400F", "i5-14450HX", "i5-14501TE"):
+            with self.subTest(model=model):
+                self.assertIn(model, rows)
+
+    def test_each_row_with_its_memory_and_its_own_page(self):
+        row = self.rows()["i5-14600K"]
+        self.assertEqual(row["types"], {"DDR5": 5600, "DDR4": 3200})
+        self.assertRegex(row["source"], r"/products/sku/236799/")
+        self.assertEqual(row["origin"], "saved-page")
