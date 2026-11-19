@@ -24,6 +24,15 @@ sin los pasos para reproducirlo: este archivo es público.
   (555 ps) sale «XMP 1 3200». Las posiciones de los perfiles son las de XMP
   1.x de DDR3, y el perfil 2 de DDR4 caería dentro del primero. No hay ningún
   volcado con XMP en `tests/fixtures`: no se escribe sin uno real delante.
+* **Los avisos de autoría de libcpuid y CPU-X** · alta · `silux/db/cpu_ids.json`
+  sale de las tablas de libcpuid (BSD-2: nombres en clave, nodos, patrones de
+  marca y las piezas ARM) y de la de encapsulados de CPU-X (GPL-3.0 o
+  posterior). BSD-2 pide conservar su copyright, sus condiciones y su renuncia
+  de garantía con el código y reproducirlos en la documentación del binario;
+  hoy solo se los nombra (Ajustes, `--db-info`, `tools/gen_cpu_db.py`). Falta
+  también la línea de copyright de CPU-X, y el AppImage no lleva ni el
+  `LICENSE` de Silux. Arreglo: los avisos completos en un archivo, copiado al
+  AppImage y enlazado desde Ajustes.
 * **`privileged/instalar.py`** · alta, condicionada · escribe el ayudante y
   su regla de polkit sin comprobar que el destino no sea sustituible. No es
   explotable con `/usr/local` en su estado normal.
@@ -67,6 +76,14 @@ sin los pasos para reproducirlo: este archivo es público.
   contadores de energía.
 * `providers/cppc.py` · media, sin comprobar · el techo del silicio con
   `acpi-cpufreq`: falta un volcado con `amd_pstate=disable`.
+* `providers/cpuid_x86.py`, `ui/pages/cpu.py` · media · con un procesador
+  que la tabla no conoce, lo del CPUID sale entero y no se inventa nada
+  (comprobado con el volcado del 5800X3D sin su fila), pero «Nombre en
+  clave», «Tecnología» y «Encapsulado» salen con «—» en vez de esconderse y
+  nombrarse al pie, y la nota dice «Regenera la base con
+  tools/gen_cpu_db.py», que no sirve a quien usa el AppImage: tiene que decir
+  que ese dato no está en esta versión y pedir el informe. Con un test que
+  quite la fila del volcado y mire la página.
 * `ui/pages/cpu.py` · media-baja · «Preferencia de energía —» con
   `acpi-cpufreq`, que no tiene EPP: la fila tendría que esconderse y decirse.
 * `providers/storage.py` · baja · el modelo de los discos SATA sale cortado a
@@ -212,6 +229,33 @@ De la quinta auditoría, sin comprobar uno a uno si siguen igual:
   `argtypes`; `history.save` con un `.tmp` fijo y sin cerrojo.
 
 ## Propuestas sin aplicar
+
+* **Identificar procesadores sin depender de nadie.** Hoy el nombre en clave,
+  el nodo y el encapsulado salen de una tabla generada una vez (26 de agosto
+  de 2026) de libcpuid y CPU-X. CPU-X está archivado desde el 27 de
+  septiembre de 2026, y desde 2022 casi todos los commits a las tablas de
+  Intel y AMD de libcpuid son de la misma persona. El plan:
+  - Una tabla propia en `silux/db/`, con la fuente y la fecha en cada regla.
+  - Intel: `arch/x86/include/asm/intel-family.h` del kernel, fijado a una
+    etiqueta (modelo → nombre en clave y segmento). Se toman los números y
+    los nombres, que son datos, no código.
+  - AMD: no hay cabecera equivalente. Rangos de familia y modelo de las guías
+    de AMD (PPR y guías de revisión), con el enlace en cada regla, como ya
+    hace `families.json`; el `amd.c` del kernel confirma la generación Zen de
+    cada rango.
+  - ARM: `arch/arm64/include/asm/cputype.h` del kernel (MIDR → núcleo).
+  - Nodo y encapsulado por modelo: de las fichas oficiales (ARK, amd.com), que
+    ya lee `tools/gen_memory_limits.py` para el máximo de memoria.
+  - `tools/gen_cpu_db.py` regenera la tabla de esas fuentes, y un test compara
+    el JSON con lo regenerado (el contenido, no un número de versión).
+  - Los informes de la comunidad: `tools/anadir_cpu.py INFORME` saca la firma
+    CPUID y la marca, dice qué regla falta y escribe un caso en
+    `tests/fixtures/cpus/` con lo esperado; un test parametrizado los pasa
+    todos. Una generación nueva es subir la etiqueta del kernel, añadir la
+    regla de AMD con su enlace y pasar un informe real.
+  - Transición: la tabla de libcpuid se queda congelada, con su aviso, como
+    último recurso, hasta que la propia cubra lo mismo (un script lo mide
+    fila a fila). Luego se quita.
 
 * **Límites de potencia de AMD** (PPT, TDC, EDC) con `ryzen_smu`. Aplazado:
   la tabla de `ryzen_smu` no está documentada, cambia con la BIOS y leerla
