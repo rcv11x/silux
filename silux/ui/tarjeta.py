@@ -156,7 +156,7 @@ def _cabecera(pintor: QPainter, p: Palette, snapshot: Snapshot) -> None:
     if not marca.isNull():
         pintor.drawPixmap(QRectF(MARGEN, MARGEN + 2, 28, 28), marca, QRectF(marca.rect()))
         desplazado = 36
-    pintor.drawText(MARGEN + desplazado, MARGEN + 26, "silux")
+    pintor.drawText(MARGEN + desplazado, MARGEN + 26, "Silux")
 
     # Debajo, de qué equipo se está hablando en una línea. Sin el nombre de la
     # máquina: eso es justo lo que no se publica.
@@ -220,7 +220,7 @@ def _pie(pintor: QPainter, p: Palette, alto: int) -> None:
     fuente.setPointSize(9)
     pintor.setFont(fuente)
     pintor.setPen(QColor(p.muted))
-    marca = f"silux {render.version(__version__)}"
+    marca = f"Silux {render.version(__version__)}"
     if build_id():
         marca += f" · {build_id()}"
     pintor.drawText(MARGEN, alto - MARGEN + 6, marca)

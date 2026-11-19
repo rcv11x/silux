@@ -119,7 +119,7 @@ class TestLoQueSeColaPorLosNombres(unittest.TestCase):
 class TestContenido(unittest.TestCase):
     def test_lleva_lo_que_hace_falta_para_diagnosticar(self):
         texto = report.build(_snapshot())
-        for encabezado in ("# Informe de silux", "## Procesador", "## Placa base",
+        for encabezado in ("# Informe de Silux", "## Procesador", "## Placa base",
                            "## Gráficos", "## Red", "## Sensores", "## Diagnóstico"):
             self.assertIn(encabezado, texto)
 
@@ -176,7 +176,7 @@ class TestContenido(unittest.TestCase):
 class TestCasosVacios(unittest.TestCase):
     def test_un_snapshot_pelado_no_revienta(self):
         texto = report.build(Snapshot(monotonic_ns=0, cpu=CpuInfo()))
-        self.assertIn("# Informe de silux", texto)
+        self.assertIn("# Informe de Silux", texto)
 
 
 
