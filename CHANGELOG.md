@@ -11,7 +11,10 @@ que hace falta.
 
 ---
 
-## 0.4 (18 de noviembre de 2026)
+## 0.4-prueba1 (sin publicar)
+
+Versión de prueba de la 0.4: lo que sigue es lo que traerá, para probarlo antes.
+
 
 La versión de los permisos y del aspecto nuevo. Un candado donde falta un
 dato por permisos, y un aviso que explica qué se gana al darlos antes de

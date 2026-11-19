@@ -30,6 +30,7 @@
   "app.sample.failed": "Fallo en el muestreo: {msg}",
   "app.sampling": "Iniciando el muestreo…",
   "app.version": "versión {v}",
+  "app.version.rc": "prueba",
   "bat.atrate": "a {w} W de ahora",
   "bat.capacity": "Capacidad",
   "bat.card.cell": "La celda",
