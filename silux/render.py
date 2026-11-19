@@ -1432,7 +1432,7 @@ def engine_gaps(gpu) -> list[str]:
         return []
     if gpu.driver == "xe":
         # xe sí publica el uso de sus motores, con un PMU que silux todavía
-        # no lee (docs/propuesta-uso-de-graficas.md, A2): decir que la
+        # no lee (docs/pendientes.md): decir que la
         # gráfica no lo da sería falso. Lo cuenta su aviso.
         return []
     esperados = (("engine.render", "engine.decode", "engine.encode")

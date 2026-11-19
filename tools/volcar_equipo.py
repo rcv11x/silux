@@ -128,7 +128,7 @@ class _Dormidas:
     Volcar un portátil con la dedicada dormida no puede despertarla: se
     grabaría una tarjeta encendida solo porque la herramienta la ha
     encendido, que es justo lo que el volcado tiene que dejar ver (B-1 de
-    `docs/propuesta-graficas.md`). De cada una dormida solo se lee
+    la revisión de gráficas). De cada una dormida solo se lee
     `volcar_gpu.SIN_DESPERTAR`; lo mismo de las otras funciones de su ranura
     (el audio HDMI duerme con ella) y de los puentes de su cadena, que en
     D3cold tienen la ranura sin corriente. Tampoco se abren sus nodos de
@@ -269,7 +269,7 @@ def _alternativas(leidos: set[str]) -> set[str]:
 
 
 # Lo que se copia de cada gráfica despierta aunque el Collector no lo lea
-# todavía (fase 0 de docs/propuesta-graficas.md): sin ello no se pueden
+# todavía (fase 0 de la revisión de gráficas): sin ello no se pueden
 # escribir los arreglos de `xe`, de las Arc y de los contadores.
 #
 # - De `xe`, las frecuencias y el reposo cuelgan del nodo PCI y no del DRM

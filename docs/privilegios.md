@@ -1,9 +1,7 @@
 # Privilegios
 
-Qué necesita permisos, cómo se piden y por qué así. Las lecciones de esta
-zona —sobre todo las de pkexec y la copia instalada— están en
-[lecciones.md](lecciones.md#privilegios), y lo que queda por arreglar, en el
-índice de pendientes de `CLAUDE.md`.
+Qué necesita permisos, cómo se piden y por qué así. Lo que queda por
+arreglar está en [pendientes.md](pendientes.md).
 
 ## El ayudante privilegiado
 
@@ -54,7 +52,7 @@ en vez de `python3 -c` reabre el agujero de la copia sustituible, y desde el
 AppImage root ni siquiera puede leerlo. `run0` y `systemd-run` piden
 «gestionar servicios del sistema», que asusta más.
 
-Así que se avisa antes (decisión del autor, 19 de noviembre): sin la regla
+Así que se avisa antes: sin la regla
 puesta y al día, cualquier botón de dar permisos abre primero «Qué pasa al dar
 permisos», que dice lo que enseñará la ventana y ofrece «Para siempre» como lo
 recomendado. Con la regla al día se piden sin más.

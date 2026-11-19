@@ -191,7 +191,7 @@ código y ninguna orden se ha ejecutado.
 ## Lo que hoy no coincide
 
 Medido el mismo día. El detalle y lo que se propone, en
-[propuesta-precision.md](propuesta-precision.md).
+[pendientes.md](pendientes.md).
 
 | Dato | silux | La orden | Quién tiene razón |
 |---|---|---|---|

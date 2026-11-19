@@ -1,17 +1,14 @@
 # Benchmark, puntuación y medida de la memoria
 
 Cómo se puntúa, por qué así, y lo que mide la pestaña de Memoria con su
-referencia externa. Las lecciones de esta zona están en
-[lecciones.md](lecciones.md#benchmark) y en
-[lecciones.md](lecciones.md#memoria).
+referencia externa.
 
 ## La escala
 
 **La escala del benchmark está cerrada y en master.** La rama `escala-v6`
 contestó la pregunta que dejó abierta la `escala-v5`: si el factor de zlib era
 una constante que se pudiera registrar o algo que había que quitar de en medio.
-No hizo falta esperar al informe del ThinkCentre M80q, que sigue sin llegar; lo
-contestó la máquina de la cuarta auditoría, un i5-10400, midiendo la misma
+Lo contestó la máquina de la cuarta auditoría, un i5-10400, midiendo la misma
 pieza el mismo día con lo que trae cada distribución: 14,9 GB/s de
 verificación con la zlib-ng de Fedora, 3,9 con la de Debian, 2,0 con la de Arch
 y 1,5 con la de Ubuntu 22.04, que es la que va dentro del AppImage. Un ×9,7
@@ -39,13 +36,13 @@ medido con su fracción del teórico, y **la latencia por nivel de caché y de l
 RAM**, que es la fila que separaba esta pestaña del Cache & Memory Benchmark de
 AIDA64. Sale de doce bytes de código máquina que persiguen punteros, la misma
 técnica que `rawcpuid.py` usa para CPUID desde el primer día: 0,9 · 2,7 · 12,3
-· 80,6 ns en el 5800X3D de casa contra los 0,9 · 2,7 · 12,4 · 66,1 de AIDA64 en
+· 80,6 ns en un 5800X3D con DDR4-3200 contra los 0,9 · 2,7 · 12,4 · 66,1 de AIDA64 en
 esa misma pieza con memoria más rápida.
 
-Hay una referencia con la que contrastar, y es de la misma pieza que el equipo
-de casa: la captura del Cache & Memory Benchmark de AIDA64 de un 5800X3D ajeno
-—DDR4-3600 CL14 en una MSI B550, o sea otra memoria y otra placa— que trajo el
-autor. Da **L1 0,9 ns · L2 2,7 · L3 12,4 · RAM 66,1**, y **lectura 51,8 GB/s ·
+Hay una referencia con la que contrastar, y es de la misma pieza: la captura
+del Cache & Memory Benchmark de AIDA64 de otro 5800X3D —DDR4-3600 CL14 en una
+MSI B550, o sea otra memoria y otra placa—. Da **L1 0,9 ns · L2 2,7 · L3
+12,4 · RAM 66,1**, y **lectura 51,8 GB/s ·
 escritura 28,8 · copia 50,1**, con las cachés a 2192, 1111 y 623 GB/s de
 lectura. Las latencias de caché valen como comprobación directa porque
 dependen del silicio y del reloj y no de la memoria: el kernel de código

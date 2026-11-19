@@ -26,7 +26,7 @@ codificar y decodificar juntos, sale una barra.
 | `radeon` (AMD antiguas) | — | — | — | los dos |
 | `i915` (integrada) | un motor por tipo (`engine/` del nodo DRM): render, video, mejora de video, copia y cómputo | el motor `vcs`: decodifica y codifica | sí: el uso sale del PMU del kernel | nada: lo que falta es por permisos y lleva candado |
 | `i915` (Arc dedicada) | los motores se enumeran | igual | el PMU propio de la Arc, que el ayudante todavía no abre | nada: lo dice su aviso (`prov.drm.arcusage`) |
-| `xe` | no se lee todavía | no se lee todavía | — | nada: el uso existe y silux no lo lee (`docs/propuesta-uso-de-graficas.md`, A2) |
+| `xe` | no se lee todavía | no se lee todavía | — | nada: el uso existe y Silux no lo lee todavía ([pendientes](pendientes.md)) |
 | `nvidia` (propietario, NVML) | `utilization.gpu` | dos barras: NVDEC y NVENC (`nvmlDeviceGetDecoderUtilization`, `…EncoderUtilization`) | no | el codificador o el decodificador, si NVML no lo da |
 | `nouveau` | — | — | — | los tres |
 
@@ -87,6 +87,6 @@ eso:
 ## Lo que no se lee, a propósito
 
 - El uso **por programa** (`fdinfo`): es otra pregunta, cuál de mis programas
-  usa la gráfica, y está en `docs/propuesta-uso-de-graficas.md`, B.
+  usa la gráfica, y está en [pendientes.md](pendientes.md).
 - MangoHud 0.8.4, en amdgpu, mira además el `fdinfo` del propio juego; su
   «GPU» es la de la tarjeta entera, la misma que lee silux.

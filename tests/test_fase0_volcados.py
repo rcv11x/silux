@@ -1,4 +1,4 @@
-"""Fase 0 de docs/propuesta-graficas.md: lo que los volcados tienen que traer.
+"""La fase 0 de la revisión de gráficas: lo que los volcados tienen que traer.
 
 - NVML se graba por `sysroot.a_traves`, como los ioctl, y sin el número de
   serie; un volcado con NVIDIA se reproduce sin la NVML de quien lo lee.

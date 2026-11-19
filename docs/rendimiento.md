@@ -62,10 +62,10 @@ el escritorio en uso para atribuirle nada.
 
 ## Antes y después, en la pantalla
 
-«Mañana» es `41dab81` (el código con que se midió en la oficina: Inicio, 5,9
+«Mañana» es `41dab81` (el código con que se midió en un i5-10400: Inicio, 5,9
 y 16,5 %); «antes», `e0f83c8`, con las barras de las 17:00 ya arregladas;
 «después», `39df74e`, con todo lo de esta pasada. Medido el 18 por la noche
-en DP-1 (240 Hz), con nadie tocando ese monitor. Memoria máxima, 176 MB.
+en el monitor de 240 Hz, con nadie tocándolo. Memoria máxima, 176 MB.
 
 | | Sin fluido, antes → después | Con fluido, antes → después |
 |---|---|---|
@@ -164,8 +164,8 @@ Cada uno en su commit, con lo medido en el mensaje:
 ## Lo que se recoloca con cada muestra
 
 Lo que cuesta al hilo de la interfaz recibir una muestra con la página
-abierta, sin pantalla y con las preferencias del autor (letra grande,
-1607×942), en el 5800X3D: CPU del hilo (`time.thread_time`), mediana de diez
+abierta, sin pantalla y con letra grande y la ventana a
+1607×942, en el 5800X3D: CPU del hilo (`time.thread_time`), mediana de diez
 muestras. «Aplicar» es `apply`; «después», lo que Qt hace a continuación
 (recolocar y pintar).
 
@@ -188,7 +188,7 @@ nada y cuestan de 0,2 a 1,8 ms por muestra.
   gráfica). Hace falta para las gráficas y los mínimos y máximos.
 - **Los fotogramas de las barras**: mientras una barra va hacia su dato
   (180 ms), el temporizador va al ritmo de la pantalla, hasta uno cada
-  7 ms. En los 240 Hz de casa son 143 por segundo durante ese rato.
+  7 ms. En una pantalla de 240 Hz son 143 por segundo durante ese rato.
 - **Cada `setText` recoloca hacia arriba**: `ElidingLabel` toma su tamaño
   del texto, y Qt recoloca la tarjeta y la página aunque nada cambie de
   sitio. Son de 0,2 a 1,8 ms por muestra (CPU, la que más); quitarlo pide

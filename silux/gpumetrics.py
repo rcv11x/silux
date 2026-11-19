@@ -96,8 +96,8 @@ _V1_3 = _V1_0 | {
 #
 # Tampoco la actividad (`average_gfx_activity` y `average_mm_activity`, sitios
 # 28 y 30): en las APU llega en centésimas de punto, y un 0,45 % de video
-# salía «45 %» (fallo 4 de docs/propuesta-graficas.md). El uso de la gráfica
-# sale de `gpu_busy_percent` y el del video de `vcn_busy_percent` (6.10).
+# saldría «45 %». El uso de la gráfica sale de
+# `gpu_busy_percent` y el del video de `vcn_busy_percent` (6.10).
 _V2_1 = {
     "temp_edge": ("H", 4),           # temperature_gfx
     "gfx_clock_average": ("H", 64),

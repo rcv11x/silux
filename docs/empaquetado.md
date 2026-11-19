@@ -1,8 +1,7 @@
 # Empaquetado: el suelo, el AppImage y las guardas
 
 Qué exige el programa desde el código fuente, qué exige la copia que se
-reparte y por qué, y cómo se comprueba. Las lecciones de esta zona están en
-[lecciones.md](lecciones.md#empaquetado-y-ci).
+reparte y por qué, y cómo se comprueba.
 
 ## Los dos AppImage
 
@@ -102,7 +101,7 @@ de 42,4 a 45,6 MB.
 PySide6 6.11 con Python 3.10 o 3.11 revienta a veces con «Segmentation
 fault» dentro del bucle de eventos: Qt libera dos veces la llamada encolada
 con que un `QScrollBar` avisa de su rango a su `QAbstractScrollArea` (la pila
-se sacó en la oficina de un volcado de memoria). Pasa cuando la ventana
+se sacó de un volcado de memoria). Pasa cuando la ventana
 cambia de forma: al dar permisos, al conectar un disco o un USB, o en los
 tests, que pasan por la misma ventana fotos de equipos distintos.
 
