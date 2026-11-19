@@ -1,0 +1,485 @@
+{
+ "_": "Las CPU de referencia que la tabla de hoy no identifica como libcpuid, con lo que da Silux. Solo puede encoger: ver tests/test_referencias_cpu.py.",
+ "cpus": {
+  "amd/bulldozer/amd-opteron-processor-6238-dual.test": {
+   "libcpuid": [
+    "Opteron (Interlagos)",
+    "GF 32SHP"
+   ],
+   "silux": [
+    "",
+    ""
+   ]
+  },
+  "amd/bulldozer/amd-opteron-processor-6238.test": {
+   "libcpuid": [
+    "Opteron (Interlagos)",
+    "GF 32SHP"
+   ],
+   "silux": [
+    "",
+    ""
+   ]
+  },
+  "amd/bulldozer/amd-opteron-processor-6274-dual.test": {
+   "libcpuid": [
+    "Opteron (Interlagos)",
+    "GF 32SHP"
+   ],
+   "silux": [
+    "",
+    ""
+   ]
+  },
+  "amd/bulldozer/amd-pro-a12-8870-r7-12-compute-cores-4c+8g.test": {
+   "libcpuid": [
+    "A-Series (Carrizo)",
+    "GF 28SHP"
+   ],
+   "silux": [
+    "Bristol Ridge",
+    "GF 28SHP"
+   ]
+  },
+  "amd/k10/amd-phenom-ii-x2-550-processor.test": {
+   "libcpuid": [
+    "Phenom II X2 (Callisto)",
+    "45 nm"
+   ],
+   "silux": [
+    "",
+    ""
+   ]
+  },
+  "amd/k10/amd-phenom-ii-x2-b55-processor.test": {
+   "libcpuid": [
+    "Phenom II X2 (Callisto)",
+    "45 nm"
+   ],
+   "silux": [
+    "",
+    ""
+   ]
+  },
+  "amd/k10/amd-phenom-ii-x3-710-processor.test": {
+   "libcpuid": [
+    "Phenom II X3 (Heka)",
+    "45 nm"
+   ],
+   "silux": [
+    "",
+    ""
+   ]
+  },
+  "amd/k10/amd-sempron-140-processor.test": {
+   "libcpuid": [
+    "Sempron (Sargas)",
+    "45 nm"
+   ],
+   "silux": [
+    "",
+    ""
+   ]
+  },
+  "amd/k10/amd-sempron-processor-140-processor.test": {
+   "libcpuid": [
+    "Sempron (Sargas)",
+    "45 nm"
+   ],
+   "silux": [
+    "",
+    ""
+   ]
+  },
+  "amd/k5/amd-k5-pr100.test": {
+   "libcpuid": [
+    "K5 (SSA/5)",
+    "unknown"
+   ],
+   "silux": [
+    "K5 (SSA/5)",
+    ""
+   ]
+  },
+  "amd/k5/amd-k5-pr75.test": {
+   "libcpuid": [
+    "K5 (SSA/5)",
+    "unknown"
+   ],
+   "silux": [
+    "",
+    ""
+   ]
+  },
+  "amd/k6/amd-k6-iii+.test": {
+   "libcpuid": [
+    "K6-III+",
+    "180 nm"
+   ],
+   "silux": [
+    "Chomper",
+    "250 nm"
+   ]
+  },
+  "amd/k7/amd-athlon-processor.test": {
+   "libcpuid": [
+    "Athlon (Pluto/Orion)",
+    "180 nm"
+   ],
+   "silux": [
+    "",
+    ""
+   ]
+  },
+  "amd/k8/dual-core-amd-opteron-processor-165.test": {
+   "libcpuid": [
+    "Opteron (Dual Core)",
+    "unknown"
+   ],
+   "silux": [
+    "Opteron (Dual Core)",
+    ""
+   ]
+  },
+  "amd/zen4/amd-ryzen-z1.test": {
+   "libcpuid": [
+    "Ryzen Z1 (Phoenix)",
+    "TSMC N4"
+   ],
+   "silux": [
+    "Phoenix",
+    "TSMC N4"
+   ]
+  },
+  "intel/ia-32/netburst/intel-celeron-cpu-1.70ghz.test": {
+   "libcpuid": [
+    "P-4 Celeron (Willamette)",
+    "0.18 µm"
+   ],
+   "silux": [
+    "P-4 Celeron (Willamette)",
+    "0.18 Âµm"
+   ]
+  },
+  "intel/ia-32/netburst/intel-celeron-cpu-1.80ghz.test": {
+   "libcpuid": [
+    "P-4 Celeron (Willamette)",
+    "0.18 µm"
+   ],
+   "silux": [
+    "P-4 Celeron (Willamette)",
+    "0.18 Âµm"
+   ]
+  },
+  "intel/ia-32/netburst/intel-celeron-cpu-2.00ghz.test": {
+   "libcpuid": [
+    "P-4 Celeron (Northwood)",
+    "0.13 µm"
+   ],
+   "silux": [
+    "P-4 Celeron (Northwood)",
+    "0.13 Âµm"
+   ]
+  },
+  "intel/ia-32/netburst/intel-celeron-cpu-2.50ghz.test": {
+   "libcpuid": [
+    "P-4 Celeron (Northwood)",
+    "0.13 µm"
+   ],
+   "silux": [
+    "P-4 Celeron (Northwood)",
+    "0.13 Âµm"
+   ]
+  },
+  "intel/ia-32/netburst/intel-celeron-cpu-215.test": {
+   "libcpuid": [
+    "Celeron (Yonah-512)",
+    "65 nm"
+   ],
+   "silux": [
+    "Xeon LV (Woodcrest)",
+    "65 nm"
+   ]
+  },
+  "intel/ia-32/netburst/intel-pentium-4-cpu-1.60ghz.test": {
+   "libcpuid": [
+    "Pentium 4 (Northwood)",
+    "0.13 µm"
+   ],
+   "silux": [
+    "",
+    ""
+   ]
+  },
+  "intel/ia-32/netburst/intel-pentium-4-cpu-1700mhz.test": {
+   "libcpuid": [
+    "Pentium 4 (Willamette)",
+    "0.18 µm"
+   ],
+   "silux": [
+    "",
+    ""
+   ]
+  },
+  "intel/ia-32/netburst/intel-pentium-4-cpu-2.40ghz.test": {
+   "libcpuid": [
+    "Pentium 4 (Northwood)",
+    "0.13 µm"
+   ],
+   "silux": [
+    "",
+    ""
+   ]
+  },
+  "intel/ia-32/netburst/intel-pentium-4-cpu-2.66ghz.test": {
+   "libcpuid": [
+    "Pentium 4 (Northwood)",
+    "0.13 µm"
+   ],
+   "silux": [
+    "",
+    ""
+   ]
+  },
+  "intel/ia-32/netburst/intel-pentium-4-cpu-2.80ghz.test": {
+   "libcpuid": [
+    "Pentium 4 (Northwood)",
+    "0.13 µm"
+   ],
+   "silux": [
+    "",
+    ""
+   ]
+  },
+  "intel/ia-32/netburst/intel-xeon-cpu-2.40ghz.test": {
+   "libcpuid": [
+    "Xeon (Prestonia)",
+    "0.13 µm"
+   ],
+   "silux": [
+    "Xeon (Prestonia)",
+    "0.13 Âµm"
+   ]
+  },
+  "intel/ia-32/netburst/mobile-intel-pentium-4-m-cpu.test": {
+   "libcpuid": [
+    "Mobile P-4 (Northwood)",
+    "0.13 µm"
+   ],
+   "silux": [
+    "Mobile P-4 (Northwood)",
+    "0.13 Âµm"
+   ]
+  },
+  "intel/ia-32/p6/intel-celeron-coppermine.test": {
+   "libcpuid": [
+    "P-III Celeron (Coppermine)",
+    "0.18 µm"
+   ],
+   "silux": [
+    "P-III Celeron (Coppermine)",
+    "0.18 Âµm"
+   ]
+  },
+  "intel/ia-32/p6/intel-celeron-m-processor-1300mhz.test": {
+   "libcpuid": [
+    "Celeron M (Banias)",
+    "0.13 µm"
+   ],
+   "silux": [
+    "Celeron M (Banias)",
+    "0.13 Âµm"
+   ]
+  },
+  "intel/ia-32/p6/intel-celeron-processor-600mhz.test": {
+   "libcpuid": [
+    "Celeron M (Shelton)",
+    "0.13 µm"
+   ],
+   "silux": [
+    "Celeron M (Shelton)",
+    "0.13 Âµm"
+   ]
+  },
+  "intel/ia-32/p6/intel-core-duo-cpu-t2600.test": {
+   "libcpuid": [
+    "Core Duo (Yonah)",
+    "65 nm"
+   ],
+   "silux": [
+    "Xeon LV (Woodcrest)",
+    "65 nm"
+   ]
+  },
+  "intel/ia-32/p6/intel-cpu-1300.test": {
+   "libcpuid": [
+    "Core Duo (Yonah)",
+    "65 nm"
+   ],
+   "silux": [
+    "Xeon LV (Woodcrest)",
+    "65 nm"
+   ]
+  },
+  "intel/ia-32/p6/intel-cpu-t2400.test": {
+   "libcpuid": [
+    "Core Duo (Yonah)",
+    "65 nm"
+   ],
+   "silux": [
+    "Xeon LV (Woodcrest)",
+    "65 nm"
+   ]
+  },
+  "intel/ia-32/p6/intel-pentium-ii-dixon.test": {
+   "libcpuid": [
+    "Pentium II (Dixon)",
+    "0.25 µm"
+   ],
+   "silux": [
+    "",
+    ""
+   ]
+  },
+  "intel/ia-32/p6/intel-pentium-iii-coppermine.test": {
+   "libcpuid": [
+    "Pentium III (Coppermine)",
+    "0.18 µm"
+   ],
+   "silux": [
+    "",
+    ""
+   ]
+  },
+  "intel/ia-32/p6/intel-pentium-iii-cpu-family-1266mhz.test": {
+   "libcpuid": [
+    "Pentium III (Tualatin)",
+    "0.13 µm"
+   ],
+   "silux": [
+    "Pentium III (Tualatin)",
+    "0.13 Âµm"
+   ]
+  },
+  "intel/ia-32/p6/intel-pentium-iii-katmai-dual.test": {
+   "libcpuid": [
+    "Pentium III (Katmai)",
+    "0.25 µm"
+   ],
+   "silux": [
+    "",
+    ""
+   ]
+  },
+  "intel/ia-32/p6/intel-pentium-iii-katmai.test": {
+   "libcpuid": [
+    "Pentium III (Katmai)",
+    "0.25 µm"
+   ],
+   "silux": [
+    "",
+    ""
+   ]
+  },
+  "intel/qemu/qemu-virtual-cpu-version.test": {
+   "libcpuid": [
+    "Pentium M (Dothan)",
+    "90 nm"
+   ],
+   "silux": [
+    "Dothan",
+    "90 nm"
+   ]
+  },
+  "intel/x86-64/core/intel-core2-duo-cpu-e6750.test": {
+   "libcpuid": [
+    "Core 2 Duo (Conroe-2M)",
+    "65 nm"
+   ],
+   "silux": [
+    "",
+    ""
+   ]
+  },
+  "intel/x86-64/core/pentium-dual-core-cpu-e5200.test": {
+   "libcpuid": [
+    "Pentium (Wolfdale-3M)",
+    "45 nm"
+   ],
+   "silux": [
+    "",
+    ""
+   ]
+  },
+  "intel/x86-64/haswell/intel-core-i7-4750hq-cpu.test": {
+   "libcpuid": [
+    "Core i7 (Haswell)",
+    "22 nm"
+   ],
+   "silux": [
+    "Haswell-H",
+    "22 nm"
+   ]
+  },
+  "intel/x86-64/lion-cove/intel-core-ultra-9-275hx.test": {
+   "libcpuid": [
+    "Core Ultra 9 (Arrow Lake-HX)",
+    "TSMC N3B"
+   ],
+   "silux": [
+    "Core Ultra 9 (Arrow Lake-S)",
+    "TSMC N3B"
+   ]
+  },
+  "intel/x86-64/netburst/intel-celeron-326.test": {
+   "libcpuid": [
+    "P-4 Celeron D (Prescott)",
+    "90 nm"
+   ],
+   "silux": [
+    "",
+    ""
+   ]
+  },
+  "intel/x86-64/raptor-cove/13th-gen-intel-core-i7-1365u.test": {
+   "libcpuid": [
+    "Core i7 (Raptor Lake-U)",
+    "Intel 7"
+   ],
+   "silux": [
+    "Raptor Lake-U",
+    "Intel 7"
+   ]
+  },
+  "intel/x86-64/raptor-cove/13th-gen-intel-coret-i7-1370p.test": {
+   "libcpuid": [
+    "Core i7 (Raptor Lake-P)",
+    "Intel 7"
+   ],
+   "silux": [
+    "Raptor Lake-P",
+    "Intel 7"
+   ]
+  },
+  "intel/x86-64/skylake/intel-core-i7-6500u-cpu.test": {
+   "libcpuid": [
+    "Core i7 (Skylake)",
+    "14 nm"
+   ],
+   "silux": [
+    "Skylake",
+    "14 nm"
+   ]
+  },
+  "intel/x86-atom/silvermont/genuine-intel-cpu-4000.test": {
+   "libcpuid": [
+    "Pentium III (Coppermine)",
+    "0.18 µm"
+   ],
+   "silux": [
+    "",
+    ""
+   ]
+  }
+ }
+}

@@ -16,7 +16,8 @@ De sus tablas de reconocimiento (`libcpuid/recog_intel.c`,
 los nodos de fabricación y los patrones de nombre comercial de los
 procesadores x86, y los nombres de los núcleos ARM. `silux/db/__init__.py`
 reescribe en Python su forma de emparejarlos: los mismos pesos y el mismo
-lenguaje de patrones.
+lenguaje de patrones. De sus volcados de prueba (`tests/`) sale
+`tests/fixtures/referencias_cpu.json`, con el que se comprueba la tabla.
 
 ```
 Copyright 2008  Veselin Georgiev,
