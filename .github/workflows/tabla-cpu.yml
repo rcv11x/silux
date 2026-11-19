@@ -1,0 +1,106 @@
+# Una vez al mes regenera la tabla de procesadores desde sus fuentes y, si ha
+# cambiado, abre un PR con el cambio y los tests ya pasados. Nada entra en
+# master sin que el autor lo revise y lo fusione.
+#
+# Hoy la tabla sale del fork rcv11x/libcpuid y de la tabla de encapsulados de
+# CPU-X (`tools/gen_cpu_db.py`), y las CPU de referencia de los volcados de
+# prueba de libcpuid (`tools/gen_referencias_cpu.py`). El generador propio de
+# la fase 2 (kernel, amd.com) entra por el mismo paso.
+#
+# Para abrir el PR hace falta encender en el repositorio «Allow GitHub Actions
+# to create and approve pull requests» (Settings › Actions › General). Sin
+# eso, el último paso falla y la ejecución sale en rojo: se ve igual.
+name: Tabla de procesadores
+
+on:
+  schedule:
+    # El día 1 de cada mes, a una hora sin la cola de las en punto.
+    - cron: "17 6 1 * *"
+  workflow_dispatch:
+
+# Solo lectura de serie; el trabajo pide lo suyo.
+permissions:
+  contents: read
+
+jobs:
+  regenerar:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      # Sin Git LFS, como en local: los volcados comprimidos de libcpuid van
+      # en LFS, y bajarlos aquí y no en casa haría que cada mes cambiase la
+      # lista de referencias sin que cambiase la tabla.
+      - name: Regenerar la tabla y las referencias
+        env:
+          GIT_LFS_SKIP_SMUDGE: "1"
+        run: |
+          python tools/gen_cpu_db.py
+          python tools/gen_referencias_cpu.py --libcpuid ~/.cache/silux/sources/libcpuid
+
+      - name: Ver si ha cambiado algo
+        id: cambios
+        run: |
+          if git diff --quiet; then
+            echo "hay=no" >> "$GITHUB_OUTPUT"
+            echo "Nada nuevo este mes."
+          else
+            echo "hay=si" >> "$GITHUB_OUTPUT"
+            git diff --stat
+          fi
+
+      - name: Instalar lo que Qt necesita para arrancar
+        if: steps.cambios.outputs.hay == 'si'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libgl1 libegl1 libxkbcommon-x11-0 libdbus-1-3 \
+            libfontconfig1 libfreetype6 libglib2.0-0 hwdata
+
+      - name: Instalar PySide6 y lo de desarrollo
+        if: steps.cambios.outputs.hay == 'si'
+        run: |
+          python -m pip install --upgrade pip
+          pip install --group dev "$(python tools/build_appimage.py --pyside-range)"
+
+      # Con la tabla nueva: si una CPU de referencia deja de salir bien, el
+      # PR no se abre y la ejecución sale en rojo.
+      - name: Pasar los tests
+        if: steps.cambios.outputs.hay == 'si'
+        run: |
+          export QT_QPA_PLATFORM=offscreen
+          python -m pytest -n auto -q -m "not a_solas"
+          python -m pytest -q -m a_solas
+
+      - name: Abrir el PR
+        if: steps.cambios.outputs.hay == 'si'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          rama="tabla-cpu-$(date -u +%Y-%m)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$rama"
+          git add silux/db/cpu_ids.json tests/fixtures/referencias_cpu.json
+          git commit -m "chore(db): la tabla de procesadores, regenerada el $(date -u +%F)" \
+                     -m "Generada por la tarea mensual (.github/workflows/tabla-cpu.yml), con los tests pasados."
+          git push origin "$rama"
+          {
+            echo "La tarea mensual ha regenerado la tabla de procesadores y la suite pasa con ella."
+            echo
+            echo '```'
+            git diff --stat HEAD~1
+            echo '```'
+            echo
+            echo "Revisa el diff de \`silux/db/cpu_ids.json\` antes de fusionar."
+          } > /tmp/cuerpo.md
+          gh pr create --base master --head "$rama" \
+            --title "La tabla de procesadores, regenerada ($(date -u +%Y-%m))" \
+            --body-file /tmp/cuerpo.md
