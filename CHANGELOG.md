@@ -256,6 +256,9 @@ publica se dice con la versión que lo trae.
 - Arreglado: el micrófono de una cámara se llama así en Sonido, en vez de
   ser un «Audio USB» más.
 - Arreglado: la cabecera del árbol USB es como la de las demás tablas.
+- Arreglado: la cabecera dice cuántas tarjetas de sonido hay en total, no
+  «de sonido» al lado de los dispositivos USB; y el árbol USB no enseña
+  columnas vacías cuando no se saben marcas ni modelos (con `--anonymous`).
 - Nuevo: sección nueva con lo enchufado por USB (en árbol, colgando de su
   concentrador, con su velocidad), las tarjetas de sonido, las cámaras y el
   adaptador Bluetooth.
