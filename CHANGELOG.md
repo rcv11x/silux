@@ -337,6 +337,9 @@ publica se dice con la versión que lo trae.
 
 ### Ajustes y escritorio
 
+- Cambiado: la primera vez Silux sale en el idioma del sistema: en español
+  si el sistema está en español, y en inglés en cualquier otro caso. Antes
+  salía siempre en español. Lo elegido en Ajustes sigue mandando.
 - Nuevo: el AppImage se actualiza solo, con un clic. Apagado de serie: Silux
   no se conecta a nada si no lo pides. En Ajustes, «Buscar ahora» o «Buscar
   actualizaciones al iniciar»; si hay una versión nueva, el botón «Actualizar

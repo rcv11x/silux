@@ -21,6 +21,10 @@ import tempfile
 CAJA = tempfile.mkdtemp(prefix="silux-tests-")
 atexit.register(shutil.rmtree, CAJA, ignore_errors=True)
 
+# The interface language now follows the system's, and the suite reads
+# Spanish: this is what a Spanish system says, here and in the CI.
+os.environ["LANGUAGE"] = "es"
+
 for _variable, _carpeta in (("XDG_CONFIG_HOME", "config"),
                             ("XDG_DATA_HOME", "data"),
                             ("XDG_CACHE_HOME", "cache")):

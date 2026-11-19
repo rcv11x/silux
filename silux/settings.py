@@ -11,8 +11,8 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-from dataclasses import asdict, dataclass, fields, replace
-from typing import Any
+from dataclasses import asdict, dataclass, field, fields, replace
+from typing import Any, Mapping, Optional
 
 
 def config_dir() -> pathlib.Path:
@@ -22,6 +22,21 @@ def config_dir() -> pathlib.Path:
 
 def config_path() -> pathlib.Path:
     return config_dir() / "settings.json"
+
+
+def system_language(environ: Optional[Mapping[str, str]] = None) -> str:
+    """Spanish when the system is in Spanish, English otherwise.
+
+    Silux always started in Spanish, and people with the system in English
+    found it that way. Same order gettext uses: LANGUAGE (a list, the first
+    wins), then LC_ALL, LC_MESSAGES and LANG.
+    """
+    env = os.environ if environ is None else environ
+    for variable in ("LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"):
+        value = (env.get(variable) or "").split(":")[0].strip().lower()
+        if value:
+            return "es" if value.startswith("es") else "en"
+    return "en"
 
 
 @dataclass(frozen=True)
@@ -53,7 +68,8 @@ class Preferences:
     # Ancho de cada columna del árbol de sensores. Vacío = calcularlo.
     # El idioma de la interfaz. El español es el original y no una traducción
     # más: es lo que sale cuando falta una cadena en cualquier otro.
-    language: str = "es"
+    # Without a saved setting, the system's (see `system_language`).
+    language: str = field(default_factory=lambda: system_language())
     sensor_columns: tuple[int, ...] = ()
     # Las ramas del árbol de sensores que quedaron plegadas. Se guarda lo
     # plegado y no lo abierto porque lo normal es tenerlo casi todo abierto:
@@ -90,7 +106,7 @@ class Preferences:
             show_all_features=_si_o_no(self.show_all_features, False),
             check_updates=_si_o_no(self.check_updates, False),
             language=(str(self.language).lower()
-                      if str(self.language).lower() in disponible() else "es"),
+                      if str(self.language).lower() in disponible() else system_language()),
             sensor_columns=tuple(min(900, max(30, int(w))) for w in (self.sensor_columns or ())),
             sensor_collapsed=tuple(str(c) for c in (self.sensor_collapsed or ()))[:400],
             sensor_expanded=tuple(str(c) for c in (self.sensor_expanded or ()))[:400],
