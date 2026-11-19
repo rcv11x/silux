@@ -61,11 +61,21 @@ que añadió a media mañana (historial, informe completo, ayuda).
 - **Otro reventón distinto, al salir**: `shiboken6.delete` de la aplicación
   en `tests/qt.py` (`_cerrar`), puntero nulo en `releaseWrapper`. Lo vio ASan
   dos veces; no tumba tests porque pasa al acabar el trabajador.
-- **Lo siguiente** (el autor lo pidió así): 1) si el doble borrado puede
-  pasar en la app de verdad, no solo en los tests; 2) buscar en el gestor
-  de errores de Qt/PySide (bugreports.qt.io) un fallo conocido de 6.11 con
-  Python 3.10 y probar otras versiones dentro de `<6.12` en el mismo
-  contenedor. Sin reintentos ni esconderlo.
+- **Con PySide6 6.10.3, en el mismo contenedor: cero reventones en seis
+  vueltas** (con 6.11.3, uno cada dos o tres; seis limpias por casualidad,
+  menos de un 2 %). Los mismos 63 fallos de correr como root, nada más.
+  Apunta a una regresión de PySide6 6.11 con Python 3.10. En el gestor de
+  errores no hay uno igual; lo más parecido: PYSIDE-1919 (3.10, recolector
+  y señales, resuelto en 6.3), PYSIDE-2193 (doble borrado con 3.10 en Linux,
+  arreglado en 6.9.1/6.10.0) y un hilo del foro sobre envoltorios rancios
+  con la dirección reutilizada en 6.10.2 y 6.11.1.
+- **Lo siguiente**: 1) si el doble borrado puede pasar en la app de verdad
+  (la app con 6.11 en 3.10, abriendo y cambiando de página, en el
+  contenedor); 2) decidir la versión: bajar el techo a `<6.11` en 3.10 (el
+  rango vive en `tools/build_appimage.py --pyside-range`; los techos, en
+  `docs/empaquetado.md`), o probar 6.11.0/6.11.1/6.11.2 para ver dónde
+  entra; 3) con un reproductor mínimo, abrir el fallo en bugreports.qt.io.
+  Sin reintentos ni esconderlo.
 
 ### La reescritura del historial (esta tarde, una sola vez)
 
