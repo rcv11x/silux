@@ -165,13 +165,13 @@ más) y `curl`; la herramienta solo usa la biblioteca estándar.
 
 1. Botón de encendido › «Cambiar a escritorio».
 2. Abrir **Konsole** (menú › Sistema).
-3. Bajar el código de la rama `oficina` y entrar:
+3. Bajar el código de `master` y entrar:
 
    ```bash
    cd ~
-   curl -L -o silux.zip https://github.com/rcv11x/silux/archive/refs/heads/oficina.zip
+   curl -L -o silux.zip https://github.com/rcv11x/silux/archive/refs/heads/master.zip
    python3 -m zipfile -e silux.zip .
-   cd silux-oficina
+   cd silux-master
    python3 -V          # tiene que ser 3.10 o más
    ```
 
@@ -203,7 +203,7 @@ más) y `curl`; la herramienta solo usa la biblioteca estándar.
    Después, la suite con el volcado nuevo.
 
 Si el `curl` falla por la red de la Deck, el zip se baja desde el navegador
-(«Code › Download ZIP» en la rama `oficina`) a `~/Descargas`, y se sigue
+(«Code › Download ZIP» en `master`) a `~/Descargas`, y se sigue
 desde el paso 3 con `cd ~/Descargas`.
 
 ## Cierre de la oficina del 18 (17:20-18:00): lo que se hizo
