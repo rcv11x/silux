@@ -415,6 +415,12 @@ publica se dice con la versión que lo trae.
 
 ### Línea de órdenes
 
+- Arreglado: el informe se lee mejor: los avisos van como cita con su título,
+  los valores de los sensores dicen de qué columna son, las notas de varias
+  líneas no se pegan, los desplegables dicen su valor y no se cuelan las
+  columnas que la ventana esconde («Concentrador · concentrador»).
+- Arreglado: `--report ''` y una sección de `--sections` que no existe dan
+  un error que dice qué pasa, en vez de seguir sin avisar.
 - Nuevo: `--report` escribe el informe completo: todo lo que enseña cada
   página, tal y como lo enseña, sin el nombre del equipo, ni direcciones, ni
   números de serie. Pide los permisos al empezar (`--without-permissions`

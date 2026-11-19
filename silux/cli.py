@@ -398,6 +398,18 @@ def main(argv: Optional[list[str]] = None) -> int:
         collector.snapshot()
         return watch(collector, style, max(0.1, args.watch), solo_sensores=args.sensors)
 
+    if args.report == "":
+        parser.error(_("cli.report.empty"))
+    if args.report and args.sections and not args.short and qt_can_start():
+        # Before asking for the password: a typo shouldn't cost it.
+        from .ui import full_report
+        unknown = full_report.unknown_sections(_lista(args.sections))
+        if unknown:
+            print(_("cli.report.unknownsection").format(
+                names=", ".join(unknown), known=", ".join(full_report.section_ids())),
+                file=sys.stderr)
+            return 2
+
     if args.report and not args.short and not args.without_permissions:
         # El informe es para entender un fallo, y lo que solo ve el
         # administrador (la memoria, la salud de los discos) es a menudo lo

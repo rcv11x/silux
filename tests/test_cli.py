@@ -167,3 +167,41 @@ class TestElArbolDeSensoresEnLaTerminal(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestReportArguments(unittest.TestCase):
+    """Mistakes in the report options are said, not silently ignored: an
+    unknown section was dropped and `--report ''` printed the plain dump."""
+
+    def run_cli(self, *args):
+        import contextlib
+        import io
+        from silux import cli
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                code = cli.main(list(args))
+            except SystemExit as exit_:
+                code = exit_.code
+        return code, out.getvalue(), err.getvalue()
+
+    def test_an_empty_report_name_is_an_error(self):
+        code, out, err = self.run_cli("--report", "", "--without-permissions")
+        self.assertEqual(code, 2)
+        self.assertEqual(out, "")
+        self.assertIn("«-»", err)
+
+    def test_an_unknown_section_is_an_error_that_lists_the_real_ones(self):
+        code, out, err = self.run_cli("--report", "-", "--without-permissions",
+                                      "--sections", "cpu,made-up")
+        self.assertEqual(code, 2)
+        self.assertEqual(out, "")
+        self.assertIn("made-up", err)
+        self.assertIn("memory", err)
+
+    def test_known_sections_still_work(self):
+        code, out, _err = self.run_cli("--report", "-", "--without-permissions",
+                                       "--sections", "cpu,Placa base")
+        self.assertEqual(code, 0)
+        self.assertIn("## CPU", out)

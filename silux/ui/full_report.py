@@ -55,6 +55,15 @@ def wanted(clave: str, sections: Optional[Iterable[str]]) -> bool:
             or nombre.split()[0] in pedidas)
 
 
+def unknown_sections(sections: Optional[Iterable[str]]) -> list[str]:
+    """The requested names that match no section, in the order given."""
+    from .app import SECTIONS
+
+    keys = [clave for clave, _activa in SECTIONS if clave not in FUERA]
+    return [name for name in sections or ()
+            if not any(wanted(key, [name]) for key in keys)]
+
+
 def build(snapshot, sections: Optional[Iterable[str]] = None,
           anonymous: bool = True) -> str:
     """El informe en Markdown, anonimizado salvo que se pida lo contrario.
