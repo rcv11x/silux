@@ -80,6 +80,11 @@ QT_PLUGINS = (
 # silux fija el estilo Fusion en `ui/theme.py` y se pinta él mismo, así que no
 # lo usaría de todas formas.
 
+# De `platforms`, todos menos el de VNC, que sirve la ventana por la red: es
+# el único que pide QtNetwork, y QtNetwork arrastra Kerberos y `libresolv`,
+# que es de glibc. Silux no se usa así.
+PLATAFORMAS_FUERA = ("libqvnc.so",)
+
 # De `imageformats` solo estos. Los demás tiran de los códecs de vídeo del
 # sistema (x265, aom, SVT-AV1) que suman otros 35 MB por poder abrir un HEIF o
 # un AVIF que aquí no se abre nunca.
@@ -97,8 +102,10 @@ IMAGEFORMATS = ("qsvg", "qico", "qjpeg", "qgif")
 DEL_SISTEMA = (
     # El tiempo de ejecución de C y C++, que tiene que ser el del sistema.
     # `libutil` también es de glibc: la pide el Python de python-build-standalone.
+    # `libresolv`, igual: hoy no la pide nada de dentro, y si algo la pide, la
+    # del sistema.
     "libc.so", "libm.so", "libpthread.so", "libdl.so", "librt.so",
-    "libutil.so", "ld-linux", "libgcc_s.so", "libstdc++.so",
+    "libutil.so", "libresolv.so", "ld-linux", "libgcc_s.so", "libstdc++.so",
     # Aceleración gráfica: esto es el driver de la tarjeta que haya puesta.
     "libGL.so", "libGLX.so", "libGLdispatch.so", "libEGL.so", "libOpenGL.so",
     "libdrm.so", "libgbm.so",
@@ -731,7 +738,8 @@ def copiar_plugins() -> set[str]:
                         f"falta el complemento de imágenes {so.name} en {origen}")
                 shutil.copy2(so, destino / so.name)
         else:
-            shutil.copytree(origen, destino)
+            shutil.copytree(origen, destino,
+                            ignore=shutil.ignore_patterns(*PLATAFORMAS_FUERA))
         for so in destino.rglob("*.so"):
             bibliotecas |= set(dependencias(so, extra=qt_propio()))
     return bibliotecas

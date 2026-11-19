@@ -535,6 +535,57 @@ class TestLosComplementosDeImagen(unittest.TestCase):
         self.assertIn("libqsvg.so", str(salida.exception))
 
 
+class TestNiVncNiLibresolv(unittest.TestCase):
+    """El AppImage llevaba `libresolv.so.2`, que es de glibc.
+
+    Llegaba por `libqvnc.so`, el plugin de Qt para servir la ventana por VNC:
+    es el único de `platforms` que pide QtNetwork, y QtNetwork arrastra
+    Kerberos y `libresolv`. Silux no se usa por VNC, y una pieza de glibc
+    dentro del paquete es lo mismo que llevarse `libc.so`: choca con la del
+    sistema. Se vio con `ldd` sobre cada plugin de PySide6 6.12.
+    """
+
+    def setUp(self):
+        import pathlib
+        import tempfile
+        from unittest import mock
+
+        import tools.build_appimage as build
+        self.build = build
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        raiz = pathlib.Path(tmp.name)
+        self.plugins = raiz / "plugins"
+        self.appdir = raiz / "silux.AppDir"
+        for carpeta, nombres in (
+                ("imageformats", tuple(f"lib{b}.so" for b in build.IMAGEFORMATS)),
+                ("platforms", ("libqxcb.so", "libqwayland.so", "libqoffscreen.so",
+                               "libqvnc.so"))):
+            (self.plugins / carpeta).mkdir(parents=True)
+            for nombre in nombres:
+                (self.plugins / carpeta / nombre).write_bytes(b"\x7fELF")
+        self.pedidas = []
+        for nombre, valor in (("APPDIR", self.appdir),
+                              ("plugins_de_qt", lambda: self.plugins),
+                              ("dependencias",
+                               lambda so, extra=None: self.pedidas.append(so.name) or []),
+                              ("qt_propio", lambda: None)):
+            parche = mock.patch.object(build, nombre, valor)
+            parche.start()
+            self.addCleanup(parche.stop)
+
+    def test_el_plugin_de_vnc_no_entra(self):
+        self.build.copiar_plugins()
+        destino = self.appdir / "usr" / "lib" / "qt" / "plugins" / "platforms"
+        self.assertEqual(sorted(p.name for p in destino.iterdir()),
+                         ["libqoffscreen.so", "libqwayland.so", "libqxcb.so"])
+        # Ni se le preguntan sus dependencias, que es por donde entraba lo demás.
+        self.assertNotIn("libqvnc.so", self.pedidas)
+
+    def test_libresolv_la_pone_el_sistema(self):
+        self.assertTrue("libresolv.so.2".startswith(self.build.DEL_SISTEMA))
+
+
 class TestLaGuardaDelAppRun(unittest.TestCase):
     """Lo que hace el AppRun en un procesador al que le faltan instrucciones.
 

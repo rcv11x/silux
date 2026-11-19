@@ -11,7 +11,12 @@ reparte y por qué, y cómo se comprueba.
 | PySide6 | la última (6.12) | 6.9 (`<6.10`) |
 | Procesador | x86-64-v2: Intel desde 2008, AMD desde 2011 | cualquier x86-64 |
 | glibc | 2.34: RHEL 9, Ubuntu 22.04, Debian 12 y posteriores | 2.35: Ubuntu 22.04, Debian 12 y posteriores |
-| Tamaño | 54 MB | 46 MB |
+| Tamaño | 53 MB | 44 MB |
+
+De los plugins de plataforma de Qt va todo menos el de VNC (`libqvnc.so`): es
+el único que pide QtNetwork, y con ella entraban Kerberos y `libresolv.so.2`,
+que es de glibc y tiene que ser la del sistema. Fuera, el normal baja de
+54,4 a 53,0 MB y el compat de 45,6 a 44,3.
 
 Los dos se construyen en un contenedor Ubuntu 22.04
 (`tools/build_appimage.py --container`, con `--compat` para el segundo).

@@ -429,8 +429,11 @@ publica se dice con la versión que lo trae.
   anterior.
 - Cambiado: el AppImage normal lleva Python 3.14 y Qt 6.12 (antes, 3.10 y
   6.11). Funciona también con glibc 2.34, así que entran RHEL 9, Rocky 9 y
-  Alma 9. Pesa 54 MB en vez de 43 y arranca antes: la ventana, un 15 %. El
+  Alma 9. Pesa 53 MB en vez de 43 y arranca antes: la ventana, un 15 %. El
   `-compat` sigue con Python 3.10 y Qt 6.9.
+- Cambiado: los dos AppImage dejan fuera el plugin de Qt para servir la
+  ventana por VNC, que se llevaba dentro una pieza de glibc (`libresolv`).
+  Pesan 1,4 MB menos.
 - Arreglado: el AppImage salía sin los iconos de la barra lateral ni la
   marca.
 - Arreglado: fuera del AppImage, instalado con pip, el programa salía sin sus
