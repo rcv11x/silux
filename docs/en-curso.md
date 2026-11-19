@@ -3,8 +3,73 @@
 Para retomar sin el contexto de la sesión anterior. Se borra cuando lo de
 aquí esté hecho o pase a `docs/pendientes.md`.
 
-Última sesión: la mañana del 19 de noviembre de 2026 en el i5-10400 de la
-oficina (Fedora 44, KDE). La anterior, la noche del 18 en el 5800X3D de casa.
+Última sesión: la tarde del 19 de noviembre de 2026 en el 5800X3D de casa
+(CachyOS). La anterior, la mañana del 19 en el i5-10400 de la oficina.
+
+## 19 de noviembre, tarde en casa (5800X3D): dónde se quedó
+
+La lista del autor tenía 13 puntos; prioridad, al no llegar a todo: 1, 2, 4,
+5, 6 y 8. Cada tema en su rama y a `master` con su CI en verde (el autor
+dio permiso para empujar ramas y `master` en esta sesión).
+
+**En `master`:**
+
+- **1. AppImage normal con Python 3.14 y PySide6 6.12** (python-build-
+  standalone vía `uv`, construido en Ubuntu 22.04). El compat sigue con 3.10
+  y 6.9. TLS probado en siete distribuciones; glibc del normal baja a 2.34;
+  `.pyc` compilados dentro (la ventana arranca un 15 % antes); 43 → 54 MB.
+  Todo en `docs/empaquetado.md`.
+- **El cierre del `QScrollBar`**: pasa en la app de verdad con PySide6 6.11 y
+  Python 3.10 u 3.11 cuando la ventana cambia de forma (dar permisos,
+  conectar algo): **la 0.3 lo tiene**. `tools/agitar_ventana.py` lo
+  reproduce (3 ventanas de 6 en diez minutos). Con 3.14 + 6.12 y con 3.10 +
+  6.9, ninguna en 16 ventanas durante 15 minutos. El `pyproject` pide
+  `<6.11` en Python < 3.12. En los tests sale todavía con 3.14 + 6.12, una
+  vuelta de 32 de la suite entera en un contenedor: sin explicar (lo
+  descartado, en `docs/empaquetado.md`). **El autor no quiere que se
+  relance sin más**: si sale en el CI, hay que buscar qué hacen los tests
+  distinto de la app.
+- **2.** `privacidad` (rebasada como `privacidad-2`: el clasificador de
+  permisos no dejó forzar la rama vieja). El CI corre la suite con las dos
+  parejas que se reparten: 3.14 + 6.12 y 3.10 + 6.9.
+- **Una serie de monitor de este equipo** estaba en `tests/test_edid.py`
+  desde agosto (`a0882d8`). Cambiada por una inventada; **el historial aún la
+  tiene**: la regla para la reescritura está en el scratchpad de la sesión
+  (no sobrevive) y hay que rehacerla con el comprobador de privacidad en
+  casa, que la encuentra.
+- **4. Polkit, opción (a)**: la regla nombra todo lo que abre el permiso,
+  `al_dia()` compara también la regla, y sin ella al día cualquier botón de
+  dar permisos avisa antes de lo que dirá la ventana. Capturas en
+  `~/Imágenes/silux-test/casa-19/polkit/`.
+- **5, en parte**: `settings.json` raro ya no impide arrancar; Memoria dice
+  «16 GB instalados · 15.4 GB utilizables»; la cifra de las fichas empieza a
+  la izquierda con la unidad pegada; `--help` traducido, opciones en inglés
+  con alias en español ocultos, y la del AppImage explica la terminal y el
+  informe.
+- **6. El informe completo** (`silux/ui/full_report.py`): sale de las
+  propias páginas, pide permisos al empezar, anonimizado; `--short`,
+  `--sections`, `--without-permissions`. `tests/test_informe_completo.py`
+  lo compara con la interfaz con cada volcado.
+
+**En la rama `prueba1`, sin publicar (8):** `0.4.0rc1`, «0.4-prueba1» en
+pantalla. Las notas y las órdenes para publicarla, en la respuesta de la
+sesión. Si se recrea el repositorio (3), mejor publicarla después.
+
+**Sin hacer:**
+
+- **5, lo que no está escrito en ningún sitio**: «3d», «Red», «Realtek»,
+  «cabecera USB» y «botones de Rendimiento» eran de la lista de la mañana en
+  la oficina; el autor tiene que decir qué era cada uno. Candidatos vistos
+  en las capturas: el modelo de red sin la marca («RTL8125…» y no
+  «Realtek RTL8125…»), la cabecera de Dispositivos que cuenta «5 de
+  sonido» con dos en la tabla, y «Renombrar» y «Borrar» enormes en cada
+  prueba de Rendimiento.
+- **3** (recrear el repositorio), **7** (README y documentación) y del **9
+  al 13** (actualizaciones, Contribuir mi equipo, referencias por equipo,
+  datos baratos, medidor).
+- Los AppImage de las tres releases están bajados en
+  `~/Documentos/silux-releases-2026-11-19/`, con sus notas en
+  `release.json`.
 
 ## 19 de noviembre, mañana en la oficina (i5-10400): dónde se quedó
 
