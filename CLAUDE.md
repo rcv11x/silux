@@ -40,6 +40,7 @@ python3 tools/capturas_readme.py       # las capturas del README, con permisos
 python3 tools/build_appimage.py --container   # el AppImage que se reparte
 python3 tools/probar_en_minimo.py --container # la suite en el Python del suelo
 python3 tools/agitar_ventana.py --ventanas 6  # cierres de Qt con la ventana cambiando de forma
+python3 tools/probar_actualizador.py VIEJO NUEVO  # el actualizador contra un GitHub falso
 uv sync --extra gui                    # el entorno de desarrollo: pytest y PySide6
 QT_QPA_PLATFORM=offscreen uv run pytest -n auto -m "not a_solas"  # la suite, en paralelo (-n 4 si corre algo más)
 QT_QPA_PLATFORM=offscreen uv run pytest -m a_solas  # los tres que miden, solos
@@ -161,6 +162,8 @@ silux/
 ├─ benchmark.py    prueba de CPU que reporta en qué condiciones midió
 ├─ membench.py     ancho de banda y latencia de la memoria, en otro proceso
 ├─ history.py      historial de pruebas de este equipo
+├─ updates.py      lo único que sale a la red, y solo si se pide: la versión
+│                  nueva y la sustitución comprobada del AppImage
 ├─ score.py        la puntuación comparable entre equipos, y su escala
 ├─ providers/      una fuente cada uno; ninguno conoce a los demás
 │                  (pci.py, devices.py y cpuidle.py son los de los datos
