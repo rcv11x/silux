@@ -82,6 +82,13 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
+      # Lo que no es de documentación (IP, MAC, IPv6 con identificador,
+      # claves, correos, series de los volcados) en cualquier archivo
+      # versionado. Dice archivo, línea y qué es, nunca el dato: este registro
+      # es público. Lo de la máquina que ejecuta aquí es el runner y no cuenta.
+      - name: Comprobar la privacidad
+        run: python tools/comprobar_privacidad.py
+
       - name: Instalar lo que Qt necesita para arrancar
         run: |
           sudo apt-get update -qq
