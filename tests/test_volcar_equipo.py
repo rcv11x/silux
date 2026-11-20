@@ -1,7 +1,6 @@
-"""Lo que tapa `tools/volcar_equipo.py` y cómo se da cuenta de lo que no."""
+"""Lo que tapa el volcador (`silux/volcado.py`) y cómo se da cuenta de lo que no."""
 
 import contextlib
-import importlib.util
 import pathlib
 import tempfile
 import unittest
@@ -12,11 +11,8 @@ from tests.arbol import arbol
 
 
 def _herramienta():
-    ruta = pathlib.Path(__file__).resolve().parent.parent / "tools" / "volcar_equipo.py"
-    spec = importlib.util.spec_from_file_location("volcar_equipo", ruta)
-    modulo = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(modulo)
-    return modulo
+    from silux import volcado
+    return volcado
 
 
 volcar = _herramienta()

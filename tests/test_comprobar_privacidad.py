@@ -18,6 +18,8 @@ import sys
 import tempfile
 import unittest
 
+from silux import privacidad
+
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
 RUTA = RAIZ / "tools" / "comprobar_privacidad.py"
 
@@ -92,17 +94,17 @@ class TestLoQueNoEsDeDocumentacion(unittest.TestCase):
 class TestLoDeEstaMaquina(unittest.TestCase):
 
     def test_se_busca_tambien_media_ipv6(self):
-        trozos = _comprobador()._trozos_de_ipv6(ipaddress.IPv6Address(ENLACE))
+        trozos = privacidad._trozos_de_ipv6(ipaddress.IPv6Address(ENLACE))
         self.assertIn("1a2b:3c4d", trozos)
         self.assertIn("1a2b3c4d", trozos)
 
     def test_el_concentrador_raiz_no_tiene_serie(self):
         """Da su dirección PCI como serie, que está en cualquier ruta de sysfs."""
-        self.assertTrue(_comprobador()._DIRECCION_PCI.match("0000:00:14.0"))
-        self.assertFalse(_comprobador()._DIRECCION_PCI.match("S5GXNX0R123456"))
+        self.assertTrue(privacidad._DIRECCION_PCI.match("0000:00:14.0"))
+        self.assertFalse(privacidad._DIRECCION_PCI.match("S5GXNX0R123456"))
 
     def test_los_rellenos_del_firmware_no_se_buscan(self):
-        relleno = _comprobador()._RELLENO
+        relleno = privacidad._RELLENO
         for texto in ("To Be Filled By O.E.M.", "Default string", "Not Specified"):
             self.assertTrue(relleno.search(texto), texto)
         self.assertFalse(relleno.search("MON7Q2X91"))

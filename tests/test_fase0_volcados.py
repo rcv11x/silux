@@ -22,7 +22,7 @@ from silux.providers.base import Draft
 from tests.arbol import arbol
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
-from tools import volcar_equipo  # noqa: E402
+from silux import volcado as volcar_equipo  # noqa: E402
 
 RTX = nvml.NvidiaGpu(pci_slot="0000:01:00.0", name="GeForce RTX 3060",
                      serial="1324021234567", uuid="GPU-1b2c3d4e-0000-1111-2222-333344445555",

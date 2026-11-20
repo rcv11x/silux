@@ -17,38 +17,13 @@ su estado de energía (ver `SIN_DESPERTAR`).
 from __future__ import annotations
 
 import pathlib
-import re
 import sys
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 
 from silux import sysroot  # noqa: E402
-
-SYS_DRM = "/sys/class/drm"
-SYS_PCI = "/sys/bus/pci/devices"
-
-# Lo que se puede leer de una gráfica dormida sin despertarla:
-# - `power/runtime_status` y `power/control` son del núcleo de PM y devuelven
-#   lo que el kernel ya tiene guardado (`drivers/base/power/sysfs.c`;
-#   `Documentation/ABI/testing/sysfs-devices-power`).
-# - `power_state` es `pdev->current_state`, guardado también
-#   (`drivers/pci/pci-sysfs.c`; `Documentation/ABI/testing/sysfs-bus-pci`,
-#   desde 5.11).
-# - La identidad: `pci_config_attr` (`drivers/pci/pci-sysfs.c`) imprime los
-#   campos de `struct pci_dev` que se leyeron al enumerar el bus, sin volver
-#   al espacio de configuración. `driver` es un enlace: no se abre.
-# Lo demás se da por peligroso. El enlace (`current_link_*`) llama a
-# `pci_config_pm_runtime_get()` desde 6.18 y saca la tarjeta de D3cold; el
-# hwmon de amdgpu la despertaba antes de `amdgpu_pm_get_access_if_active()`;
-# NVML, según el README de NVIDIA (cap. 22, RTD3), la pone activa al abrirse.
-IDENTIDAD = ("vendor", "device", "subsystem_vendor", "subsystem_device",
-             "revision", "class")
-ENERGIA = ("power/runtime_status", "power_state", "power/control")
-SIN_DESPERTAR = IDENTIDAD + ENERGIA
-# `runtime_status` y `power_state` cuando la tarjeta duerme.
-DORMIDA = ("suspended",)
-APAGADA = ("D3hot", "D3cold")
+from silux.volcado import ENERGIA, SYS_DRM, _leer, _real, dormida, energia  # noqa: E402
 
 # Lo que se busca en cada nodo. Las rutas con barra se prueban tal cual.
 INTERESAN = (
@@ -71,54 +46,6 @@ EN_EL_NODO_PCI = (
     "pp_dpm_sclk", "pp_dpm_mclk", "power_dpm_force_performance_level",
     "resource", "boot_vga", "local_cpulist",
 )
-
-
-def _leer(ruta) -> str | None:
-    try:
-        return pathlib.Path(sysroot.ruta(str(ruta))).read_text(
-            encoding="utf-8", errors="replace").strip()
-    except OSError:
-        return None
-
-
-def _real(ruta) -> pathlib.Path:
-    """El camino sin enlaces, como lo vería el sistema."""
-    return pathlib.Path(sysroot.fuera(pathlib.Path(sysroot.ruta(str(ruta))).resolve()))
-
-
-def energia(dispositivo) -> dict[str, str]:
-    """El estado de energía de un dispositivo PCI. No lo despierta."""
-    return {nombre: valor for nombre in ENERGIA
-            if (valor := _leer(f"{dispositivo}/{nombre}")) is not None}
-
-
-def dormida(estado: dict[str, str]) -> bool:
-    return (estado.get("power/runtime_status") in DORMIDA
-            or estado.get("power_state") in APAGADA)
-
-
-def graficas() -> list[str]:
-    """Las gráficas del bus PCI (clase 0x03), tengan driver o no."""
-    try:
-        nombres = sorted(p.name for p in pathlib.Path(sysroot.ruta(SYS_PCI)).iterdir())
-    except OSError:
-        return []
-    return [f"{SYS_PCI}/{n}" for n in nombres
-            if (_leer(f"{SYS_PCI}/{n}/class") or "").startswith("0x03")]
-
-
-def cadena(dispositivo) -> list[pathlib.Path]:
-    """Los puentes por los que pasa el dispositivo hasta la raíz, sin él.
-
-    La misma cuenta que `providers.drm._cadena_pcie`: se sube mientras la
-    carpeta tenga forma de dirección PCI.
-    """
-    actual = _real(dispositivo).parent
-    eslabones = []
-    while re.fullmatch(r"[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\.[0-9a-f]", actual.name):
-        eslabones.append(actual)
-        actual = actual.parent
-    return eslabones
 
 
 def _volcar(titulo: str, base, nombres) -> None:
