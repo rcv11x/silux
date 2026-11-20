@@ -112,6 +112,28 @@ class TestElSilicioMandaSobreElNombre(unittest.TestCase):
         self.assertNotIn("Dragon Range", resultado.codename or "")
         self.assertEqual(resultado.codename, "Phoenix")
 
+    def test_a_base_model_that_does_not_match_discards_the_row(self):
+        # QEMU's virtual CPU in a tester's KVM guest (0x00060FB1, model 0xB):
+        # the Cranford row (model 4) won on family and stepping alone.
+        result = db.identify_x86(
+            vendor_id="GenuineIntel", family=15, model=0xB, stepping=1,
+            ext_family=15, ext_model=0x6B, cores=4,
+            brand="QEMU Virtual CPU version 2.5+", l2_kb=4096, l3_kb=16384,
+        )
+        self.assertFalse(result.matched)
+        self.assertIsNone(result.codename)
+
+    def test_nor_on_a_row_whose_extended_model_is_not_declared(self):
+        # Family 6, model 0x6D: no row has it, and Kentsfield's (model 0xF)
+        # used to win on family alone.
+        result = db.identify_x86(
+            vendor_id="GenuineIntel", family=6, model=0xD, stepping=3,
+            ext_family=6, ext_model=0x6D, cores=4, brand="Common KVM processor",
+            l2_kb=4096, l3_kb=16384,
+        )
+        self.assertNotIn("Kentsfield", result.codename or "")
+        self.assertFalse(result.matched)
+
     def test_lo_que_sí_cuadra_se_sigue_identificando(self):
         resultado = db.identify_x86(
             vendor_id="AuthenticAMD", family=15, model=1, stepping=2,

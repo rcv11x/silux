@@ -250,6 +250,11 @@ def _identify_x86(
         if (fila := _del_kernel(vendor_id, ext_family, ext_model)) is not None:
             return Identification(codename=fila["name"], technology=None,
                                   score=1, matched=True)
+        # Without the kernel the row has nothing else, and when not even its
+        # base model is this one it matched on family alone: QEMU's virtual
+        # CPU (15, 0xB) came out as a Cranford (15, 4).
+        if best["m"] >= 0 and best["m"] != model:
+            reconocido = False
     official = amd_model(brand) if vendor_id == "AuthenticAMD" else None
     if not reconocido:
         # Not in libcpuid: the official amd.com row for this exact model
