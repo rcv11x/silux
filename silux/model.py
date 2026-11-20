@@ -1178,6 +1178,9 @@ class Gpu:
     power_cap_max_w: Optional[float] = None
     fan_rpm: Optional[int] = None
     fan_percent: Optional[float] = None
+    # A laptop's dedicated card: its fans are the machine's, in its embedded
+    # controller, and NVML gives none (a tester's RTX 4050 read «Ventilador: —»).
+    fan_of_the_machine: bool = False
     voltage_v: Optional[float] = None
     voltage_soc_v: Optional[float] = None
     voltage_memory_v: Optional[float] = None

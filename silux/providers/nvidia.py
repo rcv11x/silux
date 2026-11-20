@@ -23,6 +23,7 @@ from .. import sysroot
 from .. import nvml
 from ..model import GpuClocks, PcieLink, GpuMemory, Need
 from .base import Draft, Provider, en_reposo, read_text
+from .dmi import PORTABLE_CHASSIS
 
 # La velocidad de cada generación de PCIe, para traducir el número que da NVML.
 VELOCIDADES = {1: 2.5, 2: 5.0, 3: 8.0, 4: 16.0, 5: 32.0, 6: 64.0}
@@ -82,6 +83,8 @@ class NvidiaGpus(Provider):
                 destino["pci_slot"] = tarjeta.pci_slot
                 destino["vendor"] = "NVIDIA"
             _rellenar(destino, tarjeta)
+            if tarjeta.fan_percent is None and draft.board.chassis in PORTABLE_CHASSIS:
+                destino["fan_of_the_machine"] = True
 
         # Ya no hace falta el aviso de que una NVIDIA viene vacía: no lo viene.
         draft.notes = [n for n in draft.notes

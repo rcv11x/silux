@@ -220,6 +220,12 @@ NA_ARC_ENLACE = {
     "clocks": (("gpu.clock.link", "gpu.clock.linkmax"), "gpu.na.arc.link"),
 }
 
+# The dedicated card of a laptop: its fans are the machine's, run by its
+# embedded controller, and NVML gives none. A dash read as unread.
+NA_VENTILADOR_DEL_EQUIPO = {
+    "sensors": (("gpu.sensor.fan",), "gpu.na.laptop.fan"),
+}
+
 # Una Intel no publica su temperatura por ningún camino. Un guion ahí se lee
 # como «no la he podido leer», y no va a poderse nunca.
 NA_SIN_TEMPERATURA = {
@@ -262,6 +268,8 @@ def no_aplica(gpu: Gpu) -> tuple[dict[str, set[str]], dict[str, str]]:
         reglas.append(NA_SIN_TEMPERATURA)
     if gpu.integrated and gpu.vendor == "AMD":
         reglas.append(NA_APU_AMD)
+    if gpu.fan_of_the_machine:
+        reglas.append(NA_VENTILADOR_DEL_EQUIPO)
     if (gpu.integrated is False and gpu.driver in ("i915", "xe")
             and render.pcie_link(gpu.link) == render.DASH):
         reglas.append(NA_ARC_ENLACE)

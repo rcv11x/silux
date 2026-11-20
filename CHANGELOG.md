@@ -20,6 +20,11 @@ que hace falta.
   temporizaciones) salían pegados a la memoria soldada, que no tiene ese
   chip.
 
+### Gráficos
+
+- Arreglado: la NVIDIA de un portátil enseñaba «Ventilador: —». Su ventilador
+  es del portátil y lo lleva su controlador: no se enseña, y se dice al pie.
+
 ### Procesador
 
 - Arreglado: un procesador sin driver de frecuencia (cpufreq) salía con

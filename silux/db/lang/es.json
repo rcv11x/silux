@@ -579,6 +579,7 @@
   "gpu.na.intel.clocks.link": "No tiene reloj de SoC ni perfil de rendimiento.",
   "gpu.na.intel.sensors": "Una integrada de Intel no publica su voltaje, y no tiene un SoC aparte.",
   "gpu.na.intel.throttle": "Esta generación de Intel no publica si el motor gráfico se está frenando ni por qué; las más recientes sí.",
+  "gpu.na.laptop.fan": "En un portátil el ventilador es del equipo y lo lleva su controlador: NVIDIA no lo publica.",
   "gpu.na.notemp": "Esta gráfica no publica su temperatura.",
   "gpu.na.novram": "Una integrada no tiene memoria propia: usa la del sistema, así que no hay tipo, bus, ancho de banda, tasa de datos ni Resizable BAR que contar.",
   "gpu.na.novram.clocks": "Sin memoria de video propia no hay reloj de memoria que enseñar.",

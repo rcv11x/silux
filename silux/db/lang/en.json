@@ -579,6 +579,7 @@
   "gpu.na.intel.clocks.link": "It has no SoC clock or performance profile.",
   "gpu.na.intel.sensors": "An Intel integrated GPU does not report its voltage, and has no separate SoC.",
   "gpu.na.intel.throttle": "This Intel generation does not publish whether the graphics engine is throttling or why; newer ones do.",
+  "gpu.na.laptop.fan": "In a laptop the fan is the machine's and its controller runs it: NVIDIA does not publish it.",
   "gpu.na.notemp": "This graphics card does not report its temperature.",
   "gpu.na.novram": "An integrated GPU has no memory of its own: it uses the system's, so there is no type, bus, bandwidth, data rate or Resizable BAR to report.",
   "gpu.na.novram.clocks": "With no video memory of its own there is no memory clock to show.",
