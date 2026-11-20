@@ -250,6 +250,28 @@ De la quinta auditoría, sin comprobar uno a uno si siguen igual:
 
 ## Propuestas sin aplicar
 
+* **Leer con el ayudante instalado sin contraseña** (idea a revisar con
+  calma, no decidida). Hoy la regla es `auth_admin_keep`: la contraseña se
+  pide al dar permisos y polkit la recuerda unos minutos para ese proceso.
+  La idea: `allow_active = yes` para la sesión local activa, y que Silux se
+  conecte al abrirse solo si `pkcheck` confirma que no saldrá ninguna
+  ventana. Lo que lee el ayudante quedaría al alcance de **cualquier
+  proceso** del usuario de esa sesión, sin contraseña: la tabla SMBIOS
+  entera (números de serie de placa y memoria), SMART (serie del disco), 16
+  MSR de una lista blanca, los contadores de la gráfica y del tráfico de
+  memoria y la energía de RAPL. Riesgos: (1) un proceso comprometido de la
+  sesión llega a un proceso root sin contraseña, y un fallo del ayudante
+  pasaría a ser root sin contraseña; (2) la energía y los contadores leídos
+  miles de veces por segundo reabren el canal lateral por el que el kernel
+  cerró `energy_uj` en la 5.10 (Platypus, CVE-2020-8694) y por el que los
+  contadores uncore van detrás de `perf_event_paranoid`; (3) las series
+  dejan de ser solo de root. Lo que haría falta en el lado de root si algún
+  día se hace: un solo ayudante a la vez (cerrojo en `/run`) y un mínimo de
+  100 ms entre lecturas de energía y contadores. Las sesiones remotas o
+  inactivas seguirían pidiendo la contraseña. El 20 de noviembre de 2026 el
+  autor prefirió pedir la contraseña antes que dar root sin ella a cualquier
+  proceso de la sesión.
+
 * **Grabar una sesión** (después de la 0.4): empezar, pausar y parar, por
   ejemplo mientras se juega, con un resumen al final: máximos, medias y si
   algo se frenó por temperatura. Hoy `registro.py` graba a CSV sin resumen.
