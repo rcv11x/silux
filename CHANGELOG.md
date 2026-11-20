@@ -11,6 +11,31 @@ que hace falta.
 
 ---
 
+## Sin publicar
+
+Lo que ha entrado después de la 0.4-prueba1, a partir de los primeros
+informes que mandó la gente.
+
+### Procesador
+
+- Arreglado: un procesador que no está en la tabla salía con el nombre en
+  clave, la tecnología y el encapsulado de otro solo porque coincidía la
+  familia. El virtual de QEMU salía «Xeon (Cranford) · 90 nm».
+- Cambiado: en una máquina virtual el procesador no se busca en la tabla: lo
+  que declara lo decide el hipervisor. No salen nombre en clave, tecnología
+  ni encapsulado, la ficha dice por qué y no se pide el informe para
+  completarlo.
+
+### Gráficos
+
+- Arreglado: una gráfica cuyo driver no da versión decía «i915 None» en la
+  cabecera.
+- Arreglado: el monitor virtual de QEMU se llamaba «Red Hat, Inc. QEMU
+  Monitor»: un fabricante que no está en la lista también pierde la forma
+  jurídica.
+
+---
+
 ## 0.4-prueba1 (20 de noviembre de 2026)
 
 Versión de prueba de la 0.4: lo que sigue es lo que traerá, para probarlo antes.
