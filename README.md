@@ -1,3 +1,5 @@
+**Español** · [English](README.en.md)
+
 # <img src="silux/ui/assets/silux.svg" width="40" align="top" alt=""> Silux
 
 [![CI](https://github.com/rcv11x/silux/actions/workflows/appimage.yml/badge.svg)](https://github.com/rcv11x/silux/actions/workflows/appimage.yml)
