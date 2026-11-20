@@ -155,6 +155,47 @@ def _vigilado(camino) -> str | None:
     return texto if texto.startswith(VIGILADO) else None
 
 
+# Where Python 3.10's pathlib keeps its own copy of these: it took them from
+# os and io when imported (`_NormalAccessor`) and, unlike 3.11, does not look
+# them up again. Patching os and io alone missed everything the providers
+# read, list and look at with pathlib, and let it past the sleeping card's
+# guard.
+_POR_PATHLIB = {"open": (io, builtins), "listdir": (os,), "scandir": (os,),
+                "stat": (os,), "lstat": (os,), "readlink": (os,)}
+
+
+def _con_pathlib(parches: dict) -> dict:
+    """Los mismos parches, también en el `_NormalAccessor` de 3.10."""
+    accesor = getattr(pathlib, "_NormalAccessor", None)
+    if accesor is None:
+        return parches
+    todos = dict(parches)
+    for nombre, modulos in _POR_PATHLIB.items():
+        funcion = next((parches[(m, nombre)] for m in modulos if (m, nombre) in parches), None)
+        if funcion is not None and nombre in vars(accesor):
+            todos[(accesor, nombre)] = staticmethod(funcion)
+    return todos
+
+
+@contextlib.contextmanager
+def _parcheando(parches: dict):
+    """Pone cada función en su sitio y lo deja todo como estaba. De una clase
+    se guarda lo que tiene de verdad (un `staticmethod`, un builtin), no lo
+    que da `getattr`."""
+    def original(dueno, nombre):
+        return vars(dueno)[nombre] if isinstance(dueno, type) else getattr(dueno, nombre)
+
+    parches = _con_pathlib(parches)
+    originales = {clave: original(*clave) for clave in parches}
+    try:
+        for (dueno, nombre), funcion in parches.items():
+            setattr(dueno, nombre, funcion)
+        yield
+    finally:
+        for (dueno, nombre), funcion in originales.items():
+            setattr(dueno, nombre, funcion)
+
+
 @contextlib.contextmanager
 def _apuntando():
     """Apunta qué toca el Collector: archivos, directorios, `stat` y enlaces."""
@@ -178,14 +219,8 @@ def _apuntando():
         (os, "lstat"): apuntar(mirados, os.lstat),
         (os, "readlink"): apuntar(mirados, os.readlink),
     }
-    originales = {clave: getattr(*clave) for clave in parches}
-    try:
-        for (modulo, nombre), funcion in parches.items():
-            setattr(modulo, nombre, funcion)
+    with _parcheando(parches):
         yield leidos, listados, mirados
-    finally:
-        for (modulo, nombre), funcion in originales.items():
-            setattr(modulo, nombre, funcion)
 
 
 class _Dormidas:
@@ -295,14 +330,8 @@ def _sin_despertar(dormidas: _Dormidas | None):
     }
     if dormidas.nvidia:
         parches[(nvml.Nvml, "open")] = lambda self: False
-    originales = {clave: getattr(*clave) for clave in parches}
-    try:
-        for (modulo, nombre), funcion in parches.items():
-            setattr(modulo, nombre, funcion)
+    with _parcheando(parches):
         yield
-    finally:
-        for (modulo, nombre), funcion in originales.items():
-            setattr(modulo, nombre, funcion)
 
 
 def _recoger(dormidas: _Dormidas | None = None):

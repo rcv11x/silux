@@ -263,6 +263,38 @@ class TestUnaInterfazConNombrePropio(unittest.TestCase):
         self.assertIn("proc/self/net/dev", hallazgos[0])
 
 
+class TestWhatPathlibLists(unittest.TestCase):
+    """The providers list and look with pathlib. In Python 3.10 pathlib keeps
+    its own `os.listdir` and `os.stat` (`_NormalAccessor`), taken when it is
+    imported: the compat AppImage's annex lacked `/sys/bus/i2c/devices`,
+    where the memory provider looks for the SPD chips."""
+
+    def test_a_listed_folder_and_a_looked_at_file_are_noted(self):
+        from silux import sysroot
+        with arbol({"/sys/bus/i2c/devices/0-0050/name": "ee1004\n"}):
+            with volcar._apuntando() as (_leidos, listados, mirados):
+                carpeta = pathlib.Path(sysroot.ruta("/sys/bus/i2c/devices"))
+                [entrada.name for entrada in carpeta.iterdir()]
+                (carpeta / "0-0050" / "eeprom").exists()
+        self.assertIn("/sys/bus/i2c/devices", listados)
+        self.assertIn("/sys/bus/i2c/devices/0-0050/eeprom", mirados)
+
+    def test_and_what_wakes_a_sleeping_card_is_not_read_with_it_either(self):
+        # Path.read_text opened with that kept io.open: past the guard, the
+        # compat's annex would wake a laptop's sleeping card.
+        from silux import sysroot
+        with _montado():
+            dormidas = volcar._Dormidas()
+            with volcar._apuntando() as (leidos, _listados, _mirados), \
+                    volcar._sin_despertar(dormidas):
+                enlace = pathlib.Path(sysroot.ruta(f"{GRAFICA}/current_link_speed"))
+                with self.assertRaises(FileNotFoundError):
+                    enlace.read_text()
+                self.assertEqual(pathlib.Path(sysroot.ruta(f"{GRAFICA}/vendor")).read_text(),
+                                 "0x1002\n")
+        self.assertIn(f"{GRAFICA}/vendor", leidos)
+
+
 class TestAUsbMaker(unittest.TestCase):
     """A USB device's maker is a company, and its name is everywhere: a card
     reader says «Generic» (AMD's sound card is «HD-Audio Generic»), a
