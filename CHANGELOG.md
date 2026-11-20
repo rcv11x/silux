@@ -11,7 +11,10 @@ que hace falta.
 
 ---
 
-## Sin publicar
+## 0.4-prueba4 (20 de noviembre de 2026)
+
+La prueba3 con un arreglo más, para que la pruebe también quien usa un
+sistema sin systemd.
 
 ### Sistema
 
