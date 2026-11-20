@@ -253,6 +253,12 @@ De la quinta auditoría, sin comprobar uno a uno si siguen igual:
 * **Grabar una sesión** (después de la 0.4): empezar, pausar y parar, por
   ejemplo mientras se juega, con un resumen al final: máximos, medias y si
   algo se frenó por temperatura. Hoy `registro.py` graba a CSV sin resumen.
+* **La última hora de cada sensor** (después de la 0.4): un historial en
+  memoria mientras Silux está abierto, en Sensores y en las gráficas de cada
+  página, con un selector de tramo (1 min, 10 min, 1 h) y, al pasar el ratón,
+  el valor y la hora de ese punto. Se pinta agrupando por píxel (el mínimo y
+  el máximo de cada columna), para no perder picos ni gastar CPU, y dentro de
+  los 300 MB de la regla 7.
 * **Un benchmark de gráfica** (después de la 0.4).
 * **Diagramas que salen de datos reales**, no decorativos: el mapa de
   núcleos de la CPU (CCD, núcleos P y E, hilos hermanos, mejores núcleos) y
