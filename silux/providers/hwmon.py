@@ -144,6 +144,7 @@ _ALIMENTACION = (
     # puerto número tantos. «Puerto USB-C 2» en un portátil con uno solo.
     (re.compile(r"^(ucsi)[-_].*$", re.I), "sensor.dev.usbc"),
 )
+_ES_USBC = _ALIMENTACION[-1][0]
 
 
 def _por_numero(ruta: pathlib.Path) -> tuple:
@@ -543,8 +544,20 @@ class HwmonSensors(Provider):
             ("current_now", SensorKind.CURRENT, 1_000_000.0, "sensor.current"),
             ("power_now", SensorKind.POWER, 1_000_000.0, "sensor.power"),
         )
-        for entry in sorted(sysroot.ruta(POWER_SUPPLY).iterdir()):
+        entries = sorted(sysroot.ruta(POWER_SUPPLY).iterdir())
+        # A laptop's USB-C ports, numbered in order when there are several:
+        # the two of a ThinkPad were both «Puerto USB-C», and the tree told
+        # their readings apart by the kernel's name («ucsi-source-psy-…»).
+        ports = [e.name for e in entries if _ES_USBC.match(e.name)]
+        for entry in entries:
             name = entry.name
+            device = _nombre_de_alimentacion(name) or _("sensor.dev.power").format(n=name)
+            if name in ports:
+                # Nothing plugged in: it reads 0 V and 0 A, which says nothing.
+                if read_int(str(entry / "online")) == 0:
+                    continue
+                if len(ports) > 1:
+                    device = f"{device} {ports.index(name) + 1}"
             for filename, kind, divisor, label in fields:
                 raw = read_int(str(entry / filename))
                 if raw is None:
@@ -552,7 +565,7 @@ class HwmonSensors(Provider):
                 yield Sensor(
                     key=f"power_supply/{name}/{filename}",
                     chip=name,
-                    device=_nombre_de_alimentacion(name) or _("sensor.dev.power").format(n=name),
+                    device=device,
                     device_kind=DeviceKind.POWER,
                     label=_(label), kind=kind,
                     value=round(abs(raw) / divisor, 3),

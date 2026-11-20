@@ -26,6 +26,16 @@ que hace falta.
 - Arreglado: un adaptador de red USB se llama como su dirección física
   («enx…»), y esa dirección salía en el informe. Ahora va tapada, como las
   demás.
+- Arreglado: la nota que va debajo de una lista («Iris Xe Graphics: no
+  publica su temperatura.», «Un disco de platos…») salía pegada a la última
+  línea de la lista.
+
+### Sensores
+
+- Arreglado: un portátil con dos puertos USB-C los llamaba igual, y en
+  Sensores cada lectura llevaba el nombre del kernel
+  («ucsi-source-psy-USBC000:001»). Ahora son «Puerto USB-C 1» y «2», y un
+  puerto sin nada enchufado no enseña sus lecturas a cero.
 
 ---
 
