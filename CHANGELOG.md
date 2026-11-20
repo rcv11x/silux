@@ -26,6 +26,13 @@ informes que mandó la gente.
   ni encapsulado, la ficha dice por qué y no se pide el informe para
   completarlo.
 
+### Sistema
+
+- Arreglado: con el AppImage, los programas del sistema que lanza Silux
+  heredaban sus bibliotecas. En Debian 13, con el compat, `systemctl` no
+  arrancaba y faltaban los tiempos de arranque; y abrir la carpeta de las
+  pruebas podía abrir el gestor de archivos con el Qt del AppImage.
+
 ### Gráficos
 
 - Arreglado: una gráfica cuyo driver no da versión decía «i915 None» en la

@@ -796,7 +796,10 @@ class MainWindow(QMainWindow):
             _("updates.done").format(version=nueva.version_text))
         if respuesta == QMessageBox.StandardButton.Yes:
             # El mismo camino: el acceso directo apunta a él y sigue valiendo.
-            os.execv(str(ruta), [str(ruta), *sys.argv[1:]])
+            # Fresh, as if launched from the menu: the new copy mounts at
+            # another path and its AppRun adds its own.
+            from ..system_env import system_environment
+            os.execve(str(ruta), [str(ruta), *sys.argv[1:]], system_environment())
 
     def _on_preferences(self, prefs: Preferences) -> None:
         from dataclasses import replace

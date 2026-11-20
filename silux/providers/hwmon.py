@@ -25,6 +25,7 @@ from ..model import DeviceKind, DriverHint, Need, Sensor, SensorKind, short_bran
 from .base import Draft, Provider, mean, read_int, read_text
 from ..i18n import _
 from .. import sysroot
+from ..system_env import system_environment
 
 HWMON = pathlib.Path("/sys/class/hwmon")
 POWER_SUPPLY = pathlib.Path("/sys/class/power_supply")
@@ -607,7 +608,8 @@ class HwmonSensors(Provider):
             if not shutil.which("modinfo"):
                 return False
             result = subprocess.run(["modinfo", "-F", "filename", module],
-                                    capture_output=True, text=True)
+                                    capture_output=True, text=True,
+                                    env=system_environment())
             return result.returncode == 0 and bool(result.stdout.strip())
         return bool(sysroot.a_traves("modinfo", module, preguntar))
 

@@ -195,6 +195,8 @@ silux/
 ├─ registro.py     graba la sesión a un CSV
 ├─ i18n.py         el idioma de la interfaz; el original es el español
 ├─ sysroot.py      leer un equipo volcado en vez del de verdad
+├─ system_env.py   el entorno de un programa del sistema, sin lo que añade el
+│                  AppImage: todo lo que Silux lanza pasa por ahí
 ├─ rawcpuid.py     CPUID desde Python, sin root (mmap + ctypes)
 ├─ features.py     tabla declarativa de banderas de CPUID
 ├─ gpuapi.py       OpenGL, Vulkan, OpenCL y VA-API, en otro proceso

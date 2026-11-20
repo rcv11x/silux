@@ -492,11 +492,9 @@ class PerformancePage(ScrollPage):
         Con el gestor del escritorio, no con una ruta escrita en un aviso:
         quien quiere ver el archivo lo quiere abrir, no leer dónde está.
         """
-        from PySide6.QtCore import QUrl
-        from PySide6.QtGui import QDesktopServices
+        from ...system_env import open_path
         history.data_dir().mkdir(parents=True, exist_ok=True)
-        QDesktopServices.openUrl(
-            QUrl.fromLocalFile(str(history.data_dir())))
+        open_path(str(history.data_dir()))
 
     def _borrar_historial(self) -> None:
         """Borra las pruebas guardadas, preguntando antes."""

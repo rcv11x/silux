@@ -22,6 +22,7 @@ from ..model import (Boot, DeviceKind, Memory, Need, Sensor, SensorKind, Swap, S
                      Vulnerability)
 from .base import Draft, Provider, read_int, read_text
 from .. import privacidad, sysroot
+from ..system_env import system_environment
 
 OS_RELEASE = "/etc/os-release"
 
@@ -201,7 +202,8 @@ def _tiempos_de_systemd() -> Optional[dict[str, int]]:
     try:
         hecho = subprocess.run(
             ["systemctl", "show", *(f"--property={p}" for p in PROPIEDADES_DE_SYSTEMD)],
-            capture_output=True, text=True, timeout=3, env=dict(os.environ, LC_ALL="C"))
+            capture_output=True, text=True, timeout=3,
+            env=dict(system_environment(), LC_ALL="C"))
     except (OSError, subprocess.SubprocessError):
         return None
     return _leer_systemctl(hecho.stdout) if hecho.returncode == 0 else None

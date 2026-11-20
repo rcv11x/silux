@@ -23,6 +23,7 @@ import sys
 from typing import Any, NamedTuple, Optional
 
 from . import protocol
+from ..system_env import system_environment
 from .protocol import (ACTION_GPU_PMU, ACTION_IMC, ACTION_MSR, ACTION_PING,
                        ACTION_RAPL, ACTION_SMART, ACTION_SMBIOS, MAX_MESSAGE)
 
@@ -252,6 +253,7 @@ class PrivilegedClient:
                 orden,
                 stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL, text=True, bufsize=1,
+                env=system_environment(),
             )
         except OSError as exc:
             raise HelperUnavailable(f"no se pudo lanzar pkexec: {exc}") from exc

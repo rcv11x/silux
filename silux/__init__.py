@@ -80,15 +80,18 @@ def _preguntar_a_git() -> str:
     ahorra buscar en el historial algo que no está.
     """
     import subprocess
+    from .system_env import system_environment
+
     raiz = __file__.rsplit("/", 2)[0]
     try:
         commit = subprocess.run(
             ["git", "-C", raiz, "log", "-1", "--format=%cd.%h", "--date=format:%Y%m%d"],
-            capture_output=True, text=True, timeout=5)
+            capture_output=True, text=True, timeout=5, env=system_environment())
         if commit.returncode != 0:
             return ""
         sucio = subprocess.run(["git", "-C", raiz, "status", "--porcelain"],
-                               capture_output=True, text=True, timeout=5)
+                               capture_output=True, text=True, timeout=5,
+                               env=system_environment())
     except (OSError, subprocess.SubprocessError):
         return ""
     marca = commit.stdout.strip()

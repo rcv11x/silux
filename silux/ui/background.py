@@ -18,6 +18,8 @@ from typing import Optional, Sequence
 
 from PySide6.QtCore import QThread, Signal
 
+from ..system_env import system_environment
+
 
 @dataclass(frozen=True)
 class CommandResult:
@@ -48,7 +50,7 @@ class BackgroundCommand(QThread):
         try:
             self._proceso = subprocess.Popen(
                 self._argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE, text=True)
+                stderr=subprocess.PIPE, text=True, env=system_environment())
         except OSError as error:
             self.done.emit(CommandResult(error=str(error)))
             return

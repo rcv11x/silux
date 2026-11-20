@@ -34,6 +34,8 @@ import sys
 from dataclasses import dataclass
 from typing import Mapping, Optional
 
+from .system_env import system_environment
+
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SVG = pathlib.Path(__file__).resolve().parent / "ui" / "assets" / "silux.svg"
 
@@ -328,7 +330,8 @@ def refresh_caches() -> None:
     ):
         if shutil.which(command[0]):
             try:
-                subprocess.run(command, check=False, capture_output=True, timeout=30)
+                subprocess.run(command, check=False, capture_output=True, timeout=30,
+                               env=system_environment())
             except (OSError, subprocess.TimeoutExpired):
                 pass
 
@@ -366,7 +369,8 @@ def _write_shortcut(launcher: Launcher) -> pathlib.Path:
     if shutil.which("gio"):
         try:
             subprocess.run(["gio", "set", str(destino), "metadata::trusted", "true"],
-                           check=False, capture_output=True, timeout=10)
+                           check=False, capture_output=True, timeout=10,
+                           env=system_environment())
         except (OSError, subprocess.TimeoutExpired):
             pass
     return destino

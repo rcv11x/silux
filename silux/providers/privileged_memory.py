@@ -31,6 +31,7 @@ from ..privileged.client import (
 from .base import Draft, Provider
 from ..i18n import _
 from .. import sysroot
+from ..system_env import system_environment
 
 
 # Lo que la tabla del firmware pone cuando no sabe: los códigos 1 y 2 de sus
@@ -153,7 +154,8 @@ class PrivilegedMemory(Provider):
             if not shutil.which("modinfo"):
                 return
             result = subprocess.run(["modinfo", "-F", "filename", module],
-                                    capture_output=True, text=True)
+                                    capture_output=True, text=True,
+                                    env=system_environment())
             if result.returncode == 0 and result.stdout.strip():
                 yield DriverHint(
                     module=module,

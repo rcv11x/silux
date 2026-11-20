@@ -234,6 +234,10 @@ fi
 APPRUN = """#!/bin/sh
 # Punto de entrada del AppImage.
 AQUI="$(dirname "$(readlink -f "$0")")"
+# Where all of this lives, for `silux.system_env` to take it out of what the
+# programs of the system inherit. The runtime's APPDIR is not there when the
+# AppImage is run extracted.
+export SILUX_APPDIR="$AQUI"
 export PYTHONHOME="$AQUI/usr"
 export PYTHONPATH="$AQUI/usr/lib/python:$PYTHONPATH"
 # El segundo directorio es para cuando PySide6 trae su propio Qt: el de PyPI
