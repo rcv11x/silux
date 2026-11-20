@@ -230,13 +230,17 @@ class DevicesPage(QScrollArea):
 
     def _detach_usb(self, row: QTreeWidgetItem, keep_children: bool = False) -> None:
         """Takes the row out of the tree; its children, if kept, go out first
-        so they can be placed again under whatever now holds them."""
+        so they can be placed again under whatever now holds them.
+
+        `removeChild` and not `takeChild`: PySide keeps the parent's reference
+        to a child taken with `takeChild`, so every unplugged row stayed alive.
+        """
         if keep_children:
-            while row.childCount():
-                row.takeChild(row.childCount() - 1)
+            for child in [row.child(i) for i in range(row.childCount())]:
+                row.removeChild(child)
         parent = row.parent()
         if parent is not None:
-            parent.takeChild(parent.indexOfChild(row))
+            parent.removeChild(row)
         elif (index := self.usb.indexOfTopLevelItem(row)) >= 0:
             self.usb.takeTopLevelItem(index)
 

@@ -359,6 +359,30 @@ class TestEnLaPagina(unittest.TestCase):
             self.assertEqual(self._tree_state(page), self._tree_state(fresh), f"step {step}")
             fresh.deleteLater()
 
+    def test_unplugged_rows_are_freed(self):
+        import gc
+
+        from PySide6.QtWidgets import QTreeWidgetItem
+
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.devices import DevicesPage
+
+        def alive() -> int:
+            gc.collect()
+            return sum(1 for o in gc.get_objects() if isinstance(o, QTreeWidgetItem))
+
+        before = alive()
+        page = DevicesPage(theme.palette_for(self.app, "dark"), Preferences().normalized())
+        self.addCleanup(page.deleteLater)
+        devices = self.foto.usb_devices
+        for step in range(40):
+            # Every hub with something hanging from it comes and goes.
+            gone = "5-4.1" if step % 2 else "1-3"
+            page.apply(dataclasses.replace(self.foto, usb_devices=tuple(
+                u for u in devices if not (u.port == gone or u.port.startswith(gone + ".")))))
+        self.assertLessEqual(alive() - before, len(devices))
+
     def test_el_icono_de_la_barra_es_el_suyo(self):
         from silux.ui import icons
 

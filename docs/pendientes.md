@@ -19,20 +19,17 @@ sin los pasos para reproducirlo: este archivo es público.
   suite entera en un contenedor. Falta la causa y un reproductor sin Silux
   para bugreports.qt.io. Lo descartado y cómo se mide, en
   [empaquetado.md](empaquetado.md#el-cierre-del-qscrollbar-pyside6-611-en-python-310-y-311).
-  El 20 de noviembre de 2026 salió en el CI (3.14 + 6.12) con otra firma:
-  `abort` dentro de un `realloc` de `QTreeView.expandAll()` del árbol de USB
-  de Dispositivos, en `test_al_momento.py::test_y_al_perderlos`, que pasa
-  fotos de equipos distintos por la misma ventana. Y otra vez esa noche, ya
-  como `Segmentation fault` en la misma línea (`self.usb.expandAll()`,
-  justo después de `self.usb.clear()` en `_apply_usb`), en
-  `test_dispositivos.py::TestEnLaPagina::test_un_usb_que_se_quita_con_la_pagina_abierta`:
-  el run 44640777524, del push de b4d4144 a `master`, cuando el mismo SHA
-  había pasado en su rama. En local, 0 de 60 vueltas de esos dos tests con
-  `GLIBC_TUNABLES=glibc.malloc.check=3`. Un `realloc` que aborta dice que el
-  montón ya estaba roto de antes, pero dos veces en la misma línea apunta
-  al árbol USB, como causa o como el primer sitio que pide memoria después
-  del daño. Lo siguiente: que `_apply_usb` actualice las filas en vez de
-  vaciar y rehacer el árbol, y ver si deja de salir.
+  El 20 de noviembre de 2026 salió dos veces en el CI (3.14 + 6.12) en el
+  árbol USB de Dispositivos, justo después de `self.usb.clear()`. Ese día se
+  reprodujo fuera de los tests: la página sola, vaciando y rehaciendo el árbol
+  con subconjuntos al azar de los USB del test y `processEvents` tras cada
+  foto, revienta 3 de 3 vueltas antes de 4000 fotos, con la misma pila
+  (`sendPostedEvents` → `QMetaCallEvent::placeMetaCall` sobre un `QFrame`).
+  Actualizando las filas en vez de vaciar el árbol, 0 de 3 en 6500. Con la
+  ventana entera y su bucle de eventos, el código viejo no cayó en 4
+  ventanas de cinco minutos: en la app puede pasar, pero raro. Sigue
+  abierto en el resto: es el primer reproductor, y apunta a vaciar y rehacer
+  el contenido de un área de desplazamiento.
 * **F-A2 · `spd.py`** · alta · el XMP de DDR4 calcula el ciclo con la parte
   gruesa sola (`spd[offset+3] * 125`), sin la corrección fina: un DDR4-3600
   (555 ps) sale «XMP 1 3200». Las posiciones de los perfiles son las de XMP

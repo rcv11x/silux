@@ -138,6 +138,16 @@ tests que ponen un filtro de eventos de Python en toda la aplicación (1 de
 5). Un reproductor mínimo con un `QScrollArea` cuyo rango cambia no
 revienta con ninguna pareja.
 
+**Con 3.14 + 6.12, vaciando un árbol.** El 20 de noviembre de 2026 salió dos
+veces en el CI en el árbol USB de Dispositivos, que se vaciaba (`clear()`) y
+se rehacía entero con cada USB que entraba o salía. La página sola, con
+subconjuntos al azar de los USB del test y `processEvents` tras cada foto,
+revienta 3 de 3 vueltas antes de 4000 fotos, con la pila de siempre
+(`sendPostedEvents` → `QMetaCallEvent::placeMetaCall` sobre un `QFrame`).
+Actualizando las filas, 0 de 3 en 6500 (`DevicesPage._apply_usb`). Es el
+primer reproductor que hay, y apunta a vaciar y rehacer el contenido de un
+área de desplazamiento.
+
 Lo que falta: la causa, y un reproductor sin silux para bugreports.qt.io.
 
 ## Los techos de PySide6
