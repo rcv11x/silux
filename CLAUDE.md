@@ -275,7 +275,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); el código nuevo, en inglés (ver «Código»). Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-1557 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+1558 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
@@ -331,7 +331,8 @@ cambia el otro.
 - **Nadie se nombra sin su permiso.** Los agradecimientos (Ajustes → Acerca
   de, «Gracias» en los README y «Con informes de…» bajo el título de cada
   versión del CHANGELOG) salen de `silux/db/thanks.json`, que solo rellena el
-  autor con los nombres que cada uno le autoriza.
+  autor con los nombres que cada uno le autoriza, y cada nombre tiene que
+  estar también en la lista que él aprueba en `tests/test_thanks.py`.
 - **Lo que toca privilegios se propone antes de escribirlo**, con lo que se
   ha medido, y se espera respuesta.
 - **Lo que depende de que alguien se acuerde de subir un número no es una
