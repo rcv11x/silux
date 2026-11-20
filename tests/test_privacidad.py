@@ -318,9 +318,27 @@ class TestElNombreDelEquipoSeBuscaComoNombre(unittest.TestCase):
         self.assertEqual(tapada.sensors[0].device, "Lenovo LOQ 15IRH8")
         self.assertEqual(tapada.system.hostname, privacidad.EQUIPO)
 
-    def test_pero_un_nombre_corto_entero_si_se_tapa(self):
-        tapada = privacidad.anonimizar(self._foto("pc", aparato="pc (ACPI)"))
-        self.assertEqual(tapada.sensors[0].device, f"{privacidad.EQUIPO} (ACPI)")
+    def test_a_name_that_is_everyones_goes_from_its_field_and_nowhere_else(self):
+        # A ThinkPad called «thinkpad» had no annex: the name is
+        # thinkpad_acpi's chip. Short names, the distribution, the brand or
+        # a driver: they point at nobody, and looked for in the texts they
+        # broke other names. The hostname field still goes.
+        import dataclasses
+
+        from silux.model import Board
+        for equipo, aparato in (("thinkpad", "thinkpad"), ("lenovo", "Lenovo LOQ 15IRH8"),
+                                ("arch", "arch fan"), ("debian", "debian (ACPI)"),
+                                ("pc", "pc (ACPI)"), ("linux", "linux sensor")):
+            with self.subTest(equipo=equipo):
+                foto = dataclasses.replace(
+                    self._foto(equipo, aparato=aparato),
+                    board=Board(system_vendor="LENOVO", system_family="ThinkPad T14"),
+                    system=dataclasses.replace(self._foto(equipo).system,
+                                               distribution="Arch Linux",
+                                               distribution_id="debian"))
+                tapada = privacidad.anonimizar(foto)
+                self.assertEqual(tapada.system.hostname, privacidad.EQUIPO)
+                self.assertEqual(tapada.sensors[0].device, aparato)
 
 
 if __name__ == "__main__":

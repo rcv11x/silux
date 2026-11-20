@@ -200,17 +200,21 @@ class TestReportPreview(unittest.TestCase):
         self.assertEqual(dialog.annex_status.text(),
                          _("report.annex.status").format(summary=annex.summary_of(block)))
 
-    def test_with_a_dump_mounted_it_says_why_there_is_none(self):
-        # The report would be the dump's and the annex this machine's: the
-        # dumper refuses, and the file says so instead of carrying nothing.
+    def test_with_a_dump_mounted_the_annex_is_that_dumps(self):
+        # The report is the mounted dump's, and so is its annex: the dumper
+        # reads through sysroot.
+        import json
+
+        from silux import annex
         from tests.test_volcar_equipo import _herramienta
         with _herramienta().montado(EQUIPOS / "qemu-kvm"):
             dialog = self.open_preview()
             self.wait_for_the_annex(dialog)
-        self.assertTrue(dialog.save_button.isEnabled())
-        self.assertIn("SILUX_SYSROOT", dialog.report().rsplit("## ", 1)[-1])
-        self.assertIn(_("report.annex.failed").split("{")[0].strip(), dialog.text.toPlainText())
-        self.assertEqual(dialog.annex_status.text(), _("report.annex.status.none"))
+        block = annex.find(dialog.report())
+        for kind, rest, content, current in annex._entries(block):
+            if current == "/" and rest == "manifiesto.json":
+                manifest = json.loads(annex._file(kind, rest, content)[1])
+        self.assertEqual(manifest["cpu"], "QEMU Virtual CPU version 2.5+")
 
     def test_closing_the_window_stops_it(self):
         dialog = self.open_preview()

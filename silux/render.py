@@ -1780,6 +1780,70 @@ def gpu_api_summary(api: GpuApi) -> str:
     return " · ".join(partes)
 
 
+# A field the anonymized photo would still change, by its top field and its
+# last name, as the kind of data it is (`annex.what.*`).
+_ANNEX_FIELDS = {
+    ("gpus", "unique_id"): "gpu_id", ("gpus", "serial"): "monitor_serial",
+    ("disks", "serial"): "disk_serial", ("disks", "mountpoint"): "mount",
+    ("batteries", "serial"): "battery_serial", ("system", "hostname"): "machine_name",
+    ("network", "name"): "interface", ("network", "mac"): "mac", ("network", "ipv4"): "ip",
+    ("network", "ipv6"): "ipv6", ("network", "gateway"): "router",
+    ("usb_devices", ""): "usb", ("sound_cards", ""): "sound", ("cameras", ""): "camera",
+    ("bluetooth", ""): "bluetooth", ("sensors", ""): "text", ("notes", ""): "text",
+}
+
+
+ANNEX_WHAT = {
+    "email": "annex.what.email",
+    "serial": "annex.what.serial",
+    "disk_serial": "annex.what.disk_serial",
+    "monitor_serial": "annex.what.monitor_serial",
+    "memory_serial": "annex.what.memory_serial",
+    "battery_serial": "annex.what.battery_serial",
+    "mac": "annex.what.mac",
+    "usb": "annex.what.usb",
+    "sound": "annex.what.sound",
+    "camera": "annex.what.camera",
+    "bluetooth": "annex.what.bluetooth",
+    "router": "annex.what.router",
+    "ip": "annex.what.ip",
+    "ipv6": "annex.what.ipv6",
+    "gpu_id": "annex.what.gpu_id",
+    "interface": "annex.what.interface",
+    "machine": "annex.what.machine",
+    "machine_name": "annex.what.machine_name",
+    "mount": "annex.what.mount",
+    "text": "annex.what.text",
+}
+
+
+def annex_what(kind: str) -> str:
+    """What kind of data held back the annex, in words («una dirección IP»)."""
+    return _(ANNEX_WHAT.get(kind, ANNEX_WHAT["machine"]))
+
+
+def annex_refusal(campos: list[str]) -> str:
+    """Why the annex was not written: what was still to cover, never its value."""
+    clases = []
+    for campo in campos:
+        arriba = re.split(r"[.\[]", campo, maxsplit=1)[0]
+        hoja = campo.rsplit(".", 1)[-1] if "." in campo else ""
+        clase = _ANNEX_FIELDS.get((arriba, hoja)) or _ANNEX_FIELDS.get((arriba, ""), "machine")
+        if clase not in clases:
+            clases.append(clase)
+    return _("report.annex.refused").format(
+        que=", ".join(annex_what(c) for c in clases), campos=", ".join(campos[:5]))
+
+
+def annex_removed(quitados: list[dict]) -> Optional[str]:
+    """The files taken out of the annex and what each held, or None."""
+    if not quitados:
+        return None
+    lista = "; ".join(_("report.annex.removed.item").format(
+        que=annex_what(str(q.get("dato", ""))), ruta=q.get("ruta", "")) for q in quitados[:10])
+    return _("report.annex.removed").format(n=len(quitados), lista=lista)
+
+
 def turbo_note(clocks: Clocks) -> Optional[str]:
     """Una frase corta cuando el techo real no llega al del silicio."""
     if clocks.turbo_enabled is False and clocks.max_turbo_hz:

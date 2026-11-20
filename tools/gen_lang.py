@@ -61,6 +61,8 @@ TABLAS = {
     # cada ficha; estas solo viven aquí y se traducen con `_(frase)`, así que
     # sin declararlas la primera poda se las llevaba.
     "silux/ui/pages/graphics.py": ("NA_SIN_VRAM", "NA_INTEGRADA"),
+    # What kind of data kept the annex from being written, or took a file out.
+    "silux/render.py": ("ANNEX_WHAT",),
 }
 
 

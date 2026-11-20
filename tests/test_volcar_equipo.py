@@ -87,7 +87,7 @@ class TestLaComprobacionFinal(unittest.TestCase):
         self.assertEqual(volcar._lo_que_anonimizar_taparia(foto(local)), [])
         casa = NetworkInterface(name="enp1s0", ipv4="198.51.100.20", mac=privacidad.MAC)
         self.assertEqual(volcar._lo_que_anonimizar_taparia(foto(local, casa)),
-                         ["network.enp1s0.ipv4"])
+                         ["network[1].ipv4"])
 
 
 class TestLasDireccionesDeProc(unittest.TestCase):

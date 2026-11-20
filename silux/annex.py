@@ -277,12 +277,33 @@ def child_environment() -> dict[str, str]:
     return env
 
 
+REFUSED = "silux-annex-refused "
+
+
 def outcome(returncode: Optional[int], stdout: str, stderr: str) -> tuple[Optional[str], Optional[str]]:
-    """The block the child wrote, or why there is none."""
+    """The block the child wrote, or why there is none, in words."""
     if returncode == 0 and stdout.startswith(MARK + " "):
         return stdout, None
     reason = stderr.strip().splitlines()
+    if reason and reason[-1].startswith(REFUSED):
+        from . import render
+        try:
+            return None, render.annex_refusal(json.loads(reason[-1][len(REFUSED):])["campos"])
+        except (ValueError, KeyError, TypeError):
+            pass
     return None, reason[-1] if reason else f"exit code {returncode}"
+
+
+def removed(block: str) -> list[dict]:
+    """What the dumper took away because it could not cover it, from the
+    block's manifest: [{"ruta": …, "dato": kind}]."""
+    for kind, rest, content, current in _entries(block):
+        if current == "/" and kind == "file" and rest == "manifiesto.json":
+            try:
+                return list(json.loads(_file(kind, rest, content)[1]).get("quitados") or ())
+            except (ValueError, AttributeError):
+                return []
+    return []
 
 
 def of_this_machine() -> tuple[Optional[str], Optional[str]]:
@@ -316,10 +337,14 @@ def section(block: Optional[str], reason: Optional[str], preview: bool = False) 
         return head + _("report.annex.preparing") + "\n"
     if block is None:
         return head + _("report.annex.failed").format(reason=reason) + "\n"
+    from . import render
+
     summary = summary_of(block)
+    without = render.annex_removed(removed(block))
+    intro = _("report.annex.intro") + (f"\n\n{without}" if without else "")
     if preview:
-        return head + _("report.annex.intro") + "\n\n" + summary + ". " + _("report.annex.onsave") + ".\n"
-    return (head + _("report.annex.intro") + "\n\n<details>\n<summary>" + summary
+        return head + intro + "\n\n" + summary + ". " + _("report.annex.onsave") + ".\n"
+    return (head + intro + "\n\n<details>\n<summary>" + summary
             + "</summary>\n\n" + FENCE + "text\n" + block + FENCE + "\n\n</details>\n")
 
 
@@ -329,6 +354,10 @@ def main() -> int:
     with tempfile.TemporaryDirectory(prefix="silux-anexo-") as tmp:
         try:
             block = to_text(volcado.volcar("equipo", pathlib.Path(tmp)))
+        except volcado.Rechazo as refusal:
+            # For the window to say it in words, in the user's language.
+            print(REFUSED + json.dumps({"campos": refusal.campos}), file=sys.stderr)
+            return 1
         except (SystemExit, AnnexError, OSError) as error:
             print(str(error).strip().replace("\n", " "), file=sys.stderr)
             return 1

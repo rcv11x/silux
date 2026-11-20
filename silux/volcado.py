@@ -40,6 +40,7 @@ import pathlib
 import re
 import shutil
 import tempfile
+from typing import Optional
 
 from . import privacidad, sysroot
 from .providers.sysfs_cpu import FUENTES_DE_FRECUENCIA
@@ -408,7 +409,12 @@ def _extras_de_graficas() -> set[str]:
 # -- copiar ---------------------------------------------------------------------
 
 class _Copia:
-    """Reproduce caminos del sistema dentro del volcado, con sus enlaces."""
+    """Reproduce caminos del sistema dentro del volcado, con sus enlaces.
+
+    Through `sysroot`: with a dump mounted, it dumps that one. That is how the
+    dumper is tested on machines that are not this one, and on the dumps of
+    the suite, whose values are already the substitutes.
+    """
 
     def __init__(self, destino: pathlib.Path):
         self.destino = destino
@@ -422,7 +428,7 @@ class _Copia:
         if dentro.is_symlink() or dentro.exists():
             return
         try:
-            destino = os.readlink(camino)
+            destino = os.readlink(sysroot.ruta(camino))
         except OSError:
             # `/proc/1/exe` sin permisos: se deja fuera, y quien lo lea recibe
             # un error igual que en el equipo de verdad.
@@ -436,15 +442,15 @@ class _Copia:
         for trozo in pathlib.PurePosixPath(camino).parts[1:]:
             siguiente = os.path.join(actual, trozo)
             vueltas = 0
-            while os.path.islink(siguiente) and vueltas < 40:
+            while os.path.islink(sysroot.ruta(siguiente)) and vueltas < 40:
                 self._enlace(siguiente)
                 try:
-                    destino = os.readlink(siguiente)
+                    destino = os.readlink(sysroot.ruta(siguiente))
                 except OSError:
                     return None
                 siguiente = os.path.normpath(os.path.join(os.path.dirname(siguiente), destino))
                 vueltas += 1
-            if not os.path.lexists(siguiente):
+            if not os.path.lexists(sysroot.ruta(siguiente)):
                 return None
             if not siguiente.startswith(VIGILADO) and siguiente not in ("/sys", "/proc", "/etc"):
                 # Un enlace que sale del sistema (`/proc/1/exe`): basta con él.
@@ -458,14 +464,14 @@ class _Copia:
             self._de_fuera(camino)
             return
         dentro = self._dentro(real)
-        if os.path.isdir(real):
+        if os.path.isdir(sysroot.ruta(real)):
             dentro.mkdir(parents=True, exist_ok=True)
             return
         if dentro.exists():
             return
         dentro.parent.mkdir(parents=True, exist_ok=True)
         try:
-            with open(real, "rb") as origen:
+            with open(sysroot.ruta(real), "rb") as origen:
                 datos = origen.read(TOPE)
         except PermissionError:
             # Se deja el archivo y se apunta: al montar el volcado se le
@@ -484,15 +490,15 @@ class _Copia:
         tiene sentido, así que en el sitio del enlace va el archivo.
         """
         try:
-            real = os.path.realpath(camino)
+            real = sysroot.fuera(os.path.realpath(sysroot.ruta(camino)))
         except OSError:
             # Python 3.10 deja escapar el error de leer un enlace que no se
             # deja leer (`/proc/1/exe`); los posteriores lo tragan.
             return
-        if real.startswith(VIGILADO) or not os.path.isfile(real):
+        if real.startswith(VIGILADO) or not os.path.isfile(sysroot.ruta(real)):
             return
         try:
-            with open(real, "rb") as origen:
+            with open(sysroot.ruta(real), "rb") as origen:
                 datos = origen.read(TOPE)
         except OSError:
             return
@@ -504,19 +510,19 @@ class _Copia:
 
     def directorio(self, camino: str) -> None:
         real = self.camino(camino)
-        if real is None or not os.path.isdir(real):
+        if real is None or not os.path.isdir(sysroot.ruta(real)):
             return
         dentro = self._dentro(real)
         dentro.mkdir(parents=True, exist_ok=True)
         try:
-            entradas = os.listdir(real)
+            entradas = os.listdir(sysroot.ruta(real))
         except OSError:
             return
         for nombre in entradas:
             hijo = os.path.join(real, nombre)
-            if os.path.islink(hijo):
+            if os.path.islink(sysroot.ruta(hijo)):
                 self._enlace(hijo)
-            elif os.path.isdir(hijo):
+            elif os.path.isdir(sysroot.ruta(hijo)):
                 (dentro / nombre).mkdir(exist_ok=True)
             # Los archivos de un directorio recorrido y no leídos no se
             # copian: no los mira nadie, y en /proc serían miles.
@@ -627,29 +633,75 @@ def _ipv4_hex(ip: str) -> str:
     return "".join(f"{int(x):02X}" for x in reversed(ip.split(".")))
 
 
+# What the dumper itself writes in place of something, as it writes it: the
+# router and its network in /proc/net/route, the IPv6 in if_inet6.
+SUSTITUTOS_HEX = frozenset(s.lower() for s in (
+    _ipv4_hex(privacidad.PUERTA), _ipv4_hex(privacidad.PUERTA.rsplit(".", 1)[0] + ".0"),
+    "20010db8" + "0" * 20 + "0011", CORREO_SUSTITUTO))
+
+
+# What kind of thing each looked-for value is: the annex says it in words
+# (`render.annex_what`), never the value.
+QUE = {
+    "email": "una dirección de correo", "serial": "un número de serie",
+    "disk_serial": "el número de serie de un disco",
+    "monitor_serial": "el número de serie de un monitor",
+    "memory_serial": "el número de serie de un módulo de memoria",
+    "mac": "una dirección física de red", "usb": "el nombre de algo enchufado por USB",
+    "camera": "el nombre de una cámara", "router": "la dirección del router",
+    "ip": "una dirección IP de este equipo", "ipv6": "una dirección IPv6 de este equipo",
+    "gpu_id": "el identificador de una gráfica", "interface": "el nombre de una conexión de red",
+    "machine": "un dato de este equipo",
+}
+
+
 class _Anonimizador:
     def __init__(self, destino: pathlib.Path, grabado: dict):
         self.destino = destino
         self.grabado = grabado
-        self.secretos: set[str] = set()
+        # Lo que se quitó, por su clase (`QUE`), para buscarlo al final.
+        self.secretos: dict[str, str] = {}
         # Lo quitado de un archivo binario, que no se busca como texto.
-        self.crudos: set[bytes] = set()
-        self.equipo = (pathlib.Path("/proc/sys/kernel/hostname").read_text().strip()
-                       if os.path.exists("/proc/sys/kernel/hostname") else "")
+        self.crudos: dict[bytes, str] = {}
+        nombre = pathlib.Path(sysroot.ruta("/proc/sys/kernel/hostname"))
+        self.equipo = nombre.read_text().strip() if nombre.is_file() else ""
+        # A machine named as everyone's (the distribution, the brand): it is
+        # neither replaced in the texts nor looked for.
+        if privacidad.equipo_de_todos(self.equipo, privacidad.palabras_del_equipo(str(destino))):
+            self.equipo = ""
         self.usuario = getpass.getuser()
         self.casa = str(pathlib.Path.home())
         self.interfaces = self._interfaces()
         # El nombre que alguien le puso a una interfaz es suyo: además de
         # sustituirlo donde se sabe que sale, se busca al final en cada byte.
-        self.secretos.update(self.interfaces)
+        for viejo in self.interfaces:
+            self._secreto(viejo, "mac" if privacidad.MAC_EN_EL_NOMBRE.fullmatch(viejo)
+                          else "interface")
         self.montajes: dict[str, str] = {}
+
+    def _secreto(self, valor: Optional[str], que: str) -> None:
+        """Lo que se quitó, para buscarlo después en cada byte. Lo que es un
+        sustituto no: una puerta de enlace de verdad puede ser 192.168.1.1, y
+        encontrarla al final era encontrar el sustituto (el primer anexo de un
+        portátil con Wi-Fi no salió por eso)."""
+        valor = (valor or "").strip()
+        if len(valor) >= 4 and not privacidad.es_sustituto(valor) \
+                and valor.lower() not in SUSTITUTOS_HEX:
+            self.secretos.setdefault(valor, que)
 
     def _interfaces(self) -> dict[str, str]:
         nombres = {}
         red = self.destino / "sys" / "class" / "net"
-        for entrada in sorted(red.iterdir()) if red.is_dir() else ():
-            if not privacidad.de_sistema(entrada.name):
-                nombres[entrada.name] = privacidad.INTERFAZ.format(len(nombres) + 1)
+        entradas = sorted(e.name for e in red.iterdir()) if red.is_dir() else []
+        for entrada in entradas:
+            if not privacidad.de_sistema(entrada):
+                nombres[entrada] = privacidad.INTERFAZ.format(len(nombres) + 1)
+        # A USB adapter's name carries its MAC: the same substitute the report
+        # gives it, in the same order.
+        con_mac = [e for e in entradas if privacidad.MAC_EN_EL_NOMBRE.fullmatch(e)]
+        for orden, entrada in enumerate(con_mac):
+            if (nuevo := privacidad.nombre_sin_mac(entrada, orden)) != entrada:
+                nombres[entrada] = nuevo
         return nombres
 
     def en_serie(self) -> int:
@@ -698,7 +750,7 @@ class _Anonimizador:
         def correo(m: re.Match) -> str:
             if privacidad.CORREOS_PERMITIDOS.search(m.group()):
                 return m.group()
-            self.secretos.add(m.group())
+            self._secreto(m.group(), "email")
             return CORREO_SUSTITUTO
         return privacidad.CORREO.sub(correo, texto)
 
@@ -708,6 +760,8 @@ class _Anonimizador:
         return self.montajes.setdefault(punto, privacidad.MONTAJE.format(len(self.montajes) + 1))
 
     def contenidos(self) -> None:
+        modelos = {(_texto(m) or "").strip().lower() for m in self.destino.rglob("model")
+                   if m.is_file() and not m.is_symlink()}
         for ruta in sorted(self.destino.rglob("*")):
             if ruta.is_symlink() or not ruta.is_file():
                 continue
@@ -715,29 +769,29 @@ class _Anonimizador:
             relativo = "/" + str(ruta.relative_to(self.destino))
             datos = ruta.read_bytes()
             if nombre in SERIALES and datos.strip():
-                self.secretos.add(datos.strip().decode(errors="replace"))
+                self._secreto(datos.strip().decode(errors="replace"), "serial")
                 ruta.write_bytes(re.sub(rb"[^\n\x00]", b"0", datos))
                 continue
             if nombre == "id" and "/ata_device/" in relativo:
                 limpio, serie = _identify_sin_serie(datos.decode(errors="replace"))
                 if serie:
-                    self.secretos.add(serie)
+                    self._secreto(serie, "disk_serial")
                 ruta.write_text(limpio)
                 continue
             if nombre == "edid":
                 if len(datos) >= 16 and any(datos[12:16]):
-                    self.crudos.add(datos[12:16])
+                    self.crudos[datos[12:16]] = "monitor_serial"
                 ruta.write_bytes(_edid_sin_serie(datos))
                 continue
             if nombre == "eeprom":
                 limpio, serie = _spd_sin_serie(datos)
                 if any(serie):
-                    self.crudos.add(serie)
+                    self.crudos[serie] = "memory_serial"
                 ruta.write_bytes(limpio)
                 continue
             if nombre in DIRECCIONES and "/net/" in relativo:
                 if datos.strip() and datos.strip() not in (b"00:00:00:00:00:00",):
-                    self.secretos.add(datos.strip().decode(errors="replace"))
+                    self._secreto(datos.strip().decode(errors="replace"), "mac")
                     ruta.write_text(privacidad.MAC + "\n")
                 continue
             # Lo enchufado. El inventario de alguien también lo señala: una
@@ -753,14 +807,17 @@ class _Anonimizador:
             # the PHY or the HDA card.
             if nombre in USB_QUE_IDENTIFICA and re.search(r"/usb\d+/", relativo):
                 texto_usb = datos.decode(errors="replace").strip()
+                # A USB stick's name is also its disk's model, which the dump
+                # keeps as any disk's (and the report shows): not looked for.
                 if nombre == "product" and len(texto_usb) >= 6 \
-                        and not USB_GENERICO.search(texto_usb):
-                    self.secretos.add(texto_usb)
+                        and not USB_GENERICO.search(texto_usb) \
+                        and texto_usb.lower() not in modelos:
+                    self._secreto(texto_usb, "usb")
                 ruta.unlink()
                 continue
             if relativo.startswith("/sys/") and "/video4linux/" in relativo and nombre == "name":
                 if len(datos.strip()) >= 6:
-                    self.secretos.add(datos.decode(errors="replace").strip().split(":")[0])
+                    self._secreto(datos.decode(errors="replace").strip().split(":")[0], "camera")
                 ruta.unlink()
                 continue
             if relativo == "/proc/asound/cards":
@@ -800,7 +857,7 @@ class _Anonimizador:
                 if campos[1] != "00000000":
                     campos[1] = _ipv4_hex(privacidad.PUERTA.rsplit(".", 1)[0] + ".0")
                 if campos[2] != "00000000":
-                    self.secretos.add(campos[2])
+                    self._secreto(campos[2], "router")
                     campos[2] = _ipv4_hex(privacidad.PUERTA)
             salida.append("\t".join(campos))
         return "\n".join(salida) + "\n"
@@ -812,7 +869,7 @@ class _Anonimizador:
         for linea in texto.splitlines():
             campos = linea.split()
             if campos and campos[0] != "0" * 31 + "1":
-                self.secretos.add(campos[0])
+                self._secreto(campos[0], "ipv6")
                 linea = linea.replace(campos[0], sustituta, 1)
             salida.append(linea)
         return "\n".join(salida) + "\n"
@@ -858,8 +915,8 @@ class _Anonimizador:
         # leaves it, and the real one is looked for in every byte.
         for tarjeta in (self.grabado.get("nvml") or {}).get("tarjetas") or ():
             if isinstance(tarjeta, dict) and tarjeta.get("uuid"):
-                self.secretos.add(tarjeta["uuid"])
-                self.secretos.add(tarjeta["uuid"].removeprefix("GPU-"))
+                self._secreto(tarjeta["uuid"], "gpu_id")
+                self._secreto(tarjeta["uuid"].removeprefix("GPU-"), "gpu_id")
         limpio = json.loads(self._cambiar_texto(json.dumps(self.grabado, ensure_ascii=False)))
         for tarjeta in (limpio.get("nvml") or {}).get("tarjetas") or ():
             if isinstance(tarjeta, dict) and tarjeta.get("uuid"):
@@ -868,7 +925,7 @@ class _Anonimizador:
             valor = limpio["ioctl_red"][clave]
             nombre, _sep, codigo = clave.partition(":")
             if valor and codigo == "0x8915" and not valor.startswith("127."):
-                self.secretos.add(valor)
+                self._secreto(valor, "ip")
                 limpio["ioctl_red"][clave] = privacidad.IPV4
         if "statvfs" in limpio:
             limpio["statvfs"] = {self._montaje(p): v for p, v in limpio["statvfs"].items()}
@@ -880,19 +937,46 @@ class _Anonimizador:
 
 # -- comprobar ------------------------------------------------------------------
 
-def comprobar(destino: pathlib.Path, secretos: set[str],
-              crudos: frozenset[bytes] = frozenset(),
-              propios: dict[str, str] | None = None) -> list[str]:
-    """Lo que delata a esta máquina dentro del volcado. Vacío si nada.
+# Looked for as a word and not inside another: a machine's or a
+# connection's name is part of driver names (a «thinkpad» in thinkpad_hwmon
+# blocked an annex), and an IP is the start of a longer one. A serial number
+# is looked for anywhere.
+COMO_PALABRA = frozenset({"machine_name", "interface", "usb", "ip"})
+_ALREDEDOR = rb"[A-Za-z0-9_.-]"
 
-    `propios`, lo que identifica a esta máquina; sin él, lo de
-    `privacidad.de_esta_maquina`.
+
+def _clase_propia(descripcion: str) -> str:
+    """The kind of one of `privacidad.de_esta_maquina`'s identifiers."""
+    if descripcion == "el nombre de este equipo":
+        return "machine_name"
+    if "interfaz" in descripcion:
+        return "interface"
+    if "IPv4" in descripcion:
+        return "ip"
+    return "machine"
+
+
+def encontrados(destino: pathlib.Path, secretos, crudos=(),
+                propios: dict[str, str] | None = None) -> list[tuple[str, str]]:
+    """Where something of this machine is in the dump: (path, kind), the
+    kinds of `QUE`. Empty if nothing.
+
+    `secretos` and `crudos`, what the dumper took away (a dict by kind, or
+    any collection); `propios`, what identifies this machine, without which
+    `privacidad.de_esta_maquina`'s. A substitute is never looked for.
     """
     if propios is None:
         propios = privacidad.de_esta_maquina()
-    buscados = {d.encode(): q for d, q in propios.items() if d}
-    buscados |= {s.encode(): "dato sustituido" for s in secretos if s and len(s) >= 4}
-    buscados |= {c: "número de serie de una pieza" for c in crudos if any(c)}
+    por_clase = lambda grupo, clase: (grupo.items() if isinstance(grupo, dict)
+                                      else ((g, clase) for g in grupo))
+    buscados: list[tuple[bytes, str]] = []
+    for valor, clase in [*((d, _clase_propia(q)) for d, q in propios.items()),
+                         *por_clase(secretos, "machine")]:
+        if valor and len(valor) >= 4 and not privacidad.es_sustituto(valor):
+            buscados.append((valor.encode(), clase))
+    buscados += [(c, clase) for c, clase in por_clase(crudos, "serial") if any(c)]
+    patrones = [(re.compile(rb"(?<!" + _ALREDEDOR + rb")" + re.escape(b) + rb"(?!" + _ALREDEDOR + rb")")
+                 if clase in COMO_PALABRA else None, b, clase) for b, clase in buscados]
     hallazgos = []
     for ruta in sorted(destino.rglob("*")):
         if ruta.is_symlink():
@@ -901,11 +985,86 @@ def comprobar(destino: pathlib.Path, secretos: set[str],
             contenido = ruta.read_bytes()
         else:
             contenido = b""
-        texto_ruta = str(ruta.relative_to(destino)).encode()
-        for crudo, que in buscados.items():
-            if crudo in contenido or crudo in texto_ruta:
-                hallazgos.append(f"{ruta.relative_to(destino)}: {que}")
+        relativa = str(ruta.relative_to(destino))
+        for patron, crudo, clase in patrones:
+            for donde in (contenido, relativa.encode()):
+                if (patron.search(donde) if patron is not None else crudo in donde):
+                    hallazgos.append((relativa, clase, patron or crudo))
+                    break
     return hallazgos
+
+
+def comprobar(destino: pathlib.Path, secretos, crudos=(),
+              propios: dict[str, str] | None = None) -> list[str]:
+    """Lo que delata a esta máquina dentro del volcado, en palabras. Vacío si nada."""
+    return [f"{ruta}: {QUE.get(clase, clase)}"
+            for ruta, clase, _buscado in encontrados(destino, secretos, crudos, propios)]
+
+
+class Rechazo(SystemExit):
+    """Nothing is written: anonimizar would still cover these fields of the
+    photo. They are named by position («gpus[1].unique_id»), never by value."""
+
+    def __init__(self, campos: list[str]):
+        self.campos = list(campos)
+        super().__init__("anonimizar todavía encuentra qué tapar: "
+                         + "; ".join(self.campos[:10]) + ". No se escribe nada.")
+
+
+def _esta(buscado, texto: str) -> bool:
+    datos = texto.encode()
+    return bool(buscado.search(datos)) if isinstance(buscado, re.Pattern) else buscado in datos
+
+
+def _json_sin(dato, buscado, ruta: str = "") -> tuple[object, list[str]]:
+    """The JSON without what holds `buscado`: a string goes to None, a key or
+    a list item goes. And where it was, as a path of keys."""
+    if isinstance(dato, dict):
+        salida, quitados = {}, []
+        for clave, valor in dato.items():
+            camino = f"{ruta}.{clave}" if ruta else str(clave)
+            if _esta(buscado, str(clave)):
+                quitados.append(camino)
+                continue
+            salida[clave], dentro = _json_sin(valor, buscado, camino)
+            quitados += dentro
+        return salida, quitados
+    if isinstance(dato, list):
+        salida, quitados = [], []
+        for i, valor in enumerate(dato):
+            if isinstance(valor, str) and _esta(buscado, valor):
+                quitados.append(f"{ruta}[{i}]")
+                continue
+            limpio, dentro = _json_sin(valor, buscado, f"{ruta}[{i}]")
+            salida.append(limpio)
+            quitados += dentro
+        return salida, quitados
+    if isinstance(dato, str) and _esta(buscado, dato):
+        return None, [ruta]
+    return dato, []
+
+
+def _sin_lo_encontrado(trabajo: pathlib.Path, hallazgos) -> list[dict]:
+    """Takes away what could not be covered safely, instead of writing
+    nothing: the file, or in the two JSON files the answer that holds it.
+    Says what each was, by kind."""
+    quitados: list[dict] = []
+    for relativa, clase, buscado in hallazgos:
+        ruta = trabajo / relativa
+        if relativa in (sysroot.GRABADO, MANIFIESTO) and ruta.is_file():
+            limpio, caminos = _json_sin(json.loads(ruta.read_text()), buscado)
+            ruta.write_text(json.dumps(limpio, ensure_ascii=False, indent=1,
+                                       sort_keys=relativa == sysroot.GRABADO) + "\n")
+            quitados += [{"ruta": f"{relativa}: {c}", "dato": clase} for c in caminos]
+            continue
+        if ruta.is_symlink() or ruta.is_file():
+            ruta.unlink()
+        elif ruta.is_dir():
+            shutil.rmtree(ruta)
+        else:
+            continue
+        quitados.append({"ruta": "/" + relativa, "dato": clase})
+    return quitados
 
 
 @contextlib.contextmanager
@@ -958,8 +1117,6 @@ def volcar(nombre: str, destino_base: pathlib.Path,
     destino = destino_base / nombre
     if destino.exists():
         raise SystemExit(f"ya existe {destino}: bórralo antes para volcar otra vez")
-    if sysroot.activo():
-        raise SystemExit(f"{sysroot.VARIABLE} está puesta: esto vuelca el equipo de verdad")
 
     # Lo primero, antes de que nada la despierte: cómo está cada gráfica.
     dormidas = _Dormidas()
@@ -978,8 +1135,9 @@ def volcar(nombre: str, destino_base: pathlib.Path,
             copia.archivo(camino)
         for camino in sorted(mirados - leidos - listados):
             # Un `exists()` o un `is_dir()` que salió que sí: que siga saliendo.
-            if os.path.lexists(camino):
-                copia.archivo(camino) if not os.path.isdir(camino) else copia.directorio(camino)
+            if os.path.lexists(sysroot.ruta(camino)):
+                (copia.directorio(camino) if os.path.isdir(sysroot.ruta(camino))
+                 else copia.archivo(camino))
 
         limpio = _Anonimizador(trabajo, grabado)
         quitadas = limpio.en_serie()
@@ -1017,11 +1175,19 @@ def volcar(nombre: str, destino_base: pathlib.Path,
                   "veth): queda una de cada"] if quitadas else []),
         }, ensure_ascii=False, indent=1) + "\n")
 
+        # What was not covered goes, file by file, and the annex says so: a
+        # dump with a file less is still a dump, and with nothing written
+        # three of three testers had no annex.
+        quitados = _sin_lo_encontrado(
+            trabajo, encontrados(trabajo, limpio.secretos, limpio.crudos, propios))
+        if quitados:
+            manifiesto = json.loads((trabajo / MANIFIESTO).read_text())
+            manifiesto["quitados"] = quitados
+            (trabajo / MANIFIESTO).write_text(json.dumps(manifiesto, ensure_ascii=False, indent=1) + "\n")
         foto = foto_de(trabajo)
         if quedan := _lo_que_anonimizar_taparia(foto):
-            raise SystemExit("anonimizar todavía encuentra qué tapar: "
-                             + "; ".join(quedan[:10]) + ". No se escribe nada.")
-        if hallazgos := comprobar(trabajo, limpio.secretos, frozenset(limpio.crudos), propios):
+            raise Rechazo(quedan)
+        if hallazgos := comprobar(trabajo, limpio.secretos, limpio.crudos, propios):
             raise SystemExit("El volcado delata a esta máquina; no se escribe nada:\n  "
                              + "\n  ".join(hallazgos[:20]))
 
@@ -1091,7 +1257,8 @@ def _lo_que_anonimizar_taparia(foto) -> list[str]:
                     restos = [x for x in (a if isinstance(a, tuple) else (a,))
                               if x not in INOFENSIVOS and x not in privacidad.SUSTITUTOS_ANTERIORES]
                     if a != b and restos:
-                        quedan.append(f"network.{i.name}.{sub.name}")
+                        # By position: the name may be what is protected.
+                        quedan.append(f"network[{antes.index(i)}].{sub.name}")
             continue
         if campo.name == "disks" and _sin_numerar(antes) == _sin_numerar(despues):
             continue

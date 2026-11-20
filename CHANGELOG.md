@@ -15,10 +15,17 @@ que hace falta.
 
 ### Informe
 
-- Arreglado: con una gráfica NVIDIA despierta, el anexo no salía («anonimizar
-  todavía encuentra qué tapar: gpus»): el identificador de la tarjeta que da
-  NVIDIA quedaba a medio tapar. Ahora se tapa entero, y si el anexo no sale,
-  el informe dice qué dato lo impidió (sin el dato).
+- Arreglado: el anexo no salió en ninguno de los tres primeros equipos de la
+  prueba2. Tomaba por datos tuyos cosas que no lo son o que ya estaban
+  tapadas: una puerta de enlace 192.168.1.1, el modelo de un pendrive, el
+  identificador de una NVIDIA o un equipo llamado como su marca o como un
+  driver («thinkpad»). Ahora solo busca lo que es tuyo, y como palabra entera.
+  Si algo no se puede tapar, quita ese archivo y el informe dice cuál y qué
+  llevaba; si aun así no puede escribirse, dice qué dato quedaba por tapar,
+  nunca el dato.
+- Arreglado: un adaptador de red USB se llama como su dirección física
+  («enx…»), y esa dirección salía en el informe. Ahora va tapada, como las
+  demás.
 
 ---
 

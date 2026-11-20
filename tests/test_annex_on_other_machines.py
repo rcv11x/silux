@@ -1,0 +1,249 @@
+"""The annex on machines that are not ours.
+
+The first three annexes of the prueba2 failed, three of three, on what our
+dumps never had: a router at 192.168.1.1 (the substitute itself), a USB stick
+whose name is its disk's model, an awake NVIDIA, and a laptop called
+«thinkpad» like its sensor chip. Here the dumper runs end to end, as the
+report's annex runs it, on the suite's dumps (whose values are already the
+substitutes) and on them with what those machines had, laid out as the
+kernel lays it out.
+"""
+
+import contextlib
+import json
+import os
+import pathlib
+import socket
+import tempfile
+import unittest
+from unittest import mock
+
+from silux import annex, privacidad, volcado
+
+EQUIPOS = pathlib.Path(__file__).resolve().parent / "fixtures" / "equipos"
+
+
+def _write(root: pathlib.Path, path: str, text: str) -> None:
+    target = root / path.lstrip("/")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(text)
+
+
+def _link(root: pathlib.Path, path: str, to: str) -> None:
+    link = root / path.lstrip("/")
+    link.parent.mkdir(parents=True, exist_ok=True)
+    if link.is_symlink() or link.exists():
+        link.unlink()
+    link.symlink_to(to)
+
+
+@contextlib.contextmanager
+def _machine(dump: str):
+    """A suite's dump mounted, to add things to, and where to dump it. The
+    checks go inside: both are temporary."""
+    with volcado.montado(EQUIPOS / dump) as root, tempfile.TemporaryDirectory() as out:
+        yield root, pathlib.Path(out)
+
+
+def _dump(out: pathlib.Path, propios=None):
+    """Dumps the mounted machine; the dump, its manifest and its bytes."""
+    folder = volcado.volcar("otro", out, propios=propios if propios is not None else {})
+    manifest = json.loads((folder / "manifiesto.json").read_text())
+    everything = b"".join(p.read_bytes() for p in folder.rglob("*")
+                          if p.is_file() and not p.is_symlink())
+    everything += "\n".join(str(p.relative_to(folder)) for p in folder.rglob("*")).encode()
+    return folder, manifest, everything
+
+
+class TestWhatIsAlreadyCovered(unittest.TestCase):
+    """Our dumps hold the substitutes: as a machine, they are one whose
+    router is 192.168.1.1 and whose address is 192.168.1.120."""
+
+    def test_the_suites_dumps_dump_again_whole(self):
+        for dump in ("5800x3d", "i5-10400", "qemu-kvm"):
+            with self.subTest(dump=dump), _machine(dump) as (_root, out):
+                folder, manifest, _bytes = _dump(out, propios={
+                    privacidad.IPV4: "una dirección IPv4 de este equipo"})
+                self.assertNotIn("quitados", manifest)
+                photo = volcado.foto_de(folder)
+                self.assertEqual(volcado._lo_que_anonimizar_taparia(photo), [])
+                original = volcado.foto_de(EQUIPOS / dump)
+                self.assertEqual([t.brand for t in photo.cpu.types],
+                                 [t.brand for t in original.cpu.types])
+                self.assertEqual([(i.name, i.gateway) for i in photo.network],
+                                 [(i.name, i.gateway) for i in original.network])
+
+
+class TestAUsbStick(unittest.TestCase):
+    """The Celeron N4000's: its USB name is its disk's model."""
+
+    STICK = "/sys/devices/pci0000:00/0000:00:15.0/usb2/2-2"
+    DISK = STICK + "/2-2:1.0/host2/target2:0:0/2:0:0:0"
+    SERIAL = "E0D55EA574F2F3A0B9E30F1B"
+
+    def _add(self, root):
+        for name, value in (("idVendor", "0951"), ("idProduct", "1666"), ("speed", "5000"),
+                            ("manufacturer", "Kingston"), ("product", "DataTraveler 3.0"),
+                            ("serial", self.SERIAL), ("bDeviceClass", "00"),
+                            ("version", " 3.20")):
+            _write(root, f"{self.STICK}/{name}", value + "\n")
+        _write(root, f"{self.STICK}/2-2:1.0/bInterfaceClass", "08\n")
+        _write(root, f"{self.STICK}/2-2:1.0/bInterfaceProtocol", "50\n")
+        for name, value in (("model", "DataTraveler 3.0"), ("vendor", "Kingston"), ("rev", "PMAP")):
+            _write(root, f"{self.DISK}/{name}", value + "\n")
+        for name, value in (("size", "241827840"), ("removable", "1"), ("queue/rotational", "1"),
+                            ("queue/logical_block_size", "512"),
+                            ("queue/physical_block_size", "512"),
+                            ("stat", "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0")):
+            _write(root, f"{self.DISK}/block/sdz/{name}", value + "\n")
+        _link(root, f"{self.DISK}/block/sdz/device", "../../../2:0:0:0")
+        _link(root, "/sys/block/sdz", "../devices/pci0000:00/0000:00:15.0/usb2/2-2/2-2:1.0"
+                                      "/host2/target2:0:0/2:0:0:0/block/sdz")
+        _link(root, "/sys/bus/usb/devices/2-2", "../../../devices/pci0000:00/0000:00:15.0/usb2/2-2")
+
+    def test_its_model_stays_and_its_serial_goes(self):
+        with _machine("i5-10400") as (root, out):
+            self._add(root)
+            folder, manifest, everything = _dump(out, propios={
+                self.SERIAL: "el número de serie de algo enchufado por USB"})
+            self.assertNotIn("quitados", manifest)
+            self.assertNotIn(self.SERIAL.encode(), everything)
+            disks = {d.name: d for d in volcado.foto_de(folder).disks}
+            self.assertEqual(disks["sdz"].model, "DataTraveler 3.0")
+
+
+class TestNamesOfMachines(unittest.TestCase):
+    """A machine is called as everyone's often: its distribution (Debian's
+    installer proposes «debian»), its brand, its family or its sensor chip
+    («thinkpad»), a short or common word. None blocks the annex or breaks
+    what it is also the name of; a person's name goes from everywhere."""
+
+    def _thinkpad(self, root):
+        # thinkpad_acpi's hwmon is called «thinkpad»; a ThinkPad's DMI family.
+        hwmon = "/sys/devices/platform/thinkpad_hwmon/hwmon/hwmon9"
+        _write(root, f"{hwmon}/name", "thinkpad\n")
+        _write(root, f"{hwmon}/temp1_input", "45000\n")
+        _write(root, f"{hwmon}/fan1_input", "2300\n")
+        _link(root, "/sys/class/hwmon/hwmon9", "../../devices/platform/thinkpad_hwmon/hwmon/hwmon9")
+        dmi = root / "sys/class/dmi/id"
+        for name, value in (("sys_vendor", "LENOVO"), ("product_family", "ThinkPad T14 Gen 2i")):
+            (dmi / name).write_text(value + "\n")
+
+    @contextlib.contextmanager
+    def _dump_named(self, name):
+        with _machine("qemu-kvm") as (root, out):
+            self._thinkpad(root)
+            _write(root, "/proc/sys/kernel/hostname", name + "\n")
+            os_release = (root / "etc/os-release").read_text()
+            # The checker as on that machine: its name and the rest of its own.
+            with mock.patch.object(socket, "gethostname", return_value=name):
+                propios = privacidad.de_esta_maquina()
+            folder, manifest, everything = _dump(out, propios=propios)
+            yield folder, manifest, everything, os_release
+
+    def test_everyones_names_block_nothing_and_break_nothing(self):
+        for name in ("thinkpad", "lenovo", "arch", "debian", "pc", "linux"):
+            with self.subTest(name=name), self._dump_named(name) as (folder, manifest, _b, os_release):
+                self.assertNotIn("quitados", manifest)
+                self.assertEqual((folder / "etc/os-release").read_text(), os_release)
+                hwmon = folder / "sys/devices/platform/thinkpad_hwmon/hwmon/hwmon9/name"
+                self.assertEqual(hwmon.read_text(), "thinkpad\n")
+                self.assertEqual((folder / "proc/sys/kernel/hostname").read_text().strip(),
+                                 privacidad.EQUIPO)
+
+    def test_a_persons_name_goes_from_everywhere(self):
+        with self._dump_named("portatil-ana") as (_folder, manifest, everything, _os):
+            self.assertNotIn(b"portatil-ana", everything)
+            self.assertNotIn("quitados", manifest)
+
+
+class TestAnNvidiaLaptop(unittest.TestCase):
+    """An Intel integrated and an awake NVIDIA, as widecoocaa23's laptop."""
+
+    UUID = "GPU-5c2b6d0e-8f41-4a7d-b3e9-1f0c2a7d9e64"
+
+    def test_two_cards_and_the_nvidias_id_covered(self):
+        with _machine("i5-10400") as (root, out):
+            grabado = json.loads((root / "grabado.json").read_text())
+            grabado["nvml"] = {"abierta": True, "tarjetas": [{
+                "index": 0, "pci_slot": "0000:01:00.0", "uuid": self.UUID, "serial": None,
+                "name": "NVIDIA GeForce RTX 4050 Laptop GPU", "driver_version": "550.163.01",
+                "cuda_cores": 2560, "memory_total_bytes": 6 << 30, "memory_bus_bits": 96,
+                "throttle_reasons": []}]}
+            (root / "grabado.json").write_text(json.dumps(grabado))
+            folder, manifest, everything = _dump(out, propios={})
+            self.assertNotIn("quitados", manifest)
+            self.assertNotIn(self.UUID[4:].encode(), everything)
+            names = [g.name for g in volcado.foto_de(folder).gpus]
+            self.assertIn("NVIDIA GeForce RTX 4050 Laptop GPU", names)
+            self.assertEqual(len(names), 2)
+
+
+class TestNetworkConnections(unittest.TestCase):
+    """Wired, Wi-Fi, USB adapters, bridges, PPP and VPNs."""
+
+    SYSTEMS = ("wlp2s0", "nordlynx", "br0", "ppp0", "tailscale0", "wg0", "tun0")
+
+    def _add(self, root, name, mac="00:00:00:00:00:00"):
+        base = f"/sys/devices/virtual/net/{name}"
+        for field, value in (("operstate", "up"), ("mtu", "1420"), ("address", mac),
+                             ("type", "1"), ("carrier", "1")):
+            _write(root, f"{base}/{field}", value + "\n")
+        _link(root, f"/sys/class/net/{name}", f"../../devices/virtual/net/{name}")
+
+    def test_the_systems_stay_and_what_names_someone_goes(self):
+        with _machine("5800x3d") as (root, out):
+            for name in self.SYSTEMS:
+                self._add(root, name)
+            self._add(root, "enx001122334455", "00:11:22:33:44:55")
+            self._add(root, "ana_wg0")
+            folder, manifest, everything = _dump(out, propios={
+                "enx001122334455": "una interfaz de red con nombre puesto a mano",
+                "001122334455": "la dirección física de enx001122334455",
+                "00:11:22:33:44:55": "la dirección física de enx001122334455",
+                "ana_wg0": "una interfaz de red con nombre puesto a mano"})
+            self.assertNotIn("quitados", manifest)
+            names = {p.name for p in (folder / "sys/class/net").iterdir()}
+            self.assertLessEqual(set(self.SYSTEMS), names)
+            self.assertIn("enx00005e0053af", names)
+            self.assertIn(privacidad.INTERFAZ.format(1), names)
+            for gone in (b"001122334455", b"00:11:22:33:44:55", b"ana_wg0"):
+                self.assertNotIn(gone, everything)
+            self.assertEqual(volcado._lo_que_anonimizar_taparia(volcado.foto_de(folder)), [])
+
+
+class TestWhatCannotBeCovered(unittest.TestCase):
+    """Something of the person where no rule looks (a name in a sensor's
+    label): that file goes, the annex says which and what it held, and the
+    rest is written."""
+
+    def test_the_file_goes_and_the_annex_says_so(self):
+        label = "/sys/devices/platform/thinkpad_hwmon/hwmon/hwmon9/temp1_label"
+        with _machine("qemu-kvm") as (root, out):
+            TestNamesOfMachines()._thinkpad(root)
+            _write(root, label, "Ana García\n")
+            folder, manifest, everything = _dump(out, propios={
+                "Ana García": "el nombre de quien usa este equipo"})
+            self.assertNotIn("Ana García".encode(), everything)
+            self.assertEqual(manifest["quitados"], [{"ruta": label, "dato": "machine"}])
+            block = annex.to_text(folder)
+            self.assertEqual(annex.removed(block), manifest["quitados"])
+            self.assertIn(label, annex.section(block, None))
+
+
+class TestARefusalInWords(unittest.TestCase):
+
+    def test_by_field_and_kind_never_by_value(self):
+        from silux import render
+        from silux.i18n import _
+        text = render.annex_refusal(["gpus[1].unique_id", "network[0].ipv4"])
+        self.assertIn(_("annex.what.gpu_id"), text)
+        self.assertIn(_("annex.what.ip"), text)
+        self.assertIn("gpus[1].unique_id", text)
+        line = annex.REFUSED + json.dumps({"campos": ["gpus[1].unique_id"]})
+        self.assertEqual(annex.outcome(1, "", "algo\n" + line)[1],
+                         render.annex_refusal(["gpus[1].unique_id"]))
+
+
+if __name__ == "__main__":
+    unittest.main()

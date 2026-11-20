@@ -118,6 +118,9 @@ def a_traves(espacio: str, clave: Any, funcion: Callable[..., T], *args,
         crudo = _grabado().get(espacio, {}).get(clave)
         if crudo is None:
             return None
+        # Dumping a mounted dump records what it answered, as from a machine.
+        if _grabacion is not None:
+            _grabacion.setdefault(espacio, {})[clave] = crudo
         if tipo is not None and dataclasses.is_dataclass(tipo):
             return tipo(**crudo)
         if isinstance(crudo, list):
