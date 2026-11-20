@@ -252,9 +252,12 @@ qué el código es así, no repiten lo que ya se lee en él, y nada de relleno.
 de las notas.
 
 Lo que ya existe no se renombra al pasar: va en el proyecto de después de la
-0.4 (`docs/pendientes.md`), módulo a módulo y con los tests como red. Siguen
-en español los textos de la interfaz (`silux/db/lang/`, el original) y los
-mensajes de commit.
+0.4 (`docs/pendientes.md`), módulo a módulo y con los tests como red. Sigue
+en español lo que lee la gente: la interfaz (`silux/db/lang/`, el original),
+el CHANGELOG y las notas de las versiones. El README va en los dos idiomas:
+`README.md` (español, el de por defecto) y `README.en.md`, con las mismas
+secciones y los mismos enlaces (`tests/test_readmes.py`); si cambia uno,
+cambia el otro.
 
 **Tests.**
 - Una comprobación que nadie ha visto fallar no es una comprobación: todo test
@@ -295,13 +298,14 @@ mensajes de commit.
   en verde. Si `master` avanzó, se rebasa la rama antes, no se fusiona. Pasar
   a `master` no es publicar: ni etiqueta ni release.
 
-**Commits.** Conventional Commits con la descripción en español:
+**Commits (desde el 20 de noviembre de 2026).** Conventional Commits, en
+inglés y cortos: el título, una línea clara; el cuerpo, solo si hace falta
+explicar el porqué. Los anteriores, en español, se quedan como están.
 
 ```
-tipo(zona): descripción en minúscula y sin punto final
+type(area): short lowercase description, no final period
 
-Cuerpo: el porqué. Qué fallaba, cómo se vio, qué se comprobó, y que el
-test se vio fallar antes del arreglo.
+Optional body: the why, only when the title does not say it.
 
 Co-Authored-By: <el modelo de la sesión> <noreply@anthropic.com>
 ```

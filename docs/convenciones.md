@@ -29,21 +29,22 @@ propone en un issue antes de escribirlo.
 
 ## Al trabajar en este repositorio
 
-**Los commits siguen Conventional Commits, en español.** La primera línea es
-`tipo(zona): descripción`: el tipo es uno de los del estándar, sin traducir
-—`fix`, `feat`, `test`, `docs`, `refactor`, `perf`, `build`, `ci`, `chore`—,
-la zona es el módulo o la carpeta que se toca —`spd`, `providers/hwmon`,
-`ui/widgets`, `privileged`, `bench`, `report`, `cli`, `i18n`, `appimage`, `ci`,
-`tests`, `claude`— y la descripción va en minúscula y sin punto final. El
-cuerpo explica el porqué del cambio: qué fallaba, cómo se vio y qué se
-comprobó, incluido que el test se vio fallar antes del arreglo. El autor es el
-del repositorio, y cuando el commit se escribe con Claude lleva al final la
-línea `Co-Authored-By: Claude …` que corresponda al modelo.
+**Los commits siguen Conventional Commits, en inglés y cortos** (desde el 20
+de noviembre de 2026; los de antes, en español, no se reescriben). La primera
+línea es `type(area): description`: el tipo es uno de los del estándar —`fix`,
+`feat`, `test`, `docs`, `refactor`, `perf`, `build`, `ci`, `chore`—, la zona
+es el módulo o la carpeta que se toca —`spd`, `providers/hwmon`, `ui/widgets`,
+`privileged`, `bench`, `report`, `cli`, `i18n`, `appimage`, `ci`, `tests`,
+`claude`— y la descripción va en minúscula y sin punto final. El cuerpo, solo
+si el título no basta para entender el porqué. El autor es el del
+repositorio, y cuando el commit se escribe con Claude lleva al final la línea
+`Co-Authored-By: Claude …` que corresponda al modelo. En inglés porque el
+historial lo lee quien contribuye, como el código; lo que lee quien usa el
+programa —la interfaz, el README, el CHANGELOG y las notas de cada versión—
+sigue en español, y el README tiene además su versión en inglés.
 
 ```
-fix(ui/widgets): la ficha que nace sin dato pinta el guion pequeño
-
-Cuerpo: el porqué.
+fix(ui/widgets): small dash when a tile is born without data
 
 Co-Authored-By: <el modelo de la sesión> <noreply@anthropic.com>
 ```
