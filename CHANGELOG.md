@@ -11,7 +11,7 @@ que hace falta.
 
 ---
 
-## 0.4-prueba1 (sin publicar)
+## 0.4-prueba1 (20 de noviembre de 2026)
 
 Versión de prueba de la 0.4: lo que sigue es lo que traerá, para probarlo antes.
 
