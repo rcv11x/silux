@@ -20,7 +20,9 @@ EQUIPOS = pathlib.Path(__file__).resolve().parent / "fixtures" / "equipos"
 RTX_4050 = {"index": 0, "pci_slot": "0000:02:00.0", "uuid": None, "serial": None,
             "name": "NVIDIA GeForce RTX 4050 Laptop GPU", "driver_version": "550.163.01",
             "cuda_cores": 2560, "memory_total_bytes": 6 << 30, "memory_bus_bits": 96,
-            "temp_c": 40.0, "fan_percent": None, "throttle_reasons": []}
+            "temp_c": 32.0, "power_w": 1.4, "fan_percent": None,
+            # Its report: «Estado: sin límites», so NVML gave the reasons.
+            "throttled": False, "throttle_reasons": []}
 
 
 TARJETA = "devices/pci0000:00/0000:00:01.0/0000:02:00.0"
