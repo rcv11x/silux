@@ -176,7 +176,9 @@ def _rellenar(gpu: dict, tarjeta: nvml.NvidiaGpu) -> None:
     memoria: GpuMemory = gpu.get("memory") or GpuMemory()
     gpu["memory"] = dataclasses.replace(
         memoria,
-        total_bytes=memoria.total_bytes or tarjeta.memory_total_bytes,
+        # NVML's, when it answers: Vulkan, asked earlier, adds NVIDIA's BAR
+        # window to the total and an RTX 4060 of 8 GB read «8.2 GB».
+        total_bytes=tarjeta.memory_total_bytes or memoria.total_bytes,
         used_bytes=memoria.used_bytes if memoria.used_bytes is not None
         else tarjeta.memory_used_bytes,
         bus_bits=memoria.bus_bits or tarjeta.memory_bus_bits,

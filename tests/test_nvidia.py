@@ -8,6 +8,7 @@ llamada en sí. El día que alguien ejecute esto con una tarjeta puesta, convien
 contrastar las cifras con `nvidia-smi -q`.
 """
 
+import dataclasses
 import unittest
 from unittest import mock
 
@@ -88,6 +89,15 @@ class TestCasado(unittest.TestCase):
         gpu = draft.gpus[0]
         self.assertEqual(gpu["temp_c"], 49.0)
         self.assertEqual(gpu["name"], "GeForce RTX 4070 de sysfs")
+
+    def test_the_vram_is_nvmls_and_not_vulkans_sum(self):
+        # A tester's RTX 4060 read «8.2 GB»: Vulkan, asked before NVML, adds
+        # NVIDIA's BAR window (a host-visible heap inside the same memory) to
+        # the 8188 MiB, and that sum stayed. NVML's figure is the card's.
+        vulkan = GpuMemory(total_bytes=(8188 + 228) * 1024 ** 2)
+        tarjeta = dataclasses.replace(UNA_4070, memory_total_bytes=8188 * 1024 ** 2)
+        draft = recolectar([{"pci_slot": "0000:01:00.0", "memory": vulkan}], (tarjeta,))
+        self.assertEqual(draft.gpus[0]["memory"].total_bytes, 8188 * 1024 ** 2)
 
     def test_traduce_la_generacion_de_pcie_a_gigatransferencias(self):
         draft = recolectar([{"pci_slot": "0000:01:00.0"}])
