@@ -136,6 +136,34 @@ No son preferencias de estilo: cada una viene de un problema concreto.
 El porqué largo de cada una y el resto de la arquitectura:
 [docs/arquitectura.md](docs/arquitectura.md).
 
+### Lo que enseñaron los informes de la gente
+
+Cada una salió de un fallo en un equipo que no era el nuestro; el detalle,
+en las lecciones de las notas. Valen para el código nuevo:
+
+- **Lo que funciona con nuestros volcados no está probado.** Lo que lee o
+  tapa el equipo se prueba también con lo de la gente montado encima
+  (`tests/test_annex_on_other_machines.py`). Nuestros volcados ya llevan los
+  sustitutos: volcarlos otra vez es el caso de quien tiene esos valores.
+- **Un dato de la persona** (el nombre del equipo, el usuario) se busca y se
+  tapa como palabra entera, nunca dentro de rutas, drivers, modelos ni
+  marcas. Un nombre que es de todos (la marca, la familia, la distribución,
+  un driver, uno corto) no se busca. Lo que pone el anonimizado nunca es un
+  dato.
+- **El tipo de un disco no sale solo de `rotational`**: el kernel lo pone a 1
+  en un disco virtual y en casi todo lo que va por USB.
+- **La identidad de una pieza necesita su modelo**, no solo la familia; lo que
+  declara un hipervisor no se busca en la tabla.
+- **Una unidad o un formato del fabricante sale de su fuente** (drivedb.h de
+  smartmontools, NVML tal cual), no se supone; y un dato que no cuadra con
+  otro (escrito menos que ocupado) no se enseña.
+- **Un aviso dice lo que se sabe**: no culpa a un módulo si la causa puede ser
+  la BIOS. Y «no lo tiene» no es «no lo sé»: lo primero se dice.
+- **Lo que Silux lanza lleva `system_env.system_environment()`**; solo su
+  propio Python se queda con el entorno del AppImage.
+- **Lo que vigila `os` o `io` se prueba en Python 3.10** (el compat): su
+  `pathlib` guarda sus propias copias desde que se importa.
+
 ## Cómo está repartido
 
 ```
@@ -238,7 +266,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); el código nuevo, en inglés (ver «Código»). Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-1522 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+1545 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
