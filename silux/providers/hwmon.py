@@ -146,6 +146,13 @@ _ALIMENTACION = (
 )
 
 
+def _por_numero(ruta: pathlib.Path) -> tuple:
+    """«temp2» before «temp10»: as text, coretemp's cores came out of order
+    on a tester's i5-12450H («Núcleo 8, 12, Paquete, 20…, 0, 4»)."""
+    encaje = re.match(r"^([a-z]+)(\d+)_", ruta.name)
+    return (encaje.group(1), int(encaje.group(2))) if encaje else (ruta.name, 0)
+
+
 def render_chip(chip: str) -> str:
     from ..render import chip_name
     return chip_name(chip)
@@ -480,10 +487,10 @@ class HwmonSensors(Provider):
             if _tambien_en_power_supply(chip):
                 continue
             device, clase = device_for(chip, entry, cpu_name, board_name, gpu_names)
-            canales = sorted(entry.glob("*_input"))
+            canales = sorted(entry.glob("*_input"), key=_por_numero)
             vistos = {ruta.name.replace("_input", "") for ruta in canales}
             for sufijo in ALTERNATIVAS:
-                canales += [ruta for ruta in sorted(entry.glob(f"*{sufijo}"))
+                canales += [ruta for ruta in sorted(entry.glob(f"*{sufijo}"), key=_por_numero)
                             if ruta.name.replace(sufijo, "") not in vistos]
             for order, path in enumerate(canales):
                 sensor = self._parse(chip, device, path, order, clase)

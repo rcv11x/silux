@@ -72,5 +72,28 @@ class TestTheSuperIoHint(unittest.TestCase):
         self.assertNotIn("(Super I/O)", _("sensors.driver.body.superio"))
 
 
+
+class TestTheOrderOfAChipsChannels(unittest.TestCase):
+    """A tester's i5-12450H: coretemp's Package is temp1 and its cores go up
+    to temp25, and as text «temp10» sorts before «temp1»: «Núcleo 8, 12,
+    Paquete, 20, 21, 22, 23, 0, 4»."""
+
+    def test_by_number_not_as_text(self):
+        with tempfile.TemporaryDirectory() as raiz:
+            chip = pathlib.Path(raiz) / "hwmon3"
+            chip.mkdir()
+            (chip / "name").write_text("coretemp\n")
+            for n, etiqueta in ((1, "Package id 0"), (2, "Core 0"), (6, "Core 4"),
+                                (10, "Core 8"), (14, "Core 12"), (22, "Core 20")):
+                (chip / f"temp{n}_input").write_text("50000\n")
+                (chip / f"temp{n}_label").write_text(etiqueta + "\n")
+            with mock.patch.object(hwmon.sysroot, "ruta", lambda p: pathlib.Path(raiz)
+                                   if str(p).endswith("hwmon") else pathlib.Path(p)):
+                sensores = list(hwmon.HwmonSensors()._read_hwmon("CPU", "Placa", {}))
+        etiquetas = [s.label for s in sorted(sensores, key=lambda s: s.order)]
+        self.assertEqual(etiquetas, ["Package id 0", "Core 0", "Core 4", "Core 8",
+                                     "Core 12", "Core 20"])
+
+
 if __name__ == "__main__":
     unittest.main()

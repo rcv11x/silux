@@ -66,6 +66,8 @@ informes que mandó la gente.
   «spd5118», «Red (iwlwifi_1)» y «Alimentación · ucsi-source-psy-…» (que
   además repetía el «Puerto USB-C»), «QEMU Virtual version 2.5+» por QEMU
   Virtual CPU, «Cargando (Super I/O)» y «1 paquetes perdidos».
+- Arreglado: en Sensores, los núcleos de un procesador con más de nueve
+  canales salían desordenados («Núcleo 8, 12, Paquete, 20…, 0, 4»).
 - Cambiado: a un portátil ya no se le propone `sensors-detect` para buscar un
   Super I/O: sus ventiladores los lleva el controlador del equipo.
 
