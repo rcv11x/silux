@@ -207,6 +207,8 @@ publica se dice con la versión que lo trae.
   A · DIMM 1», «Canal B · DIMM 1».
 - Arreglado: al dar permisos desde Memoria, las tarjetas de los módulos no
   aparecían hasta cambiar de página y volver.
+- Arreglado: la medida de la memoria pedía páginas grandes y en Fedora no
+  las tenía: la latencia de la RAM salía unos 10 ns más alta.
 
 ### Gráficos
 

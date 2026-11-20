@@ -114,6 +114,22 @@ sin los pasos para reproducirlo: este archivo es público.
     en Intel, y la hoja 2 en los viejos). `grabado.json` guarda solo las
     hojas que se leyeron, así que hay que volver a volcar los tres equipos.
 
+* `membench.py`, `ui/pages/memory.py` · media · con dos CCD de L3 distinta
+  (7950X3D) o núcleos P y E (Intel híbrido) salen dos niveles con el mismo
+  nombre («L3» de 16 y 48 MB): el proceso que mide no está fijado a ningún
+  núcleo, así que el bloque de 48 MB puede medirse en el CCD de 32 MB y dar
+  la RAM llamándola L3, y los resultados se guardan por nombre y el segundo
+  pisa al primero. Hace falta fijar el proceso a una CPU (la de la L3 mayor)
+  y medir los niveles de esa CPU. Sin un volcado de dos CCD delante.
+* `membench.py` · media · repetir el 5800X3D contra AIDA64 ahora que el
+  bloque tiene páginas grandes ([benchmark.md](benchmark.md)), y ver por qué
+  las primeras vueltas de la L3 salen ruidosas (20 ns frente a 12).
+* `providers/cpuid_x86.py` · baja · la máquina virtual se reconoce solo por
+  CPUID (el bit «hypervisor» y la hoja 0x40000000). Un anfitrión que lo
+  esconde (KVM con `kvm=off`, típico al pasar una gráfica) no se ve; el
+  firmware lo diría (`sys_vendor` «QEMU», `product_name` «VirtualBox»,
+  «VMware Virtual Platform»). Sin un volcado de máquina virtual delante.
+
 ## Interfaz
 
 * **F-M2 · `ui/widgets.py`** · media · `StatTile` nace con «—» a tamaño de
