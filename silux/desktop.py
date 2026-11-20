@@ -77,6 +77,7 @@ GenericName[en]=Hardware information and sensors
 Comment=Qué hardware tienes y qué está haciendo ahora mismo
 Comment[en]=What hardware you have and what it is doing right now
 Exec=@EXEC@
+TryExec=@TRYEXEC@
 Path=@PATH@
 Icon=@ID@
 Terminal=false
@@ -238,6 +239,14 @@ def _split(value: str) -> list[str]:
     return partes
 
 
+def _string_value(value: str) -> str:
+    """A path as a string value of the file: backslashes and control
+    characters escaped, and a leading space kept."""
+    escrito = (value.replace("\\", "\\\\").replace("\n", "\\n")
+               .replace("\t", "\\t").replace("\r", "\\r"))
+    return "\\s" + escrito[1:] if escrito.startswith(" ") else escrito
+
+
 def parse_exec(value: str) -> tuple[str, ...]:
     """Lo contrario de `exec_line`, sin los códigos de campo."""
     sin_texto = re.sub(r"\\(.)", lambda m: "\\" if m.group(1) == "\\" else m.group(0), value)
@@ -250,6 +259,7 @@ def entry_text(launcher: Launcher) -> str:
              .replace("@NAME@", launcher.name)
              .replace("@NAME_EN@", launcher.name_en)
              .replace("@EXEC@", exec_line(launcher.command))
+             .replace("@TRYEXEC@", _string_value(launcher.command[0] if launcher.command else ""))
              .replace("@PATH@", launcher.working_dir)
              .replace("@ID@", launcher.app_id))
     if not launcher.working_dir:

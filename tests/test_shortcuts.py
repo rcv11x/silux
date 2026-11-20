@@ -10,8 +10,10 @@ move Silux to ~/AppImages first and open it again from there.
 import errno
 import os
 import pathlib
+import subprocess
 import tempfile
 import unittest
+from typing import Optional
 from unittest import mock
 
 from silux import desktop
@@ -259,6 +261,43 @@ KMENUEDIT = """<!DOCTYPE Menu PUBLIC '-//freedesktop//DTD Menu 1.0//EN' 'http://
  </Menu>
 </Menu>
 """
+
+
+def _glib_try_exec(entry: pathlib.Path) -> Optional[str]:
+    """TryExec as GLib reads it (GNOME's menus), or what went wrong reading
+    it. None only when GLib cannot be imported here."""
+    python = "/usr/bin/python3"
+    probe = "import gi; gi.require_version('Gio', '2.0'); from gi.repository import Gio"
+    if not os.path.exists(python) or subprocess.run(
+            [python, "-I", "-c", probe], capture_output=True, timeout=30).returncode != 0:
+        return None
+    code = (probe + "\nimport sys\napp = Gio.DesktopAppInfo.new_from_filename(sys.argv[1])\n"
+            "try:\n    print(app.get_string('TryExec') if app else 'not loaded')\n"
+            "except Exception as error:\n    print('error:', error)")
+    result = subprocess.run([python, "-I", "-c", code, str(entry)],
+                            capture_output=True, text=True, timeout=30)
+    return result.stdout.rstrip("\n") or result.stderr
+
+
+@unittest.skipIf(QApplication is None, "no PySide6")
+class TestTryExec(_FakeHome):
+
+    def setUp(self):
+        super().setUp()
+        qt.app()
+        # A space and a backslash: the value is read back with its escapes.
+        self.path = self.appimage(folder="Mis cosas/a\\b", name="Silux x86_64.AppImage")
+        desktop.set_shortcuts(True, False, desktop.current_launcher({"APPIMAGE": str(self.path)}))
+
+    def test_it_names_the_appimage(self):
+        escaped = str(self.path).replace("\\", "\\\\")
+        self.assertIn(f"TryExec={escaped}\n", desktop.desktop_path().read_text())
+
+    def test_a_real_reader_gets_the_appimage_back(self):
+        read = _glib_try_exec(desktop.desktop_path())
+        if read is None:
+            self.skipTest("no GLib from Python here")
+        self.assertEqual(read, str(self.path))
 
 
 @unittest.skipIf(QApplication is None, "no PySide6")
