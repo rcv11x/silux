@@ -30,3 +30,10 @@ for _variable, _carpeta in (("XDG_CONFIG_HOME", "config"),
                             ("XDG_CACHE_HOME", "cache")):
     os.makedirs(os.path.join(CAJA, _carpeta))
     os.environ[_variable] = os.path.join(CAJA, _carpeta)
+
+# The home folder too: the desktop folder and ~/AppImages come from it, and
+# a test of the shortcuts left one on the real desktop of whoever ran it.
+os.environ["HOME"] = os.path.join(CAJA, "home")
+os.makedirs(os.path.join(CAJA, "home", "Escritorio"))
+with open(os.path.join(CAJA, "config", "user-dirs.dirs"), "w", encoding="utf-8") as _dirs:
+    _dirs.write('XDG_DESKTOP_DIR="$HOME/Escritorio"\n')
