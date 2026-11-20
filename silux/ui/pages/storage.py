@@ -325,19 +325,23 @@ class StoragePage(ScrollPage):
             # como libres que no lo están. Lo libre de verdad es lo que dicen
             # las particiones montadas; el resto del disco es otra cosa y se
             # dice aparte.
-            libre = sum(p.free_bytes or 0 for x in discos
-                        for p in x.mounted_partitions)
-            sin_montar = max(0, total - usado - libre)
-            segmentos = [(_("storage.col.used"), usado, "accent"),
-                         (_("storage.col.free"), libre, "line")]
-            if sin_montar:
-                segmentos.append((_("storage.bar.unmounted"), sin_montar, "muted"))
             self.total_bar.set_segments(
-                segmentos, total=total, formatter=render.size,
+                self._segmentos(discos), total=total, formatter=render.size,
             )
             self.total_bar.show()
         else:
             self.total_bar.hide()
+
+    @staticmethod
+    def _segmentos(discos) -> list:
+        usado, libre, reservado, sin_montar = render.space(discos)
+        segmentos = [(_("storage.col.used"), usado, "accent"),
+                     (_("storage.col.free"), libre, "line")]
+        if reservado:
+            segmentos.append((_("storage.bar.reserved"), reservado, "muted/0.45"))
+        if sin_montar:
+            segmentos.append((_("storage.bar.unmounted"), sin_montar, "muted"))
+        return segmentos
 
     def _apply_tiles(self, discos) -> None:
         # La suma de todas las unidades, no la del disco del sistema: en un
@@ -464,11 +468,10 @@ class StoragePage(ScrollPage):
         barra = self._bars[disco.name]
         usado = disco.used_bytes
         if disco.size_bytes and usado:
-            barra.set_segments(
-                [(_("storage.col.used"), usado, "accent"),
-                 (_("storage.col.free"), max(0, disco.size_bytes - usado), "line")],
-                total=disco.size_bytes, formatter=render.size,
-            )
+            # The same split as the bar above: the rest of the disk was all
+            # «Libre» here, and above it was not.
+            barra.set_segments(self._segmentos([disco]), total=disco.size_bytes,
+                               formatter=render.size)
             barra.show()
         else:
             barra.hide()

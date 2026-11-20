@@ -24,7 +24,7 @@ Aplicaciones 206.2 MB · Caché 773.5 MB · Buffers 34.6 MB · Libre 2.8 GB
 32 GB en 1 unidad
 1 × Virtual
 28.8 GB libres
-Ocupado 2.6 GB · Libre 28.8 GB · Sin montar 597.6 MB
+Ocupado 2.6 GB · Libre 28.8 GB · Reservado 593.6 MB
 
 ### Temperaturas
 
@@ -252,7 +252,7 @@ Tampoco temperaturas, voltajes, ventilador ni consumo.
 32 GB en 1 unidad
 2.6 GB ocupados en 2 particiones montadas
 1 × Virtual
-Ocupado 2.6 GB · Libre 28.8 GB · Sin montar 597.6 MB
+Ocupado 2.6 GB · Libre 28.8 GB · Reservado 593.6 MB
 - Leyendo: 0 B/s (suma de 1 unidad)
 - Escribiendo: 0 B/s (suma de 1 unidad)
 - Espacio libre: 28.8 GB (en 2 particiones)
@@ -273,7 +273,7 @@ Ocupado 2.6 GB · Libre 28.8 GB · Sin montar 597.6 MB
 
 ### sda
 
-Ocupado 2.6 GB · Libre 29.4 GB
+Ocupado 2.6 GB · Libre 28.8 GB · Reservado 593.6 MB
 - Modelo: QEMU HARDDISK
 - Fabricante: —
 - Tipo: Virtual

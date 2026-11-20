@@ -1293,6 +1293,7 @@
   "status.blocked.tip": "Algunos datos los guarda el kernel para el administrador: el detalle de la memoria, el diagnóstico de los discos y el consumo del procesador.\nSe piden una vez y se leen sin cambiar nada del sistema.",
   "status.freeze": "espacio para congelar",
   "status.refresh": "Se actualiza cada {n} s",
+  "storage.bar.reserved": "Reservado",
   "storage.bar.unmounted": "Sin montar",
   "storage.card.details": "Firmware y sectores",
   "storage.card.disks": "Unidades",

@@ -928,6 +928,32 @@ def sound_card(tarjeta) -> str:
     return tarjeta.name or _("sound.other")
 
 
+def space(discos) -> tuple[int, int, int, int]:
+    """Used, free, reserved and unmounted bytes of these disks.
+
+    Free is what the mounted partitions say; what is mounted and is neither
+    used nor free is the filesystem's own (ext4 keeps 5 % for root, and its
+    tables); what is not mounted (another system, a swap partition, space
+    outside any partition) is said apart. A tester's laptop, all of it
+    mounted, read «Sin montar 8.6 GB» that were ext4's.
+    """
+    usado = libre = reservado = montado = 0
+    for disco in discos:
+        for particion in disco.mounted_partitions:
+            usado += particion.used_bytes or 0
+            libre += particion.free_bytes or 0
+            if particion.size_bytes:
+                montado += particion.size_bytes
+                reservado += max(0, particion.size_bytes - (particion.used_bytes or 0)
+                                 - (particion.free_bytes or 0))
+    total = sum(d.size_bytes or 0 for d in discos)
+    sin_montar = max(0, total - montado)
+    # Below 1 % of what they are part of it is a vfat's clusters and the
+    # partitions' alignment: «Sin montar 1.6 MB» is not space anyone looks for.
+    return (usado, libre, reservado if reservado >= montado / 100 else 0,
+            sin_montar if sin_montar >= total / 100 else 0)
+
+
 def trim(disco) -> Optional[str]:
     """Lo que se ve del TRIM de una unidad, sin afirmar más de lo que se ve.
 

@@ -429,9 +429,11 @@ class HomePage(ScrollPage):
                                                 n=len(discos)),
             " · ".join(tipos),
             _("home.storage.free").format(tam=render.size(libre)))
-        sin_montar = max(0, total - usado - libre)
+        _usado, _libre, reservado, sin_montar = render.space(discos)
         segmentos = [(_("home.bar.used"), usado, "accent"),
                      (_("home.bar.free"), libre, "line")]
+        if reservado:
+            segmentos.append((_("storage.bar.reserved"), reservado, "muted/0.45"))
         if sin_montar:
             segmentos.append((_("home.bar.unmounted"), sin_montar, "muted"))
         self.discos.barra.set_segments(segmentos, total=total,

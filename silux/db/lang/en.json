@@ -1293,6 +1293,7 @@
   "status.blocked.tip": "The kernel keeps some data for the administrator: memory module details, disk health and processor power draw.\nThey are requested once and read without changing anything.",
   "status.freeze": "space to freeze",
   "status.refresh": "Refreshing every {n} s",
+  "storage.bar.reserved": "Reserved",
   "storage.bar.unmounted": "Unmounted",
   "storage.card.details": "Firmware and sectors",
   "storage.card.disks": "Drives",

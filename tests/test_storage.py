@@ -360,6 +360,23 @@ class TestEspacioLibre(unittest.TestCase):
         self.assertAlmostEqual(sum(trozos.values()), 931 * self.GB,
                                delta=self.GB)
 
+    def test_what_a_mounted_filesystem_keeps_is_not_unmounted(self):
+        # A tester's laptop, its whole NVMe mounted: «Sin montar 8.6 GB» were
+        # what ext4 keeps for itself (5 % for root, its tables).
+        from silux.model import Partition
+        GB = self.GB
+        particiones = [
+            Partition(name="nvme0n1p2", mountpoint="/boot/efi", filesystem="vfat",
+                      size_bytes=512 * 1000 ** 2, used_bytes=8 * 1000 ** 2,
+                      free_bytes=504 * 1000 ** 2),
+            Partition(name="nvme0n1p3", mountpoint="/", filesystem="ext4",
+                      size_bytes=476_400 * 1000 ** 2, used_bytes=38_600 * 1000 ** 2,
+                      free_bytes=429_300 * 1000 ** 2),
+        ]
+        trozos = self._trozos(self._pagina(particiones, 476_912 * 1000 ** 2))
+        self.assertNotIn("Sin montar", trozos)
+        self.assertAlmostEqual(trozos["Reservado"], 8_500 * 1000 ** 2, delta=GB // 10)
+
     def test_un_disco_entero_montado_no_gana_un_trozo_de_mas(self):
         from silux.model import Partition
         entera = [Partition(name="sda1", mountpoint="/", filesystem="ext4",

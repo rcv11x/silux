@@ -75,6 +75,11 @@ informes que mandó la gente.
   cortado a 16 letras).
 - Cambiado: si lo escrito en total da menos de lo que el disco tiene
   guardado, no se enseña ni eso ni lo leído, y se dice por qué.
+- Arreglado: «Sin montar» contaba lo que el sistema de archivos se reserva en
+  las particiones montadas (el 5 % de ext4 para el administrador): un
+  portátil con todo montado decía «Sin montar 8.6 GB». Va aparte, como
+  «Reservado»; la barra de cada disco reparte igual que la de arriba, y lo
+  que no llega al 1 % no se cuenta.
 
 ### Gráficos
 
