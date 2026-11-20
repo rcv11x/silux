@@ -182,6 +182,9 @@ class MainWindow(QMainWindow):
         # The report preview, and how many permission notes its text had.
         self._report_preview = None
         self._report_missing: Optional[int] = None
+        # The sample after the one where permissions changed: what the helper
+        # reads as a difference (RAPL's watts) only comes with the second.
+        self._report_once_more = False
         self._palette = theme.palette_for(QApplication.instance(), prefs.theme)
         # El seguimiento de mínimos y máximos vive en la ventana, no en la
         # página: cambiar de tema reconstruye las páginas, y perder por eso el
@@ -646,9 +649,11 @@ class MainWindow(QMainWindow):
         if dialog is None or not (dialog.isVisible() or self._report_missing is None):
             return
         missing = len(snapshot.permission_notes)
-        if missing == self._report_missing:
+        if missing == self._report_missing and not self._report_once_more:
             return
         from . import full_report
+        self._report_once_more = (self._report_missing is not None
+                                  and missing != self._report_missing)
         self._report_missing = missing
         dialog.set_report(full_report.build(snapshot, anonymous=True, inside_app=True), missing)
 

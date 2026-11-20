@@ -133,6 +133,25 @@ class TestReportPreview(unittest.TestCase):
         self.app.processEvents()
         self.assertFalse(dialog.grant_button.isVisible())
 
+    def test_what_needs_a_second_reading_arrives_too(self):
+        # Two testers' reports, made right after «Dar permisos», had «Consumo:
+        # —»: the first sample through the helper only takes RAPL's reference,
+        # and the preview was rebuilt only when the permissions changed.
+        dialog = self.open_preview()
+        granted = dataclasses.replace(
+            self.snapshot, notes=tuple(n for n in self.snapshot.notes
+                                       if n not in self.snapshot.permission_notes))
+        self.assertIsNone(granted.cpu.power.package_w)
+        self.window._on_sample(granted)
+        self.app.processEvents()
+        con_consumo = dataclasses.replace(
+            granted, notes=tuple(n for n in granted.notes if n.path != "cpu.power"),
+            cpu=dataclasses.replace(granted.cpu, power=dataclasses.replace(
+                granted.cpu.power, package_w=42.0)))
+        self.window._on_sample(con_consumo)
+        self.app.processEvents()
+        self.assertIn("- Consumo: 42 W", dialog.report())
+
     def test_it_saves_what_it_shows(self):
         dialog = self.open_preview()
         target = self.tmp / "informe.md"

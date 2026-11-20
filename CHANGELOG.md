@@ -46,6 +46,13 @@ informes que mandó la gente.
 - Nuevo: Cachés avisa de que las cachés de un procesador virtual las declara
   el hipervisor.
 
+### Informe
+
+- Arreglado: el informe hecho desde la ventana justo después de «Dar
+  permisos» salía sin el consumo del procesador, aunque el equipo lo diera:
+  se quedaba con la primera lectura, y ese dato sale de restar dos. Ahora se
+  rehace también con la segunda.
+
 ### Sistema
 
 - Arreglado: con el AppImage, los programas del sistema que lanza Silux
