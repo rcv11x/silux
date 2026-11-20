@@ -191,7 +191,9 @@ class Interruptor(QAbstractButton):
     def paintEvent(self, _event) -> None:  # noqa: N802
         pintor = QPainter(self)
         pintor.setRenderHint(QPainter.RenderHint.Antialiasing)
-        caja = QRectF(self.rect()).adjusted(1, 1, -1, -1)
+        # Half a pixel in: a 1 px outline on whole coordinates falls between
+        # two rows of pixels and comes out as a blurred 2 px line.
+        caja = QRectF(self.rect()).adjusted(1.5, 1.5, -1.5, -1.5)
         radio = caja.height() / 2
         encendido = self.isChecked()
         # Apagado es un carril vacío con su contorno y la bola en `muted`,

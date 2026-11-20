@@ -121,6 +121,22 @@ class TestLaMaqueta(unittest.TestCase):
                 self.assertRegex(texto, rf"\b{numero} [^;]* {fuente}\b")
         self.assertNotIn("gen_cpu_db", texto)
 
+    def test_the_switch_outline_is_one_sharp_pixel(self):
+        """It was a blurred 2 px line: 1 px drawn between two rows of pixels."""
+        from silux.ui import theme
+        from silux.ui.pages.settings import Interruptor
+        paleta = theme.palette_for(self.app, "dark")
+        interruptor = Interruptor(paleta)
+        self.addCleanup(interruptor.deleteLater)
+        interruptor.resize(interruptor.sizeHint())
+        imagen = interruptor.grab().toImage()
+        contorno = paleta.q("muted")
+        columna = imagen.width() // 2
+        filas = [imagen.pixelColor(columna, y) for y in range(imagen.height() // 2)]
+        cerca = [c for c in filas if max(abs(c.red() - contorno.red()), abs(c.green() - contorno.green()),
+                                         abs(c.blue() - contorno.blue())) <= 8]
+        self.assertEqual(len(cerca), 1, [c.name() for c in filas])
+
     def test_python_and_qt_with_the_versions_this_copy_runs(self):
         import platform
 
