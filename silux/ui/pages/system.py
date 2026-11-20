@@ -267,10 +267,15 @@ class SystemPage(ScrollPage):
             pies.append(_("sys.boot.unpublished"))
         else:
             if arranque.firmware_s is None:
-                pies.append(_("sys.boot.nofirmware").format(
-                    gestor=arranque.loader or _("sys.boot.loader")))
+                # Without a loader's name, not «Gestor de arranque no lo
+                # publica» with the generic word standing in for one.
+                pies.append(_("sys.boot.nofirmware").format(gestor=arranque.loader)
+                            if arranque.loader else _("sys.boot.nofirmware.unknown"))
             if arranque.kernel_s is None:
-                pies.append(_("sys.boot.nosystemd"))
+                # Only systemd measures those: on OpenRC there is nobody that
+                # «did not answer».
+                pies.append(_("sys.boot.nosystemd") if system.init in (None, "systemd")
+                            else _("sys.boot.notsystemd").format(init=system.init))
             elif arranque.userspace_s is None:
                 pies.append(_("sys.boot.unfinished"))
         pie = " ".join(pies)

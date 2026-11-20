@@ -201,8 +201,10 @@ class BoardPage(ScrollPage):
         f(_("memory.field.vendor"), render.maker(board.bios_vendor) or d)
         f(_("sys.field.version"), board.bios_version or d)
         f(_("board.field.date"), render.bios_date(board.bios_date) or d)
-        f(_("board.field.smbios"), board.bios_release or d,
-          tooltip=_("board.tip.bios"))
+        # SeaBIOS writes «0.0»: a field left at zero, not a release.
+        revision = board.bios_release if board.bios_release not in (None, "", "0.0") else None
+        f(_("board.field.smbios"), revision or d, tooltip=_("board.tip.bios"))
+        self.firmware.set_visible(_("board.field.smbios"), revision is not None)
         f(_("board.field.secureboot"), self._secure_boot(board))
         # Secure Boot is UEFI's: with a legacy BIOS there is none to read.
         heredada = board.secure_boot is None and not (board.firmware or "").startswith("UEFI")

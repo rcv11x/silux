@@ -141,9 +141,14 @@ class SystemIdentity(Provider):
     @staticmethod
     def _init_system() -> Optional[str]:
         try:
-            return os.path.basename(os.readlink(sysroot.ruta("/proc/1/exe")))
+            nombre = os.path.basename(os.readlink(sysroot.ruta("/proc/1/exe")))
         except OSError:
-            return read_text("/proc/1/comm")
+            nombre = read_text("/proc/1/comm")
+        # Gentoo's OpenRC runs under sysvinit's `init`: a tester's report read
+        # «Init: init». OpenRC leaves its state in /run/openrc.
+        if nombre == "init" and sysroot.ruta("/run/openrc").is_dir():
+            return "openrc"
+        return nombre
 
 
 VULNERABILIDADES = "/sys/devices/system/cpu/vulnerabilities"

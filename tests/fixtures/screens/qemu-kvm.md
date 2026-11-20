@@ -141,7 +141,6 @@ Es una máquina virtual: no tiene placa base, y lo que se ve es lo que declara e
 - Fabricante: SeaBIOS
 - Versión: Arch Linux 1.17.0-2-2
 - Fecha: 2014-04-01
-- Revisión SMBIOS: 0.0
 - TPM: no detectado
 Con BIOS heredada no hay arranque seguro: es cosa de UEFI.
 
@@ -403,7 +402,7 @@ Esta distribución no declara variante.
 - Kernel: 2.4 s
 - Espacio de usuario: 4.4 s
 - Línea de arranque: BOOT_IMAGE=/boot/vmlinuz-6.12.117+deb13-amd64 root=… ro console=tty0 console=ttyS0,115200 earlyprintk=ttyS0,115200 consoleblank=0
-Falta cuánto tardan el firmware y el cargador: Gestor de arranque no lo publica, y el firmware tampoco.
+Falta cuánto tardan el firmware y el cargador: ni el gestor de arranque ni el firmware lo publican.
 
 ## Rendimiento
 
