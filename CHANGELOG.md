@@ -13,6 +13,24 @@ que hace falta.
 
 ## Sin publicar
 
+### Procesador
+
+- Arreglado: un procesador sin driver de frecuencia (cpufreq) salía con
+  «Frecuencia: —» en todas partes. Ahora la da `/proc/cpuinfo` y, con
+  permisos, en los Ryzen y Athlon (Zen), el propio procesador: su P-state,
+  y el P0 es el reloj base. Las filas que solo da ese driver se esconden y
+  se dice por qué.
+- Cambiado: el aviso de que falta la frecuencia ya no dice «Falta un módulo
+  del kernel»: puede ser la BIOS (Cool'n'Quiet desactivado) o que el driver
+  no haya cargado, y dice eso.
+- Arreglado: «Turbo: —» en un procesador sin turbo. Dice que no tiene.
+- Arreglado: donde el consumo del procesador pide permisos (casi todos los
+  AMD y algunos portátiles Intel), su candado decía «Pulsa el candado» y no
+  hacía nada.
+- Arreglado: con permisos, en un Intel cuyo kernel guarda el consumo para
+  root, solo llegaba el del paquete. Llegan también el de los núcleos, el del
+  uncore y el de la memoria.
+
 ### Memoria
 
 - Arreglado: en un portátil con memoria soldada y un módulo en la ranura, los
@@ -44,24 +62,6 @@ que hace falta.
   contaba como ocupado, y «Reservado» eran solo las tablas del sistema de
   archivos. Un portátil decía «Ocupado 40.6 GB» de unos 17. Ahora va en
   «Reservado», como lo cuenta `df`.
-
-### Procesador
-
-- Arreglado: un procesador sin driver de frecuencia (cpufreq) salía con
-  «Frecuencia: —» en todas partes. Ahora la da `/proc/cpuinfo` y, con
-  permisos, en los Ryzen y Athlon (Zen), el propio procesador: su P-state,
-  y el P0 es el reloj base. Las filas que solo da ese driver se esconden y
-  se dice por qué.
-- Cambiado: el aviso de que falta la frecuencia ya no dice «Falta un módulo
-  del kernel»: puede ser la BIOS (Cool'n'Quiet desactivado) o que el driver
-  no haya cargado, y dice eso.
-- Arreglado: «Turbo: —» en un procesador sin turbo. Dice que no tiene.
-- Arreglado: donde el consumo del procesador pide permisos (casi todos los
-  AMD y algunos portátiles Intel), su candado decía «Pulsa el candado» y no
-  hacía nada.
-- Arreglado: con permisos, en un Intel cuyo kernel guarda el consumo para
-  root, solo llegaba el del paquete. Llegan también el de los núcleos, el del
-  uncore y el de la memoria.
 
 ### Permisos
 
