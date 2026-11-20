@@ -1,0 +1,6 @@
+ 0 [PCH            ]: HDA-Intel - HDA Intel PCH
+                      HDA Intel PCH at 0xa2140000 irq 125
+ 1 [NVidia         ]: HDA-Intel - HDA NVidia
+                      HDA NVidia at 0xa2080000 irq 17
+ 2 [Microphone     ]: USB-Audio - 
+                      Audio USB at usb-0000:00:14.0-10, full speed

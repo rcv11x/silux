@@ -42,7 +42,7 @@ def _acpitz(f):
 # CPU), and «every acpitz is filler» came from our desktops. A new dump with
 # a zone has to say which it is.
 FILLER = {"5800x3d": True, "i5-10400": True, "i5-10400-turbo": True,
-          "i5-1135g7": False}
+          "i5-1135g7": False, "i7-10700f": True}
 
 
 class TestLasZonasQueNoMiden(unittest.TestCase):
