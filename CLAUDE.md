@@ -28,6 +28,7 @@ python3 -m silux.cli --report FICHERO   # el informe completo, de las páginas (
 python3 tools/gen_cpu_db.py            # regenerar la base de datos de CPUs (libcpuid, kernel, amd.com, cpuid)
 python3 tools/gen_referencias_cpu.py --libcpuid DIR  # las 411 CPU de referencia de sus volcados
 python3 tools/gen_memory_limits.py --intel-desde DIR  # el máximo de memoria por modelo
+python3 tools/gen_smart_units.py       # las unidades de cada contador SMART, de smartmontools
 python3 tools/gen_lang.py --write      # poner al día los archivos de idioma
 python3 tools/medir_referencia.py      # rehacer la escala de puntuación
 python3 tools/anadir_puntuacion.py INFORMES  # sumar medidas ajenas a la tabla
@@ -151,6 +152,7 @@ silux/
 ├─ throttling.py   desde cuándo lleva frenándose algo, y por qué
 ├─ registro.py     graba la sesión a un CSV
 ├─ i18n.py         el idioma de la interfaz; el original es el español
+├─ system_env.py   el entorno de lo que se lanza, sin lo que añade el AppImage
 ├─ rawcpuid.py     CPUID desde Python, sin root (mmap + ctypes)
 ├─ gpuapi.py       OpenGL, Vulkan, OpenCL y VA-API, en otro proceso
 ├─ amdgpu.py, i915.py   ioctl DRM de cada fabricante
@@ -197,9 +199,10 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
   que no dependen de la zlib de cada distribución. `score.VERSION` y
   `db/scores.json` van siempre en el mismo commit. [docs/benchmark.md](docs/benchmark.md)
 - Qué se ha validado contra qué pieza y qué se escribió a ciegas (NVIDIA sí,
-  ARM no): [docs/equipos-probados.md](docs/equipos-probados.md). Hay tres
-  equipos volcados para la suite, los tres con los datos nuevos: dos del
-  i5-10400 (en reposo y con turbo) y el Ryzen 7 5800X3D.
+  ARM no): [docs/equipos-probados.md](docs/equipos-probados.md). Hay cuatro
+  equipos volcados para la suite, con los datos nuevos: dos del i5-10400 (en
+  reposo y con turbo), el Ryzen 7 5800X3D y una máquina QEMU/KVM como la de un
+  probador (`qemu-kvm`, hecha aquí con QEMU).
 - Lo que enseña cada volcado, página a página, está en
   `tests/fixtures/screens/`: un cambio que lo altera falla en
   `test_screen_references` hasta que se rehace con
@@ -208,7 +211,8 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
   sociales ni chips con su dirección: lo vigila `tests/test_nada_en_bruto.py`
   con cada volcado. Una marca sale de `render.maker`; un chip, de
   `render.chip_name`.
-- Lo que se toma de otro proyecto (hoy, las tablas de libcpuid y CPU-X) lleva
+- Lo que se toma de otro proyecto (hoy, las tablas de libcpuid y CPU-X, y la
+  base de discos de smartmontools para las unidades del SMART) lleva
   su aviso en `silux/db/THIRD_PARTY_NOTICES.md`, que va en pip y en los
   AppImage; `tests/test_avisos_de_terceros.py` lo compara con las fuentes que
   declara la tabla. Un procesador que no está en ella dice «no está en la
@@ -231,7 +235,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); el código nuevo, en inglés (ver «Código»). Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-1482 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+1514 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
