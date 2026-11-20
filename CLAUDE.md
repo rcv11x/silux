@@ -237,10 +237,11 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
   que no dependen de la zlib de cada distribución. `score.VERSION` y
   `db/scores.json` van siempre en el mismo commit. [docs/benchmark.md](docs/benchmark.md)
 - Qué se ha validado contra qué pieza y qué se escribió a ciegas (NVIDIA sí,
-  ARM no): [docs/equipos-probados.md](docs/equipos-probados.md). Hay cuatro
-  equipos volcados para la suite, con los datos nuevos: dos del i5-10400 (en
-  reposo y con turbo), el Ryzen 7 5800X3D y una máquina QEMU/KVM como la de un
-  probador (`qemu-kvm`, hecha aquí con QEMU).
+  ARM no): [docs/equipos-probados.md](docs/equipos-probados.md). Hay cinco
+  equipos volcados para la suite: dos del i5-10400 (en reposo y con turbo),
+  el Ryzen 7 5800X3D, una máquina QEMU/KVM como la de un probador
+  (`qemu-kvm`, hecha aquí con QEMU) y el ThinkPad T14 del autor
+  (`i5-1135g7`), el primero importado del anexo de un informe.
 - Lo que enseña cada volcado, página a página, está en
   `tests/fixtures/screens/`: un cambio que lo altera falla en
   `test_screen_references` hasta que se rehace con
