@@ -102,13 +102,8 @@ sin los pasos para reproducirlo: este archivo es público.
   Deck con `tools/volcar_equipo.py`. Ver [equipos-probados.md](equipos-probados.md).
 * **Datos baratos que faltan** (de la lista de la noche del 19; ya están el
   kernel contaminado, la línea de arranque, el límite de fábrica de la
-  gráfica y los errores PCIe de la gráfica):
-  - **CPU, solo Intel**: la ventana de PL1 (`constraint_0_time_window_us`
-    de RAPL) y los frenos por temperatura
-    (`/sys/devices/system/cpu/cpu*/thermal_throttle/*_throttle_count`). En el
-    5800X3D no existen y los volcados del i5-10400 no los traen (el volcado
-    guarda solo lo que se leyó): se escriben en la oficina, con un volcado
-    nuevo.
+  gráfica, los errores PCIe de la gráfica, la ventana de PL1 y PL2 y los
+  frenos por temperatura):
   - **Placa base**: los errores AER de los puertos raíz
     (`aer_rootport_total_err_cor`, `_fatal` y `_nonfatal`). Son un número
     suelto, no las líneas `TOTAL_ERR_*` de los `aer_dev_*` que lee

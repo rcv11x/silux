@@ -21,6 +21,7 @@ from .spd_modules import SpdModules
 from .storage import Disks
 from .sysfs_cpu import SysfsClocks, SysfsTopology
 from .cpuidle import CpuIdle
+from .thermal_throttle import ThermalThrottleCounts
 from .devices import ConnectedDevices
 from .pci import PciDevices, PlatformInfo
 from .system import SystemIdentity, SystemSecurity, SystemState
@@ -33,6 +34,6 @@ __all__ = [
     "RaplPower", "ImcTraffic", "DerivedSensors",
     "Batteries",
     "DrmGpus", "GpuState", "GpuApis", "NvidiaGpus", "NetworkInterfaces",
-    "ConnectedDevices", "CpuIdle", "PowerLimits", "PciDevices", "PlatformInfo",
+    "ConnectedDevices", "CpuIdle", "ThermalThrottleCounts", "PowerLimits", "PciDevices", "PlatformInfo",
     "SystemIdentity", "SystemSecurity", "SystemState", "PrivilegedMemory", "SpdModules", "Disks",
 ]

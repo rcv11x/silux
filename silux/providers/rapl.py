@@ -66,19 +66,21 @@ def _packages() -> list[pathlib.Path]:
     return found
 
 
-def _limits(package: pathlib.Path) -> tuple[Optional[float], Optional[float]]:
-    """PL1 y PL2, en vatios, tal y como los declara el procesador."""
-    long_term = short_term = None
+def _limits(package: pathlib.Path) -> dict[str, Optional[float]]:
+    """PL1 y PL2, en vatios, tal y como los declara el procesador, con la
+    ventana de tiempo de cada uno, en segundos: los campos de `Power`."""
+    limits: dict[str, Optional[float]] = {}
     for constraint in sorted(package.glob("constraint_*_name")):
         name = (read_text(str(constraint)) or "").lower()
         micro = read_int(str(constraint).replace("_name", "_power_limit_uw"))
         if micro is None:
             continue
-        if "long" in name:
-            long_term = round(micro / 1e6, 1)
-        elif "short" in name:
-            short_term = round(micro / 1e6, 1)
-    return long_term, short_term
+        window = read_int(str(constraint).replace("_name", "_time_window_us"))
+        kind = "long" if "long" in name else "short" if "short" in name else None
+        if kind:
+            limits[f"limit_{kind}_w"] = round(micro / 1e6, 1)
+            limits[f"window_{kind}_s"] = window / 1e6 if window else None
+    return limits
 
 
 class PowerLimits(Provider):
@@ -95,7 +97,7 @@ class PowerLimits(Provider):
     provides = "cpu.power.limits"
 
     def __init__(self) -> None:
-        self._limites: Optional[tuple] = None
+        self._limites: Optional[dict] = None
 
     def available(self) -> bool:
         return bool(_packages())
@@ -103,9 +105,8 @@ class PowerLimits(Provider):
     def collect(self, draft: Draft) -> None:
         if self._limites is None:
             self._limites = _limits(_packages()[0])
-        sostenido, pico = self._limites
-        if sostenido or pico:
-            draft.cpu_extra["power"] = Power(limit_long_w=sostenido, limit_short_w=pico)
+        if self._limites.get("limit_long_w") or self._limites.get("limit_short_w"):
+            draft.cpu_extra["power"] = Power(**self._limites)
 
 
 class RaplPower(Provider):
@@ -114,7 +115,7 @@ class RaplPower(Provider):
 
     def __init__(self, client: Optional[PrivilegedClient] = None) -> None:
         self._previous: dict[str, tuple[int, float]] = {}
-        self._limits: Optional[tuple[Optional[float], Optional[float]]] = None
+        self._limits: Optional[dict[str, Optional[float]]] = None
         # El mismo ayudante que ya usan los discos y la memoria. Desde el
         # kernel 5.10 `energy_uj` no se lee sin privilegios y en las máquinas
         # donde eso pasa —AMD sobre todo— el consumo del procesador salía en
@@ -182,15 +183,13 @@ class RaplPower(Provider):
                        _("prov.rapl.onecore"), _("prov.rapl.onecore.hint"))
         if self._limits is None:
             self._limits = _limits(packages[0])
-        long_term, short_term = self._limits
 
         draft.cpu_extra["power"] = Power(
             package_w=round(totals["package_w"], 1),
             core_w=self._rounded(totals.get("core_w")),
             uncore_w=self._rounded(totals.get("uncore_w")),
             dram_w=self._rounded(totals.get("dram_w")),
-            limit_long_w=long_term,
-            limit_short_w=short_term,
+            **self._limits,
         )
 
     # -- interno ------------------------------------------------------------

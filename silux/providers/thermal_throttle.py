@@ -1,0 +1,58 @@
+"""How often the processor slowed down for temperature, since boot (Intel).
+
+The kernel counts, under each CPU's `thermal_throttle/`, every time a core or
+the whole package reached its thermal limit and how long it stayed there.
+Counted since boot, so a zero is an answer: it has not happened.
+"""
+
+from __future__ import annotations
+
+import glob
+import os
+from typing import Optional
+
+from .. import sysroot
+from ..model import ThermalThrottle
+from .base import Draft, Provider, read_int, read_text
+
+CPUS = "/sys/devices/system/cpu"
+
+
+class ThermalThrottleCounts(Provider):
+    name = "thermal-throttle"
+    provides = "cpu.thermal_throttle"
+
+    def __init__(self) -> None:
+        # One directory per physical core, and one per package: the threads
+        # of a core share its counters. Worked out once, not every sample.
+        self._cores: Optional[list[str]] = None
+        self._packages: list[str] = []
+
+    def available(self) -> bool:
+        return os.path.isdir(sysroot.ruta(f"{CPUS}/cpu0/thermal_throttle"))
+
+    def _directories(self) -> None:
+        cores: dict[tuple, str] = {}
+        packages: dict[Optional[str], str] = {}
+        for path in sorted(glob.glob(os.path.join(sysroot.ruta(CPUS), "cpu[0-9]*", "thermal_throttle")),
+                           key=lambda p: int(os.path.basename(os.path.dirname(p))[3:])):
+            cpu = sysroot.fuera(os.path.dirname(path))
+            package = read_text(f"{cpu}/topology/physical_package_id")
+            core = read_text(f"{cpu}/topology/core_id")
+            cores.setdefault((package, core), sysroot.fuera(path))
+            packages.setdefault(package, sysroot.fuera(path))
+        self._cores, self._packages = list(cores.values()), list(packages.values())
+
+    def collect(self, draft: Draft) -> None:
+        if self._cores is None:
+            self._directories()
+
+        def total(directories: list[str], counter: str) -> int:
+            return sum(read_int(f"{d}/{counter}") or 0 for d in directories)
+
+        draft.cpu_extra["thermal_throttle"] = ThermalThrottle(
+            package_count=total(self._packages, "package_throttle_count"),
+            package_ms=total(self._packages, "package_throttle_total_time_ms"),
+            core_count=total(self._cores, "core_throttle_count"),
+            core_ms=total(self._cores, "core_throttle_total_time_ms"),
+        )

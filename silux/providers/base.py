@@ -130,6 +130,7 @@ class Draft:
             power=self.cpu_extra.get("power") or Power(),
             load_average=tuple(self.cpu_extra.get("load_average") or ()),
             idle_states=tuple(self.cpu_extra.get("idle_states") or ()),
+            thermal_throttle=self.cpu_extra.get("thermal_throttle"),
         )
 
         return Snapshot(

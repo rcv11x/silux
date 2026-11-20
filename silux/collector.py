@@ -45,6 +45,7 @@ from .providers import (
     SysfsTopology,
     ConnectedDevices,
     CpuIdle,
+    ThermalThrottleCounts,
     PciDevices,
     PlatformInfo,
     PowerLimits,
@@ -80,6 +81,7 @@ DEFAULT_PROVIDERS: tuple[type[Provider], ...] = (
     TurboState,
     CpuUsage,
     CpuIdle,            # y cuánto descansa cada hilo, que también se resta
+    ThermalThrottleCounts,  # las veces que se frenó por temperatura (Intel)
     GpuState,
     NetworkInterfaces,  # las interfaces y su ritmo, que se mide entre muestreos
     Disks,              # y los discos, con el suyo

@@ -1003,6 +1003,40 @@ def seconds(valor: Optional[float]) -> str:
     return DASH if _none(valor) else f"{float(valor):.1f} s"
 
 
+def time_window(valor: Optional[float]) -> str:
+    """A RAPL time window, which goes from milliseconds to tens of seconds:
+    «28.0 s», «2.4 ms»."""
+    if _none(valor):
+        return DASH
+    if valor >= 1:
+        return seconds(valor)
+    if valor >= 1e-3:
+        return f"{valor * 1e3:.1f} ms"
+    return f"{valor * 1e6:.0f} µs"
+
+
+def thermal_throttle(frenos) -> str:
+    """«ninguno desde el arranque», or «5 en los núcleos (0.6 s) · 2 del
+    procesador entero (1.4 s)»."""
+    if frenos is None:
+        return DASH
+    partes = []
+    if frenos.core_count:
+        partes.append(_("cpu.throttle.cores").format(
+            n=frenos.core_count, tiempo=seconds(frenos.core_ms / 1000)))
+    if frenos.package_count:
+        partes.append(_("cpu.throttle.package").format(
+            n=frenos.package_count, tiempo=seconds(frenos.package_ms / 1000)))
+    return " · ".join(partes) or _("cpu.throttle.none")
+
+
+def power_limit(limite_w: Optional[float], ventana_s: Optional[float]) -> str:
+    """«65.0 W · ventana de 28.0 s», or the watts alone without a window."""
+    if _none(ventana_s):
+        return watts(limite_w)
+    return _("cpu.limit.window").format(limite=watts(limite_w), ventana=time_window(ventana_s))
+
+
 # Qué es un dispositivo PCI por su clase, para nombrar lo que `pci.ids` no
 # tiene. Las de `providers/pci.CLASES`: lo que la tabla de Placa enseña.
 CLASES_PCI = {

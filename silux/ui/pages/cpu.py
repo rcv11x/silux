@@ -54,7 +54,7 @@ NEED_TITLES = {
 # para depurar. Antes había cuatro filas de familia y modelo (dos de ellas
 # con los bits en crudo, que por sí solos no significan nada) y ahora se
 # enseñan los valores compuestos, con el desglose en el tooltip de la firma.
-LIMIT_FIELDS = ("cpu.limit.pl1", "cpu.limit.pl2")
+LIMIT_FIELDS = ("cpu.limit.pl1", "cpu.limit.pl2", "cpu.throttle")
 PROCESSOR_FIELDS = (
     "cpu.field.vendor", "cpu.field.spec", "cpu.field.codename", "cpu.field.process",
     "cpu.field.package", "cpu.field.arch", "cpu.field.cores", "cpu.field.threads", "cpu.field.virt",
@@ -444,12 +444,18 @@ class CpuPage(ScrollPage):
         """Los límites de potencia y el reposo. Lo que no hay no sale."""
         cpu = snapshot.cpu
         potencia, estados = cpu.power, cpu.idle_states
-        limites = (("cpu.limit.pl1", potencia.limit_long_w), ("cpu.limit.pl2", potencia.limit_short_w))
-        for clave, valor in limites:
-            self.limits.set(_(clave), render.watts(valor) if valor else render.DASH)
+        limites = (("cpu.limit.pl1", potencia.limit_long_w, potencia.window_long_s),
+                   ("cpu.limit.pl2", potencia.limit_short_w, potencia.window_short_s))
+        for clave, valor, ventana in limites:
+            self.limits.set(_(clave), render.power_limit(valor, ventana) if valor else render.DASH,
+                            tooltip=_("cpu.limit.window.tip") if ventana else None)
             self.limits.set_visible(_(clave), bool(valor))
-        hay_limites = any(valor for _clave, valor in limites)
-        self.limits.setVisible(hay_limites)
+        hay_limites = any(valor for _clave, valor, _ventana in limites)
+        frenos = cpu.thermal_throttle
+        self.limits.set(_("cpu.throttle"), render.thermal_throttle(frenos),
+                        tooltip=_("cpu.throttle.tip"))
+        self.limits.set_visible(_("cpu.throttle"), frenos is not None)
+        self.limits.setVisible(hay_limites or frenos is not None)
         # En AMD no faltan por leer: el kernel no los publica.
         es_amd = bool(cpu.types) and cpu.types[0].vendor == "AMD"
         self.energy_pie.setText(_("cpu.limit.amd") if es_amd and not hay_limites else "")
@@ -461,7 +467,7 @@ class CpuPage(ScrollPage):
             self.idle_bar.set_segments(render.idle_segments(estados), 100.0,
                                        formatter=lambda v: f"{v:.0f} %")
             self.idle_note.setText(render.idle_deepest(estados) or "")
-        self.energy_card.setVisible(hay_limites or bool(estados))
+        self.energy_card.setVisible(hay_limites or bool(estados) or frenos is not None)
 
     def _apply_notices(self, snapshot: Snapshot) -> None:
         # Solo las de esta pestaña: la de los módulos de memoria salía aquí

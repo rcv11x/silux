@@ -142,6 +142,10 @@ class Power:
     dram_w: Optional[float] = None
     limit_long_w: Optional[float] = None       # PL1: el sostenido, suele ser el TDP
     limit_short_w: Optional[float] = None      # PL2: el pico de unos segundos
+    # The time window each one is averaged over (Intel's tau for PL1): how
+    # long the package can stay above PL1 before PL1 holds it back.
+    window_long_s: Optional[float] = None
+    window_short_s: Optional[float] = None
 
     @property
     def load_percent(self) -> Optional[float]:
@@ -241,6 +245,17 @@ class IdleState:
 
 
 @dataclass(frozen=True, slots=True)
+class ThermalThrottle:
+    """Since boot, how many times and for how long the processor slowed down
+    for temperature: the package as a whole, and its cores added up."""
+
+    package_count: int = 0
+    package_ms: int = 0
+    core_count: int = 0
+    core_ms: int = 0
+
+
+@dataclass(frozen=True, slots=True)
 class CpuInfo:
     sockets: int = 1
     hybrid: bool = False
@@ -251,6 +266,7 @@ class CpuInfo:
     power: Power = field(default_factory=Power)
     load_average: tuple[float, ...] = ()       # 1, 5 y 15 minutos
     idle_states: tuple[IdleState, ...] = ()
+    thermal_throttle: Optional[ThermalThrottle] = None     # Intel only
 
     @property
     def package_power_w(self) -> Optional[float]:
