@@ -177,6 +177,7 @@
   "board.off": "desactivado",
   "board.on": "activado",
   "board.pci.address": "Dirección PCI {direccion}",
+  "board.pci.asleep": "en reposo",
   "board.pci.class.3d": "acelerador 3D",
   "board.pci.class.ahci": "controlador SATA",
   "board.pci.class.audio": "audio",

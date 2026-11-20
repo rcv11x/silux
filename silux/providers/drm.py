@@ -473,6 +473,15 @@ class GpuState(Provider):
                 continue
             if en_reposo(dispositivo):
                 self._dormida(gpu, nodo)
+                # Read awake at the static pass, its driver's notice said a
+                # driver was missing (NVIDIA's, before NVML answers). Asleep,
+                # NVML is closed on purpose: what is missing is that it sleeps.
+                ruta = f"gpus.{indice}"
+                draft.notes = [n for n in draft.notes
+                               if not (n.path == ruta and n.need is Need.DRIVER)]
+                if not any(n.path == ruta and n.need is Need.HARDWARE for n in draft.notes):
+                    draft.note(ruta, Need.HARDWARE,
+                               _("prov.drm.asleep"), _("prov.drm.asleep.hint"))
                 continue
             if gpu.get("suspended"):
                 # Lo estático se leyó con ella dormida y le falta media ficha.

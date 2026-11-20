@@ -201,3 +201,58 @@ class TestSeDiceEnPantalla(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestANvidiaThatFallsAsleep(BancoDrm):
+    """A tester's laptop: its RTX 4050 was awake when the static pass read it,
+    and asleep afterwards. The page said «Falta un driver» and the report
+    «falta un módulo del kernel»: NVML is closed on purpose so as not to wake
+    it, and the driver was there all along."""
+
+    def setUp(self):
+        super().setUp()
+        self.dispositivo = self.tarjeta(
+            1, ranura="0000:01:00.0", vendor="0x10de", device="0x28e1",
+            subsystem_vendor="0x17aa", subsystem_device="0x3c90",
+            **{"class": "0x030000"}, max_link_speed="16.0 GT/s PCIe",
+            max_link_width="8")
+        controlador = self.root / "drivers" / "nvidia"
+        controlador.mkdir(parents=True)
+        (self.dispositivo.resolve() / "driver").symlink_to(controlador)
+        _write(self.dispositivo / "power" / "runtime_status", "active")
+
+    def test_asleep_it_is_said_so_and_not_that_a_driver_is_missing(self):
+        draft = Draft()
+        drm.DrmGpus().collect(draft)
+        self.assertTrue([n for n in draft.notes if n.need.value == "driver"])
+        _write(self.dispositivo / "power" / "runtime_status", "suspended")
+        drm.GpuState().collect(draft)
+        notas = [n for n in draft.notes if n.path == "gpus.0"]
+        self.assertEqual([n.need.value for n in notas], ["hardware"])
+        self.assertIn("reposo", notas[0].message)
+
+
+class TestTheBoardPageDoesNotPutItInTheProcessor(unittest.TestCase):
+
+    def test_a_sleeping_card_is_asleep_not_integrated(self):
+        import dataclasses
+
+        from silux.i18n import _
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.board import BoardPage
+        from tests import qt
+        from tests.test_equipos import EQUIPOS, foto
+
+        app = qt.app()
+        f = foto(EQUIPOS / "5800x3d")[0]
+        # Asleep: no link read for it, on the PCI table or on its card.
+        gpu = dataclasses.replace(f.gpus[0], suspended=True)
+        pci = tuple(dataclasses.replace(d, link=None) if d.slot == gpu.pci_slot else d
+                    for d in f.pci_devices)
+        pagina = BoardPage(theme.palette_for(app, "dark"), Preferences())
+        self.addCleanup(pagina.deleteLater)
+        pagina.apply(dataclasses.replace(f, gpus=(gpu,), pci_devices=pci))
+        fila = next(i for i, d in enumerate(sorted(pci, key=lambda d: d.kind != "gpu"))
+                    if d.slot == gpu.pci_slot)
+        self.assertEqual(pagina.pci._cells[fila][2].full_text(), _("board.pci.asleep"))

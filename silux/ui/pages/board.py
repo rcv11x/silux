@@ -266,10 +266,16 @@ class BoardPage(ScrollPage):
         de_graficas = {d.slot.rsplit(".", 1)[0] for d in dispositivos if d.kind == "gpu"}
         # What a hypervisor emulates is not on a board or in a processor.
         virtual = snapshot.cpu.in_virtual_machine
+        graficas = {g.pci_slot: g for g in snapshot.gpus}
         filas, pistas = [], []
         for d in dispositivos:
+            grafica = graficas.get(d.slot)
             if virtual:
                 donde = _("board.pci.virtual")
+            elif grafica is not None and grafica.suspended:
+                # A laptop's dedicated card asleep: its link is not read so as
+                # not to wake it. It used to say «en el procesador».
+                donde = _("board.pci.asleep")
             elif d.kind == "gpu":
                 # Una gráfica sin enlace es la integrada: va en el procesador.
                 donde = _("board.pci.oncpu")

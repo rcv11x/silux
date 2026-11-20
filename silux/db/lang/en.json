@@ -177,6 +177,7 @@
   "board.off": "disabled",
   "board.on": "enabled",
   "board.pci.address": "PCI address {direccion}",
+  "board.pci.asleep": "asleep",
   "board.pci.class.3d": "3D controller",
   "board.pci.class.ahci": "SATA controller",
   "board.pci.class.audio": "audio",
