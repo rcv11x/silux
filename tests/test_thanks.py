@@ -19,6 +19,13 @@ from tests import pantalla, qt
 from tests.test_equipos import EQUIPOS, foto
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
+PUBLISHED = ROOT / "silux" / "db" / "thanks.json"
+
+# The names the author has approved, written here by hand and only by the
+# author. A name in the published thanks.json that is not here fails the
+# suite, and with it the CI of any release: nobody is named without being
+# written twice.
+APPROVED: frozenset[str] = frozenset()
 READMES = ("README.md", "README.en.md")
 BETWEEN_MARKS = re.compile(r"<!-- thanks:start -->\n(.*?)<!-- thanks:end -->", re.S)
 WITH_REPORTS_FROM = re.compile(r"^Con informes de (.+?)\.?$", re.M)
@@ -53,6 +60,15 @@ class _AList(unittest.TestCase):
         db.thanks.cache_clear()
         self.addCleanup(db.thanks.cache_clear)
         self.addCleanup(parche.stop)
+
+
+class TestThePublishedList(unittest.TestCase):
+
+    def test_only_names_the_author_approved(self):
+        nombres = json.loads(PUBLISHED.read_text(encoding="utf-8"))
+        self.assertIsInstance(nombres, list)
+        self.assertEqual([n for n in nombres
+                          if not (isinstance(n, str) and n.strip() in APPROVED)], [])
 
 
 class TestTheList(_AList):

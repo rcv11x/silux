@@ -668,6 +668,7 @@ class SettingsPage(ScrollPage):
         columna.addSpacing(2)
         self.thanks_names = QLabel(render.enumeration(nombres))
         self.thanks_names.setObjectName("FieldValue")
+        self.thanks_names.setFont(ui_font(m.small_pt))
         self.thanks_names.setWordWrap(True)
         self.thanks_names.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         columna.addWidget(self.thanks_names)
