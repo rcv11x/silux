@@ -334,8 +334,9 @@ class TestElAccesoDirecto(_EnCasaFalsa):
         destino.write_bytes(b"el viejo")
         destino.chmod(0o755)
         lanzador = desktop.current_launcher({"APPIMAGE": str(destino)})
-        desktop.install(lanzador)
+        desktop.set_shortcuts(True, True, lanzador)
         entrada = desktop.desktop_path().read_text()
+        acceso = desktop.shortcut_path().read_text()
         self.assertEqual(desktop.status(lanzador).state, "current")
 
         nuevo = b"el nuevo" * 100
@@ -345,7 +346,10 @@ class TestElAccesoDirecto(_EnCasaFalsa):
         updates.install(updates.latest([_release()]), destino, updates.NORMAL, red)
 
         self.assertEqual(destino.read_bytes(), nuevo)
+        self.assertTrue(os.access(destino, os.X_OK))
         self.assertEqual(desktop.desktop_path().read_text(), entrada)
+        # The one on the desktop too: the new AppImage took the same path.
+        self.assertEqual(desktop.shortcut_path().read_text(), acceso)
         self.assertEqual(desktop.status(lanzador).state, "current")
 
 

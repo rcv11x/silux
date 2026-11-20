@@ -450,6 +450,36 @@ def status(launcher: Optional[Launcher] = None) -> DesktopStatus:
 # -- instalar y quitar -------------------------------------------------------
 
 
+def set_shortcuts(menu: bool, on_desktop: bool,
+                  launcher: Optional[Launcher] = None) -> None:
+    """Each shortcut on its own: the menu entry and the one on the desktop.
+
+    The icons stay while either needs them. What an older version left is
+    removed whenever something is written.
+    """
+    launcher = launcher or current_launcher()
+    if (menu or on_desktop) and not launcher.command:
+        raise DesktopError("no se sabe dónde está el archivo de este AppImage")
+    for viejo in legacy_files(launcher):
+        viejo.unlink()
+    if menu or on_desktop:
+        render_icons(launcher.app_id)
+    else:
+        for icono in icon_files(launcher.app_id):
+            if icono.exists():
+                icono.unlink()
+    entrada, acceso = desktop_path(launcher.app_id), shortcut_path(launcher.app_id)
+    if menu:
+        write_desktop(launcher)
+    elif entrada.exists():
+        entrada.unlink()
+    if on_desktop:
+        _write_shortcut(launcher)
+    elif acceso.exists():
+        acceso.unlink()
+    refresh_caches()
+
+
 def uninstall(launcher: Optional[Launcher] = None) -> int:
     """Quita la entrada, los iconos y el acceso del escritorio; devuelve
     cuántos archivos quitó."""
@@ -473,18 +503,116 @@ def install(launcher: Optional[Launcher] = None,
     con None se deja como esté, al día si existe.
     """
     launcher = launcher or current_launcher()
-    if not launcher.command:
-        raise DesktopError("no se sabe dónde está el archivo de este AppImage")
-    for viejo in legacy_files(launcher):
-        viejo.unlink()
-    icons = render_icons(launcher.app_id)
-    entry = write_desktop(launcher)
-    acceso = shortcut_path(launcher.app_id)
     if on_desktop is None:
-        on_desktop = acceso.is_file()
-    if on_desktop:
-        _write_shortcut(launcher)
-    elif acceso.is_file():
-        acceso.unlink()
-    refresh_caches()
-    return icons, entry
+        on_desktop = shortcut_path(launcher.app_id).is_file()
+    set_shortcuts(True, on_desktop, launcher)
+    return icon_files(launcher.app_id), desktop_path(launcher.app_id)
+
+
+# -- where the AppImage lives -------------------------------------------------
+
+def appimages_dir() -> pathlib.Path:
+    """~/AppImages: where a shortcut can point without breaking, because
+    nobody empties it the way Downloads or a temporary folder get emptied."""
+    return pathlib.Path.home() / "AppImages"
+
+
+def in_appimages(path) -> bool:
+    """Whether the file is in ~/AppImages, as a link or not: the folder is
+    resolved, the file itself is not followed."""
+    return pathlib.Path(os.path.abspath(path)).parent.resolve() == appimages_dir().resolve()
+
+
+def points_here(launcher: Optional[Launcher] = None) -> bool:
+    """Whether a shortcut the user sees opens this copy."""
+    launcher = launcher or current_launcher()
+    for ruta in (desktop_path(launcher.app_id), shortcut_path(launcher.app_id)):
+        texto = _read(ruta)
+        if texto is not None and _instalado(texto) == (launcher.command, launcher.working_dir):
+            return True
+    return False
+
+
+@dataclass(frozen=True)
+class Moved:
+    """Where the AppImage is now, and whether the old one is still there
+    (it could not be moved, only copied)."""
+
+    path: pathlib.Path
+    copied: bool
+
+
+def _free_name(carpeta: pathlib.Path, nombre: str) -> pathlib.Path:
+    """The name, or the name with -2, -3… if one with it is already there."""
+    destino = carpeta / nombre
+    raiz, extension = os.path.splitext(nombre)
+    n = 2
+    while destino.exists():
+        destino = carpeta / f"{raiz}-{n}{extension}"
+        n += 1
+    return destino
+
+
+def move_to_appimages(path) -> Moved:
+    """Moves the AppImage into ~/AppImages without overwriting anything.
+
+    A hard link and then removing the old name: the link fails if the name is
+    taken, so another file can never be overwritten, and it is a move when
+    both are on the same file system. Across file systems or without
+    permission to remove the old one, it is copied, and the old one stays.
+    """
+    origen = pathlib.Path(path)
+    carpeta = appimages_dir()
+    carpeta.mkdir(parents=True, exist_ok=True)
+    while True:
+        destino = _free_name(carpeta, origen.name)
+        try:
+            os.link(origen, destino)
+        except FileExistsError:
+            continue
+        except OSError:
+            break
+        try:
+            origen.unlink()
+        except OSError:
+            return Moved(destino, copied=True)
+        return Moved(destino, copied=False)
+    while True:
+        destino = _free_name(carpeta, origen.name)
+        try:
+            with open(origen, "rb") as fuente, open(destino, "xb") as copia:
+                shutil.copyfileobj(fuente, copia, 1 << 20)
+        except FileExistsError:
+            continue
+        except OSError:
+            try:
+                destino.unlink()
+            except OSError:
+                pass
+            raise
+        destino.chmod(0o755)
+        return Moved(destino, copied=True)
+
+
+# What the AppImage's AppRun adds to the environment, pointing inside its
+# mount. Opening the moved copy without them: it sets its own.
+_DEL_MONTAJE = ("PYTHONHOME", "PYTHONPATH", "LD_LIBRARY_PATH", "QT_PLUGIN_PATH",
+                "QT_QPA_PLATFORM_PLUGIN_PATH")
+_DEL_RUNTIME = ("APPIMAGE", "APPDIR", "ARGV0", "OWD")
+
+
+def relaunch_environment(environ: Mapping[str, str]) -> dict[str, str]:
+    """The environment to open another AppImage from this one: what this
+    mount added, taken out again; the rest, as the user had it."""
+    montaje = environ.get("APPDIR") or ""
+    entorno = {k: v for k, v in environ.items() if k not in _DEL_RUNTIME}
+    for variable in _DEL_MONTAJE:
+        if variable not in entorno or not montaje:
+            continue
+        quedan = [parte for parte in entorno[variable].split(os.pathsep)
+                  if parte and not parte.startswith(montaje)]
+        if quedan:
+            entorno[variable] = os.pathsep.join(quedan)
+        else:
+            del entorno[variable]
+    return entorno

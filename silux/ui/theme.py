@@ -418,6 +418,7 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
     QLabel#FieldName  {{ color: {p.muted}; }}
     QLabel#FieldValue {{ color: {p.ink}; }}
     QLabel#Muted      {{ color: {p.muted}; }}
+    QLabel#WarnText   {{ color: {p.warn}; }}
     QLabel#Accent     {{ color: {p.accent}; }}
 
     /* El «copiado» que aparece un momento junto al valor. Va con el color de

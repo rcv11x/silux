@@ -117,11 +117,9 @@ class TestElContraste(unittest.TestCase):
     def test_el_texto_de_cada_insignia_se_lee(self):
         from PySide6.QtGui import QColor
 
-        from silux.ui.pages.settings import (ESTADOS_DE_PERMISOS, ESTADOS_DEL_MENU,
-                                             Insignia)
+        from silux.ui.pages.settings import ESTADOS_DE_PERMISOS, Insignia
 
-        tonos = {tono for _clave, _ayuda, tono in
-                 (*ESTADOS_DE_PERMISOS.values(), *ESTADOS_DEL_MENU.values())}
+        tonos = {tono for _clave, _ayuda, tono in ESTADOS_DE_PERMISOS.values()}
         for tema, p in self._paletas().items():
             for tono in sorted(tonos):
                 insignia = Insignia(p)
@@ -136,6 +134,19 @@ class TestElContraste(unittest.TestCase):
                 with self.subTest(tema=tema, tono=tono):
                     self.assertGreaterEqual(contraste(texto, fondo), 4.5)
                 insignia.deleteLater()
+
+    def test_the_small_warning_text_reads_on_the_card(self):
+        """The one under «Accesos directos» when the AppImage is not in
+        ~/AppImages: small text, so 4.5:1 like any other."""
+        from PySide6.QtGui import QColor
+
+        from silux.ui import theme
+
+        for tema, p in self._paletas().items():
+            regla = _regla(theme.stylesheet(p), "QLabel#WarnText")
+            color = QColor(re.search(r"color:\s*(#[0-9A-Fa-f]{6})", regla).group(1))
+            with self.subTest(tema=tema):
+                self.assertGreaterEqual(contraste(color, p.q("surface")), 4.5)
 
     def test_las_flechas_del_selector_se_ven(self):
         """Medidas en la página montada con la hoja de la aplicación: el

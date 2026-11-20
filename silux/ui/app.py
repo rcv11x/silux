@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import math
 import os
+import subprocess
 import sys
 import time
 from typing import Optional
@@ -342,6 +343,7 @@ class MainWindow(QMainWindow):
         self.settings_page = SettingsPage(self.prefs, self._palette)
         self.settings_page.changed.connect(self._on_preferences)
         self.settings_page.update_check_requested.connect(self.buscar_actualizacion)
+        self.settings_page.relaunch_requested.connect(self._relaunch)
         self.settings_page.elevation_requested.connect(self._on_elevation_requested)
         self.settings_page.explain_requested.connect(self._explicar_permisos)
         self.settings_page.permanent_requested.connect(self._on_permanent_requested)
@@ -723,6 +725,27 @@ class MainWindow(QMainWindow):
         self._on_preferences(replace(self.prefs, network_unit=unidad))
 
     # -- actualizaciones -----------------------------------------------------
+
+    def _relaunch(self, path: str) -> None:
+        """Closes this window and opens Silux from where it was moved.
+
+        Closed first, so its preferences are saved before the new one reads
+        them. The new one in its own session, so it does not go with this
+        process, and without what this AppImage's mount added to the
+        environment.
+        """
+        if not self.close():
+            return
+        try:
+            subprocess.Popen([path], env=desktop.relaunch_environment(os.environ),
+                             cwd=str(pathlib.Path.home()), start_new_session=True,
+                             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL)
+        except OSError as error:
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(None, _("settings.shortcut.move.title"),
+                                _("settings.shortcut.reopen.failed").format(
+                                    ruta=render.home_path(path), error=error))
 
     def buscar_actualizacion(self) -> None:
         """Pregunta a GitHub por la última versión, fuera de este hilo."""
