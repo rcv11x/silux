@@ -487,8 +487,19 @@ class MonitorPage(ScrollPage):
                            action=accion)
             if accion:
                 aviso.action_clicked.connect(
-                    lambda _=False, m=hint.module, a=aviso: self._cargar_driver(m, a))
+                    lambda _=False, m=hint.module, d=hint.provides, a=aviso:
+                    self._confirm_load(m, d, a))
             self._hint_host.addWidget(aviso)
+
+    def _confirm_load(self, module: str, gives: str, notice) -> None:
+        """Its own warning first: this changes the system, unlike giving
+        permissions to read. Nothing is asked for until it is accepted."""
+        from ..dialogs import ModuleLoadDialog
+
+        dialog = ModuleLoadDialog(module, gives, parent=self)
+        dialog.load_requested.connect(lambda: self._cargar_driver(module, notice))
+        self._module_dialog = dialog
+        dialog.open()
 
     def _cargar_driver(self, modulo: str, aviso) -> None:
         """`modprobe` ahora y una línea en `/etc/modules-load.d` para después.

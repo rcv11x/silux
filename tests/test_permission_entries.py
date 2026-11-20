@@ -75,7 +75,7 @@ class TestEveryEntryWarnsFirst(unittest.TestCase):
             entries += [(f"padlock in {key}", key, lock) for lock in page.findChildren(LockMark)
                         if getattr(lock, "_pulsable", False) and lock.isVisibleTo(window)]
             # Loading a sensor driver is not asking for permissions to read:
-            # it changes the system, and the warning says nothing changes.
+            # it changes the system, and has its own warning (test_module_load).
             entries += [(f"notice in {key}", key, notice.action_button)
                         for notice in page.findChildren(Notice)
                         if notice.action_button is not None
