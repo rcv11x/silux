@@ -108,6 +108,29 @@ class TestLaMaqueta(unittest.TestCase):
         self.addCleanup(pagina.deleteLater)
         self.assertIn(f"{cuantas} piezas ARM", pagina.db_info.text())
 
+    def test_each_number_of_the_table_says_where_it_comes_from(self):
+        pagina = _pagina(self.app)
+        self.addCleanup(pagina.deleteLater)
+        texto = pagina.db_info.text()
+        datos = db.load()
+        for numero, fuente in ((datos["counts"]["intel_family"], "Linux"),
+                               (datos["counts"]["amd_models"], "amd.com"),
+                               (datos["counts"]["cpuid_nodes"], "cpuid"),
+                               (datos["counts"]["sockets"], "CPU-X")):
+            with self.subTest(fuente=fuente):
+                self.assertRegex(texto, rf"\b{numero} [^;]* {fuente}\b")
+        self.assertNotIn("gen_cpu_db", texto)
+
+    def test_python_and_qt_with_the_versions_this_copy_runs(self):
+        import platform
+
+        from PySide6.QtCore import qVersion
+        pagina = _pagina(self.app)
+        self.addCleanup(pagina.deleteLater)
+        textos = _textos(pagina)
+        self.assertIn(f"Python {platform.python_version()}", textos)
+        self.assertTrue([t for t in textos if t.startswith("PySide6") and qVersion() in t])
+
     def test_sin_marcas_de_propuesta_y_claude_con_su_descripcion(self):
         pagina = _pagina(self.app)
         self.addCleanup(pagina.deleteLater)

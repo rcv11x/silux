@@ -18,9 +18,11 @@ alguien instala la entrada desde la terminal con la página abierta, se ve.
 from __future__ import annotations
 
 import pathlib
+import platform
 from typing import Callable, Optional
 
-from PySide6.QtCore import QLocale, QRectF, QSize, Qt, QThread, Signal
+import PySide6
+from PySide6.QtCore import QLocale, QRectF, QSize, Qt, QThread, Signal, qVersion
 from PySide6.QtGui import QColor, QFontMetrics, QPainter, QTextCursor, QTextDocument
 from PySide6.QtWidgets import (
     QAbstractButton,
@@ -48,9 +50,10 @@ AUTORIA = (
     ("Claude", "about.claude"),
 )
 
+# The versions this copy runs on: an AppImage carries its own Python and Qt.
 CONSTRUIDO_CON = (
-    ("Python 3", "about.python"),
-    ("PySide6 / Qt 6", "about.qt"),
+    (f"Python {platform.python_version()}", "about.python"),
+    (f"PySide6 {PySide6.__version__} / Qt {qVersion()}", "about.qt"),
     ("ctypes y mmap", "about.ctypes"),
     ("polkit", "about.polkit"),
 )
@@ -624,13 +627,20 @@ class SettingsPage(ScrollPage):
         data = db.load()
         counts = data.get("counts", {})
         sources = data.get("sources", {})
+        # Each number with the source it comes from: they count different
+        # things (rules, families, models, nodes) and do not add up.
         return _("settings.db.counts").format(
             intel=counts.get("x86_intel", 0),
             amd=counts.get("x86_amd", 0),
             arm=counts.get("arm_parts", 0),
-            sockets=counts.get("sockets", 0),
             commit=sources.get("libcpuid", {}).get("commit", "?"),
             fecha=sources.get("libcpuid", {}).get("date", "?"),
+            familias=counts.get("intel_family", 0),
+            kernel=sources.get("linux", {}).get("tag", "?"),
+            modelos=counts.get("amd_models", 0),
+            nodos=counts.get("cpuid_nodes", 0),
+            cpuid=sources.get("cpuid", {}).get("version", "?"),
+            sockets=counts.get("sockets", 0),
             cpux=sources.get("cpu-x", {}).get("commit", "?"))
 
     def _bloque(self, titulo: str, lineas: tuple[tuple[str, str], ...]) -> QWidget:
