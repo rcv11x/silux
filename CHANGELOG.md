@@ -158,6 +158,9 @@ publica se dice con la versión que lo trae.
   de 28.0 s») y cuántas veces se frenó por temperatura desde el arranque.
 - Cambiado: un procesador que no está en la tabla ya no repite «no está en la
   tabla de esta versión» en tres filas: lo dice el aviso de abajo.
+- Arreglado: en un Ryzen de dos chiplets con V-Cache en uno (7950X3D,
+  9950X3D), la página CPU enseñaba una sola L3 de 32 MB; ahora «96 MB +
+  32 MB», con qué CPU lleva cada una al pasar el ratón.
 
 ### Cachés
 
