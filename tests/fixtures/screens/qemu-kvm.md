@@ -41,10 +41,6 @@ Intel 82540EM Gigabit Ethernet Controller · 1 Gb/s · dúplex completo
 BIOS Arch Linux 1.17.0-2-2 · 2014-04-01
 BIOS heredada
 
-> **Faltan 2 datos que este equipo sí tiene**
-> Detalle de los módulos de memoria
-> Voltaje del procesador
-
 ## CPU
 
 QEMU Virtual version 2.5+
@@ -70,7 +66,6 @@ Máquina virtual · KVM · x86_64
 - Núcleos: 4
 - Hilos: 4
 - Virtualización: dentro de una máquina virtual
-- Voltaje: (necesita permisos)
 Es un procesador virtual: lo que declara lo decide el hipervisor, así que no se busca en la tabla de procesadores, que es de donde salen el nombre en clave, la tecnología y el encapsulado.
 
 #### Identificación (CPUID)
@@ -79,21 +74,6 @@ Es un procesador virtual: lo que declara lo decide el hipervisor, así que no se
 - Modelo: 107 (0x6B)
 - Stepping: 1
 - Firma CPUID: 0x00060FB1
-- Microcódigo: —
-
-### Relojes
-
-- Frecuencia: —
-- Multiplicador: —
-- Base: —
-- Mínima: —
-- Máxima (kernel): —
-- Máxima (silicio): —
-- Bus (BCLK): —
-- Turbo: —
-- Driver: —
-- Gobernador: —
-- Preferencia de energía: —
 
 ### Jerarquía de caché
 
@@ -108,24 +88,12 @@ MMX · SSE · SSE2 · SSE3 · SSSE3 · SSE4.1 · SSE4.2 · AES-NI
 27 banderas detectadas por CPUID · 19 no destacadas
 
 > **Este equipo no lo expone**
-> Esta máquina no publica su reloj base por ninguna vía.
-> La hoja 0x16 de CPUID es de Intel Skylake en adelante, ACPI CPPC necesita que el firmware lo declare, y la cadena de marca de este procesador no lleva la frecuencia.
-
-> **Este equipo no lo expone**
-> Este equipo no publica su reloj de referencia (BCLK).
-> Solo lo dan CPUID 0x16 en Intel moderno o los registros MSR del procesador. Deducirlo del reloj base únicamente es fiable en plataformas con ACPI CPPC, donde son 100 MHz.
-
-> **Este equipo no lo expone**
 > El hipervisor no expone la frecuencia del procesador.
 > Quien gobierna el reloj es el anfitrión: dentro de una máquina virtual no hay cpufreq que leer.
 
 > **Este equipo no lo expone**
 > Esta CPU no expone contadores de energía RAPL.
 > Es normal en AMD antiguos, en ARM y en máquinas virtuales.
-
-> **Hace falta elevar permisos**
-> El voltaje del núcleo lo tiene el procesador, no un sensor de la placa.
-> Se lee de un registro del propio procesador, y eso lo reserva el kernel al administrador.
 
 ## Cachés
 
@@ -201,8 +169,6 @@ El firmware de esta placa no dice su fabricante, su modelo ni su revisión.
 | SATA | 82801IR/IO/IH (ICH9R/DO/DH) 6 port SATA Controller [AHCI mode] | en la placa |  | ahci |
 | USB | 82371SB PIIX3 USB [Natoma/Triton II] | en la placa |  | uhci_hcd |
 
-El nombre de cada ranura («PCIEX16», «M2A_CPU») está en la tabla del firmware y sale al dar permisos.
-
 > **Este equipo no lo expone**
 > La BIOS no publica el modelo de la placa.
 > Algunos fabricantes dejan el campo sin rellenar a propósito.
@@ -210,7 +176,7 @@ El nombre de cada ranura («PCIEX16», «M2A_CPU») está en la tabla del firmwa
 ## Memoria
 
 3.8 GB utilizables
-El detalle por módulo necesita permisos de administrador
+Memoria de una máquina virtual: no hay módulos que leer
 Aplicaciones 206.2 MB · Caché 773.5 MB · Buffers 34.6 MB · Libre 2.8 GB
 Disponible 3.4 GB · sin intercambio
 
@@ -225,7 +191,6 @@ Disponible 3.4 GB · sin intercambio
 - Compartida: 572 KB
 - Libre: 2.8 GB
 - Intercambio: sin swap
-En este equipo la memoria la controla el chipset de la placa, no el procesador: hasta qué velocidad llega lo decide la placa.
 
 ### Ancho de banda y latencia
 
@@ -235,14 +200,6 @@ Mide cuánto se mueve la memoria de verdad, leyendo un bloque más grande que la
 
 El detalle de los módulos está en la tabla SMBIOS, que el kernel reserva al administrador porque junto a esos campos van los números de serie del equipo.
 El ayudante que se lanza solo sabe leer esa tabla y unos registros del procesador: no ejecuta órdenes ni escribe nada.
-
-> **Este equipo no lo expone**
-> Esta placa no expone ningún controlador SMBus, que es el bus por el que se leen los chips SPD de los módulos.
-> Pasa en portátiles y en placas donde el firmware lo reserva para sí mismo. No hay forma de leerlo desde el sistema.
-
-> **Este equipo no lo expone**
-> Este equipo no publica cuánto tráfico mueve el controlador de memoria.
-> Solo lo publican los procesadores Intel. En AMD el kernel no le pone nombre a esos contadores, y una cifra deducida a ciegas sería peor que ninguna.
 
 ## Gráficos
 
@@ -509,12 +466,6 @@ SENSORES · 5 en 2 dispositivos
 
 **Datos que faltan:**
 
-- `cpu.clocks.base_hz` (este equipo no lo expone): Esta máquina no publica su reloj base por ninguna vía.
-- `cpu.clocks.bus_hz` (este equipo no lo expone): Este equipo no publica su reloj de referencia (BCLK).
 - `board.name` (este equipo no lo expone): La BIOS no publica el modelo de la placa.
-- `modules` (requiere permisos de administrador): Los módulos de memoria están en la tabla SMBIOS, que el kernel reserva al administrador.
-- `spd` (este equipo no lo expone): Esta placa no expone ningún controlador SMBus, que es el bus por el que se leen los chips SPD de los módulos.
 - `cpu.clocks.current_hz` (este equipo no lo expone): El hipervisor no expone la frecuencia del procesador.
 - `cpu.power` (este equipo no lo expone): Esta CPU no expone contadores de energía RAPL.
-- `memory.traffic` (este equipo no lo expone): Este equipo no publica cuánto tráfico mueve el controlador de memoria.
-- `cpu.voltage_v` (requiere permisos de administrador): El voltaje del núcleo lo tiene el procesador, no un sensor de la placa.

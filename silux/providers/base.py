@@ -225,6 +225,11 @@ def en_reposo(dispositivo) -> bool:
     return read_text(f"{dispositivo}/power/runtime_status") in ("suspended", "suspending")
 
 
+def en_maquina_virtual(draft: "Draft") -> bool:
+    """Whether CPUID, read earlier in the sample, says this is a guest."""
+    return any(t.get("in_virtual_machine") for t in draft.types.values())
+
+
 def read_int(path: str) -> Optional[int]:
     raw = read_text(path)
     if raw is None:

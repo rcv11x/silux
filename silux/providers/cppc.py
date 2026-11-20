@@ -31,7 +31,7 @@ import re
 from typing import Optional
 
 from ..model import Clocks, Need
-from .base import Draft, Provider, read_int, read_text
+from .base import Draft, Provider, en_maquina_virtual, read_int, read_text
 from ..i18n import _
 from .. import kernel, sysroot
 
@@ -114,6 +114,11 @@ class CppcClocks(Provider):
             falta_bus = falta_bus or (bus is None and es_x86)
 
         _anotar_calidad(draft)
+
+        # In a virtual machine the hypervisor exposes no clock at all, and
+        # sysfs_cpu says that once.
+        if en_maquina_virtual(draft):
+            falta_base = falta_bus = False
 
         if falta_base:
             draft.note(

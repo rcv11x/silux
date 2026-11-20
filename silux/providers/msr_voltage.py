@@ -42,7 +42,7 @@ from ..i18n import _
 from ..model import Need
 from ..privileged.client import HelperError, PrivilegedClient
 from .. import rawcpuid
-from .base import Draft, Provider
+from .base import Draft, Provider, en_maquina_virtual
 
 # Qué P-state está corriendo ahora mismo (bits 2:0).
 AMD_PSTATE_STATUS = 0xC0010063
@@ -122,6 +122,10 @@ class MsrVoltage(Provider):
                 _("prov.msr.novolt"), _("prov.msr.novolt.hint"), _("what.cpu.voltage"))
 
     def collect(self, draft: Draft) -> None:
+        # KVM answers the voltage register with a constant: inside a virtual
+        # machine there is no voltage to read, with permissions or without.
+        if en_maquina_virtual(draft):
+            return
         # Si hwmon ya encontró un sensor etiquetado, ese manda: mide lo que
         # llega al procesador y esto solo dice lo que pide.
         if any(entry.get("voltage_v") is not None

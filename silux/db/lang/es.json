@@ -750,6 +750,7 @@
   "memory.chip.cpumax": "al máximo del procesador",
   "memory.chip.underclocked": "por debajo de su velocidad",
   "memory.detail.needsroot": "El detalle por módulo necesita permisos de administrador",
+  "memory.detail.virtual": "Memoria de una máquina virtual: no hay módulos que leer",
   "memory.elev.alreadyroot": "El programa ya corre como administrador pero la tabla SMBIOS no se pudo leer.",
   "memory.elev.helper": "El ayudante que se lanza solo sabe leer esa tabla y unos registros del procesador: no ejecuta órdenes ni escribe nada.",
   "memory.elev.nopkexec": "No se encuentra pkexec, así que no hay forma de pedir permisos.",

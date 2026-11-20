@@ -600,6 +600,8 @@ class MemoryPage(ScrollPage):
     def _subtitle(self, snapshot: Snapshot) -> str:
         array = snapshot.memory_array
         modules = snapshot.modules
+        if not modules and snapshot.cpu.types and snapshot.cpu.types[0].in_virtual_machine:
+            return _("memory.detail.virtual")
         if not modules:
             if snapshot.spd:
                 catalogados = {i.rated_mts for i in snapshot.spd if i.rated_mts}

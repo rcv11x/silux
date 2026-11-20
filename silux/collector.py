@@ -19,6 +19,7 @@ from typing import Iterable, Optional, Sequence
 
 from .model import Need, Snapshot
 from .privileged.client import PrivilegedClient
+from .providers.base import en_maquina_virtual
 from .i18n import _
 from .providers import (
     Batteries,
@@ -100,6 +101,18 @@ DEFAULT_PROVIDERS: tuple[type[Provider], ...] = (
 )
 
 
+# What a virtual machine does not have, whatever the notice that would ask
+# for it says: a voltage (KVM answers that register with a constant), memory
+# modules (QEMU's SMBIOS makes one up), SPD chips and a memory controller to
+# count. Those notices are decided before the sample says it is a guest.
+NOT_IN_A_VM = frozenset(("cpu.voltage_v", "modules", "spd", "memory.traffic"))
+
+
+def _without_what_a_vm_lacks(draft: Draft) -> None:
+    if en_maquina_virtual(draft):
+        draft.notes = [n for n in draft.notes if n.path not in NOT_IN_A_VM]
+
+
 def _ruta_de(exc: OSError) -> str:
     """El fichero que provocó el error, o una descripción si no lo dice."""
     return str(exc.filename) if exc.filename else str(exc)
@@ -138,6 +151,7 @@ class Collector:
 
         draft = self._clone(self._static)
         self._collect((p for p in self.providers if not p.static), into=draft)
+        _without_what_a_vm_lacks(draft)
         if draft.static_stale:
             # Algo que dormía al leer lo estático ha despertado: la próxima
             # vuelta lo lee entero.

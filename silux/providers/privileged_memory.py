@@ -28,7 +28,7 @@ from ..privileged.client import (
     PrivilegedClient,
     already_root,
 )
-from .base import Draft, Provider
+from .base import Draft, Provider, en_maquina_virtual
 from ..i18n import _
 from .. import sysroot
 from ..system_env import system_environment
@@ -86,6 +86,11 @@ class PrivilegedMemory(Provider):
             message=self._error,
             outdated=outdated,
         )
+
+        # QEMU's SMBIOS declares a «DIMM 0» of its own making: a virtual
+        # machine has no modules to read, with permissions or without.
+        if en_maquina_virtual(draft):
+            return
 
         if already_root():
             # Sin ayudante de por medio: la tabla ya se puede leer.

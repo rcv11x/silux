@@ -586,7 +586,9 @@ def memory_controller_in_chipset(cpu_type) -> bool:
     Entonces no hay «máximo del procesador» del que hablar: hasta dónde llega
     la memoria lo decide la placa.
     """
-    if getattr(cpu_type, "vendor", "") != "Intel":
+    # A virtual CPU's family and model are the hypervisor's: QEMU's is a
+    # family 15 that has no chipset behind it.
+    if getattr(cpu_type, "vendor", "") != "Intel" or getattr(cpu_type, "in_virtual_machine", False):
         return False
     familia, modelo = cpu_type.disp_family, cpu_type.disp_model
     return familia == 15 or (familia == 6 and modelo in _CONTROLADOR_EN_EL_CHIPSET)

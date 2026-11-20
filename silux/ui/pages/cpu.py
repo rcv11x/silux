@@ -121,7 +121,7 @@ class TypeSection(QWidget):
         self.identity_fold.body.addWidget(self.identity)
         processor_card.body.addWidget(self.identity_fold)
 
-        clocks_card = Card(_("cpu.card.clocks"))
+        clocks_card = self.clocks_card = Card(_("cpu.card.clocks"))
         self.clocks = InfoGrid()
         for name in CLOCK_FIELDS:
             self.clocks.add(_(name))
@@ -192,6 +192,14 @@ class TypeSection(QWidget):
         i(_("cpu.field.signature"), render.signature(cpu_type.signature),
           tooltip=render.signature_tooltip(cpu_type))
         i(_("cpu.field.microcode"), cpu_type.microcode or render.DASH)
+        # A virtual CPU has no microcode or voltage of its own, and when the
+        # hypervisor gives no clock at all the card would be all dashes: the
+        # notice below the cards says why.
+        self.identity.set_visible(_("cpu.field.microcode"),
+                                  not (virtual and cpu_type.microcode is None))
+        self.processor.set_visible(_("cpu.field.voltage"),
+                                   not (virtual and cpu_type.voltage_v is None))
+        self.clocks_card.setVisible(not (virtual and cpu_type.clocks.current_hz is None))
         # El voltaje va con los demás datos del silicio y no con los relojes:
         # es lo que la pieza pide para sostener la frecuencia que tiene puesta.
         # Si falta por permisos lleva candado, que lo pone la página después:

@@ -750,6 +750,7 @@
   "memory.chip.cpumax": "at the processor's maximum",
   "memory.chip.underclocked": "below its rated speed",
   "memory.detail.needsroot": "Per-module detail needs administrator permissions",
+  "memory.detail.virtual": "A virtual machine's memory: there are no modules to read",
   "memory.elev.alreadyroot": "The program already runs as administrator but the SMBIOS table could not be read.",
   "memory.elev.helper": "The helper that gets launched only knows how to read that table and a few processor registers: it runs no commands and writes nothing.",
   "memory.elev.nopkexec": "pkexec is not installed, so there is no way to ask for permissions.",

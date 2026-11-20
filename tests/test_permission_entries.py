@@ -93,6 +93,10 @@ class TestEveryEntryWarnsFirst(unittest.TestCase):
         from silux.ui.widgets import LockMark
 
         for name, photo in self.photos.items():
+            if not photo.permission_notes:
+                # A virtual machine: nothing it has needs permissions
+                # (test_virtual_machine), so nothing asks.
+                continue
             window = self._window(photo)
             entries = self._entries(window)
             self.assertTrue([e for e in entries if e[0].startswith("padlock")],
