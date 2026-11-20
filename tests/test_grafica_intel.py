@@ -88,6 +88,14 @@ class TestEnLaPagina(unittest.TestCase):
         self.assertFalse(self._visible(relojes, "gpu.clock.coremax"))
         self.assertFalse(self._visible(relojes, "gpu.clock.limits"))
 
+    def test_a_driver_without_version_does_not_write_none(self):
+        # A tester's i915 without Mesa read «i915 None» in the header, and a
+        # QEMU guest «bochs-drm None».
+        seccion = self._seccion(self._con_gpu(driver_version=None))
+        chips = [texto for texto, _resaltada in seccion.badges._chips]
+        self.assertIn("i915", chips)
+        self.assertFalse([c for c in chips if "None" in c])
+
     def test_unos_limites_cambiados_se_ven(self):
         relojes = dataclasses.replace(self.intel.gpus[0].clocks, core_max_hz=900_000_000)
         seccion = self._seccion(self._con_gpu(clocks=relojes))

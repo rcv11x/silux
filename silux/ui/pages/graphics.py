@@ -769,7 +769,7 @@ class GpuSection(QWidget):
     def _apply_badges(self, gpu: Gpu) -> None:
         chips = [c for c in (
             gpu.codename,
-            f"{gpu.driver} {gpu.driver_version}".strip() if gpu.driver else None,
+            " ".join(p for p in (gpu.driver, gpu.driver_version) if p) if gpu.driver else None,
             render.size(gpu.memory.total_bytes) if gpu.memory.total_bytes else None,
             render.compute_units_short(gpu),
             _("gpu.chip.integrated") if gpu.integrated else None,
