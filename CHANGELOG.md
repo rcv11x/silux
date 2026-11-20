@@ -11,10 +11,10 @@ que hace falta.
 
 ---
 
-## Sin publicar
+## 0.4-prueba2 (20 de noviembre de 2026)
 
-Lo que ha entrado después de la 0.4-prueba1, a partir de los primeros
-informes que mandó la gente.
+Segunda versión de prueba de la 0.4: lo que se ha arreglado con los primeros
+informes de la prueba1.
 
 ### Procesador
 
@@ -25,7 +25,6 @@ informes que mandó la gente.
   que declara lo decide el hipervisor. No salen nombre en clave, tecnología
   ni encapsulado, la ficha dice por qué y no se pide el informe para
   completarlo.
-
 - Arreglado: en un procesador híbrido (Intel de 12.ª en adelante), la L3 que
   comparten los núcleos P y E se contaba dos veces: un i5-12450H decía
   31.7 MB de caché en total en vez de 19.7.
@@ -58,6 +57,7 @@ informes que mandó la gente.
   ofrecen también las versiones de prueba; sin elegir, una versión de prueba
   sigue las pruebas (quien tiene la prueba2 recibe la prueba3 con «Buscar
   ahora») y una final, las finales. Una prueba recibe su final en los dos.
+  La prueba1 no tiene canal y no ve la prueba2: esta se descarga a mano.
 
 ### Textos
 
@@ -76,7 +76,6 @@ informes que mandó la gente.
 - Arreglado: en un equipo llamado como su marca («lenovo» en un Lenovo), el
   informe anónimo cambiaba la marca por «silux-pc» en los nombres de los
   sensores. El nombre del equipo se sigue tapando.
-
 - Arreglado: el informe hecho desde la ventana justo después de «Dar
   permisos» salía sin el consumo del procesador, aunque el equipo lo diera:
   se quedaba con la primera lectura, y ese dato sale de restar dos. Ahora se
