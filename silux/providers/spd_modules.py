@@ -12,12 +12,17 @@ legible por cualquiera en cuanto el kernel carga su driver.
 from __future__ import annotations
 
 import dataclasses
-from typing import Optional
 
 from .. import spd as spd_module
 from ..model import DriverHint, MemoryModule, Need
 from .base import Draft, Provider
 from ..i18n import _
+
+
+def _has_a_slot(module) -> bool:
+    """A module in a slot («…DIMM0», «DIMM_A1») and not soldered on the board
+    («Controller0-ChannelA»), by the name SMBIOS gives its place."""
+    return "dimm" in (module.locator or "").lower()
 
 
 class SpdModules(Provider):
@@ -76,20 +81,24 @@ class SpdModules(Provider):
             return
 
         pending = list(readings)
+        matches: dict[int, object] = {}
+        # Every module by part number first: module by module, a ThinkPad's
+        # soldered memory took the slot's only reading by order before the
+        # slot's module could match it (F-M16).
         for index in populated:
-            module = draft.modules[index]
-            match: Optional[object] = None
-
-            if module.part_number:
-                match = next(
-                    (r for r in pending
-                     if r.part_number and r.part_number.strip() == module.part_number.strip()),
-                    None,
-                )
-            if match is None and pending:
-                match = pending[0]
-            if match is None:
-                continue
-
-            pending.remove(match)
-            draft.modules[index] = dataclasses.replace(module, spd=match)
+            part = (draft.modules[index].part_number or "").strip()
+            match = next((r for r in pending
+                          if part and r.part_number and r.part_number.strip() == part), None)
+            if match is not None:
+                pending.remove(match)
+                matches[index] = match
+        # Then the rest in order, a slot before memory soldered on the board:
+        # that has no SPD chip of its own on the bus.
+        rest = sorted((i for i in populated if i not in matches),
+                      key=lambda i: not _has_a_slot(draft.modules[i]))
+        for index in rest:
+            if not pending:
+                break
+            matches[index] = pending.pop(0)
+        for index, match in matches.items():
+            draft.modules[index] = dataclasses.replace(draft.modules[index], spd=match)

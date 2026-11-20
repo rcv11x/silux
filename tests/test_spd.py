@@ -181,6 +181,32 @@ class TestEmparejado(unittest.TestCase):
         self.assertIsNone(draft.modules[0].spd)
         self.assertIsNotNone(draft.modules[1].spd)
 
+    def _t14(self, reading_part):
+        """The author's ThinkPad T14 Gen 2i: 8 GB soldered on the board and an
+        8 GB SODIMM in the slot, which is the only SPD the bus has."""
+        draft = self.Draft()
+        draft.modules = [
+            self.MemoryModule(locator="Controller0-ChannelA", populated=True,
+                              part_number="M471A1G44AB0-CWE"),
+            self.MemoryModule(locator="Controller1-ChannelA-DIMM0", populated=True,
+                              part_number="9905711-049.A00G"),
+        ]
+        lectura = spd.decode(FIXTURE.read_bytes(), address="0-0050", slot=0)
+        self.merge(draft, [__import__("dataclasses").replace(lectura, part_number=reading_part)])
+        return draft.modules
+
+    def test_a_reading_that_matches_a_later_module_is_not_taken_first(self):
+        # Module by module, the soldered one took the slot's only reading by
+        # order before the slot's module could match it by part number.
+        soldado, ranura = self._t14("9905711-049.A00G")
+        self.assertIsNone(soldado.spd)
+        self.assertIsNotNone(ranura.spd)
+
+    def test_by_order_a_slot_goes_before_memory_soldered_on_the_board(self):
+        soldado, ranura = self._t14("KF3200C20S4/8G")
+        self.assertIsNone(soldado.spd)
+        self.assertIsNotNone(ranura.spd)
+
     def test_sin_modulos_de_smbios_no_hace_nada(self):
         draft = self.Draft()
         self.merge(draft, [self.lectura])

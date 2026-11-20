@@ -13,6 +13,13 @@ que hace falta.
 
 ## Sin publicar
 
+### Memoria
+
+- Arreglado: en un portátil con memoria soldada y un módulo en la ranura, los
+  datos del chip SPD del módulo de la ranura (fabricante de los chips, fecha,
+  temporizaciones) salían pegados a la memoria soldada, que no tiene ese
+  chip.
+
 ### Procesador
 
 - Arreglado: un procesador sin driver de frecuencia (cpufreq) salía con
