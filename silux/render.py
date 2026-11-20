@@ -1943,10 +1943,15 @@ def core_quality_spread(logical) -> Optional[str]:
 # Coletillas que los fabricantes meten en la cadena de marca y que no
 # distinguen a un procesador de otro.
 _RELLENO_DE_MARCA = re.compile(
-    r"\s*(?:\d+-Core\s+Processor|Processor|CPU|\(R\)|\(TM\)|™|®"
+    r"\s*(?:\d+-Core\s+Processor|Processor|CPU(?!\s+version)|\(R\)|\(TM\)|™|®"
     r"|@\s*[\d.]+\s*[GM]Hz|with\s+Radeon\s+Graphics"
     r"|w/\s+Radeon[\w\s]*Graphics)",
     re.IGNORECASE)
+
+
+def lost_packets(n: int) -> str:
+    """«1 paquete perdido», «12 682 paquetes perdidos»."""
+    return _("net.lost.one") if n == 1 else _("net.lost").format(n=thousands(n))
 
 
 def cpu_short_name(brand: Optional[str]) -> str:

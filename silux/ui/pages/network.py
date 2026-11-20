@@ -284,7 +284,7 @@ class NetworkPage(ScrollPage):
                 n=render.thousands(trafico.tx_packets)))
             perdidos = trafico.problems
             self.tile_down.set_detail(
-                _("net.lost").format(n=render.thousands(perdidos)) if perdidos
+                render.lost_packets(perdidos) if perdidos
                 else _("net.nolost"))
 
     def _alternar_virtuales(self) -> None:

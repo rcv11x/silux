@@ -6,7 +6,7 @@ silux-pc · Máquina virtual · KVM
 
 ### Procesador
 
-QEMU Virtual version 2.5+
+QEMU Virtual CPU version 2.5+
 4 núcleos · 4 hilos
 
 ### Gráfica
@@ -43,7 +43,7 @@ BIOS heredada
 
 ## CPU
 
-QEMU Virtual version 2.5+
+QEMU Virtual CPU version 2.5+
 4 núcleos · 4 hilos · 1 socket
 Máquina virtual · KVM · x86_64
 - Frecuencia: —

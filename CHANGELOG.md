@@ -52,6 +52,16 @@ informes que mandó la gente.
 - Nuevo: Cachés avisa de que las cachés de un procesador virtual las declara
   el hipervisor.
 
+### Textos
+
+- Arreglado: textos en inglés o en crudo de los primeros informes: el chasis
+  «Notebook», el sensor «Composite» de un NVMe, los aparatos de Sensores
+  «spd5118», «Red (iwlwifi_1)» y «Alimentación · ucsi-source-psy-…» (que
+  además repetía el «Puerto USB-C»), «QEMU Virtual version 2.5+» por QEMU
+  Virtual CPU, «Cargando (Super I/O)» y «1 paquetes perdidos».
+- Cambiado: a un portátil ya no se le propone `sensors-detect` para buscar un
+  Super I/O: sus ventiladores los lleva el controlador del equipo.
+
 ### Informe
 
 - Arreglado: en un equipo llamado como su marca («lenovo» en un Lenovo), el

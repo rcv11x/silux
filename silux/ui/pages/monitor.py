@@ -37,6 +37,7 @@ import os
 
 from ... import registro
 from ...privileged import cargar_modulo
+from ...providers.hwmon import SUPERIO
 from ...settings import Preferences
 from ...tracking import Tracker
 from .. import theme
@@ -474,8 +475,11 @@ class MonitorPage(ScrollPage):
 
         clear_layout(self._hint_host)
         for hint in snapshot.driver_hints:
-            body = _("sensors.driver.body").format(
-                modulo=hint.module, da=hint.provides)
+            # The Super I/O is not a module's name: «Cargando (Super I/O)
+            # tendrías…» read like one.
+            body = (_("sensors.driver.body.superio").format(da=hint.provides)
+                    if hint.module == SUPERIO else
+                    _("sensors.driver.body").format(modulo=hint.module, da=hint.provides))
             detail = hint.command + (f"\n{hint.caution}" if hint.caution else "")
             # El botón solo aparece donde hay un módulo concreto que cargar. El
             # aviso del Super I/O manda a `sensors-detect` a propósito: cada

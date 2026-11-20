@@ -25,6 +25,7 @@ from ..model import DeviceKind, DriverHint, Need, Sensor, SensorKind, short_bran
 from .base import Draft, Provider, mean, read_int, read_text
 from ..i18n import _
 from .. import sysroot
+from .dmi import PORTABLE_CHASSIS
 from ..system_env import system_environment
 
 HWMON = pathlib.Path("/sys/class/hwmon")
@@ -69,6 +70,12 @@ MARGEN_DE_ESPEJO = 2.0
 
 DISK_CHIP = re.compile(r"^(drivetemp|nvme)")
 NET_CHIP = re.compile(r"^(r8\d+|e1000|igb|ixgbe|iwlwifi|mt79|ath\d+k?)")
+# The hint for a board's Super I/O chip, which is no module's name.
+SUPERIO = "(Super I/O)"
+# The memory modules' own sensors (the SPD hub of DDR5, the JC-42 of DDR4).
+MEMORY_CHIP = re.compile(r"^(spd5118|jc42)")
+# Wi-Fi cards, whose sensor does not always hang from their interface.
+WIFI_CHIP = re.compile(r"^(iwlwifi|mt79|ath\d+k?)")
 GPU_CHIP = re.compile(r"^(amdgpu|radeon|i915|xe|nouveau)")
 
 # Chips de Super I/O: si no hay ninguno, la placa no está dando ventiladores.
@@ -115,8 +122,13 @@ def device_for(chip: str, entry: pathlib.Path, cpu_name: str, board_name: str,
             return nombre, DeviceKind.GPU
         return _("sensor.dev.gpuchip").format(chip=chip), DeviceKind.GPU
     if NET_CHIP.match(chip):
-        return (_net_name(entry) or _("sensor.dev.net").format(chip=chip),
+        # A tester's iwlwifi sensor read «Red (iwlwifi_1)»: without its
+        # interface, what it is and not the driver's name.
+        respaldo = _("sensor.dev.wifi") if WIFI_CHIP.match(chip) else render_chip(chip)
+        return (_net_name(entry) or _("sensor.dev.net").format(chip=respaldo),
                 DeviceKind.NETWORK)
+    if MEMORY_CHIP.match(chip):
+        return _("sensor.mem"), DeviceKind.MEMORY
     if (energia := _nombre_de_alimentacion(chip)):
         return energia, DeviceKind.POWER
     return chip, DeviceKind.BOARD
@@ -134,6 +146,11 @@ _ALIMENTACION = (
 )
 
 
+def render_chip(chip: str) -> str:
+    from ..render import chip_name
+    return chip_name(chip)
+
+
 def _tambien_en_power_supply(chip: str) -> bool:
     """Si este chip de hwmon es el mismo aparato que una entrada de energía.
 
@@ -142,11 +159,14 @@ def _tambien_en_power_supply(chip: str) -> bool:
     que se vaya a leer: si `power_supply` no diera ninguno de esos tres
     valores, saltarse el chip de hwmon perdería el dato en vez de deduplicarlo.
     """
-    carpeta = sysroot.ruta(POWER_SUPPLY) / chip
-    if not carpeta.is_dir():
-        return False
-    return any((carpeta / campo).exists()
-               for campo in ("voltage_now", "current_now", "power_now"))
+    # hwmon writes underscores where power_supply has dashes:
+    # «ucsi_source_psy_USBC000:001» is «ucsi-source-psy-USBC000:001».
+    for nombre in dict.fromkeys((chip, chip.replace("_", "-"))):
+        carpeta = sysroot.ruta(POWER_SUPPLY) / nombre
+        if carpeta.is_dir() and any((carpeta / campo).exists()
+                                    for campo in ("voltage_now", "current_now", "power_now")):
+            return True
+    return False
 
 
 def _nombre_de_alimentacion(chip: str) -> Optional[str]:
@@ -232,6 +252,9 @@ def _friendly(chip: str, prefix: str, index: str, label: Optional[str]) -> str:
     if label:
         if GPU_CHIP.match(chip):
             return _(ETIQUETAS_GPU.get(label, label))
+        # NVMe's overall temperature is labelled in English by the kernel.
+        if DISK_CHIP.match(chip) and label == "Composite":
+            return _("sensor.nvme.composite")
         return label
     fallback = {
         "temp": "sensor.temp", "in": "sensor.voltage", "fan": "sensor.fan",
@@ -370,7 +393,8 @@ class HwmonSensors(Provider):
         draft.capabilities.add("hwmon")
         draft.sensors.extend(sensors)
         self._fill_cpu(draft, sensors)
-        draft.driver_hints.extend(self._missing_drivers(sensors))
+        draft.driver_hints.extend(self._missing_drivers(
+            sensors, portatil=draft.board.chassis in PORTABLE_CHASSIS))
 
     # -- lectura ------------------------------------------------------------
 
@@ -520,7 +544,8 @@ class HwmonSensors(Provider):
                     continue
                 yield Sensor(
                     key=f"power_supply/{name}/{filename}",
-                    chip=name, device=_("sensor.dev.power").format(n=name),
+                    chip=name,
+                    device=_nombre_de_alimentacion(name) or _("sensor.dev.power").format(n=name),
                     device_kind=DeviceKind.POWER,
                     label=_(label), kind=kind,
                     value=round(abs(raw) / divisor, 3),
@@ -613,12 +638,13 @@ class HwmonSensors(Provider):
             return result.returncode == 0 and bool(result.stdout.strip())
         return bool(sysroot.a_traves("modinfo", module, preguntar))
 
-    def _missing_drivers(self, sensors: list[Sensor]) -> Iterator[DriverHint]:
+    def _missing_drivers(self, sensors: list[Sensor],
+                         portatil: bool = False) -> Iterator[DriverHint]:
         chips = {sensor.chip for sensor in sensors}
 
-        if not any(SUPERIO_CHIPS.match(chip) for chip in chips):
+        if not portatil and not any(SUPERIO_CHIPS.match(chip) for chip in chips):
             yield DriverHint(
-                module="(Super I/O)",
+                module=SUPERIO,
                 provides=_("prov.hint.superio"),
                 command="sudo sensors-detect",
                 caution=_("prov.hint.superio.caution"),

@@ -47,6 +47,12 @@ CHASSIS_TYPES = {
     "35": "chassis.minipc",
 }
 
+# The chassis that carry their fans in the embedded controller and not in a
+# Super I/O on a board: a tester's laptop was sent to `sensors-detect`.
+PORTABLE_CHASSIS = frozenset(("chassis.laptop", "chassis.notebook", "chassis.subnotebook",
+                              "chassis.handheld", "chassis.tablet", "chassis.convertible",
+                              "chassis.detachable"))
+
 CLASS_HOST_BRIDGE = 0x060000
 CLASS_ISA_BRIDGE = 0x060100
 # Los chipsets modernos de Intel se presentan como controlador eSPI, que el

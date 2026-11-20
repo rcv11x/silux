@@ -615,7 +615,8 @@ def _diagnostico(snapshot: Snapshot) -> str:
         lineas.append("**Módulos del kernel que ampliarían lo que se ve:**")
         lineas.append("")
         for pista in snapshot.driver_hints:
-            lineas.append(f"- `{pista.module}`: {pista.provides}")
+            nombre = "Super I/O" if pista.module == "(Super I/O)" else f"`{pista.module}`"
+            lineas.append(f"- {nombre}: {pista.provides}")
             if pista.command:
                 lineas.append(f"  `{pista.command}`")
         lineas.append("")
