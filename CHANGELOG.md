@@ -33,6 +33,10 @@ que hace falta.
 
 ### Memoria
 
+- Arreglado: el perfil XMP de los DDR4 se leía un byte desplazado y con el
+  voltaje mal: unos Team Group de 3200 salían «CL 18, tRP 4, 0,81 V». Se lee
+  como lo vende el fabricante (16-18-18-38 a 1,35 V), comprobado con los
+  módulos de un probador.
 - Arreglado: en un portátil con memoria soldada y un módulo en la ranura, los
   datos del chip SPD del módulo de la ranura (fabricante de los chips, fecha,
   temporizaciones) salían pegados a la memoria soldada, que no tiene ese

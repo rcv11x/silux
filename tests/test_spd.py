@@ -426,10 +426,10 @@ class TestTeamGroup(unittest.TestCase):
 
 
 class TestAnXmpThatCannotBeRead(unittest.TestCase):
-    """A tester's DDR4 XMP came out as CL 18, tRP 4 and 0.81 V (F-A2: the
-    profile is read a byte off and the voltage misdecoded; 0xA3 is 1.35 V).
-    Until a real dump fixes the decoder, an impossible voltage drops the
-    profile, and the page says the module has XMP it cannot read."""
+    """A profile whose values make no sense is not shown, and the page says
+    the module has XMP it cannot read. It is what kept F-A2 (CL 18, tRP 4,
+    0.81 V) off the screen until anianin27's dump fixed the decoder
+    (TestTheI7_10700fsModules)."""
 
     def test_an_impossible_voltage_is_not_a_profile(self):
         self.assertFalse(spd.Timings(name="XMP 1", speed_mts=3200, cl=18, trp=4,
@@ -438,18 +438,16 @@ class TestAnXmpThatCannotBeRead(unittest.TestCase):
                                     voltage_v=1.35).plausible)
 
     def test_its_speed_still_counts_as_rated(self):
-        # The profile's cycle is read right; it is its timings and voltage
-        # that are not. Dropping all of it, a DDR4-3200 read «catalogado a
-        # 2400» and lost «al máximo del procesador». Here the Crucial above
-        # with an XMP header and a profile 1 like that tester's (0xA3 in the
-        # voltage byte, read as 0.815 V) at 500 ps, over its JEDEC 3200.
+        # A profile with an impossible value still has a cycle. Dropping all
+        # of it, a DDR4-3200 read «catalogado a 2400» and lost «al máximo
+        # del procesador». Here the Crucial above with an XMP header and a
+        # profile 1 at 500 ps, over its JEDEC 3200, at an impossible 0.81 V.
         raw = bytearray(FIXTURE.read_bytes())
         raw[384:386] = b"\x0c\x4a"
-        raw[386] = 0x20
-        perfil = 384 + 185 - 176
-        raw[perfil] = 0xA3
-        raw[perfil + 3] = 4
-        raw[perfil + 9:perfil + 12] = bytes((90, 90, 20))
+        raw[387] = 0x20
+        raw[spd.XMP1_VOLTAGE] = 0x51
+        raw[spd.XMP1_TCK] = 4
+        raw[spd.XMP1_TAA:spd.XMP1_TRP + 1] = bytes((80, 90, 90))
         info = spd.decode(bytes(raw), address="10-0050", slot=0)
         self.assertEqual(info.profiles, ())
         self.assertEqual(info.rated_mts, 4000)
@@ -760,3 +758,25 @@ class TestTheT14sDump(unittest.TestCase):
         soldada, ranura = draft.modules
         self.assertIsNone(soldada.spd)
         self.assertEqual(ranura.spd.part_number, "9905711-049.A00G")
+
+
+class TestTheI7_10700fsModules(unittest.TestCase):
+    """anianin27's two TEAMGROUP-UD4-3200 (T-Force Vulcan Z), from the annex of
+    its prueba4 report. Sold as DDR4-3200 16-18-18-38 at 1.35 V; read a byte
+    off, its XMP said CL 18, tRP 4 and 0.81 V (F-A2)."""
+
+    def test_their_xmp_is_what_the_module_is_sold_as(self):
+        from silux import volcado
+        dump = pathlib.Path(__file__).resolve().parent / "fixtures" / "equipos" / "i7-10700f"
+        with volcado.montado(dump):
+            lecturas = spd.read_all()
+        self.assertEqual(len(lecturas), 2)
+        for lectura in lecturas:
+            with self.subTest(modulo=lectura.address):
+                self.assertEqual(lectura.manufacturer, "Team Group")
+                self.assertEqual(lectura.jedec.speed_mts, 2400)
+                self.assertEqual(lectura.profiles, (spd.Timings(
+                    name="XMP 1", speed_mts=3200, cl=16, trcd=18, trp=18, tras=38,
+                    trc=56, voltage_v=1.35),))
+                self.assertEqual(lectura.rated_mts, 3200)
+

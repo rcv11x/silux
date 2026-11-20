@@ -31,18 +31,6 @@ sin los pasos para reproducirlo: este archivo es público.
   ventanas de cinco minutos: en la app puede pasar, pero raro. Sigue
   abierto en el resto: es el primer reproductor, y apunta a vaciar y rehacer
   el contenido de un área de desplazamiento.
-* **F-A2 · `spd.py`** · alta · el XMP de DDR4 calcula el ciclo con la parte
-  gruesa sola (`spd[offset+3] * 125`), sin la corrección fina: un DDR4-3600
-  (555 ps) sale «XMP 1 3200». Las posiciones de los perfiles son las de XMP
-  1.x de DDR3, y el perfil 2 de DDR4 caería dentro del primero. No hay ningún
-  volcado con XMP en `tests/fixtures`: no se escribe sin uno real delante.
-  El 20 de noviembre de 2026 llegó el primer caso real, unos TEAMGROUP-UD4-3200
-  de anianin27: «CL 18, tRCD 18, tRP 4, 0,81 V». Encaja con leer CL, tRCD y tRP
-  un byte corridos (del tRCD, del tRP y del byte de los nibbles altos) y con
-  una codificación del voltaje equivocada: 0xA3 son 1,35 V en XMP 2.0 (bit 7,
-  un voltio; los otros siete, centésimas) y aquí salía 0,815. Mientras tanto,
-  un perfil con un voltaje imposible no se enseña y la nota dice que el módulo
-  trae XMP sin leer. **Hace falta su volcado con permisos** (los bytes del SPD).
 * **`privileged/instalar.py`** · alta, condicionada · escribe el ayudante y
   su regla de polkit sin comprobar que el destino no sea sustituible. No es
   explotable con `/usr/local` en su estado normal.
@@ -127,6 +115,9 @@ necesita.
   llevan un 2,4 %.
 * `ui/pages/graphics.py` · baja · la tasa de datos de la VRAM, compuesta a
   mano.
+* `spd.py` · media · el perfil 2 de XMP en DDR4 no se lee: no hay fuente de
+  dónde va (memtest86+ solo lee el 1) ni un módulo que lo traiga. El
+  perfil 1 (F-A2) se arregló con los módulos de anianin27.
 * `spd.py` · media · `decode` revienta si el chip devuelve menos de 384 bytes,
   y se pierden todos los módulos, no solo el corto.
 * `spd.py` · media · la tabla de fabricantes JEDEC tiene 15: con cualquier

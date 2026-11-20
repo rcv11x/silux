@@ -503,14 +503,43 @@ def _xmp_revision(spd: bytes) -> Optional[str]:
     return f"{revision >> 4}.{revision & 0x0F}"
 
 
+# DDR4 XMP 2.0, profile 1, as memtest86+ reads it (system/spd.c,
+# parse_spd_ddr4): each time is its byte in 125 ps plus a signed fine
+# offset in ps; tRAS and tRC carry their high bits in 404's nibbles, in
+# 32 ns steps. Checked with a tester's TEAMGROUP-UD4-3200 (T-Force Vulcan
+# Z): 3200 16-18-18-38, as the module is sold. Before, every time was read
+# a byte off («CL 18, tRP 4»). Profile 2's place has no source to read it
+# from, and no module here carries one: it is not read.
+XMP1_VOLTAGE = 393
+XMP1_TCK, XMP1_TCK_FINE = 396, 431
+XMP1_TAA, XMP1_TAA_FINE = 401, 430
+XMP1_TRCD, XMP1_TRCD_FINE = 402, 429
+XMP1_TRP, XMP1_TRP_FINE = 403, 428
+XMP1_UPPER, XMP1_TRAS, XMP1_TRAS_FINE, XMP1_TRC = 404, 405, 427, 406
+
+
+def _signed(byte: int) -> int:
+    return byte - 256 if byte > 127 else byte
+
+
+def _xmp1_tck_ps(spd: bytes) -> Optional[int]:
+    """Profile 1's cycle in ps, or None without the XMP header."""
+    if len(spd) <= XMP1_TCK_FINE or spd[_Ddr4.XMP_MAGIC] != b"\x0c\x4a":
+        return None
+    return spd[XMP1_TCK] * 125 + _signed(spd[XMP1_TCK_FINE]) or None
+
+
+def _xmp_voltage(byte: int) -> Optional[float]:
+    """Bit 7 is one volt and the rest hundredths: 0xA3 is 1.35 V, the
+    voltage that module is sold at. Read as (b >> 1) · 0.01 it was 0.81 V.
+    Not from a source: memtest86+ does not read it."""
+    return round((byte >> 7) + (byte & 0x7F) * 0.01, 2) or None
+
+
 def _xmp_speed(spd: bytes, jedec: Optional[Timings]) -> tuple[int, ...]:
-    """Profile 1's speed alone, from its cycle: the byte F-A2 does read
-    right (a tester's 3200 was). Only the first profile, whose place is
-    sure, and only above JEDEC: it is a rated speed, not a guess. With the
-    coarse cycle alone it can read a grade low (a 3600 as 3200), never high."""
-    if len(spd) < 464 or spd[_Ddr4.XMP_MAGIC] != b"\x0c\x4a":
-        return ()
-    tck = spd[384 + 185 - 176 + 3] * 125
+    """Profile 1's speed alone, for a profile whose timings make no sense:
+    its cycle is still a rated speed. Only above JEDEC."""
+    tck = _xmp1_tck_ps(spd)
     if not tck:
         return ()
     speed = grado_jedec(2_000_000 / tck)
@@ -522,37 +551,34 @@ def _xmp_speed(spd: bytes, jedec: Optional[Timings]) -> tuple[int, ...]:
 
 
 def _xmp_profiles(spd: bytes) -> Iterator[Timings]:
-    """Perfiles XMP 2.0, con red de seguridad.
+    """XMP profile 1 of a DDR4, if it makes sense.
 
-    La estructura de XMP no está publicada por JEDEC y su descripción circula
-    por ingeniería inversa, así que no hay forma de garantizar que un módulo
-    concreto encaje. En vez de fiarse, cada perfil decodificado pasa por un
-    filtro de plausibilidad: si la velocidad o la latencia salen absurdas, se
-    descarta en silencio. Es preferible no enseñar un perfil a enseñar uno
-    inventado.
+    XMP is Intel's and not published by JEDEC: what does not pass the
+    plausibility filter is dropped, and the page says the module has a
+    profile it cannot read.
     """
-    if len(spd) < 464 or spd[_Ddr4.XMP_MAGIC] != b"\x0c\x4a":
+    tck = _xmp1_tck_ps(spd)
+    if not tck:
         return
 
-    for number, base in enumerate((185, 220), start=1):
-        offset = 384 + base - 176          # los perfiles empiezan tras la cabecera
-        if offset + 12 >= len(spd):
-            continue
-        tck = spd[offset + 3] * 125
-        if not tck:
-            continue
-        speed = grado_jedec(2_000_000 / tck)
-        profile = Timings(
-            name=f"XMP {number}",
-            speed_mts=speed,
-            cl=_ciclos_jedec(spd[offset + 9] * 125, tck),
-            trcd=_ciclos_jedec(spd[offset + 10] * 125, tck),
-            trp=_ciclos_jedec(spd[offset + 11] * 125, tck),
-            voltage_v=round(((spd[offset] >> 1) & 0x7F) * 0.01 + 
-                            (0.005 if spd[offset] & 1 else 0), 3) or None,
-        )
-        if profile.plausible:
-            yield profile
+    def tiempo(mtb: int, fine: int) -> int:
+        return spd[mtb] * 125 + _signed(spd[fine])
+
+    alto = spd[XMP1_UPPER]
+    tras = (alto & 0x0F) * 32_000 + tiempo(XMP1_TRAS, XMP1_TRAS_FINE)
+    trc = (alto >> 4) * 32_000 + spd[XMP1_TRC] * 125
+    profile = Timings(
+        name="XMP 1",
+        speed_mts=grado_jedec(2_000_000 / tck),
+        cl=_ciclos_jedec(tiempo(XMP1_TAA, XMP1_TAA_FINE), tck),
+        trcd=_ciclos_jedec(tiempo(XMP1_TRCD, XMP1_TRCD_FINE), tck),
+        trp=_ciclos_jedec(tiempo(XMP1_TRP, XMP1_TRP_FINE), tck),
+        tras=_ciclos_jedec(tras, tck),
+        trc=_ciclos_jedec(trc, tck),
+        voltage_v=_xmp_voltage(spd[XMP1_VOLTAGE]),
+    )
+    if profile.plausible:
+        yield profile
 
 
 # --------------------------------------------------------------------------
