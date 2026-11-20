@@ -157,6 +157,29 @@ class TestNamesOfMachines(unittest.TestCase):
             self.assertNotIn("quitados", manifest)
 
 
+class TestTheT14NamedThinkpad(unittest.TestCase):
+    """The author's T14, named «thinkpad»: in prueba2 its annex was refused
+    for «el nombre de este equipo» in thinkpad_hwmon. Its prueba4 annex came
+    out whole; here its real dump is dumped again under that name."""
+
+    def test_its_annex_comes_out_whole(self):
+        manifest = json.loads((EQUIPOS / "i5-1135g7" / "manifiesto.json").read_text())
+        self.assertNotIn("quitados", manifest)
+
+    def test_dumped_again_as_thinkpad(self):
+        with _machine("i5-1135g7") as (root, out):
+            _write(root, "/proc/sys/kernel/hostname", "thinkpad\n")
+            with mock.patch.object(socket, "gethostname", return_value="thinkpad"):
+                propios = privacidad.de_esta_maquina()
+            folder, manifest, _everything = _dump(out, propios=propios)
+            self.assertNotIn("quitados", manifest)
+            self.assertEqual((folder / "proc/sys/kernel/hostname").read_text().strip(),
+                             privacidad.EQUIPO)
+            self.assertTrue((folder / "sys/devices/platform/thinkpad_hwmon").is_dir())
+            nombres = {p.read_text().strip() for p in (folder / "sys/class/hwmon").glob("*/name")}
+            self.assertIn("thinkpad", nombres)
+
+
 class TestNvidiaCards(unittest.TestCase):
     """Any awake NVIDIA: widecoocaa23's laptop (an Intel integrated and an
     RTX 4050) and anianin27's desktop (an RTX 4060) had no annex in the

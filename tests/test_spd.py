@@ -725,3 +725,38 @@ class TestCodigosDeFabricante(unittest.TestCase):
         for (banco, code), quien in reales.items():
             with self.subTest(marca=quien):
                 self.assertEqual(_vendor(banco, code), quien)
+
+
+class TestTheT14sDump(unittest.TestCase):
+    """The author's ThinkPad T14 Gen 2i, from its prueba4 annex: 8 GB soldered
+    and a Kingston SODIMM, the only SPD on its bus. Its modules are SMBIOS's,
+    which the annex (without permissions) does not carry: as its report with
+    permissions gave them."""
+
+    @classmethod
+    def setUpClass(cls):
+        from silux import volcado
+        dump = pathlib.Path(__file__).resolve().parent / "fixtures" / "equipos" / "i5-1135g7"
+        with volcado.montado(dump):
+            cls.lecturas = spd.read_all()
+
+    def test_the_slots_spd_is_a_kingston(self):
+        self.assertEqual([(r.part_number, r.manufacturer, r.dram_manufacturer)
+                          for r in self.lecturas],
+                         [("9905711-049.A00G", "Kingston", "Micron")])
+
+    def test_and_it_goes_to_the_slot_not_to_the_soldered_memory(self):
+        from silux.model import MemoryModule
+        from silux.providers.base import Draft
+        from silux.providers.spd_modules import SpdModules
+        draft = Draft()
+        draft.modules = [
+            MemoryModule(locator="Controller0-ChannelA", populated=True,
+                         part_number="M471A1G44AB0-CWE", manufacturer="Samsung"),
+            MemoryModule(locator="Controller1-ChannelA-DIMM0", populated=True,
+                         part_number="9905711-049.A00G", manufacturer="Kingston"),
+        ]
+        SpdModules._merge(draft, list(self.lecturas))
+        soldada, ranura = draft.modules
+        self.assertIsNone(soldada.spd)
+        self.assertEqual(ranura.spd.part_number, "9905711-049.A00G")

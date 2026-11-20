@@ -1,0 +1,319 @@
+{
+ "cpuid": {
+  "*:0:0": [
+   27,
+   1970169159,
+   1818588270,
+   1231384169
+  ],
+  "*:2147483648:0": [
+   2147483656,
+   0,
+   0,
+   0
+  ],
+  "0:1:0": [
+   526017,
+   1050624,
+   2147154879,
+   3219913727
+  ],
+  "0:2147483649:0": [
+   0,
+   0,
+   289,
+   739248128
+  ],
+  "0:2147483650:0": [
+   1752445233,
+   1852131104,
+   1953384736,
+   1378380901
+  ],
+  "0:2147483651:0": [
+   1866670121,
+   1411933554,
+   1763715405,
+   825306421
+  ],
+  "0:2147483652:0": [
+   927413555,
+   840974368,
+   1194341422,
+   31304
+  ],
+  "0:22:0": [
+   2400,
+   4200,
+   100,
+   0
+  ],
+  "0:7:0": [
+   2,
+   4089423851,
+   415260638,
+   4228908816
+  ],
+  "0:7:1": [
+   0,
+   0,
+   0,
+   262144
+  ]
+ },
+ "gpuapi": {
+  "consultar": {
+   "opencl": [
+    {
+     "compute_units": 5,
+     "driver_version": "26.3.1-arch3.1",
+     "global_memory_bytes": 16466055168,
+     "max_clock_mhz": 400,
+     "name": "Mesa Intel(R) Iris(R) Xe Graphics (TGL GT2)",
+     "platform": "rusticl",
+     "platform_version": "OpenCL 3.1",
+     "vendor": "Intel",
+     "version": "OpenCL 3.1"
+    }
+   ],
+   "opengl": {
+    "egl_vendor": "Mesa Project",
+    "egl_version": "1.5",
+    "glsl": "4.60",
+    "renderer": "Mesa Intel(R) Iris(R) Xe Graphics (TGL GT2)",
+    "vendor": "Intel",
+    "version": "4.6 (Compatibility Profile) Mesa 26.3.1-arch3.1"
+   },
+   "vaapi": [
+    {
+     "codecs": [
+      {
+       "bits": 10,
+       "decode": true,
+       "encode": false,
+       "name": "AV1",
+       "profiles": [
+        "Profile 0"
+       ]
+      },
+      {
+       "bits": 12,
+       "decode": true,
+       "encode": true,
+       "name": "HEVC",
+       "profiles": [
+        "Main",
+        "Main 10",
+        "Main 12",
+        "Main 4:2:2 10",
+        "Main 4:2:2 12",
+        "Main 4:4:4",
+        "Main 4:4:4 10",
+        "Main 4:4:4 12",
+        "SCC Main",
+        "SCC Main 10",
+        "SCC Main 4:4:4",
+        "SCC Main 4:4:4 10"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": true,
+       "name": "H.264",
+       "profiles": [
+        "Main",
+        "High",
+        "Constrained Baseline"
+       ]
+      },
+      {
+       "bits": 10,
+       "decode": true,
+       "encode": false,
+       "name": "VP9",
+       "profiles": [
+        "Profile 0",
+        "Profile 1",
+        "Profile 2",
+        "Profile 3"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": false,
+       "name": "VP8",
+       "profiles": [
+        "Version 0.3"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": true,
+       "name": "MPEG-2",
+       "profiles": [
+        "Simple",
+        "Main"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": false,
+       "name": "VC-1",
+       "profiles": [
+        "Simple",
+        "Main",
+        "Advanced"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": true,
+       "name": "JPEG",
+       "profiles": [
+        "Baseline"
+       ]
+      }
+     ],
+     "driver": "Intel iHD driver for Intel(R) Gen Graphics - 26.3.5 ()",
+     "node": "renderD128",
+     "version": "1.24"
+    }
+   ],
+   "vulkan": [
+    {
+     "api_version": "1.4.363",
+     "device_id": 39497,
+     "device_memory_bytes": 12349541376,
+     "driver_version": 109064193,
+     "instance_version": "1.4.363",
+     "kind": "integrada",
+     "name": "Intel(R) Iris(R) Xe Graphics (TGL GT2)",
+     "vendor_id": 32902
+    }
+   ]
+  }
+ },
+ "i915": {
+  "/dev/dri/renderD128": {
+   "chipset_id": 39497,
+   "eu_total": 80,
+   "subslices": 5
+  }
+ },
+ "ioctl_red": {
+  "interfaz1:0x8915": null,
+  "interfaz1:0x891b": null,
+  "lo:0x8915": "127.0.0.1",
+  "lo:0x891b": "255.0.0.0",
+  "wlan0:0x8915": "192.168.1.120",
+  "wlan0:0x891b": "255.255.255.0"
+ },
+ "nvml": {
+  "abierta": false
+ },
+ "pciids": {
+  "144d:a808|8086:9a13|8086:9a1b|8086:9a1d|8086:9a49|8086:a0c8|8086:a0ed|8086:a0f0": {
+   "144d:a808": [
+    "Samsung Electronics Co Ltd",
+    "NVMe SSD Controller SM981/PM981/PM983"
+   ],
+   "8086:9a13": [
+    "Intel Corporation",
+    "Tiger Lake-LP Thunderbolt 4 USB Controller"
+   ],
+   "8086:9a1b": [
+    "Intel Corporation",
+    "Tiger Lake-LP Thunderbolt 4 NHI #0"
+   ],
+   "8086:9a1d": [
+    "Intel Corporation",
+    "Tiger Lake-LP Thunderbolt 4 NHI #1"
+   ],
+   "8086:9a49": [
+    "Intel Corporation",
+    "TigerLake-LP GT2 [Iris Xe Graphics]"
+   ],
+   "8086:a0c8": [
+    "Intel Corporation",
+    "500 Series Chipset Family On-Package High Definition Audio (HD Audio)"
+   ],
+   "8086:a0ed": [
+    "Intel Corporation",
+    "500 Series Chipset Family On-Package USB 3.2 Gen 2x1 (10 Gbs) xHCI Host Controller"
+   ],
+   "8086:a0f0": [
+    "Intel Corporation",
+    "Wi-Fi 6 AX201"
+   ]
+  },
+  "8086:9a14|8086:a082": {
+   "8086:9a14": [
+    "Intel Corporation",
+    "Tiger Lake-UP3/H35 4 cores Host Bridge/DRAM Registers"
+   ],
+   "8086:a082": [
+    "Intel Corporation",
+    "500 Series Chipset Family On-Package eSPI Controller"
+   ]
+  },
+  "8086:9a49|8086:9a49:17aa:22c9": {
+   "8086:9a49": [
+    "Intel Corporation",
+    "TigerLake-LP GT2 [Iris Xe Graphics]"
+   ]
+  },
+  "8086:a0f0": {
+   "8086:a0f0": [
+    "Intel Corporation",
+    "Wi-Fi 6 AX201"
+   ]
+  }
+ },
+ "pciids_fabricante": {
+  "17aa": "Lenovo"
+ },
+ "plataforma": {
+  "entorno": {
+   "SHELL": "/usr/bin/zsh",
+   "XDG_CURRENT_DESKTOP": "KDE",
+   "XDG_SESSION_TYPE": "wayland"
+  },
+  "kvm": true,
+  "machine": "x86_64",
+  "procesos": 318,
+  "uname": {
+   "machine": "x86_64",
+   "node": "silux-pc",
+   "processor": "",
+   "release": "7.3.4-1-cachyos",
+   "system": "Linux",
+   "version": "#1 SMP PREEMPT_DYNAMIC Sat, 14 Nov 2026 01:48:02 +0000"
+  }
+ },
+ "realpath": {
+  "/dev/nvme0n1p1": "/dev/nvme0n1p1",
+  "/dev/nvme0n1p2": "/dev/nvme0n1p2"
+ },
+ "statvfs": {
+  "/": [
+   38114152448,
+   471846420480
+  ],
+  "/boot": [
+   191598592,
+   1951682560
+  ]
+ },
+ "systemd": {
+  "arranque": {
+   "FinishTimestampMonotonic": 7253516,
+   "InitRDTimestampMonotonic": 0,
+   "UserspaceTimestampMonotonic": 2335125
+  }
+ }
+}

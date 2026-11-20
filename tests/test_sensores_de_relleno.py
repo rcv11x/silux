@@ -37,6 +37,14 @@ def _acpitz(f):
     return [s for s in f.sensors if s.chip == "acpitz"]
 
 
+# Whether each dump's firmware fills its ACPI zone with a fixed number. Not
+# every acpitz is filler: the author's T14 measures with it (33 °C, with the
+# CPU), and «every acpitz is filler» came from our desktops. A new dump with
+# a zone has to say which it is.
+FILLER = {"5800x3d": True, "i5-10400": True, "i5-10400-turbo": True,
+          "i5-1135g7": False}
+
+
 class TestLasZonasQueNoMiden(unittest.TestCase):
 
     @classmethod
@@ -48,11 +56,13 @@ class TestLasZonasQueNoMiden(unittest.TestCase):
         self.assertEqual({s.value for s in _acpitz(self.fotos["i5-10400"])}, {27.8})
 
     def test_se_marcan_y_solo_ellas(self):
-        # A virtual machine has no thermal zone; the two that do are checked
-        # above.
+        # A virtual machine has no thermal zone.
         for nombre, f in self.fotos.items():
             with self.subTest(equipo=nombre):
-                self.assertTrue(all(s.placeholder for s in _acpitz(f)))
+                zonas = _acpitz(f)
+                if zonas:
+                    self.assertIn(nombre, FILLER, "a new dump with acpitz: say if it measures")
+                    self.assertEqual({s.placeholder for s in zonas}, {FILLER[nombre]})
                 self.assertFalse([s.key for s in f.sensors
                                   if s.placeholder and s.chip != "acpitz"])
 

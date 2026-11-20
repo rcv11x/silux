@@ -1,0 +1,1 @@
+initrd=\initramfs-linux-cachyos.img root=… rw rootflags=subvol=/@ nowatchdog quiet splash

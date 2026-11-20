@@ -15,6 +15,8 @@ monta el Collector contra todos (`tests/test_equipos.py`).
 | `qemu-kvm` | «QEMU Virtual CPU version 2.5+» (`qemu64` con el vendedor Intel y las banderas de x86-64-v2-AES de Proxmox) | VGA estándar de QEMU (bochs-drm) | Debian 13, kernel 6.12, dentro de una máquina QEMU/KVM `pc-i440fx` con SeaBIOS, hecha el 20 de noviembre de 2026 para reproducir la de un probador: AHCI con descartes, e1000, tableta USB y el OpenGL de Mesa (llvmpipe). Sin cpufreq, sin sensores y sin zonas térmicas |
 | `5800x3d` | AMD Ryzen 7 5800X3D (Zen 3, AM4) | Radeon RX 9070 XT | CachyOS, kernel 7.3; placa X570, dos monitores, cinco discos (dos montados fuera del sistema); en reposo. De las interfaces de Docker queda una de cada. **Rehecho el 18 de noviembre de 2026** con los datos nuevos (PCI, plataforma, vulnerabilidades, arranque, intercambio, lo enchufado sin marcas ni modelos, TRIM) |
 
+| `i5-1135g7` | Intel Core i5-1135G7 (Tiger Lake-UP3) | Iris Xe | El ThinkPad T14 Gen 2i del autor, importado del anexo de su informe de la prueba4 (`tools/importar_informe.py`), el 21 de noviembre de 2026. CachyOS, kernel 7.3; 8 GB soldados y un SODIMM Kingston (el único SPD del bus), Wi-Fi, un túnel de WireGuard (sale como `interfaz1`), batería, `thinkpad_acpi` y una zona `acpitz` que mide de verdad. RAPL solo para root: es el único volcado con el candado del consumo |
+
 Todos son sin permisos. Lo que se arregle en lo que lee el procesador o la
 gráfica se comprueba contra un volcado de Intel y contra el de AMD.
 
@@ -37,7 +39,7 @@ informe, sin haberlo visto todavía en ese equipo.
 | Máquina virtual (QEMU/KVM en Proxmox) | QEMU Virtual CPU | — | — | VGA de QEMU | Debian | 0.4-prueba1 (compat) | sí | El procesador como un Xeon; el disco como HDD y SMR; permisos para lo que no tiene; rayas | Arreglados en la prueba2, comprobados con el volcado `qemu-kvm` |
 | Sobremesa | AMD Athlon 3000G | MSI A320M-A PRO | 4 GB DDR4-2400, un módulo | Radeon Vega 3 integrada | Arch | 0.3.0, 0.4-prueba1 | sí | Sin frecuencia (no hay cpufreq); «Turbo —»; la tabla PCI de una APU; rayas en Gráficos; un pendrive como HDD; «Memoria prestada al sistema»; sin aviso de errores de cable | Frecuencia y turbo hechos, para la siguiente; lo demás, pendiente o a falta de su volcado |
 | Portátil Lenovo V130-15IGM | Intel Celeron N4000 | Lenovo | 8 GB | UHD 600 | Debian 13, XFCE | 0.4-prueba2 | no | El anexo no salió (la puerta de enlace y un pendrive) | Arreglado en la prueba3 |
-| Portátil ThinkPad T14 Gen 2i | Intel Core i5-1135G7 | Lenovo | 16 GB DDR4-3200 | Iris Xe | CachyOS | 0.4-prueba2 | sí | El anexo no salió (el equipo se llama como su marca); los puertos USB-C con el nombre del kernel y a 0 V; la nota pegada en Sensores | Arreglados en la prueba3 |
+| Portátil ThinkPad T14 Gen 2i | Intel Core i5-1135G7 | Lenovo | 16 GB DDR4-3200 (8 soldados y un SODIMM) | Iris Xe | CachyOS | 0.4-prueba2, 0.4-prueba4 | sí | En la prueba2, el anexo no salió (el equipo se llama como su marca), los puertos USB-C y la nota pegada en Sensores. En la prueba4 el anexo salió entero (es el volcado `i5-1135g7`), y con él: el SPD de la ranura pegado a lo soldado, el Kingston sin fabricante y el candado del consumo, que no hacía nada | Los de la prueba2, comprobados en la prueba4; los de la prueba4, arreglados y comprobados con su volcado |
 
 ## Por plataforma
 
