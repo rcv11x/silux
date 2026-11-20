@@ -174,6 +174,11 @@ sin los pasos para reproducirlo: este archivo es público.
 * `ui/app.py` · baja · cambiar el tema reconstruye las páginas y las gráficas
   vuelven a empezar.
 * `ui/app.py` · baja · no se puede cambiar de sección con el teclado.
+* `ui/pages/performance.py` · media-baja · borrar una medida del historial
+  pregunta con los botones estándar de Qt, que salen en inglés («Cancel»,
+  «Yes») con la interfaz en español: no se carga ninguna traducción de Qt
+  (`QTranslator`), y en el AppImage tampoco está la integración de Plasma
+  que los traduce. Lo mismo el «OK» de los avisos de `QMessageBox`.
 * `ui/` · baja · `disk.pci_slot` está en el modelo y no se pinta.
 * `db/lang/` · baja · claves que ya no usa nadie; `gen_lang.py` las detecta y
   `--podar` las borra.
