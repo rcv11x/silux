@@ -61,6 +61,9 @@ informes que mandó la gente.
 
 ### Sistema
 
+- Arreglado: la lista de vulnerabilidades se titulaba «Las mitigadas» y traía
+  también las que no lo están; y las que ni el kernel sabe («Unknown») no
+  se contaban en ningún lado. Se cuentan aparte, «Sin saber».
 - Arreglado: con el AppImage, los programas del sistema que lanza Silux
   heredaban sus bibliotecas. En Debian 13, con el compat, `systemctl` no
   arrancaba y faltaban los tiempos de arranque; y abrir la carpeta de las

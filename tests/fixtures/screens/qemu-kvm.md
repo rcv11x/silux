@@ -380,8 +380,9 @@ Esta distribución no declara variante.
 - No afectan a este procesador: 8
 - Mitigadas: 6
 - Sin mitigar: 2
+- Sin saber (el kernel no lo sabe): 1
 
-#### Las mitigadas, como las describe el kernel
+#### Las que afectan a este procesador, como las describe el kernel
 
 - indirect_target_selection: Mitigation: Aligned branch/return thunks
 - itlb_multihit: KVM: Mitigation: VMX unsupported

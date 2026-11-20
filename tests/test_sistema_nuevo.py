@@ -196,11 +196,13 @@ class TestEnLaPagina(unittest.TestCase):
     def test_el_resumen_y_la_lista_entera(self):
         with pantalla.Ventana(self.foto) as ventana:
             pagina = self._pagina(ventana)
-            valores = {n: e.full_text() for n, e in pagina.security._values.items()}
+            # What shows: «Sin saber» hides when nothing is unknown.
+            valores = {n: e.full_text() for n, e in pagina.security._values.items()
+                       if e.isVisibleTo(pagina.security)}
             self.assertEqual(valores, {
                 _("sys.vuln.known"): "4", _("sys.vuln.unaffected"): "1",
                 _("sys.vuln.mitigated"): "3", _("sys.vuln.open"): _("sys.vuln.none")})
-            # La lista lleva las mitigadas, y la larga sale entera, sin «…».
+            # La lista lleva las que le afectan, y la larga sale entera, sin «…».
             self.assertEqual(list(pagina.vulns._values),
                              ["spec_rstack_overflow", "spectre_v2", "tsa"])
             pagina.vuln_fold.boton.click()

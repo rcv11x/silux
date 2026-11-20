@@ -33,7 +33,7 @@ KERNEL_FIELDS = ("sys.kernel.name", "sys.kernel.arch", "sys.field.build",
 ACTIVITY_FIELDS = ("sys.field.since", "sys.field.uptime", "sys.act.processes",
                    "sys.act.threads", "sys.field.openfiles")
 SECURITY_FIELDS = ("sys.vuln.known", "sys.vuln.unaffected", "sys.vuln.mitigated",
-                   "sys.vuln.open")
+                   "sys.vuln.open", "sys.vuln.unknown")
 BOOT_FIELDS = ("sys.boot.loader", "sys.boot.entry") + tuple(
     clave for clave, _campo in render.FASES_DE_ARRANQUE) + ("sys.boot.cmdline",)
 
@@ -223,13 +223,17 @@ class SystemPage(ScrollPage):
         if not todas:
             return
         cuenta = {estado: sum(1 for v in todas if v.state == estado)
-                  for estado in ("unaffected", "mitigated", "vulnerable")}
+                  for estado in ("unaffected", "mitigated", "vulnerable", "unknown")}
         s = self.security.set
         s(_("sys.vuln.known"), str(len(todas)))
         s(_("sys.vuln.unaffected"), str(cuenta["unaffected"]))
         s(_("sys.vuln.mitigated"), str(cuenta["mitigated"]))
         s(_("sys.vuln.open"), str(cuenta["vulnerable"]) if cuenta["vulnerable"]
           else _("sys.vuln.none"))
+        # What the kernel itself does not know («Unknown: No mitigations» in a
+        # QEMU guest) counted nowhere: 17 known, 8 + 6 + 2 said.
+        s(_("sys.vuln.unknown"), str(cuenta["unknown"]))
+        self.security.set_visible(_("sys.vuln.unknown"), bool(cuenta["unknown"]))
         # En la lista, las que tienen algo que contar: las que no afectan a
         # este procesador ya están contadas arriba.
         firma = tuple((v.name, v.status) for v in todas if v.state != "unaffected")
