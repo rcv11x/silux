@@ -126,6 +126,14 @@ vistazo. La entrada se escribe como «sin publicar» y la fecha se pone al
 etiquetar; la de arriba tiene que ser la versión que declara el paquete, y
 hay un test que lo vigila.
 
+Debajo del título de cada versión, una línea «Con informes de Ana, Luis y
+Marta.» con quien mandó los informes que la arreglaron, si ha dado permiso
+para salir. Los nombres salen de `silux/db/thanks.json`, que rellena el autor
+con los que cada uno le autoriza, y en ningún sitio se nombra a nadie que no
+esté ahí: la misma lista sale en Ajustes → Acerca de y en el apartado
+«Gracias» de los dos README (`tests/test_thanks.py`). Sin nadie que nombrar,
+la línea no se pone.
+
 Las notas de cada release en GitHub no repiten el CHANGELOG: la tabla de qué
 AppImage descargar y una lista corta de lo que cambia, con el enlace a su
 entrada del CHANGELOG para el resto. Las lee quien va a descargar y quiere

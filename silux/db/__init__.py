@@ -23,6 +23,12 @@ from typing import Any, Optional
 
 _DB_PATH = pathlib.Path(__file__).parent / "cpu_ids.json"
 
+# Who sends reports and has said they can be named. Only the author adds a
+# name, and only with that person's permission: the About page, the README
+# and the CHANGELOG's «Con informes de…» lines take theirs from here, and
+# tests/test_thanks.py keeps the last two to it.
+THANKS = pathlib.Path(__file__).parent / "thanks.json"
+
 _FIELD_WEIGHTS = (
     ("f", 2), ("m", 2), ("s", 2), ("xf", 2), ("xm", 2),
     ("nc", 2), ("l2", 1), ("l3", 1),
@@ -42,6 +48,20 @@ def load() -> dict[str, Any]:
         raise DatabaseMissing(
             f"falta {_DB_PATH}. Genérala con:  python3 tools/gen_cpu_db.py"
         ) from exc
+
+
+@functools.lru_cache(maxsize=1)
+def thanks() -> tuple[str, ...]:
+    """The names in thanks.json, as written there, once each."""
+    try:
+        names = json.loads(THANKS.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return ()
+    found: list[str] = []
+    for name in names if isinstance(names, list) else ():
+        if isinstance(name, str) and name.strip() and name.strip() not in found:
+            found.append(name.strip())
+    return tuple(found)
 
 
 def available() -> bool:

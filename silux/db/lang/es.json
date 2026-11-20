@@ -17,6 +17,8 @@
   "about.python": "todo el programa; lo que lee el hardware solo usa su biblioteca estándar",
   "about.qt": "la interfaz, y nada más: el volcado en terminal funciona sin él",
   "about.tagline": "Perfilador de hardware para Linux. Lo que en Windows hacen CPU-Z, GPU-Z y HWMonitor, en un solo programa nativo: qué equipo tienes y qué está haciendo ahora mismo.",
+  "about.thanks": "Gracias a",
+  "about.thanks.why": "Por los informes que mandan desde sus equipos: con ellos Silux se prueba en máquinas que no son la nuestra.",
   "about.thirdparty": "Datos de terceros",
   "annex.what.battery_serial": "el número de serie de la batería",
   "annex.what.bluetooth": "el nombre del adaptador Bluetooth",

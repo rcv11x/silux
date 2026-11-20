@@ -587,6 +587,8 @@ class SettingsPage(ScrollPage):
         fila.add(self._bloque(_("about.builtwith"), CONSTRUIDO_CON))
         fila.add(self._bloque(_("about.thirdparty"), DATOS_DE_TERCEROS))
         card.body.addWidget(fila)
+        if nombres := db.thanks():
+            card.body.addWidget(self._gracias(nombres))
         card.body.addWidget(Divider())
 
         self.db_info = QLabel(self._texto_de_la_base())
@@ -652,6 +654,29 @@ class SettingsPage(ScrollPage):
             cpuid=sources.get("cpuid", {}).get("version", "?"),
             sockets=counts.get("sockets", 0),
             cpux=sources.get("cpu-x", {}).get("commit", "?"))
+
+    def _gracias(self, nombres: tuple[str, ...]) -> QWidget:
+        """Who sends reports, by name, with their permission (db.thanks)."""
+        m = theme.METRICS
+        caja = QWidget()
+        columna = QVBoxLayout(caja)
+        columna.setContentsMargins(0, m.card_gap, 0, 0)
+        columna.setSpacing(3)
+        encabezado = QLabel(_("about.thanks").upper())
+        encabezado.setObjectName("ColumnTitle")
+        columna.addWidget(encabezado)
+        columna.addSpacing(2)
+        self.thanks_names = QLabel(render.enumeration(nombres))
+        self.thanks_names.setObjectName("FieldValue")
+        self.thanks_names.setWordWrap(True)
+        self.thanks_names.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        columna.addWidget(self.thanks_names)
+        porque = QLabel(_("about.thanks.why"))
+        porque.setObjectName("Muted")
+        porque.setWordWrap(True)
+        porque.setFont(ui_font(max(7, m.small_pt - 1)))
+        columna.addWidget(porque)
+        return caja
 
     def _bloque(self, titulo: str, lineas: tuple[tuple[str, str], ...]) -> QWidget:
         """Una columna de «cosa, para qué», con su encabezado."""

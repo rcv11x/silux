@@ -63,6 +63,11 @@ que hace falta.
   archivos. Un portátil decía «Ocupado 40.6 GB» de unos 17. Ahora va en
   «Reservado», como lo cuenta `df`.
 
+### Ajustes y escritorio
+
+- Nuevo: «Gracias a» en Ajustes → Acerca de y en el README, con quien manda
+  informes y ha dado permiso para salir.
+
 ### Permisos
 
 - El ayudante lee la energía y los contadores de la gráfica y de la memoria

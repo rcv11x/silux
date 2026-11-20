@@ -17,6 +17,8 @@
   "about.python": "the whole program; the hardware reading only uses its standard library",
   "about.qt": "the interface, and nothing else: the terminal dump works without it",
   "about.tagline": "A hardware profiler for Linux. What CPU-Z, GPU-Z and HWMonitor do on Windows, in one native program: what machine you have and what it is doing right now.",
+  "about.thanks": "Thanks to",
+  "about.thanks.why": "For the reports they send from their machines: with them Silux is tested on machines that are not ours.",
   "about.thirdparty": "Third-party data",
   "annex.what.battery_serial": "the battery's serial number",
   "annex.what.bluetooth": "the Bluetooth adapter's name",
