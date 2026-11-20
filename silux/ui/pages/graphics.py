@@ -136,11 +136,26 @@ NA_VIRTUAL = {
     "sensors": ((*SENSOR_FIELDS, "gpu.tile.power"), "gpu.na.virtual.sensors"),
 }
 
+# What NVML does not publish on a GeForce, or NVIDIA does not have (a SoC
+# clock, AMD's performance profile, rasterizer and shader engine counts,
+# which come from amdgpu's ioctl). A tester's RTX 4060 read about twenty
+# dashes; said at each card's foot, its driver is to blame and not the card.
+NA_NVIDIA = {
+    "card": (("gpu.field.rops", "gpu.field.shaders"), "gpu.na.nvidia.card"),
+    "memory": (("gpu.vram.type", "gpu.vram.bandwidth", "gpu.vram.datarate",
+                "gpu.vram.visible", "gpu.vram.rebar", "gpu.vram.chips",
+                "gpu.vram.shared"), "gpu.na.nvidia.memory"),
+    "clocks": (("gpu.clock.memeff", "SoC", "gpu.clock.profile"), "gpu.na.nvidia.clocks"),
+    "sensors": (("gpu.sensor.hotspot", "gpu.sensor.memtemp", "gpu.sensor.vrgfx",
+                 "gpu.sensor.vrsoc", "gpu.sensor.vrmem", "gpu.sensor.voltage",
+                 "gpu.sensor.vsoc", "gpu.sensor.vmem", "gpu.sensor.videouse"),
+                "gpu.na.nvidia.sensors"),
+}
+
 # Los reguladores los cuenta el microcontrolador de una tarjeta, y el
 # ventilador es suyo. Una integrada se alimenta y se refrigera con el resto del
 # equipo, así que esos sensores no son que falten: no son de ella. En una
-# NVIDIA dedicada sí existen y NVML no los publica, y eso sigue siendo un
-# guion, que es lo que corresponde a «no lo sé».
+# NVIDIA dedicada sí existen y NVML no los publica: NA_NVIDIA lo dice al pie.
 NA_INTEGRADA = {
     "sensors": (("gpu.sensor.vrgfx", "gpu.sensor.vrsoc", "gpu.sensor.vrmem",
                  "gpu.sensor.fan"), "gpu.na.integrated"),
@@ -237,6 +252,8 @@ def no_aplica(gpu: Gpu) -> tuple[dict[str, set[str]], dict[str, str]]:
     reglas = []
     if gpu.virtual:
         reglas.append(NA_VIRTUAL)
+    if gpu.driver == "nvidia":
+        reglas.append(NA_NVIDIA)
     if gpu.integrated and not gpu.memory.total_bytes:
         reglas.append(NA_SIN_VRAM)
     if gpu.integrated:
