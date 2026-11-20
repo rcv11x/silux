@@ -178,7 +178,8 @@ class TestAnIntelsSubzonesThroughTheHelper(unittest.TestCase):
             sitio.mkdir(parents=True, exist_ok=True)
             (sitio / "name").write_text(name + "\n")
         for parche in (mock.patch.object(helper, "POWERCAP", str(self.del_ayudante)),
-                       mock.patch.object(rapl, "POWERCAP", self.del_proveedor)):
+                       mock.patch.object(rapl, "POWERCAP", self.del_proveedor),
+                       mock.patch.dict(helper._LAST_READ, clear=True)):
             parche.start()
             self.addCleanup(parche.stop)
 
@@ -209,3 +210,60 @@ class TestAnIntelsSubzonesThroughTheHelper(unittest.TestCase):
         self.assertAlmostEqual(potencia.package_w, 2.0)
         self.assertAlmostEqual(potencia.core_w, 1.0)
         self.assertAlmostEqual(potencia.uncore_w, 0.25)
+
+
+class TestTheHelperPacesItsCounters(unittest.TestCase):
+    """Energy and busy counters at most every 100 ms, whatever the client
+    asks: read at their own rate they are the Platypus side channel."""
+
+    class Clock:
+        def __init__(self):
+            self.now = 10.0
+            self.slept = []
+
+        def monotonic(self):
+            return self.now
+
+        def sleep(self, seconds):
+            self.slept.append(seconds)
+            self.now += seconds
+
+    def setUp(self):
+        from silux.privileged import helper
+        self.helper = helper
+        self.clock = self.Clock()
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        zona = pathlib.Path(tmp.name) / "intel-rapl:0"
+        zona.mkdir()
+        (zona / "energy_uj").write_text("1\n")
+        # No counters of this machine's are opened: the PMU families answer
+        # «unsupported», after the wait.
+        for parche in (mock.patch.object(helper, "POWERCAP", tmp.name),
+                       mock.patch.object(helper, "_abrir_pmu", lambda familia: None),
+                       mock.patch.dict(helper._PMU_FDS, clear=True),
+                       mock.patch.dict(helper._LAST_READ, clear=True),
+                       mock.patch.object(helper.time, "monotonic", self.clock.monotonic),
+                       mock.patch.object(helper.time, "sleep", self.clock.sleep)):
+            parche.start()
+            self.addCleanup(parche.stop)
+
+    def test_each_reading_waits_for_the_rest_of_100_ms(self):
+        for action in ("rapl", "gpu_pmu", "imc"):
+            with self.subTest(action=action):
+                self.clock.slept.clear()
+                self.helper.handle({"action": action})
+                self.assertEqual(self.clock.slept, [])
+                self.clock.now += 0.03
+                self.helper.handle({"action": action})
+                self.assertEqual(len(self.clock.slept), 1)
+                self.assertAlmostEqual(self.clock.slept[0], 0.07)
+                self.clock.now += 0.5
+                self.helper.handle({"action": action})
+                self.assertEqual(len(self.clock.slept), 1)
+
+    def test_one_family_does_not_hold_up_another(self):
+        self.helper.handle({"action": "rapl"})
+        self.helper.handle({"action": "gpu_pmu"})
+        self.helper.handle({"action": "imc"})
+        self.assertEqual(self.clock.slept, [])

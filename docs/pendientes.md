@@ -283,10 +283,8 @@ necesita.
   y el `timeout` de `request()` no acota la lectura (F-M25).
 * **F-M26 · `privileged/client.py`** · media · tras una respuesta ilegible no
   se cierra el canal, y desde ahí cada respuesta llega con una de retraso.
-* **F-M27 · `privileged/helper.py`** · media-baja · la cadencia de RAPL la
-  decide el cliente y no el ayudante; la lista blanca de MSR tiene nueve
-  registros que no se usan. Va como propuesta antes que código: la de los
-  subdominios de RAPL (en las notas) trae un mínimo de 100 ms en el ayudante.
+* **F-M27 · `privileged/helper.py`** · media-baja · la lista blanca de MSR
+  tiene nueve registros que no se usan. Va como propuesta antes que código.
 * `privileged/helper.py` · baja · el ayudante muere con UTF-8 inválido;
   `DISK_NAME` acepta un salto de línea final; un comentario dice que
   `uncore_imc_free_running` es de Ice Lake en adelante y no lo es
@@ -370,8 +368,8 @@ De la quinta auditoría, sin comprobar uno a uno si siguen igual:
   cerró `energy_uj` en la 5.10 (Platypus, CVE-2020-8694) y por el que los
   contadores uncore van detrás de `perf_event_paranoid`; (3) las series
   dejan de ser solo de root. Lo que haría falta en el lado de root si algún
-  día se hace: un solo ayudante a la vez (cerrojo en `/run`) y un mínimo de
-  100 ms entre lecturas de energía y contadores. Las sesiones remotas o
+  día se hace: un solo ayudante a la vez (cerrojo en `/run`); el mínimo de
+  100 ms entre lecturas de energía y contadores ya está. Las sesiones remotas o
   inactivas seguirían pidiendo la contraseña. El 20 de noviembre de 2026 el
   autor prefirió pedir la contraseña antes que dar root sin ella a cualquier
   proceso de la sesión.

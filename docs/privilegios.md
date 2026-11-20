@@ -34,6 +34,39 @@ diálogo de contraseña nada más abrirse es un programa que se desinstala.
 el programa. Es opcional: sin ella pkexec pide la contraseña igual, solo que
 con un mensaje genérico en vez del nuestro.
 
+## Los contadores de energía y de ocupación
+
+Con permisos, el ayudante lee tres familias de contadores que solo suben: la
+energía de RAPL, el uso de cada motor de una gráfica Intel y el tráfico del
+controlador de memoria. Los vatios, los porcentajes y los bytes por segundo
+salen de restar dos lecturas, y eso lo hace el proceso sin privilegios.
+
+Desde el kernel 5.10, `energy_uj` es solo de root (Platypus, CVE-2020-8694):
+leídos a su propio ritmo de actualización, del orden de decenas de
+microsegundos, estos contadores dejan ver lo que calculan otros procesos. El
+subdominio de los núcleos (PP0) es justo el que usó el ataque. Por eso:
+
+- **Cada familia se lee como mucho cada 100 ms** (`MIN_READ_INTERVAL_S`), pida
+  lo que pida el cliente. Una petición que llega antes espera lo que falta; no
+  se le contesta con la lectura anterior, porque el cliente de RAPL mide el
+  tiempo con su propio reloj y la leería como 0 W. La ventana muestrea como
+  mucho cada 200 ms, así que no cambia nada de lo que se ve. Un muestreo que
+  se adelanta (al cambiar el intervalo o al dar permisos) espera como mucho
+  esos 100 ms, en el hilo de muestreo y nunca en el de la interfaz.
+- **Los nombres de zona los pone el ayudante**: lista `/sys/class/powercap` y
+  el cliente no manda ninguno. El patrón (`^[a-z]+-rapl:\d+(:\d+)?\Z`) es una
+  segunda barrera: admite el paquete y psys (`intel-rapl:0`) y un nivel por
+  debajo (núcleos, uncore y DRAM, `intel-rapl:0:0`), y nada más; tampoco la
+  copia del paquete por MMIO.
+- Lo que acota el riesgo: el ayudante solo atiende al Silux que lo lanzó tras
+  la contraseña de administrador; 100 ms es miles de veces más despacio que
+  el ataque; y, donde está activo, el filtrado de energía del microcódigo de
+  Intel.
+
+`tests/test_rapl.py` lo comprueba con el ayudante de verdad: su respuesta,
+por el cliente de verdad, hasta los vatios de los núcleos y del uncore; y la
+espera de cada familia con un reloj propio.
+
 ## La ventana de la contraseña
 
 La pide polkit, y lo que dice depende de qué se ejecute:
@@ -103,7 +136,8 @@ gravedad.
   entero con tope, el diagnóstico SMART de un disco cuyo nombre casa con un
   patrón fijo (comandos de solo lectura escritos en el código), los
   contadores de la gráfica y del controlador de memoria que admite por
-  nombre, y la energía de RAPL. No acepta rutas ni órdenes, y una petición
+  nombre, y la energía de RAPL, cada familia como mucho cada 100 ms. No
+  acepta rutas ni órdenes, y una petición
   mal formada (JSON roto, que no es un objeto, demasiado larga, acción
   desconocida, tipos raros) recibe un error y no hace nada.
 - **El instalador** comprueba que la carpeta del ayudante es una carpeta de

@@ -57,6 +57,13 @@ que hace falta.
   root, solo llegaba el del paquete. Llegan también el de los núcleos, el del
   uncore y el de la memoria.
 
+### Permisos
+
+- El ayudante lee la energía y los contadores de la gráfica y de la memoria
+  como mucho cada 100 ms, pida lo que pida el programa: leídos más deprisa
+  dejan ver lo que calculan otros procesos (CVE-2020-8694). No cambia nada de
+  lo que se ve. Al actualizar, Silux pide actualizar el ayudante.
+
 ---
 
 ## 0.4-prueba4 (20 de noviembre de 2026)

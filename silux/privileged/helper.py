@@ -24,6 +24,8 @@ corre con privilegios hay que poder auditarlo. De ahí tres decisiones:
   mismo que enseña `intel_gpu_top`. Los nombres los enumera el propio
   ayudante; el cliente pide una familia —la gráfica o la memoria— y nunca un
   nombre de PMU ni un número de evento.
+* **Energy and busy counters at most every 100 ms**, whatever the client asks
+  (`MIN_READ_INTERVAL_S`).
 
 Habla JSON por líneas: una petición por línea en la entrada, una respuesta
 por línea en la salida. Termina cuando la entrada se cierra.
@@ -120,6 +122,27 @@ PMU_POWER_EVENT = re.compile(r"^energy-gpu$")
 PMU_IMC = re.compile(r"^uncore_imc(_free_running)?(_\d+)?$")
 PMU_IMC_EVENT = re.compile(
     r"^(data_reads?|data_writes?|cas_count_read|cas_count_write|ia_requests)$")
+
+# The fewest seconds between two reads of the same counters. Read at their own
+# update rate, tens of microseconds, energy and busy counters show what other
+# processes compute (Platypus, CVE-2020-8694): the kernel closed `energy_uj`
+# to users for that. A request that comes sooner waits for the rest: answering
+# it with the previous reading would read as 0 W on the client, which times
+# energy with its own clock. The window samples every 200 ms at most.
+MIN_READ_INTERVAL_S = 0.1
+_LAST_READ: dict[str, float] = {}
+
+
+def _paced(action: str) -> None:
+    """Waits until `MIN_READ_INTERVAL_S` have passed since that action's last
+    read, whatever the client asked."""
+    last = _LAST_READ.get(action)
+    if last is not None:
+        wait = MIN_READ_INTERVAL_S - (time.monotonic() - last)
+        if wait > 0:
+            time.sleep(wait)
+    _LAST_READ[action] = time.monotonic()
+
 
 # Las dos familias que el cliente puede pedir. Son lo único que viaja por el
 # protocolo: dentro de cada una, qué PMU y qué evento se abre lo decide este
@@ -564,6 +587,7 @@ def read_gpu_pmu() -> dict:
     los reste y los convierta en un porcentaje es el proceso sin privilegios;
     aquí solo se leen ocho bytes por descriptor.
     """
+    _paced("gpu_pmu")
     if FAMILIA_GPU not in _PMU_FDS:
         _abrir_pmu(FAMILIA_GPU)
     if FAMILIA_GPU not in _PMU_FDS:
@@ -586,6 +610,7 @@ def read_imc() -> dict:
     `intel_gpu_top` junto a la gráfica, aunque el dato no sea de la gráfica:
     es el controlador entero, con el tráfico del procesador dentro.
     """
+    _paced("imc")
     if FAMILIA_IMC not in _PMU_FDS:
         _abrir_pmu(FAMILIA_IMC)
     if FAMILIA_IMC not in _PMU_FDS:
@@ -617,6 +642,7 @@ def read_rapl() -> dict:
     calcula el proceso sin privilegios, que es quien guarda la lectura
     anterior.
     """
+    _paced("rapl")
     zonas = {}
     try:
         nombres = sorted(os.listdir(POWERCAP))
