@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from collections import defaultdict, deque
 
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 from ... import render
@@ -32,6 +33,10 @@ HISTORIAL = 40
 
 class CpuLiveSection(QWidget):
     """Las cuatro cifras del procesador y la rejilla de núcleos."""
+
+    # A tile's padlock asks for permissions. Unconnected, the power tile's
+    # said «Pulsa el candado» and did nothing wherever RAPL is root's.
+    locked_clicked = Signal()
 
     def __init__(self, palette: Palette, prefs: Preferences, parent=None):
         super().__init__(parent)
@@ -83,6 +88,7 @@ class CpuLiveSection(QWidget):
         self.tile_power.chart.set_formatter(render.watts, intervalo)
         for tile in (self.tile_freq, self.tile_usage, self.tile_temp, self.tile_power):
             row.add(tile)
+            tile.locked_clicked.connect(self.locked_clicked)
         return row
 
     # -- actualización ------------------------------------------------------

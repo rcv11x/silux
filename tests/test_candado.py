@@ -121,6 +121,36 @@ class TestElCandadoEnLasPaginas(unittest.TestCase):
             rejilla._candados[_("cpu.field.voltage")].clicked.emit()
         pedir.assert_called_once()
 
+    def test_the_power_tiles_padlock_asks_too(self):
+        """Where the kernel keeps RAPL for root (most AMD, the author's T14),
+        the power tile's padlock said «Pulsa el candado» and did nothing: its
+        signal went nowhere. The i5-10400 as that kernel leaves it: the zones
+        are there and their energy cannot be read."""
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
+        from silux import volcado
+        from silux.collector import Collector
+
+        with volcado.montado(EQUIPOS / INTEL) as root:
+            for energia in root.glob("sys/devices/virtual/powercap/**/energy_uj"):
+                energia.unlink()
+            collector = Collector()
+            try:
+                f = collector.snapshot()
+            finally:
+                collector.close()
+        self.assertEqual(f.permission_note("cpu.power").need, Need.ROOT)
+        ventana = self._ventana(f)
+        ventana.select_section("CPU")
+        for _vez in range(4):
+            self.app.processEvents()
+        candado = ventana.cpu_page.live.tile_power.lock
+        self.assertTrue(candado.isVisible())
+        pedidos = []
+        ventana.cpu_page.elevation_requested.connect(lambda: pedidos.append(1))
+        QTest.mouseClick(candado, Qt.MouseButton.LeftButton)
+        self.assertEqual(pedidos, [1])
+
     def test_con_el_dato_el_candado_se_va(self):
         from silux.i18n import _
 

@@ -354,6 +354,7 @@ class CpuPage(ScrollPage):
         # es donde se busca a cuánto va, y en Sensores dejaba el árbol —que es
         # lo propio de esa página— reducido a una rendija.
         self.live = CpuLiveSection(palette, prefs)
+        self.live.locked_clicked.connect(self.elevation_requested)
         self._layout.addWidget(self.live)
 
         # Cuánto puede gastar y cuánto descansa: lo que explica un consumo en
