@@ -522,6 +522,51 @@ def install(launcher: Optional[Launcher] = None,
     return icon_files(launcher.app_id), desktop_path(launcher.app_id)
 
 
+# -- on start -----------------------------------------------------------------
+
+def stale_shortcuts(launcher: Optional[Launcher] = None) -> tuple[bool, bool]:
+    """Which shortcuts of this AppImage to rewrite on start: (menu, desktop).
+
+    One that opens a file that is no longer there (the user moved the
+    AppImage), or that opens this one but is from an older version. Not one
+    the user deleted or hid, and not one that opens another copy that still
+    exists. Only `$APPIMAGE` is looked at: the disk is never searched.
+    """
+    launcher = launcher or current_launcher()
+    if launcher.mode != "appimage" or not launcher.command:
+        return False, False
+
+    def stale(texto: Optional[str]) -> bool:
+        if texto is None:
+            return False
+        orden, carpeta = _instalado(texto)
+        if (orden, carpeta) == (launcher.command, launcher.working_dir):
+            return texto != entry_text(launcher) or not _iconos_al_dia(launcher.app_id)
+        return not _existe(orden, carpeta)
+
+    app_id = launcher.app_id
+    return (in_menu(app_id) and stale(_read(desktop_path(app_id))),
+            on_desktop(app_id) and stale(_read(shortcut_path(app_id))))
+
+
+def repoint(launcher: Optional[Launcher] = None) -> bool:
+    """Rewrites what `stale_shortcuts` says, and only that, without asking:
+    it is what the user would want. Returns whether anything was written."""
+    launcher = launcher or current_launcher()
+    menu, escritorio = stale_shortcuts(launcher)
+    if not (menu or escritorio):
+        return False
+    for viejo in legacy_files(launcher):
+        viejo.unlink()
+    render_icons(launcher.app_id)
+    if menu:
+        write_desktop(launcher)
+    if escritorio:
+        _write_shortcut(launcher)
+    refresh_caches()
+    return True
+
+
 # -- what the user deleted or hid ---------------------------------------------
 
 def _hidden(texto: str) -> bool:

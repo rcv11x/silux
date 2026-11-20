@@ -301,6 +301,78 @@ class TestTryExec(_FakeHome):
 
 
 @unittest.skipIf(QApplication is None, "no PySide6")
+class TestMovedByTheUser(_FakeHome):
+    """Moved by hand, the shortcuts follow it the next time it opens."""
+
+    def setUp(self):
+        super().setUp()
+        self.app = qt.app()
+        self.old = self.appimage()
+        desktop.set_shortcuts(True, True, desktop.current_launcher({"APPIMAGE": str(self.old)}))
+        self.new = self.home / "Programas" / self.old.name
+        self.new.parent.mkdir()
+
+    def _open_from(self, path):
+        from silux import settings
+        from silux.ui.app import MainWindow
+
+        with mock.patch.dict(os.environ, {"APPIMAGE": str(path)}):
+            window = MainWindow(settings.Preferences().normalized())
+            self.addCleanup(window.deleteLater)
+            window.settings_page.wait_for_tasks()
+            for _turn in range(5):
+                self.app.processEvents()
+            state = desktop.status()
+            window.settings_page.wait_for_tasks()
+        return state
+
+    def test_both_follow_it_without_asking(self):
+        os.rename(self.old, self.new)
+        with mock.patch("silux.ui.dialogs.MoveAppImageDialog.exec") as asked:
+            state = self._open_from(self.new)
+        asked.assert_not_called()
+        self.assertEqual(state.state, "current")
+        self.assertIn(f"Exec={self.new}", desktop.desktop_path().read_text())
+        self.assertIn(f"Exec={self.new}", desktop.shortcut_path().read_text())
+
+    def test_one_from_an_older_version_is_brought_up_to_date(self):
+        launcher = desktop.current_launcher({"APPIMAGE": str(self.old)})
+        older = desktop.entry_text(launcher).replace(f"TryExec={self.old}\n", "")
+        desktop.desktop_path().write_text(older)
+        self.assertEqual(desktop.status(launcher).state, "outdated")
+        self.assertEqual(self._open_from(self.old).state, "current")
+
+    def test_a_copy_that_still_exists_is_left_alone(self):
+        self.new.write_bytes(self.old.read_bytes())
+        self.new.chmod(0o755)
+        before = desktop.desktop_path().read_text()
+        self.assertEqual(self._open_from(self.new).state, "elsewhere")
+        self.assertEqual(desktop.desktop_path().read_text(), before)
+
+    def test_one_the_user_deleted_is_not_brought_back(self):
+        desktop.desktop_path().unlink()
+        os.rename(self.old, self.new)
+        self._open_from(self.new)
+        self.assertFalse(desktop.desktop_path().exists())
+        self.assertIn(f"Exec={self.new}", desktop.shortcut_path().read_text())
+
+    def test_one_deleted_from_the_kde_menu_stays_deleted(self):
+        menu = desktop.kde_menu_file()
+        menu.parent.mkdir(parents=True)
+        menu.write_text(KMENUEDIT)
+        os.rename(self.old, self.new)
+        self._open_from(self.new)
+        self.assertIn(f"Exec={self.old}", desktop.desktop_path().read_text())
+        self.assertEqual(menu.read_text(), KMENUEDIT)
+
+    def test_from_the_code_nothing_is_touched(self):
+        os.rename(self.old, self.new)
+        before = desktop.desktop_path().read_text()
+        self.assertEqual(desktop.stale_shortcuts(desktop.current_launcher({})), (False, False))
+        self.assertEqual(desktop.desktop_path().read_text(), before)
+
+
+@unittest.skipIf(QApplication is None, "no PySide6")
 class TestDeletedByHand(_FakeHome):
     """Deleted from a terminal or the menu: not added, and nothing else said."""
 

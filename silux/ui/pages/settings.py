@@ -824,6 +824,14 @@ class SettingsPage(ScrollPage):
         dialogo.deleteLater()
         return {"move": True, "leave": False}.get(dialogo.choice)
 
+    def repoint_shortcuts(self) -> None:
+        """On start: shortcuts to an AppImage the user moved follow it, and
+        those from an older version are brought up to date
+        (`desktop.repoint`). Deciding is a few small reads; writing, with
+        its icons and caches, goes to the background."""
+        if any(desktop.stale_shortcuts()):
+            self._en_segundo_plano(desktop.repoint)
+
     def _en_segundo_plano(self, trabajo: Callable[[], object]) -> None:
         if self._tarea is not None:
             return

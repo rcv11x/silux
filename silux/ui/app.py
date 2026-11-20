@@ -344,6 +344,7 @@ class MainWindow(QMainWindow):
         self.settings_page.changed.connect(self._on_preferences)
         self.settings_page.update_check_requested.connect(self.buscar_actualizacion)
         self.settings_page.relaunch_requested.connect(self._relaunch)
+        self.settings_page.repoint_shortcuts()
         self.settings_page.elevation_requested.connect(self._on_elevation_requested)
         self.settings_page.explain_requested.connect(self._explicar_permisos)
         self.settings_page.permanent_requested.connect(self._on_permanent_requested)
