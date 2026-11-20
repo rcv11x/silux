@@ -852,7 +852,18 @@ class _Anonimizador:
                 ruta.rename(ruta.with_name(self.interfaces[ruta.name]))
 
     def grabado_limpio(self) -> dict:
+        # NVML's UUID («GPU-» and a UUID) names the card. The rule for UUIDs
+        # zeroed its UUID and left «GPU-», which anonimizar still covered: a
+        # laptop with an awake NVIDIA had no annex. It goes as anonimizar
+        # leaves it, and the real one is looked for in every byte.
+        for tarjeta in (self.grabado.get("nvml") or {}).get("tarjetas") or ():
+            if isinstance(tarjeta, dict) and tarjeta.get("uuid"):
+                self.secretos.add(tarjeta["uuid"])
+                self.secretos.add(tarjeta["uuid"].removeprefix("GPU-"))
         limpio = json.loads(self._cambiar_texto(json.dumps(self.grabado, ensure_ascii=False)))
+        for tarjeta in (limpio.get("nvml") or {}).get("tarjetas") or ():
+            if isinstance(tarjeta, dict) and tarjeta.get("uuid"):
+                tarjeta["uuid"] = privacidad._tapar(tarjeta["uuid"])
         for clave in list(limpio.get("ioctl_red", {})):
             valor = limpio["ioctl_red"][clave]
             nombre, _sep, codigo = clave.partition(":")
@@ -1045,6 +1056,21 @@ def _sin_numerar(discos):
         for d in discos)
 
 
+def _diferencias(antes, despues, ruta: str) -> list[str]:
+    """Where two values differ, as field paths («gpus[1].unique_id»): what
+    the refusal says, without the value, which is what it protects."""
+    if antes == despues:
+        return []
+    if (dataclasses.is_dataclass(antes) and type(antes) is type(despues)):
+        return [d for campo in dataclasses.fields(antes)
+                for d in _diferencias(getattr(antes, campo.name), getattr(despues, campo.name),
+                                      f"{ruta}.{campo.name}")]
+    if isinstance(antes, tuple) and isinstance(despues, tuple) and len(antes) == len(despues):
+        return [d for i, (a, b) in enumerate(zip(antes, despues))
+                for d in _diferencias(a, b, f"{ruta}[{i}]")]
+    return [ruta]
+
+
 def _lo_que_anonimizar_taparia(foto) -> list[str]:
     """Lo que `privacidad.anonimizar` cambiaría en la foto del volcado.
 
@@ -1072,5 +1098,5 @@ def _lo_que_anonimizar_taparia(foto) -> list[str]:
         if (campo.name == "system" and antes.hostname in privacidad.SUSTITUTOS_ANTERIORES
                 and dataclasses.replace(antes, hostname=despues.hostname) == despues):
             continue
-        quedan.append(campo.name)
+        quedan += _diferencias(antes, despues, campo.name)
     return quedan

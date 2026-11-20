@@ -11,6 +11,17 @@ que hace falta.
 
 ---
 
+## Sin publicar
+
+### Informe
+
+- Arreglado: con una gráfica NVIDIA despierta, el anexo no salía («anonimizar
+  todavía encuentra qué tapar: gpus»): el identificador de la tarjeta que da
+  NVIDIA quedaba a medio tapar. Ahora se tapa entero, y si el anexo no sale,
+  el informe dice qué dato lo impidió (sin el dato).
+
+---
+
 ## 0.4-prueba2 (20 de noviembre de 2026)
 
 Segunda versión de prueba de la 0.4: lo que se ha arreglado con los primeros

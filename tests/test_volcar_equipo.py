@@ -9,6 +9,8 @@ from silux import privacidad
 from silux.model import CpuInfo, Disk, NetworkInterface, Partition, Snapshot
 from tests.arbol import arbol
 
+EQUIPOS = pathlib.Path(__file__).resolve().parent / "fixtures" / "equipos"
+
 
 def _herramienta():
     from silux import volcado
@@ -263,6 +265,58 @@ class TestUnaInterfazConNombrePropio(unittest.TestCase):
         self.assertIn("proc/self/net/dev", hallazgos[0])
 
 
+class TestAnNvidiaCard(unittest.TestCase):
+    """The first annex of the prueba2, from a laptop with an RTX 4050, did not
+    come out: «anonimizar todavía encuentra qué tapar: gpus». NVML's UUID
+    («GPU-» and a UUID) had its UUID zeroed by the dumper, and anonimizar
+    still covered the rest. Any machine with an awake NVIDIA had no annex."""
+
+    UUID = "GPU-5c2b6d0e-8f41-4a7d-b3e9-1f0c2a7d9e64"
+
+    def _dump_with_the_card(self, tmp):
+        import dataclasses
+        import json
+        import shutil
+        from silux import nvml
+        work = pathlib.Path(tmp) / "equipo"
+        shutil.copytree(EQUIPOS / "qemu-kvm", work, symlinks=True)
+        grabado = json.loads((work / "grabado.json").read_text())
+        # As the NVIDIA provider records it: a dict per card, without serial.
+        card = nvml.NvidiaGpu(
+            pci_slot="0000:01:00.0", name="NVIDIA GeForce RTX 4050 Laptop GPU",
+            vbios="95.07.2E.00.44", driver_version="550.163.01", uuid=self.UUID,
+            cuda_cores=2560, memory_total_bytes=6 << 30, memory_bus_bits=96,
+            power_cap_w=60.0, link_generation=1, link_width=8)
+        nvml_recorded = {"abierta": True,
+                         "tarjetas": [dict(dataclasses.asdict(card), serial=None,
+                                           throttle_reasons=[])]}
+        # Only NVML's goes through the dumper's cleaning: the rest of this
+        # dump was cleaned when it was made.
+        limpio = volcar._Anonimizador(work, {"nvml": nvml_recorded})
+        grabado["nvml"] = limpio.grabado_limpio()["nvml"]
+        (work / "grabado.json").write_text(json.dumps(grabado, indent=1))
+        return work, limpio
+
+    def test_its_uuid_is_covered_and_the_check_finds_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work, limpio = self._dump_with_the_card(tmp)
+            photo = volcar.foto_de(work)
+            self.assertIn("NVIDIA GeForce RTX 4050 Laptop GPU", [g.name for g in photo.gpus])
+            self.assertEqual(volcar._lo_que_anonimizar_taparia(photo), [])
+            self.assertNotIn(self.UUID[4:], (work / "grabado.json").read_text())
+            self.assertEqual(volcar.comprobar(work, limpio.secretos), [])
+            # And found anywhere else it went, byte by byte.
+            (work / "proc" / "uuid-de-mas").write_text(self.UUID)
+            self.assertTrue(volcar.comprobar(work, limpio.secretos))
+
+    def test_what_is_left_is_said_by_its_field_and_not_its_value(self):
+        from silux.model import Gpu
+        photo = Snapshot(monotonic_ns=0, cpu=CpuInfo(), gpus=(Gpu(name="x"), Gpu(unique_id=self.UUID)))
+        quedan = volcar._lo_que_anonimizar_taparia(photo)
+        self.assertEqual(quedan, ["gpus[1].unique_id"])
+        self.assertNotIn(self.UUID, " ".join(quedan))
+
+
 class TestWhatPathlibLists(unittest.TestCase):
     """The providers list and look with pathlib. In Python 3.10 pathlib keeps
     its own `os.listdir` and `os.stat` (`_NormalAccessor`), taken when it is
@@ -332,7 +386,7 @@ class TestLosMontajesEnLaComprobacionFinal(unittest.TestCase):
 
     def test_un_montaje_de_alguien_no_pasa(self):
         self.assertEqual(volcar._lo_que_anonimizar_taparia(self._foto("/", "/mnt/datos")),
-                         ["disks"])
+                         ["disks[0].partitions[1].mountpoint"])
 
     def test_uno_ya_sustituido_pasa_lleve_el_numero_que_lleve(self):
         # anonimizar numera por el orden de los discos y el volcado por el de
@@ -344,7 +398,7 @@ class TestLosMontajesEnLaComprobacionFinal(unittest.TestCase):
     def test_un_numero_de_serie_sigue_sin_pasar(self):
         foto = Snapshot(monotonic_ns=0, cpu=CpuInfo(),
                         disks=(Disk(name="sda", serial="S4EWNX0M123456"),))
-        self.assertEqual(volcar._lo_que_anonimizar_taparia(foto), ["disks"])
+        self.assertEqual(volcar._lo_que_anonimizar_taparia(foto), ["disks[0].serial"])
 
 
 
