@@ -35,6 +35,7 @@ import builtins
 import contextlib
 import dataclasses
 import errno
+import functools
 import getpass
 import importlib.util
 import io
@@ -71,6 +72,7 @@ USB_QUE_IDENTIFICA = {"product", "manufacturer", "idVendor", "idProduct"}
 # Nombres que no señalan a nadie: los de un concentrador o un controlador.
 USB_GENERICO = re.compile(r"hub|host controller|usb\s*receiver", re.I)
 MAC = re.compile(r"\b(?:[0-9a-f]{2}:){5}[0-9a-f]{2}\b", re.I)
+CORREO_SUSTITUTO = "usuario@example.org"
 UUID = re.compile(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", re.I)
 
 
@@ -574,7 +576,17 @@ class _Anonimizador:
         texto = MAC.sub(lambda m: m.group(0) if m.group(0) in ("00:00:00:00:00:00", "ff:ff:ff:ff:ff:ff")
                         else privacidad.MAC, texto)
         texto = UUID.sub("00000000-0000-0000-0000-000000000000", texto)
-        return texto
+        # An address, wherever it is: /proc/version names whoever built the
+        # kernel, and a kernel compiled at home names its owner. The same
+        # rule as the checker that runs before publishing.
+        comprobador = _comprobador()
+
+        def correo(m: re.Match) -> str:
+            if comprobador._CORREOS_PERMITIDOS.search(m.group()):
+                return m.group()
+            self.secretos.add(m.group())
+            return CORREO_SUSTITUTO
+        return comprobador._CORREO.sub(correo, texto)
 
     def _montaje(self, punto: str) -> str:
         if punto in privacidad._MONTAJES_DEL_SISTEMA:
@@ -734,6 +746,7 @@ class _Anonimizador:
 
 # -- comprobar ------------------------------------------------------------------
 
+@functools.lru_cache(maxsize=None)
 def _comprobador():
     ruta = RAIZ / "tools" / "comprobar_privacidad.py"
     spec = importlib.util.spec_from_file_location("comprobar_privacidad", ruta)

@@ -97,6 +97,18 @@ class TestLasDireccionesDeProc(unittest.TestCase):
         self.assertIn(volcar._ipv4_hex(privacidad.PUERTA), salida)
         self.assertIn("0100A8C0", self.limpio.secretos)
 
+    def test_whoever_built_the_kernel(self):
+        # /proc/version names the builder: a list address in Debian, and
+        # in a kernel someone compiled at home, theirs.
+        # Split so that the privacy checker does not find it here.
+        builder = "debian-kernel" + "@" + "lists.debian.org"
+        texto = (f"Linux version 6.12.117+deb13-amd64 ({builder}) "
+                 "(x86_64-linux-gnu-gcc-14 (Debian 14.2.0-19) 14.2.0) #1 SMP\n")
+        salida = self.limpio._cambiar_texto(texto)
+        self.assertNotIn(builder, salida)
+        self.assertIn("(usuario@example.org) (x86_64-linux-gnu-gcc-14", salida)
+        self.assertIn(builder, self.limpio.secretos)
+
     def test_ipv6_menos_el_bucle_local(self):
         bucle = "0" * 31 + "1"
         texto = (f"fe800000000000000000000000000001 02 40 20 80 enp1s0\n"
