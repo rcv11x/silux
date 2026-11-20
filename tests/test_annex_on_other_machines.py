@@ -236,6 +236,25 @@ class TestWhatCannotBeCovered(unittest.TestCase):
             self.assertIn(label, annex.section(block, None))
 
 
+class TestWhatIsInAFoldersName(unittest.TestCase):
+    """On the CI's machine one of its identifiers was in a folder's name: the
+    folder went, and the manifest said where with the identifier in it, so
+    the second check refused the dump."""
+
+    def test_it_goes_and_where_it_was_is_said_covered(self):
+        chip = "/sys/devices/platform/anagarcia_hwmon/hwmon/hwmon9"
+        with _machine("qemu-kvm") as (root, out):
+            _write(root, f"{chip}/name", "nct6775\n")
+            _write(root, f"{chip}/temp1_input", "45000\n")
+            _link(root, "/sys/class/hwmon/hwmon9", "../../devices/platform/anagarcia_hwmon/hwmon/hwmon9")
+            folder, manifest, everything = _dump(out, propios={
+                "anagarcia": "el nombre de quien usa este equipo"})
+            self.assertNotIn(b"anagarcia", everything)
+            # The folder, and the link that leads to it and names it too.
+            self.assertEqual([q["ruta"] for q in manifest["quitados"]],
+                             ["/sys/class/hwmon/hwmon9", "/sys/devices/platform/…_hwmon"])
+
+
 class TestARefusalInWords(unittest.TestCase):
 
     def test_by_field_and_kind_never_by_value(self):

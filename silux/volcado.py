@@ -1044,10 +1044,19 @@ def _json_sin(dato, buscado, ruta: str = "") -> tuple[object, list[str]]:
     return dato, []
 
 
+def _tapado(texto: str, buscado) -> str:
+    """The path as the annex says it, with what was found covered: it can
+    be in the name of a folder (it was, on the CI's machine)."""
+    datos = texto.encode()
+    datos = (buscado.sub(b"\xe2\x80\xa6", datos) if isinstance(buscado, re.Pattern)
+             else datos.replace(buscado, "…".encode()))
+    return datos.decode(errors="replace")
+
+
 def _sin_lo_encontrado(trabajo: pathlib.Path, hallazgos) -> list[dict]:
     """Takes away what could not be covered safely, instead of writing
     nothing: the file, or in the two JSON files the answer that holds it.
-    Says what each was, by kind."""
+    Says what each was, by kind, and where, with it covered."""
     quitados: list[dict] = []
     for relativa, clase, buscado in hallazgos:
         ruta = trabajo / relativa
@@ -1055,7 +1064,8 @@ def _sin_lo_encontrado(trabajo: pathlib.Path, hallazgos) -> list[dict]:
             limpio, caminos = _json_sin(json.loads(ruta.read_text()), buscado)
             ruta.write_text(json.dumps(limpio, ensure_ascii=False, indent=1,
                                        sort_keys=relativa == sysroot.GRABADO) + "\n")
-            quitados += [{"ruta": f"{relativa}: {c}", "dato": clase} for c in caminos]
+            quitados += [{"ruta": _tapado(f"{relativa}: {c}", buscado), "dato": clase}
+                         for c in caminos]
             continue
         if ruta.is_symlink() or ruta.is_file():
             ruta.unlink()
@@ -1063,7 +1073,7 @@ def _sin_lo_encontrado(trabajo: pathlib.Path, hallazgos) -> list[dict]:
             shutil.rmtree(ruta)
         else:
             continue
-        quitados.append({"ruta": "/" + relativa, "dato": clase})
+        quitados.append({"ruta": _tapado("/" + relativa, buscado), "dato": clase})
     return quitados
 
 
