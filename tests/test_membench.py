@@ -185,6 +185,32 @@ class TestElTeorico(unittest.TestCase):
         self.assertIsNone(render.memory_bandwidth_share(42_000_000_000, None))
         self.assertIsNone(render.memory_bandwidth_share(None, 51_200_000_000))
 
+
+class TestTheBlockCanHaveHugePages(unittest.TestCase):
+    """The measured block must be private memory: shared anonymous memory only
+    gets huge pages where shmem THP is on, and without them the TLB misses
+    went into the latency (RAM 72 ns instead of 62 on Fedora)."""
+
+    def test_it_is_not_shared(self):
+        from silux import membench
+
+        reserva = membench._reservar(4 << 20)
+        self.assertIsNotNone(reserva)
+        _mapa, base = reserva
+        flags = None
+        with open("/proc/self/smaps", encoding="ascii", errors="replace") as smaps:
+            dentro = False
+            for linea in smaps:
+                campos = linea.split()
+                if "-" in campos[0] and len(campos) >= 5:
+                    inicio, fin = (int(x, 16) for x in campos[0].split("-"))
+                    dentro = inicio <= base < fin
+                elif dentro and linea.startswith("VmFlags:"):
+                    flags = campos[1:]
+                    break
+        self.assertIsNotNone(flags, "the block is not in /proc/self/smaps")
+        self.assertNotIn("sh", flags)
+
 if __name__ == "__main__":
     unittest.main()
 

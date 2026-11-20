@@ -49,6 +49,14 @@ dependen del silicio y del reloj y no de la memoria: el kernel de código
 máquina dio aquí 0,9, 2,8 y 11,4. Lo que cambia con la RAM —la latencia de
 memoria y los anchos de banda— solo sirve de orden de magnitud.
 
+**Las páginas grandes no llegaban** (20 de noviembre de 2026). El bloque se
+reservaba con `mmap(-1)`, que es memoria compartida, y esa solo tiene páginas
+grandes donde `shmem_enabled` lo permite: en Fedora está a `never`, así que
+`madvise` no hacía nada y los fallos de TLB entraban en la latencia. Con
+memoria privada, en el i5-10400 la RAM pasa de 72 a 62 ns (L1 1,0, L2 3,4,
+L3 unos 12 ns). La cifra del 5800X3D de arriba (80,6 ns) se midió así y hay
+que repetirla en casa contra los 66,1 de AIDA64.
+
 De ahí sale además una duda resuelta: **la escritura a 25 GB/s que se midió
 aquí no era un artefacto de `memset`.** Ese 5800X3D da 28,8 escribiendo contra
 51,8 leyendo, así que en Zen 3 la escritura ronda la mitad de la lectura y la

@@ -228,8 +228,12 @@ def _reservar(tam: int):
     que el kernel exige para poder juntar las páginas, y un búfer normal cae
     donde caiga.
     """
+    # Private: `mmap(-1)` alone is shared anonymous memory, which only gets
+    # huge pages where shmem THP is on (it is off in Fedora). Without them the
+    # TLB misses went into the latency: RAM read 72 ns there instead of 62.
     try:
         mapa = mmap.mmap(-1, tam + PAGINA_GRANDE,
+                         flags=mmap.MAP_PRIVATE | mmap.MAP_ANONYMOUS,
                          prot=mmap.PROT_READ | mmap.PROT_WRITE)
     except (OSError, ValueError):
         return None
