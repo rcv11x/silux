@@ -750,9 +750,11 @@ class MainWindow(QMainWindow):
             self._version_nueva = release
             self.settings_page.set_update_status(
                 _("updates.available").format(version=release.version_text))
-        else:
+        elif updates.is_current(release):
             self.settings_page.set_update_status(
-                _("updates.latest").format(version=__version__))
+                _("updates.latest").format(version=render.version(__version__)))
+        else:
+            self.settings_page.set_update_status(_("updates.none"))
         self._pintar_version_nueva()
 
     def _pintar_version_nueva(self) -> None:

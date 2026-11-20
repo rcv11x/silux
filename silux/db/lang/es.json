@@ -1431,6 +1431,7 @@
   "updates.error": "No se pudo: {motivo}",
   "updates.latest": "Tienes la última versión ({version}).",
   "updates.manual": "Esta copia no se puede sustituir sola ({motivo}). Bájala desde {url}",
+  "updates.none": "No hay ninguna versión más nueva.",
   "updates.reason.readonly": "su carpeta no se puede escribir",
   "updates.reason.source": "se está ejecutando desde el código",
   "usb.kind.audio": "audio",

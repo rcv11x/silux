@@ -79,6 +79,13 @@ class TestLasVersiones(unittest.TestCase):
         self.assertFalse(updates.is_newer(updates.latest([_release("v0.4.0")]), "0.4.0"))
         self.assertFalse(updates.is_newer(None, "0.4.0"))
 
+    def test_which_one_is_this_copy(self):
+        release = updates.latest([_release("v0.4.0")])
+        self.assertTrue(updates.is_current(release, "0.4.0"))
+        self.assertFalse(updates.is_current(release, "0.4.0rc1"))
+        self.assertFalse(updates.is_current(release, "0.4.1"))
+        self.assertFalse(updates.is_current(None, "0.4.0"))
+
 
 class TestLaVersionDePrueba(unittest.TestCase):
     """La 0.4-prueba1 es 0.4.0rc1 por debajo, y quien la instale tiene que

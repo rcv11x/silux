@@ -125,6 +125,12 @@ def is_newer(release: Optional[Release], current: str = __version__) -> bool:
             and tuple(release.version) + (1, 0) > actual)
 
 
+def is_current(release: Optional[Release], current: str = __version__) -> bool:
+    """Whether this copy is that release: a test version or one ahead of
+    the latest published is not «the latest version»."""
+    return release is not None and _orden(current) == tuple(release.version) + (1, 0)
+
+
 # -- qué copia es esta --------------------------------------------------------
 
 

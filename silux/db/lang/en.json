@@ -1431,6 +1431,7 @@
   "updates.error": "It failed: {motivo}",
   "updates.latest": "You have the latest version ({version}).",
   "updates.manual": "This copy cannot replace itself ({motivo}). Download it from {url}",
+  "updates.none": "There is no newer version.",
   "updates.reason.readonly": "its folder is not writable",
   "updates.reason.source": "it is running from source",
   "usb.kind.audio": "audio",

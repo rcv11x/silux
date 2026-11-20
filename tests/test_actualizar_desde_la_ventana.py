@@ -57,8 +57,20 @@ class TestLaVentana(unittest.TestCase):
         v.buscar_actualizacion()
         self.esperar(v)
         self.assertTrue(v.update_button.isHidden())
+        # Ahead of the latest published (a test version is): nothing newer,
+        # and not «you have the latest», which would be another one.
+        self.assertEqual(v.settings_page.update_status.text(), _("updates.none"))
+
+    def test_the_latest_one_is_named_as_the_app_names_it(self):
+        from silux import render
+        v = self.ventana()
+        v._buscar_version = lambda: updates.Release(version=(0, 0, 0), tag="v0.0.0", url="u")
+        with mock.patch.object(updates, "is_current", return_value=True):
+            v.buscar_actualizacion()
+            self.esperar(v)
         self.assertEqual(v.settings_page.update_status.text(),
-                         _("updates.latest").format(version=__version__))
+                         _("updates.latest").format(version=render.version(__version__)))
+        self.assertNotIn("rc", v.settings_page.update_status.text())
 
     def test_un_error_de_red_se_dice(self):
         v = self.ventana()
