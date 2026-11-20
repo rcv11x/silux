@@ -17,7 +17,7 @@ from unittest import mock
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from silux import db, desktop
+from silux import db, desktop, render
 from silux.i18n import _
 from silux.model import Need, Note, PrivilegedState
 from tests import pantalla, qt
@@ -276,7 +276,7 @@ class TestElEscritorio(unittest.TestCase):
 
     def test_desde_el_codigo_lo_dice(self):
         texto = self.pagina.desktop_row.explicacion.text()
-        self.assertIn(str(desktop.ROOT), texto)
+        self.assertIn(render.home_path(desktop.ROOT), texto)
         self.assertIn("desarrollo", texto)
 
     def test_anadir_y_quitar_se_ven_en_la_misma_pagina(self):

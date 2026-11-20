@@ -8,6 +8,7 @@ recolección, y traducir sin reescribir nada.
 
 from __future__ import annotations
 
+import pathlib
 import re
 from typing import Optional
 
@@ -1417,6 +1418,17 @@ def duracion(segundos: float) -> str:
     if resto:
         return _("time.minsec").format(m=minutos, s=resto)
     return _("time.minutes").format(m=minutos)
+
+
+def home_path(text, home: Optional[str] = None) -> str:
+    """Paths as they are shown: the home folder as «~», wherever it is in
+    the text (an error message carries its path). People share
+    screenshots, and the home folder has the user's name in it."""
+    text = str(text)
+    home = (home if home is not None else str(pathlib.Path.home())).rstrip("/")
+    if not home:
+        return text
+    return re.sub(r"(?<![\w/.-])" + re.escape(home) + r"(?=$|[/\s'\"),:;])", "~", text)
 
 
 def version(completa: str) -> str:

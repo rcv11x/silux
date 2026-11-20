@@ -595,7 +595,7 @@ class SettingsPage(ScrollPage):
         avisos.addStretch(1)
         card.body.addLayout(avisos)
 
-        path = QLabel(_("settings.savedat").format(ruta=config_path()))
+        path = QLabel(_("settings.savedat").format(ruta=render.home_path(config_path())))
         path.setObjectName("Muted")
         path.setWordWrap(True)
         path.setFont(ui_font(m.small_pt))
@@ -734,15 +734,17 @@ class SettingsPage(ScrollPage):
         self.desktop_badge.poner(_(clave), tono)
         lanzador = estado.launcher
         if self._error_del_escritorio:
-            detalle = _("settings.desktop.failed").format(error=self._error_del_escritorio)
+            detalle = _("settings.desktop.failed").format(
+                error=render.home_path(self._error_del_escritorio))
         elif estado.state in ("elsewhere", "broken"):
-            detalle = _(ayuda).format(destino=estado.target)
+            detalle = _(ayuda).format(destino=render.home_path(estado.target))
         elif lanzador.mode == "development":
-            detalle = _("settings.desktop.dev").format(ruta=lanzador.working_dir)
+            detalle = _("settings.desktop.dev").format(ruta=render.home_path(lanzador.working_dir))
             if estado.state != "current":
                 detalle += " " + _(ayuda)
         elif lanzador.mode == "appimage" and lanzador.command:
-            detalle = _("settings.desktop.appimage").format(ruta=lanzador.command[0])
+            detalle = _("settings.desktop.appimage").format(
+                ruta=render.home_path(lanzador.command[0]))
             if estado.state != "current":
                 detalle += " " + _(ayuda)
         else:

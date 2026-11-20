@@ -664,11 +664,11 @@ class MainWindow(QMainWindow):
             pathlib.Path(destino).write_text(self._report_preview.report(), encoding="utf-8")
         except OSError as error:
             QMessageBox.warning(self, _("app.report.card"),
-                                _("app.report.failed").format(error=error))
+                                _("app.report.failed").format(error=render.home_path(error)))
             return
         QMessageBox.information(
             self, _("app.report.card"),
-            _("app.report.saved").format(ruta=destino),
+            _("app.report.saved").format(ruta=render.home_path(destino)),
         )
 
     def _tarjeta(self):
@@ -714,7 +714,7 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, _("share.dialog"), _("share.failed"))
             return
         QMessageBox.information(self, _("share.dialog"),
-                                _("share.saved").format(ruta=destino))
+                                _("share.saved").format(ruta=render.home_path(destino)))
 
     def _on_network_unit(self, unidad: str) -> None:
         """El conmutador de bytes/bits de la pestaña de Red."""
