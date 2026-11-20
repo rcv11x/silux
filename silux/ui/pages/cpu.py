@@ -108,6 +108,12 @@ class TypeSection(QWidget):
         # que puntos suspensivos.
         self.processor._values[_("cpu.field.spec")].permitir_lineas(2)
         processor_card.body.addWidget(self.processor)
+        self.virtual_foot = QLabel(_("cpu.virtual.foot"))
+        self.virtual_foot.setObjectName("Muted")
+        self.virtual_foot.setWordWrap(True)
+        self.virtual_foot.setFont(ui_font(m.small_pt))
+        self.virtual_foot.hide()
+        processor_card.body.addWidget(self.virtual_foot)
         self.identity_fold = Plegable(_("cpu.card.identity"))
         self.identity = InfoGrid()
         for name in IDENTITY_FIELDS:
@@ -165,10 +171,13 @@ class TypeSection(QWidget):
         p = self.processor.set  # noqa: E741
         p(_("cpu.field.vendor"), cpu_type.vendor or render.DASH)
         p(_("cpu.field.spec"), cpu_type.brand or render.DASH)
+        virtual = cpu_type.in_virtual_machine
+        self.virtual_foot.setVisible(virtual)
         for key, value, notes in table_fields(cpu_type):
             # Not in the CPU table: the row hides and the notice below the
             # cards says so (rule 5). Without a notice to say it, it stays.
-            hidden = not value and not explained.isdisjoint(notes)
+            # A virtual CPU is not looked up: its foot says so.
+            hidden = virtual or (not value and not explained.isdisjoint(notes))
             self.processor.set_visible(_(key), not hidden)
             if not hidden:
                 p(_(key), render.from_cpu_table(value))

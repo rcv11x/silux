@@ -133,11 +133,11 @@ class TestLaFichaLoEnseña(unittest.TestCase):
         return [w.text() for w in pagina.badges._widgets]
 
     def test_la_ficha_de_cpu_avisa_y_lo_pone_delante(self):
-        self.cpu.apply(_foto(_tipo(in_virtual_machine=True, hypervisor="VMware")))
-        insignias = self._insignias(self.cpu)
-        self.assertEqual(insignias[0], "Máquina virtual · VMware")
-        # Y sin perder lo que ya había.
-        self.assertIn("Core i5 (Comet Lake-S)", insignias)
+        # Inside a virtual machine the table is not asked (test_virtual_cpu):
+        # no codename, package or process come with it.
+        self.cpu.apply(_foto(_tipo(in_virtual_machine=True, hypervisor="VMware",
+                                   codename=None, socket=None, technology=None)))
+        self.assertEqual(self._insignias(self.cpu), ["Máquina virtual · VMware", "x86_64"])
 
     def test_en_hierro_la_ficha_sigue_empezando_por_el_nombre_en_clave(self):
         self.cpu.apply(_foto(_tipo()))

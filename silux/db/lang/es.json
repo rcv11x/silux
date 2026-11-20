@@ -398,6 +398,7 @@
   "cpu.virt.inside": "dentro de una máquina virtual",
   "cpu.virt.none": "no soportada",
   "cpu.virt.supported": "(soportada)",
+  "cpu.virtual.foot": "Es un procesador virtual: lo que declara lo decide el hipervisor, así que no se busca en la tabla de procesadores, que es de donde salen el nombre en clave, la tecnología y el encapsulado.",
   "cpu.vm": "Máquina virtual",
   "cpu.vm.named": "Máquina virtual · {nombre}",
   "csv.filter": "Valores separados por comas (*.csv)",

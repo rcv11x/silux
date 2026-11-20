@@ -398,6 +398,7 @@
   "cpu.virt.inside": "inside a virtual machine",
   "cpu.virt.none": "not supported",
   "cpu.virt.supported": "(supported)",
+  "cpu.virtual.foot": "This is a virtual processor: what it declares is up to the hypervisor, so it is not looked up in the processor table, which is where the codename, the process and the package come from.",
   "cpu.vm": "Virtual machine",
   "cpu.vm.named": "Virtual machine · {nombre}",
   "csv.filter": "Comma-separated values (*.csv)",

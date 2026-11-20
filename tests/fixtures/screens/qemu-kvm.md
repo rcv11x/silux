@@ -72,6 +72,7 @@ Máquina virtual · KVM · x86_64
 - Hilos: 4
 - Virtualización: dentro de una máquina virtual
 - Voltaje: (necesita permisos)
+Es un procesador virtual: lo que declara lo decide el hipervisor, así que no se busca en la tabla de procesadores, que es de donde salen el nombre en clave, la tecnología y el encapsulado.
 
 #### Identificación (CPUID)
 
@@ -106,10 +107,6 @@ Máquina virtual · KVM · x86_64
 
 MMX · SSE · SSE2 · SSE3 · SSSE3 · SSE4.1 · SSE4.2 · AES-NI
 27 banderas detectadas por CPUID · 19 no destacadas
-
-> **Esta versión no lo conoce todavía**
-> Este procesador (QEMU Virtual CPU version 2.5+) no está en la tabla de esta versión de Silux, que es de donde salen su nombre en clave, su nodo y su encapsulado.
-> Todo lo demás lo da el propio procesador y sale entero. Si mandas el informe (en Ajustes, o con --report), entra en la próxima versión.
 
 > **Este equipo no lo expone**
 > Esta máquina no publica su reloj base por ninguna vía.
@@ -521,7 +518,6 @@ SENSORES · 5 en 2 dispositivos
 
 **Datos que faltan:**
 
-- `cpu.codename` (esta versión no lo conoce todavía): Este procesador (QEMU Virtual CPU version 2.5+) no está en la tabla de esta versión de Silux, que es de donde salen su nombre en clave, su nodo y su encapsulado.
 - `cpu.clocks.base_hz` (este equipo no lo expone): Esta máquina no publica su reloj base por ninguna vía.
 - `cpu.clocks.bus_hz` (este equipo no lo expone): Este equipo no publica su reloj de referencia (BCLK).
 - `board.name` (este equipo no lo expone): La BIOS no publica el modelo de la placa.

@@ -137,8 +137,13 @@ class CpuidIdentity(Provider):
         )
 
         self._fill_frequencies(reader, entry)
-        self._fill_identity(draft, entry, vendor_id, disp_family, disp_model,
-                            family, model, stepping, brand)
+        # What a virtual CPU declares is up to the hypervisor: QEMU invents
+        # family and model, and with `-cpu host` the chip is the host's,
+        # whose package is not the guest's. Not looked up, so no notice
+        # asks for a report to fill it in either.
+        if not entry["in_virtual_machine"]:
+            self._fill_identity(draft, entry, vendor_id, disp_family, disp_model,
+                                family, model, stepping, brand)
 
     @staticmethod
     def _hipervisor(reader: CpuidReader) -> Optional[str]:
