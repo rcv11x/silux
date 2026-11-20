@@ -529,3 +529,92 @@ class TestElNombreDelBus(unittest.TestCase):
         self.assertIn("- Tipo: NVMe · 931.5 GB", texto)
         self.assertIn("- Tipo: HDD · SATA · ", texto)
         self.assertNotIn("· nvme", texto)
+
+
+def _identify(modelo: str) -> str:
+    """An ATA IDENTIFY as `ata_device/*/id` publishes it: 256 hex words, eight
+    per line, the model in words 27 to 46, two characters per word."""
+    palabras = [0] * 256
+    texto = modelo.ljust(40).encode("ascii")
+    for i in range(20):
+        palabras[27 + i] = int.from_bytes(texto[2 * i:2 * i + 2], "big")
+    lineas = [" ".join(f"{p:04x}" for p in palabras[i:i + 8]) for i in range(0, 256, 8)]
+    return "\n".join(lineas)
+
+
+class TestTheWholeModel(BancoDeDiscos):
+    """sysfs cuts the model to 16 characters; the IDENTIFY has all of it."""
+
+    def _sata(self, sysfs: str, entero: str) -> pathlib.Path:
+        base = self.disco("sda", modelo=sysfs)
+        puerto = self.root / "devices" / "pci0000:00" / "0000:00:17.0" / "ata3"
+        dispositivo = puerto / "host2" / "target2:0:0" / "2:0:0:0"
+        _write(dispositivo / "model", sysfs)
+        _write(puerto / "link3" / "dev3.0" / "ata_device" / "dev3.0" / "id", _identify(entero))
+        import shutil
+        shutil.rmtree(base / "device")
+        (base / "device").symlink_to(dispositivo)
+        return base
+
+    def test_from_the_identify(self):
+        base = self._sata("KINGSTON SA400S3", "KINGSTON SA400S37480G")
+        self.assertEqual(storage._modelo_ata(base), "KINGSTON SA400S37480G")
+
+    def test_without_it_there_is_nothing_to_say(self):
+        self.assertIsNone(storage._modelo_ata(self.disco("sda")))
+
+
+class TestNotLessThanWhatItHolds(unittest.TestCase):
+    """A tester's A400 had 316 GB on it and said 33 MB written in its life."""
+
+    GB = 1000 ** 3
+    A400 = [(241, 100, 68_446), (242, 100, 134_816), (231, 58, 58), (9, 100, 9_927)]
+
+    def _diagnostico(self, modelo_entero):
+        from tests.test_smart import tabla_ata
+
+        cliente = mock.Mock()
+        cliente.connected.return_value = True
+        cliente.read_smart.return_value = (tabla_ata(self.A400), "ata")
+        proveedor = storage.Disks(client=cliente)
+        draft = Draft()
+        draft.disks = [Disk(name="sda", model="KINGSTON SA400S3", partitions=(
+            Partition(name="sda3", mountpoint="/", filesystem="ext4",
+                      size_bytes=438 * self.GB, used_bytes=316 * self.GB,
+                      free_bytes=94 * self.GB),))]
+        with mock.patch.object(storage, "_modelo_ata", return_value=modelo_entero):
+            proveedor._diagnostico(draft)
+        return draft.disks[0].health
+
+    def test_with_the_whole_model_the_unit_is_known(self):
+        salud = self._diagnostico("KINGSTON SA400S37480G")
+        self.assertEqual(salud.written_bytes, 68_446 * 1024 ** 3)
+        self.assertFalse(salud.counters_unit_unknown)
+
+    def test_without_it_the_impossible_figure_is_not_shown(self):
+        # In 512-byte sectors it said 35 MB: less than the 316 GB it holds.
+        salud = self._diagnostico(None)
+        self.assertIsNone(salud.written_bytes)
+        self.assertIsNone(salud.read_bytes)
+        self.assertTrue(salud.counters_unit_unknown)
+        self.assertEqual(salud.power_on_hours, 9_927)
+
+    def test_on_the_page_the_row_hides_and_the_foot_says_why(self):
+        from silux.i18n import _
+        from silux.model import CpuInfo, Snapshot
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.storage import StoragePage
+
+        app = qt.app()
+        disco = Disk(name="sda", model="KINGSTON SA400S3", kind="SSD", rotational=False,
+                     size_bytes=480 * self.GB, health=self._diagnostico(None))
+        pagina = StoragePage(theme.palette_for(app, "dark"), Preferences())
+        self.addCleanup(pagina.deleteLater)
+        pagina.apply(Snapshot(monotonic_ns=0, cpu=CpuInfo(), disks=(disco,)))
+        app.processEvents()
+        grid = pagina._grids["sda"]
+        self.assertFalse(grid._values[_("storage.field.written")].isVisibleTo(grid))
+        pie = pagina._pies["sda"]
+        self.assertTrue(pie.isVisibleTo(pagina))
+        self.assertEqual(pie.text(), _("storage.na.written.unit"))

@@ -1386,6 +1386,9 @@ class DiskHealth:
     # La tabla de atributos de un disco SATA, entera: (número, normalizado,
     # en crudo). Los nombres dependen del fabricante; el número no.
     attributes: tuple[tuple[int, int, int], ...] = ()
+    # The write counter came out below what the disk holds: it counts in a
+    # unit nobody knows, so neither it nor the read one is shown.
+    counters_unit_unknown: bool = False
 
     @property
     def life_left_percent(self) -> Optional[int]:

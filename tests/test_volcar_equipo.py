@@ -44,6 +44,18 @@ class TestPiezasSinNumeroDeSerie(unittest.TestCase):
         datos = _spd(0x0B, 256)
         self.assertEqual(volcar._spd_sin_serie(datos), (datos, b""))
 
+    def test_the_ata_identify_keeps_its_model(self):
+        from tests.test_storage import _identify
+
+        palabras = _identify("KINGSTON SA400S37480G").split()
+        serie = "50026B7784".ljust(20).encode()
+        for i in range(10):
+            palabras[10 + i] = f"{int.from_bytes(serie[2 * i:2 * i + 2], 'big'):04x}"
+        limpio, quitado = volcar._identify_sin_serie(" ".join(palabras))
+        self.assertEqual(quitado, "50026B7784")
+        self.assertNotIn("3530", limpio.split()[10:20])
+        self.assertEqual(limpio.split()[27:47], palabras[27:47])
+
     def test_edid_con_la_suma_de_control_al_dia(self):
         bloque = bytearray(128)
         bloque[:8] = b"\x00\xff\xff\xff\xff\xff\xff\x00"

@@ -33,6 +33,16 @@ informes que mandó la gente.
   arrancaba y faltaban los tiempos de arranque; y abrir la carpeta de las
   pruebas podía abrir el gestor de archivos con el Qt del AppImage.
 
+### Almacenamiento
+
+- Arreglado: un Kingston A400 decía «Escrito en total: 33.4 MB» tras casi
+  diez mil horas: cuenta en GiB, y se leía como si contara sectores. La
+  unidad de cada contador sale ahora de la base de datos de discos de
+  smartmontools, con el modelo entero del disco (el del sistema viene
+  cortado a 16 letras).
+- Cambiado: si lo escrito en total da menos de lo que el disco tiene
+  guardado, no se enseña ni eso ni lo leído, y se dice por qué.
+
 ### Gráficos
 
 - Arreglado: una gráfica cuyo driver no da versión decía «i915 None» en la

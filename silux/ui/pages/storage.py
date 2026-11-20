@@ -519,9 +519,16 @@ class StoragePage(ScrollPage):
         # de platos no lleva esa cuenta: ni guion ni candado, no existe.
         de_platos = disco.rotational is True
         grid.set_visible(_("storage.field.life"), not de_platos)
+        # A counter in a unit nobody knows is not shown: it said less was
+        # written than the disk holds.
+        sin_unidad = salud.counters_unit_unknown
+        grid.set_visible(_("storage.field.written"), not sin_unidad)
         if (pie := self._pies.get(disco.name)) is not None:
-            pie.setText(_("storage.na.hdd.life") if de_platos else "")
-            pie.setVisible(de_platos)
+            texto = " ".join(t for t in (
+                _("storage.na.hdd.life") if de_platos else "",
+                _("storage.na.written.unit") if sin_unidad else "") if t)
+            pie.setText(texto)
+            pie.setVisible(bool(texto))
 
     def _fill_smart(self, disco: Disk) -> None:
         """La tabla entera del diagnóstico, plegada, cuando hay permisos."""

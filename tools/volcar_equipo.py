@@ -480,6 +480,29 @@ def _spd_sin_serie(datos: bytes) -> tuple[bytes, bytes]:
 EN_SERIE = (re.compile(r"br-[0-9a-f]{12}"), re.compile(r"veth[0-9a-f]+"))
 
 
+# An ATA IDENTIFY's words that identify the piece: serial number, WWN and
+# media serial number.
+IDENTIFY_SERIE = (*range(10, 20), *range(108, 112), *range(176, 206))
+
+
+def _identify_sin_serie(texto: str) -> tuple[str, str]:
+    """`ata_device/*/id` with its serial words at zero, and the serial.
+
+    The model stays: it is what says the unit of the disk's counters.
+    """
+    try:
+        palabras = [int(p, 16) for p in texto.split()]
+    except ValueError:
+        return re.sub(r"[0-9a-fA-F]", "0", texto), ""
+    serie = b"".join(palabras[i].to_bytes(2, "big") for i in range(10, 20)
+                     if i < len(palabras)).decode("ascii", "replace").strip()
+    for i in IDENTIFY_SERIE:
+        if i < len(palabras):
+            palabras[i] = 0
+    lineas = [" ".join(f"{p:04x}" for p in palabras[i:i + 8]) for i in range(0, len(palabras), 8)]
+    return "\n".join(lineas) + "\n", serie
+
+
 def _tarjetas_sin_nombre(texto: str) -> str:
     """`/proc/asound/cards` sin el nombre de los aparatos de sonido USB.
 
@@ -603,6 +626,12 @@ class _Anonimizador:
             if nombre in SERIALES and datos.strip():
                 self.secretos.add(datos.strip().decode(errors="replace"))
                 ruta.write_bytes(re.sub(rb"[^\n\x00]", b"0", datos))
+                continue
+            if nombre == "id" and "/ata_device/" in relativo:
+                limpio, serie = _identify_sin_serie(datos.decode(errors="replace"))
+                if serie:
+                    self.secretos.add(serie)
+                ruta.write_text(limpio)
                 continue
             if nombre == "edid":
                 if len(datos) >= 16 and any(datos[12:16]):

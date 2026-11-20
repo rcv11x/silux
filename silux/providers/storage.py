@@ -25,7 +25,7 @@ import time
 from typing import Iterator, Optional
 
 from .. import smart as smart_module
-from ..model import Disk, DiskIo, Need, Partition, PcieLink
+from ..model import Disk, DiskHealth, DiskIo, Need, Partition, PcieLink
 from ..privileged.client import HelperError, PrivilegedClient
 from .base import Draft, Provider, read_int, read_text
 from ..i18n import _
@@ -127,9 +127,12 @@ class Disks(Provider):
                     datos, familia = self.client.read_smart(nombre)
                 except (HelperError, OSError):
                     datos = None
-                salud = (smart_module.parse(datos, familia, vendor=disco.vendor,
-                                            model=disco.model)
+                salud = (smart_module.parse(
+                    datos, familia, vendor=disco.vendor,
+                    model=_modelo_ata(sysroot.ruta(SYS_BLOCK) / nombre) or disco.model,
+                    firmware=disco.firmware)
                          if datos is not None else None)
+                salud = _cuadra_con_lo_ocupado(salud, disco)
                 self._leido_en[nombre] = time.monotonic()
 
                 if salud is None:
@@ -238,6 +241,47 @@ class Disks(Provider):
 
 
 # -- lectura suelta ----------------------------------------------------------
+
+def _modelo_ata(base: pathlib.Path) -> Optional[str]:
+    """The whole model, from the ATA IDENTIFY the kernel publishes.
+
+    sysfs's `model` is the SCSI one, cut to 16 characters («KINGSTON
+    SA400S3»), and smartmontools' patterns need the whole one to know the
+    unit of the counters. `ata_device/*/id` is the IDENTIFY in hex words,
+    readable by anyone; the model is words 27 to 46, two characters each.
+    """
+    try:
+        real = (base / "device").resolve()
+    except OSError:
+        return None
+    puerto = next((p for p in (real, *real.parents) if re.fullmatch(r"ata\d+", p.name)), None)
+    if puerto is None:
+        return None
+    for ruta in sorted(puerto.glob("link*/dev*/ata_device/dev*/id")):
+        try:
+            palabras = [int(p, 16) for p in (read_text(str(ruta)) or "").split()]
+        except ValueError:
+            continue
+        if len(palabras) >= 47:
+            crudo = b"".join(p.to_bytes(2, "big") for p in palabras[27:47])
+            return crudo.decode("ascii", "replace").strip() or None
+    return None
+
+
+def _cuadra_con_lo_ocupado(salud: Optional[DiskHealth], disco: Disk) -> Optional[DiskHealth]:
+    """No counter shown that says less was ever written than the disk holds.
+
+    A unit nobody knows looks like a believable figure: 33 MB written by a
+    disk with 316 GB on it. Whatever the unit, what is stored was written.
+    """
+    ocupado = disco.used_bytes
+    if salud is None or salud.written_bytes is None or not ocupado:
+        return salud
+    if salud.written_bytes >= ocupado:
+        return salud
+    return dataclasses.replace(salud, written_bytes=None, read_bytes=None,
+                               counters_unit_unknown=True)
+
 
 def _limpio(texto: Optional[str]) -> Optional[str]:
     """Los campos del disco vienen rellenos de espacios hasta su longitud fija."""
