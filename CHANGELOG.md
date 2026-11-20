@@ -11,23 +11,11 @@ que hace falta.
 
 ---
 
-## Sin publicar
-
-### Informe
-
-- Nuevo: el informe completo acaba con un anexo, los datos en crudo que Silux
-  ha leído del equipo para escribirlo, con lo mismo tapado que el resto. Con
-  él, lo que falla en tu equipo se puede reproducir en las pruebas de Silux
-  sin pedirte nada más. Desde la ventana tarda un par de segundos en
-  prepararse, y «Guardar…» espera a que esté. Lleva lo que se lee sin
-  permisos; `--short` y `--sections` no lo llevan.
-
----
-
 ## 0.4-prueba2 (20 de noviembre de 2026)
 
 Segunda versión de prueba de la 0.4: lo que se ha arreglado con los primeros
-informes de la prueba1.
+informes de la prueba1, y un informe que acaba con los datos en crudo del
+equipo.
 
 ### Procesador
 
@@ -86,6 +74,20 @@ informes de la prueba1.
 
 ### Informe
 
+- Nuevo: el informe completo acaba con un anexo, los datos en crudo que Silux
+  ha leído del equipo para escribirlo, con lo mismo tapado que el resto. Con
+  él, lo que falla en tu equipo se puede reproducir en las pruebas de Silux
+  sin pedirte nada más. Desde la ventana tarda un par de segundos en
+  prepararse, y «Guardar…» espera a que esté. Lleva lo que se lee sin
+  permisos; `--short` y `--sections` no lo llevan.
+- Arreglado: el volcado de un equipo para las pruebas (el de
+  `tools/volcar_equipo.py`, que es el del anexo) no se escribía si había
+  enchufado un aparato USB de fabricante «Generic» o «Realtek»: tomaba el
+  nombre por un dato tuyo y luego lo encontraba en el sonido y en la red.
+- Arreglado: con el AppImage compat (Python 3.10), ese volcado no recogía lo
+  que se lee de cierta manera (entre otras cosas, dónde están los chips de la
+  memoria) y podía despertar la gráfica dedicada dormida de un portátil al
+  hacerlo.
 - Arreglado: en un equipo llamado como su marca («lenovo» en un Lenovo), el
   informe anónimo cambiaba la marca por «silux-pc» en los nombres de los
   sensores. El nombre del equipo se sigue tapando.
