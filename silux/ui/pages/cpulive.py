@@ -142,11 +142,12 @@ class CpuLiveSection(QWidget):
             # entonces la misma Tctl de arriba, y «núcleos 59 °C» la repetía
             # con un nombre que no era el suyo.
             por_nucleo = any(l.temp_c is not None for l in cpu.logical)
+            nucleos = cpu.cores_temp_c
             self.tile_temp.set_detail(
                 _("cpu.tile.cores").format(
-                    v=f"{self._temp(primary.temp_c):.0f} {unit}")
+                    v=f"{self._temp(nucleos):.0f} {unit}")
                 if por_nucleo and cpu.package_temp_c is not None
-                and primary.temp_c is not None else "")
+                and nucleos is not None else "")
 
         power = cpu.power
         if power.package_w is not None:

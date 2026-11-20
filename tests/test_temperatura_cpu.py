@@ -163,3 +163,46 @@ class TestElConsumoQueFaltaSeExplica(unittest.TestCase):
             textos = [l.text() for l in ventana.cpu_page.findChildren(QLabel)]
             self.assertIn(_("prov.rapl.frozen"), textos)
             self.assertEqual(ventana.cpu_page.live.tile_power.value.text(), "—")
+
+
+class TestTheCoresOfAHybrid(unittest.TestCase):
+    """A tester's i5-12450H: P cores at 90 °C on average, E cores at 67."""
+
+    def test_every_kind_counts_by_how_many_cores_it_has(self):
+        from silux.model import CpuInfo, CpuType
+
+        cpu = CpuInfo(hybrid=True, package_temp_c=97.0, types=(
+            CpuType(key="performance", label="P", cores=4, threads=8, temp_c=90.0),
+            CpuType(key="efficiency", label="E", cores=4, threads=4, temp_c=67.0)))
+        self.assertEqual(cpu.cores_temp_c, 78.5)
+
+    def test_one_kind_is_its_own_mean(self):
+        from silux.model import CpuInfo, CpuType
+
+        cpu = CpuInfo(types=(CpuType(key="general", label="", cores=6, threads=12,
+                                     temp_c=41.4),))
+        self.assertEqual(cpu.cores_temp_c, 41.4)
+
+
+class TestTheCoresOnThePage(unittest.TestCase):
+
+    def test_the_tile_says_all_the_cores(self):
+        import dataclasses
+
+        from silux.model import CpuType
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.cpu import CpuPage
+
+        app = qt.app()
+        f = foto(EQUIPOS / "i5-10400")[0]
+        base = f.cpu.types[0]
+        tipos = (dataclasses.replace(base, key="performance", label="P", cores=4, temp_c=90.0),
+                 dataclasses.replace(base, key="efficiency", label="E", cores=4, temp_c=67.0))
+        hibrida = dataclasses.replace(f, cpu=dataclasses.replace(
+            f.cpu, hybrid=True, types=tipos, package_temp_c=97.0))
+        pagina = CpuPage(theme.palette_for(app, "dark"), Preferences().normalized())
+        self.addCleanup(pagina.deleteLater)
+        pagina.apply(hibrida)
+        # Before: «núcleos 90 °C», the P cores alone.
+        self.assertEqual(pagina.live.tile_temp.detail.full_text(), "núcleos 78 °C")

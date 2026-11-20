@@ -295,6 +295,18 @@ class CpuInfo:
         return self.types[0].temp_c if self.types else None
 
     @property
+    def cores_temp_c(self) -> Optional[float]:
+        """The cores' mean, every kind of core weighted by how many it has.
+
+        A tester's i5-12450H read «núcleos 90 °C»: the P cores' alone, with
+        its four E cores at 67 °C. All eight are 78.5.
+        """
+        medidos = [(t.temp_c, t.cores) for t in self.types if t.temp_c is not None and t.cores]
+        if not medidos:
+            return None
+        return sum(temp * n for temp, n in medidos) / sum(n for _temp, n in medidos)
+
+    @property
     def total_cores(self) -> int:
         return sum(t.cores for t in self.types)
 
@@ -1900,7 +1912,7 @@ _COMPUTED: dict[str, tuple[str, ...]] = {
     "DiskHealth": ("life_left_percent", "healthy"),
     "Disk": ("display_name", "used_bytes", "mounted_partitions"),
     "CpuInfo": ("total_cores", "total_threads", "package_power_w", "temperature_c",
-                "in_virtual_machine"),
+                "cores_temp_c", "in_virtual_machine"),
     "Sensor": ("heat", "unit", "category", "alarm", "alarm_level"),
     "Board": ("display_name",),
     "MemoryModule": ("has_ecc", "underclocked", "rated_mts"),

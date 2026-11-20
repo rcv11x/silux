@@ -26,6 +26,12 @@ informes que mandó la gente.
   ni encapsulado, la ficha dice por qué y no se pide el informe para
   completarlo.
 
+- Arreglado: en un procesador híbrido (Intel de 12.ª en adelante), la L3 que
+  comparten los núcleos P y E se contaba dos veces: un i5-12450H decía
+  31.7 MB de caché en total en vez de 19.7.
+- Arreglado: en un híbrido, «núcleos» debajo de la temperatura era la media
+  de los núcleos P solos; ahora es la de todos.
+
 ### Máquinas virtuales
 
 - Cambiado: dentro de una máquina virtual no se pide permiso para nada que
