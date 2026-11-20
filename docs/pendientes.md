@@ -297,6 +297,17 @@ De la quinta auditoría, sin comprobar uno a uno si siguen igual:
   autor prefirió pedir la contraseña antes que dar root sin ella a cualquier
   proceso de la sesión.
 
+* **Canal de actualizaciones** (siguiente tanda): en Ajustes, «Estable» (de
+  serie) o «Pruebas». Con «Pruebas», el actualizador ofrece también las
+  *prereleases* (las 0.x.0rcN); con «Estable», solo las finales. Quien corre
+  una prueba recibe la versión final cuando sale, aunque esté en «Estable».
+  Hoy `updates.latest` descarta las *prereleases* y `is_newer` ya ordena
+  0.4.0rc1 < 0.4.0rc2 < 0.4.0, así que esa última parte funciona; lo que
+  falta es que `Release.version` guarde el número de la prueba (hoy son tres
+  números) para comparar una rc con otra, la preferencia y su interruptor.
+  Con su test: las dos listas de releases de la API contra cada canal, y una
+  prueba instalada en «Estable» a la que se le ofrece su final.
+
 * **Grabar una sesión** (después de la 0.4): empezar, pausar y parar, por
   ejemplo mientras se juega, con un resumen al final: máximos, medias y si
   algo se frenó por temperatura. Hoy `registro.py` graba a CSV sin resumen.
