@@ -85,5 +85,43 @@ class TestThermalThrottling(unittest.TestCase):
                                            _("cpu.throttle.package").format(n=2, tiempo="1.4 s"))))
 
 
+@unittest.skipIf(QApplication is None, "no PySide6")
+class TestOnTheCpuPage(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.app = qt.app()
+
+    def _page(self, window):
+        window.select_section("CPU")
+        for _turn in range(4):
+            self.app.processEvents()
+        return window.cpu_page
+
+    def test_the_intel_dump_shows_both(self):
+        with pantalla.Ventana(foto(EQUIPOS / "i5-10400-turbo")[0]) as window:
+            limits = self._page(window).limits
+            self.assertEqual(limits._values[_("cpu.limit.pl1")].full_text(),
+                             render.power_limit(65.0, 27.983872))
+            self.assertEqual(limits._values[_("cpu.limit.pl2")].full_text(),
+                             render.power_limit(115.0, 0.00244))
+            self.assertTrue(limits._values[_("cpu.throttle")].isVisible())
+            self.assertEqual(limits._values[_("cpu.throttle")].full_text(), _("cpu.throttle.none"))
+
+    def test_counts_that_arrive_with_the_page_open(self):
+        photo = foto(EQUIPOS / "i5-10400-turbo")[0]
+        with pantalla.Ventana(photo) as window:
+            page = self._page(window)
+            window._on_sample(dataclasses.replace(photo, cpu=dataclasses.replace(
+                photo.cpu, thermal_throttle=ThermalThrottle(1, 300, 0, 0))))
+            self.app.processEvents()
+            self.assertEqual(page.limits._values[_("cpu.throttle")].full_text(),
+                             _("cpu.throttle.package").format(n=1, tiempo="0.3 s"))
+
+    def test_amd_has_no_row(self):
+        with pantalla.Ventana(foto(EQUIPOS / "5800x3d")[0]) as window:
+            self.assertFalse(self._page(window).limits._names[_("cpu.throttle")].isVisible())
+
+
 if __name__ == "__main__":
     unittest.main()

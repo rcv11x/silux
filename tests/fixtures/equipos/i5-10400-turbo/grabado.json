@@ -196,6 +196,9 @@
   "tailscale0:0x8915": "192.168.1.120",
   "tailscale0:0x891b": "255.255.255.255"
  },
+ "nvml": {
+  "abierta": false
+ },
  "pciids": {
   "10ec:8168": {
    "10ec:8168": [
@@ -249,10 +252,10 @@
   },
   "kvm": true,
   "machine": "x86_64",
-  "procesos": 389,
+  "procesos": 381,
   "uname": {
    "machine": "x86_64",
-   "node": "equipo",
+   "node": "silux-pc",
    "processor": "",
    "release": "7.3.3-200.fc44.x86_64",
    "system": "Linux",
@@ -266,8 +269,8 @@
  },
  "statvfs": {
   "/": [
-   124088508416,
-   114264350720
+   131532554240,
+   106820304896
   ],
   "/boot": [
    526778368,
@@ -280,9 +283,9 @@
  },
  "systemd": {
   "arranque": {
-   "FinishTimestampMonotonic": 22060289,
-   "InitRDTimestampMonotonic": 859939,
-   "UserspaceTimestampMonotonic": 2606157
+   "FinishTimestampMonotonic": 21791740,
+   "InitRDTimestampMonotonic": 859819,
+   "UserspaceTimestampMonotonic": 2512710
   }
  }
 }

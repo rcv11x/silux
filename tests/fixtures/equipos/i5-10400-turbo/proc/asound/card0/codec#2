@@ -28,15 +28,15 @@ Node 0x02 [Audio Output] wcaps 0x6611: 8-Channels Digital
   Power: setting=D0, actual=D0
 Node 0x03 [Audio Output] wcaps 0x6611: 8-Channels Digital
   Converter: stream=0, channel=0
-  Digital: Enabled GenLevel KAE
-  Digital category: 0x2
+  Digital: Enabled KAE
+  Digital category: 0x0
   IEC Coding Type: 0x0
   PCM:
     rates [0x7f0]: 32000 44100 48000 88200 96000 176400 192000
     bits [0x1a]: 16 24 32
     formats [0x5]: PCM AC3
   Power states:  D0 D3 EPSS
-  Power: setting=D0, actual=D0
+  Power: setting=D3, actual=D3
 Node 0x04 [Audio Output] wcaps 0x6611: 8-Channels Digital
   Converter: stream=0, channel=0
   Digital: Enabled KAE
@@ -47,7 +47,7 @@ Node 0x04 [Audio Output] wcaps 0x6611: 8-Channels Digital
     bits [0x1a]: 16 24 32
     formats [0x5]: PCM AC3
   Power states:  D0 D3 EPSS
-  Power: setting=D0, actual=D0
+  Power: setting=D3, actual=D3
 Node 0x05 [Pin Complex] wcaps 0x40778d: 8-Channels Digital Amp-Out CP
   Amp-Out caps: ofs=0x00, nsteps=0x00, stepsize=0x00, mute=1
   Amp-Out vals:  [0x00 0x00]
