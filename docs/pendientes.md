@@ -197,12 +197,21 @@ sin los pasos para reproducirlo: este archivo es público.
   `uncore_imc_free_running` es de Ice Lake en adelante y no lo es
   ([kernel.md](kernel.md)). Va con el próximo cambio del ayudante, que obliga
   a reinstalarlo.
-* `privileged/cargar_modulo.py` · baja · llama a `modprobe` sin ruta
-  absoluta, y admite `i2c-dev`, que no es de solo lectura.
+* `privileged/cargar_modulo.py` · baja · admite `i2c-dev`, que no es de
+  solo lectura.
+* `updates.py` · baja · sin firma: el SHA-256 sale del `SHA256SUMS` de la
+  misma release, así que protege de una descarga rota, no de quien pudiera
+  escribir en las releases del repositorio.
+* `privileged/instalar.py` · baja · el ayudante llega por la tubería sin
+  longitud ni suma: si Silux muriera a mitad de escribirlo se instalaría
+  cortado (no arrancaría y saldría como desactualizado). Son 27 KB, que caben
+  en el búfer de la tubería, así que en la práctica no pasa.
+* `privileged/helper.py` · baja · un JSON anidado miles de veces cabe en el
+  tope de petición; con 3.14 no pasa nada, con el Python del sistema de una
+  distribución vieja podría lanzar `RecursionError` y cerrar el ayudante (solo
+  a sí mismo). Por comprobar con 3.10; va con el próximo cambio del ayudante.
 * `data/org.silux.helper.policy.in` · baja · diverge de la regla que escribe
   `instalar.py` y no lo usa nadie.
-* `ui/theme.py` · media-baja · cachea los iconos en un `/tmp/silux-icons` de
-  nombre fijo y usa lo que encuentre.
 * `privacidad.py`, `tools/volcar_equipo.py` · media-baja · `--anonymous` da
   la misma IP a todas las interfaces, y los volcados la misma dirección
   física: dos tarjetas iguales delatan que la captura está tocada.
@@ -281,6 +290,25 @@ De la quinta auditoría, sin comprobar uno a uno si siguen igual:
   el valor y la hora de ese punto. Se pinta agrupando por píxel (el mínimo y
   el máximo de cada columna), para no perder picos ni gastar CPU, y dentro de
   los 300 MB de la regla 7.
+* **Modo bandeja del sistema** (después de la 0.4): opcional y apagado de
+  serie, en Ajustes «Al cerrar la ventana: salir / seguir en la bandeja». En
+  la bandeja no se pinta nada: solo se leen los sensores para el historial,
+  gastando lo mínimo. Por seguridad, en la bandeja el ayudante con permisos
+  se cierra (o lo elige el usuario). Comprobar GNOME (necesita la extensión
+  AppIndicator) y KDE. Y con eso, alertas opcionales por notificación del
+  sistema (la temperatura del procesador o de la gráfica por encima de un
+  límite).
+* **Medidas finas, solo si se pueden hacer de forma fiable** (después de la
+  0.4):
+  - La topología exacta del procesador desde CPUID: qué núcleos comparten
+    cada caché, núcleos P y E en Intel y, en los Ryzen X3D, qué CCD lleva la
+    3D V-Cache (clave en los de dos CCD, como el 7950X3D). Es la base del
+    mapa de núcleos dibujado.
+  - La latencia de caché en ciclos y en curva (latencia según el tamaño de
+    los datos), que enseñe dónde acaba cada nivel, como AIDA64.
+  - El ancho de banda de la memoria con instrucciones vectoriales: lectura,
+    escritura y copia por separado.
+  - En el benchmark, el rendimiento con y sin AVX2 y AVX-512.
 * **Un benchmark de gráfica** (después de la 0.4).
 * **Diagramas que salen de datos reales**, no decorativos: el mapa de
   núcleos de la CPU (CCD, núcleos P y E, hilos hermanos, mejores núcleos) y

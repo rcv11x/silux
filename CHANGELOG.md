@@ -37,11 +37,10 @@ publica se dice con la versión que lo trae.
 - El color de acento es uno solo, el ámbar de la marca, y deja de estar en
   Ajustes. Si habías elegido otro, la interfaz vuelve al ámbar. La opción
   `--accent` desaparece: un guion que la pase termina con error.
-- El ayudante de permisos permanentes se quita desde Ajustes, con «Quitar
-  el ayudante…», y sirve también si usas el AppImage.
-- Dar los permisos para siempre ya no tiene botón propio en Memoria y
-  Almacenamiento («No volver a pedirla»): se ofrece dentro de «Qué hace
-  esto».
+- El ayudante instalado se quita desde Ajustes, con «Quitar el
+  ayudante…», y sirve también si usas el AppImage.
+- Instalar el ayudante ya no tiene botón propio en Memoria y Almacenamiento
+  («No volver a pedirla»): se ofrece dentro de «Qué hace esto».
 - La página Sistema ya no enseña el uso de la memoria: está entero en
   Memoria, en «Desglose del uso».
 - «Encendido desde», en Sistema, y el campo `boot_time` del JSON pasan a
@@ -55,7 +54,7 @@ publica se dice con la versión que lo trae.
 ### Permisos
 
 - Cambiado: «Qué pasa al dar permisos» dice lo mismo en cuatro frases cortas.
-- Nuevo: «Quitar el ayudante…» en Ajustes, si lo instalaste para siempre.
+- Nuevo: «Quitar el ayudante…» en Ajustes, si lo instalaste.
   Antes había que copiar una orden `sudo rm`.
 - Nuevo: un candado donde falta un dato por permisos, en vez del mismo guion
   que lleva lo que no se sabe. Pulsarlo los pide.
@@ -66,7 +65,7 @@ publica se dice con la versión que lo trae.
   ayudante, que solo lee, cuánto dura y quién pide la contraseña.
 - Nuevo: sin el ayudante instalado, dar permisos abre antes «Qué pasa al dar
   permisos», que avisa de que la ventana de la contraseña dirá que se va a
-  ejecutar `python3` como administrador, y recomienda «Para siempre».
+  ejecutar `python3` como administrador, y recomienda instalar el ayudante.
 - Cambiado: con el ayudante instalado, la ventana de la contraseña dice
   «Silux necesita permiso para leer datos del hardware reservados al
   administrador: memoria, discos, voltaje, consumo y uso de la gráfica. Solo
@@ -82,6 +81,14 @@ publica se dice con la versión que lo trae.
   otra vez, y no se vuelve a pedir hasta que pulses tú.
 - Arreglado: tras cancelar, los botones de permisos de Gráficos se quedaban
   en «Esperando autorización…».
+- Cambiado: «Instalar el ayudante (recomendado)» no promete que deje de
+  pedirse la contraseña. Con él, la ventana de la contraseña dice
+  en tu idioma qué se lee y no sale el aviso previo; la contraseña se sigue
+  pidiendo al dar permisos.
+- Nuevo: con un ayudante instalado de otra versión, Inicio, los avisos, los
+  candados y la barra de abajo lo dicen, con «Actualizar el ayudante».
+- Cambiado: Ajustes, con el ayudante instalado y leyendo, dice «Ayudante
+  instalado y leyendo».
 
 ### Inicio
 
@@ -498,6 +505,11 @@ publica se dice con la versión que lo trae.
 - Cambiado: tu carpeta personal sale como «~» (los ajustes, la copia de
   desarrollo, el informe guardado): una captura ya no lleva tu nombre de
   usuario.
+- Arreglado: lo que corre como administrador se busca por su ruta absoluta
+  y corre con un Python aislado, y el instalador nunca escribe a través de un
+  enlace ni en una carpeta que no sea solo de root.
+- Arreglado: los iconos que dibuja Silux ya no van a una carpeta de nombre
+  fijo en /tmp, donde otro usuario del equipo podía dejar los suyos.
 
 ### AppImage y paquete
 
