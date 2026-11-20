@@ -264,7 +264,7 @@ class MonitorPage(ScrollPage):
 
     def _apply_absent(self, snapshot: Snapshot) -> None:
         """Nombra al pie lo que no tiene rama porque el equipo no lo publica."""
-        faltan = [_("sensors.absent.gputemp").format(nombre=gpu.display_name)
+        faltan = [_("sensors.absent.gputemp").format(nombre=render.gpu_name(gpu))
                   for gpu in snapshot.gpus
                   if gpu.no_temperature_sensor and gpu.temp_c is None]
         # Los canales que el driver no nombra: «Tensión 0, 1, 2…». No se les

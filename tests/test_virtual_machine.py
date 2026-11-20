@@ -160,5 +160,60 @@ class TestTheMemory(unittest.TestCase):
         self.assertNotIn(_("mem.chipset"), pagina.avisos.text())
 
 
+@unittest.skipIf(QApplication is None, "sin PySide6")
+class TestTheOtherPages(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.app = qt.app()
+
+    def _page(self, clase, f=None):
+        from silux.settings import Preferences
+        from silux.ui import theme
+
+        pagina = clase(theme.palette_for(self.app, "dark"), Preferences().normalized())
+        self.addCleanup(pagina.deleteLater)
+        pagina.resize(1200, 900)
+        pagina.show()
+        pagina.apply(f or vm())
+        self.app.processEvents()
+        return pagina
+
+    def test_the_emulated_vga_has_a_name_and_no_dashes(self):
+        from silux.ui.pages.graphics import CLOCK_FIELDS, MEMORY_FIELDS, GraphicsPage
+
+        pagina = self._page(GraphicsPage)
+        self.assertEqual(pagina._sections[0].title.text(), "QEMU Standard VGA")
+        seccion = pagina._sections[0]
+        for grid, campos in ((seccion.memory, MEMORY_FIELDS), (seccion.clocks, CLOCK_FIELDS)):
+            for campo in campos:
+                with self.subTest(campo=campo):
+                    self.assertFalse(grid._values[_(campo)].isVisibleTo(grid))
+        self.assertIn(_("gpu.na.virtual.clocks"), seccion.clocks_pie.text())
+
+    def test_the_board_page_says_it_is_a_virtual_machine(self):
+        from silux.ui.pages.board import BoardPage
+
+        pagina = self._page(BoardPage)
+        self.assertEqual(pagina.title.text(), "QEMU Standard PC (i440FX + PIIX, 1996)")
+        self.assertEqual(pagina.board_pie.text().split(".")[0], _("board.virtual").split(".")[0])
+        # Legacy BIOS: no Secure Boot to say «unreadable» about.
+        self.assertFalse(pagina.firmware._values[_("board.field.secureboot")]
+                         .isVisibleTo(pagina.firmware))
+        self.assertEqual(pagina.firmware_pie.text(), _("board.na.secureboot.legacy"))
+        # Nothing on the PCI table is on a board or in a processor.
+        enlaces = {fila[2].full_text() for fila in pagina.pci._cells[:pagina.pci._rows]}
+        self.assertEqual(enlaces, {_("board.pci.virtual")})
+        self.assertNotIn("board.name", [n.path for n in vm().notes])
+
+    def test_the_caches_page_says_who_declares_them(self):
+        from silux.ui.pages.caches import CachesPage
+
+        pagina = self._page(CachesPage)
+        self.assertTrue(pagina.virtual_pie.isVisibleTo(pagina))
+        real = self._page(CachesPage, foto(EQUIPOS / "5800x3d")[0])
+        self.assertFalse(real.virtual_pie.isVisibleTo(real))
+
+
 if __name__ == "__main__":
     unittest.main()

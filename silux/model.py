@@ -272,6 +272,11 @@ class CpuInfo:
     thermal_throttle: Optional[ThermalThrottle] = None     # Intel only
 
     @property
+    def in_virtual_machine(self) -> bool:
+        """Inside a virtual machine: CPUID's «hypervisor» bit."""
+        return any(t.in_virtual_machine for t in self.types)
+
+    @property
     def package_power_w(self) -> Optional[float]:
         return self.power.package_w
 
@@ -843,7 +848,7 @@ class Board:
         return None
 
     @property
-    def display_name(self) -> str:
+    def display_name(self) -> Optional[str]:
         """Cómo se llama esto en una frase: «MSI H510M PRO-E».
 
         La frontera no es portátil contra sobremesa, aunque lo pareciera: es
@@ -872,7 +877,14 @@ class Board:
                 return equipo
         parts = [short_vendor(self.vendor), self.name]
         joined = " ".join(p for p in parts if p)
-        return joined or "Placa base"
+        if joined:
+            return joined
+        # No board at all (a virtual machine: QEMU declares no baseboard):
+        # the machine as the firmware calls it, «QEMU Standard PC (i440FX +
+        # PIIX, 1996)». And if not even that, `render.board_name` says so.
+        equipo = " ".join(p for p in (short_vendor(self.system_vendor),
+                                      clean_dmi(self.system_name)) if p)
+        return equipo or None
 
 
 
@@ -1135,6 +1147,9 @@ class Gpu:
     # lo mismo que no haberla podido leer, y se pinta distinto: lo que no
     # existe se esconde y se nombra al pie, no se deja con un guion.
     no_temperature_sensor: bool = False
+    # Emulated by a hypervisor (QEMU's VGA, virtio, VMware's SVGA…): no
+    # silicon, memory, clocks or sensors of its own.
+    virtual: bool = False
     hotspot_c: Optional[float] = None
     memory_temp_c: Optional[float] = None
     power_w: Optional[float] = None
@@ -1166,8 +1181,9 @@ class Gpu:
     apis: tuple[GpuApi, ...] = ()
 
     @property
-    def display_name(self) -> str:
-        return self.name or self.codename or f"Gráfica {self.index}"
+    def display_name(self) -> Optional[str]:
+        """Its name; `render.gpu_name` says it when there is none."""
+        return self.name or self.codename
 
     @property
     def pci_id(self) -> Optional[str]:
@@ -1883,7 +1899,8 @@ _COMPUTED: dict[str, tuple[str, ...]] = {
     "DiskIo": ("total_rate_bps",),
     "DiskHealth": ("life_left_percent", "healthy"),
     "Disk": ("display_name", "used_bytes", "mounted_partitions"),
-    "CpuInfo": ("total_cores", "total_threads", "package_power_w", "temperature_c"),
+    "CpuInfo": ("total_cores", "total_threads", "package_power_w", "temperature_c",
+                "in_virtual_machine"),
     "Sensor": ("heat", "unit", "category", "alarm", "alarm_level"),
     "Board": ("display_name",),
     "MemoryModule": ("has_ecc", "underclocked", "rated_mts"),

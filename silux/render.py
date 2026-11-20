@@ -1661,6 +1661,16 @@ def throttle_state(gpu) -> str:
     return _("gpu.throttle.why").format(motivos=", ".join(gpu.throttle_reasons))
 
 
+def board_name(board) -> str:
+    """The board's or the machine's name, or that the firmware gives none."""
+    return board.display_name or _("board.unnamed")
+
+
+def gpu_name(gpu) -> str:
+    """The card's name, or which one it is when nothing names it."""
+    return gpu.display_name or _("sensor.dev.gpu").format(n=gpu.index)
+
+
 def monitor_name(monitor: Optional[Edid]) -> str:
     """El modelo tal y como lo enseñaría la pegatina de detrás."""
     if monitor is None:

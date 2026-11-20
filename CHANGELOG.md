@@ -26,6 +26,26 @@ informes que mandó la gente.
   ni encapsulado, la ficha dice por qué y no se pide el informe para
   completarlo.
 
+### Máquinas virtuales
+
+- Cambiado: dentro de una máquina virtual no se pide permiso para nada que
+  no tiene: el voltaje del procesador, los módulos de memoria o la salud de
+  los discos, que el hipervisor se inventa. Tampoco se culpa a la placa del
+  SMBus, del chipset o del controlador de memoria.
+- Arreglado: el disco virtual de QEMU salía «HDD» y «disco SMR». Es
+  «Virtual», sin temperatura, horas ni desgaste que enseñar.
+- Arreglado: la VGA de QEMU se llamaba «Gráfica 0» y su ficha era una lista
+  de rayas. Se llama «QEMU Standard VGA» y dice al pie lo que una gráfica
+  emulada no tiene; del monitor virtual no salen tamaño ni fecha.
+- Arreglado: el título de Placa base decía «Placa base» cuando el firmware
+  no la nombra. Sale el equipo («QEMU Standard PC (i440FX + PIIX, 1996)»), y
+  la página dice que es una máquina virtual. Los dispositivos PCI salen
+  «emulados», no «en el procesador» ni «en la placa».
+- Arreglado: con BIOS heredada, el arranque seguro decía «no se puede leer»;
+  no existe, y se dice al pie.
+- Nuevo: Cachés avisa de que las cachés de un procesador virtual las declara
+  el hipervisor.
+
 ### Sistema
 
 - Arreglado: con el AppImage, los programas del sistema que lanza Silux

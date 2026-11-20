@@ -1,6 +1,6 @@
 ## Inicio
 
-Placa base
+QEMU Standard PC (i440FX + PIIX, 1996)
 Debian GNU/Linux 13 (trixie) · Linux 6.12.117+deb13-amd64 · encendido 11 min
 silux-pc · Máquina virtual · KVM
 
@@ -11,7 +11,7 @@ QEMU Virtual version 2.5+
 
 ### Gráfica
 
-Gráfica 0
+QEMU Standard VGA
 
 ### Memoria
 
@@ -100,6 +100,7 @@ MMX · SSE · SSE2 · SSE3 · SSSE3 · SSE4.1 · SSE4.2 · AES-NI
 32.2 MB de caché en total
 4 cachés distintas sobre 4 núcleos y 4 hilos
 L1 datos 128 KB · L1 instr. 128 KB · L2 16 MB · L3 16 MB
+Las declara el hipervisor: no tienen por qué ser las del procesador de verdad.
 
 ### Quién comparte qué
 
@@ -124,7 +125,7 @@ La unidad mínima que viaja entre memoria y caché. Leer un solo byte trae la l�
 
 ## Placa base
 
-Placa base
+QEMU Standard PC (i440FX + PIIX, 1996)
 BIOS heredada · Otro
 BIOS heredada
 
@@ -132,7 +133,7 @@ BIOS heredada
 
 - Chasis: Otro
 - Fabricante del chasis: QEMU
-El firmware de esta placa no dice su fabricante, su modelo ni su revisión.
+Es una máquina virtual: no tiene placa base, y lo que se ve es lo que declara el hipervisor.
 
 ### Firmware
 
@@ -141,8 +142,8 @@ El firmware de esta placa no dice su fabricante, su modelo ni su revisión.
 - Versión: Arch Linux 1.17.0-2-2
 - Fecha: 2014-04-01
 - Revisión SMBIOS: 0.0
-- Arranque seguro: no se puede leer
 - TPM: no detectado
+Con BIOS heredada no hay arranque seguro: es cosa de UEFI.
 
 ### Chipset
 
@@ -164,14 +165,10 @@ El firmware de esta placa no dice su fabricante, su modelo ni su revisión.
 
 | TIPO | DISPOSITIVO | ENLACE | MÁXIMO | DRIVER |
 |---|---|---|---|---|
-| Gráfica | QEMU, gráfica (1234:1111) | en el procesador |  | bochs-drm |
-| Ethernet | Intel 82540EM Gigabit Ethernet Controller | en la placa |  | e1000 |
-| SATA | 82801IR/IO/IH (ICH9R/DO/DH) 6 port SATA Controller [AHCI mode] | en la placa |  | ahci |
-| USB | 82371SB PIIX3 USB [Natoma/Triton II] | en la placa |  | uhci_hcd |
-
-> **Este equipo no lo expone**
-> La BIOS no publica el modelo de la placa.
-> Algunos fabricantes dejan el campo sin rellenar a propósito.
+| Gráfica | QEMU Standard VGA | emulado |  | bochs-drm |
+| Ethernet | Intel 82540EM Gigabit Ethernet Controller | emulado |  | e1000 |
+| SATA | 82801IR/IO/IH (ICH9R/DO/DH) 6 port SATA Controller [AHCI mode] | emulado |  | ahci |
+| USB | 82371SB PIIX3 USB [Natoma/Triton II] | emulado |  | uhci_hcd |
 
 ## Memoria
 
@@ -203,13 +200,9 @@ El ayudante que se lanza solo sabe leer esa tabla y unos registros del procesado
 
 ## Gráficos
 
-Gráfica 0
+QEMU Standard VGA
 Red Hat
 bochs-drm · principal
-- Uso: —
-- Frecuencia: —
-- Temperatura: —
-- Consumo: —
 
 ### Ahora mismo
 
@@ -219,12 +212,8 @@ Esta gráfica no publica cuánto se usa su motor gráfico ni su motor de video.
 
 - Fabricante: QEMU
 - Ensamblada por: Red Hat
-- Nombre en clave: —
 - Driver: bochs-drm
-- Versión del driver: —
-- Unidades de proceso: —
-- Unidades de rasterizado: —
-- Motores de sombreado: —
+Es una gráfica emulada por el hipervisor: no tiene nombre en clave ni unidades de proceso que contar.
 
 #### Identificadores
 
@@ -236,41 +225,15 @@ Esta gráfica no publica cuánto se usa su motor gráfico ni su motor de video.
 
 ### Memoria de video
 
-- Total: —
-- Tipo: —
-- Bus: —
-- Ancho de banda: —
-- Tasa de datos: —
-- Visible por la CPU: —
-- Resizable BAR: —
-- Chips: —
-- Tomada del sistema: —
+No tiene memoria de video propia.
 
 ### Relojes y enlace
 
-- Núcleo: —
-- Núcleo (máximo): —
-- Memoria: —
-- Memoria (efectiva): —
-- Memoria (máximo): —
-- SoC: —
-- Perfil de rendimiento: —
-- Enlace: —
-- Enlace (máximo): —
+No tiene relojes ni enlace PCIe: no hay silicio debajo.
 
 ### Consumo y temperaturas
 
-- Estado: —
-- Punto caliente: —
-- Chips de memoria: —
-- Regulador gráfico: —
-- Regulador del SoC: —
-- Regulador de memoria: —
-- Ventilador: —
-- Voltaje: —
-- Voltaje del SoC: —
-- Voltaje de memoria: —
-- Uso del motor de video: —
+Tampoco temperaturas, voltajes, ventilador ni consumo.
 
 ### Bibliotecas gráficas
 
@@ -282,7 +245,7 @@ Esta gráfica no publica cuánto se usa su motor gráfico ni su motor de video.
 
 | SALIDA | MONITOR | RESOLUCIÓN | REFRESCO | TAMAÑO | COLOR Y HDR | FABRICADO |
 |---|---|---|---|---|---|---|
-| Virtual-1 | Red Hat QEMU Monitor | 1280 × 800 | 50–125 Hz | 15.1" | — | semana 42 de 2014 |
+| Virtual-1 | Red Hat QEMU Monitor | 1280 × 800 | 50–125 Hz |  | — |  |
 
 ## Almacenamiento
 
@@ -466,6 +429,5 @@ SENSORES · 5 en 2 dispositivos
 
 **Datos que faltan:**
 
-- `board.name` (este equipo no lo expone): La BIOS no publica el modelo de la placa.
 - `cpu.clocks.current_hz` (este equipo no lo expone): El hipervisor no expone la frecuencia del procesador.
 - `cpu.power` (este equipo no lo expone): Esta CPU no expone contadores de energía RAPL.

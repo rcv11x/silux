@@ -353,7 +353,7 @@ class HwmonSensors(Provider):
     def collect(self, draft: Draft) -> None:
         cpu_name = short_brand(draft.types[next(iter(draft.types), "")].get("brand")
                                if draft.types else None)
-        board_name = draft.board.display_name
+        board_name = draft.board.display_name or _("board.unnamed")
         # Las gráficas ya están enumeradas cuando esto corre: el orden de los
         # proveedores en `collector.py` lo garantiza.
         gpu_names = {gpu["pci_slot"]: (gpu.get("name")

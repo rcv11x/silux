@@ -75,6 +75,12 @@ class CachesPage(ScrollPage):
         summary.body.addWidget(self.total)
         summary.body.addWidget(self.subtitle)
         summary.body.addWidget(self.chips)
+        # QEMU gives each virtual core 4 MB of L2 of its own making.
+        self.virtual_pie = QLabel(_("caches.virtual"))
+        self.virtual_pie.setObjectName("Muted")
+        self.virtual_pie.setWordWrap(True)
+        self.virtual_pie.hide()
+        summary.body.addWidget(self.virtual_pie)
         summary.body.addWidget(self.reparto)
         layout.addWidget(summary)
 
@@ -174,6 +180,7 @@ class CachesPage(ScrollPage):
             return
         self._ultima = snapshot
 
+        self.virtual_pie.setVisible(cpu.in_virtual_machine)
         grouped = self._group(snapshot)
         signature = tuple(
             (level, kind, cache.size_bytes, cache.instances, key)

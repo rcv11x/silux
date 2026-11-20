@@ -140,7 +140,7 @@ def dump(snapshot: Snapshot, style: Style) -> str:
         lines.append("")
 
     for gpu in snapshot.gpus:
-        lines.append(style.bold(style.accent(f"├─ {gpu.display_name}")))
+        lines.append(style.bold(style.accent(f"├─ {render.gpu_name(gpu)}")))
         lines.append(_row(style, "Fabricante", gpu.vendor or render.DASH))
         lines.append(_row(style, "Ensamblada por", gpu.subsystem_name or render.DASH))
         lines.append(_row(style, "Nombre en clave", gpu.codename or render.DASH))

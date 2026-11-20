@@ -41,6 +41,11 @@ def _clave(numeros) -> str:
     return ":".join(f"{n:04x}" for n in numeros)
 
 
+# Devices pci.ids does not list. QEMU's standard VGA uses vendor 0x1234, which
+# was never registered: without this a tester's VM showed «Gráfica 0».
+NOT_IN_PCI_IDS = {(0x1234, 0x1111): ("QEMU", "QEMU Standard VGA")}
+
+
 def lookup(
     pairs: Iterable[tuple[int, int]],
     subsystems: Iterable[tuple[int, int, int, int]] = (),
@@ -55,13 +60,18 @@ def lookup(
     pares = sorted({(int(v), int(d)) for v, d in pairs})
     subs = sorted({tuple(int(n) for n in key) for key in subsystems})
     if sysroot.activo() and not sysroot.grabo("pciids"):
-        return _lookup(pares, subs)             # un volcado de antes de grabarlo
-    pregunta = "|".join(_clave(k) for k in (*pares, *subs))
-    plano = sysroot.a_traves(
-        "pciids", pregunta,
-        lambda: {_clave(k): list(v) for k, v in _lookup(pares, subs).items()})
-    return {tuple(int(n, 16) for n in clave.split(":")): tuple(valor)
-            for clave, valor in (plano or {}).items()}
+        nombres = _lookup(pares, subs)           # un volcado de antes de grabarlo
+    else:
+        pregunta = "|".join(_clave(k) for k in (*pares, *subs))
+        plano = sysroot.a_traves(
+            "pciids", pregunta,
+            lambda: {_clave(k): list(v) for k, v in _lookup(pares, subs).items()})
+        nombres = {tuple(int(n, 16) for n in clave.split(":")): tuple(valor)
+                   for clave, valor in (plano or {}).items()}
+    for par in pares:
+        if par not in nombres and par in NOT_IN_PCI_IDS:
+            nombres[par] = NOT_IN_PCI_IDS[par]
+    return nombres
 
 
 # Lo ya contestado, por pregunta y por versión del fichero (ruta, fecha y

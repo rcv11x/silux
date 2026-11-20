@@ -77,7 +77,15 @@ class TestNombreDelEquipo(unittest.TestCase):
         self.assertEqual(board.display_name, "HP 8846")
 
     def test_y_una_placa_suelta_sin_nada(self):
-        self.assertEqual(Board().display_name, "Placa base")
+        # The model gives no text; render says it, translated.
+        from silux import render
+        self.assertIsNone(Board().display_name)
+        self.assertEqual(render.board_name(Board()), "Placa base")
+
+    def test_without_a_board_the_machine_names_it(self):
+        # QEMU declares no baseboard: a tester's VM was titled «Placa base».
+        qemu = Board(system_vendor="QEMU", system_name="Standard PC (i440FX + PIIX, 1996)")
+        self.assertEqual(qemu.display_name, "QEMU Standard PC (i440FX + PIIX, 1996)")
 
 
 class TestElNombreDeUnEquipoDeMarca(unittest.TestCase):

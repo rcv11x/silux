@@ -100,6 +100,12 @@ class BoardPage(ScrollPage):
         self.board_pie.setFont(ui_font(theme.METRICS.small_pt))
         self.board_pie.hide()
         self.board.parentWidget().body.addWidget(self.board_pie)
+        self.firmware_pie = QLabel("")
+        self.firmware_pie.setObjectName("Muted")
+        self.firmware_pie.setWordWrap(True)
+        self.firmware_pie.setFont(ui_font(theme.METRICS.small_pt))
+        self.firmware_pie.hide()
+        self.firmware.parentWidget().body.addWidget(self.firmware_pie)
         self.system = self._grid_card(bottom, _("board.card.system"),
                                       SYSTEM_FIELDS)
         self.system_card = self.system.parentWidget()
@@ -165,7 +171,7 @@ class BoardPage(ScrollPage):
     def apply(self, snapshot: Snapshot) -> None:
         board = snapshot.board
 
-        self.title.setText(board.display_name)
+        self.title.setText(render.board_name(board))
         self.subtitle.setText(self._subtitle(board))
         self._apply_badges(board)
 
@@ -184,8 +190,11 @@ class BoardPage(ScrollPage):
             self.board.set_visible(_(clave), bool(valor))
             if not valor:
                 sin_rellenar.append(_(NO_DICE[clave]))
-        pie = ([_("board.unfilled").format(campos=render.enumeration(sin_rellenar, "list.nor"))]
-               if sin_rellenar else [])
+        if snapshot.cpu.in_virtual_machine:
+            pie = [_("board.virtual")]
+        else:
+            pie = ([_("board.unfilled").format(campos=render.enumeration(sin_rellenar, "list.nor"))]
+                   if sin_rellenar else [])
 
         f = self.firmware.set
         f(_("memory.field.type"), board.firmware or d)
@@ -195,6 +204,11 @@ class BoardPage(ScrollPage):
         f(_("board.field.smbios"), board.bios_release or d,
           tooltip=_("board.tip.bios"))
         f(_("board.field.secureboot"), self._secure_boot(board))
+        # Secure Boot is UEFI's: with a legacy BIOS there is none to read.
+        heredada = board.secure_boot is None and not (board.firmware or "").startswith("UEFI")
+        self.firmware.set_visible(_("board.field.secureboot"), not heredada)
+        self.firmware_pie.setText(_("board.na.secureboot.legacy") if heredada else "")
+        self.firmware_pie.setVisible(heredada)
         f("TPM", board.tpm_version or _("board.notdetected"))
 
         c = self.chipset.set
@@ -250,9 +264,13 @@ class BoardPage(ScrollPage):
         # El sonido que comparte tarjeta con una gráfica (misma dirección,
         # otra función) es su salida HDMI: no está «en la placa».
         de_graficas = {d.slot.rsplit(".", 1)[0] for d in dispositivos if d.kind == "gpu"}
+        # What a hypervisor emulates is not on a board or in a processor.
+        virtual = snapshot.cpu.in_virtual_machine
         filas, pistas = [], []
         for d in dispositivos:
-            if d.kind == "gpu":
+            if virtual:
+                donde = _("board.pci.virtual")
+            elif d.kind == "gpu":
                 # Una gráfica sin enlace es la integrada: va en el procesador.
                 donde = _("board.pci.oncpu")
             elif d.slot.rsplit(".", 1)[0] in de_graficas:

@@ -389,7 +389,7 @@ class HomePage(ScrollPage):
                if gpu.busy_percent is None and not gpu.suspended
                and snapshot.permission_note(f"gpus.{indice}.usage")
                else "")
-        self.gpu.poner(gpu.display_name, detalle, "   ".join(piezas), pie)
+        self.gpu.poner(render.gpu_name(gpu), detalle, "   ".join(piezas), pie)
 
     def _memoria(self, snapshot: Snapshot) -> None:
         memoria = snapshot.system.memory

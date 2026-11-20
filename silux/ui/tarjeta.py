@@ -66,7 +66,7 @@ def _fila(snapshot: Snapshot) -> list[tuple[str, str, str]]:
             gpu.memory.kind if gpu.memory and gpu.memory.kind else "",
             gpu.driver or "",
         ) if x)
-        filas.append((_("nav.graphics"), gpu.display_name, detalle))
+        filas.append((_("nav.graphics"), render.gpu_name(gpu), detalle))
 
     memoria = snapshot.system.memory
     if memoria.total_bytes:
@@ -164,7 +164,7 @@ def _cabecera(pintor: QPainter, p: Palette, snapshot: Snapshot) -> None:
     if snapshot.cpu.types:
         resumen.append(render.cpu_short_name(snapshot.cpu.types[0].brand))
     if snapshot.gpus:
-        resumen.append(snapshot.gpus[snapshot.working_gpu].display_name)
+        resumen.append(render.gpu_name(snapshot.gpus[snapshot.working_gpu]))
     pintor.setPen(QColor(p.ink_dim))
     pequena = QFont()
     pequena.setPointSize(11)

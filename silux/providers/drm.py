@@ -51,6 +51,11 @@ VENDORS = {
     0x102B: "Matrox",
 }
 
+# The drivers of a graphics device a hypervisor emulates: no silicon below.
+DRIVERS_VIRTUALES = frozenset(("bochs-drm", "bochs", "virtio_gpu", "virtio-gpu",
+                               "qxl", "vmwgfx", "vboxvideo", "cirrus", "cirrus-qemu",
+                               "hyperv_drm"))
+
 # Los que no publican casi nada y conviene explicar por qué.
 DRIVERS_CIEGOS = {
     "nvidia": ("prov.drm.nvidia", "prov.drm.nvidia.hint"),
@@ -209,6 +214,8 @@ class DrmGpus(Provider):
                 gpu["memory"] = _memoria_total(dispositivo)
                 self._preguntar_al_driver(gpu, dispositivo)
             gpu["integrated"] = _es_integrada(gpu)
+            if gpu["driver"] in DRIVERS_VIRTUALES:
+                gpu["virtual"] = True
 
             aviso = DRIVERS_CIEGOS.get(gpu["driver"] or "")
             if aviso:

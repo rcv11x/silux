@@ -125,6 +125,17 @@ NA_SIN_VRAM = {
     "sensors": (("gpu.sensor.memtemp", "gpu.sensor.vmem"), "gpu.na.novram.sensors"),
 }
 
+# A graphics device a hypervisor emulates has no silicon below: no units to
+# count, no memory of its own, no clocks, link or sensors. A tester's VM read
+# a page of dashes.
+NA_VIRTUAL = {
+    "card": (("gpu.field.codename", "gpu.field.driverver", "gpu.field.compute", "gpu.field.rops",
+              "gpu.field.shaders"), "gpu.na.virtual.card"),
+    "memory": (MEMORY_FIELDS, "gpu.na.virtual.memory"),
+    "clocks": (CLOCK_FIELDS, "gpu.na.virtual.clocks"),
+    "sensors": ((*SENSOR_FIELDS, "gpu.tile.power"), "gpu.na.virtual.sensors"),
+}
+
 # Los reguladores los cuenta el microcontrolador de una tarjeta, y el
 # ventilador es suyo. Una integrada se alimenta y se refrigera con el resto del
 # equipo, así que esos sensores no son que falten: no son de ella. En una
@@ -224,6 +235,8 @@ def no_aplica(gpu: Gpu) -> tuple[dict[str, set[str]], dict[str, str]]:
     dejar un guion de más.
     """
     reglas = []
+    if gpu.virtual:
+        reglas.append(NA_VIRTUAL)
     if gpu.integrated and not gpu.memory.total_bytes:
         reglas.append(NA_SIN_VRAM)
     if gpu.integrated:
@@ -523,7 +536,7 @@ class GpuSection(QWidget):
 
     def apply(self, gpu: Gpu, recorte: str = "") -> None:
         d = render.DASH
-        self.title.setText(gpu.display_name)
+        self.title.setText(render.gpu_name(gpu))
         # Va arriba, debajo del nombre: es lo que explica por qué las cifras de
         # al lado no llegan a donde deberían, y escondido en una fila de la
         # ficha de sensores no lo lee quien no sabía que existía.
@@ -630,7 +643,7 @@ class GpuSection(QWidget):
 
         conectadas = [s for s in gpu.displays if s.connected]
         libres = [s.connector for s in gpu.displays if not s.connected]
-        self.displays.set_rows([_fila_de_salida(s) for s in conectadas]
+        self.displays.set_rows([_fila_de_salida(s, gpu.virtual) for s in conectadas]
                                or [(_("gpu.displays.none"), d, d, d, d, d)])
         self.displays_free.setText(
             _("gpu.displays.free.one" if len(libres) == 1
@@ -668,8 +681,12 @@ class GpuSection(QWidget):
         # ficha grande con un guion para siempre era el hueco más visible de
         # la página. Queda dicho al pie de «Consumo y temperaturas». Se deriva
         # de lo que ya decidió `no_aplica` en vez de repetir aquí la condición.
-        self.tile_temp.setVisible(not (gpu.no_temperature_sensor and gpu.temp_c is None))
+        self.tile_temp.setVisible(not ((gpu.no_temperature_sensor or gpu.virtual)
+                                       and gpu.temp_c is None))
         self.tile_power.setVisible("gpu.tile.power" not in ocultos["sensors"])
+        # An emulated device has no usage or clock to follow either.
+        self.tile_usage.setVisible(not gpu.virtual)
+        self.tile_clock.setVisible(not gpu.virtual)
 
         for nombre, grid, campos, pie in (
                 ("card", self.card, CARD_FIELDS, self.card_pie),
@@ -957,8 +974,12 @@ class GpuSection(QWidget):
           tooltip=_("gpu.tip.shared"))
 
 
-def _fila_de_salida(salida) -> tuple[str, ...]:
-    """Una línea de la tabla de monitores; la mitad se queda vacía si no hay."""
+def _fila_de_salida(salida, virtual: bool = False) -> tuple[str, ...]:
+    """Una línea de la tabla de monitores; la mitad se queda vacía si no hay.
+
+    A hypervisor's monitor has no size or date of manufacture of its own:
+    those cells stay empty.
+    """
     d = render.DASH
     if not salida.connected:
         return (salida.connector, _("gpu.display.free"), d, d, d, d, d)
@@ -972,9 +993,9 @@ def _fila_de_salida(salida) -> tuple[str, ...]:
         render.monitor_name(monitor),
         salida.resolution or d,
         monitor.refresh_summary or d,
-        render.monitor_diagonal(monitor) or d,
+        "" if virtual else render.monitor_diagonal(monitor) or d,
         render.monitor_color(monitor),
-        monitor.made or d,
+        "" if virtual else monitor.made or d,
     )
 
 

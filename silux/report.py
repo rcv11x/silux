@@ -217,7 +217,7 @@ def _placa(snapshot: Snapshot, anonymous: bool) -> str:
     board = snapshot.board
     return "\n".join([
         "", "## Placa base", "",
-        f"- {board.display_name or '?'}",
+        f"- {render.board_name(board)}",
         f"- BIOS: {render.bios_summary(board)}",
         f"- Chipset: {_chipset(board)}",
         f"- Firmware: {board.firmware or '—'} · arranque seguro: "
@@ -252,7 +252,7 @@ def _graficas(snapshot: Snapshot, anonymous: bool) -> str:
     lineas = ["", "## Gráficos", ""]
     for gpu in snapshot.gpus:
         lineas += [
-            f"**{gpu.display_name}**",
+            f"**{render.gpu_name(gpu)}**",
             "",
             f"- Fabricante: {gpu.vendor or '—'} · tarjeta de "
             f"{gpu.subsystem_name or '—'} · {gpu.codename or '—'}",

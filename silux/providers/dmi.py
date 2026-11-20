@@ -24,7 +24,7 @@ from typing import Optional
 
 from .. import pciids
 from ..model import Board, Need, clean_dmi
-from .base import Draft, Provider, read_text
+from .base import Draft, Provider, en_maquina_virtual, read_text
 from ..i18n import _
 from .. import sysroot
 
@@ -146,7 +146,9 @@ class DmiBoard(Provider):
             chassis=CHASSIS_TYPES.get(read_text(f"{SYS_DMI}/chassis_type") or ""),
         )
 
-        if not draft.board.name:
+        # A virtual machine has no board to blame (QEMU declares none): the
+        # board page says what it is instead.
+        if not draft.board.name and not en_maquina_virtual(draft):
             draft.note(
                 "board.name", Need.HARDWARE,
                 _("prov.dmi.noboard"), _("prov.dmi.noboard.hint"),

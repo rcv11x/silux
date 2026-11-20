@@ -45,7 +45,7 @@ class TestNombres(unittest.TestCase):
     def test_nombre_de_la_placa(self):
         board = Board(vendor="Micro-Star International Co., Ltd.", name="H510M PRO-E")
         self.assertEqual(board.display_name, "MSI H510M PRO-E")
-        self.assertEqual(Board().display_name, "Placa base")
+        self.assertIsNone(Board().display_name)
 
 
 class TestArbol(unittest.TestCase):

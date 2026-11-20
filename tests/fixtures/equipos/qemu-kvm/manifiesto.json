@@ -175,7 +175,7 @@
  "cpu": "QEMU Virtual CPU version 2.5+",
  "kernel": "Linux 6.12.117+deb13-amd64",
  "gpus": [
-  null
+  "QEMU Standard VGA"
  ],
  "fuentes": [
   "cpuid",
