@@ -9,6 +9,14 @@ sin los pasos para reproducirlo: este archivo es público.
 
 ## Lo más importante
 
+* **`test_cli.py::TestVigilarLosSensores::test_sin_sensors_el_volcado`** ·
+  sin explicar · el 20 de noviembre de 2026 falló una vez en el CI de la rama
+  `cpu-virtual` (run 44753317786, Python 3.14): la salida del `--watch` llegó
+  vacía, o sea que el `sleep` parcheado para todo el proceso saltó antes del
+  primer `print`. Dentro de un proveedor el colector lo habría atrapado; no se
+  encontró quién duerme fuera. Se relanzó (y se le dijo al autor) y pasó, y
+  pasó también en la rama que lo llevaba encima.
+
 * **El cierre del `QScrollBar` en los tests** · Qt libera dos veces la
   llamada encolada con que un `QScrollBar` avisa de su rango, y el proceso
   muere. Con PySide6 6.11 en Python 3.10 o 3.11 pasa también en la app de
@@ -35,6 +43,13 @@ sin los pasos para reproducirlo: este archivo es público.
   (555 ps) sale «XMP 1 3200». Las posiciones de los perfiles son las de XMP
   1.x de DDR3, y el perfil 2 de DDR4 caería dentro del primero. No hay ningún
   volcado con XMP en `tests/fixtures`: no se escribe sin uno real delante.
+  El 20 de noviembre de 2026 llegó el primer caso real, unos TEAMGROUP-UD4-3200
+  de anianin27: «CL 18, tRCD 18, tRP 4, 0,81 V». Encaja con leer CL, tRCD y tRP
+  un byte corridos (del tRCD, del tRP y del byte de los nibbles altos) y con
+  una codificación del voltaje equivocada: 0xA3 son 1,35 V en XMP 2.0 (bit 7,
+  un voltio; los otros siete, centésimas) y aquí salía 0,815. Mientras tanto,
+  un perfil con un voltaje imposible no se enseña y la nota dice que el módulo
+  trae XMP sin leer. **Hace falta su volcado con permisos** (los bytes del SPD).
 * **`privileged/instalar.py`** · alta, condicionada · escribe el ayudante y
   su regla de polkit sin comprobar que el destino no sea sustituible. No es
   explotable con `/usr/local` en su estado normal.
@@ -44,6 +59,58 @@ sin los pasos para reproducirlo: este archivo es público.
   la unión de los dos y el CSV escribe el dato de uno bajo el nombre del otro.
 * **`ui/pages/cpulive.py`** · media-alta · compone los relojes a mano en vez
   de con `render.hz`: 576 MHz sale «0.58 GHz» y un bus de 100 MHz «0.10 GHz».
+
+## De los informes de la prueba1 (20 de noviembre de 2026)
+
+Lo que salió de los informes de anianin27 (Gentoo, i7-10700F, RTX 4060) y
+widecoocaa23 (Lenovo LOQ con i5-12450H y RTX 4050, y su VM de Proxmox) y no se
+pudo arreglar sin un volcado de su equipo, o quedó por hacer.
+
+* **Necesita el volcado de anianin27, con permisos:**
+  - NVIDIA · media · el consumo de la RTX 4060 salía «— (de 115 W)»: NVML dio
+    el tope y no el consumo, con el driver 595. En el portátil (550) sí sale.
+    Con el volcado, `nvidia-smi -q -d POWER` al lado.
+  - NVIDIA · media · en Sensores la NVIDIA no tiene temperatura, consumo ni
+    relojes: `derived._graphics` solo añade uso, ventilador y memoria, y lo
+    demás lo da hwmon en AMD e Intel. El arreglo es corto; el test pide NVML
+    grabada en un volcado.
+  - C-states · baja · «C2 es el reposo más hondo de este procesador» en un
+    i7-10700F, que llega a C10: es lo que ofrece su driver de reposo
+    (probablemente `acpi_idle`). `cpuidle` no mira el driver.
+  - Discos · baja · el modelo entero por el IDENTIFY de `ata_device` (para
+    buscar la unidad en drivedb) está probado aquí con dos Seagate y un
+    Crucial; con el A400 de verdad, falta verlo.
+* **Necesita el volcado del portátil de widecoocaa23, con permisos:**
+  - Memoria · media · el SPD de la DDR5 no se lee con permisos aunque
+    `spd5118` está cargado y da su temperatura. Sospecha: el firmware bloquea
+    el cambio de página del chip. Un solo `spd5118` para dos módulos.
+  - Gráficos · media · la UHD sale «Sin bibliotecas gráficas»: OpenGL lo
+    contesta la NVIDIA (EGL sin superficie, por el orden de glvnd) y no hay
+    Vulkan de Intel (sin `mesa-vulkan-drivers`, o sin casar). Con el AppImage
+    normal, además, la NVIDIA despierta salió sin la fila de OpenGL que sí dio
+    el compat.
+  - Memoria · baja · «Este equipo no publica cuánto tráfico mueve el
+    controlador de memoria» en un Alder Lake-H, con la explicación de AMD
+    («Solo lo publican los procesadores Intel»).
+  - Cachés y temperatura de un híbrido · se arreglaron con la topología del
+    informe; con el volcado, conviene verlo en un equipo de verdad.
+* **Sin volcado, sin hacer todavía:**
+  - Gráficos · baja · «PCIe 1.0 × 8» de una NVIDIA en reposo, sin explicar
+    que baja el enlace para ahorrar (sube con carga): la gente lo reportará
+    como fallo.
+  - SMART · baja · atributos conocidos (4, 192, 193, 196…) salen «propio del
+    fabricante»; la temperatura en crudo sale empaquetada (64 427 589 655) y un
+    HDD enseña «Escrito en total: —» en vez de esconderlo.
+  - Batería · baja · «Retenida en el tope» al 78 % (un límite de carga) y
+    «Autonomía: —» enchufado.
+  - Informe · baja · los títulos de núcleos P/E y de la segunda gráfica no son
+    encabezados; «sostenida  ·» con doble espacio (`bench.dur.comparable`
+    empieza con dos).
+  - Modelo · baja · `dmi._firmware` guarda «BIOS heredada» y «UEFI (64
+    bits)» en español: sale así en inglés y en `--json`. Cambiarlo es cambiar
+    la API.
+  - VM · baja · el historial de Rendimiento de la VM tenía una prueba «15 s ·
+    — · — · —»: preguntar si la canceló.
 
 ## Datos que se leen mal o no se leen
 
