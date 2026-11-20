@@ -11,6 +11,22 @@ que hace falta.
 
 ---
 
+## Sin publicar
+
+### Procesador
+
+- Arreglado: un procesador sin driver de frecuencia (cpufreq) salía con
+  «Frecuencia: —» en todas partes. Ahora la da `/proc/cpuinfo` y, con
+  permisos, en los Ryzen y Athlon (Zen), el propio procesador: su P-state,
+  y el P0 es el reloj base. Las filas que solo da ese driver se esconden y
+  se dice por qué.
+- Cambiado: el aviso de que falta la frecuencia ya no dice «Falta un módulo
+  del kernel»: puede ser la BIOS (Cool'n'Quiet desactivado) o que el driver
+  no haya cargado, y dice eso.
+- Arreglado: «Turbo: —» en un procesador sin turbo. Dice que no tiene.
+
+---
+
 ## 0.4-prueba4 (20 de noviembre de 2026)
 
 La prueba3 con un arreglo más, para que la pruebe también quien usa un
