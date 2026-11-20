@@ -136,6 +136,11 @@ def abrir_plegables(pagina) -> None:
             plegable.set_abierto(True)
 
 
+def _de_lista(linea: str) -> bool:
+    """A list item or a table row, at any depth."""
+    return linea.lstrip().startswith(("- ", "|"))
+
+
 def page_text(pagina) -> str:
     """Lo que enseña una página, en Markdown."""
     lineas = _lineas(pagina, pagina)
@@ -144,6 +149,12 @@ def page_text(pagina) -> str:
     for linea in lineas:
         if linea == "" and (not salida or salida[-1] == ""):
             continue
+        # A paragraph right after a list is part of its last item in
+        # Markdown: «Iris Xe Graphics: no publica su temperatura.» read as
+        # one more sensor. A blank line between them.
+        if (salida and linea and _de_lista(salida[-1]) and not _de_lista(linea)
+                and not linea.startswith(("#", ">"))):
+            salida.append("")
         salida.append(linea)
     return "\n".join(salida).strip()
 

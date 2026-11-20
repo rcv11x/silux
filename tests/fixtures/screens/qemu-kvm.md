@@ -66,6 +66,7 @@ Máquina virtual · KVM · x86_64
 - Núcleos: 4
 - Hilos: 4
 - Virtualización: dentro de una máquina virtual
+
 Es un procesador virtual: lo que declara lo decide el hipervisor, así que no se busca en la tabla de procesadores, que es de donde salen el nombre en clave, la tecnología y el encapsulado.
 
 #### Identificación (CPUID)
@@ -133,6 +134,7 @@ BIOS heredada
 
 - Chasis: Otro
 - Fabricante del chasis: QEMU
+
 Es una máquina virtual: no tiene placa base, y lo que se ve es lo que declara el hipervisor.
 
 ### Firmware
@@ -142,6 +144,7 @@ Es una máquina virtual: no tiene placa base, y lo que se ve es lo que declara e
 - Versión: Arch Linux 1.17.0-2-2
 - Fecha: 2014-04-01
 - TPM: no detectado
+
 Con BIOS heredada no hay arranque seguro: es cosa de UEFI.
 
 ### Chipset
@@ -212,6 +215,7 @@ Esta gráfica no publica cuánto se usa su motor gráfico ni su motor de video.
 - Fabricante: QEMU
 - Ensamblada por: Red Hat
 - Driver: bochs-drm
+
 Es una gráfica emulada por el hipervisor: no tiene nombre en clave ni unidades de proceso que contar.
 
 #### Identificadores
@@ -278,6 +282,7 @@ Ocupado 2.6 GB · Libre 28.8 GB · Reservado 593.6 MB
 - Tipo: Virtual
 - Conexión: SATA
 - Capacidad: 32 GB
+
 Es un disco virtual: no tiene temperatura, horas, lo escrito ni desgaste propios, y lo que contestaría a un diagnóstico se lo inventa el hipervisor.
 
 #### Firmware y sectores
@@ -330,6 +335,7 @@ Los mismos datos son 116 MB/s o 931 Mb/s: los tests de velocidad usan bits.
 
 *DISPOSITIVO · VELOCIDAD*
 - Mando o dispositivo de entrada · Velocidad completa · 12 Mb/s
+
 Cada cosa cuelga del concentrador al que está enchufada. El número de serie no se lee.
 
 ### Cámaras
@@ -352,6 +358,7 @@ Linux 6.12.117+deb13-amd64
 - Versión: 13
 - Identificador: debian
 - Nombre del equipo: silux-pc
+
 Esta distribución no declara variante.
 
 ### Kernel y entorno
@@ -402,6 +409,7 @@ Esta distribución no declara variante.
 - Kernel: 2.4 s
 - Espacio de usuario: 4.4 s
 - Línea de arranque: BOOT_IMAGE=/boot/vmlinuz-6.12.117+deb13-amd64 root=… ro console=tty0 console=ttyS0,115200 earlyprintk=ttyS0,115200 consoleblank=0
+
 Falta cuánto tardan el firmware y el cargador: ni el gestor de arranque ni el firmware lo publican.
 
 ## Rendimiento
