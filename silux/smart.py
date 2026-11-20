@@ -18,6 +18,10 @@ Los dos formatos no se parecen:
 
 from __future__ import annotations
 
+import functools
+import json
+import pathlib
+import re
 import struct
 from typing import Optional
 
@@ -54,8 +58,34 @@ ATA_UNIDAD_ESCRITURA: dict[str, int] = {
 }
 
 
-def _unidad_escritura(vendor: Optional[str], model: Optional[str]) -> int:
-    """Cuánto vale una unidad del contador de escritura en este disco."""
+DRIVEDB = pathlib.Path(__file__).resolve().parent / "db" / "smart_units.json"
+
+
+@functools.lru_cache(maxsize=1)
+def _drivedb() -> tuple[tuple[re.Pattern, Optional[re.Pattern], dict[int, Optional[int]]], ...]:
+    """smartmontools' units per model (`tools/gen_smart_units.py`), compiled.
+
+    Its patterns are matched against the whole model, as smartctl does, and
+    the first entry that matches is the one that counts.
+    """
+    try:
+        rows = json.loads(DRIVEDB.read_text(encoding="utf-8"))["drives"]
+    except (OSError, ValueError, KeyError):
+        return ()
+    return tuple((re.compile(r["model"]),
+                  re.compile(r["firmware"]) if r.get("firmware") else None,
+                  {int(k): v for k, v in r["units"].items()})
+                 for r in rows)
+
+
+def _unidad_escritura(vendor: Optional[str], model: Optional[str],
+                      firmware: Optional[str] = None, atributo: int = 241) -> Optional[int]:
+    """Cuánto vale una unidad de este contador en este disco.
+
+    What was measured first; then smartmontools' drive database, which needs
+    the whole model (sysfs cuts it to 16 characters); then 512-byte sectors.
+    None when the counter is the flash's and not what the computer wrote.
+    """
     for texto in (vendor, model):
         if not texto:
             continue
@@ -63,6 +93,11 @@ def _unidad_escritura(vendor: Optional[str], model: Optional[str]) -> int:
         for marca, unidad in ATA_UNIDAD_ESCRITURA.items():
             if marca in minusculas:
                 return unidad
+    if model:
+        for patron, de_firmware, unidades in _drivedb():
+            if patron.fullmatch(model) and (
+                    de_firmware is None or (firmware and de_firmware.fullmatch(firmware))):
+                return unidades.get(atributo, ATA_SECTOR)
     return ATA_SECTOR
 
 CERO_ABSOLUTO = 273.15
@@ -110,7 +145,7 @@ ATA_VIDA = (231, 233, 177, 202)
 
 
 def parse(data: bytes, kind: str, vendor: Optional[str] = None,
-          model: Optional[str] = None) -> Optional[DiskHealth]:
+          model: Optional[str] = None, firmware: Optional[str] = None) -> Optional[DiskHealth]:
     """Devuelve None si los datos no tienen la pinta que deberían.
 
     El fabricante y el modelo hacen falta solo en SATA, y solo para saber en
@@ -121,7 +156,7 @@ def parse(data: bytes, kind: str, vendor: Optional[str] = None,
     if kind == "nvme":
         return _parse_nvme(data)
     if kind == "ata":
-        return _parse_ata(data, vendor, model)
+        return _parse_ata(data, vendor, model, firmware)
     return None
 
 
@@ -196,7 +231,8 @@ def _atributos(data: bytes) -> dict[int, tuple[int, int]]:
 
 
 def _parse_ata(data: bytes, vendor: Optional[str] = None,
-               model: Optional[str] = None) -> Optional[DiskHealth]:
+               model: Optional[str] = None,
+               firmware: Optional[str] = None) -> Optional[DiskHealth]:
     if len(data) < 362:
         return None
     tabla = _atributos(data)
@@ -215,20 +251,25 @@ def _parse_ata(data: bytes, vendor: Optional[str] = None,
                 return valor[1]
         return None
 
+    def en_bytes(*identificadores: int) -> Optional[int]:
+        """The first of these counters, in bytes, with its own unit."""
+        for identificador in identificadores:
+            valor = tabla.get(identificador)
+            if valor:
+                unidad = _unidad_escritura(vendor, model, firmware, identificador)
+                return valor[1] * unidad if valor[1] and unidad else None
+        return None
+
     vida = next((tabla[i][0] for i in ATA_VIDA if i in tabla), None)
-    escrito = crudo(*ATA_ESCRITO)
-    leido = crudo(*ATA_LEIDO)
     horas = crudo(ATA_HORAS)
     if horas is not None and horas > HORAS_PLAUSIBLES:
         horas = None
 
-    unidad = _unidad_escritura(vendor, model)
-
     return DiskHealth(
         power_on_hours=horas,
         power_cycles=crudo(ATA_CICLOS),
-        written_bytes=escrito * unidad if escrito else None,
-        read_bytes=leido * unidad if leido else None,
+        written_bytes=en_bytes(*ATA_ESCRITO),
+        read_bytes=en_bytes(*ATA_LEIDO),
         # El atributo guarda la vida que queda; el modelo la guarda gastada.
         percentage_used=100 - vida if vida is not None else None,
         # Un sector reasignado es un trozo de disco que ya se estropeó y se

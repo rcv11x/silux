@@ -248,3 +248,42 @@ class TestUnidadDeEscritura(unittest.TestCase):
         self.assertAlmostEqual(escrito / 1024 ** 4, 23.0, places=1)
         # Y con la cuenta de antes salía algo imposible para 3 834 horas.
         self.assertLess(crudo * smart.ATA_SECTOR / 1024 ** 2, 400)
+
+
+class TestTheDriveDatabase(unittest.TestCase):
+    """The unit of each counter, per model, from smartmontools' drivedb.h.
+
+    A tester's Kingston A400 said «Escrito en total: 33.4 MB» after 9 927
+    hours: its attribute 241 counts GiB, and read as 512-byte sectors its
+    68 446 became 35 MB. The figures are the ones in that report.
+    """
+
+    A400 = [(241, 100, 68_446), (242, 100, 134_816), (231, 58, 58), (9, 100, 9_927)]
+
+    def test_the_a400_counts_gib(self):
+        salud = smart.parse(tabla_ata(self.A400), "ata", vendor="Kingston",
+                            model="KINGSTON SA400S37480G")
+        self.assertEqual(salud.written_bytes, 68_446 * 1024 ** 3)
+        self.assertEqual(salud.read_bytes, 134_816 * 1024 ** 3)
+        self.assertAlmostEqual(salud.written_bytes / 1000 ** 4, 73.5, places=1)
+
+    def test_with_two_spaces_too(self):
+        # «KINGSTON  SA400S37480G», as some of them write it.
+        self.assertEqual(smart._unidad_escritura(None, "KINGSTON  SA400S37480G"), 1024 ** 3)
+
+    def test_the_measured_table_still_wins(self):
+        # drivedb.h says GiB for the KIOXIA-EXCERIA and doubts it («32MiB ?»);
+        # writing a known amount said 32 MiB.
+        self.assertEqual(smart._unidad_escritura(None, "KIOXIA-EXCERIA SATA SSD"),
+                         32 * 1024 * 1024)
+
+    def test_what_the_database_does_not_know_stays_in_sectors(self):
+        self.assertEqual(smart._unidad_escritura("ATA", "ST2000DM008-2FR102"), smart.ATA_SECTOR)
+
+    def test_a_counter_of_the_flash_is_not_what_the_computer_wrote(self):
+        # ATP names its 241 «Sectors_Written_to_NAND»: shown as written, it
+        # would be the flash's own writes, not the computer's.
+        self.assertIsNone(smart._unidad_escritura(None, "ATP I-Temp M.2 2280"))
+        salud = smart.parse(tabla_ata([(241, 100, 5_000), (9, 100, 100)]), "ata",
+                            model="ATP I-Temp M.2 2280")
+        self.assertIsNone(salud.written_bytes)

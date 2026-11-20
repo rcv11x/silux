@@ -44,6 +44,18 @@ class TestElArchivo(unittest.TestCase):
                 self.assertRegex(texto, rf"(?im)^## {re.escape(nombre)}\s*$")
                 self.assertIn(datos["repo"].removesuffix(".git"), texto)
 
+    def test_the_disk_table_too(self):
+        """smart_units.json, from smartmontools' drivedb.h (GPL-2.0-or-later)."""
+        import json
+
+        tabla = json.loads((RAIZ / "silux" / "db" / "smart_units.json").read_text(encoding="utf-8"))
+        texto = _avisos()
+        for nombre, datos in tabla["sources"].items():
+            with self.subTest(fuente=nombre):
+                self.assertRegex(texto, rf"(?im)^## {re.escape(nombre)}\s*$")
+                self.assertIn(datos["repo"], texto)
+        self.assertIn("SPDX-License-Identifier: GPL-2.0-or-later", texto)
+
     def test_libcpuid_con_el_aviso_entero(self):
         texto = _avisos()
         for trozo in ("Copyright 2008  Veselin Georgiev",

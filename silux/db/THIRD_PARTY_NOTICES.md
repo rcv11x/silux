@@ -2,9 +2,11 @@
 
 Silux es software libre bajo la GPL-3.0 o posterior; el texto completo está
 en `LICENSE`. La tabla con que identifica los procesadores,
-`silux/db/cpu_ids.json`, se generó con los datos de cuatro proyectos y de AMD. Sus avisos
-van aquí tal como piden sus licencias, en el repositorio, en el paquete de
-pip y dentro de cada AppImage.
+`silux/db/cpu_ids.json`, se generó con los datos de cuatro proyectos y de AMD,
+y la de las unidades de los contadores de los discos,
+`silux/db/smart_units.json`, con los de smartmontools. Sus avisos van aquí
+tal como piden sus licencias, en el repositorio, en el paquete de pip y
+dentro de cada AppImage.
 
 ## libcpuid
 
@@ -108,3 +110,22 @@ GNU General Public License for more details.
 ```
 
 Es la misma licencia que la de Silux, cuyo texto completo está en `LICENSE`.
+
+## smartmontools
+
+<https://github.com/smartmontools/smartmontools>
+
+De su base de datos de discos (`drivedb/drivedb.h`), en el commit que dice
+`silux/db/smart_units.json` (`sources.smartmontools`), salen los patrones del
+modelo de cada disco y la unidad en que cuentan lo escrito y lo leído
+(atributos 241, 242, 246 y 247): la que dice el nombre que smartmontools le
+da a cada uno. Se toman los datos, no el código.
+
+```
+drivedb.h - smartmontools drive database file
+
+Copyright (C) 2003-11 Philip Williams, Bruce Allen
+Copyright (C) 2008-26 Christian Franke
+
+SPDX-License-Identifier: GPL-2.0-or-later
+```

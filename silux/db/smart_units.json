@@ -1,0 +1,487 @@
+{
+ "schema": 1,
+ "sources": {
+  "smartmontools": {
+   "repo": "https://github.com/smartmontools/smartmontools",
+   "branch": "drivedb/8.0",
+   "commit": "a8be76c60557f67b15eca314d56e166764521059",
+   "date": "2026-09-09",
+   "file": "drivedb/drivedb.h"
+  }
+ },
+ "drives": [
+  {
+   "family": "Swissbit X-8x Family SATA SSD",
+   "model": "SFSA....M.AO.TO.............",
+   "firmware": "",
+   "units": {
+    "241": 512,
+    "242": 512
+   }
+  },
+  {
+   "family": "ATP SATA III Value Line SSDs",
+   "model": "ATP SATA III (M.2 (2242|2280)|mSATA|mSATA SSD|2.5 inch)",
+   "firmware": "SBFMB1.1|SBFMBB.3|SBFMT1.3",
+   "units": {
+    "241": 1073741824
+   }
+  },
+  {
+   "family": "ATP SATA III Superior Line SSDs",
+   "model": "ATP (SATA III|SATAIII|I-Temp. SATA III|I-Temp. SATAIII) (M.2 (2242|2280)|mSATA|2.5 inch) SSD",
+   "firmware": "T0205B|U0316B",
+   "units": {
+    "241": null
+   }
+  },
+  {
+   "family": "ATP SATA III aMLC M.2 2242/80 Embedded SSDs",
+   "model": "ATP I-Temp M\\.2 22(42|80)",
+   "firmware": "",
+   "units": {
+    "241": null
+   }
+  },
+  {
+   "family": "Crucial/Micron Client SSDs",
+   "model": "Crucial_CT(128|256|512)MX100SSD1|Crucial_CT(200|250|256|500|512|1000|1024)MX200SSD[1346]|Crucial_CT(275|525|750|1050|2050)MX300SSD[14]|Crucial_CT(120|240|480|960)M500SSD[134]|Crucial_CT(128|256|512|1024)M550SSD[134]|CT(120|240|480)BX300SSD1|CT(120|240|480|960|[124]000)BX500SSD1|CT(250|500|[124]000)MX500SSD[14][A-Z]?|Micron_M500_MTFDDA[KTV](120|240|480|960)MAV|Micron_M500DC_(EE|MT)FDDA[AK](120|240|480|800)MBB|(Micron[_ ])?M500IT[_ ]MTFDDA[KTY](032|050|060|064|120|128|240|256)[MS]BD|(Micron_)?M510[_-]MTFDDA[KTV](128|256)MAZ|MICRON_M510DC_(EE|MT)FDDAK(120|240|480|800|960)MBP|(Micron_)?M550[_-]MTFDDA[KTV](064|128|256|512|1T0)MAY|(Micron_M600_)?(EE|MT)FDDA[KTV](128|256|512|1T0)MBF[25Z]?(-.*)?|(Micron_1100_)?MTFDDA[KV](256|512|1T0|2T0)TBN(-.*)?|Micron 1100 SATA (256G|512G|1T|2T)B|(Micron_1300_)?(EE|MT)FDDA[KV](256|512|1T0|2T0)TDL(-.*)?",
+   "firmware": "",
+   "units": {
+    "246": 512
+   }
+  },
+  {
+   "family": "Maxio based SSDs (variant 2)",
+   "model": "Acer SSD SA100 (12|24|48|96|192)0GB|Fanxiang S101 ((128|256|500|512)G|[124]T)B|FORESEE ((128|256|512)G|[12]T)B SSD|HP SSD S600 (120|240)GB|HS-SSD-E100N? (128|256|512|1024)G|Lexar 128GB SSD|MT-(64|128|256|512|[124]TB?)|P3-(128|256|512|[124]TB)|Patriot Burst Elite (120|240|480|960|1920)GB|SPCC Solid State Disk|SSDPR-CX400-(128|256|512|01T|02T)-G2|Verbatim Vi560 SATA III M.2 SSD",
+   "firmware": "03[01]fAA20|J00fae20|H(19[0-9]{4}[DH]?|2212[0-9]{2}a?)|SN(0(73|89|94)|81|1(18|41)|207)[0-9]{2}|V1\\.2\\.7",
+   "units": {
+    "241": 1073741824,
+    "242": 1073741824
+   }
+  },
+  {
+   "family": "Maxio based SSDs (variant 3)",
+   "model": "(128|256|512)GB SSD|V Series SATA SSD (120|240|250|480|500|960)GB|Lexar (512G|[12]T)B SSD|Lexar SSD NQ100 (24|48|96)0GB|Patriot Burst Elite (120|240|480|960|1920)GB|PNY 1TB SATA SSD|Verbatim Vi550 S3|Verbatim Vi560 S3",
+   "firmware": "SN1(19|25|31|59)[0-9]{2}|H2209[0-9]{2}a?",
+   "units": {
+    "241": 1073741824,
+    "242": 1073741824
+   }
+  },
+  {
+   "family": "Maxio based SSDs (variant 4)",
+   "model": "Lexar SSD NS100 ((128|256|512)G|[12]T)B",
+   "firmware": "SN177[0-9]{2}|V1\\.0\\.5A",
+   "units": {
+    "241": 33554432,
+    "242": 33554432
+   }
+  },
+  {
+   "family": "Hosin Global HG2258 based SSDs",
+   "model": "M.2 2280 SATA SSD|Verbatim Vi550 S3",
+   "firmware": "[HP]AFE[AC]2\\.0",
+   "units": {
+    "241": 1073741824,
+    "242": 1073741824
+   }
+  },
+  {
+   "family": "Hosin Global HG2259 based SSDs",
+   "model": "Patriot P220 (128|256|512)GB",
+   "firmware": "HDFEB3\\.2",
+   "units": {
+    "241": 33554432,
+    "242": 33554432
+   }
+  },
+  {
+   "family": "Micron 5100 / 52x0 / 5300 / 5400 SSDs",
+   "model": "(Micron_5100_)?(EE|MT)FDDA[KV](240|480|960|1T9|3T8|7T6)T(BY|CB|CC)(_SED)?|(Micron_5200_)?MTFDDAK(240|480|960|1T9|3T8|7T6)TD(C|D|N)|Micron_5210_MTFDDAK(480|960|1T9|3T8|7T6)QDE|(Micron_5300(HC)?_)?MTFDDA[KV](240|480|960|1T9|3T8|7T6)TD[STU]([-_].*)?|(Micron_5400_)?(EE|MT)FDDA[KV](240|480|960|1T9|3T8|7T6)TG[ABC](_SED)?|VK001920G(WSXK|XAWN)",
+   "firmware": "",
+   "units": {
+    "246": 512
+   }
+  },
+  {
+   "family": "SandForce Driven SSDs",
+   "model": "Corsair Force LS SSD",
+   "firmware": "S9FM01\\.8",
+   "units": {
+    "241": 1073741824,
+    "242": 1073741824
+   }
+  },
+  {
+   "family": "SandForce Driven SSDs",
+   "model": "SanDisk SDSSDA(120|240|480)G|SanDisk SD8S[BFN]AT128G1(00|12)2",
+   "firmware": "",
+   "units": {
+    "241": 1073741824,
+    "242": 1073741824
+   }
+  },
+  {
+   "family": "SandForce Driven SSDs",
+   "model": "SandForce 1st Ed\\.|ADATA SSD DP900 (64|128|256|512)GB-DL3|ADATA SSD S(396|510|599) .?..GB|ADATA SP[389]00|ADATA SSD S[PX]900 (64|128|256|512)GB-DL2|ADATA XM11 (128|256)GB|ATP Velocity MIV (60|120|240|480)GB|Axiom Signature Series III SSD|Comay BladeDrive E28 (800|1600|3200)GB|Corsair CSSD-F(40|60|80|115|120|160|240)GBP?2.*|Corsair Voyager GTX|Corsair Force ((3 |LS )?SSD|GS|GT)|FM-25S2S-(60|120|240)GBP2|FTM(06|12|24|48)CT25H|KINGSTON RBU-SC400S37(64|128|256)G|KINGSTON SE50S37?(100|240|480)G|KINGSTON SH10[03]S3(90|120|240|480)G|KINGSTON SKC(300S37A|380S3)(60|120|180|240|480)G|KINGSTON SVP200S3(7A)?(60|90|120|240|480)G|KINGSTON SMS200S3(30|60|120)G|KINGSTON SMS450S3(32|64|128)G|KINGSTON (SV300|SKC100|SE100)S3.*G|KINGSTON SHFS37A(120|240|480)G|KINGSTON SNS4151S316GD|MKNSSDCR(45|60|90|120|180|240|360|480)GB(-(7|DX7?|MX|G2))?|MKNSSDEC(60|120|240|480|512)GB|MKNSSDAT(30|40|60|120|180|240|480)GB(-(DX|V))?|Mushkin MKNSSDCL(40|60|80|90|115|120|180|240|480)GB-DX2?|MXSSD3MDSF-(60|120)G|OCZ[ -](AGILITY2([ -]EX)?|COLOSSUS2|ONYX2|VERTEX(2|-LE))( [123]\\..*)?|OCZ-NOCTI|OCZ-REVODRIVE3?( X2)?|OCZ-REVODRIVE350|OCZ[ -](VELO|VERTEX2[ -](EX|PRO))( [123]\\..*)?|D2[CR]STK251...-....(\\.C)?|OCZ-(AGILITY3|SOLID3|VERTEX3(\\.20| LT| MI)?)|OCZ Z-DRIVE R4 [CR]M8[48]|OCZ Z-DRIVE 4500|OCZ-VELO DRIVE|TALOS2|(APOC|DENC|DENEVA|FTNC|GFGC|MANG|MMOC|NIMC|TMSC).*|(DENR|DRSAK|EC188|NIMR|PSIR|TRSAK).*|OWC Aura Pro( 6G SSD)?|OWC Mercury Electra (Pro )?[36]G SSD|OWC Mercury E(xtreme|XTREME) Pro (6G |RE )?SSD|Patriot Pyro|SanDisk SDSSDX(60|120|240|480)GG25|SuperSSpeed S301 [0-9]*GB|SG9XCS2D(0?50|100|200|400)GESLT|SSD9SC(120|240|480)GED[EA]|(TX32|TX31C1|VN0.?..GCNMK).*|(TX22D1|TX21B1).*|TX52D1.*|TS(64|128|256|512)GSSD[37]20|UGB(88P|99S)GC...H[BF].|SG9XCS(1F|2D)(50|100|200|400)GE01|VisionTek GoDrive (60|120|240|480)GB",
+   "firmware": "",
+   "units": {
+    "241": 1073741824,
+    "242": 1073741824
+   }
+  },
+  {
+   "family": "StorFly CFast SATA 6Gbps SSDs",
+   "model": "StorFly VSFCS2C[CI](016|030|060|120|240)G-...",
+   "firmware": "",
+   "units": {
+    "241": 33554432,
+    "242": 33554432
+   }
+  },
+  {
+   "family": "Phison Driven SSDs",
+   "model": "BP4 mSATA SSD|Corsair Force LE(200)? SSD|CUBEX CS500 (128|256|480|960|1024)GB|DGSR2(128|256|512)GP13T|FOXLINE FLSSD(120|128|240|256|480|512|960|1024)X5SE|GIGABYTE GP-GSTFS31((120|240|256|480)G|100T)NTD|GOODRAM IRIDIUM PRO|Hoodisk SSD|IRP?-SSDPR-S25[AC]-(120|240|256|480|512|960|0[12]T)|KINGSTON O(C|M[48S])P0S3(64|128|256|512)B-[0A]0|KINGSTON RBUSNS(4|8)180S3(32|64|128|256|512)GJ|KINGSTON SEDC400S37(400|480|800|960|1600|1800)G|KINGSTON SEDC(450R|500[MR]|600ME?)(480|960|1920|3840|7680)G|KINGSTON SM2280S3(G2)?(120|240|480)G|KINGSTON SUV300S37A(120|240|480)G|KINGSTON SKC310S3B?7A960G|KINGSTON SKC400S37(128G|256G|512G|1T)|KINGSTON SV310S3(7A|D7|N7A|B7A)960G|KINGSTON SHSS3B?7A(120|240|480|960)G|KINGSTON SS200S330G|KINGSTON  ?SA400(M8|S37)(120|240|480|960)G|KIOXIA-EXCERIA SATA SSD|MSI S270 (120|240|480|960)GB|Patriot (Blast|Blaze|Flare|Ignite)|Patriot Burst( (120|240|480|960)GB)?|PNY CS(900|1311|2211) ((12|2[45]|48|50|96)0G|[12]T)B SSD|PNY ELITE PSSD|S11-(128|256|512)G-PHISON-SSD-B27|SSD Smartbuy (60|64|120|128|240|256|480|512|960|1024|2000)GB|SSD PHISON (128|256)GB PS3110-S10C|SSDPR-CX400-(128|256|512|1024)|TEAM L3 EVO SSD (120|240|480|960)GB|SSM28(128|256|512)GPTCB3B-S11[24]61[123]|SVM2S46(128|256|512)GNPI51UF",
+   "firmware": "",
+   "units": {
+    "241": 1073741824,
+    "242": 1073741824
+   }
+  },
+  {
+   "family": "Phison Driven OEM SSDs",
+   "model": "Gigastone SSD|GOODRAM|INTENSO|INTENSO SATA III SSD|Kingmax SATA SSD (120|240|480|960)GB|SATA SSD|SPCC Solid State Disk|SSDPR-CX400-(128|256|512|1024|2028)-G2",
+   "firmware": "S[89ABH]F[DM][0-9JLTY][0-9A]\\.[0-9]",
+   "units": {
+    "241": 1073741824,
+    "242": 1073741824
+   }
+  },
+  {
+   "family": "Indilinx Barefoot 3 based SSDs",
+   "model": "OCZ-VECTOR(1[58]0)?|OCZ-VERTEX4[56]0A?|OCZ-SABER1000|OCZ-ARC100|Radeon R7",
+   "firmware": "",
+   "units": {
+    "241": 1073741824,
+    "242": 1073741824
+   }
+  },
+  {
+   "family": "Innodisk 3IE2/3ME2/3MG2/3SE2/3TG6 SSDs",
+   "model": "((1\\.8|2\\.5)\"? SATA SSD|SATA Slim|M\\.2 \\(S(42|80)\\)) 3(IE2|ME2|MG2|SE2|TG6)(-P)?",
+   "firmware": "",
+   "units": {
+    "241": 33554432,
+    "242": 33554432
+   }
+  },
+  {
+   "family": "Innodisk 1IE3/3IE3/3ME3/3IE4/3ME4 SSDs",
+   "model": "(2.5\" SATA SSD|CFast|Mini PCIeDOM|(InnoDisk Corp\\. - )?mSATA( mini)?) (1IE3|3[IM]E[34])( V2)?|(M\\.2 \\(S42\\)|SATA Slim|SATADOM-[MS][HLV]( Type [CD])?) (1IE3|3[IM]E[34])( V2)?",
+   "firmware": "",
+   "units": {
+    "241": 33554432,
+    "242": 33554432
+   }
+  },
+  {
+   "family": "InnoDisk iCF 9000 / 1SE2 Cards",
+   "model": "InnoDisk Corp\\. - (iCF9000|EDC 1SE2 H) (1|2|4|8|16|32|64)GB",
+   "firmware": "",
+   "units": {
+    "241": 33554432,
+    "242": 33554432
+   }
+  },
+  {
+   "family": "Intel 311/313 Series SSDs",
+   "model": "INTEL SSD(SA2VP|MAE[SX]C)(020|024)G[23]H?",
+   "firmware": "",
+   "units": {
+    "241": 33554432,
+    "242": 33554432
+   }
+  },
+  {
+   "family": "Intel 320 Series SSDs",
+   "model": "INTEL SSDSA[12][BCN][WT](040|080|120|160|300|600)G3[ADHL]?",
+   "firmware": "",
+   "units": {
+    "241": 33554432,
+    "242": 33554432
+   }
+  },
+  {
+   "family": "Intel 710 Series SSDs",
+   "model": "INTEL SSDSA2BZ(100|200|300)G3",
+   "firmware": "",
+   "units": {
+    "241": 33554432,
+    "242": 33554432
+   }
+  },
+  {
+   "family": "Intel 520 Series SSDs",
+   "model": "INTEL SSDSC2[BC]W(060|120|180|240|480)A3[FL]?",
+   "firmware": "",
+   "units": {
+    "241": 33554432,
+    "242": 33554432
+   }
+  },
+  {
+   "family": "Intel 525 Series SSDs",
+   "model": "INTEL SSDMCEAC(030|060|090|120|180|240)B3",
+   "firmware": "",
+   "units": {
+    "241": 33554432,
+    "242": 33554432
+   }
+  },
+  {
+   "family": "Intel 53x and Pro 1500/2500 Series SSDs",
+   "model": "INTEL SSD(MCEA|SC2B|SCKJ)[WF](056|080|120|180|240|360|480)(A4H?|A5L?|H6)",
+   "firmware": "",
+   "units": {
+    "241": 33554432,
+    "242": 33554432
+   }
+  },
+  {
+   "family": "Intel 330/335 Series SSDs",
+   "model": "INTEL SSDSC2CT(060|120|180|240)A[34]",
+   "firmware": "",
+   "units": {
+    "241": 33554432,
+    "242": 33554432
+   }
+  },
+  {
+   "family": "Intel 545s Series SSDs",
+   "model": "INTEL SSDSC[2K]K[WF](128G|256G|512G|010T)8.*",
+   "firmware": "",
+   "units": {
+    "241": 33554432,
+    "242": 33554432
+   }
+  },
+  {
+   "family": "Intel 730 and DC S35x0/3610/3700 Series SSDs",
+   "model": "INTEL SSDSC(1N|[12]B)[ABGPX]((080|100|120|150|160|200|240|300|400|480|600|800)[GH][3467][CERT]?|(012|016)T[46])|VK000(120|240|480)G(WSXF|XNZA)",
+   "firmware": "",
+   "units": {
+    "241": 33554432,
+    "242": 33554432
+   }
+  },
+  {
+   "family": "Intel SSD Pro 5400s Series",
+   "model": "INTEL SSDSC[2K]KF((120|180|240|256|360|480|512)H|010X)6( .*)?",
+   "firmware": "",
+   "units": {
+    "241": 33554432,
+    "242": 33554432
+   }
+  },
+  {
+   "family": "Intel DC S3110 Series SSDs",
+   "model": "INTEL SSDSCKKI(128|256|512)G8",
+   "firmware": "",
+   "units": {
+    "241": 33554432,
+    "242": 33554432
+   }
+  },
+  {
+   "family": "Intel S3520 Series SSDs",
+   "model": "INTEL SSDSC(2|K)(J|B)B(240G|480G|960G|150G|760G|800G|012T|016T)7.?",
+   "firmware": "",
+   "units": {
+    "241": 33554432,
+    "242": 33554432
+   }
+  },
+  {
+   "family": "Intel/Solidigm S46x0/S45x0 Series SSDs",
+   "model": "(INTEL|SOLIDIGM) SSDSC(2K|KK)(B|G)(240G|480G|960G|019T|038T|076T)[78Z].?",
+   "firmware": "",
+   "units": {
+    "241": 33554432,
+    "242": 33554432
+   }
+  },
+  {
+   "family": "Lenovo OEM Intel D3-S4510 Series SSDs",
+   "model": "SSDSC(2K|KK)(B|G)(240G|480G|960G|019T|038T|076T)8L[ ]+[^ ]+LEN",
+   "firmware": "",
+   "units": {
+    "241": 512,
+    "242": 512
+   }
+  },
+  {
+   "family": "Kingston SSDNow UV400/500",
+   "model": "KINGSTON SUV400S37A?(120|240|480|960)G|KINGSTON SUV500(M[8S])?(120|240|480|960)G",
+   "firmware": "",
+   "units": {
+    "241": 1073741824,
+    "242": 1073741824
+   }
+  },
+  {
+   "family": "Plextor M3/M5/M6/M7/S2G Series SSDs",
+   "model": "PLEXTOR  ?PX-(64|128|256|512|768)(M(3P?|5[MPS]|5Pro|6[GMSV]|[78]VC)|S2G)(\\+|-.*| )?",
+   "firmware": "",
+   "units": {
+    "241": 33554432,
+    "242": 33554432
+   }
+  },
+  {
+   "family": "Marvell based SanDisk SSDs",
+   "model": "SanDisk SD5SG2[0-9]*G1052E|SanDisk SD6S[BFP][12]M[0-9]*G(1022I?|1102)?|SanDisk SD7S[BN][67]S-?(128|256|512|960)G(1122|-1006)?|SanDisk SD8[ST][BN]8U-?((128|256|512)G|1T00)(1122|2000|-10[01]6)|SanDisk SD9S[BN]8W-?((128|256|512)G|[12]T00)(1122|-1006|1020)|SanDisk SDSSDA-((120|240|480)G|[12]T00)|SanDisk SDSSDHP[0-9]*G|SanDisk (SDSSDHII|Ultra II )[0-9]*GB?|SanDisk SDSSDH2(128|256)G|SanDisk SDSSDH3 ?((250|500|512|1000|1024|2000)G|[124]T00)|SanDisk SDSSDXPS?[0-9]*G|SanDisk SSD G5 BICS4|SanDisk SSD PLUS (120|240|480|[12]000) ?GB|SD Ultra 3D [124]TB|SSD SATAIII 16GB",
+   "firmware": "",
+   "units": {
+    "241": 1073741824,
+    "242": 1073741824
+   }
+  },
+  {
+   "family": "Silicon Motion based SSDs",
+   "model": "ADATA_IMSS332-((008|016|032|064|128|256|512)G|001T)[AEMT]P?|ADATA (SP550|SU(63[05]|650(NS38)?|655|[89]00))|AMD R5SL512G|CORSAIR FORCE LX SSD|Corsair Force LX SSD|CHN (25SATA01M|mSATAM3) (060|128|256|512)|CIS 2S M305 (16|32|64|128|256)GB|CT(120|250|500|1000)BX100SSD1|CT(240|480|960)BX200SSD1|DREVO X1 SSD|Drevo X1 pro (64|128|256)G|DEXP SSD C100 (128|256|512)Gb|EX27(8215|653[69]|668[35])RUS|HP SSD S700 ((128|256|512)G|1T)B|JAJS[56]00M((12[08]|240|256|480|512|960)C|1TB)(-1)?|KingDian S100 (32|64)GB|KingDian S(200|280|400) ((60|120|240|480)GB|1TB)|KingSpec KSD-[PS]A25\\.[1-9]-(016|032|064|128)(MS|SJ)|KINGSTON SKC600(MS)?(256|512|1024|2048)G|LITEON L[CM]H-(128|256|512)V2[MS](-.*)?|MKNSSDRE((25[06]|500|512)G|[12]T)B(-LT)?|MKNSSD(S2|TR)(12[08]|2[45]0|480|500)GB(-(3DL|LT))?|N900-(256|512)|NFN025SA31T-.*|NFORCE (256|512)25 - SSZS13|ONDA S-12 64GB|OWC Envoy Pro|Patriot P2[01]0 ((128|256|512)GB|[12]TB)|R3SL(120|240|480|960)G|Ramsta SSD S800 (120|240|480)GB|SED2QII-LP SATA SSD ((64|128|256|512)GB|[12]TB)|SH00M(120|240|480)GB|T60|TCSUNBOW [MX]3 (60|120|240|480)GB|TEAM( T253(TD|X6)?|L5Lite3D)((120|240|256|480|512)G|[12]TB?)|TS((16|32|64|128|256|512)G|1T)(SSD|MS[AM])(230S?|3[67]0[SI]?|420[IK]?)|TS(16|32|64|128|512|256)GMTS4[03]0S?|TS(120|240)GMTS420S?|TS[1248]GSSD25H-S|TS(128G|256G|512G|1T|2T|4T)SSD230S|TS(120|240|480|960)GSSD220S|TS((64|128|256|512)G|[12]T)SSD452K|TS((64|128|256|512)G|[12]T)MTS952T|TS((128|256|512)G|[124]T)SSD470K|TS(16G|32G|64G|128G|256G|512G|1T)MTS800S?|TS(120|240|480|960)GMTS820S|TS(16|32|64)GMSA630|TS(32|64|128)GPSD330|TS(16|32|64|96|128|256)GSSD(630|360S)|TS(128G|256G|512G|1T)ESD400K|TS(128G|256G|512G|1T)MTS830S|TSG(16|32|64|128|256|512)MTS400ISI|UMAX 2242 (128|256|512)GB|ZOZT G3000 (120|240|480)GB",
+   "firmware": "",
+   "units": {
+    "241": 33554432,
+    "242": 33554432,
+    "246": 33554432
+   }
+  },
+  {
+   "family": "Silicon Motion based USB SSDs",
+   "model": "ADATA SE880|SP DS72|TS((128|256|512)G|[12]T)ESD310[CPS]",
+   "firmware": "",
+   "units": {
+    "241": 33554432,
+    "242": 33554432
+   }
+  },
+  {
+   "family": "Supermicro SATA DOM (SuperDOM)",
+   "model": "SuperMicro SSD",
+   "firmware": "",
+   "units": {
+    "241": 1073741824,
+    "242": 1073741824
+   }
+  },
+  {
+   "family": "Silicon Motion based OEM SSDs",
+   "model": "240GB|Acer SSD SA100 (12|24|48|96|192)0GB|BR 64GB|BIWIN SSD|Dogfish SSD (128|256|512)GB|GIM(16|32|64|128|256|512)|INTENSO( SSD)?|Intenso  ?SSD( S(ata|ATA) ?III)?|KingFast|KSM512|LDLC|M\\.2 SSD (128|256|512)GB|Netac (MobileDataStar|SSD (120|240|480|960)GB)|ORICO|ORTIAL SSD|P3-(128|256|512|[124]TB)|P4-(120|240|480|960)|Patriot Burst Elite (120|240|480|960|1920)GB|PNY 1TB SATA SSD|RX7 (240|256|512)G|SATA3 ((12[08]|240|256|480)G|[12]T)B SSD|SPCC M\\.2 SSD|SPCC Solid State Disk|SSD 120GB|T-FORCE ((128|256|512)G|[12]T)B|Verbatim Vi550 S3|Vi550 S3",
+   "firmware": "2109XKR|HP(3418C5|3C09BA|5310B3|S2227I)|KFS03005|P0510E|P0725A|Q(0627|1107)A0|R(0529A|0817B0)|S(0222|0424|0509|0618|1211|1230)A0|S112[78]B0|T0(311|519|910)A0|U((0202|03[02]9|0401|0506|1124|1209)A|0302B)0|V0((414|609|823)A|(303|718)B)0|V1(027|102)A0|VE0R6327|W((0201|0413|0714|0825)A|(0419|0814|1025)B)0|Y0(106A|307B)0|SHY09A0",
+   "units": {
+    "241": 33554432,
+    "242": 33554432,
+    "246": 33554432
+   }
+  },
+  {
+   "family": "XITC SSDs",
+   "model": "XITC SS6000SES3(27|N6)-(24|48|96|192|384|768)0GB?",
+   "firmware": "",
+   "units": {
+    "241": 33554432,
+    "242": 33554432
+   }
+  },
+  {
+   "family": "Xmore Industrial SATA SSDs",
+   "model": "(CFAST|M2[AC]A|MSATA|SSD)[0-9]{3}[GT]XA[CEI][MT][MST]-[0-9]{3}[TZ]",
+   "firmware": "",
+   "units": {
+    "241": 1073741824
+   }
+  },
+  {
+   "family": "SK hynix SATA SSDs",
+   "model": "SK ?hynix (SC(210|300|308|311|313|401)|SH920) .*|HFS(128|256|512)G3[29A]MN[BD]-(2200|3[23]10)A|HFS(128|256|512)G3[29]MND-3(312|510)A|HFS(128|256|512)G39TND-N210A|HFS(120|250|500)G32TND-N1A2A|HFS(128|256|512)G32TNF-N3A0A|SHGS31-(250|500|1000)GS-2",
+   "firmware": "",
+   "units": {
+    "241": 1000000000,
+    "242": 1000000000
+   }
+  },
+  {
+   "family": "SK hynix SATA SSDs",
+   "model": "HFS(480|960|1T9|3T8)G3[2E]FEH-[7B][4A]10A|HFS(480|960|1T9|3T8)G3H2X069N|SK HYNIX SE5110 (480|960|1920|3840)GB ZIRCON LITE 3DTLC",
+   "firmware": "",
+   "units": {
+    "241": 1073741824,
+    "242": 1073741824
+   }
+  },
+  {
+   "family": "Toshiba HK4R Series SSD",
+   "model": "TOSHIBA THNSN8(120P|240P|480P|960P|1Q92)CSE",
+   "firmware": "",
+   "units": {
+    "241": 33554432,
+    "242": 33554432
+   }
+  },
+  {
+   "family": "Seagate BarraCuda series SSD",
+   "model": "Seagate (SSD|BarraCuda (120 )?SSD ZA(250|500|1000|2000)CM1000[23])",
+   "firmware": "",
+   "units": {
+    "241": 1073741824,
+    "242": 1073741824
+   }
+  },
+  {
+   "family": "Seagate Nytro XF1230 SATA SSD",
+   "model": "XF1230-1A(0240|0480|0960|1920)",
+   "firmware": "",
+   "units": {
+    "241": 1073741824,
+    "242": 1073741824
+   }
+  },
+  {
+   "family": "Seagate IronWolf 110 SATA SSD",
+   "model": "ZA(240|480|960|1920|3840)NM10001",
+   "firmware": "",
+   "units": {
+    "241": 1000000000,
+    "242": 1000000000
+   }
+  },
+  {
+   "family": "Seagate IronWolf (Pro) 125 SSDs",
+   "model": "Seagate IronWolf ZA(250|500|1000|2000|4000)NM10002-.*|Seagate IronWolfPro ZA(240|480|960|1920|3840)NX10001-.*",
+   "firmware": "",
+   "units": {
+    "241": 1073741824,
+    "242": 1073741824
+   }
+  },
+  {
+   "family": "Seagate Nytro SATA SSD",
+   "model": "XA(240|480|960|1920|3840)[LM]E10(00|02|04|06|08|10)3",
+   "firmware": "",
+   "units": {
+    "241": 1000000000,
+    "242": 1000000000
+   }
+  },
+  {
+   "family": "WD Blue / Red / Green SSDs",
+   "model": "WDC WDBNCE(250|500|00[124])0PNC(-.*)?|WDC  ?WDS((120|240|250|400|480|500)G|[124]00T)(1B|2B|[1235]G|[12]R)0[AB](-.*)?|WD (Green|(Blue|Red) SA5[01]0) (2\\.5|M\\.2 2280) ((24|25|50|100)0G|[24]T)B|MILAN II ((256|512)G|[12]T)B|SanDisk (Extreme )?Portable SSD|SanDisk SD9SN8W[124]T00",
+   "firmware": "",
+   "units": {
+    "241": 1073741824,
+    "242": 1073741824
+   }
+  }
+ ]
+}
