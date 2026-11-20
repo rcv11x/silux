@@ -29,6 +29,7 @@ import pathlib
 import re
 import subprocess
 import sys
+import tempfile
 
 # Los que el programa sugiere, y nada más. Todos son de solo lectura: leen un
 # chip de sensores o el SPD de la memoria, y ninguno cambia configuración.
@@ -44,6 +45,15 @@ PERMITIDOS = frozenset({
 })
 
 DESTINO = pathlib.Path("/etc/modules-load.d/silux.conf")
+# modprobe by its absolute path, not looked up in whatever PATH there is.
+MODPROBE = ("/usr/sbin/modprobe", "/sbin/modprobe", "/usr/bin/modprobe")
+
+
+def _modprobe() -> str:
+    for ruta in MODPROBE:
+        if os.path.isfile(ruta) and os.access(ruta, os.X_OK):
+            return ruta
+    raise SystemExit("No encuentro modprobe en " + ", ".join(MODPROBE) + ".")
 
 # Un nombre de módulo del kernel no lleva nada más que esto. La comprobación
 # va antes de la lista blanca y no en su lugar: si algún día alguien amplía la
@@ -69,7 +79,7 @@ def cargar(modulo: str) -> None:
             "Solo carga los que el programa sugiere, y todos son de solo lectura."
         )
 
-    resultado = subprocess.run(["modprobe", modulo],
+    resultado = subprocess.run([_modprobe(), modulo],
                                capture_output=True, text=True)
     if resultado.returncode != 0:
         detalle = (resultado.stderr or "").strip().splitlines()
@@ -94,12 +104,23 @@ def _fijar(modulo: str) -> None:
     if modulo in puestos:
         return
     puestos.append(modulo)
-    DESTINO.write_text(
-        "# Módulos de sensores que pidió silux. Borrar una línea basta para\n"
-        "# que deje de cargarse en el arranque siguiente.\n"
-        + "\n".join(puestos) + "\n",
-        encoding="utf-8")
-    os.chmod(DESTINO, 0o644)
+    texto = ("# Módulos de sensores que pidió Silux. Borrar una línea basta para\n"
+             "# que deje de cargarse en el arranque siguiente.\n"
+             + "\n".join(puestos) + "\n")
+    # Whole and atomically, never through a link: a new temporary file in the
+    # same folder (O_EXCL, O_NOFOLLOW), renamed over the old one.
+    descriptor, temporal = tempfile.mkstemp(prefix=".silux.conf.", dir=DESTINO.parent)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as archivo:
+            archivo.write(texto)
+            os.fchmod(archivo.fileno(), 0o644)
+        os.replace(temporal, DESTINO)
+    except BaseException:
+        try:
+            os.unlink(temporal)
+        except OSError:
+            pass
+        raise
 
 
 def main(argv=None) -> int:

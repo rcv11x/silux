@@ -586,7 +586,7 @@ class MonitorPage(ScrollPage):
         except _client.HelperUnavailable:
             raise RuntimeError(_("perm.nopython")) from None
 
-        return ["pkexec", *_client.en_linea(
+        return [_client.pkexec_path(), *_client.en_linea(
             interprete, "silux-cargar-modulo.py",
             guion.read_text(encoding="utf-8"), modulo)]
 

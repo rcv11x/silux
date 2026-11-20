@@ -310,8 +310,11 @@ class TestInstaladorDelAyudante(unittest.TestCase):
         parches = [
             mock.patch.object(instalar, "DESTINO", self.destino),
             mock.patch.object(instalar, "POLITICA", self.politica),
-            # chown pide root; lo que importa aquí es el resto.
+            # chown pide root; lo que importa aquí es el resto. And the folders
+            # have to be root's: here, whoever runs the tests.
             mock.patch.object(instalar.os, "chown", lambda *a: None),
+            mock.patch.object(instalar.os, "fchown", lambda *a: None),
+            mock.patch.object(instalar, "DUENO", os.getuid()),
         ]
         for parche in parches:
             parche.start()
@@ -351,7 +354,33 @@ class TestInstaladorDelAyudante(unittest.TestCase):
         primera = self.destino.read_text(encoding="utf-8").splitlines()[0]
         self.assertTrue(primera.startswith("#!/"), primera)
         self.assertNotIn("env", primera)
-        self.assertTrue(os.path.exists(primera[2:]), primera)
+        interprete, *banderas = primera[2:].split()
+        self.assertTrue(os.path.exists(interprete), primera)
+        # Isolated: no PYTHONPATH, PYTHONSTARTUP or user site-packages as root.
+        self.assertEqual(banderas, ["-I"])
+
+    def test_not_into_a_folder_someone_else_can_change(self):
+        self.destino.parent.mkdir(parents=True)
+        with mock.patch.object(self.modulo, "DUENO", os.getuid() + 1), \
+             self.assertRaises(SystemExit):
+            self.instalar()
+        self.assertFalse(self.destino.exists())
+
+    def test_never_writes_through_a_link(self):
+        """A link left where the helper goes made root write the helper over
+        whatever it pointed to."""
+        victima = pathlib.Path(self._tmp.name) / "victima"
+        victima.write_text("intacta\n")
+        self.destino.parent.mkdir(parents=True)
+        self.destino.symlink_to(victima)
+        self.politica.symlink_to(victima)
+        self.instalar()
+        self.assertEqual(victima.read_text(), "intacta\n")
+        for ruta in (self.destino, self.politica):
+            with self.subTest(ruta=ruta.name):
+                self.assertFalse(ruta.is_symlink())
+        self.assertEqual(self.destino.stat().st_mode & 0o777, 0o755)
+        self.assertEqual(self.politica.stat().st_mode & 0o777, 0o644)
 
     def test_la_politica_apunta_al_ayudante_y_no_al_interprete(self):
         """Si la acción colgara de `python3`, la autorización valdría para
@@ -458,6 +487,30 @@ class TestCargarUnModulo(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 self.modulo.cargar("nvidia")
         corrido.assert_not_called()
+
+    def test_modprobe_by_its_absolute_path(self):
+        import tempfile
+        with mock.patch.object(self.modulo.subprocess, "run") as corrido, \
+             mock.patch.object(self.modulo, "_modprobe", return_value="/usr/sbin/modprobe"), \
+             tempfile.TemporaryDirectory() as carpeta, \
+             mock.patch.object(self.modulo, "DESTINO", pathlib.Path(carpeta) / "silux.conf"):
+            corrido.return_value = mock.Mock(returncode=0, stderr="")
+            self.modulo.cargar("drivetemp")
+        self.assertEqual(corrido.call_args.args[0], ["/usr/sbin/modprobe", "drivetemp"])
+        self.assertTrue(all(ruta.startswith("/") for ruta in self.modulo.MODPROBE))
+
+    def test_the_boot_list_is_not_written_through_a_link(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as carpeta:
+            victima = pathlib.Path(carpeta) / "victima"
+            victima.write_text("intacta\n")
+            destino = pathlib.Path(carpeta) / "silux.conf"
+            destino.symlink_to(victima)
+            with mock.patch.object(self.modulo, "DESTINO", destino):
+                self.modulo._fijar("drivetemp")
+            self.assertEqual(victima.read_text(), "intacta\n")
+            self.assertFalse(destino.is_symlink())
+            self.assertIn("drivetemp", destino.read_text())
 
     def test_el_aviso_del_super_io_no_lleva_boton(self):
         """Cada placa lleva un chip distinto y cargar el que no es lee basura,

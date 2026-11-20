@@ -174,8 +174,9 @@ class TestLaMaqueta(unittest.TestCase):
 
     def test_la_orden_de_quitarlo_es_el_desinstalador(self):
         from silux.ui.app import MainWindow
+        from silux.privileged import client
         orden = MainWindow._orden_de_desinstalacion()
-        self.assertEqual(orden[0], "pkexec")
+        self.assertIn(orden[0], client.PKEXEC_PATHS)
         self.assertEqual(orden[-1], "--uninstall")
         self.assertIn("silux-instalar.py", orden)
 

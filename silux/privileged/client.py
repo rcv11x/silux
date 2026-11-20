@@ -18,7 +18,6 @@ import json
 import os
 import pathlib
 import select
-import shutil
 import subprocess
 import sys
 from typing import Any, NamedTuple, Optional
@@ -26,6 +25,17 @@ from typing import Any, NamedTuple, Optional
 from . import protocol
 from .protocol import (ACTION_GPU_PMU, ACTION_IMC, ACTION_MSR, ACTION_PING,
                        ACTION_RAPL, ACTION_SMART, ACTION_SMBIOS, MAX_MESSAGE)
+
+# pkexec by its absolute path. By name it would be looked up in the user's
+# PATH, which any process of theirs can change, and a fake one could draw its
+# own password window.
+PKEXEC_PATHS = ("/usr/bin/pkexec", "/bin/pkexec")
+
+
+def pkexec_path() -> str:
+    """Where pkexec is; the usual place if it is nowhere (`supported` says so)."""
+    return next((ruta for ruta in PKEXEC_PATHS if os.path.isfile(ruta)), PKEXEC_PATHS[0])
+
 
 # Intérpretes del sistema con los que lanzar el ayudante cuando el del programa
 # no sirve. Al ayudante le basta la biblioteca estándar, así que vale cualquiera.
@@ -75,7 +85,9 @@ def en_linea(interprete: str, nombre: str, fuente: str,
     usuario pueda reescribir. Lo que va por `argv` queda fijado por el
     `exec()` y nadie lo puede cambiar después; un archivo, sí.
     """
-    return [interprete, "-c", ARRANQUE, nombre, fuente, *argumentos]
+    # `-I`: as root, no PYTHONPATH, PYTHONSTARTUP, user site-packages or
+    # current folder, whatever pkexec left in the environment.
+    return [interprete, "-I", "-c", ARRANQUE, nombre, fuente, *argumentos]
 
 
 # Lo que dejaban en la caché las versiones que copiaban los guiones ahí para
@@ -193,7 +205,7 @@ class PrivilegedClient:
 
     @staticmethod
     def supported() -> bool:
-        return bool(shutil.which("pkexec")) and HELPER.is_file()
+        return os.access(pkexec_path(), os.X_OK) and HELPER.is_file()
 
     @staticmethod
     def empaquetado() -> bool:
@@ -354,9 +366,9 @@ class PrivilegedClient:
         # Solo se usa el instalado si es exactamente el de este programa.
         if (self.instalado() and self.al_dia()
                 and not self._sin_el_instalado):
-            return ["pkexec", str(HELPER_INSTALADO)]
-        return ["pkexec", *en_linea(interprete(), "silux-helper.py",
-                                    self._fuente_del_ayudante())]
+            return [pkexec_path(), str(HELPER_INSTALADO)]
+        return [pkexec_path(), *en_linea(interprete(), "silux-helper.py",
+                                         self._fuente_del_ayudante())]
 
     @staticmethod
     def _fuente_del_ayudante() -> str:

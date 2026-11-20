@@ -69,12 +69,8 @@ def rutas_de(orden: list[str]) -> list[str]:
     """
     rutas = []
     for pieza in orden:
-        if pieza == "pkexec":
-            import shutil
-
-            encontrado = shutil.which("pkexec")
-            if encontrado:
-                rutas.append(encontrado)
+        # pkexec where it is not installed (a CI runner): nothing to check.
+        if pieza in client.PKEXEC_PATHS and not os.path.exists(pieza):
             continue
         if not pieza.startswith("/") or "\n" in pieza:
             continue
@@ -86,7 +82,8 @@ class ComprobadorDeOrdenes(unittest.TestCase):
     """Base para los tests que examinan una orden de pkexec."""
 
     def comprobar(self, orden: list[str], contexto: str = "") -> None:
-        self.assertEqual(orden[0], "pkexec", f"{contexto}: no empieza por pkexec")
+        # By its absolute path: by name it is looked up in the user's PATH.
+        self.assertIn(orden[0], client.PKEXEC_PATHS, f"{contexto}: no empieza por pkexec")
         rutas = rutas_de(orden)
         self.assertTrue(rutas, f"{contexto}: no se ha reconocido ninguna ruta, "
                                "así que este test no está comprobando nada")
@@ -162,9 +159,11 @@ class TestNingunaRutaEscribible(ComprobadorDeOrdenes):
                 if not isinstance(padre, (ast.FunctionDef, ast.AsyncFunctionDef)):
                     continue
                 for nodo in ast.walk(padre):
-                    if (isinstance(nodo, ast.List) and nodo.elts
-                            and isinstance(nodo.elts[0], ast.Constant)
-                            and nodo.elts[0].value == "pkexec"):
+                    primero = nodo.elts[0] if isinstance(nodo, ast.List) and nodo.elts else None
+                    llamada = getattr(primero, "func", None)
+                    if (isinstance(primero, ast.Constant) and primero.value == "pkexec"
+                            or getattr(llamada, "id", getattr(llamada, "attr", None))
+                            == "pkexec_path"):
                         encontrados.add(
                             (str(archivo.relative_to(RAIZ)), padre.name))
 
@@ -182,7 +181,7 @@ class TestNingunaRutaEscribible(ComprobadorDeOrdenes):
         with mock.patch.object(PrivilegedClient, "instalado", return_value=True), \
              mock.patch.object(PrivilegedClient, "al_dia", return_value=True):
             orden = PrivilegedClient()._orden()
-        self.assertEqual(orden, ["pkexec", str(client.HELPER_INSTALADO)])
+        self.assertEqual(orden, [client.pkexec_path(), str(client.HELPER_INSTALADO)])
         self.comprobar(orden, "cliente instalado")
 
     def test_no_se_escribe_nada_en_la_cache(self):
@@ -384,6 +383,8 @@ class TestElInstaladorNoAceptaUnaRuta(unittest.TestCase):
                  mock.patch.object(instalar, "POLITICA", politica), \
                  mock.patch.object(instalar.os, "geteuid", lambda: 0), \
                  mock.patch.object(instalar.os, "chown", lambda *a, **k: None), \
+                 mock.patch.object(instalar.os, "fchown", lambda *a, **k: None), \
+                 mock.patch.object(instalar, "DUENO", os.getuid()), \
                  mock.patch.object(sys, "stdin", io.StringIO(cuerpo)), \
                  mock.patch.object(sys, "stdout", io.StringIO()):
                 self.assertEqual(instalar.main(["--from-stdin"]), 0)

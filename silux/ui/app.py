@@ -1201,7 +1201,7 @@ class MainWindow(QMainWindow):
             interprete = _client.interprete()
         except _client.HelperUnavailable:
             raise RuntimeError(_("perm.nopython.install")) from None
-        return ["pkexec", *_client.en_linea(
+        return [_client.pkexec_path(), *_client.en_linea(
             interprete, "silux-instalar.py",
             instalador.read_text(encoding="utf-8"), "--uninstall")]
 
@@ -1237,7 +1237,7 @@ class MainWindow(QMainWindow):
         except _client.HelperUnavailable:
             raise RuntimeError(_("perm.nopython.install")) from None
 
-        orden = ["pkexec", *_client.en_linea(
+        orden = [_client.pkexec_path(), *_client.en_linea(
             interprete, "silux-instalar.py",
             instalador.read_text(encoding="utf-8"), "--from-stdin")]
         return orden, _client.HELPER.read_text(encoding="utf-8")

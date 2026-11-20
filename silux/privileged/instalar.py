@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Instala el ayudante privilegiado con su propia acción de polkit.
 
-Sin esto, silux lanza el ayudante con `pkexec python3 .../helper.py`, y eso cae
-en la acción genérica de polkit, que pide la contraseña **cada vez**. Con una
-acción propia se pide una vez y polkit la recuerda el resto de la sesión, que
-es lo que hacen los demás programas que necesitan leer hardware.
+Sin esto, Silux lanza el ayudante con `pkexec python3 -c …`, y eso cae en la
+acción genérica de polkit, cuya ventana enseña la orden y no qué se lee. Con
+una acción propia la ventana lo dice con nuestras palabras. La contraseña se
+sigue pidiendo al dar permisos (`auth_admin_keep`).
 
 Hay un motivo de seguridad para copiar el ayudante en vez de apuntar a donde
 está: `pkexec` asocia la autorización a la ruta del programa que ejecuta y **no
@@ -35,7 +35,9 @@ from __future__ import annotations
 import argparse
 import os
 import pathlib
+import stat
 import sys
+import tempfile
 
 ORIGEN = pathlib.Path(__file__).resolve().parent / "helper.py"
 
@@ -118,6 +120,61 @@ def _interprete() -> str:
     raise SystemExit("No hay ningún Python del sistema con el que ejecutar el ayudante.")
 
 
+# Who has to own what the installer writes into. A constant so the tests,
+# which cannot be root, can say «me».
+DUENO = 0
+
+
+def _comprobar_carpetas(carpeta: pathlib.Path) -> None:
+    """Root's and nobody else's, all the way up.
+
+    Whoever can write a folder can swap what is inside it, file and checks
+    included. The folder of its own must be a real folder owned by root and
+    writable only by root; the ones above are followed to where they really
+    are (on Silverblue /usr/local is a link to /var/usrlocal) and must be
+    root's and not writable by everyone. A group may write them: on older
+    Debian /usr/local belongs to `staff`, which the distribution counts as
+    root.
+    """
+    info = os.lstat(carpeta)
+    if not stat.S_ISDIR(info.st_mode):
+        raise SystemExit(f"{carpeta} no es una carpeta: no instalo nada ahí.")
+    if info.st_uid != DUENO or info.st_mode & 0o022:
+        raise SystemExit(f"{carpeta} la puede cambiar alguien que no es root: no instalo nada ahí.")
+    for parte in pathlib.Path(os.path.realpath(carpeta.parent)).joinpath("x").parents:
+        info = os.stat(parte)
+        # Writable by everyone only with the sticky bit, like /tmp: then nobody
+        # can rename or delete what belongs to someone else.
+        abierta = info.st_mode & 0o002 and not info.st_mode & stat.S_ISVTX
+        if info.st_uid not in (DUENO, 0) or abierta:
+            raise SystemExit(f"{parte} la puede cambiar alguien que no es root: no instalo nada ahí.")
+
+
+def _escribir(destino: pathlib.Path, texto: str, modo: int) -> None:
+    """Writes the file whole and atomically, and never through a link.
+
+    A temporary file created new in the same folder (`mkstemp` opens it with
+    O_EXCL and O_NOFOLLOW), owned and moded before it has its name, and then
+    renamed over the old one: a rename replaces a link, it does not follow it.
+    Writing in place followed whatever was at that path.
+    """
+    descriptor, temporal = tempfile.mkstemp(prefix=f".{destino.name}.", dir=destino.parent)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as archivo:
+            archivo.write(texto)
+            archivo.flush()
+            os.fsync(archivo.fileno())
+            os.fchown(archivo.fileno(), DUENO, DUENO)
+            os.fchmod(archivo.fileno(), modo)
+        os.replace(temporal, destino)
+    except BaseException:
+        try:
+            os.unlink(temporal)
+        except OSError:
+            pass
+        raise
+
+
 def del_paquete() -> str:
     """El ayudante que viene al lado, para cuando esto se ejecuta a mano."""
     if not ORIGEN.is_file():
@@ -141,21 +198,18 @@ def instalar(cuerpo: str) -> None:
     # El shebang que trae el archivo es `/usr/bin/env python3`, que resuelve
     # contra el PATH de quien lo ejecute. Aquí lo ejecuta root a través de
     # pkexec, así que se clava el intérprete y se deja de depender del entorno.
+    # `-I`: as root, no PYTHONPATH, PYTHONSTARTUP or user site-packages.
     if cuerpo.startswith("#!"):
         cuerpo = cuerpo.split("\n", 1)[1]
-    cuerpo = f"#!{_interprete()}\n" + cuerpo
+    cuerpo = f"#!{_interprete()} -I\n" + cuerpo
 
-    DESTINO.parent.mkdir(parents=True, exist_ok=True)
-    os.chmod(DESTINO.parent, 0o755)
-    DESTINO.write_text(cuerpo, encoding="utf-8")
+    DESTINO.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
+    _comprobar_carpetas(DESTINO.parent)
+    _comprobar_carpetas(POLITICA.parent)
     # 0755 y de root: cualquiera puede ejecutarlo (pkexec decide si se le deja),
     # nadie más que root puede cambiar lo que hace.
-    os.chown(DESTINO, 0, 0)
-    os.chmod(DESTINO, 0o755)
-
-    POLITICA.write_text(politica(), encoding="utf-8")
-    os.chown(POLITICA, 0, 0)
-    os.chmod(POLITICA, 0o644)
+    _escribir(DESTINO, cuerpo, 0o755)
+    _escribir(POLITICA, politica(), 0o644)
 
     print(f"ayudante:  {DESTINO}")
     print(f"política:  {POLITICA}")
@@ -180,7 +234,7 @@ def desinstalar() -> None:
             print(f"borrado: {ruta}")
     if DESTINO.parent.is_dir() and not any(DESTINO.parent.iterdir()):
         DESTINO.parent.rmdir()
-    print("Se vuelve a pedir la contraseña en cada arranque.")
+    print("Al dar permisos vuelve a salir el aviso.")
 
 
 def main(argv=None) -> int:
