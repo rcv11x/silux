@@ -141,8 +141,6 @@ necesita.
   anterior.
 * **F-M20 · `gpumetrics.py`, `nvml.py`, `providers/derived.py`** · media ·
   `if v` con relojes y contadores: 0 MHz (GFXOFF) llega como `None`.
-* **F-M21 · `providers/drm.py`** · media · `_pmu_ok` no vuelve nunca a
-  `False`: si el ayudante muere, el aviso de Intel pasa a «no existe».
 * `providers/` · media · siete proveedores declaran `available()` y no
   `unavailable_reason()`: se callan cuando no pueden trabajar. Se nota en Red y
   en Almacenamiento, que se quedan vacías sin explicarlo.

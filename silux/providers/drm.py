@@ -647,7 +647,12 @@ class GpuState(Provider):
         could not be opened (why is not known from here).
         """
         pmu = _pmu_de(gpu) or ""
-        if self._pmu_ok and pmu in self._pmu_leidos:
+        cliente = self.client
+        if cliente is None or not cliente.connected():
+            # What was read before the helper went is not being read now
+            # (F-M21): the permissions are missing again.
+            clave = "root"
+        elif self._pmu_ok and pmu in self._pmu_leidos:
             clave = "hardware"
         elif self._pmu_ok or self._pmu_mudo:
             clave = "unopened" if _pmu_publicado(pmu) else "driver"

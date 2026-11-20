@@ -28,6 +28,8 @@ que hace falta.
   que ese uso «ya se está leyendo». Ahora dice lo que pasa con esa gráfica:
   que el kernel no publica sus contadores, o que los publica y no se han
   podido abrir.
+  Y si el ayudante se cierra, vuelve a pedir permisos en vez de seguir
+  diciendo que el uso se lee.
 
 ### Procesador
 

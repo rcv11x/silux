@@ -55,13 +55,17 @@ class Helper:
         pass
 
 
+def _the_pmu(root, events):
+    pmu = root / "sys/devices/i915"
+    (pmu / "events").mkdir(parents=True, exist_ok=True)
+    (pmu / "type").write_text("14\n")
+    for event in events:
+        (pmu / "events" / event).write_text("config=0x0\n")
+
+
 def _photo(events, helper):
     with volcado.montado(EQUIPOS / "i5-10400") as root:
-        pmu = root / "sys/devices/i915"
-        (pmu / "events").mkdir(parents=True, exist_ok=True)
-        (pmu / "type").write_text("14\n")
-        for event in events:
-            (pmu / "events" / event).write_text("config=0x0\n")
+        _the_pmu(root, events)
         collector = Collector()
         estado = next(p for p in collector.providers if isinstance(p, GpuState))
         estado.client = helper
@@ -77,6 +81,24 @@ def _notice(photo):
 
 
 class TestTheNoticeOfAnIntelsEngines(unittest.TestCase):
+
+    def test_when_the_helper_goes_it_asks_for_them_again(self):
+        # F-M21: read once, the notice kept saying the usage was being read
+        # after the helper died, and there was no usage any more.
+        helper = Helper()
+        with volcado.montado(EQUIPOS / "i5-10400") as root:
+            _the_pmu(root, WITH_ENGINES)
+            collector = Collector()
+            next(p for p in collector.providers if isinstance(p, GpuState)).client = helper
+            try:
+                collector.snapshot()
+                self.assertEqual(_notice(collector.snapshot()).need, Need.HARDWARE)
+                helper._allowed = False
+                photo = collector.snapshot()
+            finally:
+                collector.close()
+        self.assertIsNone(photo.gpus[0].busy_percent)
+        self.assertEqual(_notice(photo).need, Need.ROOT)
 
     def test_without_permissions_it_asks_for_them(self):
         photo = _photo(WITH_ENGINES, Helper(allowed=False))
