@@ -186,6 +186,9 @@ class PrivilegedClient:
         # es el de este programa. Cuesta una contraseña por arranque, que es
         # mejor que una función que no va y no dice por qué.
         self._sin_el_instalado = False
+        # One password window per request: once it has failed, whatever the
+        # reason, no other one opens until the user asks again.
+        self._failure: Optional[HelperError] = None
 
     # -- estado -------------------------------------------------------------
 
@@ -205,12 +208,25 @@ class PrivilegedClient:
     def last_error(self) -> Optional[str]:
         return self._last_error
 
+    def allow_asking(self) -> None:
+        """The user asked for permissions: `connect` may open the window again."""
+        self._failure = None
+
     # -- ciclo de vida ------------------------------------------------------
 
     def connect(self) -> None:
         """Pide autorización y deja el ayudante escuchando. Bloquea."""
         if self.connected():
             return
+        if self._failure is not None:
+            raise self._failure.with_traceback(None)
+        try:
+            self._open()
+        except HelperError as exc:
+            self._failure = exc
+            raise
+
+    def _open(self) -> None:
         # Aquí es donde las versiones anteriores escribían la copia, así que
         # aquí es donde toca recogerla.
         limpiar_copias_viejas()
@@ -233,8 +249,13 @@ class PrivilegedClient:
         try:
             reply = self.request({"action": ACTION_PING}, timeout=CONNECT_TIMEOUT)
         except HelperError:
-            code = process.poll()
             self.close()
+            # Waited for, not polled: pkexec may still be exiting when the
+            # pipe breaks, and a cancel would then pass for a failure.
+            try:
+                code = process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                code = None
             # 126 = el usuario canceló el diálogo; 127 = no autorizado.
             if code in (126, 127):
                 raise HelperDenied("Autorización cancelada o denegada.") from None
@@ -257,7 +278,7 @@ class PrivilegedClient:
         if reply.get("version", 0) < protocol.VERSION_REQUERIDA and self.instalado():
             self.close()
             self._sin_el_instalado = True
-            self.connect()
+            self._open()
 
     @staticmethod
     def instalado() -> bool:

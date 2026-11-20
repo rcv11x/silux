@@ -170,6 +170,7 @@ class Collector:
         for provider in self.providers:
             if hasattr(provider, "requested"):
                 provider.requested = True
+                provider.client.allow_asking()
         self.invalidate()
 
     def close(self) -> None:

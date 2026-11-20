@@ -80,16 +80,24 @@ class Sampler(QThread):
 
     def _loop(self, collector) -> None:
         while True:
-            if self._elevate:
+            elevating = self._elevate
+            if elevating:
                 self._elevate = False
                 try:
                     collector.request_elevation()
                 except Exception as exc:                # noqa: BLE001
                     self.failed.emit(str(exc))
             try:
-                self.sampled.emit(collector.snapshot())
+                snapshot = collector.snapshot()
             except Exception as exc:                    # noqa: BLE001
                 self.failed.emit(str(exc))
+            else:
+                self.sampled.emit(snapshot)
+            if elevating:
+                # The password window opens inside that snapshot and blocks it.
+                # Whatever was asked while it was open is answered by it, not
+                # by a second window after a cancel.
+                self._elevate = False
 
             if not self._esperar(collector):
                 return

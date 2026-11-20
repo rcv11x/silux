@@ -101,23 +101,22 @@ class Disks(Provider):
         encendido sería pedirle la contraseña a alguien que no la pidió. Quien
         eleve permisos para ver la memoria se lleva esto de propina.
         """
-        if not self.client.connected():
-            if not self.requested:
-                # Sin esta nota el contador de la barra de estado decía «1 dato
-                # requiere permisos» cuando eran dos: el detalle de la memoria y
-                # el diagnóstico de los discos.
-                draft.note(
-                    "disks.health", Need.ROOT,
-                    _("prov.disk.health"), _("prov.disk.health.hint"),
-                    _("what.disks.health"),
-                )
-                return
+        if not self.client.connected() and self.requested:
+            self.requested = False
             try:
                 self.client.connect()
             except Exception:                          # noqa: BLE001
-                self.requested = False
-                return
-            self.requested = False
+                pass
+        if not self.client.connected():
+            # Sin esta nota el contador de la barra de estado decía «1 dato
+            # requiere permisos» cuando eran dos: el detalle de la memoria y
+            # el diagnóstico de los discos. A cancelled window keeps it too.
+            draft.note(
+                "disks.health", Need.ROOT,
+                _("prov.disk.health"), _("prov.disk.health.hint"),
+                _("what.disks.health"),
+            )
+            return
 
         for indice, disco in enumerate(draft.disks):
             nombre = disco.name
