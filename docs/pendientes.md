@@ -59,7 +59,15 @@ Lo que salió de los informes de anianin27 (Gentoo, i7-10700F, RTX 4060) y
 widecoocaa23 (Lenovo LOQ con i5-12450H y RTX 4050, y su VM de Proxmox) y no se
 pudo arreglar sin un volcado de su equipo, o quedó por hacer.
 
-* **Necesita el volcado de anianin27, con permisos:**
+Desde la prueba3, el volcado llega en el anexo de su informe completo
+(`tools/importar_informe.py`). El anexo lleva lo que se lee sin permisos, y
+eso ya cubre casi todo lo de abajo: el SPD sale de `eeprom` en sysfs, y NVML,
+las API gráficas y `cpuidle` van grabados. Lo que lee el ayudante (SMART,
+SMBIOS, MSR, RAPL, los contadores de la memoria) no: está propuesto en las
+notas (`propuesta-anexo-con-permisos.md`). Lo marcado «con el ayudante» lo
+necesita.
+
+* **Necesita el volcado de anianin27:**
   - NVIDIA · media · el consumo de la RTX 4060 salía «— (de 115 W)»: NVML dio
     el tope y no el consumo, con el driver 595. En el portátil (550) sí sale.
     Con el volcado, `nvidia-smi -q -d POWER` al lado.
@@ -70,10 +78,10 @@ pudo arreglar sin un volcado de su equipo, o quedó por hacer.
   - C-states · baja · «C2 es el reposo más hondo de este procesador» en un
     i7-10700F, que llega a C10: es lo que ofrece su driver de reposo
     (probablemente `acpi_idle`). `cpuidle` no mira el driver.
-  - Discos · baja · el modelo entero por el IDENTIFY de `ata_device` (para
-    buscar la unidad en drivedb) está probado aquí con dos Seagate y un
-    Crucial; con el A400 de verdad, falta verlo.
-* **Necesita el volcado del portátil de widecoocaa23, con permisos:**
+  - Discos · baja · con el ayudante · el modelo entero por el IDENTIFY de
+    `ata_device` (para buscar la unidad en drivedb) está probado aquí con dos
+    Seagate y un Crucial; con el A400 de verdad, falta verlo.
+* **Necesita el volcado del portátil de widecoocaa23:**
   - Memoria · media · el SPD de la DDR5 no se lee con permisos aunque
     `spd5118` está cargado y da su temperatura. Sospecha: el firmware bloquea
     el cambio de página del chip. Un solo `spd5118` para dos módulos.
@@ -82,8 +90,8 @@ pudo arreglar sin un volcado de su equipo, o quedó por hacer.
     Vulkan de Intel (sin `mesa-vulkan-drivers`, o sin casar). Con el AppImage
     normal, además, la NVIDIA despierta salió sin la fila de OpenGL que sí dio
     el compat.
-  - Memoria · baja · «Este equipo no publica cuánto tráfico mueve el
-    controlador de memoria» en un Alder Lake-H, con la explicación de AMD
+  - Memoria · baja · con el ayudante · «Este equipo no publica cuánto tráfico
+    mueve el controlador de memoria» en un Alder Lake-H, con la explicación de AMD
     («Solo lo publican los procesadores Intel»).
   - Cachés y temperatura de un híbrido · se arreglaron con la topología del
     informe; con el volcado, conviene verlo en un equipo de verdad.

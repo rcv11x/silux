@@ -61,7 +61,7 @@ Desde el código, lo mismo con `uv run python -m silux.cli`.
 
 O desde la ventana: Ajustes → «Ver y guardar el informe…», que te lo enseña antes de guardarlo.
 
-Pide la contraseña para leer también lo que solo ve el administrador. El informe no lleva el nombre del equipo, ni direcciones, ni números de serie: revísalo y adjúntalo en un [issue](https://github.com/rcv11x/silux/issues) (para que Silux reconozca mejor tu equipo, con la plantilla [«Mi CPU y placa»](https://github.com/rcv11x/silux/issues/new?template=mi-cpu-y-placa.yml)) o en el canal #silux-pruebas del Discord de UniversoLinux.
+Pide la contraseña para leer también lo que solo ve el administrador. Al final lleva los datos en crudo que ha leído, que sirven para reproducir tu equipo en las pruebas de Silux. El informe no lleva el nombre del equipo, ni direcciones, ni números de serie: revísalo y adjúntalo en un [issue](https://github.com/rcv11x/silux/issues) (para que Silux reconozca mejor tu equipo, con la plantilla [«Mi CPU y placa»](https://github.com/rcv11x/silux/issues/new?template=mi-cpu-y-placa.yml)) o en el canal #silux-pruebas del Discord de UniversoLinux.
 
 ## Más
 

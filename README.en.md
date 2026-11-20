@@ -59,7 +59,7 @@ From source, the same with `uv run python -m silux.cli`.
 
 Or from the window: Settings → «View and save the report…», which shows it to you before saving it.
 
-It asks for your password so the report also includes what only the administrator can read. It leaves out the machine's name, its addresses and every serial number: look it over and attach it to an [issue](https://github.com/rcv11x/silux/issues) (so that Silux recognises your machine better, with the [«Mi CPU y placa»](https://github.com/rcv11x/silux/issues/new?template=mi-cpu-y-placa.yml) template), or share it in the #silux-pruebas channel on the UniversoLinux Discord.
+It asks for your password so the report also includes what only the administrator can read. At the end it carries the raw data it read, which let Silux's tests reproduce your machine. It leaves out the machine's name, its addresses and every serial number: look it over and attach it to an [issue](https://github.com/rcv11x/silux/issues) (so that Silux recognises your machine better, with the [«Mi CPU y placa»](https://github.com/rcv11x/silux/issues/new?template=mi-cpu-y-placa.yml) template), or share it in the #silux-pruebas channel on the UniversoLinux Discord.
 
 ## More
 

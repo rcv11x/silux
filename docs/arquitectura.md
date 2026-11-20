@@ -75,6 +75,7 @@ python3 tools/install_desktop.py       # entrada de menú del código fuente
 python3 tools/volcar_gpu.py            # lo que publica el kernel de cada gráfica
 python3 tools/volcar_equipo.py NOMBRE  # este equipo, anonimizado, a tests/fixtures/equipos/
 python3 tools/montar_equipo.py NOMBRE ORDEN…   # ejecutar algo con un volcado montado
+python3 tools/importar_informe.py INFORME NOMBRE  # el anexo de un informe, a volcado
 python3 tools/comprobar_privacidad.py  # antes de publicar nada
 python3 tools/medir_consumo.py         # lo que gasta, contra sus objetivos
 python3 tools/capturas_readme.py       # las capturas del README, con permisos
@@ -195,6 +196,8 @@ silux/
 ├─ registro.py     graba la sesión a un CSV
 ├─ i18n.py         el idioma de la interfaz; el original es el español
 ├─ sysroot.py      leer un equipo volcado en vez del de verdad
+├─ volcado.py      volcar este equipo, anonimizado: lo usan tools/ y el anexo
+├─ annex.py        el anexo del informe: el volcado en texto, y de vuelta
 ├─ system_env.py   el entorno de un programa del sistema, sin lo que añade el
 │                  AppImage: todo lo que Silux lanza pasa por ahí
 ├─ rawcpuid.py     CPUID desde Python, sin root (mmap + ctypes)
@@ -387,7 +390,8 @@ generación entera.
 ## Los equipos volcados
 
 Un arreglo no se da por bueno con lo que dice la máquina donde se escribe.
-`tools/volcar_equipo.py NOMBRE` copia en `tests/fixtures/equipos/NOMBRE/` lo
+`tools/volcar_equipo.py NOMBRE` (el código, en `silux/volcado.py`) copia en
+`tests/fixtures/equipos/NOMBRE/` lo
 que el `Collector` lee de `/sys`, `/proc` y `/etc` —lo decide el `Collector`
 ejecutándose, no una lista—, graba en `grabado.json` lo que no sale de un
 archivo (CPUID, ioctl, las APIs gráficas) y lo anonimiza. Con
@@ -402,7 +406,15 @@ los tests.
 
 `tests/test_equipos.py` monta el `Collector` contra cada volcado y comprueba
 lo que vale para cualquier equipo; lo que solo vale para uno va en el test
-del arreglo, con el volcado donde se vio. `manifiesto.json` dice qué no se
+del arreglo, con el volcado donde se vio.
+
+**El de otro equipo llega en su informe.** El informe completo acaba con un
+anexo (`annex.py`): el mismo volcado, hecho en otro proceso y escrito en texto
+carpeta a carpeta, que se puede leer antes de mandarlo.
+`tools/importar_informe.py INFORME NOMBRE` lo convierte en
+`tests/fixtures/equipos/NOMBRE/`, pasándolo antes por lo que
+`tools/comprobar_privacidad.py` mira en un volcado. El anexo lleva lo que se
+lee sin permisos: lo del ayudante está propuesto, no hecho. `manifiesto.json` dice qué no se
 pudo grabar: NVML, lo que lee el ayudante y lo que sale de restar dos
 lecturas. Qué equipos hay volcados, en [equipos-probados.md](equipos-probados.md).
 

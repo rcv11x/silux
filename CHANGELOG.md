@@ -11,6 +11,19 @@ que hace falta.
 
 ---
 
+## Sin publicar
+
+### Informe
+
+- Nuevo: el informe completo acaba con un anexo, los datos en crudo que Silux
+  ha leído del equipo para escribirlo, con lo mismo tapado que el resto. Con
+  él, lo que falla en tu equipo se puede reproducir en las pruebas de Silux
+  sin pedirte nada más. Desde la ventana tarda un par de segundos en
+  prepararse, y «Guardar…» espera a que esté. Lleva lo que se lee sin
+  permisos; `--short` y `--sections` no lo llevan.
+
+---
+
 ## 0.4-prueba2 (20 de noviembre de 2026)
 
 Segunda versión de prueba de la 0.4: lo que se ha arreglado con los primeros
