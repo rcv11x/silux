@@ -15,6 +15,7 @@ from .privileged_memory import PrivilegedMemory
 from .procfs import CpuUsage
 from .battery import Batteries
 from .msr_voltage import MsrVoltage
+from .msr_pstate import AmdPstateClocks
 from .imc import ImcTraffic
 from .rapl import RaplPower, PowerLimits
 from .spd_modules import SpdModules
@@ -30,7 +31,7 @@ from .turbo import TurboState
 __all__ = [
     "Draft", "Provider",
     "SysfsTopology", "CpuidIdentity", "ArmIdentity", "CppcClocks", "DmiBoard", "TurboState",
-    "SysfsClocks", "CpuUsage", "HwmonSensors", "MsrVoltage",
+    "SysfsClocks", "CpuUsage", "HwmonSensors", "MsrVoltage", "AmdPstateClocks",
     "RaplPower", "ImcTraffic", "DerivedSensors",
     "Batteries",
     "DrmGpus", "GpuState", "GpuApis", "NvidiaGpus", "NetworkInterfaces",

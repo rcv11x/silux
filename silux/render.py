@@ -1844,6 +1844,25 @@ def annex_removed(quitados: list[dict]) -> Optional[str]:
     return _("report.annex.removed").format(n=len(quitados), lista=lista)
 
 
+def turbo(clocks: Clocks) -> str:
+    """«activado», «desactivado», or «no tiene» for a part without one."""
+    if clocks.turbo_supported is False:
+        return _("cpu.turbo.none")
+    if clocks.turbo_enabled is None:
+        return DASH
+    return _("board.on") if clocks.turbo_enabled else _("board.off")
+
+
+def without_frequency_driver(clocks: Clocks) -> Optional[str]:
+    """What a machine without cpufreq has not, and where its frequency
+    comes from; None with a driver."""
+    if clocks.current_from == "cpuinfo":
+        return _("cpu.clocks.nodriver.cpuinfo")
+    if clocks.current_from == "msr":
+        return _("cpu.clocks.nodriver.msr")
+    return None
+
+
 def turbo_note(clocks: Clocks) -> Optional[str]:
     """Una frase corta cuando el techo real no llega al del silicio."""
     if clocks.turbo_enabled is False and clocks.max_turbo_hz:

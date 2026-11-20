@@ -223,6 +223,31 @@ class SysfsTopology(Provider):
 FUENTES_DE_FRECUENCIA = ("cpuinfo_avg_freq", "scaling_cur_freq", "cpuinfo_cur_freq")
 
 
+CPUINFO = "/proc/cpuinfo"
+
+
+def cpuinfo_mhz() -> dict[int, float]:
+    """`cpu MHz` of each processor in /proc/cpuinfo.
+
+    It is there without a frequency driver: on x86 the kernel gives the
+    APERF/MPERF measure of a thread that has been running, and the TSC's
+    frequency otherwise (`arch_freq_get_on_cpu`).
+    """
+    found: dict[int, float] = {}
+    processor = None
+    for line in (read_text(CPUINFO) or "").splitlines():
+        key, _sep, value = line.partition(":")
+        key = key.strip()
+        try:
+            if key == "processor":
+                processor = int(value)
+            elif key == "cpu MHz" and processor is not None:
+                found[processor] = float(value)
+        except ValueError:
+            continue
+    return found
+
+
 class SysfsClocks(Provider):
     """Frecuencia instantánea de cada CPU lógica, y el techo vigente."""
 
@@ -242,6 +267,16 @@ class SysfsClocks(Provider):
             if khz is not None:
                 cpu["freq_hz"] = khz * 1000
                 any_read = True
+        source = "cpufreq" if any_read else None
+        # Without a frequency driver /proc/cpuinfo still says it (a tester's
+        # Athlon 3000G read «Frecuencia: —» everywhere). Not in a virtual
+        # machine: there it is the host's clock, not the guest's.
+        virtual = any(t.get("in_virtual_machine") for t in draft.types.values())
+        if not any_read and not virtual:
+            for index, mhz in cpuinfo_mhz().items():
+                if index in draft.logical and mhz > 0:
+                    draft.logical[index]["freq_hz"] = int(mhz * 1_000_000)
+                    source = "cpuinfo"
 
         for entry in draft.types.values():
             freqs = [draft.logical[i].get("freq_hz") for i in entry.get("cpus", ())]
@@ -260,24 +295,29 @@ class SysfsClocks(Provider):
             entry["clocks"] = dataclasses.replace(
                 clocks,
                 current_hz=int(average),
+                current_from=source,
                 max_hz=ceiling * 1000 if ceiling else clocks.max_hz,
                 governor=governor or clocks.governor,
                 energy_preference=preference or clocks.energy_preference,
             )
 
-        if not any_read:
+        # No frequency driver is not «a kernel module is missing»: the firmware
+        # may not give the system the frequency states (Cool'n'Quiet off in
+        # the BIOS) or the driver may not have loaded, and from here the two
+        # look the same. The notice says that much and no more.
+        if source == "cpuinfo":
+            draft.note("cpu.clocks.driver", Need.HARDWARE,
+                       _("prov.cpu.nocpufreq"), _("prov.cpu.nocpufreq.hint"))
+        elif source is None:
             # Dentro de una máquina virtual no hay ningún módulo que cargar:
             # el hipervisor no expone cpufreq porque no gobierna el reloj.
-            # Decirlo con Need.DRIVER lo pinta de ámbar y manda a buscar un
-            # driver que no existe, que es el mismo error que el botón de
-            # permisos puesto donde el ayudante no sabía arreglar nada.
-            if any(t.get("in_virtual_machine") for t in draft.types.values()):
+            if virtual:
                 draft.note(
                     "cpu.clocks.current_hz", Need.HARDWARE,
                     _("prov.cpu.nofreq.vm"), _("prov.cpu.nofreq.vm.hint"),
                 )
             else:
                 draft.note(
-                    "cpu.clocks.current_hz", Need.DRIVER,
-                    _("prov.cpu.nofreq"), _("prov.cpu.nofreq.hint"),
+                    "cpu.clocks.current_hz", Need.HARDWARE,
+                    _("prov.cpu.nofreq"), _("prov.cpu.nocpufreq.hint"),
                 )

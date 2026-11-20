@@ -32,6 +32,7 @@ from typing import Optional
 
 from ..model import Clocks, Need
 from .base import Draft, Provider, en_maquina_virtual, read_int, read_text
+from .msr_pstate import is_zen
 from ..i18n import _
 from .. import kernel, sysroot
 
@@ -120,7 +121,14 @@ class CppcClocks(Provider):
         if en_maquina_virtual(draft):
             falta_base = falta_bus = False
 
-        if falta_base:
+        if falta_base and any(is_zen(e) for e in draft.types.values()):
+            # A Zen says it itself, in its P0 (msr_pstate): permissions fix it.
+            draft.note(
+                "cpu.clocks.base_hz", Need.ROOT,
+                _("prov.cppc.nobase.zen"), _("prov.cppc.nobase.zen.hint"),
+                _("what.cpu.base"),
+            )
+        elif falta_base:
             draft.note(
                 "cpu.clocks.base_hz", Need.HARDWARE,
                 _("prov.cppc.nobase"), _("prov.cppc.nobase.hint"),

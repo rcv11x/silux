@@ -39,6 +39,7 @@ from .providers import (
     HwmonSensors,
     ImcTraffic,
     MsrVoltage,
+    AmdPstateClocks,
     PrivilegedMemory,
     Provider,
     SpdModules,
@@ -81,6 +82,7 @@ DEFAULT_PROVIDERS: tuple[type[Provider], ...] = (
     SpdModules,         # después, para pegarse a lo que aquél haya leído
     SysfsClocks,
     TurboState,
+    AmdPstateClocks,    # con permisos, la base de un Zen y, sin cpufreq, su frecuencia
     CpuUsage,
     CpuIdle,            # y cuánto descansa cada hilo, que también se resta
     ThermalThrottleCounts,  # las veces que se frenó por temperatura (Intel)

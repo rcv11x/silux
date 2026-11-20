@@ -81,9 +81,15 @@ class Clocks:
     max_turbo_hz: Optional[int] = None    # techo del silicio, según CPUID 0x16
     bus_hz: Optional[int] = None          # BCLK / reloj de referencia
     turbo_enabled: Optional[bool] = None
+    # Whether the part has a turbo at all («cpb» on AMD, «ida» on Intel). An
+    # Athlon 3000G has none, and «Turbo: —» read as something unread.
+    turbo_supported: Optional[bool] = None
     driver: Optional[str] = None
     governor: Optional[str] = None
     energy_preference: Optional[str] = None    # EPP: hacia rendimiento o hacia ahorro
+    # Where current_hz comes from: "cpufreq", or without a frequency driver
+    # "cpuinfo" (/proc/cpuinfo) or "msr" (the processor's P-state).
+    current_from: Optional[str] = None
 
     def _mult(self, hz: Optional[int]) -> Optional[float]:
         if not hz or not self.bus_hz:

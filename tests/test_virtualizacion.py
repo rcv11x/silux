@@ -177,7 +177,9 @@ class TestElAvisoDeFrecuencia(unittest.TestCase):
             draft = Draft()
             draft.logical = {0: {}}
             draft.types = {"general": {"cpus": [0], "in_virtual_machine": en_vm}}
-            with mock.patch.object(sysfs_cpu, "SYS_CPU", tmp):
+            # Nor /proc/cpuinfo: the case where nothing gives a frequency.
+            with mock.patch.object(sysfs_cpu, "SYS_CPU", tmp), \
+                    mock.patch.object(sysfs_cpu, "cpuinfo_mhz", lambda: {}):
                 sysfs_cpu.SysfsClocks().collect(draft)
         notas = [n for n in draft.notes if n.path == "cpu.clocks.current_hz"]
         self.assertEqual(len(notas), 1, "el aviso no salió")
@@ -188,8 +190,12 @@ class TestElAvisoDeFrecuencia(unittest.TestCase):
         self.assertEqual(nota.need, Need.HARDWARE)
         self.assertIn("hipervisor", nota.message)
 
-    def test_en_hierro_sigue_siendo_un_driver_que_falta(self):
-        self.assertEqual(self._nota(en_vm=False).need, Need.DRIVER)
+    def test_on_bare_metal_it_does_not_blame_a_module_either(self):
+        # A tester's Athlon 3000G: the cause may be the BIOS, and the notice
+        # said «Falta un módulo del kernel». It says what is known.
+        nota = self._nota(en_vm=False)
+        self.assertEqual(nota.need, Need.HARDWARE)
+        self.assertIn("BIOS", nota.hint)
 
 
 class TestElColorDelAviso(unittest.TestCase):

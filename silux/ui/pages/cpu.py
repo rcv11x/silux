@@ -132,6 +132,13 @@ class TypeSection(QWidget):
         self.turbo_hint.setFont(ui_font(m.small_pt))
         self.turbo_hint.hide()
         clocks_card.body.addWidget(self.turbo_hint)
+        # What a machine without a frequency driver has not (rule 5).
+        self.clocks_foot = QLabel("")
+        self.clocks_foot.setObjectName("Muted")
+        self.clocks_foot.setWordWrap(True)
+        self.clocks_foot.setFont(ui_font(m.small_pt))
+        self.clocks_foot.hide()
+        clocks_card.body.addWidget(self.clocks_foot)
 
         columns = ResponsiveRow(min_item_width=270)
         columns.add(processor_card)
@@ -222,11 +229,18 @@ class TypeSection(QWidget):
         c(_("cpu.clock.maxsilicon"), render.clock_and_multiplier(
             clocks.max_turbo_hz, clocks.max_turbo_multiplier))
         c(_("cpu.clock.bus"), render.hz(clocks.bus_hz, 0))
-        c(_("cpu.clock.turbo"), {True: _("board.on"), False: _("board.off"),
-                                 None: render.DASH}[clocks.turbo_enabled])
+        c(_("cpu.clock.turbo"), render.turbo(clocks))
         c(_("cpu.clock.driver"), clocks.driver or render.DASH)
         c(_("cpu.clock.governor"), clocks.governor or render.DASH)
         c(_("cpu.clock.epp"), clocks.energy_preference or render.DASH)
+        # Without cpufreq these do not exist: the foot says why, and where
+        # the frequency above comes from.
+        foot = render.without_frequency_driver(clocks)
+        for clave in ("cpu.clock.min", "cpu.clock.maxkernel", "cpu.clock.driver",
+                      "cpu.clock.governor", "cpu.clock.epp"):
+            self.clocks.set_visible(_(clave), foot is None)
+        self.clocks_foot.setText(foot or "")
+        self.clocks_foot.setVisible(foot is not None)
 
         if hint := render.turbo_note(clocks):
             self.turbo_hint.setText(hint)
