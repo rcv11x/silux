@@ -23,6 +23,7 @@ de cada AppImage. Una fuente nueva necesita el suyo ahí:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import pathlib
 import re
@@ -405,10 +406,18 @@ def parse_amd_specs(page: str) -> list[dict]:
 # --------------------------------------------------------------------------
 
 # A fixed release, so what is generated can be repeated; a new one is
-# raising this and regenerating.
+# raising the version and the hash (the error says the new one) and
+# regenerating.
 CPUID_VERSION = "20260503"
+CPUID_SHA256 = "8ee10fb48d4aa20c484a75d6852883710286ed2975c314bda6d0b0383908cbfe"
 CPUID_URL = "https://etallen.com/cpuid.html"
-CPUID_TARBALL = f"https://etallen.com/cpuid/cpuid-{CPUID_VERSION}.src.tar.gz"
+# etallen.com answers GitHub's runners with an HTML page instead of the
+# tarball; Debian keeps the same file byte for byte. The hash is what makes
+# either one trustworthy.
+CPUID_TARBALLS = (
+    f"https://etallen.com/cpuid/cpuid-{CPUID_VERSION}.src.tar.gz",
+    f"https://deb.debian.org/debian/pool/main/c/cpuid/cpuid_{CPUID_VERSION}.orig.tar.gz",
+)
 
 # One line of `decode_uarch_intel` / `decode_uarch_amd`:
 #   FMQ (    0, 6, 12,12,     Ha, *u = "Cougar Cove", ...  *p = "Intel 18A");
@@ -429,9 +438,22 @@ def fetch_cpuid_source(cache: pathlib.Path, offline: bool) -> str:
     if offline:
         raise SystemExit(f"no hay copia de cpuid {CPUID_VERSION} en {path} y se pidió --offline")
     print(f"  bajando cpuid {CPUID_VERSION}…", file=sys.stderr)
-    request = urllib.request.Request(CPUID_TARBALL, headers={"User-Agent": "silux-gen-cpu-db"})
-    with urllib.request.urlopen(request, timeout=60) as response:
-        archive = tarfile.open(fileobj=io.BytesIO(response.read()), mode="r:gz")
+    failures = []
+    for url in CPUID_TARBALLS:
+        request = urllib.request.Request(url, headers={"User-Agent": "silux-gen-cpu-db"})
+        try:
+            with urllib.request.urlopen(request, timeout=60) as response:
+                data = response.read()
+        except OSError as error:
+            failures.append(f"{url}: {error}")
+            continue
+        digest = hashlib.sha256(data).hexdigest()
+        if digest == CPUID_SHA256:
+            break
+        failures.append(f"{url}: no es el tar esperado (sha256 {digest}, empieza por {data[:16]!r})")
+    else:
+        raise SystemExit(f"no se pudo bajar cpuid {CPUID_VERSION}:\n  " + "\n  ".join(failures))
+    archive = tarfile.open(fileobj=io.BytesIO(data), mode="r:gz")
     member = next(m for m in archive.getmembers() if m.name.endswith("/cpuid.c"))
     text = archive.extractfile(member).read().decode("utf-8", errors="replace")
     path.parent.mkdir(parents=True, exist_ok=True)

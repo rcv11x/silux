@@ -2,14 +2,16 @@
 # cambiado, abre un PR con el cambio y los tests ya pasados. Nada entra en
 # master sin que el autor lo revise y lo fusione.
 #
-# Hoy la tabla sale del fork rcv11x/libcpuid y de la tabla de encapsulados de
-# CPU-X (`tools/gen_cpu_db.py`), y las CPU de referencia de los volcados de
-# prueba de libcpuid (`tools/gen_referencias_cpu.py`). El generador propio de
-# la fase 2 (kernel, amd.com) entra por el mismo paso.
+# La tabla sale del fork rcv11x/libcpuid, del `intel-family.h` del kernel, de
+# la tabla de amd.com, del `cpuid` de Todd Allen (de etallen.com o, si no lo
+# da, de su copia en Debian) y de los encapsulados de CPU-X
+# (`tools/gen_cpu_db.py`); las CPU de referencia, de los volcados de prueba de
+# libcpuid (`tools/gen_referencias_cpu.py`).
 #
-# Para abrir el PR hace falta encender en el repositorio «Allow GitHub Actions
-# to create and approve pull requests» (Settings › Actions › General). Sin
-# eso, el último paso falla y la ejecución sale en rojo: se ve igual.
+# Para abrir el PR hace falta «Allow GitHub Actions to create and approve pull
+# requests» (Settings › Actions › General), encendido desde el 20 de
+# noviembre de 2026. Sin eso, el último paso falla y la ejecución sale en
+# rojo: se ve igual.
 name: Tabla de procesadores
 
 on:
