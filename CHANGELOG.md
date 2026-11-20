@@ -67,6 +67,9 @@ que hace falta.
 
 ### Almacenamiento
 
+- Nuevo: al pasar el ratón por «Reservado», en Almacenamiento y en Inicio,
+  dice qué es: lo que ext4 guarda para root y las tablas del sistema de
+  archivos.
 - Arreglado (a medias en la prueba2): lo que ext4 guarda para root (el 5 %)
   contaba como ocupado, y «Reservado» eran solo las tablas del sistema de
   archivos. Un portátil decía «Ocupado 40.6 GB» de unos 17. Ahora va en

@@ -25,6 +25,7 @@ from PySide6.QtGui import (
     QBrush, QColor, QFont, QFontMetrics, QFontMetricsF, QLinearGradient, QPainter, QPainterPath, QPen,
 )
 from PySide6.QtWidgets import (
+    QToolTip,
     QFrame,
     QScrollArea,
     QGridLayout,
@@ -1420,6 +1421,7 @@ class ChipRow(QWidget):
         self._column.setSpacing(max(4, theme.METRICS.card_gap - 2))
         self._chips: list[tuple[str, bool]] = []
         self._swatches: list = []
+        self._tooltips: list[str] = []
         self._widgets: list[Badge] = []
         self._laid_width = 0
         # El ancho mínimo lo marca la insignia más ancha, no la fila entera:
@@ -1427,12 +1429,15 @@ class ChipRow(QWidget):
         self.setMinimumWidth(64)
 
     def set_chips(self, labels: Iterable[str], highlight_first: bool = False,
-                  swatches: Optional[Sequence] = None) -> None:
+                  swatches: Optional[Sequence] = None,
+                  tooltips: Optional[Sequence[str]] = None) -> None:
         """Pone las insignias. `swatches`: un (color, borde) por insignia, o
-        nada; es lo que convierte la fila en la leyenda de una barra."""
+        nada; es lo que convierte la fila en la leyenda de una barra.
+        `tooltips`: what each one is, on hover ("" for none)."""
         chips = [(str(text), highlight_first and i == 0)
                  for i, text in enumerate(labels)]
         self._swatches = list(swatches) if swatches is not None else []
+        self._tooltips = list(tooltips) if tooltips is not None else []
 
         # Si solo ha cambiado el texto (el caso normal: una leyenda que sigue a
         # unos valores vivos) se reescriben las insignias que ya existen. Crear
@@ -1497,6 +1502,9 @@ class ChipRow(QWidget):
             color, borde = (self._swatches[indice] if indice < len(self._swatches)
                             else (None, None))
             widget.set_swatch(color, borde)
+            ayuda = self._tooltips[indice] if indice < len(self._tooltips) else ""
+            if widget.toolTip() != ayuda:
+                widget.setToolTip(ayuda)
 
     def filas(self) -> int:
         """Cuántas líneas de insignias hay montadas ahora mismo."""
@@ -2533,6 +2541,8 @@ class StackedBar(QWidget):
         super().__init__(parent)
         self._p = palette
         self._segments: list[tuple[str, float, str]] = []   # (etiqueta, valor, token)
+        # What a segment is, by its label, on hover over it or its legend.
+        self._ayudas: dict[str, str] = {}
         self._total = 0.0
         # El largo que se ve de cada tramo, por su etiqueta: se desliza
         # (`Deslizador`); la leyenda dice siempre el dato. Se crean una vez
@@ -2556,8 +2566,9 @@ class StackedBar(QWidget):
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
     def set_segments(self, segments: list[tuple[str, float, str]], total: float,
-                     formatter=None) -> None:
+                     formatter=None, tooltips: Optional[dict[str, str]] = None) -> None:
         self._segments = segments
+        self._ayudas = dict(tooltips or {})
         self._total = total or 1.0
         a_la_vista = self.isVisible()
         for etiqueta, valor, _token in segments:
@@ -2573,6 +2584,7 @@ class StackedBar(QWidget):
         self._legend.set_chips(
             (f"{label}  {self._formatter(value)}" for label, value, _token in visibles),
             swatches=[(self._color(token), borde) for _label, _value, token in visibles],
+            tooltips=[self._ayudas.get(label, "") for label, _value, _token in visibles],
         )
         self._reservar_alto()
         self._repintar_la_barra()
@@ -2625,6 +2637,30 @@ class StackedBar(QWidget):
         if self.minimumHeight() != alto:
             self.setMinimumHeight(alto)
             self.updateGeometry()
+
+    def _tramo_en(self, x: float) -> Optional[str]:
+        """The label of the segment drawn at that x, as paintEvent lays them."""
+        offset = 0.0
+        for etiqueta, value, _token in self._segments:
+            largo = self._largos.get(etiqueta)
+            fraccion = largo.valor() if largo is not None else value / self._total
+            if fraccion <= 0:
+                continue
+            offset += self.width() * fraccion
+            if x < offset:
+                return etiqueta
+        return None
+
+    def event(self, evento) -> bool:  # noqa: N802
+        if evento.type() == QEvent.Type.ToolTip and evento.pos().y() <= self.BAR_HEIGHT:
+            ayuda = self._ayudas.get(self._tramo_en(evento.pos().x()) or "", "")
+            if ayuda:
+                QToolTip.showText(evento.globalPos(), ayuda, self)
+            else:
+                QToolTip.hideText()
+                evento.ignore()
+            return True
+        return super().event(evento)
 
     def paintEvent(self, event) -> None:  # noqa: N802
         if not self._segments:

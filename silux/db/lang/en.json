@@ -1345,6 +1345,7 @@
   "status.freeze": "space to freeze",
   "status.refresh": "Refreshing every {n} s",
   "storage.bar.reserved": "Reserved",
+  "storage.bar.reserved.tip": "What the filesystem keeps for itself: in ext4, the 5 % it reserves for root (so the system can still write with the disk full) and its own tables. It is neither used nor free for anyone else.",
   "storage.bar.unmounted": "Unmounted",
   "storage.card.details": "Firmware and sectors",
   "storage.card.disks": "Drives",

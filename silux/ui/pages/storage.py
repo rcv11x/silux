@@ -327,6 +327,7 @@ class StoragePage(ScrollPage):
             # dice aparte.
             self.total_bar.set_segments(
                 self._segmentos(discos), total=total, formatter=render.size,
+                tooltips={_("storage.bar.reserved"): _("storage.bar.reserved.tip")},
             )
             self.total_bar.show()
         else:

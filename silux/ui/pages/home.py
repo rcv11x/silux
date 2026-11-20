@@ -436,8 +436,9 @@ class HomePage(ScrollPage):
             segmentos.append((_("storage.bar.reserved"), reservado, "muted/0.45"))
         if sin_montar:
             segmentos.append((_("home.bar.unmounted"), sin_montar, "muted"))
-        self.discos.barra.set_segments(segmentos, total=total,
-                                       formatter=render.size)
+        self.discos.barra.set_segments(
+            segmentos, total=total, formatter=render.size,
+            tooltips={_("storage.bar.reserved"): _("storage.bar.reserved.tip")})
 
 
     def _temperaturas(self, snapshot: Snapshot) -> None:
