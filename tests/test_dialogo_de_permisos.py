@@ -37,7 +37,9 @@ class TestElDialogo(unittest.TestCase):
         self.assertIn("Solo lee", textos[0])
         self.assertIn("uso de la gráfica", textos[0])
         self.assertIn("mientras Silux esté abierto", textos[1])
-        self.assertIn("recomendado", textos[2])
+        # What installing gives, and that the password is still asked.
+        self.assertIn("ventana de la contraseña", textos[2])
+        self.assertIn("se sigue pidiendo", textos[2])
         self.assertIn("no la ve", textos[3])
         self.assertLess(sum(len(t) for t in textos), 480)
 

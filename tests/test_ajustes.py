@@ -235,7 +235,7 @@ class TestLosPermisos(unittest.TestCase):
     def test_concedidos_no_se_vuelven_a_pedir(self):
         p = self._estado(PrivilegedState(supported=True, connected=True), notas=(),
                          instalado=True)
-        self.assertEqual(p.permission_badge.text(), _("settings.perm.connected"))
+        self.assertEqual(p.permission_badge.text(), _("settings.perm.installed.connected"))
         self.assertEqual(p.permission_badge.tono, "ok")
         self.assertFalse(p.permission_button.isVisibleTo(p))
         self.assertFalse(p.explain_button.isVisibleTo(p))

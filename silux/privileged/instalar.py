@@ -58,9 +58,10 @@ MENSAJES = {
            "It only reads; it changes nothing."),
 }
 
-# `auth_admin_keep` y no `yes`: se pide una vez y polkit la recuerda mientras
-# dure la sesión, en vez de dejar la puerta abierta para siempre. Es lo que
-# hacen LACT y kdiskmark, que necesitan lo mismo que esto.
+# `auth_admin_keep` y no `yes`: la contraseña se pide al dar permisos (polkit
+# la recuerda unos minutos y solo para ese proceso), en vez de dejar la puerta
+# abierta a cualquier proceso de la sesión. Lo que se gana instalando es que la
+# ventana diga qué se lee, no dejar de pedirla (docs/privilegios.md).
 #
 # `allow_inactive` a `no` porque una sesión que no está delante del equipo no
 # tiene por qué leer sus sensores: eso incluye las sesiones por SSH.
@@ -158,7 +159,7 @@ def instalar(cuerpo: str) -> None:
 
     print(f"ayudante:  {DESTINO}")
     print(f"política:  {POLITICA}")
-    print("Listo. La contraseña se pedirá una vez por sesión, no en cada arranque.")
+    print("Listo. La ventana de la contraseña dirá qué se lee.")
 
 
 def orden_de_desinstalar() -> str:

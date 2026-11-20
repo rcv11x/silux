@@ -363,8 +363,8 @@ class TestInstaladorDelAyudante(unittest.TestCase):
 
     def test_no_se_pide_la_contrasena_para_siempre(self):
         """`yes` dejaría la puerta abierta a cualquier proceso del usuario.
-        `auth_admin_keep` la pide una vez y la recuerda mientras dure la
-        sesión, que es lo que hacen los demás programas que leen hardware."""
+        `auth_admin_keep` la pide al dar permisos y la recuerda unos minutos
+        para ese proceso (docs/privilegios.md)."""
         self.instalar()
         texto = self.politica.read_text(encoding="utf-8")
         self.assertIn("<allow_active>auth_admin_keep</allow_active>", texto)

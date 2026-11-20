@@ -277,8 +277,7 @@ class TestElAyudanteInstaladoNecesitaSuPolitica(unittest.TestCase):
     """Las dos mitades o ninguna.
 
     El binario sin la política se ejecuta igual, pero por la acción genérica
-    de pkexec: contraseña en cada arranque en vez de una por sesión, que es el
-    motivo entero de instalarlo. Mirando solo el binario, el botón de permisos
+    de pkexec, que enseña la orden y no qué se lee: el motivo de instalarlo. Mirando solo el binario, el botón de permisos
     permanentes se escondía diciendo que ya estaba hecho.
     """
 

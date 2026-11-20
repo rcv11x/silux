@@ -1089,8 +1089,9 @@ class MainWindow(QMainWindow):
     def _on_permanent_requested(self) -> None:
         """Instala el ayudante en el sistema con su propia acción de polkit.
 
-        Va por `pkexec` como todo lo demás, así que la contraseña se pide una
-        vez —esta— y a partir de ahí una por sesión en vez de una por arranque.
+        Va por `pkexec` como todo lo demás. A partir de ahí, la ventana de la
+        contraseña dice qué se lee; la contraseña se sigue pidiendo al dar
+        permisos.
         No va en el hilo de muestreo porque esto no lee hardware: copia dos
         archivos y termina. Pero tampoco se espera aquí: mientras alguien
         escribe la contraseña, la ventana tiene que seguir pintando.

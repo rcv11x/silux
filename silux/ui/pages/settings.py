@@ -154,6 +154,8 @@ ESTADOS_DEL_MENU = {
 ESTADOS_DE_PERMISOS = {
     "root": ("settings.perm.root", "settings.perm.root.help", "ok"),
     "connected": ("settings.perm.connected", "settings.perm.connected.help", "ok"),
+    "installed_connected": ("settings.perm.installed.connected",
+                            "settings.perm.installed.connected.help", "ok"),
     "notneeded": ("settings.perm.notneeded", "settings.perm.notneeded.help", "ok"),
     "unsupported": ("settings.perm.unsupported", "settings.perm.unsupported.help", "muted"),
     "outdated": ("settings.perm.outdated", "settings.perm.outdated.help", "warn"),
@@ -689,11 +691,13 @@ class SettingsPage(ScrollPage):
         boton, explicar = None, False
         if privilegios is not None and privilegios.already_root:
             estado = "root"
+        elif privilegios is not None and privilegios.connected and instalado:
+            estado = "installed_connected"
         elif privilegios is not None and privilegios.connected:
             estado = "connected"
-            # Concedidos para esta sesión: lo único que queda por ofrecer es
-            # que no se vuelvan a pedir, y eso se explica en «Qué hace esto».
-            explicar = not instalado
+            # Concedidos mientras Silux siga abierto: lo único que queda por
+            # ofrecer es instalar el ayudante, y eso se explica en «Qué hace esto».
+            explicar = True
         elif privilegios is not None and not privilegios.supported:
             # Antes que «no hacen falta»: sin pkexec la foto no cuenta nada
             # como pendiente de permisos, y eso no es que no falte nada.

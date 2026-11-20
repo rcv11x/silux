@@ -149,13 +149,12 @@ HELPER = pathlib.Path(__file__).resolve().parent / "helper.py"
 
 # El ayudante instalado en el sistema, si alguien pulsó el botón de permisos
 # permanentes. Se prefiere al del repositorio porque trae su propia acción de
-# polkit: la contraseña se pide una vez por sesión en vez de en cada arranque.
+# polkit: la ventana de la contraseña dice qué se lee, con nuestras palabras.
 # Lo instala `silux/privileged/instalar.py`, que es también quien explica por qué
 # tiene que vivir en un sitio que el usuario no pueda escribir.
 HELPER_INSTALADO = pathlib.Path("/usr/local/libexec/silux/silux-helper")
 # Su acción de polkit. Sin ella el ayudante instalado sigue ejecutándose,
-# pero por la acción genérica: contraseña en cada arranque en vez de una
-# por sesión. Las dos rutas las escribe `instalar.py` y hay un test que
+# pero por la acción genérica, que enseña la orden y no qué se lee. Las dos rutas las escribe `instalar.py` y hay un test que
 # vigila que no se separen de estas.
 POLITICA_INSTALADA = pathlib.Path(
     "/usr/share/polkit-1/actions/org.silux.helper.policy")
@@ -284,9 +283,8 @@ class PrivilegedClient:
     def instalado() -> bool:
         """Si el ayudante del sistema está puesto, con su acción de polkit.
 
-        La política cuenta: es lo que hace que la contraseña se pida una vez
-        por sesión y no en cada arranque, que es el motivo entero de instalar
-        nada. Sin ella el ayudante se ejecuta igual, pero el botón de permisos
+        La política cuenta: es lo que hace que la ventana de la contraseña diga
+        qué se lee, que es el motivo de instalar nada. Sin ella el ayudante se ejecuta igual, pero el botón de permisos
         permanentes se escondía diciendo que ya estaba hecho cuando faltaba la
         mitad. `instalar.instalado()` ya miraba las dos.
         """

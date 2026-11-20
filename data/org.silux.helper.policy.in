@@ -8,8 +8,8 @@
   Es opcional: sin ella pkexec pide la contraseña de administrador con un
   mensaje genérico y todo funciona igual. Instalarla —cosa que solo puede
   hacer un paquete de la distribución, porque va en /usr/share— sirve para
-  dos cosas: explicar al usuario para qué se le está pidiendo la contraseña,
-  y recordar la autorización durante la sesión en vez de preguntar cada vez.
+  una cosa: explicar al usuario para qué se le está pidiendo la contraseña.
+  `auth_admin_keep` la recuerda unos minutos para el mismo proceso, no más.
 -->
 <policyconfig>
   <vendor>silux</vendor>
