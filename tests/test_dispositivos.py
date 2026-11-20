@@ -6,6 +6,7 @@ propósito: el inventario de nadie va al repositorio.
 """
 
 import dataclasses
+import random
 import unittest
 from unittest import mock
 
@@ -19,6 +20,7 @@ from tests.arbol import arbol
 from tests.test_equipos import EQUIPOS, foto
 
 try:
+    from PySide6.QtCore import Qt
     from PySide6.QtWidgets import QApplication
 except ImportError:                                    # pragma: no cover
     QApplication = None
@@ -293,6 +295,69 @@ class TestEnLaPagina(unittest.TestCase):
                 self.app.processEvents()
             self.assertIn("Disco externo", [c.split("@")[0] for c in self._arbol(pagina)])
             self.assertTrue(pagina.cameras.isVisible())
+
+    @staticmethod
+    def _tree_state(page) -> tuple:
+        """Each row in order: depth, texts, tooltip, colours and whether it is open."""
+        rows = []
+
+        def walk(item, depth):
+            rows.append((depth, [item.text(c) for c in range(4)], item.toolTip(0),
+                         [item.foreground(c).color().name() for c in range(4)],
+                         item.isExpanded() if item.childCount() else None))
+            for i in range(item.childCount()):
+                walk(item.child(i), depth + 1)
+
+        for i in range(page.usb.topLevelItemCount()):
+            walk(page.usb.topLevelItem(i), 0)
+        return rows, [page.usb.isColumnHidden(c) for c in range(4)]
+
+    @staticmethod
+    def _rows_by_tooltip(page) -> dict:
+        everything = Qt.MatchFlag.MatchContains | Qt.MatchFlag.MatchRecursive
+        return {item.toolTip(0): item for item in page.usb.findItems("", everything)}
+
+    def test_rows_still_plugged_in_are_kept(self):
+        """Rule 6: the tree updates its rows; it does not empty and rebuild itself."""
+        with pantalla.Ventana(self.foto) as window:
+            page = self._pagina(window)
+            before = self._rows_by_tooltip(page)
+            window._on_sample(dataclasses.replace(self.foto, usb_devices=tuple(
+                u for u in self.foto.usb_devices if u.port != "6-2")))
+            after = self._rows_by_tooltip(page)
+            self.assertEqual(len(after), len(before) - 1)
+            for tooltip, item in after.items():
+                self.assertIs(item, before[tooltip])
+
+    def test_plugging_and_unplugging_looks_like_a_fresh_page(self):
+        """Rule 9 for the USB tree: plugging, unplugging and swapping what is
+        on a port leaves the open page as if it had been built with that photo."""
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.devices import DevicesPage
+
+        palette = theme.palette_for(self.app, "dark")
+        page = DevicesPage(palette, Preferences().normalized())
+        self.addCleanup(page.deleteLater)
+        page.apply(self.foto)
+        devices = self.foto.usb_devices
+        leaves = [u for u in devices if not u.is_hub]
+        rng = random.Random(7)
+        for step in range(40):
+            gone = {u.port for u in devices if rng.random() < 0.3}
+            left = [u for u in devices
+                    if not any(u.port == g or u.port.startswith(g + ".") for g in gone)]
+            # Another device on the same port: unplug one thing, plug another.
+            swappable = [n for n, u in enumerate(left) if not u.is_hub]
+            if swappable and rng.random() < 0.5:
+                n = rng.choice(swappable)
+                left[n] = dataclasses.replace(rng.choice(leaves), port=left[n].port)
+            photo = dataclasses.replace(self.foto, usb_devices=tuple(left))
+            page.apply(photo)
+            fresh = DevicesPage(palette, Preferences().normalized())
+            fresh.apply(photo)
+            self.assertEqual(self._tree_state(page), self._tree_state(fresh), f"step {step}")
+            fresh.deleteLater()
 
     def test_el_icono_de_la_barra_es_el_suyo(self):
         from silux.ui import icons

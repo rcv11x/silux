@@ -88,7 +88,8 @@ class DevicesPage(QScrollArea):
         self.usb_pie.setFont(ui_font(m.small_pt))
         self.usb_card.body.addWidget(self.usb_pie)
         layout.addWidget(self.usb_card)
-        self._usb_signature: tuple = ()
+        self._usb_signature: tuple | None = None
+        self._usb_items: dict[str, QTreeWidgetItem] = {}
 
         fila = ResponsiveRow(min_item_width=320, span_last=True)
         sonido = Card(_("dev.card.sound"))
@@ -168,47 +169,88 @@ class DevicesPage(QScrollArea):
 
     def _apply_usb(self, usb) -> None:
         self.usb_card.setVisible(bool(usb))
-        firma = tuple((u.port, u.product, u.vendor, u.kind, u.speed_mbps) for u in usb)
-        if firma == self._usb_signature:
+        signature = tuple(usb)
+        if signature == self._usb_signature:
             return
-        self._usb_signature = firma
-        self.usb.clear()
-        nodos: dict[str, QTreeWidgetItem] = {}
-        for dispositivo in sorted(usb, key=lambda u: [int(x) for x in
-                                                       u.port.replace("-", ".").split(".")]):
-            fila = QTreeWidgetItem([
-                render.usb_name(dispositivo), dispositivo.vendor or "",
-                render.usb_kind(dispositivo), render.usb_speed(dispositivo.speed_mbps)])
-            fila.setFont(0, ui_font(theme.METRICS.small_pt))
-            for columna in range(1, len(USB_HEADERS)):
-                fila.setFont(columna, value_font())
-                fila.setForeground(columna, QBrush(self._p.q("ink_dim")))
-            fila.setForeground(0, QBrush(self._p.q("muted" if dispositivo.is_hub else "ink")))
-            pista = _("dev.usb.tip").format(puerto=dispositivo.port,
-                                            id=dispositivo.usb_id or render.DASH)
-            if dispositivo.slower_than_capable:
-                # El aviso, solo cuando algo rápido negocia despacio.
-                lento = _("dev.usb.slow").format(
-                    version=dispositivo.version, velocidad=render.usb_speed(dispositivo.speed_mbps))
-                pista = f"{lento}\n\n{pista}"
-                fila.setForeground(3, QBrush(self._p.q("warn")))
-                fila.setText(3, f"{fila.text(3)}  ⚠")
-            for columna in range(len(USB_HEADERS)):
-                fila.setToolTip(columna, pista)
-            padre = nodos.get(dispositivo.parent or "")
-            if padre is not None:
-                padre.addChild(fila)
-            else:
-                self.usb.addTopLevelItem(fila)
-            nodos[dispositivo.port] = fila
+        self._usb_signature = signature
+        # Rows are updated in place, never cleared and rebuilt: `clear()`
+        # followed by `expandAll()` is where Qt aborted twice in the CI, and
+        # in the app that runs every time something is plugged or unplugged.
+        devices = sorted(usb, key=lambda u: [int(x) for x in u.port.replace("-", ".").split(".")])
+        present = {u.port for u in devices}
+        for port in set(self._usb_items) - present:
+            self._detach_usb(self._usb_items.pop(port), keep_children=True)
+        placed: dict[str, int] = {}
+        for device in devices:
+            item = self._usb_items.get(device.port)
+            if item is None:
+                item = self._usb_items[device.port] = self._new_usb_row()
+            self._fill_usb_row(item, device)
+            parent_port = device.parent if device.parent in present else ""
+            index = placed.get(parent_port, 0)
+            placed[parent_port] = index + 1
+            self._place_usb(item, self._usb_items.get(parent_port), index)
+        for item in self._usb_items.values():
+            if item.childCount() and not item.isExpanded():
+                item.setExpanded(True)
         # Lo que no dice nada en ninguna fila no se enseña (regla 5). Pasa con
         # la foto anónima, que no lleva marcas ni modelos de lo enchufado: el
         # fabricante se queda vacío y «Qué es» repite el nombre («Teclado /
         # teclado»), porque el nombre ya es lo que es.
         self.usb.setColumnHidden(1, not any(u.vendor for u in usb))
         self.usb.setColumnHidden(2, not any(u.product for u in usb))
-        self.usb.expandAll()
         self._ajustar_alto()
+
+    @staticmethod
+    def _new_usb_row() -> QTreeWidgetItem:
+        row = QTreeWidgetItem()
+        row.setFont(0, ui_font(theme.METRICS.small_pt))
+        for column in range(1, len(USB_HEADERS)):
+            row.setFont(column, value_font())
+        return row
+
+    def _fill_usb_row(self, row: QTreeWidgetItem, device) -> None:
+        texts = [render.usb_name(device), device.vendor or "",
+                 render.usb_kind(device), render.usb_speed(device.speed_mbps)]
+        tip = _("dev.usb.tip").format(puerto=device.port, id=device.usb_id or render.DASH)
+        speed_tone = "ink_dim"
+        if device.slower_than_capable:
+            # El aviso, solo cuando algo rápido negocia despacio.
+            slow = _("dev.usb.slow").format(
+                version=device.version, velocidad=render.usb_speed(device.speed_mbps))
+            tip = f"{slow}\n\n{tip}"
+            speed_tone = "warn"
+            texts[3] = f"{texts[3]}  ⚠"
+        tones = ["muted" if device.is_hub else "ink", "ink_dim", "ink_dim", speed_tone]
+        # Qt ignores a value equal to the one the cell already has.
+        for column, (text, tone) in enumerate(zip(texts, tones)):
+            row.setText(column, text)
+            row.setToolTip(column, tip)
+            row.setForeground(column, QBrush(self._p.q(tone)))
+
+    def _detach_usb(self, row: QTreeWidgetItem, keep_children: bool = False) -> None:
+        """Takes the row out of the tree; its children, if kept, go out first
+        so they can be placed again under whatever now holds them."""
+        if keep_children:
+            while row.childCount():
+                row.takeChild(row.childCount() - 1)
+        parent = row.parent()
+        if parent is not None:
+            parent.takeChild(parent.indexOfChild(row))
+        elif (index := self.usb.indexOfTopLevelItem(row)) >= 0:
+            self.usb.takeTopLevelItem(index)
+
+    def _place_usb(self, row: QTreeWidgetItem, parent, index: int) -> None:
+        if parent is None:
+            if self.usb.indexOfTopLevelItem(row) == index and row.parent() is None:
+                return
+            self._detach_usb(row)
+            self.usb.insertTopLevelItem(index, row)
+        else:
+            if row.parent() is parent and parent.indexOfChild(row) == index:
+                return
+            self._detach_usb(row)
+            parent.insertChild(index, row)
 
     def _ajustar_alto(self) -> None:
         visibles = 0
