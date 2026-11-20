@@ -90,6 +90,17 @@ informes que mandó la gente.
   arrancaba y faltaban los tiempos de arranque; y abrir la carpeta de las
   pruebas podía abrir el gestor de archivos con el Qt del AppImage.
 
+### Memoria
+
+- Arreglado: la cabecera decía «3200 MT/s · al máximo del procesador» de una
+  memoria que iba a 2933: ahora dice a cuánto va.
+- Arreglado: el fabricante de unos módulos Team Group salía «04EF», el código
+  que escribe la BIOS de MSI. Se traduce, y Team Group entra en la tabla.
+- Arreglado: con un perfil XMP en la tabla, la nota decía «Estos módulos no
+  traen perfiles rápidos». Y un perfil con un voltaje imposible (0,81 V en
+  una DDR4) no se enseña: la nota dice que el módulo trae XMP y que esta
+  versión no sabe leerlo con seguridad.
+
 ### Almacenamiento
 
 - Arreglado: un Kingston A400 decía «Escrito en total: 33.4 MB» tras casi
