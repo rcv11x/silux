@@ -14,8 +14,7 @@ no las tiene.
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import (QHBoxLayout, QLabel, QPushButton, QScrollArea,
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from ...i18n import _
 from ... import render
@@ -23,7 +22,8 @@ from ...model import NetworkInterface, Snapshot
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette
-from ..widgets import Card, ChipRow, InfoGrid, ResponsiveRow, StatTile, Table, clear_layout
+from ..widgets import (Card, ChipRow, InfoGrid, ResponsiveRow, ScrollPage, StatTile, Table,
+                       clear_layout)
 
 INTERFACE_FIELDS = (
     "gpu.sensor.state", "memory.field.type", "net.field.ipv4",
@@ -68,7 +68,7 @@ def main_interface(interfaces) -> tuple:
     return principal, ordenadas
 
 
-class NetworkPage(QScrollArea):
+class NetworkPage(ScrollPage):
     # La unidad se cambia desde aquí y no desde Ajustes: se decide mirando la
     # cifra, comparándola con lo que dice otro programa, y hacer ese viaje a
     # otra pestaña para volver rompe la comparación.

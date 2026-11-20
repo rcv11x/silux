@@ -12,7 +12,7 @@ barra donde la caché ocupa su parte lo explica sin párrafos.
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QLabel, QScrollArea, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 from ...i18n import _
 from ... import render
@@ -20,7 +20,7 @@ from ...model import Snapshot, System
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette, ui_font
-from ..widgets import Card, ChipRow, InfoGrid, Plegable, ResponsiveRow
+from ..widgets import Card, ChipRow, InfoGrid, Plegable, ResponsiveRow, ScrollPage
 
 # Claves, no texto ni `_()`: estas tuplas se evalúan al importar el módulo,
 # cuando todavía no se sabe qué idioma quiere el usuario. La traducción ocurre
@@ -51,7 +51,7 @@ def format_uptime(seconds: float) -> str:
     return _("sys.uptime.m").format(m=minutes)
 
 
-class SystemPage(QScrollArea):
+class SystemPage(ScrollPage):
     def __init__(self, palette: Palette, prefs: Preferences, parent=None):
         super().__init__(parent)
         self._p = palette

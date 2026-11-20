@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QBrush
-from PySide6.QtWidgets import (QHeaderView, QLabel, QScrollArea, QTreeWidget,
+from PySide6.QtWidgets import (QHeaderView, QLabel, QTreeWidget,
                                QTreeWidgetItem, QVBoxLayout, QWidget)
 
 from ... import render
@@ -22,7 +22,7 @@ from ...model import Snapshot
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette, ui_font, value_font
-from ..widgets import Card, ChipRow, InfoGrid, ResponsiveRow, Table
+from ..widgets import Card, ChipRow, InfoGrid, ResponsiveRow, Table, ScrollPage
 
 USB_HEADERS = ("dev.col.device", "dev.col.maker", "dev.col.kind", "dev.col.speed")
 SOUND_HEADERS = ("dev.col.card", "dev.col.where")
@@ -31,7 +31,7 @@ DONDE_SUENA = {"hdmi": "dev.sound.where.gpu", "board": "dev.sound.where.board",
                "usb": "dev.sound.where.usb"}
 
 
-class DevicesPage(QScrollArea):
+class DevicesPage(ScrollPage):
 
     def __init__(self, palette: Palette, prefs: Preferences, parent=None):
         super().__init__(parent)

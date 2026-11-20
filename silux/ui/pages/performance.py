@@ -17,7 +17,7 @@ import threading
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import (QComboBox, QHBoxLayout, QLabel, QProgressBar,
                                QPushButton, QWidget,
-                               QScrollArea, QVBoxLayout, QWidget)
+                               QVBoxLayout, QWidget)
 
 from ... import benchmark, history, render, score
 from ...i18n import _
@@ -26,7 +26,7 @@ from .. import theme
 from ..theme import Palette, ui_font
 from ..scorebar import ScoreBar
 from ..widgets import (Card, InfoGrid, Notice, ResponsiveRow, Table,
-                       clear_layout, value_font)
+                       clear_layout, value_font, ScrollPage)
 
 RESULT_HEADERS = ("bench.col.load", "bench.col.one", "bench.col.all", "bench.col.scale")
 HISTORY_HEADERS = ("bench.col.test", "bench.col.measure", "bench.col.score", "bench.col.avgfreq",
@@ -48,7 +48,7 @@ DURACIONES = (
 )
 
 
-class PerformancePage(QScrollArea):
+class PerformancePage(ScrollPage):
     _finished = Signal(object)
     _progressed = Signal(str, float)
 

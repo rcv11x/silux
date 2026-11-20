@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import Optional
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QLabel, QScrollArea, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 from ...i18n import _
 from ... import render
@@ -21,7 +21,7 @@ from ...settings import Preferences
 from .. import theme
 from ..theme import Palette, ui_font
 from ..cachemap import CacheMap
-from ..widgets import Card, ChipRow, ResponsiveRow, Table
+from ..widgets import Card, ChipRow, ResponsiveRow, Table, ScrollPage
 
 
 
@@ -40,7 +40,7 @@ def cache_axis(snapshot: Snapshot) -> list[int]:
     ]
 
 
-class CachesPage(QScrollArea):
+class CachesPage(ScrollPage):
     def __init__(self, palette: Palette, prefs: Preferences, parent=None):
         super().__init__(parent)
         self._p = palette

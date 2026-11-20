@@ -26,7 +26,6 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QPushButton,
-    QScrollArea,
     QVBoxLayout,
     QWidget,
 )
@@ -50,6 +49,7 @@ from ..widgets import (
     ResponsiveRow,
     StatTile,
     clear_layout,
+    ScrollPage,
 )
 
 # Cuántos decimales tiene sentido enseñar en cada magnitud. La tabla está en
@@ -58,7 +58,7 @@ from ..widgets import (
 DECIMALS = render.SENSOR_DECIMALS
 
 
-class MonitorPage(QScrollArea):
+class MonitorPage(ScrollPage):
     # Lo emite el árbol cuando el usuario arrastra una columna; la ventana lo
     # guarda para que el ajuste sobreviva al cierre.
     columns_resized = Signal(tuple)

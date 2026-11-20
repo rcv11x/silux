@@ -17,7 +17,7 @@ from __future__ import annotations
 from typing import Optional
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QLabel, QScrollArea, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 from ... import render
 from ...i18n import _
@@ -37,6 +37,7 @@ from ..widgets import (
     ResponsiveRow,
     StackedBar,
     clear_layout,
+    ScrollPage,
 )
 
 NEED_TITLES = {
@@ -254,7 +255,7 @@ class TypeSection(QWidget):
         )
 
 
-class CpuPage(QScrollArea):
+class CpuPage(ScrollPage):
     # La pide la ventana para lanzar el ayudante, igual que Memoria, Gráficos
     # y Almacenamiento. Todos los botones piden lo mismo y se lanza un solo
     # ayudante, así que pulsar cualquiera desbloquea todo.

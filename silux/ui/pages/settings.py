@@ -30,7 +30,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
-    QScrollArea,
     QSizePolicy,
     QTextBrowser,
     QVBoxLayout,
@@ -42,7 +41,7 @@ from ...i18n import _
 from ...settings import Preferences, config_path
 from .. import theme
 from ..theme import Palette, ui_font
-from ..widgets import Card, Divider, ResponsiveRow
+from ..widgets import Card, Divider, ResponsiveRow, ScrollPage
 
 AUTORIA = (
     ("rcv11x", "about.author"),
@@ -298,7 +297,7 @@ class _Tarea(QThread):
         self.terminada.emit("")
 
 
-class SettingsPage(QScrollArea):
+class SettingsPage(ScrollPage):
     changed = Signal(object)          # Preferences
     # La página de ajustes no tiene la foto del hardware; la pide y ya la
     # guarda la ventana, que sí la tiene.

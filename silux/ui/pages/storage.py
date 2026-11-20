@@ -14,8 +14,7 @@ from __future__ import annotations
 from typing import Optional
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import (QHBoxLayout, QLabel, QPushButton, QScrollArea,
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from ... import render
 from ...i18n import _
@@ -25,7 +24,7 @@ from .. import theme
 from ..theme import Palette, ui_font
 from ..widgets import (Plegable, Card, ChipRow, InfoGrid, Notice, ResponsiveRow,
                        StackedBar, StatTile, Table,
-                       boton_de_permiso_permanente, clear_layout, dismiss_buttons)
+                       boton_de_permiso_permanente, clear_layout, dismiss_buttons, ScrollPage)
 
 DISK_HEADERS = ("storage.col.unit", "storage.col.model", "gpu.vram.type", "storage.col.size", "storage.col.used",
                 "gpu.sensor.temp", "storage.tile.reading", "storage.tile.writing")
@@ -55,7 +54,7 @@ def _orden(disco: Disk) -> tuple:
     return (disco.removable, arranque, PRIORIDAD.get(disco.kind or "", 9), disco.name)
 
 
-class StoragePage(QScrollArea):
+class StoragePage(ScrollPage):
     # El diagnóstico de los discos exige permisos, igual que el detalle de la
     # memoria. Sin un botón aquí, los campos aparecían vacíos y sin explicación
     # y no había forma de adivinar que la contraseña se pedía en otra pestaña.

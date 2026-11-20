@@ -19,7 +19,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
-    QScrollArea,
     QVBoxLayout,
     QWidget,
 )
@@ -33,7 +32,7 @@ from ..theme import Palette, ui_font
 from ..widgets import (
     Card, ChipRow, InfoGrid, Notice, Plegable, ResponsiveRow, StackedBar, Table,
     dismiss_buttons, memory_segments,
-    boton_de_permiso_permanente, clear_layout, tone_for,
+    boton_de_permiso_permanente, clear_layout, tone_for, ScrollPage,
 )
 
 from ...model import Need
@@ -75,7 +74,7 @@ USAGE_FIELDS = ("sys.mem.total", "sys.mem.used", "sys.mem.available",
                 "sys.mem.swapused")
 
 
-class MemoryPage(QScrollArea):
+class MemoryPage(ScrollPage):
     elevation_requested = Signal()
     permanent_requested = Signal()
     explain_requested = Signal()

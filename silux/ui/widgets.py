@@ -1851,6 +1851,21 @@ class _CuerpoDeTabla(QWidget):
         return resultado
 
 
+class ScrollPage(QScrollArea):
+    """A page of the window: a scroll area that stays where the user left it."""
+
+    def focusNextPrevChild(self, next_: bool) -> bool:  # noqa: N802
+        from PySide6.QtWidgets import QApplication
+
+        focused = QApplication.focusWidget()
+        if focused is not None and not focused.isEnabled():
+            # A button that disables itself while it has the focus («Buscar
+            # ahora», «Dar permisos»): Qt would hand the focus on, and the
+            # scroll area would scroll to wherever it landed. Nobody gets it.
+            return False
+        return super().focusNextPrevChild(next_)
+
+
 class Table(QScrollArea):
     """Tabla ligera de cabecera y filas, sin el peso de un QTableWidget.
 

@@ -14,7 +14,7 @@ from __future__ import annotations
 from typing import Optional
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QLabel, QScrollArea, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 from ... import render
 from ...i18n import _
@@ -24,7 +24,7 @@ from ...throttling import SeguidorDeRecortes
 from .. import theme
 from ..theme import Palette, ui_font
 from ..widgets import (Plegable, Card, ChipRow, Divider, InfoGrid, LevelList, Notice, ResponsiveRow,
-                       StatTile, Table, clear_layout, tone_for)
+                       StatTile, Table, clear_layout, tone_for, ScrollPage)
 
 # Un símbolo se lee de un vistazo; un «No» hay que leerlo. Los dos son
 # distintos por su forma, no solo por el color con que los pinta la tabla.
@@ -977,7 +977,7 @@ def _fila_de_salida(salida) -> tuple[str, ...]:
     )
 
 
-class GraphicsPage(QScrollArea):
+class GraphicsPage(ScrollPage):
     elevation_requested = Signal()
     permission_snoozed = Signal()
     permission_dismissed = Signal()

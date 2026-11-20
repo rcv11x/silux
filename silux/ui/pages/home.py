@@ -15,8 +15,7 @@ from typing import Optional, Sequence
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFontMetrics
-from PySide6.QtWidgets import (QHBoxLayout, QLabel, QPushButton, QScrollArea,
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from ...i18n import _
 from ... import render
@@ -25,7 +24,7 @@ from ...settings import Preferences
 from .. import theme
 from ..theme import Palette
 from ..widgets import (Card, ChipRow, PermissionNotice, ResponsiveRow, Sparkline,
-                       StackedBar, memory_segments)
+                       StackedBar, memory_segments, ScrollPage)
 from ..widgets import ui_font
 
 
@@ -136,7 +135,7 @@ class _TarjetaResumen(Card):
             etiqueta.setVisible(bool(etiqueta.text()))
 
 
-class HomePage(QScrollArea):
+class HomePage(ScrollPage):
     # La pide la ventana, que es quien tiene la foto y la paleta.
     share_copy_requested = Signal()
 

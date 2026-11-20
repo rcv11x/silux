@@ -24,7 +24,7 @@ from ...settings import Preferences
 from .. import theme
 from ..theme import Palette
 from ..widgets import (Card, ChipRow, InfoGrid, ResponsiveRow, StatTile,
-                       clear_layout)
+                       clear_layout, ScrollPage)
 
 CELDA = ("bat.vendor", "bat.model", "bat.tech", "bat.voltage",
          "bat.voltage.design", "bat.capacity", "bat.design")
@@ -189,7 +189,7 @@ class _SeccionBateria(QWidget):
               if bateria.charge_end_percent is not None else d)
 
 
-class BatteryPage(QScrollArea):
+class BatteryPage(ScrollPage):
     def __init__(self, palette: Palette, prefs: Preferences, parent=None):
         super().__init__(parent)
         self._palette = palette
