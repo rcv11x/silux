@@ -811,6 +811,7 @@
   "memory.spd.needsroot": " · slot and capacity need permissions",
   "memory.spd.note": "The SPD is a chip every module carries with its own specifications. It says what speed it can run at, while the BIOS decides the one it actually runs at: without XMP enabled it stays on JEDEC's conservative values.",
   "memory.spd.note.noxmp": "The SPD is a chip each module carries with its characteristics. These modules carry no fast profiles: the highest speed they declare is the JEDEC one, and the BIOS decides which one they actually run at.",
+  "memory.spd.note.xmpunread": "The SPD is a chip each module carries with its characteristics. These modules carry an XMP profile, but this version cannot read its figures safely, so they are not shown rather than shown wrong.",
   "memory.spd.rated.many": ", rated for {mts} MT/s",
   "memory.spd.rated.one": ", rated for {mts} MT/s",
   "memory.spd.read.many": "{n} modules read from their SPD chips",

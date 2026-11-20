@@ -641,9 +641,13 @@ class MemoryPage(ScrollPage):
         if modules:
             tipos = {m.type for m in modules if m.type}
             wanted.extend(sorted(tipos))
-            catalogadas = {m.rated_mts for m in modules}
-            catalogadas.discard(None)
-            wanted.extend(f"{v} MT/s" for v in sorted(catalogadas))
+            # The speed it runs at when the firmware says it, and else the one
+            # it is rated at: «3200 MT/s · al máximo del procesador» was read
+            # of memory running at 2933.
+            velocidades = {render.velocidad_de_memoria(m.configured_mts) or m.rated_mts
+                           for m in modules}
+            velocidades.discard(None)
+            wanted.extend(f"{v} MT/s" for v in sorted(velocidades))
             veredictos = {render.memory_module_verdict(m, self._limite) for m in modules}
             if "slow" in veredictos:
                 wanted.append(_("memory.chip.underclocked"))
@@ -870,7 +874,8 @@ class MemoryPage(ScrollPage):
         # del firmware lo escribe a su manera («Crucial Technology»). Con el
         # orden al revés, la misma pieza cambiaba de nombre al dar permisos.
         grid.set(_("memory.field.vendor"),
-                 render.maker((spd.manufacturer if spd else None) or module.manufacturer) or d)
+                 render.memory_maker((spd.manufacturer if spd else None)
+                                     or module.manufacturer) or d)
         grid.set(_("memory.field.chips"), render.maker(spd.dram_manufacturer if spd else None) or d,
                  tooltip=_("memory.tip.chips"))
         grid.set(_("memory.field.part"), module.part_number or (spd.part_number if spd else None) or d)
@@ -955,5 +960,15 @@ class MemoryPage(ScrollPage):
         if rows:
             self.timings.set_rows(rows, tooltips=tooltips)
         # «Sin XMP activado se queda en JEDEC» solo vale si hay XMP que activar.
-        con_perfiles = any(m.spd.overclock_profiles for m in modules if m.spd is not None)
-        self.spd_note.setText(_("memory.spd.note" if con_perfiles else "memory.spd.note.noxmp"))
+        # DDR4's decoded profiles are in `profiles`, DDR5's recognised ones in
+        # `overclock_profiles`: a tester's DDR4 with XMP read «no traen
+        # perfiles rápidos». With the XMP header and no profile that passes
+        # the sanity check (F-A2), it has one this version cannot read.
+        spds = [m.spd for m in modules if m.spd is not None]
+        if any(s.profiles or s.overclock_profiles for s in spds):
+            nota = "memory.spd.note"
+        elif any(s.xmp_revision for s in spds):
+            nota = "memory.spd.note.xmpunread"
+        else:
+            nota = "memory.spd.note.noxmp"
+        self.spd_note.setText(_(nota))

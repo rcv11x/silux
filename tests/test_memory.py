@@ -763,6 +763,10 @@ class TestElMaximoDelProcesadorEnPantalla(unittest.TestCase):
         chips = [texto for texto, _resaltada in pagina.badges._chips]
         self.assertNotIn(_("memory.chip.underclocked"), chips)
         self.assertIn(_("memory.chip.cpumax"), chips)
+        # The speed next to it is the one it runs at: a tester's header read
+        # «3200 MT/s · al máximo del procesador» with the memory at 2933.
+        self.assertIn("2666 MT/s", chips)
+        self.assertNotIn("3200 MT/s", chips)
         ficha = pagina._slot_grids[0]
         funcionando = ficha._values[_("memory.field.running")]
         self.assertNotIn("⚠", funcionando.full_text())

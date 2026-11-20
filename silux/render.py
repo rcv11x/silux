@@ -560,6 +560,20 @@ def maker(name: Optional[str]) -> Optional[str]:
     return limpio
 
 
+def memory_maker(name: Optional[str]) -> Optional[str]:
+    """A memory module's maker, also when the firmware writes its JEDEC code.
+
+    MSI's writes «04EF» (bank 5, Team Group) where others write the name: the
+    first byte counts continuation codes, the second is the code, both with
+    their parity bit.
+    """
+    if name and re.fullmatch(r"[0-9A-Fa-f]{4}", name.strip()):
+        from .spd import _vendor
+        codigo = int(name.strip(), 16)
+        return _vendor(codigo >> 8, codigo & 0xFF) or name.strip()
+    return maker(name)
+
+
 def with_maker(vendor: Optional[str], model: Optional[str]) -> Optional[str]:
     """El nombre de un producto empezando por su marca.
 

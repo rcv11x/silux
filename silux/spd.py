@@ -61,6 +61,7 @@ JEDEC_VENDORS = {
     (5, 0x1F): "Apacer",
     (5, 0x51): "Qimonda",
     (5, 0x4B): "ADATA",            # 0xCB
+    (5, 0x6F): "Team Group",       # 0xEF: a tester's TEAMGROUP-UD4-3200
     (6, 0x1B): "Crucial",          # comprobado contra un módulo real
     (6, 0x04): "Netlist",
 }
@@ -69,6 +70,9 @@ JEDEC_VENDORS = {
 # mal, y es preferible no enseñar nada a enseñar una cifra inventada.
 PLAUSIBLE_MTS = (800, 12800)
 PLAUSIBLE_CL = (5, 80)
+# DDR3 runs at 1.35-1.5 V, DDR4 at 1.2-1.5 and DDR5 at 1.1-1.45: a profile
+# outside this was decoded wrong (a tester's DDR4 XMP read 0.81 V).
+PLAUSIBLE_V = (1.0, 1.65)
 
 
 @dataclass(frozen=True, slots=True)
@@ -94,6 +98,8 @@ class Timings:
         if not PLAUSIBLE_MTS[0] <= self.speed_mts <= PLAUSIBLE_MTS[1]:
             return False
         if self.cl is not None and not PLAUSIBLE_CL[0] <= self.cl <= PLAUSIBLE_CL[1]:
+            return False
+        if self.voltage_v is not None and not PLAUSIBLE_V[0] <= self.voltage_v <= PLAUSIBLE_V[1]:
             return False
         return True
 

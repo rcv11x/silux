@@ -380,6 +380,64 @@ class TestLasLatenciasDeDdr4SeRedondeanComoJedec(unittest.TestCase):
                                           spd._Ddr4.FINE_TAA, 625), 23)
 
 
+
+class TestTeamGroup(unittest.TestCase):
+    """A tester's TEAMGROUP-UD4-3200: its maker read «04EF».
+
+    MSI's firmware writes the JEDEC code in hex, continuation count and code
+    (bank 5, 0xEF with its parity bit), and the table did not have it.
+    """
+
+    def test_in_the_spd(self):
+        self.assertEqual(spd._vendor(0x04, 0xEF), "Team Group")
+
+    def test_and_as_the_firmware_writes_it(self):
+        from silux import render
+        self.assertEqual(render.memory_maker("04EF"), "Team Group")
+        self.assertEqual(render.memory_maker("80CE"), "Samsung")
+        self.assertEqual(render.memory_maker("Kingston"), "Kingston")
+
+
+
+class TestAnXmpThatCannotBeRead(unittest.TestCase):
+    """A tester's DDR4 XMP came out as CL 18, tRP 4 and 0.81 V (F-A2: the
+    profile is read a byte off and the voltage misdecoded; 0xA3 is 1.35 V).
+    Until a real dump fixes the decoder, an impossible voltage drops the
+    profile, and the page says the module has XMP it cannot read."""
+
+    def test_an_impossible_voltage_is_not_a_profile(self):
+        self.assertFalse(spd.Timings(name="XMP 1", speed_mts=3200, cl=18, trp=4,
+                                     voltage_v=0.815).plausible)
+        self.assertTrue(spd.Timings(name="XMP 1", speed_mts=3200, cl=16,
+                                    voltage_v=1.35).plausible)
+
+    def test_the_page_says_it_has_xmp_and_does_not_show_it(self):
+        if not __import__("importlib").util.find_spec("PySide6"):
+            self.skipTest("sin PySide6")
+        import dataclasses
+
+        from silux.i18n import _
+        from silux.model import MemoryModule
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.memory import MemoryPage
+        from tests import qt
+        from tests.test_equipos import EQUIPOS, foto
+
+        app = qt.app()
+        jedec = spd.Timings(name="JEDEC", speed_mts=2400, cl=16, trcd=16, trp=16,
+                            tras=39, trc=55, voltage_v=1.2)
+        info = spd.SpdInfo(address="0-0050", slot=0, dram_type="DDR4", jedec=jedec,
+                           xmp_revision="2.0", decoded=True)
+        modulos = (MemoryModule(populated=True, locator="DIMM 0", type="DDR4",
+                                size_bytes=8 << 30, speed_mts=3200, configured_mts=2933,
+                                spd=info),)
+        pagina = MemoryPage(theme.palette_for(app, "dark"), Preferences())
+        self.addCleanup(pagina.deleteLater)
+        pagina.apply(dataclasses.replace(foto(EQUIPOS / "i5-10400")[0], modules=modulos))
+        self.assertEqual(pagina.spd_note.text(), _("memory.spd.note.xmpunread"))
+
+
 if __name__ == "__main__":
     unittest.main()
 
