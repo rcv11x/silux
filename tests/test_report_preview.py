@@ -65,6 +65,27 @@ class TestReportPreview(unittest.TestCase):
         from silux import privacidad
         self.assertIn(privacidad.EQUIPO, text)
 
+    def test_it_shows_it_formatted_and_saves_the_markdown(self):
+        dialog = self.open_preview()
+        shown = dialog.text.toPlainText()
+        for syntax in ("|---", "**", "## "):
+            with self.subTest(syntax=syntax):
+                self.assertIn(syntax, dialog.report())
+                self.assertNotIn(syntax, shown)
+
+    def test_each_line_stays_on_its_own(self):
+        """A card's lines are not joined into a paragraph."""
+        dialog = self.open_preview()
+        shown = dialog.text.toPlainText()
+        raw = dialog.report().splitlines()
+        plain = [(a, b) for a, b in zip(raw, raw[1:])
+                 if a.strip() and b.strip() and not a.startswith(("|", "#", "-"))
+                 and not b.startswith(("|", "#", "-"))]
+        self.assertTrue(plain)
+        for a, b in plain:
+            with self.subTest(line=a):
+                self.assertNotIn(f"{a.strip()} {b.strip()}", shown)
+
     def test_it_opens_with_the_version_as_the_app_says_it_and_no_table(self):
         from silux import __version__, render
         from silux.i18n import en_español
@@ -72,6 +93,21 @@ class TestReportPreview(unittest.TestCase):
         self.assertTrue(lines[0].startswith(
             f"# Informe de Silux {render.version(__version__, en_español)}"))
         self.assertFalse(lines[1].startswith("|"), lines[1])
+
+    def test_new_permissions_keep_the_reader_where_they_were(self):
+        dialog = self.open_preview()
+        dialog.resize(700, 400)
+        self.app.processEvents()
+        bar = dialog.text.verticalScrollBar()
+        bar.setValue(bar.maximum() // 2)
+        granted = dataclasses.replace(
+            self.snapshot, notes=tuple(n for n in self.snapshot.notes
+                                       if n not in self.snapshot.permission_notes))
+        before = bar.value()
+        self.window._on_sample(granted)
+        self.app.processEvents()
+        self.assertGreater(before, 0)
+        self.assertEqual(bar.value(), before)
 
     def test_it_does_not_restyle_the_app_or_show_another_window(self):
         before = self.app.styleSheet()

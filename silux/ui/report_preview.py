@@ -12,12 +12,24 @@ from __future__ import annotations
 from typing import Optional
 
 from PySide6.QtCore import Signal
-from PySide6.QtWidgets import (QDialog, QHBoxLayout, QLabel, QPlainTextEdit, QPushButton,
+from PySide6.QtWidgets import (QDialog, QHBoxLayout, QLabel, QPushButton, QTextBrowser,
                                QVBoxLayout, QWidget)
 
 from ..i18n import _
 from . import theme
-from .theme import value_font
+
+
+def github_breaks(markdown: str) -> str:
+    """Each line on its own, as GitHub shows a comment, where the report is
+    pasted: plain Markdown would join the lines of a card into a paragraph."""
+    lines = markdown.split("\n")
+    for n, line in enumerate(lines[:-1]):
+        following = lines[n + 1]
+        if (line.strip() and following.strip()
+                and not line.lstrip().startswith(("|", "#"))
+                and not following.lstrip().startswith("|")):
+            lines[n] = line + "  "
+    return "\n".join(lines)
 
 
 class ReportPreviewDialog(QDialog):
@@ -47,11 +59,12 @@ class ReportPreviewDialog(QDialog):
         missing_row.addWidget(self.grant_button)
         layout.addLayout(missing_row)
 
-        # Plain text, exactly what the file will hold.
-        self.text = QPlainTextEdit()
-        self.text.setReadOnly(True)
-        self.text.setFont(value_font())
+        # Formatted, as it reads once pasted in an issue; the file keeps the
+        # Markdown exactly as it is (`report`).
+        self.text = QTextBrowser()
+        self.text.setOpenLinks(False)
         layout.addWidget(self.text, 1)
+        self._report = ""
 
         self.save_button = QPushButton(_("report.preview.save"))
         self.save_button.setDefault(True)
@@ -67,10 +80,15 @@ class ReportPreviewDialog(QDialog):
 
     def set_report(self, text: str, missing: int) -> None:
         """Show this report; `missing` is how many data need permissions."""
-        self.text.setPlainText(text)
+        self._report = text
+        # It is rebuilt when permissions arrive: the reader stays where they were.
+        bar = self.text.verticalScrollBar()
+        position = bar.value()
+        self.text.setMarkdown(github_breaks(text))
+        bar.setValue(position)
         self.missing.setText(_("report.preview.missing").format(n=missing) if missing else "")
         self.missing.setVisible(bool(missing))
         self.grant_button.setVisible(bool(missing))
 
     def report(self) -> str:
-        return self.text.toPlainText()
+        return self._report
