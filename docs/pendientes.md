@@ -129,8 +129,11 @@ necesita.
   mano.
 * `spd.py` · media · `decode` revienta si el chip devuelve menos de 384 bytes,
   y se pierden todos los módulos, no solo el corto.
-* **F-M16 · `providers/spd_modules.py`** · media · si la referencia del
-  zócalo A no casa, A se lleva el SPD de B y B el de A.
+* `spd.py` · media · la tabla de fabricantes JEDEC tiene 15: con cualquier
+  otro, el SPD no da marca y el firmware que escribe el código (MSI: «04EF»)
+  lo enseña en bruto. Es el caso general del Team Group de anianin27. Falta la
+  tabla JEP-106 entera de una fuente, con su aviso en THIRD_PARTY_NOTICES y su
+  licencia comprobada, y decir «código JEDEC sin nombre» en vez del número.
 * **F-M17 · `providers/drm.py`** · media · sin `pci.ids`, una AMD dedicada
   sin «radeon» en el nombre recibe el de la integrada («Radeon 780M»).
 * **F-M18 · `smart.py`** · media · el atributo 202 cuenta como vida gastada
@@ -282,7 +285,8 @@ necesita.
   se cierra el canal, y desde ahí cada respuesta llega con una de retraso.
 * **F-M27 · `privileged/helper.py`** · media-baja · la cadencia de RAPL la
   decide el cliente y no el ayudante; la lista blanca de MSR tiene nueve
-  registros que no se usan. Va como propuesta antes que código.
+  registros que no se usan. Va como propuesta antes que código: la de los
+  subdominios de RAPL (en las notas) trae un mínimo de 100 ms en el ayudante.
 * `privileged/helper.py` · baja · el ayudante muere con UTF-8 inválido;
   `DISK_NAME` acepta un salto de línea final; un comentario dice que
   `uncore_imc_free_running` es de Ice Lake en adelante y no lo es
