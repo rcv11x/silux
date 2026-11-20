@@ -329,6 +329,13 @@ De la quinta auditoría, sin comprobar uno a uno si siguen igual:
 * **Diagramas que salen de datos reales**, no decorativos: el mapa de
   núcleos de la CPU (CCD, núcleos P y E, hilos hermanos, mejores núcleos) y
   la jerarquía de cachés dibujada. Nada de dibujos inventados del hardware.
+  El mapa de núcleos (después de la 0.4), en la página CPU: un recuadro por
+  CCD (o por clúster en Intel) con sus núcleos dentro; los dos hilos de cada
+  núcleo con su frecuencia y su uso en directo; la estrella de los mejores
+  núcleos; la L3 de cada CCD debajo, marcando la 3D V-Cache en los X3D; y,
+  en Intel, los núcleos P y E en grupos distintos. Todo de datos reales
+  (sysfs y CPUID), y validado con informes de equipos de dos CCD y con
+  núcleos P y E antes de enseñarlo.
 * **Bienvenida la primera vez** (cuando aún no hay `settings.json`): una
   ventana pequeña con idioma, tema y tamaño de letra, que se vean cambiar en
   el momento, y «Empezar» para guardarlos. El idioma por defecto ya sigue al
