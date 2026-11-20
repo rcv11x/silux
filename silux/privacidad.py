@@ -17,7 +17,7 @@ import dataclasses
 import re
 from typing import Optional
 
-from .model import Snapshot
+from .model import Snapshot, short_vendor
 
 # Lo que se pone en lugar de lo de cada uno. El nombre y la IPv4 parecen de
 # una casa cualquiera a propósito (decisión del autor, 19 de noviembre de
@@ -161,6 +161,16 @@ def _limpiar(texto: Optional[str], equipo: Optional[str],
     return _sin_el_equipo(_cambiar_nombres(texto, nombres), equipo)
 
 
+def _marcas(snapshot: Snapshot) -> set[str]:
+    """The makers the firmware names, as they are written and shortened."""
+    placa = snapshot.board
+    if placa is None:
+        return set()
+    nombres = (placa.system_vendor, placa.vendor, placa.chassis_vendor)
+    return {n.lower() for crudo in nombres if crudo
+            for n in (crudo, short_vendor(crudo) or "") if n}
+
+
 def anonimizar(snapshot: Snapshot) -> Snapshot:
     """La misma foto sin lo que señala a un equipo concreto."""
     cambios: dict = {}
@@ -176,6 +186,11 @@ def anonimizar(snapshot: Snapshot) -> Snapshot:
 
     if snapshot.system and snapshot.system.hostname:
         cambios["system"] = dataclasses.replace(snapshot.system, hostname=EQUIPO)
+    # A machine named after its brand («lenovo» on a Lenovo): the brand is in
+    # the report a dozen times and hides nothing, and looked for in the texts
+    # it broke them («silux-pc LOQ 15IRH8»). The field still goes.
+    if equipo and equipo.lower() in _marcas(snapshot):
+        equipo = None
 
     if snapshot.gpus:
         # El monitor también lleva su número de serie, en el EDID: se enseña

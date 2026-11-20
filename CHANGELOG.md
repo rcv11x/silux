@@ -54,6 +54,10 @@ informes que mandó la gente.
 
 ### Informe
 
+- Arreglado: en un equipo llamado como su marca («lenovo» en un Lenovo), el
+  informe anónimo cambiaba la marca por «silux-pc» en los nombres de los
+  sensores. El nombre del equipo se sigue tapando.
+
 - Arreglado: el informe hecho desde la ventana justo después de «Dar
   permisos» salía sin el consumo del procesador, aunque el equipo lo diera:
   se quedaba con la primera lectura, y ese dato sale de restar dos. Ahora se

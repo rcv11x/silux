@@ -303,6 +303,21 @@ class TestElNombreDelEquipoSeBuscaComoNombre(unittest.TestCase):
         tapada = privacidad.anonimizar(self._foto("equipo", aviso=aviso))
         self.assertEqual(tapada.notes[0].message, aviso)
 
+    def test_a_machine_named_after_its_brand_keeps_the_brand(self):
+        # A tester's Lenovo LOQ is called «lenovo»: its sensors read
+        # «silux-pc LOQ 15IRH8». The brand is already in the report in a
+        # dozen places; replacing it hid nothing and broke the name.
+        import dataclasses
+
+        from silux.model import Board
+        foto = dataclasses.replace(
+            self._foto("lenovo", aparato="Lenovo LOQ 15IRH8",
+                       aviso="El equipo Lenovo no publica su ventilador."),
+            board=Board(system_vendor="LENOVO", system_version="LOQ 15IRH8"))
+        tapada = privacidad.anonimizar(foto)
+        self.assertEqual(tapada.sensors[0].device, "Lenovo LOQ 15IRH8")
+        self.assertEqual(tapada.system.hostname, privacidad.EQUIPO)
+
     def test_pero_un_nombre_corto_entero_si_se_tapa(self):
         tapada = privacidad.anonimizar(self._foto("pc", aparato="pc (ACPI)"))
         self.assertEqual(tapada.sensors[0].device, f"{privacidad.EQUIPO} (ACPI)")
