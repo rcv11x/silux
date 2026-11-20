@@ -83,6 +83,36 @@ class TestAgrupado(unittest.TestCase):
         self.assertEqual(tamanos["performance"], 2 << 20)
         self.assertEqual(tamanos["efficiency"], 4 << 20)
 
+    def test_the_l3_both_kinds_share_is_one(self):
+        # A tester's i5-12450H: «31.7 MB de caché en total» and «8 cachés
+        # distintas», with an «L3 P 12 MB» and an «L3 E 12 MB» that were the
+        # same twelve threads' one L3. The topology is the one in that report.
+        mib = 1 << 20
+        pares = tuple((2 * i, 2 * i + 1) for i in range(4))
+        sueltos = tuple((8 + i,) for i in range(4))
+        l3 = Cache(3, "unified", 12 * mib, instances=1, shared_by=12,
+                   instance_cpus=(tuple(range(12)),))
+        tipos = (
+            CpuType(key="performance", label="P", cores=4, threads=8, caches=(
+                Cache(1, "data", 48 << 10, instances=4, shared_by=2, instance_cpus=pares),
+                Cache(1, "instruction", 32 << 10, instances=4, shared_by=2, instance_cpus=pares),
+                Cache(2, "unified", 1280 << 10, instances=4, shared_by=2, instance_cpus=pares),
+                l3)),
+            CpuType(key="efficiency", label="E", cores=4, threads=4, caches=(
+                Cache(1, "data", 32 << 10, instances=4, shared_by=1, instance_cpus=sueltos),
+                Cache(1, "instruction", 64 << 10, instances=4, shared_by=1, instance_cpus=sueltos),
+                Cache(2, "unified", 2 * mib, instances=1, shared_by=4,
+                      instance_cpus=(tuple(range(8, 12)),)),
+                l3)),
+        )
+        grupos = self.page._group(Snapshot(1, CpuInfo(hybrid=True, types=tipos)))
+        self.assertEqual(len(grupos), 7)
+        terceras = [k for k in grupos if k[0] == 3]
+        self.assertEqual(len(terceras), 1)
+        self.assertEqual(terceras[0][2], "")              # no «P» or «E»: both
+        total = sum(c.total_bytes for c in grupos.values())
+        self.assertEqual(total, (192 + 128 + 128 + 256 + 5120 + 2048) * 1024 + 12 * mib)
+
     def test_etiquetas(self):
         self.assertEqual(self.page._label(1, "data", "", False), "L1 datos")
         self.assertEqual(self.page._label(3, "unified", "", False), "L3")

@@ -277,9 +277,21 @@ class CachesPage(ScrollPage):
         """
         grouped: dict[tuple, Cache] = {}
         hybrid = snapshot.cpu.hybrid
+        # On a hybrid, each kind of core lists the L3 they share: the same
+        # instances, the same threads. A tester's i5-12450H counted it twice
+        # («L3 P 12 MB · L3 E 12 MB», 31.7 MB in total). Shared, it is one,
+        # and it is no kind's.
+        vistas: dict[tuple, int] = {}
         for cpu_type in snapshot.cpu.types:
             for cache in cpu_type.caches:
-                key = (cache.level, cache.kind, cpu_type.key if hybrid else "",
+                if cache.instance_cpus:
+                    vistas[(cache.level, cache.kind, cache.instance_cpus)] = (
+                        vistas.get((cache.level, cache.kind, cache.instance_cpus), 0) + 1)
+        for cpu_type in snapshot.cpu.types:
+            for cache in cpu_type.caches:
+                compartida = vistas.get((cache.level, cache.kind, cache.instance_cpus), 0) > 1
+                key = (cache.level, cache.kind,
+                       cpu_type.key if hybrid and not compartida else "",
                        cache.size_bytes)
                 grouped.setdefault(key, cache)
         return dict(sorted(grouped.items(),
