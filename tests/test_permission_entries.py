@@ -113,6 +113,36 @@ class TestEveryEntryWarnsFirst(unittest.TestCase):
                         ask.assert_not_called()
                         dialog.close()
 
+    def test_after_asking_and_cancelling_from_home_they_still_warn(self):
+        """The sequence of the 20th: Home, «Dar permisos esta vez», «Cancelar»
+        in the password window; then CPU and Memory must warn again."""
+        from silux.ui.widgets import LockMark
+
+        photo = self.photos["i5-10400"]
+        window = self._window(photo)
+        with mock.patch.object(window.sampler, "request_elevation") as ask:
+            window.home_page.permission_notice.grant_button.click()
+            window._dialogo_permisos.grant_button.click()
+            ask.assert_called_once()
+            # The window was cancelled: the next sample is the same, still locked.
+            window._on_sample(photo)
+            self._settle()
+            for where, section, widget in self._entries(window):
+                ask.reset_mock()
+                with self.subTest(entry=where):
+                    if section is not None:
+                        window.select_section(section)
+                        self._settle()
+                    before = window._dialogo_permisos
+                    if isinstance(widget, LockMark):
+                        QTest.mouseClick(widget, Qt.MouseButton.LeftButton)
+                    else:
+                        widget.click()
+                    self.assertIsNot(window._dialogo_permisos, before, f"{where} opened no warning")
+                    self.assertTrue(window._dialogo_permisos.isVisible())
+                    ask.assert_not_called()
+                    window._dialogo_permisos.close()
+
 
 if __name__ == "__main__":
     unittest.main()

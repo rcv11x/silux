@@ -985,6 +985,12 @@ class MainWindow(QMainWindow):
             if not boton.isEnabled():
                 boton.setEnabled(True)
                 boton.setText(_("perm.read.button"))
+        # Graphics' live in its notices: after a cancelled window they stayed
+        # disabled, «Esperando autorización…», until the notice was rebuilt.
+        for boton in self.graphics_page.elevation_buttons:
+            if not boton.isEnabled():
+                boton.setEnabled(True)
+                boton.setText(_("perm.button.read"))
         self.home_page.permission_notice.set_waiting(False)
         self._distribute(snapshot)
         self._refresh_report_preview(snapshot)
