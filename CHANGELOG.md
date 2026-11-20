@@ -11,6 +11,17 @@ que hace falta.
 
 ---
 
+## Sin publicar
+
+### Sistema
+
+- Arreglado (se rompió en la prueba2): en un sistema sin systemd cuyo
+  proceso 1 es `init` (Gentoo con OpenRC, sysvinit) salían con «?» la
+  distribución, el kernel, la arquitectura, el escritorio y el sistema de
+  inicio. Y si alguno de esos datos no se puede leer, falta ese solo.
+
+---
+
 ## 0.4-prueba3 (20 de noviembre de 2026)
 
 Una prueba corta, para que el anexo del informe salga en los equipos de la

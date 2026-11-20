@@ -225,6 +225,19 @@ def en_reposo(dispositivo) -> bool:
     return read_text(f"{dispositivo}/power/runtime_status") in ("suspended", "suspending")
 
 
+def aparte(draft: "Draft", path: str, funcion, *args):
+    """One datum read on its own: if it fails, it is that datum's notice and
+    not the provider's. A Gentoo's report lost its distribution, kernel and
+    desktop because finding out its init failed."""
+    try:
+        return funcion(*args)
+    except Exception as exc:                                  # noqa: BLE001
+        from ..i18n import _
+        draft.note(path, Need.ERROR, _("prov.crashed").format(nombre=path, error=exc),
+                   _("prov.crashed.hint"))
+        return None
+
+
 def en_maquina_virtual(draft: "Draft") -> bool:
     """Whether CPUID, read earlier in the sample, says this is a guest."""
     return any(t.get("in_virtual_machine") for t in draft.types.values())

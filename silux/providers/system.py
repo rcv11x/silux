@@ -20,7 +20,7 @@ from typing import Optional
 from ..i18n import _
 from ..model import (Boot, DeviceKind, Memory, Need, Sensor, SensorKind, Swap, System,
                      Vulnerability)
-from .base import Draft, Provider, read_int, read_text
+from .base import Draft, Provider, aparte, read_int, read_text
 from .. import privacidad, sysroot
 from ..system_env import system_environment
 
@@ -100,11 +100,11 @@ class SystemIdentity(Provider):
             variant=release.get("VARIANT"),
 
             kernel=f"{uname['system']} {uname['release']}",
-            kernel_build=self._kernel_build(),
+            kernel_build=aparte(draft, "system.kernel_build", self._kernel_build),
             architecture=uname["machine"],
 
             hostname=read_text("/proc/sys/kernel/hostname") or uname["node"],
-            init=self._init_system(),
+            init=aparte(draft, "system.init", self._init_system),
             desktop=entorno.get("XDG_CURRENT_DESKTOP"),
             session_type=entorno.get("XDG_SESSION_TYPE"),
             shell=os.path.basename(entorno.get("SHELL") or "") or None,
@@ -145,8 +145,11 @@ class SystemIdentity(Provider):
         except OSError:
             nombre = read_text("/proc/1/comm")
         # Gentoo's OpenRC runs under sysvinit's `init`: a tester's report read
-        # «Init: init». OpenRC leaves its state in /run/openrc.
-        if nombre == "init" and sysroot.ruta("/run/openrc").is_dir():
+        # «Init: init». Its runlevels are in /etc, which sysroot translates
+        # and a dump carries (/run is neither: a test would read this machine).
+        if nombre == "init" and os.path.isdir(sysroot.ruta("/etc/runlevels")):
+            return "openrc"
+        if nombre == "openrc-init":
             return "openrc"
         return nombre
 

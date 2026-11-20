@@ -8,9 +8,6 @@ really the BIOS's release.
 """
 
 import dataclasses
-import os
-import pathlib
-import tempfile
 import unittest
 from unittest import mock
 
@@ -25,19 +22,53 @@ except ImportError:                                    # pragma: no cover
     QApplication = None
 
 
-class TestOpenRc(unittest.TestCase):
+class TestWithoutSystemd(unittest.TestCase):
+    """A machine whose PID 1 is not systemd, as the kernel shows it.
 
-    def test_sysvinits_init_with_openrc_is_openrc(self):
-        with tempfile.TemporaryDirectory() as raiz:
-            (pathlib.Path(raiz) / "run" / "openrc").mkdir(parents=True)
-            ruta = lambda p: pathlib.Path(raiz) / str(p).lstrip("/")  # noqa: E731
-            with mock.patch.object(system_provider.sysroot, "ruta", ruta), \
-                    mock.patch.object(os, "readlink", return_value="/sbin/init"):
-                self.assertEqual(system_provider.SystemIdentity._init_system(), "openrc")
-            with mock.patch.object(system_provider.sysroot, "ruta",
-                                   lambda p: pathlib.Path(raiz) / "nada"), \
-                    mock.patch.object(os, "readlink", return_value="/sbin/init"):
-                self.assertEqual(system_provider.SystemIdentity._init_system(), "init")
+    The first OpenRC test replaced `sysroot.ruta` with one that always gave
+    a Path; the real one gives text for text, `.is_dir()` failed and a
+    tester's Gentoo lost its distribution, kernel and desktop («?»). Here
+    the machine is a dump mounted for real, without a systemd: no readable
+    /proc/1/exe (it is root's), and PID 1's name in /proc/1/comm.
+    """
+
+    def _system(self, pid1, runlevels=False):
+        from silux import volcado
+        from silux.collector import Collector
+        with volcado.montado(EQUIPOS / "qemu-kvm") as raiz:
+            exe = raiz / "proc/1/exe"
+            if exe.is_symlink() or exe.exists():
+                exe.unlink()
+            (raiz / "proc/1").mkdir(parents=True, exist_ok=True)
+            (raiz / "proc/1/comm").write_text(pid1 + "\n")
+            if runlevels:
+                (raiz / "etc/runlevels/default").mkdir(parents=True)
+            recolector = Collector()
+            try:
+                return recolector.snapshot()
+            finally:
+                recolector.close()
+
+    def test_each_init_and_the_rest_of_the_system(self):
+        for pid1, runlevels, init in (("init", True, "openrc"), ("openrc-init", False, "openrc"),
+                                      ("init", False, "init"), ("runit", False, "runit"),
+                                      ("s6-svscan", False, "s6-svscan")):
+            with self.subTest(pid1=pid1, runlevels=runlevels):
+                foto = self._system(pid1, runlevels)
+                self.assertEqual(foto.system.init, init)
+                self.assertTrue(foto.system.distribution)
+                self.assertTrue(foto.system.kernel)
+                self.assertEqual([n for n in foto.notes if n.path.startswith("system")], [])
+
+    def test_a_datum_that_fails_takes_nothing_else(self):
+        from silux.model import Need
+        with mock.patch.object(system_provider.SystemIdentity, "_init_system",
+                               side_effect=AttributeError("'str' object has no attribute 'is_dir'")):
+            foto = self._system("init")
+        self.assertIsNone(foto.system.init)
+        self.assertTrue(foto.system.distribution)
+        self.assertEqual([(n.path, n.need) for n in foto.notes if n.path.startswith("system")],
+                         [("system.init", Need.ERROR)])
 
 
 @unittest.skipIf(QApplication is None, "sin PySide6")
