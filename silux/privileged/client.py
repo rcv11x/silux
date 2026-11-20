@@ -22,6 +22,7 @@ import subprocess
 import sys
 from typing import Any, NamedTuple, Optional
 
+from .. import sysroot
 from . import protocol
 from ..system_env import system_environment
 from .protocol import (ACTION_GPU_PMU, ACTION_IMC, ACTION_MSR, ACTION_PING,
@@ -189,6 +190,21 @@ class HelperDenied(HelperError):
     """El usuario canceló el diálogo o no está autorizado."""
 
 
+def _of_this_machine(*paths: pathlib.Path) -> tuple[pathlib.Path, ...]:
+    """The installed helper's files as the machine being read has them.
+
+    They are files of the machine: with a dump mounted, they are read inside
+    it, and a dump has none of this machine's helper. Read straight, a helper
+    installed here and older than the code made every dump's photo say
+    «outdated», and five tests failed on the author's machine only. Not by
+    `sysroot.ruta`, which only moves what a dump records (/sys, /proc, /etc).
+    """
+    base = sysroot.raiz()
+    if base is None:
+        return paths
+    return tuple(pathlib.Path(f"{base}{path}") for path in paths)
+
+
 class PrivilegedClient:
     def __init__(self) -> None:
         self._process: Optional[subprocess.Popen] = None
@@ -302,9 +318,10 @@ class PrivilegedClient:
         permanentes se escondía diciendo que ya estaba hecho cuando faltaba la
         mitad. `instalar.instalado()` ya miraba las dos.
         """
-        return (HELPER_INSTALADO.is_file()
-                and os.access(HELPER_INSTALADO, os.X_OK)
-                and POLITICA_INSTALADA.is_file())
+        ayudante, politica = _of_this_machine(HELPER_INSTALADO, POLITICA_INSTALADA)
+        return (ayudante.is_file()
+                and os.access(ayudante, os.X_OK)
+                and politica.is_file())
 
     @staticmethod
     def _cuerpo(texto: str) -> str:
@@ -330,10 +347,11 @@ class PrivilegedClient:
         """
         from . import instalar
 
+        ayudante, politica = _of_this_machine(HELPER_INSTALADO, POLITICA_INSTALADA)
         try:
-            instalado = HELPER_INSTALADO.read_text(encoding="utf-8")
+            instalado = ayudante.read_text(encoding="utf-8")
             actual = HELPER.read_text(encoding="utf-8")
-            regla = POLITICA_INSTALADA.read_text(encoding="utf-8")
+            regla = politica.read_text(encoding="utf-8")
         except OSError:
             return False
         return (cls._cuerpo(instalado) == cls._cuerpo(actual)
