@@ -19,9 +19,8 @@ constructor de cada widget) añadía un parámetro a doce clases sin ganar nada.
 from __future__ import annotations
 
 import dataclasses
-
+import os
 import pathlib
-import tempfile
 from dataclasses import dataclass
 
 from PySide6.QtCore import QPointF, Qt
@@ -82,6 +81,17 @@ DARK = Palette(
     disabled="#525C6A",
 )
 
+
+
+def icon_cache() -> pathlib.Path:
+    """Where the drawn icons are kept: the user's own runtime folder, which
+    nobody else can write. Not a fixed name in /tmp, where another user could
+    have left the files that Qt then loads."""
+    base = os.environ.get("XDG_RUNTIME_DIR")
+    if base and os.path.isdir(base) and os.stat(base).st_uid == os.getuid():
+        return pathlib.Path(base) / "silux-icons"
+    cache = os.environ.get("XDG_CACHE_HOME") or str(pathlib.Path.home() / ".cache")
+    return pathlib.Path(cache) / "silux" / "icons"
 
 def con_alfa(color: str, alfa: float) -> str:
     """El mismo color, translúcido, en la forma que entiende Qt.
@@ -295,7 +305,7 @@ def _arrow_icon(color: str, direction: str) -> str:
     # en el nombre del archivo, o la caché seguiría sirviendo la anterior.
     size, scale = 16, 2                    # x2 para que no se vea dentado
     half, height = 5.0, 3.2
-    cache = pathlib.Path(tempfile.gettempdir()) / "silux-icons"
+    cache = icon_cache()
     target = cache / f"arrow-{color.lstrip('#')}-{direction}-{half:g}x{height:g}.png"
     if target.exists():
         return target.as_posix()
@@ -778,7 +788,7 @@ SENSOR_COLORS: dict[str, str] = {
 def sensor_icon(kind: str, palette: Palette):
     """Devuelve la ruta de un icono de 16 px para una magnitud."""
     color = getattr(palette, SENSOR_COLORS.get(kind, "muted"))
-    cache = pathlib.Path(tempfile.gettempdir()) / "silux-icons"
+    cache = icon_cache()
     target = cache / f"sensor-{kind}-{color.lstrip('#')}.png"
     if target.exists():
         return target.as_posix()
