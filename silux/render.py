@@ -206,6 +206,22 @@ def cache_summary(cache: Cache) -> str:
     return ", ".join(parts)
 
 
+def caches_summary(caches) -> str:
+    """One row for all the caches of a level: «2 × 32 MB, 16 vías», or
+    «96 MB + 32 MB, 16 vías» when the level is not the same everywhere, as in
+    a Ryzen with V-Cache on one of its two chiplets."""
+    if len(caches) == 1:
+        return cache_summary(caches[0])
+    ordered = sorted(caches, key=lambda c: -c.size_bytes)
+    parts = [f"{c.instances} × {size(c.size_bytes)}" if c.instances > 1 else size(c.size_bytes)
+             for c in ordered]
+    text = " + ".join(parts)
+    ways = {c.ways for c in ordered}
+    if len(ways) == 1 and None not in ways:
+        text += ", " + _("cache.ways").format(n=ways.pop())
+    return text
+
+
 def cache_label(cache: Cache) -> str:
     claves = {"data": "cache.label.data", "instruction": "cache.label.instr"}
     return _(claves.get(cache.kind, "cache.label.unified")).format(n=cache.level)

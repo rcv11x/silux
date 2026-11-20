@@ -230,21 +230,29 @@ class TypeSection(QWidget):
         return _("cpu.virt.none")
 
     def _apply_caches(self, cpu_type: CpuType) -> None:
-        labels = [render.cache_label(cache) for cache in cpu_type.caches]
+        # One row per level and kind. A 7950X3D has two L3 of different sizes,
+        # and two rows with the same name made the second one replace the first.
+        grupos: dict[str, list] = {}
+        for cache in cpu_type.caches:
+            grupos.setdefault(render.cache_label(cache), []).append(cache)
+        labels = list(grupos)
         if labels != self._cache_rows:
             self.caches.reset()
             for label in labels:
                 self.caches.add(label)
             self._cache_rows = labels
 
-        for cache, label in zip(cpu_type.caches, labels):
+        for label, caches in grupos.items():
+            cache = caches[0]
+            tooltip = _("cpu.cache.tip").format(
+                total=render.size(sum(c.total_bytes for c in caches)), sets=cache.sets)
+            if len(caches) > 1 and cache.level == 3 and (reparto := render.l3_asimetrica(cpu_type)):
+                tooltip = f"{reparto}\n\n{tooltip}"
             self.caches.set(
                 label,
-                render.cache_summary(cache) + "    "
-                + _("cpu.cache.line").format(b=cache.line_bytes,
-                                             hilos=cache.shared_by),
-                tooltip=_("cpu.cache.tip").format(
-                    total=render.size(cache.total_bytes), sets=cache.sets),
+                render.caches_summary(caches) + "    "
+                + _("cpu.cache.line").format(b=cache.line_bytes, hilos=cache.shared_by),
+                tooltip=tooltip,
             )
 
     def _apply_features(self, cpu_type: CpuType) -> None:
