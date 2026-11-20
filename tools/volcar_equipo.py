@@ -657,9 +657,12 @@ class _Anonimizador:
             # sale del mismo archivo. Es lo mismo que hace
             # `privacidad.anonimizar` con la foto, y por eso el archivo se
             # borra en vez de rellenarse: el proveedor tiene que leer «nada».
+            # The maker goes too, but is not looked for afterwards: it is a
+            # company, and «Realtek» or «Generic» are also the sound codec,
+            # the PHY or the HDA card.
             if nombre in USB_QUE_IDENTIFICA and re.search(r"/usb\d+/", relativo):
                 texto_usb = datos.decode(errors="replace").strip()
-                if nombre in ("product", "manufacturer") and len(texto_usb) >= 6 \
+                if nombre == "product" and len(texto_usb) >= 6 \
                         and not USB_GENERICO.search(texto_usb):
                     self.secretos.add(texto_usb)
                 ruta.unlink()

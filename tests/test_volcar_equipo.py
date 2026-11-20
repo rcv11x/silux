@@ -267,6 +267,32 @@ class TestUnaInterfazConNombrePropio(unittest.TestCase):
         self.assertIn("proc/self/net/dev", hallazgos[0])
 
 
+class TestAUsbMaker(unittest.TestCase):
+    """A USB device's maker is a company, and its name is everywhere: a card
+    reader says «Generic» (AMD's sound card is «HD-Audio Generic»), a
+    network adapter «Realtek» (and so is the sound codec). Taken for a
+    secret, the final check refused to write the dump of such a machine."""
+
+    def test_it_goes_and_is_not_looked_for_elsewhere(self):
+        for fabricante, modelo, sonido in (
+                ("Generic", "USB3.0-CRW", "Codec: Generic HDMI\n"),
+                ("Realtek", "USB 10/100/1000 LAN", "Codec: Realtek ALC1220\n")):
+            with self.subTest(fabricante=fabricante), tempfile.TemporaryDirectory() as tmp:
+                raiz = pathlib.Path(tmp)
+                aparato = raiz / "sys/devices/pci0000:00/0000:00:08.1/usb1/1-3"
+                aparato.mkdir(parents=True)
+                (aparato / "manufacturer").write_text(fabricante + "\n")
+                (aparato / "product").write_text(modelo + "\n")
+                (raiz / "proc/asound/card0").mkdir(parents=True)
+                (raiz / "proc/asound/card0/codec#0").write_text(sonido)
+                limpio = volcar._Anonimizador(raiz, {})
+                limpio.contenidos()
+                self.assertFalse((aparato / "manufacturer").exists())
+                self.assertEqual(volcar.comprobar(raiz, limpio.secretos), [])
+                # The model does say what someone has plugged in: still looked for.
+                self.assertIn(modelo, limpio.secretos)
+
+
 class TestLosMontajesEnLaComprobacionFinal(unittest.TestCase):
 
     @staticmethod
