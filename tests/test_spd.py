@@ -714,10 +714,13 @@ class TestCodigosDeFabricante(unittest.TestCase):
         from silux.spd import _vendor
 
         # (byte de banco, byte de identificador) -> quién es.
+        # Kingston's, from the SODIMM of the author's T14 (its dump): bank 2,
+        # one continuation code. The table had it in bank 1, and the SPD of
+        # every Kingston came out without a maker.
         reales = {
-            (0x80, 0xCE): "Samsung", (0x80, 0x98): "Kingston",
+            (0x80, 0xCE): "Samsung", (0x01, 0x98): "Kingston",
             (0x80, 0xAD): "SK Hynix", (0x80, 0x2C): "Micron",
-            (0x85, 0x9B): "Crucial", (0x84, 0xCB): "ADATA",
+            (0x85, 0x9B): "Crucial", (0x04, 0xCB): "ADATA",
         }
         for (banco, code), quien in reales.items():
             with self.subTest(marca=quien):

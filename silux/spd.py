@@ -51,7 +51,7 @@ MODULE_TYPES = {0x01: "RDIMM", 0x02: "UDIMM", 0x03: "SODIMM", 0x04: "LRDIMM",
 JEDEC_VENDORS = {
     (1, 0x2C): "Micron",
     (1, 0x4F): "Transcend",
-    (1, 0x18): "Kingston",         # 0x98 con paridad
+    (2, 0x18): "Kingston",         # 0x98; bank 2, from a real SODIMM (the author's T14)
     (1, 0x2D): "SK Hynix",         # 0xAD
     (1, 0x4E): "Samsung",          # 0xCE
     (1, 0x5A): "Winbond",          # 0xDA
