@@ -49,6 +49,8 @@ publica se dice con la versión que lo trae.
 - En Sensores, las ramas que nunca abriste o cerraste a mano vuelven a
   seguir la regla: una rama larga que tuvieras abierta («Relojes · 16») nace
   cerrada otra vez hasta que la abras.
+- La cabecera de `--report` es una lista («- **Kernel:** …») y no una
+  tabla: si un guion la leía como tabla, hay que cambiarlo.
 
 ### Permisos
 
@@ -76,6 +78,10 @@ publica se dice con la versión que lo trae.
   permisos o se enchufa o se quita algo.
 - Arreglado: un dato que falta por otro motivo ya no dice «requiere
   permisos», y ningún texto culpa al equipo de lo que es un permiso.
+- Arreglado: «Cancelar» en la ventana de la contraseña cancela. Antes salía
+  otra vez, y no se vuelve a pedir hasta que pulses tú.
+- Arreglado: tras cancelar, los botones de permisos de Gráficos se quedaban
+  en «Esperando autorización…».
 
 ### Inicio
 
@@ -141,6 +147,10 @@ publica se dice con la versión que lo trae.
   una zona del firmware que marca siempre lo mismo (27.8 °C).
 - Arreglado: en una ventana estrecha, la especificación del procesador pasa
   a dos líneas en vez de cortarse.
+- Nuevo: en los Intel, la ventana de tiempo de PL1 y PL2 («65.0 W · ventana
+  de 28.0 s») y cuántas veces se frenó por temperatura desde el arranque.
+- Cambiado: un procesador que no está en la tabla ya no repite «no está en la
+  tabla de esta versión» en tres filas: lo dice el aviso de abajo.
 
 ### Cachés
 
@@ -287,6 +297,8 @@ publica se dice con la versión que lo trae.
 - Nuevo: sección nueva con lo enchufado por USB (en árbol, colgando de su
   concentrador, con su velocidad), las tarjetas de sonido, las cámaras y el
   adaptador Bluetooth.
+- Arreglado: enchufar o quitar un USB con la página abierta podía cerrar el
+  programa.
 
 ### Placa base
 
@@ -322,6 +334,7 @@ publica se dice con la versión que lo trae.
 - Arreglado: los miles se separan con un espacio fino, igual en español que
   en inglés: las horas de un disco ya no salen «4.136 h», que parecían
   cuatro horas con decimales.
+- Nuevo: «Kernel contaminado» dice qué módulos lo contaminan.
 
 ### Sensores
 
@@ -336,6 +349,8 @@ publica se dice con la versión que lo trae.
   son una medida.
 - Arreglado: «Paquete» y «Núcleo N», no «Package id 0» y «Core N».
 - Arreglado: en una ventana estrecha, la cabecera se salía por la derecha.
+- Nuevo: «Cargar el módulo» avisa antes de que eso sí cambia el sistema, qué
+  módulo carga y cómo deshacerlo.
 
 ### Rendimiento
 
@@ -388,6 +403,13 @@ publica se dice con la versión que lo trae.
   programa.
 - Arreglado: Ajustes hablaba de «las 53» banderas cuando la página CPU
   cuenta las de tu procesador.
+- Arreglado: «Buscar ahora», y cualquier botón que se queda esperando,
+  movían la página.
+- Cambiado: con una versión de prueba, la búsqueda dice «No hay ninguna
+  versión más nueva» y no «Tienes la última versión (0.4.0rc1)».
+- Cambiado: «Acerca de» dice de dónde sale cada cifra de la tabla de
+  procesadores y con qué Python y qué Qt corre esta copia.
+- Cambiado: «Ver y guardar el informe…» lo enseña formateado.
 
 ### Aspecto
 
@@ -439,6 +461,7 @@ publica se dice con la versión que lo trae.
 - Arreglado: con un ayudante de permisos de una versión anterior instalado,
   Memoria y Almacenamiento salían cortadas por la derecha en una ventana
   estrecha.
+- Arreglado: el contorno de los interruptores salía borroso.
 
 ### Línea de órdenes
 
@@ -462,6 +485,8 @@ publica se dice con la versión que lo trae.
   de `--font-scale` son normal, large, larger y largest.
 - Nuevo: `--samples N`, para que `--screenshot` capture con las gráficas
   llenas.
+- Cambiado: el informe empieza con la versión como la dice la ventana
+  («0.4-prueba1») y una lista, no una tabla sin cabecera.
 
 ### Privacidad
 
@@ -470,6 +495,9 @@ publica se dice con la versión que lo trae.
   dispositivo dice qué clase de cosa es y a qué velocidad va, no su marca.
 - Arreglado: con `--anonymous`, dos tarjetas de red distintas salían con la
   misma dirección física.
+- Cambiado: tu carpeta personal sale como «~» (los ajustes, la copia de
+  desarrollo, el informe guardado): una captura ya no lleva tu nombre de
+  usuario.
 
 ### AppImage y paquete
 
@@ -493,6 +521,7 @@ publica se dice con la versión que lo trae.
   marca.
 - Arreglado: fuera del AppImage, instalado con pip, el programa salía sin sus
   textos: la interfaz enseñaba claves como `cpu.card.clocks`.
+- Nuevo: el README también en inglés.
 
 ### Limitaciones conocidas
 
