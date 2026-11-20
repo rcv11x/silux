@@ -1,0 +1,2 @@
+/dev/sda1 / ext4 rw,relatime,discard,errors=remount-ro 0 0
+/dev/sda15 /boot/efi vfat rw,relatime,fmask=0077,dmask=0077,codepage=437,iocharset=ascii,shortname=mixed,utf8,errors=remount-ro 0 0

@@ -54,6 +54,10 @@ class TestLaTemperaturaDeLaCpu(unittest.TestCase):
                 ventana._on_sample(f)
                 inicio = re.search(r"([\d.]+)\s*°C", ventana.home_page.cpu.cifras.text())
                 ficha = ventana.cpu_page.live.tile_temp.value.text()
+                if f.cpu.temperature_c is None:
+                    # A virtual machine has no sensor: neither says a figure.
+                    self.assertIsNone(inicio)
+                    continue
                 self.assertIsNotNone(inicio)
                 self.assertEqual(round(float(inicio.group(1))), int(ficha))
 

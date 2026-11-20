@@ -1,0 +1,166 @@
+{
+ "cpuid": {
+  "*:0:0": [
+   13,
+   1970169159,
+   1818588270,
+   1231384169
+  ],
+  "*:2147483648:0": [
+   2147483658,
+   0,
+   0,
+   0
+  ],
+  "0:1073741824:0": [
+   1073741825,
+   1263359563,
+   1447775574,
+   77
+  ],
+  "0:1:0": [
+   397233,
+   264192,
+   2193105409,
+   395049981
+  ],
+  "0:2147483649:0": [
+   397233,
+   0,
+   1,
+   537921536
+  ],
+  "0:2147483650:0": [
+   1431127377,
+   1919505952,
+   1818326388,
+   1431323424
+  ],
+  "0:2147483651:0": [
+   1919252000,
+   1852795251,
+   892219936,
+   43
+  ],
+  "0:2147483652:0": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "0:7:0": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "0:7:1": [
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ "gpuapi": {
+  "consultar": {
+   "opencl": [],
+   "opengl": null,
+   "vaapi": [],
+   "vulkan": [
+    {
+     "api_version": "1.4.305",
+     "device_id": 0,
+     "device_memory_bytes": 4111781888,
+     "driver_version": 1,
+     "instance_version": "1.4.309",
+     "kind": "CPU",
+     "name": "llvmpipe (LLVM 19.1.7, 128 bits)",
+     "vendor_id": 65541
+    }
+   ]
+  }
+ },
+ "ioctl_red": {
+  "ens4:0x8915": "192.168.1.120",
+  "ens4:0x891b": "255.255.255.0",
+  "lo:0x8915": "127.0.0.1",
+  "lo:0x891b": "255.0.0.0"
+ },
+ "nvml": {
+  "abierta": false
+ },
+ "pciids": {
+  "1234:1111|1234:1111:1af4:1100": {},
+  "1234:1111|8086:100e|8086:2922|8086:7020": {
+   "8086:100e": [
+    "Intel Corporation",
+    "82540EM Gigabit Ethernet Controller"
+   ],
+   "8086:2922": [
+    "Intel Corporation",
+    "82801IR/IO/IH (ICH9R/DO/DH) 6 port SATA Controller [AHCI mode]"
+   ],
+   "8086:7020": [
+    "Intel Corporation",
+    "82371SB PIIX3 USB [Natoma/Triton II]"
+   ]
+  },
+  "8086:100e": {
+   "8086:100e": [
+    "Intel Corporation",
+    "82540EM Gigabit Ethernet Controller"
+   ]
+  },
+  "8086:1237|8086:7000": {
+   "8086:1237": [
+    "Intel Corporation",
+    "440FX - 82441FX PMC [Natoma]"
+   ],
+   "8086:7000": [
+    "Intel Corporation",
+    "82371SB PIIX3 ISA [Natoma/Triton II]"
+   ]
+  }
+ },
+ "pciids_fabricante": {
+  "1af4": "Red Hat, Inc."
+ },
+ "plataforma": {
+  "entorno": {
+   "SHELL": "/bin/bash",
+   "XDG_CURRENT_DESKTOP": null,
+   "XDG_SESSION_TYPE": "tty"
+  },
+  "machine": "x86_64",
+  "procesos": 121,
+  "uname": {
+   "machine": "x86_64",
+   "node": "silux-pc",
+   "processor": "",
+   "release": "6.12.117+deb13-amd64",
+   "system": "Linux",
+   "version": "#1 SMP PREEMPT_DYNAMIC Debian 6.12.117-1 (2026-11-12)"
+  }
+ },
+ "realpath": {
+  "/dev/sda1": "/dev/sda1",
+  "/dev/sda15": "/dev/sda15"
+ },
+ "statvfs": {
+  "/": [
+   2795884544,
+   30807506944
+  ],
+  "/boot/efi": [
+   9322496,
+   120395776
+  ]
+ },
+ "systemd": {
+  "arranque": {
+   "FinishTimestampMonotonic": 6797146,
+   "InitRDTimestampMonotonic": 0,
+   "UserspaceTimestampMonotonic": 2350548
+  }
+ }
+}

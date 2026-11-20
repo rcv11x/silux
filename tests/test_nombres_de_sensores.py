@@ -31,7 +31,8 @@ class TestLosHilos(unittest.TestCase):
             f = foto(carpeta)[0]
             por_clave = {s.key: s.label for s in f.sensors}
             with self.subTest(equipo=carpeta.name):
-                for hilo in f.cpu.logical:
+                # A virtual machine has no cpufreq: no clock, no sensor.
+                for hilo in (h for h in f.cpu.logical if h.freq_hz is not None):
                     self.assertEqual(por_clave[f"clock/cpu{hilo.index}"],
                                      thread_name(hilo.index))
                 self.assertFalse([e for e in por_clave.values() if "Core #" in e])

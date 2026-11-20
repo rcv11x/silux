@@ -162,7 +162,10 @@ class TestNingunaPaginaDeNingunEquipo(unittest.TestCase):
         # El campo «Especificación» de la página CPU es, a propósito, la
         # cadena que da el procesador de sí mismo, como en CPU-Z. Es el único
         # sitio donde va algo sin tocar, y se dice cuál.
-        return any(texto == tipo.brand for tipo in f.cpu.types)
+        # And the kernel's own description of each vulnerability, which the
+        # System page quotes on purpose: it is what one pastes in a search.
+        return (any(texto == tipo.brand for tipo in f.cpu.types)
+                or any(texto == v.status for v in f.system.vulnerabilities))
 
     def _hallazgos(self, f) -> list[str]:
         encontrados = []
