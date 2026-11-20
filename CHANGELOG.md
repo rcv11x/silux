@@ -11,6 +11,30 @@ que hace falta.
 
 ---
 
+## Sin publicar
+
+### Ajustes y escritorio
+
+- Cambiado: «Integración con el escritorio» se llama ahora «Accesos
+  directos», con un interruptor para cada uno, «En el menú de aplicaciones»
+  y «En el escritorio», que se aplica al momento. Ya no hay botón «Añadir»
+  aparte, y la ruta del AppImage sale en pequeño debajo.
+- Nuevo: al poner un acceso directo desde un AppImage que no está en
+  ~/AppImages, Silux ofrece moverse allí para que el acceso no se rompa el
+  día que se vacíe Descargas: «Mover y añadir» lo mueve (sin pisar otro
+  archivo del mismo nombre) y vuelve a abrir Silux desde allí. Si no se puede
+  mover, lo copia y te dice que el de antes ya se puede borrar. Si lo dejas
+  donde está, Ajustes avisa de que el acceso dejará de funcionar si mueves o
+  borras el archivo.
+- Nuevo: si mueves el AppImage a otra carpeta, al abrirlo desde allí sus
+  accesos directos pasan a apuntar a la ruta nueva, sin preguntar. Si en la
+  ruta de antes sigue habiendo una copia, no se tocan.
+- Arreglado: un acceso directo borrado a mano, desde la terminal o desde el
+  editor de menús de KDE, sale en Ajustes como no añadido. Volver a ponerlo
+  desde Ajustes deshace también el borrado del editor de KDE.
+- Nuevo: la entrada del menú lleva `TryExec`: si el AppImage ya no existe,
+  el menú deja de enseñarla la próxima vez que se pone al día.
+
 ## 0.4-prueba1 (20 de noviembre de 2026)
 
 Versión de prueba de la 0.4: lo que sigue es lo que traerá, para probarlo antes.
