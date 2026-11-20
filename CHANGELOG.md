@@ -70,6 +70,11 @@ que hace falta.
   archivos. Un portátil decía «Ocupado 40.6 GB» de unos 17. Ahora va en
   «Reservado», como lo cuenta `df`.
 
+### Sensores
+
+- Arreglado: una NVIDIA con el driver propietario no tenía temperatura,
+  consumo ni relojes en Sensores, aunque sí en Gráficos.
+
 ### Ajustes y escritorio
 
 - Nuevo: «Gracias a» en Ajustes → Acerca de y en el README, con quien manda

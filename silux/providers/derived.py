@@ -125,6 +125,22 @@ class DerivedSensors(Provider):
                 ("fan_pct", _("sensor.fan"), SensorKind.USAGE,
                  gpu.get("fan_percent"), 3),
             ]
+            if gpu.get("driver") == "nvidia":
+                # The proprietary driver has no hwmon: its temperature, power
+                # and clocks come from NVML into the model and nowhere else. A
+                # tester's RTX 4060 had them on its page and not here.
+                campos += [
+                    ("temp", _("sensor.gpucore"), SensorKind.TEMPERATURE,
+                     gpu.get("temp_c"), 5),
+                    ("power", _("sensor.power"), SensorKind.POWER, gpu.get("power_w"), 6),
+                ]
+                if relojes is not None:
+                    campos += [
+                        ("clk_core", _("sensor.gpucore"), SensorKind.CLOCK,
+                         _mhz(relojes.core_hz), 30),
+                        ("clk_mem", _("sensor.mem"), SensorKind.CLOCK,
+                         _mhz(relojes.memory_hz), 33),
+                    ]
             if relojes is not None:
                 campos += [
                     ("clk_soc", "SoC", SensorKind.CLOCK, _mhz(relojes.soc_hz), 32),

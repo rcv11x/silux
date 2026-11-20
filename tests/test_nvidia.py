@@ -178,5 +178,26 @@ class TestSesion(unittest.TestCase):
         self.assertEqual(nvml.Nvml().devices(), [])
 
 
+class TestAProprietaryNvidiaInSensors(unittest.TestCase):
+    """Its driver has no hwmon: temperature and clocks come from NVML, and
+    the sensor tree had none of them (anianin27's RTX 4060)."""
+
+    def test_its_temperature_and_clocks_are_there(self):
+        import pathlib
+        from silux.model import SensorKind
+        from tests.test_equipos import EQUIPOS, foto
+        f = foto(EQUIPOS / "i7-10700f")[0]
+        nvidia_ = {(s.kind, s.label): s.value for s in f.sensors if s.device == "GeForce RTX 4060"}
+        self.assertEqual(nvidia_[(SensorKind.TEMPERATURE, "Núcleo")], 33.0)
+        self.assertEqual(nvidia_[(SensorKind.CLOCK, "Núcleo")], 2505.0)
+
+    def test_an_amd_card_does_not_get_them_twice(self):
+        # Its hwmon already gives them.
+        from tests.test_equipos import EQUIPOS, foto
+        f = foto(EQUIPOS / "5800x3d")[0]
+        self.assertFalse([s.key for s in f.sensors if s.chip == "drm" and
+                          s.key.split("/")[-1] in ("temp", "power", "clk_core", "clk_mem")])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -59,10 +59,6 @@ necesita.
   - NVIDIA · media · el consumo de la RTX 4060 salía «— (de 115 W)»: NVML dio
     el tope y no el consumo, con el driver 595. En el portátil (550) sí sale.
     Con el volcado, `nvidia-smi -q -d POWER` al lado.
-  - NVIDIA · media · en Sensores la NVIDIA no tiene temperatura, consumo ni
-    relojes: `derived._graphics` solo añade uso, ventilador y memoria, y lo
-    demás lo da hwmon en AMD e Intel. El arreglo es corto; el test pide NVML
-    grabada en un volcado.
   - Discos · baja · con el ayudante · el modelo entero por el IDENTIFY de
     `ata_device` (para buscar la unidad en drivedb) está probado aquí con dos
     Seagate y un Crucial; con el A400 de verdad, falta verlo.
