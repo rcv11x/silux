@@ -19,7 +19,6 @@ que hace falta.
   datos del chip SPD del módulo de la ranura (fabricante de los chips, fecha,
   temporizaciones) salían pegados a la memoria soldada, que no tiene ese
   chip.
-
 - Arreglado (se rompió en la prueba2): unos DDR4-3200 con un XMP que esta
   versión no sabe leer salían «Catalogado a 2400» y perdían el aviso de que
   van al máximo del procesador. La velocidad del perfil se lee bien y vuelve a
@@ -35,6 +34,13 @@ que hace falta.
   podido abrir.
   Y si el ayudante se cierra, vuelve a pedir permisos en vez de seguir
   diciendo que el uso se lee.
+
+### Almacenamiento
+
+- Arreglado (a medias en la prueba2): lo que ext4 guarda para root (el 5 %)
+  contaba como ocupado, y «Reservado» eran solo las tablas del sistema de
+  archivos. Un portátil decía «Ocupado 40.6 GB» de unos 17. Ahora va en
+  «Reservado», como lo cuenta `df`.
 
 ### Procesador
 

@@ -478,20 +478,20 @@ def _particiones(base: pathlib.Path, disco: str,
 
 
 def _ocupacion(punto: str) -> tuple[Optional[int], Optional[int]]:
-    """Cuánto ocupa un sistema de archivos montado.
+    """Cuánto ocupa un sistema de archivos montado, y cuánto tiene libre.
 
-    Se descuenta lo reservado para el administrador, que en ext4 son el 5 % del
-    disco: contarlo como libre haría que la suma no cuadrara con lo que enseña
-    cualquier otra herramienta.
+    Ocupado es lo que no está libre para nadie (f_blocks − f_bfree) y libre lo
+    que puede usar cualquiera (f_bavail), como los cuenta `df`. Lo que ext4
+    guarda para root (el 5 % por defecto) no es ninguna de las dos cosas: queda
+    fuera, con las tablas, y `render.space` lo llama «Reservado». Contado como
+    ocupado, un portátil decía «Ocupado 40.6 GB» de unos 17.
     """
     def medir() -> tuple[Optional[int], Optional[int]]:
         try:
             st = os.statvfs(punto)
         except OSError:
             return None, None
-        total = st.f_blocks * st.f_frsize
-        libre = st.f_bavail * st.f_frsize
-        return total - libre, libre
+        return (st.f_blocks - st.f_bfree) * st.f_frsize, st.f_bavail * st.f_frsize
 
     # Con un equipo volcado, lo grabado: el punto de montaje es de otra máquina.
     return sysroot.a_traves("statvfs", punto, medir) or (None, None)

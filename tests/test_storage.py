@@ -5,6 +5,7 @@ delante: un NVMe, un SSD SATA, un disco mecánico, uno externo y uno sin
 particionar. La máquina donde corren los tests no tiene por qué llevar ninguno.
 """
 
+import os
 import pathlib
 import tempfile
 import unittest
@@ -300,6 +301,34 @@ class TestDosDiscosIguales(unittest.TestCase):
     def test_y_sigue_eligiendo_el_mas_caliente(self):
         pagina = self._pagina_con([35.0, 51.0, 44.0])
         self.assertIn("51", pagina.tile_temp.value.text())
+
+
+class TestRootsReserveIsReserved(unittest.TestCase):
+    """ext4 keeps 5 % of itself for root by default, and that is neither
+    used nor anybody's free space. Counted as used (f_blocks − f_bavail), a
+    tester's laptop read «Ocupado 40.6 GB · Reservado 8.5 GB»: the reserved
+    was only the tables, and the 23 GB for root were inside the used."""
+
+    def test_any_ext4_with_its_default_reserve(self):
+        # That laptop's root, 476.4 GB, as statvfs gives it: 4 KiB blocks,
+        # 8.5 GB of tables outside f_blocks, 427.3 GB available, 5 % for root.
+        bloque = 4096
+        f_blocks = int((476.4 - 8.5) * 1e9) // bloque
+        f_bavail = int(427.3e9) // bloque
+        f_bfree = f_bavail + f_blocks * 5 // 100
+        st = os.statvfs_result((bloque, bloque, f_blocks, f_bfree, f_bavail,
+                                0, 0, 0, 0, 255))
+        with mock.patch.object(storage.os, "statvfs", return_value=st):
+            usados, libres = storage._ocupacion("/")
+        particion = Partition(name="nvme0n1p2", mountpoint="/", filesystem="ext4",
+                              size_bytes=int(476.4e9), used_bytes=usados, free_bytes=libres)
+        disco = Disk(name="nvme0n1", kind="NVMe", size_bytes=int(476.4e9),
+                     partitions=(particion,))
+        usado, libre, reservado, sin_montar = render.space((disco,))
+        self.assertAlmostEqual(libre / 1e9, 427.3, delta=0.1)
+        self.assertAlmostEqual(reservado / 1e9, 8.5 + (476.4 - 8.5) * 0.05, delta=0.1)
+        self.assertAlmostEqual(usado / 1e9, 476.4 - 427.3 - reservado / 1e9, delta=0.1)
+        self.assertEqual(sin_montar, 0)
 
 
 class TestEspacioLibre(unittest.TestCase):
