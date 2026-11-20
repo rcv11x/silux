@@ -60,7 +60,9 @@ DISK_NAME = re.compile(r"^(nvme\d+n\d+|nvme\d+|sd[a-z]{1,2}|hd[a-z])$")
 # Las zonas de powercap que se dejan leer. El nombre lo pone el kernel y no
 # tiene rutas dentro: se comprueba igualmente, porque lo que llega viene del
 # proceso sin privilegios y aquí se es root.
-RAPL_ZONE = re.compile(r"^[a-z]+-rapl:\d+$")
+# A package or psys zone (`intel-rapl:0`) and one level under it: core,
+# uncore and dram (`intel-rapl:0:0`). Not the MMIO copy of the package.
+RAPL_ZONE = re.compile(r"^[a-z]+-rapl:\d+(:\d+)?\Z")
 POWERCAP = "/sys/class/powercap"
 SMART_BYTES = 512
 

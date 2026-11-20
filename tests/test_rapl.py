@@ -11,13 +11,14 @@ daba los permisos, el ayudante arrancaba… y nadie leía RAPL, así que la nota
 se iba nunca y el botón no tenía nada que hacer.
 """
 
+import json
 import pathlib
 import tempfile
 import unittest
 from unittest import mock
 
 from silux.model import Need
-from silux.privileged.client import HelperError
+from silux.privileged.client import HelperError, PrivilegedClient
 from silux.providers import rapl
 from silux.providers.base import Draft
 
@@ -124,12 +125,87 @@ class TestLoQueLeeElAyudante(unittest.TestCase):
     def test_solo_se_admiten_nombres_de_zona(self):
         from silux.privileged import helper
 
-        for bueno in ("intel-rapl:0", "amd-rapl:1"):
+        for bueno in ("intel-rapl:0", "amd-rapl:1", "intel-rapl:0:0", "intel-rapl:0:2"):
             self.assertRegex(bueno, helper.RAPL_ZONE)
-        for malo in ("../../etc/shadow", "intel-rapl:0:0", "rapl", ""):
+        for malo in ("../../etc/shadow", "rapl", "", "intel-rapl:0:0:0", "intel-rapl-mmio:0",
+                     "intel-rapl:0\n", "intel-rapl:0/energy_uj"):
             self.assertNotRegex(malo, helper.RAPL_ZONE)
 
     def test_la_accion_está_declarada_en_el_protocolo(self):
         from silux.privileged import protocol
 
         self.assertIn(protocol.ACTION_RAPL, protocol.ACTIONS)
+
+
+class _InProcessClient(PrivilegedClient):
+    """The real client talking to the real helper, in this process: what
+    `handle` answers, through JSON as the pipe carries it."""
+
+    def connected(self) -> bool:
+        return True
+
+    def request(self, payload, timeout=None):
+        from silux.privileged import helper
+        return json.loads(json.dumps(helper.handle(json.loads(json.dumps(payload)))))
+
+
+class TestAnIntelsSubzonesThroughTheHelper(unittest.TestCase):
+    """The author's T14 with permissions: «Consumo 3 W» and nothing else. The
+    helper took one level of zones, and its test listed `intel-rapl:0:0` as a
+    bad name; the provider's test used a fake that gave the sub-zone anyway.
+
+    Two trees, because the user running the tests can read what the kernel
+    keeps for root: the helper's, flat as /sys/class/powercap lists every
+    zone, with `energy_uj`; the provider's, nested as the kernel has them,
+    without it.
+    """
+
+    ZONES = {"intel-rapl:0": "package-0", "intel-rapl:0:0": "core",
+             "intel-rapl:0:1": "uncore", "intel-rapl:1": "psys",
+             "intel-rapl-mmio:0": "package-0"}
+
+    def setUp(self):
+        from silux.privileged import helper
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.del_ayudante = pathlib.Path(tmp.name) / "helper"
+        self.del_proveedor = pathlib.Path(tmp.name) / "provider"
+        for zone, name in self.ZONES.items():
+            (self.del_ayudante / zone).mkdir(parents=True)
+            (self.del_ayudante / zone / "name").write_text(name + "\n")
+            padre = zone.rsplit(":", 1)[0] if zone.count(":") == 2 else None
+            sitio = (self.del_proveedor / padre / zone) if padre else self.del_proveedor / zone
+            sitio.mkdir(parents=True, exist_ok=True)
+            (sitio / "name").write_text(name + "\n")
+        for parche in (mock.patch.object(helper, "POWERCAP", str(self.del_ayudante)),
+                       mock.patch.object(rapl, "POWERCAP", self.del_proveedor)):
+            parche.start()
+            self.addCleanup(parche.stop)
+
+    def _energia(self, **julios):
+        for zone, value in julios.items():
+            (self.del_ayudante / zone / "energy_uj").write_text(f"{int(value * 1e6)}\n")
+
+    def test_the_helper_gives_core_and_uncore(self):
+        from silux.privileged import helper
+        self._energia(**{"intel-rapl:0": 1, "intel-rapl:0:0": 1, "intel-rapl:0:1": 1,
+                         "intel-rapl:1": 1, "intel-rapl-mmio:0": 1})
+        zonas = helper.read_rapl()["zones"]
+        self.assertEqual(set(zonas), {"intel-rapl:0", "intel-rapl:0:0", "intel-rapl:0:1",
+                                      "intel-rapl:1"})
+
+    def test_and_the_page_gets_their_watts(self):
+        proveedor = rapl.RaplPower(client=_InProcessClient())
+        draft = Draft()
+        self._energia(**{"intel-rapl:0": 10, "intel-rapl:0:0": 5, "intel-rapl:0:1": 1,
+                         "intel-rapl:1": 20})
+        with mock.patch.object(rapl.time, "monotonic", return_value=100.0):
+            proveedor.collect(draft)
+        self._energia(**{"intel-rapl:0": 12, "intel-rapl:0:0": 6, "intel-rapl:0:1": 1.25,
+                         "intel-rapl:1": 23})
+        with mock.patch.object(rapl.time, "monotonic", return_value=101.0):
+            proveedor.collect(draft)
+        potencia = draft.cpu_extra["power"]
+        self.assertAlmostEqual(potencia.package_w, 2.0)
+        self.assertAlmostEqual(potencia.core_w, 1.0)
+        self.assertAlmostEqual(potencia.uncore_w, 0.25)

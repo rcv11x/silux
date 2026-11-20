@@ -53,6 +53,9 @@ que hace falta.
   del kernel»: puede ser la BIOS (Cool'n'Quiet desactivado) o que el driver
   no haya cargado, y dice eso.
 - Arreglado: «Turbo: —» en un procesador sin turbo. Dice que no tiene.
+- Arreglado: con permisos, en un Intel cuyo kernel guarda el consumo para
+  root, solo llegaba el del paquete. Llegan también el de los núcleos, el del
+  uncore y el de la memoria.
 
 ---
 
