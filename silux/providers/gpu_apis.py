@@ -34,6 +34,7 @@ _COLA_DEL_DRIVER = re.compile(r"\s*\((?:RADV|LLVM|ACO|radeonsi|llvmpipe)[^)]*\)\
                               re.IGNORECASE)
 # «4.6 (Compatibility Profile) Mesa 26.2.1-arch3.1» → 26.2.1-arch3.1
 _VERSION_DE_MESA = re.compile(r"Mesa\s+([\w.\-]+)")
+_VERSION_DE_NVIDIA = re.compile(r"NVIDIA\s+(\d+\.\d+(?:\.\d+)?)")
 
 
 class GpuApis(Provider):
@@ -278,7 +279,9 @@ def _solo_version(texto: str) -> Optional[str]:
 
 
 def _mesa(texto: str) -> Optional[str]:
-    encaje = _VERSION_DE_MESA.search(texto)
+    """The driver version in OpenGL's: Mesa's, or NVIDIA's («4.6.0 NVIDIA
+    595.104.02»)."""
+    encaje = _VERSION_DE_MESA.search(texto) or _VERSION_DE_NVIDIA.search(texto)
     return encaje.group(1) if encaje else None
 
 
@@ -299,7 +302,8 @@ def _version_del_driver(dispositivo: dict) -> Optional[str]:
     if not crudo:
         return None
     if dispositivo.get("vendor_id") == 0x10DE:
-        return f"{(crudo >> 22) & 0x3FF}.{(crudo >> 14) & 0xFF}.{(crudo >> 6) & 0xFF}"
+        # Two digits in the last part, as NVIDIA writes it: 595.104.02.
+        return f"{(crudo >> 22) & 0x3FF}.{(crudo >> 14) & 0xFF}.{(crudo >> 6) & 0xFF:02d}"
     return f"{(crudo >> 22) & 0x7F}.{(crudo >> 12) & 0x3FF}.{crudo & 0xFFF}"
 
 

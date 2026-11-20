@@ -97,7 +97,18 @@ class TestVersiones(unittest.TestCase):
         nvidia = dict(VULKAN_AMD, vendor_id=0x10DE, device_id=0x2684,
                       driver_version=(580 << 22) | (65 << 14) | (6 << 6))
         draft = _recolectar([{"vendor_id": 0x10DE, "device_id": 0x2684}], vulkan=[nvidia])
-        self.assertEqual(draft.gpus[0]["apis"][0].driver, "580.65.6")
+        # Its last part has two digits: the driver is 580.65.06. A tester's
+        # report read «595.104.2» where nvidia-smi says 595.104.02.
+        self.assertEqual(draft.gpus[0]["apis"][0].driver, "580.65.06")
+
+    def test_opengl_says_nvidias_too(self):
+        # «4.6.0 NVIDIA 595.104.02»: the driver column read «—».
+        opengl = {"version": "4.6.0 NVIDIA 595.104.02", "glsl": "4.60 NVIDIA",
+                  "renderer": "NVIDIA GeForce RTX 4060/PCIe/SSE2",
+                  "vendor": "NVIDIA Corporation"}
+        draft = _recolectar([{"vendor_id": 0x10DE, "device_id": 0x2882, "vendor": "NVIDIA"}],
+                            opengl=opengl)
+        self.assertEqual(draft.gpus[0]["apis"][0].driver, "595.104.02")
 
     def test_las_versiones_se_quedan_en_el_numero(self):
         draft = _recolectar([{"vendor_id": 0x1002, "device_id": 0x7550, "primary": True}],
