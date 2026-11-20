@@ -475,6 +475,7 @@
   "engine.video": "video",
   "engine.videoenhance": "mejora de video",
   "gpu.api.detail": "Detalle",
+  "gpu.api.software": "por software, en el procesador",
   "gpu.api.version": "Versión",
   "gpu.apis.none": "Sin bibliotecas gráficas",
   "gpu.asleep": "En reposo: no se le pregunta nada para no despertarla.",

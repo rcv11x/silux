@@ -81,6 +81,7 @@ class GpuApis(Provider):
         for indice, gpu in enumerate(draft.gpus):
             gpu["codecs"] = _codecs_de(gpu, vaapi)
             apis: list[GpuApi] = []
+            sin_driver_de_la_tarjeta: set[int] = set()
 
             if dispositivo := _vulkan_de(gpu, vulkan):
                 apis.append(GpuApi(
@@ -102,13 +103,21 @@ class GpuApis(Provider):
             if opengl and opengl.get("version") and _es_de(
                     f"{opengl.get('renderer') or ''} {opengl.get('vendor') or ''}",
                     gpu, draft.gpus, principal, indice):
+                # llvmpipe is the processor drawing: a tester's VM showed
+                # Mesa's version as that of bochs-drm, its emulated VGA.
+                por_software = _fabricante_de(opengl.get("renderer") or "") == "software"
+                extra = " · ".join(p for p in (
+                    f"GLSL {opengl['glsl']}" if opengl.get("glsl") else None,
+                    _("gpu.api.software") if por_software else None) if p)
                 apis.append(GpuApi(
                     name="OpenGL",
                     version=_solo_version(opengl["version"]),
                     device=opengl.get("renderer"),
                     driver=_mesa(opengl["version"]),
-                    extra=f"GLSL {opengl['glsl']}" if opengl.get("glsl") else None,
+                    extra=extra or None,
                 ))
+                if por_software:
+                    sin_driver_de_la_tarjeta.add(len(apis) - 1)
             for dispositivo in opencl:
                 if not _es_de(f"{dispositivo.get('name') or ''} "
                               f"{dispositivo.get('vendor') or ''}",
@@ -139,7 +148,8 @@ class GpuApis(Provider):
             if apis:
                 gpu["apis"] = tuple(apis)
                 gpu["driver_version"] = gpu.get("driver_version") or next(
-                    (a.driver for a in apis if a.driver), None
+                    (a.driver for i, a in enumerate(apis)
+                     if a.driver and i not in sin_driver_de_la_tarjeta), None
                 )
 
 

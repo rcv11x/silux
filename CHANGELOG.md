@@ -77,6 +77,17 @@ informes que mandó la gente.
 - Arreglado: el monitor virtual de QEMU se llamaba «Red Hat, Inc. QEMU
   Monitor»: un fabricante que no está en la lista también pierde la forma
   jurídica.
+- Arreglado: la dedicada de un portátil, dormida, decía «Falta un driver» y
+  salía «en el procesador» en la tabla PCI. Dice que está en reposo.
+- Arreglado: la ficha de una NVIDIA tenía una veintena de rayas. Lo que NVML
+  no publica en una GeForce, o lo que una NVIDIA no tiene, se esconde y se
+  dice al pie.
+- Arreglado: una RTX 4060 de 8 GB salía con 8.2 GB: Vulkan suma la ventana
+  de la BAR a la memoria, y manda la cifra de NVML.
+- Arreglado: la versión del driver de NVIDIA perdía un cero («595.104.2» en
+  vez de 595.104.02), y la fila de OpenGL no la decía.
+- Arreglado: el OpenGL por software (llvmpipe) daba su versión de Mesa como
+  la del driver de la tarjeta; ahora dice que dibuja el procesador.
 
 ---
 

@@ -101,6 +101,17 @@ class TestVersiones(unittest.TestCase):
         # report read «595.104.2» where nvidia-smi says 595.104.02.
         self.assertEqual(draft.gpus[0]["apis"][0].driver, "580.65.06")
 
+    def test_llvmpipe_is_not_the_cards_driver(self):
+        # A tester's QEMU guest: Mesa's llvmpipe answered OpenGL, and its
+        # version became that of bochs-drm, the emulated VGA's driver.
+        opengl = {"version": "4.5 (Compatibility Profile) Mesa 25.0.7-2", "glsl": "4.50",
+                  "renderer": "llvmpipe (LLVM 19.1.7, 256 bits)", "vendor": "Mesa"}
+        draft = _recolectar([{"vendor_id": 0x1234, "device_id": 0x1111, "vendor": "QEMU",
+                              "driver": "bochs-drm", "primary": True}], opengl=opengl)
+        gpu = draft.gpus[0]
+        self.assertIsNone(gpu.get("driver_version"))
+        self.assertIn("por software", gpu["apis"][0].extra)
+
     def test_opengl_says_nvidias_too(self):
         # «4.6.0 NVIDIA 595.104.02»: the driver column read «—».
         opengl = {"version": "4.6.0 NVIDIA 595.104.02", "glsl": "4.60 NVIDIA",
