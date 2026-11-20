@@ -110,7 +110,9 @@ class TestLaResidencia(unittest.TestCase):
                    IdleState("C2_ACPI", "ACPI FFH MWAIT 0x33", 94.0, 66.0, 100.0))
         self.assertEqual([n for n, _v, _t in render.idle_segments(estados)],
                          [_("cpu.idle.active"), "C1", "C2"])
-        self.assertTrue(render.idle_deepest(estados).startswith("C2 es el reposo"))
+        # And they are said to be the board's, not this processor's.
+        self.assertEqual(render.idle_deepest(estados),
+                         _("cpu.idle.deepest.acpi").format(nombre="C2", bajo="66", alto="100"))
         # Lo que no es esa etiqueta se queda como está.
         self.assertEqual(render.idle_name("C1E"), "C1E")
         self.assertEqual(render.idle_name("C6"), "C6")

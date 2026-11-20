@@ -337,8 +337,14 @@ def idle_deepest(estados) -> Optional[str]:
     if not estados:
         return None
     hondo = estados[-1]
-    return _("cpu.idle.deepest").format(nombre=idle_name(hondo.name), bajo=f"{hondo.low:.0f}",
-                                        alto=f"{hondo.high:.0f}")
+    # «C2_ACPI»: intel_idle took the states from the firmware's _CST table
+    # (intel_idle_init_cstates_acpi), and the number is ACPI's level, not the
+    # processor's C-state. «C2 is this processor's deepest», on a Comet
+    # Lake that goes far deeper, was not true.
+    frase = (_("cpu.idle.deepest.acpi") if hondo.name.endswith("_ACPI")
+             else _("cpu.idle.deepest"))
+    return frase.format(nombre=idle_name(hondo.name), bajo=f"{hondo.low:.0f}",
+                        alto=f"{hondo.high:.0f}")
 
 
 def power_breakdown(power: Power) -> str:

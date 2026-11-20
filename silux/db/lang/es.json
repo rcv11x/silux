@@ -401,6 +401,7 @@
   "cpu.flags.rest": " · {n} no destacadas",
   "cpu.idle.active": "Activo",
   "cpu.idle.deepest": "{nombre} es el reposo más hondo de este procesador: entre el {bajo} % y el {alto} % del tiempo, según el hilo.",
+  "cpu.idle.deepest.acpi": "{nombre} es el más hondo de los estados de reposo que declara la placa en su tabla ACPI, que son los que usa Linux aquí: su número es el de ACPI, no el del procesador. Entre el {bajo} % y el {alto} % del tiempo, según el hilo.",
   "cpu.idle.title": "En el último intervalo, de media entre todos los hilos",
   "cpu.limit.amd": "Los límites de potencia de AMD (PPT, TDC y EDC) no los publica el kernel.",
   "cpu.limit.pl1": "Límite sostenido (PL1)",

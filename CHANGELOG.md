@@ -15,6 +15,9 @@ que hace falta.
 
 ### Procesador
 
+- Arreglado: con los estados de reposo de la tabla ACPI de la placa (un
+  Comet Lake, un Tiger Lake), «C2 es el reposo más hondo de este procesador»
+  no era cierto: dice que son los de la placa, con su número de ACPI.
 - Arreglado: un procesador sin driver de frecuencia (cpufreq) salía con
   «Frecuencia: —» en todas partes. Ahora la da `/proc/cpuinfo` y, con
   permisos, en los Ryzen y Athlon (Zen), el propio procesador: su P-state,

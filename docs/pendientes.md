@@ -63,9 +63,6 @@ necesita.
     relojes: `derived._graphics` solo añade uso, ventilador y memoria, y lo
     demás lo da hwmon en AMD e Intel. El arreglo es corto; el test pide NVML
     grabada en un volcado.
-  - C-states · baja · «C2 es el reposo más hondo de este procesador» en un
-    i7-10700F, que llega a C10: es lo que ofrece su driver de reposo
-    (probablemente `acpi_idle`). `cpuidle` no mira el driver.
   - Discos · baja · con el ayudante · el modelo entero por el IDENTIFY de
     `ata_device` (para buscar la unidad en drivedb) está probado aquí con dos
     Seagate y un Crucial; con el A400 de verdad, falta verlo.

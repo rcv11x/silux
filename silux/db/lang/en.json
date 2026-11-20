@@ -401,6 +401,7 @@
   "cpu.flags.rest": " · {n} not highlighted",
   "cpu.idle.active": "Active",
   "cpu.idle.deepest": "{nombre} is this processor's deepest idle state: between {bajo} % and {alto} % of the time, depending on the thread.",
+  "cpu.idle.deepest.acpi": "{nombre} is the deepest of the idle states the board declares in its ACPI table, which are the ones Linux uses here: its number is ACPI's, not the processor's. Between {bajo} % and {alto} % of the time, depending on the thread.",
   "cpu.idle.title": "Over the last interval, averaged across all threads",
   "cpu.limit.amd": "AMD's power limits (PPT, TDC and EDC) are not published by the kernel.",
   "cpu.limit.pl1": "Sustained limit (PL1)",
