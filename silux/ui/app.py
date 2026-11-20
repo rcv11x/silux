@@ -512,6 +512,8 @@ class MainWindow(QMainWindow):
             self._instalacion = None
         self.monitor_page.cancelar_ordenes()
         self.settings_page.wait_for_tasks()
+        if self._report_preview is not None:
+            self._report_preview.cancel_annex()
         # El registro se cierra a mano: lo escrito ya está en el disco, pero
         # dejar el descriptor abierto al salir deja la última fila a medias.
         self.monitor_page.cerrar_registro()
@@ -639,6 +641,7 @@ class MainWindow(QMainWindow):
             self._report_preview.permissions_requested.connect(self._on_elevation_requested)
         self._report_missing = None
         self._refresh_report_preview(self._last_snapshot)
+        self._report_preview.start_annex()
         self._report_preview.show()
         self._report_preview.raise_()
 

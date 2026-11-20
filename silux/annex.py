@@ -261,27 +261,66 @@ def size_of(block: str) -> tuple[int, int]:
 
 # -- this machine ------------------------------------------------------------------
 
-def of_this_machine() -> tuple[Optional[str], Optional[str]]:
-    """This machine's annex block, made in another process, or why not.
+# This machine's annex is made in another process: the dump learns what the
+# Collector reads by patching `open` for the whole process, and the window's
+# sampler keeps reading meanwhile.
 
-    In another process because the dump learns what the Collector reads by
-    patching `open` for the whole process, and the window's sampler keeps
-    reading meanwhile.
-    """
+def command() -> list[str]:
+    return [sys.executable, "-m", "silux.annex"]
+
+
+def child_environment() -> dict[str, str]:
+    """Silux's own Python, finding the package wherever it runs from."""
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     env = dict(os.environ)
     env["PYTHONPATH"] = os.pathsep.join([root] + ([env["PYTHONPATH"]] if env.get("PYTHONPATH") else []))
+    return env
+
+
+def outcome(returncode: Optional[int], stdout: str, stderr: str) -> tuple[Optional[str], Optional[str]]:
+    """The block the child wrote, or why there is none."""
+    if returncode == 0 and stdout.startswith(MARK + " "):
+        return stdout, None
+    reason = stderr.strip().splitlines()
+    return None, reason[-1] if reason else f"exit code {returncode}"
+
+
+def of_this_machine() -> tuple[Optional[str], Optional[str]]:
+    """This machine's annex block, or why not."""
     try:
-        done = subprocess.run([sys.executable, "-m", "silux.annex"], capture_output=True,
-                              text=True, timeout=TIMEOUT_S, env=env, check=False)
+        done = subprocess.run(command(), capture_output=True, text=True, timeout=TIMEOUT_S,
+                              env=child_environment(), check=False)
     except subprocess.TimeoutExpired:
         return None, f"took more than {TIMEOUT_S} s"
     except OSError as error:
         return None, str(error)
-    if done.returncode != 0 or not done.stdout.startswith(MARK + " "):
-        reason = done.stderr.strip().splitlines()
-        return None, reason[-1] if reason else f"exit code {done.returncode}"
-    return done.stdout, None
+    return outcome(done.returncode, done.stdout, done.stderr)
+
+
+def summary_of(block: str) -> str:
+    """«1660 archivos, 153.4 KB»."""
+    from . import render
+    from .i18n import _
+
+    files, size = size_of(block)
+    return _("report.annex.summary").format(files=files, size=render.size(size))
+
+
+def section(block: Optional[str], reason: Optional[str], preview: bool = False) -> str:
+    """The report's last section. The preview says what the file will carry
+    without the block itself: two hundred kilobytes nobody reads there."""
+    from .i18n import _
+
+    head = "\n## " + _("report.annex.title") + "\n\n"
+    if block is None and reason is None:
+        return head + _("report.annex.preparing") + "\n"
+    if block is None:
+        return head + _("report.annex.failed").format(reason=reason) + "\n"
+    summary = summary_of(block)
+    if preview:
+        return head + _("report.annex.intro") + "\n\n" + summary + ". " + _("report.annex.onsave") + ".\n"
+    return (head + _("report.annex.intro") + "\n\n<details>\n<summary>" + summary
+            + "</summary>\n\n" + FENCE + "text\n" + block + FENCE + "\n\n</details>\n")
 
 
 def main() -> int:

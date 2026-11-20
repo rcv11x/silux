@@ -1,6 +1,10 @@
 """La línea de órdenes: su ayuda y sus alias."""
 
+import pathlib
+import tempfile
 import unittest
+
+from silux.i18n import _
 
 
 class TestLaAyuda(unittest.TestCase):
@@ -216,3 +220,24 @@ class TestReportArguments(unittest.TestCase):
                                        "--sections", "cpu,Placa base")
         self.assertEqual(code, 0)
         self.assertIn("## CPU", out)
+        # A chosen part of the report is not for reproducing the machine.
+        self.assertNotIn("silux-annex", out)
+
+    def test_the_full_report_ends_with_this_machines_raw_data(self):
+        from silux import annex
+        from silux.collector import Collector
+        code, out, _err = self.run_cli("--report", "-", "--without-permissions")
+        self.assertEqual(code, 0)
+        last = out.rsplit("\n## ", 1)[-1]
+        self.assertTrue(last.startswith(_("report.annex.title")), last[:80])
+        with tempfile.TemporaryDirectory() as tmp:
+            annex.to_folder(annex.find(out), pathlib.Path(tmp) / "back")
+            from silux import volcado
+            photo = volcado.foto_de(pathlib.Path(tmp) / "back")
+        self.assertEqual([t.brand for t in photo.cpu.types],
+                         [t.brand for t in Collector().snapshot().cpu.types])
+
+    def test_the_short_one_does_not(self):
+        code, out, _err = self.run_cli("--report", "-", "--short", "--without-permissions")
+        self.assertEqual(code, 0)
+        self.assertNotIn("silux-annex", out)

@@ -35,7 +35,7 @@ LANG = RAIZ / "silux" / "db" / "lang"
 # falta un dato la escribió el autor y se lee en pantalla. Como aquí solo se
 # extrae lo que ya está envuelto en `_()`, los datos no corren peligro.
 FUENTES = ("silux/ui", "silux/render.py", "silux/cli.py", "silux/report.py",
-           "silux/providers", "silux/collector.py", "silux/spd.py")
+           "silux/providers", "silux/collector.py", "silux/spd.py", "silux/annex.py")
 
 
 # Tablas de opciones cuyo texto se traduce al montar el desplegable, con

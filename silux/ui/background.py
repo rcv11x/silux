@@ -38,9 +38,13 @@ class BackgroundCommand(QThread):
     done = Signal(object)
 
     def __init__(self, argv: Sequence[str], stdin: Optional[str] = None,
-                 timeout: float = 180.0, parent=None) -> None:
+                 timeout: float = 180.0, parent=None,
+                 env: Optional[dict[str, str]] = None) -> None:
         super().__init__(parent)
         self._argv = list(argv)
+        # The system's, unless it is Silux's own Python (`annex`), which
+        # needs the AppImage's.
+        self._env = env
         self._stdin = stdin
         self._timeout = timeout
         self._proceso: Optional[subprocess.Popen] = None
@@ -50,7 +54,8 @@ class BackgroundCommand(QThread):
         try:
             self._proceso = subprocess.Popen(
                 self._argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE, text=True, env=system_environment())
+                stderr=subprocess.PIPE, text=True,
+                env=self._env if self._env is not None else system_environment())
         except OSError as error:
             self.done.emit(CommandResult(error=str(error)))
             return

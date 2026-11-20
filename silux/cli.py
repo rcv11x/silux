@@ -432,6 +432,12 @@ def main(argv: Optional[list[str]] = None) -> int:
             from .ui import full_report
             texto = full_report.build(snapshot, sections=_lista(args.sections),
                                       anonymous=not args.with_identifiers)
+            if not args.sections:
+                # What it read to show all that, to reproduce it in the
+                # tests; a chosen part of the report is not for that.
+                from . import annex
+                bloque, motivo = annex.of_this_machine()
+                texto = texto.rstrip("\n") + "\n" + annex.section(bloque, motivo)
         else:
             texto = report.build(snapshot, anonymous=not args.with_identifiers)
         if args.report == "-":

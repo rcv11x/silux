@@ -52,7 +52,17 @@ class TestReportPreview(unittest.TestCase):
         self.app.processEvents()
         dialog = self.window._report_preview
         self.addCleanup(dialog.close)
+        # Before the window goes: a QThread destroyed while it runs aborts.
+        self.addCleanup(dialog.cancel_annex)
         return dialog
+
+    def wait_for_the_annex(self, dialog):
+        import time
+        deadline = time.monotonic() + 90
+        while dialog.annex_pending() and time.monotonic() < deadline:
+            self.app.processEvents()
+            time.sleep(0.02)
+        self.assertFalse(dialog.annex_pending())
 
     def test_it_is_the_full_report(self):
         dialog = self.open_preview()
@@ -154,12 +164,66 @@ class TestReportPreview(unittest.TestCase):
 
     def test_it_saves_what_it_shows(self):
         dialog = self.open_preview()
+        self.wait_for_the_annex(dialog)
         target = self.tmp / "informe.md"
         with mock.patch("PySide6.QtWidgets.QFileDialog.getSaveFileName",
                         return_value=(str(target), "")), \
              mock.patch("PySide6.QtWidgets.QMessageBox.information"):
             dialog.save_button.click()
         self.assertEqual(target.read_text(encoding="utf-8"), dialog.report())
+
+
+    # -- the annex: this machine's raw data at the end of the file ----------------
+
+    def test_while_it_is_made_the_preview_says_so_and_saving_waits(self):
+        dialog = self.open_preview()
+        self.assertTrue(dialog.annex_pending())
+        self.assertFalse(dialog.save_button.isEnabled())
+        self.assertIn(_("report.annex.preparing"), dialog.text.toPlainText())
+        # Also beside the button, wherever the reader is scrolled to.
+        self.assertEqual(dialog.annex_status.text(), _("report.annex.preparing"))
+        self.assertTrue(dialog.annex_status.isVisible())
+        self.assertNotIn("silux-annex", dialog.report())
+
+    def test_once_made_the_preview_says_what_goes_and_the_file_carries_it(self):
+        from silux import annex, render
+        dialog = self.open_preview()
+        self.wait_for_the_annex(dialog)
+        self.assertTrue(dialog.save_button.isEnabled())
+        block = annex.find(dialog.report())
+        files, size = annex.size_of(block)
+        shown = dialog.text.toPlainText()
+        self.assertIn(_("report.annex.summary").format(files=files, size=render.size(size)), shown)
+        self.assertIn(_("report.annex.onsave"), shown)
+        # The preview names it; the block itself only goes in the file.
+        self.assertNotIn("silux-annex", shown)
+        self.assertEqual(dialog.annex_status.text(),
+                         _("report.annex.status").format(summary=annex.summary_of(block)))
+
+    def test_with_a_dump_mounted_it_says_why_there_is_none(self):
+        # The report would be the dump's and the annex this machine's: the
+        # dumper refuses, and the file says so instead of carrying nothing.
+        from tests.test_volcar_equipo import _herramienta
+        with _herramienta().montado(EQUIPOS / "qemu-kvm"):
+            dialog = self.open_preview()
+            self.wait_for_the_annex(dialog)
+        self.assertTrue(dialog.save_button.isEnabled())
+        self.assertIn("SILUX_SYSROOT", dialog.report().rsplit("## ", 1)[-1])
+        self.assertIn(_("report.annex.failed").split("{")[0].strip(), dialog.text.toPlainText())
+        self.assertEqual(dialog.annex_status.text(), _("report.annex.status.none"))
+
+    def test_closing_the_window_stops_it(self):
+        dialog = self.open_preview()
+        job = dialog._annex_job
+        deadline = __import__("time").monotonic() + 10
+        while job._proceso is None and __import__("time").monotonic() < deadline:
+            self.app.processEvents()
+        child = job._proceso
+        self.assertIsNotNone(child)
+        self.window.close()
+        self.assertIsNone(dialog._annex_job)
+        self.assertIsNotNone(child.poll())
+        self.assertTrue(job.isFinished())
 
 
 class TestIssueTemplate(unittest.TestCase):
