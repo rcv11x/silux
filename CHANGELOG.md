@@ -11,7 +11,10 @@ que hace falta.
 
 ---
 
-## Sin publicar
+## 0.4-prueba3 (20 de noviembre de 2026)
+
+Una prueba corta, para que el anexo del informe salga en los equipos de la
+gente: en la prueba2 no salió en ninguno de los tres primeros.
 
 ### Informe
 
