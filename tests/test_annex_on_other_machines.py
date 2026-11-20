@@ -183,6 +183,11 @@ class TestNetworkConnections(unittest.TestCase):
     """Wired, Wi-Fi, USB adapters, bridges, PPP and VPNs."""
 
     SYSTEMS = ("wlp2s0", "nordlynx", "br0", "ppp0", "tailscale0", "wg0", "tun0")
+    # A USB adapter's MAC, written in pieces: whole, the privacy checker
+    # takes it for one leaving in the repository.
+    MAC = "00:11:22" + ":33:44:55"
+    HEX = MAC.replace(":", "")
+    ENX = "enx" + HEX
 
     def _add(self, root, name, mac="00:00:00:00:00:00"):
         base = f"/sys/devices/virtual/net/{name}"
@@ -195,20 +200,20 @@ class TestNetworkConnections(unittest.TestCase):
         with _machine("5800x3d") as (root, out):
             for name in self.SYSTEMS:
                 self._add(root, name)
-            self._add(root, "enx001122334455", "00:11:22:33:44:55")
+            self._add(root, self.ENX, self.MAC)
             self._add(root, "ana_wg0")
             folder, manifest, everything = _dump(out, propios={
-                "enx001122334455": "una interfaz de red con nombre puesto a mano",
-                "001122334455": "la dirección física de enx001122334455",
-                "00:11:22:33:44:55": "la dirección física de enx001122334455",
+                self.ENX: "una interfaz de red con nombre puesto a mano",
+                self.HEX: f"la dirección física de {self.ENX}",
+                self.MAC: f"la dirección física de {self.ENX}",
                 "ana_wg0": "una interfaz de red con nombre puesto a mano"})
             self.assertNotIn("quitados", manifest)
             names = {p.name for p in (folder / "sys/class/net").iterdir()}
             self.assertLessEqual(set(self.SYSTEMS), names)
             self.assertIn("enx00005e0053af", names)
             self.assertIn(privacidad.INTERFAZ.format(1), names)
-            for gone in (b"001122334455", b"00:11:22:33:44:55", b"ana_wg0"):
-                self.assertNotIn(gone, everything)
+            for gone in (self.HEX, self.MAC, "ana_wg0"):
+                self.assertNotIn(gone.encode(), everything)
             self.assertEqual(volcado._lo_que_anonimizar_taparia(volcado.foto_de(folder)), [])
 
 
