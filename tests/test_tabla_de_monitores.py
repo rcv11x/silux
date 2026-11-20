@@ -49,6 +49,14 @@ class TestElNombreDelMonitor(unittest.TestCase):
         raro = dataclasses.replace(self.monitores[0], manufacturer="Acme Displays", model="X1")
         self.assertEqual(render.monitor_name(raro), "Acme Displays X1")
 
+    def test_an_unknown_one_without_its_legal_form(self):
+        # QEMU's virtual monitor: «RHT» in pnp.ids is «Red Hat, Inc.».
+        import dataclasses
+
+        qemu = dataclasses.replace(self.monitores[0], manufacturer="Red Hat, Inc.",
+                                   model="QEMU Monitor")
+        self.assertEqual(render.monitor_name(qemu), "Red Hat QEMU Monitor")
+
 
 @unittest.skipIf(QApplication is None, "sin PySide6")
 class TestLaTabla(unittest.TestCase):
