@@ -74,6 +74,15 @@ CLOCK_FIELDS = (
 )
 
 
+def table_fields(cpu_type: CpuType) -> tuple:
+    """The three fields that come from the CPU table and not from the chip:
+    (row, value, notes that explain it missing). An unknown chip has one
+    note for the three."""
+    return (("cpu.field.codename", cpu_type.codename, ("cpu.codename",)),
+            ("cpu.field.process", cpu_type.technology, ("cpu.codename", "cpu.technology")),
+            ("cpu.field.package", cpu_type.socket, ("cpu.codename", "cpu.socket")))
+
+
 class TypeSection(QWidget):
     """Las tarjetas de un tipo de núcleo. En una CPU híbrida hay dos."""
 
@@ -151,13 +160,18 @@ class TypeSection(QWidget):
             self.processor.set(nombre, render.volts(self._voltaje),
                                tooltip=_("cpu.tip.voltage"))
 
-    def apply(self, cpu_type: CpuType) -> None:
+    def apply(self, cpu_type: CpuType, explained: frozenset = frozenset()) -> None:
+        """`explained`: the paths of the notes on the page about the CPU table."""
         p = self.processor.set  # noqa: E741
         p(_("cpu.field.vendor"), cpu_type.vendor or render.DASH)
         p(_("cpu.field.spec"), cpu_type.brand or render.DASH)
-        p(_("cpu.field.codename"), render.from_cpu_table(cpu_type.codename))
-        p(_("cpu.field.process"), render.from_cpu_table(cpu_type.technology))
-        p(_("cpu.field.package"), render.from_cpu_table(cpu_type.socket))
+        for key, value, notes in table_fields(cpu_type):
+            # Not in the CPU table: the row hides and the notice below the
+            # cards says so (rule 5). Without a notice to say it, it stays.
+            hidden = not value and not explained.isdisjoint(notes)
+            self.processor.set_visible(_(key), not hidden)
+            if not hidden:
+                p(_(key), render.from_cpu_table(value))
         p(_("cpu.field.arch"), cpu_type.architecture or render.DASH)
         p(_("cpu.field.cores"), str(cpu_type.cores))
         p(_("cpu.field.threads"), f"{cpu_type.threads}" + (_("cpu.smt.on") if cpu_type.smt else ""))
@@ -416,9 +430,10 @@ class CpuPage(ScrollPage):
                 self._sections_host.addWidget(section)
             self._signature = signature
 
+        explained = frozenset(n.path for n in snapshot.notes if n.need == Need.DATABASE)
         for cpu_type in cpu.types:
             if section := self._sections.get(cpu_type.key):
-                section.apply(cpu_type)
+                section.apply(cpu_type, explained)
                 section.lock_voltage(snapshot.permission_note("cpu.voltage_v"), self._p.info)
 
     def hide_permission_notices(self, ocultos: bool) -> None:

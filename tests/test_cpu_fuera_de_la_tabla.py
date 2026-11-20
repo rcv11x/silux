@@ -95,16 +95,29 @@ class TestEnLaPagina(unittest.TestCase):
         self.app.processEvents()
         return ventana.cpu_page.findChildren(TypeSection)[0]
 
-    def test_las_tres_filas_lo_dicen_sin_guion(self):
+    def test_the_three_rows_hide_and_the_notice_says_why(self):
+        """Rule 5: three rows saying «not in the table» repeated the notice."""
+        nota = next(n for n in self.fuera.notes if n.path == "cpu.codename")
         with pantalla.Ventana(self.fuera) as ventana:
             seccion = self._seccion(ventana)
             for clave in DE_LA_TABLA:
                 with self.subTest(fila=clave):
-                    etiqueta = seccion.processor._values[_(clave)]
-                    self.assertTrue(etiqueta.isVisible())
-                    self.assertEqual(etiqueta.full_text(), _("cpu.notintable"))
+                    self.assertFalse(seccion.processor._names[_(clave)].isVisible())
+                    self.assertFalse(seccion.processor._values[_(clave)].isVisible())
+            self.assertIn(nota.message, pantalla.textos_de(ventana.cpu_page))
             # Lo que da el procesador, a su lado y entero.
             self.assertEqual(seccion.processor._values[_("cpu.field.cores")].full_text(), "8")
+
+    def test_with_its_row_they_are_back(self):
+        with pantalla.Ventana(self.fuera) as ventana:
+            seccion = self._seccion(ventana)
+            ventana._on_sample(foto(EQUIPOS / "5800x3d")[0])
+            self.app.processEvents()
+            self.assertEqual(seccion.processor._values[_("cpu.field.codename")].full_text(),
+                             "Ryzen 7 (Vermeer)")
+            for clave in DE_LA_TABLA:
+                with self.subTest(fila=clave):
+                    self.assertTrue(seccion.processor._names[_(clave)].isVisible())
 
     def test_en_la_terminal_tambien(self):
         from silux import cli
