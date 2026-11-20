@@ -87,7 +87,13 @@ INTEL_AVISOS = {
     "root": ("prov.drm.intelroot", "prov.drm.intelroot.hint"),
     "driver": (INTEL_SIN_TEMPERATURA, "prov.drm.inteldriver.hint"),
     "hardware": (INTEL_SIN_TEMPERATURA, "prov.drm.intelhw.hint"),
+    "unopened": (INTEL_SIN_TEMPERATURA, "prov.drm.intelunopened.hint"),
 }
+
+# Where the kernel publishes each PMU and its events; readable without
+# permissions, so it says whether a card has busy counters at all.
+EVENT_SOURCE = "/sys/bus/event_source/devices"
+BUSY_EVENT = re.compile(r"^[a-z]+\d+-busy$")
 
 # Cómo llama el kernel a cada motor y qué hace. El prefijo del nombre basta:
 # rcs0 es el de dibujo, vcs1 el segundo decodificador de video.
@@ -415,6 +421,10 @@ class GpuState(Provider):
         self._pmu_previo: Optional[tuple[int, dict]] = None
         self._pmu_ok = False
         self._pmu_mudo = False
+        # The PMUs whose counters the helper did return. Any counter is not
+        # this card's: a tester's UHD got only the package's energy-gpu, and
+        # its notice said its engines' usage was already being read.
+        self._pmu_leidos: set[str] = set()
         # El contador de reposo es acumulativo, igual que los del PMU, pero
         # este sale de sysfs y no cuesta permisos.
         self._rc6: dict[str, tuple[float, int]] = {}
@@ -527,7 +537,7 @@ class GpuState(Provider):
                     draft.note(f"gpus.{indice}.usage", Need.HARDWARE,
                                _("prov.drm.arcusage"), _("prov.drm.arcusage.hint"))
                 else:
-                    self._avisar_de_intel(draft, indice)
+                    self._avisar_de_intel(draft, indice, gpu)
         self._con_instantes = con_instantes
         # Las de una tarjeta que se fue a dormir o desapareció no esperan a
         # que vuelva: serían de otro rato.
@@ -576,6 +586,8 @@ class GpuState(Provider):
             return None, None
 
         self._pmu_ok = True
+        self._pmu_leidos = {pmu for pmu, eventos in crudo.items()
+                            if any(BUSY_EVENT.match(e) for e in eventos)}
         previo, self._pmu_previo = self._pmu_previo, (reloj, crudo)
         if previo is None:
             return None, None
@@ -627,12 +639,18 @@ class GpuState(Provider):
             return None
         return min(100.0, max(0.0, (acumulado - dormido) * 100.0 / ventana))
 
-    def _avisar_de_intel(self, draft: Draft, indice: int) -> None:
-        """Por qué esa tarjeta tiene huecos, según lo que se pueda leer hoy."""
-        if self._pmu_mudo:
-            clave = "driver"
-        elif self._pmu_ok:
+    def _avisar_de_intel(self, draft: Draft, indice: int, gpu: dict) -> None:
+        """Por qué esa tarjeta tiene huecos, según lo que se pueda leer hoy.
+
+        With the helper running, what is said depends on this card: its
+        counters came, the kernel does not publish them, or it does and they
+        could not be opened (why is not known from here).
+        """
+        pmu = _pmu_de(gpu) or ""
+        if self._pmu_ok and pmu in self._pmu_leidos:
             clave = "hardware"
+        elif self._pmu_ok or self._pmu_mudo:
+            clave = "unopened" if _pmu_publicado(pmu) else "driver"
         else:
             clave = "root"
         draft.note(f"gpus.{indice}", NEED_INTEL[clave],
@@ -640,7 +658,20 @@ class GpuState(Provider):
                    what=_("what.gpu.usage") if clave == "root" else "")
 
 
-NEED_INTEL = {"root": Need.ROOT, "driver": Need.DRIVER, "hardware": Need.HARDWARE}
+# The kernel not publishing a card's counters is not a module to load.
+NEED_INTEL = {"root": Need.ROOT, "driver": Need.HARDWARE, "hardware": Need.HARDWARE,
+              "unopened": Need.ERROR}
+
+
+def _pmu_publicado(nombre: str) -> bool:
+    """Whether the kernel publishes busy counters for that PMU."""
+    if not nombre:
+        return False
+    try:
+        eventos = os.listdir(sysroot.ruta(f"{EVENT_SOURCE}/{nombre}/events"))
+    except OSError:
+        return False
+    return any(BUSY_EVENT.match(e) for e in eventos)
 
 
 def _motores_intel(raiz: pathlib.Path) -> tuple[GpuEngine, ...]:

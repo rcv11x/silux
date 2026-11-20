@@ -24,6 +24,10 @@ que hace falta.
 
 - Arreglado: la NVIDIA de un portátil enseñaba «Ventilador: —». Su ventilador
   es del portátil y lo lleva su controlador: no se enseña, y se dice al pie.
+- Arreglado: con permisos, una Intel cuyo uso por motor no se pudo leer decía
+  que ese uso «ya se está leyendo». Ahora dice lo que pasa con esa gráfica:
+  que el kernel no publica sus contadores, o que los publica y no se han
+  podido abrir.
 
 ### Procesador
 

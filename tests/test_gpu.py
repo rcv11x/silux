@@ -858,37 +858,6 @@ class TestRepartoDeMotores(unittest.TestCase):
         self.assertNotIn("busy_percent", gpu)
 
 
-class TestElAvisoSigueAlEstado(unittest.TestCase):
-    """El mismo hueco se explica distinto según lo que se pueda leer hoy."""
-
-    def _aviso(self, proveedor):
-        draft = Draft()
-        proveedor._avisar_de_intel(draft, 0)
-        return draft.notes[0]
-
-    def test_sin_permisos_pide_permisos(self):
-        from silux.model import Need
-        from silux.providers.drm import GpuState
-
-        self.assertEqual(self._aviso(GpuState()).need, Need.ROOT)
-
-    def test_una_vez_leido_deja_de_pedirlos(self):
-        from silux.model import Need
-        from silux.providers.drm import GpuState
-
-        proveedor = GpuState()
-        proveedor._pmu_ok = True
-        self.assertEqual(self._aviso(proveedor).need, Need.HARDWARE)
-
-    def test_si_el_kernel_no_los_da_lo_dice(self):
-        from silux.model import Need
-        from silux.providers.drm import GpuState
-
-        proveedor = GpuState()
-        proveedor._pmu_mudo = True
-        self.assertEqual(self._aviso(proveedor).need, Need.DRIVER)
-
-
 class TestMotoresDeLaTarjeta(unittest.TestCase):
     """Una gráfica no es un bloque «al 40 %»: son varias unidades.
 

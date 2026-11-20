@@ -90,6 +90,10 @@ necesita.
     Vulkan de Intel (sin `mesa-vulkan-drivers`, o sin casar). Con el AppImage
     normal, además, la NVIDIA despierta salió sin la fila de OpenGL que sí dio
     el compat.
+  - Gráficos · media · con el ayudante · la UHD sin uso por motor: el ayudante
+    abrió `power/energy-gpu` y ningún contador de la i915, y su nodo DRM no
+    enumeró motores (`engine/`). El aviso ya dice lo que se sabe; el porqué,
+    con el volcado (¿qué eventos publica `event_source/devices/i915`?).
   - Memoria · baja · con el ayudante · «Este equipo no publica cuánto tráfico
     mueve el controlador de memoria» en un Alder Lake-H, con la explicación de AMD
     («Solo lo publican los procesadores Intel»).
