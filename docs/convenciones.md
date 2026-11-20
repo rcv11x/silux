@@ -77,6 +77,14 @@ intermedio: el commit siguiente lo deja atrasado otra vez, con una fila que
 el archivo no menciona y cifras que ya no cuadran. Se escribe cuando ya no va
 a entrar nada más.
 
+**Una rama solo para lo que tiene riesgo, y se borra al pasar a `master`.**
+Con una rama por tema para todo, hasta un cambio de una línea en la
+documentación esperaba a su CI, y en noviembre de 2026 había veintiuna ramas
+en el remoto, todas ya en `master`, que nadie se atrevía a borrar. Lo que no
+puede romper el programa —documentación, notas, textos, arreglos pequeños—
+va directo a `master` con la suite pasada; lo que sí puede, en su rama hasta
+que su CI sale en verde, y entonces se pasa y se borra.
+
 **Un dato nuevo no está terminado hasta que hay un test que lo ve en pantalla**,
 montando la página de verdad y comprobando la celda. Más de mil tests pasaban
 con el voltaje del núcleo medido, guardado en el modelo y sin ninguna fila donde

@@ -284,12 +284,13 @@ mensajes de commit.
   cambio, Claude escribe en su respuesta el diff de lo que ha tocado (líneas
   con `+` y con `-`), no solo el resumen: el autor lo sigue por ahí.
 - **El commit del CLAUDE.md es el último antes de empujar.**
-- **Una rama por tema** (`contribuir`, `graficas`, `rendimiento`…), que sale
-  de `master`; no hay una rama de trabajo fija por equipo. Un tema terminado
-  y con su CI en verde pasa a `master` enseguida: tandas pequeñas, no una
-  rama que acumula días. Las ramas no se empujan salvo que se diga; el CI
-  de una rama se lanza a mano con
-  `gh workflow run appimage.yml --ref RAMA` y se sigue con `gh run watch`.
+- **Directo a `master`**: documentación, notas, textos y arreglos pequeños,
+  con la suite pasada antes de subir.
+- **En rama, solo los cambios de código con riesgo o grandes**, una por tema
+  (`graficas`, `rendimiento`…) y saliendo de `master`. El CI de una rama se
+  lanza a mano con `gh workflow run appimage.yml --ref RAMA` y se sigue con
+  `gh run watch`. En cuanto sale en verde, la rama pasa a `master` y se
+  borra, aquí y en el remoto: que no se acumulen ramas.
 - **A `master` solo con `git merge --ff-only`**, y solo con el CI de esa rama
   en verde. Si `master` avanzó, se rebasa la rama antes, no se fusiona. Pasar
   a `master` no es publicar: ni etiqueta ni release.
