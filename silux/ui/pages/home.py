@@ -19,7 +19,7 @@ from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWi
 
 from ...i18n import _
 from ... import render
-from ...model import Snapshot
+from ...model import DISK_KINDS, Snapshot
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette
@@ -421,7 +421,7 @@ class HomePage(ScrollPage):
         usado = sum(d.used_bytes or 0 for d in discos)
         libre = sum(p.free_bytes or 0 for d in discos for p in d.mounted_partitions)
         tipos = [f"{sum(1 for d in discos if d.kind == k)} × {k}"
-                 for k in ("NVMe", "SSD", "HDD")
+                 for k in DISK_KINDS
                  if any(d.kind == k for d in discos)]
         self.discos.poner(
             _("home.storage.total.one" if len(discos) == 1

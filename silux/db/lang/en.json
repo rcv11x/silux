@@ -1307,6 +1307,7 @@
   "storage.health.read": "Diagnostics read from {n} of {total} drives. The rest do not publish them or did not answer.",
   "storage.loading": "Reading the disks…",
   "storage.na.hdd.life": "A spinning disk has no “life left”: that is the wear of an SSD's cells.",
+  "storage.na.virtual": "This is a virtual disk: it has no temperature, hours, total written or wear of its own, and what it would answer to a diagnosis is made up by the hypervisor.",
   "storage.na.written.unit": "The totals written and read are not shown: this disk's counter says less than what it already holds, so it counts in a unit that is not known.",
   "storage.none": "No drives",
   "storage.notemp": "no drive publishes its temperature",

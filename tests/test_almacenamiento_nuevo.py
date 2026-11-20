@@ -68,7 +68,9 @@ class TestLoQueSeDice(unittest.TestCase):
                          "lo admite · no se ve que se esté haciendo")
 
     def test_un_disco_de_platos_que_los_admite_es_un_smr(self):
-        self.assertEqual(render.trim(self._disco(discard=True, rotational=True)),
+        # The provider calls a disk that spins «HDD»; a virtual one that says
+        # it spins is not (test_virtual_machine).
+        self.assertEqual(render.trim(self._disco(discard=True, rotational=True, kind="HDD")),
                          "admite descartes (disco SMR)")
 
     def test_el_que_no_los_admite_no_ensena_la_fila(self):

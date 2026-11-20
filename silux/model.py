@@ -1403,6 +1403,10 @@ class DiskHealth:
         return self.critical_warning == 0
 
 
+# The kinds of disk, in the order the pages count them.
+DISK_KINDS = ("NVMe", "SSD", "HDD", "Virtual")
+
+
 @dataclass(frozen=True, slots=True)
 class Disk:
     """Una unidad de almacenamiento."""

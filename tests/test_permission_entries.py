@@ -67,6 +67,9 @@ class TestEveryEntryWarnsFirst(unittest.TestCase):
                    ("Memory button", "Memoria", window.memory_page.elevation_button),
                    ("Storage button", "Almacenamiento", window.storage_page.elevation_button),
                    ("Settings button", "Ajustes", window.settings_page.permission_button)]
+        # A virtual disk has no diagnosis to unlock (test_virtual_machine).
+        if all(d.kind == "Virtual" for d in window._last_snapshot.disks):
+            entries = [e for e in entries if e[0] != "Storage button"]
         for key, active in appmod.SECTIONS:
             if not active or not window.select_section(key):
                 continue

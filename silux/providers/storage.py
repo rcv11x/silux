@@ -101,6 +101,10 @@ class Disks(Provider):
         encendido sería pedirle la contraseña a alguien que no la pidió. Quien
         eleve permisos para ver la memoria se lleva esto de propina.
         """
+        # A virtual disk's SMART is the hypervisor's invention: nothing to
+        # unlock, nothing to read.
+        if draft.disks and all(d.kind == "Virtual" for d in draft.disks):
+            return
         if not self.client.connected() and self.requested:
             self.requested = False
             try:
@@ -120,7 +124,7 @@ class Disks(Provider):
 
         for indice, disco in enumerate(draft.disks):
             nombre = disco.name
-            if nombre in self._sin_salud:
+            if nombre in self._sin_salud or disco.kind == "Virtual":
                 continue
             if self._toca_releer(nombre):
                 try:
@@ -183,6 +187,7 @@ class Disks(Provider):
         transporte = _transporte(base, nombre)
 
         modelo = _limpio(read_text(str(base / "device" / "model")))
+        virtual = es_virtual(nombre, modelo, read_text(str(base / "device" / "vendor")))
         return Disk(
             name=nombre,
             model=modelo,
@@ -191,7 +196,7 @@ class Disks(Provider):
                              or read_text(str(base / "device" / "rev"))),
             serial=_limpio(read_text(str(base / "device" / "serial"))),
             size_bytes=sectores * SECTOR,
-            kind=_tipo(rotatorio, transporte),
+            kind=_tipo(rotatorio, transporte, virtual),
             transport=transporte,
             rotational=None if rotatorio is None else bool(rotatorio),
             logical_sector=read_int(str(base / "queue" / "logical_block_size")),
@@ -346,13 +351,28 @@ def _transporte(base: pathlib.Path, nombre: str) -> Optional[str]:
     return None
 
 
-def _tipo(rotatorio: Optional[int], transporte: Optional[str]) -> Optional[str]:
-    """HDD, SSD o NVMe.
+# The disks a hypervisor makes up: their model, their vendor or their name
+# says so. QEMU's say they spin (rotational 1) unless told otherwise, and
+# with discard on they admit TRIM: it read «HDD» and «disco SMR».
+_VIRTUALES = re.compile(r"^(QEMU |VBOX |VMware|Virtual (disk|HD)|Msft Virtual)", re.I)
+
+
+def es_virtual(nombre: str, modelo: Optional[str], vendor: Optional[str]) -> bool:
+    return (nombre.startswith(("vd", "xvd"))
+            or bool(modelo and _VIRTUALES.match(modelo))
+            or (vendor or "").strip().upper() in ("QEMU", "VBOX", "VMWARE", "MSFT"))
+
+
+def _tipo(rotatorio: Optional[int], transporte: Optional[str],
+          virtual: bool = False) -> Optional[str]:
+    """HDD, SSD, NVMe or Virtual.
 
     No hay ningún campo que lo diga. «No rotatorio» agrupa a un SSD SATA y a un
     NVMe, que no se parecen en nada ni en velocidad ni en cómo se conectan, así
     que el bus decide entre los dos.
     """
+    if virtual:
+        return "Virtual"
     if rotatorio is None:
         return None
     if rotatorio:

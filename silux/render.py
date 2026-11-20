@@ -934,16 +934,17 @@ def trim(disco) -> Optional[str]:
     «Lo admite» es un hecho. Que se esté haciendo es una señal: la partición
     montada con `discard`, o el temporizador `fstrim.timer` activado, que
     puede no cubrir esa partición. Un disco de platos que admite descartes es
-    un SMR, y se dice así. El que no los admite no enseña la fila.
+    un SMR, y se dice así; uno virtual no es de platos aunque lo diga. El que
+    no los admite no enseña la fila.
     """
     if not disco.discard:
         return None
-    partes = [_("disk.trim.smr") if disco.rotational else _("disk.trim.yes")]
+    partes = [_("disk.trim.smr") if disco.kind == "HDD" else _("disk.trim.yes")]
     if disco.discard_mounted:
         partes.append(_("disk.trim.mounted"))
     if disco.fstrim_timer:
         partes.append(_("disk.trim.timer"))
-    if len(partes) == 1 and not disco.rotational:
+    if len(partes) == 1 and disco.kind != "HDD":
         partes.append(_("disk.trim.unseen"))
     return " · ".join(partes)
 

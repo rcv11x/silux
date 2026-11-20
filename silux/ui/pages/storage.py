@@ -18,7 +18,7 @@ from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWi
 
 from ... import render
 from ...i18n import _
-from ...model import Disk, Snapshot
+from ...model import DISK_KINDS, Disk, Snapshot
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette, ui_font
@@ -46,7 +46,7 @@ DISK_DETAIL_FIELDS = ("storage.field.firmware", "storage.field.logical",
 
 # Los discos se ordenan por lo que le importa a quien mira: primero el que
 # lleva el sistema, luego por tipo y al final los que se pueden desenchufar.
-PRIORIDAD = {"NVMe": 0, "SSD": 1, "HDD": 2}
+PRIORIDAD = {tipo: orden for orden, tipo in enumerate(DISK_KINDS)}
 
 
 def _orden(disco: Disk) -> tuple:
@@ -240,8 +240,10 @@ class StoragePage(ScrollPage):
         self._apply_cards(discos)
         self._apply_avisos(discos)
         # La tarjeta solo estorba cuando ya no hace falta.
-        leidos = sum(1 for x in discos if x.health.power_on_hours is not None)
-        self.elevation_card.setVisible(bool(discos) and leidos < len(discos)
+        # A virtual disk has no diagnosis to unlock.
+        reales = [x for x in discos if x.kind != "Virtual"]
+        leidos = sum(1 for x in reales if x.health.power_on_hours is not None)
+        self.elevation_card.setVisible(bool(reales) and leidos < len(reales)
                                        and not self._sin_avisos_de_permisos)
         # En los dos sentidos: si el diagnóstico deja de estar (los permisos
         # eran de esta sesión y el ayudante se fue), la tarjeta vuelve a decir
@@ -249,7 +251,7 @@ class StoragePage(ScrollPage):
         outdated = snapshot.privileged.outdated
         self.elevation_text.setText(
             _("perm.outdated.body") if outdated
-            else _("storage.health.read").format(n=leidos, total=len(discos)) if leidos
+            else _("storage.health.read").format(n=leidos, total=len(reales)) if leidos
             else _("storage.health.body"))
         # Updating the helper is what brings it back: its button is the one left.
         self.elevation_button.setVisible(not outdated)
@@ -308,7 +310,7 @@ class StoragePage(ScrollPage):
         )
 
         chips = []
-        for tipo in ("NVMe", "SSD", "HDD"):
+        for tipo in DISK_KINDS:
             cuantos = sum(1 for x in discos if x.kind == tipo)
             if cuantos:
                 chips.append(f"{cuantos} × {tipo}")
@@ -517,15 +519,21 @@ class StoragePage(ScrollPage):
           tooltip=_("storage.tip.life"))
         # La vida restante es el desgaste de las celdas de un SSD. Un disco
         # de platos no lleva esa cuenta: ni guion ni candado, no existe.
-        de_platos = disco.rotational is True
-        grid.set_visible(_("storage.field.life"), not de_platos)
+        de_platos = disco.kind == "HDD"
+        # A virtual disk has no diagnosis, temperature or wear: what QEMU
+        # answers is made up.
+        virtual = disco.kind == "Virtual"
+        grid.set_visible(_("storage.field.life"), not (de_platos or virtual))
         # A counter in a unit nobody knows is not shown: it said less was
         # written than the disk holds.
         sin_unidad = salud.counters_unit_unknown
-        grid.set_visible(_("storage.field.written"), not sin_unidad)
+        grid.set_visible(_("storage.field.written"), not (sin_unidad or virtual))
+        for clave in ("gpu.sensor.temp", "storage.field.hours"):
+            grid.set_visible(_(clave), not virtual)
         if (pie := self._pies.get(disco.name)) is not None:
             texto = " ".join(t for t in (
                 _("storage.na.hdd.life") if de_platos else "",
+                _("storage.na.virtual") if virtual else "",
                 _("storage.na.written.unit") if sin_unidad else "") if t)
             pie.setText(texto)
             pie.setVisible(bool(texto))

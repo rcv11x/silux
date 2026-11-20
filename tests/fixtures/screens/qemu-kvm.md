@@ -22,7 +22,7 @@ Aplicaciones 206.2 MB · Caché 773.5 MB · Buffers 34.6 MB · Libre 2.8 GB
 ### Almacenamiento
 
 32 GB en 1 unidad
-1 × HDD
+1 × Virtual
 28.8 GB libres
 Ocupado 2.6 GB · Libre 28.8 GB · Sin montar 597.6 MB
 
@@ -41,9 +41,8 @@ Intel 82540EM Gigabit Ethernet Controller · 1 Gb/s · dúplex completo
 BIOS Arch Linux 1.17.0-2-2 · 2014-04-01
 BIOS heredada
 
-> **Faltan 3 datos que este equipo sí tiene**
+> **Faltan 2 datos que este equipo sí tiene**
 > Detalle de los módulos de memoria
-> Salud de los discos
 > Voltaje del procesador
 
 ## CPU
@@ -332,23 +331,18 @@ Esta gráfica no publica cuánto se usa su motor gráfico ni su motor de video.
 
 32 GB en 1 unidad
 2.6 GB ocupados en 2 particiones montadas
-1 × HDD
+1 × Virtual
 Ocupado 2.6 GB · Libre 28.8 GB · Sin montar 597.6 MB
 - Leyendo: 0 B/s (suma de 1 unidad)
 - Escribiendo: 0 B/s (suma de 1 unidad)
 - Espacio libre: 28.8 GB (en 2 particiones)
 - Más caliente: — (ningún disco publica su temperatura)
 
-### Estado de los discos
-
-Las horas de encendido, los terabytes escritos y el desgaste los guarda cada disco en sus propios contadores de diagnóstico. El kernel reserva esos comandos al administrador porque son los mismos que sirven para borrar un disco.
-El ayudante que se lanza solo sabe pedir diagnóstico y leer unas tablas del sistema: no ejecuta órdenes ni escribe nada.
-
 ### Unidades
 
 | UNIDAD | MODELO | TIPO | CAPACIDAD | OCUPADO | TEMPERATURA | LEYENDO | ESCRIBIENDO |
 |---|---|---|---|---|---|---|---|
-| sda | QEMU HARDDISK | HDD | 32 GB | 2.6 GB | — | 0 B/s | 0 B/s |
+| sda | QEMU HARDDISK | Virtual | 32 GB | 2.6 GB | — | 0 B/s | 0 B/s |
 
 ### Particiones montadas
 
@@ -362,13 +356,10 @@ El ayudante que se lanza solo sabe pedir diagnóstico y leer unas tablas del sis
 Ocupado 2.6 GB · Libre 29.4 GB
 - Modelo: QEMU HARDDISK
 - Fabricante: —
-- Tipo: HDD
+- Tipo: Virtual
 - Conexión: SATA
 - Capacidad: 32 GB
-- Temperatura: (necesita permisos)
-- Horas encendido: (necesita permisos)
-- Escrito en total: (necesita permisos)
-Un disco de platos no tiene «vida restante»: es el desgaste de las celdas de un SSD.
+Es un disco virtual: no tiene temperatura, horas, lo escrito ni desgaste propios, y lo que contestaría a un diagnóstico se lo inventa el hipervisor.
 
 #### Firmware y sectores
 
@@ -376,7 +367,7 @@ Un disco de platos no tiene «vida restante»: es el desgaste de las celdas de u
 - Sector lógico: 512 B
 - Sector físico: 512 B
 - Planificador: mq-deadline
-- TRIM: admite descartes (disco SMR) · montado con discard · fstrim.timer activado
+- TRIM: lo admite · montado con discard · fstrim.timer activado
 
 ## Red
 
@@ -524,7 +515,6 @@ SENSORES · 5 en 2 dispositivos
 - `modules` (requiere permisos de administrador): Los módulos de memoria están en la tabla SMBIOS, que el kernel reserva al administrador.
 - `spd` (este equipo no lo expone): Esta placa no expone ningún controlador SMBus, que es el bus por el que se leen los chips SPD de los módulos.
 - `cpu.clocks.current_hz` (este equipo no lo expone): El hipervisor no expone la frecuencia del procesador.
-- `disks.health` (requiere permisos de administrador): El diagnóstico de los discos lo guarda cada unidad en sus propios contadores.
 - `cpu.power` (este equipo no lo expone): Esta CPU no expone contadores de energía RAPL.
 - `memory.traffic` (este equipo no lo expone): Este equipo no publica cuánto tráfico mueve el controlador de memoria.
 - `cpu.voltage_v` (requiere permisos de administrador): El voltaje del núcleo lo tiene el procesador, no un sensor de la placa.
