@@ -429,11 +429,11 @@ def status(launcher: Optional[Launcher] = None) -> DesktopStatus:
     versión que alguien tendría que acordarse de subir.
     """
     launcher = launcher or current_launcher()
-    en_escritorio = shortcut_path(launcher.app_id).is_file()
+    en_escritorio = on_desktop(launcher.app_id)
     if not launcher.command:
         return DesktopStatus("unsupported", launcher, on_desktop=en_escritorio)
     texto = _read(desktop_path(launcher.app_id))
-    if texto is None:
+    if texto is None or not in_menu(launcher.app_id):
         return DesktopStatus("missing", launcher, on_desktop=en_escritorio)
     orden, carpeta = _instalado(texto)
     destino = carpeta or (orden[0] if orden else "")
@@ -471,7 +471,10 @@ def set_shortcuts(menu: bool, on_desktop: bool,
     entrada, acceso = desktop_path(launcher.app_id), shortcut_path(launcher.app_id)
     if menu:
         write_desktop(launcher)
-    elif entrada.exists():
+        _drop_kde_exclusion(launcher.app_id)
+    elif in_menu(launcher.app_id):
+        # Only a visible one: a file the user hid is theirs, and removing it
+        # could uncover a system entry it was hiding.
         entrada.unlink()
     if on_desktop:
         _write_shortcut(launcher)
@@ -509,6 +512,91 @@ def install(launcher: Optional[Launcher] = None,
     return icon_files(launcher.app_id), desktop_path(launcher.app_id)
 
 
+# -- what the user deleted or hid ---------------------------------------------
+
+def _hidden(texto: str) -> bool:
+    """`Hidden=true` (deleted, says the specification) or `NoDisplay=true`
+    (kept out of the menus), in the entry's own group."""
+    grupo = ""
+    for linea in texto.splitlines():
+        linea = linea.strip()
+        if linea.startswith("["):
+            grupo = linea
+        elif grupo == "[Desktop Entry]" and "=" in linea:
+            clave, valor = (parte.strip() for parte in linea.split("=", 1))
+            if clave in ("Hidden", "NoDisplay") and valor == "true":
+                return True
+    return False
+
+
+def kde_menu_file() -> pathlib.Path:
+    """Where Plasma's menu editor keeps its changes. Deleting an entry there
+    leaves the file and adds an `<Exclude>` with its name."""
+    config = pathlib.Path(os.environ.get("XDG_CONFIG_HOME") or pathlib.Path.home() / ".config")
+    return config / "menus" / "applications-kmenuedit.menu"
+
+
+_EXCLUDE = re.compile(r"(?P<pre>[ \t]*)<Exclude>(?P<body>.*?)</Exclude>(?P<post>\n?)", re.S)
+
+
+def _kde_excluded(app_id: str) -> bool:
+    texto = _read(kde_menu_file())
+    if not texto:
+        return False
+    nombre = f"<Filename>{app_id}.desktop</Filename>"
+    fuera = any(nombre in m.group("body") for m in _EXCLUDE.finditer(texto))
+    # Moved to another submenu is an Exclude in one and an Include in another.
+    dentro = any(nombre in bloque for bloque in re.findall(r"<Include>.*?</Include>", texto, re.S))
+    return fuera and not dentro
+
+
+def _drop_kde_exclusion(app_id: str) -> None:
+    """Turning the menu shortcut on again undoes a delete from Plasma's menu
+    editor; otherwise the switch would say «in the menu» and it would not be."""
+    ruta = kde_menu_file()
+    texto = _read(ruta)
+    nombre = f"<Filename>{app_id}.desktop</Filename>"
+    if not texto or nombre not in texto:
+        return
+
+    def limpiar(m: re.Match) -> str:
+        cuerpo = re.sub(r"\s*" + re.escape(nombre), "", m.group("body"))
+        if cuerpo == m.group("body"):
+            return m.group(0)
+        return "" if not cuerpo.strip() else f"{m.group('pre')}<Exclude>{cuerpo}</Exclude>{m.group('post')}"
+
+    nuevo = _EXCLUDE.sub(limpiar, texto)
+    if nuevo == texto:
+        return
+    import tempfile
+    modo = ruta.stat().st_mode & 0o777
+    descriptor, temporal = tempfile.mkstemp(dir=ruta.parent, prefix=".silux-")
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as archivo:
+            archivo.write(nuevo)
+        os.chmod(temporal, modo)
+        os.replace(temporal, ruta)
+    except OSError:
+        try:
+            os.unlink(temporal)
+        except OSError:
+            pass
+        raise
+
+
+def in_menu(app_id: str = APP_ID) -> bool:
+    """Whether the menu shows this entry: the file is there, not hidden and
+    not deleted from Plasma's menu editor. Deleted by hand it is simply not
+    there: no notice, no error."""
+    texto = _read(desktop_path(app_id))
+    return texto is not None and not _hidden(texto) and not _kde_excluded(app_id)
+
+
+def on_desktop(app_id: str = APP_ID) -> bool:
+    texto = _read(shortcut_path(app_id))
+    return texto is not None and not _hidden(texto)
+
+
 # -- where the AppImage lives -------------------------------------------------
 
 def appimages_dir() -> pathlib.Path:
@@ -526,8 +614,10 @@ def in_appimages(path) -> bool:
 def points_here(launcher: Optional[Launcher] = None) -> bool:
     """Whether a shortcut the user sees opens this copy."""
     launcher = launcher or current_launcher()
-    for ruta in (desktop_path(launcher.app_id), shortcut_path(launcher.app_id)):
-        texto = _read(ruta)
+    app_id = launcher.app_id
+    for visible, ruta in ((in_menu(app_id), desktop_path(app_id)),
+                          (on_desktop(app_id), shortcut_path(app_id))):
+        texto = _read(ruta) if visible else None
         if texto is not None and _instalado(texto) == (launcher.command, launcher.working_dir):
             return True
     return False

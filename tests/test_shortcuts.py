@@ -236,6 +236,96 @@ class TestInSettings(_FakeHome):
             self.assertFalse(self.page.desktop_fragile.isVisibleTo(self.page))
 
 
+# What Plasma's menu editor writes when an entry is deleted: the .desktop
+# stays, and its name goes into an <Exclude> of its submenu.
+KMENUEDIT = """<!DOCTYPE Menu PUBLIC '-//freedesktop//DTD Menu 1.0//EN' 'http://www.freedesktop.org/standards/menu-spec/1.0/menu.dtd'>
+<Menu>
+ <Menu>
+  <Name>System</Name>
+  <Layout>
+   <Merge type="menus"/>
+   <Merge type="files"/>
+  </Layout>
+  <Exclude>
+   <Filename>silux.desktop</Filename>
+   <Filename>other.desktop</Filename>
+  </Exclude>
+ </Menu>
+ <Menu>
+  <Name>Utilities</Name>
+  <Exclude>
+   <Filename>silux.desktop</Filename>
+  </Exclude>
+ </Menu>
+</Menu>
+"""
+
+
+@unittest.skipIf(QApplication is None, "no PySide6")
+class TestDeletedByHand(_FakeHome):
+    """Deleted from a terminal or the menu: not added, and nothing else said."""
+
+    def setUp(self):
+        super().setUp()
+        self.app = qt.app()
+        self.path = self.appimage("AppImages")
+        patch = mock.patch.dict(os.environ, {"APPIMAGE": str(self.path)})
+        patch.start()
+        self.addCleanup(patch.stop)
+        desktop.set_shortcuts(True, True)
+        from tests.test_ajustes import _pagina
+        self.page = _pagina(self.app)
+        self.addCleanup(self.page.deleteLater)
+
+    def _quietly_off(self, switch):
+        self.page.refresh_desktop()
+        self.assertFalse(switch.isChecked())
+        self.assertEqual(self.page._error_del_escritorio, "")
+        self.assertFalse(self.page._arreglo.isVisibleTo(self.page))
+        self.assertFalse(self.page.desktop_fragile.isVisibleTo(self.page))
+
+    def test_from_a_terminal(self):
+        desktop.desktop_path().unlink()
+        self._quietly_off(self.page.menu_switch)
+        self.assertEqual(self.page.menu_row.explicacion.text(), _("settings.shortcut.menu.help"))
+        desktop.shortcut_path().unlink()
+        self._quietly_off(self.page.desktop_shortcut)
+
+    def test_hidden_with_nodisplay(self):
+        entry = desktop.desktop_path()
+        entry.write_text(entry.read_text() + "NoDisplay=true\n")
+        self._quietly_off(self.page.menu_switch)
+
+    def _wait(self):
+        self.page.wait_for_tasks()
+        for _turn in range(5):
+            self.app.processEvents()
+
+    def test_from_the_kde_menu_and_back(self):
+        menu = desktop.kde_menu_file()
+        menu.parent.mkdir(parents=True)
+        menu.write_text(KMENUEDIT)
+        self._quietly_off(self.page.menu_switch)
+        self.page.menu_switch.setChecked(True)
+        self._wait()
+        self.assertTrue(self.page.menu_switch.isChecked())
+        self.assertTrue(desktop.in_menu())
+        text = menu.read_text()
+        self.assertNotIn("<Filename>silux.desktop</Filename>", text)
+        self.assertIn("<Filename>other.desktop</Filename>", text)
+        self.assertNotIn("<Name>Utilities</Name>\n  <Exclude>", text)
+        self.assertTrue(text.startswith("<!DOCTYPE Menu"))
+
+    def test_moved_to_another_kde_submenu_is_still_there(self):
+        menu = desktop.kde_menu_file()
+        menu.parent.mkdir(parents=True)
+        menu.write_text(KMENUEDIT.replace(" <Menu>\n  <Name>Utilities</Name>\n  <Exclude>",
+                                          " <Menu>\n  <Name>Utilities</Name>\n  <Include>")
+                        .replace("</Filename>\n  </Exclude>\n </Menu>\n</Menu>",
+                                 "</Filename>\n  </Include>\n </Menu>\n</Menu>"))
+        self.assertTrue(desktop.in_menu())
+
+
 @unittest.skipIf(QApplication is None, "no PySide6")
 class TestTheQuestion(unittest.TestCase):
 
