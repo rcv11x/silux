@@ -55,10 +55,11 @@ SMBIOS, MSR, RAPL, los contadores de la memoria) no: está propuesto en las
 notas (`propuesta-anexo-con-permisos.md`). Lo marcado «con el ayudante» lo
 necesita.
 
-* **Necesita el volcado de anianin27:**
-  - NVIDIA · media · el consumo de la RTX 4060 salía «— (de 115 W)»: NVML dio
-    el tope y no el consumo, con el driver 595. En el portátil (550) sí sale.
-    Con el volcado, `nvidia-smi -q -d POWER` al lado.
+* **Del equipo de anianin27** (volcado `i7-10700f`, de la prueba4):
+  - NVIDIA · media · a ciegas · el consumo de la RTX 4060 con el driver 595:
+    `nvmlDeviceGetPowerUsage` no contesta y ahora se piden los campos de
+    potencia de NVML (185 y 186). Falta ver que dan una cifra en su equipo; su
+    próximo anexo la grabará.
   - Discos · baja · con el ayudante · el modelo entero por el IDENTIFY de
     `ata_device` (para buscar la unidad en drivedb) está probado aquí con dos
     Seagate y un Crucial; con el A400 de verdad, falta verlo.

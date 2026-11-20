@@ -46,6 +46,36 @@ MOTIVOS = {
 SIN_MOTIVO = 0x0000000000000001
 
 
+# The GPU's power as a field value (nvml.h, NVML 13.4.92): the average over
+# a second (Ampere and newer, but GA100) and the current one (every
+# architecture). nvmlDeviceGetPowerUsage only answers where «power management
+# mode» is supported, and the header points to these two for the rest: a
+# tester's RTX 4060 with driver 595 gave its temperature, clocks and limit,
+# and no power. Milliwatts, like nvmlDeviceGetPowerUsage and the limits of
+# the same block; for these two the header does not write it.
+CAMPO_POTENCIA_MEDIA, CAMPO_POTENCIA_AL_MOMENTO = 185, 186
+
+
+class _Valor(ctypes.Union):
+    """nvmlValue_t, its members in the header's order."""
+    _fields_ = [("dVal", ctypes.c_double), ("siVal", ctypes.c_int), ("uiVal", ctypes.c_uint),
+                ("ulVal", ctypes.c_ulong), ("ullVal", ctypes.c_ulonglong),
+                ("sllVal", ctypes.c_longlong), ("usVal", ctypes.c_ushort)]
+
+
+class _Campo(ctypes.Structure):
+    """nvmlFieldValue_t."""
+    _fields_ = [("fieldId", ctypes.c_uint), ("scopeId", ctypes.c_uint),
+                ("timestamp", ctypes.c_longlong), ("latencyUsec", ctypes.c_longlong),
+                ("valueType", ctypes.c_uint), ("nvmlReturn", ctypes.c_uint),
+                ("value", _Valor)]
+
+
+# nvmlValueType_t: which member of the union holds the value.
+MIEMBRO_DEL_TIPO = {0: "dVal", 1: "uiVal", 2: "ulVal", 3: "ullVal", 4: "sllVal",
+                    5: "siVal", 6: "usVal"}
+
+
 class _Memoria(ctypes.Structure):
     _fields_ = [("total", ctypes.c_ulonglong), ("free", ctypes.c_ulonglong),
                 ("used", ctypes.c_ulonglong)]
@@ -227,6 +257,36 @@ class Nvml:
             return None
         return buffer.value.decode("utf-8", "replace").strip() or None
 
+    def _campos(self, asa, *ids: int) -> dict[int, float]:
+        """Field values that came back, by id. Each one carries its own
+        return code and value type: one that fails does not spoil the rest."""
+        funcion = self._sim("nvmlDeviceGetFieldValues")
+        if funcion is None:
+            return {}
+        campos = (_Campo * len(ids))()
+        for campo, ident in zip(campos, ids):
+            campo.fieldId = ident
+        try:
+            if funcion(asa, ctypes.c_int(len(ids)), campos) != NVML_SUCCESS:
+                return {}
+        except (ctypes.ArgumentError, OSError):
+            return {}
+        leidos = {}
+        for campo in campos:
+            miembro = MIEMBRO_DEL_TIPO.get(campo.valueType)
+            if campo.nvmlReturn == NVML_SUCCESS and miembro:
+                leidos[campo.fieldId] = float(getattr(campo.value, miembro))
+        return leidos
+
+    def _potencia(self, asa) -> Optional[float]:
+        """Watts: nvmlDeviceGetPowerUsage, or the power fields where it does
+        not answer."""
+        milivatios = self._entero("nvmlDeviceGetPowerUsage", asa)
+        if milivatios is None:
+            campos = self._campos(asa, CAMPO_POTENCIA_MEDIA, CAMPO_POTENCIA_AL_MOMENTO)
+            milivatios = campos.get(CAMPO_POTENCIA_MEDIA, campos.get(CAMPO_POTENCIA_AL_MOMENTO))
+        return round(milivatios / 1000, 1) if milivatios is not None else None
+
     def _estructura(self, nombre: str, asa, tipo, *alternativas):
         funcion = self._sim(nombre, *alternativas)
         if funcion is None:
@@ -274,7 +334,7 @@ class Nvml:
             decode_busy_percent=self._utilizacion("nvmlDeviceGetDecoderUtilization", asa),
             temp_c=(lambda v: float(v) if v is not None else None)(
                 self._entero("nvmlDeviceGetTemperature", asa, ctypes.c_uint(TEMPERATURA_GPU))),
-            power_w=milis("nvmlDeviceGetPowerUsage", asa),
+            power_w=self._potencia(asa),
             power_cap_w=milis("nvmlDeviceGetEnforcedPowerLimit", asa),
             fan_percent=(lambda v: float(v) if v is not None else None)(
                 self._entero("nvmlDeviceGetFanSpeed", asa)),

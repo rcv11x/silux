@@ -54,6 +54,8 @@ que hace falta.
 
 ### Gráficos
 
+- Arreglado: el consumo de una NVIDIA con los drivers recientes (595) salía
+  «—»: se pide también como lo indica la documentación de NVML.
 - Arreglado: la NVIDIA de un portátil enseñaba «Ventilador: —». Su ventilador
   es del portátil y lo lleva su controlador: no se enseña, y se dice al pie.
 - Arreglado: con permisos, una Intel cuyo uso por motor no se pudo leer decía

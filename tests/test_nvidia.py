@@ -178,6 +178,56 @@ class TestSesion(unittest.TestCase):
         self.assertEqual(nvml.Nvml().devices(), [])
 
 
+class _Nvml:
+    """libnvidia-ml as nvml.h (NVML 13.4.92) describes these two calls:
+    the power usage call answers NOT_SUPPORTED (3) where power management
+    mode is not, and each field value carries its own return code."""
+
+    def __init__(self, uso=None, campos=None):
+        self.uso, self.campos, self.pedidos = uso, campos or {}, []
+
+    def nvmlDeviceGetPowerUsage(self, asa, valor):
+        if self.uso is None:
+            return 3
+        valor._obj.value = self.uso
+        return 0
+
+    def nvmlDeviceGetFieldValues(self, asa, cuantos, campos):
+        for campo in campos[:cuantos.value]:
+            self.pedidos.append(campo.fieldId)
+            if campo.fieldId in self.campos:
+                campo.nvmlReturn, campo.valueType = 0, 1
+                campo.value.uiVal = self.campos[campo.fieldId]
+            else:
+                campo.nvmlReturn = 3
+        return 0
+
+
+class TestThePowerOfANewDriver(unittest.TestCase):
+    """anianin27's RTX 4060 with driver 595: temperature, clocks and limit,
+    and «Consumo: —». nvmlDeviceGetPowerUsage only answers where power
+    management mode is supported; the header points to the power fields."""
+
+    def _potencia(self, lib):
+        sesion = nvml.Nvml()
+        sesion._lib = lib
+        return sesion._potencia(nvml.ctypes.c_void_p(1))
+
+    def test_the_seconds_average_where_the_old_call_does_not_answer(self):
+        self.assertEqual(self._potencia(_Nvml(campos={185: 15234, 186: 17000})), 15.2)
+
+    def test_or_the_current_one(self):
+        self.assertEqual(self._potencia(_Nvml(campos={186: 9800})), 9.8)
+
+    def test_without_either_there_is_none(self):
+        self.assertIsNone(self._potencia(_Nvml()))
+
+    def test_where_the_old_call_answers_the_fields_are_not_asked(self):
+        lib = _Nvml(uso=12000, campos={185: 99000})
+        self.assertEqual(self._potencia(lib), 12.0)
+        self.assertEqual(lib.pedidos, [])
+
+
 class TestAProprietaryNvidiaInSensors(unittest.TestCase):
     """Its driver has no hwmon: temperature and clocks come from NVML, and
     the sensor tree had none of them (anianin27's RTX 4060)."""
