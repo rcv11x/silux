@@ -23,6 +23,22 @@ Tdie además de Tctl (los Ryzen con desplazamiento: 1700X, 1800X y los
 Threadripper de las dos primeras generaciones). Se enseña Tdie, por lo que
 dice la documentación del kernel; el 5800X3D solo tiene Tctl.
 
+## Lo que ha llegado de la gente
+
+Una línea por equipo del que ha llegado un informe, sin quién lo mandó. Los
+informes y el detalle de cada fallo están en las notas privadas del autor;
+lo que se arregla, en el CHANGELOG. «A ciegas»: arreglado con lo que dice el
+informe, sin haberlo visto todavía en ese equipo.
+
+| Equipo | Procesador | Placa | Memoria | Gráfica | Sistema | Versión | Permisos | Lo que salió mal | Estado |
+|---|---|---|---|---|---|---|---|---|---|
+| Sobremesa | Intel Core i7-10700F | MSI H410M-A PRO | DDR4 Team Group, con XMP | GeForce RTX 4060 (nvidia 595) | Gentoo, OpenRC | 0.4-prueba1 | sí | XMP mal leído; consumo de la NVIDIA «—»; 8,2 GB de VRAM; versión del driver sin un cero; «Escrito en total» del Kingston A400; OpenRC como «init»; los C-states | Arreglados a ciegas en la prueba2, salvo XMP, el consumo y los C-states, que piden su volcado |
+| Portátil Lenovo LOQ 15IRH8 | Intel Core i5-12450H | Lenovo | DDR5-4800 | UHD + GeForce RTX 4050 Laptop | Debian 13 | 0.4-prueba1 (normal y compat), 0.4-prueba2 | sí | Sin tiempos de arranque con el compat; la L3 contada dos veces; la dedicada dormida «sin driver»; nombres en bruto; el anexo de la prueba2 no salió (NVIDIA) | Arreglados en la prueba2 y la prueba3; el SPD de la DDR5, las bibliotecas de la UHD y el tráfico de memoria piden su volcado |
+| Máquina virtual (QEMU/KVM en Proxmox) | QEMU Virtual CPU | — | — | VGA de QEMU | Debian | 0.4-prueba1 (compat) | sí | El procesador como un Xeon; el disco como HDD y SMR; permisos para lo que no tiene; rayas | Arreglados en la prueba2, comprobados con el volcado `qemu-kvm` |
+| Sobremesa | AMD Athlon 3000G | MSI A320M-A PRO | 4 GB DDR4-2400, un módulo | Radeon Vega 3 integrada | Arch | 0.3.0, 0.4-prueba1 | sí | Sin frecuencia (no hay cpufreq); «Turbo —»; la tabla PCI de una APU; rayas en Gráficos; un pendrive como HDD; «Memoria prestada al sistema»; sin aviso de errores de cable | Frecuencia y turbo hechos, para la siguiente; lo demás, pendiente o a falta de su volcado |
+| Portátil Lenovo V130-15IGM | Intel Celeron N4000 | Lenovo | 8 GB | UHD 600 | Debian 13, XFCE | 0.4-prueba2 | no | El anexo no salió (la puerta de enlace y un pendrive) | Arreglado en la prueba3 |
+| Portátil ThinkPad T14 Gen 2i | Intel Core i5-1135G7 | Lenovo | 16 GB DDR4-3200 | Iris Xe | CachyOS | 0.4-prueba2 | sí | El anexo no salió (el equipo se llama como su marca); los puertos USB-C con el nombre del kernel y a 0 V; la nota pegada en Sensores | Arreglados en la prueba3 |
+
 ## Por plataforma
 
 De Gráficos sale todo lo que publica el nodo DRM —identidad, VRAM, tabla DPM,
