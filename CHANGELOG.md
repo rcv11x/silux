@@ -75,6 +75,13 @@ informes que mandó la gente.
 
 ### Sistema
 
+- Arreglado: con OpenRC (Gentoo) el sistema de inicio salía «init», y el pie
+  de Arranque decía que systemd «no ha contestado» en un sistema sin
+  systemd. Sale «openrc», y el pie dice que esos tiempos los mide systemd.
+- Arreglado: sin gestor de arranque conocido, el pie decía «Gestor de
+  arranque no lo publica».
+- Cambiado: «Revisión SMBIOS» se llama «Revisión de la BIOS», que es lo que
+  es, y el «0.0» de relleno de SeaBIOS no se enseña.
 - Arreglado: la lista de vulnerabilidades se titulaba «Las mitigadas» y traía
   también las que no lo están; y las que ni el kernel sabe («Unknown») no
   se contaban en ningún lado. Se cuentan aparte, «Sin saber».
