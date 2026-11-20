@@ -24,6 +24,11 @@ from .base import Draft, Provider, read_int, read_text
 from .. import privacidad, sysroot
 
 OS_RELEASE = "/etc/os-release"
+
+# The taint bits a module can set (P, F, C, O, E, K, X, T, N): the ones
+# whose culprit /sys/module/<name>/taint can name.
+MODULE_TAINT_BITS = sum(1 << bit for bit in (0, 1, 10, 12, 13, 15, 16, 17, 18))
+
 MEMINFO = "/proc/meminfo"
 
 _OS_LINE = re.compile(r'^([A-Za-z_][A-Za-z0-9_]*)=(.*)$')
@@ -318,11 +323,34 @@ class SystemState(Provider):
             threads=self._threads(),
             open_files=self._open_files(),
             # Can change during the session: loading a module taints it.
-            tainted=read_int("/proc/sys/kernel/tainted"),
+            tainted=(mascara := read_int("/proc/sys/kernel/tainted")),
+            tainting_modules=self._tainting_modules(mascara),
         )
         draft.sensors.extend(self._sensors(draft.system))
 
     # -- interno ------------------------------------------------------------
+
+    def _tainting_modules(self, mask: Optional[int]) -> tuple[tuple[str, str], ...]:
+        """Which loaded modules tainted the kernel, and with what.
+
+        Read again only when the mask or the number of loaded modules
+        changes, not on every sample; and not at all when no bit set is one
+        a module can set.
+        """
+        if not mask or not mask & MODULE_TAINT_BITS:
+            return ()
+        try:
+            loaded = len(os.listdir(sysroot.ruta("/sys/module")))
+        except OSError:
+            return ()
+        key = (mask, loaded)
+        if getattr(self, "_taint_key", None) != key:
+            found = []
+            for path in sorted(glob.glob(os.path.join(sysroot.ruta("/sys/module"), "*", "taint"))):
+                if letters := read_text(sysroot.fuera(path)):
+                    found.append((os.path.basename(os.path.dirname(path)), letters))
+            self._taint_key, self._taint_modules = key, tuple(found)
+        return self._taint_modules
 
     @staticmethod
     def _procesos() -> int:

@@ -1078,22 +1078,31 @@ def gpu_power_limit_tip(gpu) -> str:
     return tip
 
 
-# Bit by bit, as Documentation/admin-guide/tainted-kernels.rst lists them.
+# Bit by bit, as Documentation/admin-guide/tainted-kernels.rst lists them,
+# with the letter each one has in /sys/module/<name>/taint.
 TAINT_BITS = 20
+TAINT_LETTERS = "PFSRMBUDAWCIOELKXTNJ"
 
 
-def taint_reasons(mask: int) -> list[str]:
-    """Why the kernel is tainted, one translated reason per bit set."""
-    return [_(f"sys.taint.{bit}") for bit in range(TAINT_BITS) if mask >> bit & 1]
+def taint_reasons(mask: int, modules: tuple = ()) -> list[str]:
+    """Why the kernel is tainted, one translated reason per bit set, with the
+    modules that set it: «un módulo de fuera del kernel (nvidia)»."""
+    reasons = []
+    for bit in range(TAINT_BITS):
+        if mask >> bit & 1:
+            names = [name for name, letters in modules if TAINT_LETTERS[bit] in letters]
+            reason = _(f"sys.taint.{bit}")
+            reasons.append(f"{reason} ({', '.join(names)})" if names else reason)
+    return reasons
 
 
-def tainted(mask: int | None) -> str:
+def tainted(mask: int | None, modules: tuple = ()) -> str:
     """«no», or the reasons: «módulo de fuera del kernel · módulo sin firmar»."""
     if mask is None:
         return DASH
     if not mask:
         return _("sys.taint.no")
-    reasons = taint_reasons(mask)
+    reasons = taint_reasons(mask, modules)
     unknown = mask >> TAINT_BITS
     if unknown:
         reasons.append(_("sys.taint.other").format(mask=mask))

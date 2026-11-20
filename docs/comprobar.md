@@ -173,6 +173,7 @@ código y ninguna orden se ha ejecutado.
 | Tiempo encendido | `/proc/uptime` | `uptime` | no |
 | Procesos e hilos | los directorios numéricos de `/proc` y sus `task` | `ps -e --no-headers \| wc -l`, `ps -eL --no-headers \| wc -l` | no |
 | Archivos abiertos | `/proc/sys/fs/file-nr` | `cat /proc/sys/fs/file-nr` | no |
+| Kernel contaminado, y qué módulo | `/proc/sys/kernel/tainted`, y si alguna marca es de módulo, `/sys/module/*/taint` | `cat /proc/sys/kernel/tainted`, `grep . /sys/module/*/taint` | no |
 
 ## Sensores
 

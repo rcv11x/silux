@@ -533,6 +533,9 @@ class System:
     open_files: int = 0
     # /proc/sys/kernel/tainted, the bit mask; None when it can't be read.
     tainted: Optional[int] = None
+    # The modules that tainted it, with their letters from
+    # /sys/module/<name>/taint: (("nvidia", "PO"),).
+    tainting_modules: tuple[tuple[str, str], ...] = ()
 
     memory: Memory = field(default_factory=Memory)
 

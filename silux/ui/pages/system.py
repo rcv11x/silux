@@ -202,7 +202,7 @@ class SystemPage(ScrollPage):
         graficos = render.graphics_stack(snapshot)
         k(_("sys.kernel.graphics"), graficos or d)
         self.kernel.set_visible(_("sys.kernel.graphics"), bool(graficos))
-        k(_("sys.kernel.tainted"), render.tainted(system.tainted),
+        k(_("sys.kernel.tainted"), render.tainted(system.tainted, system.tainting_modules),
           tooltip=_("sys.taint.tip").format(mask=system.tainted or 0))
         self.kernel.set_visible(_("sys.kernel.tainted"), system.tainted is not None)
 

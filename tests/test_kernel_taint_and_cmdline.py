@@ -6,12 +6,15 @@ or address: that is hidden when it is read, so neither the window nor a
 report nor a dump holds it.
 """
 
+import glob
 import re
 import unittest
+from unittest import mock
 
 from silux import privacidad, render
 from silux.i18n import _
 from tests import pantalla, qt
+from tests.arbol import arbol
 from tests.test_equipos import EQUIPOS, foto, volcados
 
 try:
@@ -56,6 +59,49 @@ class TestTaint(unittest.TestCase):
         self.assertIn("1048576", render.tainted(1 << 20))
 
 
+MODULES = {"/proc/meminfo": "MemTotal: 1 kB\n",
+           "/proc/sys/kernel/tainted": "12288\n",
+           "/sys/module/nvidia/taint": "POE\n",
+           "/sys/module/vboxdrv/taint": "OE\n",
+           "/sys/module/ext4/taint": "\n"}
+
+
+def _state(files=MODULES):
+    from silux.providers.base import Draft
+    from silux.providers.system import SystemState
+    with arbol(files):
+        draft = Draft()
+        SystemState().collect(draft)
+    return draft.system
+
+
+class TestWhichModuleTaintsIt(unittest.TestCase):
+
+    def test_the_modules_are_read_with_their_letters(self):
+        self.assertEqual(_state().tainting_modules, (("nvidia", "POE"), ("vboxdrv", "OE")))
+
+    def test_each_reason_names_its_modules(self):
+        system = _state()
+        self.assertEqual(render.tainted(system.tainted, system.tainting_modules),
+                         f"{_('sys.taint.12')} (nvidia, vboxdrv) · {_('sys.taint.13')} (nvidia, vboxdrv)")
+
+    def test_a_warning_is_no_module_and_nothing_is_read(self):
+        files = {**MODULES, "/proc/sys/kernel/tainted": "512\n"}
+        with mock.patch("glob.glob", wraps=glob.glob) as listed:
+            system = _state(files)
+        self.assertEqual(system.tainting_modules, ())
+        self.assertFalse([c for c in listed.call_args_list if "module" in str(c)])
+
+    def test_read_again_only_when_something_changes(self):
+        from silux.providers.base import Draft
+        from silux.providers.system import SystemState
+        provider = SystemState()
+        with arbol(MODULES), mock.patch("glob.glob", wraps=glob.glob) as listed:
+            for _sample in range(3):
+                provider.collect(Draft())
+            self.assertEqual(len([c for c in listed.call_args_list if "module" in str(c)]), 1)
+
+
 @unittest.skipIf(QApplication is None, "no PySide6")
 class TestOnTheSystemPage(unittest.TestCase):
 
@@ -77,6 +123,15 @@ class TestOnTheSystemPage(unittest.TestCase):
             line = page.boot._values[_("sys.boot.cmdline")]
             self.assertTrue(line.isVisible())
             self.assertIn("root=…", line.full_text())
+
+    def test_the_modules_are_named_on_the_page(self):
+        import dataclasses
+        photo = foto(EQUIPOS / "5800x3d")[0]
+        photo = dataclasses.replace(photo, system=dataclasses.replace(
+            photo.system, tainting_modules=_state().tainting_modules))
+        with pantalla.Ventana(photo) as window:
+            tainted = self.page(window).kernel._values[_("sys.kernel.tainted")]
+            self.assertIn("(nvidia, vboxdrv)", tainted.full_text())
 
     def test_hidden_when_the_dump_has_no_reading(self):
         with pantalla.Ventana(foto(EQUIPOS / "i5-10400")[0]) as window:
