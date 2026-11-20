@@ -22,9 +22,17 @@ sin los pasos para reproducirlo: este archivo es público.
   El 20 de noviembre de 2026 salió en el CI (3.14 + 6.12) con otra firma:
   `abort` dentro de un `realloc` de `QTreeView.expandAll()` del árbol de USB
   de Dispositivos, en `test_al_momento.py::test_y_al_perderlos`, que pasa
-  fotos de equipos distintos por la misma ventana. Un `realloc` que aborta
-  dice que el montón ya estaba roto de antes: es el mismo daño, visto en
-  otro sitio.
+  fotos de equipos distintos por la misma ventana. Y otra vez esa noche, ya
+  como `Segmentation fault` en la misma línea (`self.usb.expandAll()`,
+  justo después de `self.usb.clear()` en `_apply_usb`), en
+  `test_dispositivos.py::TestEnLaPagina::test_un_usb_que_se_quita_con_la_pagina_abierta`:
+  el run 44640777524, del push de b4d4144 a `master`, cuando el mismo SHA
+  había pasado en su rama. En local, 0 de 60 vueltas de esos dos tests con
+  `GLIBC_TUNABLES=glibc.malloc.check=3`. Un `realloc` que aborta dice que el
+  montón ya estaba roto de antes, pero dos veces en la misma línea apunta
+  al árbol USB, como causa o como el primer sitio que pide memoria después
+  del daño. Lo siguiente: que `_apply_usb` actualice las filas en vez de
+  vaciar y rehacer el árbol, y ver si deja de salir.
 * **F-A2 · `spd.py`** · alta · el XMP de DDR4 calcula el ciclo con la parte
   gruesa sola (`spd[offset+3] * 125`), sin la corrección fina: un DDR4-3600
   (555 ps) sale «XMP 1 3200». Las posiciones de los perfiles son las de XMP
@@ -173,6 +181,12 @@ sin los pasos para reproducirlo: este archivo es público.
 * **F-M32 · `cli.py`** · media · el valor de un sensor se formatea de tres
   maneras: `--sensors`, el volcado y `render.sensor_value`.
 * `report.py` · baja · `_placa` recibe `anonymous` y no lo usa.
+* **El informe con permisos, sin probar con los AppImage de la prueba1** ·
+  media · sin permisos se generó con los dos AppImage del CI, en este equipo
+  y con los tres volcados, y con entradas raras. Con permisos no: polkit
+  pide la contraseña (`auth_admin_keep`) y la noche del 19 no había nadie
+  delante. Probar `--report` y «Ver y guardar el informe…» → «Dar
+  permisos» con los dos antes de publicar.
 * `registro.py` · baja · la hora del CSV va sin fecha, y las cabeceras se
   repiten cuando un aparato publica varias etiquetas iguales.
 
@@ -203,11 +217,6 @@ sin los pasos para reproducirlo: este archivo es público.
 
 ## Empaquetado y CI
 
-* `tools/build_appimage.py` · baja · los AppImage llevan dentro
-  `libresolv.so.2`, que es de glibc. Llega por el plugin de Qt para VNC, que
-  arrastra QtNetwork y Kerberos; solo se carga con `QT_QPA_PLATFORM=vnc`.
-  Hay que dejar fuera ese plugin y llevar `libresolv` a lo que se deja al
-  sistema.
 * `tools/build_appimage.py` · baja · `--container` se traga `--keep` y
   `--appdir-only`; `appimagetool` se descarga en cada construcción sin fijar
   su hash.
@@ -223,6 +232,11 @@ sin los pasos para reproducirlo: este archivo es público.
   `test_avisos.py::test_no_salta_ningun_aviso_en_reposo` y
   `test_segundo_plano.py::TestCargarUnModulo::test_un_fallo_de_verdad_se_ensena`.
 * `tests/test_al_momento.py` no cubre Batería: ningún volcado tiene una.
+* `.github/workflows/tabla-cpu.yml` · baja · el paso que abre el PR no se ha
+  visto correr. Se lanzó a mano tres veces (el 19 y el 20 de noviembre de
+  2026): dos sin nada nuevo, y la del medio falló antes, al bajar el
+  `cpuid`. Todo lo anterior a ese paso, con las cinco fuentes, sí ha
+  corrido.
 
 ## Menores
 
