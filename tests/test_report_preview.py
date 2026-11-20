@@ -65,6 +65,14 @@ class TestReportPreview(unittest.TestCase):
         from silux import privacidad
         self.assertIn(privacidad.EQUIPO, text)
 
+    def test_it_opens_with_the_version_as_the_app_says_it_and_no_table(self):
+        from silux import __version__, render
+        from silux.i18n import en_español
+        lines = [line for line in self.open_preview().report().splitlines() if line.strip()]
+        self.assertTrue(lines[0].startswith(
+            f"# Informe de Silux {render.version(__version__, en_español)}"))
+        self.assertFalse(lines[1].startswith("|"), lines[1])
+
     def test_it_does_not_restyle_the_app_or_show_another_window(self):
         before = self.app.styleSheet()
         visible = {w for w in self.app.topLevelWidgets() if w.isVisible()}

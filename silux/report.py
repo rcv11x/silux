@@ -65,33 +65,33 @@ def build(snapshot: Snapshot, anonymous: bool = True) -> str:
 def _cabecera(snapshot: Snapshot, anonymous: bool) -> str:
     sistema = snapshot.system
     qt = _version_de_qt()
+    # A list and not a table: a key-value table has no header to give it,
+    # and an empty one was the first thing the report showed.
     lineas = [
-        f"# Informe de Silux {__version__}"
+        f"# Informe de Silux {render.version(__version__, en_español)}"
         + (f" ({build_id()})" if build_id() else ""),
         "",
-        "| | |",
-        "|---|---|",
-        f"| Distribución | {sistema.distribution or '?'} {sistema.version_id or ''} |",
-        f"| Kernel | {sistema.kernel or '?'} |",
+        f"- **Distribución:** {sistema.distribution or '?'} {sistema.version_id or ''}".rstrip(),
+        f"- **Kernel:** {sistema.kernel or '?'}",
         # Con qué se compiló el kernel: CachyOS usa clang y la mayoría gcc, y
         # eso cambia a qué se parece un equipo cuando algo va raro.
-        f"| Compilado | {sistema.kernel_build or '?'} |",
-        f"| Arquitectura | {sistema.architecture or '?'} |",
-        f"| Escritorio | {sistema.desktop or '?'} · {sistema.session_type or '?'} |",
-        f"| Init | {sistema.init or '?'} |",
-        f"| Python | {platform.python_version()} |",
-        f"| Qt (PySide6) | {qt or 'no instalado'} |",
-        f"| Fuentes activas | {', '.join(sorted(snapshot.capabilities)) or 'ninguna'} |",
-        f"| Ejecutado desde | {_procedencia()} |",
+        f"- **Compilado:** {sistema.kernel_build or '?'}",
+        f"- **Arquitectura:** {sistema.architecture or '?'}",
+        f"- **Escritorio:** {sistema.desktop or '?'} · {sistema.session_type or '?'}",
+        f"- **Init:** {sistema.init or '?'}",
+        f"- **Python:** {platform.python_version()}",
+        f"- **Qt (PySide6):** {qt or 'no instalado'}",
+        f"- **Fuentes activas:** {', '.join(sorted(snapshot.capabilities)) or 'ninguna'}",
+        f"- **Ejecutado desde:** {_procedencia()}",
     ]
     # Va en la cabecera y no en el apartado del procesador porque no habla del
     # procesador: cambia cómo se lee el archivo entero. Sin esta fila, un
     # informe de una VM de VMware describe una placa 440BX y un i5-10500T de
     # dos núcleos y dos sockets sin que nada avise de que no hay tal equipo.
     if virt := _hipervisor(snapshot):
-        lineas.append(f"| Máquina virtual | {virt} |")
+        lineas.append(f"- **Máquina virtual:** {virt}")
     if not anonymous and sistema.hostname:
-        lineas.append(f"| Equipo | {sistema.hostname} |")
+        lineas.append(f"- **Equipo:** {sistema.hostname}")
     return "\n".join(lineas)
 
 

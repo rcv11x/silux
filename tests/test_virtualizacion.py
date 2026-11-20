@@ -157,11 +157,11 @@ class TestElInformeLoDice(unittest.TestCase):
 
     def test_la_cabecera_nombra_al_hipervisor(self):
         texto = report.build(_foto(_tipo(in_virtual_machine=True, hypervisor="VMware")))
-        self.assertIn("| Máquina virtual | VMware |", texto)
+        self.assertIn("- **Máquina virtual:** VMware", texto)
 
     def test_sin_identificar_lo_dice_igual(self):
         texto = report.build(_foto(_tipo(in_virtual_machine=True)))
-        self.assertIn("| Máquina virtual | sí, hipervisor sin identificar |", texto)
+        self.assertIn("- **Máquina virtual:** sí, hipervisor sin identificar", texto)
 
     def test_un_equipo_real_no_gana_una_fila(self):
         self.assertNotIn("Máquina virtual", report.build(_foto(_tipo())))

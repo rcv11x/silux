@@ -1431,20 +1431,20 @@ def home_path(text, home: Optional[str] = None) -> str:
     return re.sub(r"(?<![\w/.-])" + re.escape(home) + r"(?=$|[/\s'\"),:;])", "~", text)
 
 
-def version(completa: str) -> str:
+def version(completa: str, translate=_) -> str:
     """La versión como se enseña: «0.4» y no «0.4.0»; «0.4.1» en un arreglo;
     «0.4-prueba1» en la primera de prueba de la 0.4.
 
-    Por debajo siempre es x.y.z (pyproject, la etiqueta, el informe y
-    `--version`, que son para máquinas y para reportar fallos). A quien mira
-    la ventana, el tercer número solo le dice algo cuando no es cero: es la
-    versión de arreglos de esa.
+    Por debajo siempre es x.y.z (pyproject, la etiqueta y `--version`, que
+    son para máquinas). A quien mira la ventana o lee el informe, el tercer
+    número solo le dice algo cuando no es cero: es la versión de arreglos de
+    esa. The report passes `en_español`: it is always in Spanish.
     """
     # Una versión de prueba va como la pide PEP 440 («0.4.0rc1») y se
     # enseña con su nombre: «0.4-prueba1».
     prueba = re.fullmatch(r"(\d+\.\d+\.\d+)rc(\d+)", completa)
     if prueba:
-        return f"{version(prueba.group(1))}-{_('app.version.rc')}{prueba.group(2)}"
+        return f"{version(prueba.group(1))}-{translate('app.version.rc')}{prueba.group(2)}"
     partes = completa.split(".")
     if len(partes) == 3 and partes[2] == "0":
         return ".".join(partes[:2])
