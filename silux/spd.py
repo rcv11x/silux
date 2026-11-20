@@ -132,12 +132,18 @@ class SpdInfo:
     # Perfiles cuya presencia se reconoce pero cuyas cifras no se interpretan:
     # hoy, los de DDR5. Ver `_ddr5_perfiles`.
     overclock_profiles: tuple[str, ...] = ()
+    # The speed an XMP profile declares, kept even when the rest of the
+    # profile cannot be trusted (F-A2): its cycle is read right, its timings
+    # and voltage are not. Dropping it, a tester's DDR4-3200 read «catalogado
+    # a 2400» and lost «al máximo del procesador».
+    xmp_speeds_mts: tuple[int, ...] = ()
     decoded: bool = False                     # False = formato no soportado
 
     @property
     def rated_mts(self) -> Optional[int]:
         """La velocidad más alta que el módulo declara saber dar."""
         candidatos = [t.speed_mts for t in (self.jedec, *self.profiles) if t]
+        candidatos += list(self.xmp_speeds_mts)
         return max(candidatos) if candidatos else None
 
 
@@ -320,6 +326,7 @@ def _decode_ddr4(spd: bytes, address: str, slot: int) -> SpdInfo:
             DDR4_DENSIDADES.get(spd[d.DENSITY] & 0x0F), ancho_chip, ancho_bus, ranks),
         jedec=jedec if jedec.plausible else None,
         profiles=tuple(_xmp_profiles(spd)),
+        xmp_speeds_mts=_xmp_speed(spd, jedec if jedec.plausible else None),
         xmp_revision=_xmp_revision(spd),
         decoded=True,
     )
@@ -494,6 +501,24 @@ def _xmp_revision(spd: bytes) -> Optional[str]:
         return None
     revision = spd[_Ddr4.XMP_REVISION]
     return f"{revision >> 4}.{revision & 0x0F}"
+
+
+def _xmp_speed(spd: bytes, jedec: Optional[Timings]) -> tuple[int, ...]:
+    """Profile 1's speed alone, from its cycle: the byte F-A2 does read
+    right (a tester's 3200 was). Only the first profile, whose place is
+    sure, and only above JEDEC: it is a rated speed, not a guess. With the
+    coarse cycle alone it can read a grade low (a 3600 as 3200), never high."""
+    if len(spd) < 464 or spd[_Ddr4.XMP_MAGIC] != b"\x0c\x4a":
+        return ()
+    tck = spd[384 + 185 - 176 + 3] * 125
+    if not tck:
+        return ()
+    speed = grado_jedec(2_000_000 / tck)
+    if not PLAUSIBLE_MTS[0] <= speed <= PLAUSIBLE_MTS[1]:
+        return ()
+    if jedec is not None and speed <= jedec.speed_mts:
+        return ()
+    return (speed,)
 
 
 def _xmp_profiles(spd: bytes) -> Iterator[Timings]:

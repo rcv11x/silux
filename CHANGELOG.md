@@ -20,6 +20,11 @@ que hace falta.
   temporizaciones) salían pegados a la memoria soldada, que no tiene ese
   chip.
 
+- Arreglado (se rompió en la prueba2): unos DDR4-3200 con un XMP que esta
+  versión no sabe leer salían «Catalogado a 2400» y perdían el aviso de que
+  van al máximo del procesador. La velocidad del perfil se lee bien y vuelve a
+  contar.
+
 ### Gráficos
 
 - Arreglado: la NVIDIA de un portátil enseñaba «Ventilador: —». Su ventilador

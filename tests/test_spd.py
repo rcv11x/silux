@@ -437,6 +437,42 @@ class TestAnXmpThatCannotBeRead(unittest.TestCase):
         self.assertTrue(spd.Timings(name="XMP 1", speed_mts=3200, cl=16,
                                     voltage_v=1.35).plausible)
 
+    def test_its_speed_still_counts_as_rated(self):
+        # The profile's cycle is read right; it is its timings and voltage
+        # that are not. Dropping all of it, a DDR4-3200 read «catalogado a
+        # 2400» and lost «al máximo del procesador». Here the Crucial above
+        # with an XMP header and a profile 1 like that tester's (0xA3 in the
+        # voltage byte, read as 0.815 V) at 500 ps, over its JEDEC 3200.
+        raw = bytearray(FIXTURE.read_bytes())
+        raw[384:386] = b"\x0c\x4a"
+        raw[386] = 0x20
+        perfil = 384 + 185 - 176
+        raw[perfil] = 0xA3
+        raw[perfil + 3] = 4
+        raw[perfil + 9:perfil + 12] = bytes((90, 90, 20))
+        info = spd.decode(bytes(raw), address="10-0050", slot=0)
+        self.assertEqual(info.profiles, ())
+        self.assertEqual(info.rated_mts, 4000)
+
+    def test_and_the_warning_of_the_processors_maximum_is_back(self):
+        # That tester's case whole: TEAMGROUP DDR4-3200 at 2933 on an
+        # i7-10700F, whose official maximum is 2933.
+        from silux import db, render
+        from silux.i18n import _
+        from silux.model import MemoryModule
+        jedec = spd.Timings(name="JEDEC", speed_mts=2400, cl=16, trcd=16, trp=16,
+                            tras=39, trc=55, voltage_v=1.2)
+        info = spd.SpdInfo(address="0-0050", slot=0, dram_type="DDR4", jedec=jedec,
+                           xmp_revision="2.0", xmp_speeds_mts=(3200,), decoded=True)
+        modulos = tuple(MemoryModule(populated=True, locator=f"DIMM {n}", type="DDR4",
+                                     size_bytes=8 << 30, speed_mts=2400,
+                                     configured_mts=2933, spd=info) for n in (0, 1))
+        self.assertEqual(modulos[0].rated_mts, 3200)
+        limite = db.memory_limit("Intel(R) Core(TM) i7-10700F CPU @ 2.90GHz", "DDR4")
+        self.assertEqual(render.memory_speed_warning(modulos, limite),
+                         _("mem.cpumax").format(actual=2933, rated=3200,
+                                                modelo=render.memory_limit_label(limite)))
+
     def test_the_page_says_it_has_xmp_and_does_not_show_it(self):
         if not __import__("importlib").util.find_spec("PySide6"):
             self.skipTest("sin PySide6")
