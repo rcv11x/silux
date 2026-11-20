@@ -279,6 +279,11 @@ cambia el otro.
   release, ni fecha en el CHANGELOG. Lo que entra en `master` se queda como
   «sin publicar» en la entrada de arriba del CHANGELOG, que sigue acumulando
   hasta que él decida cortarla.
+- **Las notas de una release llevan solo dos cosas**: la tabla de qué
+  AppImage descargar (normal o compat, para qué equipos) y lo que cambia en
+  esa versión, en una lista corta, con la lista completa enlazada al
+  CHANGELOG. Nada de peticiones, explicaciones largas, frases personales ni
+  «qué te pido»: cómo mandar un informe va en el README.
 - **Lo que toca privilegios se propone antes de escribirlo**, con lo que se
   ha medido, y se espera respuesta.
 - **Lo que depende de que alguien se acuerde de subir un número no es una

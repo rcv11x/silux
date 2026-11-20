@@ -126,6 +126,13 @@ vistazo. La entrada se escribe como «sin publicar» y la fecha se pone al
 etiquetar; la de arriba tiene que ser la versión que declara el paquete, y
 hay un test que lo vigila.
 
+Las notas de cada release en GitHub no repiten el CHANGELOG: la tabla de qué
+AppImage descargar y una lista corta de lo que cambia, con el enlace a su
+entrada del CHANGELOG para el resto. Las lee quien va a descargar y quiere
+saber qué archivo y qué trae; las peticiones y las instrucciones para mandar
+un informe se quedaban ahí, versión tras versión, tapando lo que cambiaba.
+Eso va en el README, que es el mismo para todas.
+
 ## El idioma
 
 La interfaz va en **español neutro**: `video` y no «vídeo», `archivo` y no
