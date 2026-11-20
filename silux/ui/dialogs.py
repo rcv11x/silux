@@ -18,6 +18,32 @@ PARRAFOS = ("perm.explain.reads", "perm.explain.once", "perm.explain.always",
             "perm.explain.polkit")
 
 
+def ajustar_tope(dialogo: QDialog) -> None:
+    """El ancho máximo: el de leer a gusto, o lo que pida la orden.
+
+    Con un tope más estrecho que la orden, el campo se sale por la
+    derecha y los párrafos se quedan sin altura. Se vuelve a calcular
+    justo antes de enseñarse, que es cuando Qt decide el tamaño y cuando
+    el tema ya ha pasado por los botones.
+    """
+    pide = dialogo.layout().minimumSize().width()
+    # El mínimo también: uno puesto a mano manda sobre el del contenido,
+    # y con él más bajo Qt deja el diálogo más estrecho que la orden.
+    ancho = max(theme.METRICS.base_pt * 40, pide)
+    dialogo.setMinimumWidth(ancho)
+    dialogo.setMaximumWidth(max(theme.METRICS.base_pt * 52, pide))
+    # Y el alto que piden los párrafos a ese ancho, que es el más
+    # estrecho y por tanto el más alto. El mínimo que calcula Qt cuenta
+    # cada párrafo como una línea: en Wayland la ventana abría con ese
+    # tamaño (573x299 donde hacían falta 425) y salían cortados los
+    # párrafos y los botones. Sin pantalla no pasa, y por eso no se veía
+    # en las capturas.
+    alto = dialogo.layout().totalHeightForWidth(ancho)
+    dialogo.setMinimumHeight(alto)
+    if dialogo.height() < alto or not dialogo.isVisible():
+        dialogo.resize(max(dialogo.width(), ancho), alto)
+
+
 class PermissionsDialog(QDialog):
     """«Qué hace esto»: lo que pasa al dar permisos, antes de darlos.
 
@@ -101,36 +127,11 @@ class PermissionsDialog(QDialog):
         layout.addLayout(botones)
         layout.addWidget(self.window_note)
 
-        self._ajustar_tope()
-
-    def _ajustar_tope(self) -> None:
-        """El ancho máximo: el de leer a gusto, o lo que pida la orden.
-
-        Con un tope más estrecho que la orden, el campo se sale por la
-        derecha y los párrafos se quedan sin altura. Se vuelve a calcular
-        justo antes de enseñarse, que es cuando Qt decide el tamaño y cuando
-        el tema ya ha pasado por los botones.
-        """
-        pide = self.layout().minimumSize().width()
-        # El mínimo también: uno puesto a mano manda sobre el del contenido,
-        # y con él más bajo Qt deja el diálogo más estrecho que la orden.
-        ancho = max(theme.METRICS.base_pt * 40, pide)
-        self.setMinimumWidth(ancho)
-        self.setMaximumWidth(max(theme.METRICS.base_pt * 52, pide))
-        # Y el alto que piden los párrafos a ese ancho, que es el más
-        # estrecho y por tanto el más alto. El mínimo que calcula Qt cuenta
-        # cada párrafo como una línea: en Wayland la ventana abría con ese
-        # tamaño (573x299 donde hacían falta 425) y salían cortados los
-        # párrafos y los botones. Sin pantalla no pasa, y por eso no se veía
-        # en las capturas.
-        alto = self.layout().totalHeightForWidth(ancho)
-        self.setMinimumHeight(alto)
-        if self.height() < alto or not self.isVisible():
-            self.resize(max(self.width(), ancho), alto)
+        ajustar_tope(self)
 
     def setVisible(self, visible: bool) -> None:  # noqa: N802
         if visible:
-            self._ajustar_tope()
+            ajustar_tope(self)
         super().setVisible(visible)
 
     def _dar(self) -> None:
