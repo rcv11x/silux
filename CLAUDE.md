@@ -36,6 +36,7 @@ python3 tools/install_desktop.py       # entrada de menú: «Silux (desarrollo)�
 python3 tools/volcar_gpu.py            # lo que publica el kernel de cada gráfica
 python3 tools/volcar_equipo.py NOMBRE  # este equipo, anonimizado, a tests/fixtures/equipos/
 python3 tools/montar_equipo.py NOMBRE ORDEN…  # ejecutar algo con un volcado montado, como los tests
+python3 tools/importar_informe.py INFORME NOMBRE  # el anexo del informe de alguien, a volcado
 python3 tools/update_screen_references.py  # rehacer lo que enseña cada volcado (y revisar el diff)
 python3 tools/comprobar_privacidad.py  # antes de publicar nada
 python3 tools/medir_consumo.py         # lo que gasta, contra sus objetivos (regla 7)
@@ -152,6 +153,8 @@ silux/
 ├─ throttling.py   desde cuándo lleva frenándose algo, y por qué
 ├─ registro.py     graba la sesión a un CSV
 ├─ i18n.py         el idioma de la interfaz; el original es el español
+├─ volcado.py      volcar este equipo, anonimizado (tools/volcar_equipo.py)
+├─ annex.py        el anexo del informe: ese volcado en texto, y de vuelta
 ├─ system_env.py   el entorno de lo que se lanza, sin lo que añade el AppImage
 ├─ rawcpuid.py     CPUID desde Python, sin root (mmap + ctypes)
 ├─ gpuapi.py       OpenGL, Vulkan, OpenCL y VA-API, en otro proceso
@@ -235,7 +238,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); el código nuevo, en inglés (ver «Código»). Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-1514 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+1522 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
