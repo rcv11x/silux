@@ -157,26 +157,41 @@ class TestNamesOfMachines(unittest.TestCase):
             self.assertNotIn("quitados", manifest)
 
 
-class TestAnNvidiaLaptop(unittest.TestCase):
-    """An Intel integrated and an awake NVIDIA, as widecoocaa23's laptop."""
+class TestNvidiaCards(unittest.TestCase):
+    """Any awake NVIDIA: widecoocaa23's laptop (an Intel integrated and an
+    RTX 4050) and anianin27's desktop (an RTX 4060) had no annex in the
+    prueba2. And a machine with two, each with its own UUID."""
 
-    UUID = "GPU-5c2b6d0e-8f41-4a7d-b3e9-1f0c2a7d9e64"
+    @staticmethod
+    def _card(index, slot, uuid, name, driver, cuda, gib, bus):
+        return {"index": index, "pci_slot": slot, "uuid": uuid, "serial": None, "name": name,
+                "driver_version": driver, "cuda_cores": cuda, "memory_total_bytes": gib << 30,
+                "memory_bus_bits": bus, "throttle_reasons": []}
 
-    def test_two_cards_and_the_nvidias_id_covered(self):
-        with _machine("i5-10400") as (root, out):
-            grabado = json.loads((root / "grabado.json").read_text())
-            grabado["nvml"] = {"abierta": True, "tarjetas": [{
-                "index": 0, "pci_slot": "0000:01:00.0", "uuid": self.UUID, "serial": None,
-                "name": "NVIDIA GeForce RTX 4050 Laptop GPU", "driver_version": "550.163.01",
-                "cuda_cores": 2560, "memory_total_bytes": 6 << 30, "memory_bus_bits": 96,
-                "throttle_reasons": []}]}
-            (root / "grabado.json").write_text(json.dumps(grabado))
-            folder, manifest, everything = _dump(out, propios={})
-            self.assertNotIn("quitados", manifest)
-            self.assertNotIn(self.UUID[4:].encode(), everything)
-            names = [g.name for g in volcado.foto_de(folder).gpus]
-            self.assertIn("NVIDIA GeForce RTX 4050 Laptop GPU", names)
-            self.assertEqual(len(names), 2)
+    CASES = {
+        "laptop": ("i5-10400", [("0000:01:00.0", "GPU-5c2b6d0e-8f41-4a7d-b3e9-1f0c2a7d9e64",
+                                 "NVIDIA GeForce RTX 4050 Laptop GPU", "550.163.01", 2560, 6, 96)]),
+        "desktop": ("5800x3d", [("0000:2d:00.0", "GPU-91d3a7c4-0b2e-4f6a-9c18-7e5d2a4b6c80",
+                                 "NVIDIA GeForce RTX 4060", "595.104.02", 3072, 8, 128)]),
+        "two": ("5800x3d", [("0000:2d:00.0", "GPU-91d3a7c4-0b2e-4f6a-9c18-7e5d2a4b6c80",
+                             "NVIDIA GeForce RTX 4060", "595.104.02", 3072, 8, 128),
+                            ("0000:2e:00.0", "GPU-0a7e6b5c-4d3f-4e2a-8b1c-9d0e1f2a3b4c",
+                             "NVIDIA GeForce RTX 3060", "595.104.02", 3584, 12, 192)]),
+    }
+
+    def test_each_cards_id_covered(self):
+        for case, (dump, cards) in self.CASES.items():
+            with self.subTest(case=case), _machine(dump) as (root, out):
+                grabado = json.loads((root / "grabado.json").read_text())
+                grabado["nvml"] = {"abierta": True, "tarjetas": [
+                    self._card(i, *c) for i, c in enumerate(cards)]}
+                (root / "grabado.json").write_text(json.dumps(grabado))
+                folder, manifest, everything = _dump(out, propios={})
+                self.assertNotIn("quitados", manifest)
+                for _slot, uuid, name, *_rest in cards:
+                    self.assertNotIn(uuid[4:].encode(), everything)
+                names = [g.name for g in volcado.foto_de(folder).gpus]
+                self.assertLessEqual({c[2] for c in cards}, set(names))
 
 
 class TestNetworkConnections(unittest.TestCase):
