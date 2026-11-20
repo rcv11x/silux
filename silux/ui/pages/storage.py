@@ -246,9 +246,13 @@ class StoragePage(ScrollPage):
         # En los dos sentidos: si el diagnóstico deja de estar (los permisos
         # eran de esta sesión y el ayudante se fue), la tarjeta vuelve a decir
         # lo del principio y no «leídos 2 de 5».
+        outdated = snapshot.privileged.outdated
         self.elevation_text.setText(
-            _("storage.health.read").format(n=leidos, total=len(discos)) if leidos
+            _("perm.outdated.body") if outdated
+            else _("storage.health.read").format(n=leidos, total=len(discos)) if leidos
             else _("storage.health.body"))
+        # Updating the helper is what brings it back: its button is the one left.
+        self.elevation_button.setVisible(not outdated)
 
     def record(self, snapshot: Snapshot) -> None:
         """Las fichas de arriba, que guardan la historia de la lectura y la

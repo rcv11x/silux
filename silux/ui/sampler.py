@@ -39,6 +39,7 @@ class Sampler(QThread):
         self._wake = QWaitCondition()
         self._stopping = False
         self._elevate = False
+        self._refresh_static = False
 
     def set_interval(self, milliseconds: int) -> None:
         self._mutex.lock()
@@ -53,6 +54,12 @@ class Sampler(QThread):
         trabajo (y el diálogo de polkit, que bloquea) ocurre en este hilo.
         """
         self._elevate = True
+        self._wake.wakeAll()
+
+    def refresh_static(self) -> None:
+        """Reads again what is read once, on the next sample: after installing
+        or removing the helper, which changes what the static part says."""
+        self._refresh_static = True
         self._wake.wakeAll()
 
     def stop(self) -> None:
@@ -80,6 +87,9 @@ class Sampler(QThread):
 
     def _loop(self, collector) -> None:
         while True:
+            if self._refresh_static:
+                self._refresh_static = False
+                collector.invalidate()
             elevating = self._elevate
             if elevating:
                 self._elevate = False

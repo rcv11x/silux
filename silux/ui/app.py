@@ -1017,7 +1017,9 @@ class MainWindow(QMainWindow):
         # sabe leer en este equipo. El enlace sigue aquí aunque el aviso se
         # haya quitado para siempre; es lo que queda para darlos después.
         bloqueados = len(snapshot.permission_notes)
-        if bloqueados:
+        if bloqueados and snapshot.privileged.outdated:
+            self._blocked.setText(_("status.blocked.outdated"))
+        elif bloqueados:
             plantilla = (_("status.blocked.action") if bloqueados == 1
                          else _("status.blocked.action.many"))
             self._blocked.setText(plantilla.format(n=bloqueados))
@@ -1038,7 +1040,11 @@ class MainWindow(QMainWindow):
         """
         from ..privileged.client import PrivilegedClient
 
-        if PrivilegedClient.instalado() and PrivilegedClient.al_dia():
+        if self._last_snapshot is not None and self._last_snapshot.privileged.outdated:
+            # Every padlock and button says «update the helper»: that is what
+            # it does, with no notice first.
+            self._on_permanent_requested()
+        elif PrivilegedClient.instalado() and PrivilegedClient.al_dia():
             self._elevar()
         else:
             self._explicar_permisos()
@@ -1136,6 +1142,8 @@ class MainWindow(QMainWindow):
             return
 
         self._refrescar_botones_permanentes()
+        # What the helper's state changes is read once: read it again.
+        self.sampler.refresh_static()
         if self._last_snapshot is not None:
             self.settings_page.set_privileges(self._last_snapshot)
         self._status.set_full_text(
@@ -1183,6 +1191,8 @@ class MainWindow(QMainWindow):
                     (resultado.stderr or "").strip().splitlines()[-1:] or [_("perm.failed")])
             return
         self._refrescar_botones_permanentes()
+        # What the helper's state changes is read once: read it again.
+        self.sampler.refresh_static()
         if self._last_snapshot is not None:
             self.settings_page.set_privileges(self._last_snapshot)
         self._status.set_full_text(_("settings.perm.removed"))
@@ -1351,9 +1361,13 @@ class MainWindow(QMainWindow):
             self.home_page.set_permission_notice(())
             return
         recaida = self._permisos_completos
-        apartado = self._aviso_pospuesto or self.prefs.permission_notice_dismissed
+        outdated = snapshot.privileged.outdated
+        # An outdated helper is not «data you could see»: it is a root file
+        # left behind that no longer works. Only «Ahora no» puts it away.
+        apartado = self._aviso_pospuesto or (self.prefs.permission_notice_dismissed
+                                             and not outdated)
         visible = recaida or not apartado
-        self.home_page.set_permission_notice(faltan if visible else (), recaida)
+        self.home_page.set_permission_notice(faltan if visible else (), recaida, outdated)
         for pagina in self._paginas_con_aviso():
             pagina.hide_permission_notices(not visible)
 

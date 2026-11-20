@@ -477,7 +477,7 @@ class CpuPage(ScrollPage):
             # Apartados desde aquí o desde Inicio. Lo que falta sigue dicho en
             # su sitio, con el candado, y en el enlace de la barra de estado.
             notes = tuple(n for n in notes if n.need is not Need.ROOT)
-        signature = tuple((n.path, n.need) for n in notes)
+        signature = tuple((n.path, n.need, n.helper_outdated) for n in notes)
         if signature == self._notice_signature:
             return
         self._notice_signature = signature
@@ -491,9 +491,9 @@ class CpuPage(ScrollPage):
             # vatios en blanco: el aviso lo tenía delante y la salida en otra
             # sección.
             aviso = Notice(
-                _(NEED_TITLES.get(note.need, note.need.value)),
+                render.permission_title(note, _(NEED_TITLES.get(note.need, note.need.value))),
                 note.message, note.hint,
-                action=(_("perm.button.read")
+                action=(render.permission_action(note)
                         if note.need is Need.ROOT else None),
                 tone=tone_for(note.need),
                 dismissible=note.need is Need.ROOT,

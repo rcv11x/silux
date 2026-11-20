@@ -498,7 +498,7 @@ class GpuSection(QWidget):
         """`sin_permisos`: los avisos de permisos están apartados."""
         if sin_permisos:
             notes = [n for n in notes if n.need is not Need.ROOT]
-        signature = tuple((n.path, n.need) for n in notes)
+        signature = tuple((n.path, n.need, n.helper_outdated) for n in notes)
         if signature == self._notice_signature:
             return
         self._notice_signature = signature
@@ -507,9 +507,10 @@ class GpuSection(QWidget):
         self.elevation_buttons = []
         for note in notes:
             aviso = Notice(
-                _(NEED_TITLES.get(note.need, note.need.value)), note.message, note.hint,
+                render.permission_title(note, _(NEED_TITLES.get(note.need, note.need.value))),
+                note.message, note.hint,
                 tone=tone_for(note.need),
-                action=(_("perm.button.read")
+                action=(render.permission_action(note)
                         if note.need is Need.ROOT else None),
                 dismissible=note.need is Need.ROOT,
             )

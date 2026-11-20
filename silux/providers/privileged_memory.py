@@ -77,11 +77,13 @@ class PrivilegedMemory(Provider):
 
     def collect(self, draft: Draft) -> None:
         draft.driver_hints.extend(self._spd_hint())
+        outdated = PrivilegedClient.necesita_reinstalar()
         draft.privileged = PrivilegedState(
             supported=self.client.supported(),
             connected=self.client.connected(),
             already_root=already_root(),
             message=self._error,
+            outdated=outdated,
         )
 
         if already_root():
@@ -115,6 +117,7 @@ class PrivilegedMemory(Provider):
             connected=self.client.connected(),
             already_root=already_root(),
             message=self._error,
+            outdated=outdated,
         )
 
     # -- SPD ----------------------------------------------------------------

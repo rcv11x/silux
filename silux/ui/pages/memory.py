@@ -680,6 +680,12 @@ class MemoryPage(ScrollPage):
                 _("memory.elev.nopkexec.hint")
             )
             self.elevation_button.hide()
+        elif state.outdated:
+            # What brings it back is updating the helper: its button is the
+            # one left, «Actualizar el ayudante».
+            self.elevation_text.setText(_("perm.outdated.body"))
+            self.elevation_hint.setText("")
+            self.elevation_button.hide()
         else:
             leidos = len(snapshot.spd)
             if leidos:

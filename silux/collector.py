@@ -12,6 +12,7 @@ dejar la aplicación en blanco.
 from __future__ import annotations
 
 import copy
+import dataclasses
 import inspect
 import time
 from typing import Iterable, Optional, Sequence
@@ -104,6 +105,17 @@ def _ruta_de(exc: OSError) -> str:
     return str(exc.filename) if exc.filename else str(exc)
 
 
+def _with_the_helper_outdated(snapshot: Snapshot) -> Snapshot:
+    """What permissions would read, said as what fixes it: the installed
+    helper is from another version, so it is not giving permissions but
+    updating the helper. Every notice, padlock and the report say it alike."""
+    falta = set(snapshot.permission_notes)
+    notes = tuple(dataclasses.replace(n, message=_("perm.outdated.body"), hint="",
+                                      helper_outdated=True) if n in falta else n
+                  for n in snapshot.notes)
+    return dataclasses.replace(snapshot, notes=notes)
+
+
 class Collector:
     """Punto de entrada de la capa de datos. Reutilizable y con estado propio."""
 
@@ -130,7 +142,10 @@ class Collector:
             # Algo que dormía al leer lo estático ha despertado: la próxima
             # vuelta lo lee entero.
             self.invalidate()
-        return draft.freeze()
+        snapshot = draft.freeze()
+        if snapshot.privileged.outdated:
+            snapshot = _with_the_helper_outdated(snapshot)
+        return snapshot
 
     def sample(self, settle: float = 0.25) -> Snapshot:
         """Una sola foto lista para enseñar.

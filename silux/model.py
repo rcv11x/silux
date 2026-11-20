@@ -43,6 +43,9 @@ class Note:
     # proveedor en las notas que el ayudante privilegiado sabe resolver, y es
     # lo que permite listarlas juntas sin deducir nada de la ruta.
     what: str = ""
+    # It needs permissions and the installed helper is from another version:
+    # what fixes it is updating the helper, not giving permissions.
+    helper_outdated: bool = False
 
 
 # --------------------------------------------------------------------------
@@ -675,6 +678,9 @@ class PrivilegedState:
     connected: bool = False
     already_root: bool = False
     message: Optional[str] = None            # el último fallo, si lo hubo
+    # The helper installed in the system is not this version's: it is not
+    # used, and it stays owned by root until it is replaced.
+    outdated: bool = False
 
 
 # --------------------------------------------------------------------------

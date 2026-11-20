@@ -1704,6 +1704,7 @@ class PermissionNotice(QFrame):
         self._compact = compact
         self._nombres: tuple[str, ...] = ()
         self._recaida = False
+        self._outdated = False
         m = theme.METRICS
 
         layout = QVBoxLayout(self)
@@ -1742,14 +1743,22 @@ class PermissionNotice(QFrame):
         self.buttons.addWidget(self.dismiss_button)
         layout.addLayout(self.buttons)
 
-    def set_missing(self, nombres: Sequence[str], recaida: bool = False) -> None:
-        """Pone lo que falta. `recaida`: se tenía y ha dejado de leerse."""
+    def set_missing(self, nombres: Sequence[str], recaida: bool = False,
+                    outdated: bool = False) -> None:
+        """Pone lo que falta. `recaida`: se tenía y ha dejado de leerse.
+        `outdated`: the installed helper is from another version, and what
+        brings it back is updating it, not giving permissions."""
         nombres = tuple(nombres)
-        if nombres == self._nombres and recaida == self._recaida:
+        if (nombres, recaida, outdated) == (self._nombres, self._recaida, self._outdated):
             return
-        self._nombres, self._recaida = nombres, recaida
+        self._nombres, self._recaida, self._outdated = nombres, recaida, outdated
+        self.grant_button.setText(_("perm.replace.button") if outdated else _("perm.notice.grant"))
+        self.explain_button.setVisible(not outdated)
+        self.dismiss_button.setVisible(not outdated)
         n = len(nombres)
-        if recaida:
+        if outdated:
+            clave = "perm.outdated.home"
+        elif recaida:
             clave = "perm.notice.lost.one" if n == 1 else "perm.notice.lost.many"
         else:
             clave = "perm.notice.title.one" if n == 1 else "perm.notice.title.many"
@@ -1780,6 +1789,7 @@ class PermissionNotice(QFrame):
         """Mientras polkit pregunta, el botón lo dice y no se puede repetir."""
         self.grant_button.setEnabled(not esperando)
         self.grant_button.setText(_("perm.waiting") if esperando
+                                  else _("perm.replace.button") if self._outdated
                                   else _("perm.notice.grant"))
 
 

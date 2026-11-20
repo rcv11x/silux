@@ -233,11 +233,12 @@ class HomePage(ScrollPage):
 
     # -- actualización ------------------------------------------------------
 
-    def set_permission_notice(self, nombres, recaida: bool = False) -> None:
+    def set_permission_notice(self, nombres, recaida: bool = False,
+                              outdated: bool = False) -> None:
         """Qué falta por permisos, o nada. Lo decide la ventana, que es quien
         sabe si el aviso se apartó: esta página se rehace al cambiar de tema."""
         if nombres:
-            self.permission_notice.set_missing(nombres, recaida)
+            self.permission_notice.set_missing(nombres, recaida, outdated)
         self.permission_notice.setVisible(bool(nombres))
 
     def apply(self, snapshot: Snapshot) -> None:

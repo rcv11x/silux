@@ -400,7 +400,18 @@ def lock_tooltip(nota) -> str:
 
     Por qué falta, con las palabras de la nota, y qué pasa al pulsarlo.
     """
-    return f"{nota.message}\n\n{_('lock.tip')}"
+    return f"{nota.message}\n\n{_('lock.tip.outdated' if nota.helper_outdated else 'lock.tip')}"
+
+
+def permission_action(nota) -> str:
+    """The button of a note that needs permissions: give them, or update the
+    installed helper when it is from another version."""
+    return _("perm.replace.button") if nota.helper_outdated else _("perm.button.read")
+
+
+def permission_title(nota, titulo: str) -> str:
+    """A notice's title: the page's own, or that the helper is out of date."""
+    return _("perm.outdated.title") if nota.helper_outdated else titulo
 
 
 # Cómo llama el kernel al dúplex de un enlace, y con qué clave se dice aquí.
