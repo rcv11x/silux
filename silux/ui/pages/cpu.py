@@ -162,6 +162,8 @@ class TypeSection(QWidget):
 
         self._cache_rows: list[str] = []
         self._voltaje = None
+        self._base_hz = None
+        self._base_texto = render.DASH
         self._chip_signature: tuple = ()
 
     def lock_voltage(self, nota, color: str) -> None:
@@ -172,6 +174,15 @@ class TypeSection(QWidget):
         elif self.processor.is_locked(nombre):
             self.processor.set(nombre, render.volts(self._voltaje),
                                tooltip=_("cpu.tip.voltage"))
+
+    def lock_base(self, nota, color: str) -> None:
+        """The base clock missing for permissions (`nota`): a Zen states it in
+        its P0, which only the administrator reads."""
+        nombre = _("cpu.clock.base")
+        if nota is not None and self._base_hz is None:
+            self.clocks.set_locked(nombre, color, render.lock_tooltip(nota))
+        elif self.clocks.is_locked(nombre):
+            self.clocks.set(nombre, self._base_texto)
 
     def apply(self, cpu_type: CpuType, explained: frozenset = frozenset()) -> None:
         """`explained`: the paths of the notes on the page about the CPU table."""
@@ -220,8 +231,10 @@ class TypeSection(QWidget):
         clocks = cpu_type.clocks
         c(_("cpu.clock.current"), render.hz(clocks.current_hz))
         c(_("cpu.clock.multiplier"), render.multiplier(clocks.multiplier))
-        c(_("cpu.clock.base"), render.clock_and_multiplier(
-            clocks.base_hz, clocks.base_multiplier))
+        self._base_hz = clocks.base_hz
+        self._base_texto = render.clock_and_multiplier(clocks.base_hz, clocks.base_multiplier)
+        if self._base_hz is not None or not self.clocks.is_locked(_("cpu.clock.base")):
+            c(_("cpu.clock.base"), self._base_texto)
         c(_("cpu.clock.min"), render.clock_and_multiplier(
             clocks.min_hz, clocks.min_multiplier))
         c(_("cpu.clock.maxkernel"), render.clock_and_multiplier(
@@ -465,6 +478,7 @@ class CpuPage(ScrollPage):
                 section = TypeSection(self._p, self._prefs, title)
                 # El candado del voltaje pide lo mismo que el botón del aviso.
                 section.processor.locked_clicked.connect(self.elevation_requested)
+                section.clocks.locked_clicked.connect(self.elevation_requested)
                 self._sections[cpu_type.key] = section
                 self._sections_host.addWidget(section)
             self._signature = signature
@@ -474,6 +488,7 @@ class CpuPage(ScrollPage):
             if section := self._sections.get(cpu_type.key):
                 section.apply(cpu_type, explained)
                 section.lock_voltage(snapshot.permission_note("cpu.voltage_v"), self._p.info)
+                section.lock_base(snapshot.permission_note("cpu.clocks.base_hz"), self._p.info)
 
     def hide_permission_notices(self, ocultos: bool) -> None:
         """Deja de enseñar los avisos de permisos, o los vuelve a enseñar."""

@@ -214,6 +214,16 @@ class TestTheCpuPage(unittest.TestCase):
                                                   "cpu.clock.epp")})
         self.assertEqual((foot, shown), (_("cpu.clocks.nodriver.cpuinfo"), True))
 
+    def test_a_zens_base_without_permissions_has_its_padlock(self):
+        from silux.ui.pages.cpu import TypeSection
+        with _machine(cppc=False, boost_flag=False):
+            photo = _photo()
+        with pantalla.Ventana(photo) as window:
+            window.select_section("CPU")
+            self.app.processEvents()
+            section = window.cpu_page.findChildren(TypeSection)[0]
+            self.assertTrue(section.clocks.is_locked(_("cpu.clock.base")))
+
     def test_with_one_nothing_changes(self):
         with volcado.montado(EQUIPOS / "5800x3d"):
             photo = _photo()
