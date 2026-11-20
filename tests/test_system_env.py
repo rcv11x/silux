@@ -20,7 +20,8 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 # Silux's own children run the AppImage's Python and need its environment;
 # the module loader runs as root under pkexec, which already cleans it.
-OWN_PYTHON = {"silux/gpuapi.py", "silux/membench.py", "silux/privileged/cargar_modulo.py"}
+OWN_PYTHON = {"silux/gpuapi.py", "silux/membench.py", "silux/annex.py",
+              "silux/privileged/cargar_modulo.py"}
 LAUNCHERS = {"run", "Popen", "call", "check_call", "check_output"}
 
 

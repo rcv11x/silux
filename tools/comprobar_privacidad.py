@@ -219,11 +219,19 @@ def _direcciones_sospechosas(texto: str) -> list[str]:
             and not any(r.match(d) for r in RANGOS_DE_DOCUMENTACION)]
 
 
-def revisar(rutas: list[pathlib.Path], propios: dict[str, str]) -> list[str]:
-    """Cada hallazgo como «archivo: qué es». No dice el dato: se publicaría."""
+def revisar(rutas: list[pathlib.Path], propios: dict[str, str],
+            where=None) -> list[str]:
+    """Cada hallazgo como «archivo: qué es». No dice el dato: se publicaría.
+
+    `where(ruta)`, dónde acabará en el repositorio lo que aún no está en él
+    (lo que importa un informe).
+    """
     hallazgos: list[str] = []
     for ruta in rutas:
-        relativa = str(ruta.relative_to(RAIZ)) if ruta.is_relative_to(RAIZ) else str(ruta)
+        if where is not None:
+            relativa = where(ruta)
+        else:
+            relativa = str(ruta.relative_to(RAIZ)) if ruta.is_relative_to(RAIZ) else str(ruta)
         hallazgos += [f"{relativa}: {q}" for q in _en_un_volcado(ruta, relativa)]
         try:
             crudo = ruta.read_bytes()
