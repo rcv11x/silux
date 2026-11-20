@@ -9,13 +9,6 @@ sin los pasos para reproducirlo: este archivo es público.
 
 ## Lo más importante
 
-* **`test_cli.py::TestVigilarLosSensores::test_sin_sensors_el_volcado`** ·
-  sin explicar · el 20 de noviembre de 2026 falló una vez en el CI de la rama
-  `cpu-virtual` (run 44753317786, Python 3.14): la salida del `--watch` llegó
-  vacía, o sea que el `sleep` parcheado para todo el proceso saltó antes del
-  primer `print`. Dentro de un proveedor el colector lo habría atrapado; no se
-  encontró quién duerme fuera. Se relanzó (y se le dijo al autor) y pasó, y
-  pasó también en la rama que lo llevaba encima.
 
 * **El cierre del `QScrollBar` en los tests** · Qt libera dos veces la
   llamada encolada con que un `QScrollBar` avisa de su rango, y el proceso

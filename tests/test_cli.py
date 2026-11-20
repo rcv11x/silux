@@ -126,12 +126,20 @@ class TestVigilarLosSensores(unittest.TestCase):
     def _una_vuelta(self, *argumentos):
         import contextlib
         import io
+        import types
         from unittest import mock
         from silux import cli
         salida = io.StringIO()
-        with mock.patch.object(cli.time, "sleep", side_effect=self._Basta), \
+        # Only the `time` cli sees. `cli.time` is the time module itself, and
+        # patching its `sleep` stopped whoever else slept first: the
+        # `Popen.wait` of the `git log` behind `build_id()`, which waits with
+        # sleeps when git has closed its pipes but cannot be reaped yet. The
+        # output came back empty (1 run in 100, CI run 44753317786).
+        reloj = types.SimpleNamespace(sleep=mock.Mock(side_effect=self._Basta))
+        with mock.patch.object(cli, "time", reloj), \
              contextlib.redirect_stdout(salida), self.assertRaises(self._Basta):
             cli.main([*argumentos, "--watch", "1", "--no-color"])
+        reloj.sleep.assert_called_once_with(1.0)
         return salida.getvalue()
 
     def test_con_sensors_solo_los_sensores(self):
@@ -142,6 +150,9 @@ class TestVigilarLosSensores(unittest.TestCase):
         volcado = cli.dump(foto, cli.Style(enabled=False))
         primera_del_volcado = volcado.strip().splitlines()[0]
         self.assertNotIn(primera_del_volcado, texto)
+        # And what it does print: with nothing printed, the line above held.
+        arbol = cli.sensors_text(foto, cli.Style(enabled=False))
+        self.assertIn(arbol.strip().splitlines()[0], texto)
 
     def test_sin_sensors_el_volcado(self):
         from silux import cli
