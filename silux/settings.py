@@ -64,6 +64,9 @@ class Preferences:
     # Buscar una versión nueva al abrir. Apagado de serie: el programa no se
     # conecta a nada si nadie lo pide (docs/arquitectura.md#el-actualizador).
     check_updates: bool = False
+    # «stable» or «testing»; empty follows the running version (a test
+    # version looks for the next test version, a final for finals).
+    update_channel: str = ""
     # Ancho de la columna «Sensor» del árbol. 0 = calcularlo del contenido.
     # Ancho de cada columna del árbol de sensores. Vacío = calcularlo.
     # El idioma de la interfaz. El español es el original y no una traducción
@@ -105,6 +108,8 @@ class Preferences:
             network_unit="bits" if self.network_unit == "bits" else "bytes",
             show_all_features=_si_o_no(self.show_all_features, False),
             check_updates=_si_o_no(self.check_updates, False),
+            update_channel=(self.update_channel
+                            if self.update_channel in ("stable", "testing") else ""),
             language=(str(self.language).lower()
                       if str(self.language).lower() in disponible() else system_language()),
             sensor_columns=tuple(min(900, max(30, int(w))) for w in (self.sensor_columns or ())),

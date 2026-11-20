@@ -58,10 +58,20 @@ class Release:
     url: str
     # Nombre del adjunto -> su URL de descarga.
     assets: Mapping[str, str] = field(default_factory=dict)
+    # The test version's number (0.4.0rc3 is 3); None for a final.
+    prerelease: Optional[int] = None
 
     @property
     def version_text(self) -> str:
-        return ".".join(str(n) for n in self.version)
+        """«0.4.0» or «0.4.0rc3», as `__version__` writes it."""
+        base = ".".join(str(n) for n in self.version)
+        return f"{base}rc{self.prerelease}" if self.prerelease is not None else base
+
+    @property
+    def order(self) -> tuple[int, ...]:
+        """To compare with `_orden`: a test version before its final."""
+        return tuple(self.version) + ((0, self.prerelease) if self.prerelease is not None
+                                      else (1, 0))
 
 
 # -- versiones ----------------------------------------------------------------
@@ -93,42 +103,59 @@ def _orden(texto: str) -> Optional[tuple[int, ...]]:
     return base + ((0, int(prueba)) if prueba is not None else (1, 0))
 
 
-def latest(releases: object) -> Optional[Release]:
+CHANNELS = ("stable", "testing")
+
+
+def channel_for(preference: str, current: str = __version__) -> str:
+    """The channel to look in. Without a choice, a test version follows the
+    tests: whoever runs the 0.4-prueba2 gets the prueba3 with «Buscar
+    ahora», and a final, only finals."""
+    if preference in CHANNELS:
+        return preference
+    return "testing" if (_orden(current) or (0, 0, 0, 1))[3] == 0 else "stable"
+
+
+def latest(releases: object, channel: str = "stable") -> Optional[Release]:
     """La release publicada más alta de la lista que da la API.
 
-    Fuera los borradores y las *prereleases*, y lo que no tenga la forma que
-    se espera: la respuesta viene de fuera y no se da nada por hecho.
+    Fuera los borradores, y lo que no tenga la forma que se espera: la
+    respuesta viene de fuera y no se da nada por hecho. The test versions
+    (marked *prerelease*, or tagged «rcN») only on the testing channel.
     """
     mejor: Optional[Release] = None
     for entrada in releases if isinstance(releases, list) else ():
         if not isinstance(entrada, dict):
             continue
-        if entrada.get("draft") or entrada.get("prerelease"):
+        if entrada.get("draft"):
             continue
-        version = parse_version(str(entrada.get("tag_name") or ""))
-        if version is None:
+        encontrada = _VERSION.fullmatch(str(entrada.get("tag_name") or "").strip())
+        if encontrada is None:
+            continue
+        version = tuple(int(n) for n in encontrada.groups()[:3])
+        prueba = int(encontrada.group(4)) if encontrada.group(4) is not None else None
+        if (entrada.get("prerelease") or prueba is not None) and channel != "testing":
             continue
         adjuntos = {}
         for adjunto in entrada.get("assets") or ():
             if isinstance(adjunto, dict) and adjunto.get("name") and adjunto.get("browser_download_url"):
                 adjuntos[str(adjunto["name"])] = str(adjunto["browser_download_url"])
         url = str(entrada.get("html_url") or f"{RELEASES_URL}/tag/{entrada['tag_name']}")
-        if mejor is None or version > mejor.version:
-            mejor = Release(version, str(entrada["tag_name"]), url, adjuntos)
+        candidata = Release(version, str(entrada["tag_name"]), url, adjuntos, prueba)
+        if mejor is None or candidata.order > mejor.order:
+            mejor = candidata
     return mejor
 
 
 def is_newer(release: Optional[Release], current: str = __version__) -> bool:
     """Si la release va por delante de esta versión, comparada entera."""
     actual = _orden(current)
-    return (release is not None and actual is not None
-            and tuple(release.version) + (1, 0) > actual)
+    return release is not None and actual is not None and release.order > actual
 
 
 def is_current(release: Optional[Release], current: str = __version__) -> bool:
     """Whether this copy is that release: a test version or one ahead of
     the latest published is not «the latest version»."""
-    return release is not None and _orden(current) == tuple(release.version) + (1, 0)
+    return release is not None and _orden(current) == release.order
 
 
 # -- qué copia es esta --------------------------------------------------------
@@ -258,14 +285,14 @@ def _abierta(abrir_url: Abrir, url: str) -> BinaryIO:
         raise UpdateError("network", str(error)) from error
 
 
-def check(abrir_url: Abrir = abrir) -> Optional[Release]:
-    """La última release publicada; None si no hay ninguna."""
+def check(abrir_url: Abrir = abrir, channel: str = "stable") -> Optional[Release]:
+    """La última release publicada en ese canal; None si no hay ninguna."""
     datos = _leer(abrir_url, API_URL, TOPE_DE_LA_LISTA)
     try:
         lista = json.loads(datos.decode("utf-8"))
     except ValueError as error:
         raise UpdateError("badreply", str(error)) from error
-    return latest(lista)
+    return latest(lista, channel)
 
 
 def parse_sums(texto: str) -> dict[str, str]:

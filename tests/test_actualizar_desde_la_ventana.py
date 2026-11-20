@@ -41,19 +41,20 @@ class TestLaVentana(unittest.TestCase):
 
     def test_buscar_ahora_con_version_nueva_pone_el_aviso(self):
         v = self.ventana()
-        v._buscar_version = lambda: NUEVA
+        v._buscar_version = lambda channel="stable": NUEVA
         v.settings_page.update_now.click()
         self.esperar(v)
         self.assertFalse(v.update_button.isHidden())
-        self.assertIn("99.0.0", v.update_button.text())
-        self.assertIn("99.0.0", v.settings_page.update_status.text())
+        # As the window writes every version: «99.0», «0.4-prueba3».
+        self.assertIn("99.0", v.update_button.text())
+        self.assertIn("99.0", v.settings_page.update_status.text())
 
     def test_sin_version_nueva_lo_dice_y_no_hay_aviso(self):
         v = self.ventana()
         # Una más antigua que cualquiera: la que corre puede ser de prueba
         # (0.4.0rc1), y una de prueba no es una release que se ofrezca.
         antigua = updates.Release(version=(0, 0, 0), tag="v0.0.0", url="u")
-        v._buscar_version = lambda: antigua
+        v._buscar_version = lambda channel="stable": antigua
         v.buscar_actualizacion()
         self.esperar(v)
         self.assertTrue(v.update_button.isHidden())
@@ -64,7 +65,7 @@ class TestLaVentana(unittest.TestCase):
     def test_the_latest_one_is_named_as_the_app_names_it(self):
         from silux import render
         v = self.ventana()
-        v._buscar_version = lambda: updates.Release(version=(0, 0, 0), tag="v0.0.0", url="u")
+        v._buscar_version = lambda channel="stable": updates.Release(version=(0, 0, 0), tag="v0.0.0", url="u")
         with mock.patch.object(updates, "is_current", return_value=True):
             v.buscar_actualizacion()
             self.esperar(v)
@@ -72,9 +73,25 @@ class TestLaVentana(unittest.TestCase):
                          _("updates.latest").format(version=render.version(__version__)))
         self.assertNotIn("rc", v.settings_page.update_status.text())
 
+    def test_a_test_version_looks_in_the_test_channel(self):
+        # Whoever runs the prueba2 gets the prueba3 with «Buscar ahora».
+        from unittest import mock
+        v = self.ventana()
+        pedido = []
+        prueba3 = updates.Release(version=(99, 0, 0), tag="99.0.0rc3", url="u", prerelease=3)
+        v._buscar_version = lambda channel="stable": pedido.append(channel) or prueba3
+        with mock.patch.object(updates, "__version__", "0.4.0rc2"), \
+                mock.patch.object(updates, "channel_for",
+                                  lambda pref, current="0.4.0rc2": updates.CHANNELS[1]
+                                  if pref in ("", "testing") else "stable"):
+            v.buscar_actualizacion()
+            self.esperar(v)
+        self.assertEqual(pedido, ["testing"])
+        self.assertIn("99.0-prueba3", v.settings_page.update_status.text())
+
     def test_un_error_de_red_se_dice(self):
         v = self.ventana()
-        def falla():
+        def falla(channel="stable"):
             raise updates.UpdateError("network", "sin red")
         v._buscar_version = falla
         v.buscar_actualizacion()

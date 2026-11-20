@@ -457,9 +457,13 @@ alguien lo pide.
 | Sumas | el `SHA256SUMS` de esa release | 64 kB |
 | Bajar | el AppImage del mismo tipo que el que corre (normal o `-compat`) | 400 MB |
 
-**Qué cuenta como nuevo:** solo las releases publicadas, nunca los borradores
-ni las versiones de prueba. Una de prueba va por debajo de su final
-(`0.4.0rc1` < `0.4.0`), así que quien tiene la 0.4-prueba1 recibe la 0.4.
+**Qué cuenta como nuevo:** solo las releases publicadas, nunca los
+borradores. Las versiones de prueba (marcadas *prerelease*, o con «rcN» en la
+etiqueta) solo en el canal «Pruebas» de Ajustes; sin elegir canal, una versión
+de prueba busca en ese y una final, en «Estable» (`updates.channel_for`). Una
+de prueba va por debajo de la siguiente y de su final (`0.4.0rc2` <
+`0.4.0rc3` < `0.4.0`), así que quien tiene la 0.4-prueba2 recibe la prueba3 y,
+en cualquier canal, la 0.4.
 
 **Cómo se sustituye:** se baja a un temporal en la misma carpeta, se
 comprueba la suma, y `os.replace` lo pone en la ruta de `$APPIMAGE`, que es a

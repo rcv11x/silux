@@ -734,7 +734,8 @@ class MainWindow(QMainWindow):
         if self._tarea_de_red is not None and self._tarea_de_red.isRunning():
             return
         self.settings_page.set_update_status(_("updates.checking"), buscando=True)
-        self._lanzar(self._buscar_version, self._buscada)
+        canal = updates.channel_for(self.prefs.update_channel)
+        self._lanzar(lambda: self._buscar_version(channel=canal), self._buscada)
 
     def _lanzar(self, funcion, al_acabar) -> None:
         tarea = _TareaDeRed(funcion, self)
@@ -754,7 +755,7 @@ class MainWindow(QMainWindow):
         if updates.is_newer(release):
             self._version_nueva = release
             self.settings_page.set_update_status(
-                _("updates.available").format(version=release.version_text))
+                _("updates.available").format(version=render.version(release.version_text)))
         elif updates.is_current(release):
             self.settings_page.set_update_status(
                 _("updates.latest").format(version=render.version(__version__)))
@@ -766,7 +767,7 @@ class MainWindow(QMainWindow):
         nueva = getattr(self, "_version_nueva", None)
         if nueva is not None:
             self.update_button.setText(
-                _("updates.button").format(version=nueva.version_text))
+                _("updates.button").format(version=render.version(nueva.version_text)))
         self.update_button.setVisible(nueva is not None)
 
     def _actualizar(self) -> None:
@@ -784,7 +785,7 @@ class MainWindow(QMainWindow):
             return
         self.update_button.setEnabled(False)
         self.update_button.setText(
-            _("updates.downloading").format(version=nueva.version_text))
+            _("updates.downloading").format(version=render.version(nueva.version_text)))
         self._lanzar(lambda: self._instalar_version(nueva, ruta), self._instalada)
 
     def _instalada(self, ruta, error) -> None:
@@ -798,7 +799,7 @@ class MainWindow(QMainWindow):
         self._pintar_version_nueva()
         respuesta = QMessageBox.question(
             self, _("updates.done.title"),
-            _("updates.done").format(version=nueva.version_text))
+            _("updates.done").format(version=render.version(nueva.version_text)))
         if respuesta == QMessageBox.StandardButton.Yes:
             # El mismo camino: el acceso directo apunta a él y sigue valiendo.
             # Fresh, as if launched from the menu: the new copy mounts at

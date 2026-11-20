@@ -115,6 +115,46 @@ class TestLaVersionDePrueba(unittest.TestCase):
         self.assertEqual(updates.latest(lista).version, (0, 3, 0))
 
 
+class TestTheChannel(unittest.TestCase):
+    """«Estable» or «Pruebas» in Settings: the author wants whoever runs the
+    0.4-prueba2 to get the prueba3 with «Buscar ahora»."""
+
+    API = [_release("v0.3.0"), _release("0.4.0rc2", prerelease=True),
+           _release("0.4.0rc3", prerelease=True)]
+    API_CON_LA_FINAL = API + [_release("v0.4.0")]
+
+    def test_stable_offers_only_finals(self):
+        self.assertEqual(updates.latest(self.API, "stable").version, (0, 3, 0))
+        self.assertEqual(updates.latest(self.API_CON_LA_FINAL, "stable").version, (0, 4, 0))
+
+    def test_testing_offers_the_next_test_version(self):
+        rc3 = updates.latest(self.API, "testing")
+        self.assertEqual((rc3.version, rc3.prerelease), ((0, 4, 0), 3))
+        self.assertTrue(updates.is_newer(rc3, "0.4.0rc2"))
+        self.assertFalse(updates.is_newer(rc3, "0.4.0rc3"))
+        self.assertTrue(updates.is_current(rc3, "0.4.0rc3"))
+        self.assertEqual(rc3.version_text, "0.4.0rc3")
+
+    def test_and_the_final_over_its_test_versions(self):
+        final = updates.latest(self.API_CON_LA_FINAL, "testing")
+        self.assertEqual((final.version, final.prerelease), ((0, 4, 0), None))
+
+    def test_a_test_version_on_stable_gets_its_final(self):
+        final = updates.latest(self.API_CON_LA_FINAL, "stable")
+        self.assertTrue(updates.is_newer(final, "0.4.0rc2"))
+
+    def test_without_a_choice_a_test_version_follows_the_tests(self):
+        self.assertEqual(updates.channel_for("", "0.4.0rc2"), "testing")
+        self.assertEqual(updates.channel_for("", "0.4.0"), "stable")
+        self.assertEqual(updates.channel_for("stable", "0.4.0rc2"), "stable")
+        self.assertEqual(updates.channel_for("testing", "0.4.0"), "testing")
+
+    def test_check_asks_the_channel(self):
+        red = Red({updates.API_URL: json.dumps(self.API).encode()})
+        self.assertEqual(updates.check(red, channel="testing").prerelease, 3)
+        self.assertEqual(updates.check(red, channel="stable").version, (0, 3, 0))
+
+
 class TestQueCopiaEs(unittest.TestCase):
     def test_el_compatible_baja_el_compatible(self):
         self.assertEqual(updates.asset_name("20261118.c01944d-compat"), updates.COMPAT)

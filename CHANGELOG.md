@@ -52,6 +52,13 @@ informes que mandó la gente.
 - Nuevo: Cachés avisa de que las cachés de un procesador virtual las declara
   el hipervisor.
 
+### Actualizaciones
+
+- Nuevo: en Ajustes, el canal: «Estable» o «Pruebas». Con «Pruebas» se
+  ofrecen también las versiones de prueba; sin elegir, una versión de prueba
+  sigue las pruebas (quien tiene la prueba2 recibe la prueba3 con «Buscar
+  ahora») y una final, las finales. Una prueba recibe su final en los dos.
+
 ### Textos
 
 - Arreglado: textos en inglés o en crudo de los primeros informes: el chasis

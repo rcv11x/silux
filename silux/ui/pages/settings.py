@@ -38,7 +38,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ... import __version__, db, desktop, i18n, render
+from ... import __version__, db, desktop, i18n, render, updates
 from ...i18n import _
 from ...settings import Preferences, config_path
 from .. import theme
@@ -133,6 +133,8 @@ FONT_SCALES = (("opt.density.normal", "normal"), ("opt.font.large", "grande"),
                ("opt.font.larger", "mayor"), ("opt.font.largest", "máximo"))
 NETWORK_UNITS = (("opt.net.bytes", "bytes"),
                  ("opt.net.bits", "bits"))
+UPDATE_CHANNELS = (("opt.channel.stable", "stable"),
+                   ("opt.channel.testing", "testing"))
 
 # El ancho mínimo de los desplegables; todos acaban midiendo lo que pida el
 # más ancho (`_igualar_controles`), para que la columna quede recta.
@@ -542,6 +544,8 @@ class SettingsPage(ScrollPage):
     def _build_updates(self) -> Card:
         """Buscar versiones nuevas: apagado de serie y a petición."""
         self.check_updates = self._interruptor(self._prefs.check_updates)
+        self.update_channel = self._combo(
+            UPDATE_CHANNELS, updates.channel_for(self._prefs.update_channel))
         self.update_now = QPushButton(_("settings.updates.now"))
         self.update_now.clicked.connect(self.update_check_requested.emit)
         self.update_status = QLabel("")
@@ -552,6 +556,8 @@ class SettingsPage(ScrollPage):
             _("settings.group.updates"),
             _Renglon(_("settings.updates.label"), self.check_updates,
                      _("settings.updates.help")),
+            _Renglon(_("settings.updates.channel"), self.update_channel,
+                     _("settings.updates.channel.help")),
             _Renglon(_("settings.updates.manual"), self.update_now),
         )
         card.body.addWidget(self.update_status)
@@ -852,6 +858,10 @@ class SettingsPage(ScrollPage):
             show_all_features=self.all_features.isChecked(),
             fluid_charts=self.fluid_charts.isChecked(),
             check_updates=self.check_updates.isChecked(),
+            # What the running version would follow anyway stays unchosen:
+            # a test version that later installs its final goes to finals.
+            update_channel=("" if self.update_channel.currentData()
+                            == updates.channel_for("") else self.update_channel.currentData()),
         ).normalized()
 
     def _emit(self, *_args) -> None:
