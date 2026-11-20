@@ -117,7 +117,7 @@ class Draft:
 
         logical = tuple(
             LogicalCpu(**{k: v for k, v in raw.items() if k in LogicalCpu.__dataclass_fields__})
-            for _, raw in sorted(self.logical.items())
+            for _indice, raw in sorted(self.logical.items())
         )
 
         cpu = CpuInfo(
@@ -263,7 +263,7 @@ def parse_cpu_list(raw: Optional[str]) -> tuple[int, ...]:
         if not chunk:
             continue
         if "-" in chunk:
-            start, _, end = chunk.partition("-")
+            start, _sep, end = chunk.partition("-")
             try:
                 out.extend(range(int(start), int(end) + 1))
             except ValueError:
