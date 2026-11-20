@@ -23,6 +23,9 @@ que hace falta.
   versión no sabe leer salían «Catalogado a 2400» y perdían el aviso de que
   van al máximo del procesador. La velocidad del perfil se lee bien y vuelve a
   contar.
+- Arreglado: el chip SPD de un módulo Kingston no daba fabricante: la tabla
+  ponía a Kingston en otro banco de códigos JEDEC. Lo enseñó el módulo del
+  ThinkPad del autor.
 
 ### Gráficos
 
@@ -53,6 +56,9 @@ que hace falta.
   del kernel»: puede ser la BIOS (Cool'n'Quiet desactivado) o que el driver
   no haya cargado, y dice eso.
 - Arreglado: «Turbo: —» en un procesador sin turbo. Dice que no tiene.
+- Arreglado: donde el consumo del procesador pide permisos (casi todos los
+  AMD y algunos portátiles Intel), su candado decía «Pulsa el candado» y no
+  hacía nada.
 - Arreglado: con permisos, en un Intel cuyo kernel guarda el consumo para
   root, solo llegaba el del paquete. Llegan también el de los núcleos, el del
   uncore y el de la memoria.
