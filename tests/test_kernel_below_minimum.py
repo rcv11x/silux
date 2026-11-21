@@ -34,7 +34,7 @@ class TestAKernelBelowTheMinimum(unittest.TestCase):
         notas = [n for n in f.notes if n.key == "kernel.belowminimum"]
         self.assertEqual([(n.path, n.need) for n in notas], [("system.kernel", Need.KERNEL)])
         texto = _("kernel.belowminimum").format(
-            tuyo="5.10", minimo="{}.{}".format(*kernel.MINIMO))
+            tuyo="5.10", minimo="{}.{}".format(*kernel.MINIMUM))
         self.assertEqual(notas[0].message, texto)
         qt.app()
         with pantalla.Ventana(f) as ventana:

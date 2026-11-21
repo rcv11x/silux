@@ -1,9 +1,9 @@
-"""Acumulación de mínimos, máximos y medias por sensor.
+"""Minimum, maximum and mean per sensor.
 
-Es la función que define a un monitor de hardware: el valor actual lo da
-cualquiera, pero saber a cuánto llegó la temperatura mientras jugabas (o si
-un ventilador se paró un instante) exige recordar. Se guarda aparte del
-modelo a propósito: el snapshot es una foto, y esto es la película.
+What defines a hardware monitor: anyone gives the current value, but knowing
+how hot it got while you played (or whether a fan stopped for an instant)
+takes remembering. Kept apart from the model on purpose: the snapshot is a
+photo, and this is the film.
 """
 
 from __future__ import annotations
@@ -12,11 +12,11 @@ from collections import deque
 from dataclasses import dataclass, field
 from typing import Iterable, Optional
 
-# Cuántas muestras guarda la curva de cada sensor. Sesenta a un segundo es el
-# último minuto, que es el tramo en el que se ve si algo está subiendo. Cien
-# sensores por sesenta muestras son unos 200 KB: dentro del presupuesto, y
-# ampliarlo mucho más no añade lectura, solo aplasta la curva.
-HISTORIAL = 60
+# How many samples each sensor's curve keeps. Sixty at one second is the last
+# minute, where one sees whether something is rising. A hundred sensors by
+# sixty samples is about 200 KB: within budget, and much more adds no
+# reading, it only flattens the curve.
+HISTORY_LENGTH = 60
 
 
 @dataclass
@@ -26,9 +26,9 @@ class Extremes:
     total: float = 0.0
     samples: int = 0
     last: float = 0.0
-    # La serie reciente. Los extremos dicen dónde estuvo el sensor; esto dice
-    # hacia dónde va, que es lo que uno mira cuando algo empieza a calentarse.
-    history: deque = field(default_factory=lambda: deque(maxlen=HISTORIAL))
+    # The recent series. The extremes say where the sensor was; this says
+    # where it goes, which is what one looks at when something heats up.
+    history: deque = field(default_factory=lambda: deque(maxlen=HISTORY_LENGTH))
 
     @property
     def average(self) -> float:
@@ -37,7 +37,7 @@ class Extremes:
 
 @dataclass
 class Tracker:
-    """Sigue una colección de valores identificados por clave."""
+    """Follows a collection of values identified by key."""
 
     _values: dict[str, Extremes] = field(default_factory=dict)
 
@@ -66,8 +66,8 @@ class Tracker:
         return self._values.get(key)
 
     def reset(self, key: Optional[str] = None) -> None:
-        """Pone a cero un sensor, o todos. Equivale al botón de reiniciar
-        mínimos y máximos que trae cualquier monitor de hardware."""
+        """Reset one sensor, or all. The reset-minimum-and-maximum button any
+        hardware monitor has."""
         if key is None:
             self._values.clear()
         else:

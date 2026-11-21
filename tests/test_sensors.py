@@ -13,7 +13,7 @@ from silux.model import (
 from silux.providers import hwmon
 from silux.providers.base import Draft
 from silux.providers.derived import DerivedSensors
-from silux.tracking import HISTORIAL, Tracker
+from silux.tracking import HISTORY_LENGTH, Tracker
 from tests import qt
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -219,12 +219,12 @@ class TestHistorialDelSeguidor(unittest.TestCase):
         muestra por segundo son treinta y seis mil valores cada uno en una
         tarde, y el programa crece hasta que alguien lo cierra."""
         seguidor = Tracker()
-        for muestra in range(HISTORIAL * 3):
+        for muestra in range(HISTORY_LENGTH * 3):
             seguidor.update("cpu", float(muestra))
         historial = seguidor.get("cpu").history
-        self.assertEqual(len(historial), HISTORIAL)
+        self.assertEqual(len(historial), HISTORY_LENGTH)
         # Y lo que queda es lo último, no lo primero.
-        self.assertEqual(historial[-1], float(HISTORIAL * 3 - 1))
+        self.assertEqual(historial[-1], float(HISTORY_LENGTH * 3 - 1))
 
     def test_la_primera_muestra_ya_cuenta(self):
         seguidor = Tracker()

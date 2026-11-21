@@ -107,12 +107,12 @@ class SystemIdentity(Provider):
             shell=os.path.basename(environment.get("SHELL") or "") or None,
         )
         running = kernel.version(uname["release"])
-        if running is not None and running < kernel.MINIMO:
+        if running is not None and running < kernel.MINIMUM:
             # What appeared after the minimum is explained value by value;
             # below it, something may be missing and nothing would say why.
             draft.note("system.kernel", Need.KERNEL, _("kernel.belowminimum").format(
                 tuyo=f"{running[0]}.{running[1]}",
-                minimo=f"{kernel.MINIMO[0]}.{kernel.MINIMO[1]}"), key="kernel.belowminimum")
+                minimo=f"{kernel.MINIMUM[0]}.{kernel.MINIMUM[1]}"), key="kernel.belowminimum")
 
     @staticmethod
     def _kernel_build() -> Optional[str]:

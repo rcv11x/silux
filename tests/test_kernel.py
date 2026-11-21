@@ -50,10 +50,10 @@ class TestElDocumentoYElCodigoDicenLoMismo(unittest.TestCase):
         return filas
 
     def test_cada_clave_con_la_misma_version(self):
-        self.assertEqual(self._filas(), kernel.DESDE)
+        self.assertEqual(self._filas(), kernel.SINCE)
 
     def test_todo_lo_de_la_tabla_es_posterior_al_minimo(self):
-        self.assertTrue(all(v > kernel.MINIMO for v in kernel.DESDE.values()))
+        self.assertTrue(all(v > kernel.MINIMUM for v in kernel.SINCE.values()))
 
     def test_el_readme_dice_el_minimo(self):
         readme = (RAIZ / "README.md").read_text(encoding="utf-8")

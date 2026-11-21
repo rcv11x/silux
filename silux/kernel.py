@@ -1,14 +1,13 @@
-"""Lo que silux lee y no existe en todos los kernels que admite.
+"""What Silux reads that does not exist in every kernel it supports.
 
-El mínimo es Linux 5.15. Algunos datos aparecieron después, y cuando faltan
-en un kernel anterior no es que el equipo no los tenga: es que su kernel no
-los publica todavía. Esa ausencia se dice distinta de «este equipo no lo
-tiene» —«Tu kernel (5.15) no publica esto; existe desde Linux 6.10»—, porque
-tiene arreglo y el arreglo no es otro hardware.
+The minimum is Linux 5.15. Some values appeared later, and when missing on
+an older kernel the machine does not lack them: its kernel does not publish
+them yet. That is said differently from «this machine does not have it»
+(«Your kernel (5.15) does not publish this; it exists since Linux 6.10»), as
+it has a fix, and the fix is not other hardware.
 
-La versión de cada dato, con su fuente (el commit o la documentación del
-kernel), está en `docs/kernel.md`; `tests/test_kernel.py` comprueba que las
-dos tablas dicen lo mismo.
+Each value's version, with its source (the kernel commit or documentation),
+is in `docs/kernel.md`; `tests/test_kernel.py` checks both tables agree.
 """
 
 from __future__ import annotations
@@ -20,11 +19,11 @@ from typing import Optional
 from . import sysroot
 from .i18n import _
 
-MINIMO = (5, 15)
+MINIMUM = (5, 15)
 
-# Dato → primera versión de mainline que lo publica. Solo lo que es posterior
-# al mínimo; lo anterior está en todos los kernels que silux admite.
-DESDE = {
+# Value → the first mainline version that publishes it. Only what is newer
+# than the minimum; the rest is in every kernel Silux supports.
+SINCE = {
     "cpufreq.cpuinfo_avg_freq": (6, 15),
     "amd_pstate": (5, 17),
     "amd_pstate.epp": (6, 3),
@@ -38,31 +37,31 @@ DESDE = {
 }
 
 
-def version(texto: Optional[str]) -> Optional[tuple[int, int]]:
-    """(6, 10) de «6.10.3-arch1-1» o de «Linux 6.10.3-arch1-1»."""
-    encaje = re.search(r"(\d+)\.(\d+)", texto or "")
-    return (int(encaje.group(1)), int(encaje.group(2))) if encaje else None
+def version(text: Optional[str]) -> Optional[tuple[int, int]]:
+    """(6, 10) from «6.10.3-arch1-1» or «Linux 6.10.3-arch1-1»."""
+    match = re.search(r"(\d+)\.(\d+)", text or "")
+    return (int(match.group(1)), int(match.group(2))) if match else None
 
 
 def running() -> Optional[tuple[int, int]]:
-    """La del kernel en marcha; en un equipo volcado, la de cuando se volcó."""
+    """The running kernel's; on a dumped machine, the one it had when dumped."""
     uname = sysroot.recorded("plataforma", "uname", lambda: platform.uname()._asdict())
     return version((uname or {}).get("release"))
 
 
-def too_old(clave: str, actual: Optional[tuple[int, int]] = None,
-            dato: str = "") -> Optional[str]:
-    """La frase que explica la ausencia si el kernel es anterior al dato.
+def too_old(key: str, current: Optional[tuple[int, int]] = None,
+            feature: str = "") -> Optional[str]:
+    """The sentence that explains the absence if the kernel predates the value.
 
-    None si el kernel ya lo publica, o si no se sabe cuál es: entonces la
-    ausencia es del equipo y se explica como siempre. Con `dato`, la frase lo
-    nombra, para un pie que dice varias cosas a la vez.
+    None if the kernel already publishes it, or if it is unknown: then the
+    absence is the machine's and is explained as always. With `feature`, the
+    sentence names it, for a foot note that says several things at once.
     """
-    desde = DESDE[clave]
-    actual = actual or running()
-    if actual is None or actual >= desde:
+    since = SINCE[key]
+    current = current or running()
+    if current is None or current >= since:
         return None
-    tuyo, desde = f"{actual[0]}.{actual[1]}", f"{desde[0]}.{desde[1]}"
-    if dato:
-        return _("kernel.tooold.what").format(dato=dato, tuyo=tuyo, desde=desde)
-    return _("kernel.tooold").format(tuyo=tuyo, desde=desde)
+    running_now, since = f"{current[0]}.{current[1]}", f"{since[0]}.{since[1]}"
+    if feature:
+        return _("kernel.tooold.what").format(dato=feature, tuyo=running_now, desde=since)
+    return _("kernel.tooold").format(tuyo=running_now, desde=since)

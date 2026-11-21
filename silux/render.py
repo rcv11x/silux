@@ -1807,9 +1807,9 @@ def throttle_episode(episodio, ahora_ns: int) -> Optional[str]:
     """
     if episodio is None:
         return None
-    cuanto = duracion(episodio.duracion_s(ahora_ns))
-    motivos = ", ".join(sorted(episodio.motivos)) or _("throttle.unknown")
-    clave = "throttle.ongoing" if episodio.en_curso() else "throttle.past"
+    cuanto = duracion(episodio.duration_s(ahora_ns))
+    motivos = ", ".join(sorted(episodio.reasons)) or _("throttle.unknown")
+    clave = "throttle.ongoing" if episodio.ongoing() else "throttle.past"
     return _(clave).format(tiempo=cuanto, motivos=motivos)
 
 

@@ -1,18 +1,17 @@
-"""Desde cuándo lleva frenándose algo, y por qué.
+"""Since when something has been throttling, and why.
 
-Los motivos de recorte ya se leen —`indep_throttle_status` en AMD, NVML en
-NVIDIA— y hasta ahora salían como una fila más de una ficha: «recortando por
-temperatura del punto caliente». Eso dice qué pasa ahora y no dice lo que uno
-quiere saber, que es si lleva así un instante o cuarenta segundos.
+Throttle reasons are already read (`indep_throttle_status` on AMD, NVML on
+NVIDIA) and showed as one more row: «throttling for hotspot temperature».
+That says what happens now, not what one wants to know: whether it has been
+so for an instant or forty seconds.
 
-La diferencia importa. Una tarjeta que toca su límite de potencia medio
-segundo en cada cambio de escena está funcionando como se diseñó; una que
-lleva un minuto entero contra el límite térmico tiene un problema de
-refrigeración. El dato es el mismo y la conclusión es la contraria.
+It matters. A card touching its power limit half a second at each scene
+change works as designed; one a whole minute against its thermal limit has a
+cooling problem. Same value, opposite conclusion.
 
-Se guarda aparte del modelo por lo mismo que `tracking.py`: el snapshot es una
-foto y esto es la película. Y se recuerda un rato lo que acaba de terminar,
-porque quien mira la pantalla justo después del pico también quiere saberlo.
+Kept apart from the model, as `tracking.py`: the snapshot is a photo and
+this is the film. What just ended is remembered a while, since whoever looks
+right after the peak wants to know too.
 """
 
 from __future__ import annotations
@@ -20,91 +19,89 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Iterable, Optional
 
-# Cuánto se sigue enseñando un episodio ya terminado. Medio minuto es lo que
-# tarda uno en apartar la vista del juego y mirar el programa.
-MEMORIA_S = 30.0
+# How long an episode that ended is still shown. Half a minute is what it
+# takes to look away from a game and at the program.
+MEMORY_S = 30.0
 
-# Por debajo de esto no se dice nada: un recorte de dos décimas en un cambio de
-# escena es el funcionamiento normal de cualquier tarjeta moderna, y avisar de
-# él convierte el aviso en ruido de fondo.
-MINIMO_S = 1.5
-
-
-@dataclass
-class Episodio:
-    """Un tramo continuo de recorte."""
-
-    desde_ns: int
-    hasta_ns: Optional[int] = None          # None = sigue en curso
-    # Todos los que se han visto durante el episodio, no solo el último: una
-    # tarjeta que empieza por potencia y acaba por temperatura ha hecho las dos
-    # cosas, y quedarse con la de ahora pierde la mitad de la historia.
-    motivos: set[str] = field(default_factory=set)
-
-    def en_curso(self) -> bool:
-        return self.hasta_ns is None
-
-    def duracion_s(self, ahora_ns: int) -> float:
-        final = self.hasta_ns if self.hasta_ns is not None else ahora_ns
-        return max(0.0, (final - self.desde_ns) / 1e9)
+# Below this nothing is said: a two-tenths throttle at a scene change is how
+# any modern card works, and warning of it turns the warning into noise.
+MIN_S = 1.5
 
 
 @dataclass
-class SeguidorDeRecortes:
-    """Sigue los episodios de recorte de varias cosas a la vez.
+class Episode:
+    """A continuous stretch of throttling."""
 
-    La clave la pone quien llama: en la práctica es la ranura PCI de cada
-    gráfica, que es lo único que no cambia entre muestreos.
+    since_ns: int
+    until_ns: Optional[int] = None          # None = still going on
+    # Every reason seen during the episode, not only the last: a card that
+    # starts on power and ends on temperature did both, and keeping only the
+    # current one loses half the story.
+    reasons: set[str] = field(default_factory=set)
+
+    def ongoing(self) -> bool:
+        return self.until_ns is None
+
+    def duration_s(self, now_ns: int) -> float:
+        end = self.until_ns if self.until_ns is not None else now_ns
+        return max(0.0, (end - self.since_ns) / 1e9)
+
+
+@dataclass
+class ThrottleTracker:
+    """Follows the throttling episodes of several things at once.
+
+    The caller sets the key: in practice each GPU's PCI slot, the one thing
+    that does not change between samples.
     """
 
-    _abiertos: dict[str, Episodio] = field(default_factory=dict)
-    _ultimos: dict[str, Episodio] = field(default_factory=dict)
+    _open: dict[str, Episode] = field(default_factory=dict)
+    _last: dict[str, Episode] = field(default_factory=dict)
 
-    def update(self, clave: str, activo: Optional[bool],
-               motivos: Iterable[str], ahora_ns: int) -> None:
-        """Una muestra. `activo` a None es «no se sabe» y no abre ni cierra."""
-        if activo is None:
+    def update(self, key: str, active: Optional[bool],
+               reasons: Iterable[str], now_ns: int) -> None:
+        """One sample. `active` at None is «not known», and opens or closes nothing."""
+        if active is None:
             return
 
-        episodio = self._abiertos.get(clave)
-        if activo:
-            if episodio is None:
-                episodio = Episodio(desde_ns=ahora_ns)
-                self._abiertos[clave] = episodio
-            episodio.motivos.update(m for m in motivos if m)
-        elif episodio is not None:
-            episodio.hasta_ns = ahora_ns
-            self._ultimos[clave] = episodio
-            del self._abiertos[clave]
+        episode = self._open.get(key)
+        if active:
+            if episode is None:
+                episode = Episode(since_ns=now_ns)
+                self._open[key] = episode
+            episode.reasons.update(m for m in reasons if m)
+        elif episode is not None:
+            episode.until_ns = now_ns
+            self._last[key] = episode
+            del self._open[key]
 
-    def actual(self, clave: str) -> Optional[Episodio]:
-        """El episodio en curso, si lleva ya lo bastante para contar."""
-        return self._abiertos.get(clave)
+    def current(self, key: str) -> Optional[Episode]:
+        """The ongoing episode, if it has lasted long enough to count."""
+        return self._open.get(key)
 
-    def reciente(self, clave: str, ahora_ns: int) -> Optional[Episodio]:
-        """El último que terminó, mientras siga siendo reciente."""
-        episodio = self._ultimos.get(clave)
-        if episodio is None or episodio.hasta_ns is None:
+    def recent(self, key: str, now_ns: int) -> Optional[Episode]:
+        """The last one that ended, while it is still recent."""
+        episode = self._last.get(key)
+        if episode is None or episode.until_ns is None:
             return None
-        if (ahora_ns - episodio.hasta_ns) / 1e9 > MEMORIA_S:
+        if (now_ns - episode.until_ns) / 1e9 > MEMORY_S:
             return None
-        return episodio
+        return episode
 
-    def relevante(self, clave: str, ahora_ns: int) -> Optional[Episodio]:
-        """El que hay que enseñar: el de ahora, o el que acaba de terminar.
+    def relevant(self, key: str, now_ns: int) -> Optional[Episode]:
+        """The one to show: the current one, or the one that just ended.
 
-        Los dos tienen que haber durado lo suyo. Un parpadeo no se cuenta ni
-        mientras pasa ni después.
+        Both must have lasted enough. A blink is not counted, during or after.
         """
-        for episodio in (self.actual(clave), self.reciente(clave, ahora_ns)):
-            if episodio is not None and episodio.duracion_s(ahora_ns) >= MINIMO_S:
-                return episodio
+        for episode in (self.current(key), self.recent(key, now_ns)):
+            if episode is not None and episode.duration_s(now_ns) >= MIN_S:
+                return episode
         return None
 
-    def reset(self, clave: Optional[str] = None) -> None:
-        if clave is None:
-            self._abiertos.clear()
-            self._ultimos.clear()
+    def reset(self, key: Optional[str] = None) -> None:
+        if key is None:
+            self._open.clear()
+            self._last.clear()
         else:
-            self._abiertos.pop(clave, None)
-            self._ultimos.pop(clave, None)
+            self._open.pop(key, None)
+            self._last.pop(key, None)

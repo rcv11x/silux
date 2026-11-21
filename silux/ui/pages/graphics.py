@@ -18,7 +18,7 @@ from ... import render
 from ...i18n import _
 from ...model import Gpu, Need, Snapshot
 from ...settings import Preferences
-from ...throttling import SeguidorDeRecortes
+from ...throttling import ThrottleTracker
 from .. import theme
 from ..theme import Palette, ui_font
 from ..widgets import (
@@ -1134,7 +1134,7 @@ class GraphicsPage(ScrollPage):
         self._p = palette
         # Lleva la cuenta de cuánto tiempo lleva frenándose cada tarjeta. Es
         # estado entre muestreos, así que vive en la página y no en el modelo.
-        self._recortes = SeguidorDeRecortes()
+        self._recortes = ThrottleTracker()
         self._prefs = prefs
         self._sin_avisos_de_permisos = False
         m = theme.METRICS
@@ -1196,7 +1196,7 @@ class GraphicsPage(ScrollPage):
             self._recortes.update(clave, gpu.throttled, gpu.throttle_reasons, ahora)
             seccion.show()
             seccion.apply(gpu, render.throttle_episode(
-                self._recortes.relevante(clave, ahora), ahora) or "",
+                self._recortes.relevant(clave, ahora), ahora) or "",
                 apis_on_this_machine=any(g.apis for g in snapshot.gpus))
 
         self._apply_notices(snapshot)
