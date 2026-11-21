@@ -41,19 +41,14 @@ sin los pasos para reproducirlo: este archivo es público.
 * **`ui/pages/cpulive.py`** · media-alta · compone los relojes a mano en vez
   de con `render.hz`: 576 MHz sale «0.58 GHz» y un bus de 100 MHz «0.10 GHz».
 
-## De los informes de la prueba1 (20 de noviembre de 2026)
+## De los informes de las pruebas
 
-Lo que salió de los informes de anianin27 (Gentoo, i7-10700F, RTX 4060) y
-widecoocaa23 (Lenovo LOQ con i5-12450H y RTX 4050, y su VM de Proxmox) y no se
-pudo arreglar sin un volcado de su equipo, o quedó por hacer.
-
-Desde la prueba3, el volcado llega en el anexo de su informe completo
-(`tools/importar_informe.py`). El anexo lleva lo que se lee sin permisos, y
-eso ya cubre casi todo lo de abajo: el SPD sale de `eeprom` en sysfs, y NVML,
-las API gráficas y `cpuidle` van grabados. Lo que lee el ayudante (SMART,
-SMBIOS, MSR, RAPL, los contadores de la memoria) no: está propuesto en las
-notas (`propuesta-anexo-con-permisos.md`). Lo marcado «con el ayudante» lo
-necesita.
+Lo que salió de los informes de las pruebas y no se pudo arreglar sin más
+datos de su equipo, o quedó por hacer. El volcado llega en el anexo de cada
+informe completo (`tools/importar_informe.py`): lleva lo que se lee sin
+permisos. Lo que lee el ayudante (SMART, SMBIOS, MSR, RAPL, los contadores de
+la memoria) no va: está propuesto en las notas
+(`propuesta-anexo-con-permisos.md`). Lo marcado «con el ayudante» lo necesita.
 
 * **Del T14 del autor** (volcado `i5-1135g7`):
   - Gráficos · media · el pico de 1336648637.3 W en la gráfica del consumo
@@ -64,44 +59,49 @@ necesita.
     (`providers/counters.py`), lo imposible se descarta y el informe dice sus
     números (`report.power.discarded`): con el siguiente que lo traiga, si
     fue la ventana o el contador.
-* **Del equipo de anianin27** (volcado `i7-10700f`, de la prueba4):
-  - NVIDIA · media · a ciegas · el consumo de la RTX 4060 con el driver 595:
-    `nvmlDeviceGetPowerUsage` no contesta y ahora se piden los campos de
-    potencia de NVML (185 y 186). Falta ver que dan una cifra en su equipo; su
-    próximo anexo la grabará.
+* **Del sobremesa con i7-10700F y RTX 4060** (volcado `i7-10700f`, de la
+  prueba5):
+  - NVIDIA · media · el consumo de la RTX 4060 con el driver 595 sigue sin
+    salir: ni `nvmlDeviceGetPowerUsage` ni los campos 185 y 186. Desde la
+    prueba6 una nota lo dice y el informe lleva lo que contestó NVML a cada
+    uno; con eso, y con `nvidia-smi -q -d POWER`, se sabe si es el driver o la
+    llamada.
   - Discos · baja · con el ayudante · el modelo entero por el IDENTIFY de
     `ata_device` (para buscar la unidad en drivedb) está probado aquí con dos
     Seagate y un Crucial; con el A400 de verdad, falta verlo.
-* **Necesita el volcado del portátil de widecoocaa23:**
-  - Memoria · media · el SPD de la DDR5 no se lee con permisos aunque
-    `spd5118` está cargado y da su temperatura. Sospecha: el firmware bloquea
-    el cambio de página del chip. Un solo `spd5118` para dos módulos.
-  - Gráficos · media · la UHD sale «Sin bibliotecas gráficas»: OpenGL lo
-    contesta la NVIDIA (EGL sin superficie, por el orden de glvnd) y no hay
-    Vulkan de Intel (sin `mesa-vulkan-drivers`, o sin casar). Con el AppImage
-    normal, además, la NVIDIA despierta salió sin la fila de OpenGL que sí dio
-    el compat.
-  - Gráficos · media · con el ayudante · la UHD sin uso por motor: el ayudante
-    abrió `power/energy-gpu` y ningún contador de la i915, y su nodo DRM no
-    enumeró motores (`engine/`). El aviso ya dice lo que se sabe; el porqué,
-    con el volcado (¿qué eventos publica `event_source/devices/i915`?).
-  - Memoria · baja · con el ayudante · «Este equipo no publica cuánto tráfico
-    mueve el controlador de memoria» en un Alder Lake-H, con la explicación de AMD
-    («Solo lo publican los procesadores Intel»).
-  - Cachés y temperatura de un híbrido · se arreglaron con la topología del
-    informe; con el volcado, conviene verlo en un equipo de verdad.
+  - Gráficos · baja · su Gentoo no tiene el cargador de OpenCL y el aviso lo
+    dice bien, pero sin el paquete de Gentoo: `system_deps` cubre Debian,
+    Ubuntu, Fedora y Arch.
+* **Del portátil Lenovo LOQ 15IRH8** (volcado `i5-12450h`, de la prueba5):
+  - Memoria · media · el SPD de la DDR5 no se lee: `spd5118` está enganchado
+    en `0-0050` y da su temperatura, pero no hay `eeprom` ni nada en
+    `/sys/bus/nvmem`, y es un solo dispositivo para dos módulos. Falta de su
+    equipo: `ls -l /sys/bus/i2c/devices/0-0050/`, `ls /sys/bus/nvmem/devices`
+    y `sudo dmesg | grep -i spd`.
+  - Gráficos · media · ni Vulkan ni OpenGL usan la UHD: Vulkan lista la NVIDIA
+    y llvmpipe, y el contexto de OpenGL es el de la NVIDIA. Desde la prueba6
+    se dice así. El porqué, con `vulkaninfo --summary` y
+    `ls /usr/share/vulkan/icd.d/`. Y «Versión del driver» y «Tomada del
+    sistema» salen con guion porque vienen de esas API: esconderlas y
+    decirlo al pie.
+  - Memoria · baja · con el ayudante · el controlador publica sus contadores
+    libres (`uncore_imc_free_running_0/1`) y el ayudante no los abrió. Desde
+    la prueba6 sale como error con lo que contestó el ayudante.
+  - Placa · baja · «Chipset: —»: en un portátil Intel el puente eSPI no trae
+    modelo en `pci.ids` («Alder Lake PCH eSPI Controller»). Necesita una nota
+    que lo explique; la familia no es la identidad.
+  - Red · baja · «J6C1» como ranura de la Ethernet: es lo que el firmware
+    declara en SMBIOS tipo 9, y no le dice nada a nadie.
+  - Placa · baja · la cabecera repite el firmware y el TPM de debajo.
+  - Sensores · baja · la Wi-Fi sale como dos aparatos.
+  - Gráficos · baja · la UHD no da uso por motor porque su PMU no publica
+    eventos `*-busy` (solo frecuencia, RC6 e interrupciones). El aviso ya lo
+    dice bien.
 * **Sin volcado, sin hacer todavía:**
-  - Gráficos · baja · «PCIe 1.0 × 8» de una NVIDIA en reposo, sin explicar
-    que baja el enlace para ahorrar (sube con carga): la gente lo reportará
-    como fallo.
   - SMART · baja · atributos conocidos (4, 192, 193, 196…) salen «propio del
-    fabricante»; la temperatura en crudo sale empaquetada (64 427 589 655) y un
-    HDD enseña «Escrito en total: —» en vez de esconderlo.
-  - Batería · baja · «Retenida en el tope» al 78 % (un límite de carga) y
-    «Autonomía: —» enchufado.
+    fabricante», y la temperatura en crudo sale empaquetada (64 427 589 655).
   - Informe · baja · los títulos de núcleos P/E y de la segunda gráfica no son
-    encabezados; «sostenida  ·» con doble espacio (`bench.dur.comparable`
-    empieza con dos).
+    encabezados.
   - Modelo · baja · `dmi._firmware` guarda «BIOS heredada» y «UEFI (64
     bits)» en español: sale así en inglés y en `--json`. Cambiarlo es cambiar
     la API.

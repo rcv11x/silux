@@ -29,7 +29,8 @@ en el idioma de quien lee.
   el tipo 1Fh es `logical-non-volatile`.
 - Campos nuevos: `Note.key` y `Note.detail`; `Sensor.device_key`,
   `chip_label`, `group` y `plausible`; `Gpu.package_temp_c`;
-  `MemoryModule.in_a_slot`.
+  `MemoryModule.in_a_slot`; `Snapshot.failures`, los fallos del propio
+  Silux con su traza.
 
 ### Consumo
 
@@ -76,6 +77,17 @@ en el idioma de quien lee.
 - Los avisos dicen las cosas en lenguaje normal: ni nodos, ni hwmon, ni
   rutas en pantalla. El detalle técnico va al informe, junto a cada dato que
   falta.
+- Arreglado: una NVIDIA sin el «modesetting» de nvidia-drm decía «Sin salidas
+  de video», y sus salidas funcionan. Ahora dice que el driver no las publica.
+- Arreglado: una integrada que ni Vulkan ni OpenGL usan, con otra gráfica que
+  sí, decía «Sin bibliotecas gráficas». Ahora dice que no la usan.
+- La cabecera de cada gráfica dice el enlace al que llega («PCIe 4.0 × 8»), no
+  el del momento: en reposo el enlace baja para gastar menos y se leía como
+  una avería. La fila «Enlace» sigue con el de ahora y, al pasar el ratón,
+  dice que en reposo es lo normal.
+- Arreglado: una NVIDIA sin consumo enseñaba un guion sin motivo. Ahora una
+  nota dice que el driver no lo da, y el informe lleva lo que contestó NVML a
+  cada forma de pedirlo.
 
 ### Batería
 
@@ -84,6 +96,10 @@ en el idioma de quien lee.
   «Calculando…», no un guion ni «0».
 - La capacidad sale con la misma cifra en todos los sitios: arriba ponía
   «50 Wh» y debajo «50.5 Wh».
+- Con la batería llena o retenida en su tope, Autonomía dice «con el
+  cargador», no un guion.
+- Arreglado: un portátil con una sola batería, que el kernel llama BAT1, la
+  enseñaba como «Batería 2» en Sensores.
 
 ### Memoria
 
@@ -107,6 +123,24 @@ en el idioma de quien lee.
   permisos.
 - Arreglado: con memoria soldada, la nota decía que sus chips, sus perfiles y
   su fecha «no se han podido leer». La soldada no lleva chip SPD, y lo dice.
+- Arreglado: el aviso de cargar `spd5118` salía con el módulo ya cargado, y
+  hablaba de «los 1 módulos». Si el chip ya tiene su driver no se propone
+  nada, y con uno va en singular.
+- Arreglado: el tráfico de la memoria decía «este equipo no lo publica»
+  cuando el controlador sí publica sus contadores y no se pudieron abrir.
+  Ahora sale como error, y el informe lleva el motivo.
+
+### Procesador
+
+- Arreglado: las cachés de un núcleo sin SMT decían «1 hilos».
+- En un híbrido, las cachés de cada nivel van con los núcleos P antes que
+  los E.
+
+### Almacenamiento
+
+- Un NVMe cuyo modelo empieza por «SKHynix» es de SK hynix.
+- Un disco de platos cuyo SMART no lleva la cuenta de lo escrito ya no
+  enseña «Escrito en total: —»: la fila se esconde y el pie lo dice.
 
 ### Sensores
 
@@ -133,6 +167,14 @@ en el idioma de quien lee.
   de WireGuard, los puentes de Docker), que Red enseña plegadas: ahora van
   desplegadas. Y el bucle local conserva su dirección, 127.0.0.1, que no
   identifica a nadie.
+- Arreglado: un fallo del propio Silux (un archivo suyo que no está, un
+  error al leer entre muestras) salía como «este equipo no lo publica», o
+  no salía. Ahora es un error, y el informe lo lista con su traza, sin la
+  carpeta personal.
+- Arreglado: en el anexo, un disco montado en una ruta con el nombre del
+  usuario dentro salía con dos nombres distintos, y al reproducirlo se
+  quedaba sin cifras.
+- Un espacio de más en «sostenida  · la medida de referencia».
 
 ---
 
