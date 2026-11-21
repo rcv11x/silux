@@ -25,8 +25,9 @@ class _InEnglish(unittest.TestCase):
 class TestTheSpdNotice(_InEnglish):
 
     def test_two_types_are_joined_in_english(self):
-        lecturas = [types.SimpleNamespace(decoded=False, dram_type=t, part_number=None)
-                    for t in ("DDR3", "DDR2")]
+        lecturas = [types.SimpleNamespace(decoded=False, dram_type=t, part_number=None,
+                                          partial=False, address=f"0-005{n}")
+                    for n, t in enumerate(("DDR3", "DDR2"))]
         with mock.patch.object(spd_modules.spd_module, "read_all", return_value=lecturas):
             borrador = Draft()
             spd_modules.SpdModules().collect(borrador)

@@ -23,7 +23,8 @@ def _structure(type_: int, fields: bytes, strings: list[str]) -> bytes:
     return header + fields + body
 
 
-def _memory_device(size_mb: int = 8192, extended_mb: int = 0, configured_mts: int = 2666) -> bytes:
+def _memory_device(size_mb: int = 8192, extended_mb: int = 0, configured_mts: int = 2666,
+                   memory_type: int = 0x1A) -> bytes:
     fields = bytearray(0x28 - 4)
 
     def put_word(offset: int, value: int) -> None:
@@ -38,7 +39,7 @@ def _memory_device(size_mb: int = 8192, extended_mb: int = 0, configured_mts: in
     fields[0x0F - 4] = 0                    # conjunto de dispositivos
     fields[0x10 - 4] = 1                    # cadena 1: ubicación
     fields[0x11 - 4] = 2                    # cadena 2: banco
-    fields[0x12 - 4] = 0x1A                 # DDR4
+    fields[0x12 - 4] = memory_type          # 0x1A DDR4, 0x22 DDR5
     put_word(0x13, 1 << 14)                 # sin registrar
     put_word(0x15, 3200)                    # velocidad nominal
     fields[0x17 - 4] = 3                    # fabricante

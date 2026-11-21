@@ -44,6 +44,17 @@ class SpdModules(Provider):
     def collect(self, draft: Draft) -> None:
         failures: list = []
         readings = spd_module.read_all(failures)
+        partial = {r.address for r in readings if r.partial}
+        if partial:
+            # Page 0 read and the rest didn't: the page switch is a write,
+            # and the machine blocks writes to the SPD.
+            draft.note("spd", Need.HARDWARE, _("prov.spd.partial"),
+                       _("prov.spd.partial.hint"),
+                       detail="; ".join(f"{device}: {errno.errorcode.get(exc.errno, exc.errno)}"
+                                        f" ({exc.strerror})" for device, exc in failures
+                                        if device in partial),
+                       key="prov.spd.partial")
+            failures = [(device, exc) for device, exc in failures if device not in partial]
         if failures:
             # The chip is there and reading it failed: on DDR5, when the
             # machine blocks SPD writes (the driver needs them to switch

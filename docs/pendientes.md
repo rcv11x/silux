@@ -71,12 +71,6 @@ la memoria) no va: está propuesto en las notas
     `ata_device` (para buscar la unidad en drivedb) está probado aquí con dos
     Seagate y un Crucial; con el A400 de verdad, falta verlo.
 * **Del portátil Lenovo LOQ 15IRH8** (volcado `i5-12450h`, de la prueba5):
-  - Memoria · media · el SPD de la DDR5 no se lee: `spd5118` está en
-    `0-0050` con su `eeprom`, y leerlo falla. Su `dmesg` dice «SPD Write
-    Disable is set» y, tras suspender, que el driver no pudo escribir. Desde
-    la prueba6 se dice así y el informe lleva el error exacto; con él se sabe
-    si es el bloqueo de escrituras (solo se leería la primera página) o la
-    suspensión.
   - Gráficos · baja · Mesa rechaza la UHD en Vulkan («Vulkan requires
     context isolation»), y desde la prueba6 la fila de Vulkan lo dice con
     ese motivo. Falta saber por qué su i915 no da aislamiento de contextos.

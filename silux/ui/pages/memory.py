@@ -857,7 +857,10 @@ class MemoryPage(ScrollPage):
             # la placa de lo que puede ser un permiso o un driver.
             nota_spd = getattr(self, "_nota_spd", None)
             campos = lista[:1].upper() + lista[1:]
-            if nota_spd is not None:
+            if nota_spd is not None and nota_spd.key == "prov.spd.partial":
+                pies.append(_("memory.na.spd.partial").format(campos=campos))
+                spd_reason_told = True
+            elif nota_spd is not None:
                 # The reason and what to do about it go here, once: the note's
                 # own box is left out (`_apply_notices`).
                 pies.append(" ".join(p for p in (_("memory.na.nospd.why").format(
@@ -896,7 +899,8 @@ class MemoryPage(ScrollPage):
         y se nombran al pie. El fabricante sí suele venir en la tabla; solo se
         esconde si tampoco está ahí.
         """
-        if module.spd is not None:
+        # With only its first page read, what the rest holds is missing too.
+        if module.spd is not None and not module.spd.partial:
             return ()
         return (() if module.manufacturer else ("memory.field.vendor",)) + (
             "memory.field.chips", "memory.field.profiles", "memory.field.made")
@@ -1004,6 +1008,9 @@ class MemoryPage(ScrollPage):
         spds = [m.spd for m in modules if m.spd is not None]
         if any(s.profiles or s.overclock_profiles for s in spds):
             nota = "memory.spd.note"
+        elif any(s.partial for s in spds):
+            # The profiles would be on the pages that couldn't be read.
+            nota = "memory.spd.note.partial"
         elif any(s.xmp_revision for s in spds):
             nota = "memory.spd.note.xmpunread"
         else:

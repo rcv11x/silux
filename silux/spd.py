@@ -114,6 +114,9 @@ class SpdInfo:
     # Perfiles cuya presencia se reconoce pero cuyas cifras no se interpretan:
     # hoy, los de DDR5. Ver `_ddr5_perfiles`.
     overclock_profiles: tuple[str, ...] = ()
+    # Only the first page could be read (a DDR5 chip whose page switch the
+    # machine blocks): what lies beyond it is unknown, not absent.
+    partial: bool = False
     # The speed an XMP profile declares, kept even when the rest of the
     # profile cannot be trusted (F-A2): its cycle is read right, its timings
     # and voltage are not. Dropping it, a tester's DDR4-3200 read «catalogado
@@ -380,9 +383,11 @@ def _decode_ddr5(spd: bytes, address: str, slot: int) -> SpdInfo:
         voltage_v=1.1,
     )
 
-    organizacion = spd[d.ORGANIZATION] if len(spd) > d.ORGANIZATION else 0
-    bus = spd[d.BUS_WIDTH] if len(spd) > d.BUS_WIDTH else 0
-    ranks = ((organizacion >> 3) & 0x07) + 1
+    # The module's organization is on page 1: with page 0 alone, unknown.
+    completo = len(spd) > d.BUS_WIDTH
+    organizacion = spd[d.ORGANIZATION] if completo else 0
+    bus = spd[d.BUS_WIDTH] if completo else 0
+    ranks = ((organizacion >> 3) & 0x07) + 1 if completo else None
     canales = ((bus >> 5) & 0x03) + 1
     ancho_canal = 8 << (bus & 0x07)
     extension = ((bus >> 3) & 0x03) * 4        # los bits de ECC, si los hay
@@ -404,15 +409,17 @@ def _decode_ddr5(spd: bytes, address: str, slot: int) -> SpdInfo:
         **(_date(spd[d.DATE_YEAR], spd[d.DATE_WEEK]) if len(spd) > d.DATE_WEEK else {}),
         ranks=ranks,
         device_width=ancho_chip,
-        bus_width=ancho_canal * canales,
+        bus_width=ancho_canal * canales if completo else None,
         ecc_bits=extension * canales,
         channels=canales,
         capacity_bytes=_capacidad(
             DDR5_DENSIDADES.get(densidad & 0x1F), ancho_chip,
-            ancho_canal * canales, ranks, dies=1 << ((densidad >> 5) & 0x07)),
+            ancho_canal * canales, ranks, dies=1 << ((densidad >> 5) & 0x07))
+        if completo else None,
         jedec=jedec if jedec.plausible else None,
         overclock_profiles=_ddr5_perfiles(spd),
         decoded=True,
+        partial=len(spd) < DDR5_SIZE,
     )
 
 
@@ -730,6 +737,29 @@ def _eeproms() -> Iterator[tuple[pathlib.Path, int]]:
             yield entry, int(match.group(1), 16) - 0x50
 
 
+# A DDR5 SPD is 1024 bytes in eight pages of 128. The driver switches pages by
+# writing to the chip; where the machine blocks SPD writes only page 0 reads.
+DDR5_SIZE, DDR5_PAGE = 1024, 128
+# DDR5's JEDEC speeds start at 3200 MT/s (a 625 ps cycle).
+DDR5_MIN_MTS = 3200
+
+
+def first_page(raw: bytes, address: str, slot: int) -> Optional[SpdInfo]:
+    """A DDR5 chip's page 0 alone, if it holds up.
+
+    Its CRC is on page 3, so it can't be checked: the type byte, a DDR5
+    cycle, plausible timings and known module type and chip width have to
+    vouch for it instead. Nothing that fails is shown.
+    """
+    if len(raw) < DDR5_PAGE or raw[2] != 0x12:
+        return None
+    info = _decode_ddr5(raw[:DDR5_PAGE], address, slot)
+    if (info.jedec is None or info.jedec.cl is None or info.jedec.speed_mts < DDR5_MIN_MTS
+            or info.module_type is None or info.device_width is None):
+        return None
+    return info
+
+
 def read_all(failures: Optional[list] = None) -> list[SpdInfo]:
     """Lee el SPD de todos los zócalos que el kernel esté exponiendo.
 
@@ -743,6 +773,14 @@ def read_all(failures: Optional[list] = None) -> list[SpdInfo]:
         except OSError as exc:
             if failures is not None:
                 failures.append((entry.name, exc))
+            # Only reads: page 0 needs no page switch, so no write to the chip.
+            try:
+                with open(entry / "eeprom", "rb") as eeprom:
+                    head = eeprom.read(DDR5_PAGE)
+            except OSError:
+                continue
+            if (partial := first_page(head, entry.name, slot)) is not None:
+                found.append(partial)
             continue
         found.append(decode(raw, address=entry.name, slot=slot))
     return found
