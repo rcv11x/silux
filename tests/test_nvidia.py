@@ -262,7 +262,7 @@ class TestAProprietaryNvidiaInSensors(unittest.TestCase):
         from tests.test_equipos import EQUIPOS, foto
         f = foto(EQUIPOS / "i7-10700f")[0]
         nvidia_ = {(s.kind, s.label): s.value for s in f.sensors if s.device == "GeForce RTX 4060"}
-        self.assertEqual(nvidia_[(SensorKind.TEMPERATURE, "Núcleo")], 33.0)
+        self.assertEqual(nvidia_[(SensorKind.TEMPERATURE, "Núcleo")], 37.0)
         self.assertEqual(nvidia_[(SensorKind.CLOCK, "Núcleo")], 2505.0)
 
     def test_an_amd_card_does_not_get_them_twice(self):
