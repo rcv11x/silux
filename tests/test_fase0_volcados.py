@@ -39,7 +39,7 @@ class TestNvmlSeGraba(unittest.TestCase):
         sysroot.empezar_a_grabar()
         try:
             vivo = self.proveedor(mock.Mock(open=lambda: True, devices=lambda: [RTX]))
-            with mock.patch.object(nvidia, "nvidias_dormidas", return_value=[]):
+            with mock.patch.object(nvidia, "sleeping_nvidias", return_value=[]):
                 self.assertTrue(vivo.available())
             vivo.collect(Draft())
         finally:

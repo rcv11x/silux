@@ -148,7 +148,7 @@ class MemoryTraffic(_Calculation):
     def __init__(self, tmp, clock):
         super().__init__(tmp, clock)
         from silux.providers import imc
-        patch = mock.patch.object(imc, "hay_controlador", lambda: True)
+        patch = mock.patch.object(imc, "has_controller", lambda: True)
         patch.start()
         self.stop = patch.stop
         self.helper = _Helper()

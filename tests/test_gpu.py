@@ -1423,29 +1423,29 @@ class TestNucleosCudaDeNvidia(unittest.TestCase):
     """
 
     def test_lo_que_ya_son_nucleos_se_deja_como_esta(self):
-        from silux.providers.nvidia import _nucleos_cuda
+        from silux.providers.nvidia import _cuda_cores
 
-        self.assertEqual(_nucleos_cuda({"codename": "TU116"}, 1536), 1536)
+        self.assertEqual(_cuda_cores({"codename": "TU116"}, 1536), 1536)
 
     def test_los_multiprocesadores_se_convierten_a_nucleos(self):
-        from silux.providers.nvidia import _nucleos_cuda
+        from silux.providers.nvidia import _cuda_cores
 
         # RTX 4060: 24 multiprocesadores de Ada, 128 núcleos cada uno.
-        self.assertEqual(_nucleos_cuda({"codename": "AD107"}, 24), 3072)
+        self.assertEqual(_cuda_cores({"codename": "AD107"}, 24), 3072)
         # RTX 3050 Mobile: 16 de Ampere.
-        self.assertEqual(_nucleos_cuda({"codename": "GA107M"}, 16), 2048)
+        self.assertEqual(_cuda_cores({"codename": "GA107M"}, 16), 2048)
 
     def test_una_arquitectura_desconocida_no_se_inventa(self):
         """Antes que un número creíble y falso, ninguno."""
-        from silux.providers.nvidia import _nucleos_cuda
+        from silux.providers.nvidia import _cuda_cores
 
-        self.assertIsNone(_nucleos_cuda({"codename": "XX999"}, 24))
-        self.assertIsNone(_nucleos_cuda({}, 24))
+        self.assertIsNone(_cuda_cores({"codename": "XX999"}, 24))
+        self.assertIsNone(_cuda_cores({}, 24))
 
     def test_sin_dato_sigue_sin_haber_dato(self):
-        from silux.providers.nvidia import _nucleos_cuda
+        from silux.providers.nvidia import _cuda_cores
 
-        self.assertIsNone(_nucleos_cuda({"codename": "AD107"}, None))
+        self.assertIsNone(_cuda_cores({"codename": "AD107"}, None))
 
 
 class TestSalidasLibres(unittest.TestCase):

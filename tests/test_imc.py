@@ -165,9 +165,9 @@ class TestLaDerivada(unittest.TestCase):
         # eso depende de quién ejecute los tests. Aquí se comprueba la cuenta,
         # así que se responde que sí y se deja el sysfs en paz.
         import silux.providers.imc as modulo
-        self._original = modulo.hay_controlador
-        modulo.hay_controlador = lambda: True
-        self.addCleanup(setattr, modulo, "hay_controlador", self._original)
+        self._original = modulo.has_controller
+        modulo.has_controller = lambda: True
+        self.addCleanup(setattr, modulo, "has_controller", self._original)
 
     def test_diez_gibibytes_en_un_segundo_son_diez_gibibytes(self):
         """La comprobación de la que salió todo, con sus números.
@@ -264,12 +264,12 @@ class TestLaDerivada(unittest.TestCase):
 
     def test_una_maquina_sin_contadores_deja_de_preguntar(self):
         import silux.providers.imc as modulo
-        sin = mock.patch.object(modulo, "hay_contadores", lambda: False)
+        sin = mock.patch.object(modulo, "has_counters", lambda: False)
         sin.start()
         self.addCleanup(sin.stop)
         proveedor = self._proveedor([PmuUnsupported("no hay")])
         self._recoge(proveedor, veces=1)
-        self.assertTrue(proveedor._mudo)
+        self.assertTrue(proveedor._silent)
         self.assertFalse(proveedor.available())
         self.assertEqual(proveedor.unavailable_reason()[1], Need.HARDWARE,
                          "que no exista no se arregla con permisos")
@@ -280,7 +280,7 @@ class TestLaDerivada(unittest.TestCase):
                                      _lectura(0, 0, 0),
                                      _lectura(1_000_000_000, GiB, GiB)])
         borrador = self._recoge(proveedor, veces=3)
-        self.assertFalse(proveedor._mudo)
+        self.assertFalse(proveedor._silent)
         self.assertIsNotNone(borrador.memory_traffic)
 
 
@@ -289,9 +289,9 @@ class TestPorQueFaltaCuandoFalta(unittest.TestCase):
 
     def test_con_contador_y_sin_permisos_pide_permisos(self):
         import silux.providers.imc as modulo
-        original = modulo.hay_controlador
-        modulo.hay_controlador = lambda: True
-        self.addCleanup(setattr, modulo, "hay_controlador", original)
+        original = modulo.has_controller
+        modulo.has_controller = lambda: True
+        self.addCleanup(setattr, modulo, "has_controller", original)
 
         proveedor = ImcTraffic(client=None)
         ruta, motivo, _mensaje, _pista, falta = proveedor.unavailable_reason()
@@ -302,17 +302,17 @@ class TestPorQueFaltaCuandoFalta(unittest.TestCase):
     def test_sin_contador_no_se_pide_nada(self):
         """En un Ryzen, pedir la contraseña para no enseñar nada sería peor."""
         import silux.providers.imc as modulo
-        original = modulo.hay_controlador
-        modulo.hay_controlador = lambda: False
-        self.addCleanup(setattr, modulo, "hay_controlador", original)
+        original = modulo.has_controller
+        modulo.has_controller = lambda: False
+        self.addCleanup(setattr, modulo, "has_controller", original)
 
         proveedor = ImcTraffic(client=None)
         self.assertEqual(proveedor.unavailable_reason()[1], Need.HARDWARE)
 
     def test_el_buscador_de_pmu_lee_el_sysfs_de_verdad(self):
         """Sin exigir resultado: esta máquina puede no tener ninguno."""
-        from silux.providers.imc import hay_controlador
-        self.assertIsInstance(hay_controlador(), bool)
+        from silux.providers.imc import has_controller
+        self.assertIsInstance(has_controller(), bool)
 
 
 class TestElTraficoEnPantalla(unittest.TestCase):
@@ -504,9 +504,9 @@ class TestElTraficoEnElArbolDeSensores(unittest.TestCase):
         from silux.model import CpuInfo, CpuType, Snapshot
         import silux.providers.imc as modulo
 
-        original = modulo.hay_controlador
-        modulo.hay_controlador = lambda: True
-        self.addCleanup(setattr, modulo, "hay_controlador", original)
+        original = modulo.has_controller
+        modulo.has_controller = lambda: True
+        self.addCleanup(setattr, modulo, "has_controller", original)
 
         proveedor = ImcTraffic(client=ClienteFalso([
             _lectura(0, 0, 0),
@@ -530,9 +530,9 @@ class TestElTraficoEnElArbolDeSensores(unittest.TestCase):
     def test_las_claves_de_los_sensores_no_bailan_entre_muestreos(self):
         """Sin `key` estable no hay mínimos ni máximos que acumular."""
         import silux.providers.imc as modulo
-        original = modulo.hay_controlador
-        modulo.hay_controlador = lambda: True
-        self.addCleanup(setattr, modulo, "hay_controlador", original)
+        original = modulo.has_controller
+        modulo.has_controller = lambda: True
+        self.addCleanup(setattr, modulo, "has_controller", original)
 
         proveedor = ImcTraffic(client=ClienteFalso([
             _lectura(0, 0, 0),

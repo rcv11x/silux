@@ -1,15 +1,12 @@
-"""Rellena las tarjetas NVIDIA con lo que solo sabe NVML.
+"""Fills NVIDIA cards with what only NVML knows.
 
-`DrmGpus` ya las ha enumerado (el nodo PCI está ahí para todos los drivers)
-pero con el driver propietario esa ficha viene casi vacía. Este proveedor la
-completa preguntando a NVML y casando por la dirección PCI, que es el único
-identificador que ambos lados publican.
+`DrmGpus` has listed them (the PCI node is there for every driver), but with
+the proprietary driver that card comes almost empty. This completes it by
+asking NVML and matching by PCI address, the only identifier both publish.
 
-No sustituye a nada: si algún dato ya venía de sysfs (una tarjeta con nouveau,
-por ejemplo) se respeta, y NVML solo tapa huecos.
-
-La sesión se abre una vez y se queda abierta; el colector la cierra al salir
-por el mismo camino que usa para el ayudante de permisos.
+It replaces nothing: what came from sysfs (a card with nouveau) stays, and
+NVML only fills gaps. The session opens once and stays open; the collector
+closes it on exit, the same way it closes the helper.
 """
 
 from __future__ import annotations
@@ -25,108 +22,104 @@ from ..model import GpuClocks, GpuMemory, Need, PcieLink
 from .base import Draft, Provider, en_reposo, read_text
 from .dmi import PORTABLE_CHASSIS
 
-# La velocidad de cada generación de PCIe, para traducir el número que da NVML.
-VELOCIDADES = {1: 2.5, 2: 5.0, 3: 8.0, 4: 16.0, 5: 32.0, 6: 64.0}
+# Each PCIe generation's speed, to translate the number NVML gives.
+SPEEDS_GTS = {1: 2.5, 2: 5.0, 3: 8.0, 4: 16.0, 5: 32.0, 6: 64.0}
 
 
 class NvidiaGpus(Provider):
-    """Memoria, relojes, sensores y recorte de rendimiento de las GeForce."""
+    """Memory, clocks, sensors and throttling of GeForce cards."""
 
     name = "nvml"
     provides = "gpus.nvidia"
 
     def __init__(self) -> None:
-        # Se llama `client` a propósito: el colector cierra por ese nombre.
+        # Called `client` on purpose: the collector closes by that name.
         self.client = nvml.Nvml()
 
     def available(self) -> bool:
-        # Con un equipo volcado se contesta lo grabado: abierta o no, y qué
-        # tarjetas dio (`sysroot.a_traves`). Nunca la NVML de esta máquina.
+        # With a dump, what was recorded answers: open or not, and which cards
+        # it gave (`sysroot.a_traves`). Never this machine's NVML.
         if sysroot.activo():
             return bool(sysroot.a_traves("nvml", "abierta", self.client.open))
-        if nvidias_dormidas():
-            # NVML habla con todas las tarjetas a la vez: abrirla, o tenerla
-            # abierta y preguntar, despierta la que duerme. Se suelta mientras
-            # haya una suspendida y se vuelve a abrir cuando despierte.
+        if sleeping_nvidias():
+            # NVML talks to every card at once: opening it, or asking with it
+            # open, wakes the one that sleeps. It is closed while one is
+            # suspended and opened again when it wakes.
             self.client.close()
             return False
         return bool(sysroot.a_traves("nvml", "abierta", self.client.open))
 
-    def _tarjetas(self) -> list[nvml.NvidiaGpu]:
-        """Lo que contesta NVML, grabado para los volcados.
-
-        Se graba como diccionarios y sin el número de serie, que no se usa en
-        ninguna parte: un volcado no tiene por qué llevarlo.
-        """
-        def preguntar():
+    def _cards(self) -> list[nvml.NvidiaGpu]:
+        """What NVML answers, recorded for the dumps: as dictionaries and
+        without the serial number, which nothing uses."""
+        def ask():
             return [dict(dataclasses.asdict(t), serial=None) for t in self.client.devices()]
-        crudas = sysroot.a_traves("nvml", "tarjetas", preguntar) or ()
+        raw_cards = sysroot.a_traves("nvml", "tarjetas", ask) or ()
         return [nvml.NvidiaGpu(**dict(c, throttle_reasons=tuple(c.get("throttle_reasons") or ())))
-                for c in crudas]
+                for c in raw_cards]
 
     def unavailable_reason(self):
-        return None       # sin NVIDIA no falta nada; no hay nada que explicar
+        return None       # without an NVIDIA nothing is missing
 
     def collect(self, draft: Draft) -> None:
-        tarjetas = self._tarjetas()
-        if not tarjetas:
+        cards = self._cards()
+        if not cards:
             return
         draft.capabilities.add("nvml")
 
-        por_ranura = {gpu.get("pci_slot"): gpu for gpu in draft.gpus if gpu.get("pci_slot")}
-        for tarjeta in tarjetas:
-            destino = por_ranura.get(tarjeta.pci_slot)
-            if destino is None:
-                # NVML ve una tarjeta que DRM no enumeró. Pasa con las Tesla en
-                # modo de solo cómputo, que no registran nodo de gráficos.
-                destino = draft.gpu(len(draft.gpus))
-                destino["pci_slot"] = tarjeta.pci_slot
-                destino["vendor"] = "NVIDIA"
-            _rellenar(destino, tarjeta)
-            if tarjeta.fan_percent is None and draft.board.chassis in PORTABLE_CHASSIS:
-                destino["fan_of_the_machine"] = True
+        by_slot = {gpu.get("pci_slot"): gpu for gpu in draft.gpus if gpu.get("pci_slot")}
+        for card in cards:
+            target = by_slot.get(card.pci_slot)
+            if target is None:
+                # NVML sees a card DRM did not list: compute-only Teslas
+                # register no graphics node.
+                target = draft.gpu(len(draft.gpus))
+                target["pci_slot"] = card.pci_slot
+                target["vendor"] = "NVIDIA"
+            _fill(target, card)
+            if card.fan_percent is None and draft.board.chassis in PORTABLE_CHASSIS:
+                target["fan_of_the_machine"] = True
 
-        # Ya no hace falta el aviso de que una NVIDIA viene vacía: no lo viene.
+        # The notice that an NVIDIA comes empty is not needed: it does not.
         draft.notes = [n for n in draft.notes
                        if not (n.need is Need.DRIVER and n.path.startswith("gpus.")
                                and "NVIDIA" in n.message)]
 
         # A dash with no reason breaks rule 5: say the driver did not give it,
         # and what NVML answered goes in the report.
-        for tarjeta in tarjetas:
-            for indice, gpu in enumerate(draft.gpus):
-                if gpu.get("pci_slot") == tarjeta.pci_slot and gpu.get("power_w") is None:
-                    draft.note(f"gpus.{indice}.power_w", Need.HARDWARE,
+        for card in cards:
+            for index, gpu in enumerate(draft.gpus):
+                if gpu.get("pci_slot") == card.pci_slot and gpu.get("power_w") is None:
+                    draft.note(f"gpus.{index}.power_w", Need.HARDWARE,
                                _("prov.nvml.nopower"), what=_("what.gpu.power"),
-                               detail=tarjeta.power_error or "", key="nvml.nopower")
+                               detail=card.power_error or "", key="nvml.nopower")
 
 
 PCI = "/sys/bus/pci/devices"
 
 
-def nvidias_dormidas() -> list[str]:
-    """Las gráficas de NVIDIA que el kernel tiene suspendidas (D3).
+def sleeping_nvidias() -> list[str]:
+    """The NVIDIA cards the kernel has suspended (D3).
 
-    Se mira en el bus y no en lo que enumeró DRM: con el driver propietario
-    sin `nvidia-drm.modeset` no hay nodo DRM, y la tarjeta duerme igual. El
-    portátil típico (Optimus con RTD3, de serie en Ampere y posteriores con
-    el driver 525 o más) la tiene así siempre que no se juega.
+    Read from the bus, not from what DRM listed: with the proprietary driver
+    and no `nvidia-drm.modeset` there is no DRM node, and the card sleeps all
+    the same. A typical Optimus laptop with RTD3 keeps it so when idle.
     """
-    dormidas = []
-    for camino in sorted(glob.glob(os.path.join(sysroot.ruta(PCI), "*"))):
-        if (read_text(f"{camino}/vendor") or "").lower() != "0x10de":
+    sleeping = []
+    for path in sorted(glob.glob(os.path.join(sysroot.ruta(PCI), "*"))):
+        if (read_text(f"{path}/vendor") or "").lower() != "0x10de":
             continue
-        if not (read_text(f"{camino}/class") or "").startswith("0x03"):
+        if not (read_text(f"{path}/class") or "").startswith("0x03"):
             continue
-        if en_reposo(camino):
-            dormidas.append(os.path.basename(camino))
-    return dormidas
+        if en_reposo(path):
+            sleeping.append(os.path.basename(path))
+    return sleeping
 
 
-# Cuántos núcleos CUDA lleva cada multiprocesador, por generación. Las dos
-# primeras letras del nombre en clave dicen cuál es —AD107 es Ada, TU116 es
-# Turing— y es un dato de la arquitectura, igual para toda la familia.
-NUCLEOS_POR_SM = {
+# CUDA cores per multiprocessor, by generation. The codename's first two
+# letters say which (AD107 is Ada, TU116 Turing): an architecture fact, the
+# same for the whole family.
+CORES_PER_SM = {
     "GP": 128,   # Pascal
     "GV": 64,    # Volta
     "TU": 64,    # Turing
@@ -135,88 +128,82 @@ NUCLEOS_POR_SM = {
     "GB": 128,   # Blackwell
 }
 
-# Por debajo de esto no son núcleos. La tarjeta más modesta que habla NVML
-# ronda los 256 y ninguna GPU pasa de 200 multiprocesadores, así que entre las
-# dos magnitudes hay un hueco que no deja lugar a dudas.
-MINIMO_NUCLEOS = 200
+# Below this they are not cores. The smallest card NVML talks to has about
+# 256, and no GPU has more than 200 multiprocessors: the gap leaves no doubt.
+MIN_CORES = 200
 
 
-def _nucleos_cuda(gpu: dict, crudo: Optional[int]) -> Optional[int]:
-    """Los núcleos CUDA de verdad, que no siempre es lo que contesta NVML.
+def _cuda_cores(gpu: dict, raw: Optional[int]) -> Optional[int]:
+    """The real CUDA core count, which is not always what NVML answers.
 
-    `nvmlDeviceGetNumGpuCores` devuelve una cosa distinta según la tarjeta: una
-    GTX 1660 Ti contesta 1536, que son sus núcleos, y una RTX 4060 contesta 24,
-    que son sus multiprocesadores —lleva 3072 núcleos—. Salían las dos juntas
-    en capturas de dos usuarios, «1536 CUDA» y «24 CUDA», y la segunda parece
-    un fallo del programa porque lo es.
-
-    Cuando el número es demasiado bajo para ser núcleos se multiplica por lo
-    que da cada multiprocesador en esa arquitectura. Si no se reconoce la
-    arquitectura no se inventa: se deja sin dato, que es preferible a una
-    cifra creíble y falsa.
+    `nvmlDeviceGetNumGpuCores` returns cores on some cards and
+    multiprocessors on others (24 on an RTX 4060, which has 3072 cores). A
+    number too low to be cores is multiplied by the cores per multiprocessor
+    of its architecture; an unknown architecture gives nothing rather than a
+    believable, false figure.
     """
-    if crudo is None or crudo >= MINIMO_NUCLEOS:
-        return crudo
-    clave = (gpu.get("codename") or "")[:2].upper()
-    factor = NUCLEOS_POR_SM.get(clave)
-    return crudo * factor if factor else None
+    if raw is None or raw >= MIN_CORES:
+        return raw
+    key = (gpu.get("codename") or "")[:2].upper()
+    factor = CORES_PER_SM.get(key)
+    return raw * factor if factor else None
 
 
-def _rellenar(gpu: dict, tarjeta: nvml.NvidiaGpu) -> None:
-    directos = {
-        "name": tarjeta.name,
-        "vbios": tarjeta.vbios,
-        "driver_version": tarjeta.driver_version,
-        "unique_id": tarjeta.uuid,
-        "compute_units": _nucleos_cuda(gpu, tarjeta.cuda_cores),
-        "busy_percent": tarjeta.busy_percent,
-        "memory_busy_percent": tarjeta.memory_busy_percent,
-        "encode_busy_percent": tarjeta.encode_busy_percent,
-        "decode_busy_percent": tarjeta.decode_busy_percent,
-        "temp_c": tarjeta.temp_c,
-        "power_w": tarjeta.power_w,
-        "power_cap_w": tarjeta.power_cap_w,
-        "fan_percent": tarjeta.fan_percent,
-        "throttled": tarjeta.throttled,
+def _fill(gpu: dict, card: nvml.NvidiaGpu) -> None:
+    direct = {
+        "name": card.name,
+        "vbios": card.vbios,
+        "driver_version": card.driver_version,
+        "unique_id": card.uuid,
+        "compute_units": _cuda_cores(gpu, card.cuda_cores),
+        "busy_percent": card.busy_percent,
+        "memory_busy_percent": card.memory_busy_percent,
+        "encode_busy_percent": card.encode_busy_percent,
+        "decode_busy_percent": card.decode_busy_percent,
+        "temp_c": card.temp_c,
+        "power_w": card.power_w,
+        "power_cap_w": card.power_cap_w,
+        "fan_percent": card.fan_percent,
+        "throttled": card.throttled,
     }
-    for campo, valor in directos.items():
-        if valor is not None and gpu.get(campo) is None:
-            gpu[campo] = valor
-    if tarjeta.throttle_reasons and not gpu.get("throttle_reasons"):
-        gpu["throttle_reasons"] = tarjeta.throttle_reasons
+    for field, value in direct.items():
+        if value is not None and gpu.get(field) is None:
+            gpu[field] = value
+    if card.throttle_reasons and not gpu.get("throttle_reasons"):
+        gpu["throttle_reasons"] = card.throttle_reasons
 
-    memoria: GpuMemory = gpu.get("memory") or GpuMemory()
+    memory: GpuMemory = gpu.get("memory") or GpuMemory()
     gpu["memory"] = dataclasses.replace(
-        memoria,
+        memory,
         # NVML's, when it answers: Vulkan, asked earlier, adds NVIDIA's BAR
         # window to the total and an RTX 4060 of 8 GB read «8.2 GB».
-        total_bytes=tarjeta.memory_total_bytes or memoria.total_bytes,
-        used_bytes=memoria.used_bytes if memoria.used_bytes is not None
-        else tarjeta.memory_used_bytes,
-        bus_bits=memoria.bus_bits or tarjeta.memory_bus_bits,
+        total_bytes=card.memory_total_bytes or memory.total_bytes,
+        used_bytes=memory.used_bytes if memory.used_bytes is not None
+        else card.memory_used_bytes,
+        bus_bits=memory.bus_bits or card.memory_bus_bits,
     )
-    # Las GeForce y las Quadro son tarjetas aparte. Lo que NVIDIA fusiona
-    # con el procesador son los Tegra, que no hablan por NVML en un PC.
+    # GeForce and Quadro are separate cards. What NVIDIA builds into the
+    # processor is Tegra, which does not talk NVML on a PC.
     gpu["integrated"] = False
 
-    relojes: GpuClocks = gpu.get("clocks") or GpuClocks()
+    clocks: GpuClocks = gpu.get("clocks") or GpuClocks()
     gpu["clocks"] = dataclasses.replace(
-        relojes,
-        core_hz=relojes.core_hz if relojes.core_hz is not None else tarjeta.core_hz,
-        core_max_hz=relojes.core_max_hz or tarjeta.core_max_hz,
-        memory_hz=relojes.memory_hz if relojes.memory_hz is not None else tarjeta.memory_hz,
-        memory_max_hz=relojes.memory_max_hz or tarjeta.memory_max_hz,
+        clocks,
+        core_hz=clocks.core_hz if clocks.core_hz is not None else card.core_hz,
+        core_max_hz=clocks.core_max_hz or card.core_max_hz,
+        memory_hz=clocks.memory_hz if clocks.memory_hz is not None else card.memory_hz,
+        memory_max_hz=clocks.memory_max_hz or card.memory_max_hz,
     )
 
-    # NVML da la generación de PCIe; el modelo guarda gigatransferencias, que es
-    # lo que publica sysfs para todas las demás tarjetas.
-    enlace: PcieLink = gpu.get("link") or PcieLink()
+    # NVML gives the PCIe generation; the model keeps gigatransfers, which is
+    # what sysfs publishes for every other card.
+    link: PcieLink = gpu.get("link") or PcieLink()
     gpu["link"] = dataclasses.replace(
-        enlace,
-        current_speed_gts=(enlace.current_speed_gts
-                           or VELOCIDADES.get(tarjeta.link_generation or 0)),
-        current_width=enlace.current_width or tarjeta.link_width,
-        max_speed_gts=(enlace.max_speed_gts
-                       or VELOCIDADES.get(tarjeta.max_link_generation or 0)),
-        max_width=enlace.max_width or tarjeta.max_link_width,
+        link,
+        current_speed_gts=(link.current_speed_gts
+                           or SPEEDS_GTS.get(card.link_generation or 0)),
+        current_width=link.current_width or card.link_width,
+        max_speed_gts=(link.max_speed_gts
+                       or SPEEDS_GTS.get(card.max_link_generation or 0)),
+        max_width=link.max_width or card.max_link_width,
     )

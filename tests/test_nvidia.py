@@ -137,23 +137,23 @@ class TestNucleosCuda(unittest.TestCase):
 
     def test_una_3050_mobile_da_multiprocesadores(self):
         gpu = {"codename": "GA107M"}
-        self.assertEqual(nvidia._nucleos_cuda(gpu, 16), 2048)
+        self.assertEqual(nvidia._cuda_cores(gpu, 16), 2048)
 
     def test_una_4080_laptop_tambien(self):
         gpu = {"codename": "AD104M"}
-        self.assertEqual(nvidia._nucleos_cuda(gpu, 58), 7424)
+        self.assertEqual(nvidia._cuda_cores(gpu, 58), 7424)
 
     def test_una_1660_ti_da_los_nucleos_de_verdad(self):
         """1536 ya son núcleos: no hay nada que multiplicar."""
         gpu = {"codename": "TU116"}
-        self.assertEqual(nvidia._nucleos_cuda(gpu, 1536), 1536)
+        self.assertEqual(nvidia._cuda_cores(gpu, 1536), 1536)
 
     def test_una_arquitectura_que_no_se_reconoce_no_se_inventa(self):
         gpu = {"codename": "XX999"}
-        self.assertIsNone(nvidia._nucleos_cuda(gpu, 16))
+        self.assertIsNone(nvidia._cuda_cores(gpu, 16))
 
     def test_sin_nombre_en_clave_tampoco(self):
-        self.assertIsNone(nvidia._nucleos_cuda({}, 16))
+        self.assertIsNone(nvidia._cuda_cores({}, 16))
 
 
 class TestSinNvidia(unittest.TestCase):

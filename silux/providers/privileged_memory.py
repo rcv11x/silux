@@ -1,14 +1,14 @@
-"""Módulos de memoria, a través del ayudante privilegiado.
+"""Memory modules, through the privileged helper.
 
-Sin permisos solo se sabe cuánta RAM hay en total, porque eso lo cuenta el
-kernel. Quién la fabrica, de qué tipo es, a qué velocidad va y cuántos
-zócalos quedan libres está en la tabla SMBIOS, que el kernel reserva a root
-por buenos motivos: junto a esos campos van los números de serie del equipo.
+Without permissions only the total RAM is known, which the kernel counts.
+Who made it, its type, speed and free slots are in the SMBIOS table, which
+the kernel keeps for root for good reasons: the machine's serial numbers go
+with them.
 
-Este proveedor no eleva permisos por su cuenta. Se queda esperando a que el
-usuario lo pida desde la interfaz, y hasta entonces deja una nota explicando
-qué falta y por qué. Un programa de diagnóstico que abre un diálogo de
-contraseña nada más arrancar es un programa que se desinstala.
+This provider never raises permissions on its own. It waits for the user to
+ask from the interface, and until then leaves a note saying what is missing
+and why: a diagnostic program that asks for a password at startup gets
+uninstalled.
 """
 
 from __future__ import annotations
@@ -82,7 +82,7 @@ class PrivilegedMemory(Provider):
             return
 
         if already_root():
-            # Sin ayudante de por medio: la tabla ya se puede leer.
+            # No helper in between: the table can be read already.
             self._read_directly(draft)
             return
 
@@ -117,19 +117,18 @@ class PrivilegedMemory(Provider):
 
     # -- SPD ----------------------------------------------------------------
 
-    # Los chips de SPD de un módulo DDR4 viven en el bus SMBus, en las
-    # direcciones 0x50 a 0x57: una por zócalo.
+    # A DDR4 module's SPD chip lives on the SMBus, at addresses 0x50 to
+    # 0x57: one per slot.
     _SPD_ADDRESS = re.compile(r"^\d+-00(5[0-7])$")
 
     @classmethod
     def _spd_hint(cls) -> Iterator[DriverHint]:
-        """La tabla SMBIOS dice a qué velocidad va la memoria; el SPD dice a
-        cuánto podría ir.
+        """SMBIOS says what speed the memory runs at; the SPD says what it
+        could run at.
 
-        Son datos distintos: SMBIOS refleja lo que la BIOS ha negociado, y sin
-        XMP activado eso son los valores JEDEC conservadores. Los perfiles del
-        fabricante están en el chip SPD del propio módulo, al que se llega por
-        el bus SMBus cuando está cargado el driver correspondiente.
+        SMBIOS shows what the firmware negotiated, which without XMP are the
+        conservative JEDEC values. The maker's profiles are in each module's
+        SPD chip, reached through the SMBus once its driver is loaded.
         """
         devices = pathlib.Path(sysroot.ruta("/sys/bus/i2c/devices"))
         if not devices.is_dir():
@@ -140,7 +139,7 @@ class PrivilegedMemory(Provider):
         if not candidates:
             return
         if any((entry / "eeprom").exists() for entry in candidates):
-            return                            # ya está leído
+            return                            # already read
         # A device with its driver bound (its link, or the hwmon only a driver
         # registers) gains nothing from loading one: why it cannot be read is
         # spd.unreadable_cause's to say.
@@ -149,8 +148,8 @@ class PrivilegedMemory(Provider):
         if not candidates:
             return
 
-        # De la más nueva a la más vieja: el driver que sobra no encuentra
-        # nada y no molesta, pero sin el que toca no se lee el módulo.
+        # Newest first: a driver that does not apply finds nothing and does
+        # no harm, but without the right one the module is not read.
         modinfo = system_deps.program_path("modinfo")
         for module in ("spd5118", "ee1004", "at24"):
             if not modinfo:
@@ -168,7 +167,7 @@ class PrivilegedMemory(Provider):
                 )
                 return
 
-    # -- interno ------------------------------------------------------------
+    # -- internals ----------------------------------------------------------
 
     @staticmethod
     def _explain(draft: Draft) -> None:
@@ -202,6 +201,6 @@ class PrivilegedMemory(Provider):
                 max_capacity_bytes=first.get("max_capacity_bytes") or 0,
                 error_correction=first.get("error_correction"),
             )
-        # De la misma tabla, cómo se llama cada ranura de la placa.
+        # From the same table, each board slot's name.
         draft.pci_slot_names = smbios.system_slots(structures)
         draft.capabilities.add("smbios")

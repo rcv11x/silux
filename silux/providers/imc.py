@@ -1,28 +1,20 @@
-"""El tráfico que mueve el controlador de memoria, leído de su PMU.
+"""The traffic the memory controller moves, read from its PMU.
 
-No es una prueba: es un sensor. Nadie provoca este tráfico, es el que hay, y
-por eso vive al lado del ancho de banda que mide `membench` y no dentro. Aquel
-dice lo que la memoria *puede* dar y para saberlo tiene que ocupar la máquina;
-este dice lo que está moviendo ahora mismo, mientras el equipo hace lo suyo.
+A sensor, not a benchmark: nobody causes this traffic, it is what there is.
+`membench` says what the memory *can* give and has to load the machine to
+know; this says what it moves right now. It counts the whole controller,
+with the processor's traffic inside, so `ia_requests` (what the cores ask
+for) is read as well.
 
-Es el mismo contador que `intel_gpu_top` enseña junto a la gráfica, y su sitio
-no es aquella página: la integrada usa la RAM del sistema como VRAM, pero lo
-que se cuenta aquí es el controlador entero, con el tráfico del procesador
-dentro. De ahí que se lea también `ia_requests`, que es la parte que piden los
-núcleos.
+**Intel only.** AMD publishes no named counters: from Zen 4 the kernel
+registers an `amd_umc_N` PMU without an `events/` group, so the event number
+would be written by hand with no part to check it on; before Zen 3 nothing
+is documented. Rather than make up a figure, it says this machine does not
+publish it.
 
-**Solo Intel.** AMD no publica estos contadores con nombre: de Zen 4 en
-adelante existe el PMU `amd_umc_N` pero el kernel no le registra un grupo
-`events/`, así que habría que escribir el número de evento a mano y afirmar lo
-que significa sin ninguna pieza donde comprobarlo; y de Zen 3 para atrás no
-hay nada documentado. Ante la duda no se inventa una cifra: se dice que este
-equipo no lo publica, en gris y sin botón que pulsar.
-
-Hace falta el ayudante privilegiado. `perf_event_paranoid` viene a 2 en
-cualquier distribución y a los contadores del uncore les hace falta
-CAP_PERFMON, que es el valor 0; bajarlo sería abrirle el perfilado de la
-máquina entera a cualquier proceso, así que se pide por donde ya se pide todo
-lo demás.
+It needs the privileged helper: uncore counters need CAP_PERFMON, and
+lowering `perf_event_paranoid` would open profiling of the whole machine to
+any process.
 """
 
 from __future__ import annotations
@@ -42,93 +34,90 @@ from .counters import increase, window_s
 _PMU_IMC = re.compile(PMU_IMC)
 _PMU_IMC_EVENT = re.compile(PMU_IMC_EVENT)
 
-# Cómo llama cada generación a lo mismo. Las dos primeras filas son la
-# dirección del tráfico; la tercera es ese mismo tráfico visto por origen.
-LECTURA = frozenset({"data_reads", "data_read", "cas_count_read"})
-ESCRITURA = frozenset({"data_writes", "data_write", "cas_count_write"})
-NUCLEOS = frozenset({"ia_requests"})
+# How each generation names the same thing. The first two rows are the
+# traffic's direction; the third is that same traffic by origin.
+READ_EVENTS = frozenset({"data_reads", "data_read", "cas_count_read"})
+WRITE_EVENTS = frozenset({"data_writes", "data_write", "cas_count_write"})
+CORE_EVENTS = frozenset({"ia_requests"})
 
-# La unidad en la que el kernel publica estos contadores. Se comprueba en vez
-# de darse por sabida: la escala sola no dice de qué es factor, y multiplicar
-# por un mega lo que viniera en otra cosa daría una cifra creíble y falsa.
-UNIDAD = "MiB"
-BYTES_POR_UNIDAD = 1 << 20
+# The unit the kernel publishes these counters in. Checked, not assumed: the
+# scale alone does not say what it multiplies, and a mebibyte factor on
+# something else would give a believable, false figure.
+UNIT = "MiB"
+BYTES_PER_UNIT = 1 << 20
 
-# El aparato bajo el que cuelgan estos sensores: el mismo que ya usa el uso de
-# RAM, con su misma clave, para que sean uno y no dos. Escribir «Memoria» a
-# pelo los juntaba en español y los partía en inglés, donde el otro se llama
-# «Memory». Quién va antes en el árbol no lo decide este nombre sino la clase
-# que lleva cada sensor.
-DISPOSITIVO = "sensor.mem"
+# The device these sensors hang from: the same as RAM usage, with its key,
+# so they are one and not two. Which goes first in the tree is decided by
+# each sensor's kind, not by this name.
+DEVICE = "sensor.mem"
 
 
-def hay_controlador() -> bool:
-    """Si esta máquina publica algún PMU de controlador de memoria.
+def has_controller() -> bool:
+    """Whether this machine publishes any memory controller PMU.
 
-    Se mira sin privilegios —listar el directorio sí se puede, abrir el
-    contador no— y es lo que separa las dos respuestas: «hace falta permiso»
-    de «este equipo no lo tiene». Sin esta comprobación, un Ryzen pediría la
-    contraseña para no enseñar nada.
+    Checked without privileges (listing the folder is allowed, opening the
+    counter is not): it tells «needs permission» from «this machine does not
+    have it», so a Ryzen is not asked for a password to show nothing.
     """
     try:
-        return any(_PMU_IMC.match(nombre) for nombre in os.listdir(sysroot.ruta(PMU_ROOT)))
+        return any(_PMU_IMC.match(name) for name in os.listdir(sysroot.ruta(PMU_ROOT)))
     except OSError:
         return False
 
 
-def hay_contadores() -> bool:
+def has_counters() -> bool:
     """Whether a memory controller PMU publishes an event the helper opens.
 
     Then the helper not opening it is an error to tell, not hardware that
     lacks it. Listing the events needs no privileges either.
     """
     try:
-        raiz = sysroot.ruta(PMU_ROOT)
-        nombres = os.listdir(raiz)
+        root = sysroot.ruta(PMU_ROOT)
+        names = os.listdir(root)
     except OSError:
         return False
-    for nombre in nombres:
-        if not _PMU_IMC.match(nombre):
+    for name in names:
+        if not _PMU_IMC.match(name):
             continue
         try:
-            eventos = os.listdir(os.path.join(raiz, nombre, "events"))
+            events = os.listdir(os.path.join(root, name, "events"))
         except OSError:
             continue
-        if any(_PMU_IMC_EVENT.match(evento) for evento in eventos):
+        if any(_PMU_IMC_EVENT.match(event) for event in events):
             return True
     return False
 
 
 class ImcTraffic(Provider):
-    """Bytes por segundo que van y vienen de la RAM, por el PMU del uncore."""
+    """Bytes per second to and from RAM, by the uncore's PMU."""
 
     name = "imc"
     provides = "memory.traffic"
 
     def __init__(self, client: Optional[PrivilegedClient] = None) -> None:
         self.client = client
-        self._previo: Optional[tuple[int, dict[str, dict[str, int]]]] = None
-        self._mudo = False          # esta máquina no los tiene: no insistir
+        self._previous: Optional[tuple[int, dict[str, dict[str, int]]]] = None
+        self._silent = False          # this machine has none: stop asking
         # What the helper said when it could not open them, for the report.
-        self._motivo = ""
+        self._reason = ""
 
     def available(self) -> bool:
-        if self._mudo or not hay_controlador():
+        if self._silent or not has_controller():
             return False
         return bool(self.client and self.client.connected())
 
     def unavailable_reason(self):
         if self.available():
             return None
-        if hay_controlador() and not self._mudo:
+        if has_controller() and not self._silent:
             return ("memory.traffic", Need.ROOT,
                     _("prov.imc.denied"), _("prov.imc.denied.hint"),
                     _("what.memory.traffic"))
-        if hay_contadores():
+        if has_counters():
             # The kernel publishes them and the helper could not open them:
             # not «this machine does not have it».
             return ("memory.traffic", Need.ERROR,
-                    _("prov.imc.unopened"), _("prov.imc.unopened.hint"), "", self._motivo)
+                    _("prov.imc.unopened"), _("prov.imc.unopened.hint"), "", self._reason)
         return ("memory.traffic", Need.HARDWARE,
                 _("prov.imc.none"), _("prov.imc.none.hint"))
 
@@ -136,88 +125,87 @@ class ImcTraffic(Provider):
         if not self.available():
             return
         try:
-            lectura = self.client.imc()       # type: ignore[union-attr]
+            reading = self.client.imc()       # type: ignore[union-attr]
         except PmuUnsupported as exc:
-            # No los tiene. Se deja de preguntar, y el aviso pasa a ser el
-            # gris de «esta máquina no lo publica».
-            self._mudo = True
-            self._motivo = str(exc)
-            self._previo = None
+            # It has none. Stop asking; the notice becomes «this machine does
+            # not publish it».
+            self._silent = True
+            self._reason = str(exc)
+            self._previous = None
             return
         except HelperError:
-            # Un fallo suelto no da nada por perdido: la tubería puede haberse
-            # cortado y el usuario volver a autorizar.
+            # A single failure loses nothing: the pipe may have broken and the
+            # user may authorize again.
             return
 
-        if lectura.truncated:
-            # Faltan canales por abrir, así que la suma saldría corta. Una
-            # cifra baja y creíble es peor que ninguna.
+        if reading.truncated:
+            # Channels missing, so the sum would fall short. A low, believable
+            # figure is worse than none.
             draft.note("memory.traffic", Need.ERROR,
                        _("prov.imc.truncated"), _("prov.imc.truncated.hint"))
             return
 
-        previo, self._previo = self._previo, (lectura.monotonic_ns, lectura.counters)
+        previous, self._previous = self._previous, (reading.monotonic_ns, reading.counters)
         draft.capabilities.add("imc")
-        if previo is None:
-            return                            # la primera solo fija referencia
+        if previous is None:
+            return                            # the first one only sets the base
 
-        reloj_previo, contadores_previos = previo
-        segundos = window_s(reloj_previo / 1e9, lectura.monotonic_ns / 1e9, draft.interval_s)
-        if segundos is None:
+        previous_clock, previous_counters = previous
+        seconds = window_s(previous_clock / 1e9, reading.monotonic_ns / 1e9, draft.interval_s)
+        if seconds is None:
             return
 
-        totales = {"lectura": 0, "escritura": 0, "nucleos": 0}
-        visto = {"lectura": False, "escritura": False, "nucleos": False}
-        for pmu, eventos in lectura.counters.items():
-            anteriores = contadores_previos.get(pmu, {})
-            for evento, valor in eventos.items():
-                if evento in LECTURA:
-                    campo = "lectura"
-                elif evento in ESCRITURA:
-                    campo = "escritura"
-                elif evento in NUCLEOS:
-                    campo = "nucleos"
+        totals = {"read": 0, "write": 0, "cpu": 0}
+        seen = {"read": False, "write": False, "cpu": False}
+        for pmu, events in reading.counters.items():
+            before_counts = previous_counters.get(pmu, {})
+            for event, value in events.items():
+                if event in READ_EVENTS:
+                    field = "read"
+                elif event in WRITE_EVENTS:
+                    field = "write"
+                elif event in CORE_EVENTS:
+                    field = "cpu"
                 else:
                     continue
-                antes = anteriores.get(evento)
-                crecido = None if antes is None else increase(antes, valor)
-                if crecido is None:
-                    return          # contador nuevo o reiniciado: esta vuelta no
-                if lectura.units.get(pmu, {}).get(evento) != UNIDAD:
-                    continue        # unidad desconocida: no se convierte
-                escala = lectura.scales.get(pmu, {}).get(evento)
-                if not escala:
+                before = before_counts.get(event)
+                grown = None if before is None else increase(before, value)
+                if grown is None:
+                    return          # a new or restarted counter: not this time
+                if reading.units.get(pmu, {}).get(event) != UNIT:
+                    continue        # unknown unit: not converted
+                scale = reading.scales.get(pmu, {}).get(event)
+                if not scale:
                     continue
-                movido = crecido * escala * BYTES_POR_UNIDAD
-                totales[campo] += int(movido / segundos)
-                visto[campo] = True
+                moved = grown * scale * BYTES_PER_UNIT
+                totals[field] += int(moved / seconds)
+                seen[field] = True
 
-        if not (visto["lectura"] and visto["escritura"]):
+        if not (seen["read"] and seen["write"]):
             return
         draft.memory_traffic = MemoryTraffic(
-            read_bytes_s=totales["lectura"],
-            write_bytes_s=totales["escritura"],
-            cpu_bytes_s=totales["nucleos"] if visto["nucleos"] else None,
+            read_bytes_s=totals["read"],
+            write_bytes_s=totals["write"],
+            cpu_bytes_s=totals["cpu"] if seen["cpu"] else None,
         )
         draft.resolve("memory.traffic")
 
-        # Y al árbol de sensores, donde lo que aporta es el máximo de la
-        # sesión: el pico que ha llegado a mover esta máquina. Aquí sí, al
-        # revés que el voltaje del núcleo: eso es el escalón de un P-state y
-        # esto es una medida continua, así que su historial significa algo.
-        # «Del procesador» no sube: en el árbol, al lado de la lectura y la
-        # escritura, se leería como una tercera dirección del tráfico.
-        for clave, etiqueta, bytes_s, orden in (
-                ("read", "sensor.imc.read", totales["lectura"], 0),
-                ("write", "sensor.imc.write", totales["escritura"], 1)):
+        # And to the sensor tree, where it adds the session's maximum: the
+        # most this machine has moved. Unlike the core voltage (a P-state's
+        # step), this is a continuous measure, so its history means something.
+        # «From the processor» does not go up: next to read and write it would
+        # read as a third direction of the traffic.
+        for key, label, bytes_s, order in (
+                ("read", "sensor.imc.read", totals["read"], 0),
+                ("write", "sensor.imc.write", totals["write"], 1)):
             draft.sensors.append(Sensor(
-                key=f"imc/{clave}",
+                key=f"imc/{key}",
                 chip="uncore_imc",
-                device=_(DISPOSITIVO),
+                device=_(DEVICE),
                 device_key="memory",
                 device_kind=DeviceKind.MEMORY,
-                label=_(etiqueta),
+                label=_(label),
                 kind=SensorKind.BANDWIDTH,
                 value=bytes_s / 1e6,
-                order=orden,
+                order=order,
             ))
