@@ -1,29 +1,28 @@
-"""Vuelca lo que leen los proveedores de este equipo, para la suite.
+"""Dumps what this machine's providers read, for the test suite.
 
-Lo lanza `tools/volcar_equipo.py NOMBRE`, que lo deja en
-`tests/fixtures/equipos/NOMBRE/`: una copia de lo que el Collector lee
-de `/sys`, `/proc` y `/etc` —y nada más—, y en `grabado.json` lo que no sale
-de un archivo: la CPUID de cada tipo de núcleo, los ioctl de la gráfica, lo que
-contestan OpenGL y Vulkan, el espacio de cada montaje, las direcciones. Con
-`SILUX_SYSROOT` apuntando ahí, el Collector da este equipo en cualquier otro.
+Run by `tools/volcar_equipo.py NAME`, which leaves it in
+`tests/fixtures/equipos/NAME/`: a copy of what the Collector reads from
+`/sys`, `/proc` and `/etc` (and nothing else), and in `grabado.json` what
+doesn't come from a file: each core type's CPUID, the graphics ioctls, what
+OpenGL and Vulkan answer, each mount's space, the addresses. With
+`SILUX_SYSROOT` pointing there, the Collector gives this machine on any
+other.
 
-Solo lee. No pide permisos ni usa el ayudante: el volcado es el de un equipo
-sin permisos, que es como lo abre la mayoría de la gente.
+It only reads. No permissions, no helper: the dump is that of a machine
+without permissions, which is how most people open it.
 
-**Qué se copia lo decide el propio Collector**, no una lista escrita aquí: se
-ejecuta de verdad mientras se apunta cada archivo que abre, cada directorio
-que recorre, cada `stat` y cada enlace. Una lista a mano se quedaría vieja el
-día que un proveedor leyera un archivo nuevo, y el volcado diría que el equipo
-no lo tiene.
+**The Collector itself decides what is copied**, not a list written here: it
+runs for real while every file it opens, every folder it walks, every `stat`
+and every link is noted. A hand list would go stale the day a provider read
+a new file, and the dump would say the machine lacks it.
 
-**Lo que identifica a alguien se sustituye** por lo mismo que pone
-`privacidad.anonimizar` —el nombre del equipo, las direcciones, los números de
-serie, las interfaces con nombre puesto a mano, los puntos de montaje que no
-son del sistema, el usuario—, y antes de dar el volcado por bueno se
-comprueban dos cosas: que `privacidad.anonimizar` no encuentra nada más que
-tapar en la foto que sale de él, y que ninguno de los identificadores de esta
-máquina que busca `tools/comprobar_privacidad.py` aparece en ningún byte. Si
-algo falla, no se deja nada escrito.
+**What identifies someone is replaced** with what `privacidad.anonymize`
+writes (the machine's name, addresses, serial numbers, interfaces named by
+hand, mount points that aren't the system's, the user), and before the dump
+is accepted two things are checked: that `privacidad.anonymize` finds
+nothing more to cover in the snapshot it gives, and that none of this
+machine's identifiers that `tools/comprobar_privacidad.py` looks for appears
+in any byte. If anything fails, nothing is written.
 """
 
 from __future__ import annotations
@@ -46,50 +45,50 @@ from . import privacidad, sysroot
 from .providers.sysfs_cpu import FREQUENCY_SOURCES
 
 WATCHED_TREES = ("/sys/", "/proc/", "/etc/")
-# Un archivo de sysfs o de procfs de más de esto no es lo que se lee para
-# describir un equipo; copiarlo solo engordaría el repositorio.
+# A sysfs or procfs file larger than this isn't what's read to describe a
+# machine; copying it would only bloat the repository.
 MAX_BYTES = 512 * 1024
 MANIFEST = "manifiesto.json"
 
-# Archivos cuyo contenido identifica a una pieza concreta y no dice nada del
-# modelo: se cambian por ceros del mismo largo.
+# Files whose content identifies one specific part and says nothing about
+# the model: replaced with zeros of the same length.
 SERIAL_FILES = {"serial", "serial_number", "wwid", "vpd_pg80", "vpd_pg83",
             "unique_id", "product_uuid", "product_serial", "board_serial",
             "chassis_serial", "uuid", "eui", "nguid", "perm_addr"}
 ADDRESS_FILES = {"address", "perm_address"}
-# De un dispositivo USB, lo que dice de quién es y qué modelo.
+# What a USB device says about whose it is and which model.
 USB_IDENTIFYING_FILES = {"product", "manufacturer", "idVendor", "idProduct"}
-# Nombres que no señalan a nadie: los de un concentrador o un controlador.
+# Names that point to nobody: a hub's or a controller's.
 USB_GENERIC = re.compile(r"hub|host controller|usb\s*receiver", re.I)
 MAC = re.compile(r"\b(?:[0-9a-f]{2}:){5}[0-9a-f]{2}\b", re.I)
 EMAIL_SUBSTITUTE = "usuario@example.org"
 UUID = re.compile(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", re.I)
 
 
-# -- las gráficas dormidas -------------------------------------------------------
+# -- sleeping graphics cards ------------------------------------------------------
 
 SYS_DRM = "/sys/class/drm"
 SYS_PCI = "/sys/bus/pci/devices"
 
-# Lo que se puede leer de una gráfica dormida sin despertarla:
-# - `power/runtime_status` y `power/control` son del núcleo de PM y devuelven
-#   lo que el kernel ya tiene guardado (`drivers/base/power/sysfs.c`;
+# What can be read from a sleeping card without waking it:
+# - `power/runtime_status` and `power/control` are the PM core's and return
+#   what the kernel already holds (`drivers/base/power/sysfs.c`;
 #   `Documentation/ABI/testing/sysfs-devices-power`).
-# - `power_state` es `pdev->current_state`, guardado también
+# - `power_state` is `pdev->current_state`, also held
 #   (`drivers/pci/pci-sysfs.c`; `Documentation/ABI/testing/sysfs-bus-pci`,
-#   desde 5.11).
-# - La identidad: `pci_config_attr` (`drivers/pci/pci-sysfs.c`) imprime los
-#   campos de `struct pci_dev` que se leyeron al enumerar el bus, sin volver
-#   al espacio de configuración. `driver` es un enlace: no se abre.
-# Lo demás se da por peligroso. El enlace (`current_link_*`) llama a
-# `pci_config_pm_runtime_get()` desde 6.18 y saca la tarjeta de D3cold; el
-# hwmon de amdgpu la despertaba antes de `amdgpu_pm_get_access_if_active()`;
-# NVML, según el README de NVIDIA (cap. 22, RTD3), la pone activa al abrirse.
+#   since 5.11).
+# - The identity: `pci_config_attr` (`drivers/pci/pci-sysfs.c`) prints the
+#   `struct pci_dev` fields read when the bus was enumerated, without going
+#   back to config space. `driver` is a link: it isn't opened.
+# Everything else is taken as dangerous. The link (`current_link_*`) calls
+# `pci_config_pm_runtime_get()` since 6.18 and takes the card out of D3cold;
+# amdgpu's hwmon woke it before `amdgpu_pm_get_access_if_active()`; NVML,
+# per NVIDIA's README (ch. 22, RTD3), makes it active when opened.
 IDENTITY_FILES = ("vendor", "device", "subsystem_vendor", "subsystem_device",
              "revision", "class")
 POWER_FILES = ("power/runtime_status", "power_state", "power/control")
 NO_WAKE_FILES = IDENTITY_FILES + POWER_FILES
-# `runtime_status` y `power_state` cuando la tarjeta duerme.
+# `runtime_status` and `power_state` while the card sleeps.
 SUSPENDED = ("suspended",)
 POWERED_OFF = ("D3hot", "D3cold")
 
@@ -102,12 +101,12 @@ def _read(path) -> str | None:
 
 
 def _resolved(path) -> pathlib.Path:
-    """El camino sin enlaces, como lo vería el sistema."""
+    """The path without links, as the system would see it."""
     return pathlib.Path(sysroot.unrooted(pathlib.Path(sysroot.path(str(path))).resolve()))
 
 
 def power_state(device) -> dict[str, str]:
-    """El estado de energía de un dispositivo PCI. No lo despierta."""
+    """A PCI device's power state. Doesn't wake it."""
     return {name: value for name in POWER_FILES
             if (value := _read(f"{device}/{name}")) is not None}
 
@@ -118,7 +117,7 @@ def is_asleep(state: dict[str, str]) -> bool:
 
 
 def gpu_devices() -> list[str]:
-    """Las gráficas del bus PCI (clase 0x03), tengan driver o no."""
+    """The graphics cards on the PCI bus (class 0x03), with a driver or not."""
     try:
         names = sorted(p.name for p in pathlib.Path(sysroot.path(SYS_PCI)).iterdir())
     except OSError:
@@ -128,10 +127,10 @@ def gpu_devices() -> list[str]:
 
 
 def bridge_chain(device) -> list[pathlib.Path]:
-    """Los puentes por los que pasa el dispositivo hasta la raíz, sin él.
+    """The bridges the device goes through to the root, without itself.
 
-    La misma cuenta que `providers.drm._cadena_pcie`: se sube mientras la
-    carpeta tenga forma de dirección PCI.
+    The same walk as `providers.drm._pcie_chain`: up while the folder looks
+    like a PCI address.
     """
     current = _resolved(device).parent
     links = []
@@ -141,7 +140,7 @@ def bridge_chain(device) -> list[pathlib.Path]:
     return links
 
 
-# -- qué lee el Collector ------------------------------------------------------
+# -- what the Collector reads --------------------------------------------------
 
 def _watched(path) -> str | None:
     try:
@@ -150,8 +149,8 @@ def _watched(path) -> str | None:
         return None
     if isinstance(text, bytes):
         text = text.decode(errors="replace")
-    # Con una raíz puesta (los tests), el camino se apunta como lo vería el
-    # sistema: es el que se copia después.
+    # With a root set (the tests), the path is noted as the system would see
+    # it: that's the one copied afterwards.
     text = sysroot.unrooted(text)
     return text if text.startswith(WATCHED_TREES) else None
 
@@ -166,7 +165,7 @@ _VIA_PATHLIB = {"open": (io, builtins), "listdir": (os,), "scandir": (os,),
 
 
 def _with_pathlib(patches: dict) -> dict:
-    """Los mismos parches, también en el `_NormalAccessor` de 3.10."""
+    """The same patches, also in 3.10's `_NormalAccessor`."""
     accessor = getattr(pathlib, "_NormalAccessor", None)
     if accessor is None:
         return patches
@@ -180,9 +179,9 @@ def _with_pathlib(patches: dict) -> dict:
 
 @contextlib.contextmanager
 def _patching(patches: dict):
-    """Pone cada función en su sitio y lo deja todo como estaba. De una clase
-    se guarda lo que tiene de verdad (un `staticmethod`, un builtin), no lo
-    que da `getattr`."""
+    """Put each function in place and leave everything as it was. From a
+    class, what it really holds is kept (a `staticmethod`, a builtin), not
+    what `getattr` gives."""
     def original(owner, name):
         return vars(owner)[name] if isinstance(owner, type) else getattr(owner, name)
 
@@ -199,7 +198,7 @@ def _patching(patches: dict):
 
 @contextlib.contextmanager
 def _noting():
-    """Apunta qué toca el Collector: archivos, directorios, `stat` y enlaces."""
+    """Note what the Collector touches: files, folders, `stat` and links."""
     read_paths: set[str] = set()
     listed: set[str] = set()
     checked: set[str] = set()
@@ -225,17 +224,16 @@ def _noting():
 
 
 class _SleepingCards:
-    """Las gráficas que el sistema tiene dormidas, y lo que no se toca de ellas.
+    """The cards the system has asleep, and what isn't touched on them.
 
-    Volcar un portátil con la dedicada dormida no puede despertarla: se
-    grabaría una tarjeta encendida solo porque la herramienta la ha
-    encendido, que es justo lo que el volcado tiene que dejar ver (B-1 de
-    la revisión de gráficas). De cada una dormida solo se lee
-    `SIN_DESPERTAR`; lo mismo de las otras funciones de su ranura
-    (el audio HDMI duerme con ella) y de los puentes de su cadena, que en
-    D3cold tienen la ranura sin corriente. Tampoco se abren sus nodos de
-    `/dev/dri` (los ioctl), ni NVML si es una NVIDIA, ni las API gráficas,
-    que enumeran todas las tarjetas.
+    Dumping a laptop with its discrete card asleep must not wake it: an
+    awake card would be recorded only because the tool woke it, which is
+    exactly what the dump has to show. From each sleeping card only
+    `NO_WAKE_FILES` is read; the same from the other functions of its slot
+    (the HDMI audio sleeps with it) and from the bridges of its chain, which
+    in D3cold have the slot unpowered. Nor are its `/dev/dri` nodes opened
+    (the ioctls), nor NVML if it's an NVIDIA, nor the graphics APIs, which
+    enumerate every card.
     """
 
     def __init__(self) -> None:
@@ -262,14 +260,14 @@ class _SleepingCards:
                                 if n.name.startswith(("card", "renderD")))
             if _read(f"{gpu}/vendor") == "0x10de":
                 self.nvidia = True
-        # El más largo primero: la gráfica cuelga de sus puentes.
+        # Longest first: the card hangs from its bridges.
         self.nodes = sorted(set(self.nodes), key=len, reverse=True)
 
     def __bool__(self) -> bool:
         return bool(self.asleep)
 
     def power_files(self) -> set[str]:
-        """Los archivos de energía de cada gráfica, dormida o no, para el volcado."""
+        """Each card's power files, asleep or not, for the dump."""
         return {f"{SYS_PCI}/{slot}/{name}"
                 for slot, state in self.states.items() for name in state}
 
@@ -305,10 +303,10 @@ class _SleepingCards:
 
 @contextlib.contextmanager
 def _without_waking(sleeping: _SleepingCards | None):
-    """Que el Collector no lea lo que despierta una gráfica dormida.
+    """Keep the Collector from reading what wakes a sleeping card.
 
-    Lo que se le niega lo recibe como un archivo que no existe, que es como
-    lo verá al leer el volcado.
+    What it's denied comes back as a file that doesn't exist, which is how
+    it will see it reading the dump.
     """
     if not sleeping:
         yield
@@ -336,7 +334,7 @@ def _without_waking(sleeping: _SleepingCards | None):
 
 
 def _collect(sleeping: _SleepingCards | None = None):
-    """Ejecuta el Collector de verdad, apuntando y grabando lo que pregunta."""
+    """Run the real Collector, noting and recording what it asks for."""
     from silux.collector import Collector
 
     sysroot.start_recording()
@@ -351,31 +349,31 @@ def _collect(sleeping: _SleepingCards | None = None):
 
 
 def _alternatives(read_paths: set[str]) -> set[str]:
-    """Las otras fuentes de un dato que el proveedor leyó de la primera.
+    """The other sources of a datum the provider read from the first.
 
-    La única excepción a que el Collector decida qué se copia: de la
-    frecuencia de cada hilo se queda con la primera fuente que contesta y no
-    abre las demás. Sin ellas, el volcado de un kernel que tiene
-    `cpuinfo_avg_freq` no sirve para ver qué sale en uno que no la tiene. La
-    lista es la del proveedor, no una escrita aquí.
+    The one exception to the Collector deciding what's copied: for each
+    thread's frequency it keeps the first source that answers and doesn't
+    open the rest. Without them, the dump of a kernel that has
+    `cpuinfo_avg_freq` can't show what one without it gives. The list is the
+    provider's, not one written here.
     """
     return {os.path.join(os.path.dirname(path), source)
             for path in read_paths if os.path.basename(path) in FREQUENCY_SOURCES
             for source in FREQUENCY_SOURCES}
 
 
-# Lo que se copia de cada gráfica despierta aunque el Collector no lo lea
-# todavía (fase 0 de la revisión de gráficas): sin ello no se pueden
-# escribir los arreglos de `xe`, de las Arc y de los contadores.
+# What's copied from each awake card even if the Collector doesn't read it
+# yet: without it the fixes for `xe`, the Arc cards and the counters can't be
+# written.
 #
-# - De `xe`, las frecuencias y el reposo cuelgan del nodo PCI y no del DRM
-#   (`tile*/gt*/freq0/`, con su `throttle/`, y `gtidle/`), y su hwmon tiene
-#   canales con nombre (`pkg`, `vram`) que no se leen hoy: el hwmon entero.
-# - De cada puente de su cadena hasta la raíz, el enlace y quién es: la Arc
-#   lleva un conmutador dentro y el enlace bueno es el de fuera (I1).
-# - De `/sys/bus/event_source/devices`, el tipo, el formato y los eventos de
-#   cada PMU: el nombre del de una Arc con i915 y los eventos de xe (I2, I9).
-#   Nada de esto identifica a nadie.
+# - With `xe`, the frequencies and idle state hang from the PCI node, not the
+#   DRM one (`tile*/gt*/freq0/`, with its `throttle/`, and `gtidle/`), and
+#   its hwmon has named channels (`pkg`, `vram`) not read today: the whole
+#   hwmon.
+# - From each bridge of its chain up to the root, the link and who it is: an
+#   Arc carries a switch inside and the link that counts is the outer one.
+# - From `/sys/bus/event_source/devices`, each PMU's type, format and
+#   events: an Arc's on i915 and xe's events. None of it identifies anyone.
 GPU_EXTRAS = ("tile*/gt*/freq0/*", "tile*/gt*/freq0/throttle/*",
                      "tile*/gt*/gtidle/*", "hwmon/hwmon*/*")
 BRIDGE_EXTRAS = ("vendor", "device", "class", "current_link_speed",
@@ -384,7 +382,7 @@ EVENT_SOURCE = "/sys/bus/event_source/devices"
 
 
 def _gpu_extras() -> set[str]:
-    """Los caminos de `EXTRAS_DE_GRAFICA`, de los puentes y de event_source."""
+    """The paths of `GPU_EXTRAS`, of the bridges and of event_source."""
     import glob
 
     def existing(pattern: str) -> set[str]:
@@ -406,7 +404,7 @@ def _gpu_extras() -> set[str]:
     return paths
 
 
-# -- copiar ---------------------------------------------------------------------
+# -- copying --------------------------------------------------------------------
 
 class _Copy:
     """Reproduce caminos del sistema dentro del volcado, con sus enlaces.
@@ -430,14 +428,14 @@ class _Copy:
         try:
             target = os.readlink(sysroot.path(path))
         except OSError:
-            # `/proc/1/exe` sin permisos: se deja fuera, y quien lo lea recibe
-            # un error igual que en el equipo de verdad.
+            # `/proc/1/exe` without permissions: left out, and whoever reads
+            # it gets an error just as on the real machine.
             return
         inside.parent.mkdir(parents=True, exist_ok=True)
         os.symlink(target, inside)
 
     def resolve(self, path: str) -> str | None:
-        """Recrea cada enlace del camino y devuelve dónde está de verdad."""
+        """Recreate each link of the path and return where it really is."""
         current = "/"
         for part in pathlib.PurePosixPath(path).parts[1:]:
             following = os.path.join(current, part)
@@ -453,7 +451,7 @@ class _Copy:
             if not os.path.lexists(sysroot.path(following)):
                 return None
             if not following.startswith(WATCHED_TREES) and following not in ("/sys", "/proc", "/etc"):
-                # Un enlace que sale del sistema (`/proc/1/exe`): basta con él.
+                # A link leaving the system (`/proc/1/exe`): the link is enough.
                 return None
             current = following
         return current
@@ -474,8 +472,8 @@ class _Copy:
             with open(sysroot.path(real_path), "rb") as source:
                 data = source.read(MAX_BYTES)
         except PermissionError:
-            # Se deja el archivo y se apunta: al montar el volcado se le
-            # quitan los permisos para que leerlo dé el mismo error que aquí.
+            # The file is left and noted: when the dump is mounted it loses
+            # its permissions, so reading it fails the same way as here.
             inside.write_bytes(b"")
             self.unreadable.add(real_path)
             return
@@ -484,16 +482,16 @@ class _Copy:
         inside.write_bytes(data)
 
     def _from_outside(self, path: str) -> None:
-        """Un enlace que sale de lo volcado y acaba en un archivo.
+        """A link that leaves the dumped trees and ends in a file.
 
-        `/etc/os-release` apunta a `../usr/lib/os-release`. Copiar `/usr` no
-        tiene sentido, así que en el sitio del enlace va el archivo.
+        `/etc/os-release` points to `../usr/lib/os-release`. Copying `/usr`
+        makes no sense, so the file goes where the link was.
         """
         try:
             real_path = sysroot.unrooted(os.path.realpath(sysroot.path(path)))
         except OSError:
-            # Python 3.10 deja escapar el error de leer un enlace que no se
-            # deja leer (`/proc/1/exe`); los posteriores lo tragan.
+            # Python 3.10 lets out the error of reading an unreadable link
+            # (`/proc/1/exe`); later versions swallow it.
             return
         if real_path.startswith(WATCHED_TREES) or not os.path.isfile(sysroot.path(real_path)):
             return
@@ -524,11 +522,11 @@ class _Copy:
                 self._link(child)
             elif os.path.isdir(sysroot.path(child)):
                 (inside / name).mkdir(exist_ok=True)
-            # Los archivos de un directorio recorrido y no leídos no se
-            # copian: no los mira nadie, y en /proc serían miles.
+            # Files of a walked folder that weren't read aren't copied: nobody
+            # looks at them, and in /proc there would be thousands.
 
 
-# -- anonimizar -----------------------------------------------------------------
+# -- anonymizing ----------------------------------------------------------------
 
 def _text_of(path: pathlib.Path) -> str | None:
     try:
@@ -544,7 +542,7 @@ def _text_of(path: pathlib.Path) -> str | None:
 
 
 def _edid_without_serial(data: bytes) -> bytes:
-    """El EDID con el número de serie a ceros y la suma de control al día."""
+    """The EDID with its serial number zeroed and its checksum updated."""
     if len(data) < 128 or data[:8] != b"\x00\xff\xff\xff\xff\xff\xff\x00":
         return data
     block = bytearray(data[:128])
@@ -556,15 +554,15 @@ def _edid_without_serial(data: bytes) -> bytes:
     return bytes(block) + data[128:]
 
 
-# Dónde lleva el SPD el número de serie del módulo, según el tipo de memoria
-# (byte 2). Ninguna suma de control lo cubre: la de DDR4 acaba en el 253 y la
-# de DDR5 en el 509. silux no lo decodifica, y por eso ni la foto ni el
-# comprobador lo verían: se borra aquí, por posición.
+# Where the SPD keeps the module's serial number, by memory type (byte 2).
+# No checksum covers it: DDR4's ends at 253 and DDR5's at 509. silux doesn't
+# decode it, so neither the snapshot nor the checker would see it: it's
+# erased here, by position.
 SPD_SERIAL = {0x0C: (325, 329), 0x12: (517, 521)}
 
 
 def _spd_without_serial(data: bytes) -> tuple[bytes, bytes]:
-    """El SPD con el número de serie a ceros, y el número que se quitó."""
+    """The SPD with its serial number zeroed, and the number taken out."""
     if len(data) < 3 or data[2] not in SPD_SERIAL:
         return data, b""
     start, end = SPD_SERIAL[data[2]]
@@ -573,9 +571,9 @@ def _spd_without_serial(data: bytes) -> tuple[bytes, bytes]:
     return data[:start] + bytes(end - start) + data[end:], data[start:end]
 
 
-# Las interfaces que una herramienta crea en serie: Docker, un puente por red
-# y un `veth` por contenedor en marcha. Dicen cuánto hay montado en la máquina
-# y no añaden nada al volcado: de cada familia se queda una.
+# The interfaces a tool creates in series: Docker, a bridge per network and a
+# `veth` per running container. They say how much runs on the machine and add
+# nothing to the dump: one of each family stays.
 IN_SERIES = (re.compile(r"br-[0-9a-f]{12}"), re.compile(r"veth[0-9a-f]+"))
 
 
@@ -603,11 +601,11 @@ def _identify_without_serial(text: str) -> tuple[str, str]:
 
 
 def _cards_without_names(text: str) -> str:
-    """`/proc/asound/cards` sin el nombre de los aparatos de sonido USB.
+    """`/proc/asound/cards` without the USB sound devices' names.
 
-    Cada tarjeta son dos renglones. De las USB se deja que lo son y por dónde
-    cuelgan, y se quita cómo se llaman; las de la placa y la gráfica se quedan
-    como están, que no identifican a nadie.
+    Each card is two lines. Of the USB ones, that they are USB and where they
+    hang stays, and their name goes; the board's and the graphics card's stay
+    as they are, identifying nobody.
     """
     lines = text.splitlines()
     out = []
@@ -620,7 +618,7 @@ def _cards_without_names(text: str) -> str:
 
 
 def _extra_in_series(names) -> set[str]:
-    """De cada familia de interfaces en serie, todas menos la primera."""
+    """Of each family of interfaces in series, all but the first."""
     names = list(names)
     extra: set[str] = set()
     for pattern in IN_SERIES:
@@ -629,7 +627,7 @@ def _extra_in_series(names) -> set[str]:
 
 
 def _ipv4_hex(ip: str) -> str:
-    """Una dirección como la escribe /proc/net/route: hexadecimal al revés."""
+    """An address as /proc/net/route writes it: hexadecimal, reversed."""
     return "".join(f"{int(x):02X}" for x in reversed(ip.split(".")))
 
 
@@ -659,9 +657,9 @@ class _Anonymizer:
     def __init__(self, target: pathlib.Path, recording: dict):
         self.target = target
         self.recording = recording
-        # Lo que se quitó, por su clase (`QUE`), para buscarlo al final.
+        # What was taken out, by kind (`SECRET_KINDS`), to look for it at the end.
         self.secrets: dict[str, str] = {}
-        # Lo quitado de un archivo binario, que no se busca como texto.
+        # What was taken out of a binary file, not looked for as text.
         self.raw_secrets: dict[bytes, str] = {}
         name = pathlib.Path(sysroot.path("/proc/sys/kernel/hostname"))
         self.host = name.read_text().strip() if name.is_file() else ""
@@ -672,18 +670,17 @@ class _Anonymizer:
         self.user = getpass.getuser()
         self.home = str(pathlib.Path.home())
         self.interfaces = self._interfaces()
-        # El nombre que alguien le puso a una interfaz es suyo: además de
-        # sustituirlo donde se sabe que sale, se busca al final en cada byte.
+        # The name someone gave an interface is theirs: besides replacing it
+        # where it's known to appear, it's looked for in every byte at the end.
         for old in self.interfaces:
             self._secret(old, "mac" if privacidad.MAC_IN_NAME.fullmatch(old)
                           else "interface")
         self.mounts: dict[str, str] = {}
 
     def _secret(self, value: Optional[str], kind: str) -> None:
-        """Lo que se quitó, para buscarlo después en cada byte. Lo que es un
-        sustituto no: una puerta de enlace de verdad puede ser 192.168.1.1, y
-        encontrarla al final era encontrar el sustituto (el primer anexo de un
-        portátil con Wi-Fi no salió por eso)."""
+        """What was taken out, to look for later in every byte. Not what's a
+        substitute: a real gateway can be 192.168.1.1, and finding it at the
+        end was finding the substitute."""
         value = (value or "").strip()
         if len(value) >= 4 and not privacidad.is_substitute(value) \
                 and value.lower() not in HEX_SUBSTITUTES:
@@ -705,10 +702,10 @@ class _Anonymizer:
         return names
 
     def drop_serial_interfaces(self) -> int:
-        """Quita las interfaces en serie que sobran, y dice cuántas eran.
+        """Remove the surplus interfaces in series and say how many there were.
 
-        De todas partes: su carpeta, su enlace, sus líneas en las tablas de
-        `/proc/net` y lo que se grabó de ellas.
+        From everywhere: their folder, their link, their lines in the
+        `/proc/net` tables and what was recorded of them.
         """
         net_dir = self.target / "sys" / "class" / "net"
         if not net_dir.is_dir():
@@ -794,14 +791,13 @@ class _Anonymizer:
                     self._secret(data.strip().decode(errors="replace"), "mac")
                     path.write_text(privacidad.MAC + "\n")
                 continue
-            # Lo enchufado. El inventario de alguien también lo señala: una
-            # llave de seguridad, un micrófono concreto. Del USB quedan la
-            # clase, la velocidad y de qué cuelga cada cosa, que es lo que
-            # los tests necesitan; la marca, el modelo y sus identificadores
-            # se quitan, y con ellos el nombre del adaptador Bluetooth, que
-            # sale del mismo archivo. Es lo mismo que hace
-            # `privacidad.anonimizar` con la foto, y por eso el archivo se
-            # borra en vez de rellenarse: el proveedor tiene que leer «nada».
+            # What's plugged in. Someone's inventory points to them too: a
+            # security key, a specific microphone. Of USB, the class, the
+            # speed and what hangs from what stay, which is what the tests
+            # need; the maker, model and identifiers go, and with them the
+            # Bluetooth adapter's name, from the same file. The same as
+            # `privacidad.anonymize` does with the snapshot, so the file is
+            # deleted rather than filled: the provider must read «nothing».
             # The maker goes too, but is not looked for afterwards: it is a
             # company, and «Realtek» or «Generic» are also the sound codec,
             # the PHY or the HDA card.
@@ -831,8 +827,8 @@ class _Anonymizer:
                 path.write_text(" ".join(privacidad.hide_cmdline_identifiers(
                     data.decode(errors="replace"))) + "\n")
                 continue
-            # /proc/net es un enlace a self/net: el archivo de verdad acaba en
-            # /proc/<pid>/net/, así que se reconoce por cómo termina.
+            # /proc/net is a link to self/net: the real file ends up in
+            # /proc/<pid>/net/, so it's recognized by how it ends.
             if relative.startswith("/proc/") and relative.endswith("/net/route"):
                 path.write_text(self._replace_text(self._network_path(data.decode())))
                 continue
@@ -863,7 +859,7 @@ class _Anonymizer:
         return "\n".join(out) + "\n"
 
     def _ipv6(self, text: str) -> str:
-        # privacidad.IPV6, 2001:db8::11, en los 32 dígitos de /proc/net/if_inet6.
+        # privacidad.IPV6, 2001:db8::11, in the 32 digits of /proc/net/if_inet6.
         substitute = "20010db8" + "0" * 20 + "0011"
         out = []
         for line in text.splitlines():
@@ -875,11 +871,11 @@ class _Anonymizer:
         return "\n".join(out) + "\n"
 
     def _mounts(self, text: str) -> str:
-        """Los montajes de los discos, con los puntos que puso alguien tapados.
+        """The disks' mounts, with the mount points someone set covered.
 
-        Solo se quedan las líneas de un dispositivo, que son las que lee el
-        proveedor. Las demás no describen el equipo sino la sesión: el
-        AppImage abierto, los contenedores, la carpeta del usuario.
+        Only a device's lines stay, the ones the provider reads. The rest
+        describe the session, not the machine: the open AppImage, the
+        containers, the user's folder.
         """
         out = []
         for line in text.splitlines():
@@ -895,7 +891,7 @@ class _Anonymizer:
         return "\n".join(out) + "\n"
 
     def rename_interfaces(self) -> None:
-        """Las interfaces con nombre propio, también en carpetas y enlaces."""
+        """The interfaces with names of their own, also in folders and links."""
         if not self.interfaces:
             return
         for path in sorted(self.target.rglob("*"), key=lambda r: -len(r.parts)):
@@ -910,9 +906,9 @@ class _Anonymizer:
 
     def clean_recording(self) -> dict:
         # NVML's UUID («GPU-» and a UUID) names the card. The rule for UUIDs
-        # zeroed its UUID and left «GPU-», which anonimizar still covered: a
-        # laptop with an awake NVIDIA had no annex. It goes as anonimizar
-        # leaves it, and the real one is looked for in every byte.
+        # zeroed the UUID and left «GPU-», which anonymize still covered. It
+        # goes as anonymize leaves it, and the real one is looked for in
+        # every byte.
         for card in (self.recording.get("nvml") or {}).get("tarjetas") or ():
             if isinstance(card, dict) and card.get("uuid"):
                 self._secret(card["uuid"], "gpu_id")
@@ -938,18 +934,18 @@ class _Anonymizer:
         return clean
 
 
-# -- comprobar ------------------------------------------------------------------
+# -- checking -------------------------------------------------------------------
 
 # Looked for as a word and not inside another: a machine's or a
-# connection's name is part of driver names (a «thinkpad» in thinkpad_hwmon
-# blocked an annex), and an IP is the start of a longer one. A serial number
-# is looked for anywhere.
+# connection's name is part of driver names (a «thinkpad» in thinkpad_hwmon),
+# and an IP is the start of a longer one. A serial number is looked for
+# anywhere.
 AS_WORD = frozenset({"machine_name", "interface", "usb", "ip"})
 _AROUND = rb"[A-Za-z0-9_.-]"
 
 
 def _own_class(description: str) -> str:
-    """The kind of one of `privacidad.de_esta_maquina`'s identifiers."""
+    """The kind of one of `privacidad.of_this_machine`'s identifiers."""
     if description == "el nombre de este equipo":
         return "machine_name"
     if "interfaz" in description:
@@ -962,11 +958,11 @@ def _own_class(description: str) -> str:
 def found_in(target: pathlib.Path, secrets, raw_secrets=(),
                 own: dict[str, str] | None = None) -> list[tuple[str, str]]:
     """Where something of this machine is in the dump: (path, kind), the
-    kinds of `QUE`. Empty if nothing.
+    kinds of `SECRET_KINDS`. Empty if nothing.
 
-    `secretos` and `crudos`, what the dumper took away (a dict by kind, or
-    any collection); `propios`, what identifies this machine, without which
-    `privacidad.de_esta_maquina`'s. A substitute is never looked for.
+    `secrets` and `raw_secrets`, what the dumper took away (a dict by kind,
+    or any collection); `own`, what identifies this machine, without which
+    `privacidad.of_this_machine`'s. A substitute is never looked for.
     """
     if own is None:
         own = privacidad.of_this_machine()
@@ -999,14 +995,14 @@ def found_in(target: pathlib.Path, secrets, raw_secrets=(),
 
 def check(target: pathlib.Path, secrets, raw_secrets=(),
               own: dict[str, str] | None = None) -> list[str]:
-    """Lo que delata a esta máquina dentro del volcado, en palabras. Vacío si nada."""
+    """What gives this machine away in the dump, in words. Empty if nothing."""
     return [f"{path}: {QUE.get(kind, kind)}"
             for path, kind, _wanted in found_in(target, secrets, raw_secrets, own)]
 
 
 class Refusal(SystemExit):
-    """Nothing is written: anonimizar would still cover these fields of the
-    photo. They are named by position («gpus[1].unique_id»), never by value."""
+    """Nothing is written: anonymize would still cover these fields of the
+    snapshot. Named by position («gpus[1].unique_id»), never by value."""
 
     def __init__(self, fields: list[str]):
         self.fields = list(fields)
@@ -1020,7 +1016,7 @@ def _contains(wanted, text: str) -> bool:
 
 
 def _json_without(datum, wanted, path: str = "") -> tuple[object, list[str]]:
-    """The JSON without what holds `buscado`: a string goes to None, a key or
+    """The JSON without what holds `wanted`: a string goes to None, a key or
     a list item goes. And where it was, as a path of keys."""
     if isinstance(datum, dict):
         out, removed = {}, []
@@ -1082,7 +1078,7 @@ def _without_found(work: pathlib.Path, findings) -> list[dict]:
 
 @contextlib.contextmanager
 def mounted(folder: pathlib.Path):
-    """El volcado listo para leer: una copia con los ilegibles sin permiso."""
+    """The dump ready to read: a copy with the unreadable files unreadable."""
     with tempfile.TemporaryDirectory(prefix="silux-equipo-") as tmp:
         copy = pathlib.Path(tmp) / "raiz"
         shutil.copytree(folder, copy, symlinks=True)
@@ -1111,7 +1107,7 @@ def mounted(folder: pathlib.Path):
 
 
 def snapshot_of(folder: pathlib.Path):
-    """La foto que da el Collector leyendo el volcado."""
+    """The snapshot the Collector gives reading the dump."""
     from silux.collector import Collector
 
     with mounted(folder):
@@ -1123,7 +1119,7 @@ def snapshot_of(folder: pathlib.Path):
             collector.close()
 
 
-# -- principal ------------------------------------------------------------------
+# -- main -----------------------------------------------------------------------
 
 def dump(name: str, base: pathlib.Path,
            own: dict[str, str] | None = None) -> pathlib.Path:
@@ -1131,11 +1127,11 @@ def dump(name: str, base: pathlib.Path,
     if target.exists():
         raise SystemExit(f"ya existe {target}: bórralo antes para volcar otra vez")
 
-    # Lo primero, antes de que nada la despierte: cómo está cada gráfica.
+    # First, before anything wakes it: how each card is.
     sleeping = _SleepingCards()
     read_paths, listed, checked, recording = _collect(sleeping)
     read_paths |= _alternatives(read_paths) | sleeping.power_files() | _gpu_extras()
-    # Copiar también es leer: lo de una gráfica dormida no pasa ni por aquí.
+    # Copying is reading too: what's on a sleeping card doesn't even pass here.
     read_paths = {c for c in read_paths if not sleeping.forbidden(c)}
     checked = {c for c in checked if not sleeping.forbidden(c)}
     with tempfile.TemporaryDirectory(prefix="silux-volcado-") as tmp:
@@ -1147,7 +1143,7 @@ def dump(name: str, base: pathlib.Path,
         for path in sorted(read_paths):
             copy.copy_file(path)
         for path in sorted(checked - read_paths - listed):
-            # Un `exists()` o un `is_dir()` que salió que sí: que siga saliendo.
+            # An `exists()` or `is_dir()` that said yes: let it keep saying so.
             if os.path.lexists(sysroot.path(path)):
                 (copy.directory(path) if os.path.isdir(sysroot.path(path))
                  else copy.copy_file(path))
@@ -1159,16 +1155,16 @@ def dump(name: str, base: pathlib.Path,
         (work / sysroot.RECORDING_FILE).write_text(
             json.dumps(clean.clean_recording(), ensure_ascii=False, indent=1, sort_keys=True) + "\n")
 
-        # Git no guarda directorios vacíos, y algunos cuentan: los procesos de
-        # /proc, o un /sys/firmware/efi que solo se mira si existe. Se apuntan
-        # y se recrean al montar.
+        # Git doesn't keep empty folders, and some count: /proc's processes,
+        # or a /sys/firmware/efi only checked for existence. They're noted and
+        # recreated when mounting.
         empty_dirs = sorted("/" + str(d.relative_to(work)) for d in work.rglob("*")
                         if d.is_dir() and not d.is_symlink() and not any(d.iterdir()))
         (work / MANIFEST).write_text(json.dumps({
             "herramienta": 1,
             "vacios": empty_dirs,
             "ilegibles": sorted(clean._replace_text(c) for c in copy.unreadable),
-            # Cómo estaba cada gráfica antes de leer nada, por su ranura.
+            # How each card was before anything was read, by its slot.
             "energia_de_las_graficas": sleeping.states,
             "sin_grabar": [
                 "de NVML, el número de serie de cada tarjeta",
@@ -1188,9 +1184,9 @@ def dump(name: str, base: pathlib.Path,
                   "veth): queda una de cada"] if dropped else []),
         }, ensure_ascii=False, indent=1) + "\n")
 
-        # What was not covered goes, file by file, and the annex says so: a
-        # dump with a file less is still a dump, and with nothing written
-        # three of three testers had no annex.
+        # What wasn't covered goes, file by file, and the annex says so: a
+        # dump missing a file is still a dump, and with nothing written there
+        # would be no annex at all.
         removed = _without_found(
             work, found_in(work, clean.secrets, clean.raw_secrets, own))
         if removed:
@@ -1214,18 +1210,17 @@ def dump(name: str, base: pathlib.Path,
     return target
 
 
-# Lo que `anonimizar` sustituye aunque no identifique a nadie: el bucle local
-# y una MAC a ceros. Que lo cambie no significa que el volcado se lo dejara.
+# What `anonymize` replaces though it identifies nobody: the loopback and an
+# all-zero MAC. That it changes them doesn't mean the dump left them.
 HARMLESS = {"127.0.0.1", "::1", "00:00:00:00:00:00", None, ()}
 ALREADY_SUBSTITUTED = re.compile(re.escape(privacidad.MOUNT).replace(r"\{\}", r"\d+"))
 
 
 def _unnumbered(disks):
-    """Los discos con los montajes ya sustituidos sin su número.
+    """The disks with already replaced mounts, without their number.
 
-    `anonimizar` numera por el orden de los discos y el volcado por el de
-    `/proc/mounts`: un `/media/unidad3` que pasa a `/media/unidad1` no es un
-    dato que quedara por tapar.
+    `anonymize` numbers by disk order and the dump by `/proc/mounts`': a
+    `/media/unidad3` becoming `/media/unidad1` isn't a datum left to cover.
     """
     return tuple(
         dataclasses.replace(d, partitions=tuple(
@@ -1251,11 +1246,11 @@ def _differences(before, after, path: str) -> list[str]:
 
 
 def _what_anonymize_would_cover(snapshot) -> list[str]:
-    """Lo que `privacidad.anonimizar` cambiaría en la foto del volcado.
+    """What `privacidad.anonymize` would change in the dump's snapshot.
 
-    Si cambia algo, es que el volcado dejó un dato que identifica a alguien.
-    Lo único que se acepta es lo que anonimizar tapa por sistema sin que sea
-    de nadie, como `127.0.0.1`.
+    If it changes anything, the dump left a datum that identifies someone.
+    Only what anonymize covers by rule without it being anyone's is
+    accepted, such as `127.0.0.1`.
     """
     covered = privacidad.anonymize(snapshot)
     left = []
