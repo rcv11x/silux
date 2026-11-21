@@ -32,7 +32,7 @@ from .. import amdgpu, edid, gpumetrics, i915, pciids, sysroot
 from ..i18n import _
 from ..model import Display, GpuClockLevel, GpuClocks, GpuEngine, GpuMemory, Need, PcieLink
 from ..privileged.client import HelperError, PmuUnsupported, PrivilegedClient
-from .base import Draft, Provider, en_reposo, read_int, read_text
+from .base import Draft, Provider, is_suspended, read_int, read_text
 from .counters import increase, window_s
 from .rapl import Discarded, package_ceiling_w
 
@@ -198,7 +198,7 @@ class DrmGpus(Provider):
             # Lo primero, antes de tocar nada que la despierte. La identidad
             # (vendor, device, revisión) la guarda el kernel al enumerar y se
             # lee sin despertarla; el enlace, la memoria y el driver, no.
-            dormida = en_reposo(dispositivo)
+            dormida = is_suspended(dispositivo)
             gpu["suspended"] = dormida
 
             self._identidad(gpu, dispositivo, draft, dormida)
@@ -250,7 +250,7 @@ class DrmGpus(Provider):
         gpu["pci_slot"] = dispositivo.name
         # El nodo DRM sigue siendo el del framebuffer; el enlace y la memoria
         # se leen del dispositivo de verdad, que es quien los tiene.
-        if not en_reposo(dispositivo):
+        if not is_suspended(dispositivo):
             gpu["link"] = _enlace(dispositivo)
         gpu["integrated"] = _es_integrada(gpu)
         draft.note(f"gpus.{indice}", Need.DRIVER,
@@ -462,7 +462,7 @@ class GpuState(Provider):
         tarjeta dormida no se lee: leerla la despertaría.
         """
         for dispositivo in self._con_instantes:
-            if en_reposo(dispositivo):
+            if is_suspended(dispositivo):
                 continue
             for campo, archivo in USO_INSTANTANEO:
                 valor = _porcentaje(dispositivo / archivo)
@@ -471,7 +471,7 @@ class GpuState(Provider):
         # Reading the actual frequency does not wake an Intel GPU (i915 reads
         # it only if the device is in use), but a suspended one is left alone.
         for dispositivo, raiz in self._con_reloj:
-            if en_reposo(dispositivo):
+            if is_suspended(dispositivo):
                 continue
             hz = _intel_hz(dispositivo, raiz, "cur")
             if hz is not None:
@@ -500,7 +500,7 @@ class GpuState(Provider):
             dispositivo = raiz / "device"
             if not dispositivo.is_dir():
                 continue
-            if en_reposo(dispositivo):
+            if is_suspended(dispositivo):
                 self._dormida(gpu, nodo)
                 # Read awake at the static pass, its driver's notice said a
                 # driver was missing (NVIDIA's, before NVML answers). Asleep,

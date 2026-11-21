@@ -19,7 +19,7 @@ from typing import Optional
 from .. import nvml, sysroot
 from ..i18n import _
 from ..model import GpuClocks, GpuMemory, Need, PcieLink
-from .base import Draft, Provider, en_reposo, read_text
+from .base import Draft, Provider, is_suspended, read_text
 from .dmi import PORTABLE_CHASSIS
 
 # Each PCIe generation's speed, to translate the number NVML gives.
@@ -111,7 +111,7 @@ def sleeping_nvidias() -> list[str]:
             continue
         if not (read_text(f"{path}/class") or "").startswith("0x03"):
             continue
-        if en_reposo(path):
+        if is_suspended(path):
             sleeping.append(os.path.basename(path))
     return sleeping
 

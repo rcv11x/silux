@@ -178,13 +178,13 @@ class TestRelojDeReferencia(unittest.TestCase):
     """El BCLK deducido, en aislado."""
 
     def test_multiplicadores_de_cuarto_en_cuarto(self):
-        self.assertAlmostEqual(cppc._reloj_de_referencia(3_401_000_000) / 1e6, 100.03, places=1)
-        self.assertEqual(cppc._reloj_de_referencia(2_900_000_000), 100_000_000)
-        self.assertAlmostEqual(cppc._reloj_de_referencia(3_333_000_000) / 1e6, 100.24, places=1)
+        self.assertAlmostEqual(cppc._reference_clock(3_401_000_000) / 1e6, 100.03, places=1)
+        self.assertEqual(cppc._reference_clock(2_900_000_000), 100_000_000)
+        self.assertAlmostEqual(cppc._reference_clock(3_333_000_000) / 1e6, 100.24, places=1)
 
     def test_lo_que_no_cuadra_se_deja_vacio(self):
         # Un reloj tan bajo que el multiplicador no llega a 1.
-        self.assertIsNone(cppc._reloj_de_referencia(50_000_000))
+        self.assertIsNone(cppc._reference_clock(50_000_000))
 
 
 class TestVariosTiposDeNucleo(BancoDeRelojes):

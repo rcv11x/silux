@@ -13,7 +13,7 @@ from typing import Optional
 
 from .. import sysroot
 from ..model import Clocks
-from .base import Draft, Provider, en_maquina_virtual, read_int, read_text
+from .base import Draft, Provider, is_virtual_machine, read_int, read_text
 
 INTEL_PSTATE_NO_TURBO = "/sys/devices/system/cpu/intel_pstate/no_turbo"
 CPUFREQ_BOOST = "/sys/devices/system/cpu/cpufreq/boost"
@@ -61,7 +61,7 @@ class TurboState(Provider):
         if not self._supported_read:
             self._supported, self._supported_read = _turbo_supported(), True
         # A virtual CPU's flags are the hypervisor's, not the host's part.
-        supported = None if en_maquina_virtual(draft) else self._supported
+        supported = None if is_virtual_machine(draft) else self._supported
 
         if enabled is None and supported is None:
             return

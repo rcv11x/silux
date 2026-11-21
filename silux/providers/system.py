@@ -21,7 +21,7 @@ from .. import privacidad, sysroot
 from ..i18n import _
 from ..model import Boot, DeviceKind, Memory, Need, Sensor, SensorKind, Swap, System, Vulnerability
 from ..system_env import system_environment
-from .base import Draft, Provider, aparte, read_int, read_text
+from .base import Draft, Provider, on_its_own, read_int, read_text
 
 OS_RELEASE = "/etc/os-release"
 
@@ -99,11 +99,11 @@ class SystemIdentity(Provider):
             variant=release.get("VARIANT"),
 
             kernel=f"{uname['system']} {uname['release']}",
-            kernel_build=aparte(draft, "system.kernel_build", self._kernel_build),
+            kernel_build=on_its_own(draft, "system.kernel_build", self._kernel_build),
             architecture=uname["machine"],
 
             hostname=read_text("/proc/sys/kernel/hostname") or uname["node"],
-            init=aparte(draft, "system.init", self._init_system),
+            init=on_its_own(draft, "system.init", self._init_system),
             desktop=entorno.get("XDG_CURRENT_DESKTOP"),
             session_type=entorno.get("XDG_SESSION_TYPE"),
             shell=os.path.basename(entorno.get("SHELL") or "") or None,

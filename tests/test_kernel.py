@@ -201,9 +201,9 @@ class TestLosVolcadosEnUn515(unittest.TestCase):
 
         draft = Draft()
         draft.types["general"] = {"vendor": "Intel", "cpus": [0], "architecture": "x86_64"}
-        with mock.patch("silux.providers.cppc._hay_ranking", return_value=True), \
-             mock.patch("silux.providers.cppc._techo_de_amd_pstate", return_value=None), \
-             mock.patch("silux.providers.cppc._leer_cppc", return_value={}), \
+        with mock.patch("silux.providers.cppc._has_ranking", return_value=True), \
+             mock.patch("silux.providers.cppc._amd_pstate_ceiling", return_value=None), \
+             mock.patch("silux.providers.cppc._read_cppc", return_value={}), \
              mock.patch("silux.kernel.running", return_value=(5, 15)):
             CppcClocks().collect(draft)
         nota = next(n for n in draft.notes if n.path == "cpu.clocks.max_turbo_hz")

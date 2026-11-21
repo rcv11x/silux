@@ -23,7 +23,7 @@ from typing import Optional
 from ..i18n import _
 from ..model import Clocks, Need
 from ..privileged.client import HelperError, PrivilegedClient
-from .base import Draft, Provider, en_maquina_virtual
+from .base import Draft, Provider, is_virtual_machine
 from .msr_voltage import AMD_PSTATE_DEF, AMD_PSTATE_STATUS, AMD_PSTATES
 
 ZEN_FAMILIES = (0x17, 0x19)
@@ -66,7 +66,7 @@ class AmdPstateClocks(Provider):
         return bool(self.client and self.client.connected())
 
     def collect(self, draft: Draft) -> None:
-        if en_maquina_virtual(draft):
+        if is_virtual_machine(draft):
             return
         zen = [entry for entry in draft.types.values() if is_zen(entry)]
         clocks = [entry.get("clocks") or Clocks() for entry in zen]

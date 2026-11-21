@@ -23,7 +23,7 @@ from typing import Optional
 from .. import pciids, sysroot
 from ..i18n import _
 from ..model import Board, Need, clean_dmi
-from .base import Draft, Provider, en_maquina_virtual, read_text
+from .base import Draft, Provider, is_virtual_machine, read_text
 
 SYS_DMI = "/sys/class/dmi/id"
 PCI_DEVICES = pathlib.Path("/sys/bus/pci/devices")
@@ -150,7 +150,7 @@ class DmiBoard(Provider):
 
         # A virtual machine has no board to blame (QEMU declares none): the
         # board page says what it is instead.
-        if not draft.board.name and not en_maquina_virtual(draft):
+        if not draft.board.name and not is_virtual_machine(draft):
             draft.note(
                 "board.name", Need.HARDWARE,
                 _("prov.dmi.noboard"), _("prov.dmi.noboard.hint"),

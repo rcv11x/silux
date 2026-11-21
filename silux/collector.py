@@ -58,7 +58,7 @@ from .providers import (
     ThermalThrottleCounts,
     TurboState,
 )
-from .providers.base import en_maquina_virtual
+from .providers.base import is_virtual_machine
 
 
 def _instanciar(cls: type[Provider], cliente: PrivilegedClient) -> Provider:
@@ -115,7 +115,7 @@ NOT_IN_A_VM = frozenset(("cpu.voltage_v", "modules", "spd", "memory.traffic"))
 
 
 def _without_what_a_vm_lacks(draft: Draft) -> None:
-    if en_maquina_virtual(draft):
+    if is_virtual_machine(draft):
         draft.notes = [n for n in draft.notes if n.path not in NOT_IN_A_VM]
 
 

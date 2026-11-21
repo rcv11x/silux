@@ -20,7 +20,7 @@ from typing import Optional
 
 from .. import pciids, sysroot
 from ..model import PciDevice, PcieLink, Platform
-from .base import Draft, Provider, en_reposo, read_text
+from .base import Draft, Provider, is_suspended, read_text
 from .drm import VENDORS, _cadena_pcie, _enlace
 
 DEVICES = "/sys/bus/pci/devices"
@@ -74,9 +74,9 @@ class PciDevices(Provider):
             # SATA or sound controller lives inside the chipset or processor:
             # its node publishes the chipset's internal link, which would read
             # as a slot running at half. A suspended card is not asked:
-            # reading its link wakes it since Linux 6.18 (`en_reposo`).
+            # reading its link wakes it since Linux 6.18 (`is_suspended`).
             link = (_enlace(node, self._links.get(fixed["slot"]))
-                      if fixed["kind"] in IN_A_SLOT and not en_reposo(node) else None)
+                      if fixed["kind"] in IN_A_SLOT and not is_suspended(node) else None)
             if link is not None:
                 self._links[fixed["slot"]] = link
             # An Intel integrated card publishes no link: it hangs from none,

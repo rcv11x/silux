@@ -1,13 +1,12 @@
-"""Infraestructura común de los proveedores.
+"""What every provider shares.
 
-Un proveedor lee una fuente concreta (CPUID, sysfs, hwmon…) y escribe en un
-`Draft`. El borrador es mutable porque la recolección lo es; al final se
-congela en un `Snapshot` inmutable, que es lo único que sale de la capa de
-datos.
+A provider reads one source (CPUID, sysfs, hwmon…) and writes into a
+`Draft`. The draft is mutable because collecting is; at the end it freezes
+into an immutable `Snapshot`, the only thing that leaves the data layer.
 
-Cada proveedor declara qué necesita para funcionar. Cuando no puede,
-no desaparece en silencio: deja una `Note` explicando por qué, y la interfaz
-la enseña en vez de mostrar un hueco sin explicación.
+Each provider says what it needs to work. When it cannot, it does not vanish
+in silence: it leaves a `Note` saying why, and the interface shows it
+instead of an unexplained gap.
 """
 
 from __future__ import annotations
@@ -41,7 +40,7 @@ from ..model import (
 
 @dataclass
 class Draft:
-    """Estado mutable durante una recolección. No sale nunca del colector."""
+    """Mutable state during a collection. It never leaves the collector."""
 
     monotonic_ns: int = field(default_factory=time.monotonic_ns)
     # The sampling interval: a rate from a window shorter than half of it is
@@ -68,19 +67,19 @@ class Draft:
     sound_cards: list = field(default_factory=list)
     cameras: list = field(default_factory=list)
     bluetooth: list = field(default_factory=list)
-    # Dirección PCI → nombre de la ranura, de la tabla del firmware (permisos).
+    # PCI address → slot name, from the firmware's table (permissions).
     pci_slot_names: dict = field(default_factory=dict)
     privileged: PrivilegedState = field(default_factory=PrivilegedState)
     sensors: list[Sensor] = field(default_factory=list)
     driver_hints: list[DriverHint] = field(default_factory=list)
     capabilities: set[str] = field(default_factory=set)
     notes: list[Note] = field(default_factory=list)
-    # Lo estático se leyó con algo dormido que ya no lo está: una gráfica
-    # suspendida no se lee entera para no despertarla, y cuando despierta hay
-    # que volver a por lo que faltó. Lo mira el colector al acabar la vuelta.
+    # The static data was read with something asleep that is not any more: a
+    # suspended card is not read whole so as not to wake it, and when it
+    # wakes the rest is fetched. The collector looks at this after the pass.
     static_stale: bool = False
 
-    # -- ayudas de escritura ------------------------------------------------
+    # -- writing helpers ----------------------------------------------------
 
     def type_for(self, key: str) -> dict[str, Any]:
         return self.types.setdefault(key, {"key": key, "label": key, "cpus": []})
@@ -89,12 +88,11 @@ class Draft:
         return self.logical.setdefault(index, {"index": index, "core_id": -1, "package_id": 0})
 
     def gpu(self, index: int) -> dict[str, Any]:
-        """La tarjeta número N, creándola si es la primera vez que se la nombra.
+        """Card number N, created the first time it is named.
 
-        Se guardan como diccionarios y no como `Gpu` porque las rellenan varios
-        proveedores por turnos (el kernel primero, las APIs gráficas después) y
-        rehacer un dataclass congelado en cada paso se come los campos que otro
-        acaba de poner.
+        Dictionaries and not `Gpu`: several providers fill them in turn (the
+        kernel first, the graphics APIs after), and rebuilding a frozen
+        dataclass at each step loses fields another one just set.
         """
         while len(self.gpus) <= index:
             self.gpus.append({"index": len(self.gpus)})
@@ -106,17 +104,16 @@ class Draft:
                                what=what, detail=detail, key=key))
 
     def resolve(self, path: str) -> None:
-        """Retira las notas de un dato que otro proveedor sí ha conseguido.
+        """Drop the notes on a value another provider did get.
 
-        Los proveedores no se conocen entre sí, pero varios pueden apuntar al
-        mismo dato por caminos distintos, y el que llega primero deja dicho
-        que no pudo. En ARM eso hacía que la identidad del procesador
-        apareciera como ausente —«CPUID es una instrucción de x86»— con el
-        nombre del núcleo escrito justo encima.
+        Providers do not know each other, but several can reach the same value
+        by different paths, and the first one says it could not: on ARM the
+        processor's identity showed as missing («CPUID is an x86
+        instruction») with the core's name written right above.
         """
         self.notes = [n for n in self.notes if n.path != path]
 
-    # -- congelación --------------------------------------------------------
+    # -- freezing -----------------------------------------------------------
 
     def freeze(self) -> Snapshot:
         types: list[CpuType] = []
@@ -126,14 +123,14 @@ class Draft:
             data["caches"] = tuple(data.get("caches", ()))
             data["features"] = tuple(data.get("features", ()))
             data.setdefault("clocks", Clocks())
-            # Descarta cualquier clave que no sea un campo del modelo: evita
-            # que un proveedor rompa el congelado escribiendo de más.
+            # Drop any key that is not a model field: a provider writing too
+            # much must not break the freeze.
             valid = {f for f in CpuType.__dataclass_fields__}
             types.append(CpuType(**{k: v for k, v in data.items() if k in valid}))
 
         logical = tuple(
             LogicalCpu(**{k: v for k, v in raw.items() if k in LogicalCpu.__dataclass_fields__})
-            for _indice, raw in sorted(self.logical.items())
+            for _index, raw in sorted(self.logical.items())
         )
 
         cpu = CpuInfo(
@@ -180,13 +177,13 @@ class Draft:
 
 
 class Provider:
-    """Base de todos los proveedores.
+    """The base of every provider.
 
-    `static` distingue lo que se lee una vez (identidad, topología, cachés) de
-    lo que hay que refrescar en cada muestreo (frecuencias, temperaturas, uso).
+    `static` tells what is read once (identity, topology, caches) from what
+    is refreshed on every sample (clocks, temperatures, usage).
     """
 
-    name: str = "sin-nombre"
+    name: str = "unnamed"
     provides: str = ""
     static: bool = False
 
@@ -194,10 +191,10 @@ class Provider:
         return True
 
     def unavailable_reason(self) -> Optional[tuple]:
-        """(ruta, motivo, mensaje, pista) si no se puede usar. `None` si sí.
+        """(path, need, message, hint) if it cannot be used; None if it can.
 
-        Con un quinto elemento, qué falta en corto, cuando es cosa de permisos
-        y el ayudante lo sabe leer (`Note.what`).
+        With a fifth item, what is missing in a few words, when it is about
+        permissions and the helper can read it (`Note.what`).
         """
         return None
 
@@ -205,17 +202,17 @@ class Provider:
         raise NotImplementedError
 
     def wants_between_samples(self) -> bool:
-        """Si quiere leer algo entre una muestra y la siguiente
-        (`between_samples`). Casi ninguno: cada lectura despierta el hilo."""
+        """Whether it reads something between one sample and the next
+        (`between_samples`). Almost none: each reading wakes the thread."""
         return False
 
     def between_samples(self) -> None:
-        """Una lectura entre muestras, para lo que el hardware da como un
-        instante y se enseña como la media del intervalo."""
+        """A reading between samples, for what the hardware gives as an
+        instant and is shown as the interval's mean."""
 
 
 # --------------------------------------------------------------------------
-# lectura de sysfs y procfs, tolerante a ficheros que no existen
+# reading sysfs and procfs, tolerating files that do not exist
 # --------------------------------------------------------------------------
 
 
@@ -227,26 +224,24 @@ def read_text(path: str) -> Optional[str]:
         return None
 
 
-def en_reposo(dispositivo) -> bool:
-    """Si el kernel tiene ese dispositivo suspendido por el runtime PM (D3).
+def is_suspended(device) -> bool:
+    """Whether the kernel has the device suspended by runtime PM (D3).
 
-    `power/runtime_status` lo publica el núcleo de gestión de energía, no el
-    driver: `runtime_status_show` (drivers/base/power/sysfs.c) devuelve el
-    estado guardado sin despertar el dispositivo
-    (Documentation/ABI/testing/sysfs-devices-power). Casi todo lo demás sí lo
-    despierta: el enlace PCIe desde Linux 6.18, el hwmon y los ioctl de
-    amdgpu, abrir el nodo de render, NVML. Quien pregunta saca a la tarjeta
-    de su reposo y después la mide despierta, que no es como estaba.
+    The power management core publishes `power/runtime_status`, not the
+    driver: `runtime_status_show` (drivers/base/power/sysfs.c) returns the
+    stored state without waking the device. Almost everything else wakes it:
+    the PCIe link since Linux 6.18, hwmon and amdgpu's ioctls, opening the
+    render node, NVML. Whoever asks wakes the card and then measures it awake,
+    which is not how it was.
     """
-    return read_text(f"{dispositivo}/power/runtime_status") in ("suspended", "suspending")
+    return read_text(f"{device}/power/runtime_status") in ("suspended", "suspending")
 
 
-def aparte(draft: "Draft", path: str, funcion, *args):
-    """One datum read on its own: if it fails, it is that datum's notice and
-    not the provider's. A Gentoo's report lost its distribution, kernel and
-    desktop because finding out its init failed."""
+def on_its_own(draft: "Draft", path: str, function, *args):
+    """One value read on its own: if it fails, it is that value's notice and
+    not the provider's, which would lose everything else it reads."""
     try:
-        return funcion(*args)
+        return function(*args)
     except Exception as exc:                                  # noqa: BLE001
         from ..i18n import _
         draft.note(path, Need.ERROR, _("prov.crashed").format(nombre=path, error=exc),
@@ -254,7 +249,7 @@ def aparte(draft: "Draft", path: str, funcion, *args):
         return None
 
 
-def en_maquina_virtual(draft: "Draft") -> bool:
+def is_virtual_machine(draft: "Draft") -> bool:
     """Whether CPUID, read earlier in the sample, says this is a guest."""
     return any(t.get("in_virtual_machine") for t in draft.types.values())
 
@@ -270,7 +265,7 @@ def read_int(path: str) -> Optional[int]:
 
 
 def parse_cpu_list(raw: Optional[str]) -> tuple[int, ...]:
-    """Convierte "0-3,8,10-11" en (0, 1, 2, 3, 8, 10, 11)."""
+    """Turns "0-3,8,10-11" into (0, 1, 2, 3, 8, 10, 11)."""
     if not raw:
         return ()
     out: list[int] = []
@@ -293,7 +288,7 @@ def parse_cpu_list(raw: Optional[str]) -> tuple[int, ...]:
 
 
 def parse_size(raw: Optional[str]) -> Optional[int]:
-    """Convierte "32K" / "12288K" / "8M" a bytes."""
+    """Turns "32K" / "12288K" / "8M" into bytes."""
     if not raw:
         return None
     raw = raw.strip()

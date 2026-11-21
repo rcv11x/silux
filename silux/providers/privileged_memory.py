@@ -30,7 +30,7 @@ from ..privileged.client import (
     already_root,
 )
 from ..system_env import system_environment
-from .base import Draft, Provider, en_maquina_virtual
+from .base import Draft, Provider, is_virtual_machine
 
 
 def _module(raw: dict) -> MemoryModule:
@@ -78,7 +78,7 @@ class PrivilegedMemory(Provider):
 
         # QEMU's SMBIOS declares a «DIMM 0» of its own making: a virtual
         # machine has no modules to read, with permissions or without.
-        if en_maquina_virtual(draft):
+        if is_virtual_machine(draft):
             return
 
         if already_root():

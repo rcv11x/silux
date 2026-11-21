@@ -1,14 +1,12 @@
-"""Consumo del paquete, desglosado, vía RAPL (powercap).
+"""The package's power, broken down, through RAPL (powercap).
 
-El kernel expone contadores de energía en microjulios que solo suben. Los
-vatios son su derivada, así que este proveedor guarda la lectura anterior
-igual que el del uso de CPU. El contador da la vuelta al llegar a
-`max_energy_range_uj` y hay que tenerlo en cuenta o se ven picos absurdos.
+The kernel publishes energy counters in microjoules that only go up. Watts
+are their rate, so the previous reading is kept. The counter wraps at
+`max_energy_range_uj`, which has to be handled or absurd peaks show.
 
-Se leen también los subdominios y los límites que declara el propio
-procesador. Sin eso, un "7 W" en reposo parece un error de medición; con el
-desglose se ve que son los núcleos en reposo profundo, y que el límite
-sostenido de este chip son 65 W. Es un dato que CPU-X no muestra.
+The subdomains and the limits the processor declares are read too: a «7 W»
+at idle looks like a measuring error until the breakdown shows the cores in
+deep idle, and that the part's sustained limit is 65 W.
 """
 
 from __future__ import annotations
@@ -26,25 +24,23 @@ from .counters import increase, window_s
 
 POWERCAP = pathlib.Path("/sys/class/powercap")
 
-# Nombres que usa el kernel para cada subdominio -> campo del modelo.
+# The kernel's name for each subdomain -> the model's field.
 SUBDOMAINS = {"core": "core_w", "uncore": "uncore_w", "dram": "dram_w"}
 
 
-# Donde el dominio `core` no es la suma de los núcleos. En Intel es PP0, un
-# contador del paquete. En AMD el kernel lo saca de `MSR_AMD_CORE_ENERGY_STATUS`,
-# que es de cada núcleo, y lo lee en uno solo: el primero del paquete. Medido
-# en un 5800X3D con una carga atada a un hilo: en el núcleo 0 el dominio sube
-# de 3,4 a 5,9 W, en el núcleo 5 no se mueve.
-NUCLEO_SUELTO = frozenset(("AuthenticAMD", "HygonGenuine"))
+# Where the `core` domain is not the sum of the cores. On Intel it is PP0, a
+# package counter. On AMD the kernel takes it from
+# `MSR_AMD_CORE_ENERGY_STATUS`, which is per core, and reads it on one core
+# only, the package's first: a load pinned to another core does not move it.
+CORE_DOMAIN_ON_ONE_CORE = frozenset(("AuthenticAMD", "HygonGenuine"))
 
 
-def _core_es_de_un_nucleo(draft: Draft) -> bool:
-    return any(t.get("vendor_id") in NUCLEO_SUELTO for t in draft.types.values())
+def _core_is_one_cores(draft: Draft) -> bool:
+    return any(t.get("vendor_id") in CORE_DOMAIN_ON_ONE_CORE for t in draft.types.values())
 
 
-# El framework se llama «intel-rapl» por su origen, pero AMD lo usa igual y
-# según la versión del kernel aparece como «amd-rapl». Buscar solo el primero
-# dejaba a las máquinas AMD sin lectura de consumo.
+# The framework is called «intel-rapl» after its origin, but AMD uses it too
+# and, depending on the kernel, it shows as «amd-rapl».
 RAPL_ZONES = ("intel-rapl:*", "amd-rapl:*", "*-rapl:*")
 
 
@@ -58,7 +54,7 @@ def _packages() -> list[pathlib.Path]:
         for entry in sorted(sysroot.ruta(POWERCAP).glob(pattern)):
             if entry.name in seen:
                 continue
-            # Los subdominios (core, uncore, dram) llevan un segundo «:».
+            # Subdomains (core, uncore, dram) carry a second «:».
             if entry.name.count(":") > 1:
                 continue
             if (read_text(str(entry / "name")) or "").startswith("package"):
@@ -69,7 +65,7 @@ def _packages() -> list[pathlib.Path]:
 
 # Without any limit declared, no single package draws this for a second.
 FALLBACK_CEILING_W = 1000.0
-# Where a dropped reading is told: the report's Diagnóstico, no page.
+# Where a dropped reading is told: the report's diagnosis, no page.
 DISCARDED_PATH = "report.power.discarded"
 
 
@@ -80,20 +76,19 @@ def package_ceiling_w() -> float:
     packages = _packages()
     if not packages:
         return FALLBACK_CEILING_W
-    limites: dict[str, float] = {}
+    limits: dict[str, float] = {}
     for constraint in packages[0].glob("constraint_*_name"):
         micro = read_int(str(constraint).replace("_name", "_power_limit_uw"))
         if micro:
-            limites[(read_text(str(constraint)) or "").lower()] = micro / 1e6
-    if "peak_power" in limites:
-        return limites["peak_power"]
-    return 2 * max(limites.values()) if limites else FALLBACK_CEILING_W
+            limits[(read_text(str(constraint)) or "").lower()] = micro / 1e6
+    if "peak_power" in limits:
+        return limits["peak_power"]
+    return 2 * max(limits.values()) if limits else FALLBACK_CEILING_W
 
 
 class Discarded:
     """The readings dropped as impossible, told in the report with their
-    numbers: a negative watt, or more than the part can draw. A tester's
-    Iris Xe drew 9 W and its chart got a point at 1336648637.3 W."""
+    numbers: a negative watt, or more than the part can draw."""
 
     def __init__(self, source: str) -> None:
         self.source = source
@@ -118,8 +113,8 @@ class Discarded:
 
 
 def _limits(package: pathlib.Path) -> dict[str, Optional[float]]:
-    """PL1 y PL2, en vatios, tal y como los declara el procesador, con la
-    ventana de tiempo de cada uno, en segundos: los campos de `Power`."""
+    """PL1 and PL2, in watts, as the processor declares them, with each one's
+    time window in seconds: the fields of `Power`."""
     limits: dict[str, Optional[float]] = {}
     for constraint in sorted(package.glob("constraint_*_name")):
         name = (read_text(str(constraint)) or "").lower()
@@ -135,29 +130,28 @@ def _limits(package: pathlib.Path) -> dict[str, Optional[float]]:
 
 
 class PowerLimits(Provider):
-    """PL1 y PL2: los límites que el firmware programó, sin esperar al consumo.
+    """PL1 and PL2: the limits the firmware set, without waiting for power.
 
-    Están al lado de los contadores de energía, pero no son lo mismo: los
-    contadores los reserva el kernel a root y los límites se leen con
-    cualquier usuario. `RaplPower` solo los ponía cuando conseguía medir, así
-    que sin permisos un Intel no decía sus límites teniéndolos a la vista.
-    Va delante de él; cuando hay consumo, `RaplPower` escribe la ficha entera.
+    They sit next to the energy counters but are not the same: the kernel
+    keeps the counters for root, and the limits are readable by any user.
+    This runs before `RaplPower`, which writes the whole card when it has
+    power.
     """
 
     name = "power-limits"
     provides = "cpu.power.limits"
 
     def __init__(self) -> None:
-        self._limites: Optional[dict] = None
+        self._limit_values: Optional[dict] = None
 
     def available(self) -> bool:
         return bool(_packages())
 
     def collect(self, draft: Draft) -> None:
-        if self._limites is None:
-            self._limites = _limits(_packages()[0])
-        if self._limites.get("limit_long_w") or self._limites.get("limit_short_w"):
-            draft.cpu_extra["power"] = Power(**self._limites)
+        if self._limit_values is None:
+            self._limit_values = _limits(_packages()[0])
+        if self._limit_values.get("limit_long_w") or self._limit_values.get("limit_short_w"):
+            draft.cpu_extra["power"] = Power(**self._limit_values)
 
 
 class RaplPower(Provider):
@@ -167,13 +161,11 @@ class RaplPower(Provider):
     def __init__(self, client: Optional[PrivilegedClient] = None) -> None:
         self._previous: dict[str, tuple[int, float]] = {}
         self._limits: Optional[dict[str, Optional[float]]] = None
-        # El mismo ayudante que ya usan los discos y la memoria. Desde el
-        # kernel 5.10 `energy_uj` no se lee sin privilegios y en las máquinas
-        # donde eso pasa —AMD sobre todo— el consumo del procesador salía en
-        # blanco. Peor: la nota de «requiere permisos» no se iba nunca, porque
-        # el usuario los daba, el ayudante arrancaba y nadie leía esto.
+        # The same helper the disks and memory use. Since kernel 5.10
+        # `energy_uj` is not readable without privileges, and where that
+        # applies (AMD above all) the processor's power came out blank.
         self.client = client
-        self._por_el_ayudante = False
+        self._by_the_helper = False
         self._cache: dict[str, int] = {}
         # When the helper's reading was taken: it may wait up to 100 ms for
         # its pace, and timing it from before the request skewed the watts.
@@ -187,8 +179,8 @@ class RaplPower(Provider):
             return False
         if read_int(str(packages[0] / "energy_uj")) is not None:
             return True
-        # Con el ayudante conectado sí se puede, aunque el kernel se lo niegue
-        # a este proceso.
+        # With the helper connected it can, though the kernel refuses this
+        # process.
         return bool(self.client and self.client.connected())
 
     def unavailable_reason(self):
@@ -206,35 +198,35 @@ class RaplPower(Provider):
         if not packages:
             return
 
-        # Una sola petición al ayudante por muestreo, no una por zona.
+        # One request to the helper per sample, not one per zone.
         self._cache: dict[str, int] = {}
         totals: dict[str, float] = {}
 
-        suelto = _core_es_de_un_nucleo(draft)
-        sin_nucleos = False
+        one_core = _core_is_one_cores(draft)
+        no_cores = False
         for package in packages:
             self._accumulate(package, "package_w", totals, draft.interval_s)
             for child in sorted(package.glob(f"{package.name}:*")):
                 field = SUBDOMAINS.get(read_text(str(child / "name")) or "")
-                if field == "core_w" and suelto:
-                    sin_nucleos = True
+                if field == "core_w" and one_core:
+                    no_cores = True
                 elif field:
                     self._accumulate(child, field, totals, draft.interval_s)
         self._discarded.note(draft)
 
         if "package_w" not in totals:
-            return                          # primera pasada: solo referencia
+            return                          # the first pass only sets the base
         if totals["package_w"] == 0:
-            # Un paquete encendido siempre gasta algo: si su contador no ha
-            # avanzado en todo un muestreo, está parado, y 0 W sería un dato
-            # que parece bueno y no lo es. Los subdominios sí pueden quedarse
-            # quietos (la gráfica integrada apagada), el paquete no.
+            # A package that is on always draws something: if its counter has
+            # not moved in a whole sample it is stuck, and 0 W would look like
+            # a value. Subdomains can stay still (an integrated GPU off); the
+            # package cannot.
             draft.note("cpu.power", Need.HARDWARE,
                        _("prov.rapl.frozen"), _("prov.rapl.frozen.hint"))
             return
 
         draft.capabilities.add("rapl")
-        if sin_nucleos:
+        if no_cores:
             draft.note("cpu.power.core_w", Need.HARDWARE,
                        _("prov.rapl.onecore"), _("prov.rapl.onecore.hint"))
         if self._limits is None:
@@ -248,18 +240,17 @@ class RaplPower(Provider):
             **self._limits,
         )
 
-    # -- interno ------------------------------------------------------------
+    # -- internals ----------------------------------------------------------
 
     @staticmethod
     def _rounded(value: Optional[float]) -> Optional[float]:
         return None if value is None else round(value, 2)
 
-    def _por_ayudante(self, zona: str) -> Optional[int]:
-        """Los microjulios de una zona cuando el kernel no deja leerlos.
+    def _by_helper(self, zone: str) -> Optional[int]:
+        """A zone's microjoules when the kernel does not let them be read.
 
-        Se piden todas de una vez y se guardan: en un equipo con paquete,
-        núcleos y DRAM son cuatro lecturas por muestreo, y cada una por su
-        cuenta serían cuatro viajes al ayudante por segundo.
+        All are asked at once and kept: with package, cores and DRAM that is
+        four readings per sample, and four trips to the helper a second.
         """
         if not (self.client and self.client.connected()):
             return None
@@ -267,17 +258,17 @@ class RaplPower(Provider):
             try:
                 self._cache = self.client.rapl()
                 self._cache_instant = time.monotonic()
-                self._por_el_ayudante = True
+                self._by_the_helper = True
             except HelperError:
                 return None
-        return self._cache.get(zona)
+        return self._cache.get(zone)
 
     def _read(self, zone: pathlib.Path) -> tuple[Optional[int], str, float]:
         """The zone's microjoules, where they came from and when."""
         microjoules = read_int(str(zone / "energy_uj"))
         if microjoules is not None:
             return microjoules, "sysfs", time.monotonic()
-        microjoules = self._por_ayudante(zone.name)
+        microjoules = self._by_helper(zone.name)
         return microjoules, "helper", self._cache_instant
 
     def _accumulate(self, zone: pathlib.Path, field: str,
