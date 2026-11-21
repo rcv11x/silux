@@ -1997,14 +1997,12 @@ def turbo(clocks: Clocks) -> str:
     return _("board.on") if clocks.turbo_enabled else _("board.off")
 
 
-def base_clock(clocks: Clocks) -> str:
-    """«2.40 GHz × 24.0 · 900 MHz con el TDP configurado ahora»: the base of
-    the specification, and the one the configured TDP gives when it differs."""
-    text = clock_and_multiplier(clocks.base_hz, clocks.base_multiplier)
+def configured_base(clocks: Clocks) -> Optional[str]:
+    """The base the configured TDP gives, when it isn't the specification's."""
     now = clocks.base_configured_hz
     if clocks.base_hz and now and abs(now - clocks.base_hz) >= 50_000_000:
-        text += " · " + _("cpu.base.tdp").format(f=hz(now))
-    return text
+        return hz(now)
+    return None
 
 
 def without_frequency_driver(clocks: Clocks) -> Optional[str]:

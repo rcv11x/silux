@@ -150,14 +150,15 @@ class TestTheBaseClock(unittest.TestCase):
             ventana.select_section("CPU")
             seccion = ventana.stack.currentWidget().findChildren(TypeSection)[0]
             base = seccion.clocks._values[_("cpu.clock.base")].full_text()
-        self.assertTrue(base.startswith(render.hz(2_400_000_000)), base)
-        self.assertIn(_("cpu.base.tdp").format(f=render.hz(900_000_000)), base)
+            tdp = seccion.clocks._values[_("cpu.clock.base.tdp")].full_text()
+            tdp_visible = _("cpu.clock.base.tdp") not in seccion.clocks._ocultas
+        self.assertEqual(base, render.clock_and_multiplier(2_400_000_000, 24.0))
+        self.assertEqual((tdp, tdp_visible), (render.hz(900_000_000), True))
 
     def test_a_single_base_says_one(self):
         from silux.model import Clocks
-        self.assertEqual(render.base_clock(Clocks(base_hz=3_400_000_000, base_configured_hz=3_400_000_000,
-                                                  bus_hz=100_000_000)),
-                         render.clock_and_multiplier(3_400_000_000, 34.0))
+        self.assertIsNone(render.configured_base(Clocks(base_hz=3_400_000_000,
+                                                        base_configured_hz=3_400_000_000)))
 
 
 if __name__ == "__main__":

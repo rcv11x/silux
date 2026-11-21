@@ -86,7 +86,9 @@ def dump(snapshot: Snapshot, style: Style) -> str:
         clocks = cpu_type.clocks
         lines.append(style.bold(style.accent("├─ Relojes")))
         lines.append(_row(style, "Frecuencia", f"{render.hz(clocks.current_hz)}  {render.multiplier(clocks.multiplier)}"))
-        lines.append(_row(style, "Base", render.base_clock(clocks)))
+        lines.append(_row(style, "Base", render.clock_and_multiplier(clocks.base_hz, clocks.base_multiplier)))
+        if configured := render.configured_base(clocks):
+            lines.append(_row(style, _("cpu.clock.base.tdp"), configured))
         lines.append(_row(style, "Mínima", f"{render.hz(clocks.min_hz)}  {render.multiplier(clocks.min_multiplier)}"))
         lines.append(_row(style, "Máxima (kernel)", f"{render.hz(clocks.max_hz)}  {render.multiplier(clocks.max_multiplier)}"))
         lines.append(_row(style, "Máxima (silicio)", f"{render.hz(clocks.max_turbo_hz)}  {render.multiplier(clocks.max_turbo_multiplier)}"))

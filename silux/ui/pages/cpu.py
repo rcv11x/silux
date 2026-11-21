@@ -69,7 +69,8 @@ IDENTITY_FIELDS = (
 )
 
 CLOCK_FIELDS = (
-    "cpu.clock.current", "cpu.clock.multiplier", "cpu.clock.base", "cpu.clock.min",
+    "cpu.clock.current", "cpu.clock.multiplier", "cpu.clock.base", "cpu.clock.base.tdp",
+    "cpu.clock.min",
     "cpu.clock.maxk", "cpu.clock.maxs", "cpu.clock.bus", "cpu.clock.turbo",
     "cpu.clock.driver", "bench.cond.governor", "bench.cond.epp",
 )
@@ -233,12 +234,13 @@ class TypeSection(QWidget):
         c(_("cpu.clock.current"), render.hz(clocks.current_hz))
         c(_("cpu.clock.multiplier"), render.multiplier(clocks.multiplier))
         self._base_hz = clocks.base_hz
-        self._base_texto = render.base_clock(clocks)
+        self._base_texto = render.clock_and_multiplier(clocks.base_hz, clocks.base_multiplier)
         if self._base_hz is not None or not self.clocks.is_locked(_("cpu.clock.base")):
-            c(_("cpu.clock.base"), self._base_texto,
-              tooltip=_("cpu.tip.base.tdp") if clocks.base_configured_hz
-              and self._base_texto != render.clock_and_multiplier(
-                  clocks.base_hz, clocks.base_multiplier) else None)
+            c(_("cpu.clock.base"), self._base_texto)
+        configured = render.configured_base(clocks)
+        self.clocks.set_visible(_("cpu.clock.base.tdp"), configured is not None)
+        if configured:
+            c(_("cpu.clock.base.tdp"), configured, tooltip=_("cpu.tip.base.tdp"))
         c(_("cpu.clock.min"), render.clock_and_multiplier(
             clocks.min_hz, clocks.min_multiplier))
         c(_("cpu.clock.maxkernel"), render.clock_and_multiplier(

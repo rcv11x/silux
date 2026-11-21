@@ -198,7 +198,14 @@ class TestWithPermissions(unittest.TestCase):
         self.assertNotEqual(photo.cpu.types[0].clocks.current_from, "msr")
 
 
+def _only_when_it_differs() -> str:
+    return _("cpu.clock.base.tdp")
+
+
 class TestTheCpuPage(unittest.TestCase):
+    """The rows a machine lacks hide and the foot names them. The configured
+    TDP's base is apart: it shows only when it isn't the specification's, and
+    hidden it isn't missing."""
 
     @classmethod
     def setUpClass(cls):
@@ -221,10 +228,11 @@ class TestTheCpuPage(unittest.TestCase):
         self.assertEqual(values[_("cpu.clock.current")],
                          render.hz(photo.cpu.types[0].clocks.current_hz))
         # No turbo: its row and the silicon ceiling go too, said at the foot.
-        self.assertEqual(hidden, {_(k) for k in ("cpu.clock.min", "cpu.clock.maxkernel",
-                                                  "cpu.clock.driver", "cpu.clock.governor",
-                                                  "cpu.clock.epp", "cpu.clock.turbo",
-                                                  "cpu.clock.maxsilicon")})
+        self.assertEqual(hidden - {_only_when_it_differs()},
+                         {_(k) for k in ("cpu.clock.min", "cpu.clock.maxkernel",
+                                         "cpu.clock.driver", "cpu.clock.governor",
+                                         "cpu.clock.epp", "cpu.clock.turbo",
+                                         "cpu.clock.maxsilicon")})
         self.assertEqual((foot, shown), (_("cpu.clocks.nodriver.cpuinfo") + " "
                                          + _("cpu.clocks.noturbo"), True))
 
@@ -242,7 +250,7 @@ class TestTheCpuPage(unittest.TestCase):
         with volcado.montado(EQUIPOS / "5800x3d"):
             photo = _photo()
         _values, hidden, _foot, shown = self._clocks(photo)
-        self.assertEqual((hidden, shown), (set(), False))
+        self.assertEqual((hidden, shown), ({_only_when_it_differs()}, False))
 
 
 if __name__ == "__main__":
