@@ -1,20 +1,16 @@
-"""Cuántas unidades de ejecución tiene de verdad una gráfica Intel.
+"""How many execution units an Intel GPU really has.
 
-El número no está en sysfs por ningún lado. Lo único que contestaba era
-OpenCL, y contesta otra cosa: sus «unidades de cómputo» son los subslices, que
-en Xe-LP agrupan dieciséis EU cada uno. Por eso una Iris Xe G7 de 80 EU salía
-con un 5 en la ficha, etiquetado como EU, sin que el número fuera falso ni la
-etiqueta cierta.
+The number is nowhere in sysfs. Only OpenCL answered, and it answers
+something else: its «compute units» are subslices, of sixteen EU each on
+Xe-LP, so an 80 EU Iris Xe G7 showed a 5 labelled EU.
 
-Quien sabe el dato es el driver, y lo da por `DRM_IOCTL_I915_GETPARAM` con
-`I915_PARAM_EU_TOTAL`, que es de donde lo sacan Mesa e `intel_gpu_top`.
+The driver knows, through `DRM_IOCTL_I915_GETPARAM` with
+`I915_PARAM_EU_TOTAL`, where Mesa and `intel_gpu_top` take it from. The
+render node is opened, readable by anyone as in `amdgpu.py`, and only read.
+The chip id is a check: if it differs from sysfs's, this is another card and
+the answer is dropped.
 
-Se abre el nodo de render, legible por cualquiera igual que en `amdgpu.py`, y
-solo se lee. El identificador del chip sirve de comprobación: si no coincide
-con el que dice sysfs, es que se está hablando con otra tarjeta y se descarta.
-
-Esto es solo para `i915`. El driver `xe` de las generaciones nuevas tiene su
-propia interfaz y no atiende a estos números.
+Only for `i915`: the newer `xe` driver has its own interface.
 """
 
 from __future__ import annotations
@@ -32,7 +28,7 @@ from . import sysroot
 DRM_COMMAND_BASE = 0x40
 DRM_I915_GETPARAM = 0x06
 
-# De <drm/i915_drm.h>. Son ABI: los números no se reutilizan nunca.
+# From <drm/i915_drm.h>. They are ABI: the numbers are never reused.
 I915_PARAM_CHIPSET_ID = 4
 I915_PARAM_SUBSLICE_TOTAL = 33
 I915_PARAM_EU_TOTAL = 34
@@ -40,19 +36,19 @@ I915_PARAM_EU_TOTAL = 34
 
 @dataclass(frozen=True)
 class DeviceInfo:
-    """None en cada campo que el driver no haya querido contestar."""
+    """None in each field the driver did not answer."""
 
     chipset_id: Optional[int] = None
     eu_total: Optional[int] = None
     subslices: Optional[int] = None
 
 
-class _Peticion(ctypes.Structure):
-    """`struct drm_i915_getparam`: qué se pregunta y dónde dejar la respuesta.
+class _Request(ctypes.Structure):
+    """`struct drm_i915_getparam`: what is asked and where to put the answer.
 
-    El puntero va alineado a ocho, así que entre los dos campos hay cuatro
-    bytes de relleno que ctypes pone solo. El tamaño tiene que salir 16 o el
-    ioctl no es el que el kernel espera.
+    The pointer is aligned to eight, so ctypes pads four bytes between the
+    two fields. The size must come out 16, or the ioctl is not the one the
+    kernel expects.
     """
 
     _fields_ = [("param", ctypes.c_int32),
@@ -60,57 +56,57 @@ class _Peticion(ctypes.Structure):
 
 
 def query(node: str, expected_device_id: Optional[int] = None) -> Optional[DeviceInfo]:
-    """Pregunta al driver. Devuelve None ante cualquier duda, sin quejarse."""
+    """Ask the driver. None at any doubt, without complaining."""
     try:
         descriptor = os.open(node, os.O_RDWR | os.O_CLOEXEC)
     except OSError:
         return None
 
     try:
-        chipset = _parametro(descriptor, I915_PARAM_CHIPSET_ID)
-        # Si el chip no es el que dice sysfs, este nodo es de otra tarjeta y
-        # todo lo que conteste estaría atribuido a quien no es.
+        chipset = _param(descriptor, I915_PARAM_CHIPSET_ID)
+        # If the chip is not the one sysfs says, this node is another card's
+        # and all it answered would be credited to the wrong one.
         if expected_device_id is not None and chipset != expected_device_id:
             return None
         return DeviceInfo(
             chipset_id=chipset,
-            eu_total=_parametro(descriptor, I915_PARAM_EU_TOTAL),
-            subslices=_parametro(descriptor, I915_PARAM_SUBSLICE_TOTAL),
+            eu_total=_param(descriptor, I915_PARAM_EU_TOTAL),
+            subslices=_param(descriptor, I915_PARAM_SUBSLICE_TOTAL),
         )
     finally:
         os.close(descriptor)
 
 
 def render_node(device: pathlib.Path | str) -> Optional[str]:
-    """El `/dev/dri/renderD*` de una tarjeta, a partir de su nodo PCI."""
-    directorio = pathlib.Path(sysroot.path(device), "drm")
-    if not directorio.is_dir():
+    """A card's `/dev/dri/renderD*`, from its PCI node."""
+    folder = pathlib.Path(sysroot.path(device), "drm")
+    if not folder.is_dir():
         return None
-    for entrada in sorted(directorio.glob("renderD*")):
-        camino = f"/dev/dri/{entrada.name}"
-        if sysroot.active() or os.path.exists(camino):
-            return camino
+    for entry in sorted(folder.glob("renderD*")):
+        path = f"/dev/dri/{entry.name}"
+        if sysroot.active() or os.path.exists(path):
+            return path
     return None
 
 
-def _parametro(descriptor: int, cual: int) -> Optional[int]:
-    """Un `GETPARAM` suelto. Los que no existan contestan con un error."""
-    valor = ctypes.c_int32(0)
-    peticion = _Peticion(cual, ctypes.pointer(valor))
+def _param(descriptor: int, which: int) -> Optional[int]:
+    """A single `GETPARAM`. Those that do not exist answer with an error."""
+    value = ctypes.c_int32(0)
+    request = _Request(which, ctypes.pointer(value))
     try:
-        if fcntl.ioctl(descriptor, _ORDEN, peticion) != 0:
+        if fcntl.ioctl(descriptor, _ORDER, request) != 0:
             return None
     except (OSError, ValueError):
         return None
-    # Cero no es una respuesta: ninguna gráfica tiene cero unidades. El driver
-    # lo devuelve así cuando conoce el parámetro pero no tiene qué contestar.
-    return valor.value or None
+    # Zero is no answer: no GPU has zero units. The driver returns it when it
+    # knows the parameter but has nothing to say.
+    return value.value or None
 
 
-def _iowr(letra: str, numero: int, tamano: int) -> int:
-    """El mismo `_IOWR` de <asm/ioctl.h>, que Python no trae hecho."""
-    LECTURA_Y_ESCRITURA = 3
-    return (LECTURA_Y_ESCRITURA << 30) | (tamano << 16) | (ord(letra) << 8) | numero
+def _iowr(letter: str, number: int, size: int) -> int:
+    """The same `_IOWR` as <asm/ioctl.h>, which Python does not provide."""
+    READ_WRITE = 3
+    return (READ_WRITE << 30) | (size << 16) | (ord(letter) << 8) | number
 
 
-_ORDEN = _iowr("d", DRM_COMMAND_BASE + DRM_I915_GETPARAM, ctypes.sizeof(_Peticion))
+_ORDER = _iowr("d", DRM_COMMAND_BASE + DRM_I915_GETPARAM, ctypes.sizeof(_Request))

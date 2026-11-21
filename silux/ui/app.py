@@ -1534,7 +1534,7 @@ def build_parser():
                             ("--letra", "--font-scale"), ("--tamano", "--size"),
                             ("--anonimo", "--anonymous"), ("--captura", "--screenshot"),
                             ("--muestras", "--samples"), ("--pagina", "--page")):
-        parser.alias(espanol, de=ingles)
+        parser.alias(espanol, of=ingles)
     return parser
 
 

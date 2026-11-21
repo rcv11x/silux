@@ -20,7 +20,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 from ... import render
-from ...features import para_arquitectura
+from ...features import for_architecture
 from ...i18n import _
 from ...model import CpuType, Need, Snapshot
 from ...settings import Preferences
@@ -312,7 +312,7 @@ class TypeSection(QWidget):
             )
 
     def _apply_features(self, cpu_type: CpuType) -> None:
-        destacadas, bonitos = para_arquitectura(cpu_type.architecture)
+        destacadas, bonitos = for_architecture(cpu_type.architecture)
         present = set(cpu_type.features)
         if self._prefs.show_all_features:
             shown = [bonitos.get(f, f.upper()) for f in cpu_type.features]

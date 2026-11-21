@@ -1,13 +1,13 @@
-"""La ayuda de la línea de órdenes, en el idioma de la interfaz.
+"""The command line's help, in the interface's language.
 
-Lo comparten el volcado en terminal (`cli.py`) y la ventana (`ui/app.py`):
-las opciones van en inglés, cada una con su alias en español que no sale en
-la ayuda (`--informe` es `--report`), y todo lo que dice `--help` sale de
-`db/lang`, también lo que argparse escribe en inglés por su cuenta: «usage»,
+Shared by the terminal output (`cli.py`) and the window (`ui/app.py`):
+options are in English, each with a Spanish alias that the help does not
+show (`--informe` is `--report`), and everything `--help` says comes from
+`db/lang`, also what argparse writes in English on its own: «usage»,
 «options», «show this help message and exit».
 
-No importa Qt: la ayuda de la terminal tiene que salir aunque no haya
-pantalla, ni PySide6, ni un procesador en el que arranque Qt.
+It does not import Qt: the terminal help must work without a screen,
+PySide6 or a processor Qt starts on.
 """
 
 from __future__ import annotations
@@ -19,93 +19,93 @@ import sys
 from .i18n import _
 
 
-class _Formato(argparse.RawDescriptionHelpFormatter):
-    """El de argparse, con «uso:» traducido y el epílogo tal y como se
-    escribe (con sus saltos de línea y su sangría)."""
+class _Format(argparse.RawDescriptionHelpFormatter):
+    """argparse's, with «usage:» translated and the epilog as written (with
+    its line breaks and indentation)."""
 
     def add_usage(self, usage, actions, groups, prefix=None):  # noqa: D401
         return super().add_usage(usage, actions, groups, prefix=_("cli.usage"))
 
 
 class Parser(argparse.ArgumentParser):
-    """Un `ArgumentParser` que habla el idioma de la interfaz.
+    """An `ArgumentParser` that speaks the interface's language.
 
-    `alias` añade la versión en español de una opción sin enseñarla en la
-    ayuda: comparte destino con la inglesa.
+    `alias` adds an option's Spanish version without showing it in the help:
+    it shares the English one's destination.
     """
 
     def __init__(self, prog: str, description: str, epilog: str = "") -> None:
         super().__init__(prog=prog, description=description, epilog=epilog or None,
-                         formatter_class=_Formato, add_help=False)
+                         formatter_class=_Format, add_help=False)
         self._optionals.title = _("cli.options")
         self.add_argument("-h", "--help", action="help", help=_("cli.help"))
         self.add_argument("--ayuda", action="help", help=argparse.SUPPRESS)
 
-    def alias(self, espanol: str, *, de: str) -> None:
-        """`espanol` hace lo mismo que la opción `de`, sin salir en la ayuda."""
-        original = next(a for a in self._actions if de in a.option_strings)
-        argumentos = dict(dest=original.dest, help=argparse.SUPPRESS)
+    def alias(self, spanish: str, *, of: str) -> None:
+        """`spanish` does the same as the option `of`, without showing in the help."""
+        original = next(a for a in self._actions if of in a.option_strings)
+        arguments = dict(dest=original.dest, help=argparse.SUPPRESS)
         if isinstance(original, argparse._StoreTrueAction):
-            argumentos["action"] = "store_true"
+            arguments["action"] = "store_true"
         elif isinstance(original, argparse._VersionAction):
-            argumentos.update(action="version", version=original.version)
-            argumentos.pop("dest")
+            arguments.update(action="version", version=original.version)
+            arguments.pop("dest")
         else:
-            argumentos.update(nargs=original.nargs, const=original.const,
+            arguments.update(nargs=original.nargs, const=original.const,
                               type=original.type, metavar=original.metavar,
                               choices=original.choices)
-        self.add_argument(espanol, **argumentos)
+        self.add_argument(spanish, **arguments)
 
     def error(self, message: str):  # noqa: D401
-        """El error de argparse, con el prefijo en el idioma de la interfaz.
-        El mensaje en sí lo escribe argparse y se deja como viene."""
+        """argparse's error, with its prefix in the interface's language. The
+        message itself is argparse's and stays as it comes."""
         self.print_usage(sys.stderr)
         self.exit(2, f"{self.prog}: {_('cli.error')}: {message}\n")
 
 
 def how_to_call() -> tuple[str, str]:
-    """Cómo se llama a la ventana y a la terminal desde donde se esté.
+    """How the window and the terminal are called from wherever it runs.
 
-    Desde el AppImage, el archivo que se descargó y `--cli`; instalado con
-    pip, las dos órdenes del paquete; desde el código, los dos módulos. Es lo
-    que la ayuda pone en sus ejemplos, para que se puedan copiar tal cual.
+    From the AppImage, the downloaded file and `--cli`; installed with pip,
+    the package's two commands; from the code, the two modules. It is what
+    the help puts in its examples, so they can be copied as they are.
     """
     appimage = os.environ.get("APPIMAGE")
     if appimage:
-        archivo = "./" + os.path.basename(appimage)
-        return archivo, archivo
-    programa = os.path.basename(sys.argv[0] if sys.argv else "")
-    if programa in ("silux", "silux-gui"):
+        file_name = "./" + os.path.basename(appimage)
+        return file_name, file_name
+    program = os.path.basename(sys.argv[0] if sys.argv else "")
+    if program in ("silux", "silux-gui"):
         return "silux-gui", "silux"
     return "python3 -m silux.ui.app", "python3 -m silux.cli"
 
 
-def _ejemplos(filas: list[tuple[str, str]]) -> str:
-    """Órdenes y lo que hacen, en dos columnas, sea cual sea el largo de la
-    orden: desde el código se llama `python3 -m silux.cli` y desde el
-    AppImage `./silux-x86_64.AppImage`."""
-    ancho = max(len(orden) for orden, _texto in filas) + 3
-    return "\n".join(f"  {orden.ljust(ancho)}{texto}" for orden, texto in filas)
+def _examples(rows: list[tuple[str, str]]) -> str:
+    """Commands and what they do, in two columns whatever the command's length:
+    from the code it is `python3 -m silux.cli`, from the AppImage
+    `./silux-x86_64.AppImage`."""
+    width = max(len(order) for order, _text in rows) + 3
+    return "\n".join(f"  {order.ljust(width)}{text}" for order, text in rows)
 
 
 def epilog_for_terminal() -> str:
-    """Lo que la ayuda de la ventana cuenta de la terminal y del informe."""
-    _ventana, cli = how_to_call()
-    ayuda = f"{cli} --cli --help" if os.environ.get("APPIMAGE") else f"{cli} --help"
-    filas = [(f"{cli} --report {_('cli.example.reportfile')}", _("cli.example.report")),
+    """What the window's help says of the terminal and the report."""
+    _window, cli = how_to_call()
+    help_text = f"{cli} --cli --help" if os.environ.get("APPIMAGE") else f"{cli} --help"
+    rows = [(f"{cli} --report {_('cli.example.reportfile')}", _("cli.example.report")),
              (f"{cli} --json", _("cli.example.json")),
              (f"{cli} --sensors --watch", _("cli.example.sensors")),
-             (ayuda, _("gui.example.clihelp"))]
-    return "\n\n".join([_("gui.epilog.title") + "\n" + _ejemplos(filas),
+             (help_text, _("gui.example.clihelp"))]
+    return "\n\n".join([_("gui.epilog.title") + "\n" + _examples(rows),
                          _("gui.epilog.report")])
 
 
 def epilog_for_cli() -> str:
-    """Los ejemplos de la ayuda de la terminal."""
-    _ventana, cli = how_to_call()
-    filas = [(cli, _("cli.example.all")),
+    """The examples of the terminal's help."""
+    _window, cli = how_to_call()
+    rows = [(cli, _("cli.example.all")),
              (f"{cli} --report {_('cli.example.reportfile')}", _("cli.example.report")),
              (f"{cli} --sensors --watch", _("cli.example.sensors")),
              (f"{cli} --json", _("cli.example.json"))]
-    return "\n\n".join([_("cli.epilog.title") + "\n" + _ejemplos(filas),
+    return "\n\n".join([_("cli.epilog.title") + "\n" + _examples(rows),
                          _("cli.epilog.report")])

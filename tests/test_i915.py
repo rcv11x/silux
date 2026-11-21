@@ -18,12 +18,12 @@ from silux import i915
 class TestLaPeticion(unittest.TestCase):
     def test_mide_lo_que_el_kernel_espera(self):
         """Un s32, cuatro bytes de relleno y un puntero de ocho."""
-        self.assertEqual(ctypes.sizeof(i915._Peticion), 16)
+        self.assertEqual(ctypes.sizeof(i915._Request), 16)
 
     def test_el_numero_de_orden_es_el_de_i915_getparam(self):
         # DRM_IOWR('d', 0x46, 16): lectura y escritura, tamaño 16, letra 'd'.
         esperado = (3 << 30) | (16 << 16) | (ord("d") << 8) | 0x46
-        self.assertEqual(i915._ORDEN, esperado)
+        self.assertEqual(i915._ORDER, esperado)
 
 
 class TestQuery(unittest.TestCase):

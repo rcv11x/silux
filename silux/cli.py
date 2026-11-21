@@ -368,7 +368,7 @@ def build_parser() -> argparse.ArgumentParser:
                             ("--base-de-datos", "--db-info"), ("--corto", "--short"),
                             ("--secciones", "--sections"),
                             ("--sin-permisos", "--without-permissions")):
-        parser.alias(espanol, de=ingles)
+        parser.alias(espanol, of=ingles)
     return parser
 
 

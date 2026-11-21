@@ -367,9 +367,9 @@ def core_type_label(cpu_type: CpuType, hybrid: bool, traducir=None) -> str:
 
 
 def instructions(cpu_type: CpuType, limit: int | None = None) -> str:
-    from .features import para_arquitectura
+    from .features import for_architecture
 
-    destacadas, bonitos = para_arquitectura(cpu_type.architecture)
+    destacadas, bonitos = for_architecture(cpu_type.architecture)
     present = set(cpu_type.features)
     shown = [bonitos.get(f, f.upper()) for f in destacadas if f in present]
     if cpu_type.smt:
