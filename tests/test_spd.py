@@ -266,12 +266,12 @@ LPDDR_DEL_FIRMWARE = {"LPDDR4X-4266": 4266, "LPDDR5-5500": 5500, "LPDDR5-6400": 
 class TestLosGradosDeTodasLasGeneraciones(unittest.TestCase):
 
     def test_ddr_y_ddr2_por_su_tck(self):
-        from silux.spd import grado_jedec
+        from silux.spd import jedec_grade
 
         for generacion, grados in GRADOS_FUERA_DE_LA_REJILLA.items():
             for nombre, tck in grados.items():
                 with self.subTest(generacion=generacion, grado=nombre):
-                    self.assertEqual(grado_jedec(2_000_000 / tck), nombre)
+                    self.assertEqual(jedec_grade(2_000_000 / tck), nombre)
 
     def test_lpddr_como_la_da_el_firmware(self):
         from silux import render
@@ -305,12 +305,12 @@ class TestElGradoDeCadaVelocidad(unittest.TestCase):
     """
 
     def test_todos_los_grados_salen_con_su_nombre(self):
-        from silux.spd import grado_jedec
+        from silux.spd import jedec_grade
 
         for generacion, grados in GRADOS.items():
             for nombre, tck in grados.items():
                 with self.subTest(generacion=generacion, grado=nombre):
-                    self.assertEqual(grado_jedec(2_000_000 / tck), nombre)
+                    self.assertEqual(jedec_grade(2_000_000 / tck), nombre)
 
     def test_la_formula_de_antes_fallaba_en_once(self):
         """Para que el test valga: se ejecuta la de antes y se cuenta.
@@ -325,19 +325,19 @@ class TestElGradoDeCadaVelocidad(unittest.TestCase):
 
     def test_una_velocidad_que_no_se_parece_a_nada_se_deja_como_está(self):
         """Un SPD ilegible no tiene por qué salir con un número bonito."""
-        from silux.spd import grado_jedec
+        from silux.spd import jedec_grade
 
-        self.assertEqual(grado_jedec(50), 50,
+        self.assertEqual(jedec_grade(50), 50,
                          "50 MT/s no es un grado, y decir que son 66 sería "
                          "maquillar un dato roto")
 
     def test_por_debajo_de_la_rejilla_no_hay_grado_que_dar(self):
         """Cero es lo que el resto del módulo entiende como «no hay dato»."""
-        from silux.spd import grado_jedec
+        from silux.spd import jedec_grade
 
         for absurdo in (0, 7, -1):
             with self.subTest(mts=absurdo):
-                self.assertEqual(grado_jedec(absurdo), 0)
+                self.assertEqual(jedec_grade(absurdo), 0)
 
     def test_la_cuenta_va_en_enteros(self):
         """Con flotantes, 12 × 266,666… puede dar 3199,9999 y truncar a 3199.
@@ -345,7 +345,7 @@ class TestElGradoDeCadaVelocidad(unittest.TestCase):
         Se comprueba en toda la rejilla y no en un caso suelto: es el tipo de
         fallo que aparece en un múltiplo cualquiera y no en el que se probó.
         """
-        from silux.spd import grado_jedec
+        from silux.spd import jedec_grade
 
         # Dos casillas que JEDEC nombra redondeando y no truncando: 666,67 es
         # DDR2-667 y 7466,67, LPDDR5X-7467 (TestLosGradosDeTodasLasGeneraciones).
@@ -353,7 +353,7 @@ class TestElGradoDeCadaVelocidad(unittest.TestCase):
         for n in range(3, 120):
             exacto = n * 200 / 3
             with self.subTest(n=n):
-                self.assertEqual(grado_jedec(exacto), redondeadas.get(n, n * 200 // 3))
+                self.assertEqual(jedec_grade(exacto), redondeadas.get(n, n * 200 // 3))
 
 
 class TestLaFormulaNoSeCopiaEnVariosSitios(unittest.TestCase):
@@ -366,12 +366,12 @@ class TestLaFormulaNoSeCopiaEnVariosSitios(unittest.TestCase):
         import re as _re
 
         fuente = _p.Path("silux/spd.py").read_text(encoding="utf-8")
-        # Fuera de `grado_jedec`, nadie puede redondear una velocidad.
-        cuerpo = fuente.split("def grado_jedec")[1].split("\ndef ", 1)[1]
+        # Fuera de `jedec_grade`, nadie puede redondear una velocidad.
+        cuerpo = fuente.split("def jedec_grade")[1].split("\ndef ", 1)[1]
         sospechosas = _re.findall(r"2_000_000\s*/\s*\w+\s*/\s*100", cuerpo)
         self.assertEqual(sospechosas, [],
                          "hay quien vuelve a redondear a la centena en vez de "
-                         "pasar por grado_jedec")
+                         "pasar por jedec_grade")
 
 
 
@@ -389,17 +389,17 @@ class TestLasLatenciasDeDdr4SeRedondeanComoJedec(unittest.TestCase):
     """
 
     def test_lo_que_no_cae_en_un_ciclo_entero_sube(self):
-        self.assertEqual(spd._ciclos_jedec(13_875, 625), 23)
+        self.assertEqual(spd._jedec_cycles(13_875, 625), 23)
 
     def test_lo_que_cae_en_un_ciclo_entero_se_queda(self):
-        self.assertEqual(spd._ciclos_jedec(13_750, 625), 22)
+        self.assertEqual(spd._jedec_cycles(13_750, 625), 22)
 
     def test_el_ciclo_truncado_no_hace_subir_de_mas(self):
-        self.assertEqual(spd._ciclos_jedec(14_166, 833), 17)
-        self.assertEqual(spd._ciclos_jedec(13_320, 833), 16)
+        self.assertEqual(spd._jedec_cycles(14_166, 833), 17)
+        self.assertEqual(spd._jedec_cycles(13_320, 833), 16)
 
     def test_sin_ciclo_no_hay_latencia(self):
-        self.assertIsNone(spd._ciclos_jedec(13_875, 0))
+        self.assertIsNone(spd._jedec_cycles(13_875, 0))
 
     def test_la_lectura_de_ddr4_lo_usa(self):
         """Por el camino de verdad: un SPD con tAA de 111 × 125 ps."""
@@ -650,26 +650,26 @@ class TestDiagnosticoDelBus(unittest.TestCase):
     def _con(self, controlador: bool, bus: bool):
         # With the bus, one chip registered without its driver nor a name.
         chips = [pathlib.Path("/nonexistent/8-0050")] if bus else []
-        return (mock.patch.object(spd, "_hay_controlador_smbus", lambda: controlador),
+        return (mock.patch.object(spd, "_has_smbus_controller", lambda: controlador),
                 mock.patch.multiple(spd, memory_buses=lambda: ["8"] if bus else [],
                                     spd_chips=lambda buses=None: chips,
                                     has_driver=lambda chip: False))
 
     def test_sin_controlador_no_hay_nada_que_hacer(self):
         with self._con(False, False)[0], self._con(False, False)[1]:
-            motivo, solucion = spd.diagnostico()
+            motivo, solucion = spd.diagnosis()
         self.assertIn("no expone", motivo)
         self.assertIn("No hay forma", solucion)
 
     def test_con_controlador_pero_sin_bus_lo_reserva_el_firmware(self):
         with self._con(True, False)[0], self._con(True, False)[1]:
-            motivo, solucion = spd.diagnostico()
+            motivo, solucion = spd.diagnosis()
         self.assertIn("firmware", motivo)
         self.assertIn("acpi_enforce_resources=lax", solucion)
 
     def test_con_bus_solo_falta_el_modulo(self):
         with self._con(True, True)[0], self._con(True, True)[1]:
-            motivo, solucion = spd.diagnostico()
+            motivo, solucion = spd.diagnosis()
         self.assertIn("driver", motivo)
         self.assertIn("ee1004", solucion)
         self.assertIn("spd5118", solucion)

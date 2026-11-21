@@ -69,8 +69,8 @@ class Timings:
 
     @property
     def summary(self) -> str:
-        partes = [str(v) for v in (self.cl, self.trcd, self.trp, self.tras) if v]
-        return "-".join(partes) if partes else "—"
+        parts = [str(v) for v in (self.cl, self.trcd, self.trp, self.tras) if v]
+        return "-".join(parts) if parts else "—"
 
     @property
     def plausible(self) -> bool:
@@ -127,9 +127,9 @@ class SpdInfo:
     @property
     def rated_mts(self) -> Optional[int]:
         """La velocidad más alta que el módulo declara saber dar."""
-        candidatos = [t.speed_mts for t in (self.jedec, *self.profiles) if t]
-        candidatos += list(self.xmp_speeds_mts)
-        return max(candidatos) if candidatos else None
+        candidates = [t.speed_mts for t in (self.jedec, *self.profiles) if t]
+        candidates += list(self.xmp_speeds_mts)
+        return max(candidates) if candidates else None
 
 
 # El paso de la rejilla de velocidades de memoria, en MT/s: 200/3, o sea
@@ -137,7 +137,7 @@ class SpdInfo:
 # generaciones: DDR3-1066 son 1066,67; DDR4-2666, 2666,67; DDR5-6400, 6400
 # exactos. Los perfiles XMP tampoco se salen —3600, 3733,33, 4133,33, 6600—
 # porque el reloj de referencia va en tercios.
-PASO_JEDEC = (200, 3)
+JEDEC_STEP = (200, 3)
 
 
 # Las velocidades con nombre de cada generación, como las nombra JEDEC. La
@@ -147,7 +147,7 @@ PASO_JEDEC = (200, 3)
 # (DDR2), JESD79-3F (DDR3), JESD79-4D (DDR4), JESD79-5C (DDR5), JESD209-3C
 # (LPDDR3), JESD209-4D (LPDDR4/4X), JESD209-5C (LPDDR5/5X); 7467 es el grado
 # de LPDDR5X que usan Intel y Micron.
-VELOCIDADES_JEDEC = (
+JEDEC_SPEEDS = (
     200, 266, 333, 400,                                   # DDR
     533, 667, 800, 1066,                                  # DDR2
     1333, 1600, 1866, 2133,                               # DDR3, LPDDR3
@@ -162,10 +162,10 @@ VELOCIDADES_JEDEC = (
 # tCK del SPD va cuantizado a un picosegundo (un 0,1 % a 8800 MT/s), y el
 # firmware redondea los tercios a un lado o al otro (2666 o 2667). Con un
 # 0,5 % la casilla 7533 de la rejilla, que no es un grado, caía en 7500.
-TOLERANCIA_JEDEC = 0.003
+JEDEC_TOLERANCE = 0.003
 
 
-def grado_jedec(mts: float) -> int:
+def jedec_grade(mts: float) -> int:
     """El nombre del grado al que corresponde una velocidad calculada.
 
     Hace falta porque el tCK del SPD viene cuantizado a un picosegundo y la
@@ -190,26 +190,26 @@ def grado_jedec(mts: float) -> int:
     entiende como «no hay dato».
     """
     if mts > 0:
-        cercana = min(VELOCIDADES_JEDEC, key=lambda v: abs(v - mts))
-        if abs(cercana - mts) <= mts * TOLERANCIA_JEDEC:
-            return cercana
+        nearest = min(JEDEC_SPEEDS, key=lambda v: abs(v - mts))
+        if abs(nearest - mts) <= mts * JEDEC_TOLERANCE:
+            return nearest
     # Lo que no es un grado de JEDEC (un perfil XMP: 3600, 3733, 4133) sigue
     # en la rejilla, porque el reloj de referencia va en tercios igual.
-    paso, divisor = PASO_JEDEC
-    n = round(mts * divisor / paso)
+    step, divisor = JEDEC_STEP
+    n = round(mts * divisor / step)
     if n <= 0:
         return 0
-    grado = n * paso // divisor
-    if abs(grado - mts) > mts * 0.02:
+    grade = n * step // divisor
+    if abs(grade - mts) > mts * 0.02:
         return round(mts)
-    return grado
+    return grade
 
 
 # Densidad de cada chip, en gigabits. El índice es el valor del SPD, y cada
 # generación numera los suyos.
-DDR5_DENSIDADES = {1: 4, 2: 8, 3: 12, 4: 16, 5: 24, 6: 32, 7: 48, 8: 64}
-DDR5_ANCHOS = {0: 4, 1: 8, 2: 16, 3: 32}
-DDR4_DENSIDADES = {2: 1, 3: 2, 4: 4, 5: 8, 6: 16, 7: 32}
+DDR5_DENSITIES = {1: 4, 2: 8, 3: 12, 4: 16, 5: 24, 6: 32, 7: 48, 8: 64}
+DDR5_WIDTHS = {0: 4, 1: 8, 2: 16, 3: 32}
+DDR4_DENSITIES = {2: 1, 3: 2, 4: 4, 5: 8, 6: 16, 7: 32}
 
 
 # --------------------------------------------------------------------------
@@ -239,7 +239,7 @@ class _Ddr4:
     XMP_REVISION = 387
 
 
-def _ciclos_jedec(picosegundos: float, tck_ps: float) -> Optional[int]:
+def _jedec_cycles(picoseconds: float, tck_ps: float) -> Optional[int]:
     """Un tiempo pasado a ciclos de reloj, con el redondeo de JEDEC.
 
     Hacia arriba, porque la memoria no puede responder antes de tiempo: 22,2
@@ -249,9 +249,9 @@ def _ciclos_jedec(picosegundos: float, tck_ps: float) -> Optional[int]:
     tiempo de justo 17 ciclos sale 17,006, que con el techo a secas subiría a
     18. En enteros, para que no dependa de cómo caiga un flotante.
     """
-    if not (tck_ps and picosegundos):
+    if not (tck_ps and picoseconds):
         return None
-    return (int(picosegundos) * 1000 // int(tck_ps) + 974) // 1000 or None
+    return (int(picoseconds) * 1000 // int(tck_ps) + 974) // 1000 or None
 
 
 def _ddr4_timing(spd: bytes, medium: int, fine: int, tck_ps: float) -> Optional[int]:
@@ -264,16 +264,16 @@ def _ddr4_timing(spd: bytes, medium: int, fine: int, tck_ps: float) -> Optional[
     if not tck_ps:
         return None
     picoseconds = spd[medium] * 125 + _signed(spd[fine])
-    return _ciclos_jedec(picoseconds, tck_ps)
+    return _jedec_cycles(picoseconds, tck_ps)
 
 
 def _decode_ddr4(spd: bytes, address: str, slot: int) -> SpdInfo:
     d = _Ddr4
     tck_ps = spd[d.TCK_MIN] * 125 + _signed(spd[d.FINE_TCK_MIN])
     # DDR4 transfiere dos veces por ciclo: de ahí el 2 000 000.
-    speed = grado_jedec(2_000_000 / tck_ps) if tck_ps else 0
+    speed = jedec_grade(2_000_000 / tck_ps) if tck_ps else 0
 
-    tras = (((spd[d.TRAS_TRC_UPPER] & 0x0F) << 8) | spd[d.TRAS_LSB]) * 125
+    after = (((spd[d.TRAS_TRC_UPPER] & 0x0F) << 8) | spd[d.TRAS_LSB]) * 125
     trc = ((((spd[d.TRAS_TRC_UPPER] & 0xF0) >> 4) << 8) | spd[d.TRC_LSB]) * 125
     trc += _signed(spd[d.FINE_TRC])
 
@@ -283,16 +283,16 @@ def _decode_ddr4(spd: bytes, address: str, slot: int) -> SpdInfo:
         cl=_ddr4_timing(spd, d.TAA, d.FINE_TAA, tck_ps),
         trcd=_ddr4_timing(spd, d.TRCD, d.FINE_TRCD, tck_ps),
         trp=_ddr4_timing(spd, d.TRP, d.FINE_TRP, tck_ps),
-        tras=_ciclos_jedec(tras, tck_ps),
-        trc=_ciclos_jedec(trc, tck_ps),
+        tras=_jedec_cycles(after, tck_ps),
+        trc=_jedec_cycles(trc, tck_ps),
         voltage_v=1.2,
     )
 
     organization = spd[d.ORGANIZATION]
     bus = spd[d.BUS_WIDTH]
     ranks = ((organization >> 3) & 0x07) + 1
-    ancho_chip = 4 << (organization & 0x07)
-    ancho_bus = 8 << (bus & 0x07)
+    chip_width = 4 << (organization & 0x07)
+    bus_width = 8 << (bus & 0x07)
 
     return SpdInfo(
         address=address,
@@ -304,11 +304,11 @@ def _decode_ddr4(spd: bytes, address: str, slot: int) -> SpdInfo:
         part_number=_text(spd[d.PART_NUMBER]),
         **_date(spd[d.DATE_YEAR], spd[d.DATE_WEEK]),
         ranks=ranks,
-        device_width=ancho_chip,
-        bus_width=ancho_bus,
+        device_width=chip_width,
+        bus_width=bus_width,
         ecc_bits=8 if (bus >> 3) & 0x03 else 0,
-        capacity_bytes=_capacidad(
-            DDR4_DENSIDADES.get(spd[d.DENSITY] & 0x0F), ancho_chip, ancho_bus, ranks),
+        capacity_bytes=_capacity(
+            DDR4_DENSITIES.get(spd[d.DENSITY] & 0x0F), chip_width, bus_width, ranks),
         jedec=jedec if jedec.plausible else None,
         profiles=tuple(_xmp_profiles(spd)),
         xmp_speeds_mts=_xmp_speed(spd, jedec if jedec.plausible else None),
@@ -352,48 +352,48 @@ def _u16(spd: bytes, offset: int) -> int:
     return spd[offset] | (spd[offset + 1] << 8)
 
 
-def _ddr5_ciclos(picosegundos: int, tck_ps: int) -> Optional[int]:
+def _ddr5_cycles(picoseconds: int, tck_ps: int) -> Optional[int]:
     """Un tiempo del SPD pasado a ciclos de reloj.
 
     Se redondea hacia arriba: un CL que sale en 39,2 ciclos es un CL40, porque
     la memoria no puede responder antes de tiempo. Redondear al más cercano
     convierte un CL40 en CL39, que no existe.
     """
-    if not (tck_ps and picosegundos):
+    if not (tck_ps and picoseconds):
         return None
-    return -(-picosegundos // tck_ps) or None
+    return -(-picoseconds // tck_ps) or None
 
 
 def _decode_ddr5(spd: bytes, address: str, slot: int) -> SpdInfo:
     d = _Ddr5
     tck_ps = _u16(spd, d.TCK_MIN)
     # Como DDR4, dos transferencias por ciclo. Un tCK de 357 ps son 5600 MT/s.
-    speed = grado_jedec(2_000_000 / tck_ps) if tck_ps else 0
+    speed = jedec_grade(2_000_000 / tck_ps) if tck_ps else 0
 
     jedec = Timings(
         name="JEDEC",
         speed_mts=speed,
-        cl=_ddr5_ciclos(_u16(spd, d.TAA), tck_ps),
-        trcd=_ddr5_ciclos(_u16(spd, d.TRCD), tck_ps),
-        trp=_ddr5_ciclos(_u16(spd, d.TRP), tck_ps),
-        tras=_ddr5_ciclos(_u16(spd, d.TRAS), tck_ps),
-        trc=_ddr5_ciclos(_u16(spd, d.TRC), tck_ps),
+        cl=_ddr5_cycles(_u16(spd, d.TAA), tck_ps),
+        trcd=_ddr5_cycles(_u16(spd, d.TRCD), tck_ps),
+        trp=_ddr5_cycles(_u16(spd, d.TRP), tck_ps),
+        tras=_ddr5_cycles(_u16(spd, d.TRAS), tck_ps),
+        trc=_ddr5_cycles(_u16(spd, d.TRC), tck_ps),
         # DDR5 bajó de 1,2 V a 1,1 V, que es de donde sale buena parte de su
         # eficiencia.
         voltage_v=1.1,
     )
 
     # The module's organization is on page 1: with page 0 alone, unknown.
-    completo = len(spd) > d.BUS_WIDTH
-    organizacion = spd[d.ORGANIZATION] if completo else 0
-    bus = spd[d.BUS_WIDTH] if completo else 0
-    ranks = ((organizacion >> 3) & 0x07) + 1 if completo else None
-    canales = ((bus >> 5) & 0x03) + 1
-    ancho_canal = 8 << (bus & 0x07)
+    full = len(spd) > d.BUS_WIDTH
+    organization = spd[d.ORGANIZATION] if full else 0
+    bus = spd[d.BUS_WIDTH] if full else 0
+    ranks = ((organization >> 3) & 0x07) + 1 if full else None
+    channels = ((bus >> 5) & 0x03) + 1
+    channel_width = 8 << (bus & 0x07)
     extension = ((bus >> 3) & 0x03) * 4        # los bits de ECC, si los hay
 
-    densidad = spd[d.DENSITY] if len(spd) > d.DENSITY else 0
-    ancho_chip = DDR5_ANCHOS.get((spd[d.IO_WIDTH] >> 5) & 0x07
+    density = spd[d.DENSITY] if len(spd) > d.DENSITY else 0
+    chip_width = DDR5_WIDTHS.get((spd[d.IO_WIDTH] >> 5) & 0x07
                                  if len(spd) > d.IO_WIDTH else -1)
 
     return SpdInfo(
@@ -408,22 +408,22 @@ def _decode_ddr5(spd: bytes, address: str, slot: int) -> SpdInfo:
         part_number=_text(spd[d.PART_NUMBER]) if len(spd) > d.PART_NUMBER.stop else None,
         **(_date(spd[d.DATE_YEAR], spd[d.DATE_WEEK]) if len(spd) > d.DATE_WEEK else {}),
         ranks=ranks,
-        device_width=ancho_chip,
-        bus_width=ancho_canal * canales if completo else None,
-        ecc_bits=extension * canales,
-        channels=canales,
-        capacity_bytes=_capacidad(
-            DDR5_DENSIDADES.get(densidad & 0x1F), ancho_chip,
-            ancho_canal * canales, ranks, dies=1 << ((densidad >> 5) & 0x07))
-        if completo else None,
+        device_width=chip_width,
+        bus_width=channel_width * channels if full else None,
+        ecc_bits=extension * channels,
+        channels=channels,
+        capacity_bytes=_capacity(
+            DDR5_DENSITIES.get(density & 0x1F), chip_width,
+            channel_width * channels, ranks, dies=1 << ((density >> 5) & 0x07))
+        if full else None,
         jedec=jedec if jedec.plausible else None,
-        overclock_profiles=_ddr5_perfiles(spd),
+        overclock_profiles=_ddr5_profiles(spd),
         decoded=True,
         partial=len(spd) < DDR5_SIZE,
     )
 
 
-def _ddr5_perfiles(spd: bytes) -> tuple[str, ...]:
+def _ddr5_profiles(spd: bytes) -> tuple[str, ...]:
     """Qué perfiles de fábrica trae el módulo, sin interpretarlos.
 
     XMP 3.0 y EXPO guardan aquí las temporizaciones que el fabricante garantiza
@@ -434,16 +434,16 @@ def _ddr5_perfiles(spd: bytes) -> tuple[str, ...]:
     marca la tabla.
     """
     d = _Ddr5
-    encontrados = []
+    found = []
     if len(spd) > d.XMP_MAGIC.stop and spd[d.XMP_MAGIC] == b"\x0c\x4a":
-        encontrados.append("XMP 3.0")
+        found.append("XMP 3.0")
     if len(spd) > d.EXPO_MAGIC.stop and spd[d.EXPO_MAGIC] == b"EXPO":
-        encontrados.append("EXPO")
-    return tuple(encontrados)
+        found.append("EXPO")
+    return tuple(found)
 
 
-def _capacidad(gigabits: Optional[int], ancho_chip: Optional[int],
-               ancho_bus: int, ranks: int, dies: int = 1) -> Optional[int]:
+def _capacity(gigabits: Optional[int], chip_width: Optional[int],
+               bus_width: int, ranks: int, dies: int = 1) -> Optional[int]:
     """Cuánta memoria hay: los chips que caben por lo que guarda cada uno.
 
     Es el mismo número que da la tabla SMBIOS, pero aquella pide permisos de
@@ -451,10 +451,10 @@ def _capacidad(gigabits: Optional[int], ancho_chip: Optional[int],
     donde el usuario no eleve permisos, esta es la única forma de saber cuánta
     memoria tiene cada zócalo.
     """
-    if not (gigabits and ancho_chip and ancho_bus):
+    if not (gigabits and chip_width and bus_width):
         return None
-    chips_por_rank = ancho_bus // ancho_chip
-    return gigabits * chips_por_rank * ranks * dies * 1024**3 // 8
+    chips_per_rank = bus_width // chip_width
+    return gigabits * chips_per_rank * ranks * dies * 1024**3 // 8
 
 
 def _vendor(bank: int, code: int) -> Optional[str]:
@@ -470,12 +470,12 @@ def _vendor(bank: int, code: int) -> Optional[str]:
 @functools.lru_cache(maxsize=1)
 def _jep106() -> dict[tuple[int, int], str]:
     try:
-        datos = json.loads(JEP106.read_text(encoding="utf-8"))
+        data = json.loads(JEP106.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return {}
-    return {(int(banco), int(codigo, 16)): nombre
-            for banco, codigos in datos.get("makers", {}).items()
-            for codigo, nombre in codigos.items()}
+    return {(int(bank), int(code, 16)): name
+            for bank, codes in data.get("makers", {}).items()
+            for code, name in codes.items()}
 
 
 def _text(raw: bytes) -> Optional[str]:
@@ -517,10 +517,6 @@ XMP1_TRP, XMP1_TRP_FINE = 403, 428
 XMP1_UPPER, XMP1_TRAS, XMP1_TRAS_FINE, XMP1_TRC = 404, 405, 427, 406
 
 
-def _signed(byte: int) -> int:
-    return byte - 256 if byte > 127 else byte
-
-
 def _xmp1_tck_ps(spd: bytes) -> Optional[int]:
     """Profile 1's cycle in ps, or None without the XMP header."""
     if len(spd) <= XMP1_TCK_FINE or spd[_Ddr4.XMP_MAGIC] != b"\x0c\x4a":
@@ -541,7 +537,7 @@ def _xmp_speed(spd: bytes, jedec: Optional[Timings]) -> tuple[int, ...]:
     tck = _xmp1_tck_ps(spd)
     if not tck:
         return ()
-    speed = grado_jedec(2_000_000 / tck)
+    speed = jedec_grade(2_000_000 / tck)
     if not PLAUSIBLE_MTS[0] <= speed <= PLAUSIBLE_MTS[1]:
         return ()
     if jedec is not None and speed <= jedec.speed_mts:
@@ -560,20 +556,20 @@ def _xmp_profiles(spd: bytes) -> Iterator[Timings]:
     if not tck:
         return
 
-    def tiempo(mtb: int, fine: int) -> int:
+    def timing(mtb: int, fine: int) -> int:
         return spd[mtb] * 125 + _signed(spd[fine])
 
-    alto = spd[XMP1_UPPER]
-    tras = (alto & 0x0F) * 32_000 + tiempo(XMP1_TRAS, XMP1_TRAS_FINE)
-    trc = (alto >> 4) * 32_000 + spd[XMP1_TRC] * 125
+    high = spd[XMP1_UPPER]
+    after = (high & 0x0F) * 32_000 + timing(XMP1_TRAS, XMP1_TRAS_FINE)
+    trc = (high >> 4) * 32_000 + spd[XMP1_TRC] * 125
     profile = Timings(
         name="XMP 1",
-        speed_mts=grado_jedec(2_000_000 / tck),
-        cl=_ciclos_jedec(tiempo(XMP1_TAA, XMP1_TAA_FINE), tck),
-        trcd=_ciclos_jedec(tiempo(XMP1_TRCD, XMP1_TRCD_FINE), tck),
-        trp=_ciclos_jedec(tiempo(XMP1_TRP, XMP1_TRP_FINE), tck),
-        tras=_ciclos_jedec(tras, tck),
-        trc=_ciclos_jedec(trc, tck),
+        speed_mts=jedec_grade(2_000_000 / tck),
+        cl=_jedec_cycles(timing(XMP1_TAA, XMP1_TAA_FINE), tck),
+        trcd=_jedec_cycles(timing(XMP1_TRCD, XMP1_TRCD_FINE), tck),
+        trp=_jedec_cycles(timing(XMP1_TRP, XMP1_TRP_FINE), tck),
+        tras=_jedec_cycles(after, tck),
+        trc=_jedec_cycles(trc, tck),
         voltage_v=_xmp_voltage(spd[XMP1_VOLTAGE]),
     )
     if profile.plausible:
@@ -606,7 +602,7 @@ def available() -> bool:
 
 # Clase PCI de un controlador SMBus, que es como se le reconoce sin depender
 # del fabricante.
-CLASE_SMBUS = 0x0C0500
+SMBUS_CLASS = 0x0C0500
 SYS_PCI = pathlib.Path("/sys/bus/pci/devices")
 SYS_I2C = pathlib.Path("/sys/bus/i2c/devices")
 
@@ -646,7 +642,7 @@ def memory_buses() -> list[str]:
             pci_class = int((sysroot.path(SYS_PCI) / parent / "class").read_text().strip(), 16)
         except (OSError, ValueError):
             continue
-        if PCI_ADDRESS.match(parent) and pci_class >> 8 == CLASE_SMBUS >> 8:
+        if PCI_ADDRESS.match(parent) and pci_class >> 8 == SMBUS_CLASS >> 8:
             found.append(bus.name[len("i2c-"):])
     return found
 
@@ -685,7 +681,7 @@ def unreadable_cause() -> str:
     mayoría de las placas AMD ese consejo no sirve de nada: el módulo ya está
     disponible y el problema es que no hay ningún bus donde buscar.
     """
-    if not _hay_controlador_smbus():
+    if not _has_smbus_controller():
         return CAUSE_NO_SMBUS
     buses = memory_buses()
     if not buses:
@@ -701,27 +697,27 @@ def unreadable_cause() -> str:
     return CAUSE_NO_CONTENT if chips else CAUSE_NO_CHIP
 
 
-def diagnostico(causa: Optional[str] = None) -> tuple[str, str]:
+def diagnosis(cause: Optional[str] = None) -> tuple[str, str]:
     """Por qué no se puede leer el SPD, y qué hacer, dicho para la persona."""
-    causa = causa or unreadable_cause()
-    mensaje, ayuda = CAUSES[causa]
-    if causa == CAUSE_NO_DRIVER:
+    cause = cause or unreadable_cause()
+    message, hint = CAUSES[cause]
+    if cause == CAUSE_NO_DRIVER:
         # The chip's own driver when the kernel named it; the three
         # generations' otherwise.
-        modulos = sorted({m for chip in spd_chips() if not has_driver(chip)
+        modules = sorted({m for chip in spd_chips() if not has_driver(chip)
                           if (m := driver_for(chip))})
-        if modulos:
-            return _(mensaje), _("spd.nodriver.load").format(
-                orden="  ".join(f"sudo modprobe {m}" for m in modulos))
-    return _(mensaje), _(ayuda)
+        if modules:
+            return _(message), _("spd.nodriver.load").format(
+                orden="  ".join(f"sudo modprobe {m}" for m in modules))
+    return _(message), _(hint)
 
 
-def _hay_controlador_smbus() -> bool:
+def _has_smbus_controller() -> bool:
     """Si la placa trae el bus por el que viven los chips SPD."""
     try:
-        for dispositivo in sysroot.path(SYS_PCI).iterdir():
-            crudo = (dispositivo / "class").read_text().strip()
-            if int(crudo, 16) == CLASE_SMBUS:
+        for device in sysroot.path(SYS_PCI).iterdir():
+            raw = (device / "class").read_text().strip()
+            if int(raw, 16) == SMBUS_CLASS:
                 return True
     except (OSError, ValueError):
         pass

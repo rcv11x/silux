@@ -35,7 +35,7 @@ class SpdModules(Provider):
         # driver; each has a different fix, and «load ee1004» only helps the
         # last.
         cause = spd_module.unreadable_cause()
-        reason, fix = spd_module.diagnostico(cause)
+        reason, fix = spd_module.diagnosis(cause)
         # Without the bus, or with it reserved, it's down to the board. With
         # the bus and no driver, loading one fixes it.
         need = Need.DRIVER if cause == spd_module.CAUSE_NO_DRIVER else Need.HARDWARE

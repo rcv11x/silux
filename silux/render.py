@@ -31,7 +31,7 @@ from .model import (
     short_vendor,
     thread_name,
 )
-from .spd import grado_jedec
+from .spd import jedec_grade
 
 DASH = "—"
 
@@ -1525,7 +1525,7 @@ def velocidad_de_memoria(mts: Optional[int]) -> Optional[int]:
     """
     if not mts:
         return mts
-    return grado_jedec(mts) or mts
+    return jedec_grade(mts) or mts
 
 
 def memory_module_verdict(modulo, limite=None) -> Optional[str]:

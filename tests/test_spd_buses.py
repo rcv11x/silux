@@ -71,7 +71,7 @@ class TestWhichBusLeadsToMemory(unittest.TestCase):
         with self.tree.patches():
             self.assertEqual(spd.memory_buses(), ["8"])
             self.assertEqual(spd.unreadable_cause(), spd.CAUSE_NO_CHIP)
-            motivo, consejo = spd.diagnostico()
+            motivo, consejo = spd.diagnosis()
         self.assertEqual((motivo, consejo), (_("spd.nochip"), _("spd.nochip.hint")))
         self.assertNotIn("modprobe", consejo)
 
@@ -81,20 +81,20 @@ class TestWhichBusLeadsToMemory(unittest.TestCase):
             self.tree.chip(8, address, SMBUS, name="ee1004")
         with self.tree.patches():
             self.assertEqual(spd.unreadable_cause(), spd.CAUSE_NO_DRIVER)
-            _motivo, consejo = spd.diagnostico()
+            _motivo, consejo = spd.diagnosis()
         self.assertEqual(consejo, _("spd.nodriver.load").format(orden="sudo modprobe ee1004"))
 
     def test_a_ddr3_chip_is_read_by_at24(self):
         self.tree.bus(8, SMBUS)
         self.tree.chip(8, 0x50, SMBUS, name="spd")
         with self.tree.patches():
-            self.assertIn("sudo modprobe at24", spd.diagnostico()[1])
+            self.assertIn("sudo modprobe at24", spd.diagnosis()[1])
 
     def test_a_chip_without_a_name_gets_the_three_generations(self):
         self.tree.bus(8, SMBUS)
         self.tree.chip(8, 0x50, SMBUS)
         with self.tree.patches():
-            self.assertEqual(spd.diagnostico()[1], _("spd.nodriver.hint"))
+            self.assertEqual(spd.diagnosis()[1], _("spd.nodriver.hint"))
 
     def test_chips_with_their_driver_and_nothing_published(self):
         self.tree.bus(8, SMBUS)

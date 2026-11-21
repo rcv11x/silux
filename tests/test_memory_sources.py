@@ -82,6 +82,6 @@ class TestTheJedecTops(unittest.TestCase):
         generaciones = {"DDR3": (1333, 2133), "DDR4": (2400, 3200), "DDR5": (3600, 8800)}
         for tipo, (desde, hasta) in generaciones.items():
             with self.subTest(tipo=tipo):
-                propias = [v for v in spd.VELOCIDADES_JEDEC if desde <= v <= hasta]
-                self.assertIn(JEDEC_TOP_MTS[tipo], spd.VELOCIDADES_JEDEC)
+                propias = [v for v in spd.JEDEC_SPEEDS if desde <= v <= hasta]
+                self.assertIn(JEDEC_TOP_MTS[tipo], spd.JEDEC_SPEEDS)
                 self.assertEqual(JEDEC_TOP_MTS[tipo], max(propias))

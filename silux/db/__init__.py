@@ -88,24 +88,24 @@ def _compile_pattern(pattern: str) -> re.Pattern[str]:
     out: list[str] = []
     i = 0
     while i < len(pattern):
-        char = pattern[i]
-        if char == ".":
+        character = pattern[i]
+        if character == ".":
             out.append(".")
-        elif char == "#":
+        elif character == "#":
             out.append(r"\d")
-        elif char == "[":
+        elif character == "[":
             close = pattern.find("]", i)
             if close < 0:
-                out.append(re.escape(char))
+                out.append(re.escape(character))
             else:
-                chars = pattern[i + 1 : close]
-                safe = chars.replace("\\", "\\\\").replace("]", "\\]").replace("^", "\\^")
+                characters = pattern[i + 1 : close]
+                safe = characters.replace("\\", "\\\\").replace("]", "\\]").replace("^", "\\^")
                 if "-" in safe:                    # el guion solo es literal al final
                     safe = safe.replace("-", "") + "-"
                 out.append(f"[{safe}]")
                 i = close
         else:
-            out.append(re.escape(char))
+            out.append(re.escape(character))
         i += 1
     return re.compile("".join(out))
 
@@ -153,28 +153,28 @@ class Identification(dict):
 # nombre. Salía un nombre en clave, una litografía y un encapsulado que eran de
 # otro chip, y con toda la seguridad del mundo. Un dato ausente se ve; uno
 # inventado que suena bien, no.
-_DISCRIMINANTES = ("f", "xf", "xm")
+_DISTINGUISHING_FIELDS = ("f", "xf", "xm")
 
 
-def _casa_la_marca(entry: dict, brand: str) -> bool:
+def _brand_matches(entry: dict, brand: str) -> bool:
     pattern, pattern_score = entry.get("bp"), entry.get("bs", 0)
     return bool(pattern and pattern_score > 0 and _compile_pattern(pattern).search(brand))
 
 
-def _del_kernel(vendor_id: str, ext_family: int, ext_model: int) -> Optional[dict]:
+def _from_kernel(vendor_id: str, ext_family: int, ext_model: int) -> Optional[dict]:
     """La microarquitectura de Intel por familia y modelo, de `intel-family.h`."""
     if vendor_id != "GenuineIntel":
         return None
-    for fila in load().get("intel_family", ()):
-        if fila["family"] == ext_family and fila["model"] == ext_model:
-            return fila
+    for row in load().get("intel_family", ()):
+        if row["family"] == ext_family and row["model"] == ext_model:
+            return row
     return None
 
 
 def _score(entry: dict, probe: dict, brand: str) -> int:
-    for key in _DISCRIMINANTES:
-        declarado = entry.get(key, -1)
-        if declarado >= 0 and declarado != probe.get(key):
+    for key in _DISTINGUISHING_FIELDS:
+        declared = entry.get(key, -1)
+        if declared >= 0 and declared != probe.get(key):
             return 0
 
     total = 0
@@ -183,7 +183,7 @@ def _score(entry: dict, probe: dict, brand: str) -> int:
         if expected >= 0 and expected == probe.get(key):
             total += weight
 
-    if _casa_la_marca(entry, brand):
+    if _brand_matches(entry, brand):
         total += entry["bs"]
     return total
 
@@ -242,13 +242,13 @@ def _identify_x86(
 
     best: Optional[dict] = None
     best_score = -1
-    empatadas: list[dict] = []
+    tied: list[dict] = []
     for entry in table:
         value = _score(entry, probe, clean_brand)
         if value > best_score:
-            best, best_score, empatadas = entry, value, [entry]
+            best, best_score, tied = entry, value, [entry]
         elif value == best_score:
-            empatadas.append(entry)
+            tied.append(entry)
 
     if best is None:
         return Identification(codename=None, technology=None, score=0, matched=False)
@@ -256,27 +256,27 @@ def _identify_x86(
     # libcpuid usa «Unknown …» como comodín para lo que no reconoce. Enseñarlo
     # como nombre en clave sería contestar «no lo sé» con cara de saberlo: mejor
     # dar el procesador por no identificado y que la sección lo explique.
-    nombre = _sin_desempatar_por_el_orden(best["name"], empatadas)
-    reconocido = (nombre is not None and best_score > 0
-                  and not nombre.lower().startswith("unknown"))
+    name = _common_to_the_tie(best["name"], tied)
+    recognized = (name is not None and best_score > 0
+                  and not name.lower().startswith("unknown"))
     # Una fila sin modelo extendido es de los procesadores que no lo tienen
     # (el extendido y el base coinciden: un Dothan, un Presler). Si este sí
     # lo tiene y la marca tampoco casa, la fila solo ha acertado la familia y
     # el modelo base, que no dicen qué procesador es: un Panther Lake (6,
     # 0xCC) salía «Atom (Cedarview)» por la fila de familia 6 y modelo 12. Si
     # el kernel conoce ese modelo, manda él.
-    if (reconocido and best["xm"] < 0 and ext_model != model
-            and not _casa_la_marca(best, clean_brand)):
-        if (fila := _del_kernel(vendor_id, ext_family, ext_model)) is not None:
-            return Identification(codename=fila["name"], technology=None,
+    if (recognized and best["xm"] < 0 and ext_model != model
+            and not _brand_matches(best, clean_brand)):
+        if (row := _from_kernel(vendor_id, ext_family, ext_model)) is not None:
+            return Identification(codename=row["name"], technology=None,
                                   score=1, matched=True)
         # Without the kernel the row has nothing else, and when not even its
         # base model is this one it matched on family alone: QEMU's virtual
         # CPU (15, 0xB) came out as a Cranford (15, 4).
         if best["m"] >= 0 and best["m"] != model:
-            reconocido = False
+            recognized = False
     official = amd_model(brand) if vendor_id == "AuthenticAMD" else None
-    if not reconocido:
+    if not recognized:
         # Not in libcpuid: the official amd.com row for this exact model
         # first, then the per-family ranges.
         if official is not None and official.get("codename"):
@@ -285,38 +285,38 @@ def _identify_x86(
                                   score=1, matched=True)
         # La tabla por modelo no lo conoce. Antes de darse por vencido, la
         # tabla por rangos, que cubre las familias enteras.
-        if regla := _por_familia(vendor_id, ext_family, ext_model):
+        if rule := _by_family(vendor_id, ext_family, ext_model):
             return Identification(
-                codename=regla["name"],
-                technology=regla.get("tech"),
+                codename=rule["name"],
+                technology=rule.get("tech"),
                 score=1,
                 matched=True,
             )
         # Y después, la de Intel del kernel, que va por delante de libcpuid.
         # Da el nombre en clave y nada más: el nodo no sale de ahí.
-        if (fila := _del_kernel(vendor_id, ext_family, ext_model)) is not None:
-            return Identification(codename=fila["name"], technology=None,
+        if (row := _from_kernel(vendor_id, ext_family, ext_model)) is not None:
+            return Identification(codename=row["name"], technology=None,
                                   score=1, matched=True)
-    technology = best.get("tech") if reconocido else None
-    if reconocido and technology is None and official is not None:
+    technology = best.get("tech") if recognized else None
+    if recognized and technology is None and official is not None:
         # libcpuid knew the chip but not its node; amd.com says it.
         technology = official.get("node")
     return Identification(
-        codename=nombre if reconocido else None,
+        codename=name if recognized else None,
         technology=technology,
         score=best_score,
-        matched=reconocido,
+        matched=recognized,
     )
 
 
 # El nombre en clave de verdad, que varias entradas comparten: «Ryzen 5
 # (Cezanne)» y «Ryzen 9 PRO (Cezanne)» describen el mismo silicio y solo se
 # diferencian en a qué gama se vendió cada pieza.
-_ENTRE_PARENTESIS = re.compile(r"\(([^)]+)\)\s*$")
+_IN_PARENTHESES = re.compile(r"\(([^)]+)\)\s*$")
 
 
-def _sin_desempatar_por_el_orden(nombre: str,
-                                 empatadas: list[dict]) -> Optional[str]:
+def _common_to_the_tie(name: str,
+                                 tied: list[dict]) -> Optional[str]:
     """Lo que se puede afirmar cuando varias entradas puntúan igual.
 
     Las ocho entradas de Cezanne llevan el mismo silicio —familia, modelo y
@@ -333,15 +333,15 @@ def _sin_desempatar_por_el_orden(nombre: str,
     devuelve `None` para que decida la tabla por rangos, que va por familia y
     no por gama comercial.
     """
-    if len(empatadas) < 2:
-        return nombre
-    nombres = {e["name"] for e in empatadas}
-    if len(nombres) == 1:
-        return nombre
-    claves = {m.group(1) for n in nombres if (m := _ENTRE_PARENTESIS.search(n))}
+    if len(tied) < 2:
+        return name
+    names = {e["name"] for e in tied}
+    if len(names) == 1:
+        return name
+    codenames = {m.group(1) for n in names if (m := _IN_PARENTHESES.search(n))}
     # Si no comparten uno solo, no hay nada que se pueda afirmar de todas a la
     # vez, y quedarse con una sería volver a elegir por el orden del archivo.
-    return claves.pop() if len(claves) == 1 else None
+    return codenames.pop() if len(codenames) == 1 else None
 
 
 def identify_arm(implementer: int, part_num: int) -> Identification:
@@ -385,15 +385,15 @@ def find_socket(vendor_id: str, codename: Optional[str], brand: str) -> Optional
     # one amd.com lists for it, a CPU-X row for the whole codename, and then
     # the rules. A codename-wide row said «FP7/FP8» for every Phoenix where
     # amd.com says «FP7, FP7r2» for the 7445HS.
-    filas = load().get("sockets", {}).get(vendor_id, ())
-    for entry in filas:
+    rows = load().get("sockets", {}).get(vendor_id, ())
+    for entry in rows:
         wants_codename = entry["codename"] is not None
         model_ok = entry["model"] is not None and entry["model"] in brand
         codename_ok = wants_codename and codename is not None and entry["codename"] in codename
         if model_ok and (codename_ok or not wants_codename):
             return entry["socket"]
 
-    wide = next((entry["socket"] for entry in filas
+    wide = next((entry["socket"] for entry in rows
                  if entry["model"] is None and entry["codename"] is not None
                  and codename is not None and entry["codename"] in codename), None)
     official = amd_model(brand) if vendor_id == "AuthenticAMD" else None
@@ -485,7 +485,7 @@ def _load_families() -> list[dict]:
         return []
 
 
-def _por_familia(vendor_id: str, ext_family: int, ext_model: int) -> Optional[dict]:
+def _by_family(vendor_id: str, ext_family: int, ext_model: int) -> Optional[dict]:
     """La microarquitectura de un procesador que la tabla por modelo no cubre.
 
     libcpuid va por modelo concreto y tarda meses en incorporar lo recién
@@ -495,11 +495,11 @@ def _por_familia(vendor_id: str, ext_family: int, ext_model: int) -> Optional[di
     que vendrá, y como solo se consulta cuando la otra tabla no encuentra nada,
     nunca puede empeorar un dato que ya se sabía.
     """
-    for regla in _load_families():
-        if regla.get("vendor") != vendor_id or regla.get("family") != ext_family:
+    for rule in _load_families():
+        if rule.get("vendor") != vendor_id or rule.get("family") != ext_family:
             continue
-        if regla.get("from", 0) <= ext_model <= regla.get("to", -1):
-            return regla
+        if rule.get("from", 0) <= ext_model <= rule.get("to", -1):
+            return rule
     return None
 
 
@@ -510,17 +510,17 @@ def _por_familia(vendor_id: str, ext_family: int, ext_model: int) -> Optional[di
 # El modelo de Intel dentro de la cadena de marca: «i5-10400» en «Intel(R)
 # Core(TM) i5-10400 CPU @ 2.90GHz». Entero, con su letra: «i5-10400H» es un
 # portátil y no puede casar con la fila del de sobremesa.
-_MODELO_INTEL = re.compile(r"\b(i[3579]-\d{3,5}[A-Z]{0,2}\d?)\b")
+_INTEL_MODEL = re.compile(r"\b(i[3579]-\d{3,5}[A-Z]{0,2}\d?)\b")
 # La primera generación escribe el modelo de otra forma en CPUID: «Core(TM)
 # i7 CPU 920», «i5 CPU M 520» (portátil), y su ficha «i7-920», «i5-520M».
 _MODELO_INTEL_1 = re.compile(r"\b(i[3579]) CPU\s+(?:([A-Z]{1,2})\s+)?(\d{3})\b")
 # Las Core Ultra y las Core 3/5/7, sin guion: «Core(TM) Ultra 7 155H».
-_MODELO_INTEL_SIN_I = re.compile(
+_INTEL_MODEL_WITHOUT_I = re.compile(
     r"\bCore(?:\(TM\)|™)?\s+(Ultra\s+)?([3579])\s+(?:Processor\s+)?(\d{3}[A-Z]{0,2})\b")
 # Lo que sobra alrededor del modelo de AMD, en la tabla del fabricante
 # («AMD Ryzen™ 7 5800X3D») y en la cadena de CPUID («AMD Ryzen 7 5800X3D
 # 8-Core Processor», «… with Radeon Graphics»).
-_RUIDO_AMD = re.compile(
+_AMD_NOISE = re.compile(
     r"\(R\)|\(TM\)|™|®|^AMD\s+|\s+\d+-Core Processor.*$|\s+(with|w/) Radeon.*$"
     r"|\s*\(OEM Only\)|\s+Processor\b",
     re.IGNORECASE)
@@ -532,16 +532,16 @@ def normalize_cpu_model(name: str) -> str:
     La misma función para la tabla (al generarla) y para la cadena de marca
     del procesador (al buscar): «i5-10400» o «Ryzen 7 5800X3D».
     """
-    nombre = name or ""
-    if (encaje := _MODELO_INTEL.search(nombre)):
-        return encaje.group(1)
-    if (encaje := _MODELO_INTEL_1.search(nombre)):
-        gama, letra, numero = encaje.groups()
-        return f"{gama}-{numero}{letra or ''}"
-    if (encaje := _MODELO_INTEL_SIN_I.search(nombre)):
-        ultra, gama, numero = encaje.groups()
-        return f"Core {'Ultra ' if ultra else ''}{gama} {numero}"
-    return " ".join(_RUIDO_AMD.sub("", nombre).split())
+    model_name = name or ""
+    if (match := _INTEL_MODEL.search(model_name)):
+        return match.group(1)
+    if (match := _MODELO_INTEL_1.search(model_name)):
+        tier, letter, number = match.groups()
+        return f"{tier}-{number}{letter or ''}"
+    if (match := _INTEL_MODEL_WITHOUT_I.search(model_name)):
+        ultra, tier, number = match.groups()
+        return f"Core {'Ultra ' if ultra else ''}{tier} {number}"
+    return " ".join(_AMD_NOISE.sub("", model_name).split())
 
 
 @dataclasses.dataclass(frozen=True)
@@ -561,10 +561,10 @@ def _load_memory_limits() -> dict[str, dict]:
     path = pathlib.Path(__file__).parent / "memory_limits.json"
     try:
         with path.open(encoding="utf-8") as fh:
-            filas = json.load(fh).get("cpus", [])
+            rows = json.load(fh).get("cpus", [])
     except (FileNotFoundError, json.JSONDecodeError):
         return {}
-    return {modelo: fila for fila in filas for modelo in fila["models"]}
+    return {model: row for row in rows for model in row["models"]}
 
 
 def memory_layout(ranks: tuple[Optional[int], ...]) -> Optional[str]:
@@ -573,10 +573,10 @@ def memory_layout(ranks: tuple[Optional[int], ...]) -> Optional[str]:
     `ranks`: los rangos de cada módulo puesto. Con rangos distintos, o alguno
     sin saber, no hay disposición de la ficha de AMD que case.
     """
-    rangos = set(ranks)
-    if not ranks or len(rangos) != 1 or None in rangos:
+    distinct = set(ranks)
+    if not ranks or len(distinct) != 1 or None in distinct:
         return None
-    return f"{len(ranks)}x{rangos.pop()}R"
+    return f"{len(ranks)}x{distinct.pop()}R"
 
 
 def memory_limit(brand: str, memory_type: Optional[str],
@@ -590,17 +590,17 @@ def memory_limit(brand: str, memory_type: Optional[str],
     """
     if not brand or not memory_type:
         return None
-    modelo = normalize_cpu_model(brand)
-    fila = _load_memory_limits().get(modelo)
-    if fila is None or memory_type not in fila["types"]:
+    model = normalize_cpu_model(brand)
+    row = _load_memory_limits().get(model)
+    if row is None or memory_type not in row["types"]:
         return None
-    cifra = fila["types"][memory_type]
-    if isinstance(cifra, int):
-        return MemoryLimit(modelo, cifra, fila["source"])
-    disposicion = memory_layout(tuple(ranks))
-    if disposicion is None or disposicion not in cifra:
+    figure = row["types"][memory_type]
+    if isinstance(figure, int):
+        return MemoryLimit(model, figure, row["source"])
+    layout = memory_layout(tuple(ranks))
+    if layout is None or layout not in figure:
         return None
-    return MemoryLimit(modelo, cifra[disposicion], fila["source"], disposicion)
+    return MemoryLimit(model, figure[layout], row["source"], layout)
 
 
 # Los Intel de antes de Nehalem (2008) que llevan el controlador de memoria
@@ -609,7 +609,7 @@ def memory_limit(brand: str, memory_type: Optional[str],
 # —Merom y Conroe (0x0F), Merom-L (0x16), Penryn, Wolfdale y Yorkfield
 # (0x17), Dunnington (0x1D)—. Los Atom de entonces no entran: Diamondville
 # lo tiene en el chipset y Pineview ya integrado, con modelos que se cruzan.
-_CONTROLADOR_EN_EL_CHIPSET = {0x0F, 0x16, 0x17, 0x1D}
+_CONTROLLER_IN_CHIPSET = {0x0F, 0x16, 0x17, 0x1D}
 
 
 def memory_controller_in_chipset(cpu_type) -> bool:
@@ -622,5 +622,5 @@ def memory_controller_in_chipset(cpu_type) -> bool:
     # family 15 that has no chipset behind it.
     if getattr(cpu_type, "vendor", "") != "Intel" or getattr(cpu_type, "in_virtual_machine", False):
         return False
-    familia, modelo = cpu_type.disp_family, cpu_type.disp_model
-    return familia == 15 or (familia == 6 and modelo in _CONTROLADOR_EN_EL_CHIPSET)
+    family, model = cpu_type.disp_family, cpu_type.disp_model
+    return family == 15 or (family == 6 and model in _CONTROLLER_IN_CHIPSET)
