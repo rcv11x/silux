@@ -152,6 +152,7 @@ _ALIMENTACION = (
     (re.compile(r"^(ucsi)[-_].*$", re.I), "sensor.dev.usbc"),
 )
 _ES_USBC = _ALIMENTACION[-1][0]
+_ES_BATERIA = _ALIMENTACION[0][0]
 
 
 def _por_numero(ruta: pathlib.Path) -> tuple:
@@ -580,9 +581,14 @@ class HwmonSensors(Provider):
         # the two of a ThinkPad were both «Puerto USB-C», and the tree told
         # their readings apart by the kernel's name («ucsi-source-psy-…»).
         ports = [e.name for e in entries if _ES_USBC.match(e.name)]
+        # The kernel may call the only battery BAT1: numbered only when there
+        # are several.
+        baterias = [e.name for e in entries if _ES_BATERIA.match(e.name)]
         for entry in entries:
             name = entry.name
             device = _nombre_de_alimentacion(name) or _("sensor.dev.power").format(n=name)
+            if baterias == [name]:
+                device = _("sensor.dev.battery")
             alimentacion = _alimentacion(name)
             clave = (_clave_de_alimentacion(*alimentacion) if alimentacion
                      else f"power-supply:{name}")
