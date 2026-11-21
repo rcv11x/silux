@@ -95,7 +95,8 @@ class CpuidIdentity(Provider):
                 with pinned(cpus[0]):
                     self._fill(reader, draft, entry)
             except CpuidError as exc:
-                draft.note(f"cpu.types.{key}", Need.PLATFORM, str(exc))
+                draft.note(f"cpu.types.{key}", Need.PLATFORM,
+                           _("prov.cpuid.pin").format(cpu=cpus[0]), detail=str(exc))
 
     # -- internals ----------------------------------------------------------
 

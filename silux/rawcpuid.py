@@ -76,8 +76,8 @@ def pagina_ejecutable(codigo: bytes, error=RuntimeError):
         errno = ctypes.get_errno()
         mm.close()
         raise error(
-            f"mprotect falló (errno {errno}). El entorno prohíbe ejecutar memoria "
-            "anónima; suele pasar bajo políticas SELinux estrictas o en sandboxes."
+            f"mprotect failed (errno {errno}): executing anonymous memory is not "
+            "allowed here, usually by a strict SELinux policy or a sandbox"
         )
     return mm, address
 
@@ -119,7 +119,7 @@ def pinned(cpu_index: int) -> Iterator[None]:
     try:
         os.sched_setaffinity(0, {cpu_index})
     except OSError as exc:                      # cpu apagada, cgroup restrictivo…
-        raise CpuidError(f"no se pudo fijar el hilo a la CPU {cpu_index}: {exc}") from exc
+        raise CpuidError(f"could not pin the thread to CPU {cpu_index}: {exc}") from exc
     anterior, _cpu_fijada = _cpu_fijada, cpu_index
     try:
         yield
@@ -133,7 +133,7 @@ class CpuidReader:
 
     def __init__(self) -> None:
         if not is_supported():
-            raise CpuidError(f"CPUID solo está implementado para x86-64, no para {maquina()}")
+            raise CpuidError(f"CPUID is only implemented for x86-64, not {maquina()}")
 
         self._mm, address = pagina_ejecutable(_CODE_X86_64, CpuidError)
 
@@ -148,7 +148,7 @@ class CpuidReader:
             self.vendor_id = struct.pack("<III", ebx, edx, ecx).decode("ascii")
         except Exception as exc:
             self.close()
-            raise CpuidError(f"CPUID devolvió basura: {exc}") from exc
+            raise CpuidError(f"CPUID returned garbage: {exc}") from exc
 
         self.max_extended_leaf = self(0x8000_0000)[0]
 
