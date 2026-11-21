@@ -227,8 +227,8 @@ def _is_up(operstate: Optional[str], base: pathlib.Path) -> bool:
 
 
 def _flag(path: pathlib.Path) -> Optional[bool]:
-    valor = read_int(str(path))
-    return None if valor is None else bool(valor)
+    value = read_int(str(path))
+    return None if value is None else bool(value)
 
 
 def _kind(name: str, base: pathlib.Path, arphrd: Optional[int]) -> str:
@@ -258,9 +258,9 @@ def _pci_identity(base: pathlib.Path) -> dict:
         return {}
 
     def hex_field(field: str) -> Optional[int]:
-        crudo = read_text(str(device / field))
+        raw = read_text(str(device / field))
         try:
-            return int(crudo, 16) if crudo else None
+            return int(raw, 16) if raw else None
         except ValueError:
             return None
 

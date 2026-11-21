@@ -502,8 +502,8 @@ def _supports_discard(base: pathlib.Path) -> Optional[bool]:
 def _mounted_with_discard() -> set[str]:
     """The partitions mounted with the `discard` option."""
     found: set[str] = set()
-    for linea in (read_text(PROC_MOUNTS) or "").splitlines():
-        fields = linea.split()
+    for line in (read_text(PROC_MOUNTS) or "").splitlines():
+        fields = line.split()
         if len(fields) >= 4 and fields[0].startswith("/dev/") \
                 and "discard" in fields[3].replace("=", ",").split(","):
             found.add(fields[0][len("/dev/"):])
@@ -523,8 +523,8 @@ def _mounts() -> dict[str, tuple[str, str]]:
     found: dict[str, tuple[str, str]] = {}
     try:
         with open(sysroot.ruta(PROC_MOUNTS), encoding="utf-8") as handle:
-            for linea in handle:
-                fields = linea.split()
+            for line in handle:
+                fields = line.split()
                 if len(fields) < 3:
                     continue
                 source, mountpoint, filesystem = fields[0], fields[1], fields[2]
