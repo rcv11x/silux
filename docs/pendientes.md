@@ -61,26 +61,27 @@ la memoria) no va: está propuesto en las notas
     fue la ventana o el contador.
 * **Del sobremesa con i7-10700F y RTX 4060** (volcado `i7-10700f`, de la
   prueba5):
-  - NVIDIA · media · el consumo de la RTX 4060 con el driver 595 sigue sin
-    salir: ni `nvmlDeviceGetPowerUsage` ni los campos 185 y 186. Desde la
-    prueba6 una nota lo dice y el informe lleva lo que contestó NVML a cada
-    uno; con eso, y con `nvidia-smi -q -d POWER`, se sabe si es el driver o la
-    llamada.
+  - NVIDIA · media · el consumo de la RTX 4060 sale de las muestras de NVML
+    (`nvmlDeviceGetSamples`), porque ni `nvmlDeviceGetPowerUsage` ni los
+    campos 185 y 186 contestan. Falta compararlo con `nvidia-smi -q -d POWER`
+    en su equipo: NVML no documenta la unidad de esas muestras y se toman
+    como milivatios, que es lo que cuadra con los dos decimales en vatios de
+    `nvidia-smi`.
   - Discos · baja · con el ayudante · el modelo entero por el IDENTIFY de
     `ata_device` (para buscar la unidad en drivedb) está probado aquí con dos
     Seagate y un Crucial; con el A400 de verdad, falta verlo.
 * **Del portátil Lenovo LOQ 15IRH8** (volcado `i5-12450h`, de la prueba5):
-  - Memoria · media · el SPD de la DDR5 no se lee: `spd5118` está enganchado
-    en `0-0050` y da su temperatura, pero no hay `eeprom` ni nada en
-    `/sys/bus/nvmem`, y es un solo dispositivo para dos módulos. Falta de su
-    equipo: `ls -l /sys/bus/i2c/devices/0-0050/`, `ls /sys/bus/nvmem/devices`
-    y `sudo dmesg | grep -i spd`.
-  - Gráficos · media · ni Vulkan ni OpenGL usan la UHD: Vulkan lista la NVIDIA
-    y llvmpipe, y el contexto de OpenGL es el de la NVIDIA. Desde la prueba6
-    se dice así. El porqué, con `vulkaninfo --summary` y
-    `ls /usr/share/vulkan/icd.d/`. Y «Versión del driver» y «Tomada del
-    sistema» salen con guion porque vienen de esas API: esconderlas y
-    decirlo al pie.
+  - Memoria · media · el SPD de la DDR5 no se lee: `spd5118` está en
+    `0-0050` con su `eeprom`, y leerlo falla. Su `dmesg` dice «SPD Write
+    Disable is set» y, tras suspender, que el driver no pudo escribir. Desde
+    la prueba6 se dice así y el informe lleva el error exacto; con él se sabe
+    si es el bloqueo de escrituras (solo se leería la primera página) o la
+    suspensión.
+  - Gráficos · baja · Mesa rechaza la UHD en Vulkan («Vulkan requires
+    context isolation»), y desde la prueba6 la fila de Vulkan lo dice con
+    ese motivo. Falta saber por qué su i915 no da aislamiento de contextos.
+    Y «Versión del driver» y «Tomada del sistema» salen con guion porque
+    vienen de esas API: esconderlas y decirlo al pie.
   - Memoria · baja · con el ayudante · el controlador publica sus contadores
     libres (`uncore_imc_free_running_0/1`) y el ayudante no los abrió. Desde
     la prueba6 sale como error con lo que contestó el ayudante.

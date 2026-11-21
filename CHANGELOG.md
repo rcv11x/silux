@@ -107,6 +107,16 @@ en el idioma de quien lee.
   nota dice que el driver no lo da, y el informe lleva lo que contestó NVML a
   cada forma de pedirlo.
 
+- Una NVIDIA cuyo driver no da el consumo por las vías normales lo saca
+  ahora de las muestras de potencia que el driver toma siempre, con su media
+  en cada intervalo, como hace `nvidia-smi`. Y enseña su límite de potencia de fábrica y el rango que
+  admite.
+- Con un driver de NVIDIA que ya no traiga las llamadas antiguas de la
+  temperatura y de los motivos de recorte, se usan las que las sustituyen.
+- Cuando el driver de Vulkan está instalado y rechaza una gráfica, la fila de
+  Vulkan lo dice, con el motivo que dio el driver, en vez de «ni Vulkan ni
+  OpenGL la usan».
+
 ### Batería
 
 - Justo después de enchufar o desenchufar el cargador, el portátil tarda
@@ -148,6 +158,11 @@ en el idioma de quien lee.
   cuando el controlador sí publica sus contadores y no se pudieron abrir.
   Ahora sale como error, y el informe lleva el motivo.
 
+- Si el chip SPD de la DDR5 está y leerlo falla, se dice así, con el error
+  exacto en el informe: pasa cuando el equipo bloquea las escrituras al SPD
+  o cuando el driver no se recupera de una suspensión. Antes solo decía que
+  no se había podido leer.
+
 ### Procesador
 
 - Arreglado: las cachés de un núcleo sin SMT decían «1 hilos».
@@ -178,6 +193,15 @@ en el idioma de quien lee.
   memoria («semana 16 de 2024»), la frecuencia fija de un procesador, un
   sistema sin nombre y un disco sin particiones montadas. Las dos fechas se
   guardaban ya escritas; ahora son números y se escriben al pintar.
+
+### Sistema
+
+- Con un kernel anterior a Linux 5.15, el mínimo, la página Sistema avisa de
+  que puede faltar algún dato sin que se diga por qué. Sistema enseña ya sus
+  avisos, también el de un `systemctl`, `kmod` o `xdg-open` que falte.
+- En Gentoo, el paquete que falta se nombra con el de Gentoo
+  (`dev-libs/opencl-icd-loader` para OpenCL), no con el de las otras cuatro
+  familias.
 
 ### Informe
 
