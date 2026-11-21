@@ -1250,6 +1250,9 @@ class Gpu:
 
     displays: tuple[Display, ...] = ()
     apis: tuple[GpuApi, ...] = ()
+    # (API, the driver's reason as it wrote it) for each graphics API whose
+    # driver is installed and rejected this card; the reason may be empty.
+    api_rejections: tuple[tuple[str, str], ...] = ()
 
     @property
     def display_name(self) -> Optional[str]:

@@ -166,3 +166,35 @@ class TestAnSpdThatFailsToRead(unittest.TestCase):
         self.assertEqual([n.key for n in notas], ["prov.spd.readfailed"])
         self.assertIn("ENXIO", notas[0].detail)
         self.assertNotEqual(notas[0].need, Need.ERROR)
+
+
+class TestTheVulkanDriverThatRejectsTheUhd(unittest.TestCase):
+    """Mesa's Intel driver is installed and rejects its UHD; the recorded
+    answer of the new code carries what the driver wrote on stderr."""
+
+    def test_the_reason_on_its_card(self):
+        import json
+        from silux import sysroot, volcado
+        from silux.collector import Collector
+        from tests.interval import second_snapshot
+
+        with volcado.montado(DUMP) as raiz:
+            ruta = raiz / "grabado.json"
+            grabado = json.loads(ruta.read_text())
+            grabado["gpuapi"]["consultar"]["vulkan_rejected"] = [{
+                "device": "Intel(R) Graphics (ADL GT2)",
+                "reason": "Vulkan requires context isolation",
+                "code": "VK_ERROR_INCOMPATIBLE_DRIVER"}]
+            ruta.write_text(json.dumps(grabado))
+            sysroot.olvidar()
+            recolector = Collector()
+            try:
+                f = second_snapshot(recolector)
+            finally:
+                recolector.close()
+        uhd = next(g for g in f.gpus if g.vendor == "Intel")
+        self.assertEqual(uhd.api_rejections, (("Vulkan", "Vulkan requires context isolation"),))
+        with pantalla.Ventana(f) as ventana:
+            ventana.select_section("Gráficos")
+            textos = pantalla.textos_de(ventana.stack.currentWidget())
+        self.assertIn(_("gpu.apis.rejected") + ": Vulkan requires context isolation", textos)

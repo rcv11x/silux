@@ -63,6 +63,8 @@ class GpuApis(Provider):
         opencl = data.get("opencl") or []
         opengl = data.get("opengl")
         vaapi = data.get("vaapi") or []
+        rejected = data.get("vulkan_rejected") or []
+        icds = data.get("vulkan_icds") or []
 
         if not (vulkan or opencl or opengl or vaapi):
             draft.note(
@@ -134,12 +136,38 @@ class GpuApis(Provider):
                 # then could not set the right one. OpenCL's figure stays in its
                 # row of the libraries table, where it is understood.
 
+            if not apis:
+                gpu["api_rejections"] = _rejections(gpu, draft.gpus, primary, index,
+                                                    rejected, icds, bool(vulkan))
             if apis:
                 gpu["apis"] = tuple(apis)
                 gpu["driver_version"] = gpu.get("driver_version") or next(
                     (a.driver for i, a in enumerate(apis)
                      if a.driver and i not in not_the_cards_driver), None
                 )
+
+
+# The maker a Vulkan driver library is for, by its file name.
+_ICD_VENDORS = (("intel", "Intel"), ("radeon", "AMD"), ("amd", "AMD"), ("nvidia", "NVIDIA"))
+
+
+def _rejections(gpu: dict, gpus: list[dict], primary: int, index: int,
+                rejected: list[dict], icds: list[str], vulkan_works: bool) -> tuple:
+    """Why no Vulkan driver took this card, when one is installed for it.
+
+    The driver's own words when it said them on stderr; otherwise, with
+    Vulkan working for other cards and this maker's driver installed, an
+    empty reason: it is there and does not accept the card.
+    """
+    for item in rejected:
+        if _answers_for(item.get("device") or "", gpu, gpus, primary, index):
+            return (("Vulkan", item.get("reason") or ""),)
+    vendor = gpu.get("vendor") or ""
+    installed = {maker for library in icds for word, maker in _ICD_VENDORS
+                 if word in library.lower()}
+    if vulkan_works and vendor in installed:
+        return (("Vulkan", ""),)
+    return ()
 
 
 def _vulkan_memory(gpu: dict, device: dict) -> None:
