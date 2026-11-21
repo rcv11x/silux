@@ -13,6 +13,24 @@ que hace falta.
 
 ## Sin publicar
 
+### Cambio que rompe: la salida JSON (`--json`)
+
+Para quien la lee desde un script. Lo que era texto en español pasa a ser
+el número o el código que da el propio estándar; el texto se pone al pintar,
+en el idioma de quien lee.
+
+- `spd.manufactured` («semana 32 de 2021») pasa a ser `manufactured_year`
+  y `manufactured_week`.
+- `Edid.made` ya no sale: la fecha va en `year` y `week`.
+- `MemoryModule.form_factor` y `MemoryArray.error_correction` son el código
+  de SMBIOS (`13` es SODIMM, `11` una fila de chips, `5` ECC de bit único),
+  no su nombre. `details` son los números de bit de la tabla 77.
+- `MemoryModule.type` ya no vale «Otro» ni «Desconocido» (sale `null`), y
+  el tipo 1Fh es `logical-non-volatile`.
+- Campos nuevos: `Note.key` y `Note.detail`; `Sensor.device_key`,
+  `chip_label`, `group` y `plausible`; `Gpu.package_temp_c`;
+  `MemoryModule.in_a_slot`.
+
 ### Consumo
 
 - Arreglado: un consumo imposible entraba en la gráfica, en el máximo y en la
