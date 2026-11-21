@@ -83,7 +83,8 @@ class TestTheFamily(unittest.TestCase):
             ("ubuntu", "debian"): "ubuntu", ("linuxmint", "ubuntu debian"): "ubuntu",
             ("debian", ""): "debian", ("fedora", ""): "fedora",
             ("rocky", "rhel centos fedora"): "fedora", ("cachyos", "arch"): "arch",
-            ("manjaro", "arch"): "arch", ("gentoo", ""): None,
+            ("manjaro", "arch"): "arch", ("gentoo", ""): "gentoo",
+            ("nixos", ""): None,
         }
         for (ident, like), familia in casos.items():
             with self.subTest(ident=ident):
@@ -127,14 +128,25 @@ class TestTheNotes(unittest.TestCase):
         self.assertEqual(nota.message, _("deps.graphics").format(cuales="Vulkan, OpenCL"))
         self.assertEqual(nota.hint, _("deps.hint.many").format(paquetes="vulkan-loader y ocl-icd"))
 
-    def test_nvml_on_gentoo_names_every_family_and_replaces_the_drivers_note(self):
+    def test_nvml_on_gentoo_names_its_package_and_replaces_the_drivers_note(self):
         photo = _photo("i7-10700f", {"nvml": False})
         nota = _package_notes(photo)["gpus.packages.nvml"]
         self.assertEqual(nota.message, _("deps.nvml"))
-        self.assertEqual(nota.hint, _("deps.hint.any").format(paquete=(
-            "libnvidia-ml1 (Debian), libnvidia-compute-NNN (Ubuntu), "
-            "xorg-x11-drv-nvidia-cuda-libs (Fedora), nvidia-utils (Arch)")))
+        self.assertEqual(nota.hint, _("deps.hint").format(paquete="x11-drivers/nvidia-drivers"))
         self.assertFalse([n for n in photo.notes if n.message == _("prov.drm.nvidia")])
+
+    def test_opencl_on_gentoo(self):
+        # Its OpenCL loader is not Arch's or Fedora's ocl-icd.
+        notas = _package_notes(_photo("i7-10700f", {"opencl": False, "vulkan": True,
+                                                    "egl": True, "opengl": True, "vaapi": True}))
+        self.assertEqual(notas["gpus.packages.apis"].hint,
+                         _("deps.hint").format(paquete="dev-libs/opencl-icd-loader"))
+
+    def test_a_distribution_of_no_family_names_every_one(self):
+        dep = system_deps.BY_KEY["opencl"]
+        self.assertEqual(system_deps.package_text(dep, None),
+                         "ocl-icd-libopencl1 (Debian, Ubuntu), ocl-icd (Fedora, Arch), "
+                         "dev-libs/opencl-icd-loader (Gentoo)")
 
     def test_on_the_graphics_page(self):
         qt.app()

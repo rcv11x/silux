@@ -69,9 +69,6 @@ la memoria) no va: está propuesto en las notas
   - Discos · baja · con el ayudante · el modelo entero por el IDENTIFY de
     `ata_device` (para buscar la unidad en drivedb) está probado aquí con dos
     Seagate y un Crucial; con el A400 de verdad, falta verlo.
-  - Gráficos · baja · su Gentoo no tiene el cargador de OpenCL y el aviso lo
-    dice bien, pero sin el paquete de Gentoo: `system_deps` cubre Debian,
-    Ubuntu, Fedora y Arch.
 * **Del portátil Lenovo LOQ 15IRH8** (volcado `i5-12450h`, de la prueba5):
   - Memoria · media · el SPD de la DDR5 no se lee: `spd5118` está enganchado
     en `0-0050` y da su temperatura, pero no hay `eeprom` ni nada en

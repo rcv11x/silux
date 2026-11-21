@@ -75,7 +75,7 @@ The documentation in `docs/` is in Spanish.
 - [Architecture](docs/arquitectura.md): how it is built and how to run each part.
 - [Conventions](docs/convenciones.md): how to contribute.
 - [Tested machines](docs/equipos-probados.md) and [what's still missing](docs/pendientes.md).
-- [What it uses from the system](docs/dependencias.md): which package brings each piece on Debian, Ubuntu, Fedora and Arch, and what happens without it.
+- [What it uses from the system](docs/dependencias.md): which package brings each piece on Debian, Ubuntu, Fedora, Arch and Gentoo, and what happens without it.
 - [What changed in each release](CHANGELOG.md).
 - In English: [a short architecture](ARCHITECTURE.md), [how to contribute](CONTRIBUTING.md) and [how to report a security problem](SECURITY.md).
 

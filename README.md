@@ -73,7 +73,7 @@ A quienes mandan informes: con ellos Silux se prueba en equipos que no son el nu
 - [Arquitectura](docs/arquitectura.md): cómo está hecho y cómo ejecutar cada cosa.
 - [Convenciones](docs/convenciones.md): cómo contribuir.
 - [Equipos probados](docs/equipos-probados.md) y [lo que falta](docs/pendientes.md).
-- [Lo que usa del sistema](docs/dependencias.md): qué paquete trae cada cosa en Debian, Ubuntu, Fedora y Arch, y qué pasa si falta.
+- [Lo que usa del sistema](docs/dependencias.md): qué paquete trae cada cosa en Debian, Ubuntu, Fedora, Arch y Gentoo, y qué pasa si falta.
 - [Cambios de cada versión](CHANGELOG.md).
 - En inglés: [la arquitectura en corto](ARCHITECTURE.md), [cómo contribuir](CONTRIBUTING.md) y [cómo avisar de un problema de seguridad](SECURITY.md).
 
