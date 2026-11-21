@@ -195,7 +195,12 @@ en las lecciones de las notas. Valen para el código nuevo:
   guarda con códigos, claves o valores en bruto (el código de SMBIOS,
   `Note.key`, `Segment.key`, `Sensor.device_key`); la traducción va al final,
   al pintar. Cada volcado en español y en inglés da el mismo modelo salvo sus
-  textos (`tests/test_language_independence.py`).
+  textos (`tests/test_language_independence.py`), y cada página se ve solo en
+  el idioma elegido (`tests/test_interface_language.py`). Ni una fecha se
+  guarda ya escrita.
+- **Una gráfica dibuja una sola serie.** Cada punto entra con su
+  `Series(clave, unidad)`: otra clave empieza de cero, y lo que no cabe en
+  su unidad (`model.PLAUSIBLE`) no entra (`tests/test_chart_series.py`).
 
 ## Cómo está repartido
 
@@ -303,7 +308,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); el código nuevo, en inglés (ver «Código»). Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-1622 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+1627 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
