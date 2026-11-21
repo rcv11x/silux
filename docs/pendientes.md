@@ -104,6 +104,17 @@ la memoria) no va: está propuesto en las notas
   - Volcados · baja · `edid.resolve_vendors` lee el `pnp.ids` de quien
     ejecuta, no el del volcado; y un volcado sin el `name` de un bus i2c
     hace que `_hay_bus_de_memoria` abandone al primer fallo.
+* **Del sobremesa con Ryzen 3 4100 y RX 550** (volcado `ryzen3-4100`, de la
+  prueba6):
+  - Gráficos · media · los códecs solo dicen MPEG-2 y JPEG: la Mesa de Fedora
+    no trae H.264 ni HEVC (patentes), y los añade `mesa-va-drivers-freeworld`
+    de RPM Fusion. Se podría decir en la tabla de códecs.
+  - Gráficos · baja · «Versión del driver: 26.2.6» y «amdgpu 26.2.6» en la
+    cabecera son la versión de Mesa, no la del driver del kernel.
+  - Gráficos · baja · el enlace va a x4 de x8 a 8 GT/s: hace falta saber si
+    es el ahorro de energía de Polaris o el enlace de verdad. El volcado no
+    guarda `pp_dpm_pcie`, que diría qué líneas pide la tarjeta en cada
+    nivel.
 * **Sin volcado, sin hacer todavía:**
   - SMART · baja · atributos conocidos (4, 192, 193, 196…) salen «propio del
     fabricante», y la temperatura en crudo sale empaquetada (64 427 589 655).
