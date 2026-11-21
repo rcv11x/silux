@@ -99,9 +99,10 @@ la memoria) no va: está propuesto en las notas
   prueba5, sin volcado en la suite):
   - Memoria · baja · «Rangos: —» y «Voltaje: —» sin explicar cuando la
     tabla SMBIOS no los trae.
-  - CPU · media · «Turbo: —» en un Athlon 3000G sin driver de frecuencia:
-    declara `cpb` y sin cpufreq no hay estado. Y «Multiplicador» y «Máxima
-    (silicio)» con guion.
+  - CPU · baja · en un Zen sin CPPC ni driver de frecuencia, «Multiplicador»
+    y «Bus (BCLK)» salen con guion sin explicar: existen, pero sin CPPC no
+    se derivan. Con la base leída de su P0 se podrían derivar (el reloj de
+    referencia de Zen es de 100 MHz).
   - Almacenamiento · baja · se propone `drivetemp` aunque SMART ya da la
     temperatura. Y el firmware de un pendrive sale con guion.
   - Red · baja · `lo` sale con «Driver», «Modelo» y «Ranura PCI» a guion

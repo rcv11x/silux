@@ -220,11 +220,13 @@ class TestTheCpuPage(unittest.TestCase):
         values, hidden, foot, shown = self._clocks(photo)
         self.assertEqual(values[_("cpu.clock.current")],
                          render.hz(photo.cpu.types[0].clocks.current_hz))
-        self.assertEqual(values[_("cpu.clock.turbo")], _("cpu.turbo.none"))
+        # No turbo: its row and the silicon ceiling go too, said at the foot.
         self.assertEqual(hidden, {_(k) for k in ("cpu.clock.min", "cpu.clock.maxkernel",
                                                   "cpu.clock.driver", "cpu.clock.governor",
-                                                  "cpu.clock.epp")})
-        self.assertEqual((foot, shown), (_("cpu.clocks.nodriver.cpuinfo"), True))
+                                                  "cpu.clock.epp", "cpu.clock.turbo",
+                                                  "cpu.clock.maxsilicon")})
+        self.assertEqual((foot, shown), (_("cpu.clocks.nodriver.cpuinfo") + " "
+                                         + _("cpu.clocks.noturbo"), True))
 
     def test_a_zens_base_without_permissions_has_its_padlock(self):
         from silux.ui.pages.cpu import TypeSection

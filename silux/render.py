@@ -1973,6 +1973,13 @@ def without_frequency_driver(clocks: Clocks) -> Optional[str]:
     return None
 
 
+def clocks_footnote(clocks: Clocks) -> Optional[str]:
+    """What the Clocks card hides and why: no frequency driver, no turbo."""
+    parts = [p for p in (without_frequency_driver(clocks),
+                         _("cpu.clocks.noturbo") if clocks.turbo_supported is False else None) if p]
+    return " ".join(parts) or None
+
+
 def turbo_note(clocks: Clocks) -> Optional[str]:
     """Una frase corta cuando el techo real no llega al del silicio."""
     if clocks.turbo_enabled is False and clocks.max_turbo_hz:

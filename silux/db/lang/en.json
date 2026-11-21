@@ -386,6 +386,7 @@
   "cpu.clock.turbo": "Turbo",
   "cpu.clocks.nodriver.cpuinfo": "Without a frequency driver there is no governor, energy preference, or kernel minimum and maximum. The frequency is the one the kernel records for each core.",
   "cpu.clocks.nodriver.msr": "Without a frequency driver there is no governor, energy preference, or kernel minimum and maximum. The frequency is that of the P-state the processor is in.",
+  "cpu.clocks.noturbo": "This processor has no turbo: its highest frequency is the base.",
   "cpu.field.arch": "Architecture",
   "cpu.field.codename": "Codename",
   "cpu.field.cores": "Cores",

@@ -1,0 +1,49 @@
+"""A processor without turbo hides it, and says so, instead of a dash.
+
+Some parts without turbo declare the «cpb» flag anyway, and without a
+frequency driver nothing in the kernel says otherwise: the Clocks card read
+«Turbo: —» and «Máxima (silicio): —» on a part that has neither. AMD's
+specifications list those models with a base clock and no boost.
+"""
+
+import unittest
+
+from silux import db
+from silux.i18n import _
+from tests import pantalla, qt
+from tests.test_equipos import EQUIPOS, foto
+
+
+class TestTheSpecs(unittest.TestCase):
+
+    def test_listed_without_boost_with_boost_and_not_listed(self):
+        self.assertIs(db.amd_turbo("AMD Athlon 3000G with Radeon Vega Graphics"), False)
+        self.assertIs(db.amd_turbo("AMD Ryzen 7 5800X3D 8-Core Processor"), True)
+        self.assertIsNone(db.amd_turbo("Intel(R) Core(TM) i5-10400 CPU @ 2.90GHz"))
+
+
+class TestAPartWithoutTurbo(unittest.TestCase):
+
+    def test_its_clocks_card(self):
+        f = foto(EQUIPOS / "athlon-3000g")[0]
+        reloj = f.cpu.types[0].clocks
+        self.assertIs(reloj.turbo_supported, False)
+        qt.app()
+        with pantalla.Ventana(f) as ventana:
+            ventana.select_section("CPU")
+            pagina = ventana.stack.currentWidget()
+            from silux.ui.pages.cpu import TypeSection
+            seccion = pagina.findChildren(TypeSection)[0]
+            for clave in ("cpu.clock.turbo", "cpu.clock.maxsilicon"):
+                with self.subTest(campo=clave):
+                    self.assertFalse(seccion.clocks._values[_(clave)].isVisibleTo(pagina))
+            self.assertIn(_("cpu.clocks.noturbo"), seccion.clocks_foot.text())
+
+    def test_a_part_whose_kernel_publishes_its_boost_is_untouched(self):
+        reloj = foto(EQUIPOS / "5800x3d")[0].cpu.types[0].clocks
+        self.assertIsNot(reloj.turbo_supported, False)
+        self.assertIsNotNone(reloj.turbo_enabled)
+
+
+if __name__ == "__main__":
+    unittest.main()

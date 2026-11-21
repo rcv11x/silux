@@ -452,6 +452,18 @@ def amd_model(brand: str) -> Optional[dict]:
     return None
 
 
+def amd_turbo(brand: str) -> Optional[bool]:
+    """Whether AMD's specifications list a boost clock for this model.
+
+    False only for a model listed with its base clock and no boost; None
+    when AMD doesn't list it.
+    """
+    row = amd_model(brand)
+    if row is None or not row.get("base_mhz"):
+        return None
+    return row.get("boost_mhz") is not None
+
+
 @functools.lru_cache(maxsize=1)
 def _load_overlay() -> dict[str, Any]:
     path = pathlib.Path(__file__).parent / "sockets.json"

@@ -386,6 +386,7 @@
   "cpu.clock.turbo": "Turbo",
   "cpu.clocks.nodriver.cpuinfo": "Sin driver de frecuencia no hay gobernador, preferencia de energía, ni mínima o máxima del kernel. La frecuencia es la que anota el kernel de cada núcleo.",
   "cpu.clocks.nodriver.msr": "Sin driver de frecuencia no hay gobernador, preferencia de energía, ni mínima o máxima del kernel. La frecuencia es la del P-state en que está el procesador.",
+  "cpu.clocks.noturbo": "Este procesador no tiene turbo: su frecuencia más alta es la base.",
   "cpu.field.arch": "Arquitectura",
   "cpu.field.codename": "Nombre en clave",
   "cpu.field.cores": "Núcleos",

@@ -11,7 +11,7 @@ import dataclasses
 import os
 from typing import Optional
 
-from .. import sysroot
+from .. import db, sysroot
 from ..model import Clocks
 from .base import Draft, Provider, is_virtual_machine, read_int, read_text
 
@@ -62,6 +62,13 @@ class TurboState(Provider):
             self._supported, self._supported_read = _turbo_supported(), True
         # A virtual CPU's flags are the hypervisor's, not the host's part.
         supported = None if is_virtual_machine(draft) else self._supported
+        if enabled is None and supported:
+            # Some parts without turbo set the flag anyway. With no boost
+            # control from the kernel to say otherwise, the maker's
+            # specifications decide.
+            brands = {entry.get("brand") for entry in draft.types.values() if entry.get("brand")}
+            if brands and all(db.amd_turbo(brand) is False for brand in brands):
+                supported = False
 
         if enabled is None and supported is None:
             return

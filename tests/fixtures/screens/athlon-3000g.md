@@ -97,11 +97,9 @@ Athlon (Picasso) · AM4 · GF 12LP · x86_64
 - Frecuencia: 2.91 GHz
 - Multiplicador: —
 - Base: (necesita permisos)
-- Máxima (silicio): —
 - Bus (BCLK): —
-- Turbo: —
 
-Sin driver de frecuencia no hay gobernador, preferencia de energía, ni mínima o máxima del kernel. La frecuencia es la que anota el kernel de cada núcleo.
+Sin driver de frecuencia no hay gobernador, preferencia de energía, ni mínima o máxima del kernel. La frecuencia es la que anota el kernel de cada núcleo. Este procesador no tiene turbo: su frecuencia más alta es la base.
 
 ### Jerarquía de caché
 

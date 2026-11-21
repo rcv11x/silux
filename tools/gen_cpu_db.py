@@ -365,6 +365,14 @@ def _amd_value(item: dict, key: str):
     return str(value).strip() if value not in (None, "") else None
 
 
+def _amd_mhz(item: dict, key: str) -> "int | None":
+    """A clock field («3500.0») as whole MHz, or None."""
+    try:
+        return round(float(_amd_value(item, key) or ""))
+    except ValueError:
+        return None
+
+
 def parse_amd_specs(page: str) -> list[dict]:
     """One row per model: codename, socket and node as amd.com gives them."""
     import html as html_lib
@@ -394,6 +402,9 @@ def parse_amd_specs(page: str) -> list[dict]:
             "codename": codename,
             "socket": _amd_value(item, "cpuSocket"),
             "node": _amd_value(item, "processorTechnologyForCpuCores"),
+            # In MHz; a model listed with a base clock and no boost has none.
+            "base_mhz": _amd_mhz(item, "baseClock"),
+            "boost_mhz": _amd_mhz(item, "maxBoostClock"),
             "source": (item.get("productPages") or {}).get("en") or AMD_SPECS_URL,
         })
     if len(rows) < 100:

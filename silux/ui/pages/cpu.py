@@ -247,12 +247,17 @@ class TypeSection(QWidget):
         c(_("cpu.clock.driver"), clocks.driver or render.DASH)
         c(_("cpu.clock.governor"), clocks.governor or render.DASH)
         c(_("cpu.clock.epp"), clocks.energy_preference or render.DASH)
-        # Without cpufreq these do not exist: the foot says why, and where
-        # the frequency above comes from.
-        foot = render.without_frequency_driver(clocks)
+        # Without cpufreq these do not exist, and without turbo neither do
+        # the turbo and a silicon ceiling above the base: the foot says why,
+        # and where the frequency above comes from.
+        sin_driver = render.without_frequency_driver(clocks) is not None
         for clave in ("cpu.clock.min", "cpu.clock.maxkernel", "cpu.clock.driver",
                       "cpu.clock.governor", "cpu.clock.epp"):
-            self.clocks.set_visible(_(clave), foot is None)
+            self.clocks.set_visible(_(clave), not sin_driver)
+        sin_turbo = clocks.turbo_supported is False
+        for clave in ("cpu.clock.turbo", "cpu.clock.maxsilicon"):
+            self.clocks.set_visible(_(clave), not sin_turbo)
+        foot = render.clocks_footnote(clocks)
         self.clocks_foot.setText(foot or "")
         self.clocks_foot.setVisible(foot is not None)
 
