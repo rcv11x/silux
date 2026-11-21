@@ -53,6 +53,8 @@ no es un disco duro, y un procesador sin turbo no enseña el suyo.
   todo eso) ya no sale con raya: se esconde y el pie lo nombra.
 - Si el enlace PCIe va a toda velocidad pero con menos líneas de las que
   admiten la tarjeta y la ranura, ya no se atribuye al reposo.
+- Inicio nombra cada gráfica por el enlace al que llega, como la cabecera de
+  Gráficos: en reposo una NVIDIA de portátil salía «PCIe 1.0 × 8».
 - Un límite de potencia con un mínimo de 0 W ya no se presenta como un rango.
 
 ### Almacenamiento

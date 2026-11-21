@@ -634,11 +634,7 @@ class GpuSection(QWidget):
         # `pcie_link` devuelve un guion cuando no hay enlace que contar, y una
         # integrada no lo tiene: el subtítulo salía «Apple Inc. · —». Un guion
         # entre dos datos se lee como si faltara algo en medio.
-        # The subtitle names the card: the link it reaches, not the one of the
-        # moment, which drops at idle and read «PCIe 1.0 × 8» like a fault.
-        enlace = render.pcie_link(gpu.link, maximum=True) if gpu.link else render.DASH
-        if enlace == render.DASH and gpu.link:
-            enlace = render.pcie_link(gpu.link)
+        enlace = render.gpu_link(gpu)
         self.subtitle.setText(" · ".join(
             p for p in (render.maker(gpu.subsystem_name), gpu.codename, enlace)
             if p and p != render.DASH))

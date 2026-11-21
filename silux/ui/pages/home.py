@@ -352,7 +352,7 @@ class HomePage(ScrollPage):
         detalle = " · ".join(p for p in (
             _("gpu.chip.integrated") if gpu.integrated else None,
             render.vram_kind(gpu.memory) if gpu.memory.total_bytes else None,
-            render.pcie_link(gpu.link) if gpu.link.current_speed_gts else None,
+            render.gpu_link(gpu),
             render.compute_units(gpu) if gpu.compute_units else None,
         ) if p and p != render.DASH)
 

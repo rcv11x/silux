@@ -749,6 +749,15 @@ def pcie_link(link: PcieLink, maximum: bool = False) -> str:
     return f"{nombre} × {width}" if width else nombre
 
 
+def gpu_link(gpu) -> str:
+    """The link a card reaches, which names it: the maximum, not the one of
+    the moment, which drops at idle; the current one when that's all."""
+    if not gpu.link:
+        return DASH
+    reached = pcie_link(gpu.link, maximum=True)
+    return reached if reached != DASH else pcie_link(gpu.link)
+
+
 def pcie_note(link: PcieLink) -> Optional[str]:
     """Por qué el enlace va más lento de lo que puede, cuando pasa.
 
