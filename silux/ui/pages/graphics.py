@@ -245,6 +245,39 @@ NA_SIN_TEMPERATURA = {
     "sensors": (("gpu.sensor.hotspot",), "gpu.na.notemp"),
 }
 
+# What an AMD card's driver may not publish on a given generation (older
+# ones have no firmware telemetry), by row and by how the foot names it.
+# The video engine's use is said in «Right now» already: no name here.
+AMD_SILENT = {
+    "card": (),
+    "memory": (("gpu.vram.chips", lambda g: g.memory.vendor, "gpu.na.piece.vramvendor"),),
+    "clocks": (("gpu.clock.memeff", lambda g: g.clocks.memory_effective_hz, "gpu.na.piece.memeff"),
+               ("SoC", lambda g: g.clocks.soc_hz, "gpu.na.piece.socclock")),
+    "sensors": (("gpu.sensor.state", lambda g: g.throttled, "gpu.na.piece.state"),
+                ("gpu.sensor.hotspot", lambda g: g.hotspot_c, "gpu.na.piece.hotspot"),
+                ("gpu.sensor.memtemp", lambda g: g.memory_temp_c, "gpu.na.piece.memtemp"),
+                ("gpu.sensor.vrgfx", lambda g: g.vr_gfx_c, "gpu.na.piece.vrs"),
+                ("gpu.sensor.vrsoc", lambda g: g.vr_soc_c, "gpu.na.piece.vrs"),
+                ("gpu.sensor.vrmem", lambda g: g.vr_memory_c, "gpu.na.piece.vrs"),
+                ("gpu.sensor.vsoc", lambda g: g.voltage_soc_v, "gpu.na.piece.voltages"),
+                ("gpu.sensor.vmem", lambda g: g.voltage_memory_v, "gpu.na.piece.voltages"),
+                ("gpu.sensor.videouse", lambda g: g.video_busy_percent, None)),
+}
+
+
+def _silent_on_this_amd(gpu: Gpu) -> dict:
+    """The rows an awake AMD card's driver doesn't publish, hidden and named
+    at the foot: «—» there would read as unread, and it never will be."""
+    regla = {}
+    for tarjeta, filas in AMD_SILENT.items():
+        claves = tuple(clave for clave, valor, _nombre in filas if valor(gpu) is None)
+        nombres = list(dict.fromkeys(nombre for clave, valor, nombre in filas
+                                     if valor(gpu) is None and nombre))
+        if claves:
+            regla[tarjeta] = (claves, ("gpu.na.amd.silent", nombres) if nombres else None)
+    return regla
+
+
 ENGINE_HEADERS = ("gpu.engine.name", "gpu.engine.role", "gpu.tile.usage", "gpu.engine.can")
 CODEC_HEADERS = ("gpu.codec.name", "gpu.codec.decode", "gpu.codec.encode", "gpu.codec.depth", "gpu.codec.profiles")
 
@@ -286,6 +319,9 @@ def no_aplica(gpu: Gpu) -> tuple[dict[str, set[str]], dict[str, str]]:
     if (gpu.integrated is False and gpu.driver in ("i915", "xe")
             and render.pcie_link(gpu.link) == render.DASH):
         reglas.append(NA_ARC_ENLACE)
+    if (gpu.driver == "amdgpu" and gpu.integrated is False and not gpu.suspended
+            and gpu.temp_c is not None):
+        reglas.append(_silent_on_this_amd(gpu))
     if gpu.integrated and gpu.driver in ("i915", "xe"):
         regla = dict(NA_INTEL_INTEGRADA)
         if render.pcie_link(gpu.link) != render.DASH:
@@ -303,8 +339,16 @@ def no_aplica(gpu: Gpu) -> tuple[dict[str, set[str]], dict[str, str]]:
     for regla in reglas:
         for tarjeta, (claves, frase) in regla.items():
             ocultos[tarjeta].update(claves)
-            frases[tarjeta].append(frase)
-    return ocultos, {t: " ".join(_(f) for f in v) for t, v in frases.items()}
+            if frase:
+                frases[tarjeta].append(frase)
+
+    def texto(frase) -> str:
+        # A key, or a key with the pieces it names.
+        if isinstance(frase, str):
+            return _(frase)
+        clave, nombres = frase
+        return _(clave).format(campos=render.enumeration([_(n) for n in nombres], "list.nor"))
+    return ocultos, {t: " ".join(texto(f) for f in v) for t, v in frases.items()}
 
 
 def pie_de_sensores(ocultos: set[str]) -> str:

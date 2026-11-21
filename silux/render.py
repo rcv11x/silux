@@ -758,6 +758,11 @@ def pcie_note(link: PcieLink) -> Optional[str]:
     """
     if not link.downgraded:
         return None
+    if link.fewer_lanes_at_full_speed:
+        # Saving power usually lowers the speed; fewer lanes at full speed
+        # may be the card's own power saving or a link trained narrower.
+        return _("pcie.now.lanes").format(actual=pcie_link(link),
+                                          max=pcie_link(link, maximum=True))
     return _("pcie.now").format(actual=pcie_link(link),
                                 max=pcie_link(link, maximum=True))
 
@@ -1275,9 +1280,12 @@ def gpu_factory_power_limit(gpu) -> str:
     parts = []
     if gpu.power_cap_default_w is not None:
         parts.append(watts(gpu.power_cap_default_w))
-    if gpu.power_cap_min_w is not None and gpu.power_cap_max_w is not None:
+    if gpu.power_cap_min_w and gpu.power_cap_max_w is not None:
         parts.append(_("gpu.power.range").format(desde=figure(gpu.power_cap_min_w, 1),
                                                   hasta=watts(gpu.power_cap_max_w)))
+    elif gpu.power_cap_max_w is not None and gpu.power_cap_max_w != gpu.power_cap_default_w:
+        # A minimum of 0 W is no limit: some drivers write it as «none».
+        parts.append(_("gpu.power.upto").format(hasta=watts(gpu.power_cap_max_w)))
     return " · ".join(parts) or DASH
 
 

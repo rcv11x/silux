@@ -1,0 +1,301 @@
+{
+ "amdgpu": {
+  "/dev/dri/renderD128": {
+   "arrays_per_engine": 1,
+   "compute_units": 8,
+   "device_id": 27039,
+   "family": 130,
+   "is_apu": false,
+   "max_engine_hz": 1183000000,
+   "max_memory_hz": 1500000000,
+   "render_backends": 4,
+   "shader_engines": 2,
+   "vram_bits": 128,
+   "vram_type": "GDDR5"
+  }
+ },
+ "cpuid": {
+  "*:0:0": [
+   16,
+   1752462657,
+   1145913699,
+   1769238117
+  ],
+  "*:2147483648:0": [
+   2147483680,
+   1752462657,
+   1145913699,
+   1769238117
+  ],
+  "0:1:0": [
+   8785665,
+   526336,
+   2130194955,
+   395049983
+  ],
+  "0:2147483649:0": [
+   8785665,
+   536870912,
+   1975662591,
+   802421759
+  ],
+  "0:2147483650:0": [
+   541347137,
+   1702525266,
+   540221550,
+   808464692
+  ],
+  "0:2147483651:0": [
+   1127035936,
+   543519343,
+   1668248144,
+   1869837157
+  ],
+  "0:2147483652:0": [
+   538976370,
+   538976288,
+   538976288,
+   2105376
+  ],
+  "0:7:0": [
+   0,
+   563909033,
+   4194308,
+   0
+  ],
+  "0:7:1": [
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ "gpuapi": {
+  "consultar": {
+   "opencl": [],
+   "opengl": {
+    "egl_vendor": "Mesa Project",
+    "egl_version": "1.5",
+    "glsl": "4.60",
+    "renderer": "AMD Radeon RX 550 / 550 Series (radeonsi, polaris12, ACO, DRM 3.64, 7.2.15-200.fc44.x86_64)",
+    "vendor": "AMD",
+    "version": "4.6 (Compatibility Profile) Mesa 26.2.6"
+   },
+   "vaapi": [
+    {
+     "codecs": [
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": false,
+       "name": "MPEG-2",
+       "profiles": [
+        "Simple",
+        "Main"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": false,
+       "name": "JPEG",
+       "profiles": [
+        "Baseline"
+       ]
+      }
+     ],
+     "driver": "Mesa Gallium driver 26.2.6 for AMD Radeon RX 550 / 550 Series (radeonsi, polaris12, ACO, DRM 3.64, 7.2.15-200.fc44.x86_64)",
+     "node": "renderD128",
+     "version": "1.23"
+    }
+   ],
+   "vulkan": [
+    {
+     "api_version": "1.4.354",
+     "device_id": 27039,
+     "device_memory_bytes": 2147483648,
+     "driver_version": 109060102,
+     "instance_version": "1.4.341",
+     "kind": "dedicada",
+     "name": "AMD Radeon RX 550 / 550 Series (RADV POLARIS12)",
+     "vendor_id": 4098
+    },
+    {
+     "api_version": "1.4.354",
+     "device_id": 0,
+     "device_memory_bytes": 16616112128,
+     "driver_version": 109060102,
+     "instance_version": "1.4.341",
+     "kind": "CPU",
+     "name": "llvmpipe (LLVM 22.1.8, 256 bits)",
+     "vendor_id": 65541
+    }
+   ],
+   "vulkan_icds": [
+    "libvulkan_asahi.so",
+    "libvulkan_asahi.so",
+    "libvulkan_broadcom.so",
+    "libvulkan_broadcom.so",
+    "libvulkan_dzn.so",
+    "libvulkan_dzn.so",
+    "libvulkan_freedreno.so",
+    "libvulkan_freedreno.so",
+    "libvulkan_intel_hasvk.so",
+    "libvulkan_intel_hasvk.so",
+    "libvulkan_intel.so",
+    "libvulkan_intel.so",
+    "libvulkan_lvp.so",
+    "libvulkan_lvp.so",
+    "libvulkan_nouveau.so",
+    "libvulkan_nouveau.so",
+    "libvulkan_panfrost.so",
+    "libvulkan_panfrost.so",
+    "libvulkan_powervr_mesa.so",
+    "libvulkan_powervr_mesa.so",
+    "libvulkan_radeon.so",
+    "libvulkan_radeon.so",
+    "libvulkan_virtio.so",
+    "libvulkan_virtio.so"
+   ],
+   "vulkan_rejected": []
+  }
+ },
+ "ioctl_red": {
+  "enp5s0:0x8915": null,
+  "enp5s0:0x891b": null,
+  "lo:0x8915": "127.0.0.1",
+  "lo:0x891b": "255.0.0.0",
+  "wlp8s0f4u2:0x8915": "192.168.1.120",
+  "wlp8s0f4u2:0x891b": "255.255.255.0"
+ },
+ "nvml": {
+  "abierta": false
+ },
+ "paquetes": {
+  "egl": true,
+  "kmod": true,
+  "opencl": true,
+  "opengl": true,
+  "pci.ids": true,
+  "pkexec": true,
+  "pnp.ids": true,
+  "python3": true,
+  "systemctl": true,
+  "vaapi": true,
+  "vulkan": true,
+  "xdg-open": true
+ },
+ "pciids": {
+  "1002:1637|1002:699f|1002:aae0|1022:15e3|1022:1639|1022:43c8|1022:43d5|1022:7901|10ec:8168|15b7:5019": {
+   "1002:1637": [
+    "Advanced Micro Devices, Inc. [AMD/ATI]",
+    "Renoir/Cezanne HDMI/DP Audio Controller"
+   ],
+   "1002:699f": [
+    "Advanced Micro Devices, Inc. [AMD/ATI]",
+    "Lexa PRO [Radeon 540/540X/550/550X / RX 540X/550/550X]"
+   ],
+   "1002:aae0": [
+    "Advanced Micro Devices, Inc. [AMD/ATI]",
+    "Baffin HDMI/DP Audio [Radeon RX 550 640SP / RX 560/560X]"
+   ],
+   "1022:15e3": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "Ryzen HD Audio Controller"
+   ],
+   "1022:1639": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "Renoir/Cezanne USB 3.1"
+   ],
+   "1022:43c8": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "400 Series Chipset SATA Controller"
+   ],
+   "1022:43d5": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "400 Series Chipset USB 3.1 xHCI Compliant Host Controller"
+   ],
+   "1022:7901": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "FCH SATA Controller [AHCI mode]"
+   ],
+   "10ec:8168": [
+    "Realtek Semiconductor Co., Ltd.",
+    "RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller"
+   ],
+   "15b7:5019": [
+    "Sandisk Corp",
+    "WD Green SN350 240GB (DRAM-less) / SN560E NVMe SSD"
+   ]
+  },
+  "1002:699f|1002:699f:1849:5001": {
+   "1002:699f": [
+    "Advanced Micro Devices, Inc. [AMD/ATI]",
+    "Lexa PRO [Radeon 540/540X/550/550X / RX 540X/550/550X]"
+   ]
+  },
+  "1022:1630|1022:790e": {
+   "1022:1630": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "Renoir/Cezanne Root Complex"
+   ],
+   "1022:790e": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "FCH LPC Bridge"
+   ]
+  },
+  "10ec:8168": {
+   "10ec:8168": [
+    "Realtek Semiconductor Co., Ltd.",
+    "RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller"
+   ]
+  }
+ },
+ "pciids_fabricante": {
+  "1849": "ASRock Incorporation"
+ },
+ "plataforma": {
+  "entorno": {
+   "SHELL": "/bin/bash",
+   "XDG_CURRENT_DESKTOP": "KDE",
+   "XDG_SESSION_TYPE": "wayland"
+  },
+  "kvm": true,
+  "machine": "x86_64",
+  "procesos": 410,
+  "uname": {
+   "machine": "x86_64",
+   "node": "silux-pc",
+   "processor": "",
+   "release": "7.2.15-200.fc44.x86_64",
+   "system": "Linux",
+   "version": "#1 SMP PREEMPT_DYNAMIC Sun Nov  1 16:10:54 UTC 2026"
+  }
+ },
+ "realpath": {
+  "/dev/nvme0n1p1": "/dev/nvme0n1p1",
+  "/dev/nvme0n1p2": "/dev/nvme0n1p2",
+  "/dev/nvme0n1p3": "/dev/nvme0n1p3"
+ },
+ "statvfs": {
+  "/": [
+   62216822784,
+   172570533888
+  ],
+  "/boot": [
+   527208448,
+   1389015040
+  ],
+  "/boot/efi": [
+   21053440,
+   606846976
+  ]
+ },
+ "systemd": {
+  "arranque": {
+   "FinishTimestampMonotonic": 25761581,
+   "InitRDTimestampMonotonic": 4092458,
+   "UserspaceTimestampMonotonic": 10294317
+  }
+ }
+}

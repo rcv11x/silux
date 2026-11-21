@@ -1,0 +1,8 @@
+ 0 [WEBCAM         ]: USB-Audio - 
+                      Audio USB at usb-0000:02:00.0-6, high speed
+ 1 [HDMI           ]: HDA-Intel - HDA ATI HDMI
+                      HDA ATI HDMI at 0xfcf60000 irq 86
+ 2 [Generic        ]: HDA-Intel - HD-Audio Generic
+                      HD-Audio Generic at 0xfca08000 irq 85
+ 3 [Generic_1      ]: HDA-Intel - HD-Audio Generic
+                      HD-Audio Generic at 0xfca00000 irq 87

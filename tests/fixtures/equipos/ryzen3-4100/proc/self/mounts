@@ -1,0 +1,13 @@
+/dev/nvme0n1p3 / btrfs rw,seclabel,relatime,compress=zstd:1,ssd,discard=async,space_cache=v2,subvolid=256,subvol=/root 0 0
+/dev/nvme0n1p3 /home btrfs rw,seclabel,relatime,compress=zstd:1,ssd,discard=async,space_cache=v2,subvolid=257,subvol=/home 0 0
+/dev/nvme0n1p2 /boot ext4 rw,seclabel,relatime 0 0
+/dev/loop1 /media/unidad1 squashfs ro,context=system_u:object_r:snappy_snap_t:s0,nodev,relatime,errors=continue 0 0
+/dev/loop4 /media/unidad2 squashfs ro,context=system_u:object_r:snappy_snap_t:s0,nodev,relatime,errors=continue 0 0
+/dev/loop7 /media/unidad3 squashfs ro,context=system_u:object_r:snappy_snap_t:s0,nodev,relatime,errors=continue 0 0
+/dev/loop2 /media/unidad4 squashfs ro,context=system_u:object_r:snappy_snap_t:s0,nodev,relatime,errors=continue 0 0
+/dev/loop5 /media/unidad5 squashfs ro,context=system_u:object_r:snappy_snap_t:s0,nodev,relatime,errors=continue 0 0
+/dev/loop3 /media/unidad6 squashfs ro,context=system_u:object_r:snappy_snap_t:s0,nodev,relatime,errors=continue 0 0
+/dev/loop0 /media/unidad7 squashfs ro,context=system_u:object_r:snappy_snap_t:s0,nodev,relatime,errors=continue 0 0
+/dev/loop8 /media/unidad8 squashfs ro,context=system_u:object_r:snappy_snap_t:s0,nodev,relatime,errors=continue 0 0
+/dev/loop6 /media/unidad9 squashfs ro,context=system_u:object_r:snappy_snap_t:s0,nodev,relatime,errors=continue 0 0
+/dev/nvme0n1p1 /boot/efi vfat rw,relatime,fmask=0077,dmask=0077,codepage=437,iocharset=ascii,shortname=winnt,errors=remount-ro 0 0

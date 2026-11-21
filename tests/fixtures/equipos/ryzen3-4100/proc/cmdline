@@ -1,0 +1,1 @@
+BOOT_IMAGE=(hd0,gpt2)/vmlinuz-7.2.15-200.fc44.x86_64 root=… ro rootflags=subvol=root rhgb quiet

@@ -1,0 +1,1 @@
+Mitigation: Retpolines; IBPB: conditional; STIBP: always-on; RSB filling; PBRSB-eIBRS: Not affected; BHI: Not affected

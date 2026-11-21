@@ -869,6 +869,8 @@ DMI_PLACEHOLDERS = frozenset({
     "not specified", "not applicable", "none", "n/a", "unknown",
     "oem", "o.e.m.", "chassis manufacturer", "chassis version",
     "0123456789", "xxxxxxxx", "empty",
+    # Some Gigabyte boards leave the board version as a template.
+    "x.x",
 })
 
 
@@ -1063,6 +1065,14 @@ class PcieLink:
     @property
     def max_generation(self) -> Optional[int]:
         return self._generation(self.max_speed_gts)
+
+    @property
+    def fewer_lanes_at_full_speed(self) -> bool:
+        """Running at its top speed with fewer lanes than both ends allow."""
+        return bool(self.current_speed_gts and self.max_speed_gts
+                    and self.current_speed_gts >= self.max_speed_gts - 0.1
+                    and self.current_width and self.max_width
+                    and self.current_width < self.max_width)
 
     @property
     def downgraded(self) -> bool:
@@ -2071,7 +2081,7 @@ _COMPUTED: dict[str, tuple[str, ...]] = {
                "max_multiplier", "max_turbo_multiplier", "turbo_headroom_hz"),
     "Power": ("load_percent",),
     "GpuMemory": ("used_percent", "resizable_bar"),
-    "PcieLink": ("generation", "max_generation", "downgraded"),
+    "PcieLink": ("fewer_lanes_at_full_speed", "generation", "max_generation", "downgraded"),
     "Display": ("resolution",),
     "Edid": ("diagonal_inches", "refresh_range",
              "refresh_summary", "best_mode"),

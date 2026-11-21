@@ -111,8 +111,8 @@ class TestAmd(_Pagina, unittest.TestCase):
         self.assertTrue(seccion.now_pie.isVisible())
         self.assertEqual(seccion.now_pie.text(),
                          _("gpu.now.gap").format(motores=_("gpu.now.gap.video")))
-        self.assertFalse(seccion.sensors._names[_("gpu.sensor.videouse")].isHidden(),
-                         "sin barra, su fila sigue diciendo que no se sabe")
+        # Said once, at the foot of «Right now»: its row goes, no dash.
+        self.assertTrue(seccion.sensors._names[_("gpu.sensor.videouse")].isHidden())
 
     def test_dormida_no_tiene_barras_ni_pie(self):
         gpu = dataclasses.replace(self.fotos["5800x3d"].gpus[0], suspended=True,
