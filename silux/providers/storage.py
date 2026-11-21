@@ -183,6 +183,7 @@ class Disks(Provider):
         sectors = read_int(str(base / "size")) or 0
         rotational = read_int(str(base / "queue" / "rotational"))
         transport = _transport(base, name)
+        removable = read_int(str(base / "removable")) == 1
 
         model = _clean(read_text(str(base / "device" / "model")))
         virtual = is_virtual(name, model, read_text(str(base / "device" / "vendor")))
@@ -194,13 +195,13 @@ class Disks(Provider):
                              or read_text(str(base / "device" / "rev"))),
             serial=_clean(read_text(str(base / "device" / "serial"))),
             size_bytes=sectors * SECTOR,
-            kind=_kind(rotational, transport, virtual),
+            kind=_kind(rotational, transport, virtual, removable),
             transport=transport,
             rotational=None if rotational is None else bool(rotational),
             logical_sector=read_int(str(base / "queue" / "logical_block_size")),
             physical_sector=read_int(str(base / "queue" / "physical_block_size")),
             scheduler=_scheduler(base),
-            removable=read_int(str(base / "removable")) == 1,
+            removable=removable,
             pci_slot=_pci_slot(base) if transport == "nvme" else None,
             link=_link(base) if transport == "nvme" else None,
             temp_c=_temperature(base),
@@ -363,8 +364,8 @@ def is_virtual(name: str, model: Optional[str], vendor: Optional[str]) -> bool:
 
 
 def _kind(rotational: Optional[int], transport: Optional[str],
-          virtual: bool = False) -> Optional[str]:
-    """HDD, SSD, NVMe or Virtual.
+          virtual: bool = False, removable: bool = False) -> Optional[str]:
+    """HDD, SSD, NVMe, Flash or Virtual.
 
     No field says it. «Not rotational» covers a SATA SSD and an NVMe, alike
     in neither speed nor connection, so the bus decides between them.
@@ -373,6 +374,11 @@ def _kind(rotational: Optional[int], transport: Optional[str],
         return "Virtual"
     if rotational is None:
         return None
+    if transport == "usb" and rotational:
+        # Over USB the kernel marks nearly everything as rotational, so it
+        # says nothing. A removable device is flash (a pen drive, a card in
+        # a reader); a fixed one may spin or not, and that isn't known.
+        return "Flash" if removable else None
     if rotational:
         return "HDD"
     return "NVMe" if transport == "nvme" else "SSD"

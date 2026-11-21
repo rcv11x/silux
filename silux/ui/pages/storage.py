@@ -325,7 +325,7 @@ class StoragePage(ScrollPage):
         for tipo in DISK_KINDS:
             cuantos = sum(1 for x in discos if x.kind == tipo)
             if cuantos:
-                chips.append(f"{cuantos} × {tipo}")
+                chips.append(f"{cuantos} × {render.disk_kind(tipo)}")
         if tuple(chips) != self._chip_signature:
             self._chip_signature = tuple(chips)
             self.badges.set_chips(chips, highlight_first=True)
@@ -403,7 +403,7 @@ class StoragePage(ScrollPage):
         self.disks.set_rows([
             (x.name,
              (x.model or d)[:30],
-             x.kind or d,
+             render.disk_kind(x.kind),
              render.size(x.size_bytes),
              render.size(x.used_bytes) if x.used_bytes else d,
              render.temperature(x.temp_c, self._prefs.fahrenheit),
@@ -497,8 +497,11 @@ class StoragePage(ScrollPage):
         f = grid.set
         f(_("storage.col.model"), disco.model or d)
         f(_("gpu.field.vendor"), disco.vendor or d)
-        f(_("gpu.vram.type"), disco.kind or d,
+        f(_("gpu.vram.type"), render.disk_kind(disco.kind),
           tooltip=_("storage.tip.kind"))
+        # Over USB a fixed disk's kind can't be known: hidden, and said below.
+        kind_unknown = disco.kind is None and disco.transport == "usb"
+        grid.set_visible(_("gpu.vram.type"), not kind_unknown)
         f(_("storage.field.bus"), render.disk_bus(disco.transport))
         f(_("storage.col.size"), render.size(disco.size_bytes))
         # El enlace PCIe es del NVMe. Un SATA no tiene uno propio —negocia su
@@ -552,14 +555,22 @@ class StoragePage(ScrollPage):
         # rule 5, hidden and named below instead of a dash.
         no_lo_cuenta = (salud.power_on_hours is not None and salud.written_bytes is None
                         and not sin_unidad)
+        # A flash drive over USB answered no diagnosis with the permissions
+        # given: it keeps none, so its rows aren't dashes but absent.
+        flash_sin_smart = (disco.kind == "Flash" and not bloqueados
+                           and salud.power_on_hours is None and disco.temp_c is None)
         grid.set_visible(_("storage.field.written"),
-                         not (sin_unidad or virtual or no_lo_cuenta))
+                         not (sin_unidad or virtual or no_lo_cuenta or flash_sin_smart))
         for clave in ("gpu.sensor.temp", "storage.field.hours"):
-            grid.set_visible(_(clave), not virtual)
+            grid.set_visible(_(clave), not (virtual or flash_sin_smart))
+        if flash_sin_smart:
+            grid.set_visible(_("storage.field.life"), False)
         if (pie := self._pies.get(disco.name)) is not None:
             texto = " ".join(t for t in (
                 _("storage.na.hdd.life") if de_platos else "",
                 _("storage.na.virtual") if virtual else "",
+                _("storage.na.flash") if flash_sin_smart else "",
+                _("storage.na.kind.usb") if disco.kind is None and disco.transport == "usb" else "",
                 _("storage.na.written.unit") if sin_unidad else "",
                 _("storage.na.written") if no_lo_cuenta and not virtual else "") if t)
             pie.setText(texto)

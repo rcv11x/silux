@@ -93,6 +93,13 @@ def memory_error_correction(code: Optional[int], translate=_) -> Optional[str]:
     return translate(clave) if clave else None
 
 
+def disk_kind(kind: Optional[str]) -> str:
+    """A disk's kind as shown: the acronyms as they are, flash by name."""
+    if kind == "Flash":
+        return _("storage.kind.flash")
+    return kind or DASH
+
+
 def memory_rated(module) -> str:
     """«3200 MT/s», saying so when only the firmware's table gives it."""
     if not module.rated_mts:

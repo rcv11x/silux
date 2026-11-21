@@ -1541,7 +1541,7 @@ class DiskHealth:
 
 
 # The kinds of disk, in the order the pages count them.
-DISK_KINDS = ("NVMe", "SSD", "HDD", "Virtual")
+DISK_KINDS = ("NVMe", "SSD", "HDD", "Flash", "Virtual")
 
 
 @dataclass(frozen=True, slots=True)

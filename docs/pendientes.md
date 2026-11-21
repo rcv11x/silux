@@ -102,9 +102,8 @@ la memoria) no va: está propuesto en las notas
   - CPU · media · «Turbo: —» en un Athlon 3000G sin driver de frecuencia:
     declara `cpb` y sin cpufreq no hay estado. Y «Multiplicador» y «Máxima
     (silicio)» con guion.
-  - Almacenamiento · baja · un pendrive con guiones en Temperatura, Horas,
-    Escrito y Firmware; y se propone `drivetemp` aunque SMART ya da la
-    temperatura.
+  - Almacenamiento · baja · se propone `drivetemp` aunque SMART ya da la
+    temperatura. Y el firmware de un pendrive sale con guion.
   - Red · baja · `lo` sale con «Driver», «Modelo» y «Ranura PCI» a guion
     (también en los volcados de la suite).
   - Volcados · baja · `edid.resolve_vendors` lee el `pnp.ids` de quien
