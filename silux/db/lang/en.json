@@ -662,6 +662,7 @@
   "gpu.throttle.none": "no limits",
   "gpu.throttle.some": "throttling",
   "gpu.throttle.why": "throttling: {motivos}",
+  "gpu.tile.asleep": "asleep {pct} of the time",
   "gpu.tile.clock": "Frequency",
   "gpu.tile.hotspot": "hotspot {valor}",
   "gpu.tile.memclock": "memory {valor}",

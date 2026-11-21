@@ -25,6 +25,16 @@ que hace falta.
   salía hasta un 50 % alto. Ahora se cronometra donde se lee, y no se resta
   una lectura de sysfs a otra del ayudante.
 
+### Gráficos
+
+- Arreglado: la frecuencia de una gráfica Intel saltaba cada segundo
+  (0, 1050, 0, 450, 1100 MHz con un video 4K60) porque era una lectura
+  suelta, y con la gráfica dormida en RC6 se lee 0. Ahora es la media de lo
+  que leyó despierta durante el intervalo, y debajo dice cuánto tiempo estuvo
+  en reposo.
+- Una gráfica dormida dice «en reposo» en la ficha, en la gráfica y en el
+  informe, no «0 MHz».
+
 ### Memoria
 
 - Arreglado: el fabricante de un módulo de memoria y el de sus chips salen

@@ -53,6 +53,13 @@ def _none(value: object) -> bool:
     return value is None or value == ""
 
 
+def gpu_clock(value: Optional[float]) -> str:
+    """A GPU's engine clock: at 0 it is asleep, and asleep is not a clock."""
+    if value == 0:
+        return _("gpu.clock.idle")
+    return hz(value)
+
+
 def hz(value: Optional[float], decimals: int | None = None) -> str:
     if _none(value):
         return DASH

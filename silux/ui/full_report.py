@@ -293,8 +293,7 @@ def _lineas(widget, raiz) -> list[str]:
         if widget.is_locked():
             valor = f"({_('report.locked')})"
         else:
-            cifra, unidad = widget.value.text(), widget.unit.text()
-            valor = cifra + (f" {unidad}" if unidad and cifra and cifra != "—" else "")
+            valor = widget.figure_text()
         detalle = (_texto_de_etiqueta(widget.detail)
                    if widget.detail.isVisibleTo(raiz) else "")
         return [f"- {widget.caption.text()}: {valor}" + (f" ({detalle})" if detalle else "")]

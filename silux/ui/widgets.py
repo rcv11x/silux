@@ -1203,8 +1203,11 @@ class _Cifra(QLabel):
         self.updateGeometry()
         self.update()
 
+    # A word in place of the figure («en reposo»): it has no unit.
+    palabra = False
+
     def _con_unidad(self) -> bool:
-        return bool(self._unidad) and self.text() != render.DASH
+        return bool(self._unidad) and self.text() != render.DASH and not self.palabra
 
     def ancho_de_la_unidad(self) -> int:
         if not self._unidad:
@@ -1372,11 +1375,20 @@ class StatTile(Card):
     def is_locked(self) -> bool:
         return not self.lock.isHidden()
 
-    def update_value(self, text: str, series_value: Optional[float] = None) -> None:
+    def figure_text(self) -> str:
+        """The figure as it reads: with its unit only where it is painted."""
+        cifra = self.value.text()
+        return f"{cifra} {self.unit.text()}" if cifra and self.value._con_unidad() else cifra
+
+    def update_value(self, text: str, series_value: Optional[float] = None,
+                     word: bool = False) -> None:
+        """`word` is a state instead of a figure («en reposo»): grey and
+        without its unit."""
         if not self.lock.isHidden():
             self.lock.hide()
             self.value.show()
-        if self.value.text() != text:
+        if self.value.text() != text or self.value.palabra != word:
+            self.value.palabra = word
             self.value.setText(text)
             # El guion de «sin dato» a treinta y seis píxeles es una raya
             # gruesa que no se lee como un guion: en una Intel, con cuatro de
@@ -1387,7 +1399,8 @@ class StatTile(Card):
             self.value.setFont(
                 ui_font(theme.METRICS.small_pt) if vacio
                 else value_font(theme.METRICS.tile_value_pt, bold=True))
-            self.value.setObjectName("Muted" if vacio else "TileValue")
+            # A state keeps the figure's size, in the grey of what is off.
+            self.value.setObjectName("Muted" if vacio or word else "TileValue")
             self.value.style().unpolish(self.value)
             self.value.style().polish(self.value)
         self.chart.push(series_value)

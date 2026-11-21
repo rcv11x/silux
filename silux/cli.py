@@ -169,7 +169,7 @@ def dump(snapshot: Snapshot, style: Style) -> str:
             f"chips de {gpu.memory.vendor}" if gpu.memory.vendor else None) if p)
         if detalle:
             lines.append(_row(style, "", style.dim(detalle)))
-        lines.append(_row(style, "Núcleo", f"{render.hz(gpu.clocks.core_hz)}"
+        lines.append(_row(style, "Núcleo", f"{render.gpu_clock(gpu.clocks.core_hz)}"
                           f"  de {render.hz(gpu.clocks.core_max_hz)}"))
         lines.append(_row(style, "Reloj de memoria", f"{render.hz(gpu.clocks.memory_hz)}"
                           f"  de {render.hz(gpu.clocks.memory_max_hz)}"))

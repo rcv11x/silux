@@ -484,14 +484,15 @@ class GpuSection(QWidget):
         # megahercios.
         for tile in (self.tile_usage, self.tile_temp, self.tile_power):
             tile.reserve([render.figure(999)])
-        self.tile_clock.reserve([render.figure(9999)])
+        # «en reposo» too: going from it to a figure must not move the row.
+        self.tile_clock.reserve([render.figure(9999), render.gpu_clock(0)])
         self.tile_usage.chart.set_range(0, 100)
 
         intervalo = self._prefs.interval_s
         self.tile_usage.chart.set_formatter(render.percent, intervalo)
         self.tile_power.chart.set_formatter(render.watts, intervalo)
         self.tile_clock.chart.set_formatter(
-            lambda v: render.hz(v * 1e6), intervalo)
+            lambda v: render.gpu_clock(v * 1e6), intervalo)
         self.tile_temp.chart.set_formatter(
             lambda v: render.temperature(v, False), intervalo)
         return fila
@@ -608,8 +609,7 @@ class GpuSection(QWidget):
 
         k = self.clocks.set
         # Parado no es una frecuencia: «0 MHz» se lee como un fallo de lectura.
-        k(_("gpu.clock.core"), _("gpu.clock.idle") if gpu.clocks.core_hz == 0
-          else render.hz(gpu.clocks.core_hz))
+        k(_("gpu.clock.core"), render.gpu_clock(gpu.clocks.core_hz))
         k(_("gpu.clock.coremax"), render.hz(gpu.clocks.core_max_hz))
         k(_("gpu.clock.silmax"), render.hz(gpu.clocks.silicon_max_hz),
           tooltip=_("gpu.tip.silmax"))
@@ -850,7 +850,10 @@ class GpuSection(QWidget):
     def _apply_tiles_rest(self, gpu: Gpu, candado) -> None:
         relojes = gpu.clocks
         nucleo_mhz = relojes.core_hz / 1e6 if relojes.core_hz is not None else None
-        self.tile_clock.update_value(render.figure(nucleo_mhz), nucleo_mhz)
+        dormida = relojes.core_hz == 0
+        self.tile_clock.update_value(
+            render.gpu_clock(0) if dormida else render.figure(nucleo_mhz), nucleo_mhz,
+            word=dormida)
         # La escala llega hasta el techo de la tabla DPM, que es lo que hace
         # que la curva diga «va al máximo» en vez de solo «va subiendo».
         if relojes.core_max_hz:
@@ -864,8 +867,13 @@ class GpuSection(QWidget):
         elif relojes.memory_hz:
             self.tile_clock.set_detail(_("gpu.tile.memclock").format(
                 valor=render.hz(relojes.memory_hz)))
+        elif gpu.sleep_percent and not dormida:
+            # Awake, its clock is the mean of when it ran; how long it slept
+            # is told here, not averaged into it as 0 MHz.
+            self.tile_clock.set_detail(_("gpu.tile.asleep").format(
+                pct=render.percent(gpu.sleep_percent)))
         else:
-            self.tile_clock.set_detail(_("gpu.clock.idle") if relojes.core_hz == 0 else "")
+            self.tile_clock.set_detail("")
 
         temperatura = gpu.temp_c
         if self._prefs.fahrenheit and temperatura is not None:

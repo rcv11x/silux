@@ -438,12 +438,15 @@ class GpuState(Provider):
         # (`between_samples`), y de qué tarjetas despiertas leerlo.
         self._lecturas: dict[tuple[pathlib.Path, str], list[float]] = {}
         self._con_instantes: list[pathlib.Path] = []
+        # The Intel cards whose engine clock is read between samples too,
+        # with their DRM node (`_intel_clock`).
+        self._con_reloj: list[tuple[pathlib.Path, pathlib.Path]] = []
 
     def available(self) -> bool:
         return os.path.isdir(sysroot.ruta(SYS_DRM))
 
     def wants_between_samples(self) -> bool:
-        return bool(self._con_instantes)
+        return bool(self._con_instantes or self._con_reloj)
 
     def between_samples(self) -> None:
         """Lee los contadores de uso que amdgpu da como un instante.
@@ -462,6 +465,14 @@ class GpuState(Provider):
                 valor = _porcentaje(dispositivo / archivo)
                 if valor is not None:
                     self._lecturas.setdefault((dispositivo, campo), []).append(valor)
+        # Reading the actual frequency does not wake an Intel GPU (i915 reads
+        # it only if the device is in use), but a suspended one is left alone.
+        for dispositivo, raiz in self._con_reloj:
+            if en_reposo(dispositivo):
+                continue
+            hz = _intel_hz(dispositivo, raiz, "cur")
+            if hz is not None:
+                self._lecturas.setdefault((dispositivo, "core_hz"), []).append(hz)
 
     def _media(self, dispositivo: pathlib.Path, campo: str, archivo: str) -> Optional[float]:
         """La lectura de ahora junto con las de entre muestras, en una media."""
@@ -477,6 +488,7 @@ class GpuState(Provider):
         ocupacion, vatios = self._contadores()
         self._discarded.note(draft)
         con_instantes = []
+        con_reloj = []
         for indice, gpu in enumerate(draft.gpus):
             nodo = gpu.get("drm_node")
             if not nodo:
@@ -523,6 +535,9 @@ class GpuState(Provider):
 
             if gpu.get("driver") in ("i915", "xe"):
                 gpu["sleep_percent"] = self._reposo(nodo, raiz)
+                gpu["clocks"] = self._intel_clock(dispositivo, raiz, gpu["clocks"],
+                                                  gpu["sleep_percent"])
+                con_reloj.append((dispositivo, raiz))
                 rc6 = _primero(read_int(f"{raiz}/gt/gt0/rc6_enable"),
                                read_int(f"{raiz}/power/rc6_enable"))
                 gpu["sleep_enabled"] = None if rc6 is None else rc6 != 0
@@ -543,9 +558,11 @@ class GpuState(Provider):
                 else:
                     self._avisar_de_intel(draft, indice, gpu)
         self._con_instantes = con_instantes
+        self._con_reloj = con_reloj
         # Las de una tarjeta que se fue a dormir o desapareció no esperan a
         # que vuelva: serían de otro rato.
-        self._lecturas = {k: v for k, v in self._lecturas.items() if k[0] in con_instantes}
+        vigentes = set(con_instantes) | {par[0] for par in con_reloj}
+        self._lecturas = {k: v for k, v in self._lecturas.items() if k[0] in vigentes}
 
     def _dormida(self, gpu: dict, nodo: str) -> None:
         """Una tarjeta suspendida: no se le pregunta nada.
@@ -628,6 +645,32 @@ class GpuState(Provider):
                 salida.setdefault(pmu, {})[evento] = min(100.0, max(0.0, porcentaje))
         return salida, vatios
 
+    def _intel_clock(self, dispositivo: pathlib.Path, raiz: pathlib.Path,
+                     relojes: GpuClocks, dormida: Optional[float]) -> GpuClocks:
+        """The engine's clock over the interval, not one reading.
+
+        `act_freq` reads 0 whenever the GPU is in RC6, which during a video is
+        most of the time: one reading a second went 0/1050/0/450/1100 MHz on
+        the author's T14 with a 4K60 video. RC6 is sleep, not a 0 MHz clock,
+        so the figure is the mean of the readings that found it awake (one
+        every 250 ms and this one). With none of them awake it is asleep (0),
+        unless RC6 says it worked part of the interval unseen: then the
+        frequency the driver has asked for, the one it wakes up at.
+        """
+        lecturas = self._lecturas.pop((dispositivo, "core_hz"), [])
+        if relojes.core_hz is not None:
+            lecturas.append(relojes.core_hz)
+        if not lecturas:
+            return relojes
+        despierta = [hz for hz in lecturas if hz]
+        if despierta:
+            hz = round(sum(despierta) / len(despierta) / 1e6) * 1_000_000
+        elif dormida is not None and dormida < ASLEEP_ALL_THE_INTERVAL:
+            hz = _intel_hz(dispositivo, raiz, "req") or 0
+        else:
+            hz = 0
+        return dataclasses.replace(relojes, core_hz=hz)
+
     def _reposo(self, nodo: str, raiz: pathlib.Path) -> Optional[float]:
         """Cuánto del intervalo ha estado la gráfica dormida del todo.
 
@@ -637,7 +680,8 @@ class GpuState(Provider):
         medio —encendida y esperando— que gasta y que aquí no cuenta.
         """
         acumulado = _primero(read_int(f"{raiz}/gt/gt0/rc6_residency_ms"),
-                             read_int(f"{raiz}/power/rc6_residency_ms"))
+                             read_int(f"{raiz}/power/rc6_residency_ms"),
+                             read_int(f"{raiz}/device/tile0/gt0/gtidle/idle_residency_ms"))
         if acumulado is None:
             return None
         ahora = time.monotonic()
@@ -1041,7 +1085,10 @@ def _limitacion_intel(nodo: pathlib.Path) -> tuple[Optional[bool], tuple[str, ..
 
 
 # Cómo llama xe a las frecuencias del silicio, que i915 llama RP0, RP1 y RPn.
-_XE = {"RP0": "rp0", "RP1": "rpe", "RPn": "rpn"}
+# xe's `cur_freq` is the requested one, as i915's `cur`; the actual is `act_freq`.
+_XE = {"RP0": "rp0", "RP1": "rpe", "RPn": "rpn", "cur": "act", "req": "cur"}
+# RC6 above this share of the interval is having slept all of it.
+ASLEEP_ALL_THE_INTERVAL = 99.0
 
 
 def _intel_hz(dispositivo: pathlib.Path, nodo: Optional[pathlib.Path],
@@ -1074,8 +1121,8 @@ def _intel_hz(dispositivo: pathlib.Path, nodo: Optional[pathlib.Path],
 
     if nodo is not None:
         # `act` es la que va de verdad; `cur` es la que se ha pedido. Para el
-        # máximo no hay tal distinción.
-        medida = "act" if cual == "cur" else cual
+        # máximo no hay tal distinción. `req` is the requested one by name.
+        medida = {"cur": "act", "req": "cur"}.get(cual, cual)
         for ruta in (f"{nodo}/gt/gt0/rps_{medida}_freq_mhz",
                      f"{nodo}/gt/gt0/rps_{cual}_freq_mhz",
                      f"{nodo}/gt_{medida}_freq_mhz",
