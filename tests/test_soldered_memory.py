@@ -2,8 +2,14 @@
 
 The author's T14 Gen 2i: 8 GB soldered and a Kingston SODIMM in the slot,
 the only SPD on its bus. With permissions its two modules come from SMBIOS
-(as its report gave them); the soldered one has no chip, and the foot said
-its chips, profiles and date «no se ha podido leer».
+(as its report gave them, both with form factor SODIMM); the soldered one
+has no chip, and the foot said its chips, profiles and date «no se ha
+podido leer».
+
+What is soldered: the SMBIOS form factor first, when it is one of memory
+on the board (a row of chips); the name of its place otherwise, since many
+laptops call soldered memory «ChannelA-DIMM0» and the T14 calls its
+soldered memory a SODIMM.
 """
 
 import dataclasses
@@ -30,6 +36,7 @@ def _page(modulos):
 def _t14(lectura):
     comun = dict(populated=True, type="DDR4", size_bytes=8 << 30, speed_mts=3200,
                  configured_mts=3200, rank=1)
+    comun["form_factor"] = "SODIMM"
     return (MemoryModule(locator="Controller0-ChannelA", manufacturer="Samsung",
                          part_number="M471A1G44AB0-CWE", **comun),
             MemoryModule(locator="Controller1-ChannelA-DIMM0", manufacturer="Kingston",
@@ -56,6 +63,32 @@ class TestSolderedMemory(unittest.TestCase):
         self.assertTrue(MemoryModule(locator="Bottom-Slot 1(left)").in_a_slot)
         self.assertTrue(MemoryModule(locator="DIMM_A1").in_a_slot)
         self.assertFalse(MemoryModule(locator="Controller0-ChannelA").in_a_slot)
+
+    def test_a_row_of_chips_is_soldered_whatever_its_place_is_called(self):
+        for formato in ("Fila de chips", "Chip", "Die"):
+            with self.subTest(formato=formato):
+                self.assertFalse(MemoryModule(locator="ChannelA-DIMM0",
+                                              form_factor=formato).in_a_slot)
+        # A SODIMM does not settle it: the T14's soldered memory says so too.
+        self.assertFalse(MemoryModule(locator="Controller0-ChannelA",
+                                      form_factor="SODIMM").in_a_slot)
+        self.assertTrue(MemoryModule(locator="ChannelA-DIMM0",
+                                     form_factor="SODIMM").in_a_slot)
+
+    def test_on_the_page_a_row_of_chips_has_no_chip(self):
+        def soldada_con_nombre_de_ranura(lectura):
+            sin, con = _t14(lectura)
+            return (dataclasses.replace(sin, locator="ChannelA-DIMM0",
+                                        form_factor="Fila de chips"), con)
+        pagina = _page(soldada_con_nombre_de_ranura)
+        pie = pagina.spd_missing.text()
+        self.assertIn(_("memory.na.soldered").split("{campos}")[1], pie)
+
+    def test_the_names_are_smbios_own(self):
+        from silux.model import SOLDERED_FORM_FACTORS
+        from silux.privileged.smbios import FORM_FACTORS
+        self.assertEqual({FORM_FACTORS[c] for c in (0x05, 0x0B, 0x10)},
+                         set(SOLDERED_FORM_FACTORS))
 
 
 if __name__ == "__main__":

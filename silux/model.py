@@ -600,6 +600,12 @@ class System:
 MARGEN_DE_REDONDEO = 0.01
 
 
+# SMBIOS type 17 form factors of memory that is part of the board: Chip (05h),
+# Row of chips (0Bh) and Die (10h), as `privileged/smbios.FORM_FACTORS` names
+# them (tests/test_soldered_memory.py compares the two).
+SOLDERED_FORM_FACTORS = ("Chip", "Fila de chips", "Die")
+
+
 @dataclass(frozen=True, slots=True)
 class MemoryModule:
     """Un zócalo de memoria, esté ocupado o no.
@@ -628,9 +634,16 @@ class MemoryModule:
 
     @property
     def in_a_slot(self) -> bool:
-        """In a slot («…DIMM0», «DIMM_A1», HP's «Bottom-Slot 1») and not
-        soldered on the board («Controller0-ChannelA»), by the name SMBIOS
-        gives its place. Soldered memory has no SPD chip of its own."""
+        """In a slot and not soldered on the board, which has no SPD chip.
+
+        A form factor of memory that is part of the board settles it, even
+        where the place is called «ChannelA-DIMM0». No other one does: the
+        author's T14 declares its soldered 8 GB a SODIMM. Then the name SMBIOS
+        gives its place: «…DIMM0», «DIMM_A1», HP's «Bottom-Slot 1» are slots;
+        «Controller0-ChannelA» is not.
+        """
+        if self.form_factor in SOLDERED_FORM_FACTORS:
+            return False
         lugar = (self.locator or "").lower()
         return "dimm" in lugar or "slot" in lugar
 

@@ -53,6 +53,10 @@ que hace falta.
 
 ### Memoria
 
+- La memoria soldada se reconoce primero por su formato en la tabla del
+  firmware («Fila de chips»), aunque su zócalo se llame «ChannelA-DIMM0».
+  Con otro formato manda el nombre del zócalo: el T14 declara «SODIMM» su
+  memoria soldada.
 - Arreglado: el fabricante de un módulo de memoria y el de sus chips salen
   de la lista entera de JEDEC (JEP106BP, más de 2300 fabricantes, de la copia
   de OpenOCD). La de antes tenía 15, y Kingston, Infineon, Elpida y Transcend
