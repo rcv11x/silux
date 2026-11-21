@@ -150,6 +150,16 @@ def interprete() -> str:
     )
 
 
+def pkexec_inline(name: str, source: str, *args: str) -> list[str]:
+    """The pkexec command that runs `source` as root without a file.
+
+    The only place a pkexec command with code is built: the program and its
+    arguments go by argv, so no path the user can rewrite is in it. Raises
+    HelperUnavailable without a system Python to run it.
+    """
+    return [pkexec_path(), *en_linea(interprete(), name, source, *args)]
+
+
 def escribible_por_el_usuario(ruta) -> bool:
     """Si este usuario puede cambiar lo que hay en esa ruta.
 
@@ -395,8 +405,7 @@ class PrivilegedClient:
         if (self.instalado() and self.al_dia()
                 and not self._sin_el_instalado):
             return [pkexec_path(), str(HELPER_INSTALADO)]
-        return [pkexec_path(), *en_linea(interprete(), "silux-helper.py",
-                                         self._fuente_del_ayudante())]
+        return pkexec_inline("silux-helper.py", self._fuente_del_ayudante())
 
     @staticmethod
     def _fuente_del_ayudante() -> str:

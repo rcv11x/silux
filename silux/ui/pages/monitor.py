@@ -582,13 +582,10 @@ class MonitorPage(ScrollPage):
 
         guion = pathlib.Path(cargar_modulo.__file__)
         try:
-            interprete = _client.interprete()
+            return _client.pkexec_inline("silux-cargar-modulo.py",
+                                         guion.read_text(encoding="utf-8"), modulo)
         except _client.HelperUnavailable:
             raise RuntimeError(_("perm.nopython")) from None
-
-        return [_client.pkexec_path(), *_client.en_linea(
-            interprete, "silux-cargar-modulo.py",
-            guion.read_text(encoding="utf-8"), modulo)]
 
     def _reset_extremes(self) -> None:
         self._tracker.reset()

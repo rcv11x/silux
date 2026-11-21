@@ -126,6 +126,27 @@ class TestTheContract(unittest.TestCase):
         self.assertEqual(protocol.HELPER_VERSION, helper.VERSION)
 
 
+class TestOnePkexecCommand(unittest.TestCase):
+    """Every pkexec command is built by client.py: four places built their
+    own, each with its own handling of a missing interpreter."""
+
+    def test_nobody_else_builds_one(self):
+        import ast
+        import pathlib
+        paquete = pathlib.Path(protocol.__file__).resolve().parents[1]
+        cliente = paquete / "privileged" / "client.py"
+        fuera = []
+        for archivo in paquete.rglob("*.py"):
+            if archivo.resolve() == cliente.resolve():
+                continue
+            for nodo in ast.walk(ast.parse(archivo.read_text(encoding="utf-8"))):
+                if isinstance(nodo, ast.Call):
+                    nombre = getattr(nodo.func, "attr", getattr(nodo.func, "id", ""))
+                    if nombre in ("pkexec_path", "en_linea"):
+                        fuera.append(f"{archivo.relative_to(paquete)}:{nodo.lineno} {nombre}")
+        self.assertEqual(fuera, [])
+
+
 class TestALineTooLong(unittest.TestCase):
     """The helper runs as root: a line with no end must not be held whole in
     its memory. It read the line and checked its size afterwards."""

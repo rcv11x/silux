@@ -1220,12 +1220,10 @@ class MainWindow(QMainWindow):
         instalador = (Path(__file__).resolve().parent.parent
                       / "privileged" / "instalar.py")
         try:
-            interprete = _client.interprete()
+            return _client.pkexec_inline("silux-instalar.py",
+                                         instalador.read_text(encoding="utf-8"), "--uninstall")
         except _client.HelperUnavailable:
             raise RuntimeError(_("perm.nopython.install")) from None
-        return [_client.pkexec_path(), *_client.en_linea(
-            interprete, "silux-instalar.py",
-            instalador.read_text(encoding="utf-8"), "--uninstall")]
 
     @staticmethod
     def _orden_de_instalacion() -> tuple[list[str], str]:
@@ -1255,13 +1253,10 @@ class MainWindow(QMainWindow):
         instalador = (Path(__file__).resolve().parent.parent
                       / "privileged" / "instalar.py")
         try:
-            interprete = _client.interprete()
+            orden = _client.pkexec_inline("silux-instalar.py",
+                                          instalador.read_text(encoding="utf-8"), "--from-stdin")
         except _client.HelperUnavailable:
             raise RuntimeError(_("perm.nopython.install")) from None
-
-        orden = [_client.pkexec_path(), *_client.en_linea(
-            interprete, "silux-instalar.py",
-            instalador.read_text(encoding="utf-8"), "--from-stdin")]
         return orden, _client.HELPER.read_text(encoding="utf-8")
 
     def _restaurar_botones_permanentes(self) -> None:

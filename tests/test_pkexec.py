@@ -98,12 +98,12 @@ class ComprobadorDeOrdenes(unittest.TestCase):
                     "por argv con `client.en_linea`.")
 
 
-# Los tres sitios del programa que construyen una orden de pkexec, con el
-# nombre de quien la construye. La lista está aquí para que se pueda recorrer
-# entera y para que un cuarto sitio no pase desapercibido: hay un test que
-# compara esto con lo que encuentra leyendo el código.
+# Where a pkexec command is built (client.py, the only place) and who asks
+# for one with code. A test compares this with what it finds reading the
+# code, so a new caller cannot go unchecked.
 CONSTRUCTORES = (
     ("silux/privileged/client.py", "PrivilegedClient._orden"),
+    ("silux/privileged/client.py", "pkexec_inline"),
     ("silux/ui/app.py", "MainWindow._orden_de_instalacion"),
     ("silux/ui/app.py", "MainWindow._orden_de_desinstalacion"),
     ("silux/ui/pages/monitor.py", "MonitorPage._orden_de_carga"),
@@ -161,7 +161,9 @@ class TestNingunaRutaEscribible(ComprobadorDeOrdenes):
                 for nodo in ast.walk(padre):
                     primero = nodo.elts[0] if isinstance(nodo, ast.List) and nodo.elts else None
                     llamada = getattr(primero, "func", None)
-                    if (isinstance(primero, ast.Constant) and primero.value == "pkexec"
+                    pide = (isinstance(nodo, ast.Call) and getattr(
+                        nodo.func, "attr", getattr(nodo.func, "id", None)) == "pkexec_inline")
+                    if (pide or isinstance(primero, ast.Constant) and primero.value == "pkexec"
                             or getattr(llamada, "id", getattr(llamada, "attr", None))
                             == "pkexec_path"):
                         encontrados.add(
