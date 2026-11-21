@@ -11,6 +11,7 @@ anyone once the kernel loads its driver.
 from __future__ import annotations
 
 import dataclasses
+import errno
 
 from .. import render
 from .. import spd as spd_module
@@ -41,7 +42,18 @@ class SpdModules(Provider):
         return ("spd", need, reason, fix)
 
     def collect(self, draft: Draft) -> None:
-        readings = spd_module.read_all()
+        failures: list = []
+        readings = spd_module.read_all(failures)
+        if failures:
+            # The chip is there and reading it failed: on DDR5, when the
+            # machine blocks SPD writes (the driver needs them to switch
+            # pages) or the driver did not recover from a suspend. Which one
+            # is not known from here; the error goes to the report.
+            draft.note("spd", Need.HARDWARE, _("prov.spd.readfailed"),
+                       _("prov.spd.readfailed.hint"),
+                       detail="; ".join(f"{device}: {errno.errorcode.get(exc.errno, exc.errno)}"
+                                        f" ({exc.strerror})" for device, exc in failures),
+                       key="prov.spd.readfailed")
         if not readings:
             return
 

@@ -1165,6 +1165,8 @@
   "prov.rapl.none.hint": "Es normal en AMD antiguos, en ARM y en máquinas virtuales.",
   "prov.rapl.onecore": "El consumo de los núcleos no se enseña en este procesador",
   "prov.rapl.onecore.hint": "En AMD ese contador es el de un solo núcleo, el primero, y no la suma de todos. El del paquete sí es el del procesador entero.",
+  "prov.spd.readfailed": "El chip SPD de la memoria está, pero no se ha podido leer.",
+  "prov.spd.readfailed.hint": "En DDR5 pasa cuando el equipo bloquea las escrituras al SPD, que el driver necesita para cambiar de página, o cuando el driver no se recuperó tras una suspensión. El error exacto va en el informe.",
   "prov.spd.thesemodules": "estos módulos",
   "prov.spd.unsupported": "El SPD de {tipos} todavía no se sabe interpretar.",
   "prov.spd.unsupported.hint": "Están implementados los formatos de DDR4 y DDR5.",
