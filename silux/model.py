@@ -627,7 +627,8 @@ class MemoryModule:
     type: Optional[str] = None               # "DDR4"
     # SMBIOS type 17 form factor code: 09h DIMM, 0Dh SODIMM, 0Bh row of chips.
     form_factor: Optional[int] = None
-    details: tuple[str, ...] = ()
+    # SMBIOS type 17 type detail bits that are set (DSP0134 table 77).
+    details: tuple[int, ...] = ()
     speed_mts: Optional[int] = None          # lo que el módulo puede dar
     configured_mts: Optional[int] = None     # a lo que va de verdad
     manufacturer: Optional[str] = None
