@@ -776,6 +776,7 @@
   "home.threads.many": "{n} threads",
   "home.threads.one": "{n} thread",
   "home.uptime": "up {tiempo}",
+  "kernel.belowminimum": "Your kernel ({tuyo}) is older than Linux {minimo}, the minimum Silux supports: some values may be missing without saying why.",
   "kernel.tooold": "Your kernel ({tuyo}) does not publish this; it exists since Linux {desde}.",
   "kernel.tooold.what": "{dato}: your kernel ({tuyo}) does not publish it; it exists since Linux {desde}.",
   "list.and": "and",

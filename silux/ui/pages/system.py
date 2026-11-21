@@ -20,7 +20,18 @@ from ...model import Snapshot, System
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette, ui_font
-from ..widgets import Card, ChipRow, InfoGrid, Plegable, ResponsiveRow, ScrollPage
+from ..widgets import (
+    Card,
+    ChipRow,
+    InfoGrid,
+    Notice,
+    Plegable,
+    ResponsiveRow,
+    ScrollPage,
+    clear_layout,
+    tone_for,
+)
+from .board import NEED_TITLES
 
 # Claves, no texto ni `_()`: estas tuplas se evalúan al importar el módulo,
 # cuando todavía no se sabe qué idioma quiere el usuario. La traducción ocurre
@@ -131,6 +142,11 @@ class SystemPage(ScrollPage):
         self.extra_pie.hide()
         layout.addWidget(self.extra_pie)
 
+        self._notices_host = QVBoxLayout()
+        self._notices_host.setSpacing(6)
+        layout.addLayout(self._notices_host)
+        self._notice_signature: tuple = ()
+
         layout.addStretch(1)
         self._badge_signature: tuple = ()
 
@@ -171,6 +187,7 @@ class SystemPage(ScrollPage):
                 tiempo=format_uptime(system.uptime_seconds))
         )
         self._apply_badges(system)
+        self._apply_notices(snapshot)
 
         o = self.os.set
         o(_("sys.field.distro"), system.distribution or d)
@@ -215,6 +232,18 @@ class SystemPage(ScrollPage):
         self._apply_security(system)
         self._apply_swap(system)
         self._apply_boot(system)
+
+    def _apply_notices(self, snapshot: Snapshot) -> None:
+        notes = snapshot.notes_for("system")
+        signature = tuple((n.path, n.need, n.message) for n in notes)
+        if signature == self._notice_signature:
+            return
+        self._notice_signature = signature
+        clear_layout(self._notices_host)
+        for note in notes:
+            self._notices_host.addWidget(
+                Notice(_(NEED_TITLES.get(note.need, note.need.value)),
+                       note.message, note.hint, tone=tone_for(note.need)))
 
     def _apply_security(self, system: System) -> None:
         todas = system.vulnerabilities

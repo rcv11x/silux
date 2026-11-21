@@ -17,7 +17,7 @@ import subprocess
 import time
 from typing import Optional
 
-from .. import privacidad, sysroot
+from .. import kernel, privacidad, sysroot
 from ..i18n import _
 from ..model import Boot, DeviceKind, Memory, Need, Sensor, SensorKind, Swap, System, Vulnerability
 from ..system_env import system_environment
@@ -108,6 +108,13 @@ class SystemIdentity(Provider):
             session_type=entorno.get("XDG_SESSION_TYPE"),
             shell=os.path.basename(entorno.get("SHELL") or "") or None,
         )
+        running = kernel.version(uname["release"])
+        if running is not None and running < kernel.MINIMO:
+            # What appeared after the minimum is explained value by value;
+            # below it, something may be missing and nothing would say why.
+            draft.note("system.kernel", Need.KERNEL, _("kernel.belowminimum").format(
+                tuyo=f"{running[0]}.{running[1]}",
+                minimo=f"{kernel.MINIMO[0]}.{kernel.MINIMO[1]}"), key="kernel.belowminimum")
 
     @staticmethod
     def _kernel_build() -> Optional[str]:
