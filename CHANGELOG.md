@@ -174,6 +174,15 @@ en el idioma de quien lee.
   usuario dentro salía con dos nombres distintos, y al reproducirlo se
   quedaba sin cifras.
 - Un espacio de más en «sostenida  · la medida de referencia».
+- Con la interfaz en inglés, dos palabras salían en español: la «y» que une
+  los tipos de memoria del aviso del SPD y la «instancia» de la fila de
+  Vulkan.
+
+### Permisos
+
+- El ayudante con permisos lee cada petición con un tope, en vez de leerla
+  entera y mirar después cuánto ocupa. Quien lo tenga instalado verá que hay
+  que actualizarlo.
 
 ---
 
