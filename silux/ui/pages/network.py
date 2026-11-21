@@ -32,8 +32,8 @@ INTERFACE_FIELDS = (
     "storage.col.model", "net.field.slot",
 )
 
-TRAFFIC_HEADERS = ("Interfaz", "Bajando", "Subiendo", "Recibido", "Enviado",
-                   "Paquetes", "Perdidos")
+TRAFFIC_HEADERS = ("net.col.iface", "net.col.down", "net.col.up", "net.col.received",
+                   "net.col.sent", "net.col.packets", "net.col.lost")
 
 # En qué orden se enseñan: primero la que da servicio, al final lo virtual.
 PRIORIDAD = {"ethernet": 0, "wifi": 1, "puente": 2, "virtual": 3,
@@ -193,10 +193,10 @@ class NetworkPage(ScrollPage):
 
     def _build_tiles(self) -> QWidget:
         fila = ResponsiveRow(min_item_width=150)
-        self.tile_down = StatTile("Bajando", "", self._p)
-        self.tile_up = StatTile("Subiendo", "", self._p)
-        self.tile_rx = StatTile("Recibido", "", self._p)
-        self.tile_tx = StatTile("Enviado", "", self._p)
+        self.tile_down = StatTile(_("net.col.down"), "", self._p)
+        self.tile_up = StatTile(_("net.col.up"), "", self._p)
+        self.tile_rx = StatTile(_("net.col.received"), "", self._p)
+        self.tile_tx = StatTile(_("net.col.sent"), "", self._p)
         for tile in (self.tile_down, self.tile_up, self.tile_rx, self.tile_tx):
             fila.add(tile)
         # Lo más ancho que puede escribir cada una: un ritmo hasta los cien

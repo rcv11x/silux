@@ -93,6 +93,11 @@ que hace falta.
 - Los nombres del tráfico de red en Sensores («Bajada», «Subida»…) salen en
   el idioma de la interfaz.
 
+### Red
+
+- Arreglado: con la interfaz en inglés, las cabeceras del tráfico y las
+  cuatro fichas de arriba salían en español.
+
 ### Informe
 
 - Arreglado: el informe no decía nada de las interfaces virtuales (un túnel
