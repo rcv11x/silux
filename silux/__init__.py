@@ -1,55 +1,54 @@
-"""silux: perfilador de hardware para Linux.
+"""silux: a hardware profiler for Linux.
 
 Copyright (C) 2026 rcv11x
 
-Este programa es software libre: puede redistribuirlo y modificarlo bajo los
-términos de la Licencia Pública General de GNU, versión 3 o posterior, tal y
-como la publica la Free Software Foundation. Se distribuye con la esperanza de
-que resulte útil, pero SIN NINGUNA GARANTÍA. El texto completo está en el
-fichero LICENSE.
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option)
+any later version. It is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY. The full text is in the LICENSE file.
 
-La licencia es la GPL porque la base de datos de identificación incluye la
-tabla de encapsulados que hereda de CPU-X, que es GPL-3.0.
+The license is the GPL because the identification database includes the
+package table inherited from CPU-X, which is GPL-3.0.
 
-La regla que sostiene todo el paquete: los proveedores leen *valores*
-(enteros en hercios, bytes, grados) y el modelo los guarda tal cual.
-El texto que ve el usuario se produce en `silux.render`, nunca antes.
+The rule the whole package rests on: providers read *values* (integers in
+hertz, bytes, degrees) and the model keeps them as they are. The text the
+user sees is produced in `silux.render`, never earlier.
 """
 
-# Sube cuando hay algo que el usuario nota. El número menor —de 0.1 a 0.2— se
-# reserva para cuando algo le cambia de verdad: una sección nueva, un dato que
-# antes no salía, o algo que deja de funcionar como funcionaba. El último
-# dígito, para arreglos que no obligan a leer nada.
+# Bumped when there is something the user notices. The minor number (0.1 to
+# 0.2) is kept for when something really changes for them: a new section, a
+# datum that didn't show before, or something that stops working as it did.
+# The last digit, for fixes that don't require reading anything.
 #
-# No es cosmético: sin esto, la única forma que tiene alguien de saber si va
-# atrasado es el identificador de construcción, y un hash no se compara de un
-# vistazo. Lo que cambia en cada versión está en CHANGELOG.md, y hay un test
-# que no deja subir este número sin escribirlo allí.
+# Not cosmetic: without it, the only way to know whether a copy is behind is
+# the build identifier, and a hash can't be compared at a glance. What
+# changes in each version is in CHANGELOG.md, and a test won't let this
+# number go up without writing it there.
 __version__ = "0.4.0rc7"
 
 
 def build_id() -> str:
-    """Qué copia exacta es esta: «20260829.c22e689», o vacío si no se sabe.
+    """Which exact copy this is: «20260829.c22e689», or empty if unknown.
 
-    Se llama `build_id` y no `build` porque `report.build()` ya existe y es
-    otra cosa —construye el informe—: importarla suelta la habría pisado
-    dentro de ese módulo, que es el error del guion bajo otra vez.
+    Called `build_id` rather than `build` because `report.build()` already
+    exists and builds the report: imported bare, it would have shadowed it
+    inside that module.
 
-    Nace de un problema concreto: la gente manda capturas de lo que le sale, y
-    entre una y otra pasan arreglos. Sin esto, una captura de anteayer con un
-    fallo ya corregido se investiga otra vez desde cero, y la versión sola no
-    basta: entre dos publicaciones hay decenas de commits y todos dicen lo
-    mismo.
+    People send screenshots of what they see, and fixes land between one and
+    the next. Without this, an old screenshot of a bug already fixed gets
+    investigated from scratch, and the version alone isn't enough: between
+    two releases there are dozens of commits that all say the same.
 
-    No sustituye a `__version__` ni al revés, porque contestan a dos personas
-    distintas. Esto es para quien mantiene el programa: de qué commit exacto
-    salió esa copia. La versión es para quien lo usa: si va atrasado o no, que
-    es algo que un hash no dice.
+    It doesn't replace `__version__`, nor the reverse: they answer two
+    different people. This is for whoever maintains the program: which exact
+    commit that copy came from. The version is for whoever uses it: whether
+    they are behind, which a hash doesn't say.
 
-    Tres sitios, en este orden. El archivo que escribe el empaquetador, que es
-    el caso que importa porque el AppImage viaja sin repositorio. El propio git
-    si estamos sobre el código fuente. Y si no hay ninguno —un tarball suelto,
-    una copia por FTP—, nada: es preferible el hueco a inventar un número.
+    Three places, in this order. The file the packager writes, the case that
+    matters, since the AppImage travels without a repository. Git itself, when
+    running from source. And if neither (a loose tarball, a copied folder),
+    nothing: a gap beats a made-up number.
     """
     global _build
     if _build is None:
@@ -61,23 +60,23 @@ _build = None
 
 
 def _read_build() -> str:
-    """Lo que dejó escrito el empaquetador dentro del paquete."""
+    """What the packager left written inside the package."""
     try:
         import pathlib
         text = (pathlib.Path(__file__).parent / "_build.txt").read_text(
             encoding="utf-8").strip()
     except OSError:
         return ""
-    # Un archivo a medio escribir no vale más que no tenerlo.
+    # A half-written file is worth no more than none.
     return text if text and len(text) < 64 else ""
 
 
 def _ask_git() -> str:
-    """La fecha y el commit de la copia de trabajo, si esto es un repositorio.
+    """The working copy's date and commit, if this is a repository.
 
-    La marca `+` al final avisa de que hay cambios sin guardar: una captura de
-    una copia tocada a mano no se corresponde con ningún commit, y saberlo
-    ahorra buscar en el historial algo que no está.
+    A trailing `+` says there are uncommitted changes: a screenshot of a copy
+    edited by hand matches no commit, and knowing it saves searching the
+    history for something that isn't there.
     """
     import subprocess
 

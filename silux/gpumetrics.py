@@ -1,20 +1,20 @@
-"""La tabla de telemetría que el firmware de una Radeon publica cada momento.
+"""The telemetry table a Radeon's firmware publishes moment to moment.
 
-`gpu_metrics` es un binario que el driver deja en sysfs con lo que le cuenta el
-microcontrolador de la tarjeta. Trae cosas que no están en ningún otro sitio:
+`gpu_metrics` is a binary the driver leaves in sysfs with what the card's
+microcontroller reports. It has things found nowhere else:
 
-- **Por qué la tarjeta se está frenando**, si es que lo hace. Es la pregunta que
-  se hace cualquiera cuando un juego va a menos de lo que debería, y hasta ahora
-  solo se podía responder a ojo mirando la temperatura.
-- **Las temperaturas de los reguladores de voltaje**, que hwmon no expone.
-- **El reloj efectivo de la memoria**, que es el que se anuncia en las fichas:
-  una GDDR6 a 1258 MHz de reloj de comando trabaja a 2505 efectivos.
+- **Why the card is throttling**, if it is. The question anyone asks when a
+  game runs slower than it should, otherwise answered only by eyeing the
+  temperature.
+- **The voltage regulators' temperatures**, which hwmon doesn't expose.
+- **The memory's effective clock**, the one on spec sheets: a GDDR6 at a
+  1258 MHz command clock runs at 2505 effective.
 
-El formato lleva versión en la cabecera y ha cambiado varias veces, no siempre
-añadiendo al final. Por eso cada versión tiene aquí su tabla de posiciones
-explícita: leer una v1.4 con las posiciones de una v1.3 no da error, da números
-creíbles y equivocados, que es peor. Una versión que no esté en la tabla se
-deja pasar con una nota en vez de adivinar.
+The format carries its version in the header and has changed several times,
+not always by appending. So each version has its own explicit offset table
+here: reading a v1.4 with a v1.3's offsets gives no error, only believable
+wrong numbers, which is worse. A version not in the table is let through
+with a note instead of guessed.
 """
 
 from __future__ import annotations
@@ -24,10 +24,10 @@ import struct
 from dataclasses import dataclass
 from typing import Optional
 
-HEADER = "<HBB"          # tamaño, revisión de formato, revisión de contenido
+HEADER = "<HBB"          # size, format revision, content revision
 
-# Por qué se frena la tarjeta. Son los bits de `indep_throttle_status`, que AMD
-# definió justamente para que no dependieran del modelo de chip.
+# Why the card throttles. The bits of `indep_throttle_status`, which AMD
+# defined precisely so they don't depend on the chip model.
 THROTTLE_REASONS = {
     0: "límite de potencia (PPT0)",
     1: "límite de potencia (PPT1)",
@@ -52,9 +52,9 @@ THROTTLE_REASONS = {
     20: "regulador de voltaje caliente",
 }
 
-# Las posiciones dentro de cada versión de la tabla. Las v1.0 a v1.3 comparten
-# toda la primera mitad (cada una añadió campos detrás) así que se construyen
-# una a partir de la anterior; las v1.4 en adelante reordenaron y no valen.
+# The offsets in each version of the table. v1.0 to v1.3 share the whole
+# first half (each added fields at the end), so each is built on the one
+# before; v1.4 and later reordered and don't fit.
 _V1_0 = {
     "temp_edge": ("H", 4), "temp_hotspot": ("H", 6), "temp_mem": ("H", 8),
     "temp_vr_gfx": ("H", 10), "temp_vr_soc": ("H", 12), "temp_vr_mem": ("H", 14),
@@ -71,33 +71,33 @@ _V1_3 = _V1_0 | {
     "throttle_independent": ("Q", 112),
 }
 
-# Las 2.x son las de las APU, y no son una 1.x con campos añadidos: la
-# estructura es otra. Salen de `gpu_metrics_v2_1` en
-# `drivers/gpu/drm/amd/include/kgd_pp_interface.h`, y los sitios están
-# calculados con las reglas de alineación de C —el `uint64` del reloj obliga a
-# alinear a ocho— para un total de 120 bytes, que es lo que declara la tabla.
+# The 2.x are the APUs', and not a 1.x with fields added: the layout is
+# different. They come from `gpu_metrics_v2_1` in
+# `drivers/gpu/drm/amd/include/kgd_pp_interface.h`, with offsets worked out
+# by C's alignment rules (the clock's `uint64` forces 8-byte alignment) for a
+# total of 120 bytes, which is what the table declares.
 #
-# Lo que una APU no tiene no está: no hay VRAM propia que medir, ni
-# reguladores de voltaje aparte, ni enlace PCIe que negociar. En su lugar trae
-# lo suyo: la temperatura y el reloj de cada núcleo del procesador, y el
-# consumo repartido entre CPU, SoC y gráfica. De momento se leen los campos
-# que el modelo ya sabe enseñar.
+# What an APU lacks isn't there: no VRAM of its own to measure, no separate
+# voltage regulators, no PCIe link to negotiate. It brings its own instead:
+# each CPU core's temperature and clock, and the power split between CPU,
+# SoC and graphics. For now only the fields the model can already show are
+# read.
 #
-# `fan_pwm` no se lee como `fan_rpm` a propósito: uno es un ciclo de trabajo de
-# 0 a 255 y el otro son revoluciones por minuto. Enseñar un PWM donde se espera
-# una velocidad daría un ventilador a 200 RPM que no existe.
+# `fan_pwm` is deliberately not read as `fan_rpm`: one is a 0 to 255 duty
+# cycle, the other revolutions per minute. A PWM shown as a speed would be a
+# fan at 200 RPM that doesn't exist.
 #
-# Lo que está y no se lee, a propósito, porque no es lo que parece:
-# `temperature_soc` (sitio 6) es la del SoC, no un punto caliente de la
-# gráfica; y `average_socket_power` (sitio 40) es el consumo del encapsulado
-# entero, núcleos del procesador incluidos (smu_v13_0_4_get_gpu_metrics y
-# yellow_carp_get_gpu_metrics lo copian de `metrics.SocketPower`). Pintados
-# como «Punto caliente» y «Consumo» de la gráfica, mentían.
+# Left unread on purpose, because they aren't what they seem:
+# `temperature_soc` (offset 6) is the SoC's, not a graphics hot spot; and
+# `average_socket_power` (offset 40) is the whole package's power, CPU cores
+# included (smu_v13_0_4_get_gpu_metrics and yellow_carp_get_gpu_metrics copy
+# it from `metrics.SocketPower`). Shown as the graphics' «Hot spot» and
+# «Power», they lied.
 #
-# Tampoco la actividad (`average_gfx_activity` y `average_mm_activity`, sitios
-# 28 y 30): en las APU llega en centésimas de punto, y un 0,45 % de video
-# saldría «45 %». El uso de la gráfica sale de
-# `gpu_busy_percent` y el del video de `vcn_busy_percent` (6.10).
+# Nor the activity (`average_gfx_activity` and `average_mm_activity`,
+# offsets 28 and 30): on APUs it comes in hundredths of a point, and 0.45 %
+# of video would show as «45 %». Graphics usage comes from
+# `gpu_busy_percent` and video's from `vcn_busy_percent` (6.10).
 _V2_1 = {
     "temp_edge": ("H", 4),           # temperature_gfx
     "gfx_clock_average": ("H", 64),
@@ -109,13 +109,13 @@ _V2_1 = {
     "throttle_status": ("I", 108),
 }
 
-# La 1.0 no está, a propósito. En `gpu_metrics_v1_0` (kgd_pp_interface.h)
-# lo primero tras la cabecera es el `uint64_t system_clock_counter`, y el
-# kernel avisa de que esa estructura «is not naturally aligned»: sus campos
-# no están donde los de la 1.1. Leída con estas posiciones salían
-# temperaturas y relojes sacados de los bytes del contador de tiempo, cifras
-# creíbles y falsas. Pasa por `sin_interpretar`, que lo dice, hasta tener un
-# volcado con el que contrastar su tabla.
+# 1.0 is left out on purpose. In `gpu_metrics_v1_0` (kgd_pp_interface.h)
+# the first thing after the header is the `uint64_t system_clock_counter`,
+# and the kernel warns that this structure «is not naturally aligned»: its
+# fields aren't where 1.1's are. Read with these offsets it gave
+# temperatures and clocks taken from the time counter's bytes, believable
+# and false. It goes through `uninterpreted`, which says so, until a dump
+# can check its table.
 VERSIONS = {
     (1, 1): _V1_0,
     (1, 2): _V1_0,
@@ -123,20 +123,20 @@ VERSIONS = {
     (2, 1): _V2_1,
 }
 
-# Las versiones cuyas temperaturas vienen en centigrados y no en grados. El
-# driver copia lo que da el firmware sin convertirlo, mientras que las
-# funciones normales de sensores dividen por cien, así que en las 2.x un 44,1
-# llega como 4410.
+# The versions whose temperatures come in centidegrees rather than degrees.
+# The driver copies what the firmware gives without converting it, while the
+# usual sensor functions divide by a hundred, so on 2.x a 44.1 arrives as
+# 4410.
 CENTIDEGREES = {(2, 1)}
 
-# Un campo a todo unos es «este chip no lo mide». Hay que descartarlo antes de
-# enseñar 65 535 grados o un reloj de cuatro mil millones.
+# A field of all ones is «this chip doesn't measure it». It must be dropped
+# before showing 65 535 degrees or a four-billion clock.
 NO_DATA = {"H": 0xFFFF, "I": 0xFFFFFFFF, "Q": 0xFFFFFFFFFFFFFFFF}
 
 
 @dataclass(frozen=True, slots=True)
 class Metrics:
-    """Una foto de la telemetría, ya en unidades del modelo."""
+    """A telemetry snapshot, already in the model's units."""
 
     version: str = ""
     temp_edge_c: Optional[float] = None
@@ -153,7 +153,7 @@ class Metrics:
     gfx_clock_average_hz: Optional[int] = None
     soc_clock_hz: Optional[int] = None
     memory_clock_hz: Optional[int] = None
-    # El reloj efectivo de la memoria: el que sale en las fichas técnicas.
+    # The memory's effective clock: the one on spec sheets.
     memory_clock_effective_hz: Optional[int] = None
     fan_rpm: Optional[int] = None
     link_width: Optional[int] = None
@@ -166,15 +166,15 @@ class Metrics:
 
 
 def parse(raw: bytes) -> Optional[Metrics]:
-    """Devuelve None si la tabla está vacía o es de una versión desconocida."""
+    """None if the table is empty or of an unknown version."""
     if len(raw) < 4:
         return None
     size, format_rev, content_rev = struct.unpack_from(HEADER, raw, 0)
     layout = VERSIONS.get((format_rev, content_rev))
     if layout is None:
         return None
-    # El propio firmware dice cuánto ocupa: si lo leído no llega, la tabla está
-    # cortada y no hay forma de saber qué campos son buenos.
+    # The firmware itself says how long it is: if what was read falls short,
+    # the table is cut and there's no telling which fields are good.
     usable = min(size, len(raw))
 
     def field(name: str) -> Optional[int]:
@@ -188,25 +188,25 @@ def parse(raw: bytes) -> Optional[Metrics]:
 
     mhz = lambda name: (lambda v: v * 1_000_000 if v else None)(field(name))
     def temperature(name: str) -> Optional[float]:
-        """Una temperatura, venga en grados o en centigrados.
+        """A temperature, whether in degrees or centidegrees.
 
-        La versión dice cuál esperar, pero además se comprueba el rango, y no
-        por desconfianza: es que un error aquí no se detecta solo. Una GPU va
-        entre 0 y 125 grados, así que un 4410 no puede ser grados y un 44 no
-        puede ser centigrados. Los dos casos se distinguen sin ambigüedad y sin
-        depender de acertar la versión.
+        The version says which to expect, but the range is checked too,
+        because a mistake here would go unnoticed. A GPU runs between 0 and
+        125 degrees, so 4410 can't be degrees and 44 can't be centidegrees:
+        the two cases are told apart without ambiguity and without relying on
+        the version.
         """
         value = field(name)
         if value is None:
             return None
-        if value > 200:                  # ninguna GPU llega a 200 grados
+        if value > 200:                  # no GPU reaches 200 degrees
             return round(value / 100, 1)
         return float(value)
     volts = lambda name: (lambda v: round(v / 1000, 3) if v else None)(field(name))
     percent = lambda name: (lambda v: float(v) if v is not None and v <= 100 else None)(field(name))
 
-    # El independiente del modelo de chip va primero; el otro solo se entiende
-    # sabiendo qué ASIC hay debajo, y ahí sí que no se puede nombrar el motivo.
+    # The chip-independent one goes first; the other only makes sense knowing
+    # the ASIC underneath, and then the reason can't be named.
     flags = field("throttle_independent")
     reasons = _reasons(flags) if flags is not None else ()
     if flags is None:
@@ -236,7 +236,7 @@ def parse(raw: bytes) -> Optional[Metrics]:
         memory_clock_effective_hz=mhz("memory_clock_average"),
         fan_rpm=field("fan_rpm"),
         link_width=width or None,
-        # Viene en décimas de gigatransferencia: 160 son 16,0 GT/s.
+        # In tenths of a gigatransfer: 160 is 16.0 GT/s.
         link_speed_gts=round(speed / 10, 1) if speed else None,
         voltage_gfx_v=volts("voltage_gfx"),
         voltage_soc_v=volts("voltage_soc"),
@@ -247,13 +247,13 @@ def parse(raw: bytes) -> Optional[Metrics]:
 
 
 def read(device: pathlib.Path | str) -> Optional[Metrics]:
-    """Lee la tabla del nodo PCI de una tarjeta."""
+    """Read the table from a card's PCI node."""
     raw = raw_of(device)
     return parse(raw) if raw else None
 
 
 def raw_of(device: pathlib.Path | str) -> Optional[bytes]:
-    """La tabla tal cual, sin interpretar."""
+    """The table as is, uninterpreted."""
     try:
         return pathlib.Path(device, "gpu_metrics").read_bytes() or None
     except OSError:
@@ -261,18 +261,16 @@ def raw_of(device: pathlib.Path | str) -> Optional[bytes]:
 
 
 def uninterpreted(device: pathlib.Path | str) -> Optional[tuple[str, int]]:
-    """La versión y el tamaño de una tabla que existe y no se sabe leer.
+    """The version and size of a table that exists and can't be read.
 
-    Devuelve None cuando no hay tabla o cuando sí se entiende. Sirve para dos
-    cosas que antes no pasaban: decirle al usuario que su tarjeta publica
-    telemetría que este programa todavía no interpreta —en vez de callarse, que
-    es lo que hacía— y llevarse la versión en el informe, que es de donde puede
-    salir la tabla de posiciones sin tener la pieza delante.
+    None when there is no table or when it is understood. It lets the user
+    be told that the card publishes telemetry this program doesn't interpret
+    yet, rather than saying nothing, and puts the version in the report,
+    which is where its offset table can come from without the part at hand.
 
-    Las v1.4 en adelante reordenaron los campos y las 2.x son las de las APU.
-    Interpretarlas con las posiciones de una v1.3 no da error: da cifras
-    creíbles y equivocadas, así que hasta tener un volcado de verdad con el que
-    contrastar, se dice que no se leen y no se adivina.
+    Interpreting a version with another's offsets gives no error, only
+    believable wrong numbers: until a real dump can check it, it is said to
+    be unread rather than guessed.
     """
     raw = raw_of(device)
     if not raw or len(raw) < 4:
@@ -284,7 +282,7 @@ def uninterpreted(device: pathlib.Path | str) -> Optional[tuple[str, int]]:
 
 
 def version_of(raw: bytes) -> Optional[str]:
-    """La versión de una tabla, aunque no se sepa interpretar su contenido."""
+    """A table's version, even when its content can't be interpreted."""
     if len(raw) < 4:
         return None
     _, format_rev, content_rev = struct.unpack_from(HEADER, raw, 0)
@@ -292,7 +290,7 @@ def version_of(raw: bytes) -> Optional[str]:
 
 
 def _reasons(flags: int) -> tuple[str, ...]:
-    """Los motivos encendidos, sin repetir: varios bits nombran lo mismo."""
+    """The reasons set, without repeats: several bits name the same thing."""
     seen: list[str] = []
     for bit, reason in THROTTLE_REASONS.items():
         if flags & (1 << bit) and reason not in seen:

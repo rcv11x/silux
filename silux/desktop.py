@@ -1,26 +1,27 @@
-"""El icono y la entrada de menú en el escritorio del usuario.
+"""The icon and the menu entry on the user's desktop.
 
-Sin esto la aplicación no aparece en el lanzador y la barra de tareas le pone
-un icono genérico. Todo va a `~/.local/share`, así que no hace falta root y no
-toca nada del sistema.
+Without them the application doesn't appear in the launcher and the taskbar
+gives it a generic icon. Everything goes to `~/.local/share`, so no root is
+needed and nothing of the system is touched.
 
-Vive dentro del paquete, y no en `tools/`, porque lo usan dos sitios: la
-herramienta `tools/install_desktop.py` y el botón de Ajustes, que también
-tiene que funcionar desde el AppImage, donde `tools/` no viaja.
+It lives in the package, not in `tools/`, because two places use it: the
+`tools/install_desktop.py` tool and the button in Settings, which must also
+work from the AppImage, where `tools/` doesn't travel.
 
-La entrada apunta a lo que se está ejecutando, y cada forma de ejecutarlo
-tiene la suya (`current_launcher`):
+The entry points at what is running, and each way of running it has its own
+(`current_launcher`):
 
-- desde el AppImage, `silux.desktop` abre el archivo `.AppImage`, no la
-  carpeta temporal donde se monta, que desaparece al cerrar;
-- desde el código, `silux-dev.desktop`, «Silux (desarrollo)», con su propio
-  icono e identificador: la del AppImage y la del repositorio conviven y
-  quitar una no deja a la otra sin icono;
-- desde un paquete instalado, `silux.desktop` con `silux-gui`.
+- from the AppImage, `silux.desktop` opens the `.AppImage` file, not the
+  temporary folder it is mounted on, which goes away on exit;
+- from source, `silux-dev.desktop`, «Silux (desarrollo)», with its own icon
+  and identifier: the AppImage's and the repository's live side by side, and
+  removing one doesn't leave the other without an icon;
+- from an installed package, `silux.desktop` with `silux-gui`.
 
-Los PNG se generan desde el SVG con Qt, que ya es dependencia de la interfaz:
-así no hace falta tener rsvg-convert ni Inkscape. Con `QImageReader` y no con
-`QtSvg`, que no va dentro del AppImage; el complemento `qsvg`, sí.
+The PNGs are rendered from the SVG with Qt, already a dependency of the
+interface, so neither rsvg-convert nor Inkscape is needed. With
+`QImageReader` rather than `QtSvg`, which isn't in the AppImage; the `qsvg`
+plugin is.
 """
 
 from __future__ import annotations
@@ -41,21 +42,22 @@ SVG = pathlib.Path(__file__).resolve().parent / "ui" / "assets" / "silux.svg"
 
 APP_ID = "silux"
 DEV_APP_ID = "silux-dev"
-# Los tamaños que pide la especificación de iconos de freedesktop, más los que
-# usan en la práctica Plasma y GNOME para la barra de tareas.
+# The sizes freedesktop's icon specification asks for, plus those Plasma and
+# GNOME use in practice for the taskbar.
 SIZES = (16, 22, 24, 32, 48, 64, 128, 256, 512)
 
-# El nombre que tuvo el proyecto antes de llamarse silux. Su instalador dejó
-# `cpuz.desktop` y su juego de iconos, y nada los quitaba: en la oficina seguía
-# en el menú una entrada que lanza un módulo que ya no existe desde una carpeta
-# que tampoco. Solo se quita si es nuestra; un CPU-Z bajo Wine es otra cosa.
+# The project's name before it was called silux. Its installer left
+# `cpuz.desktop` and its icon set, and nothing removed them: the menu kept an
+# entry launching a module that no longer exists from a folder that doesn't
+# either. Removed only if it is ours; a CPU-Z under Wine is something else.
 LEGACY_ID = "cpuz"
 LEGACY_MODULE = "cpuz.ui.app"
 MODULE = "silux.ui.app"
 
-# Las palabras con las que alguien buscaría esto en el lanzador. Van sin tildes
-# además de con ellas porque nadie teclea «caché» con acento al buscar, y sin
-# marcas registradas: el nombre se cambió justamente para no rozarlas.
+# The words someone would search the launcher with. Without accents as well
+# as with them, since nobody types «caché» with its accent when searching,
+# and without trademarks: the name was changed precisely to stay clear of
+# them.
 KEYWORDS = (
     "hardware;cpu;procesador;processor;gpu;grafica;gráfica;graphics;tarjeta;"
     "radeon;geforce;vram;memoria;memory;ram;dimm;cache;caché;placa;motherboard;"
@@ -66,9 +68,9 @@ KEYWORDS = (
     "sistema;system;"
 )
 
-# El identificador va en tres sitios y tienen que coincidir: el nombre del
-# archivo (que es el `app_id` de la ventana en Wayland), `Icon=` y
-# `StartupWMClass=`, que en X11 se compara con la clase de la ventana.
+# The identifier goes in three places that must match: the file's name (the
+# window's `app_id` on Wayland), `Icon=` and `StartupWMClass=`, which X11
+# compares with the window's class.
 DESKTOP_TEMPLATE = f"""[Desktop Entry]
 Type=Application
 Version=1.5
@@ -90,25 +92,25 @@ StartupWMClass=@ID@
 
 
 class DesktopError(RuntimeError):
-    """Lo que impide instalar, dicho para quien lo lee."""
+    """What prevents installing, said for whoever reads it."""
 
 
 @dataclass(frozen=True)
 class Launcher:
-    """Cómo se abre esta copia de silux desde el menú."""
+    """How this copy of silux is opened from the menu."""
 
-    mode: str                       # "appimage", "development" o "package"
+    mode: str                       # "appimage", "development" or "package"
     app_id: str
     name: str
     name_en: str
-    # La orden, argumento a argumento. Vacía si no se sabe: un AppImage
-    # montado sin `$APPIMAGE` no dice dónde está su archivo.
+    # The command, argument by argument. Empty if unknown: an AppImage
+    # mounted without `$APPIMAGE` doesn't say where its file is.
     command: tuple[str, ...]
     working_dir: str = ""
 
 
 def source_checkout() -> Optional[pathlib.Path]:
-    """La carpeta del repositorio, si este silux se ejecuta desde su código."""
+    """The repository's folder, if this silux runs from its source."""
     if (ROOT / "pyproject.toml").is_file() and (ROOT / "tools" / "install_desktop.py").is_file():
         return ROOT
     return None
@@ -149,11 +151,11 @@ def desktop_path(app_id: str = APP_ID) -> pathlib.Path:
 
 
 def icon_files(app_id: str) -> list[pathlib.Path]:
-    """Todos los iconos con ese nombre en el tema, de cualquier tamaño.
+    """Every icon with that name in the theme, of any size.
 
-    No solo los de `SIZES`: un tamaño que una versión anterior generaba y
-    esta ya no se quedaría para siempre con el logo de entonces, y el
-    escritorio lo elige cuando es el que mejor le encaja.
+    Not only those in `SIZES`: a size an earlier version rendered and this
+    one no longer does would keep the old logo forever, and the desktop picks
+    it when it fits best.
     """
     if not hicolor().is_dir():
         return []
@@ -169,11 +171,11 @@ def _read(path: pathlib.Path) -> Optional[str]:
 
 
 def legacy_files(launcher: Launcher) -> list[pathlib.Path]:
-    """Lo que dejó una versión vieja y esta ya no escribe.
+    """What an old version left and this one no longer writes.
 
-    La entrada de cuando el proyecto se llamaba cpuz; y, si esta copia es la
-    del repositorio, la `silux.desktop` que el instalador escribía antes para
-    el código, que ahora es de quien lo ejecute empaquetado.
+    The entry from when the project was called cpuz; and, if this copy is the
+    repository's, the `silux.desktop` the installer used to write for the
+    source, which now belongs to whoever runs it packaged.
     """
     old_files: list[pathlib.Path] = []
     text = _read(desktop_path(LEGACY_ID))
@@ -186,10 +188,10 @@ def legacy_files(launcher: Launcher) -> list[pathlib.Path]:
     return old_files
 
 
-# -- la orden -----------------------------------------------------------------
+# -- the command --------------------------------------------------------------
 
-# Lo que obliga a entrecomillar un argumento según la especificación de las
-# entradas de escritorio. Dentro de las comillas, estos cuatro van con barra.
+# What makes an argument need quotes under the desktop entry specification.
+# Inside the quotes, these four take a backslash.
 _SHELL_SPECIAL = set(" \t\n\"'\\><~|&;$*?#()`")
 _NEEDS_BACKSLASH = re.compile(r'(["`$\\])')
 
@@ -199,22 +201,22 @@ def _quote(argument: str) -> str:
         quoted = argument
     else:
         quoted = '"' + _NEEDS_BACKSLASH.sub(r"\\\1", argument) + '"'
-    # `%` abre un código de campo (`%f`, `%U`); el literal se escribe doble.
+    # `%` starts a field code (`%f`, `%U`); a literal one is written twice.
     return quoted.replace("%", "%%")
 
 
 def exec_line(command: tuple[str, ...]) -> str:
-    """La orden como va en `Exec=`.
+    """The command as it goes in `Exec=`.
 
-    Lleva dos capas: la de las comillas, y encima la del valor de texto del
-    archivo, donde una barra se escribe doble.
+    Two layers: the quoting, and on top the file's string value, where a
+    backslash is written twice.
     """
     return " ".join(_quote(a) for a in command).replace("\\", "\\\\")
 
 
 def _split(value: str) -> list[str]:
-    """Parte la orden con las reglas de la especificación, no las de la shell:
-    entre comillas, la barra solo escapa a `"`, `` ` ``, `$` y a sí misma."""
+    """Split the command by the specification's rules, not the shell's:
+    inside quotes, a backslash only escapes `"`, `` ` ``, `$` and itself."""
     parts: list[str] = []
     current: Optional[str] = None
     i = 0
@@ -241,7 +243,7 @@ def _split(value: str) -> list[str]:
 
 
 def parse_exec(value: str) -> tuple[str, ...]:
-    """Lo contrario de `exec_line`, sin los códigos de campo."""
+    """The reverse of `exec_line`, without the field codes."""
     empty = re.sub(r"\\(.)", lambda m: "\\" if m.group(1) == "\\" else m.group(0), value)
     return tuple(p.replace("%%", "%") for p in _split(empty)
                  if not re.fullmatch(r"%[a-zA-Z]", p))
@@ -259,19 +261,19 @@ def entry_text(launcher: Launcher) -> str:
     return text
 
 
-# -- escribir -----------------------------------------------------------------
+# -- writing ------------------------------------------------------------------
 
 
 def render_icons(app_id: str = APP_ID) -> list[pathlib.Path]:
-    """Rasteriza el SVG a los tamaños de la especificación."""
+    """Rasterize the SVG to the specification's sizes."""
     from PySide6.QtCore import QSize
     from PySide6.QtGui import QGuiApplication, QImageReader
 
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     app = QGuiApplication.instance() or QGuiApplication([])
 
-    # Fuera lo anterior antes de escribir: archivos nuevos y no reescritos
-    # encima, y ninguno de un tamaño que esta versión ya no genera.
+    # Out with the old before writing: new files rather than rewritten ones,
+    # and none of a size this version no longer renders.
     for old in icon_files(app_id):
         old.unlink()
 
@@ -308,22 +310,21 @@ def write_desktop(launcher: Launcher) -> pathlib.Path:
 
 
 def refresh_caches() -> None:
-    """Avisa al escritorio de que hay iconos y entrada nuevos.
+    """Tell the desktop there are new icons and a new entry.
 
-    Todas las órdenes son opcionales: si no están, el escritorio acaba
-    enterándose igual, solo que más tarde. Pero en Plasma «más tarde» puede
-    ser «al reiniciar la sesión»: `plasmashell` guarda en memoria los iconos
-    que ya pintó, y cambiar el archivo no le basta. Escucha una señal de
-    D-Bus para volver a leerlos, la misma que manda Plasma al cambiar de tema
-    de iconos.
+    Every command is optional: without them the desktop finds out anyway,
+    only later. But on Plasma «later» can mean «at the next login»:
+    `plasmashell` keeps the icons it already drew in memory, and a changed
+    file isn't enough. It listens for a D-Bus signal to reload them, the one
+    Plasma sends when the icon theme changes.
     """
-    # Que la carpeta del tema parezca cambiada a quien compare fechas.
+    # Make the theme's folder look changed to anyone comparing dates.
     if hicolor().is_dir():
         os.utime(hicolor())
     for command in (
         ["update-desktop-database", str(desktop_path().parent)],
         ["gtk-update-icon-cache", "-f", "-t", str(hicolor())],
-        # Las entradas de menú de Plasma salen de su caché, no de la carpeta.
+        # Plasma's menu entries come from its cache, not from the folder.
         ["kbuildsycoca6"],
         ["dbus-send", "--session", "--type=signal", "/KIconLoader",
          "org.kde.KIconLoader.iconChanged", "int32:0"],
@@ -337,10 +338,10 @@ def refresh_caches() -> None:
 
 
 def desktop_dir() -> pathlib.Path:
-    """La carpeta del escritorio del usuario («Escritorio» en español).
+    """The user's desktop folder («Escritorio» in Spanish).
 
-    Se lee de `user-dirs.dirs`, que es lo que hace `xdg-user-dir`, sin lanzar
-    nada: esto se pregunta desde la interfaz.
+    Read from `user-dirs.dirs`, as `xdg-user-dir` does, without launching
+    anything: the interface asks this.
     """
     home = pathlib.Path.home()
     config = pathlib.Path(os.environ.get("XDG_CONFIG_HOME") or home / ".config")
@@ -359,9 +360,9 @@ def shortcut_path(app_id: str = APP_ID) -> pathlib.Path:
 
 
 def _write_shortcut(launcher: Launcher) -> pathlib.Path:
-    """La misma entrada, en el escritorio. Ejecutable, que es lo que piden
-    Plasma y GNOME para lanzarla; GNOME además quiere que se marque como de
-    confianza, y `gio` lo hace si está."""
+    """The same entry, on the desktop. Executable, which Plasma and GNOME
+    require to launch it; GNOME also wants it marked as trusted, and `gio`
+    does that if present."""
     target = shortcut_path(launcher.app_id)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(entry_text(launcher), encoding="utf-8")
@@ -376,29 +377,29 @@ def _write_shortcut(launcher: Launcher) -> pathlib.Path:
     return target
 
 
-# -- el estado ----------------------------------------------------------------
+# -- the state ----------------------------------------------------------------
 
 @dataclass(frozen=True)
 class DesktopStatus:
-    """Cómo está la entrada de menú de esta copia de silux.
+    """How this copy of silux's menu entry stands.
 
-    `state`: «unsupported» (no se puede instalar: un AppImage que no dice
-    dónde está su archivo), «missing», «current», «elsewhere» (abre otra
-    copia que existe), «broken» (abre algo que ya no existe) u «outdated»
-    (abre esta, pero la entrada, los iconos o lo que dejó una versión vieja
-    no son los de ahora).
+    `state`: «unsupported» (it can't be installed: an AppImage that doesn't
+    say where its file is), «missing», «current», «elsewhere» (opens another
+    copy that exists), «broken» (opens something that no longer exists) or
+    «outdated» (opens this one, but the entry, the icons or what an old
+    version left aren't today's).
     """
 
     state: str
     launcher: Launcher
-    # A qué apunta la entrada instalada, para decirlo: la orden, o la carpeta
-    # si es la del repositorio.
+    # What the installed entry points at, to say so: the command, or the
+    # folder if it is the repository's.
     target: str = ""
     on_desktop: bool = False
 
 
 def _installed_command(text: str) -> tuple[tuple[str, ...], str]:
-    """La orden y la carpeta de una entrada instalada."""
+    """The command and folder of an installed entry."""
     command, folder = (), ""
     for line in text.splitlines():
         if line.startswith("Exec="):
@@ -427,10 +428,10 @@ def _icons_up_to_date(app_id: str) -> bool:
 
 
 def status(launcher: Optional[Launcher] = None) -> DesktopStatus:
-    """Lo que hay instalado comparado con lo que se instalaría ahora.
+    """What is installed compared with what would be installed now.
 
-    Se compara el contenido —la entrada entera y el SVG—, no un número de
-    versión que alguien tendría que acordarse de subir.
+    The content is compared (the whole entry and the SVG), not a version
+    number someone would have to remember to bump.
     """
     launcher = launcher or current_launcher()
     on_the_desktop = shortcut_path(launcher.app_id).is_file()
@@ -451,12 +452,12 @@ def status(launcher: Optional[Launcher] = None) -> DesktopStatus:
     return DesktopStatus("current" if up_to_date else "outdated", launcher, target, on_the_desktop)
 
 
-# -- instalar y quitar -------------------------------------------------------
+# -- installing and removing -------------------------------------------------
 
 
 def uninstall(launcher: Optional[Launcher] = None) -> int:
-    """Quita la entrada, los iconos y el acceso del escritorio; devuelve
-    cuántos archivos quitó."""
+    """Remove the entry, the icons and the desktop shortcut; return how many
+    files were removed."""
     launcher = launcher or current_launcher()
     removed = 0
     for path in [desktop_path(launcher.app_id), *icon_files(launcher.app_id),
@@ -470,11 +471,11 @@ def uninstall(launcher: Optional[Launcher] = None) -> int:
 
 def install(launcher: Optional[Launcher] = None,
             on_desktop: Optional[bool] = None) -> tuple[list[pathlib.Path], pathlib.Path]:
-    """Instala los iconos y la entrada; devuelve los dos.
+    """Install the icons and the entry; return both.
 
-    Reinstalar deja lo mismo que instalar en limpio: quita antes lo que dejó
-    una versión vieja. `on_desktop` pone o quita el acceso del escritorio;
-    con None se deja como esté, al día si existe.
+    Reinstalling leaves the same as a clean install: it first removes what an
+    old version left. `on_desktop` adds or removes the desktop shortcut; None
+    leaves it as it is, updated if it exists.
     """
     launcher = launcher or current_launcher()
     if not launcher.command:

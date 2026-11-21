@@ -1,11 +1,11 @@
-"""Buscar una versión nueva y, si el usuario lo pide, sustituir el AppImage.
+"""Look for a new version and, if the user asks, replace the AppImage.
 
-Es lo único del programa que sale a la red, y solo cuando alguien lo pide: el
-ajuste de buscar al iniciar viene apagado y el botón «Buscar ahora» se pulsa a
-mano. A quién se conecta y por qué así: `docs/arquitectura.md#el-actualizador`.
+The only part of the program that goes on the network, and only when asked:
+the check-at-startup setting comes off, and «Check now» is pressed by hand.
+Who it connects to and why: `docs/arquitectura.md#el-actualizador`.
 
-Sin Qt: la interfaz llama a esto desde un hilo. La red pasa por `abrir`, que
-los tests sustituyen por uno falso; ninguno sale a GitHub.
+No Qt: the interface calls this from a thread. The network goes through
+`open_url`, which the tests replace with a fake; none reaches GitHub.
 """
 
 from __future__ import annotations
@@ -30,21 +30,21 @@ SUMS = "SHA256SUMS"
 NORMAL = "silux-x86_64.AppImage"
 COMPAT = "silux-x86_64-compat.AppImage"
 
-# Topes de lo que se acepta de cada respuesta. La lista de releases ocupa unos
-# kilobytes por versión; un AppImage, unos 120 MB.
+# Caps on what each reply may bring. The release list is a few kilobytes per
+# version; an AppImage, about 120 MB.
 MAX_LIST_BYTES = 1 << 20
 MAX_SUMS_BYTES = 64 << 10
 MAX_APPIMAGE_BYTES = 400 << 20
-# Lo que se espera a que llegue algo. En la descarga cuenta por cada lectura,
-# no por el total: una conexión lenta que avanza no se corta.
+# How long to wait for something to arrive. For the download it counts per
+# read, not for the total: a slow connection that keeps moving isn't cut.
 TIMEOUT_S = 15.0
 DOWNLOAD_TIMEOUT_S = 60.0
 CHUNK = 1 << 16
 
 
 class UpdateError(Exception):
-    """Lo que impide buscar o actualizar. `code` es lo que traduce la
-    interfaz; el texto, el detalle técnico para el globo."""
+    """What prevents checking or updating. `code` is what the interface
+    translates; the text, the technical detail for the tooltip."""
 
     def __init__(self, code: str, detail: str = ""):
         super().__init__(detail or code)
@@ -56,7 +56,7 @@ class Release:
     version: tuple[int, int, int]
     tag: str
     url: str
-    # Nombre del adjunto -> su URL de descarga.
+    # Asset name -> its download URL.
     assets: Mapping[str, str] = field(default_factory=dict)
     # The test version's number (0.4.0rc3 is 3); None for a final.
     prerelease: Optional[int] = None
@@ -69,20 +69,20 @@ class Release:
 
     @property
     def order(self) -> tuple[int, ...]:
-        """To compare with `_orden`: a test version before its final."""
+        """To compare with `_sort_key`: a test version before its final."""
         return tuple(self.version) + ((0, self.prerelease) if self.prerelease is not None
                                       else (1, 0))
 
 
-# -- versiones ----------------------------------------------------------------
+# -- versions -----------------------------------------------------------------
 
-# «0.4.0rc1» es la 0.4-prueba1: se entiende para saber qué va por delante,
-# pero no se ofrece nunca como versión a la que actualizar.
+# «0.4.0rc1» is the 0.4-prueba1: understood to tell what is ahead, but never
+# offered as a version to update to.
 _VERSION = re.compile(r"v?(\d+)\.(\d+)\.(\d+)(?:rc(\d+))?")
 
 
 def parse_version(text: str) -> Optional[tuple[int, int, int]]:
-    """«v0.5.0» o «0.5.0» como tres números; None si no es eso exactamente."""
+    """«v0.5.0» or «0.5.0» as three numbers; None if it isn't exactly that."""
     match = _VERSION.fullmatch((text or "").strip())
     if match is None or match.group(4) is not None:
         return None
@@ -90,10 +90,9 @@ def parse_version(text: str) -> Optional[tuple[int, int, int]]:
 
 
 def _sort_key(text: str) -> Optional[tuple[int, ...]]:
-    """Para comparar: una versión de prueba va por debajo de su final.
+    """For comparing: a test version sorts below its final.
 
-    0.4.0rc1 < 0.4.0rc2 < 0.4.0 < 0.4.1. Sin esto, la versión que corre en la
-    0.4-prueba1 no se entendía y nunca había nada más nuevo.
+    0.4.0rc1 < 0.4.0rc2 < 0.4.0 < 0.4.1.
     """
     match = _VERSION.fullmatch((text or "").strip())
     if match is None:
@@ -116,11 +115,11 @@ def channel_for(preference: str, current: str = __version__) -> str:
 
 
 def latest(releases: object, channel: str = "stable") -> Optional[Release]:
-    """La release publicada más alta de la lista que da la API.
+    """The highest published release in the list the API gives.
 
-    Fuera los borradores, y lo que no tenga la forma que se espera: la
-    respuesta viene de fuera y no se da nada por hecho. The test versions
-    (marked *prerelease*, or tagged «rcN») only on the testing channel.
+    Drafts are left out, and anything not shaped as expected: the reply comes
+    from outside and nothing is taken for granted. The test versions (marked
+    *prerelease*, or tagged «rcN») only on the testing channel.
     """
     best: Optional[Release] = None
     for entry in releases if isinstance(releases, list) else ():
@@ -147,7 +146,7 @@ def latest(releases: object, channel: str = "stable") -> Optional[Release]:
 
 
 def is_newer(release: Optional[Release], current: str = __version__) -> bool:
-    """Si la release va por delante de esta versión, comparada entera."""
+    """Whether the release is ahead of this version, compared in full."""
     installed = _sort_key(current)
     return release is not None and installed is not None and release.order > installed
 
@@ -158,26 +157,27 @@ def is_current(release: Optional[Release], current: str = __version__) -> bool:
     return release is not None and _sort_key(current) == release.order
 
 
-# -- qué copia es esta --------------------------------------------------------
+# -- which copy this is -------------------------------------------------------
 
 
 def asset_name(build: Optional[str] = None) -> str:
-    """El AppImage del mismo tipo que el que corre.
+    """The AppImage of the same kind as the one running.
 
-    El empaquetador deja en la marca de construcción un `-compat` al final en
-    el compatible; es lo que hay dentro del paquete y no depende de cómo haya
-    llamado el usuario al archivo.
+    The packager leaves a trailing `-compat` in the compatible one's build
+    mark; it is inside the package and doesn't depend on what the user named
+    the file.
     """
     build_mark = build_id() if build is None else build
     return COMPAT if build_mark.endswith("-compat") else NORMAL
 
 
 def replaceable_path(environ: Optional[Mapping[str, str]] = None) -> Optional[pathlib.Path]:
-    """El AppImage que se puede sustituir, o None si solo cabe avisar.
+    """The AppImage that can be replaced, or None if all that's left is to
+    tell.
 
-    None desde el código (no hay `$APPIMAGE`) y cuando su carpeta no se puede
-    escribir: el temporal va al lado y `os.replace` necesita escribir en la
-    carpeta, no en el archivo.
+    None from source (no `$APPIMAGE`) and when its folder isn't writable: the
+    temporary file goes next to it, and `os.replace` needs to write to the
+    folder, not the file.
     """
     env = os.environ if environ is None else environ
     path = env.get("APPIMAGE")
@@ -189,25 +189,25 @@ def replaceable_path(environ: Optional[Mapping[str, str]] = None) -> Optional[pa
     return appimage
 
 
-# -- la red -------------------------------------------------------------------
+# -- the network --------------------------------------------------------------
 
 
 class _HttpsOnly(urllib.request.HTTPRedirectHandler):
-    """GitHub redirige los adjuntos a otro dominio; a `http://`, nunca."""
+    """GitHub redirects assets to another domain; never to `http://`."""
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):
-        # Un `UpdateError` y no un `URLError`: este último es un `OSError`, y
-        # quien abre lo tomaba por un corte de red y decía «no hay conexión».
+        # An `UpdateError`, not a `URLError`: the latter is an `OSError`, and
+        # the caller took it for a network outage and said «no connection».
         if not newurl.lower().startswith("https://"):
             raise UpdateError("insecure", newurl)
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
-# Dónde guarda cada familia de distribuciones los certificados en que
-# confía: Debian, Ubuntu y Arch; Fedora y RHEL; openSUSE; y el resto. El
-# OpenSSL que va dentro del AppImage es el de Ubuntu 22.04 y los busca en
-# `/usr/lib/ssl`, que solo existe en Debian y sus derivadas: en Fedora o en
-# Arch no encontraba ninguno y no podía verificar a GitHub.
+# Where each family of distributions keeps the certificates it trusts:
+# Debian, Ubuntu and Arch; Fedora and RHEL; openSUSE; and the rest. The
+# OpenSSL inside the AppImage is Ubuntu 22.04's and looks in `/usr/lib/ssl`,
+# which only Debian and its derivatives have: on Fedora or Arch it found
+# none and couldn't verify GitHub.
 CA_BUNDLES = (
     "/etc/ssl/certs/ca-certificates.crt",
     "/etc/pki/tls/certs/ca-bundle.crt",
@@ -220,19 +220,18 @@ _opener_built = None
 
 
 def _opener():
-    """El que abre las URL: solo HTTPS, verificando contra los certificados
-    del sistema. Se monta la primera vez, no al importar: sin el módulo
-    `ssl` (un Python sin OpenSSL) el error tiene que ser «no hay TLS» y no
-    un «no hay conexión» que manda a mirar el router."""
+    """What opens the URLs: HTTPS only, verified against the system's
+    certificates. Built on first use, not on import: without the `ssl`
+    module (a Python without OpenSSL) the error must be «no TLS», not a «no
+    connection» that sends people to check their router."""
     global _opener_built
     if _opener_built is None:
         try:
             import ssl
         except ImportError as error:
             raise UpdateError("notls", str(error)) from error
-        # `create_default_context` ya mira `SSL_CERT_FILE` y lo que el
-        # OpenSSL de dentro tenga por defecto; a eso se suma el almacén del
-        # sistema que haya.
+        # `create_default_context` already looks at `SSL_CERT_FILE` and the
+        # bundled OpenSSL's defaults; the system's store, if any, is added.
         context = ssl.create_default_context()
         for path in CA_BUNDLES:
             if os.path.isfile(path):
@@ -244,12 +243,12 @@ def _opener():
 
 
 def user_agent() -> str:
-    """Solo el nombre y la versión: nada del equipo ni de quien lo usa."""
+    """Only the name and version: nothing about the machine or its user."""
     return f"silux/{__version__}"
 
 
 def open_url(url: str, timeout: float) -> BinaryIO:
-    """Abre una URL HTTPS y devuelve la respuesta, que se lee por trozos."""
+    """Open an HTTPS URL and return the reply, read in chunks."""
     if not url.lower().startswith("https://"):
         raise UpdateError("insecure", url)
     request = urllib.request.Request(url, headers={
@@ -278,7 +277,7 @@ def _network_error(error: Exception) -> UpdateError:
 
 
 def _read_all(opener: Opener, url: str, limit: int, timeout: float = TIMEOUT_S) -> bytes:
-    """Toda la respuesta, o un error si pasa del tope."""
+    """The whole reply, or an error if it goes over the limit."""
     try:
         with opener(url, timeout) as response:
             data = response.read(limit + 1)
@@ -301,7 +300,7 @@ def _open_download(opener: Opener, url: str) -> BinaryIO:
 
 
 def check(opener: Opener = open_url, channel: str = "stable") -> Optional[Release]:
-    """La última release publicada en ese canal; None si no hay ninguna."""
+    """The latest release published on that channel; None if there is none."""
     data = _read_all(opener, API_URL, MAX_LIST_BYTES)
     try:
         releases = json.loads(data.decode("utf-8"))
@@ -311,7 +310,7 @@ def check(opener: Opener = open_url, channel: str = "stable") -> Optional[Releas
 
 
 def parse_sums(text: str) -> dict[str, str]:
-    """Las líneas de `sha256sum`: «hash  nombre» (con `*` si es binario)."""
+    """`sha256sum`'s lines: «hash  name» (with `*` if binary)."""
     sums = {}
     for line in text.splitlines():
         parts = line.strip().split(None, 1)
@@ -321,7 +320,7 @@ def parse_sums(text: str) -> dict[str, str]:
 
 
 def expected_hash(release: Release, name: str, opener: Opener = open_url) -> str:
-    """El SHA-256 publicado para ese adjunto. Sin él no se baja nada."""
+    """The SHA-256 published for that asset. Without it nothing is downloaded."""
     if name not in release.assets:
         raise UpdateError("noasset", name)
     if SUMS not in release.assets:
@@ -336,12 +335,12 @@ def expected_hash(release: Release, name: str, opener: Opener = open_url) -> str
 def install(release: Release, target: pathlib.Path, name: Optional[str] = None,
             opener: Opener = open_url,
             progress: Optional[Callable[[int], None]] = None) -> pathlib.Path:
-    """Baja el AppImage, lo comprueba y lo pone en lugar de `destino`.
+    """Download the AppImage, check it and put it in place of `target`.
 
-    El temporal va en la misma carpeta para que `os.replace` sea un cambio de
-    nombre y no una copia: quien abra el programa en ese instante encuentra el
-    viejo entero o el nuevo entero. Si algo falla, el temporal se borra y
-    `destino` queda como estaba.
+    The temporary file goes in the same folder so `os.replace` is a rename,
+    not a copy: whoever opens the program at that instant finds the old one
+    whole or the new one whole. If anything fails, the temporary file is
+    removed and `target` is left as it was.
     """
     name = name or asset_name()
     expected = expected_hash(release, name, opener)
@@ -378,10 +377,10 @@ def install(release: Release, target: pathlib.Path, name: Optional[str] = None,
         except OSError:
             pass
         if isinstance(error, OSError):
-            # Lo de la red ya llega como UpdateError: esto es el disco.
+            # Network failures already arrive as UpdateError: this is the disk.
             raise UpdateError("write", str(error)) from error
         raise
-    # Que el cambio de nombre llegue al disco, no solo el contenido.
+    # Make the rename reach the disk, not only the content.
     try:
         folder_fd = os.open(str(target.parent), os.O_RDONLY)
         try:

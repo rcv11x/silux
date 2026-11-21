@@ -1,19 +1,18 @@
-"""Interpreta los datos de diagnóstico que devuelve un disco.
+"""Interprets the diagnostic data a disk returns.
 
-El ayudante privilegiado pide los bytes y no los mira; el análisis se hace
-aquí, sin privilegios, porque analizar formatos binarios es de donde salen la
-mayoría de los fallos de memoria y hacerlo como root sería regalar el problema.
+The privileged helper fetches the bytes without looking at them; they are
+parsed here, without privileges, since parsing binary formats is where most
+memory bugs come from, and doing it as root would hand the problem over.
 
-Los dos formatos no se parecen:
+The two formats have little in common:
 
-- **NVMe** tiene un registro fijo y bien definido: cada campo está en su sitio
-  y significa lo mismo en cualquier disco. Es de los pocos formatos de esta
-  industria en los que uno puede fiarse sin comprobar el fabricante.
-- **SATA** tiene una tabla de atributos numerados donde cada fabricante decide
-  qué guarda en cuáles. Los números que importan son los mismos desde hace
-  veinte años, pero el valor «en crudo» de un atributo puede significar horas
-  en un disco y minutos en otro, así que aquí solo se leen los que tienen un
-  significado acordado.
+- **NVMe** has a fixed, well-defined log: every field has its place and
+  means the same on any disk. One of the few formats in this industry that
+  can be trusted without checking the maker.
+- **SATA** has a table of numbered attributes, and each maker decides what
+  goes in which. The numbers that matter have been the same for twenty
+  years, but an attribute's raw value can mean hours on one disk and
+  minutes on another, so only those with an agreed meaning are read.
 """
 
 from __future__ import annotations
@@ -27,33 +26,32 @@ from typing import Optional
 
 from .model import DiskHealth
 
-# Una «unidad de datos» de NVMe son mil sectores de 512 bytes.
+# An NVMe «data unit» is a thousand 512-byte sectors.
 NVME_DATA_UNIT = 1000 * 512
-# Los sectores lógicos con los que SATA cuenta lo escrito.
+# The logical sectors SATA counts what was written in.
 ATA_SECTOR = 512
 
-# Cuánto vale una unidad del atributo 241 según quién fabrique el disco.
+# What one unit of attribute 241 is worth, by the disk's maker.
 #
-# El atributo se llama «LBAs escritas» y casi todo el mundo cuenta sectores de
-# 512 bytes, pero no es obligatorio y algunos fabricantes cuentan bloques
-# mucho mayores. Kioxia usa bloques de 32 MiB: dando por hecho los 512 bytes,
-# un disco con 23 TiB escritos declaraba 367 MB, que son 65 536 veces menos.
+# The attribute is called «LBAs written» and almost everyone counts 512-byte
+# sectors, but nothing requires it and some makers count much larger
+# blocks. Kioxia uses 32 MiB blocks: assuming 512 bytes, a disk with 23 TiB
+# written claimed 367 MB, 65 536 times less.
 #
-# Ni siquiera las herramientas de referencia coinciden. `smartctl` etiqueta
-# ese atributo como «Lifetime_Writes_GiB» —que daría 735 TiB, más de lo que
-# el disco aguantaría— y libatasmart asume 32 MiB. Como no hay forma de
-# deducirlo del propio atributo, aquí solo se apunta lo que se ha medido
-# contra hardware real: se escribe una cantidad conocida y se mira cuánto
-# sube el contador.
+# Not even the reference tools agree. `smartctl` labels the attribute
+# «Lifetime_Writes_GiB», which would give 735 TiB, more than the disk could
+# take, and libatasmart assumes 32 MiB. Since the attribute itself can't
+# tell, only what was measured on real hardware goes here: write a known
+# amount and see how much the counter rises.
 #
-# Lo que no esté en esta tabla se cuenta en sectores de 512 bytes, que es lo
-# que hace la inmensa mayoría y lo que el programa venía haciendo.
+# Anything not in this table counts 512-byte sectors, as nearly every disk
+# does.
 ATA_WRITE_UNIT: dict[str, int] = {
-    # Comprobado en un KIOXIA-EXCERIA SATA de 240 GB: escritos 4,09 GiB, el
-    # contador subió 133 unidades → 31,5 MiB por unidad, o sea 32 MiB.
+    # Checked on a 240 GB KIOXIA-EXCERIA SATA: 4.09 GiB written, the counter
+    # rose 133 units → 31.5 MiB per unit, so 32 MiB.
     "kioxia": 32 * 1024 * 1024,
-    # Toshiba vendía estos mismos discos antes de que la división de memorias
-    # pasara a llamarse Kioxia, y comparten firmware.
+    # Toshiba sold these same disks before its memory division was renamed
+    # Kioxia, and they share firmware.
     "toshiba": 32 * 1024 * 1024,
 }
 
@@ -80,7 +78,7 @@ def _drivedb() -> tuple[tuple[re.Pattern, Optional[re.Pattern], dict[int, Option
 
 def _write_unit(vendor: Optional[str], model: Optional[str],
                       firmware: Optional[str] = None, attribute: int = 241) -> Optional[int]:
-    """Cuánto vale una unidad de este contador en este disco.
+    """What one unit of this counter is worth on this disk.
 
     What was measured first; then smartmontools' drive database, which needs
     the whole model (sysfs cuts it to 16 characters); then 512-byte sectors.
@@ -104,7 +102,7 @@ ABSOLUTE_ZERO = 273.15
 
 
 class _Nvme:
-    """Posiciones del registro de salud de NVMe. Son fijas por especificación."""
+    """Offsets in the NVMe health log, fixed by the specification."""
 
     CRITICAL_WARNING = 0
     TEMPERATURE = 1
@@ -118,40 +116,40 @@ class _Nvme:
     MEDIA_ERRORS = 160
 
 
-# Los atributos de SATA que significan lo mismo en todos los fabricantes.
+# SATA attributes that mean the same for every maker.
 ATA_POWER_ON_HOURS = 9
 ATA_POWER_CYCLES = 12
 ATA_TEMPERATURE = 194
-# El de siempre y el que usan Crucial y Micron para lo mismo.
+# The usual one, and the one Crucial and Micron use for the same thing.
 ATA_WRITTEN = (241, 246)
 ATA_READ = (242, 247)
 
-# Contadores que caben de sobra en 32 bits y donde varios fabricantes usan los
-# dos bytes altos del contador para otra cosa. Un Seagate declaraba 132 billones
-# de horas de encendido —quince mil millones de años— porque ahí guarda algo
-# suyo; leídos los 32 bits bajos son 13 147 horas, que es un disco de año y
-# medio. Es exactamente lo que avisa la cabecera de este módulo, y pasó igual.
+# Counters that fit in 32 bits with room to spare, where several makers use
+# the top two bytes for something else. A Seagate claimed 132 trillion
+# power-on hours, fifteen billion years, because it keeps something of its
+# own there; its low 32 bits are 13 147 hours, a disk a year and a half
+# old.
 ATA_32_BITS = (ATA_POWER_ON_HOURS, ATA_POWER_CYCLES)
 
-# Ningún disco fabricado ha estado encendido doscientos años. Si sale más, el
-# contador no significa lo que se cree y es mejor no enseñarlo.
+# No disk ever made has been on for two hundred years. Above that, the
+# counter doesn't mean what it seems and is better not shown.
 PLAUSIBLE_HOURS = 200 * 365 * 24
 ATA_REALLOCATED = 5
 ATA_PENDING = 197
 ATA_UNCORRECTABLE = 198
-# El desgaste de un SSD lo publican con tres números distintos según la marca;
-# los tres guardan lo mismo: cuánta vida queda, de 100 a 0.
+# Makers publish an SSD's wear under three different numbers; all three hold
+# the same thing: how much life is left, from 100 to 0.
 ATA_LIFE_LEFT = (231, 233, 177, 202)
 
 
 def parse(data: bytes, kind: str, vendor: Optional[str] = None,
           model: Optional[str] = None, firmware: Optional[str] = None) -> Optional[DiskHealth]:
-    """Devuelve None si los datos no tienen la pinta que deberían.
+    """None if the data doesn't look as it should.
 
-    El fabricante y el modelo hacen falta solo en SATA, y solo para saber en
-    qué unidades cuenta el disco lo que lleva escrito. NVMe no los necesita:
-    su registro de salud está definido por la especificación y significa lo
-    mismo en cualquier disco.
+    The vendor and model are only needed on SATA, and only to know which
+    units the disk counts what it wrote in. NVMe doesn't need them: its
+    health log is defined by the specification and means the same on any
+    disk.
     """
     if kind == "nvme":
         return _parse_nvme(data)
@@ -161,7 +159,7 @@ def parse(data: bytes, kind: str, vendor: Optional[str] = None,
 
 
 def _u128(data: bytes, offset: int) -> Optional[int]:
-    """NVMe guarda los contadores en 128 bits. Nadie llega ni de lejos."""
+    """NVMe keeps its counters in 128 bits. Nothing comes close."""
     if offset + 16 > len(data):
         return None
     low, high = struct.unpack_from("<QQ", data, offset)
@@ -183,23 +181,23 @@ def _parse_nvme(data: bytes) -> Optional[DiskHealth]:
         power_cycles=_u128(data, _Nvme.POWER_CYCLES) or None,
         written_bytes=written * NVME_DATA_UNIT if written else None,
         read_bytes=read_units * NVME_DATA_UNIT if read_units else None,
-        # Un disco puede pasar del 100 %: sigue funcionando, solo que ya ha
-        # gastado toda la vida que el fabricante garantizaba.
+        # A disk can go past 100 %: it still works, it has just used all the
+        # life the maker guaranteed.
         percentage_used=used,
         spare_percent=data[_Nvme.AVAILABLE_SPARE],
         unsafe_shutdowns=_u128(data, _Nvme.UNSAFE_SHUTDOWNS) or None,
         media_errors=_u128(data, _Nvme.MEDIA_ERRORS),
         critical_warning=data[_Nvme.CRITICAL_WARNING],
     )
-    # Un registro entero a ceros es un disco que no lo implementa, no uno
-    # recién estrenado con cero horas.
+    # A log that is all zeros is a disk that doesn't implement it, not a
+    # brand-new one with zero hours.
     if not any((health.power_on_hours, health.written_bytes, kelvin)):
         return None
     return health
 
 
 def nvme_temperature(data: bytes) -> Optional[float]:
-    """La temperatura del registro, que NVMe da en kelvin."""
+    """The log's temperature, which NVMe gives in kelvin."""
     if len(data) < 3:
         return None
     kelvin = struct.unpack_from("<H", data, _Nvme.TEMPERATURE)[0]
@@ -209,10 +207,10 @@ def nvme_temperature(data: bytes) -> Optional[float]:
 
 
 def _attributes(data: bytes) -> dict[int, tuple[int, int]]:
-    """Los treinta atributos de la tabla: {id: (normalizado, en crudo)}.
+    """The table's thirty attributes: {id: (normalized, raw)}.
 
-    El normalizado va de 100 a 0 y lo interpreta el disco; el crudo es el
-    contador de verdad. Cuál de los dos vale depende del atributo.
+    The normalized value goes from 100 to 0 and the disk interprets it; the
+    raw one is the actual counter. Which one counts depends on the attribute.
     """
     found: dict[int, tuple[int, int]] = {}
     for index in range(30):
@@ -220,7 +218,7 @@ def _attributes(data: bytes) -> dict[int, tuple[int, int]]:
         if start + 12 > len(data):
             break
         attr_id = data[start]
-        if attr_id == 0:                 # entrada vacía
+        if attr_id == 0:                 # empty slot
             continue
         normalized = data[start + 3]
         raw_bytes = data[start + 5:start + 11]
@@ -240,10 +238,10 @@ def _parse_ata(data: bytes, vendor: Optional[str] = None,
         return None
 
     def raw(*attr_ids: int) -> Optional[int]:
-        """El primero de estos atributos que el disco publique.
+        """The first of these attributes the disk publishes.
 
-        Varios fabricantes guardan lo mismo en números distintos, así que se
-        prueban en orden en vez de dar por hecho uno solo.
+        Several makers keep the same thing under different numbers, so they
+        are tried in order rather than assuming one.
         """
         for attr_id in attr_ids:
             entry = table.get(attr_id)
@@ -270,11 +268,10 @@ def _parse_ata(data: bytes, vendor: Optional[str] = None,
         power_cycles=raw(ATA_POWER_CYCLES),
         written_bytes=in_bytes(*ATA_WRITTEN),
         read_bytes=in_bytes(*ATA_READ),
-        # El atributo guarda la vida que queda; el modelo la guarda gastada.
+        # The attribute keeps the life left; the model keeps it used.
         percentage_used=100 - life_left if life_left is not None else None,
-        # Un sector reasignado es un trozo de disco que ya se estropeó y se
-        # sustituyó por uno de repuesto. Que haya alguno no es fatal; que
-        # crezcan con el tiempo sí.
+        # A reallocated sector is a piece of disk that already failed and was
+        # replaced by a spare. A few aren't fatal; their growing over time is.
         media_errors=(raw(ATA_REALLOCATED) or 0) + (raw(ATA_PENDING) or 0)
         + (raw(ATA_UNCORRECTABLE) or 0),
         attributes=tuple((attr_id, normalized, raw_value)
@@ -283,13 +280,13 @@ def _parse_ata(data: bytes, vendor: Optional[str] = None,
 
 
 def ata_temperature(data: bytes) -> Optional[float]:
-    """La temperatura de la tabla de atributos, si el disco la publica."""
+    """The temperature from the attribute table, if the disk publishes it."""
     if len(data) < 362:
         return None
     entry = _attributes(data).get(ATA_TEMPERATURE)
     if not entry:
         return None
-    # Los bits altos del crudo llevan mínimos y máximos en muchos discos; la
-    # temperatura actual está en el byte bajo.
+    # Many disks keep minimums and maximums in the raw value's high bytes;
+    # the current temperature is in the low byte.
     degrees = entry[1] & 0xFF
     return float(degrees) if 0 < degrees < 120 else None
