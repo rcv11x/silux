@@ -24,7 +24,7 @@ BAT = "sys/class/power_supply/BAT0"
 
 
 def photo(status, power_uw):
-    with volcado.montado(EQUIPOS / "i5-1135g7") as raiz:
+    with volcado.mounted(EQUIPOS / "i5-1135g7") as raiz:
         (raiz / BAT / "status").write_text(f"{status}\n")
         (raiz / BAT / "power_now").write_text(f"{power_uw}\n")
         collector = Collector()

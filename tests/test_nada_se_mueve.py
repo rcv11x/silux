@@ -32,7 +32,7 @@ def dos_fotos(carpeta):
 
     from tests.interval import fake_clock, next_snapshot
 
-    with _herramienta().montado(carpeta), fake_clock() as reloj:
+    with _herramienta().mounted(carpeta), fake_clock() as reloj:
         recolector = Collector()
         try:
             recolector.snapshot()
@@ -96,7 +96,7 @@ def con_contadores_avanzando(carpeta):
 
     from tests.interval import fake_clock, next_snapshot
 
-    with _herramienta().montado(carpeta) as raiz, fake_clock() as reloj:
+    with _herramienta().mounted(carpeta) as raiz, fake_clock() as reloj:
         recolector = Collector()
         try:
             recolector.snapshot()

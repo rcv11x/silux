@@ -424,7 +424,7 @@ class TestTheDesktopRtx4060WithItsSamples(unittest.TestCase):
         from tests.interval import second_snapshot
         from tests.test_equipos import EQUIPOS
 
-        with volcado.montado(EQUIPOS / "i7-10700f") as raiz:
+        with volcado.mounted(EQUIPOS / "i7-10700f") as raiz:
             ruta = raiz / "grabado.json"
             grabado = json.loads(ruta.read_text())
             grabado["nvml"]["tarjetas"][0].update(

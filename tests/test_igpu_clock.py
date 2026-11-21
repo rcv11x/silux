@@ -33,7 +33,7 @@ def photo(readings, asleep_ms, requested=None):
     """Two samples a second apart; between them `readings` of the actual
     frequency, the last one at the sample, and `asleep_ms` more of RC6."""
     reloj = _Clock()
-    with volcado.montado(EQUIPOS / "i5-1135g7") as raiz, \
+    with volcado.mounted(EQUIPOS / "i5-1135g7") as raiz, \
             mock.patch("silux.providers.drm.time.monotonic", reloj):
         gt = raiz / GT
         if requested is not None:

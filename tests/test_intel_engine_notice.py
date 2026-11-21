@@ -64,7 +64,7 @@ def _the_pmu(root, events):
 
 
 def _photo(events, helper):
-    with volcado.montado(EQUIPOS / "i5-10400") as root:
+    with volcado.mounted(EQUIPOS / "i5-10400") as root:
         _the_pmu(root, events)
         collector = Collector()
         estado = next(p for p in collector.providers if isinstance(p, GpuState))
@@ -86,7 +86,7 @@ class TestTheNoticeOfAnIntelsEngines(unittest.TestCase):
         # F-M21: read once, the notice kept saying the usage was being read
         # after the helper died, and there was no usage any more.
         helper = Helper()
-        with volcado.montado(EQUIPOS / "i5-10400") as root:
+        with volcado.mounted(EQUIPOS / "i5-10400") as root:
             _the_pmu(root, WITH_ENGINES)
             collector = Collector()
             next(p for p in collector.providers if isinstance(p, GpuState)).client = helper

@@ -20,7 +20,7 @@ RAIZ = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 
 from silux import volcado  # noqa: E402
-from silux.volcado import MANIFIESTO, foto_de, montado  # noqa: E402,F401
+from silux.volcado import MANIFEST, mounted, snapshot_of  # noqa: E402,F401
 from tools import comprobar_privacidad  # noqa: E402
 
 DESTINO = RAIZ / "tests" / "fixtures" / "equipos"
@@ -32,8 +32,8 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
     if not re.fullmatch(r"[a-z0-9][a-z0-9._-]*", args.nombre):
         parser.error("el nombre, en minúsculas, cifras, puntos y guiones")
-    destino = volcado.volcar(args.nombre, DESTINO,
-                             propios=comprobar_privacidad._de_esta_maquina())
+    destino = volcado.dump(args.nombre, DESTINO,
+                             own=comprobar_privacidad._de_esta_maquina())
     tamano = sum(f.stat().st_size for f in destino.rglob("*") if f.is_file() and not f.is_symlink())
     print(f"  volcado en {destino.relative_to(RAIZ)} ({tamano / 1024:.0f} KB)")
     print("  pasado por privacidad.anonimizar y por los identificadores de "

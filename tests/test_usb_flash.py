@@ -37,7 +37,7 @@ def _snapshot(removable: bool, permissions: bool):
     from silux.collector import Collector
     from tests.interval import second_snapshot
 
-    with volcado.montado(EQUIPOS / "i5-10400") as raiz:
+    with volcado.mounted(EQUIPOS / "i5-10400") as raiz:
         _plug(raiz, removable)
         sysroot.forget()
         recolector = Collector()

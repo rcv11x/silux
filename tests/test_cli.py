@@ -233,7 +233,7 @@ class TestReportArguments(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             annex.to_folder(annex.find(out), pathlib.Path(tmp) / "back")
             from silux import volcado
-            photo = volcado.foto_de(pathlib.Path(tmp) / "back")
+            photo = volcado.snapshot_of(pathlib.Path(tmp) / "back")
         self.assertEqual([t.brand for t in photo.cpu.types],
                          [t.brand for t in Collector().snapshot().cpu.types])
 

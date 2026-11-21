@@ -43,7 +43,7 @@ def foto_con_el_contador_andando(nombre: str):
     from silux.collector import Collector
     from tests.interval import fake_clock, next_snapshot
 
-    with _herramienta().montado(EQUIPOS / nombre) as raiz, fake_clock() as reloj:
+    with _herramienta().mounted(EQUIPOS / nombre) as raiz, fake_clock() as reloj:
         recolector = Collector()
         try:
             recolector.snapshot()

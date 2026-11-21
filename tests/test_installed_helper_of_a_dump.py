@@ -39,7 +39,7 @@ class TestTheHelperInstalledHere(unittest.TestCase):
         self.assertTrue(client.PrivilegedClient.necesita_reinstalar())
 
     def test_a_dumps_photo_does_not_carry_it(self):
-        with volcado.montado(EQUIPOS / "i5-10400"):
+        with volcado.mounted(EQUIPOS / "i5-10400"):
             self.assertFalse(client.PrivilegedClient.instalado())
             collector = Collector()
             try:

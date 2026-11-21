@@ -207,7 +207,7 @@ class TestReportPreview(unittest.TestCase):
 
         from silux import annex
         from tests.test_volcar_equipo import _herramienta
-        with _herramienta().montado(EQUIPOS / "qemu-kvm"):
+        with _herramienta().mounted(EQUIPOS / "qemu-kvm"):
             dialog = self.open_preview()
             self.wait_for_the_annex(dialog)
         block = annex.find(dialog.report())

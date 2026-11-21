@@ -90,7 +90,7 @@ class TestTheMemoryControllerItCouldNotOpen(unittest.TestCase):
 
         from tests.interval import fake_clock
         from silux import volcado
-        with volcado.montado(DUMP), fake_clock():
+        with volcado.mounted(DUMP), fake_clock():
             proveedor = imc.ImcTraffic(client=Helper())
             proveedor.collect(Draft())
             razon = proveedor.unavailable_reason()
@@ -111,7 +111,7 @@ class TestTheSpdHint(unittest.TestCase):
         from silux.providers.privileged_memory import PrivilegedMemory
 
         hecho = subprocess.CompletedProcess([], 0, stdout="/lib/modules/spd5118.ko\n")
-        with volcado.montado(DUMP) as raiz:
+        with volcado.mounted(DUMP) as raiz:
             if quitar_hwmon:
                 # As before the driver binds: the bus lists the device alone.
                 shutil.rmtree(raiz / "sys/bus/i2c/devices/0-0050/hwmon")
@@ -151,7 +151,7 @@ class TestAnSpdThatFailsToRead(unittest.TestCase):
                 raise OSError(error, errno.errorcode.get(error, "error"))
             return real_open(path, *args, **kwargs)
 
-        with volcado.montado(DUMP) as raiz:
+        with volcado.mounted(DUMP) as raiz:
             (raiz / "sys/bus/i2c/devices/0-0050/eeprom").write_bytes(b"")
             with mock.patch("builtins.open", fake_open), \
                     mock.patch("pathlib.Path.read_bytes",
@@ -178,7 +178,7 @@ class TestTheVulkanDriverThatRejectsTheUhd(unittest.TestCase):
         from silux.collector import Collector
         from tests.interval import second_snapshot
 
-        with volcado.montado(DUMP) as raiz:
+        with volcado.mounted(DUMP) as raiz:
             ruta = raiz / "grabado.json"
             grabado = json.loads(ruta.read_text())
             grabado["gpuapi"]["consultar"]["vulkan_rejected"] = [{

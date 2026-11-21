@@ -33,11 +33,11 @@ def main(argv=None) -> int:
                         help="lo que se ejecuta con el volcado montado")
     args = parser.parse_args(argv)
     carpeta = volcar_equipo.DESTINO / args.nombre
-    if not (carpeta / volcar_equipo.MANIFIESTO).is_file():
+    if not (carpeta / volcar_equipo.MANIFEST).is_file():
         parser.error(f"no hay ningún volcado que se llame {args.nombre}")
     if not args.orden:
         parser.error("falta la orden")
-    with volcar_equipo.montado(carpeta):
+    with volcar_equipo.mounted(carpeta):
         # La variable ya está puesta en este proceso; la orden la hereda.
         return subprocess.run(args.orden).returncode
 

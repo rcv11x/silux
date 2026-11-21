@@ -45,8 +45,8 @@ def import_report(report: pathlib.Path, name: str, base: pathlib.Path = TARGET):
             annex.to_folder(block, work)
         except (annex.AnnexError, OSError) as error:
             raise SystemExit(f"{report}: {error}") from None
-        if not (work / volcado.MANIFIESTO).is_file():
-            raise SystemExit(f"{report}: el anexo no trae {volcado.MANIFIESTO}; no es un volcado")
+        if not (work / volcado.MANIFEST).is_file():
+            raise SystemExit(f"{report}: el anexo no trae {volcado.MANIFEST}; no es un volcado")
         # Checked as what it will be: a dump of the suite.
         found = comprobar_privacidad.revisar(
             [p for p in sorted(work.rglob("*")) if p.is_file() and not p.is_symlink()], {},
@@ -54,7 +54,7 @@ def import_report(report: pathlib.Path, name: str, base: pathlib.Path = TARGET):
         if found:
             raise SystemExit("El anexo lleva lo que un volcado no puede llevar; no se deja "
                              "nada:\n  " + "\n  ".join(found[:20]))
-        photo = volcado.foto_de(work)
+        photo = volcado.snapshot_of(work)
         shutil.copytree(work, target, symlinks=True)
     return target, photo
 

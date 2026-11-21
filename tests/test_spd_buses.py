@@ -120,7 +120,7 @@ class TestAChipWaitingForItsDriver(unittest.TestCase):
         from tests.test_nada_en_bruto import _con_permisos
         from tests.test_smbios import _end, _memory_array, _memory_device
 
-        with volcado.montado(EQUIPOS / "i5-10400") as raiz:
+        with volcado.mounted(EQUIPOS / "i5-10400") as raiz:
             _without_driver(raiz)
             sysroot.forget()
             recolector = Collector()

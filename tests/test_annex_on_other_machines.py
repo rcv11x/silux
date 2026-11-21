@@ -41,13 +41,13 @@ def _link(root: pathlib.Path, path: str, to: str) -> None:
 def _machine(dump: str):
     """A suite's dump mounted, to add things to, and where to dump it. The
     checks go inside: both are temporary."""
-    with volcado.montado(EQUIPOS / dump) as root, tempfile.TemporaryDirectory() as out:
+    with volcado.mounted(EQUIPOS / dump) as root, tempfile.TemporaryDirectory() as out:
         yield root, pathlib.Path(out)
 
 
 def _dump(out: pathlib.Path, propios=None):
     """Dumps the mounted machine; the dump, its manifest and its bytes."""
-    folder = volcado.volcar("otro", out, propios=propios if propios is not None else {})
+    folder = volcado.dump("otro", out, own=propios if propios is not None else {})
     manifest = json.loads((folder / "manifiesto.json").read_text())
     everything = b"".join(p.read_bytes() for p in folder.rglob("*")
                           if p.is_file() and not p.is_symlink())
@@ -65,9 +65,9 @@ class TestWhatIsAlreadyCovered(unittest.TestCase):
                 folder, manifest, _bytes = _dump(out, propios={
                     privacidad.IPV4: "una dirección IPv4 de este equipo"})
                 self.assertNotIn("quitados", manifest)
-                photo = volcado.foto_de(folder)
-                self.assertEqual(volcado._lo_que_anonimizar_taparia(photo), [])
-                original = volcado.foto_de(EQUIPOS / dump)
+                photo = volcado.snapshot_of(folder)
+                self.assertEqual(volcado._what_anonymize_would_cover(photo), [])
+                original = volcado.snapshot_of(EQUIPOS / dump)
                 self.assertEqual([t.brand for t in photo.cpu.types],
                                  [t.brand for t in original.cpu.types])
                 self.assertEqual([(i.name, i.gateway) for i in photo.network],
@@ -108,7 +108,7 @@ class TestAUsbStick(unittest.TestCase):
                 self.SERIAL: "el número de serie de algo enchufado por USB"})
             self.assertNotIn("quitados", manifest)
             self.assertNotIn(self.SERIAL.encode(), everything)
-            disks = {d.name: d for d in volcado.foto_de(folder).disks}
+            disks = {d.name: d for d in volcado.snapshot_of(folder).disks}
             self.assertEqual(disks["sdz"].model, "DataTraveler 3.0")
 
 
@@ -213,7 +213,7 @@ class TestNvidiaCards(unittest.TestCase):
                 self.assertNotIn("quitados", manifest)
                 for _slot, uuid, name, *_rest in cards:
                     self.assertNotIn(uuid[4:].encode(), everything)
-                names = [g.name for g in volcado.foto_de(folder).gpus]
+                names = [g.name for g in volcado.snapshot_of(folder).gpus]
                 self.assertLessEqual({c[2] for c in cards}, set(names))
 
 
@@ -252,7 +252,7 @@ class TestNetworkConnections(unittest.TestCase):
             self.assertIn(privacidad.INTERFACE.format(1), names)
             for gone in (self.HEX, self.MAC, "ana_wg0"):
                 self.assertNotIn(gone.encode(), everything)
-            self.assertEqual(volcado._lo_que_anonimizar_taparia(volcado.foto_de(folder)), [])
+            self.assertEqual(volcado._what_anonymize_would_cover(volcado.snapshot_of(folder)), [])
 
 
 class TestWhatCannotBeCovered(unittest.TestCase):

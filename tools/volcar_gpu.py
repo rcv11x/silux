@@ -23,7 +23,7 @@ RAIZ = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 
 from silux import sysroot  # noqa: E402
-from silux.volcado import ENERGIA, SYS_DRM, _leer, _real, dormida, energia  # noqa: E402
+from silux.volcado import POWER_FILES, SYS_DRM, _read, _resolved, is_asleep, power_state  # noqa: E402
 
 # Lo que se busca en cada nodo. Las rutas con barra se prueban tal cual.
 INTERESAN = (
@@ -52,7 +52,7 @@ def _volcar(titulo: str, base, nombres) -> None:
     print(f"\n  [{titulo}]")
     vistos = 0
     for nombre in nombres:
-        valor = _leer(f"{base}/{nombre}")
+        valor = _read(f"{base}/{nombre}")
         if valor is None:
             continue
         vistos += 1
@@ -72,7 +72,7 @@ def main() -> int:
         print("Este equipo no expone /sys/class/drm.", file=sys.stderr)
         return 1
 
-    print(f"kernel: {_leer('/proc/sys/kernel/osrelease')}")
+    print(f"kernel: {_read('/proc/sys/kernel/osrelease')}")
 
     tarjetas = sorted(p.name for p in drm.glob("card*") if p.name[4:].isdigit())
     if not tarjetas:
@@ -83,19 +83,19 @@ def main() -> int:
         nodo = f"{SYS_DRM}/{tarjeta}"
         dispositivo = f"{nodo}/device"
         enlace = pathlib.Path(sysroot.path(f"{dispositivo}/driver"))
-        driver = _real(enlace).name if enlace.exists() else None
+        driver = _resolved(enlace).name if enlace.exists() else None
         print(f"\n{'=' * 62}")
         print(f"{tarjeta}  ·  driver {driver or '?'}")
         try:
-            print(f"  ranura: {_real(dispositivo).name}")
+            print(f"  ranura: {_resolved(dispositivo).name}")
         except OSError:
             pass
 
         # Lo primero, antes de tocar nada que la despierte.
-        estado = energia(dispositivo)
-        _volcar("energía", dispositivo, ENERGIA)
+        estado = power_state(dispositivo)
+        _volcar("energía", dispositivo, POWER_FILES)
         _volcar("identidad", dispositivo, ("vendor", "device", "class"))
-        if dormida(estado):
+        if is_asleep(estado):
             print("\n  La tarjeta está dormida: no se lee nada más de ella para no "
                   "despertarla. Para volcarla entera, que la use un programa "
                   "(o `power/control` a `on`) y se repite.")
@@ -116,9 +116,9 @@ def main() -> int:
         hwmon = pathlib.Path(sysroot.path(f"{dispositivo}/hwmon"))
         if hwmon.is_dir():
             for chip in sorted(hwmon.iterdir()):
-                print(f"\n  [hwmon: {_leer(chip / 'name')}]")
+                print(f"\n  [hwmon: {_read(chip / 'name')}]")
                 for fichero in sorted(chip.glob("*_*")):
-                    if (valor := _leer(fichero)) is not None:
+                    if (valor := _read(fichero)) is not None:
                         print(f"    {fichero.name} = {valor}")
     return 0
 

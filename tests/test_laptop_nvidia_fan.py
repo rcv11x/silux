@@ -45,7 +45,7 @@ def _the_card(root: pathlib.Path) -> None:
 
 
 def _photo(chassis: str):
-    with volcado.montado(EQUIPOS / "i5-10400") as root:
+    with volcado.mounted(EQUIPOS / "i5-10400") as root:
         (root / "sys/class/dmi/id/chassis_type").write_text(chassis + "\n")
         _the_card(root)
         grabado = json.loads((root / "grabado.json").read_text())

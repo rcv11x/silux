@@ -35,7 +35,7 @@ class TestNoParagraphGluedToAList(unittest.TestCase):
         from silux.ui import full_report
         for dump in sorted(p.name for p in EQUIPOS.iterdir() if (p / "manifiesto.json").is_file()):
             with self.subTest(dump=dump):
-                photo = volcado.foto_de(EQUIPOS / dump)
+                photo = volcado.snapshot_of(EQUIPOS / dump)
                 text = full_report.build(photo, anonymous=True)
                 self.assertEqual(_glued(text), [])
 

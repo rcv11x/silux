@@ -35,7 +35,7 @@ class TestWithoutSystemd(unittest.TestCase):
     def _system(self, pid1, runlevels=False):
         from silux import volcado
         from silux.collector import Collector
-        with volcado.montado(EQUIPOS / "qemu-kvm") as raiz:
+        with volcado.mounted(EQUIPOS / "qemu-kvm") as raiz:
             exe = raiz / "proc/1/exe"
             if exe.is_symlink() or exe.exists():
                 exe.unlink()

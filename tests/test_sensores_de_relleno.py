@@ -181,7 +181,7 @@ class TestNoCuentaComoTemperaturaDeNada(unittest.TestCase):
         # Sin coretemp ni k10temp, la temperatura del procesador caía a la
         # zona de ACPI: 27.8 °C clavados, con pinta de dato bueno.
         volcar = _herramienta()
-        with volcar.montado(EQUIPOS / "i5-10400") as raiz:
+        with volcar.mounted(EQUIPOS / "i5-10400") as raiz:
             # Como en un kernel sin el módulo `coretemp` cargado.
             for enlace in list((raiz / "sys/class/hwmon").iterdir()):
                 if (enlace / "name").read_text().strip() == "coretemp":

@@ -241,7 +241,7 @@ class TestElEnlaceSinReleerLoQueNoCambia(unittest.TestCase):
         from silux.providers.pci import PciDevices
         from tests.test_equipos import EQUIPOS, _herramienta
 
-        with _herramienta().montado(EQUIPOS / "5800x3d"):
+        with _herramienta().mounted(EQUIPOS / "5800x3d"):
             proveedor = PciDevices()
             primera = Draft()
             proveedor.collect(primera)

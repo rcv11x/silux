@@ -32,7 +32,7 @@ def _photo(outdated: bool):
     with mock.patch.object(PrivilegedClient, "necesita_reinstalar", return_value=outdated), \
          mock.patch("silux.providers.privileged_memory.already_root", return_value=False), \
          mock.patch.object(PrivilegedClient, "supported", return_value=True), \
-         _herramienta().montado(EQUIPOS / "i5-10400"):
+         _herramienta().mounted(EQUIPOS / "i5-10400"):
         collector = Collector()
         try:
             collector.snapshot()

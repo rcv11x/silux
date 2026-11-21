@@ -206,7 +206,7 @@ class TestThisMachine(unittest.TestCase):
         self.assertIsNone(reason)
         with tempfile.TemporaryDirectory() as tmp:
             annex.to_folder(block, pathlib.Path(tmp) / "back")
-            photo = volcado.foto_de(pathlib.Path(tmp) / "back")
+            photo = volcado.snapshot_of(pathlib.Path(tmp) / "back")
         live = Collector().snapshot()
         self.assertEqual([t.brand for t in photo.cpu.types], [t.brand for t in live.cpu.types])
         self.assertEqual(len(photo.cpu.logical), len(live.cpu.logical))

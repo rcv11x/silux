@@ -41,7 +41,7 @@ class _Recorded(unittest.TestCase):
                                  return_value=False)):
             patch.start()
             self.addCleanup(patch.stop)
-        mounted = _herramienta().montado(EQUIPOS / "5800x3d")
+        mounted = _herramienta().mounted(EQUIPOS / "5800x3d")
         mounted.__enter__()
         self.addCleanup(mounted.__exit__, None, None, None)
         self.collector = Collector()

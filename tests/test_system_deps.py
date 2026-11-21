@@ -29,7 +29,7 @@ DOCS = ROOT / "docs" / "dependencias.md"
 
 def _photo(dump: str, presentes: dict):
     """The dump mounted with what it recorded of these pieces."""
-    with volcado.montado(EQUIPOS / dump) as root:
+    with volcado.mounted(EQUIPOS / dump) as root:
         grabado = json.loads((root / "grabado.json").read_text())
         grabado["paquetes"] = presentes
         (root / "grabado.json").write_text(json.dumps(grabado))
@@ -91,7 +91,7 @@ class TestTheFamily(unittest.TestCase):
                 self.assertEqual(system_deps.family({"ID": ident, "ID_LIKE": like}), familia)
 
     def test_gentoos_single_quotes(self):
-        with volcado.montado(EQUIPOS / "i7-10700f"):
+        with volcado.mounted(EQUIPOS / "i7-10700f"):
             self.assertEqual(system_deps.read_os_release()["ID"], "gentoo")
 
 

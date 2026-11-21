@@ -353,10 +353,10 @@ def main() -> int:
 
     with tempfile.TemporaryDirectory(prefix="silux-anexo-") as tmp:
         try:
-            block = to_text(volcado.volcar("equipo", pathlib.Path(tmp)))
-        except volcado.Rechazo as refusal:
+            block = to_text(volcado.dump("equipo", pathlib.Path(tmp)))
+        except volcado.Refusal as refusal:
             # For the window to say it in words, in the user's language.
-            print(REFUSED + json.dumps({"campos": refusal.campos}), file=sys.stderr)
+            print(REFUSED + json.dumps({"campos": refusal.fields}), file=sys.stderr)
             return 1
         except (SystemExit, AnnexError, OSError) as error:
             print(str(error).strip().replace("\n", " "), file=sys.stderr)

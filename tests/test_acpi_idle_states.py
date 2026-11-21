@@ -25,7 +25,7 @@ EQUIPOS = pathlib.Path(__file__).resolve().parent / "fixtures" / "equipos"
 
 
 def _residency(dump: str) -> list[IdleState]:
-    with volcado.montado(EQUIPOS / dump):
+    with volcado.mounted(EQUIPOS / dump):
         estados = CpuIdle()._enumerate()
     antes = {(cpu, nombre): 0 for cpu, lista in estados.items() for _b, nombre, _d in lista}
     # In one second, 10 % in C1 and 80 % in the deepest, every thread alike.

@@ -28,7 +28,7 @@ CORETEMP = "sys/devices/platform/coretemp.0"
 
 
 def photo(dump="i5-1135g7", without_coretemp=False):
-    with volcado.montado(EQUIPOS / dump) as raiz:
+    with volcado.mounted(EQUIPOS / dump) as raiz:
         if without_coretemp:
             shutil.rmtree(raiz / CORETEMP)
             for enlace in (raiz / "sys/class/hwmon").iterdir():

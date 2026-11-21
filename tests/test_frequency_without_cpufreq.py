@@ -56,7 +56,7 @@ class _Helper:
 def _machine(dump="5800x3d", cppc=True, boost_flag=True):
     """The dump mounted without a frequency driver (and, if asked, without
     CPPC or the turbo flag)."""
-    with volcado.montado(EQUIPOS / dump) as root:
+    with volcado.mounted(EQUIPOS / dump) as root:
         cpus = root / "sys/devices/system/cpu"
         for gone in [*cpus.glob("cpu[0-9]*/cpufreq"), cpus / "cpufreq" / "boost",
                      *([] if cppc else cpus.glob("cpu[0-9]*/acpi_cppc"))]:
@@ -126,7 +126,7 @@ class TestWithoutPermissions(unittest.TestCase):
 
     def test_a_virtual_machine_still_has_none(self):
         # There /proc/cpuinfo would give the host's clock.
-        with volcado.montado(EQUIPOS / "qemu-kvm"):
+        with volcado.mounted(EQUIPOS / "qemu-kvm"):
             photo = _photo()
         self.assertIsNone(photo.cpu.types[0].clocks.current_hz)
         self.assertIsNone(photo.cpu.types[0].clocks.turbo_supported)
@@ -136,7 +136,7 @@ class TestTheTurbo(unittest.TestCase):
 
     def test_what_the_kernel_flags_say(self):
         for dump, flag in (("5800x3d", "cpb"), ("i5-10400", "ida")):
-            with self.subTest(dump=dump), volcado.montado(EQUIPOS / dump):
+            with self.subTest(dump=dump), volcado.mounted(EQUIPOS / dump):
                 self.assertTrue(_photo().cpu.types[0].clocks.turbo_supported, flag)
 
     def test_a_part_without_one_says_so(self):
@@ -168,7 +168,7 @@ class TestWithPermissions(unittest.TestCase):
 
     def test_with_a_driver_and_a_base_it_asks_nothing(self):
         helper = _Helper()
-        with volcado.montado(EQUIPOS / "5800x3d"):
+        with volcado.mounted(EQUIPOS / "5800x3d"):
             _photo(helper)
         # The voltage provider reads once per sample; this one, never.
         self.assertEqual(helper.reads, 2)
@@ -193,7 +193,7 @@ class TestWithPermissions(unittest.TestCase):
 
     def test_not_on_an_intel(self):
         helper = _Helper()
-        with volcado.montado(EQUIPOS / "i5-10400"):
+        with volcado.mounted(EQUIPOS / "i5-10400"):
             photo = _photo(helper)
         self.assertNotEqual(photo.cpu.types[0].clocks.current_from, "msr")
 
@@ -247,7 +247,7 @@ class TestTheCpuPage(unittest.TestCase):
             self.assertTrue(section.clocks.is_locked(_("cpu.clock.base")))
 
     def test_with_one_nothing_changes(self):
-        with volcado.montado(EQUIPOS / "5800x3d"):
+        with volcado.mounted(EQUIPOS / "5800x3d"):
             photo = _photo()
         _values, hidden, _foot, shown = self._clocks(photo)
         self.assertEqual((hidden, shown), ({_only_when_it_differs()}, False))

@@ -63,7 +63,7 @@ class TestReadEverySample(unittest.TestCase):
 
     def test_the_new_limit_on_the_open_page(self):
         qt.app()
-        with volcado.montado(LAPTOP) as root, fake_clock() as clock:
+        with volcado.mounted(LAPTOP) as root, fake_clock() as clock:
             sysroot.forget()
             pl1 = root / MMIO / "constraint_0_power_limit_uw"
             collector = Collector()
@@ -107,7 +107,7 @@ class TestThePeakHasNoWindow(unittest.TestCase):
                 raise OSError(errno.ENODATA, os.strerror(errno.ENODATA), os.fspath(path))
             return real_open(path, *args, **kwargs)
 
-        with volcado.montado(LAPTOP) as root, fake_clock() as clock:
+        with volcado.mounted(LAPTOP) as root, fake_clock() as clock:
             sysroot.forget()
             for zone in (MMIO, "sys/devices/virtual/powercap/intel-rapl/intel-rapl:0"):
                 (root / zone / "constraint_2_time_window_us").write_text("")

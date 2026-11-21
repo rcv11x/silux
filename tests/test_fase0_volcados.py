@@ -85,7 +85,7 @@ class TestLoQueSeCopiaDeMas(unittest.TestCase):
             enlace = raiz / "sys/bus/pci/devices/0000:03:00.0"
             enlace.parent.mkdir(parents=True, exist_ok=True)
             enlace.symlink_to(raiz / self.RAMA.lstrip("/"))
-            extras = volcar_equipo._extras_de_graficas()
+            extras = volcar_equipo._gpu_extras()
         for camino in (f"{self.RAMA}/tile0/gt0/freq0/act_freq",
                        f"{self.RAMA}/tile0/gt0/freq0/throttle/reasons",
                        f"{self.RAMA}/tile0/gt0/gtidle/idle_residency_ms",
@@ -106,7 +106,7 @@ class TestLoQueSeCopiaDeMas(unittest.TestCase):
             enlace = raiz / "sys/bus/pci/devices/0000:03:00.0"
             enlace.parent.mkdir(parents=True, exist_ok=True)
             enlace.symlink_to(raiz / self.RAMA.lstrip("/"))
-            extras = volcar_equipo._extras_de_graficas()
+            extras = volcar_equipo._gpu_extras()
         self.assertFalse(any(c.startswith("/sys/devices") for c in extras), extras)
 
 
@@ -120,7 +120,7 @@ class TestUnEnlaceQueNoSeDejaLeer(unittest.TestCase):
         PermissionError de leer el enlace; el volcado entero se caía."""
         import tempfile
         with tempfile.TemporaryDirectory() as tmp:
-            copia = volcar_equipo._Copia(pathlib.Path(tmp))
+            copia = volcar_equipo._Copy(pathlib.Path(tmp))
             with mock.patch.object(volcar_equipo.os.path, "realpath",
                                    side_effect=PermissionError(13, "Permission denied")):
-                copia._de_fuera("/proc/1/exe")
+                copia._from_outside("/proc/1/exe")

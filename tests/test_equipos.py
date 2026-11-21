@@ -33,7 +33,7 @@ def foto(carpeta: pathlib.Path):
     from tests.interval import second_snapshot
 
     volcar = _herramienta()
-    with volcar.montado(carpeta) as raiz, _vigilando(str(raiz)) as tocados:
+    with volcar.mounted(carpeta) as raiz, _vigilando(str(raiz)) as tocados:
         recolector = Collector()
         try:
             return second_snapshot(recolector), sorted(set(tocados))
@@ -84,7 +84,7 @@ class TestEquiposVolcados(unittest.TestCase):
                 continue        # volcado antes de que se grabaran
             grabaron += 1
             manifiesto = json.loads((carpeta / "manifiesto.json").read_text())
-            with self.subTest(equipo=nombre), self.volcar.montado(carpeta), \
+            with self.subTest(equipo=nombre), self.volcar.mounted(carpeta), \
                     mock.patch.object(pciids, "database_path", lambda: None):
                 pciids._vendor_name.cache_clear()
                 self.addCleanup(pciids._vendor_name.cache_clear)
@@ -154,7 +154,7 @@ class TestEquiposVolcados(unittest.TestCase):
             cpus = carpeta / "sys" / "devices" / "system" / "cpu"
             if not list(cpus.glob("cpu*/cpufreq/scaling_cur_freq")):
                 continue        # volcado antes de que se guardaran las dos
-            with self.subTest(equipo=nombre), self.volcar.montado(carpeta) as raiz:
+            with self.subTest(equipo=nombre), self.volcar.mounted(carpeta) as raiz:
                 for media in (raiz / "sys/devices/system/cpu").glob(
                         "cpu*/cpufreq/cpuinfo_avg_freq"):
                     media.unlink()
@@ -227,10 +227,10 @@ class TestEquiposVolcados(unittest.TestCase):
     def test_el_volcado_no_delata_a_nadie(self):
         for nombre, (carpeta, f, _tocados) in self.equipos.items():
             with self.subTest(equipo=nombre):
-                self.assertEqual(self.volcar._lo_que_anonimizar_taparia(f), [])
+                self.assertEqual(self.volcar._what_anonymize_would_cover(f), [])
                 # Los de la máquina que ejecuta la suite: en el CI no son los
                 # del volcado, pero aquí, en la del autor, sí pueden serlo.
-                self.assertEqual(self.volcar.comprobar(carpeta, set()), [])
+                self.assertEqual(self.volcar.check(carpeta, set()), [])
 
     def test_ninguna_pieza_lleva_su_numero_de_serie(self):
         # silux no decodifica el serie del SPD ni el numérico del EDID: ni la
@@ -238,7 +238,7 @@ class TestEquiposVolcados(unittest.TestCase):
         for nombre, (carpeta, _f, _tocados) in self.equipos.items():
             for eeprom in carpeta.rglob("eeprom"):
                 datos = eeprom.read_bytes()
-                limpio, serie = self.volcar._spd_sin_serie(datos)
+                limpio, serie = self.volcar._spd_without_serial(datos)
                 with self.subTest(equipo=nombre, spd=eeprom.parent.name):
                     self.assertFalse(any(serie))
             for edid in carpeta.rglob("edid"):

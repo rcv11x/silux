@@ -723,7 +723,7 @@ class TestTheT14sDump(unittest.TestCase):
     def setUpClass(cls):
         from silux import volcado
         dump = pathlib.Path(__file__).resolve().parent / "fixtures" / "equipos" / "i5-1135g7"
-        with volcado.montado(dump):
+        with volcado.mounted(dump):
             cls.lecturas = spd.read_all()
 
     def test_the_slots_spd_is_a_kingston(self):
@@ -756,7 +756,7 @@ class TestTheI7_10700fsModules(unittest.TestCase):
     def test_their_xmp_is_what_the_module_is_sold_as(self):
         from silux import volcado
         dump = pathlib.Path(__file__).resolve().parent / "fixtures" / "equipos" / "i7-10700f"
-        with volcado.montado(dump):
+        with volcado.mounted(dump):
             lecturas = spd.read_all()
         self.assertEqual(len(lecturas), 2)
         for lectura in lecturas:

@@ -22,7 +22,7 @@ class TestUsbCPorts(unittest.TestCase):
              "ucsi-source-psy-USBC000:002": ("1", "20000000", "2250000")}
 
     def _sensors(self, ports):
-        with volcado.montado(EQUIPOS / "5800x3d") as root:
+        with volcado.mounted(EQUIPOS / "5800x3d") as root:
             supplies = root / "sys/class/power_supply"
             if supplies.exists():
                 shutil.rmtree(supplies)

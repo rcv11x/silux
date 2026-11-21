@@ -14,7 +14,7 @@ from tests.test_equipos import EQUIPOS
 
 
 def _snapshot(release: str):
-    with volcado.montado(EQUIPOS / "qemu-kvm") as raiz:
+    with volcado.mounted(EQUIPOS / "qemu-kvm") as raiz:
         ruta = raiz / "grabado.json"
         grabado = json.loads(ruta.read_text())
         grabado["plataforma"]["uname"]["release"] = release

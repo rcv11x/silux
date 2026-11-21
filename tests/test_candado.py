@@ -131,7 +131,7 @@ class TestElCandadoEnLasPaginas(unittest.TestCase):
         from silux import volcado
         from silux.collector import Collector
 
-        with volcado.montado(EQUIPOS / INTEL) as root:
+        with volcado.mounted(EQUIPOS / INTEL) as root:
             for energia in root.glob("sys/devices/virtual/powercap/**/energy_uj"):
                 energia.unlink()
             collector = Collector()
