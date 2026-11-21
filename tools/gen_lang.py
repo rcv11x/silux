@@ -54,8 +54,7 @@ TABLAS = {
     "silux/ui/sensortree.py": ("COLUMNS",),
     "silux/providers/dmi.py": ("CHASSIS_TYPES", "_ALIMENTACION"),
     "silux/providers/hwmon.py": ("GPU_LABELS", "_POWER_SUPPLIES"),
-    "silux/providers/drm.py": ("DRIVERS_CIEGOS", "INTEL_AVISOS", "MOTORES_INTEL",
-                              "INTEL_SIN_TEMPERATURA"),
+    "silux/providers/drm.py": ("BLIND_DRIVERS", "INTEL_NOTICES", "INTEL_ENGINES"),
     # Las frases de lo que no aplica a una tarjeta. El resto de claves de esa
     # página se salvan solas porque además aparecen como literal al rellenar
     # cada ficha; estas solo viven aquí y se traducen con `_(frase)`, así que

@@ -89,7 +89,7 @@ class GpuEnergyAndBusy(_Calculation):
         engines = {"i915": {"rcs0-busy": 10**9 + counter * 10**8},
                    "power": {"energy-gpu": int((100 + counter) / escala)}}
         self.helper.answer = (int(instant * 1e9), engines, {"power": {"energy-gpu": escala}})
-        busy, watts = self.provider._contadores(INTERVAL)
+        busy, watts = self.provider._counters(INTERVAL)
         busy = (busy or {}).get("i915", {}).get("rcs0-busy")
         return None if busy is None and watts is None else (busy, watts)
 
@@ -104,7 +104,7 @@ class GpuSleep(_Calculation):
     def read(self, instant, counter):
         self.clock.now = instant
         (self.tmp / "gt" / "gt0" / "rc6_residency_ms").write_text(f"{5000 + counter * 400}\n")
-        return self.provider._reposo("card1", self.tmp, INTERVAL)
+        return self.provider._idle("card1", self.tmp, INTERVAL)
 
 
 class CpuUsage(_Calculation):

@@ -155,8 +155,8 @@ class TestTheIntegratedGpusEnergy(_Tree):
 
     def test_a_jump_is_dropped(self):
         estado = self._state([self._reading(10**9, 100.0), self._reading(2 * 10**9, 1_336_648_746.3)])
-        estado._contadores(1.0)
-        _ocupacion, vatios = estado._contadores(1.0)
+        estado._counters(1.0)
+        _ocupacion, vatios = estado._counters(1.0)
         self.assertIsNone(vatios)
         draft = Draft()
         estado._discarded.note(draft)
@@ -164,8 +164,8 @@ class TestTheIntegratedGpusEnergy(_Tree):
 
     def test_nine_watts_stay(self):
         estado = self._state([self._reading(10**9, 100.0), self._reading(2 * 10**9, 109.0)])
-        estado._contadores(1.0)
-        self.assertAlmostEqual(estado._contadores(1.0)[1], 9.0, places=3)
+        estado._counters(1.0)
+        self.assertAlmostEqual(estado._counters(1.0)[1], 9.0, places=3)
 
 
 if __name__ == "__main__":

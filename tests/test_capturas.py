@@ -100,23 +100,23 @@ class TestNombreDeLaIntegrada(unittest.TestCase):
 
     def test_lo_saca_de_la_marca_del_procesador(self):
         self.assertEqual(
-            drm._IGPU_EN_LA_MARCA.search(
+            drm._IGPU_IN_BRAND.search(
                 "AMD Ryzen 7 7445HS w/ Radeon 740M Graphics").group(1).strip(),
             "Radeon 740M")
 
     def test_un_procesador_sin_grafica_no_dice_nada(self):
-        self.assertIsNone(drm._IGPU_EN_LA_MARCA.search(
+        self.assertIsNone(drm._IGPU_IN_BRAND.search(
             "AMD Ryzen 7 5800X3D 8-Core Processor"))
 
     def test_una_radeon_generica_no_aporta_modelo(self):
         """«with Radeon Graphics» no dice cuál es, así que no se usa."""
-        self.assertIsNone(drm._IGPU_EN_LA_MARCA.search(
+        self.assertIsNone(drm._IGPU_IN_BRAND.search(
             "AMD Ryzen 5 5600G with Radeon Graphics"))
 
     def test_busca_en_los_tipos_de_nucleo_del_borrador(self):
         draft = Draft()
         draft.type_for("general")["brand"] = "AMD Ryzen 7 7445HS w/ Radeon 740M Graphics"
-        self.assertEqual(drm._igpu_de_la_cpu(draft), "Radeon 740M")
+        self.assertEqual(drm._cpu_igpu(draft), "Radeon 740M")
 
 
 class TestConsejoDelSpd(unittest.TestCase):

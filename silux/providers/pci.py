@@ -21,7 +21,7 @@ from typing import Optional
 from .. import pciids, sysroot
 from ..model import PciDevice, PcieLink, Platform
 from .base import Draft, Provider, is_suspended, read_text
-from .drm import VENDORS, _cadena_pcie, _enlace
+from .drm import VENDORS, _link, _pcie_chain
 
 DEVICES = "/sys/bus/pci/devices"
 
@@ -75,7 +75,7 @@ class PciDevices(Provider):
             # its node publishes the chipset's internal link, which would read
             # as a slot running at half. A suspended card is not asked:
             # reading its link wakes it since Linux 6.18 (`is_suspended`).
-            link = (_enlace(node, self._links.get(fixed["slot"]))
+            link = (_link(node, self._links.get(fixed["slot"]))
                       if fixed["kind"] in IN_A_SLOT and not is_suspended(node) else None)
             if link is not None:
                 self._links[fixed["slot"]] = link
@@ -148,7 +148,7 @@ class PciDevices(Provider):
         to a bridge on its chain (a graphics card carries its own)."""
         if not names:
             return None
-        for hop in _cadena_pcie(node):
+        for hop in _pcie_chain(node):
             if (name := names.get(hop.name)):
                 return name
         return None
