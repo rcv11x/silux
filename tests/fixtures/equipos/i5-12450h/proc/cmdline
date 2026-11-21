@@ -1,0 +1,1 @@
+BOOT_IMAGE=/boot/vmlinuz-6.12.117+deb13-amd64 root=… ro quiet splash vt.global_cursor_default=0 loglevel=3

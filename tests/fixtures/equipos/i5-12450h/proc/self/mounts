@@ -1,0 +1,2 @@
+/dev/nvme0n1p3 / ext4 rw,relatime,errors=remount-ro 0 0
+/dev/nvme0n1p2 /boot/efi vfat rw,relatime,fmask=0077,dmask=0077,codepage=437,iocharset=ascii,shortname=mixed,utf8,errors=remount-ro 0 0
