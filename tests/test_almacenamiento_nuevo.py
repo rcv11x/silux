@@ -36,23 +36,23 @@ class TestLoQueSeLee(unittest.TestCase):
         archivos = {"/sys/block/nvme0n1/queue/discard_max_bytes": "2199023255040\n",
                     "/sys/block/sdb/queue/discard_max_bytes": "0\n"}
         with arbol(archivos) as raiz:
-            self.assertIs(storage._admite_descartes(raiz / "sys/block/nvme0n1"), True)
-            self.assertIs(storage._admite_descartes(raiz / "sys/block/sdb"), False)
-            self.assertIsNone(storage._admite_descartes(raiz / "sys/block/no-existe"))
+            self.assertIs(storage._supports_discard(raiz / "sys/block/nvme0n1"), True)
+            self.assertIs(storage._supports_discard(raiz / "sys/block/sdb"), False)
+            self.assertIsNone(storage._supports_discard(raiz / "sys/block/no-existe"))
 
     def test_que_particiones_van_montadas_con_discard(self):
         with arbol({"/proc/mounts": MONTAJES}):
-            self.assertEqual(storage._con_discard(), {"nvme0n1p2"})
+            self.assertEqual(storage._mounted_with_discard(), {"nvme0n1p2"})
 
     def test_una_opcion_que_solo_contiene_la_palabra_no_cuenta(self):
         with arbol({"/proc/mounts": "/dev/sda1 /x ext4 rw,nodiscard 0 0\n"}):
-            self.assertEqual(storage._con_discard(), set())
+            self.assertEqual(storage._mounted_with_discard(), set())
 
     def test_el_temporizador(self):
-        with arbol({storage.FSTRIM_ACTIVADO: ""}):
-            self.assertTrue(storage._fstrim_activo())
+        with arbol({storage.FSTRIM_ENABLED: ""}):
+            self.assertTrue(storage._fstrim_enabled())
         with arbol({"/proc/mounts": MONTAJES}):
-            self.assertFalse(storage._fstrim_activo())
+            self.assertFalse(storage._fstrim_enabled())
 
 
 class TestLoQueSeDice(unittest.TestCase):

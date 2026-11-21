@@ -7,7 +7,7 @@ confunden, que en un programa cuyo trabajo es informar viene a ser lo mismo.
 import unittest
 
 from silux.model import Board
-from silux.providers.storage import _de_la_marca
+from silux.providers.storage import _maker_from_model
 
 
 class TestFabricanteDelDisco(unittest.TestCase):
@@ -24,20 +24,20 @@ class TestFabricanteDelDisco(unittest.TestCase):
             ("Intenso NVME", "Intenso"),
             ("CT500MX500SSD1", "Crucial"),
         ]:
-            self.assertEqual(_de_la_marca(modelo), esperado, modelo)
+            self.assertEqual(_maker_from_model(modelo), esperado, modelo)
 
     def test_los_prefijos_largos_ganan_a_los_cortos(self):
         """«wd_black» antes que «wd », «sk hynix» antes que «hynix»."""
-        self.assertEqual(_de_la_marca("WD_BLACK SN850X"), "Western Digital")
-        self.assertEqual(_de_la_marca("SK hynix BC711"), "SK hynix")
+        self.assertEqual(_maker_from_model("WD_BLACK SN850X"), "Western Digital")
+        self.assertEqual(_maker_from_model("SK hynix BC711"), "SK hynix")
 
     def test_las_series_de_seagate_van_por_numero(self):
-        self.assertEqual(_de_la_marca("ST8000DM004-2CX188"), "Seagate")
+        self.assertEqual(_maker_from_model("ST8000DM004-2CX188"), "Seagate")
 
     def test_lo_que_no_reconoce_no_se_lo_inventa(self):
-        self.assertIsNone(_de_la_marca("Disco Genérico 9000"))
-        self.assertIsNone(_de_la_marca(""))
-        self.assertIsNone(_de_la_marca(None))
+        self.assertIsNone(_maker_from_model("Disco Genérico 9000"))
+        self.assertIsNone(_maker_from_model(""))
+        self.assertIsNone(_maker_from_model(None))
 
 
 class TestNombreDelEquipo(unittest.TestCase):

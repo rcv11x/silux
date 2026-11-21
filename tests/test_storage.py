@@ -31,7 +31,7 @@ class BancoDeDiscos(unittest.TestCase):
         parches = [
             mock.patch.object(storage, "SYS_BLOCK", self.root / "block"),
             mock.patch.object(storage, "PROC_MOUNTS", str(self.root / "mounts")),
-            mock.patch.object(storage, "_ocupacion", lambda punto: (1000, 4000)),
+            mock.patch.object(storage, "_usage", lambda punto: (1000, 4000)),
         ]
         for parche in parches:
             parche.start()
@@ -319,7 +319,7 @@ class TestRootsReserveIsReserved(unittest.TestCase):
         st = os.statvfs_result((bloque, bloque, f_blocks, f_bfree, f_bavail,
                                 0, 0, 0, 0, 255))
         with mock.patch.object(storage.os, "statvfs", return_value=st):
-            usados, libres = storage._ocupacion("/")
+            usados, libres = storage._usage("/")
         particion = Partition(name="nvme0n1p2", mountpoint="/", filesystem="ext4",
                               size_bytes=int(476.4e9), used_bytes=usados, free_bytes=libres)
         disco = Disk(name="nvme0n1", kind="NVMe", size_bytes=int(476.4e9),
@@ -445,7 +445,7 @@ class TestLaTemperaturaDelDiagnostico(unittest.TestCase):
     def _muestra(self, temp_c=None):
         draft = Draft()
         draft.disks = [Disk(name="sda", temp_c=temp_c)]
-        self.proveedor._diagnostico(draft)
+        self.proveedor._diagnosis(draft)
         return draft.disks[0]
 
     def test_la_primera_vez_la_trae_el_diagnostico(self):
@@ -464,13 +464,13 @@ class TestLaTemperaturaDelDiagnostico(unittest.TestCase):
 
     def test_pasado_el_intervalo_se_vuelve_a_preguntar(self):
         self._muestra()
-        self.proveedor._leido_en["sda"] -= storage.INTERVALO_SALUD + 1
+        self.proveedor._read_at["sda"] -= storage.HEALTH_INTERVAL_S + 1
         self._muestra()
         self.assertEqual(self.cliente.read_smart.call_count, 2)
 
     def test_un_refresco_fallido_no_borra_lo_que_ya_se_sabia(self):
         self._muestra()
-        self.proveedor._leido_en["sda"] -= storage.INTERVALO_SALUD + 1
+        self.proveedor._read_at["sda"] -= storage.HEALTH_INTERVAL_S + 1
         self.cliente.read_smart.side_effect = OSError("el disco no contesta")
         disco = self._muestra()
         self.assertEqual(disco.health, self.salud)
@@ -604,10 +604,10 @@ class TestTheWholeModel(BancoDeDiscos):
 
     def test_from_the_identify(self):
         base = self._sata("KINGSTON SA400S3", "KINGSTON SA400S37480G")
-        self.assertEqual(storage._modelo_ata(base), "KINGSTON SA400S37480G")
+        self.assertEqual(storage._ata_model(base), "KINGSTON SA400S37480G")
 
     def test_without_it_there_is_nothing_to_say(self):
-        self.assertIsNone(storage._modelo_ata(self.disco("sda")))
+        self.assertIsNone(storage._ata_model(self.disco("sda")))
 
 
 class TestNotLessThanWhatItHolds(unittest.TestCase):
@@ -628,8 +628,8 @@ class TestNotLessThanWhatItHolds(unittest.TestCase):
             Partition(name="sda3", mountpoint="/", filesystem="ext4",
                       size_bytes=438 * self.GB, used_bytes=316 * self.GB,
                       free_bytes=94 * self.GB),))]
-        with mock.patch.object(storage, "_modelo_ata", return_value=modelo_entero):
-            proveedor._diagnostico(draft)
+        with mock.patch.object(storage, "_ata_model", return_value=modelo_entero):
+            proveedor._diagnosis(draft)
         return draft.disks[0].health
 
     def test_with_the_whole_model_the_unit_is_known(self):

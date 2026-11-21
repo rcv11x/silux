@@ -193,7 +193,7 @@ class DiskRate(_Calculation):
         self.clock.now = instant
         sectores = 1000 + counter * 2048
         (self.tmp / "stat").write_text(f"10 0 {sectores} 0 10 0 {sectores} 0 0 0 0\n")
-        return self.provider._trafico("nvme0n1", self.tmp).read_rate_bps
+        return self.provider._traffic("nvme0n1", self.tmp).read_rate_bps
 
 
 CALCULATIONS = (Rapl, GpuEnergyAndBusy, GpuSleep, CpuUsage, CpuIdleStates,
