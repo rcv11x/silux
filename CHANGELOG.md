@@ -12,6 +12,57 @@ que hace falta.
 
 ## Sin publicar
 
+### Memoria
+
+- Sin el chip SPD, «Catalogado a» y «Voltaje» dicen «según la BIOS» cuando
+  solo los da la tabla del firmware: muchas BIOS dejan ahí el voltaje de
+  serie aunque un perfil XMP o EXPO suba el real. Y si la memoria va por
+  encima de la velocidad más alta de JEDEC de su tipo, se avisa de que su
+  voltaje real puede ser otro.
+- El motivo de que no se lea el SPD sale una vez, al pie de los módulos, y
+  no dos.
+- Arreglado: con los permisos dados, lo que faltaba por un driver salía como
+  «(necesita permisos)». Ahora se dice que falta el driver, y cuál.
+- Arreglado: se recomendaba cargar `ee1004` en equipos sin ningún chip SPD a
+  la vista, porque contaban como bus de la memoria los del touchpad. Ahora
+  solo cuenta el bus que cuelga del controlador SMBus, el driver que se
+  recomienda es el del chip que hay, y sin chip se dice así.
+- Una DDR5 de la que solo se puede leer la primera página del SPD (cuando el
+  equipo bloquea las escrituras que hacen falta para pasar a las demás)
+  enseña lo que hay en ella: el tipo, la velocidad y las temporizaciones de
+  JEDEC. El resto se dice bloqueado, y la tabla de la BIOS completa lo que
+  puede.
+
+### Procesador
+
+- Un procesador sin turbo ya no enseña «Turbo: —» ni «Máxima (silicio): —»:
+  esas filas se esconden y el pie lo dice. Cuando el kernel no lo sabe, lo
+  dice la ficha oficial de AMD.
+- Los errores de la instrucción que identifica el procesador ya no salen en
+  español con la interfaz en inglés.
+
+### Gráficos
+
+- En una AMD, lo que su driver no publica en esa tarjeta (el punto caliente,
+  los reguladores, los voltajes del SoC y de la memoria; en una Polaris, casi
+  todo eso) ya no sale con raya: se esconde y el pie lo nombra.
+- Si el enlace PCIe va a toda velocidad pero con menos líneas de las que
+  admiten la tarjeta y la ranura, ya no se atribuye al reposo.
+- Un límite de potencia con un mínimo de 0 W ya no se presenta como un rango.
+
+### Almacenamiento
+
+- Arreglado: un pendrive salía como disco duro. Por USB el kernel marca casi
+  todo como si girara: un dispositivo USB extraíble es memoria flash, y lo
+  que no publica (temperatura, horas, escrito) se esconde y se dice.
+
+### Inicio y Placa base
+
+- Arreglado: al dar permisos con Inicio abierto, la temperatura que
+  encabezaba podía quedarse en la de antes en vez de pasar a la más alta.
+- «x.x» como versión de la placa, que dejan algunas Gigabyte, es un relleno
+  del firmware y no se enseña.
+
 ### Idioma
 
 - Con la interfaz en inglés, dos palabras salían en español: la «y» que une
