@@ -116,6 +116,11 @@ DEL_SISTEMA = (
     "libwayland-server.so",
     # Con estado en /run y /sys.
     "libudev.so", "libselinux.so",
+    # Las fuentes de la máquina, con la configuración que su fontconfig sabe
+    # leer: una copia vieja dentro llena la terminal de avisos con la de una
+    # distribución al día. La lista de exclusión de AppImage las deja fuera
+    # por lo mismo, y cualquier escritorio las trae.
+    "libfontconfig.so", "libfreetype.so",
 )
 
 # De la biblioteca estándar de Python: lo que no se usa y ocupa.
