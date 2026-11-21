@@ -10,11 +10,13 @@ did not record it says nothing.
 import json
 import pathlib
 import re
+import ssl
 import tempfile
 import unittest
+import urllib.error
 from unittest import mock
 
-from silux import system_deps, volcado
+from silux import system_deps, updates, volcado
 from silux.collector import Collector
 from silux.i18n import _
 from silux.model import Need
@@ -142,6 +144,25 @@ class TestTheNotes(unittest.TestCase):
             textos = pantalla.textos_de(ventana.graphics_page)
         self.assertIn(_("note.package"), textos)
         self.assertIn(_("deps.graphics").format(cuales="Vulkan"), textos)
+
+
+class TestTheUpdaterWithoutCertificates(unittest.TestCase):
+    """Without a certificate store the error was «no hay conexión con GitHub»."""
+
+    def _error(self, certificados):
+        def abrir(url, espera):
+            raise urllib.error.URLError(ssl.SSLCertVerificationError(1, "unable to get local issuer"))
+        with mock.patch.object(updates, "CERTIFICADOS", certificados):
+            with self.assertRaises(updates.UpdateError) as contexto:
+                updates.check(abrir)
+        return contexto.exception.code
+
+    def test_it_says_the_certificates_are_missing(self):
+        self.assertEqual(self._error(("/no/existe.crt",)), "nocerts")
+
+    def test_with_them_it_is_still_the_network(self):
+        with tempfile.NamedTemporaryFile(suffix=".crt") as certificado:
+            self.assertEqual(self._error((certificado.name,)), "network")
 
 
 if __name__ == "__main__":

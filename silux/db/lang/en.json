@@ -1533,6 +1533,7 @@
   "updates.err.insecure": "a redirect tried to leave HTTPS",
   "updates.err.network": "there is no connection to GitHub or it dropped",
   "updates.err.noasset": "the new version has no AppImage of this kind",
+  "updates.err.nocerts": "the system's certificates to check GitHub against are not there: they come in the package ca-certificates",
   "updates.err.nosums": "the new version does not publish its SHA256SUMS",
   "updates.err.notls": "this copy lacks what secure connections need (TLS)",
   "updates.err.toolarge": "the file is over the size limit",

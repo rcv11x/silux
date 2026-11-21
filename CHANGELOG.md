@@ -91,6 +91,9 @@ que hace falta.
   NVML, las bibliotecas gráficas, pkexec, el Python del sistema…), se dice
   en Diagnóstico y en su página, con el paquete de su distribución. La lista
   entera, con lo que da cada cosa, en `docs/dependencias.md`.
+- Arreglado: sin los certificados del sistema, buscar una versión nueva
+  decía «no hay conexión con GitHub»; ahora dice que faltan los certificados
+  y qué paquete los trae.
 
 ### Permisos
 

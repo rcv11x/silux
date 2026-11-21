@@ -262,6 +262,21 @@ def abrir(url: str, espera: float) -> BinaryIO:
 Abrir = Callable[[str, float], BinaryIO]
 
 
+def _de_red(error: Exception) -> UpdateError:
+    """«network», unless the connection failed because this system has no
+    certificates to check GitHub's against: that is a package to install
+    (ca-certificates in every family), not a network that is down."""
+    motivo = getattr(error, "reason", error)
+    try:
+        import ssl
+    except ImportError:
+        return UpdateError("network", str(error))
+    if isinstance(motivo, ssl.SSLCertVerificationError) and \
+            not any(os.path.isfile(ruta) for ruta in CERTIFICADOS):
+        return UpdateError("nocerts", str(error))
+    return UpdateError("network", str(error))
+
+
 def _leer(abrir_url: Abrir, url: str, tope: int, espera: float = ESPERA) -> bytes:
     """Toda la respuesta, o un error si pasa del tope."""
     try:
@@ -270,7 +285,7 @@ def _leer(abrir_url: Abrir, url: str, tope: int, espera: float = ESPERA) -> byte
     except UpdateError:
         raise
     except (OSError, ValueError) as error:
-        raise UpdateError("network", str(error)) from error
+        raise _de_red(error) from error
     if len(datos) > tope:
         raise UpdateError("toolarge", url)
     return datos
@@ -282,7 +297,7 @@ def _abierta(abrir_url: Abrir, url: str) -> BinaryIO:
     except UpdateError:
         raise
     except (OSError, ValueError) as error:
-        raise UpdateError("network", str(error)) from error
+        raise _de_red(error) from error
 
 
 def check(abrir_url: Abrir = abrir, channel: str = "stable") -> Optional[Release]:

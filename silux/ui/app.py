@@ -156,7 +156,7 @@ ERRORES_DE_ACTUALIZACION = {
     "insecure": "updates.err.insecure", "noasset": "updates.err.noasset",
     "nosums": "updates.err.nosums", "badhash": "updates.err.badhash",
     "toolarge": "updates.err.toolarge", "write": "updates.err.write",
-    "notls": "updates.err.notls",
+    "notls": "updates.err.notls", "nocerts": "updates.err.nocerts",
 }
 
 
