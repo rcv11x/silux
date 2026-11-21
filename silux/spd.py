@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import functools
 import json
+import os
 import pathlib
 import re
 from dataclasses import dataclass
@@ -605,11 +606,68 @@ SYS_I2C = pathlib.Path("/sys/bus/i2c/devices")
 
 # Why the SPD cannot be read, by its code, and how it is said.
 CAUSE_NO_SMBUS, CAUSE_NO_BUS, CAUSE_NO_DRIVER = "nosmbus", "nobus", "nodriver"
+CAUSE_NO_CHIP, CAUSE_NO_CONTENT = "nochip", "nocontent"
 CAUSES = {
     CAUSE_NO_SMBUS: ("spd.nosmbus", "spd.nosmbus.hint"),
     CAUSE_NO_BUS: ("spd.nobus", "spd.nobus.hint"),
     CAUSE_NO_DRIVER: ("spd.nodriver", "spd.nodriver.hint"),
+    CAUSE_NO_CHIP: ("spd.nochip", "spd.nochip.hint"),
+    CAUSE_NO_CONTENT: ("spd.nocontent", "spd.nocontent.hint"),
 }
+# The driver for each SPD chip, by the name the kernel registers it under
+# (`i2c_register_spd`: «spd» is DDR3 and older, read by at24).
+SPD_DRIVERS = {"spd5118": "spd5118", "ee1004": "ee1004", "spd": "at24", "at24": "at24"}
+PCI_ADDRESS = re.compile(r"^[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\.[0-7]$")
+
+
+def memory_buses() -> list[str]:
+    """The numbers of the i2c buses that hang straight from an SMBus controller.
+
+    The modules' SPD chips live there. A touchpad's DesignWare buses and a
+    graphics card's hang from other devices and never lead to memory.
+    """
+    found = []
+    try:
+        entries = sorted(sysroot.ruta(SYS_I2C).iterdir())
+    except OSError:
+        return found
+    for bus in entries:
+        if not bus.name.startswith("i2c-"):
+            continue
+        try:
+            parent = pathlib.PurePosixPath(os.readlink(bus)).parent.name
+            pci_class = int((sysroot.ruta(SYS_PCI) / parent / "class").read_text().strip(), 16)
+        except (OSError, ValueError):
+            continue
+        if PCI_ADDRESS.match(parent) and pci_class >> 8 == CLASE_SMBUS >> 8:
+            found.append(bus.name[len("i2c-"):])
+    return found
+
+
+def spd_chips(buses: Optional[list[str]] = None) -> list[pathlib.Path]:
+    """The devices the kernel registered at 0x50-0x57 of the memory buses."""
+    buses = memory_buses() if buses is None else buses
+    try:
+        entries = sorted(sysroot.ruta(SYS_I2C).iterdir())
+    except OSError:
+        return []
+    return [entry for entry in entries
+            if SPD_ADDRESS.match(entry.name)
+            and entry.name.split("-", 1)[0] in buses]
+
+
+def has_driver(chip: pathlib.Path) -> bool:
+    """Whether a driver is bound: its link, or what only a driver creates."""
+    return ((chip / "driver").exists() or (chip / "eeprom").exists()
+            or (chip / "hwmon").is_dir())
+
+
+def driver_for(chip: pathlib.Path) -> Optional[str]:
+    """The module that reads this chip, from the name the kernel gave it."""
+    try:
+        return SPD_DRIVERS.get((chip / "name").read_text().strip())
+    except OSError:
+        return None
 
 
 def unreadable_cause() -> str:
@@ -622,20 +680,32 @@ def unreadable_cause() -> str:
     """
     if not _hay_controlador_smbus():
         return CAUSE_NO_SMBUS
-    if not _hay_bus_de_memoria():
+    buses = memory_buses()
+    if not buses:
         # El caso más común en placas AMD: el firmware declara la región de
         # entrada/salida del SMBus como suya y el kernel no la toca por si
         # los dos escriben a la vez.
         return CAUSE_NO_BUS
-    # Cada generación de memoria lleva un chip distinto y hace falta el driver
-    # que le corresponde. Faltaba el de DDR3, y a una placa X79 con Xeon E5 v2
-    # se le proponían los dos que no le sirven de nada.
-    return CAUSE_NO_DRIVER
+    chips = spd_chips(buses)
+    if any(not has_driver(chip) for chip in chips):
+        return CAUSE_NO_DRIVER
+    # With no chip registered there is no driver to load; with all of them
+    # bound, the driver doesn't publish what they hold.
+    return CAUSE_NO_CONTENT if chips else CAUSE_NO_CHIP
 
 
 def diagnostico(causa: Optional[str] = None) -> tuple[str, str]:
     """Por qué no se puede leer el SPD, y qué hacer, dicho para la persona."""
-    mensaje, ayuda = CAUSES[causa or unreadable_cause()]
+    causa = causa or unreadable_cause()
+    mensaje, ayuda = CAUSES[causa]
+    if causa == CAUSE_NO_DRIVER:
+        # The chip's own driver when the kernel named it; the three
+        # generations' otherwise.
+        modulos = sorted({m for chip in spd_chips() if not has_driver(chip)
+                          if (m := driver_for(chip))})
+        if modulos:
+            return _(mensaje), _("spd.nodriver.load").format(
+                orden="  ".join(f"sudo modprobe {m}" for m in modulos))
     return _(mensaje), _(ayuda)
 
 
@@ -647,22 +717,6 @@ def _hay_controlador_smbus() -> bool:
             if int(crudo, 16) == CLASE_SMBUS:
                 return True
     except (OSError, ValueError):
-        pass
-    return False
-
-
-def _hay_bus_de_memoria() -> bool:
-    """Si hay algún bus i2c que no sea el de la gráfica.
-
-    Las tarjetas gráficas registran los suyos para hablar con los monitores y
-    con sus propios sensores, y no llevan a ninguna memoria.
-    """
-    try:
-        for bus in sysroot.ruta(SYS_I2C).glob("i2c-*"):
-            nombre = (bus / "name").read_text().strip().lower()
-            if "amdgpu" not in nombre and "nvidia" not in nombre and "i915" not in nombre:
-                return True
-    except OSError:
         pass
     return False
 

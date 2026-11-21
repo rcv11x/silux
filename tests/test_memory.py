@@ -995,25 +995,6 @@ class TestSinSpdNoSeCulpaALaPlaca(unittest.TestCase):
         self.assertIn(_("spd.nobus")[1:40], texto)
         self.assertNotIn("esta placa no deja", texto)
 
-    def test_sin_driver_es_candado(self):
-        """La nota es la que deja el proveedor en un equipo con el bus y sin
-        ee1004 cargado (spd.diagnostico: «nodriver», Need.DRIVER). No sale
-        de una copia del volcado: el volcado guardó lo que se leyó, y al
-        encontrar el SPD nadie miró la lista de buses."""
-        import dataclasses
-        from silux.i18n import _
-        from silux.model import Need, Note
-        from tests.test_equipos import EQUIPOS, foto
-
-        base = foto(EQUIPOS / "i5-10400")[0]
-        nota = Note("spd", Need.DRIVER, _("spd.nodriver"), _("spd.nodriver.hint"))
-        pagina = self._pagina(dataclasses.replace(base, notes=base.notes + (nota,)))
-        ficha = pagina._slot_grids[0]
-        for clave in ("memory.field.chips", "memory.field.profiles", "memory.field.made"):
-            with self.subTest(campo=clave):
-                self.assertTrue(ficha.is_locked(_(clave)))
-        self.assertFalse(pagina.spd_missing.isVisibleTo(pagina))
-
     def test_el_proveedor_distingue_driver_de_placa(self):
         from unittest import mock
         from silux.i18n import _

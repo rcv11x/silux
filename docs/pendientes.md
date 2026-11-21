@@ -97,13 +97,6 @@ la memoria) no va: está propuesto en las notas
     dice bien.
 * **Del portátil Lenovo V130 y del sobremesa con Athlon 3000G** (anexos de la
   prueba5, sin volcado en la suite):
-  - Memoria · media · con los permisos dados, «Chips», «Perfiles rápidos» y
-    «Fabricado» salen como «(necesita permisos)»: es el candado de un SPD
-    que falta por driver, y en el informe se lee como permisos.
-  - Memoria · media · «Falta un módulo del kernel: modprobe ee1004» en un
-    portátil sin ningún chip en `0x50–0x57`: `_hay_bus_de_memoria` cuenta
-    como bus de memoria cualquiera que no sea de la gráfica, también los
-    DesignWare del touchpad. Falta saber si ahí cargar el driver serviría.
   - Memoria · baja · «Rangos: —» y «Voltaje: —» sin explicar cuando la
     tabla SMBIOS no los trae.
   - CPU · media · «Turbo: —» en un Athlon 3000G sin driver de frecuencia:

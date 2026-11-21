@@ -820,13 +820,6 @@ class MemoryPage(ScrollPage):
                     if clave not in sin_spd_soldada:
                         sin_spd_soldada.append(clave)
                     continue
-                if nota_spd is not None and nota_spd.need is Need.DRIVER \
-                        and clave != "memory.field.vendor":
-                    # El SPD está y se lee cargando su driver: candado, no
-                    # «no hay de dónde».
-                    grid.set_locked(_(clave), self._p.info,
-                                    f"{nota_spd.message}\n\n{_('memory.tip.spddriver')}")
-                    continue
                 grid.set_visible(_(clave), False)
                 if clave not in sin_spd:
                     sin_spd.append(clave)

@@ -123,8 +123,11 @@ class TestConsejoDelSpd(unittest.TestCase):
     def test_menciona_las_tres_generaciones(self):
         """A una placa X79 se le proponían solo los módulos de DDR4 y DDR5."""
         from silux import spd
+        # A chip registered without its driver nor a name: any generation.
         with mock.patch.object(spd, "_hay_controlador_smbus", return_value=True), \
-             mock.patch.object(spd, "_hay_bus_de_memoria", return_value=True):
+             mock.patch.multiple(spd, memory_buses=lambda: ["0"],
+                                 spd_chips=lambda buses=None: [spd.pathlib.Path("/nonexistent/0-0050")],
+                                 has_driver=lambda chip: False):
             _, consejo = spd.diagnostico()
         for modulo in ("spd5118", "ee1004", "at24"):
             self.assertIn(modulo, consejo)

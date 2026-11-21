@@ -13,12 +13,10 @@ uninstalled.
 
 from __future__ import annotations
 
-import pathlib
-import re
 import subprocess
 from typing import Iterator, Optional
 
-from .. import sysroot, system_deps
+from .. import spd, sysroot, system_deps
 from ..i18n import _
 from ..model import DriverHint, MemoryArray, MemoryModule, Need, PrivilegedState
 from ..privileged import smbios
@@ -117,10 +115,6 @@ class PrivilegedMemory(Provider):
 
     # -- SPD ----------------------------------------------------------------
 
-    # A DDR4 module's SPD chip lives on the SMBus, at addresses 0x50 to
-    # 0x57: one per slot.
-    _SPD_ADDRESS = re.compile(r"^\d+-00(5[0-7])$")
-
     @classmethod
     def _spd_hint(cls) -> Iterator[DriverHint]:
         """SMBIOS says what speed the memory runs at; the SPD says what it
@@ -130,28 +124,22 @@ class PrivilegedMemory(Provider):
         conservative JEDEC values. The maker's profiles are in each module's
         SPD chip, reached through the SMBus once its driver is loaded.
         """
-        devices = pathlib.Path(sysroot.ruta("/sys/bus/i2c/devices"))
-        if not devices.is_dir():
-            return
-
-        candidates = [entry for entry in devices.iterdir()
-                      if cls._SPD_ADDRESS.match(entry.name)]
-        if not candidates:
-            return
-        if any((entry / "eeprom").exists() for entry in candidates):
-            return                            # already read
-        # A device with its driver bound (its link, or the hwmon only a driver
-        # registers) gains nothing from loading one: why it cannot be read is
-        # spd.unreadable_cause's to say.
-        candidates = [entry for entry in candidates
-                      if not (entry / "driver").exists() and not (entry / "hwmon").is_dir()]
+        # Only chips the kernel registered on a memory bus: a touchpad's
+        # buses can have something at 0x50 too.
+        chips = spd.spd_chips()
+        if not chips or any((chip / "eeprom").exists() for chip in chips):
+            return                            # nothing to load, or already read
+        # A chip with its driver bound gains nothing from loading one: why it
+        # can't be read is spd.unreadable_cause's to say.
+        candidates = [chip for chip in chips if not spd.has_driver(chip)]
         if not candidates:
             return
 
-        # Newest first: a driver that does not apply finds nothing and does
-        # no harm, but without the right one the module is not read.
+        # The chip's own driver when the kernel named it. Otherwise newest
+        # first: one that doesn't apply finds nothing and does no harm.
+        named = sorted({m for chip in candidates if (m := spd.driver_for(chip))})
         modinfo = system_deps.program_path("modinfo")
-        for module in ("spd5118", "ee1004", "at24"):
+        for module in named or ("spd5118", "ee1004", "at24"):
             if not modinfo:
                 return
             result = subprocess.run([modinfo, "-F", "filename", module],
