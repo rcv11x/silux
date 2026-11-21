@@ -338,6 +338,15 @@ De la quinta auditoría, sin comprobar uno a uno si siguen igual:
 
 ## Propuestas sin aplicar
 
+* **La frecuencia media de una Intel por el ayudante** (propuesta, sin
+  escribir: toca su lista blanca). Sin permisos, la frecuencia es la media de
+  las lecturas de `act_freq` que pillan despierta a la gráfica, cada 250 ms;
+  con un video 4K60 (despierta el 18 % del tiempo) uno de cada tres segundos
+  no la pilla ninguna y sale la pedida. El PMU de i915 publica
+  `actual-frequency` y `requested-frequency` acumuladas por el kernel: dos
+  eventos más en `PMU_EVENT`, del mismo PMU que ya se abre. Falta medirlo en
+  el T14 contra `intel_gpu_top` y el visto bueno del autor.
+
 * **Leer con el ayudante instalado sin contraseña** (idea a revisar con
   calma, no decidida). Hoy la regla es `auth_admin_keep`: la contraseña se
   pide al dar permisos y polkit la recuerda unos minutos para ese proceso.

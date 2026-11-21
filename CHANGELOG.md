@@ -21,9 +21,10 @@ que hace falta.
   que declara RAPL) se descarta, y el informe dice cuántos y con qué números.
   Vale para el procesador y para la gráfica integrada de Intel.
 - Arreglado: el consumo del procesador leído con permisos se cronometraba
-  antes de leerse, y el ayudante puede esperar hasta 100 ms: algún segundo
-  salía hasta un 50 % alto. Ahora se cronometra donde se lee, y no se resta
-  una lectura de sysfs a otra del ayudante.
+  antes de leerse, y el ayudante puede esperar hasta 100 ms: con el
+  intervalo de un segundo, algún segundo salía hasta un 10 % alto o bajo.
+  Ahora se cronometra donde se lee, y no se resta una lectura de sysfs a
+  otra del ayudante.
 
 ### Gráficos
 
