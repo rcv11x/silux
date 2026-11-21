@@ -30,21 +30,21 @@ from .model import Snapshot, short_vendor
 # 2026): una red 192.168.1.x con su puerta en .1 es la más común que hay, y
 # quien lee un informe no se para en ella. `tools/comprobar_privacidad.py` las
 # acepta por ser estas; cualquier otra privada la da por real.
-EQUIPO = "silux-pc"
+HOST_NAME = "silux-pc"
 IPV4 = "192.168.1.120"
-PUERTA = "192.168.1.1"
+GATEWAY = "192.168.1.1"
 # Del bloque que la RFC 3849 y la RFC 7042 reservan para documentación: no
 # encaminan a ninguna parte.
 IPV6 = "2001:db8::11"
 MAC = "00:00:5e:00:53:af"
 # La de una interfaz que no tiene: el bucle local. No es de nadie.
-SIN_MAC = "00:00:00:00:00:00"
+NO_MAC = "00:00:00:00:00:00"
 # Lo que se ponía hasta el 19 de noviembre de 2026, tan inventado como lo de
 # ahora: los volcados de antes lo llevan. «equipo» además es una palabra, y
 # tomarlo por el nombre de la máquina tapaba «Este equipo no publica…».
-SUSTITUTOS_ANTERIORES = frozenset({"equipo", "192.0.2.11", "192.0.2.1"})
+OLD_SUBSTITUTES = frozenset({"equipo", "192.0.2.11", "192.0.2.1"})
 # Lo que se pone en lugar de una interfaz con un nombre elegido por alguien.
-INTERFAZ = "interfaz{}"
+INTERFACE = "interfaz{}"
 
 # Los nombres que pone el sistema y no una persona: los predecibles de systemd
 # (`enp6s0`, `wlo1`, `enx001122334455`), los clásicos del kernel y los de las
@@ -56,7 +56,7 @@ INTERFAZ = "interfaz{}"
 # sabe que «ana» es una persona. Por eso aquí se enumera lo permitido, no lo
 # prohibido, y los patrones son estrictos: con `en*` a secas, `enrique-vpn`
 # pasaría por una tarjeta de red.
-_DEL_SISTEMA = re.compile(r"""
+_SYSTEM_NAME = re.compile(r"""
     lo
   | (?:en|wl|ww|ib|sl)(?:x[0-9a-f]{12}|[oPpscvabui]\d+(?:[fdnsupcvi]\d+)*)
   | (?:eth|wlan|wwan|usb|bond|team|dummy|tun|tap|ppp|wg|vmnet|vboxnet|virbr
@@ -75,12 +75,12 @@ _DEL_SISTEMA = re.compile(r"""
 # Los puntos de montaje que pone el sistema y no dicen nada de nadie. Los
 # demás llevan el nombre del usuario o la etiqueta que alguien le puso a un
 # disco: `/run/media/ana/FOTOS`, `/home/ana/datos`.
-_MONTAJES_DEL_SISTEMA = frozenset((
+_SYSTEM_MOUNTS = frozenset((
     "/", "/boot", "/boot/efi", "/efi", "/home", "/root", "/usr", "/var",
     "/var/log", "/var/lib", "/var/cache", "/opt", "/srv", "/tmp", "/nix",
     "/gnu", "/snap", "/swap", "/recovery",
 ))
-MONTAJE = "/media/unidad{}"
+MOUNT = "/media/unidad{}"
 
 
 # Kernel parameters whose value names this machine: a disk, an encrypted
@@ -110,123 +110,123 @@ def hide_cmdline_identifiers(cmdline: str) -> tuple[str, ...]:
     return tuple(hidden)
 
 
-def de_sistema(nombre: str) -> bool:
+def is_system_name(name: str) -> bool:
     """Si una interfaz se llama como la llama el sistema y no una persona."""
-    return bool(_DEL_SISTEMA.fullmatch(nombre))
+    return bool(_SYSTEM_NAME.fullmatch(name))
 
 
 # A USB network adapter is named after its MAC: «enx» and twelve digits.
 # The name is the system's, but it carries the address.
-MAC_EN_EL_NOMBRE = re.compile(r"((?:en|wl|ww)x)([0-9a-f]{12})")
+MAC_IN_NAME = re.compile(r"((?:en|wl|ww)x)([0-9a-f]{12})")
 
 
-def nombre_sin_mac(nombre: str, orden: int) -> str:
+def name_without_mac(name: str, index: int) -> str:
     """`enx001122334455` with the substitute MAC number `orden` in its name."""
-    encaje = MAC_EN_EL_NOMBRE.fullmatch(nombre)
-    if encaje is None:
-        return nombre
-    return encaje.group(1) + _mac_falsa(orden).replace(":", "")
+    match = MAC_IN_NAME.fullmatch(name)
+    if match is None:
+        return name
+    return match.group(1) + _fake_mac(index).replace(":", "")
 
 
 # Lo que pone el anonimizado, y por eso no es de nadie: encontrarlo en un
 # volcado es encontrar el sustituto. Uno de verdad puede valer lo mismo —una
 # puerta de enlace 192.168.1.1 es lo más común—, y entonces está tan tapado
 # como el resto.
-_SUSTITUTO_NUMERADO = re.compile(r"interfaz\d+|/media/unidad\d+|00:00:5e:00:53:[0-9a-f]{2}"
+_NUMBERED_SUBSTITUTE = re.compile(r"interfaz\d+|/media/unidad\d+|00:00:5e:00:53:[0-9a-f]{2}"
                                  r"|(?:en|wl|ww)x00005e0053[0-9a-f]{2}")
 
 
-def es_sustituto(valor: str) -> bool:
+def is_substitute(value: str) -> bool:
     """Si es lo que pone el anonimizado (o ceros), no algo de alguien."""
-    limpio = (valor or "").strip().lower()
-    return (limpio in {EQUIPO, IPV4, PUERTA, IPV6, MAC, SIN_MAC, *SUSTITUTOS_ANTERIORES}
-            or not limpio.strip("0:.- ") or bool(_SUSTITUTO_NUMERADO.fullmatch(limpio)))
+    clean = (value or "").strip().lower()
+    return (clean in {HOST_NAME, IPV4, GATEWAY, IPV6, MAC, NO_MAC, *OLD_SUBSTITUTES}
+            or not clean.strip("0:.- ") or bool(_NUMBERED_SUBSTITUTE.fullmatch(clean)))
 
 
 # The names a machine can have that are everyone's: the installer's default
 # is the distribution («debian»), or it is the brand («lenovo»). Covered in
 # the texts it broke them («ID=silux-pc» in os-release), and looked for it
 # was found in the distribution's name.
-_EQUIPOS_DE_TODOS = frozenset({
+_COMMON_HOST_NAMES = frozenset({
     "localhost", "localhost.localdomain", "linux", "home", "casa", "server", "servidor",
     "desktop", "escritorio", "laptop", "notebook", "portatil", "portátil", "computer",
     "ordenador", "workstation", "gaming", "router", "nas", "pc", "user", "usuario"})
 # A name this short is a word or initials: it cannot block the annex.
-EQUIPO_CORTO = 4
+SHORT_HOST_NAME = 4
 
 
-def palabras_de_todos(*textos: Optional[str]) -> frozenset[str]:
+def common_words(*texts: Optional[str]) -> frozenset[str]:
     """The words of a system's description (distribution, brand) and the
     default names, lowercased."""
-    palabras = set(_EQUIPOS_DE_TODOS)
-    for texto in textos:
-        if texto:
-            palabras.add(texto.strip().lower())
-            palabras.update(p for p in re.split(r"[\s/(),\"]+", texto.lower()) if len(p) >= 3)
-            if (corto := short_vendor(texto)):
-                palabras.add(corto.lower())
-    return frozenset(palabras)
+    words = set(_COMMON_HOST_NAMES)
+    for text in texts:
+        if text:
+            words.add(text.strip().lower())
+            words.update(p for p in re.split(r"[\s/(),\"]+", text.lower()) if len(p) >= 3)
+            if (short := short_vendor(text)):
+                words.add(short.lower())
+    return frozenset(words)
 
 
-def palabras_del_equipo(raiz: str = "/") -> frozenset[str]:
+def machine_words(root: str = "/") -> frozenset[str]:
     """Lo mismo, leído de un sistema: `/etc/os-release` y los fabricantes de
     la tabla DMI (de esta máquina, o de un volcado)."""
-    base = pathlib.Path(raiz)
-    textos = []
-    for linea in _leer(base / "etc/os-release").splitlines():
-        clave, _igual, valor = linea.partition("=")
-        if clave in ("ID", "ID_LIKE", "NAME", "VERSION_CODENAME"):
-            textos.append(valor.strip().strip('"'))
-    for nombre in ("sys_vendor", "board_vendor", "chassis_vendor", "product_family",
+    base = pathlib.Path(root)
+    texts = []
+    for line in _read(base / "etc/os-release").splitlines():
+        key, _sep, value = line.partition("=")
+        if key in ("ID", "ID_LIKE", "NAME", "VERSION_CODENAME"):
+            texts.append(value.strip().strip('"'))
+    for name in ("sys_vendor", "board_vendor", "chassis_vendor", "product_family",
                    "product_name", "board_name"):
-        textos.append(_leer(base / "sys/class/dmi/id" / nombre))
+        texts.append(_read(base / "sys/class/dmi/id" / name))
     # And what drivers, modules and sensor chips are called: «thinkpad» is
     # thinkpad_acpi's chip and a common name for a ThinkPad.
-    nombres = set()
-    for patron in ("sys/module/*", "sys/bus/*/drivers/*"):
-        nombres.update(p.name for p in base.glob(patron))
-    nombres.update(_leer(p) for p in base.glob("sys/class/hwmon/*/name"))
-    return palabras_de_todos(*textos) | {n.lower() for n in nombres if n} | {
-        parte for n in nombres if n for parte in re.split(r"[_-]", n.lower()) if len(parte) >= 3}
+    names = set()
+    for pattern in ("sys/module/*", "sys/bus/*/drivers/*"):
+        names.update(p.name for p in base.glob(pattern))
+    names.update(_read(p) for p in base.glob("sys/class/hwmon/*/name"))
+    return common_words(*texts) | {n.lower() for n in names if n} | {
+        part for n in names if n for part in re.split(r"[_-]", n.lower()) if len(part) >= 3}
 
 
-def equipo_de_todos(nombre: Optional[str], palabras: frozenset[str]) -> bool:
+def is_common_host_name(name: Optional[str], words: frozenset[str]) -> bool:
     """A machine's name that is everyone's: the brand, the distribution, a
     driver, a common word or a short one. It cannot block the annex."""
-    if not nombre:
+    if not name:
         return False
-    limpio = nombre.strip().lower()
-    return len(limpio) <= EQUIPO_CORTO or limpio in palabras
+    clean = name.strip().lower()
+    return len(clean) <= SHORT_HOST_NAME or clean in words
 
 
-def _cambiar_nombres(texto: Optional[str], cambios: dict[str, str]) -> Optional[str]:
+def _rename(text: Optional[str], changes: dict[str, str]) -> Optional[str]:
     """Sustituye cada nombre de interfaz cuando aparece como nombre entero."""
-    if not texto:
-        return texto
-    for viejo, nuevo in cambios.items():
-        texto = re.sub(rf"(?<![\w.-]){re.escape(viejo)}(?![\w.-])", nuevo, texto)
-    return texto
+    if not text:
+        return text
+    for old, new in changes.items():
+        text = re.sub(rf"(?<![\w.-]){re.escape(old)}(?![\w.-])", new, text)
+    return text
 
 
-def _mac_falsa(orden: int) -> str:
+def _fake_mac(index: int) -> str:
     """La dirección de documentación número `orden`, empezando por `MAC`.
 
     El bloque que reserva la RFC 7042 tiene 256, y se da la vuelta: con más
     tarjetas distintas que eso se repetiría alguna, que es mejor que salirse
     de él.
     """
-    prefijo, _sep, ultimo = MAC.rpartition(":")
-    return f"{prefijo}:{(int(ultimo, 16) + orden) % 256:02x}"
+    prefix, _sep, last = MAC.rpartition(":")
+    return f"{prefix}:{(int(last, 16) + index) % 256:02x}"
 
 
-def _tapar(valor: Optional[str], relleno: str = "0") -> Optional[str]:
+def _mask(value: Optional[str], fill: str = "0") -> Optional[str]:
     """Mantiene el largo para que nada se recoloque al ocultarlo."""
-    if not valor:
-        return valor
-    return relleno * len(valor)
+    if not value:
+        return value
+    return fill * len(value)
 
 
-def _sin_el_equipo(texto: Optional[str], equipo: Optional[str]) -> Optional[str]:
+def _without_host(text: Optional[str], host: Optional[str]) -> Optional[str]:
     """Quita el nombre del equipo de donde se haya colado.
 
     Hace falta porque el nombre no vive solo en su campo: una interfaz de
@@ -239,89 +239,89 @@ def _sin_el_equipo(texto: Optional[str], equipo: Optional[str]) -> Optional[str]
     que ver: «lan» convertía `wlan0` en `wequipo0`. Entero, un nombre de dos
     letras ya no rompe nada, así que tampoco hay que dejar de taparlo.
     """
-    if not texto or not equipo or len(equipo) < 2:
-        return texto
-    if equipo == EQUIPO or equipo in SUSTITUTOS_ANTERIORES:
-        return texto            # ya está tapado
-    return re.sub(rf"(?<![0-9A-Za-z]){re.escape(equipo)}(?![0-9A-Za-z])",
-                  EQUIPO, texto, flags=re.IGNORECASE)
+    if not text or not host or len(host) < 2:
+        return text
+    if host == HOST_NAME or host in OLD_SUBSTITUTES:
+        return text            # ya está tapado
+    return re.sub(rf"(?<![0-9A-Za-z]){re.escape(host)}(?![0-9A-Za-z])",
+                  HOST_NAME, text, flags=re.IGNORECASE)
 
 
-def _limpiar(texto: Optional[str], equipo: Optional[str],
-             nombres: dict[str, str]) -> Optional[str]:
-    return _sin_el_equipo(_cambiar_nombres(texto, nombres), equipo)
+def _clean(text: Optional[str], host: Optional[str],
+             names: dict[str, str]) -> Optional[str]:
+    return _without_host(_rename(text, names), host)
 
 
-def without_home(texto: str) -> str:
+def without_home(text: str) -> str:
     """A traceback names where Silux runs from, and from a checkout that is
     inside the user's home folder."""
-    casa = str(pathlib.Path.home())
-    return texto.replace(casa, "~") if len(casa) > 1 else texto
+    home = str(pathlib.Path.home())
+    return text.replace(home, "~") if len(home) > 1 else text
 
 
-def _de_todos(snapshot: Snapshot) -> frozenset[str]:
+def _common_words_of(snapshot: Snapshot) -> frozenset[str]:
     """The words of this photo that are everyone's: the makers and the
     machine's family and name as the firmware writes them, the distribution,
     and the drivers and sensor chips (`palabras_del_equipo` does the same
     reading a system)."""
-    placa, sistema = snapshot.board, snapshot.system
-    textos = [*((placa.system_vendor, placa.vendor, placa.chassis_vendor, placa.system_family,
-                 placa.system_name, placa.system_version, placa.name) if placa else ()),
-              *((sistema.distribution, sistema.distribution_id) if sistema else ())]
-    nombres = ({s.chip for s in snapshot.sensors if s.chip}
+    board, system = snapshot.board, snapshot.system
+    texts = [*((board.system_vendor, board.vendor, board.chassis_vendor, board.system_family,
+                 board.system_name, board.system_version, board.name) if board else ()),
+              *((system.distribution, system.distribution_id) if system else ())]
+    names = ({s.chip for s in snapshot.sensors if s.chip}
                | {g.driver for g in snapshot.gpus if g.driver}
                | {getattr(i, "driver", None) for i in snapshot.network} - {None})
-    return palabras_de_todos(*textos) | {n.lower() for n in nombres} | {
-        parte for n in nombres for parte in re.split(r"[_-]", n.lower()) if len(parte) >= 3}
+    return common_words(*texts) | {n.lower() for n in names} | {
+        part for n in names for part in re.split(r"[_-]", n.lower()) if len(part) >= 3}
 
 
-def _tapar_direccion(direccion: Optional[str], sustituto: str) -> Optional[str]:
+def _mask_address(address: Optional[str], substitute: str) -> Optional[str]:
     """The substitute, but the loopback stays: 127.0.0.1 and ::1 are
     everyone's, and with the substitute «lo» read like a network card. A
     link-local address (fe80::) is covered: it can carry the MAC."""
-    if not direccion:
+    if not address:
         return None
     try:
-        if ipaddress.ip_address(direccion.split("/")[0].split("%")[0]).is_loopback:
-            return direccion
+        if ipaddress.ip_address(address.split("/")[0].split("%")[0]).is_loopback:
+            return address
     except ValueError:
         pass
-    return sustituto
+    return substitute
 
 
-def anonimizar(snapshot: Snapshot) -> Snapshot:
+def anonymize(snapshot: Snapshot) -> Snapshot:
     """La misma foto sin lo que señala a un equipo concreto."""
-    cambios: dict = {}
-    equipo = snapshot.system.hostname if snapshot.system else None
+    changes: dict = {}
+    host = snapshot.system.hostname if snapshot.system else None
     # Las interfaces con nombre puesto por alguien, numeradas en el orden en
     # que vienen. El mismo cambio se aplica después a todo lo que las nombra:
     # la red crea una rama del árbol de sensores por interfaz, y un aviso
     # puede citar una por su nombre.
-    nombres: dict[str, str] = {}
-    for interfaz in snapshot.network:
-        if not de_sistema(interfaz.name) and interfaz.name not in nombres:
-            nombres[interfaz.name] = INTERFAZ.format(len(nombres) + 1)
-    con_mac = sorted({i.name for i in snapshot.network if MAC_EN_EL_NOMBRE.fullmatch(i.name)})
-    for orden, nombre in enumerate(con_mac):
-        nombres[nombre] = nombre_sin_mac(nombre, orden)
+    names: dict[str, str] = {}
+    for interface in snapshot.network:
+        if not is_system_name(interface.name) and interface.name not in names:
+            names[interface.name] = INTERFACE.format(len(names) + 1)
+    with_mac = sorted({i.name for i in snapshot.network if MAC_IN_NAME.fullmatch(i.name)})
+    for index, name in enumerate(with_mac):
+        names[name] = name_without_mac(name, index)
 
     if snapshot.system and snapshot.system.hostname:
-        cambios["system"] = dataclasses.replace(snapshot.system, hostname=EQUIPO)
+        changes["system"] = dataclasses.replace(snapshot.system, hostname=HOST_NAME)
     # A machine named after its brand («lenovo» on a Lenovo): the brand is in
     # the report a dozen times and hides nothing, and looked for in the texts
     # it broke them («silux-pc LOQ 15IRH8»). The field still goes.
-    if equipo and equipo_de_todos(equipo, _de_todos(snapshot)):
-        equipo = None
+    if host and is_common_host_name(host, _common_words_of(snapshot)):
+        host = None
 
     if snapshot.gpus:
         # El monitor también lleva su número de serie, en el EDID: se enseña
         # en la ficha de cada pantalla.
-        cambios["gpus"] = tuple(
+        changes["gpus"] = tuple(
             dataclasses.replace(
-                g, unique_id=_tapar(g.unique_id),
+                g, unique_id=_mask(g.unique_id),
                 displays=tuple(
                     dataclasses.replace(d, monitor=dataclasses.replace(
-                        d.monitor, serial=_tapar(d.monitor.serial)))
+                        d.monitor, serial=_mask(d.monitor.serial)))
                     if d.monitor else d
                     for d in g.displays))
             for g in snapshot.gpus
@@ -333,22 +333,22 @@ def anonimizar(snapshot: Snapshot) -> Snapshot:
     # cada una y a qué velocidad va, que es lo que hace falta para un fallo,
     # y no de qué marca.
     if snapshot.usb_devices:
-        cambios["usb_devices"] = tuple(
+        changes["usb_devices"] = tuple(
             dataclasses.replace(u, vendor=None, product=None, usb_id=None)
             for u in snapshot.usb_devices)
     if snapshot.sound_cards:
-        cambios["sound_cards"] = tuple(
+        changes["sound_cards"] = tuple(
             dataclasses.replace(s, name=None) if s.kind == "usb" else s
             for s in snapshot.sound_cards)
     if snapshot.cameras:
-        cambios["cameras"] = tuple(dataclasses.replace(c, name=None) for c in snapshot.cameras)
+        changes["cameras"] = tuple(dataclasses.replace(c, name=None) for c in snapshot.cameras)
     if snapshot.bluetooth:
-        cambios["bluetooth"] = tuple(
+        changes["bluetooth"] = tuple(
             dataclasses.replace(b, product=None) for b in snapshot.bluetooth)
 
     if snapshot.batteries:
-        cambios["batteries"] = tuple(
-            dataclasses.replace(b, serial=_tapar(b.serial))
+        changes["batteries"] = tuple(
+            dataclasses.replace(b, serial=_mask(b.serial))
             for b in snapshot.batteries)
 
     if snapshot.network:
@@ -358,84 +358,84 @@ def anonimizar(snapshot: Snapshot) -> Snapshot:
         # tarjeta que tiene debajo.
         macs: dict[str, str] = {}
 
-        def _mac(real: Optional[str]) -> Optional[str]:
-            if not real or real == SIN_MAC:
+        def _mac_index(real: Optional[str]) -> Optional[str]:
+            if not real or real == NO_MAC:
                 return real
-            return macs.setdefault(real.lower(), _mac_falsa(len(macs)))
+            return macs.setdefault(real.lower(), _fake_mac(len(macs)))
 
-        cambios["network"] = tuple(
+        changes["network"] = tuple(
             dataclasses.replace(
                 i,
                 # El nombre también: las interfaces virtuales se llaman como
                 # la máquina más veces de lo que parece.
                 # Las del sistema se quedan como están, aunque el equipo se
                 # llame «lo» o «docker»; las demás, por su sustituto.
-                name=(nombres.get(i.name, i.name) if de_sistema(i.name)
-                      else _limpiar(i.name, equipo, nombres) or i.name),
-                mac=_mac(i.mac),
-                ipv4=_tapar_direccion(i.ipv4, IPV4),
-                ipv6=tuple(_tapar_direccion(d, IPV6) for d in i.ipv6),
-                gateway=PUERTA if i.gateway else None,
+                name=(names.get(i.name, i.name) if is_system_name(i.name)
+                      else _clean(i.name, host, names) or i.name),
+                mac=_mac_index(i.mac),
+                ipv4=_mask_address(i.ipv4, IPV4),
+                ipv6=tuple(_mask_address(d, IPV6) for d in i.ipv6),
+                gateway=GATEWAY if i.gateway else None,
             )
             for i in snapshot.network
         )
 
     if snapshot.disks:
-        montajes: dict[str, str] = {}
+        mounts: dict[str, str] = {}
 
-        def _montaje(ruta: Optional[str]) -> Optional[str]:
-            if not ruta or ruta in _MONTAJES_DEL_SISTEMA:
-                return ruta
-            return montajes.setdefault(ruta, MONTAJE.format(len(montajes) + 1))
+        def _mount_index(path: Optional[str]) -> Optional[str]:
+            if not path or path in _SYSTEM_MOUNTS:
+                return path
+            return mounts.setdefault(path, MOUNT.format(len(mounts) + 1))
 
-        cambios["disks"] = tuple(
+        changes["disks"] = tuple(
             dataclasses.replace(
-                d, serial=_tapar(d.serial),
-                partitions=tuple(dataclasses.replace(p, mountpoint=_montaje(p.mountpoint))
+                d, serial=_mask(d.serial),
+                partitions=tuple(dataclasses.replace(p, mountpoint=_mount_index(p.mountpoint))
                                  for p in d.partitions))
             for d in snapshot.disks
         )
 
-    if snapshot.sensors and (nombres or equipo):
-        sensores = tuple(
+    if snapshot.sensors and (names or host):
+        sensors = tuple(
             # La clave también, aunque no se pinte: va en la foto y en lo que
             # se exporte de ella. El cambio es el mismo en cada muestreo, así
             # que los mínimos y máximos que cuelgan de ella no se pierden.
-            dataclasses.replace(s, key=_limpiar(s.key, equipo, nombres),
-                                device=_limpiar(s.device, equipo, nombres),
-                                label=_limpiar(s.label, equipo, nombres))
+            dataclasses.replace(s, key=_clean(s.key, host, names),
+                                device=_clean(s.device, host, names),
+                                label=_clean(s.label, host, names))
             for s in snapshot.sensors)
-        if sensores != snapshot.sensors:
-            cambios["sensors"] = sensores
+        if sensors != snapshot.sensors:
+            changes["sensors"] = sensors
 
     if snapshot.notes:
-        avisos = tuple(
-            dataclasses.replace(n, message=without_home(_limpiar(n.message, equipo, nombres) or ""),
-                                hint=_limpiar(n.hint, equipo, nombres),
-                                detail=without_home(_limpiar(n.detail, equipo, nombres) or ""))
+        notes = tuple(
+            dataclasses.replace(n, message=without_home(_clean(n.message, host, names) or ""),
+                                hint=_clean(n.hint, host, names),
+                                detail=without_home(_clean(n.detail, host, names) or ""))
             for n in snapshot.notes)
-        if avisos != snapshot.notes:
-            cambios["notes"] = avisos
+        if notes != snapshot.notes:
+            changes["notes"] = notes
 
     if snapshot.failures:
-        cambios["failures"] = tuple(
-            dataclasses.replace(f, error=without_home(_limpiar(f.error, equipo, nombres) or ""),
-                                trace=without_home(_limpiar(f.trace, equipo, nombres) or ""))
+        changes["failures"] = tuple(
+            dataclasses.replace(f, error=without_home(_clean(f.error, host, names) or ""),
+                                trace=without_home(_clean(f.trace, host, names) or ""))
             for f in snapshot.failures)
 
-    return dataclasses.replace(snapshot, **cambios) if cambios else snapshot
+    return dataclasses.replace(snapshot, **changes) if changes else snapshot
 
 
-def _leer(ruta: pathlib.Path) -> str:
+def _read(path: pathlib.Path) -> str:
     try:
-        return ruta.read_text(errors="ignore").strip()
+        return path.read_text(errors="ignore").strip()
     except OSError:
         return ""
 
 
 # -- lo de esta máquina ----------------------------------------------------------
 
-def _trozos_de_ipv6(direccion: ipaddress.IPv6Address) -> dict[str, str]:
+def _ipv6_parts(address: ipaddress.IPv6Address) -> dict[str, str]:
     """La dirección y lo que de ella basta para reconocer la máquina.
 
     La mitad baja (el identificador de interfaz) es estable en una conexión y
@@ -443,63 +443,63 @@ def _trozos_de_ipv6(direccion: ipaddress.IPv6Address) -> dict[str, str]:
     es la conexión. Un test llegó a llevar una `fe80::` con los dos primeros
     grupos del identificador de la máquina del autor y el resto a mano.
     """
-    trozos = {}
-    hexa = direccion.exploded.replace(":", "")
-    trozos[hexa] = "una dirección IPv6 de este equipo"
-    trozos[str(direccion)] = "una dirección IPv6 de este equipo"
-    grupos = direccion.exploded.split(":")
-    identificador = grupos[4:]
+    parts = {}
+    hex_text = address.exploded.replace(":", "")
+    parts[hex_text] = "una dirección IPv6 de este equipo"
+    parts[str(address)] = "una dirección IPv6 de este equipo"
+    groups = address.exploded.split(":")
+    interface_id = groups[4:]
     for i in range(3):
-        par = identificador[i:i + 2]
-        if all(int(g, 16) == 0 for g in par):
+        pair = interface_id[i:i + 2]
+        if all(int(g, 16) == 0 for g in pair):
             continue
-        trozos["".join(par)] = "parte del identificador IPv6 de este equipo"
-        trozos[":".join(f"{int(g, 16):x}" for g in par)] = \
+        parts["".join(pair)] = "parte del identificador IPv6 de este equipo"
+        parts[":".join(f"{int(g, 16):x}" for g in pair)] = \
             "parte del identificador IPv6 de este equipo"
-    if direccion.is_global:
-        prefijo = ":".join(f"{int(g, 16):x}" for g in grupos[:3])
-        trozos[prefijo] = "el prefijo IPv6 de la conexión de este equipo"
-    return trozos
+    if address.is_global:
+        prefix = ":".join(f"{int(g, 16):x}" for g in groups[:3])
+        parts[prefix] = "el prefijo IPv6 de la conexión de este equipo"
+    return parts
 
 
-def _direcciones_propias() -> dict[str, str]:
-    datos: dict[str, str] = {}
-    for linea in _leer(pathlib.Path("/proc/net/if_inet6")).splitlines():
-        campos = linea.split()
-        if not campos:
+def _own_addresses() -> dict[str, str]:
+    data: dict[str, str] = {}
+    for line in _read(pathlib.Path("/proc/net/if_inet6")).splitlines():
+        fields = line.split()
+        if not fields:
             continue
         try:
-            direccion = ipaddress.IPv6Address(int(campos[0], 16))
+            address = ipaddress.IPv6Address(int(fields[0], 16))
         except ValueError:
             continue
-        if direccion.is_loopback:
+        if address.is_loopback:
             continue
-        datos.update(_trozos_de_ipv6(direccion))
+        data.update(_ipv6_parts(address))
     # /proc/net/fib_trie dice cada dirección local con «/32 host LOCAL» debajo.
-    anterior = None
-    for linea in _leer(pathlib.Path("/proc/net/fib_trie")).splitlines():
-        if (m := re.search(r"\|-- (\d+\.\d+\.\d+\.\d+)$", linea)):
-            anterior = m.group(1)
-        elif "/32 host LOCAL" in linea and anterior and not anterior.startswith("127."):
-            datos[anterior] = "una dirección IPv4 de este equipo"
-    return datos
+    previous = None
+    for line in _read(pathlib.Path("/proc/net/fib_trie")).splitlines():
+        if (m := re.search(r"\|-- (\d+\.\d+\.\d+\.\d+)$", line)):
+            previous = m.group(1)
+        elif "/32 host LOCAL" in line and previous and not previous.startswith("127."):
+            data[previous] = "una dirección IPv4 de este equipo"
+    return data
 
 
 # Lo que el firmware pone cuando no hay número de serie. Buscarlo daría por
 # delatora cualquier línea de código que lo reconozca.
-_RELLENO = re.compile(r"(?i)filled by o\.?e\.?m|default string|not specified|system serial|"
+_FILLER = re.compile(r"(?i)filled by o\.?e\.?m|default string|not specified|system serial|"
                       r"chassis serial|^none$|^n/a$|0123456789|^unknown$")
 
 
 # Un concentrador raíz de USB da como «número de serie» su dirección PCI
 # («0000:00:14.0»), que está en cualquier ruta de sysfs y no es de nadie.
-_DIRECCION_PCI = re.compile(r"^[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\.[0-7]$")
+_PCI_ADDRESS = re.compile(r"^[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\.[0-7]$")
 
 
-def _series_propias() -> dict[str, str]:
+def _own_serials() -> dict[str, str]:
     """Los números de serie que se leen sin permisos (y los otros, si se puede)."""
-    datos: dict[str, str] = {}
-    sitios = {
+    data: dict[str, str] = {}
+    places = {
         "/sys/block/*/device/serial": "el número de serie de un disco",
         "/sys/class/nvme/*/serial": "el número de serie de un disco",
         "/sys/block/*/device/wwid": "el identificador de un disco",
@@ -511,66 +511,66 @@ def _series_propias() -> dict[str, str]:
         "/sys/class/dmi/id/chassis_serial": "el número de serie del chasis",
         "/etc/machine-id": "el machine-id",
     }
-    for patron, que_es in sitios.items():
-        for ruta in pathlib.Path("/").glob(patron.lstrip("/")):
-            valor = _leer(ruta)
-            for trozo in {valor, valor.split()[-1] if valor.split() else ""}:
-                if (len(trozo) >= 6 and trozo.strip("0 ") and not _RELLENO.search(trozo)
-                        and not _DIRECCION_PCI.match(trozo)):
-                    datos[trozo] = que_es
-    for ruta in pathlib.Path("/sys/class/drm").glob("card*-*/edid"):
+    for pattern, kind in places.items():
+        for path in pathlib.Path("/").glob(pattern.lstrip("/")):
+            value = _read(path)
+            for chunk in {value, value.split()[-1] if value.split() else ""}:
+                if (len(chunk) >= 6 and chunk.strip("0 ") and not _FILLER.search(chunk)
+                        and not _PCI_ADDRESS.match(chunk)):
+                    data[chunk] = kind
+    for path in pathlib.Path("/sys/class/drm").glob("card*-*/edid"):
         try:
-            edid = ruta.read_bytes()
+            edid = path.read_bytes()
         except OSError:
             continue
-        for texto in _series_de_edid(edid):
-            datos[texto] = "el número de serie de un monitor"
-    return datos
+        for text in _edid_serials(edid):
+            data[text] = "el número de serie de un monitor"
+    return data
 
 
-def _series_de_edid(edid: bytes) -> list[str]:
+def _edid_serials(edid: bytes) -> list[str]:
     """El texto del descriptor de número de serie (0xFF), si no está a ceros."""
-    series = []
-    for inicio in range(54, 126, 18):
-        bloque = edid[inicio:inicio + 18]
-        if len(bloque) == 18 and bloque[:3] == b"\0\0\0" and bloque[3] == 0xFF:
-            texto = bloque[5:].split(b"\n")[0].decode("latin-1").strip()
-            if len(texto) >= 4 and texto.strip("0 "):
-                series.append(texto)
-    return series
+    serials = []
+    for start in range(54, 126, 18):
+        block = edid[start:start + 18]
+        if len(block) == 18 and block[:3] == b"\0\0\0" and block[3] == 0xFF:
+            text = block[5:].split(b"\n")[0].decode("latin-1").strip()
+            if len(text) >= 4 and text.strip("0 "):
+                serials.append(text)
+    return serials
 
 
-def de_esta_maquina() -> dict[str, str]:
+def of_this_machine() -> dict[str, str]:
     """Lo que identifica al equipo donde se está trabajando ahora mismo."""
-    datos = {}
-    if not equipo_de_todos(socket.gethostname(), palabras_del_equipo(str(sysroot.root() or "/"))):
-        datos[socket.gethostname()] = "el nombre de este equipo"
-    for ruta in pathlib.Path("/sys/class/net").glob("*/address"):
-        mac = _leer(ruta)
+    data = {}
+    if not is_common_host_name(socket.gethostname(), machine_words(str(sysroot.root() or "/"))):
+        data[socket.gethostname()] = "el nombre de este equipo"
+    for path in pathlib.Path("/sys/class/net").glob("*/address"):
+        mac = _read(path)
         if mac and not mac.startswith("00:00:00"):
-            datos[mac] = f"la dirección física de {ruta.parent.name}"
+            data[mac] = f"la dirección física de {path.parent.name}"
             # As a USB adapter's name carries it: «enx» and the digits.
-            datos[mac.replace(":", "").lower()] = f"la dirección física de {ruta.parent.name}"
-        nombre = ruta.parent.name
-        if not de_sistema(nombre) or MAC_EN_EL_NOMBRE.fullmatch(nombre):
-            datos[nombre] = "una interfaz de red con nombre puesto a mano"
-    datos.update(_direcciones_propias())
-    datos.update(_series_propias())
-    if (casa := pathlib.Path.home()).name:
-        datos[str(casa)] = "la carpeta personal"
+            data[mac.replace(":", "").lower()] = f"la dirección física de {path.parent.name}"
+        name = path.parent.name
+        if not is_system_name(name) or MAC_IN_NAME.fullmatch(name):
+            data[name] = "una interfaz de red con nombre puesto a mano"
+    data.update(_own_addresses())
+    data.update(_own_serials())
+    if (home := pathlib.Path.home()).name:
+        data[str(home)] = "la carpeta personal"
     try:
-        nombre_real = pwd.getpwuid(os.getuid()).pw_gecos.split(",")[0].strip()
+        real_name = pwd.getpwuid(os.getuid()).pw_gecos.split(",")[0].strip()
     except KeyError:
-        nombre_real = ""
-    if len(nombre_real) >= 4 and nombre_real != pwd.getpwuid(os.getuid()).pw_name:
-        datos[nombre_real] = "el nombre de quien usa este equipo"
+        real_name = ""
+    if len(real_name) >= 4 and real_name != pwd.getpwuid(os.getuid()).pw_name:
+        data[real_name] = "el nombre de quien usa este equipo"
     # What is a substitute is not this machine's, though it may be its value
     # (a real 192.168.1.120 is the report's IPv4).
-    return {d: q for d, q in datos.items() if d and len(d) >= 4 and not es_sustituto(d)}
+    return {d: q for d, q in data.items() if d and len(d) >= 4 and not is_substitute(d)}
 
 
 # Una dirección de correo, y las que no son de nadie.
-CORREO = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
-CORREOS_PERMITIDOS = re.compile(
+EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+ALLOWED_EMAILS = re.compile(
     r"(noreply@anthropic\.com|noreply@github\.com|git@github\.com"
     r"|@example\.(com|org|net)|@kernel\.org)$", re.I)

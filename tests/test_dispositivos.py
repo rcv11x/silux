@@ -190,7 +190,7 @@ class TestLosNombres(unittest.TestCase):
             cameras=tuple(draft.cameras),
             bluetooth=(BluetoothAdapter(name="hci0", product="Adaptador Acme", bus="usb",
                                         powered=True),))
-        anonima = privacidad.anonimizar(f)
+        anonima = privacidad.anonymize(f)
         self.assertEqual({(u.vendor, u.product, u.usb_id) for u in anonima.usb_devices},
                          {(None, None, None)})
         self.assertEqual([u.kind for u in anonima.usb_devices],

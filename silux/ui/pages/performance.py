@@ -277,7 +277,7 @@ class PerformancePage(ScrollPage):
 
     def _build_explanation(self) -> Card:
         card = Card(_("bench.card.what"))
-        for carga in benchmark.CARGAS:
+        for carga in benchmark.WORKLOADS:
             etiqueta = QLabel(f"<b>{carga.name}</b><br>{carga.explanation}")
             etiqueta.setObjectName("Muted")
             etiqueta.setWordWrap(True)
@@ -329,7 +329,7 @@ class PerformancePage(ScrollPage):
         if not segundos:
             self.duracion_total.setText("")
             return
-        total = segundos * len(benchmark.CARGAS) * 2
+        total = segundos * len(benchmark.WORKLOADS) * 2
         if total < 90:
             texto = _("bench.total.s").format(n=f"{total:.0f}")
         elif total < 3600:
@@ -358,8 +358,8 @@ class PerformancePage(ScrollPage):
             self, _("bench.dialog.duration"),
             _("bench.dialog.duration.body"),
             value=(self._duracion_libre or 600.0) / 60.0,
-            minValue=benchmark.MINIMO_SEGUNDOS / 60.0,
-            maxValue=benchmark.MAXIMO_SEGUNDOS / 60.0, decimals=1)
+            minValue=benchmark.MIN_SECONDS / 60.0,
+            maxValue=benchmark.MAX_SECONDS / 60.0, decimals=1)
         if not aceptado:
             self.duracion.setCurrentIndex(1)
             self._duracion_libre = None
@@ -659,7 +659,7 @@ class PerformancePage(ScrollPage):
 
         filas = []
         fuera = False
-        for carga in benchmark.CARGAS:
+        for carga in benchmark.WORKLOADS:
             uno = resultado.find(carga.key, 1)
             todos = resultado.find(carga.key, hilos)
             escala = resultado.scaling(carga.key, hilos)

@@ -104,7 +104,7 @@ class TestLasDireccionesDeProc(unittest.TestCase):
         salida = self.limpio._ruta_de_red(texto)
         self.assertNotIn("0100A8C0", salida)
         self.assertNotIn("0000A8C0", salida)
-        self.assertIn(volcar._ipv4_hex(privacidad.PUERTA), salida)
+        self.assertIn(volcar._ipv4_hex(privacidad.GATEWAY), salida)
         self.assertIn("0100A8C0", self.limpio.secretos)
 
     def test_whoever_built_the_kernel(self):
@@ -263,7 +263,7 @@ class TestUnaInterfazConNombrePropio(unittest.TestCase):
         for tabla in ("route", "if_inet6"):
             texto = (self.red / tabla).read_text()
             self.assertNotIn("AnaPC_wg0", texto, tabla)
-            self.assertIn(privacidad.INTERFAZ.format(1), texto, tabla)
+            self.assertIn(privacidad.INTERFACE.format(1), texto, tabla)
         self.assertIn("enp1s0", (self.red / "route").read_text())
 
     def test_y_la_comprobacion_final_lo_busca_en_cada_byte(self):

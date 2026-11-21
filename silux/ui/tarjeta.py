@@ -24,7 +24,7 @@ from PySide6.QtGui import QColor, QFont, QPainter, QPixmap
 from .. import __version__, build_id, render
 from ..i18n import _
 from ..model import Snapshot
-from ..privacidad import anonimizar
+from ..privacidad import anonymize
 from . import theme
 from .theme import Palette
 
@@ -117,7 +117,7 @@ def dibujar(snapshot: Snapshot, palette: Palette,
     en un sitio público, así que lo seguro es lo que pasa si nadie toca nada.
     """
     if anonimo:
-        snapshot = anonimizar(snapshot)
+        snapshot = anonymize(snapshot)
 
     filas = _fila(snapshot)
     alto = MARGEN * 2 + 96 + len(filas) * ALTO_FILA + 30

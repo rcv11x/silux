@@ -13,24 +13,24 @@ import unittest
 from unittest import mock
 
 from silux import benchmark, history, score
-from silux.benchmark import Conditions, Medida, Result
+from silux.benchmark import Conditions, Measure, Result
 from tests import qt
 
 
 class TestMedidas(unittest.TestCase):
     def test_operaciones_por_segundo(self):
-        m = Medida(load="hash", threads=1, operations=1250, seconds=5.0)
+        m = Measure(load="hash", threads=1, operations=1250, seconds=5.0)
         self.assertEqual(m.per_second, 250.0)
 
     def test_una_medida_sin_tiempo_no_divide_entre_cero(self):
-        self.assertEqual(Medida(load="x", threads=1, operations=10, seconds=0).per_second, 0)
+        self.assertEqual(Measure(load="x", threads=1, operations=10, seconds=0).per_second, 0)
 
     def test_la_escala_entre_un_hilo_y_todos(self):
-        r = Result((Medida("hash", 1, 1000, 5.0), Medida("hash", 16, 8500, 5.0)))
+        r = Result((Measure("hash", 1, 1000, 5.0), Measure("hash", 16, 8500, 5.0)))
         self.assertEqual(r.scaling("hash", 16), 8.5)
 
     def test_sin_las_dos_medidas_no_hay_escala(self):
-        r = Result((Medida("hash", 1, 1000, 5.0),))
+        r = Result((Measure("hash", 1, 1000, 5.0),))
         self.assertIsNone(r.scaling("hash", 16))
 
 
@@ -57,25 +57,25 @@ class TestAvisos(unittest.TestCase):
     """Lo que hay que saber antes de comparar la cifra con otra."""
 
     def test_la_carga_de_fondo_invalida_la_comparacion(self):
-        avisos = benchmark._avisos(Conditions(background_load=35.0,
+        avisos = benchmark._warnings(Conditions(background_load=35.0,
                                               governor="performance"))
         self.assertTrue(any("carga de fondo" in a for a in avisos))
 
     def test_un_poco_de_fondo_es_normal(self):
         # Siempre hay algo corriendo; avisar por un 3 % sería ruido.
-        avisos = benchmark._avisos(Conditions(background_load=3.0,
+        avisos = benchmark._warnings(Conditions(background_load=3.0,
                                               governor="performance"))
         self.assertEqual(avisos, ())
 
     def test_el_gobernador_de_ahorro_se_dice(self):
-        avisos = benchmark._avisos(Conditions(governor="powersave"))
+        avisos = benchmark._warnings(Conditions(governor="powersave"))
         self.assertTrue(any("powersave" in a for a in avisos))
 
     def test_en_rendimiento_no_hay_nada_que_avisar(self):
-        self.assertEqual(benchmark._avisos(Conditions(governor="performance")), ())
+        self.assertEqual(benchmark._warnings(Conditions(governor="performance")), ())
 
     def test_la_caida_de_frecuencia_se_explica_con_cifras(self):
-        avisos = benchmark._avisos(Conditions(
+        avisos = benchmark._warnings(Conditions(
             governor="performance",
             frequency_peak_hz=4_500_000_000, frequency_end_hz=3_600_000_000))
         self.assertTrue(any("4.50" in a and "3.60" in a for a in avisos))
@@ -83,7 +83,7 @@ class TestAvisos(unittest.TestCase):
 
 class TestCargas(unittest.TestCase):
     def test_las_dos_cargas_funcionan(self):
-        for carga in benchmark.CARGAS:
+        for carga in benchmark.WORKLOADS:
             self.assertIsNotNone(carga.work(), carga.key)
 
     def test_ninguna_necesita_un_compilador(self):
@@ -108,7 +108,7 @@ class TestEjecucion(unittest.TestCase):
     def test_se_puede_cancelar(self):
         parar = threading.Event()
         parar.set()
-        with mock.patch.object(benchmark, "_carga_de_fondo", lambda: 0.0):
+        with mock.patch.object(benchmark, "_background_load", lambda: 0.0):
             resultado = benchmark.run(quick=True, stop=parar)
         self.assertEqual(resultado.measures, ())
 
@@ -116,7 +116,7 @@ class TestEjecucion(unittest.TestCase):
         pasos = []
         parar = threading.Event()
         parar.set()
-        with mock.patch.object(benchmark, "_carga_de_fondo", lambda: 0.0):
+        with mock.patch.object(benchmark, "_background_load", lambda: 0.0):
             benchmark.run(quick=True, stop=parar,
                           on_progress=lambda que, cuanto: pasos.append((que, cuanto)))
         self.assertEqual(pasos[-1][1], 1.0)
@@ -166,31 +166,31 @@ class TestCargaDeVerificacion(unittest.TestCase):
     """
 
     def test_esta_entre_las_cargas(self):
-        self.assertIn("verificacion", [c.key for c in benchmark.CARGAS])
+        self.assertIn("verificacion", [c.key for c in benchmark.WORKLOADS])
 
     def test_declara_cuantos_bytes_recorre_una_operacion(self):
         """Es la única que lo declara, y por eso es la única que lo necesita:
         las otras cuatro tienen una entrada del mismo tamaño en toda máquina."""
-        cargas = {c.key: c for c in benchmark.CARGAS}
-        self.assertIsNotNone(cargas["verificacion"].bytes_por_op)
+        cargas = {c.key: c for c in benchmark.WORKLOADS}
+        self.assertIsNotNone(cargas["verificacion"].bytes_per_op)
         for clave in ("compresion", "hash", "compresion_dura", "derivacion"):
-            self.assertIsNone(cargas[clave].bytes_por_op, clave)
+            self.assertIsNone(cargas[clave].bytes_per_op, clave)
 
     def test_el_bloque_se_dimensiona_con_la_cache(self):
         from unittest import mock
-        with mock.patch.object(benchmark, "_leer", side_effect=lambda r: "32768K"):
-            self.assertEqual(benchmark._tamano_del_bloque(), 64)
-        with mock.patch.object(benchmark, "_leer", side_effect=lambda r: "96M"):
-            self.assertEqual(benchmark._tamano_del_bloque(), 192)
+        with mock.patch.object(benchmark, "_read", side_effect=lambda r: "32768K"):
+            self.assertEqual(benchmark._block_size_mb(), 64)
+        with mock.patch.object(benchmark, "_read", side_effect=lambda r: "96M"):
+            self.assertEqual(benchmark._block_size_mb(), 192)
 
     def test_con_un_suelo_y_un_techo(self):
         from unittest import mock
-        with mock.patch.object(benchmark, "_leer", return_value=None):
-            self.assertEqual(benchmark._tamano_del_bloque(),
-                             benchmark.BLOQUE_MINIMO_MB)
-        with mock.patch.object(benchmark, "_leer", return_value="512M"):
-            self.assertEqual(benchmark._tamano_del_bloque(),
-                             benchmark.BLOQUE_MAXIMO_MB)
+        with mock.patch.object(benchmark, "_read", return_value=None):
+            self.assertEqual(benchmark._block_size_mb(),
+                             benchmark.MIN_BLOCK_MB)
+        with mock.patch.object(benchmark, "_read", return_value="512M"):
+            self.assertEqual(benchmark._block_size_mb(),
+                             benchmark.MAX_BLOCK_MB)
 
     def test_el_tamano_del_bloque_no_cambia_lo_que_se_puntua(self):
         """El fallo que la suite no cazaba, y que aquí se mide de verdad.
@@ -244,22 +244,22 @@ class TestCargaDeVerificacion(unittest.TestCase):
         medirlo de seguido mide el asignador, que es la tormenta de fallos de
         página que ya costó una escala entera con LZMA.
         """
-        carga = next(c for c in benchmark.CARGAS if c.key == "verificacion")
-        benchmark._grande = benchmark.BLOQUE * (
-            megas * 1024 * 1024 // len(benchmark.BLOQUE))
+        carga = next(c for c in benchmark.WORKLOADS if c.key == "verificacion")
+        benchmark._big = benchmark.PATTERN * (
+            megas * 1024 * 1024 // len(benchmark.PATTERN))
         try:
             for _ in range(3):
                 carga.work()
-            return benchmark._medir(carga, 1, segundos)
+            return benchmark._measure(carga, 1, segundos)
         finally:
-            benchmark._soltar_el_bloque()
+            benchmark._release_block()
 
     def test_el_bloque_se_suelta_al_terminar(self):
         """Son hasta 192 MB y el programa entero se mueve en 130."""
-        benchmark._bloque_grande()
-        self.assertIsNotNone(benchmark._grande)
-        benchmark._soltar_el_bloque()
-        self.assertIsNone(benchmark._grande)
+        benchmark._big_block()
+        self.assertIsNotNone(benchmark._big)
+        benchmark._release_block()
+        self.assertIsNone(benchmark._big)
 
 
 class TestDuracion(unittest.TestCase):
@@ -268,48 +268,48 @@ class TestDuracion(unittest.TestCase):
         # ejecutarlas…
         from unittest import mock
         vistas = []
-        with mock.patch.object(benchmark, "_medir",
+        with mock.patch.object(benchmark, "_measure",
                                side_effect=lambda c, h, d: vistas.append((c.key, d)) or
-                               benchmark.Medida(c.key, h, 1, d)):
-            benchmark.run(seconds=benchmark.MINIMO_SEGUNDOS)
-        self.assertEqual({c for c, _d in vistas}, {c.key for c in benchmark.CARGAS})
-        self.assertEqual({d for _c, d in vistas}, {benchmark.MINIMO_SEGUNDOS})
+                               benchmark.Measure(c.key, h, 1, d)):
+            benchmark.run(seconds=benchmark.MIN_SECONDS)
+        self.assertEqual({c for c, _d in vistas}, {c.key for c in benchmark.WORKLOADS})
+        self.assertEqual({d for _c, d in vistas}, {benchmark.MIN_SECONDS})
 
     def test_y_la_medida_dura_lo_que_se_pidio(self):
         # …y que una medida de verdad lo respeta: una carga, un hilo y todos.
-        resultado = benchmark.run(seconds=benchmark.MINIMO_SEGUNDOS, loads=("hash",))
+        resultado = benchmark.run(seconds=benchmark.MIN_SECONDS, loads=("hash",))
         self.assertEqual(len(resultado.measures), 2)
         for medida in resultado.measures:
-            self.assertGreaterEqual(medida.seconds, benchmark.MINIMO_SEGUNDOS * 0.9)
-            self.assertLess(medida.seconds, benchmark.MINIMO_SEGUNDOS * 3)
+            self.assertGreaterEqual(medida.seconds, benchmark.MIN_SECONDS * 0.9)
+            self.assertLess(medida.seconds, benchmark.MIN_SECONDS * 3)
 
     def test_no_se_acepta_una_barbaridad(self):
         from unittest import mock
         vistas = []
-        with mock.patch.object(benchmark, "_medir",
+        with mock.patch.object(benchmark, "_measure",
                                side_effect=lambda c, h, d: vistas.append(d) or
-                               benchmark.Medida(c.key, h, 1, d)):
+                               benchmark.Measure(c.key, h, 1, d)):
             benchmark.run(seconds=9999.0)
-        self.assertTrue(all(d <= benchmark.MAXIMO_SEGUNDOS for d in vistas))
+        self.assertTrue(all(d <= benchmark.MAX_SECONDS for d in vistas))
         vistas.clear()
-        with mock.patch.object(benchmark, "_medir",
+        with mock.patch.object(benchmark, "_measure",
                                side_effect=lambda c, h, d: vistas.append(d) or
-                               benchmark.Medida(c.key, h, 1, d)):
+                               benchmark.Measure(c.key, h, 1, d)):
             benchmark.run(seconds=0.001)
-        self.assertTrue(all(d >= benchmark.MINIMO_SEGUNDOS for d in vistas))
+        self.assertTrue(all(d >= benchmark.MIN_SECONDS for d in vistas))
 
     def test_se_puede_pedir_que_cargas_se_miden(self):
         from unittest import mock
         vistas = []
-        with mock.patch.object(benchmark, "_medir",
+        with mock.patch.object(benchmark, "_measure",
                                side_effect=lambda c, h, d: vistas.append(c.key) or
-                               benchmark.Medida(c.key, h, 1, d)):
+                               benchmark.Measure(c.key, h, 1, d)):
             benchmark.run(quick=True, loads=("hash", "compresion"))
             # En el orden de la prueba, no en el que se pidan.
             self.assertEqual(vistas, ["compresion", "compresion", "hash", "hash"])
             vistas.clear()
             benchmark.run(quick=True)
-        self.assertEqual(len(vistas), len(benchmark.CARGAS) * 2)
+        self.assertEqual(len(vistas), len(benchmark.WORKLOADS) * 2)
 
     def test_una_carga_que_no_existe_no_se_calla(self):
         with self.assertRaises(ValueError):
@@ -318,18 +318,18 @@ class TestDuracion(unittest.TestCase):
     def test_sin_pedir_nada_manda_el_modo(self):
         from unittest import mock
         vistas = []
-        with mock.patch.object(benchmark, "_medir",
+        with mock.patch.object(benchmark, "_measure",
                                side_effect=lambda c, h, d: vistas.append(d) or
-                               benchmark.Medida(c.key, h, 1, d)):
+                               benchmark.Measure(c.key, h, 1, d)):
             benchmark.run(quick=True)
-        self.assertEqual(set(vistas), {benchmark.SEGUNDOS_RAPIDO})
+        self.assertEqual(set(vistas), {benchmark.QUICK_SECONDS})
 
 
 class TestCargasNuevas(unittest.TestCase):
     """Las cinco cargas, y por qué son cinco y no siete."""
 
     def test_estan_las_cinco(self):
-        claves = [c.key for c in benchmark.CARGAS]
+        claves = [c.key for c in benchmark.WORKLOADS]
         self.assertEqual(claves, ["compresion", "hash", "compresion_dura",
                                   "derivacion", "verificacion"])
 
@@ -398,7 +398,7 @@ class TestCargasNuevas(unittest.TestCase):
         hilos = self._hilos()
         if hilos < 4:
             self.skipTest("hacen falta varios núcleos para ver el reparto")
-        for carga in benchmark.CARGAS:
+        for carga in benchmark.WORKLOADS:
             with self.subTest(carga=carga.key):
                 paralelo = self._paralelismo(carga.work, hilos)
                 self.assertGreater(paralelo, 1.8,
@@ -418,7 +418,7 @@ class TestCargasNuevas(unittest.TestCase):
         self.assertLess(self._paralelismo(puro, hilos), 1.3)
 
     def test_cada_una_explica_qué_mide(self):
-        for carga in benchmark.CARGAS:
+        for carga in benchmark.WORKLOADS:
             self.assertTrue(carga.explanation.strip(), carga.key)
             self.assertGreater(len(carga.explanation), 40, carga.key)
 
@@ -426,16 +426,16 @@ class TestCargasNuevas(unittest.TestCase):
 class TestDuracionLarga(unittest.TestCase):
     def test_se_puede_pedir_media_hora_por_medida(self):
         """Para dejar el equipo cociéndose y ver si aguanta."""
-        self.assertGreaterEqual(benchmark.MAXIMO_SEGUNDOS, 1800.0)
+        self.assertGreaterEqual(benchmark.MAX_SECONDS, 1800.0)
 
     def test_pero_no_más(self):
         from unittest import mock
         vistas = []
-        with mock.patch.object(benchmark, "_medir",
+        with mock.patch.object(benchmark, "_measure",
                                side_effect=lambda c, h, d: vistas.append(d) or
-                               benchmark.Medida(c.key, h, 1, d)):
+                               benchmark.Measure(c.key, h, 1, d)):
             benchmark.run(seconds=99_999.0)
-        self.assertTrue(all(d <= benchmark.MAXIMO_SEGUNDOS for d in vistas))
+        self.assertTrue(all(d <= benchmark.MAX_SECONDS for d in vistas))
 
 
 class TestCancelar(unittest.TestCase):
@@ -458,15 +458,15 @@ class TestCancelar(unittest.TestCase):
 
         resultado = benchmark.run(seconds=1.0, stop=parar, on_progress=contar)
         self.assertGreaterEqual(len(resultado.measures), 1)
-        self.assertLess(len(resultado.measures), len(benchmark.CARGAS) * 2)
+        self.assertLess(len(resultado.measures), len(benchmark.WORKLOADS) * 2)
 
     def test_el_bloque_grande_se_suelta_aunque_se_cancele(self):
         """Si no, quedarían 192 MB colgados por haber pulsado Cancelar."""
         parar = threading.Event()
         parar.set()
-        benchmark._bloque_grande()
+        benchmark._big_block()
         benchmark.run(seconds=1.0, stop=parar)
-        self.assertIsNone(benchmark._grande)
+        self.assertIsNone(benchmark._big)
 
 
 class TestDuracionTotal(unittest.TestCase):
@@ -496,7 +496,7 @@ class TestDuracionTotal(unittest.TestCase):
         self.assertIn("min", pagina.duracion_total.text())
 
     def test_diez_porque_son_cinco_cargas_en_uno_y_en_todos(self):
-        self.assertEqual(len(benchmark.CARGAS) * 2, 10)
+        self.assertEqual(len(benchmark.WORKLOADS) * 2, 10)
 
 
 class TestLoQueNoPuntuaSeVeQueNoPuntua(unittest.TestCase):
@@ -520,10 +520,10 @@ class TestLoQueNoPuntuaSeVeQueNoPuntua(unittest.TestCase):
 
     def _resultado(self, hilos=8):
         medidas = tuple(
-            benchmark.Medida(load=c.key, threads=n, operations=100 * n,
+            benchmark.Measure(load=c.key, threads=n, operations=100 * n,
                              seconds=15.0,
-                             bytes_=c.bytes_por_op() if c.bytes_por_op else None)
-            for c in benchmark.CARGAS for n in (1, hilos))
+                             bytes_=c.bytes_per_op() if c.bytes_per_op else None)
+            for c in benchmark.WORKLOADS for n in (1, hilos))
         return benchmark.Result(measures=medidas)
 
     def _nombres(self, pagina):
@@ -534,7 +534,7 @@ class TestLoQueNoPuntuaSeVeQueNoPuntua(unittest.TestCase):
     def test_la_marca_está_en_las_que_no_puntúan_y_solo_en_ellas(self):
         pagina = self._pagina()
         pagina._show(self._resultado())
-        for carga, nombre in zip(benchmark.CARGAS, self._nombres(pagina)):
+        for carga, nombre in zip(benchmark.WORKLOADS, self._nombres(pagina)):
             with self.subTest(carga=carga.key):
                 self.assertEqual(nombre.endswith("*"),
                                  not score.is_scored(carga.key))
@@ -549,7 +549,7 @@ class TestLoQueNoPuntuaSeVeQueNoPuntua(unittest.TestCase):
         import unittest.mock as mock
 
         pagina = self._pagina()
-        todas = tuple(c.key for c in benchmark.CARGAS)
+        todas = tuple(c.key for c in benchmark.WORKLOADS)
         with mock.patch.object(score, "SCORED_WORKLOADS", todas):
             pagina._show(self._resultado())
             self.assertTrue(pagina.results_note.isHidden())
@@ -637,11 +637,11 @@ class TestElRodajeNoDependeDeLoRapidoQueSeaElEquipo(unittest.TestCase):
     """
 
     def test_se_cuentan_vueltas(self):
-        self.assertGreaterEqual(benchmark.VUELTAS_EN_VACIO, 80)
+        self.assertGreaterEqual(benchmark.IDLE_ROUNDS, 80)
 
     def test_pero_con_un_tope_para_no_colgar_la_prueba(self):
         """Más vale medir con el arranque a medio pagar que no terminar."""
-        self.assertLessEqual(benchmark.TOPE_EN_VACIO_S, 5.0)
+        self.assertLessEqual(benchmark.IDLE_CAP_S, 5.0)
 
     def test_una_carga_lentisima_no_alarga_la_prueba(self):
         import time
@@ -652,9 +652,9 @@ class TestElRodajeNoDependeDeLoRapidoQueSeaElEquipo(unittest.TestCase):
                 time.sleep(0.05)
 
         inicio = time.perf_counter()
-        benchmark._rodar_en_vacio(Lenta(), 1)
+        benchmark._warm_up(Lenta(), 1)
         self.assertLess(time.perf_counter() - inicio,
-                        benchmark.TOPE_EN_VACIO_S + 1.0)
+                        benchmark.IDLE_CAP_S + 1.0)
 
 
 class TestLaCargaAjenaDuranteLaPrueba(unittest.TestCase):
@@ -669,57 +669,57 @@ class TestLaCargaAjenaDuranteLaPrueba(unittest.TestCase):
 
     def test_se_mide_la_resta_y_no_lo_ocupado(self):
         """La prueba ocupa el equipo entero: a secas, todo daría el 100 %."""
-        vigilante = benchmark._Vigilante()
+        vigilante = benchmark._Watcher()
         # Dos lecturas seguidas donde todo lo ocupado es de este proceso.
         with mock.patch.object(benchmark, "_jiffies",
                                side_effect=[(1000, 0, 0), (2000, 0, 1000)]):
-            vigilante._cpu_antes = benchmark._jiffies()
-            self.assertEqual(vigilante._cuanto_roban(), 0.0)
+            vigilante._cpu_before = benchmark._jiffies()
+            self.assertEqual(vigilante._stolen_now(), 0.0)
 
     def test_lo_que_consume_otro_sí_cuenta(self):
-        vigilante = benchmark._Vigilante()
+        vigilante = benchmark._Watcher()
         # De mil jiffies, ninguno inactivo y solo la mitad nuestros.
         with mock.patch.object(benchmark, "_jiffies",
                                side_effect=[(1000, 0, 0), (2000, 0, 500)]):
-            vigilante._cpu_antes = benchmark._jiffies()
-            self.assertAlmostEqual(vigilante._cuanto_roban(), 50.0)
+            vigilante._cpu_before = benchmark._jiffies()
+            self.assertAlmostEqual(vigilante._stolen_now(), 50.0)
 
     def test_lo_inactivo_no_es_de_nadie(self):
-        vigilante = benchmark._Vigilante()
+        vigilante = benchmark._Watcher()
         with mock.patch.object(benchmark, "_jiffies",
                                side_effect=[(1000, 0, 0), (2000, 1000, 0)]):
-            vigilante._cpu_antes = benchmark._jiffies()
-            self.assertEqual(vigilante._cuanto_roban(), 0.0)
+            vigilante._cpu_before = benchmark._jiffies()
+            self.assertEqual(vigilante._stolen_now(), 0.0)
 
     def test_una_resta_negativa_es_cero_y_no_un_error(self):
         """Los dos ficheros no se leen en el mismo instante."""
-        vigilante = benchmark._Vigilante()
+        vigilante = benchmark._Watcher()
         with mock.patch.object(benchmark, "_jiffies",
                                side_effect=[(1000, 0, 0), (2000, 0, 1200)]):
-            vigilante._cpu_antes = benchmark._jiffies()
-            self.assertEqual(vigilante._cuanto_roban(), 0.0)
+            vigilante._cpu_before = benchmark._jiffies()
+            self.assertEqual(vigilante._stolen_now(), 0.0)
 
     def test_sin_poder_leer_no_se_inventa_una_cifra(self):
-        vigilante = benchmark._Vigilante()
+        vigilante = benchmark._Watcher()
         with mock.patch.object(benchmark, "_jiffies", return_value=None):
-            self.assertIsNone(vigilante._cuanto_roban())
+            self.assertIsNone(vigilante._stolen_now())
 
     def test_el_pico_manda_sobre_la_media(self):
         """Algo que se despierta a mitad se diluye si se promedia."""
-        vigilante = benchmark._Vigilante()
-        vigilante._ajeno = [0.1, 0.2, 45.0, 0.3]
-        self.assertEqual(vigilante.ajeno_pico(), 45.0)
+        vigilante = benchmark._Watcher()
+        vigilante._stolen = [0.1, 0.2, 45.0, 0.3]
+        self.assertEqual(vigilante.stolen_peak(), 45.0)
 
     def test_sin_muestras_no_hay_pico(self):
-        self.assertIsNone(benchmark._Vigilante().ajeno_pico())
+        self.assertIsNone(benchmark._Watcher().stolen_peak())
 
     def test_se_avisa_de_lo_que_pasó_durante_y_no_solo_de_lo_de_antes(self):
-        avisos = benchmark._avisos(benchmark.Conditions(
+        avisos = benchmark._warnings(benchmark.Conditions(
             governor="performance", background_load=0.5, background_peak=40.0))
         self.assertTrue(any("mientras se medía" in a for a in avisos),
                         f"no se avisa del pico: {avisos}")
 
     def test_un_pico_pequeño_no_es_para_avisar(self):
-        avisos = benchmark._avisos(benchmark.Conditions(
+        avisos = benchmark._warnings(benchmark.Conditions(
             governor="performance", background_peak=2.0))
         self.assertEqual(avisos, ())

@@ -20,9 +20,9 @@ from . import __version__, build_id, privacidad, render
 from .i18n import in_spanish
 from .model import Need, Snapshot
 
-OCULTO = "«omitido»"
+HIDDEN = "«omitido»"
 
-MOTIVOS = {
+NEED_REASONS = {
     Need.ROOT: "requiere permisos de administrador",
     Need.DATABASE: "esta versión no lo conoce todavía",
     Need.HARDWARE: "este equipo no lo expone",
@@ -45,177 +45,177 @@ def build(snapshot: Snapshot, anonymous: bool = True) -> str:
     valor de mentira.
     """
     if anonymous:
-        snapshot = privacidad.anonimizar(snapshot)
-    partes = [
-        _cabecera(snapshot, anonymous),
-        _procesador(snapshot),
-        _memoria(snapshot),
-        _placa(snapshot, anonymous),
-        _graficas(snapshot, anonymous),
-        _almacenamiento(snapshot),
-        _bateria(snapshot),
-        _red(snapshot, anonymous),
-        _sensores(snapshot),
-        _rendimiento(),
-        _diagnostico(snapshot),
+        snapshot = privacidad.anonymize(snapshot)
+    parts = [
+        _header(snapshot, anonymous),
+        _processor(snapshot),
+        _memory(snapshot),
+        _board(snapshot, anonymous),
+        _graphics(snapshot, anonymous),
+        _storage(snapshot),
+        _battery(snapshot),
+        _network(snapshot, anonymous),
+        _sensors(snapshot),
+        _benchmark(),
+        _diagnosis(snapshot),
     ]
-    return "\n".join(parte for parte in partes if parte).strip() + "\n"
+    return "\n".join(part for part in parts if part).strip() + "\n"
 
 
 # -- secciones ---------------------------------------------------------------
 
-def _cabecera(snapshot: Snapshot, anonymous: bool) -> str:
-    sistema = snapshot.system
-    qt = _version_de_qt()
+def _header(snapshot: Snapshot, anonymous: bool) -> str:
+    system = snapshot.system
+    qt = _qt_version()
     # A list and not a table: a key-value table has no header to give it,
     # and an empty one was the first thing the report showed.
-    lineas = [
+    lines = [
         f"# Informe de Silux {render.version(__version__, in_spanish)}"
         + (f" ({build_id()})" if build_id() else ""),
         "",
-        f"- **Distribución:** {sistema.distribution or '?'} {sistema.version_id or ''}".rstrip(),
-        f"- **Kernel:** {sistema.kernel or '?'}",
+        f"- **Distribución:** {system.distribution or '?'} {system.version_id or ''}".rstrip(),
+        f"- **Kernel:** {system.kernel or '?'}",
         # Con qué se compiló el kernel: CachyOS usa clang y la mayoría gcc, y
         # eso cambia a qué se parece un equipo cuando algo va raro.
-        f"- **Compilado:** {sistema.kernel_build or '?'}",
-        f"- **Arquitectura:** {sistema.architecture or '?'}",
-        f"- **Escritorio:** {sistema.desktop or '?'} · {sistema.session_type or '?'}",
-        f"- **Init:** {sistema.init or '?'}",
+        f"- **Compilado:** {system.kernel_build or '?'}",
+        f"- **Arquitectura:** {system.architecture or '?'}",
+        f"- **Escritorio:** {system.desktop or '?'} · {system.session_type or '?'}",
+        f"- **Init:** {system.init or '?'}",
         f"- **Python:** {platform.python_version()}",
         f"- **Qt (PySide6):** {qt or 'no instalado'}",
         f"- **Fuentes activas:** {', '.join(sorted(snapshot.capabilities)) or 'ninguna'}",
-        f"- **Ejecutado desde:** {_procedencia()}",
+        f"- **Ejecutado desde:** {_provenance()}",
     ]
     # Va en la cabecera y no en el apartado del procesador porque no habla del
     # procesador: cambia cómo se lee el archivo entero. Sin esta fila, un
     # informe de una VM de VMware describe una placa 440BX y un i5-10500T de
     # dos núcleos y dos sockets sin que nada avise de que no hay tal equipo.
-    if virt := _hipervisor(snapshot):
-        lineas.append(f"- **Máquina virtual:** {virt}")
-    if not anonymous and sistema.hostname:
-        lineas.append(f"- **Equipo:** {sistema.hostname}")
-    return "\n".join(lineas)
+    if virt := _hypervisor(snapshot):
+        lines.append(f"- **Máquina virtual:** {virt}")
+    if not anonymous and system.hostname:
+        lines.append(f"- **Equipo:** {system.hostname}")
+    return "\n".join(lines)
 
 
-def _hipervisor(snapshot: Snapshot) -> str:
+def _hypervisor(snapshot: Snapshot) -> str:
     """Quién está debajo, para la cabecera. Vacío si esto es hierro."""
-    for tipo in snapshot.cpu.types:
-        if tipo.in_virtual_machine:
-            return tipo.hypervisor or "sí, hipervisor sin identificar"
+    for cpu_type in snapshot.cpu.types:
+        if cpu_type.in_virtual_machine:
+            return cpu_type.hypervisor or "sí, hipervisor sin identificar"
     return ""
 
 
-def _procesador(snapshot: Snapshot) -> str:
+def _processor(snapshot: Snapshot) -> str:
     cpu = snapshot.cpu
     if not cpu.types:
         return ""
-    lineas = ["", "## Procesador", ""]
+    lines = ["", "## Procesador", ""]
     # En un híbrido, cada tipo de núcleo es un bloque con la misma marca
     # repetida, y así el informe de un i9-13980HX salía con dos apartados de
     # «8 / 16» y «16 / 16» sin decir cuál era cuál ni cuántos hay en total. Los
     # 24 núcleos y 32 hilos de esa pieza no aparecían en ninguna parte del
     # archivo que se pide justamente para saber qué lleva dentro un equipo.
     if cpu.hybrid:
-        lineas += [
+        lines += [
             f"**{cpu.types[0].brand or '?'}** — "
             f"{cpu.total_cores} núcleos · {cpu.total_threads} hilos",
             "",
         ]
-    for tipo in cpu.types:
-        relojes = tipo.clocks
-        lineas += [
-            f"**{render.core_type_label(tipo, cpu.hybrid, in_spanish)}**"
-            if cpu.hybrid else f"**{tipo.brand or '?'}**",
+    for cpu_type in cpu.types:
+        clocks = cpu_type.clocks
+        lines += [
+            f"**{render.core_type_label(cpu_type, cpu.hybrid, in_spanish)}**"
+            if cpu.hybrid else f"**{cpu_type.brand or '?'}**",
             "",
-            f"- Nombre en clave: {render.from_cpu_table(tipo.codename, in_spanish)}"
-            f" · {render.from_cpu_table(tipo.technology, in_spanish)}",
-            f"- Encapsulado: {render.from_cpu_table(tipo.socket, in_spanish)}",
-            f"- Núcleos / hilos: {tipo.cores} / {tipo.threads}",
-            f"- Familia {render.dec(tipo.disp_family)} · "
-            f"modelo {render.dec(tipo.disp_model)} · "
-            f"stepping {render.dec(tipo.stepping)} · "
-            f"firma {render.signature(tipo.signature)}",
-            f"- Microcódigo: {tipo.microcode or '—'}",
-            f"- Relojes: base {render.hz(relojes.base_hz)} · "
-            f"máx kernel {render.hz(relojes.max_hz)} · "
-            f"máx silicio {render.hz(relojes.max_turbo_hz)} · "
-            f"bus {render.hz(relojes.bus_hz, 0)}",
-            f"- Driver: {relojes.driver or '—'} · {relojes.governor or '—'}",
-            f"- Cachés: {_caches(tipo)}",
+            f"- Nombre en clave: {render.from_cpu_table(cpu_type.codename, in_spanish)}"
+            f" · {render.from_cpu_table(cpu_type.technology, in_spanish)}",
+            f"- Encapsulado: {render.from_cpu_table(cpu_type.socket, in_spanish)}",
+            f"- Núcleos / hilos: {cpu_type.cores} / {cpu_type.threads}",
+            f"- Familia {render.dec(cpu_type.disp_family)} · "
+            f"modelo {render.dec(cpu_type.disp_model)} · "
+            f"stepping {render.dec(cpu_type.stepping)} · "
+            f"firma {render.signature(cpu_type.signature)}",
+            f"- Microcódigo: {cpu_type.microcode or '—'}",
+            f"- Relojes: base {render.hz(clocks.base_hz)} · "
+            f"máx kernel {render.hz(clocks.max_hz)} · "
+            f"máx silicio {render.hz(clocks.max_turbo_hz)} · "
+            f"bus {render.hz(clocks.bus_hz, 0)}",
+            f"- Driver: {clocks.driver or '—'} · {clocks.governor or '—'}",
+            f"- Cachés: {_caches(cpu_type)}",
             "",
         ]
-    return "\n".join(lineas)
+    return "\n".join(lines)
 
 
-def _caches(tipo) -> str:
-    if not tipo.caches:
+def _caches(cpu_type) -> str:
+    if not cpu_type.caches:
         return "—"
     return " · ".join(
         f"{render.cache_label(cache)} {render.size(cache.size_bytes)}"
         + (f" ×{cache.instances}" if cache.instances > 1 else "")
-        for cache in tipo.caches
+        for cache in cpu_type.caches
     )
 
 
-def _memoria(snapshot: Snapshot) -> str:
-    memoria = snapshot.system.memory
-    lineas = ["", "## Memoria", "",
-              f"- Total: {render.size(memoria.total_bytes)}"]
+def _memory(snapshot: Snapshot) -> str:
+    memory = snapshot.system.memory
+    lines = ["", "## Memoria", "",
+              f"- Total: {render.size(memory.total_bytes)}"]
 
     # El tráfico del controlador es de un instante y hay que decirlo: el
     # informe se escribe con la máquina haciendo cualquier cosa, así que un
     # número alto aquí no dice nada malo y uno bajo tampoco dice nada bueno.
-    if (trafico := snapshot.memory_traffic) is not None:
-        partes = [f"lectura {render.rate(trafico.read_bytes_s)}",
-                  f"escritura {render.rate(trafico.write_bytes_s)}"]
-        if trafico.cpu_bytes_s is not None:
-            partes.append(f"del procesador {render.rate(trafico.cpu_bytes_s)}")
-        lineas.append("- Tráfico del controlador en este instante: "
-                      + " · ".join(partes))
+    if (traffic := snapshot.memory_traffic) is not None:
+        parts = [f"lectura {render.rate(traffic.read_bytes_s)}",
+                  f"escritura {render.rate(traffic.write_bytes_s)}"]
+        if traffic.cpu_bytes_s is not None:
+            parts.append(f"del procesador {render.rate(traffic.cpu_bytes_s)}")
+        lines.append("- Tráfico del controlador en este instante: "
+                      + " · ".join(parts))
     if (array := snapshot.memory_array) is not None:
-        detalle = [f"{array.slots} ranuras" if array.slots else ""]
+        detail = [f"{array.slots} ranuras" if array.slots else ""]
         if array.max_capacity_bytes:
-            detalle.append(f"hasta {render.size(array.max_capacity_bytes)}")
-        if correccion := render.memory_error_correction(array.error_correction, in_spanish):
-            detalle.append(correccion)
-        if any(detalle):
-            lineas.append("- Placa: " + " · ".join(d for d in detalle if d))
+            detail.append(f"hasta {render.size(array.max_capacity_bytes)}")
+        if ecc := render.memory_error_correction(array.error_correction, in_spanish):
+            detail.append(ecc)
+        if any(detail):
+            lines.append("- Placa: " + " · ".join(d for d in detail if d))
 
     if snapshot.modules:
-        for modulo in snapshot.modules:
-            lineas.append(
-                f"- {modulo.locator or '?'}: {render.size(modulo.size_bytes)} "
-                f"{render.memory_type(modulo.type, in_spanish) or ''} {modulo.speed_mts or ''} MT/s "
-                f"{modulo.manufacturer or ''} {modulo.part_number or ''}".rstrip()
+        for module in snapshot.modules:
+            lines.append(
+                f"- {module.locator or '?'}: {render.size(module.size_bytes)} "
+                f"{render.memory_type(module.type, in_spanish) or ''} {module.speed_mts or ''} MT/s "
+                f"{module.manufacturer or ''} {module.part_number or ''}".rstrip()
             )
     else:
-        lineas.append("- Detalle por módulo: no leído (requiere permisos)")
+        lines.append("- Detalle por módulo: no leído (requiere permisos)")
 
     # El SPD es otra fuente que el DMI y dice cosas que aquel no: quién fabricó
     # los chips además del módulo, los perfiles XMP y la semana de fabricación.
     # Sale aparte porque cuando los dos están, no se contradicen sino que se
     # completan, y cuál falta es en sí un dato para diagnosticar.
     for spd in snapshot.spd:
-        partes = [f"- SPD {render.dec(spd.slot) if spd.slot is not None else '?'}:"]
-        partes.append(spd.dram_type or spd.module_type or "?")
+        parts = [f"- SPD {render.dec(spd.slot) if spd.slot is not None else '?'}:"]
+        parts.append(spd.dram_type or spd.module_type or "?")
         if spd.capacity_bytes:
-            partes.append(render.size(spd.capacity_bytes))
-        for texto in (render.maker(spd.manufacturer), spd.part_number):
-            if texto:
-                partes.append(texto)
+            parts.append(render.size(spd.capacity_bytes))
+        for text in (render.maker(spd.manufacturer), spd.part_number):
+            if text:
+                parts.append(text)
         if spd.dram_manufacturer and spd.dram_manufacturer != spd.manufacturer:
-            partes.append(f"chips {render.maker(spd.dram_manufacturer)}")
-        if fecha := render.made(spd.manufactured_year, spd.manufactured_week, in_spanish):
-            partes.append(f"fabricado {fecha}")
+            parts.append(f"chips {render.maker(spd.dram_manufacturer)}")
+        if date := render.made(spd.manufactured_year, spd.manufactured_week, in_spanish):
+            parts.append(f"fabricado {date}")
         if spd.ranks:
-            partes.append(f"{spd.ranks} rangos")
+            parts.append(f"{spd.ranks} rangos")
         if spd.overclock_profiles:
-            partes.append(f"{len(spd.overclock_profiles)} perfiles XMP/EXPO")
-        lineas.append(" ".join(partes))
-    return "\n".join(lineas)
+            parts.append(f"{len(spd.overclock_profiles)} perfiles XMP/EXPO")
+        lines.append(" ".join(parts))
+    return "\n".join(lines)
 
 
-def _placa(snapshot: Snapshot, anonymous: bool) -> str:
+def _board(snapshot: Snapshot, anonymous: bool) -> str:
     board = snapshot.board
     return "\n".join([
         "", "## Placa base", "",
@@ -248,12 +248,12 @@ def _chipset(board) -> str:
     return board.chipset or board.chipset_full or "—"
 
 
-def _graficas(snapshot: Snapshot, anonymous: bool) -> str:
+def _graphics(snapshot: Snapshot, anonymous: bool) -> str:
     if not snapshot.gpus:
         return "\n## Gráficos\n\nNo se detectó ninguna tarjeta.\n"
-    lineas = ["", "## Gráficos", ""]
+    lines = ["", "## Gráficos", ""]
     for gpu in snapshot.gpus:
-        lineas += [
+        lines += [
             f"**{render.gpu_name(gpu)}**",
             "",
             f"- Fabricante: {gpu.vendor or '—'} · tarjeta de "
@@ -267,9 +267,9 @@ def _graficas(snapshot: Snapshot, anonymous: bool) -> str:
         # adivinar: leerla con las posiciones de otra versión no da error, da
         # cifras creíbles y equivocadas.
         if gpu.metrics_version:
-            lineas.append(
+            lines.append(
                 f"- Telemetría sin interpretar: gpu_metrics v{gpu.metrics_version}")
-        lineas += [
+        lines += [
             f"- BIOS de video: {gpu.vbios or '—'}",
             f"- Memoria: {render.size(gpu.memory.total_bytes)} "
             f"{render.vram_kind(gpu.memory)} · {render.vram_bus(gpu.memory)} · "
@@ -279,17 +279,17 @@ def _graficas(snapshot: Snapshot, anonymous: bool) -> str:
             f"- APIs: {', '.join(f'{a.name} {a.version}' for a in gpu.apis) or '—'}",
         ]
         if not anonymous and render.unique_id(gpu.unique_id):
-            lineas.append(f"- Identificador único: {render.unique_id(gpu.unique_id)}")
-        for salida in gpu.connected_displays:
-            monitor = salida.monitor
-            detalle = (f"{render.monitor_name(monitor)} · {render.display_mode(salida)}"
-                       if monitor else render.display_summary(salida))
-            lineas.append(f"- {salida.connector}: {detalle}")
-        lineas.append("")
-    return "\n".join(lineas)
+            lines.append(f"- Identificador único: {render.unique_id(gpu.unique_id)}")
+        for display in gpu.connected_displays:
+            monitor = display.monitor
+            detail = (f"{render.monitor_name(monitor)} · {render.display_mode(display)}"
+                       if monitor else render.display_summary(display))
+            lines.append(f"- {display.connector}: {detail}")
+        lines.append("")
+    return "\n".join(lines)
 
 
-def _almacenamiento(snapshot: Snapshot) -> str:
+def _storage(snapshot: Snapshot) -> str:
     """Los discos, que es de lo que más se equivoca el programa.
 
     Faltaba entera, y era la única de las once páginas que no salía por aquí.
@@ -305,98 +305,98 @@ def _almacenamiento(snapshot: Snapshot) -> str:
     if not snapshot.disks:
         return "\n## Almacenamiento\n\nNo se detectó ningún disco.\n"
 
-    lineas = ["", "## Almacenamiento", ""]
-    for disco in snapshot.disks:
-        titulo = _titulo_del_disco(disco)
-        lineas.append(f"**{titulo}**")
-        lineas.append("")
+    lines = ["", "## Almacenamiento", ""]
+    for disk in snapshot.disks:
+        title = _disk_title(disk)
+        lines.append(f"**{title}**")
+        lines.append("")
         # El bus solo cuando añade algo: en un NVMe es lo mismo que el tipo.
-        bus = render.disk_bus(disco.transport) if disco.transport else None
-        tipo = " · ".join(p for p in (disco.kind, bus if bus != disco.kind else None)
+        bus = render.disk_bus(disk.transport) if disk.transport else None
+        kind = " · ".join(p for p in (disk.kind, bus if bus != disk.kind else None)
                           if p) or "—"
-        lineas.append(f"- Tipo: {tipo} · {render.size(disco.size_bytes)}")
-        if disco.firmware:
-            lineas.append(f"- Firmware: {disco.firmware}")
+        lines.append(f"- Tipo: {kind} · {render.size(disk.size_bytes)}")
+        if disk.firmware:
+            lines.append(f"- Firmware: {disk.firmware}")
         # El enlace solo lo tienen los NVMe: en SATA quien negocia es la
         # controladora y la comparte con los demás discos del cable.
-        if disco.link:
-            lineas.append(f"- Enlace: {render.pcie_link(disco.link)}")
-        sectores = [f"lógico {disco.logical_sector}" if disco.logical_sector else "",
-                    f"físico {disco.physical_sector}" if disco.physical_sector else ""]
-        if any(sectores):
-            lineas.append("- Sectores: "
-                          + " · ".join(s for s in sectores if s) + " bytes")
-        if disco.scheduler:
-            lineas.append(f"- Planificador: {disco.scheduler}")
-        if disco.temp_c is not None:
-            lineas.append(f"- Temperatura: {render.temperature(disco.temp_c)}")
-        if (salud := disco.health) is not None:
-            lineas += _salud_del_disco(salud)
-        if disco.partitions:
-            lineas.append(f"- Particiones: {_particiones(disco)}")
-        lineas.append("")
-    return "\n".join(lineas)
+        if disk.link:
+            lines.append(f"- Enlace: {render.pcie_link(disk.link)}")
+        sectors = [f"lógico {disk.logical_sector}" if disk.logical_sector else "",
+                    f"físico {disk.physical_sector}" if disk.physical_sector else ""]
+        if any(sectors):
+            lines.append("- Sectores: "
+                          + " · ".join(s for s in sectors if s) + " bytes")
+        if disk.scheduler:
+            lines.append(f"- Planificador: {disk.scheduler}")
+        if disk.temp_c is not None:
+            lines.append(f"- Temperatura: {render.temperature(disk.temp_c)}")
+        if (health := disk.health) is not None:
+            lines += _disk_health(health)
+        if disk.partitions:
+            lines.append(f"- Particiones: {_partitions(disk)}")
+        lines.append("")
+    return "\n".join(lines)
 
 
-def _titulo_del_disco(disco) -> str:
+def _disk_title(disk) -> str:
     """Fabricante y modelo sin decir dos veces lo mismo.
 
     El fabricante se saca del propio modelo, porque sysfs dice «ATA» en SATA y
     nada en NVMe. Así que en cuanto el modelo ya empieza por él, juntarlos da
     «Samsung Samsung SSD 970 EVO Plus».
     """
-    modelo = (disco.model or "").strip()
-    marca = (disco.vendor or "").strip()
-    if not modelo:
-        return marca or disco.name
-    if marca and not modelo.lower().startswith(marca.lower()):
-        return f"{marca} {modelo}"
-    return modelo
+    model = (disk.model or "").strip()
+    brand = (disk.vendor or "").strip()
+    if not model:
+        return brand or disk.name
+    if brand and not model.lower().startswith(brand.lower()):
+        return f"{brand} {model}"
+    return model
 
 
-def _salud_del_disco(salud) -> list[str]:
+def _disk_health(health) -> list[str]:
     """Los contadores que dicen cuánta vida le queda a la unidad."""
-    lineas = []
-    gastado = []
-    if salud.percentage_used is not None:
-        gastado.append(f"{salud.percentage_used:.0f} % de vida consumida")
-    if salud.spare_percent is not None:
-        gastado.append(f"{salud.spare_percent:.0f} % de reserva")
-    if gastado:
-        lineas.append("- Desgaste: " + " · ".join(gastado))
+    lines = []
+    used = []
+    if health.percentage_used is not None:
+        used.append(f"{health.percentage_used:.0f} % de vida consumida")
+    if health.spare_percent is not None:
+        used.append(f"{health.spare_percent:.0f} % de reserva")
+    if used:
+        lines.append("- Desgaste: " + " · ".join(used))
 
-    uso = []
-    if salud.power_on_hours is not None:
-        uso.append(f"{salud.power_on_hours} h encendido")
-    if salud.power_cycles is not None:
-        uso.append(f"{salud.power_cycles} arranques")
-    if uso:
-        lineas.append("- Uso: " + " · ".join(uso))
+    usage = []
+    if health.power_on_hours is not None:
+        usage.append(f"{health.power_on_hours} h encendido")
+    if health.power_cycles is not None:
+        usage.append(f"{health.power_cycles} arranques")
+    if usage:
+        lines.append("- Uso: " + " · ".join(usage))
 
-    trafico = []
-    if salud.written_bytes is not None:
-        trafico.append(f"{render.size(salud.written_bytes)} escritos")
-    if salud.read_bytes is not None:
-        trafico.append(f"{render.size(salud.read_bytes)} leídos")
-    if trafico:
-        lineas.append("- Total: " + " · ".join(trafico))
+    traffic = []
+    if health.written_bytes is not None:
+        traffic.append(f"{render.size(health.written_bytes)} escritos")
+    if health.read_bytes is not None:
+        traffic.append(f"{render.size(health.read_bytes)} leídos")
+    if traffic:
+        lines.append("- Total: " + " · ".join(traffic))
 
     # Lo que de verdad hay que mirar. `critical_warning` es el campo por el que
     # un NVMe avisa de que va camino de perder datos; los apagones bruscos, en
     # cambio, cuentan cortes de luz y no son una avería.
-    avisos = []
-    if salud.critical_warning:
-        avisos.append(f"aviso crítico: {salud.critical_warning}")
-    if salud.media_errors:
-        avisos.append(f"{salud.media_errors} errores de medio")
-    if salud.unsafe_shutdowns:
-        avisos.append(f"{salud.unsafe_shutdowns} apagones bruscos")
-    if avisos:
-        lineas.append("- Avisos: " + " · ".join(avisos))
-    return lineas
+    warnings = []
+    if health.critical_warning:
+        warnings.append(f"aviso crítico: {health.critical_warning}")
+    if health.media_errors:
+        warnings.append(f"{health.media_errors} errores de medio")
+    if health.unsafe_shutdowns:
+        warnings.append(f"{health.unsafe_shutdowns} apagones bruscos")
+    if warnings:
+        lines.append("- Avisos: " + " · ".join(warnings))
+    return lines
 
 
-def _particiones(disco) -> str:
+def _partitions(disk) -> str:
     """Cuántas hay y cuánto queda libre de lo que está montado.
 
     Sin puntos de montaje: una ruta puede llevar dentro el nombre de quien usa
@@ -408,18 +408,18 @@ def _particiones(disco) -> str:
     ocupado al total da por montado todo el disco, y con un Windows al lado
     eso contaba como libre una partición ajena de 570 GB.
     """
-    montadas = [p for p in disco.partitions if p.mountpoint]
-    resumen = f"{len(disco.partitions)}"
-    if montadas:
-        libre = sum(p.free_bytes for p in montadas if p.free_bytes is not None)
-        sistemas = sorted({p.filesystem for p in montadas if p.filesystem})
-        plural = "montada" if len(montadas) == 1 else "montadas"
-        resumen += (f" ({len(montadas)} {plural}, {render.size(libre)} libres"
-                    + (f", {', '.join(sistemas)}" if sistemas else "") + ")")
-    return resumen
+    mounted = [p for p in disk.partitions if p.mountpoint]
+    summary = f"{len(disk.partitions)}"
+    if mounted:
+        free = sum(p.free_bytes for p in mounted if p.free_bytes is not None)
+        filesystems = sorted({p.filesystem for p in mounted if p.filesystem})
+        plural = "montada" if len(mounted) == 1 else "montadas"
+        summary += (f" ({len(mounted)} {plural}, {render.size(free)} libres"
+                    + (f", {', '.join(filesystems)}" if filesystems else "") + ")")
+    return summary
 
 
-def _bateria(snapshot: Snapshot) -> str:
+def _battery(snapshot: Snapshot) -> str:
     """La batería, que en un portátil es la pieza que peor envejece.
 
     Sin sección si no hay ninguna: que un sobremesa no tenga batería no es una
@@ -431,110 +431,110 @@ def _bateria(snapshot: Snapshot) -> str:
     if not snapshot.batteries:
         return ""
 
-    lineas = ["", "## Batería", ""]
-    for bateria in snapshot.batteries:
-        titulo = " ".join(x for x in (bateria.manufacturer, bateria.model)
-                          if x) or bateria.name
-        lineas.append(f"**{titulo}**")
-        lineas.append("")
-        if (salud := bateria.health_percent) is not None:
-            lineas.append(
-                f"- Salud: {salud:.0f} % ({render.watt_hours(bateria.full_wh)} de "
-                f"{render.watt_hours(bateria.design_wh)} de diseño)")
-        if bateria.cycles:
-            lineas.append(f"- Ciclos de carga: {bateria.cycles}")
-        estado = []
-        if bateria.percent is not None:
-            estado.append(f"{bateria.percent:.0f} %")
-        if bateria.status:
-            estado.append(in_spanish(bateria.status).lower())
-        if bateria.power_settling:
-            estado.append(in_spanish("bat.calculating").lower())
-        elif bateria.power_w is not None:
-            estado.append(render.watts(bateria.power_w))
-        if estado:
-            lineas.append("- Estado: " + " · ".join(estado))
-        if bateria.technology:
-            lineas.append(f"- Tecnología: {bateria.technology}")
-        voltajes = []
-        if bateria.voltage_v:
-            voltajes.append(f"{bateria.voltage_v:.2f} V")
-        if bateria.design_voltage_v:
-            voltajes.append(f"nominal {bateria.design_voltage_v:.2f} V")
-        if voltajes:
-            lineas.append("- Tensión: " + " · ".join(voltajes))
+    lines = ["", "## Batería", ""]
+    for battery in snapshot.batteries:
+        title = " ".join(x for x in (battery.manufacturer, battery.model)
+                          if x) or battery.name
+        lines.append(f"**{title}**")
+        lines.append("")
+        if (health := battery.health_percent) is not None:
+            lines.append(
+                f"- Salud: {health:.0f} % ({render.watt_hours(battery.full_wh)} de "
+                f"{render.watt_hours(battery.design_wh)} de diseño)")
+        if battery.cycles:
+            lines.append(f"- Ciclos de carga: {battery.cycles}")
+        status = []
+        if battery.percent is not None:
+            status.append(f"{battery.percent:.0f} %")
+        if battery.status:
+            status.append(in_spanish(battery.status).lower())
+        if battery.power_settling:
+            status.append(in_spanish("bat.calculating").lower())
+        elif battery.power_w is not None:
+            status.append(render.watts(battery.power_w))
+        if status:
+            lines.append("- Estado: " + " · ".join(status))
+        if battery.technology:
+            lines.append(f"- Tecnología: {battery.technology}")
+        voltages = []
+        if battery.voltage_v:
+            voltages.append(f"{battery.voltage_v:.2f} V")
+        if battery.design_voltage_v:
+            voltages.append(f"nominal {battery.design_voltage_v:.2f} V")
+        if voltages:
+            lines.append("- Tensión: " + " · ".join(voltages))
         # Los topes solo si están puestos. Un ThinkPad sin límite publica 0 y
         # 100, que es el rango entero: eso es no tener tope, y escribirlo
         # hacía creer que había algo configurado.
-        inicio = bateria.charge_start_percent
-        fin = bateria.charge_end_percent
-        puestos = ((inicio is not None or fin is not None)
-                   and not ((inicio or 0) <= 0
-                            and (fin if fin is not None else 100) >= 100))
-        if puestos:
-            lineas.append(
+        start = battery.charge_start_percent
+        end = battery.charge_end_percent
+        fitted = ((start is not None or end is not None)
+                   and not ((start or 0) <= 0
+                            and (end if end is not None else 100) >= 100))
+        if fitted:
+            lines.append(
                 f"- Topes de carga: "
-                f"{bateria.charge_start_percent if bateria.charge_start_percent is not None else '—'}"
+                f"{battery.charge_start_percent if battery.charge_start_percent is not None else '—'}"
                 f" – "
-                f"{bateria.charge_end_percent if bateria.charge_end_percent is not None else '—'} %")
-        lineas.append("")
-    return "\n".join(lineas)
+                f"{battery.charge_end_percent if battery.charge_end_percent is not None else '—'} %")
+        lines.append("")
+    return "\n".join(lines)
 
 
-def _red(snapshot: Snapshot, anonymous: bool) -> str:
+def _network(snapshot: Snapshot, anonymous: bool) -> str:
     if not snapshot.network:
         return ""
-    lineas = ["", "## Red", ""]
-    for interfaz in snapshot.network:
-        if interfaz.kind == "loopback":
+    lines = ["", "## Red", ""]
+    for interface in snapshot.network:
+        if interface.kind == "loopback":
             continue
         # Las direcciones se tapan siempre que se pueda: identifican la red de
         # quien envía el informe y no hacen falta para diagnosticar nada.
-        direccion = OCULTO if (anonymous and interfaz.ipv4) else (interfaz.ipv4 or "—")
-        mac = OCULTO if (anonymous and interfaz.mac) else (interfaz.mac or "—")
-        lineas.append(
-            f"- **{interfaz.name}** ({interfaz.kind}): "
-            f"{render.interface_state(interfaz)} · {render.link_summary(interfaz) or '—'} · "
-            f"{render.with_maker(interfaz.vendor, interfaz.model) or interfaz.driver or '—'} · IP {direccion} · MAC {mac}"
+        address = HIDDEN if (anonymous and interface.ipv4) else (interface.ipv4 or "—")
+        mac = HIDDEN if (anonymous and interface.mac) else (interface.mac or "—")
+        lines.append(
+            f"- **{interface.name}** ({interface.kind}): "
+            f"{render.interface_state(interface)} · {render.link_summary(interface) or '—'} · "
+            f"{render.with_maker(interface.vendor, interface.model) or interface.driver or '—'} · IP {address} · MAC {mac}"
         )
-    return "\n".join(lineas)
+    return "\n".join(lines)
 
 
-def _sensores(snapshot: Snapshot) -> str:
+def _sensors(snapshot: Snapshot) -> str:
     if not snapshot.sensors:
         return "\n## Sensores\n\nNinguno detectado.\n"
-    arbol = snapshot.sensor_tree()
-    lineas = ["", "## Sensores", "",
-              f"{len(snapshot.sensors)} lecturas en {len(arbol)} dispositivos.", ""]
-    for categorias in arbol.values():
-        aparato = Snapshot.device_name(categorias)
-        cuantos = sum(len(s) for s in categorias.values())
+    tree = snapshot.sensor_tree()
+    lines = ["", "## Sensores", "",
+              f"{len(snapshot.sensors)} lecturas en {len(tree)} dispositivos.", ""]
+    for categories in tree.values():
+        device = Snapshot.device_name(categories)
+        count = sum(len(s) for s in categories.values())
         # Las categorías son claves —«cat.temperature»—, porque los nombres que
         # agrupan los inventa el programa y son interfaz. Sin traducirlas, el
         # informe enseñaba la clave cruda a quien lo abriera. Y va en español y
         # no en el idioma de quien lo genera, como el resto del informe: si no,
         # un informe en inglés saldría con «Procesador» y «temperatures» en la
         # misma página.
-        resumen = ", ".join(f"{in_spanish(nombre).lower()} ({len(s)})"
-                            for nombre, s in categorias.items())
-        lineas.append(f"- **{aparato}**, {cuantos}: {resumen}")
+        summary = ", ".join(f"{in_spanish(name).lower()} ({len(s)})"
+                            for name, s in categories.items())
+        lines.append(f"- **{device}**, {count}: {summary}")
         # Y con sus nombres y valores. El recuento solo dice cuántos hay, y lo
         # que se revisa de un equipo ajeno es justo lo otro: cómo se llama cada
         # sensor y si el número es creíble. Un chip que bautiza sus entradas
         # «temp1, temp2, temp3» y una placa que declara un mínimo de 127 grados
         # se ven aquí y en ningún otro sitio de este archivo.
-        for nombre, sensores in categorias.items():
-            valores = " · ".join(
+        for name, sensors in categories.items():
+            values = " · ".join(
                 f"{s.label} {render.sensor_value(s.value, s.kind)} {s.unit}".strip()
                 # Quien revisa un equipo ajeno mira justo si el número es
                 # creíble: que 16.8 °C lleve dicho lo que es.
                 + (" (relleno del firmware, no es una medida)" if s.placeholder else "")
-                for s in sensores)
-            lineas.append(f"  - {in_spanish(nombre).lower()}: {valores}")
-    return "\n".join(lineas)
+                for s in sensors)
+            lines.append(f"  - {in_spanish(name).lower()}: {values}")
+    return "\n".join(lines)
 
 
-def _rendimiento() -> str:
+def _benchmark() -> str:
     """La última prueba que puntúa, si la hay.
 
     Va en el informe porque es lo que permite juntar medidas de piezas que no
@@ -547,46 +547,46 @@ def _rendimiento() -> str:
     """
     from . import benchmark, history, score
 
-    entradas = [e for e in history.load()
+    entries = [e for e in history.load()
                 if e.score_version == score.VERSION and score.comparable(e.seconds)]
-    if not entradas:
+    if not entries:
         return ""
-    ultima = max(entradas, key=lambda e: e.timestamp)
-    puntos = score.compute(ultima.scores, ultima.threads)
-    if puntos is None:
+    latest = max(entries, key=lambda e: e.timestamp)
+    points = score.compute(latest.scores, latest.threads)
+    if points is None:
         return ""
-    un_hilo, multi = puntos
+    single, multi = points
 
-    lineas = [
+    lines = [
         "\n## Rendimiento\n",
         "| | |",
         "|---|---|",
         f"| Puntuación (todos los hilos) | {multi} |",
-        f"| Puntuación (un hilo) | {un_hilo} |",
-        f"| Hilos | {ultima.threads} |",
+        f"| Puntuación (un hilo) | {single} |",
+        f"| Hilos | {latest.threads} |",
         f"| Escala | v{score.VERSION} |",
         # Cuáles entran en la cifra. Sin esto, dos informes de escalas
         # distintas se leen igual y la diferencia que se saca no existe: de la
         # v5 a la v6 la puntuación de un mismo equipo se mueve sin que el
         # equipo cambie, porque tres de las cinco cargas dejaron de contar.
         ("| Cargas que puntúan | "
-         + " · ".join(c.name for c in benchmark.CARGAS if score.is_scored(c.key))
+         + " · ".join(c.name for c in benchmark.WORKLOADS if score.is_scored(c.key))
          + " |"),
     ]
     # Las condiciones son la mitad de lo que hace comparable una cifra: sin
     # ellas, dos puntuaciones distintas no se sabe si separan a dos equipos o
     # a dos momentos del mismo.
-    if ultima.governor:
-        lineas.append(f"| Gobernador | {ultima.governor} |")
-    if ultima.frequency_avg_hz:
-        lineas.append(f"| Frecuencia media | {render.hz(ultima.frequency_avg_hz)} |")
-    if ultima.temperature_peak_c is not None:
-        lineas.append(f"| Temperatura máxima | {ultima.temperature_peak_c:.0f} °C |")
-    if ultima.background_load is not None:
-        lineas.append(f"| Carga de fondo | {ultima.background_load:.1f} % |")
+    if latest.governor:
+        lines.append(f"| Gobernador | {latest.governor} |")
+    if latest.frequency_avg_hz:
+        lines.append(f"| Frecuencia media | {render.hz(latest.frequency_avg_hz)} |")
+    if latest.temperature_peak_c is not None:
+        lines.append(f"| Temperatura máxima | {latest.temperature_peak_c:.0f} °C |")
+    if latest.background_load is not None:
+        lines.append(f"| Carga de fondo | {latest.background_load:.1f} % |")
     # El pico de lo ajeno explica una cifra baja que si no parece del equipo.
-    if ultima.background_peak is not None:
-        lineas.append(f"| Otro programa, como mucho | {ultima.background_peak:.1f} % |")
+    if latest.background_peak is not None:
+        lines.append(f"| Otro programa, como mucho | {latest.background_peak:.1f} % |")
     # Con qué bibliotecas se midió. Ya no explica la puntuación —para eso se
     # quitaron de ella las cargas que dependen del sistema—, y sigue haciendo
     # falta para leer las cifras de esas tres: la misma pieza rinde un ×9,7
@@ -594,57 +594,57 @@ def _rendimiento() -> str:
     # La versión y las extensiones van juntas porque por separado no se
     # interpreta ninguna de las dos: una zlib clásica no usa ninguna bandera,
     # así que ahí las de la CPU no dicen nada.
-    if ultima.zlib_version or ultima.openssl_version:
-        piezas = []
-        if ultima.zlib_version:
-            extensiones = " · ".join(ultima.zlib_simd) or "ninguna de las que usa"
-            piezas.append(f"zlib {ultima.zlib_version} ({extensiones})")
-        if ultima.openssl_version:
-            piezas.append(ultima.openssl_version)
-        lineas.append("| Bibliotecas | " + " · ".join(piezas) + " |")
+    if latest.zlib_version or latest.openssl_version:
+        parts = []
+        if latest.zlib_version:
+            simd = " · ".join(latest.zlib_simd) or "ninguna de las que usa"
+            parts.append(f"zlib {latest.zlib_version} ({simd})")
+        if latest.openssl_version:
+            parts.append(latest.openssl_version)
+        lines.append("| Bibliotecas | " + " · ".join(parts) + " |")
     # Y por qué son dos y no cinco, que si no la fila de arriba parece un
     # recorte y es lo contrario: es lo que hace que la cifra sea del
     # procesador de quien la manda y no de su distribución.
-    lineas.append(
+    lines.append(
         "\nLas otras tres cargas se miden y se enseñan en el programa, pero no"
         " entran en la puntuación: las calcula una biblioteca del sistema y"
         " cambian con la distribución en vez de con el procesador.")
-    return "\n".join(lineas) + "\n"
+    return "\n".join(lines) + "\n"
 
 
-def _diagnostico(snapshot: Snapshot) -> str:
+def _diagnosis(snapshot: Snapshot) -> str:
     """Lo que no se pudo leer y por qué. Es la parte útil de un informe de fallo."""
-    lineas = ["", "## Diagnóstico", ""]
+    lines = ["", "## Diagnóstico", ""]
 
     if snapshot.driver_hints:
-        lineas.append("**Módulos del kernel que ampliarían lo que se ve:**")
-        lineas.append("")
-        for pista in snapshot.driver_hints:
-            nombre = "Super I/O" if pista.module == "(Super I/O)" else f"`{pista.module}`"
-            lineas.append(f"- {nombre}: {pista.provides}")
-            if pista.command:
-                lineas.append(f"  `{pista.command}`")
-        lineas.append("")
+        lines.append("**Módulos del kernel que ampliarían lo que se ve:**")
+        lines.append("")
+        for hint in snapshot.driver_hints:
+            name = "Super I/O" if hint.module == "(Super I/O)" else f"`{hint.module}`"
+            lines.append(f"- {name}: {hint.provides}")
+            if hint.command:
+                lines.append(f"  `{hint.command}`")
+        lines.append("")
 
     if snapshot.notes:
-        lineas.append("**Datos que faltan:**")
-        lineas.append("")
-        for nota in snapshot.notes:
-            lineas.append(f"- `{nota.path}` ({MOTIVOS.get(nota.need, nota.need.value)}): "
-                          f"{nota.message}" + (f" ({nota.detail})" if nota.detail else ""))
+        lines.append("**Datos que faltan:**")
+        lines.append("")
+        for note in snapshot.notes:
+            lines.append(f"- `{note.path}` ({NEED_REASONS.get(note.need, note.need.value)}): "
+                          f"{note.message}" + (f" ({note.detail})" if note.detail else ""))
     else:
-        lineas.append("Sin datos ausentes: todo lo que el equipo expone se ha leído.")
+        lines.append("Sin datos ausentes: todo lo que el equipo expone se ha leído.")
 
     if snapshot.failures:
-        lineas += ["", "**Fallos de Silux, con su traza:**", ""]
-        for fallo in snapshot.failures:
-            veces = f" ({fallo.count} veces)" if fallo.count > 1 else ""
-            lineas += [f"- `{fallo.where}`{veces}: {fallo.error}", "",
-                       "```text", fallo.trace, "```", ""]
-    return "\n".join(lineas)
+        lines += ["", "**Fallos de Silux, con su traza:**", ""]
+        for failure in snapshot.failures:
+            times = f" ({failure.count} veces)" if failure.count > 1 else ""
+            lines += [f"- `{failure.where}`{times}: {failure.error}", "",
+                       "```text", failure.trace, "```", ""]
+    return "\n".join(lines)
 
 
-def _procedencia() -> str:
+def _provenance() -> str:
     """Si corre desde un AppImage o desde el código.
 
     Importa más de lo que parece: desde un AppImage el ayudante privilegiado
@@ -658,7 +658,7 @@ def _procedencia() -> str:
     return "código fuente o paquete del sistema"
 
 
-def _version_de_qt() -> Optional[str]:
+def _qt_version() -> Optional[str]:
     try:
         import PySide6
         return PySide6.__version__

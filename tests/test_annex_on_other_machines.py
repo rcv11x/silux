@@ -137,7 +137,7 @@ class TestNamesOfMachines(unittest.TestCase):
             os_release = (root / "etc/os-release").read_text()
             # The checker as on that machine: its name and the rest of its own.
             with mock.patch.object(socket, "gethostname", return_value=name):
-                propios = privacidad.de_esta_maquina()
+                propios = privacidad.of_this_machine()
             folder, manifest, everything = _dump(out, propios=propios)
             yield folder, manifest, everything, os_release
 
@@ -149,7 +149,7 @@ class TestNamesOfMachines(unittest.TestCase):
                 hwmon = folder / "sys/devices/platform/thinkpad_hwmon/hwmon/hwmon9/name"
                 self.assertEqual(hwmon.read_text(), "thinkpad\n")
                 self.assertEqual((folder / "proc/sys/kernel/hostname").read_text().strip(),
-                                 privacidad.EQUIPO)
+                                 privacidad.HOST_NAME)
 
     def test_a_persons_name_goes_from_everywhere(self):
         with self._dump_named("portatil-ana") as (_folder, manifest, everything, _os):
@@ -170,11 +170,11 @@ class TestTheT14NamedThinkpad(unittest.TestCase):
         with _machine("i5-1135g7") as (root, out):
             _write(root, "/proc/sys/kernel/hostname", "thinkpad\n")
             with mock.patch.object(socket, "gethostname", return_value="thinkpad"):
-                propios = privacidad.de_esta_maquina()
+                propios = privacidad.of_this_machine()
             folder, manifest, _everything = _dump(out, propios=propios)
             self.assertNotIn("quitados", manifest)
             self.assertEqual((folder / "proc/sys/kernel/hostname").read_text().strip(),
-                             privacidad.EQUIPO)
+                             privacidad.HOST_NAME)
             self.assertTrue((folder / "sys/devices/platform/thinkpad_hwmon").is_dir())
             nombres = {p.read_text().strip() for p in (folder / "sys/class/hwmon").glob("*/name")}
             self.assertIn("thinkpad", nombres)
@@ -249,7 +249,7 @@ class TestNetworkConnections(unittest.TestCase):
             names = {p.name for p in (folder / "sys/class/net").iterdir()}
             self.assertLessEqual(set(self.SYSTEMS), names)
             self.assertIn("enx00005e0053af", names)
-            self.assertIn(privacidad.INTERFAZ.format(1), names)
+            self.assertIn(privacidad.INTERFACE.format(1), names)
             for gone in (self.HEX, self.MAC, "ana_wg0"):
                 self.assertNotIn(gone.encode(), everything)
             self.assertEqual(volcado._lo_que_anonimizar_taparia(volcado.foto_de(folder)), [])

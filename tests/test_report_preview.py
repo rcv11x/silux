@@ -73,7 +73,7 @@ class TestReportPreview(unittest.TestCase):
                 self.assertIn(heading, text)
         # Anonymous, like the one the terminal writes.
         from silux import privacidad
-        self.assertIn(privacidad.EQUIPO, text)
+        self.assertIn(privacidad.HOST_NAME, text)
 
     def test_it_shows_it_formatted_and_saves_the_markdown(self):
         dialog = self.open_preview()

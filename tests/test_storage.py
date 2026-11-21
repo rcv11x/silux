@@ -251,7 +251,7 @@ class TestLaCapturaAnonimaNoEnsenaDondeSeMonta(unittest.TestCase):
     def test_anonima_no_sale_el_usuario(self):
         from silux import privacidad
 
-        texto = self._textos(privacidad.anonimizar(self._foto()))
+        texto = self._textos(privacidad.anonymize(self._foto()))
         self.assertNotIn("zoraida", texto)
         self.assertIn("/boot/efi", texto)
 

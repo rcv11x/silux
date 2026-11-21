@@ -636,7 +636,7 @@ def _ipv4_hex(ip: str) -> str:
 # What the dumper itself writes in place of something, as it writes it: the
 # router and its network in /proc/net/route, the IPv6 in if_inet6.
 SUSTITUTOS_HEX = frozenset(s.lower() for s in (
-    _ipv4_hex(privacidad.PUERTA), _ipv4_hex(privacidad.PUERTA.rsplit(".", 1)[0] + ".0"),
+    _ipv4_hex(privacidad.GATEWAY), _ipv4_hex(privacidad.GATEWAY.rsplit(".", 1)[0] + ".0"),
     "20010db8" + "0" * 20 + "0011", CORREO_SUSTITUTO))
 
 
@@ -667,7 +667,7 @@ class _Anonimizador:
         self.equipo = nombre.read_text().strip() if nombre.is_file() else ""
         # A machine named as everyone's (the distribution, the brand): it is
         # neither replaced in the texts nor looked for.
-        if privacidad.equipo_de_todos(self.equipo, privacidad.palabras_del_equipo(str(destino))):
+        if privacidad.is_common_host_name(self.equipo, privacidad.machine_words(str(destino))):
             self.equipo = ""
         self.usuario = getpass.getuser()
         self.casa = str(pathlib.Path.home())
@@ -675,7 +675,7 @@ class _Anonimizador:
         # El nombre que alguien le puso a una interfaz es suyo: además de
         # sustituirlo donde se sabe que sale, se busca al final en cada byte.
         for viejo in self.interfaces:
-            self._secreto(viejo, "mac" if privacidad.MAC_EN_EL_NOMBRE.fullmatch(viejo)
+            self._secreto(viejo, "mac" if privacidad.MAC_IN_NAME.fullmatch(viejo)
                           else "interface")
         self.montajes: dict[str, str] = {}
 
@@ -685,7 +685,7 @@ class _Anonimizador:
         encontrarla al final era encontrar el sustituto (el primer anexo de un
         portátil con Wi-Fi no salió por eso)."""
         valor = (valor or "").strip()
-        if len(valor) >= 4 and not privacidad.es_sustituto(valor) \
+        if len(valor) >= 4 and not privacidad.is_substitute(valor) \
                 and valor.lower() not in SUSTITUTOS_HEX:
             self.secretos.setdefault(valor, que)
 
@@ -694,13 +694,13 @@ class _Anonimizador:
         red = self.destino / "sys" / "class" / "net"
         entradas = sorted(e.name for e in red.iterdir()) if red.is_dir() else []
         for entrada in entradas:
-            if not privacidad.de_sistema(entrada):
-                nombres[entrada] = privacidad.INTERFAZ.format(len(nombres) + 1)
+            if not privacidad.is_system_name(entrada):
+                nombres[entrada] = privacidad.INTERFACE.format(len(nombres) + 1)
         # A USB adapter's name carries its MAC: the same substitute the report
         # gives it, in the same order.
-        con_mac = [e for e in entradas if privacidad.MAC_EN_EL_NOMBRE.fullmatch(e)]
+        con_mac = [e for e in entradas if privacidad.MAC_IN_NAME.fullmatch(e)]
         for orden, entrada in enumerate(con_mac):
-            if (nuevo := privacidad.nombre_sin_mac(entrada, orden)) != entrada:
+            if (nuevo := privacidad.name_without_mac(entrada, orden)) != entrada:
                 nombres[entrada] = nuevo
         return nombres
 
@@ -737,7 +737,7 @@ class _Anonimizador:
     def _cambiar_texto(self, texto: str) -> str:
         for viejo, nuevo in self.interfaces.items():
             texto = re.sub(rf"(?<![\w.-]){re.escape(viejo)}(?![\w.-])", nuevo, texto)
-        texto = privacidad._sin_el_equipo(texto, self.equipo) or texto
+        texto = privacidad._without_host(texto, self.equipo) or texto
         texto = texto.replace(self.casa, "/home/usuario")
         if len(self.usuario) >= 3:
             texto = re.sub(rf"(?<![\w.-]){re.escape(self.usuario)}(?![\w.-])", "usuario", texto)
@@ -748,16 +748,16 @@ class _Anonimizador:
         # kernel, and a kernel compiled at home names its owner. The same
         # rule as the checker that runs before publishing.
         def correo(m: re.Match) -> str:
-            if privacidad.CORREOS_PERMITIDOS.search(m.group()):
+            if privacidad.ALLOWED_EMAILS.search(m.group()):
                 return m.group()
             self._secreto(m.group(), "email")
             return CORREO_SUSTITUTO
-        return privacidad.CORREO.sub(correo, texto)
+        return privacidad.EMAIL.sub(correo, texto)
 
     def _montaje(self, punto: str) -> str:
-        if punto in privacidad._MONTAJES_DEL_SISTEMA:
+        if punto in privacidad._SYSTEM_MOUNTS:
             return punto
-        return self.montajes.setdefault(punto, privacidad.MONTAJE.format(len(self.montajes) + 1))
+        return self.montajes.setdefault(punto, privacidad.MOUNT.format(len(self.montajes) + 1))
 
     def contenidos(self) -> None:
         modelos = {(_texto(m) or "").strip().lower() for m in self.destino.rglob("model")
@@ -824,7 +824,7 @@ class _Anonimizador:
                 ruta.write_text(_tarjetas_sin_nombre(datos.decode(errors="replace")))
                 continue
             if relativo == "/proc/sys/kernel/hostname":
-                ruta.write_text(privacidad.EQUIPO + "\n")
+                ruta.write_text(privacidad.HOST_NAME + "\n")
                 continue
             if relativo == "/proc/cmdline":
                 # The disks' UUIDs, an encrypted volume, the machine's name.
@@ -855,10 +855,10 @@ class _Anonimizador:
             campos = linea.split("\t")
             if len(campos) > 2:
                 if campos[1] != "00000000":
-                    campos[1] = _ipv4_hex(privacidad.PUERTA.rsplit(".", 1)[0] + ".0")
+                    campos[1] = _ipv4_hex(privacidad.GATEWAY.rsplit(".", 1)[0] + ".0")
                 if campos[2] != "00000000":
                     self._secreto(campos[2], "router")
-                    campos[2] = _ipv4_hex(privacidad.PUERTA)
+                    campos[2] = _ipv4_hex(privacidad.GATEWAY)
             salida.append("\t".join(campos))
         return "\n".join(salida) + "\n"
 
@@ -923,7 +923,7 @@ class _Anonimizador:
         limpio = json.loads(self._cambiar_texto(json.dumps(self.grabado, ensure_ascii=False)))
         for tarjeta in (limpio.get("nvml") or {}).get("tarjetas") or ():
             if isinstance(tarjeta, dict) and tarjeta.get("uuid"):
-                tarjeta["uuid"] = privacidad._tapar(tarjeta["uuid"])
+                tarjeta["uuid"] = privacidad._mask(tarjeta["uuid"])
         for clave in list(limpio.get("ioctl_red", {})):
             valor = limpio["ioctl_red"][clave]
             nombre, _sep, codigo = clave.partition(":")
@@ -934,7 +934,7 @@ class _Anonimizador:
             limpio["statvfs"] = montados
         entorno = limpio.get("plataforma", {}).get("uname")
         if isinstance(entorno, dict) and entorno.get("node"):
-            entorno["node"] = privacidad.EQUIPO
+            entorno["node"] = privacidad.HOST_NAME
         return limpio
 
 
@@ -969,13 +969,13 @@ def encontrados(destino: pathlib.Path, secretos, crudos=(),
     `privacidad.de_esta_maquina`'s. A substitute is never looked for.
     """
     if propios is None:
-        propios = privacidad.de_esta_maquina()
+        propios = privacidad.of_this_machine()
     por_clase = lambda grupo, clase: (grupo.items() if isinstance(grupo, dict)
                                       else ((g, clase) for g in grupo))
     buscados: list[tuple[bytes, str]] = []
     for valor, clase in [*((d, _clase_propia(q)) for d, q in propios.items()),
                          *por_clase(secretos, "machine")]:
-        if valor and len(valor) >= 4 and not privacidad.es_sustituto(valor):
+        if valor and len(valor) >= 4 and not privacidad.is_substitute(valor):
             buscados.append((valor.encode(), clase))
     buscados += [(c, clase) for c, clase in por_clase(crudos, "serial") if any(c)]
     patrones = [(re.compile(rb"(?<!" + _ALREDEDOR + rb")" + re.escape(b) + rb"(?!" + _ALREDEDOR + rb")")
@@ -1217,7 +1217,7 @@ def volcar(nombre: str, destino_base: pathlib.Path,
 # Lo que `anonimizar` sustituye aunque no identifique a nadie: el bucle local
 # y una MAC a ceros. Que lo cambie no significa que el volcado se lo dejara.
 INOFENSIVOS = {"127.0.0.1", "::1", "00:00:00:00:00:00", None, ()}
-YA_SUSTITUIDO = re.compile(re.escape(privacidad.MONTAJE).replace(r"\{\}", r"\d+"))
+YA_SUSTITUIDO = re.compile(re.escape(privacidad.MOUNT).replace(r"\{\}", r"\d+"))
 
 
 def _sin_numerar(discos):
@@ -1229,7 +1229,7 @@ def _sin_numerar(discos):
     """
     return tuple(
         dataclasses.replace(d, partitions=tuple(
-            dataclasses.replace(p, mountpoint=privacidad.MONTAJE.format(""))
+            dataclasses.replace(p, mountpoint=privacidad.MOUNT.format(""))
             if p.mountpoint and YA_SUSTITUIDO.fullmatch(p.mountpoint) else p
             for p in d.partitions))
         for d in discos)
@@ -1257,7 +1257,7 @@ def _lo_que_anonimizar_taparia(foto) -> list[str]:
     Lo único que se acepta es lo que anonimizar tapa por sistema sin que sea
     de nadie, como `127.0.0.1`.
     """
-    tapada = privacidad.anonimizar(foto)
+    tapada = privacidad.anonymize(foto)
     quedan = []
     for campo in dataclasses.fields(foto):
         antes, despues = getattr(foto, campo.name), getattr(tapada, campo.name)
@@ -1268,14 +1268,14 @@ def _lo_que_anonimizar_taparia(foto) -> list[str]:
                 for sub in dataclasses.fields(i):
                     a, b = getattr(i, sub.name), getattr(j, sub.name)
                     restos = [x for x in (a if isinstance(a, tuple) else (a,))
-                              if x not in INOFENSIVOS and x not in privacidad.SUSTITUTOS_ANTERIORES]
+                              if x not in INOFENSIVOS and x not in privacidad.OLD_SUBSTITUTES]
                     if a != b and restos:
                         # By position: the name may be what is protected.
                         quedan.append(f"network[{antes.index(i)}].{sub.name}")
             continue
         if campo.name == "disks" and _sin_numerar(antes) == _sin_numerar(despues):
             continue
-        if (campo.name == "system" and antes.hostname in privacidad.SUSTITUTOS_ANTERIORES
+        if (campo.name == "system" and antes.hostname in privacidad.OLD_SUBSTITUTES
                 and dataclasses.replace(antes, hostname=despues.hostname) == despues):
             continue
         quedan += _diferencias(antes, despues, campo.name)

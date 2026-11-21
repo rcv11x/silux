@@ -1613,8 +1613,8 @@ def _anonimizador(activo: bool):
     """
     if not activo:
         return lambda foto: foto
-    from ..privacidad import anonimizar
-    return anonimizar
+    from ..privacidad import anonymize
+    return anonymize
 
 
 def main(argv: Optional[list[str]] = None) -> int:

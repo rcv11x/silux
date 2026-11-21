@@ -68,7 +68,7 @@ def _foto() -> Snapshot:
 
 class TestLoQueSeTapa(unittest.TestCase):
     def setUp(self):
-        self.limpia = privacidad.anonimizar(_foto())
+        self.limpia = privacidad.anonymize(_foto())
 
     def test_el_nombre_del_equipo(self):
         self.assertEqual(self.limpia.system.hostname, "silux-pc")
@@ -94,7 +94,7 @@ class TestLoQueSeTapa(unittest.TestCase):
                # de verdad sigue siendo la misma al taparla.
                dataclasses.replace(f.network[0], name="br0", mac="00:00:5e:00:53:0b"),
                dataclasses.replace(f.network[0], name="lo", mac="00:00:00:00:00:00"))
-        limpia = privacidad.anonimizar(dataclasses.replace(f, network=red))
+        limpia = privacidad.anonymize(dataclasses.replace(f, network=red))
         macs = [i.mac for i in limpia.network]
         self.assertEqual(macs[0], privacidad.MAC)
         self.assertNotEqual(macs[0], macs[1])
@@ -117,7 +117,7 @@ class TestLoQueSeTapa(unittest.TestCase):
                dataclasses.replace(f.network[0], name="enp6s0", mac="00:00:5e:00:53:0c"))
         pagina = NetworkPage(theme.palette_for(app, "dark"), Preferences().normalized())
         self.addCleanup(pagina.deleteLater)
-        pagina.apply(privacidad.anonimizar(dataclasses.replace(f, network=red)))
+        pagina.apply(privacidad.anonymize(dataclasses.replace(f, network=red)))
         app.processEvents()
         texto = "\n".join(e.text() for e in pagina.findChildren(QLabel))
         self.assertEqual(len(set(re.findall(r"00:00:5e:00:53:[0-9a-f]{2}", texto))), 2, texto)
@@ -140,7 +140,7 @@ class TestLoQueSeTapa(unittest.TestCase):
 
 class TestLoQueNoSeToca(unittest.TestCase):
     def setUp(self):
-        self.limpia = privacidad.anonimizar(_foto())
+        self.limpia = privacidad.anonymize(_foto())
 
     def test_el_hardware_sigue_entero(self):
         """La gracia de una captura es que enseñe el programa de verdad."""
@@ -155,12 +155,12 @@ class TestLoQueNoSeToca(unittest.TestCase):
 
     def test_una_foto_sin_nada_que_tapar_se_devuelve_igual(self):
         vacia = Snapshot(monotonic_ns=0, cpu=CpuInfo())
-        self.assertIs(privacidad.anonimizar(vacia), vacia)
+        self.assertIs(privacidad.anonymize(vacia), vacia)
 
     def test_no_inventa_una_ip_donde_no_habia(self):
         foto = Snapshot(monotonic_ns=0, cpu=CpuInfo(), network=(
             NetworkInterface(name="lo", up=True),))
-        self.assertIsNone(privacidad.anonimizar(foto).network[0].ipv4)
+        self.assertIsNone(privacidad.anonymize(foto).network[0].ipv4)
 
 
 class TestLaMarcaDeLasCapturas(unittest.TestCase):
@@ -233,23 +233,23 @@ class TestElNombreDelEquipoSeColabaPorLaRed(unittest.TestCase):
                                  NetworkInterface(name="wlan0", up=True)))
 
     def test_la_interfaz_que_se_llama_como_el_equipo_se_tapa(self):
-        tapada = privacidad.anonimizar(self._foto())
+        tapada = privacidad.anonymize(self._foto())
         self.assertNotIn("alex_portatil", [i.name for i in tapada.network])
 
     def test_las_demas_conservan_su_nombre(self):
-        tapada = privacidad.anonimizar(self._foto())
+        tapada = privacidad.anonymize(self._foto())
         self.assertIn("wlan0", [i.name for i in tapada.network])
 
     def test_también_cuando_el_nombre_va_dentro(self):
         """`docker-alex_portatil` o `br-alex_portatil-0`."""
-        tapada = privacidad.anonimizar(
+        tapada = privacidad.anonymize(
             self._foto(interfaz="br-alex_portatil-0"))
         self.assertNotIn("alex_portatil", tapada.network[0].name)
 
     def test_un_nombre_de_equipo_muy_corto_no_arrasa_con_todo(self):
         """Con un equipo llamado «pc», tapar esas dos letras destrozaría
         «enp5s0» y media lista sin motivo."""
-        tapada = privacidad.anonimizar(self._foto(equipo="pc", interfaz="enp5s0"))
+        tapada = privacidad.anonymize(self._foto(equipo="pc", interfaz="enp5s0"))
         self.assertEqual(tapada.network[0].name, "enp5s0")
 
 
@@ -278,14 +278,14 @@ class TestElNombreDelEquipoSeBuscaComoNombre(unittest.TestCase):
                    if aviso else ()))
 
     def test_da_igual_como_vaya_escrito(self):
-        tapada = privacidad.anonimizar(self._foto(
+        tapada = privacidad.anonymize(self._foto(
             "portatil-ana", aparato="PORTATIL-ANA-acpi",
             aviso="El equipo Portatil-Ana no publica su ventilador."))
-        self.assertEqual(tapada.sensors[0].device, f"{privacidad.EQUIPO}-acpi")
+        self.assertEqual(tapada.sensors[0].device, f"{privacidad.HOST_NAME}-acpi")
         self.assertNotIn("ana", tapada.notes[0].message.lower())
 
     def test_un_nombre_corto_no_se_come_trozos_de_otros(self):
-        tapada = privacidad.anonimizar(self._foto(
+        tapada = privacidad.anonymize(self._foto(
             "lan", red=("wlan0",), aparato="Red (wlan0)",
             aviso="La placa lanza un aviso."))
         self.assertEqual(tapada.network[0].name, "wlan0")
@@ -293,14 +293,14 @@ class TestElNombreDelEquipoSeBuscaComoNombre(unittest.TestCase):
         self.assertEqual(tapada.notes[0].message, "La placa lanza un aviso.")
 
     def test_ni_el_de_una_interfaz_del_sistema(self):
-        tapada = privacidad.anonimizar(self._foto("dock", red=("docker0",)))
+        tapada = privacidad.anonymize(self._foto("dock", red=("docker0",)))
         self.assertEqual(tapada.network[0].name, "docker0")
 
     def test_un_nombre_ya_tapado_no_se_vuelve_a_buscar(self):
         # Los volcados de antes del 19 de noviembre se llaman «equipo», que es
         # además una palabra: se tapaba «Este equipo no publica…».
         aviso = "Este equipo no publica su ventilador."
-        tapada = privacidad.anonimizar(self._foto("equipo", aviso=aviso))
+        tapada = privacidad.anonymize(self._foto("equipo", aviso=aviso))
         self.assertEqual(tapada.notes[0].message, aviso)
 
     def test_a_machine_named_after_its_brand_keeps_the_brand(self):
@@ -314,9 +314,9 @@ class TestElNombreDelEquipoSeBuscaComoNombre(unittest.TestCase):
             self._foto("lenovo", aparato="Lenovo LOQ 15IRH8",
                        aviso="El equipo Lenovo no publica su ventilador."),
             board=Board(system_vendor="LENOVO", system_version="LOQ 15IRH8"))
-        tapada = privacidad.anonimizar(foto)
+        tapada = privacidad.anonymize(foto)
         self.assertEqual(tapada.sensors[0].device, "Lenovo LOQ 15IRH8")
-        self.assertEqual(tapada.system.hostname, privacidad.EQUIPO)
+        self.assertEqual(tapada.system.hostname, privacidad.HOST_NAME)
 
     def test_a_name_that_is_everyones_goes_from_its_field_and_nowhere_else(self):
         # A ThinkPad called «thinkpad» had no annex: the name is
@@ -336,8 +336,8 @@ class TestElNombreDelEquipoSeBuscaComoNombre(unittest.TestCase):
                     system=dataclasses.replace(self._foto(equipo).system,
                                                distribution="Arch Linux",
                                                distribution_id="debian"))
-                tapada = privacidad.anonimizar(foto)
-                self.assertEqual(tapada.system.hostname, privacidad.EQUIPO)
+                tapada = privacidad.anonymize(foto)
+                self.assertEqual(tapada.system.hostname, privacidad.HOST_NAME)
                 self.assertEqual(tapada.sensors[0].device, aparato)
 
 

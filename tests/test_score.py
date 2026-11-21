@@ -82,13 +82,13 @@ class TestSoloPuntuaLoQueMideElProcesador(unittest.TestCase):
 
     def _que_dependen(self, claves):
         """De esas cargas, las que se apoyan en algo que cambia con la distro."""
-        return {c.key for c in benchmark.CARGAS if c.key in claves
+        return {c.key for c in benchmark.WORKLOADS if c.key in claves
                 and set(c.work.__code__.co_names) & self.DEL_SISTEMA}
 
     def test_las_que_puntuan_existen_entre_las_cargas(self):
         """Una clave mal escrita dejaría la escala sin esa carga y en silencio."""
         self.assertTrue(set(score.SCORED_WORKLOADS)
-                        <= {c.key for c in benchmark.CARGAS})
+                        <= {c.key for c in benchmark.WORKLOADS})
 
     def test_ninguna_de_las_que_puntuan_depende_del_sistema(self):
         self.assertEqual(self._que_dependen(score.SCORED_WORKLOADS), set())
@@ -311,14 +311,14 @@ class TestLaTablaYLasMedidasEnLaMismaUnidad(unittest.TestCase):
     BLOQUE = 192 * 1024 * 1024
 
     def _resultado(self):
-        from silux.benchmark import Conditions, Medida, Result
+        from silux.benchmark import Conditions, Measure, Result
         medidas = []
         for carga in ("compresion", "hash", "compresion_dura", "derivacion"):
             for hilos in (1, 4):
-                medidas.append(Medida(load=carga, threads=hilos,
+                medidas.append(Measure(load=carga, threads=hilos,
                                       operations=100 * hilos, seconds=10.0))
         for hilos in (1, 4):
-            medidas.append(Medida(load="verificacion", threads=hilos,
+            medidas.append(Measure(load="verificacion", threads=hilos,
                                   operations=100 * hilos, seconds=10.0,
                                   bytes_=self.BLOQUE))
         return Result(measures=tuple(medidas), conditions=Conditions(),

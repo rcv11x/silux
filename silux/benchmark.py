@@ -41,33 +41,33 @@ SYS_CPU = "/sys/devices/system/cpu"
 
 # 4 MB con entropía media: ni tan repetido que la compresión sea trivial ni tan
 # aleatorio que no haya nada que comprimir.
-BLOQUE = bytes(range(256)) * 16384
+PATTERN = bytes(range(256)) * 16384
 # Un trozo del anterior: la compresión pesada es tan lenta que con los 4 MB
 # enteros cada operación tardaría más que la medida entera.
-MEDIO = BLOQUE[:65536]
+MEDIUM = PATTERN[:65536]
 
 # Cuánto dura cada medida. Por debajo de tres segundos el resultado depende de
 # si al turbo le dio tiempo a subir; por encima de diez, la prueba entera se
 # hace larga sin cambiar la cifra.
-SEGUNDOS = 5.0
-SEGUNDOS_RAPIDO = 2.0
+SECONDS = 5.0
+QUICK_SECONDS = 2.0
 # Los extremos de lo que se puede pedir. Por debajo de uno la cifra depende de
 # si al turbo le dio tiempo a subir; por encima de sesenta, la prueba se hace
 # eterna para medir lo mismo que a los treinta.
-MINIMO_SEGUNDOS = 1.0
+MIN_SECONDS = 1.0
 # Media hora por medida. Con seis medidas eso son tres horas de prueba, que es
 # más de lo que nadie necesita, pero quien quiera dejar el equipo cociéndose
 # toda la tarde para ver si aguanta tiene derecho a pedirlo.
-MAXIMO_SEGUNDOS = 1800.0
+MAX_SECONDS = 1800.0
 
 # A partir de aquí, la carga de fondo estropea la medida.
-CARGA_ACEPTABLE = 10.0
+ACCEPTABLE_LOAD = 10.0
 # Y a partir de aquí, la frecuencia cayó lo bastante como para decirlo.
-CAIDA_NOTABLE = 0.90
+NOTABLE_DROP = 0.90
 
 
 @dataclass(frozen=True, slots=True)
-class Carga:
+class Workload:
     """Una de las cosas que se le pide hacer al procesador."""
 
     key: str
@@ -80,7 +80,7 @@ class Carga:
     # premiaba a los procesadores con poca caché en un 42,8 %, porque una
     # operación sobre 64 MB no es la misma que sobre 192. Es una función y no
     # un número porque ese tamaño se decide al arrancar la prueba.
-    bytes_por_op: Optional[Callable[[], int]] = None
+    bytes_per_op: Optional[Callable[[], int]] = None
 
 
 # El bloque tiene que no caber en la caché, y cuánto es eso depende del
@@ -88,82 +88,82 @@ class Carga:
 # así que ahí la prueba mediría la caché y no la memoria. Se dimensiona al
 # doble de la L3 que haya, con un suelo para las CPU pequeñas y un techo para
 # no pedir media RAM prestada.
-BLOQUE_MINIMO_MB = 64
-BLOQUE_MAXIMO_MB = 192
-_grande: Optional[bytes] = None
+MIN_BLOCK_MB = 64
+MAX_BLOCK_MB = 192
+_big: Optional[bytes] = None
 
 
-def _tamano_del_bloque() -> int:
+def _block_size_mb() -> int:
     """En megas: el doble de la caché de último nivel, entre 64 y 192."""
-    mayor = 0
-    for indice in range(5):
-        crudo = _leer(f"{SYS_CPU}/cpu0/cache/index{indice}/size")
-        if not crudo:
+    largest = 0
+    for index in range(5):
+        raw = _read(f"{SYS_CPU}/cpu0/cache/index{index}/size")
+        if not raw:
             continue
         try:
-            valor = int(crudo.rstrip("KMG"))
+            value = int(raw.rstrip("KMG"))
         except ValueError:
             continue
-        if crudo.endswith("M"):
-            valor *= 1024
-        elif crudo.endswith("G"):
-            valor *= 1024 * 1024
-        mayor = max(mayor, valor // 1024)          # a megas
-    return max(BLOQUE_MINIMO_MB, min(BLOQUE_MAXIMO_MB, mayor * 2 or BLOQUE_MINIMO_MB))
+        if raw.endswith("M"):
+            value *= 1024
+        elif raw.endswith("G"):
+            value *= 1024 * 1024
+        largest = max(largest, value // 1024)          # a megas
+    return max(MIN_BLOCK_MB, min(MAX_BLOCK_MB, largest * 2 or MIN_BLOCK_MB))
 
 
-def _bloque_grande() -> bytes:
-    global _grande
-    if _grande is None:
-        megas = _tamano_del_bloque()
-        _grande = BLOQUE * (megas * 1024 * 1024 // len(BLOQUE))
-    return _grande
+def _big_block() -> bytes:
+    global _big
+    if _big is None:
+        megabytes = _block_size_mb()
+        _big = PATTERN * (megabytes * 1024 * 1024 // len(PATTERN))
+    return _big
 
 
-def _soltar_el_bloque() -> None:
+def _release_block() -> None:
     """Devuelve los megas del bloque al terminar la prueba.
 
     Son hasta 192 MB, y el programa entero se mueve en 130: dejarlos vivos
     después de medir dispararía el consumo el resto de la sesión por una
     prueba que dura medio minuto.
     """
-    global _grande
-    _grande = None
+    global _big
+    _big = None
 
 
-CARGAS: tuple[Carga, ...] = (
-    Carga("compresion", "Compresión",
-          "Comprimir es enteros y acceso a memoria, que es lo que hace el "
-          "equipo al instalar un juego o abrir un proyecto grande.",
-          lambda: zlib.compress(BLOQUE, 9)),
-    Carga("hash", "Resumen criptográfico",
-          "Enteros puros y sin instrucciones especializadas: mide el núcleo, "
-          "no una aceleración concreta.",
-          lambda: hashlib.sha512(BLOQUE).digest()),
+WORKLOADS: tuple[Workload, ...] = (
+    Workload("compresion", "Compresión",
+             "Comprimir es enteros y acceso a memoria, que es lo que hace el "
+             "equipo al instalar un juego o abrir un proyecto grande.",
+             lambda: zlib.compress(PATTERN, 9)),
+    Workload("hash", "Resumen criptográfico",
+             "Enteros puros y sin instrucciones especializadas: mide el núcleo, "
+             "no una aceleración concreta.",
+             lambda: hashlib.sha512(PATTERN).digest()),
     # bzip2 y no LZMA, y no es indiferente: ver `POR QUÉ NO LZMA` más abajo.
-    Carga("compresion_dura", "Compresión pesada",
-          "Lo mismo pero apretando de verdad: bzip2 ordena el bloque entero "
-          "antes de comprimirlo, así que hace mucho más trabajo por byte y "
-          "separa a un núcleo rápido de uno que solo tiene muchos hermanos.",
-          lambda: bz2.compress(MEDIO, 9)),
-    Carga("derivacion", "Derivación de clave",
-          "Miles de rondas encadenadas sin poder adelantar trabajo: es lo que "
-          "hace un gestor de contraseñas al abrirse, y no lo acelera ninguna "
-          "instrucción especial.",
-          lambda: hashlib.pbkdf2_hmac("sha512", b"silux", b"benchmark", 12_000)),
+    Workload("compresion_dura", "Compresión pesada",
+             "Lo mismo pero apretando de verdad: bzip2 ordena el bloque entero "
+             "antes de comprimirlo, así que hace mucho más trabajo por byte y "
+             "separa a un núcleo rápido de uno que solo tiene muchos hermanos.",
+             lambda: bz2.compress(MEDIUM, 9)),
+    Workload("derivacion", "Derivación de clave",
+             "Miles de rondas encadenadas sin poder adelantar trabajo: es lo que "
+             "hace un gestor de contraseñas al abrirse, y no lo acelera ninguna "
+             "instrucción especial.",
+             lambda: hashlib.pbkdf2_hmac("sha512", b"silux", b"benchmark", 12_000)),
     # Se llamaba «Memoria» y prometía medir el camino hasta la RAM. No lo
     # mide: con un bloque de 4 MB, que cabe de sobra en la caché, da lo mismo
     # que con 384 —21 GB/s en los dos—, porque el cuello lo pone el cálculo
     # del CRC y no la memoria (la RAM de esa misma máquina da 48,5 GB/s
     # medidos con `membench`). Lo que sí es cierto es que de las cinco es la
     # que menos gana con los hilos.
-    Carga("verificacion", "Suma de verificación",
-          "Recorre un bloque grande calculando una suma de comprobación. El "
-          "cuello lo pone el propio cálculo y no la RAM, así que mide enteros "
-          "y no el camino hasta la memoria: de eso se encarga la página de "
-          "Memoria, que sí lo mide.",
-          lambda: zlib.crc32(_bloque_grande()),
-          bytes_por_op=lambda: len(_bloque_grande())),
+    Workload("verificacion", "Suma de verificación",
+             "Recorre un bloque grande calculando una suma de comprobación. El "
+             "cuello lo pone el propio cálculo y no la RAM, así que mide enteros "
+             "y no el camino hasta la memoria: de eso se encarga la página de "
+             "Memoria, que sí lo mide.",
+             lambda: zlib.crc32(_big_block()),
+             bytes_per_op=lambda: len(_big_block())),
 )
 
 # POR QUÉ NO LZMA. La compresión pesada fue `lzma.compress(MEDIO, preset=0)`
@@ -243,7 +243,7 @@ CARGAS: tuple[Carga, ...] = (
 
 
 @dataclass(frozen=True, slots=True)
-class Medida:
+class Measure:
     """El resultado de una carga con un número de hilos."""
 
     load: str
@@ -298,28 +298,28 @@ class Conditions:
         """Si la frecuencia cayó de forma apreciable durante la prueba."""
         if not (self.frequency_peak_hz and self.frequency_end_hz):
             return False
-        return self.frequency_end_hz < self.frequency_peak_hz * CAIDA_NOTABLE
+        return self.frequency_end_hz < self.frequency_peak_hz * NOTABLE_DROP
 
 
 @dataclass(frozen=True, slots=True)
 class Result:
     """Las medidas y el contexto que dice si valen."""
 
-    measures: tuple[Medida, ...] = ()
+    measures: tuple[Measure, ...] = ()
     conditions: Conditions = field(default_factory=Conditions)
     warnings: tuple[str, ...] = ()
 
-    def find(self, load: str, threads: int) -> Optional[Medida]:
+    def find(self, load: str, threads: int) -> Optional[Measure]:
         return next((m for m in self.measures
                      if m.load == load and m.threads == threads), None)
 
     def scaling(self, load: str, threads: int) -> Optional[float]:
         """Cuánto multiplica el rendimiento al usar todos los hilos."""
-        uno = self.find(load, 1)
-        muchos = self.find(load, threads)
-        if not (uno and muchos and uno.per_second):
+        one = self.find(load, 1)
+        many = self.find(load, threads)
+        if not (one and many and one.per_second):
             return None
-        return round(muchos.per_second / uno.per_second, 1)
+        return round(many.per_second / one.per_second, 1)
 
 
 def run(quick: bool = False, on_progress: Optional[Callable[[str, float], None]] = None,
@@ -340,49 +340,49 @@ def run(quick: bool = False, on_progress: Optional[Callable[[str, float], None]]
     calentado, mientras que a los treinta se mide con el equipo asentado, que
     es lo que de verdad va a pasar mientras se juega o se compila.
     """
-    duracion = (max(MINIMO_SEGUNDOS, min(MAXIMO_SEGUNDOS, float(seconds)))
-                if seconds else (SEGUNDOS_RAPIDO if quick else SEGUNDOS))
-    hilos = os.cpu_count() or 1
-    cargas = CARGAS
+    duration = (max(MIN_SECONDS, min(MAX_SECONDS, float(seconds)))
+                if seconds else (QUICK_SECONDS if quick else SECONDS))
+    threads = os.cpu_count() or 1
+    workloads = WORKLOADS
     if loads is not None:
-        if desconocidas := set(loads) - {carga.key for carga in CARGAS}:
-            raise ValueError(f"no hay ninguna carga llamada {sorted(desconocidas)}")
-        cargas = tuple(carga for carga in CARGAS if carga.key in loads)
-    vigilante = _Vigilante()
+        if unknown := set(loads) - {workload.key for workload in WORKLOADS}:
+            raise ValueError(f"no hay ninguna carga llamada {sorted(unknown)}")
+        workloads = tuple(workload for workload in WORKLOADS if workload.key in loads)
+    watcher = _Watcher()
 
-    fondo = _carga_de_fondo()
-    temperatura_inicial = _temperatura()
+    background = _background_load()
+    start_temperature = _temperature()
 
-    pasos = [(carga, n) for carga in cargas for n in (1, hilos)]
-    medidas: list[Medida] = []
-    vigilante.empezar()
+    steps = [(workload, n) for workload in workloads for n in (1, threads)]
+    measures: list[Measure] = []
+    watcher.start()
     try:
-        for indice, (carga, n) in enumerate(pasos):
+        for index, (workload, n) in enumerate(steps):
             if stop is not None and stop.is_set():
                 break
             if on_progress:
-                etiqueta = f"{carga.name}, {n} {'hilo' if n == 1 else 'hilos'}"
-                on_progress(etiqueta, indice / len(pasos))
-            medidas.append(_medir(carga, n, duracion))
+                label = f"{workload.name}, {n} {'hilo' if n == 1 else 'hilos'}"
+                on_progress(label, index / len(steps))
+            measures.append(_measure(workload, n, duration))
     finally:
-        vigilante.parar()
-        _soltar_el_bloque()
+        watcher.stop()
+        _release_block()
 
     if on_progress:
         on_progress("listo", 1.0)
 
-    condiciones = Conditions(
-        frequency_avg_hz=vigilante.media(),
-        frequency_peak_hz=vigilante.pico(),
-        frequency_end_hz=vigilante.final(),
-        temperature_start_c=temperatura_inicial,
-        temperature_peak_c=vigilante.temperatura_pico(),
-        governor=_leer(f"{SYS_CPU}/cpu0/cpufreq/scaling_governor"),
-        energy_preference=_leer(f"{SYS_CPU}/cpu0/cpufreq/energy_performance_preference"),
-        background_load=fondo,
-        background_peak=vigilante.ajeno_pico(),
+    conditions = Conditions(
+        frequency_avg_hz=watcher.average(),
+        frequency_peak_hz=watcher.peak(),
+        frequency_end_hz=watcher.final(),
+        temperature_start_c=start_temperature,
+        temperature_peak_c=watcher.temperature_peak(),
+        governor=_read(f"{SYS_CPU}/cpu0/cpufreq/scaling_governor"),
+        energy_preference=_read(f"{SYS_CPU}/cpu0/cpufreq/energy_performance_preference"),
+        background_load=background,
+        background_peak=watcher.stolen_peak(),
     )
-    return Result(tuple(medidas), condiciones, _avisos(condiciones))
+    return Result(tuple(measures), conditions, _warnings(conditions))
 
 
 # -- ejecución ---------------------------------------------------------------
@@ -402,14 +402,14 @@ def run(quick: bool = False, on_progress: Optional[Callable[[str, float], None]]
 # Con unas ochenta vueltas ya está en régimen; se dejan ciento veinte de
 # margen. Lo que el rodaje no arregla es la inestabilidad de LZMA que la sacó
 # de aquí: esa no se calma en ningún número de vueltas.
-VUELTAS_EN_VACIO = 120
+IDLE_ROUNDS = 120
 
 # Tope por si la carga es lentísima en un equipo modesto: más vale medir con
 # el arranque a medio pagar que dejar la prueba colgada un minuto por carga.
-TOPE_EN_VACIO_S = 2.0
+IDLE_CAP_S = 2.0
 
 
-def _rodar_en_vacio(carga: "Carga", hilos: int) -> None:
+def _warm_up(workload: "Workload", threads: int) -> None:
     """Deja la carga en régimen para que la medida no pague su arranque.
 
     Como el orden es un hilo primero y todos después, ese arranque lo pagaba
@@ -420,55 +420,55 @@ def _rodar_en_vacio(carga: "Carga", hilos: int) -> None:
     # arranque de la carga, que son unas ochenta llamadas, y eso no dura lo
     # mismo en un Ryzen que en un portátil de hace diez años: medio segundo
     # aquí son cientos de vueltas y allí puede que ninguna.
-    fin = time.perf_counter() + TOPE_EN_VACIO_S
+    end = time.perf_counter() + IDLE_CAP_S
 
-    def bucle() -> None:
-        trabajo = carga.work
-        for _vuelta in range(VUELTAS_EN_VACIO):
-            if time.perf_counter() > fin:
+    def loop() -> None:
+        work = workload.work
+        for _round in range(IDLE_ROUNDS):
+            if time.perf_counter() > end:
                 break
-            trabajo()
+            work()
 
-    obreros = [threading.Thread(target=bucle, daemon=True)
-               for _ in range(hilos)]
-    for obrero in obreros:
-        obrero.start()
-    for obrero in obreros:
-        obrero.join(timeout=TOPE_EN_VACIO_S + 5)
+    workers = [threading.Thread(target=loop, daemon=True)
+               for _ in range(threads)]
+    for worker in workers:
+        worker.start()
+    for worker in workers:
+        worker.join(timeout=IDLE_CAP_S + 5)
 
 
-def _medir(carga: Carga, hilos: int, duracion: float) -> Medida:
+def _measure(workload: Workload, threads: int, duration: float) -> Measure:
     """Cuenta cuántas veces cabe la carga en el tiempo dado.
 
     Se mide por tiempo y no por trabajo fijo porque una cantidad que en un
     Ryzen tarda un segundo, en un portátil de hace diez años tarda treinta.
     """
-    _rodar_en_vacio(carga, hilos)
-    parar = threading.Event()
-    cuenta = [0] * hilos
+    _warm_up(workload, threads)
+    stop = threading.Event()
+    count = [0] * threads
 
-    def bucle(indice: int) -> None:
-        vueltas = 0
-        trabajo = carga.work
-        while not parar.is_set():
-            trabajo()
-            vueltas += 1
-        cuenta[indice] = vueltas
+    def loop(index: int) -> None:
+        rounds = 0
+        work = workload.work
+        while not stop.is_set():
+            work()
+            rounds += 1
+        count[index] = rounds
 
-    obreros = [threading.Thread(target=bucle, args=(i,), daemon=True)
-               for i in range(hilos)]
-    inicio = time.perf_counter()
-    for obrero in obreros:
-        obrero.start()
-    time.sleep(duracion)
-    parar.set()
-    for obrero in obreros:
-        obrero.join(timeout=10)
-    transcurrido = time.perf_counter() - inicio
+    workers = [threading.Thread(target=loop, args=(i,), daemon=True)
+               for i in range(threads)]
+    start = time.perf_counter()
+    for worker in workers:
+        worker.start()
+    time.sleep(duration)
+    stop.set()
+    for worker in workers:
+        worker.join(timeout=10)
+    elapsed = time.perf_counter() - start
 
-    return Medida(load=carga.key, threads=hilos,
-                  operations=sum(cuenta), seconds=transcurrido,
-                  bytes_=carga.bytes_por_op() if carga.bytes_por_op else None)
+    return Measure(load=workload.key, threads=threads,
+                  operations=sum(count), seconds=elapsed,
+                  bytes_=workload.bytes_per_op() if workload.bytes_per_op else None)
 
 
 # Aquí vivían `_fijar_afinidad` y `_nucleo_preferido`, que ataban el hilo de
@@ -491,42 +491,42 @@ def _medir(carga: Carga, hilos: int, duracion: float) -> Medida:
 
 # -- contexto ----------------------------------------------------------------
 
-class _Vigilante:
+class _Watcher:
     """Sigue la frecuencia y la temperatura mientras se mide."""
 
     def __init__(self) -> None:
-        self._frecuencias: list[int] = []
-        self._temperaturas: list[float] = []
-        self._ajeno: list[float] = []
-        self._cpu_antes = _jiffies()
-        self._parar = threading.Event()
-        self._hilo: Optional[threading.Thread] = None
+        self._frequencies: list[int] = []
+        self._temperatures: list[float] = []
+        self._stolen: list[float] = []
+        self._cpu_before = _jiffies()
+        self._stop_event = threading.Event()
+        self._thread: Optional[threading.Thread] = None
 
-    def empezar(self) -> None:
-        self._hilo = threading.Thread(target=self._bucle, daemon=True)
-        self._hilo.start()
+    def start(self) -> None:
+        self._thread = threading.Thread(target=self._loop, daemon=True)
+        self._thread.start()
 
-    def parar(self) -> None:
-        self._parar.set()
-        if self._hilo is not None:
-            self._hilo.join(timeout=2)
+    def stop(self) -> None:
+        self._stop_event.set()
+        if self._thread is not None:
+            self._thread.join(timeout=2)
 
-    def _bucle(self) -> None:
-        while not self._parar.is_set():
+    def _loop(self) -> None:
+        while not self._stop_event.is_set():
             # Solo cuenta la frecuencia más alta del momento: la media de todos
             # los núcleos, con la mitad dormidos, no dice a qué fue el trabajo.
-            picos = [_entero(f"{SYS_CPU}/cpu{i}/cpufreq/scaling_cur_freq")
+            current = [_read_int(f"{SYS_CPU}/cpu{i}/cpufreq/scaling_cur_freq")
                      for i in range(os.cpu_count() or 1)]
-            validos = [p for p in picos if p]
-            if validos:
-                self._frecuencias.append(max(validos) * 1000)
-            if (grados := _temperatura()) is not None:
-                self._temperaturas.append(grados)
-            if (robado := self._cuanto_roban()) is not None:
-                self._ajeno.append(robado)
-            self._parar.wait(0.25)
+            valid = [p for p in current if p]
+            if valid:
+                self._frequencies.append(max(valid) * 1000)
+            if (degrees := _temperature()) is not None:
+                self._temperatures.append(degrees)
+            if (stolen := self._stolen_now()) is not None:
+                self._stolen.append(stolen)
+            self._stop_event.wait(0.25)
 
-    def _cuanto_roban(self) -> Optional[float]:
+    def _stolen_now(self) -> Optional[float]:
         """Qué parte de la máquina se lleva otro programa, ahora mismo.
 
         No vale mirar `/proc/stat` a secas mientras la prueba corre: la prueba
@@ -534,53 +534,53 @@ class _Vigilante:
         es la resta, lo ocupado menos lo que consume este mismo proceso, que es
         justo lo que le está quitando sitio a la medida.
         """
-        ahora = _jiffies()
-        anterior, self._cpu_antes = self._cpu_antes, ahora
-        if ahora is None or anterior is None:
+        now = _jiffies()
+        before, self._cpu_before = self._cpu_before, now
+        if now is None or before is None:
             return None
-        total, inactivo, propio = ahora
-        total_antes, inactivo_antes, propio_antes = anterior
-        transcurrido = total - total_antes
-        if transcurrido <= 0:
+        total, idle, own = now
+        total_before, idle_before, own_before = before
+        elapsed = total - total_before
+        if elapsed <= 0:
             return None
-        ocupado = transcurrido - (inactivo - inactivo_antes)
-        ajeno = ocupado - (propio - propio_antes)
+        busy = elapsed - (idle - idle_before)
+        stolen = busy - (own - own_before)
         # Puede salir negativo por unas centésimas: los dos ficheros no se leen
         # en el mismo instante. Cero es la respuesta, no un error.
-        return max(0.0, ajeno / transcurrido * 100)
+        return max(0.0, stolen / elapsed * 100)
 
-    def media(self) -> Optional[int]:
-        return int(sum(self._frecuencias) / len(self._frecuencias)) if self._frecuencias else None
+    def average(self) -> Optional[int]:
+        return int(sum(self._frequencies) / len(self._frequencies)) if self._frequencies else None
 
-    def pico(self) -> Optional[int]:
-        return max(self._frecuencias) if self._frecuencias else None
+    def peak(self) -> Optional[int]:
+        return max(self._frequencies) if self._frequencies else None
 
     def final(self) -> Optional[int]:
         """La media del último tramo, para ver si acabó más baja que empezó."""
-        if len(self._frecuencias) < 8:
-            return self._frecuencias[-1] if self._frecuencias else None
-        cola = self._frecuencias[-len(self._frecuencias) // 4:]
-        return int(sum(cola) / len(cola))
+        if len(self._frequencies) < 8:
+            return self._frequencies[-1] if self._frequencies else None
+        tail = self._frequencies[-len(self._frequencies) // 4:]
+        return int(sum(tail) / len(tail))
 
-    def temperatura_pico(self) -> Optional[float]:
-        return max(self._temperaturas) if self._temperaturas else None
+    def temperature_peak(self) -> Optional[float]:
+        return max(self._temperatures) if self._temperatures else None
 
-    def ajeno_pico(self) -> Optional[float]:
+    def stolen_peak(self) -> Optional[float]:
         """Lo más que llegó a robarle otro programa durante la prueba.
 
         El pico y no la media: lo que estropea una medida es que algo se
         despierte a mitad, y promediado entre dos minutos y medio eso se diluye
         hasta parecer nada.
         """
-        return round(max(self._ajeno), 1) if self._ajeno else None
+        return round(max(self._stolen), 1) if self._stolen else None
 
 
-def _avisos(condiciones: Conditions) -> tuple[str, ...]:
+def _warnings(conditions: Conditions) -> tuple[str, ...]:
     """Lo que hay que saber antes de comparar esta cifra con otra."""
-    avisos = []
-    if condiciones.background_load and condiciones.background_load > CARGA_ACEPTABLE:
-        avisos.append(
-            f"Había un {condiciones.background_load:.0f} % de carga de fondo al "
+    warnings = []
+    if conditions.background_load and conditions.background_load > ACCEPTABLE_LOAD:
+        warnings.append(
+            f"Había un {conditions.background_load:.0f} % de carga de fondo al "
             "empezar. El resultado no es comparable con el de una máquina en "
             "reposo."
         )
@@ -589,26 +589,26 @@ def _avisos(condiciones: Conditions) -> tuple[str, ...]:
     # estropea una prueba: quien la lanza y se va a hacer otra cosa, o quien
     # tiene una actualización en marcha sin saberlo, salía con «0 % de carga de
     # fondo» y una cifra baja que no tenía explicación en ninguna parte.
-    if (condiciones.background_peak
-            and condiciones.background_peak > CARGA_ACEPTABLE):
-        avisos.append(
+    if (conditions.background_peak
+            and conditions.background_peak > ACCEPTABLE_LOAD):
+        warnings.append(
             f"Otro programa llegó a llevarse el "
-            f"{condiciones.background_peak:.0f} % de la máquina mientras se "
+            f"{conditions.background_peak:.0f} % de la máquina mientras se "
             "medía. La cifra sale más baja de lo que da este equipo en reposo."
         )
-    if condiciones.governor and condiciones.governor not in ("performance",):
-        avisos.append(
-            f"El gobernador de energía estaba en «{condiciones.governor}». "
+    if conditions.governor and conditions.governor not in ("performance",):
+        warnings.append(
+            f"El gobernador de energía estaba en «{conditions.governor}». "
             "En «performance» la cifra sería más alta."
         )
-    if condiciones.throttled:
-        pico = condiciones.frequency_peak_hz or 0
-        final = condiciones.frequency_end_hz or 0
-        avisos.append(
-            f"La frecuencia bajó de {pico / 1e9:.2f} a {final / 1e9:.2f} GHz "
+    if conditions.throttled:
+        peak = conditions.frequency_peak_hz or 0
+        final = conditions.frequency_end_hz or 0
+        warnings.append(
+            f"La frecuencia bajó de {peak / 1e9:.2f} a {final / 1e9:.2f} GHz "
             "durante la prueba: el procesador no pudo sostener su máximo."
         )
-    return tuple(avisos)
+    return tuple(warnings)
 
 
 def _jiffies() -> Optional[tuple[int, int, int]]:
@@ -618,64 +618,64 @@ def _jiffies() -> Optional[tuple[int, int, int]]:
     entre ellos.
     """
     try:
-        with open("/proc/stat", encoding="utf-8") as fichero:
-            numeros = [int(x) for x in fichero.readline().split()[1:8]]
-        with open(f"/proc/{os.getpid()}/stat", encoding="utf-8") as fichero:
-            campos = fichero.read().rsplit(")", 1)[1].split()
+        with open("/proc/stat", encoding="utf-8") as handle:
+            numbers = [int(x) for x in handle.readline().split()[1:8]]
+        with open(f"/proc/{os.getpid()}/stat", encoding="utf-8") as handle:
+            fields = handle.read().rsplit(")", 1)[1].split()
         # utime + stime, que es lo que este proceso ha consumido de CPU.
-        propio = int(campos[11]) + int(campos[12])
+        own = int(fields[11]) + int(fields[12])
     except (OSError, ValueError, IndexError):
         return None
-    if len(numeros) < 5:
+    if len(numbers) < 5:
         return None
-    return sum(numeros), numeros[3] + numeros[4], propio
+    return sum(numbers), numbers[3] + numbers[4], own
 
 
-def _carga_de_fondo() -> Optional[float]:
+def _background_load() -> Optional[float]:
     """Qué porcentaje de la máquina está ocupado antes de empezar."""
-    def instantanea() -> Optional[tuple[int, int]]:
+    def snapshot() -> Optional[tuple[int, int]]:
         try:
-            with open("/proc/stat", encoding="utf-8") as fichero:
-                campos = fichero.readline().split()
+            with open("/proc/stat", encoding="utf-8") as handle:
+                fields = handle.readline().split()
         except OSError:
             return None
-        if len(campos) < 5:
+        if len(fields) < 5:
             return None
-        numeros = [int(c) for c in campos[1:8] if c.isdigit()]
-        return sum(numeros), numeros[3]        # total, inactivo
+        numbers = [int(c) for c in fields[1:8] if c.isdigit()]
+        return sum(numbers), numbers[3]        # total, inactivo
 
-    antes = instantanea()
-    if antes is None:
+    before = snapshot()
+    if before is None:
         return None
     time.sleep(0.3)
-    despues = instantanea()
-    if despues is None or despues[0] == antes[0]:
+    after = snapshot()
+    if after is None or after[0] == before[0]:
         return None
-    ocupado = (despues[0] - antes[0]) - (despues[1] - antes[1])
-    return round(ocupado / (despues[0] - antes[0]) * 100, 1)
+    busy = (after[0] - before[0]) - (after[1] - before[1])
+    return round(busy / (after[0] - before[0]) * 100, 1)
 
 
-def _temperatura() -> Optional[float]:
+def _temperature() -> Optional[float]:
     """La del procesador, del primer chip que la publique."""
-    for indice in range(16):
-        nombre = _leer(f"/sys/class/hwmon/hwmon{indice}/name")
-        if nombre in ("k10temp", "coretemp", "zenpower", "cpu_thermal"):
-            milesimas = _entero(f"/sys/class/hwmon/hwmon{indice}/temp1_input")
-            if milesimas:
-                return round(milesimas / 1000, 1)
+    for index in range(16):
+        name = _read(f"/sys/class/hwmon/hwmon{index}/name")
+        if name in ("k10temp", "coretemp", "zenpower", "cpu_thermal"):
+            millidegrees = _read_int(f"/sys/class/hwmon/hwmon{index}/temp1_input")
+            if millidegrees:
+                return round(millidegrees / 1000, 1)
     return None
 
 
-def _leer(ruta: str) -> Optional[str]:
+def _read(path: str) -> Optional[str]:
     try:
-        return pathlib.Path(ruta).read_text(encoding="utf-8").strip() or None
+        return pathlib.Path(path).read_text(encoding="utf-8").strip() or None
     except OSError:
         return None
 
 
-def _entero(ruta: str) -> Optional[int]:
-    crudo = _leer(ruta)
+def _read_int(path: str) -> Optional[int]:
+    raw = _read(path)
     try:
-        return int(crudo) if crudo else None
+        return int(raw) if raw else None
     except ValueError:
         return None

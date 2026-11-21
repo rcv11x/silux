@@ -64,8 +64,8 @@ class TestElInformeDiceLoQueEnsenaLaVentana(unittest.TestCase):
 
         informe = full_report.build(f)
         apartados = _apartados(informe)
-        with pantalla.Ventana(privacidad.anonimizar(f)) as ventana:
-            ventana._on_sample(privacidad.anonimizar(f))
+        with pantalla.Ventana(privacidad.anonymize(f)) as ventana:
+            ventana._on_sample(privacidad.anonymize(f))
             for clave, pagina in pantalla.recorrer(ventana):
                 if clave in full_report.FUERA or seccion_que_falta(ventana, clave):
                     continue

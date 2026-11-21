@@ -78,7 +78,7 @@ class TestElVolcadoNuevo(unittest.TestCase):
         self.assertTrue(all(c.name is None for c in self.foto.cameras))
         self.assertTrue(all(b.product is None for b in self.foto.bluetooth))
         # Anonimizar ya no encuentra nada que quitar ahí.
-        anonima = privacidad.anonimizar(self.foto)
+        anonima = privacidad.anonymize(self.foto)
         self.assertEqual(anonima.usb_devices, usb)
         self.assertEqual(anonima.sound_cards, self.foto.sound_cards)
 
@@ -151,7 +151,7 @@ class TestElVolcadoNuevoDeIntel(unittest.TestCase):
         self.assertEqual(sorted(u.kind for u in usb), ["keyboard", "mouse"])
         self.assertEqual({(u.vendor, u.product, u.usb_id) for u in usb}, {(None, None, None)})
         self.assertTrue(all(s.name is None for s in self.foto.sound_cards))
-        anonima = privacidad.anonimizar(self.foto)
+        anonima = privacidad.anonymize(self.foto)
         self.assertEqual(anonima.usb_devices, usb)
 
     def test_en_el_volcado_no_hay_archivos_que_digan_de_quien_es_cada_cosa(self):

@@ -91,7 +91,7 @@ def build(snapshot, sections: Optional[Iterable[str]] = None,
     # one would restyle the whole application.
     if not inside_app:
         theme.apply(aplicacion, "dark", preferencias.density, "normal")
-    foto = privacidad.anonimizar(snapshot) if anonymous else snapshot
+    foto = privacidad.anonymize(snapshot) if anonymous else snapshot
     ventana = MainWindow(preferencias)
     if inside_app:
         # Laid out and painted, but never on screen.
@@ -104,7 +104,7 @@ def build(snapshot, sections: Optional[Iterable[str]] = None,
         # medias) solo sale con la segunda.
         ventana._on_sample(foto)
         ventana._on_sample(foto)
-        partes = [report._cabecera(foto, anonymous=anonymous)]
+        partes = [report._header(foto, anonymous=anonymous)]
         for clave, activa in SECTIONS:
             if not activa or clave in FUERA or not wanted(clave, sections):
                 continue
@@ -117,7 +117,7 @@ def build(snapshot, sections: Optional[Iterable[str]] = None,
             cuerpo = page_text(pagina)
             if cuerpo.strip():
                 partes.append(f"\n## {_(clave)}\n\n{cuerpo}")
-        partes.append(report._diagnostico(foto))
+        partes.append(report._diagnosis(foto))
     finally:
         ventana.hide()
         ventana.deleteLater()

@@ -37,15 +37,15 @@ import sys
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 from silux import privacidad  # noqa: E402  (lo que pone el anonimizado)
-from silux.privacidad import _leer, _series_de_edid  # noqa: E402
+from silux.privacidad import _edid_serials, _read  # noqa: E402
 
-_CORREO = privacidad.CORREO
-_CORREOS_PERMITIDOS = privacidad.CORREOS_PERMITIDOS
+_CORREO = privacidad.EMAIL
+_CORREOS_PERMITIDOS = privacidad.ALLOWED_EMAILS
 
 # Lo que el anonimizado pone en lugar de lo de cada uno: parece de verdad a
 # propósito, y por eso se nombra. Cualquier otra IPv4 privada es de alguien.
-_SUSTITUTOS = {privacidad.IPV4, privacidad.PUERTA}
-_NOMBRES_DE_EQUIPO_FALSOS = {"", privacidad.EQUIPO, *privacidad.SUSTITUTOS_ANTERIORES}
+_SUSTITUTOS = {privacidad.IPV4, privacidad.GATEWAY}
+_NOMBRES_DE_EQUIPO_FALSOS = {"", privacidad.HOST_NAME, *privacidad.OLD_SUBSTITUTES}
 
 RANGOS_DE_DOCUMENTACION = (
     re.compile(r"^192\.0\.2\."), re.compile(r"^198\.51\.100\."),
@@ -68,14 +68,14 @@ def _privados() -> dict[str, str]:
     comas).
     """
     datos: list[str] = os.environ.get("SILUX_PRIVADO", "").split(",")
-    datos += _leer(RAIZ / ".privado").splitlines()
+    datos += _read(RAIZ / ".privado").splitlines()
     return {d.strip(): "un dato de .privado" for d in datos if len(d.strip()) >= 4}
 
 
 
 def _de_esta_maquina() -> dict[str, str]:
     """Lo de esta máquina, y lo de `.privado`."""
-    return {**privacidad.de_esta_maquina(), **_privados()}
+    return {**privacidad.of_this_machine(), **_privados()}
 
 
 # -- lo que no es de documentación, sea de quien sea -----------------------------
@@ -162,16 +162,16 @@ def _en_un_volcado(ruta: pathlib.Path, relativa: str) -> list[str]:
             return []
         if len(edid) >= 16 and int.from_bytes(edid[12:16], "little") != 0:
             return ["un número de serie de monitor (EDID, bytes 12-15)"]
-        if _series_de_edid(edid):
+        if _edid_serials(edid):
             return ["un número de serie de monitor (EDID, descriptor 0xFF)"]
         return []
     if nombre in _SERIES_EN_VOLCADOS:
-        valor = _leer(ruta)
+        valor = _read(ruta)
         if valor.strip("0-: \n"):
             return [f"un {nombre} sin poner a cero"]
     if nombre == "hostname" and relativa.endswith("kernel/hostname"):
-        if _leer(ruta) not in _NOMBRES_DE_EQUIPO_FALSOS:
-            return [f"un nombre de equipo que no es «{privacidad.EQUIPO}»"]
+        if _read(ruta) not in _NOMBRES_DE_EQUIPO_FALSOS:
+            return [f"un nombre de equipo que no es «{privacidad.HOST_NAME}»"]
     return []
 
 

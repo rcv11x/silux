@@ -14,7 +14,7 @@ import unittest
 from unittest import mock
 
 from silux import history
-from silux.benchmark import Conditions, Medida, Result
+from silux.benchmark import Conditions, Measure, Result
 from tests import qt
 
 
@@ -22,7 +22,7 @@ def _resultado(ops_por_hilo=100.0, hilos=8, gobernador="performance") -> Result:
     """Una prueba con las cargas que guarda una de verdad: las dos que
     puntúan y la verificación, que se mide en bytes y no en operaciones."""
     medidas = tuple(
-        Medida(load=carga, threads=n, operations=int(ops_por_hilo * n * 2), seconds=2.0,
+        Measure(load=carga, threads=n, operations=int(ops_por_hilo * n * 2), seconds=2.0,
                bytes_=64 * 1024**2 if carga == "verificacion" else None)
         for carga in ("hash", "compresion_dura", "verificacion")
         for n in (1, hilos)

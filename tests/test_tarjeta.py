@@ -55,10 +55,10 @@ class TestLoQueNoSale(unittest.TestCase):
     """Una imagen para pegar en público no lleva de quién es el equipo."""
 
     def _texto_de_las_filas(self, foto):
-        from silux.privacidad import anonimizar
+        from silux.privacidad import anonymize
         from silux.ui import tarjeta
 
-        filas = tarjeta._fila(anonimizar(foto))
+        filas = tarjeta._fila(anonymize(foto))
         return " ".join(" ".join(fila) for fila in filas)
 
     def test_ni_el_nombre_del_equipo_ni_las_direcciones(self):
@@ -75,8 +75,8 @@ class TestLoQueNoSale(unittest.TestCase):
         """Lo seguro tiene que ser lo que pasa si nadie toca nada."""
         from silux.ui import tarjeta
 
-        with mock.patch.object(tarjeta, "anonimizar",
-                               side_effect=tarjeta.anonimizar) as tapar:
+        with mock.patch.object(tarjeta, "anonymize",
+                               side_effect=tarjeta.anonymize) as tapar:
             tarjeta.dibujar(_snapshot(), _paleta())
         tapar.assert_called_once()
 
@@ -145,7 +145,7 @@ def _paleta():
 class TestLosDatosDePruebaNoSonLosDeSustitucion(unittest.TestCase):
     def test_ninguno_coincide_con_lo_que_pone_privacidad(self):
         from silux import privacidad
-        sustitutos = (privacidad.EQUIPO, privacidad.IPV4, privacidad.MAC,
-                      privacidad.PUERTA, "0" * len(SERIE))
+        sustitutos = (privacidad.HOST_NAME, privacidad.IPV4, privacidad.MAC,
+                      privacidad.GATEWAY, "0" * len(SERIE))
         for dato in (EQUIPO, DIRECCION, MAC, SERIE):
             self.assertNotIn(dato, sustitutos)

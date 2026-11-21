@@ -16,7 +16,7 @@ from tests.test_equipos import EQUIPOS, foto
 class TestTheLoopbackIsNotCovered(unittest.TestCase):
 
     def test_it_keeps_its_address_and_the_rest_does_not(self):
-        anonima = privacidad.anonimizar(foto(EQUIPOS / "i5-1135g7")[0])
+        anonima = privacidad.anonymize(foto(EQUIPOS / "i5-1135g7")[0])
         por_nombre = {i.name: i for i in anonima.network}
         self.assertEqual(por_nombre["lo"].ipv4, "127.0.0.1")
         self.assertEqual(por_nombre["wlan0"].ipv4, privacidad.IPV4)

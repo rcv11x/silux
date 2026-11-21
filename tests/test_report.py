@@ -67,7 +67,7 @@ class TestPrivacidad(unittest.TestCase):
 
     def test_lo_omitido_se_dice_en_vez_de_borrarse(self):
         # Un hueco en blanco haría dudar de si el dato faltaba o se ocultó.
-        self.assertIn(report.OCULTO, report.build(_snapshot()))
+        self.assertIn(report.HIDDEN, report.build(_snapshot()))
 
 
 
@@ -183,8 +183,8 @@ class TestCasosVacios(unittest.TestCase):
 class TestLosDatosDePruebaNoSonLosDeSustitucion(unittest.TestCase):
     def test_ninguno_coincide_con_lo_que_pone_privacidad(self):
         from silux import privacidad
-        sustitutos = (privacidad.EQUIPO, privacidad.IPV4, privacidad.MAC,
-                      privacidad.PUERTA, "0" * len(SERIE))
+        sustitutos = (privacidad.HOST_NAME, privacidad.IPV4, privacidad.MAC,
+                      privacidad.GATEWAY, "0" * len(SERIE))
         for dato in (EQUIPO, DIRECCION, MAC, SERIE):
             self.assertNotIn(dato, sustitutos)
 
@@ -368,7 +368,7 @@ class TestRendimientoEnElInforme(unittest.TestCase):
         fila = next(l for l in texto.splitlines()
                     if l.startswith("| Cargas que puntúan |"))
         nombres = {n.strip() for n in fila.split("|")[2].split("·")}
-        self.assertEqual(nombres, {c.name for c in benchmark.CARGAS
+        self.assertEqual(nombres, {c.name for c in benchmark.WORKLOADS
                                    if score.is_scored(c.key)})
         self.assertIn("zlib 1.2.11 (pclmulqdq · avx2)", texto)
         self.assertIn("OpenSSL 3.0.2", texto)

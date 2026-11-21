@@ -129,7 +129,7 @@ def comparable(seconds: float) -> bool:
 def is_scored(workload: str) -> bool:
     """Whether this workload counts towards the score.
 
-    It lives here and not in `benchmark.CARGAS` because it is the scale's
+    It lives here and not in `benchmark.WORKLOADS` because it is the scale's
     decision, not the workload's: the same run, measured the same, counts or
     not depending on what the formula can compare. A mark on each workload
     would keep it in two places that could drift apart unnoticed.

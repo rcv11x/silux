@@ -49,7 +49,7 @@ def main() -> int:
     from PySide6.QtWidgets import QApplication
 
     from silux.collector import Collector
-    from silux.privacidad import anonimizar
+    from silux.privacidad import anonymize
     from silux.ui import app as appmod
 
     destino = args.destino or carpeta_de_imagenes()
@@ -62,7 +62,7 @@ def main() -> int:
               flush=True)
         recolector.request_elevation()
     for _vuelta in range(max(2, args.segundos)):
-        ventana._on_sample(anonimizar(recolector.snapshot()))
+        ventana._on_sample(anonymize(recolector.snapshot()))
         aplicacion.processEvents()
         time.sleep(1.0)
     privilegios = ventana._last_snapshot.privileged
