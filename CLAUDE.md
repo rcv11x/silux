@@ -126,7 +126,7 @@ No son preferencias de estilo: cada una viene de un problema concreto.
    (`record`). La salida conocida si la memoria se acerca es construir las
    páginas al visitarlas.
 8. **Lo que cueste memoria de forma permanente, en otro proceso.** OpenGL,
-   Vulkan y OpenCL se preguntan en un hijo (`gpuapi.consultar()`), que muere
+   Vulkan y OpenCL se preguntan en un hijo (`gpuapi.query()`), que muere
    al contestar; un driver que revienta solo se lleva al hijo.
 9. **La interfaz responde al momento.** Lo que cambia (permisos, un disco
    que se conecta, un dato que aparece o desaparece) se ve en la página
