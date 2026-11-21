@@ -157,6 +157,17 @@ class TestLasDireccionesDeProc(unittest.TestCase):
         self.assertNotIn("datos", salida)
         self.assertIn("/dev/sdb1 /media/unidad1 ext4", salida)
 
+    def test_a_mount_has_the_same_substitute_in_mounts_and_statvfs(self):
+        # A desktop's second disk was /media/unidad1 in mounts and unidad2 in
+        # statvfs: its path held something the text cover changes, and
+        # statvfs was numbered after it. Replayed, the disk had no numbers.
+        punto = f"{self.limpio.casa}/discos/datos"
+        self.limpio.grabado = {"statvfs": {"/": [1, 2], punto: [3, 4]}}
+        salida = self.limpio._mounts(f"/dev/sda2 / btrfs rw 0 0\n/dev/sdb1 {punto} ext4 rw 0 0\n")
+        self.assertIn("/dev/sdb1 /media/unidad1 ext4", salida)
+        self.assertEqual(self.limpio.grabado_limpio()["statvfs"],
+                         {"/": [1, 2], "/media/unidad1": [3, 4]})
+
 
 class TestLasFuentesAlternativas(unittest.TestCase):
     """El proveedor se queda con la primera fuente de frecuencia que contesta,

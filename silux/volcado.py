@@ -917,6 +917,9 @@ class _Anonimizador:
             if isinstance(tarjeta, dict) and tarjeta.get("uuid"):
                 self._secreto(tarjeta["uuid"], "gpu_id")
                 self._secreto(tarjeta["uuid"].removeprefix("GPU-"), "gpu_id")
+        # Mount points are numbered by their real path, as in /proc/mounts:
+        # covered first, a path holding the user's name became another one.
+        montados = {self._montaje(p): v for p, v in (self.grabado.get("statvfs") or {}).items()}
         limpio = json.loads(self._cambiar_texto(json.dumps(self.grabado, ensure_ascii=False)))
         for tarjeta in (limpio.get("nvml") or {}).get("tarjetas") or ():
             if isinstance(tarjeta, dict) and tarjeta.get("uuid"):
@@ -928,7 +931,7 @@ class _Anonimizador:
                 self._secreto(valor, "ip")
                 limpio["ioctl_red"][clave] = privacidad.IPV4
         if "statvfs" in limpio:
-            limpio["statvfs"] = {self._montaje(p): v for p, v in limpio["statvfs"].items()}
+            limpio["statvfs"] = montados
         entorno = limpio.get("plataforma", {}).get("uname")
         if isinstance(entorno, dict) and entorno.get("node"):
             entorno["node"] = privacidad.EQUIPO
