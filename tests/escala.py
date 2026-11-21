@@ -17,7 +17,7 @@ def tabla_de_la_escala(caso) -> dict:
     """La tabla vigente, o el test falla diciendo por qué no la hay."""
     from silux import score
 
-    tabla = score.referencias()
+    tabla = score.references()
     if not tabla:
         caso.fail(NO_CARGA)
     return tabla

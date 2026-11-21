@@ -20,7 +20,7 @@ def construir(*, fabricante="GBT", producto=10025, serie=0x01010101,
               medida_mm=None) -> bytes:
     """Un EDID 1.4 de mentira, con su suma de comprobación al final."""
     bloque = bytearray(128)
-    bloque[0:8] = cabecera if cabecera is not None else edid.CABECERA
+    bloque[0:8] = cabecera if cabecera is not None else edid.HEADER
 
     empaquetado = 0
     for indice, letra in enumerate(fabricante):
@@ -65,14 +65,14 @@ def construir(*, fabricante="GBT", producto=10025, serie=0x01010101,
     if refresco:
         minimo, maximo = refresco
         bloque[72:75] = b"\x00\x00\x00"
-        bloque[75] = edid.TIPO_RANGOS
+        bloque[75] = edid.TYPE_RANGES
         # Los bits de acarreo para pasar de 255 Hz; aquí no hacen falta.
         bloque[76] = 0
         bloque[77], bloque[78] = minimo, maximo
     if nombre:
-        descriptor(90, edid.TIPO_NOMBRE, nombre)
+        descriptor(90, edid.TYPE_NAME, nombre)
     if serie_texto:
-        descriptor(108, edid.TIPO_SERIE, serie_texto)
+        descriptor(108, edid.TYPE_SERIAL, serie_texto)
 
     bloque[127] = (256 - sum(bloque[:127]) % 256) % 256
     return bytes(bloque)

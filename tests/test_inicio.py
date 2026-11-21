@@ -297,14 +297,14 @@ class TestTarjetaDePuntuacion(unittest.TestCase):
     def test_con_la_duracion_canonica_sale_la_cifra(self):
         from silux import score
 
-        self.pagina._pintar_puntuacion(self._prueba(score.SEGUNDOS_CANONICOS))
+        self.pagina._pintar_puntuacion(self._prueba(score.CANONICAL_SECONDS))
         self.assertFalse(self.pagina.score_card.isHidden())
         self.assertTrue(self.pagina.score_value.text())
 
     def test_sin_medidas_de_esa_pieza_no_hay_barra_pero_sí_explicación(self):
         from silux import score
 
-        self.pagina._pintar_puntuacion(self._prueba(score.SEGUNDOS_CANONICOS))
+        self.pagina._pintar_puntuacion(self._prueba(score.CANONICAL_SECONDS))
         self.assertIsNone(self.pagina.score_bar._comparacion)
         self.assertTrue(self.pagina.score_range.text(),
                         "el hueco tiene que explicarse")
@@ -318,11 +318,11 @@ class TestTarjetaDePuntuacion(unittest.TestCase):
         tabla["piezas"] = {"Procesador de prueba": {
             "hilos": tabla["patron"]["hilos"],
             "un_hilo": [900, 1000, 1100], "multihilo": [900, 1000, 1100]}}
-        with mock.patch.object(score, "referencias", lambda: tabla):
+        with mock.patch.object(score, "references", lambda: tabla):
             self.pagina._pintar_puntuacion(
-                self._prueba(score.SEGUNDOS_CANONICOS))
+                self._prueba(score.CANONICAL_SECONDS))
         self.assertIsNotNone(self.pagina.score_bar._comparacion)
-        self.assertEqual(self.pagina.score_bar._comparacion.muestras, 3)
+        self.assertEqual(self.pagina.score_bar._comparacion.samples, 3)
 
 
 class TestTodasLasPaginasRecibenElMuestreo(unittest.TestCase):

@@ -537,7 +537,7 @@ class TestLoQueNoPuntuaSeVeQueNoPuntua(unittest.TestCase):
         for carga, nombre in zip(benchmark.CARGAS, self._nombres(pagina)):
             with self.subTest(carga=carga.key):
                 self.assertEqual(nombre.endswith("*"),
-                                 not score.puntua(carga.key))
+                                 not score.is_scored(carga.key))
 
     def test_y_la_leyenda_que_la_explica_está_a_la_vista(self):
         pagina = self._pagina()
@@ -550,7 +550,7 @@ class TestLoQueNoPuntuaSeVeQueNoPuntua(unittest.TestCase):
 
         pagina = self._pagina()
         todas = tuple(c.key for c in benchmark.CARGAS)
-        with mock.patch.object(score, "PUNTUABLES", todas):
+        with mock.patch.object(score, "SCORED_WORKLOADS", todas):
             pagina._show(self._resultado())
             self.assertTrue(pagina.results_note.isHidden())
             self.assertEqual([n for n in self._nombres(pagina) if n.endswith("*")], [])
@@ -567,7 +567,7 @@ class TestDerivaTermica(unittest.TestCase):
         from silux import score
         return history.Entry(
             timestamp=ts, cpu="Ryzen 7 5800X3D", threads=16, seconds=segundos,
-            scores={f"{carga}/16": puntuacion for carga in score.PUNTUABLES},
+            scores={f"{carga}/16": puntuacion for carga in score.SCORED_WORKLOADS},
             temperature_peak_c=grados,
         )
 
@@ -576,7 +576,7 @@ class TestDerivaTermica(unittest.TestCase):
                 for i in range(cuantas)]
 
     def test_calentarse_de_mas_se_avisa(self):
-        deriva = history.deriva_termica(self._prueba(500, 1000.0, 78.0),
+        deriva = history.thermal_drift(self._prueba(500, 1000.0, 78.0),
                                         self._historial())
         self.assertIsNotNone(deriva)
         grados, cuantas = deriva
@@ -586,18 +586,18 @@ class TestDerivaTermica(unittest.TestCase):
     def test_un_par_de_grados_es_ruido(self):
         """La misma prueba dos veces seguidas ya varía según cómo estuviera el
         equipo antes de empezar."""
-        self.assertIsNone(history.deriva_termica(self._prueba(500, 1000.0, 71.5),
+        self.assertIsNone(history.thermal_drift(self._prueba(500, 1000.0, 71.5),
                                                  self._historial()))
 
     def test_si_rindio_mas_la_temperatura_se_explica_sola(self):
         """Un 40 % más de trabajo calienta más, y eso no es una avería."""
-        self.assertIsNone(history.deriva_termica(self._prueba(500, 1400.0, 80.0),
+        self.assertIsNone(history.thermal_drift(self._prueba(500, 1400.0, 80.0),
                                                  self._historial()))
 
     def test_con_una_sola_referencia_no_se_dice_nada(self):
         """Con una prueba detrás no se distingue una tendencia de un día
         raro."""
-        self.assertIsNone(history.deriva_termica(self._prueba(500, 1000.0, 80.0),
+        self.assertIsNone(history.thermal_drift(self._prueba(500, 1000.0, 80.0),
                                                  self._historial(cuantas=2)))
 
     def test_no_se_compara_contra_otra_duracion(self):
@@ -605,16 +605,16 @@ class TestDerivaTermica(unittest.TestCase):
         no: sus temperaturas no son la misma pregunta."""
         largas = [self._prueba(100 + i, 1000.0, 70.0, segundos=30.0)
                   for i in range(5)]
-        self.assertIsNone(history.deriva_termica(self._prueba(500, 1000.0, 80.0),
+        self.assertIsNone(history.thermal_drift(self._prueba(500, 1000.0, 80.0),
                                                  largas))
 
     def test_una_prueba_sin_temperatura_no_entra(self):
         sin = [self._prueba(100 + i, 1000.0, None) for i in range(5)]
-        self.assertIsNone(history.deriva_termica(self._prueba(500, 1000.0, 80.0), sin))
+        self.assertIsNone(history.thermal_drift(self._prueba(500, 1000.0, 80.0), sin))
 
     def test_enfriarse_tambien_se_dice(self):
         """Si acabas de limpiarlo, ahí se ve."""
-        deriva = history.deriva_termica(self._prueba(500, 1000.0, 62.0),
+        deriva = history.thermal_drift(self._prueba(500, 1000.0, 62.0),
                                         self._historial())
         self.assertIsNotNone(deriva)
         self.assertLess(deriva[0], 0)
@@ -622,7 +622,7 @@ class TestDerivaTermica(unittest.TestCase):
     def test_la_mediana_aguanta_una_prueba_rara(self):
         """Una lanzada con el equipo ya caliente no debe mover la referencia."""
         raras = self._historial() + [self._prueba(150, 1000.0, 95.0)]
-        self.assertIsNone(history.deriva_termica(self._prueba(500, 1000.0, 72.0),
+        self.assertIsNone(history.thermal_drift(self._prueba(500, 1000.0, 72.0),
                                                  raras))
 
 

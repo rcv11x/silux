@@ -369,7 +369,7 @@ class TestRendimientoEnElInforme(unittest.TestCase):
                     if l.startswith("| Cargas que puntúan |"))
         nombres = {n.strip() for n in fila.split("|")[2].split("·")}
         self.assertEqual(nombres, {c.name for c in benchmark.CARGAS
-                                   if score.puntua(c.key)})
+                                   if score.is_scored(c.key)})
         self.assertIn("zlib 1.2.11 (pclmulqdq · avx2)", texto)
         self.assertIn("OpenSSL 3.0.2", texto)
         # Y por qué son dos: sin esto la fila de arriba parece un recorte.

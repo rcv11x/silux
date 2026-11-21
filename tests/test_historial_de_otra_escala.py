@@ -24,9 +24,9 @@ except ImportError:                                    # pragma: no cover
 def prueba(ts, version, **mas):
     return history.Entry(
         timestamp=ts, cpu="AMD Ryzen 7 5800X3D", threads=16,
-        seconds=score.SEGUNDOS_CANONICOS,
+        seconds=score.CANONICAL_SECONDS,
         scores={f"{carga}/{hilos}": 1000.0 * hilos
-                for carga in score.PUNTUABLES for hilos in (1, 16)},
+                for carga in score.SCORED_WORKLOADS for hilos in (1, 16)},
         score_version=version, **mas)
 
 
@@ -61,7 +61,7 @@ class TestElHistorial(unittest.TestCase):
 
     def test_la_de_esta_escala_lleva_su_cifra(self):
         celdas = self._celdas([prueba(200, score.VERSION)])
-        puntos = score.puntuar(prueba(200, score.VERSION).scores, 16)
+        puntos = score.compute(prueba(200, score.VERSION).scores, 16)
         self.assertIsNotNone(puntos)
         self.assertIn(render.thousands(puntos[1]), celdas)
         self.assertFalse([t for t in celdas if t.startswith("escala v")])

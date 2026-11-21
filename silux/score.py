@@ -104,23 +104,23 @@ VERSION = 6
 #
 # Lo que esto cuesta está escrito donde se paga: en `benchmark.py`, al lado de
 # la carga que se quedó sin sustituta.
-PUNTUABLES = ("hash", "compresion_dura")
+SCORED_WORKLOADS = ("hash", "compresion_dura")
 
 # Cuánto tiene que durar cada medida para que la prueba puntúe. Quince segundos
 # es el punto en el que la mayoría de los procesadores ya han dejado atrás el
 # turbo de arranque y todavía no llevan tanto rato como para que el resultado
 # lo decida la refrigeración de la caja. Por debajo se mide el turbo; por
 # encima, el disipador.
-SEGUNDOS_CANONICOS = 15.0
+CANONICAL_SECONDS = 15.0
 
 # Cuánto puede desviarse la duración real y seguir contando. El bucle no corta
 # en mitad de una operación, así que quince segundos pedidos salen quince y
 # pico.
-TOLERANCIA_SEGUNDOS = 1.5
+SECONDS_TOLERANCE = 1.5
 
 # Lo que saca el patrón, por definición. Una cifra redonda se lee mejor que un
 # tanto por ciento y deja sitio a las piezas que rinden más de mil.
-ESCALA = 1000
+SCALE = 1000
 
 # Las operaciones por segundo del patrón viven en un archivo de datos y no
 # aquí: son medidas, no elegidas, y rehacerlas en otro equipo no debería
@@ -128,29 +128,29 @@ ESCALA = 1000
 # su papel es poner en la misma escala a las que puntúan. Cambiarlas mueve
 # todas las puntuaciones a la vez, y por eso el archivo declara para qué
 # versión de la fórmula vale.
-_TABLA = pathlib.Path(__file__).parent / "db" / "scores.json"
+_TABLE = pathlib.Path(__file__).parent / "db" / "scores.json"
 
 
 @functools.lru_cache(maxsize=1)
-def referencias() -> dict:
+def references() -> dict:
     """La tabla del patrón, o vacía si no está.
 
     Sin ella no hay puntuación: es la escala. Y sin escala es preferible no
     enseñar cifra a enseñar una que no significa lo mismo en dos equipos.
     """
     try:
-        with _TABLA.open(encoding="utf-8") as fh:
-            datos = json.load(fh)
+        with _TABLE.open(encoding="utf-8") as fh:
+            data = json.load(fh)
     except (OSError, ValueError):
         return {}
-    return datos if datos.get("version_formula") == VERSION else {}
+    return data if data.get("version_formula") == VERSION else {}
 
 
-def patron() -> dict:
+def reference_machine() -> dict:
     """Con qué equipo y en qué condiciones se tomó la escala."""
-    return referencias().get("patron", {})
+    return references().get("patron", {})
 
-def puntuar(scores: dict[str, float], hilos: int) -> Optional[tuple[int, int]]:
+def compute(scores: dict[str, float], threads: int) -> Optional[tuple[int, int]]:
     """La puntuación de un hilo y la de todos.
 
     `scores` es lo que guarda el historial: «compresion/1» y «compresion/16»
@@ -163,15 +163,15 @@ def puntuar(scores: dict[str, float], hilos: int) -> Optional[tuple[int, int]]:
     `comparable`. Antes se mezclaban las dos preguntas y en la misma pantalla
     salían dos puntuaciones distintas de la misma prueba.
     """
-    tabla = referencias()
-    un_hilo = _combinar(scores, 1, tabla.get("un_hilo", {}))
-    multi = _combinar(scores, hilos, tabla.get("multihilo", {}))
-    if un_hilo is None or multi is None:
+    table = references()
+    single = _combined(scores, 1, table.get("un_hilo", {}))
+    multi = _combined(scores, threads, table.get("multihilo", {}))
+    if single is None or multi is None:
         return None
-    return un_hilo, multi
+    return single, multi
 
 
-def comparable(segundos: float) -> bool:
+def comparable(seconds: float) -> bool:
     """Si esta puntuación se puede poner al lado de la de otro equipo.
 
     Tres segundos cogen el turbo entero y treinta lo pierden a mitad, así que
@@ -179,10 +179,10 @@ def comparable(segundos: float) -> bool:
     mismo equipo eso no molesta —el historial ya exige la misma duración para
     comparar—, pero entre dos equipos sí.
     """
-    return abs(segundos - SEGUNDOS_CANONICOS) <= TOLERANCIA_SEGUNDOS
+    return abs(seconds - CANONICAL_SECONDS) <= SECONDS_TOLERANCE
 
 
-def puntua(carga: str) -> bool:
+def is_scored(workload: str) -> bool:
     """Si esta carga entra en la puntuación.
 
     Vive aquí y no en `benchmark.CARGAS` porque es una decisión de la escala y
@@ -190,27 +190,27 @@ def puntua(carga: str) -> bool:
     que la fórmula sepa comparar. Poner la marca en cada carga la dejaría en
     dos sitios, y el día que se separen no lo diría nadie.
     """
-    return carga in PUNTUABLES
+    return workload in SCORED_WORKLOADS
 
 
-def multihilo_exacta(scores: dict[str, float], hilos: int) -> Optional[float]:
+def exact_multithread(scores: dict[str, float], threads: int) -> Optional[float]:
     """La puntuación a todos los hilos, sin redondear.
 
     Es la cifra con que el historial compara dos pruebas del mismo equipo: el
     redondeo de `puntuar` es para enseñarla, y al comparar movería una décima
     las diferencias pequeñas.
     """
-    return _fraccion(scores, hilos, referencias().get("multihilo", {}))
+    return _fraction(scores, threads, references().get("multihilo", {}))
 
 
-def _combinar(scores: dict[str, float], hilos: int,
-              referencia: dict[str, float]) -> Optional[int]:
-    fraccion = _fraccion(scores, hilos, referencia)
-    return None if fraccion is None else round(fraccion)
+def _combined(scores: dict[str, float], threads: int,
+              reference: dict[str, float]) -> Optional[int]:
+    fraction = _fraction(scores, threads, reference)
+    return None if fraction is None else round(fraction)
 
 
-def _fraccion(scores: dict[str, float], hilos: int,
-              referencia: dict[str, float]) -> Optional[float]:
+def _fraction(scores: dict[str, float], threads: int,
+              reference: dict[str, float]) -> Optional[float]:
     """La media de las cargas puntuables, cada una contra su referencia.
 
     Recorre `PUNTUABLES` y no la tabla entera: la referencia guarda las cinco
@@ -222,63 +222,63 @@ def _fraccion(scores: dict[str, float], hilos: int,
     comparación con cualquier prueba completa, y la cifra parecería igual de
     válida.
     """
-    if not referencia:
+    if not reference:
         return None
-    fracciones = []
-    for carga in PUNTUABLES:
-        del_patron = referencia.get(carga)
-        medido = scores.get(f"{carga}/{hilos}")
-        if medido is None or not del_patron:
+    fractions = []
+    for workload in SCORED_WORKLOADS:
+        reference_value = reference.get(workload)
+        measured = scores.get(f"{workload}/{threads}")
+        if measured is None or not reference_value:
             return None
-        fracciones.append(medido / del_patron)
-    return sum(fracciones) / len(fracciones) * ESCALA
+        fractions.append(measured / reference_value)
+    return sum(fractions) / len(fractions) * SCALE
 
 
 # Cuántas medidas hacen falta para hablar de un rango. Con dos, los extremos
 # son las dos que hay y la barra diría que cualquier cosa es normal o que nada
 # lo es, según la suerte. Tres es poco y ya permite una mediana.
-MINIMO_MUESTRAS = 3
+MIN_SAMPLES = 3
 
 # Cuánto se puede alejar la puntuación de la mediana de su pieza antes de que
 # merezca comentarse. Un 8 % arriba o abajo entra dentro de lo que separa a dos
 # equipos con la misma CPU: la placa, la memoria, el disipador y el gobernador.
-MARGEN_NORMAL = 0.08
+NORMAL_MARGIN = 0.08
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
-class Comparacion:
+class Placement:
     """Dónde cae una puntuación entre las de su misma pieza."""
 
-    puntuacion: int
-    minimo: int
-    maximo: int
-    mediana: int
-    muestras: int
+    value: int
+    minimum: int
+    maximum: int
+    median: int
+    samples: int
 
     @property
-    def fraccion(self) -> float:
+    def fraction(self) -> float:
         """Dónde ponerla en la barra, de 0 a 1.
 
         Se recorta a los extremos: una pieza que rinda por encima de todo lo
         registrado tiene que verse al final de la barra, no fuera de ella.
         """
-        if self.maximo <= self.minimo:
+        if self.maximum <= self.minimum:
             return 0.5
-        cruda = (self.puntuacion - self.minimo) / (self.maximo - self.minimo)
-        return max(0.0, min(1.0, cruda))
+        raw = (self.value - self.minimum) / (self.maximum - self.minimum)
+        return max(0.0, min(1.0, raw))
 
     @property
-    def desvio(self) -> float:
+    def deviation(self) -> float:
         """Cuánto se aparta de la mediana, en tanto por uno."""
-        return (self.puntuacion - self.mediana) / self.mediana if self.mediana else 0.0
+        return (self.value - self.median) / self.median if self.median else 0.0
 
     @property
     def normal(self) -> bool:
-        return abs(self.desvio) <= MARGEN_NORMAL
+        return abs(self.deviation) <= NORMAL_MARGIN
 
 
-def comparar(cpu: str, puntuacion: int,
-             multihilo: bool = True) -> Optional[Comparacion]:
+def compare(cpu: str, value: int,
+             multithread: bool = True) -> Optional[Placement]:
     """Dónde cae esta puntuación entre las conocidas de la misma pieza.
 
     Devuelve `None` cuando no se sabe nada de esa CPU, que hoy es casi
@@ -286,25 +286,25 @@ def comparar(cpu: str, puntuacion: int,
     que vaya llegando. Es mejor no decir nada que situar a alguien respecto de
     dos medidas sueltas.
     """
-    pieza = referencias().get("piezas", {}).get(cpu)
-    if not pieza:
+    part = references().get("piezas", {}).get(cpu)
+    if not part:
         return None
-    muestras = sorted(pieza.get("multihilo" if multihilo else "un_hilo", []))
-    if len(muestras) < MINIMO_MUESTRAS:
+    samples = sorted(part.get("multihilo" if multithread else "un_hilo", []))
+    if len(samples) < MIN_SAMPLES:
         return None
-    mitad = len(muestras) // 2
-    mediana = (muestras[mitad] if len(muestras) % 2
-               else (muestras[mitad - 1] + muestras[mitad]) / 2)
-    return Comparacion(
-        puntuacion=puntuacion,
-        minimo=int(muestras[0]),
-        maximo=int(muestras[-1]),
-        mediana=int(round(mediana)),
-        muestras=len(muestras),
+    middle = len(samples) // 2
+    median = (samples[middle] if len(samples) % 2
+               else (samples[middle - 1] + samples[middle]) / 2)
+    return Placement(
+        value=value,
+        minimum=int(samples[0]),
+        maximum=int(samples[-1]),
+        median=int(round(median)),
+        samples=len(samples),
     )
 
 
-def piezas_conocidas() -> int:
+def known_parts() -> int:
     """Cuántas piezas tienen medidas suficientes para comparar."""
-    return sum(1 for p in referencias().get("piezas", {}).values()
-               if len(p.get("multihilo", [])) >= MINIMO_MUESTRAS)
+    return sum(1 for p in references().get("piezas", {}).values()
+               if len(p.get("multihilo", [])) >= MIN_SAMPLES)

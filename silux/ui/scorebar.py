@@ -61,15 +61,15 @@ class ScoreBar(QWidget):
 
         # La mediana, para que se vea respecto de qué se está lejos o cerca.
         comp = self._comparacion
-        if comp.maximo > comp.minimo:
-            centro = (comp.mediana - comp.minimo) / (comp.maximo - comp.minimo)
+        if comp.maximum > comp.minimum:
+            centro = (comp.median - comp.minimum) / (comp.maximum - comp.minimum)
             x = 1 + centro * ancho
             pintor.setPen(QPen(QColor(self._p.muted), 1, Qt.PenStyle.DashLine))
             pintor.drawLine(QPointF(x, arriba), QPointF(x, arriba + alto))
 
         # Y la marca de este equipo, en el color de acento, que es el que el
         # programa usa para lo que le pertenece a quien mira.
-        x = 1 + comp.fraccion * ancho
+        x = 1 + comp.fraction * ancho
         marca = QRectF(x - 2, arriba - (self.ALTO_MARCA - alto) / 2,
                        4, self.ALTO_MARCA)
         pintor.setPen(Qt.PenStyle.NoPen)

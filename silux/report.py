@@ -552,7 +552,7 @@ def _rendimiento() -> str:
     if not entradas:
         return ""
     ultima = max(entradas, key=lambda e: e.timestamp)
-    puntos = score.puntuar(ultima.scores, ultima.threads)
+    puntos = score.compute(ultima.scores, ultima.threads)
     if puntos is None:
         return ""
     un_hilo, multi = puntos
@@ -570,7 +570,7 @@ def _rendimiento() -> str:
         # v5 a la v6 la puntuación de un mismo equipo se mueve sin que el
         # equipo cambie, porque tres de las cinco cargas dejaron de contar.
         ("| Cargas que puntúan | "
-         + " · ".join(c.name for c in benchmark.CARGAS if score.puntua(c.key))
+         + " · ".join(c.name for c in benchmark.CARGAS if score.is_scored(c.key))
          + " |"),
     ]
     # Las condiciones son la mitad de lo que hace comparable una cifra: sin

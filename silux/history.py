@@ -26,7 +26,7 @@ from .benchmark import Result
 # Cuántas pruebas se conservan. Suficiente para ver una tendencia a lo largo
 # de meses, y poco para que el archivo siga siendo un JSON que se lee de una
 # vez y se puede abrir con un editor.
-MAXIMO = 60
+MAX_ENTRIES = 60
 
 
 def data_dir() -> pathlib.Path:
@@ -38,7 +38,7 @@ def history_path() -> pathlib.Path:
     return data_dir() / "benchmarks.json"
 
 
-def misma_duracion(una: float, otra: float) -> bool:
+def same_duration(a: float, b: float) -> bool:
     """Si dos pruebas pidieron la misma duración por medida.
 
     Lo guardado es lo que tardó la medida más larga: lo pedido más lo que
@@ -48,7 +48,7 @@ def misma_duracion(una: float, otra: float) -> bool:
     cercanas que se ofrecen, la rápida de 2 s y la de 3. No es el de
     `score.comparable` a propósito: aquel, de 1,5 s, juntaría esas dos.
     """
-    return abs(una - otra) <= max(0.25, 0.02 * max(una, otra))
+    return abs(a - b) <= max(0.25, 0.02 * max(a, b))
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -114,9 +114,9 @@ class Entry:
         """
         from . import score
 
-        return score.multihilo_exacta(self.scores, self.threads)
+        return score.exact_multithread(self.scores, self.threads)
 
-    def comparable_con(self, otra: "Entry") -> bool:
+    def comparable_with(self, other: "Entry") -> bool:
         """Si dos pruebas se pueden poner una al lado de otra.
 
         Cambiar la duración cambia la cifra —una medida de tres segundos coge
@@ -124,9 +124,9 @@ class Entry:
         otra duración diría que el equipo se ha vuelto más lento cuando lo
         único que cambió fue la pregunta.
         """
-        return (self.cpu == otra.cpu and self.threads == otra.threads
-                and misma_duracion(self.seconds, otra.seconds)
-                and self.score_version == otra.score_version)
+        return (self.cpu == other.cpu and self.threads == other.threads
+                and same_duration(self.seconds, other.seconds)
+                and self.score_version == other.score_version)
 
 
 # Las banderas que deciden qué ruta usa zlib-ng. No es una lista de curiosidades:
@@ -137,7 +137,7 @@ class Entry:
 # mismo y conviene no leerlo mal: con una zlib clásica debajo no se usa
 # ninguna, porque no lleva ninguna dentro. Se guardan igualmente, y juntas con
 # la versión: la pareja se interpreta, cada mitad por su cuenta no.
-EXTENSIONES = ("vpclmulqdq", "pclmulqdq", "avx2")
+SIMD_FLAGS = ("vpclmulqdq", "pclmulqdq", "avx2")
 
 
 def _zlib_version() -> Optional[str]:
@@ -162,52 +162,52 @@ def _openssl_version() -> Optional[str]:
         return None
 
 
-def _extensiones() -> tuple[str, ...]:
+def _simd_flags() -> tuple[str, ...]:
     """Las de `EXTENSIONES` que tenga este procesador, en ese orden."""
     try:
         with open("/proc/cpuinfo", encoding="utf-8", errors="replace") as fh:
-            for linea in fh:
-                if linea.startswith(("flags", "Features")):
-                    tiene = set(linea.split(":", 1)[1].split())
-                    return tuple(f for f in EXTENSIONES if f in tiene)
+            for line in fh:
+                if line.startswith(("flags", "Features")):
+                    present = set(line.split(":", 1)[1].split())
+                    return tuple(f for f in SIMD_FLAGS if f in present)
     except OSError:
         pass
     return ()
 
 
-def from_result(resultado: Result, cpu: str, seconds: float) -> Entry:
+def from_result(result: Result, cpu: str, seconds: float) -> Entry:
     # `rate` y no `operations / seconds`: donde el tamaño de una operación
     # cambia de una máquina a otra, lo comparable son los bytes por segundo.
     scores = {f"{m.load}/{m.threads}": m.rate
-              for m in resultado.measures if m.seconds}
-    condiciones = resultado.conditions
-    hilos = max((m.threads for m in resultado.measures), default=1)
+              for m in result.measures if m.seconds}
+    conditions = result.conditions
+    threads = max((m.threads for m in result.measures), default=1)
     from . import score
 
     return Entry(
         score_version=score.VERSION,
         zlib_version=_zlib_version(),
-        zlib_simd=_extensiones(),
+        zlib_simd=_simd_flags(),
         openssl_version=_openssl_version(),
         timestamp=time.time(),
         cpu=cpu,
-        threads=hilos,
+        threads=threads,
         seconds=seconds,
         scores=scores,
-        governor=condiciones.governor,
-        temperature_peak_c=condiciones.temperature_peak_c,
-        frequency_avg_hz=condiciones.frequency_avg_hz,
-        background_load=condiciones.background_load,
-        background_peak=condiciones.background_peak,
+        governor=conditions.governor,
+        temperature_peak_c=conditions.temperature_peak_c,
+        frequency_avg_hz=conditions.frequency_avg_hz,
+        background_load=conditions.background_load,
+        background_peak=conditions.background_peak,
     )
 
 
-def _numero(valor) -> bool:
+def _is_number(value) -> bool:
     # `bool` es un `int` para Python, y un `true` donde va una fecha no lo es.
-    return isinstance(valor, (int, float)) and not isinstance(valor, bool)
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
 
 
-def _bien_formada(fila: dict) -> bool:
+def _well_formed(row: dict) -> bool:
     """Si una entrada leída del disco se puede usar sin que reviente después.
 
     El archivo lo escribe el programa, pero vive en el disco de alguien: una
@@ -215,16 +215,16 @@ def _bien_formada(fila: dict) -> bool:
     reventaba más tarde, al ordenar o al sumar, montando la página de
     Rendimiento. O sea, la ventana no abría.
     """
-    medidas = fila.get("scores")
-    return (_numero(fila.get("timestamp"))
-            and isinstance(fila.get("cpu"), str)
-            and _numero(fila.get("threads")) and fila["threads"] > 0
-            and _numero(fila.get("seconds")) and fila["seconds"] > 0
-            and isinstance(medidas, dict)
-            and all(isinstance(k, str) and _numero(v) for k, v in medidas.items())
-            and isinstance(fila.get("label", ""), str)
-            and all(fila.get(campo) is None or _numero(fila[campo])
-                    for campo in ("temperature_peak_c", "frequency_avg_hz",
+    measures = row.get("scores")
+    return (_is_number(row.get("timestamp"))
+            and isinstance(row.get("cpu"), str)
+            and _is_number(row.get("threads")) and row["threads"] > 0
+            and _is_number(row.get("seconds")) and row["seconds"] > 0
+            and isinstance(measures, dict)
+            and all(isinstance(k, str) and _is_number(v) for k, v in measures.items())
+            and isinstance(row.get("label", ""), str)
+            and all(row.get(field) is None or _is_number(row[field])
+                    for field in ("temperature_peak_c", "frequency_avg_hz",
                                   "background_load", "background_peak",
                                   "score_version")))
 
@@ -232,92 +232,92 @@ def _bien_formada(fila: dict) -> bool:
 def load() -> list[Entry]:
     """Las pruebas guardadas, de la más reciente a la más antigua."""
     try:
-        crudo = json.loads(history_path().read_text(encoding="utf-8"))
+        raw = json.loads(history_path().read_text(encoding="utf-8"))
     except (OSError, ValueError):
         # `ValueError` cubre el JSON mal formado y también un UTF-8 roto.
         return []
-    if not isinstance(crudo, list):
+    if not isinstance(raw, list):
         return []
 
-    entradas = []
-    validos = {f.name for f in dataclasses.fields(Entry)}
-    for fila in crudo:
-        if not isinstance(fila, dict) or not _bien_formada(fila):
+    entries = []
+    known_fields = {f.name for f in dataclasses.fields(Entry)}
+    for row in raw:
+        if not isinstance(row, dict) or not _well_formed(row):
             continue
         try:
-            entradas.append(Entry(**{k: v for k, v in fila.items() if k in validos}))
+            entries.append(Entry(**{k: v for k, v in row.items() if k in known_fields}))
         except TypeError:
             # Una entrada de una versión con otros campos: se salta ella sola
             # en vez de tirar el archivo entero.
             continue
-    entradas.sort(key=lambda e: e.timestamp, reverse=True)
-    return entradas
+    entries.sort(key=lambda e: e.timestamp, reverse=True)
+    return entries
 
 
-def save(entradas: list[Entry]) -> bool:
+def save(entries: list[Entry]) -> bool:
     """Guarda el historial. No es crítico: si falla, la prueba ya se enseñó."""
     try:
         data_dir().mkdir(parents=True, exist_ok=True)
-        temporal = history_path().with_suffix(".json.tmp")
-        temporal.write_text(
-            json.dumps([dataclasses.asdict(e) for e in entradas[:MAXIMO]],
+        temp_path = history_path().with_suffix(".json.tmp")
+        temp_path.write_text(
+            json.dumps([dataclasses.asdict(e) for e in entries[:MAX_ENTRIES]],
                        indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8")
-        temporal.replace(history_path())
+        temp_path.replace(history_path())
         return True
     except OSError:
         return False
 
 
-def append(entrada: Entry) -> list[Entry]:
+def append(entry: Entry) -> list[Entry]:
     """Añade una prueba al historial y devuelve el historial resultante."""
-    entradas = [entrada] + load()
-    save(entradas)
-    return entradas[:MAXIMO]
+    entries = [entry] + load()
+    save(entries)
+    return entries[:MAX_ENTRIES]
 
 
-def comparar(actual: Entry, anteriores: list[Entry]) -> Optional[tuple[Entry, float]]:
+def compare(latest: Entry, previous: list[Entry]) -> Optional[tuple[Entry, float]]:
     """La prueba comparable más reciente y cuánto ha cambiado, en tanto por ciento.
 
     Devuelve None cuando no hay con qué comparar, que es lo que pasa la
     primera vez y cada vez que se cambia la duración de la medida.
     """
-    total = actual.total()
+    total = latest.total()
     if not total:
         return None
-    for otra in anteriores:
-        if otra.timestamp >= actual.timestamp or not otra.comparable_con(actual):
+    for other in previous:
+        if other.timestamp >= latest.timestamp or not other.comparable_with(latest):
             continue
-        anterior = otra.total()
-        if anterior:
-            return otra, (total - anterior) / anterior * 100
+        before = other.total()
+        if before:
+            return other, (total - before) / before * 100
     return None
 
 
 # Cuánto tienen que parecerse dos puntuaciones para que su diferencia de
 # temperatura signifique algo. Si el equipo rindió un 20 % más, que esté más
 # caliente se explica solo y no hay nada que avisar.
-CERCA_EN_PUNTUACION = 0.03
+CLOSE_SCORE = 0.03
 
 # El salto térmico a partir del cual se dice algo. Por debajo es ruido: la
 # misma prueba dos veces seguidas ya varía un par de grados según cómo estuviera
 # el equipo antes de empezar.
-DERIVA_MINIMA_C = 4.0
+MIN_DRIFT_C = 4.0
 
 # Cuántas pruebas viejas hacen falta para tener una referencia. Con una sola no
 # se distingue una tendencia de un día raro.
-MINIMO_PARA_COMPARAR = 3
+MIN_TO_COMPARE = 3
 
 
-def _mediana(valores: list[float]) -> float:
-    ordenados = sorted(valores)
-    mitad = len(ordenados) // 2
-    if len(ordenados) % 2:
-        return ordenados[mitad]
-    return (ordenados[mitad - 1] + ordenados[mitad]) / 2
+def _median(values: list[float]) -> float:
+    ordered = sorted(values)
+    middle = len(ordered) // 2
+    if len(ordered) % 2:
+        return ordered[middle]
+    return (ordered[middle - 1] + ordered[middle]) / 2
 
 
-def deriva_termica(actual: Entry, anteriores: list[Entry]) -> Optional[tuple[float, int]]:
+def thermal_drift(latest: Entry, previous: list[Entry]) -> Optional[tuple[float, int]]:
     """Cuánto más caliente está el equipo haciendo el mismo trabajo.
 
     Devuelve `(grados de diferencia, cuántas pruebas hay detrás)`, o None si
@@ -335,31 +335,31 @@ def deriva_termica(actual: Entry, anteriores: list[Entry]) -> Optional[tuple[flo
     normales y aquí saldrían igual que ocho grados de pasta seca; por eso el
     aviso dice lo que ve y no lo diagnostica.
     """
-    if actual.temperature_peak_c is None:
+    if latest.temperature_peak_c is None:
         return None
-    total = actual.total()
+    total = latest.total()
     if not total:
         return None
 
-    referencias = []
-    for otra in anteriores:
-        if otra.timestamp >= actual.timestamp or not otra.comparable_con(actual):
+    references = []
+    for other in previous:
+        if other.timestamp >= latest.timestamp or not other.comparable_with(latest):
             continue
-        if otra.temperature_peak_c is None:
+        if other.temperature_peak_c is None:
             continue
-        suya = otra.total()
-        if not suya:
+        own = other.total()
+        if not own:
             continue
-        if abs(suya - total) / total > CERCA_EN_PUNTUACION:
+        if abs(own - total) / total > CLOSE_SCORE:
             continue
-        referencias.append(otra.temperature_peak_c)
+        references.append(other.temperature_peak_c)
 
-    if len(referencias) < MINIMO_PARA_COMPARAR:
+    if len(references) < MIN_TO_COMPARE:
         return None
-    diferencia = actual.temperature_peak_c - _mediana(referencias)
-    if abs(diferencia) < DERIVA_MINIMA_C:
+    difference = latest.temperature_peak_c - _median(references)
+    if abs(difference) < MIN_DRIFT_C:
         return None
-    return diferencia, len(referencias)
+    return difference, len(references)
 
 
 def clear() -> bool:
@@ -373,9 +373,9 @@ def clear() -> bool:
 
 def remove(timestamp: float) -> list[Entry]:
     """Borra una prueba concreta por su marca de tiempo."""
-    quedan = [e for e in load() if e.timestamp != timestamp]
-    save(quedan)
-    return quedan
+    kept = [e for e in load() if e.timestamp != timestamp]
+    save(kept)
+    return kept
 
 
 def remove_other_scales(version: int) -> list[Entry]:
@@ -384,17 +384,17 @@ def remove_other_scales(version: int) -> list[Entry]:
     También las que no dicen con cuál se midieron: son de antes de que la
     escala tuviera número. Su cifra no se puede poner al lado de las de ahora.
     """
-    quedan = [e for e in load() if e.score_version == version]
-    save(quedan)
-    return quedan
+    kept = [e for e in load() if e.score_version == version]
+    save(kept)
+    return kept
 
 
 def rename(timestamp: float, label: str) -> list[Entry]:
     """Le pone (o le quita) el nombre a una prueba."""
-    entradas = []
-    for entrada in load():
-        if entrada.timestamp == timestamp:
-            entrada = dataclasses.replace(entrada, label=label.strip())
-        entradas.append(entrada)
-    save(entradas)
-    return entradas
+    entries = []
+    for entry in load():
+        if entry.timestamp == timestamp:
+            entry = dataclasses.replace(entry, label=label.strip())
+        entries.append(entry)
+    save(entries)
+    return entries

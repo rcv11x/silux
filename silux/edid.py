@@ -22,21 +22,21 @@ import re
 from dataclasses import dataclass
 from typing import Iterable, Optional
 
-CABECERA = bytes((0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00))
-BLOQUE = 128
+HEADER = bytes((0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00))
+BLOCK = 128
 
-CANDIDATOS_PNP = (
+PNP_CANDIDATES = (
     "/usr/share/hwdata/pnp.ids",
     "/usr/share/misc/pnp.ids",
     "/usr/share/pnp.ids",
 )
 
 # Los cuatro descriptores de 18 bytes que hay a partir del byte 54.
-DESCRIPTORES = range(54, 126, 18)
-TIPO_SERIE = 0xFF
-TIPO_TEXTO = 0xFE
-TIPO_RANGOS = 0xFD
-TIPO_NOMBRE = 0xFC
+DESCRIPTORS = range(54, 126, 18)
+TYPE_SERIAL = 0xFF
+TYPE_TEXT = 0xFE
+TYPE_RANGES = 0xFD
+TYPE_NAME = 0xFC
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,8 +51,8 @@ class VideoMode:
 
     @property
     def label(self) -> str:
-        entrelazado = "i" if self.interlaced else ""
-        return f"{self.width} × {self.height}{entrelazado} @ {self.refresh_hz:g} Hz"
+        suffix = "i" if self.interlaced else ""
+        return f"{self.width} × {self.height}{suffix} @ {self.refresh_hz:g} Hz"
 
 
 @dataclass(frozen=True, slots=True)
@@ -149,122 +149,122 @@ class Edid:
 
 def parse(raw: bytes) -> Optional[Edid]:
     """Devuelve None si esto no es un EDID; nunca revienta con basura."""
-    if len(raw) < BLOQUE or not raw.startswith(CABECERA):
+    if len(raw) < BLOCK or not raw.startswith(HEADER):
         return None
     # El bloque tiene que sumar cero módulo 256. Un EDID que no cuadra suele ser
     # un cable malo o un adaptador que se lo inventa, y sus datos no valen.
-    if sum(raw[:BLOQUE]) % 256 != 0:
+    if sum(raw[:BLOCK]) % 256 != 0:
         return None
 
-    empaquetado = int.from_bytes(raw[8:10], "big")
-    letras = "".join(chr(((empaquetado >> desplazamiento) & 0x1F) + 0x40)
-                     for desplazamiento in (10, 5, 0))
-    if not letras.isalpha():
+    packed = int.from_bytes(raw[8:10], "big")
+    letters = "".join(chr(((packed >> shift) & 0x1F) + 0x40)
+                     for shift in (10, 5, 0))
+    if not letters.isalpha():
         return None
 
-    nombre, serie_texto = _de_los_descriptores(raw)
-    ancho_mm, alto_mm, al_milimetro = _medida_del_panel(raw)
-    ancho, alto, refresco = _modo_preferido(raw)
-    minimo, maximo = _rango_de_refresco(raw)
-    serie_numero = int.from_bytes(raw[12:16], "little")
+    model_name, serial_text = _from_descriptors(raw)
+    width_mm, height_mm, exact = _panel_size(raw)
+    width, height, refresh = _preferred_mode(raw)
+    refresh_min, refresh_max = _refresh_range(raw)
+    serial_number = int.from_bytes(raw[12:16], "little")
 
     return Edid(
-        manufacturer_id=letras,
-        model=nombre,
+        manufacturer_id=letters,
+        model=model_name,
         product_code=int.from_bytes(raw[10:12], "little"),
         # El de texto es el que enseña la pegatina de detrás; el numérico es el
         # de respaldo, y un 0 o un 0x01010101 significan «sin número».
-        serial=serie_texto or (str(serie_numero)
-                               if serie_numero not in (0, 0x01010101) else None),
+        serial=serial_text or (str(serial_number)
+                               if serial_number not in (0, 0x01010101) else None),
         year=raw[17] + 1990 if raw[17] else None,
         week=raw[16] if 1 <= raw[16] <= 53 else None,
         version=f"{raw[18]}.{raw[19]}",
-        width_mm=ancho_mm,
-        height_mm=alto_mm,
-        size_exact=al_milimetro,
-        native_width=ancho,
-        native_height=alto,
-        native_refresh_hz=refresco,
-        refresh_min_hz=minimo,
-        refresh_max_hz=maximo,
-        **_extensiones(raw),
+        width_mm=width_mm,
+        height_mm=height_mm,
+        size_exact=exact,
+        native_width=width,
+        native_height=height,
+        native_refresh_hz=refresh,
+        refresh_min_hz=refresh_min,
+        refresh_max_hz=refresh_max,
+        **_extensions(raw),
     )
 
 
 def read(connector: pathlib.Path | str) -> Optional[Edid]:
     """Lee y decodifica el EDID de un conector de `/sys/class/drm`."""
     try:
-        crudo = pathlib.Path(connector, "edid").read_bytes()
+        raw = pathlib.Path(connector, "edid").read_bytes()
     except OSError:
         return None
-    return parse(crudo) if crudo else None
+    return parse(raw) if raw else None
 
 
 def resolve_vendors(edids: Iterable[Edid]) -> dict[str, str]:
     """Traduce las tres letras a nombres, en una sola pasada por `pnp.ids`."""
-    buscados = {e.manufacturer_id for e in edids if e.manufacturer_id}
-    if not buscados:
+    wanted = {e.manufacturer_id for e in edids if e.manufacturer_id}
+    if not wanted:
         return {}
-    ruta = next((p for p in map(pathlib.Path, CANDIDATOS_PNP) if p.is_file()), None)
-    if ruta is None:
+    path = next((p for p in map(pathlib.Path, PNP_CANDIDATES) if p.is_file()), None)
+    if path is None:
         return {}
 
-    encontrados: dict[str, str] = {}
+    found: dict[str, str] = {}
     try:
-        with ruta.open(encoding="utf-8", errors="replace") as fichero:
-            for linea in fichero:
-                codigo, _, nombre = linea.partition("\t")
-                if codigo in buscados:
-                    encontrados[codigo] = nombre.strip()
-                    if len(encontrados) == len(buscados):
+        with path.open(encoding="utf-8", errors="replace") as handle:
+            for line in handle:
+                code, _tab, name = line.partition("\t")
+                if code in wanted:
+                    found[code] = name.strip()
+                    if len(found) == len(wanted):
                         break
     except OSError:
         pass
-    return encontrados
+    return found
 
 
 # -- interno ----------------------------------------------------------------
 
-def _texto_del_descriptor(trozo: bytes) -> str:
+def _descriptor_text(chunk: bytes) -> str:
     """Los descriptores de texto van rellenos con 0x0A y espacios."""
-    crudo = trozo[5:18].split(b"\x0a")[0]
-    return re.sub(r"\s+", " ", crudo.decode("cp437", "replace")).strip()
+    text_bytes = chunk[5:18].split(b"\x0a")[0]
+    return re.sub(r"\s+", " ", text_bytes.decode("cp437", "replace")).strip()
 
 
-def _de_los_descriptores(raw: bytes) -> tuple[Optional[str], Optional[str]]:
-    nombre = serie = None
-    for inicio in DESCRIPTORES:
-        trozo = raw[inicio:inicio + 18]
-        if len(trozo) < 18 or trozo[0:2] != b"\x00\x00":
+def _from_descriptors(raw: bytes) -> tuple[Optional[str], Optional[str]]:
+    name = serial = None
+    for start in DESCRIPTORS:
+        chunk = raw[start:start + 18]
+        if len(chunk) < 18 or chunk[0:2] != b"\x00\x00":
             continue                      # es un temporizador, no texto
-        tipo = trozo[3]
-        if tipo == TIPO_NOMBRE:
-            nombre = _texto_del_descriptor(trozo) or nombre
-        elif tipo == TIPO_SERIE:
-            serie = _texto_del_descriptor(trozo) or serie
-    return nombre, serie
+        kind = chunk[3]
+        if kind == TYPE_NAME:
+            name = _descriptor_text(chunk) or name
+        elif kind == TYPE_SERIAL:
+            serial = _descriptor_text(chunk) or serial
+    return name, serial
 
 
-def _rango_de_refresco(raw: bytes) -> tuple[Optional[int], Optional[int]]:
+def _refresh_range(raw: bytes) -> tuple[Optional[int], Optional[int]]:
     """El descriptor 0xFD dice entre qué refrescos puede trabajar la pantalla.
 
     Los valores no caben en un byte desde que hay monitores de más de 255 Hz,
     así que el estándar añadió unos bits de acarreo en el byte anterior que hay
     que sumar antes de leerlos.
     """
-    for inicio in DESCRIPTORES:
-        trozo = raw[inicio:inicio + 18]
-        if len(trozo) < 18 or trozo[0:2] != b"\x00\x00" or trozo[3] != TIPO_RANGOS:
+    for start in DESCRIPTORS:
+        chunk = raw[start:start + 18]
+        if len(chunk) < 18 or chunk[0:2] != b"\x00\x00" or chunk[3] != TYPE_RANGES:
             continue
-        acarreo = trozo[4]
-        minimo = trozo[5] + (255 if acarreo & 0x01 else 0)
-        maximo = trozo[6] + (255 if acarreo & 0x02 else 0)
-        if maximo:
-            return minimo or None, maximo
+        carry = chunk[4]
+        low = chunk[5] + (255 if carry & 0x01 else 0)
+        high = chunk[6] + (255 if carry & 0x02 else 0)
+        if high:
+            return low or None, high
     return None, None
 
 
-def _medida_del_panel(raw: bytes) -> tuple[Optional[int], Optional[int], bool]:
+def _panel_size(raw: bytes) -> tuple[Optional[int], Optional[int], bool]:
     """Ancho y alto de la imagen en milímetros, y si son al milímetro.
 
     El bloque base los da en centímetros (bytes 21 y 22). El primer
@@ -272,42 +272,42 @@ def _medida_del_panel(raw: bytes) -> tuple[Optional[int], Optional[int], bool]:
     toman esos cuando cuadran con los centímetros: hay pantallas que ponen ahí
     la proporción («16 × 9») o un cero, y un proyector no tiene medida.
     """
-    ancho_cm, alto_cm = raw[21], raw[22]
-    trozo = raw[54:72]
-    if int.from_bytes(trozo[0:2], "little"):            # es un temporizador
-        ancho = trozo[12] | ((trozo[14] >> 4) << 8)
-        alto = trozo[13] | ((trozo[14] & 0x0F) << 8)
-        cuadra = (abs(ancho - ancho_cm * 10) <= 10 and abs(alto - alto_cm * 10) <= 10
-                  if ancho_cm and alto_cm else False)
-        if ancho and alto and cuadra:
-            return ancho, alto, True
-    return ancho_cm * 10 or None, alto_cm * 10 or None, False
+    width_cm, height_cm = raw[21], raw[22]
+    chunk = raw[54:72]
+    if int.from_bytes(chunk[0:2], "little"):            # es un temporizador
+        width = chunk[12] | ((chunk[14] >> 4) << 8)
+        height = chunk[13] | ((chunk[14] & 0x0F) << 8)
+        matches = (abs(width - width_cm * 10) <= 10 and abs(height - height_cm * 10) <= 10
+                  if width_cm and height_cm else False)
+        if width and height and matches:
+            return width, height, True
+    return width_cm * 10 or None, height_cm * 10 or None, False
 
 
-def _modo_preferido(raw: bytes) -> tuple[Optional[int], Optional[int], Optional[float]]:
+def _preferred_mode(raw: bytes) -> tuple[Optional[int], Optional[int], Optional[float]]:
     """El primer temporizador detallado es el modo nativo de la pantalla."""
-    trozo = raw[54:72]
-    reloj = int.from_bytes(trozo[0:2], "little") * 10_000      # en hercios
-    if not reloj:
+    chunk = raw[54:72]
+    pixel_clock = int.from_bytes(chunk[0:2], "little") * 10_000      # en hercios
+    if not pixel_clock:
         return None, None, None
 
-    ancho = trozo[2] | ((trozo[4] & 0xF0) << 4)
-    ancho_blanco = trozo[3] | ((trozo[4] & 0x0F) << 8)
-    alto = trozo[5] | ((trozo[7] & 0xF0) << 4)
-    alto_blanco = trozo[6] | ((trozo[7] & 0x0F) << 8)
-    if not (ancho and alto):
+    width = chunk[2] | ((chunk[4] & 0xF0) << 4)
+    width_blank = chunk[3] | ((chunk[4] & 0x0F) << 8)
+    height = chunk[5] | ((chunk[7] & 0xF0) << 4)
+    height_blank = chunk[6] | ((chunk[7] & 0x0F) << 8)
+    if not (width and height):
         return None, None, None
 
-    total = (ancho + ancho_blanco) * (alto + alto_blanco)
-    refresco = round(reloj / total, 1) if total else None
-    return ancho, alto, refresco
+    total = (width + width_blank) * (height + height_blank)
+    refresh = round(pixel_clock / total, 1) if total else None
+    return width, height, refresh
 
 
 # --------------------------------------------------------------------------
 # Extensiones CTA-861
 # --------------------------------------------------------------------------
 
-ETIQUETA_CTA = 0x02
+CTA_TAG = 0x02
 # Los códigos de la tabla 3 de CTA-861: (ancho, alto, refresco, entrelazado).
 # Están los de uso corriente, no los 219 que existen; un código que no esté
 # aquí se salta en vez de inventarle una resolución.
@@ -353,13 +353,13 @@ VIC = {
 }
 
 # Los tipos de bloque dentro de la colección de datos.
-BLOQUE_AUDIO, BLOQUE_VIDEO, BLOQUE_FABRICANTE = 1, 2, 3
-BLOQUE_ALTAVOCES, BLOQUE_EXTENDIDO = 4, 7
+BLOCK_AUDIO, BLOCK_VIDEO, BLOCK_VENDOR = 1, 2, 3
+BLOCK_SPEAKERS, BLOCK_EXTENDED = 4, 7
 
 # Y los subtipos de los extendidos, que es donde vive lo moderno.
-EXT_COLORIMETRIA, EXT_HDR = 5, 6
+EXT_COLORIMETRY, EXT_HDR = 5, 6
 
-FORMATOS_AUDIO = {
+AUDIO_FORMATS = {
     1: "LPCM", 2: "AC-3", 3: "MPEG-1", 4: "MP3", 5: "MPEG-2", 6: "AAC",
     7: "DTS", 8: "ATRAC", 9: "DSD", 10: "E-AC-3", 11: "DTS-HD",
     12: "Dolby TrueHD", 13: "DST", 14: "WMA Pro",
@@ -368,27 +368,27 @@ FORMATOS_AUDIO = {
 # Las curvas de transferencia del bloque de HDR estático. La primera es la
 # de siempre, así que solo se enseñan las otras: decir que un monitor admite
 # gamma tradicional no es noticia.
-CURVAS_HDR = {1: "HDR gamma", 2: "HDR10 (PQ)", 3: "HLG"}
+HDR_CURVES = {1: "HDR gamma", 2: "HDR10 (PQ)", 3: "HLG"}
 
-ESPACIOS_COLOR = {
+COLOR_SPACES = {
     0: "xvYCC601", 1: "xvYCC709", 2: "sYCC601", 3: "opYCC601",
     4: "opRGB", 5: "BT.2020 cYCC", 6: "BT.2020 YCC", 7: "BT.2020 RGB",
 }
 
 
-def _modos_cta(datos: bytes) -> list[VideoMode]:
+def _cta_modes(data: bytes) -> list[VideoMode]:
     """Los modos del bloque de vídeo: un byte por código, el bit 7 marca nativo."""
-    modos = []
-    for octeto in datos:
-        codigo, nativo = octeto & 0x7F, bool(octeto & 0x80)
-        if (medidas := VIC.get(codigo)) is None:
+    modes = []
+    for byte in data:
+        code, native = byte & 0x7F, bool(byte & 0x80)
+        if (dims := VIC.get(code)) is None:
             continue
-        ancho, alto, hz, entrelazado = medidas
-        modos.append(VideoMode(ancho, alto, hz, entrelazado, nativo))
-    return modos
+        width, height, hz, interlaced = dims
+        modes.append(VideoMode(width, height, hz, interlaced, native))
+    return modes
 
 
-def _extension_cta(bloque: bytes) -> dict:
+def _cta_extension(block: bytes) -> dict:
     """Lo que dice una extensión CTA-861: modos, HDR, color y audio.
 
     La colección de bloques de datos ocupa desde el byte 4 hasta donde diga el
@@ -396,53 +396,53 @@ def _extension_cta(bloque: bytes) -> dict:
     recorre con cuidado de no salirse: un EDID mal grabado es de las cosas más
     fáciles de encontrar, y aquí no puede tumbar la lectura de nada más.
     """
-    salida: dict = {"modes": [], "hdr": [], "color_spaces": [], "audio": []}
-    if len(bloque) < 4 or bloque[0] != ETIQUETA_CTA:
-        return salida
+    found: dict = {"modes": [], "hdr": [], "color_spaces": [], "audio": []}
+    if len(block) < 4 or block[0] != CTA_TAG:
+        return found
 
-    fin = bloque[2]
-    if not 4 <= fin <= len(bloque):
-        return salida
+    end = block[2]
+    if not 4 <= end <= len(block):
+        return found
 
     i = 4
-    while i < fin:
-        cabecera = bloque[i]
-        etiqueta, largo = cabecera >> 5, cabecera & 0x1F
-        datos = bloque[i + 1:i + 1 + largo]
-        if len(datos) < largo:
+    while i < end:
+        header = block[i]
+        tag, length = header >> 5, header & 0x1F
+        data = block[i + 1:i + 1 + length]
+        if len(data) < length:
             break
 
-        if etiqueta == BLOQUE_VIDEO:
-            salida["modes"].extend(_modos_cta(datos))
-        elif etiqueta == BLOQUE_AUDIO:
+        if tag == BLOCK_VIDEO:
+            found["modes"].extend(_cta_modes(data))
+        elif tag == BLOCK_AUDIO:
             # Tríos de bytes: los cinco bits altos del primero son el formato.
-            for j in range(0, len(datos) - 2, 3):
-                nombre = FORMATOS_AUDIO.get((datos[j] >> 3) & 0x0F)
-                if nombre and nombre not in salida["audio"]:
-                    salida["audio"].append(nombre)
-        elif etiqueta == BLOQUE_EXTENDIDO and datos:
-            if datos[0] == EXT_HDR and len(datos) >= 2:
-                salida["hdr"] = [nombre for bit, nombre in CURVAS_HDR.items()
-                                 if datos[1] & (1 << bit)]
-            elif datos[0] == EXT_COLORIMETRIA and len(datos) >= 2:
-                salida["color_spaces"] = [
-                    nombre for bit, nombre in ESPACIOS_COLOR.items()
-                    if datos[1] & (1 << bit)]
-        i += largo + 1
-    return salida
+            for j in range(0, len(data) - 2, 3):
+                name = AUDIO_FORMATS.get((data[j] >> 3) & 0x0F)
+                if name and name not in found["audio"]:
+                    found["audio"].append(name)
+        elif tag == BLOCK_EXTENDED and data:
+            if data[0] == EXT_HDR and len(data) >= 2:
+                found["hdr"] = [name for bit, name in HDR_CURVES.items()
+                                 if data[1] & (1 << bit)]
+            elif data[0] == EXT_COLORIMETRY and len(data) >= 2:
+                found["color_spaces"] = [
+                    name for bit, name in COLOR_SPACES.items()
+                    if data[1] & (1 << bit)]
+        i += length + 1
+    return found
 
 
-def _extensiones(raw: bytes) -> dict:
+def _extensions(raw: bytes) -> dict:
     """Recorre los bloques que van detrás del principal y junta lo que traen."""
-    juntos: dict = {"modes": [], "hdr": [], "color_spaces": [], "audio": []}
-    for inicio in range(BLOQUE, len(raw) - BLOQUE + 1, BLOQUE):
-        trozo = raw[inicio:inicio + BLOQUE]
-        if len(trozo) < BLOQUE or trozo[0] != ETIQUETA_CTA:
+    merged: dict = {"modes": [], "hdr": [], "color_spaces": [], "audio": []}
+    for start in range(BLOCK, len(raw) - BLOCK + 1, BLOCK):
+        chunk = raw[start:start + BLOCK]
+        if len(chunk) < BLOCK or chunk[0] != CTA_TAG:
             continue
-        for clave, valores in _extension_cta(trozo).items():
-            for valor in valores:
-                if valor not in juntos[clave]:
-                    juntos[clave].append(valor)
+        for key, values in _cta_extension(chunk).items():
+            for value in values:
+                if value not in merged[key]:
+                    merged[key].append(value)
     # Tuplas: el Snapshot es inmutable de arriba abajo, y una lista dentro de
     # un dataclass congelado es una promesa que no se cumple.
-    return {clave: tuple(valores) for clave, valores in juntos.items()}
+    return {key: tuple(values) for key, values in merged.items()}

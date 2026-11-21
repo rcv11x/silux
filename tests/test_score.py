@@ -30,8 +30,8 @@ class TestLasCincoCargasPesanLoMismo(unittest.TestCase):
         scores = {f"{c}/1": v for c, v in tabla["un_hilo"].items()}
         scores |= {f"{c}/{hilos}": v for c, v in tabla["multihilo"].items()}
         self.assertEqual(
-            score.puntuar(scores, hilos),
-            (score.ESCALA, score.ESCALA))
+            score.compute(scores, hilos),
+            (score.SCALE, score.SCALE))
 
     def test_ninguna_carga_decide_ella_sola(self):
         """Doblar una sola carga no puede doblar la puntuación."""
@@ -40,22 +40,22 @@ class TestLasCincoCargasPesanLoMismo(unittest.TestCase):
         base = {f"{c}/1": v for c, v in tabla["un_hilo"].items()}
         base |= {f"{c}/{hilos}": v for c, v in tabla["multihilo"].items()}
 
-        for carga in score.PUNTUABLES:
+        for carga in score.SCORED_WORKLOADS:
             with self.subTest(carga=carga):
                 tocado = dict(base)
                 tocado[f"{carga}/{hilos}"] *= 2
-                _uno, multi = score.puntuar(tocado, hilos)
+                _uno, multi = score.compute(tocado, hilos)
                 # A partes iguales: doblar una sube lo que valga una de ellas.
-                esperado = 1 + 1 / len(score.PUNTUABLES)
-                self.assertAlmostEqual(multi / score.ESCALA, esperado, delta=0.01)
+                esperado = 1 + 1 / len(score.SCORED_WORKLOADS)
+                self.assertAlmostEqual(multi / score.SCALE, esperado, delta=0.01)
 
     def test_ir_al_doble_en_todo_es_el_doble_de_puntuacion(self):
         tabla = self._referencia()
         hilos = tabla["patron"]["hilos"]
         scores = {f"{c}/1": v * 2 for c, v in tabla["un_hilo"].items()}
         scores |= {f"{c}/{hilos}": v * 2 for c, v in tabla["multihilo"].items()}
-        self.assertEqual(score.puntuar(scores, hilos),
-                         (2 * score.ESCALA, 2 * score.ESCALA))
+        self.assertEqual(score.compute(scores, hilos),
+                         (2 * score.SCALE, 2 * score.SCALE))
 
 
 class TestSoloPuntuaLoQueMideElProcesador(unittest.TestCase):
@@ -87,11 +87,11 @@ class TestSoloPuntuaLoQueMideElProcesador(unittest.TestCase):
 
     def test_las_que_puntuan_existen_entre_las_cargas(self):
         """Una clave mal escrita dejaría la escala sin esa carga y en silencio."""
-        self.assertTrue(set(score.PUNTUABLES)
+        self.assertTrue(set(score.SCORED_WORKLOADS)
                         <= {c.key for c in benchmark.CARGAS})
 
     def test_ninguna_de_las_que_puntuan_depende_del_sistema(self):
-        self.assertEqual(self._que_dependen(score.PUNTUABLES), set())
+        self.assertEqual(self._que_dependen(score.SCORED_WORKLOADS), set())
 
     def test_y_la_comprobacion_caza_lo_que_dice_cazar(self):
         """Una guarda que solo se ha visto pasar no ha demostrado nada.
@@ -101,14 +101,14 @@ class TestSoloPuntuaLoQueMideElProcesador(unittest.TestCase):
         nada.
         """
         self.assertEqual(
-            self._que_dependen(tuple(score.PUNTUABLES)
+            self._que_dependen(tuple(score.SCORED_WORKLOADS)
                                + ("verificacion", "derivacion")),
             {"verificacion", "derivacion"})
 
     def test_la_escala_trae_la_referencia_de_cada_una(self):
         tabla = tabla_de_la_escala(self)
         for cual in ("un_hilo", "multihilo"):
-            for carga in score.PUNTUABLES:
+            for carga in score.SCORED_WORKLOADS:
                 with self.subTest(cual=cual, carga=carga):
                     self.assertIn(carga, tabla[cual])
 
@@ -136,27 +136,27 @@ class TestSoloPuntuaLoQueSePuedeComparar(unittest.TestCase):
         que es lo que compara el historial. Lo que la duración decide es otra
         cosa, y se contesta aparte.
         """
-        self.assertIsNotNone(score.puntuar(self.scores, self.hilos))
+        self.assertIsNotNone(score.compute(self.scores, self.hilos))
 
     def test_pero_solo_una_se_compara_con_otras_maquinas(self):
         for segundos in (3.0, 5.0, 30.0, 120.0):
             with self.subTest(segundos=segundos):
                 self.assertFalse(score.comparable(segundos))
-        self.assertTrue(score.comparable(score.SEGUNDOS_CANONICOS))
+        self.assertTrue(score.comparable(score.CANONICAL_SECONDS))
 
     def test_la_duracion_canonica_admite_el_desvio_del_bucle(self):
         """No corta en mitad de una operación: 15 pedidos salen 15 y pico."""
         self.assertTrue(score.comparable(15.4))
-        self.assertTrue(score.comparable(score.SEGUNDOS_CANONICOS + 1.0))
-        self.assertFalse(score.comparable(score.SEGUNDOS_CANONICOS + 5.0))
+        self.assertTrue(score.comparable(score.CANONICAL_SECONDS + 1.0))
+        self.assertFalse(score.comparable(score.CANONICAL_SECONDS + 5.0))
 
     def test_una_prueba_a_la_que_le_falte_una_carga_no_puntua(self):
         """Sin una de las que puntúan, la cifra parecería igual de válida."""
-        for carga in score.PUNTUABLES:
+        for carga in score.SCORED_WORKLOADS:
             with self.subTest(carga=carga):
                 incompleta = {k: v for k, v in self.scores.items()
                               if not k.startswith(f"{carga}/")}
-                self.assertIsNone(score.puntuar(incompleta, self.hilos))
+                self.assertIsNone(score.compute(incompleta, self.hilos))
 
     def test_pero_sin_una_de_las_que_no_puntúan_sí(self):
         """Son diagnóstico, no escala: su ausencia no invalida la cifra.
@@ -166,7 +166,7 @@ class TestSoloPuntuaLoQueSePuedeComparar(unittest.TestCase):
         """
         sin_verificacion = {k: v for k, v in self.scores.items()
                             if not k.startswith("verificacion/")}
-        self.assertIsNotNone(score.puntuar(sin_verificacion, self.hilos))
+        self.assertIsNotNone(score.compute(sin_verificacion, self.hilos))
 
 
 class TestLaEscalaSeDeclaraYSeVersiona(unittest.TestCase):
@@ -191,20 +191,20 @@ class TestLaEscalaSeDeclaraYSeVersiona(unittest.TestCase):
             "version_formula")
         self.assertEqual(declarada, score.VERSION,
                          "score.VERSION y db/scores.json van en el mismo commit")
-        self.assertTrue(score.referencias(), "la escala vigente no carga")
+        self.assertTrue(score.references(), "la escala vigente no carga")
 
     def test_una_escala_de_otra_version_no_se_usa(self):
         """Antes que mezclar dos escalas, ninguna."""
         import unittest.mock as mock
 
         with mock.patch.object(score, "VERSION", score.VERSION + 99):
-            score.referencias.cache_clear()
-            self.assertEqual(score.referencias(), {})
-        score.referencias.cache_clear()
+            score.references.cache_clear()
+            self.assertEqual(score.references(), {})
+        score.references.cache_clear()
 
     def test_la_escala_dice_en_que_condiciones_se_tomo(self):
         tabla_de_la_escala(self)
-        patron = score.patron()
+        patron = score.reference_machine()
         for campo in ("cpu", "hilos", "segundos", "carga_de_fondo"):
             self.assertIn(campo, patron)
 
@@ -218,45 +218,45 @@ class TestDondeCaeUnaPuntuacion(unittest.TestCase):
         """Una tabla con esas medidas para la pieza de prueba."""
         import unittest.mock as mock
 
-        tabla = dict(score.referencias())
+        tabla = dict(score.references())
         tabla["piezas"] = {self.PIEZA: {"hilos": 8, "un_hilo": muestras,
                                         "multihilo": muestras}}
-        return mock.patch.object(score, "referencias", lambda: tabla)
+        return mock.patch.object(score, "references", lambda: tabla)
 
     def test_con_menos_de_tres_medidas_no_se_dice_nada(self):
         """Situar a alguien entre dos medidas sueltas es peor que callar."""
         for muestras in ([], [1000], [900, 1100]):
             with self.subTest(muestras=len(muestras)), self._con(muestras):
-                self.assertIsNone(score.comparar(self.PIEZA, 1000))
+                self.assertIsNone(score.compare(self.PIEZA, 1000))
 
     def test_una_pieza_desconocida_no_se_compara(self):
-        self.assertIsNone(score.comparar("Procesador que no existe", 1000))
+        self.assertIsNone(score.compare("Procesador que no existe", 1000))
 
     def test_sitúa_la_puntuación_entre_los_extremos(self):
         with self._con([800, 900, 1000, 1100, 1200]):
-            c = score.comparar(self.PIEZA, 1000)
-            self.assertEqual((c.minimo, c.maximo, c.mediana), (800, 1200, 1000))
-            self.assertEqual(c.muestras, 5)
-            self.assertAlmostEqual(c.fraccion, 0.5)
+            c = score.compare(self.PIEZA, 1000)
+            self.assertEqual((c.minimum, c.maximum, c.median), (800, 1200, 1000))
+            self.assertEqual(c.samples, 5)
+            self.assertAlmostEqual(c.fraction, 0.5)
 
     def test_lo_que_se_sale_del_rango_se_queda_en_el_borde(self):
         """Una pieza mejor que todo lo registrado se ve al final, no fuera."""
         with self._con([800, 900, 1000]):
-            self.assertAlmostEqual(score.comparar(self.PIEZA, 5000).fraccion, 1.0)
-            self.assertAlmostEqual(score.comparar(self.PIEZA, 10).fraccion, 0.0)
+            self.assertAlmostEqual(score.compare(self.PIEZA, 5000).fraction, 1.0)
+            self.assertAlmostEqual(score.compare(self.PIEZA, 10).fraction, 0.0)
 
     def test_cerca_de_la_mediana_es_lo_normal(self):
         """Entre dos equipos con la misma CPU hay placa, RAM y disipador."""
         with self._con([800, 900, 1000, 1100, 1200]):
-            self.assertTrue(score.comparar(self.PIEZA, 1000).normal)
-            self.assertTrue(score.comparar(self.PIEZA, 1050).normal)
-            self.assertFalse(score.comparar(self.PIEZA, 1300).normal)
-            self.assertFalse(score.comparar(self.PIEZA, 700).normal)
+            self.assertTrue(score.compare(self.PIEZA, 1000).normal)
+            self.assertTrue(score.compare(self.PIEZA, 1050).normal)
+            self.assertFalse(score.compare(self.PIEZA, 1300).normal)
+            self.assertFalse(score.compare(self.PIEZA, 700).normal)
 
     def test_el_signo_dice_si_va_por_encima_o_por_debajo(self):
         with self._con([800, 900, 1000, 1100, 1200]):
-            self.assertGreater(score.comparar(self.PIEZA, 1300).desvio, 0)
-            self.assertLess(score.comparar(self.PIEZA, 700).desvio, 0)
+            self.assertGreater(score.compare(self.PIEZA, 1300).deviation, 0)
+            self.assertLess(score.compare(self.PIEZA, 700).deviation, 0)
 
 
 class TestNoSeMezclanEscalas(unittest.TestCase):
@@ -284,12 +284,12 @@ class TestNoSeMezclanEscalas(unittest.TestCase):
 
     def test_dos_escalas_distintas_no_son_comparables(self):
         vieja, nueva = self._entrada(score.VERSION - 1), self._entrada(score.VERSION)
-        self.assertFalse(nueva.comparable_con(vieja))
-        self.assertTrue(nueva.comparable_con(self._entrada(score.VERSION)))
+        self.assertFalse(nueva.comparable_with(vieja))
+        self.assertTrue(nueva.comparable_with(self._entrada(score.VERSION)))
 
     def test_una_prueba_anterior_a_esto_tampoco_lo_es(self):
         """Las guardadas antes no dicen con qué escala se midieron."""
-        self.assertFalse(self._entrada(score.VERSION).comparable_con(
+        self.assertFalse(self._entrada(score.VERSION).comparable_with(
             self._entrada(None)))
 
 

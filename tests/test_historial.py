@@ -78,9 +78,9 @@ class TestGuardarYLeer(_ConCarpetaPropia):
         self.assertGreater(leidas[0].timestamp, leidas[1].timestamp)
 
     def test_no_se_guardan_infinitas(self):
-        for _ in range(history.MAXIMO + 12):
+        for _ in range(history.MAX_ENTRIES + 12):
             history.append(history.from_result(_resultado(), "CPU", 2.0))
-        self.assertLessEqual(len(history.load()), history.MAXIMO)
+        self.assertLessEqual(len(history.load()), history.MAX_ENTRIES)
 
 
 
@@ -136,7 +136,7 @@ class TestUnHistorialEstropeadoNoImpideArrancar(_ConCarpetaPropia):
                                 dict(self._buena(), seconds=None))
         for entrada in leidas:
             entrada.total()
-            entrada.comparable_con(entrada)
+            entrada.comparable_with(entrada)
 
     def test_la_pagina_de_rendimiento_se_monta_igual(self):
         import json
@@ -156,20 +156,20 @@ class TestComparar(_ConCarpetaPropia):
     def test_dice_cuanto_ha_cambiado(self):
         antes = history.from_result(_resultado(100.0), "CPU", 2.0)
         despues = history.from_result(_resultado(110.0), "CPU", 2.0)
-        salida = history.comparar(despues, [despues, antes])
+        salida = history.compare(despues, [despues, antes])
         self.assertIsNotNone(salida)
         _, cambio = salida
         self.assertAlmostEqual(cambio, 10.0, places=1)
 
     def test_la_primera_vez_no_hay_con_qué(self):
         sola = history.from_result(_resultado(), "CPU", 2.0)
-        self.assertIsNone(history.comparar(sola, [sola]))
+        self.assertIsNone(history.compare(sola, [sola]))
 
     def test_no_compara_contra_otro_procesador(self):
         otra = history.from_result(_resultado(100.0), "Core i5-10400", 2.0)
         time.sleep(0.01)
         mia = history.from_result(_resultado(200.0), "Ryzen 7 5800X3D", 2.0)
-        self.assertIsNone(history.comparar(mia, [mia, otra]))
+        self.assertIsNone(history.compare(mia, [mia, otra]))
 
     def test_ni_contra_otra_duración(self):
         """Una medida de 3 s coge el turbo entero y una de 30 no: compararlas
@@ -177,13 +177,13 @@ class TestComparar(_ConCarpetaPropia):
         corta = history.from_result(_resultado(100.0), "CPU", 3.0)
         time.sleep(0.01)
         larga = history.from_result(_resultado(80.0), "CPU", 30.0)
-        self.assertIsNone(history.comparar(larga, [larga, corta]))
+        self.assertIsNone(history.compare(larga, [larga, corta]))
 
     def test_ni_contra_una_posterior(self):
         vieja = history.from_result(_resultado(100.0), "CPU", 2.0)
         time.sleep(0.01)
         nueva = history.from_result(_resultado(110.0), "CPU", 2.0)
-        self.assertIsNone(history.comparar(vieja, [nueva, vieja]))
+        self.assertIsNone(history.compare(vieja, [nueva, vieja]))
 
 
 
@@ -203,7 +203,7 @@ class TestLaCifraConQueSeCompara(_ConCarpetaPropia):
     def _entrada(self, ts, puntua=1000.0, verifica=1.6e11, faltan=()):
         from silux import score
         medidas = {}
-        for carga in score.PUNTUABLES:
+        for carga in score.SCORED_WORKLOADS:
             if carga not in faltan:
                 medidas[f"{carga}/8"] = puntua
                 medidas[f"{carga}/1"] = puntua / 8
@@ -215,27 +215,27 @@ class TestLaCifraConQueSeCompara(_ConCarpetaPropia):
     def test_otra_zlib_no_cambia_la_comparacion(self):
         antes = self._entrada(1)
         despues = self._entrada(2, verifica=0.8e11)
-        _, cambio = history.comparar(despues, [despues, antes])
+        _, cambio = history.compare(despues, [despues, antes])
         self.assertAlmostEqual(cambio, 0.0, places=1)
 
     def test_lo_que_puntua_si_la_cambia(self):
         antes = self._entrada(1)
         despues = self._entrada(2, puntua=1100.0)
-        _, cambio = history.comparar(despues, [despues, antes])
+        _, cambio = history.compare(despues, [despues, antes])
         self.assertAlmostEqual(cambio, 10.0, places=0)
 
     def test_una_prueba_sin_la_verificacion_se_compara_igual(self):
         antes = self._entrada(1)
         despues = self._entrada(2, verifica=None)
-        _, cambio = history.comparar(despues, [despues, antes])
+        _, cambio = history.compare(despues, [despues, antes])
         self.assertAlmostEqual(cambio, 0.0, places=1)
 
     def test_a_una_que_le_falta_una_que_puntua_no_se_la_compara(self):
         """Era el −100 % de una prueba cancelada a medias."""
         from silux import score
         antes = self._entrada(1)
-        despues = self._entrada(2, faltan=(score.PUNTUABLES[-1],))
-        self.assertIsNone(history.comparar(despues, [despues, antes]))
+        despues = self._entrada(2, faltan=(score.SCORED_WORKLOADS[-1],))
+        self.assertIsNone(history.compare(despues, [despues, antes]))
 
     def test_la_deriva_termica_tampoco_mira_la_verificacion(self):
         import dataclasses
@@ -243,14 +243,14 @@ class TestLaCifraConQueSeCompara(_ConCarpetaPropia):
                   for i in range(4)]
         nueva = dataclasses.replace(self._entrada(100, verifica=0.8e11),
                                     temperature_peak_c=80.0)
-        self.assertIsNotNone(history.deriva_termica(nueva, viejas))
+        self.assertIsNotNone(history.thermal_drift(nueva, viejas))
 
 
 
 class TestLaMismaDuracion(unittest.TestCase):
     """Lo que se guarda es lo que duró de verdad, no lo que se pidió.
 
-    `comparable_con` exigía que dos duraciones coincidieran con 0,01 s de
+    `comparable_with` exigía que dos duraciones coincidieran con 0,01 s de
     margen, sobre lo que tardó la medida más larga: el pedido más lo que tarde
     en acabar la operación en vuelo. Son de 3 a 8 ms con la zlib-ng de Fedora
     y hasta 128 ms con la del AppImage, así que dos pruebas de quince segundos
@@ -264,16 +264,16 @@ class TestLaMismaDuracion(unittest.TestCase):
                              scores={})
 
     def test_quince_segundos_y_unos_milisegundos_son_quince(self):
-        self.assertTrue(self._entrada(15.004).comparable_con(self._entrada(15.016)))
+        self.assertTrue(self._entrada(15.004).comparable_with(self._entrada(15.016)))
 
     def test_con_la_zlib_mas_lenta_tambien(self):
-        self.assertTrue(self._entrada(2.003).comparable_con(self._entrada(2.128)))
+        self.assertTrue(self._entrada(2.003).comparable_with(self._entrada(2.128)))
 
     def test_pero_dos_y_tres_segundos_no_son_lo_mismo(self):
-        self.assertFalse(self._entrada(2.0).comparable_con(self._entrada(3.0)))
+        self.assertFalse(self._entrada(2.0).comparable_with(self._entrada(3.0)))
 
     def test_ni_quince_y_treinta(self):
-        self.assertFalse(self._entrada(15.0).comparable_con(self._entrada(30.0)))
+        self.assertFalse(self._entrada(15.0).comparable_with(self._entrada(30.0)))
 
 
 class TestPuntuacion(unittest.TestCase):
@@ -281,7 +281,7 @@ class TestPuntuacion(unittest.TestCase):
         from silux import score
         entrada = history.from_result(_resultado(100.0, hilos=8), "CPU", 2.0)
         self.assertEqual(round(entrada.total()),
-                         score.puntuar(entrada.scores, 8)[1])
+                         score.compute(entrada.scores, 8)[1])
 
     def test_sin_medidas_no_hay_puntuación(self):
         vacia = history.from_result(Result((), Conditions(), ()), "CPU", 2.0)

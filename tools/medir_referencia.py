@@ -93,10 +93,10 @@ def main(argv=None) -> int:
     cpu = (render.cpu_short_name(foto.cpu.types[0].brand)
            if foto.cpu.types else "?")
     print(f"  midiendo en {cpu}, {os.cpu_count() or 1} hilos, "
-          f"{score.SEGUNDOS_CANONICOS:.0f} s por carga")
+          f"{score.CANONICAL_SECONDS:.0f} s por carga")
     print("  (unos dos minutos y medio; conviene no tocar el equipo)\n")
 
-    resultado = benchmark.run(seconds=score.SEGUNDOS_CANONICOS)
+    resultado = benchmark.run(seconds=score.CANONICAL_SECONDS)
     for aviso in resultado.warnings:
         print(f"  aviso: {aviso}", file=sys.stderr)
 
@@ -126,7 +126,7 @@ def main(argv=None) -> int:
         "patron": {
             "cpu": cpu,
             "hilos": hilos,
-            "segundos": score.SEGUNDOS_CANONICOS,
+            "segundos": score.CANONICAL_SECONDS,
             "gobernador": resultado.conditions.governor,
             "carga_de_fondo": carga,
             "temperatura_pico_c": resultado.conditions.temperature_peak_c,
@@ -148,7 +148,7 @@ def main(argv=None) -> int:
     for c in cargas:
         # Cuál de las cinco entra en la cifra. Sin esto, quien remide la escala
         # ve cinco columnas iguales y no sabe cuáles está moviendo de verdad.
-        marca = "" if score.puntua(c) else "   (no puntúa)"
+        marca = "" if score.is_scored(c) else "   (no puntúa)"
         print(f"  {c:<18} {_cifra(tabla['un_hilo'][c]):>12} "
               f"{_cifra(tabla['multihilo'][c]):>14}{marca}")
 

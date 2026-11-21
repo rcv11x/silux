@@ -54,9 +54,9 @@ class TestMonitoresReales(unittest.TestCase):
 
 class TestDecodificador(unittest.TestCase):
     def _extension(self, bloques: bytes, fin: int) -> dict:
-        cabecera = bytes([edid.ETIQUETA_CTA, 3, fin, 0x71])
+        cabecera = bytes([edid.CTA_TAG, 3, fin, 0x71])
         relleno = bytes(128 - len(cabecera) - len(bloques))
-        return edid._extension_cta(cabecera + bloques + relleno)
+        return edid._cta_extension(cabecera + bloques + relleno)
 
     def test_un_bloque_de_video(self):
         # etiqueta 2 (vídeo), 2 bytes: VIC 97 nativo y VIC 16.
@@ -82,10 +82,10 @@ class TestDecodificador(unittest.TestCase):
         self.assertIsInstance(salida["modes"], list)
 
     def test_un_bloque_que_no_es_cta_se_ignora(self):
-        self.assertEqual(edid._extension_cta(bytes(128))["modes"], [])
+        self.assertEqual(edid._cta_extension(bytes(128))["modes"], [])
 
     def test_un_bloque_corto_tampoco_revienta(self):
-        self.assertEqual(edid._extension_cta(b"\x02")["modes"], [])
+        self.assertEqual(edid._cta_extension(b"\x02")["modes"], [])
 
     def test_un_fin_de_datos_absurdo_se_descarta(self):
         salida = self._extension(bytes([(2 << 5) | 1, 16]), 200)

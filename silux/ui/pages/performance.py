@@ -223,12 +223,12 @@ class PerformancePage(ScrollPage):
             # elegirla era cuestión de suerte y la barra de comparación no
             # aparecía nunca sin que nada dijera por qué.
             nombre = _(etiqueta)
-            if segundos == score.SEGUNDOS_CANONICOS:
+            if segundos == score.CANONICAL_SECONDS:
                 nombre += _("bench.dur.comparable")
             self.duracion.addItem(nombre, segundos)
         self.duracion.setCurrentIndex(
             next((i for i, (_e, s) in enumerate(DURACIONES)
-                  if s == score.SEGUNDOS_CANONICOS), 1))
+                  if s == score.CANONICAL_SECONDS), 1))
         self.duracion.activated.connect(self._quizas_preguntar_duracion)
         self._duracion_libre: float | None = None
         self.duracion.setToolTip(
@@ -393,7 +393,7 @@ class PerformancePage(ScrollPage):
             # Una prueba medida con otra escala no se pone al lado de estas:
             # su cifra diría una diferencia que no existe.
             de_esta_escala = entrada.score_version == score.VERSION
-            puntos = (score.puntuar(entrada.scores, entrada.threads)
+            puntos = (score.compute(entrada.scores, entrada.threads)
                       if de_esta_escala else None)
             # Y lo dice en su celda: un guion ahí es «no lo sé», y sí se
             # sabe por qué no hay cifra.
@@ -578,7 +578,7 @@ class PerformancePage(ScrollPage):
         normal mientras la tabla esté vacía. Cada hueco se explica en vez de
         dejar la tarjeta a medias.
         """
-        puntos = score.puntuar(entrada.scores, entrada.threads)
+        puntos = score.compute(entrada.scores, entrada.threads)
         if puntos is None:
             self.score_card.hide()
             return
@@ -592,23 +592,23 @@ class PerformancePage(ScrollPage):
         if not score.comparable(entrada.seconds):
             self.score_bar.set_comparacion(None)
             self.score_range.setText(_("bench.score.onlyown").format(
-                s=f"{score.SEGUNDOS_CANONICOS:.0f}"))
+                s=f"{score.CANONICAL_SECONDS:.0f}"))
             self.score_card.show()
             return
 
-        comparacion = score.comparar(entrada.cpu, multi)
+        comparacion = score.compare(entrada.cpu, multi)
         self.score_bar.set_comparacion(comparacion)
         if comparacion is None:
             self.score_range.setText(_("bench.score.alone"))
         else:
             clave = ("bench.score.normal" if comparacion.normal
-                     else "bench.score.above" if comparacion.desvio > 0
+                     else "bench.score.above" if comparacion.deviation > 0
                      else "bench.score.below")
             self.score_range.setText(
-                _(clave).format(pct=f"{abs(comparacion.desvio) * 100:.0f}",
-                                min=render.thousands(comparacion.minimo),
-                                max=render.thousands(comparacion.maximo),
-                                n=comparacion.muestras))
+                _(clave).format(pct=f"{abs(comparacion.deviation) * 100:.0f}",
+                                min=render.thousands(comparacion.minimum),
+                                max=render.thousands(comparacion.maximum),
+                                n=comparacion.samples))
         self.score_card.show()
 
     def _pintar_historial(self, entradas, actual=None) -> None:
@@ -626,7 +626,7 @@ class PerformancePage(ScrollPage):
         self.history_card.show()
 
         if actual is not None:
-            comparacion = history.comparar(actual, entradas)
+            comparacion = history.compare(actual, entradas)
             if comparacion is not None:
                 otra, cambio = comparacion
                 signo = "+" if cambio >= 0 else ""
@@ -641,7 +641,7 @@ class PerformancePage(ScrollPage):
         La puntuación aguanta mientras el ventilador compensa, así que subir
         de grados haciendo lo mismo se nota antes que bajar de cifra.
         """
-        deriva = history.deriva_termica(actual, entradas)
+        deriva = history.thermal_drift(actual, entradas)
         if deriva is None:
             self.deriva_hint.hide()
             return
@@ -666,7 +666,7 @@ class PerformancePage(ScrollPage):
             # El asterisco marca las que se miden y no puntúan. La cifra sale
             # igual: es de las buenas para diagnosticar, y esconderla dejaría
             # a quien mira sin saber que se midió.
-            marca = "" if score.puntua(carga.key) else " *"
+            marca = "" if score.is_scored(carga.key) else " *"
             fuera = fuera or bool(marca)
             filas.append((
                 carga.name + marca,

@@ -285,7 +285,7 @@ def version_of(raw: bytes) -> Optional[str]:
     """A table's version, even when its content can't be interpreted."""
     if len(raw) < 4:
         return None
-    _, format_rev, content_rev = struct.unpack_from(HEADER, raw, 0)
+    _size, format_rev, content_rev = struct.unpack_from(HEADER, raw, 0)
     return f"{format_rev}.{content_rev}"
 
 

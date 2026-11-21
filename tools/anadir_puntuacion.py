@@ -59,8 +59,8 @@ def escala_del_patron() -> float:
     escalados de hasta unas diez veces los hilos, porque el patrón escala
     unas nueve.
     """
-    tabla = score.referencias()
-    veces = [tabla["multihilo"][c] / tabla["un_hilo"][c] for c in score.PUNTUABLES]
+    tabla = score.references()
+    veces = [tabla["multihilo"][c] / tabla["un_hilo"][c] for c in score.SCORED_WORKLOADS]
     return sum(veces) / len(veces)
 
 
@@ -158,7 +158,7 @@ def main(argv=None) -> int:
     print()
     for nombre, pieza in sorted(piezas.items()):
         cuantas = len(pieza["multihilo"])
-        falta = score.MINIMO_MUESTRAS - cuantas
+        falta = score.MIN_SAMPLES - cuantas
         estado = ("se compara" if falta <= 0
                   else f"faltan {falta} para poder comparar")
         print(f"  {nombre:<38} {cuantas:>2} medidas · {estado}")
