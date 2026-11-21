@@ -74,7 +74,7 @@ class TestElContratoDelAyudante(unittest.TestCase):
     def test_la_version_subio_al_anadir_la_accion(self):
         # Una copia instalada en /usr/local/libexec no se actualiza sola, y
         # una que no sepa esta acción tiene que declararse vieja.
-        self.assertEqual(helper.VERSION, protocol.VERSION_REQUERIDA)
+        self.assertEqual(helper.VERSION, protocol.HELPER_VERSION)
         self.assertGreaterEqual(helper.VERSION, 3)
 
     def test_el_patron_admite_los_tres_nombres_que_usa_intel(self):

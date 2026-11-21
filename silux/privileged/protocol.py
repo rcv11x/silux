@@ -1,15 +1,19 @@
-"""El contrato entre el programa y su ayudante privilegiado.
+"""The contract between the program and its privileged helper.
 
-Vive en un módulo aparte porque lo comparten los dos lados, y porque tener el
-contrato escrito en un solo sitio es lo que permite auditarlo de un vistazo:
-estas son *todas* las cosas que el proceso con privilegios sabe hacer.
+Both sides share it, and written in one place it can be audited at a
+glance: these are *all* the things the privileged process knows how to do.
+The helper travels alone (by argv or as an installed copy) and cannot import
+this, so it keeps its own copies; the tests keep them equal.
 """
 
 from __future__ import annotations
 
-PROTOCOL_VERSION = 1
+# The helper's version this program needs: what it can do (its actions and
+# registers). A fix that keeps the contract does not raise it; the installed
+# copy is compared by content anyway.
+HELPER_VERSION = 3
 
-# Acciones admitidas. Cualquier otra cosa se rechaza sin mirarla.
+# The actions it accepts. Anything else is refused unread.
 ACTION_PING = "ping"
 ACTION_SMBIOS = "smbios"
 ACTION_MSR = "msr"
@@ -20,77 +24,51 @@ ACTION_RAPL = "rapl"
 ACTIONS = frozenset({ACTION_PING, ACTION_SMBIOS, ACTION_MSR, ACTION_SMART,
                      ACTION_GPU_PMU, ACTION_IMC, ACTION_RAPL})
 
-# Rutas que el ayudante puede abrir. No hay ninguna forma de pedirle otra.
+# The SMBIOS table, the only firmware file it opens.
 DMI_TABLE = "/sys/firmware/dmi/tables/DMI"
-DMI_ENTRY_POINT = "/sys/firmware/dmi/tables/smbios_entry_point"
-MSR_DEVICE = "/dev/cpu/{cpu}/msr"
 
-# Los nombres de disco que el ayudante acepta abrir. El patrón es estricto a
-# propósito: sin él, un nombre como «../../etc/shadow» le haría abrir
-# cualquier cosa. Aquí solo caben nvme0, nvme0n1, sda y parecidos.
+# The disk names it accepts. Strict on purpose: without it, «../../etc/shadow»
+# would open anything. Only nvme0, nvme0n1, sda and the like fit.
 DISK_NAME = r"^(nvme\d+n\d+|nvme\d+|sd[a-z]{1,2}|hd[a-z])$"
-DISK_DEVICE = "/dev/{name}"
 
-# El ayudante solo pide los registros de diagnóstico, que son de lectura. No
-# hay forma de pedirle un comando de escritura ni de borrado.
-NVME_GET_LOG_PAGE = 0x02          # opcode de administración
-NVME_LOG_SMART = 0x02             # el registro de salud
-ATA_SMART_READ_DATA = 0xD0        # función de SMART READ DATA
-SMART_DATA_BYTES = 512            # lo que ocupa la respuesta de los dos
-
-# Registros MSR permitidos, con lo que significan. La lista blanca existe
-# porque un MSR arbitrario puede exponer información sensible o depender de
-# efectos secundarios; estos son de solo lectura y bien documentados.
-# La versión del ayudante que este programa necesita. Vive aquí además de en
-# `helper.py` porque el ayudante viaja solo —por argv o como copia instalada—
-# y no puede importar nada de aquí; hay un test que no las deja separarse.
-VERSION_REQUERIDA = 3
-
+# The MSRs it reads, with what they mean. An arbitrary MSR can expose
+# sensitive data or have side effects; these are read-only and documented.
 MSR_ALLOWED: dict[int, str] = {
-    0x0198: "IA32_PERF_STATUS",          # voltaje y ratio actuales
-    0x0199: "IA32_PERF_CTL",             # ratio solicitado
-    0x019C: "IA32_THERM_STATUS",         # margen hasta el límite térmico
+    0x0198: "IA32_PERF_STATUS",          # current voltage and ratio
+    0x0199: "IA32_PERF_CTL",             # requested ratio
+    0x019C: "IA32_THERM_STATUS",         # margin to the thermal limit
     0x01A2: "MSR_TEMPERATURE_TARGET",    # TjMax
-    0x01AD: "MSR_TURBO_RATIO_LIMIT",     # multiplicadores turbo por nº de núcleos
-    0x00CE: "MSR_PLATFORM_INFO",         # ratio base, mínimo y máximo eficiente
-    0x0610: "MSR_PKG_POWER_LIMIT",       # PL1 y PL2 configurados
-    0x0606: "MSR_RAPL_POWER_UNIT",       # unidades para interpretar los de arriba
-    0xC0010293: "AMD_MSR_CORE_ENERGY",   # energía por núcleo en AMD
+    0x01AD: "MSR_TURBO_RATIO_LIMIT",     # turbo ratios by active cores
+    0x00CE: "MSR_PLATFORM_INFO",         # base, minimum and max efficient ratio
+    0x0610: "MSR_PKG_POWER_LIMIT",       # PL1 and PL2 as set
+    0x0606: "MSR_RAPL_POWER_UNIT",       # units to read the ones above
+    0xC0010293: "AMD_MSR_CORE_ENERGY",   # energy per core on AMD
     0xC0010299: "AMD_MSR_RAPL_UNIT",
-    0xC0010063: "MSR_PSTATE_STATUS",     # qué P-state está activo
-    0xC0010064: "MSR_PSTATE_0",          # y la definición de cada uno, que
-    0xC0010065: "MSR_PSTATE_1",          # lleva el VID del núcleo en 21:14
+    0xC0010063: "MSR_PSTATE_STATUS",     # which P-state is active
+    0xC0010064: "MSR_PSTATE_0",          # and each one's definition, with
+    0xC0010065: "MSR_PSTATE_1",          # the core VID in bits 21:14
     0xC0010066: "MSR_PSTATE_2",
 }
 
-# El PMU de las gráficas Intel. Es la única acción que no lleva parámetros: el
-# ayudante enumera él mismo los PMU y los eventos, y solo abre los que encajan
-# en estos dos patrones. El cliente no manda nombres ni números de evento.
-#
-# Los contadores de ocupación son agregados de la máquina entera y no llevan
-# periodo de muestreo, así que cuentan nanosegundos de motor ocupado y nada
-# más: ni pilas de llamadas, ni direcciones, ni actividad de ningún proceso.
+# Intel graphics' PMU. It takes no parameters: the helper lists the PMUs and
+# events itself and opens only those matching these two patterns; the client
+# sends no names or event numbers. Busy counters are totals of the whole
+# machine with no sampling: busy nanoseconds and nothing else, no call stacks,
+# addresses or any process's activity.
 PMU_ROOT = "/sys/bus/event_source/devices"
 PMU_GPU = r"^(i915|xe_[0-9a-f]{4}_[0-9a-f]{2}_[0-9a-f]{2}\.[0-9a-f])$"
 PMU_EVENT = r"^(rcs|bcs|vcs|vecs|ccs)\d+-busy$"
 
-# El controlador de memoria, por los mismos dos patrones y con la misma regla:
-# el cliente pide «el controlador de memoria» y el ayudante decide qué abre.
-# Los contadores son acumulativos y agregados de la máquina entera —cuántas
-# líneas de caché han ido y venido de la RAM—, así que no dicen nada de ningún
-# proceso en concreto.
-#
-# Intel le cambia el nombre al PMU según la generación: `uncore_imc` hasta
-# Comet Lake, `uncore_imc_free_running_N` de Ice Lake en adelante y
-# `uncore_imc_N` en los de servidor, que llaman a sus eventos por el comando
-# de la DRAM en vez de por la dirección.
+# The memory controller, by the same two patterns and the same rule: the
+# client asks for «the memory controller» and the helper decides what it
+# opens. The counters are cumulative totals of the whole machine (cache lines
+# to and from RAM), so they say nothing of any process. Intel renames the PMU
+# by generation: `uncore_imc` up to Comet Lake, `uncore_imc_free_running_N`
+# from Ice Lake, and `uncore_imc_N` on servers, whose events are named by the
+# DRAM command instead of the direction.
 PMU_IMC = r"^uncore_imc(_free_running)?(_\d+)?$"
 PMU_IMC_EVENT = r"^(data_reads?|data_writes?|cas_count_read|cas_count_write|ia_requests)$"
 
-# Tamaño máximo de un mensaje, en bytes. Evita que un lado pueda hacer que el
-# otro reserve memoria sin límite.
+# The largest message, in bytes: neither side can make the other allocate
+# without limit.
 MAX_MESSAGE = 4 * 1024 * 1024
-
-
-class ProtocolError(RuntimeError):
-    """El otro lado ha dicho algo que no encaja con el contrato."""

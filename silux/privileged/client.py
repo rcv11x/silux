@@ -312,7 +312,7 @@ class PrivilegedClient:
         # programa le pidiera de nuevo —una acción, un registro— saldría
         # rechazado con un mensaje que no menciona la causa. Se cayó justo así
         # al añadir los registros del voltaje del núcleo.
-        if reply.get("version", 0) < protocol.VERSION_REQUERIDA and self.instalado():
+        if reply.get("version", 0) < protocol.HELPER_VERSION and self.instalado():
             self.close()
             self._sin_el_instalado = True
             self._open()

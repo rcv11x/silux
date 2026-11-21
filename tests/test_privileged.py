@@ -97,6 +97,35 @@ class TestRespuestas(unittest.TestCase):
                 json.dumps(helper.handle(peticion))
 
 
+class TestTheContract(unittest.TestCase):
+    """protocol.py is what the helper and the program agree on: nothing in it
+    that nobody uses, and one version, the real one."""
+
+    def test_every_name_is_used(self):
+        import ast
+        import pathlib
+        import re
+        origen = pathlib.Path(protocol.__file__).resolve()
+        raiz = origen.parents[2]
+        arbol = ast.parse(origen.read_text(encoding="utf-8"))
+        nombres = {t.id for n in arbol.body if isinstance(n, (ast.Assign, ast.AnnAssign))
+                   for t in (n.targets if isinstance(n, ast.Assign) else [n.target])
+                   if isinstance(t, ast.Name)}
+        nombres |= {n.name for n in arbol.body if isinstance(n, (ast.ClassDef, ast.FunctionDef))}
+        usados = set()
+        # The helper has its own copies by the same names: they do not count.
+        for archivo in [*(raiz / "silux").rglob("*.py"), *(raiz / "tests").rglob("*.py")]:
+            if archivo.resolve() in (origen, pathlib.Path(helper.__file__).resolve()):
+                continue
+            texto = archivo.read_text(encoding="utf-8")
+            usados |= {n for n in nombres if re.search(rf"\b{n}\b", texto)}
+        self.assertEqual(sorted(nombres - usados), [])
+
+    def test_one_version_the_helpers(self):
+        self.assertFalse(hasattr(protocol, "PROTOCOL_VERSION"))
+        self.assertEqual(protocol.HELPER_VERSION, helper.VERSION)
+
+
 class TestALineTooLong(unittest.TestCase):
     """The helper runs as root: a line with no end must not be held whole in
     its memory. It read the line and checked its size afterwards."""
@@ -610,7 +639,7 @@ class TestLaVersionDelAyudante(unittest.TestCase):
 
     def test_las_dos_versiones_van_juntas(self):
         from silux.privileged import helper, protocol
-        self.assertEqual(helper.VERSION, protocol.VERSION_REQUERIDA)
+        self.assertEqual(helper.VERSION, protocol.HELPER_VERSION)
 
     def test_un_ayudante_viejo_se_deja_de_lado(self):
         from silux.privileged import client
