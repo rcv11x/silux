@@ -1,8 +1,5 @@
 # Silux — contexto del proyecto
 
-Si existe `../silux-notas/` (las notas privadas del autor, clonadas al lado),
-se leen lo primero su `en-curso.md` y su `claude.md`.
-
 Perfilador de hardware para Linux en Python + PySide6: lo que en Windows hacen
 **CPU-Z, GPU-Z y HWMonitor**, en un solo programa nativo. Identificación del
 hardware y monitorización de sensores.
@@ -14,8 +11,7 @@ aunque se lea sin permisos.
 
 Este archivo es corto a propósito: se carga en cada sesión. El detalle vive en
 `docs/` (índice al final). Antes de tocar una zona, se lee lo suyo en
-[docs/pendientes.md](docs/pendientes.md) y, si están las notas, en
-`../silux-notas/lecciones.md`.
+[docs/pendientes.md](docs/pendientes.md).
 
 ## Cómo se ejecuta
 
@@ -58,7 +54,7 @@ En paralelo tardan medio minuto entre las dos pasadas; en serie, minuto y
 medio. **`-n auto` cuando la suite es lo único pesado que corre** (sin
 agentes en paralelo, sin un contenedor, sin otra suite a la vez); **`-n 4` si
 hay algo más corriendo**: cada proceso carga Qt, y varias suites a la vez
-llenan 16 GB. Las dos pasadas son las del CI: tres tests comparan dos medidas de
+llenan la memoria. Las dos pasadas son las del CI: tres tests comparan dos medidas de
 rendimiento y van solos (`tests/conftest.py`). Cuántos son lo dice la suite al
 terminar; no se apunta aquí a mano. Si sale bastante menos que en la
 última ejecución, falta algo por recoger. Corren en una carpeta temporal propia
@@ -119,7 +115,8 @@ No son preferencias de estilo: cada una viene de un problema concreto.
    tiene: es un error, y el informe lleva su traza (`silux/failures.py`).
 6. **Los widgets que se refrescan a menudo reutilizan.** `ChipRow` y `Table`
    reescriben el texto de lo que ya existe; hay tests que lo vigilan.
-7. **Presupuesto: 300 MB de memoria, y de CPU, en el 5800X3D y para la
+7. **Presupuesto: 300 MB de memoria, y de CPU, en el equipo de referencia
+   ([docs/rendimiento.md](docs/rendimiento.md)) y para la
    página que más gasta, 7 % de un núcleo a la vista sin movimiento fluido,
    9 % con él y 5,5 % escondida.** Ronda los 160 MB y 5,7 / 7,2 / 4,5 %. Lo
    comprueba `tools/medir_consumo.py`, que sale con 1 si algo se pasa; las
@@ -143,8 +140,8 @@ El porqué largo de cada una y el resto de la arquitectura:
 
 ### Lo que enseñaron los informes de la gente
 
-Cada una salió de un fallo en un equipo que no era el nuestro; el detalle,
-en las lecciones de las notas. Valen para el código nuevo:
+Cada una salió de un fallo en un equipo que no era el nuestro. Valen para el
+código nuevo:
 
 - **Lo que funciona con nuestros volcados no está probado.** Lo que lee o
   tapa el equipo se prueba también con lo de la gente montado encima
@@ -278,7 +275,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
   equipos volcados para la suite: dos del i5-10400 (en reposo y con turbo),
   el Ryzen 7 5800X3D, una máquina QEMU/KVM como la de un probador
   (`qemu-kvm`, hecha aquí con QEMU), y tres importados del anexo de un
-  informe: el ThinkPad T14 del autor (`i5-1135g7`), un sobremesa con Gentoo,
+  informe: un ThinkPad T14 (`i5-1135g7`), un sobremesa con Gentoo,
   OpenRC y una RTX 4060 (`i7-10700f`) y un Lenovo LOQ híbrido con una RTX
   4050 (`i5-12450h`).
 - Lo que enseña cada volcado, página a página, está en
@@ -314,7 +311,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); el código nuevo, en inglés (ver «Código»). Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-1638 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+1639 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
@@ -331,8 +328,8 @@ y nunca las dos lenguas en el mismo nombre.
 
 Los comentarios y docstrings nuevos, en inglés, cortos y útiles: dicen por
 qué el código es así, no repiten lo que ya se lee en él, y nada de relleno.
-«Antes…», «se probó…» o «costó…» van al mensaje del commit o a las lecciones
-de las notas; un porqué que no cabe en un comentario, a `docs/decisiones/`.
+«Antes…», «se probó…» o «costó…» van al mensaje del commit; un porqué que no
+cabe en un comentario, a `docs/decisiones/`.
 ruff (las reglas F y el orden de imports, en `pyproject.toml`) pasa en el CI
 y con `pre-commit`.
 
@@ -367,16 +364,6 @@ cambia el otro.
   imagen.
 
 **Flujo de trabajo.**
-- **Nunca se empuja sin preguntar.** Commitear es reversible; publicar no.
-- **No se publica ninguna versión sin que lo diga el autor.** Ni etiqueta, ni
-  release, ni fecha en el CHANGELOG. Lo que entra en `master` se queda como
-  «sin publicar» en la entrada de arriba del CHANGELOG, que sigue acumulando
-  hasta que él decida cortarla.
-- **Las notas de una release llevan solo dos cosas**: la tabla de qué
-  AppImage descargar (normal o compat, para qué equipos) y lo que cambia en
-  esa versión, en una lista corta, con la lista completa enlazada al
-  CHANGELOG. Nada de peticiones, explicaciones largas, frases personales ni
-  «qué te pido»: cómo mandar un informe va en el README.
 - **Nadie se nombra sin su permiso.** Los agradecimientos (Ajustes → Acerca
   de, «Gracias» en los README y «Con informes de…» bajo el título de cada
   versión del CHANGELOG) salen de `silux/db/thanks.json`, que solo rellena el
@@ -386,20 +373,8 @@ cambia el otro.
   ha medido, y se espera respuesta.
 - **Lo que depende de que alguien se acuerde de subir un número no es una
   comprobación.** Se compara el contenido.
-- **Lo que se añade y lo que se quita se enseña en la terminal.** Tras cada
-  cambio, Claude escribe en su respuesta el diff de lo que ha tocado (líneas
-  con `+` y con `-`), no solo el resumen: el autor lo sigue por ahí.
-- **El commit del CLAUDE.md es el último antes de empujar.**
-- **Directo a `master`**: documentación, notas, textos y arreglos pequeños,
-  con la suite pasada antes de subir.
-- **En rama, solo los cambios de código con riesgo o grandes**, una por tema
-  (`graficas`, `rendimiento`…) y saliendo de `master`. El CI de una rama se
-  lanza a mano con `gh workflow run appimage.yml --ref RAMA` y se sigue con
-  `gh run watch`. En cuanto sale en verde, la rama pasa a `master` y se
-  borra, aquí y en el remoto: que no se acumulen ramas.
-- **A `master` solo con `git merge --ff-only`**, y solo con el CI de esa rama
-  en verde. Si `master` avanzó, se rebasa la rama antes, no se fusiona. Pasar
-  a `master` no es publicar: ni etiqueta ni release.
+- Lo local de quien trabaja aquí (sus notas, su equipo, su forma de trabajar)
+  va en `CLAUDE.local.md`, que no se publica.
 
 **Commits (desde el 20 de noviembre de 2026).** Conventional Commits, en
 inglés y cortos: el título, una línea clara; el cuerpo, solo si hace falta
@@ -459,7 +434,3 @@ en el mismo commit; lo que se encuentra y no se arregla, se apunta.
   cabe en un comentario, con sus datos y lo descartado.
 
 En la raíz, en inglés: `ARCHITECTURE.md`, `CONTRIBUTING.md` y `SECURITY.md`.
-
-Las notas de trabajo —dónde se quedó cada sesión, las lecciones, las
-propuestas y el historial— están en el repositorio privado
-`rcv11x/silux-notas`, no aquí.

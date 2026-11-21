@@ -17,6 +17,10 @@ dist/
 # probó y no funcionó, que es lo que hace falta leer antes de tocar el código.
 RETOMAR.md
 
+# Lo local de quien trabaja aquí: sus notas, su equipo y su forma de
+# trabajar. Lo lee cada sesión y no se publica.
+CLAUDE.local.md
+
 # Lo que el propio programa genera al usarlo, que lleva datos de la máquina de
 # quien lo ejecute. El README y el CLAUDE.md mandan escribir justo estas dos
 # cosas en el directorio del proyecto, así que sin esto un `git add -A` acaba
