@@ -1,15 +1,14 @@
-"""Identificación del procesador contra la base de datos generada.
+"""Identifying the processor against the generated database.
 
-El algoritmo es el de libcpuid, reimplementado: a cada fila de la tabla se le
-da una puntuación según cuántos campos coinciden con el procesador real, y
-gana la más alta. No es una búsqueda exacta porque no puede serlo: dos CPUs
-distintas comparten familia y modelo, y solo el número de núcleos, el tamaño
-de caché o la cadena de marca las separan.
+libcpuid's algorithm, reimplemented: each table row gets a score by how many
+fields match the real processor, and the highest wins. Not an exact lookup
+because it can't be: two different CPUs share family and model, and only
+the core count, the cache size or the brand string tell them apart.
 
-Pesos (de libcpuid): 2 puntos por familia, modelo, stepping, familia
-extendida, modelo extendido y número de núcleos; 1 punto por tamaño de L2 y
-de L3; y el peso propio de cada patrón de marca, que es el que desempata
-entre modelos de la misma generación.
+Weights (libcpuid's): 2 points each for family, model, stepping, extended
+family, extended model and core count; 1 point each for L2 and L3 size; and
+each brand pattern's own weight, which breaks ties between models of the
+same generation.
 """
 
 from __future__ import annotations
@@ -36,7 +35,7 @@ _FIELD_WEIGHTS = (
 
 
 class DatabaseMissing(FileNotFoundError):
-    """No hay base de datos generada. Se arregla con tools/gen_cpu_db.py."""
+    """No generated database. Fixed with tools/gen_cpu_db.py."""
 
 
 @functools.lru_cache(maxsize=1)
@@ -69,21 +68,21 @@ def available() -> bool:
 
 
 def provenance() -> dict[str, Any]:
-    """De qué commit de qué repositorio salieron los datos."""
+    """Which commit of which repository the data came from."""
     return load().get("sources", {})
 
 
 # --------------------------------------------------------------------------
-# patrones de marca
+# brand patterns
 # --------------------------------------------------------------------------
 
 
 @functools.lru_cache(maxsize=2048)
 def _compile_pattern(pattern: str) -> re.Pattern[str]:
-    """Traduce el mini-lenguaje de libcpuid a una expresión regular.
+    """Translate libcpuid's mini-language into a regular expression.
 
-    `.` = cualquier carácter, `#` = cualquier dígito, `[abc]` = uno de esos.
-    No hay rangos: dentro de los corchetes todo es literal.
+    `.` = any character, `#` = any digit, `[abc]` = one of those. No ranges:
+    inside the brackets everything is literal.
     """
     out: list[str] = []
     i = 0
@@ -100,7 +99,7 @@ def _compile_pattern(pattern: str) -> re.Pattern[str]:
             else:
                 characters = pattern[i + 1 : close]
                 safe = characters.replace("\\", "\\\\").replace("]", "\\]").replace("^", "\\^")
-                if "-" in safe:                    # el guion solo es literal al final
+                if "-" in safe:                    # a hyphen is only literal at the end
                     safe = safe.replace("-", "") + "-"
                 out.append(f"[{safe}]")
                 i = close
@@ -114,17 +113,17 @@ _NOISE = re.compile(r"\b(?:CPU|Processor)\b")
 
 
 def normalize_brand(brand: str) -> str:
-    """Quita las palabras de relleno igual que hace libcpuid antes de comparar."""
+    """Drop the filler words as libcpuid does before comparing."""
     return " ".join(_NOISE.sub("", brand).split())
 
 
 # --------------------------------------------------------------------------
-# búsqueda x86
+# x86 lookup
 # --------------------------------------------------------------------------
 
 
 class Identification(dict):
-    """Resultado de una búsqueda: nombre en clave, nodo y confianza."""
+    """A lookup's result: codename, node and confidence."""
 
     @property
     def codename(self) -> Optional[str]:
@@ -143,16 +142,13 @@ class Identification(dict):
         return bool(self.get("matched"))
 
 
-# La familia y el modelo identifican el silicio: los pone el propio procesador
-# y no admiten interpretación. Si una entrada declara uno de ellos y no
-# coincide, esa entrada no es de este chip por mucho que su nombre comercial se
-# parezca, así que queda descartada en vez de sumar puntos por lo demás.
-#
-# Sin esto, un Ryzen 7 7445HS (modelo 0x7C) se identificaba como «Dragon Range»
-# porque el patrón «Ryzen 7 7###H» de una entrada del modelo 0x61 le casaba el
-# nombre. Salía un nombre en clave, una litografía y un encapsulado que eran de
-# otro chip, y con toda la seguridad del mundo. Un dato ausente se ve; uno
-# inventado que suena bien, no.
+# Family and model identify the silicon: the processor itself sets them and
+# they admit no interpretation. An entry that declares one of them and
+# doesn't match isn't this chip, however alike its commercial name, so it is
+# discarded instead of scoring points for the rest. Without this, a
+# processor took the codename, node and package of another chip whose brand
+# pattern its name happened to match. A missing datum shows; a made-up one
+# that sounds right doesn't.
 _DISTINGUISHING_FIELDS = ("f", "xf", "xm")
 
 
@@ -162,7 +158,7 @@ def _brand_matches(entry: dict, brand: str) -> bool:
 
 
 def _from_kernel(vendor_id: str, ext_family: int, ext_model: int) -> Optional[dict]:
-    """La microarquitectura de Intel por familia y modelo, de `intel-family.h`."""
+    """Intel's microarchitecture by family and model, from `intel-family.h`."""
     if vendor_id != "GenuineIntel":
         return None
     for row in load().get("intel_family", ()):
@@ -189,7 +185,7 @@ def _score(entry: dict, probe: dict, brand: str) -> int:
 
 
 def identify_x86(**probe) -> Identification:
-    """Busca el procesador en la tabla del fabricante y devuelve el mejor match.
+    """Look the processor up in its maker's table and return the best match.
 
     When the chip is named but no source gives its node, cpuid's table by
     family and model fills it in (Panther Lake, named by the kernel).
@@ -253,18 +249,19 @@ def _identify_x86(
     if best is None:
         return Identification(codename=None, technology=None, score=0, matched=False)
 
-    # libcpuid usa «Unknown …» como comodín para lo que no reconoce. Enseñarlo
-    # como nombre en clave sería contestar «no lo sé» con cara de saberlo: mejor
-    # dar el procesador por no identificado y que la sección lo explique.
+    # libcpuid uses «Unknown …» as a catch-all for what it doesn't recognize.
+    # Showing it as a codename would answer «I don't know» looking like it
+    # knows: better to leave the processor unidentified and let the section
+    # say so.
     name = _common_to_the_tie(best["name"], tied)
     recognized = (name is not None and best_score > 0
                   and not name.lower().startswith("unknown"))
-    # Una fila sin modelo extendido es de los procesadores que no lo tienen
-    # (el extendido y el base coinciden: un Dothan, un Presler). Si este sí
-    # lo tiene y la marca tampoco casa, la fila solo ha acertado la familia y
-    # el modelo base, que no dicen qué procesador es: un Panther Lake (6,
-    # 0xCC) salía «Atom (Cedarview)» por la fila de familia 6 y modelo 12. Si
-    # el kernel conoce ese modelo, manda él.
+    # A row without an extended model belongs to processors that have none
+    # (extended and base model match: a Dothan, a Presler). If this one has
+    # it and the brand doesn't match either, the row only got family and base
+    # model right, which don't say which processor it is: a Panther Lake (6,
+    # 0xCC) came out as «Atom (Cedarview)» from the family 6 model 12 row. If
+    # the kernel knows that model, it rules.
     if (recognized and best["xm"] < 0 and ext_model != model
             and not _brand_matches(best, clean_brand)):
         if (row := _from_kernel(vendor_id, ext_family, ext_model)) is not None:
@@ -283,8 +280,8 @@ def _identify_x86(
             return Identification(codename=official["codename"],
                                   technology=official.get("node"),
                                   score=1, matched=True)
-        # La tabla por modelo no lo conoce. Antes de darse por vencido, la
-        # tabla por rangos, que cubre las familias enteras.
+        # The per-model table doesn't know it. Before giving up, the range
+        # table, which covers whole families.
         if rule := _by_family(vendor_id, ext_family, ext_model):
             return Identification(
                 codename=rule["name"],
@@ -292,8 +289,8 @@ def _identify_x86(
                 score=1,
                 matched=True,
             )
-        # Y después, la de Intel del kernel, que va por delante de libcpuid.
-        # Da el nombre en clave y nada más: el nodo no sale de ahí.
+        # Then the kernel's Intel table, which is ahead of libcpuid. It gives
+        # the codename and nothing else: the node doesn't come from there.
         if (row := _from_kernel(vendor_id, ext_family, ext_model)) is not None:
             return Identification(codename=row["name"], technology=None,
                                   score=1, matched=True)
@@ -309,29 +306,26 @@ def _identify_x86(
     )
 
 
-# El nombre en clave de verdad, que varias entradas comparten: «Ryzen 5
-# (Cezanne)» y «Ryzen 9 PRO (Cezanne)» describen el mismo silicio y solo se
-# diferencian en a qué gama se vendió cada pieza.
+# The real codename, which several entries share: «Ryzen 5 (Cezanne)» and
+# «Ryzen 9 PRO (Cezanne)» describe the same silicon and only differ in the
+# tier each part was sold in.
 _IN_PARENTHESES = re.compile(r"\(([^)]+)\)\s*$")
 
 
 def _common_to_the_tie(name: str,
                                  tied: list[dict]) -> Optional[str]:
-    """Lo que se puede afirmar cuando varias entradas puntúan igual.
+    """What can be stated when several entries score the same.
 
-    Las ocho entradas de Cezanne llevan el mismo silicio —familia, modelo y
-    extensiones idénticas— y solo se distinguen por el patrón de la cadena de
-    marca, que en todas termina en H o U: son las de portátil. Un 5600G, que
-    es de sobremesa y acaba en G, no casa con ninguna, así que las ocho quedan
-    empatadas con la puntuación del silicio y ganaba la primera del archivo.
-    Salía «Ryzen 9 PRO (Cezanne)» en un Ryzen 5 de sobremesa, y el orden de la
-    tabla no es un criterio: es el orden en que las escribió otro.
+    The same silicon can have several entries (identical family, model and
+    extensions) told apart only by the brand pattern. A processor matching
+    none of the patterns leaves them all tied on the silicon's score, and
+    the table's order isn't a criterion: it's the order someone else wrote
+    them in.
 
-    Lo único cierto cuando empatan es lo que todas dicen igual, que es el
-    nombre en clave entre paréntesis. Se devuelve ese a secas; y si ni en eso
-    coinciden —el mismo silicio se vendió como Cezanne y como Barceló—, se
-    devuelve `None` para que decida la tabla por rangos, que va por familia y
-    no por gama comercial.
+    What's certain on a tie is what they all say alike, the codename in
+    parentheses: that alone is returned. If not even that matches (the same
+    silicon sold as Cezanne and as Barceló), `None`, so the range table
+    decides, which goes by family and not by commercial tier.
     """
     if len(tied) < 2:
         return name
@@ -339,8 +333,8 @@ def _common_to_the_tie(name: str,
     if len(names) == 1:
         return name
     codenames = {m.group(1) for n in names if (m := _IN_PARENTHESES.search(n))}
-    # Si no comparten uno solo, no hay nada que se pueda afirmar de todas a la
-    # vez, y quedarse con una sería volver a elegir por el orden del archivo.
+    # If they don't share a single one, nothing can be said of all of them at
+    # once, and keeping one would be choosing by the file's order again.
     return codenames.pop() if len(codenames) == 1 else None
 
 
@@ -365,26 +359,26 @@ def identify_arm(implementer: int, part_num: int) -> Identification:
 
 
 # --------------------------------------------------------------------------
-# socket / encapsulado
+# socket / package
 # --------------------------------------------------------------------------
 
 
 def find_socket(vendor_id: str, codename: Optional[str], brand: str) -> Optional[str]:
-    """Busca el encapsulado en tres pasadas, de más específica a más general.
+    """Find the package in three passes, most specific first.
 
-    1. La tabla por modelo concreto heredada de CPU-X: exacta pero diminuta.
-    2. Nuestra tabla por microarquitectura: una regla cubre una generación
-       entera, así que acierta con procesadores que nadie ha catalogado.
-    3. Los sufijos de segmento: un "-U" o un "-H" en el nombre en clave
-       significa BGA, y decir "soldado" es más útil que dejarlo en blanco.
+    1. The per-model table inherited from CPU-X: exact but tiny.
+    2. Our per-microarchitecture table: one rule covers a whole generation,
+       so it gets processors nobody has catalogued.
+    3. Segment suffixes: a "-U" or "-H" in the codename means BGA, and
+       saying "soldered" is more useful than leaving it blank.
     """
     if not codename and not brand:
         return None
 
     # From the most precise to the least: a CPU-X row for this very model, the
     # one amd.com lists for it, a CPU-X row for the whole codename, and then
-    # the rules. A codename-wide row said «FP7/FP8» for every Phoenix where
-    # amd.com says «FP7, FP7r2» for the 7445HS.
+    # the rules. A codename-wide row can list two packages where amd.com gives
+    # the model's exact one.
     rows = load().get("sockets", {}).get(vendor_id, ())
     for entry in rows:
         wants_codename = entry["codename"] is not None
@@ -399,8 +393,7 @@ def find_socket(vendor_id: str, codename: Optional[str], brand: str) -> Optional
     official = amd_model(brand) if vendor_id == "AuthenticAMD" else None
     if official is not None and official.get("socket"):
         # CPU-X's «AM4 (PGA-1331)» says what amd.com's «AM4» says, and more;
-        # anything else that disagrees loses: it said «FP5» for a desktop
-        # 2200G.
+        # anything else that disagrees loses.
         if wide is not None and wide.startswith(official["socket"] + " ("):
             return wide
         return official["socket"]
@@ -476,7 +469,7 @@ def _load_overlay() -> dict[str, Any]:
 
 @functools.lru_cache(maxsize=1)
 def _load_families() -> list[dict]:
-    """La tabla de microarquitecturas por rango de modelo."""
+    """The microarchitecture table by model range."""
     path = pathlib.Path(__file__).parent / "families.json"
     try:
         with path.open(encoding="utf-8") as fh:
@@ -486,14 +479,14 @@ def _load_families() -> list[dict]:
 
 
 def _by_family(vendor_id: str, ext_family: int, ext_model: int) -> Optional[dict]:
-    """La microarquitectura de un procesador que la tabla por modelo no cubre.
+    """The microarchitecture of a processor the per-model table doesn't cover.
 
-    libcpuid va por modelo concreto y tarda meses en incorporar lo recién
-    salido, así que un procesador nuevo se queda sin nombre en clave ni
-    litografía. El fabricante, en cambio, documenta rangos enteros: toda la
-    familia 19h de la 0x70 a la 0x7F es Phoenix. Una regla por rango cubre lo
-    que vendrá, y como solo se consulta cuando la otra tabla no encuentra nada,
-    nunca puede empeorar un dato que ya se sabía.
+    libcpuid goes model by model and takes months to add what's just out, so
+    a new processor is left without codename or node. The maker, instead,
+    documents whole ranges: all of family 19h from 0x70 to 0x7F is Phoenix.
+    A rule per range covers what's to come, and since it's only asked when
+    the other table finds nothing, it can never worsen a datum already
+    known.
     """
     for rule in _load_families():
         if rule.get("vendor") != vendor_id or rule.get("family") != ext_family:
@@ -504,22 +497,22 @@ def _by_family(vendor_id: str, ext_family: int, ext_model: int) -> Optional[dict
 
 
 # --------------------------------------------------------------------------
-# máximo oficial de memoria
+# official memory maximum
 # --------------------------------------------------------------------------
 
-# El modelo de Intel dentro de la cadena de marca: «i5-10400» en «Intel(R)
-# Core(TM) i5-10400 CPU @ 2.90GHz». Entero, con su letra: «i5-10400H» es un
-# portátil y no puede casar con la fila del de sobremesa.
+# Intel's model inside the brand string: «i5-10400» in «Intel(R) Core(TM)
+# i5-10400 CPU @ 2.90GHz». Whole, with its letter: «i5-10400H» is a laptop
+# and can't match the desktop part's row.
 _INTEL_MODEL = re.compile(r"\b(i[3579]-\d{3,5}[A-Z]{0,2}\d?)\b")
-# La primera generación escribe el modelo de otra forma en CPUID: «Core(TM)
-# i7 CPU 920», «i5 CPU M 520» (portátil), y su ficha «i7-920», «i5-520M».
+# The first generation writes the model differently in CPUID: «Core(TM) i7
+# CPU 920», «i5 CPU M 520» (laptop), and its spec sheet «i7-920», «i5-520M».
 _MODELO_INTEL_1 = re.compile(r"\b(i[3579]) CPU\s+(?:([A-Z]{1,2})\s+)?(\d{3})\b")
-# Las Core Ultra y las Core 3/5/7, sin guion: «Core(TM) Ultra 7 155H».
+# Core Ultra and Core 3/5/7, without a hyphen: «Core(TM) Ultra 7 155H».
 _INTEL_MODEL_WITHOUT_I = re.compile(
     r"\bCore(?:\(TM\)|™)?\s+(Ultra\s+)?([3579])\s+(?:Processor\s+)?(\d{3}[A-Z]{0,2})\b")
-# Lo que sobra alrededor del modelo de AMD, en la tabla del fabricante
-# («AMD Ryzen™ 7 5800X3D») y en la cadena de CPUID («AMD Ryzen 7 5800X3D
-# 8-Core Processor», «… with Radeon Graphics»).
+# What surrounds AMD's model, in the maker's table («AMD Ryzen™ 7 5800X3D»)
+# and in the CPUID string («AMD Ryzen 7 5800X3D 8-Core Processor», «… with
+# Radeon Graphics»).
 _AMD_NOISE = re.compile(
     r"\(R\)|\(TM\)|™|®|^AMD\s+|\s+\d+-Core Processor.*$|\s+(with|w/) Radeon.*$"
     r"|\s*\(OEM Only\)|\s+Processor\b",
@@ -527,10 +520,10 @@ _AMD_NOISE = re.compile(
 
 
 def normalize_cpu_model(name: str) -> str:
-    """El modelo por el que se busca en la tabla de máximos de memoria.
+    """The model looked up in the memory maximum table.
 
-    La misma función para la tabla (al generarla) y para la cadena de marca
-    del procesador (al buscar): «i5-10400» o «Ryzen 7 5800X3D».
+    The same function for the table (when generating it) and the processor's
+    brand string (when looking up): «i5-10400» or «Ryzen 7 5800X3D».
     """
     model_name = name or ""
     if (match := _INTEL_MODEL.search(model_name)):
@@ -546,13 +539,13 @@ def normalize_cpu_model(name: str) -> str:
 
 @dataclasses.dataclass(frozen=True)
 class MemoryLimit:
-    """El máximo oficial de memoria de un procesador para estos módulos."""
+    """A processor's official memory maximum for these modules."""
 
     model: str
     mts: int
     source: str
-    # La disposición con la que vale, en AMD: «2x1R» son dos módulos de un
-    # rango. None si el fabricante da una sola cifra.
+    # The layout it holds for, on AMD: «2x1R» is two single-rank modules.
+    # None if the maker gives a single figure.
     layout: Optional[str] = None
 
 
@@ -568,10 +561,10 @@ def _load_memory_limits() -> dict[str, dict]:
 
 
 def memory_layout(ranks: tuple[Optional[int], ...]) -> Optional[str]:
-    """«2x1R» para dos módulos de un rango; None si no se puede decir.
+    """«2x1R» for two single-rank modules; None if it can't be said.
 
-    `ranks`: los rangos de cada módulo puesto. Con rangos distintos, o alguno
-    sin saber, no hay disposición de la ficha de AMD que case.
+    `ranks`: each fitted module's ranks. With different ranks, or one
+    unknown, no layout on AMD's spec sheet matches.
     """
     distinct = set(ranks)
     if not ranks or len(distinct) != 1 or None in distinct:
@@ -581,12 +574,12 @@ def memory_layout(ranks: tuple[Optional[int], ...]) -> Optional[str]:
 
 def memory_limit(brand: str, memory_type: Optional[str],
                  ranks: tuple[Optional[int], ...] = ()) -> Optional[MemoryLimit]:
-    """El máximo oficial de memoria de este procesador con estos módulos, o None.
+    """This processor's official memory maximum with these modules, or None.
 
-    Solo lo que dice la tabla, para ese modelo exacto y ese tipo de memoria.
-    En AMD la cifra depende de la disposición de los módulos (`ranks`, los
-    rangos de cada módulo puesto): sin una que case con la ficha no hay
-    máximo conocido, y quien llama sigue sin afirmar nada.
+    Only what the table says, for that exact model and memory type. On AMD
+    the figure depends on the modules' layout (`ranks`, each fitted module's
+    ranks): without one matching the spec sheet there's no known maximum,
+    and the caller still states nothing.
     """
     if not brand or not memory_type:
         return None
@@ -603,20 +596,21 @@ def memory_limit(brand: str, memory_type: Optional[str],
     return MemoryLimit(model, figure[layout], row["source"], layout)
 
 
-# Los Intel de antes de Nehalem (2008) que llevan el controlador de memoria
-# en el chipset de la placa (el northbridge) y no en el procesador: los
-# Pentium 4 y Pentium D de 64 bits (familia 15) y los Core 2 de familia 6
-# —Merom y Conroe (0x0F), Merom-L (0x16), Penryn, Wolfdale y Yorkfield
-# (0x17), Dunnington (0x1D)—. Los Atom de entonces no entran: Diamondville
-# lo tiene en el chipset y Pineview ya integrado, con modelos que se cruzan.
+# The Intel processors before Nehalem (2008) whose memory controller is in
+# the board's chipset (the northbridge) and not the processor: the 64-bit
+# Pentium 4 and Pentium D (family 15) and the family 6 Core 2: Merom and
+# Conroe (0x0F), Merom-L (0x16), Penryn, Wolfdale and Yorkfield (0x17),
+# Dunnington (0x1D). The Atoms of the time stay out: Diamondville has it in
+# the chipset and Pineview already integrated, with models that cross.
 _CONTROLLER_IN_CHIPSET = {0x0F, 0x16, 0x17, 0x1D}
 
 
 def memory_controller_in_chipset(cpu_type) -> bool:
-    """Si la memoria de este equipo la controla el chipset y no el procesador.
+    """Whether this machine's memory is controlled by the chipset and not
+    the processor.
 
-    Entonces no hay «máximo del procesador» del que hablar: hasta dónde llega
-    la memoria lo decide la placa.
+    Then there's no «processor maximum» to speak of: the board decides how
+    far memory goes.
     """
     # A virtual CPU's family and model are the hypervisor's: QEMU's is a
     # family 15 that has no chipset behind it.

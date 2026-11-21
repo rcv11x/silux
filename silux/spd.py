@@ -1,18 +1,18 @@
-"""Lectura del SPD de los módulos de memoria.
+"""Reading the memory modules' SPD.
 
-El SPD es un pequeño chip de identificación que lleva cada módulo pegado al
-mismo circuito. Cuenta cosas que la tabla SMBIOS no sabe: **a qué velocidad
-puede ir el módulo**, no solo a cuál lo ha puesto la BIOS. Esa diferencia es
-justo lo que explica una memoria de 3200 corriendo a 2667.
+The SPD is a small identification chip each module carries on its own
+board. It tells what the SMBIOS table doesn't know: **the speed the module
+can run at**, not only the one the BIOS set. That difference is exactly
+what explains a 3200 memory running at 2667.
 
-Se llega a él por el bus SMBus, y en la mayoría de distribuciones el fichero
-queda legible por cualquiera (no hay nada sensible salvo el número de serie,
-que este módulo ni mira). Hace falta que el kernel haya cargado el driver del
-chip: `ee1004` para DDR4, `spd5118` para DDR5.
+It is reached over the SMBus, and on most distributions the file is
+readable by anyone (nothing in it is sensitive but the serial number, which
+this module doesn't even look at). The kernel needs the chip's driver
+loaded: `ee1004` for DDR4, `spd5118` for DDR5.
 
-Lo que sigue decodifica el formato de DDR4 (JEDEC 21-C, anexo K, 4.1.2.12).
-Está contrastado contra módulos reales, y hay un fixture en los tests con el
-volcado de uno para que siga estándolo.
+What follows decodes the DDR4 format (JEDEC 21-C, annex K, 4.1.2.12) and
+DDR5's. Checked against real modules, with a test fixture holding one's dump
+so it stays that way.
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ from . import sysroot
 from .i18n import _
 
 I2C_DEVICES = pathlib.Path("/sys/bus/i2c/devices")
-# Un chip SPD por zócalo, en las direcciones 0x50 a 0x57 del bus.
+# One SPD chip per slot, at addresses 0x50 to 0x57 on the bus.
 SPD_ADDRESS = re.compile(r"^\d+-00(5[0-7])$")
 
 DRAM_TYPES = {0x0B: "DDR3", 0x0C: "DDR4", 0x0E: "LPDDR3", 0x0F: "LPDDR4",
@@ -40,23 +40,21 @@ MODULE_TYPES = {0x01: "RDIMM", 0x02: "UDIMM", 0x03: "SODIMM", 0x04: "LRDIMM",
                 0x09: "72b-SO-UDIMM", 0x0C: "16b-SO-DIMM", 0x0D: "32b-SO-DIMM"}
 
 # The makers by their JEDEC code, the whole JEP106 list (tools/gen_jep106.py,
-# from OpenOCD): bank from 1 and code without its parity bit. A hand table
-# of 15 had Kingston, Infineon, Elpida and Transcend in the wrong place and
-# left every other maker out.
+# from OpenOCD): bank from 1 and code without its parity bit.
 JEP106 = pathlib.Path(__file__).parent / "db" / "jep106.json"
 
-# Rangos de cordura. Un valor fuera de aquí significa que se ha decodificado
-# mal, y es preferible no enseñar nada a enseñar una cifra inventada.
+# Sanity ranges. A value outside them means it was decoded wrong, and
+# showing nothing beats showing a made-up figure.
 PLAUSIBLE_MTS = (800, 12800)
 PLAUSIBLE_CL = (5, 80)
 # DDR3 runs at 1.35-1.5 V, DDR4 at 1.2-1.5 and DDR5 at 1.1-1.45: a profile
-# outside this was decoded wrong (a tester's DDR4 XMP read 0.81 V).
+# outside this was decoded wrong (one DDR4 XMP profile read as 0.81 V).
 PLAUSIBLE_V = (1.0, 1.65)
 
 
 @dataclass(frozen=True, slots=True)
 class Timings:
-    """Un juego de temporizaciones: el JEDEC de fábrica o un perfil XMP."""
+    """A set of timings: the factory JEDEC one or an XMP profile."""
 
     name: str
     speed_mts: int
@@ -86,12 +84,12 @@ class Timings:
 @dataclass(frozen=True, slots=True)
 class SpdInfo:
     address: str                              # "10-0050"
-    slot: int                                 # 0 a 7, según la dirección
+    slot: int                                 # 0 to 7, by the address
     dram_type: Optional[str] = None
     module_type: Optional[str] = None
     manufacturer: Optional[str] = None
-    # Quién fabricó los chips, que a menudo no es quien vende el módulo: los
-    # Crucial llevan silicio de Micron, y eso la tabla SMBIOS no lo dice.
+    # Who made the chips, often not who sells the module: Crucial modules
+    # carry Micron silicon, which the SMBIOS table doesn't say.
     dram_manufacturer: Optional[str] = None
     part_number: Optional[str] = None
     # When it was made, as the SPD dates it: a week of a year. Numbers: it
@@ -102,51 +100,51 @@ class SpdInfo:
     device_width: Optional[int] = None
     bus_width: Optional[int] = None
     ecc_bits: int = 0
-    # DDR5 parte el módulo en dos subcanales de 32 bits. Explica por qué un
-    # DIMM de 64 bits declara dos canales y no es un error de lectura.
+    # DDR5 splits the module into two 32-bit subchannels. It explains why a
+    # 64-bit DIMM declares two channels and isn't a misreading.
     channels: int = 1
-    # Sale de multiplicar la densidad de los chips por cuántos hay. Es el mismo
-    # número que da SMBIOS, pero sin pedir permisos de administrador.
+    # The chips' density times how many there are. The same number SMBIOS
+    # gives, without asking for administrator permissions.
     capacity_bytes: Optional[int] = None
     jedec: Optional[Timings] = None
     profiles: tuple[Timings, ...] = ()
     xmp_revision: Optional[str] = None
-    # Perfiles cuya presencia se reconoce pero cuyas cifras no se interpretan:
-    # hoy, los de DDR5. Ver `_ddr5_perfiles`.
+    # Profiles whose presence is recognized but whose figures aren't
+    # interpreted: today, DDR5's. See `_ddr5_profiles`.
     overclock_profiles: tuple[str, ...] = ()
     # Only the first page could be read (a DDR5 chip whose page switch the
     # machine blocks): what lies beyond it is unknown, not absent.
     partial: bool = False
     # The speed an XMP profile declares, kept even when the rest of the
-    # profile cannot be trusted (F-A2): its cycle is read right, its timings
-    # and voltage are not. Dropping it, a tester's DDR4-3200 read «catalogado
-    # a 2400» and lost «al máximo del procesador».
+    # profile can't be trusted (F-A2): its cycle reads right, its timings and
+    # voltage don't. Dropping it, a DDR4-3200 module read as rated for 2400
+    # and lost «at the processor's maximum».
     xmp_speeds_mts: tuple[int, ...] = ()
-    decoded: bool = False                     # False = formato no soportado
+    decoded: bool = False                     # False = unsupported format
 
     @property
     def rated_mts(self) -> Optional[int]:
-        """La velocidad más alta que el módulo declara saber dar."""
+        """The highest speed the module declares it can do."""
         candidates = [t.speed_mts for t in (self.jedec, *self.profiles) if t]
         candidates += list(self.xmp_speeds_mts)
         return max(candidates) if candidates else None
 
 
-# El paso de la rejilla de velocidades de memoria, en MT/s: 200/3, o sea
-# 66,666… Todas las que existen son múltiplos suyos, y en las tres
-# generaciones: DDR3-1066 son 1066,67; DDR4-2666, 2666,67; DDR5-6400, 6400
-# exactos. Los perfiles XMP tampoco se salen —3600, 3733,33, 4133,33, 6600—
-# porque el reloj de referencia va en tercios.
+# The step of the memory speed grid, in MT/s: 200/3, or 66.666… Every speed
+# there is is a multiple of it, in all three generations: DDR3-1066 is
+# 1066.67, DDR4-2666 is 2666.67, DDR5-6400 is exactly 6400. XMP profiles
+# don't leave it either (3600, 3733.33, 4133.33, 6600), because the
+# reference clock goes in thirds.
 JEDEC_STEP = (200, 3)
 
 
-# Las velocidades con nombre de cada generación, como las nombra JEDEC. La
-# rejilla de 200/3 de arriba no basta para todas: DDR2-667 son 666,67 y JEDEC
-# la nombra redondeando, no truncando, y la LPDDR5/5X no cae en la rejilla
-# (5500 y 7500 están a media casilla). Fuentes: JESD79F (DDR), JESD79-2F
-# (DDR2), JESD79-3F (DDR3), JESD79-4D (DDR4), JESD79-5C (DDR5), JESD209-3C
-# (LPDDR3), JESD209-4D (LPDDR4/4X), JESD209-5C (LPDDR5/5X); 7467 es el grado
-# de LPDDR5X que usan Intel y Micron.
+# Each generation's named speeds, as JEDEC names them. The 200/3 grid above
+# isn't enough for all: DDR2-667 is 666.67 and JEDEC names it by rounding,
+# not truncating, and LPDDR5/5X don't fall on the grid (5500 and 7500 are
+# half a step off). Sources: JESD79F (DDR), JESD79-2F (DDR2), JESD79-3F
+# (DDR3), JESD79-4D (DDR4), JESD79-5C (DDR5), JESD209-3C (LPDDR3),
+# JESD209-4D (LPDDR4/4X), JESD209-5C (LPDDR5/5X); 7467 is the LPDDR5X grade
+# Intel and Micron use.
 JEDEC_SPEEDS = (
     200, 266, 333, 400,                                   # DDR
     533, 667, 800, 1066,                                  # DDR2
@@ -158,43 +156,39 @@ JEDEC_SPEEDS = (
     5500, 7467, 7500, 8533, 9600,                         # LPDDR5, LPDDR5X
 )
 
-# Cuánto se puede separar lo medido de su grado y seguir siendo ese grado: el
-# tCK del SPD va cuantizado a un picosegundo (un 0,1 % a 8800 MT/s), y el
-# firmware redondea los tercios a un lado o al otro (2666 o 2667). Con un
-# 0,5 % la casilla 7533 de la rejilla, que no es un grado, caía en 7500.
+# How far a measured speed may stray from its grade and still be it: the
+# SPD's tCK is quantized to a picosecond (0.1 % at 8800 MT/s), and firmware
+# rounds the thirds one way or the other (2666 or 2667). With 0.5 % the
+# grid's 7533 step, which isn't a grade, fell into 7500.
 JEDEC_TOLERANCE = 0.003
 
 
 def jedec_grade(mts: float) -> int:
-    """El nombre del grado al que corresponde una velocidad calculada.
+    """The name of the grade a computed speed belongs to.
 
-    Hace falta porque el tCK del SPD viene cuantizado a un picosegundo y la
-    división no cae redonda: un DDR4-2133 guarda 938 ps y `2000000/938` da
-    2132,2, no 2133,33. Antes esto se redondeaba a la centena más cercana, que
-    va bien con los grados redondos y mal con los que llevan tercio: DDR4-2666
-    salía «2700 MT/s», que no es una velocidad que exista, y con ella el módulo
-    parecía ir por debajo de lo suyo. Fallaban once de los veintiocho grados
-    conocidos de DDR3, DDR4, DDR5 y XMP.
+    Needed because the SPD's tCK is quantized to a picosecond and the
+    division doesn't come out round: a DDR4-2133 stores 938 ps and
+    `2000000/938` gives 2132.2, not 2133.33. Rounding to the nearest hundred
+    works for round grades and fails for those with a third: DDR4-2666 came
+    out as «2700 MT/s», a speed that doesn't exist.
 
-    Primero se busca el grado con nombre más cercano (`VELOCIDADES_JEDEC`), de
-    cualquier generación: 2666,67 es «DDR4-2666», 666,67 es «DDR2-667» y la
-    LPDDR5-5500 sigue siendo 5500. Lo que no es un grado de JEDEC —un perfil
-    XMP— va al múltiplo de 200/3 más cercano, truncado. La cuenta va
-    en enteros —`n * 200 // 3`— para que el truncado no dependa de cómo caiga
-    un flotante.
+    The nearest named grade (`JEDEC_SPEEDS`) of any generation is looked for
+    first: 2666.67 is «DDR4-2666», 666.67 is «DDR2-667», and LPDDR5-5500
+    stays 5500. What isn't a JEDEC grade (an XMP profile) goes to the nearest
+    multiple of 200/3, truncated, computed in integers (`n * 200 // 3`) so
+    the truncation doesn't depend on how a float falls.
 
-    Si el valor no se parece a ninguna velocidad de las que existen, se
-    devuelve lo medido: un SPD ilegible no tiene por qué salir con un número
-    bonito y falso. Y por debajo de la primera posición de la rejilla no hay
-    grado que dar, así que sale un cero, que es lo que el resto del módulo
-    entiende como «no hay dato».
+    If the value looks like no speed that exists, the measured one is
+    returned: an unreadable SPD needn't come out with a pretty false number.
+    Below the grid's first step there's no grade to give, so it returns zero,
+    which the rest of the module reads as «no datum».
     """
     if mts > 0:
         nearest = min(JEDEC_SPEEDS, key=lambda v: abs(v - mts))
         if abs(nearest - mts) <= mts * JEDEC_TOLERANCE:
             return nearest
-    # Lo que no es un grado de JEDEC (un perfil XMP: 3600, 3733, 4133) sigue
-    # en la rejilla, porque el reloj de referencia va en tercios igual.
+    # What isn't a JEDEC grade (an XMP profile: 3600, 3733, 4133) stays on
+    # the grid, since the reference clock goes in thirds all the same.
     step, divisor = JEDEC_STEP
     n = round(mts * divisor / step)
     if n <= 0:
@@ -205,15 +199,15 @@ def jedec_grade(mts: float) -> int:
     return grade
 
 
-# Densidad de cada chip, en gigabits. El índice es el valor del SPD, y cada
-# generación numera los suyos.
+# Each chip's density, in gigabits. The index is the SPD's value, and each
+# generation numbers its own.
 DDR5_DENSITIES = {1: 4, 2: 8, 3: 12, 4: 16, 5: 24, 6: 32, 7: 48, 8: 64}
 DDR5_WIDTHS = {0: 4, 1: 8, 2: 16, 3: 32}
 DDR4_DENSITIES = {2: 1, 3: 2, 4: 4, 5: 8, 6: 16, 7: 32}
 
 
 # --------------------------------------------------------------------------
-# decodificación DDR4
+# DDR4 decoding
 # --------------------------------------------------------------------------
 
 
@@ -222,7 +216,7 @@ def _signed(value: int) -> int:
 
 
 class _Ddr4:
-    """Los desplazamientos del formato DDR4, con nombre."""
+    """The DDR4 format's offsets, by name."""
 
     TCK_MIN, TCK_MAX = 18, 19
     TAA, TRCD, TRP = 24, 25, 26
@@ -240,14 +234,14 @@ class _Ddr4:
 
 
 def _jedec_cycles(picoseconds: float, tck_ps: float) -> Optional[int]:
-    """Un tiempo pasado a ciclos de reloj, con el redondeo de JEDEC.
+    """A time turned into clock cycles, with JEDEC's rounding.
 
-    Hacia arriba, porque la memoria no puede responder antes de tiempo: 22,2
-    ciclos son un CL23, y al más cercano saldría un CL22 que no aguanta. Pero
-    con un margen del 2,6 %, que es el del algoritmo de JEDEC: el SPD guarda
-    el ciclo truncado a picosegundos —833 en DDR4-2400, que son 833,33—, y un
-    tiempo de justo 17 ciclos sale 17,006, que con el techo a secas subiría a
-    18. En enteros, para que no dependa de cómo caiga un flotante.
+    Up, because memory can't answer early: 22.2 cycles are a CL23, and to
+    the nearest it would be a CL22 that doesn't hold. But with a 2.6 %
+    margin, JEDEC's algorithm's: the SPD stores the cycle truncated to
+    picoseconds (833 for DDR4-2400, really 833.33), and a time of exactly 17
+    cycles comes out as 17.006, which a bare ceiling would take to 18. In
+    integers, so it doesn't depend on how a float falls.
     """
     if not (tck_ps and picoseconds):
         return None
@@ -255,11 +249,11 @@ def _jedec_cycles(picoseconds: float, tck_ps: float) -> Optional[int]:
 
 
 def _ddr4_timing(spd: bytes, medium: int, fine: int, tck_ps: float) -> Optional[int]:
-    """Convierte un tiempo del SPD a ciclos de reloj.
+    """Turn an SPD time into clock cycles.
 
-    El valor va en dos partes: una gruesa en unidades de 125 ps y un ajuste
-    fino con signo en picosegundos. Ignorar el ajuste fino desplaza los
-    resultados justo lo suficiente para que un CL22 salga como CL21.
+    The value comes in two parts: a coarse one in 125 ps units and a signed
+    fine adjustment in picoseconds. Ignoring the fine adjustment shifts the
+    results just enough for a CL22 to come out as CL21.
     """
     if not tck_ps:
         return None
@@ -270,7 +264,7 @@ def _ddr4_timing(spd: bytes, medium: int, fine: int, tck_ps: float) -> Optional[
 def _decode_ddr4(spd: bytes, address: str, slot: int) -> SpdInfo:
     d = _Ddr4
     tck_ps = spd[d.TCK_MIN] * 125 + _signed(spd[d.FINE_TCK_MIN])
-    # DDR4 transfiere dos veces por ciclo: de ahí el 2 000 000.
+    # DDR4 transfers twice per cycle: hence the 2 000 000.
     speed = jedec_grade(2_000_000 / tck_ps) if tck_ps else 0
 
     after = (((spd[d.TRAS_TRC_UPPER] & 0x0F) << 8) | spd[d.TRAS_LSB]) * 125
@@ -318,18 +312,17 @@ def _decode_ddr4(spd: bytes, address: str, slot: int) -> SpdInfo:
 
 
 # --------------------------------------------------------------------------
-# decodificación DDR5
+# DDR5 decoding
 # --------------------------------------------------------------------------
 
 
 class _Ddr5:
-    """Los desplazamientos del formato DDR5 (JEDEC JESD400-5).
+    """The DDR5 format's offsets (JEDEC JESD400-5).
 
-    No se parece al de DDR4 más que en el byte que dice qué tipo de memoria es.
-    El chip pasa de 512 bytes a 1024, los tiempos dejan de ir en dos partes
-    (una gruesa y un ajuste fino) y se guardan en picosegundos de dieciséis
-    bits, y todo lo que identifica al módulo se muda a un bloque propio que
-    empieza en el byte 512.
+    It shares nothing with DDR4's but the byte saying which memory type it
+    is. The chip goes from 512 bytes to 1024, times stop coming in two parts
+    and are stored in sixteen-bit picoseconds, and everything identifying the
+    module moves to its own block starting at byte 512.
     """
 
     TCK_MIN, TCK_MAX = 20, 22
@@ -340,24 +333,24 @@ class _Ddr5:
     DATE_YEAR, DATE_WEEK = 515, 516
     PART_NUMBER = slice(521, 551)
     DRAM_BANK, DRAM_ID = 552, 553
-    # Los bloques de perfiles de fábrica, cada uno con su firma al principio.
+    # The factory profile blocks, each with its signature at the start.
     XMP_MAGIC = slice(640, 642)
     EXPO_MAGIC = slice(832, 836)
 
 
 def _u16(spd: bytes, offset: int) -> int:
-    """Los tiempos van en dos bytes, el bajo primero."""
+    """Times take two bytes, low first."""
     if offset + 1 >= len(spd):
         return 0
     return spd[offset] | (spd[offset + 1] << 8)
 
 
 def _ddr5_cycles(picoseconds: int, tck_ps: int) -> Optional[int]:
-    """Un tiempo del SPD pasado a ciclos de reloj.
+    """An SPD time turned into clock cycles.
 
-    Se redondea hacia arriba: un CL que sale en 39,2 ciclos es un CL40, porque
-    la memoria no puede responder antes de tiempo. Redondear al más cercano
-    convierte un CL40 en CL39, que no existe.
+    Rounded up: a CL coming out at 39.2 cycles is a CL40, because memory
+    can't answer early. Rounding to the nearest turns a CL40 into a CL39,
+    which doesn't exist.
     """
     if not (tck_ps and picoseconds):
         return None
@@ -367,7 +360,7 @@ def _ddr5_cycles(picoseconds: int, tck_ps: int) -> Optional[int]:
 def _decode_ddr5(spd: bytes, address: str, slot: int) -> SpdInfo:
     d = _Ddr5
     tck_ps = _u16(spd, d.TCK_MIN)
-    # Como DDR4, dos transferencias por ciclo. Un tCK de 357 ps son 5600 MT/s.
+    # Like DDR4, two transfers per cycle. A 357 ps tCK is 5600 MT/s.
     speed = jedec_grade(2_000_000 / tck_ps) if tck_ps else 0
 
     jedec = Timings(
@@ -378,8 +371,8 @@ def _decode_ddr5(spd: bytes, address: str, slot: int) -> SpdInfo:
         trp=_ddr5_cycles(_u16(spd, d.TRP), tck_ps),
         tras=_ddr5_cycles(_u16(spd, d.TRAS), tck_ps),
         trc=_ddr5_cycles(_u16(spd, d.TRC), tck_ps),
-        # DDR5 bajó de 1,2 V a 1,1 V, que es de donde sale buena parte de su
-        # eficiencia.
+        # DDR5 went from 1.2 V to 1.1 V, where much of its efficiency comes
+        # from.
         voltage_v=1.1,
     )
 
@@ -390,7 +383,7 @@ def _decode_ddr5(spd: bytes, address: str, slot: int) -> SpdInfo:
     ranks = ((organization >> 3) & 0x07) + 1 if full else None
     channels = ((bus >> 5) & 0x03) + 1
     channel_width = 8 << (bus & 0x07)
-    extension = ((bus >> 3) & 0x03) * 4        # los bits de ECC, si los hay
+    extension = ((bus >> 3) & 0x03) * 4        # the ECC bits, if any
 
     density = spd[d.DENSITY] if len(spd) > d.DENSITY else 0
     chip_width = DDR5_WIDTHS.get((spd[d.IO_WIDTH] >> 5) & 0x07
@@ -424,14 +417,13 @@ def _decode_ddr5(spd: bytes, address: str, slot: int) -> SpdInfo:
 
 
 def _ddr5_profiles(spd: bytes) -> tuple[str, ...]:
-    """Qué perfiles de fábrica trae el módulo, sin interpretarlos.
+    """Which factory profiles the module carries, without interpreting them.
 
-    XMP 3.0 y EXPO guardan aquí las temporizaciones que el fabricante garantiza
-    por encima de las de JEDEC. Sus formatos no son públicos como el de JEDEC, y
-    leerlos a ojo daría cifras creíbles y equivocadas, que es peor que no
-    darlas. Reconocer su firma sí es seguro, y decir que están es mejor que
-    callarlo: quien mire sabrá que su memoria puede ir más rápido de lo que
-    marca la tabla.
+    XMP 3.0 and EXPO keep here the timings the maker guarantees beyond
+    JEDEC's. Their formats aren't public like JEDEC's, and reading them by
+    eye would give believable wrong figures, worse than none. Recognizing
+    their signature is safe, and saying they're there beats silence: whoever
+    looks learns their memory can go faster than the table says.
     """
     d = _Ddr5
     found = []
@@ -444,12 +436,12 @@ def _ddr5_profiles(spd: bytes) -> tuple[str, ...]:
 
 def _capacity(gigabits: Optional[int], chip_width: Optional[int],
                bus_width: int, ranks: int, dies: int = 1) -> Optional[int]:
-    """Cuánta memoria hay: los chips que caben por lo que guarda cada uno.
+    """How much memory there is: the chips that fit times what each holds.
 
-    Es el mismo número que da la tabla SMBIOS, pero aquella pide permisos de
-    administrador y el chip SPD del módulo se lee sin pedir nada. En un equipo
-    donde el usuario no eleve permisos, esta es la única forma de saber cuánta
-    memoria tiene cada zócalo.
+    The same number the SMBIOS table gives, but that one needs
+    administrator permissions and the module's SPD chip reads without asking
+    anything. Where the user doesn't elevate, it is the only way to know how
+    much memory each slot has.
     """
     if not (gigabits and chip_width and bus_width):
         return None
@@ -458,11 +450,11 @@ def _capacity(gigabits: Optional[int], chip_width: Optional[int],
 
 
 def _vendor(bank: int, code: int) -> Optional[str]:
-    """Traduce un código JEDEC de fabricante.
+    """Translate a JEDEC maker code.
 
-    El primer byte no es el número de banco sino cuántos códigos de
-    continuación lo preceden, y ambos llevan bit de paridad impar en el bit 7.
-    Leerlo como un número suelto da bancos equivocados.
+    The first byte isn't the bank number but how many continuation codes
+    precede it, and both carry an odd parity bit in bit 7. Read as a plain
+    number it gives the wrong bank.
     """
     return _jep106().get(((bank & 0x7F) + 1, code & 0x7F))
 
@@ -484,7 +476,7 @@ def _text(raw: bytes) -> Optional[str]:
 
 
 def _date(year: int, week: int) -> dict:
-    """Van en BCD: 0x21 es 2021, no 33. The fields of `SpdInfo`."""
+    """In BCD: 0x21 is 2021, not 33. The fields of `SpdInfo`."""
     def bcd(value: int) -> Optional[int]:
         high, low = value >> 4, value & 0x0F
         return high * 10 + low if high <= 9 and low <= 9 else None
@@ -505,10 +497,9 @@ def _xmp_revision(spd: bytes) -> Optional[str]:
 # DDR4 XMP 2.0, profile 1, as memtest86+ reads it (system/spd.c,
 # parse_spd_ddr4): each time is its byte in 125 ps plus a signed fine
 # offset in ps; tRAS and tRC carry their high bits in 404's nibbles, in
-# 32 ns steps. Checked with a tester's TEAMGROUP-UD4-3200 (T-Force Vulcan
-# Z): 3200 16-18-18-38, as the module is sold. Before, every time was read
-# a byte off («CL 18, tRP 4»). Profile 2's place has no source to read it
-# from, and no module here carries one: it is not read.
+# 32 ns steps. Checked against a module sold as 3200 16-18-18-38. Profile
+# 2's place has no source to read it from, and no module here carries one:
+# it isn't read.
 XMP1_VOLTAGE = 393
 XMP1_TCK, XMP1_TCK_FINE = 396, 431
 XMP1_TAA, XMP1_TAA_FINE = 401, 430
@@ -525,9 +516,9 @@ def _xmp1_tck_ps(spd: bytes) -> Optional[int]:
 
 
 def _xmp_voltage(byte: int) -> Optional[float]:
-    """Bit 7 is one volt and the rest hundredths: 0xA3 is 1.35 V, the
-    voltage that module is sold at. Read as (b >> 1) · 0.01 it was 0.81 V.
-    Not from a source: memtest86+ does not read it."""
+    """Bit 7 is one volt and the rest hundredths: 0xA3 is 1.35 V. Read as
+    (b >> 1) · 0.01 it was 0.81 V. Not from a source: memtest86+ doesn't
+    read it."""
     return round((byte >> 7) + (byte & 0x7F) * 0.01, 2) or None
 
 
@@ -577,7 +568,7 @@ def _xmp_profiles(spd: bytes) -> Iterator[Timings]:
 
 
 # --------------------------------------------------------------------------
-# lectura
+# reading
 # --------------------------------------------------------------------------
 
 
@@ -591,8 +582,8 @@ def decode(spd: bytes, address: str = "", slot: int = 0) -> SpdInfo:
     if spd[2] == 0x12:
         return _decode_ddr5(spd, address, slot)
 
-    # DDR3 y anteriores tienen otro formato. Se identifica el tipo, que ya es
-    # algo, y se deja claro que el detalle no está implementado.
+    # DDR3 and older have another format. The type is identified, which is
+    # something, and it's made clear the detail isn't implemented.
     return SpdInfo(address=address, slot=slot, dram_type=dram, decoded=False)
 
 
@@ -600,8 +591,8 @@ def available() -> bool:
     return any(True for _chip in _eeproms())
 
 
-# Clase PCI de un controlador SMBus, que es como se le reconoce sin depender
-# del fabricante.
+# The PCI class of an SMBus controller, how it's recognized without
+# depending on the maker.
 SMBUS_CLASS = 0x0C0500
 SYS_PCI = pathlib.Path("/sys/bus/pci/devices")
 SYS_I2C = pathlib.Path("/sys/bus/i2c/devices")
@@ -674,20 +665,20 @@ def driver_for(chip: pathlib.Path) -> Optional[str]:
 
 
 def unreadable_cause() -> str:
-    """Por qué no se puede leer el SPD en este equipo, como código.
+    """Why the SPD can't be read on this machine, as a code.
 
-    Hay tres motivos distintos y la solución de cada uno no se parece a la de
-    los otros. Antes se contestaba siempre lo mismo —«carga ee1004»— y en la
-    mayoría de las placas AMD ese consejo no sirve de nada: el módulo ya está
-    disponible y el problema es que no hay ningún bus donde buscar.
+    There are three different reasons, and each one's fix is unlike the
+    others'. Answering «load ee1004» every time is useless on most AMD
+    boards: the module is already there and the problem is that there's no
+    bus to look on.
     """
     if not _has_smbus_controller():
         return CAUSE_NO_SMBUS
     buses = memory_buses()
     if not buses:
-        # El caso más común en placas AMD: el firmware declara la región de
-        # entrada/salida del SMBus como suya y el kernel no la toca por si
-        # los dos escriben a la vez.
+        # The most common case on AMD boards: the firmware claims the SMBus
+        # I/O region as its own and the kernel leaves it alone in case both
+        # write at once.
         return CAUSE_NO_BUS
     chips = spd_chips(buses)
     if any(not has_driver(chip) for chip in chips):
@@ -698,7 +689,7 @@ def unreadable_cause() -> str:
 
 
 def diagnosis(cause: Optional[str] = None) -> tuple[str, str]:
-    """Por qué no se puede leer el SPD, y qué hacer, dicho para la persona."""
+    """Why the SPD can't be read, and what to do, said for the person."""
     cause = cause or unreadable_cause()
     message, hint = CAUSES[cause]
     if cause == CAUSE_NO_DRIVER:
@@ -713,7 +704,7 @@ def diagnosis(cause: Optional[str] = None) -> tuple[str, str]:
 
 
 def _has_smbus_controller() -> bool:
-    """Si la placa trae el bus por el que viven los chips SPD."""
+    """Whether the board has the bus the SPD chips live on."""
     try:
         for device in sysroot.path(SYS_PCI).iterdir():
             raw = (device / "class").read_text().strip()
@@ -757,7 +748,7 @@ def first_page(raw: bytes, address: str, slot: int) -> Optional[SpdInfo]:
 
 
 def read_all(failures: Optional[list] = None) -> list[SpdInfo]:
-    """Lee el SPD de todos los zócalos que el kernel esté exponiendo.
+    """Read the SPD of every slot the kernel exposes.
 
     `failures` collects (device, OSError) for each `eeprom` that is there and
     could not be read: that is not the same as having none.
