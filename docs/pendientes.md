@@ -57,10 +57,13 @@ necesita.
 
 * **Del T14 del autor** (volcado `i5-1135g7`):
   - Gráficos · media · el pico de 1336648637.3 W en la gráfica del consumo
-    de la Iris Xe (glmark2, en batería) no está reproducido: restando bien,
-    el contador `energy-gpu` no puede dar esa cifra. Se descarta y el informe
-    dice sus números (`report.power.discarded`): con el siguiente informe que
-    lo traiga, la causa.
+    de la Iris Xe (glmark2, en batería) no está reproducido: 9 J en unos
+    7 ns, pero el valor y su marca viajan juntos en la respuesta del
+    ayudante y no se ha encontrado un camino que dé esa ventana. Ningún
+    ritmo sale ya de una ventana de menos de medio intervalo
+    (`providers/counters.py`), lo imposible se descarta y el informe dice sus
+    números (`report.power.discarded`): con el siguiente que lo traiga, si
+    fue la ventana o el contador.
 * **Del equipo de anianin27** (volcado `i7-10700f`, de la prueba4):
   - NVIDIA · media · a ciegas · el consumo de la RTX 4060 con el driver 595:
     `nvmlDeviceGetPowerUsage` no contesta y ahora se piden los campos de
@@ -190,6 +193,13 @@ necesita.
   «VMware Virtual Platform»). Sin un volcado de máquina virtual delante.
 
 ## Interfaz
+
+* **Literales en español fuera de `_()`** · media · la página de Red tenía
+  sus cabeceras y sus fichas así (en inglés salían en español), y los
+  nombres del tráfico de red en Sensores también. Arreglados esos; falta un
+  test general que encuentre el resto, por ejemplo montando cada página en
+  inglés y buscando textos que solo existen como valor de `es.json` o que no
+  pasan por ninguna clave.
 
 * **F-M2 · `ui/widgets.py`** · media · `StatTile` nace con «—» a tamaño de
   cifra y solo cambia la letra cuando cambia el texto: una ficha que nunca
