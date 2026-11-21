@@ -27,8 +27,9 @@ from typing import Optional
 from . import sysroot
 from .system_env import system_environment
 
-FAMILIES = ("debian", "ubuntu", "fedora", "arch")
-FAMILY_NAMES = {"debian": "Debian", "ubuntu": "Ubuntu", "fedora": "Fedora", "arch": "Arch"}
+FAMILIES = ("debian", "ubuntu", "fedora", "arch", "gentoo")
+FAMILY_NAMES = {"debian": "Debian", "ubuntu": "Ubuntu", "fedora": "Fedora", "arch": "Arch",
+                "gentoo": "Gentoo"}
 
 LD_CACHE = "/etc/ld.so.cache"
 LIBRARY_DIRS = ("/usr/lib", "/usr/lib64", "/lib", "/lib64", "/usr/lib/x86_64-linux-gnu",
@@ -51,72 +52,92 @@ DEPENDENCIES = (
     Dependency("pci.ids", "data",
                ("/usr/share/hwdata/pci.ids", "/usr/share/misc/pci.ids", "/usr/share/pci.ids",
                 "/var/lib/pciutils/pci.ids"),
-               {"debian": "pci.ids", "ubuntu": "hwdata", "fedora": "hwdata", "arch": "hwdata"},
+               {"debian": "pci.ids", "ubuntu": "hwdata", "fedora": "hwdata", "arch": "hwdata",
+                "gentoo": "sys-apps/hwdata"},
                "deps.pciids"),
     Dependency("pnp.ids", "data",
                ("/usr/share/hwdata/pnp.ids", "/usr/share/misc/pnp.ids", "/usr/share/pnp.ids"),
-               {"debian": "pnp.ids", "ubuntu": "hwdata", "fedora": "hwdata", "arch": "hwdata"},
+               {"debian": "pnp.ids", "ubuntu": "hwdata", "fedora": "hwdata", "arch": "hwdata",
+                "gentoo": "sys-apps/hwdata"},
                "deps.pnpids"),
     Dependency("nvml", "library", ("libnvidia-ml.so.1",),
                # Ubuntu's carries the driver's version: libnvidia-compute-595.
                {"debian": "libnvidia-ml1", "ubuntu": "libnvidia-compute-{nvidia}",
-                "fedora": "xorg-x11-drv-nvidia-cuda-libs", "arch": "nvidia-utils"},
+                "fedora": "xorg-x11-drv-nvidia-cuda-libs", "arch": "nvidia-utils",
+                "gentoo": "x11-drivers/nvidia-drivers"},
                "deps.nvml"),
     Dependency("vulkan", "library", ("libvulkan.so.1",),
                {"debian": "libvulkan1", "ubuntu": "libvulkan1", "fedora": "vulkan-loader",
-                "arch": "vulkan-icd-loader"}),
+                "arch": "vulkan-icd-loader",
+                "gentoo": "media-libs/vulkan-loader"}),
     Dependency("egl", "library", ("libEGL.so.1",),
                {"debian": "libegl1", "ubuntu": "libegl1", "fedora": "libglvnd-egl",
-                "arch": "libglvnd"}),
+                "arch": "libglvnd",
+                "gentoo": "media-libs/libglvnd"}),
     Dependency("opengl", "library", ("libGL.so.1",),
                {"debian": "libgl1", "ubuntu": "libgl1", "fedora": "libglvnd-glx",
-                "arch": "libglvnd"}),
+                "arch": "libglvnd",
+                "gentoo": "media-libs/libglvnd"}),
     Dependency("opencl", "library", ("libOpenCL.so.1",),
                {"debian": "ocl-icd-libopencl1", "ubuntu": "ocl-icd-libopencl1",
-                "fedora": "ocl-icd", "arch": "ocl-icd"}),
+                "fedora": "ocl-icd", "arch": "ocl-icd",
+                "gentoo": "dev-libs/opencl-icd-loader"}),
     Dependency("vaapi", "library", ("libva.so.2", "libva-drm.so.2"),
                {"debian": "libva2 libva-drm2", "ubuntu": "libva2 libva-drm2",
-                "fedora": "libva", "arch": "libva"}),
+                "fedora": "libva", "arch": "libva",
+                "gentoo": "media-libs/libva"}),
     Dependency("pkexec", "program", ("pkexec",),
-               {"debian": "pkexec", "ubuntu": "pkexec", "fedora": "polkit", "arch": "polkit"},
+               {"debian": "pkexec", "ubuntu": "pkexec", "fedora": "polkit", "arch": "polkit",
+                "gentoo": "sys-auth/polkit"},
                "deps.pkexec"),
     Dependency("python3", "program", ("python3",),
-               {"debian": "python3", "ubuntu": "python3", "fedora": "python3", "arch": "python"},
+               {"debian": "python3", "ubuntu": "python3", "fedora": "python3", "arch": "python",
+                "gentoo": "dev-lang/python"},
                "deps.python3"),
     Dependency("systemctl", "program", ("systemctl",),
-               {"debian": "systemd", "ubuntu": "systemd", "fedora": "systemd", "arch": "systemd"},
+               {"debian": "systemd", "ubuntu": "systemd", "fedora": "systemd", "arch": "systemd",
+                "gentoo": "sys-apps/systemd"},
                "deps.systemctl"),
     Dependency("kmod", "program", ("modinfo", "modprobe"),
-               {"debian": "kmod", "ubuntu": "kmod", "fedora": "kmod", "arch": "kmod"},
+               {"debian": "kmod", "ubuntu": "kmod", "fedora": "kmod", "arch": "kmod",
+                "gentoo": "sys-apps/kmod"},
                "deps.kmod"),
     Dependency("xdg-open", "program", ("xdg-open",),
                {"debian": "xdg-utils", "ubuntu": "xdg-utils", "fedora": "xdg-utils",
-                "arch": "xdg-utils"},
+                "arch": "xdg-utils",
+                "gentoo": "x11-misc/xdg-utils"},
                "deps.xdgopen"),
     Dependency("gio", "program", ("gio",),
                {"debian": "libglib2.0-bin", "ubuntu": "libglib2.0-bin", "fedora": "glib2",
-                "arch": "glib2"}),
+                "arch": "glib2",
+                "gentoo": "dev-libs/glib"}),
     Dependency("update-desktop-database", "program", ("update-desktop-database",),
                {"debian": "desktop-file-utils", "ubuntu": "desktop-file-utils",
-                "fedora": "desktop-file-utils", "arch": "desktop-file-utils"}),
+                "fedora": "desktop-file-utils", "arch": "desktop-file-utils",
+                "gentoo": "dev-util/desktop-file-utils"}),
     Dependency("gtk-update-icon-cache", "program", ("gtk-update-icon-cache",),
                {"debian": "gtk-update-icon-cache", "ubuntu": "gtk-update-icon-cache",
-                "fedora": "gtk-update-icon-cache", "arch": "gtk-update-icon-cache"}),
+                "fedora": "gtk-update-icon-cache", "arch": "gtk-update-icon-cache",
+                "gentoo": "dev-util/gtk-update-icon-cache"}),
     # Ubuntu 24.04 has Plasma 5 and no KF6: no package brings it there.
     Dependency("kbuildsycoca6", "program", ("kbuildsycoca6",),
                {"debian": "libkf6service-bin", "ubuntu": None,
-                "fedora": "kf6-kservice", "arch": "kservice"}),
+                "fedora": "kf6-kservice", "arch": "kservice",
+                "gentoo": "kde-frameworks/kservice"}),
     Dependency("dbus-send", "program", ("dbus-send",),
                {"debian": "dbus-bin", "ubuntu": "dbus-bin", "fedora": "dbus-tools",
-                "arch": "dbus"}),
+                "arch": "dbus",
+                "gentoo": "sys-apps/dbus"}),
     Dependency("ca-certificates", "data",
                ("/etc/ssl/certs/ca-certificates.crt", "/etc/pki/tls/certs/ca-bundle.crt",
                 "/etc/ssl/ca-bundle.pem", "/etc/pki/tls/cacert.pem", "/etc/ssl/cert.pem"),
                {"debian": "ca-certificates", "ubuntu": "ca-certificates",
-                "fedora": "ca-certificates", "arch": "ca-certificates"}),
+                "fedora": "ca-certificates", "arch": "ca-certificates",
+                "gentoo": "app-misc/ca-certificates"}),
     Dependency("lm-sensors", "program", ("sensors-detect",),
                {"debian": "lm-sensors", "ubuntu": "lm-sensors", "fedora": "lm_sensors",
-                "arch": "lm_sensors"}),
+                "arch": "lm_sensors",
+                "gentoo": "sys-apps/lm-sensors"}),
 )
 
 BY_KEY = {dep.key: dep for dep in DEPENDENCIES}
@@ -128,10 +149,10 @@ GRAPHICS_LIBRARIES = ("vulkan", "egl", "opengl", "opencl", "vaapi")
 
 def family(os_release: dict) -> Optional[str]:
     """Which family's package names apply: Ubuntu before Debian (Mint, Pop
-    and the rest say both), and None for one that is none of the four."""
+    and the rest say both), and None for one that is none of the five."""
     ids = [os_release.get("ID", "")] + os_release.get("ID_LIKE", "").split()
     ids = [i.strip().lower() for i in ids if i.strip()]
-    for nombre in ("ubuntu", "debian", "fedora", "arch"):
+    for nombre in ("ubuntu", "debian", "fedora", "arch", "gentoo"):
         if nombre in ids:
             return nombre
     if any(i in ("rhel", "centos", "rocky", "almalinux") for i in ids):
