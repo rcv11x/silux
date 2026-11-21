@@ -198,7 +198,7 @@ class DmiBoard(Provider):
     @staticmethod
     def _chipset(board: Optional[str] = None) -> tuple[Optional[str], Optional[str], Optional[str]]:
         """The LPC/eSPI bridge on bus 0 identifies the chipset; the host
-        bridge, the memory controller inside the CPU."""
+        bridge is the memory controller inside the CPU."""
         if not sysroot.path(PCI_DEVICES).is_dir():
             return None, None, None
 

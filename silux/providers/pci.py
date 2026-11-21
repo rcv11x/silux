@@ -185,7 +185,7 @@ class PlatformInfo(Provider):
         kind = "AMD-V" if "svm" in words else "VT-x" if "vmx" in words else None
         if kind is None:
             return None, None
-        # `/dev/kvm` isn't under /sys or /proc: asked through `a_traves` so a
+        # `/dev/kvm` isn't under /sys or /proc: asked through `recorded` so a
         # dump keeps its machine's answer.
         in_use = sysroot.recorded("plataforma", "kvm", lambda: os.path.exists("/dev/kvm"))
         return kind, "active" if in_use else "present"
@@ -217,7 +217,7 @@ class PlatformInfo(Provider):
 
     @staticmethod
     def _codec() -> Optional[str]:
-        """The board's sound codec. HDMI ones belong to the graphics card."""
+        """The board's sound codec. HDMI codecs belong to the graphics card."""
         for path in sorted(glob.glob(os.path.join(sysroot.path("/proc/asound"), "card*", "codec#*"))):
             first = (read_text(sysroot.unrooted(path)) or "").split("\n", 1)[0]
             name = first.partition(":")[2].strip()

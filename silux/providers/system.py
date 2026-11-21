@@ -361,11 +361,11 @@ class SystemState(Provider):
 
     @staticmethod
     def _processes() -> int:
-        """How many processes there are. Through `recorded`: a dump does not
+        """How many processes there are, through `recorded`: a dump doesn't
         copy all of `/proc`, and counting its folders gave «Processes: 1»."""
         count = sysroot.recorded(
             "plataforma", "procesos", lambda: len(glob.glob("/proc/[0-9]*")))
-        if count is None:                      # a dump from before it was recorded
+        if count is None:                      # a dump older than this recording
             count = len(glob.glob(sysroot.path("/proc/[0-9]*")))
         return int(count)
 
