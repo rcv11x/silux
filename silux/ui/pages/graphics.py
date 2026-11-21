@@ -322,6 +322,9 @@ class GpuSection(QWidget):
 
     def __init__(self, palette: Palette, prefs: Preferences, parent=None):
         super().__init__(parent)
+        # Whether some card of this machine has a graphics API: without any, the
+        # libraries are missing; with one, they just do not see this card.
+        self._apis_en_el_equipo = False
         self._p = palette
         self._prefs = prefs
         m = theme.METRICS
@@ -562,7 +565,8 @@ class GpuSection(QWidget):
                 self.elevation_buttons.append(aviso.action_button)
             self._notices_host.addWidget(aviso)
 
-    def apply(self, gpu: Gpu, recorte: str = "") -> None:
+    def apply(self, gpu: Gpu, recorte: str = "", apis_on_this_machine: bool = False) -> None:
+        self._apis_en_el_equipo = apis_on_this_machine
         d = render.DASH
         self.title.setText(render.gpu_name(gpu))
         # Va arriba, debajo del nombre: es lo que explica por qué las cifras de
@@ -666,12 +670,21 @@ class GpuSection(QWidget):
         self.apis.set_rows([
             (api.name, api.version or d, api.driver or d, api.extra or d)
             for api in gpu.apis
-        ] or [(_("gpu.apis.none"), d, d, d)])
+        ] or [(_("gpu.apis.notseen") if self._apis_en_el_equipo else _("gpu.apis.none"),
+               d, d, d)])
 
         conectadas = [s for s in gpu.displays if s.connected]
         libres = [s.connector for s in gpu.displays if not s.connected]
+        if gpu.displays:
+            vacia = _("gpu.displays.nothing")
+        elif gpu.driver == "nvidia":
+            # Without nvidia-drm's modesetting the kernel lists no connector
+            # for the card, though its ports work.
+            vacia = _("gpu.displays.unpublished")
+        else:
+            vacia = _("gpu.displays.none")
         self.displays.set_rows([_fila_de_salida(s, gpu.virtual) for s in conectadas]
-                               or [(_("gpu.displays.none"), d, d, d, d, d)])
+                               or [(vacia, d, d, d, d, d)])
         self.displays_free.setText(
             _("gpu.displays.free.one" if len(libres) == 1
               else "gpu.displays.free").format(n=len(libres),
@@ -1124,7 +1137,8 @@ class GraphicsPage(ScrollPage):
             self._recortes.update(clave, gpu.throttled, gpu.throttle_reasons, ahora)
             seccion.show()
             seccion.apply(gpu, render.throttle_episode(
-                self._recortes.relevante(clave, ahora), ahora) or "")
+                self._recortes.relevante(clave, ahora), ahora) or "",
+                apis_on_this_machine=any(g.apis for g in snapshot.gpus))
 
         self._apply_notices(snapshot)
 

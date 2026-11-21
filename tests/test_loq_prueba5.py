@@ -19,6 +19,32 @@ from tests.test_equipos import EQUIPOS, foto
 DUMP = EQUIPOS / "i5-12450h"
 
 
+class TestOnItsPages(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        qt.app()
+        cls.foto = foto(DUMP)[0]
+
+    def _texts(self, seccion):
+        with pantalla.Ventana(self.foto) as ventana:
+            ventana.select_section(seccion)
+            return pantalla.textos_de(ventana.stack.currentWidget())
+
+    def test_an_nvidia_without_modesetting_has_unpublished_outputs(self):
+        textos = self._texts("Gráficos")
+        self.assertIn(_("gpu.displays.unpublished"), textos)
+        self.assertNotIn(_("gpu.displays.none"), textos)
+
+    def test_an_integrated_card_no_api_uses(self):
+        # Vulkan lists the NVIDIA and llvmpipe, OpenGL's context is the NVIDIA's.
+        textos = self._texts("Gráficos")
+        self.assertIn(_("gpu.apis.notseen"), textos)
+        self.assertNotIn(_("gpu.apis.none"), textos)
+
+
+
+
 class TestTheMemoryControllerItCouldNotOpen(unittest.TestCase):
 
     def test_it_says_so_with_the_helpers_reason(self):
