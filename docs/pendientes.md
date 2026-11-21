@@ -41,6 +41,12 @@ sin los pasos para reproducirlo: este archivo es público.
 * **`ui/pages/cpulive.py`** · media-alta · compone los relojes a mano en vez
   de con `render.hz`: 576 MHz sale «0.58 GHz» y un bus de 100 MHz «0.10 GHz».
 
+* **El recuento de subtests varía** · baja · con el mismo código, la suite
+  dio 62 798 en una ejecución y 62 822 en las demás. Algún test recorre algo
+  que cambia de una vez a otra, y eso le quita valor a comparar el recuento
+  con el de la última ejecución. Falta encontrar cuál (`-v` en dos
+  ejecuciones y comparar los SUBPASSED por test).
+
 ## De los informes de las pruebas
 
 Lo que salió de los informes de las pruebas y no se pudo arreglar sin más
@@ -239,7 +245,10 @@ la memoria) no va: está propuesto en las notas
 * **F-M8 · varios** · media · texto en español fijo con la interfaz en
   inglés: las cargas del benchmark, «semana N de AAAA» (que además se guarda
   ya formateado en el modelo), «Cargando…», «Bajada/Subida», «BIOS
-  heredada», «UEFI (64 bits)», «Gráfica N».
+  heredada», «UEFI (64 bits)», «Gráfica N». También los motivos por los que
+  se frena una gráfica (`gpumetrics.THROTTLE_REASONS`, los de `nvml.py` y los
+  de `i915`): el modelo los guarda como texto en español y se pintan tal
+  cual. Deberían ser claves que se traducen al pintar.
 * **F-M9 · `ui/widgets.py`** · media · las etiquetas seleccionables con el
   ratón cuestan 22 MB: cada una crea su `QTextDocument`.
 * `ui/pages/memory.py` · baja · «Banco: P0 CHANNEL A» sale en bruto del
