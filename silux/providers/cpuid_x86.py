@@ -136,7 +136,7 @@ class CpuidIdentity(Provider):
             hypervisor=self._hypervisor(reader) if "hypervisor" in feats else None,
         )
 
-        self._fill_frequencies(reader, entry)
+        self._fill_frequencies(reader, entry, hybrid=len(draft.types) > 1)
         # What a virtual CPU declares is up to the hypervisor: QEMU invents
         # family and model, and with `-cpu host` the chip is the host's,
         # whose package is not the guest's. Not looked up, so no notice
@@ -157,8 +157,12 @@ class CpuidIdentity(Provider):
         return HYPERVISOR_NAMES.get(signature, signature)
 
     @staticmethod
-    def _fill_frequencies(reader: CpuidReader, entry: dict) -> None:
-        """Leaf 0x16: base clock, turbo ceiling and BCLK. Skylake and later."""
+    def _fill_frequencies(reader: CpuidReader, entry: dict, hybrid: bool) -> None:
+        """Leaf 0x16: base clock, turbo ceiling and BCLK. Skylake and later.
+
+        A hybrid answers one base for the whole package, which is neither
+        core type's: there each type's own, from intel_pstate, is the base.
+        """
         if not reader.supports(0x16):
             return
         base_mhz, max_mhz, bus_mhz, _rest = reader(0x16)
@@ -168,7 +172,8 @@ class CpuidIdentity(Provider):
         clocks: Clocks = entry.get("clocks") or Clocks()
         entry["clocks"] = dataclasses.replace(
             clocks,
-            base_hz=clocks.base_hz or (base_mhz * 1_000_000 or None),
+            base_hz=(clocks.base_hz or (clocks.base_configured_hz if hybrid else None)
+                     or base_mhz * 1_000_000 or None),
             max_turbo_hz=max_mhz * 1_000_000 or None,
             bus_hz=bus_mhz * 1_000_000 or None,
         )

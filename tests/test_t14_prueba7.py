@@ -155,6 +155,13 @@ class TestTheBaseClock(unittest.TestCase):
         self.assertEqual(base, render.clock_and_multiplier(2_400_000_000, 24.0))
         self.assertEqual((tdp, tdp_visible), (render.hz(900_000_000), True))
 
+    def test_a_hybrid_keeps_each_core_types_base(self):
+        """CPUID gives a hybrid's whole package one base, which is neither
+        type's: each one's own is intel_pstate's."""
+        tipos = foto(EQUIPOS / "i5-12450h")[0].cpu.types
+        self.assertEqual([t.clocks.base_hz for t in tipos], [2_000_000_000, 1_500_000_000])
+        self.assertEqual([render.configured_base(t.clocks) for t in tipos], [None, None])
+
     def test_a_single_base_says_one(self):
         from silux.model import Clocks
         self.assertIsNone(render.configured_base(Clocks(base_hz=3_400_000_000,
