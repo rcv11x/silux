@@ -559,7 +559,7 @@ class TestRamasRecordadas(unittest.TestCase):
         arbol = self._tree(None)
         if not arbol.topLevelItemCount():
             self.skipTest("esta máquina no publica sensores")
-        clave = f"::{arbol.topLevelItem(0).text(0)}"
+        clave = next(c for c, fila in arbol._rows.items() if fila is arbol.topLevelItem(0))
 
         otro = self._tree([clave])
         self.assertFalse(otro.topLevelItem(0).isExpanded())
@@ -572,7 +572,7 @@ class TestRamasRecordadas(unittest.TestCase):
         if not arbol.topLevelItemCount():
             self.skipTest("esta máquina no publica sensores")
         arbol.topLevelItem(0).setExpanded(False)
-        clave = f"::{arbol.topLevelItem(0).text(0)}"
+        clave = next(c for c, fila in arbol._rows.items() if fila is arbol.topLevelItem(0))
         self.assertIn(clave, arbol.collapsed())
 
 

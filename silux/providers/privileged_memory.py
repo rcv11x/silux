@@ -33,24 +33,14 @@ from .. import sysroot, system_deps
 from ..system_env import system_environment
 
 
-# Lo que la tabla del firmware pone cuando no sabe: los códigos 1 y 2 de sus
-# enumeraciones, «Other» y «Unknown». En los zócalos vacíos es lo normal. No
-# es un dato, y no pasa al modelo como si lo fuera.
-_NO_ES_UN_DATO = frozenset(("Otro", "Otra", "Desconocido", "Desconocida"))
-
-
-def _sabido(valor: Optional[str]) -> Optional[str]:
-    return None if valor in _NO_ES_UN_DATO else valor
-
-
 def _module(raw: dict) -> MemoryModule:
     return MemoryModule(
         locator=raw.get("locator"),
         bank=raw.get("bank"),
         populated=bool(raw.get("populated")),
         size_bytes=raw.get("size_bytes") or 0,
-        type=_sabido(raw.get("type")),
-        form_factor=_sabido(raw.get("form_factor")),
+        type=raw.get("type"),
+        form_factor=raw.get("form_factor"),
         details=tuple(raw.get("details") or ()),
         speed_mts=raw.get("speed_mts"),
         configured_mts=raw.get("configured_mts"),
@@ -202,7 +192,7 @@ class PrivilegedMemory(Provider):
             draft.memory_array = MemoryArray(
                 slots=first.get("slots"),
                 max_capacity_bytes=first.get("max_capacity_bytes") or 0,
-                error_correction=_sabido(first.get("error_correction")),
+                error_correction=first.get("error_correction"),
             )
         # De la misma tabla, cómo se llama cada ranura de la placa.
         draft.pci_slot_names = smbios.system_slots(structures)

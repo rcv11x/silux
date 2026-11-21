@@ -36,7 +36,7 @@ def _page(modulos):
 def _t14(lectura):
     comun = dict(populated=True, type="DDR4", size_bytes=8 << 30, speed_mts=3200,
                  configured_mts=3200, rank=1)
-    comun["form_factor"] = "SODIMM"
+    comun["form_factor"] = 0x0D          # SODIMM
     return (MemoryModule(locator="Controller0-ChannelA", manufacturer="Samsung",
                          part_number="M471A1G44AB0-CWE", **comun),
             MemoryModule(locator="Controller1-ChannelA-DIMM0", manufacturer="Kingston",
@@ -65,30 +65,36 @@ class TestSolderedMemory(unittest.TestCase):
         self.assertFalse(MemoryModule(locator="Controller0-ChannelA").in_a_slot)
 
     def test_a_row_of_chips_is_soldered_whatever_its_place_is_called(self):
-        for formato in ("Fila de chips", "Chip", "Die"):
+        for formato in (0x0B, 0x05, 0x10):                  # row of chips, chip, die
             with self.subTest(formato=formato):
                 self.assertFalse(MemoryModule(locator="ChannelA-DIMM0",
                                               form_factor=formato).in_a_slot)
         # A SODIMM does not settle it: the T14's soldered memory says so too.
         self.assertFalse(MemoryModule(locator="Controller0-ChannelA",
-                                      form_factor="SODIMM").in_a_slot)
+                                      form_factor=0x0D).in_a_slot)
         self.assertTrue(MemoryModule(locator="ChannelA-DIMM0",
-                                     form_factor="SODIMM").in_a_slot)
+                                     form_factor=0x0D).in_a_slot)
 
     def test_on_the_page_a_row_of_chips_has_no_chip(self):
         def soldada_con_nombre_de_ranura(lectura):
             sin, con = _t14(lectura)
             return (dataclasses.replace(sin, locator="ChannelA-DIMM0",
-                                        form_factor="Fila de chips"), con)
+                                        form_factor=0x0B), con)
         pagina = _page(soldada_con_nombre_de_ranura)
         pie = pagina.spd_missing.text()
         self.assertIn(_("memory.na.soldered").split("{campos}")[1], pie)
 
-    def test_the_names_are_smbios_own(self):
-        from silux.model import SOLDERED_FORM_FACTORS
-        from silux.privileged.smbios import FORM_FACTORS
-        self.assertEqual({FORM_FACTORS[c] for c in (0x05, 0x0B, 0x10)},
-                         set(SOLDERED_FORM_FACTORS))
+    def test_the_code_decides_and_the_name_is_said_in_each_language(self):
+        from silux import i18n, render
+        modulo = MemoryModule(locator="ChannelA-DIMM0", form_factor=0x0B)
+        nombres = {}
+        for idioma in ("es", "en"):
+            i18n.set_language(idioma)
+            try:
+                nombres[idioma] = (modulo.in_a_slot, render.memory_form_factor(modulo.form_factor))
+            finally:
+                i18n.set_language("es")
+        self.assertEqual(nombres, {"es": (False, "Fila de chips"), "en": (False, "Row of chips")})
 
 
 if __name__ == "__main__":

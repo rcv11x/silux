@@ -176,8 +176,8 @@ def _memoria(snapshot: Snapshot) -> str:
         detalle = [f"{array.slots} ranuras" if array.slots else ""]
         if array.max_capacity_bytes:
             detalle.append(f"hasta {render.size(array.max_capacity_bytes)}")
-        if array.error_correction:
-            detalle.append(array.error_correction)
+        if correccion := render.memory_error_correction(array.error_correction, en_español):
+            detalle.append(correccion)
         if any(detalle):
             lineas.append("- Placa: " + " · ".join(d for d in detalle if d))
 
@@ -185,7 +185,7 @@ def _memoria(snapshot: Snapshot) -> str:
         for modulo in snapshot.modules:
             lineas.append(
                 f"- {modulo.locator or '?'}: {render.size(modulo.size_bytes)} "
-                f"{modulo.type or ''} {modulo.speed_mts or ''} MT/s "
+                f"{render.memory_type(modulo.type, en_español) or ''} {modulo.speed_mts or ''} MT/s "
                 f"{modulo.manufacturer or ''} {modulo.part_number or ''}".rstrip()
             )
     else:
@@ -506,7 +506,8 @@ def _sensores(snapshot: Snapshot) -> str:
     arbol = snapshot.sensor_tree()
     lineas = ["", "## Sensores", "",
               f"{len(snapshot.sensors)} lecturas en {len(arbol)} dispositivos.", ""]
-    for aparato, categorias in arbol.items():
+    for categorias in arbol.values():
+        aparato = Snapshot.device_name(categorias)
         cuantos = sum(len(s) for s in categorias.values())
         # Las categorías son claves —«cat.temperature»—, porque los nombres que
         # agrupan los inventa el programa y son interfaz. Sin traducirlas, el

@@ -95,7 +95,7 @@ CPU_CHIPS = ("coretemp", "k10temp", "zenpower", "cpu_thermal", "k8temp", "acpitz
 
 
 def device_for(chip: str, entry: pathlib.Path, cpu_name: str, board_name: str,
-               gpu_names: Optional[dict[str, str]] = None) -> tuple[str, str]:
+               gpu_names: Optional[dict[str, str]] = None) -> tuple[str, str, str]:
     """A qué aparato del árbol cuelga este chip, y de qué clase es.
 
     El nombre importa: un árbol que dice "coretemp" y "nct6683" obliga a saber
@@ -106,31 +106,39 @@ def device_for(chip: str, entry: pathlib.Path, cpu_name: str, board_name: str,
     devolvía solo el nombre y el árbol tenía que deducir la clase otra vez
     comparando cadenas, con lo que el procesador y el disco acababan en el
     cajón de la placa y el árbol se abría por el disco.
+
+    And its key, built from the same raw things as its name and never from
+    the name, which is in the interface's language: the tree groups by it.
     """
     if CPU_CHIP.match(chip):
-        return cpu_name, DeviceKind.CPU
+        return cpu_name, DeviceKind.CPU, "cpu"
     if BOARD_CHIP.match(chip):
-        return board_name, DeviceKind.BOARD
+        return board_name, DeviceKind.BOARD, "board"
     if DISK_CHIP.match(chip):
-        return _disk_name(entry) or _("sensor.dev.storage"), DeviceKind.DISK
+        disco = _disk_name(entry)
+        return disco or _("sensor.dev.storage"), DeviceKind.DISK, f"disk:{disco or ''}"
     if GPU_CHIP.match(chip):
         # El nombre de verdad si se sabe cuál es: un árbol que dice «amdgpu» no
         # sirve de nada en un equipo con dos gráficas, y en uno con una sola
         # obliga igualmente a saber qué driver lleva.
-        if nombre := (gpu_names or {}).get(_ranura_pci(entry) or ""):
-            return nombre, DeviceKind.GPU
-        return _("sensor.dev.gpuchip").format(chip=chip), DeviceKind.GPU
+        ranura = _ranura_pci(entry) or ""
+        if nombre := (gpu_names or {}).get(ranura):
+            return nombre, DeviceKind.GPU, f"gpu:{ranura}"
+        return _("sensor.dev.gpuchip").format(chip=chip), DeviceKind.GPU, f"gpu-chip:{chip}"
     if NET_CHIP.match(chip):
+        if interfaz := _net_iface(entry):
+            return _("sensor.dev.net").format(chip=interfaz), DeviceKind.NETWORK, f"net:{interfaz}"
         # A tester's iwlwifi sensor read «Red (iwlwifi_1)»: without its
         # interface, what it is and not the driver's name.
-        respaldo = _("sensor.dev.wifi") if WIFI_CHIP.match(chip) else render_chip(chip)
-        return (_net_name(entry) or _("sensor.dev.net").format(chip=respaldo),
-                DeviceKind.NETWORK)
+        wifi = bool(WIFI_CHIP.match(chip))
+        respaldo = _("sensor.dev.wifi") if wifi else render_chip(chip)
+        return (_("sensor.dev.net").format(chip=respaldo), DeviceKind.NETWORK,
+                f"net-chip:{'wifi' if wifi else chip}")
     if MEMORY_CHIP.match(chip):
-        return _("sensor.mem"), DeviceKind.MEMORY
-    if (energia := _nombre_de_alimentacion(chip)):
-        return energia, DeviceKind.POWER
-    return chip, DeviceKind.BOARD
+        return _("sensor.mem"), DeviceKind.MEMORY, "memory"
+    if (alimentacion := _alimentacion(chip)):
+        return _nombre_de_alimentacion(chip), DeviceKind.POWER, _clave_de_alimentacion(*alimentacion)
+    return chip, DeviceKind.BOARD, f"chip:{chip}"
 
 
 # Lo que un portátil publica como chip de sensores y que sale en crudo si no
@@ -176,6 +184,23 @@ def _tambien_en_power_supply(chip: str) -> bool:
     return False
 
 
+def _alimentacion(chip: str) -> Optional[tuple[str, int]]:
+    """Which power supply it is: its name's key, and its number (0 for none)."""
+    for patron, clave in _ALIMENTACION:
+        if (encaje := patron.match(chip)):
+            return clave, _numero_de_alimentacion(encaje)
+    return None
+
+
+def _numero_de_alimentacion(encaje: re.Match) -> int:
+    sufijo = encaje.group(1)
+    return int(sufijo) + 1 if sufijo.isdigit() and int(sufijo) else 0
+
+
+def _clave_de_alimentacion(clave: str, numero: int) -> str:
+    return f"power:{clave}:{numero}"
+
+
 def _nombre_de_alimentacion(chip: str) -> Optional[str]:
     """«Batería» en vez de «BAT0», «Puerto USB-C» en vez del nombre del kernel.
 
@@ -184,10 +209,8 @@ def _nombre_de_alimentacion(chip: str) -> Optional[str]:
     """
     for patron, clave in _ALIMENTACION:
         if (encaje := patron.match(chip)):
-            sufijo = encaje.group(1)
-            if sufijo.isdigit() and int(sufijo):
-                return f"{_(clave)} {int(sufijo) + 1}"
-            return _(clave)
+            numero = _numero_de_alimentacion(encaje)
+            return f"{_(clave)} {numero}" if numero else _(clave)
     return None
 
 
@@ -219,6 +242,12 @@ def _net_name(entry: pathlib.Path) -> Optional[str]:
     dispositivos, porque el bus MDIO por el que se sube es un contenedor sin
     `uevent` y está justo en medio del camino bueno.
     """
+    interfaz = _net_iface(entry)
+    return _("sensor.dev.net").format(chip=interfaz) if interfaz else None
+
+
+def _net_iface(entry: pathlib.Path) -> Optional[str]:
+    """The network interface a sensor belongs to, raw (`_net_name`)."""
     try:
         actual = (entry / "device").resolve()
     except OSError:
@@ -228,7 +257,7 @@ def _net_name(entry: pathlib.Path) -> Optional[str]:
         if red.is_dir() and "/virtual/" not in f"{red}/":
             interfaces = sorted(p.name for p in red.iterdir())
             if interfaces:
-                return _("sensor.dev.net").format(chip=interfaces[0])
+                return interfaces[0]
         if actual.parent == actual:
             break
         actual = actual.parent
@@ -339,7 +368,7 @@ def _umbrales(kind, bajo, alto, critico, chip=None) -> dict:
     """
     if kind is SensorKind.FAN:
         return {"low": None, "high": None, "critical": None}
-    if _nombre_de_alimentacion(chip or ""):
+    if _alimentacion(chip or ""):
         return {"low": None, "high": None, "critical": None}
 
     bajo = _plausible(bajo, kind)
@@ -487,20 +516,20 @@ class HwmonSensors(Provider):
             # y no «Tensión 0»— porque ahí el kernel dice qué es cada archivo.
             if _tambien_en_power_supply(chip):
                 continue
-            device, clase = device_for(chip, entry, cpu_name, board_name, gpu_names)
+            device, clase, clave = device_for(chip, entry, cpu_name, board_name, gpu_names)
             canales = sorted(entry.glob("*_input"), key=_por_numero)
             vistos = {ruta.name.replace("_input", "") for ruta in canales}
             for sufijo in ALTERNATIVAS:
                 canales += [ruta for ruta in sorted(entry.glob(f"*{sufijo}"), key=_por_numero)
                             if ruta.name.replace(sufijo, "") not in vistos]
             for order, path in enumerate(canales):
-                sensor = self._parse(chip, device, path, order, clase)
+                sensor = self._parse(chip, device, path, order, clase, clave)
                 if sensor is not None:
                     yield sensor
 
     @staticmethod
     def _parse(chip: str, device: str, path: pathlib.Path, order: int = 0,
-               clase: str = DeviceKind.BOARD) -> Optional[Sensor]:
+               clase: str = DeviceKind.BOARD, device_key: str = "") -> Optional[Sensor]:
         match = re.match(r"^([a-z]+)(\d+)_(?:input|average)$", path.name)
         if match is None:
             return None
@@ -524,7 +553,9 @@ class HwmonSensors(Provider):
             chip=chip,
             device=device,
             device_kind=clase,
+            device_key=device_key,
             label=_friendly(chip, prefix, index, etiqueta),
+            chip_label=etiqueta,
             unnamed=not etiqueta,
             kind=kind,
             value=round(raw / divisor, 3),
@@ -552,12 +583,16 @@ class HwmonSensors(Provider):
         for entry in entries:
             name = entry.name
             device = _nombre_de_alimentacion(name) or _("sensor.dev.power").format(n=name)
+            alimentacion = _alimentacion(name)
+            clave = (_clave_de_alimentacion(*alimentacion) if alimentacion
+                     else f"power-supply:{name}")
             if name in ports:
                 # Nothing plugged in: it reads 0 V and 0 A, which says nothing.
                 if read_int(str(entry / "online")) == 0:
                     continue
                 if len(ports) > 1:
                     device = f"{device} {ports.index(name) + 1}"
+                    clave = f"{clave}#{ports.index(name) + 1}"
             for filename, kind, divisor, label in fields:
                 raw = read_int(str(entry / filename))
                 if raw is None:
@@ -567,6 +602,7 @@ class HwmonSensors(Provider):
                     chip=name,
                     device=device,
                     device_kind=DeviceKind.POWER,
+                    device_key=clave,
                     label=_(label), kind=kind,
                     value=round(abs(raw) / divisor, 3),
                 )
@@ -606,11 +642,12 @@ class HwmonSensors(Provider):
         for sensor in sensors:
             if sensor.kind is not SensorKind.TEMPERATURE:
                 continue
-            if match := _CORE_LABEL.match(sensor.label):
+            etiqueta = sensor.chip_label or ""
+            if match := _CORE_LABEL.match(etiqueta):
                 per_core[int(match.group(1))] = sensor.value
-            elif sensor.label.lower() == "tdie":
+            elif etiqueta.lower() == "tdie":
                 die.append(sensor.value)
-            elif _PACKAGE_LABEL.match(sensor.label):
+            elif _PACKAGE_LABEL.match(etiqueta):
                 package.append(sensor.value)
             else:
                 unlabelled.append(sensor.value)
@@ -639,7 +676,7 @@ class HwmonSensors(Provider):
     @staticmethod
     def _pick_voltage(draft: Draft, sensors: list[Sensor]) -> None:
         for sensor in sensors:
-            if sensor.kind is SensorKind.VOLTAGE and _VCORE_LABEL.search(sensor.label):
+            if sensor.kind is SensorKind.VOLTAGE and _VCORE_LABEL.search(sensor.chip_label or ""):
                 for entry in draft.types.values():
                     entry["voltage_v"] = sensor.value
                 return

@@ -35,6 +35,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 from .. import render
+from ..model import Snapshot
 from ..i18n import _
 from . import theme
 from .theme import Palette, value_font, ui_font
@@ -232,6 +233,8 @@ class SensorTree(QTreeWidget):
         super().__init__(parent)
         self._p = palette
         self._rows: dict[str, QTreeWidgetItem] = {}
+        # The name each device branch is painted with, by its raw key.
+        self._nombres: dict[str, str] = {}
         self._structure: tuple = ()
 
         self.setColumnCount(len(self.COLUMNS))
@@ -609,6 +612,7 @@ class SensorTree(QTreeWidget):
         self._abierta_por_regla.clear()
         self.clear()
         self._rows.clear()
+        self._nombres.clear()
         self._orden_natural.clear()
 
         partido: dict = {}
@@ -625,7 +629,10 @@ class SensorTree(QTreeWidget):
 
         for device, categories in partido.items():
             aparato_inactivo = all(inactiva for _s, _c, inactiva in categories.values())
-            device_item = QTreeWidgetItem([device])
+            # `device` is the raw key its rows go by and its folds are kept
+            # under; what is painted is its name.
+            self._nombres[device] = Snapshot.device_name(tree[device])
+            device_item = QTreeWidgetItem([self._nombres[device]])
             device_item.setFont(0, self._branch_font)
             device_item.setForeground(0, self._p.q("ink"))
             device_item.setFirstColumnSpanned(True)
@@ -834,7 +841,9 @@ class SensorTree(QTreeWidget):
         item = self._rows.get(f"::{device}")
         if item is None:
             return
-        texto = device if not cuantos else f"{device}   ⚠ {cuantos}"
+        # `device` is its raw key: what is written is its name.
+        nombre = self._nombres.get(device, device)
+        texto = nombre if not cuantos else f"{nombre}   ⚠ {cuantos}"
         if item.text(0) != texto:
             item.setText(0, texto)
         item.setForeground(0, self._p.q("crit") if critico

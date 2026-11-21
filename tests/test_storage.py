@@ -372,7 +372,7 @@ class TestEspacioLibre(unittest.TestCase):
         ]
 
     def _trozos(self, pagina):
-        return {etiqueta: valor for etiqueta, valor, _ in pagina.total_bar._segments}
+        return {s.label: s.value for s in pagina.total_bar._segments}
 
     def test_lo_libre_sale_de_las_particiones_montadas(self):
         trozos = self._trozos(self._pagina(self._dual_boot(), 931 * self.GB))

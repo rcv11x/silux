@@ -1021,12 +1021,15 @@ class TestSinSpdNoSeCulpaALaPlaca(unittest.TestCase):
         from silux.providers.spd_modules import SpdModules
 
         proveedor = SpdModules()
-        for motivo, need in ((_("spd.nodriver"), Need.DRIVER), (_("spd.nobus"), Need.HARDWARE),
-                             (_("spd.nosmbus"), Need.HARDWARE)):
-            with self.subTest(motivo=motivo[:30]), \
+        from silux import spd
+        for causa, need in ((spd.CAUSE_NO_DRIVER, Need.DRIVER), (spd.CAUSE_NO_BUS, Need.HARDWARE),
+                            (spd.CAUSE_NO_SMBUS, Need.HARDWARE)):
+            with self.subTest(causa=causa), \
                     mock.patch.object(SpdModules, "available", return_value=False), \
-                    mock.patch("silux.spd.diagnostico", return_value=(motivo, "")):
-                self.assertIs(proveedor.unavailable_reason()[1], need)
+                    mock.patch("silux.spd.unreadable_cause", return_value=causa):
+                razon = proveedor.unavailable_reason()
+                self.assertIs(razon[1], need)
+                self.assertEqual(razon[2], _(spd.CAUSES[causa][0]))
 
 
 class TestElFabricanteSiempreIgual(unittest.TestCase):

@@ -17,42 +17,33 @@ from __future__ import annotations
 import struct
 from typing import Iterator, Optional
 
+from ..model import LOGICAL_NON_VOLATILE
+
 TYPE_PHYSICAL_MEMORY_ARRAY = 16
 TYPE_MEMORY_DEVICE = 17
 
-# Tabla 76 de la especificación: tipo de memoria.
+# Tabla 76 de la especificación: tipo de memoria. The names of a technology,
+# the same in every language; 01h «Other» and 02h «Unknown» are no type.
 MEMORY_TYPES = {
-    0x01: "Otro", 0x02: "Desconocido", 0x03: "DRAM", 0x04: "EDRAM",
+    0x03: "DRAM", 0x04: "EDRAM",
     0x05: "VRAM", 0x06: "SRAM", 0x07: "RAM", 0x08: "ROM", 0x09: "Flash",
     0x0A: "EEPROM", 0x0B: "FEPROM", 0x0C: "EPROM", 0x0D: "CDRAM",
     0x0E: "3DRAM", 0x0F: "SDRAM", 0x10: "SGRAM", 0x11: "RDRAM",
     0x12: "DDR", 0x13: "DDR2", 0x14: "DDR2 FB-DIMM",
     0x18: "DDR3", 0x19: "FBD2", 0x1A: "DDR4", 0x1B: "LPDDR",
-    0x1C: "LPDDR2", 0x1D: "LPDDR3", 0x1E: "LPDDR4", 0x1F: "Lógica no volátil",
+    0x1C: "LPDDR2", 0x1D: "LPDDR3", 0x1E: "LPDDR4", 0x1F: LOGICAL_NON_VOLATILE,
     0x20: "HBM", 0x21: "HBM2", 0x22: "DDR5", 0x23: "LPDDR5", 0x24: "HBM3",
 }
 
-# Tabla 75: factor de forma.
-FORM_FACTORS = {
-    0x01: "Otro", 0x02: "Desconocido", 0x03: "SIMM", 0x04: "SIP", 0x05: "Chip",
-    0x06: "DIP", 0x07: "ZIP", 0x08: "Placa propietaria", 0x09: "DIMM",
-    0x0A: "TSOP", 0x0B: "Fila de chips", 0x0C: "RIMM", 0x0D: "SODIMM",
-    0x0E: "SRIMM", 0x0F: "FB-DIMM", 0x10: "Die",
-}
+# The form factor (table 75), the error correction (table 78) and the type
+# detail bits (table 77) travel as the specification's codes: what decides
+# on them compares codes, and their names are said when painting
+# (`render.memory_form_factor`…), in the interface's language.
+NOT_A_VALUE = (0x00, 0x01, 0x02)        # none, «Other», «Unknown»
 
-# Tabla 78: corrección de errores del conjunto de memoria.
-ERROR_CORRECTION = {
-    0x01: "Otra", 0x02: "Desconocida", 0x03: "Ninguna", 0x04: "Paridad",
-    0x05: "ECC de bit único", 0x06: "ECC de varios bits", 0x07: "CRC",
-}
-
-# Bits de «type detail» (tabla 77) que merece la pena traducir. Los números
-# son los de la especificación, no una numeración propia: equivocarse aquí
-# hace que un módulo sin buffer se anuncie como registrado.
-TYPE_DETAILS = {
-    3: "Paginado rápido", 6: "RAMBUS", 7: "Síncrona", 9: "EDO",
-    12: "No volátil", 13: "Registrada", 14: "Sin registrar", 15: "LRDIMM",
-}
+# Los números de bit son los de la especificación, no una numeración propia:
+# equivocarse aquí hace que un módulo sin buffer se anuncie como registrado.
+TYPE_DETAIL_BITS = (3, 6, 7, 9, 12, 13, 14, 15)
 
 PLACEHOLDERS = frozenset({
     "", "unknown", "not specified", "none", "n/a", "no module installed",
@@ -155,11 +146,16 @@ def _rank(structure: Structure) -> Optional[int]:
     return rank or None
 
 
-def _details(structure: Structure) -> list[str]:
+def _code(value: Optional[int]) -> Optional[int]:
+    """An enumeration's code, or None for the ones that are no value."""
+    return None if value is None or value in NOT_A_VALUE else value
+
+
+def _details(structure: Structure) -> list[int]:
     detail = structure.word(0x13)
     if detail is None:
         return []
-    return [name for bit, name in TYPE_DETAILS.items() if detail & (1 << bit)]
+    return [bit for bit in TYPE_DETAIL_BITS if detail & (1 << bit)]
 
 
 def memory_devices(structures: list[Structure]) -> list[dict]:
@@ -175,7 +171,7 @@ def memory_devices(structures: list[Structure]) -> list[dict]:
             "size_bytes": size,
             "populated": size > 0,
             "type": MEMORY_TYPES.get(structure.byte(0x12) or 0),
-            "form_factor": FORM_FACTORS.get(structure.byte(0x0E) or 0),
+            "form_factor": _code(structure.byte(0x0E)),
             "details": _details(structure),
             "speed_mts": structure.word(0x15) or None,
             "configured_mts": structure.word(0x20) or None,
@@ -209,7 +205,7 @@ def memory_arrays(structures: list[Structure]) -> list[dict]:
             # 255 ranuras es rara pero la especificación lo contempla.
             "slots": structure.word(0x0D),
             "max_capacity_bytes": capacity_bytes,
-            "error_correction": ERROR_CORRECTION.get(structure.byte(0x06) or 0),
+            "error_correction": _code(structure.byte(0x06)),
         })
     return arrays
 

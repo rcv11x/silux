@@ -443,15 +443,15 @@ class HomePage(ScrollPage):
             " · ".join(tipos),
             _("home.storage.free").format(tam=render.size(libre)))
         _usado, _libre, reservado, sin_montar = render.space(discos)
-        segmentos = [(_("home.bar.used"), usado, "accent"),
-                     (_("home.bar.free"), libre, "line")]
+        segmentos = [render.Segment("used", _("home.bar.used"), usado, "accent"),
+                     render.Segment("free", _("home.bar.free"), libre, "line")]
         if reservado:
-            segmentos.append((_("storage.bar.reserved"), reservado, "muted/0.45"))
+            segmentos.append(render.Segment("reserved", _("storage.bar.reserved"), reservado,
+                                            "muted/0.45", _("storage.bar.reserved.tip")))
         if sin_montar:
-            segmentos.append((_("home.bar.unmounted"), sin_montar, "muted"))
-        self.discos.barra.set_segments(
-            segmentos, total=total, formatter=render.size,
-            tooltips={_("storage.bar.reserved"): _("storage.bar.reserved.tip")})
+            segmentos.append(render.Segment("unmounted", _("home.bar.unmounted"), sin_montar,
+                                            "muted"))
+        self.discos.barra.set_segments(segmentos, total=total, formatter=render.size)
 
 
     def _temperaturas(self, snapshot: Snapshot) -> None:
@@ -555,6 +555,6 @@ def _tipo_de_memoria(snapshot: Snapshot) -> Optional[str]:
     # uno vacío no se saca cómo es la memoria que hay puesta.
     for modulo in snapshot.modules:
         if modulo.populated and modulo.type:
-            return (f"{modulo.type}-{modulo.speed_mts}" if modulo.speed_mts
-                    else modulo.type)
+            tipo = render.memory_type(modulo.type)
+            return f"{tipo}-{modulo.speed_mts}" if modulo.speed_mts else tipo
     return None

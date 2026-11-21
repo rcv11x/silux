@@ -227,8 +227,8 @@ def dump(snapshot: Snapshot, style: Style) -> str:
 
     if snapshot.sensors:
         lines.append(style.bold(style.accent("├─ Sensores")))
-        for device, categories in snapshot.sensor_tree().items():
-            lines.append(f"  {style.bold(device)}")
+        for categories in snapshot.sensor_tree().values():
+            lines.append(f"  {style.bold(Snapshot.device_name(categories))}")
             for category, sensors in categories.items():
                 lines.append(f"    {style.dim(category)}")
                 for sensor in sensors:
@@ -262,8 +262,8 @@ def dump(snapshot: Snapshot, style: Style) -> str:
 def sensors_text(snapshot: Snapshot, style: Style) -> str:
     """El árbol de sensores, como lo enseña `--sensors`."""
     lineas = []
-    for device, categories in snapshot.sensor_tree().items():
-        lineas.append(style.bold(device))
+    for categories in snapshot.sensor_tree().values():
+        lineas.append(style.bold(Snapshot.device_name(categories)))
         for category, sensors in categories.items():
             # La categoría es una clave («cat.temperature»): se traduce, como
             # en la ventana y en el informe.

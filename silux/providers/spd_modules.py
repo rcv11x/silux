@@ -34,11 +34,12 @@ class SpdModules(Provider):
         # el bus entero, puede estar reservado por el firmware o puede que solo
         # falte cargar un módulo. Decir siempre «carga ee1004» era inútil en la
         # mayoría de las placas AMD, donde ese módulo ya está y no hay bus.
-        motivo, solucion = spd_module.diagnostico()
+        causa = spd_module.unreadable_cause()
+        motivo, solucion = spd_module.diagnostico(causa)
         # Sin bus, o con el bus reservado por el firmware, es la placa. Con
         # el bus y sin driver, el SPD está y se lee cargándolo, que pide
         # permisos: eso no se le puede achacar al equipo.
-        need = Need.DRIVER if motivo == _("spd.nodriver") else Need.HARDWARE
+        need = Need.DRIVER if causa == spd_module.CAUSE_NO_DRIVER else Need.HARDWARE
         return ("spd", need, motivo, solucion)
 
     def collect(self, draft: Draft) -> None:

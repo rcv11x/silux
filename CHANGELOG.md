@@ -63,6 +63,11 @@ que hace falta.
 
 ### Memoria
 
+- Arreglado: el formato de cada módulo, la corrección de errores y el tipo
+  que da la tabla del firmware se guardaban como textos en español y la
+  lógica decidía sobre ellos (lo soldado, por «Fila de chips»). Ahora son
+  los códigos de la especificación y se nombran al pintar: en inglés ya no
+  salen «Fila de chips» ni «ECC de bit único».
 - La memoria soldada se reconoce primero por su formato en la tabla del
   firmware («Fila de chips»), aunque su zócalo se llame «ChannelA-DIMM0».
   Con otro formato manda el nombre del zócalo: el T14 declara «SODIMM» su
@@ -78,6 +83,15 @@ que hace falta.
   permisos.
 - Arreglado: con memoria soldada, la nota decía que sus chips, sus perfiles y
   su fecha «no se han podido leer». La soldada no lleva chip SPD, y lo dice.
+
+### Sensores
+
+- Arreglado: el árbol agrupaba cada aparato por su nombre traducido y
+  guardaba así las ramas que se dejan plegadas. Ahora va por una clave del
+  aparato que no cambia con el idioma. Las ramas plegadas a mano que tenían
+  un nombre traducido (la red, la memoria, la batería) se abren una vez.
+- Los nombres del tráfico de red en Sensores («Bajada», «Subida»…) salen en
+  el idioma de la interfaz.
 
 ### Informe
 

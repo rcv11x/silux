@@ -182,6 +182,7 @@ class ImcTraffic(Provider):
                 key=f"imc/{clave}",
                 chip="uncore_imc",
                 device=_(DISPOSITIVO),
+                device_key="memory",
                 device_kind=DeviceKind.MEMORY,
                 label=_(etiqueta),
                 kind=SensorKind.BANDWIDTH,

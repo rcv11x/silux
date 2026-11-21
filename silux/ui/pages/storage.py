@@ -326,9 +326,7 @@ class StoragePage(ScrollPage):
             # las particiones montadas; el resto del disco es otra cosa y se
             # dice aparte.
             self.total_bar.set_segments(
-                self._segmentos(discos), total=total, formatter=render.size,
-                tooltips={_("storage.bar.reserved"): _("storage.bar.reserved.tip")},
-            )
+                self._segmentos(discos), total=total, formatter=render.size)
             self.total_bar.show()
         else:
             self.total_bar.hide()
@@ -336,12 +334,14 @@ class StoragePage(ScrollPage):
     @staticmethod
     def _segmentos(discos) -> list:
         usado, libre, reservado, sin_montar = render.space(discos)
-        segmentos = [(_("storage.col.used"), usado, "accent"),
-                     (_("storage.col.free"), libre, "line")]
+        segmentos = [render.Segment("used", _("storage.col.used"), usado, "accent"),
+                     render.Segment("free", _("storage.col.free"), libre, "line")]
         if reservado:
-            segmentos.append((_("storage.bar.reserved"), reservado, "muted/0.45"))
+            segmentos.append(render.Segment("reserved", _("storage.bar.reserved"), reservado,
+                                            "muted/0.45", _("storage.bar.reserved.tip")))
         if sin_montar:
-            segmentos.append((_("storage.bar.unmounted"), sin_montar, "muted"))
+            segmentos.append(render.Segment("unmounted", _("storage.bar.unmounted"),
+                                            sin_montar, "muted"))
         return segmentos
 
     def _apply_tiles(self, discos) -> None:

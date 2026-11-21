@@ -46,7 +46,7 @@ class TestElProveedor(unittest.TestCase):
         self.assertEqual(sum(1 for s in self.foto.sensors if s.mirror_of), 6)
 
     def test_siguen_en_la_foto_pero_no_en_el_arbol(self):
-        placa = self.foto.sensor_tree()[self.foto.board.display_name]["cat.temperature"]
+        placa = self.foto.sensor_tree()["board"]["cat.temperature"]
         self.assertEqual([s.chip for s in placa if s.chip.startswith("gigabyte")], [])
         self.assertEqual(len([s for s in placa if s.chip.startswith("it8688")]), 6)
         self.assertEqual(len(_temperaturas(self.foto.sensors, "gigabyte_wmi")), 6)
@@ -113,7 +113,7 @@ class TestEnLaPaginaDeSensores(unittest.TestCase):
         pagina.apply(f)
         app.processEvents()
 
-        placa = f.board.display_name
+        placa = "board"
         rama = pagina.tree._rows[f"::{placa}/cat.temperature"]
         nombres = [rama.child(i).text(0) for i in range(rama.childCount())]
         # Seis del chip y las tres de relleno de ACPI: nueve, no quince.
@@ -132,7 +132,7 @@ class TestEnLaPaginaDeSensores(unittest.TestCase):
         self.assertFalse([ventiladores.child(i).text(0) for i in range(ventiladores.childCount())
                           if "(" in ventiladores.child(i).text(0)])
 
-        grafica = pagina.tree._rows[f"::{f.gpus[0].name}/cat.temperature"]
+        grafica = pagina.tree._rows[f"::gpu:{f.gpus[0].pci_slot}/cat.temperature"]
         self.assertFalse([grafica.child(i).text(0) for i in range(grafica.childCount())
                           if "(" in grafica.child(i).text(0)])
 

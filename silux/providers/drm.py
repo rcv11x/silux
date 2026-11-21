@@ -232,7 +232,7 @@ class DrmGpus(Provider):
             aviso = DRIVERS_CIEGOS.get(gpu["driver"] or "")
             if aviso:
                 draft.note(f"gpus.{indice}", Need.DRIVER,
-                           *(_(clave) for clave in aviso))
+                           *(_(clave) for clave in aviso), key=aviso[0])
 
         _nombrar_monitores(draft.gpus)
 

@@ -12,7 +12,8 @@ propósito— y comprobar que el contador veía esos mismos diez.
 
 import unittest
 
-from silux.model import MemoryTraffic, Need, SensorKind
+from silux.i18n import _
+from silux.model import Snapshot, MemoryTraffic, Need, SensorKind
 from silux.privileged import helper, protocol
 from silux.privileged.client import HelperError, LecturaImc, PmuUnsupported
 from silux.providers.base import Draft
@@ -513,9 +514,10 @@ class TestElTraficoEnElArbolDeSensores(unittest.TestCase):
                         cpu=CpuInfo(types=(CpuType(key="general", label="g"),)),
                         sensors=tuple(borrador.sensors))
         arbol = foto.sensor_tree()
-        self.assertIn("Memoria", arbol)
-        self.assertIn("cat.bandwidth", arbol["Memoria"])
-        valores = [s.value for s in arbol["Memoria"]["cat.bandwidth"]]
+        self.assertIn("memory", arbol)
+        self.assertEqual(Snapshot.device_name(arbol["memory"]), _("sensor.mem"))
+        self.assertIn("cat.bandwidth", arbol["memory"])
+        valores = [s.value for s in arbol["memory"]["cat.bandwidth"]]
         self.assertEqual(len(valores), 2)
         # 4 GiB en un segundo son 4295 MB/s.
         self.assertAlmostEqual(max(valores), 4295, delta=5)

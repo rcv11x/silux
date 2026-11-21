@@ -8,6 +8,8 @@ de un chip, «Temperatura 1» del otro.
 
 import unittest
 
+from silux.model import Snapshot
+
 from silux.i18n import _
 from tests import qt
 from tests.test_equipos import EQUIPOS, foto
@@ -37,7 +39,7 @@ class TestElOrdenDelArbol(unittest.TestCase):
                             self.assertLess(orden.index(pronto), orden.index(tarde))
 
     def test_cada_chip_va_junto_y_los_de_relleno_al_final(self):
-        placa = self.arbol[self.foto.board.display_name]["cat.temperature"]
+        placa = self.arbol["board"]["cat.temperature"]
         chips = [s.chip for s in placa]
         # El Super I/O y las zonas de ACPI; lo que `gigabyte_wmi` repite del
         # primero ya no entra en el árbol (tests/test_sensores_repetidos.py).
@@ -72,7 +74,7 @@ class TestLasRamasLargas(unittest.TestCase):
 
     def test_los_relojes_por_hilo_nacen_plegados_y_dicen_cuantos_son(self):
         arbol = self._arbol()
-        cpu = "AMD Ryzen 7 5800X3D"
+        cpu = "cpu"                 # its raw key: «AMD Ryzen 7 5800X3D»
         relojes = arbol._rows[f"::{cpu}/cat.clock"]
         self.assertFalse(relojes.isExpanded())
         self.assertEqual(relojes.text(0), f"{_('cat.clock')} · 16")
@@ -86,7 +88,7 @@ class TestLasRamasLargas(unittest.TestCase):
         from silux.ui import theme
         from silux.ui.sensortree import SensorTree
 
-        cpu = "AMD Ryzen 7 5800X3D"
+        cpu = "cpu"                 # its raw key: «AMD Ryzen 7 5800X3D»
         arbol = SensorTree(theme.palette_for(self.app, "dark"))
         self.addCleanup(arbol.deleteLater)
         arbol.set_collapsed((f"::{cpu}/cat.temperature",), (f"::{cpu}/cat.clock",))
@@ -98,7 +100,7 @@ class TestLasRamasLargas(unittest.TestCase):
         """Se guardaba el estado entero, y con una sola rama cerrada a mano
         todas las demás quedaban «elegidas abiertas»: las largas incluidas, y
         cualquier regla nueva no llegaba a quien ya tenía preferencias."""
-        cpu = "AMD Ryzen 7 5800X3D"
+        cpu = "cpu"                 # its raw key: «AMD Ryzen 7 5800X3D»
         arbol = self._arbol(plegadas=(f"::{cpu}/cat.temperature",))
         self.assertFalse(arbol._rows[f"::{cpu}/cat.clock"].isExpanded())
         self.assertTrue(arbol._rows[f"::{cpu}"].isExpanded())
@@ -114,7 +116,7 @@ class TestLasRamasLargas(unittest.TestCase):
         self.assertEqual((arbol.collapsed(), arbol.expanded()), ((), ()))
 
     def test_solo_se_apunta_lo_que_se_aparta_de_la_regla(self):
-        cpu = "AMD Ryzen 7 5800X3D"
+        cpu = "cpu"                 # its raw key: «AMD Ryzen 7 5800X3D»
         arbol = self._arbol()
         avisos = []
         arbol.branchesChanged.connect(lambda c, a: avisos.append((c, a)))
@@ -165,9 +167,9 @@ class TestLoQueNoTieneActividadNacePlegado(unittest.TestCase):
 
     def test_los_ventiladores_parados_van_aparte_y_cerrados(self):
         pagina = self._pagina("5800x3d")
-        placa = self.foto.board.display_name
+        placa = "board"
         todos = [s for s in self.foto.sensors
-                 if s.device == placa and s.kind.value == "fan"]
+                 if s.group == placa and s.kind.value == "fan"]
         parados = [s.label for s in todos if s.value == 0]
         girando = [s.label for s in todos if s.value > 0]
         # El caso: en esa placa hay de los dos.
@@ -187,9 +189,9 @@ class TestLoQueNoTieneActividadNacePlegado(unittest.TestCase):
 
     def test_si_todos_estan_parados_se_cierra_la_categoria_sin_partirla(self):
         pagina = self._pagina("5800x3d")
-        grafica = self.foto.gpus[0].name
+        grafica = f"gpu:{self.foto.gpus[0].pci_slot}"
         ventiladores = [s for s in self.foto.sensors
-                        if s.device == grafica and s.kind.value == "fan"]
+                        if s.group == grafica and s.kind.value == "fan"]
         self.assertTrue(ventiladores and all(s.value == 0 for s in ventiladores))
         filas = pagina.tree._rows
         self.assertFalse(filas[f"::{grafica}/cat.fan"].isExpanded())
@@ -201,9 +203,9 @@ class TestLoQueNoTieneActividadNacePlegado(unittest.TestCase):
         import dataclasses
 
         pagina = self._pagina("5800x3d")
-        placa = self.foto.board.display_name
+        placa = "board"
         parado = next(s for s in self.foto.sensors
-                      if s.device == placa and s.kind.value == "fan" and s.value == 0)
+                      if s.group == placa and s.kind.value == "fan" and s.value == 0)
         girando = dataclasses.replace(self.foto, sensors=tuple(
             dataclasses.replace(s, value=640.0) if s.key == parado.key else s
             for s in self.foto.sensors))
@@ -221,8 +223,8 @@ class TestLoQueNoTieneActividadNacePlegado(unittest.TestCase):
                 pagina = self._pagina(equipo)
                 principal, todas = main_interface(self.foto.network)
                 filas = pagina.tree._rows
-                ramas = {i.name: filas[f"::Red ({i.name})"] for i in todas
-                         if f"::Red ({i.name})" in filas}
+                ramas = {i.name: filas[f"::net:{i.name}"] for i in todas
+                         if f"::net:{i.name}" in filas}
                 self.assertGreater(len(ramas), 1)
                 self.assertTrue(ramas[principal.name].isExpanded())
                 for nombre, rama in ramas.items():
@@ -237,36 +239,37 @@ class TestLoQueNoTieneActividadNacePlegado(unittest.TestCase):
         pagina = self._pagina("5800x3d")
         principal, todas = main_interface(self.foto.network)
         otra = next(i for i in todas if i is not principal
-                    and f"::Red ({i.name})" in pagina.tree._rows)
-        self.assertFalse(pagina.tree._rows[f"::Red ({otra.name})"].isExpanded())
+                    and f"::net:{i.name}" in pagina.tree._rows)
+        self.assertFalse(pagina.tree._rows[f"::net:{otra.name}"].isExpanded())
         con_ritmo = dataclasses.replace(otra, traffic=dataclasses.replace(
             otra.traffic, rx_rate_bps=4096.0, tx_rate_bps=512.0))
         despues = dataclasses.replace(self.foto, network=tuple(
             con_ritmo if i is otra else i for i in self.foto.network))
         pagina.tree.rebuild(despues.sensor_tree(), pagina._inactivos(despues))
-        self.assertTrue(pagina.tree._rows[f"::Red ({otra.name})"].isExpanded())
+        self.assertTrue(pagina.tree._rows[f"::net:{otra.name}"].isExpanded())
 
     def test_lo_que_el_usuario_dejo_manda_tambien_aqui(self):
-        placa = "Gigabyte X570 AORUS ELITE"
+        placa = "board"             # «Gigabyte X570 AORUS ELITE»
         pagina = self._pagina("5800x3d", abiertas=(f"::{placa}/cat.fan/idle",))
-        self.assertEqual(placa, self.foto.board.display_name)
+        self.assertEqual(Snapshot.device_name(self.foto.sensor_tree()[placa]),
+                         self.foto.board.display_name)
         self.assertTrue(pagina.tree._rows[f"::{placa}/cat.fan/idle"].isExpanded())
 
     def test_con_las_preferencias_de_antes_lo_inactivo_tambien_se_pliega(self):
         """Las del autor: tres ramas cerradas a mano, guardadas cuando se
         guardaba el estado entero. Lo nuevo le tiene que llegar igual."""
-        cpu = "AMD Ryzen 7 5800X3D"
+        cpu = "cpu"                 # its raw key: «AMD Ryzen 7 5800X3D»
         # (El consumo del procesador no está en el volcado: sale de restar
         # dos lecturas. Que su rama esté guardada y no exista no rompe nada.)
         pagina = self._pagina("5800x3d", plegadas=(
-            f"::{cpu}/cat.power", f"::{cpu}/cat.temperature", "::Red (enp6s0)/cat.network"))
-        placa = self.foto.board.display_name
+            f"::{cpu}/cat.power", f"::{cpu}/cat.temperature", "::net:enp6s0/cat.network"))
+        placa = "board"
         filas = pagina.tree._rows
         self.assertFalse(filas[f"::{placa}/cat.fan/idle"].isExpanded())
         self.assertFalse(filas[f"::{cpu}/cat.temperature"].isExpanded())
-        self.assertFalse(filas["::Red (enp6s0)/cat.network"].isExpanded())
-        self.assertTrue(filas["::Red (enp6s0)"].isExpanded())
-        cerradas = [c for c in filas if c.startswith("::Red (") and c.count("/") == 0
+        self.assertFalse(filas["::net:enp6s0/cat.network"].isExpanded())
+        self.assertTrue(filas["::net:enp6s0"].isExpanded())
+        cerradas = [c for c in filas if c.startswith("::net:") and c.count("/") == 0
                     and not filas[c].isExpanded()]
         self.assertTrue(cerradas)
 

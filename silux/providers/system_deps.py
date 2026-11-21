@@ -86,7 +86,7 @@ class SystemDependencies(Provider):
             # It says what the driver's own note says, and which package.
             draft.notes = [n for n in draft.notes
                            if not (n.path.startswith("gpus.") and n.need is Need.DRIVER
-                                   and n.message == _("prov.drm.nvidia"))]
+                                   and n.key == "prov.drm.nvidia")]
             note("gpus.packages.nvml", "nvml", _("deps.nvml"))
         if _graphics_with_a_driver():
             self._graphics(draft, familia)

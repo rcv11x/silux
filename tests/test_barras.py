@@ -64,16 +64,16 @@ class TestLasBarras(unittest.TestCase):
     def test_cada_insignia_lleva_el_color_de_su_tramo(self):
         ventana = self._ventana()
         for nombre, barra in self._barras(ventana).items():
-            visibles = [s for s in barra._segments if s[1] > 0]
+            visibles = [s for s in barra._segments if s.value > 0]
             insignias = barra._legend._widgets
             with self.subTest(barra=nombre):
                 self.assertGreater(len(visibles), 1)
                 self.assertEqual(len(insignias), len(visibles))
-                for (etiqueta, _valor, token), insignia in zip(visibles, insignias):
-                    self.assertIn(etiqueta, insignia.text())
-                    self.assertIsNotNone(insignia.swatch(), etiqueta)
+                for tramo, insignia in zip(visibles, insignias):
+                    self.assertIn(tramo.label, insignia.text())
+                    self.assertIsNotNone(insignia.swatch(), tramo.key)
                     self.assertEqual(insignia.swatch().name(),
-                                     barra._color(token).name(), etiqueta)
+                                     barra._color(tramo.token).name(), tramo.key)
 
     def test_la_memoria_va_en_tonos_del_acento_y_no_en_colores_de_estado(self):
         # El azul de «información» y el amarillo de «aviso» dentro de una
@@ -82,7 +82,7 @@ class TestLasBarras(unittest.TestCase):
         for nombre in ("Inicio, memoria", "Memoria"):
             barra = self._barras(ventana)[nombre]
             estados = {barra._p.q(n).name() for n in ("info", "warn", "crit", "ok")}
-            colores = [barra._color(t).name() for _e, v, t in barra._segments if v > 0]
+            colores = [barra._color(s.token).name() for s in barra._segments if s.value > 0]
             with self.subTest(barra=nombre):
                 self.assertFalse(estados.intersection(colores))
                 self.assertEqual(len(set(colores)), len(colores), "dos tramos iguales")
@@ -100,8 +100,7 @@ class TestLasBarras(unittest.TestCase):
 
         barra = self._ventana().home_page.memoria.barra
         fondo = barra._p.q("line").name()
-        cache = [token for etiqueta, valor, token in barra._segments
-                 if etiqueta == _("sys.mem.cache")]
+        cache = [s.token for s in barra._segments if s.key == "cache"]
         self.assertEqual(len(cache), 1)
         self.assertNotEqual(barra._color(cache[0]).name(), fondo)
 

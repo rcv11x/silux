@@ -55,13 +55,14 @@ class TestLoQueElFirmwareNoSabe(unittest.TestCase):
 
         crudos = smbios.memory_devices(list(smbios.parse_table(DOS_DE_CUATRO)))
         self.assertEqual([m["populated"] for m in crudos], [False, True, False, True])
-        self.assertEqual(crudos[0]["type"], "Desconocido")
+        # «Unknown» is no type: the empty slot says none, whatever the language.
+        self.assertIsNone(crudos[0]["type"])
 
     def test_no_llega_al_modelo(self):
         draft = Draft()
         PrivilegedMemory._parse(draft, DOS_DE_CUATRO)
         self.assertEqual([m.type for m in draft.modules], [None, "DDR4", None, "DDR4"])
-        self.assertEqual([m.form_factor for m in draft.modules], [None, "DIMM", None, "DIMM"])
+        self.assertEqual([m.form_factor for m in draft.modules], [None, 0x09, None, 0x09])
         for modulo in draft.modules:
             for campo in dataclasses.fields(modulo):
                 valor = getattr(modulo, campo.name)

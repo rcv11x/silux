@@ -2520,7 +2520,7 @@ class LevelList(QWidget):
         return " · ".join(t for t in (cifra.text(), porcentaje.text()) if t)
 
 
-def memory_segments(memory) -> list[tuple[str, float, str]]:
+def memory_segments(memory) -> list[render.Segment]:
     """Los tramos de la barra de memoria: lo mismo en Inicio, Memoria y Sistema.
 
     Los tres más el hueco del fondo suman el total, por eso van las
@@ -2535,10 +2535,10 @@ def memory_segments(memory) -> list[tuple[str, float, str]]:
     un aviso dentro.
     """
     return [
-        (_("sys.mem.apps"), memory.apps_bytes, "accent"),
-        (_("sys.mem.cache"), memory.cache_bytes, "accent/0.5"),
-        (_("sys.mem.buffers"), memory.buffers_bytes, "accent/0.25"),
-        (_("sys.mem.free"), memory.free_bytes, "line"),
+        render.Segment("apps", _("sys.mem.apps"), memory.apps_bytes, "accent"),
+        render.Segment("cache", _("sys.mem.cache"), memory.cache_bytes, "accent/0.5"),
+        render.Segment("buffers", _("sys.mem.buffers"), memory.buffers_bytes, "accent/0.25"),
+        render.Segment("free", _("sys.mem.free"), memory.free_bytes, "line"),
     ]
 
 
@@ -2555,11 +2555,9 @@ class StackedBar(QWidget):
     def __init__(self, palette: Palette, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self._p = palette
-        self._segments: list[tuple[str, float, str]] = []   # (etiqueta, valor, token)
-        # What a segment is, by its label, on hover over it or its legend.
-        self._ayudas: dict[str, str] = {}
+        self._segments: list[render.Segment] = []
         self._total = 0.0
-        # El largo que se ve de cada tramo, por su etiqueta: se desliza
+        # El largo que se ve de cada tramo, por su clave: se desliza
         # (`Deslizador`); la leyenda dice siempre el dato. Se crean una vez
         # por tramo y se reutilizan en cada muestra.
         self._largos: dict[str, Deslizador] = {}
@@ -2580,26 +2578,25 @@ class StackedBar(QWidget):
         layout.addWidget(self._legend)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
-    def set_segments(self, segments: list[tuple[str, float, str]], total: float,
-                     formatter=None, tooltips: Optional[dict[str, str]] = None) -> None:
-        self._segments = segments
-        self._ayudas = dict(tooltips or {})
+    def set_segments(self, segments: list[render.Segment], total: float,
+                     formatter=None) -> None:
+        self._segments = list(segments)
         self._total = total or 1.0
         a_la_vista = self.isVisible()
-        for etiqueta, valor, _token in segments:
-            fraccion = max(0.0, valor) / self._total
-            if etiqueta not in self._largos:
-                self._largos[etiqueta] = Deslizador(fraccion)
+        for tramo in self._segments:
+            fraccion = max(0.0, tramo.value) / self._total
+            if tramo.key not in self._largos:
+                self._largos[tramo.key] = Deslizador(fraccion)
             else:
-                self._largos[etiqueta].fijar(fraccion, animar=a_la_vista)
+                self._largos[tramo.key].fijar(fraccion, animar=a_la_vista)
         if formatter is not None:
             self._formatter = formatter
-        visibles = [s for s in segments if s[1] > 0]
+        visibles = [s for s in self._segments if s.value > 0]
         borde = self._p.q("muted", 0.6)
         self._legend.set_chips(
-            (f"{label}  {self._formatter(value)}" for label, value, _token in visibles),
-            swatches=[(self._color(token), borde) for _label, _value, token in visibles],
-            tooltips=[self._ayudas.get(label, "") for label, _value, _token in visibles],
+            (f"{s.label}  {self._formatter(s.value)}" for s in visibles),
+            swatches=[(self._color(s.token), borde) for s in visibles],
+            tooltips=[s.tooltip for s in visibles],
         )
         self._reservar_alto()
         self._repintar_la_barra()
@@ -2653,22 +2650,23 @@ class StackedBar(QWidget):
             self.setMinimumHeight(alto)
             self.updateGeometry()
 
-    def _tramo_en(self, x: float) -> Optional[str]:
-        """The label of the segment drawn at that x, as paintEvent lays them."""
+    def _tramo_en(self, x: float) -> Optional[render.Segment]:
+        """The segment drawn at that x, as paintEvent lays them."""
         offset = 0.0
-        for etiqueta, value, _token in self._segments:
-            largo = self._largos.get(etiqueta)
-            fraccion = largo.valor() if largo is not None else value / self._total
+        for tramo in self._segments:
+            largo = self._largos.get(tramo.key)
+            fraccion = largo.valor() if largo is not None else tramo.value / self._total
             if fraccion <= 0:
                 continue
             offset += self.width() * fraccion
             if x < offset:
-                return etiqueta
+                return tramo
         return None
 
     def event(self, evento) -> bool:  # noqa: N802
         if evento.type() == QEvent.Type.ToolTip and evento.pos().y() <= self.BAR_HEIGHT:
-            ayuda = self._ayudas.get(self._tramo_en(evento.pos().x()) or "", "")
+            tramo = self._tramo_en(evento.pos().x())
+            ayuda = tramo.tooltip if tramo else ""
             if ayuda:
                 QToolTip.showText(evento.globalPos(), ayuda, self)
             else:
@@ -2693,13 +2691,13 @@ class StackedBar(QWidget):
         painter.drawRect(rect)
 
         offset = 0.0
-        for etiqueta, value, token in self._segments:
-            largo = self._largos.get(etiqueta)
-            fraccion = largo.valor() if largo is not None else value / self._total
+        for tramo in self._segments:
+            largo = self._largos.get(tramo.key)
+            fraccion = largo.valor() if largo is not None else tramo.value / self._total
             if fraccion <= 0:
                 continue
             width = rect.width() * fraccion
-            painter.setBrush(QBrush(self._color(token)))
+            painter.setBrush(QBrush(self._color(tramo.token)))
             painter.drawRect(QRectF(offset, 0, width, self.BAR_HEIGHT))
             offset += width
         painter.end()

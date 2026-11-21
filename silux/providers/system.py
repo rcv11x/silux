@@ -434,6 +434,7 @@ class SystemState(Provider):
             return []
         sensors = [Sensor(
             key="memory/ram", chip="meminfo", device=_("sensor.mem"),
+            device_key="memory",
             device_kind=DeviceKind.MEMORY,
             label=_("sensor.mem.ram"), kind=SensorKind.USAGE,
             value=memory.used_percent, order=0, high=90.0,
@@ -441,6 +442,7 @@ class SystemState(Provider):
         if memory.swap_total_bytes:
             sensors.append(Sensor(
                 key="memory/swap", chip="meminfo", device=_("sensor.mem"),
+            device_key="memory",
                 device_kind=DeviceKind.MEMORY,
                 label=_("sensor.mem.swap"), kind=SensorKind.USAGE,
                 value=memory.swap_used_percent, order=1, high=80.0,

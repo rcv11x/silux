@@ -601,8 +601,17 @@ SYS_PCI = pathlib.Path("/sys/bus/pci/devices")
 SYS_I2C = pathlib.Path("/sys/bus/i2c/devices")
 
 
-def diagnostico() -> tuple[str, str]:
-    """Por qué no se puede leer el SPD en este equipo, y qué hacer.
+# Why the SPD cannot be read, by its code, and how it is said.
+CAUSE_NO_SMBUS, CAUSE_NO_BUS, CAUSE_NO_DRIVER = "nosmbus", "nobus", "nodriver"
+CAUSES = {
+    CAUSE_NO_SMBUS: ("spd.nosmbus", "spd.nosmbus.hint"),
+    CAUSE_NO_BUS: ("spd.nobus", "spd.nobus.hint"),
+    CAUSE_NO_DRIVER: ("spd.nodriver", "spd.nodriver.hint"),
+}
+
+
+def unreadable_cause() -> str:
+    """Por qué no se puede leer el SPD en este equipo, como código.
 
     Hay tres motivos distintos y la solución de cada uno no se parece a la de
     los otros. Antes se contestaba siempre lo mismo —«carga ee1004»— y en la
@@ -610,18 +619,22 @@ def diagnostico() -> tuple[str, str]:
     disponible y el problema es que no hay ningún bus donde buscar.
     """
     if not _hay_controlador_smbus():
-        return (_("spd.nosmbus"), _("spd.nosmbus.hint"))
-
+        return CAUSE_NO_SMBUS
     if not _hay_bus_de_memoria():
         # El caso más común en placas AMD: el firmware declara la región de
         # entrada/salida del SMBus como suya y el kernel no la toca por si
         # los dos escriben a la vez.
-        return (_("spd.nobus"), _("spd.nobus.hint"))
-
+        return CAUSE_NO_BUS
     # Cada generación de memoria lleva un chip distinto y hace falta el driver
     # que le corresponde. Faltaba el de DDR3, y a una placa X79 con Xeon E5 v2
     # se le proponían los dos que no le sirven de nada.
-    return (_("spd.nodriver"), _("spd.nodriver.hint"))
+    return CAUSE_NO_DRIVER
+
+
+def diagnostico(causa: Optional[str] = None) -> tuple[str, str]:
+    """Por qué no se puede leer el SPD, y qué hacer, dicho para la persona."""
+    mensaje, ayuda = CAUSES[causa or unreadable_cause()]
+    return _(mensaje), _(ayuda)
 
 
 def _hay_controlador_smbus() -> bool:

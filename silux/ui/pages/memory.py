@@ -636,15 +636,15 @@ class MemoryPage(ScrollPage):
         if array and array.max_capacity_bytes:
             partes.append(_("memory.array.upto").format(
                 tam=render.size(array.max_capacity_bytes)))
-        if array and array.error_correction:
-            partes.append(f"ECC: {array.error_correction.lower()}")
+        if correccion := render.memory_error_correction(array.error_correction if array else None):
+            partes.append(f"ECC: {correccion.lower()}")
         return " · ".join(partes)
 
     def _apply_badges(self, snapshot: Snapshot) -> None:
         modules = [m for m in self._display_modules(snapshot) if m.populated]
         wanted = []
         if modules:
-            tipos = {m.type for m in modules if m.type}
+            tipos = {render.memory_type(m.type) for m in modules if m.type}
             wanted.extend(sorted(tipos))
             # The speed it runs at when the firmware says it, and else the one
             # it is rated at: «3200 MT/s · al máximo del procesador» was read
@@ -735,7 +735,6 @@ class MemoryPage(ScrollPage):
                 locator=_("memory.module.n").format(n=orden),
                 populated=True,
                 type=info.dram_type,
-                form_factor=info.module_type,
                 manufacturer=info.manufacturer,
                 part_number=info.part_number,
                 rank=info.ranks,
@@ -898,7 +897,8 @@ class MemoryPage(ScrollPage):
         grid.set(_("memory.field.chips"), render.maker(spd.dram_manufacturer if spd else None) or d,
                  tooltip=_("memory.tip.chips"))
         grid.set(_("memory.field.part"), module.part_number or (spd.part_number if spd else None) or d)
-        grid.set(_("memory.field.type"), module.type or (spd.dram_type if spd else None) or d)
+        grid.set(_("memory.field.type"),
+                 render.memory_type(module.type) or (spd.dram_type if spd else None) or d)
         # La capacidad sale de SMBIOS, que pide permisos, pero el SPD de DDR5
         # la trae en la densidad de sus chips y ese se lee sin pedir nada.
         capacidad = module.size_bytes or (spd.capacity_bytes if spd else None)
@@ -940,7 +940,8 @@ class MemoryPage(ScrollPage):
                    else (f"{spd.jedec.voltage_v:.2f} V" if spd and spd.jedec
                          and spd.jedec.voltage_v else d))
         grid.set(_("memory.field.voltage"), voltaje)
-        grid.set(_("memory.field.form"), module.form_factor or (spd.module_type if spd else None) or d)
+        grid.set(_("memory.field.form"), render.memory_form_factor(module.form_factor)
+                 or (spd.module_type if spd else None) or d)
 
         perfiles = spd.overclock_profiles if spd else ()
         grid.set(_("memory.field.profiles"), ", ".join(perfiles) if perfiles else d,

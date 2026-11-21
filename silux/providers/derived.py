@@ -89,11 +89,11 @@ class DerivedSensors(Provider):
             device = _("sensor.dev.net").format(chip=interfaz.name)
             trafico = interfaz.traffic
             campos = (
-                ("rx", "Bajada", SensorKind.NETWORK, trafico.rx_rate_bps, 0),
-                ("tx", "Subida", SensorKind.NETWORK, trafico.tx_rate_bps, 1),
-                ("rx_total", "Recibido", SensorKind.MEMORY,
+                ("rx", _("sensor.net.down"), SensorKind.NETWORK, trafico.rx_rate_bps, 0),
+                ("tx", _("sensor.net.up"), SensorKind.NETWORK, trafico.tx_rate_bps, 1),
+                ("rx_total", _("sensor.net.received"), SensorKind.MEMORY,
                  _megas(trafico.rx_bytes), 10),
-                ("tx_total", "Enviado", SensorKind.MEMORY,
+                ("tx_total", _("sensor.net.sent"), SensorKind.MEMORY,
                  _megas(trafico.tx_bytes), 11),
             )
             for clave, etiqueta, tipo, valor, orden in campos:
@@ -101,6 +101,7 @@ class DerivedSensors(Provider):
                     continue
                 sensors.append(Sensor(
                     key=f"net/{interfaz.name}/{clave}", chip="net", device=device,
+                    device_key=f"net:{interfaz.name}",
                     device_kind=DeviceKind.NETWORK,
                     label=etiqueta, kind=tipo,
                     value=round(float(valor) / (1024 if tipo is SensorKind.NETWORK else 1),
@@ -123,6 +124,9 @@ class DerivedSensors(Provider):
         for gpu in draft.gpus:
             device = gpu.get("name") or _("sensor.dev.gpu").format(
                 n=gpu.get("index", 0))
+            # The same key hwmon gives its chip: its PCI slot.
+            clave_aparato = (f"gpu:{gpu['pci_slot']}" if gpu.get("pci_slot")
+                             else f"gpu-index:{gpu.get('index', 0)}")
             marca = f"gpu{gpu.get('index', 0)}"
             relojes = gpu.get("clocks")
             memoria = gpu.get("memory")
@@ -183,6 +187,7 @@ class DerivedSensors(Provider):
                     continue
                 sensors.append(Sensor(
                     key=f"{marca}/{clave}", chip="drm", device=device,
+                    device_key=clave_aparato,
                     device_kind=DeviceKind.GPU,
                     label=etiqueta, kind=tipo,
                     value=round(float(valor), DECIMALES.get(tipo, 1)),
@@ -210,6 +215,7 @@ class DerivedSensors(Provider):
                 continue
             sensors.append(Sensor(
                 key=f"rapl/{attribute}", chip="intel-rapl", device=device,
+                device_key="cpu",
                 device_kind=DeviceKind.CPU,
                 label=label, kind=SensorKind.POWER, value=value, order=order,
                 # El límite sostenido del propio chip es el umbral natural:
@@ -228,6 +234,7 @@ class DerivedSensors(Provider):
                 continue
             sensors.append(Sensor(
                 key=f"clock/cpu{index}", chip="cpufreq", device=device,
+                device_key="cpu",
                 device_kind=DeviceKind.CPU,
                 label=thread_name(index), kind=SensorKind.CLOCK,
                 value=round(frequency / 1e6, 1), order=index,
@@ -241,6 +248,7 @@ class DerivedSensors(Provider):
         if total is not None:
             sensors.append(Sensor(
                 key="usage/total", chip="procfs", device=device,
+                device_key="cpu",
                 device_kind=DeviceKind.CPU,
                 label=_("sensor.total"), kind=SensorKind.USAGE,
                 value=total, order=-1,
@@ -251,6 +259,7 @@ class DerivedSensors(Provider):
                 continue
             sensors.append(Sensor(
                 key=f"usage/cpu{index}", chip="procfs", device=device,
+                device_key="cpu",
                 device_kind=DeviceKind.CPU,
                 label=thread_name(index), kind=SensorKind.USAGE,
                 value=value, order=index,

@@ -20,12 +20,15 @@ from silux.providers import hwmon
 class TestSensorDevices(unittest.TestCase):
 
     def test_the_memory_temperature_hangs_from_the_memory(self):
-        dispositivo, clase = hwmon.device_for("spd5118", pathlib.Path("/nada"), "CPU", "Placa")
+        dispositivo, clase, clave = hwmon.device_for("spd5118", pathlib.Path("/nada"), "CPU", "Placa")
         self.assertEqual(dispositivo, _("sensor.mem"))
+        self.assertEqual(clave, "memory")
 
     def test_a_wifi_card_without_its_interface_is_not_its_chip(self):
-        dispositivo, _clase = hwmon.device_for("iwlwifi_1", pathlib.Path("/nada"), "CPU", "Placa")
+        dispositivo, _clase, clave = hwmon.device_for("iwlwifi_1", pathlib.Path("/nada"),
+                                                      "CPU", "Placa")
         self.assertNotIn("iwlwifi", dispositivo)
+        self.assertEqual(clave, "net-chip:wifi")
 
     def test_an_nvme_composite_is_said_in_the_language(self):
         self.assertEqual(hwmon._friendly("nvme", "temp", "1", "Composite"),

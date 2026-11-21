@@ -116,7 +116,7 @@ class TestModulosDeMemoria(unittest.TestCase):
         self.assertEqual(modulo["manufacturer"], "Kingston")
         self.assertEqual(modulo["part_number"], "KF3200C16D4/8GX")
         self.assertEqual(modulo["type"], "DDR4")
-        self.assertEqual(modulo["form_factor"], "DIMM")
+        self.assertEqual(modulo["form_factor"], 0x09)          # DIMM
         self.assertEqual(modulo["size_bytes"], 8 * 1024 ** 3)
         self.assertEqual(modulo["speed_mts"], 3200)
         self.assertEqual(modulo["configured_mts"], 2666)
@@ -127,7 +127,7 @@ class TestModulosDeMemoria(unittest.TestCase):
     def test_el_bit_de_detalle_correcto(self):
         # El bit 14 es «sin registrar». Confundirlo con el 13 anunciaría un
         # módulo doméstico como memoria registrada de servidor.
-        self.assertEqual(self._modules(_memory_device())[0]["details"], ["Sin registrar"])
+        self.assertEqual(self._modules(_memory_device())[0]["details"], [14])   # unbuffered
 
     def test_modulos_grandes_usan_el_campo_extendido(self):
         # Con 0x7FFF en el campo de 16 bits hay que leer el de 32.
@@ -152,7 +152,7 @@ class TestConjuntoDeMemoria(unittest.TestCase):
         arrays = smbios.memory_arrays(list(smbios.parse_table(_memory_array(slots=4))))
         self.assertEqual(arrays[0]["slots"], 4)
         self.assertEqual(arrays[0]["max_capacity_bytes"], 64 * 1024 ** 3)
-        self.assertEqual(arrays[0]["error_correction"], "Ninguna")
+        self.assertEqual(arrays[0]["error_correction"], 0x03)  # none
 
     def test_muchos_zocalos_caben_en_dos_bytes(self):
         # Leer este campo como un solo byte da 44 en vez de 300.

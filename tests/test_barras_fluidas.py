@@ -15,6 +15,8 @@ cargada que esté la máquina.
 
 import dataclasses
 import unittest
+
+from silux import render
 from unittest import mock
 
 from tests import qt
@@ -156,13 +158,13 @@ class TestLasBarrasDeVerdad(unittest.TestCase):
     def test_la_de_memoria_tambien(self):
         from silux.ui.widgets import StackedBar
         barra = self.a_la_vista(StackedBar(self.paleta))
-        barra.set_segments([("Aplicaciones", 2.0, "accent")], 10.0)
-        barra.set_segments([("Aplicaciones", 6.0, "accent")], 10.0)
-        self.assertAlmostEqual(barra._largos["Aplicaciones"].valor(), 0.2)
+        barra.set_segments([render.Segment("apps", "Aplicaciones", 2.0, "accent")], 10.0)
+        barra.set_segments([render.Segment("apps", "Aplicaciones", 6.0, "accent")], 10.0)
+        self.assertAlmostEqual(barra._largos["apps"].valor(), 0.2)
         self.assertTrue(barra.advance(0.1))
         self.reloj.pasar(1.0)
         barra.advance(0.2)
-        self.assertAlmostEqual(barra._largos["Aplicaciones"].valor(), 0.6)
+        self.assertAlmostEqual(barra._largos["apps"].valor(), 0.6)
         self.assertFalse(barra.advance(0.3))
 
     def test_la_de_cada_hilo_tambien(self):
@@ -267,7 +269,7 @@ class TestLasBarrasDeVerdad(unittest.TestCase):
 
         from silux.ui.widgets import Badge, StackedBar
         barra = self.a_la_vista(StackedBar(self.paleta))
-        barra.set_segments([("Aplicaciones", 2.0, "accent"), ("Libre", 8.0, "line")], 10.0)
+        barra.set_segments([render.Segment("apps", "Aplicaciones", 2.0, "accent"), render.Segment("free", "Libre", 8.0, "line")], 10.0)
         self.app.processEvents()
 
         class Contador(QObject):
@@ -281,7 +283,7 @@ class TestLasBarrasDeVerdad(unittest.TestCase):
         contador = Contador()
         self.app.installEventFilter(contador)
         self.addCleanup(self.app.removeEventFilter, contador)
-        barra.set_segments([("Aplicaciones", 6.0, "accent"), ("Libre", 4.0, "line")], 10.0)
+        barra.set_segments([render.Segment("apps", "Aplicaciones", 6.0, "accent"), render.Segment("free", "Libre", 4.0, "line")], 10.0)
         self.app.processEvents()
         Contador.pintados = 0
         for _vez in range(5):
@@ -295,10 +297,10 @@ class TestLasBarrasDeVerdad(unittest.TestCase):
         a medio camino no se queda ahí hasta la muestra siguiente."""
         from silux.ui.widgets import StackedBar
         barra = self.a_la_vista(StackedBar(self.paleta))
-        barra.set_segments([("Aplicaciones", 2.0, "accent")], 10.0)
-        barra.set_segments([("Aplicaciones", 6.0, "accent")], 10.0)
+        barra.set_segments([render.Segment("apps", "Aplicaciones", 2.0, "accent")], 10.0)
+        barra.set_segments([render.Segment("apps", "Aplicaciones", 6.0, "accent")], 10.0)
         self.assertFalse(barra.advance(1.0))
-        self.assertAlmostEqual(barra._largos["Aplicaciones"].valor(), 0.6)
+        self.assertAlmostEqual(barra._largos["apps"].valor(), 0.6)
 
 
 def lista_con(paleta, *nombres):

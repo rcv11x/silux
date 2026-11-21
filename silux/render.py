@@ -10,12 +10,12 @@ from __future__ import annotations
 
 import pathlib
 import re
-from typing import Optional
+from typing import NamedTuple, Optional
 
 from .features import pretty as pretty_feature
 from .i18n import _
 from .spd import grado_jedec
-from .model import (MARGEN_DE_REDONDEO, Cache, Clocks, CpuType, Display,
+from .model import (LOGICAL_NON_VOLATILE, MARGEN_DE_REDONDEO, Cache, Clocks, CpuType, Display,
                     Edid, GpuApi, PcieLink, GpuMemory, NetworkInterface,
                     NetworkTraffic, Power, SensorKind, short_vendor,
                     thread_name)
@@ -51,6 +51,40 @@ def sensor_value(value: Optional[float], kind: SensorKind) -> str:
 
 def _none(value: object) -> bool:
     return value is None or value == ""
+
+
+# SMBIOS memory enumerations, by the specification's code (DSP0134 tables 75
+# and 78): the model keeps the code and its name is said here.
+FORM_FACTOR_KEYS = {
+    0x03: "smbios.form.simm", 0x04: "smbios.form.sip", 0x05: "smbios.form.chip",
+    0x06: "smbios.form.dip", 0x07: "smbios.form.zip", 0x08: "smbios.form.card",
+    0x09: "smbios.form.dimm", 0x0A: "smbios.form.tsop", 0x0B: "smbios.form.rowofchips",
+    0x0C: "smbios.form.rimm", 0x0D: "smbios.form.sodimm", 0x0E: "smbios.form.srimm",
+    0x0F: "smbios.form.fbdimm", 0x10: "smbios.form.die",
+}
+ERROR_CORRECTION_KEYS = {
+    0x03: "smbios.ecc.none", 0x04: "smbios.ecc.parity", 0x05: "smbios.ecc.single",
+    0x06: "smbios.ecc.multi", 0x07: "smbios.ecc.crc",
+}
+
+
+def memory_form_factor(code: Optional[int], translate=_) -> Optional[str]:
+    """A memory module's form factor by its SMBIOS code; None if unknown."""
+    clave = FORM_FACTOR_KEYS.get(code) if code is not None else None
+    return translate(clave) if clave else None
+
+
+def memory_error_correction(code: Optional[int], translate=_) -> Optional[str]:
+    """The memory's error correction by its SMBIOS code; None if unknown."""
+    clave = ERROR_CORRECTION_KEYS.get(code) if code is not None else None
+    return translate(clave) if clave else None
+
+
+def memory_type(name: Optional[str], translate=_) -> Optional[str]:
+    """A memory technology: its name, or SMBIOS 1Fh said in words."""
+    if name == LOGICAL_NON_VOLATILE:
+        return translate("smbios.type.logicalnvm")
+    return name
 
 
 def gpu_clock(value: Optional[float]) -> str:
@@ -332,16 +366,28 @@ def idle_name(nombre: str) -> str:
     return nombre[:-len("_ACPI")] if nombre.endswith("_ACPI") else nombre
 
 
-def idle_segments(estados) -> list[tuple[str, float, str]]:
+class Segment(NamedTuple):
+    """A stacked bar's segment. `key` is what it is, raw, and what the bar
+    goes by; `label` and `tooltip` are only painted."""
+
+    key: str
+    label: str
+    value: float
+    token: str
+    tooltip: str = ""
+
+
+def idle_segments(estados) -> list[Segment]:
     """Los tramos de la barra de reposo: lo activo y cada estado, sobre 100."""
     dormido = sum(e.percent for e in estados)
-    tramos = [(_("cpu.idle.active"), max(0.0, round(100.0 - dormido, 1)), "accent")]
+    tramos = [Segment("active", _("cpu.idle.active"),
+                      max(0.0, round(100.0 - dormido, 1)), "accent")]
     con_tiempo = [e for e in estados if e.percent > 0]
     for i, estado in enumerate(con_tiempo):
         # El más hondo siempre con el tono del fondo.
         tono = _TONOS_DE_REPOSO[-1] if i == len(con_tiempo) - 1 and len(con_tiempo) > 1 \
             else _TONOS_DE_REPOSO[min(i, len(_TONOS_DE_REPOSO) - 2)]
-        tramos.append((idle_name(estado.name), estado.percent, tono))
+        tramos.append(Segment(estado.name, idle_name(estado.name), estado.percent, tono))
     return tramos
 
 

@@ -377,7 +377,7 @@ class MonitorPage(ScrollPage):
                 apagada=sensor.placeholder,
             )
             if sensor.alarm_level != "ok":
-                avisos.setdefault(sensor.device, []).append(sensor.alarm_level)
+                avisos.setdefault(sensor.group, []).append(sensor.alarm_level)
 
         # El aviso tiene que llegar a la rama cerrada: con ocho aparatos y cien
         # sensores, uno en rojo dentro de una rama plegada no lo ve nadie.

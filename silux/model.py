@@ -50,6 +50,9 @@ class Note:
     # Where it was looked for (a path, a driver's register, a PMU): for the
     # report, never on screen, where a message is said in plain words.
     detail: str = ""
+    # The key of its message: what decides on a note looks at this, never at
+    # the message, which is in the interface's language.
+    key: str = ""
 
 
 # --------------------------------------------------------------------------
@@ -600,10 +603,13 @@ class System:
 MARGEN_DE_REDONDEO = 0.01
 
 
-# SMBIOS type 17 form factors of memory that is part of the board: Chip (05h),
-# Row of chips (0Bh) and Die (10h), as `privileged/smbios.FORM_FACTORS` names
-# them (tests/test_soldered_memory.py compares the two).
-SOLDERED_FORM_FACTORS = ("Chip", "Fila de chips", "Die")
+# SMBIOS type 17 form factors (DSP0134 table 75) of memory that is part of
+# the board: Chip, Row of chips and Die. Codes, as the table gives them.
+SOLDERED_FORM_FACTORS = (0x05, 0x0B, 0x10)
+FORM_FACTOR_SODIMM = 0x0D
+# SMBIOS memory type 1Fh, the only one that is not a technology's name: said
+# in the interface's language when painting (`render.memory_type`).
+LOGICAL_NON_VOLATILE = "logical-non-volatile"
 
 
 @dataclass(frozen=True, slots=True)
@@ -619,7 +625,8 @@ class MemoryModule:
     populated: bool = False
     size_bytes: int = 0
     type: Optional[str] = None               # "DDR4"
-    form_factor: Optional[str] = None        # "DIMM", "SODIMM"
+    # SMBIOS type 17 form factor code: 09h DIMM, 0Dh SODIMM, 0Bh row of chips.
+    form_factor: Optional[int] = None
     details: tuple[str, ...] = ()
     speed_mts: Optional[int] = None          # lo que el módulo puede dar
     configured_mts: Optional[int] = None     # a lo que va de verdad
@@ -689,7 +696,8 @@ class MemoryModule:
 class MemoryArray:
     slots: Optional[int] = None
     max_capacity_bytes: int = 0
-    error_correction: Optional[str] = None
+    # SMBIOS type 16 error correction code: 03h none, 05h single-bit ECC…
+    error_correction: Optional[int] = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -1685,10 +1693,23 @@ class Sensor:
     # omisión la placa, que es donde cuelga lo que no se reconoce: un Super I/O
     # que no esté en ninguna lista sigue siendo un chip de la placa.
     device_kind: str = DeviceKind.BOARD
+    # What device it is, raw ("cpu", "net:eno1", "gpu:0000:03:00.0"): the
+    # tree groups by this and remembers the user's folds by it. `device` is
+    # its name, in the interface's language, and is only painted.
+    device_key: str = ""
+    # The label the chip gives, as the kernel publishes it, or None: what
+    # decides on a label («Package id 0», «Vcore») looks at this, never at
+    # `label`, which may be one Silux made up in the interface's language.
+    chip_label: Optional[str] = None
 
     @property
     def unit(self) -> str:
         return self.unit_override or UNITS.get(self.kind, "")
+
+    @property
+    def group(self) -> str:
+        """The device the tree hangs it from: its key, or its name without one."""
+        return self.device_key or self.device
 
     @property
     def category(self) -> str:
@@ -1801,14 +1822,19 @@ class Snapshot:
         """
         tree: dict[str, dict[str, list[Sensor]]] = {}
         clases: dict[str, str] = {}
+        nombres: dict[str, str] = {}
         for sensor in self.sensors:
             if sensor.mirror_of:
                 continue                # la misma lectura por otro driver: una vez
-            tree.setdefault(sensor.device, {}).setdefault(sensor.category, []).append(sensor)
-            clases.setdefault(sensor.device, sensor.device_kind)
+            # By its raw key, not its name: names are in the interface's
+            # language, and the user's folds are kept by this.
+            tree.setdefault(sensor.group, {}).setdefault(sensor.category, []).append(sensor)
+            clases.setdefault(sensor.group, sensor.device_kind)
+            nombres.setdefault(sensor.group, sensor.device)
 
         ordered: dict[str, dict[str, tuple[Sensor, ...]]] = {}
-        for device in sorted(tree, key=lambda d: self._puesto_del_aparato(d, clases[d])):
+        # Ordered by name, which is painting: alphabetical in the reader's language.
+        for device in sorted(tree, key=lambda d: self._puesto_del_aparato(nombres[d], clases[d])):
             categories = tree[device]
             ordered[device] = {
                 # Por chip y, dentro, en su orden: una placa que publica las
@@ -1839,6 +1865,11 @@ class Snapshot:
         cadenas, porque la mitad de esos nombres se traducen.
         """
         return (DEVICE_ORDER.get(kind, DEVICE_ORDER[DeviceKind.BOARD]), device)
+
+    @staticmethod
+    def device_name(categories: dict) -> str:
+        """The name of a `sensor_tree` device, whose key is raw: its sensors'."""
+        return next(iter(categories.values()))[0].device
 
     def notes_for(self, prefix: str) -> tuple[Note, ...]:
         return tuple(n for n in self.notes if n.path.startswith(prefix))
@@ -1972,7 +2003,7 @@ _COMPUTED: dict[str, tuple[str, ...]] = {
     "Disk": ("display_name", "used_bytes", "mounted_partitions"),
     "CpuInfo": ("total_cores", "total_threads", "package_power_w", "temperature_c",
                 "cores_temp_c", "in_virtual_machine"),
-    "Sensor": ("heat", "unit", "category", "alarm", "alarm_level"),
+    "Sensor": ("heat", "unit", "group", "category", "alarm", "alarm_level"),
     "Board": ("display_name",),
     "MemoryModule": ("has_ecc", "underclocked", "rated_mts", "in_a_slot"),
     "SpdInfo": ("rated_mts",),

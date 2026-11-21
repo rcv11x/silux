@@ -33,8 +33,8 @@ class TestTheReservedSpaceExplainsItself(unittest.TestCase):
                          {_("storage.bar.reserved"): _("storage.bar.reserved.tip")})
         # And over the bar, the segment under the pointer.
         x = next(x for x in range(barra.width())
-                 if barra._tramo_en(x) == _("storage.bar.reserved"))
-        self.assertEqual(barra._ayudas[barra._tramo_en(x)], _("storage.bar.reserved.tip"))
+                 if (tramo := barra._tramo_en(x)) and tramo.key == "reserved")
+        self.assertEqual(barra._tramo_en(x).tooltip, _("storage.bar.reserved.tip"))
 
     def test_in_storage(self):
         with pantalla.Ventana(self.photo) as ventana:

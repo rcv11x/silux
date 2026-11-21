@@ -88,9 +88,9 @@ class Draft:
         return self.gpus[index]
 
     def note(self, path: str, need: Need, message: str, hint: str = "",
-             what: str = "", detail: str = "") -> None:
+             what: str = "", detail: str = "", key: str = "") -> None:
         self.notes.append(Note(path=path, need=need, message=message, hint=hint,
-                               what=what, detail=detail))
+                               what=what, detail=detail, key=key))
 
     def resolve(self, path: str) -> None:
         """Retira las notas de un dato que otro proveedor sí ha conseguido.

@@ -91,9 +91,10 @@ class TestLaResidencia(unittest.TestCase):
         estados = (IdleState("POLL", None, 0.0, 0.0, 0.0), IdleState("C1", None, 16.0, 10.0, 25.0),
                    IdleState("C2", None, 63.0, 45.0, 73.0))
         tramos = render.idle_segments(estados)
-        self.assertEqual([(n, v) for n, v, _tono in tramos],
-                         [(_("cpu.idle.active"), 21.0), ("C1", 16.0), ("C2", 63.0)])
-        self.assertAlmostEqual(sum(v for _n, v, _t in tramos), 100.0)
+        self.assertEqual([(s.key, s.label, s.value) for s in tramos],
+                         [("active", _("cpu.idle.active"), 21.0), ("C1", "C1", 16.0),
+                          ("C2", "C2", 63.0)])
+        self.assertAlmostEqual(sum(s.value for s in tramos), 100.0)
         self.assertEqual(render.idle_deepest(estados),
                          "C2 es el reposo más hondo de este procesador: entre el 45 % y el "
                          "73 % del tiempo, según el hilo.")
@@ -108,7 +109,7 @@ class TestLaResidencia(unittest.TestCase):
         estados = (IdleState("POLL", "CPUIDLE CORE POLL IDLE", 0.0, 0.0, 0.0),
                    IdleState("C1_ACPI", "ACPI FFH MWAIT 0x0", 3.0, 1.0, 5.0),
                    IdleState("C2_ACPI", "ACPI FFH MWAIT 0x33", 94.0, 66.0, 100.0))
-        self.assertEqual([n for n, _v, _t in render.idle_segments(estados)],
+        self.assertEqual([s.label for s in render.idle_segments(estados)],
                          [_("cpu.idle.active"), "C1", "C2"])
         # And they are said to be the board's, not this processor's.
         self.assertEqual(render.idle_deepest(estados),
