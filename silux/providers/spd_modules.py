@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import dataclasses
 
+from .. import render
 from .. import spd as spd_module
 from ..i18n import _
 from ..model import Need
@@ -53,7 +54,7 @@ class SpdModules(Provider):
             draft.note(
                 "spd", Need.PLATFORM,
                 _("prov.spd.unsupported").format(
-                    tipos=" y ".join(sorted(kinds))
+                    tipos=render.enumeration(sorted(kinds))
                           or _("prov.spd.thesemodules")),
                 _("prov.spd.unsupported.hint"),
             )
