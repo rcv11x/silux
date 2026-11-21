@@ -83,7 +83,7 @@ class TestLaRaizAlternativaNoSeSaleDeElla(unittest.TestCase):
         preguntas = []
         with mock.patch.object(rawcpuid.CpuidReader, "__call__",
                                lambda self, *a: preguntas.append(a) or (0, 0, 0, 0)), \
-             mock.patch.object(gpuapi, "consultar",
+             mock.patch.object(gpuapi, "query",
                                lambda: preguntas.append("gpuapi") or {}):
             recolector = Collector()
             try:

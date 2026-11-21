@@ -164,8 +164,8 @@ class TestNvidia(_Pagina, unittest.TestCase):
             return nvml.NVML_SUCCESS
 
         sesion = nvml.Nvml()
-        with mock.patch.object(sesion, "_sim", lambda *nombres: funcion):
-            self.assertEqual(sesion._utilizacion("nvmlDeviceGetEncoderUtilization", None), 25.0)
+        with mock.patch.object(sesion, "_symbol", lambda *nombres: funcion):
+            self.assertEqual(sesion._utilization("nvmlDeviceGetEncoderUtilization", None), 25.0)
         self.assertEqual(len(recibido[0]), 2)
 
 

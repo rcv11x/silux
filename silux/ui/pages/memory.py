@@ -398,7 +398,7 @@ class MemoryPage(ScrollPage):
             # Fuera del hilo de la interfaz: son cien milisegundos, pero el
             # hijo tiene un minuto de plazo y si algo va mal se comería la
             # ventana entera.
-            self._bw_listo.emit(membench.consultar(cache, niveles))
+            self._bw_listo.emit(membench.query(cache, niveles))
 
         self._bw_hilo = threading.Thread(target=trabajo, daemon=True)
         self._bw_hilo.start()
@@ -411,8 +411,8 @@ class MemoryPage(ScrollPage):
         self.bw_note.setVisible(True)
 
         self._pintar_latencias(resultado)
-        self.latencies_measured.emit({l.nivel: l.nanoseconds for l in resultado.latencias})
-        por_donde = {m.donde: m for m in resultado.medidas}
+        self.latencies_measured.emit({l.level: l.nanoseconds for l in resultado.latencies})
+        por_donde = {m.where: m for m in resultado.measurements}
         teorico = render.memory_theoretical_bandwidth(self._bw_modulos)
         techo = por_donde.get("techo")
 
@@ -421,7 +421,7 @@ class MemoryPage(ScrollPage):
             motivos = {"sin_memoria": "memory.bw.nomem",
                        "cache_enorme": "memory.bw.hugecache"}
             self.bw_grid.set(_("memory.bw.ram"), render.DASH)
-            self.bw_note.setText(_(motivos.get(resultado.motivo,
+            self.bw_note.setText(_(motivos.get(resultado.reason,
                                                "memory.bw.failed")))
         else:
             parte = render.memory_bandwidth_share(ram.bandwidth_bytes, teorico)
@@ -448,7 +448,7 @@ class MemoryPage(ScrollPage):
         Los que no se hayan podido medir se esconden en vez de salir con un
         guion: en un procesador sin L3 no falta el dato, es que no hay nivel.
         """
-        por_nivel = {l.nivel: l for l in resultado.latencias}
+        por_nivel = {l.level: l for l in resultado.latencies}
         hay = bool(por_nivel)
         self.lat_title.setVisible(hay)
         self.lat_grid.setVisible(hay)
@@ -461,7 +461,7 @@ class MemoryPage(ScrollPage):
         motivos = {"cadena_enorme": "memory.lat.partial",
                    "no_x86": "memory.lat.nox86",
                    "sin_ejecutable": "memory.lat.noexec"}
-        clave = motivos.get(resultado.motivo_latencias)
+        clave = motivos.get(resultado.latency_reason)
         texto = _(clave) if clave else (_("memory.lat.note") if hay else "")
         self.lat_note.setText(texto)
         self.lat_note.setVisible(bool(texto))

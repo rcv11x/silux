@@ -327,7 +327,7 @@ def _sin_despertar(dormidas: _Dormidas | None):
         (builtins, "open"): guardar(builtins.open),
         (io, "open"): guardar(io.open),
         (os, "open"): guardar(os.open),
-        (gpuapi, "consultar"): lambda *a, **k: {},
+        (gpuapi, "query"): lambda *a, **k: {},
     }
     if dormidas.nvidia:
         parches[(nvml.Nvml, "open")] = lambda self: False

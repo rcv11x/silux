@@ -38,7 +38,7 @@ def _recolectar(gpus, vulkan=(), opencl=(), opengl=None) -> Draft:
     for indice, campos in enumerate(gpus):
         draft.gpu(indice).update(campos)
     respuesta = {"vulkan": list(vulkan), "opencl": list(opencl), "opengl": opengl}
-    with mock.patch.object(gpu_apis.gpuapi, "consultar", lambda: respuesta):
+    with mock.patch.object(gpu_apis.gpuapi, "query", lambda: respuesta):
         gpu_apis.GpuApis().collect(draft)
     return draft
 
@@ -164,7 +164,7 @@ class TestCuandoFalta(unittest.TestCase):
 
         draft = Draft()
         draft.gpu(0).update({"vendor_id": 0x1002, "device_id": 0x7550})
-        with mock.patch.object(gpu_apis.gpuapi, "consultar", revienta):
+        with mock.patch.object(gpu_apis.gpuapi, "query", revienta):
             gpu_apis.GpuApis().collect(draft)
         self.assertEqual([n.path for n in draft.notes], ["gpus.apis"])
 
@@ -194,7 +194,7 @@ class TestConsultaEnOtroProceso(unittest.TestCase):
     def test_lee_el_json_del_hijo(self):
         salida = json.dumps({"vulkan": [VULKAN_AMD], "opencl": [], "opengl": OPENGL})
         with self._con_subproceso(returncode=0, stdout=salida.encode()):
-            leido = gpuapi.consultar()
+            leido = gpuapi.query()
         self.assertEqual(leido["vulkan"][0]["device_id"], 0x7550)
         self.assertEqual(leido["opengl"]["glsl"], "4.60")
 
@@ -202,29 +202,29 @@ class TestConsultaEnOtroProceso(unittest.TestCase):
         # Justo lo que pasa cuando un driver roto revienta: antes se llevaba
         # por delante el proceso entero.
         with self._con_subproceso(returncode=-11, stdout=b""):
-            self.assertEqual(gpuapi.consultar(), self.VACIO)
+            self.assertEqual(gpuapi.query(), self.VACIO)
 
     def test_una_salida_que_no_es_json(self):
         with self._con_subproceso(returncode=0, stdout=b"Segmentation fault"):
-            self.assertEqual(gpuapi.consultar(), self.VACIO)
+            self.assertEqual(gpuapi.query(), self.VACIO)
 
     def test_json_que_no_es_un_diccionario(self):
         with self._con_subproceso(returncode=0, stdout=b"[1, 2, 3]"):
-            self.assertEqual(gpuapi.consultar(), self.VACIO)
+            self.assertEqual(gpuapi.query(), self.VACIO)
 
     def test_un_driver_colgado_no_cuelga_el_muestreo(self):
         def se_atasca(*args, **kwargs):
-            raise subprocess.TimeoutExpired(cmd="silux.gpuapi", timeout=gpuapi.TIEMPO_MAXIMO)
+            raise subprocess.TimeoutExpired(cmd="silux.gpuapi", timeout=gpuapi.TIMEOUT_S)
 
         with mock.patch.object(subprocess, "run", se_atasca):
-            self.assertEqual(gpuapi.consultar(), self.VACIO)
+            self.assertEqual(gpuapi.query(), self.VACIO)
 
     def test_sin_interprete_que_lanzar(self):
         def no_existe(*args, **kwargs):
             raise OSError("no such file")
 
         with mock.patch.object(subprocess, "run", no_existe):
-            self.assertEqual(gpuapi.consultar(), self.VACIO)
+            self.assertEqual(gpuapi.query(), self.VACIO)
 
     def test_el_hijo_encuentra_el_paquete(self):
         capturado = {}
@@ -235,7 +235,7 @@ class TestConsultaEnOtroProceso(unittest.TestCase):
             return mock.Mock(returncode=0, stdout=b"{}")
 
         with mock.patch.object(subprocess, "run", espia):
-            gpuapi.consultar()
+            gpuapi.query()
         self.assertEqual(capturado["orden"][1:], ["-m", "silux.gpuapi"])
         self.assertIn("PYTHONPATH", capturado["env"])
 

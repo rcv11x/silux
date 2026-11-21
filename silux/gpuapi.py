@@ -39,7 +39,7 @@ from typing import Any, Iterator, Optional
 
 # Margen de sobra: cargar los drivers de las tres es lo lento, y cuando algo se
 # atasca de verdad es que el driver está colgado y no va a contestar nunca.
-TIEMPO_MAXIMO = 20
+TIMEOUT_S = 20
 
 # Las bibliotecas, en el orden en que suelen llamarse los enlaces.
 LIB_VULKAN = ("libvulkan.so.1", "libvulkan.so")
@@ -54,17 +54,17 @@ class ApiError(RuntimeError):
     """No se pudo preguntar. Nunca sale del módulo: aquí se traduce a None."""
 
 
-def _cargar(nombres: tuple[str, ...]) -> Optional[ctypes.CDLL]:
-    for nombre in nombres:
+def _load(names: tuple[str, ...]) -> Optional[ctypes.CDLL]:
+    for name in names:
         try:
-            return ctypes.CDLL(nombre)
+            return ctypes.CDLL(name)
         except OSError:
             continue
     return None
 
 
 @contextlib.contextmanager
-def _sin_ruido() -> Iterator[None]:
+def _silenced() -> Iterator[None]:
     """Tapa el descriptor 2 mientras se pregunta.
 
     Los drivers de Mesa escriben avisos por su cuenta al cargarse (que RADV no
@@ -72,18 +72,18 @@ def _sin_ruido() -> Iterator[None]:
     que se callen. Sin esto, un `silux --json` deja de ser JSON.
     """
     try:
-        copia = os.dup(2)
-        nulo = os.open(os.devnull, os.O_WRONLY)
+        saved = os.dup(2)
+        devnull = os.open(os.devnull, os.O_WRONLY)
     except OSError:
         yield
         return
     try:
-        os.dup2(nulo, 2)
+        os.dup2(devnull, 2)
         yield
     finally:
-        os.dup2(copia, 2)
-        os.close(nulo)
-        os.close(copia)
+        os.dup2(saved, 2)
+        os.close(devnull)
+        os.close(saved)
 
 
 @contextlib.contextmanager
@@ -150,9 +150,9 @@ def vulkan_icds() -> list[str]:
 _VULKAN_SAID: list[str] = []
 
 
-def _version(empaquetada: int) -> str:
+def _version(packed: int) -> str:
     """Vulkan mete la versión en 32 bits: 7 de mayor, 10 de menor, 12 de parche."""
-    return f"{(empaquetada >> 22) & 0x7F}.{(empaquetada >> 12) & 0x3FF}.{empaquetada & 0xFFF}"
+    return f"{(packed >> 22) & 0x7F}.{(packed >> 12) & 0x3FF}.{packed & 0xFFF}"
 
 
 # -- Vulkan ------------------------------------------------------------------
@@ -224,7 +224,7 @@ class _VkMemoryProps(ctypes.Structure):
 # sistema. Es el bit que distingue la VRAM de la memoria compartida.
 VK_MEMORY_HEAP_DEVICE_LOCAL_BIT = 0x1
 
-VK_TIPOS = {1: "integrada", 2: "dedicada", 3: "virtual", 4: "CPU"}
+VK_KINDS = {1: "integrada", 2: "dedicada", 3: "virtual", 4: "CPU"}
 
 VK_STRUCTURE_TYPE_APPLICATION_INFO = 0
 VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO = 1
@@ -235,52 +235,52 @@ VK_API_1_0 = 1 << 22
 
 def vulkan() -> list[dict]:
     """Las tarjetas que ve Vulkan, con su versión de API y su nombre real."""
-    lib = _cargar(LIB_VULKAN)
+    lib = _load(LIB_VULKAN)
     if lib is None:
         return []
 
     with _capturing(_VULKAN_SAID):
-        instancia_ver = ctypes.c_uint32(VK_API_1_0)
+        instance_version = ctypes.c_uint32(VK_API_1_0)
         with contextlib.suppress(AttributeError):
-            lib.vkEnumerateInstanceVersion(ctypes.byref(instancia_ver))
+            lib.vkEnumerateInstanceVersion(ctypes.byref(instance_version))
 
         app = _VkAppInfo(VK_STRUCTURE_TYPE_APPLICATION_INFO, None, b"silux", 0,
                          None, 0, VK_API_1_0)
         info = _VkInstanceInfo(VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO, None, 0,
                                ctypes.pointer(app), 0, None, 0, None)
-        instancia = ctypes.c_void_p()
-        if lib.vkCreateInstance(ctypes.byref(info), None, ctypes.byref(instancia)) != 0:
+        instance = ctypes.c_void_p()
+        if lib.vkCreateInstance(ctypes.byref(info), None, ctypes.byref(instance)) != 0:
             return []
 
         try:
-            cuantas = ctypes.c_uint32()
-            if lib.vkEnumeratePhysicalDevices(instancia, ctypes.byref(cuantas), None) != 0:
+            count = ctypes.c_uint32()
+            if lib.vkEnumeratePhysicalDevices(instance, ctypes.byref(count), None) != 0:
                 return []
-            if not cuantas.value:
+            if not count.value:
                 return []
-            dispositivos = (ctypes.c_void_p * cuantas.value)()
-            lib.vkEnumeratePhysicalDevices(instancia, ctypes.byref(cuantas), dispositivos)
+            devices = (ctypes.c_void_p * count.value)()
+            lib.vkEnumeratePhysicalDevices(instance, ctypes.byref(count), devices)
 
-            encontradas = []
-            for handle in dispositivos:
+            found = []
+            for handle in devices:
                 props = _VkProps()
                 lib.vkGetPhysicalDeviceProperties(ctypes.c_void_p(handle), ctypes.byref(props))
-                encontradas.append({
+                found.append({
                     "name": props.deviceName.decode("utf-8", "replace") or None,
                     "api_version": _version(props.apiVersion),
-                    "instance_version": _version(instancia_ver.value),
+                    "instance_version": _version(instance_version.value),
                     "driver_version": props.driverVersion,
                     "vendor_id": props.vendorID,
                     "device_id": props.deviceID,
-                    "kind": VK_TIPOS.get(props.deviceType),
-                    "device_memory_bytes": _vk_memoria(lib, handle),
+                    "kind": VK_KINDS.get(props.deviceType),
+                    "device_memory_bytes": _vk_device_memory(lib, handle),
                 })
-            return encontradas
+            return found
         finally:
-            lib.vkDestroyInstance(instancia, None)
+            lib.vkDestroyInstance(instance, None)
 
 
-def _vk_memoria(lib, handle) -> Optional[int]:
+def _vk_device_memory(lib, handle) -> Optional[int]:
     """La memoria que la tarjeta lleva encima, sumando sus montones propios.
 
     Solo cuentan los marcados como locales del dispositivo: los demás son
@@ -313,68 +313,68 @@ CL_DRIVER_VERSION = 0x102D
 CL_DEVICE_VERSION = 0x102F
 
 
-def _cl_texto(fn, objeto, codigo: int) -> Optional[str]:
-    tamano = ctypes.c_size_t()
-    if fn(objeto, codigo, 0, None, ctypes.byref(tamano)) != 0 or not tamano.value:
+def _cl_text(fn, obj, code: int) -> Optional[str]:
+    size = ctypes.c_size_t()
+    if fn(obj, code, 0, None, ctypes.byref(size)) != 0 or not size.value:
         return None
-    buffer = ctypes.create_string_buffer(tamano.value)
-    if fn(objeto, codigo, tamano.value, buffer, None) != 0:
+    buffer = ctypes.create_string_buffer(size.value)
+    if fn(obj, code, size.value, buffer, None) != 0:
         return None
     return buffer.value.decode("utf-8", "replace").strip() or None
 
 
-def _cl_numero(fn, objeto, codigo: int, tipo) -> Optional[int]:
-    valor = tipo()
-    if fn(objeto, codigo, ctypes.sizeof(tipo), ctypes.byref(valor), None) != 0:
+def _cl_number(fn, obj, code: int, ctype) -> Optional[int]:
+    value = ctype()
+    if fn(obj, code, ctypes.sizeof(ctype), ctypes.byref(value), None) != 0:
         return None
-    return valor.value
+    return value.value
 
 
 def opencl() -> list[dict]:
     """Los dispositivos de cómputo, con sus unidades y su versión de OpenCL."""
-    lib = _cargar(LIB_OPENCL)
+    lib = _load(LIB_OPENCL)
     if lib is None:
         return []
 
-    with _sin_ruido():
-        cuantas = ctypes.c_uint32()
-        if lib.clGetPlatformIDs(0, None, ctypes.byref(cuantas)) != 0 or not cuantas.value:
+    with _silenced():
+        count = ctypes.c_uint32()
+        if lib.clGetPlatformIDs(0, None, ctypes.byref(count)) != 0 or not count.value:
             return []
-        plataformas = (ctypes.c_void_p * cuantas.value)()
-        lib.clGetPlatformIDs(cuantas.value, plataformas, None)
+        platforms = (ctypes.c_void_p * count.value)()
+        lib.clGetPlatformIDs(count.value, platforms, None)
 
-        encontrados = []
-        for plataforma in plataformas:
-            handle = ctypes.c_void_p(plataforma)
-            nombre_plataforma = _cl_texto(lib.clGetPlatformInfo, handle, CL_PLATFORM_NAME)
+        found = []
+        for platform in platforms:
+            handle = ctypes.c_void_p(platform)
+            platform_name = _cl_text(lib.clGetPlatformInfo, handle, CL_PLATFORM_NAME)
 
-            cuantos = ctypes.c_uint32()
+            device_count = ctypes.c_uint32()
             if lib.clGetDeviceIDs(handle, ctypes.c_uint64(CL_DEVICE_TYPE_ALL), 0, None,
-                                  ctypes.byref(cuantos)) != 0 or not cuantos.value:
+                                  ctypes.byref(device_count)) != 0 or not device_count.value:
                 continue
-            dispositivos = (ctypes.c_void_p * cuantos.value)()
+            devices = (ctypes.c_void_p * device_count.value)()
             lib.clGetDeviceIDs(handle, ctypes.c_uint64(CL_DEVICE_TYPE_ALL),
-                               cuantos.value, dispositivos, None)
+                               device_count.value, devices, None)
 
-            for dispositivo in dispositivos:
-                d = ctypes.c_void_p(dispositivo)
+            for device in devices:
+                d = ctypes.c_void_p(device)
                 info = lib.clGetDeviceInfo
-                encontrados.append({
-                    "platform": nombre_plataforma,
-                    "platform_version": _cl_texto(lib.clGetPlatformInfo, handle,
+                found.append({
+                    "platform": platform_name,
+                    "platform_version": _cl_text(lib.clGetPlatformInfo, handle,
                                                   CL_PLATFORM_VERSION),
-                    "name": _cl_texto(info, d, CL_DEVICE_NAME),
-                    "vendor": _cl_texto(info, d, CL_DEVICE_VENDOR),
-                    "version": _cl_texto(info, d, CL_DEVICE_VERSION),
-                    "driver_version": _cl_texto(info, d, CL_DRIVER_VERSION),
-                    "compute_units": _cl_numero(info, d, CL_DEVICE_MAX_COMPUTE_UNITS,
+                    "name": _cl_text(info, d, CL_DEVICE_NAME),
+                    "vendor": _cl_text(info, d, CL_DEVICE_VENDOR),
+                    "version": _cl_text(info, d, CL_DEVICE_VERSION),
+                    "driver_version": _cl_text(info, d, CL_DRIVER_VERSION),
+                    "compute_units": _cl_number(info, d, CL_DEVICE_MAX_COMPUTE_UNITS,
                                                 ctypes.c_uint32),
-                    "max_clock_mhz": _cl_numero(info, d, CL_DEVICE_MAX_CLOCK_FREQUENCY,
+                    "max_clock_mhz": _cl_number(info, d, CL_DEVICE_MAX_CLOCK_FREQUENCY,
                                                 ctypes.c_uint32),
-                    "global_memory_bytes": _cl_numero(info, d, CL_DEVICE_GLOBAL_MEM_SIZE,
+                    "global_memory_bytes": _cl_number(info, d, CL_DEVICE_GLOBAL_MEM_SIZE,
                                                       ctypes.c_uint64),
                 })
-        return encontrados
+        return found
 
 
 # -- OpenGL ------------------------------------------------------------------
@@ -397,8 +397,8 @@ def opengl() -> Optional[dict]:
     una ventana. EGL permite uno «sin superficie», que es justo lo que se
     necesita: crear, preguntar cuatro cadenas y cerrarlo.
     """
-    egl = _cargar(LIB_EGL)
-    gl = _cargar(LIB_GL)
+    egl = _load(LIB_EGL)
+    gl = _load(LIB_GL)
     if egl is None or gl is None:
         return None
 
@@ -412,54 +412,54 @@ def opengl() -> Optional[dict]:
     gl.glGetString.restype = ctypes.c_char_p
     gl.glGetString.argtypes = [ctypes.c_uint32]
 
-    with _sin_ruido():
-        pantalla = egl.eglGetPlatformDisplay(EGL_PLATFORM_SURFACELESS_MESA, None, None)
-        if not pantalla:
+    with _silenced():
+        egl_display = egl.eglGetPlatformDisplay(EGL_PLATFORM_SURFACELESS_MESA, None, None)
+        if not egl_display:
             return None
-        pantalla = ctypes.c_void_p(pantalla)
-        mayor, menor = ctypes.c_int(), ctypes.c_int()
-        if not egl.eglInitialize(pantalla, ctypes.byref(mayor), ctypes.byref(menor)):
+        egl_display = ctypes.c_void_p(egl_display)
+        major, minor = ctypes.c_int(), ctypes.c_int()
+        if not egl.eglInitialize(egl_display, ctypes.byref(major), ctypes.byref(minor)):
             return None
 
-        contexto = None
+        context = None
         try:
             if not egl.eglBindAPI(EGL_OPENGL_API):
                 return None
-            configuraciones = (ctypes.c_void_p * 1)()
-            cuantas = ctypes.c_int()
-            atributos = (ctypes.c_int * 5)(EGL_SURFACE_TYPE, EGL_PBUFFER_BIT,
+            configs = (ctypes.c_void_p * 1)()
+            count = ctypes.c_int()
+            attributes = (ctypes.c_int * 5)(EGL_SURFACE_TYPE, EGL_PBUFFER_BIT,
                                            EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT, EGL_NONE)
-            if not egl.eglChooseConfig(pantalla, atributos, configuraciones, 1,
-                                       ctypes.byref(cuantas)) or not cuantas.value:
+            if not egl.eglChooseConfig(egl_display, attributes, configs, 1,
+                                       ctypes.byref(count)) or not count.value:
                 return None
 
-            contexto = egl.eglCreateContext(pantalla, configuraciones[0], None, None)
-            if not contexto:
+            context = egl.eglCreateContext(egl_display, configs[0], None, None)
+            if not context:
                 return None
-            contexto = ctypes.c_void_p(contexto)
-            if not egl.eglMakeCurrent(pantalla, None, None, contexto):
+            context = ctypes.c_void_p(context)
+            if not egl.eglMakeCurrent(egl_display, None, None, context):
                 return None
 
-            texto = lambda codigo: (
-                (gl.glGetString(codigo) or b"").decode("utf-8", "replace").strip() or None
+            text = lambda code: (
+                (gl.glGetString(code) or b"").decode("utf-8", "replace").strip() or None
             )
             return {
-                "version": texto(GL_VERSION),
-                "renderer": texto(GL_RENDERER),
-                "vendor": texto(GL_VENDOR),
-                "glsl": texto(GL_SHADING_LANGUAGE_VERSION),
-                "egl_version": f"{mayor.value}.{menor.value}",
-                "egl_vendor": (egl.eglQueryString(pantalla, EGL_VENDOR) or b"").decode(
+                "version": text(GL_VERSION),
+                "renderer": text(GL_RENDERER),
+                "vendor": text(GL_VENDOR),
+                "glsl": text(GL_SHADING_LANGUAGE_VERSION),
+                "egl_version": f"{major.value}.{minor.value}",
+                "egl_vendor": (egl.eglQueryString(egl_display, EGL_VENDOR) or b"").decode(
                     "utf-8", "replace") or None,
             }
         finally:
             # Soltar el contexto antes de cerrar: si se queda activo, la
             # siguiente biblioteca gráfica de este proceso se lo encuentra puesto.
             with contextlib.suppress(Exception):
-                egl.eglMakeCurrent(pantalla, None, None, None)
-                if contexto:
-                    egl.eglDestroyContext(pantalla, contexto)
-                egl.eglTerminate(pantalla)
+                egl.eglMakeCurrent(egl_display, None, None, None)
+                if context:
+                    egl.eglDestroyContext(egl_display, context)
+                egl.eglTerminate(egl_display)
 
 
 # -- VA-API: qué códecs acelera la tarjeta -----------------------------------
@@ -472,7 +472,7 @@ def opengl() -> Optional[dict]:
 
 # Perfiles de VA-API, agrupados por códec. El número es el valor del enum de
 # `va.h` y no se puede deducir del nombre, así que va escrito.
-VA_PERFILES: dict[int, tuple[str, str, Optional[int]]] = {
+VA_PROFILES: dict[int, tuple[str, str, Optional[int]]] = {
     0:  ("MPEG-2", "Simple", 8),
     1:  ("MPEG-2", "Main", 8),
     2:  ("MPEG-4", "Simple", 8),
@@ -515,20 +515,20 @@ VA_PERFILES: dict[int, tuple[str, str, Optional[int]]] = {
 
 # Qué significa cada punto de entrada. Los que no están aquí —postproceso,
 # estadísticas, contenido protegido— no son ni decodificar ni codificar.
-VA_DECODIFICA = frozenset({1})                    # VLD
-VA_CODIFICA = frozenset({6, 7, 8, 11})            # EncSlice, EncPicture, LP, FEI
+VA_DECODE = frozenset({1})                    # VLD
+VA_ENCODE = frozenset({6, 7, 8, 11})            # EncSlice, EncPicture, LP, FEI
 
 # El orden en que se enseñan: primero lo que la gente busca.
-VA_ORDEN = ("AV1", "VVC", "HEVC", "H.264", "VP9", "VP8", "MPEG-2", "MPEG-4",
+VA_ORDER = ("AV1", "VVC", "HEVC", "H.264", "VP9", "VP8", "MPEG-2", "MPEG-4",
             "VC-1", "H.263", "JPEG")
 
 
-def _nodos_de_render() -> list[str]:
+def _render_nodes() -> list[str]:
     try:
-        entradas = sorted(os.listdir("/dev/dri"))
+        entries = sorted(os.listdir("/dev/dri"))
     except OSError:
         return []
-    return [f"/dev/dri/{n}" for n in entradas if n.startswith("renderD")]
+    return [f"/dev/dri/{n}" for n in entries if n.startswith("renderD")]
 
 
 def vaapi() -> list[dict]:
@@ -538,8 +538,8 @@ def vaapi() -> list[dict]:
     una tarjeta concreta y no hay que adivinar de cuál habla, que es el
     problema que tienen OpenGL y OpenCL en un portátil híbrido.
     """
-    lib = _cargar(LIB_VA)
-    drm = _cargar(LIB_VA_DRM)
+    lib = _load(LIB_VA)
+    drm = _load(LIB_VA_DRM)
     if lib is None or drm is None:
         return []
 
@@ -561,98 +561,98 @@ def vaapi() -> list[dict]:
         ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ctypes.c_int),
         ctypes.POINTER(ctypes.c_int)]
 
-    salida = []
-    for ruta in _nodos_de_render():
-        datos = _vaapi_de(lib, drm, ruta)
-        if datos is not None:
-            salida.append(datos)
-    return salida
+    found = []
+    for path in _render_nodes():
+        data = _vaapi_of(lib, drm, path)
+        if data is not None:
+            found.append(data)
+    return found
 
 
-def _vaapi_de(lib, drm, ruta: str) -> Optional[dict]:
+def _vaapi_of(lib, drm, path: str) -> Optional[dict]:
     """Abre un nodo de render, pregunta y lo cierra todo pase lo que pase."""
     try:
-        descriptor = os.open(ruta, os.O_RDWR)
+        fd = os.open(path, os.O_RDWR)
     except OSError:
         return None                      # sin permiso sobre el nodo, o no está
 
     display = None
     try:
-        with _sin_ruido():
-            display = drm.vaGetDisplayDRM(descriptor)
+        with _silenced():
+            display = drm.vaGetDisplayDRM(fd)
             if not display:
                 return None
-            mayor, menor = ctypes.c_int(), ctypes.c_int()
-            if lib.vaInitialize(display, ctypes.byref(mayor),
-                                ctypes.byref(menor)) != 0:
+            major, minor = ctypes.c_int(), ctypes.c_int()
+            if lib.vaInitialize(display, ctypes.byref(major),
+                                ctypes.byref(minor)) != 0:
                 return None
 
-            fabricante = lib.vaQueryVendorString(display)
+            vendor = lib.vaQueryVendorString(display)
             codecs = _va_codecs(lib, display)
         if not codecs:
             return None
         return {
-            "node": os.path.basename(ruta),
-            "version": f"{mayor.value}.{menor.value}",
-            "driver": (fabricante or b"").decode("utf-8", "replace").strip() or None,
+            "node": os.path.basename(path),
+            "version": f"{major.value}.{minor.value}",
+            "driver": (vendor or b"").decode("utf-8", "replace").strip() or None,
             "codecs": codecs,
         }
     except (OSError, AttributeError, ValueError):
         return None
     finally:
         if display:
-            with _sin_ruido():
+            with _silenced():
                 lib.vaTerminate(display)
-        os.close(descriptor)
+        os.close(fd)
 
 
 def _va_codecs(lib, display) -> list[dict]:
     """Recorre los perfiles y agrupa por códec lo que sabe hacer cada uno."""
-    tope = lib.vaMaxNumProfiles(display)
-    if tope <= 0:
+    max_profiles = lib.vaMaxNumProfiles(display)
+    if max_profiles <= 0:
         return []
-    perfiles = (ctypes.c_int * tope)()
-    cuantos = ctypes.c_int()
-    if lib.vaQueryConfigProfiles(display, perfiles,
-                                 ctypes.byref(cuantos)) != 0:
+    profiles = (ctypes.c_int * max_profiles)()
+    profile_count = ctypes.c_int()
+    if lib.vaQueryConfigProfiles(display, profiles,
+                                 ctypes.byref(profile_count)) != 0:
         return []
 
-    tope_e = max(lib.vaMaxNumEntrypoints(display), 1)
-    puntos = (ctypes.c_int * tope_e)()
-    agrupado: dict[str, dict] = {}
+    max_entrypoints = max(lib.vaMaxNumEntrypoints(display), 1)
+    entrypoint_buffer = (ctypes.c_int * max_entrypoints)()
+    by_codec: dict[str, dict] = {}
 
-    for indice in range(min(cuantos.value, tope)):
-        conocido = VA_PERFILES.get(perfiles[indice])
-        if conocido is None:
+    for index in range(min(profile_count.value, max_profiles)):
+        known = VA_PROFILES.get(profiles[index])
+        if known is None:
             continue                     # perfil nuevo que aún no está en la tabla
-        codec, perfil, bits = conocido
-        cuantos_e = ctypes.c_int()
-        if lib.vaQueryConfigEntrypoints(display, perfiles[indice], puntos,
-                                        ctypes.byref(cuantos_e)) != 0:
+        codec, profile, bits = known
+        entrypoint_count = ctypes.c_int()
+        if lib.vaQueryConfigEntrypoints(display, profiles[index], entrypoint_buffer,
+                                        ctypes.byref(entrypoint_count)) != 0:
             continue
-        entradas = {puntos[i] for i in range(min(cuantos_e.value, tope_e))}
-        decodifica = bool(entradas & VA_DECODIFICA)
-        codifica = bool(entradas & VA_CODIFICA)
-        if not (decodifica or codifica):
+        entrypoints = {entrypoint_buffer[i] for i in range(min(entrypoint_count.value, max_entrypoints))}
+        decodes = bool(entrypoints & VA_DECODE)
+        encodes = bool(entrypoints & VA_ENCODE)
+        if not (decodes or encodes):
             continue
 
-        entrada = agrupado.setdefault(codec, {"name": codec, "decode": False,
+        codec_entry = by_codec.setdefault(codec, {"name": codec, "decode": False,
                                               "encode": False, "bits": None,
                                               "profiles": []})
-        entrada["decode"] = entrada["decode"] or decodifica
-        entrada["encode"] = entrada["encode"] or codifica
+        codec_entry["decode"] = codec_entry["decode"] or decodes
+        codec_entry["encode"] = codec_entry["encode"] or encodes
         if bits is not None:
-            entrada["bits"] = max(entrada["bits"] or 0, bits)
-        entrada["profiles"].append(perfil)
+            codec_entry["bits"] = max(codec_entry["bits"] or 0, bits)
+        codec_entry["profiles"].append(profile)
 
-    orden = {nombre: i for i, nombre in enumerate(VA_ORDEN)}
-    return sorted(agrupado.values(),
-                  key=lambda c: (orden.get(c["name"], len(orden)), c["name"]))
+    order = {name: i for i, name in enumerate(VA_ORDER)}
+    return sorted(by_codec.values(),
+                  key=lambda c: (order.get(c["name"], len(order)), c["name"]))
 
 
 # -- las tres a la vez, en un proceso que se tira después ---------------------
 
-def en_este_proceso() -> dict[str, Any]:
+def in_this_process() -> dict[str, Any]:
     """Pregunta a las tres aquí mismo. Es lo que ejecuta el proceso hijo."""
     found = {"vulkan": vulkan(), "opencl": opencl(), "opengl": opengl(),
              "vaapi": vaapi()}
@@ -661,43 +661,43 @@ def en_este_proceso() -> dict[str, Any]:
     return found
 
 
-def consultar() -> dict[str, Any]:
+def query() -> dict[str, Any]:
     """Las tres APIs, preguntadas fuera para no cargar aquí sus drivers.
 
     Si el proceso hijo no sale adelante se devuelve vacío en vez de preguntar
     aquí: hacerlo funcionaría, pero dejaría el programa por encima de su
     presupuesto de memoria para siempre, y eso no se arregla luego.
     """
-    vacio: dict[str, Any] = {"vulkan": [], "opencl": [], "opengl": None,
+    empty: dict[str, Any] = {"vulkan": [], "opencl": [], "opengl": None,
                              "vaapi": []}
     # El directorio que contiene el paquete, para que el hijo lo encuentre esté
     # silux instalado o ejecutándose desde el código fuente.
-    raiz = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    entorno = dict(os.environ)
-    entorno["PYTHONPATH"] = os.pathsep.join(
-        [raiz] + ([entorno["PYTHONPATH"]] if entorno.get("PYTHONPATH") else [])
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    env = dict(os.environ)
+    env["PYTHONPATH"] = os.pathsep.join(
+        [root] + ([env["PYTHONPATH"]] if env.get("PYTHONPATH") else [])
     )
     try:
-        completado = subprocess.run(
+        completed = subprocess.run(
             [sys.executable, "-m", "silux.gpuapi"],
-            capture_output=True, timeout=TIEMPO_MAXIMO, env=entorno, check=False,
+            capture_output=True, timeout=TIMEOUT_S, env=env, check=False,
         )
     except (OSError, subprocess.SubprocessError):
-        return vacio
+        return empty
 
-    if completado.returncode != 0 or not completado.stdout:
-        return vacio
+    if completed.returncode != 0 or not completed.stdout:
+        return empty
     try:
-        leido = json.loads(completado.stdout)
+        data = json.loads(completed.stdout)
     except (json.JSONDecodeError, UnicodeDecodeError):
-        return vacio
-    return leido if isinstance(leido, dict) else vacio
+        return empty
+    return data if isinstance(data, dict) else empty
 
 
 def main() -> int:
     # La salida tiene que ser JSON limpio: los avisos de los drivers ya van
     # tapados, pero cualquier otra cosa que se imprima aquí rompería al padre.
-    json.dump(en_este_proceso(), sys.stdout)
+    json.dump(in_this_process(), sys.stdout)
     return 0
 
 

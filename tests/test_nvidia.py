@@ -46,28 +46,28 @@ class TestDireccionPci(unittest.TestCase):
     """NVML y sysfs escriben la misma dirección de dos formas distintas."""
 
     def test_normaliza_el_formato_de_nvml(self):
-        self.assertEqual(nvml._ranura("00000000:0C:00.0"), "0000:0c:00.0")
-        self.assertEqual(nvml._ranura("00000000:01:00.0"), "0000:01:00.0")
+        self.assertEqual(nvml._slot("00000000:0C:00.0"), "0000:0c:00.0")
+        self.assertEqual(nvml._slot("00000000:01:00.0"), "0000:01:00.0")
 
     def test_un_dominio_que_no_es_cero(self):
         # El dominio va en ocho dígitos hexadecimales; sysfs lo escribe en
         # cuatro salvo que no quepa, como en las máquinas con muchos buses.
-        self.assertEqual(nvml._ranura("00000001:01:00.0"), "0001:01:00.0")
-        self.assertEqual(nvml._ranura("00010000:01:00.0"), "10000:01:00.0")
+        self.assertEqual(nvml._slot("00000001:01:00.0"), "0001:01:00.0")
+        self.assertEqual(nvml._slot("00010000:01:00.0"), "10000:01:00.0")
 
     def test_algo_que_no_es_una_direccion(self):
-        self.assertIsNone(nvml._ranura("no soy una dirección"))
-        self.assertIsNone(nvml._ranura(""))
+        self.assertIsNone(nvml._slot("no soy una dirección"))
+        self.assertIsNone(nvml._slot(""))
 
 
 class TestMotivosDeRecorte(unittest.TestCase):
     def test_el_reposo_no_es_un_recorte(self):
         # El bit 0 significa «la tarjeta está parada», que es lo normal y no
         # tiene nada que ver con que la estén frenando.
-        self.assertEqual(nvml._motivos(0x01), ())
+        self.assertEqual(nvml._reasons(0x01), ())
 
     def test_temperatura_y_potencia(self):
-        motivos = nvml._motivos(0x04 | 0x40)
+        motivos = nvml._reasons(0x04 | 0x40)
         self.assertIn("límite de potencia del driver", motivos)
         self.assertIn("temperatura (hardware)", motivos)
 
@@ -240,15 +240,15 @@ class TestThePowerSamples(unittest.TestCase):
         lib = _NvmlWithSamples()
         self.assertEqual((len(lib.SAMPLES), min(lib.SAMPLES), max(lib.SAMPLES),
                           sum(lib.SAMPLES) / len(lib.SAMPLES)), (119, 52590, 55370, 53110))
-        watts, reason = self._session(lib)._potencia(nvml.ctypes.c_void_p(1), 0)
+        watts, reason = self._session(lib)._power(nvml.ctypes.c_void_p(1), 0)
         self.assertEqual(watts, 53.1)
         self.assertIsNone(reason)
 
     def test_the_next_reading_asks_only_for_new_samples(self):
         lib = _NvmlWithSamples()
         sesion = self._session(lib)
-        sesion._potencia(nvml.ctypes.c_void_p(1), 0)
-        sesion._potencia(nvml.ctypes.c_void_p(1), 0)
+        sesion._power(nvml.ctypes.c_void_p(1), 0)
+        sesion._power(nvml.ctypes.c_void_p(1), 0)
         self.assertEqual(lib.since[0], 0)
         self.assertEqual(lib.since[-1], 1000 + len(_NvmlWithSamples.SAMPLES) - 1)
 
@@ -285,7 +285,7 @@ class TestAnOldDriver(unittest.TestCase):
     def test_missing_calls_leave_their_value_empty(self):
         sesion = nvml.Nvml()
         sesion._lib = _OldDriver()
-        sesion._activa = True
+        sesion._active = True
         tarjetas = sesion.devices()
         self.assertEqual(len(tarjetas), 1)
         self.assertEqual(tarjetas[0].temp_c, 40.0)
@@ -325,7 +325,7 @@ class TestADriverWithoutTheDeprecatedCalls(unittest.TestCase):
     def _card(self, lib):
         sesion = nvml.Nvml()
         sesion._lib = lib
-        sesion._activa = True
+        sesion._active = True
         return sesion.devices()[0]
 
     def test_the_temperature_from_its_replacement(self):
@@ -337,7 +337,7 @@ class TestADriverWithoutTheDeprecatedCalls(unittest.TestCase):
     def test_the_throttle_reasons_from_theirs(self):
         tarjeta = self._card(_DriverWithoutTheOldCalls())
         self.assertTrue(tarjeta.throttled)
-        self.assertEqual(tarjeta.throttle_reasons, (nvml.MOTIVOS[0x4],))
+        self.assertEqual(tarjeta.throttle_reasons, (nvml.THROTTLE_REASONS[0x4],))
 
     def test_an_old_driver_still_uses_the_old_ones(self):
         tarjeta = self._card(_OldDriver())
@@ -371,7 +371,7 @@ class TestThePowerOfANewDriver(unittest.TestCase):
     def _leer(self, lib):
         sesion = nvml.Nvml()
         sesion._lib = lib
-        return sesion._potencia(nvml.ctypes.c_void_p(1), 0)
+        return sesion._power(nvml.ctypes.c_void_p(1), 0)
 
     def _potencia(self, lib):
         return self._leer(lib)[0]

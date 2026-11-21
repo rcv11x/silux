@@ -1197,17 +1197,17 @@ class TestCodecsDeVideo(unittest.TestCase):
         self.assertEqual(self._codecs([(999, [1])]), [])
 
     def test_se_ordenan_por_lo_que_la_gente_busca(self):
-        from silux.gpuapi import VA_ORDEN
+        from silux.gpuapi import VA_ORDER
 
         # 0 = MPEG-2 Simple, 32 = AV1 Profile 0, 7 = H.264 High.
         nombres = [c["name"] for c in self._codecs([(0, [1]), (32, [1]), (7, [1])])]
         self.assertEqual(nombres, ["AV1", "H.264", "MPEG-2"])
-        self.assertLess(VA_ORDEN.index("AV1"), VA_ORDEN.index("JPEG"))
+        self.assertLess(VA_ORDER.index("AV1"), VA_ORDER.index("JPEG"))
 
     def test_cada_familia_conocida_tiene_su_nombre(self):
-        from silux.gpuapi import VA_PERFILES
+        from silux.gpuapi import VA_PROFILES
 
-        familias = {familia for familia, _, _ in VA_PERFILES.values()}
+        familias = {familia for familia, _, _ in VA_PROFILES.values()}
         for esperada in ("H.264", "HEVC", "AV1", "VP9", "VP8", "MPEG-2"):
             with self.subTest(codec=esperada):
                 self.assertIn(esperada, familias)
