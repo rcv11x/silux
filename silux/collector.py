@@ -1,12 +1,12 @@
-"""Orquesta a los proveedores y produce snapshots.
+"""Runs the providers and produces snapshots.
 
-La separación entre estático y dinámico es lo que hace que refrescar sea
-barato: la identidad del procesador, la topología y las cachés se leen una
-vez; las frecuencias, temperaturas, uso y vatios, en cada muestreo.
+Splitting static from dynamic is what makes refreshing cheap: the
+processor's identity, topology and caches are read once; frequencies,
+temperatures, usage and watts, every sample.
 
-Si un proveedor revienta, no se lleva por delante la recolección: se anota
-como una nota más y el resto sigue. Un sensor raro en una placa rara no debe
-dejar la aplicación en blanco.
+A provider that crashes doesn't take the collection down with it: it is
+noted and the rest go on. An odd sensor on an odd board must not leave the
+application blank.
 """
 
 from __future__ import annotations
@@ -62,48 +62,47 @@ from .providers.base import is_virtual_machine
 
 
 def _instantiate(cls: type[Provider], client: PrivilegedClient) -> Provider:
-    """Crea un proveedor pasándole el ayudante si sabe usarlo."""
+    """Build a provider, handing it the helper if it knows how to use it."""
     if "client" in inspect.signature(cls).parameters:
         return cls(client=client)                     # type: ignore[call-arg]
     return cls()
 
-
-# El orden importa: la topología define qué tipos de núcleo hay, y CPUID
-# necesita saberlo para preguntar una vez por cada uno.
+# The order matters: the topology says which core types there are, and
+# CPUID needs that to ask once per type.
 DEFAULT_PROVIDERS: tuple[type[Provider], ...] = (
-    SysfsTopology,      # define qué tipos de núcleo hay
-    CpuidIdentity,      # necesita saberlo para preguntar una vez por tipo
-    ArmIdentity,        # y lo mismo donde no hay CPUID porque no es x86
-    CppcClocks,         # rellena los relojes que CPUID 0x16 no supo dar
-    DmiBoard,           # da el nombre de la placa, que usa el árbol de sensores
-    DrmGpus,            # enumera las gráficas antes de que nadie las consulte
-    GpuApis,            # y después les pregunta a OpenGL, Vulkan y OpenCL
+    SysfsTopology,
+    CpuidIdentity,
+    ArmIdentity,
+    CppcClocks,         # fills in the clocks CPUID 0x16 couldn't give
+    DmiBoard,           # the board's name, which the sensor tree uses
+    DrmGpus,            # lists the cards before anything asks them
+    GpuApis,            # then asks OpenGL, Vulkan and OpenCL about them
     SystemDependencies,  # what the system lacks, saying it for the two above
     SystemIdentity,
-    SystemSecurity,     # mitigaciones y arranque: una vez
-    PlatformInfo,       # IOMMU, virtualización y los chips de la placa
-    PrivilegedMemory,   # espera a que el usuario lo pida
-    SpdModules,         # después, para pegarse a lo que aquél haya leído
+    SystemSecurity,
+    PlatformInfo,
+    PrivilegedMemory,
+    SpdModules,         # after it, to match up with what it read
     SysfsClocks,
     TurboState,
-    AmdPstateClocks,    # con permisos, la base de un Zen y, sin cpufreq, su frecuencia
+    AmdPstateClocks,
     CpuUsage,
-    CpuIdle,            # y cuánto descansa cada hilo, que también se resta
-    ThermalThrottleCounts,  # las veces que se frenó por temperatura (Intel)
+    CpuIdle,            # how long each thread rests, also taken from usage
+    ThermalThrottleCounts,
     GpuState,
-    NetworkInterfaces,  # las interfaces y su ritmo, que se mide entre muestreos
-    Disks,              # y los discos, con el suyo
-    Batteries,          # la batería, que en un portátil se degrada sola
-    PciDevices,         # detrás de gráficas, discos y red: usa sus nombres
-    ConnectedDevices,   # lo enchufado: USB, sonido, cámaras y Bluetooth
+    NetworkInterfaces,
+    Disks,
+    Batteries,
+    PciDevices,         # after the cards, disks and network: it uses their names
+    ConnectedDevices,
     NvidiaGpus,
     SystemState,
-    PowerLimits,        # PL1 y PL2, que se leen sin permisos
+    PowerLimits,        # before RaplPower, which adds its watts to this card
     RaplPower,
-    ImcTraffic,        # el tráfico de la memoria, que se mide entre muestreos
-    HwmonSensors,       # nombra los aparatos con lo que ya se sabe
-    MsrVoltage,         # y detrás: el voltaje que ningún sensor etiquetó
-    DerivedSensors,     # el último: solo transforma lo recogido
+    ImcTraffic,
+    HwmonSensors,       # names the devices with what is already known
+    MsrVoltage,         # after it: the voltage no sensor labelled
+    DerivedSensors,     # last: it only transforms what was collected
 )
 
 
@@ -120,7 +119,7 @@ def _without_what_a_vm_lacks(draft: Draft) -> None:
 
 
 def _path_of(exc: OSError) -> str:
-    """El fichero que provocó el error, o una descripción si no lo dice."""
+    """The file that caused the error, or a description if it doesn't say."""
     return str(exc.filename) if exc.filename else str(exc)
 
 
@@ -150,7 +149,7 @@ def _with_the_helper_outdated(snapshot: Snapshot) -> Snapshot:
 
 
 class Collector:
-    """Punto de entrada de la capa de datos. Reutilizable y con estado propio."""
+    """The data layer's entry point. Reusable, with its own state."""
 
     def __init__(self, providers: Optional[Sequence[Provider]] = None) -> None:
         # How far apart snapshots are meant to be. Whoever takes them says so
@@ -160,9 +159,9 @@ class Collector:
         if providers is not None:
             self.providers: list[Provider] = list(providers)
         else:
-            # Un solo ayudante para todos los que lo necesiten. Cada cliente
-            # lanza su propio proceso y abre su propio diálogo de polkit, así
-            # que dos clientes serían dos veces la contraseña para lo mismo.
+            # One helper for every provider that needs it. Each client starts
+            # its own process and opens its own polkit dialog, so two clients
+            # would be the password twice for the same thing.
             shared = PrivilegedClient()
             self.providers = [_instantiate(cls, shared) for cls in DEFAULT_PROVIDERS]
         self._static: Optional[Draft] = None
@@ -179,8 +178,8 @@ class Collector:
         self._collect((p for p in self.providers if not p.static), into=draft)
         _without_what_a_vm_lacks(draft)
         if draft.static_stale:
-            # Algo que dormía al leer lo estático ha despertado: la próxima
-            # vuelta lo lee entero.
+            # Something asleep when the static data was read has woken up:
+            # the next pass reads it all.
             self.invalidate()
         snapshot = dataclasses.replace(draft.freeze(), failures=self.failures.recent())
         if snapshot.privileged.outdated:
@@ -188,11 +187,10 @@ class Collector:
         return snapshot
 
     def sample(self, settle: float = 0.25) -> Snapshot:
-        """Una sola foto lista para enseñar.
+        """One snapshot ready to show.
 
-        El uso de CPU y los vatios son derivadas: la primera lectura solo
-        establece la referencia y aún no tiene valor. Por eso se muestrea dos
-        veces con una pausa corta en medio.
+        CPU usage and watts are rates: the first reading only sets the
+        baseline. So it samples twice with a short pause between.
         """
         self.interval_s = settle
         self.snapshot()
@@ -200,14 +198,14 @@ class Collector:
         return self.snapshot()
 
     def wants_between_samples(self) -> bool:
-        """Si algún proveedor quiere leer entre muestras: si no, el hilo de
-        muestreo duerme el intervalo entero de una vez."""
+        """Whether any provider wants to read between samples; if not, the
+        sampling thread sleeps the whole interval at once."""
         return any(p.wants_between_samples() for p in self.providers if not p.static)
 
     def between_samples(self) -> None:
-        """Las lecturas entre muestras. Un fallo aquí no quita nada de la
-        página: la muestra siguiente lee igual y, sin estas lecturas, se queda
-        con su instante. Va al informe con su traza."""
+        """The readings between samples. A failure here takes nothing off the
+        page: the next sample reads anyway and, without them, keeps its own
+        instant. It goes to the report with its traceback."""
         for provider in self.providers:
             if provider.static or not provider.wants_between_samples():
                 continue
@@ -218,15 +216,15 @@ class Collector:
                 self.failures.record(f"{provider.name}.between_samples", exc)
 
     def request_elevation(self) -> None:
-        """Marca que el usuario quiere los datos que exigen privilegios.
+        """Mark that the user wants the data that needs privileges.
 
-        No eleva nada aquí: se limita a apuntarlo e invalidar lo estático. El
-        diálogo de autenticación lo abre el proveedor en el hilo de muestreo,
-        que es donde puede bloquear sin congelar la ventana.
+        Nothing is elevated here: it is only noted, and the static data
+        invalidated. The provider opens the authentication dialog on the
+        sampling thread, where it can block without freezing the window.
         """
-        # A todo el que sepa esperar la señal, no solo al de memoria: los
-        # discos también piden permisos y comparten el mismo ayudante, así que
-        # una autorización sirve para los dos.
+        # Everyone who can wait for the signal, not only memory: the disks
+        # ask for permissions too and share the same helper, so one
+        # authorization serves both.
         for provider in self.providers:
             if hasattr(provider, "requested"):
                 provider.requested = True
@@ -234,8 +232,8 @@ class Collector:
         self.invalidate()
 
     def close(self) -> None:
-        # Los proveedores comparten cliente, así que se cierra cada uno una
-        # sola vez aunque lo tengan varios.
+        # Providers share a client, so each is closed once even when several
+        # hold it.
         closed: set[int] = set()
         for provider in self.providers:
             client = getattr(provider, "client", None)
@@ -244,10 +242,10 @@ class Collector:
                 client.close()
 
     def invalidate(self) -> None:
-        """Fuerza a releer también lo estático (p. ej. tras cargar un módulo)."""
+        """Force the static data to be read again (after loading a module, say)."""
         self._static = None
 
-    # -- interno ------------------------------------------------------------
+    # -- internals ----------------------------------------------------------
 
     def _collect(self, providers: Iterable[Provider], into: Optional[Draft] = None) -> Draft:
         draft = into if into is not None else Draft()
@@ -259,9 +257,9 @@ class Collector:
                     continue
                 provider.collect(draft)
             except PermissionError as exc:
-                # No es que el dato no exista: es que no se deja leer. Pasaba
-                # con «no aplica a esta plataforma», que es lo contrario de lo
-                # que ocurre, y en un entorno enjaulado salía así hasta la red.
+                # Not that the data doesn't exist: it can't be read. It used
+                # to say «doesn't apply to this platform», the opposite of
+                # what happens, and in a sandbox even the network said so.
                 draft.note(
                     provider.provides or provider.name,
                     Need.ROOT,
@@ -299,10 +297,10 @@ class Collector:
 
     @staticmethod
     def _clone(static: Draft) -> Draft:
-        """Copia el estado estático para que cada muestreo parta de él intacto.
+        """Copy the static state so each sample starts from it untouched.
 
-        Los valores del modelo son inmutables, así que basta con duplicar los
-        diccionarios; no hace falta una copia profunda de verdad.
+        The model's values are immutable, so duplicating the dictionaries is
+        enough; no real deep copy is needed.
         """
         draft = Draft()
         draft.sockets = static.sockets

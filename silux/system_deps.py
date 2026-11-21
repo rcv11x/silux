@@ -45,7 +45,7 @@ class Dependency:
     kind: str                         # "data", "library" or "program"
     names: tuple[str, ...]            # paths, sonames or program names
     packages: dict                    # family -> package, None where none brings it
-    note: Optional[str] = None        # i18n key of the Diagnóstico note, if it gets one
+    note: Optional[str] = None        # i18n key of the Diagnostics note, if it gets one
 
 
 DEPENDENCIES = (

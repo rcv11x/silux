@@ -1,9 +1,8 @@
-"""Interfaz de línea de órdenes.
+"""Command line interface.
 
-Existe por tres razones, y las tres importan: sirve para depurar sin abrir la
-ventana, produce JSON que otros programas pueden consumir (cosa que el
-`--dump` de CPU-X no puede porque ya es texto) y es la prueba de que la capa
-de datos no depende de Qt para nada.
+It exists for three reasons: debugging without opening the window, JSON
+that other programs can consume (which CPU-X's `--dump` can't give, being
+text already), and proof that the data layer doesn't depend on Qt at all.
 """
 
 from __future__ import annotations
@@ -34,7 +33,7 @@ NEED_LABELS = {
 
 
 class Style:
-    """Colores ANSI, desactivados solos si la salida no es un terminal."""
+    """ANSI colours, turned off on their own when the output isn't a terminal."""
 
     def __init__(self, enabled: bool) -> None:
         self.enabled = enabled
@@ -158,7 +157,7 @@ def dump(snapshot: Snapshot, style: Style) -> str:
         if link_note := render.pcie_note(gpu.link):
             lines.append(_row(style, "", style.dim(link_note)))
 
-        # Si no se sabe cuánta se usa, al menos se dice cuánta hay.
+        # If how much is used isn't known, at least say how much there is.
         summary = render.gpu_memory_summary(gpu.memory)
         if summary == render.DASH and gpu.memory.total_bytes:
             summary = render.size(gpu.memory.total_bytes)
@@ -179,8 +178,8 @@ def dump(snapshot: Snapshot, style: Style) -> str:
         if gpu.sleep_percent is not None:
             lines.append(_row(style, "En reposo", render.percent(gpu.sleep_percent)))
         for engine in gpu.engines:
-            # El detalle por motor es lo que distingue «la tarjeta no da más»
-            # de «solo va cargado el decodificador de video».
+            # The per-engine detail is what tells «the card can't give more»
+            # from «only the video decoder is busy».
             detail_text = " · ".join(p for p in (
                 engine.kind, ", ".join(engine.capabilities) or None) if p)
             lines.append(_row(style, f"  {engine.name}",
@@ -262,13 +261,13 @@ def dump(snapshot: Snapshot, style: Style) -> str:
 
 
 def sensors_text(snapshot: Snapshot, style: Style) -> str:
-    """El árbol de sensores, como lo enseña `--sensors`."""
+    """The sensor tree, as `--sensors` shows it."""
     lines = []
     for categories in snapshot.sensor_tree().values():
         lines.append(style.bold(Snapshot.device_name(categories)))
         for category, sensors in categories.items():
-            # La categoría es una clave («cat.temperature»): se traduce, como
-            # en la ventana y en el informe.
+            # The category is a key («cat.temperature»): translated, as in the
+            # window and the report.
             lines.append(f"  {style.dim(_(category))}")
             for sensor in sensors:
                 digits = 3 if sensor.kind.value == "voltage" else 1
@@ -280,11 +279,11 @@ def sensors_text(snapshot: Snapshot, style: Style) -> str:
 
 def watch(collector: Collector, style: Style, interval: float,
           only_sensors: bool = False) -> int:
-    """Lo repite cada `interval` segundos. Con `--sensors`, solo el árbol de
-    sensores: la ayuda lo pone de ejemplo («los sensores, cada segundo») y
-    salía el volcado entero."""
+    """Repeat every `interval` seconds. With `--sensors`, only the sensor
+    tree: the help gives that as an example («the sensors, every second»)
+    and the whole dump came out."""
     collector.interval_s = interval
-    print("\033[?25l", end="")            # oculta el cursor
+    print("\033[?25l", end="")            # hide the cursor
     try:
         while True:
             snapshot = collector.snapshot()
@@ -294,25 +293,25 @@ def watch(collector: Collector, style: Style, interval: float,
     except KeyboardInterrupt:
         return 0
     finally:
-        print("\033[?25h", end="")        # y lo devuelve
+        print("\033[?25h", end="")        # and bring it back
 
 
 def _sections() -> list[str]:
-    """Las secciones que se pueden pedir en el informe completo. Escritas
-    aquí y no importadas de la interfaz: la ayuda sale sin Qt."""
+    """The sections the full report can be asked for. Written here rather than
+    imported from the interface, so the help comes out without Qt."""
     return ["home", "cpu", "caches", "board", "memory", "graphics", "storage",
             "network", "devices", "battery", "system", "benchmark", "sensors"]
 
 
 def qt_can_start() -> bool:
-    """Si Qt puede arrancar aquí, para el informe completo, que monta la
-    ventana sin pantalla.
+    """Whether Qt can start here, for the full report, which builds the
+    window without a screen.
 
-    En un procesador sin x86-64-v2, Qt 6.10 o posterior revienta con
-    «Instrucción ilegal» al cargarse, sin dejar decir nada. Dentro del
-    AppImage la guarda de Python no sabe qué PySide6 lleva (va copiado, no
-    instalado), así que se mira la marca de la copia: el `-compat` lleva un
-    Qt que arranca en cualquier x86-64.
+    On a processor without x86-64-v2, Qt 6.10 and later die with «Illegal
+    instruction» while loading, before anything can be said. Inside the
+    AppImage, Python's guard can't tell which PySide6 it carries (it is
+    copied, not installed), so it looks at the build's mark: `-compat`
+    carries a Qt that starts on any x86-64.
     """
     import importlib.util
 
@@ -329,15 +328,15 @@ def qt_can_start() -> bool:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """Las opciones del volcado en terminal.
+    """The terminal dump's options.
 
-    Aparte para que se puedan enumerar sin ejecutar nada: el AppImage reparte
-    entre la interfaz y esto según con qué se le llame, y hay un test que
-    comprueba contra esta lista que no se quede ninguna sin repartir. Los
-    alias en español tampoco.
+    Kept apart so they can be listed without running anything: the AppImage
+    dispatches between the interface and this by how it is called, and a
+    test checks against this list that none is left out. Nor the Spanish
+    aliases.
 
-    Los textos salen del idioma de la interfaz: quien llama lo pone antes
-    (`main`, con las preferencias guardadas).
+    The texts are in the interface's language: the caller sets it first
+    (`main`, with the saved preferences).
     """
     from .options import Parser, epilog_for_cli, how_to_call
 
@@ -379,8 +378,8 @@ def _comma_list(text: Optional[str]) -> Optional[list[str]]:
 
 
 def main(argv: Optional[list[str]] = None) -> int:
-    # El idioma de la interfaz, el que se eligió en Ajustes: la ayuda y el
-    # informe salen en ese.
+    # The interface's language, the one chosen in Settings: the help and the
+    # report come out in it.
     from . import i18n, settings
     i18n.set_language(settings.load().language)
     parser = build_parser()
@@ -416,9 +415,9 @@ def main(argv: Optional[list[str]] = None) -> int:
             return 2
 
     if args.report and not args.short and not args.without_permissions:
-        # El informe es para entender un fallo, y lo que solo ve el
-        # administrador (la memoria, la salud de los discos) es a menudo lo
-        # que hace falta. Se piden al empezar, como en la ventana.
+        # The report is for understanding a failure, and what only the
+        # administrator sees (the memory, the disks' health) is often what's
+        # needed. Asked for at the start, as in the window.
         from .privileged.client import already_root
         if not already_root():
             print(_("cli.report.asking"), file=sys.stderr)

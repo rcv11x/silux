@@ -1,19 +1,16 @@
-"""Guardar en un CSV lo que va midiendo la sesión.
+"""Write what the session measures to a CSV file.
 
-Un monitor abierto durante una partida ve cosas que el usuario no: en qué
-minuto empezó a subir la temperatura, si el ventilador reaccionó tarde, cuánto
-duró de verdad el pico. Todo eso vive en la memoria del programa y se pierde
-al cerrarlo.
+A monitor left open during a game sees what the user doesn't: the minute
+the temperature started to climb, whether the fan reacted late, how long
+the peak really lasted. All of that lives in memory and is lost on exit.
 
-Se escribe sobre la marcha y no al final, por dos motivos. Una sesión que se
-quiere registrar es larga —eso es lo que la hace interesante— y acumularla
-entera en memoria para volcarla al cerrar contradice el presupuesto que tiene
-este programa. Y si algo se cuelga a mitad, que es justo cuando más falta hace
-el registro, lo escrito hasta ese momento sigue ahí.
+It is written as it goes, not at the end. A session worth recording is
+long, and holding it all in memory to write it on exit would break the
+program's memory budget. And if something hangs halfway, which is exactly
+when the log is needed, what was written so far is still there.
 
-El formato es CSV a propósito: se abre en cualquier hoja de cálculo sin
-explicar nada a nadie. Una fila por muestreo y una columna por sensor, que es
-la forma en la que una hoja de cálculo sabe dibujar una gráfica sola.
+CSV on purpose: any spreadsheet opens it as is. One row per sample and one
+column per sensor is the shape a spreadsheet charts on its own.
 """
 
 from __future__ import annotations
@@ -26,9 +23,8 @@ from typing import Optional, TextIO
 
 from .model import UNITS, Snapshot
 
-# Las columnas fijas que van delante de los sensores. El reloj de pared sirve
-# para cruzar el registro con lo que uno estaba haciendo; el relativo, para
-# leer la gráfica sin restar horas.
+# The wall clock lines the log up with what the user was doing; the
+# relative one lets the chart be read without subtracting times.
 FIXED_HEADER = ("hora", "segundos")
 
 
@@ -42,12 +38,12 @@ def suggested_name() -> str:
 
 
 class SensorLog:
-    """Escribe un CSV mientras dura la sesión.
+    """Writes a CSV for as long as the session lasts.
 
-    Las columnas se fijan con el primer muestreo y no cambian: un sensor que
-    aparece a mitad —al enchufar algo, al cargar un módulo— se queda fuera en
-    vez de descolocar todas las filas anteriores. Y uno que desaparece deja su
-    columna vacía, que es la diferencia entre «no había dato» y «valía cero».
+    The columns are fixed by the first sample: a sensor that appears halfway
+    (something plugged in, a module loaded) is left out rather than shifting
+    every earlier row. One that disappears leaves its column empty, which
+    tells «no reading» apart from «it was zero».
     """
 
     def __init__(self, path: pathlib.Path):
@@ -58,21 +54,21 @@ class SensorLog:
         self._start_ns: Optional[int] = None
         self._rows = 0
 
-    # -- ciclo de vida ------------------------------------------------------
+    # -- lifecycle ----------------------------------------------------------
 
     def open(self, snapshot: Snapshot) -> None:
-        """Crea el archivo y escribe la cabecera a partir de esta foto."""
+        """Create the file and write the header from this snapshot."""
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        # `newline=""` es lo que pide el módulo csv para no doblar los saltos
-        # de línea en los sistemas que los escriben con dos caracteres.
+        # `newline=""` is what the csv module asks for, so line breaks aren't
+        # doubled on systems that write them as two characters.
         self._file = open(self.path, "w", newline="", encoding="utf-8")
         self._csv = csv.writer(self._file)
         self._keys = tuple(s.key for s in snapshot.sensors)
         self._start_ns = snapshot.monotonic_ns
 
-        # La cabecera lleva el nombre legible y la unidad, no la clave interna:
-        # quien abre esto en una hoja de cálculo no sabe qué es
-        # «hwmon/nct6798/temp3_input».
+        # The header has the readable name and the unit, not the internal key:
+        # whoever opens this in a spreadsheet doesn't know what
+        # «hwmon/nct6798/temp3_input» is.
         labels = []
         for sensor in snapshot.sensors:
             name = f"{sensor.device} · {sensor.label}"
@@ -82,7 +78,7 @@ class SensorLog:
         self._file.flush()
 
     def write(self, snapshot: Snapshot) -> None:
-        """Una fila. Se ignora si el registro no está abierto."""
+        """One row. Ignored if the log isn't open."""
         if self._csv is None or self._file is None:
             return
         values = {s.key: s.value for s in snapshot.sensors}
@@ -90,15 +86,15 @@ class SensorLog:
         self._csv.writerow([
             time.strftime("%H:%M:%S"),
             f"{elapsed:.1f}",
-            # Un sensor que ha desaparecido deja la celda vacía y no un cero:
-            # una hoja de cálculo dibuja el cero y salta el hueco, que es
-            # exactamente la diferencia que hay que ver.
+            # A sensor that disappeared leaves the cell empty, not a zero: a
+            # spreadsheet plots the zero and skips the gap, which is exactly
+            # the difference to see.
             *[_cell(values.get(key)) for key in self._keys],
         ])
         self._rows += 1
-        # Se vacía el buffer en cada fila. Cuesta poco a un muestreo por
-        # segundo y es lo que hace que el archivo sirva si el equipo se cuelga,
-        # que es justo el caso para el que se enciende un registro.
+        # Flushed on every row. At one sample a second it costs little, and it
+        # keeps the file useful if the machine hangs, which is the very case a
+        # log is started for.
         self._file.flush()
 
     def close(self) -> None:
@@ -107,7 +103,7 @@ class SensorLog:
         self._file = None
         self._csv = None
 
-    # -- estado -------------------------------------------------------------
+    # -- state --------------------------------------------------------------
 
     @property
     def active(self) -> bool:
@@ -127,6 +123,6 @@ class SensorLog:
 def _cell(value: Optional[float]) -> str:
     if value is None:
         return ""
-    # Punto decimal y sin separador de miles: es lo que toda hoja de cálculo
-    # entiende como número sin tener que elegir región al importar.
+    # A decimal point and no thousands separator: every spreadsheet reads
+    # that as a number without picking a region on import.
     return f"{value:g}"
