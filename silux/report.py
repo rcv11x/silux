@@ -17,7 +17,7 @@ import sys
 from typing import Optional
 
 from . import __version__, build_id, privacidad, render
-from .i18n import en_español
+from .i18n import in_spanish
 from .model import Need, Snapshot
 
 OCULTO = "«omitido»"
@@ -70,7 +70,7 @@ def _cabecera(snapshot: Snapshot, anonymous: bool) -> str:
     # A list and not a table: a key-value table has no header to give it,
     # and an empty one was the first thing the report showed.
     lineas = [
-        f"# Informe de Silux {render.version(__version__, en_español)}"
+        f"# Informe de Silux {render.version(__version__, in_spanish)}"
         + (f" ({build_id()})" if build_id() else ""),
         "",
         f"- **Distribución:** {sistema.distribution or '?'} {sistema.version_id or ''}".rstrip(),
@@ -124,12 +124,12 @@ def _procesador(snapshot: Snapshot) -> str:
     for tipo in cpu.types:
         relojes = tipo.clocks
         lineas += [
-            f"**{render.core_type_label(tipo, cpu.hybrid, en_español)}**"
+            f"**{render.core_type_label(tipo, cpu.hybrid, in_spanish)}**"
             if cpu.hybrid else f"**{tipo.brand or '?'}**",
             "",
-            f"- Nombre en clave: {render.from_cpu_table(tipo.codename, en_español)}"
-            f" · {render.from_cpu_table(tipo.technology, en_español)}",
-            f"- Encapsulado: {render.from_cpu_table(tipo.socket, en_español)}",
+            f"- Nombre en clave: {render.from_cpu_table(tipo.codename, in_spanish)}"
+            f" · {render.from_cpu_table(tipo.technology, in_spanish)}",
+            f"- Encapsulado: {render.from_cpu_table(tipo.socket, in_spanish)}",
             f"- Núcleos / hilos: {tipo.cores} / {tipo.threads}",
             f"- Familia {render.dec(tipo.disp_family)} · "
             f"modelo {render.dec(tipo.disp_model)} · "
@@ -176,7 +176,7 @@ def _memoria(snapshot: Snapshot) -> str:
         detalle = [f"{array.slots} ranuras" if array.slots else ""]
         if array.max_capacity_bytes:
             detalle.append(f"hasta {render.size(array.max_capacity_bytes)}")
-        if correccion := render.memory_error_correction(array.error_correction, en_español):
+        if correccion := render.memory_error_correction(array.error_correction, in_spanish):
             detalle.append(correccion)
         if any(detalle):
             lineas.append("- Placa: " + " · ".join(d for d in detalle if d))
@@ -185,7 +185,7 @@ def _memoria(snapshot: Snapshot) -> str:
         for modulo in snapshot.modules:
             lineas.append(
                 f"- {modulo.locator or '?'}: {render.size(modulo.size_bytes)} "
-                f"{render.memory_type(modulo.type, en_español) or ''} {modulo.speed_mts or ''} MT/s "
+                f"{render.memory_type(modulo.type, in_spanish) or ''} {modulo.speed_mts or ''} MT/s "
                 f"{modulo.manufacturer or ''} {modulo.part_number or ''}".rstrip()
             )
     else:
@@ -205,7 +205,7 @@ def _memoria(snapshot: Snapshot) -> str:
                 partes.append(texto)
         if spd.dram_manufacturer and spd.dram_manufacturer != spd.manufacturer:
             partes.append(f"chips {render.maker(spd.dram_manufacturer)}")
-        if fecha := render.made(spd.manufactured_year, spd.manufactured_week, en_español):
+        if fecha := render.made(spd.manufactured_year, spd.manufactured_week, in_spanish):
             partes.append(f"fabricado {fecha}")
         if spd.ranks:
             partes.append(f"{spd.ranks} rangos")
@@ -233,7 +233,7 @@ def _placa(snapshot: Snapshot, anonymous: bool) -> str:
         f" · nombre {board.system_name or '—'}"
         f" · versión {board.system_version or '—'}"
         f" · familia {board.system_family or '—'}",
-        f"- Chasis: {en_español(board.chassis) if board.chassis else '—'}",
+        f"- Chasis: {in_spanish(board.chassis) if board.chassis else '—'}",
     ])
 
 
@@ -447,9 +447,9 @@ def _bateria(snapshot: Snapshot) -> str:
         if bateria.percent is not None:
             estado.append(f"{bateria.percent:.0f} %")
         if bateria.status:
-            estado.append(en_español(bateria.status).lower())
+            estado.append(in_spanish(bateria.status).lower())
         if bateria.power_settling:
-            estado.append(en_español("bat.calculating").lower())
+            estado.append(in_spanish("bat.calculating").lower())
         elif bateria.power_w is not None:
             estado.append(render.watts(bateria.power_w))
         if estado:
@@ -515,7 +515,7 @@ def _sensores(snapshot: Snapshot) -> str:
         # no en el idioma de quien lo genera, como el resto del informe: si no,
         # un informe en inglés saldría con «Procesador» y «temperatures» en la
         # misma página.
-        resumen = ", ".join(f"{en_español(nombre).lower()} ({len(s)})"
+        resumen = ", ".join(f"{in_spanish(nombre).lower()} ({len(s)})"
                             for nombre, s in categorias.items())
         lineas.append(f"- **{aparato}**, {cuantos}: {resumen}")
         # Y con sus nombres y valores. El recuento solo dice cuántos hay, y lo
@@ -530,7 +530,7 @@ def _sensores(snapshot: Snapshot) -> str:
                 # creíble: que 16.8 °C lleve dicho lo que es.
                 + (" (relleno del firmware, no es una medida)" if s.placeholder else "")
                 for s in sensores)
-            lineas.append(f"  - {en_español(nombre).lower()}: {valores}")
+            lineas.append(f"  - {in_spanish(nombre).lower()}: {valores}")
     return "\n".join(lineas)
 
 

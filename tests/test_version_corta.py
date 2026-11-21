@@ -20,7 +20,7 @@ class TestLaVersion(unittest.TestCase):
 
     def test_una_de_prueba_lleva_su_nombre(self):
         from silux import i18n
-        self.addCleanup(i18n.set_language, i18n.actual())
+        self.addCleanup(i18n.set_language, i18n.current())
         i18n.set_language("es")
         self.assertEqual(render.version("0.4.0rc1"), "0.4-prueba1")
         self.assertEqual(render.version("0.4.1rc2"), "0.4.1-prueba2")

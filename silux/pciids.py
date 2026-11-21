@@ -1,16 +1,15 @@
-"""Resolución de nombres de dispositivos PCI contra la base pci.ids.
+"""PCI device names from the pci.ids database.
 
-El fichero lo mantiene el proyecto hwdata y viene instalado en casi cualquier
-distribución, así que no hace falta empaquetar copia: se lee del sistema. Son
-1,7 MB, pero como solo interesan un puñado de identificadores concretos se
-recorre una sola vez buscándolos, en lugar de cargar el fichero entero en
-memoria para consultarlo tres veces.
+The hwdata project keeps the file and almost every distribution installs it,
+so no copy is packaged: it is read from the system. It is 1.7 MB, and as only
+a handful of ids matter, it is walked once looking for them instead of
+loading it whole to ask three times.
 
-Formato del fichero:
+The file's format:
 
     8086  Intel Corporation
     <tab>9b53  Comet Lake-S 6c Host Bridge/DRAM Controller
-    <tab><tab>1462 7d23  Subsistema
+    <tab><tab>1462 7d23  Subsystem
 """
 
 from __future__ import annotations
@@ -37,12 +36,12 @@ def database_path() -> Optional[pathlib.Path]:
     return None
 
 
-def _clave(numeros) -> str:
-    return ":".join(f"{n:04x}" for n in numeros)
+def _key(numbers) -> str:
+    return ":".join(f"{n:04x}" for n in numbers)
 
 
-# Devices pci.ids does not list. QEMU's standard VGA uses vendor 0x1234, which
-# was never registered: without this a tester's VM showed «Gráfica 0».
+# Devices pci.ids does not list. QEMU's standard VGA uses vendor 0x1234,
+# never registered: without this a virtual machine showed «Gráfica 0».
 NOT_IN_PCI_IDS = {(0x1234, 0x1111): ("QEMU", "QEMU Standard VGA")}
 
 
@@ -50,76 +49,76 @@ def lookup(
     pairs: Iterable[tuple[int, int]],
     subsystems: Iterable[tuple[int, int, int, int]] = (),
 ) -> dict[tuple[int, int], tuple[str, str]]:
-    """Lo mismo que `_lookup`, pero contestando lo grabado en un equipo volcado.
+    """The same as `_lookup`, answering what a dumped machine recorded.
 
-    `pci.ids` es de la máquina que ejecuta, no del equipo volcado, y cambia
-    con la distribución: la Radeon del 5800X3D se llama «Radeon RX 9070 XT
-    16GB» con el de CachyOS y «AMD Radeon RX 9070 XT» con el de una Ubuntu
-    22.04, que no trae esa tarjeta. El volcado guarda lo que contestó aquí.
+    `pci.ids` belongs to the machine running, not the dumped one, and changes
+    with the distribution: the same Radeon is «Radeon RX 9070 XT 16GB» with
+    one and «AMD Radeon RX 9070 XT» with an older one that lacks the card. The
+    dump keeps what it answered there.
     """
-    pares = sorted({(int(v), int(d)) for v, d in pairs})
+    pair_list = sorted({(int(v), int(d)) for v, d in pairs})
     subs = sorted({tuple(int(n) for n in key) for key in subsystems})
     if sysroot.active() and not sysroot.did_record("pciids"):
-        nombres = _lookup(pares, subs)           # un volcado de antes de grabarlo
+        names = _lookup(pair_list, subs)           # a dump from before this was recorded
     else:
-        pregunta = "|".join(_clave(k) for k in (*pares, *subs))
-        plano = sysroot.recorded(
-            "pciids", pregunta,
-            lambda: {_clave(k): list(v) for k, v in _lookup(pares, subs).items()})
-        nombres = {tuple(int(n, 16) for n in clave.split(":")): tuple(valor)
-                   for clave, valor in (plano or {}).items()}
-    for par in pares:
-        if par not in nombres and par in NOT_IN_PCI_IDS:
-            nombres[par] = NOT_IN_PCI_IDS[par]
-    return nombres
+        query = "|".join(_key(k) for k in (*pair_list, *subs))
+        flat = sysroot.recorded(
+            "pciids", query,
+            lambda: {_key(k): list(v) for k, v in _lookup(pair_list, subs).items()})
+        names = {tuple(int(n, 16) for n in lookup_key.split(":")): tuple(value_text)
+                   for lookup_key, value_text in (flat or {}).items()}
+    for pair in pair_list:
+        if pair not in names and pair in NOT_IN_PCI_IDS:
+            names[pair] = NOT_IN_PCI_IDS[pair]
+    return names
 
 
-# Lo ya contestado, por pregunta y por versión del fichero (ruta, fecha y
-# tamaño). Recorrer pci.ids entero son milisegundos de Python, y la red
-# pregunta por el nombre de su tarjeta en cada muestreo: con la ventana
-# escondida era el 7 % de lo que gastaba silux.
-_contestado: dict[tuple, dict] = {}
+# What was already answered, by question and by file version (path, date and
+# size). Walking all of pci.ids is milliseconds of Python, and the network
+# asks for its card's name every sample: with the window hidden it was 7 %
+# of what Silux spent.
+_answered: dict[tuple, dict] = {}
 
 
 def _lookup(
     pairs: Iterable[tuple[int, int]],
     subsystems: Iterable[tuple[int, int, int, int]] = (),
 ) -> dict[tuple[int, int], tuple[str, str]]:
-    """`_recorrer`, recordando lo contestado mientras el fichero no cambie."""
-    pares = tuple(sorted({(int(v), int(d)) for v, d in pairs}))
+    """`_walk`, remembering what it answered while the file does not change."""
+    pair_list = tuple(sorted({(int(v), int(d)) for v, d in pairs}))
     subs = tuple(sorted({tuple(int(n) for n in key) for key in subsystems}))
     path = database_path()
     if path is None:
         return {}
     try:
-        estado = path.stat()
+        state = path.stat()
     except OSError:
         return {}
-    clave = (str(path), estado.st_mtime_ns, estado.st_size, pares, subs)
-    if clave not in _contestado:
-        _contestado[clave] = _recorrer(path, pares, subs)
-    return dict(_contestado[clave])
+    lookup_key = (str(path), state.st_mtime_ns, state.st_size, pair_list, subs)
+    if lookup_key not in _answered:
+        _answered[lookup_key] = _walk(path, pair_list, subs)
+    return dict(_answered[lookup_key])
 
 
-def _recorrer(
+def _walk(
     path: pathlib.Path,
     pairs: Iterable[tuple[int, int]],
     subsystems: Iterable[tuple[int, int, int, int]] = (),
 ) -> dict[tuple[int, int], tuple[str, str]]:
-    """Devuelve {(vendor, device): (nombre del fabricante, nombre del modelo)}.
+    """{(vendor, device): (vendor name, model name)}.
 
-    Los identificadores que no estén en la base simplemente no aparecen en el
-    resultado; quien llama decide qué enseñar en su lugar.
+    Ids not in the database simply do not appear; the caller decides what to
+    show instead.
 
-    `subsystems` pide además las líneas anidadas de tercer nivel, con las que
-    una tarjeta deja de ser «Radeon RX 9070/9070 XT/9070 GRE» (tres modelos a
-    la vez) y pasa a ser la que de verdad hay puesta. Se resuelven en la misma
-    pasada, y sus resultados vuelven con la clave de cuatro números.
+    `subsystems` also asks for the nested third-level lines, with which a card
+    stops being «Radeon RX 9070/9070 XT/9070 GRE» (three models at once) and
+    becomes the one installed. They are resolved in the same pass, and come
+    back under the four-number key.
     """
     wanted = {(int(v), int(d)) for v, d in pairs}
     subs_wanted = {tuple(int(n) for n in key) for key in subsystems}
-    # El fabricante de la tarjeta es un fabricante de primer nivel como
-    # cualquier otro, así que basta con pedir su sección al recorrer.
+    # The card's vendor is a top-level vendor like any other, so asking for its
+    # section during the walk is enough.
     wanted |= {(key[0], key[1]) for key in subs_wanted}
     if not wanted and not subs_wanted:
         return {}
@@ -128,9 +127,9 @@ def _recorrer(
     vendors_wanted |= {key[2] for key in subs_wanted}
     found: dict = {}
     vendor_names: dict[int, str] = {}
-    # Los subsistemas se apuntan al vuelo y se nombran al final: la sección del
-    # fabricante de la tarjeta puede venir después de la del chip en el fichero.
-    subs_crudos: dict[tuple[int, int, int, int], str] = {}
+    # Subsystems are noted on the fly and named at the end: the card vendor's
+    # section may come after the chip's in the file.
+    raw_subs: dict[tuple[int, int, int, int], str] = {}
 
     current_vendor: Optional[int] = None
     current_device: Optional[int] = None
@@ -140,8 +139,8 @@ def _recorrer(
                 if not line or line.startswith("#"):
                     continue
                 if not line.startswith("\t"):
-                    # Línea de fabricante. Al llegar a una sección que no
-                    # interesa se marca como None y se saltan sus modelos.
+                    # A vendor line. A section that does not matter is marked
+                    # None and its models skipped.
                     code, _, name = line.partition("  ")
                     try:
                         current_vendor = int(code, 16)
@@ -164,30 +163,30 @@ def _recorrer(
                     key = (current_vendor, device)
                     if key in wanted:
                         found[key] = (vendor_names[current_vendor], name.strip())
-                        # Ya no se puede salir en cuanto estén todos: puede
-                        # quedar por leer la sección del fabricante de la tarjeta.
+                        # It cannot stop once all are found: the card vendor's
+                        # section may still be ahead.
                         if len(found) == len(wanted) and not subs_wanted:
                             return found
                 elif current_device is not None and current_vendor is not None:
                     code, _, name = line.strip().partition("  ")
                     subvendor, _, subdevice = code.partition(" ")
                     try:
-                        clave = (current_vendor, current_device,
+                        lookup_key = (current_vendor, current_device,
                                  int(subvendor, 16), int(subdevice, 16))
                     except ValueError:
                         continue
-                    if clave in subs_wanted:
-                        subs_crudos[clave] = name.strip()
+                    if lookup_key in subs_wanted:
+                        raw_subs[lookup_key] = name.strip()
     except OSError:
         return found
 
-    for clave, nombre in subs_crudos.items():
-        found[clave] = (vendor_names.get(clave[2], ""), nombre)
+    for lookup_key, entry_name in raw_subs.items():
+        found[lookup_key] = (vendor_names.get(lookup_key[2], ""), entry_name)
     return found
 
 
 def vendor_name(vendor: int) -> Optional[str]:
-    """El nombre de un fabricante, o el que se grabó en un equipo volcado."""
+    """A vendor's name, or the one recorded on a dumped machine."""
     if sysroot.active() and not sysroot.did_record("pciids"):
         return _vendor_name(int(vendor))
     return sysroot.recorded("pciids_fabricante", f"{int(vendor):04x}",
@@ -196,13 +195,12 @@ def vendor_name(vendor: int) -> Optional[str]:
 
 @functools.lru_cache(maxsize=64)
 def _vendor_name(vendor: int) -> Optional[str]:
-    """Solo el nombre de un fabricante, sin pedir ningún modelo.
+    """Only a vendor's name, without asking for any model.
 
-    Hace falta para el «Ensamblada por» de una gráfica: pci.ids trae la línea
-    del subsistema completo solo para las combinaciones que alguien se ha
-    molestado en añadir, y una placa reciente no suele estar. Pero el
-    fabricante sí: el 0x1462 es MSI aunque no aparezca esa tarjeta suya
-    concreta, y decir quién la montó vale más que un guion.
+    For a graphics card's «Built by»: pci.ids carries the full subsystem line
+    only for combinations someone added, and a recent board usually is not
+    there. The vendor is: 0x1462 is MSI even if that card of theirs is not
+    listed, and saying who built it is worth more than a dash.
     """
     path = database_path()
     if path is None:

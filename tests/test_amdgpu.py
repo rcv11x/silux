@@ -25,11 +25,11 @@ RELOJES = {"max_engine_clock": 2_520_000, "max_memory_clock": 1_258_000}
 
 
 def respuesta(campos=None, relojes=None) -> bytes:
-    buffer = bytearray(amdgpu.RESPUESTA)
+    buffer = bytearray(amdgpu.REPLY_SIZE)
     for nombre, valor in {**NUEVE_MIL_SETENTA, **(campos or {})}.items():
-        struct.pack_into("<I", buffer, amdgpu.CAMPOS[nombre], valor)
+        struct.pack_into("<I", buffer, amdgpu.FIELDS[nombre], valor)
     for nombre, valor in {**RELOJES, **(relojes or {})}.items():
-        struct.pack_into("<Q", buffer, amdgpu.CAMPOS_64[nombre], valor)
+        struct.pack_into("<Q", buffer, amdgpu.FIELDS_64[nombre], valor)
     return bytes(buffer)
 
 
@@ -131,7 +131,7 @@ class TestDesconfianza(unittest.TestCase):
 
 class TestSinDatos(unittest.TestCase):
     def test_una_estructura_a_ceros(self):
-        info = consultar(b"\x00" * amdgpu.RESPUESTA, device_id=None)
+        info = consultar(b"\x00" * amdgpu.REPLY_SIZE, device_id=None)
         self.assertIsNone(info.vram_type)
         self.assertIsNone(info.rops)
         self.assertIsNone(info.bandwidth_bytes)

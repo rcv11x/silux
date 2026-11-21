@@ -577,7 +577,7 @@ class MainWindow(QMainWindow):
             # la interfaz en inglés, que es como está escrito en cualquier
             # script o captura de antes.
             nombres = {item.text().lower(), clave.lower(),
-                       i18n.en_español(clave).lower()}
+                       i18n.in_spanish(clave).lower()}
             if buscado in nombres:
                 return row
         return None

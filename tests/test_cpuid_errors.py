@@ -31,7 +31,7 @@ class TestTheExceptionTexts(unittest.TestCase):
                          "could not pin the thread to CPU 3: [Errno 22] Invalid argument")
 
     def test_a_machine_that_is_not_x86(self):
-        with mock.patch.object(rawcpuid, "maquina", lambda: "aarch64"):
+        with mock.patch.object(rawcpuid, "machine", lambda: "aarch64"):
             with self.assertRaises(rawcpuid.CpuidError) as caught:
                 rawcpuid.CpuidReader()
         self.assertEqual(str(caught.exception), "CPUID is only implemented for x86-64, not aarch64")

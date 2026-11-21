@@ -284,7 +284,7 @@ def latencias(niveles: "list[tuple[str, int]]") -> tuple:
     if not rawcpuid.is_supported():
         return (), "no_x86"
     try:
-        mm, direccion = rawcpuid.pagina_ejecutable(_CODIGO_PERSEGUIR)
+        mm, direccion = rawcpuid.executable_page(_CODIGO_PERSEGUIR)
     except Exception:                                          # noqa: BLE001
         # Un entorno que prohíbe ejecutar memoria anónima. Sin latencias, pero
         # el resto de la medida sigue valiendo.

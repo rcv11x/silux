@@ -411,7 +411,7 @@ class SettingsPage(ScrollPage):
         # El idioma va el primero: es lo que cambia todo lo demás, y quien lo
         # busca no viene a mirar el tema.
         self.language_box = QComboBox()
-        idiomas = i18n.disponible()
+        idiomas = i18n.available()
         for codigo, nombre in idiomas.items():
             self.language_box.addItem(nombre, codigo)
         actual = self._prefs.language if self._prefs.language in idiomas else "es"

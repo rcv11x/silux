@@ -1,25 +1,24 @@
-"""El idioma de la interfaz.
+"""The interface's language.
 
-Las claves son símbolos —`cpu.card.clocks`— y no el texto español. Así,
-retocar una frase en castellano no deja su traducción inglesa colgada de la
-versión vieja: la clave no se mueve, y lo que cambia es el valor en `es.json`.
+Keys are symbols (`cpu.card.clocks`), not the Spanish text: rewording a
+Spanish sentence does not leave its English translation hanging from the old
+one, as the key stays and only the value in `es.json` changes.
 
-Lo malo conocido de las claves simbólicas es que una traducción incompleta
-enseña `cpu.card.clocks` en pantalla. Aquí no pasa, porque hay dos escalones:
-si el idioma pedido no tiene la clave se mira el español, y solo si tampoco
-está sale la clave. Un archivo a medio traducir enseña español entre inglés,
-que se lee; y la clave suelta queda como aviso de que falta escribirla en las
-dos lenguas, no en una.
+The known weakness of symbolic keys is an incomplete translation showing
+`cpu.card.clocks` on screen. Not here, as there are two steps: a key missing
+in the chosen language falls back to Spanish, and only if that is missing too
+does the key show. A half-translated file shows Spanish among English, which
+reads; a bare key says the text is missing in both languages.
 
-Los idiomas son archivos JSON en `db/lang/`. Se eligió sobre gettext por quién
-los va a escribir: un `.po` hay que compilarlo a binario antes de que sirva, y
-esto se corrige desde el navegador de GitHub y se lee en el diff línea a línea.
+Languages are JSON files in `db/lang/`, chosen over gettext for whoever
+writes them: a `.po` has to be compiled before it works, and these can be
+fixed from GitHub's browser and read in the diff line by line.
 
-    _("cpu.card.clocks")       → "Clocks" en inglés, "Relojes" en español
+    _("cpu.card.clocks")       → "Clocks" in English, "Relojes" in Spanish
 
-Lo que **no** se traduce es lo que sale del propio equipo: el nombre del
-procesador, las etiquetas de los sensores que publica el kernel, los códigos
-de los chips. Eso no es texto del programa, es el dato.
+What is **not** translated comes from the machine itself: the processor's
+name, the sensor labels the kernel publishes, the chips' codes. That is not
+the program's text, it is the data.
 """
 
 from __future__ import annotations
@@ -28,130 +27,128 @@ import json
 import pathlib
 from typing import Callable, Optional
 
-# Los idiomas que trae el programa. La clave es el código ISO y el valor, el
-# nombre en su propia lengua: quien busca su idioma lo reconoce escrito como
-# lo escribe él, no traducido al de la interfaz.
-IDIOMAS: dict[str, str] = {
+# The languages the program carries. The key is the ISO code and the value
+# the name in its own language: whoever looks for theirs recognizes it as
+# they write it, not translated into the interface's.
+LANGUAGES: dict[str, str] = {
     "es": "Español",
     "en": "English",
 }
 
-CARPETA = pathlib.Path(__file__).resolve().parent / "db" / "lang"
+FOLDER = pathlib.Path(__file__).resolve().parent / "db" / "lang"
 
-_actual = "es"
-_tabla: dict[str, str] = {}
-# El español se tiene siempre cargado, sea cual sea el idioma elegido: es el
-# escalón intermedio entre una traducción que falta y la clave pelada.
-_base: dict[str, str] = {}
-_oyentes: list[Callable[[], None]] = []
-
-
-def disponible() -> dict[str, str]:
-    """Los idiomas que tienen archivo."""
-    idiomas = {}
-    for ruta in sorted(CARPETA.glob("*.json")) if CARPETA.is_dir() else ():
-        idiomas[ruta.stem] = IDIOMAS.get(ruta.stem, ruta.stem)
-    return idiomas or {"es": IDIOMAS["es"]}
+_current = "es"
+_table: dict[str, str] = {}
+# Spanish is always loaded, whatever language is chosen: the step between a
+# missing translation and the bare key.
+_fallback: dict[str, str] = {}
+_listeners: list[Callable[[], None]] = []
 
 
-def _cargar(codigo: str) -> dict[str, str]:
-    """Un archivo de idioma, o vacío si no está o está roto.
+def available() -> dict[str, str]:
+    """The languages that have a file."""
+    languages = {}
+    for path in sorted(FOLDER.glob("*.json")) if FOLDER.is_dir() else ():
+        languages[path.stem] = LANGUAGES.get(path.stem, path.stem)
+    return languages or {"es": LANGUAGES["es"]}
 
-    Se descarta lo que no sea texto por texto: un archivo a medio escribir no
-    tiene por qué tirar la interfaz abajo.
+
+def _load(code: str) -> dict[str, str]:
+    """A language file, or empty if missing or broken.
+
+    Whatever is not text for text is dropped: a half-written file must not
+    take the interface down.
     """
     try:
-        datos = json.loads((CARPETA / f"{codigo}.json").read_text(encoding="utf-8"))
+        data = json.loads((FOLDER / f"{code}.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return {}
-    return {k: v for k, v in datos.items()
+    return {k: v for k, v in data.items()
             if isinstance(k, str) and isinstance(v, str) and v}
 
 
-def actual() -> str:
-    return _actual
+def current() -> str:
+    return _current
 
 
-def set_language(codigo: Optional[str]) -> str:
-    """Carga un idioma y avisa a quien esté escuchando. Devuelve el que quedó.
+def set_language(code: Optional[str]) -> str:
+    """Load a language and tell whoever listens. Returns the one in force.
 
-    Un código que no existe no es un error que deba parar el programa: se
-    vuelve al español, que siempre está.
+    A code that does not exist is no error to stop the program: it falls back
+    to Spanish, which is always there.
     """
-    global _actual, _tabla, _base
+    global _current, _table, _fallback
 
-    if not _base:
-        _base = _cargar("es")
+    if not _fallback:
+        _fallback = _load("es")
 
-    codigo = (codigo or "es").lower()
-    if codigo == "es":
-        _actual, _tabla = "es", {}
+    code = (code or "es").lower()
+    if code == "es":
+        _current, _table = "es", {}
     else:
-        cargado = _cargar(codigo)
-        _actual, _tabla = (codigo, cargado) if cargado else ("es", {})
-    _avisar()
-    return _actual
+        loaded = _load(code)
+        _current, _table = (code, loaded) if loaded else ("es", {})
+    _notify()
+    return _current
 
 
-def _(clave: str) -> str:
-    """El texto de una clave en el idioma de ahora.
+def _(key: str) -> str:
+    """A key's text in the current language.
 
-    Tres escalones, y el orden es lo que hace utilizable esto: el idioma
-    pedido, el español, y por último la clave. Un `en.json` a medias enseña
-    español entre inglés, que se lee; solo cuando la frase no está escrita en
-    ninguna de las dos lenguas asoma la clave, y eso es lo que hace falta ver
-    para ir a escribirla.
+    Three steps, and the order is what makes this usable: the chosen
+    language, Spanish, and last the key. A half-done `en.json` shows Spanish
+    among English, which reads; only a sentence written in neither language
+    shows the key, and that is what one needs to see to go and write it.
     """
-    if clave in _tabla:
-        return _tabla[clave]
-    if not _base:
-        set_language(_actual)
-    return _base.get(clave, clave)
+    if key in _table:
+        return _table[key]
+    if not _fallback:
+        set_language(_current)
+    return _fallback.get(key, key)
 
 
-def en_español(clave: str) -> str:
-    """El texto castellano de una clave, aunque la interfaz esté en otro idioma.
+def in_spanish(key: str) -> str:
+    """A key's Spanish text, whatever the interface's language.
 
-    Lo usa quien tiene que reconocer un nombre escrito en español venga de
-    donde venga: `--page Sensores` no puede dejar de funcionar porque alguien
-    se ponga la interfaz en inglés.
+    For whoever has to recognize a name written in Spanish wherever it comes
+    from: `--page Sensores` must keep working with the interface in English.
     """
-    global _base
-    if not _base:
-        _base = _cargar("es")
-    return _base.get(clave, clave)
+    global _fallback
+    if not _fallback:
+        _fallback = _load("es")
+    return _fallback.get(key, key)
 
 
-def al_cambiar(callback: Callable[[], None]) -> None:
-    """Registra a quien tenga que repintarse cuando cambie el idioma."""
-    if callback not in _oyentes:
-        _oyentes.append(callback)
+def on_change(callback: Callable[[], None]) -> None:
+    """Register whoever must repaint when the language changes."""
+    if callback not in _listeners:
+        _listeners.append(callback)
 
 
-def olvidar(callback: Callable[[], None]) -> None:
-    if callback in _oyentes:
-        _oyentes.remove(callback)
+def forget(callback: Callable[[], None]) -> None:
+    if callback in _listeners:
+        _listeners.remove(callback)
 
 
-def _avisar() -> None:
-    for callback in list(_oyentes):
+def _notify() -> None:
+    for callback in list(_listeners):
         try:
             callback()
         except RuntimeError:
-            # Un widget que Qt ya destruyó. Se descuelga y se sigue: que un
-            # oyente muerto impida cambiar de idioma sería absurdo.
-            olvidar(callback)
+            # A widget Qt already destroyed: dropped, and on we go. A dead
+            # listener must not stop the language from changing.
+            forget(callback)
 
 
-def sin_traducir(codigo: str) -> list[str]:
-    """Las cadenas que el idioma pedido todavía no cubre.
+def untranslated(code: str) -> list[str]:
+    """The strings the chosen language does not cover yet.
 
-    Sirve para `tools/gen_lang.py`, que es quien mantiene los archivos al día
-    cuando aparece texto nuevo en el programa.
+    For `tools/gen_lang.py`, which keeps the files up to date when new text
+    appears in the program.
     """
-    ruta = CARPETA / f"{codigo}.json"
+    path = FOLDER / f"{code}.json"
     try:
-        datos = json.loads(ruta.read_text(encoding="utf-8"))
+        data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return []
-    return sorted(k for k, v in datos.items() if not v)
+    return sorted(k for k, v in data.items() if not v)

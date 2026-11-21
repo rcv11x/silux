@@ -62,7 +62,7 @@ MAX_V = 2.0
 
 
 def _is_x86() -> bool:
-    return rawcpuid.maquina() in ("x86_64", "AMD64", "i686", "i386")
+    return rawcpuid.machine() in ("x86_64", "AMD64", "i686", "i386")
 
 
 def _amd_voltage(values: dict) -> Optional[float]:

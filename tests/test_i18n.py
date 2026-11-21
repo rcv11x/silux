@@ -34,8 +34,8 @@ class TestIdioma(unittest.TestCase):
         """El escalón que hace utilizable esto: una traducción a medias enseña
         español entre inglés, que se lee, y no la clave pelada."""
         i18n.set_language("en")
-        with mock.patch.dict(i18n._tabla, clear=False) as tabla:
-            i18n._tabla.pop("cpu.card.clocks", None)
+        with mock.patch.dict(i18n._table, clear=False) as tabla:
+            i18n._table.pop("cpu.card.clocks", None)
             self.assertEqual(_("cpu.card.clocks"), "Relojes")
 
     def test_una_clave_que_no_existe_en_ningun_idioma_se_ve(self):
@@ -52,7 +52,7 @@ class TestIdioma(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             carpeta = pathlib.Path(tmp)
             (carpeta / "xx.json").write_text("{esto no es json", encoding="utf-8")
-            with mock.patch.object(i18n, "CARPETA", carpeta):
+            with mock.patch.object(i18n, "FOLDER", carpeta):
                 self.assertEqual(i18n.set_language("xx"), "es")
 
     def test_una_entrada_vacia_no_borra_el_texto(self):
@@ -63,34 +63,34 @@ class TestIdioma(unittest.TestCase):
                 json.dumps({"a.uno": "Uno", "a.dos": "Dos"}), encoding="utf-8")
             (carpeta / "xx.json").write_text(
                 json.dumps({"a.uno": "", "a.dos": "Two"}), encoding="utf-8")
-            with mock.patch.object(i18n, "CARPETA", carpeta):
-                i18n._base = {}
+            with mock.patch.object(i18n, "FOLDER", carpeta):
+                i18n._fallback = {}
                 i18n.set_language("xx")
                 self.assertEqual(_("a.uno"), "Uno")
                 self.assertEqual(_("a.dos"), "Two")
-        i18n._base = {}
+        i18n._fallback = {}
 
     def test_el_español_siempre_está_en_la_lista(self):
-        self.assertIn("es", i18n.disponible())
+        self.assertIn("es", i18n.available())
 
     def test_cada_clave_del_español_tiene_su_inglés(self):
         """Un hueco es una frase en español en medio de una interfaz en
         inglés: se lee, pero canta."""
-        es = json.loads((i18n.CARPETA / "es.json").read_text(encoding="utf-8"))
-        en = json.loads((i18n.CARPETA / "en.json").read_text(encoding="utf-8"))
+        es = json.loads((i18n.FOLDER / "es.json").read_text(encoding="utf-8"))
+        en = json.loads((i18n.FOLDER / "en.json").read_text(encoding="utf-8"))
         faltan = [k for k in es if not en.get(k)]
         self.assertEqual(faltan, [], f"{len(faltan)} sin traducir al inglés")
 
     def test_las_claves_son_simbolos_y_no_frases(self):
         """Si una clave es una frase, retocarla en el código deja su
         traducción colgada: eso es lo que se dejó atrás."""
-        es = json.loads((i18n.CARPETA / "es.json").read_text(encoding="utf-8"))
+        es = json.loads((i18n.FOLDER / "es.json").read_text(encoding="utf-8"))
         frases = [k for k in es if " " in k or len(k) > 40]
         self.assertEqual(frases, [])
 
     def test_cada_idioma_se_lee_en_su_propia_lengua(self):
         """Quien busca el suyo lo reconoce escrito como lo escribe él."""
-        self.assertEqual(i18n.IDIOMAS["en"], "English")
+        self.assertEqual(i18n.LANGUAGES["en"], "English")
 
 
 class TestLoQueNoSeTraduce(unittest.TestCase):

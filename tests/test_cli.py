@@ -20,7 +20,7 @@ class TestLaAyuda(unittest.TestCase):
         import contextlib
         import io
         from silux import i18n
-        anterior = i18n.actual()
+        anterior = i18n.current()
         self.addCleanup(i18n.set_language, anterior)
         i18n.set_language(idioma)
         salida = io.StringIO()
@@ -66,7 +66,7 @@ class TestLaAyudaDeLaVentana(unittest.TestCase):
         import os
         from unittest import mock
         from silux import i18n, options
-        self.addCleanup(i18n.set_language, i18n.actual())
+        self.addCleanup(i18n.set_language, i18n.current())
         i18n.set_language("es")
         with mock.patch.dict(os.environ, {"APPIMAGE": "/home/x/silux-x86_64.AppImage"}):
             texto = options.epilog_for_terminal()

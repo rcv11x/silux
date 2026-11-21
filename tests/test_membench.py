@@ -284,7 +284,7 @@ class TestLatencias(unittest.TestCase):
 
     def test_si_el_sistema_prohibe_ejecutar_memoria_se_dice(self):
         """Pasa bajo políticas SELinux estrictas y en algunos sandboxes."""
-        with mock.patch.object(membench.rawcpuid, "pagina_ejecutable",
+        with mock.patch.object(membench.rawcpuid, "executable_page",
                                side_effect=RuntimeError("mprotect")):
             salidas, motivo = membench.latencias(self.NIVELES)
         self.assertEqual((salidas, motivo), ((), "sin_ejecutable"))

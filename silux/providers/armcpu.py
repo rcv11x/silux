@@ -26,7 +26,7 @@ CPUINFO = "/proc/cpuinfo"
 DEVICE_TREE = "/sys/firmware/devicetree/base"
 
 def is_arm() -> bool:
-    return rawcpuid.maquina().lower().startswith(("aarch64", "arm"))
+    return rawcpuid.machine().lower().startswith(("aarch64", "arm"))
 
 
 def _cpuinfo() -> list[dict[str, str]]:
@@ -162,7 +162,7 @@ class ArmIdentity(Provider):
             brand=" ".join(p for p in (vendor, core, stepping) if p) or None,
             codename=identity.get("codename"),
             technology=identity.get("technology"),
-            architecture=rawcpuid.maquina(),
+            architecture=rawcpuid.machine(),
             # ARM's equivalent of the CPUID signature: the two numbers that
             # identify the silicon, without a family and model that mean
             # something else here.

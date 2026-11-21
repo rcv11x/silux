@@ -269,7 +269,7 @@ class TestCpuHibrida(unittest.TestCase):
     def test_en_español_aunque_la_interfaz_esté_en_inglés(self):
         """El informe es castellano fijo: con `_()` se mezclarían los idiomas."""
         from silux import i18n
-        anterior = i18n.actual()
+        anterior = i18n.current()
         try:
             i18n.set_language("en")
             texto = report.build(self._hibrida())
@@ -433,7 +433,7 @@ class TestLasCategoriasSalenEnCastellano(unittest.TestCase):
         """Lo que rompería esto es cambiar `en_español` por `_`."""
         from silux import i18n
 
-        anterior = i18n.actual()
+        anterior = i18n.current()
         try:
             i18n.set_language("en")
             texto = self._con_varias_categorias()

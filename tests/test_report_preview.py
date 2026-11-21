@@ -98,10 +98,10 @@ class TestReportPreview(unittest.TestCase):
 
     def test_it_opens_with_the_version_as_the_app_says_it_and_no_table(self):
         from silux import __version__, render
-        from silux.i18n import en_español
+        from silux.i18n import in_spanish
         lines = [line for line in self.open_preview().report().splitlines() if line.strip()]
         self.assertTrue(lines[0].startswith(
-            f"# Informe de Silux {render.version(__version__, en_español)}"))
+            f"# Informe de Silux {render.version(__version__, in_spanish)}"))
         self.assertFalse(lines[1].startswith("|"), lines[1])
 
     def test_new_permissions_keep_the_reader_where_they_were(self):

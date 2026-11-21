@@ -1,9 +1,8 @@
-"""Preferencias del usuario, guardadas en disco.
+"""The user's preferences, saved on disk.
 
-Deliberadamente pequeño: un dataclass, un fichero JSON en la ruta que manda
-la especificación XDG, y nada más. Si el fichero está corrupto o es de una
-versión futura, se ignora y se usan los valores por defecto en vez de
-reventar al arrancar.
+Small on purpose: a dataclass, a JSON file at the path the XDG specification
+says, and nothing more. A corrupt file or one from a future version is
+ignored and the defaults are used, rather than crashing at startup.
 """
 
 from __future__ import annotations
@@ -42,63 +41,61 @@ def system_language(environ: Optional[Mapping[str, str]] = None) -> str:
 @dataclass(frozen=True)
 class Preferences:
     interval_s: float = 1.0
-    # Las gráficas se deslizan entre muestra y muestra en vez de saltar. No
-    # lee nada más: solo repinta más veces, y solo las que están a la vista,
-    # que son cuatro. Medido en un Ryzen 7 5800X3D sale al 2 % de un núcleo.
-    # Apagado de serie de todas formas: en un portátil eso es batería.
+    # Charts glide between samples instead of jumping. It reads nothing more,
+    # only repaints more often, and only the four on screen: about 2 % of a
+    # core on a desktop CPU. Off by default anyway: on a laptop that is
+    # battery.
     fluid_charts: bool = False
     theme: str = "system"                 # system | light | dark
     temperature_unit: str = "c"           # c | f
     density: str = "normal"               # spacious | normal | compact
-    # «grande» de salida: en un monitor de 27" a 1440p el tamaño base se
-    # lee pequeño, y quien lo quiera más apretado lo baja en dos clics.
+    # «grande» by default: on a 27" monitor at 1440p the base size reads small,
+    # and whoever wants it tighter lowers it in two clicks.
     font_scale: str = "grande"            # normal | grande | mayor | máximo
-    # Sin color de acento que elegir: es el ámbar de la marca, en todas las
-    # páginas. Un `settings.json` antiguo con «accent» se carga igual: `load`
-    # descarta las claves que no conoce.
-    # En bytes por segundo o en bits por segundo. Los fabricantes miden los
-    # enlaces en bits y los programas de descarga en bytes, y son ocho veces
-    # distintos: quien compara con un test de velocidad quiere bits.
+    # No accent colour to choose: it is the brand's amber, on every page. An
+    # old `settings.json` with «accent» loads anyway: `load` drops the keys it
+    # does not know.
+    # In bytes or bits per second. Makers measure links in bits and download
+    # programs in bytes, eight times apart: whoever compares with a speed test
+    # wants bits.
     network_unit: str = "bytes"           # bytes | bits
     show_all_features: bool = False
-    # Buscar una versión nueva al abrir. Apagado de serie: el programa no se
-    # conecta a nada si nadie lo pide (docs/arquitectura.md#el-actualizador).
+    # Look for a new version on opening. Off by default: the program connects
+    # to nothing unless asked (docs/arquitectura.md#el-actualizador).
     check_updates: bool = False
     # «stable» or «testing»; empty follows the running version (a test
     # version looks for the next test version, a final for finals).
     update_channel: str = ""
-    # Ancho de la columna «Sensor» del árbol. 0 = calcularlo del contenido.
-    # Ancho de cada columna del árbol de sensores. Vacío = calcularlo.
-    # El idioma de la interfaz. El español es el original y no una traducción
-    # más: es lo que sale cuando falta una cadena en cualquier otro.
+    # The width of each column of the sensor tree. Empty = from the content.
+    # The interface's language. Spanish is the original and not one more
+    # translation: it shows wherever a string is missing in another.
     # Without a saved setting, the system's (see `system_language`).
     language: str = field(default_factory=lambda: system_language())
     sensor_columns: tuple[int, ...] = ()
-    # Las ramas del árbol de sensores que quedaron plegadas. Se guarda lo
-    # plegado y no lo abierto porque lo normal es tenerlo casi todo abierto:
-    # así una lista vacía significa «como estaba», que es lo que quiere quien
-    # nunca ha tocado nada.
+    # The sensor tree branches left folded. The folded ones are kept, not the
+    # open ones, since most is usually open: an empty list means «as it was»,
+    # which is what someone who never touched anything wants.
     sensor_collapsed: tuple[str, ...] = ()
-    # Y las que abrió a mano de entre las que nacen cerradas: las largas
-    # («Relojes · 16») y las que no tienen actividad. Lo que no está en
-    # ninguna de las dos listas sigue la regla, y la regla puede cambiar de
-    # una versión a otra sin pisar lo que el usuario eligió.
+    # And those opened by hand among the ones born closed: the long ones
+    # («Clocks · 16») and those without activity. What is in neither list
+    # follows the rule, and the rule can change between versions without
+    # overriding what the user chose.
     sensor_expanded: tuple[str, ...] = ()
     window_width: int = 900
     window_height: int = 680
-    # El aviso de Inicio de que faltan datos por permisos, quitado con «No
-    # volver a mostrar». El enlace de la barra de estado sigue estando.
+    # The Home notice that data is missing for lack of permissions, dismissed
+    # with «Do not show again». The status bar's link stays.
     permission_notice_dismissed: bool = False
 
-    # -- validación ---------------------------------------------------------
+    # -- validation ---------------------------------------------------------
 
     def normalized(self) -> "Preferences":
-        from .i18n import disponible
+        from .i18n import available
 
         return replace(
             self,
             interval_s=min(10.0, max(0.2, float(self.interval_s))),
-            fluid_charts=_si_o_no(self.fluid_charts, False),
+            fluid_charts=_yes_or_no(self.fluid_charts, False),
             theme=self.theme if self.theme in ("system", "light", "dark") else "system",
             temperature_unit="f" if self.temperature_unit == "f" else "c",
             density=self.density if self.density in ("spacious", "normal", "compact") else "normal",
@@ -106,20 +103,20 @@ class Preferences:
                         if self.font_scale in ("normal", "grande", "mayor", "máximo")
                         else "grande"),
             network_unit="bits" if self.network_unit == "bits" else "bytes",
-            show_all_features=_si_o_no(self.show_all_features, False),
-            check_updates=_si_o_no(self.check_updates, False),
+            show_all_features=_yes_or_no(self.show_all_features, False),
+            check_updates=_yes_or_no(self.check_updates, False),
             update_channel=(self.update_channel
                             if self.update_channel in ("stable", "testing") else ""),
             language=(str(self.language).lower()
-                      if str(self.language).lower() in disponible() else system_language()),
+                      if str(self.language).lower() in available() else system_language()),
             sensor_columns=tuple(min(900, max(30, int(w))) for w in (self.sensor_columns or ())),
             sensor_collapsed=tuple(str(c) for c in (self.sensor_collapsed or ()))[:400],
             sensor_expanded=tuple(str(c) for c in (self.sensor_expanded or ()))[:400],
-            # El recorte aquí es solo un saneado grueso; el suelo de verdad lo
-            # pone la ventana, que sabe qué densidad está activa.
+            # Only a rough clamp here; the window sets the real floor, knowing
+            # which density is active.
             window_width=min(3840, max(380, int(self.window_width))),
             window_height=min(2160, max(320, int(self.window_height))),
-            permission_notice_dismissed=_si_o_no(self.permission_notice_dismissed, False),
+            permission_notice_dismissed=_yes_or_no(self.permission_notice_dismissed, False),
         )
 
     @property
@@ -131,28 +128,26 @@ class Preferences:
         return int(round(self.interval_s * 1000))
 
 
-def _si_o_no(valor: Any, defecto: bool) -> bool:
-    """Un sí o un no, sin tomar por sí cualquier cosa que no esté vacía.
+def _yes_or_no(setting_value: Any, default: bool) -> bool:
+    """A yes or a no, without taking anything non-empty for a yes.
 
-    `bool("false")` es `True`: un `settings.json` editado a mano con
-    `"fluid_charts": "false"` encendía el movimiento fluido.
+    `bool("false")` is `True`: a hand-edited `settings.json` with
+    `"fluid_charts": "false"` turned smooth motion on.
     """
-    if isinstance(valor, bool):
-        return valor
-    if isinstance(valor, (int, float)) and valor in (0, 1):
-        return bool(valor)
-    if isinstance(valor, str) and valor.strip().lower() in ("true", "false"):
-        return valor.strip().lower() == "true"
-    return defecto
+    if isinstance(setting_value, bool):
+        return setting_value
+    if isinstance(setting_value, (int, float)) and setting_value in (0, 1):
+        return bool(setting_value)
+    if isinstance(setting_value, str) and setting_value.strip().lower() in ("true", "false"):
+        return setting_value.strip().lower() == "true"
+    return default
 
 
 def load() -> Preferences:
-    """Las preferencias guardadas, campo a campo.
+    """The saved preferences, field by field.
 
-    Un archivo que no se lee o que no es un objeto JSON da las de serie: con
-    una lista o un número, la ventana no llegaba a abrir. Y un campo malo se
-    queda con su valor de serie sin llevarse a los demás: antes, un solo
-    tamaño escrito como texto tiraba todas las preferencias.
+    A file that cannot be read, or is not a JSON object, gives the defaults.
+    A bad field keeps its default without taking the others down.
     """
     try:
         raw: Any = json.loads(config_path().read_text(encoding="utf-8"))
@@ -161,23 +156,23 @@ def load() -> Preferences:
     if not isinstance(raw, dict):
         return Preferences()
     base = Preferences()
-    buenos: dict[str, Any] = {}
-    for campo in fields(Preferences):
-        if campo.name not in raw:
+    valid: dict[str, Any] = {}
+    for pref_field in fields(Preferences):
+        if pref_field.name not in raw:
             continue
         try:
-            replace(base, **{campo.name: raw[campo.name]}).normalized()
+            replace(base, **{pref_field.name: raw[pref_field.name]}).normalized()
         except (TypeError, ValueError, OverflowError):
             continue
-        buenos[campo.name] = raw[campo.name]
-    return Preferences(**buenos).normalized()
+        valid[pref_field.name] = raw[pref_field.name]
+    return Preferences(**valid).normalized()
 
 
 def save(preferences: Preferences) -> bool:
-    """Guarda y devuelve si lo consiguió. No es crítico: si falla, se sigue."""
+    """Save and say whether it worked. Not critical: on failure, carry on."""
     try:
         config_dir().mkdir(parents=True, exist_ok=True)
-        # Escritura atómica: un corte de luz no debe dejar un JSON a medias.
+        # Atomic write: a power cut must not leave half a JSON.
         temporary = config_path().with_suffix(".json.tmp")
         temporary.write_text(
             json.dumps(asdict(preferences.normalized()), indent=2) + "\n", encoding="utf-8"

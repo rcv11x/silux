@@ -1,15 +1,14 @@
-"""Ejecuta la instrucción CPUID desde Python, sin root y sin compilar nada.
+"""Run the CPUID instruction from Python, without root or compiling anything.
 
-El truco: se reservan unas pocas páginas anónimas con `mmap`, se escriben en
-ellas los 20 bytes de código máquina de una función que hace `cpuid`, se les
-quita permiso de escritura y se les da permiso de ejecución (W^X), y se llama
-al resultado con `ctypes` como si fuera cualquier otra función de C.
+The trick: a few anonymous pages are reserved with `mmap`, the 20 bytes of
+machine code of a function that runs `cpuid` are written in them, write
+permission is removed and execute permission given (W^X), and the result is
+called with `ctypes` like any other C function.
 
-CPUID responde por el núcleo donde se ejecuta, así que para leer los datos de
-un núcleo concreto hay que fijar el hilo a él. En Linux
-`sched_setaffinity(0, …)` afecta al *hilo* que llama, no al proceso entero:
-por eso `pinned()` es seguro siempre que se use dentro del hilo trabajador y
-nunca en el hilo de la interfaz.
+CPUID answers for the core it runs on, so reading a given core's data means
+pinning the thread to it. On Linux `sched_setaffinity(0, …)` affects the
+calling *thread*, not the whole process: `pinned()` is safe as long as it is
+used in the worker thread and never in the interface's.
 """
 
 from __future__ import annotations
@@ -25,14 +24,14 @@ from typing import Iterator, Optional
 from . import sysroot
 
 __all__ = ["CpuidError", "CpuidReader", "pinned", "is_supported",
-           "pagina_ejecutable"]
+           "executable_page"]
 
-# System V AMD64: rdi = puntero de salida, esi = hoja, edx = subhoja.
+# System V AMD64: rdi = output pointer, esi = leaf, edx = subleaf.
 _CODE_X86_64 = bytes(
     (
-        0x53,                    # push rbx        (rbx es callee-saved)
-        0x89, 0xF0,              # mov  eax, esi   -> hoja
-        0x89, 0xD1,              # mov  ecx, edx   -> subhoja
+        0x53,                    # push rbx        (rbx is callee-saved)
+        0x89, 0xF0,              # mov  eax, esi   -> leaf
+        0x89, 0xD1,              # mov  ecx, edx   -> subleaf
         0x0F, 0xA2,              # cpuid
         0x89, 0x07,              # mov  [rdi+0],  eax
         0x89, 0x5F, 0x04,        # mov  [rdi+4],  ebx
@@ -46,30 +45,28 @@ _CODE_X86_64 = bytes(
 _PROT_READ_EXEC = 0x1 | 0x4
 
 
-def pagina_ejecutable(codigo: bytes, error=RuntimeError):
-    """Una página con `codigo` dentro, lista para llamarse con ctypes.
+def executable_page(code: bytes, error=RuntimeError):
+    """A page with `code` inside, ready to be called with ctypes.
 
-    Devuelve el `mmap` y la dirección. El `mmap` hay que guardarlo mientras se
-    use la función: si se recolecta, la dirección deja de ser válida y la
-    llamada siguiente se lleva el proceso por delante.
+    Returns the `mmap` and the address. The `mmap` must be kept while the
+    function is used: if collected, the address stops being valid and the
+    next call takes the process down.
 
-    Vive aquí porque este módulo fue el primero que lo necesitó, para CPUID, y
-    ahora lo usa también el kernel que persigue punteros de `membench`. Los
-    detalles que tiene dentro se aprendieron una vez y no conviene repetirlos
-    en dos sitios para que se desincronicen.
+    It lives here because this module needed it first, for CPUID; `membench`'s
+    pointer-chasing kernel uses it too. Its details were learnt once and must
+    not live in two places to drift apart.
     """
     mm = mmap.mmap(-1, mmap.PAGESIZE, prot=mmap.PROT_READ | mmap.PROT_WRITE)
-    mm.write(codigo)
+    mm.write(code)
 
-    # `CDLL(None)` es el propio proceso, que ya trae la libc cargada, y es
-    # lo que hacen los otros dos módulos que la piden. Buscarla con
-    # `find_library` no la encuentra mejor y sí lanza `ldconfig -p` para
-    # preguntar por algo que ya está abierto: un fork y un exec dentro del
-    # hilo de muestreo, y un fallo donde no haya ldconfig puesto.
+    # `CDLL(None)` is the process itself, which already has libc loaded, as the
+    # other two modules that need it do. `find_library` finds it no better and
+    # runs `ldconfig -p` for something already open: a fork and an exec in
+    # the sampling thread, and a failure where there is no ldconfig.
     libc = ctypes.CDLL(None, use_errno=True)
-    # La vista se crea y se descarta en la misma expresión: si se guardara,
-    # el mmap quedaría "exportado" y no se podría cerrar nunca. La dirección
-    # sigue siendo válida mientras viva `mm`.
+    # The view is created and dropped in the same expression: kept, the mmap
+    # would be «exported» and could never be closed. The address stays valid
+    # while `mm` lives.
     address = ctypes.addressof(ctypes.c_char.from_buffer(mm))
 
     if libc.mprotect(ctypes.c_void_p(address), mmap.PAGESIZE, _PROT_READ_EXEC) != 0:
@@ -83,66 +80,66 @@ def pagina_ejecutable(codigo: bytes, error=RuntimeError):
 
 
 class CpuidError(RuntimeError):
-    """CPUID no se puede usar en esta máquina o en este entorno."""
+    """CPUID cannot be used on this machine or in this environment."""
 
 
-# La CPU a la que está fijado el hilo, para la clave de lo que se graba: en un
-# híbrido, la hoja 4 de un núcleo P y la de uno E no contestan lo mismo.
-_cpu_fijada: Optional[int] = None
+# The CPU the thread is pinned to, for the key of what is recorded: on a
+# hybrid, a P core's leaf 4 and an E core's do not answer the same.
+_pinned_cpu: Optional[int] = None
 
 
-def maquina() -> str:
-    """`platform.machine()`, o la del equipo volcado."""
+def machine() -> str:
+    """`platform.machine()`, or the dumped machine's."""
     return sysroot.recorded("plataforma", "machine", platform.machine) or ""
 
 
 def is_supported() -> bool:
-    return maquina() in ("x86_64", "AMD64")
+    return machine() in ("x86_64", "AMD64")
 
 
 @contextlib.contextmanager
 def pinned(cpu_index: int) -> Iterator[None]:
-    """Fija el hilo actual a una CPU lógica y restaura la máscara al salir.
+    """Pin the current thread to a logical CPU and restore the mask on exit.
 
-    Con un equipo volcado no se toca la afinidad: sus CPU no tienen por qué
-    existir en este, y lo que se pregunta ya está grabado CPU a CPU.
+    With a dumped machine the affinity is not touched: its CPUs need not exist
+    here, and what is asked is already recorded CPU by CPU.
     """
-    global _cpu_fijada
+    global _pinned_cpu
     if sysroot.active():
-        anterior, _cpu_fijada = _cpu_fijada, cpu_index
+        before, _pinned_cpu = _pinned_cpu, cpu_index
         try:
             yield
         finally:
-            _cpu_fijada = anterior
+            _pinned_cpu = before
         return
     previous = os.sched_getaffinity(0)
     try:
         os.sched_setaffinity(0, {cpu_index})
     except OSError as exc:                      # cpu apagada, cgroup restrictivo…
         raise CpuidError(f"could not pin the thread to CPU {cpu_index}: {exc}") from exc
-    anterior, _cpu_fijada = _cpu_fijada, cpu_index
+    before, _pinned_cpu = _pinned_cpu, cpu_index
     try:
         yield
     finally:
-        _cpu_fijada = anterior
+        _pinned_cpu = before
         os.sched_setaffinity(0, previous)
 
 
 class CpuidReader:
-    """Lector de hojas CPUID. Construirlo una vez y reutilizarlo."""
+    """A CPUID leaf reader. Build it once and reuse it."""
 
     def __init__(self) -> None:
         if not is_supported():
-            raise CpuidError(f"CPUID is only implemented for x86-64, not {maquina()}")
+            raise CpuidError(f"CPUID is only implemented for x86-64, not {machine()}")
 
-        self._mm, address = pagina_ejecutable(_CODE_X86_64, CpuidError)
+        self._mm, address = executable_page(_CODE_X86_64, CpuidError)
 
         prototype = ctypes.CFUNCTYPE(None, ctypes.POINTER(ctypes.c_uint32), ctypes.c_uint32, ctypes.c_uint32)
         self._call = prototype(address)
         self._regs = (ctypes.c_uint32 * 4)()
 
-        # Comprobación de cordura: la hoja 0 siempre devuelve un identificador
-        # de fabricante con caracteres imprimibles.
+        # Sanity check: leaf 0 always returns a vendor id of printable
+        # characters.
         try:
             self.max_leaf, ebx, ecx, edx = self(0)
             self.vendor_id = struct.pack("<III", ebx, edx, ecx).decode("ascii")
@@ -153,16 +150,16 @@ class CpuidReader:
         self.max_extended_leaf = self(0x8000_0000)[0]
 
     def __call__(self, leaf: int, subleaf: int = 0) -> tuple[int, int, int, int]:
-        """Devuelve (eax, ebx, ecx, edx) para una hoja y subhoja.
+        """(eax, ebx, ecx, edx) for a leaf and subleaf.
 
-        Pasa por `sysroot.recorded`: al volcar un equipo se graba, y al leer
-        uno volcado se repite sin ejecutar la instrucción.
+        Through `sysroot.recorded`: dumping a machine records it, and reading
+        a dumped one replays it without running the instruction.
         """
-        cpu = "*" if _cpu_fijada is None else _cpu_fijada
+        cpu = "*" if _pinned_cpu is None else _pinned_cpu
         return sysroot.recorded("cpuid", f"{cpu}:{leaf}:{subleaf}",
-                                self._preguntar, leaf, subleaf) or (0, 0, 0, 0)
+                                self._ask, leaf, subleaf) or (0, 0, 0, 0)
 
-    def _preguntar(self, leaf: int, subleaf: int) -> tuple[int, int, int, int]:
+    def _ask(self, leaf: int, subleaf: int) -> tuple[int, int, int, int]:
         self._call(self._regs, leaf, subleaf)
         return tuple(self._regs)  # type: ignore[return-value]
 
@@ -172,24 +169,23 @@ class CpuidReader:
         return leaf <= self.max_leaf
 
     def brand_string(self) -> str:
-        """La cadena de marca del fabricante, en las hojas 0x80000002-4."""
+        """The vendor's brand string, in leaves 0x80000002-4."""
         if not self.supports(0x8000_0004):
             return ""
         raw = b"".join(struct.pack("<IIII", *self(leaf)) for leaf in (0x8000_0002, 0x8000_0003, 0x8000_0004))
         return " ".join(raw.split(b"\x00")[0].decode("ascii", "replace").split())
 
     def hypervisor_id(self) -> str:
-        """La firma de doce bytes que publica el hipervisor en la hoja 0x40000000.
+        """The twelve-byte signature the hypervisor publishes in leaf 0x40000000.
 
-        No vale preguntar por `supports`: esa hoja está fuera del rango que
-        anuncia la hoja 0, y CPUID contesta a lo que no conoce con el
-        contenido de la hoja más alta que tenga, o sea con basura creíble.
-        Quien autoriza esta pregunta es el bit «hypervisor» de la hoja 1, y
-        comprobarlo es cosa de quien llama.
+        `supports` cannot be asked: this leaf is outside the range leaf 0
+        announces, and CPUID answers what it does not know with its highest
+        leaf's contents, believable garbage. The «hypervisor» bit of leaf 1
+        authorizes this question, and checking it is the caller's job.
         """
         _eax, ebx, ecx, edx = self(0x4000_0000)
-        # Aquí el orden es EBX-ECX-EDX y no el EBX-EDX-ECX de la hoja 0: son
-        # dos cadenas distintas escritas por dos gentes distintas.
+        # Here the order is EBX-ECX-EDX, not leaf 0's EBX-EDX-ECX: two strings
+        # written by two different people.
         raw = struct.pack("<III", ebx, ecx, edx).split(b"\x00")[0]
         if not raw or any(b < 0x20 or b > 0x7E for b in raw):
             return ""
