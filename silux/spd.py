@@ -676,13 +676,19 @@ def _eeproms() -> Iterator[tuple[pathlib.Path, int]]:
             yield entry, int(match.group(1), 16) - 0x50
 
 
-def read_all() -> list[SpdInfo]:
-    """Lee el SPD de todos los zócalos que el kernel esté exponiendo."""
+def read_all(failures: Optional[list] = None) -> list[SpdInfo]:
+    """Lee el SPD de todos los zócalos que el kernel esté exponiendo.
+
+    `failures` collects (device, OSError) for each `eeprom` that is there and
+    could not be read: that is not the same as having none.
+    """
     found = []
     for entry, slot in _eeproms():
         try:
             raw = (entry / "eeprom").read_bytes()
-        except OSError:
+        except OSError as exc:
+            if failures is not None:
+                failures.append((entry.name, exc))
             continue
         found.append(decode(raw, address=entry.name, slot=slot))
     return found

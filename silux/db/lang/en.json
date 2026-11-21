@@ -1164,6 +1164,8 @@
   "prov.rapl.none.hint": "Normal on older AMD, on ARM and in virtual machines.",
   "prov.rapl.onecore": "Core power is not shown on this processor",
   "prov.rapl.onecore.hint": "On AMD that counter belongs to a single core, the first one, not to all of them added up. The package reading does cover the whole processor.",
+  "prov.spd.readfailed": "The memory's SPD chip is there, but reading it failed.",
+  "prov.spd.readfailed.hint": "On DDR5 this happens when the machine blocks writes to the SPD, which the driver needs to switch pages, or when the driver did not recover after a suspend. The exact error is in the report.",
   "prov.spd.thesemodules": "these modules",
   "prov.spd.unsupported": "The SPD of {tipos} cannot be decoded yet.",
   "prov.spd.unsupported.hint": "The DDR4 and DDR5 formats are implemented.",

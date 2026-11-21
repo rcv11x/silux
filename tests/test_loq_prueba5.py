@@ -130,3 +130,39 @@ class TestTheSpdHint(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestAnSpdThatFailsToRead(unittest.TestCase):
+    """Its DDR5 SPD hub has its driver and its `eeprom`, and reading it fails:
+    the machine blocks writes to the SPD (which the driver needs to switch
+    pages), or the driver did not recover from a suspend. It said «could not
+    be read», and swallowed why."""
+
+    def _collect(self, error):
+        import errno
+        from unittest import mock
+        from silux import volcado
+        from silux.providers.spd_modules import SpdModules
+
+        real_open = open
+
+        def fake_open(path, *args, **kwargs):
+            if str(path).endswith("0-0050/eeprom"):
+                raise OSError(error, errno.errorcode.get(error, "error"))
+            return real_open(path, *args, **kwargs)
+
+        with volcado.montado(DUMP) as raiz:
+            (raiz / "sys/bus/i2c/devices/0-0050/eeprom").write_bytes(b"")
+            with mock.patch("builtins.open", fake_open), \
+                    mock.patch("pathlib.Path.read_bytes",
+                               lambda p: fake_open(p, "rb").read()):
+                borrador = Draft()
+                SpdModules().collect(borrador)
+        return [n for n in borrador.notes if n.path == "spd"]
+
+    def test_it_says_why_with_the_error(self):
+        import errno
+        notas = self._collect(errno.ENXIO)
+        self.assertEqual([n.key for n in notas], ["prov.spd.readfailed"])
+        self.assertIn("ENXIO", notas[0].detail)
+        self.assertNotEqual(notas[0].need, Need.ERROR)
