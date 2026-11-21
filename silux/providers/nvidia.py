@@ -176,6 +176,9 @@ def _rellenar(gpu: dict, tarjeta: nvml.NvidiaGpu) -> None:
         "temp_c": tarjeta.temp_c,
         "power_w": tarjeta.power_w,
         "power_cap_w": tarjeta.power_cap_w,
+        "power_cap_default_w": tarjeta.power_cap_default_w,
+        "power_cap_min_w": tarjeta.power_cap_min_w,
+        "power_cap_max_w": tarjeta.power_cap_max_w,
         "fan_percent": tarjeta.fan_percent,
         "throttled": tarjeta.throttled,
     }
