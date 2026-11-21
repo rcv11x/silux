@@ -1,9 +1,8 @@
 """Minimum, maximum and mean per sensor.
 
-What defines a hardware monitor: anyone gives the current value, but knowing
-how hot it got while you played (or whether a fan stopped for an instant)
-takes remembering. Kept apart from the model on purpose: the snapshot is a
-photo, and this is the film.
+Anyone can show the current value; knowing how hot it got during a game, or
+whether a fan stopped for a moment, takes memory. Kept out of the model: the
+snapshot is a photo, this is the film.
 """
 
 from __future__ import annotations
@@ -12,10 +11,9 @@ from collections import deque
 from dataclasses import dataclass, field
 from typing import Iterable, Optional
 
-# How many samples each sensor's curve keeps. Sixty at one second is the last
-# minute, where one sees whether something is rising. A hundred sensors by
-# sixty samples is about 200 KB: within budget, and much more adds no
-# reading, it only flattens the curve.
+# Sixty samples at one second is the last minute, enough to see a trend. A
+# hundred sensors by sixty samples is about 200 KB; more would only flatten
+# the curve.
 HISTORY_LENGTH = 60
 
 
@@ -26,8 +24,8 @@ class Extremes:
     total: float = 0.0
     samples: int = 0
     last: float = 0.0
-    # The recent series. The extremes say where the sensor was; this says
-    # where it goes, which is what one looks at when something heats up.
+    # The recent series: the extremes say where the sensor has been, this
+    # says where it is heading.
     history: deque = field(default_factory=lambda: deque(maxlen=HISTORY_LENGTH))
 
     @property
@@ -37,7 +35,7 @@ class Extremes:
 
 @dataclass
 class Tracker:
-    """Follows a collection of values identified by key."""
+    """Tracks a set of values by key."""
 
     _values: dict[str, Extremes] = field(default_factory=dict)
 
@@ -66,8 +64,7 @@ class Tracker:
         return self._values.get(key)
 
     def reset(self, key: Optional[str] = None) -> None:
-        """Reset one sensor, or all. The reset-minimum-and-maximum button any
-        hardware monitor has."""
+        """Reset one sensor, or all of them: the usual reset min/max button."""
         if key is None:
             self._values.clear()
         else:

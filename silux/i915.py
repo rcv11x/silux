@@ -1,16 +1,14 @@
-"""How many execution units an Intel GPU really has.
+"""How many execution units an Intel GPU has.
 
-The number is nowhere in sysfs. Only OpenCL answered, and it answers
-something else: its «compute units» are subslices, of sixteen EU each on
-Xe-LP, so an 80 EU Iris Xe G7 showed a 5 labelled EU.
+sysfs doesn't say. OpenCL does answer, but its «compute units» are
+subslices (sixteen EUs each on Xe-LP), so an 80 EU Iris Xe would show 5.
 
-The driver knows, through `DRM_IOCTL_I915_GETPARAM` with
-`I915_PARAM_EU_TOTAL`, where Mesa and `intel_gpu_top` take it from. The
-render node is opened, readable by anyone as in `amdgpu.py`, and only read.
-The chip id is a check: if it differs from sysfs's, this is another card and
-the answer is dropped.
+The driver knows: `DRM_IOCTL_I915_GETPARAM` with `I915_PARAM_EU_TOTAL`, the
+same query Mesa and `intel_gpu_top` use, on the render node (readable by
+everyone, as in `amdgpu.py`). The chip id is checked against sysfs so the
+answer can't be credited to another card.
 
-Only for `i915`: the newer `xe` driver has its own interface.
+Only for `i915`: the newer `xe` driver has a different interface.
 """
 
 from __future__ import annotations
@@ -28,7 +26,7 @@ from . import sysroot
 DRM_COMMAND_BASE = 0x40
 DRM_I915_GETPARAM = 0x06
 
-# From <drm/i915_drm.h>. They are ABI: the numbers are never reused.
+# From <drm/i915_drm.h>. ABI: numbers are never reused.
 I915_PARAM_CHIPSET_ID = 4
 I915_PARAM_SUBSLICE_TOTAL = 33
 I915_PARAM_EU_TOTAL = 34
@@ -36,7 +34,7 @@ I915_PARAM_EU_TOTAL = 34
 
 @dataclass(frozen=True)
 class DeviceInfo:
-    """None in each field the driver did not answer."""
+    """Each field is None where the driver didn't answer."""
 
     chipset_id: Optional[int] = None
     eu_total: Optional[int] = None
@@ -44,11 +42,10 @@ class DeviceInfo:
 
 
 class _Request(ctypes.Structure):
-    """`struct drm_i915_getparam`: what is asked and where to put the answer.
+    """`struct drm_i915_getparam`: the parameter and where to write it.
 
-    The pointer is aligned to eight, so ctypes pads four bytes between the
-    two fields. The size must come out 16, or the ioctl is not the one the
-    kernel expects.
+    The pointer is 8-byte aligned, so ctypes pads 4 bytes after the first
+    field. The size must be 16 or the kernel won't recognise the ioctl.
     """
 
     _fields_ = [("param", ctypes.c_int32),
@@ -56,7 +53,7 @@ class _Request(ctypes.Structure):
 
 
 def query(node: str, expected_device_id: Optional[int] = None) -> Optional[DeviceInfo]:
-    """Ask the driver. None at any doubt, without complaining."""
+    """Ask the driver. None on any doubt, without complaining."""
     try:
         descriptor = os.open(node, os.O_RDWR | os.O_CLOEXEC)
     except OSError:
@@ -64,8 +61,7 @@ def query(node: str, expected_device_id: Optional[int] = None) -> Optional[Devic
 
     try:
         chipset = _param(descriptor, I915_PARAM_CHIPSET_ID)
-        # If the chip is not the one sysfs says, this node is another card's
-        # and all it answered would be credited to the wrong one.
+        # Another chip id means this node belongs to another card.
         if expected_device_id is not None and chipset != expected_device_id:
             return None
         return DeviceInfo(
@@ -90,7 +86,7 @@ def render_node(device: pathlib.Path | str) -> Optional[str]:
 
 
 def _param(descriptor: int, which: int) -> Optional[int]:
-    """A single `GETPARAM`. Those that do not exist answer with an error."""
+    """A single GETPARAM; unknown parameters answer with an error."""
     value = ctypes.c_int32(0)
     request = _Request(which, ctypes.pointer(value))
     try:
@@ -98,13 +94,13 @@ def _param(descriptor: int, which: int) -> Optional[int]:
             return None
     except (OSError, ValueError):
         return None
-    # Zero is no answer: no GPU has zero units. The driver returns it when it
-    # knows the parameter but has nothing to say.
+    # No GPU has zero units: the driver answers 0 when it knows the parameter
+    # but has no value for it.
     return value.value or None
 
 
 def _iowr(letter: str, number: int, size: int) -> int:
-    """The same `_IOWR` as <asm/ioctl.h>, which Python does not provide."""
+    """`_IOWR` from <asm/ioctl.h>, which Python doesn't provide."""
     READ_WRITE = 3
     return (READ_WRITE << 30) | (size << 16) | (ord(letter) << 8) | number
 

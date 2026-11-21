@@ -1,14 +1,13 @@
-"""Run the CPUID instruction from Python, without root or compiling anything.
+"""Run CPUID from Python, without root and without compiling anything.
 
-The trick: a few anonymous pages are reserved with `mmap`, the 20 bytes of
-machine code of a function that runs `cpuid` are written in them, write
-permission is removed and execute permission given (W^X), and the result is
-called with `ctypes` like any other C function.
+The 20 bytes of a function that executes `cpuid` go into an anonymous page,
+the page is flipped from writable to executable (W^X), and ctypes calls it
+like any C function.
 
-CPUID answers for the core it runs on, so reading a given core's data means
-pinning the thread to it. On Linux `sched_setaffinity(0, …)` affects the
-calling *thread*, not the whole process: `pinned()` is safe as long as it is
-used in the worker thread and never in the interface's.
+CPUID reports on the core it runs on, so reading a given core means pinning
+the thread to it first. On Linux `sched_setaffinity(0, …)` pins the calling
+thread, not the process, which is why `pinned()` is only safe from the
+worker thread and never from the UI thread.
 """
 
 from __future__ import annotations
@@ -46,27 +45,21 @@ _PROT_READ_EXEC = 0x1 | 0x4
 
 
 def executable_page(code: bytes, error=RuntimeError):
-    """A page with `code` inside, ready to be called with ctypes.
+    """Map `code` into an executable page and return (mmap, address).
 
-    Returns the `mmap` and the address. The `mmap` must be kept while the
-    function is used: if collected, the address stops being valid and the
-    next call takes the process down.
-
-    It lives here because this module needed it first, for CPUID; `membench`'s
-    pointer-chasing kernel uses it too. Its details were learnt once and must
-    not live in two places to drift apart.
+    Keep the mmap alive while the function is in use: once it is collected
+    the address dangles and the next call takes the process down. `membench`
+    uses this too, for its pointer-chasing kernel.
     """
     mm = mmap.mmap(-1, mmap.PAGESIZE, prot=mmap.PROT_READ | mmap.PROT_WRITE)
     mm.write(code)
 
-    # `CDLL(None)` is the process itself, which already has libc loaded, as the
-    # other two modules that need it do. `find_library` finds it no better and
-    # runs `ldconfig -p` for something already open: a fork and an exec in
-    # the sampling thread, and a failure where there is no ldconfig.
+    # The process already has libc loaded. `find_library` would run
+    # `ldconfig -p` to find it: a fork and exec in the sampling thread, and a
+    # failure on systems without ldconfig.
     libc = ctypes.CDLL(None, use_errno=True)
-    # The view is created and dropped in the same expression: kept, the mmap
-    # would be «exported» and could never be closed. The address stays valid
-    # while `mm` lives.
+    # Don't keep the buffer view: an exported mmap can never be closed. The
+    # address stays valid as long as `mm` does.
     address = ctypes.addressof(ctypes.c_char.from_buffer(mm))
 
     if libc.mprotect(ctypes.c_void_p(address), mmap.PAGESIZE, _PROT_READ_EXEC) != 0:
@@ -80,11 +73,11 @@ def executable_page(code: bytes, error=RuntimeError):
 
 
 class CpuidError(RuntimeError):
-    """CPUID cannot be used on this machine or in this environment."""
+    """CPUID is not usable on this machine or in this environment."""
 
 
-# The CPU the thread is pinned to, for the key of what is recorded: on a
-# hybrid, a P core's leaf 4 and an E core's do not answer the same.
+# Part of the key for recorded answers: on a hybrid CPU, leaf 4 differs
+# between P and E cores.
 _pinned_cpu: Optional[int] = None
 
 
@@ -99,10 +92,10 @@ def is_supported() -> bool:
 
 @contextlib.contextmanager
 def pinned(cpu_index: int) -> Iterator[None]:
-    """Pin the current thread to a logical CPU and restore the mask on exit.
+    """Pin the current thread to one logical CPU, restoring its mask on exit.
 
-    With a dumped machine the affinity is not touched: its CPUs need not exist
-    here, and what is asked is already recorded CPU by CPU.
+    With a dump mounted the affinity is left alone: its CPUs may not exist
+    here, and the answers are already recorded per CPU.
     """
     global _pinned_cpu
     if sysroot.active():
@@ -115,7 +108,7 @@ def pinned(cpu_index: int) -> Iterator[None]:
     previous = os.sched_getaffinity(0)
     try:
         os.sched_setaffinity(0, {cpu_index})
-    except OSError as exc:                      # cpu apagada, cgroup restrictivo…
+    except OSError as exc:                      # offline CPU, restrictive cgroup…
         raise CpuidError(f"could not pin the thread to CPU {cpu_index}: {exc}") from exc
     before, _pinned_cpu = _pinned_cpu, cpu_index
     try:
@@ -126,7 +119,7 @@ def pinned(cpu_index: int) -> Iterator[None]:
 
 
 class CpuidReader:
-    """A CPUID leaf reader. Build it once and reuse it."""
+    """Reads CPUID leaves. Create one and reuse it."""
 
     def __init__(self) -> None:
         if not is_supported():
@@ -138,8 +131,8 @@ class CpuidReader:
         self._call = prototype(address)
         self._regs = (ctypes.c_uint32 * 4)()
 
-        # Sanity check: leaf 0 always returns a vendor id of printable
-        # characters.
+        # Leaf 0 always returns a printable vendor string; anything else means
+        # the call itself is broken.
         try:
             self.max_leaf, ebx, ecx, edx = self(0)
             self.vendor_id = struct.pack("<III", ebx, edx, ecx).decode("ascii")
@@ -152,8 +145,8 @@ class CpuidReader:
     def __call__(self, leaf: int, subleaf: int = 0) -> tuple[int, int, int, int]:
         """(eax, ebx, ecx, edx) for a leaf and subleaf.
 
-        Through `sysroot.recorded`: dumping a machine records it, and reading
-        a dumped one replays it without running the instruction.
+        Goes through `sysroot.recorded`: dumping a machine records the
+        answer, and a mounted dump replays it without running the instruction.
         """
         cpu = "*" if _pinned_cpu is None else _pinned_cpu
         return sysroot.recorded("cpuid", f"{cpu}:{leaf}:{subleaf}",
@@ -169,23 +162,22 @@ class CpuidReader:
         return leaf <= self.max_leaf
 
     def brand_string(self) -> str:
-        """The vendor's brand string, in leaves 0x80000002-4."""
+        """The brand string, from leaves 0x80000002 to 0x80000004."""
         if not self.supports(0x8000_0004):
             return ""
         raw = b"".join(struct.pack("<IIII", *self(leaf)) for leaf in (0x8000_0002, 0x8000_0003, 0x8000_0004))
         return " ".join(raw.split(b"\x00")[0].decode("ascii", "replace").split())
 
     def hypervisor_id(self) -> str:
-        """The twelve-byte signature the hypervisor publishes in leaf 0x40000000.
+        """The 12-byte hypervisor signature from leaf 0x40000000.
 
-        `supports` cannot be asked: this leaf is outside the range leaf 0
-        announces, and CPUID answers what it does not know with its highest
-        leaf's contents, believable garbage. The «hypervisor» bit of leaf 1
-        authorizes this question, and checking it is the caller's job.
+        Don't gate this on `supports`: the leaf is past the range leaf 0
+        reports, and CPUID answers an unknown leaf with the highest one's
+        contents, which looks plausible. The caller checks the hypervisor bit
+        of leaf 1 first.
         """
         _eax, ebx, ecx, edx = self(0x4000_0000)
-        # Here the order is EBX-ECX-EDX, not leaf 0's EBX-EDX-ECX: two strings
-        # written by two different people.
+        # EBX-ECX-EDX here, unlike leaf 0's EBX-EDX-ECX.
         raw = struct.pack("<III", ebx, ecx, edx).split(b"\x00")[0]
         if not raw or any(b < 0x20 or b > 0x7E for b in raw):
             return ""

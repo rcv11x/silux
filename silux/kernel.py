@@ -1,13 +1,12 @@
-"""What Silux reads that does not exist in every kernel it supports.
+"""Values Silux reads that not every supported kernel publishes.
 
-The minimum is Linux 5.15. Some values appeared later, and when missing on
-an older kernel the machine does not lack them: its kernel does not publish
-them yet. That is said differently from «this machine does not have it»
-(«Your kernel (5.15) does not publish this; it exists since Linux 6.10»), as
-it has a fix, and the fix is not other hardware.
+The minimum is Linux 5.15. Some values appeared later, and on an older
+kernel their absence is the kernel's, not the machine's. That is worded
+differently («Your kernel (5.15) doesn't publish this; it exists since Linux
+6.10») because the fix is a newer kernel, not other hardware.
 
-Each value's version, with its source (the kernel commit or documentation),
-is in `docs/kernel.md`; `tests/test_kernel.py` checks both tables agree.
+Each version, with its source, is in `docs/kernel.md`; `tests/test_kernel.py`
+checks both tables agree.
 """
 
 from __future__ import annotations
@@ -22,7 +21,7 @@ from .i18n import _
 MINIMUM = (5, 15)
 
 # Value → the first mainline version that publishes it. Only what is newer
-# than the minimum; the rest is in every kernel Silux supports.
+# than the minimum.
 SINCE = {
     "cpufreq.cpuinfo_avg_freq": (6, 15),
     "amd_pstate": (5, 17),
@@ -44,18 +43,18 @@ def version(text: Optional[str]) -> Optional[tuple[int, int]]:
 
 
 def running() -> Optional[tuple[int, int]]:
-    """The running kernel's; on a dumped machine, the one it had when dumped."""
+    """The running kernel's version; with a dump mounted, the dumped one's."""
     uname = sysroot.recorded("plataforma", "uname", lambda: platform.uname()._asdict())
     return version((uname or {}).get("release"))
 
 
 def too_old(key: str, current: Optional[tuple[int, int]] = None,
             feature: str = "") -> Optional[str]:
-    """The sentence that explains the absence if the kernel predates the value.
+    """The sentence explaining an absence, if the kernel predates the value.
 
-    None if the kernel already publishes it, or if it is unknown: then the
-    absence is the machine's and is explained as always. With `feature`, the
-    sentence names it, for a foot note that says several things at once.
+    None if the kernel publishes it or its version is unknown: then the
+    absence is the machine's and is explained as usual. With `feature`, the
+    sentence names it, for a footnote that covers several values.
     """
     since = SINCE[key]
     current = current or running()

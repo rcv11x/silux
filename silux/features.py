@@ -1,8 +1,7 @@
-"""The table of CPUID flags: which bit of which register is which instruction.
+"""CPUID feature flags: which bit of which register is which instruction.
 
-Purely declarative: each entry is (leaf, subleaf, register, bit, name). Names
-follow /proc/cpuinfo's convention where there is one, so they are
-recognizable and can be checked against the kernel.
+Each entry is (leaf, subleaf, register, bit, name). Names follow
+/proc/cpuinfo where it has one, so they can be checked against the kernel.
 """
 
 from __future__ import annotations
@@ -64,8 +63,7 @@ FEATURE_BITS: tuple[tuple[int, int, int, int, str], ...] = (
     )),
 )
 
-# What is shown first, in the order it is meant to be read. The rest stays
-# available but does not compete for screen space.
+# Shown first, in reading order; the rest stays available below.
 HIGHLIGHTS: tuple[str, ...] = (
     "mmx", "sse", "sse2", "sse3", "ssse3", "sse4_1", "sse4_2", "sse4a",
     "avx", "avx2", "avx512f", "avx_vnni", "amx_tile",
@@ -73,10 +71,9 @@ HIGHLIGHTS: tuple[str, ...] = (
     "bmi1", "bmi2", "adx", "rdrand", "rdseed", "vmx", "svm",
 )
 
-# The same for ARM, with its own extensions and names. A separate list,
-# because some flags share a name across both architectures without being the
-# same: an aarch64's «aes» is ARMv8's crypto extension, and calling it AES-NI,
-# Intel's, gives a processor an instruction it does not have.
+# ARM gets its own list: some flag names exist on both architectures and mean
+# different things. An aarch64's «aes» is ARMv8's crypto extension, and
+# calling it AES-NI would credit the chip with an Intel instruction.
 HIGHLIGHTS_ARM: tuple[str, ...] = (
     "asimd", "sve", "sve2", "sme", "aes", "pmull", "sha1", "sha2", "sha3",
     "sha512", "crc32", "atomics", "fphp", "asimdhp", "asimddp", "asimdrdm",
@@ -94,7 +91,7 @@ PRETTY_ARM: dict[str, str] = {
     "flagm": "FlagM", "rng": "RNG", "sm3": "SM3", "sm4": "SM4",
 }
 
-# Pretty names for what is highlighted.
+# Display names for the highlighted flags.
 PRETTY: dict[str, str] = {
     "mmx": "MMX", "sse": "SSE", "sse2": "SSE2", "sse3": "SSE3",
     "ssse3": "SSSE3", "sse4_1": "SSE4.1", "sse4_2": "SSE4.2", "sse4a": "SSE4A",
@@ -108,10 +105,10 @@ PRETTY: dict[str, str] = {
 
 
 def decode(reader) -> tuple[str, ...]:
-    """Read every supported flag, grouping by leaf so none is read twice.
+    """Read every known flag, querying each leaf only once.
 
-    `reader` is anything callable as `reader(leaf, subleaf)` that returns the
-    tuple (eax, ebx, ecx, edx): a `CpuidReader`.
+    `reader(leaf, subleaf)` returns (eax, ebx, ecx, edx), like a
+    `CpuidReader`.
     """
     cache: dict[tuple[int, int], tuple[int, int, int, int]] = {}
     found: list[str] = []
@@ -133,10 +130,6 @@ def pretty(name: str) -> str:
 
 
 def for_architecture(architecture: Optional[str]):
-    """The highlighted flags and how they are named, by which CPU it is.
-
-    A flag with the same name is not the same instruction on both
-    architectures, so one table will not do: the silicon's own is chosen.
-    """
+    """The highlighted flags and their names for this CPU's architecture."""
     is_arm = (architecture or "").lower().startswith(("aarch64", "arm"))
     return (HIGHLIGHTS_ARM, PRETTY_ARM) if is_arm else (HIGHLIGHTS, PRETTY)

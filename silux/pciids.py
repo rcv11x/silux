@@ -1,11 +1,10 @@
 """PCI device names from the pci.ids database.
 
-The hwdata project keeps the file and almost every distribution installs it,
-so no copy is packaged: it is read from the system. It is 1.7 MB, and as only
-a handful of ids matter, it is walked once looking for them instead of
-loading it whole to ask three times.
+Distributions ship the file (from the hwdata project), so it is read from
+the system rather than bundled. It is 1.7 MB and only a handful of ids
+matter, so it is scanned once for all of them instead of loaded whole.
 
-The file's format:
+The format:
 
     8086  Intel Corporation
     <tab>9b53  Comet Lake-S 6c Host Bridge/DRAM Controller
@@ -40,8 +39,8 @@ def _key(numbers) -> str:
     return ":".join(f"{n:04x}" for n in numbers)
 
 
-# Devices pci.ids does not list. QEMU's standard VGA uses vendor 0x1234,
-# never registered: without this a virtual machine showed «Gráfica 0».
+# Devices pci.ids doesn't list. QEMU's standard VGA uses the unregistered
+# vendor 0x1234.
 NOT_IN_PCI_IDS = {(0x1234, 0x1111): ("QEMU", "QEMU Standard VGA")}
 
 
@@ -49,17 +48,16 @@ def lookup(
     pairs: Iterable[tuple[int, int]],
     subsystems: Iterable[tuple[int, int, int, int]] = (),
 ) -> dict[tuple[int, int], tuple[str, str]]:
-    """The same as `_lookup`, answering what a dumped machine recorded.
+    """`_lookup`, or what a mounted dump recorded.
 
-    `pci.ids` belongs to the machine running, not the dumped one, and changes
-    with the distribution: the same Radeon is «Radeon RX 9070 XT 16GB» with
-    one and «AMD Radeon RX 9070 XT» with an older one that lacks the card. The
-    dump keeps what it answered there.
+    pci.ids belongs to the running system, not the dumped one, and it differs
+    between distributions: the same card can be «Radeon RX 9070 XT 16GB» with
+    one and «AMD Radeon RX 9070 XT» with an older file.
     """
     pair_list = sorted({(int(v), int(d)) for v, d in pairs})
     subs = sorted({tuple(int(n) for n in key) for key in subsystems})
     if sysroot.active() and not sysroot.did_record("pciids"):
-        names = _lookup(pair_list, subs)           # a dump from before this was recorded
+        names = _lookup(pair_list, subs)           # a dump older than this recording
     else:
         query = "|".join(_key(k) for k in (*pair_list, *subs))
         flat = sysroot.recorded(
@@ -73,10 +71,9 @@ def lookup(
     return names
 
 
-# What was already answered, by question and by file version (path, date and
-# size). Walking all of pci.ids is milliseconds of Python, and the network
-# asks for its card's name every sample: with the window hidden it was 7 %
-# of what Silux spent.
+# Answers by question and by file version (path, mtime, size). Scanning
+# pci.ids takes milliseconds of Python, and the network page asks for its
+# card's name every sample.
 _answered: dict[tuple, dict] = {}
 
 
@@ -84,7 +81,7 @@ def _lookup(
     pairs: Iterable[tuple[int, int]],
     subsystems: Iterable[tuple[int, int, int, int]] = (),
 ) -> dict[tuple[int, int], tuple[str, str]]:
-    """`_walk`, remembering what it answered while the file does not change."""
+    """`_walk`, cached until the file changes."""
     pair_list = tuple(sorted({(int(v), int(d)) for v, d in pairs}))
     subs = tuple(sorted({tuple(int(n) for n in key) for key in subsystems}))
     path = database_path()
@@ -107,18 +104,14 @@ def _walk(
 ) -> dict[tuple[int, int], tuple[str, str]]:
     """{(vendor, device): (vendor name, model name)}.
 
-    Ids not in the database simply do not appear; the caller decides what to
-    show instead.
-
-    `subsystems` also asks for the nested third-level lines, with which a card
-    stops being «Radeon RX 9070/9070 XT/9070 GRE» (three models at once) and
-    becomes the one installed. They are resolved in the same pass, and come
-    back under the four-number key.
+    Ids not in the database are left out; the caller decides what to show.
+    `subsystems` also resolves the nested third-level lines, which name the
+    exact board («Radeon RX 9070/9070 XT/9070 GRE» becomes one model). They
+    come back under the four-id key, from the same pass.
     """
     wanted = {(int(v), int(d)) for v, d in pairs}
     subs_wanted = {tuple(int(n) for n in key) for key in subsystems}
-    # The card's vendor is a top-level vendor like any other, so asking for its
-    # section during the walk is enough.
+    # The board maker is a top-level vendor too: ask for its section as well.
     wanted |= {(key[0], key[1]) for key in subs_wanted}
     if not wanted and not subs_wanted:
         return {}
@@ -127,8 +120,8 @@ def _walk(
     vendors_wanted |= {key[2] for key in subs_wanted}
     found: dict = {}
     vendor_names: dict[int, str] = {}
-    # Subsystems are noted on the fly and named at the end: the card vendor's
-    # section may come after the chip's in the file.
+    # Subsystems are collected as they appear and named at the end: the board
+    # maker's section may come after the chip's.
     raw_subs: dict[tuple[int, int, int, int], str] = {}
 
     current_vendor: Optional[int] = None
@@ -139,8 +132,8 @@ def _walk(
                 if not line or line.startswith("#"):
                     continue
                 if not line.startswith("\t"):
-                    # A vendor line. A section that does not matter is marked
-                    # None and its models skipped.
+                    # A vendor line. Sections we don't need are marked None so
+                    # their models are skipped.
                     code, _, name = line.partition("  ")
                     try:
                         current_vendor = int(code, 16)
@@ -163,8 +156,8 @@ def _walk(
                     key = (current_vendor, device)
                     if key in wanted:
                         found[key] = (vendor_names[current_vendor], name.strip())
-                        # It cannot stop once all are found: the card vendor's
-                        # section may still be ahead.
+                        # Can't stop early: the board maker's section may still
+                        # be ahead.
                         if len(found) == len(wanted) and not subs_wanted:
                             return found
                 elif current_device is not None and current_vendor is not None:
@@ -186,7 +179,7 @@ def _walk(
 
 
 def vendor_name(vendor: int) -> Optional[str]:
-    """A vendor's name, or the one recorded on a dumped machine."""
+    """A vendor's name, or the one a mounted dump recorded."""
     if sysroot.active() and not sysroot.did_record("pciids"):
         return _vendor_name(int(vendor))
     return sysroot.recorded("pciids_fabricante", f"{int(vendor):04x}",
@@ -195,12 +188,11 @@ def vendor_name(vendor: int) -> Optional[str]:
 
 @functools.lru_cache(maxsize=64)
 def _vendor_name(vendor: int) -> Optional[str]:
-    """Only a vendor's name, without asking for any model.
+    """Only a vendor's name, for a card's «Built by».
 
-    For a graphics card's «Built by»: pci.ids carries the full subsystem line
-    only for combinations someone added, and a recent board usually is not
-    there. The vendor is: 0x1462 is MSI even if that card of theirs is not
-    listed, and saying who built it is worth more than a dash.
+    pci.ids only has the full subsystem line for combinations someone added,
+    and recent boards usually aren't there. The vendor is: 0x1462 is MSI
+    whether or not that card is listed.
     """
     path = database_path()
     if path is None:

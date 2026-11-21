@@ -1,19 +1,18 @@
 """Read the system from another root: a dumped machine's.
 
-With `SILUX_SYSROOT` pointing to a dump made by `tools/volcar_equipo.py`,
+With `SILUX_SYSROOT` pointing at a dump made by `tools/volcar_equipo.py`,
 providers read `/sys`, `/proc` and `/etc` from there instead of from the
-machine running the program. It lets a fix be checked on an Intel and an
-AMD without having both at hand: each one's dump is in
-`tests/fixtures/equipos/` and the suite runs the Collector against all.
+running machine. That is how a fix gets checked on an Intel and an AMD
+without having both: their dumps are in `tests/fixtures/equipos/` and the
+suite runs the Collector against each.
 
-What does not come from a file (the CPUID instruction, DRM ioctls, what
-OpenGL and Vulkan answer, a disk's free space, IP addresses) is recorded when
-dumping and replayed when reading, with `recorded`. A dump of one processor
-has to give that processor even if the suite runs on another: asking the
-real CPU would mix two machines and say everything fits.
+What doesn't come from a file (CPUID, DRM ioctls, OpenGL and Vulkan, free
+disk space, IP addresses) is recorded at dump time and replayed through
+`recorded`. A dump has to answer for its own processor even when the suite
+runs on another; asking the real CPU would mix two machines.
 
-Without the variable nothing changes: `path` returns what it gets and
-`recorded` calls the function.
+Without the variable, `path` returns its argument and `recorded` just calls
+the function.
 """
 
 from __future__ import annotations
@@ -25,16 +24,15 @@ import pathlib
 from typing import Any, Callable, Optional, TypeVar
 
 VARIABLE = "SILUX_SYSROOT"
-# What is recorded goes in a file of the dump itself, next to `sys/` and `proc/`.
+# The recordings live in the dump itself, next to `sys/` and `proc/`.
 RECORDING_FILE = "grabado.json"
 
-# The prefixes that are redirected. Not `/dev`: what is read from `/dev` are
-# ioctls, and those are recorded.
+# Not `/dev`: what is read there goes through ioctls, which are recorded.
 PREFIXES = ("/sys/", "/proc/", "/etc/")
 
 T = TypeVar("T")
 
-# While dumping, what goes through `recorded` is noted here.
+# What goes through `recorded` while dumping.
 _recording: Optional[dict[str, dict[str, Any]]] = None
 _cache: dict[pathlib.Path, dict] = {}
 
@@ -49,11 +47,11 @@ def active() -> bool:
 
 
 def path(location):
-    """The path inside the active root, of the same type as received.
+    """The path inside the active root, of the same type it was given.
 
-    Idempotent: a path already inside the root comes back the same, as
-    providers pass paths from one function to another and not all know
-    whether theirs was translated already.
+    Idempotent: a path already inside the root comes back unchanged, since
+    providers hand paths to each other without knowing whether they were
+    translated.
     """
     base = root()
     if base is None:
@@ -68,10 +66,10 @@ def path(location):
 
 
 def unrooted(location) -> str:
-    """The path as the system would see it: without the root in front.
+    """The path as the system sees it, without the root prefix.
 
-    For what is compared with a system path written in the code, or shown,
-    or ends in the model: no dump folder may stay inside the model.
+    For comparing with a system path in the code, showing it, or storing it
+    in the model, which must never contain a dump folder.
     """
     base = root()
     text = os.fspath(location)
@@ -93,10 +91,10 @@ def _recorded() -> dict:
 
 
 def did_record(space: str) -> bool:
-    """Whether the active dump recorded anything in that space.
+    """Whether the active dump recorded anything under `space`.
 
-    For what started being recorded after the first dumps were made: in one
-    without it, the caller goes on as before it was recorded.
+    For what started being recorded after the first dumps: without it, the
+    caller falls back to how it worked before.
     """
     return space in _recorded()
 
@@ -106,17 +104,16 @@ def recorded(space: str, key: Any, function: Callable[..., T], *args,
     """Call `function`, or return what it answered when the machine was dumped.
 
     `space` and `key` name the question: `("cpuid", "0:7:0")`,
-    `("amdgpu", "/dev/dri/renderD128")`. With the root active nothing is
-    called; what was not recorded returns None, as the program does when a
-    source is missing. `kind` rebuilds a dataclass from the recorded
-    dictionary.
+    `("amdgpu", "/dev/dri/renderD128")`. With a root active nothing is
+    called, and an unrecorded question returns None, as a missing source
+    does. `kind` rebuilds a dataclass from the recorded dict.
     """
     key = str(key)
     if active():
         raw = _recorded().get(space, {}).get(key)
         if raw is None:
             return None
-        # Dumping a mounted dump records what it answered, as from a machine.
+        # Dumping a mounted dump records its answers, as with a real machine.
         if _recording is not None:
             _recording.setdefault(space, {})[key] = raw
         if kind is not None and dataclasses.is_dataclass(kind):
@@ -143,5 +140,5 @@ def recorded_data() -> dict:
 
 
 def forget() -> None:
-    """For the tests that switch dumps within one process."""
+    """For tests that switch dumps within one process."""
     _cache.clear()
