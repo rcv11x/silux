@@ -83,7 +83,7 @@ class TestSystemd(unittest.TestCase):
         with mock.patch.dict(os.environ, env, clear=True), \
                 mock.patch.object(system.subprocess, "run") as run:
             run.return_value = subprocess.CompletedProcess([], 0, "", "")
-            system._tiempos_de_systemd()
+            system._systemd_times()
         usado = run.call_args.kwargs["env"]
         self.assertNotIn("LD_LIBRARY_PATH", usado)
         self.assertEqual(usado["LC_ALL"], "C")

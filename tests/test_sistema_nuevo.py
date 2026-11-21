@@ -12,7 +12,7 @@ from silux import render
 from silux.i18n import _
 from silux.model import Boot, Swap
 from silux.providers.base import Draft
-from silux.providers.system import SystemSecurity, estado_de, leer_intercambio
+from silux.providers.system import SystemSecurity, state_of, read_swaps
 from tests import pantalla, qt
 from tests.arbol import arbol
 from tests.test_equipos import EQUIPOS, foto
@@ -70,7 +70,7 @@ class TestElProveedor(unittest.TestCase):
         with arbol(archivos):
             draft = Draft()
             SystemSecurity().collect(draft)
-            return dataclasses.replace(draft.system, swaps=leer_intercambio())
+            return dataclasses.replace(draft.system, swaps=read_swaps())
 
     def test_las_vulnerabilidades_con_el_texto_del_kernel_y_su_estado(self):
         sistema = self._sistema(EQUIPO)
@@ -80,12 +80,12 @@ class TestElProveedor(unittest.TestCase):
         self.assertTrue(sistema.vulnerabilities[2].status.endswith("BHI: Not affected"))
 
     def test_los_estados(self):
-        self.assertEqual(estado_de("Vulnerable: Clear CPU buffers attempted, no microcode"),
+        self.assertEqual(state_of("Vulnerable: Clear CPU buffers attempted, no microcode"),
                          "vulnerable")
-        self.assertEqual(estado_de("KVM: Mitigation: VMX disabled"), "mitigated")
+        self.assertEqual(state_of("KVM: Mitigation: VMX disabled"), "mitigated")
         # «Not affected» dentro de una mitigación no la convierte en no afectada.
-        self.assertEqual(estado_de("Mitigation: Retpolines; BHI: Not affected"), "mitigated")
-        self.assertEqual(estado_de("Unknown: Dependent on hypervisor status"), "unknown")
+        self.assertEqual(state_of("Mitigation: Retpolines; BHI: Not affected"), "mitigated")
+        self.assertEqual(state_of("Unknown: Dependent on hypervisor status"), "unknown")
 
     def test_el_arranque_separa_el_firmware_del_cargador(self):
         arranque = self._sistema(EQUIPO).boot
@@ -133,13 +133,13 @@ class TestElProveedor(unittest.TestCase):
                           ("sys.boot.phase.userspace", "19.5 s")])
 
     def test_lo_que_dice_systemctl(self):
-        from silux.providers.system import _leer_systemctl
+        from silux.providers.system import _parse_systemctl
 
-        self.assertEqual(_leer_systemctl("InitRDTimestampMonotonic=859939\n"
+        self.assertEqual(_parse_systemctl("InitRDTimestampMonotonic=859939\n"
                                          "UserspaceTimestampMonotonic=2606157\n"
                                          "FinishTimestampMonotonic=22060289\n"),
                          SYSTEMD_I5_10400)
-        self.assertIsNone(_leer_systemctl(""))
+        self.assertIsNone(_parse_systemctl(""))
 
     def test_el_zram_es_una_sola_fila_con_como_comprime(self):
         (swap,) = self._sistema(EQUIPO).swaps
@@ -176,7 +176,7 @@ class TestEnLaPagina(unittest.TestCase):
             SystemSecurity().collect(draft)
             cls.foto = dataclasses.replace(base, system=dataclasses.replace(
                 base.system, vulnerabilities=draft.system.vulnerabilities,
-                boot=draft.system.boot, swaps=leer_intercambio()))
+                boot=draft.system.boot, swaps=read_swaps()))
         cls.sin_nada = dataclasses.replace(base, system=dataclasses.replace(
             base.system, vulnerabilities=(), boot=Boot(), swaps=()))
 

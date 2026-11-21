@@ -310,11 +310,11 @@ class TestQuienContesta(unittest.TestCase):
             ("Mesa Intel(R) Graphics (RPL-P)", "Intel"),
             ("AMD Radeon RX 9070 XT (radeonsi, gfx1201, ACO)", "AMD"),
         ]:
-            self.assertEqual(gpu_apis._fabricante_de(texto), esperado, texto)
+            self.assertEqual(gpu_apis._vendor_of(texto), esperado, texto)
 
     def test_un_rasterizador_por_software_no_es_ninguna_tarjeta(self):
         """llvmpipe contesta cuando no hay driver, y no es la tarjeta puesta."""
-        self.assertEqual(gpu_apis._fabricante_de("llvmpipe (LLVM 19.1.0, 256 bits)"),
+        self.assertEqual(gpu_apis._vendor_of("llvmpipe (LLVM 19.1.0, 256 bits)"),
                          "software")
 
     def test_y_no_se_le_cuelga_a_nadie(self):
@@ -327,7 +327,7 @@ class TestQuienContesta(unittest.TestCase):
         self.assertNotIn("apis", draft.gpus[1])
 
     def test_lo_que_no_dice_nada_sigue_yendo_a_la_principal(self):
-        self.assertIsNone(gpu_apis._fabricante_de("Generic Renderer 1.0"))
+        self.assertIsNone(gpu_apis._vendor_of("Generic Renderer 1.0"))
 
 
 class TestMemoriaPorVulkan(unittest.TestCase):

@@ -1221,31 +1221,31 @@ class TestRepartoDeCodecs(unittest.TestCase):
     """
 
     def test_cada_tarjeta_recibe_los_de_su_nodo(self):
-        from silux.providers.gpu_apis import _codecs_de
+        from silux.providers.gpu_apis import _codecs_of
 
         respuesta = [{"node": "renderD129",
                       "codecs": [{"name": "AV1", "decode": True, "encode": False,
                                   "bits": 10, "profiles": ["Profile 0"]}]}]
         with mock.patch("silux.providers.gpu_apis.amdgpu.render_node",
                         return_value="/dev/dri/renderD129"):
-            codecs = _codecs_de({"pci_slot": "0000:03:00.0"}, respuesta)
+            codecs = _codecs_of({"pci_slot": "0000:03:00.0"}, respuesta)
         self.assertEqual(len(codecs), 1)
         self.assertEqual(codecs[0].name, "AV1")
         self.assertTrue(codecs[0].decode)
         self.assertFalse(codecs[0].encode)
 
     def test_los_de_otra_tarjeta_no_se_le_cuelgan(self):
-        from silux.providers.gpu_apis import _codecs_de
+        from silux.providers.gpu_apis import _codecs_of
 
         respuesta = [{"node": "renderD128", "codecs": [{"name": "AV1"}]}]
         with mock.patch("silux.providers.gpu_apis.amdgpu.render_node",
                         return_value="/dev/dri/renderD129"):
-            self.assertEqual(_codecs_de({"pci_slot": "0000:03:00.0"}, respuesta), ())
+            self.assertEqual(_codecs_of({"pci_slot": "0000:03:00.0"}, respuesta), ())
 
     def test_sin_ranura_no_se_atribuye_nada(self):
-        from silux.providers.gpu_apis import _codecs_de
+        from silux.providers.gpu_apis import _codecs_of
 
-        self.assertEqual(_codecs_de({}, [{"node": "renderD128"}]), ())
+        self.assertEqual(_codecs_of({}, [{"node": "renderD128"}]), ())
 
 
 class TestAnchoDeLasColumnas(unittest.TestCase):

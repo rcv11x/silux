@@ -18,17 +18,17 @@ class TestOsRelease(unittest.TestCase):
     """Gentoo entrecomilla con comillas simples y es igual de válido."""
 
     def test_quita_las_comillas_simples(self):
-        self.assertEqual(system._desentrecomillar("'Gentoo Linux'"), "Gentoo Linux")
+        self.assertEqual(system._unquote("'Gentoo Linux'"), "Gentoo Linux")
 
     def test_y_las_dobles_de_siempre(self):
-        self.assertEqual(system._desentrecomillar('"Debian GNU/Linux"'),
+        self.assertEqual(system._unquote('"Debian GNU/Linux"'),
                          "Debian GNU/Linux")
 
     def test_sin_comillas_no_toca_nada(self):
-        self.assertEqual(system._desentrecomillar("CachyOS"), "CachyOS")
+        self.assertEqual(system._unquote("CachyOS"), "CachyOS")
 
     def test_una_comilla_suelta_dentro_se_respeta(self):
-        self.assertEqual(system._desentrecomillar('"L\'Autre"'), "L'Autre")
+        self.assertEqual(system._unquote('"L\'Autre"'), "L'Autre")
 
     def test_lee_un_fichero_de_gentoo_entero(self):
         contenido = ("NAME='Gentoo Linux'\n"

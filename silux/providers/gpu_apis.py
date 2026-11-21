@@ -1,17 +1,15 @@
-"""Lo que las APIs gráficas cuentan de cada tarjeta.
+"""What the graphics APIs say of each card.
 
-Preguntar cuesta caro (los drivers de las tres suman 118 MB de residente) así
-que `silux.gpuapi` lo hace en un proceso aparte y aquí solo llega el resultado.
+Asking is costly (the three drivers add up to 118 MB resident), so
+`silux.gpuapi` does it in a separate process and only the result arrives.
 
-El kernel dice qué hay puesto; OpenGL, Vulkan y OpenCL dicen qué se puede hacer
-con ello. Son datos de otra naturaleza (versiones de API, no registros) y por
-eso van en un proveedor aparte que se apoya en `silux.gpuapi`.
+The kernel says what is installed; OpenGL, Vulkan and OpenCL say what can be
+done with it: API versions, not registers.
 
-Además resuelve una ambigüedad que sysfs no puede: `pci.ids` puede dar un
-nombre para tres modelos («Radeon RX 9070/9070 XT/9070 GRE») y es el driver
-quien sabe cuál es. Cuando el nombre que ya hay lleva barras, el de Vulkan lo
-sustituye; si no, se respeta el de la base de datos, que suele ser más
-completo porque incluye a quien montó la tarjeta.
+It also settles what sysfs cannot: `pci.ids` may give one name for three
+models («Radeon RX 9070/9070 XT/9070 GRE»), and the driver knows which. A
+name with slashes is replaced by Vulkan's; otherwise the database's stays,
+which is usually fuller, with whoever built the card.
 """
 
 from __future__ import annotations
@@ -26,22 +24,22 @@ from ..i18n import _
 from ..model import GpuApi, GpuMemory, Need, VideoCodec
 from .base import Draft, Provider
 
-# «AMD Radeon RX 9070 XT (RADV GFX1201)» → el paréntesis es del driver, no del
-# nombre de la tarjeta.
-_COLA_DEL_DRIVER = re.compile(r"\s*\((?:RADV|LLVM|ACO|radeonsi|llvmpipe)[^)]*\)\s*$",
+# «AMD Radeon RX 9070 XT (RADV GFX1201)» → the parenthesis is the driver's,
+# not the card's name.
+_DRIVER_SUFFIX = re.compile(r"\s*\((?:RADV|LLVM|ACO|radeonsi|llvmpipe)[^)]*\)\s*$",
                               re.IGNORECASE)
 # «4.6 (Compatibility Profile) Mesa 26.2.1-arch3.1» → 26.2.1-arch3.1
-_VERSION_DE_MESA = re.compile(r"Mesa\s+([\w.\-]+)")
-_VERSION_DE_NVIDIA = re.compile(r"NVIDIA\s+(\d+\.\d+(?:\.\d+)?)")
+_MESA_VERSION = re.compile(r"Mesa\s+([\w.\-]+)")
+_NVIDIA_VERSION = re.compile(r"NVIDIA\s+(\d+\.\d+(?:\.\d+)?)")
 
 
 class GpuApis(Provider):
-    """OpenGL, Vulkan y OpenCL, preguntados una sola vez."""
+    """OpenGL, Vulkan and OpenCL, asked once."""
 
     name = "gpu-apis"
     provides = "gpus.apis"
-    # Las versiones de API no cambian mientras el programa esté abierto, y
-    # crear un contexto de OpenGL en cada muestreo sería absurdo.
+    # API versions do not change while the program runs, and creating an
+    # OpenGL context on every sample would be absurd.
     static = True
 
     def available(self) -> bool:
@@ -51,20 +49,20 @@ class GpuApis(Provider):
         if not draft.gpus:
             return
         if any(gpu.get("suspended") for gpu in draft.gpus):
-            # Vulkan y OpenCL abren todas las tarjetas para enumerarlas, y
-            # abrir el nodo de una suspendida la despierta. Se pregunta cuando
-            # despierte: lo estático se vuelve a leer entonces.
+            # Vulkan and OpenCL open every card to list them, and opening a
+            # suspended card's node wakes it. Asked when it wakes: the static
+            # data is read again then.
             draft.note("gpus.apis", Need.HARDWARE,
                        _("prov.apis.asleep"), _("prov.apis.asleep.hint"))
             return
 
-        # Una sola llamada: por dentro lanza un proceso aparte que carga los
-        # drivers, contesta y muere. Ver el porqué en `silux.gpuapi`.
-        datos = sysroot.a_traves("gpuapi", "consultar", _sin_reventar, gpuapi.consultar) or {}
-        vulkan = datos.get("vulkan") or []
-        opencl = datos.get("opencl") or []
-        opengl = datos.get("opengl")
-        vaapi = datos.get("vaapi") or []
+        # A single call: inside, it starts a process that loads the drivers,
+        # answers and dies. Why, in `silux.gpuapi`.
+        data = sysroot.a_traves("gpuapi", "consultar", _without_crashing, gpuapi.consultar) or {}
+        vulkan = data.get("vulkan") or []
+        opencl = data.get("opencl") or []
+        opengl = data.get("opengl")
+        vaapi = data.get("vaapi") or []
 
         if not (vulkan or opencl or opengl or vaapi):
             draft.note(
@@ -74,263 +72,249 @@ class GpuApis(Provider):
             return
 
         draft.capabilities.add("gpu-apis")
-        principal = _principal(draft.gpus)
+        primary = _primary_index(draft.gpus)
 
-        for indice, gpu in enumerate(draft.gpus):
-            gpu["codecs"] = _codecs_de(gpu, vaapi)
+        for index, gpu in enumerate(draft.gpus):
+            gpu["codecs"] = _codecs_of(gpu, vaapi)
             apis: list[GpuApi] = []
-            sin_driver_de_la_tarjeta: set[int] = set()
+            not_the_cards_driver: set[int] = set()
 
-            if dispositivo := _vulkan_de(gpu, vulkan):
+            if device := _vulkan_of(gpu, vulkan):
                 apis.append(GpuApi(
                     name="Vulkan",
-                    version=dispositivo["api_version"],
-                    device=dispositivo["name"],
-                    driver=_version_del_driver(dispositivo),
-                    extra=f"instancia {dispositivo['instance_version']}",
+                    version=device["api_version"],
+                    device=device["name"],
+                    driver=_driver_version(device),
+                    extra=f"instancia {device['instance_version']}",
                 ))
-                _afinar_nombre(gpu, dispositivo["name"])
-                _memoria_de_vulkan(gpu, dispositivo)
+                _refine_name(gpu, device["name"])
+                _vulkan_memory(gpu, device)
 
-            # OpenGL y OpenCL no publican el nodo PCI, pero sí dicen quién
-            # contesta. Antes se le atribuían a la tarjeta que el kernel marca
-            # como principal, y en un portátil híbrido esa es la integrada
-            # mientras quien responde es la dedicada: la ficha de una Radeon
-            # acababa con «GLSL 4.60 NVIDIA» y con las unidades de cómputo de
-            # la otra tarjeta.
-            if opengl and opengl.get("version") and _es_de(
+            # OpenGL and OpenCL do not publish the PCI node, but say who
+            # answers. On a hybrid laptop the card the kernel marks as primary
+            # is the integrated one while the dedicated one answers: matched to
+            # the primary, a Radeon's card ended with «GLSL 4.60 NVIDIA».
+            if opengl and opengl.get("version") and _answers_for(
                     f"{opengl.get('renderer') or ''} {opengl.get('vendor') or ''}",
-                    gpu, draft.gpus, principal, indice):
-                # llvmpipe is the processor drawing: a tester's VM showed
-                # Mesa's version as that of bochs-drm, its emulated VGA.
-                por_software = _fabricante_de(opengl.get("renderer") or "") == "software"
+                    gpu, draft.gpus, primary, index):
+                # llvmpipe is the processor drawing: in a virtual machine
+                # Mesa's version showed as that of its emulated VGA.
+                by_software = _vendor_of(opengl.get("renderer") or "") == "software"
                 extra = " · ".join(p for p in (
                     f"GLSL {opengl['glsl']}" if opengl.get("glsl") else None,
-                    _("gpu.api.software") if por_software else None) if p)
+                    _("gpu.api.software") if by_software else None) if p)
                 apis.append(GpuApi(
                     name="OpenGL",
-                    version=_solo_version(opengl["version"]),
+                    version=_version_only(opengl["version"]),
                     device=opengl.get("renderer"),
                     driver=_mesa(opengl["version"]),
                     extra=extra or None,
                 ))
-                if por_software:
-                    sin_driver_de_la_tarjeta.add(len(apis) - 1)
-            for dispositivo in opencl:
-                if not _es_de(f"{dispositivo.get('name') or ''} "
-                              f"{dispositivo.get('vendor') or ''}",
-                              gpu, draft.gpus, principal, indice):
+                if by_software:
+                    not_the_cards_driver.add(len(apis) - 1)
+            for device in opencl:
+                if not _answers_for(f"{device.get('name') or ''} "
+                              f"{device.get('vendor') or ''}",
+                              gpu, draft.gpus, primary, index):
                     continue
                 apis.append(GpuApi(
                     name="OpenCL",
-                    version=_solo_version(dispositivo.get("version") or ""),
-                    device=dispositivo.get("name"),
-                    driver=dispositivo.get("driver_version"),
-                    extra=_unidades(dispositivo),
+                    version=_version_only(device.get("version") or ""),
+                    device=device.get("name"),
+                    driver=device.get("driver_version"),
+                    extra=_units(device),
                 ))
-                # Lo que OpenCL cuenta NO va a `compute_units`, ni siquiera
-                # cuando el campo está vacío. Sus «unidades de cómputo» son las
-                # de su modelo de programación y no las del silicio: los
-                # subslices de una Intel (5 en una Iris Xe de 80 EU) y los
-                # multiprocesadores de una NVIDIA (16 en una RTX 3050 de 2048
-                # núcleos). Puestas ahí salían con la etiqueta del fabricante
-                # —«5 EU», «16 núcleos CUDA»— y eso es falso en la unidad.
-                #
-                # Aquí llegaba antes que NVML y que el ioctl de i915, así que
-                # ocupaba el campo y los que sí saben ya no lo pisaban: el
-                # arreglo de `_nucleos_cuda` estaba escrito y no llegaba a
-                # aplicarse nunca. La cifra de OpenCL no se pierde, sigue en su
-                # renglón de la tabla de bibliotecas, que es donde se entiende
-                # de qué está hablando.
+                # What OpenCL counts does NOT go to `compute_units`, even
+                # when that field is empty. Its «compute units» are those of
+                # its programming model, not of the silicon: an Intel's
+                # subslices (5 on an 80 EU Iris Xe), an NVIDIA's
+                # multiprocessors (16 on a 2048-core RTX 3050). There they
+                # carried the maker's label («5 EU», «16 CUDA cores»), false in
+                # the unit, and they arrived before NVML and i915's ioctl, which
+                # then could not set the right one. OpenCL's figure stays in its
+                # row of the libraries table, where it is understood.
 
             if apis:
                 gpu["apis"] = tuple(apis)
                 gpu["driver_version"] = gpu.get("driver_version") or next(
                     (a.driver for i, a in enumerate(apis)
-                     if a.driver and i not in sin_driver_de_la_tarjeta), None
+                     if a.driver and i not in not_the_cards_driver), None
                 )
 
 
-def _memoria_de_vulkan(gpu: dict, dispositivo: dict) -> None:
-    """La VRAM que el driver no publica, si Vulkan la sabe.
+def _vulkan_memory(gpu: dict, device: dict) -> None:
+    """The VRAM the driver does not publish, if Vulkan knows it.
 
-    amdgpu la escribe en sysfs y NVML la da para las NVIDIA con el driver
-    propietario. Con nouveau no hay ninguna de las dos, y la ficha de una
-    GeForce entera se quedaba sin un solo dato de memoria. Vulkan enumera los
-    montones de memoria de la tarjeta y ahí está.
-
-    Nunca pisa lo que ya se sabía: el driver mide su propio chip y Vulkan
-    informa de lo que puede repartir, que no tiene por qué ser lo mismo.
+    amdgpu writes it in sysfs and NVML gives it for NVIDIA's own driver.
+    With nouveau there is neither, and a GeForce's card had no memory data.
+    Vulkan lists the card's memory heaps, and it is there. It never
+    overwrites what was known: the driver measures its own chip, and Vulkan
+    reports what it can share out, which need not be the same.
     """
-    bytes_ = dispositivo.get("device_memory_bytes")
+    bytes_ = device.get("device_memory_bytes")
     if not bytes_:
         return
-    memoria = gpu.get("memory") or GpuMemory()
-    if memoria.total_bytes:
+    memory = gpu.get("memory") or GpuMemory()
+    if memory.total_bytes:
         return
-    # En una integrada ese montón NO es memoria de la tarjeta: es la RAM del
-    # sistema que el driver le deja tomar. Una Iris Xe declara 11.5 GB en un
-    # equipo con 15.3 de RAM, y puesto como «Total» de la memoria de video
-    # salía en la insignia y en la imagen de compartir como «Iris Xe · 11.5
-    # GB», que se lee como una tarjeta con once giga y medio de VRAM. El
-    # modelo ya tiene el campo donde va eso, y dice en su comentario por qué
-    # va aparte: no es memoria de la tarjeta.
-    #
-    # Cuando no se ha podido decidir si es integrada, `integrated` es None y
-    # aquí se hace lo de siempre: inventar en la dirección contraria sería
-    # quitarle la VRAM a una dedicada.
+    # On an integrated card that heap is NOT the card's memory: it is system
+    # RAM the driver lets it take (11.5 GB on a machine with 15.3 GB). As the
+    # video memory's «Total» it read like a card with 11.5 GB of VRAM. The
+    # model has its own field for it. When it could not be decided whether
+    # it is integrated, `integrated` is None and the usual happens: guessing
+    # the other way would take a dedicated card's VRAM away.
     if gpu.get("integrated"):
-        if memoria.gtt_total_bytes:
+        if memory.gtt_total_bytes:
             return
-        gpu["memory"] = dataclasses.replace(memoria, gtt_total_bytes=bytes_)
+        gpu["memory"] = dataclasses.replace(memory, gtt_total_bytes=bytes_)
         return
-    gpu["memory"] = dataclasses.replace(memoria, total_bytes=bytes_)
+    gpu["memory"] = dataclasses.replace(memory, total_bytes=bytes_)
 
 
-# -- casado y limpieza -------------------------------------------------------
+# -- matching and cleaning ---------------------------------------------------
 
-def _sin_reventar(funcion):
-    """Una API rota no puede llevarse por delante a las otras dos."""
+def _without_crashing(function):
+    """A broken API must not take the other two down."""
     try:
-        return funcion()
+        return function()
     except Exception:                                  # noqa: BLE001
         return None
 
 
-def _principal(gpus: list[dict]) -> int:
-    """La tarjeta que el sistema usa por omisión, que es la que arrancó."""
-    for indice, gpu in enumerate(gpus):
+def _primary_index(gpus: list[dict]) -> int:
+    """The card the system uses by default, the one it booted with."""
+    for index, gpu in enumerate(gpus):
         if gpu.get("primary"):
-            return indice
+            return index
     return 0
 
 
-# Por qué palabras se reconoce a cada fabricante en el texto que devuelven
-# OpenGL y OpenCL, que no es una lista de campos sino una cadena suelta:
-# «NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2», «AMD Radeon 740M (RADV
-# PHOENIX)», «Mesa Intel(R) Graphics (RPL-P)».
-_MARCAS = {
+# The words that tell each maker in the text OpenGL and OpenCL return, a
+# loose string and not a list of fields: «NVIDIA GeForce RTX 3050 Laptop
+# GPU/PCIe/SSE2», «AMD Radeon 740M (RADV PHOENIX)», «Mesa Intel(R) Graphics
+# (RPL-P)».
+_VENDOR_WORDS = {
     "NVIDIA": ("nvidia", "geforce", "quadro", "tesla", "rtx ", "gtx "),
     "AMD": ("amd", "radeon", "radv", "amdgpu", "gfx1", "gfx9", "advanced micro"),
     "Intel": ("intel", "iris", "arc ", " uhd", " hd graphics", "anv"),
 }
-# Rasterizadores por software: contestan cuando no hay driver que conteste, y
-# no son ninguna de las tarjetas puestas.
-_POR_SOFTWARE = ("llvmpipe", "softpipe", "swrast", "zink", "lavapipe")
+# Software rasterizers: they answer when no driver does, and are none of the
+# installed cards.
+_SOFTWARE_RASTERIZERS = ("llvmpipe", "softpipe", "swrast", "zink", "lavapipe")
 
 
-def _fabricante_de(texto: str) -> Optional[str]:
-    """A qué fabricante suena el texto de una API, si es que suena a alguno."""
-    bajo = texto.lower()
-    if any(marca in bajo for marca in _POR_SOFTWARE):
+def _vendor_of(text: str) -> Optional[str]:
+    """Which maker an API's text sounds like, if any."""
+    lower = text.lower()
+    if any(word in lower for word in _SOFTWARE_RASTERIZERS):
         return "software"
-    for nombre, marcas in _MARCAS.items():
-        if any(marca in bajo for marca in marcas):
-            return nombre
+    for name, words in _VENDOR_WORDS.items():
+        if any(word in lower for word in words):
+            return name
     return None
 
 
-def _es_de(texto: str, gpu: dict, gpus: list[dict],
-           principal: int, indice: int) -> bool:
-    """Si esta API la contesta esta tarjeta y no otra de las puestas.
+def _answers_for(text: str, gpu: dict, gpus: list[dict],
+           primary: int, index: int) -> bool:
+    """Whether this card answers this API and not another installed one.
 
-    Con una sola tarjeta no hay nada que decidir. Con varias se mira quién
-    dice ser: es lo único que OpenGL y OpenCL publican, porque el nodo PCI no
-    lo dan. Cuando el texto no permite decidir se cae en la principal, que es
-    lo que se hacía siempre, pero eso ya no arrastra las unidades de cómputo.
+    With one card there is nothing to decide. With several, who it says it is
+    decides: OpenGL and OpenCL publish nothing else, not the PCI node. When
+    the text cannot decide, the primary card is taken, without its compute
+    units.
     """
     if len(gpus) <= 1:
-        return indice == principal
-    quien = _fabricante_de(texto)
-    if quien == "software":
-        return False                      # no es ninguna de las puestas
-    if quien is None:
-        return indice == principal        # sin pistas, lo de antes
-    candidatos = [i for i, g in enumerate(gpus) if (g.get("vendor") or "") == quien]
-    if not candidatos:
-        return indice == principal
-    if len(candidatos) == 1:
-        return indice == candidatos[0]
-    # Varias del mismo fabricante: desempata el modelo si aparece entero.
-    bajo = texto.lower()
-    for i in candidatos:
-        nombre = (gpus[i].get("name") or "").lower()
-        if nombre and nombre in bajo:
-            return indice == i
-    return indice == (principal if principal in candidatos else candidatos[0])
+        return index == primary
+    who = _vendor_of(text)
+    if who == "software":
+        return False                      # none of the installed ones
+    if who is None:
+        return index == primary        # no clue: as before
+    candidates = [i for i, g in enumerate(gpus) if (g.get("vendor") or "") == who]
+    if not candidates:
+        return index == primary
+    if len(candidates) == 1:
+        return index == candidates[0]
+    # Several from the same maker: the model breaks the tie if it shows whole.
+    lower = text.lower()
+    for i in candidates:
+        name = (gpus[i].get("name") or "").lower()
+        if name and name in lower:
+            return index == i
+    return index == (primary if primary in candidates else candidates[0])
 
 
-def _vulkan_de(gpu: dict, dispositivos: list[dict]) -> Optional[dict]:
-    """Vulkan sí publica el identificador PCI, así que aquí no hay que adivinar."""
-    for dispositivo in dispositivos:
-        if (dispositivo.get("vendor_id") == gpu.get("vendor_id")
-                and dispositivo.get("device_id") == gpu.get("device_id")):
-            return dispositivo
+def _vulkan_of(gpu: dict, devices: list[dict]) -> Optional[dict]:
+    """Vulkan does publish the PCI id, so nothing is guessed here."""
+    for device in devices:
+        if (device.get("vendor_id") == gpu.get("vendor_id")
+                and device.get("device_id") == gpu.get("device_id")):
+            return device
     return None
 
 
-def _afinar_nombre(gpu: dict, nombre: Optional[str]) -> None:
-    """Sustituye un nombre que vale para varios modelos por el del driver."""
-    if not nombre:
+def _refine_name(gpu: dict, name: Optional[str]) -> None:
+    """Replace a name that fits several models with the driver's."""
+    if not name:
         return
-    actual = gpu.get("name")
-    # Una barra en el nombre es la marca de pci.ids para «una de estas».
-    if actual and "/" not in actual:
+    current = gpu.get("name")
+    # A slash in the name is pci.ids's mark for «one of these».
+    if current and "/" not in current:
         return
-    gpu["name"] = _COLA_DEL_DRIVER.sub("", nombre).strip() or actual
+    gpu["name"] = _DRIVER_SUFFIX.sub("", name).strip() or current
 
 
-def _solo_version(texto: str) -> Optional[str]:
-    """«OpenCL 3.1» y «4.6 (Compatibility Profile) Mesa…» → «3.1» y «4.6»."""
-    encaje = re.search(r"(\d+\.\d+(?:\.\d+)?)", texto)
-    return encaje.group(1) if encaje else (texto.strip() or None)
+def _version_only(text: str) -> Optional[str]:
+    """«OpenCL 3.1» and «4.6 (Compatibility Profile) Mesa…» → «3.1» and «4.6»."""
+    match = re.search(r"(\d+\.\d+(?:\.\d+)?)", text)
+    return match.group(1) if match else (text.strip() or None)
 
 
-def _mesa(texto: str) -> Optional[str]:
+def _mesa(text: str) -> Optional[str]:
     """The driver version in OpenGL's: Mesa's, or NVIDIA's («4.6.0 NVIDIA
     595.104.02»)."""
-    encaje = _VERSION_DE_MESA.search(texto) or _VERSION_DE_NVIDIA.search(texto)
-    return encaje.group(1) if encaje else None
+    match = _MESA_VERSION.search(text) or _NVIDIA_VERSION.search(text)
+    return match.group(1) if match else None
 
 
-def _unidades(dispositivo: dict) -> Optional[str]:
-    unidades = dispositivo.get("compute_units")
-    return (_("gpu.units.count").format(n=unidades)
-            if unidades else None)
+def _units(device: dict) -> Optional[str]:
+    units = device.get("compute_units")
+    return (_("gpu.units.count").format(n=units)
+            if units else None)
 
 
-def _version_del_driver(dispositivo: dict) -> Optional[str]:
-    """Vulkan da la versión del driver en 32 bits, y no todos la empaquetan igual.
+def _driver_version(device: dict) -> Optional[str]:
+    """Vulkan gives the driver version in 32 bits, not packed the same by all.
 
-    Casi todos siguen el reparto de la propia API (10, 10 y 12 bits), con lo que
-    Mesa sale como 26.2.1. NVIDIA usa el suyo, y leerlo con el reparto estándar
-    da un número que no se parece a nada.
+    Almost all follow the API's own split (10, 10 and 12 bits), which gives
+    Mesa as 26.2.1. NVIDIA uses its own, and read the standard way it gives a
+    number that looks like nothing.
     """
-    crudo = dispositivo.get("driver_version")
-    if not crudo:
+    raw = device.get("driver_version")
+    if not raw:
         return None
-    if dispositivo.get("vendor_id") == 0x10DE:
+    if device.get("vendor_id") == 0x10DE:
         # Two digits in the last part, as NVIDIA writes it: 595.104.02.
-        return f"{(crudo >> 22) & 0x3FF}.{(crudo >> 14) & 0xFF}.{(crudo >> 6) & 0xFF:02d}"
-    return f"{(crudo >> 22) & 0x7F}.{(crudo >> 12) & 0x3FF}.{crudo & 0xFFF}"
+        return f"{(raw >> 22) & 0x3FF}.{(raw >> 14) & 0xFF}.{(raw >> 6) & 0xFF:02d}"
+    return f"{(raw >> 22) & 0x7F}.{(raw >> 12) & 0x3FF}.{raw & 0xFFF}"
 
 
-def _codecs_de(gpu: dict, vaapi: list) -> tuple[VideoCodec, ...]:
-    """Los códecs del nodo de render de esta tarjeta, y solo de ese.
+def _codecs_of(gpu: dict, vaapi: list) -> tuple[VideoCodec, ...]:
+    """The codecs of this card's render node, and only its own.
 
-    Aquí no hay que adivinar nada: VA-API se abre sobre un nodo concreto, y el
-    nodo cuelga del dispositivo PCI de la tarjeta. Es lo contrario de lo que
-    pasa con OpenGL, que no dice de quién habla.
+    Nothing to guess: VA-API opens on a given node, and the node hangs from
+    the card's PCI device. The opposite of OpenGL, which does not say whom
+    it speaks of.
     """
-    ranura = gpu.get("pci_slot")
-    if not ranura:
+    slot = gpu.get("pci_slot")
+    if not slot:
         return ()
-    nodo = amdgpu.render_node(f"/sys/bus/pci/devices/{ranura}")
-    if not nodo:
+    node = amdgpu.render_node(f"/sys/bus/pci/devices/{slot}")
+    if not node:
         return ()
-    nombre = os.path.basename(nodo)
-    for entrada in vaapi:
-        if entrada.get("node") != nombre:
+    name = os.path.basename(node)
+    for entry in vaapi:
+        if entry.get("node") != name:
             continue
         return tuple(
             VideoCodec(
@@ -340,6 +324,6 @@ def _codecs_de(gpu: dict, vaapi: list) -> tuple[VideoCodec, ...]:
                 max_bit_depth=c.get("bits"),
                 profiles=tuple(c.get("profiles") or ()),
             )
-            for c in entrada.get("codecs") or []
+            for c in entry.get("codecs") or []
         )
     return ()

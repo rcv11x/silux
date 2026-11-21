@@ -1,9 +1,9 @@
-"""Sistema operativo, kernel, memoria y actividad.
+"""Operating system, kernel, memory and activity.
 
-Se parte en dos proveedores porque la naturaleza de los datos es distinta: la
-distribución y el kernel no cambian mientras el programa está abierto, y la
-memoria y el número de procesos cambian cada segundo. Leer /etc/os-release una
-vez por muestreo sería tirar trabajo.
+Two providers, because the data differ in kind: the distribution and the
+kernel do not change while the program runs, and memory and the number of
+processes change every second. Reading /etc/os-release on every sample
+would be wasted work.
 """
 
 from __future__ import annotations
@@ -45,21 +45,19 @@ _MEM_FIELDS = {
 }
 
 
-def _desentrecomillar(valor: str) -> str:
-    """Quita las comillas de un valor de os-release.
+def _unquote(value: str) -> str:
+    """Strip the quotes of an os-release value.
 
-    El formato es el de un fragmento de shell, así que las comillas pueden ser
-    dobles o simples. Mirando solo las dobles, Gentoo —que usa simples—
-    aparecía en la ventana como 'Gentoo Linux' y '2.18', con las comillas
-    puestas.
+    The format is a shell fragment, so quotes can be double or single; with
+    only the double ones, single-quoted values showed with their quotes.
     """
-    valor = valor.strip()
-    for comilla in ('"', "'"):
-        if len(valor) >= 2 and valor[0] == comilla and valor[-1] == comilla:
-            valor = valor[1:-1]
+    value = value.strip()
+    for quote in ('"', "'"):
+        if len(value) >= 2 and value[0] == quote and value[-1] == quote:
+            value = value[1:-1]
             break
-    # En las dobles, el shell deja escapar unos cuantos caracteres.
-    return re.sub(r"\\([\\$`\"'])", r"\1", valor)
+    # In double quotes, the shell lets a few characters be escaped.
+    return re.sub(r"\\([\\$`\"'])", r"\1", value)
 
 
 def _os_release() -> dict[str, str]:
@@ -71,14 +69,14 @@ def _os_release() -> dict[str, str]:
                 if line.startswith("#"):
                     continue
                 if match := _OS_LINE.match(line):
-                    values[match.group(1)] = _desentrecomillar(match.group(2))
+                    values[match.group(1)] = _unquote(match.group(2))
     except OSError:
         pass
     return values
 
 
 class SystemIdentity(Provider):
-    """Lo que no cambia: distribución, kernel, escritorio, nombre del equipo."""
+    """What does not change: distribution, kernel, desktop, machine name."""
 
     name = "system-identity"
     provides = "system"
@@ -87,9 +85,9 @@ class SystemIdentity(Provider):
     def collect(self, draft: Draft) -> None:
         release = _os_release()
         uname = sysroot.a_traves("plataforma", "uname", lambda: platform.uname()._asdict())
-        entorno = sysroot.a_traves("plataforma", "entorno", lambda: {
-            clave: os.environ.get(clave)
-            for clave in ("XDG_CURRENT_DESKTOP", "XDG_SESSION_TYPE", "SHELL")})
+        environment = sysroot.a_traves("plataforma", "entorno", lambda: {
+            key: os.environ.get(key)
+            for key in ("XDG_CURRENT_DESKTOP", "XDG_SESSION_TYPE", "SHELL")})
 
         draft.capabilities.add("system")
         draft.system = System(
@@ -104,66 +102,62 @@ class SystemIdentity(Provider):
 
             hostname=read_text("/proc/sys/kernel/hostname") or uname["node"],
             init=on_its_own(draft, "system.init", self._init_system),
-            desktop=entorno.get("XDG_CURRENT_DESKTOP"),
-            session_type=entorno.get("XDG_SESSION_TYPE"),
-            shell=os.path.basename(entorno.get("SHELL") or "") or None,
+            desktop=environment.get("XDG_CURRENT_DESKTOP"),
+            session_type=environment.get("XDG_SESSION_TYPE"),
+            shell=os.path.basename(environment.get("SHELL") or "") or None,
         )
 
     @staticmethod
     def _kernel_build() -> Optional[str]:
-        """La fecha y el compilador con que se construyó el kernel.
+        """The date and compiler the kernel was built with.
 
-        Lo interesante empieza en el «#», que es el número de compilación, y
-        sigue con la fecha. El compilador va en el último paréntesis anterior.
-        Antes se exigía que fuera gcc, y con cualquier otro —CachyOS compila
-        con clang— el respaldo devolvía «Linux version 6.18.35-gentoo», que
-        es repetir el kernel en el renglón de al lado.
+        What matters starts at «#», the build number, and goes on with the
+        date. The compiler is in the last parenthesis before it; with only gcc
+        accepted, a kernel built with clang repeated the kernel's own name.
         """
         raw = read_text("/proc/version")
         if not raw:
             return None
-        marca = re.search(r"(#\d+.*)$", raw)
-        if not marca:
+        hash_mark = re.search(r"(#\d+.*)$", raw)
+        if not hash_mark:
             return None
-        build = marca.group(1).strip()
-        cabeza = raw[:marca.start()]
-        # Quién lo compiló. Nada de fiarse de los paréntesis: Gentoo escribe
-        # «gcc (Gentoo 14.3.0 p2) 14.3.0» y Ubuntu «gcc-13 (Ubuntu 13.2.0)
-        # 13.2.0», los dos con paréntesis dentro de paréntesis. Vale con
-        # buscar el nombre y quedarse con la última versión que va detrás.
-        if quien := re.search(r"\b(gcc|clang)\b", cabeza, re.IGNORECASE):
-            hasta_la_coma = cabeza[quien.end():].split(",")[0]
-            if versiones := re.findall(r"\d+\.\d+(?:\.\d+)?", hasta_la_coma):
-                return f"{build} · {quien.group(1).lower()} {versiones[-1]}"
+        build = hash_mark.group(1).strip()
+        head = raw[:hash_mark.start()]
+        # Who built it. Parentheses cannot be trusted: «gcc (Gentoo 14.3.0
+        # p2) 14.3.0» and «gcc-13 (Ubuntu 13.2.0) 13.2.0» nest them. Finding
+        # the name and taking the last version after it is enough.
+        if compiler := re.search(r"\b(gcc|clang)\b", head, re.IGNORECASE):
+            up_to_comma = head[compiler.end():].split(",")[0]
+            if versions := re.findall(r"\d+\.\d+(?:\.\d+)?", up_to_comma):
+                return f"{build} · {compiler.group(1).lower()} {versions[-1]}"
         return build
 
     @staticmethod
     def _init_system() -> Optional[str]:
         try:
-            nombre = os.path.basename(os.readlink(sysroot.ruta("/proc/1/exe")))
+            name = os.path.basename(os.readlink(sysroot.ruta("/proc/1/exe")))
         except OSError:
-            nombre = read_text("/proc/1/comm")
-        # Gentoo's OpenRC runs under sysvinit's `init`: a tester's report read
-        # «Init: init». Its runlevels are in /etc, which sysroot translates
-        # and a dump carries (/run is neither: a test would read this machine).
-        if nombre == "init" and os.path.isdir(sysroot.ruta("/etc/runlevels")):
+            name = read_text("/proc/1/comm")
+        # OpenRC runs under sysvinit's `init`, which would read «Init: init».
+        # Its runlevels are in /etc, which sysroot translates and a dump
+        # carries (/run is neither: a test would read this machine).
+        if name == "init" and os.path.isdir(sysroot.ruta("/etc/runlevels")):
             return "openrc"
-        if nombre == "openrc-init":
+        if name == "openrc-init":
             return "openrc"
-        return nombre
+        return name
 
 
-VULNERABILIDADES = "/sys/devices/system/cpu/vulnerabilities"
+VULNERABILITIES = "/sys/devices/system/cpu/vulnerabilities"
 EFIVARS = "/sys/firmware/efi/efivars"
-# El identificador con que los cargadores publican sus variables (la interfaz
-# del cargador de arranque de systemd). De ahí solo se leen estas cuatro: las
-# demás llevan el UUID de la partición y una ficha del sistema, que no son
-# asunto de nadie.
-GUID_DEL_CARGADOR = "4a67b082-0a4c-41cf-b6c7-440b29bb8c4f"
+# The id under which boot loaders publish their variables (systemd's Boot
+# Loader Interface). Only these four are read: the rest carry the partition's
+# UUID and a system id, nobody's business.
+LOADER_GUID = "4a67b082-0a4c-41cf-b6c7-440b29bb8c4f"
 
 
-def estado_de(status: str) -> str:
-    """Qué dice el kernel de una vulnerabilidad, en una de cuatro palabras."""
+def state_of(status: str) -> str:
+    """What the kernel says of a vulnerability, in one of four words."""
     if status.startswith("Not affected"):
         return "unaffected"
     if status.startswith("Vulnerable"):
@@ -173,51 +167,51 @@ def estado_de(status: str) -> str:
     return "unknown"
 
 
-def _variable_efi(nombre: str) -> Optional[str]:
-    """El texto de una variable del cargador. Cuatro bytes de atributos y
-    después UTF-16."""
+def _efi_variable(name: str) -> Optional[str]:
+    """A boot loader variable's text: four bytes of attributes, then
+    UTF-16."""
     try:
-        with open(sysroot.ruta(f"{EFIVARS}/{nombre}-{GUID_DEL_CARGADOR}"), "rb") as archivo:
-            crudo = archivo.read(4096)
+        with open(sysroot.ruta(f"{EFIVARS}/{name}-{LOADER_GUID}"), "rb") as handle:
+            raw = handle.read(4096)
     except OSError:
         return None
-    return crudo[4:].decode("utf-16-le", "replace").strip("\x00 ") or None
+    return raw[4:].decode("utf-16-le", "replace").strip("\x00 ") or None
 
 
-# La tabla FPDT del firmware: cuándo lanzó al cargador y cuándo este le
-# devolvió el control al salir de los servicios de arranque, en ns desde el
-# encendido. Es de donde systemd saca firmware y cargador cuando el gestor no
-# publica sus variables (el GRUB de Fedora), y se lee sin permisos.
+# The firmware's FPDT table: when it launched the loader and when the loader
+# handed back control on leaving boot services, in ns since power-on. Where
+# systemd takes firmware and loader times when the boot manager publishes no
+# variables, readable without permissions.
 FPDT = "/sys/firmware/acpi/fpdt/boot"
 
-# Lo que systemd sabe del arranque, en µs desde que arrancó el kernel. Por
-# D-Bus, sin permisos, con cualquier gestor de arranque.
-PROPIEDADES_DE_SYSTEMD = ("InitRDTimestampMonotonic", "UserspaceTimestampMonotonic",
+# What systemd knows of the boot, in µs since the kernel started. Over D-Bus,
+# without permissions, with any boot loader.
+SYSTEMD_PROPERTIES = ("InitRDTimestampMonotonic", "UserspaceTimestampMonotonic",
                           "FinishTimestampMonotonic")
 
 
-def _leer_systemctl(salida: str) -> Optional[dict[str, int]]:
-    valores = {}
-    for linea in salida.splitlines():
-        clave, _sep, valor = linea.partition("=")
-        if clave in PROPIEDADES_DE_SYSTEMD and valor.strip().isdigit():
-            valores[clave] = int(valor)
-    return valores or None
+def _parse_systemctl(out: str) -> Optional[dict[str, int]]:
+    values = {}
+    for line in out.splitlines():
+        key, _sep, value = line.partition("=")
+        if key in SYSTEMD_PROPERTIES and value.strip().isdigit():
+            values[key] = int(value)
+    return values or None
 
 
-def _tiempos_de_systemd() -> Optional[dict[str, int]]:
+def _systemd_times() -> Optional[dict[str, int]]:
     try:
-        hecho = subprocess.run(
-            ["systemctl", "show", *(f"--property={p}" for p in PROPIEDADES_DE_SYSTEMD)],
+        done = subprocess.run(
+            ["systemctl", "show", *(f"--property={p}" for p in SYSTEMD_PROPERTIES)],
             capture_output=True, text=True, timeout=3,
             env=dict(system_environment(), LC_ALL="C"))
     except (OSError, subprocess.SubprocessError):
         return None
-    return _leer_systemctl(hecho.stdout) if hecho.returncode == 0 else None
+    return _parse_systemctl(done.stdout) if done.returncode == 0 else None
 
 
 class SystemSecurity(Provider):
-    """Lo que no cambia en toda la sesión: mitigaciones y arranque."""
+    """What does not change all session: mitigations and boot."""
 
     name = "system-security"
     provides = "system.vulnerabilities"
@@ -225,88 +219,88 @@ class SystemSecurity(Provider):
 
     def collect(self, draft: Draft) -> None:
         draft.system = dataclasses.replace(
-            draft.system, vulnerabilities=self._vulnerabilidades(), boot=self._arranque())
+            draft.system, vulnerabilities=self._vulnerabilities(), boot=self._boot())
 
     @staticmethod
-    def _vulnerabilidades() -> tuple[Vulnerability, ...]:
-        salida = []
-        for camino in sorted(glob.glob(os.path.join(sysroot.ruta(VULNERABILIDADES), "*"))):
-            estado = read_text(sysroot.fuera(camino))
-            if estado:
-                salida.append(Vulnerability(name=os.path.basename(camino), status=estado,
-                                            state=estado_de(estado)))
-        return tuple(salida)
+    def _vulnerabilities() -> tuple[Vulnerability, ...]:
+        out = []
+        for path in sorted(glob.glob(os.path.join(sysroot.ruta(VULNERABILITIES), "*"))):
+            status = read_text(sysroot.fuera(path))
+            if status:
+                out.append(Vulnerability(name=os.path.basename(path), status=status,
+                                            state=state_of(status)))
+        return tuple(out)
 
     @staticmethod
-    def _arranque() -> Boot:
-        def segundos(nombre: str) -> Optional[float]:
-            valor = _variable_efi(nombre)
-            return int(valor) / 1e6 if valor and valor.isdigit() else None
+    def _boot() -> Boot:
+        def seconds(name: str) -> Optional[float]:
+            value = _efi_variable(name)
+            return int(value) / 1e6 if value and value.isdigit() else None
 
-        hasta_el_cargador = segundos("LoaderTimeInitUSec")
-        hasta_el_kernel = segundos("LoaderTimeExecUSec")
-        if hasta_el_cargador is None or hasta_el_kernel is None:
-            lanzado = read_int(f"{FPDT}/bootloader_launch_ns")
-            salida = read_int(f"{FPDT}/exitbootservice_end_ns")
-            if lanzado and salida:
-                hasta_el_cargador, hasta_el_kernel = lanzado / 1e9, salida / 1e9
-        cargador = (round(hasta_el_kernel - hasta_el_cargador, 1)
-                    if hasta_el_cargador is not None and hasta_el_kernel is not None
-                    and hasta_el_kernel >= hasta_el_cargador else None)
-        if cargador is None:
-            hasta_el_cargador = None
+        to_loader = seconds("LoaderTimeInitUSec")
+        to_kernel = seconds("LoaderTimeExecUSec")
+        if to_loader is None or to_kernel is None:
+            launched = read_int(f"{FPDT}/bootloader_launch_ns")
+            exited = read_int(f"{FPDT}/exitbootservice_end_ns")
+            if launched and exited:
+                to_loader, to_kernel = launched / 1e9, exited / 1e9
+        loader = (round(to_kernel - to_loader, 1)
+                    if to_loader is not None and to_kernel is not None
+                    and to_kernel >= to_loader else None)
+        if loader is None:
+            to_loader = None
 
-        systemd = sysroot.a_traves("systemd", "arranque", _tiempos_de_systemd) or {}
+        systemd = sysroot.a_traves("systemd", "arranque", _systemd_times) or {}
         initrd = systemd.get("InitRDTimestampMonotonic", 0)
-        espacio = systemd.get("UserspaceTimestampMonotonic", 0)
-        fin = systemd.get("FinishTimestampMonotonic", 0)
+        userspace = systemd.get("UserspaceTimestampMonotonic", 0)
+        finish = systemd.get("FinishTimestampMonotonic", 0)
 
-        def tramo(desde: int, hasta: int) -> Optional[float]:
-            return round((hasta - desde) / 1e6, 1) if hasta > desde else None
+        def span(start: int, end: int) -> Optional[float]:
+            return round((end - start) / 1e6, 1) if end > start else None
 
         return Boot(
-            loader=_variable_efi("LoaderInfo"),
-            entry=_variable_efi("LoaderEntrySelected"),
-            firmware_s=round(hasta_el_cargador, 1) if hasta_el_cargador is not None else None,
-            loader_s=cargador,
-            # Sin initrd, el kernel llega hasta systemd.
-            kernel_s=tramo(0, initrd or espacio) if espacio else None,
-            initrd_s=tramo(initrd, espacio) if initrd else None,
-            userspace_s=tramo(espacio, fin) if espacio and fin else None,
+            loader=_efi_variable("LoaderInfo"),
+            entry=_efi_variable("LoaderEntrySelected"),
+            firmware_s=round(to_loader, 1) if to_loader is not None else None,
+            loader_s=loader,
+            # Without an initrd, the kernel runs up to systemd.
+            kernel_s=span(0, initrd or userspace) if userspace else None,
+            initrd_s=span(initrd, userspace) if initrd else None,
+            userspace_s=span(userspace, finish) if userspace and finish else None,
             cmdline=privacidad.hide_cmdline_identifiers(read_text("/proc/cmdline") or ""))
 
 
-def leer_intercambio() -> tuple[Swap, ...]:
-    """Cada espacio de intercambio de `/proc/swaps`; el zram, con lo suyo."""
-    crudo = read_text("/proc/swaps") or ""
-    salida = []
-    for linea in crudo.splitlines()[1:]:
-        campos = linea.split()
+def read_swaps() -> tuple[Swap, ...]:
+    """Each swap space in `/proc/swaps`; zram with its own details."""
+    raw = read_text("/proc/swaps") or ""
+    out = []
+    for line in raw.splitlines()[1:]:
+        campos = line.split()
         if len(campos) < 5:
             continue
         try:
-            tamano, usado, prioridad = int(campos[2]) * 1024, int(campos[3]) * 1024, int(campos[4])
+            size, used, priority = int(campos[2]) * 1024, int(campos[3]) * 1024, int(campos[4])
         except ValueError:
             continue
-        swap = Swap(device=campos[0], kind=campos[1], size_bytes=tamano, used_bytes=usado,
-                    priority=prioridad)
-        nombre = os.path.basename(campos[0])
-        if nombre.startswith("zram"):
-            algoritmos = read_text(f"/sys/block/{nombre}/comp_algorithm") or ""
-            elegido = next((a.strip("[]") for a in algoritmos.split() if a.startswith("[")), None)
-            estado = (read_text(f"/sys/block/{nombre}/mm_stat") or "").split()
+        swap = Swap(device=campos[0], kind=campos[1], size_bytes=size, used_bytes=used,
+                    priority=priority)
+        name = os.path.basename(campos[0])
+        if name.startswith("zram"):
+            algorithms = read_text(f"/sys/block/{name}/comp_algorithm") or ""
+            chosen = next((a.strip("[]") for a in algorithms.split() if a.startswith("[")), None)
+            status = (read_text(f"/sys/block/{name}/mm_stat") or "").split()
             try:
-                original, comprimido = int(estado[0]), int(estado[1])
+                original, compressed = int(status[0]), int(status[1])
             except (ValueError, IndexError):
-                original = comprimido = None
-            swap = dataclasses.replace(swap, zram=True, algorithm=elegido,
-                                       original_bytes=original, compressed_bytes=comprimido)
-        salida.append(swap)
-    return tuple(salida)
+                original = compressed = None
+            swap = dataclasses.replace(swap, zram=True, algorithm=chosen,
+                                       original_bytes=original, compressed_bytes=compressed)
+        out.append(swap)
+    return tuple(out)
 
 
 class SystemState(Provider):
-    """Lo que cambia: memoria, tiempo encendido, procesos y descriptores."""
+    """What changes: memory, uptime, processes and file descriptors."""
 
     name = "system-state"
     provides = "system.memory"
@@ -328,17 +322,17 @@ class SystemState(Provider):
             memory=self._memory(),
             uptime_seconds=uptime,
             boot_time=self._boot_time(uptime),
-            processes=self._procesos(),
-            swaps=leer_intercambio(),
+            processes=self._processes(),
+            swaps=read_swaps(),
             threads=self._threads(),
             open_files=self._open_files(),
             # Can change during the session: loading a module taints it.
-            tainted=(mascara := read_int("/proc/sys/kernel/tainted")),
-            tainting_modules=self._tainting_modules(mascara),
+            tainted=(mask := read_int("/proc/sys/kernel/tainted")),
+            tainting_modules=self._tainting_modules(mask),
         )
         draft.sensors.extend(self._sensors(draft.system))
 
-    # -- interno ------------------------------------------------------------
+    # -- internals ----------------------------------------------------------
 
     def _tainting_modules(self, mask: Optional[int]) -> tuple[tuple[str, str], ...]:
         """Which loaded modules tainted the kernel, and with what.
@@ -363,15 +357,14 @@ class SystemState(Provider):
         return self._taint_modules
 
     @staticmethod
-    def _procesos() -> int:
-        """Cuántos procesos hay. Por `a_traves`: un volcado no copia `/proc`
-        entero, y contando sus carpetas el equipo volcado decía «Procesos: 1»
-        donde el de verdad tenía quinientos."""
-        cuenta = sysroot.a_traves(
+    def _processes() -> int:
+        """How many processes there are. Through `a_traves`: a dump does not
+        copy all of `/proc`, and counting its folders gave «Processes: 1»."""
+        count = sysroot.a_traves(
             "plataforma", "procesos", lambda: len(glob.glob("/proc/[0-9]*")))
-        if cuenta is None:                      # un volcado de antes de grabarlo
-            cuenta = len(glob.glob(sysroot.ruta("/proc/[0-9]*")))
-        return int(cuenta)
+        if count is None:                      # a dump from before it was recorded
+            count = len(glob.glob(sysroot.ruta("/proc/[0-9]*")))
+        return int(count)
 
     @staticmethod
     def _memory() -> Memory:
@@ -383,7 +376,7 @@ class SystemState(Provider):
                     field = _MEM_FIELDS.get(key)
                     if field is None:
                         continue
-                    # /proc/meminfo va en kibibytes salvo excepciones raras.
+                    # /proc/meminfo is in kibibytes but for rare exceptions.
                     values[field] = int(rest.split()[0]) * 1024
                     if len(values) == len(_MEM_FIELDS):
                         break
@@ -403,14 +396,14 @@ class SystemState(Provider):
     def _boot_time(uptime: float) -> Optional[str]:
         if uptime <= 0:
             return None
-        # Año-mes-día, como la fecha de la BIOS (`render.bios_date`): «06/08»
-        # se lee de dos maneras según quién lo mire, y esto de ninguna más.
+        # Year-month-day, like the firmware date (`render.bios_date`): «06/08»
+        # reads two ways depending on who looks, this only one.
         return time.strftime("%Y-%m-%d %H:%M", time.localtime(time.time() - uptime))
 
     @staticmethod
     def _threads() -> int:
-        """El cuarto campo de /proc/loadavg cuenta entidades del planificador,
-        que son hilos: mucho más barato que recorrer /proc/*/task."""
+        """The fourth field of /proc/loadavg counts scheduler entities, which
+        are threads: far cheaper than walking /proc/*/task."""
         raw = read_text("/proc/loadavg")
         try:
             return int(raw.split()[3].split("/")[1]) if raw else 0
@@ -427,7 +420,7 @@ class SystemState(Provider):
 
     @staticmethod
     def _sensors(system: System) -> list[Sensor]:
-        """La ocupación de memoria también es una magnitud que se sigue."""
+        """Memory use is a value worth following too."""
         memory = system.memory
         if not memory.total_bytes:
             return []
