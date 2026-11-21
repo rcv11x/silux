@@ -328,6 +328,13 @@ qué el código es así, no repiten lo que ya se lee en él, y nada de relleno.
 «Antes…», «se probó…» o «costó…» van al mensaje del commit o a las lecciones
 de las notas.
 
+**Escribe para cualquiera que lo lea: corto, directo, sin rayas ni frases
+solemnes, sin hablar de un equipo concreto; los comentarios explican el
+porqué.** Vale para el código, la documentación, los commits y los textos
+del repositorio. «Algunos portátiles declaran SODIMM también para la memoria
+soldada», no «el T14 declara SODIMM»: el equipo concreto va en el test o en
+su fixture.
+
 Lo que ya existe no se renombra al pasar: va en el proyecto de después de la
 0.4 (`docs/pendientes.md`), módulo a módulo y con los tests como red. Sigue
 en español lo que lee la gente: la interfaz (`silux/db/lang/`, el original),
