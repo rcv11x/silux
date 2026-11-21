@@ -17,6 +17,8 @@ import inspect
 import time
 from typing import Iterable, Optional, Sequence
 
+from . import sysroot
+from .failures import Failures
 from .model import Need, Snapshot
 from .privileged.client import PrivilegedClient
 from .providers.base import en_maquina_virtual
@@ -122,6 +124,20 @@ def _ruta_de(exc: OSError) -> str:
     return str(exc.filename) if exc.filename else str(exc)
 
 
+# What the system publishes about its hardware. A file missing there is
+# something this machine does not have; missing anywhere else (our database,
+# a temporary file, a program we launch) it is our failure.
+SYSTEM_TREES = ("/sys/", "/proc/", "/dev/", "/etc/", "/run/")
+
+
+def is_the_systems(exc: OSError) -> bool:
+    ruta = str(exc.filename) if exc.filename else ""
+    raiz = sysroot.raiz()
+    if raiz is not None and ruta.startswith(str(raiz)):
+        ruta = ruta[len(str(raiz)):]
+    return ruta.startswith(SYSTEM_TREES)
+
+
 def _with_the_helper_outdated(snapshot: Snapshot) -> Snapshot:
     """What permissions would read, said as what fixes it: the installed
     helper is from another version, so it is not giving permissions but
@@ -150,6 +166,7 @@ class Collector:
             compartido = PrivilegedClient()
             self.providers = [_instanciar(cls, compartido) for cls in DEFAULT_PROVIDERS]
         self._static: Optional[Draft] = None
+        self.failures = Failures()
 
     # -- API ----------------------------------------------------------------
 
@@ -165,7 +182,7 @@ class Collector:
             # Algo que dormía al leer lo estático ha despertado: la próxima
             # vuelta lo lee entero.
             self.invalidate()
-        snapshot = draft.freeze()
+        snapshot = dataclasses.replace(draft.freeze(), failures=self.failures.recent())
         if snapshot.privileged.outdated:
             snapshot = _with_the_helper_outdated(snapshot)
         return snapshot
@@ -188,15 +205,17 @@ class Collector:
         return any(p.wants_between_samples() for p in self.providers if not p.static)
 
     def between_samples(self) -> None:
-        """Las lecturas entre muestras. Un fallo aquí no se cuenta: la muestra
-        siguiente lee igual y, sin estas lecturas, se queda con su instante."""
+        """Las lecturas entre muestras. Un fallo aquí no quita nada de la
+        página: la muestra siguiente lee igual y, sin estas lecturas, se queda
+        con su instante. Va al informe con su traza."""
         for provider in self.providers:
             if provider.static or not provider.wants_between_samples():
                 continue
             try:
                 provider.between_samples()
-            except Exception:                             # noqa: BLE001
-                pass
+            except Exception as exc:                      # noqa: BLE001
+                # The next sample reads anyway; the report says it failed.
+                self.failures.record(f"{provider.name}.between_samples", exc)
 
     def request_elevation(self) -> None:
         """Marca que el usuario quiere los datos que exigen privilegios.
@@ -250,20 +269,33 @@ class Collector:
                     detail=_("prov.denied.detail").format(ruta=_ruta_de(exc)),
                 )
             except (FileNotFoundError, NotADirectoryError) as exc:
-                draft.note(
-                    provider.provides or provider.name,
-                    Need.HARDWARE,
-                    _("prov.missing"),
-                    detail=_("prov.missing.detail").format(ruta=_ruta_de(exc)),
-                )
+                if is_the_systems(exc):
+                    draft.note(
+                        provider.provides or provider.name,
+                        Need.HARDWARE,
+                        _("prov.missing"),
+                        detail=_("prov.missing.detail").format(ruta=_ruta_de(exc)),
+                    )
+                else:
+                    self._our_failure(draft, provider, exc)
             except Exception as exc:                      # noqa: BLE001
-                draft.note(
-                    provider.provides or provider.name,
-                    Need.ERROR,
-                    _("prov.crashed").format(nombre=provider.name, error=exc),
-                    _("prov.crashed.hint"),
-                )
+                self._our_failure(draft, provider, exc)
         return draft
+
+    def _our_failure(self, draft: Draft, provider: Provider, exc: Exception) -> None:
+        """Silux's own failure: an error on its page, and in the report with
+        its traceback. Never «this machine does not have it» (rule 5). It
+        replaces what another provider said of the same datum: a padlock
+        would promise what permissions may not give."""
+        self.failures.record(provider.name, exc)
+        draft.resolve(provider.provides or provider.name)
+        draft.note(
+            provider.provides or provider.name,
+            Need.ERROR,
+            _("prov.crashed").format(nombre=provider.name, error=exc),
+            _("prov.crashed.hint"),
+            key="prov.crashed",
+        )
 
     @staticmethod
     def _clone(static: Draft) -> Draft:

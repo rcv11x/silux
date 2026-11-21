@@ -252,6 +252,13 @@ def _limpiar(texto: Optional[str], equipo: Optional[str],
     return _sin_el_equipo(_cambiar_nombres(texto, nombres), equipo)
 
 
+def without_home(texto: str) -> str:
+    """A traceback names where Silux runs from, and from a checkout that is
+    inside the user's home folder."""
+    casa = str(pathlib.Path.home())
+    return texto.replace(casa, "~") if len(casa) > 1 else texto
+
+
 def _de_todos(snapshot: Snapshot) -> frozenset[str]:
     """The words of this photo that are everyone's: the makers and the
     machine's family and name as the firmware writes them, the distribution,
@@ -401,13 +408,20 @@ def anonimizar(snapshot: Snapshot) -> Snapshot:
         if sensores != snapshot.sensors:
             cambios["sensors"] = sensores
 
-    if snapshot.notes and (nombres or equipo):
+    if snapshot.notes:
         avisos = tuple(
-            dataclasses.replace(n, message=_limpiar(n.message, equipo, nombres),
-                                hint=_limpiar(n.hint, equipo, nombres))
+            dataclasses.replace(n, message=without_home(_limpiar(n.message, equipo, nombres) or ""),
+                                hint=_limpiar(n.hint, equipo, nombres),
+                                detail=without_home(_limpiar(n.detail, equipo, nombres) or ""))
             for n in snapshot.notes)
         if avisos != snapshot.notes:
             cambios["notes"] = avisos
+
+    if snapshot.failures:
+        cambios["failures"] = tuple(
+            dataclasses.replace(f, error=without_home(_limpiar(f.error, equipo, nombres) or ""),
+                                trace=without_home(_limpiar(f.trace, equipo, nombres) or ""))
+            for f in snapshot.failures)
 
     return dataclasses.replace(snapshot, **cambios) if cambios else snapshot
 

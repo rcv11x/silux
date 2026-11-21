@@ -55,6 +55,16 @@ class Note:
     key: str = ""
 
 
+@dataclass(frozen=True, slots=True)
+class Failure:
+    """A failure of Silux's own code, with its traceback, for the report."""
+
+    where: str         # the provider, or the provider and the step
+    error: str         # «KeyError: 'temp1'»
+    trace: str
+    count: int = 1     # the same failure again only counts
+
+
 # --------------------------------------------------------------------------
 # CPU
 # --------------------------------------------------------------------------
@@ -1846,6 +1856,7 @@ class Snapshot:
     driver_hints: tuple[DriverHint, ...] = ()
     capabilities: frozenset[str] = frozenset()
     notes: tuple[Note, ...] = ()
+    failures: tuple[Failure, ...] = ()
 
     def sensor_tree(self) -> dict[str, dict[str, tuple[Sensor, ...]]]:
         """Dispositivo → categoría → sensores, en el orden en que se dibujan.

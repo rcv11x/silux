@@ -102,6 +102,18 @@ class TestElProveedor(unittest.TestCase):
         self.assertEqual(len(avisos), 1)
         self.assertIn("modprobe", avisos[0].hint)
 
+    def test_an_unexpected_failure_is_an_error_not_silence(self):
+        # It returned without a word: the voltage was missing with no reason.
+        from silux.collector import Collector
+        cliente = mock.Mock()
+        cliente.connected.return_value = True
+        cliente.read_msr.side_effect = ValueError("bad register list")
+        recolector = Collector(providers=[])
+        draft = recolector._collect([msr_voltage.MsrVoltage(cliente)], into=_draft())
+        avisos = [n for n in draft.notes if n.path == "cpu.voltage_v"]
+        self.assertEqual([n.need for n in avisos], [Need.ERROR])
+        self.assertEqual([f.where for f in recolector.failures.recent()], ["msr-voltage"])
+
     def test_a_intel_se_le_pregunta_su_registro_y_no_los_de_amd(self):
         _draft_, cliente = self._con({}, vendor="Intel")
         cliente.read_msr.assert_called_once_with(0, [msr_voltage.INTEL_PERF_STATUS])

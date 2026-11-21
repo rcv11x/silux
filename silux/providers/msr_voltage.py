@@ -146,8 +146,6 @@ class MsrVoltage(Provider):
             draft.note("cpu.voltage_v", Need.DRIVER,
                        _("prov.msr.nomodule"), _("prov.msr.nomodule.hint"))
             return
-        except Exception:                                      # noqa: BLE001
-            return
 
         voltaje = _voltaje_amd(valores) if es_amd else _voltaje_intel(valores)
         if voltaje is None or not MINIMO_V <= voltaje <= MAXIMO_V:

@@ -179,6 +179,18 @@ class TestWithPermissions(unittest.TestCase):
         self.assertEqual([n.need for n in photo.notes if n.path == "cpu.clocks.base_hz"],
                          [Need.DRIVER])
 
+    def test_an_unexpected_failure_is_an_error_not_silence(self):
+        # It returned without a word, and the base had no reason to be missing.
+        class _Broken(_Helper):
+            def read_msr(self, cpu, registers):
+                raise ValueError("bad register list")
+
+        with _machine(cppc=False):
+            photo = _photo(_Broken())
+        self.assertEqual([n.need for n in photo.notes if n.path == "cpu.clocks.base_hz"],
+                         [Need.ERROR])
+        self.assertIn("msr-pstate", [f.where for f in photo.failures])
+
     def test_not_on_an_intel(self):
         helper = _Helper()
         with volcado.montado(EQUIPOS / "i5-10400"):

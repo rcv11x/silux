@@ -634,6 +634,13 @@ def _diagnostico(snapshot: Snapshot) -> str:
                           f"{nota.message}" + (f" ({nota.detail})" if nota.detail else ""))
     else:
         lineas.append("Sin datos ausentes: todo lo que el equipo expone se ha leído.")
+
+    if snapshot.failures:
+        lineas += ["", "**Fallos de Silux, con su traza:**", ""]
+        for fallo in snapshot.failures:
+            veces = f" ({fallo.count} veces)" if fallo.count > 1 else ""
+            lineas += [f"- `{fallo.where}`{veces}: {fallo.error}", "",
+                       "```text", fallo.trace, "```", ""]
     return "\n".join(lineas)
 
 

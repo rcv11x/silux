@@ -85,8 +85,6 @@ class AmdPstateClocks(Provider):
                 draft.note("cpu.clocks.base_hz", Need.DRIVER,
                            _("prov.msr.nomodule"), _("prov.msr.nomodule.hint"))
             return
-        except Exception:                                      # noqa: BLE001
-            return
 
         base = pstate_hz(values.get(AMD_PSTATE_DEF))
         state = values.get(AMD_PSTATE_STATUS)
