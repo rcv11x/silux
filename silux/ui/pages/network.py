@@ -291,6 +291,12 @@ class NetworkPage(ScrollPage):
         self._virtuales_abiertas = not self._virtuales_abiertas
         self._apply_virtuales(self._virtuales)
 
+    def open_for_report(self) -> None:
+        """The virtual interfaces, unfolded: the report carries everything. A
+        tester's WireGuard tunnel was in Sensores and nowhere in its report."""
+        if self._virtuales and not self._virtuales_abiertas:
+            self._alternar_virtuales()
+
     def _apply_virtuales(self, virtuales) -> None:
         self._virtuales = tuple(virtuales)
         self.virtual_toggle.setVisible(bool(virtuales))

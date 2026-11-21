@@ -20,3 +20,24 @@ class TestTheLoopbackIsNotCovered(unittest.TestCase):
         por_nombre = {i.name: i for i in anonima.network}
         self.assertEqual(por_nombre["lo"].ipv4, "127.0.0.1")
         self.assertEqual(por_nombre["wlan0"].ipv4, privacidad.IPV4)
+
+
+class TestTheVirtualInterfacesInTheReport(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        qt.app()
+        from silux.ui import full_report
+        cls.texto = full_report.build(foto(EQUIPOS / "i5-1135g7")[0], sections=["Red"])
+
+    def test_the_tunnel_is_there(self):
+        self.assertIn("| interfaz1 |", self.texto)
+        self.assertIn("### interfaz1", self.texto)
+
+    def test_with_its_loopback_as_it_is(self):
+        lo = self.texto[self.texto.index("### lo"):]
+        self.assertIn("127.0.0.1", lo[:lo.index("### ", 4)])
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -326,6 +326,25 @@ Los mismos datos son 116 MB/s o 931 Mb/s: los tests de velocidad usan bits.
 - Modelo: Intel 82540EM Gigabit Ethernet Controller
 - Ranura PCI: 0000:00:04.0
 
+### Interfaces virtuales
+
+| INTERFAZ | BAJANDO | SUBIENDO | RECIBIDO | ENVIADO | PAQUETES | PERDIDOS |
+|---|---|---|---|---|---|---|
+| lo | 0 B/s | 0 B/s | 6.9 KB | 6.9 KB | 172 | 0 |
+
+### lo
+
+- Estado: activa
+- Tipo: Bucle local
+- Dirección IPv4: 127.0.0.1
+- Máscara: 255.0.0.0
+- Dirección IPv6: ::1
+- Dirección física: 00:00:00:00:00:00
+- MTU: 65536
+- Driver: —
+- Modelo: —
+- Ranura PCI: —
+
 ## Dispositivos
 
 1 dispositivo USB

@@ -134,6 +134,9 @@ def abrir_plegables(pagina) -> None:
     for plegable in pagina.findChildren(Plegable):
         if not plegable.abierto():
             plegable.set_abierto(True)
+    # What a page folds its own way (Red, its virtual interfaces).
+    if hasattr(pagina, "open_for_report"):
+        pagina.open_for_report()
 
 
 def _de_lista(linea: str) -> bool:

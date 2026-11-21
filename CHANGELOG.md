@@ -27,6 +27,13 @@ que hace falta.
 - Arreglado: con memoria soldada, la nota decía que sus chips, sus perfiles y
   su fecha «no se han podido leer». La soldada no lleva chip SPD, y lo dice.
 
+### Informe
+
+- Arreglado: el informe no decía nada de las interfaces virtuales (un túnel
+  de WireGuard, los puentes de Docker), que Red enseña plegadas: ahora van
+  desplegadas. Y el bucle local conserva su dirección, 127.0.0.1, que no
+  identifica a nadie.
+
 ---
 
 ## 0.4-prueba5 (21 de noviembre de 2026)
