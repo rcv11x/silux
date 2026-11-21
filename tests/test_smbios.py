@@ -23,7 +23,7 @@ def _structure(type_: int, fields: bytes, strings: list[str]) -> bytes:
     return header + fields + body
 
 
-def _memory_device(size_mb: int = 8192, extended_mb: int = 0) -> bytes:
+def _memory_device(size_mb: int = 8192, extended_mb: int = 0, configured_mts: int = 2666) -> bytes:
     fields = bytearray(0x28 - 4)
 
     def put_word(offset: int, value: int) -> None:
@@ -47,7 +47,7 @@ def _memory_device(size_mb: int = 8192, extended_mb: int = 0) -> bytes:
     fields[0x1A - 4] = 6                    # referencia
     fields[0x1B - 4] = 0x02                 # rango 2
     struct.pack_into("<I", fields, 0x1C - 4, extended_mb)
-    put_word(0x20, 2666)                    # velocidad configurada
+    put_word(0x20, configured_mts)          # velocidad configurada
     put_word(0x22, 1200)
     put_word(0x24, 1200)
     put_word(0x26, 1200)

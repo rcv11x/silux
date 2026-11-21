@@ -622,6 +622,12 @@ FORM_FACTOR_SODIMM = 0x0D
 LOGICAL_NON_VOLATILE = "logical-non-volatile"
 
 
+# The fastest JEDEC speed of each desktop memory type (JESD79-3, JESD79-4 and
+# JESD79-5C); anything above is a maker's profile. Soldered LPDDR has no
+# profiles and is left out.
+JEDEC_TOP_MTS = {"DDR3": 2133, "DDR4": 3200, "DDR5": 8800}
+
+
 @dataclass(frozen=True, slots=True)
 class MemoryModule:
     """Un zócalo de memoria, esté ocupado o no.
@@ -685,6 +691,34 @@ class MemoryModule:
         if self.spd is not None and self.spd.rated_mts:
             return self.spd.rated_mts
         return self.speed_mts
+
+    @property
+    def rated_from_firmware(self) -> bool:
+        """Whether `rated_mts` is only what the firmware's table says."""
+        return not (self.spd is not None and self.spd.rated_mts) and bool(self.speed_mts)
+
+    @property
+    def voltage_mv(self) -> Optional[int]:
+        """The firmware's configured voltage, else the SPD's JEDEC one."""
+        if self.voltage_configured_mv:
+            return self.voltage_configured_mv
+        if self.spd is not None and self.spd.jedec and self.spd.jedec.voltage_v:
+            return round(self.spd.jedec.voltage_v * 1000)
+        return None
+
+    @property
+    def voltage_from_firmware(self) -> bool:
+        """Many BIOSes leave the configured voltage at its stock value while
+        an XMP or EXPO profile raises the real one."""
+        return bool(self.voltage_configured_mv)
+
+    @property
+    def above_jedec(self) -> bool:
+        """Running faster than any JEDEC speed of its type: a maker's profile
+        (XMP, EXPO), with its own voltage."""
+        top = JEDEC_TOP_MTS.get(self.type or "")
+        running = self.configured_mts or self.speed_mts
+        return bool(top and running and running > top + 1)
 
     @property
     def underclocked(self) -> bool:
@@ -2053,7 +2087,9 @@ _COMPUTED: dict[str, tuple[str, ...]] = {
                 "cores_temp_c", "in_virtual_machine"),
     "Sensor": ("heat", "unit", "plausible", "group", "category", "alarm", "alarm_level"),
     "Board": ("display_name",),
-    "MemoryModule": ("has_ecc", "underclocked", "rated_mts", "in_a_slot"),
+    "MemoryModule": ("has_ecc", "underclocked", "rated_mts", "in_a_slot",
+                     "rated_from_firmware", "voltage_mv", "voltage_from_firmware",
+                     "above_jedec"),
     "SpdInfo": ("rated_mts",),
     "Timings": ("summary",),
     "Memory": ("used_bytes", "used_percent", "cache_bytes", "apps_bytes",

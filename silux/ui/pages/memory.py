@@ -25,7 +25,7 @@ from PySide6.QtWidgets import (
 
 from ... import db, kernel, membench, render
 from ...i18n import _
-from ...model import MemoryModule, Need, Snapshot
+from ...model import JEDEC_TOP_MTS, MemoryModule, Need, Snapshot
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette, ui_font
@@ -553,8 +553,9 @@ class MemoryPage(ScrollPage):
         # La tarjeta de elevación ya explica lo de los permisos, así que aquí
         # solo van las notas que no cubre: por ejemplo, un SPD que no se sabe
         # interpretar todavía.
+        told = getattr(self, "_spd_reason_told", False)
         notes = [n for n in snapshot.notes
-                 if n.path.startswith("spd")
+                 if (n.path.startswith("spd") and not (told and n.path == "spd"))
                  or (n.path.startswith("modules") and snapshot.modules)
                  or (n.path == "memory.traffic" and n.need is not Need.ROOT)]
         signature = tuple((n.path, n.need) for n in notes)
@@ -849,6 +850,7 @@ class MemoryPage(ScrollPage):
         lista = render.enumeration(
             [_(SOLO_DEL_SPD[clave]) for clave in MODULE_FIELDS if clave in sin_spd])
         pies = []
+        spd_reason_told = False
         # El SPD de la DDR5 lo lee el driver spd5118, de Linux 6.11: con un
         # kernel anterior no es la placa la que no deja, es que no hay driver.
         ddr5 = any(m.type == "DDR5" for m in modules if m.populated)
@@ -862,10 +864,15 @@ class MemoryPage(ScrollPage):
             # la placa de lo que puede ser un permiso o un driver.
             nota_spd = getattr(self, "_nota_spd", None)
             campos = lista[:1].upper() + lista[1:]
-            pies.append(_("memory.na.nospd.why").format(
-                campos=campos, motivo=nota_spd.message[:1].lower() + nota_spd.message[1:])
-                        if nota_spd is not None else
-                        _("memory.na.nospd").format(campos=campos))
+            if nota_spd is not None:
+                # The reason and what to do about it go here, once: the note's
+                # own box is left out (`_apply_notices`).
+                pies.append(" ".join(p for p in (_("memory.na.nospd.why").format(
+                    campos=campos, motivo=nota_spd.message[:1].lower() + nota_spd.message[1:]),
+                    nota_spd.hint) if p))
+                spd_reason_told = True
+            else:
+                pies.append(_("memory.na.nospd").format(campos=campos))
         if sin_spd_soldada:
             lista = render.enumeration([_(SOLO_DEL_SPD[clave]) for clave in MODULE_FIELDS
                                         if clave in sin_spd_soldada])
@@ -873,7 +880,16 @@ class MemoryPage(ScrollPage):
         # Que no traen perfiles rápidos se dice una vez, en la nota de la tabla
         # de perfiles, que es donde se buscan (`_apply_timings`); la fila se
         # esconde sin repetirlo aquí.
-        self.spd_missing.setText(" ".join(pies))
+        # Above every JEDEC speed of its type the module runs a maker's
+        # profile, whose voltage the firmware's table often doesn't show.
+        perfil = next((m for m in modules if m.populated and m.above_jedec
+                       and m.voltage_from_firmware), None)
+        if perfil is not None:
+            pies.append(_("memory.na.voltage.profile").format(
+                tipo=render.memory_type(perfil.type), jedec=JEDEC_TOP_MTS[perfil.type]))
+        self._spd_reason_told = spd_reason_told
+        # One paragraph per matter: why the SPD isn't read is not the profile.
+        self.spd_missing.setText("\n\n".join(pies))
         self.spd_missing.setVisible(bool(pies))
 
     @staticmethod
@@ -916,8 +932,9 @@ class MemoryPage(ScrollPage):
                  if not module.size_bytes and capacidad else "")
 
         rated = module.rated_mts
-        grid.set(_("memory.field.rated"), f"{rated} MT/s" if rated else d,
-                 tooltip=_("memory.tip.rated") if spd else "")
+        grid.set(_("memory.field.rated"), render.memory_rated(module),
+                 tooltip=_("memory.tip.rated.bios") if module.rated_from_firmware
+                 else _("memory.tip.rated") if spd else "")
 
         crudo_mts = module.configured_mts or module.speed_mts
         actual = render.velocidad_de_memoria(crudo_mts)
@@ -944,11 +961,8 @@ class MemoryPage(ScrollPage):
             rangos += _("memory.ranks.ecc")
         grid.set(_("memory.field.ranks"), rangos)
 
-        voltaje = (f"{module.voltage_configured_mv / 1000:.2f} V"
-                   if module.voltage_configured_mv
-                   else (f"{spd.jedec.voltage_v:.2f} V" if spd and spd.jedec
-                         and spd.jedec.voltage_v else d))
-        grid.set(_("memory.field.voltage"), voltaje)
+        grid.set(_("memory.field.voltage"), render.memory_voltage(module),
+                 tooltip=_("memory.tip.voltage.bios") if module.voltage_from_firmware else "")
         grid.set(_("memory.field.form"), render.memory_form_factor(module.form_factor)
                  or (spd.module_type if spd else None) or d)
 

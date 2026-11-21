@@ -93,6 +93,22 @@ def memory_error_correction(code: Optional[int], translate=_) -> Optional[str]:
     return translate(clave) if clave else None
 
 
+def memory_rated(module) -> str:
+    """«3200 MT/s», saying so when only the firmware's table gives it."""
+    if not module.rated_mts:
+        return DASH
+    text = f"{module.rated_mts} MT/s"
+    return f"{text} · {_('memory.source.bios')}" if module.rated_from_firmware else text
+
+
+def memory_voltage(module) -> str:
+    """«1.35 V», saying so when only the firmware's table gives it."""
+    if module.voltage_mv is None:
+        return DASH
+    text = f"{module.voltage_mv / 1000:.2f} V"
+    return f"{text} · {_('memory.source.bios')}" if module.voltage_from_firmware else text
+
+
 def memory_type(name: Optional[str], translate=_) -> Optional[str]:
     """A memory technology: its name, or SMBIOS 1Fh said in words."""
     if name == LOGICAL_NON_VOLATILE:

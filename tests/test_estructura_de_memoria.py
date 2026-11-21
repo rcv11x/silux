@@ -116,7 +116,8 @@ class TestSinSpd(unittest.TestCase):
                 pagina.spd_missing.text(),
                 "Los chips, los perfiles rápidos y la fecha de fabricación salen del "
                 "chip SPD de cada módulo, y no se puede leer: el controlador SMBus existe "
-                "pero el kernel no lo ha activado: el firmware de la placa se reserva ese bus.")
+                "pero el kernel no lo ha activado: el firmware de la placa se reserva ese bus. "
+                + _("spd.nobus.hint"))
 
     def test_si_la_tabla_tampoco_dice_el_fabricante_tambien_se_esconde(self):
         import dataclasses
