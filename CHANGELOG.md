@@ -20,6 +20,10 @@ que hace falta.
   de OpenOCD). La de antes tenía 15, y Kingston, Infineon, Elpida y Transcend
   estaban en el sitio equivocado. Un código sin nombre en la lista se dice
   como tal.
+- Arreglado: sin permisos, un portátil con memoria soldada decía «8 GB
+  instalados · 15.3 GB utilizables»: la soldada no tiene chip SPD y no
+  contaba. Ahora no dice cuánta hay instalada, y sí que el resto se sabe con
+  permisos.
 
 ---
 

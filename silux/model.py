@@ -1836,7 +1836,18 @@ class Snapshot:
         if modulos:
             return sum(modulos)
         spd = [i.capacity_bytes for i in self.spd if i.capacity_bytes]
-        return sum(spd) if spd else None
+        if not spd or not self.spd_accounts_for_all_memory:
+            return None
+        return sum(spd)
+
+    @property
+    def spd_accounts_for_all_memory(self) -> bool:
+        """Whether the SPD chips add up to the usable memory at least. Memory
+        soldered on the board has none: the author's T14 read «8 GB
+        instalados · 15.3 GB utilizables», and installed is never less."""
+        spd = sum(i.capacity_bytes for i in self.spd if i.capacity_bytes)
+        util = self.system.memory.total_bytes
+        return not util or spd >= util
 
     @property
     def working_gpu(self) -> Optional[int]:

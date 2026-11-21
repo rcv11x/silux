@@ -614,9 +614,13 @@ class MemoryPage(ScrollPage):
                 velocidad = (_("memory.spd.rated.one" if cuantos == 1
                                else "memory.spd.rated.many").format(mts=max(catalogados))
                              if catalogados else "")
+                # Memory without a chip of its own (soldered) is not in the SPD:
+                # what is read is not all there is, and it is said.
+                resto = (_("memory.spd.needsroot") if snapshot.spd_accounts_for_all_memory
+                         else _("memory.spd.notall"))
                 return (_("memory.spd.read.one" if cuantos == 1
                           else "memory.spd.read.many").format(n=cuantos)
-                        + velocidad + _("memory.spd.needsroot"))
+                        + velocidad + resto)
             return _("memory.detail.needsroot")
         # Cuántos módulos, y no «2 de 4 zócalos»: la tabla del firmware
         # declara ranuras que la placa no tiene (la H510M PRO-E de la oficina
