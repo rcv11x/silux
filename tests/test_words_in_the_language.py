@@ -12,6 +12,7 @@ from unittest import mock
 from silux import i18n
 from silux.providers import spd_modules
 from silux.providers.base import Draft
+from tests.test_equipos import EQUIPOS, foto
 
 
 class _InEnglish(unittest.TestCase):
@@ -32,6 +33,16 @@ class TestTheSpdNotice(_InEnglish):
         mensaje = next(n.message for n in borrador.notes if n.path == "spd")
         self.assertIn("DDR2 and DDR3", mensaje)
         self.assertNotIn(" y ", mensaje)
+
+
+class TestTheVulkanRow(_InEnglish):
+
+    def test_its_instance_in_english(self):
+        f = foto(EQUIPOS / "5800x3d")[0]
+        detalles = [a.extra for g in f.gpus for a in g.apis if a.name == "Vulkan"]
+        self.assertTrue(detalles)
+        for detalle in detalles:
+            self.assertTrue(detalle.startswith("instance "), detalle)
 
 
 if __name__ == "__main__":

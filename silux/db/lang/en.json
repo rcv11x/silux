@@ -520,6 +520,7 @@
   "engine.videoenhance": "video enhance",
   "fan.stopped": "stopped",
   "gpu.api.detail": "Details",
+  "gpu.api.instance": "instance {version}",
   "gpu.api.software": "in software, on the processor",
   "gpu.api.version": "Version",
   "gpu.apis.none": "No graphics libraries",

@@ -85,7 +85,7 @@ class GpuApis(Provider):
                     version=device["api_version"],
                     device=device["name"],
                     driver=_driver_version(device),
-                    extra=f"instancia {device['instance_version']}",
+                    extra=_("gpu.api.instance").format(version=device["instance_version"]),
                 ))
                 _refine_name(gpu, device["name"])
                 _vulkan_memory(gpu, device)
