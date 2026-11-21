@@ -170,12 +170,21 @@ en las lecciones de las notas. Valen para el código nuevo:
 - **Lo que vigila `os` o `io` se prueba en Python 3.10** (el compat): su
   `pathlib` guarda sus propias copias desde que se importa.
 - **Lo imposible se descarta solo**: un voltaje que no cuadra tira el voltaje,
-  no la velocidad bien leída que venía al lado.
+  no la velocidad bien leída que venía al lado. Lo que sale de restar un
+  contador también: un vatio negativo o por encima de lo que da la pieza no
+  entra en la gráfica, ni en el máximo, ni en la media, y el informe dice sus
+  números.
+- **Una lectura suelta no es el intervalo**: lo que el hardware da como un
+  instante (el uso de una AMD, la frecuencia de una Intel) se lee entre
+  muestras y se enseña su media. Y dormida no es 0: es «en reposo».
 - **Lo que se dice de una pieza se mira en esa pieza**: que el ayudante
   devuelva algún contador no dice que devuelva los de esta gráfica. Y un
   estado que se activa también vuelve atrás.
 - **Un arreglo se compara con la herramienta de referencia** (`df`,
   `sensors`…) en un equipo de verdad, no con que el síntoma desaparezca.
+- **En pantalla, lenguaje normal**: ni rutas, ni nodos, ni hwmon. Dónde se
+  buscó va al `detail` de la nota, que solo escribe el informe
+  (`tests/test_igpu_temperature.py` lo mira en cada página de cada volcado).
 
 ## Cómo está repartido
 
@@ -283,7 +292,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); el código nuevo, en inglés (ver «Código»). Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-1576 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+1591 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
