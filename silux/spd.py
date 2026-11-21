@@ -93,7 +93,10 @@ class SpdInfo:
     # Crucial llevan silicio de Micron, y eso la tabla SMBIOS no lo dice.
     dram_manufacturer: Optional[str] = None
     part_number: Optional[str] = None
-    manufactured: Optional[str] = None        # "semana 32 de 2021"
+    # When it was made, as the SPD dates it: a week of a year. Numbers: it
+    # is said in the reader's language when painting (`render.made`).
+    manufactured_year: Optional[int] = None
+    manufactured_week: Optional[int] = None
     ranks: Optional[int] = None
     device_width: Optional[int] = None
     bus_width: Optional[int] = None
@@ -295,7 +298,7 @@ def _decode_ddr4(spd: bytes, address: str, slot: int) -> SpdInfo:
         manufacturer=_vendor(spd[d.VENDOR_BANK], spd[d.VENDOR_ID]),
         dram_manufacturer=_vendor(spd[d.DRAM_BANK], spd[d.DRAM_ID]),
         part_number=_text(spd[d.PART_NUMBER]),
-        manufactured=_date(spd[d.DATE_YEAR], spd[d.DATE_WEEK]),
+        **_date(spd[d.DATE_YEAR], spd[d.DATE_WEEK]),
         ranks=ranks,
         device_width=ancho_chip,
         bus_width=ancho_bus,
@@ -397,8 +400,7 @@ def _decode_ddr5(spd: bytes, address: str, slot: int) -> SpdInfo:
         dram_manufacturer=_vendor(spd[d.DRAM_BANK], spd[d.DRAM_ID])
         if len(spd) > d.DRAM_ID else None,
         part_number=_text(spd[d.PART_NUMBER]) if len(spd) > d.PART_NUMBER.stop else None,
-        manufactured=_date(spd[d.DATE_YEAR], spd[d.DATE_WEEK])
-        if len(spd) > d.DATE_WEEK else None,
+        **(_date(spd[d.DATE_YEAR], spd[d.DATE_WEEK]) if len(spd) > d.DATE_WEEK else {}),
         ranks=ranks,
         device_width=ancho_chip,
         bus_width=ancho_canal * canales,
@@ -473,16 +475,16 @@ def _text(raw: bytes) -> Optional[str]:
     return value or None
 
 
-def _date(year: int, week: int) -> Optional[str]:
-    """Van en BCD: 0x21 es 2021, no 33."""
+def _date(year: int, week: int) -> dict:
+    """Van en BCD: 0x21 es 2021, no 33. The fields of `SpdInfo`."""
     def bcd(value: int) -> Optional[int]:
         high, low = value >> 4, value & 0x0F
         return high * 10 + low if high <= 9 and low <= 9 else None
 
     y, w = bcd(year), bcd(week)
     if not y or not w or not 1 <= w <= 53:
-        return None
-    return f"semana {w} de {2000 + y}"
+        return {}
+    return {"manufactured_year": 2000 + y, "manufactured_week": w}
 
 
 def _xmp_revision(spd: bytes) -> Optional[str]:

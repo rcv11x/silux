@@ -60,7 +60,7 @@ class TestModuloReal(unittest.TestCase):
 
     def test_fecha_en_bcd(self):
         # El año va en BCD: 0x23 son 2023, no 35.
-        self.assertEqual(self.info.manufactured, "semana 37 de 2023")
+        self.assertEqual((self.info.manufactured_year, self.info.manufactured_week), (2023, 37))
 
     def test_este_modulo_no_trae_xmp(self):
         self.assertIsNone(self.info.xmp_revision)
@@ -81,13 +81,13 @@ class TestCodigosJedec(unittest.TestCase):
 
 class TestFechas(unittest.TestCase):
     def test_bcd(self):
-        self.assertEqual(spd._date(0x21, 0x32), "semana 32 de 2021")
-        self.assertEqual(spd._date(0x23, 0x01), "semana 1 de 2023")
+        self.assertEqual(spd._date(0x21, 0x32), {"manufactured_year": 2021, "manufactured_week": 32})
+        self.assertEqual(spd._date(0x23, 0x01), {"manufactured_year": 2023, "manufactured_week": 1})
 
     def test_valores_imposibles(self):
-        self.assertIsNone(spd._date(0x00, 0x00))
-        self.assertIsNone(spd._date(0x2A, 0x10))        # nibble no BCD
-        self.assertIsNone(spd._date(0x21, 0x99))        # semana 99
+        self.assertEqual(spd._date(0x00, 0x00), {})
+        self.assertEqual(spd._date(0x2A, 0x10), {})        # nibble no BCD
+        self.assertEqual(spd._date(0x21, 0x99), {})        # semana 99
 
 
 class TestPlausibilidad(unittest.TestCase):
@@ -571,7 +571,7 @@ class TestDdr5(unittest.TestCase):
     def test_identidad_del_modulo(self):
         self.assertEqual(render.maker(self.info.manufacturer), "Micron")
         self.assertEqual(self.info.part_number, "CT16G56C46U5.M8G1")
-        self.assertEqual(self.info.manufactured, "semana 32 de 2024")
+        self.assertEqual((self.info.manufactured_year, self.info.manufactured_week), (2024, 32))
 
     def test_los_dos_subcanales(self):
         # Un DIMM de DDR5 se parte en dos canales de 32 bits. Sin decirlo, un

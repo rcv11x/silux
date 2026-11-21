@@ -205,8 +205,8 @@ def _memoria(snapshot: Snapshot) -> str:
                 partes.append(texto)
         if spd.dram_manufacturer and spd.dram_manufacturer != spd.manufacturer:
             partes.append(f"chips {render.maker(spd.dram_manufacturer)}")
-        if spd.manufactured:
-            partes.append(f"fabricado {spd.manufactured}")
+        if fecha := render.made(spd.manufactured_year, spd.manufactured_week, en_español):
+            partes.append(f"fabricado {fecha}")
         if spd.ranks:
             partes.append(f"{spd.ranks} rangos")
         if spd.overclock_profiles:

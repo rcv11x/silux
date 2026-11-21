@@ -8,6 +8,8 @@ repositorio los números de serie del equipo de nadie.
 
 import unittest
 
+from silux import render
+
 from silux import edid
 
 
@@ -89,7 +91,8 @@ class TestLecturaNormal(unittest.TestCase):
 
     def test_fecha_de_fabricacion(self):
         self.assertEqual((self.monitor.week, self.monitor.year), (16, 2024))
-        self.assertEqual(self.monitor.made, "semana 16 de 2024")
+        self.assertEqual((self.monitor.year, self.monitor.week), (2024, 16))
+        self.assertEqual(render.made(self.monitor.year, self.monitor.week), "semana 16 de 2024")
 
     def test_con_solo_centimetros_la_diagonal_es_aproximada(self):
         """59 × 33 cm daban «26.6"» para un monitor de 27: medio centímetro
@@ -189,7 +192,7 @@ class TestCasosRaros(unittest.TestCase):
     def test_un_monitor_sin_fecha(self):
         monitor = edid.parse(construir(anno=None, semana=0))
         self.assertIsNone(monitor.year)
-        self.assertIsNone(monitor.made)
+        self.assertIsNone(render.made(monitor.year, monitor.week))
 
 
 class TestNombresDeFabricante(unittest.TestCase):

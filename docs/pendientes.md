@@ -194,12 +194,10 @@ necesita.
 
 ## Interfaz
 
-* **Literales en español fuera de `_()`** · media · la página de Red tenía
-  sus cabeceras y sus fichas así (en inglés salían en español), y los
-  nombres del tráfico de red en Sensores también. Arreglados esos; falta un
-  test general que encuentre el resto, por ejemplo montando cada página en
-  inglés y buscando textos que solo existen como valor de `es.json` o que no
-  pasan por ninguna clave.
+* **La terminal, solo en español** · menor · `cli.py` escribe el volcado
+  con literales en español («Núcleo», «Reloj de memoria», «de N W»), sin
+  pasar por `_()`. `tests/test_interface_language.py` mira la ventana, no la
+  terminal.
 
 * **F-M2 · `ui/widgets.py`** · media · `StatTile` nace con «—» a tamaño de
   cifra y solo cambia la letra cuando cambia el texto: una ficha que nunca

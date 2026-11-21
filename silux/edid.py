@@ -146,13 +146,6 @@ class Edid:
         """Si lo que se enseña es el modo preferido y no un rango declarado."""
         return not self.refresh_range and bool(self.native_refresh_hz)
 
-    @property
-    def made(self) -> Optional[str]:
-        """«semana 16 de 2024», que es como lo fecha el propio estándar."""
-        if not self.year:
-            return None
-        return f"semana {self.week} de {self.year}" if self.week else str(self.year)
-
 
 def parse(raw: bytes) -> Optional[Edid]:
     """Devuelve None si esto no es un EDID; nunca revienta con basura."""

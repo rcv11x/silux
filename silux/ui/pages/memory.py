@@ -946,7 +946,8 @@ class MemoryPage(ScrollPage):
         perfiles = spd.overclock_profiles if spd else ()
         grid.set(_("memory.field.profiles"), ", ".join(perfiles) if perfiles else d,
                  tooltip=_("memory.tip.profiles") if perfiles else "")
-        grid.set(_("memory.field.made"), (spd.manufactured if spd else None) or d)
+        grid.set(_("memory.field.made"),
+                 (render.made(spd.manufactured_year, spd.manufactured_week) if spd else None) or d)
         grid.set(_("memory.field.bank"), render.banco_de_memoria(module.bank) or d)
 
     def _apply_timings(self, modules: list[MemoryModule]) -> None:

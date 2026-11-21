@@ -413,7 +413,7 @@ class StoragePage(ScrollPage):
              render.size(p.free_bytes))
             for x in discos for p in x.mounted_partitions
         ]
-        self.parts.set_rows(filas or [("Ninguna montada", d, d, d, d, d)])
+        self.parts.set_rows(filas or [(_("storage.nomounted"), d, d, d, d, d)])
 
     def _apply_cards(self, discos) -> None:
         nombres = tuple(x.name for x in discos)

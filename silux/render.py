@@ -87,6 +87,14 @@ def memory_type(name: Optional[str], translate=_) -> Optional[str]:
     return name
 
 
+def made(year: Optional[int], week: Optional[int], translate=_) -> Optional[str]:
+    """When a piece was made, as its own standard dates it: «semana 16 de
+    2024» (EDID, SPD). The year alone without its week."""
+    if not year:
+        return None
+    return translate("date.week").format(semana=week, anio=year) if week else str(year)
+
+
 def gpu_clock(value: Optional[float]) -> str:
     """A GPU's engine clock: at 0 it is asleep, and asleep is not a clock."""
     if value == 0:
@@ -584,7 +592,7 @@ def fan(rpm_value: Optional[int], percent_value: Optional[float]) -> str:
     if _none(rpm_value) and _none(percent_value):
         return DASH
     if parado:
-        return "parado"
+        return _("fan.stopped")
     partes = []
     if not _none(rpm_value):
         partes.append(f"{int(rpm_value)} RPM")
@@ -1807,7 +1815,7 @@ def monitor_summary(monitor: Optional[Edid]) -> str:
     pulgadas = monitor_diagonal(monitor)
     medida = (f"{monitor.width_mm} × {monitor.height_mm} mm"
               if monitor.width_mm and monitor.height_mm else None)
-    partes = [p for p in (pulgadas, medida, monitor.made) if p]
+    partes = [p for p in (pulgadas, medida, made(monitor.year, monitor.week)) if p]
     return " · ".join(partes) if partes else DASH
 
 

@@ -1048,7 +1048,7 @@ def _fila_de_salida(salida, virtual: bool = False) -> tuple[str, ...]:
         monitor.refresh_summary or d,
         "" if virtual else render.monitor_diagonal(monitor) or d,
         render.monitor_color(monitor),
-        "" if virtual else monitor.made or d,
+        "" if virtual else render.made(monitor.year, monitor.week) or d,
     )
 
 

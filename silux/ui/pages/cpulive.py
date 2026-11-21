@@ -127,7 +127,7 @@ class CpuLiveSection(QWidget):
             # GHz» en un Xeon con el turbo apagado: cierto y sin información.
             if suelo and techo:
                 if abs(techo - suelo) < 1e7:          # menos de 10 MHz: es fijo
-                    self.tile_freq.set_detail(f"fija en {render.hz(techo)}")
+                    self.tile_freq.set_detail(_("cpu.tile.fixed").format(valor=render.hz(techo)))
                 else:
                     self.tile_freq.set_detail(f"{render.hz(suelo)} – {render.hz(techo)}")
 

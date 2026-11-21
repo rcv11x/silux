@@ -165,7 +165,7 @@ class SystemPage(ScrollPage):
         memory = system.memory
         d = render.DASH
 
-        self.title.setText(system.distribution or "Sistema desconocido")
+        self.title.setText(system.distribution or _("sys.unknown"))
         self.subtitle.setText(
             _("sys.subtitle").format(
                 equipo=system.hostname or d,

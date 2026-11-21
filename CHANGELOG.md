@@ -103,6 +103,11 @@ que hace falta.
 
 - Arreglado: con la interfaz en inglés, las cabeceras del tráfico y las
   cuatro fichas de arriba salían en español.
+- Arreglado: más textos que salían en español con la interfaz en inglés: un
+  ventilador parado, la fecha de fabricación de un monitor y de un módulo de
+  memoria («semana 16 de 2024»), la frecuencia fija de un procesador, un
+  sistema sin nombre y un disco sin particiones montadas. Las dos fechas se
+  guardaban ya escritas; ahora son números y se escriben al pintar.
 
 ### Informe
 

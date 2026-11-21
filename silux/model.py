@@ -2019,7 +2019,7 @@ _COMPUTED: dict[str, tuple[str, ...]] = {
     "GpuMemory": ("used_percent", "resizable_bar"),
     "PcieLink": ("generation", "max_generation", "downgraded"),
     "Display": ("resolution",),
-    "Edid": ("diagonal_inches", "made", "refresh_range",
+    "Edid": ("diagonal_inches", "refresh_range",
              "refresh_summary", "best_mode"),
     "VideoMode": ("label",),
     "Gpu": ("display_name", "pci_id", "subsystem_id", "connected_displays"),
