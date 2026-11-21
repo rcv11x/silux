@@ -4,9 +4,7 @@
 
 [![CI](https://github.com/rcv11x/silux/actions/workflows/appimage.yml/badge.svg)](https://github.com/rcv11x/silux/actions/workflows/appimage.yml)
 
-*Hardware profiler for Linux. The interface is in Spanish and English.*
-
-Silux identifica el hardware de un equipo con Linux y vigila sus sensores: lo que en Windows hacen CPU-Z, GPU-Z y HWMonitor, en un solo programa. Cuando no puede leer un dato, dice por qué.
+Silux enseña qué hardware tiene un equipo con Linux y qué está haciendo: procesador, memoria, gráficas, discos, red, batería y sensores. Hace lo que en Windows hacen CPU-Z, GPU-Z y HWMonitor, en un solo programa, en español o en inglés. Cuando no puede leer un dato, dice por qué.
 
 ![Inicio](capturas/inicio.png)
 
@@ -77,6 +75,7 @@ A quienes mandan informes: con ellos Silux se prueba en equipos que no son el nu
 - [Equipos probados](docs/equipos-probados.md) y [lo que falta](docs/pendientes.md).
 - [Lo que usa del sistema](docs/dependencias.md): qué paquete trae cada cosa en Debian, Ubuntu, Fedora y Arch, y qué pasa si falta.
 - [Cambios de cada versión](CHANGELOG.md).
+- En inglés: [la arquitectura en corto](ARCHITECTURE.md), [cómo contribuir](CONTRIBUTING.md) y [cómo avisar de un problema de seguridad](SECURITY.md).
 
 Silux se escribe con ayuda de Claude, el asistente de IA de Anthropic.
 

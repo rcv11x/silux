@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/rcv11x/silux/actions/workflows/appimage.yml/badge.svg)](https://github.com/rcv11x/silux/actions/workflows/appimage.yml)
 
-Silux identifies the hardware in a Linux machine and keeps an eye on its sensors: what CPU-Z, GPU-Z and HWMonitor do on Windows, in a single program. When it can't read something, it tells you why. The interface is in Spanish and English.
+Silux shows what hardware a Linux machine has and what it is doing: processor, memory, graphics, disks, network, battery and sensors. It does what CPU-Z, GPU-Z and HWMonitor do on Windows, in a single program, in English or Spanish. When it can't read something, it tells you why.
 
 ![Home](capturas/inicio.png)
 
@@ -70,13 +70,14 @@ To everyone who sends reports: with them Silux is tested on machines that are no
 
 ## More
 
-The documentation is in Spanish.
+The documentation in `docs/` is in Spanish.
 
 - [Architecture](docs/arquitectura.md): how it is built and how to run each part.
 - [Conventions](docs/convenciones.md): how to contribute.
 - [Tested machines](docs/equipos-probados.md) and [what's still missing](docs/pendientes.md).
 - [What it uses from the system](docs/dependencias.md): which package brings each piece on Debian, Ubuntu, Fedora and Arch, and what happens without it.
 - [What changed in each release](CHANGELOG.md).
+- In English: [a short architecture](ARCHITECTURE.md), [how to contribute](CONTRIBUTING.md) and [how to report a security problem](SECURITY.md).
 
 Silux is written with the help of Claude, Anthropic's AI assistant.
 

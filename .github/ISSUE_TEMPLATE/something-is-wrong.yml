@@ -1,0 +1,43 @@
+name: Something is wrong
+description: A value that is wrong, one missing without a reason, or a crash.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks. What helps most is the full report:
+
+        ```
+        ./silux-x86_64.AppImage --report report.md
+        ```
+
+        or in Silux, Settings › «View and save the report…». It leaves out the
+        machine's name, addresses and serial numbers, but read it before
+        attaching it.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happens
+      description: On which page, what it shows and what you expected.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: What `silux --version` or the sidebar says.
+      placeholder: 0.4-prueba5 (20261121.250900c)
+    validations:
+      required: true
+  - type: textarea
+    id: report
+    attributes:
+      label: The report
+      description: Drop report.md here, or paste its contents.
+  - type: checkboxes
+    id: checked
+    attributes:
+      label: Before sending it
+      options:
+        - label: I have read the report and it holds nothing I do not want to publish.
+          required: true

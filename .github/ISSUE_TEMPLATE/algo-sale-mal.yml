@@ -1,0 +1,43 @@
+name: Algo sale mal
+description: Un dato que sale mal, que falta sin explicar por qué, o un cierre.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Gracias. Lo que más ayuda es el informe completo:
+
+        ```
+        ./silux-x86_64.AppImage --report informe.md
+        ```
+
+        o en Silux, Ajustes › «Ver y guardar el informe…». No lleva el nombre del
+        equipo, ni direcciones, ni números de serie, pero revísalo antes de
+        adjuntarlo.
+  - type: textarea
+    id: what
+    attributes:
+      label: Qué pasa
+      description: En qué página, qué sale y qué esperabas ver.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Versión
+      description: Lo que dice `silux --version`, o la barra lateral.
+      placeholder: 0.4-prueba5 (20261121.250900c)
+    validations:
+      required: true
+  - type: textarea
+    id: report
+    attributes:
+      label: El informe
+      description: Arrastra aquí informe.md, o pega lo que tiene dentro.
+  - type: checkboxes
+    id: checked
+    attributes:
+      label: Antes de mandarlo
+      options:
+        - label: He revisado el informe y no lleva nada que no quiera publicar.
+          required: true

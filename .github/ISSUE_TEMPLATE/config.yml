@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Un problema de seguridad / A security problem
+    url: https://github.com/rcv11x/silux/security
+    about: En privado, no en un issue / Privately, not in an issue (SECURITY.md).

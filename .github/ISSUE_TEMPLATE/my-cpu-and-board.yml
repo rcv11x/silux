@@ -1,0 +1,47 @@
+name: My CPU and board
+description: Send your machine's report so Silux recognizes it better.
+title: "My machine: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for sending your machine. Save the full report, with permissions:
+
+        ```
+        ./silux-x86_64.AppImage --report report.md
+        ```
+
+        or in Silux, Settings › «View and save the report…». It leaves out the
+        machine's name, addresses and serial numbers, but read it before
+        attaching it.
+  - type: input
+    id: cpu
+    attributes:
+      label: Processor
+      placeholder: AMD Ryzen 7 9800X3D
+    validations:
+      required: true
+  - type: input
+    id: board
+    attributes:
+      label: Motherboard, or laptop model
+      placeholder: MSI MAG B650 TOMAHAWK WIFI
+  - type: textarea
+    id: report
+    attributes:
+      label: The report
+      description: Drop report.md here, or paste its contents.
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything wrong or missing
+      description: A value that does not show, is wrong, or that you expected to see.
+  - type: checkboxes
+    id: checked
+    attributes:
+      label: Before sending it
+      options:
+        - label: I have read the report and it holds nothing I do not want to publish.
+          required: true
