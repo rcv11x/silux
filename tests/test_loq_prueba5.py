@@ -73,5 +73,34 @@ class TestTheMemoryControllerItCouldNotOpen(unittest.TestCase):
         self.assertIn("Invalid argument", razon[5])
 
 
+class TestTheSpdHint(unittest.TestCase):
+    """Its SPD hub had spd5118 bound, and the hint said to load spd5118 for
+    «the 1 modules» of a laptop with two."""
+
+    def _hints(self, quitar_hwmon=False):
+        import shutil
+        import subprocess
+        from unittest import mock
+        from silux import volcado
+        from silux.providers.privileged_memory import PrivilegedMemory
+
+        hecho = subprocess.CompletedProcess([], 0, stdout="/lib/modules/spd5118.ko\n")
+        with volcado.montado(DUMP) as raiz:
+            if quitar_hwmon:
+                # As before the driver binds: the bus lists the device alone.
+                shutil.rmtree(raiz / "sys/bus/i2c/devices/0-0050/hwmon")
+            with mock.patch("silux.system_deps.program_path", return_value="/usr/bin/modinfo"), \
+                    mock.patch("subprocess.run", return_value=hecho):
+                return list(PrivilegedMemory._spd_hint())
+
+    def test_no_driver_to_load_when_it_is_bound(self):
+        self.assertEqual(self._hints(), [])
+
+    def test_one_device_without_its_driver_is_one_module(self):
+        pistas = self._hints(quitar_hwmon=True)
+        self.assertEqual([p.module for p in pistas], ["spd5118"])
+        self.assertEqual(pistas[0].provides, _("prov.hint.spd.one"))
+
+
 if __name__ == "__main__":
     unittest.main()

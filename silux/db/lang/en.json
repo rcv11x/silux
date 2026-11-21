@@ -1121,6 +1121,7 @@
   "prov.hint.drivetemp": "the temperature of the SATA drives",
   "prov.hint.spd": "the SPD of the {n} modules: XMP profiles, timings and what speed they could run at",
   "prov.hint.spd.caution": "It only reads the module's identification chip; it changes no configuration.",
+  "prov.hint.spd.one": "the module's SPD: XMP profiles, timings and what speed it could run at",
   "prov.hint.superio": "fans, board voltages and chipset temperatures",
   "prov.hint.superio.caution": "Do not guess the module: every board carries a different chip and loading the wrong one can read garbage. sensors-detect identifies it and says which to load.",
   "prov.hwmon.nochips": "The system publishes no sensor.",

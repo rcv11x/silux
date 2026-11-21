@@ -141,6 +141,13 @@ class PrivilegedMemory(Provider):
             return
         if any((entry / "eeprom").exists() for entry in candidates):
             return                            # ya está leído
+        # A device with its driver bound (its link, or the hwmon only a driver
+        # registers) gains nothing from loading one: why it cannot be read is
+        # spd.unreadable_cause's to say.
+        candidates = [entry for entry in candidates
+                      if not (entry / "driver").exists() and not (entry / "hwmon").is_dir()]
+        if not candidates:
+            return
 
         # De la más nueva a la más vieja: el driver que sobra no encuentra
         # nada y no molesta, pero sin el que toca no se lee el módulo.
@@ -154,7 +161,8 @@ class PrivilegedMemory(Provider):
             if result.returncode == 0 and result.stdout.strip():
                 yield DriverHint(
                     module=module,
-                    provides=_("prov.hint.spd").format(n=len(candidates)),
+                    provides=_("prov.hint.spd.one" if len(candidates) == 1
+                               else "prov.hint.spd").format(n=len(candidates)),
                     command=f"sudo modprobe {module}",
                     caution=_("prov.hint.spd.caution"),
                 )

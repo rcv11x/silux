@@ -1121,6 +1121,7 @@
   "prov.hint.drivetemp": "la temperatura de los discos SATA",
   "prov.hint.spd": "el SPD de los {n} módulos: perfiles XMP, temporizaciones y a qué velocidad podrían ir",
   "prov.hint.spd.caution": "Solo lee el chip de identificación del módulo; no cambia ninguna configuración.",
+  "prov.hint.spd.one": "el SPD del módulo: perfiles XMP, temporizaciones y a qué velocidad podría ir",
   "prov.hint.superio": "ventiladores, voltajes de la placa y temperaturas del chipset",
   "prov.hint.superio.caution": "No conviene adivinar el módulo: cada placa lleva un chip distinto y cargar el que no es puede leer basura. sensors-detect lo identifica y dice cuál cargar.",
   "prov.hwmon.nochips": "El sistema no publica ningún sensor.",
