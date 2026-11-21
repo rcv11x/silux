@@ -52,6 +52,23 @@ class TestOnItsPages(unittest.TestCase):
         self.assertEqual(aparatos, {_("sensor.dev.battery")})
 
 
+class TestItsModel(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.foto = foto(DUMP)[0]
+
+
+    def test_its_caches_go_p_before_e_within_a_level(self):
+        qt.app()
+        from silux.ui.pages.caches import CachesPage
+        claves = list(CachesPage._group(self.foto))
+        self.assertEqual([(nivel, tipo, nucleo) for nivel, tipo, nucleo, _tam in claves],
+                         [(1, "data", "performance"), (1, "data", "efficiency"),
+                          (1, "instruction", "performance"), (1, "instruction", "efficiency"),
+                          (2, "unified", "performance"), (2, "unified", "efficiency"),
+                          (3, "unified", "")])
+
 class TestTheMemoryControllerItCouldNotOpen(unittest.TestCase):
 
     def test_it_says_so_with_the_helpers_reason(self):

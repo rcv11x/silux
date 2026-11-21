@@ -294,8 +294,12 @@ class CachesPage(ScrollPage):
                        cpu_type.key if hybrid and not compartida else "",
                        cache.size_bytes)
                 grouped.setdefault(key, cache)
+        # Within a level and kind, the kinds of core go in the processor's
+        # order (P before E), whichever is bigger.
+        orden = {t.key: n for n, t in enumerate(snapshot.cpu.types)}
         return dict(sorted(grouped.items(),
-                           key=lambda item: (item[0][0], item[0][1], -item[0][3])))
+                           key=lambda item: (item[0][0], item[0][1],
+                                             orden.get(item[0][2], -1), -item[0][3])))
 
     @staticmethod
     def _label(level: int, kind: str, key: str, hybrid: bool) -> str:
