@@ -198,6 +198,23 @@ jobs:
           APPIMAGE_EXTRACT_AND_RUN=1 QT_QPA_PLATFORM=offscreen \
             ./dist/silux-x86_64-compat.AppImage --help
 
+      # La ventana en una distribución al día, sin un solo aviso: un
+      # fontconfig empaquetado de Ubuntu 22.04 sacaba decenas al leer la
+      # configuración de uno nuevo. `--help` no carga la parte gráfica de Qt,
+      # así que se hace una captura sin pantalla.
+      - name: Arrancar la ventana en una distribución al día
+        run: |
+          for ai in silux-x86_64.AppImage silux-x86_64-compat.AppImage; do
+            docker run --rm -v "$PWD/dist":/ai:ro -e APPIMAGE_EXTRACT_AND_RUN=1 \
+              -e QT_QPA_PLATFORM=offscreen docker.io/library/archlinux:latest sh -c "
+                pacman -Sy --noconfirm --needed fontconfig freetype2 libglvnd libxkbcommon \
+                  libxkbcommon-x11 dbus glib2 ttf-dejavu libx11 libxcb > /dev/null
+                cp /ai/$ai /tmp/ && cd /tmp
+                ./$ai --screenshot /tmp/s.png --page Inicio > salida.txt 2>&1 || { cat salida.txt; exit 1; }
+                test -s /tmp/s.png || { echo '::error::$ai no hizo la captura'; exit 1; }
+                if grep -i fontconfig salida.txt; then echo '::error::$ai: avisos de fontconfig'; exit 1; fi"
+          done
+
       # Lo que compara el programa antes de sustituirse al actualizar
       # (`silux/updates.py`): sin esta lista no se baja nada. Va siempre, no
       # solo al etiquetar, porque los borradores se montan con el artefacto.
