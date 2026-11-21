@@ -29,7 +29,7 @@ class TestLaSuiteVaEnSuCaja(unittest.TestCase):
         caja = self._caja()
         for nombre, ruta in (("preferencias", settings.config_dir()),
                              ("historial", history.history_path()),
-                             ("registro", registro.carpeta()),
+                             ("registro", registro.folder()),
                              ("caché", pathlib.Path(os.environ.get("XDG_CACHE_HOME", "")))):
             with self.subTest(nombre=nombre):
                 self.assertTrue(pathlib.Path(ruta).is_relative_to(caja),

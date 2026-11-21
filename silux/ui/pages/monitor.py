@@ -114,7 +114,7 @@ class MonitorPage(ScrollPage):
         self._core_history: dict[int, deque] = defaultdict(lambda: deque(maxlen=40))
         self._structure: tuple = ()
         self._cuenta_completa = ""
-        self._registro: Optional[registro.Registro] = None
+        self._registro: Optional[registro.SensorLog] = None
         self._pendiente_abrir = False
         self._hint_signature: tuple = ()
 
@@ -176,32 +176,32 @@ class MonitorPage(ScrollPage):
     def _alternar_registro(self) -> None:
         from PySide6.QtWidgets import QFileDialog
 
-        if self._registro is not None and self._registro.activo:
-            self._registro.cerrar()
+        if self._registro is not None and self._registro.active:
+            self._registro.close()
             self._pintar_estado_registro()
             return
 
-        carpeta = registro.carpeta()
+        carpeta = registro.folder()
         carpeta.mkdir(parents=True, exist_ok=True)
         ruta, _filtro = QFileDialog.getSaveFileName(
             self, _("csv.save.title"),
-            str(carpeta / registro.nombre_sugerido()),
+            str(carpeta / registro.suggested_name()),
             _("csv.filter"))
         if not ruta:
             return
-        self._registro = registro.Registro(pathlib.Path(ruta))
+        self._registro = registro.SensorLog(pathlib.Path(ruta))
         self._pendiente_abrir = True
         self._pintar_estado_registro()
 
     def _pintar_estado_registro(self) -> None:
         """El botón dice qué hace ahora y, grabando, cuánto lleva."""
-        activo = self._registro is not None and self._registro.activo
+        activo = self._registro is not None and self._registro.active
         pendiente = getattr(self, "_pendiente_abrir", False)
         if activo:
             # El plural va dentro de la clave y no fuera: en otras lenguas
             # no siempre son dos formas, y partir la frase para pegar el
             # número deja al traductor sin poder mover el orden.
-            filas = self._registro.filas
+            filas = self._registro.rows
             clave = ("sensors.record.stop.one" if filas == 1
                      else "sensors.record.stop.many")
             self.record_button.setText(_(clave).format(n=filas))
@@ -218,7 +218,7 @@ class MonitorPage(ScrollPage):
     def cerrar_registro(self) -> None:
         """Al cerrar la ventana: el archivo se queda con lo que llevaba."""
         if self._registro is not None:
-            self._registro.cerrar()
+            self._registro.close()
 
     def _buscar(self, texto: str) -> None:
         self.tree.set_filter(texto)
@@ -315,11 +315,11 @@ class MonitorPage(ScrollPage):
             return
         try:
             if self._pendiente_abrir:
-                self._registro.abrir(snapshot)
+                self._registro.open(snapshot)
                 self._pendiente_abrir = False
-            self._registro.escribir(snapshot)
+            self._registro.write(snapshot)
         except OSError as error:
-            self._registro.cerrar()
+            self._registro.close()
             self._registro = None
             self._pendiente_abrir = False
             self._aviso_de_registro(str(error))

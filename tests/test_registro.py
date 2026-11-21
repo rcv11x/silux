@@ -11,7 +11,7 @@ import tempfile
 import unittest
 
 from silux.model import CpuInfo, Sensor, SensorKind, Snapshot
-from silux.registro import Registro
+from silux.registro import SensorLog
 
 
 def _foto(momento_ns: int, **valores) -> Snapshot:
@@ -35,83 +35,83 @@ class TestRegistro(unittest.TestCase):
             return list(csv.reader(f))
 
     def test_una_fila_por_muestreo(self):
-        r = Registro(self.destino)
-        r.abrir(_foto(0, cpu=40.0))
+        r = SensorLog(self.destino)
+        r.open(_foto(0, cpu=40.0))
         for i in range(3):
-            r.escribir(_foto(i * 10**9, cpu=40.0 + i))
-        r.cerrar()
+            r.write(_foto(i * 10**9, cpu=40.0 + i))
+        r.close()
         filas = self._leer()
         self.assertEqual(len(filas), 4)          # cabecera + tres
-        self.assertEqual(r.filas, 3)
+        self.assertEqual(r.rows, 3)
 
     def test_la_cabecera_lleva_el_nombre_legible_y_la_unidad(self):
         """Quien abre esto en una hoja de cálculo no sabe qué es
         «hwmon/nct6798/temp3_input»."""
-        r = Registro(self.destino)
-        r.abrir(_foto(0, cpu=40.0))
-        r.cerrar()
+        r = SensorLog(self.destino)
+        r.open(_foto(0, cpu=40.0))
+        r.close()
         self.assertEqual(self._leer()[0], ["hora", "segundos", "Placa · CPU (°C)"])
 
     def test_los_segundos_cuentan_desde_que_se_empezo(self):
-        r = Registro(self.destino)
-        r.abrir(_foto(5 * 10**9, cpu=40.0))
-        r.escribir(_foto(5 * 10**9, cpu=40.0))
-        r.escribir(_foto(12 * 10**9, cpu=41.0))
-        r.cerrar()
+        r = SensorLog(self.destino)
+        r.open(_foto(5 * 10**9, cpu=40.0))
+        r.write(_foto(5 * 10**9, cpu=40.0))
+        r.write(_foto(12 * 10**9, cpu=41.0))
+        r.close()
         self.assertEqual([f[1] for f in self._leer()[1:]], ["0.0", "7.0"])
 
     def test_un_sensor_que_desaparece_deja_la_celda_vacia(self):
         """Una hoja de cálculo dibuja el cero y salta el hueco, que es
         exactamente la diferencia que hay que ver."""
-        r = Registro(self.destino)
-        r.abrir(_foto(0, cpu=40.0, gpu=50.0))
-        r.escribir(_foto(0, cpu=40.0))
-        r.cerrar()
+        r = SensorLog(self.destino)
+        r.open(_foto(0, cpu=40.0, gpu=50.0))
+        r.write(_foto(0, cpu=40.0))
+        r.close()
         self.assertEqual(self._leer()[1][2:], ["40", ""])
 
     def test_un_sensor_nuevo_no_descoloca_las_filas_anteriores(self):
         """Aparece al enchufar algo o al cargar un módulo. Las columnas se
         fijan con la primera foto."""
-        r = Registro(self.destino)
-        r.abrir(_foto(0, cpu=40.0))
-        r.escribir(_foto(0, cpu=40.0, recien_llegado=1.0))
-        r.cerrar()
+        r = SensorLog(self.destino)
+        r.open(_foto(0, cpu=40.0))
+        r.write(_foto(0, cpu=40.0, recien_llegado=1.0))
+        r.close()
         filas = self._leer()
         self.assertEqual(len(filas[0]), 3)
         self.assertEqual(len(filas[1]), 3)
 
     def test_escribir_sin_abrir_no_revienta(self):
-        Registro(self.destino).escribir(_foto(0, cpu=40.0))
+        SensorLog(self.destino).write(_foto(0, cpu=40.0))
         self.assertFalse(self.destino.exists())
 
     def test_lo_escrito_esta_en_el_disco_antes_de_cerrar(self):
         """Si el equipo se cuelga —que es justo el caso para el que se
         enciende un registro— lo de antes tiene que seguir ahí."""
-        r = Registro(self.destino)
-        r.abrir(_foto(0, cpu=40.0))
-        r.escribir(_foto(0, cpu=40.0))
+        r = SensorLog(self.destino)
+        r.open(_foto(0, cpu=40.0))
+        r.write(_foto(0, cpu=40.0))
         self.assertGreater(self.destino.stat().st_size, 0)
         self.assertEqual(len(self._leer()), 2)
-        r.cerrar()
+        r.close()
 
     def test_un_valor_ausente_no_se_escribe_como_cero(self):
-        r = Registro(self.destino)
-        r.abrir(_foto(0, cpu=None))
-        r.escribir(_foto(0, cpu=None))
-        r.cerrar()
+        r = SensorLog(self.destino)
+        r.open(_foto(0, cpu=None))
+        r.write(_foto(0, cpu=None))
+        r.close()
         self.assertEqual(self._leer()[1][2], "")
 
     def test_los_numeros_van_con_punto_decimal(self):
         """Es lo que toda hoja de cálculo entiende sin elegir región."""
-        r = Registro(self.destino)
-        r.abrir(_foto(0, cpu=40.5))
-        r.escribir(_foto(0, cpu=40.5))
-        r.cerrar()
+        r = SensorLog(self.destino)
+        r.open(_foto(0, cpu=40.5))
+        r.write(_foto(0, cpu=40.5))
+        r.close()
         self.assertEqual(self._leer()[1][2], "40.5")
 
     def test_cerrar_dos_veces_no_falla(self):
-        r = Registro(self.destino)
-        r.abrir(_foto(0, cpu=40.0))
-        r.cerrar()
-        r.cerrar()
-        self.assertFalse(r.activo)
+        r = SensorLog(self.destino)
+        r.open(_foto(0, cpu=40.0))
+        r.close()
+        r.close()
+        self.assertFalse(r.active)

@@ -61,10 +61,10 @@ from .providers import (
 from .providers.base import is_virtual_machine
 
 
-def _instanciar(cls: type[Provider], cliente: PrivilegedClient) -> Provider:
+def _instantiate(cls: type[Provider], client: PrivilegedClient) -> Provider:
     """Crea un proveedor pasándole el ayudante si sabe usarlo."""
     if "client" in inspect.signature(cls).parameters:
-        return cls(client=cliente)                     # type: ignore[call-arg]
+        return cls(client=client)                     # type: ignore[call-arg]
     return cls()
 
 
@@ -119,7 +119,7 @@ def _without_what_a_vm_lacks(draft: Draft) -> None:
         draft.notes = [n for n in draft.notes if n.path not in NOT_IN_A_VM]
 
 
-def _ruta_de(exc: OSError) -> str:
+def _path_of(exc: OSError) -> str:
     """El fichero que provocó el error, o una descripción si no lo dice."""
     return str(exc.filename) if exc.filename else str(exc)
 
@@ -131,20 +131,20 @@ SYSTEM_TREES = ("/sys/", "/proc/", "/dev/", "/etc/", "/run/")
 
 
 def is_the_systems(exc: OSError) -> bool:
-    ruta = str(exc.filename) if exc.filename else ""
-    raiz = sysroot.root()
-    if raiz is not None and ruta.startswith(str(raiz)):
-        ruta = ruta[len(str(raiz)):]
-    return ruta.startswith(SYSTEM_TREES)
+    path = str(exc.filename) if exc.filename else ""
+    root = sysroot.root()
+    if root is not None and path.startswith(str(root)):
+        path = path[len(str(root)):]
+    return path.startswith(SYSTEM_TREES)
 
 
 def _with_the_helper_outdated(snapshot: Snapshot) -> Snapshot:
     """What permissions would read, said as what fixes it: the installed
     helper is from another version, so it is not giving permissions but
     updating the helper. Every notice, padlock and the report say it alike."""
-    falta = set(snapshot.permission_notes)
+    missing = set(snapshot.permission_notes)
     notes = tuple(dataclasses.replace(n, message=_("perm.outdated.body"), hint="",
-                                      helper_outdated=True) if n in falta else n
+                                      helper_outdated=True) if n in missing else n
                   for n in snapshot.notes)
     return dataclasses.replace(snapshot, notes=notes)
 
@@ -163,8 +163,8 @@ class Collector:
             # Un solo ayudante para todos los que lo necesiten. Cada cliente
             # lanza su propio proceso y abre su propio diálogo de polkit, así
             # que dos clientes serían dos veces la contraseña para lo mismo.
-            compartido = PrivilegedClient()
-            self.providers = [_instanciar(cls, compartido) for cls in DEFAULT_PROVIDERS]
+            shared = PrivilegedClient()
+            self.providers = [_instantiate(cls, shared) for cls in DEFAULT_PROVIDERS]
         self._static: Optional[Draft] = None
         self.failures = Failures()
 
@@ -236,11 +236,11 @@ class Collector:
     def close(self) -> None:
         # Los proveedores comparten cliente, así que se cierra cada uno una
         # sola vez aunque lo tengan varios.
-        cerrados: set[int] = set()
+        closed: set[int] = set()
         for provider in self.providers:
             client = getattr(provider, "client", None)
-            if client is not None and id(client) not in cerrados:
-                cerrados.add(id(client))
+            if client is not None and id(client) not in closed:
+                closed.add(id(client))
                 client.close()
 
     def invalidate(self) -> None:
@@ -266,7 +266,7 @@ class Collector:
                     provider.provides or provider.name,
                     Need.ROOT,
                     _("prov.denied"),
-                    detail=_("prov.denied.detail").format(ruta=_ruta_de(exc)),
+                    detail=_("prov.denied.detail").format(ruta=_path_of(exc)),
                 )
             except (FileNotFoundError, NotADirectoryError) as exc:
                 if is_the_systems(exc):
@@ -274,7 +274,7 @@ class Collector:
                         provider.provides or provider.name,
                         Need.HARDWARE,
                         _("prov.missing"),
-                        detail=_("prov.missing.detail").format(ruta=_ruta_de(exc)),
+                        detail=_("prov.missing.detail").format(ruta=_path_of(exc)),
                     )
                 else:
                     self._our_failure(draft, provider, exc)

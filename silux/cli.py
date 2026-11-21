@@ -97,9 +97,9 @@ def dump(snapshot: Snapshot, style: Style) -> str:
                                             f" · {clocks.energy_preference or render.DASH}"))
         if note := render.turbo_note(clocks):
             lines.append(_row(style, "", style.warn(note)))
-        if reparto := render.core_quality_spread(snapshot.cpu.logical):
+        if spread := render.core_quality_spread(snapshot.cpu.logical):
             lines.append(_row(style, "Mejores núcleos",
-                              f"{render.best_cores(snapshot.cpu.logical)} · {reparto}"))
+                              f"{render.best_cores(snapshot.cpu.logical)} · {spread}"))
         lines.append("")
 
         lines.append(style.bold(style.accent("├─ Cachés")))
@@ -155,22 +155,22 @@ def dump(snapshot: Snapshot, style: Style) -> str:
         lines.append(_row(style, "Ranura", gpu.pci_slot or render.DASH))
         lines.append(_row(style, "BIOS de video", gpu.vbios or render.DASH))
         lines.append(_row(style, "Enlace", render.pcie_link(gpu.link)))
-        if nota := render.pcie_note(gpu.link):
-            lines.append(_row(style, "", style.dim(nota)))
+        if link_note := render.pcie_note(gpu.link):
+            lines.append(_row(style, "", style.dim(link_note)))
 
         # Si no se sabe cuánta se usa, al menos se dice cuánta hay.
-        resumen = render.gpu_memory_summary(gpu.memory)
-        if resumen == render.DASH and gpu.memory.total_bytes:
-            resumen = render.size(gpu.memory.total_bytes)
-        lines.append(_row(style, "VRAM", resumen))
-        detalle = " · ".join(p for p in (
+        summary = render.gpu_memory_summary(gpu.memory)
+        if summary == render.DASH and gpu.memory.total_bytes:
+            summary = render.size(gpu.memory.total_bytes)
+        lines.append(_row(style, "VRAM", summary))
+        detail_text = " · ".join(p for p in (
             f"{render.vram_kind(gpu.memory)} · {render.vram_bus(gpu.memory)}"
             if gpu.memory.kind else None,
             render.bandwidth(gpu.memory.bandwidth_bytes)
             if gpu.memory.bandwidth_bytes else None,
             f"chips de {gpu.memory.vendor}" if gpu.memory.vendor else None) if p)
-        if detalle:
-            lines.append(_row(style, "", style.dim(detalle)))
+        if detail_text:
+            lines.append(_row(style, "", style.dim(detail_text)))
         lines.append(_row(style, "Núcleo", f"{render.gpu_clock(gpu.clocks.core_hz)}"
                           f"  de {render.hz(gpu.clocks.core_max_hz)}"))
         lines.append(_row(style, "Reloj de memoria", f"{render.hz(gpu.clocks.memory_hz)}"
@@ -178,53 +178,53 @@ def dump(snapshot: Snapshot, style: Style) -> str:
         lines.append(_row(style, "Uso", render.percent(gpu.busy_percent)))
         if gpu.sleep_percent is not None:
             lines.append(_row(style, "En reposo", render.percent(gpu.sleep_percent)))
-        for motor in gpu.engines:
+        for engine in gpu.engines:
             # El detalle por motor es lo que distingue «la tarjeta no da más»
             # de «solo va cargado el decodificador de video».
-            detalle = " · ".join(p for p in (
-                motor.kind, ", ".join(motor.capabilities) or None) if p)
-            lines.append(_row(style, f"  {motor.name}",
-                              f"{render.percent(motor.busy_percent)}"
-                              + (f"  {style.dim(detalle)}" if detalle else "")))
+            detail_text = " · ".join(p for p in (
+                engine.kind, ", ".join(engine.capabilities) or None) if p)
+            lines.append(_row(style, f"  {engine.name}",
+                              f"{render.percent(engine.busy_percent)}"
+                              + (f"  {style.dim(detail_text)}" if detail_text else "")))
         if gpu.codecs:
             lines.append(_row(style, "Códecs", ""))
             for codec in gpu.codecs:
-                marcas = ("decodifica" if codec.decode else "") + \
+                flags = ("decodifica" if codec.decode else "") + \
                          (" y codifica" if codec.encode and codec.decode
                           else "codifica" if codec.encode else "")
                 if codec.max_bit_depth:
-                    marcas += f" · {codec.max_bit_depth} bits"
-                lines.append(_row(style, f"  {codec.name}", style.dim(marcas)))
+                    flags += f" · {codec.max_bit_depth} bits"
+                lines.append(_row(style, f"  {codec.name}", style.dim(flags)))
         lines.append(_row(style, "Temperatura", render.temperature(gpu.temp_c)))
         if gpu.hotspot_c is not None:
             lines.append(_row(style, "", style.dim(
                 f"punto caliente {render.temperature(gpu.hotspot_c)}"
                 f" · memoria {render.temperature(gpu.memory_temp_c)}")))
-        consumo = render.watts(gpu.power_w)
+        power_text = render.watts(gpu.power_w)
         if gpu.power_cap_w:
-            consumo += f"  de {render.watts(gpu.power_cap_w)}"
-        lines.append(_row(style, "Consumo", consumo))
+            power_text += f"  de {render.watts(gpu.power_cap_w)}"
+        lines.append(_row(style, "Consumo", power_text))
         lines.append(_row(style, "Ventilador", f"{render.rpm(gpu.fan_rpm)}"
                           + (f"  ({render.percent(gpu.fan_percent)})"
                              if gpu.fan_percent is not None else "")))
-        unidades = " · ".join(p for p in (
+        units = " · ".join(p for p in (
             render.compute_units(gpu) if gpu.compute_units else None,
             f"{gpu.rops} ROP" if gpu.rops else None,
             f"{gpu.shader_engines} motores" if gpu.shader_engines else None) if p)
-        lines.append(_row(style, "Unidades", unidades or render.DASH))
+        lines.append(_row(style, "Unidades", units or render.DASH))
 
         for api in gpu.apis:
             lines.append(_row(style, api.name, render.gpu_api_summary(api)))
-        for salida in gpu.displays:
-            if salida.monitor:
-                lines.append(_row(style, salida.connector,
-                                  render.monitor_name(salida.monitor)))
+        for output in gpu.displays:
+            if output.monitor:
+                lines.append(_row(style, output.connector,
+                                  render.monitor_name(output.monitor)))
                 lines.append(_row(style, "", style.dim(
-                    f"{render.display_mode(salida)} · "
-                    f"{render.monitor_summary(salida.monitor)}")))
+                    f"{render.display_mode(output)} · "
+                    f"{render.monitor_summary(output.monitor)}")))
             else:
-                lines.append(_row(style, salida.connector,
-                                  style.dim(render.display_summary(salida))))
+                lines.append(_row(style, output.connector,
+                                  style.dim(render.display_summary(output))))
         lines.append("")
 
     if snapshot.sensors:
@@ -263,23 +263,23 @@ def dump(snapshot: Snapshot, style: Style) -> str:
 
 def sensors_text(snapshot: Snapshot, style: Style) -> str:
     """El árbol de sensores, como lo enseña `--sensors`."""
-    lineas = []
+    lines = []
     for categories in snapshot.sensor_tree().values():
-        lineas.append(style.bold(Snapshot.device_name(categories)))
+        lines.append(style.bold(Snapshot.device_name(categories)))
         for category, sensors in categories.items():
             # La categoría es una clave («cat.temperature»): se traduce, como
             # en la ventana y en el informe.
-            lineas.append(f"  {style.dim(_(category))}")
+            lines.append(f"  {style.dim(_(category))}")
             for sensor in sensors:
                 digits = 3 if sensor.kind.value == "voltage" else 1
                 mark = style.warn(" ⚠") if sensor.alarm else ""
-                lineas.append(f"    {sensor.label:<24} "
+                lines.append(f"    {sensor.label:<24} "
                               f"{sensor.value:>10.{digits}f} {sensor.unit}{mark}")
-    return "\n".join(lineas)
+    return "\n".join(lines)
 
 
 def watch(collector: Collector, style: Style, interval: float,
-          solo_sensores: bool = False) -> int:
+          only_sensors: bool = False) -> int:
     """Lo repite cada `interval` segundos. Con `--sensors`, solo el árbol de
     sensores: la ayuda lo pone de ejemplo («los sensores, cada segundo») y
     salía el volcado entero."""
@@ -288,7 +288,7 @@ def watch(collector: Collector, style: Style, interval: float,
     try:
         while True:
             snapshot = collector.snapshot()
-            body = sensors_text(snapshot, style) if solo_sensores else dump(snapshot, style)
+            body = sensors_text(snapshot, style) if only_sensors else dump(snapshot, style)
             print("\033[H\033[J" + body, flush=True)
             time.sleep(interval)
     except KeyboardInterrupt:
@@ -297,7 +297,7 @@ def watch(collector: Collector, style: Style, interval: float,
         print("\033[?25h", end="")        # y lo devuelve
 
 
-def _secciones() -> list[str]:
+def _sections() -> list[str]:
     """Las secciones que se pueden pedir en el informe completo. Escritas
     aquí y no importadas de la interfaz: la ayuda sale sin Qt."""
     return ["home", "cpu", "caches", "board", "memory", "graphics", "storage",
@@ -341,7 +341,7 @@ def build_parser() -> argparse.ArgumentParser:
     """
     from .options import Parser, epilog_for_cli, how_to_call
 
-    _ventana, terminal = how_to_call()
+    _window, terminal = how_to_call()
     parser = Parser(prog=terminal, description=_("cli.description"),
                     epilog=epilog_for_cli())
     parser.add_argument("--report", nargs="?", const="-", metavar=_("cli.metavar.file"),
@@ -349,7 +349,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--short", action="store_true", help=_("cli.opt.short"))
     parser.add_argument("--sections", metavar=_("cli.metavar.sections"),
                         help=_("cli.opt.sections").format(
-                            lista=", ".join(_secciones())))
+                            lista=", ".join(_sections())))
     parser.add_argument("--without-permissions", action="store_true",
                         help=_("cli.opt.withoutperms"))
     parser.add_argument("--json", action="store_true", help=_("cli.opt.json"))
@@ -362,20 +362,20 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version", help=_("cli.version"),
                         version=f"silux {__version__}"
                                 + (f" ({build_id()})" if build_id() else ""))
-    for espanol, ingles in (("--informe", "--report"), ("--sensores", "--sensors"),
+    for spanish, english in (("--informe", "--report"), ("--sensores", "--sensors"),
                             ("--vigilar", "--watch"), ("--sin-color", "--no-color"),
                             ("--con-identificadores", "--with-identifiers"),
                             ("--base-de-datos", "--db-info"), ("--corto", "--short"),
                             ("--secciones", "--sections"),
                             ("--sin-permisos", "--without-permissions")):
-        parser.alias(espanol, of=ingles)
+        parser.alias(spanish, of=english)
     return parser
 
 
-def _lista(texto: Optional[str]) -> Optional[list[str]]:
-    if not texto:
+def _comma_list(text: Optional[str]) -> Optional[list[str]]:
+    if not text:
         return None
-    return [s.strip() for s in texto.split(",") if s.strip()]
+    return [s.strip() for s in text.split(",") if s.strip()]
 
 
 def main(argv: Optional[list[str]] = None) -> int:
@@ -401,14 +401,14 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     if args.watch is not None:
         collector.snapshot()
-        return watch(collector, style, max(0.1, args.watch), solo_sensores=args.sensors)
+        return watch(collector, style, max(0.1, args.watch), only_sensors=args.sensors)
 
     if args.report == "":
         parser.error(_("cli.report.empty"))
     if args.report and args.sections and not args.short and qt_can_start():
         # Before asking for the password: a typo shouldn't cost it.
         from .ui import full_report
-        unknown = full_report.unknown_sections(_lista(args.sections))
+        unknown = full_report.unknown_sections(_comma_list(args.sections))
         if unknown:
             print(_("cli.report.unknownsection").format(
                 names=", ".join(unknown), known=", ".join(full_report.section_ids())),
@@ -430,26 +430,26 @@ def main(argv: Optional[list[str]] = None) -> int:
         return 0
 
     if args.report:
-        completo = not args.short and qt_can_start()
-        if not args.short and not completo:
+        full = not args.short and qt_can_start()
+        if not args.short and not full:
             print(_("cli.report.noqt"), file=sys.stderr)
-        if completo:
+        if full:
             from .ui import full_report
-            texto = full_report.build(snapshot, sections=_lista(args.sections),
+            text = full_report.build(snapshot, sections=_comma_list(args.sections),
                                       anonymous=not args.with_identifiers)
             if not args.sections:
                 # What it read to show all that, to reproduce it in the
                 # tests; a chosen part of the report is not for that.
                 from . import annex
-                bloque, motivo = annex.of_this_machine()
-                texto = texto.rstrip("\n") + "\n" + annex.section(bloque, motivo)
+                block, reason = annex.of_this_machine()
+                text = text.rstrip("\n") + "\n" + annex.section(block, reason)
         else:
-            texto = report.build(snapshot, anonymous=not args.with_identifiers)
+            text = report.build(snapshot, anonymous=not args.with_identifiers)
         if args.report == "-":
-            sys.stdout.write(texto)
+            sys.stdout.write(text)
         else:
             try:
-                pathlib.Path(args.report).write_text(texto, encoding="utf-8")
+                pathlib.Path(args.report).write_text(text, encoding="utf-8")
             except OSError as error:
                 print(f"No se pudo escribir el informe: {error}", file=sys.stderr)
                 return 1

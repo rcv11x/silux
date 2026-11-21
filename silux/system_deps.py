@@ -152,62 +152,62 @@ def family(os_release: dict) -> Optional[str]:
     and the rest say both), and None for one that is none of the five."""
     ids = [os_release.get("ID", "")] + os_release.get("ID_LIKE", "").split()
     ids = [i.strip().lower() for i in ids if i.strip()]
-    for nombre in ("ubuntu", "debian", "fedora", "arch", "gentoo"):
-        if nombre in ids:
-            return nombre
+    for candidate in ("ubuntu", "debian", "fedora", "arch", "gentoo"):
+        if candidate in ids:
+            return candidate
     if any(i in ("rhel", "centos", "rocky", "almalinux") for i in ids):
         return "fedora"
     return None
 
 
 def read_os_release() -> dict:
-    datos: dict[str, str] = {}
-    for ruta in ("/etc/os-release", "/usr/lib/os-release"):
+    fields: dict[str, str] = {}
+    for path in ("/etc/os-release", "/usr/lib/os-release"):
         try:
-            with open(sysroot.path(ruta), encoding="utf-8") as archivo:
-                for linea in archivo:
-                    clave, signo, valor = linea.strip().partition("=")
-                    if signo:
+            with open(sysroot.path(path), encoding="utf-8") as handle:
+                for line in handle:
+                    key, sep, value = line.strip().partition("=")
+                    if sep:
                         # Gentoo's quotes are single: ID='gentoo'.
-                        datos[clave] = valor.strip().strip('"').strip("'")
-            return datos
+                        fields[key] = value.strip().strip('"').strip("'")
+            return fields
         except OSError:
             continue
-    return datos
+    return fields
 
 
 def nvidia_major() -> Optional[str]:
     """The proprietary driver's major version, «595», from its module."""
     try:
-        with open(sysroot.path("/sys/module/nvidia/version"), encoding="ascii") as archivo:
-            version = archivo.read().strip()
+        with open(sysroot.path("/sys/module/nvidia/version"), encoding="ascii") as handle:
+            version = handle.read().strip()
     except OSError:
         return None
     major = version.split(".")[0]
     return major if major.isdigit() else None
 
 
-def package_text(dep: Dependency, familia: Optional[str],
+def package_text(dep: Dependency, distro_family: Optional[str],
                  nvidia: Optional[str] = None) -> str:
     """«libvulkan1», or every family's when the distribution is none of them:
     «libvulkan1 (Debian, Ubuntu), vulkan-loader (Fedora), vulkan-icd-loader (Arch)».
     `nvidia` is the driver's major version, where the package carries it."""
-    paquetes = {fam: nombre.replace("{nvidia}", nvidia or "NNN")
-                for fam, nombre in dep.packages.items() if nombre}
-    if familia is not None:
-        return paquetes[familia]
-    grupos: dict[str, list[str]] = {}
+    packages = {fam: template.replace("{nvidia}", nvidia or "NNN")
+                for fam, template in dep.packages.items() if template}
+    if distro_family is not None:
+        return packages[distro_family]
+    groups: dict[str, list[str]] = {}
     for fam in FAMILIES:
-        if fam in paquetes:
-            grupos.setdefault(paquetes[fam], []).append(FAMILY_NAMES[fam])
-    return ", ".join(f"{paquete} ({', '.join(familias)})" for paquete, familias in grupos.items())
+        if fam in packages:
+            groups.setdefault(packages[fam], []).append(FAMILY_NAMES[fam])
+    return ", ".join(f"{package} ({', '.join(family_names)})" for package, family_names in groups.items())
 
 
 def program_path(name: str) -> Optional[str]:
     """Where a system program is, also in the sbin folders a user's PATH may
     leave out (Debian's does: modinfo is in /usr/sbin)."""
-    camino = os.pathsep.join([system_environment().get("PATH", ""), *PROGRAM_DIRS])
-    return shutil.which(name, path=camino)
+    search_path = os.pathsep.join([system_environment().get("PATH", ""), *PROGRAM_DIRS])
+    return shutil.which(name, path=search_path)
 
 
 def _in_loader_cache(soname: str) -> Optional[bool]:
@@ -215,25 +215,25 @@ def _in_loader_cache(soname: str) -> Optional[bool]:
     name is usually the tail of its path («/usr/lib/libvulkan.so.1»)."""
     try:
         with open(LD_CACHE, "rb") as cache:
-            datos = cache.read()
+            data = cache.read()
     except OSError:
         return None
-    nombre = soname.encode() + b"\x00"
-    return b"/" + nombre in datos or b"\x00" + nombre in datos
+    needle = soname.encode() + b"\x00"
+    return b"/" + needle in data or b"\x00" + needle in data
 
 
 def _present_now(dep: Dependency) -> bool:
     if dep.kind == "data":
-        return any(os.path.isfile(ruta) for ruta in dep.names)
+        return any(os.path.isfile(path) for path in dep.names)
     if dep.kind == "library":
         for soname in dep.names:
-            en_cache = _in_loader_cache(soname)
-            if en_cache is None:
-                en_cache = any(os.path.exists(os.path.join(d, soname)) for d in LIBRARY_DIRS)
-            if not en_cache:
+            cached = _in_loader_cache(soname)
+            if cached is None:
+                cached = any(os.path.exists(os.path.join(d, soname)) for d in LIBRARY_DIRS)
+            if not cached:
                 return False
         return True
-    return all(program_path(nombre) for nombre in dep.names)
+    return all(program_path(program) for program in dep.names)
 
 
 def present(key: str) -> Optional[bool]:
