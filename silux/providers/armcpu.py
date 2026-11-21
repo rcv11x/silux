@@ -1,13 +1,12 @@
-"""The processor's identity on ARM, where there is no CPUID.
+"""The processor's identity on ARM, which has no CPUID.
 
-What an instruction answers on x86, the kernel publishes here already read
-from MIDR_EL1: who made the core, which one it is and its revision. That
-gives the name («ARM Cortex-A55 r0p0»), which is what an aarch64 has instead
-of a brand string: ARM silicon carries none.
+The kernel publishes what MIDR_EL1 says: who designed the core, which core
+it is and its revision. That gives the name («ARM Cortex-A55 r0p0»), the
+aarch64 stand-in for a brand string, which ARM silicon doesn't carry.
 
-The rest has no equivalent and is not faked: no x86-style family or model,
+The rest has no equivalent and isn't faked: no x86-style family or model,
 no brand string, no socket. There are instruction-set flags («Features»),
-and usually a device tree that says which device it is.
+and usually a device tree naming the device.
 """
 
 from __future__ import annotations
@@ -30,10 +29,10 @@ def is_arm() -> bool:
 
 
 def _cpuinfo() -> list[dict[str, str]]:
-    """The blocks of /proc/cpuinfo, one per logical CPU, in order.
+    """/proc/cpuinfo's blocks, one per logical CPU, in order.
 
-    On aarch64 each block carries the four MIDR fields. On big.LITTLE they
-    differ, and that is the point: the blocks say which core each CPU is.
+    On aarch64 each carries the four MIDR fields. On big.LITTLE they differ,
+    which is how each CPU's core is told apart.
     """
     try:
         raw = pathlib.Path(sysroot.path(CPUINFO)).read_text(encoding="utf-8", errors="replace")
@@ -66,11 +65,8 @@ def _integer(block: dict[str, str], key: str) -> Optional[int]:
 
 
 def midr_by_cpu() -> dict[int, tuple[Optional[int], Optional[int]]]:
-    """Each logical CPU's (implementer, part).
-
-    It tells big cores from little ones without Intel's PMUs, which ARM does
-    not have.
-    """
+    """Each logical CPU's (implementer, part), which tells big cores from
+    little ones without Intel's hybrid PMUs."""
     out: dict[int, tuple[Optional[int], Optional[int]]] = {}
     for block in _cpuinfo():
         index = _integer(block, "processor")
@@ -86,16 +82,16 @@ def _from_tree(name: str) -> Optional[str]:
     raw = read_text(f"{DEVICE_TREE}/{name}")
     if not raw:
         return None
-    # C strings, and «compatible» chains several separated by zeros.
+    # C strings; «compatible» chains several, separated by NULs.
     clean = raw.split("\x00")[0].strip()
     return clean or None
 
 
 def machine_model() -> Optional[str]:
-    """Which device it is: «Raspberry Pi 4 Model B Rev 1.4».
+    """Which device this is: «Raspberry Pi 4 Model B Rev 1.4».
 
-    On x86 the board's DMI says it. An ARM machine seldom has SMBIOS, but
-    almost always a device tree, which plays the same part.
+    On x86 the board's DMI says it. ARM machines rarely have SMBIOS but
+    nearly always a device tree, which plays the same role.
     """
     return _from_tree("model")
 
@@ -118,8 +114,8 @@ class ArmIdentity(Provider):
         if not blocks:
             return
         draft.capabilities.add("arm-cpuinfo")
-        # CPUID already said it does not exist here. The identity does, read
-        # elsewhere.
+        # CPUID already noted it doesn't exist here; the identity does, read
+        # another way.
         draft.resolve("cpu.identity")
 
         by_cpu = midr_by_cpu()
@@ -130,8 +126,8 @@ class ArmIdentity(Provider):
                            if _integer(b, "processor") == cpus[0]), blocks[0])
             self._fill(entry, block, implementer, part)
 
-        # On ARM the device tree does what DMI does on x86: say which device
-        # this is. Not the processor's, so it goes where the board's would.
+        # The device tree names the device, not the processor, so it goes
+        # where the board's name would.
         model = machine_model()
         if model and not draft.board.name:
             draft.board = dataclasses.replace(
@@ -152,7 +148,8 @@ class ArmIdentity(Provider):
         variant = _integer(block, "CPU variant")
         revision = _integer(block, "CPU revision")
 
-        # rXpY is how ARM names its silicon revisions, and how its errata do.
+        # rXpY is how ARM names silicon revisions, and how its errata refer
+        # to them.
         stepping = (f"r{variant}p{revision}"
                 if variant is not None and revision is not None else None)
 
@@ -163,9 +160,9 @@ class ArmIdentity(Provider):
             codename=identity.get("codename"),
             technology=identity.get("technology"),
             architecture=rawcpuid.machine(),
-            # ARM's equivalent of the CPUID signature: the two numbers that
-            # identify the silicon, without a family and model that mean
-            # something else here.
+            # ARM's counterpart of the CPUID signature: the two numbers that
+            # identify the silicon, without x86's family and model, which
+            # mean something else here.
             signature=(implementer << 24 | part << 4) if None not in (implementer, part) else None,
             features=_flags(block),
         )
@@ -178,5 +175,5 @@ class ArmIdentity(Provider):
 
 def _flags(block: dict[str, str]) -> tuple[str, ...]:
     raw = block.get("Features") or block.get("flags") or ""
-    # As the kernel names them. Pretty names are render's job.
+    # As the kernel names them; display names are render's job.
     return tuple(f for f in re.split(r"\s+", raw) if f)

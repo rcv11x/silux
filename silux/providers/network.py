@@ -1,14 +1,12 @@
-"""Network interfaces: what they are, how they are connected and how much they move.
+"""Network interfaces: what they are, how they connect and how much they move.
 
-Almost everything is in `/sys/class/net`, readable by anyone: link state,
-negotiated speed, MAC, MTU and the traffic counters. What the kernel does
-not publish there is the IP address, asked to the system with the old
-`ifconfig` ioctl, since addresses live in the network stack and not in the
-device.
+Nearly everything is in `/sys/class/net`, readable by anyone: link state,
+negotiated speed, MAC, MTU and the traffic counters. The IP address isn't
+there, since addresses belong to the network stack rather than the device,
+so it is asked for with the old `ifconfig` ioctl.
 
-Upload and download rates come from two samples: the counters are totals
-since the interface came up, so two readings over the elapsed time are the
-only way to know the speed now.
+The counters are totals since the interface came up, so the current upload
+and download rates come from two readings.
 """
 
 from __future__ import annotations
@@ -38,12 +36,12 @@ SIOCGIFNETMASK = 0x891B
 COUNTERS = ("rx_bytes", "tx_bytes", "rx_packets", "tx_packets",
               "rx_errors", "tx_errors", "rx_dropped", "tx_dropped")
 
-# The value of `type` in sysfs, from the kernel's ARPHRD_*.
+# `type` in sysfs, from the kernel's ARPHRD_* values.
 TYPE_ETHERNET, TYPE_LOOPBACK = 1, 772
 
-# Interfaces that exist but are not a card: virtual machine bridges, tunnels,
-# containers. Shown anyway (whoever has libvirt wants to see their bridge),
-# marked as what they are.
+# Interfaces that exist but aren't a card: VM bridges, tunnels, containers.
+# Shown anyway (libvirt users want to see their bridge), marked for what they
+# are.
 VIRTUAL_PREFIXES = ("virbr", "docker", "veth", "br-", "tun", "tap", "vmnet",
                       "wg", "tailscale", "zt", "bond", "dummy")
 
@@ -55,14 +53,14 @@ class NetworkInterfaces(Provider):
     provides = "network"
 
     def __init__(self) -> None:
-        # The previous pass's counters, to subtract.
+        # The previous pass's counters, to subtract from.
         self._previous: dict[str, tuple[float, int, int]] = {}
         self._interval_s = 1.0
-        # What does not change while an interface exists (what it is, its
-        # driver and card), by name and `ifindex`: one deleted and created
-        # again with the same name gets another index. Docker creates a bridge
-        # and a `veth` per network and container, and with forty interfaces
-        # rereading everything was about a thousand calls per sample.
+        # What doesn't change while an interface exists (its kind, driver and
+        # card), by name and `ifindex`, since one deleted and recreated under
+        # the same name gets a new index. Docker adds a bridge and a `veth` per
+        # network and container; with forty interfaces, rereading everything
+        # was about a thousand calls per sample.
         self._fixed: dict[tuple[str, Optional[int]], tuple[str, Optional[str], dict]] = {}
 
     def available(self) -> bool:
@@ -115,7 +113,7 @@ class NetworkInterfaces(Provider):
             ipv6=ipv6,
             gateway=routes.get(name),
             default_route=name in routes,
-            # A down interface returns -1 in `speed`, not its speed.
+            # A down interface reports -1 as its `speed`.
             speed_mbps=speed if speed and speed > 0 else None,
             duplex=read_text(str(base / "duplex")) or None,
             mtu=read_int(str(base / "mtu")),
@@ -134,7 +132,7 @@ class NetworkInterfaces(Provider):
         previous = self._previous.get(name)
         if previous is not None:
             before, rx, tx = previous
-            # The counters restart if the interface goes down and back; a
+            # The counters restart when the interface goes down and up again; a
             # negative delta is that, not a negative rate.
             down = rate(rx, before, values["rx_bytes"], now, self._interval_s)
             up = rate(tx, before, values["tx_bytes"], now, self._interval_s)
@@ -146,14 +144,13 @@ class NetworkInterfaces(Provider):
 
 
 def _all_counters() -> dict[str, dict[str, int]]:
-    """Every interface's eight counters, in a single read.
+    """Every interface's eight counters in a single read.
 
-    `/proc/net/dev` holds them together; sysfs is eight files per interface
-    and sample. The columns are those of `dev_seq_printf_stats`
+    `/proc/net/dev` holds them together, where sysfs is eight files per
+    interface per sample. The columns follow `dev_seq_printf_stats`
     (net/core/net-procfs.c): bytes, packets, errors and drops received, four
-    more, and the same sent. The receive drop adds `rx_dropped` and
-    `rx_missed_errors`. What is not here (a dump without it) is read from
-    sysfs as always.
+    more, then the same sent. Receive drops add `rx_dropped` and
+    `rx_missed_errors`. A dump without this file falls back to sysfs.
     """
     out = {}
     for line in (read_text(PROC_DEV) or "").splitlines():
@@ -173,7 +170,7 @@ def _all_counters() -> dict[str, dict[str, int]]:
 
 
 class _Addresses:
-    """An open socket to ask IPv4 addresses by ioctl."""
+    """An open socket for asking IPv4 addresses by ioctl."""
 
     def __init__(self) -> None:
         try:
@@ -203,8 +200,8 @@ class _Addresses:
             reply = fcntl.ioctl(self._socket.fileno(), code,
                                     struct.pack("256s", name[:15].encode()))
         except OSError:
-            # An interface without an address answers with an error, a
-            # legitimate answer: it has no IP yet.
+            # An interface without an address answers with an error, which is
+            # a legitimate answer: it has no IP yet.
             return None
         return socket.inet_ntoa(reply[20:24])
 
@@ -214,9 +211,9 @@ class _Addresses:
 def _is_up(operstate: Optional[str], base: pathlib.Path) -> bool:
     """Whether the interface is working.
 
-    `operstate` saying «up» is not enough: loopback and tunnels answer
-    «unknown» because their driver does not report link state, and calling
-    them down would be false. There `carrier` decides.
+    `operstate` saying «up» isn't enough: loopback and tunnels say «unknown»
+    because their driver doesn't report link state, and calling them down
+    would be wrong. For those, `carrier` decides.
     """
     state = (operstate or "").lower()
     if state == "up":
@@ -252,7 +249,7 @@ def _driver(base: pathlib.Path) -> Optional[str]:
 
 
 def _pci_identity(base: pathlib.Path) -> dict:
-    """The card's model, if it hangs from the PCI bus."""
+    """The card's model, if it sits on the PCI bus."""
     device = base / "device"
     if not device.exists():
         return {}
@@ -280,10 +277,10 @@ def _pci_identity(base: pathlib.Path) -> dict:
 
 
 def _default_routes() -> dict[str, str]:
-    """Which interface traffic to the internet goes out of, and to which gateway.
+    """The interface and gateway that internet traffic leaves through.
 
-    Addresses in `/proc/net/route` are hexadecimal and reversed, as the
-    kernel keeps them in memory.
+    `/proc/net/route` writes addresses in hex, byte-reversed, as the kernel
+    keeps them in memory.
     """
     found: dict[str, str] = {}
     try:

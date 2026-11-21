@@ -1,29 +1,28 @@
-"""The core voltage, asked to the processor itself.
+"""The core voltage, read from the processor itself.
 
-No sensor gives it reliably: `k10temp` publishes no voltage, and a board's
-Super I/O chip publishes several **without labels**, so picking one would be
-guessing, and the driver does not promise their order.
+No sensor gives it reliably: `k10temp` reports no voltage, and a board's
+Super I/O reports several **without labels**, in no promised order, so
+picking one would be a guess.
 
-What is the same on every machine is asking the processor, as root through
-the helper:
+What works the same everywhere is asking the processor, as root through the
+helper:
 
-- **AMD**: register `0xC0010063` says which P-state is active and
-  `0xC0010064 + n` holds its definition, with the VID in bits 21:14. The
-  voltage is `1.55 − 0.00625 × VID`, the same since family 15h.
-- **Intel**: `MSR_PERF_STATUS` holds the measured voltage in bits 47:32, in
-  16-bit fixed point: divided by 8192.
+- **AMD**: `0xC0010063` holds the active P-state and `0xC0010064 + n` its
+  definition, with the VID in bits 21:14. The voltage is
+  `1.55 − 0.00625 × VID`, unchanged since family 15h.
+- **Intel**: `MSR_PERF_STATUS` holds the measured voltage in bits 47:32, as
+  16-bit fixed point divided by 8192.
 
-Both are read-only and have no side effects when read, the condition to be
+Both are read-only with no side effects, which is what earns them a place
 on the helper's list.
 
-**It is the voltage the processor asks for, not the one it gets.** What
-reaches the pins is measured by the board's regulator, which hwmon gives when
-its chip labels its channels; when both are there, the measured one wins.
+**It is the voltage the processor requests, not what it gets.** What reaches
+the pins is measured by the board's regulator, which hwmon reports when its
+chip labels the channels; when both exist, the measured one wins.
 
-**And with boost it falls short.** The P-state table describes the base
-states; above P0 the part's own controller raises clock and voltage, and P0's
-VID keeps its value. The figure is not false, it is another point of the
-curve.
+**With boost it falls short.** The P-state table describes the base states;
+above P0 the part's own controller raises clock and voltage while P0's VID
+stays put. The figure isn't wrong, it's another point on the curve.
 """
 
 from __future__ import annotations
@@ -36,27 +35,27 @@ from ..model import Need
 from ..privileged.client import HelperError, PrivilegedClient
 from .base import Draft, Provider, is_virtual_machine
 
-# Which P-state is running now (bits 2:0).
+# The running P-state (bits 2:0).
 AMD_PSTATE_STATUS = 0xC0010063
-# Each one's definition. There are eight, but only the first three are used.
+# Each P-state's definition. There are eight; only the first three are used.
 AMD_PSTATE_DEF = 0xC0010064
 AMD_PSTATES = 3
 
-# From AMD's programmer's guide: in PStateDef, CpuVid is bits 21:14.
+# AMD's programmer's guide: CpuVid is PStateDef bits 21:14.
 AMD_VID_SHIFT = 14
 AMD_VID_MASK = 0xFF
 AMD_VID_BASE = 1.55
 AMD_VID_STEP = 0.00625
 
-# Intel: IA32_PERF_STATUS. The voltage is in bits 47:32 in 16-bit fixed point,
-# so the divisor is 2^13 and not 2^16: the three high bits are the integer part.
+# Intel: IA32_PERF_STATUS. Bits 47:32 are 16-bit fixed point with three
+# integer bits, so the divisor is 2^13, not 2^16.
 INTEL_PERF_STATUS = 0x198
 INTEL_VOLTAGE_SHIFT = 32
 INTEL_VOLTAGE_MASK = 0xFFFF
 INTEL_VOLTAGE_DIVISOR = 8192.0
 
-# Below or above this it is not a core voltage but garbage: a register that
-# does not exist reads as zeros, and a misread one blows up.
+# Outside this range it's garbage, not a core voltage: a missing register
+# reads as zeros, and a misread one blows up.
 MIN_V = 0.2
 MAX_V = 2.0
 
@@ -98,10 +97,10 @@ class MsrVoltage(Provider):
         return bool(self.client and self.client.connected())
 
     def unavailable_reason(self):
-        """Without the helper there is no register to read, and that has a fix.
+        """Without the helper there is no register to read, and that is fixable.
 
-        `ROOT` on purpose: it carries the button that gives permissions, where
-        `DRIVER` reads as «your machine does not have it».
+        `ROOT` on purpose: it carries the button that grants permissions,
+        where `DRIVER` would read as «your machine doesn't have it».
         """
         if self.available():
             return None
@@ -112,12 +111,12 @@ class MsrVoltage(Provider):
                 _("prov.msr.novolt"), _("prov.msr.novolt.hint"), _("what.cpu.voltage"))
 
     def collect(self, draft: Draft) -> None:
-        # KVM answers the voltage register with a constant: inside a virtual
-        # machine there is no voltage to read, with permissions or without.
+        # KVM answers the voltage register with a constant: a virtual machine
+        # has no voltage to read, with permissions or without.
         if is_virtual_machine(draft):
             return
         # A labelled hwmon sensor wins: it measures what reaches the
-        # processor, and this only says what it asks for.
+        # processor, while this only says what it requests.
         if any(entry.get("voltage_v") is not None
                for entry in draft.types.values()):
             return
@@ -131,8 +130,8 @@ class MsrVoltage(Provider):
         try:
             values = self.client.read_msr(0, registers)
         except HelperError:
-            # Most often the «msr» module is not loaded, and one command
-            # fixes that: say which.
+            # Usually the msr module isn't loaded, and one command fixes it:
+            # say which.
             draft.note("cpu.voltage_v", Need.DRIVER,
                        _("prov.msr.nomodule"), _("prov.msr.nomodule.hint"))
             return
@@ -143,5 +142,5 @@ class MsrVoltage(Provider):
 
         for entry in draft.types.values():
             entry["voltage_v"] = round(voltage, 3)
-        # The status bar lists the sources that gave something.
+        # The status bar lists the sources that produced something.
         draft.capabilities.add("msr")

@@ -1,16 +1,16 @@
 """Motherboard, firmware and chipset.
 
-Three sources answering one question (what this is built on):
+Three sources for one question, what the machine is built on:
 
-* `/sys/class/dmi/id` gives the board, the firmware and the system, as the
-  SMBIOS table declares them. The serial numbers and UUID sit next to them,
-  readable by root only; this provider does not look at them.
-* `/sys/firmware/efi` and `/sys/class/tpm` say how the machine boots.
-* The PCI bus identifies the chipset: the LPC/eSPI bridge on bus 0 *is* the
-  chipset, and `pci.ids` names it.
+* `/sys/class/dmi/id`: the board, firmware and system as SMBIOS declares
+  them. The serial numbers and UUID next to them are root-only, and this
+  provider never looks at them.
+* `/sys/firmware/efi` and `/sys/class/tpm`: how the machine boots.
+* The PCI bus: the LPC/eSPI bridge on bus 0 *is* the chipset, and pci.ids
+  names it.
 
-Makers leave SMBIOS fields with fillers like «Default string». They are
-dropped: showing them as data is worse than an empty field.
+Makers leave SMBIOS fields with fillers like «Default string». Those are
+dropped: an empty field beats a filler shown as data.
 """
 
 from __future__ import annotations
@@ -30,8 +30,8 @@ PCI_DEVICES = pathlib.Path("/sys/bus/pci/devices")
 EFI = pathlib.Path("/sys/firmware/efi")
 SECURE_BOOT = EFI / "efivars" / "SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c"
 
-# SMBIOS gives the number; this program gives the name, so it goes by keys
-# and is translated when painted.
+# SMBIOS gives a number; Silux gives the name, as a key translated when
+# painted.
 CHASSIS_TYPES = {
     "1": "chassis.other", "2": "chassis.unknown", "3": "chassis.desktop",
     "4": "chassis.lowdesktop", "5": "chassis.pizzabox", "6": "chassis.minitower",
@@ -44,8 +44,8 @@ CHASSIS_TYPES = {
     "35": "chassis.minipc",
 }
 
-# The chassis that carry their fans in the embedded controller and not in a
-# Super I/O on a board: a laptop must not be sent to `sensors-detect`.
+# Chassis whose fans hang off the embedded controller rather than a Super
+# I/O on a board: a laptop must not be sent to `sensors-detect`.
 PORTABLE_CHASSIS = frozenset(("chassis.laptop", "chassis.notebook", "chassis.subnotebook",
                               "chassis.handheld", "chassis.tablet", "chassis.convertible",
                               "chassis.detachable"))
@@ -67,10 +67,10 @@ _CHIPSET_FAMILY = re.compile(r"\b(\d{3} Series)\s+Chipset\b", re.IGNORECASE)
 
 
 # On AM4 and AM5 the LPC bridge on bus 0 is the FCH inside the processor,
-# named the same on every board. There the board's name says the chipset
-# («B550M» is a microATX B550; «B650E-F», a B650E). The list is closed on
-# purpose: a letter and three digits is also a laptop («Aspire A515-45»), and
-# a missing chipset is better explained than made up.
+# named the same on every board, so the board's name gives the chipset
+# («B550M» is a microATX B550). The list is closed on purpose: a letter and
+# three digits can also be a laptop («Aspire A515-45»), and a missing
+# chipset explained beats one made up.
 _AMD_CHIPSETS = ("A320", "B350", "X370", "B450", "X470", "A520", "B550", "X570",
                  "A620", "B650", "X670", "B840", "B850", "X870",
                  "X399", "TRX40", "TRX50", "WRX80", "WRX90")
@@ -79,7 +79,7 @@ AMD = "Advanced Micro Devices"
 
 
 def chipset_from_board_name(board: Optional[str]) -> Optional[str]:
-    """The AMD chipset written in a board's name, if it is."""
+    """The AMD chipset in a board's name, if there is one."""
     match = _CHIPSET_IN_BOARD_NAME.search(board or "")
     return match.group(1) + (match.group(2) or "") if match else None
 
@@ -87,9 +87,9 @@ def chipset_from_board_name(board: Optional[str]) -> Optional[str]:
 def chipset(bridge: Optional[tuple[str, str]], board: Optional[str]) -> Optional[str]:
     """«Intel H510», «AMD X570», or nothing if nobody says.
 
-    `bridge` is what `pci.ids` says of the LPC/eSPI bridge: maker and name.
-    An AMD one without a model looks at the board, and failing that, a PCI
-    device's name is not taken for a chipset.
+    `bridge` is pci.ids's maker and name for the LPC/eSPI bridge. An AMD
+    bridge without a model falls back to the board's name; failing that, a
+    PCI device's name is never taken for a chipset.
     """
     if bridge is None:
         return None
@@ -156,7 +156,7 @@ class DmiBoard(Provider):
             chassis=CHASSIS_TYPES.get(read_text(f"{SYS_DMI}/chassis_type") or ""),
         )
 
-        # A virtual machine has no board to blame (QEMU declares none): the
+        # A virtual machine has no board to blame (QEMU declares none); the
         # board page says what it is instead.
         if not draft.board.name and not is_virtual_machine(draft):
             draft.note(
@@ -175,7 +175,7 @@ class DmiBoard(Provider):
 
     @staticmethod
     def _secure_boot() -> Optional[bool]:
-        """The EFI variable holds 4 bytes of attributes, then the value."""
+        """An EFI variable is 4 bytes of attributes followed by the value."""
         try:
             data = sysroot.path(SECURE_BOOT).read_bytes()
         except OSError:
@@ -188,7 +188,7 @@ class DmiBoard(Provider):
             major = read_text(str(entry / "tpm_version_major"))
             if major:
                 return f"TPM {major}.0"
-            # Old TPM 1.2 chips do not publish that file.
+            # Old TPM 1.2 chips don't publish that file.
             if (entry / "caps").exists():
                 return "TPM 1.2"
         return None
