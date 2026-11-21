@@ -115,6 +115,17 @@ la memoria) no va: está propuesto en las notas
     es el ahorro de energía de Polaris o el enlace de verdad. El volcado no
     guarda `pp_dpm_pcie`, que diría qué líneas pide la tarjeta en cada
     nivel.
+* **Del T14 del autor, con la prueba7:**
+  - Procesador · media · falta comprobar con los valores reales del T14 el
+    límite de la copia MMIO de RAPL (`intel-rapl-mmio:0`): el informe de la
+    prueba7 no los traía porque Silux no la leía.
+  - Escritorio · baja · el monitor del sistema de KDE enseña Silux como
+    `app.slice/app-@…` cuando se abre el AppImage con doble clic: Plasma
+    nombra el *scope* de systemd por la entrada `.desktop` que lanzó, y un
+    ejecutable suelto no tiene. `setDesktopFileName` ya está y no lo cambia.
+    Abierto desde su entrada de menú sale con nombre. Arreglo posible: al
+    arrancar en un `app-@…`, pedir a systemd (por D-Bus, sin permisos) un
+    *scope* `app-silux@…` para el propio proceso, como hace Plasma.
 * **Sin volcado, sin hacer todavía:**
   - SMART · baja · atributos conocidos (4, 192, 193, 196…) salen «propio del
     fabricante», y la temperatura en crudo sale empaquetada (64 427 589 655).
