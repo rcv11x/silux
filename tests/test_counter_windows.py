@@ -249,3 +249,31 @@ class TestTheRule(unittest.TestCase):
 if __name__ == "__main__":
     unittest.main()
 
+
+class TestHomesGpuChart(unittest.TestCase):
+    """Inicio's GPU card draws its usage or, without it, its clock. A sample
+    without usage (a short window now gives none) drew megahertz on the
+    percentages' history."""
+
+    def test_usage_and_clock_never_share_the_chart(self):
+        import dataclasses
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.home import HomePage
+        from tests import qt
+        from tests.test_equipos import EQUIPOS, foto
+
+        f = foto(EQUIPOS / "i5-10400")[0]
+        gpu = f.gpus[0]
+        relojes = dataclasses.replace(gpu.clocks, core_hz=350_000_000)
+        con_uso = dataclasses.replace(f, gpus=(dataclasses.replace(
+            gpu, busy_percent=40.0, clocks=relojes),))
+        sin_uso = dataclasses.replace(f, gpus=(dataclasses.replace(
+            gpu, busy_percent=None, power_w=None, temp_c=None, clocks=relojes),))
+        pagina = HomePage(theme.palette_for(qt.app(), "dark"), Preferences().normalized())
+        pagina.apply(con_uso)
+        pagina.apply(con_uso)
+        pagina.apply(sin_uso)
+        self.assertEqual(list(pagina.gpu.grafica._values), [350.0])
+        pagina.apply(con_uso)
+        self.assertEqual(list(pagina.gpu.grafica._values), [40.0])

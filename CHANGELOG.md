@@ -31,6 +31,9 @@ que hace falta.
   entre las dos lecturas no ha pasado al menos la mitad del intervalo, o el
   contador ha ido hacia atrás, esa vuelta no da cifra y empieza otra. El
   techo de los vatios imposibles queda detrás, de red.
+- Arreglado: la gráfica de la tarjeta de la gráfica en Inicio enseña el uso
+  o, sin él, la frecuencia. Una muestra sin uso pintaba megahercios encima
+  de los porcentajes; ahora empieza de cero cuando cambia lo que enseña.
 
 ### Gráficos
 

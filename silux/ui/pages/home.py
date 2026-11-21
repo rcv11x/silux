@@ -145,6 +145,9 @@ class HomePage(ScrollPage):
         super().__init__(parent)
         self._p = palette
         self._prefs = prefs
+        # What the GPU card's chart is drawing: its usage or, without it, its
+        # clock (`_serie_de_la_gpu`).
+        self._serie_gpu: Optional[str] = None
         m = theme.METRICS
 
         self.setWidgetResizable(True)
@@ -193,6 +196,14 @@ class HomePage(ScrollPage):
         layout.addStretch(1)
         self._chips: tuple = ()
         self._titular_de_temperaturas: Optional[str] = None
+
+    def _serie_de_la_gpu(self, serie: str) -> None:
+        """The GPU card's chart shows usage (%) or, without it, the clock
+        (MHz). A sample without usage drew megahertz on the percentages'
+        scale: it starts over when what it shows changes."""
+        if self._serie_gpu != serie:
+            self._serie_gpu = serie
+            self.gpu.grafica.clear()
 
     def _tarjeta(self, host: ResponsiveRow, titulo: str, seccion: str,
                  cuerpo: Optional[str] = "grafica") -> _TarjetaResumen:
@@ -356,6 +367,7 @@ class HomePage(ScrollPage):
         elif gpu.busy_percent is not None:
             piezas.append(render.percent(gpu.busy_percent))
             moldes.append(_porcentajes())
+            self._serie_de_la_gpu("usage")
             self.gpu.grafica.push(gpu.busy_percent)
             self.gpu.grafica.set_range(0.0, 100.0)
         if gpu.temp_c is not None:
@@ -372,6 +384,7 @@ class HomePage(ScrollPage):
             # lee sin pedir nada, así que al menos se ve que la cosa se mueve.
             piezas.append(render.hz(gpu.clocks.core_hz))
             moldes.append(_relojes())
+            self._serie_de_la_gpu("clock")
             self.gpu.grafica.push(gpu.clocks.core_hz / 1e6)
             if gpu.clocks.core_max_hz:
                 # Con su techo al lado: 350 MHz solos no dicen si es mucho.

@@ -811,6 +811,14 @@ class Sparkline(QWidget):
             return _("chart.ago.s").format(cifra=cifra, n=f"{atras:.0f}")
         return _("chart.ago.min").format(cifra=cifra, n=f"{atras / 60:.0f}")
 
+    def clear(self) -> None:
+        """Forgets the series: for a chart that changes what it shows, which
+        must not draw one quantity over the other's history."""
+        if self._values:
+            self._values.clear()
+            self._version += 1
+            self.update()
+
     def push(self, value: Optional[float]) -> None:
         if value is not None:
             self._values.append(float(value))
