@@ -1,18 +1,18 @@
-"""Decodifica el EDID, que es la chapa de identificación de un monitor.
+"""Decodes the EDID, a monitor's identification plate.
 
-Cada pantalla lleva 128 bytes (a veces con extensiones detrás) que el kernel
-deja tal cual en `/sys/class/drm/<conector>/edid`, sin pedir permisos. Dentro
-está lo que sysfs no cuenta por otra vía: quién la fabricó, qué modelo es,
-cuándo se hizo, cuánto mide de verdad y a qué resolución y refresco quiere
-trabajar.
+Every display carries 128 bytes (sometimes with extensions after them) that
+the kernel leaves as they are in `/sys/class/drm/<connector>/edid`, readable
+without permissions. Inside is what sysfs doesn't tell any other way: who
+made it, which model it is, when it was made, its real size, and the
+resolution and refresh it wants to run at.
 
-El formato es de 1994 y se nota. Las tres letras del fabricante van empaquetadas
-en cinco bits cada una, los tamaños se parten entre varios bytes con los cuatro
-bits altos de un tercero, y el nombre del modelo puede estar en cualquiera de
-cuatro descriptores o en ninguno. Es el mismo tipo de trabajo que `spd.py`.
+The format dates from 1994 and shows it. The maker's three letters are
+packed in five bits each, sizes are split across bytes with the top four
+bits of a third, and the model's name may be in any of four descriptors or
+in none. The same kind of work as `spd.py`.
 
-Las tres letras se traducen a un nombre con `pnp.ids`, del mismo paquete hwdata
-del que ya sale `pci.ids`.
+The three letters are turned into a name with `pnp.ids`, from the same
+hwdata package `pci.ids` comes from.
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ PNP_CANDIDATES = (
     "/usr/share/pnp.ids",
 )
 
-# Los cuatro descriptores de 18 bytes que hay a partir del byte 54.
+# The four 18-byte descriptors from byte 54 on.
 DESCRIPTORS = range(54, 126, 18)
 TYPE_SERIAL = 0xFF
 TYPE_TEXT = 0xFE
@@ -41,7 +41,7 @@ TYPE_NAME = 0xFC
 
 @dataclass(frozen=True, slots=True)
 class VideoMode:
-    """Un modo de vídeo de los que el monitor declara admitir."""
+    """A video mode the monitor declares it supports."""
 
     width: int
     height: int
@@ -57,10 +57,10 @@ class VideoMode:
 
 @dataclass(frozen=True, slots=True)
 class Edid:
-    """Lo que una pantalla dice de sí misma."""
+    """What a display says about itself."""
 
-    manufacturer_id: Optional[str] = None      # las tres letras: GBT, GSM…
-    manufacturer: Optional[str] = None         # ya traducidas
+    manufacturer_id: Optional[str] = None      # the three letters: GBT, GSM…
+    manufacturer: Optional[str] = None         # already translated
     model: Optional[str] = None
     product_code: Optional[int] = None
     serial: Optional[str] = None
@@ -69,24 +69,24 @@ class Edid:
     version: Optional[str] = None
     width_mm: Optional[int] = None
     height_mm: Optional[int] = None
-    # Si esas dos medidas vienen al milímetro. El bloque base del EDID las da
-    # en centímetros enteros, y de ahí salía «26.6"» para un monitor de 27:
-    # medio centímetro por lado mueve la diagonal un cuarto de pulgada. El
-    # temporizador del modo nativo las trae en milímetros; cuando no las trae
-    # o no cuadran con las otras, quedan las de centímetros y la diagonal se
-    # enseña como lo que es, aproximada.
+    # Whether those two sizes are to the millimetre. The EDID's base block
+    # gives them in whole centimetres, which made a 27" monitor «26.6"»: half
+    # a centimetre per side moves the diagonal a quarter of an inch. The
+    # native mode's timing has them in millimetres; when it doesn't, or they
+    # don't match the others, the centimetres stay and the diagonal is shown
+    # for what it is, approximate.
     size_exact: bool = False
     native_width: Optional[int] = None
     native_height: Optional[int] = None
     native_refresh_hz: Optional[float] = None
-    # El rango que declara el monitor, que no es lo mismo que el modo
-    # preferido: un OLED de 240 Hz puede pedir 60 como preferido y aun así
-    # llegar a 240. Enseñar solo el preferido se queda muy corto.
+    # The range the monitor declares, which isn't the preferred mode: a 240 Hz
+    # OLED may prefer 60 and still reach 240. Showing only the preferred mode
+    # falls far short.
     refresh_min_hz: Optional[int] = None
     refresh_max_hz: Optional[int] = None
-    # De las extensiones CTA-861. El bloque base solo tiene sitio para el modo
-    # preferido y unos pocos estándar, así que sin mirarlas un monitor que
-    # admite 4K a 120 aparece como si solo hiciera 1080p a 60.
+    # From the CTA-861 extensions. The base block only has room for the
+    # preferred mode and a few standard ones, so without them a monitor that
+    # does 4K at 120 looks like it only does 1080p at 60.
     modes: tuple[VideoMode, ...] = ()
     hdr: tuple[str, ...] = ()
     color_spaces: tuple[str, ...] = ()
@@ -94,10 +94,10 @@ class Edid:
 
     @property
     def best_mode(self) -> Optional[VideoMode]:
-        """El modo más exigente de los declarados.
+        """The most demanding mode declared.
 
-        Ordena por píxeles y luego por refresco: entre 4K a 60 y 1080p a 240
-        gana el 4K, que es lo que define de lo que es capaz el panel.
+        Sorted by pixels and then refresh: between 4K at 60 and 1080p at 240,
+        4K wins, which is what defines what the panel can do.
         """
         if not self.modes:
             return None
@@ -105,8 +105,8 @@ class Edid:
 
     @property
     def diagonal_inches(self) -> Optional[float]:
-        """La diagonal del panel. Con un decimal si las medidas son al
-        milímetro; redondeada a la pulgada si solo hay centímetros."""
+        """The panel's diagonal. One decimal if the sizes are to the
+        millimetre; rounded to the inch if there are only centimetres."""
         if not (self.width_mm and self.height_mm):
             return None
         diagonal = (self.width_mm ** 2 + self.height_mm ** 2) ** 0.5 / 25.4
@@ -122,18 +122,16 @@ class Edid:
 
     @property
     def refresh_summary(self) -> Optional[str]:
-        """El refresco que se enseña, venga de donde venga.
+        """The refresh shown, wherever it comes from.
 
-        El rango del descriptor 0xFD es el bueno y manda: un OLED de 240 Hz
-        declara 60 como modo preferido, así que enseñar el preferido como si
-        fuera el techo se queda corto por mucho.
+        The 0xFD descriptor's range is the right one and rules: a 240 Hz OLED
+        declares 60 as its preferred mode, so showing the preferred mode as
+        the ceiling falls far short.
 
-        Pero ese descriptor es opcional y los paneles de portátil casi nunca
-        lo traen: el eDP de un ThinkPad salía sin refresco ninguno teniendo el
-        dato calculado desde su temporización detallada. Cuando no hay rango,
-        el modo nativo es lo único que hay y decirlo es mejor que callarse —
-        con la reserva de que es el preferido y no necesariamente el máximo,
-        que es lo que aclara el rótulo de al lado.
+        But that descriptor is optional and laptop panels almost never carry
+        it. With no range, the native mode is all there is, and saying it
+        beats silence, with the caveat, which the label next to it makes,
+        that it is the preferred and not necessarily the maximum.
         """
         if self.refresh_range:
             return self.refresh_range
@@ -143,16 +141,16 @@ class Edid:
 
     @property
     def refresh_is_native_only(self) -> bool:
-        """Si lo que se enseña es el modo preferido y no un rango declarado."""
+        """Whether what's shown is the preferred mode rather than a declared range."""
         return not self.refresh_range and bool(self.native_refresh_hz)
 
 
 def parse(raw: bytes) -> Optional[Edid]:
-    """Devuelve None si esto no es un EDID; nunca revienta con basura."""
+    """None if this isn't an EDID; never crashes on garbage."""
     if len(raw) < BLOCK or not raw.startswith(HEADER):
         return None
-    # El bloque tiene que sumar cero módulo 256. Un EDID que no cuadra suele ser
-    # un cable malo o un adaptador que se lo inventa, y sus datos no valen.
+    # The block must add up to zero modulo 256. An EDID that doesn't is
+    # usually a bad cable or an adapter making one up, and its data is no good.
     if sum(raw[:BLOCK]) % 256 != 0:
         return None
 
@@ -172,8 +170,8 @@ def parse(raw: bytes) -> Optional[Edid]:
         manufacturer_id=letters,
         model=model_name,
         product_code=int.from_bytes(raw[10:12], "little"),
-        # El de texto es el que enseña la pegatina de detrás; el numérico es el
-        # de respaldo, y un 0 o un 0x01010101 significan «sin número».
+        # The text one is what the sticker on the back shows; the number is the
+        # fallback, and 0 or 0x01010101 mean «no number».
         serial=serial_text or (str(serial_number)
                                if serial_number not in (0, 0x01010101) else None),
         year=raw[17] + 1990 if raw[17] else None,
@@ -192,7 +190,7 @@ def parse(raw: bytes) -> Optional[Edid]:
 
 
 def read(connector: pathlib.Path | str) -> Optional[Edid]:
-    """Lee y decodifica el EDID de un conector de `/sys/class/drm`."""
+    """Read and decode the EDID of a `/sys/class/drm` connector."""
     try:
         raw = pathlib.Path(connector, "edid").read_bytes()
     except OSError:
@@ -201,7 +199,7 @@ def read(connector: pathlib.Path | str) -> Optional[Edid]:
 
 
 def resolve_vendors(edids: Iterable[Edid]) -> dict[str, str]:
-    """Traduce las tres letras a nombres, en una sola pasada por `pnp.ids`."""
+    """Turn the three letters into names, in a single pass over `pnp.ids`."""
     wanted = {e.manufacturer_id for e in edids if e.manufacturer_id}
     if not wanted:
         return {}
@@ -223,10 +221,10 @@ def resolve_vendors(edids: Iterable[Edid]) -> dict[str, str]:
     return found
 
 
-# -- interno ----------------------------------------------------------------
+# -- internals ----------------------------------------------------------------
 
 def _descriptor_text(chunk: bytes) -> str:
-    """Los descriptores de texto van rellenos con 0x0A y espacios."""
+    """Text descriptors are padded with 0x0A and spaces."""
     text_bytes = chunk[5:18].split(b"\x0a")[0]
     return re.sub(r"\s+", " ", text_bytes.decode("cp437", "replace")).strip()
 
@@ -236,7 +234,7 @@ def _from_descriptors(raw: bytes) -> tuple[Optional[str], Optional[str]]:
     for start in DESCRIPTORS:
         chunk = raw[start:start + 18]
         if len(chunk) < 18 or chunk[0:2] != b"\x00\x00":
-            continue                      # es un temporizador, no texto
+            continue                      # a timing, not text
         kind = chunk[3]
         if kind == TYPE_NAME:
             name = _descriptor_text(chunk) or name
@@ -246,11 +244,10 @@ def _from_descriptors(raw: bytes) -> tuple[Optional[str], Optional[str]]:
 
 
 def _refresh_range(raw: bytes) -> tuple[Optional[int], Optional[int]]:
-    """El descriptor 0xFD dice entre qué refrescos puede trabajar la pantalla.
+    """The 0xFD descriptor says which refresh rates the display can run at.
 
-    Los valores no caben en un byte desde que hay monitores de más de 255 Hz,
-    así que el estándar añadió unos bits de acarreo en el byte anterior que hay
-    que sumar antes de leerlos.
+    The values haven't fit in a byte since monitors went past 255 Hz, so the
+    standard added carry bits in the byte before, to add before reading them.
     """
     for start in DESCRIPTORS:
         chunk = raw[start:start + 18]
@@ -265,16 +262,16 @@ def _refresh_range(raw: bytes) -> tuple[Optional[int], Optional[int]]:
 
 
 def _panel_size(raw: bytes) -> tuple[Optional[int], Optional[int], bool]:
-    """Ancho y alto de la imagen en milímetros, y si son al milímetro.
+    """The image's width and height in millimetres, and whether exact.
 
-    El bloque base los da en centímetros (bytes 21 y 22). El primer
-    temporizador detallado, el del modo nativo, los repite en milímetros. Se
-    toman esos cuando cuadran con los centímetros: hay pantallas que ponen ahí
-    la proporción («16 × 9») o un cero, y un proyector no tiene medida.
+    The base block gives them in centimetres (bytes 21 and 22). The first
+    detailed timing, the native mode's, repeats them in millimetres. Those
+    are taken when they match the centimetres: some displays put the aspect
+    ratio there («16 × 9») or a zero, and a projector has no size.
     """
     width_cm, height_cm = raw[21], raw[22]
     chunk = raw[54:72]
-    if int.from_bytes(chunk[0:2], "little"):            # es un temporizador
+    if int.from_bytes(chunk[0:2], "little"):            # a timing
         width = chunk[12] | ((chunk[14] >> 4) << 8)
         height = chunk[13] | ((chunk[14] & 0x0F) << 8)
         matches = (abs(width - width_cm * 10) <= 10 and abs(height - height_cm * 10) <= 10
@@ -285,9 +282,9 @@ def _panel_size(raw: bytes) -> tuple[Optional[int], Optional[int], bool]:
 
 
 def _preferred_mode(raw: bytes) -> tuple[Optional[int], Optional[int], Optional[float]]:
-    """El primer temporizador detallado es el modo nativo de la pantalla."""
+    """The first detailed timing is the display's native mode."""
     chunk = raw[54:72]
-    pixel_clock = int.from_bytes(chunk[0:2], "little") * 10_000      # en hercios
+    pixel_clock = int.from_bytes(chunk[0:2], "little") * 10_000      # in hertz
     if not pixel_clock:
         return None, None, None
 
@@ -304,13 +301,13 @@ def _preferred_mode(raw: bytes) -> tuple[Optional[int], Optional[int], Optional[
 
 
 # --------------------------------------------------------------------------
-# Extensiones CTA-861
+# CTA-861 extensions
 # --------------------------------------------------------------------------
 
 CTA_TAG = 0x02
-# Los códigos de la tabla 3 de CTA-861: (ancho, alto, refresco, entrelazado).
-# Están los de uso corriente, no los 219 que existen; un código que no esté
-# aquí se salta en vez de inventarle una resolución.
+# The codes of CTA-861's table 3: (width, height, refresh, interlaced). The
+# common ones, not all 219; a code not here is skipped rather than given a
+# made-up resolution.
 VIC = {
     1: (640, 480, 59.94, False),
     2: (720, 480, 59.94, False), 3: (720, 480, 59.94, False),
@@ -352,11 +349,11 @@ VIC = {
     218: (5120, 2880, 60.0, False), 219: (5120, 2880, 120.0, False),
 }
 
-# Los tipos de bloque dentro de la colección de datos.
+# The block types in the data collection.
 BLOCK_AUDIO, BLOCK_VIDEO, BLOCK_VENDOR = 1, 2, 3
 BLOCK_SPEAKERS, BLOCK_EXTENDED = 4, 7
 
-# Y los subtipos de los extendidos, que es donde vive lo moderno.
+# And the extended blocks' subtypes, where the modern things live.
 EXT_COLORIMETRY, EXT_HDR = 5, 6
 
 AUDIO_FORMATS = {
@@ -365,9 +362,9 @@ AUDIO_FORMATS = {
     12: "Dolby TrueHD", 13: "DST", 14: "WMA Pro",
 }
 
-# Las curvas de transferencia del bloque de HDR estático. La primera es la
-# de siempre, así que solo se enseñan las otras: decir que un monitor admite
-# gamma tradicional no es noticia.
+# The transfer curves of the static HDR block. The first is the usual one,
+# so only the others are shown: a monitor supporting traditional gamma isn't
+# news.
 HDR_CURVES = {1: "HDR gamma", 2: "HDR10 (PQ)", 3: "HLG"}
 
 COLOR_SPACES = {
@@ -377,7 +374,7 @@ COLOR_SPACES = {
 
 
 def _cta_modes(data: bytes) -> list[VideoMode]:
-    """Los modos del bloque de vídeo: un byte por código, el bit 7 marca nativo."""
+    """The video block's modes: one byte per code, bit 7 marks native."""
     modes = []
     for byte in data:
         code, native = byte & 0x7F, bool(byte & 0x80)
@@ -389,12 +386,12 @@ def _cta_modes(data: bytes) -> list[VideoMode]:
 
 
 def _cta_extension(block: bytes) -> dict:
-    """Lo que dice una extensión CTA-861: modos, HDR, color y audio.
+    """What a CTA-861 extension says: modes, HDR, colour and audio.
 
-    La colección de bloques de datos ocupa desde el byte 4 hasta donde diga el
-    byte 2, y cada bloque lleva su tipo y su longitud en la cabecera. Se
-    recorre con cuidado de no salirse: un EDID mal grabado es de las cosas más
-    fáciles de encontrar, y aquí no puede tumbar la lectura de nada más.
+    The data block collection runs from byte 4 to where byte 2 says, and each
+    block carries its type and length in its header. It is walked carefully
+    so as not to overrun: a badly written EDID is among the easiest things to
+    come across, and here it can't bring down any other reading.
     """
     found: dict = {"modes": [], "hdr": [], "color_spaces": [], "audio": []}
     if len(block) < 4 or block[0] != CTA_TAG:
@@ -415,7 +412,7 @@ def _cta_extension(block: bytes) -> dict:
         if tag == BLOCK_VIDEO:
             found["modes"].extend(_cta_modes(data))
         elif tag == BLOCK_AUDIO:
-            # Tríos de bytes: los cinco bits altos del primero son el formato.
+            # Triplets of bytes: the first one's top five bits are the format.
             for j in range(0, len(data) - 2, 3):
                 name = AUDIO_FORMATS.get((data[j] >> 3) & 0x0F)
                 if name and name not in found["audio"]:
@@ -433,7 +430,7 @@ def _cta_extension(block: bytes) -> dict:
 
 
 def _extensions(raw: bytes) -> dict:
-    """Recorre los bloques que van detrás del principal y junta lo que traen."""
+    """Walk the blocks after the main one and gather what they bring."""
     merged: dict = {"modes": [], "hdr": [], "color_spaces": [], "audio": []}
     for start in range(BLOCK, len(raw) - BLOCK + 1, BLOCK):
         chunk = raw[start:start + BLOCK]
@@ -443,6 +440,6 @@ def _extensions(raw: bytes) -> dict:
             for value in values:
                 if value not in merged[key]:
                     merged[key].append(value)
-    # Tuplas: el Snapshot es inmutable de arriba abajo, y una lista dentro de
-    # un dataclass congelado es una promesa que no se cumple.
+    # Tuples: the Snapshot is immutable top to bottom, and a list inside a
+    # frozen dataclass is a promise not kept.
     return {key: tuple(values) for key, values in merged.items()}

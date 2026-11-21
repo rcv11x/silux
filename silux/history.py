@@ -1,15 +1,15 @@
-"""El historial de pruebas de rendimiento de este equipo.
+"""This machine's benchmark history.
 
-Una puntuación suelta no dice nada: 610 op/s solo significa algo comparado
-con otra cosa. Lo de fuera —la tabla de internet— casi nunca sirve, porque
-está medido con otro gobernador, otra temperatura ambiente y otro programa.
-Lo que sí compara bien es el mismo equipo consigo mismo: antes y después de
-cambiar la pasta térmica, en invierno y en agosto, con el portátil enchufado
-y con batería.
+A lone score says nothing: 610 op/s only means something next to another
+figure. Outside figures (an internet table) rarely help, being measured with
+another governor, another room temperature and another program. What does
+compare well is the same machine against itself: before and after new
+thermal paste, in winter and in August, a laptop on the charger and on
+battery.
 
-Se guarda en el disco del usuario, no se envía a ninguna parte, y cada
-entrada lleva las condiciones en las que se midió: sin ellas, dos cifras
-distintas del mismo equipo no se pueden interpretar.
+Kept on the user's disk, never sent anywhere, and each entry carries the
+conditions it was measured in: without them, two different figures from the
+same machine can't be read.
 """
 
 from __future__ import annotations
@@ -23,9 +23,8 @@ from typing import Optional
 
 from .benchmark import Result
 
-# Cuántas pruebas se conservan. Suficiente para ver una tendencia a lo largo
-# de meses, y poco para que el archivo siga siendo un JSON que se lee de una
-# vez y se puede abrir con un editor.
+# How many runs are kept. Enough to see a trend over months, and few enough
+# for the file to stay a JSON read in one go and openable in an editor.
 MAX_ENTRIES = 60
 
 
@@ -39,63 +38,60 @@ def history_path() -> pathlib.Path:
 
 
 def same_duration(a: float, b: float) -> bool:
-    """Si dos pruebas pidieron la misma duración por medida.
+    """Whether two runs asked for the same duration per measurement.
 
-    Lo guardado es lo que tardó la medida más larga: lo pedido más lo que
-    tarde en acabar la operación que estaba en vuelo, que va de unos
-    milisegundos a 128 con la zlib del AppImage. El margen cubre ese exceso y
-    se queda por debajo del segundo que separa las dos duraciones más
-    cercanas que se ofrecen, la rápida de 2 s y la de 3. No es el de
-    `score.comparable` a propósito: aquel, de 1,5 s, juntaría esas dos.
+    What is stored is how long the longest measurement took: what was asked
+    plus finishing the operation in flight, from a few milliseconds to 128
+    with the AppImage's zlib. The margin covers that excess and stays under
+    the second between the two closest durations offered, the quick 2 s and
+    3 s. Not `score.comparable`'s on purpose: its 1.5 s would join those two.
     """
     return abs(a - b) <= max(0.25, 0.02 * max(a, b))
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class Entry:
-    """Una prueba guardada, con lo justo para volver a interpretarla."""
+    """A saved run, with just enough to interpret it again."""
 
     timestamp: float
-    cpu: str                       # para no comparar contra otro equipo
+    cpu: str                       # so as not to compare against another machine
     threads: int
-    seconds: float                 # cuánto duró cada medida
+    seconds: float                 # how long each measurement lasted
     scores: dict[str, float]       # «compresion/1», «compresion/16» → op/s
-    # Un nombre que le pone el usuario: «con la pasta nueva», «verano», «tras
-    # subir el PBO». Sin él, una lista de fechas no dice qué cambió entre una
-    # y otra, que es justo lo que se quiere saber al comparar.
+    # A name the user gives it: «new paste», «summer», «after raising PBO».
+    # Without it, a list of dates doesn't say what changed between them,
+    # which is what comparing is for.
     label: str = ""
     governor: Optional[str] = None
     temperature_peak_c: Optional[float] = None
     frequency_avg_hz: Optional[int] = None
     background_load: Optional[float] = None
-    # Lo más que llegó a robarle otro programa mientras se medía. El de arriba
-    # se toma antes de empezar y no ve lo que pase después.
+    # The most another program took from it during the measurement. The one
+    # above is taken before starting and doesn't see what happens later.
     background_peak: Optional[float] = None
-    # Con qué escala se calculó su puntuación. Sin esto, dos pruebas medidas
-    # con escalas distintas salen en la misma tabla como si se pudieran
-    # comparar, y la diferencia que se lee no existe: al rehacer la escala la
-    # cifra de un hilo se movió un 68 % sin que el equipo cambiara.
+    # The scale its score was computed with. Without it, two runs measured on
+    # different scales sit in the same table as if comparable, and the
+    # difference read there doesn't exist: redoing the scale moved the
+    # single-thread figure 68 % with the machine unchanged.
     score_version: Optional[int] = None
-    # Con qué bibliotecas se midió, y con qué extensiones del procesador. Ya
-    # no deciden la puntuación —desde la v6 las tres cargas que dependen del
-    # sistema no puntúan—, pero siguen guardándose, porque son lo que permite
-    # leer sus cifras: la misma pieza da 14,9 GB/s en la carga de verificación
-    # con zlib-ng y 1,5 con la zlib de Ubuntu 22.04, que es la que va dentro
-    # del AppImage.
+    # The libraries it was measured with, and the processor's extensions.
+    # They no longer decide the score (since v6 the three workloads that
+    # depend on the system don't score), but they are still kept because
+    # they explain those figures: the same part gives 14.9 GB/s in the
+    # verification workload with zlib-ng and 1.5 with Ubuntu 22.04's zlib,
+    # the one inside the AppImage.
     #
-    # Las extensiones van al lado de la versión y no sueltas porque por sí
-    # solas no dicen nada: una zlib clásica no trae ni una instrucción
-    # `pclmulqdq` ni un solo `cpuid`, así que ejecuta el mismo camino en un
-    # Nehalem de 2009 que en un Zen 5 y las banderas dan igual. Solo importan
-    # cuando debajo hay zlib-ng, que sí despacha mirando la CPU.
+    # The extensions go with the version because alone they say nothing: a
+    # classic zlib has no `pclmulqdq` instruction and no `cpuid` at all, so
+    # it runs the same path on a 2009 Nehalem as on a Zen 5. They only matter
+    # with zlib-ng underneath, which dispatches by CPU.
     zlib_version: Optional[str] = None
     zlib_simd: tuple[str, ...] = ()
-    # Y con qué OpenSSL, que es la otra biblioteca de la que cuelgan cargas.
-    # Aquí el reparto es curioso y por eso se guarda: el resumen
-    # criptográfico da lo mismo en todas partes (190,05 · 190,13 · 190,17 op/s
-    # en tres distribuciones con dos versiones mayores), y la derivación de
-    # clave se lleva un ×1,38 entre la 3.0 y la 3.5, porque lo que cambió no
-    # es el algoritmo sino lo que cuesta cada una de sus doce mil vueltas.
+    # And the OpenSSL, the other library workloads hang from. Kept because
+    # the split is odd: the digest gives the same everywhere (190.05, 190.13,
+    # 190.17 op/s on three distributions with two major versions), while key
+    # derivation moves ×1.38 between 3.0 and 3.5, since what changed isn't
+    # the algorithm but the cost of each of its twelve thousand rounds.
     openssl_version: Optional[str] = None
 
     @property
@@ -103,47 +99,46 @@ class Entry:
         return time.strftime("%d/%m/%Y %H:%M", time.localtime(self.timestamp))
 
     def total(self) -> Optional[float]:
-        """La cifra con que se comparan dos pruebas del mismo equipo.
+        """The figure two runs of the same machine are compared by.
 
-        Es la puntuación a todos los hilos, o sea, las cargas que puntúan, cada
-        una contra su referencia. Era la suma en crudo de todas las medidas, y
-        la de verificación va en bytes por segundo —cien mil millones contra
-        unos miles—, así que la comparación la decidía la carga que no puntúa
-        y que depende de la zlib de cada distribución. Sin todas las que
-        puntúan no hay cifra, y una prueba cancelada a medias no se compara.
+        The all-threads score: the scoring workloads, each against its
+        reference. A raw sum of every measurement let the verification
+        workload decide (it counts bytes per second, a hundred billion
+        against a few thousand), and that one doesn't score and depends on
+        each distribution's zlib. Without every scoring workload there is no
+        figure, and a run cancelled halfway isn't compared.
         """
         from . import score
 
         return score.exact_multithread(self.scores, self.threads)
 
     def comparable_with(self, other: "Entry") -> bool:
-        """Si dos pruebas se pueden poner una al lado de otra.
+        """Whether two runs can be put side by side.
 
-        Cambiar la duración cambia la cifra —una medida de tres segundos coge
-        el turbo entero y una de treinta no—, así que comparar contra una de
-        otra duración diría que el equipo se ha vuelto más lento cuando lo
-        único que cambió fue la pregunta.
+        Changing the duration changes the figure (three seconds get all the
+        turbo and thirty don't), so comparing against another duration would
+        say the machine got slower when only the question changed.
         """
         return (self.cpu == other.cpu and self.threads == other.threads
                 and same_duration(self.seconds, other.seconds)
                 and self.score_version == other.score_version)
 
 
-# Las banderas que deciden qué ruta usa zlib-ng. No es una lista de curiosidades:
-# la de 256 bits (`vpclmulqdq`) es de Ice Lake y Zen 3 en adelante, así que un
-# procesador anterior usa otra y rinde distinto con la misma biblioteca.
+# The flags that decide which path zlib-ng takes. The 256-bit one
+# (`vpclmulqdq`) is Ice Lake and Zen 3 onwards, so an older processor takes
+# another and performs differently with the same library.
 #
-# Son las del procesador y no las que la biblioteca llegue a usar, que no es lo
-# mismo y conviene no leerlo mal: con una zlib clásica debajo no se usa
-# ninguna, porque no lleva ninguna dentro. Se guardan igualmente, y juntas con
-# la versión: la pareja se interpreta, cada mitad por su cuenta no.
+# They are the processor's, not those the library ends up using: with a
+# classic zlib underneath none is used, as it carries none. Kept anyway, and
+# together with the version: the pair can be interpreted, each half alone
+# can't.
 SIMD_FLAGS = ("vpclmulqdq", "pclmulqdq", "avx2")
 
 
 def _zlib_version() -> Optional[str]:
-    """Qué biblioteca de compresión hay debajo, que no es la misma en todas
-    las distribuciones: CachyOS y Fedora traen zlib-ng, y Debian, Ubuntu,
-    Arch y openSUSE la clásica."""
+    """Which compression library is underneath, which differs between
+    distributions: CachyOS and Fedora ship zlib-ng; Debian, Ubuntu, Arch and
+    openSUSE the classic one."""
     try:
         import zlib
         return zlib.ZLIB_RUNTIME_VERSION
@@ -152,18 +147,18 @@ def _zlib_version() -> Optional[str]:
 
 
 def _openssl_version() -> Optional[str]:
-    """Con qué OpenSSL se midió, de la que cuelgan dos de las cargas."""
+    """The OpenSSL it was measured with, which two workloads hang from."""
     try:
         import ssl
         return ssl.OPENSSL_VERSION
     except Exception:                                  # noqa: BLE001
-        # Un Python compilado sin `ssl` sigue midiendo: `hashlib` cae a lo que
-        # trae CPython dentro. Lo que no hay entonces es de qué informar.
+        # A Python built without `ssl` still measures: `hashlib` falls back
+        # on what CPython carries. There's just nothing to report then.
         return None
 
 
 def _simd_flags() -> tuple[str, ...]:
-    """Las de `EXTENSIONES` que tenga este procesador, en ese orden."""
+    """Those of `SIMD_FLAGS` this processor has, in that order."""
     try:
         with open("/proc/cpuinfo", encoding="utf-8", errors="replace") as fh:
             for line in fh:
@@ -176,8 +171,8 @@ def _simd_flags() -> tuple[str, ...]:
 
 
 def from_result(result: Result, cpu: str, seconds: float) -> Entry:
-    # `rate` y no `operations / seconds`: donde el tamaño de una operación
-    # cambia de una máquina a otra, lo comparable son los bytes por segundo.
+    # `rate` rather than `operations / seconds`: where an operation's size
+    # varies between machines, bytes per second are what compare.
     scores = {f"{m.load}/{m.threads}": m.rate
               for m in result.measures if m.seconds}
     conditions = result.conditions
@@ -203,17 +198,17 @@ def from_result(result: Result, cpu: str, seconds: float) -> Entry:
 
 
 def _is_number(value) -> bool:
-    # `bool` es un `int` para Python, y un `true` donde va una fecha no lo es.
+    # `bool` is an `int` to Python, and a `true` where a date goes isn't one.
     return isinstance(value, (int, float)) and not isinstance(value, bool)
 
 
 def _well_formed(row: dict) -> bool:
-    """Si una entrada leída del disco se puede usar sin que reviente después.
+    """Whether an entry read from disk can be used without crashing later.
 
-    El archivo lo escribe el programa, pero vive en el disco de alguien: una
-    entrada con un campo del tipo equivocado se leía sin rechistar y
-    reventaba más tarde, al ordenar o al sumar, montando la página de
-    Rendimiento. O sea, la ventana no abría.
+    The program writes the file, but it lives on someone's disk: an entry
+    with a field of the wrong type was read without complaint and crashed
+    later, sorting or summing while building the Benchmark page, so the
+    window didn't open.
     """
     measures = row.get("scores")
     return (_is_number(row.get("timestamp"))
@@ -230,11 +225,11 @@ def _well_formed(row: dict) -> bool:
 
 
 def load() -> list[Entry]:
-    """Las pruebas guardadas, de la más reciente a la más antigua."""
+    """The saved runs, newest first."""
     try:
         raw = json.loads(history_path().read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        # `ValueError` cubre el JSON mal formado y también un UTF-8 roto.
+        # `ValueError` covers malformed JSON and broken UTF-8 too.
         return []
     if not isinstance(raw, list):
         return []
@@ -247,15 +242,15 @@ def load() -> list[Entry]:
         try:
             entries.append(Entry(**{k: v for k, v in row.items() if k in known_fields}))
         except TypeError:
-            # Una entrada de una versión con otros campos: se salta ella sola
-            # en vez de tirar el archivo entero.
+            # An entry from a version with other fields: it alone is skipped
+            # rather than dropping the whole file.
             continue
     entries.sort(key=lambda e: e.timestamp, reverse=True)
     return entries
 
 
 def save(entries: list[Entry]) -> bool:
-    """Guarda el historial. No es crítico: si falla, la prueba ya se enseñó."""
+    """Save the history. Not critical: if it fails, the run was already shown."""
     try:
         data_dir().mkdir(parents=True, exist_ok=True)
         temp_path = history_path().with_suffix(".json.tmp")
@@ -270,17 +265,17 @@ def save(entries: list[Entry]) -> bool:
 
 
 def append(entry: Entry) -> list[Entry]:
-    """Añade una prueba al historial y devuelve el historial resultante."""
+    """Add a run to the history and return the resulting history."""
     entries = [entry] + load()
     save(entries)
     return entries[:MAX_ENTRIES]
 
 
 def compare(latest: Entry, previous: list[Entry]) -> Optional[tuple[Entry, float]]:
-    """La prueba comparable más reciente y cuánto ha cambiado, en tanto por ciento.
+    """The latest comparable run and how much it changed, in percent.
 
-    Devuelve None cuando no hay con qué comparar, que es lo que pasa la
-    primera vez y cada vez que se cambia la duración de la medida.
+    None when there's nothing to compare with, as happens the first time and
+    whenever the measurement's duration changes.
     """
     total = latest.total()
     if not total:
@@ -294,18 +289,18 @@ def compare(latest: Entry, previous: list[Entry]) -> Optional[tuple[Entry, float
     return None
 
 
-# Cuánto tienen que parecerse dos puntuaciones para que su diferencia de
-# temperatura signifique algo. Si el equipo rindió un 20 % más, que esté más
-# caliente se explica solo y no hay nada que avisar.
+# How alike two scores must be for their temperature difference to mean
+# something. If the machine did 20 % more work, running hotter explains
+# itself and there's nothing to warn about.
 CLOSE_SCORE = 0.03
 
-# El salto térmico a partir del cual se dice algo. Por debajo es ruido: la
-# misma prueba dos veces seguidas ya varía un par de grados según cómo estuviera
-# el equipo antes de empezar.
+# The temperature rise worth mentioning. Below it is noise: the same run
+# twice in a row already varies a couple of degrees with how the machine was
+# before starting.
 MIN_DRIFT_C = 4.0
 
-# Cuántas pruebas viejas hacen falta para tener una referencia. Con una sola no
-# se distingue una tendencia de un día raro.
+# How many older runs make a reference. With only one, a trend can't be told
+# from an odd day.
 MIN_TO_COMPARE = 3
 
 
@@ -318,22 +313,22 @@ def _median(values: list[float]) -> float:
 
 
 def thermal_drift(latest: Entry, previous: list[Entry]) -> Optional[tuple[float, int]]:
-    """Cuánto más caliente está el equipo haciendo el mismo trabajo.
+    """How much hotter the machine runs doing the same work.
 
-    Devuelve `(grados de diferencia, cuántas pruebas hay detrás)`, o None si
-    no hay con qué comparar. Es el dato que delata pasta seca o polvo: la
-    puntuación puede aguantar mientras el ventilador compensa, y lo que sube
-    antes es la temperatura para el mismo trabajo.
+    Returns `(degrees of difference, how many runs back it)`, or None if
+    there's nothing to compare with. It is what gives away dried paste or
+    dust: the score can hold while the fan compensates, and what rises first
+    is the temperature for the same work.
 
-    Se compara contra la mediana y no contra la última: una prueba suelta
-    lanzada con el equipo ya caliente sale alta y no significa nada. Y solo
-    entran las que puntuaron parecido, porque si el equipo rindió más, que
-    esté más caliente se explica solo.
+    Compared against the median, not the latest: a lone run started with the
+    machine already warm comes out high and means nothing. And only those
+    that scored alike count, since a machine that did more work running
+    hotter explains itself.
 
-    Lo que esto no puede saber es la temperatura ambiente, que no la mide
-    ningún sensor de la máquina. Ocho grados entre febrero y agosto son
-    normales y aquí saldrían igual que ocho grados de pasta seca; por eso el
-    aviso dice lo que ve y no lo diagnostica.
+    What this can't know is the room temperature, which no sensor in the
+    machine measures. Eight degrees between February and August are normal
+    and would look the same as eight degrees of dried paste, so the warning
+    says what it sees and doesn't diagnose.
     """
     if latest.temperature_peak_c is None:
         return None
@@ -363,7 +358,7 @@ def thermal_drift(latest: Entry, previous: list[Entry]) -> Optional[tuple[float,
 
 
 def clear() -> bool:
-    """Borra el historial entero. Devuelve si había algo que borrar."""
+    """Delete the whole history. Return whether there was anything to delete."""
     try:
         history_path().unlink()
         return True
@@ -372,17 +367,17 @@ def clear() -> bool:
 
 
 def remove(timestamp: float) -> list[Entry]:
-    """Borra una prueba concreta por su marca de tiempo."""
+    """Delete one run by its timestamp."""
     kept = [e for e in load() if e.timestamp != timestamp]
     save(kept)
     return kept
 
 
 def remove_other_scales(version: int) -> list[Entry]:
-    """Borra las pruebas medidas con otra escala que `version`.
+    """Delete the runs measured on a scale other than `version`.
 
-    También las que no dicen con cuál se midieron: son de antes de que la
-    escala tuviera número. Su cifra no se puede poner al lado de las de ahora.
+    Also those that don't say which: they predate numbered scales. Their
+    figure can't sit next to today's.
     """
     kept = [e for e in load() if e.score_version == version]
     save(kept)
@@ -390,7 +385,7 @@ def remove_other_scales(version: int) -> list[Entry]:
 
 
 def rename(timestamp: float, label: str) -> list[Entry]:
-    """Le pone (o le quita) el nombre a una prueba."""
+    """Name (or unname) a run."""
     entries = []
     for entry in load():
         if entry.timestamp == timestamp:

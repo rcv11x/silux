@@ -1,37 +1,24 @@
-"""Una puntuación que sí se puede comparar entre dos equipos.
+"""A score that can be compared between two machines.
 
-El historial ya guardaba una cifra por prueba, pero su propio comentario decía
-que solo servía para ordenar pruebas del mismo equipo. Y era verdad por dos
-motivos, los dos de fondo:
+Two things make a raw figure useless for that, and both are handled here:
 
-**Sumaba operaciones por segundo de cinco cargas con magnitudes distintas.**
-En un 5800X3D la compresión pesada daba 28 494 op/s y la memoria 533, así que
-la primera pesaba el 82 % del total y las otras cuatro eran decoración. La
-«puntuación» era, en la práctica, la compresión pesada; un procesador bueno en
-lo demás y flojo en eso salía mal sin que se pudiera ver por qué.
+**Workloads of different magnitudes.** Summed as operations per second, the
+heaviest one decides: on a 5800X3D heavy compression gave 28 494 op/s and
+memory 533, so the first was 82 % of the total. Each workload is divided by
+what a reference part gives, so all of them weigh the same.
 
-**Y dependía de cuánto durase cada medida.** Tres segundos cogen el turbo
-entero y treinta lo pierden a mitad, así que la misma pieza da dos cifras muy
-distintas según lo que se le pida. Eso está bien para preguntar «¿cuánto
-aguanta este equipo?», que es para lo que se dejan elegir duraciones, y hace
-imposible poner dos pruebas cualesquiera una al lado de otra.
+**The duration of each measurement.** Three seconds get all the turbo and
+thirty lose it halfway, so the same part gives very different figures
+depending on what it is asked. Only runs at the canonical duration score.
 
-Aquí se arreglan las dos cosas. Cada carga se divide por lo que da en una
-pieza tomada como patrón, así que todas entran valiendo lo mismo, y solo se
-puntúan las pruebas hechas con la duración canónica. Lo que no cumple esas dos
-condiciones no recibe puntuación: es preferible a dar una cifra que parece
-comparable y no lo es.
+And not every workload can score: three of the five rest on a library each
+distribution builds its own way, and there the figure stops being the
+processor's. They are still measured and shown; which ones and why, in
+`SCORED_WORKLOADS`.
 
-Y hay una tercera condición, que llegó después y por el mismo motivo: **no
-toda carga puede puntuar**. Tres de las cinco se apoyan en una biblioteca que
-cada distribución compila a su manera, y ahí la cifra deja de ser del
-procesador —hasta un ×9,7 en la misma pieza según qué zlib traiga el sistema—.
-Se siguen midiendo y se enseñan, porque son buen diagnóstico; lo que no hacen
-es entrar en la puntuación. Cuáles y por qué, en `PUNTUABLES`.
-
-La fórmula lleva versión. Cambiar las referencias o las cargas cambia la
-escala de todas las puntuaciones a la vez, y una cifra vieja junto a una nueva
-diría una diferencia que no existe.
+What doesn't meet those conditions gets no score, which beats a figure that
+looks comparable and isn't. The formula carries a version: changing the
+references or the workloads moves every score at once.
 """
 
 from __future__ import annotations
@@ -42,101 +29,59 @@ import json
 import pathlib
 from typing import Optional
 
-# Sube cuando cambien las referencias, las cargas o la forma de combinarlas.
-# Una puntuación de otra versión no se compara con esta.
-#
-# La 4 cambió la compresión pesada de LZMA a bzip2. No fue por gusto: LZMA
-# saltaba entre dos velocidades separadas un 26 % y ella sola metía un 4,7 %
-# de dispersión en la puntuación de un equipo consigo mismo, con lo que dos
-# piezas que se llevaran menos de eso salían indistinguibles. El motivo largo,
-# con las cifras y lo que se probó antes de rendirse, está en `benchmark.py`.
-#
-# La 5 dejó de contar operaciones en la carga que recorre un bloque grande.
-# Ese bloque se dimensiona con la caché de cada equipo —entre 64 y 192 MB—,
-# así que una «operación» no era la misma cosa en dos máquinas: con el mismo
-# ancho de banda real, un procesador con poca caché sacaba un 42,8 % más solo
-# por recorrer un bloque más pequeño. Ahora esa carga se cuenta en bytes por
-# segundo, que no depende del tamaño (queda un 1 % residual, por debajo del
-# ruido de la propia medida, que ronda el 1,3 %). En el mismo paso, la carga
-# pasó a llamarse «verificación», porque no medía lo que su nombre decía.
-#
-# La 6 dejó fuera de la cifra las tres cargas que dependen de una biblioteca
-# del sistema. No llegó a haber una v5 publicada: se vio antes de fusionarla,
-# midiendo la misma pieza —un i5-10400— con lo que trae cada distribución, el
-# mismo día y en el mismo equipo:
-#
-#     crc32 de 64 MiB   zlib-ng 1.3.1 (Fedora)    14,9 GB/s
-#                       zlib 1.3.1 (Debian)        3,9
-#                       zlib 1.3.2 (Arch)          2,0
-#                       zlib 1.2.11 (Ubuntu)       1,5   ← la del AppImage
-#
-# Un ×9,7 que no es del procesador. La compresión se lleva un ×2,75 por lo
-# mismo y la derivación un ×1,38 entre OpenSSL 3.0 y 3.5. Sumado: el mismo
-# equipo puntuaba 716 con la zlib de Fedora y 504 con la del AppImage, un
-# 30 % que decidía la distribución y no la pieza. Y no había forma de
-# arreglarlo fijando el entorno, porque el programa se reparte también en
-# paquetes de distribución, donde cada usuario se lleva la suya.
+# Bumped when the references, the workloads or how they combine change. A
+# score from another version isn't compared with this one. What each version
+# changed and why: docs/decisiones/escala-del-benchmark.md.
 VERSION = 6
 
-# Las cargas que entran en la puntuación. No son las mejores ni las más
-# bonitas: son las que miden el procesador y no la distribución.
+# The workloads that count towards the score: those that measure the
+# processor and not the distribution.
 #
-# El criterio está medido, no supuesto. La misma pieza, tres distribuciones y
-# dos versiones mayores de OpenSSL:
+# Measured, not assumed. The same part, three distributions and two major
+# OpenSSL versions:
 #
-#     resumen criptográfico   190,05 · 190,13 · 190,17 op/s   ±0,1 %
-#     compresión pesada        99,54 · 100,96 · 102,84        ±3 %
-#     derivación de clave      123,53 · 152,12 · 170,00       ×1,38
-#     compresión                 (zlib, arriba)               ×2,75
-#     verificación               (zlib, arriba)               ×9,7
+#     digest              190.05 · 190.13 · 190.17 op/s   ±0.1 %
+#     heavy compression    99.54 · 100.96 · 102.84        ±3 %
+#     key derivation      123.53 · 152.12 · 170.00        ×1.38
+#     compression           (zlib)                        ×2.75
+#     verification          (zlib)                        ×9.7
 #
-# Las tres de fuera se siguen midiendo y enseñando, con la biblioteca que las
-# midió al lado: son buen diagnóstico, y son justamente las que delatan qué
-# hay debajo. Lo que no pueden es entrar en una cifra que se compara entre
-# equipos.
-#
-# Se probó a acercarlas usando lo que CPython trae dentro, y sale peor: su
-# sha512 interno da 55 op/s en 3.14 y 109 en 3.10 —cambió la implementación, y
-# hasta el nombre del módulo—, o sea el doble de dispersión que OpenSSL, que
-# es una sola upstream con su ensamblador y su despacho por CPUID. Y
-# `pbkdf2_hmac` ni siquiera tiene versión interna: sin OpenSSL desaparece de
-# `hashlib`, así que esa carga no se puede desatar del sistema.
-#
-# Lo que esto cuesta está escrito donde se paga: en `benchmark.py`, al lado de
-# la carga que se quedó sin sustituta.
+# The other three are still measured and shown, with the library that
+# measured them next to them: they are good diagnostics, and exactly what
+# gives away what's underneath. They just can't go into a figure compared
+# between machines. The cost is written where it's paid: in `benchmark.py`,
+# next to the workload left without a replacement.
 SCORED_WORKLOADS = ("hash", "compresion_dura")
 
-# Cuánto tiene que durar cada medida para que la prueba puntúe. Quince segundos
-# es el punto en el que la mayoría de los procesadores ya han dejado atrás el
-# turbo de arranque y todavía no llevan tanto rato como para que el resultado
-# lo decida la refrigeración de la caja. Por debajo se mide el turbo; por
-# encima, el disipador.
+# How long each measurement must last for the run to score. Fifteen seconds
+# is where most processors have left the start-up turbo behind and haven't
+# yet run long enough for the case's cooling to decide. Below it the turbo
+# is measured; above, the heatsink.
 CANONICAL_SECONDS = 15.0
 
-# Cuánto puede desviarse la duración real y seguir contando. El bucle no corta
-# en mitad de una operación, así que quince segundos pedidos salen quince y
-# pico.
+# How far the real duration may drift and still count. The loop doesn't stop
+# mid-operation, so fifteen seconds asked come out as fifteen and a bit.
 SECONDS_TOLERANCE = 1.5
 
-# Lo que saca el patrón, por definición. Una cifra redonda se lee mejor que un
-# tanto por ciento y deja sitio a las piezas que rinden más de mil.
+# What the reference part scores, by definition. A round figure reads better
+# than a percentage and leaves room for parts that do better than a thousand.
 SCALE = 1000
 
-# Las operaciones por segundo del patrón viven en un archivo de datos y no
-# aquí: son medidas, no elegidas, y rehacerlas en otro equipo no debería
-# obligar a tocar código. Guarda las cinco, porque describe al patrón entero;
-# su papel es poner en la misma escala a las que puntúan. Cambiarlas mueve
-# todas las puntuaciones a la vez, y por eso el archivo declara para qué
-# versión de la fórmula vale.
+# The reference part's operations per second live in a data file, not here:
+# they are measured, not chosen, and redoing them on another machine
+# shouldn't mean touching code. It keeps all five, describing the reference
+# part whole; its role is to put the scoring ones on one scale. Changing them
+# moves every score at once, which is why the file says which formula
+# version it is for.
 _TABLE = pathlib.Path(__file__).parent / "db" / "scores.json"
 
 
 @functools.lru_cache(maxsize=1)
 def references() -> dict:
-    """La tabla del patrón, o vacía si no está.
+    """The reference table, or empty if missing.
 
-    Sin ella no hay puntuación: es la escala. Y sin escala es preferible no
-    enseñar cifra a enseñar una que no significa lo mismo en dos equipos.
+    Without it there's no score: it is the scale. And without a scale, no
+    figure beats one that doesn't mean the same on two machines.
     """
     try:
         with _TABLE.open(encoding="utf-8") as fh:
@@ -147,21 +92,20 @@ def references() -> dict:
 
 
 def reference_machine() -> dict:
-    """Con qué equipo y en qué condiciones se tomó la escala."""
+    """Which machine, and under what conditions, the scale was taken on."""
     return references().get("patron", {})
 
 def compute(scores: dict[str, float], threads: int) -> Optional[tuple[int, int]]:
-    """La puntuación de un hilo y la de todos.
+    """The single-thread score and the all-threads one.
 
-    `scores` es lo que guarda el historial: «compresion/1» y «compresion/16»
-    con sus operaciones por segundo.
+    `scores` is what the history keeps: «compresion/1» and «compresion/16»
+    with their operations per second.
 
-    No mira la duración a propósito. Poner las cinco cargas en la misma escala
-    vale para cualquier prueba, y es mejor cifra que la suma en crudo también
-    dentro de un mismo equipo. Lo que la duración decide es otra cosa: si esta
-    cifra se puede poner al lado de la de otra máquina, y eso lo contesta
-    `comparable`. Antes se mezclaban las dos preguntas y en la misma pantalla
-    salían dos puntuaciones distintas de la misma prueba.
+    The duration is deliberately not looked at. Putting the workloads on one
+    scale is right for any run, and a better figure than the raw sum within
+    one machine too. What the duration decides is something else: whether
+    this figure can sit next to another machine's, which `comparable`
+    answers.
     """
     table = references()
     single = _combined(scores, 1, table.get("un_hilo", {}))
@@ -172,33 +116,33 @@ def compute(scores: dict[str, float], threads: int) -> Optional[tuple[int, int]]
 
 
 def comparable(seconds: float) -> bool:
-    """Si esta puntuación se puede poner al lado de la de otro equipo.
+    """Whether this score can sit next to another machine's.
 
-    Tres segundos cogen el turbo entero y treinta lo pierden a mitad, así que
-    la misma pieza da cifras distintas según lo que se le pida. Dentro de un
-    mismo equipo eso no molesta —el historial ya exige la misma duración para
-    comparar—, pero entre dos equipos sí.
+    Three seconds get all the turbo and thirty lose it halfway, so the same
+    part gives different figures depending on what it is asked. Within one
+    machine that's fine (the history already requires the same duration to
+    compare), but not between two.
     """
     return abs(seconds - CANONICAL_SECONDS) <= SECONDS_TOLERANCE
 
 
 def is_scored(workload: str) -> bool:
-    """Si esta carga entra en la puntuación.
+    """Whether this workload counts towards the score.
 
-    Vive aquí y no en `benchmark.CARGAS` porque es una decisión de la escala y
-    no de la carga: la misma prueba, medida igual, entra o no entra según lo
-    que la fórmula sepa comparar. Poner la marca en cada carga la dejaría en
-    dos sitios, y el día que se separen no lo diría nadie.
+    It lives here and not in `benchmark.CARGAS` because it is the scale's
+    decision, not the workload's: the same run, measured the same, counts or
+    not depending on what the formula can compare. A mark on each workload
+    would keep it in two places that could drift apart unnoticed.
     """
     return workload in SCORED_WORKLOADS
 
 
 def exact_multithread(scores: dict[str, float], threads: int) -> Optional[float]:
-    """La puntuación a todos los hilos, sin redondear.
+    """The all-threads score, unrounded.
 
-    Es la cifra con que el historial compara dos pruebas del mismo equipo: el
-    redondeo de `puntuar` es para enseñarla, y al comparar movería una décima
-    las diferencias pequeñas.
+    The figure the history compares two runs of the same machine by:
+    `compute` rounds for display, which would shift small differences when
+    comparing.
     """
     return _fraction(scores, threads, references().get("multihilo", {}))
 
@@ -211,16 +155,15 @@ def _combined(scores: dict[str, float], threads: int,
 
 def _fraction(scores: dict[str, float], threads: int,
               reference: dict[str, float]) -> Optional[float]:
-    """La media de las cargas puntuables, cada una contra su referencia.
+    """The mean of the scoring workloads, each against its reference.
 
-    Recorre `PUNTUABLES` y no la tabla entera: la referencia guarda las cinco
-    cargas porque describe al patrón entero, y quién puntúa lo decide la
-    fórmula. Con la tabla mandando, añadir una medida al patrón cambiaría la
-    escala sin que nadie tocara la versión.
+    It walks `SCORED_WORKLOADS`, not the whole table: the reference keeps all
+    five workloads, describing the reference part whole, and the formula
+    decides which score. If the table ruled, adding a measurement to it
+    would change the scale without anyone bumping the version.
 
-    Hacen falta todas: con una menos, la que falta se llevaría por delante la
-    comparación con cualquier prueba completa, y la cifra parecería igual de
-    válida.
+    All are needed: with one missing, the gap would skew the comparison with
+    any complete run, and the figure would look just as valid.
     """
     if not reference:
         return None
@@ -234,20 +177,20 @@ def _fraction(scores: dict[str, float], threads: int,
     return sum(fractions) / len(fractions) * SCALE
 
 
-# Cuántas medidas hacen falta para hablar de un rango. Con dos, los extremos
-# son las dos que hay y la barra diría que cualquier cosa es normal o que nada
-# lo es, según la suerte. Tres es poco y ya permite una mediana.
+# How many measurements make a range. With two, the ends are the two there
+# are, and the bar would call anything normal or nothing, by luck. Three is
+# few, and already allows a median.
 MIN_SAMPLES = 3
 
-# Cuánto se puede alejar la puntuación de la mediana de su pieza antes de que
-# merezca comentarse. Un 8 % arriba o abajo entra dentro de lo que separa a dos
-# equipos con la misma CPU: la placa, la memoria, el disipador y el gobernador.
+# How far a score may stray from its part's median before it's worth a
+# comment. 8 % either way is what separates two machines with the same CPU:
+# the board, the memory, the heatsink and the governor.
 NORMAL_MARGIN = 0.08
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class Placement:
-    """Dónde cae una puntuación entre las de su misma pieza."""
+    """Where a score falls among those of the same part."""
 
     value: int
     minimum: int
@@ -257,10 +200,10 @@ class Placement:
 
     @property
     def fraction(self) -> float:
-        """Dónde ponerla en la barra, de 0 a 1.
+        """Where to put it on the bar, from 0 to 1.
 
-        Se recorta a los extremos: una pieza que rinda por encima de todo lo
-        registrado tiene que verse al final de la barra, no fuera de ella.
+        Clamped to the ends: a part beating everything recorded must show at
+        the end of the bar, not past it.
         """
         if self.maximum <= self.minimum:
             return 0.5
@@ -269,7 +212,7 @@ class Placement:
 
     @property
     def deviation(self) -> float:
-        """Cuánto se aparta de la mediana, en tanto por uno."""
+        """How far it is from the median, as a fraction."""
         return (self.value - self.median) / self.median if self.median else 0.0
 
     @property
@@ -279,12 +222,12 @@ class Placement:
 
 def compare(cpu: str, value: int,
              multithread: bool = True) -> Optional[Placement]:
-    """Dónde cae esta puntuación entre las conocidas de la misma pieza.
+    """Where this score falls among the known ones for the same part.
 
-    Devuelve `None` cuando no se sabe nada de esa CPU, que hoy es casi
-    siempre: la tabla arranca con lo poco que se ha medido y se llena con lo
-    que vaya llegando. Es mejor no decir nada que situar a alguien respecto de
-    dos medidas sueltas.
+    `None` when nothing is known about that CPU, which today is almost
+    always: the table starts with the little measured so far and fills as
+    more comes in. Saying nothing beats placing someone against two lone
+    measurements.
     """
     part = references().get("piezas", {}).get(cpu)
     if not part:
@@ -305,6 +248,6 @@ def compare(cpu: str, value: int,
 
 
 def known_parts() -> int:
-    """Cuántas piezas tienen medidas suficientes para comparar."""
+    """How many parts have enough measurements to compare."""
     return sum(1 for p in references().get("piezas", {}).values()
                if len(p.get("multihilo", [])) >= MIN_SAMPLES)
