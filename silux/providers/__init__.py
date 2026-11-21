@@ -26,6 +26,7 @@ from .thermal_throttle import ThermalThrottleCounts
 from .devices import ConnectedDevices
 from .pci import PciDevices, PlatformInfo
 from .system import SystemIdentity, SystemSecurity, SystemState
+from .system_deps import SystemDependencies
 from .turbo import TurboState
 
 __all__ = [
@@ -36,5 +37,5 @@ __all__ = [
     "Batteries",
     "DrmGpus", "GpuState", "GpuApis", "NvidiaGpus", "NetworkInterfaces",
     "ConnectedDevices", "CpuIdle", "ThermalThrottleCounts", "PowerLimits", "PciDevices", "PlatformInfo",
-    "SystemIdentity", "SystemSecurity", "SystemState", "PrivilegedMemory", "SpdModules", "Disks",
+    "SystemIdentity", "SystemSecurity", "SystemState", "SystemDependencies", "PrivilegedMemory", "SpdModules", "Disks",
 ]

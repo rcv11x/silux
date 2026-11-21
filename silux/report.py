@@ -29,6 +29,8 @@ MOTIVOS = {
     Need.DRIVER: "falta un módulo del kernel",
     Need.PLATFORM: "no aplica a esta plataforma",
     Need.ERROR: "falló al leerse",
+    Need.KERNEL: "el kernel es anterior al dato",
+    Need.PACKAGE: "falta un paquete del sistema",
 }
 
 

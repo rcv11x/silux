@@ -39,6 +39,7 @@ NEED_TITLES = {
     Need.ROOT: "note.needsroot",
     Need.DATABASE: "note.database",
     Need.HARDWARE: "note.hardware",
+    Need.PACKAGE: "note.package",
     Need.DRIVER: "note.needsmodule",
     Need.PLATFORM: "note.platform",
     Need.ERROR: "note.failed",

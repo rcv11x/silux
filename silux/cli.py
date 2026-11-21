@@ -28,6 +28,8 @@ NEED_LABELS = {
     Need.DRIVER: "falta un driver",
     Need.PLATFORM: "no aplica aquí",
     Need.ERROR: "falló al leerse",
+    Need.KERNEL: "kernel anterior al dato",
+    Need.PACKAGE: "falta un paquete",
 }
 
 

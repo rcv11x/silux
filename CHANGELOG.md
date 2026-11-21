@@ -85,6 +85,13 @@ que hace falta.
 - Nuevo: «Gracias a» en Ajustes → Acerca de y en el README, con quien manda
   informes y ha dado permiso para salir.
 
+### Sistema
+
+- Nuevo: si falta algo del sistema que este equipo necesita (`pci.ids`,
+  NVML, las bibliotecas gráficas, pkexec, el Python del sistema…), se dice
+  en Diagnóstico y en su página, con el paquete de su distribución. La lista
+  entera, con lo que da cada cosa, en `docs/dependencias.md`.
+
 ### Permisos
 
 - El ayudante lee la energía y los contadores de la gráfica y de la memoria

@@ -29,6 +29,7 @@ class Need(str, Enum):
     PLATFORM = "platform"    # no aplica a esta arquitectura
     ERROR = "error"          # falló al leerse; esto es un fallo nuestro
     KERNEL = "kernel"        # el kernel de este equipo es anterior al dato
+    PACKAGE = "package"      # a package of the system is not installed (system_deps)
 
 
 @dataclass(frozen=True, slots=True)

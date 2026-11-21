@@ -52,6 +52,7 @@ from .providers import (
     PciDevices,
     PlatformInfo,
     PowerLimits,
+    SystemDependencies,
     SystemIdentity,
     SystemSecurity,
     SystemState,
@@ -75,6 +76,7 @@ DEFAULT_PROVIDERS: tuple[type[Provider], ...] = (
     DmiBoard,           # da el nombre de la placa, que usa el árbol de sensores
     DrmGpus,            # enumera las gráficas antes de que nadie las consulte
     GpuApis,            # y después les pregunta a OpenGL, Vulkan y OpenCL
+    SystemDependencies,  # what the system lacks, saying it for the two above
     SystemIdentity,
     SystemSecurity,     # mitigaciones y arranque: una vez
     PlatformInfo,       # IOMMU, virtualización y los chips de la placa

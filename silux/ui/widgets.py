@@ -1547,6 +1547,8 @@ NEED_TONES = {
     Need.DRIVER: "action",
     Need.DATABASE: "action",
     Need.HARDWARE: "idle",
+    # Fixable: installing a package.
+    Need.PACKAGE: "action",
     Need.PLATFORM: "idle",
     Need.ERROR: "bad",
     # Tiene arreglo, pero no desde aquí: actualizar el kernel.
