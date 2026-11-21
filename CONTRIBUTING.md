@@ -23,6 +23,7 @@ before publishing. Its annex lets us replay your machine in the tests.
 uv sync --extra gui
 QT_QPA_PLATFORM=offscreen uv run pytest -n auto -m "not a_solas"
 QT_QPA_PLATFORM=offscreen uv run pytest -m a_solas
+uvx pre-commit install       # ruff on every commit, as CI runs it
 ```
 
 The floor is Python 3.10: passing on a recent Python says nothing about

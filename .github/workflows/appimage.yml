@@ -89,6 +89,14 @@ jobs:
       - name: Comprobar la privacidad
         run: python tools/comprobar_privacidad.py
 
+      # Pyflakes and the import order, as pyproject.toml sets them; the same
+      # version as .pre-commit-config.yaml.
+      - name: Comprobar el código con ruff
+        if: matrix.paquete == 'normal'
+        run: |
+          python -m pip install ruff==0.17.6
+          ruff check silux tools tests
+
       - name: Instalar lo que Qt necesita para arrancar
         run: |
           sudo apt-get update -qq
@@ -104,6 +112,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install --group dev "$(python tools/build_appimage.py --pyside-range ${{ matrix.paquete == 'compat' && '--compat' || '' }})"
           python -c 'import PySide6, sys; print("Python", sys.version.split()[0], "· PySide6", PySide6.__version__)'
+
+      # Informative only: the code is not typed through yet. Its count says
+      # whether a change made it better or worse.
+      - name: mypy (informativo)
+        if: matrix.paquete == 'normal'
+        continue-on-error: true
+        run: |
+          python -m pip install mypy==2.4.1
+          mypy silux --ignore-missing-imports
 
       # Si fallan, cada fallo sale como anotación además de en el registro. El
       # registro pide autenticación para leerse y las anotaciones no, así que

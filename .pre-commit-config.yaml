@@ -1,0 +1,7 @@
+# pre-commit install, once: ruff checks what is about to be committed with the
+# rules in pyproject.toml. The same version runs in CI.
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.6
+    hooks:
+      - id: ruff-check
