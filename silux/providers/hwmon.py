@@ -378,7 +378,8 @@ class HwmonSensors(Provider):
         if self.available():
             return None
         return ("sensors", Need.DRIVER,
-                _("prov.hwmon.nochips"), _("prov.hwmon.nochips.hint"))
+                _("prov.hwmon.nochips"), _("prov.hwmon.nochips.hint"), "",
+                _("prov.hwmon.nochips.detail"))
 
     def collect(self, draft: Draft) -> None:
         cpu_name = short_brand(draft.types[next(iter(draft.types), "")].get("brand")
@@ -615,6 +616,9 @@ class HwmonSensors(Provider):
                 unlabelled.append(sensor.value)
 
         package = die or package
+        if package:
+            # The package's own sensor, which a GPU inside it shares.
+            draft.cpu_extra["package_sensor_temp_c"] = round(max(package), 1)
         if not package and not per_core:
             package = unlabelled            # chips de un solo sensor, como acpitz
 

@@ -76,7 +76,11 @@ class TestEnLasTresPaginas(unittest.TestCase):
         from silux.i18n import _
 
         ficha = self._ficha_de_graficos(self._ventana(INTEL))
-        self.assertFalse(ficha.tile_temp.isVisible())
+        # Its own it has none; the package's, named as that, is no dash.
+        from silux import render
+        self.assertTrue(ficha.tile_temp.isVisible())
+        self.assertEqual(ficha.tile_temp.caption.text(), _("gpu.tile.temp.package"))
+        self.assertNotEqual(ficha.tile_temp.value.text(), render.DASH)
         self.assertFalse(ficha.sensors._values[_("gpu.sensor.hotspot")].isVisible())
         # En esta integrada «Consumo y temperaturas» no tiene nada propio y
         # se va: su explicación queda debajo de la fila de tarjetas.

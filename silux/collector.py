@@ -240,14 +240,15 @@ class Collector:
                 draft.note(
                     provider.provides or provider.name,
                     Need.ROOT,
-                    _("prov.denied").format(ruta=_ruta_de(exc)),
-                    _("prov.denied.hint"),
+                    _("prov.denied"),
+                    detail=_("prov.denied.detail").format(ruta=_ruta_de(exc)),
                 )
             except (FileNotFoundError, NotADirectoryError) as exc:
                 draft.note(
                     provider.provides or provider.name,
                     Need.HARDWARE,
-                    _("prov.missing").format(ruta=_ruta_de(exc)),
+                    _("prov.missing"),
+                    detail=_("prov.missing.detail").format(ruta=_ruta_de(exc)),
                 )
             except Exception as exc:                      # noqa: BLE001
                 draft.note(

@@ -211,8 +211,8 @@ class TestLoQueNoSeTraduce(unittest.TestCase):
         while creciendo:
             antes = len(nombres)
             # La semilla se rehace en cada vuelta: una tabla puede estar
-            # escrita con el nombre de otra dentro, como INTEL_AVISOS, que
-            # reutiliza INTEL_SIN_TEMPERATURA en dos de sus tres filas.
+            # escrita con el nombre de otra dentro: una fila de una tabla que
+            # es la constante de otra.
             nombres |= {n for n, v in asignados.items()
                         if isinstance(v, (ast.Dict, ast.Tuple, ast.List,
                                           ast.Constant))

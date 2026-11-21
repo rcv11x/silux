@@ -80,8 +80,8 @@ class CpuidIdentity(Provider):
             return ("cpu.identity", Need.PLATFORM,
                     _("prov.cpuid.notx86"), _("prov.cpuid.notx86.hint"))
         return ("cpu.identity", Need.PLATFORM,
-                _("prov.cpuid.failed").format(error=self._error),
-                _("prov.cpuid.failed.hint"))
+                _("prov.cpuid.failed"), _("prov.cpuid.failed.hint"), "",
+                _("prov.cpuid.failed.detail").format(error=self._error))
 
     def collect(self, draft: Draft) -> None:
         reader = self._reader

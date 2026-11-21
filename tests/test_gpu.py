@@ -573,16 +573,17 @@ class TestCentinelasDelEnlace(unittest.TestCase):
 
 
 class TestAvisoDeIntel(unittest.TestCase):
-    def test_los_tres_avisos_dicen_lo_de_la_temperatura(self):
-        # Es lo único que una Intel no da por ningún camino: el nodo DRM no
-        # trae hwmon y su PMU no tiene evento térmico.
+    def test_la_temperatura_se_dice_una_vez_y_aparte(self):
+        # The one thing an Intel integrated card has no way to give. It is
+        # said by its own note, with the package's when there is one
+        # (tests/test_igpu_temperature.py), not again in each usage notice.
         from silux.providers.drm import INTEL_AVISOS
 
         # La tabla lleva claves, no frases: se traducen aquí, porque lo
         # que hay que vigilar es lo que acaba leyendo el usuario.
-        for clave, (mensaje, pista) in INTEL_AVISOS.items():
+        for clave, (mensaje, pista, detalle) in INTEL_AVISOS.items():
             with self.subTest(clave=clave):
-                self.assertIn("temperatura", _(mensaje))
+                self.assertNotIn("temperatura", _(mensaje))
                 self.assertTrue(_(pista))
 
     def test_solo_el_de_permisos_promete_uso_y_consumo(self):
@@ -1859,8 +1860,8 @@ class TestLasArc(BancoDrm):
         self.assertEqual(gpu.memory_temp_c, 60.0)
         self.assertFalse(gpu.no_temperature_sensor)
         textos = " ".join(n.message for n in draft.notes)
-        self.assertNotIn(_("prov.drm.inteltemp"), textos)
-        self.assertNotIn("no publica su temperatura", textos)
+        self.assertNotIn(_("gpu.temp.none.note"), textos)
+        self.assertNotIn(_("gpu.temp.package.note"), textos)
 
     def test_sin_hwmon_sigue_sin_temperatura(self):
         self.tarjeta(0, ranura="0000:00:02.0", vendor="0x8086", device="0x9bc8")

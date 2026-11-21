@@ -27,6 +27,9 @@ class TestLaPaginaDeGraficos(unittest.TestCase):
     def setUpClass(cls):
         cls.app = qt.app()
         cls.fotos = {n: foto(EQUIPOS / n)[0] for n in ("5800x3d", "i5-10400")}
+        # An Intel with no temperature at all: coretemp not loaded.
+        from tests.test_igpu_temperature import photo
+        cls.fotos["i5-10400 sin coretemp"] = photo("i5-10400", without_coretemp=True)
 
     def _ficha(self, equipo):
         from silux.settings import Preferences
@@ -80,7 +83,7 @@ class TestLaPaginaDeGraficos(unittest.TestCase):
         su celda se quedaba reservada, vacía, entre Frecuencia y Consumo."""
         from silux.ui.widgets import StatTile
 
-        ficha = self._ficha("i5-10400")
+        ficha = self._ficha("i5-10400 sin coretemp")
         self.assertFalse(ficha.tile_temp.isVisible())
         fichas = sorted((f for f in ficha.findChildren(StatTile) if f.isVisible()),
                         key=lambda f: f.mapTo(ficha, f.rect().topLeft()).x())
@@ -289,7 +292,8 @@ class TestLaPaginaDeGraficos(unittest.TestCase):
         self.assertEqual(ficha.now.visible_rows(),
                          ["Render / 3D", "Video (codificar y decodificar)",
                           "Mejora de video", "Copia"])
-        self.assertFalse(ficha.tile_temp.isVisible())
+        # Its temperature is the package's, named as that.
+        self.assertEqual(ficha.tile_temp.caption.text(), _("gpu.tile.temp.package"))
         self.assertTrue(ficha.tile_usage.isVisible())
 
 

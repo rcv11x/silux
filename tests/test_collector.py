@@ -38,7 +38,9 @@ class TestExcepciones(unittest.TestCase):
     def test_un_permiso_denegado_pide_permisos(self):
         nota = _nota_de(PermissionError(13, "Permission denied", "/sys/class/net"))
         self.assertEqual(nota.need, Need.ROOT)
-        self.assertIn("/sys/class/net", nota.message)
+        # The path, for the report; on screen, plain words.
+        self.assertIn("/sys/class/net", nota.detail)
+        self.assertNotIn("/sys", nota.message)
 
     def test_y_no_dice_que_la_plataforma_no_aplique(self):
         """Salía así en un aarch64 enjaulado: hasta la red «no aplicaba»."""
@@ -48,7 +50,8 @@ class TestExcepciones(unittest.TestCase):
     def test_un_fichero_que_no_esta_es_hardware_que_no_lo_publica(self):
         nota = _nota_de(FileNotFoundError(2, "No such file", "/sys/class/hwmon"))
         self.assertEqual(nota.need, Need.HARDWARE)
-        self.assertIn("/sys/class/hwmon", nota.message)
+        self.assertIn("/sys/class/hwmon", nota.detail)
+        self.assertNotIn("/sys", nota.message)
 
     def test_lo_demas_es_un_fallo_nuestro_y_se_dice(self):
         nota = _nota_de(ValueError("me he liado"))

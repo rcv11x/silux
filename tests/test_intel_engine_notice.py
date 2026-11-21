@@ -77,7 +77,7 @@ def _photo(events, helper):
 
 
 def _notice(photo):
-    return next(n for n in photo.notes if n.path == "gpus.0")
+    return next((n for n in photo.notes if n.path == "gpus.0"), None)
 
 
 class TestTheNoticeOfAnIntelsEngines(unittest.TestCase):
@@ -92,7 +92,8 @@ class TestTheNoticeOfAnIntelsEngines(unittest.TestCase):
             next(p for p in collector.providers if isinstance(p, GpuState)).client = helper
             try:
                 collector.snapshot()
-                self.assertEqual(_notice(collector.snapshot()).need, Need.HARDWARE)
+                # Read, there is nothing about its usage to say.
+                self.assertIsNone(_notice(collector.snapshot()))
                 helper._allowed = False
                 photo = collector.snapshot()
             finally:
@@ -107,7 +108,7 @@ class TestTheNoticeOfAnIntelsEngines(unittest.TestCase):
     def test_its_counters_came_back(self):
         photo = _photo(WITH_ENGINES, Helper())
         self.assertIsNotNone(photo.gpus[0].busy_percent)
-        self.assertEqual(_notice(photo).hint, _("prov.drm.intelhw.hint"))
+        self.assertIsNone(_notice(photo))
 
     def test_only_the_energy_came_back(self):
         # The LOQ's case: the kernel publishes them and they did not come.
@@ -134,7 +135,7 @@ class TestTheNoticeOfAnIntelsEngines(unittest.TestCase):
             ventana.select_section("Gráficos")
             textos = " ".join(pantalla.textos_de(ventana.graphics_page))
         self.assertIn(_("prov.drm.intelunopened.hint"), textos)
-        self.assertNotIn(_("prov.drm.intelhw.hint"), textos)
+        self.assertNotIn(_("prov.drm.intelroot"), textos)
 
 
 if __name__ == "__main__":

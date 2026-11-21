@@ -37,7 +37,8 @@ class CpuUsage(Provider):
         if self.available():
             return None
         return ("cpu.usage_percent", Need.PLATFORM,
-                _("prov.procfs.nostat"), "")
+                _("prov.procfs.nostat"), "", "",
+                _("prov.missing.detail").format(ruta="/proc/stat"))
 
     def collect(self, draft: Draft) -> None:
         current = self._read()

@@ -74,7 +74,6 @@ DRIVERS_CIEGOS = {
 # en los Intel de sobremesa parecía ser el plano de la gráfica— y no lo es: se
 # queda clavado en 3,2 W mientras el reloj del motor gráfico va de 350 a
 # 1050 MHz. Habría sido un dato creíble y falso.
-INTEL_SIN_TEMPERATURA = "prov.drm.inteltemp"
 
 # El uso y el consumo sí existen, pero solo como contadores del kernel. Los lee
 # el ayudante privilegiado, el mismo que ya pide permisos una vez para los
@@ -84,11 +83,15 @@ INTEL_SIN_TEMPERATURA = "prov.drm.inteltemp"
 # Es un cerrojo de todo el sistema —a 0 cualquier proceso sin privilegios puede
 # perfilar la máquina entera—, y bajarlo para ver un porcentaje no compensa.
 # Comprobado además que el valor intermedio, 1, tampoco sirve.
+#
+# The temperature is not here: DerivedSensors says it, with the package's.
+# With its counters read ("hardware") nothing is missing to say.
 INTEL_AVISOS = {
-    "root": ("prov.drm.intelroot", "prov.drm.intelroot.hint"),
-    "driver": (INTEL_SIN_TEMPERATURA, "prov.drm.inteldriver.hint"),
-    "hardware": (INTEL_SIN_TEMPERATURA, "prov.drm.intelhw.hint"),
-    "unopened": (INTEL_SIN_TEMPERATURA, "prov.drm.intelunopened.hint"),
+    "root": ("prov.drm.intelroot", "prov.drm.intelroot.hint", ""),
+    "driver": ("prov.drm.inteldriver", "prov.drm.inteldriver.hint",
+               "prov.drm.inteldriver.detail"),
+    "unopened": ("prov.drm.intelunopened", "prov.drm.intelunopened.hint",
+                 "prov.drm.intelunopened.detail"),
 }
 
 # Where the kernel publishes each PMU and its events; readable without
@@ -170,7 +173,8 @@ class DrmGpus(Provider):
         if self.available():
             return None
         return ("gpus", Need.PLATFORM,
-                _("prov.drm.nosysfs"), _("prov.drm.nosysfs.hint"))
+                _("prov.drm.nosysfs"), _("prov.drm.nosysfs.hint"), "",
+                _("prov.missing.detail").format(ruta=SYS_DRM))
 
     def collect(self, draft: Draft) -> None:
         nodos = tarjetas()
@@ -708,19 +712,19 @@ class GpuState(Provider):
             # (F-M21): the permissions are missing again.
             clave = "root"
         elif self._pmu_ok and pmu in self._pmu_leidos:
-            clave = "hardware"
+            return
         elif self._pmu_ok or self._pmu_mudo:
             clave = "unopened" if _pmu_publicado(pmu) else "driver"
         else:
             clave = "root"
-        draft.note(f"gpus.{indice}", NEED_INTEL[clave],
-                   *(_(k) for k in INTEL_AVISOS[clave]),
-                   what=_("what.gpu.usage") if clave == "root" else "")
+        mensaje, ayuda, detalle = (_(k) if k else "" for k in INTEL_AVISOS[clave])
+        draft.note(f"gpus.{indice}", NEED_INTEL[clave], mensaje, ayuda,
+                   what=_("what.gpu.usage") if clave == "root" else "",
+                   detail=detalle.format(pmu=pmu or "?"))
 
 
 # The kernel not publishing a card's counters is not a module to load.
-NEED_INTEL = {"root": Need.ROOT, "driver": Need.HARDWARE, "hardware": Need.HARDWARE,
-              "unopened": Need.ERROR}
+NEED_INTEL = {"root": Need.ROOT, "driver": Need.HARDWARE, "unopened": Need.ERROR}
 
 
 def _pmu_publicado(nombre: str) -> bool:

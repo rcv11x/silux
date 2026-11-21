@@ -34,6 +34,14 @@ que hace falta.
   en reposo.
 - Una gráfica dormida dice «en reposo» en la ficha, en la gráfica y en el
   informe, no «0 MHz».
+- Una gráfica integrada de Intel no tiene sensor de temperatura propio (i915
+  y xe solo lo dan en las dedicadas). Ahora Gráficos enseña la del paquete,
+  como «Temperatura del paquete, compartida con la CPU»; nunca como la de la
+  gráfica, ni en Sensores ni en el informe. Sin sensor del paquete, como
+  antes.
+- Los avisos dicen las cosas en lenguaje normal: ni nodos, ni hwmon, ni
+  rutas en pantalla. El detalle técnico va al informe, junto a cada dato que
+  falta.
 
 ### Memoria
 

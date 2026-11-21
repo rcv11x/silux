@@ -628,7 +628,7 @@ def _diagnostico(snapshot: Snapshot) -> str:
         lineas.append("")
         for nota in snapshot.notes:
             lineas.append(f"- `{nota.path}` ({MOTIVOS.get(nota.need, nota.need.value)}): "
-                          f"{nota.message}")
+                          f"{nota.message}" + (f" ({nota.detail})" if nota.detail else ""))
     else:
         lineas.append("Sin datos ausentes: todo lo que el equipo expone se ha leído.")
     return "\n".join(lineas)

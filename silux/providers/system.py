@@ -319,7 +319,8 @@ class SystemState(Provider):
         if self.available():
             return None
         return ("system.memory", Need.PLATFORM,
-                _("prov.sys.nomeminfo"), "")
+                _("prov.sys.nomeminfo"), "", "",
+                _("prov.missing.detail").format(ruta="/proc/meminfo"))
 
     def collect(self, draft: Draft) -> None:
         uptime = self._uptime()

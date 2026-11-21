@@ -708,7 +708,7 @@ class GpuSection(QWidget):
         # la página. Queda dicho al pie de «Consumo y temperaturas». Se deriva
         # de lo que ya decidió `no_aplica` en vez de repetir aquí la condición.
         self.tile_temp.setVisible(not ((gpu.no_temperature_sensor or gpu.virtual)
-                                       and gpu.temp_c is None))
+                                       and gpu.temp_c is None and gpu.package_temp_c is None))
         self.tile_power.setVisible("gpu.tile.power" not in ocultos["sensors"])
         # An emulated device has no usage or clock to follow either.
         self.tile_usage.setVisible(not gpu.virtual)
@@ -875,15 +875,24 @@ class GpuSection(QWidget):
         else:
             self.tile_clock.set_detail("")
 
-        temperatura = gpu.temp_c
+        # Without a sensor of its own, the package's, said to be that.
+        del_paquete = gpu.temp_c is None and gpu.package_temp_c is not None
+        temperatura = gpu.package_temp_c if del_paquete else gpu.temp_c
         if self._prefs.fahrenheit and temperatura is not None:
             temperatura = temperatura * 9 / 5 + 32
         self.tile_temp.set_unit("°F" if self._prefs.fahrenheit else "°C")
         self.tile_temp.update_value(render.figure(temperatura), temperatura)
-        self.tile_temp.set_detail(
-            _("gpu.tile.hotspot").format(valor=render.temperature(
-                gpu.hotspot_c, self._prefs.fahrenheit))
-            if gpu.hotspot_c is not None else "")
+        # Named as the package's, so neither the figure nor the report can be
+        # read as the GPU's own; and back to its name if it gets a sensor.
+        self.tile_temp.set_label(_("gpu.tile.temp.package") if del_paquete
+                                 else _("gpu.tile.temp"))
+        if del_paquete:
+            self.tile_temp.set_detail(_("gpu.tile.package"))
+        else:
+            self.tile_temp.set_detail(
+                _("gpu.tile.hotspot").format(valor=render.temperature(
+                    gpu.hotspot_c, self._prefs.fahrenheit))
+                if gpu.hotspot_c is not None else "")
 
         if gpu.power_w is None and candado is not None:
             self.tile_power.set_locked(_("lock.detail"), render.lock_tooltip(candado))

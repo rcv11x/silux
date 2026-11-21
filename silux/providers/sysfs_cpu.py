@@ -85,7 +85,8 @@ class SysfsTopology(Provider):
         if self.available():
             return None
         return ("cpu.topology", Need.PLATFORM,
-                _("prov.cpu.nosysfs"), _("prov.cpu.nosysfs.hint"))
+                _("prov.cpu.nosysfs"), _("prov.cpu.nosysfs.hint"), "",
+                _("prov.missing.detail").format(ruta="/sys/devices/system/cpu"))
 
     def collect(self, draft: Draft) -> None:
         draft.capabilities.add("sysfs-cpu")

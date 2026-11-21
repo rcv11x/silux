@@ -17,7 +17,7 @@ from __future__ import annotations
 from typing import Optional
 
 from ..i18n import _
-from ..model import DeviceKind, Sensor, SensorKind, short_brand, thread_name
+from ..model import DeviceKind, Need, Sensor, SensorKind, short_brand, thread_name
 from .base import Draft, Provider
 
 
@@ -40,6 +40,7 @@ class DerivedSensors(Provider):
     provides = "sensors.derived"
 
     def collect(self, draft: Draft) -> None:
+        self._shared_package(draft)
         if not draft.types:
             # Aun sin procesador identificado, las gráficas pueden tener datos.
             draft.sensors.extend(self._graphics(draft))
@@ -52,6 +53,26 @@ class DerivedSensors(Provider):
         draft.sensors.extend(self._usage(draft, device))
         draft.sensors.extend(self._graphics(draft))
         draft.sensors.extend(self._network(draft))
+
+    @staticmethod
+    def _shared_package(draft: Draft) -> None:
+        """An Intel GPU inside the processor has no temperature sensor: i915
+        and xe register hwmon only on dedicated cards. It is given the
+        package's, which it shares with the CPU, labelled as that; it never
+        becomes its `temp_c`, so neither Sensores nor the alerts take it for
+        the GPU's. Without a package sensor it has none, and says so."""
+        grados = draft.cpu_extra.get("package_sensor_temp_c")
+        for indice, gpu in enumerate(draft.gpus):
+            if not (gpu.get("integrated") and gpu.get("no_temperature_sensor")
+                    and gpu.get("temp_c") is None):
+                continue
+            gpu["package_temp_c"] = grados
+            if grados is None:
+                draft.note(f"gpus.{indice}.temp_c", Need.HARDWARE, _("gpu.temp.none.note"),
+                           detail=_("gpu.temp.detail"))
+            else:
+                draft.note(f"gpus.{indice}.temp_c", Need.HARDWARE, _("gpu.temp.package.note"),
+                           detail=_("gpu.temp.detail.package"))
 
     @staticmethod
     def _network(draft: Draft) -> list[Sensor]:

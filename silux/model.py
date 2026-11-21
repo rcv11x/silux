@@ -47,6 +47,9 @@ class Note:
     # It needs permissions and the installed helper is from another version:
     # what fixes it is updating the helper, not giving permissions.
     helper_outdated: bool = False
+    # Where it was looked for (a path, a driver's register, a PMU): for the
+    # report, never on screen, where a message is said in plain words.
+    detail: str = ""
 
 
 # --------------------------------------------------------------------------
@@ -1177,6 +1180,9 @@ class Gpu:
     # lo mismo que no haberla podido leer, y se pinta distinto: lo que no
     # existe se esconde y se nombra al pie, no se deja con un guion.
     no_temperature_sensor: bool = False
+    # Such a card inside the processor: the temperature of the package it
+    # shares with the CPU. Never its own, and never shown as if it were.
+    package_temp_c: Optional[float] = None
     # Emulated by a hypervisor (QEMU's VGA, virtio, VMware's SVGA…): no
     # silicon, memory, clocks or sensors of its own.
     virtual: bool = False

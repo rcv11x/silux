@@ -136,7 +136,8 @@ class Batteries(Provider):
         if self.available():
             return None
         return ("batteries", Need.PLATFORM,
-                _("prov.bat.nosysfs"), _("prov.bat.nosysfs.hint"))
+                _("prov.bat.nosysfs"), _("prov.bat.nosysfs.hint"), "",
+                _("prov.missing.detail").format(ruta="/sys/class/power_supply"))
 
     def collect(self, draft: Draft) -> None:
         if not sysroot.ruta(POWER_SUPPLY).is_dir():
