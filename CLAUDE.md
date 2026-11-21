@@ -40,6 +40,8 @@ python3 tools/montar_equipo.py NOMBRE ORDEN…  # ejecutar algo con un volcado m
 python3 tools/importar_informe.py INFORME NOMBRE  # el anexo del informe de alguien, a volcado
 python3 tools/update_screen_references.py  # rehacer lo que enseña cada volcado (y revisar el diff)
 python3 tools/comprobar_privacidad.py  # antes de publicar nada
+python3 tools/dump_fingerprint.py --save     # el JSON y el informe de cada volcado, antes de un cambio
+python3 tools/dump_fingerprint.py --compare  # y después: tienen que salir idénticos
 python3 tools/medir_consumo.py         # lo que gasta, contra sus objetivos (regla 7)
 python3 tools/capturas_readme.py       # las capturas del README, con permisos
 python3 tools/build_appimage.py --container   # el AppImage que se reparte
@@ -113,6 +115,8 @@ No son preferencias de estilo: cada una viene de un problema concreto.
    esconder la sección; cada página enseña solo sus notas. Y lo que no existe
    en este hardware no se pinta con guion: se esconde y se nombra al pie. Lo
    que falta por permisos lleva candado, que es otro estado: tiene arreglo.
+   Un fallo de nuestro código no se explica como algo que el equipo no
+   tiene: es un error, y el informe lleva su traza (`silux/failures.py`).
 6. **Los widgets que se refrescan a menudo reutilizan.** `ChipRow` y `Table`
    reescriben el texto de lo que ya existe; hay tests que lo vigilan.
 7. **Presupuesto: 300 MB de memoria, y de CPU, en el 5800X3D y para la
@@ -209,6 +213,7 @@ silux/
 ├─ model.py        dataclasses congeladas: Snapshot, CpuType, Sensor, Board…
 ├─ render.py       ÚNICO sitio donde un valor se convierte en texto
 ├─ collector.py    orquesta los proveedores; su orden importa y está comentado
+├─ failures.py     los fallos de nuestro código, con su traza, para el informe
 ├─ cli.py          volcado en terminal, JSON, sensores e informe
 ├─ report.py       informe en Markdown para reportar fallos
 ├─ privacidad.py   qué identifica a alguien: lo usan el informe y las capturas
@@ -269,12 +274,13 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
   que no dependen de la zlib de cada distribución. `score.VERSION` y
   `db/scores.json` van siempre en el mismo commit. [docs/benchmark.md](docs/benchmark.md)
 - Qué se ha validado contra qué pieza y qué se escribió a ciegas (NVIDIA sí,
-  ARM no): [docs/equipos-probados.md](docs/equipos-probados.md). Hay seis
+  ARM no): [docs/equipos-probados.md](docs/equipos-probados.md). Hay siete
   equipos volcados para la suite: dos del i5-10400 (en reposo y con turbo),
   el Ryzen 7 5800X3D, una máquina QEMU/KVM como la de un probador
-  (`qemu-kvm`, hecha aquí con QEMU), y dos importados del anexo de un
-  informe: el ThinkPad T14 del autor (`i5-1135g7`) y el sobremesa de un
-  probador con Gentoo, OpenRC y una RTX 4060 (`i7-10700f`).
+  (`qemu-kvm`, hecha aquí con QEMU), y tres importados del anexo de un
+  informe: el ThinkPad T14 del autor (`i5-1135g7`), un sobremesa con Gentoo,
+  OpenRC y una RTX 4060 (`i7-10700f`) y un Lenovo LOQ híbrido con una RTX
+  4050 (`i5-12450h`).
 - Lo que enseña cada volcado, página a página, está en
   `tests/fixtures/screens/`: un cambio que lo altera falla en
   `test_screen_references` hasta que se rehace con
@@ -308,7 +314,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); el código nuevo, en inglés (ver «Código»). Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-1627 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+1638 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
@@ -326,7 +332,9 @@ y nunca las dos lenguas en el mismo nombre.
 Los comentarios y docstrings nuevos, en inglés, cortos y útiles: dicen por
 qué el código es así, no repiten lo que ya se lee en él, y nada de relleno.
 «Antes…», «se probó…» o «costó…» van al mensaje del commit o a las lecciones
-de las notas.
+de las notas; un porqué que no cabe en un comentario, a `docs/decisiones/`.
+ruff (las reglas F y el orden de imports, en `pyproject.toml`) pasa en el CI
+y con `pre-commit`.
 
 **Escribe para cualquiera que lo lea: corto, directo, sin rayas ni frases
 solemnes, sin hablar de un equipo concreto; los comentarios explican el
@@ -335,8 +343,9 @@ del repositorio. «Algunos portátiles declaran SODIMM también para la memoria
 soldada», no «el T14 declara SODIMM»: el equipo concreto va en el test o en
 su fixture.
 
-Lo que ya existe no se renombra al pasar: va en el proyecto de después de la
-0.4 (`docs/pendientes.md`), módulo a módulo y con los tests como red. Sigue
+Lo que ya existe no se renombra al pasar: se pasa a inglés por zonas, cada
+una en su rama, con herramientas que entienden el código (LibCST o rope, no
+buscar y reemplazar), la huella idéntica y los tests como red. Sigue
 en español lo que lee la gente: la interfaz (`silux/db/lang/`, el original),
 el CHANGELOG y las notas de las versiones. El README va en los dos idiomas:
 `README.md` (español, el de por defecto) y `README.en.md`, con las mismas
@@ -446,6 +455,10 @@ en el mismo commit; lo que se encuentra y no se arregla, se apunta.
   cada gráfica se puede medir y de dónde sale en cada driver.
 - [docs/comprobar.md](docs/comprobar.md): el comando equivalente a cada dato,
   para verificarlo a mano.
+- [docs/decisiones/](docs/decisiones/): el porqué de cada decisión que no
+  cabe en un comentario, con sus datos y lo descartado.
+
+En la raíz, en inglés: `ARCHITECTURE.md`, `CONTRIBUTING.md` y `SECURITY.md`.
 
 Las notas de trabajo —dónde se quedó cada sesión, las lecciones, las
 propuestas y el historial— están en el repositorio privado
