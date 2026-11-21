@@ -1132,6 +1132,8 @@
   "prov.imc.none.hint": "Only Intel processors publish it. On AMD the kernel gives those counters no names, and a figure guessed blindly would be worse than none.",
   "prov.imc.truncated": "This machine has more memory channels than can be read at once.",
   "prov.imc.truncated.hint": "The sum would come out short, so it is not shown. This is a Silux limit: please report it with a report file.",
+  "prov.imc.unopened": "The memory controller publishes its traffic, but its counter could not be opened.",
+  "prov.imc.unopened.hint": "The reason goes in the report: sending it helps fix it.",
   "prov.mem.denied": "Reading the memory modules was not authorised.",
   "prov.mem.denied.hint": "You can try again whenever you like.",
   "prov.mem.helperfail": "The privileged helper failed: {error}",

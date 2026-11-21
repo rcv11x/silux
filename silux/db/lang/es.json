@@ -1132,6 +1132,8 @@
   "prov.imc.none.hint": "Solo lo publican los procesadores Intel. En AMD el kernel no le pone nombre a esos contadores, y una cifra deducida a ciegas sería peor que ninguna.",
   "prov.imc.truncated": "Este equipo tiene más canales de memoria de los que se pueden leer a la vez.",
   "prov.imc.truncated.hint": "La suma saldría corta, así que no se enseña. Es un límite de Silux: conviene reportarlo con un informe.",
+  "prov.imc.unopened": "El controlador de memoria publica su tráfico, pero no se ha podido abrir su contador.",
+  "prov.imc.unopened.hint": "El motivo va en el informe: mandarlo sirve para arreglarlo.",
   "prov.mem.denied": "No se autorizó la lectura de los módulos de memoria.",
   "prov.mem.denied.hint": "Se puede volver a intentar cuando quieras.",
   "prov.mem.helperfail": "El ayudante privilegiado falló: {error}",

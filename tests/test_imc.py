@@ -11,6 +11,7 @@ propósito— y comprobar que el contador veía esos mismos diez.
 """
 
 import unittest
+from unittest import mock
 
 from silux.i18n import _
 from silux.model import Snapshot, MemoryTraffic, Need, SensorKind
@@ -262,6 +263,10 @@ class TestLaDerivada(unittest.TestCase):
                       "un tope nuestro que recorta la cifra es un fallo nuestro")
 
     def test_una_maquina_sin_contadores_deja_de_preguntar(self):
+        import silux.providers.imc as modulo
+        sin = mock.patch.object(modulo, "hay_contadores", lambda: False)
+        sin.start()
+        self.addCleanup(sin.stop)
         proveedor = self._proveedor([PmuUnsupported("no hay")])
         self._recoge(proveedor, veces=1)
         self.assertTrue(proveedor._mudo)

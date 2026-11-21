@@ -34,12 +34,13 @@ from typing import Optional
 from ..i18n import _
 from ..model import DeviceKind, MemoryTraffic, Need, Sensor, SensorKind
 from ..privileged.client import HelperError, PmuUnsupported, PrivilegedClient
-from ..privileged.protocol import PMU_IMC, PMU_ROOT
+from ..privileged.protocol import PMU_IMC, PMU_IMC_EVENT, PMU_ROOT
 from .base import Draft, Provider
 from .counters import increase, window_s
 from .. import sysroot
 
 _PMU_IMC = re.compile(PMU_IMC)
+_PMU_IMC_EVENT = re.compile(PMU_IMC_EVENT)
 
 # Cómo llama cada generación a lo mismo. Las dos primeras filas son la
 # dirección del tráfico; la tercera es ese mismo tráfico visto por origen.
@@ -75,6 +76,29 @@ def hay_controlador() -> bool:
         return False
 
 
+def hay_contadores() -> bool:
+    """Whether a memory controller PMU publishes an event the helper opens.
+
+    Then the helper not opening it is an error to tell, not hardware that
+    lacks it. Listing the events needs no privileges either.
+    """
+    try:
+        raiz = sysroot.ruta(PMU_ROOT)
+        nombres = os.listdir(raiz)
+    except OSError:
+        return False
+    for nombre in nombres:
+        if not _PMU_IMC.match(nombre):
+            continue
+        try:
+            eventos = os.listdir(os.path.join(raiz, nombre, "events"))
+        except OSError:
+            continue
+        if any(_PMU_IMC_EVENT.match(evento) for evento in eventos):
+            return True
+    return False
+
+
 class ImcTraffic(Provider):
     """Bytes por segundo que van y vienen de la RAM, por el PMU del uncore."""
 
@@ -85,6 +109,8 @@ class ImcTraffic(Provider):
         self.client = client
         self._previo: Optional[tuple[int, dict[str, dict[str, int]]]] = None
         self._mudo = False          # esta máquina no los tiene: no insistir
+        # What the helper said when it could not open them, for the report.
+        self._motivo = ""
 
     def available(self) -> bool:
         if self._mudo or not hay_controlador():
@@ -98,6 +124,11 @@ class ImcTraffic(Provider):
             return ("memory.traffic", Need.ROOT,
                     _("prov.imc.denied"), _("prov.imc.denied.hint"),
                     _("what.memory.traffic"))
+        if hay_contadores():
+            # The kernel publishes them and the helper could not open them:
+            # not «this machine does not have it».
+            return ("memory.traffic", Need.ERROR,
+                    _("prov.imc.unopened"), _("prov.imc.unopened.hint"), "", self._motivo)
         return ("memory.traffic", Need.HARDWARE,
                 _("prov.imc.none"), _("prov.imc.none.hint"))
 
@@ -106,10 +137,11 @@ class ImcTraffic(Provider):
             return
         try:
             lectura = self.client.imc()       # type: ignore[union-attr]
-        except PmuUnsupported:
+        except PmuUnsupported as exc:
             # No los tiene. Se deja de preguntar, y el aviso pasa a ser el
             # gris de «esta máquina no lo publica».
             self._mudo = True
+            self._motivo = str(exc)
             self._previo = None
             return
         except HelperError:
