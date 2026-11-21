@@ -1,0 +1,298 @@
+{
+ "amdgpu": {
+  "/dev/dri/renderD128": {
+   "arrays_per_engine": 1,
+   "compute_units": 3,
+   "device_id": 5592,
+   "family": 142,
+   "is_apu": true,
+   "max_engine_hz": 1100000000,
+   "max_memory_hz": 1200000000,
+   "render_backends": 1,
+   "shader_engines": 1,
+   "vram_bits": 64,
+   "vram_type": "DDR4"
+  }
+ },
+ "cpuid": {
+  "*:0:0": [
+   13,
+   1752462657,
+   1145913699,
+   1769238117
+  ],
+  "*:2147483648:0": [
+   2147483679,
+   1752462657,
+   1145913699,
+   1769238117
+  ],
+  "0:1:0": [
+   8458113,
+   264192,
+   2128097803,
+   395049983
+  ],
+  "0:2147483649:0": [
+   8458113,
+   536870912,
+   901919743,
+   802421759
+  ],
+  "0:2147483650:0": [
+   541347137,
+   1818784833,
+   857763439,
+   1194340400
+  ],
+  "0:2147483651:0": [
+   1953068832,
+   1632772200,
+   1852794212,
+   1734694432
+  ],
+  "0:2147483652:0": [
+   1917263969,
+   1768452193,
+   538997603,
+   2105376
+  ],
+  "0:7:0": [
+   0,
+   547094953,
+   0,
+   0
+  ],
+  "0:7:1": [
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ "gpuapi": {
+  "consultar": {
+   "opencl": [],
+   "opengl": {
+    "egl_vendor": "Mesa Project",
+    "egl_version": "1.5",
+    "glsl": "4.60",
+    "renderer": "AMD Radeon Vega 3 Graphics (radeonsi, raven2, ACO, DRM 3.64, 7.3.5-arch1-1)",
+    "vendor": "AMD",
+    "version": "4.6 (Compatibility Profile) Mesa 26.3.1-arch1.2"
+   },
+   "vaapi": [
+    {
+     "codecs": [
+      {
+       "bits": 10,
+       "decode": true,
+       "encode": true,
+       "name": "HEVC",
+       "profiles": [
+        "Main",
+        "Main 10"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": true,
+       "name": "H.264",
+       "profiles": [
+        "Constrained Baseline",
+        "Main",
+        "High"
+       ]
+      },
+      {
+       "bits": 10,
+       "decode": true,
+       "encode": false,
+       "name": "VP9",
+       "profiles": [
+        "Profile 0",
+        "Profile 2"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": false,
+       "name": "MPEG-2",
+       "profiles": [
+        "Simple",
+        "Main"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": false,
+       "name": "VC-1",
+       "profiles": [
+        "Simple",
+        "Main",
+        "Advanced"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": false,
+       "name": "JPEG",
+       "profiles": [
+        "Baseline"
+       ]
+      }
+     ],
+     "driver": "Mesa Gallium driver 26.3.1-arch1.2 for AMD Radeon Vega 3 Graphics (radeonsi, raven2, ACO, DRM 3.64, 7.3.5-arch1-1)",
+     "node": "renderD128",
+     "version": "1.24"
+    }
+   ],
+   "vulkan": [
+    {
+     "api_version": "1.4.363",
+     "device_id": 5592,
+     "device_memory_bytes": 1529430016,
+     "driver_version": 109064193,
+     "instance_version": "1.4.363",
+     "kind": "integrada",
+     "name": "AMD Radeon Vega 3 Graphics (RADV RAVEN2)",
+     "vendor_id": 4098
+    }
+   ]
+  }
+ },
+ "ioctl_red": {
+  "enp37s0:0x8915": "192.168.1.120",
+  "enp37s0:0x891b": "255.255.255.0",
+  "lo:0x8915": "127.0.0.1",
+  "lo:0x891b": "255.0.0.0"
+ },
+ "modinfo": {
+  "drivetemp": true
+ },
+ "nvml": {
+  "abierta": false
+ },
+ "paquetes": {
+  "egl": true,
+  "kmod": true,
+  "opencl": true,
+  "opengl": true,
+  "pci.ids": true,
+  "pkexec": true,
+  "pnp.ids": true,
+  "python3": true,
+  "systemctl": true,
+  "vaapi": true,
+  "vulkan": true,
+  "xdg-open": true
+ },
+ "pciids": {
+  "1002:15d8|1002:15d8:1462:7c51": {
+   "1002:15d8": [
+    "Advanced Micro Devices, Inc. [AMD/ATI]",
+    "Picasso/Raven 2 [Radeon Vega Series / Radeon Vega Mobile Series]"
+   ]
+  },
+  "1002:15d8|1002:15de|1022:15e3|1022:15e5|1022:43b8|1022:43bc|1022:7901|10ec:8168": {
+   "1002:15d8": [
+    "Advanced Micro Devices, Inc. [AMD/ATI]",
+    "Picasso/Raven 2 [Radeon Vega Series / Radeon Vega Mobile Series]"
+   ],
+   "1002:15de": [
+    "Advanced Micro Devices, Inc. [AMD/ATI]",
+    "Raven/Raven2/Fenghuang HDMI/DP Audio Controller"
+   ],
+   "1022:15e3": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "Ryzen HD Audio Controller"
+   ],
+   "1022:15e5": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "Raven2 USB 3.1"
+   ],
+   "1022:43b8": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "A320 Chipset SATA Controller [AHCI mode]"
+   ],
+   "1022:43bc": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "A320 USB 3.1 XHCI Host Controller"
+   ],
+   "1022:7901": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "FCH SATA Controller [AHCI mode]"
+   ],
+   "10ec:8168": [
+    "Realtek Semiconductor Co., Ltd.",
+    "RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller"
+   ]
+  },
+  "1022:15d0|1022:790e": {
+   "1022:15d0": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "Raven/Raven2 Root Complex"
+   ],
+   "1022:790e": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "FCH LPC Bridge"
+   ]
+  },
+  "10ec:8168": {
+   "10ec:8168": [
+    "Realtek Semiconductor Co., Ltd.",
+    "RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller"
+   ]
+  }
+ },
+ "pciids_fabricante": {
+  "1462": "Micro-Star International Co., Ltd. [MSI]"
+ },
+ "plataforma": {
+  "entorno": {
+   "SHELL": "/usr/bin/bash",
+   "XDG_CURRENT_DESKTOP": "KDE",
+   "XDG_SESSION_TYPE": "wayland"
+  },
+  "machine": "x86_64",
+  "procesos": 246,
+  "uname": {
+   "machine": "x86_64",
+   "node": "silux-pc",
+   "processor": "",
+   "release": "7.3.5-arch1-1",
+   "system": "Linux",
+   "version": "#1 SMP PREEMPT_DYNAMIC Tue, 17 Nov 2026 22:28:33 +0000"
+  }
+ },
+ "realpath": {
+  "/dev/sda1": "/dev/sda1",
+  "/dev/sda2": "/dev/sda2",
+  "/dev/sdb1": "/dev/sdb1"
+ },
+ "statvfs": {
+  "/": [
+   8127406080,
+   456950788096
+  ],
+  "/boot": [
+   84156416,
+   987467776
+  ],
+  "/media/unidad2": [
+   63411322880,
+   60280668160
+  ]
+ },
+ "systemd": {
+  "arranque": {
+   "FinishTimestampMonotonic": 27738039,
+   "InitRDTimestampMonotonic": 0,
+   "UserspaceTimestampMonotonic": 13172778
+  }
+ }
+}

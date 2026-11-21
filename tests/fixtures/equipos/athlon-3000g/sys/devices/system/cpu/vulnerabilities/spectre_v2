@@ -1,0 +1,1 @@
+Mitigation: Retpolines; IBPB: conditional; STIBP: disabled; RSB filling; PBRSB-eIBRS: Not affected; BHI: Not affected

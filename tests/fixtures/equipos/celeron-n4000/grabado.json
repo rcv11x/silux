@@ -1,0 +1,316 @@
+{
+ "cpuid": {
+  "*:0:0": [
+   24,
+   1970169159,
+   1818588270,
+   1231384169
+  ],
+  "*:2147483648:0": [
+   2147483656,
+   0,
+   0,
+   0
+  ],
+  "0:1:0": [
+   460449,
+   4196352,
+   1341713343,
+   3219913727
+  ],
+  "0:2147483649:0": [
+   0,
+   0,
+   257,
+   739248128
+  ],
+  "0:2147483650:0": [
+   1702129225,
+   693250156,
+   1818575648,
+   1852797541
+  ],
+  "0:2147483651:0": [
+   539578920,
+   808465486,
+   1346576432,
+   541073493
+  ],
+  "0:2147483652:0": [
+   808529457,
+   8013895,
+   0,
+   0
+  ],
+  "0:22:0": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "0:7:0": [
+   0,
+   580182663,
+   1077936132,
+   2885682176
+  ],
+  "0:7:1": [
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ "gpuapi": {
+  "consultar": {
+   "opencl": [],
+   "opengl": {
+    "egl_vendor": "Mesa Project",
+    "egl_version": "1.5",
+    "glsl": "4.60",
+    "renderer": "Mesa Intel(R) UHD Graphics 600 (GLK 2)",
+    "vendor": "Intel",
+    "version": "4.6 (Compatibility Profile) Mesa 25.2.6-1~bpo13+1"
+   },
+   "vaapi": [
+    {
+     "codecs": [
+      {
+       "bits": 10,
+       "decode": true,
+       "encode": true,
+       "name": "HEVC",
+       "profiles": [
+        "Main",
+        "Main 10"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": true,
+       "name": "H.264",
+       "profiles": [
+        "Main",
+        "High",
+        "Constrained Baseline"
+       ]
+      },
+      {
+       "bits": 10,
+       "decode": true,
+       "encode": false,
+       "name": "VP9",
+       "profiles": [
+        "Profile 0",
+        "Profile 2"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": true,
+       "name": "VP8",
+       "profiles": [
+        "Version 0.3"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": false,
+       "name": "MPEG-2",
+       "profiles": [
+        "Simple",
+        "Main"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": false,
+       "name": "VC-1",
+       "profiles": [
+        "Simple",
+        "Main",
+        "Advanced"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": true,
+       "name": "JPEG",
+       "profiles": [
+        "Baseline"
+       ]
+      }
+     ],
+     "driver": "Intel iHD driver for Intel(R) Gen Graphics - 25.2.3 ()",
+     "node": "renderD128",
+     "version": "1.22"
+    }
+   ],
+   "vulkan": [
+    {
+     "api_version": "1.4.348",
+     "device_id": 12677,
+     "device_memory_bytes": 6101667840,
+     "driver_version": 109056002,
+     "instance_version": "1.4.309",
+     "kind": "integrada",
+     "name": "Intel(R) UHD Graphics 600 (GLK 2)",
+     "vendor_id": 32902
+    },
+    {
+     "api_version": "1.4.348",
+     "device_id": 0,
+     "device_memory_bytes": 8135557120,
+     "driver_version": 109056002,
+     "instance_version": "1.4.309",
+     "kind": "CPU",
+     "name": "llvmpipe (LLVM 19.1.7, 128 bits)",
+     "vendor_id": 65541
+    }
+   ]
+  }
+ },
+ "i915": {
+  "/dev/dri/renderD128": {
+   "chipset_id": 12677,
+   "eu_total": 12,
+   "subslices": 2
+  }
+ },
+ "ioctl_red": {
+  "enp3s0:0x8915": null,
+  "enp3s0:0x891b": null,
+  "lo:0x8915": "127.0.0.1",
+  "lo:0x891b": "255.0.0.0",
+  "wlp2s0:0x8915": "192.168.1.120",
+  "wlp2s0:0x891b": "255.255.255.0"
+ },
+ "modinfo": {
+  "drivetemp": true
+ },
+ "nvml": {
+  "abierta": false
+ },
+ "paquetes": {
+  "egl": true,
+  "kmod": true,
+  "opencl": true,
+  "opengl": true,
+  "pci.ids": true,
+  "pkexec": true,
+  "pnp.ids": false,
+  "python3": true,
+  "systemctl": true,
+  "vaapi": true,
+  "vulkan": true,
+  "xdg-open": true
+ },
+ "pciids": {
+  "10ec:8168": {
+   "10ec:8168": [
+    "Realtek Semiconductor Co., Ltd.",
+    "RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller"
+   ]
+  },
+  "10ec:8168|8086:3166|8086:3185|8086:3198|8086:31a8|8086:31e3": {
+   "10ec:8168": [
+    "Realtek Semiconductor Co., Ltd.",
+    "RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller"
+   ],
+   "8086:3166": [
+    "Intel Corporation",
+    "Dual Band Wireless-AC 3165 Plus Bluetooth"
+   ],
+   "8086:3185": [
+    "Intel Corporation",
+    "GeminiLake [UHD Graphics 600]"
+   ],
+   "8086:3198": [
+    "Intel Corporation",
+    "Celeron/Pentium Silver Processor High Definition Audio"
+   ],
+   "8086:31a8": [
+    "Intel Corporation",
+    "Celeron/Pentium Silver Processor USB 3.0 xHCI Controller"
+   ],
+   "8086:31e3": [
+    "Intel Corporation",
+    "Celeron/Pentium Silver Processor SATA Controller"
+   ]
+  },
+  "8086:3166": {
+   "8086:3166": [
+    "Intel Corporation",
+    "Dual Band Wireless-AC 3165 Plus Bluetooth"
+   ]
+  },
+  "8086:3185|8086:3185:17aa:3805": {
+   "8086:3185": [
+    "Intel Corporation",
+    "GeminiLake [UHD Graphics 600]"
+   ]
+  },
+  "8086:31e8|8086:31f0": {
+   "8086:31e8": [
+    "Intel Corporation",
+    "Celeron/Pentium Silver Processor LPC Controller"
+   ],
+   "8086:31f0": [
+    "Intel Corporation",
+    "Gemini Lake Host Bridge"
+   ]
+  }
+ },
+ "pciids_fabricante": {
+  "17aa": "Lenovo"
+ },
+ "plataforma": {
+  "entorno": {
+   "SHELL": "/bin/bash",
+   "XDG_CURRENT_DESKTOP": "XFCE",
+   "XDG_SESSION_TYPE": "x11"
+  },
+  "kvm": true,
+  "machine": "x86_64",
+  "procesos": 195,
+  "uname": {
+   "machine": "x86_64",
+   "node": "silux-pc",
+   "processor": "",
+   "release": "7.1.8+deb13-amd64",
+   "system": "Linux",
+   "version": "#1 SMP PREEMPT_DYNAMIC Debian 7.1.8-1~bpo13+1 (2026-08-16)"
+  }
+ },
+ "realpath": {
+  "/dev/sda4": "/dev/sda4",
+  "/dev/sda6": "/dev/sda6",
+  "/dev/sdb1": "/dev/sdb1"
+ },
+ "statvfs": {
+  "/": [
+   35406385152,
+   57405239296
+  ],
+  "/boot/efi": [
+   9510912,
+   9980968960
+  ],
+  "/media/unidad2": [
+   63410667520,
+   60281323520
+  ]
+ },
+ "systemd": {
+  "arranque": {
+   "FinishTimestampMonotonic": 18997157,
+   "InitRDTimestampMonotonic": 0,
+   "UserspaceTimestampMonotonic": 6512649
+  }
+ }
+}

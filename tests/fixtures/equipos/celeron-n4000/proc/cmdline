@@ -1,0 +1,1 @@
+BOOT_IMAGE=/boot/vmlinuz-7.1.8+deb13-amd64 root=… ro quiet

@@ -487,6 +487,12 @@ class HomePage(ScrollPage):
         por_clave = {clave: (nombre, grados) for clave, nombre, grados in lecturas}
         candidato = max(lecturas, key=lambda lectura: lectura[2])
         actual = self._titular_de_temperaturas
+        # A reading that appears or goes (a disk's, once permissions are
+        # given) starts the choice over: the page then reads as if opened now.
+        leidas = frozenset(por_clave)
+        if leidas != getattr(self, "_temperaturas_leidas", leidas):
+            actual = None
+        self._temperaturas_leidas = leidas
         if actual not in por_clave or \
                 candidato[2] - por_clave[actual][1] >= MARGEN_DEL_TITULAR:
             actual = self._titular_de_temperaturas = candidato[0]
