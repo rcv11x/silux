@@ -268,6 +268,20 @@ def _de_todos(snapshot: Snapshot) -> frozenset[str]:
         parte for n in nombres for parte in re.split(r"[_-]", n.lower()) if len(parte) >= 3}
 
 
+def _tapar_direccion(direccion: Optional[str], sustituto: str) -> Optional[str]:
+    """The substitute, but the loopback stays: 127.0.0.1 and ::1 are
+    everyone's, and with the substitute «lo» read like a network card. A
+    link-local address (fe80::) is covered: it can carry the MAC."""
+    if not direccion:
+        return None
+    try:
+        if ipaddress.ip_address(direccion.split("/")[0].split("%")[0]).is_loopback:
+            return direccion
+    except ValueError:
+        pass
+    return sustituto
+
+
 def anonimizar(snapshot: Snapshot) -> Snapshot:
     """La misma foto sin lo que señala a un equipo concreto."""
     cambios: dict = {}
@@ -352,8 +366,8 @@ def anonimizar(snapshot: Snapshot) -> Snapshot:
                 name=(nombres.get(i.name, i.name) if de_sistema(i.name)
                       else _limpiar(i.name, equipo, nombres) or i.name),
                 mac=_mac(i.mac),
-                ipv4=IPV4 if i.ipv4 else None,
-                ipv6=tuple(IPV6 for _direccion in i.ipv6),
+                ipv4=_tapar_direccion(i.ipv4, IPV4),
+                ipv6=tuple(_tapar_direccion(d, IPV6) for d in i.ipv6),
                 gateway=PUERTA if i.gateway else None,
             )
             for i in snapshot.network
