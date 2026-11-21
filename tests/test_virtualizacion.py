@@ -70,7 +70,7 @@ class TestFirmaDelHipervisor(unittest.TestCase):
 
     @staticmethod
     def _quien(firma: bytes):
-        return CpuidIdentity._hipervisor(ReaderFalso(_registros(firma)))
+        return CpuidIdentity._hypervisor(ReaderFalso(_registros(firma)))
 
     def test_vmware(self):
         self.assertEqual(self._quien(b"VMwareVMware"), "VMware")
@@ -89,9 +89,9 @@ class TestFirmaDelHipervisor(unittest.TestCase):
     def test_lo_que_no_es_texto_no_es_una_firma(self):
         # Sin hipervisor debajo, CPUID contesta a una hoja que no conoce con
         # el contenido de la más alta que tenga: números, no letras.
-        self.assertIsNone(CpuidIdentity._hipervisor(ReaderFalso((0x16, 0, 0, 0))))
+        self.assertIsNone(CpuidIdentity._hypervisor(ReaderFalso((0x16, 0, 0, 0))))
         self.assertIsNone(
-            CpuidIdentity._hipervisor(ReaderFalso((0x16, 0x0001_0002, 0x03, 0x04))))
+            CpuidIdentity._hypervisor(ReaderFalso((0x16, 0x0001_0002, 0x03, 0x04))))
 
 
 class TestElTextoDeLaInsignia(unittest.TestCase):

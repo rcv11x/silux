@@ -1,15 +1,13 @@
-"""Sensores derivados de datos que ya se han leído.
+"""Sensors derived from data already read.
 
-Los relojes, el uso por núcleo y el desglose de potencia no salen de un chip
-hwmon: los da CPUID, cpufreq, /proc/stat y RAPL. Pero en un árbol de sensores
-son exactamente eso (magnitudes que cambian y que interesa seguir con sus
-mínimos y máximos), así que aquí se convierten al mismo formato que el resto.
+Clocks, per-core usage and the power breakdown do not come from a hwmon chip
+but from CPUID, cpufreq, /proc/stat and RAPL. In a sensor tree they are what
+the rest are (values that change, worth following with their minimum and
+maximum), so they are turned into the same shape here, as HWiNFO does under
+the processor's node.
 
-Es lo que hace HWiNFO: bajo el nodo del procesador conviven las temperaturas
-del chip de sensores con los relojes y el uso, que vienen de otro sitio.
-
-Este proveedor se ejecuta el último a propósito: solo transforma lo que otros
-han recogido y no toca ningún fichero.
+It runs last on purpose: it only transforms what others collected and opens
+no file.
 """
 
 from __future__ import annotations
@@ -20,9 +18,9 @@ from ..i18n import _
 from ..model import DeviceKind, Need, Sensor, SensorKind, short_brand, thread_name
 from .base import Draft, Provider
 
-# Un voltaje redondeado a un decimal deja de ser un voltaje: 0,845 V se
-# convierte en 0,8 y ya no dice nada. Cada magnitud tiene la suya.
-DECIMALES = {SensorKind.VOLTAGE: 3, SensorKind.TEMPERATURE: 1, SensorKind.CLOCK: 1,
+# A voltage rounded to one decimal stops being one: 0.845 V becomes 0.8 and
+# says nothing. Each kind has its own.
+DECIMALS = {SensorKind.VOLTAGE: 3, SensorKind.TEMPERATURE: 1, SensorKind.CLOCK: 1,
              SensorKind.USAGE: 1, SensorKind.MEMORY: 0, SensorKind.NETWORK: 1}
 
 
@@ -30,7 +28,7 @@ def _mhz(hz: Optional[int]) -> Optional[float]:
     return round(hz / 1e6, 1) if hz else None
 
 
-def _megas(byte: Optional[int]) -> Optional[float]:
+def _mebibytes(byte: Optional[int]) -> Optional[float]:
     return round(byte / 1024**2, 1) if byte else None
 
 
@@ -41,7 +39,7 @@ class DerivedSensors(Provider):
     def collect(self, draft: Draft) -> None:
         self._shared_package(draft)
         if not draft.types:
-            # Aun sin procesador identificado, las gráficas pueden tener datos.
+            # Even without an identified processor, the GPUs may have data.
             draft.sensors.extend(self._graphics(draft))
             return
         first = draft.types[next(iter(draft.types))]
@@ -60,77 +58,75 @@ class DerivedSensors(Provider):
         package's, which it shares with the CPU, labelled as that; it never
         becomes its `temp_c`, so neither Sensores nor the alerts take it for
         the GPU's. Without a package sensor it has none, and says so."""
-        grados = draft.cpu_extra.get("package_sensor_temp_c")
-        for indice, gpu in enumerate(draft.gpus):
+        degrees = draft.cpu_extra.get("package_sensor_temp_c")
+        for index, gpu in enumerate(draft.gpus):
             if not (gpu.get("integrated") and gpu.get("no_temperature_sensor")
                     and gpu.get("temp_c") is None):
                 continue
-            gpu["package_temp_c"] = grados
-            if grados is None:
-                draft.note(f"gpus.{indice}.temp_c", Need.HARDWARE, _("gpu.temp.none.note"),
+            gpu["package_temp_c"] = degrees
+            if degrees is None:
+                draft.note(f"gpus.{index}.temp_c", Need.HARDWARE, _("gpu.temp.none.note"),
                            detail=_("gpu.temp.detail"))
             else:
-                draft.note(f"gpus.{indice}.temp_c", Need.HARDWARE, _("gpu.temp.package.note"),
+                draft.note(f"gpus.{index}.temp_c", Need.HARDWARE, _("gpu.temp.package.note"),
                            detail=_("gpu.temp.detail.package"))
 
     @staticmethod
     def _network(draft: Draft) -> list[Sensor]:
-        """El ritmo de cada interfaz que esté moviendo algo.
+        """The rate of each interface that is up.
 
-        Solo las que están levantadas: un equipo con Docker puede tener quince
-        interfaces virtuales a cero, y llenar el árbol con ellas lo hace
-        ilegible sin añadir nada.
+        Only those up: a machine with Docker can have fifteen virtual
+        interfaces at zero, and filling the tree with them adds nothing.
         """
         sensors: list[Sensor] = []
-        for interfaz in draft.network:
-            if not interfaz.up or interfaz.kind == "loopback":
+        for interface in draft.network:
+            if not interface.up or interface.kind == "loopback":
                 continue
-            device = _("sensor.dev.net").format(chip=interfaz.name)
-            trafico = interfaz.traffic
-            campos = (
-                ("rx", _("sensor.net.down"), SensorKind.NETWORK, trafico.rx_rate_bps, 0),
-                ("tx", _("sensor.net.up"), SensorKind.NETWORK, trafico.tx_rate_bps, 1),
+            device = _("sensor.dev.net").format(chip=interface.name)
+            traffic = interface.traffic
+            fields = (
+                ("rx", _("sensor.net.down"), SensorKind.NETWORK, traffic.rx_rate_bps, 0),
+                ("tx", _("sensor.net.up"), SensorKind.NETWORK, traffic.tx_rate_bps, 1),
                 ("rx_total", _("sensor.net.received"), SensorKind.MEMORY,
-                 _megas(trafico.rx_bytes), 10),
+                 _mebibytes(traffic.rx_bytes), 10),
                 ("tx_total", _("sensor.net.sent"), SensorKind.MEMORY,
-                 _megas(trafico.tx_bytes), 11),
+                 _mebibytes(traffic.tx_bytes), 11),
             )
-            for clave, etiqueta, tipo, valor, orden in campos:
-                if valor is None:
+            for key, label, kind, value, order in fields:
+                if value is None:
                     continue
                 sensors.append(Sensor(
-                    key=f"net/{interfaz.name}/{clave}", chip="net", device=device,
-                    device_key=f"net:{interfaz.name}",
+                    key=f"net/{interface.name}/{key}", chip="net", device=device,
+                    device_key=f"net:{interface.name}",
                     device_kind=DeviceKind.NETWORK,
-                    label=etiqueta, kind=tipo,
-                    value=round(float(valor) / (1024 if tipo is SensorKind.NETWORK else 1),
-                                DECIMALES.get(tipo, 1)),
-                    order=orden,
+                    label=label, kind=kind,
+                    value=round(float(value) / (1024 if kind is SensorKind.NETWORK else 1),
+                                DECIMALS.get(kind, 1)),
+                    order=order,
                 ))
         return sensors
 
     @staticmethod
     def _graphics(draft: Draft) -> list[Sensor]:
-        """Lo de la gráfica que no sale de hwmon.
+        """What of the graphics card does not come from hwmon.
 
-        El chip de sensores de una tarjeta da temperaturas, ventilador y poco
-        más. El uso, la memoria ocupada, los relojes que solo conoce el firmware
-        y las temperaturas de los reguladores vienen del driver y del ioctl, y
-        en el árbol pintan tanto como los otros: son magnitudes que cambian y
-        que interesa seguir con su mínimo y su máximo.
+        A card's sensor chip gives temperatures, the fan and little more.
+        Usage, used memory, the clocks only the firmware knows and the
+        regulators' temperatures come from the driver and the ioctl, and in
+        the tree they matter as much: values worth following.
         """
         sensors: list[Sensor] = []
         for gpu in draft.gpus:
             device = gpu.get("name") or _("sensor.dev.gpu").format(
                 n=gpu.get("index", 0))
             # The same key hwmon gives its chip: its PCI slot.
-            clave_aparato = (f"gpu:{gpu['pci_slot']}" if gpu.get("pci_slot")
+            device_key = (f"gpu:{gpu['pci_slot']}" if gpu.get("pci_slot")
                              else f"gpu-index:{gpu.get('index', 0)}")
-            marca = f"gpu{gpu.get('index', 0)}"
-            relojes = gpu.get("clocks")
-            memoria = gpu.get("memory")
+            prefix = f"gpu{gpu.get('index', 0)}"
+            clocks = gpu.get("clocks")
+            memory = gpu.get("memory")
 
-            campos: list[tuple[str, str, SensorKind, object, int]] = [
+            fields: list[tuple[str, str, SensorKind, object, int]] = [
                 ("busy", _("sensor.gpu.core"), SensorKind.USAGE,
                  gpu.get("busy_percent"), 0),
                 ("mem_busy", _("sensor.gpu.mem"), SensorKind.USAGE,
@@ -151,50 +147,49 @@ class DerivedSensors(Provider):
             ]
             if gpu.get("driver") == "nvidia":
                 # The proprietary driver has no hwmon: its temperature, power
-                # and clocks come from NVML into the model and nowhere else. A
-                # tester's RTX 4060 had them on its page and not here.
-                campos += [
+                # and clocks come from NVML into the model and nowhere else.
+                fields += [
                     ("temp", _("sensor.gpucore"), SensorKind.TEMPERATURE,
                      gpu.get("temp_c"), 5),
                     ("power", _("sensor.power"), SensorKind.POWER, gpu.get("power_w"), 6),
                 ]
-                if relojes is not None:
-                    campos += [
+                if clocks is not None:
+                    fields += [
                         ("clk_core", _("sensor.gpucore"), SensorKind.CLOCK,
-                         _mhz(relojes.core_hz), 30),
+                         _mhz(clocks.core_hz), 30),
                         ("clk_mem", _("sensor.mem"), SensorKind.CLOCK,
-                         _mhz(relojes.memory_hz), 33),
+                         _mhz(clocks.memory_hz), 33),
                     ]
-            if relojes is not None:
-                campos += [
-                    ("clk_soc", "SoC", SensorKind.CLOCK, _mhz(relojes.soc_hz), 32),
+            if clocks is not None:
+                fields += [
+                    ("clk_soc", "SoC", SensorKind.CLOCK, _mhz(clocks.soc_hz), 32),
                     ("clk_mem_eff", _("sensor.mem.effective"), SensorKind.CLOCK,
-                     _mhz(relojes.memory_effective_hz), 31),
+                     _mhz(clocks.memory_effective_hz), 31),
                 ]
-            if memoria is not None:
-                campos += [
+            if memory is not None:
+                fields += [
                     ("vram_pct", _("sensor.vram"), SensorKind.USAGE,
-                     memoria.used_percent, 4),
+                     memory.used_percent, 4),
                     ("vram_mb", _("sensor.vram"), SensorKind.MEMORY,
-                     _megas(memoria.used_bytes), 40),
+                     _mebibytes(memory.used_bytes), 40),
                     ("gtt_mb", _("sensor.gtt"), SensorKind.MEMORY,
-                     _megas(memoria.gtt_used_bytes), 41),
+                     _mebibytes(memory.gtt_used_bytes), 41),
                 ]
 
-            for clave, etiqueta, tipo, valor, orden in campos:
-                if valor is None:
+            for key, label, kind, value, order in fields:
+                if value is None:
                     continue
                 sensors.append(Sensor(
-                    key=f"{marca}/{clave}", chip="drm", device=device,
-                    device_key=clave_aparato,
+                    key=f"{prefix}/{key}", chip="drm", device=device,
+                    device_key=device_key,
                     device_kind=DeviceKind.GPU,
-                    label=etiqueta, kind=tipo,
-                    value=round(float(valor), DECIMALES.get(tipo, 1)),
-                    order=orden,
+                    label=label, kind=kind,
+                    value=round(float(value), DECIMALS.get(kind, 1)),
+                    order=order,
                 ))
         return sensors
 
-    # -- interno ------------------------------------------------------------
+    # -- internals ----------------------------------------------------------
 
     @staticmethod
     def _power(draft: Draft, device: str) -> list[Sensor]:
@@ -217,8 +212,8 @@ class DerivedSensors(Provider):
                 device_key="cpu",
                 device_kind=DeviceKind.CPU,
                 label=label, kind=SensorKind.POWER, value=value, order=order,
-                # El límite sostenido del propio chip es el umbral natural:
-                # pasarlo sostenidamente significa que va a bajar frecuencia.
+                # The chip's own sustained limit is the natural threshold:
+                # staying above it means the clock will drop.
                 high=power.limit_long_w if attribute == "package_w" else None,
                 critical=power.limit_short_w if attribute == "package_w" else None,
             ))

@@ -1,12 +1,12 @@
-"""Identidad del procesador leyendo CPUID directamente, sin root.
+"""The processor's identity read straight from CPUID, without root.
 
-Es lo único que sysfs no puede dar: fabricante real, cadena de marca, familia
-y modelo, el juego de instrucciones y (en Intel moderno) el reloj base, el
-techo de turbo del silicio y el BCLK, en la hoja 0x16. Ese último dato es el
-que CPU-X saca leyendo MSR con un daemon privilegiado; aquí sale gratis.
+What sysfs cannot give: the real vendor, the brand string, family and model,
+the instruction set and (on modern Intel) the base clock, the part's turbo
+ceiling and the BCLK, in leaf 0x16, which other tools read from MSRs with a
+privileged daemon.
 
-CPUID responde por el núcleo que la ejecuta, así que en una CPU híbrida hay
-que preguntar una vez por cada tipo de núcleo, fijando el hilo a uno de ellos.
+CPUID answers for the core that runs it, so a hybrid CPU is asked once per
+core type, with the thread pinned to one of its cores.
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ from ..model import Clocks, Need
 from ..rawcpuid import CpuidError, CpuidReader, is_supported, pinned
 from .base import Draft, Provider
 
-# Hoja 0x1A: tipo de núcleo nativo en las CPU híbridas de Intel.
+# Leaf 0x1A: the native core type of Intel's hybrid CPUs.
 CORE_TYPE_ATOM = 0x20
 CORE_TYPE_CORE = 0x40
 
@@ -38,9 +38,9 @@ VENDOR_NAMES = {
     "  Shanghai  ": "Zhaoxin",
 }
 
-# La firma de doce bytes de la hoja 0x40000000. Cada hipervisor eligió la suya
-# una vez y ya no la cambia, así que la tabla es corta y no envejece. Se busca
-# sin espacios de relleno porque varios los usan para llegar a doce.
+# The twelve-byte signature of leaf 0x40000000. Each hypervisor chose its own
+# once and keeps it, so the table is short and does not age. Looked up without
+# padding spaces, which several use to reach twelve.
 HYPERVISOR_NAMES = {
     "VMwareVMware": "VMware",
     "KVMKVMKVM": "KVM",
@@ -55,7 +55,7 @@ HYPERVISOR_NAMES = {
 
 
 class CpuidIdentity(Provider):
-    """Rellena la identidad de cada tipo de núcleo a partir de CPUID."""
+    """Fills each core type's identity from CPUID."""
 
     name = "cpuid-x86"
     provides = "cpu.identity"
@@ -97,7 +97,7 @@ class CpuidIdentity(Provider):
             except CpuidError as exc:
                 draft.note(f"cpu.types.{key}", Need.PLATFORM, str(exc))
 
-    # -- interno ------------------------------------------------------------
+    # -- internals ----------------------------------------------------------
 
     def _fill(self, reader: CpuidReader, draft: Draft, entry: dict) -> None:
         vendor_id = reader.vendor_id
@@ -110,8 +110,8 @@ class CpuidIdentity(Provider):
         ext_family_bits = (eax >> 20) & 0xFF
         ext_model_bits = (eax >> 16) & 0xF
 
-        # Las hojas de datos del fabricante (y las bases de datos de
-        # identificación) usan los valores compuestos, no los bits crudos.
+        # The maker's datasheets (and identification databases) use the
+        # composed values, not the raw bits.
         disp_family = family + ext_family_bits if family == 0xF else family
         disp_model = model + (ext_model_bits << 4) if family in (6, 0xF) else model
 
@@ -129,11 +129,10 @@ class CpuidIdentity(Provider):
             signature=eax,
             features=feats,
             virtualization=("VT-x" if "vmx" in feats else "AMD-V" if "svm" in feats else None),
-            # El bit «hypervisor» lo pone el anfitrión: ningún procesador real
-            # lo enciende, así que es la señal más directa de estar dentro de
-            # una máquina virtual.
+            # The host sets the «hypervisor» bit: no real processor does, so
+            # it is the most direct sign of running in a virtual machine.
             in_virtual_machine="hypervisor" in feats,
-            hypervisor=self._hipervisor(reader) if "hypervisor" in feats else None,
+            hypervisor=self._hypervisor(reader) if "hypervisor" in feats else None,
         )
 
         self._fill_frequencies(reader, entry)
@@ -146,24 +145,22 @@ class CpuidIdentity(Provider):
                                 family, model, stepping, brand)
 
     @staticmethod
-    def _hipervisor(reader: CpuidReader) -> Optional[str]:
-        """Quién está debajo. Solo tiene sentido con el bit «hypervisor» puesto.
-
-        Una firma que no esté en la tabla se devuelve tal cual en vez de
-        perderse: identifica igual al hipervisor y llega al informe, que es de
-        donde puede salir la entrada que falta.
-        """
-        firma = reader.hypervisor_id().strip()
-        if not firma:
+    def _hypervisor(reader: CpuidReader) -> Optional[str]:
+        """Who is underneath; only with the «hypervisor» bit set. A signature
+        not in the table is returned as is: it still identifies the
+        hypervisor and reaches the report, where the missing entry can come
+        from."""
+        signature = reader.hypervisor_id().strip()
+        if not signature:
             return None
-        return HYPERVISOR_NAMES.get(firma, firma)
+        return HYPERVISOR_NAMES.get(signature, signature)
 
     @staticmethod
     def _fill_frequencies(reader: CpuidReader, entry: dict) -> None:
-        """Hoja 0x16: reloj base, techo de turbo y BCLK. Skylake y posteriores."""
+        """Leaf 0x16: base clock, turbo ceiling and BCLK. Skylake and later."""
         if not reader.supports(0x16):
             return
-        base_mhz, max_mhz, bus_mhz, _resto = reader(0x16)
+        base_mhz, max_mhz, bus_mhz, _rest = reader(0x16)
         if not any((base_mhz, max_mhz, bus_mhz)):
             return
 
@@ -213,8 +210,8 @@ class CpuidIdentity(Provider):
                 _("prov.cpuid.unknown.hint"),
             )
 
-        # Con el procesador reconocido puede faltar igual uno de los dos: la
-        # tabla trae filas sin nodo, y el encapsulado sale de otra tabla.
+        # A recognized processor can still lack one of the two: the table has
+        # rows without a process node, and the package comes from another one.
         if ident.matched and entry.get("technology") is None:
             draft.note(
                 "cpu.technology", Need.DATABASE,
@@ -230,7 +227,7 @@ class CpuidIdentity(Provider):
 
 
 def entry_cache_kb(entry: dict, level: int) -> Optional[int]:
-    """Tamaño de una caché en KB, como lo espera la base de datos de libcpuid."""
+    """A cache's size in KB, as libcpuid's database expects it."""
     for cache in entry.get("caches", ()):
         if cache.level == level and cache.kind in ("unified", "data"):
             return cache.size_bytes // 1024

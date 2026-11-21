@@ -1,14 +1,13 @@
-"""Lo que cuelga del bus PCI, y lo que la placa tiene activado.
+"""What hangs from the PCI bus, and what the board has enabled.
 
-Dos proveedores. `PlatformInfo` se lee una vez: IOMMU, virtualización, el
-chip de sensores, el códec de sonido. `PciDevices` se lee en cada muestreo
-porque el enlace de un dispositivo cambia solo: una gráfica en reposo baja
-el suyo para gastar menos.
+Two providers. `PlatformInfo` is read once: IOMMU, virtualization, the
+sensor chip, the sound codec. `PciDevices` on every sample, since a device's
+link changes on its own: an idle graphics card lowers it to save power.
 
-Los nombres no salen en bruto de `pci.ids` cuando silux ya llama a esa pieza
-de otra manera: el disco se llama como en Almacenamiento, la gráfica como en
-Gráficos y la tarjeta de red como en Red (regla 1). Por eso `PciDevices` va
-detrás de esos tres en `collector.py`.
+Names are not taken raw from `pci.ids` when Silux already calls that part
+something else: the disk as in Storage, the graphics card as in Graphics,
+the network card as in Network (rule 1). So `PciDevices` runs after those
+three in `collector.py`.
 """
 
 from __future__ import annotations
@@ -24,210 +23,207 @@ from ..model import PciDevice, PcieLink, Platform
 from .base import Draft, Provider, en_reposo, read_text
 from .drm import VENDORS, _cadena_pcie, _enlace
 
-DISPOSITIVOS = "/sys/bus/pci/devices"
+DEVICES = "/sys/bus/pci/devices"
 
-# La clase PCI (los cuatro primeros dígitos) de lo que se enseña. Los puentes
-# y lo demás no son dispositivos que nadie busque por su nombre.
-CLASES = {
+# The PCI class (first four digits) of what is shown. Bridges and the rest
+# are not devices anyone looks for by name.
+CLASSES = {
     "0300": "gpu", "0302": "gpu", "0380": "gpu",
     "0108": "nvme", "0106": "sata", "0104": "sata",
     "0200": "ethernet", "0280": "wifi",
     "0c03": "usb", "0403": "audio", "0401": "audio",
 }
-# En qué orden salen: lo que va en una ranura primero, los controladores de
-# la placa después.
-EN_RANURA = ("gpu", "nvme", "ethernet", "wifi")
-ORDEN = ("gpu", "nvme", "ethernet", "wifi", "sata", "usb", "audio")
+# In what order: what goes in a slot first, the board's controllers after.
+IN_A_SLOT = ("gpu", "nvme", "ethernet", "wifi")
+ORDER = ("gpu", "nvme", "ethernet", "wifi", "sata", "usb", "audio")
 
-_DIRECCION = re.compile(r"[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\.[0-9a-f]")
+_ADDRESS = re.compile(r"[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\.[0-9a-f]")
 
 
-def _hex(camino: str) -> Optional[int]:
-    crudo = read_text(camino)
+def _hex(path: str) -> Optional[int]:
+    raw = read_text(path)
     try:
-        return int(crudo, 16) if crudo else None
+        return int(raw, 16) if raw else None
     except ValueError:
         return None
 
 
 class PciDevices(Provider):
-    """Los dispositivos PCI con nombre, driver y enlace."""
+    """The PCI devices with their name, driver and link."""
 
     name = "pci"
     provides = "pci_devices"
 
     def __init__(self) -> None:
-        # Qué hay no cambia mientras el programa está abierto; el enlace sí.
-        self._fijos: Optional[list[dict]] = None
-        # El último enlace de cada ranura: su máximo no cambia y no se relee.
-        self._enlaces: dict[str, PcieLink] = {}
+        # What is there does not change while the program runs; the link does.
+        self._fixed: Optional[list[dict]] = None
+        # Each slot's last link: its maximum does not change and is not reread.
+        self._links: dict[str, PcieLink] = {}
 
     def available(self) -> bool:
-        return os.path.isdir(sysroot.ruta(DISPOSITIVOS))
+        return os.path.isdir(sysroot.ruta(DEVICES))
 
     def collect(self, draft: Draft) -> None:
-        if self._fijos is None:
-            self._fijos = self._enumerar()
-        propios = self._nombres_propios(draft)
-        salida = []
-        for fijo in self._fijos:
-            nodo = pathlib.Path(sysroot.ruta(f"{DISPOSITIVOS}/{fijo['slot']}"))
-            # El enlace solo dice algo de lo que va en una ranura. Un
-            # controlador USB, SATA o de sonido vive dentro del chipset o del
-            # procesador: lo que publica su nodo es el enlace interno del
-            # chipset, y enseñarlo («PCIe 4.0 × 4, máximo × 8») se leería
-            # como una ranura que va a medias.
-            # Una tarjeta suspendida no se pregunta: leer su enlace la saca
-            # del reposo desde Linux 6.18 (`en_reposo`).
-            enlace = (_enlace(nodo, self._enlaces.get(fijo["slot"]))
-                      if fijo["kind"] in EN_RANURA and not en_reposo(nodo) else None)
-            if enlace is not None:
-                self._enlaces[fijo["slot"]] = enlace
-            # Una integrada de Intel no publica enlace: no cuelga de ninguno,
-            # va dentro del procesador. Un enlace sin una sola cifra no es un
-            # enlace del que no se sabe nada, es que no lo hay.
-            if enlace is not None and not any((enlace.current_speed_gts, enlace.max_speed_gts,
-                                               enlace.current_width, enlace.max_width)):
-                enlace = None
-            salida.append(PciDevice(
-                slot=fijo["slot"], kind=fijo["kind"],
-                name=propios.get(fijo["slot"]) or fijo["name"],
-                vendor=fijo["vendor"], driver=fijo["driver"],
-                link=enlace,
-                slot_name=self._ranura(nodo, draft.pci_slot_names),
-                vendor_id=fijo["ids"][0], device_id=fijo["ids"][1], pci_class=fijo["clase"]))
-        salida.sort(key=lambda d: (ORDEN.index(d.kind), d.slot))
-        draft.pci_devices = salida
+        if self._fixed is None:
+            self._fixed = self._enumerate()
+        own = self._own_names(draft)
+        out = []
+        for fixed in self._fixed:
+            node = pathlib.Path(sysroot.ruta(f"{DEVICES}/{fixed['slot']}"))
+            # The link only means something for what goes in a slot. A USB,
+            # SATA or sound controller lives inside the chipset or processor:
+            # its node publishes the chipset's internal link, which would read
+            # as a slot running at half. A suspended card is not asked:
+            # reading its link wakes it since Linux 6.18 (`en_reposo`).
+            link = (_enlace(node, self._links.get(fixed["slot"]))
+                      if fixed["kind"] in IN_A_SLOT and not en_reposo(node) else None)
+            if link is not None:
+                self._links[fixed["slot"]] = link
+            # An Intel integrated card publishes no link: it hangs from none,
+            # being inside the processor. A link without a single figure is not
+            # an unknown link, it is none.
+            if link is not None and not any((link.current_speed_gts, link.max_speed_gts,
+                                               link.current_width, link.max_width)):
+                link = None
+            out.append(PciDevice(
+                slot=fixed["slot"], kind=fixed["kind"],
+                name=own.get(fixed["slot"]) or fixed["name"],
+                vendor=fixed["vendor"], driver=fixed["driver"],
+                link=link,
+                slot_name=self._slot_name(node, draft.pci_slot_names),
+                vendor_id=fixed["ids"][0], device_id=fixed["ids"][1], pci_class=fixed["class_code"]))
+        out.sort(key=lambda d: (ORDER.index(d.kind), d.slot))
+        draft.pci_devices = out
 
     @staticmethod
-    def _enumerar() -> list[dict]:
-        crudos = []
-        for camino in sorted(glob.glob(os.path.join(sysroot.ruta(DISPOSITIVOS), "*"))):
-            slot = os.path.basename(camino)
-            if not _DIRECCION.fullmatch(slot):
+    def _enumerate() -> list[dict]:
+        raws = []
+        for path in sorted(glob.glob(os.path.join(sysroot.ruta(DEVICES), "*"))):
+            slot = os.path.basename(path)
+            if not _ADDRESS.fullmatch(slot):
                 continue
-            base = sysroot.fuera(camino)
-            clase = (read_text(f"{base}/class") or "")[2:6]
-            tipo = CLASES.get(clase)
-            if tipo is None:
+            base = sysroot.fuera(path)
+            code = (read_text(f"{base}/class") or "")[2:6]
+            kind = CLASSES.get(code)
+            if kind is None:
                 continue
             driver = None
             try:
-                enlace = pathlib.Path(camino, "driver")
-                driver = enlace.resolve().name if enlace.exists() else None
+                link = pathlib.Path(path, "driver")
+                driver = link.resolve().name if link.exists() else None
             except OSError:
                 pass
-            crudos.append({"slot": slot, "kind": tipo, "driver": driver, "clase": clase,
+            raws.append({"slot": slot, "kind": kind, "driver": driver, "class_code": code,
                            "ids": (_hex(f"{base}/vendor"), _hex(f"{base}/device"))})
-        pares = [c["ids"] for c in crudos if None not in c["ids"]]
-        nombres = pciids.lookup(pares) if pares else {}
-        for crudo in crudos:
-            marca, modelo = nombres.get(crudo["ids"], (None, None))
-            # Un dispositivo que pci.ids aún no tiene (el audio del H510,
-            # 8086:f0c8, en el de Fedora 44) sigue siendo de alguien.
-            crudo["vendor"] = marca or VENDORS.get(crudo["ids"][0])
-            crudo["name"] = modelo
-        return crudos
+        pairs = [c["ids"] for c in raws if None not in c["ids"]]
+        names = pciids.lookup(pairs) if pairs else {}
+        for raw in raws:
+            vendor, model = names.get(raw["ids"], (None, None))
+            # A device pci.ids does not know yet still belongs to someone:
+            # the vendor by its id.
+            raw["vendor"] = vendor or VENDORS.get(raw["ids"][0])
+            raw["name"] = model
+        return raws
 
     @staticmethod
-    def _nombres_propios(draft: Draft) -> dict[str, str]:
-        """El nombre que cada pieza ya tiene en su página, por dirección."""
-        propios: dict[str, str] = {}
+    def _own_names(draft: Draft) -> dict[str, str]:
+        """The name each part already has on its page, by address."""
+        own: dict[str, str] = {}
         for gpu in draft.gpus:
             if gpu.get("pci_slot") and gpu.get("name"):
-                propios[gpu["pci_slot"]] = gpu["name"]
-        for disco in draft.disks:
-            if getattr(disco, "pci_slot", None) and disco.model:
-                propios[disco.pci_slot] = disco.model
-        for interfaz in draft.network:
-            ranura = getattr(interfaz, "pci_slot", None)
-            nombre = getattr(interfaz, "display_name", None)
-            if ranura and nombre and nombre != interfaz.name:
-                propios[ranura] = nombre
-        return propios
+                own[gpu["pci_slot"]] = gpu["name"]
+        for disk in draft.disks:
+            if getattr(disk, "pci_slot", None) and disk.model:
+                own[disk.pci_slot] = disk.model
+        for interface in draft.network:
+            slot = getattr(interface, "pci_slot", None)
+            name = getattr(interface, "display_name", None)
+            if slot and name and name != interface.name:
+                own[slot] = name
+        return own
 
     @staticmethod
-    def _ranura(nodo: pathlib.Path, nombres: dict) -> Optional[str]:
-        """El nombre de la ranura, si la tabla del firmware señala a este
-        dispositivo o a un puente de su cadena (una gráfica lleva los suyos)."""
-        if not nombres:
+    def _slot_name(node: pathlib.Path, names: dict) -> Optional[str]:
+        """The slot's name, if the firmware's table points to this device or
+        to a bridge on its chain (a graphics card carries its own)."""
+        if not names:
             return None
-        for eslabon in _cadena_pcie(nodo):
-            if (nombre := nombres.get(eslabon.name)):
-                return nombre
+        for hop in _cadena_pcie(node):
+            if (name := names.get(hop.name)):
+                return name
         return None
 
 
 class PlatformInfo(Provider):
-    """IOMMU, virtualización, decodificación por encima de 4 GB y los chips
-    de la placa. Una vez."""
+    """IOMMU, virtualization, decoding above 4 GB and the board's chips.
+    Once."""
 
     name = "platform"
     provides = "platform"
     static = True
 
     def collect(self, draft: Draft) -> None:
-        tipo, estado = self._virtualizacion()
+        kind, state = self._virtualization()
         draft.platform = Platform(
             iommu_groups=self._iommu(),
-            virtualization=estado, virtualization_kind=tipo,
-            above_4g_devices=self._por_encima_de_4g(),
-            sensor_chip=self._chip_de_sensores(),
+            virtualization=state, virtualization_kind=kind,
+            above_4g_devices=self._above_4g(),
+            sensor_chip=self._sensor_chip(),
             audio_codec=self._codec(),
         )
 
     @staticmethod
     def _iommu() -> Optional[int]:
-        grupos = glob.glob(os.path.join(sysroot.ruta("/sys/kernel/iommu_groups"), "*"))
-        return len(grupos) or None
+        groups = glob.glob(os.path.join(sysroot.ruta("/sys/kernel/iommu_groups"), "*"))
+        return len(groups) or None
 
     @staticmethod
-    def _virtualizacion() -> tuple[Optional[str], Optional[str]]:
-        banderas = ""
-        for linea in (read_text("/proc/cpuinfo") or "").splitlines():
-            if linea.startswith("flags"):
-                banderas = linea.partition(":")[2]
+    def _virtualization() -> tuple[Optional[str], Optional[str]]:
+        flags = ""
+        for line in (read_text("/proc/cpuinfo") or "").splitlines():
+            if line.startswith("flags"):
+                flags = line.partition(":")[2]
                 break
-        palabras = banderas.split()
-        tipo = "AMD-V" if "svm" in palabras else "VT-x" if "vmx" in palabras else None
-        if tipo is None:
+        words = flags.split()
+        kind = "AMD-V" if "svm" in words else "VT-x" if "vmx" in words else None
+        if kind is None:
             return None, None
-        # `/dev/kvm` no es de /sys ni de /proc: se pregunta por `a_traves`
-        # para que un volcado guarde lo que contestó su equipo.
-        en_uso = sysroot.a_traves("plataforma", "kvm", lambda: os.path.exists("/dev/kvm"))
-        return tipo, "active" if en_uso else "present"
+        # `/dev/kvm` is not in /sys or /proc: asked through `a_traves` so a
+        # dump keeps what its machine answered.
+        in_use = sysroot.a_traves("plataforma", "kvm", lambda: os.path.exists("/dev/kvm"))
+        return kind, "active" if in_use else "present"
 
     @staticmethod
-    def _por_encima_de_4g() -> int:
-        cuantos = 0
-        for camino in glob.glob(os.path.join(sysroot.ruta(DISPOSITIVOS), "*", "resource")):
-            for linea in (read_text(sysroot.fuera(camino)) or "").splitlines():
-                campos = linea.split()
+    def _above_4g() -> int:
+        count = 0
+        for path in glob.glob(os.path.join(sysroot.ruta(DEVICES), "*", "resource")):
+            for line in (read_text(sysroot.fuera(path)) or "").splitlines():
+                fields = line.split()
                 try:
-                    if len(campos) >= 2 and int(campos[1], 16) and int(campos[0], 16) >= 1 << 32:
-                        cuantos += 1
+                    if len(fields) >= 2 and int(fields[1], 16) and int(fields[0], 16) >= 1 << 32:
+                        count += 1
                         break
                 except ValueError:
                     continue
-        return cuantos
+        return count
 
     @staticmethod
-    def _chip_de_sensores() -> Optional[str]:
+    def _sensor_chip() -> Optional[str]:
         from .hwmon import BOARD_CHIP
 
-        for camino in sorted(glob.glob(os.path.join(sysroot.ruta("/sys/class/hwmon"), "*", "name"))):
-            nombre = read_text(sysroot.fuera(camino)) or ""
-            if BOARD_CHIP.match(nombre) and not nombre.startswith(("acpitz", "thermal")) \
-                    and not nombre.endswith("_wmi"):
-                return nombre
+        for path in sorted(glob.glob(os.path.join(sysroot.ruta("/sys/class/hwmon"), "*", "name"))):
+            name = read_text(sysroot.fuera(path)) or ""
+            if BOARD_CHIP.match(name) and not name.startswith(("acpitz", "thermal")) \
+                    and not name.endswith("_wmi"):
+                return name
         return None
 
     @staticmethod
     def _codec() -> Optional[str]:
-        """El códec de sonido de la placa. Los de HDMI son de la gráfica."""
-        for camino in sorted(glob.glob(os.path.join(sysroot.ruta("/proc/asound"), "card*", "codec#*"))):
-            primera = (read_text(sysroot.fuera(camino)) or "").split("\n", 1)[0]
-            nombre = primera.partition(":")[2].strip()
-            if nombre and "HDMI" not in nombre:
-                return nombre
+        """The board's sound codec. HDMI ones belong to the graphics card."""
+        for path in sorted(glob.glob(os.path.join(sysroot.ruta("/proc/asound"), "card*", "codec#*"))):
+            first = (read_text(sysroot.fuera(path)) or "").split("\n", 1)[0]
+            name = first.partition(":")[2].strip()
+            if name and "HDMI" not in name:
+                return name
         return None

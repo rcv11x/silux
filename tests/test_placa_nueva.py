@@ -80,9 +80,9 @@ class TestLasRanurasDelFirmware(unittest.TestCase):
             nodo = pathlib.Path(tmp, "pci0000:00", "0000:00:03.1", "0000:0a:00.0",
                                 "0000:0b:00.0", "0000:0c:00.0")
             nodo.mkdir(parents=True)
-            self.assertEqual(PciDevices._ranura(nodo, {"0000:0a:00.0": "PCIEX16"}), "PCIEX16")
-            self.assertIsNone(PciDevices._ranura(nodo, {"0000:01:00.0": "M2A_CPU"}))
-            self.assertIsNone(PciDevices._ranura(nodo, {}))
+            self.assertEqual(PciDevices._slot_name(nodo, {"0000:0a:00.0": "PCIEX16"}), "PCIEX16")
+            self.assertIsNone(PciDevices._slot_name(nodo, {"0000:01:00.0": "M2A_CPU"}))
+            self.assertIsNone(PciDevices._slot_name(nodo, {}))
 
 
 class TestLoQueDiceLaPlataforma(unittest.TestCase):

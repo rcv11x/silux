@@ -133,13 +133,13 @@ class TestElChipsetDeUnaPlacaAmd(unittest.TestCase):
         }
         for placa, esperado in casos.items():
             with self.subTest(placa=placa):
-                self.assertEqual(dmi.chipset_de_la_placa(placa), esperado)
+                self.assertEqual(dmi.chipset_from_board_name(placa), esperado)
 
     def test_un_nombre_que_no_lo_dice_no_se_adivina(self):
         for placa in ("LNVNB161216", "MS-7D23", "316C", "AX5700", "B5",
                       "Aspire A515-45", "VivoBook X513EA", None, ""):
             with self.subTest(placa=placa):
-                self.assertIsNone(dmi.chipset_de_la_placa(placa))
+                self.assertIsNone(dmi.chipset_from_board_name(placa))
 
     def test_el_5800x3d_dice_x570_y_no_un_dispositivo_pci(self):
         from tests.test_equipos import EQUIPOS, foto
