@@ -1,6 +1,6 @@
 """Processor usage from /proc/stat.
 
-Usage is a rate: no file says «35 %», only accumulated jiffies. The previous
+Usage is a rate: the file only has accumulated jiffies, so the previous
 reading is kept and the difference divided.
 """
 
@@ -47,8 +47,8 @@ class CpuUsage(Provider):
             return
         now = time.monotonic()
         if window_s(self._previous_at, now, draft.interval_s) is None:
-            # Jiffies are time too, but a window this short gives two or three
-            # of them: the usage would be 0, 50 or 100 %.
+            # A window this short holds only two or three jiffies, which would
+            # make usage 0, 50 or 100 %.
             self._previous, self._previous_at = current, now
             return
 
@@ -68,11 +68,10 @@ class CpuUsage(Provider):
 
     @staticmethod
     def _load_average() -> tuple[float, ...]:
-        """The system's load average over 1, 5 and 15 minutes.
+        """The 1, 5 and 15 minute load averages.
 
-        It complements the usage: usage says how much the CPU works now, the
-        load how many processes were waiting on average. With 12 threads, a
-        load of 12 is full saturation.
+        Usage says how busy the CPU is now; load says how many processes were
+        waiting on average. With 12 threads, a load of 12 is full saturation.
         """
         try:
             with open(sysroot.path("/proc/loadavg"), encoding="ascii") as fh:

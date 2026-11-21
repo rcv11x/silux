@@ -1,10 +1,9 @@
-"""Time in each of the processor's idle states (C-states).
+"""Time spent in each processor idle state (C-state).
 
-The kernel counts, per thread and per state, the microseconds spent there
-since boot (`cpuidle/stateN/time`). Two readings give the share of the last
-interval each thread spent in each state: whether the machine really rests
-when it does nothing. No permissions needed; the first reading only sets the
-base.
+The kernel counts the microseconds each thread spends in each state since
+boot (`cpuidle/stateN/time`). Two readings give each state's share of the
+last interval, which shows whether an idle machine really rests. No
+permissions needed; the first reading only sets the baseline.
 """
 
 from __future__ import annotations
@@ -28,7 +27,7 @@ class CpuIdle(Provider):
     provides = "cpu.idle_states"
 
     def __init__(self) -> None:
-        # Names do not change: read once. cpu → [(folder, name, description)]
+        # Names don't change, so they are read once: cpu → [(folder, name, description)]
         self._states: Optional[dict[int, list[tuple[str, str, Optional[str]]]]] = None
         self._previous: Optional[tuple[float, dict[tuple[int, str], int]]] = None
 
@@ -51,8 +50,8 @@ class CpuIdle(Provider):
         return states
 
     def collect(self, draft: Draft) -> None:
-        # A dump holds one reading of each counter: subtracted from itself it
-        # would read «0 % in every state», which looks like a value and is not.
+        # A dump has a single reading of each counter; subtracting it from
+        # itself would show a plausible but false «0 % in every state».
         if sysroot.active():
             return
         if self._states is None:
@@ -75,8 +74,8 @@ class CpuIdle(Provider):
 
     @staticmethod
     def residency(before: dict, after: dict, seconds: float, states: dict) -> list[IdleState]:
-        """The share of the interval in each state: mean, minimum and maximum
-        over the threads, in the kernel's order, from lightest to deepest."""
+        """Each state's share of the interval, as mean, minimum and maximum
+        across threads, from the lightest state to the deepest."""
         if seconds <= 0:
             return []
         order: list[tuple[str, Optional[str]]] = []
@@ -91,8 +90,8 @@ class CpuIdle(Provider):
                 if state != name or (cpu, state) not in before:
                     continue
                 spent = increase(before[(cpu, state)], micros)
-                # A counter going back (a thread taken offline and back) gives
-                # no share: that thread does not count this time.
+        # A counter that went backwards (a thread taken offline and back)
+        # gives no share; that thread sits this interval out.
                 if spent is None:
                     continue
                 shares.append(min(100.0, spent / (seconds * 1e6) * 100.0))

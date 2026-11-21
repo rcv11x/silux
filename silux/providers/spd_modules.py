@@ -1,11 +1,11 @@
-"""The SPD of each memory module, matched to SMBIOS's modules.
+"""Each memory module's SPD, matched to the SMBIOS modules.
 
-Two views of the same modules: SMBIOS says where each one is and at what
-speed the firmware set it; the SPD says what it can do. Together they say
-«runs at 2667 of the 3200 it supports».
+Two views of the same modules: SMBIOS says where each one sits and the
+speed the firmware set, the SPD says what it is rated for. Together they
+give «runs at 2667 of its 3200».
 
-No permissions needed: on most distributions the SPD chip is readable by
-anyone once the kernel loads its driver.
+No permissions needed: on most distributions the SPD is readable by anyone
+once the kernel loads its driver.
 """
 
 from __future__ import annotations
@@ -31,13 +31,13 @@ class SpdModules(Provider):
     def unavailable_reason(self):
         if self.available():
             return None
-        # The bus may be missing, reserved by the firmware, or only lack its
-        # driver: each has its own fix, and «load ee1004» helps none of the
-        # first two.
+        # The bus may be missing, reserved by the firmware, or just lack its
+        # driver; each has a different fix, and «load ee1004» only helps the
+        # last.
         cause = spd_module.unreadable_cause()
         reason, fix = spd_module.diagnostico(cause)
-        # Without the bus, or with it reserved, it is the board's. With the bus
-        # and no driver, loading one reads it.
+        # Without the bus, or with it reserved, it's down to the board. With
+        # the bus and no driver, loading one fixes it.
         need = Need.DRIVER if cause == spd_module.CAUSE_NO_DRIVER else Need.HARDWARE
         return ("spd", need, reason, fix)
 
@@ -56,10 +56,10 @@ class SpdModules(Provider):
                        key="prov.spd.partial")
             failures = [(device, exc) for device, exc in failures if device not in partial]
         if failures:
-            # The chip is there and reading it failed: on DDR5, when the
-            # machine blocks SPD writes (the driver needs them to switch
-            # pages) or the driver did not recover from a suspend. Which one
-            # is not known from here; the error goes to the report.
+            # The chip is there and reading it failed. On DDR5 that happens
+            # when the machine blocks SPD writes (the driver needs them to
+            # switch pages) or the driver didn't survive a suspend; which one
+            # can't be told from here, so the errno goes to the report.
             draft.note("spd", Need.HARDWARE, _("prov.spd.readfailed"),
                        _("prov.spd.readfailed.hint"),
                        detail="; ".join(f"{device}: {errno.errorcode.get(exc.errno, exc.errno)}"
@@ -86,8 +86,9 @@ class SpdModules(Provider):
     def _merge(draft: Draft, readings: list) -> None:
         """Attach each SPD reading to its SMBIOS module.
 
-        Nothing maps a chip's bus address to the firmware's slot name: match
-        by part number where both have one, then in order, as every tool does.
+        Nothing maps a chip's bus address to the firmware's slot name, so
+        match by part number where both have one, then in order, like every
+        other tool.
         """
         populated = [i for i, m in enumerate(draft.modules) if m.populated]
         if not populated:
@@ -95,8 +96,8 @@ class SpdModules(Provider):
 
         pending = list(readings)
         matches: dict[int, object] = {}
-        # Every module by part number first: matched one by one, soldered
-        # memory could take the slot's only reading before the slot did.
+        # Part numbers first, for every module: matching one at a time, a
+        # soldered module could take the reading that belongs to a slot.
         for index in populated:
             part = (draft.modules[index].part_number or "").strip()
             match = next((r for r in pending
@@ -104,8 +105,8 @@ class SpdModules(Provider):
             if match is not None:
                 pending.remove(match)
                 matches[index] = match
-        # Then the rest in order, a slot before memory soldered on the board:
-        # that has no SPD chip of its own on the bus.
+        # Then the rest in order, slots before soldered memory, which has no
+        # SPD chip of its own on the bus.
         rest = sorted((i for i in populated if i not in matches),
                       key=lambda i: not draft.modules[i].in_a_slot)
         for index in rest:

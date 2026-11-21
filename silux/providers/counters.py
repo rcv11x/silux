@@ -1,20 +1,19 @@
 """Rates from two readings of a counter, and when two readings give none.
 
-A rate is what a counter went up between two readings over the time between
-them, and that time can be wrong in ways the difference does not show. A
-power chart got 1336648637.3 W from an Iris Xe drawing 9 W: 9 J over a window
-of nanoseconds gives exactly that. So every such calculation goes through
-here, with the same rules:
+A rate is how much a counter rose divided by the time between the readings,
+and that time can be wrong in ways the difference doesn't show: 9 J over a
+window of nanoseconds is a billion watts. Every such calculation goes
+through here, with the same rules:
 
-- a window that is not positive, or shorter than half the sampling interval,
-  gives nothing;
-- a counter that went back (reset, re-opened, a device that came back) gives
-  nothing, unless it is one that wraps at a known value;
-- either way, the new reading is the base for the next one, which is what
-  every caller does by keeping the last reading whatever came of it.
+- a window that isn't positive, or is shorter than half the sampling
+  interval, gives nothing;
+- a counter that went backwards (reset, reopened, a device that came back)
+  gives nothing, unless it wraps at a known value;
+- either way, the new reading becomes the baseline for the next, as every
+  caller keeps its last reading whatever came of it.
 
-The impossible-value check (`rapl.Discarded`) stays behind this, as a safety
-net for what a valid window still cannot explain.
+The impossible-value check (`rapl.Discarded`) stays behind this as a safety
+net for what a valid window still can't explain.
 """
 
 from __future__ import annotations
@@ -26,7 +25,7 @@ MIN_WINDOW_SHARE = 0.5
 
 
 def window_s(before_s: float, after_s: float, interval_s: float) -> Optional[float]:
-    """The seconds between two readings, or None if they do not make a window."""
+    """Seconds between two readings, or None if they don't make a window."""
     seconds = after_s - before_s
     if seconds <= 0 or seconds < interval_s * MIN_WINDOW_SHARE:
         return None
@@ -34,10 +33,10 @@ def window_s(before_s: float, after_s: float, interval_s: float) -> Optional[flo
 
 
 def increase(before: float, after: float, wrap: Optional[float] = None) -> Optional[float]:
-    """How much a counter that only goes up went up, or None if it went back.
+    """How much a monotonic counter rose, or None if it went backwards.
 
-    `wrap` is the value at which the counter starts again from zero (RAPL's
-    `max_energy_range_uj`): going back is then going round, once.
+    `wrap` is where the counter rolls over to zero (RAPL's
+    `max_energy_range_uj`); going backwards is then one wraparound.
     """
     grown = after - before
     if grown >= 0:
@@ -49,7 +48,7 @@ def increase(before: float, after: float, wrap: Optional[float] = None) -> Optio
 
 def rate(before: float, before_s: float, after: float, after_s: float,
          interval_s: float, wrap: Optional[float] = None) -> Optional[float]:
-    """Per second between two readings, or None when they cannot say."""
+    """The per-second rate between two readings, or None if they can't say."""
     seconds = window_s(before_s, after_s, interval_s)
     if seconds is None:
         return None

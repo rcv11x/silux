@@ -1,8 +1,8 @@
-"""How often the processor slowed down for temperature, since boot (Intel).
+"""How often the processor throttled for temperature since boot (Intel).
 
-The kernel counts, under each CPU's `thermal_throttle/`, every time a core or
-the whole package reached its thermal limit and how long it stayed there.
-Counted since boot, so a zero is an answer: it has not happened.
+The kernel counts, under each CPU's `thermal_throttle/`, every time a core
+or the package hit its thermal limit and for how long. The count starts at
+boot, so zero is an answer: it hasn't happened.
 """
 
 from __future__ import annotations
@@ -23,8 +23,8 @@ class ThermalThrottleCounts(Provider):
     provides = "cpu.thermal_throttle"
 
     def __init__(self) -> None:
-        # One directory per physical core, and one per package: the threads
-        # of a core share its counters. Worked out once, not every sample.
+        # One directory per physical core and one per package; a core's
+        # threads share its counters.
         self._cores: Optional[list[str]] = None
         self._packages: list[str] = []
 
