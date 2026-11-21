@@ -1,13 +1,12 @@
 """Memory modules, through the privileged helper.
 
-Without permissions only the total RAM is known, which the kernel counts.
-Who made it, its type, speed and free slots are in the SMBIOS table, which
-the kernel keeps for root for good reasons: the machine's serial numbers go
-with them.
+Without permissions only the total RAM is known. Maker, type, speed and
+free slots are in the SMBIOS table, which the kernel keeps root-only for
+good reason: the machine's serial numbers are in it.
 
-This provider never raises permissions on its own. It waits for the user to
-ask from the interface, and until then leaves a note saying what is missing
-and why: a diagnostic program that asks for a password at startup gets
+This provider never asks for permissions on its own. It waits for the user
+to ask from the interface and until then leaves a note saying what is
+missing and why: a diagnostic tool that wants a password at startup gets
 uninstalled.
 """
 
@@ -74,13 +73,13 @@ class PrivilegedMemory(Provider):
             outdated=outdated,
         )
 
-        # QEMU's SMBIOS declares a «DIMM 0» of its own making: a virtual
-        # machine has no modules to read, with permissions or without.
+        # QEMU's SMBIOS declares a made-up «DIMM 0»: a virtual machine has no
+        # modules to read, with permissions or without.
         if is_virtual_machine(draft):
             return
 
         if already_root():
-            # No helper in between: the table can be read already.
+            # The table is already readable; no helper needed.
             self._read_directly(draft)
             return
 
@@ -117,12 +116,12 @@ class PrivilegedMemory(Provider):
 
     @classmethod
     def _spd_hint(cls) -> Iterator[DriverHint]:
-        """SMBIOS says what speed the memory runs at; the SPD says what it
-        could run at.
+        """SMBIOS says the speed the memory runs at; the SPD says the speed it
+        is rated for.
 
         SMBIOS shows what the firmware negotiated, which without XMP are the
         conservative JEDEC values. The maker's profiles are in each module's
-        SPD chip, reached through the SMBus once its driver is loaded.
+        SPD chip, reachable over the SMBus once its driver is loaded.
         """
         # Only chips the kernel registered on a memory bus: a touchpad's
         # buses can have something at 0x50 too.
@@ -189,6 +188,6 @@ class PrivilegedMemory(Provider):
                 max_capacity_bytes=first.get("max_capacity_bytes") or 0,
                 error_correction=first.get("error_correction"),
             )
-        # From the same table, each board slot's name.
+        # Each board slot's name, from the same table.
         draft.pci_slot_names = smbios.system_slots(structures)
         draft.capabilities.add("smbios")

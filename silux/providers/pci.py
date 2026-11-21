@@ -1,13 +1,12 @@
-"""What hangs from the PCI bus, and what the board has enabled.
+"""What sits on the PCI bus, and what the board has enabled.
 
-Two providers. `PlatformInfo` is read once: IOMMU, virtualization, the
-sensor chip, the sound codec. `PciDevices` on every sample, since a device's
-link changes on its own: an idle graphics card lowers it to save power.
+Two providers. `PlatformInfo` runs once: IOMMU, virtualization, the sensor
+chip, the sound codec. `PciDevices` runs every sample, since a device's
+link changes on its own: an idle graphics card drops it to save power.
 
-Names are not taken raw from `pci.ids` when Silux already calls that part
-something else: the disk as in Storage, the graphics card as in Graphics,
-the network card as in Network (rule 1). So `PciDevices` runs after those
-three in `collector.py`.
+A part Silux already names elsewhere keeps that name instead of pci.ids's
+raw one (the disk as on Storage, the card as on Graphics, the NIC as on
+Network), so `PciDevices` runs after those three in `collector.py`.
 """
 
 from __future__ import annotations
@@ -25,15 +24,15 @@ from .drm import VENDORS, _link, _pcie_chain
 
 DEVICES = "/sys/bus/pci/devices"
 
-# The PCI class (first four digits) of what is shown. Bridges and the rest
-# are not devices anyone looks for by name.
+# PCI classes shown, by their first four digits. Bridges and the like are
+# not devices anyone looks for by name.
 CLASSES = {
     "0300": "gpu", "0302": "gpu", "0380": "gpu",
     "0108": "nvme", "0106": "sata", "0104": "sata",
     "0200": "ethernet", "0280": "wifi",
     "0c03": "usb", "0403": "audio", "0401": "audio",
 }
-# In what order: what goes in a slot first, the board's controllers after.
+# Order: what goes in a slot first, the board's controllers after.
 IN_A_SLOT = ("gpu", "nvme", "ethernet", "wifi")
 ORDER = ("gpu", "nvme", "ethernet", "wifi", "sata", "usb", "audio")
 
@@ -55,9 +54,9 @@ class PciDevices(Provider):
     provides = "pci_devices"
 
     def __init__(self) -> None:
-        # What is there does not change while the program runs; the link does.
+        # The devices don't change while Silux runs; their links do.
         self._fixed: Optional[list[dict]] = None
-        # Each slot's last link: its maximum does not change and is not reread.
+        # Each slot's last link. Its maximum doesn't change and isn't reread.
         self._links: dict[str, PcieLink] = {}
 
     def available(self) -> bool:
@@ -70,18 +69,18 @@ class PciDevices(Provider):
         out = []
         for fixed in self._fixed:
             node = pathlib.Path(sysroot.path(f"{DEVICES}/{fixed['slot']}"))
-            # The link only means something for what goes in a slot. A USB,
-            # SATA or sound controller lives inside the chipset or processor:
-            # its node publishes the chipset's internal link, which would read
-            # as a slot running at half. A suspended card is not asked:
+            # A link only means something for what goes in a slot. USB, SATA
+            # and sound controllers live inside the chipset or the processor,
+            # and their node reports the chipset's internal link, which would
+            # read as a slot at half speed. A suspended card isn't asked:
             # reading its link wakes it since Linux 6.18 (`is_suspended`).
             link = (_link(node, self._links.get(fixed["slot"]))
                       if fixed["kind"] in IN_A_SLOT and not is_suspended(node) else None)
             if link is not None:
                 self._links[fixed["slot"]] = link
-            # An Intel integrated card publishes no link: it hangs from none,
-            # being inside the processor. A link without a single figure is not
-            # an unknown link, it is none.
+            # Intel's integrated GPU reports no link because it hangs from
+            # none, being inside the processor: a link with no figures at all
+            # is not unknown, it doesn't exist.
             if link is not None and not any((link.current_speed_gts, link.max_speed_gts,
                                                link.current_width, link.max_width)):
                 link = None
@@ -119,8 +118,7 @@ class PciDevices(Provider):
         names = pciids.lookup(pairs) if pairs else {}
         for raw in raws:
             vendor, model = names.get(raw["ids"], (None, None))
-            # A device pci.ids does not know yet still belongs to someone:
-            # the vendor by its id.
+            # A device pci.ids doesn't know yet still has a vendor id.
             raw["vendor"] = vendor or VENDORS.get(raw["ids"][0])
             raw["name"] = model
         return raws
@@ -145,7 +143,7 @@ class PciDevices(Provider):
     @staticmethod
     def _slot_name(node: pathlib.Path, names: dict) -> Optional[str]:
         """The slot's name, if the firmware's table points to this device or
-        to a bridge on its chain (a graphics card carries its own)."""
+        to a bridge above it (a graphics card brings its own)."""
         if not names:
             return None
         for hop in _pcie_chain(node):
@@ -155,8 +153,7 @@ class PciDevices(Provider):
 
 
 class PlatformInfo(Provider):
-    """IOMMU, virtualization, decoding above 4 GB and the board's chips.
-    Once."""
+    """IOMMU, virtualization, above-4G decoding and the board's chips, once."""
 
     name = "platform"
     provides = "platform"
@@ -188,8 +185,8 @@ class PlatformInfo(Provider):
         kind = "AMD-V" if "svm" in words else "VT-x" if "vmx" in words else None
         if kind is None:
             return None, None
-        # `/dev/kvm` is not in /sys or /proc: asked through `recorded` so a
-        # dump keeps what its machine answered.
+        # `/dev/kvm` isn't under /sys or /proc: asked through `a_traves` so a
+        # dump keeps its machine's answer.
         in_use = sysroot.recorded("plataforma", "kvm", lambda: os.path.exists("/dev/kvm"))
         return kind, "active" if in_use else "present"
 

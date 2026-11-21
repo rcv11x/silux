@@ -1,11 +1,11 @@
-"""The processor's identity read straight from CPUID, without root.
+"""The processor's identity, read straight from CPUID without root.
 
-What sysfs cannot give: the real vendor, the brand string, family and model,
-the instruction set and (on modern Intel) the base clock, the part's turbo
-ceiling and the BCLK, in leaf 0x16, which other tools read from MSRs with a
-privileged daemon.
+What sysfs can't give: the real vendor, the brand string, family and model,
+the instruction set and, on modern Intel, leaf 0x16's base clock, turbo
+ceiling and BCLK, which other tools read from MSRs through a privileged
+daemon.
 
-CPUID answers for the core that runs it, so a hybrid CPU is asked once per
+CPUID reports on the core it runs on, so a hybrid CPU is queried once per
 core type, with the thread pinned to one of its cores.
 """
 
@@ -38,9 +38,9 @@ VENDOR_NAMES = {
     "  Shanghai  ": "Zhaoxin",
 }
 
-# The twelve-byte signature of leaf 0x40000000. Each hypervisor chose its own
-# once and keeps it, so the table is short and does not age. Looked up without
-# padding spaces, which several use to reach twelve.
+# Leaf 0x40000000's 12-byte signature. Each hypervisor picked one long ago
+# and kept it, so the table is short and doesn't age. Matched without the
+# padding spaces several use to fill twelve bytes.
 HYPERVISOR_NAMES = {
     "VMwareVMware": "VMware",
     "KVMKVMKVM": "KVM",
@@ -111,8 +111,8 @@ class CpuidIdentity(Provider):
         ext_family_bits = (eax >> 20) & 0xFF
         ext_model_bits = (eax >> 16) & 0xF
 
-        # The maker's datasheets (and identification databases) use the
-        # composed values, not the raw bits.
+        # Datasheets and identification databases use the composed values,
+        # not the raw bits.
         disp_family = family + ext_family_bits if family == 0xF else family
         disp_model = model + (ext_model_bits << 4) if family in (6, 0xF) else model
 
@@ -130,27 +130,26 @@ class CpuidIdentity(Provider):
             signature=eax,
             features=feats,
             virtualization=("VT-x" if "vmx" in feats else "AMD-V" if "svm" in feats else None),
-            # The host sets the «hypervisor» bit: no real processor does, so
-            # it is the most direct sign of running in a virtual machine.
+            # No real processor sets the hypervisor bit, so it is the most
+            # direct sign of running in a virtual machine.
             in_virtual_machine="hypervisor" in feats,
             hypervisor=self._hypervisor(reader) if "hypervisor" in feats else None,
         )
 
         self._fill_frequencies(reader, entry, hybrid=len(draft.types) > 1)
-        # What a virtual CPU declares is up to the hypervisor: QEMU invents
-        # family and model, and with `-cpu host` the chip is the host's,
-        # whose package is not the guest's. Not looked up, so no notice
-        # asks for a report to fill it in either.
+        # A virtual CPU's identity is whatever the hypervisor declares: QEMU
+        # makes up family and model, and with `-cpu host` the chip is the
+        # host's but the package isn't the guest's. So it isn't looked up, and
+        # no notice asks for a report to fill it in.
         if not entry["in_virtual_machine"]:
             self._fill_identity(draft, entry, vendor_id, disp_family, disp_model,
                                 family, model, stepping, brand)
 
     @staticmethod
     def _hypervisor(reader: CpuidReader) -> Optional[str]:
-        """Who is underneath; only with the «hypervisor» bit set. A signature
-        not in the table is returned as is: it still identifies the
-        hypervisor and reaches the report, where the missing entry can come
-        from."""
+        """The hypervisor underneath, when the hypervisor bit is set. An
+        unknown signature is returned as is: it still identifies it, and the
+        report carries it so the table can be extended."""
         signature = reader.hypervisor_id().strip()
         if not signature:
             return None
@@ -158,7 +157,7 @@ class CpuidIdentity(Provider):
 
     @staticmethod
     def _fill_frequencies(reader: CpuidReader, entry: dict, hybrid: bool) -> None:
-        """Leaf 0x16: base clock, turbo ceiling and BCLK. Skylake and later.
+        """Leaf 0x16: base clock, turbo ceiling and BCLK (Skylake and later).
 
         A hybrid answers one base for the whole package, which is neither
         core type's: there each type's own, from intel_pstate, is the base.
@@ -216,8 +215,8 @@ class CpuidIdentity(Provider):
                 _("prov.cpuid.unknown.hint"),
             )
 
-        # A recognized processor can still lack one of the two: the table has
-        # rows without a process node, and the package comes from another one.
+        # A recognised processor can still lack either: some table rows have
+        # no process node, and the package comes from a different source.
         if ident.matched and entry.get("technology") is None:
             draft.note(
                 "cpu.technology", Need.DATABASE,

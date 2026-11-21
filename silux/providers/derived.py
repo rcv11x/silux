@@ -1,13 +1,13 @@
 """Sensors derived from data already read.
 
-Clocks, per-core usage and the power breakdown do not come from a hwmon chip
-but from CPUID, cpufreq, /proc/stat and RAPL. In a sensor tree they are what
-the rest are (values that change, worth following with their minimum and
-maximum), so they are turned into the same shape here, as HWiNFO does under
-the processor's node.
+Clocks, per-core usage and the power breakdown come from CPUID, cpufreq,
+/proc/stat and RAPL rather than a hwmon chip, but in a sensor tree they are
+the same kind of thing (changing values worth tracking with their minimum
+and maximum), so they are reshaped here to match, as HWiNFO does under the
+processor's node.
 
-It runs last on purpose: it only transforms what others collected and opens
-no file.
+Runs last on purpose: it only reshapes what others collected and opens no
+file.
 """
 
 from __future__ import annotations
@@ -18,8 +18,8 @@ from ..i18n import _
 from ..model import DeviceKind, Need, Sensor, SensorKind, short_brand, thread_name
 from .base import Draft, Provider
 
-# A voltage rounded to one decimal stops being one: 0.845 V becomes 0.8 and
-# says nothing. Each kind has its own.
+# Rounded to one decimal, 0.845 V becomes 0.8 and says nothing: each kind
+# has its own precision.
 DECIMALS = {SensorKind.VOLTAGE: 3, SensorKind.TEMPERATURE: 1, SensorKind.CLOCK: 1,
              SensorKind.USAGE: 1, SensorKind.MEMORY: 0, SensorKind.NETWORK: 1}
 
@@ -39,7 +39,7 @@ class DerivedSensors(Provider):
     def collect(self, draft: Draft) -> None:
         self._shared_package(draft)
         if not draft.types:
-            # Even without an identified processor, the GPUs may have data.
+            # The GPUs may have data even without an identified processor.
             draft.sensors.extend(self._graphics(draft))
             return
         first = draft.types[next(iter(draft.types))]
@@ -53,11 +53,11 @@ class DerivedSensors(Provider):
 
     @staticmethod
     def _shared_package(draft: Draft) -> None:
-        """An Intel GPU inside the processor has no temperature sensor: i915
-        and xe register hwmon only on dedicated cards. It is given the
-        package's, which it shares with the CPU, labelled as that; it never
-        becomes its `temp_c`, so neither Sensores nor the alerts take it for
-        the GPU's. Without a package sensor it has none, and says so."""
+        """An Intel GPU inside the processor has no temperature sensor (i915
+        and xe only register hwmon for discrete cards), so it gets the
+        package's, labelled as shared with the CPU. It never becomes its
+        `temp_c`, so neither Sensors nor the alerts mistake it for the GPU's.
+        Without a package sensor it has none, and says so."""
         degrees = draft.cpu_extra.get("package_sensor_temp_c")
         for index, gpu in enumerate(draft.gpus):
             if not (gpu.get("integrated") and gpu.get("no_temperature_sensor")
@@ -75,8 +75,8 @@ class DerivedSensors(Provider):
     def _network(draft: Draft) -> list[Sensor]:
         """The rate of each interface that is up.
 
-        Only those up: a machine with Docker can have fifteen virtual
-        interfaces at zero, and filling the tree with them adds nothing.
+        Only those up: with Docker there can be fifteen idle virtual
+        interfaces, and the tree gains nothing from them.
         """
         sensors: list[Sensor] = []
         for interface in draft.network:
@@ -108,18 +108,18 @@ class DerivedSensors(Provider):
 
     @staticmethod
     def _graphics(draft: Draft) -> list[Sensor]:
-        """What of the graphics card does not come from hwmon.
+        """The graphics card values that don't come from hwmon.
 
-        A card's sensor chip gives temperatures, the fan and little more.
-        Usage, used memory, the clocks only the firmware knows and the
-        regulators' temperatures come from the driver and the ioctl, and in
-        the tree they matter as much: values worth following.
+        A card's sensor chip gives temperatures, the fan and little else.
+        Usage, used memory, firmware-only clocks and the regulators'
+        temperatures come from the driver and its ioctl, and are just as
+        worth tracking.
         """
         sensors: list[Sensor] = []
         for gpu in draft.gpus:
             device = gpu.get("name") or _("sensor.dev.gpu").format(
                 n=gpu.get("index", 0))
-            # The same key hwmon gives its chip: its PCI slot.
+            # The same key hwmon gives the card's chip: its PCI slot.
             device_key = (f"gpu:{gpu['pci_slot']}" if gpu.get("pci_slot")
                              else f"gpu-index:{gpu.get('index', 0)}")
             prefix = f"gpu{gpu.get('index', 0)}"
@@ -147,7 +147,7 @@ class DerivedSensors(Provider):
             ]
             if gpu.get("driver") == "nvidia":
                 # The proprietary driver has no hwmon: its temperature, power
-                # and clocks come from NVML into the model and nowhere else.
+                # and clocks reach the model only through NVML.
                 fields += [
                     ("temp", _("sensor.gpucore"), SensorKind.TEMPERATURE,
                      gpu.get("temp_c"), 5),
@@ -213,7 +213,7 @@ class DerivedSensors(Provider):
                 device_kind=DeviceKind.CPU,
                 label=label, kind=SensorKind.POWER, value=value, order=order,
                 # The chip's own sustained limit is the natural threshold:
-                # staying above it means the clock will drop.
+                # staying above it means the clock is about to drop.
                 high=power.limit_long_w if attribute == "package_w" else None,
                 critical=power.limit_short_w if attribute == "package_w" else None,
             ))

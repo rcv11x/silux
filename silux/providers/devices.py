@@ -1,13 +1,13 @@
 """What is plugged in: USB, sound, cameras and the Bluetooth adapter.
 
-Not the machine's own hardware but what surrounds it, so it has its own
-section. All read from sysfs and `/proc/asound`, without permissions, on
-every sample: things get plugged and unplugged with the program open.
+Not the machine's own hardware but what's around it, so it has its own
+page. Read from sysfs and `/proc/asound` without permissions on every
+sample, since things get plugged and unplugged with Silux open.
 
-**Not read, on purpose:** a USB device's serial number (`serial`), a
-Bluetooth adapter's address (`address`) and what it is paired with. The
-first identifies one device; the last is someone else's. A file never opened
-never reaches the model or a dump.
+**Never read, on purpose:** a USB device's `serial`, a Bluetooth adapter's
+`address` and what it is paired with. The first identifies one device, the
+last is someone else's. A file never opened never reaches the model or a
+dump.
 """
 
 from __future__ import annotations
@@ -24,9 +24,8 @@ from .base import Draft, Provider, read_text
 
 USB = "/sys/bus/usb/devices"
 
-# What a device is by its interfaces' class, most specific first: a keyboard
-# with a card reader is a reader first, and a camera with a microphone, a
-# camera.
+# A device's kind by its interfaces' class, most specific first: a keyboard
+# with a card reader is a reader, a camera with a microphone is a camera.
 BY_INTERFACE = (
     ("0e", "video"), ("08", "storage"), ("0b", "smartcard"), ("01", "audio"),
     ("e0", "wireless"), ("07", "printer"), ("03", "input"),
@@ -36,8 +35,8 @@ _PORT = re.compile(r"\d+-\d+(\.\d+)*")
 
 
 def _kind(node: str) -> str:
-    """What it is: never «by interface», which is what a device says when it
-    leaves the answer to its interfaces. They are asked instead."""
+    """What it is. Never «per interface», which is how a device defers to
+    its interfaces; they are asked instead."""
     own = (read_text(f"{node}/bDeviceClass") or "").lower()
     if own == "09":
         return "hub"
@@ -68,14 +67,14 @@ class ConnectedDevices(Provider):
     provides = "usb_devices"
 
     def __init__(self) -> None:
-        # What was read of each USB device, by its port and its sysfs entry's
-        # inode: something unplugged and another plugged into the same port
-        # is another entry, with another inode. While nothing changes, each
-        # sample only lists the folder.
+        # Each USB device's reading, by port and by its sysfs entry's inode:
+        # unplugging one device and plugging another into the same port makes
+        # a new entry with a new inode. While nothing changes, a sample only
+        # lists the folder.
         self._usb_read: dict[tuple[str, int], UsbDevice] = {}
-        # And the sound cards, by the text of `/proc/asound/cards`: reading
-        # their codecs is costly, as `codec#N` is the codec's whole dump and
-        # the kernel builds it when opened.
+        # Sound cards, by the text of `/proc/asound/cards`. Reading their
+        # codecs is costly: `codec#N` is the codec's full dump, built by the
+        # kernel when opened.
         self._sound_read: tuple[Optional[str], list[SoundCard]] = (None, [])
 
     def available(self) -> bool:
@@ -160,7 +159,7 @@ class ConnectedDevices(Provider):
 
     @staticmethod
     def _cameras() -> list[Camera]:
-        # A device creates several nodes (image and metadata): grouped by the
+        # A device creates several nodes (image and metadata), grouped by the
         # device they hang from. A virtual camera hangs from none.
         groups: dict[str, list] = {}
         for path in sorted(glob.glob(os.path.join(sysroot.path("/sys/class/video4linux"), "video*"))):
@@ -200,16 +199,16 @@ class ConnectedDevices(Provider):
         return out
 
 
-# The USB video class (USB-IF): a camera's.
+# The USB video class: a camera.
 VIDEO_CLASS = "0e"
 
 
 def _is_camera_mic(line: str) -> bool:
     """Whether a USB sound card is a camera's microphone.
 
-    `/proc/asound/cards` says where it hangs: «… at usb-0000:0e:00.3-4.1.4,
-    high speed», the controller and the port path. The device at that path,
-    on that controller's bus, is a camera if any of its interfaces is video.
+    `/proc/asound/cards` says where it hangs («… at usb-0000:0e:00.3-4.1.4,
+    high speed»): the controller and the port path. The device at that path
+    on that controller's bus is a camera if any of its interfaces is video.
     """
     match = re.search(r"usb-([0-9a-fA-F:.]+)-([\d.]+)", line)
     if not match:

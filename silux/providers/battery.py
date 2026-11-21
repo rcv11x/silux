@@ -1,15 +1,14 @@
-"""The battery, the part of a laptop that wears out the most.
+"""The battery, the part of a laptop that wears out most.
 
-What people want to know is not its voltage: it is how much capacity it has
-left against what it had new.
+What people want to know isn't its voltage but how much capacity it has
+left compared with new.
 
-**Two conventions, both in use.** Depending on the firmware, the kernel
-publishes capacity as `charge_*` (µAh) or `energy_*` (µWh), and some publish
-both. Milliamp-hours cannot be compared across machines without the cell
-voltage (4000 mAh at 7.6 V and at 11.4 V are very different batteries), so
-everything here is in watt-hours: a charge is multiplied by the design
-voltage, which is the one that goes with the nominal capacity and does not
-move with how full it is.
+The kernel reports capacity as `charge_*` (µAh) or `energy_*` (µWh),
+depending on the firmware, and some report both. Milliamp-hours can't be
+compared across machines without the cell voltage (4000 mAh at 7.6 V and at
+11.4 V are very different batteries), so everything here is in watt-hours:
+a charge is multiplied by the design voltage, which goes with the nominal
+capacity and doesn't move with the charge level.
 
 No permissions needed: plain sysfs.
 """
@@ -26,8 +25,8 @@ from .base import Draft, Provider, read_int, read_text
 
 POWER_SUPPLY = pathlib.Path("/sys/class/power_supply")
 
-# The kernel's status -> its translation key. The kernel writes it in English
-# and capitalized, which is not shown.
+# The kernel's status → its translation key. The kernel writes it
+# capitalised, in English, which is never shown.
 STATUSES = {
     "charging": "bat.status.charging",
     "discharging": "bat.status.discharging",
@@ -40,11 +39,10 @@ STATUSES = {
 def _is_battery(entry: pathlib.Path) -> bool:
     """The machine's battery, not the charger or a wireless mouse.
 
-    `/sys/class/power_supply` holds everything: the power adapter, USB-C
-    ports and any device with a cell. `type` is not enough: a wireless mouse
-    publishes `type=Battery` too, and a desktop would get a battery page.
-    `scope` tells them apart: devices say «Device»; the machine's battery
-    says «System», or nothing on older laptops.
+    `/sys/class/power_supply` holds the adapter, USB-C ports and any device
+    with a cell, and `type=Battery` alone would give a desktop a battery page
+    for its mouse. `scope` tells them apart: devices say «Device», the
+    machine's battery says «System», or nothing on older laptops.
     """
     if (read_text(str(entry / "type")) or "").strip().lower() != "battery":
         return False
@@ -64,10 +62,10 @@ def _watt_hours(entry: pathlib.Path, which: str,
 
 
 def _watts(entry: pathlib.Path, voltage: Optional[float]) -> Optional[float]:
-    """What goes in or out right now, always positive.
+    """What flows in or out right now, always positive.
 
-    The sign of `current_now` means different things in different firmware,
-    so the absolute value is taken and `status` says which way it goes.
+    The sign of `current_now` differs between firmwares, so the absolute
+    value is taken and `status` gives the direction.
     """
     if (microwatts := read_int(str(entry / "power_now"))) is not None:
         return round(abs(microwatts) / 1e6, 2)
@@ -83,9 +81,9 @@ def _read(entry: pathlib.Path) -> Battery:
     design = read_int(str(entry / "voltage_min_design"))
     design_volts = round(design / 1e6, 3) if design else None
 
-    # The design voltage converts mAh to Wh: it goes with the nominal
-    # capacity. The current one moves with the charge and would give another
-    # capacity on every sample.
+    # The design voltage converts mAh to Wh because it goes with the nominal
+    # capacity; the current voltage moves with the charge and would give a
+    # different capacity every sample.
     nominal = design_volts or volts
 
     raw = (read_text(str(entry / "status")) or "").strip().lower()
@@ -115,7 +113,7 @@ def _read(entry: pathlib.Path) -> Battery:
 
 
 class Batteries(Provider):
-    """The machine's batteries. A desktop has none, and that is said."""
+    """The machine's batteries. A desktop has none."""
 
     name = "battery"
     provides = "batteries"
@@ -137,8 +135,8 @@ class Batteries(Provider):
                        for entry in sorted(sysroot.path(POWER_SUPPLY).iterdir())
                        if _is_battery(entry)]
         if not found:
-            # No note: a desktop has no battery, and saying so every time
-            # would be warning that a machine is what it is. The page hides.
+            # No note: a desktop has no battery, and saying so would be
+            # warning that a machine is what it is. The page just hides.
             return
         draft.capabilities.add("battery")
         draft.batteries = found
