@@ -1000,7 +1000,7 @@
   "pcie.errors.nonfatal": "{n} non-fatal",
   "pcie.errors.nonfatal.one": "{n} non-fatal",
   "pcie.errors.tip": "What the PCIe link itself counted since boot (AER). Corrected ones are fixed by the hardware by resending; many of them point to a slot, a riser or a cable with a poor signal. Non-fatal and fatal ones are real failures.",
-  "pcie.now": "Running at {actual}; the card and the slot can do {max}",
+  "pcie.now": "Running at {actual}; the card and the slot can do {max}. At idle this is normal: the link drops to save power and rises under load.",
   "perm.button.read": "Read with administrator permissions",
   "perm.dialog.title": "Permanent permissions",
   "perm.explain.always": "Installed, the password window will say in your language what is read and this notice won't show; the password is still asked.",

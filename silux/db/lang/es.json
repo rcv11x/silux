@@ -1000,7 +1000,7 @@
   "pcie.errors.nonfatal": "{n} no fatales",
   "pcie.errors.nonfatal.one": "{n} no fatal",
   "pcie.errors.tip": "Los que ha contado el propio enlace PCIe desde el arranque (AER). Los corregidos los arregla el hardware repitiendo el envío; muchos apuntan a una ranura, un riser o un cable con mala señal. Los no fatales y los fatales son fallos de verdad.",
-  "pcie.now": "Ahora a {actual}; la tarjeta y la ranura llegan a {max}",
+  "pcie.now": "Ahora a {actual}; la tarjeta y la ranura llegan a {max}. En reposo es lo normal: el enlace baja para gastar menos y sube al trabajar.",
   "perm.button.read": "Leer con permisos de administrador",
   "perm.dialog.title": "Permisos permanentes",
   "perm.explain.always": "Instalado, la ventana de la contraseña dirá en tu idioma qué se lee y no saldrá este aviso; la contraseña se sigue pidiendo.",

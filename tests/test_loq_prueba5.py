@@ -47,6 +47,12 @@ class TestOnItsPages(unittest.TestCase):
         textos = self._texts("Batería")
         self.assertIn(_("bat.left.oncharger"), textos)
 
+    def test_the_header_names_the_link_it_reaches(self):
+        # At idle its NVIDIA ran at PCIe 2.0 and the header read like a fault.
+        textos = self._texts("Gráficos")
+        self.assertIn("Lenovo · AD107M · PCIe 4.0 × 8", textos)
+        self.assertIn("PCIe 2.0 × 8", textos)          # the Link row, as it is now
+
     def test_its_only_battery_is_not_battery_2(self):
         aparatos = {s.device for s in self.foto.sensors if s.chip == "BAT1"}
         self.assertEqual(aparatos, {_("sensor.dev.battery")})
