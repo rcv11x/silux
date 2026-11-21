@@ -31,8 +31,10 @@ import contextlib
 import ctypes
 import json
 import os
+import re
 import subprocess
 import sys
+import tempfile
 from typing import Any, Iterator, Optional
 
 # Margen de sobra: cargar los drivers de las tres es lo lento, y cuando algo se
@@ -82,6 +84,70 @@ def _sin_ruido() -> Iterator[None]:
         os.dup2(copia, 2)
         os.close(nulo)
         os.close(copia)
+
+
+@contextlib.contextmanager
+def _capturing(said: list) -> Iterator[None]:
+    """Fd 2 to a temporary file while asking, its text appended to `said`.
+
+    A driver that rejects a card says why only there, and `silux --json`
+    must stay JSON.
+    """
+    try:
+        copy = os.dup(2)
+        held = tempfile.TemporaryFile()
+    except OSError:
+        yield
+        return
+    try:
+        os.dup2(held.fileno(), 2)
+        yield
+    finally:
+        os.dup2(copy, 2)
+        os.close(copy)
+        held.seek(0)
+        said.append(held.read().decode("utf-8", "replace"))
+        held.close()
+
+
+# Mesa's vk_errorf writes «<reason> for <device> (VK_ERROR_…)», after an
+# optional «MESA-INTEL: error: » prefix.
+_REJECTION = re.compile(r"(?P<reason>\S.*?) for (?P<device>.+?) \((?P<code>VK_ERROR_[A-Z_]+)\)\s*$")
+_MESA_PREFIX = re.compile(r"^\S*MESA[^:]*:\s*\w+:\s*")
+# Where Vulkan's loader finds its drivers (the ICD manifests).
+ICD_FOLDERS = ("/usr/share/vulkan/icd.d", "/usr/local/share/vulkan/icd.d", "/etc/vulkan/icd.d")
+
+
+def vulkan_rejections(said: str) -> list[dict]:
+    """The cards a Vulkan driver refused, with its reason, from what it wrote."""
+    found = []
+    for line in said.splitlines():
+        match = _REJECTION.search(_MESA_PREFIX.sub("", line.strip()))
+        if match:
+            found.append(match.groupdict())
+    return found
+
+
+def vulkan_icds() -> list[str]:
+    """The library each installed Vulkan driver manifest points to."""
+    libraries = []
+    for folder in ICD_FOLDERS:
+        try:
+            names = sorted(os.listdir(folder))
+        except OSError:
+            continue
+        for name in names:
+            try:
+                with open(os.path.join(folder, name), encoding="utf-8") as handle:
+                    path = json.load(handle).get("ICD", {}).get("library_path")
+            except (OSError, ValueError, AttributeError):
+                continue
+            if path:
+                libraries.append(os.path.basename(path))
+    return libraries
+
+
+_VULKAN_SAID: list[str] = []
 
 
 def _version(empaquetada: int) -> str:
@@ -173,7 +239,7 @@ def vulkan() -> list[dict]:
     if lib is None:
         return []
 
-    with _sin_ruido():
+    with _capturing(_VULKAN_SAID):
         instancia_ver = ctypes.c_uint32(VK_API_1_0)
         with contextlib.suppress(AttributeError):
             lib.vkEnumerateInstanceVersion(ctypes.byref(instancia_ver))
@@ -588,8 +654,11 @@ def _va_codecs(lib, display) -> list[dict]:
 
 def en_este_proceso() -> dict[str, Any]:
     """Pregunta a las tres aquí mismo. Es lo que ejecuta el proceso hijo."""
-    return {"vulkan": vulkan(), "opencl": opencl(), "opengl": opengl(),
-            "vaapi": vaapi()}
+    found = {"vulkan": vulkan(), "opencl": opencl(), "opengl": opengl(),
+             "vaapi": vaapi()}
+    found["vulkan_rejected"] = vulkan_rejections("".join(_VULKAN_SAID))
+    found["vulkan_icds"] = vulkan_icds()
+    return found
 
 
 def consultar() -> dict[str, Any]:

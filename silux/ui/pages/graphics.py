@@ -682,11 +682,15 @@ class GpuSection(QWidget):
         self._apply_no_aplica(gpu)
         self._apply_engines(gpu)
         self._apply_codecs(gpu)
+        # A driver that is installed and rejects this card says so, with its
+        # reason when it gave one.
+        rejected = [(name, d, d, _("gpu.apis.rejected") + (f": {reason}" if reason else ""))
+                    for name, reason in gpu.api_rejections]
         self.apis.set_rows([
             (api.name, api.version or d, api.driver or d, api.extra or d)
             for api in gpu.apis
-        ] or [(_("gpu.apis.notseen") if self._apis_en_el_equipo else _("gpu.apis.none"),
-               d, d, d)])
+        ] or rejected or [(_("gpu.apis.notseen") if self._apis_en_el_equipo
+                           else _("gpu.apis.none"), d, d, d)])
 
         conectadas = [s for s in gpu.displays if s.connected]
         libres = [s.connector for s in gpu.displays if not s.connected]

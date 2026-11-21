@@ -524,6 +524,7 @@
   "gpu.api.version": "Version",
   "gpu.apis.none": "No graphics libraries",
   "gpu.apis.notseen": "Neither Vulkan nor OpenGL use it on this computer",
+  "gpu.apis.rejected": "the driver is installed and does not accept this card",
   "gpu.asleep": "Asleep: it is not queried, so that it stays asleep.",
   "gpu.asleep.last": "Last read at {hora}.",
   "gpu.asleep.lasttemp": "Last known, at {hora}: {valor}.",
