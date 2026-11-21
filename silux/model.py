@@ -1,11 +1,12 @@
-"""El modelo de datos: valores tipados, nunca texto ya formateado.
+"""The data model: typed values, never already formatted text.
 
-Todo lo que sale de aquí es inmutable. Un `Snapshot` es una foto completa
-del sistema en un instante; la interfaz compara dos fotos consecutivas para
-saber qué repintar, y el exportador de JSON serializa una sin más trabajo.
+Everything here is immutable. A `Snapshot` is a complete photo of the
+system at one instant; the interface compares two consecutive snapshots to
+know what to repaint, and the JSON exporter serializes one with no extra
+work.
 
-Los nombres de campo llevan la unidad (`freq_hz`, `size_bytes`, `temp_c`)
-para que no haya ninguna duda de qué guarda cada uno.
+Field names carry their unit (`freq_hz`, `size_bytes`, `temp_c`) so there's
+no doubt what each holds.
 """
 
 from __future__ import annotations
@@ -15,34 +16,34 @@ from dataclasses import dataclass, field, fields, is_dataclass
 from enum import Enum
 from typing import Any, Optional
 
-from .edid import Edid, VideoMode  # noqa: F401  (se reexportan al modelo)
-from .spd import SpdInfo, Timings  # noqa: F401  (se reexporta al modelo)
+from .edid import Edid, VideoMode  # noqa: F401  (re-exported by the model)
+from .spd import SpdInfo, Timings  # noqa: F401  (re-exported by the model)
 
 
 class Need(str, Enum):
-    """Por qué falta un dato. Es lo que la interfaz enseña al usuario."""
+    """Why a datum is missing. What the interface shows the user."""
 
-    ROOT = "root"            # hace falta elevar privilegios
-    DATABASE = "database"    # el hardware no está en la base de datos
-    HARDWARE = "hardware"    # esta máquina simplemente no lo expone
-    DRIVER = "driver"        # haría falta cargar un módulo del kernel
-    PLATFORM = "platform"    # no aplica a esta arquitectura
-    ERROR = "error"          # falló al leerse; esto es un fallo nuestro
-    KERNEL = "kernel"        # el kernel de este equipo es anterior al dato
+    ROOT = "root"            # privileges must be elevated
+    DATABASE = "database"    # the hardware isn't in the database
+    HARDWARE = "hardware"    # this machine just doesn't expose it
+    DRIVER = "driver"        # a kernel module would have to be loaded
+    PLATFORM = "platform"    # doesn't apply to this architecture
+    ERROR = "error"          # failed to read; that is our own failure
+    KERNEL = "kernel"        # this machine's kernel predates the datum
     PACKAGE = "package"      # a package of the system is not installed (system_deps)
 
 
 @dataclass(frozen=True, slots=True)
 class Note:
-    """Explica la ausencia de un dato concreto, con su motivo."""
+    """Explains why one specific datum is missing, with its reason."""
 
-    path: str          # p. ej. "cpu.voltage_v"
+    path: str          # e.g. "cpu.voltage_v"
     need: Need
     message: str
-    hint: str = ""     # qué puede hacer el usuario al respecto
-    # Qué es lo que falta, en tres palabras: «Salud de los discos». Lo pone el
-    # proveedor en las notas que el ayudante privilegiado sabe resolver, y es
-    # lo que permite listarlas juntas sin deducir nada de la ruta.
+    hint: str = ""     # what the user can do about it
+    # What's missing, in three words: «Disk health». The provider sets it on
+    # the notes the privileged helper can resolve, and it lets them be listed
+    # together without deducing anything from the path.
     what: str = ""
     # It needs permissions and the installed helper is from another version:
     # what fixes it is updating the helper, not giving permissions.
@@ -78,10 +79,10 @@ class Cache:
     ways: Optional[int] = None
     line_bytes: Optional[int] = None
     sets: Optional[int] = None
-    instances: int = 1              # cuántas hay para este tipo de núcleo
-    shared_by: int = 1              # cpus lógicas que comparten cada instancia
-    # Qué CPUs lógicas comparten cada instancia. Es lo que permite dibujar el
-    # mapa de la jerarquía: sin esto solo se sabe cuántas hay, no cuáles.
+    instances: int = 1              # how many there are for this core type
+    shared_by: int = 1              # logical CPUs sharing each instance
+    # Which logical CPUs share each instance. It lets the hierarchy map be
+    # drawn: without it only how many is known, not which.
     instance_cpus: tuple[tuple[int, ...], ...] = ()
 
     @property
@@ -91,23 +92,23 @@ class Cache:
 
 @dataclass(frozen=True, slots=True)
 class Clocks:
-    current_hz: Optional[int] = None      # media de los núcleos de este tipo
+    current_hz: Optional[int] = None      # mean of this type's cores
     min_hz: Optional[int] = None
-    max_hz: Optional[int] = None          # techo efectivo que aplica el kernel
+    max_hz: Optional[int] = None          # the effective ceiling the kernel applies
     base_hz: Optional[int] = None
     # The base at the TDP the machine is configured to now (intel_pstate's
     # `base_frequency`, HWP's guaranteed performance). A laptop whose maker
     # sets a lower TDP gets a lower base than the specification's.
     base_configured_hz: Optional[int] = None
-    max_turbo_hz: Optional[int] = None    # techo del silicio, según CPUID 0x16
-    bus_hz: Optional[int] = None          # BCLK / reloj de referencia
+    max_turbo_hz: Optional[int] = None    # the silicon's ceiling, per CPUID 0x16
+    bus_hz: Optional[int] = None          # BCLK / reference clock
     turbo_enabled: Optional[bool] = None
-    # Whether the part has a turbo at all («cpb» on AMD, «ida» on Intel). An
-    # Athlon 3000G has none, and «Turbo: —» read as something unread.
+    # Whether the part has a turbo at all («cpb» on AMD, «ida» on Intel). Some
+    # parts have none, and «Turbo: —» read as something unread.
     turbo_supported: Optional[bool] = None
     driver: Optional[str] = None
     governor: Optional[str] = None
-    energy_preference: Optional[str] = None    # EPP: hacia rendimiento o hacia ahorro
+    energy_preference: Optional[str] = None    # EPP: towards performance or towards saving
     # Where current_hz comes from: "cpufreq", or without a frequency driver
     # "cpuinfo" (/proc/cpuinfo) or "msr" (the processor's P-state).
     current_from: Optional[str] = None
@@ -139,19 +140,19 @@ class Clocks:
 
     @property
     def highest_hz(self) -> Optional[int]:
-        """Lo más alto a lo que puede ir: el techo del silicio o el del kernel.
+        """The highest it can go: the silicon's ceiling or the kernel's.
 
-        No `max_hz` a secas: ese es el techo que aplica el kernel ahora, y
-        cambia en caliente cuando un gestor de energía apaga y enciende el
-        turbo. Lo que se dibuje contra él cambia de escala con cada vaivén y
-        recorta lo medido antes del cambio. El del silicio no se mueve; el del
-        kernel se mira también porque hay equipos que pasan del de CPUID.
+        Not `max_hz` alone: that's the ceiling the kernel applies now, and it
+        changes on the fly when a power manager turns the turbo off and on.
+        Whatever's drawn against it changes scale with each swing and clips
+        what was measured before. The silicon's doesn't move; the kernel's is
+        looked at too because some machines go past CPUID's.
         """
         return max(filter(None, (self.max_hz, self.max_turbo_hz)), default=None)
 
     @property
     def turbo_headroom_hz(self) -> Optional[int]:
-        """Cuánta frecuencia deja sin usar el techo actual frente al del silicio."""
+        """How much frequency the current ceiling leaves unused against the silicon's."""
         if self.max_turbo_hz and self.max_hz and self.max_turbo_hz > self.max_hz:
             return self.max_turbo_hz - self.max_hz
         return None
@@ -159,19 +160,19 @@ class Clocks:
 
 @dataclass(frozen=True, slots=True)
 class Power:
-    """Consumo del paquete, desglosado y con los límites del hardware.
+    """The package's power, broken down, with the hardware's limits.
 
-    Un solo número deja al usuario sin saber si está bien. El desglose por
-    dominio y el límite declarado por el propio procesador convierten
-    "7 W" en "7 de 65 W, y casi todo son los núcleos".
+    A single number leaves the user not knowing whether it's fine. The
+    breakdown by domain and the limit the processor itself declares turn
+    "7 W" into "7 of 65 W, and nearly all of it the cores".
     """
 
     package_w: Optional[float] = None
     core_w: Optional[float] = None
     uncore_w: Optional[float] = None
     dram_w: Optional[float] = None
-    limit_long_w: Optional[float] = None       # PL1: el sostenido, suele ser el TDP
-    limit_short_w: Optional[float] = None      # PL2: el pico de unos segundos
+    limit_long_w: Optional[float] = None       # PL1: the sustained one, usually the TDP
+    limit_short_w: Optional[float] = None      # PL2: the peak for a few seconds
     # The time window each one is averaged over (Intel's tau for PL1): how
     # long the package can stay above PL1 before PL1 holds it back.
     window_long_s: Optional[float] = None
@@ -183,7 +184,7 @@ class Power:
 
     @property
     def load_percent(self) -> Optional[float]:
-        """Qué fracción del límite sostenido se está usando."""
+        """What fraction of the sustained limit is in use."""
         if self.package_w is None or not self.limit_long_w:
             return None
         return round(100.0 * self.package_w / self.limit_long_w, 1)
@@ -191,7 +192,7 @@ class Power:
 
 @dataclass(frozen=True, slots=True)
 class LogicalCpu:
-    """Una CPU lógica: un hilo, tal y como lo ve el kernel."""
+    """A logical CPU: a thread, as the kernel sees it."""
 
     index: int
     core_id: int
@@ -200,36 +201,36 @@ class LogicalCpu:
     freq_hz: Optional[int] = None
     temp_c: Optional[float] = None
     usage_percent: Optional[float] = None
-    # Lo bien que salió este núcleo de la oblea, en la escala de rendimiento de
-    # ACPI CPPC. No es una frecuencia ni se puede convertir en una: es una nota
-    # relativa entre los núcleos de esta pieza. Ver `providers/cppc.py`.
+    # How well this core came out of the wafer, on ACPI CPPC's performance
+    # scale. Not a frequency and can't be turned into one: a relative grade
+    # among this part's cores. See `providers/cppc.py`.
     quality: Optional[int] = None
 
 
 @dataclass(frozen=True, slots=True)
 class CpuType:
-    """Un tipo de núcleo. En una CPU homogénea hay uno; en una híbrida, dos.
+    """A core type. A homogeneous CPU has one; a hybrid, two.
 
-    Modelar esto como lista desde el principio es deliberado: convertirlo
-    después obliga a reescribir el modelo entero y toda la interfaz.
+    Modelling it as a list from the start is deliberate: changing it later
+    means rewriting the whole model and the whole interface.
     """
 
     key: str                    # "general" | "performance" | "efficiency"
-    label: str                  # lo decide `render`, esto es solo un identificador
+    label: str                  # `render` decides it; this is only an identifier
     vendor: str = ""            # "Intel", "AMD"…
     vendor_id: str = ""         # "GenuineIntel"
-    brand: str = ""             # cadena de marca cruda de CPUID
+    brand: str = ""             # CPUID's raw brand string
     codename: Optional[str] = None
     technology: Optional[str] = None
     socket: Optional[str] = None
     architecture: str = ""
 
-    # CPUID parte la familia y el modelo en un campo base y otro extendido,
-    # por razones históricas: cuando los cuatro bits del campo base se
-    # agotaron, se añadieron los extendidos y hay que recomponerlos. Los
-    # campos "disp" son ya la suma, que es lo que el fabricante publica en su
-    # hoja de datos; los otros son los bits en crudo, útiles solo para
-    # depurar. `signature` es el registro EAX entero de la hoja 1.
+    # CPUID splits family and model into a base and an extended field, for
+    # historical reasons: when the base field's four bits ran out, the
+    # extended ones were added and both must be recombined. The "disp" fields
+    # are already the sum, which is what the maker publishes in its
+    # datasheet; the others are the raw bits, only useful for debugging.
+    # `signature` is leaf 1's whole EAX register.
     family: Optional[int] = None
     model: Optional[int] = None
     stepping: Optional[int] = None
@@ -237,9 +238,9 @@ class CpuType:
     disp_model: Optional[int] = None
     signature: Optional[int] = None
 
-    virtualization: Optional[str] = None       # "VT-x", "AMD-V" o nada
+    virtualization: Optional[str] = None       # "VT-x", "AMD-V" or nothing
     in_virtual_machine: bool = False
-    hypervisor: Optional[str] = None           # "VMware", "KVM"…: quién está debajo
+    hypervisor: Optional[str] = None           # "VMware", "KVM"…: who's underneath
 
     cores: int = 0
     threads: int = 0
@@ -263,12 +264,12 @@ class CpuType:
 
 @dataclass(frozen=True, slots=True)
 class IdleState:
-    """Cuánto del último intervalo pasaron los hilos en un estado de reposo.
+    """How much of the last interval the threads spent in an idle state.
 
-    Es un dato que sale de restar dos lecturas, como el uso. `percent` es la
-    media de todos los hilos; `low` y `high`, el que menos y el que más.
-    Los nombres son los del kernel («C1», «C2», «C6», «C10»): cambian entre
-    fabricantes y no se traducen.
+    A datum that comes from subtracting two readings, like usage. `percent`
+    is all threads' mean; `low` and `high`, the least and the most. The names
+    are the kernel's («C1», «C2», «C6», «C10»): they change between makers
+    and aren't translated.
     """
 
     name: str
@@ -298,7 +299,7 @@ class CpuInfo:
     usage_percent: Optional[float] = None
     package_temp_c: Optional[float] = None
     power: Power = field(default_factory=Power)
-    load_average: tuple[float, ...] = ()       # 1, 5 y 15 minutos
+    load_average: tuple[float, ...] = ()       # 1, 5 and 15 minutes
     idle_states: tuple[IdleState, ...] = ()
     thermal_throttle: Optional[ThermalThrottle] = None     # Intel only
 
@@ -313,13 +314,12 @@ class CpuInfo:
 
     @property
     def temperature_c(self) -> Optional[float]:
-        """La temperatura del procesador: la del encapsulado si la hay.
+        """The processor's temperature: the package's if there is one.
 
-        Es el punto más caliente de la pieza y la que mira el control de los
-        ventiladores; la media de los núcleos esconde el que más calienta. Sin
-        sensor de encapsulado, la del primer tipo de núcleo. Inicio y la
-        página CPU la piden aquí: cada una decidía por su lado y, con la misma
-        foto de un i5-10400, una decía 33 °C y la otra 30.
+        It's the part's hottest point and the one fan control looks at; the
+        cores' mean hides the hottest. Without a package sensor, the first
+        core type's. Home and the CPU page ask for it here, so they can't
+        disagree about the same snapshot.
         """
         if self.package_temp_c is not None:
             return self.package_temp_c
@@ -329,8 +329,8 @@ class CpuInfo:
     def cores_temp_c(self) -> Optional[float]:
         """The cores' mean, every kind of core weighted by how many it has.
 
-        A tester's i5-12450H read «núcleos 90 °C»: the P cores' alone, with
-        its four E cores at 67 °C. All eight are 78.5.
+        On a hybrid, the P cores alone read far hotter than the whole
+        processor: the E cores run cooler.
         """
         measured = [(t.temp_c, t.cores) for t in self.types if t.temp_c is not None and t.cores]
         if not measured:
@@ -347,26 +347,25 @@ class CpuInfo:
 
 
 # --------------------------------------------------------------------------
-# Sistema
+# System
 # --------------------------------------------------------------------------
 
 
 @dataclass(frozen=True, slots=True)
 class Memory:
-    """Reparto de la memoria, tal y como lo cuenta /proc/meminfo.
+    """How memory is split, as /proc/meminfo tells it.
 
-    Hay dos formas legítimas de contar la memoria usada y conviene no
-    mezclarlas:
+    There are two legitimate ways to count used memory, best kept apart:
 
-    * `used_bytes` = total − disponible. Es la definición de `free` y la de
-      cualquier monitor del sistema: «cuánta no podría recuperar aunque
-      quisiera». Incluye la parte de la caché que no es recuperable, como
-      tmpfs y la memoria compartida.
-    * `apps_bytes` = total − libre − buffers − caché recuperable. Es la que
-      permite dibujar una barra cuyos trozos suman exactamente el total.
+    * `used_bytes` = total − available. `free`'s definition and any system
+      monitor's: «how much couldn't be recovered even if it wanted». It
+      includes the part of the cache that can't be reclaimed, such as tmpfs
+      and shared memory.
+    * `apps_bytes` = total − free − buffers − reclaimable cache. It lets a
+      bar be drawn whose pieces add up exactly to the total.
 
-    La primera sale siempre algo mayor que la segunda, y no es un error: la
-    diferencia es justo la caché que el kernel no puede devolver.
+    The first always comes out somewhat larger than the second, and it's not
+    an error: the difference is exactly the cache the kernel can't give back.
     """
 
     total_bytes: int = 0
@@ -375,7 +374,7 @@ class Memory:
     buffers_bytes: int = 0
     cached_bytes: int = 0
     shared_bytes: int = 0
-    reclaimable_bytes: int = 0          # SReclaimable: slab que sí se devuelve
+    reclaimable_bytes: int = 0          # SReclaimable: slab that is given back
     swap_total_bytes: int = 0
     swap_free_bytes: int = 0
 
@@ -385,12 +384,12 @@ class Memory:
 
     @property
     def cache_bytes(self) -> int:
-        """La caché que el kernel puede devolver si alguien pide memoria."""
+        """The cache the kernel can give back if someone asks for memory."""
         return max(0, self.cached_bytes + self.reclaimable_bytes - self.shared_bytes)
 
     @property
     def apps_bytes(self) -> int:
-        """Lo que no es ni libre, ni buffers, ni caché recuperable."""
+        """What's neither free, nor buffers, nor reclaimable cache."""
         return max(0, self.total_bytes - self.free_bytes
                    - self.buffers_bytes - self.cache_bytes)
 
@@ -411,11 +410,11 @@ class Memory:
 
 @dataclass(frozen=True, slots=True)
 class PciDevice:
-    """Algo que cuelga del bus PCI y merece nombrarse: una gráfica, un
-    disco, una tarjeta de red, un controlador USB, SATA o de sonido.
+    """Something on the PCI bus worth naming: a graphics card, a disk, a
+    network card, a USB, SATA or sound controller.
 
-    `name` es el nombre con que silux ya llama a esa pieza en su página (el
-    modelo del disco, la gráfica) cuando lo tiene; si no, el de `pci.ids`.
+    `name` is what silux already calls that part on its page (the disk's
+    model, the graphics card) when it has one; otherwise `pci.ids`'.
     """
 
     slot: str                                # "0000:01:00.0"
@@ -423,31 +422,31 @@ class PciDevice:
     name: Optional[str] = None
     vendor: Optional[str] = None
     driver: Optional[str] = None
-    # El enlace con el sistema, medido como en Gráficos: el eslabón más lento
-    # de la cadena hasta la raíz, no lo que diga el nodo del dispositivo.
-    # None en lo que no va en una ranura (USB, SATA, sonido de la placa).
+    # The link with the system, measured as on the Graphics page: the slowest
+    # link of the chain up to the root, not what the device's node says.
+    # None for what doesn't sit in a slot (USB, SATA, the board's sound).
     link: Optional["PcieLink"] = None
-    # Cómo se llama la ranura en la placa, según la tabla del firmware. Solo
-    # con permisos, y solo si su dirección casa con este dispositivo.
+    # What the slot is called on the board, per the firmware's table. Only
+    # with permissions, and only if its address matches this device.
     slot_name: Optional[str] = None
-    # Lo que dice el propio dispositivo: con ellos se nombra lo que `pci.ids`
-    # aún no tiene («Intel, audio HD (8086:f0c8)»).
+    # What the device itself says: with them, what `pci.ids` doesn't have
+    # yet gets a name («Intel, audio HD (8086:f0c8)»).
     vendor_id: Optional[int] = None
     device_id: Optional[int] = None
-    pci_class: Optional[str] = None          # clase y subclase: "0403"
+    pci_class: Optional[str] = None          # class and subclass: "0403"
 
 
 @dataclass(frozen=True, slots=True)
 class Platform:
-    """Lo que la placa y su firmware tienen activado."""
+    """What the board and its firmware have enabled."""
 
-    iommu_groups: Optional[int] = None       # None: sin IOMMU activa
-    # "active": en uso (existe /dev/kvm). "present": el procesador la tiene y
-    # no está en uso; puede ser la BIOS o que falte el módulo. None: no la hay.
+    iommu_groups: Optional[int] = None       # None: no active IOMMU
+    # "active": in use (/dev/kvm exists). "present": the processor has it and
+    # it's not in use; the BIOS or a missing module. None: there's none.
     virtualization: Optional[str] = None
     virtualization_kind: Optional[str] = None      # "AMD-V" | "VT-x"
-    # Cuántos dispositivos tienen memoria asignada por encima de 4 GB. Uno
-    # basta para afirmar que la opción está activada; cero no demuestra nada.
+    # How many devices have memory mapped above 4 GB. One is enough to say
+    # the option is on; zero proves nothing.
     above_4g_devices: int = 0
     sensor_chip: Optional[str] = None        # "it8688"
     audio_codec: Optional[str] = None        # "Realtek ALCS1200A"
@@ -455,19 +454,19 @@ class Platform:
 
 @dataclass(frozen=True, slots=True)
 class UsbDevice:
-    """Algo enchufado por USB. Sin número de serie: no se lee nunca."""
+    """Something plugged in by USB. No serial number: it's never read."""
 
-    port: str                                # "5-4.1.4": bus 5, puerto 4, y dos concentradores
+    port: str                                # "5-4.1.4": bus 5, port 4, and two hubs
     vendor: Optional[str] = None
     product: Optional[str] = None
     usb_id: Optional[str] = None             # "046d:c54d"
-    kind: str = "other"                      # ver `providers/devices.py`, CLASES
-    speed_mbps: Optional[float] = None       # la negociada: 1.5, 12, 480, 5000…
-    version: Optional[str] = None            # la que declara el dispositivo: "2.00", "3.20"
+    kind: str = "other"                      # see `providers/devices.py`, `_kind`
+    speed_mbps: Optional[float] = None       # the negotiated one: 1.5, 12, 480, 5000…
+    version: Optional[str] = None            # the one the device declares: "2.00", "3.20"
 
     @property
     def parent(self) -> Optional[str]:
-        """El concentrador del que cuelga, o None si va a un puerto del equipo."""
+        """The hub it hangs from, or None if it goes to one of the machine's ports."""
         return self.port.rsplit(".", 1)[0] if "." in self.port else None
 
     @property
@@ -476,8 +475,8 @@ class UsbDevice:
 
     @property
     def slower_than_capable(self) -> bool:
-        """Un dispositivo de USB 3 negociando a 480 Mb/s o menos: suele ser
-        el cable o el puerto. Uno de USB 2 a 12 Mb/s no es nada: va a lo suyo."""
+        """A USB 3 device negotiating at 480 Mb/s or less: usually the cable or
+        the port. A USB 2 one at 12 Mb/s is nothing: it does its own thing."""
         try:
             capable = float(self.version or 0) >= 3.0
         except ValueError:
@@ -487,20 +486,20 @@ class UsbDevice:
 
 @dataclass(frozen=True, slots=True)
 class SoundCard:
-    name: Optional[str] = None               # el del dispositivo, si es USB
+    name: Optional[str] = None               # the device's, if it's USB
     kind: str = "other"                      # "hdmi" | "board" | "usb" | "other"
     codec: Optional[str] = None              # "Realtek ALCS1200A"
-    # La tarjeta USB es el micrófono de una cámara: su aparato tiene también
-    # una interfaz de video. En el árbol USB sale como la cámara, no como
-    # un aparato de audio, y sin esto la tabla de sonido tenía uno más.
+    # The USB card is a camera's microphone: its device also has a video
+    # interface. In the USB tree it shows as the camera, not as an audio
+    # device, and without this the sound table had one too many.
     camera: bool = False
 
 
 @dataclass(frozen=True, slots=True)
 class Camera:
     name: Optional[str] = None
-    nodes: int = 1                           # un aparato crea varios /dev/video*
-    virtual: bool = False                    # no cuelga de ningún bus
+    nodes: int = 1                           # one device creates several /dev/video*
+    virtual: bool = False                    # hangs from no bus
 
 
 @dataclass(frozen=True, slots=True)
@@ -513,10 +512,10 @@ class BluetoothAdapter:
 
 @dataclass(frozen=True, slots=True)
 class Vulnerability:
-    """Una vulnerabilidad del procesador según el kernel que está corriendo.
+    """A processor vulnerability per the running kernel.
 
-    `status` es el texto del kernel, sin tocar: es lo que se pega en un
-    buscador. `state` es lo que silux saca de él para contar y avisar.
+    `status` is the kernel's text, untouched: it's what gets pasted into a
+    search engine. `state` is what silux takes from it to count and warn.
     """
 
     name: str                    # "spectre_v2"
@@ -526,7 +525,7 @@ class Vulnerability:
 
 @dataclass(frozen=True, slots=True)
 class Swap:
-    """Un espacio de intercambio. Si es zram, con cómo comprime."""
+    """A swap space. If it's zram, with how it compresses."""
 
     device: str                              # "/dev/zram0", "/swapfile"
     kind: str                                # "partition" | "file"
@@ -535,8 +534,8 @@ class Swap:
     priority: Optional[int] = None
     zram: bool = False
     algorithm: Optional[str] = None          # "zstd"
-    original_bytes: Optional[int] = None     # lo guardado, antes de comprimir
-    compressed_bytes: Optional[int] = None   # lo que ocupa comprimido
+    original_bytes: Optional[int] = None     # what was stored, before compressing
+    compressed_bytes: Optional[int] = None   # what it takes compressed
 
     @property
     def ratio(self) -> Optional[float]:
@@ -547,28 +546,28 @@ class Swap:
 
 @dataclass(frozen=True, slots=True)
 class Boot:
-    """Con qué arrancó el equipo y cuánto tardó cada fase.
+    """What the machine booted with and how long each phase took.
 
-    El firmware y el cargador los publican los gestores que siguen la
-    interfaz de systemd (systemd-boot, Limine) y, si el gestor no, la tabla
-    FPDT del firmware; el kernel, el initrd y el espacio de usuario, systemd,
-    con cualquier gestor.
+    The firmware's and loader's times are published by the boot managers
+    that follow systemd's interface (systemd-boot, Limine) and, when the
+    manager doesn't, by the firmware's FPDT table; the kernel's, initrd's
+    and userspace's by systemd, with any manager.
     """
 
     loader: Optional[str] = None             # "Limine 12.10.0"
     entry: Optional[str] = None              # "CachyOS.linux-cachyos"
-    firmware_s: Optional[float] = None       # del encendido al cargador
-    loader_s: Optional[float] = None         # del cargador al kernel
-    kernel_s: Optional[float] = None         # del kernel al initrd (o a systemd)
-    initrd_s: Optional[float] = None         # None si arrancó sin initrd
-    userspace_s: Optional[float] = None      # None mientras no ha terminado
+    firmware_s: Optional[float] = None       # from power-on to the loader
+    loader_s: Optional[float] = None         # from the loader to the kernel
+    kernel_s: Optional[float] = None         # from the kernel to the initrd (or to systemd)
+    initrd_s: Optional[float] = None         # None if it booted without an initrd
+    userspace_s: Optional[float] = None      # None while it hasn't finished
     # The kernel command line, parameter by parameter, with what identifies
     # the machine already hidden (privacidad.hide_cmdline_identifiers).
     cmdline: tuple[str, ...] = ()
 
     @property
     def total_s(self) -> Optional[float]:
-        """Desde el encendido: sin el firmware y el cargador no hay total."""
+        """From power-on: without the firmware and the loader there's no total."""
         if self.firmware_s is None or self.loader_s is None:
             return None
         return round(sum(f for f in (self.firmware_s, self.loader_s, self.kernel_s,
@@ -611,13 +610,13 @@ class System:
     boot: Boot = field(default_factory=Boot)
 
 
-# Cuánto puede diferir la velocidad a la que va un módulo de la que declara
-# sin que sea un recorte de verdad. Es el redondeo del grado JEDEC y nada más:
-# unos firmwares escriben 2666 y otros 2667 para la misma memoria.
+# How far a module's running speed may differ from its declared one without
+# being a real underclock. It's the JEDEC grade's rounding and nothing else:
+# some firmware writes 2666 and some 2667 for the same memory.
 #
-# El 1 % no puede confundir dos grados: los contiguos están separados por 133
-# MT/s como poco en DDR4 —2400, 2666, 2933— y por 400 en DDR5. Y absorbe de
-# sobra el redondeo, que como mucho es de un MT/s.
+# 1 % can't confuse two grades: neighbours are at least 133 MT/s apart in
+# DDR4 (2400, 2666, 2933) and 400 in DDR5. And it easily absorbs the
+# rounding, at most one MT/s.
 ROUNDING_MARGIN = 0.01
 
 
@@ -638,10 +637,10 @@ JEDEC_TOP_MTS = {"DDR3": 2133, "DDR4": 3200, "DDR5": 8800}
 
 @dataclass(frozen=True, slots=True)
 class MemoryModule:
-    """Un zócalo de memoria, esté ocupado o no.
+    """A memory slot, occupied or not.
 
-    Los zócalos vacíos también salen: saber que quedan dos libres es la mitad
-    de la razón por la que alguien abre esta pestaña.
+    Empty slots show too: knowing two are free is half the reason someone
+    opens this tab.
     """
 
     locator: Optional[str] = None            # "DIMM A1"
@@ -653,8 +652,8 @@ class MemoryModule:
     form_factor: Optional[int] = None
     # SMBIOS type 17 type detail bits that are set (DSP0134 table 77).
     details: tuple[int, ...] = ()
-    speed_mts: Optional[int] = None          # lo que el módulo puede dar
-    configured_mts: Optional[int] = None     # a lo que va de verdad
+    speed_mts: Optional[int] = None          # what the module can do
+    configured_mts: Optional[int] = None     # what it really runs at
     manufacturer: Optional[str] = None
     part_number: Optional[str] = None
     rank: Optional[int] = None
@@ -669,8 +668,8 @@ class MemoryModule:
         """In a slot and not soldered on the board, which has no SPD chip.
 
         A form factor of memory that is part of the board settles it, even
-        where the place is called «ChannelA-DIMM0». No other one does: the
-        author's T14 declares its soldered 8 GB a SODIMM. Then the name SMBIOS
+        where the place is called «ChannelA-DIMM0». No other one does: some
+        laptops declare their soldered memory a SODIMM. Then the name SMBIOS
         gives its place: «…DIMM0», «DIMM_A1», HP's «Bottom-Slot 1» are slots;
         «Controller0-ChannelA» is not.
         """
@@ -694,20 +693,20 @@ class MemoryModule:
 
     @property
     def has_ecc(self) -> Optional[bool]:
-        """Si el ancho total supera al de datos, esos bits de más son ECC."""
+        """If the total width is larger than the data width, the extra bits are ECC."""
         if self.total_width is None or self.data_width is None or not self.data_width:
             return None
         return self.total_width > self.data_width
 
-    # Se rellena desde el chip SPD del propio módulo, cuando se puede leer.
+    # Filled from the module's own SPD chip, when it can be read.
     spd: Optional[SpdInfo] = None
 
     @property
     def rated_mts(self) -> Optional[int]:
-        """A cuánto puede ir el módulo, no a cuánto lo han puesto.
+        """The speed the module can run at, not the one it was set to.
 
-        El SPD lo sabe de verdad; la tabla SMBIOS solo repite lo que la BIOS
-        ha negociado, que sin XMP son los valores conservadores de JEDEC.
+        The SPD really knows it; the SMBIOS table only repeats what the BIOS
+        negotiated, which without XMP are JEDEC's conservative values.
         """
         if self.spd is not None and self.spd.rated_mts:
             return self.spd.rated_mts
@@ -747,13 +746,13 @@ class MemoryModule:
 
     @property
     def underclocked(self) -> bool:
-        """El módulo va por debajo de lo que sabe dar.
+        """The module runs below what it can.
 
-        Con margen, y no por prudencia: los grados JEDEC salen de un reloj que
-        cae en tercios —DDR4-2666 son 1333,33 MHz, o sea 2666,67 MT/s— y cada
-        firmware lo redondea a su manera. Un SK Hynix que el SPD cataloga a
-        2667 y la BIOS pone a 2666 es el mismo grado, y comparando a pelo
-        encendía el aviso y su triángulo por un MT/s.
+        With a margin, and not out of caution: JEDEC grades come from a clock
+        that falls in thirds (DDR4-2666 is 1333.33 MHz, so 2666.67 MT/s) and
+        each firmware rounds it its own way. A module the SPD rates at 2667
+        and the BIOS sets to 2666 is the same grade, and a bare comparison lit
+        the warning and its triangle over one MT/s.
         """
         current = self.configured_mts or self.speed_mts
         rated = self.rated_mts
@@ -772,23 +771,23 @@ class MemoryArray:
 
 @dataclass(frozen=True, slots=True)
 class MemoryTraffic:
-    """Lo que el controlador de memoria está moviendo ahora mismo.
+    """What the memory controller is moving right now.
 
-    Es un sensor y no una prueba: nadie lo provoca, es el tráfico que hay. Por
-    eso vive aparte del ancho de banda que mide `membench`, que dice lo que la
-    memoria *puede* dar y para saberlo tiene que ocupar la máquina.
+    A sensor and not a benchmark: nobody causes it, it's the traffic there
+    is. So it lives apart from the bandwidth `membench` measures, which says
+    what memory *can* give and has to occupy the machine to know.
 
-    En bytes por segundo, como el teórico y como lo medido, para que las tres
-    cifras de la misma página se puedan comparar sin convertir nada. El
-    contador del kernel cuenta líneas de caché y la conversión ocurre en el
-    proveedor, que es quien tiene la escala al lado.
+    In bytes per second, like the theoretical and the measured ones, so the
+    page's three figures compare without converting anything. The kernel's
+    counter counts cache lines and the conversion happens in the provider,
+    which has the scale at hand.
     """
 
     read_bytes_s: int = 0
     write_bytes_s: int = 0
-    # Del total, lo que piden los núcleos. El resto lo mueven la gráfica
-    # integrada y los dispositivos por su cuenta, y esos dos no se separan:
-    # sus contadores marcan lo mismo parada la máquina que a plena carga.
+    # Of the total, what the cores ask for. The rest is moved by the
+    # integrated graphics and the devices on their own, and those two can't be
+    # told apart: their counters read the same idle as at full load.
     cpu_bytes_s: Optional[int] = None
 
     @property
@@ -798,29 +797,29 @@ class MemoryTraffic:
 
 @dataclass(frozen=True, slots=True)
 class PrivilegedState:
-    """Qué se sabe del ayudante privilegiado, para poder explicarlo."""
+    """What's known about the privileged helper, to be able to explain it."""
 
-    supported: bool = False                  # hay pkexec y ayudante
+    supported: bool = False                  # there is pkexec and a helper
     connected: bool = False
     already_root: bool = False
-    message: Optional[str] = None            # el último fallo, si lo hubo
+    message: Optional[str] = None            # the last failure, if there was one
     # The helper installed in the system is not this version's: it is not
     # used, and it stays owned by root until it is replaced.
     outdated: bool = False
 
 
 # --------------------------------------------------------------------------
-# Placa base
+# Motherboard
 # --------------------------------------------------------------------------
 
 
-# Los fabricantes se identifican en DMI con su razón social completa. Nadie
-# llama "Micro-Star International Co., Ltd." a una MSI.
+# Makers identify themselves in DMI with their full legal name. Nobody calls
+# an MSI "Micro-Star International Co., Ltd.".
 VENDOR_ALIASES: dict[str, str] = {
     "micro-star international": "MSI",
     "asustek computer": "ASUS",
     "gigabyte technology": "Gigabyte",
-    # Así se escribe en el EDID de sus monitores, con guion y en mayúsculas.
+    # As written in its monitors' EDID, hyphenated and in capitals.
     "giga-byte technology": "Gigabyte",
     "lg electronics": "LG",
     "american megatrends": "AMI",
@@ -831,9 +830,9 @@ VENDOR_ALIASES: dict[str, str] = {
     "biostar": "Biostar",
     "supermicro": "Supermicro",
     "acer": "Acer",
-    # Los de memoria, como los escribe la tabla del firmware. El SPD los da
-    # por su código JEDEC («Crucial», «Micron», «SK Hynix») y un módulo no
-    # puede cambiar de nombre al dar permisos.
+    # Memory makers, as the firmware's table writes them. The SPD gives them
+    # by JEDEC code («Crucial», «Micron», «SK Hynix»), and a module can't
+    # change name when permissions are given.
     "crucial technology": "Crucial",
     "micron technology": "Micron",
     "kingston": "Kingston",
@@ -846,8 +845,8 @@ VENDOR_ALIASES: dict[str, str] = {
     # As JEP106 writes them (spd._vendor).
     "a-data technology": "ADATA",
     "nanya technology": "Nanya",
-    # Los de red y sonido, como los escribe `pci.ids`: la marca que va en la
-    # caja es la primera palabra.
+    # Network and sound makers, as `pci.ids` writes them: the brand on the
+    # box is the first word.
     "realtek semiconductor": "Realtek",
     "mediatek": "MediaTek",
     "qualcomm atheros": "Qualcomm Atheros",
@@ -870,11 +869,10 @@ _BRAND_NOISE = re.compile(r"\((?:R|TM|tm|r)\)|\bCPU\b|\bProcessor\b|@.*$|\b\d+-C
 
 
 def thread_name(index: int) -> str:
-    """Cómo se llama un hilo del procesador: «CPU 3».
+    """What a processor thread is called: «CPU 3».
 
-    Como lo numera el kernel, y lo mismo en la rejilla de la página CPU que
-    en el árbol de sensores. En el árbol se llamaban «Core #3», que además
-    de ser otro nombre era otra cosa: un núcleo con SMT son dos de estos.
+    As the kernel numbers it, and the same on the CPU page's grid as in the
+    sensor tree. A core with SMT is two of these.
     """
     return f"CPU {index}"
 
@@ -886,8 +884,8 @@ def short_brand(brand: Optional[str]) -> str:
     return " ".join(_BRAND_NOISE.sub("", brand).split()) or "Procesador"
 
 
-# Valores que los fabricantes dejan sin rellenar en la tabla SMBIOS. Enseñar
-# "Default string" como si fuera un dato es peor que no enseñar nada.
+# Values makers leave unfilled in the SMBIOS table. Showing "Default string"
+# as if it were data is worse than showing nothing.
 DMI_PLACEHOLDERS = frozenset({
     "default string", "to be filled by o.e.m.", "to be filled by oem",
     "system manufacturer", "system product name", "system version",
@@ -899,14 +897,14 @@ DMI_PLACEHOLDERS = frozenset({
 })
 
 
-# «1.0», «Rev 1.0», «01». Lo que una placa que se vende suelta deja en la
-# versión del sistema, y que no es el nombre de ningún equipo. Los rellenos con
-# letras —«Default string», «System Product Name»— ya los caza DMI_PLACEHOLDERS.
+# «1.0», «Rev 1.0», «01». What a board sold on its own leaves in the system
+# version, which isn't any machine's name. The fillers with letters
+# («Default string», «System Product Name») are already caught by
+# DMI_PLACEHOLDERS.
 _ONLY_A_VERSION = re.compile(r"(?:rev\.?\s*)?[\d.,\s]+", re.I)
-# Los otros dos rellenos que no son un nombre, vistos en una Gigabyte X570
-# AORUS ELITE: la versión del sistema es «-CF», un sufijo suelto, y la familia
-# «X570 MB», el chipset y «placa base». Con ellos el equipo salía «Gigabyte
-# -CF».
+# The other two fillers that aren't a name: a lone suffix as the system
+# version («-CF») and a family made of the chipset and «MB». With them the
+# machine came out as «Gigabyte -CF».
 _ONLY_A_SUFFIX = re.compile(r"[^0-9a-z]\S{0,6}", re.I)
 _ONLY_THE_BOARD = re.compile(r".*\bMB", re.I)
 
@@ -917,7 +915,7 @@ def _names_a_machine(value: str) -> bool:
 
 
 def clean_dmi(value: Optional[str]) -> Optional[str]:
-    """Descarta los rellenos que dejan las BIOS sin configurar."""
+    """Drop the fillers unconfigured BIOSes leave."""
     if not value:
         return None
     # «N34ET64W (1.64 )»: spaces the firmware pads its fields with.
@@ -936,12 +934,12 @@ class Board:
     bios_date: Optional[str] = None
     bios_release: Optional[str] = None
 
-    firmware: Optional[str] = None          # "UEFI (64 bits)" o "BIOS heredada"
+    firmware: Optional[str] = None          # "UEFI (64 bits)" or "BIOS heredada"
     secure_boot: Optional[bool] = None
     tpm_version: Optional[str] = None
 
     chipset: Optional[str] = None           # "Intel H510"
-    chipset_full: Optional[str] = None      # el nombre completo de pci.ids
+    chipset_full: Optional[str] = None      # pci.ids' full name
     # The chipset (the PCH) is a die inside the processor's package, as on
     # most Intel laptops since Tiger Lake: no separate chip on the board.
     chipset_on_package: bool = False
@@ -958,19 +956,16 @@ class Board:
 
     @property
     def system_display_name(self) -> Optional[str]:
-        """El nombre comercial del equipo, si lo hay.
+        """The machine's commercial name, if there is one.
 
-        Los OEM lo escriben en la versión o en la familia del sistema; una
-        placa que se vende suelta deja ahí un número de versión o uno de los
-        rellenos de fábrica. Lo segundo no es el nombre de nada, así que si no
-        queda ninguno de los dos, no hay equipo que nombrar y manda la placa.
+        OEMs write it in the system's version or family; a board sold on its
+        own leaves a version number or a factory filler there. The latter
+        names nothing, so if neither is left there's no machine to name and
+        the board rules.
 
-        No se mira `system_name`: en un OEM trae el código de producto
-        —«11DQS0KM00»— y en una placa suelta el código de la propia placa
-        —«MS-7D23»—, o sea que las dos veces es peor que lo que ya se tiene.
-        HP y Dell sí ponen ahí el nombre bueno, pero sin un informe de uno
-        delante no hay forma de distinguirlos del caso de arriba, y adivinar
-        aquí es romper lo que funciona.
+        `system_name` isn't looked at: on an OEM it carries the product code
+        («11DQS0KM00») and on a loose board the board's own code («MS-7D23»),
+        worse both times than what's already there.
         """
         for attribute in (self.system_version, self.system_family):
             name = clean_dmi(attribute)
@@ -980,30 +975,26 @@ class Board:
 
     @property
     def display_name(self) -> Optional[str]:
-        """Cómo se llama esto en una frase: «MSI H510M PRO-E».
+        """What this is called in one phrase: «MSI H510M PRO-E».
 
-        La frontera no es portátil contra sobremesa, aunque lo pareciera: es
-        placa con nombre comercial contra código interno. Una X570 AORUS ELITE
-        se compró por su nombre; una «316C» o una «LNVNB161216» no las ha visto
-        nadie, y ahí manda el nombre del equipo, que es el de la pegatina.
-
-        Preguntar por el chasis era una aproximación a eso y falló dos veces:
-        primero con un IdeaPad 330 y luego con un ThinkCentre M80q, que es un
-        Mini PC y salía como «Lenovo 316C». Ampliar la lista de chasis no lo
-        habría cerrado —un ThinkCentre, un OptiPlex o un EliteDesk suelen
-        declararse «Desktop» a secas—, así que se pregunta lo que de verdad
-        decide: si el equipo tiene un nombre comercial. La señal está en el
-        propio dato, sin adivinar nada: en una placa suelta ese campo trae
-        «1.0» o «Default string», y en un equipo de marca trae su nombre.
+        The line isn't laptop against desktop, though it might seem so: it's
+        a board with a commercial name against an internal code. An X570
+        AORUS ELITE was bought by its name; nobody has seen a «316C» or an
+        «LNVNB161216», and there the machine's name rules, the one on its
+        sticker. The chassis type was an approximation of that and failed
+        (a Mini PC came out as «Lenovo 316C»), so what really decides is
+        asked: whether the machine has a commercial name. The signal is in
+        the datum itself: on a loose board that field carries «1.0» or
+        «Default string», and on a branded machine its name.
         """
         if self.system_display_name:
             brand = short_vendor(self.system_vendor) or ""
             name = self.system_display_name
-            # Lenovo escribe «Lenovo ideapad 330-15ICH» ahí dentro, con la
-            # marca incluida; anteponerla otra vez da «Lenovo Lenovo ideapad».
+            # Lenovo writes «Lenovo ideapad 330-15ICH» there, brand included;
+            # putting it in front again gives «Lenovo Lenovo ideapad».
             machine = (name if name.lower().startswith(brand.lower() or "\0")
                       else " ".join(p for p in (brand, name) if p))
-            # Solo si aporta: algunos fabricantes repiten ahí el código de placa.
+            # Only if it adds something: some makers repeat the board code there.
             if machine and (self.name or "") not in machine:
                 return machine
         parts = [short_vendor(self.vendor), self.name]
@@ -1026,23 +1017,23 @@ class Board:
 
 @dataclass(frozen=True, slots=True)
 class GpuMemory:
-    """La VRAM de la tarjeta, y la RAM del sistema que tiene prestada."""
+    """The card's VRAM, and the system RAM it borrows."""
 
     total_bytes: Optional[int] = None
     used_bytes: Optional[int] = None
-    # El trozo de VRAM que la CPU puede direccionar. Con Resizable BAR es toda;
-    # sin él son los 256 MB de siempre, y eso cuesta rendimiento.
+    # The part of VRAM the CPU can address. With Resizable BAR it's all of it;
+    # without, the usual 256 MB, which costs performance.
     visible_bytes: Optional[int] = None
     visible_used_bytes: Optional[int] = None
-    # GTT: memoria del sistema que el driver le presta a la GPU cuando la VRAM
-    # se queda corta. No es memoria de la tarjeta y por eso va aparte.
+    # GTT: system memory the driver lends the GPU when VRAM runs short. Not
+    # the card's memory, hence apart.
     gtt_total_bytes: Optional[int] = None
     gtt_used_bytes: Optional[int] = None
     vendor: Optional[str] = None
     kind: Optional[str] = None          # GDDR6, HBM2e…
     bus_bits: Optional[int] = None
-    # La tasa a la que viajan los datos, que no es el reloj: una GDDR6 a
-    # 1258 MHz mueve 20 Gbps. Es el número que sale en las fichas técnicas.
+    # The rate data travels at, which isn't the clock: a GDDR6 at 1258 MHz
+    # moves 20 Gbps. The number on spec sheets.
     data_rate_hz: Optional[int] = None
     bandwidth_bytes: Optional[int] = None
 
@@ -1054,19 +1045,20 @@ class GpuMemory:
 
     @property
     def resizable_bar(self) -> Optional[bool]:
-        """Si la CPU ve toda la VRAM de golpe en vez de por una ventana."""
+        """Whether the CPU sees all of VRAM at once rather than through a window."""
         if not self.total_bytes or not self.visible_bytes:
             return None
-        # Un margen pequeño: el firmware reserva unos megas para sí mismo.
+        # A small margin: the firmware keeps a few megabytes for itself.
         return self.visible_bytes >= self.total_bytes * 0.95
 
 
 @dataclass(frozen=True, slots=True)
 class PcieLink:
-    """Un enlace PCIe: a cuánto va ahora y a cuánto podría ir.
+    """A PCIe link: how fast it runs now and how fast it could.
 
-    Lo usan la gráfica y los discos NVMe por igual. Vale el eslabón más lento
-    de la cadena hasta el puerto raíz, no lo que declare el aparato del final.
+    Used by the graphics card and NVMe disks alike. What counts is the
+    slowest link of the chain up to the root port, not what the device at
+    the end declares.
     """
 
     current_speed_gts: Optional[float] = None
@@ -1082,7 +1074,7 @@ class PcieLink:
     def _generation(gts: Optional[float]) -> Optional[int]:
         if not gts:
             return None
-        # 2,5 · 5 · 8 · 16 · 32 · 64 GT/s son las seis generaciones de PCIe.
+        # 2.5 · 5 · 8 · 16 · 32 · 64 GT/s are PCIe's six generations.
         for generation, speed in enumerate((2.5, 5.0, 8.0, 16.0, 32.0, 64.0), start=1):
             if abs(gts - speed) < 0.1:
                 return generation
@@ -1106,10 +1098,10 @@ class PcieLink:
 
     @property
     def downgraded(self) -> bool:
-        """La tarjeta va por debajo de lo que puede.
+        """The card runs below what it can.
 
-        En reposo es lo normal (los drivers bajan el enlace para gastar menos)
-        así que esto se enseña como un apunte, no como un aviso.
+        At idle that's normal (drivers lower the link to save power), so it's
+        shown as a remark, not a warning.
         """
         if self.current_speed_gts and self.max_speed_gts:
             if self.current_speed_gts < self.max_speed_gts - 0.1:
@@ -1121,7 +1113,7 @@ class PcieLink:
 
 @dataclass(frozen=True, slots=True)
 class GpuClockLevel:
-    """Un escalón de la tabla DPM: la GPU solo corre a estas frecuencias."""
+    """A step of the DPM table: the GPU only runs at these frequencies."""
 
     index: int
     hz: int
@@ -1134,14 +1126,14 @@ class GpuClocks:
     memory_hz: Optional[int] = None
     core_max_hz: Optional[int] = None
     memory_max_hz: Optional[int] = None
-    # El reloj al que de verdad viaja la memoria, que es el de las fichas
-    # técnicas: una GDDR6 con el reloj de comando a 1258 va a 2505 efectivos.
+    # The clock memory really travels at, the spec sheets' one: a GDDR6 with
+    # its command clock at 1258 runs at 2505 effective.
     memory_effective_hz: Optional[int] = None
     soc_hz: Optional[int] = None
-    # Lo que el silicio admite, en una Intel: RPn, la mínima; RP1, la más
-    # eficiente; RP0, la máxima sin pasarse. `core_max_hz` y `core_min_hz`
-    # son los límites puestos ahora, que salen de fábrica iguales a RP0 y RPn
-    # y cualquiera puede cambiar.
+    # What the silicon allows, on an Intel: RPn, the minimum; RP1, the most
+    # efficient; RP0, the maximum without going over. `core_max_hz` and
+    # `core_min_hz` are the limits set now, equal to RP0 and RPn from the
+    # factory and changeable by anyone.
     core_min_hz: Optional[int] = None
     silicon_min_hz: Optional[int] = None
     efficient_hz: Optional[int] = None
@@ -1153,28 +1145,27 @@ class GpuClocks:
 
 @dataclass(frozen=True, slots=True)
 class GpuApi:
-    """Una API gráfica y hasta dónde llega en esta máquina."""
+    """A graphics API and how far it goes on this machine."""
 
     name: str                       # OpenGL, Vulkan, OpenCL
     version: Optional[str] = None
-    device: Optional[str] = None    # cómo se llama a sí misma la tarjeta ahí
+    device: Optional[str] = None    # what the card calls itself there
     driver: Optional[str] = None
-    extra: Optional[str] = None     # GLSL, unidades de cómputo…
+    extra: Optional[str] = None     # GLSL, compute units…
 
 
 @dataclass(frozen=True, slots=True)
 class Display:
-    """Una salida de vídeo de la tarjeta, esté enchufada o no."""
+    """One of the card's video outputs, plugged in or not."""
 
     connector: str                  # DP-1, HDMI-A-1…
     connected: bool = False
-    # Cuidado con esto: es el modeset del kernel, no la sesión. Con un
-    # compositor Wayland al mando vale False en pantallas encendidas, así que
-    # sirve en consola y en X11 pero no para afirmar que algo está en uso.
+    # Careful: this is the kernel's modeset, not the session's. With a
+    # Wayland compositor in charge it's False on displays that are on, so it
+    # works on the console and X11 but can't say something is in use.
     enabled: bool = False
-    # El modo preferido que declara el monitor, que es el que casi siempre
-    # acaba usándose. La resolución que el compositor tenga puesta ahora mismo
-    # no está en sysfs.
+    # The preferred mode the monitor declares, which is nearly always the one
+    # used. The resolution the compositor has set right now isn't in sysfs.
     width: Optional[int] = None
     height: Optional[int] = None
     refresh_hz: Optional[float] = None
@@ -1189,40 +1180,40 @@ class Display:
 
 @dataclass(frozen=True, slots=True)
 class VideoCodec:
-    """Un códec y qué sabe hacer la tarjeta con él por hardware.
+    """A codec and what the card can do with it in hardware.
 
-    Es de lo más útil que se puede saber de una gráfica: decide si un vídeo se
-    va a decodificar en el chip, gastando un par de vatios, o a base de CPU. Y
-    la diferencia entre decodificar y codificar importa: casi todas leen AV1 y
-    muy pocas lo escriben.
+    Among the most useful things to know about a graphics card: it decides
+    whether a video is decoded on the chip, spending a couple of watts, or
+    on the CPU. And decoding versus encoding matters: nearly all read AV1
+    and very few write it.
     """
 
     name: str                             # H.264, HEVC, AV1…
     decode: bool = False
     encode: bool = False
-    max_bit_depth: Optional[int] = None   # 8, 10 o 12
-    profiles: tuple[str, ...] = ()        # los que da el driver, sin tocar
+    max_bit_depth: Optional[int] = None   # 8, 10 or 12
+    profiles: tuple[str, ...] = ()        # the driver's, untouched
 
 
 @dataclass(frozen=True, slots=True)
 class GpuEngine:
-    """Un motor de la gráfica: qué sabe hacer y cuánto está ocupado.
+    """A graphics engine: what it can do and how busy it is.
 
-    Una tarjeta moderna no es un bloque que está «al 40 %»: son varias
-    unidades independientes —dibujo, copia, decodificación de video— y saber
-    cuál va cargada es la diferencia entre «la gráfica no da más» y «el
-    decodificador está saturado y el resto duerme».
+    A modern card isn't one block «at 40 %»: it's several independent units
+    (drawing, copying, video decoding), and knowing which one is loaded is
+    the difference between «the card can't give more» and «the decoder is
+    saturated and the rest sleeps».
     """
 
-    name: str                       # rcs0, vcs0…, tal como lo llama el kernel
-    kind: Optional[str] = None      # render, copia, video, video-enhance
+    name: str                       # rcs0, vcs0…, as the kernel names it
+    kind: Optional[str] = None      # render, copy, video, video-enhance
     busy_percent: Optional[float] = None
     capabilities: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
 class Gpu:
-    """Una tarjeta gráfica: lo que sabe el kernel y lo que dicen las APIs."""
+    """A graphics card: what the kernel knows and what the APIs say."""
 
     index: int = 0
     name: Optional[str] = None
@@ -1230,13 +1221,11 @@ class Gpu:
     codename: Optional[str] = None
     driver: Optional[str] = None
     driver_version: Optional[str] = None
-    # La versión de `gpu_metrics` cuando el firmware publica una que este
-    # programa todavía no sabe leer: las v1.4 en adelante reordenaron los
-    # campos y las 2.x son las de las APU. Se guarda para poder decirlo y para
-    # que salga en el informe, que es de donde puede salir su tabla de
-    # posiciones sin tener la pieza delante.
+    # The `gpu_metrics` version when the firmware publishes one this program
+    # can't read yet. Kept to be able to say so and to put it in the report,
+    # which is where its offset table can come from without the part at hand.
     metrics_version: Optional[str] = None
-    drm_node: Optional[str] = None      # card0, card1… no tiene por qué ir en orden
+    drm_node: Optional[str] = None      # card0, card1… not necessarily in order
     pci_slot: Optional[str] = None
     vendor_id: Optional[int] = None
     device_id: Optional[int] = None
@@ -1246,15 +1235,15 @@ class Gpu:
     revision: Optional[int] = None
     vbios: Optional[str] = None
     unique_id: Optional[str] = None
-    # None cuando no se puede decidir. No es lo mismo que no serlo: con
-    # nouveau no se lee la VRAM, y por ahí una GTX 1050 acababa de
-    # integrada solo porque su memoria no se pudo contar.
+    # None when it can't be decided. Not the same as not being one: nouveau
+    # doesn't give the VRAM, and a dedicated card would otherwise end up as
+    # integrated only because its memory couldn't be counted.
     integrated: Optional[bool] = None
     primary: bool = False
-    # Suspendida por el runtime PM del kernel (D3): la dedicada de un portátil
-    # cuando nadie la usa. Leer de ella casi cualquier cosa la despierta, así
-    # que no se le pregunta nada y lo de abajo se queda sin dato. Lo último
-    # que se supo antes de dormirse: cuándo (`time.time()`) y su temperatura.
+    # Suspended by the kernel's runtime PM (D3): a laptop's dedicated card
+    # when nobody uses it. Reading almost anything wakes it, so nothing is
+    # asked and what's below stays without data. The last thing known before
+    # it slept: when (`time.time()`) and its temperature.
     suspended: bool = False
     last_awake_s: Optional[float] = None
     last_temp_c: Optional[float] = None
@@ -1265,26 +1254,26 @@ class Gpu:
 
     busy_percent: Optional[float] = None
     memory_busy_percent: Optional[float] = None
-    # El motor de video entero, codificar y decodificar juntos: en AMD es un
-    # solo motor (VCN) con una sola cifra (docs/motores-de-graficas.md).
+    # The whole video engine, encoding and decoding together: on AMD it's one
+    # engine (VCN) with one figure (docs/motores-de-graficas.md).
     video_busy_percent: Optional[float] = None
-    # Por separado, donde son motores distintos y el driver los mide aparte:
-    # NVENC y NVDEC en NVIDIA.
+    # Separately, where they're different engines the driver measures apart:
+    # NVENC and NVDEC on NVIDIA.
     encode_busy_percent: Optional[float] = None
     decode_busy_percent: Optional[float] = None
-    # Cuánto del intervalo ha pasado la gráfica dormida del todo. No es «100
-    # menos el uso»: entre estar ocupada y estar en reposo profundo hay un
-    # término medio, encendida y sin trabajo, que en consumo no es lo mismo.
+    # How much of the interval the card spent fully asleep. Not «100 minus
+    # usage»: between busy and deep idle there's a middle ground, on and
+    # without work, which isn't the same in power.
     sleep_percent: Optional[float] = None
-    # Si el driver deja dormir a la gráfica (RC6 en Intel). Apagado, el
-    # reposo es siempre 0 % y gasta aunque no haga nada.
+    # Whether the driver lets the card sleep (RC6 on Intel). Off, idle is
+    # always 0 % and it draws power even doing nothing.
     sleep_enabled: Optional[bool] = None
     engines: tuple[GpuEngine, ...] = ()
     codecs: tuple[VideoCodec, ...] = ()
     temp_c: Optional[float] = None
-    # La tarjeta no publica su temperatura por ningún camino: las Intel. No es
-    # lo mismo que no haberla podido leer, y se pinta distinto: lo que no
-    # existe se esconde y se nombra al pie, no se deja con un guion.
+    # The card publishes its temperature by no means: Intel's. Not the same
+    # as failing to read it, and painted differently: what doesn't exist is
+    # hidden and named at the foot, not left with a dash.
     no_temperature_sensor: bool = False
     # Such a card inside the processor: the temperature of the package it
     # shares with the CPU. Never its own, and never shown as if it were.
@@ -1303,18 +1292,18 @@ class Gpu:
     fan_rpm: Optional[int] = None
     fan_percent: Optional[float] = None
     # A laptop's dedicated card: its fans are the machine's, in its embedded
-    # controller, and NVML gives none (a tester's RTX 4050 read «Ventilador: —»).
+    # controller, and NVML gives none.
     fan_of_the_machine: bool = False
     voltage_v: Optional[float] = None
     voltage_soc_v: Optional[float] = None
     voltage_memory_v: Optional[float] = None
-    # Los reguladores de voltaje de la propia tarjeta. No están en hwmon: los
-    # cuenta el microcontrolador del firmware.
+    # The card's own voltage regulators. Not in hwmon: the firmware's
+    # microcontroller counts them.
     vr_gfx_c: Optional[float] = None
     vr_soc_c: Optional[float] = None
     vr_memory_c: Optional[float] = None
-    # Si la tarjeta se está frenando, y por qué. Es la pregunta que se hace
-    # cualquiera cuando un juego rinde menos de lo que debería.
+    # Whether the card is throttling, and why. The question anyone asks when
+    # a game performs worse than it should.
     throttled: Optional[bool] = None
     throttle_reasons: tuple[str, ...] = ()
     compute_units: Optional[int] = None
@@ -1352,7 +1341,7 @@ class Gpu:
 
 @dataclass(frozen=True, slots=True)
 class NetworkTraffic:
-    """Lo que ha pasado por una interfaz, y a qué ritmo pasa ahora."""
+    """What has gone through an interface, and at what rate now."""
 
     rx_bytes: int = 0
     tx_bytes: int = 0
@@ -1362,8 +1351,8 @@ class NetworkTraffic:
     tx_errors: int = 0
     rx_dropped: int = 0
     tx_dropped: int = 0
-    # Ritmo instantáneo, calculado entre dos muestreos. En bytes por segundo:
-    # el modelo guarda números, y ya decidirá el render si los enseña en bits.
+    # Instant rate, computed between two samples. In bytes per second: the
+    # model keeps numbers, and render decides whether to show them in bits.
     rx_rate_bps: Optional[float] = None
     tx_rate_bps: Optional[float] = None
 
@@ -1379,7 +1368,7 @@ class NetworkTraffic:
 
     @property
     def problems(self) -> int:
-        """Paquetes que no llegaron a su destino, por el motivo que sea."""
+        """Packets that didn't reach their destination, for whatever reason."""
         return self.rx_errors + self.tx_errors + self.rx_dropped + self.tx_dropped
 
     @property
@@ -1395,12 +1384,12 @@ class NetworkTraffic:
 
 @dataclass(frozen=True, slots=True)
 class NetworkInterface:
-    """Una interfaz de red: qué es, cómo está conectada y cuánto mueve."""
+    """A network interface: what it is, how it's connected and how much it moves."""
 
     name: str
-    kind: str = "ethernet"          # ethernet, wifi, loopback, virtual, puente
+    kind: str = "ethernet"          # ethernet, wifi, loopback, virtual, bridge
     up: bool = False
-    carrier: Optional[bool] = None  # si hay cable enchufado / asociación wifi
+    carrier: Optional[bool] = None  # whether a cable is plugged in / wifi is associated
     mac: Optional[str] = None
     ipv4: Optional[str] = None
     netmask: Optional[str] = None
@@ -1422,14 +1411,14 @@ class NetworkInterface:
 
     @property
     def active(self) -> bool:
-        """Enchufada y con dirección: la que de verdad está dando servicio."""
+        """Plugged in and with an address: the one really serving."""
         return self.up and bool(self.ipv4 or self.ipv6)
 
 
 
 @dataclass(frozen=True, slots=True)
 class Partition:
-    """Una partición, con lo que ocupa si está montada."""
+    """A partition, with what it takes if mounted."""
 
     name: str                                  # nvme0n1p2
     size_bytes: Optional[int] = None
@@ -1451,19 +1440,20 @@ class Partition:
 
 @dataclass(frozen=True, slots=True)
 class Battery:
-    """La batería de un portátil, que es la pieza que más se degrada.
+    """A laptop's battery, the part that degrades most.
 
-    Todo en vatios-hora y en vatios, no en miliamperios-hora. El kernel usa
-    dos convenciones según el firmware —`charge_*` en µAh y `energy_*` en
-    µWh— y los mAh no se pueden comparar entre equipos sin saber el voltaje
-    de la celda: 4000 mAh a 7,6 V y 4000 mAh a 11,4 V son baterías muy
-    distintas. Se normaliza al entrar para que la ficha no tenga que elegir.
+    Everything in watt-hours and watts, not milliamp-hours. The kernel uses
+    two conventions depending on the firmware (`charge_*` in µAh and
+    `energy_*` in µWh), and mAh can't be compared between machines without
+    the cell's voltage: 4000 mAh at 7.6 V and 4000 mAh at 11.4 V are very
+    different batteries. Normalized on the way in so the card doesn't have
+    to choose.
     """
 
     name: str = ""
     present: bool = True
-    # Una clave, no el texto del kernel: «Discharging» se traduce, y quien
-    # mira la ficha no tiene por qué leer inglés.
+    # A key, not the kernel's text: «Discharging» is translated, and whoever
+    # looks at the card needn't read English.
     status: Optional[str] = None
     percent: Optional[float] = None
 
@@ -1473,8 +1463,8 @@ class Battery:
 
     voltage_v: Optional[float] = None
     design_voltage_v: Optional[float] = None
-    # Positivo siempre: si carga o descarga lo dice `status`, y un signo que
-    # cambia de sentido según el firmware no informa de nada.
+    # Always positive: whether it charges or discharges is `status`'s to say,
+    # and a sign whose meaning depends on the firmware tells nothing.
     power_w: Optional[float] = None
     cycles: Optional[int] = None
 
@@ -1483,19 +1473,18 @@ class Battery:
     technology: Optional[str] = None
     serial: Optional[str] = None
 
-    # Los topes de carga que traen ASUS, Lenovo y algún otro. Cargar al 60 %
-    # alarga bastante la vida de la celda y casi nadie sabe que su portátil
-    # lo permite.
+    # The charge thresholds ASUS, Lenovo and a few others have. Charging to
+    # 60 % lengthens the cell's life a good deal and hardly anyone knows their
+    # laptop allows it.
     charge_start_percent: Optional[int] = None
     charge_end_percent: Optional[int] = None
 
     @property
     def health_percent(self) -> Optional[float]:
-        """Lo que le queda de la capacidad con la que salió de fábrica.
+        """What's left of the capacity it left the factory with.
 
-        Es el dato por el que se mira esta ficha: un «87 %» dice más que
-        cualquier otra cifra de aquí, porque es lo único que responde a «¿se
-        me está muriendo?».
+        The datum this card is looked at for: «87 %» says more than any other
+        figure here, being the only one answering «is it dying?».
         """
         if not self.design_wh or self.full_wh is None:
             return None
@@ -1508,19 +1497,19 @@ class Battery:
 
     @property
     def power_settling(self) -> bool:
-        """Charging or discharging at 0 W cannot be: after the charger goes
-        in or out, the embedded controller takes a few seconds to update
-        `power_now` (the author's T14). Not unread, and not zero: coming."""
+        """Charging or discharging at 0 W can't be: after the charger goes in
+        or out, the embedded controller takes a few seconds to update
+        `power_now`. Not unread, and not zero: coming."""
         return (self.status in ("bat.status.charging", "bat.status.discharging")
                 and not self.power_w)
 
     @property
     def seconds_left(self) -> Optional[int]:
-        """Cuánto aguanta al ritmo de ahora, o cuánto le falta para llenarse.
+        """How long it lasts at the current rate, or how long until full.
 
-        Al ritmo de ahora y no «en general»: con el equipo en reposo salen
-        nueve horas y compilando salen dos, y las dos cifras son ciertas. Por
-        eso se enseña al lado del consumo y no sola.
+        At the current rate and not «in general»: idle gives nine hours and
+        compiling two, and both are true. So it's shown next to the power
+        draw, not alone.
         """
         if not self.power_w or self.now_wh is None:
             return None
@@ -1534,7 +1523,7 @@ class Battery:
 
 @dataclass(frozen=True, slots=True)
 class DiskIo:
-    """Lo que ha pasado por el disco, y a qué ritmo pasa ahora."""
+    """What has gone through the disk, and at what rate now."""
 
     read_bytes: int = 0
     write_bytes: int = 0
@@ -1552,26 +1541,26 @@ class DiskIo:
 
 @dataclass(frozen=True, slots=True)
 class DiskHealth:
-    """El estado del disco según sus propios contadores SMART.
+    """The disk's state per its own SMART counters.
 
-    Casi nada de esto se puede leer sin permisos: el kernel reserva los
-    comandos de diagnóstico al administrador porque son los mismos que borran
-    un disco. Por eso viene aparte y puede estar entero vacío.
+    Almost none of it reads without permissions: the kernel keeps the
+    diagnostic commands for the administrator because they're the same ones
+    that wipe a disk. So it comes apart and may be entirely empty.
     """
 
     power_on_hours: Optional[int] = None
     power_cycles: Optional[int] = None
-    written_bytes: Optional[int] = None        # el famoso TBW
+    written_bytes: Optional[int] = None        # the well-known TBW
     read_bytes: Optional[int] = None
-    # Cuánta vida le queda al SSD según su propio contador de desgaste, de 0
-    # a 100. Los discos mecánicos no lo tienen.
+    # How much life the SSD has left per its own wear counter, from 0 to 100.
+    # Spinning disks don't have it.
     percentage_used: Optional[int] = None
     spare_percent: Optional[int] = None
     unsafe_shutdowns: Optional[int] = None
     media_errors: Optional[int] = None
     critical_warning: Optional[int] = None
-    # La tabla de atributos de un disco SATA, entera: (número, normalizado,
-    # en crudo). Los nombres dependen del fabricante; el número no.
+    # A SATA disk's whole attribute table: (number, normalized, raw). The
+    # names depend on the maker; the number doesn't.
     attributes: tuple[tuple[int, int, int], ...] = ()
     # The write counter came out below what the disk holds: it counts in a
     # unit nobody knows, so neither it nor the read one is shown.
@@ -1596,7 +1585,7 @@ DISK_KINDS = ("NVMe", "SSD", "HDD", "Flash", "Virtual")
 
 @dataclass(frozen=True, slots=True)
 class Disk:
-    """Una unidad de almacenamiento."""
+    """A storage drive."""
 
     name: str                                  # sda, nvme0n1
     model: Optional[str] = None
@@ -1604,8 +1593,8 @@ class Disk:
     firmware: Optional[str] = None
     serial: Optional[str] = None
     size_bytes: Optional[int] = None
-    # HDD, SSD o NVMe. Es lo primero que se quiere saber y no está en ningún
-    # campo: hay que deducirlo de si el disco gira y de por dónde va conectado.
+    # HDD, SSD or NVMe. The first thing one wants to know, and in no field:
+    # it's deduced from whether the disk spins and how it's connected.
     kind: Optional[str] = None
     transport: Optional[str] = None            # sata, nvme, usb…
     rotational: Optional[bool] = None
@@ -1614,11 +1603,11 @@ class Disk:
     scheduler: Optional[str] = None
     removable: bool = False
     pci_slot: Optional[str] = None
-    link: Optional[PcieLink] = None            # solo los NVMe
+    link: Optional[PcieLink] = None            # NVMe only
     temp_c: Optional[float] = None
-    # Si la unidad admite descartes (TRIM) y qué se ve de que se estén
-    # haciendo: alguna partición montada con `discard`, o el temporizador
-    # `fstrim.timer` activado. Lo segundo es una señal, no una garantía.
+    # Whether the drive supports discards (TRIM) and what shows they happen:
+    # a partition mounted with `discard`, or the `fstrim.timer` enabled. The
+    # latter is a sign, not a guarantee.
     discard: Optional[bool] = None
     discard_mounted: bool = False
     fstrim_timer: bool = False
@@ -1632,7 +1621,7 @@ class Disk:
 
     @property
     def used_bytes(self) -> Optional[int]:
-        """Lo ocupado sumando las particiones montadas."""
+        """What's used, adding up the mounted partitions."""
         used = [p.used_bytes for p in self.partitions if p.used_bytes is not None]
         return sum(used) if used else None
 
@@ -1669,9 +1658,9 @@ class SensorKind(str, Enum):
     USAGE = "usage"
     MEMORY = "memory"
     NETWORK = "network"
-    # Un ritmo de transferencia que no es de red: hoy, lo que mueve el
-    # controlador de memoria. Va aparte de NETWORK porque comparten forma
-    # y no significado, y juntos caerían en la misma rama del árbol.
+    # A transfer rate that isn't network: today, what the memory controller
+    # moves. Apart from NETWORK because they share a shape and not a meaning,
+    # and together they'd fall into the same branch of the tree.
     BANDWIDTH = "bandwidth"
     OTHER = "other"
 
@@ -1697,20 +1686,13 @@ UNITS: dict[str, str] = {
 }
 
 class DeviceKind(str, Enum):
-    """Qué clase de aparato publica un sensor: procesador, placa, disco…
+    """Which kind of device publishes a sensor: processor, board, disk…
 
-    Lo sabe quien lo lee, y hasta ahora lo tiraba. `hwmon.device_for` decide
-    que un chip es de la CPU precisamente para ponerle su nombre, y luego el
-    árbol volvía a deducirlo comparando ese nombre con otro compuesto en otro
-    sitio. No casaban: «Intel Core i5-10400» contra la cadena entera de CPUID,
-    y «ATA KIOXIA-EXCERIA S» contra el modelo sin el prefijo del bus. Los dos
-    caían al cajón de la placa, y entre iguales manda el alfabeto, así que el
-    árbol abría por el disco.
-
-    La otra mitad del fallo es que esos nombres son texto de interfaz: el
-    aparato de la memoria sale de `_("sensor.mem")`, así que en inglés dice
-    «Memory» y ninguna comparación contra «Memoria» podía acertar. Un orden no
-    se decide con cadenas que se traducen.
+    Whoever reads it knows. Deducing it later by comparing the device's name
+    with one built elsewhere didn't match («Intel Core i5-10400» against the
+    whole CPUID string), and those names are interface text anyway: the
+    memory device comes from `_("sensor.mem")`, so in English it says
+    «Memory». An order isn't decided with strings that get translated.
     """
 
     CPU = "cpu"
@@ -1719,13 +1701,13 @@ class DeviceKind(str, Enum):
     GPU = "gpu"
     DISK = "disk"
     NETWORK = "network"
-    POWER = "power"          # batería, adaptador, puertos que alimentan
+    POWER = "power"          # battery, adapter, ports that supply power
 
 
-# El orden en que se dibujan los aparatos del árbol: como se buscan y no como
-# los numeró el kernel, que es el de los directorios de hwmon y cambia entre
-# arranques. Primero el procesador, luego la placa —donde se miran los
-# ventiladores y los voltajes— y detrás lo demás.
+# The order the tree's devices are drawn in: as they're looked for, not as
+# the kernel numbered them, which is hwmon's folder order and changes
+# between boots. The processor first, then the board (where fans and
+# voltages are looked at), then the rest.
 DEVICE_ORDER: dict[str, int] = {
     DeviceKind.CPU: 0,
     DeviceKind.BOARD: 1,
@@ -1737,10 +1719,9 @@ DEVICE_ORDER: dict[str, int] = {
 }
 
 
-# El nombre de la rama en la que cae cada tipo dentro del árbol de sensores.
-# La rama del árbol en la que cae cada tipo. Son claves y no texto: estos
-# nombres los inventa el programa para agrupar —el kernel no los da— así que
-# son interfaz y se traducen al montar el árbol.
+# The branch each kind falls into within the sensor tree. Keys, not text:
+# the program makes these names up to group (the kernel doesn't give them),
+# so they're interface and get translated when the tree is built.
 CATEGORIES: dict[str, str] = {
     SensorKind.VOLTAGE: "cat.voltage",
     SensorKind.TEMPERATURE: "cat.temperature",
@@ -1756,13 +1737,10 @@ CATEGORIES: dict[str, str] = {
     SensorKind.OTHER: "cat.other",
 }
 
-# Orden en que se enseñan las ramas: el mismo que usan HWMonitor y HWiNFO,
-# de lo que más se consulta a lo que menos.
-# De lo que se viene a mirar a lo que se consulta: qué va caliente, cómo
-# giran los ventiladores y cuánto consume, antes que las tensiones y que un
-# reloj por hilo. Con las tensiones primero, la rama de la placa abría con
-# nueve voltajes sin nombre y la del procesador llevaba dieciséis relojes
-# entre sus temperaturas y su consumo.
+# The order branches are shown in, from what people come to look at to what
+# they consult: what runs hot, how the fans spin and how much it draws,
+# before voltages and a clock per thread. With voltages first, the board's
+# branch opened with nine unnamed voltages.
 CATEGORY_ORDER: tuple[str, ...] = (
     "cat.temperature", "cat.fan", "cat.power", "cat.usage",
     "cat.voltage", "cat.current", "cat.clock",
@@ -1772,51 +1750,50 @@ CATEGORY_ORDER: tuple[str, ...] = (
 
 @dataclass(frozen=True, slots=True)
 class Sensor:
-    """Una lectura suelta de un chip de sensores.
+    """One reading from a sensor chip.
 
-    `key` tiene que ser estable entre muestreos: es lo que permite acumular
-    mínimos y máximos por sensor a lo largo de la sesión, que es la gracia de
-    un monitor de hardware frente a un simple visor de valores actuales.
+    `key` must be stable between samples: it lets minimums and maximums be
+    accumulated per sensor over the session, which is the point of a
+    hardware monitor over a plain viewer of current values.
     """
 
     key: str                        # "coretemp/temp2"
-    chip: str                       # nombre crudo del chip: "coretemp"
-    device: str                     # el aparato: "MSI H510M PRO-E", "Core i5-10400"
+    chip: str                       # the chip's raw name: "coretemp"
+    device: str                     # the device: "MSI H510M PRO-E", "Core i5-10400"
     label: str                      # "Core 0", "Vcore", "CPU Fan"
     kind: SensorKind
     value: float
-    low: Optional[float] = None     # umbral bajo declarado por el chip
-    high: Optional[float] = None    # umbral alto
+    low: Optional[float] = None     # the low threshold the chip declares
+    high: Optional[float] = None    # the high threshold
     critical: Optional[float] = None
-    order: int = 0                  # para mantener el orden natural dentro de la rama
-    # True cuando los umbrales no los publica el sensor y los pone silux por
-    # el chip que es. Se dice en la ventana: un límite estimado y uno que
-    # declara el fabricante no merecen la misma confianza.
+    order: int = 0                  # to keep the natural order within the branch
+    # True when the sensor doesn't publish the thresholds and silux sets them
+    # by which chip it is. Said in the window: an estimated limit and one the
+    # maker declares don't deserve the same trust.
     estimated_limits: bool = False
-    # True cuando el driver no dice qué mide este canal y el nombre es un
-    # número puesto aquí: «Tensión 3». En un Super I/O (it87, nct67xx) qué
-    # llega a cada entrada lo decidió quien diseñó la placa, y el kernel no lo
-    # sabe. Se dice en la ventana en vez de inventar un nombre.
+    # True when the driver doesn't say what this channel measures and the
+    # name is a number set here: «Voltage 3». On a Super I/O (it87, nct67xx)
+    # what reaches each input was decided by the board's designer, and the
+    # kernel doesn't know. Said in the window instead of making up a name.
     unnamed: bool = False
-    # True cuando lo que se lee no es una medida sino el número fijo que el
-    # firmware devuelve por una zona térmica que no conectó a ningún sensor:
-    # 16.8 o 27.8 °C clavados en las `acpitz` de muchas placas de sobremesa.
-    # El equipo lo publica, así que se enseña; pero se dice lo que es, no
-    # lleva umbrales y no vale como temperatura de ninguna pieza.
+    # True when what's read isn't a measurement but the fixed number the
+    # firmware returns for a thermal zone wired to no sensor: 16.8 or 27.8 °C
+    # stuck in many desktop boards' `acpitz`. The machine publishes it, so
+    # it's shown; but it says what it is, carries no thresholds and doesn't
+    # count as any part's temperature.
     placeholder: bool = False
-    # El chip del que esta lectura es una repetición, o None. La interfaz WMI
-    # de una placa Gigabyte publica las mismas sondas que su Super I/O: son
-    # el mismo chip leído por dos drivers. La lectura sigue en la foto —la
-    # graba el CSV, sale en el JSON—, pero el árbol la enseña una sola vez,
-    # la del chip, y dice que el otro driver la repite.
+    # The chip this reading repeats, or None. A Gigabyte board's WMI
+    # interface publishes the same probes as its Super I/O: the same chip
+    # read by two drivers. The reading stays in the snapshot (the CSV records
+    # it, the JSON has it), but the tree shows it once, the chip's, and says
+    # the other driver repeats it.
     mirror_of: Optional[str] = None
-    # Para lo que no encaja en ningún tipo con unidad fija, como un ritmo de
-    # transferencia. Es la excepción, no la norma: si algo se repite, merece su
-    # propio SensorKind.
+    # For what fits no kind with a fixed unit, such as a transfer rate. The
+    # exception, not the rule: what recurs deserves its own SensorKind.
     unit_override: Optional[str] = None
-    # Qué clase de aparato lo publica, para ponerlo en su sitio del árbol. Por
-    # omisión la placa, que es donde cuelga lo que no se reconoce: un Super I/O
-    # que no esté en ninguna lista sigue siendo un chip de la placa.
+    # What kind of device publishes it, to put it in its place in the tree.
+    # The board by default, where whatever's unrecognized hangs: a Super I/O
+    # on no list is still a board chip.
     device_kind: str = DeviceKind.BOARD
     # What device it is, raw ("cpu", "net:eno1", "gpu:0000:03:00.0"): the
     # tree groups by this and remembers the user's folds by it. `device` is
@@ -1848,17 +1825,17 @@ class Sensor:
 
     @property
     def alarm(self) -> bool:
-        """Si la lectura ha pasado un umbral que declara el propio hardware."""
+        """Whether the reading crossed a threshold the hardware itself declares."""
         return self.alarm_level != "ok"
 
     @property
     def alarm_level(self) -> str:
-        """«ok», «alto» o «crítico», según lo que diga el propio hardware.
+        """«ok», «alto» or «crítico», per what the hardware itself says.
 
-        Dos niveles y no uno porque no es lo mismo: `max` es donde el
-        fabricante empieza a incomodarse y `crit` donde el equipo se apaga
-        solo. Pintar los dos del mismo color deja al que mira sin saber si
-        tiene que hacer algo ahora o solo estar al tanto.
+        Two levels and not one because they differ: `max` is where the maker
+        starts to worry and `crit` where the machine shuts down on its own.
+        Painting both the same colour leaves the viewer not knowing whether
+        to act now or just keep an eye.
         """
         if self.value is None:
             return "ok"
@@ -1870,22 +1847,22 @@ class Sensor:
             return "alto"
         return "ok"
 
-    # Desde qué fracción del umbral se empieza a teñir. Por debajo de tres
-    # cuartos no se pinta nada: un procesador a 45 grados de 90 no está «medio
-    # caliente», está bien, y darle un color intermedio convierte el color en
-    # decoración y deja de avisar de nada.
+    # From which fraction of the threshold tinting starts. Below three
+    # quarters nothing is painted: a processor at 45 of 90 degrees isn't
+    # «half hot», it's fine, and an in-between colour would turn colour into
+    # decoration that warns of nothing.
     WARM_FROM = 0.75
 
     @property
     def heat(self) -> Optional[float]:
-        """Lo cerca que está de su umbral, de 0 a 1, o None si no hay umbral.
+        """How close it is to its threshold, 0 to 1, or None without one.
 
-        Solo para temperaturas: un voltaje a media escala no significa nada, y
-        un ventilador a tope es lo que se espera bajo carga.
+        Temperatures only: a voltage at half scale means nothing, and a fan at
+        full speed is expected under load.
 
-        Sirve para teñir una lista larga. Noventa y nueve renglones de cifras
-        del mismo color se leen uno a uno; con la que se está acercando en otro
-        color se sabe dónde mirar sin leerlos.
+        It tints a long list. Ninety-nine rows of figures in one colour are
+        read one by one; with the one getting close in another colour, you
+        know where to look without reading them.
         """
         if self.kind is not SensorKind.TEMPERATURE or self.value is None:
             return None
@@ -1900,11 +1877,10 @@ class Sensor:
 
 @dataclass(frozen=True, slots=True)
 class DriverHint:
-    """Un módulo del kernel que daría más sensores y no está cargado.
+    """A kernel module that would give more sensors and isn't loaded.
 
-    En Linux, un monitor de hardware no está limitado por lo que puede leer
-    sino por los drivers que haya cargados. Detectarlo y decirlo vale más que
-    cualquier sensor extra.
+    On Linux a hardware monitor isn't limited by what it can read but by the
+    drivers that are loaded. Detecting and saying it beats any extra sensor.
     """
 
     module: str
@@ -1946,18 +1922,18 @@ class Snapshot:
     failures: tuple[Failure, ...] = ()
 
     def sensor_tree(self) -> dict[str, dict[str, tuple[Sensor, ...]]]:
-        """Dispositivo → categoría → sensores, en el orden en que se dibujan.
+        """Device → category → sensors, in the order they're drawn.
 
-        Es la forma en que presentan los datos HWMonitor y HWiNFO, y no es
-        casualidad: agrupar por aparato y luego por magnitud es lo que permite
-        mirar «qué hace la placa» o «qué temperaturas hay» sin leerlo todo.
+        How HWMonitor and HWiNFO present the data, and not by chance:
+        grouping by device and then by quantity lets one look at «what the
+        board does» or «what temperatures there are» without reading it all.
         """
         tree: dict[str, dict[str, list[Sensor]]] = {}
         kinds: dict[str, str] = {}
         names: dict[str, str] = {}
         for sensor in self.sensors:
             if sensor.mirror_of:
-                continue                # la misma lectura por otro driver: una vez
+                continue                # the same reading through another driver: once
             # By its raw key, not its name: names are in the interface's
             # language, and the user's folds are kept by this.
             tree.setdefault(sensor.group, {}).setdefault(sensor.category, []).append(sensor)
@@ -1969,10 +1945,9 @@ class Snapshot:
         for device in sorted(tree, key=lambda d: self._device_order(names[d], kinds[d])):
             categories = tree[device]
             ordered[device] = {
-                # Por chip y, dentro, en su orden: una placa que publica las
-                # mismas sondas por dos caminos (su Super I/O y su interfaz
-                # WMI) las enseñaba intercaladas, «Temperatura 1» de uno,
-                # «Temperatura 1» del otro. Las de relleno, al final.
+                # By chip and, within it, in its order: a board publishing the
+                # same probes two ways (its Super I/O and its WMI interface)
+                # showed them interleaved. The filler ones go last.
                 name: tuple(sorted(categories[name],
                                    key=lambda s: (s.placeholder, s.chip, s.order, s.label)))
                 for name in CATEGORY_ORDER
@@ -1982,19 +1957,13 @@ class Snapshot:
 
     @staticmethod
     def _device_order(device: str, kind: str) -> tuple[int, str]:
-        """En qué orden se dibuja cada aparato del árbol de sensores.
+        """The order each device of the sensor tree is drawn in.
 
-        Sin esto salen en el orden en que los devuelve el kernel, que es el de
-        los directorios de hwmon: un número arbitrario que cambia entre
-        arranques. Se ordenan como se buscan —primero el procesador, luego la
-        placa— y no como los numeró el sistema.
-
-        La clase la trae cada sensor porque es lo que el proveedor ya resolvió
-        al leerlo. Antes se deducía aquí comparando el nombre del aparato con
-        otro compuesto en otro sitio, y no casaba ninguno: el procesador y el
-        disco caían los dos en el cajón de la placa y el árbol abría por el
-        disco, en orden alfabético. Y no había forma de arreglarlo con
-        cadenas, porque la mitad de esos nombres se traducen.
+        Without it they come in the kernel's order, hwmon's folders: an
+        arbitrary number that changes between boots. They're sorted as
+        they're looked for (processor first, then the board), not as the
+        system numbered them. The kind comes with each sensor, since the
+        provider already resolved it when reading.
         """
         return (DEVICE_ORDER.get(kind, DEVICE_ORDER[DeviceKind.BOARD]), device)
 
@@ -2008,12 +1977,13 @@ class Snapshot:
 
     @property
     def permission_notes(self) -> tuple[Note, ...]:
-        """Lo que falta y se arregla dando permisos, en el orden de la foto.
+        """What's missing and is fixed by giving permissions, in the snapshot's
+        order.
 
-        Solo lo que el ayudante sabe leer en este equipo: una nota de
-        permisos sin `what` es un archivo que no se deja abrir, y eso no lo
-        resuelve una contraseña; y sin ayudante no hay a quién pedírselo.
-        Contar de más aquí es poner un botón que no arregla lo que anuncia.
+        Only what the helper can read on this machine: a permission note
+        without `what` is a file that won't open, which a password doesn't
+        solve; and without a helper there's nobody to ask. Counting too many
+        here puts up a button that doesn't fix what it announces.
         """
         if not self.privileged.supported:
             return ()
@@ -2021,14 +1991,14 @@ class Snapshot:
 
     @property
     def installed_memory_bytes(self) -> Optional[int]:
-        """La memoria instalada: la suma de los módulos, no lo que ve el kernel.
+        """Installed memory: the modules' sum, not what the kernel sees.
 
-        `system.memory.total_bytes` es la utilizable (`MemTotal`), que es lo
-        instalado menos lo que se quedan el firmware, el kernel y la gráfica
-        integrada. Sale de la tabla del firmware (con permisos) o, si no, del
-        SPD. Sin ninguno de los dos no se sabe, y no se adivina: la memoria
-        por bloques de `/sys/devices/system/memory` deja fuera lo que reserva
-        una integrada.
+        `system.memory.total_bytes` is the usable amount (`MemTotal`): what's
+        installed minus what the firmware, the kernel and integrated graphics
+        keep. It comes from the firmware's table (with permissions) or else
+        the SPD. Without either it isn't known, and it isn't guessed: the
+        memory by blocks in `/sys/devices/system/memory` leaves out what
+        integrated graphics reserve.
         """
         modules = [m.size_bytes for m in self.modules if m.populated and m.size_bytes]
         if modules:
@@ -2041,25 +2011,25 @@ class Snapshot:
     @property
     def spd_accounts_for_all_memory(self) -> bool:
         """Whether the SPD chips add up to the usable memory at least. Memory
-        soldered on the board has none: the author's T14 read «8 GB
-        instalados · 15.3 GB utilizables», and installed is never less."""
+        soldered on the board has none, and installed is never less than
+        usable."""
         spd = sum(i.capacity_bytes for i in self.spd if i.capacity_bytes)
         util = self.system.memory.total_bytes
         return not util or spd >= util
 
     @property
     def working_gpu(self) -> Optional[int]:
-        """El índice de la gráfica que está trabajando, la que se resume.
+        """The index of the working graphics card, the one summarized.
 
-        No la primera de la lista: el orden es el de `cardN`, y en un portátil
-        para jugar la integrada suele ser `card0`, así que Inicio decía que el
-        equipo «tiene» una UHD. Tampoco solo `boot_vga`, que es con la que
-        arrancó el firmware y en un portátil es la integrada.
+        Not the list's first: the order is `cardN`'s, and on a gaming laptop
+        the integrated one is often `card0`, so Home said the machine «has»
+        integrated graphics. Nor just `boot_vga`, the one the firmware booted
+        with, which on a laptop is the integrated one.
 
-        La dedicada despierta, si la hay: es la que dibuja en un sobremesa y
-        la que se usa cuando se juega. Si la dedicada duerme, la que está
-        despierta, que es la que trabaja. Si duermen todas o no se sabe, la
-        de arranque, y si no, la primera.
+        The awake dedicated card, if any: the one that draws on a desktop and
+        is used when gaming. If the dedicated card sleeps, the awake one,
+        which is the one working. If all sleep or it isn't known, the boot
+        one, and failing that the first.
         """
         if not self.gpus:
             return None
@@ -2078,11 +2048,11 @@ class Snapshot:
         return 0
 
     def permission_note(self, path: str) -> Optional[Note]:
-        """La nota de permisos que guarda ese campo, si lo guarda alguna.
+        """The permission note that field holds, if any.
 
-        Para pintar un candado donde iría el dato: la página pregunta por el
-        campo —`gpus.0.usage`— y la nota puede ser la suya o la de la pieza
-        entera, `gpus.0`. Lo que falta por otro motivo no tiene candado.
+        To paint a padlock where the datum would go: the page asks for the
+        field (`gpus.0.usage`), and the note can be its own or the whole
+        part's, `gpus.0`. What's missing for another reason has no padlock.
         """
         for note in self.permission_notes:
             if path == note.path or path.startswith(note.path + "."):
@@ -2091,11 +2061,11 @@ class Snapshot:
 
 
 def to_jsonable(obj: Any) -> Any:
-    """Convierte el modelo a estructuras que `json` sabe serializar.
+    """Turn the model into structures `json` can serialize.
 
-    Se escribe a mano en lugar de usar `dataclasses.asdict` porque hay que
-    incluir las propiedades calculadas (multiplicadores, totales) y ordenar
-    los conjuntos para que la salida sea estable entre ejecuciones.
+    Written by hand instead of using `dataclasses.asdict` because the
+    computed properties (multipliers, totals) must be included and the sets
+    sorted so the output is stable between runs.
     """
     if is_dataclass(obj) and not isinstance(obj, type):
         out: dict[str, Any] = {}
