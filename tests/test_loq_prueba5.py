@@ -58,6 +58,9 @@ class TestItsModel(unittest.TestCase):
     def setUpClass(cls):
         cls.foto = foto(DUMP)[0]
 
+    def test_its_disk_is_sk_hynix(self):
+        # NVMe gives no vendor; the model reads «SKHynix_HFS512GEJ4X112N».
+        self.assertEqual(self.foto.disks[0].vendor, "SK hynix")
 
     def test_its_caches_go_p_before_e_within_a_level(self):
         qt.app()
