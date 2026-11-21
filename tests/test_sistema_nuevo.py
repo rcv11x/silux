@@ -184,7 +184,7 @@ class TestEnLaPagina(unittest.TestCase):
     def _fases(pagina):
         """Las filas de tiempos que se ven, con su valor."""
         return {_(clave): pagina.boot._values[_(clave)].full_text()
-                for clave, _campo in render.FASES_DE_ARRANQUE
+                for clave, _campo in render.BOOT_PHASES
                 if pagina.boot._values[_(clave)].isVisibleTo(pagina)}
 
     def _pagina(self, ventana):

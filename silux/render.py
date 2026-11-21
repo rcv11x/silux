@@ -15,7 +15,7 @@ from typing import NamedTuple, Optional
 from .i18n import _
 from .model import (
     LOGICAL_NON_VOLATILE,
-    MARGEN_DE_REDONDEO,
+    ROUNDING_MARGIN,
     Cache,
     Clocks,
     CpuType,
@@ -83,14 +83,14 @@ ERROR_CORRECTION_KEYS = {
 
 def memory_form_factor(code: Optional[int], translate=_) -> Optional[str]:
     """A memory module's form factor by its SMBIOS code; None if unknown."""
-    clave = FORM_FACTOR_KEYS.get(code) if code is not None else None
-    return translate(clave) if clave else None
+    key = FORM_FACTOR_KEYS.get(code) if code is not None else None
+    return translate(key) if key else None
 
 
 def memory_error_correction(code: Optional[int], translate=_) -> Optional[str]:
     """The memory's error correction by its SMBIOS code; None if unknown."""
-    clave = ERROR_CORRECTION_KEYS.get(code) if code is not None else None
-    return translate(clave) if clave else None
+    key = ERROR_CORRECTION_KEYS.get(code) if code is not None else None
+    return translate(key) if key else None
 
 
 def disk_kind(kind: Optional[str]) -> str:
@@ -215,7 +215,7 @@ def multiplier(value: Optional[float]) -> str:
     return DASH if _none(value) else f"× {float(value):.1f}"
 
 
-def clock_and_multiplier(frecuencia: Optional[int],
+def clock_and_multiplier(frequency: Optional[int],
                          factor: Optional[float]) -> str:
     """«3.40 GHz  × 34.0», o solo la parte que se sepa.
 
@@ -224,8 +224,8 @@ def clock_and_multiplier(frecuencia: Optional[int],
     «1.60 GHz  —», y uno sin ninguno de los dos, «—  —». El guion marca un
     dato ausente, y ahí se leía como un fallo de formato.
     """
-    piezas = [p for p in (hz(frecuencia), multiplier(factor)) if p != DASH]
-    return "  ".join(piezas) or DASH
+    pieces = [p for p in (hz(frequency), multiplier(factor)) if p != DASH]
+    return "  ".join(pieces) or DASH
 
 
 def dec(value: Optional[int]) -> str:
@@ -329,11 +329,11 @@ def caches_summary(caches) -> str:
 
 
 def cache_label(cache: Cache) -> str:
-    claves = {"data": "cache.label.data", "instruction": "cache.label.instr"}
-    return _(claves.get(cache.kind, "cache.label.unified")).format(n=cache.level)
+    keys = {"data": "cache.label.data", "instruction": "cache.label.instr"}
+    return _(keys.get(cache.kind, "cache.label.unified")).format(n=cache.level)
 
 
-def from_cpu_table(valor: Optional[str], traducir=None) -> str:
+def from_cpu_table(value: Optional[str], translate_key=None) -> str:
     """Un dato que sale de la tabla de procesadores y no del propio silicio.
 
     El nombre en clave, el nodo y el encapsulado no se leen del procesador:
@@ -341,37 +341,37 @@ def from_cpu_table(valor: Optional[str], traducir=None) -> str:
     salga después no está. Se dice así y no con un guion, que se lee como
     «este equipo no lo tiene». `traducir`, como en `core_type_label`.
     """
-    return valor or (traducir or _)("cpu.notintable")
+    return value or (translate_key or _)("cpu.notintable")
 
 
-def core_type_label(cpu_type: CpuType, hybrid: bool, traducir=None) -> str:
+def core_type_label(cpu_type: CpuType, hybrid: bool, translate_key=None) -> str:
     """`traducir` deja pedir el castellano fijo desde fuera de la interfaz.
 
     El informe va en español pase lo que pase, así que ahí entra `en_español`
     en vez de `_`; con la función normal, el informe de alguien con la interfaz
     en inglés mezclaría los dos idiomas en la misma página.
     """
-    tr = traducir or _
+    tr = translate_key or _
     if not hybrid:
         return tr("cpu.type.generic")
     # «P» y «E» son como los llama Intel; ARM llama a lo mismo big.LITTLE.
     # El reparto es el mismo, el nombre no, y quien mira su teléfono no
     # reconoce «núcleo E» por ninguna parte.
     if (cpu_type.architecture or "").lower().startswith(("aarch64", "arm")):
-        claves = {"performance": "core.type.big", "efficiency": "core.type.little"}
+        keys = {"performance": "core.type.big", "efficiency": "core.type.little"}
     else:
-        claves = {"performance": "core.type.p", "efficiency": "core.type.e"}
-    if cpu_type.key in claves:
-        return tr(claves[cpu_type.key])
+        keys = {"performance": "core.type.p", "efficiency": "core.type.e"}
+    if cpu_type.key in keys:
+        return tr(keys[cpu_type.key])
     return tr("core.type.named").format(nombre=cpu_type.key)
 
 
 def instructions(cpu_type: CpuType, limit: int | None = None) -> str:
     from .features import for_architecture
 
-    destacadas, bonitos = for_architecture(cpu_type.architecture)
+    starred, pretty = for_architecture(cpu_type.architecture)
     present = set(cpu_type.features)
-    shown = [bonitos.get(f, f.upper()) for f in destacadas if f in present]
+    shown = [pretty.get(f, f.upper()) for f in starred if f in present]
     if cpu_type.smt:
         shown.insert(0, "HT" if cpu_type.vendor == "Intel" else "SMT")
     if limit is not None and len(shown) > limit:
@@ -391,11 +391,11 @@ def power_headline(power: Power) -> str:
 
 # Los tonos de la barra de reposo, del estado más ligero al más hondo: cuanto
 # más hondo duerme, más se parece al fondo. Lo que resalta es lo activo.
-_TONOS_DE_REPOSO = ("accent/0.6", "accent/0.4", "accent/0.25", "accent/0.15", "line")
+_IDLE_TONES = ("accent/0.6", "accent/0.4", "accent/0.25", "accent/0.15", "line")
 
 
-_CORETEMP_PAQUETE = re.compile(r"^Package id (\d+)$")
-_CORETEMP_NUCLEO = re.compile(r"^Core (\d+)$")
+_CORETEMP_PACKAGE = re.compile(r"^Package id (\d+)$")
+_CORETEMP_CORE = re.compile(r"^Core (\d+)$")
 
 
 def sensor_label(sensor) -> str:
@@ -407,22 +407,22 @@ def sensor_label(sensor) -> str:
     puso el fabricante y no se tocan.
     """
     if sensor.chip == "coretemp":
-        if (encaje := _CORETEMP_PAQUETE.match(sensor.label)):
-            numero = int(encaje.group(1))
-            return _("sensor.package") if numero == 0 else f'{_("sensor.package")} {numero}'
-        if (encaje := _CORETEMP_NUCLEO.match(sensor.label)):
-            return _("sensor.core").format(n=int(encaje.group(1)))
+        if (match := _CORETEMP_PACKAGE.match(sensor.label)):
+            number = int(match.group(1))
+            return _("sensor.package") if number == 0 else f'{_("sensor.package")} {number}'
+        if (match := _CORETEMP_CORE.match(sensor.label)):
+            return _("sensor.core").format(n=int(match.group(1)))
     return sensor.label
 
 
-def idle_name(nombre: str) -> str:
+def idle_name(name: str) -> str:
     """«C2», no «C2_ACPI».
 
     `intel_idle` pone «_ACPI» detrás de los estados que toma de la tabla del
     firmware cuando no tiene una propia para ese procesador (un Comet Lake-S,
     por ejemplo). Dice de dónde salió el estado, no qué estado es.
     """
-    return nombre[:-len("_ACPI")] if nombre.endswith("_ACPI") else nombre
+    return name[:-len("_ACPI")] if name.endswith("_ACPI") else name
 
 
 class Segment(NamedTuple):
@@ -436,33 +436,33 @@ class Segment(NamedTuple):
     tooltip: str = ""
 
 
-def idle_segments(estados) -> list[Segment]:
+def idle_segments(states) -> list[Segment]:
     """Los tramos de la barra de reposo: lo activo y cada estado, sobre 100."""
-    dormido = sum(e.percent for e in estados)
-    tramos = [Segment("active", _("cpu.idle.active"),
-                      max(0.0, round(100.0 - dormido, 1)), "accent")]
-    con_tiempo = [e for e in estados if e.percent > 0]
-    for i, estado in enumerate(con_tiempo):
+    asleep = sum(e.percent for e in states)
+    spans = [Segment("active", _("cpu.idle.active"),
+                      max(0.0, round(100.0 - asleep, 1)), "accent")]
+    timed = [e for e in states if e.percent > 0]
+    for i, state in enumerate(timed):
         # El más hondo siempre con el tono del fondo.
-        tono = _TONOS_DE_REPOSO[-1] if i == len(con_tiempo) - 1 and len(con_tiempo) > 1 \
-            else _TONOS_DE_REPOSO[min(i, len(_TONOS_DE_REPOSO) - 2)]
-        tramos.append(Segment(estado.name, idle_name(estado.name), estado.percent, tono))
-    return tramos
+        tone = _IDLE_TONES[-1] if i == len(timed) - 1 and len(timed) > 1 \
+            else _IDLE_TONES[min(i, len(_IDLE_TONES) - 2)]
+        spans.append(Segment(state.name, idle_name(state.name), state.percent, tone))
+    return spans
 
 
-def idle_deepest(estados) -> Optional[str]:
+def idle_deepest(states) -> Optional[str]:
     """«C2, el reposo más hondo: entre el 54 % y el 73 % según el hilo.»"""
-    if not estados:
+    if not states:
         return None
-    hondo = estados[-1]
+    deepest = states[-1]
     # «C2_ACPI»: intel_idle took the states from the firmware's _CST table
     # (intel_idle_init_cstates_acpi), and the number is ACPI's level, not the
     # processor's C-state. «C2 is this processor's deepest», on a Comet
     # Lake that goes far deeper, was not true.
-    frase = (_("cpu.idle.deepest.acpi") if hondo.name.endswith("_ACPI")
+    sentence = (_("cpu.idle.deepest.acpi") if deepest.name.endswith("_ACPI")
              else _("cpu.idle.deepest"))
-    return frase.format(nombre=idle_name(hondo.name), bajo=f"{hondo.low:.0f}",
-                        alto=f"{hondo.high:.0f}")
+    return sentence.format(nombre=idle_name(deepest.name), bajo=f"{deepest.low:.0f}",
+                        alto=f"{deepest.high:.0f}")
 
 
 def power_breakdown(power: Power) -> str:
@@ -486,30 +486,30 @@ def power_tooltip(power: Power) -> str:
     return "\n".join(lines)
 
 
-def plural(cantidad: int, singular: str, plural_: str) -> str:
+def plural(amount: int, singular: str, plural_: str) -> str:
     """La palabra que toca según la cantidad.
 
     Parece una tontería hasta que un equipo con un solo módulo de memoria lee
     «1 módulos leídos» y piensa que el programa está roto. Cuando alguien va a
     fiarse de las cifras, la concordancia es parte de fiarse.
     """
-    return singular if cantidad == 1 else plural_
+    return singular if amount == 1 else plural_
 
 
-def unique_id(crudo: Optional[str]) -> Optional[str]:
+def unique_id(raw: Optional[str]) -> Optional[str]:
     """El identificador único de una pieza, o nada si no identifica nada.
 
     Todo ceros es la forma que tiene un driver de decir que no lo tiene.
     """
-    if not crudo or not crudo.strip().strip("0"):
+    if not raw or not raw.strip().strip("0"):
         return None
-    return crudo.strip()
+    return raw.strip()
 
 
-_FECHA_DMI = re.compile(r"(\d{1,2})/(\d{1,2})/(\d{4})")
+_DMI_DATE = re.compile(r"(\d{1,2})/(\d{1,2})/(\d{4})")
 
 
-def bios_date(crudo: Optional[str]) -> Optional[str]:
+def bios_date(raw: Optional[str]) -> Optional[str]:
     """La fecha de la BIOS sin ambigüedad: «2025-10-28».
 
     El firmware la escribe como mes/día/año, a la americana, y pintada tal
@@ -517,41 +517,41 @@ def bios_date(crudo: Optional[str]) -> Optional[str]:
     junio. Año-mes-día no se confunde con nada. Lo que no tenga esa forma se
     deja como viene: es mejor que inventarle un orden.
     """
-    if not crudo:
+    if not raw:
         return None
-    partes = _FECHA_DMI.fullmatch(crudo.strip())
-    if partes is None:
-        return crudo.strip()
-    mes, dia, anno = (int(p) for p in partes.groups())
-    if not (1 <= mes <= 12 and 1 <= dia <= 31):
-        return crudo.strip()
-    return f"{anno:04d}-{mes:02d}-{dia:02d}"
+    parts = _DMI_DATE.fullmatch(raw.strip())
+    if parts is None:
+        return raw.strip()
+    month, day, year = (int(p) for p in parts.groups())
+    if not (1 <= month <= 12 and 1 <= day <= 31):
+        return raw.strip()
+    return f"{year:04d}-{month:02d}-{day:02d}"
 
 
 def bios_summary(board) -> str:
     """«AMI 1.80 (2023-06-08)»: de quién es la BIOS, cuál y de cuándo."""
-    junto = " ".join(p for p in (short_vendor(board.bios_vendor), board.bios_version) if p)
-    fecha = bios_date(board.bios_date)
-    return f"{junto} ({fecha})" if junto and fecha else junto or DASH
+    together = " ".join(p for p in (short_vendor(board.bios_vendor), board.bios_version) if p)
+    date = bios_date(board.bios_date)
+    return f"{together} ({date})" if together and date else together or DASH
 
 
-def lock_tooltip(nota) -> str:
+def lock_tooltip(note) -> str:
     """Lo que dice el candado de un dato que falta por permisos.
 
     Por qué falta, con las palabras de la nota, y qué pasa al pulsarlo.
     """
-    return f"{nota.message}\n\n{_('lock.tip.outdated' if nota.helper_outdated else 'lock.tip')}"
+    return f"{note.message}\n\n{_('lock.tip.outdated' if note.helper_outdated else 'lock.tip')}"
 
 
-def permission_action(nota) -> str:
+def permission_action(note) -> str:
     """The button of a note that needs permissions: give them, or update the
     installed helper when it is from another version."""
-    return _("perm.replace.button") if nota.helper_outdated else _("perm.button.read")
+    return _("perm.replace.button") if note.helper_outdated else _("perm.button.read")
 
 
-def permission_title(nota, titulo: str) -> str:
+def permission_title(note, title: str) -> str:
     """A notice's title: the page's own, or that the helper is out of date."""
-    return _("perm.outdated.title") if nota.helper_outdated else titulo
+    return _("perm.outdated.title") if note.helper_outdated else title
 
 
 # Cómo llama el kernel al dúplex de un enlace, y con qué clave se dice aquí.
@@ -560,20 +560,20 @@ def permission_title(nota, titulo: str) -> str:
 DUPLEX = {"full": "net.duplex.full", "half": "net.duplex.half"}
 
 
-def link_summary(interfaz) -> Optional[str]:
+def link_summary(interface) -> Optional[str]:
     """«2.5 Gb/s · dúplex completo»: cómo quedó negociado el enlace.
 
     Estaba en el modelo, que lo componía con la palabra del kernel tal cual:
     la página de Red decía «2.5 Gb/s · full» con la interfaz en español.
     """
-    if not interfaz.speed_mbps:
+    if not interface.speed_mbps:
         return None
-    if interfaz.speed_mbps >= 1000:
-        velocidad = f"{interfaz.speed_mbps / 1000:g} Gb/s"
+    if interface.speed_mbps >= 1000:
+        speed = f"{interface.speed_mbps / 1000:g} Gb/s"
     else:
-        velocidad = f"{interfaz.speed_mbps} Mb/s"
-    clave = DUPLEX.get((interfaz.duplex or "").lower())
-    return f"{velocidad} · {_(clave)}" if clave else velocidad
+        speed = f"{interface.speed_mbps} Mb/s"
+    key = DUPLEX.get((interface.duplex or "").lower())
+    return f"{speed} · {_(key)}" if key else speed
 
 
 def rate(value: Optional[float], bits: bool = False) -> str:
@@ -595,12 +595,12 @@ def rate(value: Optional[float], bits: bool = False) -> str:
     if _none(value):
         return DASH
     value = float(value) * (8 if bits else 1)
-    escala = ((1e9, "Gb/s" if bits else "GB/s"),
+    scale = ((1e9, "Gb/s" if bits else "GB/s"),
               (1e6, "Mb/s" if bits else "MB/s"),
               (1e3, "kb/s" if bits else "kB/s"))
-    for factor, unidad in escala:
+    for factor, unit in scale:
         if value >= factor:
-            return f"{value / factor:.1f} {unidad}"
+            return f"{value / factor:.1f} {unit}"
     return f"{value:.0f} {'b/s' if bits else 'B/s'}"
 
 
@@ -618,8 +618,8 @@ def interface_state(interface: NetworkInterface) -> str:
         # detrás del equipo, pero solo tiene sentido donde hay un cable que
         # mirar: un puente de máquinas virtuales o un túnel están parados, no
         # desenchufados.
-        con_cable = interface.kind in ("ethernet", "wifi")
-        if con_cable and interface.carrier is False:
+        cabled = interface.kind in ("ethernet", "wifi")
+        if cabled and interface.carrier is False:
             return _("net.state.nosignal" if interface.kind == "wifi"
                      else "net.state.nocable")
         return _("net.state.down")
@@ -639,24 +639,24 @@ def fan(rpm_value: Optional[int], percent_value: Optional[float]) -> str:
     porcentaje. Juntar «—» con «(0.0 %)» quedaba como si faltara un dato y
     sobrara otro, cuando lo que dicen los dos es que está parado.
     """
-    parado = (rpm_value == 0) or (percent_value == 0)
+    stopped = (rpm_value == 0) or (percent_value == 0)
     if _none(rpm_value) and _none(percent_value):
         return DASH
-    if parado:
+    if stopped:
         return _("fan.stopped")
-    partes = []
+    parts = []
     if not _none(rpm_value):
-        partes.append(f"{int(rpm_value)} RPM")
+        parts.append(f"{int(rpm_value)} RPM")
     if not _none(percent_value):
-        partes.append(f"({percent(percent_value)})" if partes else percent(percent_value))
-    return "   ".join(partes)
+        parts.append(f"({percent(percent_value)})" if parts else percent(percent_value))
+    return "   ".join(parts)
 
 
 # Lo que una razón social lleva detrás del nombre, y que nadie dice.
-_FORMA_JURIDICA = re.compile(
+_LEGAL_FORM = re.compile(
     r"[,\s]+(?:Co\.?,?\s*Ltd\.?|Inc\.?|Corp(?:oration)?\.?|Ltd\.?|Limited|LLC|GmbH"
     r"|S\.?A\.?|AG|B\.?V\.?)$", re.IGNORECASE)
-_MARCA_ENTRE_CORCHETES = re.compile(r"\[([^\]]+)\]\s*$")
+_BRAND_IN_BRACKETS = re.compile(r"\[([^\]]+)\]\s*$")
 
 
 def maker(name: Optional[str]) -> Optional[str]:
@@ -671,17 +671,17 @@ def maker(name: Optional[str]) -> Optional[str]:
     """
     if not name:
         return None
-    conocido = short_vendor(name)
-    if conocido != name:
-        return conocido
-    if (corchetes := _MARCA_ENTRE_CORCHETES.search(name)):
-        return corchetes.group(1).split("/")[0]
+    known = short_vendor(name)
+    if known != name:
+        return known
+    if (bracketed := _BRAND_IN_BRACKETS.search(name)):
+        return bracketed.group(1).split("/")[0]
     if " / " in name:
         return name.rsplit(" / ", 1)[1].strip()
-    limpio = name.strip()
-    while (corto := _FORMA_JURIDICA.sub("", limpio)) != limpio and corto:
-        limpio = corto
-    return limpio
+    clean = name.strip()
+    while (short := _LEGAL_FORM.sub("", clean)) != clean and short:
+        clean = short
+    return clean
 
 
 def memory_maker(name: Optional[str]) -> Optional[str]:
@@ -693,9 +693,9 @@ def memory_maker(name: Optional[str]) -> Optional[str]:
     """
     if name and re.fullmatch(r"[0-9A-Fa-f]{4}", name.strip()):
         from .spd import _vendor
-        codigo = int(name.strip(), 16)
-        nombre = _vendor(codigo >> 8, codigo & 0xFF)
-        return maker(nombre) if nombre else _("mem.maker.code").format(codigo=name.strip())
+        code = int(name.strip(), 16)
+        vendor_name = _vendor(code >> 8, code & 0xFF)
+        return maker(vendor_name) if vendor_name else _("mem.maker.code").format(codigo=name.strip())
     return maker(name)
 
 
@@ -709,36 +709,36 @@ def with_maker(vendor: Optional[str], model: Optional[str]) -> Optional[str]:
     """
     if not model:
         return None
-    marca = maker(vendor)
-    if not marca or model.lower().startswith(marca.lower()):
+    brand = maker(vendor)
+    if not brand or model.lower().startswith(brand.lower()):
         return model
-    return f"{marca} {model}"
+    return f"{brand} {model}"
 
 
-def network_kind(clase: Optional[str]) -> str:
+def network_kind(kind: Optional[str]) -> str:
     """El tipo de una interfaz, dicho en el idioma de la interfaz: «Ethernet»,
     «Wi-Fi», «Puente». El proveedor guarda la clave y no el texto."""
-    if not clase:
+    if not kind:
         return DASH
-    texto = _(f"net.kind.{clase}")
-    return clase if texto == f"net.kind.{clase}" else texto
+    text = _(f"net.kind.{kind}")
+    return kind if text == f"net.kind.{kind}" else text
 
 
-def network_name(interfaz) -> str:
+def network_name(interface) -> str:
     """Cómo se llama una tarjeta de red: su modelo con la marca, o el nombre
     de la interfaz si no se sabe el modelo."""
-    return with_maker(interfaz.vendor, interfaz.model) or interfaz.name
+    return with_maker(interface.vendor, interface.model) or interface.name
 
 
 # El kernel le pega al nombre de algunos chips dónde los encontró: la
 # dirección del Super I/O («it8688_40050607») o el bus MDIO de la tarjeta de
 # red («r8169_0_600:00»). Sirve para distinguir dos iguales, no para leerlo.
-_DIRECCION_DEL_CHIP = re.compile(r"(?:_[0-9a-f]{6,}|_\d+_[0-9a-f]+:\d+)$")
+_CHIP_ADDRESS = re.compile(r"(?:_[0-9a-f]{6,}|_\d+_[0-9a-f]+:\d+)$")
 
 
 def chip_name(chip: str) -> str:
     """El nombre de un chip de sensores sin la dirección que le pega el kernel."""
-    return _DIRECCION_DEL_CHIP.sub("", chip)
+    return _CHIP_ADDRESS.sub("", chip)
 
 
 # Cómo se escribe cada bus. El kernel los da en minúsculas, y pasarlos todos
@@ -760,8 +760,8 @@ def pcie_link(link: PcieLink, maximum: bool = False) -> str:
     speed = link.max_speed_gts if maximum else link.current_speed_gts
     if generation is None and speed is None:
         return DASH
-    nombre = f"PCIe {generation}.0" if generation else f"{speed:g} GT/s"
-    return f"{nombre} × {width}" if width else nombre
+    name = f"PCIe {generation}.0" if generation else f"{speed:g} GT/s"
+    return f"{name} × {width}" if width else name
 
 
 def gpu_link(gpu) -> str:
@@ -817,20 +817,20 @@ def possible_texts(formatter, top: float) -> list[str]:
     sube y la unidad aún no ha cambiado: 999,96 MB/s se escribe «1000.0
     MB/s», una cifra más que «999.9».
     """
-    techo = float(top) * 1.1
-    pruebas = {0.0, float(top), techo}
+    ceiling = float(top) * 1.1
+    runs = {0.0, float(top), ceiling}
     for base in (2, 10):
-        potencia = 1.0
-        while potencia <= techo:
-            for margen in (1e-4, 1e-6):
-                pruebas.add(potencia * (1 - margen))
-            potencia *= base
-    textos = []
-    for valor in sorted(pruebas):
-        texto = formatter(valor)
-        if texto not in textos:
-            textos.append(texto)
-    return textos
+        power_value = 1.0
+        while power_value <= ceiling:
+            for margin in (1e-4, 1e-6):
+                runs.add(power_value * (1 - margin))
+            power_value *= base
+    texts = []
+    for value in sorted(runs):
+        text = formatter(value)
+        if text not in texts:
+            texts.append(text)
+    return texts
 
 
 def bandwidth(value: Optional[int]) -> str:
@@ -858,7 +858,7 @@ def vram_bus(memory: GpuMemory) -> str:
 
 # Cada fabricante cuenta sus unidades de proceso de una forma y no son
 # equivalentes entre sí.
-UNIDADES_DE_PROCESO = {
+PROCESSING_UNITS = {
     "NVIDIA": "gpu.units.cuda",
     "AMD": "gpu.units.cu",
     "Intel": "gpu.units.eu",
@@ -869,16 +869,16 @@ def compute_units(gpu) -> str:
     """«64 unidades de cómputo», «2048 núcleos CUDA»."""
     if not gpu.compute_units:
         return DASH
-    clave = UNIDADES_DE_PROCESO.get(gpu.vendor or "", "gpu.units.generic")
-    return f"{gpu.compute_units} {_(clave)}"
+    key = PROCESSING_UNITS.get(gpu.vendor or "", "gpu.units.generic")
+    return f"{gpu.compute_units} {_(key)}"
 
 
 def compute_units_short(gpu) -> Optional[str]:
     """Lo mismo pero para una insignia: «64 CU», «2048 CUDA»."""
     if not gpu.compute_units:
         return None
-    corto = {"NVIDIA": "CUDA", "AMD": "CU", "Intel": "EU"}.get(gpu.vendor or "", "u.")
-    return f"{gpu.compute_units} {corto}"
+    short = {"NVIDIA": "CUDA", "AMD": "CU", "Intel": "EU"}.get(gpu.vendor or "", "u.")
+    return f"{gpu.compute_units} {short}"
 
 
 def resizable_bar(memory: GpuMemory) -> str:
@@ -887,8 +887,8 @@ def resizable_bar(memory: GpuMemory) -> str:
         return DASH
     if memory.resizable_bar:
         return _("gpu.rebar.on")
-    ventana = size(memory.visible_bytes) if memory.visible_bytes else DASH
-    return _("gpu.rebar.off").format(ventana=ventana)
+    window = size(memory.visible_bytes) if memory.visible_bytes else DASH
+    return _("gpu.rebar.off").format(ventana=window)
 
 
 # Los bits de `critical_warning` del registro de salud de NVMe, que es donde
@@ -897,7 +897,7 @@ def resizable_bar(memory: GpuMemory) -> str:
 # De dónde sacar en qué canal está un módulo. El firmware lo escribe de varias
 # maneras según quién haga la placa, y ninguna es obligatoria: «P0 CHANNEL A»
 # en el banco, «DIMM_A1» en el localizador, «ChannelA-DIMM0» en los portátiles.
-_CANAL = (
+_CHANNEL = (
     re.compile(r"CHANNEL[\s_-]*([A-H])\b", re.I),
     re.compile(r"\bDIMM[\s_-]*([A-H])\d", re.I),
     re.compile(r"\bCH([A-H])\b", re.I),
@@ -910,33 +910,33 @@ _CANAL = (
 # letras salía «canal único» en una máquina que va en doble canal, con el
 # agravante de que entonces aconseja repartir los módulos: repartidos ya
 # estaban.
-_CONTROLADOR = re.compile(r"CONTROLLER[\s_-]*(\d+)", re.I)
+_CONTROLLER = re.compile(r"CONTROLLER[\s_-]*(\d+)", re.I)
 
 # Cómo se llama tener tantos canales poblados. Por encima de cuatro se dice el
 # número, que «óctuple canal» no lo usa nadie.
-NOMBRE_DE_CANALES = {1: "mem.chan.1", 2: "mem.chan.2",
+CHANNEL_NAMES = {1: "mem.chan.1", 2: "mem.chan.2",
                      3: "mem.chan.3", 4: "mem.chan.4"}
 
 
-def _canal_de(modulo) -> Optional[str]:
+def _channel_of(module) -> Optional[str]:
     """Qué canal ocupa un módulo, si el firmware lo dice.
 
     No devuelve la letra sino algo que identifique el canal de verdad: cuando
     el localizador nombra el controlador, la letra por sí sola se repite entre
     ellos y dos módulos bien repartidos parecían estar en el mismo sitio.
     """
-    for texto in (modulo.bank, modulo.locator):
-        if not texto:
+    for text in (module.bank, module.locator):
+        if not text:
             continue
-        for patron in _CANAL:
-            if (encaje := patron.search(texto)):
-                letra = encaje.group(1).upper()
-                controlador = _CONTROLADOR.search(texto)
-                return f"{controlador.group(1)}:{letra}" if controlador else letra
+        for pattern in _CHANNEL:
+            if (match := pattern.search(text)):
+                letter = match.group(1).upper()
+                controller = _CONTROLLER.search(text)
+                return f"{controller.group(1)}:{letter}" if controller else letter
     return None
 
 
-def memory_channels(modulos) -> Optional[int]:
+def memory_channels(modules) -> Optional[int]:
     """Cuántos canales tienen al menos un módulo puesto.
 
     Devuelve None cuando el firmware no dice en qué canal está cada zócalo, que
@@ -944,24 +944,24 @@ def memory_channels(modulos) -> Optional[int]:
     dato ahí sería peor que no darlo: en canal único la memoria rinde la mitad,
     y decirlo al revés manda a alguien a abrir el equipo para nada.
     """
-    poblados = [m for m in modulos if m.populated]
-    if not poblados:
+    populated = [m for m in modules if m.populated]
+    if not populated:
         return None
-    canales = {c for m in poblados if (c := _canal_de(m))}
-    return len(canales) or None
+    channels = {c for m in populated if (c := _channel_of(m))}
+    return len(channels) or None
 
 
-def memory_channel_label(modulos) -> Optional[str]:
+def memory_channel_label(modules) -> Optional[str]:
     """«Doble canal», «canal único»… con cuántos módulos lo forman."""
-    cuantos = memory_channels(modulos)
-    if cuantos is None:
+    count = memory_channels(modules)
+    if count is None:
         return None
-    nombre = (_(NOMBRE_DE_CANALES[cuantos]) if cuantos in NOMBRE_DE_CANALES
-              else _("mem.chan.n").format(n=cuantos))
-    puestos = sum(1 for m in modulos if m.populated)
-    modulos_txt = _("mem.modules.one" if puestos == 1
-                    else "mem.modules.many").format(n=puestos)
-    return f"{nombre} · {modulos_txt}"
+    name = (_(CHANNEL_NAMES[count]) if count in CHANNEL_NAMES
+              else _("mem.chan.n").format(n=count))
+    fitted = sum(1 for m in modules if m.populated)
+    modules_text = _("mem.modules.one" if fitted == 1
+                    else "mem.modules.many").format(n=fitted)
+    return f"{name} · {modules_text}"
 
 
 def nanoseconds(value: Optional[float]) -> str:
@@ -970,7 +970,7 @@ def nanoseconds(value: Optional[float]) -> str:
     return DASH if _none(value) else f"{float(value):.1f} ns"
 
 
-def memory_theoretical_bandwidth(modulos) -> Optional[int]:
+def memory_theoretical_bandwidth(modules) -> Optional[int]:
     """Lo que daría esta memoria si nada la frenara, en bytes por segundo.
 
     Es una multiplicación, no una medida: las transferencias por segundo por
@@ -982,62 +982,62 @@ def memory_theoretical_bandwidth(modulos) -> Optional[int]:
     costó un aviso equivocado en la ficha de al lado: en canal único la memoria
     rinde la mitad, y aquí saldría un porcentaje que dobla al de verdad.
     """
-    canales = memory_channels(modulos)
-    if not canales:
+    channels = memory_channels(modules)
+    if not channels:
         return None
-    velocidades = [m.configured_mts or m.speed_mts for m in modulos
+    speeds = [m.configured_mts or m.speed_mts for m in modules
                    if m.populated and (m.configured_mts or m.speed_mts)]
-    if not velocidades:
+    if not speeds:
         return None
     # La más lenta: el controlador iguala a la baja lo que le pongan.
-    return min(velocidades) * 1_000_000 * 8 * canales
+    return min(speeds) * 1_000_000 * 8 * channels
 
 
-def memory_bandwidth_share(medido: Optional[int], teorico: Optional[int]) -> Optional[float]:
+def memory_bandwidth_share(measured_value: Optional[int], theoretical: Optional[int]) -> Optional[float]:
     """Qué fracción del teórico se está consiguiendo, en tanto por ciento."""
-    if not medido or not teorico:
+    if not measured_value or not theoretical:
         return None
-    return round(medido / teorico * 100, 1)
+    return round(measured_value / theoretical * 100, 1)
 
 
 # Los trozos que los firmwares pegan en el localizador de un zócalo. Salen así,
 # sin espacios y cada fabricante a su manera: «Controller0-ChannelA»,
 # «ChannelA-DIMM0», «DIMM_A1», «DIMM A», «DIMM 0».
-_ZOC_CONTROLADOR = re.compile(r"controller\s*[-_]?\s*(\d+)", re.I)
-_ZOC_CANAL = re.compile(r"chan(?:nel)?\s*[-_]?\s*([a-z])\b", re.I)
+_SLOT_CONTROLLER = re.compile(r"controller\s*[-_]?\s*(\d+)", re.I)
+_SLOT_CHANNEL = re.compile(r"chan(?:nel)?\s*[-_]?\s*([a-z])\b", re.I)
 # «DIMM_A1» lleva canal y número pegados; «DIMM 0» solo número; «DIMM A» solo
 # canal. El orden importa: el primero que casa gana.
-_ZOC_DIMM_CANAL_Y_NUM = re.compile(r"dimm\s*[-_]?\s*([a-z])\s*(\d+)", re.I)
-_ZOC_DIMM_NUM = re.compile(r"dimm\s*[-_]?\s*(\d+)", re.I)
-_ZOC_DIMM_CANAL = re.compile(r"dimm\s*[-_]?\s*([a-z])\b", re.I)
+_SLOT_DIMM_CHANNEL_AND_NUMBER = re.compile(r"dimm\s*[-_]?\s*([a-z])\s*(\d+)", re.I)
+_SLOT_DIMM_NUMBER = re.compile(r"dimm\s*[-_]?\s*(\d+)", re.I)
+_SLOT_DIMM_CHANNEL = re.compile(r"dimm\s*[-_]?\s*([a-z])\b", re.I)
 
 
-def _piezas_del_zocalo(locator: str) -> dict:
+def _slot_parts(locator: str) -> dict:
     """Qué dice el localizador de un zócalo, campo a campo.
 
     Vacío si no se reconoce nada, y entonces quien llama deja el texto crudo:
     inventarse una posición a partir de algo que no se entiende es peor que
     enseñar lo que puso el firmware.
     """
-    piezas: dict = {}
-    if (casa := _ZOC_CONTROLADOR.search(locator)):
-        piezas["controlador"] = casa.group(1)
-    if (casa := _ZOC_CANAL.search(locator)):
-        piezas["canal"] = casa.group(1).upper()
+    pieces: dict = {}
+    if (home := _SLOT_CONTROLLER.search(locator)):
+        pieces["controlador"] = home.group(1)
+    if (home := _SLOT_CHANNEL.search(locator)):
+        pieces["canal"] = home.group(1).upper()
 
-    if (casa := _ZOC_DIMM_CANAL_Y_NUM.search(locator)):
-        piezas.setdefault("canal", casa.group(1).upper())
-        piezas["dimm"] = casa.group(2)
-    elif (casa := _ZOC_DIMM_NUM.search(locator)):
-        piezas["dimm"] = casa.group(1)
-    elif (casa := _ZOC_DIMM_CANAL.search(locator)):
-        piezas.setdefault("canal", casa.group(1).upper())
-    return piezas
+    if (home := _SLOT_DIMM_CHANNEL_AND_NUMBER.search(locator)):
+        pieces.setdefault("canal", home.group(1).upper())
+        pieces["dimm"] = home.group(2)
+    elif (home := _SLOT_DIMM_NUMBER.search(locator)):
+        pieces["dimm"] = home.group(1)
+    elif (home := _SLOT_DIMM_CHANNEL.search(locator)):
+        pieces.setdefault("canal", home.group(1).upper())
+    return pieces
 
 
 # Cómo se llama cada velocidad de USB. Es la negociada, no la versión del
 # dispositivo: un teclado USB 2.0 va a 12 Mb/s y está bien.
-_USB_VELOCIDADES = {1.5: "usb.speed.low", 12.0: "usb.speed.full", 480.0: "usb.speed.high",
+_USB_SPEEDS = {1.5: "usb.speed.low", 12.0: "usb.speed.full", 480.0: "usb.speed.high",
                     5000.0: "usb.speed.super", 10000.0: "usb.speed.superplus",
                     20000.0: "usb.speed.superplus", 40000.0: "usb.speed.usb4"}
 USB_KINDS = {
@@ -1054,34 +1054,34 @@ def usb_speed(mbps: Optional[float]) -> str:
     """«Velocidad completa · 12 Mb/s», «SuperSpeed · 5 Gb/s»."""
     if _none(mbps):
         return DASH
-    cifra = f"{mbps / 1000:g} Gb/s" if mbps >= 1000 else f"{mbps:g} Mb/s"
-    clave = _USB_VELOCIDADES.get(float(mbps))
-    return f"{_(clave)} · {cifra}" if clave else cifra
+    figure = f"{mbps / 1000:g} Gb/s" if mbps >= 1000 else f"{mbps:g} Mb/s"
+    key = _USB_SPEEDS.get(float(mbps))
+    return f"{_(key)} · {figure}" if key else figure
 
 
-def usb_kind(dispositivo) -> str:
-    return _(USB_KINDS.get(dispositivo.kind, "usb.kind.other"))
+def usb_kind(device) -> str:
+    return _(USB_KINDS.get(device.kind, "usb.kind.other"))
 
 
-def usb_name(dispositivo) -> str:
+def usb_name(device) -> str:
     """El nombre del dispositivo; si no lo trae (o la foto es anónima), lo que es."""
-    nombre = usb_kind(dispositivo)
-    return dispositivo.product or (nombre[:1].upper() + nombre[1:])
+    name = usb_kind(device)
+    return device.product or (name[:1].upper() + name[1:])
 
 
-def sound_card(tarjeta) -> str:
+def sound_card(card) -> str:
     """«HDMI de la gráfica», «Placa base · Realtek ALCS1200A», o el nombre
     del aparato USB. No los de ALSA («HDA ATI HDMI», «HD-Audio Generic»)."""
-    if tarjeta.kind == "hdmi":
+    if card.kind == "hdmi":
         return _("sound.hdmi")
-    if tarjeta.kind == "board":
-        return _("sound.board").format(codec=tarjeta.codec) if tarjeta.codec else _("sound.board.plain")
-    if tarjeta.kind == "usb":
-        return tarjeta.name or _("sound.usb.camera" if tarjeta.camera else "sound.usb")
-    return tarjeta.name or _("sound.other")
+    if card.kind == "board":
+        return _("sound.board").format(codec=card.codec) if card.codec else _("sound.board.plain")
+    if card.kind == "usb":
+        return card.name or _("sound.usb.camera" if card.camera else "sound.usb")
+    return card.name or _("sound.other")
 
 
-def space(discos) -> tuple[int, int, int, int]:
+def space(disks) -> tuple[int, int, int, int]:
     """Used, free, reserved and unmounted bytes of these disks.
 
     Free is what the mounted partitions say; what is mounted and is neither
@@ -1090,24 +1090,24 @@ def space(discos) -> tuple[int, int, int, int]:
     outside any partition) is said apart. A tester's laptop, all of it
     mounted, read «Sin montar 8.6 GB» that were ext4's.
     """
-    usado = libre = reservado = montado = 0
-    for disco in discos:
-        for particion in disco.mounted_partitions:
-            usado += particion.used_bytes or 0
-            libre += particion.free_bytes or 0
-            if particion.size_bytes:
-                montado += particion.size_bytes
-                reservado += max(0, particion.size_bytes - (particion.used_bytes or 0)
-                                 - (particion.free_bytes or 0))
-    total = sum(d.size_bytes or 0 for d in discos)
-    sin_montar = max(0, total - montado)
+    used = free = reserved = mounted = 0
+    for disk in disks:
+        for partition in disk.mounted_partitions:
+            used += partition.used_bytes or 0
+            free += partition.free_bytes or 0
+            if partition.size_bytes:
+                mounted += partition.size_bytes
+                reserved += max(0, partition.size_bytes - (partition.used_bytes or 0)
+                                 - (partition.free_bytes or 0))
+    total = sum(d.size_bytes or 0 for d in disks)
+    unmounted = max(0, total - mounted)
     # Below 1 % of what they are part of it is a vfat's clusters and the
     # partitions' alignment: «Sin montar 1.6 MB» is not space anyone looks for.
-    return (usado, libre, reservado if reservado >= montado / 100 else 0,
-            sin_montar if sin_montar >= total / 100 else 0)
+    return (used, free, reserved if reserved >= mounted / 100 else 0,
+            unmounted if unmounted >= total / 100 else 0)
 
 
-def trim(disco) -> Optional[str]:
+def trim(disk) -> Optional[str]:
     """Lo que se ve del TRIM de una unidad, sin afirmar más de lo que se ve.
 
     «Lo admite» es un hecho. Que se esté haciendo es una señal: la partición
@@ -1116,21 +1116,21 @@ def trim(disco) -> Optional[str]:
     un SMR, y se dice así; uno virtual no es de platos aunque lo diga. El que
     no los admite no enseña la fila.
     """
-    if not disco.discard:
+    if not disk.discard:
         return None
-    partes = [_("disk.trim.smr") if disco.kind == "HDD" else _("disk.trim.yes")]
-    if disco.discard_mounted:
-        partes.append(_("disk.trim.mounted"))
-    if disco.fstrim_timer:
-        partes.append(_("disk.trim.timer"))
-    if len(partes) == 1 and disco.kind != "HDD":
-        partes.append(_("disk.trim.unseen"))
-    return " · ".join(partes)
+    parts = [_("disk.trim.smr") if disk.kind == "HDD" else _("disk.trim.yes")]
+    if disk.discard_mounted:
+        parts.append(_("disk.trim.mounted"))
+    if disk.fstrim_timer:
+        parts.append(_("disk.trim.timer"))
+    if len(parts) == 1 and disk.kind != "HDD":
+        parts.append(_("disk.trim.unseen"))
+    return " · ".join(parts)
 
 
 # Los atributos SMART de un disco SATA que significan lo mismo en casi todos.
 # Los demás se enseñan con su número: su nombre depende del fabricante.
-SMART_COMUNES = {
+SMART_COMMON = {
     1: "smart.attr.1", 5: "smart.attr.5", 9: "smart.attr.9", 12: "smart.attr.12",
     187: "smart.attr.187", 188: "smart.attr.188", 194: "smart.attr.194",
     197: "smart.attr.197", 198: "smart.attr.198", 199: "smart.attr.199",
@@ -1138,29 +1138,29 @@ SMART_COMUNES = {
 }
 
 
-def smart_rows(salud) -> list[tuple[str, str]]:
+def smart_rows(health) -> list[tuple[str, str]]:
     """El diagnóstico entero de un disco, en filas de nombre y valor.
 
     Primero lo que tiene nombre fijo (lo de NVMe viene así de la norma) y
     después, en un SATA, la tabla de atributos tal cual: número, nombre si es
     de los comunes, valor normalizado y contador en crudo.
     """
-    filas: list[tuple[str, str]] = []
-    for clave, valor in (
-            ("smart.cycles", salud.power_cycles), ("smart.unsafe", salud.unsafe_shutdowns),
-            ("smart.mediaerrors", salud.media_errors),
-            ("smart.spare", f"{salud.spare_percent} %" if salud.spare_percent is not None else None),
-            ("smart.read", size(salud.read_bytes) if salud.read_bytes else None),
-            ("smart.warning", None if salud.critical_warning is None
-             else _("smart.warning.none") if salud.critical_warning == 0
-             else f"0x{salud.critical_warning:02x}")):
-        if valor is not None:
-            filas.append((_(clave), thousands(valor) if isinstance(valor, int) else str(valor)))
-    for numero, normalizado, crudo in salud.attributes:
-        nombre = _(SMART_COMUNES[numero]) if numero in SMART_COMUNES else _("smart.attr.other")
-        filas.append((f"{numero} · {nombre}", _("smart.attr.value").format(
-            normalizado=normalizado, crudo=thousands(crudo))))
-    return filas
+    rows: list[tuple[str, str]] = []
+    for key, value in (
+            ("smart.cycles", health.power_cycles), ("smart.unsafe", health.unsafe_shutdowns),
+            ("smart.mediaerrors", health.media_errors),
+            ("smart.spare", f"{health.spare_percent} %" if health.spare_percent is not None else None),
+            ("smart.read", size(health.read_bytes) if health.read_bytes else None),
+            ("smart.warning", None if health.critical_warning is None
+             else _("smart.warning.none") if health.critical_warning == 0
+             else f"0x{health.critical_warning:02x}")):
+        if value is not None:
+            rows.append((_(key), thousands(value) if isinstance(value, int) else str(value)))
+    for number, normalized, raw in health.attributes:
+        name = _(SMART_COMMON[number]) if number in SMART_COMMON else _("smart.attr.other")
+        rows.append((f"{number} · {name}", _("smart.attr.value").format(
+            normalizado=normalized, crudo=thousands(raw))))
+    return rows
 
 
 def iommu(platform) -> str:
@@ -1179,8 +1179,8 @@ def virtualization(platform) -> Optional[str]:
     """
     if not platform.virtualization:
         return None
-    clave = "plat.virt.active" if platform.virtualization == "active" else "plat.virt.present"
-    return _(clave).format(tipo=platform.virtualization_kind or "")
+    key = "plat.virt.active" if platform.virtualization == "active" else "plat.virt.present"
+    return _(key).format(tipo=platform.virtualization_kind or "")
 
 
 def above_4g(platform) -> Optional[str]:
@@ -1195,58 +1195,58 @@ def above_4g(platform) -> Optional[str]:
 # punto ni coma, que cada idioma lee como decimal el del otro: «4.136 h»
 # parecían cuatro horas. Es lo que pide la norma (ISO 80000-1, el SI), y se
 # lee igual en español que en inglés.
-ESPACIO_DE_MILES = "\u202f"
+THOUSANDS_SPACE = "\u202f"
 
 
-def thousands(valor: Optional[int]) -> str:
+def thousands(value: Optional[int]) -> str:
     """«4 136»: un entero con los miles separados, igual en cualquier locale."""
-    if _none(valor):
+    if _none(value):
         return DASH
-    return f"{int(valor):,}".replace(",", ESPACIO_DE_MILES)
+    return f"{int(value):,}".replace(",", THOUSANDS_SPACE)
 
 
-def seconds(valor: Optional[float]) -> str:
+def seconds(value: Optional[float]) -> str:
     """«13.3 s»."""
-    return DASH if _none(valor) else f"{float(valor):.1f} s"
+    return DASH if _none(value) else f"{float(value):.1f} s"
 
 
-def time_window(valor: Optional[float]) -> str:
+def time_window(value: Optional[float]) -> str:
     """A RAPL time window, which goes from milliseconds to tens of seconds:
     «28.0 s», «2.4 ms»."""
-    if _none(valor):
+    if _none(value):
         return DASH
-    if valor >= 1:
-        return seconds(valor)
-    if valor >= 1e-3:
-        return f"{valor * 1e3:.1f} ms"
-    return f"{valor * 1e6:.0f} µs"
+    if value >= 1:
+        return seconds(value)
+    if value >= 1e-3:
+        return f"{value * 1e3:.1f} ms"
+    return f"{value * 1e6:.0f} µs"
 
 
-def thermal_throttle(frenos) -> str:
+def thermal_throttle(throttles) -> str:
     """«ninguno desde el arranque», or «5 en los núcleos (0.6 s) · 2 del
     procesador entero (1.4 s)»."""
-    if frenos is None:
+    if throttles is None:
         return DASH
-    partes = []
-    if frenos.core_count:
-        partes.append(_("cpu.throttle.cores").format(
-            n=frenos.core_count, tiempo=seconds(frenos.core_ms / 1000)))
-    if frenos.package_count:
-        partes.append(_("cpu.throttle.package").format(
-            n=frenos.package_count, tiempo=seconds(frenos.package_ms / 1000)))
-    return " · ".join(partes) or _("cpu.throttle.none")
+    parts = []
+    if throttles.core_count:
+        parts.append(_("cpu.throttle.cores").format(
+            n=throttles.core_count, tiempo=seconds(throttles.core_ms / 1000)))
+    if throttles.package_count:
+        parts.append(_("cpu.throttle.package").format(
+            n=throttles.package_count, tiempo=seconds(throttles.package_ms / 1000)))
+    return " · ".join(parts) or _("cpu.throttle.none")
 
 
-def power_limit(limite_w: Optional[float], ventana_s: Optional[float]) -> str:
+def power_limit(limit_w: Optional[float], window_s: Optional[float]) -> str:
     """«65.0 W · ventana de 28.0 s», or the watts alone without a window."""
-    if _none(ventana_s):
-        return watts(limite_w)
-    return _("cpu.limit.window").format(limite=watts(limite_w), ventana=time_window(ventana_s))
+    if _none(window_s):
+        return watts(limit_w)
+    return _("cpu.limit.window").format(limite=watts(limit_w), ventana=time_window(window_s))
 
 
 # Qué es un dispositivo PCI por su clase, para nombrar lo que `pci.ids` no
 # tiene. Las de `providers/pci.CLASES`: lo que la tabla de Placa enseña.
-CLASES_PCI = {
+PCI_CLASSES = {
     "0300": "board.pci.class.vga", "0302": "board.pci.class.3d",
     "0380": "board.pci.class.display", "0108": "board.pci.class.nvme",
     "0106": "board.pci.class.ahci", "0104": "board.pci.class.raid",
@@ -1263,21 +1263,21 @@ def pci_unnamed(device) -> Optional[str]:
     lo quiera reportar o encontrar. Decir solo que no está en la lista era
     explicar el hueco sin decir qué hay.
     """
-    marca = maker(device.vendor)
+    brand = maker(device.vendor)
     ids = (f"{device.vendor_id:04x}:{device.device_id:04x}"
            if device.vendor_id is not None and device.device_id is not None else None)
-    clase = CLASES_PCI.get(device.pci_class or "")
-    if marca and clase:
-        texto = _("board.pci.unnamed").format(marca=marca, clase=_(clase))
+    kind = PCI_CLASSES.get(device.pci_class or "")
+    if brand and kind:
+        text = _("board.pci.unnamed").format(marca=brand, clase=_(kind))
     else:
-        texto = marca or (_(clase) if clase else None)
+        text = brand or (_(kind) if kind else None)
     if ids:
-        texto = f"{texto} ({ids})" if texto else ids
-    return texto
+        text = f"{text} ({ids})" if text else ids
+    return text
 
 
 # Las fases del arranque, en orden, con el campo de `Boot` de cada una.
-FASES_DE_ARRANQUE = (("sys.boot.phase.firmware", "firmware_s"),
+BOOT_PHASES = (("sys.boot.phase.firmware", "firmware_s"),
                      ("sys.boot.phase.loader", "loader_s"),
                      ("sys.boot.phase.kernel", "kernel_s"),
                      ("sys.boot.phase.initrd", "initrd_s"),
@@ -1361,21 +1361,21 @@ def boot_phases(boot) -> list[tuple[str, str]]:
     encendido, y enseñados tal cual no se sabe si el segundo suma al primero.
     Sin el firmware no hay total (`Boot.total_s`).
     """
-    return [(clave, seconds(getattr(boot, campo))) for clave, campo in FASES_DE_ARRANQUE
-            if getattr(boot, campo) is not None]
+    return [(key, seconds(getattr(boot, field))) for key, field in BOOT_PHASES
+            if getattr(boot, field) is not None]
 
 
 def swap_summary(swap) -> str:
     """«45.0 MB de 31.3 GB · zstd · comprime 2.1 a 1 · prioridad 100»."""
-    partes = [_("sys.swap.used").format(usado=size(swap.used_bytes), total=size(swap.size_bytes))]
+    parts = [_("sys.swap.used").format(usado=size(swap.used_bytes), total=size(swap.size_bytes))]
     if swap.zram:
         if swap.algorithm:
-            partes.append(swap.algorithm)
+            parts.append(swap.algorithm)
         if swap.ratio:
-            partes.append(_("sys.swap.ratio").format(n=f"{swap.ratio:.1f}"))
+            parts.append(_("sys.swap.ratio").format(n=f"{swap.ratio:.1f}"))
     if swap.priority is not None:
-        partes.append(_("sys.swap.priority").format(n=swap.priority))
-    return " · ".join(partes)
+        parts.append(_("sys.swap.priority").format(n=swap.priority))
+    return " · ".join(parts)
 
 
 def swap_name(swap) -> str:
@@ -1387,7 +1387,7 @@ def swap_name(swap) -> str:
 
 
 # Los drivers del kernel cuya parte de usuario es Mesa.
-_CON_MESA = ("amdgpu", "radeon", "i915", "xe", "nouveau")
+_MESA_DRIVERS = ("amdgpu", "radeon", "i915", "xe", "nouveau")
 
 
 def graphics_stack(snapshot) -> Optional[str]:
@@ -1397,7 +1397,7 @@ def graphics_stack(snapshot) -> Optional[str]:
     es la de Mesa («26.2.6-arch3.1», y aquí sin la coletilla del paquete).
     """
     for gpu in snapshot.gpus:
-        if gpu.driver in _CON_MESA:
+        if gpu.driver in _MESA_DRIVERS:
             for api in gpu.apis:
                 if api.name == "OpenGL" and api.driver:
                     return f"Mesa {api.driver.split('-')[0]}"
@@ -1406,7 +1406,7 @@ def graphics_stack(snapshot) -> Optional[str]:
     return None
 
 
-def enumeration(piezas, ultima: str = "list.and") -> str:
+def enumeration(pieces, last: str = "list.and") -> str:
     """«el fabricante, los chips y la fecha»: una lista como se dice.
 
     Para las notas que nombran lo que falta. Una lista de nombres de campo
@@ -1414,10 +1414,10 @@ def enumeration(piezas, ultima: str = "list.and") -> str:
     como un formulario; una frase no. `ultima` es la clave de la conjunción:
     «y» por omisión, «ni» para lo que se niega.
     """
-    piezas = [p for p in piezas if p]
-    if len(piezas) <= 1:
-        return "".join(piezas)
-    return f"{', '.join(piezas[:-1])} {_(ultima)} {piezas[-1]}"
+    pieces = [p for p in pieces if p]
+    if len(pieces) <= 1:
+        return "".join(pieces)
+    return f"{', '.join(pieces[:-1])} {_(last)} {pieces[-1]}"
 
 
 def slot_names(zocalos: list[tuple[Optional[str], Optional[str]]]) -> list[str]:
@@ -1442,61 +1442,61 @@ def slot_names(zocalos: list[tuple[Optional[str], Optional[str]]]) -> list[str]:
     inventar una posición; y si aun así dos coinciden, se les añade el banco
     y, en último caso, su número de orden. Nunca salen dos iguales.
     """
-    crudos = [(localizador or "").strip() for localizador, _banco in zocalos]
-    piezas = []
-    for localizador, banco in zocalos:
-        suyas = _piezas_del_zocalo(localizador or "")
+    raw_values = [(localizador or "").strip() for localizador, _bank in zocalos]
+    pieces = []
+    for localizador, bank_name in zocalos:
+        own = _slot_parts(localizador or "")
         # El banco completa lo que el localizador calla, y nunca lo corrige.
-        for campo, valor in _piezas_del_zocalo(banco or "").items():
-            if campo != "dimm":
-                suyas.setdefault(campo, valor)
-        piezas.append(suyas)
+        for field, value in _slot_parts(bank_name or "").items():
+            if field != "dimm":
+                own.setdefault(field, value)
+        pieces.append(own)
 
-    def etiqueta(suyas: dict, campos: tuple) -> str:
-        partes = []
-        if "controlador" in campos and "controlador" in suyas:
-            partes.append(_("memory.slot.controller").format(n=suyas["controlador"]))
-        if "canal" in suyas:
-            partes.append(_("memory.slot.channel").format(c=suyas["canal"]))
-        if "dimm" in campos and "dimm" in suyas:
-            partes.append(_("memory.slot.dimm").format(n=suyas["dimm"]))
-        return " · ".join(partes)
+    def tag(own: dict, fields: tuple) -> str:
+        parts = []
+        if "controlador" in fields and "controlador" in own:
+            parts.append(_("memory.slot.controller").format(n=own["controlador"]))
+        if "canal" in own:
+            parts.append(_("memory.slot.channel").format(c=own["canal"]))
+        if "dimm" in fields and "dimm" in own:
+            parts.append(_("memory.slot.dimm").format(n=own["dimm"]))
+        return " · ".join(parts)
 
-    if piezas and all(piezas):
+    if pieces and all(pieces):
         # De menos a más: se añade un campo solo si sin él dos zócalos se
         # llamarían igual, y antes uno que dos.
         # The controller before the DIMM number: a channel is a controller's
         # letter, and two «Channel A» on two controllers are two channels.
-        for campos in ((), ("controlador",), ("dimm",), ("dimm", "controlador")):
-            nombres = [etiqueta(suyas, campos) for suyas in piezas]
-            if all(nombres) and len(set(nombres)) == len(nombres):
-                return nombres
+        for fields in ((), ("controlador",), ("dimm",), ("dimm", "controlador")):
+            names = [tag(own, fields) for own in pieces]
+            if all(names) and len(set(names)) == len(names):
+                return names
 
     # No se entiende, o ni con todo se distinguen: lo del firmware, y lo
     # mínimo para que no haya dos iguales.
-    nombres = [crudo or _("memory.slot") for crudo in crudos]
-    if len(set(nombres)) < len(nombres):
-        repetidos = {n for n in nombres if nombres.count(n) > 1}
-        nombres = [f"{nombre} · {banco_de_memoria(banco)}"
-                   if nombre in repetidos and banco and banco.strip() else nombre
-                   for nombre, (_localizador, banco) in zip(nombres, zocalos)]
-    if len(set(nombres)) < len(nombres):
-        repetidos = {n for n in nombres if nombres.count(n) > 1}
+    names = [raw or _("memory.slot") for raw in raw_values]
+    if len(set(names)) < len(names):
+        repeated = {n for n in names if names.count(n) > 1}
+        names = [f"{name} · {memory_bank(bank_name)}"
+                   if name in repeated and bank_name and bank_name.strip() else name
+                   for name, (_locator, bank_name) in zip(names, zocalos)]
+    if len(set(names)) < len(names):
+        repeated = {n for n in names if names.count(n) > 1}
         vistos: dict[str, int] = {}
-        salida = []
-        for nombre in nombres:
-            if nombre in repetidos:
-                vistos[nombre] = vistos.get(nombre, 0) + 1
-                nombre = f"{nombre} ({vistos[nombre]})"
-            salida.append(nombre)
-        nombres = salida
-    return nombres
+        out = []
+        for name in names:
+            if name in repeated:
+                vistos[name] = vistos.get(name, 0) + 1
+                name = f"{name} ({vistos[name]})"
+            out.append(name)
+        names = out
+    return names
 
 
-_BANCO_REDUNDANTE = re.compile(r"^bank[\s_-]*", re.I)
+_REDUNDANT_BANK = re.compile(r"^bank[\s_-]*", re.I)
 
 
-def banco_de_memoria(bank: Optional[str]) -> Optional[str]:
+def memory_bank(bank: Optional[str]) -> Optional[str]:
     """El banco sin repetir la palabra que ya lleva la fila.
 
     El firmware escribe «BANK 0» y la fila se titula «Banco», así que se leía
@@ -1506,11 +1506,11 @@ def banco_de_memoria(bank: Optional[str]) -> Optional[str]:
     """
     if not bank:
         return bank
-    limpio = _BANCO_REDUNDANTE.sub("", bank.strip()).strip()
-    return limpio or bank
+    clean = _REDUNDANT_BANK.sub("", bank.strip()).strip()
+    return clean or bank
 
 
-def velocidad_de_memoria(mts: Optional[int]) -> Optional[int]:
+def memory_speed(mts: Optional[int]) -> Optional[int]:
     """El nombre del grado al que corresponde una velocidad del firmware.
 
     La tabla SMBIOS trae lo que la BIOS haya escrito, y cada una redondea a su
@@ -1528,35 +1528,35 @@ def velocidad_de_memoria(mts: Optional[int]) -> Optional[int]:
     return jedec_grade(mts) or mts
 
 
-def memory_module_verdict(modulo, limite=None) -> Optional[str]:
+def memory_module_verdict(module, limit=None) -> Optional[str]:
     """Si un módulo va más lento de lo que admite, y por qué.
 
     None si va a lo suyo; «cpu_max» si va al máximo oficial del procesador
     (`limite`, de `db.memory_limit`), que no es un fallo ni un perfil sin
     activar; «slow» si va por debajo sin que eso lo explique.
     """
-    if not modulo.underclocked:
+    if not module.underclocked:
         return None
-    actual = velocidad_de_memoria(modulo.configured_mts or modulo.speed_mts)
-    if limite and actual and actual >= limite.mts * (1 - MARGEN_DE_REDONDEO):
+    current = memory_speed(module.configured_mts or module.speed_mts)
+    if limit and current and current >= limit.mts * (1 - ROUNDING_MARGIN):
         return "cpu_max"
     return "slow"
 
 
-def memory_limit_label(limite) -> str:
+def memory_limit_label(limit) -> str:
     """«i5-10400», o «Ryzen 7 5800X3D con 2 módulos de 1 rango».
 
     En AMD la cifra vale para esa disposición de módulos y no para otra: con
     cuatro de dos rangos el mismo procesador garantiza menos. Se dice.
     """
-    if not limite.layout:
-        return limite.model
-    cuantos, rangos = limite.layout.rstrip("R").split("x")
-    return _("mem.layout.one" if rangos == "1" else "mem.layout.many").format(
-        modelo=limite.model, n=cuantos, r=rangos)
+    if not limit.layout:
+        return limit.model
+    count, ranges = limit.layout.rstrip("R").split("x")
+    return _("mem.layout.one" if ranges == "1" else "mem.layout.many").format(
+        modelo=limit.model, n=count, r=ranges)
 
 
-def memory_speed_warning(modulos, limite=None, chipset: bool = False) -> Optional[str]:
+def memory_speed_warning(modules, limit=None, chipset: bool = False) -> Optional[str]:
     """Por qué la memoria no va más rápido, cuando hay algo que decir.
 
     El techo del conjunto no es el del módulo más rápido: es el del más lento,
@@ -1570,33 +1570,33 @@ def memory_speed_warning(modulos, limite=None, chipset: bool = False) -> Optiona
     módulo declara más que otro —y eso es lo que hay que contar, porque si no
     la cifra alta de la ficha no se entiende—, o no hay nada que decir.
     """
-    puestos = [m for m in modulos if m.populated and m.rated_mts]
-    if not puestos:
+    fitted = [m for m in modules if m.populated and m.rated_mts]
+    if not fitted:
         return None
-    actual = velocidad_de_memoria(
-        max((m.configured_mts or m.speed_mts or 0) for m in puestos))
-    if not actual:
+    current = memory_speed(
+        max((m.configured_mts or m.speed_mts or 0) for m in fitted))
+    if not current:
         return None
 
-    techo = min(m.rated_mts for m in puestos)
-    mayor = max(m.rated_mts for m in puestos)
+    ceiling = min(m.rated_mts for m in fitted)
+    highest = max(m.rated_mts for m in fitted)
 
-    if actual < techo * (1 - MARGEN_DE_REDONDEO):
+    if current < ceiling * (1 - ROUNDING_MARGIN):
         # Al máximo del procesador no hay perfil que activar: es lo que su
         # fabricante garantiza, y los módulos rápidos no lo cambian.
-        if limite and actual >= limite.mts * (1 - MARGEN_DE_REDONDEO):
-            return _("mem.cpumax").format(actual=actual, rated=techo,
-                                          modelo=memory_limit_label(limite))
+        if limit and current >= limit.mts * (1 - ROUNDING_MARGIN):
+            return _("mem.cpumax").format(actual=current, rated=ceiling,
+                                          modelo=memory_limit_label(limit))
         # Con el controlador en el chipset el límite es de la placa, no del
         # procesador.
         return _("mem.underclocked.chipset" if chipset else "mem.underclocked").format(
-            actual=actual, rated=techo)
-    if mayor > techo * (1 + MARGEN_DE_REDONDEO):
-        return _("mem.mixed").format(actual=actual, lento=techo, rapido=mayor)
+            actual=current, rated=ceiling)
+    if highest > ceiling * (1 + ROUNDING_MARGIN):
+        return _("mem.mixed").format(actual=current, lento=ceiling, rapido=highest)
     return None
 
 
-def memory_channel_warning(modulos) -> Optional[str]:
+def memory_channel_warning(modules) -> Optional[str]:
     """Cuándo la memoria está rindiendo por debajo de lo que podría.
 
     Es de los pocos problemas de hardware que son a la vez muy comunes, muy
@@ -1604,19 +1604,19 @@ def memory_channel_warning(modulos) -> Optional[str]:
     de que los dos módulos están en el mismo canal, y en un equipo con gráfica
     integrada eso se lleva por delante la mitad de los fotogramas.
     """
-    canales = memory_channels(modulos)
-    if canales is None or canales > 1:
+    channels = memory_channels(modules)
+    if channels is None or channels > 1:
         return None
-    puestos = sum(1 for m in modulos if m.populated)
-    libres = sum(1 for m in modulos if not m.populated)
-    if puestos > 1:
-        return _("mem.channel.same").format(n=puestos)
-    if libres:
+    fitted = sum(1 for m in modules if m.populated)
+    free_slots = sum(1 for m in modules if not m.populated)
+    if fitted > 1:
+        return _("mem.channel.same").format(n=fitted)
+    if free_slots:
         return _("mem.channel.single")
     return None
 
 
-AVISOS_NVME = {
+NVME_WARNINGS = {
     0: "disk.warn.spare",
     1: "disk.warn.temp",
     2: "disk.warn.reliability",
@@ -1629,10 +1629,10 @@ AVISOS_NVME = {
 # garantiza el disco hasta el 0 %, así que un 10 % no es una avería: es el
 # momento de ir pensando en la copia de seguridad, y decirlo antes es lo único
 # que sirve de algo.
-VIDA_BAJA_PCT = 10
+LOW_LIFE_PCT = 10
 
 
-def disk_warnings(salud) -> list[tuple[str, str]]:
+def disk_warnings(health) -> list[tuple[str, str]]:
     """Lo que un disco está diciendo de sí mismo, como `(nivel, frase)`.
 
     El registro de salud se leía entero y no se enseñaba ni una línea de él:
@@ -1642,37 +1642,37 @@ def disk_warnings(salud) -> list[tuple[str, str]]:
     Los apagones bruscos no son un aviso: cuentan los cortes de luz y los
     botones de reinicio, y en un equipo de sobremesa son normales.
     """
-    avisos: list[tuple[str, str]] = []
-    if salud is None:
-        return avisos
+    warnings: list[tuple[str, str]] = []
+    if health is None:
+        return warnings
 
-    if salud.critical_warning:
-        for bit, clave in AVISOS_NVME.items():
-            if salud.critical_warning & (1 << bit):
-                avisos.append(("crítico", _(clave).capitalize() + "."))
-        if not avisos:                     # un bit que la especificación no cubre
-            avisos.append(("crítico", _("disk.warn.unknown").format(
-                codigo=f"{salud.critical_warning:#04x}")))
+    if health.critical_warning:
+        for bit, key in NVME_WARNINGS.items():
+            if health.critical_warning & (1 << bit):
+                warnings.append(("crítico", _(key).capitalize() + "."))
+        if not warnings:                     # un bit que la especificación no cubre
+            warnings.append(("crítico", _("disk.warn.unknown").format(
+                codigo=f"{health.critical_warning:#04x}")))
 
-    if salud.media_errors:
-        clave = ("disk.warn.media.one" if salud.media_errors == 1
+    if health.media_errors:
+        key = ("disk.warn.media.one" if health.media_errors == 1
                  else "disk.warn.media.many")
-        avisos.append(("alto", _(clave).format(n=thousands(salud.media_errors))))
+        warnings.append(("alto", _(key).format(n=thousands(health.media_errors))))
 
-    vida = salud.life_left_percent
-    if vida is not None and vida <= VIDA_BAJA_PCT:
-        avisos.append(("alto", _("disk.warn.life").format(pct=vida)))
-    return avisos
+    life = health.life_left_percent
+    if life is not None and life <= LOW_LIFE_PCT:
+        warnings.append(("alto", _("disk.warn.life").format(pct=life)))
+    return warnings
 
 
-def duracion(segundos: float) -> str:
+def duration(seconds: float) -> str:
     """«40 s», «2 min 10 s». Sin decimales: nadie mide un recorte en décimas."""
-    if segundos < 60:
-        return _("time.seconds").format(n=f"{segundos:.0f}")
-    minutos, resto = divmod(int(segundos), 60)
-    if resto:
-        return _("time.minsec").format(m=minutos, s=resto)
-    return _("time.minutes").format(m=minutos)
+    if seconds < 60:
+        return _("time.seconds").format(n=f"{seconds:.0f}")
+    minutes, rest = divmod(int(seconds), 60)
+    if rest:
+        return _("time.minsec").format(m=minutes, s=rest)
+    return _("time.minutes").format(m=minutes)
 
 
 def home_path(text, home: Optional[str] = None) -> str:
@@ -1686,7 +1686,7 @@ def home_path(text, home: Optional[str] = None) -> str:
     return re.sub(r"(?<![\w/.-])" + re.escape(home) + r"(?=$|[/\s'\"),:;])", "~", text)
 
 
-def version(completa: str, translate=_) -> str:
+def version(full: str, translate=_) -> str:
     """La versión como se enseña: «0.4» y no «0.4.0»; «0.4.1» en un arreglo;
     «0.4-prueba1» en la primera de prueba de la 0.4.
 
@@ -1697,17 +1697,17 @@ def version(completa: str, translate=_) -> str:
     """
     # Una versión de prueba va como la pide PEP 440 («0.4.0rc1») y se
     # enseña con su nombre: «0.4-prueba1».
-    prueba = re.fullmatch(r"(\d+\.\d+\.\d+)rc(\d+)", completa)
-    if prueba:
-        return f"{version(prueba.group(1))}-{translate('app.version.rc')}{prueba.group(2)}"
-    partes = completa.split(".")
-    if len(partes) == 3 and partes[2] == "0":
-        return ".".join(partes[:2])
-    return completa
+    run = re.fullmatch(r"(\d+\.\d+\.\d+)rc(\d+)", full)
+    if run:
+        return f"{version(run.group(1))}-{translate('app.version.rc')}{run.group(2)}"
+    parts = full.split(".")
+    if len(parts) == 3 and parts[2] == "0":
+        return ".".join(parts[:2])
+    return full
 
 
 # El orden de las barras de motores, del que más se mira al que menos.
-ORDEN_DE_MOTORES = ("engine.render", "engine.compute", "engine.video",
+ENGINE_ORDER = ("engine.render", "engine.compute", "engine.video",
                     "engine.decode", "engine.encode", "engine.videoenhance",
                     "engine.copy")
 
@@ -1732,26 +1732,26 @@ def engine_levels(gpu) -> list[tuple[str, Optional[float]]]:
     if getattr(gpu, "suspended", False):
         return []
     if gpu.engines:
-        por_tipo: dict[str, list] = {}
-        for motor in gpu.engines:
-            if motor.kind:
-                por_tipo.setdefault(motor.kind, []).append(motor.busy_percent)
-        salida = []
-        for clave in ORDEN_DE_MOTORES:
-            if clave in por_tipo:
-                leidos = [v for v in por_tipo[clave] if v is not None]
-                salida.append((clave, max(leidos) if leidos else None))
-        return salida
+        by_type: dict[str, list] = {}
+        for engine in gpu.engines:
+            if engine.kind:
+                by_type.setdefault(engine.kind, []).append(engine.busy_percent)
+        out = []
+        for key in ENGINE_ORDER:
+            if key in by_type:
+                read_values = [v for v in by_type[key] if v is not None]
+                out.append((key, max(read_values) if read_values else None))
+        return out
     if gpu.vendor == "AMD":
-        salida = [("engine.render", gpu.busy_percent),
+        out = [("engine.render", gpu.busy_percent),
                   ("engine.video", gpu.video_busy_percent)]
     elif gpu.vendor == "NVIDIA":
-        salida = [("engine.render", gpu.busy_percent),
+        out = [("engine.render", gpu.busy_percent),
                   ("engine.decode", gpu.decode_busy_percent),
                   ("engine.encode", gpu.encode_busy_percent)]
     else:
         return []
-    return [(k, v) for k, v in salida if v is not None]
+    return [(k, v) for k, v in out if v is not None]
 
 
 def engine_gaps(gpu) -> list[str]:
@@ -1769,10 +1769,10 @@ def engine_gaps(gpu) -> list[str]:
         # no lee (docs/pendientes.md): decir que la
         # gráfica no lo da sería falso. Lo cuenta su aviso.
         return []
-    esperados = (("engine.render", "engine.decode", "engine.encode")
+    expected = (("engine.render", "engine.decode", "engine.encode")
                  if gpu.vendor == "NVIDIA" else ("engine.render", "engine.video"))
-    medidos = {clave for clave, _valor in engine_levels(gpu)}
-    return [clave for clave in esperados if clave not in medidos]
+    measured = {key for key, _level in engine_levels(gpu)}
+    return [key for key in expected if key not in measured]
 
 
 def gpu_asleep(gpu, fahrenheit: bool = False) -> str:
@@ -1784,19 +1784,19 @@ def gpu_asleep(gpu, fahrenheit: bool = False) -> str:
     """
     if not getattr(gpu, "suspended", False):
         return ""
-    texto = _("gpu.asleep")
+    text = _("gpu.asleep")
     if gpu.last_awake_s is not None:
         import time
-        hora = time.strftime("%H:%M", time.localtime(gpu.last_awake_s))
+        hour = time.strftime("%H:%M", time.localtime(gpu.last_awake_s))
         if gpu.last_temp_c is not None:
-            texto += " " + _("gpu.asleep.lasttemp").format(
-                hora=hora, valor=temperature(gpu.last_temp_c, fahrenheit))
+            text += " " + _("gpu.asleep.lasttemp").format(
+                hora=hour, valor=temperature(gpu.last_temp_c, fahrenheit))
         else:
-            texto += " " + _("gpu.asleep.last").format(hora=hora)
-    return texto
+            text += " " + _("gpu.asleep.last").format(hora=hour)
+    return text
 
 
-def throttle_episode(episodio, ahora_ns: int) -> Optional[str]:
+def throttle_episode(episode, ahora_ns: int) -> Optional[str]:
     """Cuánto lleva —o llevó— frenándose, y por qué.
 
     «Recortando por temperatura del punto caliente» dice qué pasa ahora y no
@@ -1805,26 +1805,26 @@ def throttle_episode(episodio, ahora_ns: int) -> Optional[str]:
     lleva un minuto contra el límite térmico tiene un problema de
     refrigeración. El dato es el mismo y la conclusión es la contraria.
     """
-    if episodio is None:
+    if episode is None:
         return None
-    cuanto = duracion(episodio.duration_s(ahora_ns))
-    motivos = ", ".join(sorted(episodio.reasons)) or _("throttle.unknown")
-    clave = "throttle.ongoing" if episodio.ongoing() else "throttle.past"
-    return _(clave).format(tiempo=cuanto, motivos=motivos)
+    how_long = duration(episode.duration_s(ahora_ns))
+    reasons = ", ".join(sorted(episode.reasons)) or _("throttle.unknown")
+    key = "throttle.ongoing" if episode.ongoing() else "throttle.past"
+    return _(key).format(tiempo=how_long, motivos=reasons)
 
 
-def gpu_clock_limits(relojes) -> Optional[str]:
+def gpu_clock_limits(clocks) -> Optional[str]:
     """«350 MHz – 900 MHz», solo si alguien cambió los límites del motor.
 
     De fábrica el mínimo y el máximo puestos son los del silicio (RPn y
     RP0), y repetirlos sería decir lo mismo dos veces. Si no se saben los
     del silicio no hay con qué comparar.
     """
-    puestos = (relojes.core_min_hz, relojes.core_max_hz)
-    silicio = (relojes.silicon_min_hz, relojes.silicon_max_hz)
-    if None in puestos or None in silicio or puestos == silicio:
+    fitted = (clocks.core_min_hz, clocks.core_max_hz)
+    silicon = (clocks.silicon_min_hz, clocks.silicon_max_hz)
+    if None in fitted or None in silicon or fitted == silicon:
         return None
-    return f"{hz(puestos[0])} – {hz(puestos[1])}"
+    return f"{hz(fitted[0])} – {hz(fitted[1])}"
 
 
 def gpu_sleep(gpu) -> str:
@@ -1861,8 +1861,8 @@ def monitor_name(monitor: Optional[Edid]) -> str:
         return DASH
     # La marca, no la razón social: «GIGA-BYTE TECHNOLOGY CO., LTD. AORUS
     # FO27Q2» se comía el ancho de la tabla de salidas.
-    partes = [p for p in (maker(monitor.manufacturer), monitor.model) if p]
-    return " ".join(partes) if partes else (monitor.manufacturer_id or DASH)
+    parts = [p for p in (maker(monitor.manufacturer), monitor.model) if p]
+    return " ".join(parts) if parts else (monitor.manufacturer_id or DASH)
 
 
 def monitor_diagonal(monitor: Optional[Edid]) -> Optional[str]:
@@ -1882,22 +1882,22 @@ def monitor_summary(monitor: Optional[Edid]) -> str:
     """«26.7" · 590 × 334 mm · semana 16 de 2024»."""
     if monitor is None:
         return DASH
-    pulgadas = monitor_diagonal(monitor)
-    medida = (f"{monitor.width_mm} × {monitor.height_mm} mm"
+    inches = monitor_diagonal(monitor)
+    measurement = (f"{monitor.width_mm} × {monitor.height_mm} mm"
               if monitor.width_mm and monitor.height_mm else None)
-    partes = [p for p in (pulgadas, medida, made(monitor.year, monitor.week)) if p]
-    return " · ".join(partes) if partes else DASH
+    parts = [p for p in (inches, measurement, made(monitor.year, monitor.week)) if p]
+    return " · ".join(parts) if parts else DASH
 
 
 def display_mode(display: Display) -> str:
     """La resolución nativa con su refresco: «2560 × 1440 · 48–240 Hz»."""
     if not display.connected:
         return DASH
-    rango = display.monitor.refresh_range if display.monitor else None
-    if not rango and display.refresh_hz:
-        rango = f"{display.refresh_hz:g} Hz"
-    partes = [p for p in (display.resolution, rango) if p]
-    return " · ".join(partes) if partes else DASH
+    range_ = display.monitor.refresh_range if display.monitor else None
+    if not range_ and display.refresh_hz:
+        range_ = f"{display.refresh_hz:g} Hz"
+    parts = [p for p in (display.resolution, range_) if p]
+    return " · ".join(parts) if parts else DASH
 
 
 def display_summary(display: Display) -> str:
@@ -1916,12 +1916,12 @@ def display_summary(display: Display) -> str:
 
 def gpu_api_summary(api: GpuApi) -> str:
     """«1.4.354 · Mesa 26.2.1 · 64 unidades de cómputo»."""
-    partes = [api.version or DASH]
+    parts = [api.version or DASH]
     if api.driver:
-        partes.append(api.driver)
+        parts.append(api.driver)
     if api.extra:
-        partes.append(api.extra)
-    return " · ".join(partes)
+        parts.append(api.extra)
+    return " · ".join(parts)
 
 
 # A field the anonymized photo would still change, by its top field and its
@@ -1966,26 +1966,26 @@ def annex_what(kind: str) -> str:
     return _(ANNEX_WHAT.get(kind, ANNEX_WHAT["machine"]))
 
 
-def annex_refusal(campos: list[str]) -> str:
+def annex_refusal(fields: list[str]) -> str:
     """Why the annex was not written: what was still to cover, never its value."""
-    clases = []
-    for campo in campos:
-        arriba = re.split(r"[.\[]", campo, maxsplit=1)[0]
-        hoja = campo.rsplit(".", 1)[-1] if "." in campo else ""
-        clase = _ANNEX_FIELDS.get((arriba, hoja)) or _ANNEX_FIELDS.get((arriba, ""), "machine")
-        if clase not in clases:
-            clases.append(clase)
+    kinds = []
+    for field in fields:
+        top = re.split(r"[.\[]", field, maxsplit=1)[0]
+        leaf = field.rsplit(".", 1)[-1] if "." in field else ""
+        kind = _ANNEX_FIELDS.get((top, leaf)) or _ANNEX_FIELDS.get((top, ""), "machine")
+        if kind not in kinds:
+            kinds.append(kind)
     return _("report.annex.refused").format(
-        que=", ".join(annex_what(c) for c in clases), campos=", ".join(campos[:5]))
+        que=", ".join(annex_what(c) for c in kinds), campos=", ".join(fields[:5]))
 
 
-def annex_removed(quitados: list[dict]) -> Optional[str]:
+def annex_removed(removed: list[dict]) -> Optional[str]:
     """The files taken out of the annex and what each held, or None."""
-    if not quitados:
+    if not removed:
         return None
-    lista = "; ".join(_("report.annex.removed.item").format(
-        que=annex_what(str(q.get("dato", ""))), ruta=q.get("ruta", "")) for q in quitados[:10])
-    return _("report.annex.removed").format(n=len(quitados), lista=lista)
+    items = "; ".join(_("report.annex.removed.item").format(
+        que=annex_what(str(q.get("dato", ""))), ruta=q.get("ruta", "")) for q in removed[:10])
+    return _("report.annex.removed").format(n=len(removed), lista=items)
 
 
 def turbo(clocks: Clocks) -> str:
@@ -2032,7 +2032,7 @@ def turbo_note(clocks: Clocks) -> Optional[str]:
     return None
 
 
-def _rango_de_cpus(cpus: tuple[int, ...]) -> str:
+def _cpu_range(cpus: tuple[int, ...]) -> str:
     """«0-7» en vez de «0, 1, 2, 3, 4, 5, 6, 7» cuando son consecutivas."""
     if not cpus:
         return ""
@@ -2041,7 +2041,7 @@ def _rango_de_cpus(cpus: tuple[int, ...]) -> str:
     return ", ".join(str(c) for c in cpus)
 
 
-def l3_asimetrica(cpu_type) -> Optional[str]:
+def asymmetric_l3(cpu_type) -> Optional[str]:
     """Cuando la L3 no es igual en todo el procesador, qué le toca a cada cual.
 
     Es lo que pasa en un Ryzen de dos chiplets con V-Cache en uno solo: un
@@ -2053,21 +2053,21 @@ def l3_asimetrica(cpu_type) -> Optional[str]:
     Se describe lo que se lee y no se diagnostica: la asimetría es un hecho de
     sysfs. Que sea V-Cache lo confirma el nombre comercial, y solo si lo trae.
     """
-    ele3 = [c for c in cpu_type.caches if c.level == 3]
-    if len({c.size_bytes for c in ele3}) < 2:
+    l3 = [c for c in cpu_type.caches if c.level == 3]
+    if len({c.size_bytes for c in l3}) < 2:
         return None
 
-    partes = []
-    for cache in sorted(ele3, key=lambda c: -c.size_bytes):
+    parts = []
+    for cache in sorted(l3, key=lambda c: -c.size_bytes):
         cpus = cache.instance_cpus[0] if cache.instance_cpus else ()
-        donde = _rango_de_cpus(cpus)
-        partes.append(
-            _("cache.l3.part").format(tam=size(cache.size_bytes), donde=donde)
-            if donde else _("cache.l3.partsome").format(tam=size(cache.size_bytes)))
-    frase = _("cache.l3.uneven").format(reparto=_("core.join").join(partes))
+        where = _cpu_range(cpus)
+        parts.append(
+            _("cache.l3.part").format(tam=size(cache.size_bytes), donde=where)
+            if where else _("cache.l3.partsome").format(tam=size(cache.size_bytes)))
+    sentence = _("cache.l3.uneven").format(reparto=_("core.join").join(parts))
     if "3D" in (cpu_type.brand or "").upper():
-        frase += _("cache.l3.vcache")
-    return frase
+        sentence += _("cache.l3.vcache")
+    return sentence
 
 
 def vcache(cpu_type) -> Optional[str]:
@@ -2077,14 +2077,14 @@ def vcache(cpu_type) -> Optional[str]:
     «Ryzen 7 5800X3D» lo dice él. No se deduce del tamaño de la L3, que
     también crece por otros motivos según la familia.
     """
-    marca = (cpu_type.brand or "").upper()
-    if "X3D" not in marca:
+    brand = (cpu_type.brand or "").upper()
+    if "X3D" not in brand:
         return None
-    grande = max((c.size_bytes for c in cpu_type.caches if c.level == 3),
+    large = max((c.size_bytes for c in cpu_type.caches if c.level == 3),
                  default=None)
-    if grande is None:
+    if large is None:
         return _("cache.vcache.plain")
-    return _("cache.vcache.size").format(tam=size(grande))
+    return _("cache.vcache.size").format(tam=size(large))
 
 
 def core_quality_by_type(logical) -> dict[str, list[tuple[int, int, float]]]:
@@ -2105,60 +2105,60 @@ def core_quality_by_type(logical) -> dict[str, list[tuple[int, int, float]]]:
     comparten silicio y traen por fuerza la misma nota; enseñarla dos veces
     sugeriría que se midieron por separado.
     """
-    por_tipo: dict[str, dict[int, int]] = {}
+    by_type: dict[str, dict[int, int]] = {}
     for cpu in logical:
         if not cpu.quality:
             continue
-        nucleos = por_tipo.setdefault(cpu.type_key, {})
-        nucleos.setdefault(cpu.core_id, cpu.quality)
+        cores = by_type.setdefault(cpu.type_key, {})
+        cores.setdefault(cpu.core_id, cpu.quality)
 
-    resultado = {}
-    for clave, nucleos in por_tipo.items():
+    result = {}
+    for key, cores in by_type.items():
         # Un tipo cuyos núcleos traen todos la misma nota no se ha medido:
         # el firmware ha rellenado el campo con la constante de la familia.
-        if len(set(nucleos.values())) < 2:
+        if len(set(cores.values())) < 2:
             continue
-        mejor = max(nucleos.values())
-        resultado[clave] = sorted(
-            ((core, nota, nota / mejor) for core, nota in nucleos.items()),
-            key=lambda fila: (-fila[1], fila[0]),
+        best = max(cores.values())
+        result[key] = sorted(
+            ((core, note, note / best) for core, note in cores.items()),
+            key=lambda row: (-row[1], row[0]),
         )
-    return resultado
+    return result
 
 
 def core_quality(logical) -> list[tuple[int, int, float]]:
     """Como `core_quality_by_type`, aplanado, para una CPU de un solo tipo."""
-    por_tipo = core_quality_by_type(logical)
-    if len(por_tipo) != 1:
+    by_type = core_quality_by_type(logical)
+    if len(by_type) != 1:
         return []
-    return next(iter(por_tipo.values()))
+    return next(iter(by_type.values()))
 
 
-def best_core_ids(logical, cuantos: int = 2) -> set[int]:
+def best_core_ids(logical, count: int = 2) -> set[int]:
     """Los núcleos físicos que llevan estrella: los mejores de cada tipo.
 
     De cada tipo por separado, porque el mejor P-core y el mejor E-core son dos
     respuestas a la misma pregunta hecha sobre piezas distintas.
     """
-    cabeza: set[int] = set()
-    for orden in core_quality_by_type(logical).values():
-        mejor = orden[0][1]
+    head: set[int] = set()
+    for order in core_quality_by_type(logical).values():
+        best = order[0][1]
         # Los empatados con el mejor van todos: en muchas piezas hay dos, y
         # quedarse con uno por el orden del bucle sería inventar un desempate.
-        iguales = [core for core, nota, _fraccion in orden if nota == mejor]
-        cabeza.update(iguales[:cuantos])
-    return cabeza
+        equal = [core for core, note, _fraction in order if note == best]
+        head.update(equal[:count])
+    return head
 
 
-def best_cores(logical, cuantos: int = 2) -> str:
+def best_cores(logical, count: int = 2) -> str:
     """«Núcleo 1 y núcleo 3», los que el firmware marca como los mejores."""
-    cabeza = sorted(best_core_ids(logical, cuantos))
-    if not cabeza:
+    head = sorted(best_core_ids(logical, count))
+    if not head:
         return DASH
-    nombres = [_("core.name").format(n=core) for core in cabeza]
-    if len(nombres) == 1:
-        return nombres[0].capitalize()
-    return (", ".join(nombres[:-1]) + _("core.join") + nombres[-1]).capitalize()
+    names = [_("core.name").format(n=core) for core in head]
+    if len(names) == 1:
+        return names[0].capitalize()
+    return (", ".join(names[:-1]) + _("core.join") + names[-1]).capitalize()
 
 
 def starred_cpus(logical) -> str:
@@ -2168,16 +2168,16 @@ def starred_cpus(logical) -> str:
     ven cuatro estrellas y la frase decía «núcleo 1 y núcleo 3». Las dos cosas
     son ciertas y no lo parecen: quien mira cuenta cuatro y lee dos.
     """
-    orden = core_quality(logical)
-    if not orden:
+    order = core_quality(logical)
+    if not order:
         return ""
-    mejor = orden[0][1]
-    cabeza = {core for core, nota, _fraccion in orden if nota == mejor}
-    indices = sorted(c.index for c in logical if c.core_id in cabeza)
-    if len(indices) <= len(cabeza):        # sin SMT no hay nada que aclarar
+    best = order[0][1]
+    head = {core for core, note, _fraction in order if note == best}
+    indexes = sorted(c.index for c in logical if c.core_id in head)
+    if len(indexes) <= len(head):        # sin SMT no hay nada que aclarar
         return ""
-    nombres = [thread_name(i) for i in indices]
-    return ", ".join(nombres[:-1]) + _("core.join") + nombres[-1]
+    names = [thread_name(i) for i in indexes]
+    return ", ".join(names[:-1]) + _("core.join") + names[-1]
 
 
 def core_quality_spread(logical) -> Optional[str]:
@@ -2187,13 +2187,13 @@ def core_quality_spread(logical) -> Optional[str]:
     diferencia importa; comparar entre tipos daría una cifra grande y sin
     significado. Ver `core_quality_by_type`.
     """
-    por_tipo = core_quality_by_type(logical)
-    if not por_tipo:
+    by_type = core_quality_by_type(logical)
+    if not by_type:
         return None
-    orden = min(por_tipo.values(), key=lambda filas: filas[-1][2])
-    peor = orden[-1]
-    clave = "core.spread.type" if len(por_tipo) > 1 else "core.spread"
-    return _(clave).format(n=peor[0], pct=f"{peor[2] * 100:.0f}")
+    order = min(by_type.values(), key=lambda rows: rows[-1][2])
+    worst = order[-1]
+    key = "core.spread.type" if len(by_type) > 1 else "core.spread"
+    return _(key).format(n=worst[0], pct=f"{worst[2] * 100:.0f}")
 
 
 # Coletillas que los fabricantes meten en la cadena de marca y que no
@@ -2238,9 +2238,9 @@ def cpu_short_name(brand: Optional[str]) -> str:
     """
     if not brand:
         return DASH
-    limpio = _RELLENO_DE_MARCA.sub("", brand)
-    limpio = re.sub(r"\s{2,}", " ", limpio).strip(" -·")
-    return limpio or brand
+    clean = _RELLENO_DE_MARCA.sub("", brand)
+    clean = re.sub(r"\s{2,}", " ", clean).strip(" -·")
+    return clean or brand
 
 
 def monitor_color(edid) -> str:
@@ -2251,11 +2251,11 @@ def monitor_color(edid) -> str:
     extensiones, un panel con HDR10 y BT.2020 se describe igual que uno de
     hace veinte años.
     """
-    piezas = list(edid.hdr)
+    pieces = list(edid.hdr)
     # De los espacios de color solo el más ancho: enseñar los seis que declara
     # un monitor llena la celda sin decir mucho más que el mayor de ellos.
-    for amplio in ("BT.2020 RGB", "BT.2020 YCC", "opRGB", "xvYCC709"):
-        if amplio in edid.color_spaces:
-            piezas.append(amplio)
+    for wide in ("BT.2020 RGB", "BT.2020 YCC", "opRGB", "xvYCC709"):
+        if wide in edid.color_spaces:
+            pieces.append(wide)
             break
-    return " · ".join(piezas) if piezas else DASH
+    return " · ".join(pieces) if pieces else DASH

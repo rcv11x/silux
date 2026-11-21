@@ -278,7 +278,7 @@ class TestLosGradosDeTodasLasGeneraciones(unittest.TestCase):
 
         for nombre, mts in LPDDR_DEL_FIRMWARE.items():
             with self.subTest(grado=nombre):
-                self.assertEqual(render.velocidad_de_memoria(mts), int(nombre.split("-")[1]))
+                self.assertEqual(render.memory_speed(mts), int(nombre.split("-")[1]))
 
     def test_el_firmware_que_redondea_al_otro_lado(self):
         """2666 o 2667, 666 o 667: el mismo grado se nombra igual."""
@@ -287,7 +287,7 @@ class TestLosGradosDeTodasLasGeneraciones(unittest.TestCase):
         for crudo, grado in ((2667, 2666), (2666, 2666), (666, 667), (667, 667),
                              (1067, 1066), (1333, 1333)):
             with self.subTest(crudo=crudo):
-                self.assertEqual(render.velocidad_de_memoria(crudo), grado)
+                self.assertEqual(render.memory_speed(crudo), grado)
 
 
 class TestElGradoDeCadaVelocidad(unittest.TestCase):

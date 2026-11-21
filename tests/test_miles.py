@@ -55,7 +55,7 @@ class TestNadieAgrupaPorSuCuenta(unittest.TestCase):
         for archivo in sorted(RAIZ.rglob("*.py")):
             for numero, linea in enumerate(archivo.read_text(encoding="utf-8").splitlines(), 1):
                 # La única que agrupa es render.thousands, y lo hace con este espacio.
-                if self.PATRON.search(linea) and "ESPACIO_DE_MILES" not in linea:
+                if self.PATRON.search(linea) and "THOUSANDS_SPACE" not in linea:
                     culpables.append(f"{archivo.relative_to(RAIZ.parent)}:{numero}: {linea.strip()}")
         self.assertEqual(culpables, [])
 

@@ -659,7 +659,7 @@ class MemoryPage(ScrollPage):
             # The speed it runs at when the firmware says it, and else the one
             # it is rated at: «3200 MT/s · al máximo del procesador» was read
             # of memory running at 2933.
-            velocidades = {render.velocidad_de_memoria(m.configured_mts) or m.rated_mts
+            velocidades = {render.memory_speed(m.configured_mts) or m.rated_mts
                            for m in modules}
             velocidades.discard(None)
             wanted.extend(f"{v} MT/s" for v in sorted(velocidades))
@@ -936,7 +936,7 @@ class MemoryPage(ScrollPage):
                  else _("memory.tip.rated") if spd else "")
 
         crudo_mts = module.configured_mts or module.speed_mts
-        actual = render.velocidad_de_memoria(crudo_mts)
+        actual = render.memory_speed(crudo_mts)
         funcionando = f"{actual} MT/s" if actual else d
         veredicto = render.memory_module_verdict(module, limite)
         if veredicto == "slow":
@@ -979,7 +979,7 @@ class MemoryPage(ScrollPage):
                  tooltip=_("memory.tip.profiles") if perfiles else "")
         grid.set(_("memory.field.made"),
                  (render.made(spd.manufactured_year, spd.manufactured_week) if spd else None) or d)
-        grid.set(_("memory.field.bank"), render.banco_de_memoria(module.bank) or d)
+        grid.set(_("memory.field.bank"), render.memory_bank(module.bank) or d)
 
     def _apply_timings(self, modules: list[MemoryModule]) -> None:
         rows: list[list[str]] = []

@@ -46,7 +46,7 @@ ACTIVITY_FIELDS = ("sys.field.since", "sys.field.uptime", "sys.act.processes",
 SECURITY_FIELDS = ("sys.vuln.known", "sys.vuln.unaffected", "sys.vuln.mitigated",
                    "sys.vuln.open", "sys.vuln.unknown")
 BOOT_FIELDS = ("sys.boot.loader", "sys.boot.entry") + tuple(
-    clave for clave, _campo in render.FASES_DE_ARRANQUE) + ("sys.boot.cmdline",)
+    clave for clave, _campo in render.BOOT_PHASES) + ("sys.boot.cmdline",)
 
 
 def format_uptime(seconds: float) -> str:

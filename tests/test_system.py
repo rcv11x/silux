@@ -738,7 +738,7 @@ class TestOrdenDelArbolDeSensores(unittest.TestCase):
                             label="l", kind=SensorKind.FAN, value=900.0),),
         )
         clase = foto.sensors[0].device_kind
-        self.assertEqual(foto._puesto_del_aparato("nct6699", clase)[0], 1)
+        self.assertEqual(foto._device_order("nct6699", clase)[0], 1)
 
 
 class TestQueLasCifrasQuepan(unittest.TestCase):

@@ -241,7 +241,7 @@ class TestRyzenDeDosChiplets(unittest.TestCase):
     def test_se_dice_qué_nucleos_llevan_la_caché_grande(self):
         from silux import render
 
-        frase = render.l3_asimetrica(self._tipo())
+        frase = render.asymmetric_l3(self._tipo())
         self.assertIn("96 MB", frase)
         self.assertIn("0-15", frase)
         self.assertIn("32 MB", frase)
@@ -252,8 +252,8 @@ class TestRyzenDeDosChiplets(unittest.TestCase):
         V-Cache es el fabricante en la cadena de marca."""
         from silux import render
 
-        self.assertIn("V-Cache", render.l3_asimetrica(self._tipo()))
-        sin_marca = render.l3_asimetrica(self._tipo("Procesador genérico"))
+        self.assertIn("V-Cache", render.asymmetric_l3(self._tipo()))
+        sin_marca = render.asymmetric_l3(self._tipo("Procesador genérico"))
         self.assertIn("96 MB", sin_marca)
         self.assertNotIn("V-Cache", sin_marca)
 
@@ -261,7 +261,7 @@ class TestRyzenDeDosChiplets(unittest.TestCase):
         from silux import render
 
         self._montar(asimetrica=False)
-        self.assertIsNone(render.l3_asimetrica(self._tipo("AMD Ryzen 9 7950X")))
+        self.assertIsNone(render.asymmetric_l3(self._tipo("AMD Ryzen 9 7950X")))
 
     def test_la_etiqueta_de_vcache_sale_del_nombre(self):
         from silux import render

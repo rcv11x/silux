@@ -301,7 +301,7 @@ class TypeSection(QWidget):
             cache = caches[0]
             tooltip = _("cpu.cache.tip").format(
                 total=render.size(sum(c.total_bytes for c in caches)), sets=cache.sets)
-            if len(caches) > 1 and cache.level == 3 and (reparto := render.l3_asimetrica(cpu_type)):
+            if len(caches) > 1 and cache.level == 3 and (reparto := render.asymmetric_l3(cpu_type)):
                 tooltip = f"{reparto}\n\n{tooltip}"
             self.caches.set(
                 label,

@@ -305,9 +305,9 @@ class TestLasDosDetectorasDeCanalNoSePisan(unittest.TestCase):
     def test_cada_una_tiene_sus_propios_patrones(self):
         from silux import render
 
-        self.assertIsInstance(render._CANAL, tuple,
+        self.assertIsInstance(render._CHANNEL, tuple,
                               "la de contar canales usa varios patrones")
-        self.assertTrue(hasattr(render, "_ZOC_CANAL"),
+        self.assertTrue(hasattr(render, "_SLOT_CHANNEL"),
                         "la del título tiene que llevar su propio prefijo")
 
     def test_contar_canales_sigue_funcionando(self):
@@ -489,7 +489,7 @@ class TestLaVelocidadQueEnsenaLaFicha(TestElTituloLlegaALaTarjeta):
         """Es el que sale en dmidecode: hace falta para contrastar."""
         from silux import render
 
-        self.assertEqual(render.velocidad_de_memoria(2667), 2666)
+        self.assertEqual(render.memory_speed(2667), 2666)
         idioma = __import__("json").loads(
             (RAIZ_LANG / "es.json").read_text(encoding="utf-8"))
         self.assertIn("dmidecode", idioma["memory.tip.firmware"])
@@ -661,7 +661,7 @@ class TestElBancoNoSeDiceDosVeces(unittest.TestCase):
         for crudo, esperado in (("BANK 0", "0"), ("BANK 1", "1"),
                                 ("Bank0", "0"), ("bank_2", "2")):
             with self.subTest(crudo=crudo):
-                self.assertEqual(render.banco_de_memoria(crudo), esperado)
+                self.assertEqual(render.memory_bank(crudo), esperado)
 
     def test_lo_que_trae_algo_más_se_deja_entero(self):
         """En «Node0_Bank0» el resto sí distingue, y recortarlo perdería el
@@ -670,12 +670,12 @@ class TestElBancoNoSeDiceDosVeces(unittest.TestCase):
 
         for crudo in ("Node0_Bank0", "A1_BANK0", "BANK", ""):
             with self.subTest(crudo=crudo):
-                self.assertEqual(render.banco_de_memoria(crudo), crudo)
+                self.assertEqual(render.memory_bank(crudo), crudo)
 
     def test_sin_banco_no_se_inventa(self):
         from silux import render
 
-        self.assertIsNone(render.banco_de_memoria(None))
+        self.assertIsNone(render.memory_bank(None))
 
 
 class TestElMaximoDelProcesador(unittest.TestCase):

@@ -203,7 +203,7 @@ class CachesPage(ScrollPage):
             etiquetas.insert(0, marca)
         self.chips.set_chips(etiquetas)
 
-        if (reparto := render.l3_asimetrica(cpu.types[0])):
+        if (reparto := render.asymmetric_l3(cpu.types[0])):
             self.reparto.setText(reparto)
             self.reparto.show()
         else:

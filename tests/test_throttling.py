@@ -97,9 +97,9 @@ class TestComoSeCuenta(unittest.TestCase):
         self.assertTrue(frase.startswith("Ha estado 40 s"), frase)
 
     def test_los_minutos_se_dicen_en_minutos(self):
-        self.assertEqual(render.duracion(45), "45 s")
-        self.assertEqual(render.duracion(130), "2 min 10 s")
-        self.assertEqual(render.duracion(120), "2 min")
+        self.assertEqual(render.duration(45), "45 s")
+        self.assertEqual(render.duration(130), "2 min 10 s")
+        self.assertEqual(render.duration(120), "2 min")
 
     def test_sin_motivos_no_se_inventa_uno(self):
         """NVML dice que recorta y a veces no dice por qué."""

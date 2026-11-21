@@ -332,10 +332,10 @@ class CpuInfo:
         A tester's i5-12450H read «núcleos 90 °C»: the P cores' alone, with
         its four E cores at 67 °C. All eight are 78.5.
         """
-        medidos = [(t.temp_c, t.cores) for t in self.types if t.temp_c is not None and t.cores]
-        if not medidos:
+        measured = [(t.temp_c, t.cores) for t in self.types if t.temp_c is not None and t.cores]
+        if not measured:
             return None
-        return sum(temp * n for temp, n in medidos) / sum(n for _temp, n in medidos)
+        return sum(temp * n for temp, n in measured) / sum(n for _temp, n in measured)
 
     @property
     def total_cores(self) -> int:
@@ -479,10 +479,10 @@ class UsbDevice:
         """Un dispositivo de USB 3 negociando a 480 Mb/s o menos: suele ser
         el cable o el puerto. Uno de USB 2 a 12 Mb/s no es nada: va a lo suyo."""
         try:
-            capaz = float(self.version or 0) >= 3.0
+            capable = float(self.version or 0) >= 3.0
         except ValueError:
             return False
-        return bool(capaz and self.speed_mbps and self.speed_mbps < 5000)
+        return bool(capable and self.speed_mbps and self.speed_mbps < 5000)
 
 
 @dataclass(frozen=True, slots=True)
@@ -618,7 +618,7 @@ class System:
 # El 1 % no puede confundir dos grados: los contiguos están separados por 133
 # MT/s como poco en DDR4 —2400, 2666, 2933— y por 400 en DDR5. Y absorbe de
 # sobra el redondeo, que como mucho es de un MT/s.
-MARGEN_DE_REDONDEO = 0.01
+ROUNDING_MARGIN = 0.01
 
 
 # SMBIOS type 17 form factors (DSP0134 table 75) of memory that is part of
@@ -676,8 +676,8 @@ class MemoryModule:
         """
         if self.form_factor in SOLDERED_FORM_FACTORS:
             return False
-        lugar = (self.locator or "").lower()
-        return "dimm" in lugar or "slot" in lugar
+        place = (self.locator or "").lower()
+        return "dimm" in place or "slot" in place
 
     @property
     def soldered_by(self) -> Optional[str]:
@@ -755,11 +755,11 @@ class MemoryModule:
         2667 y la BIOS pone a 2666 es el mismo grado, y comparando a pelo
         encendía el aviso y su triángulo por un MT/s.
         """
-        actual = self.configured_mts or self.speed_mts
+        current = self.configured_mts or self.speed_mts
         rated = self.rated_mts
-        if not (actual and rated):
+        if not (current and rated):
             return False
-        return actual < rated * (1 - MARGEN_DE_REDONDEO)
+        return current < rated * (1 - ROUNDING_MARGIN)
 
 
 @dataclass(frozen=True, slots=True)
@@ -902,18 +902,18 @@ DMI_PLACEHOLDERS = frozenset({
 # «1.0», «Rev 1.0», «01». Lo que una placa que se vende suelta deja en la
 # versión del sistema, y que no es el nombre de ningún equipo. Los rellenos con
 # letras —«Default string», «System Product Name»— ya los caza DMI_PLACEHOLDERS.
-_SOLO_UNA_VERSION = re.compile(r"(?:rev\.?\s*)?[\d.,\s]+", re.I)
+_ONLY_A_VERSION = re.compile(r"(?:rev\.?\s*)?[\d.,\s]+", re.I)
 # Los otros dos rellenos que no son un nombre, vistos en una Gigabyte X570
 # AORUS ELITE: la versión del sistema es «-CF», un sufijo suelto, y la familia
 # «X570 MB», el chipset y «placa base». Con ellos el equipo salía «Gigabyte
 # -CF».
-_SOLO_UN_SUFIJO = re.compile(r"[^0-9a-z]\S{0,6}", re.I)
-_SOLO_LA_PLACA = re.compile(r".*\bMB", re.I)
+_ONLY_A_SUFFIX = re.compile(r"[^0-9a-z]\S{0,6}", re.I)
+_ONLY_THE_BOARD = re.compile(r".*\bMB", re.I)
 
 
-def _nombra_un_equipo(valor: str) -> bool:
-    return not (_SOLO_UNA_VERSION.fullmatch(valor) or _SOLO_UN_SUFIJO.fullmatch(valor)
-                or _SOLO_LA_PLACA.fullmatch(valor))
+def _names_a_machine(value: str) -> bool:
+    return not (_ONLY_A_VERSION.fullmatch(value) or _ONLY_A_SUFFIX.fullmatch(value)
+                or _ONLY_THE_BOARD.fullmatch(value))
 
 
 def clean_dmi(value: Optional[str]) -> Optional[str]:
@@ -972,10 +972,10 @@ class Board:
         delante no hay forma de distinguirlos del caso de arriba, y adivinar
         aquí es romper lo que funciona.
         """
-        for campo in (self.system_version, self.system_family):
-            nombre = clean_dmi(campo)
-            if nombre and _nombra_un_equipo(nombre):
-                return nombre
+        for attribute in (self.system_version, self.system_family):
+            name = clean_dmi(attribute)
+            if name and _names_a_machine(name):
+                return name
         return None
 
     @property
@@ -997,15 +997,15 @@ class Board:
         «1.0» o «Default string», y en un equipo de marca trae su nombre.
         """
         if self.system_display_name:
-            marca = short_vendor(self.system_vendor) or ""
-            nombre = self.system_display_name
+            brand = short_vendor(self.system_vendor) or ""
+            name = self.system_display_name
             # Lenovo escribe «Lenovo ideapad 330-15ICH» ahí dentro, con la
             # marca incluida; anteponerla otra vez da «Lenovo Lenovo ideapad».
-            equipo = (nombre if nombre.lower().startswith(marca.lower() or "\0")
-                      else " ".join(p for p in (marca, nombre) if p))
+            machine = (name if name.lower().startswith(brand.lower() or "\0")
+                      else " ".join(p for p in (brand, name) if p))
             # Solo si aporta: algunos fabricantes repiten ahí el código de placa.
-            if equipo and (self.name or "") not in equipo:
-                return equipo
+            if machine and (self.name or "") not in machine:
+                return machine
         parts = [short_vendor(self.vendor), self.name]
         joined = " ".join(p for p in parts if p)
         if joined:
@@ -1013,9 +1013,9 @@ class Board:
         # No board at all (a virtual machine: QEMU declares no baseboard):
         # the machine as the firmware calls it, «QEMU Standard PC (i440FX +
         # PIIX, 1996)». And if not even that, `render.board_name` says so.
-        equipo = " ".join(p for p in (short_vendor(self.system_vendor),
+        machine = " ".join(p for p in (short_vendor(self.system_vendor),
                                       clean_dmi(self.system_name)) if p)
-        return equipo or None
+        return machine or None
 
 
 
@@ -1083,8 +1083,8 @@ class PcieLink:
         if not gts:
             return None
         # 2,5 · 5 · 8 · 16 · 32 · 64 GT/s son las seis generaciones de PCIe.
-        for generation, velocidad in enumerate((2.5, 5.0, 8.0, 16.0, 32.0, 64.0), start=1):
-            if abs(gts - velocidad) < 0.1:
+        for generation, speed in enumerate((2.5, 5.0, 8.0, 16.0, 32.0, 64.0), start=1):
+            if abs(gts - speed) < 0.1:
                 return generation
         return None
 
@@ -1525,8 +1525,8 @@ class Battery:
         if not self.power_w or self.now_wh is None:
             return None
         if self.status == "bat.status.charging":
-            falta = (self.full_wh or self.design_wh or 0) - self.now_wh
-            return int(falta / self.power_w * 3600) if falta > 0 else None
+            remaining = (self.full_wh or self.design_wh or 0) - self.now_wh
+            return int(remaining / self.power_w * 3600) if remaining > 0 else None
         if self.status == "bat.status.discharging":
             return int(self.now_wh / self.power_w * 3600)
         return None
@@ -1633,8 +1633,8 @@ class Disk:
     @property
     def used_bytes(self) -> Optional[int]:
         """Lo ocupado sumando las particiones montadas."""
-        usados = [p.used_bytes for p in self.partitions if p.used_bytes is not None]
-        return sum(usados) if usados else None
+        used = [p.used_bytes for p in self.partitions if p.used_bytes is not None]
+        return sum(used) if used else None
 
     @property
     def mounted_partitions(self) -> tuple[Partition, ...]:
@@ -1652,10 +1652,10 @@ PLAUSIBLE = {
 
 def plausible(value: float, unit: str, ceiling: Optional[float] = None) -> bool:
     """Whether a value can be of a series in that unit (and under `ceiling`)."""
-    bajo, alto = PLAUSIBLE[unit]
+    low, high = PLAUSIBLE[unit]
     if ceiling is not None:
-        alto = min(alto, ceiling)
-    return bajo <= value <= alto
+        high = min(high, ceiling)
+    return low <= value <= high
 
 
 class SensorKind(str, Enum):
@@ -1834,8 +1834,8 @@ class Sensor:
     @property
     def plausible(self) -> bool:
         """Whether its value can be one of its kind: a raw counter is not."""
-        unidad = SENSOR_UNITS.get(self.kind)
-        return unidad is None or plausible(self.value, unidad)
+        unit = SENSOR_UNITS.get(self.kind)
+        return unit is None or plausible(self.value, unit)
 
     @property
     def group(self) -> str:
@@ -1874,7 +1874,7 @@ class Sensor:
     # cuartos no se pinta nada: un procesador a 45 grados de 90 no está «medio
     # caliente», está bien, y darle un color intermedio convierte el color en
     # decoración y deja de avisar de nada.
-    TIBIO_DESDE = 0.75
+    WARM_FROM = 0.75
 
     @property
     def heat(self) -> Optional[float]:
@@ -1889,13 +1889,13 @@ class Sensor:
         """
         if self.kind is not SensorKind.TEMPERATURE or self.value is None:
             return None
-        techo = self.critical if self.critical is not None else self.high
-        if not techo or techo <= 0:
+        ceiling = self.critical if self.critical is not None else self.high
+        if not ceiling or ceiling <= 0:
             return None
-        fraccion = self.value / techo
-        if fraccion <= self.TIBIO_DESDE:
+        fraction = self.value / ceiling
+        if fraction <= self.WARM_FROM:
             return 0.0
-        return min(1.0, (fraccion - self.TIBIO_DESDE) / (1 - self.TIBIO_DESDE))
+        return min(1.0, (fraction - self.WARM_FROM) / (1 - self.WARM_FROM))
 
 
 @dataclass(frozen=True, slots=True)
@@ -1953,20 +1953,20 @@ class Snapshot:
         mirar «qué hace la placa» o «qué temperaturas hay» sin leerlo todo.
         """
         tree: dict[str, dict[str, list[Sensor]]] = {}
-        clases: dict[str, str] = {}
-        nombres: dict[str, str] = {}
+        kinds: dict[str, str] = {}
+        names: dict[str, str] = {}
         for sensor in self.sensors:
             if sensor.mirror_of:
                 continue                # la misma lectura por otro driver: una vez
             # By its raw key, not its name: names are in the interface's
             # language, and the user's folds are kept by this.
             tree.setdefault(sensor.group, {}).setdefault(sensor.category, []).append(sensor)
-            clases.setdefault(sensor.group, sensor.device_kind)
-            nombres.setdefault(sensor.group, sensor.device)
+            kinds.setdefault(sensor.group, sensor.device_kind)
+            names.setdefault(sensor.group, sensor.device)
 
         ordered: dict[str, dict[str, tuple[Sensor, ...]]] = {}
         # Ordered by name, which is painting: alphabetical in the reader's language.
-        for device in sorted(tree, key=lambda d: self._puesto_del_aparato(nombres[d], clases[d])):
+        for device in sorted(tree, key=lambda d: self._device_order(names[d], kinds[d])):
             categories = tree[device]
             ordered[device] = {
                 # Por chip y, dentro, en su orden: una placa que publica las
@@ -1981,7 +1981,7 @@ class Snapshot:
         return ordered
 
     @staticmethod
-    def _puesto_del_aparato(device: str, kind: str) -> tuple[int, str]:
+    def _device_order(device: str, kind: str) -> tuple[int, str]:
         """En qué orden se dibuja cada aparato del árbol de sensores.
 
         Sin esto salen en el orden en que los devuelve el kernel, que es el de
@@ -2030,9 +2030,9 @@ class Snapshot:
         por bloques de `/sys/devices/system/memory` deja fuera lo que reserva
         una integrada.
         """
-        modulos = [m.size_bytes for m in self.modules if m.populated and m.size_bytes]
-        if modulos:
-            return sum(modulos)
+        modules = [m.size_bytes for m in self.modules if m.populated and m.size_bytes]
+        if modules:
+            return sum(modules)
         spd = [i.capacity_bytes for i in self.spd if i.capacity_bytes]
         if not spd or not self.spd_accounts_for_all_memory:
             return None
@@ -2063,15 +2063,15 @@ class Snapshot:
         """
         if not self.gpus:
             return None
-        despiertas = [i for i, g in enumerate(self.gpus) if not g.suspended]
-        for i in despiertas:
+        awake = [i for i, g in enumerate(self.gpus) if not g.suspended]
+        for i in awake:
             if self.gpus[i].integrated is False:
                 return i
-        for i in despiertas:
+        for i in awake:
             if self.gpus[i].primary:
                 return i
-        if despiertas:
-            return despiertas[0]
+        if awake:
+            return awake[0]
         for i, g in enumerate(self.gpus):
             if g.primary:
                 return i
@@ -2084,9 +2084,9 @@ class Snapshot:
         campo —`gpus.0.usage`— y la nota puede ser la suya o la de la pieza
         entera, `gpus.0`. Lo que falta por otro motivo no tiene candado.
         """
-        for nota in self.permission_notes:
-            if path == nota.path or path.startswith(nota.path + "."):
-                return nota
+        for note in self.permission_notes:
+            if path == note.path or path.startswith(note.path + "."):
+                return note
         return None
 
 
