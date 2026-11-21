@@ -164,8 +164,8 @@ código nuevo:
 - **Lo que Silux lanza lleva `system_env.system_environment()`**; solo su
   propio Python se queda con el entorno del AppImage.
 - **Lo que se usa del sistema va en `system_deps.py`**, con el paquete que lo
-  trae en Debian, Ubuntu, Fedora y Arch, preguntado a su gestor de paquetes;
-  si falta, Diagnóstico lo dice. `docs/dependencias.md` dice lo mismo
+  trae en Debian, Ubuntu, Fedora, Arch y Gentoo, preguntado a su gestor de
+  paquetes; si falta, Diagnóstico lo dice. `docs/dependencias.md` dice lo mismo
   (`tests/test_system_deps.py`). Un programa se busca también en `/usr/sbin`:
   el `PATH` de Debian no lo lleva.
 - **Lo que vigila `os` o `io` se prueba en Python 3.10** (el compat): su
@@ -326,8 +326,13 @@ parámetros, atributos, módulos y tests; `CamelCase` solo para clases;
 constantes en `MAYÚSCULAS`. También dentro de un módulo que siga en español,
 y nunca las dos lenguas en el mismo nombre.
 
-Los comentarios y docstrings nuevos, en inglés, cortos y útiles: dicen por
-qué el código es así, no repiten lo que ya se lee en él, y nada de relleno.
+Los comentarios y docstrings nuevos, en inglés natural, como lo escribiría
+alguien nativo: no se traducen frase a frase, se reescriben. Un comentario se
+queda solo si explica lo que el código no dice (el porqué, una trampa del
+hardware o del kernel, un límite que no es obvio); si repite el código, se
+borra. Mejor un nombre claro que un comentario que explique un nombre malo.
+Un docstring dice qué hace y lo que no es obvio, corto, sin historia ni
+ejemplos de equipos concretos.
 «Antes…», «se probó…» o «costó…» van al mensaje del commit; un porqué que no
 cabe en un comentario, a `docs/decisiones/`.
 ruff (las reglas F y el orden de imports, en `pyproject.toml`) pasa en el CI
@@ -342,7 +347,10 @@ su fixture.
 
 Lo que ya existe no se renombra al pasar: se pasa a inglés por zonas, cada
 una en su rama, con herramientas que entienden el código (LibCST o rope, no
-buscar y reemplazar), la huella idéntica y los tests como red. Sigue
+buscar y reemplazar), la huella idéntica y los tests como red. En cada zona,
+sus comentarios y docstrings se rehacen con el criterio de arriba, y al
+acabarla se abren todas las páginas de todos los volcados en los dos
+idiomas, además de la suite: rope falla sin avisar. Sigue
 en español lo que lee la gente: la interfaz (`silux/db/lang/`, el original),
 el CHANGELOG y las notas de las versiones. El README va en los dos idiomas:
 `README.md` (español, el de por defecto) y `README.en.md`, con las mismas
@@ -423,6 +431,8 @@ en el mismo commit; lo que se encuentra y no se arregla, se apunta.
   contra qué pieza, y los equipos volcados.
 - [docs/kernel.md](docs/kernel.md): desde qué versión del kernel existe cada
   dato, con su fuente. El mínimo es 5.15.
+- [docs/nvml.md](docs/nvml.md): desde qué driver de NVIDIA existe cada dato
+  que se pide a NVML, y qué se prueba si una llamada no contesta.
 - [docs/rendimiento.md](docs/rendimiento.md): lo que gasta Silux, cómo se
   mide y sus objetivos.
 - [docs/benchmark.md](docs/benchmark.md): la escala y la medida de la memoria.
