@@ -28,6 +28,7 @@ from .. import smart as smart_module
 from ..model import Disk, DiskHealth, DiskIo, Need, Partition, PcieLink
 from ..privileged.client import HelperError, PrivilegedClient
 from .base import Draft, Provider, read_int, read_text
+from .counters import rate
 from ..i18n import _
 from .. import sysroot
 
@@ -64,6 +65,7 @@ class Disks(Provider):
     def __init__(self, client: Optional[PrivilegedClient] = None) -> None:
         # Contadores de la vuelta anterior, para restar y sacar el ritmo.
         self._previo: dict[str, tuple[float, int, int]] = {}
+        self._interval_s = 1.0
         self.client = client or PrivilegedClient()
         # El diagnóstico no cambia de un segundo a otro: son horas encendido y
         # terabytes escritos. Se lee una vez y se guarda.
@@ -83,6 +85,7 @@ class Disks(Provider):
         return sysroot.ruta(SYS_BLOCK).is_dir()
 
     def collect(self, draft: Draft) -> None:
+        self._interval_s = draft.interval_s
         nombres = [p.name for p in sorted(sysroot.ruta(SYS_BLOCK).iterdir())
                    if not VIRTUALES.match(p.name)]
         if not nombres:
@@ -230,12 +233,12 @@ class Disks(Provider):
         anterior = self._previo.get(nombre)
         if anterior is not None:
             antes, rx, tx = anterior
-            transcurrido = ahora - antes
             # Los contadores se reinician al reconectar un disco externo; un
             # delta negativo es eso, no un ritmo negativo.
-            if transcurrido > 0 and leidos >= rx and escritos >= tx:
-                lectura = (leidos - rx) / transcurrido
-                escritura = (escritos - tx) / transcurrido
+            lectura = rate(rx, antes, leidos, ahora, self._interval_s)
+            escritura = rate(tx, antes, escritos, ahora, self._interval_s)
+            if lectura is None or escritura is None:
+                lectura = escritura = None
         self._previo[nombre] = (ahora, leidos, escritos)
 
         return DiskIo(

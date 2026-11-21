@@ -30,11 +30,13 @@ def dos_fotos(carpeta):
     from silux.collector import Collector
     from tests.test_volcar_equipo import _herramienta
 
-    with _herramienta().montado(carpeta):
+    from tests.interval import fake_clock, next_snapshot
+
+    with _herramienta().montado(carpeta), fake_clock() as reloj:
         recolector = Collector()
         try:
             recolector.snapshot()
-            return recolector.snapshot(), recolector.snapshot()
+            return next_snapshot(recolector, reloj), next_snapshot(recolector, reloj)
         finally:
             recolector.close()
 
@@ -92,14 +94,16 @@ def con_contadores_avanzando(carpeta):
     from silux.collector import Collector
     from tests.test_volcar_equipo import _herramienta
 
-    with _herramienta().montado(carpeta) as raiz:
+    from tests.interval import fake_clock, next_snapshot
+
+    with _herramienta().montado(carpeta) as raiz, fake_clock() as reloj:
         recolector = Collector()
         try:
             recolector.snapshot()
             avanzar(raiz, ocupadas=50, octetos=1024)
-            segunda = recolector.snapshot()
+            segunda = next_snapshot(recolector, reloj)
             avanzar(raiz, ocupadas=1000, octetos=50_000_000)
-            return segunda, recolector.snapshot()
+            return segunda, next_snapshot(recolector, reloj)
         finally:
             recolector.close()
 

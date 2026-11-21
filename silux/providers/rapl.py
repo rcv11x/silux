@@ -21,6 +21,7 @@ from ..i18n import _
 from ..model import Need, Power
 from ..privileged.client import HelperError, PrivilegedClient
 from .base import Draft, Provider, read_int, read_text
+from .counters import increase, window_s
 from .. import sysroot
 
 POWERCAP = pathlib.Path("/sys/class/powercap")
@@ -212,13 +213,13 @@ class RaplPower(Provider):
         suelto = _core_es_de_un_nucleo(draft)
         sin_nucleos = False
         for package in packages:
-            self._accumulate(package, "package_w", totals)
+            self._accumulate(package, "package_w", totals, draft.interval_s)
             for child in sorted(package.glob(f"{package.name}:*")):
                 field = SUBDOMAINS.get(read_text(str(child / "name")) or "")
                 if field == "core_w" and suelto:
                     sin_nucleos = True
                 elif field:
-                    self._accumulate(child, field, totals)
+                    self._accumulate(child, field, totals, draft.interval_s)
         self._discarded.note(draft)
 
         if "package_w" not in totals:
@@ -280,7 +281,7 @@ class RaplPower(Provider):
         return microjoules, "helper", self._cache_instant
 
     def _accumulate(self, zone: pathlib.Path, field: str,
-                    totals: dict[str, float]) -> None:
+                    totals: dict[str, float], interval_s: float) -> None:
         microjoules, source, instant = self._read(zone)
         if microjoules is None:
             return
@@ -293,14 +294,15 @@ class RaplPower(Provider):
         if before is None or before[2] != source:
             return
 
-        elapsed = instant - before[1]
-        delta = microjoules - before[0]
-        if delta < 0:                        # el contador dio la vuelta
-            ceiling = read_int(str(zone / "max_energy_range_uj"))
-            if not ceiling:
-                return
-            delta += ceiling
-        if elapsed <= 0:
+        elapsed = window_s(before[1], instant, interval_s)
+        if elapsed is None:
+            return
+        delta = increase(before[0], microjoules)
+        if delta is None:
+            # Gone round: the range is read only then.
+            delta = increase(before[0], microjoules,
+                             wrap=read_int(str(zone / "max_energy_range_uj")))
+        if delta is None:
             return
 
         watts = delta / 1e6 / elapsed

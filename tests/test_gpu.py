@@ -729,7 +729,7 @@ class TestContadoresDelKernel(unittest.TestCase):
 
     def test_la_primera_lectura_solo_fija_la_referencia(self):
         proveedor, _ = self._proveedor([_lectura(0, 0)])
-        self.assertEqual(proveedor._contadores(), (None, None))
+        self.assertEqual(proveedor._contadores(1.0), (None, None))
 
     def test_la_segunda_ya_da_el_porcentaje(self):
         # Medio segundo ocupado dentro de una ventana de un segundo.
@@ -737,8 +737,8 @@ class TestContadoresDelKernel(unittest.TestCase):
             _lectura(1_000_000_000, 0),
             _lectura(2_000_000_000, 500_000_000),
         ])
-        proveedor._contadores()
-        ocupacion, _ = proveedor._contadores()
+        proveedor._contadores(1.0)
+        ocupacion, _ = proveedor._contadores(1.0)
         self.assertAlmostEqual(ocupacion["i915"]["rcs0-busy"], 50.0)
 
     def test_un_contador_reiniciado_se_salta_esa_vuelta(self):
@@ -746,18 +746,18 @@ class TestContadoresDelKernel(unittest.TestCase):
             _lectura(1_000_000_000, 900_000_000),
             _lectura(2_000_000_000, 10_000_000),
         ])
-        proveedor._contadores()
-        ocupacion, _ = proveedor._contadores()
+        proveedor._contadores(1.0)
+        ocupacion, _ = proveedor._contadores(1.0)
         self.assertEqual(ocupacion, {})
 
     def test_no_se_pasa_del_cien_por_cien(self):
         # En ventanas cortas el contador y el reloj no arrancan alineados.
         proveedor, _ = self._proveedor([
             _lectura(1_000_000_000, 0),
-            _lectura(1_000_050_000, 60_000),
+            _lectura(2_000_000_000, 1_000_100_000),
         ])
-        proveedor._contadores()
-        ocupacion, _ = proveedor._contadores()
+        proveedor._contadores(1.0)
+        ocupacion, _ = proveedor._contadores(1.0)
         self.assertEqual(ocupacion["i915"]["rcs0-busy"], 100.0)
 
     def test_los_vatios_salen_del_contador_de_energia(self):
@@ -766,8 +766,8 @@ class TestContadoresDelKernel(unittest.TestCase):
             _lectura(1_000_000_000, 0, energia=0),
             _lectura(2_000_000_000, 0, energia=2**32),
         ])
-        proveedor._contadores()
-        _, vatios = proveedor._contadores()
+        proveedor._contadores(1.0)
+        _, vatios = proveedor._contadores(1.0)
         self.assertAlmostEqual(vatios, 1.0, places=6)
 
     def test_la_energia_no_se_cuela_como_un_motor_mas(self):
@@ -775,22 +775,22 @@ class TestContadoresDelKernel(unittest.TestCase):
             _lectura(1_000_000_000, 0, energia=0),
             _lectura(2_000_000_000, 0, energia=2**32),
         ])
-        proveedor._contadores()
-        ocupacion, _ = proveedor._contadores()
+        proveedor._contadores(1.0)
+        ocupacion, _ = proveedor._contadores(1.0)
         self.assertNotIn("power", ocupacion)
 
     def test_sin_permisos_no_se_le_pregunta_nada(self):
         proveedor, cliente = self._proveedor([], conectado=False)
-        self.assertEqual(proveedor._contadores(), (None, None))
+        self.assertEqual(proveedor._contadores(1.0), (None, None))
         self.assertEqual(cliente.llamadas, 0)
 
     def test_una_maquina_sin_contadores_deja_de_preguntarse(self):
         from silux.privileged.client import PmuUnsupported
 
         proveedor, cliente = self._proveedor([PmuUnsupported("no hay")])
-        proveedor._contadores()
-        proveedor._contadores()
-        proveedor._contadores()
+        proveedor._contadores(1.0)
+        proveedor._contadores(1.0)
+        proveedor._contadores(1.0)
         self.assertEqual(cliente.llamadas, 1)
 
     def test_un_fallo_suelto_no_lo_da_por_perdido(self):
@@ -802,16 +802,16 @@ class TestContadoresDelKernel(unittest.TestCase):
             _lectura(1_000_000_000, 0),
             _lectura(2_000_000_000, 250_000_000),
         ])
-        proveedor._contadores()
-        proveedor._contadores()
-        ocupacion, _ = proveedor._contadores()
+        proveedor._contadores(1.0)
+        proveedor._contadores(1.0)
+        ocupacion, _ = proveedor._contadores(1.0)
         self.assertAlmostEqual(ocupacion["i915"]["rcs0-busy"], 25.0)
         self.assertEqual(cliente.llamadas, 3)
 
     def test_sin_cliente_no_revienta(self):
         from silux.providers.drm import GpuState
 
-        self.assertEqual(GpuState()._contadores(), (None, None))
+        self.assertEqual(GpuState()._contadores(1.0), (None, None))
 
 
 class TestRepartoDeMotores(unittest.TestCase):
@@ -987,7 +987,7 @@ class TestReposoDeLaGrafica(unittest.TestCase):
         from silux.providers.drm import GpuState
 
         self._dormido(1000)
-        self.assertIsNone(GpuState()._reposo("card1", self.raiz))
+        self.assertIsNone(GpuState()._reposo("card1", self.raiz, 1.0))
 
     def test_la_segunda_da_el_porcentaje(self):
         from silux.providers.drm import GpuState
@@ -995,9 +995,9 @@ class TestReposoDeLaGrafica(unittest.TestCase):
         proveedor = GpuState()
         with mock.patch("silux.providers.drm.time.monotonic", side_effect=[10.0, 11.0]):
             self._dormido(1000)
-            proveedor._reposo("card1", self.raiz)
+            proveedor._reposo("card1", self.raiz, 1.0)
             self._dormido(1800)          # 800 ms dormida en 1000 de ventana
-            self.assertAlmostEqual(proveedor._reposo("card1", self.raiz), 80.0)
+            self.assertAlmostEqual(proveedor._reposo("card1", self.raiz, 1.0), 80.0)
 
     def test_no_se_pasa_del_cien(self):
         from silux.providers.drm import GpuState
@@ -1005,23 +1005,23 @@ class TestReposoDeLaGrafica(unittest.TestCase):
         proveedor = GpuState()
         with mock.patch("silux.providers.drm.time.monotonic", side_effect=[10.0, 11.0]):
             self._dormido(0)
-            proveedor._reposo("card1", self.raiz)
+            proveedor._reposo("card1", self.raiz, 1.0)
             self._dormido(1200)
-            self.assertEqual(proveedor._reposo("card1", self.raiz), 100.0)
+            self.assertEqual(proveedor._reposo("card1", self.raiz, 1.0), 100.0)
 
     def test_un_contador_reiniciado_se_salta(self):
         from silux.providers.drm import GpuState
 
         proveedor = GpuState()
         self._dormido(5000)
-        proveedor._reposo("card1", self.raiz)
+        proveedor._reposo("card1", self.raiz, 1.0)
         self._dormido(10)
-        self.assertIsNone(proveedor._reposo("card1", self.raiz))
+        self.assertIsNone(proveedor._reposo("card1", self.raiz, 1.0))
 
     def test_sin_contador_no_se_inventa(self):
         from silux.providers.drm import GpuState
 
-        self.assertIsNone(GpuState()._reposo("card1", self.raiz))
+        self.assertIsNone(GpuState()._reposo("card1", self.raiz, 1.0))
 
     def test_no_es_lo_contrario_del_uso(self):
         # Entre trabajar y dormir hay un término medio —encendida y sin

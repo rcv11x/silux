@@ -25,6 +25,12 @@ que hace falta.
   intervalo de un segundo, algún segundo salía hasta un 10 % alto o bajo.
   Ahora se cronometra donde se lee, y no se resta una lectura de sysfs a
   otra del ayudante.
+- Arreglado de raíz: todo lo que sale de restar dos lecturas (el consumo
+  del procesador y de la gráfica, el uso de cada uno, la red, los discos, el
+  tráfico de la memoria y los estados de reposo) pasa por la misma regla. Si
+  entre las dos lecturas no ha pasado al menos la mitad del intervalo, o el
+  contador ha ido hacia atrás, esa vuelta no da cifra y empieza otra. El
+  techo de los vatios imposibles queda detrás, de red.
 
 ### Gráficos
 

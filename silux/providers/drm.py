@@ -33,6 +33,7 @@ from ..model import (Display, GpuClockLevel, GpuClocks, GpuEngine, PcieLink, Gpu
                       Need)
 from ..privileged.client import HelperError, PmuUnsupported, PrivilegedClient
 from .base import Draft, Provider, en_reposo, read_int, read_text
+from .counters import increase, window_s
 from .rapl import Discarded, package_ceiling_w
 from ..i18n import _
 from .. import sysroot
@@ -489,7 +490,7 @@ class GpuState(Provider):
         return round(sum(lecturas) / len(lecturas), 1)
 
     def collect(self, draft: Draft) -> None:
-        ocupacion, vatios = self._contadores()
+        ocupacion, vatios = self._contadores(draft.interval_s)
         self._discarded.note(draft)
         con_instantes = []
         con_reloj = []
@@ -538,7 +539,7 @@ class GpuState(Provider):
             self._despierta[nodo] = (time.time(), gpu.get("temp_c"))
 
             if gpu.get("driver") in ("i915", "xe"):
-                gpu["sleep_percent"] = self._reposo(nodo, raiz)
+                gpu["sleep_percent"] = self._reposo(nodo, raiz, draft.interval_s)
                 gpu["clocks"] = self._intel_clock(dispositivo, raiz, gpu["clocks"],
                                                   gpu["sleep_percent"])
                 con_reloj.append((dispositivo, raiz))
@@ -585,8 +586,8 @@ class GpuState(Provider):
 
     # -- el contador de ocupación del kernel --------------------------------
 
-    def _contadores(self) -> tuple[Optional[dict[str, dict[str, float]]],
-                                   Optional[float]]:
+    def _contadores(self, interval_s: float) -> tuple[Optional[dict[str, dict[str, float]]],
+                                                      Optional[float]]:
         """La ocupación de cada motor en tanto por ciento, y los vatios.
 
         El ayudante devuelve contadores acumulados desde que los abrió; lo que
@@ -617,9 +618,10 @@ class GpuState(Provider):
         if previo is None:
             return None, None
         reloj_previo, crudo_previo = previo
-        ventana = reloj - reloj_previo
-        if ventana <= 0:
+        segundos = window_s(reloj_previo / 1e9, reloj / 1e9, interval_s)
+        if segundos is None:
             return None, None
+        ventana = segundos * 1e9
 
         salida: dict[str, dict[str, float]] = {}
         vatios = None
@@ -627,14 +629,15 @@ class GpuState(Provider):
             anteriores = crudo_previo.get(pmu, {})
             for evento, valor in eventos.items():
                 antes = anteriores.get(evento)
-                if antes is None or valor < antes:
+                crecido = None if antes is None else increase(antes, valor)
+                if crecido is None:
                     continue                  # contador nuevo o reiniciado
                 if (pmu, evento) == PMU_ENERGIA:
                     escala = escalas.get(pmu, {}).get(evento)
                     if escala:
                         # El contador va en julios una vez escalado, y un
                         # vatio es un julio por segundo.
-                        vatios = (valor - antes) * escala * 1e9 / ventana
+                        vatios = crecido * escala * 1e9 / ventana
                         # The integrated GPU is part of the package: it cannot
                         # draw more than the package can.
                         if self._ceiling is None:
@@ -645,7 +648,7 @@ class GpuState(Provider):
                     continue
                 # Se recorta a 100: en ventanas muy cortas el contador y el
                 # reloj no arrancan alineados y sale algo más.
-                porcentaje = (valor - antes) * 100.0 / ventana
+                porcentaje = crecido * 100.0 / ventana
                 salida.setdefault(pmu, {})[evento] = min(100.0, max(0.0, porcentaje))
         return salida, vatios
 
@@ -675,7 +678,7 @@ class GpuState(Provider):
             hz = 0
         return dataclasses.replace(relojes, core_hz=hz)
 
-    def _reposo(self, nodo: str, raiz: pathlib.Path) -> Optional[float]:
+    def _reposo(self, nodo: str, raiz: pathlib.Path, interval_s: float) -> Optional[float]:
         """Cuánto del intervalo ha estado la gráfica dormida del todo.
 
         Es el RC6 de Intel, y sale de sysfs sin pedir permisos: un contador de
@@ -693,10 +696,11 @@ class GpuState(Provider):
         if previo is None:
             return None
         antes, dormido = previo
-        ventana = (ahora - antes) * 1000.0
-        if ventana <= 0 or acumulado < dormido:
+        segundos = window_s(antes, ahora, interval_s)
+        crecido = increase(dormido, acumulado)
+        if segundos is None or crecido is None:
             return None
-        return min(100.0, max(0.0, (acumulado - dormido) * 100.0 / ventana))
+        return min(100.0, max(0.0, crecido * 100.0 / (segundos * 1000.0)))
 
     def _avisar_de_intel(self, draft: Draft, indice: int, gpu: dict) -> None:
         """Por qué esa tarjeta tiene huecos, según lo que se pueda leer hoy.

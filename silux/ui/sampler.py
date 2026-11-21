@@ -97,6 +97,7 @@ class Sampler(QThread):
                     collector.request_elevation()
                 except Exception as exc:                # noqa: BLE001
                     self.failed.emit(str(exc))
+            collector.interval_s = self._interval_ms / 1000
             try:
                 snapshot = collector.snapshot()
             except Exception as exc:                    # noqa: BLE001

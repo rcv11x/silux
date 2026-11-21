@@ -30,12 +30,13 @@ def foto(carpeta: pathlib.Path):
     """La foto de un equipo volcado, y los caminos del de verdad que tocó."""
     from silux.collector import Collector
 
+    from tests.interval import second_snapshot
+
     volcar = _herramienta()
     with volcar.montado(carpeta) as raiz, _vigilando(str(raiz)) as tocados:
         recolector = Collector()
         try:
-            recolector.snapshot()
-            return recolector.snapshot(), sorted(set(tocados))
+            return second_snapshot(recolector), sorted(set(tocados))
         finally:
             recolector.close()
 

@@ -24,6 +24,7 @@ from typing import Iterator, Optional
 from .. import pciids
 from ..model import NetworkInterface, NetworkTraffic
 from .base import Draft, Provider, read_int, read_text
+from .counters import rate
 from .. import sysroot
 
 SYS_NET = "/sys/class/net"
@@ -57,6 +58,7 @@ class NetworkInterfaces(Provider):
     def __init__(self) -> None:
         # Contadores de la vuelta anterior, para poder restar.
         self._previo: dict[str, tuple[float, int, int]] = {}
+        self._interval_s = 1.0
         # Lo que no cambia de una interfaz mientras existe —qué es, su driver
         # y su tarjeta—, por su nombre y su `ifindex`: una que se borra y se
         # vuelve a crear con el mismo nombre trae otro índice. Docker crea un
@@ -68,6 +70,7 @@ class NetworkInterfaces(Provider):
         return os.path.isdir(sysroot.ruta(SYS_NET))
 
     def collect(self, draft: Draft) -> None:
+        self._interval_s = draft.interval_s
         nombres = sorted(p.name for p in pathlib.Path(sysroot.ruta(SYS_NET)).iterdir())
         if not nombres:
             return
@@ -132,12 +135,12 @@ class NetworkInterfaces(Provider):
         anterior = self._previo.get(nombre)
         if anterior is not None:
             antes, rx, tx = anterior
-            transcurrido = ahora - antes
             # Los contadores se reinician si la interfaz se cae y vuelve; un
             # delta negativo es eso, no un ritmo negativo.
-            if transcurrido > 0 and valores["rx_bytes"] >= rx and valores["tx_bytes"] >= tx:
-                bajada = (valores["rx_bytes"] - rx) / transcurrido
-                subida = (valores["tx_bytes"] - tx) / transcurrido
+            bajada = rate(rx, antes, valores["rx_bytes"], ahora, self._interval_s)
+            subida = rate(tx, antes, valores["tx_bytes"], ahora, self._interval_s)
+            if bajada is None or subida is None:
+                bajada = subida = None
         self._previo[nombre] = (ahora, valores["rx_bytes"], valores["tx_bytes"])
 
         return NetworkTraffic(**valores, rx_rate_bps=bajada, tx_rate_bps=subida)

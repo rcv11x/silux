@@ -21,6 +21,7 @@ from silux.collector import Collector
 from silux.i18n import _
 from silux.model import SensorKind
 from tests import pantalla, qt
+from tests.interval import second_snapshot
 
 EQUIPOS = pathlib.Path(__file__).resolve().parent / "fixtures" / "equipos"
 CORETEMP = "sys/devices/platform/coretemp.0"
@@ -35,8 +36,7 @@ def photo(dump="i5-1135g7", without_coretemp=False):
                     enlace.unlink()
         collector = Collector()
         try:
-            collector.snapshot()
-            return collector.snapshot()
+            return second_snapshot(collector)
         finally:
             collector.close()
 

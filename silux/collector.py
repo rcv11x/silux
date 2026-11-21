@@ -137,6 +137,10 @@ class Collector:
     """Punto de entrada de la capa de datos. Reutilizable y con estado propio."""
 
     def __init__(self, providers: Optional[Sequence[Provider]] = None) -> None:
+        # How far apart snapshots are meant to be. Whoever takes them says so
+        # (the sampler, `sample`, the CLI's --watch): the rates check their
+        # window against it.
+        self.interval_s = 1.0
         if providers is not None:
             self.providers: list[Provider] = list(providers)
         else:
@@ -154,6 +158,7 @@ class Collector:
             self._static = self._collect(p for p in self.providers if p.static)
 
         draft = self._clone(self._static)
+        draft.interval_s = self.interval_s
         self._collect((p for p in self.providers if not p.static), into=draft)
         _without_what_a_vm_lacks(draft)
         if draft.static_stale:
@@ -172,6 +177,7 @@ class Collector:
         establece la referencia y aún no tiene valor. Por eso se muestrea dos
         veces con una pausa corta en medio.
         """
+        self.interval_s = settle
         self.snapshot()
         time.sleep(settle)
         return self.snapshot()

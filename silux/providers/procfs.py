@@ -8,11 +8,13 @@ tiene, junto con el de energía.
 
 from __future__ import annotations
 
+import time
 from typing import Optional
 
 from ..i18n import _
 from ..model import Need
 from .base import Draft, Provider
+from .counters import increase, window_s
 from .. import sysroot
 
 # user nice system idle iowait irq softirq steal …
@@ -25,6 +27,7 @@ class CpuUsage(Provider):
 
     def __init__(self) -> None:
         self._previous: dict[str, tuple[int, int]] = {}
+        self._previous_at = 0.0
 
     def available(self) -> bool:
         try:
@@ -44,6 +47,12 @@ class CpuUsage(Provider):
         current = self._read()
         if not current:
             return
+        ahora = time.monotonic()
+        if window_s(self._previous_at, ahora, draft.interval_s) is None:
+            # Jiffies are time too, but a window this short gives two or three
+            # of them: the usage would be 0, 50 or 100 %.
+            self._previous, self._previous_at = current, ahora
+            return
 
         total = self._delta("cpu", current)
         if total is not None:
@@ -57,7 +66,7 @@ class CpuUsage(Provider):
         if load := self._load_average():
             draft.cpu_extra["load_average"] = load
 
-        self._previous = current
+        self._previous, self._previous_at = current, ahora
 
     @staticmethod
     def _load_average() -> tuple[float, ...]:
@@ -95,8 +104,8 @@ class CpuUsage(Provider):
         before = self._previous.get(key)
         if before is None or key not in current:
             return None
-        total_delta = current[key][0] - before[0]
-        idle_delta = current[key][1] - before[1]
-        if total_delta <= 0:
+        total_delta = increase(before[0], current[key][0])
+        idle_delta = increase(before[1], current[key][1])
+        if not total_delta or idle_delta is None:
             return None
-        return round(100.0 * (total_delta - idle_delta) / total_delta, 1)
+        return round(100.0 * max(0.0, total_delta - idle_delta) / total_delta, 1)

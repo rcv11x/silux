@@ -31,6 +31,9 @@ class Draft:
     """Estado mutable durante una recolección. No sale nunca del colector."""
 
     monotonic_ns: int = field(default_factory=time.monotonic_ns)
+    # The sampling interval: a rate from a window shorter than half of it is
+    # no rate (`counters.window_s`).
+    interval_s: float = 1.0
     sockets: int = 1
     hybrid: bool = False
     types: dict[str, dict[str, Any]] = field(default_factory=dict)

@@ -36,6 +36,7 @@ from ..model import DeviceKind, MemoryTraffic, Need, Sensor, SensorKind
 from ..privileged.client import HelperError, PmuUnsupported, PrivilegedClient
 from ..privileged.protocol import PMU_IMC, PMU_ROOT
 from .base import Draft, Provider
+from .counters import increase, window_s
 from .. import sysroot
 
 _PMU_IMC = re.compile(PMU_IMC)
@@ -129,8 +130,8 @@ class ImcTraffic(Provider):
             return                            # la primera solo fija referencia
 
         reloj_previo, contadores_previos = previo
-        ventana = lectura.monotonic_ns - reloj_previo
-        if ventana <= 0:
+        segundos = window_s(reloj_previo / 1e9, lectura.monotonic_ns / 1e9, draft.interval_s)
+        if segundos is None:
             return
 
         totales = {"lectura": 0, "escritura": 0, "nucleos": 0}
@@ -147,15 +148,16 @@ class ImcTraffic(Provider):
                 else:
                     continue
                 antes = anteriores.get(evento)
-                if antes is None or valor < antes:
+                crecido = None if antes is None else increase(antes, valor)
+                if crecido is None:
                     return          # contador nuevo o reiniciado: esta vuelta no
                 if lectura.units.get(pmu, {}).get(evento) != UNIDAD:
                     continue        # unidad desconocida: no se convierte
                 escala = lectura.scales.get(pmu, {}).get(evento)
                 if not escala:
                     continue
-                movido = (valor - antes) * escala * BYTES_POR_UNIDAD
-                totales[campo] += int(movido * 1e9 / ventana)
+                movido = crecido * escala * BYTES_POR_UNIDAD
+                totales[campo] += int(movido / segundos)
                 visto[campo] = True
 
         if not (visto["lectura"] and visto["escritura"]):

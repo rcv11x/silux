@@ -281,6 +281,7 @@ def watch(collector: Collector, style: Style, interval: float,
     """Lo repite cada `interval` segundos. Con `--sensors`, solo el árbol de
     sensores: la ayuda lo pone de ejemplo («los sensores, cada segundo») y
     salía el volcado entero."""
+    collector.interval_s = interval
     print("\033[?25l", end="")            # oculta el cursor
     try:
         while True:

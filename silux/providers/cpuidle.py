@@ -20,6 +20,7 @@ from typing import Optional
 from .. import sysroot
 from ..model import IdleState
 from .base import Draft, Provider, read_int, read_text
+from .counters import increase, window_s
 
 CPUS = "/sys/devices/system/cpu"
 
@@ -69,8 +70,11 @@ class CpuIdle(Provider):
         previo, self._previo = self._previo, (ahora, lectura)
         if previo is None or not lectura:
             return
+        segundos = window_s(previo[0], ahora, draft.interval_s)
+        if segundos is None:
+            return
         draft.cpu_extra["idle_states"] = self.residencia(
-            previo[1], lectura, ahora - previo[0], self._estados)
+            previo[1], lectura, segundos, self._estados)
 
     @staticmethod
     def residencia(antes: dict, despues: dict, segundos: float, estados: dict) -> list[IdleState]:
@@ -89,10 +93,10 @@ class CpuIdle(Provider):
             for (cpu, estado), micros in despues.items():
                 if estado != nombre or (cpu, estado) not in antes:
                     continue
-                gastado = micros - antes[(cpu, estado)]
+                gastado = increase(antes[(cpu, estado)], micros)
                 # Un contador que retrocede (un hilo que se apagó y volvió)
                 # no da un porcentaje: ese hilo no cuenta en esta vuelta.
-                if gastado < 0:
+                if gastado is None:
                     continue
                 partes.append(min(100.0, gastado / (segundos * 1e6) * 100.0))
             if partes:
