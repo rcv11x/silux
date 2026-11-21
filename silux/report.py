@@ -1,13 +1,13 @@
-"""Genera un informe pegable, para cuando alguien reporta un fallo.
+"""Builds a pasteable report, for when someone reports a bug.
 
-Un «no me sale la gráfica» no se puede diagnosticar: hace falta saber qué
-hardware hay, qué kernel, qué fuentes de datos respondieron y cuáles no. Este
-módulo produce todo eso en Markdown, listo para pegar en un issue o en un foro.
+«The chart doesn't show» can't be diagnosed: it takes knowing the hardware,
+the kernel, which data sources answered and which didn't. This module
+produces all of that in Markdown, ready to paste into an issue or a forum.
 
-Está pensado para que quien lo envía pueda leerlo antes: no hay nada oculto.
-Los números de serie y los identificadores únicos del equipo se sustituyen por
-una marca, porque un informe de un fallo no necesita saber cuál es tu máquina
-en concreto y quien lo pega en internet no debería tener que acordarse.
+Meant to be read by whoever sends it first: nothing is hidden. Serial
+numbers and the machine's unique identifiers are replaced by a mark, since
+a bug report doesn't need to know which exact machine is yours, and whoever
+pastes it online shouldn't have to remember.
 """
 
 from __future__ import annotations
@@ -35,14 +35,13 @@ NEED_REASONS = {
 
 
 def build(snapshot: Snapshot, anonymous: bool = True) -> str:
-    """El informe entero. `anonymous` tapa lo que identifica al equipo.
+    """The whole report. `anonymous` covers what identifies the machine.
 
-    Anónimo, la foto pasa antes por `privacidad.anonimizar`, que es quien
-    decide qué identifica a alguien: el nombre del equipo no vive solo en su
-    campo, y repetir aquí al lado esa decisión es como se escapaba por los
-    nombres de red y por el árbol de sensores. Las marcas de «omitido» de cada
-    sección se quedan, porque dicen que algo se tapó en vez de enseñar un
-    valor de mentira.
+    Anonymous, the snapshot first goes through `privacidad.anonymize`, which
+    decides what identifies someone: the machine's name doesn't live only in
+    its field, and repeating that decision here is how it leaked through
+    network names and the sensor tree. Each section's «omitted» marks stay,
+    since they say something was covered instead of showing a fake value.
     """
     if anonymous:
         snapshot = privacidad.anonymize(snapshot)
@@ -62,7 +61,7 @@ def build(snapshot: Snapshot, anonymous: bool = True) -> str:
     return "\n".join(part for part in parts if part).strip() + "\n"
 
 
-# -- secciones ---------------------------------------------------------------
+# -- sections ----------------------------------------------------------------
 
 def _header(snapshot: Snapshot, anonymous: bool) -> str:
     system = snapshot.system
@@ -75,8 +74,9 @@ def _header(snapshot: Snapshot, anonymous: bool) -> str:
         "",
         f"- **Distribución:** {system.distribution or '?'} {system.version_id or ''}".rstrip(),
         f"- **Kernel:** {system.kernel or '?'}",
-        # Con qué se compiló el kernel: CachyOS usa clang y la mayoría gcc, y
-        # eso cambia a qué se parece un equipo cuando algo va raro.
+        # What the kernel was built with: some distributions use clang and
+        # most gcc, which changes what a machine looks like when something
+        # goes odd.
         f"- **Compilado:** {system.kernel_build or '?'}",
         f"- **Arquitectura:** {system.architecture or '?'}",
         f"- **Escritorio:** {system.desktop or '?'} · {system.session_type or '?'}",
@@ -86,10 +86,10 @@ def _header(snapshot: Snapshot, anonymous: bool) -> str:
         f"- **Fuentes activas:** {', '.join(sorted(snapshot.capabilities)) or 'ninguna'}",
         f"- **Ejecutado desde:** {_provenance()}",
     ]
-    # Va en la cabecera y no en el apartado del procesador porque no habla del
-    # procesador: cambia cómo se lee el archivo entero. Sin esta fila, un
-    # informe de una VM de VMware describe una placa 440BX y un i5-10500T de
-    # dos núcleos y dos sockets sin que nada avise de que no hay tal equipo.
+    # In the header, not the processor's section, because it isn't about the
+    # processor: it changes how the whole file reads. Without this row, a VM's
+    # report describes a virtual board and processor with nothing saying
+    # there's no such machine.
     if virt := _hypervisor(snapshot):
         lines.append(f"- **Máquina virtual:** {virt}")
     if not anonymous and system.hostname:
@@ -98,7 +98,7 @@ def _header(snapshot: Snapshot, anonymous: bool) -> str:
 
 
 def _hypervisor(snapshot: Snapshot) -> str:
-    """Quién está debajo, para la cabecera. Vacío si esto es hierro."""
+    """Who's underneath, for the header. Empty on bare metal."""
     for cpu_type in snapshot.cpu.types:
         if cpu_type.in_virtual_machine:
             return cpu_type.hypervisor or "sí, hipervisor sin identificar"
@@ -110,11 +110,9 @@ def _processor(snapshot: Snapshot) -> str:
     if not cpu.types:
         return ""
     lines = ["", "## Procesador", ""]
-    # En un híbrido, cada tipo de núcleo es un bloque con la misma marca
-    # repetida, y así el informe de un i9-13980HX salía con dos apartados de
-    # «8 / 16» y «16 / 16» sin decir cuál era cuál ni cuántos hay en total. Los
-    # 24 núcleos y 32 hilos de esa pieza no aparecían en ninguna parte del
-    # archivo que se pide justamente para saber qué lleva dentro un equipo.
+    # On a hybrid, each core type is a block with the same brand repeated, so
+    # the report listed two sections of cores and threads without saying
+    # which was which or how many there are in all.
     if cpu.hybrid:
         lines += [
             f"**{cpu.types[0].brand or '?'}** — "
@@ -162,9 +160,9 @@ def _memory(snapshot: Snapshot) -> str:
     lines = ["", "## Memoria", "",
               f"- Total: {render.size(memory.total_bytes)}"]
 
-    # El tráfico del controlador es de un instante y hay que decirlo: el
-    # informe se escribe con la máquina haciendo cualquier cosa, así que un
-    # número alto aquí no dice nada malo y uno bajo tampoco dice nada bueno.
+    # The controller's traffic is from one instant and that must be said: the
+    # report is written with the machine doing anything, so a high number
+    # here says nothing bad and a low one nothing good.
     if (traffic := snapshot.memory_traffic) is not None:
         parts = [f"lectura {render.rate(traffic.read_bytes_s)}",
                   f"escritura {render.rate(traffic.write_bytes_s)}"]
@@ -191,10 +189,10 @@ def _memory(snapshot: Snapshot) -> str:
     else:
         lines.append("- Detalle por módulo: no leído (requiere permisos)")
 
-    # El SPD es otra fuente que el DMI y dice cosas que aquel no: quién fabricó
-    # los chips además del módulo, los perfiles XMP y la semana de fabricación.
-    # Sale aparte porque cuando los dos están, no se contradicen sino que se
-    # completan, y cuál falta es en sí un dato para diagnosticar.
+    # The SPD is another source than DMI and says what DMI doesn't: who made
+    # the chips as well as the module, the XMP profiles and the week of
+    # manufacture. It goes apart because, when both are there, they complete
+    # each other, and which one is missing is a datum in itself.
     for spd in snapshot.spd:
         parts = [f"- SPD {render.dec(spd.slot) if spd.slot is not None else '?'}:"]
         parts.append(spd.dram_type or spd.module_type or "?")
@@ -224,9 +222,9 @@ def _board(snapshot: Snapshot, anonymous: bool) -> str:
         f"- Chipset: {_chipset(board)}",
         f"- Firmware: {board.firmware or '—'} · arranque seguro: "
         f"{'sí' if board.secure_boot else 'no'} · TPM: {board.tpm_version or 'no'}",
-        # En crudo y los cinco, porque de aquí sale el titular de arriba y cada
-        # fabricante escribe el nombre del equipo donde le parece. Sin esto, un
-        # «me sale un nombre raro» obligaba a pedir un dmidecode aparte.
+        # Raw and all five, since the headline above comes from here and each
+        # maker writes the machine's name wherever it likes. Without this, «I
+        # get an odd name» meant asking for a separate dmidecode.
         f"- DMI de la placa: {board.vendor or '—'} · {board.name or '—'}"
         f" · versión {board.version or '—'}",
         f"- DMI del sistema: {board.system_vendor or '—'}"
@@ -238,10 +236,10 @@ def _board(snapshot: Snapshot, anonymous: bool) -> str:
 
 
 def _chipset(board) -> str:
-    """El chipset y, al lado, lo que `pci.ids` dice del puente del bus 0.
+    """The chipset and, next to it, what `pci.ids` says of bus 0's bridge.
 
-    Los dos, porque en un AMD el segundo es «FCH LPC Bridge» en todas las
-    placas y el primero sale del nombre de la placa: si falla, se ve de qué.
+    Both, because on AMD the second is «FCH LPC Bridge» on every board and
+    the first comes from the board's name: if it fails, it shows from what.
     """
     if board.chipset and board.chipset_full and board.chipset_full not in board.chipset:
         return f"{board.chipset} ({board.chipset_full})"
@@ -261,11 +259,10 @@ def _graphics(snapshot: Snapshot, anonymous: bool) -> str:
             f"- Identificador: {gpu.pci_id or '—'} · subsistema {gpu.subsystem_id or '—'}",
             f"- Driver: {gpu.driver or '—'} {gpu.driver_version or ''}".rstrip(),
         ]
-        # La versión de la telemetría que el programa todavía no interpreta.
-        # Con esto y el modelo se puede escribir su tabla de posiciones sin
-        # tener la pieza delante, que es la única forma de añadirla sin
-        # adivinar: leerla con las posiciones de otra versión no da error, da
-        # cifras creíbles y equivocadas.
+        # The telemetry version the program can't interpret yet. With it and
+        # the model its offset table can be written without the part at hand,
+        # the only way to add it without guessing: reading it with another
+        # version's offsets gives no error, only believable wrong numbers.
         if gpu.metrics_version:
             lines.append(
                 f"- Telemetría sin interpretar: gpu_metrics v{gpu.metrics_version}")
@@ -290,17 +287,13 @@ def _graphics(snapshot: Snapshot, anonymous: bool) -> str:
 
 
 def _storage(snapshot: Snapshot) -> str:
-    """Los discos, que es de lo que más se equivoca el programa.
+    """The disks, which the program gets wrong most often.
 
-    Faltaba entera, y era la única de las once páginas que no salía por aquí.
-    Se notaba al pedir informes: para revisar un disco había que pedir además
-    una captura, cuando el modelo exacto y los contadores de salud son texto y
-    caben aquí. Justo aquí se han corregido ya un fabricante que se sacaba del
-    prefijo del modelo y un TBW que salía 65 536 veces pequeño; ninguno de los
-    dos se ve sin la cifra delante.
+    The exact model and the health counters are text and fit here; without
+    them, checking a disk meant asking for a screenshot as well.
 
-    El número de serie no se escribe: lo tapa `privacidad.anonimizar` antes de
-    llegar, como el de la gráfica.
+    The serial number isn't written: `privacidad.anonymize` covers it before
+    it arrives, as with the graphics card's.
     """
     if not snapshot.disks:
         return "\n## Almacenamiento\n\nNo se detectó ningún disco.\n"
@@ -310,15 +303,15 @@ def _storage(snapshot: Snapshot) -> str:
         title = _disk_title(disk)
         lines.append(f"**{title}**")
         lines.append("")
-        # El bus solo cuando añade algo: en un NVMe es lo mismo que el tipo.
+        # The bus only when it adds something: on NVMe it's the same as the type.
         bus = render.disk_bus(disk.transport) if disk.transport else None
         kind = " · ".join(p for p in (disk.kind, bus if bus != disk.kind else None)
                           if p) or "—"
         lines.append(f"- Tipo: {kind} · {render.size(disk.size_bytes)}")
         if disk.firmware:
             lines.append(f"- Firmware: {disk.firmware}")
-        # El enlace solo lo tienen los NVMe: en SATA quien negocia es la
-        # controladora y la comparte con los demás discos del cable.
+        # Only NVMe disks have a link: on SATA the controller negotiates, and
+        # shares it with the cable's other disks.
         if disk.link:
             lines.append(f"- Enlace: {render.pcie_link(disk.link)}")
         sectors = [f"lógico {disk.logical_sector}" if disk.logical_sector else "",
@@ -339,10 +332,10 @@ def _storage(snapshot: Snapshot) -> str:
 
 
 def _disk_title(disk) -> str:
-    """Fabricante y modelo sin decir dos veces lo mismo.
+    """Maker and model without saying the same thing twice.
 
-    El fabricante se saca del propio modelo, porque sysfs dice «ATA» en SATA y
-    nada en NVMe. Así que en cuanto el modelo ya empieza por él, juntarlos da
+    The maker comes from the model itself, since sysfs says «ATA» on SATA
+    and nothing on NVMe. So once the model starts with it, joining them gives
     «Samsung Samsung SSD 970 EVO Plus».
     """
     model = (disk.model or "").strip()
@@ -355,7 +348,7 @@ def _disk_title(disk) -> str:
 
 
 def _disk_health(health) -> list[str]:
-    """Los contadores que dicen cuánta vida le queda a la unidad."""
+    """The counters that say how much life the drive has left."""
     lines = []
     used = []
     if health.percentage_used is not None:
@@ -381,9 +374,9 @@ def _disk_health(health) -> list[str]:
     if traffic:
         lines.append("- Total: " + " · ".join(traffic))
 
-    # Lo que de verdad hay que mirar. `critical_warning` es el campo por el que
-    # un NVMe avisa de que va camino de perder datos; los apagones bruscos, en
-    # cambio, cuentan cortes de luz y no son una avería.
+    # What really needs looking at. `critical_warning` is the field an NVMe
+    # warns through that it's on its way to losing data; unsafe shutdowns
+    # count power cuts and aren't a fault.
     warnings = []
     if health.critical_warning:
         warnings.append(f"aviso crítico: {health.critical_warning}")
@@ -397,16 +390,15 @@ def _disk_health(health) -> list[str]:
 
 
 def _partitions(disk) -> str:
-    """Cuántas hay y cuánto queda libre de lo que está montado.
+    """How many there are and how much of what's mounted is free.
 
-    Sin puntos de montaje: una ruta puede llevar dentro el nombre de quien usa
-    el equipo —`/media/pepe/USB`—, y este archivo está pensado para pegarlo en
-    público. Lo que hace falta para diagnosticar es el reparto, no dónde
-    cuelga cada una.
+    No mount points: a path can carry the user's name inside
+    (`/media/<user>/USB`), and this file is meant to be pasted in public.
+    What diagnosis needs is the layout, not where each one hangs.
 
-    Y lo montado se dice aparte de la capacidad a propósito: restarle lo
-    ocupado al total da por montado todo el disco, y con un Windows al lado
-    eso contaba como libre una partición ajena de 570 GB.
+    And what's mounted is told apart from the capacity on purpose: taking
+    the used space off the total assumes the whole disk is mounted, and with
+    Windows alongside, a foreign 570 GB partition counted as free.
     """
     mounted = [p for p in disk.partitions if p.mountpoint]
     summary = f"{len(disk.partitions)}"
@@ -420,13 +412,13 @@ def _partitions(disk) -> str:
 
 
 def _battery(snapshot: Snapshot) -> str:
-    """La batería, que en un portátil es la pieza que peor envejece.
+    """The battery, the part that ages worst in a laptop.
 
-    Sin sección si no hay ninguna: que un sobremesa no tenga batería no es una
-    carencia que haya que explicar.
+    No section if there's none: a desktop without a battery isn't a gap that
+    needs explaining.
 
-    El número de serie de la celda no se escribe, como el de los discos y el de
-    la gráfica.
+    The cell's serial number isn't written, as with the disks' and the
+    graphics card's.
     """
     if not snapshot.batteries:
         return ""
@@ -463,9 +455,9 @@ def _battery(snapshot: Snapshot) -> str:
             voltages.append(f"nominal {battery.design_voltage_v:.2f} V")
         if voltages:
             lines.append("- Tensión: " + " · ".join(voltages))
-        # Los topes solo si están puestos. Un ThinkPad sin límite publica 0 y
-        # 100, que es el rango entero: eso es no tener tope, y escribirlo
-        # hacía creer que había algo configurado.
+        # The thresholds only when set. A laptop without a limit publishes 0
+        # and 100, the whole range: that is no threshold, and writing it made
+        # it look as if something were configured.
         start = battery.charge_start_percent
         end = battery.charge_end_percent
         fitted = ((start is not None or end is not None)
@@ -488,8 +480,8 @@ def _network(snapshot: Snapshot, anonymous: bool) -> str:
     for interface in snapshot.network:
         if interface.kind == "loopback":
             continue
-        # Las direcciones se tapan siempre que se pueda: identifican la red de
-        # quien envía el informe y no hacen falta para diagnosticar nada.
+        # Addresses are covered whenever possible: they identify the sender's
+        # network and aren't needed to diagnose anything.
         address = HIDDEN if (anonymous and interface.ipv4) else (interface.ipv4 or "—")
         mac = HIDDEN if (anonymous and interface.mac) else (interface.mac or "—")
         lines.append(
@@ -509,25 +501,24 @@ def _sensors(snapshot: Snapshot) -> str:
     for categories in tree.values():
         device = Snapshot.device_name(categories)
         count = sum(len(s) for s in categories.values())
-        # Las categorías son claves —«cat.temperature»—, porque los nombres que
-        # agrupan los inventa el programa y son interfaz. Sin traducirlas, el
-        # informe enseñaba la clave cruda a quien lo abriera. Y va en español y
-        # no en el idioma de quien lo genera, como el resto del informe: si no,
-        # un informe en inglés saldría con «Procesador» y «temperatures» en la
-        # misma página.
+        # The categories are keys («cat.temperature»), since the names that
+        # group sensors are the program's own and part of the interface.
+        # Translated, and into Spanish rather than the language of whoever
+        # generates it, like the rest of the report: otherwise an English
+        # report would show «Procesador» and «temperatures» on one page.
         summary = ", ".join(f"{in_spanish(name).lower()} ({len(s)})"
                             for name, s in categories.items())
         lines.append(f"- **{device}**, {count}: {summary}")
-        # Y con sus nombres y valores. El recuento solo dice cuántos hay, y lo
-        # que se revisa de un equipo ajeno es justo lo otro: cómo se llama cada
-        # sensor y si el número es creíble. Un chip que bautiza sus entradas
-        # «temp1, temp2, temp3» y una placa que declara un mínimo de 127 grados
-        # se ven aquí y en ningún otro sitio de este archivo.
+        # With their names and values too. The count only says how many there
+        # are, and what's checked on someone else's machine is just that: what
+        # each sensor is called and whether the number is believable. A chip
+        # naming its inputs «temp1, temp2, temp3», or a board declaring a
+        # 127-degree minimum, show here and nowhere else in this file.
         for name, sensors in categories.items():
             values = " · ".join(
                 f"{s.label} {render.sensor_value(s.value, s.kind)} {s.unit}".strip()
-                # Quien revisa un equipo ajeno mira justo si el número es
-                # creíble: que 16.8 °C lleve dicho lo que es.
+                # Whoever checks a foreign machine looks at whether the number
+                # is believable: let 16.8 °C say what it is.
                 + (" (relleno del firmware, no es una medida)" if s.placeholder else "")
                 for s in sensors)
             lines.append(f"  - {in_spanish(name).lower()}: {values}")
@@ -535,15 +526,15 @@ def _sensors(snapshot: Snapshot) -> str:
 
 
 def _benchmark() -> str:
-    """La última prueba que puntúa, si la hay.
+    """The latest run that scores, if any.
 
-    Va en el informe porque es lo que permite juntar medidas de piezas que no
-    están a mano. Sin esto, quien manda un informe manda su hardware y no lo
-    que rinde, y la tabla de puntuaciones no se llena nunca.
+    In the report because it lets measurements of parts not at hand be
+    gathered: without it, whoever sends a report sends their hardware but not
+    how it performs, and the score table never fills.
 
-    Solo la última comparable: un historial entero es del equipo de quien lo
-    manda y aquí no aporta, y las de otra escala dirían una diferencia que no
-    existe.
+    Only the latest comparable one: a whole history belongs to the sender's
+    machine and adds nothing here, and runs on another scale would show a
+    difference that doesn't exist.
     """
     from . import benchmark, history, score
 
@@ -565,17 +556,17 @@ def _benchmark() -> str:
         f"| Puntuación (un hilo) | {single} |",
         f"| Hilos | {latest.threads} |",
         f"| Escala | v{score.VERSION} |",
-        # Cuáles entran en la cifra. Sin esto, dos informes de escalas
-        # distintas se leen igual y la diferencia que se saca no existe: de la
-        # v5 a la v6 la puntuación de un mismo equipo se mueve sin que el
-        # equipo cambie, porque tres de las cinco cargas dejaron de contar.
+        # Which workloads count towards the figure. Without this, two reports
+        # on different scales read the same and the difference drawn from them
+        # doesn't exist: the same machine's score moves between scales because
+        # of which workloads count.
         ("| Cargas que puntúan | "
          + " · ".join(c.name for c in benchmark.WORKLOADS if score.is_scored(c.key))
          + " |"),
     ]
-    # Las condiciones son la mitad de lo que hace comparable una cifra: sin
-    # ellas, dos puntuaciones distintas no se sabe si separan a dos equipos o
-    # a dos momentos del mismo.
+    # The conditions are half of what makes a figure comparable: without
+    # them, there's no telling whether two scores separate two machines or
+    # two moments of the same one.
     if latest.governor:
         lines.append(f"| Gobernador | {latest.governor} |")
     if latest.frequency_avg_hz:
@@ -584,16 +575,16 @@ def _benchmark() -> str:
         lines.append(f"| Temperatura máxima | {latest.temperature_peak_c:.0f} °C |")
     if latest.background_load is not None:
         lines.append(f"| Carga de fondo | {latest.background_load:.1f} % |")
-    # El pico de lo ajeno explica una cifra baja que si no parece del equipo.
+    # The peak of foreign load explains a low figure that would otherwise
+    # seem the machine's.
     if latest.background_peak is not None:
         lines.append(f"| Otro programa, como mucho | {latest.background_peak:.1f} % |")
-    # Con qué bibliotecas se midió. Ya no explica la puntuación —para eso se
-    # quitaron de ella las cargas que dependen del sistema—, y sigue haciendo
-    # falta para leer las cifras de esas tres: la misma pieza rinde un ×9,7
-    # distinto en la verificación según qué zlib traiga la distribución.
-    # La versión y las extensiones van juntas porque por separado no se
-    # interpreta ninguna de las dos: una zlib clásica no usa ninguna bandera,
-    # así que ahí las de la CPU no dicen nada.
+    # The libraries it was measured with. They no longer explain the score
+    # (the workloads that depend on the system were taken out of it for
+    # that), but they are still needed to read those three figures: the same
+    # part's verification differs ×9.7 with the distribution's zlib. Version
+    # and extensions go together because neither reads alone: a classic zlib
+    # uses no flag, so the CPU's say nothing there.
     if latest.zlib_version or latest.openssl_version:
         parts = []
         if latest.zlib_version:
@@ -602,9 +593,9 @@ def _benchmark() -> str:
         if latest.openssl_version:
             parts.append(latest.openssl_version)
         lines.append("| Bibliotecas | " + " · ".join(parts) + " |")
-    # Y por qué son dos y no cinco, que si no la fila de arriba parece un
-    # recorte y es lo contrario: es lo que hace que la cifra sea del
-    # procesador de quien la manda y no de su distribución.
+    # And why two and not five; otherwise the row above looks like a cut,
+    # when it's the opposite: it is what makes the figure the sender's
+    # processor's rather than their distribution's.
     lines.append(
         "\nLas otras tres cargas se miden y se enseñan en el programa, pero no"
         " entran en la puntuación: las calcula una biblioteca del sistema y"
@@ -613,7 +604,7 @@ def _benchmark() -> str:
 
 
 def _diagnosis(snapshot: Snapshot) -> str:
-    """Lo que no se pudo leer y por qué. Es la parte útil de un informe de fallo."""
+    """What couldn't be read and why. The useful part of a bug report."""
     lines = ["", "## Diagnóstico", ""]
 
     if snapshot.driver_hints:
@@ -645,11 +636,10 @@ def _diagnosis(snapshot: Snapshot) -> str:
 
 
 def _provenance() -> str:
-    """Si corre desde un AppImage o desde el código.
+    """Whether it runs from an AppImage or from source.
 
-    Importa más de lo que parece: desde un AppImage el ayudante privilegiado
-    necesita un rodeo, y un «no me deja elevar permisos» sin este dato no lleva
-    a ninguna parte.
+    It matters more than it seems: from an AppImage the privileged helper
+    needs a detour, and «it won't let me elevate» without this goes nowhere.
     """
     import os
 

@@ -1,28 +1,29 @@
-"""Una prueba de rendimiento que dice en qué condiciones se hizo.
+"""A benchmark that says under what conditions it ran.
 
-La cifra de un benchmark no vale nada por sí sola. El mismo procesador da
-resultados muy distintos según el gobernador de energía, según lo caliente que
-esté, según si otro programa le está robando la mitad de los núcleos. Quien
-compara su número con el de internet y no cuadra se queda sin saber por qué.
+A benchmark's figure means nothing alone. The same processor gives very
+different results depending on the power governor, how hot it is, or
+another program taking half its cores. Whoever compares their number with
+one online and finds it doesn't match is left not knowing why.
 
-Silux ya sabe leer todo eso mientras trabaja, así que aquí la prueba no
-devuelve un número: devuelve un número **y las condiciones en las que salió**.
-Si el gobernador estaba en ahorro, lo dice. Si la CPU bajó de frecuencia a
-mitad de prueba, lo dice. Si había carga de fondo, avisa de que el resultado no
-es comparable. Eso es lo que convierte una cifra en un diagnóstico.
+Silux can already read all of that while it works, so here the benchmark
+returns a number **and the conditions it came out under**. If the governor
+was saving power, it says so. If the CPU dropped frequency halfway, it says
+so. If there was background load, it warns the result isn't comparable.
 
-Sobre las cargas: son de la biblioteca estándar, y no por comodidad. Compilar
-un núcleo en C daría lo mismo (se probó: la misma estabilidad), pero dentro de
-un AppImage no hay compilador, y una prueba que solo funciona desde el código
-fuente no le sirve a quien descarga el programa. `zlib`, `bz2` y `hashlib`
-tienen su bucle en C igualmente, ya compilado, y liberan el intérprete mientras
-trabajan, así que reparten de verdad entre núcleos.
+The workloads come from the standard library: an AppImage carries no
+compiler, and a benchmark that only works from source is no use to whoever
+downloads the program. `zlib`, `bz2` and `hashlib` have their loops in C
+already compiled, and release the interpreter while working, so they truly
+spread across cores.
 
-`SHA-512` y no `SHA-256` a propósito: la instrucción `sha_ni` acelera la
-segunda y no la primera, así que con SHA-256 un procesador que la tenga saldría
-inflado y dejaría de poder compararse con uno que no. Vale para las dos cargas
-que usan hash, la del resumen y la de derivación de clave: en esta última el
-efecto sería incluso mayor, porque son miles de rondas encadenadas.
+`SHA-512` rather than `SHA-256` on purpose: the `sha_ni` instruction speeds
+up the second and not the first, so with SHA-256 a processor having it would
+come out inflated and stop being comparable with one that doesn't. That goes
+for both workloads using a hash, the digest and key derivation; in the
+latter the effect would be even larger, being thousands of chained rounds.
+
+Why these workloads and how they are measured, with the figures:
+docs/decisiones/cargas-del-benchmark.md.
 """
 
 from __future__ import annotations
@@ -39,62 +40,62 @@ from typing import Callable, Optional, Sequence
 
 SYS_CPU = "/sys/devices/system/cpu"
 
-# 4 MB con entropía media: ni tan repetido que la compresión sea trivial ni tan
-# aleatorio que no haya nada que comprimir.
+# 4 MB of medium entropy: neither so repetitive that compressing is trivial
+# nor so random that there's nothing to compress.
 PATTERN = bytes(range(256)) * 16384
-# Un trozo del anterior: la compresión pesada es tan lenta que con los 4 MB
-# enteros cada operación tardaría más que la medida entera.
+# A piece of the above: heavy compression is so slow that with the whole
+# 4 MB a single operation would outlast the measurement.
 MEDIUM = PATTERN[:65536]
 
-# Cuánto dura cada medida. Por debajo de tres segundos el resultado depende de
-# si al turbo le dio tiempo a subir; por encima de diez, la prueba entera se
-# hace larga sin cambiar la cifra.
+# How long each measurement lasts. Under three seconds the result depends on
+# whether the turbo had time to rise; over ten, the whole run gets long
+# without changing the figure.
 SECONDS = 5.0
 QUICK_SECONDS = 2.0
-# Los extremos de lo que se puede pedir. Por debajo de uno la cifra depende de
-# si al turbo le dio tiempo a subir; por encima de sesenta, la prueba se hace
-# eterna para medir lo mismo que a los treinta.
+# The limits of what can be asked. Under one second the figure depends on
+# whether the turbo had time to rise; past sixty, the run drags on to
+# measure what it measured at thirty.
 MIN_SECONDS = 1.0
-# Media hora por medida. Con seis medidas eso son tres horas de prueba, que es
-# más de lo que nadie necesita, pero quien quiera dejar el equipo cociéndose
-# toda la tarde para ver si aguanta tiene derecho a pedirlo.
+# Half an hour per measurement. With six that's three hours, more than
+# anyone needs, but whoever wants to leave the machine cooking all afternoon
+# to see if it holds may ask for it.
 MAX_SECONDS = 1800.0
 
-# A partir de aquí, la carga de fondo estropea la medida.
+# From here on, background load spoils the measurement.
 ACCEPTABLE_LOAD = 10.0
-# Y a partir de aquí, la frecuencia cayó lo bastante como para decirlo.
+# And from here on, the frequency fell enough to say so.
 NOTABLE_DROP = 0.90
 
 
 @dataclass(frozen=True, slots=True)
 class Workload:
-    """Una de las cosas que se le pide hacer al procesador."""
+    """One of the things the processor is asked to do."""
 
     key: str
     name: str
     explanation: str
     work: Callable[[], object]
-    # Cuántos bytes recorre una operación. Solo lo declara la carga cuyo
-    # bloque no mide lo mismo en todas las máquinas: contar «operaciones por
-    # segundo» de un bloque que se dimensiona con la caché de cada equipo
-    # premiaba a los procesadores con poca caché en un 42,8 %, porque una
-    # operación sobre 64 MB no es la misma que sobre 192. Es una función y no
-    # un número porque ese tamaño se decide al arrancar la prueba.
+    # How many bytes one operation walks. Only declared by the workload whose
+    # block isn't the same on every machine: counting «operations per
+    # second» over a block sized by each machine's cache rewarded processors
+    # with little cache by 42.8 %, since an operation over 64 MB isn't one
+    # over 192. A function, not a number, because that size is decided when
+    # the benchmark starts.
     bytes_per_op: Optional[Callable[[], int]] = None
 
 
-# El bloque tiene que no caber en la caché, y cuánto es eso depende del
-# procesador: un 5800X3D lleva 96 MB de L3 y se traga entero un bloque de 64,
-# así que ahí la prueba mediría la caché y no la memoria. Se dimensiona al
-# doble de la L3 que haya, con un suelo para las CPU pequeñas y un techo para
-# no pedir media RAM prestada.
+# The block must not fit in the cache, and how much that is depends on the
+# processor: a 5800X3D has 96 MB of L3 and swallows a 64 MB block whole, so
+# there the benchmark would measure the cache and not memory. Sized at twice
+# the L3, with a floor for small CPUs and a ceiling so as not to borrow half
+# the RAM.
 MIN_BLOCK_MB = 64
 MAX_BLOCK_MB = 192
 _big: Optional[bytes] = None
 
 
 def _block_size_mb() -> int:
-    """En megas: el doble de la caché de último nivel, entre 64 y 192."""
+    """In megabytes: twice the last-level cache, between 64 and 192."""
     largest = 0
     for index in range(5):
         raw = _read(f"{SYS_CPU}/cpu0/cache/index{index}/size")
@@ -108,7 +109,7 @@ def _block_size_mb() -> int:
             value *= 1024
         elif raw.endswith("G"):
             value *= 1024 * 1024
-        largest = max(largest, value // 1024)          # a megas
+        largest = max(largest, value // 1024)          # to megabytes
     return max(MIN_BLOCK_MB, min(MAX_BLOCK_MB, largest * 2 or MIN_BLOCK_MB))
 
 
@@ -121,11 +122,11 @@ def _big_block() -> bytes:
 
 
 def _release_block() -> None:
-    """Devuelve los megas del bloque al terminar la prueba.
+    """Give back the block's megabytes when the benchmark ends.
 
-    Son hasta 192 MB, y el programa entero se mueve en 130: dejarlos vivos
-    después de medir dispararía el consumo el resto de la sesión por una
-    prueba que dura medio minuto.
+    Up to 192 MB, and the whole program lives in about 130: keeping them
+    after measuring would raise its footprint for the rest of the session
+    because of a benchmark lasting half a minute.
     """
     global _big
     _big = None
@@ -140,7 +141,7 @@ WORKLOADS: tuple[Workload, ...] = (
              "Enteros puros y sin instrucciones especializadas: mide el núcleo, "
              "no una aceleración concreta.",
              lambda: hashlib.sha512(PATTERN).digest()),
-    # bzip2 y no LZMA, y no es indiferente: ver `POR QUÉ NO LZMA` más abajo.
+    # bzip2 rather than LZMA, which matters: docs/decisiones/cargas-del-benchmark.md.
     Workload("compresion_dura", "Compresión pesada",
              "Lo mismo pero apretando de verdad: bzip2 ordena el bloque entero "
              "antes de comprimirlo, así que hace mucho más trabajo por byte y "
@@ -151,12 +152,10 @@ WORKLOADS: tuple[Workload, ...] = (
              "hace un gestor de contraseñas al abrirse, y no lo acelera ninguna "
              "instrucción especial.",
              lambda: hashlib.pbkdf2_hmac("sha512", b"silux", b"benchmark", 12_000)),
-    # Se llamaba «Memoria» y prometía medir el camino hasta la RAM. No lo
-    # mide: con un bloque de 4 MB, que cabe de sobra en la caché, da lo mismo
-    # que con 384 —21 GB/s en los dos—, porque el cuello lo pone el cálculo
-    # del CRC y no la memoria (la RAM de esa misma máquina da 48,5 GB/s
-    # medidos con `membench`). Lo que sí es cierto es que de las cinco es la
-    # que menos gana con los hilos.
+    # Once called «Memory», promising to measure the path to RAM. It doesn't:
+    # a 4 MB block that fits easily in the cache gives the same as 384 MB,
+    # because the CRC computation is the bottleneck, not memory. What is true
+    # is that of the five it gains least from threads.
     Workload("verificacion", "Suma de verificación",
              "Recorre un bloque grande calculando una suma de comprobación. El "
              "cuello lo pone el propio cálculo y no la RAM, así que mide enteros "
@@ -166,91 +165,21 @@ WORKLOADS: tuple[Workload, ...] = (
              bytes_per_op=lambda: len(_big_block())),
 )
 
-# POR QUÉ NO LZMA. La compresión pesada fue `lzma.compress(MEDIO, preset=0)`
-# hasta que se midió de qué venía la dispersión de la puntuación multihilo.
-# LZMA alterna entre dos velocidades —25 800 y 32 500 operaciones por segundo
-# en un 5800X3D, un 26 % de diferencia— según le llueva o no una tormenta de
-# fallos de página: 280 000 por segundo contra ninguno, de los búferes que
-# pide en cada llamada. El estado se decide por proceso, tarda entre cero y
-# más de veinticinco segundos en asentarse, y a veces no se asienta; dentro de
-# una misma medida es plano, así que alargarla no lo promedia, lo hereda. Con
-# eso, la puntuación entera dispersaba un 4,7 % entre repeticiones del mismo
-# equipo, y quitando esta carga, un 0,3 %: era ella sola.
-#
-# Se probó a domarla y no se pudo. Rodar más no basta porque a veces no se
-# calma nunca. `mallopt` con el umbral de `mmap` fijo lo empeora —a 256 KB
-# baja a 4 787 op/s— porque fijarlo apaga el ajuste dinámico de glibc, que es
-# justo lo que llevaba al estado bueno. Bajar el diccionario lo hunde a un
-# tercio y subirlo a 1 MB, a un octavo. Y no es el asignador y ya: con
-# `preset=1` los fallos casi desaparecen y sigue dispersando un 18 %, o sea
-# que LZMA tiene además otra fuente de inestabilidad que no se aisló.
-#
-# bzip2 no tiene ninguna de las dos: dispersa un 2,1 % en vez de un 20,6 % y
-# reparte igual de bien (×9.9 con dieciséis hilos, contra ×10.9). Es más lenta
-# en operaciones por segundo, y da igual: lo que se compara es contra el
-# patrón, no contra otra carga.
-
-# No hay carga de coma flotante, y no es un olvido. Todo lo que la haría en
-# Python sin dependencias —sumar, multiplicar listas— tiene el bucle en C pero
-# manejando objetos del intérprete, así que no suelta el GIL: medido aquí,
-# escala ×1.0 con dieciséis hilos. Una prueba multihilo que no reparte no mide
-# el procesador, mide el candado.
-
-# QUÉ SE PERDIÓ AL QUITAR ZLIB DE LA PUNTUACIÓN. Desde la v6 puntúan dos de
-# las cinco —el resumen y la compresión pesada—, que son las únicas cuya
-# implementación no cambia con la distribución. El porqué, con las cifras,
-# está en `score.PUNTUABLES`; aquí está lo que costó, que es lo que hay que
-# recuperar y no se ha recuperado.
-#
-# No se fueron «tres cargas»: se fue un perfil. De las cinco, las dos únicas
-# donde tener más hilos por núcleo *resta* estaban entre las que salieron.
-# Medido en un i5-10400, doce hilos contra sus seis núcleos físicos:
-#
-#     compresión           +0,5 %
-#     resumen              +4,0 %
-#     compresión pesada   +15,0 %
-#     derivación           −5,3 %
-#     verificación        −13,1 %
-#
-# Con las cinco, el SMT sale a +0,2 % neto y la puntuación dice que doce hilos
-# rinden como seis núcleos (481 contra 483). Con las dos que quedan sale a
-# +9,5 %. La cifra no deja de distinguir piezas por esto —las distancias
-# medidas entre cuatro configuraciones se mantienen o crecen—, pero premia el
-# SMT más de lo que el equipo da en un abanico de trabajos.
-#
-# La carga que taparía el hueco tiene que ser código máquina propio, como el
-# que `membench` ya usa: es lo único que no cambia de un entorno a otro. El
-# mismo kernel da 12,95 y 13,02 millones de saltos por segundo en Python 3.14
-# y en 3.10 (±0,7 %), donde el sha512 que CPython trae dentro se va al doble
-# entre esas dos versiones y zlib a un ×9,7 entre distribuciones.
-#
-# Y tiene dos condiciones más, las dos medidas y ninguna evidente:
-#
-# 1. **De lectura secuencial, no de latencia.** El kernel de persecución de
-#    punteros que ya existe no sirve para esto: escala ×12,24 con doce hilos,
-#    o sea premia el SMT todavía más que las dos que quedan, porque la
-#    latencia es justo lo que el SMT tapa. Lo que hace falta es saturar el
-#    bus: leyendo, un i5-10400 da 21-27 GB/s con un hilo, 32 con seis y 29 con
-#    doce, o sea ×0,89 al pasar de seis a doce. Más hilos estorban, que es el
-#    perfil que falta.
-#
-# 2. **Un bloque propio por hilo.** Con el bloque compartido —que es lo que
-#    hace la verificación con su `_bloque_grande()` global— los hilos recorren
-#    en fila el mismo camino y se sirven unos a otros desde la caché: doce
-#    hilos «miden» 131 GB/s en un equipo cuya RAM da 32. Ese es el fallo que
-#    no hay que repetir, y explica de paso por qué el ×5,96 de escalado de esa
-#    carga nunca fue el camino hasta la memoria.
+# No floating-point workload, on purpose: done in Python without
+# dependencies it handles interpreter objects and doesn't release the GIL,
+# so it doesn't spread across threads. Why, and what the score lost when
+# zlib's workloads left it: docs/decisiones/cargas-del-benchmark.md.
 
 
 @dataclass(frozen=True, slots=True)
 class Measure:
-    """El resultado de una carga con un número de hilos."""
+    """A workload's result with a number of threads."""
 
     load: str
     threads: int
     operations: int
     seconds: float
-    # Los bytes que recorrió cada operación, si la carga lo declara.
+    # The bytes each operation walked, if the workload declares it.
     bytes_: Optional[int] = None
 
     @property
@@ -259,12 +188,12 @@ class Measure:
 
     @property
     def rate(self) -> float:
-        """Lo que se puntúa: bytes por segundo donde el tamaño varía.
+        """What's scored: bytes per second where the size varies.
 
-        Es la cifra que no depende de cómo de grande sea el bloque en esta
-        máquina. Donde la carga tiene una entrada fija —las otras cuatro— las
-        dos formas son proporcionales y da lo mismo, así que se sigue contando
-        por operaciones y no hace falta declarar nada.
+        The figure that doesn't depend on how big the block is on this
+        machine. Where the workload's input is fixed (the other four) both
+        ways are proportional, so it keeps counting operations and declares
+        nothing.
         """
         if not self.seconds:
             return 0.0
@@ -275,14 +204,14 @@ class Measure:
 
 @dataclass(frozen=True, slots=True)
 class Conditions:
-    """En qué estado estaba la máquina mientras se medía."""
+    """The machine's state while it was being measured."""
 
-    # Lo que ocupaba otro programa mientras se medía, no antes de empezar. Son
-    # dos preguntas distintas y la segunda es la que importa: una prueba de
-    # quince segundos por carga dura dos minutos y medio, y `background_load`
-    # se tomaba en tres décimas antes del primer paso. Con eso, alguien que
-    # abriera el navegador a mitad salía con «0 % de carga de fondo» y una
-    # cifra baja sin explicación.
+    # What another program took while measuring, not before starting. The
+    # second question is the one that matters: a run of fifteen seconds per
+    # workload lasts two and a half minutes, and `background_load` is taken
+    # in three tenths of a second before the first step. With only that,
+    # someone opening a browser halfway got «0 % background load» and a low
+    # figure with no explanation.
     background_peak: Optional[float] = None
     frequency_avg_hz: Optional[int] = None
     frequency_peak_hz: Optional[int] = None
@@ -295,7 +224,7 @@ class Conditions:
 
     @property
     def throttled(self) -> bool:
-        """Si la frecuencia cayó de forma apreciable durante la prueba."""
+        """Whether the frequency fell noticeably during the run."""
         if not (self.frequency_peak_hz and self.frequency_end_hz):
             return False
         return self.frequency_end_hz < self.frequency_peak_hz * NOTABLE_DROP
@@ -303,7 +232,7 @@ class Conditions:
 
 @dataclass(frozen=True, slots=True)
 class Result:
-    """Las medidas y el contexto que dice si valen."""
+    """The measurements, and the context that says whether they hold."""
 
     measures: tuple[Measure, ...] = ()
     conditions: Conditions = field(default_factory=Conditions)
@@ -314,7 +243,7 @@ class Result:
                      if m.load == load and m.threads == threads), None)
 
     def scaling(self, load: str, threads: int) -> Optional[float]:
-        """Cuánto multiplica el rendimiento al usar todos los hilos."""
+        """How much performance multiplies with every thread."""
         one = self.find(load, 1)
         many = self.find(load, threads)
         if not (one and many and one.per_second):
@@ -326,19 +255,20 @@ def run(quick: bool = False, on_progress: Optional[Callable[[str, float], None]]
         stop: Optional[threading.Event] = None,
         seconds: Optional[float] = None,
         loads: Optional[Sequence[str]] = None) -> Result:
-    """Ejecuta la prueba entera. Bloquea: llámese desde un hilo aparte.
+    """Run the whole benchmark. Blocks: call it from another thread.
 
-    `on_progress` recibe qué se está midiendo y cuánto se lleva, de 0 a 1.
-    `stop` permite cancelar entre medidas.
-    `seconds` fija cuánto dura cada medida; sin él manda `quick`.
-    `loads` son las claves de las cargas que se miden; sin él, todas. Van en
-    el orden de la prueba, no en el que se pidan. Un resultado con menos
-    cargas de las que puntúan no da puntuación: es para medir una cosa suelta.
+    `on_progress` gets what is being measured and how far along, 0 to 1.
+    `stop` allows cancelling between measurements.
+    `seconds` sets how long each measurement lasts; without it, `quick`
+    decides.
+    `loads` are the keys of the workloads to measure; without it, all. They
+    run in the benchmark's order, not the order asked. A result with fewer
+    workloads than score gets no score: it is for measuring one thing.
 
-    Alargar la prueba no cambia la cifra, cambia en qué condiciones se toma:
-    a los cinco segundos el turbo ya subió y el disipador aún no se ha
-    calentado, mientras que a los treinta se mide con el equipo asentado, que
-    es lo que de verdad va a pasar mientras se juega o se compila.
+    Lengthening the run doesn't change the figure, it changes the conditions
+    it's taken in: at five seconds the turbo has risen and the heatsink isn't
+    warm yet, while at thirty the machine has settled, which is what really
+    happens while gaming or compiling.
     """
     duration = (max(MIN_SECONDS, min(MAX_SECONDS, float(seconds)))
                 if seconds else (QUICK_SECONDS if quick else SECONDS))
@@ -385,41 +315,32 @@ def run(quick: bool = False, on_progress: Optional[Callable[[str, float], None]]
     return Result(tuple(measures), conditions, _warnings(conditions))
 
 
-# -- ejecución ---------------------------------------------------------------
+# -- running -----------------------------------------------------------------
 
-# Unas vueltas que no se cuentan, antes de cada medida. La primera vez que una
-# carga corre en un proceso da una cifra distinta de todas las siguientes, y lo
-# que se paga ahí no es del procesador sino del asignador, que sirve con `mmap`
-# los búferes holgados hasta que glibc sube su umbral por su cuenta.
-#
-# Con la compresión pesada de entonces —LZMA— la diferencia era del 65 %:
-# 1 780 operaciones por segundo la primera vez y 2 950 a partir de la segunda.
-# Con bzip2 es del 2,7 % a un hilo (151,7 la primera y 156,0 después), porque
-# no pide en cada llamada un búfer que cruce el umbral. Sigue mereciendo la
-# pena: cuesta unas centésimas y quita un sesgo que caía siempre en la misma
-# cifra, la de un hilo, por medirse antes que las demás.
-#
-# Con unas ochenta vueltas ya está en régimen; se dejan ciento veinte de
-# margen. Lo que el rodaje no arregla es la inestabilidad de LZMA que la sacó
-# de aquí: esa no se calma en ningún número de vueltas.
+# Some uncounted rounds before each measurement. The first time a workload
+# runs in a process gives a different figure from all the later ones, and
+# what's paid there is the allocator's, not the processor's. About eighty
+# rounds settle it; a hundred and twenty leave a margin.
 IDLE_ROUNDS = 120
 
-# Tope por si la carga es lentísima en un equipo modesto: más vale medir con
-# el arranque a medio pagar que dejar la prueba colgada un minuto por carga.
+# A cap in case the workload is very slow on a modest machine: better to
+# measure with the start-up half paid than leave the run hanging a minute per
+# workload.
 IDLE_CAP_S = 2.0
 
 
 def _warm_up(workload: "Workload", threads: int) -> None:
-    """Deja la carga en régimen para que la medida no pague su arranque.
+    """Bring the workload to a steady state so the measurement doesn't pay
+    for its start-up.
 
-    Como el orden es un hilo primero y todos después, ese arranque lo pagaba
-    siempre la medida de un hilo: la escala entre uno y todos salía en catorce
-    veces con un procesador de ocho núcleos.
+    With one thread measured first, that start-up always fell on the
+    single-thread figure, and the scaling from one to all came out at
+    fourteen times on an eight-core processor.
     """
-    # Se cuentan vueltas y no segundos. Lo que hay que dejar atrás es el
-    # arranque de la carga, que son unas ochenta llamadas, y eso no dura lo
-    # mismo en un Ryzen que en un portátil de hace diez años: medio segundo
-    # aquí son cientos de vueltas y allí puede que ninguna.
+    # Rounds, not seconds: what must be left behind is the workload's
+    # start-up, about eighty calls, and that doesn't last the same on a fast
+    # desktop as on a ten-year-old laptop: half a second is hundreds of rounds
+    # on one and maybe none on the other.
     end = time.perf_counter() + IDLE_CAP_S
 
     def loop() -> None:
@@ -438,10 +359,10 @@ def _warm_up(workload: "Workload", threads: int) -> None:
 
 
 def _measure(workload: Workload, threads: int, duration: float) -> Measure:
-    """Cuenta cuántas veces cabe la carga en el tiempo dado.
+    """Count how many times the workload fits in the given time.
 
-    Se mide por tiempo y no por trabajo fijo porque una cantidad que en un
-    Ryzen tarda un segundo, en un portátil de hace diez años tarda treinta.
+    By time and not by a fixed amount of work, since what takes a second on
+    a fast desktop takes thirty on a ten-year-old laptop.
     """
     _warm_up(workload, threads)
     stop = threading.Event()
@@ -471,28 +392,15 @@ def _measure(workload: Workload, threads: int, duration: float) -> Measure:
                   bytes_=workload.bytes_per_op() if workload.bytes_per_op else None)
 
 
-# Aquí vivían `_fijar_afinidad` y `_nucleo_preferido`, que ataban el hilo de
-# la medida de un núcleo al que el firmware señala como mejor. La idea era
-# quitar ruido —un hilo que salta de núcleo tira la caché— y hacía justo lo
-# contrario: medida contra medida, atarlo cuesta un 40 % en la compresión
-# pesada y un 11 % en la derivación de clave, y la dispersión entre
-# repeticiones sale igual o peor que dejándolo suelto.
-#
-# Y como la afinidad solo se fijaba al medir con un hilo, esa penalización
-# caía siempre en la misma cifra. La prueba entera daba 1 771 operaciones por
-# segundo a un hilo y 24 842 a dieciséis: una escala de catorce veces en un
-# procesador de ocho núcleos, que no es posible. Sin atar nada sale 3 004 y
-# 24 099, ocho veces, que es lo que dan las otras cuatro cargas.
-#
-# Si algún día vuelve a hacer falta, que sea con una medición delante: la
-# dispersión sin atar, en este equipo y con el gobernador en «performance»,
-# fue del 1,3 % al 3,3 % según la carga.
+# The measuring thread isn't pinned to any core: pinning it made the
+# single-thread figure worse, not steadier. The figures:
+# docs/decisiones/cargas-del-benchmark.md.
 
 
-# -- contexto ----------------------------------------------------------------
+# -- context -----------------------------------------------------------------
 
 class _Watcher:
-    """Sigue la frecuencia y la temperatura mientras se mide."""
+    """Follows frequency and temperature while measuring."""
 
     def __init__(self) -> None:
         self._frequencies: list[int] = []
@@ -513,8 +421,8 @@ class _Watcher:
 
     def _loop(self) -> None:
         while not self._stop_event.is_set():
-            # Solo cuenta la frecuencia más alta del momento: la media de todos
-            # los núcleos, con la mitad dormidos, no dice a qué fue el trabajo.
+            # Only the highest frequency at the moment counts: the mean of
+            # every core, half of them asleep, doesn't say what the work ran at.
             current = [_read_int(f"{SYS_CPU}/cpu{i}/cpufreq/scaling_cur_freq")
                      for i in range(os.cpu_count() or 1)]
             valid = [p for p in current if p]
@@ -527,12 +435,12 @@ class _Watcher:
             self._stop_event.wait(0.25)
 
     def _stolen_now(self) -> Optional[float]:
-        """Qué parte de la máquina se lleva otro programa, ahora mismo.
+        """How much of the machine another program takes, right now.
 
-        No vale mirar `/proc/stat` a secas mientras la prueba corre: la prueba
-        ocupa el equipo entero y todo saldría al cien por cien. Lo que se busca
-        es la resta, lo ocupado menos lo que consume este mismo proceso, que es
-        justo lo que le está quitando sitio a la medida.
+        `/proc/stat` alone won't do while the run goes: the benchmark
+        occupies the whole machine and everything would read a hundred
+        percent. What's sought is the difference, busy minus what this very
+        process uses, which is what's taking room from the measurement.
         """
         now = _jiffies()
         before, self._cpu_before = self._cpu_before, now
@@ -545,8 +453,8 @@ class _Watcher:
             return None
         busy = elapsed - (idle - idle_before)
         stolen = busy - (own - own_before)
-        # Puede salir negativo por unas centésimas: los dos ficheros no se leen
-        # en el mismo instante. Cero es la respuesta, no un error.
+        # It can come out negative by a hundredth: the two files aren't read
+        # at the same instant. Zero is the answer, not an error.
         return max(0.0, stolen / elapsed * 100)
 
     def average(self) -> Optional[int]:
@@ -556,7 +464,7 @@ class _Watcher:
         return max(self._frequencies) if self._frequencies else None
 
     def final(self) -> Optional[int]:
-        """La media del último tramo, para ver si acabó más baja que empezó."""
+        """The last stretch's mean, to see whether it ended lower than it began."""
         if len(self._frequencies) < 8:
             return self._frequencies[-1] if self._frequencies else None
         tail = self._frequencies[-len(self._frequencies) // 4:]
@@ -566,17 +474,17 @@ class _Watcher:
         return max(self._temperatures) if self._temperatures else None
 
     def stolen_peak(self) -> Optional[float]:
-        """Lo más que llegó a robarle otro programa durante la prueba.
+        """The most another program took from it during the run.
 
-        El pico y no la media: lo que estropea una medida es que algo se
-        despierte a mitad, y promediado entre dos minutos y medio eso se diluye
-        hasta parecer nada.
+        The peak and not the mean: what spoils a measurement is something
+        waking up halfway, and averaged over two and a half minutes that
+        dilutes into nothing.
         """
         return round(max(self._stolen), 1) if self._stolen else None
 
 
 def _warnings(conditions: Conditions) -> tuple[str, ...]:
-    """Lo que hay que saber antes de comparar esta cifra con otra."""
+    """What to know before comparing this figure with another."""
     warnings = []
     if conditions.background_load and conditions.background_load > ACCEPTABLE_LOAD:
         warnings.append(
@@ -584,11 +492,10 @@ def _warnings(conditions: Conditions) -> tuple[str, ...]:
             "empezar. El resultado no es comparable con el de una máquina en "
             "reposo."
         )
-    # Lo de arriba mira cómo estaba el equipo antes de empezar; esto, lo que
-    # pasó mientras se medía. Son preguntas distintas y la segunda es la que
-    # estropea una prueba: quien la lanza y se va a hacer otra cosa, o quien
-    # tiene una actualización en marcha sin saberlo, salía con «0 % de carga de
-    # fondo» y una cifra baja que no tenía explicación en ninguna parte.
+    # The above looks at the machine before starting; this, at what happened
+    # while measuring. The second is what spoils a run: whoever starts it and
+    # goes off to do something else, or has an update running unknowingly,
+    # got «0 % background load» and a low figure explained nowhere.
     if (conditions.background_peak
             and conditions.background_peak > ACCEPTABLE_LOAD):
         warnings.append(
@@ -612,17 +519,17 @@ def _warnings(conditions: Conditions) -> tuple[str, ...]:
 
 
 def _jiffies() -> Optional[tuple[int, int, int]]:
-    """Del sistema: totales e inactivos; y lo que lleva gastado este proceso.
+    """The system's totals and idle time, and what this process has used.
 
-    Los tres a la vez y del mismo instante, porque lo que se busca es la resta
-    entre ellos.
+    All three at once and from the same instant, since what's sought is the
+    difference between them.
     """
     try:
         with open("/proc/stat", encoding="utf-8") as handle:
             numbers = [int(x) for x in handle.readline().split()[1:8]]
         with open(f"/proc/{os.getpid()}/stat", encoding="utf-8") as handle:
             fields = handle.read().rsplit(")", 1)[1].split()
-        # utime + stime, que es lo que este proceso ha consumido de CPU.
+        # utime + stime: the CPU this process has used.
         own = int(fields[11]) + int(fields[12])
     except (OSError, ValueError, IndexError):
         return None
@@ -632,7 +539,7 @@ def _jiffies() -> Optional[tuple[int, int, int]]:
 
 
 def _background_load() -> Optional[float]:
-    """Qué porcentaje de la máquina está ocupado antes de empezar."""
+    """What share of the machine is busy before starting."""
     def snapshot() -> Optional[tuple[int, int]]:
         try:
             with open("/proc/stat", encoding="utf-8") as handle:
@@ -642,7 +549,7 @@ def _background_load() -> Optional[float]:
         if len(fields) < 5:
             return None
         numbers = [int(c) for c in fields[1:8] if c.isdigit()]
-        return sum(numbers), numbers[3]        # total, inactivo
+        return sum(numbers), numbers[3]        # total, idle
 
     before = snapshot()
     if before is None:
@@ -656,7 +563,7 @@ def _background_load() -> Optional[float]:
 
 
 def _temperature() -> Optional[float]:
-    """La del procesador, del primer chip que la publique."""
+    """The processor's, from the first chip that publishes it."""
     for index in range(16):
         name = _read(f"/sys/class/hwmon/hwmon{index}/name")
         if name in ("k10temp", "coretemp", "zenpower", "cpu_thermal"):

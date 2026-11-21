@@ -12,6 +12,7 @@ lo que se probó y salió mal, a los mensajes de commit.
 |---|---|
 | [Las versiones de prueba se llaman «0.4-pruebaN» y son la 0.4.0rcN](versiones.md) | noviembre de 2026 |
 | [La puntuación usa dos cargas de cinco](escala-del-benchmark.md) | septiembre de 2026 |
+| [Las cargas del benchmark: cuáles, cómo se miden y lo que falta](cargas-del-benchmark.md) | 21 de noviembre de 2026 |
 | [Ningún ritmo sale de una ventana de menos de medio intervalo](ventana-de-los-ritmos.md) | 21 de noviembre de 2026 |
 | [Un vatio imposible se descarta y el informe lo cuenta](vatios-imposibles.md) | 21 de noviembre de 2026 |
 | [La lógica nunca decide sobre un texto traducido](sin-textos-traducidos.md) | 21 de noviembre de 2026 |

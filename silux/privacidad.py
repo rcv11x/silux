@@ -1,14 +1,13 @@
-"""Quitarle a una foto del equipo lo que identifica a quien la sacó.
+"""Take out of a snapshot what identifies whoever took it.
 
-El informe de fallos ya tapa estos campos al escribirlos, porque está pensado
-para pegarlo en un issue público. Una captura de pantalla tiene el mismo
-problema y no tenía la misma salida: el número de serie de la gráfica y el
-nombre del equipo salen en la ventana, y de ahí a un foro o al README de un
-repositorio hay un paso.
+The bug report already covers these fields when writing them, since it is
+meant for a public issue. A screenshot has the same problem: the graphics
+card's serial number and the machine's name appear in the window, and from
+there to a forum or a repository's README is one step.
 
-No se borran los datos: se sustituyen por algo del mismo largo y con la misma
-pinta, para que la ventana siga midiendo lo mismo y la captura enseñe cómo se
-ve el programa de verdad.
+The data isn't deleted: it is replaced by something of the same length and
+look, so the window measures the same and the screenshot shows how the
+program really looks.
 """
 
 from __future__ import annotations
@@ -25,37 +24,36 @@ from typing import Optional
 from . import sysroot
 from .model import Snapshot, short_vendor
 
-# Lo que se pone en lugar de lo de cada uno. El nombre y la IPv4 parecen de
-# una casa cualquiera a propósito (decisión del autor, 19 de noviembre de
-# 2026): una red 192.168.1.x con su puerta en .1 es la más común que hay, y
-# quien lee un informe no se para en ella. `tools/comprobar_privacidad.py` las
-# acepta por ser estas; cualquier otra privada la da por real.
+# What goes in place of each person's own. The name and IPv4 look like any
+# home's on purpose: a 192.168.1.x network with its gateway at .1 is the most
+# common there is, and whoever reads a report doesn't stop at it.
+# `tools/comprobar_privacidad.py` accepts these for being these; any other
+# private one it takes as real.
 HOST_NAME = "silux-pc"
 IPV4 = "192.168.1.120"
 GATEWAY = "192.168.1.1"
-# Del bloque que la RFC 3849 y la RFC 7042 reservan para documentación: no
-# encaminan a ninguna parte.
+# From the block RFC 3849 and RFC 7042 reserve for documentation: they route
+# nowhere.
 IPV6 = "2001:db8::11"
 MAC = "00:00:5e:00:53:af"
-# La de una interfaz que no tiene: el bucle local. No es de nadie.
+# That of an interface that has none: the loopback. Nobody's.
 NO_MAC = "00:00:00:00:00:00"
-# Lo que se ponía hasta el 19 de noviembre de 2026, tan inventado como lo de
-# ahora: los volcados de antes lo llevan. «equipo» además es una palabra, y
-# tomarlo por el nombre de la máquina tapaba «Este equipo no publica…».
+# The earlier substitutes, as made up as today's: older dumps carry them.
+# «equipo» is also a word, and taking it for the machine's name covered
+# «Este equipo no publica…».
 OLD_SUBSTITUTES = frozenset({"equipo", "192.0.2.11", "192.0.2.1"})
-# Lo que se pone en lugar de una interfaz con un nombre elegido por alguien.
+# What goes in place of an interface whose name someone chose.
 INTERFACE = "interfaz{}"
 
-# Los nombres que pone el sistema y no una persona: los predecibles de systemd
-# (`enp6s0`, `wlo1`, `enx001122334455`), los clásicos del kernel y los de las
-# herramientas que crean interfaces solas —Docker, libvirt, Tailscale,
-# WireGuard con su nombre de ejemplo—. Son los que hacen falta para
-# diagnosticar y no dicen nada de nadie. Lo demás lo eligió alguien, y eso es
-# justo lo que puede llevar su nombre: un `wg-quick` con el fichero
-# `ana_wg0.conf` crea una interfaz `ana_wg0`, y ningún sustituto del hostname
-# sabe que «ana» es una persona. Por eso aquí se enumera lo permitido, no lo
-# prohibido, y los patrones son estrictos: con `en*` a secas, `enrique-vpn`
-# pasaría por una tarjeta de red.
+# The names the system gives, not a person: systemd's predictable ones
+# (`enp6s0`, `wlo1`, `enx001122334455`), the kernel's classic ones, and those
+# of tools that create interfaces on their own (Docker, libvirt, Tailscale,
+# WireGuard with its example name). They are what diagnosis needs and say
+# nothing about anyone. The rest someone chose, and that is exactly what can
+# carry their name: `wg-quick` with a `<user>_wg0.conf` file creates a
+# `<user>_wg0` interface, and no hostname substitute knows that is a person.
+# So what's allowed is listed, not what's forbidden, and the patterns are
+# strict: with a bare `en*`, `enrique-vpn` would pass for a network card.
 _SYSTEM_NAME = re.compile(r"""
     lo
   | (?:en|wl|ww|ib|sl)(?:x[0-9a-f]{12}|[oPpscvabui]\d+(?:[fdnsupcvi]\d+)*)
@@ -72,9 +70,9 @@ _SYSTEM_NAME = re.compile(r"""
 """, re.VERBOSE)
 
 
-# Los puntos de montaje que pone el sistema y no dicen nada de nadie. Los
-# demás llevan el nombre del usuario o la etiqueta que alguien le puso a un
-# disco: `/run/media/ana/FOTOS`, `/home/ana/datos`.
+# The mount points the system sets, which say nothing about anyone. The rest
+# carry the user's name or the label someone gave a disk:
+# `/run/media/<user>/PHOTOS`, `/home/<user>/data`.
 _SYSTEM_MOUNTS = frozenset((
     "/", "/boot", "/boot/efi", "/efi", "/home", "/root", "/usr", "/var",
     "/var/log", "/var/lib", "/var/cache", "/opt", "/srv", "/tmp", "/nix",
@@ -111,7 +109,7 @@ def hide_cmdline_identifiers(cmdline: str) -> tuple[str, ...]:
 
 
 def is_system_name(name: str) -> bool:
-    """Si una interfaz se llama como la llama el sistema y no una persona."""
+    """Whether an interface is named as the system names it, not a person."""
     return bool(_SYSTEM_NAME.fullmatch(name))
 
 
@@ -121,23 +119,22 @@ MAC_IN_NAME = re.compile(r"((?:en|wl|ww)x)([0-9a-f]{12})")
 
 
 def name_without_mac(name: str, index: int) -> str:
-    """`enx001122334455` with the substitute MAC number `orden` in its name."""
+    """`enx001122334455` with substitute MAC number `index` in its name."""
     match = MAC_IN_NAME.fullmatch(name)
     if match is None:
         return name
     return match.group(1) + _fake_mac(index).replace(":", "")
 
 
-# Lo que pone el anonimizado, y por eso no es de nadie: encontrarlo en un
-# volcado es encontrar el sustituto. Uno de verdad puede valer lo mismo —una
-# puerta de enlace 192.168.1.1 es lo más común—, y entonces está tan tapado
-# como el resto.
+# What the anonymizer writes, and so nobody's: finding it in a dump is
+# finding the substitute. A real value may be the same (a 192.168.1.1
+# gateway is the most common), and then it is as covered as the rest.
 _NUMBERED_SUBSTITUTE = re.compile(r"interfaz\d+|/media/unidad\d+|00:00:5e:00:53:[0-9a-f]{2}"
                                  r"|(?:en|wl|ww)x00005e0053[0-9a-f]{2}")
 
 
 def is_substitute(value: str) -> bool:
-    """Si es lo que pone el anonimizado (o ceros), no algo de alguien."""
+    """Whether it's what the anonymizer writes (or zeros), not someone's."""
     clean = (value or "").strip().lower()
     return (clean in {HOST_NAME, IPV4, GATEWAY, IPV6, MAC, NO_MAC, *OLD_SUBSTITUTES}
             or not clean.strip("0:.- ") or bool(_NUMBERED_SUBSTITUTE.fullmatch(clean)))
@@ -169,8 +166,8 @@ def common_words(*texts: Optional[str]) -> frozenset[str]:
 
 
 def machine_words(root: str = "/") -> frozenset[str]:
-    """Lo mismo, leído de un sistema: `/etc/os-release` y los fabricantes de
-    la tabla DMI (de esta máquina, o de un volcado)."""
+    """The same, read from a system: `/etc/os-release` and the makers in the
+    DMI table (of this machine, or of a dump)."""
     base = pathlib.Path(root)
     texts = []
     for line in _read(base / "etc/os-release").splitlines():
@@ -200,7 +197,7 @@ def is_common_host_name(name: Optional[str], words: frozenset[str]) -> bool:
 
 
 def _rename(text: Optional[str], changes: dict[str, str]) -> Optional[str]:
-    """Sustituye cada nombre de interfaz cuando aparece como nombre entero."""
+    """Replace each interface name where it appears as a whole word."""
     if not text:
         return text
     for old, new in changes.items():
@@ -209,40 +206,39 @@ def _rename(text: Optional[str], changes: dict[str, str]) -> Optional[str]:
 
 
 def _fake_mac(index: int) -> str:
-    """La dirección de documentación número `orden`, empezando por `MAC`.
+    """The documentation address number `index`, starting from `MAC`.
 
-    El bloque que reserva la RFC 7042 tiene 256, y se da la vuelta: con más
-    tarjetas distintas que eso se repetiría alguna, que es mejor que salirse
-    de él.
+    The block RFC 7042 reserves has 256, and it wraps around: with more
+    distinct cards than that one would repeat, which beats leaving the block.
     """
     prefix, _sep, last = MAC.rpartition(":")
     return f"{prefix}:{(int(last, 16) + index) % 256:02x}"
 
 
 def _mask(value: Optional[str], fill: str = "0") -> Optional[str]:
-    """Mantiene el largo para que nada se recoloque al ocultarlo."""
+    """Keep the length so nothing shifts when it's covered."""
     if not value:
         return value
     return fill * len(value)
 
 
 def _without_host(text: Optional[str], host: Optional[str]) -> Optional[str]:
-    """Quita el nombre del equipo de donde se haya colado.
+    """Take the machine's name out of wherever it slipped in.
 
-    Hace falta porque el nombre no vive solo en su campo: una interfaz de
-    Tailscale, de ZeroTier o un puente creado a mano se llaman como la
-    máquina, y lo mismo el aparato de sensores que la nombra.
+    Needed because the name doesn't live only in its field: a Tailscale or
+    ZeroTier interface, or a bridge made by hand, are named after the
+    machine, and so is the sensor device that names it.
 
-    Se busca como nombre entero y sin distinguir mayúsculas, que es como lo
-    trata el propio sistema. Como subcadena exacta se escapaba
-    «PORTATIL-ANA» y, con un hostname corto, destrozaba lo que no tenía nada
-    que ver: «lan» convertía `wlan0` en `wequipo0`. Entero, un nombre de dos
-    letras ya no rompe nada, así que tampoco hay que dejar de taparlo.
+    Looked for as a whole word, case-insensitive, as the system itself
+    treats it. As an exact substring it missed «LAPTOP-NAME» and, with a
+    short hostname, wrecked unrelated text: «lan» turned `wlan0` into
+    `wequipo0`. As a whole word, a two-letter name breaks nothing, so there's
+    no need to stop covering it either.
     """
     if not text or not host or len(host) < 2:
         return text
     if host == HOST_NAME or host in OLD_SUBSTITUTES:
-        return text            # ya está tapado
+        return text            # already covered
     return re.sub(rf"(?<![0-9A-Za-z]){re.escape(host)}(?![0-9A-Za-z])",
                   HOST_NAME, text, flags=re.IGNORECASE)
 
@@ -262,8 +258,8 @@ def without_home(text: str) -> str:
 def _common_words_of(snapshot: Snapshot) -> frozenset[str]:
     """The words of this photo that are everyone's: the makers and the
     machine's family and name as the firmware writes them, the distribution,
-    and the drivers and sensor chips (`palabras_del_equipo` does the same
-    reading a system)."""
+    and the drivers and sensor chips (`machine_words` does the same reading a
+    system)."""
     board, system = snapshot.board, snapshot.system
     texts = [*((board.system_vendor, board.vendor, board.chassis_vendor, board.system_family,
                  board.system_name, board.system_version, board.name) if board else ()),
@@ -290,13 +286,12 @@ def _mask_address(address: Optional[str], substitute: str) -> Optional[str]:
 
 
 def anonymize(snapshot: Snapshot) -> Snapshot:
-    """La misma foto sin lo que señala a un equipo concreto."""
+    """The same snapshot without what points to one specific machine."""
     changes: dict = {}
     host = snapshot.system.hostname if snapshot.system else None
-    # Las interfaces con nombre puesto por alguien, numeradas en el orden en
-    # que vienen. El mismo cambio se aplica después a todo lo que las nombra:
-    # la red crea una rama del árbol de sensores por interfaz, y un aviso
-    # puede citar una por su nombre.
+    # Interfaces named by someone, numbered in the order they come. The same
+    # change is then applied to everything naming them: the network makes a
+    # sensor-tree branch per interface, and a notice may cite one by name.
     names: dict[str, str] = {}
     for interface in snapshot.network:
         if not is_system_name(interface.name) and interface.name not in names:
@@ -314,8 +309,8 @@ def anonymize(snapshot: Snapshot) -> Snapshot:
         host = None
 
     if snapshot.gpus:
-        # El monitor también lleva su número de serie, en el EDID: se enseña
-        # en la ficha de cada pantalla.
+        # The monitor carries its serial number too, in the EDID: it's shown
+        # on each display's card.
         changes["gpus"] = tuple(
             dataclasses.replace(
                 g, unique_id=_mask(g.unique_id),
@@ -327,11 +322,11 @@ def anonymize(snapshot: Snapshot) -> Snapshot:
             for g in snapshot.gpus
         )
 
-    # Lo enchufado. El número de serie no se lee nunca, pero el inventario
-    # también señala: una llave de seguridad, un micrófono concreto, el
-    # modelo exacto de una cámara. Anónima, la foto dice qué clase de cosa es
-    # cada una y a qué velocidad va, que es lo que hace falta para un fallo,
-    # y no de qué marca.
+    # What's plugged in. The serial number is never read, but the inventory
+    # points to someone too: a security key, a specific microphone, a
+    # camera's exact model. Anonymous, the snapshot says what kind of thing
+    # each is and how fast it runs, which is what a bug needs, and not its
+    # brand.
     if snapshot.usb_devices:
         changes["usb_devices"] = tuple(
             dataclasses.replace(u, vendor=None, product=None, usb_id=None)
@@ -352,10 +347,9 @@ def anonymize(snapshot: Snapshot) -> Snapshot:
             for b in snapshot.batteries)
 
     if snapshot.network:
-        # Cada dirección física distinta, una falsa distinta: con la misma en
-        # todas, dos tarjetas salían con una sola dirección. Y la misma de
-        # verdad da la misma falsa, que es lo que pasa con un puente y la
-        # tarjeta que tiene debajo.
+        # Each distinct physical address gets a distinct fake one: with the
+        # same for all, two cards came out with one address. And the same
+        # real one gives the same fake, as with a bridge and the card under it.
         macs: dict[str, str] = {}
 
         def _mac_index(real: Optional[str]) -> Optional[str]:
@@ -366,10 +360,10 @@ def anonymize(snapshot: Snapshot) -> Snapshot:
         changes["network"] = tuple(
             dataclasses.replace(
                 i,
-                # El nombre también: las interfaces virtuales se llaman como
-                # la máquina más veces de lo que parece.
-                # Las del sistema se quedan como están, aunque el equipo se
-                # llame «lo» o «docker»; las demás, por su sustituto.
+                # The name too: virtual interfaces are named after the machine
+                # more often than it seems. The system's stay as they are,
+                # even if the machine is called «lo» or «docker»; the rest go
+                # by their substitute.
                 name=(names.get(i.name, i.name) if is_system_name(i.name)
                       else _clean(i.name, host, names) or i.name),
                 mac=_mac_index(i.mac),
@@ -398,9 +392,9 @@ def anonymize(snapshot: Snapshot) -> Snapshot:
 
     if snapshot.sensors and (names or host):
         sensors = tuple(
-            # La clave también, aunque no se pinte: va en la foto y en lo que
-            # se exporte de ella. El cambio es el mismo en cada muestreo, así
-            # que los mínimos y máximos que cuelgan de ella no se pierden.
+            # The key too, though not painted: it's in the snapshot and in
+            # whatever is exported from it. The change is the same every
+            # sample, so the minimums and maximums hanging from it aren't lost.
             dataclasses.replace(s, key=_clean(s.key, host, names),
                                 device=_clean(s.device, host, names),
                                 label=_clean(s.label, host, names))
@@ -433,15 +427,14 @@ def _read(path: pathlib.Path) -> str:
         return ""
 
 
-# -- lo de esta máquina ----------------------------------------------------------
+# -- this machine's ---------------------------------------------------------------
 
 def _ipv6_parts(address: ipaddress.IPv6Address) -> dict[str, str]:
-    """La dirección y lo que de ella basta para reconocer la máquina.
+    """The address and the parts of it enough to recognize the machine.
 
-    La mitad baja (el identificador de interfaz) es estable en una conexión y
-    no cambia con la red; en una global, además, la mitad alta dice de quién
-    es la conexión. Un test llegó a llevar una `fe80::` con los dos primeros
-    grupos del identificador de la máquina del autor y el resto a mano.
+    The low half (the interface identifier) is stable within a connection
+    and doesn't change with the network; in a global address the high half
+    also says whose connection it is.
     """
     parts = {}
     hex_text = address.exploded.replace(":", "")
@@ -475,7 +468,7 @@ def _own_addresses() -> dict[str, str]:
         if address.is_loopback:
             continue
         data.update(_ipv6_parts(address))
-    # /proc/net/fib_trie dice cada dirección local con «/32 host LOCAL» debajo.
+    # /proc/net/fib_trie gives each local address with «/32 host LOCAL» under it.
     previous = None
     for line in _read(pathlib.Path("/proc/net/fib_trie")).splitlines():
         if (m := re.search(r"\|-- (\d+\.\d+\.\d+\.\d+)$", line)):
@@ -485,19 +478,19 @@ def _own_addresses() -> dict[str, str]:
     return data
 
 
-# Lo que el firmware pone cuando no hay número de serie. Buscarlo daría por
-# delatora cualquier línea de código que lo reconozca.
+# What the firmware writes when there's no serial number. Looking for it would
+# flag any line of code that recognizes it.
 _FILLER = re.compile(r"(?i)filled by o\.?e\.?m|default string|not specified|system serial|"
                       r"chassis serial|^none$|^n/a$|0123456789|^unknown$")
 
 
-# Un concentrador raíz de USB da como «número de serie» su dirección PCI
-# («0000:00:14.0»), que está en cualquier ruta de sysfs y no es de nadie.
+# A USB root hub gives its PCI address («0000:00:14.0») as its «serial
+# number», which is in any sysfs path and nobody's.
 _PCI_ADDRESS = re.compile(r"^[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\.[0-7]$")
 
 
 def _own_serials() -> dict[str, str]:
-    """Los números de serie que se leen sin permisos (y los otros, si se puede)."""
+    """The serial numbers readable without permissions (and the others, if possible)."""
     data: dict[str, str] = {}
     places = {
         "/sys/block/*/device/serial": "el número de serie de un disco",
@@ -529,7 +522,7 @@ def _own_serials() -> dict[str, str]:
 
 
 def _edid_serials(edid: bytes) -> list[str]:
-    """El texto del descriptor de número de serie (0xFF), si no está a ceros."""
+    """The text of the serial number descriptor (0xFF), unless it's zeros."""
     serials = []
     for start in range(54, 126, 18):
         block = edid[start:start + 18]
@@ -541,7 +534,7 @@ def _edid_serials(edid: bytes) -> list[str]:
 
 
 def of_this_machine() -> dict[str, str]:
-    """Lo que identifica al equipo donde se está trabajando ahora mismo."""
+    """What identifies the machine being worked on right now."""
     data = {}
     if not is_common_host_name(socket.gethostname(), machine_words(str(sysroot.root() or "/"))):
         data[socket.gethostname()] = "el nombre de este equipo"
@@ -569,7 +562,7 @@ def of_this_machine() -> dict[str, str]:
     return {d: q for d, q in data.items() if d and len(d) >= 4 and not is_substitute(d)}
 
 
-# Una dirección de correo, y las que no son de nadie.
+# An email address, and those that are nobody's.
 EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 ALLOWED_EMAILS = re.compile(
     r"(noreply@anthropic\.com|noreply@github\.com|git@github\.com"
