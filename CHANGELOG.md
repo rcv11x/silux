@@ -13,6 +13,18 @@ que hace falta.
 
 ## Sin publicar
 
+### Consumo
+
+- Arreglado: un consumo imposible entraba en la gráfica, en el máximo y en la
+  media (una Iris Xe que gastaba 9 W tuvo un pico de 1336648637.3 W). Ahora
+  un vatio negativo o por encima de lo que puede dar la pieza (su PL4, o lo
+  que declara RAPL) se descarta, y el informe dice cuántos y con qué números.
+  Vale para el procesador y para la gráfica integrada de Intel.
+- Arreglado: el consumo del procesador leído con permisos se cronometraba
+  antes de leerse, y el ayudante puede esperar hasta 100 ms: algún segundo
+  salía hasta un 50 % alto. Ahora se cronometra donde se lee, y no se resta
+  una lectura de sysfs a otra del ayudante.
+
 ### Memoria
 
 - Arreglado: el fabricante de un módulo de memoria y el de sus chips salen

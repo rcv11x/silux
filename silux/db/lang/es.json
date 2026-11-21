@@ -1022,6 +1022,8 @@
   "plat.virt.active": "activa ({tipo}), en uso por KVM",
   "plat.virt.present": "el procesador la tiene ({tipo}); no está en uso",
   "power.cores": "núcleos",
+  "power.discarded": "Se han descartado {n} lecturas imposibles del consumo ({fuente}). La última: {ultima}",
+  "power.discarded.last": "{vatios} W, con un techo de {techo} W, de restar {antes} a {ahora} en {segundos} s.",
   "power.package": "Paquete:",
   "power.pl1": "Límite sostenido (PL1):",
   "power.pl2": "Límite de pico (PL2):",

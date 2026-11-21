@@ -1022,6 +1022,8 @@
   "plat.virt.active": "active ({tipo}), in use by KVM",
   "plat.virt.present": "the processor has it ({tipo}); not in use",
   "power.cores": "cores",
+  "power.discarded": "{n} impossible power readings were dropped ({fuente}). The last one: {ultima}",
+  "power.discarded.last": "{vatios} W, with a ceiling of {techo} W, from subtracting {antes} from {ahora} in {segundos} s.",
   "power.package": "Package:",
   "power.pl1": "Sustained limit (PL1):",
   "power.pl2": "Peak limit (PL2):",

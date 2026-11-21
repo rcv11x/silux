@@ -37,10 +37,16 @@ PAQUETE, DOMINIO = 60_000_000, 4_000_000
 
 
 def foto_con_el_contador_andando(nombre: str):
-    """La foto de un volcado con RAPL avanzando entre los dos muestreos."""
+    """La foto de un volcado con RAPL avanzando entre los dos muestreos, un
+    segundo después: 60 J and 4 J in a few milliseconds were thousands of
+    watts, which the impossible-watts check now drops."""
+    from unittest import mock
     from silux.collector import Collector
+    from silux.providers import rapl
 
-    with _herramienta().montado(EQUIPOS / nombre) as raiz:
+    reloj = [1000.0]
+    with _herramienta().montado(EQUIPOS / nombre) as raiz, \
+            mock.patch.object(rapl.time, "monotonic", lambda: reloj[0]):
         recolector = Collector()
         try:
             recolector.snapshot()
@@ -48,6 +54,7 @@ def foto_con_el_contador_andando(nombre: str):
                 paquete = contador.parent.name.count(":") == 1
                 contador.write_text(
                     f"{int(contador.read_text()) + (PAQUETE if paquete else DOMINIO)}\n")
+            reloj[0] += 1.0
             return recolector.snapshot()
         finally:
             recolector.close()

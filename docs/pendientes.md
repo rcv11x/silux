@@ -55,6 +55,12 @@ SMBIOS, MSR, RAPL, los contadores de la memoria) no: está propuesto en las
 notas (`propuesta-anexo-con-permisos.md`). Lo marcado «con el ayudante» lo
 necesita.
 
+* **Del T14 del autor** (volcado `i5-1135g7`):
+  - Gráficos · media · el pico de 1336648637.3 W en la gráfica del consumo
+    de la Iris Xe (glmark2, en batería) no está reproducido: restando bien,
+    el contador `energy-gpu` no puede dar esa cifra. Se descarta y el informe
+    dice sus números (`report.power.discarded`): con el siguiente informe que
+    lo traiga, la causa.
 * **Del equipo de anianin27** (volcado `i7-10700f`, de la prueba4):
   - NVIDIA · media · a ciegas · el consumo de la RTX 4060 con el driver 595:
     `nvmlDeviceGetPowerUsage` no contesta y ahora se piden los campos de

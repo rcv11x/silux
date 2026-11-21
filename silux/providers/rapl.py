@@ -66,6 +66,56 @@ def _packages() -> list[pathlib.Path]:
     return found
 
 
+# Without any limit declared, no single package draws this for a second.
+FALLBACK_CEILING_W = 1000.0
+# Where a dropped reading is told: the report's Diagnóstico, no page.
+DISCARDED_PATH = "report.power.discarded"
+
+
+def package_ceiling_w() -> float:
+    """The most a package can draw, from what RAPL declares: its PL4
+    (`peak_power`) if declared; twice its highest limit if not (it goes above
+    PL2 for an instant, never to twice); FALLBACK_CEILING_W without any."""
+    packages = _packages()
+    if not packages:
+        return FALLBACK_CEILING_W
+    limites: dict[str, float] = {}
+    for constraint in packages[0].glob("constraint_*_name"):
+        micro = read_int(str(constraint).replace("_name", "_power_limit_uw"))
+        if micro:
+            limites[(read_text(str(constraint)) or "").lower()] = micro / 1e6
+    if "peak_power" in limites:
+        return limites["peak_power"]
+    return 2 * max(limites.values()) if limites else FALLBACK_CEILING_W
+
+
+class Discarded:
+    """The readings dropped as impossible, told in the report with their
+    numbers: a negative watt, or more than the part can draw. A tester's
+    Iris Xe drew 9 W and its chart got a point at 1336648637.3 W."""
+
+    def __init__(self, source: str) -> None:
+        self.source = source
+        self.count = 0
+        self.last = ""
+
+    def check(self, watts: float, ceiling: float, before: int, after: int,
+              seconds: float) -> bool:
+        """Whether those watts can be; if not, they are counted and kept."""
+        if 0 <= watts <= ceiling:
+            return True
+        self.count += 1
+        self.last = _("power.discarded.last").format(
+            vatios=f"{watts:.1f}", techo=f"{ceiling:.0f}", antes=before, ahora=after,
+            segundos=f"{seconds:.3f}")
+        return False
+
+    def note(self, draft: Draft) -> None:
+        if self.count:
+            draft.note(DISCARDED_PATH, Need.ERROR, _("power.discarded").format(
+                n=self.count, fuente=self.source, ultima=self.last))
+
+
 def _limits(package: pathlib.Path) -> dict[str, Optional[float]]:
     """PL1 y PL2, en vatios, tal y como los declara el procesador, con la
     ventana de tiempo de cada uno, en segundos: los campos de `Power`."""
@@ -124,6 +174,11 @@ class RaplPower(Provider):
         self.client = client
         self._por_el_ayudante = False
         self._cache: dict[str, int] = {}
+        # When the helper's reading was taken: it may wait up to 100 ms for
+        # its pace, and timing it from before the request skewed the watts.
+        self._cache_instant = 0.0
+        self._ceiling: Optional[float] = None
+        self._discarded = Discarded("RAPL")
 
     def available(self) -> bool:
         packages = _packages()
@@ -152,19 +207,19 @@ class RaplPower(Provider):
 
         # Una sola petición al ayudante por muestreo, no una por zona.
         self._cache: dict[str, int] = {}
-        now = time.monotonic()
         totals: dict[str, float] = {}
 
         suelto = _core_es_de_un_nucleo(draft)
         sin_nucleos = False
         for package in packages:
-            self._accumulate(package, "package_w", now, totals)
+            self._accumulate(package, "package_w", totals)
             for child in sorted(package.glob(f"{package.name}:*")):
                 field = SUBDOMAINS.get(read_text(str(child / "name")) or "")
                 if field == "core_w" and suelto:
                     sin_nucleos = True
                 elif field:
-                    self._accumulate(child, field, now, totals)
+                    self._accumulate(child, field, totals)
+        self._discarded.note(draft)
 
         if "package_w" not in totals:
             return                          # primera pasada: solo referencia
@@ -210,26 +265,35 @@ class RaplPower(Provider):
         if not self._cache:
             try:
                 self._cache = self.client.rapl()
+                self._cache_instant = time.monotonic()
                 self._por_el_ayudante = True
             except HelperError:
                 return None
         return self._cache.get(zona)
 
-    def _accumulate(self, zone: pathlib.Path, field: str, now: float,
-                    totals: dict[str, float]) -> None:
+    def _read(self, zone: pathlib.Path) -> tuple[Optional[int], str, float]:
+        """The zone's microjoules, where they came from and when."""
         microjoules = read_int(str(zone / "energy_uj"))
-        if microjoules is None:
-            microjoules = self._por_ayudante(zone.name)
+        if microjoules is not None:
+            return microjoules, "sysfs", time.monotonic()
+        microjoules = self._por_ayudante(zone.name)
+        return microjoules, "helper", self._cache_instant
+
+    def _accumulate(self, zone: pathlib.Path, field: str,
+                    totals: dict[str, float]) -> None:
+        microjoules, source, instant = self._read(zone)
         if microjoules is None:
             return
 
         key = zone.name
         before = self._previous.get(key)
-        self._previous[key] = (microjoules, now)
-        if before is None:
+        self._previous[key] = (microjoules, instant, source)
+        # Not against a reading from the other source: they are the same
+        # counter, but timed differently.
+        if before is None or before[2] != source:
             return
 
-        elapsed = now - before[1]
+        elapsed = instant - before[1]
         delta = microjoules - before[0]
         if delta < 0:                        # el contador dio la vuelta
             ceiling = read_int(str(zone / "max_energy_range_uj"))
@@ -239,4 +303,8 @@ class RaplPower(Provider):
         if elapsed <= 0:
             return
 
-        totals[field] = totals.get(field, 0.0) + delta / 1e6 / elapsed
+        watts = delta / 1e6 / elapsed
+        if self._ceiling is None:
+            self._ceiling = package_ceiling_w()
+        if self._discarded.check(watts, self._ceiling, before[0], microjoules, elapsed):
+            totals[field] = totals.get(field, 0.0) + watts

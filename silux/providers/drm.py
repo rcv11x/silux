@@ -33,6 +33,7 @@ from ..model import (Display, GpuClockLevel, GpuClocks, GpuEngine, PcieLink, Gpu
                       Need)
 from ..privileged.client import HelperError, PmuUnsupported, PrivilegedClient
 from .base import Draft, Provider, en_reposo, read_int, read_text
+from .rapl import Discarded, package_ceiling_w
 from ..i18n import _
 from .. import sysroot
 
@@ -425,6 +426,8 @@ class GpuState(Provider):
         # this card's: a tester's UHD got only the package's energy-gpu, and
         # its notice said its engines' usage was already being read.
         self._pmu_leidos: set[str] = set()
+        self._ceiling: Optional[float] = None
+        self._discarded = Discarded("energy-gpu")
         # El contador de reposo es acumulativo, igual que los del PMU, pero
         # este sale de sysfs y no cuesta permisos.
         self._rc6: dict[str, tuple[float, int]] = {}
@@ -472,6 +475,7 @@ class GpuState(Provider):
 
     def collect(self, draft: Draft) -> None:
         ocupacion, vatios = self._contadores()
+        self._discarded.note(draft)
         con_instantes = []
         for indice, gpu in enumerate(draft.gpus):
             nodo = gpu.get("drm_node")
@@ -610,6 +614,13 @@ class GpuState(Provider):
                         # El contador va en julios una vez escalado, y un
                         # vatio es un julio por segundo.
                         vatios = (valor - antes) * escala * 1e9 / ventana
+                        # The integrated GPU is part of the package: it cannot
+                        # draw more than the package can.
+                        if self._ceiling is None:
+                            self._ceiling = package_ceiling_w()
+                        if not self._discarded.check(vatios, self._ceiling, antes, valor,
+                                                     ventana / 1e9):
+                            vatios = None
                     continue
                 # Se recorta a 100: en ventanas muy cortas el contador y el
                 # reloj no arrancan alineados y sale algo más.
