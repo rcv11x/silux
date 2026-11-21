@@ -767,6 +767,7 @@ class MemoryPage(ScrollPage):
         nombres = render.slot_names([(m.locator, m.bank) for m in modules])
 
         sin_spd: list[str] = []
+        sin_spd_soldada: list[str] = []
         numero = 0
         for nombre, module in zip(nombres, modules):
             crudo = module.locator or ""
@@ -800,7 +801,16 @@ class MemoryPage(ScrollPage):
                 grid.set(_("memory.field.slot"), nombre,
                          tooltip=crudo if crudo and crudo != nombre else None)
             nota_spd = getattr(self, "_nota_spd", None)
+            # Soldered on the board, while another module's SPD is read: it has
+            # no chip, which is not «could not be read».
+            soldada = (module.spd is None and not module.in_a_slot
+                       and any(m.spd is not None for m in modules if m.populated))
             for clave in self._solo_del_spd(module):
+                if soldada:
+                    grid.set_visible(_(clave), False)
+                    if clave not in sin_spd_soldada:
+                        sin_spd_soldada.append(clave)
+                    continue
                 if nota_spd is not None and nota_spd.need is Need.DRIVER \
                         and clave != "memory.field.vendor":
                     # El SPD está y se lee cargando su driver: candado, no
@@ -848,6 +858,10 @@ class MemoryPage(ScrollPage):
                 campos=campos, motivo=nota_spd.message[:1].lower() + nota_spd.message[1:])
                         if nota_spd is not None else
                         _("memory.na.nospd").format(campos=campos))
+        if sin_spd_soldada:
+            lista = render.enumeration([_(SOLO_DEL_SPD[clave]) for clave in MODULE_FIELDS
+                                        if clave in sin_spd_soldada])
+            pies.append(_("memory.na.soldered").format(campos=lista[:1].upper() + lista[1:]))
         # Que no traen perfiles rápidos se dice una vez, en la nota de la tabla
         # de perfiles, que es donde se buscan (`_apply_timings`); la fila se
         # esconde sin repetirlo aquí.

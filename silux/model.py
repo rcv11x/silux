@@ -624,6 +624,14 @@ class MemoryModule:
     voltage_configured_mv: Optional[int] = None
 
     @property
+    def in_a_slot(self) -> bool:
+        """In a slot («…DIMM0», «DIMM_A1», HP's «Bottom-Slot 1») and not
+        soldered on the board («Controller0-ChannelA»), by the name SMBIOS
+        gives its place. Soldered memory has no SPD chip of its own."""
+        lugar = (self.locator or "").lower()
+        return "dimm" in lugar or "slot" in lugar
+
+    @property
     def has_ecc(self) -> Optional[bool]:
         """Si el ancho total supera al de datos, esos bits de más son ECC."""
         if self.total_width is None or self.data_width is None or not self.data_width:
@@ -1939,7 +1947,7 @@ _COMPUTED: dict[str, tuple[str, ...]] = {
                 "cores_temp_c", "in_virtual_machine"),
     "Sensor": ("heat", "unit", "category", "alarm", "alarm_level"),
     "Board": ("display_name",),
-    "MemoryModule": ("has_ecc", "underclocked", "rated_mts"),
+    "MemoryModule": ("has_ecc", "underclocked", "rated_mts", "in_a_slot"),
     "SpdInfo": ("rated_mts",),
     "Timings": ("summary",),
     "Memory": ("used_bytes", "used_percent", "cache_bytes", "apps_bytes",

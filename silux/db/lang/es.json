@@ -841,6 +841,7 @@
   "memory.na.nospd.kernel": "{campos} salen del chip SPD de cada módulo. {kernel} (Es el driver spd5118, el que lee el SPD de la DDR5.)",
   "memory.na.nospd.why": "{campos} salen del chip SPD de cada módulo, y no se puede leer: {motivo}",
   "memory.na.profiles": "los perfiles rápidos",
+  "memory.na.soldered": "{campos} salen del chip SPD de cada módulo, y la memoria soldada en la placa no lo lleva.",
   "memory.na.vendor": "el fabricante",
   "memory.ranks.ecc": "   con ECC",
   "memory.slot": "Zócalo",

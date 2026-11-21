@@ -841,6 +841,7 @@
   "memory.na.nospd.kernel": "{campos} come from each module's SPD chip. {kernel} (It is the spd5118 driver, which reads DDR5 SPD.)",
   "memory.na.nospd.why": "{campos} come from each module's SPD chip, which cannot be read: {motivo}",
   "memory.na.profiles": "the fast profiles",
+  "memory.na.soldered": "{campos} come from each module's SPD chip, and memory soldered on the board has none.",
   "memory.na.vendor": "the maker",
   "memory.ranks.ecc": "   with ECC",
   "memory.slot": "Slot",

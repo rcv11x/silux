@@ -19,12 +19,6 @@ from .base import Draft, Provider
 from ..i18n import _
 
 
-def _has_a_slot(module) -> bool:
-    """A module in a slot («…DIMM0», «DIMM_A1») and not soldered on the board
-    («Controller0-ChannelA»), by the name SMBIOS gives its place."""
-    return "dimm" in (module.locator or "").lower()
-
-
 class SpdModules(Provider):
     name = "spd"
     provides = "spd"
@@ -95,7 +89,7 @@ class SpdModules(Provider):
         # Then the rest in order, a slot before memory soldered on the board:
         # that has no SPD chip of its own on the bus.
         rest = sorted((i for i in populated if i not in matches),
-                      key=lambda i: not _has_a_slot(draft.modules[i]))
+                      key=lambda i: not draft.modules[i].in_a_slot)
         for index in rest:
             if not pending:
                 break

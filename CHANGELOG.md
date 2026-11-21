@@ -24,6 +24,8 @@ que hace falta.
   instalados · 15.3 GB utilizables»: la soldada no tiene chip SPD y no
   contaba. Ahora no dice cuánta hay instalada, y sí que el resto se sabe con
   permisos.
+- Arreglado: con memoria soldada, la nota decía que sus chips, sus perfiles y
+  su fecha «no se han podido leer». La soldada no lleva chip SPD, y lo dice.
 
 ---
 
