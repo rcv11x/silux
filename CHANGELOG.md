@@ -10,7 +10,12 @@ que hace falta.
 
 ---
 
-## Sin publicar
+## 0.4-prueba7 (21 de noviembre de 2026)
+
+Con los informes de la prueba5 y de la prueba6: la memoria dice lo que solo
+sabe la BIOS y por qué no se lee el SPD, sin recomendar drivers de más; una
+Radeon sin telemetría del firmware ya no se llena de rayas; un pendrive ya
+no es un disco duro, y un procesador sin turbo no enseña el suyo.
 
 ### Memoria
 
@@ -55,6 +60,11 @@ que hace falta.
 - Arreglado: un pendrive salía como disco duro. Por USB el kernel marca casi
   todo como si girara: un dispositivo USB extraíble es memoria flash, y lo
   que no publica (temperatura, horas, escrito) se esconde y se dice.
+
+### Empaquetado
+
+- El AppImage usa el fontconfig y el freetype del sistema: en una
+  distribución al día ya no llena la terminal de avisos al arrancar.
 
 ### Inicio y Placa base
 
