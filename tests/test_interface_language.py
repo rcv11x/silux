@@ -25,7 +25,10 @@ from tests import pantalla, qt
 from tests.test_equipos import foto, volcados
 
 LANG = pathlib.Path(__file__).resolve().parent.parent / "silux" / "db" / "lang"
-WORD = re.compile(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]{2,}")
+# Letters with neither a letter nor a digit next to them: a commit hash such
+# as «f92b2be3» in the build id holds no word.
+WORD = re.compile(r"(?<![\dA-Za-zÁÉÍÓÚÜÑáéíóúüñ])[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]{2,}"
+                  r"(?![\dA-Za-zÁÉÍÓÚÜÑáéíóúüñ])")
 HTML = re.compile(r"<[^>]+>|&[#\w]+;")
 PATH = re.compile(r"(?:~|\.)?(?:/[\w.@:+\-]+)+/?")
 ACCENT = re.compile(r"[áéíóúñ¿¡]")
