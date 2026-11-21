@@ -293,6 +293,56 @@ class TestAnOldDriver(unittest.TestCase):
         self.assertIn("not in the library", tarjetas[0].power_error)
 
 
+class _DriverWithoutTheOldCalls(_OldDriver):
+    """A driver after CUDA 14, where the calls deprecated in 13.0 answer
+    NVML_ERROR_DEPRECATED (26) and their replacements do."""
+
+    def __init__(self):
+        self.versions = []
+
+    def nvmlDeviceGetTemperature(self, handle, sensor, value):
+        return 26
+
+    def nvmlDeviceGetCurrentClocksThrottleReasons(self, handle, value):
+        return 26
+
+    def nvmlDeviceGetTemperatureV(self, handle, reading):
+        reading = reading._obj
+        self.versions.append(reading.version)
+        if reading.sensorType != 0:
+            return 2
+        reading.temperature = 52
+        return 0
+
+    def nvmlDeviceGetCurrentClocksEventReasons(self, handle, value):
+        value._obj.value = 0x4 | 0x1          # software power cap, and idle
+        return 0
+
+
+class TestADriverWithoutTheDeprecatedCalls(unittest.TestCase):
+
+    def _card(self, lib):
+        sesion = nvml.Nvml()
+        sesion._lib = lib
+        sesion._activa = True
+        return sesion.devices()[0]
+
+    def test_the_temperature_from_its_replacement(self):
+        lib = _DriverWithoutTheOldCalls()
+        self.assertEqual(self._card(lib).temp_c, 52.0)
+        # nvmlTemperature_v1: its size (12 bytes) and version 1 in the top byte.
+        self.assertEqual(lib.versions, [12 | 1 << 24])
+
+    def test_the_throttle_reasons_from_theirs(self):
+        tarjeta = self._card(_DriverWithoutTheOldCalls())
+        self.assertTrue(tarjeta.throttled)
+        self.assertEqual(tarjeta.throttle_reasons, (nvml.MOTIVOS[0x4],))
+
+    def test_an_old_driver_still_uses_the_old_ones(self):
+        tarjeta = self._card(_OldDriver())
+        self.assertEqual(tarjeta.temp_c, 40.0)
+
+
 class TestItsPowerLimits(unittest.TestCase):
 
     def test_current_default_minimum_and_maximum(self):

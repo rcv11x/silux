@@ -29,7 +29,8 @@ NVML_SUCCESS = 0
 NVML_ERRORS = {1: "UNINITIALIZED", 2: "INVALID_ARGUMENT", 3: "NOT_SUPPORTED",
                4: "NO_PERMISSION", 6: "NOT_FOUND", 9: "DRIVER_NOT_LOADED", 10: "TIMEOUT",
                13: "FUNCTION_NOT_FOUND", 15: "GPU_IS_LOST", 17: "OPERATING_SYSTEM",
-               18: "LIB_RM_VERSION_MISMATCH", 21: "NO_DATA", 999: "UNKNOWN"}
+               18: "LIB_RM_VERSION_MISMATCH", 21: "NO_DATA", 25: "ARGUMENT_VERSION_MISMATCH",
+               26: "DEPRECATED", 999: "UNKNOWN"}
 
 
 def nvml_error(codigo: int) -> str:
@@ -96,6 +97,16 @@ TOTAL_POWER_SAMPLES = 0
 class _Sample(ctypes.Structure):
     """nvmlSample_t."""
     _fields_ = [("timeStamp", ctypes.c_ulonglong), ("sampleValue", _Valor)]
+
+
+class _Temperature(ctypes.Structure):
+    """nvmlTemperature_v1_t, for nvmlDeviceGetTemperatureV (R570 and newer)."""
+    _fields_ = [("version", ctypes.c_uint), ("sensorType", ctypes.c_uint),
+                ("temperature", ctypes.c_int)]
+
+
+# NVML_STRUCT_VERSION: the structure's size, and its version in the top byte.
+TEMPERATURE_V1 = ctypes.sizeof(_Temperature) | 1 << 24
 
 
 class _Memoria(ctypes.Structure):
@@ -395,6 +406,21 @@ class Nvml:
         return {"power_cap_default_w": watts(default), "power_cap_min_w": watts(minimum),
                 "power_cap_max_w": watts(maximum)}
 
+    def _temperature(self, handle) -> Optional[float]:
+        """The GPU's temperature. nvmlDeviceGetTemperature is deprecated
+        since CUDA 13.0 and answers NVML_ERROR_DEPRECATED once removed; its
+        replacement exists from R570, so older drivers keep the old one."""
+        function = self._sim("nvmlDeviceGetTemperatureV")
+        if function is not None:
+            reading = _Temperature(version=TEMPERATURE_V1, sensorType=TEMPERATURA_GPU)
+            try:
+                if function(handle, ctypes.byref(reading)) == NVML_SUCCESS:
+                    return float(reading.temperature)
+            except (ctypes.ArgumentError, OSError):
+                pass
+        value = self._entero("nvmlDeviceGetTemperature", handle, ctypes.c_uint(TEMPERATURA_GPU))
+        return float(value) if value is not None else None
+
     def _estructura(self, nombre: str, asa, tipo, *alternativas):
         funcion = self._sim(nombre, *alternativas)
         if funcion is None:
@@ -418,8 +444,12 @@ class Nvml:
             self._entero(*args))
 
         potencia, sin_potencia = self._potencia(asa, indice)
-        banderas = self._entero("nvmlDeviceGetCurrentClocksThrottleReasons", asa,
+        # Renamed in R535 with the same bits; the old name is deprecated.
+        banderas = self._entero("nvmlDeviceGetCurrentClocksEventReasons", asa,
                                 tipo=ctypes.c_ulonglong)
+        if banderas is None:
+            banderas = self._entero("nvmlDeviceGetCurrentClocksThrottleReasons", asa,
+                                    tipo=ctypes.c_ulonglong)
         motivos = _motivos(banderas) if banderas is not None else ()
 
         return NvidiaGpu(
@@ -441,8 +471,7 @@ class Nvml:
             memory_busy_percent=float(uso.memory) if uso else None,
             encode_busy_percent=self._utilizacion("nvmlDeviceGetEncoderUtilization", asa),
             decode_busy_percent=self._utilizacion("nvmlDeviceGetDecoderUtilization", asa),
-            temp_c=(lambda v: float(v) if v is not None else None)(
-                self._entero("nvmlDeviceGetTemperature", asa, ctypes.c_uint(TEMPERATURA_GPU))),
+            temp_c=self._temperature(asa),
             power_w=potencia,
             power_error=sin_potencia,
             power_cap_w=milis("nvmlDeviceGetEnforcedPowerLimit", asa),
