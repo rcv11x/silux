@@ -95,6 +95,28 @@ la memoria) no va: está propuesto en las notas
   - Gráficos · baja · la UHD no da uso por motor porque su PMU no publica
     eventos `*-busy` (solo frecuencia, RC6 e interrupciones). El aviso ya lo
     dice bien.
+* **Del portátil Lenovo V130 y del sobremesa con Athlon 3000G** (anexos de la
+  prueba5, sin volcado en la suite):
+  - Memoria · media · con los permisos dados, «Chips», «Perfiles rápidos» y
+    «Fabricado» salen como «(necesita permisos)»: es el candado de un SPD
+    que falta por driver, y en el informe se lee como permisos.
+  - Memoria · media · «Falta un módulo del kernel: modprobe ee1004» en un
+    portátil sin ningún chip en `0x50–0x57`: `_hay_bus_de_memoria` cuenta
+    como bus de memoria cualquiera que no sea de la gráfica, también los
+    DesignWare del touchpad. Falta saber si ahí cargar el driver serviría.
+  - Memoria · baja · «Rangos: —» y «Voltaje: —» sin explicar cuando la
+    tabla SMBIOS no los trae.
+  - CPU · media · «Turbo: —» en un Athlon 3000G sin driver de frecuencia:
+    declara `cpb` y sin cpufreq no hay estado. Y «Multiplicador» y «Máxima
+    (silicio)» con guion.
+  - Almacenamiento · baja · un pendrive con guiones en Temperatura, Horas,
+    Escrito y Firmware; y se propone `drivetemp` aunque SMART ya da la
+    temperatura.
+  - Red · baja · `lo` sale con «Driver», «Modelo» y «Ranura PCI» a guion
+    (también en los volcados de la suite).
+  - Volcados · baja · `edid.resolve_vendors` lee el `pnp.ids` de quien
+    ejecuta, no el del volcado; y un volcado sin el `name` de un bus i2c
+    hace que `_hay_bus_de_memoria` abandone al primer fallo.
 * **Sin volcado, sin hacer todavía:**
   - SMART · baja · atributos conocidos (4, 192, 193, 196…) salen «propio del
     fabricante», y la temperatura en crudo sale empaquetada (64 427 589 655).
