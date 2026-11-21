@@ -25,6 +25,17 @@ from typing import Optional
 BIBLIOTECAS = ("libnvidia-ml.so.1", "libnvidia-ml.so")
 
 NVML_SUCCESS = 0
+# nvmlReturn_t, as nvml.h names them: what the report says NVML answered.
+NVML_ERRORS = {1: "UNINITIALIZED", 2: "INVALID_ARGUMENT", 3: "NOT_SUPPORTED",
+               4: "NO_PERMISSION", 6: "NOT_FOUND", 9: "DRIVER_NOT_LOADED", 10: "TIMEOUT",
+               13: "FUNCTION_NOT_FOUND", 15: "GPU_IS_LOST", 17: "OPERATING_SYSTEM",
+               18: "LIB_RM_VERSION_MISMATCH", 21: "NO_DATA", 999: "UNKNOWN"}
+
+
+def nvml_error(codigo: int) -> str:
+    nombre = NVML_ERRORS.get(codigo)
+    return f"NVML_ERROR_{nombre} ({codigo})" if nombre else f"NVML return {codigo}"
+
 TEMPERATURA_GPU = 0
 # Los relojes que interesan, por su enumeración: gráfico, SM, memoria, vídeo.
 RELOJ_GRAFICO, RELOJ_SM, RELOJ_MEMORIA, RELOJ_VIDEO = 0, 1, 2, 3
@@ -117,6 +128,8 @@ class NvidiaGpu:
     decode_busy_percent: Optional[float] = None
     temp_c: Optional[float] = None
     power_w: Optional[float] = None
+    # Without power: what NVML answered to each way of asking, for the report.
+    power_error: Optional[str] = None
     power_cap_w: Optional[float] = None
     fan_percent: Optional[float] = None
     core_hz: Optional[int] = None
@@ -205,16 +218,25 @@ class Nvml:
                 return simbolo
         return None
 
-    def _entero(self, nombre: str, asa, *extra, tipo=ctypes.c_uint) -> Optional[int]:
+    def _entero(self, nombre: str, asa, *extra, tipo=ctypes.c_uint,
+                motivos: Optional[list] = None) -> Optional[int]:
+        """The value, or None; `motivos` collects why not."""
         funcion = self._sim(nombre)
         if funcion is None:
+            if motivos is not None:
+                motivos.append(f"{nombre}: not in the library")
             return None
         valor = tipo()
         argumentos = (asa, *extra, ctypes.byref(valor))
         try:
-            if funcion(*argumentos) != NVML_SUCCESS:
-                return None
-        except (ctypes.ArgumentError, OSError):
+            codigo = funcion(*argumentos)
+        except (ctypes.ArgumentError, OSError) as exc:
+            if motivos is not None:
+                motivos.append(f"{nombre}: {exc}")
+            return None
+        if codigo != NVML_SUCCESS:
+            if motivos is not None:
+                motivos.append(f"{nombre}: {nvml_error(codigo)}")
             return None
         return valor.value
 
@@ -257,35 +279,49 @@ class Nvml:
             return None
         return buffer.value.decode("utf-8", "replace").strip() or None
 
-    def _campos(self, asa, *ids: int) -> dict[int, float]:
+    def _campos(self, asa, *ids: int, motivos: Optional[list] = None) -> dict[int, float]:
         """Field values that came back, by id. Each one carries its own
-        return code and value type: one that fails does not spoil the rest."""
+        return code and value type: one that fails does not spoil the rest.
+        `motivos` collects why each missing one is missing."""
+        motivos = motivos if motivos is not None else []
         funcion = self._sim("nvmlDeviceGetFieldValues")
         if funcion is None:
+            motivos.append("nvmlDeviceGetFieldValues: not in the library")
             return {}
         campos = (_Campo * len(ids))()
         for campo, ident in zip(campos, ids):
             campo.fieldId = ident
         try:
-            if funcion(asa, ctypes.c_int(len(ids)), campos) != NVML_SUCCESS:
-                return {}
-        except (ctypes.ArgumentError, OSError):
+            codigo = funcion(asa, ctypes.c_int(len(ids)), campos)
+        except (ctypes.ArgumentError, OSError) as exc:
+            motivos.append(f"nvmlDeviceGetFieldValues: {exc}")
+            return {}
+        if codigo != NVML_SUCCESS:
+            motivos.append(f"nvmlDeviceGetFieldValues: {nvml_error(codigo)}")
             return {}
         leidos = {}
         for campo in campos:
             miembro = MIEMBRO_DEL_TIPO.get(campo.valueType)
             if campo.nvmlReturn == NVML_SUCCESS and miembro:
                 leidos[campo.fieldId] = float(getattr(campo.value, miembro))
+            elif campo.nvmlReturn != NVML_SUCCESS:
+                motivos.append(f"field {campo.fieldId}: {nvml_error(campo.nvmlReturn)}")
+            else:
+                motivos.append(f"field {campo.fieldId}: value type {campo.valueType}")
         return leidos
 
-    def _potencia(self, asa) -> Optional[float]:
+    def _potencia(self, asa) -> tuple[Optional[float], Optional[str]]:
         """Watts: nvmlDeviceGetPowerUsage, or the power fields where it does
-        not answer."""
-        milivatios = self._entero("nvmlDeviceGetPowerUsage", asa)
+        not answer. Without them, what NVML answered to each."""
+        motivos: list[str] = []
+        milivatios = self._entero("nvmlDeviceGetPowerUsage", asa, motivos=motivos)
         if milivatios is None:
-            campos = self._campos(asa, CAMPO_POTENCIA_MEDIA, CAMPO_POTENCIA_AL_MOMENTO)
+            campos = self._campos(asa, CAMPO_POTENCIA_MEDIA, CAMPO_POTENCIA_AL_MOMENTO,
+                                  motivos=motivos)
             milivatios = campos.get(CAMPO_POTENCIA_MEDIA, campos.get(CAMPO_POTENCIA_AL_MOMENTO))
-        return round(milivatios / 1000, 1) if milivatios is not None else None
+        if milivatios is None:
+            return None, "; ".join(motivos) or None
+        return round(milivatios / 1000, 1), None
 
     def _estructura(self, nombre: str, asa, tipo, *alternativas):
         funcion = self._sim(nombre, *alternativas)
@@ -309,6 +345,7 @@ class Nvml:
         milis = lambda *args: (lambda v: round(v / 1000, 1) if v is not None else None)(
             self._entero(*args))
 
+        potencia, sin_potencia = self._potencia(asa)
         banderas = self._entero("nvmlDeviceGetCurrentClocksThrottleReasons", asa,
                                 tipo=ctypes.c_ulonglong)
         motivos = _motivos(banderas) if banderas is not None else ()
@@ -334,7 +371,8 @@ class Nvml:
             decode_busy_percent=self._utilizacion("nvmlDeviceGetDecoderUtilization", asa),
             temp_c=(lambda v: float(v) if v is not None else None)(
                 self._entero("nvmlDeviceGetTemperature", asa, ctypes.c_uint(TEMPERATURA_GPU))),
-            power_w=self._potencia(asa),
+            power_w=potencia,
+            power_error=sin_potencia,
             power_cap_w=milis("nvmlDeviceGetEnforcedPowerLimit", asa),
             fan_percent=(lambda v: float(v) if v is not None else None)(
                 self._entero("nvmlDeviceGetFanSpeed", asa)),

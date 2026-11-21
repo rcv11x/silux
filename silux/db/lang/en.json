@@ -1154,6 +1154,7 @@
   "prov.msr.novolt.hint": "It is read from a processor register, and the kernel reserves that for the administrator.",
   "prov.msr.nox86": "Core voltage is read from a register that only exists on x86.",
   "prov.msr.nox86.hint": "On this architecture either the board sensor publishes it or nobody does.",
+  "prov.nvml.nopower": "The NVIDIA driver does not give this card's power draw.",
   "prov.procfs.nostat": "The system does not publish the processor's usage.",
   "prov.rapl.denied": "The RAPL energy counter exists but cannot be read.",
   "prov.rapl.denied.hint": "Many distributions have restricted it to root since CVE-2020-8694.",
@@ -1631,6 +1632,7 @@
   "what.cpu.power": "Processor power",
   "what.cpu.voltage": "Processor voltage",
   "what.disks.health": "Disk health",
+  "what.gpu.power": "the graphics card's power draw",
   "what.gpu.usage": "Graphics usage and power",
   "what.memory.modules": "Memory module details",
   "what.memory.traffic": "Memory traffic"

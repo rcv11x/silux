@@ -1154,6 +1154,7 @@
   "prov.msr.novolt.hint": "Se lee de un registro del propio procesador, y eso lo reserva el kernel al administrador.",
   "prov.msr.nox86": "El voltaje del núcleo se lee de un registro que solo existe en x86.",
   "prov.msr.nox86.hint": "En esta arquitectura lo publica el sensor de la placa o no lo publica nadie.",
+  "prov.nvml.nopower": "El driver de NVIDIA no da el consumo de esta tarjeta.",
   "prov.procfs.nostat": "El sistema no publica el uso del procesador.",
   "prov.rapl.denied": "El contador de energía RAPL existe pero no se puede leer.",
   "prov.rapl.denied.hint": "Muchas distribuciones lo restringen a root desde CVE-2020-8694.",
@@ -1631,6 +1632,7 @@
   "what.cpu.power": "Consumo del procesador",
   "what.cpu.voltage": "Voltaje del procesador",
   "what.disks.health": "Salud de los discos",
+  "what.gpu.power": "el consumo de la gráfica",
   "what.gpu.usage": "Uso y consumo de la gráfica",
   "what.memory.modules": "Detalle de los módulos de memoria",
   "what.memory.traffic": "Tráfico de la memoria"

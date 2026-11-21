@@ -21,6 +21,7 @@ import os
 from typing import Optional
 from .. import sysroot
 from .. import nvml
+from ..i18n import _
 from ..model import GpuClocks, PcieLink, GpuMemory, Need
 from .base import Draft, Provider, en_reposo, read_text
 from .dmi import PORTABLE_CHASSIS
@@ -90,6 +91,15 @@ class NvidiaGpus(Provider):
         draft.notes = [n for n in draft.notes
                        if not (n.need is Need.DRIVER and n.path.startswith("gpus.")
                                and "NVIDIA" in n.message)]
+
+        # A dash with no reason breaks rule 5: say the driver did not give it,
+        # and what NVML answered goes in the report.
+        for tarjeta in tarjetas:
+            for indice, gpu in enumerate(draft.gpus):
+                if gpu.get("pci_slot") == tarjeta.pci_slot and gpu.get("power_w") is None:
+                    draft.note(f"gpus.{indice}.power_w", Need.HARDWARE,
+                               _("prov.nvml.nopower"), what=_("what.gpu.power"),
+                               detail=tarjeta.power_error or "", key="nvml.nopower")
 
 
 PCI = "/sys/bus/pci/devices"

@@ -16,6 +16,7 @@ from silux import nvml
 from silux.model import GpuClocks, PcieLink, GpuMemory
 from silux.providers import nvidia
 from silux.providers.base import Draft
+from tests import pantalla, qt
 
 UNA_4070 = nvml.NvidiaGpu(
     index=0, pci_slot="0000:01:00.0", name="NVIDIA GeForce RTX 4070",
@@ -204,14 +205,17 @@ class _Nvml:
 
 
 class TestThePowerOfANewDriver(unittest.TestCase):
-    """anianin27's RTX 4060 with driver 595: temperature, clocks and limit,
-    and «Consumo: —». nvmlDeviceGetPowerUsage only answers where power
+    """A desktop RTX 4060 with driver 595: temperature, clocks and limit, and
+    «Consumo: —». nvmlDeviceGetPowerUsage only answers where power
     management mode is supported; the header points to the power fields."""
 
-    def _potencia(self, lib):
+    def _leer(self, lib):
         sesion = nvml.Nvml()
         sesion._lib = lib
         return sesion._potencia(nvml.ctypes.c_void_p(1))
+
+    def _potencia(self, lib):
+        return self._leer(lib)[0]
 
     def test_the_seconds_average_where_the_old_call_does_not_answer(self):
         self.assertEqual(self._potencia(_Nvml(campos={185: 15234, 186: 17000})), 15.2)
@@ -221,6 +225,26 @@ class TestThePowerOfANewDriver(unittest.TestCase):
 
     def test_without_either_there_is_none(self):
         self.assertIsNone(self._potencia(_Nvml()))
+
+    def test_without_either_it_keeps_what_nvml_answered(self):
+        # The same card in prueba5: neither way gave it, and nothing said why.
+        _vatios, motivo = self._leer(_Nvml())
+        self.assertEqual(motivo, "nvmlDeviceGetPowerUsage: NVML_ERROR_NOT_SUPPORTED (3); "
+                                 "field 185: NVML_ERROR_NOT_SUPPORTED (3); "
+                                 "field 186: NVML_ERROR_NOT_SUPPORTED (3)")
+        self.assertIsNone(self._leer(_Nvml(uso=12000))[1])
+
+    def test_its_page_says_the_driver_does_not_give_it(self):
+        from silux.i18n import _
+        from tests.test_equipos import EQUIPOS, foto
+        f = foto(EQUIPOS / "i7-10700f")[0]
+        nota = next(n for n in f.notes if n.path == "gpus.0.power_w")
+        self.assertEqual(nota.message, _("prov.nvml.nopower"))
+        qt.app()
+        with pantalla.Ventana(f) as ventana:
+            ventana.select_section("Gráficos")
+            self.assertIn(_("prov.nvml.nopower"),
+                          " ".join(pantalla.textos_de(ventana.stack.currentWidget())))
 
     def test_where_the_old_call_answers_the_fields_are_not_asked(self):
         lib = _Nvml(uso=12000, campos={185: 99000})
