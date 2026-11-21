@@ -65,6 +65,7 @@ DATOS_DE_TERCEROS = (
     ("AMD", "about.amdcom"),
     ("cpuid", "about.cpuid"),
     ("hwdata", "about.hwdata"),
+    ("OpenOCD", "about.openocd"),
 )
 
 AVISOS = pathlib.Path(db.__file__).parent / "THIRD_PARTY_NOTICES.md"

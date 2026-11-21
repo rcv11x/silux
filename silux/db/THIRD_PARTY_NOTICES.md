@@ -3,8 +3,9 @@
 Silux es software libre bajo la GPL-3.0 o posterior; el texto completo está
 en `LICENSE`. La tabla con que identifica los procesadores,
 `silux/db/cpu_ids.json`, se generó con los datos de cuatro proyectos y de AMD,
-y la de las unidades de los contadores de los discos,
-`silux/db/smart_units.json`, con los de smartmontools. Sus avisos van aquí
+la de las unidades de los contadores de los discos,
+`silux/db/smart_units.json`, con los de smartmontools, y la de los
+fabricantes de memoria, `silux/db/jep106.json`, con la de OpenOCD. Sus avisos van aquí
 tal como piden sus licencias, en el repositorio, en el paquete de pip y
 dentro de cada AppImage.
 
@@ -128,4 +129,26 @@ Copyright (C) 2003-11 Philip Williams, Bruce Allen
 Copyright (C) 2008-26 Christian Franke
 
 SPDX-License-Identifier: GPL-2.0-or-later
+```
+
+## OpenOCD
+
+<https://github.com/openocd-org/openocd>
+
+De su copia de la lista de fabricantes de JEDEC (`src/helper/jep106.inc`), en
+el commit que dice `silux/db/jep106.json` (`sources.OpenOCD`), salen el
+nombre de cada fabricante por su banco y su código: con ellos se dice quién
+hizo cada módulo de memoria y sus chips, según su SPD. Se toman los datos, no
+el código. Su cabecera, tal cual:
+
+```
+SPDX-License-Identifier: GPL-2.0-or-later
+
+The manufacturer's standard identification code list appears in JEP106.
+Copyright (c) 2026 JEDEC. All rights reserved.
+
+JEP106 is regularly updated. For the current manufacturer's standard
+identification code list, please visit the JEDEC website at www.jedec.org .
+
+This file is aligned to revision JEP106BP September 2026.
 ```

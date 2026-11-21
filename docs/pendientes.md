@@ -114,11 +114,6 @@ necesita.
   perfil 1 (F-A2) se arregló con los módulos de anianin27.
 * `spd.py` · media · `decode` revienta si el chip devuelve menos de 384 bytes,
   y se pierden todos los módulos, no solo el corto.
-* `spd.py` · media · la tabla de fabricantes JEDEC tiene 15: con cualquier
-  otro, el SPD no da marca y el firmware que escribe el código (MSI: «04EF»)
-  lo enseña en bruto. Es el caso general del Team Group de anianin27. Falta la
-  tabla JEP-106 entera de una fuente, con su aviso en THIRD_PARTY_NOTICES y su
-  licencia comprobada, y decir «código JEDEC sin nombre» en vez del número.
 * **F-M17 · `providers/drm.py`** · media · sin `pci.ids`, una AMD dedicada
   sin «radeon» en el nombre recibe el de la integrada («Radeon 780M»).
 * **F-M18 · `smart.py`** · media · el atributo 202 cuenta como vida gastada

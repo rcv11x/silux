@@ -56,6 +56,20 @@ class TestElArchivo(unittest.TestCase):
                 self.assertIn(datos["repo"], texto)
         self.assertIn("SPDX-License-Identifier: GPL-2.0-or-later", texto)
 
+    def test_the_memory_makers_too(self):
+        """jep106.json, from OpenOCD's jep106.inc (GPL-2.0-or-later, the list
+        JEDEC's): its notice with the header it carries."""
+        import json
+
+        tabla = json.loads((RAIZ / "silux" / "db" / "jep106.json").read_text(encoding="utf-8"))
+        texto = _avisos()
+        for nombre, datos in tabla["sources"].items():
+            with self.subTest(fuente=nombre):
+                self.assertRegex(texto, rf"(?im)^## {re.escape(nombre)}\s*$")
+                self.assertIn(datos["repo"], texto)
+        self.assertIn(f"revision {tabla['revision']}", texto)
+        self.assertIn("Copyright (c) 2026 JEDEC", texto)
+
     def test_libcpuid_con_el_aviso_entero(self):
         texto = _avisos()
         for trozo in ("Copyright 2008  Veselin Georgiev",

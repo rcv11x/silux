@@ -17,6 +17,8 @@ volcado de uno para que siga estándolo.
 
 from __future__ import annotations
 
+import functools
+import json
 import pathlib
 import re
 from dataclasses import dataclass
@@ -36,35 +38,11 @@ MODULE_TYPES = {0x01: "RDIMM", 0x02: "UDIMM", 0x03: "SODIMM", 0x04: "LRDIMM",
                 0x05: "Mini-RDIMM", 0x06: "Mini-UDIMM", 0x08: "72b-SO-RDIMM",
                 0x09: "72b-SO-UDIMM", 0x0C: "16b-SO-DIMM", 0x0D: "32b-SO-DIMM"}
 
-# Fabricantes por su código JEDEC (banco, identificador). La lista oficial
-# son cientos de entradas; aquí solo van las que se pueden justificar, porque
-# una tabla con códigos inventados es peor que no tener tabla: cuando falla,
-# el nombre que da la tabla SMBIOS sirve igual de bien.
-#
-# **Los códigos van sin el bit de paridad.** El SPD los guarda en ocho bits,
-# de los cuales el más alto es paridad impar: un módulo Crucial trae 0x9B y su
-# identificador es 0x1B. Como `_vendor` quita ese bit antes de buscar, la tabla
-# tiene que estar en la misma moneda. La mitad de esta lista estaba escrita con
-# el byte completo, tal y como aparece publicado —Samsung 0xCE, Kingston 0x98,
-# SK Hynix 0xAD—, y esas siete entradas no casaban nunca: justo las tres marcas
-# que más memoria venden salían sin fabricante. Hay un test que lo vigila.
-JEDEC_VENDORS = {
-    (1, 0x2C): "Micron",
-    (1, 0x4F): "Transcend",
-    (2, 0x18): "Kingston",         # 0x98; bank 2, from a real SODIMM (the author's T14)
-    (1, 0x2D): "SK Hynix",         # 0xAD
-    (1, 0x4E): "Samsung",          # 0xCE
-    (1, 0x5A): "Winbond",          # 0xDA
-    (2, 0x41): "Infineon",         # 0xC1
-    (2, 0x7E): "Elpida",           # 0xFE
-    (3, 0x0B): "Nanya",
-    (5, 0x1F): "Apacer",
-    (5, 0x51): "Qimonda",
-    (5, 0x4B): "ADATA",            # 0xCB
-    (5, 0x6F): "Team Group",       # 0xEF: a tester's TEAMGROUP-UD4-3200
-    (6, 0x1B): "Crucial",          # comprobado contra un módulo real
-    (6, 0x04): "Netlist",
-}
+# The makers by their JEDEC code, the whole JEP106 list (tools/gen_jep106.py,
+# from OpenOCD): bank from 1 and code without its parity bit. A hand table
+# of 15 had Kingston, Infineon, Elpida and Transcend in the wrong place and
+# left every other maker out.
+JEP106 = pathlib.Path(__file__).parent / "db" / "jep106.json"
 
 # Rangos de cordura. Un valor fuera de aquí significa que se ha decodificado
 # mal, y es preferible no enseñar nada a enseñar una cifra inventada.
@@ -476,7 +454,18 @@ def _vendor(bank: int, code: int) -> Optional[str]:
     continuación lo preceden, y ambos llevan bit de paridad impar en el bit 7.
     Leerlo como un número suelto da bancos equivocados.
     """
-    return JEDEC_VENDORS.get(((bank & 0x7F) + 1, code & 0x7F))
+    return _jep106().get(((bank & 0x7F) + 1, code & 0x7F))
+
+
+@functools.lru_cache(maxsize=1)
+def _jep106() -> dict[tuple[int, int], str]:
+    try:
+        datos = json.loads(JEP106.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return {(int(banco), int(codigo, 16)): nombre
+            for banco, codigos in datos.get("makers", {}).items()
+            for codigo, nombre in codigos.items()}
 
 
 def _text(raw: bytes) -> Optional[str]:

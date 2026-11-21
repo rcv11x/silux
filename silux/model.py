@@ -741,6 +741,9 @@ VENDOR_ALIASES: dict[str, str] = {
     "g skill": "G.Skill",
     "g.skill": "G.Skill",
     "corsair": "Corsair",
+    # As JEP106 writes them (spd._vendor).
+    "a-data technology": "ADATA",
+    "nanya technology": "Nanya",
     # Los de red y sonido, como los escribe `pci.ids`: la marca que va en la
     # caja es la primera palabra.
     "realtek semiconductor": "Realtek",

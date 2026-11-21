@@ -200,11 +200,11 @@ def _memoria(snapshot: Snapshot) -> str:
         partes.append(spd.dram_type or spd.module_type or "?")
         if spd.capacity_bytes:
             partes.append(render.size(spd.capacity_bytes))
-        for texto in (spd.manufacturer, spd.part_number):
+        for texto in (render.maker(spd.manufacturer), spd.part_number):
             if texto:
                 partes.append(texto)
         if spd.dram_manufacturer and spd.dram_manufacturer != spd.manufacturer:
-            partes.append(f"chips {spd.dram_manufacturer}")
+            partes.append(f"chips {render.maker(spd.dram_manufacturer)}")
         if spd.manufactured:
             partes.append(f"fabricado {spd.manufactured}")
         if spd.ranks:

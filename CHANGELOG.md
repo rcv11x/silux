@@ -11,6 +11,18 @@ que hace falta.
 
 ---
 
+## Sin publicar
+
+### Memoria
+
+- Arreglado: el fabricante de un módulo de memoria y el de sus chips salen
+  de la lista entera de JEDEC (JEP106BP, más de 2300 fabricantes, de la copia
+  de OpenOCD). La de antes tenía 15, y Kingston, Infineon, Elpida y Transcend
+  estaban en el sitio equivocado. Un código sin nombre en la lista se dice
+  como tal.
+
+---
+
 ## 0.4-prueba5 (21 de noviembre de 2026)
 
 Con lo que trajeron los primeros informes con sus datos en crudo: el XMP de

@@ -846,7 +846,7 @@ class TestElFabricanteNoCambiaAlDarPermisos(unittest.TestCase):
         app = qt.app()
         base = foto(EQUIPOS / "i5-10400")[0]
         spd = base.spd[0]
-        self.assertEqual(spd.manufacturer, "Crucial")
+        self.assertEqual(render.maker(spd.manufacturer), "Crucial")
         # Lo que da `dmidecode -t 17` de esta máquina.
         modulo = MemoryModule(populated=True, locator="Controller0-ChannelA", bank="BANK 0",
                               type="DDR4", size_bytes=8 << 30, speed_mts=2667,

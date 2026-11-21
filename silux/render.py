@@ -576,7 +576,8 @@ def memory_maker(name: Optional[str]) -> Optional[str]:
     if name and re.fullmatch(r"[0-9A-Fa-f]{4}", name.strip()):
         from .spd import _vendor
         codigo = int(name.strip(), 16)
-        return _vendor(codigo >> 8, codigo & 0xFF) or name.strip()
+        nombre = _vendor(codigo >> 8, codigo & 0xFF)
+        return maker(nombre) if nombre else _("mem.maker.code").format(codigo=name.strip())
     return maker(name)
 
 

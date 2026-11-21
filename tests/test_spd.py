@@ -11,7 +11,7 @@ import struct
 import unittest
 from unittest import mock
 
-from silux import spd
+from silux import render, spd
 
 FIXTURE = pathlib.Path(__file__).parent / "fixtures" / "ddr4-crucial-3200.spd"
 
@@ -29,9 +29,11 @@ class TestModuloReal(unittest.TestCase):
 
     def test_referencia_y_fabricantes(self):
         self.assertEqual(self.info.part_number, "CT8G4DFRA32A.M8FR")
-        self.assertEqual(self.info.manufacturer, "Crucial")
+        # As JEDEC names them, and the brand on screen.
+        self.assertEqual(self.info.manufacturer, "Crucial Technology")
+        self.assertEqual(render.maker(self.info.manufacturer), "Crucial")
         # Quien vende el módulo y quien fabrica el silicio no son lo mismo.
-        self.assertEqual(self.info.dram_manufacturer, "Micron")
+        self.assertEqual(render.maker(self.info.dram_manufacturer), "Micron")
 
     def test_velocidad_catalogada(self):
         """Este módulo va a 2667 en su equipo, pero está catalogado a 3200."""
@@ -69,8 +71,9 @@ class TestCodigosJedec(unittest.TestCase):
     def test_el_primer_byte_cuenta_continuaciones_no_bancos(self):
         # 0x85 = paridad + 5 continuaciones -> banco 6. Leerlo como número
         # suelto daría el banco 133 y ningún fabricante.
-        self.assertEqual(spd._vendor(0x85, 0x9B), "Crucial")
-        self.assertEqual(spd._vendor(0x80, 0x2C), "Micron")
+        from silux import render
+        self.assertEqual(render.maker(spd._vendor(0x85, 0x9B)), "Crucial")
+        self.assertEqual(render.maker(spd._vendor(0x80, 0x2C)), "Micron")
 
     def test_un_codigo_desconocido_no_inventa_nada(self):
         self.assertIsNone(spd._vendor(0x7F, 0x01))
@@ -415,7 +418,8 @@ class TestTeamGroup(unittest.TestCase):
     """
 
     def test_in_the_spd(self):
-        self.assertEqual(spd._vendor(0x04, 0xEF), "Team Group")
+        from silux import render
+        self.assertEqual(render.maker(spd._vendor(0x04, 0xEF)), "Team Group")
 
     def test_and_as_the_firmware_writes_it(self):
         from silux import render
@@ -565,7 +569,7 @@ class TestDdr5(unittest.TestCase):
         self.assertEqual(self.info.jedec.voltage_v, 1.1)
 
     def test_identidad_del_modulo(self):
-        self.assertEqual(self.info.manufacturer, "Micron")
+        self.assertEqual(render.maker(self.info.manufacturer), "Micron")
         self.assertEqual(self.info.part_number, "CT16G56C46U5.M8G1")
         self.assertEqual(self.info.manufactured, "semana 32 de 2024")
 
@@ -700,12 +704,12 @@ class TestCodigosDeFabricante(unittest.TestCase):
     """
 
     def test_ninguno_lleva_el_bit_de_paridad(self):
-        from silux.spd import JEDEC_VENDORS
+        from silux.spd import _jep106
 
         con_paridad = {f"0x{code:02X} ({nombre})"
-                       for (_banco, code), nombre in JEDEC_VENDORS.items()
-                       if code & 0x80}
+                       for (_banco, code), nombre in _jep106().items() if code & 0x80}
         self.assertEqual(con_paridad, set())
+        self.assertGreater(len(_jep106()), 2000)
 
     def test_las_marcas_mas_comunes_se_reconocen(self):
         """Con los bytes tal y como los publica un módulo, paridad incluida."""
@@ -722,7 +726,8 @@ class TestCodigosDeFabricante(unittest.TestCase):
         }
         for (banco, code), quien in reales.items():
             with self.subTest(marca=quien):
-                self.assertEqual(_vendor(banco, code), quien)
+                from silux import render
+                self.assertEqual(render.maker(_vendor(banco, code)), quien)
 
 
 class TestTheT14sDump(unittest.TestCase):
@@ -739,7 +744,7 @@ class TestTheT14sDump(unittest.TestCase):
             cls.lecturas = spd.read_all()
 
     def test_the_slots_spd_is_a_kingston(self):
-        self.assertEqual([(r.part_number, r.manufacturer, r.dram_manufacturer)
+        self.assertEqual([(r.part_number, r.manufacturer, render.maker(r.dram_manufacturer))
                           for r in self.lecturas],
                          [("9905711-049.A00G", "Kingston", "Micron")])
 
@@ -773,10 +778,44 @@ class TestTheI7_10700fsModules(unittest.TestCase):
         self.assertEqual(len(lecturas), 2)
         for lectura in lecturas:
             with self.subTest(modulo=lectura.address):
-                self.assertEqual(lectura.manufacturer, "Team Group")
+                from silux import render
+                self.assertEqual(render.maker(lectura.manufacturer), "Team Group")
                 self.assertEqual(lectura.jedec.speed_mts, 2400)
                 self.assertEqual(lectura.profiles, (spd.Timings(
                     name="XMP 1", speed_mts=3200, cl=16, trcd=18, trp=18, tras=38,
                     trc=56, voltage_v=1.35),))
                 self.assertEqual(lectura.rated_mts, 3200)
+
+
+class TestTheWholeJep106List(unittest.TestCase):
+    """The makers by their JEDEC code, from OpenOCD's copy of JEP106. The hand
+    table of 15 had Kingston, Infineon, Elpida and Transcend in the wrong
+    place, and every other maker out."""
+
+    def test_makers_the_old_table_did_not_have(self):
+        from silux import render
+        # As a module's SPD writes them: continuation count and code, both
+        # with their odd parity bit.
+        for (banco, codigo), quien in {(0x04, 0xCD): "G.Skill", (0x02, 0x9E): "Corsair",
+                                      (0x80, 0xC1): "Infineon (Siemens)"}.items():
+            with self.subTest(marca=quien):
+                self.assertEqual(render.maker(spd._vendor(banco, codigo)), quien)
+
+    def test_a_code_with_no_name_says_so(self):
+        from silux import render
+        from silux.i18n import _
+        self.assertEqual(render.memory_maker("7FFF"),
+                         _("mem.maker.code").format(codigo="7FFF"))
+
+    def test_the_generator_reads_openocds_lines(self):
+        import importlib.util
+        ruta = pathlib.Path(__file__).resolve().parent.parent / "tools" / "gen_jep106.py"
+        especificacion = importlib.util.spec_from_file_location("gen_jep106", ruta)
+        gen = importlib.util.module_from_spec(especificacion)
+        especificacion.loader.exec_module(gen)
+        revision, makers = gen.table("/* This file is aligned to revision JEP106BP September 2026. */\n"
+                                     '[0][0x2c - 1] = "Micron Technology",\n'
+                                     '[1][0x18 - 1] = "Kingston",\n')
+        self.assertEqual(revision, "JEP106BP")
+        self.assertEqual(makers, {"1": {"2C": "Micron Technology"}, "2": {"18": "Kingston"}})
 
