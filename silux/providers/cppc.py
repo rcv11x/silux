@@ -81,7 +81,8 @@ class CppcClocks(Provider):
                 draft.capabilities.add("cppc")
 
             nominal = _nominal_hz(cppc)
-            base = clocks.base_hz or nominal or _base_from_brand(entry.get("brand"))
+            base = (clocks.base_hz or nominal or clocks.base_configured_hz
+                    or _base_from_brand(entry.get("brand")))
 
             # BCLK is only derived when the base comes from CPPC (see
             # REFERENCE_HZ), and only on x86: a server ARM publishes ACPI CPPC

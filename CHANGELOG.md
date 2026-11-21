@@ -10,6 +10,36 @@ que hace falta.
 
 ---
 
+## Sin publicar
+
+### Procesador
+
+- La base de la ficha y la del TDP configurado ahora salen juntas: un
+  portátil configurado con menos TDP enseñaba «Base 900 MHz» con «@ 2.40GHz»
+  en el nombre.
+- PL1 y PL2 son los que se aplican: el procesador guarda cada límite en sus
+  registros y en los del controlador de memoria, y aplica el más bajo. Si
+  difieren, se dice el otro.
+- El tamaño de cada caché sale con los decimales que hacen falta para que la
+  cuenta cuadre: «4 × 1.25 MB», no «4 × 1.2 MB» para 5 MB.
+
+### Memoria
+
+- Dos módulos en dos controladores ya no se llaman los dos «Canal A»: el
+  zócalo dice su controlador cuando es lo que los distingue.
+- Un voltaje que el SPD confirma ya no dice «según la BIOS».
+- La ficha de un módulo soldado dice «Soldada a la placa» y por qué se sabe,
+  en vez del formato que declara la BIOS.
+
+### Red y Placa base
+
+- Los paquetes que el kernel descarta se llaman descartados, no perdidos, y
+  los que llegan con error salen aparte.
+- La explicación de bytes y bits ya no da cifras que no son las del equipo.
+- El chipset de un portátil que lo lleva en el encapsulado del procesador
+  sale como tal, y la versión de la BIOS sin los espacios que deja el
+  firmware.
+
 ## 0.4-prueba7 (21 de noviembre de 2026)
 
 Con los informes de la prueba5 y de la prueba6: la memoria dice lo que solo

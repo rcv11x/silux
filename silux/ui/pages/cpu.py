@@ -233,9 +233,12 @@ class TypeSection(QWidget):
         c(_("cpu.clock.current"), render.hz(clocks.current_hz))
         c(_("cpu.clock.multiplier"), render.multiplier(clocks.multiplier))
         self._base_hz = clocks.base_hz
-        self._base_texto = render.clock_and_multiplier(clocks.base_hz, clocks.base_multiplier)
+        self._base_texto = render.base_clock(clocks)
         if self._base_hz is not None or not self.clocks.is_locked(_("cpu.clock.base")):
-            c(_("cpu.clock.base"), self._base_texto)
+            c(_("cpu.clock.base"), self._base_texto,
+              tooltip=_("cpu.tip.base.tdp") if clocks.base_configured_hz
+              and self._base_texto != render.clock_and_multiplier(
+                  clocks.base_hz, clocks.base_multiplier) else None)
         c(_("cpu.clock.min"), render.clock_and_multiplier(
             clocks.min_hz, clocks.min_multiplier))
         c(_("cpu.clock.maxkernel"), render.clock_and_multiplier(
@@ -506,13 +509,20 @@ class CpuPage(ScrollPage):
         """Los límites de potencia y el reposo. Lo que no hay no sale."""
         cpu = snapshot.cpu
         potencia, estados = cpu.power, cpu.idle_states
-        limites = (("cpu.limit.pl1", potencia.limit_long_w, potencia.window_long_s),
-                   ("cpu.limit.pl2", potencia.limit_short_w, potencia.window_short_s))
-        for clave, valor, ventana in limites:
-            self.limits.set(_(clave), render.power_limit(valor, ventana) if valor else render.DASH,
-                            tooltip=_("cpu.limit.window.tip") if ventana else None)
+        limites = (("cpu.limit.pl1", potencia.limit_long_w, potencia.window_long_s,
+                    potencia.limit_long_other_w),
+                   ("cpu.limit.pl2", potencia.limit_short_w, potencia.window_short_s,
+                    potencia.limit_short_other_w))
+        for clave, valor, ventana, otro in limites:
+            texto = render.power_limit(valor, ventana) if valor else render.DASH
+            pista = _("cpu.limit.window.tip") if ventana else ""
+            if valor and otro:
+                # Two copies of the limit: the lower is enforced.
+                texto += " · " + _("cpu.limit.lowest").format(otro=render.watts(otro))
+                pista = " ".join(p for p in (_("cpu.limit.lowest.tip"), pista) if p)
+            self.limits.set(_(clave), texto, tooltip=pista or None)
             self.limits.set_visible(_(clave), bool(valor))
-        hay_limites = any(valor for _clave, valor, _ventana in limites)
+        hay_limites = any(valor for _clave, valor, _ventana, _otro in limites)
         frenos = cpu.thermal_throttle
         self.limits.set(_("cpu.throttle"), render.thermal_throttle(frenos),
                         tooltip=_("cpu.throttle.tip"))

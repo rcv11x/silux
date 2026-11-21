@@ -224,7 +224,7 @@ class BoardPage(ScrollPage):
         f("TPM", board.tpm_version or _("board.notdetected"))
 
         c = self.chipset.set
-        c(_("board.field.chipset"), board.chipset or d)
+        c(_("board.field.chipset"), render.board_chipset(board))
         c(_("board.field.pciid"), board.chipset_full or d,
           tooltip=_("board.tip.chipset"))
         c(_("board.field.memctl"), board.host_bridge or d,

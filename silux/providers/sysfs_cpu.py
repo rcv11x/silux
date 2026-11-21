@@ -201,7 +201,7 @@ class SysfsTopology(Provider):
         # them without notice.
         return Clocks(
             min_hz=khz("cpuinfo_min_freq"),
-            base_hz=khz("base_frequency"),
+            base_configured_hz=khz("base_frequency"),
             driver=read_text(f"{freq}/scaling_driver"),
         )
 

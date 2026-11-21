@@ -112,6 +112,42 @@ class Discarded:
                 n=self.count, fuente=self.source, ultima=self.last))
 
 
+# Intel also keeps the package's limits in the memory controller's registers
+# (MMIO), next to the MSR ones; the processor enforces the lower of the two.
+MMIO_ZONES = "intel-rapl-mmio:*"
+
+
+def _mmio_package() -> Optional[pathlib.Path]:
+    if not sysroot.ruta(POWERCAP).is_dir():
+        return None
+    for entry in sorted(sysroot.ruta(POWERCAP).glob(MMIO_ZONES)):
+        if entry.name.count(":") == 1 and (read_text(str(entry / "name")) or "").startswith("package"):
+            return entry
+    return None
+
+
+def effective_limits(msr: dict, mmio: dict) -> dict:
+    """Each limit as enforced: the lower of the MSR's and the MMIO's, with
+    the other one kept when they differ, to say where it comes from."""
+    limits = dict(msr)
+    for kind in ("long", "short"):
+        a, b = msr.get(f"limit_{kind}_w"), mmio.get(f"limit_{kind}_w")
+        if b is None:
+            continue
+        if a is None or b < a:
+            limits[f"limit_{kind}_w"] = b
+            limits[f"window_{kind}_s"] = mmio.get(f"window_{kind}_s")
+        if a is not None and a != b:
+            limits[f"limit_{kind}_other_w"] = max(a, b)
+    return limits
+
+
+def package_limits(package: pathlib.Path) -> dict:
+    """The limits a package enforces, from both of its copies."""
+    mmio = _mmio_package()
+    return effective_limits(_limits(package), _limits(mmio) if mmio else {})
+
+
 def _limits(package: pathlib.Path) -> dict[str, Optional[float]]:
     """PL1 and PL2, in watts, as the processor declares them, with each one's
     time window in seconds: the fields of `Power`."""
@@ -149,7 +185,7 @@ class PowerLimits(Provider):
 
     def collect(self, draft: Draft) -> None:
         if self._limit_values is None:
-            self._limit_values = _limits(_packages()[0])
+            self._limit_values = package_limits(_packages()[0])
         if self._limit_values.get("limit_long_w") or self._limit_values.get("limit_short_w"):
             draft.cpu_extra["power"] = Power(**self._limit_values)
 
@@ -230,7 +266,7 @@ class RaplPower(Provider):
             draft.note("cpu.power.core_w", Need.HARDWARE,
                        _("prov.rapl.onecore"), _("prov.rapl.onecore.hint"))
         if self._limits is None:
-            self._limits = _limits(packages[0])
+            self._limits = package_limits(packages[0])
 
         draft.cpu_extra["power"] = Power(
             package_w=round(totals["package_w"], 1),

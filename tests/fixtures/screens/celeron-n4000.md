@@ -429,16 +429,16 @@ Ocupado 33.0 GB · Libre 62.8 GB · Reservado 6.7 GB · Sin montar 136.0 GB
 wlp2s0 · 192.168.1.120
 Intel Dual Band Wireless-AC 3165 Plus Bluetooth
 puerta 192.168.1.1 · 1 de 2 activas
-- Bajando: 0 B/s (3 paquetes perdidos)
+- Bajando: 0 B/s (3 paquetes descartados)
 - Subiendo: 0 B/s
 - Recibido: 8.3 KB (105 paquetes)
 - Enviado: 8.3 KB (66 paquetes)
 
 ### Tráfico por interfaz
 
-Los mismos datos son 116 MB/s o 931 Mb/s: los tests de velocidad usan bits.
+1 MB/s son 8 Mb/s: los tests de velocidad usan bits.
 
-| INTERFAZ | BAJANDO | SUBIENDO | RECIBIDO | ENVIADO | PAQUETES | PERDIDOS |
+| INTERFAZ | BAJANDO | SUBIENDO | RECIBIDO | ENVIADO | PAQUETES | DESCARTADOS |
 |---|---|---|---|---|---|---|
 | wlp2s0 | 0 B/s | 0 B/s | 8.3 KB | 8.3 KB | 171 | 3 |
 | enp3s0 | 0 B/s | 0 B/s | 0 B | 0 B | 0 | 0 |
@@ -469,7 +469,7 @@ Los mismos datos son 116 MB/s o 931 Mb/s: los tests de velocidad usan bits.
 
 ### Interfaces virtuales
 
-| INTERFAZ | BAJANDO | SUBIENDO | RECIBIDO | ENVIADO | PAQUETES | PERDIDOS |
+| INTERFAZ | BAJANDO | SUBIENDO | RECIBIDO | ENVIADO | PAQUETES | DESCARTADOS |
 |---|---|---|---|---|---|---|
 | lo | 0 B/s | 0 B/s | 8.5 KB | 8.5 KB | 198 | 0 |
 

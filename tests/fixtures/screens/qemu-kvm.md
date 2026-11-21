@@ -298,16 +298,16 @@ Es un disco virtual: no tiene temperatura, horas, lo escrito ni desgaste propios
 ens4 · 192.168.1.120
 Intel 82540EM Gigabit Ethernet Controller · 1 Gb/s · dúplex completo
 puerta 192.168.1.1 · 1 de 1 activas
-- Bajando: 0 B/s (sin pérdidas)
+- Bajando: 0 B/s (ninguno descartado)
 - Subiendo: 0 B/s
 - Recibido: 109.8 MB (79 087 paquetes)
 - Enviado: 881.5 KB (6 177 paquetes)
 
 ### Tráfico por interfaz
 
-Los mismos datos son 116 MB/s o 931 Mb/s: los tests de velocidad usan bits.
+1 MB/s son 8 Mb/s: los tests de velocidad usan bits.
 
-| INTERFAZ | BAJANDO | SUBIENDO | RECIBIDO | ENVIADO | PAQUETES | PERDIDOS |
+| INTERFAZ | BAJANDO | SUBIENDO | RECIBIDO | ENVIADO | PAQUETES | DESCARTADOS |
 |---|---|---|---|---|---|---|
 | ens4 | 0 B/s | 0 B/s | 109.8 MB | 881.5 KB | 85 264 | 0 |
 
@@ -328,7 +328,7 @@ Los mismos datos son 116 MB/s o 931 Mb/s: los tests de velocidad usan bits.
 
 ### Interfaces virtuales
 
-| INTERFAZ | BAJANDO | SUBIENDO | RECIBIDO | ENVIADO | PAQUETES | PERDIDOS |
+| INTERFAZ | BAJANDO | SUBIENDO | RECIBIDO | ENVIADO | PAQUETES | DESCARTADOS |
 |---|---|---|---|---|---|---|
 | lo | 0 B/s | 0 B/s | 6.9 KB | 6.9 KB | 172 | 0 |
 

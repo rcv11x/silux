@@ -24,7 +24,8 @@ def _structure(type_: int, fields: bytes, strings: list[str]) -> bytes:
 
 
 def _memory_device(size_mb: int = 8192, extended_mb: int = 0, configured_mts: int = 2666,
-                   memory_type: int = 0x1A) -> bytes:
+                   memory_type: int = 0x1A, locator: str = "DIMM 1", bank: str = "P0 CHANNEL A",
+                   part: str = "KF3200C16D4/8GX") -> bytes:
     fields = bytearray(0x28 - 4)
 
     def put_word(offset: int, value: int) -> None:
@@ -54,8 +55,8 @@ def _memory_device(size_mb: int = 8192, extended_mb: int = 0, configured_mts: in
     put_word(0x26, 1200)
 
     return _structure(17, bytes(fields), [
-        "DIMM 1", "P0 CHANNEL A", "Kingston", "0x12345678",
-        "Not Specified", "KF3200C16D4/8GX",
+        locator, bank, "Kingston", "0x12345678",
+        "Not Specified", part,
     ])
 
 

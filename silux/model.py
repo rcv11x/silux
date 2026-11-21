@@ -95,6 +95,10 @@ class Clocks:
     min_hz: Optional[int] = None
     max_hz: Optional[int] = None          # techo efectivo que aplica el kernel
     base_hz: Optional[int] = None
+    # The base at the TDP the machine is configured to now (intel_pstate's
+    # `base_frequency`, HWP's guaranteed performance). A laptop whose maker
+    # sets a lower TDP gets a lower base than the specification's.
+    base_configured_hz: Optional[int] = None
     max_turbo_hz: Optional[int] = None    # techo del silicio, según CPUID 0x16
     bus_hz: Optional[int] = None          # BCLK / reloj de referencia
     turbo_enabled: Optional[bool] = None
@@ -172,6 +176,10 @@ class Power:
     # long the package can stay above PL1 before PL1 holds it back.
     window_long_s: Optional[float] = None
     window_short_s: Optional[float] = None
+    # The higher of the two copies of each limit (MSR and MMIO) when they
+    # differ: the processor enforces the lower one, the one above.
+    limit_long_other_w: Optional[float] = None
+    limit_short_other_w: Optional[float] = None
 
     @property
     def load_percent(self) -> Optional[float]:
@@ -672,6 +680,19 @@ class MemoryModule:
         return "dimm" in lugar or "slot" in lugar
 
     @property
+    def soldered_by(self) -> Optional[str]:
+        """How it is known to be soldered: "form" (the firmware's form factor)
+        or "place" (its place names no slot); None in a slot."""
+        if self.in_a_slot:
+            return None
+        if self.form_factor in SOLDERED_FORM_FACTORS:
+            return "form"
+        # Its own SPD chip, or no place at all to judge by: nothing says so.
+        if self.spd is not None or not self.locator:
+            return None
+        return "place"
+
+    @property
     def has_ecc(self) -> Optional[bool]:
         """Si el ancho total supera al de datos, esos bits de más son ECC."""
         if self.total_width is None or self.data_width is None or not self.data_width:
@@ -708,9 +729,13 @@ class MemoryModule:
 
     @property
     def voltage_from_firmware(self) -> bool:
-        """Many BIOSes leave the configured voltage at its stock value while
-        an XMP or EXPO profile raises the real one."""
-        return bool(self.voltage_configured_mv)
+        """Only the firmware says it: many BIOSes leave the configured voltage
+        at its stock value while an XMP or EXPO profile raises the real one.
+        The SPD stating the same voltage confirms it."""
+        if not self.voltage_configured_mv:
+            return False
+        spd_v = self.spd.jedec.voltage_v if self.spd is not None and self.spd.jedec else None
+        return not (spd_v and abs(spd_v * 1000 - self.voltage_configured_mv) < 10)
 
     @property
     def above_jedec(self) -> bool:
@@ -895,7 +920,9 @@ def clean_dmi(value: Optional[str]) -> Optional[str]:
     """Descarta los rellenos que dejan las BIOS sin configurar."""
     if not value:
         return None
-    return None if value.strip().lower() in DMI_PLACEHOLDERS else value.strip()
+    # «N34ET64W (1.64 )»: spaces the firmware pads its fields with.
+    value = re.sub(r"\s+\)", ")", re.sub(r"\(\s+", "(", " ".join(value.split())))
+    return None if value.lower() in DMI_PLACEHOLDERS else value
 
 
 @dataclass(frozen=True, slots=True)
@@ -915,6 +942,9 @@ class Board:
 
     chipset: Optional[str] = None           # "Intel H510"
     chipset_full: Optional[str] = None      # el nombre completo de pci.ids
+    # The chipset (the PCH) is a die inside the processor's package, as on
+    # most Intel laptops since Tiger Lake: no separate chip on the board.
+    chipset_on_package: bool = False
     host_bridge: Optional[str] = None
 
     system_vendor: Optional[str] = None
@@ -1351,6 +1381,16 @@ class NetworkTraffic:
     def problems(self) -> int:
         """Paquetes que no llegaron a su destino, por el motivo que sea."""
         return self.rx_errors + self.tx_errors + self.rx_dropped + self.tx_dropped
+
+    @property
+    def dropped(self) -> int:
+        """Packets the kernel discarded: mostly not lost on the wire."""
+        return self.rx_dropped + self.tx_dropped
+
+    @property
+    def errors(self) -> int:
+        """Packets that arrived or left damaged."""
+        return self.rx_errors + self.tx_errors
 
 
 @dataclass(frozen=True, slots=True)
@@ -2087,7 +2127,7 @@ _COMPUTED: dict[str, tuple[str, ...]] = {
              "refresh_summary", "best_mode"),
     "VideoMode": ("label",),
     "Gpu": ("display_name", "pci_id", "subsystem_id", "connected_displays"),
-    "NetworkTraffic": ("total_bytes", "total_rate_bps", "problems"),
+    "NetworkTraffic": ("dropped", "errors", "total_bytes", "total_rate_bps", "problems"),
     "NetworkInterface": ("display_name", "active"),
     "Partition": ("used_percent", "mounted"),
     "DiskIo": ("total_rate_bps",),
@@ -2097,7 +2137,7 @@ _COMPUTED: dict[str, tuple[str, ...]] = {
                 "cores_temp_c", "in_virtual_machine"),
     "Sensor": ("heat", "unit", "plausible", "group", "category", "alarm", "alarm_level"),
     "Board": ("display_name",),
-    "MemoryModule": ("has_ecc", "underclocked", "rated_mts", "in_a_slot",
+    "MemoryModule": ("has_ecc", "underclocked", "rated_mts", "in_a_slot", "soldered_by",
                      "rated_from_firmware", "voltage_mv", "voltage_from_firmware",
                      "above_jedec"),
     "SpdInfo": ("rated_mts",),

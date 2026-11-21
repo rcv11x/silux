@@ -62,6 +62,10 @@ _CHIPSET_MODEL = re.compile(
 )
 
 
+# «500 Series Chipset Family On-Package eSPI Controller»: a family.
+_CHIPSET_FAMILY = re.compile(r"\b(\d{3} Series)\s+Chipset\b", re.IGNORECASE)
+
+
 # On AM4 and AM5 the LPC bridge on bus 0 is the FCH inside the processor,
 # named the same on every board. There the board's name says the chipset
 # («B550M» is a microATX B550; «B650E-F», a B650E). The list is closed on
@@ -92,6 +96,9 @@ def chipset(bridge: Optional[tuple[str, str]], board: Optional[str]) -> Optional
     vendor, name = bridge
     match = _CHIPSET_MODEL.search(name)
     model = match.group(1) if match else None
+    if model is None and (family := _CHIPSET_FAMILY.search(name)):
+        # A laptop's PCH names its family, not a model: «500 Series».
+        model = family.group(1)
     if model is None and vendor.startswith(AMD):
         model = chipset_from_board_name(board)
     brand = "AMD" if vendor.startswith(AMD) else vendor.split()[0]
@@ -136,6 +143,7 @@ class DmiBoard(Provider):
 
             chipset=model,
             chipset_full=chipset_full,
+            chipset_on_package="on-package" in (chipset_full or "").lower(),
             host_bridge=host_bridge,
 
             system_vendor=_dmi("sys_vendor"),

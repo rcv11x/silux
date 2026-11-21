@@ -797,7 +797,8 @@ class MemoryPage(ScrollPage):
             for name in MODULE_FIELDS:
                 grid.add(_(name))
             card.body.addWidget(grid)
-            self._fill(grid, module, self._limite)
+            self._fill(grid, module, self._limite,
+                       otro_con_spd=any(o.spd is not None for o in modules if o is not module))
             # El zócalo: con permisos, el de la tabla del firmware (y lo que
             # puso tal cual, al pasar el ratón); sin ellos, candado.
             if del_spd:
@@ -906,7 +907,8 @@ class MemoryPage(ScrollPage):
             "memory.field.chips", "memory.field.profiles", "memory.field.made")
 
     @staticmethod
-    def _fill(grid: InfoGrid, module: MemoryModule, limite=None) -> None:
+    def _fill(grid: InfoGrid, module: MemoryModule, limite=None,
+              otro_con_spd: bool = False) -> None:
         d = render.DASH
         spd = module.spd
 
@@ -960,8 +962,17 @@ class MemoryPage(ScrollPage):
 
         grid.set(_("memory.field.voltage"), render.memory_voltage(module),
                  tooltip=_("memory.tip.voltage.bios") if module.voltage_from_firmware else "")
-        grid.set(_("memory.field.form"), render.memory_form_factor(module.form_factor)
-                 or (spd.module_type if spd else None) or d)
+        if module.soldered_by:
+            # What the firmware calls it (a T14 says «SODIMM») isn't what it is.
+            motivo = (_("memory.tip.soldered.form") if module.soldered_by == "form"
+                      else _("memory.tip.soldered.place").format(
+                          formato=render.memory_form_factor(module.form_factor) or d))
+            if module.spd is None and otro_con_spd:
+                motivo += " " + _("memory.tip.soldered.nospd")
+            grid.set(_("memory.field.form"), _("memory.form.soldered"), tooltip=motivo)
+        else:
+            grid.set(_("memory.field.form"), render.memory_form_factor(module.form_factor)
+                     or (spd.module_type if spd else None) or d)
 
         perfiles = spd.overclock_profiles if spd else ()
         grid.set(_("memory.field.profiles"), ", ".join(perfiles) if perfiles else d,

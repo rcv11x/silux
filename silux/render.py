@@ -287,9 +287,24 @@ def load_average(values: tuple[float, ...], threads: int = 0) -> str:
             if threads else text)
 
 
+def cache_size(value: Optional[int]) -> str:
+    """«1.25 MB»: a cache's size with the decimals it needs, so that «4 ×
+    1.25 MB» adds up to the 5 MB of the level."""
+    if _none(value):
+        return DASH
+    for unit, factor in (("MB", 1024**2), ("KB", 1024)):
+        if value >= factor:
+            scaled = value / factor
+            for digits in (0, 1, 2):
+                if round(scaled, digits) == scaled:
+                    return f"{scaled:.{digits}f} {unit}"
+            return size(value)
+    return f"{value} B"
+
+
 def cache_summary(cache: Cache) -> str:
     """«6 × 32 KB, 8 vías»: la forma en que se lee una jerarquía de caché."""
-    parts = [size(cache.size_bytes)]
+    parts = [cache_size(cache.size_bytes)]
     if cache.instances > 1:
         parts[0] = f"{cache.instances} × {parts[0]}"
     if cache.ways:
@@ -304,8 +319,8 @@ def caches_summary(caches) -> str:
     if len(caches) == 1:
         return cache_summary(caches[0])
     ordered = sorted(caches, key=lambda c: -c.size_bytes)
-    parts = [f"{c.instances} × {size(c.size_bytes)}" if c.instances > 1 else size(c.size_bytes)
-             for c in ordered]
+    parts = [f"{c.instances} × {cache_size(c.size_bytes)}" if c.instances > 1
+             else cache_size(c.size_bytes) for c in ordered]
     text = " + ".join(parts)
     ways = {c.ways for c in ordered}
     if len(ways) == 1 and None not in ways:
@@ -1450,7 +1465,9 @@ def slot_names(zocalos: list[tuple[Optional[str], Optional[str]]]) -> list[str]:
     if piezas and all(piezas):
         # De menos a más: se añade un campo solo si sin él dos zócalos se
         # llamarían igual, y antes uno que dos.
-        for campos in ((), ("dimm",), ("controlador",), ("dimm", "controlador")):
+        # The controller before the DIMM number: a channel is a controller's
+        # letter, and two «Channel A» on two controllers are two channels.
+        for campos in ((), ("controlador",), ("dimm",), ("dimm", "controlador")):
             nombres = [etiqueta(suyas, campos) for suyas in piezas]
             if all(nombres) and len(set(nombres)) == len(nombres):
                 return nombres
@@ -1980,6 +1997,16 @@ def turbo(clocks: Clocks) -> str:
     return _("board.on") if clocks.turbo_enabled else _("board.off")
 
 
+def base_clock(clocks: Clocks) -> str:
+    """«2.40 GHz × 24.0 · 900 MHz con el TDP configurado ahora»: the base of
+    the specification, and the one the configured TDP gives when it differs."""
+    text = clock_and_multiplier(clocks.base_hz, clocks.base_multiplier)
+    now = clocks.base_configured_hz
+    if clocks.base_hz and now and abs(now - clocks.base_hz) >= 50_000_000:
+        text += " · " + _("cpu.base.tdp").format(f=hz(now))
+    return text
+
+
 def without_frequency_driver(clocks: Clocks) -> Optional[str]:
     """What a machine without cpufreq has not, and where its frequency
     comes from; None with a driver."""
@@ -2181,8 +2208,26 @@ _RELLENO_DE_MARCA = re.compile(
 
 
 def lost_packets(n: int) -> str:
-    """«1 paquete perdido», «12 682 paquetes perdidos»."""
+    """«1 paquete descartado», «12 682 paquetes descartados»."""
     return _("net.lost.one") if n == 1 else _("net.lost").format(n=thousands(n))
+
+
+def board_chipset(board) -> str:
+    """«Intel 500 Series · in the processor's package» when it is there."""
+    if not board.chipset:
+        return DASH
+    if board.chipset_on_package:
+        return f"{board.chipset} · {_('board.chipset.onpackage')}"
+    return board.chipset
+
+
+def packet_problems(traffic) -> str:
+    """«2 506 paquetes descartados», with the damaged ones apart: a discard
+    is the kernel's choice, an error is a fault."""
+    parts = [lost_packets(traffic.dropped)] if traffic.dropped else []
+    if traffic.errors:
+        parts.append(_("net.errors").format(n=thousands(traffic.errors)))
+    return " · ".join(parts) or _("net.nolost")
 
 
 def cpu_short_name(brand: Optional[str]) -> str:

@@ -307,10 +307,8 @@ class NetworkPage(ScrollPage):
                 n=render.thousands(trafico.rx_packets)))
             self.tile_tx.set_detail(_("net.packets2").format(
                 n=render.thousands(trafico.tx_packets)))
-            perdidos = trafico.problems
-            self.tile_down.set_detail(
-                render.lost_packets(perdidos) if perdidos
-                else _("net.nolost"))
+            self.tile_down.set_detail(render.packet_problems(trafico))
+            self.tile_down.setToolTip(_("net.tip.dropped") if trafico.problems else "")
 
     def _alternar_virtuales(self) -> None:
         self._virtuales_abiertas = not self._virtuales_abiertas
@@ -352,7 +350,9 @@ class NetworkPage(ScrollPage):
              render.size(interfaz.traffic.rx_bytes),
              render.size(interfaz.traffic.tx_bytes),
              render.thousands(interfaz.traffic.rx_packets + interfaz.traffic.tx_packets),
-             render.thousands(interfaz.traffic.problems))
+             render.thousands(interfaz.traffic.dropped)
+             + (" " + _("net.errors.short").format(n=render.thousands(interfaz.traffic.errors))
+                if interfaz.traffic.errors else ""))
             for interfaz in interfaces
         ]
         return filas or [(_("net.none"), d, d, d, d, d, d)]

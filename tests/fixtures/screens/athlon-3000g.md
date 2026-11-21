@@ -441,16 +441,16 @@ Un disco de platos no tiene «vida restante»: es el desgaste de las celdas de u
 enp37s0 · 192.168.1.120
 Realtek RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller · 1 Gb/s · dúplex completo
 puerta 192.168.1.1 · 1 de 1 activas
-- Bajando: 0 B/s (sin pérdidas)
+- Bajando: 0 B/s (ninguno descartado)
 - Subiendo: 0 B/s
 - Recibido: 9.4 KB (77 paquetes)
 - Enviado: 11.0 KB (85 paquetes)
 
 ### Tráfico por interfaz
 
-Los mismos datos son 116 MB/s o 931 Mb/s: los tests de velocidad usan bits.
+1 MB/s son 8 Mb/s: los tests de velocidad usan bits.
 
-| INTERFAZ | BAJANDO | SUBIENDO | RECIBIDO | ENVIADO | PAQUETES | PERDIDOS |
+| INTERFAZ | BAJANDO | SUBIENDO | RECIBIDO | ENVIADO | PAQUETES | DESCARTADOS |
 |---|---|---|---|---|---|---|
 | enp37s0 | 0 B/s | 0 B/s | 9.4 KB | 11.0 KB | 162 | 0 |
 
@@ -471,7 +471,7 @@ Los mismos datos son 116 MB/s o 931 Mb/s: los tests de velocidad usan bits.
 
 ### Interfaces virtuales
 
-| INTERFAZ | BAJANDO | SUBIENDO | RECIBIDO | ENVIADO | PAQUETES | PERDIDOS |
+| INTERFAZ | BAJANDO | SUBIENDO | RECIBIDO | ENVIADO | PAQUETES | DESCARTADOS |
 |---|---|---|---|---|---|---|
 | lo | 0 B/s | 0 B/s | 960 B | 960 B | 32 | 0 |
 

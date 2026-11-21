@@ -213,7 +213,7 @@ class CachesPage(ScrollPage):
             {
                 "label": self._label(level, kind, key, cpu.hybrid),
                 "level": level,
-                "instances": [(cpus, render.size(cache.size_bytes))
+                "instances": [(cpus, render.cache_size(cache.size_bytes))
                               for cpus in cache.instance_cpus],
             }
             for (level, kind, key, _tam), cache in grouped.items()
@@ -233,7 +233,7 @@ class CachesPage(ScrollPage):
         filas = [
             [
                 self._label(level, kind, key, cpu.hybrid),
-                render.size(cache.size_bytes),
+                render.cache_size(cache.size_bytes),
                 str(cache.instances),
                 render.size(cache.total_bytes),
                 str(cache.ways or render.DASH),
