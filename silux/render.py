@@ -1,9 +1,9 @@
-"""Capa de presentación: convierte valores en texto.
+"""Presentation layer: turns values into text.
 
-Todo el formateo del programa vive aquí y solo aquí. El modelo guarda
-hercios, bytes y grados; la interfaz y la CLI llaman a estas funciones. Es lo
-que permite tener una salida JSON de verdad, cambiar de °C a °F sin tocar la
-recolección, y traducir sin reescribir nada.
+All the program's formatting lives here and only here. The model keeps
+hertz, bytes and degrees; the interface and the CLI call these functions.
+It's what allows a real JSON output, switching from °C to °F without
+touching collection, and translating without rewriting anything.
 """
 
 from __future__ import annotations
@@ -35,12 +35,10 @@ from .spd import jedec_grade
 
 DASH = "—"
 
-# Cuántos decimales lleva cada magnitud de un sensor. Redondear todas igual
-# estropea la mitad: un voltaje a un decimal deja de ser un voltaje —0,845 V se
-# queda en 0,8 y ya no dice nada— y un ventilador con decimales no dice más.
-#
-# Vive aquí y no en la página de sensores porque ahora también la usa el
-# informe, y dos tablas iguales en dos archivos se desincronizan solas.
+# How many decimals each sensor quantity takes. Rounding them all alike
+# spoils half: a voltage at one decimal stops being a voltage (0.845 V
+# becomes 0.8 and says nothing) and a fan with decimals says no more. It
+# lives here and not on the sensors page because the report uses it too.
 SENSOR_DECIMALS = {
     SensorKind.TEMPERATURE: 1,
     SensorKind.VOLTAGE: 3,
@@ -52,10 +50,10 @@ SENSOR_DECIMALS = {
 
 
 def sensor_value(value: Optional[float], kind: SensorKind) -> str:
-    """El valor de un sensor con los decimales que le corresponden.
+    """A sensor's value with the decimals it takes.
 
-    Sin unidad: quien la pone decide antes si la convierte, que es lo que hace
-    la pantalla con los grados Fahrenheit.
+    No unit: whoever adds it decides first whether to convert, as the screen
+    does with Fahrenheit.
     """
     if value is None:
         return DASH
@@ -124,7 +122,7 @@ def memory_type(name: Optional[str], translate=_) -> Optional[str]:
 
 
 def made(year: Optional[int], week: Optional[int], translate=_) -> Optional[str]:
-    """When a piece was made, as its own standard dates it: «semana 16 de
+    """When a piece was made, as its own standard dates it: «week 16 of
     2024» (EDID, SPD). The year alone without its week."""
     if not year:
         return None
@@ -146,27 +144,26 @@ def hz(value: Optional[float], decimals: int | None = None) -> str:
         return f"{value / 1e9:.{2 if decimals is None else decimals}f} GHz"
     if value >= 1e6:
         return f"{value / 1e6:.{0 if decimals is None else decimals}f} MHz"
-    # Un cero no se escala: una GPU en reposo profundo marca 0 y salía como
-    # «0 kHz», que sugiere una frecuencia diminuta en vez de una parada. La
-    # unidad que se elige por magnitud deja de tener sentido cuando no hay
-    # magnitud. Sigue sin ser un dato ausente: parada es la respuesta.
+    # A zero isn't scaled: a GPU in deep idle reads 0 and came out as
+    # «0 kHz», suggesting a tiny frequency rather than a stop. Choosing the
+    # unit by magnitude makes no sense without a magnitude. Still not a
+    # missing datum: stopped is the answer.
     if value == 0:
         return "0 MHz"
     return f"{value / 1e3:.0f} kHz"
 
 
 def size(value: Optional[int]) -> str:
-    """Siempre en la unidad más grande que aplique.
+    """Always in the largest unit that applies.
 
-    La versión anterior prefería la unidad en la que la división saliera
-    exacta, y por eso 13,9 MB de caché total se enseñaban como "14208 KB".
+    Preferring the unit the division came out exact in showed 13.9 MB of
+    total cache as "14208 KB".
     """
     if _none(value):
         return DASH
     value = int(value)
-    # Los terabytes aparecieron con los discos: hasta entonces la unidad más
-    # grande que se veía era la RAM, y «8849.3 GB» de almacenamiento total no
-    # se lee, se cuenta.
+    # Terabytes came with disks: until then the largest unit seen was RAM,
+    # and «8849.3 GB» of total storage isn't read, it's counted.
     for unit, factor in (("TB", 1024**4), ("GB", 1024**3), ("MB", 1024**2), ("KB", 1024)):
         if value >= factor:
             scaled = value / factor
@@ -192,17 +189,16 @@ def watts(value: Optional[float]) -> str:
 
 def watt_hours(value: Optional[float]) -> str:
     """A battery's energy, with the same decimal wherever it is: the badge
-    said «50 Wh» above a «Diseño 50.5 Wh»."""
+    said «50 Wh» above a «Design 50.5 Wh»."""
     return DASH if _none(value) else f"{float(value):.1f} Wh"
 
 
 def figure(value: Optional[float], decimals: int = 0) -> str:
-    """La cifra de una ficha grande, sin su unidad, que va aparte.
+    """A big tile's figure, without its unit, which goes apart.
 
-    Con las cifras tabulares de la letra de los valores, lo que mide solo
-    depende de cuántas tiene: el ancho que reserva cada ficha
-    (`StatTile.reserve`) sale de aquí mismo, con el tope de lo que puede
-    llegar a decir.
+    With the value font's tabular figures, what it measures only depends on
+    how many it has: the width each tile reserves (`StatTile.reserve`)
+    comes from here too, with the cap of what it can come to say.
     """
     return DASH if _none(value) else f"{float(value):.{decimals}f}"
 
@@ -217,41 +213,41 @@ def multiplier(value: Optional[float]) -> str:
 
 def clock_and_multiplier(frequency: Optional[int],
                          factor: Optional[float]) -> str:
-    """«3.40 GHz  × 34.0», o solo la parte que se sepa.
+    """«3.40 GHz  × 34.0», or just the part that's known.
 
-    Los dos van juntos en el mismo renglón, y unirlos a pelo dejaba a la vista
-    el hueco del que falta: un Broadwell sin multiplicador publicado salía
-    «1.60 GHz  —», y uno sin ninguno de los dos, «—  —». El guion marca un
-    dato ausente, y ahí se leía como un fallo de formato.
+    Both go on the same row, and joining them bluntly left the missing one's
+    gap showing: a processor without a published multiplier came out as
+    «1.60 GHz  —», and one with neither as «—  —». A dash marks a missing
+    datum, and there it read as a formatting fault.
     """
     pieces = [p for p in (hz(frequency), multiplier(factor)) if p != DASH]
     return "  ".join(pieces) or DASH
 
 
 def dec(value: Optional[int]) -> str:
-    """Un entero tal cual. Existe para no escribir `x or DASH`: un stepping 0
-    es un stepping de verdad, y con `or` se convertiría en un guion."""
+    """An integer as is. It exists so as not to write `x or DASH`: stepping 0
+    is a real stepping, and `or` would turn it into a dash."""
     return DASH if value is None else str(value)
 
 
 def hex_id(value: Optional[int]) -> str:
-    """Como lo enseñan las hojas de datos: decimal y hexadecimal juntos."""
+    """As datasheets show it: decimal and hexadecimal together."""
     if value is None:
         return DASH
     return f"{value} (0x{value:X})"
 
 
 def signature(value: Optional[int]) -> str:
-    """El registro EAX de la hoja 1 de CPUID, tal cual."""
+    """CPUID leaf 1's EAX register, as is."""
     return DASH if value is None else f"0x{value:08X}"
 
 
 def signature_tooltip(cpu_type: CpuType) -> str:
-    """Explica de dónde salen la familia y el modelo compuestos.
+    """Explain where the composed family and model come from.
 
-    Es la pregunta que hace todo el mundo al ver un "modelo 5" en un
-    procesador que Intel llama 165: CPUID reparte cada valor entre un campo
-    base y otro extendido, y lo que vale es la suma.
+    It's the question everyone asks seeing a "model 5" on a processor Intel
+    calls 165: CPUID splits each value into a base and an extended field,
+    and what counts is the sum.
     """
     if cpu_type.signature is None:
         return ""
@@ -264,12 +260,12 @@ def signature_tooltip(cpu_type: CpuType) -> str:
 
 
 def virtual_machine(cpu_type: CpuType) -> Optional[str]:
-    """Quién está debajo, o nada si esto es hierro de verdad.
+    """Who's underneath, or nothing on bare metal.
 
-    Vive aquí y no en cada página porque lo piden dos —Inicio y CPU— y porque
-    es justo lo que cambia cómo se lee todo lo demás: los núcleos, los
-    sockets y las cachés de una máquina virtual son los que le inventó el
-    hipervisor, no los de la pieza cuyo nombre sale en el titular.
+    It lives here and not in each page because two ask for it (Home and CPU)
+    and because it changes how everything else reads: a virtual machine's
+    cores, sockets and caches are the ones the hypervisor made up, not those
+    of the part whose name is in the headline.
     """
     if not cpu_type.in_virtual_machine:
         return None
@@ -279,7 +275,7 @@ def virtual_machine(cpu_type: CpuType) -> Optional[str]:
 
 
 def load_average(values: tuple[float, ...], threads: int = 0) -> str:
-    """Carga a 1, 5 y 15 minutos, con el número de hilos como referencia."""
+    """Load at 1, 5 and 15 minutes, with the thread count as reference."""
     if not values:
         return DASH
     text = " · ".join(f"{v:.2f}" for v in values)
@@ -303,7 +299,7 @@ def cache_size(value: Optional[int]) -> str:
 
 
 def cache_summary(cache: Cache) -> str:
-    """«6 × 32 KB, 8 vías»: la forma en que se lee una jerarquía de caché."""
+    """«6 × 32 KB, 8 vías»: how a cache hierarchy reads."""
     parts = [cache_size(cache.size_bytes)]
     if cache.instances > 1:
         parts[0] = f"{cache.instances} × {parts[0]}"
@@ -334,29 +330,30 @@ def cache_label(cache: Cache) -> str:
 
 
 def from_cpu_table(value: Optional[str], translate_key=None) -> str:
-    """Un dato que sale de la tabla de procesadores y no del propio silicio.
+    """A datum that comes from the processor table and not the silicon.
 
-    El nombre en clave, el nodo y el encapsulado no se leen del procesador:
-    están en una tabla que es una foto del día en que se hizo, y uno que
-    salga después no está. Se dice así y no con un guion, que se lee como
-    «este equipo no lo tiene». `traducir`, como en `core_type_label`.
+    The codename, node and package aren't read from the processor: they're
+    in a table that's a snapshot of the day it was made, and one released
+    later isn't there. It's said so, not with a dash, which reads as «this
+    machine doesn't have it». `translate_key`, as in `core_type_label`.
     """
     return value or (translate_key or _)("cpu.notintable")
 
 
 def core_type_label(cpu_type: CpuType, hybrid: bool, translate_key=None) -> str:
-    """`traducir` deja pedir el castellano fijo desde fuera de la interfaz.
+    """`translate_key` lets fixed Spanish be asked for from outside the
+    interface.
 
-    El informe va en español pase lo que pase, así que ahí entra `en_español`
-    en vez de `_`; con la función normal, el informe de alguien con la interfaz
-    en inglés mezclaría los dos idiomas en la misma página.
+    The report is in Spanish whatever happens, so `in_spanish` goes in there
+    instead of `_`; with the normal function, the report of someone with the
+    interface in English would mix both languages on one page.
     """
     tr = translate_key or _
     if not hybrid:
         return tr("cpu.type.generic")
-    # «P» y «E» son como los llama Intel; ARM llama a lo mismo big.LITTLE.
-    # El reparto es el mismo, el nombre no, y quien mira su teléfono no
-    # reconoce «núcleo E» por ninguna parte.
+    # «P» and «E» are Intel's names; ARM calls the same thing big.LITTLE. The
+    # split is the same, the name isn't, and whoever looks at their phone
+    # doesn't recognize «E core» anywhere.
     if (cpu_type.architecture or "").lower().startswith(("aarch64", "arm")):
         keys = {"performance": "core.type.big", "efficiency": "core.type.little"}
     else:
@@ -380,7 +377,7 @@ def instructions(cpu_type: CpuType, limit: int | None = None) -> str:
 
 
 def power_headline(power: Power) -> str:
-    """Una línea corta que pone el consumo en contexto: "de 65 W sostenidos"."""
+    """A short line putting the power draw in context: "of 65 W sustained"."""
     if power.package_w is None:
         return ""
     if power.limit_long_w:
@@ -389,8 +386,8 @@ def power_headline(power: Power) -> str:
     return ""
 
 
-# Los tonos de la barra de reposo, del estado más ligero al más hondo: cuanto
-# más hondo duerme, más se parece al fondo. Lo que resalta es lo activo.
+# The idle bar's tones, from the lightest state to the deepest: the deeper it
+# sleeps, the more it looks like the background. What stands out is the active.
 _IDLE_TONES = ("accent/0.6", "accent/0.4", "accent/0.25", "accent/0.15", "line")
 
 
@@ -399,12 +396,12 @@ _CORETEMP_CORE = re.compile(r"^Core (\d+)$")
 
 
 def sensor_label(sensor) -> str:
-    """El nombre de un sensor en el árbol, en el idioma de la interfaz.
+    """A sensor's name in the tree, in the interface's language.
 
-    Solo las etiquetas que `coretemp` publica en inglés: «Package id 0» es
-    «Paquete» y «Core 3», «Núcleo 3». El modelo las guarda tal cual, que es
-    lo que quieren el informe y el CSV; las de los demás chips son las que
-    puso el fabricante y no se tocan.
+    Only the labels `coretemp` publishes in English: «Package id 0» is
+    «Paquete» and «Core 3», «Núcleo 3». The model keeps them as they are,
+    which the report and the CSV want; other chips' are the maker's and
+    aren't touched.
     """
     if sensor.chip == "coretemp":
         if (match := _CORETEMP_PACKAGE.match(sensor.label)):
@@ -416,11 +413,11 @@ def sensor_label(sensor) -> str:
 
 
 def idle_name(name: str) -> str:
-    """«C2», no «C2_ACPI».
+    """«C2», not «C2_ACPI».
 
-    `intel_idle` pone «_ACPI» detrás de los estados que toma de la tabla del
-    firmware cuando no tiene una propia para ese procesador (un Comet Lake-S,
-    por ejemplo). Dice de dónde salió el estado, no qué estado es.
+    `intel_idle` appends «_ACPI» to the states it takes from the firmware's
+    table when it has none of its own for that processor. It says where the
+    state came from, not which state it is.
     """
     return name[:-len("_ACPI")] if name.endswith("_ACPI") else name
 
@@ -437,13 +434,13 @@ class Segment(NamedTuple):
 
 
 def idle_segments(states) -> list[Segment]:
-    """Los tramos de la barra de reposo: lo activo y cada estado, sobre 100."""
+    """The idle bar's segments: the active part and each state, out of 100."""
     asleep = sum(e.percent for e in states)
     spans = [Segment("active", _("cpu.idle.active"),
                       max(0.0, round(100.0 - asleep, 1)), "accent")]
     timed = [e for e in states if e.percent > 0]
     for i, state in enumerate(timed):
-        # El más hondo siempre con el tono del fondo.
+        # The deepest always in the background's tone.
         tone = _IDLE_TONES[-1] if i == len(timed) - 1 and len(timed) > 1 \
             else _IDLE_TONES[min(i, len(_IDLE_TONES) - 2)]
         spans.append(Segment(state.name, idle_name(state.name), state.percent, tone))
@@ -451,7 +448,7 @@ def idle_segments(states) -> list[Segment]:
 
 
 def idle_deepest(states) -> Optional[str]:
-    """«C2, el reposo más hondo: entre el 54 % y el 73 % según el hilo.»"""
+    """«C2, the deepest idle: between 54 % and 73 % depending on the thread.»"""
     if not states:
         return None
     deepest = states[-1]
@@ -466,7 +463,7 @@ def idle_deepest(states) -> Optional[str]:
 
 
 def power_breakdown(power: Power) -> str:
-    """El reparto por dominio, que es lo que explica un consumo en reposo bajo."""
+    """The breakdown by domain, which explains a low idle power draw."""
     parts = [
         (f'{_("power.cores")} {watts(power.core_w)}', power.core_w),
         (f'{_("power.uncore")} {watts(power.uncore_w)}', power.uncore_w),
@@ -487,19 +484,19 @@ def power_tooltip(power: Power) -> str:
 
 
 def plural(amount: int, singular: str, plural_: str) -> str:
-    """La palabra que toca según la cantidad.
+    """The word that fits the quantity.
 
-    Parece una tontería hasta que un equipo con un solo módulo de memoria lee
-    «1 módulos leídos» y piensa que el programa está roto. Cuando alguien va a
-    fiarse de las cifras, la concordancia es parte de fiarse.
+    Seems trivial until a machine with a single memory module reads «1
+    modules read» and thinks the program is broken. When someone is going to
+    trust the figures, agreement is part of trusting.
     """
     return singular if amount == 1 else plural_
 
 
 def unique_id(raw: Optional[str]) -> Optional[str]:
-    """El identificador único de una pieza, o nada si no identifica nada.
+    """A part's unique identifier, or nothing if it identifies nothing.
 
-    Todo ceros es la forma que tiene un driver de decir que no lo tiene.
+    All zeros is a driver's way of saying it doesn't have one.
     """
     if not raw or not raw.strip().strip("0"):
         return None
@@ -510,12 +507,12 @@ _DMI_DATE = re.compile(r"(\d{1,2})/(\d{1,2})/(\d{4})")
 
 
 def bios_date(raw: Optional[str]) -> Optional[str]:
-    """La fecha de la BIOS sin ambigüedad: «2025-10-28».
+    """The BIOS date without ambiguity: «2025-10-28».
 
-    El firmware la escribe como mes/día/año, a la americana, y pintada tal
-    cual «06/08/2023» se lee en España como el seis de agosto y es el ocho de
-    junio. Año-mes-día no se confunde con nada. Lo que no tenga esa forma se
-    deja como viene: es mejor que inventarle un orden.
+    The firmware writes it as month/day/year, American style, and painted as
+    is «06/08/2023» reads in Spain as the sixth of August when it's the
+    eighth of June. Year-month-day can't be confused. What doesn't have that
+    shape is left as it comes: better than inventing an order.
     """
     if not raw:
         return None
@@ -529,16 +526,16 @@ def bios_date(raw: Optional[str]) -> Optional[str]:
 
 
 def bios_summary(board) -> str:
-    """«AMI 1.80 (2023-06-08)»: de quién es la BIOS, cuál y de cuándo."""
+    """«AMI 1.80 (2023-06-08)»: whose the BIOS is, which, and from when."""
     together = " ".join(p for p in (short_vendor(board.bios_vendor), board.bios_version) if p)
     date = bios_date(board.bios_date)
     return f"{together} ({date})" if together and date else together or DASH
 
 
 def lock_tooltip(note) -> str:
-    """Lo que dice el candado de un dato que falta por permisos.
+    """What a datum missing for permissions says on its padlock.
 
-    Por qué falta, con las palabras de la nota, y qué pasa al pulsarlo.
+    Why it's missing, in the note's words, and what happens on clicking it.
     """
     return f"{note.message}\n\n{_('lock.tip.outdated' if note.helper_outdated else 'lock.tip')}"
 
@@ -554,18 +551,14 @@ def permission_title(note, title: str) -> str:
     return _("perm.outdated.title") if note.helper_outdated else title
 
 
-# Cómo llama el kernel al dúplex de un enlace, y con qué clave se dice aquí.
-# Lo que no esté en la tabla —«unknown», que es lo que da una interfaz sin
-# cable— no se pinta: no es un dúplex, es que no hay negociación.
+# How the kernel names a link's duplex, and by which key it's said here.
+# What's not in the table («unknown», from an interface without a cable) isn't
+# painted: it's not a duplex, there's just no negotiation.
 DUPLEX = {"full": "net.duplex.full", "half": "net.duplex.half"}
 
 
 def link_summary(interface) -> Optional[str]:
-    """«2.5 Gb/s · dúplex completo»: cómo quedó negociado el enlace.
-
-    Estaba en el modelo, que lo componía con la palabra del kernel tal cual:
-    la página de Red decía «2.5 Gb/s · full» con la interfaz en español.
-    """
+    """«2.5 Gb/s · dúplex completo»: how the link was negotiated."""
     if not interface.speed_mbps:
         return None
     if interface.speed_mbps >= 1000:
@@ -577,20 +570,19 @@ def link_summary(interface) -> Optional[str]:
 
 
 def rate(value: Optional[float], bits: bool = False) -> str:
-    """Un ritmo de transferencia: «2.1 MB/s» o «17.6 Mb/s», a elegir.
+    """A transfer rate: «2.1 MB/s» or «17.6 Mb/s», to choose.
 
-    Las dos unidades son correctas y se llevan un factor de ocho, que es
-    justo lo que confunde: el mismo enlace son 116 MB/s en un gestor de
-    descargas y 931 Mb/s en un test de velocidad. Como no hay una respuesta
-    buena para todo el mundo, se ofrecen las dos y decide quien mira.
+    Both units are right and differ by a factor of eight, which is exactly
+    what confuses: the same link is 116 MB/s in a download manager and
+    931 Mb/s in a speed test. As there's no answer good for everyone, both
+    are offered and the viewer decides.
 
-    Las dos van en potencias de mil, no de 1024. En redes esa es la convención
-    (un enlace «gigabit» son mil millones de bits por segundo) y respetarla
-    hace que las dos unidades cuadren entre sí y con lo que enseña un test de
-    velocidad: los mismos datos son 116 MB/s y 931 Mb/s, exactamente ocho
-    veces. Con potencias de 1024 saldrían 976 y nadie entendería de dónde sale
-    la diferencia. Los totales acumulados sí usan 1024, como el resto del
-    programa, porque ahí la referencia es el disco y no el cable.
+    Both in powers of a thousand, not 1024. That's networking's convention
+    (a «gigabit» link is a billion bits per second), and following it makes
+    the two units match each other and what a speed test shows, exactly eight
+    times. With powers of 1024 it would come out 976 and nobody would see
+    where the difference comes from. Accumulated totals do use 1024, like
+    the rest of the program, since their reference is the disk, not the cable.
     """
     if _none(value):
         return DASH
@@ -605,19 +597,18 @@ def rate(value: Optional[float], bits: bool = False) -> str:
 
 
 def traffic_summary(traffic: NetworkTraffic) -> str:
-    """«↓ 1.2 GB · ↑ 456 MB», el histórico desde que se levantó la interfaz."""
+    """«↓ 1.2 GB · ↑ 456 MB», the history since the interface came up."""
     if not traffic.total_bytes:
         return DASH
     return f"↓ {size(traffic.rx_bytes)}   ↑ {size(traffic.tx_bytes)}"
 
 
 def interface_state(interface: NetworkInterface) -> str:
-    """En qué estado está el enlace, en una palabra."""
+    """The link's state, in one word."""
     if not interface.up:
-        # Distinguir «apagada» de «encendida pero sin cable» ahorra ir a mirar
-        # detrás del equipo, pero solo tiene sentido donde hay un cable que
-        # mirar: un puente de máquinas virtuales o un túnel están parados, no
-        # desenchufados.
+        # Telling «off» from «on but unplugged» saves a look behind the
+        # machine, but only makes sense where there's a cable: a bridge for
+        # virtual machines or a tunnel is stopped, not unplugged.
         cabled = interface.kind in ("ethernet", "wifi")
         if cabled and interface.carrier is False:
             return _("net.state.nosignal" if interface.kind == "wifi"
@@ -633,11 +624,11 @@ def rpm(value: Optional[int]) -> str:
 
 
 def fan(rpm_value: Optional[int], percent_value: Optional[float]) -> str:
-    """El ventilador, con las dos cifras o con la que haya.
+    """The fan, with both figures or whichever there is.
 
-    Cada driver da una cosa: amdgpu publica las revoluciones y NVML solo el
-    porcentaje. Juntar «—» con «(0.0 %)» quedaba como si faltara un dato y
-    sobrara otro, cuando lo que dicen los dos es que está parado.
+    Each driver gives one thing: amdgpu publishes the revolutions and NVML
+    only the percentage. Putting «—» with «(0.0 %)» looked as if one datum
+    were missing and another extra, when both say it's stopped.
     """
     stopped = (rpm_value == 0) or (percent_value == 0)
     if _none(rpm_value) and _none(percent_value):
@@ -652,7 +643,7 @@ def fan(rpm_value: Optional[int], percent_value: Optional[float]) -> str:
     return "   ".join(parts)
 
 
-# Lo que una razón social lleva detrás del nombre, y que nadie dice.
+# What a legal name carries after the name, and nobody says.
 _LEGAL_FORM = re.compile(
     r"[,\s]+(?:Co\.?,?\s*Ltd\.?|Inc\.?|Corp(?:oration)?\.?|Ltd\.?|Limited|LLC|GmbH"
     r"|S\.?A\.?|AG|B\.?V\.?)$", re.IGNORECASE)
@@ -660,14 +651,14 @@ _BRAND_IN_BRACKETS = re.compile(r"\[([^\]]+)\]\s*$")
 
 
 def maker(name: Optional[str]) -> Optional[str]:
-    """La marca de un fabricante, no su razón social.
+    """A maker's brand, not its legal name.
 
-    «Micro-Star International Co., Ltd. [MSI]» es una MSI y «Tul Corporation
-    / PowerColor» una PowerColor. El firmware y `pci.ids` dan el nombre de la
-    empresa; aquí se deja el que lleva la caja. Primero los que se conocen
-    (`model.short_vendor`), después lo que el propio `pci.ids` marca como
-    nombre comercial —entre corchetes, o tras la barra— y, si no, se le quita
-    la forma jurídica del final.
+    «Micro-Star International Co., Ltd. [MSI]» is an MSI and «Tul
+    Corporation / PowerColor» a PowerColor. The firmware and `pci.ids` give
+    the company's name; what's on the box is kept here. First the known ones
+    (`model.short_vendor`), then what `pci.ids` itself marks as the brand
+    (in brackets, or after the slash) and, failing that, the legal form at
+    the end is dropped.
     """
     if not name:
         return None
@@ -700,12 +691,12 @@ def memory_maker(name: Optional[str]) -> Optional[str]:
 
 
 def with_maker(vendor: Optional[str], model: Optional[str]) -> Optional[str]:
-    """El nombre de un producto empezando por su marca.
+    """A product's name starting with its brand.
 
-    `pci.ids` da el modelo sin el fabricante: «RTL8111/8168/8211/8411 PCI
-    Express Gigabit Ethernet Controller» no dice que es una Realtek, y es
-    lo primero que se busca. Si el modelo ya empieza por la marca, no se
-    repite.
+    `pci.ids` gives the model without the maker: «RTL8111/8168/8211/8411 PCI
+    Express Gigabit Ethernet Controller» doesn't say it's a Realtek, which
+    is the first thing looked for. If the model already starts with the
+    brand, it isn't repeated.
     """
     if not model:
         return None
@@ -716,8 +707,8 @@ def with_maker(vendor: Optional[str], model: Optional[str]) -> Optional[str]:
 
 
 def network_kind(kind: Optional[str]) -> str:
-    """El tipo de una interfaz, dicho en el idioma de la interfaz: «Ethernet»,
-    «Wi-Fi», «Puente». El proveedor guarda la clave y no el texto."""
+    """An interface's type, said in the interface's language: «Ethernet»,
+    «Wi-Fi», «Bridge». The provider keeps the key, not the text."""
     if not kind:
         return DASH
     text = _(f"net.kind.{kind}")
@@ -725,36 +716,36 @@ def network_kind(kind: Optional[str]) -> str:
 
 
 def network_name(interface) -> str:
-    """Cómo se llama una tarjeta de red: su modelo con la marca, o el nombre
-    de la interfaz si no se sabe el modelo."""
+    """What a network card is called: its model with the brand, or the
+    interface's name if the model isn't known."""
     return with_maker(interface.vendor, interface.model) or interface.name
 
 
-# El kernel le pega al nombre de algunos chips dónde los encontró: la
-# dirección del Super I/O («it8688_40050607») o el bus MDIO de la tarjeta de
-# red («r8169_0_600:00»). Sirve para distinguir dos iguales, no para leerlo.
+# The kernel appends to some chips' names where it found them: the Super
+# I/O's address («it8688_40050607») or the network card's MDIO bus
+# («r8169_0_600:00»). It tells two identical ones apart; it's not for reading.
 _CHIP_ADDRESS = re.compile(r"(?:_[0-9a-f]{6,}|_\d+_[0-9a-f]+:\d+)$")
 
 
 def chip_name(chip: str) -> str:
-    """El nombre de un chip de sensores sin la dirección que le pega el kernel."""
+    """A sensor chip's name without the address the kernel appends."""
     return _CHIP_ADDRESS.sub("", chip)
 
 
-# Cómo se escribe cada bus. El kernel los da en minúsculas, y pasarlos todos
-# a mayúsculas deja «NVME» al lado de un «NVMe» bien escrito.
+# How each bus is written. The kernel gives them in lower case, and putting
+# them all in capitals leaves «NVME» next to a properly written «NVMe».
 _BUSES = {"nvme": "NVMe"}
 
 
 def disk_bus(transport: Optional[str]) -> str:
-    """El bus de un disco como se escribe: «NVMe», «SATA», «USB»."""
+    """A disk's bus as it's written: «NVMe», «SATA», «USB»."""
     if not transport:
         return DASH
     return _BUSES.get(transport, transport.upper())
 
 
 def pcie_link(link: PcieLink, maximum: bool = False) -> str:
-    """«PCIe 5.0 × 16», que es como lo nombra todo el mundo menos sysfs."""
+    """«PCIe 5.0 × 16», as everyone but sysfs names it."""
     generation = link.max_generation if maximum else link.generation
     width = link.max_width if maximum else link.current_width
     speed = link.max_speed_gts if maximum else link.current_speed_gts
@@ -774,11 +765,11 @@ def gpu_link(gpu) -> str:
 
 
 def pcie_note(link: PcieLink) -> Optional[str]:
-    """Por qué el enlace va más lento de lo que puede, cuando pasa.
+    """Why the link runs slower than it can, when it does.
 
-    Casi siempre es que la tarjeta está en reposo y el driver ha bajado el
-    enlace para gastar menos, así que se dice como apunte y no como aviso: en
-    una máquina parada es lo que tiene que ocurrir.
+    Almost always the card is idle and the driver lowered the link to save
+    power, so it's said as a remark, not a warning: on an idle machine it's
+    what should happen.
     """
     if not link.downgraded:
         return None
@@ -792,12 +783,11 @@ def pcie_note(link: PcieLink) -> Optional[str]:
 
 
 def gpu_memory_summary(memory: GpuMemory) -> str:
-    """«2.0 GB de 15.9 GB  (12 %)», o nada si no se sabe cuánta se usa.
+    """«2.0 GB of 15.9 GB  (12 %)», or nothing if how much is used is unknown.
 
-    Antes, cuando el driver no publicaba la memoria ocupada, esto devolvía el
-    total. La página lo pintaba bajo el renglón «En uso» y el resultado era
-    que una integrada de Intel declaraba tener los 11,6 GB ocupados al
-    completo. Un dato que falta se dice que falta.
+    Returning the total when the driver didn't publish the used memory had
+    the page paint it under «In use», and integrated graphics claimed all of
+    it occupied. A missing datum is said to be missing.
     """
     if memory.total_bytes is None or memory.used_bytes is None:
         return DASH
@@ -807,15 +797,15 @@ def gpu_memory_summary(memory: GpuMemory) -> str:
 
 
 def possible_texts(formatter, top: float) -> list[str]:
-    """Lo que `formatter` puede escribir para un valor entre 0 y `top`.
+    """What `formatter` can write for a value between 0 and `top`.
 
-    Para reservar el ancho del más largo y que la columna no baile al
-    cambiar las cifras. Lo más largo sale justo antes de un cambio de unidad
-    o de un dígito más («1023.9 MB», «999.9 W»), así que se prueba ahí en
-    base 2 y en base 10, y un poco por encima del tope: un consumo puede
-    pasar un instante del suyo. Y más cerca todavía, donde el redondeo ya
-    sube y la unidad aún no ha cambiado: 999,96 MB/s se escribe «1000.0
-    MB/s», una cifra más que «999.9».
+    To reserve the longest one's width so the column doesn't dance as the
+    figures change. The longest comes right before a change of unit or one
+    more digit («1023.9 MB», «999.9 W»), so it's tried there in base 2 and
+    base 10, and a little above the cap: a power draw can exceed its own for
+    an instant. And closer still, where rounding already goes up and the
+    unit hasn't changed: 999.96 MB/s is written «1000.0 MB/s», one figure
+    more than «999.9».
     """
     ceiling = float(top) * 1.1
     runs = {0.0, float(top), ceiling}
@@ -834,30 +824,28 @@ def possible_texts(formatter, top: float) -> list[str]:
 
 
 def bandwidth(value: Optional[int]) -> str:
-    """El ancho de banda de la memoria, en las unidades de las fichas técnicas."""
+    """Memory bandwidth, in spec sheets' units."""
     if _none(value):
         return DASH
     return f"{float(value) / 1e9:.0f} GB/s"
 
 
 def vram_kind(memory: GpuMemory) -> str:
-    """El tipo de memoria a secas: GDDR6, HBM2e. Nada más.
+    """The memory type alone: GDDR6, HBM2e. Nothing more.
 
-    Antes devolvía «GDDR6 · 256 bits» y, cuando no se conocía el tipo, un
-    escueto «128 bits» en un campo que se llamaba «Tipo». La anchura del bus es
-    otro dato distinto y tiene su propia fila.
+    The bus width is another datum with its own row.
     """
     return memory.kind or DASH
 
 
 def vram_bus(memory: GpuMemory) -> str:
-    """La anchura del bus de memoria: «256 bits»."""
+    """The memory bus width: «256 bits»."""
     return (_("gpu.bus.bits").format(n=memory.bus_bits)
             if memory.bus_bits else DASH)
 
 
-# Cada fabricante cuenta sus unidades de proceso de una forma y no son
-# equivalentes entre sí.
+# Each maker counts its processing units its own way, and they aren't
+# equivalent.
 PROCESSING_UNITS = {
     "NVIDIA": "gpu.units.cuda",
     "AMD": "gpu.units.cu",
@@ -866,7 +854,7 @@ PROCESSING_UNITS = {
 
 
 def compute_units(gpu) -> str:
-    """«64 unidades de cómputo», «2048 núcleos CUDA»."""
+    """«64 compute units», «2048 CUDA cores»."""
     if not gpu.compute_units:
         return DASH
     key = PROCESSING_UNITS.get(gpu.vendor or "", "gpu.units.generic")
@@ -874,7 +862,7 @@ def compute_units(gpu) -> str:
 
 
 def compute_units_short(gpu) -> Optional[str]:
-    """Lo mismo pero para una insignia: «64 CU», «2048 CUDA»."""
+    """The same for a badge: «64 CU», «2048 CUDA»."""
     if not gpu.compute_units:
         return None
     short = {"NVIDIA": "CUDA", "AMD": "CU", "Intel": "EU"}.get(gpu.vendor or "", "u.")
@@ -882,7 +870,7 @@ def compute_units_short(gpu) -> Optional[str]:
 
 
 def resizable_bar(memory: GpuMemory) -> str:
-    """Si la CPU alcanza toda la VRAM o solo una ventana de 256 MB."""
+    """Whether the CPU reaches all of VRAM or only a 256 MB window."""
     if memory.resizable_bar is None:
         return DASH
     if memory.resizable_bar:
@@ -891,39 +879,36 @@ def resizable_bar(memory: GpuMemory) -> str:
     return _("gpu.rebar.off").format(ventana=window)
 
 
-# Los bits de `critical_warning` del registro de salud de NVMe, que es donde
-# un disco dice que tiene un problema. Están definidos por la especificación y
-# significan lo mismo en todas las marcas.
-# De dónde sacar en qué canal está un módulo. El firmware lo escribe de varias
-# maneras según quién haga la placa, y ninguna es obligatoria: «P0 CHANNEL A»
-# en el banco, «DIMM_A1» en el localizador, «ChannelA-DIMM0» en los portátiles.
+# Where to find which channel a module is on. The firmware writes it in
+# several ways depending on who made the board, and none is mandatory:
+# «P0 CHANNEL A» in the bank, «DIMM_A1» in the locator, «ChannelA-DIMM0» on
+# laptops.
 _CHANNEL = (
     re.compile(r"CHANNEL[\s_-]*([A-H])\b", re.I),
     re.compile(r"\bDIMM[\s_-]*([A-H])\d", re.I),
     re.compile(r"\bCH([A-H])\b", re.I),
 )
 
-# Y de qué controlador cuelga, cuando el firmware lo dice. Hace falta porque la
-# letra sola no identifica un canal: un ThinkPad con dos módulos los llama
-# «Controller0-ChannelA» y «Controller1-ChannelA-DIMM0», que son los dos
-# «canal A» y son dos canales distintos, uno por controlador. Contando solo
-# letras salía «canal único» en una máquina que va en doble canal, con el
-# agravante de que entonces aconseja repartir los módulos: repartidos ya
-# estaban.
+# And which controller it hangs from, when the firmware says. Needed because
+# the letter alone doesn't identify a channel: a laptop with two modules can
+# call them «Controller0-ChannelA» and «Controller1-ChannelA-DIMM0», both
+# «channel A» and two different channels, one per controller. Counting only
+# letters said «single channel» on a machine running dual channel, and then
+# advised spreading the modules, already spread.
 _CONTROLLER = re.compile(r"CONTROLLER[\s_-]*(\d+)", re.I)
 
-# Cómo se llama tener tantos canales poblados. Por encima de cuatro se dice el
-# número, que «óctuple canal» no lo usa nadie.
+# What having so many channels populated is called. Above four the number is
+# said: nobody uses «octuple channel».
 CHANNEL_NAMES = {1: "mem.chan.1", 2: "mem.chan.2",
                      3: "mem.chan.3", 4: "mem.chan.4"}
 
 
 def _channel_of(module) -> Optional[str]:
-    """Qué canal ocupa un módulo, si el firmware lo dice.
+    """Which channel a module is on, if the firmware says.
 
-    No devuelve la letra sino algo que identifique el canal de verdad: cuando
-    el localizador nombra el controlador, la letra por sí sola se repite entre
-    ellos y dos módulos bien repartidos parecían estar en el mismo sitio.
+    Not the letter but something that really identifies the channel: when
+    the locator names the controller, the letter alone repeats between them
+    and two well-spread modules looked to be in the same place.
     """
     for text in (module.bank, module.locator):
         if not text:
@@ -937,12 +922,12 @@ def _channel_of(module) -> Optional[str]:
 
 
 def memory_channels(modules) -> Optional[int]:
-    """Cuántos canales tienen al menos un módulo puesto.
+    """How many channels have at least one module fitted.
 
-    Devuelve None cuando el firmware no dice en qué canal está cada zócalo, que
-    pasa en placas que numeran los bancos en vez de nombrarlos. Inventarse el
-    dato ahí sería peor que no darlo: en canal único la memoria rinde la mitad,
-    y decirlo al revés manda a alguien a abrir el equipo para nada.
+    None when the firmware doesn't say which channel each slot is on, as on
+    boards that number banks instead of naming them. Making it up would be
+    worse than not giving it: in single channel memory performs half, and
+    saying the opposite sends someone to open the machine for nothing.
     """
     populated = [m for m in modules if m.populated]
     if not populated:
@@ -952,7 +937,7 @@ def memory_channels(modules) -> Optional[int]:
 
 
 def memory_channel_label(modules) -> Optional[str]:
-    """«Doble canal», «canal único»… con cuántos módulos lo forman."""
+    """«Dual channel», «single channel»… with how many modules make it."""
     count = memory_channels(modules)
     if count is None:
         return None
@@ -965,22 +950,22 @@ def memory_channel_label(modules) -> Optional[str]:
 
 
 def nanoseconds(value: Optional[float]) -> str:
-    """«0.9 ns». Un decimal: la L1 de cualquier procesador anda por ahí y con
-    cero decimales todas las cachés rápidas saldrían iguales."""
+    """«0.9 ns». One decimal: any processor's L1 is around there, and with
+    no decimals all the fast caches would come out the same."""
     return DASH if _none(value) else f"{float(value):.1f} ns"
 
 
 def memory_theoretical_bandwidth(modules) -> Optional[int]:
-    """Lo que daría esta memoria si nada la frenara, en bytes por segundo.
+    """What this memory would give if nothing held it back, in bytes per second.
 
-    Es una multiplicación, no una medida: las transferencias por segundo por
-    los ocho bytes que mueve cada una, por los canales que estén poblados. Vale
-    para poner al lado de lo medido y ver cuánto se aprovecha; sola no dice
-    gran cosa, porque ninguna máquina llega a su teórico.
+    A multiplication, not a measurement: transfers per second times the
+    eight bytes each moves, times the populated channels. It's for setting
+    next to what's measured to see how much is used; alone it says little,
+    since no machine reaches its theoretical figure.
 
-    Sin saber los canales no se calcula. Suponer dos es justo el error que ya
-    costó un aviso equivocado en la ficha de al lado: en canal único la memoria
-    rinde la mitad, y aquí saldría un porcentaje que dobla al de verdad.
+    Without the channels it isn't computed. Assuming two is the very mistake
+    that once gave a wrong warning: in single channel memory performs half,
+    and this would show a percentage double the real one.
     """
     channels = memory_channels(modules)
     if not channels:
@@ -989,35 +974,35 @@ def memory_theoretical_bandwidth(modules) -> Optional[int]:
                    if m.populated and (m.configured_mts or m.speed_mts)]
     if not speeds:
         return None
-    # La más lenta: el controlador iguala a la baja lo que le pongan.
+    # The slowest: the controller runs everything at the lowest it's given.
     return min(speeds) * 1_000_000 * 8 * channels
 
 
 def memory_bandwidth_share(measured_value: Optional[int], theoretical: Optional[int]) -> Optional[float]:
-    """Qué fracción del teórico se está consiguiendo, en tanto por ciento."""
+    """What fraction of the theoretical figure is reached, in percent."""
     if not measured_value or not theoretical:
         return None
     return round(measured_value / theoretical * 100, 1)
 
 
-# Los trozos que los firmwares pegan en el localizador de un zócalo. Salen así,
-# sin espacios y cada fabricante a su manera: «Controller0-ChannelA»,
+# The pieces firmware sticks into a slot's locator, written thus, without
+# spaces and each maker its own way: «Controller0-ChannelA»,
 # «ChannelA-DIMM0», «DIMM_A1», «DIMM A», «DIMM 0».
 _SLOT_CONTROLLER = re.compile(r"controller\s*[-_]?\s*(\d+)", re.I)
 _SLOT_CHANNEL = re.compile(r"chan(?:nel)?\s*[-_]?\s*([a-z])\b", re.I)
-# «DIMM_A1» lleva canal y número pegados; «DIMM 0» solo número; «DIMM A» solo
-# canal. El orden importa: el primero que casa gana.
+# «DIMM_A1» carries channel and number together; «DIMM 0» only the number;
+# «DIMM A» only the channel. The order matters: the first that matches wins.
 _SLOT_DIMM_CHANNEL_AND_NUMBER = re.compile(r"dimm\s*[-_]?\s*([a-z])\s*(\d+)", re.I)
 _SLOT_DIMM_NUMBER = re.compile(r"dimm\s*[-_]?\s*(\d+)", re.I)
 _SLOT_DIMM_CHANNEL = re.compile(r"dimm\s*[-_]?\s*([a-z])\b", re.I)
 
 
 def _slot_parts(locator: str) -> dict:
-    """Qué dice el localizador de un zócalo, campo a campo.
+    """What a slot's locator says, field by field.
 
-    Vacío si no se reconoce nada, y entonces quien llama deja el texto crudo:
-    inventarse una posición a partir de algo que no se entiende es peor que
-    enseñar lo que puso el firmware.
+    Empty if nothing is recognized, and then the caller keeps the raw text:
+    making up a position from something not understood is worse than
+    showing what the firmware wrote.
     """
     pieces: dict = {}
     if (home := _SLOT_CONTROLLER.search(locator)):
@@ -1035,8 +1020,8 @@ def _slot_parts(locator: str) -> dict:
     return pieces
 
 
-# Cómo se llama cada velocidad de USB. Es la negociada, no la versión del
-# dispositivo: un teclado USB 2.0 va a 12 Mb/s y está bien.
+# What each USB speed is called. The negotiated one, not the device's
+# version: a USB 2.0 keyboard runs at 12 Mb/s and that's fine.
 _USB_SPEEDS = {1.5: "usb.speed.low", 12.0: "usb.speed.full", 480.0: "usb.speed.high",
                     5000.0: "usb.speed.super", 10000.0: "usb.speed.superplus",
                     20000.0: "usb.speed.superplus", 40000.0: "usb.speed.usb4"}
@@ -1051,7 +1036,7 @@ USB_KINDS = {
 
 
 def usb_speed(mbps: Optional[float]) -> str:
-    """«Velocidad completa · 12 Mb/s», «SuperSpeed · 5 Gb/s»."""
+    """«Full speed · 12 Mb/s», «SuperSpeed · 5 Gb/s»."""
     if _none(mbps):
         return DASH
     figure = f"{mbps / 1000:g} Gb/s" if mbps >= 1000 else f"{mbps:g} Mb/s"
@@ -1064,14 +1049,14 @@ def usb_kind(device) -> str:
 
 
 def usb_name(device) -> str:
-    """El nombre del dispositivo; si no lo trae (o la foto es anónima), lo que es."""
+    """The device's name; if it has none (or the snapshot is anonymous), what it is."""
     name = usb_kind(device)
     return device.product or (name[:1].upper() + name[1:])
 
 
 def sound_card(card) -> str:
-    """«HDMI de la gráfica», «Placa base · Realtek ALCS1200A», o el nombre
-    del aparato USB. No los de ALSA («HDA ATI HDMI», «HD-Audio Generic»)."""
+    """«The graphics card's HDMI», «Board · Realtek ALCS1200A», or the USB
+    device's name. Not ALSA's («HDA ATI HDMI», «HD-Audio Generic»)."""
     if card.kind == "hdmi":
         return _("sound.hdmi")
     if card.kind == "board":
@@ -1087,8 +1072,8 @@ def space(disks) -> tuple[int, int, int, int]:
     Free is what the mounted partitions say; what is mounted and is neither
     used nor free is the filesystem's own (ext4 keeps 5 % for root, and its
     tables); what is not mounted (another system, a swap partition, space
-    outside any partition) is said apart. A tester's laptop, all of it
-    mounted, read «Sin montar 8.6 GB» that were ext4's.
+    outside any partition) is said apart. Without this, ext4's reserve read
+    as unmounted space.
     """
     used = free = reserved = mounted = 0
     for disk in disks:
@@ -1108,13 +1093,13 @@ def space(disks) -> tuple[int, int, int, int]:
 
 
 def trim(disk) -> Optional[str]:
-    """Lo que se ve del TRIM de una unidad, sin afirmar más de lo que se ve.
+    """What shows of a drive's TRIM, claiming no more than what shows.
 
-    «Lo admite» es un hecho. Que se esté haciendo es una señal: la partición
-    montada con `discard`, o el temporizador `fstrim.timer` activado, que
-    puede no cubrir esa partición. Un disco de platos que admite descartes es
-    un SMR, y se dice así; uno virtual no es de platos aunque lo diga. El que
-    no los admite no enseña la fila.
+    «Supports it» is a fact. That it's being done is a sign: the partition
+    mounted with `discard`, or `fstrim.timer` enabled, which may not cover
+    that partition. A spinning disk that supports discards is an SMR, and
+    it's said so; a virtual one isn't spinning even if it says so. One that
+    doesn't support them doesn't show the row.
     """
     if not disk.discard:
         return None
@@ -1128,8 +1113,8 @@ def trim(disk) -> Optional[str]:
     return " · ".join(parts)
 
 
-# Los atributos SMART de un disco SATA que significan lo mismo en casi todos.
-# Los demás se enseñan con su número: su nombre depende del fabricante.
+# A SATA disk's SMART attributes that mean the same on almost all of them.
+# The rest are shown with their number: their name depends on the maker.
 SMART_COMMON = {
     1: "smart.attr.1", 5: "smart.attr.5", 9: "smart.attr.9", 12: "smart.attr.12",
     187: "smart.attr.187", 188: "smart.attr.188", 194: "smart.attr.194",
@@ -1139,11 +1124,11 @@ SMART_COMMON = {
 
 
 def smart_rows(health) -> list[tuple[str, str]]:
-    """El diagnóstico entero de un disco, en filas de nombre y valor.
+    """A disk's whole diagnosis, in rows of name and value.
 
-    Primero lo que tiene nombre fijo (lo de NVMe viene así de la norma) y
-    después, en un SATA, la tabla de atributos tal cual: número, nombre si es
-    de los comunes, valor normalizado y contador en crudo.
+    First what has a fixed name (NVMe's comes so from the standard) and
+    then, on SATA, the attribute table as is: number, name if it's a common
+    one, normalized value and raw counter.
     """
     rows: list[tuple[str, str]] = []
     for key, value in (
@@ -1164,18 +1149,18 @@ def smart_rows(health) -> list[tuple[str, str]]:
 
 
 def iommu(platform) -> str:
-    """«activa · 34 grupos» o «sin activar»."""
+    """«active · 34 groups» or «not enabled»."""
     if not platform.iommu_groups:
         return _("plat.iommu.off")
     return _("plat.iommu.on").format(n=platform.iommu_groups)
 
 
 def virtualization(platform) -> Optional[str]:
-    """«activa (AMD-V), en uso por KVM», o que el procesador la tiene.
+    """«active (AMD-V), in use by KVM», or that the processor has it.
 
-    Que la bandera esté no dice que la BIOS la haya dejado encendida; que
-    exista `/dev/kvm` sí. Sin él no se sabe si es la BIOS o que falta el
-    módulo, y se dice justo eso.
+    The flag being there doesn't say the BIOS left it on; `/dev/kvm`
+    existing does. Without it there's no telling whether it's the BIOS or a
+    missing module, and that's exactly what's said.
     """
     if not platform.virtualization:
         return None
@@ -1184,22 +1169,22 @@ def virtualization(platform) -> Optional[str]:
 
 
 def above_4g(platform) -> Optional[str]:
-    """«activo · 4 dispositivos lo usan». Sin ninguno no se afirma nada."""
+    """«active · 4 devices use it». With none, nothing is claimed."""
     if not platform.above_4g_devices:
         return None
     return _("plat.above4g.one" if platform.above_4g_devices == 1
              else "plat.above4g.many").format(n=platform.above_4g_devices)
 
 
-# El separador de miles: un espacio fino que no parte la línea (U+202F). Ni
-# punto ni coma, que cada idioma lee como decimal el del otro: «4.136 h»
-# parecían cuatro horas. Es lo que pide la norma (ISO 80000-1, el SI), y se
-# lee igual en español que en inglés.
+# The thousands separator: a thin no-break space (U+202F). Neither a point
+# nor a comma, which each language reads as the other's decimal: «4.136 h»
+# looked like four hours. It's what the standard asks for (ISO 80000-1, the
+# SI), and reads the same in Spanish and English.
 THOUSANDS_SPACE = "\u202f"
 
 
 def thousands(value: Optional[int]) -> str:
-    """«4 136»: un entero con los miles separados, igual en cualquier locale."""
+    """«4 136»: an integer with its thousands separated, the same in any locale."""
     if _none(value):
         return DASH
     return f"{int(value):,}".replace(",", THOUSANDS_SPACE)
@@ -1244,8 +1229,8 @@ def power_limit(limit_w: Optional[float], window_s: Optional[float]) -> str:
     return _("cpu.limit.window").format(limite=watts(limit_w), ventana=time_window(window_s))
 
 
-# Qué es un dispositivo PCI por su clase, para nombrar lo que `pci.ids` no
-# tiene. Las de `providers/pci.CLASES`: lo que la tabla de Placa enseña.
+# What a PCI device is by its class, to name what `pci.ids` doesn't have.
+# Those of `providers/pci.CLASES`: what the Board table shows.
 PCI_CLASSES = {
     "0300": "board.pci.class.vga", "0302": "board.pci.class.3d",
     "0380": "board.pci.class.display", "0108": "board.pci.class.nvme",
@@ -1257,11 +1242,10 @@ PCI_CLASSES = {
 
 
 def pci_unnamed(device) -> Optional[str]:
-    """«Intel, audio HD (8086:f0c8)»: lo que no está en `pci.ids`, por lo que es.
+    """«Intel, audio HD (8086:f0c8)»: what isn't in `pci.ids`, by what it is.
 
-    La marca, la clase del dispositivo y su identificador, como lo busca quien
-    lo quiera reportar o encontrar. Decir solo que no está en la lista era
-    explicar el hueco sin decir qué hay.
+    The brand, the device class and its identifier, as whoever wants to
+    report or find it searches for it.
     """
     brand = maker(device.vendor)
     ids = (f"{device.vendor_id:04x}:{device.device_id:04x}"
@@ -1276,7 +1260,7 @@ def pci_unnamed(device) -> Optional[str]:
     return text
 
 
-# Las fases del arranque, en orden, con el campo de `Boot` de cada una.
+# The boot phases, in order, with each one's `Boot` field.
 BOOT_PHASES = (("sys.boot.phase.firmware", "firmware_s"),
                      ("sys.boot.phase.loader", "loader_s"),
                      ("sys.boot.phase.kernel", "kernel_s"),
@@ -1341,7 +1325,7 @@ def taint_reasons(mask: int, modules: tuple = ()) -> list[str]:
 
 
 def tainted(mask: int | None, modules: tuple = ()) -> str:
-    """«no», or the reasons: «módulo de fuera del kernel · módulo sin firmar»."""
+    """«no», or the reasons: «out-of-tree module · unsigned module»."""
     if mask is None:
         return DASH
     if not mask:
@@ -1354,19 +1338,19 @@ def tainted(mask: int | None, modules: tuple = ()) -> str:
 
 
 def boot_phases(boot) -> list[tuple[str, str]]:
-    """Cada fase que se sabe, con lo que tardó: [("sys.boot.phase.firmware", "5.2 s"), …].
+    """Each known phase with how long it took: [("sys.boot.phase.firmware", "5.2 s"), …].
 
-    Cada una por separado y el total aparte, para que no quede la duda de si
-    una incluye a otra: el cargador publica dos instantes contados desde el
-    encendido, y enseñados tal cual no se sabe si el segundo suma al primero.
-    Sin el firmware no hay total (`Boot.total_s`).
+    Each separately and the total apart, so there's no doubt whether one
+    includes another: the loader publishes two instants counted from
+    power-on, and shown as they are it's unclear whether the second adds to
+    the first. Without the firmware there's no total (`Boot.total_s`).
     """
     return [(key, seconds(getattr(boot, field))) for key, field in BOOT_PHASES
             if getattr(boot, field) is not None]
 
 
 def swap_summary(swap) -> str:
-    """«45.0 MB de 31.3 GB · zstd · comprime 2.1 a 1 · prioridad 100»."""
+    """«45.0 MB of 31.3 GB · zstd · compresses 2.1 to 1 · priority 100»."""
     parts = [_("sys.swap.used").format(usado=size(swap.used_bytes), total=size(swap.size_bytes))]
     if swap.zram:
         if swap.algorithm:
@@ -1379,22 +1363,22 @@ def swap_summary(swap) -> str:
 
 
 def swap_name(swap) -> str:
-    """«zram0 (en memoria)», «/swapfile (archivo)», «/dev/sda2 (partición)»."""
+    """«zram0 (in memory)», «/swapfile (file)», «/dev/sda2 (partition)»."""
     if swap.zram:
         return _("sys.swap.zram").format(nombre=swap.device.rsplit("/", 1)[-1])
     return _("sys.swap.file" if swap.kind == "file" else "sys.swap.partition").format(
         nombre=swap.device)
 
 
-# Los drivers del kernel cuya parte de usuario es Mesa.
+# The kernel drivers whose userspace side is Mesa.
 _MESA_DRIVERS = ("amdgpu", "radeon", "i915", "xe", "nouveau")
 
 
 def graphics_stack(snapshot) -> Optional[str]:
-    """«Mesa 26.2.6», o «NVIDIA 570.86» con el driver propietario.
+    """«Mesa 26.2.6», or «NVIDIA 570.86» on the proprietary driver.
 
-    No se lee nada nuevo: con un driver libre, la versión que declara OpenGL
-    es la de Mesa («26.2.6-arch3.1», y aquí sin la coletilla del paquete).
+    Nothing new is read: with a free driver, the version OpenGL declares is
+    Mesa's («26.2.6-arch3.1», here without the package's suffix).
     """
     for gpu in snapshot.gpus:
         if gpu.driver in _MESA_DRIVERS:
@@ -1407,12 +1391,11 @@ def graphics_stack(snapshot) -> Optional[str]:
 
 
 def enumeration(pieces, last: str = "list.and") -> str:
-    """«el fabricante, los chips y la fecha»: una lista como se dice.
+    """«the maker, the chips and the date»: a list as it's spoken.
 
-    Para las notas que nombran lo que falta. Una lista de nombres de campo
-    separados por comas («Sin Chips, Perfiles rápidos, Fabricado») se lee
-    como un formulario; una frase no. `ultima` es la clave de la conjunción:
-    «y» por omisión, «ni» para lo que se niega.
+    For the notes naming what's missing. A comma-separated list of field
+    names reads like a form; a sentence doesn't. `last` is the conjunction's
+    key: «y» by default, «ni» for what's negated.
     """
     pieces = [p for p in pieces if p]
     if len(pieces) <= 1:
@@ -1421,32 +1404,31 @@ def enumeration(pieces, last: str = "list.and") -> str:
 
 
 def slot_names(zocalos: list[tuple[Optional[str], Optional[str]]]) -> list[str]:
-    """El nombre de cada zócalo, por orden: único, y que se entienda.
+    """Each slot's name, in order: unique, and understandable.
 
-    Recibe el localizador y el banco de cada uno, como los da el firmware, y
-    devuelve un nombre por zócalo en el mismo orden. Es por posición y no por
-    localizador porque el localizador se repite: una Gigabyte X570 llama a
-    sus cuatro zócalos «DIMM 0», «DIMM 1», «DIMM 0», «DIMM 1» y pone el canal
-    en el banco («P0 CHANNEL A», «P0 CHANNEL B»). Con un diccionario por
-    localizador los dos módulos puestos se llamaban «DIMM 1» y los dos huecos
-    «DIMM 0».
+    Takes each one's locator and bank, as the firmware gives them, and
+    returns one name per slot in the same order. By position and not by
+    locator because locators repeat: some boards call their four slots
+    «DIMM 0», «DIMM 1», «DIMM 0», «DIMM 1» and put the channel in the bank
+    («P0 CHANNEL A», «P0 CHANNEL B»). With a dictionary by locator, the two
+    fitted modules were both «DIMM 1» and the two empty slots «DIMM 0».
 
-    Cada fabricante reparte el dato a su manera —ASUS «DIMM_A2», MSI
-    «DIMM_A1», los OEM «ChannelA-DIMM0», Lenovo «Controller0-ChannelA»—, así
-    que se junta lo que digan los dos campos. La regla: **el canal sale
-    siempre que se conozca**, porque es lo que decide el rendimiento y es lo
-    que se busca al abrir esto; el número de DIMM y el controlador solo
-    cuando sin ellos dos zócalos se llamarían igual.
+    Each maker splits the datum its own way (ASUS «DIMM_A2», MSI «DIMM_A1»,
+    OEMs «ChannelA-DIMM0», Lenovo «Controller0-ChannelA»), so what both
+    fields say is put together. The rule: **the channel shows whenever it's
+    known**, since it decides performance and is what's looked for here;
+    the DIMM number and the controller only when without them two slots
+    would be called the same.
 
-    Si alguno no se entiende se deja lo que puso el firmware, que es mejor que
-    inventar una posición; y si aun así dos coinciden, se les añade el banco
-    y, en último caso, su número de orden. Nunca salen dos iguales.
+    If one isn't understood, the firmware's text stays, which beats making
+    up a position; and if two still match, the bank is added and, as a last
+    resort, their order number. Two never come out the same.
     """
     raw_values = [(localizador or "").strip() for localizador, _bank in zocalos]
     pieces = []
     for localizador, bank_name in zocalos:
         own = _slot_parts(localizador or "")
-        # El banco completa lo que el localizador calla, y nunca lo corrige.
+        # The bank fills in what the locator leaves out, and never corrects it.
         for field, value in _slot_parts(bank_name or "").items():
             if field != "dimm":
                 own.setdefault(field, value)
@@ -1463,8 +1445,8 @@ def slot_names(zocalos: list[tuple[Optional[str], Optional[str]]]) -> list[str]:
         return " · ".join(parts)
 
     if pieces and all(pieces):
-        # De menos a más: se añade un campo solo si sin él dos zócalos se
-        # llamarían igual, y antes uno que dos.
+        # Least to most: a field is added only if without it two slots would
+        # be called the same, one before two.
         # The controller before the DIMM number: a channel is a controller's
         # letter, and two «Channel A» on two controllers are two channels.
         for fields in ((), ("controlador",), ("dimm",), ("dimm", "controlador")):
@@ -1472,8 +1454,8 @@ def slot_names(zocalos: list[tuple[Optional[str], Optional[str]]]) -> list[str]:
             if all(names) and len(set(names)) == len(names):
                 return names
 
-    # No se entiende, o ni con todo se distinguen: lo del firmware, y lo
-    # mínimo para que no haya dos iguales.
+    # Not understood, or not told apart even with everything: the firmware's
+    # text, and the least needed so no two match.
     names = [raw or _("memory.slot") for raw in raw_values]
     if len(set(names)) < len(names):
         repeated = {n for n in names if names.count(n) > 1}
@@ -1497,12 +1479,12 @@ _REDUNDANT_BANK = re.compile(r"^bank[\s_-]*", re.I)
 
 
 def memory_bank(bank: Optional[str]) -> Optional[str]:
-    """El banco sin repetir la palabra que ya lleva la fila.
+    """The bank without repeating the word the row already carries.
 
-    El firmware escribe «BANK 0» y la fila se titula «Banco», así que se leía
-    «Banco: BANK 0». Solo se quita cuando el valor empieza por ahí y queda algo
-    detrás: los localizadores de banco que traen más cosas —«Node0_Bank0»— se
-    dejan enteros, porque ahí el resto sí distingue.
+    The firmware writes «BANK 0» and the row is titled «Bank», so it read
+    «Bank: BANK 0». Dropped only when the value starts with it and something
+    is left after: bank locators carrying more («Node0_Bank0») stay whole,
+    since there the rest does tell apart.
     """
     if not bank:
         return bank
@@ -1511,17 +1493,16 @@ def memory_bank(bank: Optional[str]) -> Optional[str]:
 
 
 def memory_speed(mts: Optional[int]) -> Optional[int]:
-    """El nombre del grado al que corresponde una velocidad del firmware.
+    """The grade name a firmware speed belongs to.
 
-    La tabla SMBIOS trae lo que la BIOS haya escrito, y cada una redondea a su
-    manera los grados que llevan tercio: DDR4-2666 son 2666,67 MT/s y unas
-    ponen 2666 y otras 2667. Enseñar el crudo dejaba en la misma ficha dos
-    convenciones —«Catalogado a 3200» y «Funcionando a 2667»— cuando 2667 no es
-    el nombre de ninguna velocidad.
+    The SMBIOS table carries what the BIOS wrote, and each rounds the grades
+    with a third its own way: DDR4-2666 is 2666.67 MT/s, and some write 2666
+    and others 2667. Showing the raw value left two conventions on one card
+    («Rated for 3200» and «Running at 2667»), when 2667 names no speed.
 
-    Se normaliza **al pintar** y no antes: el modelo sigue guardando lo que dijo
-    el firmware, que es lo que hace falta para contrastar con `dmidecode`, y de
-    eso se encarga el tooltip de la fila.
+    Normalized **when painting** and not before: the model still keeps what
+    the firmware said, which is what's needed to check against `dmidecode`,
+    and the row's tooltip takes care of that.
     """
     if not mts:
         return mts
@@ -1529,11 +1510,12 @@ def memory_speed(mts: Optional[int]) -> Optional[int]:
 
 
 def memory_module_verdict(module, limit=None) -> Optional[str]:
-    """Si un módulo va más lento de lo que admite, y por qué.
+    """Whether a module runs slower than it allows, and why.
 
-    None si va a lo suyo; «cpu_max» si va al máximo oficial del procesador
-    (`limite`, de `db.memory_limit`), que no es un fallo ni un perfil sin
-    activar; «slow» si va por debajo sin que eso lo explique.
+    None if it runs at its own speed; «cpu_max» if at the processor's
+    official maximum (`limit`, from `db.memory_limit`), which is neither a
+    fault nor an inactive profile; «slow» if below without that explaining
+    it.
     """
     if not module.underclocked:
         return None
@@ -1544,10 +1526,10 @@ def memory_module_verdict(module, limit=None) -> Optional[str]:
 
 
 def memory_limit_label(limit) -> str:
-    """«i5-10400», o «Ryzen 7 5800X3D con 2 módulos de 1 rango».
+    """«i5-10400», or «Ryzen 7 5800X3D with 2 single-rank modules».
 
-    En AMD la cifra vale para esa disposición de módulos y no para otra: con
-    cuatro de dos rangos el mismo procesador garantiza menos. Se dice.
+    On AMD the figure holds for that module layout and no other: with four
+    dual-rank modules the same processor guarantees less. It's said.
     """
     if not limit.layout:
         return limit.model
@@ -1557,18 +1539,17 @@ def memory_limit_label(limit) -> str:
 
 
 def memory_speed_warning(modules, limit=None, chipset: bool = False) -> Optional[str]:
-    """Por qué la memoria no va más rápido, cuando hay algo que decir.
+    """Why the memory doesn't run faster, when there's something to say.
 
-    El techo del conjunto no es el del módulo más rápido: es el del más lento,
-    porque todos van al mismo reloj. Con uno de 3200 y otro de 2667 el equipo
-    no verá 3200 active lo que active, así que prometerlo mandaba a alguien a
-    pelearse con la BIOS para nada. Lo trajo un ThinkCentre M80q, que además
-    llevaba los dos módulos desparejos.
+    The set's ceiling isn't the fastest module's: it's the slowest's, since
+    all run on the same clock. With one 3200 module and one 2667 the machine
+    won't see 3200 whatever is enabled, so promising it sent someone to
+    fight the BIOS for nothing.
 
-    Tres respuestas y no dos: hay margen de verdad —y entonces el perfil
-    rápido sin activar es la explicación de siempre—, no hay margen pero un
-    módulo declara más que otro —y eso es lo que hay que contar, porque si no
-    la cifra alta de la ficha no se entiende—, o no hay nada que decir.
+    Three answers, not two: there's real headroom (and then the inactive
+    fast profile is the usual explanation), there's none but one module
+    declares more than another (which must be said, or the card's high
+    figure makes no sense), or there's nothing to say.
     """
     fitted = [m for m in modules if m.populated and m.rated_mts]
     if not fitted:
@@ -1582,13 +1563,13 @@ def memory_speed_warning(modules, limit=None, chipset: bool = False) -> Optional
     highest = max(m.rated_mts for m in fitted)
 
     if current < ceiling * (1 - ROUNDING_MARGIN):
-        # Al máximo del procesador no hay perfil que activar: es lo que su
-        # fabricante garantiza, y los módulos rápidos no lo cambian.
+        # At the processor's maximum there's no profile to enable: it's what
+        # its maker guarantees, and fast modules don't change it.
         if limit and current >= limit.mts * (1 - ROUNDING_MARGIN):
             return _("mem.cpumax").format(actual=current, rated=ceiling,
                                           modelo=memory_limit_label(limit))
-        # Con el controlador en el chipset el límite es de la placa, no del
-        # procesador.
+        # With the controller in the chipset, the limit is the board's, not
+        # the processor's.
         return _("mem.underclocked.chipset" if chipset else "mem.underclocked").format(
             actual=current, rated=ceiling)
     if highest > ceiling * (1 + ROUNDING_MARGIN):
@@ -1597,12 +1578,12 @@ def memory_speed_warning(modules, limit=None, chipset: bool = False) -> Optional
 
 
 def memory_channel_warning(modules) -> Optional[str]:
-    """Cuándo la memoria está rindiendo por debajo de lo que podría.
+    """When memory performs below what it could.
 
-    Es de los pocos problemas de hardware que son a la vez muy comunes, muy
-    caros en rendimiento y completamente invisibles: nada en el sistema avisa
-    de que los dos módulos están en el mismo canal, y en un equipo con gráfica
-    integrada eso se lleva por delante la mitad de los fotogramas.
+    One of the few hardware problems at once very common, very costly in
+    performance and completely invisible: nothing in the system warns that
+    both modules are on the same channel, and with integrated graphics that
+    takes away half the frames.
     """
     channels = memory_channels(modules)
     if channels is None or channels > 1:
@@ -1625,22 +1606,20 @@ NVME_WARNINGS = {
     5: "disk.warn.pmr",
 }
 
-# Por debajo de esto se avisa de que al SSD le queda poco. El fabricante
-# garantiza el disco hasta el 0 %, así que un 10 % no es una avería: es el
-# momento de ir pensando en la copia de seguridad, y decirlo antes es lo único
-# que sirve de algo.
+# Below this the SSD is said to have little left. The maker guarantees the
+# disk down to 0 %, so 10 % isn't a fault: it's time to think about the
+# backup, and saying so early is the only thing that helps.
 LOW_LIFE_PCT = 10
 
 
 def disk_warnings(health) -> list[tuple[str, str]]:
-    """Lo que un disco está diciendo de sí mismo, como `(nivel, frase)`.
+    """What a disk is saying about itself, as `(level, sentence)`.
 
-    El registro de salud se leía entero y no se enseñaba ni una línea de él:
-    `critical_warning` es el campo por el que un NVMe avisa de que va camino
-    de perder datos, y estaba ahí sin que lo mirara nadie.
+    `critical_warning` is the field an NVMe warns through that it's on its
+    way to losing data.
 
-    Los apagones bruscos no son un aviso: cuentan los cortes de luz y los
-    botones de reinicio, y en un equipo de sobremesa son normales.
+    Unsafe shutdowns aren't a warning: they count power cuts and reset
+    buttons, normal on a desktop.
     """
     warnings: list[tuple[str, str]] = []
     if health is None:
@@ -1650,7 +1629,7 @@ def disk_warnings(health) -> list[tuple[str, str]]:
         for bit, key in NVME_WARNINGS.items():
             if health.critical_warning & (1 << bit):
                 warnings.append(("crítico", _(key).capitalize() + "."))
-        if not warnings:                     # un bit que la especificación no cubre
+        if not warnings:                     # a bit the specification doesn't cover
             warnings.append(("crítico", _("disk.warn.unknown").format(
                 codigo=f"{health.critical_warning:#04x}")))
 
@@ -1666,7 +1645,7 @@ def disk_warnings(health) -> list[tuple[str, str]]:
 
 
 def duration(seconds: float) -> str:
-    """«40 s», «2 min 10 s». Sin decimales: nadie mide un recorte en décimas."""
+    """«40 s», «2 min 10 s». No decimals: nobody measures throttling in tenths."""
     if seconds < 60:
         return _("time.seconds").format(n=f"{seconds:.0f}")
     minutes, rest = divmod(int(seconds), 60)
@@ -1687,16 +1666,16 @@ def home_path(text, home: Optional[str] = None) -> str:
 
 
 def version(full: str, translate=_) -> str:
-    """La versión como se enseña: «0.4» y no «0.4.0»; «0.4.1» en un arreglo;
-    «0.4-prueba1» en la primera de prueba de la 0.4.
+    """The version as shown: «0.4», not «0.4.0»; «0.4.1» for a fix release;
+    «0.4-prueba1» for 0.4's first test release.
 
-    Por debajo siempre es x.y.z (pyproject, la etiqueta y `--version`, que
-    son para máquinas). A quien mira la ventana o lee el informe, el tercer
-    número solo le dice algo cuando no es cero: es la versión de arreglos de
-    esa. The report passes `en_español`: it is always in Spanish.
+    Underneath it's always x.y.z (pyproject, the tag and `--version`, which
+    are for machines). To whoever looks at the window or reads the report,
+    the third number only says something when it isn't zero. The report
+    passes `in_spanish`: it is always in Spanish.
     """
-    # Una versión de prueba va como la pide PEP 440 («0.4.0rc1») y se
-    # enseña con su nombre: «0.4-prueba1».
+    # A test version goes as PEP 440 asks («0.4.0rc1») and is shown by its
+    # name: «0.4-prueba1».
     run = re.fullmatch(r"(\d+\.\d+\.\d+)rc(\d+)", full)
     if run:
         return f"{version(run.group(1))}-{translate('app.version.rc')}{run.group(2)}"
@@ -1706,28 +1685,29 @@ def version(full: str, translate=_) -> str:
     return full
 
 
-# El orden de las barras de motores, del que más se mira al que menos.
+# The order of the engine bars, from the most looked at to the least.
 ENGINE_ORDER = ("engine.render", "engine.compute", "engine.video",
                     "engine.decode", "engine.encode", "engine.videoenhance",
                     "engine.copy")
 
 
 def engine_levels(gpu) -> list[tuple[str, Optional[float]]]:
-    """Las barras de uso por motor de una gráfica: (clave, porcentaje).
+    """A graphics card's usage bars per engine: (key, percentage).
 
-    Solo los motores que esta gráfica deja medir, cada uno de donde lo da su
-    driver (docs/motores-de-graficas.md):
+    Only the engines this card lets be measured, each from where its driver
+    gives it (docs/motores-de-graficas.md):
 
-    - Intel (i915, xe) enumera sus motores: una barra por tipo, con el más
-      ocupado de cada tipo, porque dos decodificadores a medias no son un
-      video al cien. Con None, el motor está y su uso lo guarda un permiso.
-    - AMD no enumera motores: el uso de la gráfica y el de su motor de video
-      (VCN), que codifica y decodifica con una sola cifra. Desde el VCN 4
-      decodificar también va por la cola de codificar, así que no hay forma
-      de separarlos: una barra, no dos con un dato repartido.
-    - NVIDIA tiene NVENC y NVDEC aparte, y NVML los mide aparte: dos barras.
+    - Intel (i915, xe) enumerates its engines: one bar per type, with each
+      type's busiest, because two half-busy decoders aren't a video at full.
+      With None, the engine is there and a permission holds its usage.
+    - AMD doesn't enumerate engines: the graphics usage and its video
+      engine's (VCN), which encodes and decodes with one figure. Since VCN 4
+      decoding also goes through the encode queue, so there's no separating
+      them: one bar, not two with a split datum.
+    - NVIDIA has NVENC and NVDEC apart, and NVML measures them apart: two
+      bars.
 
-    Una gráfica dormida no tiene barras: no se ha leído nada de ella.
+    A sleeping card has no bars: nothing was read from it.
     """
     if getattr(gpu, "suspended", False):
         return []
@@ -1755,19 +1735,19 @@ def engine_levels(gpu) -> list[tuple[str, Optional[float]]]:
 
 
 def engine_gaps(gpu) -> list[str]:
-    """Los motores que toda gráfica tiene y esta no deja medir.
+    """The engines every card has and this one doesn't let be measured.
 
-    Toda gráfica tiene un motor gráfico y uno de video; en NVIDIA, el de
-    video son dos. Lo que su driver no publica no lleva barra y se nombra al
-    pie, que es lo que evita que desaparezca en silencio. Lo que está y
-    guarda un permiso no es esto: lleva candado (`engine_levels` con None).
+    Every card has a graphics and a video engine; on NVIDIA, the video one
+    is two. What its driver doesn't publish gets no bar and is named at the
+    foot, so it doesn't disappear silently. What's there and held by a
+    permission isn't this: it carries a padlock (`engine_levels` with None).
     """
     if getattr(gpu, "suspended", False):
         return []
     if gpu.driver == "xe":
-        # xe sí publica el uso de sus motores, con un PMU que silux todavía
-        # no lee (docs/pendientes.md): decir que la
-        # gráfica no lo da sería falso. Lo cuenta su aviso.
+        # xe does publish its engines' usage, with a PMU silux doesn't read
+        # yet (docs/pendientes.md): saying the card doesn't give it would be
+        # false. Its notice says so.
         return []
     expected = (("engine.render", "engine.decode", "engine.encode")
                  if gpu.vendor == "NVIDIA" else ("engine.render", "engine.video"))
@@ -1776,11 +1756,11 @@ def engine_gaps(gpu) -> list[str]:
 
 
 def gpu_asleep(gpu, fahrenheit: bool = False) -> str:
-    """Qué se dice de una gráfica suspendida, o "" si está despierta.
+    """What's said of a suspended card, or "" if it's awake.
 
-    Sin cifras de ahora, que no se han leído, y con lo último que se supo y
-    de cuándo, si se llegó a ver despierta: una temperatura sin su hora se
-    leería como la de este momento.
+    No figures for now, which weren't read, and with the last thing known
+    and when, if it was seen awake: a temperature without its time would
+    read as the current one.
     """
     if not getattr(gpu, "suspended", False):
         return ""
@@ -1797,13 +1777,12 @@ def gpu_asleep(gpu, fahrenheit: bool = False) -> str:
 
 
 def throttle_episode(episode, ahora_ns: int) -> Optional[str]:
-    """Cuánto lleva —o llevó— frenándose, y por qué.
+    """How long it's been (or was) throttling, and why.
 
-    «Recortando por temperatura del punto caliente» dice qué pasa ahora y no
-    dice lo que se quiere saber. Una tarjeta que toca su límite de potencia
-    medio segundo en cada cambio de escena funciona como se diseñó; una que
-    lleva un minuto contra el límite térmico tiene un problema de
-    refrigeración. El dato es el mismo y la conclusión es la contraria.
+    «Throttling for hot-spot temperature» says what happens now and not what
+    one wants to know. A card touching its power limit half a second at each
+    scene change works as designed; one held against its thermal limit for a
+    minute has a cooling problem. Same datum, opposite conclusion.
     """
     if episode is None:
         return None
@@ -1814,11 +1793,11 @@ def throttle_episode(episode, ahora_ns: int) -> Optional[str]:
 
 
 def gpu_clock_limits(clocks) -> Optional[str]:
-    """«350 MHz – 900 MHz», solo si alguien cambió los límites del motor.
+    """«350 MHz – 900 MHz», only if someone changed the engine's limits.
 
-    De fábrica el mínimo y el máximo puestos son los del silicio (RPn y
-    RP0), y repetirlos sería decir lo mismo dos veces. Si no se saben los
-    del silicio no hay con qué comparar.
+    From the factory the set minimum and maximum are the silicon's (RPn and
+    RP0), and repeating them would say the same twice. Without the silicon's
+    there's nothing to compare with.
     """
     fitted = (clocks.core_min_hz, clocks.core_max_hz)
     silicon = (clocks.silicon_min_hz, clocks.silicon_max_hz)
@@ -1828,14 +1807,14 @@ def gpu_clock_limits(clocks) -> Optional[str]:
 
 
 def gpu_sleep(gpu) -> str:
-    """Cuánto ha dormido la gráfica, o que no la dejan dormir."""
+    """How long the card has slept, or that it isn't allowed to."""
     if gpu.sleep_enabled is False:
         return _("gpu.engines.rc6off")
     return percent(gpu.sleep_percent)
 
 
 def throttle_state(gpu) -> str:
-    """Si la tarjeta se está frenando, y por qué motivos."""
+    """Whether the card is throttling, and for what reasons."""
     if gpu.throttled is None:
         return DASH
     if not gpu.throttled:
@@ -1856,20 +1835,20 @@ def gpu_name(gpu) -> str:
 
 
 def monitor_name(monitor: Optional[Edid]) -> str:
-    """El modelo tal y como lo enseñaría la pegatina de detrás."""
+    """The model as the sticker on the back would show it."""
     if monitor is None:
         return DASH
-    # La marca, no la razón social: «GIGA-BYTE TECHNOLOGY CO., LTD. AORUS
-    # FO27Q2» se comía el ancho de la tabla de salidas.
+    # The brand, not the legal name: «GIGA-BYTE TECHNOLOGY CO., LTD. AORUS
+    # FO27Q2» ate up the outputs table's width.
     parts = [p for p in (maker(monitor.manufacturer), monitor.model) if p]
     return " ".join(parts) if parts else (monitor.manufacturer_id or DASH)
 
 
 def monitor_diagonal(monitor: Optional[Edid]) -> Optional[str]:
-    """«26.7"», o «≈ 27"» cuando el monitor solo da centímetros enteros.
+    """«26.7"», or «≈ 27"» when the monitor only gives whole centimetres.
 
-    Con medio centímetro de error por lado la diagonal baila un cuarto de
-    pulgada: un decimal ahí es una precisión que el dato no tiene.
+    With half a centimetre of error per side the diagonal moves a quarter of
+    an inch: one decimal there is a precision the datum doesn't have.
     """
     if monitor is None or not monitor.diagonal_inches:
         return None
@@ -1879,7 +1858,7 @@ def monitor_diagonal(monitor: Optional[Edid]) -> Optional[str]:
 
 
 def monitor_summary(monitor: Optional[Edid]) -> str:
-    """«26.7" · 590 × 334 mm · semana 16 de 2024»."""
+    """«26.7" · 590 × 334 mm · week 16 of 2024»."""
     if monitor is None:
         return DASH
     inches = monitor_diagonal(monitor)
@@ -1890,7 +1869,7 @@ def monitor_summary(monitor: Optional[Edid]) -> str:
 
 
 def display_mode(display: Display) -> str:
-    """La resolución nativa con su refresco: «2560 × 1440 · 48–240 Hz»."""
+    """The native resolution with its refresh: «2560 × 1440 · 48–240 Hz»."""
     if not display.connected:
         return DASH
     range_ = display.monitor.refresh_range if display.monitor else None
@@ -1901,13 +1880,13 @@ def display_mode(display: Display) -> str:
 
 
 def display_summary(display: Display) -> str:
-    """Una salida de vídeo: qué hay enchufado y a qué resolución.
+    """A video output: what's plugged in and at what resolution.
 
-    A propósito no dice si la pantalla está encendida. El kernel publica un
-    `enabled` y un `dpms` que lo parecen, pero bajo Wayland el compositor toma
-    el control del modeset y sysfs pasa a decir «disabled» y «Off» de pantallas
-    que están funcionando delante de uno. Un dato que miente en el escritorio
-    más común no se enseña.
+    On purpose it doesn't say whether the display is on. The kernel
+    publishes an `enabled` and a `dpms` that seem to, but under Wayland the
+    compositor takes over the modeset and sysfs says «disabled» and «Off» of
+    displays working right in front of you. A datum that lies on the most
+    common desktop isn't shown.
     """
     if not display.connected:
         return _("display.unplugged")
@@ -1915,7 +1894,7 @@ def display_summary(display: Display) -> str:
 
 
 def gpu_api_summary(api: GpuApi) -> str:
-    """«1.4.354 · Mesa 26.2.1 · 64 unidades de cómputo»."""
+    """«1.4.354 · Mesa 26.2.1 · 64 compute units»."""
     parts = [api.version or DASH]
     if api.driver:
         parts.append(api.driver)
@@ -2023,7 +2002,7 @@ def clocks_footnote(clocks: Clocks) -> Optional[str]:
 
 
 def turbo_note(clocks: Clocks) -> Optional[str]:
-    """Una frase corta cuando el techo real no llega al del silicio."""
+    """A short sentence when the real ceiling falls short of the silicon's."""
     if clocks.turbo_enabled is False and clocks.max_turbo_hz:
         return _("clock.turbo.off").format(max=hz(clocks.max_turbo_hz))
     if clocks.turbo_headroom_hz:
@@ -2033,7 +2012,7 @@ def turbo_note(clocks: Clocks) -> Optional[str]:
 
 
 def _cpu_range(cpus: tuple[int, ...]) -> str:
-    """«0-7» en vez de «0, 1, 2, 3, 4, 5, 6, 7» cuando son consecutivas."""
+    """«0-7» instead of «0, 1, 2, 3, 4, 5, 6, 7» when they're consecutive."""
     if not cpus:
         return ""
     if len(cpus) > 2 and list(cpus) == list(range(cpus[0], cpus[-1] + 1)):
@@ -2042,16 +2021,16 @@ def _cpu_range(cpus: tuple[int, ...]) -> str:
 
 
 def asymmetric_l3(cpu_type) -> Optional[str]:
-    """Cuando la L3 no es igual en todo el procesador, qué le toca a cada cual.
+    """When L3 isn't the same across the processor, what each part gets.
 
-    Es lo que pasa en un Ryzen de dos chiplets con V-Cache en uno solo: un
-    7950X3D lleva 96 MB en la mitad de sus núcleos y 32 en la otra. La
-    diferencia no es un detalle de ficha técnica —es la razón de ser de la
-    pieza, y de qué chiplet coja el planificador depende que un juego rinda
-    como el modelo caro o como el barato.
+    As in a two-chiplet Ryzen with V-Cache on one only: half its cores have
+    96 MB and the other half 32. Not a spec-sheet detail: it's the part's
+    reason to exist, and which chiplet the scheduler picks decides whether a
+    game performs like the expensive model or the cheap one.
 
-    Se describe lo que se lee y no se diagnostica: la asimetría es un hecho de
-    sysfs. Que sea V-Cache lo confirma el nombre comercial, y solo si lo trae.
+    It describes what's read and doesn't diagnose: the asymmetry is a sysfs
+    fact. That it's V-Cache is confirmed by the commercial name, and only if
+    it carries it.
     """
     l3 = [c for c in cpu_type.caches if c.level == 3]
     if len({c.size_bytes for c in l3}) < 2:
@@ -2071,11 +2050,11 @@ def asymmetric_l3(cpu_type) -> Optional[str]:
 
 
 def vcache(cpu_type) -> Optional[str]:
-    """«3D V-Cache» cuando la pieza lo lleva, según su propio nombre.
+    """«3D V-Cache» when the part has it, per its own name.
 
-    El nombre comercial sale de CPUID y lo escribe el fabricante: un
-    «Ryzen 7 5800X3D» lo dice él. No se deduce del tamaño de la L3, que
-    también crece por otros motivos según la familia.
+    The commercial name comes from CPUID and the maker writes it: a «Ryzen 7
+    5800X3D» says so itself. It isn't deduced from the L3's size, which also
+    grows for other reasons depending on the family.
     """
     brand = (cpu_type.brand or "").upper()
     if "X3D" not in brand:
@@ -2088,22 +2067,21 @@ def vcache(cpu_type) -> Optional[str]:
 
 
 def core_quality_by_type(logical) -> dict[str, list[tuple[int, int, float]]]:
-    """Por tipo de núcleo, los físicos ordenados de mejor a peor.
+    """By core type, the physical cores sorted best to worst.
 
-    Cada fila es `(core_id, nota cruda, fracción del mejor de su tipo)`. La
-    fracción es lo único comparable entre máquinas: la nota cruda es la escala
-    de rendimiento de CPPC de esta pieza y no significa lo mismo en otra.
+    Each row is `(core_id, raw grade, fraction of its type's best)`. The
+    fraction is the only thing comparable between machines: the raw grade
+    is this part's CPPC performance scale and means something else on
+    another.
 
-    Se separa por tipo porque en un Intel híbrido comparar un P-core con un
-    E-core no dice nada de la calidad del silicio. Un E-core con la mitad de
-    nota no «salió peor de la oblea»: es otro núcleo, con otro propósito y
-    otro tamaño, y la plataforma lo puntúa más bajo por diseño. Sin separarlos,
-    un 12900K decía que su núcleo más flojo se quedaba en el 35 % del mejor,
-    que es cierto en el número y falso en lo que da a entender.
+    Split by type because on an Intel hybrid comparing a P core with an E
+    core says nothing about silicon quality: an E core with half the grade
+    didn't «come out worse from the wafer», it's another core with another
+    purpose and size, and the platform grades it lower by design.
 
-    Y se agrupa por núcleo físico porque los dos hilos de un mismo núcleo
-    comparten silicio y traen por fuerza la misma nota; enseñarla dos veces
-    sugeriría que se midieron por separado.
+    And grouped by physical core because a core's two threads share silicon
+    and necessarily carry the same grade; showing it twice would suggest
+    they were measured separately.
     """
     by_type: dict[str, dict[int, int]] = {}
     for cpu in logical:
@@ -2114,8 +2092,8 @@ def core_quality_by_type(logical) -> dict[str, list[tuple[int, int, float]]]:
 
     result = {}
     for key, cores in by_type.items():
-        # Un tipo cuyos núcleos traen todos la misma nota no se ha medido:
-        # el firmware ha rellenado el campo con la constante de la familia.
+        # A type whose cores all carry the same grade wasn't measured: the
+        # firmware filled the field with the family's constant.
         if len(set(cores.values())) < 2:
             continue
         best = max(cores.values())
@@ -2127,7 +2105,7 @@ def core_quality_by_type(logical) -> dict[str, list[tuple[int, int, float]]]:
 
 
 def core_quality(logical) -> list[tuple[int, int, float]]:
-    """Como `core_quality_by_type`, aplanado, para una CPU de un solo tipo."""
+    """Like `core_quality_by_type`, flattened, for a single-type CPU."""
     by_type = core_quality_by_type(logical)
     if len(by_type) != 1:
         return []
@@ -2135,23 +2113,23 @@ def core_quality(logical) -> list[tuple[int, int, float]]:
 
 
 def best_core_ids(logical, count: int = 2) -> set[int]:
-    """Los núcleos físicos que llevan estrella: los mejores de cada tipo.
+    """The physical cores that get a star: each type's best.
 
-    De cada tipo por separado, porque el mejor P-core y el mejor E-core son dos
-    respuestas a la misma pregunta hecha sobre piezas distintas.
+    Each type separately, because the best P core and the best E core are
+    two answers to the same question asked of different parts.
     """
     head: set[int] = set()
     for order in core_quality_by_type(logical).values():
         best = order[0][1]
-        # Los empatados con el mejor van todos: en muchas piezas hay dos, y
-        # quedarse con uno por el orden del bucle sería inventar un desempate.
+        # Those tied with the best all go: many parts have two, and keeping
+        # one by the loop's order would be making up a tiebreak.
         equal = [core for core, note, _fraction in order if note == best]
         head.update(equal[:count])
     return head
 
 
 def best_cores(logical, count: int = 2) -> str:
-    """«Núcleo 1 y núcleo 3», los que el firmware marca como los mejores."""
+    """«Core 1 and core 3», the ones the firmware marks as the best."""
     head = sorted(best_core_ids(logical, count))
     if not head:
         return DASH
@@ -2162,11 +2140,11 @@ def best_cores(logical, count: int = 2) -> str:
 
 
 def starred_cpus(logical) -> str:
-    """Las CPU lógicas que llevan estrella, para que la cuenta cuadre.
+    """The logical CPUs that get a star, so the count adds up.
 
-    Con SMT cada núcleo bueno marca sus dos hilos, así que en un 5800X3D se
-    ven cuatro estrellas y la frase decía «núcleo 1 y núcleo 3». Las dos cosas
-    son ciertas y no lo parecen: quien mira cuenta cuatro y lee dos.
+    With SMT each good core marks its two threads, so four stars show while
+    the sentence names two cores. Both are true and don't look it: whoever
+    looks counts four and reads two.
     """
     order = core_quality(logical)
     if not order:
@@ -2174,18 +2152,18 @@ def starred_cpus(logical) -> str:
     best = order[0][1]
     head = {core for core, note, _fraction in order if note == best}
     indexes = sorted(c.index for c in logical if c.core_id in head)
-    if len(indexes) <= len(head):        # sin SMT no hay nada que aclarar
+    if len(indexes) <= len(head):        # without SMT there's nothing to clarify
         return ""
     names = [thread_name(i) for i in indexes]
     return ", ".join(names[:-1]) + _("core.join") + names[-1]
 
 
 def core_quality_spread(logical) -> Optional[str]:
-    """Cuánto va del mejor núcleo al peor dentro de su propio tipo.
+    """How far it is from the best core to the worst within its own type.
 
-    En un híbrido se dice del tipo con más recorrido, que es donde la
-    diferencia importa; comparar entre tipos daría una cifra grande y sin
-    significado. Ver `core_quality_by_type`.
+    On a hybrid it's said of the type with the widest spread, where the
+    difference matters; comparing across types would give a large figure
+    with no meaning. See `core_quality_by_type`.
     """
     by_type = core_quality_by_type(logical)
     if not by_type:
@@ -2196,8 +2174,8 @@ def core_quality_spread(logical) -> Optional[str]:
     return _(key).format(n=worst[0], pct=f"{worst[2] * 100:.0f}")
 
 
-# Coletillas que los fabricantes meten en la cadena de marca y que no
-# distinguen a un procesador de otro.
+# Tails makers put in the brand string that don't tell one processor from
+# another.
 _RELLENO_DE_MARCA = re.compile(
     r"\s*(?:\d+-Core\s+Processor|Processor|CPU(?!\s+version)|\(R\)|\(TM\)|™|®"
     r"|@\s*[\d.]+\s*[GM]Hz|with\s+Radeon\s+Graphics"
@@ -2206,7 +2184,7 @@ _RELLENO_DE_MARCA = re.compile(
 
 
 def lost_packets(n: int) -> str:
-    """«1 paquete descartado», «12 682 paquetes descartados»."""
+    """«1 packet discarded», «12 682 packets discarded»."""
     return _("net.lost.one") if n == 1 else _("net.lost").format(n=thousands(n))
 
 
@@ -2229,12 +2207,12 @@ def packet_problems(traffic) -> str:
 
 
 def cpu_short_name(brand: Optional[str]) -> str:
-    """El nombre del procesador sin la paja: «Ryzen 7 5800X3D».
+    """The processor's name without the chaff: «Ryzen 7 5800X3D».
 
-    La cadena de marca viene con coletillas que no distinguen un modelo de
-    otro —«8-Core Processor», «(R)», «@ 2.90GHz»— y que en un titular ocupan
-    dos líneas para no decir nada: los núcleos y la frecuencia ya están al
-    lado, con su propia etiqueta.
+    The brand string comes with tails that don't tell one model from another
+    («8-Core Processor», «(R)», «@ 2.90GHz») and in a headline take two
+    lines to say nothing: cores and frequency are already next to it, with
+    their own label.
     """
     if not brand:
         return DASH
@@ -2244,16 +2222,16 @@ def cpu_short_name(brand: Optional[str]) -> str:
 
 
 def monitor_color(edid) -> str:
-    """Lo que el monitor declara en sus extensiones: HDR y espacios de color.
+    """What the monitor declares in its extensions: HDR and colour spaces.
 
-    Sale de los bloques CTA-861, que es donde vive lo moderno. El bloque base
-    del EDID es de 1994 y no tiene sitio para nada de esto: sin mirar las
-    extensiones, un panel con HDR10 y BT.2020 se describe igual que uno de
-    hace veinte años.
+    From the CTA-861 blocks, where the modern things live. The EDID's base
+    block dates from 1994 and has no room for any of this: without the
+    extensions, a panel with HDR10 and BT.2020 is described like one from
+    twenty years ago.
     """
     pieces = list(edid.hdr)
-    # De los espacios de color solo el más ancho: enseñar los seis que declara
-    # un monitor llena la celda sin decir mucho más que el mayor de ellos.
+    # Of the colour spaces only the widest: showing all six a monitor
+    # declares fills the cell without saying much more than the largest.
     for wide in ("BT.2020 RGB", "BT.2020 YCC", "opRGB", "xvYCC709"):
         if wide in edid.color_spaces:
             pieces.append(wide)
