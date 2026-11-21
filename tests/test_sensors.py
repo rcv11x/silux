@@ -308,55 +308,55 @@ class TestNombresDeAlimentacion(unittest.TestCase):
     """Lo que un portátil publica como chip y salía en crudo en el árbol."""
 
     def test_una_bateria_se_llama_bateria(self):
-        from silux.providers.hwmon import _nombre_de_alimentacion
+        from silux.providers.hwmon import _power_supply_name
 
-        self.assertEqual(_nombre_de_alimentacion("BAT0"), "Batería")
+        self.assertEqual(_power_supply_name("BAT0"), "Batería")
 
     def test_la_segunda_bateria_se_distingue(self):
-        from silux.providers.hwmon import _nombre_de_alimentacion
+        from silux.providers.hwmon import _power_supply_name
 
-        self.assertEqual(_nombre_de_alimentacion("BAT1"), "Batería 2")
+        self.assertEqual(_power_supply_name("BAT1"), "Batería 2")
 
     def test_el_puerto_usbc_no_lleva_el_nombre_del_kernel(self):
         """`ucsi_source_psy_USBC000:001` no lo reconoce nadie en un árbol."""
-        from silux.providers.hwmon import _nombre_de_alimentacion
+        from silux.providers.hwmon import _power_supply_name
 
         self.assertEqual(
-            _nombre_de_alimentacion("ucsi_source_psy_USBC000:001"),
+            _power_supply_name("ucsi_source_psy_USBC000:001"),
             "Puerto USB-C")
 
     def test_lo_que_sigue_a_usbc_no_es_un_numero_de_puerto(self):
         """Es un identificador de ACPI. Numerarlo daba «Puerto USB-C 2» en un
         portátil que tiene uno solo."""
-        from silux.providers.hwmon import _nombre_de_alimentacion
+        from silux.providers.hwmon import _power_supply_name
 
         self.assertEqual(
-            _nombre_de_alimentacion("ucsi_source_psy_USBC000:002"),
+            _power_supply_name("ucsi_source_psy_USBC000:002"),
             "Puerto USB-C")
 
     def test_un_chip_normal_no_se_toca(self):
-        from silux.providers.hwmon import _nombre_de_alimentacion
+        from silux.providers.hwmon import _power_supply_name
 
         for chip in ("coretemp", "nct6798", "thinkpad", "amdgpu", "nvme"):
             with self.subTest(chip=chip):
-                self.assertIsNone(_nombre_de_alimentacion(chip))
+                self.assertIsNone(_power_supply_name(chip))
 
     def test_de_una_fuente_externa_no_se_avisa(self):
         """Un puerto USB-C sin nada conectado marca 0 V, y eso queda por
         debajo de cualquier mínimo que declare el chip: un ThinkPad tenía un
         aviso permanente por llevar el cargador desenchufado."""
         from silux.model import SensorKind
-        from silux.providers.hwmon import _umbrales
+        from silux.providers.hwmon import _thresholds
 
-        limites = _umbrales(SensorKind.VOLTAGE, 4.0, 20.0, 22.0,
+        limites = _thresholds(SensorKind.VOLTAGE, 4.0, 20.0, 22.0,
                             "ucsi_source_psy_USBC000:001")
         self.assertEqual(limites, {"low": None, "high": None, "critical": None})
 
     def test_un_chip_de_verdad_conserva_sus_umbrales(self):
         from silux.model import SensorKind
-        from silux.providers.hwmon import _umbrales
+        from silux.providers.hwmon import _thresholds
 
-        limites = _umbrales(SensorKind.VOLTAGE, 1.0, 1.5, 1.6, "nct6798")
+        limites = _thresholds(SensorKind.VOLTAGE, 1.0, 1.5, 1.6, "nct6798")
         self.assertEqual(limites["high"], 1.5)
 
 
@@ -446,19 +446,19 @@ class TestLaBateriaNoSaleDosVeces(unittest.TestCase):
 
     def test_un_chip_que_también_está_en_power_supply_se_salta(self):
         self._energia("BAT0", voltage_now=11_384_000, power_now=9_100_000)
-        self.assertTrue(hwmon._tambien_en_power_supply("BAT0"))
+        self.assertTrue(hwmon._also_in_power_supply("BAT0"))
 
     def test_un_chip_normal_no(self):
-        self.assertFalse(hwmon._tambien_en_power_supply("coretemp"))
+        self.assertFalse(hwmon._also_in_power_supply("coretemp"))
 
     def test_una_carpeta_sin_los_valores_no_cuenta(self):
         """Si power_supply no publica nada legible, saltarse el chip de hwmon
         perdería el dato en vez de deduplicarlo."""
         self._energia("BAT9", capacity=80)
-        self.assertFalse(hwmon._tambien_en_power_supply("BAT9"))
+        self.assertFalse(hwmon._also_in_power_supply("BAT9"))
 
     def test_el_puerto_usbc_también_se_deduplica(self):
         self._energia("ucsi-source-psy-USBC000:001", voltage_now=0,
                       current_now=0)
         self.assertTrue(
-            hwmon._tambien_en_power_supply("ucsi-source-psy-USBC000:001"))
+            hwmon._also_in_power_supply("ucsi-source-psy-USBC000:001"))

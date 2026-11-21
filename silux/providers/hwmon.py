@@ -1,15 +1,15 @@
-"""Todos los sensores del equipo, desde /sys/class/hwmon.
+"""Every sensor of the machine, from /sys/class/hwmon.
 
-Se enumera el árbol entero una sola vez y de ahí salen dos cosas: la lista
-completa de sensores que consume la página de Monitor, y los valores concretos
-(temperatura por núcleo, voltaje) que necesita la de CPU. Hacerlo en dos
-pasadas sería leer los mismos ficheros dos veces por muestreo.
+The whole tree is walked once and gives two things: the full sensor list
+the Monitor page uses, and the specific values (per-core temperature,
+voltage) the CPU page needs. Two passes would read the same files twice per
+sample.
 
-Aquí vive también la parte que más diferencia a un monitor de hardware en
-Linux: **detectar qué driver falta**. La máquina no está limitada por lo que
-el programa sepa leer, sino por los módulos que el kernel tenga cargados. Una
-placa sin su módulo de Super I/O no enseña ni un ventilador ni un voltaje, y
-decirlo vale más que cualquier sensor extra.
+Here also lives what most sets a Linux hardware monitor apart: **finding
+which driver is missing**. The machine is limited not by what the program can
+read but by the modules the kernel has loaded. A board without its Super I/O
+module shows no fan and no voltage, and saying so is worth more than any
+extra sensor.
 """
 
 from __future__ import annotations
@@ -30,42 +30,38 @@ from .dmi import PORTABLE_CHASSIS
 HWMON = pathlib.Path("/sys/class/hwmon")
 POWER_SUPPLY = pathlib.Path("/sys/class/power_supply")
 
-# Prefijo del fichero -> (tipo, divisor para pasar a la unidad del modelo)
+# File prefix -> (kind, divisor to the model's unit)
 MEASUREMENTS: dict[str, tuple[SensorKind, float]] = {
-    "temp": (SensorKind.TEMPERATURE, 1000.0),      # milésimas de grado
-    "in": (SensorKind.VOLTAGE, 1000.0),            # milivoltios
-    "fan": (SensorKind.FAN, 1.0),                  # ya viene en RPM
-    "power": (SensorKind.POWER, 1_000_000.0),      # microvatios
-    "curr": (SensorKind.CURRENT, 1000.0),          # miliamperios
-    "energy": (SensorKind.ENERGY, 1_000_000.0),    # microjulios
-    # Las gráficas publican aquí sus relojes, en hercios. Se pasan a megahercios
-    # porque es la unidad en la que el árbol guarda todos los relojes, incluidos
-    # los del procesador. Sin esta línea la tarjeta enseñaba temperaturas y
-    # ventilador pero ninguna frecuencia.
+    "temp": (SensorKind.TEMPERATURE, 1000.0),      # millidegrees
+    "in": (SensorKind.VOLTAGE, 1000.0),            # millivolts
+    "fan": (SensorKind.FAN, 1.0),                  # already RPM
+    "power": (SensorKind.POWER, 1_000_000.0),      # microwatts
+    "curr": (SensorKind.CURRENT, 1000.0),          # milliamps
+    "energy": (SensorKind.ENERGY, 1_000_000.0),    # microjoules
+    # GPUs publish their clocks here, in hertz. They go to megahertz, the unit
+    # the tree keeps every clock in, the processor's included.
     "freq": (SensorKind.CLOCK, 1_000_000.0),
 }
 
-# Canales que no se llaman `_input`. amdgpu publica el consumo como
-# `power1_average` (es una media de la última ventana, no una lectura
-# instantánea) y sin mirar aquí la tarjeta se quedaba sin consumo.
-ALTERNATIVAS = ("_average",)
+# Channels not named `_input`. amdgpu publishes power as `power1_average` (a
+# mean over the last window, not an instant reading).
+ALTERNATIVES = ("_average",)
 
-# A qué aparato pertenece cada chip. El orden importa: gana la primera regla.
+# Which device each chip belongs to. Order matters: the first rule wins.
 CPU_CHIP = re.compile(r"^(coretemp|k10temp|k8temp|zenpower|cpu_thermal)$")
-# Los `*_wmi` son los sensores que el fabricante de la placa expone por su
-# propia interfaz: `gigabyte_wmi` salía en crudo en el árbol al lado de la
-# misma placa nombrada por su Super I/O.
+# The `*_wmi` ones are the sensors the board maker exposes through its own
+# interface, next to the same board named by its Super I/O.
 BOARD_CHIP = re.compile(
     r"^(nct\d+|it\d+|w836\d+|f71\d+|smsc|lm\d+|nzxt|asus|acpitz|thermal"
     r"|\w+_wmi)")
-# Los drivers que no leen un chip propio sino el de otro driver, por otro
-# camino: `gigabyte_wmi` le pide al firmware de la placa las temperaturas de
-# su Super I/O, que `it87` ya lee directamente. Aquí solo entra lo que se
-# sabe; y aun así se confirma con las lecturas antes de darlas por repetidas.
-ESPEJOS = {"gigabyte_wmi": re.compile(r"^it8\d+")}
-# Cuánto pueden separarse dos lecturas del mismo sensor tomadas una detrás de
-# otra: el chip redondea a grados y entre una y otra pasan milisegundos.
-MARGEN_DE_ESPEJO = 2.0
+# Drivers that read not their own chip but another driver's, another way:
+# `gigabyte_wmi` asks the board's firmware for its Super I/O's temperatures,
+# which `it87` reads directly. Only what is known goes here, and even so the
+# readings confirm it before they are taken as repeated.
+MIRRORS = {"gigabyte_wmi": re.compile(r"^it8\d+")}
+# How far apart two readings of the same sensor, one after the other, can be:
+# the chip rounds to degrees and milliseconds pass between them.
+MIRROR_MARGIN = 2.0
 
 DISK_CHIP = re.compile(r"^(drivetemp|nvme)")
 NET_CHIP = re.compile(r"^(r8\d+|e1000|igb|ixgbe|iwlwifi|mt79|ath\d+k?)")
@@ -77,35 +73,33 @@ MEMORY_CHIP = re.compile(r"^(spd5118|jc42)")
 WIFI_CHIP = re.compile(r"^(iwlwifi|mt79|ath\d+k?)")
 GPU_CHIP = re.compile(r"^(amdgpu|radeon|i915|xe|nouveau)")
 
-# Chips de Super I/O: si no hay ninguno, la placa no está dando ventiladores.
+# Super I/O chips: without any, the board is giving no fans.
 SUPERIO_CHIPS = re.compile(r"^(nct\d+|it\d+|w836\d+|f71\d+|smsc|nzxt|asus)")
 
 _CORE_LABEL = re.compile(r"^Core\s+(\d+)$", re.IGNORECASE)
 _PACKAGE_LABEL = re.compile(r"^(Package id \d+|Tdie|Tctl|CPU Temperature)$", re.IGNORECASE)
 _VCORE_LABEL = re.compile(r"(vcore|cpu\s*v(core|oltage)|vid)", re.IGNORECASE)
 
-# Lo que devuelve una zona térmica de ACPI que el firmware declara y no
-# conecta a nada: siempre el mismo número, que no ha medido nadie. Son décimas
-# de kelvin redondas escritas en la tabla (2900, 3010 y 3030).
-CHIP_DE_ZONAS_ACPI = "acpitz"
-VALORES_DE_RELLENO = frozenset((16.8, 27.8, 29.8))
+# What an ACPI thermal zone the firmware declares and connects to nothing
+# returns: always the same number, measured by nobody. Round tenths of
+# kelvin written in the table (2900, 3010 and 3030).
+ACPI_ZONES_CHIP = "acpitz"
+FILLER_VALUES = frozenset((16.8, 27.8, 29.8))
 
-# Chips de la CPU, en orden de preferencia: los primeros miden el die.
+# The CPU's chips, by preference: the first ones measure the die.
 CPU_CHIPS = ("coretemp", "k10temp", "zenpower", "cpu_thermal", "k8temp", "acpitz")
 
 
 def device_for(chip: str, entry: pathlib.Path, cpu_name: str, board_name: str,
                gpu_names: Optional[dict[str, str]] = None) -> tuple[str, str, str]:
-    """A qué aparato del árbol cuelga este chip, y de qué clase es.
+    """Which tree device this chip hangs from, and its kind.
 
-    El nombre importa: un árbol que dice "coretemp" y "nct6683" obliga a saber
-    qué es cada cosa. Uno que dice "Intel Core i5-10400" y "MSI H510M PRO-E"
-    se lee solo, que es lo que hacen HWMonitor y HWiNFO.
+    The name matters: a tree saying "coretemp" and "nct6683" makes one know
+    what each thing is; one saying the processor's and the board's names
+    reads by itself, as HWMonitor and HWiNFO do.
 
-    La clase sale de aquí también, y no es un extra: es la misma decisión. Se
-    devolvía solo el nombre y el árbol tenía que deducir la clase otra vez
-    comparando cadenas, con lo que el procesador y el disco acababan en el
-    cajón de la placa y el árbol se abría por el disco.
+    The kind comes from here too: it is the same decision. With only the name
+    returned, the tree had to work the kind out again by comparing strings.
 
     And its key, built from the same raw things as its name and never from
     the name, which is in the interface's language: the tree groups by it.
@@ -115,51 +109,49 @@ def device_for(chip: str, entry: pathlib.Path, cpu_name: str, board_name: str,
     if BOARD_CHIP.match(chip):
         return board_name, DeviceKind.BOARD, "board"
     if DISK_CHIP.match(chip):
-        disco = _disk_name(entry)
-        return disco or _("sensor.dev.storage"), DeviceKind.DISK, f"disk:{disco or ''}"
+        disk = _disk_name(entry)
+        return disk or _("sensor.dev.storage"), DeviceKind.DISK, f"disk:{disk or ''}"
     if GPU_CHIP.match(chip):
-        # El nombre de verdad si se sabe cuál es: un árbol que dice «amdgpu» no
-        # sirve de nada en un equipo con dos gráficas, y en uno con una sola
-        # obliga igualmente a saber qué driver lleva.
-        ranura = _ranura_pci(entry) or ""
-        if nombre := (gpu_names or {}).get(ranura):
-            return nombre, DeviceKind.GPU, f"gpu:{ranura}"
+        # The real name when known: «amdgpu» says nothing on a machine with
+        # two GPUs, and with one it still makes one know the driver.
+        slot = _pci_slot(entry) or ""
+        if entry_name := (gpu_names or {}).get(slot):
+            return entry_name, DeviceKind.GPU, f"gpu:{slot}"
         return _("sensor.dev.gpuchip").format(chip=chip), DeviceKind.GPU, f"gpu-chip:{chip}"
     if NET_CHIP.match(chip):
-        if interfaz := _net_iface(entry):
-            return _("sensor.dev.net").format(chip=interfaz), DeviceKind.NETWORK, f"net:{interfaz}"
-        # A tester's iwlwifi sensor read «Red (iwlwifi_1)»: without its
+        if interface := _net_iface(entry):
+            return _("sensor.dev.net").format(chip=interface), DeviceKind.NETWORK, f"net:{interface}"
+        # An iwlwifi sensor read «Network (iwlwifi_1)»: without its
         # interface, what it is and not the driver's name.
         wifi = bool(WIFI_CHIP.match(chip))
-        respaldo = _("sensor.dev.wifi") if wifi else render_chip(chip)
-        return (_("sensor.dev.net").format(chip=respaldo), DeviceKind.NETWORK,
+        backup = _("sensor.dev.wifi") if wifi else render_chip(chip)
+        return (_("sensor.dev.net").format(chip=backup), DeviceKind.NETWORK,
                 f"net-chip:{'wifi' if wifi else chip}")
     if MEMORY_CHIP.match(chip):
         return _("sensor.mem"), DeviceKind.MEMORY, "memory"
-    if (alimentacion := _alimentacion(chip)):
-        return _nombre_de_alimentacion(chip), DeviceKind.POWER, _clave_de_alimentacion(*alimentacion)
+    if (supply := _power_supply_kind(chip)):
+        return _power_supply_name(chip), DeviceKind.POWER, _power_supply_key(*supply)
     return chip, DeviceKind.BOARD, f"chip:{chip}"
 
 
-# Lo que un portátil publica como chip de sensores y que sale en crudo si no
-# se traduce. `ucsi_source_psy_USBC000:001` es el nombre que el kernel le da al
-# puerto USB-C que negocia la carga, y en el árbol no lo reconoce nadie.
-_ALIMENTACION = (
+# What a laptop publishes as a sensor chip, raw unless translated.
+# `ucsi_source_psy_USBC000:001` is the kernel's name for the USB-C port that
+# negotiates charging, which nobody would recognize in the tree.
+_POWER_SUPPLIES = (
     (re.compile(r"^(?:BAT|CMB)(\d*)$", re.I), "sensor.dev.battery"),
     (re.compile(r"^(?:AC|ADP)(\d*)$", re.I), "sensor.dev.adapter"),
-    # Sin número: lo que sigue a `USBC` es un identificador de ACPI, no el
-    # puerto número tantos. «Puerto USB-C 2» en un portátil con uno solo.
+    # No number: what follows `USBC` is an ACPI id, not the port's number.
     (re.compile(r"^(ucsi)[-_].*$", re.I), "sensor.dev.usbc"),
 )
-_ES_USBC = _ALIMENTACION[-1][0]
-_ES_BATERIA = _ALIMENTACION[0][0]
+_IS_USBC = _POWER_SUPPLIES[-1][0]
+_IS_BATTERY = _POWER_SUPPLIES[0][0]
 
 
-def _por_numero(ruta: pathlib.Path) -> tuple:
+def _by_number(path: pathlib.Path) -> tuple:
     """«temp2» before «temp10»: as text, coretemp's cores came out of order
-    on a tester's i5-12450H («Núcleo 8, 12, Paquete, 20…, 0, 4»)."""
-    encaje = re.match(r"^([a-z]+)(\d+)_", ruta.name)
-    return (encaje.group(1), int(encaje.group(2))) if encaje else (ruta.name, 0)
+    («Core 8, 12, Package, 20…, 0, 4»)."""
+    hit = re.match(r"^([a-z]+)(\d+)_", path.name)
+    return (hit.group(1), int(hit.group(2))) if hit else (path.name, 0)
 
 
 def render_chip(chip: str) -> str:
@@ -167,106 +159,104 @@ def render_chip(chip: str) -> str:
     return chip_name(chip)
 
 
-def _tambien_en_power_supply(chip: str) -> bool:
-    """Si este chip de hwmon es el mismo aparato que una entrada de energía.
+def _also_in_power_supply(chip: str) -> bool:
+    """Whether this hwmon chip is the same device as a power supply entry.
 
-    En un portátil, la batería y los puertos USB-C cuelgan de los dos sitios
-    con el mismo nombre. Se comprueba que exista la carpeta y que publique algo
-    que se vaya a leer: si `power_supply` no diera ninguno de esos tres
-    valores, saltarse el chip de hwmon perdería el dato en vez de deduplicarlo.
+    On a laptop, the battery and USB-C ports hang from both places with the
+    same name. The folder must exist and publish something to be read: if
+    `power_supply` gave none of those three values, skipping the hwmon chip
+    would lose the value instead of deduplicating it.
     """
     # hwmon writes underscores where power_supply has dashes:
     # «ucsi_source_psy_USBC000:001» is «ucsi-source-psy-USBC000:001».
-    for nombre in dict.fromkeys((chip, chip.replace("_", "-"))):
-        carpeta = sysroot.ruta(POWER_SUPPLY) / nombre
-        if carpeta.is_dir() and any((carpeta / campo).exists()
-                                    for campo in ("voltage_now", "current_now", "power_now")):
+    for entry_name in dict.fromkeys((chip, chip.replace("_", "-"))):
+        folder = sysroot.ruta(POWER_SUPPLY) / entry_name
+        if folder.is_dir() and any((folder / field).exists()
+                                    for field in ("voltage_now", "current_now", "power_now")):
             return True
     return False
 
 
-def _alimentacion(chip: str) -> Optional[tuple[str, int]]:
+def _power_supply_kind(chip: str) -> Optional[tuple[str, int]]:
     """Which power supply it is: its name's key, and its number (0 for none)."""
-    for patron, clave in _ALIMENTACION:
-        if (encaje := patron.match(chip)):
-            return clave, _numero_de_alimentacion(encaje)
+    for pattern, key in _POWER_SUPPLIES:
+        if (hit := pattern.match(chip)):
+            return key, _power_supply_number(hit)
     return None
 
 
-def _numero_de_alimentacion(encaje: re.Match) -> int:
-    sufijo = encaje.group(1)
-    return int(sufijo) + 1 if sufijo.isdigit() and int(sufijo) else 0
+def _power_supply_number(hit: re.Match) -> int:
+    suffix = hit.group(1)
+    return int(suffix) + 1 if suffix.isdigit() and int(suffix) else 0
 
 
-def _clave_de_alimentacion(clave: str, numero: int) -> str:
-    return f"power:{clave}:{numero}"
+def _power_supply_key(key: str, number: int) -> str:
+    return f"power:{key}:{number}"
 
 
-def _nombre_de_alimentacion(chip: str) -> Optional[str]:
-    """«Batería» en vez de «BAT0», «Puerto USB-C» en vez del nombre del kernel.
+def _power_supply_name(chip: str) -> Optional[str]:
+    """«Battery» instead of «BAT0», «USB-C port» instead of the kernel's name.
 
-    Se conserva el número cuando lo hay: un portátil con dos baterías las
-    tiene que poder distinguir, y con una sola el número sobra.
+    The number stays when there is one: a laptop with two batteries must tell
+    them apart, and with one the number is not needed.
     """
-    for patron, clave in _ALIMENTACION:
-        if (encaje := patron.match(chip)):
-            numero = _numero_de_alimentacion(encaje)
-            return f"{_(clave)} {numero}" if numero else _(clave)
+    for pattern, key in _POWER_SUPPLIES:
+        if (hit := pattern.match(chip)):
+            number = _power_supply_number(hit)
+            return f"{_(key)} {number}" if number else _(key)
     return None
 
 
-def _ranura_pci(entry: pathlib.Path) -> Optional[str]:
-    """La dirección PCI del aparato al que cuelga un chip de sensores."""
+def _pci_slot(entry: pathlib.Path) -> Optional[str]:
+    """The PCI address of the device a sensor chip hangs from."""
     try:
-        destino = (entry / "device").resolve()
+        target = (entry / "device").resolve()
     except OSError:
         return None
-    while destino.name and destino.name != "/":
-        if re.fullmatch(r"[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\.[0-9a-f]", destino.name):
-            return destino.name
-        destino = destino.parent
+    while target.name and target.name != "/":
+        if re.fullmatch(r"[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\.[0-9a-f]", target.name):
+            return target.name
+        target = target.parent
     return None
 
 
 def _net_name(entry: pathlib.Path) -> Optional[str]:
-    """El nombre de la interfaz de red a la que pertenece un sensor.
+    """The network interface a sensor belongs to.
 
-    El sensor de temperatura de una Realtek no cuelga de la tarjeta sino del
-    bus MDIO por el que se habla con el chip físico, un par de niveles más
-    abajo. Así que se sube hasta dar con el `net/` de la interfaz.
+    A Realtek's temperature sensor hangs not from the card but from the MDIO
+    bus that talks to the physical chip, a couple of levels down, so it climbs
+    to the interface's `net/`.
 
-    Las interfaces virtuales no cuentan. Subiendo a ciegas se llegaba a
-    `/sys/devices/virtual`, que también tiene un `net/` dentro —con el bucle
-    local y los puentes— y acababa colgando de «Red (lo)» la temperatura de
-    cualquier sensor virtual: un ThinkPad enseñaba el loopback a 34 °C, y el
-    bucle local no tiene con qué calentarse. No vale parar donde se acaben los
-    dispositivos, porque el bus MDIO por el que se sube es un contenedor sin
-    `uevent` y está justo en medio del camino bueno.
+    Virtual interfaces do not count. Climbing blindly reached
+    `/sys/devices/virtual`, which has a `net/` too (loopback and bridges), and
+    any virtual sensor's temperature ended under «Network (lo)». Stopping
+    where devices end does not work either: the MDIO bus is a container
+    without `uevent`, right in the middle of the good path.
     """
-    interfaz = _net_iface(entry)
-    return _("sensor.dev.net").format(chip=interfaz) if interfaz else None
+    interface = _net_iface(entry)
+    return _("sensor.dev.net").format(chip=interface) if interface else None
 
 
 def _net_iface(entry: pathlib.Path) -> Optional[str]:
     """The network interface a sensor belongs to, raw (`_net_name`)."""
     try:
-        actual = (entry / "device").resolve()
+        current = (entry / "device").resolve()
     except OSError:
         return None
-    for _nivel in range(6):
-        red = actual / "net"
-        if red.is_dir() and "/virtual/" not in f"{red}/":
-            interfaces = sorted(p.name for p in red.iterdir())
+    for _level in range(6):
+        net = current / "net"
+        if net.is_dir() and "/virtual/" not in f"{net}/":
+            interfaces = sorted(p.name for p in net.iterdir())
             if interfaces:
                 return interfaces[0]
-        if actual.parent == actual:
+        if current.parent == current:
             break
-        actual = actual.parent
+        current = current.parent
     return None
 
 
 def _disk_name(entry: pathlib.Path) -> Optional[str]:
-    """El modelo del disco al que pertenece un chip de temperatura."""
+    """The model of the disk a temperature chip belongs to."""
     for candidate in (entry / "device" / "model", entry / "device" / "device" / "model"):
         if (model := read_text(str(candidate))):
             vendor = read_text(str(candidate.parent / "vendor")) or ""
@@ -274,9 +264,9 @@ def _disk_name(entry: pathlib.Path) -> Optional[str]:
     return None
 
 
-# Las etiquetas que pone amdgpu son las del firmware. Dicen algo si uno sabe
-# qué es un «sclk», y nada si no.
-ETIQUETAS_GPU = {
+# amdgpu's labels are the firmware's. They say something to whoever knows
+# what an «sclk» is, and nothing otherwise.
+GPU_LABELS = {
     "sclk": "sensor.gpucore", "mclk": "sensor.mem", "fclk": "Fabric",
     "socclk": "SoC", "vddgfx": "sensor.gpucore", "vddnb": "Northbridge",
     "vddc": "sensor.gpucore", "edge": "sensor.edge",
@@ -288,7 +278,7 @@ ETIQUETAS_GPU = {
 def _friendly(chip: str, prefix: str, index: str, label: Optional[str]) -> str:
     if label:
         if GPU_CHIP.match(chip):
-            return _(ETIQUETAS_GPU.get(label, label))
+            return _(GPU_LABELS.get(label, label))
         # NVMe's overall temperature is labelled in English by the kernel.
         if DISK_CHIP.match(chip) and label == "Composite":
             return _("sensor.nvme.composite")
@@ -301,13 +291,12 @@ def _friendly(chip: str, prefix: str, index: str, label: Optional[str]) -> str:
     return f"{_(fallback.get(prefix, prefix))} {index}"
 
 
-# Hasta dónde puede llegar razonablemente un umbral de cada tipo. Los chips
-# dejan sin usar los campos que no aplican y el kernel los devuelve tal cual:
-# un NVMe publicaba «alto = 65261.85 °C», que son 0xFFFF en kelvin, o sea el
-# valor de fábrica de un umbral que nadie rellenó. Sin filtrarlos, la mitad de
-# los sensores tendría un límite que no se alcanza ni fundiendo la placa, y un
-# aviso que nunca salta es igual de inútil que no tenerlo.
-TOPES = {
+# How far a threshold of each kind can reasonably go. Chips leave unused
+# fields as they come and the kernel returns them: an NVMe published «high =
+# 65261.85 °C», 0xFFFF in kelvin, a factory value nobody filled. Unfiltered,
+# half the sensors would have a limit no board reaches, and an alarm that
+# never fires is as useless as none.
+CAPS = {
     SensorKind.TEMPERATURE: 200.0,      # °C
     SensorKind.VOLTAGE: 30.0,           # V
     SensorKind.FAN: 30_000.0,           # RPM
@@ -317,89 +306,85 @@ TOPES = {
 }
 
 
-# Cuando el sensor no publica sus límites, los pone silux por el chip que es.
-# Hace falta: de las 28 temperaturas de un equipo corriente, solo 7 traen
-# umbral, y el procesador —que es el que importa— no suele traer ninguno.
+# When a sensor publishes no limits, Silux sets them by the chip it is: of
+# the 28 temperatures of an ordinary machine only 7 carry a threshold, and
+# the processor, which matters, usually none.
 #
-# Las cifras son conservadoras a propósito, y del punto en que el fabricante
-# empieza a recortar, no del que rompe. Un aviso que salta antes de tiempo
-# quema la confianza en todos los demás, así que donde hay duda no se pone
-# nada: los sensores de placa (it87, nct, acpitz, gigabyte_wmi) miden puntos
-# que solo conoce quien diseñó la placa, y ahí no hay forma de acertar.
-LIMITES_ESTIMADOS = {
-    # AMD: Tctl llega a 90 por diseño en Zen 3 y no es una avería.
+# The figures are conservative on purpose, from where the maker starts to
+# throttle, not where it breaks. An alarm that fires early burns trust in all
+# the others, so where in doubt nothing is set: board sensors (it87, nct,
+# acpitz, gigabyte_wmi) measure points only the board's designer knows.
+ESTIMATED_LIMITS = {
+    # AMD: Tctl reaches 90 by design on Zen 3, and that is no fault.
     "k10temp": (88.0, 95.0),
     "zenpower": (88.0, 95.0),
-    # Intel: Tjmax anda por 100 en las de escritorio.
+    # Intel: Tjmax is about 100 on desktop parts.
     "coretemp": (95.0, 100.0),
-    # NVMe que no declara el suyo. Los que lo declaran ganan ellos.
+    # An NVMe that declares none. Those that do win.
     "nvme": (75.0, 85.0),
-    # Discos mecánicos: aquí sí hay consenso, y es más bajo de lo que parece.
+    # Hard disks: here there is consensus, and it is lower than it seems.
     "drivetemp": (55.0, 60.0),
 }
 
 
-def _plausible(valor, kind):
-    """Descarta un umbral fuera de lo que ese tipo de sensor puede dar."""
-    if valor is None:
+def _plausible(reading, kind):
+    """Drop a threshold outside what that kind of sensor can give."""
+    if reading is None:
         return None
-    tope = TOPES.get(kind)
-    if tope is not None and not -tope <= valor <= tope:
+    cap = CAPS.get(kind)
+    if cap is not None and not -cap <= reading <= cap:
         return None
-    return valor
+    return reading
 
 
-def _umbrales(kind, bajo, alto, critico, chip=None) -> dict:
-    """Los tres límites de un sensor, ya limpios de los que no valen.
+def _thresholds(kind, low, high, critical, chip=None) -> dict:
+    """A sensor's three limits, cleaned of those that are not valid.
 
-    Los chips traen de fábrica los campos que nadie configuró, y el kernel los
-    devuelve tal cual. Un nct6798 publica `temp_min = 127` y `temp_max = 127`
-    para sus seis temperaturas: con eso, una placa a 34 °C queda «por debajo
-    del mínimo» y saltan seis avisos a la vez. Un aviso falso gasta más
-    confianza de la que gana uno acertado.
+    Chips carry factory values in fields nobody set, and the kernel returns
+    them. An nct6798 publishes `temp_min = 127` and `temp_max = 127` for its
+    six temperatures: a board at 34 °C is then «below the minimum» and six
+    alarms fire at once. A false alarm costs more trust than a right one wins.
 
-    De los ventiladores no se avisa. Que uno vaya a tope no es un problema —es
-    lo que se espera bajo carga— y que esté parado tampoco, porque casi todas
-    las tarjetas modernas los paran a propósito en reposo.
+    Fans raise no alarm: one at full speed is what load expects, and one
+    stopped is too, as almost every modern card stops them at idle.
 
-    Y tampoco de lo que se enchufa por fuera. Un puerto USB-C sin nada
-    conectado marca 0 V, y eso está por debajo de cualquier mínimo que declare
-    el chip: un ThinkPad saltaba con un aviso permanente por tener el cargador
-    desenchufado. Cero ahí no es una avería, es que no hay nada puesto.
+    Nor what is plugged in from outside: a USB-C port with nothing connected
+    reads 0 V, below any minimum the chip declares. Zero there is not a fault,
+    it is that nothing is plugged in.
     """
     if kind is SensorKind.FAN:
         return {"low": None, "high": None, "critical": None}
-    if _alimentacion(chip or ""):
+    if _power_supply_kind(chip or ""):
         return {"low": None, "high": None, "critical": None}
 
-    bajo = _plausible(bajo, kind)
-    alto = _plausible(alto, kind)
-    critico = _plausible(critico, kind)
+    low = _plausible(low, kind)
+    high = _plausible(high, kind)
+    critical = _plausible(critical, kind)
 
-    # Un mínimo por encima del máximo es un par que nadie rellenó.
-    if bajo is not None and alto is not None and bajo >= alto:
-        bajo = alto = None
+    # A minimum above the maximum is a pair nobody filled.
+    if low is not None and high is not None and low >= high:
+        low = high = None
 
-    if (alto is None and critico is None
+    if (high is None and critical is None
             and kind is SensorKind.TEMPERATURE
-            and (estimado := LIMITES_ESTIMADOS.get(chip or ""))):
-        return {"low": bajo, "high": estimado[0], "critical": estimado[1],
+            and (estimated := ESTIMATED_LIMITS.get(chip or ""))):
+        return {"low": low, "high": estimated[0], "critical": estimated[1],
                 "estimated_limits": True}
-    return {"low": bajo, "high": alto, "critical": critico}
+    return {"low": low, "high": high, "critical": critical}
 
 
 class HwmonSensors(Provider):
-    """Enumera todos los chips y reparte lo que corresponde a la CPU."""
+    """Lists every chip and hands the CPU page what is its."""
 
     name = "hwmon"
     provides = "sensors"
 
     def __init__(self) -> None:
         super().__init__()
-        # Las zonas de ACPI que se han visto marcar algo distinto del relleno.
-        self._zonas_vivas: set[str] = set()
-        # Los pares (driver espejo, chip) ya confirmados como la misma lectura.
-        self._espejos: set[tuple[str, str]] = set()
+        # The ACPI zones seen reading something other than the filler.
+        self._live_zones: set[str] = set()
+        # The (mirror driver, chip) pairs confirmed as the same reading.
+        self._mirrors: set[tuple[str, str]] = set()
 
     def available(self) -> bool:
         return sysroot.ruta(HWMON).is_dir()
@@ -415,15 +400,15 @@ class HwmonSensors(Provider):
         cpu_name = short_brand(draft.types[next(iter(draft.types), "")].get("brand")
                                if draft.types else None)
         board_name = draft.board.display_name or _("board.unnamed")
-        # Las gráficas ya están enumeradas cuando esto corre: el orden de los
-        # proveedores en `collector.py` lo garantiza.
+        # The GPUs are already listed when this runs: the order of the
+        # providers in `collector.py` guarantees it.
         gpu_names = {gpu["pci_slot"]: (gpu.get("name")
                                        or _("sensor.dev.gpu").format(
                                            n=gpu["index"]))
                      for gpu in draft.gpus if gpu.get("pci_slot")}
 
-        sensors = self._sin_relleno(self._read_hwmon(cpu_name, board_name, gpu_names))
-        sensors = self._sin_repetir(sensors)
+        sensors = self._without_fillers(self._read_hwmon(cpu_name, board_name, gpu_names))
+        sensors = self._without_repeats(sensors)
         sensors += list(self._read_power_supplies())
         if not sensors:
             return
@@ -432,73 +417,72 @@ class HwmonSensors(Provider):
         draft.sensors.extend(sensors)
         self._fill_cpu(draft, sensors)
         draft.driver_hints.extend(self._missing_drivers(
-            sensors, portatil=draft.board.chassis in PORTABLE_CHASSIS))
+            sensors, laptop=draft.board.chassis in PORTABLE_CHASSIS))
 
-    # -- lectura ------------------------------------------------------------
+    # -- reading ------------------------------------------------------------
 
-    def _sin_relleno(self, sensores: Iterator[Sensor]) -> list[Sensor]:
-        """Marca las zonas de ACPI que dan el número fijo del firmware.
+    def _without_fillers(self, found_sensors: Iterator[Sensor]) -> list[Sensor]:
+        """Mark the ACPI zones giving the firmware's fixed number.
 
-        En un portátil esas zonas miden de verdad y pueden pasar por 27.8 °C
-        como por cualquier otro valor: la que se ha visto alguna vez en otro
-        número no se vuelve a marcar. Por eso se recuerda entre muestreos.
+        On a laptop those zones really measure and can pass through 27.8 °C
+        like any other value: one seen at another number is not marked again,
+        so it is remembered between samples.
         """
-        salida = []
-        for sensor in sensores:
-            if (sensor.chip == CHIP_DE_ZONAS_ACPI
+        out = []
+        for sensor in found_sensors:
+            if (sensor.chip == ACPI_ZONES_CHIP
                     and sensor.kind is SensorKind.TEMPERATURE):
-                if sensor.value not in VALORES_DE_RELLENO:
-                    self._zonas_vivas.add(sensor.key)
-                elif sensor.key not in self._zonas_vivas:
+                if sensor.value not in FILLER_VALUES:
+                    self._live_zones.add(sensor.key)
+                elif sensor.key not in self._live_zones:
                     sensor = dataclasses.replace(sensor, placeholder=True, low=None,
                                                  high=None, critical=None,
                                                  estimated_limits=False)
-            salida.append(sensor)
-        return salida
+            out.append(sensor)
+        return out
 
-    def _sin_repetir(self, sensores: list[Sensor]) -> list[Sensor]:
-        """Marca las temperaturas que un driver repite de otro (`ESPEJOS`).
+    def _without_repeats(self, found_sensors: list[Sensor]) -> list[Sensor]:
+        """Mark the temperatures a driver repeats from another (`MIRRORS`).
 
-        En una Gigabyte X570 salían doce temperaturas de placa y eran seis:
-        las del IT8688 y las mismas otra vez por `gigabyte_wmi`. Se dan por
-        repetidas cuando los dos drivers publican el mismo número de sondas y
-        marcan lo mismo que su pareja, con el margen de dos lecturas seguidas
-        y perdonando una. Una vez confirmado se recuerda: bajo carga, entre leer un
-        driver y el otro una sonda puede moverse más que el margen, y el
-        árbol no puede ganar y perder seis filas a cada muestreo.
+        A board can show twelve temperatures that are six: the IT8688's and
+        the same again through `gigabyte_wmi`. They are taken as repeated when
+        both drivers publish the same number of probes reading the same as
+        their pair, within two readings' margin and forgiving one. Once
+        confirmed it is remembered: under load a probe can move more than the
+        margin between reading one driver and the other, and the tree cannot
+        gain and lose six rows every sample.
         """
-        def temperaturas(chip: str) -> list[Sensor]:
-            return sorted((s for s in sensores if s.chip == chip
+        def temperatures(chip: str) -> list[Sensor]:
+            return sorted((s for s in found_sensors if s.chip == chip
                            and s.kind is SensorKind.TEMPERATURE), key=lambda s: s.order)
 
-        chips = list(dict.fromkeys(s.chip for s in sensores))
-        repetidas: dict[str, str] = {}
-        for espejo, patron in ESPEJOS.items():
-            suyas = temperaturas(espejo)
-            if not suyas:
+        chips = list(dict.fromkeys(s.chip for s in found_sensors))
+        repeated: dict[str, str] = {}
+        for mirror, pattern in MIRRORS.items():
+            own = temperatures(mirror)
+            if not own:
                 continue
             for chip in chips:
-                if not patron.match(chip):
+                if not pattern.match(chip):
                     continue
-                otras = temperaturas(chip)
-                if len(otras) != len(suyas):
+                others = temperatures(chip)
+                if len(others) != len(own):
                     continue
-                if (espejo, chip) not in self._espejos:
-                    # Todas menos una: la sonda del zócalo se mueve varios
-                    # grados por segundo, y entre leer un driver y el otro
-                    # puede no coincidir ni siendo la misma (41 y 47 °C en el
-                    # volcado de esta placa, con las otras cinco clavadas).
-                    lejos = sum(1 for a, b in zip(suyas, otras)
-                                if abs(a.value - b.value) > MARGEN_DE_ESPEJO)
-                    if lejos > (1 if len(suyas) >= 3 else 0):
+                if (mirror, chip) not in self._mirrors:
+                    # All but one: the socket's probe moves several degrees a
+                    # second, and between reading one driver and the other it
+                    # may not match even being the same one.
+                    far = sum(1 for a, b in zip(own, others)
+                                if abs(a.value - b.value) > MIRROR_MARGIN)
+                    if far > (1 if len(own) >= 3 else 0):
                         continue
-                    self._espejos.add((espejo, chip))
-                repetidas.update({s.key: chip for s in suyas})
+                    self._mirrors.add((mirror, chip))
+                repeated.update({s.key: chip for s in own})
                 break
-        if not repetidas:
-            return sensores
-        return [dataclasses.replace(s, mirror_of=repetidas[s.key])
-                if s.key in repetidas else s for s in sensores]
+        if not repeated:
+            return found_sensors
+        return [dataclasses.replace(s, mirror_of=repeated[s.key])
+                if s.key in repeated else s for s in found_sensors]
 
     def _read_hwmon(self, cpu_name: str, board_name: str,
                     gpu_names: Optional[dict[str, str]] = None) -> Iterator[Sensor]:
@@ -508,34 +492,32 @@ class HwmonSensors(Provider):
             chip = read_text(str(entry / "name"))
             if not chip:
                 continue
-            # La batería y los puertos USB-C de un portátil salen por dos
-            # sitios: aquí y en `/sys/class/power_supply`, con el mismo nombre
-            # de chip y los mismos valores. Un ThinkPad enseñaba «Alimentación
-            # · BAT0» y «Batería» como dos aparatos distintos con las mismas
-            # cifras, y los dos puertos USB-C repetidos. Se queda la lectura de
-            # power_supply, que es la que trae etiquetas con nombre —«Tensión»
-            # y no «Tensión 0»— porque ahí el kernel dice qué es cada archivo.
-            if _tambien_en_power_supply(chip):
+            # A laptop's battery and USB-C ports show in two places: here and
+            # in `/sys/class/power_supply`, with the same chip name and values.
+            # power_supply's reading stays, as it carries named labels
+            # («Voltage» and not «Voltage 0»): there the kernel says what each
+            # file is.
+            if _also_in_power_supply(chip):
                 continue
-            device, clase, clave = device_for(chip, entry, cpu_name, board_name, gpu_names)
-            canales = sorted(entry.glob("*_input"), key=_por_numero)
-            vistos = {ruta.name.replace("_input", "") for ruta in canales}
-            for sufijo in ALTERNATIVAS:
-                canales += [ruta for ruta in sorted(entry.glob(f"*{sufijo}"), key=_por_numero)
-                            if ruta.name.replace(sufijo, "") not in vistos]
-            for order, path in enumerate(canales):
-                sensor = self._parse(chip, device, path, order, clase, clave)
+            device, device_kind, key = device_for(chip, entry, cpu_name, board_name, gpu_names)
+            channels = sorted(entry.glob("*_input"), key=_by_number)
+            seen = {path.name.replace("_input", "") for path in channels}
+            for suffix in ALTERNATIVES:
+                channels += [path for path in sorted(entry.glob(f"*{suffix}"), key=_by_number)
+                            if path.name.replace(suffix, "") not in seen]
+            for order, path in enumerate(channels):
+                sensor = self._parse(chip, device, path, order, device_kind, key)
                 if sensor is not None:
                     yield sensor
 
     @staticmethod
     def _parse(chip: str, device: str, path: pathlib.Path, order: int = 0,
-               clase: str = DeviceKind.BOARD, device_key: str = "") -> Optional[Sensor]:
+               device_kind: str = DeviceKind.BOARD, device_key: str = "") -> Optional[Sensor]:
         match = re.match(r"^([a-z]+)(\d+)_(?:input|average)$", path.name)
         if match is None:
             return None
         prefix, index = match.groups()
-        sufijo = "_average" if path.name.endswith("_average") else "_input"
+        suffix = "_average" if path.name.endswith("_average") else "_input"
         if prefix not in MEASUREMENTS:
             return None
 
@@ -544,31 +526,31 @@ class HwmonSensors(Provider):
             return None
         kind, divisor = MEASUREMENTS[prefix]
 
-        def threshold(nombre: str) -> Optional[float]:
-            value = read_int(str(path).replace(sufijo, f"_{nombre}"))
+        def threshold(entry_name: str) -> Optional[float]:
+            value = read_int(str(path).replace(suffix, f"_{entry_name}"))
             return None if value is None else value / divisor
 
-        etiqueta = read_text(str(path).replace(sufijo, "_label"))
+        label_text = read_text(str(path).replace(suffix, "_label"))
         return Sensor(
             key=f"{chip}/{prefix}{index}",
             chip=chip,
             device=device,
-            device_kind=clase,
+            device_kind=device_kind,
             device_key=device_key,
-            label=_friendly(chip, prefix, index, etiqueta),
-            chip_label=etiqueta,
-            unnamed=not etiqueta,
+            label=_friendly(chip, prefix, index, label_text),
+            chip_label=label_text,
+            unnamed=not label_text,
             kind=kind,
             value=round(raw / divisor, 3),
-            **_umbrales(kind, threshold("min"), threshold("max"),
+            **_thresholds(kind, threshold("min"), threshold("max"),
                         threshold("crit"), chip),
             order=order,
         )
 
     @staticmethod
     def _read_power_supplies() -> Iterator[Sensor]:
-        """Baterías y adaptadores. En un sobremesa no hay ninguno; en un
-        portátil son la mitad de lo interesante."""
+        """Batteries and adapters. A desktop has none; on a laptop they are
+        half of what matters."""
         if not sysroot.ruta(POWER_SUPPLY).is_dir():
             return
         fields = (
@@ -577,20 +559,19 @@ class HwmonSensors(Provider):
             ("power_now", SensorKind.POWER, 1_000_000.0, "sensor.power"),
         )
         entries = sorted(sysroot.ruta(POWER_SUPPLY).iterdir())
-        # A laptop's USB-C ports, numbered in order when there are several:
-        # the two of a ThinkPad were both «Puerto USB-C», and the tree told
-        # their readings apart by the kernel's name («ucsi-source-psy-…»).
-        ports = [e.name for e in entries if _ES_USBC.match(e.name)]
+        # A laptop's USB-C ports, numbered in order when there are several,
+        # instead of being told apart by the kernel's name.
+        ports = [e.name for e in entries if _IS_USBC.match(e.name)]
         # The kernel may call the only battery BAT1: numbered only when there
         # are several.
-        baterias = [e.name for e in entries if _ES_BATERIA.match(e.name)]
+        batteries = [e.name for e in entries if _IS_BATTERY.match(e.name)]
         for entry in entries:
             name = entry.name
-            device = _nombre_de_alimentacion(name) or _("sensor.dev.power").format(n=name)
-            if baterias == [name]:
+            device = _power_supply_name(name) or _("sensor.dev.power").format(n=name)
+            if batteries == [name]:
                 device = _("sensor.dev.battery")
-            alimentacion = _alimentacion(name)
-            clave = (_clave_de_alimentacion(*alimentacion) if alimentacion
+            supply = _power_supply_kind(name)
+            key = (_power_supply_key(*supply) if supply
                      else f"power-supply:{name}")
             if name in ports:
                 # Nothing plugged in: it reads 0 V and 0 A, which says nothing.
@@ -598,7 +579,7 @@ class HwmonSensors(Provider):
                     continue
                 if len(ports) > 1:
                     device = f"{device} {ports.index(name) + 1}"
-                    clave = f"{clave}#{ports.index(name) + 1}"
+                    key = f"{key}#{ports.index(name) + 1}"
             for filename, kind, divisor, label in fields:
                 raw = read_int(str(entry / filename))
                 if raw is None:
@@ -608,19 +589,19 @@ class HwmonSensors(Provider):
                     chip=name,
                     device=device,
                     device_kind=DeviceKind.POWER,
-                    device_key=clave,
+                    device_key=key,
                     label=_(label), kind=kind,
                     value=round(abs(raw) / divisor, 3),
                 )
 
-    # -- reparto hacia la pestaña de CPU ------------------------------------
+    # -- handing out to the CPU page ----------------------------------------
 
     def _fill_cpu(self, draft: Draft, sensors: list[Sensor]) -> None:
         by_chip: dict[str, list[Sensor]] = {}
         for sensor in sensors:
             by_chip.setdefault(sensor.chip, []).append(sensor)
 
-        # Una zona que da el número de relleno no es la temperatura de nadie.
+        # A zone giving the filler number is nobody's temperature.
         chip = next((name for name in CPU_CHIPS
                      if any(not s.placeholder for s in by_chip.get(name, ()))), None)
         if chip is None:
@@ -638,22 +619,21 @@ class HwmonSensors(Provider):
     def _spread_temperatures(draft: Draft, sensors: list[Sensor]) -> None:
         per_core: dict[int, float] = {}
         package: list[float] = []
-        # `k10temp` solo publica Tdie donde Tctl lleva sumado un
-        # desplazamiento para el control de los ventiladores (20 °C en un
-        # 1800X, 27 en un Threadripper 1950X). Con las dos, la temperatura es
-        # Tdie; con Tctl sola, las dos son la misma.
+        # `k10temp` only publishes Tdie where Tctl carries an offset for fan
+        # control (20 °C on an 1800X, 27 on a Threadripper 1950X). With both,
+        # the temperature is Tdie; with Tctl alone, they are the same.
         die: list[float] = []
         unlabelled: list[float] = []
 
         for sensor in sensors:
             if sensor.kind is not SensorKind.TEMPERATURE:
                 continue
-            etiqueta = sensor.chip_label or ""
-            if match := _CORE_LABEL.match(etiqueta):
+            label_text = sensor.chip_label or ""
+            if match := _CORE_LABEL.match(label_text):
                 per_core[int(match.group(1))] = sensor.value
-            elif etiqueta.lower() == "tdie":
+            elif label_text.lower() == "tdie":
                 die.append(sensor.value)
-            elif _PACKAGE_LABEL.match(etiqueta):
+            elif _PACKAGE_LABEL.match(label_text):
                 package.append(sensor.value)
             else:
                 unlabelled.append(sensor.value)
@@ -663,7 +643,7 @@ class HwmonSensors(Provider):
             # The package's own sensor, which a GPU inside it shares.
             draft.cpu_extra["package_sensor_temp_c"] = round(max(package), 1)
         if not package and not per_core:
-            package = unlabelled            # chips de un solo sensor, como acpitz
+            package = unlabelled            # single-sensor chips, like acpitz
 
         for cpu in draft.logical.values():
             if (value := per_core.get(cpu.get("core_id", -1))) is not None:
@@ -686,16 +666,15 @@ class HwmonSensors(Provider):
                 for entry in draft.types.values():
                     entry["voltage_v"] = sensor.value
                 return
-        # Y si no hay ninguno etiquetado, aquí no se avisa: el aviso lo pone
-        # `msr_voltage`, que corre detrás y sabe si se puede sacar del propio
-        # procesador. Poniéndolo aquí salían dos avisos de lo mismo, y el de
-        # aquí decía que no hay nada que hacer cuando sí lo hay.
+        # With none labelled, no notice here: `msr_voltage` runs after and
+        # knows whether the processor itself can give it. A notice here too
+        # said two things of the same, and this one said nothing could be done.
 
-    # -- drivers que faltan -------------------------------------------------
+    # -- missing drivers ----------------------------------------------------
 
     @staticmethod
     def _module_exists(module: str) -> bool:
-        def preguntar() -> bool:
+        def ask() -> bool:
             modinfo = system_deps.program_path("modinfo")
             if not modinfo:
                 return False
@@ -703,13 +682,13 @@ class HwmonSensors(Provider):
                                     capture_output=True, text=True,
                                     env=system_environment())
             return result.returncode == 0 and bool(result.stdout.strip())
-        return bool(sysroot.a_traves("modinfo", module, preguntar))
+        return bool(sysroot.a_traves("modinfo", module, ask))
 
     def _missing_drivers(self, sensors: list[Sensor],
-                         portatil: bool = False) -> Iterator[DriverHint]:
+                         laptop: bool = False) -> Iterator[DriverHint]:
         chips = {sensor.chip for sensor in sensors}
 
-        if not portatil and not any(SUPERIO_CHIPS.match(chip) for chip in chips):
+        if not laptop and not any(SUPERIO_CHIPS.match(chip) for chip in chips):
             yield DriverHint(
                 module=SUPERIO,
                 provides=_("prov.hint.superio"),

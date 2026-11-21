@@ -53,7 +53,7 @@ TABLAS = {
     "silux/ui/pages/cpu.py": ("PROCESSOR_FIELDS", "CLOCK_FIELDS"),
     "silux/ui/sensortree.py": ("COLUMNS",),
     "silux/providers/dmi.py": ("CHASSIS_TYPES", "_ALIMENTACION"),
-    "silux/providers/hwmon.py": ("ETIQUETAS_GPU", "_ALIMENTACION"),
+    "silux/providers/hwmon.py": ("GPU_LABELS", "_POWER_SUPPLIES"),
     "silux/providers/drm.py": ("DRIVERS_CIEGOS", "INTEL_AVISOS", "MOTORES_INTEL",
                               "INTEL_SIN_TEMPERATURA"),
     # Las frases de lo que no aplica a una tarjeta. El resto de claves de esa

@@ -8,7 +8,7 @@ día importe. Por eso aquí se prueba más lo que NO tiene que saltar.
 import unittest
 
 from silux.model import Sensor, SensorKind
-from silux.providers.hwmon import LIMITES_ESTIMADOS, _umbrales
+from silux.providers.hwmon import ESTIMATED_LIMITS, _thresholds
 
 
 def _sensor(**campos) -> Sensor:
@@ -47,30 +47,30 @@ class TestUmbralesQueNoValen(unittest.TestCase):
         Se descarta, y como el chip es conocido entra el estimado en su lugar,
         que es justo lo que se quiere: un límite que sí se puede cruzar.
         """
-        salida = _umbrales(SensorKind.TEMPERATURE, None, 65261.85, None, "nvme")
+        salida = _thresholds(SensorKind.TEMPERATURE, None, 65261.85, None, "nvme")
         self.assertNotEqual(salida["high"], 65261.85)
-        self.assertEqual(salida["high"], LIMITES_ESTIMADOS["nvme"][0])
+        self.assertEqual(salida["high"], ESTIMATED_LIMITS["nvme"][0])
         self.assertTrue(salida["estimated_limits"])
 
     def test_y_en_un_chip_desconocido_se_queda_sin_umbral(self):
-        salida = _umbrales(SensorKind.TEMPERATURE, None, 65261.85, None, "it8688")
+        salida = _thresholds(SensorKind.TEMPERATURE, None, 65261.85, None, "it8688")
         self.assertIsNone(salida["high"])
 
     def test_un_minimo_por_encima_del_maximo(self):
         """Un nct6798 publica min=127 y max=127 en sus seis temperaturas, y con
         eso una placa a 34 grados quedaba «por debajo del mínimo»."""
-        salida = _umbrales(SensorKind.TEMPERATURE, 127.0, 127.0, None, "it8688")
+        salida = _thresholds(SensorKind.TEMPERATURE, 127.0, 127.0, None, "it8688")
         self.assertIsNone(salida["low"])
         self.assertIsNone(salida["high"])
 
     def test_de_los_ventiladores_no_se_avisa(self):
         """Que uno vaya a tope es lo normal bajo carga, y que esté parado
         también: casi todas las tarjetas los paran en reposo."""
-        salida = _umbrales(SensorKind.FAN, 0.0, 3650.0, None, "amdgpu")
+        salida = _thresholds(SensorKind.FAN, 0.0, 3650.0, None, "amdgpu")
         self.assertEqual(set(salida.values()), {None})
 
     def test_los_buenos_se_respetan(self):
-        salida = _umbrales(SensorKind.TEMPERATURE, None, 84.85, 84.85, "nvme")
+        salida = _thresholds(SensorKind.TEMPERATURE, None, 84.85, 84.85, "nvme")
         self.assertEqual(salida["high"], 84.85)
         self.assertFalse(salida.get("estimated_limits"))
 
@@ -80,27 +80,27 @@ class TestUmbralesEstimados(unittest.TestCase):
     procesador —el que más importa— no trae ninguno."""
 
     def test_se_ponen_cuando_el_chip_no_los_da(self):
-        salida = _umbrales(SensorKind.TEMPERATURE, None, None, None, "k10temp")
-        self.assertEqual(salida["high"], LIMITES_ESTIMADOS["k10temp"][0])
+        salida = _thresholds(SensorKind.TEMPERATURE, None, None, None, "k10temp")
+        self.assertEqual(salida["high"], ESTIMATED_LIMITS["k10temp"][0])
         self.assertTrue(salida["estimated_limits"])
 
     def test_pero_nunca_pisan_a_los_del_hardware(self):
-        salida = _umbrales(SensorKind.TEMPERATURE, None, 70.0, None, "k10temp")
+        salida = _thresholds(SensorKind.TEMPERATURE, None, 70.0, None, "k10temp")
         self.assertEqual(salida["high"], 70.0)
         self.assertFalse(salida.get("estimated_limits"))
 
     def test_no_se_inventan_para_un_chip_desconocido(self):
-        salida = _umbrales(SensorKind.TEMPERATURE, None, None, None, "it8688")
+        salida = _thresholds(SensorKind.TEMPERATURE, None, None, None, "it8688")
         self.assertIsNone(salida["high"])
 
     def test_ni_para_lo_que_no_sea_temperatura(self):
         """De un voltaje no hay forma de estimar nada: depende del raíl."""
-        salida = _umbrales(SensorKind.VOLTAGE, None, None, None, "k10temp")
+        salida = _thresholds(SensorKind.VOLTAGE, None, None, None, "k10temp")
         self.assertIsNone(salida["high"])
 
     def test_y_van_del_lado_prudente(self):
         """Tctl llega a 90 en Zen 3 por diseño y no es una avería."""
-        alto, critico = LIMITES_ESTIMADOS["k10temp"]
+        alto, critico = ESTIMATED_LIMITS["k10temp"]
         self.assertGreaterEqual(alto, 85.0)
         self.assertGreater(critico, alto)
 

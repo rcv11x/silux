@@ -60,7 +60,7 @@ class TestElProveedor(unittest.TestCase):
         distintas = [dataclasses.replace(s, value=s.value + 9.0)
                      if s.chip == "gigabyte_wmi" and s.order in primeras
                      else s for s in self._sin_marcar()]
-        salida = HwmonSensors()._sin_repetir(distintas)
+        salida = HwmonSensors()._without_repeats(distintas)
         self.assertEqual([s for s in salida if s.mirror_of], [])
 
     def test_una_sonda_que_se_mueve_entre_las_dos_lecturas_no_lo_impide(self):
@@ -71,24 +71,24 @@ class TestElProveedor(unittest.TestCase):
         movida = [dataclasses.replace(s, value=s.value + 6.0)
                   if s.chip == "gigabyte_wmi" and s.order == tercera else s
                   for s in self._sin_marcar()]
-        salida = HwmonSensors()._sin_repetir(movida)
+        salida = HwmonSensors()._without_repeats(movida)
         self.assertEqual(sum(1 for s in salida if s.mirror_of), 6)
 
     def test_si_no_son_las_mismas_sondas_tampoco(self):
         una_menos = self._sin_marcar()
         una_menos.remove(_temperaturas(una_menos, "gigabyte_wmi")[-1])
-        salida = HwmonSensors()._sin_repetir(una_menos)
+        salida = HwmonSensors()._without_repeats(una_menos)
         self.assertEqual([s for s in salida if s.mirror_of], [])
 
     def test_una_vez_confirmado_no_se_desdice_con_un_salto(self):
         """Bajo carga, entre leer un driver y el otro una sonda se mueve más
         que el margen: el árbol no puede ganar y perder seis filas."""
         proveedor = HwmonSensors()
-        self.assertEqual(sum(1 for s in proveedor._sin_repetir(self._sin_marcar())
+        self.assertEqual(sum(1 for s in proveedor._without_repeats(self._sin_marcar())
                              if s.mirror_of), 6)
         salto = [dataclasses.replace(s, value=s.value + 5.0)
                  if s.chip == "gigabyte_wmi" else s for s in self._sin_marcar()]
-        self.assertEqual(sum(1 for s in proveedor._sin_repetir(salto) if s.mirror_of), 6)
+        self.assertEqual(sum(1 for s in proveedor._without_repeats(salto) if s.mirror_of), 6)
 
     def test_en_un_equipo_sin_ese_driver_no_se_marca_nada(self):
         intel = foto(EQUIPOS / "i5-10400")[0]

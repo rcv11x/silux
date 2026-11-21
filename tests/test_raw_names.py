@@ -41,7 +41,7 @@ class TestSensorDevices(unittest.TestCase):
             (carpeta / "voltage_now").write_text("0\n")
             with mock.patch.object(hwmon, "POWER_SUPPLY", pathlib.Path(raiz)):
                 # hwmon writes underscores where power_supply has dashes.
-                self.assertTrue(hwmon._tambien_en_power_supply("ucsi_source_psy_USBC000:001"))
+                self.assertTrue(hwmon._also_in_power_supply("ucsi_source_psy_USBC000:001"))
                 sensores = list(hwmon.HwmonSensors._read_power_supplies())
         self.assertEqual({s.device for s in sensores}, {_("sensor.dev.usbc")})
 
@@ -66,8 +66,8 @@ class TestTheSuperIoHint(unittest.TestCase):
 
     def test_a_laptop_is_not_sent_to_look_for_one(self):
         # Its fans are the embedded controller's: sensors-detect finds nothing.
-        portatil = list(hwmon.HwmonSensors()._missing_drivers([], portatil=True))
-        sobremesa = list(hwmon.HwmonSensors()._missing_drivers([], portatil=False))
+        portatil = list(hwmon.HwmonSensors()._missing_drivers([], laptop=True))
+        sobremesa = list(hwmon.HwmonSensors()._missing_drivers([], laptop=False))
         self.assertNotIn(hwmon.SUPERIO, [h.module for h in portatil])
         self.assertIn(hwmon.SUPERIO, [h.module for h in sobremesa])
 
