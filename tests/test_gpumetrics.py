@@ -32,7 +32,7 @@ def tabla(version=(1, 3), tamano=120, **cambios) -> bytes:
     formato, contenido = version
     crudo = bytearray(tamano)
     struct.pack_into("<HBB", crudo, 0, tamano, formato, contenido)
-    posiciones = gpumetrics.VERSIONES.get(version, gpumetrics.VERSIONES[(1, 3)])
+    posiciones = gpumetrics.VERSIONS.get(version, gpumetrics.VERSIONS[(1, 3)])
     for nombre, valor in {**CAMPOS, **cambios}.items():
         if nombre not in posiciones:
             continue
@@ -166,24 +166,24 @@ class TestUnaVersionQueNoSeSabeLeer(unittest.TestCase):
         return self.raiz
 
     def test_una_version_conocida_no_se_declara_ilegible(self):
-        self.assertIsNone(gpumetrics.sin_interpretar(self._tabla(1, 3)))
+        self.assertIsNone(gpumetrics.uninterpreted(self._tabla(1, 3)))
 
     def test_una_v1_4_se_declara_y_dice_cual_es(self):
-        version, tamano = gpumetrics.sin_interpretar(self._tabla(1, 4))
+        version, tamano = gpumetrics.uninterpreted(self._tabla(1, 4))
         self.assertEqual(version, "1.4")
         self.assertEqual(tamano, 120)
 
     def test_una_2_x_que_todavía_no_está_también(self):
         """La 2.1 ya se lee; las siguientes de las APU aún no."""
-        version, _tamano = gpumetrics.sin_interpretar(self._tabla(2, 4, 200))
+        version, _tamano = gpumetrics.uninterpreted(self._tabla(2, 4, 200))
         self.assertEqual(version, "2.4")
 
     def test_sin_tabla_no_hay_nada_que_declarar(self):
-        self.assertIsNone(gpumetrics.sin_interpretar(self.raiz))
+        self.assertIsNone(gpumetrics.uninterpreted(self.raiz))
 
     def test_una_tabla_cortada_no_revienta(self):
         (self.raiz / "gpu_metrics").write_bytes(b"\x02")
-        self.assertIsNone(gpumetrics.sin_interpretar(self.raiz))
+        self.assertIsNone(gpumetrics.uninterpreted(self.raiz))
 
     def test_no_se_inventa_una_lectura_de_lo_que_no_entiende(self):
         """Lo importante: sigue sin interpretarse, solo se dice que está."""
@@ -270,7 +270,7 @@ class TestLaV2DeLasApu(unittest.TestCase):
     def test_el_ventilador_no_se_saca_del_pwm(self):
         """`fan_pwm` es un ciclo de trabajo de 0 a 255, no revoluciones: darlo
         por RPM enseñaría un ventilador a 200 vueltas que no existe."""
-        self.assertNotIn("fan_rpm", gpumetrics.VERSIONES[(2, 1)])
+        self.assertNotIn("fan_rpm", gpumetrics.VERSIONS[(2, 1)])
 
     def test_ya_no_se_declara_ilegible(self):
         import pathlib
@@ -279,4 +279,4 @@ class TestLaV2DeLasApu(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             raiz = pathlib.Path(tmp)
             (raiz / "gpu_metrics").write_bytes(self._tabla(gfxclk=800))
-            self.assertIsNone(gpumetrics.sin_interpretar(raiz))
+            self.assertIsNone(gpumetrics.uninterpreted(raiz))

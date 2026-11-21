@@ -24,11 +24,11 @@ import struct
 from dataclasses import dataclass
 from typing import Optional
 
-CABECERA = "<HBB"          # tamaño, revisión de formato, revisión de contenido
+HEADER = "<HBB"          # tamaño, revisión de formato, revisión de contenido
 
 # Por qué se frena la tarjeta. Son los bits de `indep_throttle_status`, que AMD
 # definió justamente para que no dependieran del modelo de chip.
-MOTIVOS = {
+THROTTLE_REASONS = {
     0: "límite de potencia (PPT0)",
     1: "límite de potencia (PPT1)",
     2: "límite de potencia (PPT2)",
@@ -116,7 +116,7 @@ _V2_1 = {
 # temperaturas y relojes sacados de los bytes del contador de tiempo, cifras
 # creíbles y falsas. Pasa por `sin_interpretar`, que lo dice, hasta tener un
 # volcado con el que contrastar su tabla.
-VERSIONES = {
+VERSIONS = {
     (1, 1): _V1_0,
     (1, 2): _V1_0,
     (1, 3): _V1_3,
@@ -127,11 +127,11 @@ VERSIONES = {
 # driver copia lo que da el firmware sin convertirlo, mientras que las
 # funciones normales de sensores dividen por cien, así que en las 2.x un 44,1
 # llega como 4410.
-CENTIGRADOS = {(2, 1)}
+CENTIDEGREES = {(2, 1)}
 
 # Un campo a todo unos es «este chip no lo mide». Hay que descartarlo antes de
 # enseñar 65 535 grados o un reloj de cuatro mil millones.
-SIN_DATO = {"H": 0xFFFF, "I": 0xFFFFFFFF, "Q": 0xFFFFFFFFFFFFFFFF}
+NO_DATA = {"H": 0xFFFF, "I": 0xFFFFFFFF, "Q": 0xFFFFFFFFFFFFFFFF}
 
 
 @dataclass(frozen=True, slots=True)
@@ -169,25 +169,25 @@ def parse(raw: bytes) -> Optional[Metrics]:
     """Devuelve None si la tabla está vacía o es de una versión desconocida."""
     if len(raw) < 4:
         return None
-    tamano, formato, contenido = struct.unpack_from(CABECERA, raw, 0)
-    tabla = VERSIONES.get((formato, contenido))
-    if tabla is None:
+    size, format_rev, content_rev = struct.unpack_from(HEADER, raw, 0)
+    layout = VERSIONS.get((format_rev, content_rev))
+    if layout is None:
         return None
     # El propio firmware dice cuánto ocupa: si lo leído no llega, la tabla está
     # cortada y no hay forma de saber qué campos son buenos.
-    util = min(tamano, len(raw))
+    usable = min(size, len(raw))
 
-    def leer(nombre: str) -> Optional[int]:
-        if nombre not in tabla:
+    def field(name: str) -> Optional[int]:
+        if name not in layout:
             return None
-        formato_campo, sitio = tabla[nombre]
-        if sitio + struct.calcsize(formato_campo) > util:
+        field_format, offset = layout[name]
+        if offset + struct.calcsize(field_format) > usable:
             return None
-        valor = struct.unpack_from("<" + formato_campo, raw, sitio)[0]
-        return None if valor == SIN_DATO[formato_campo] else valor
+        value = struct.unpack_from("<" + field_format, raw, offset)[0]
+        return None if value == NO_DATA[field_format] else value
 
-    mhz = lambda nombre: (lambda v: v * 1_000_000 if v else None)(leer(nombre))
-    def grados(nombre: str) -> Optional[float]:
+    mhz = lambda name: (lambda v: v * 1_000_000 if v else None)(field(name))
+    def temperature(name: str) -> Optional[float]:
         """Una temperatura, venga en grados o en centigrados.
 
         La versión dice cuál esperar, pero además se comprueba el rango, y no
@@ -196,60 +196,60 @@ def parse(raw: bytes) -> Optional[Metrics]:
         puede ser centigrados. Los dos casos se distinguen sin ambigüedad y sin
         depender de acertar la versión.
         """
-        valor = leer(nombre)
-        if valor is None:
+        value = field(name)
+        if value is None:
             return None
-        if valor > 200:                  # ninguna GPU llega a 200 grados
-            return round(valor / 100, 1)
-        return float(valor)
-    voltios = lambda nombre: (lambda v: round(v / 1000, 3) if v else None)(leer(nombre))
-    porcentaje = lambda nombre: (lambda v: float(v) if v is not None and v <= 100 else None)(leer(nombre))
+        if value > 200:                  # ninguna GPU llega a 200 grados
+            return round(value / 100, 1)
+        return float(value)
+    volts = lambda name: (lambda v: round(v / 1000, 3) if v else None)(field(name))
+    percent = lambda name: (lambda v: float(v) if v is not None and v <= 100 else None)(field(name))
 
     # El independiente del modelo de chip va primero; el otro solo se entiende
     # sabiendo qué ASIC hay debajo, y ahí sí que no se puede nombrar el motivo.
-    banderas = leer("throttle_independent")
-    motivos = _motivos(banderas) if banderas is not None else ()
-    if banderas is None:
-        crudo = leer("throttle_status")
-        frenada = None if crudo is None else bool(crudo)
+    flags = field("throttle_independent")
+    reasons = _reasons(flags) if flags is not None else ()
+    if flags is None:
+        status = field("throttle_status")
+        throttled = None if status is None else bool(status)
     else:
-        frenada = bool(banderas)
+        throttled = bool(flags)
 
-    ancho = leer("link_width")
-    velocidad = leer("link_speed")
+    width = field("link_width")
+    speed = field("link_speed")
     return Metrics(
-        version=f"{formato}.{contenido}",
-        temp_edge_c=grados("temp_edge"),
-        temp_hotspot_c=grados("temp_hotspot"),
-        temp_memory_c=grados("temp_mem"),
-        temp_vr_gfx_c=grados("temp_vr_gfx"),
-        temp_vr_soc_c=grados("temp_vr_soc"),
-        temp_vr_mem_c=grados("temp_vr_mem"),
-        gfx_activity_percent=porcentaje("gfx_activity"),
-        memory_activity_percent=porcentaje("memory_activity"),
-        video_activity_percent=porcentaje("video_activity"),
-        socket_power_w=(lambda v: float(v) if v is not None else None)(leer("socket_power")),
+        version=f"{format_rev}.{content_rev}",
+        temp_edge_c=temperature("temp_edge"),
+        temp_hotspot_c=temperature("temp_hotspot"),
+        temp_memory_c=temperature("temp_mem"),
+        temp_vr_gfx_c=temperature("temp_vr_gfx"),
+        temp_vr_soc_c=temperature("temp_vr_soc"),
+        temp_vr_mem_c=temperature("temp_vr_mem"),
+        gfx_activity_percent=percent("gfx_activity"),
+        memory_activity_percent=percent("memory_activity"),
+        video_activity_percent=percent("video_activity"),
+        socket_power_w=(lambda v: float(v) if v is not None else None)(field("socket_power")),
         gfx_clock_hz=mhz("gfx_clock"),
         gfx_clock_average_hz=mhz("gfx_clock_average"),
         soc_clock_hz=mhz("soc_clock"),
         memory_clock_hz=mhz("memory_clock"),
         memory_clock_effective_hz=mhz("memory_clock_average"),
-        fan_rpm=leer("fan_rpm"),
-        link_width=ancho or None,
+        fan_rpm=field("fan_rpm"),
+        link_width=width or None,
         # Viene en décimas de gigatransferencia: 160 son 16,0 GT/s.
-        link_speed_gts=round(velocidad / 10, 1) if velocidad else None,
-        voltage_gfx_v=voltios("voltage_gfx"),
-        voltage_soc_v=voltios("voltage_soc"),
-        voltage_memory_v=voltios("voltage_mem"),
-        throttle_reasons=motivos,
-        throttled=frenada,
+        link_speed_gts=round(speed / 10, 1) if speed else None,
+        voltage_gfx_v=volts("voltage_gfx"),
+        voltage_soc_v=volts("voltage_soc"),
+        voltage_memory_v=volts("voltage_mem"),
+        throttle_reasons=reasons,
+        throttled=throttled,
     )
 
 
 def read(device: pathlib.Path | str) -> Optional[Metrics]:
     """Lee la tabla del nodo PCI de una tarjeta."""
-    crudo = raw_of(device)
-    return parse(crudo) if crudo else None
+    raw = raw_of(device)
+    return parse(raw) if raw else None
 
 
 def raw_of(device: pathlib.Path | str) -> Optional[bytes]:
@@ -260,7 +260,7 @@ def raw_of(device: pathlib.Path | str) -> Optional[bytes]:
         return None
 
 
-def sin_interpretar(device: pathlib.Path | str) -> Optional[tuple[str, int]]:
+def uninterpreted(device: pathlib.Path | str) -> Optional[tuple[str, int]]:
     """La versión y el tamaño de una tabla que existe y no se sabe leer.
 
     Devuelve None cuando no hay tabla o cuando sí se entiende. Sirve para dos
@@ -274,27 +274,27 @@ def sin_interpretar(device: pathlib.Path | str) -> Optional[tuple[str, int]]:
     creíbles y equivocadas, así que hasta tener un volcado de verdad con el que
     contrastar, se dice que no se leen y no se adivina.
     """
-    crudo = raw_of(device)
-    if not crudo or len(crudo) < 4:
+    raw = raw_of(device)
+    if not raw or len(raw) < 4:
         return None
-    tamano, formato, contenido = struct.unpack_from(CABECERA, crudo, 0)
-    if (formato, contenido) in VERSIONES:
+    size, format_rev, content_rev = struct.unpack_from(HEADER, raw, 0)
+    if (format_rev, content_rev) in VERSIONS:
         return None
-    return f"{formato}.{contenido}", min(tamano, len(crudo))
+    return f"{format_rev}.{content_rev}", min(size, len(raw))
 
 
 def version_of(raw: bytes) -> Optional[str]:
     """La versión de una tabla, aunque no se sepa interpretar su contenido."""
     if len(raw) < 4:
         return None
-    _, formato, contenido = struct.unpack_from(CABECERA, raw, 0)
-    return f"{formato}.{contenido}"
+    _, format_rev, content_rev = struct.unpack_from(HEADER, raw, 0)
+    return f"{format_rev}.{content_rev}"
 
 
-def _motivos(banderas: int) -> tuple[str, ...]:
+def _reasons(flags: int) -> tuple[str, ...]:
     """Los motivos encendidos, sin repetir: varios bits nombran lo mismo."""
-    vistos: list[str] = []
-    for bit, motivo in MOTIVOS.items():
-        if banderas & (1 << bit) and motivo not in vistos:
-            vistos.append(motivo)
-    return tuple(vistos)
+    seen: list[str] = []
+    for bit, reason in THROTTLE_REASONS.items():
+        if flags & (1 << bit) and reason not in seen:
+            seen.append(reason)
+    return tuple(seen)

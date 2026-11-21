@@ -53,26 +53,26 @@ def build_id() -> str:
     """
     global _build
     if _build is None:
-        _build = _leer_build() or _preguntar_a_git() or ""
+        _build = _read_build() or _ask_git() or ""
     return _build
 
 
 _build = None
 
 
-def _leer_build() -> str:
+def _read_build() -> str:
     """Lo que dejó escrito el empaquetador dentro del paquete."""
     try:
         import pathlib
-        texto = (pathlib.Path(__file__).parent / "_build.txt").read_text(
+        text = (pathlib.Path(__file__).parent / "_build.txt").read_text(
             encoding="utf-8").strip()
     except OSError:
         return ""
     # Un archivo a medio escribir no vale más que no tenerlo.
-    return texto if texto and len(texto) < 64 else ""
+    return text if text and len(text) < 64 else ""
 
 
-def _preguntar_a_git() -> str:
+def _ask_git() -> str:
     """La fecha y el commit de la copia de trabajo, si esto es un repositorio.
 
     La marca `+` al final avisa de que hay cambios sin guardar: una captura de
@@ -83,17 +83,17 @@ def _preguntar_a_git() -> str:
 
     from .system_env import system_environment
 
-    raiz = __file__.rsplit("/", 2)[0]
+    root = __file__.rsplit("/", 2)[0]
     try:
         commit = subprocess.run(
-            ["git", "-C", raiz, "log", "-1", "--format=%cd.%h", "--date=format:%Y%m%d"],
+            ["git", "-C", root, "log", "-1", "--format=%cd.%h", "--date=format:%Y%m%d"],
             capture_output=True, text=True, timeout=5, env=system_environment())
         if commit.returncode != 0:
             return ""
-        sucio = subprocess.run(["git", "-C", raiz, "status", "--porcelain"],
+        dirty = subprocess.run(["git", "-C", root, "status", "--porcelain"],
                                capture_output=True, text=True, timeout=5,
                                env=system_environment())
     except (OSError, subprocess.SubprocessError):
         return ""
-    marca = commit.stdout.strip()
-    return f"{marca}+" if marca and sucio.stdout.strip() else marca
+    mark = commit.stdout.strip()
+    return f"{mark}+" if mark and dirty.stdout.strip() else mark

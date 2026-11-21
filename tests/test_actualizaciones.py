@@ -201,24 +201,24 @@ class TestLaRed(unittest.TestCase):
             return io.BytesIO(b"[]")
 
         falso = mock.Mock(open=abrir_falso)
-        with mock.patch.object(updates, "_abridor", return_value=falso):
+        with mock.patch.object(updates, "_opener", return_value=falso):
             updates.check()
         peticion, espera = abiertas[0]
         self.assertEqual(peticion.get_header("User-agent"), f"silux/{__version__}")
         self.assertEqual(set(peticion.headers), {"User-agent", "Accept"})
-        self.assertEqual(espera, updates.ESPERA)
+        self.assertEqual(espera, updates.TIMEOUT_S)
 
     def test_nada_que_no_sea_https(self):
         # Con el abridor de verdad tapado: si la guarda faltara, el test no
         # puede acabar saliendo a la red.
-        with mock.patch.object(updates, "_abridor", side_effect=AssertionError("salió")), \
+        with mock.patch.object(updates, "_opener", side_effect=AssertionError("salió")), \
                 self.assertRaises(updates.UpdateError) as caso:
-            updates.abrir("http://api.github.com/repos/rcv11x/silux/releases", 1)
+            updates.open_url("http://api.github.com/repos/rcv11x/silux/releases", 1)
         self.assertEqual(caso.exception.code, "insecure")
 
     def test_una_redireccion_a_http_se_corta(self):
         with self.assertRaises(updates.UpdateError) as caso:
-            updates._SoloHttps().redirect_request(None, None, 302, "", {}, "http://ejemplo.org/x")
+            updates._HttpsOnly().redirect_request(None, None, 302, "", {}, "http://ejemplo.org/x")
         self.assertEqual(caso.exception.code, "insecure")
 
     def test_y_se_dice_por_que_y_no_que_falta_red(self):
@@ -230,13 +230,13 @@ class TestLaRed(unittest.TestCase):
         def abrir(url, espera):
             if url.endswith("/s"):
                 return io.BytesIO(f"{'0' * 64}  {updates.NORMAL}\n".encode())
-            return updates._SoloHttps().redirect_request(None, None, 302, "", {}, "http://x/a")
+            return updates._HttpsOnly().redirect_request(None, None, 302, "", {}, "http://x/a")
 
         with tempfile.TemporaryDirectory() as carpeta:
             destino = pathlib.Path(carpeta, updates.NORMAL)
             destino.write_bytes(b"viejo")
             with self.assertRaises(updates.UpdateError) as caso:
-                updates.install(release, destino, updates.NORMAL, abrir_url=abrir)
+                updates.install(release, destino, updates.NORMAL, opener=abrir)
             self.assertEqual(caso.exception.code, "insecure")
             self.assertEqual(destino.read_bytes(), b"viejo")
 
@@ -247,7 +247,7 @@ class TestLaRed(unittest.TestCase):
         self.assertEqual(caso.exception.code, "network")
 
     def test_una_lista_enorme_no_se_lee_entera(self):
-        red = Red({updates.API_URL: b"[" + b" " * updates.TOPE_DE_LA_LISTA + b"]"})
+        red = Red({updates.API_URL: b"[" + b" " * updates.MAX_LIST_BYTES + b"]"})
         with self.assertRaises(updates.UpdateError) as caso:
             updates.check(red)
         self.assertEqual(caso.exception.code, "toolarge")
@@ -313,7 +313,7 @@ class TestSustituir(unittest.TestCase):
         self.assertNotIn(V + updates.NORMAL, red.pedidas)
 
     def test_mas_grande_que_el_tope_se_corta(self):
-        with mock.patch.object(updates, "TOPE_DEL_APPIMAGE", 1000):
+        with mock.patch.object(updates, "MAX_APPIMAGE_BYTES", 1000):
             with self.assertRaises(updates.UpdateError) as caso:
                 updates.install(self.release, self.destino, updates.NORMAL, self._red())
         self.assertEqual(caso.exception.code, "toolarge")
@@ -404,25 +404,25 @@ class TestLaConexionSegura(unittest.TestCase):
     """
 
     def setUp(self):
-        self.addCleanup(setattr, updates, "_abridor_hecho", None)
-        updates._abridor_hecho = None
+        self.addCleanup(setattr, updates, "_opener_built", None)
+        updates._opener_built = None
 
     def test_sin_ssl_se_dice_que_falta_tls_y_no_que_falta_red(self):
         import sys
         with mock.patch.dict(sys.modules, {"ssl": None}):
             with self.assertRaises(updates.UpdateError) as error:
-                updates.abrir(updates.API_URL, 1.0)
+                updates.open_url(updates.API_URL, 1.0)
         self.assertEqual(error.exception.code, "notls")
 
     def test_se_fia_de_los_certificados_del_sistema(self):
         import os
         import ssl
-        sistema = next((r for r in updates.CERTIFICADOS if os.path.isfile(r)), None)
+        sistema = next((r for r in updates.CA_BUNDLES if os.path.isfile(r)), None)
         if sistema is None:
             self.skipTest("este equipo no tiene almacén de certificados en un sitio conocido")
         vacio = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         with mock.patch.object(ssl, "create_default_context", return_value=vacio):
-            abridor = updates._abridor()
+            abridor = updates._opener()
         manejador = next(h for h in abridor.handlers
                          if isinstance(h, __import__("urllib.request").request.HTTPSHandler))
         self.assertIs(manejador._context, vacio)

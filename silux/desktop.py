@@ -175,32 +175,32 @@ def legacy_files(launcher: Launcher) -> list[pathlib.Path]:
     del repositorio, la `silux.desktop` que el instalador escribía antes para
     el código, que ahora es de quien lo ejecute empaquetado.
     """
-    viejos: list[pathlib.Path] = []
-    texto = _read(desktop_path(LEGACY_ID))
-    if texto is not None and LEGACY_MODULE in texto:
-        viejos += [desktop_path(LEGACY_ID), *icon_files(LEGACY_ID)]
+    old_files: list[pathlib.Path] = []
+    text = _read(desktop_path(LEGACY_ID))
+    if text is not None and LEGACY_MODULE in text:
+        old_files += [desktop_path(LEGACY_ID), *icon_files(LEGACY_ID)]
     if launcher.mode == "development":
-        texto = _read(desktop_path(APP_ID))
-        if texto is not None and MODULE in texto:
-            viejos += [desktop_path(APP_ID), *icon_files(APP_ID)]
-    return viejos
+        text = _read(desktop_path(APP_ID))
+        if text is not None and MODULE in text:
+            old_files += [desktop_path(APP_ID), *icon_files(APP_ID)]
+    return old_files
 
 
 # -- la orden -----------------------------------------------------------------
 
 # Lo que obliga a entrecomillar un argumento según la especificación de las
 # entradas de escritorio. Dentro de las comillas, estos cuatro van con barra.
-_RESERVADOS = set(" \t\n\"'\\><~|&;$*?#()`")
-_CON_BARRA = re.compile(r'(["`$\\])')
+_SHELL_SPECIAL = set(" \t\n\"'\\><~|&;$*?#()`")
+_NEEDS_BACKSLASH = re.compile(r'(["`$\\])')
 
 
 def _quote(argument: str) -> str:
-    if argument and not (_RESERVADOS & set(argument)):
-        citado = argument
+    if argument and not (_SHELL_SPECIAL & set(argument)):
+        quoted = argument
     else:
-        citado = '"' + _CON_BARRA.sub(r"\\\1", argument) + '"'
+        quoted = '"' + _NEEDS_BACKSLASH.sub(r"\\\1", argument) + '"'
     # `%` abre un código de campo (`%f`, `%U`); el literal se escribe doble.
-    return citado.replace("%", "%%")
+    return quoted.replace("%", "%%")
 
 
 def exec_line(command: tuple[str, ...]) -> str:
@@ -215,48 +215,48 @@ def exec_line(command: tuple[str, ...]) -> str:
 def _split(value: str) -> list[str]:
     """Parte la orden con las reglas de la especificación, no las de la shell:
     entre comillas, la barra solo escapa a `"`, `` ` ``, `$` y a sí misma."""
-    partes: list[str] = []
-    actual: Optional[str] = None
+    parts: list[str] = []
+    current: Optional[str] = None
     i = 0
     while i < len(value):
         c = value[i]
         if c in " \t":
-            if actual is not None:
-                partes.append(actual)
-                actual = None
+            if current is not None:
+                parts.append(current)
+                current = None
         elif c == '"':
-            actual = actual or ""
+            current = current or ""
             i += 1
             while i < len(value) and value[i] != '"':
                 if value[i] == "\\" and i + 1 < len(value) and value[i + 1] in '"`$\\':
                     i += 1
-                actual += value[i]
+                current += value[i]
                 i += 1
         else:
-            actual = (actual or "") + c
+            current = (current or "") + c
         i += 1
-    if actual is not None:
-        partes.append(actual)
-    return partes
+    if current is not None:
+        parts.append(current)
+    return parts
 
 
 def parse_exec(value: str) -> tuple[str, ...]:
     """Lo contrario de `exec_line`, sin los códigos de campo."""
-    sin_texto = re.sub(r"\\(.)", lambda m: "\\" if m.group(1) == "\\" else m.group(0), value)
-    return tuple(p.replace("%%", "%") for p in _split(sin_texto)
+    empty = re.sub(r"\\(.)", lambda m: "\\" if m.group(1) == "\\" else m.group(0), value)
+    return tuple(p.replace("%%", "%") for p in _split(empty)
                  if not re.fullmatch(r"%[a-zA-Z]", p))
 
 
 def entry_text(launcher: Launcher) -> str:
-    texto = (DESKTOP_TEMPLATE
+    text = (DESKTOP_TEMPLATE
              .replace("@NAME@", launcher.name)
              .replace("@NAME_EN@", launcher.name_en)
              .replace("@EXEC@", exec_line(launcher.command))
              .replace("@PATH@", launcher.working_dir)
              .replace("@ID@", launcher.app_id))
     if not launcher.working_dir:
-        texto = "\n".join(line for line in texto.splitlines() if line != "Path=") + "\n"
-    return texto
+        text = "\n".join(line for line in text.splitlines() if line != "Path=") + "\n"
+    return text
 
 
 # -- escribir -----------------------------------------------------------------
@@ -272,8 +272,8 @@ def render_icons(app_id: str = APP_ID) -> list[pathlib.Path]:
 
     # Fuera lo anterior antes de escribir: archivos nuevos y no reescritos
     # encima, y ninguno de un tamaño que esta versión ya no genera.
-    for viejo in icon_files(app_id):
-        viejo.unlink()
+    for old in icon_files(app_id):
+        old.unlink()
 
     written = []
     for size in SIZES:
@@ -342,16 +342,16 @@ def desktop_dir() -> pathlib.Path:
     Se lee de `user-dirs.dirs`, que es lo que hace `xdg-user-dir`, sin lanzar
     nada: esto se pregunta desde la interfaz.
     """
-    casa = pathlib.Path.home()
-    config = pathlib.Path(os.environ.get("XDG_CONFIG_HOME") or casa / ".config")
+    home = pathlib.Path.home()
+    config = pathlib.Path(os.environ.get("XDG_CONFIG_HOME") or home / ".config")
     try:
-        for linea in (config / "user-dirs.dirs").read_text(encoding="utf-8").splitlines():
-            if linea.startswith("XDG_DESKTOP_DIR="):
-                valor = linea.split("=", 1)[1].strip().strip('"')
-                return pathlib.Path(valor.replace("$HOME", str(casa)))
+        for line in (config / "user-dirs.dirs").read_text(encoding="utf-8").splitlines():
+            if line.startswith("XDG_DESKTOP_DIR="):
+                value = line.split("=", 1)[1].strip().strip('"')
+                return pathlib.Path(value.replace("$HOME", str(home)))
     except OSError:
         pass
-    return casa / "Desktop"
+    return home / "Desktop"
 
 
 def shortcut_path(app_id: str = APP_ID) -> pathlib.Path:
@@ -362,18 +362,18 @@ def _write_shortcut(launcher: Launcher) -> pathlib.Path:
     """La misma entrada, en el escritorio. Ejecutable, que es lo que piden
     Plasma y GNOME para lanzarla; GNOME además quiere que se marque como de
     confianza, y `gio` lo hace si está."""
-    destino = shortcut_path(launcher.app_id)
-    destino.parent.mkdir(parents=True, exist_ok=True)
-    destino.write_text(entry_text(launcher), encoding="utf-8")
-    destino.chmod(0o755)
+    target = shortcut_path(launcher.app_id)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(entry_text(launcher), encoding="utf-8")
+    target.chmod(0o755)
     if shutil.which("gio"):
         try:
-            subprocess.run(["gio", "set", str(destino), "metadata::trusted", "true"],
+            subprocess.run(["gio", "set", str(target), "metadata::trusted", "true"],
                            check=False, capture_output=True, timeout=10,
                            env=system_environment())
         except (OSError, subprocess.TimeoutExpired):
             pass
-    return destino
+    return target
 
 
 # -- el estado ----------------------------------------------------------------
@@ -397,33 +397,33 @@ class DesktopStatus:
     on_desktop: bool = False
 
 
-def _instalado(texto: str) -> tuple[tuple[str, ...], str]:
+def _installed_command(text: str) -> tuple[tuple[str, ...], str]:
     """La orden y la carpeta de una entrada instalada."""
-    orden, carpeta = (), ""
-    for linea in texto.splitlines():
-        if linea.startswith("Exec="):
-            orden = parse_exec(linea[len("Exec="):])
-        elif linea.startswith("Path="):
-            carpeta = linea[len("Path="):]
-    return orden, carpeta
+    command, folder = (), ""
+    for line in text.splitlines():
+        if line.startswith("Exec="):
+            command = parse_exec(line[len("Exec="):])
+        elif line.startswith("Path="):
+            folder = line[len("Path="):]
+    return command, folder
 
 
-def _existe(orden: tuple[str, ...], carpeta: str) -> bool:
-    if not orden:
+def _runs(command: tuple[str, ...], folder: str) -> bool:
+    if not command:
         return False
-    programa = orden[0]
-    encontrado = (os.path.isfile(programa) and os.access(programa, os.X_OK)) \
-        if os.sep in programa else shutil.which(programa) is not None
-    return encontrado and (not carpeta or os.path.isdir(carpeta))
+    program = command[0]
+    found = (os.path.isfile(program) and os.access(program, os.X_OK)) \
+        if os.sep in program else shutil.which(program) is not None
+    return found and (not folder or os.path.isdir(folder))
 
 
-def _iconos_al_dia(app_id: str) -> bool:
+def _icons_up_to_date(app_id: str) -> bool:
     try:
         if scalable_path(app_id).read_bytes() != SVG.read_bytes():
             return False
     except OSError:
         return False
-    return all(icon_path(tamano, app_id).is_file() for tamano in SIZES)
+    return all(icon_path(size, app_id).is_file() for size in SIZES)
 
 
 def status(launcher: Optional[Launcher] = None) -> DesktopStatus:
@@ -433,22 +433,22 @@ def status(launcher: Optional[Launcher] = None) -> DesktopStatus:
     versión que alguien tendría que acordarse de subir.
     """
     launcher = launcher or current_launcher()
-    en_escritorio = shortcut_path(launcher.app_id).is_file()
+    on_the_desktop = shortcut_path(launcher.app_id).is_file()
     if not launcher.command:
-        return DesktopStatus("unsupported", launcher, on_desktop=en_escritorio)
-    texto = _read(desktop_path(launcher.app_id))
-    if texto is None:
-        return DesktopStatus("missing", launcher, on_desktop=en_escritorio)
-    orden, carpeta = _instalado(texto)
-    destino = carpeta or (orden[0] if orden else "")
-    if (orden, carpeta) != (launcher.command, launcher.working_dir):
-        estado = "elsewhere" if _existe(orden, carpeta) else "broken"
-        return DesktopStatus(estado, launcher, destino, en_escritorio)
-    al_dia = (texto == entry_text(launcher) and _iconos_al_dia(launcher.app_id)
+        return DesktopStatus("unsupported", launcher, on_desktop=on_the_desktop)
+    text = _read(desktop_path(launcher.app_id))
+    if text is None:
+        return DesktopStatus("missing", launcher, on_desktop=on_the_desktop)
+    command, folder = _installed_command(text)
+    target = folder or (command[0] if command else "")
+    if (command, folder) != (launcher.command, launcher.working_dir):
+        state = "elsewhere" if _runs(command, folder) else "broken"
+        return DesktopStatus(state, launcher, target, on_the_desktop)
+    up_to_date = (text == entry_text(launcher) and _icons_up_to_date(launcher.app_id)
               and not legacy_files(launcher))
-    if en_escritorio and _read(shortcut_path(launcher.app_id)) != entry_text(launcher):
-        al_dia = False
-    return DesktopStatus("current" if al_dia else "outdated", launcher, destino, en_escritorio)
+    if on_the_desktop and _read(shortcut_path(launcher.app_id)) != entry_text(launcher):
+        up_to_date = False
+    return DesktopStatus("current" if up_to_date else "outdated", launcher, target, on_the_desktop)
 
 
 # -- instalar y quitar -------------------------------------------------------
@@ -479,16 +479,16 @@ def install(launcher: Optional[Launcher] = None,
     launcher = launcher or current_launcher()
     if not launcher.command:
         raise DesktopError("no se sabe dónde está el archivo de este AppImage")
-    for viejo in legacy_files(launcher):
-        viejo.unlink()
+    for old in legacy_files(launcher):
+        old.unlink()
     icons = render_icons(launcher.app_id)
     entry = write_desktop(launcher)
-    acceso = shortcut_path(launcher.app_id)
+    shortcut = shortcut_path(launcher.app_id)
     if on_desktop is None:
-        on_desktop = acceso.is_file()
+        on_desktop = shortcut.is_file()
     if on_desktop:
         _write_shortcut(launcher)
-    elif acceso.is_file():
-        acceso.unlink()
+    elif shortcut.is_file():
+        shortcut.unlink()
     refresh_caches()
     return icons, entry

@@ -450,9 +450,9 @@ def _marca_de_construccion() -> str:
     """La marca de git, leída aquí fuera para pasársela al contenedor."""
     if str(ROOT) not in sys.path:
         sys.path.insert(0, str(ROOT))
-    from silux import _preguntar_a_git
+    from silux import _ask_git
 
-    return _preguntar_a_git()
+    return _ask_git()
 
 
 def construir_en_contenedor(imagen: str, compat: bool = False) -> int:
@@ -1076,9 +1076,9 @@ def sellar_build() -> None:
     if not marca:
         if str(ROOT) not in sys.path:
             sys.path.insert(0, str(ROOT))
-        from silux import _preguntar_a_git
+        from silux import _ask_git
 
-        marca = _preguntar_a_git()
+        marca = _ask_git()
     if not marca:
         print("  sin git: el paquete sale sin marca de construcción",
               file=sys.stderr)

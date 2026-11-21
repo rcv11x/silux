@@ -32,14 +32,14 @@ COMPAT = "silux-x86_64-compat.AppImage"
 
 # Topes de lo que se acepta de cada respuesta. La lista de releases ocupa unos
 # kilobytes por versión; un AppImage, unos 120 MB.
-TOPE_DE_LA_LISTA = 1 << 20
-TOPE_DE_LAS_SUMAS = 64 << 10
-TOPE_DEL_APPIMAGE = 400 << 20
+MAX_LIST_BYTES = 1 << 20
+MAX_SUMS_BYTES = 64 << 10
+MAX_APPIMAGE_BYTES = 400 << 20
 # Lo que se espera a que llegue algo. En la descarga cuenta por cada lectura,
 # no por el total: una conexión lenta que avanza no se corta.
-ESPERA = 15.0
-ESPERA_DE_LA_DESCARGA = 60.0
-BLOQUE = 1 << 16
+TIMEOUT_S = 15.0
+DOWNLOAD_TIMEOUT_S = 60.0
+CHUNK = 1 << 16
 
 
 class UpdateError(Exception):
@@ -81,26 +81,26 @@ class Release:
 _VERSION = re.compile(r"v?(\d+)\.(\d+)\.(\d+)(?:rc(\d+))?")
 
 
-def parse_version(texto: str) -> Optional[tuple[int, int, int]]:
+def parse_version(text: str) -> Optional[tuple[int, int, int]]:
     """«v0.5.0» o «0.5.0» como tres números; None si no es eso exactamente."""
-    encontrada = _VERSION.fullmatch((texto or "").strip())
-    if encontrada is None or encontrada.group(4) is not None:
+    match = _VERSION.fullmatch((text or "").strip())
+    if match is None or match.group(4) is not None:
         return None
-    return tuple(int(n) for n in encontrada.groups()[:3])  # type: ignore[return-value]
+    return tuple(int(n) for n in match.groups()[:3])  # type: ignore[return-value]
 
 
-def _orden(texto: str) -> Optional[tuple[int, ...]]:
+def _sort_key(text: str) -> Optional[tuple[int, ...]]:
     """Para comparar: una versión de prueba va por debajo de su final.
 
     0.4.0rc1 < 0.4.0rc2 < 0.4.0 < 0.4.1. Sin esto, la versión que corre en la
     0.4-prueba1 no se entendía y nunca había nada más nuevo.
     """
-    encontrada = _VERSION.fullmatch((texto or "").strip())
-    if encontrada is None:
+    match = _VERSION.fullmatch((text or "").strip())
+    if match is None:
         return None
-    base = tuple(int(n) for n in encontrada.groups()[:3])
-    prueba = encontrada.group(4)
-    return base + ((0, int(prueba)) if prueba is not None else (1, 0))
+    base = tuple(int(n) for n in match.groups()[:3])
+    rc = match.group(4)
+    return base + ((0, int(rc)) if rc is not None else (1, 0))
 
 
 CHANNELS = ("stable", "testing")
@@ -112,7 +112,7 @@ def channel_for(preference: str, current: str = __version__) -> str:
     ahora», and a final, only finals."""
     if preference in CHANNELS:
         return preference
-    return "testing" if (_orden(current) or (0, 0, 0, 1))[3] == 0 else "stable"
+    return "testing" if (_sort_key(current) or (0, 0, 0, 1))[3] == 0 else "stable"
 
 
 def latest(releases: object, channel: str = "stable") -> Optional[Release]:
@@ -122,40 +122,40 @@ def latest(releases: object, channel: str = "stable") -> Optional[Release]:
     respuesta viene de fuera y no se da nada por hecho. The test versions
     (marked *prerelease*, or tagged «rcN») only on the testing channel.
     """
-    mejor: Optional[Release] = None
-    for entrada in releases if isinstance(releases, list) else ():
-        if not isinstance(entrada, dict):
+    best: Optional[Release] = None
+    for entry in releases if isinstance(releases, list) else ():
+        if not isinstance(entry, dict):
             continue
-        if entrada.get("draft"):
+        if entry.get("draft"):
             continue
-        encontrada = _VERSION.fullmatch(str(entrada.get("tag_name") or "").strip())
-        if encontrada is None:
+        match = _VERSION.fullmatch(str(entry.get("tag_name") or "").strip())
+        if match is None:
             continue
-        version = tuple(int(n) for n in encontrada.groups()[:3])
-        prueba = int(encontrada.group(4)) if encontrada.group(4) is not None else None
-        if (entrada.get("prerelease") or prueba is not None) and channel != "testing":
+        version = tuple(int(n) for n in match.groups()[:3])
+        rc = int(match.group(4)) if match.group(4) is not None else None
+        if (entry.get("prerelease") or rc is not None) and channel != "testing":
             continue
-        adjuntos = {}
-        for adjunto in entrada.get("assets") or ():
-            if isinstance(adjunto, dict) and adjunto.get("name") and adjunto.get("browser_download_url"):
-                adjuntos[str(adjunto["name"])] = str(adjunto["browser_download_url"])
-        url = str(entrada.get("html_url") or f"{RELEASES_URL}/tag/{entrada['tag_name']}")
-        candidata = Release(version, str(entrada["tag_name"]), url, adjuntos, prueba)
-        if mejor is None or candidata.order > mejor.order:
-            mejor = candidata
-    return mejor
+        assets_by_name = {}
+        for asset in entry.get("assets") or ():
+            if isinstance(asset, dict) and asset.get("name") and asset.get("browser_download_url"):
+                assets_by_name[str(asset["name"])] = str(asset["browser_download_url"])
+        url = str(entry.get("html_url") or f"{RELEASES_URL}/tag/{entry['tag_name']}")
+        candidate = Release(version, str(entry["tag_name"]), url, assets_by_name, rc)
+        if best is None or candidate.order > best.order:
+            best = candidate
+    return best
 
 
 def is_newer(release: Optional[Release], current: str = __version__) -> bool:
     """Si la release va por delante de esta versión, comparada entera."""
-    actual = _orden(current)
-    return release is not None and actual is not None and release.order > actual
+    installed = _sort_key(current)
+    return release is not None and installed is not None and release.order > installed
 
 
 def is_current(release: Optional[Release], current: str = __version__) -> bool:
     """Whether this copy is that release: a test version or one ahead of
     the latest published is not «the latest version»."""
-    return release is not None and _orden(current) == release.order
+    return release is not None and _sort_key(current) == release.order
 
 
 # -- qué copia es esta --------------------------------------------------------
@@ -168,8 +168,8 @@ def asset_name(build: Optional[str] = None) -> str:
     el compatible; es lo que hay dentro del paquete y no depende de cómo haya
     llamado el usuario al archivo.
     """
-    marca = build_id() if build is None else build
-    return COMPAT if marca.endswith("-compat") else NORMAL
+    build_mark = build_id() if build is None else build
+    return COMPAT if build_mark.endswith("-compat") else NORMAL
 
 
 def replaceable_path(environ: Optional[Mapping[str, str]] = None) -> Optional[pathlib.Path]:
@@ -180,19 +180,19 @@ def replaceable_path(environ: Optional[Mapping[str, str]] = None) -> Optional[pa
     carpeta, no en el archivo.
     """
     env = os.environ if environ is None else environ
-    ruta = env.get("APPIMAGE")
-    if not ruta:
+    path = env.get("APPIMAGE")
+    if not path:
         return None
-    archivo = pathlib.Path(ruta)
-    if not archivo.is_file() or not os.access(archivo.parent, os.W_OK | os.X_OK):
+    appimage = pathlib.Path(path)
+    if not appimage.is_file() or not os.access(appimage.parent, os.W_OK | os.X_OK):
         return None
-    return archivo
+    return appimage
 
 
 # -- la red -------------------------------------------------------------------
 
 
-class _SoloHttps(urllib.request.HTTPRedirectHandler):
+class _HttpsOnly(urllib.request.HTTPRedirectHandler):
     """GitHub redirige los adjuntos a otro dominio; a `http://`, nunca."""
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):
@@ -208,7 +208,7 @@ class _SoloHttps(urllib.request.HTTPRedirectHandler):
 # OpenSSL que va dentro del AppImage es el de Ubuntu 22.04 y los busca en
 # `/usr/lib/ssl`, que solo existe en Debian y sus derivadas: en Fedora o en
 # Arch no encontraba ninguno y no podía verificar a GitHub.
-CERTIFICADOS = (
+CA_BUNDLES = (
     "/etc/ssl/certs/ca-certificates.crt",
     "/etc/pki/tls/certs/ca-bundle.crt",
     "/etc/ssl/ca-bundle.pem",
@@ -216,16 +216,16 @@ CERTIFICADOS = (
     "/etc/ssl/cert.pem",
 )
 
-_abridor_hecho = None
+_opener_built = None
 
 
-def _abridor():
+def _opener():
     """El que abre las URL: solo HTTPS, verificando contra los certificados
     del sistema. Se monta la primera vez, no al importar: sin el módulo
     `ssl` (un Python sin OpenSSL) el error tiene que ser «no hay TLS» y no
     un «no hay conexión» que manda a mirar el router."""
-    global _abridor_hecho
-    if _abridor_hecho is None:
+    global _opener_built
+    if _opener_built is None:
         try:
             import ssl
         except ImportError as error:
@@ -233,14 +233,14 @@ def _abridor():
         # `create_default_context` ya mira `SSL_CERT_FILE` y lo que el
         # OpenSSL de dentro tenga por defecto; a eso se suma el almacén del
         # sistema que haya.
-        contexto = ssl.create_default_context()
-        for ruta in CERTIFICADOS:
-            if os.path.isfile(ruta):
-                contexto.load_verify_locations(cafile=ruta)
+        context = ssl.create_default_context()
+        for path in CA_BUNDLES:
+            if os.path.isfile(path):
+                context.load_verify_locations(cafile=path)
                 break
-        _abridor_hecho = urllib.request.build_opener(
-            _SoloHttps, urllib.request.HTTPSHandler(context=contexto))
-    return _abridor_hecho
+        _opener_built = urllib.request.build_opener(
+            _HttpsOnly, urllib.request.HTTPSHandler(context=context))
+    return _opener_built
 
 
 def user_agent() -> str:
@@ -248,94 +248,94 @@ def user_agent() -> str:
     return f"silux/{__version__}"
 
 
-def abrir(url: str, espera: float) -> BinaryIO:
+def open_url(url: str, timeout: float) -> BinaryIO:
     """Abre una URL HTTPS y devuelve la respuesta, que se lee por trozos."""
     if not url.lower().startswith("https://"):
         raise UpdateError("insecure", url)
-    peticion = urllib.request.Request(url, headers={
+    request = urllib.request.Request(url, headers={
         "User-Agent": user_agent(),
         "Accept": "application/vnd.github+json" if url.startswith(API_URL) else "*/*",
     })
-    return _abridor().open(peticion, timeout=espera)
+    return _opener().open(request, timeout=timeout)
 
 
-Abrir = Callable[[str, float], BinaryIO]
+Opener = Callable[[str, float], BinaryIO]
 
 
-def _de_red(error: Exception) -> UpdateError:
+def _network_error(error: Exception) -> UpdateError:
     """«network», unless the connection failed because this system has no
     certificates to check GitHub's against: that is a package to install
     (ca-certificates in every family), not a network that is down."""
-    motivo = getattr(error, "reason", error)
+    reason = getattr(error, "reason", error)
     try:
         import ssl
     except ImportError:
         return UpdateError("network", str(error))
-    if isinstance(motivo, ssl.SSLCertVerificationError) and \
-            not any(os.path.isfile(ruta) for ruta in CERTIFICADOS):
+    if isinstance(reason, ssl.SSLCertVerificationError) and \
+            not any(os.path.isfile(path) for path in CA_BUNDLES):
         return UpdateError("nocerts", str(error))
     return UpdateError("network", str(error))
 
 
-def _leer(abrir_url: Abrir, url: str, tope: int, espera: float = ESPERA) -> bytes:
+def _read_all(opener: Opener, url: str, limit: int, timeout: float = TIMEOUT_S) -> bytes:
     """Toda la respuesta, o un error si pasa del tope."""
     try:
-        with abrir_url(url, espera) as respuesta:
-            datos = respuesta.read(tope + 1)
+        with opener(url, timeout) as response:
+            data = response.read(limit + 1)
     except UpdateError:
         raise
     except (OSError, ValueError) as error:
-        raise _de_red(error) from error
-    if len(datos) > tope:
+        raise _network_error(error) from error
+    if len(data) > limit:
         raise UpdateError("toolarge", url)
-    return datos
+    return data
 
 
-def _abierta(abrir_url: Abrir, url: str) -> BinaryIO:
+def _open_download(opener: Opener, url: str) -> BinaryIO:
     try:
-        return abrir_url(url, ESPERA_DE_LA_DESCARGA)
+        return opener(url, DOWNLOAD_TIMEOUT_S)
     except UpdateError:
         raise
     except (OSError, ValueError) as error:
-        raise _de_red(error) from error
+        raise _network_error(error) from error
 
 
-def check(abrir_url: Abrir = abrir, channel: str = "stable") -> Optional[Release]:
+def check(opener: Opener = open_url, channel: str = "stable") -> Optional[Release]:
     """La última release publicada en ese canal; None si no hay ninguna."""
-    datos = _leer(abrir_url, API_URL, TOPE_DE_LA_LISTA)
+    data = _read_all(opener, API_URL, MAX_LIST_BYTES)
     try:
-        lista = json.loads(datos.decode("utf-8"))
+        releases = json.loads(data.decode("utf-8"))
     except ValueError as error:
         raise UpdateError("badreply", str(error)) from error
-    return latest(lista, channel)
+    return latest(releases, channel)
 
 
-def parse_sums(texto: str) -> dict[str, str]:
+def parse_sums(text: str) -> dict[str, str]:
     """Las líneas de `sha256sum`: «hash  nombre» (con `*` si es binario)."""
-    sumas = {}
-    for linea in texto.splitlines():
-        partes = linea.strip().split(None, 1)
-        if len(partes) == 2 and re.fullmatch(r"[0-9a-fA-F]{64}", partes[0]):
-            sumas[partes[1].lstrip("*").strip()] = partes[0].lower()
-    return sumas
+    sums = {}
+    for line in text.splitlines():
+        parts = line.strip().split(None, 1)
+        if len(parts) == 2 and re.fullmatch(r"[0-9a-fA-F]{64}", parts[0]):
+            sums[parts[1].lstrip("*").strip()] = parts[0].lower()
+    return sums
 
 
-def expected_hash(release: Release, nombre: str, abrir_url: Abrir = abrir) -> str:
+def expected_hash(release: Release, name: str, opener: Opener = open_url) -> str:
     """El SHA-256 publicado para ese adjunto. Sin él no se baja nada."""
-    if nombre not in release.assets:
-        raise UpdateError("noasset", nombre)
+    if name not in release.assets:
+        raise UpdateError("noasset", name)
     if SUMS not in release.assets:
         raise UpdateError("nosums", release.tag)
-    datos = _leer(abrir_url, release.assets[SUMS], TOPE_DE_LAS_SUMAS)
-    suma = parse_sums(datos.decode("utf-8", errors="replace")).get(nombre)
-    if suma is None:
-        raise UpdateError("nosums", nombre)
-    return suma
+    data = _read_all(opener, release.assets[SUMS], MAX_SUMS_BYTES)
+    digest = parse_sums(data.decode("utf-8", errors="replace")).get(name)
+    if digest is None:
+        raise UpdateError("nosums", name)
+    return digest
 
 
-def install(release: Release, destino: pathlib.Path, nombre: Optional[str] = None,
-            abrir_url: Abrir = abrir,
-            progreso: Optional[Callable[[int], None]] = None) -> pathlib.Path:
+def install(release: Release, target: pathlib.Path, name: Optional[str] = None,
+            opener: Opener = open_url,
+            progress: Optional[Callable[[int], None]] = None) -> pathlib.Path:
     """Baja el AppImage, lo comprueba y lo pone en lugar de `destino`.
 
     El temporal va en la misma carpeta para que `os.replace` sea un cambio de
@@ -343,38 +343,38 @@ def install(release: Release, destino: pathlib.Path, nombre: Optional[str] = Non
     viejo entero o el nuevo entero. Si algo falla, el temporal se borra y
     `destino` queda como estaba.
     """
-    nombre = nombre or asset_name()
-    esperado = expected_hash(release, nombre, abrir_url)
-    descriptor, temporal = tempfile.mkstemp(prefix=".silux-", suffix=".part",
-                                            dir=str(destino.parent))
+    name = name or asset_name()
+    expected = expected_hash(release, name, opener)
+    descriptor, temp_path = tempfile.mkstemp(prefix=".silux-", suffix=".part",
+                                            dir=str(target.parent))
     try:
-        resumen = hashlib.sha256()
+        digest = hashlib.sha256()
         total = 0
-        with os.fdopen(descriptor, "wb") as salida, \
-                _abierta(abrir_url, release.assets[nombre]) as respuesta:
+        with os.fdopen(descriptor, "wb") as out, \
+                _open_download(opener, release.assets[name]) as response:
             while True:
                 try:
-                    bloque = respuesta.read(BLOQUE)
+                    chunk = response.read(CHUNK)
                 except (OSError, ValueError) as error:
                     raise UpdateError("network", str(error)) from error
-                if not bloque:
+                if not chunk:
                     break
-                total += len(bloque)
-                if total > TOPE_DEL_APPIMAGE:
-                    raise UpdateError("toolarge", nombre)
-                resumen.update(bloque)
-                salida.write(bloque)
-                if progreso is not None:
-                    progreso(total)
-            salida.flush()
-            os.fsync(salida.fileno())
-        if resumen.hexdigest() != esperado:
-            raise UpdateError("badhash", nombre)
-        os.chmod(temporal, 0o755)
-        os.replace(temporal, destino)
+                total += len(chunk)
+                if total > MAX_APPIMAGE_BYTES:
+                    raise UpdateError("toolarge", name)
+                digest.update(chunk)
+                out.write(chunk)
+                if progress is not None:
+                    progress(total)
+            out.flush()
+            os.fsync(out.fileno())
+        if digest.hexdigest() != expected:
+            raise UpdateError("badhash", name)
+        os.chmod(temp_path, 0o755)
+        os.replace(temp_path, target)
     except BaseException as error:
         try:
-            os.unlink(temporal)
+            os.unlink(temp_path)
         except OSError:
             pass
         if isinstance(error, OSError):
@@ -383,11 +383,11 @@ def install(release: Release, destino: pathlib.Path, nombre: Optional[str] = Non
         raise
     # Que el cambio de nombre llegue al disco, no solo el contenido.
     try:
-        carpeta = os.open(str(destino.parent), os.O_RDONLY)
+        folder_fd = os.open(str(target.parent), os.O_RDONLY)
         try:
-            os.fsync(carpeta)
+            os.fsync(folder_fd)
         finally:
-            os.close(carpeta)
+            os.close(folder_fd)
     except OSError:
         pass
-    return destino
+    return target

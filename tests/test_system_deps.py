@@ -164,7 +164,7 @@ class TestTheUpdaterWithoutCertificates(unittest.TestCase):
     def _error(self, certificados):
         def abrir(url, espera):
             raise urllib.error.URLError(ssl.SSLCertVerificationError(1, "unable to get local issuer"))
-        with mock.patch.object(updates, "CERTIFICADOS", certificados):
+        with mock.patch.object(updates, "CA_BUNDLES", certificados):
             with self.assertRaises(updates.UpdateError) as contexto:
                 updates.check(abrir)
         return contexto.exception.code

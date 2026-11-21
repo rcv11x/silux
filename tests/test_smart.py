@@ -222,29 +222,29 @@ class TestUnidadDeEscritura(unittest.TestCase):
                                    ("WDC", "WD Blue SA510"),
                                    (None, None)):
             with self.subTest(fabricante=fabricante):
-                self.assertEqual(smart._unidad_escritura(fabricante, modelo),
+                self.assertEqual(smart._write_unit(fabricante, modelo),
                                  smart.ATA_SECTOR)
 
     def test_kioxia_cuenta_en_bloques_de_32_mib(self):
         # Medido: escritos 4,09 GiB, el contador subió 133 → 31,5 MiB por unidad.
-        self.assertEqual(smart._unidad_escritura("Kioxia", "KIOXIA-EXCERIA S"),
+        self.assertEqual(smart._write_unit("Kioxia", "KIOXIA-EXCERIA S"),
                          32 * 1024 * 1024)
 
     def test_toshiba_tambien(self):
         """Son los mismos discos antes del cambio de nombre de la división."""
-        self.assertEqual(smart._unidad_escritura(None, "TOSHIBA THNSNJ256GCSU"),
+        self.assertEqual(smart._write_unit(None, "TOSHIBA THNSNJ256GCSU"),
                          32 * 1024 * 1024)
 
     def test_da_igual_dónde_venga_el_nombre(self):
         # Unos discos ponen la marca en el fabricante y otros solo en el modelo.
-        self.assertEqual(smart._unidad_escritura("KIOXIA", None), 32 * 1024 * 1024)
-        self.assertEqual(smart._unidad_escritura(None, "kioxia exceria"),
+        self.assertEqual(smart._write_unit("KIOXIA", None), 32 * 1024 * 1024)
+        self.assertEqual(smart._write_unit(None, "kioxia exceria"),
                          32 * 1024 * 1024)
 
     def test_el_disco_real_da_una_cifra_creible(self):
         """752 881 unidades de un KIOXIA-EXCERIA son 23 TiB, no 367 MB."""
         crudo = 752_881
-        escrito = crudo * smart._unidad_escritura("Kioxia", "KIOXIA-EXCERIA S")
+        escrito = crudo * smart._write_unit("Kioxia", "KIOXIA-EXCERIA S")
         self.assertAlmostEqual(escrito / 1024 ** 4, 23.0, places=1)
         # Y con la cuenta de antes salía algo imposible para 3 834 horas.
         self.assertLess(crudo * smart.ATA_SECTOR / 1024 ** 2, 400)
@@ -269,21 +269,21 @@ class TestTheDriveDatabase(unittest.TestCase):
 
     def test_with_two_spaces_too(self):
         # «KINGSTON  SA400S37480G», as some of them write it.
-        self.assertEqual(smart._unidad_escritura(None, "KINGSTON  SA400S37480G"), 1024 ** 3)
+        self.assertEqual(smart._write_unit(None, "KINGSTON  SA400S37480G"), 1024 ** 3)
 
     def test_the_measured_table_still_wins(self):
         # drivedb.h says GiB for the KIOXIA-EXCERIA and doubts it («32MiB ?»);
         # writing a known amount said 32 MiB.
-        self.assertEqual(smart._unidad_escritura(None, "KIOXIA-EXCERIA SATA SSD"),
+        self.assertEqual(smart._write_unit(None, "KIOXIA-EXCERIA SATA SSD"),
                          32 * 1024 * 1024)
 
     def test_what_the_database_does_not_know_stays_in_sectors(self):
-        self.assertEqual(smart._unidad_escritura("ATA", "ST2000DM008-2FR102"), smart.ATA_SECTOR)
+        self.assertEqual(smart._write_unit("ATA", "ST2000DM008-2FR102"), smart.ATA_SECTOR)
 
     def test_a_counter_of_the_flash_is_not_what_the_computer_wrote(self):
         # ATP names its 241 «Sectors_Written_to_NAND»: shown as written, it
         # would be the flash's own writes, not the computer's.
-        self.assertIsNone(smart._unidad_escritura(None, "ATP I-Temp M.2 2280"))
+        self.assertIsNone(smart._write_unit(None, "ATP I-Temp M.2 2280"))
         salud = smart.parse(tabla_ata([(241, 100, 5_000), (9, 100, 100)]), "ata",
                             model="ATP I-Temp M.2 2280")
         self.assertIsNone(salud.written_bytes)

@@ -1189,7 +1189,7 @@ def _telemetry(gpu: dict, device: pathlib.Path,
         # A version that cannot be read is not the same as having no table,
         # and both ended in the same silence: the user saw empty throttle
         # reasons and voltages with nothing to explain them.
-        if (new_value := gpumetrics.sin_interpretar(device)) is not None:
+        if (new_value := gpumetrics.uninterpreted(device)) is not None:
             version, _size = new_value
             draft.note(f"gpus.{index}.metrics", Need.DATABASE,
                        _("prov.drm.metricsnew").format(version=version),
