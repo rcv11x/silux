@@ -163,6 +163,9 @@ def _fill(gpu: dict, card: nvml.NvidiaGpu) -> None:
         "temp_c": card.temp_c,
         "power_w": card.power_w,
         "power_cap_w": card.power_cap_w,
+        "power_cap_default_w": card.power_cap_default_w,
+        "power_cap_min_w": card.power_cap_min_w,
+        "power_cap_max_w": card.power_cap_max_w,
         "fan_percent": card.fan_percent,
         "throttled": card.throttled,
     }

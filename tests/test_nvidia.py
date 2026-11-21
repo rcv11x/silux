@@ -204,6 +204,114 @@ class _Nvml:
         return 0
 
 
+class _NvmlWithSamples(_Nvml):
+    """A desktop RTX 4060 with driver 595, as `nvidia-smi -q -d POWER` showed
+    it: no power usage, no power fields, and the power samples buffer (119
+    samples between 52.59 and 55.37 W, 53.11 on average)."""
+
+    SAMPLES = [52590] * 60 + [53000] * 50 + [55370] * 9
+
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        self.since = []
+
+    def nvmlDeviceGetSamples(self, asa, kind, last_seen, value_type, count, samples):
+        self.since.append(last_seen.value)
+        value_type._obj.value = 1                    # unsigned int
+        if samples is None:
+            count._obj.value = len(self.SAMPLES)
+            return 0
+        for i, mw in enumerate(self.SAMPLES[:count._obj.value]):
+            samples[i].timeStamp = 1000 + i
+            samples[i].sampleValue.uiVal = mw
+        return 0
+
+
+class TestThePowerSamples(unittest.TestCase):
+    """Neither the power usage nor the fields answer: the mean of the power
+    samples since the last reading, as nvidia-smi does."""
+
+    def _session(self, lib):
+        sesion = nvml.Nvml()
+        sesion._lib = lib
+        return sesion
+
+    def test_the_mean_of_its_samples(self):
+        lib = _NvmlWithSamples()
+        watts, reason = self._session(lib)._potencia(nvml.ctypes.c_void_p(1), 0)
+        media = sum(_NvmlWithSamples.SAMPLES) / len(_NvmlWithSamples.SAMPLES) / 1000
+        self.assertEqual(watts, round(media, 1))
+        self.assertIsNone(reason)
+
+    def test_the_next_reading_asks_only_for_new_samples(self):
+        lib = _NvmlWithSamples()
+        sesion = self._session(lib)
+        sesion._potencia(nvml.ctypes.c_void_p(1), 0)
+        sesion._potencia(nvml.ctypes.c_void_p(1), 0)
+        self.assertEqual(lib.since[0], 0)
+        self.assertEqual(lib.since[-1], 1000 + len(_NvmlWithSamples.SAMPLES) - 1)
+
+
+class _OldDriver:
+    """A driver from before most calls: only these exist, and the rest are
+    missing symbols. Nothing may break; what is missing stays empty."""
+
+    def nvmlInit_v2(self):
+        return 0
+
+    def nvmlShutdown(self):
+        return 0
+
+    def nvmlDeviceGetCount_v2(self, count):
+        count._obj.value = 1
+        return 0
+
+    def nvmlDeviceGetHandleByIndex_v2(self, index, handle):
+        handle._obj.value = 1
+        return 0
+
+    def nvmlDeviceGetName(self, handle, buffer, size):
+        buffer.value = b"GeForce GTX 680"
+        return 0
+
+    def nvmlDeviceGetTemperature(self, handle, sensor, value):
+        value._obj.value = 40
+        return 0
+
+
+class TestAnOldDriver(unittest.TestCase):
+
+    def test_missing_calls_leave_their_value_empty(self):
+        sesion = nvml.Nvml()
+        sesion._lib = _OldDriver()
+        sesion._activa = True
+        tarjetas = sesion.devices()
+        self.assertEqual(len(tarjetas), 1)
+        self.assertEqual(tarjetas[0].temp_c, 40.0)
+        self.assertIsNone(tarjetas[0].power_w)
+        self.assertIsNone(tarjetas[0].power_cap_max_w)
+        self.assertIn("not in the library", tarjetas[0].power_error)
+
+
+class TestItsPowerLimits(unittest.TestCase):
+
+    def test_current_default_minimum_and_maximum(self):
+        class _Limits(_NvmlWithSamples):
+            def nvmlDeviceGetPowerManagementLimitConstraints(self, asa, low, high):
+                low._obj.value, high._obj.value = 90000, 115000
+                return 0
+
+            def nvmlDeviceGetPowerManagementDefaultLimit(self, asa, value):
+                value._obj.value = 115000
+                return 0
+
+        sesion = nvml.Nvml()
+        sesion._lib = _Limits()
+        limites = sesion._limits(nvml.ctypes.c_void_p(1))
+        self.assertEqual(limites, {"power_cap_default_w": 115.0, "power_cap_min_w": 90.0,
+                                   "power_cap_max_w": 115.0})
+
+
 class TestThePowerOfANewDriver(unittest.TestCase):
     """A desktop RTX 4060 with driver 595: temperature, clocks and limit, and
     «Consumo: —». nvmlDeviceGetPowerUsage only answers where power
@@ -212,7 +320,7 @@ class TestThePowerOfANewDriver(unittest.TestCase):
     def _leer(self, lib):
         sesion = nvml.Nvml()
         sesion._lib = lib
-        return sesion._potencia(nvml.ctypes.c_void_p(1))
+        return sesion._potencia(nvml.ctypes.c_void_p(1), 0)
 
     def _potencia(self, lib):
         return self._leer(lib)[0]
@@ -231,7 +339,8 @@ class TestThePowerOfANewDriver(unittest.TestCase):
         _vatios, motivo = self._leer(_Nvml())
         self.assertEqual(motivo, "nvmlDeviceGetPowerUsage: NVML_ERROR_NOT_SUPPORTED (3); "
                                  "field 185: NVML_ERROR_NOT_SUPPORTED (3); "
-                                 "field 186: NVML_ERROR_NOT_SUPPORTED (3)")
+                                 "field 186: NVML_ERROR_NOT_SUPPORTED (3); "
+                                 "nvmlDeviceGetSamples: not in the library")
         self.assertIsNone(self._leer(_Nvml(uso=12000))[1])
 
     def test_its_page_says_the_driver_does_not_give_it(self):
@@ -250,6 +359,44 @@ class TestThePowerOfANewDriver(unittest.TestCase):
         lib = _Nvml(uso=12000, campos={185: 99000})
         self.assertEqual(self._potencia(lib), 12.0)
         self.assertEqual(lib.pedidos, [])
+
+
+class TestTheDesktopRtx4060WithItsSamples(unittest.TestCase):
+    """What the new code records on that desktop: the power from the
+    samples, and the limits nvidia-smi showed (115 W, from 90 to 115)."""
+
+    def test_its_power_and_limits_on_the_page(self):
+        import json
+        from silux import render, sysroot, volcado
+        from silux.collector import Collector
+        from silux.i18n import _
+        from tests.interval import second_snapshot
+        from tests.test_equipos import EQUIPOS
+
+        with volcado.montado(EQUIPOS / "i7-10700f") as raiz:
+            ruta = raiz / "grabado.json"
+            grabado = json.loads(ruta.read_text())
+            grabado["nvml"]["tarjetas"][0].update(
+                power_w=53.0, power_error=None, power_cap_default_w=115.0,
+                power_cap_min_w=90.0, power_cap_max_w=115.0)
+            ruta.write_text(json.dumps(grabado))
+            sysroot.olvidar()
+            recolector = Collector()
+            try:
+                f = second_snapshot(recolector)
+            finally:
+                recolector.close()
+        gpu = f.gpus[0]
+        self.assertEqual((gpu.power_w, gpu.power_cap_default_w, gpu.power_cap_min_w,
+                          gpu.power_cap_max_w), (53.0, 115.0, 90.0, 115.0))
+        self.assertFalse([n for n in f.notes if n.path == "gpus.0.power_w"])
+        qt.app()
+        with pantalla.Ventana(f) as ventana:
+            ventana.select_section("Gráficos")
+            textos = pantalla.textos_de(ventana.stack.currentWidget())
+        self.assertIn(render.gpu_factory_power_limit(gpu), textos)
+        self.assertIn(_("gpu.sensor.powercap"), textos)
+        self.assertNotIn(_("prov.nvml.nopower"), " ".join(textos))
 
 
 class TestAProprietaryNvidiaInSensors(unittest.TestCase):

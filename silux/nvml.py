@@ -87,6 +87,17 @@ MIEMBRO_DEL_TIPO = {0: "dVal", 1: "uiVal", 2: "ulVal", 3: "ullVal", 4: "sllVal",
                     5: "siVal", 6: "usVal"}
 
 
+# nvmlSamplingType_t: the board's total power, which the driver samples into
+# a ring buffer whether or not the power usage call answers. nvidia-smi shows
+# their mean as «Power Samples» where «Power Draw» is N/A.
+TOTAL_POWER_SAMPLES = 0
+
+
+class _Sample(ctypes.Structure):
+    """nvmlSample_t."""
+    _fields_ = [("timeStamp", ctypes.c_ulonglong), ("sampleValue", _Valor)]
+
+
 class _Memoria(ctypes.Structure):
     _fields_ = [("total", ctypes.c_ulonglong), ("free", ctypes.c_ulonglong),
                 ("used", ctypes.c_ulonglong)]
@@ -131,6 +142,9 @@ class NvidiaGpu:
     # Without power: what NVML answered to each way of asking, for the report.
     power_error: Optional[str] = None
     power_cap_w: Optional[float] = None
+    power_cap_default_w: Optional[float] = None
+    power_cap_min_w: Optional[float] = None
+    power_cap_max_w: Optional[float] = None
     fan_percent: Optional[float] = None
     core_hz: Optional[int] = None
     core_max_hz: Optional[int] = None
@@ -156,6 +170,9 @@ class Nvml:
     def __init__(self) -> None:
         self._lib: Optional[ctypes.CDLL] = None
         self._activa = False
+        # The newest power sample already used, per card: each reading
+        # averages only what the driver sampled since the previous one.
+        self._last_power_sample: dict[int, int] = {}
 
     # -- ciclo de vida ------------------------------------------------------
 
@@ -310,9 +327,9 @@ class Nvml:
                 motivos.append(f"field {campo.fieldId}: value type {campo.valueType}")
         return leidos
 
-    def _potencia(self, asa) -> tuple[Optional[float], Optional[str]]:
-        """Watts: nvmlDeviceGetPowerUsage, or the power fields where it does
-        not answer. Without them, what NVML answered to each."""
+    def _potencia(self, asa, index: int) -> tuple[Optional[float], Optional[str]]:
+        """Watts: nvmlDeviceGetPowerUsage, else the power fields, else the
+        mean of the power samples. Without any, what NVML answered to each."""
         motivos: list[str] = []
         milivatios = self._entero("nvmlDeviceGetPowerUsage", asa, motivos=motivos)
         if milivatios is None:
@@ -320,8 +337,63 @@ class Nvml:
                                   motivos=motivos)
             milivatios = campos.get(CAMPO_POTENCIA_MEDIA, campos.get(CAMPO_POTENCIA_AL_MOMENTO))
         if milivatios is None:
+            milivatios = self._power_samples(asa, index, motivos)
+        if milivatios is None:
             return None, "; ".join(motivos) or None
         return round(milivatios / 1000, 1), None
+
+    def _power_samples(self, handle, index: int, reasons: list) -> Optional[float]:
+        """Mean of the power samples taken since the last reading, in mW.
+
+        The first reading has nothing to start from and takes what the
+        buffer holds, a few seconds' worth.
+        """
+        function = self._sim("nvmlDeviceGetSamples")
+        if function is None:
+            reasons.append("nvmlDeviceGetSamples: not in the library")
+            return None
+        since = ctypes.c_ulonglong(self._last_power_sample.get(index, 0))
+        kind, value_type, count = ctypes.c_uint(TOTAL_POWER_SAMPLES), ctypes.c_uint(), ctypes.c_uint()
+        samples = None
+        try:
+            # A first call without a buffer says how many there are.
+            code = function(handle, kind, since, ctypes.byref(value_type), ctypes.byref(count), None)
+            if code == NVML_SUCCESS and count.value:
+                samples = (_Sample * count.value)()
+                code = function(handle, kind, since, ctypes.byref(value_type),
+                                ctypes.byref(count), samples)
+        except (ctypes.ArgumentError, OSError) as exc:
+            reasons.append(f"nvmlDeviceGetSamples: {exc}")
+            return None
+        if code != NVML_SUCCESS:
+            reasons.append(f"nvmlDeviceGetSamples: {nvml_error(code)}")
+            return None
+        member = MIEMBRO_DEL_TIPO.get(value_type.value)
+        taken = list(samples)[:count.value] if samples is not None else []
+        if not taken or member is None:
+            reasons.append(f"nvmlDeviceGetSamples: {len(taken)} samples, value type {value_type.value}")
+            return None
+        self._last_power_sample[index] = max(sample.timeStamp for sample in taken)
+        return sum(float(getattr(sample.sampleValue, member)) for sample in taken) / len(taken)
+
+    def _limits(self, handle) -> dict[str, Optional[float]]:
+        """The factory power limit and the range the card accepts, in watts."""
+        minimum = maximum = None
+        function = self._sim("nvmlDeviceGetPowerManagementLimitConstraints")
+        if function is not None:
+            low, high = ctypes.c_uint(), ctypes.c_uint()
+            try:
+                if function(handle, ctypes.byref(low), ctypes.byref(high)) == NVML_SUCCESS:
+                    minimum, maximum = low.value, high.value
+            except (ctypes.ArgumentError, OSError):
+                pass
+        default = self._entero("nvmlDeviceGetPowerManagementDefaultLimit", handle)
+
+        def watts(milliwatts: Optional[int]) -> Optional[float]:
+            return round(milliwatts / 1000, 1) if milliwatts else None
+
+        return {"power_cap_default_w": watts(default), "power_cap_min_w": watts(minimum),
+                "power_cap_max_w": watts(maximum)}
 
     def _estructura(self, nombre: str, asa, tipo, *alternativas):
         funcion = self._sim(nombre, *alternativas)
@@ -345,7 +417,7 @@ class Nvml:
         milis = lambda *args: (lambda v: round(v / 1000, 1) if v is not None else None)(
             self._entero(*args))
 
-        potencia, sin_potencia = self._potencia(asa)
+        potencia, sin_potencia = self._potencia(asa, indice)
         banderas = self._entero("nvmlDeviceGetCurrentClocksThrottleReasons", asa,
                                 tipo=ctypes.c_ulonglong)
         motivos = _motivos(banderas) if banderas is not None else ()
@@ -374,6 +446,7 @@ class Nvml:
             power_w=potencia,
             power_error=sin_potencia,
             power_cap_w=milis("nvmlDeviceGetEnforcedPowerLimit", asa),
+            **self._limits(asa),
             fan_percent=(lambda v: float(v) if v is not None else None)(
                 self._entero("nvmlDeviceGetFanSpeed", asa)),
             core_hz=mhz("nvmlDeviceGetClockInfo", asa, ctypes.c_uint(RELOJ_GRAFICO)),
