@@ -34,6 +34,12 @@ que hace falta.
 - Arreglado: la gráfica de la tarjeta de la gráfica en Inicio enseña el uso
   o, sin él, la frecuencia. Una muestra sin uso pintaba megahercios encima
   de los porcentajes; ahora empieza de cero cuando cambia lo que enseña.
+- Arreglado de raíz: cada gráfica dibuja una sola serie, con su clave y su
+  unidad. Si cambia lo que enseña (otra tarjeta, otro disco, otra interfaz,
+  °C o °F, quién encabeza las temperaturas en Inicio) empieza de cero, y un
+  valor que no cabe en su unidad (un contador en bruto, milésimas de grado,
+  más bytes de los que da el enlace) no entra, ni en la curva de cada
+  sensor ni en su mínimo, máximo y media.
 
 ### Gráficos
 

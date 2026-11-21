@@ -22,6 +22,7 @@ from ...model import DISK_KINDS, Disk, Snapshot
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette, ui_font
+from ..widgets import Series
 from ..widgets import (Plegable, Card, ChipRow, InfoGrid, Notice, ResponsiveRow,
                        StackedBar, StatTile, Table,
                        boton_de_permiso_permanente, clear_layout, dismiss_buttons, ScrollPage)
@@ -350,8 +351,10 @@ class StoragePage(ScrollPage):
         # moviendo en total. Cuál se mueve va en la tabla de abajo.
         lectura = sum(x.io.read_rate_bps or 0 for x in discos) if discos else None
         escritura = sum(x.io.write_rate_bps or 0 for x in discos) if discos else None
-        self.tile_read.update_value(render.rate(lectura), lectura)
-        self.tile_write.update_value(render.rate(escritura), escritura)
+        self.tile_read.update_value(render.rate(lectura), lectura,
+                                    series=Series("disks/read", "B/s"))
+        self.tile_write.update_value(render.rate(escritura), escritura,
+                                     series=Series("disks/write", "B/s"))
         cuantos = _("storage.tile.sum.one" if len(discos) == 1
                     else "storage.tile.sum").format(n=len(discos))
         self.tile_read.set_detail(cuantos)
@@ -374,8 +377,11 @@ class StoragePage(ScrollPage):
             # un rato encendido y todo se estabiliza.
             valor, disco = max(temperaturas, key=lambda par: par[0])
             mostrado = valor * 9 / 5 + 32 if self._prefs.fahrenheit else valor
-            self.tile_temp.set_unit("°F" if self._prefs.fahrenheit else "°C")
-            self.tile_temp.update_value(render.figure(mostrado), mostrado)
+            unidad = "°F" if self._prefs.fahrenheit else "°C"
+            self.tile_temp.set_unit(unidad)
+            # The hottest disk's: when another one is, the chart starts over.
+            self.tile_temp.update_value(render.figure(mostrado), mostrado,
+                                        series=Series(f"disk:{disco.name}/temp", unidad))
             self.tile_temp.set_detail(disco.name)
         else:
             self.tile_temp.update_value(render.DASH)

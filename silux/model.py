@@ -1538,6 +1538,23 @@ class Disk:
         return tuple(p for p in self.partitions if p.mounted)
 
 
+# What a value can be in each unit. Outside it, it is not of its series: a raw
+# counter, another quantity. A net behind the providers' own checks, for the
+# charts (`Sparkline`) and the sensors' history.
+PLAUSIBLE = {
+    "%": (0.0, 100.0), "W": (0.0, 5000.0), "GHz": (0.0, 20.0), "MHz": (0.0, 20_000.0),
+    "°C": (-60.0, 250.0), "°F": (-76.0, 482.0), "B/s": (0.0, 1e12),
+}
+
+
+def plausible(value: float, unit: str, ceiling: Optional[float] = None) -> bool:
+    """Whether a value can be of a series in that unit (and under `ceiling`)."""
+    bajo, alto = PLAUSIBLE[unit]
+    if ceiling is not None:
+        alto = min(alto, ceiling)
+    return bajo <= value <= alto
+
+
 class SensorKind(str, Enum):
     TEMPERATURE = "temperature"
     VOLTAGE = "voltage"
@@ -1554,6 +1571,11 @@ class SensorKind(str, Enum):
     # y no significado, y juntos caerían en la misma rama del árbol.
     BANDWIDTH = "bandwidth"
     OTHER = "other"
+
+
+# The unit a sensor kind is read in, where that unit has a plausible range.
+SENSOR_UNITS = {SensorKind.TEMPERATURE: "°C", SensorKind.POWER: "W",
+                SensorKind.USAGE: "%", SensorKind.CLOCK: "MHz"}
 
 
 UNITS: dict[str, str] = {
@@ -1705,6 +1727,12 @@ class Sensor:
     @property
     def unit(self) -> str:
         return self.unit_override or UNITS.get(self.kind, "")
+
+    @property
+    def plausible(self) -> bool:
+        """Whether its value can be one of its kind: a raw counter is not."""
+        unidad = SENSOR_UNITS.get(self.kind)
+        return unidad is None or plausible(self.value, unidad)
 
     @property
     def group(self) -> str:
@@ -2003,7 +2031,7 @@ _COMPUTED: dict[str, tuple[str, ...]] = {
     "Disk": ("display_name", "used_bytes", "mounted_partitions"),
     "CpuInfo": ("total_cores", "total_threads", "package_power_w", "temperature_c",
                 "cores_temp_c", "in_virtual_machine"),
-    "Sensor": ("heat", "unit", "group", "category", "alarm", "alarm_level"),
+    "Sensor": ("heat", "unit", "plausible", "group", "category", "alarm", "alarm_level"),
     "Board": ("display_name",),
     "MemoryModule": ("has_ecc", "underclocked", "rated_mts", "in_a_slot"),
     "SpdInfo": ("rated_mts",),

@@ -13,6 +13,8 @@ no las tiene.
 
 from __future__ import annotations
 
+from typing import Optional
+
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
@@ -22,6 +24,7 @@ from ...model import NetworkInterface, Snapshot
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette
+from ..widgets import Series
 from ..widgets import (Card, ChipRow, InfoGrid, ResponsiveRow, ScrollPage, StatTile, Table,
                        clear_layout)
 
@@ -54,6 +57,14 @@ def is_physical(interfaz: NetworkInterface) -> bool:
     Docker son veinte.
     """
     return interfaz.kind in ("ethernet", "wifi") or bool(interfaz.pci_slot)
+
+
+def link_ceiling(interfaz) -> Optional[float]:
+    """The most an interface can move, in bytes a second, by its link speed
+    (with a tenth more of headroom); None if it does not say."""
+    if interfaz is None or not interfaz.speed_mbps or interfaz.speed_mbps <= 0:
+        return None
+    return interfaz.speed_mbps * 1e6 / 8 * 1.1
 
 
 def main_interface(interfaces) -> tuple:
@@ -272,8 +283,14 @@ class NetworkPage(ScrollPage):
 
         # La cifra y la unidad van juntas porque la unidad cambia sola: pasar de
         # KB/s a MB/s en mitad de una descarga es lo normal.
-        self.tile_down.update_value(render.rate(bajada, self._bits), bajada)
-        self.tile_up.update_value(render.rate(subida, self._bits), subida)
+        # The main interface's: when another one becomes it, they start over.
+        interfaz = principal.name if principal else ""
+        # Faster than its link, a rate is a raw byte counter.
+        enlace = link_ceiling(principal)
+        self.tile_down.update_value(render.rate(bajada, self._bits), bajada,
+                                    series=Series(f"net:{interfaz}/down", "B/s", enlace))
+        self.tile_up.update_value(render.rate(subida, self._bits), subida,
+                                  series=Series(f"net:{interfaz}/up", "B/s", enlace))
         self.tile_rx.update_value(render.size(trafico.rx_bytes) if trafico else render.DASH)
         self.tile_tx.update_value(render.size(trafico.tx_bytes) if trafico else render.DASH)
 

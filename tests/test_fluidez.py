@@ -10,7 +10,7 @@ from PySide6.QtWidgets import QApplication
 
 from silux.settings import Preferences
 from silux.ui import theme
-from silux.ui.widgets import Sparkline
+from silux.ui.widgets import Series, Sparkline
 from tests import muestras, qt
 
 
@@ -21,6 +21,7 @@ def _app():
 class TestDeslizamiento(unittest.TestCase):
     def setUp(self):
         self.grafica = Sparkline(theme.palette_for(_app(), "dark"))
+        self.grafica.set_series(Series("prueba", "MHz"))
         for valor in (10.0, 20.0, 30.0):
             self.grafica.push(valor)
 
@@ -203,6 +204,7 @@ class TestEscalaVertical(unittest.TestCase):
     def _grafica(self, valores):
         from silux.ui.widgets import Sparkline
         g = Sparkline(theme.palette_for(_app(), "dark"))
+        g.set_series(Series("prueba", "MHz"))
         g.resize(300, 40)
         for v in valores:
             g.push(v)
@@ -305,6 +307,7 @@ class TestSinRebote(unittest.TestCase):
     def _grafica(self, cuantas):
         from silux.ui.widgets import Sparkline
         g = Sparkline(theme.palette_for(_app(), "dark"))
+        g.set_series(Series("prueba", "MHz"))
         g.resize(self.ANCHO, 40)
         for i in range(cuantas):
             g.push(40.0 + (i % 7))
@@ -374,6 +377,7 @@ class TestPicoDeLaGrafica(unittest.TestCase):
         from silux.ui.widgets import Sparkline
 
         g = Sparkline(theme.DARK)
+        g.set_series(Series("prueba", "MHz"))
         g.resize(300, 40)
         for v in valores:
             g.push(v)

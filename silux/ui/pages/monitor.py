@@ -260,7 +260,9 @@ class MonitorPage(ScrollPage):
         if snapshot is self._contada:
             return
         self._contada = snapshot
-        self._tracker.update_many((s.key, s.value) for s in snapshot.sensors)
+        # A reading that cannot be of its kind (a raw counter) gets neither in
+        # its history nor in its minimum, maximum or mean.
+        self._tracker.update_many((s.key, s.value) for s in snapshot.sensors if s.plausible)
         self._registrar(snapshot)
 
     def _apply_absent(self, snapshot: Snapshot) -> None:
@@ -421,7 +423,7 @@ class MonitorPage(ScrollPage):
     def _values(self, sensor: Sensor) -> list[str]:
         digits = DECIMALS.get(sensor.kind, 1)
         value, unit = self._converted(sensor)
-        current = f"{value:.{digits}f} {unit}".strip()
+        current = f"{value:.{digits}f} {unit}".strip() if sensor.plausible else render.DASH
 
         extremes = self._tracker.get(sensor.key)
         if extremes is None:

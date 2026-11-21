@@ -29,9 +29,10 @@ class TestLaCifraDelPico(unittest.TestCase):
         cls.app = qt.app()
 
     def _grafica(self, valores, ancho=300, alto=40, capacidad=None):
-        from silux.ui.widgets import Sparkline
+        from silux.ui.widgets import Series, Sparkline
 
         g = Sparkline(theme.DARK, capacity=capacidad or len(valores))
+        g.set_series(Series("prueba", "MHz"))
         g.resize(ancho, alto)
         g.set_formatter(render.temperature, 1.0)
         for v in valores:

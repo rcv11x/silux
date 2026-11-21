@@ -14,7 +14,7 @@ from PySide6.QtWidgets import QApplication
 from silux import render
 from silux.settings import Preferences
 from silux.ui import theme
-from silux.ui.widgets import Sparkline
+from silux.ui.widgets import Series, Sparkline
 from tests import qt
 
 
@@ -79,6 +79,7 @@ class TestLecturaDeGraficas(unittest.TestCase):
         lado.
         """
         chart = Sparkline(theme.DARK, capacity=capacidad or max(2, len(valores)))
+        chart.set_series(Series("prueba", "MHz"))
         chart.resize(ancho, 30)
         chart.set_formatter(render.percent, interval_s=1.0)
         for valor in valores:
@@ -192,6 +193,7 @@ class TestLecturaDeGraficas(unittest.TestCase):
 
     def test_sin_formateador_se_enseña_el_numero_pelado(self):
         chart = Sparkline(theme.DARK)
+        chart.set_series(Series("prueba", "MHz"))
         chart.resize(100, 30)
         for valor in (1, 2, 3):
             chart.push(valor)

@@ -23,6 +23,7 @@ from ...settings import Preferences
 from ...throttling import SeguidorDeRecortes
 from .. import theme
 from ..theme import Palette, ui_font
+from ..widgets import Series
 from ..widgets import (Plegable, Card, ChipRow, Divider, InfoGrid, LevelList, Notice, ResponsiveRow,
                        StatTile, Table, clear_layout, tone_for, ScrollPage)
 
@@ -840,7 +841,11 @@ class GpuSection(QWidget):
         self._apply_tiles_rest(gpu, candado)
 
     def _apply_usage(self, gpu: Gpu) -> None:
-        self.tile_usage.update_value(render.figure(gpu.busy_percent), gpu.busy_percent)
+        # Its charts are this card's: a section can get another card when the
+        # list changes, and its history is not that one's.
+        tarjeta = gpu.pci_slot or f"gpu{gpu.index}"
+        self.tile_usage.update_value(render.figure(gpu.busy_percent), gpu.busy_percent,
+                                     series=Series(f"{tarjeta}/usage", "%"))
         # El detalle del uso deja de repetir la memoria: ahora tiene su cuadro.
         self.tile_usage.set_detail(
             _("gpu.tile.video").format(
@@ -853,7 +858,7 @@ class GpuSection(QWidget):
         dormida = relojes.core_hz == 0
         self.tile_clock.update_value(
             render.gpu_clock(0) if dormida else render.figure(nucleo_mhz), nucleo_mhz,
-            word=dormida)
+            word=dormida, series=Series(f"{gpu.pci_slot or f'gpu{gpu.index}'}/clock", "MHz"))
         # La escala llega hasta el techo de la tabla DPM, que es lo que hace
         # que la curva diga «va al máximo» en vez de solo «va subiendo».
         if relojes.core_max_hz:
@@ -880,8 +885,13 @@ class GpuSection(QWidget):
         temperatura = gpu.package_temp_c if del_paquete else gpu.temp_c
         if self._prefs.fahrenheit and temperatura is not None:
             temperatura = temperatura * 9 / 5 + 32
-        self.tile_temp.set_unit("°F" if self._prefs.fahrenheit else "°C")
-        self.tile_temp.update_value(render.figure(temperatura), temperatura)
+        unidad = "°F" if self._prefs.fahrenheit else "°C"
+        self.tile_temp.set_unit(unidad)
+        # The package's and its own are two series, not one.
+        origen = "package" if del_paquete else "own"
+        self.tile_temp.update_value(
+            render.figure(temperatura), temperatura,
+            series=Series(f"{gpu.pci_slot or f'gpu{gpu.index}'}/temp/{origen}", unidad))
         # Named as the package's, so neither the figure nor the report can be
         # read as the GPU's own; and back to its name if it gets a sensor.
         self.tile_temp.set_label(_("gpu.tile.temp.package") if del_paquete
@@ -899,7 +909,7 @@ class GpuSection(QWidget):
         else:
             self.tile_power.update_value(
                 render.figure(gpu.power_w),
-                gpu.power_w)
+                gpu.power_w, series=Series(f"{gpu.pci_slot or f'gpu{gpu.index}'}/power", "W"))
             self.tile_power.set_detail(
                 _("gpu.tile.of").format(valor=render.watts(gpu.power_cap_w))
                 if gpu.power_cap_w else "")

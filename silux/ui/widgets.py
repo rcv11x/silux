@@ -17,7 +17,7 @@ from __future__ import annotations
 import math
 import time
 from collections import deque
-from typing import Iterable, Optional, Sequence
+from typing import Iterable, NamedTuple, Optional, Sequence
 
 from PySide6.QtCore import (QEvent, QPoint, QPointF, QRectF, QSize, Qt,
                             QTimer, Signal)
@@ -40,7 +40,7 @@ from PySide6.QtWidgets import (
 
 from .. import render
 from ..i18n import _
-from ..model import Need
+from ..model import Need, plausible
 from . import theme
 from .theme import Palette, value_font, ui_font
 
@@ -713,6 +713,21 @@ def curva_suave(points, cerrar_en=None) -> QPainterPath:
     return camino
 
 
+class Series(NamedTuple):
+    """What a chart draws: one quantity, of one thing, in one unit.
+
+    `key` says what and of what, raw ("gpu:0000:00:02.0/power"); `unit` is
+    one of `model.PLAUSIBLE`, and `ceiling` lowers its top where the thing
+    itself says it (a link's speed). Inicio's GPU chart drew megahertz over
+    percentages when a sample came without usage: a chart never draws one
+    series over another.
+    """
+
+    key: str
+    unit: str
+    ceiling: Optional[float] = None
+
+
 class Sparkline(QWidget):
     """Serie temporal compacta: relleno de área, línea y punto en el extremo.
 
@@ -731,6 +746,7 @@ class Sparkline(QWidget):
         self._hover: Optional[int] = None
         self._formatter = None
         self._interval_s = 1.0
+        self._series: Optional[Series] = None
         # Cuánto se ha avanzado hacia la muestra siguiente, de 0 a 1. Sirve
         # para que la línea se deslice en vez de dar un salto por segundo:
         # con el movimiento fluido apagado se queda en 1 y no se nota.
@@ -811,7 +827,26 @@ class Sparkline(QWidget):
             return _("chart.ago.s").format(cifra=cifra, n=f"{atras:.0f}")
         return _("chart.ago.min").format(cifra=cifra, n=f"{atras / 60:.0f}")
 
+    def set_series(self, series: Series) -> None:
+        """What it draws from now on. Another series starts it over."""
+        if series != self._series:
+            if self._series is not None:
+                self.clear()
+            self._series = series
+
+    @property
+    def series(self) -> Optional[Series]:
+        return self._series
+
     def push(self, value: Optional[float]) -> None:
+        """A point of its series. None (no datum) adds nothing, and a value
+        that cannot be in its unit is not of it: it does not get in."""
+        if value is None:
+            return
+        if self._series is None:
+            raise TypeError("a chart takes the points of a declared series (set_series)")
+        if not plausible(value, self._series.unit, self._series.ceiling):
+            return
         if value is not None:
             self._values.append(float(value))
             self._version += 1
@@ -1381,9 +1416,12 @@ class StatTile(Card):
         return f"{cifra} {self.unit.text()}" if cifra and self.value._con_unidad() else cifra
 
     def update_value(self, text: str, series_value: Optional[float] = None,
-                     word: bool = False) -> None:
+                     word: bool = False, series: Optional[Series] = None) -> None:
         """`word` is a state instead of a figure («en reposo»): grey and
-        without its unit."""
+        without its unit. `series` is what `series_value` is a point of: a
+        chart takes no point without it."""
+        if series is not None:
+            self.chart.set_series(series)
         if not self.lock.isHidden():
             self.lock.hide()
             self.value.show()

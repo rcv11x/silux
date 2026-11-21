@@ -23,6 +23,7 @@ from ...model import DISK_KINDS, Snapshot
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette
+from ..widgets import Series
 from ..widgets import (Card, ChipRow, PermissionNotice, ResponsiveRow, Sparkline,
                        StackedBar, memory_segments, ScrollPage)
 from ..widgets import ui_font
@@ -145,9 +146,6 @@ class HomePage(ScrollPage):
         super().__init__(parent)
         self._p = palette
         self._prefs = prefs
-        # What the GPU card's chart is drawing: its usage or, without it, its
-        # clock (`_serie_de_la_gpu`).
-        self._serie_gpu: Optional[str] = None
         m = theme.METRICS
 
         self.setWidgetResizable(True)
@@ -196,14 +194,6 @@ class HomePage(ScrollPage):
         layout.addStretch(1)
         self._chips: tuple = ()
         self._titular_de_temperaturas: Optional[str] = None
-
-    def _serie_de_la_gpu(self, serie: str) -> None:
-        """The GPU card's chart shows usage (%) or, without it, the clock
-        (MHz). A sample without usage drew megahertz on the percentages'
-        scale: it starts over when what it shows changes."""
-        if self._serie_gpu != serie:
-            self._serie_gpu = serie
-            self.gpu.grafica.clear()
 
     def _tarjeta(self, host: ResponsiveRow, titulo: str, seccion: str,
                  cuerpo: Optional[str] = "grafica") -> _TarjetaResumen:
@@ -325,6 +315,7 @@ class HomePage(ScrollPage):
         if cpu.usage_percent is not None:
             piezas.append(render.percent(cpu.usage_percent))
             moldes.append(_porcentajes())
+            self.cpu.grafica.set_series(Series("cpu/usage", "%"))
             self.cpu.grafica.push(cpu.usage_percent)
             self.cpu.grafica.set_range(0.0, 100.0)
         if principal.clocks.current_hz:
@@ -367,7 +358,7 @@ class HomePage(ScrollPage):
         elif gpu.busy_percent is not None:
             piezas.append(render.percent(gpu.busy_percent))
             moldes.append(_porcentajes())
-            self._serie_de_la_gpu("usage")
+            self.gpu.grafica.set_series(Series(f"{gpu.pci_slot}/usage", "%"))
             self.gpu.grafica.push(gpu.busy_percent)
             self.gpu.grafica.set_range(0.0, 100.0)
         if gpu.temp_c is not None:
@@ -384,7 +375,7 @@ class HomePage(ScrollPage):
             # lee sin pedir nada, así que al menos se ve que la cosa se mueve.
             piezas.append(render.hz(gpu.clocks.core_hz))
             moldes.append(_relojes())
-            self._serie_de_la_gpu("clock")
+            self.gpu.grafica.set_series(Series(f"{gpu.pci_slot}/clock", "MHz"))
             self.gpu.grafica.push(gpu.clocks.core_hz / 1e6)
             if gpu.clocks.core_max_hz:
                 # Con su techo al lado: 350 MHz solos no dicen si es mucho.
@@ -461,15 +452,17 @@ class HomePage(ScrollPage):
         es cuál, y en un equipo sin sensor en la gráfica el segundo es otra
         cosa. La más caliente va arriba, que es la que se viene a mirar.
         """
+        # (what it is, raw; its name; °C): the headline and its chart go by
+        # the first, which no language changes.
         lecturas = []
         if (grados := snapshot.cpu.temperature_c) is not None:
-            lecturas.append((_("home.temp.cpu"), grados))
+            lecturas.append(("cpu", _("home.temp.cpu"), grados))
         grafica = (snapshot.gpus[snapshot.working_gpu] if snapshot.gpus else None)
         if grafica is not None and (grados := grafica.temp_c) is not None:
-            lecturas.append((_("home.temp.gpu"), grados))
+            lecturas.append(("gpu", _("home.temp.gpu"), grados))
         discos = [d.temp_c for d in snapshot.disks if d.temp_c is not None]
         if discos:
-            lecturas.append((_("home.temp.disk"), max(discos)))
+            lecturas.append(("disk", _("home.temp.disk"), max(discos)))
 
         # La gráfica que no publica su temperatura no deja un hueco entre las
         # cifras: se dice aquí abajo, que no es lo mismo que no haberla leído.
@@ -484,24 +477,26 @@ class HomePage(ScrollPage):
         # gráfica a 53,0 saltaba de uno a otro cada segundo, y la tarjeta
         # entera bailaba. Quien está arriba se queda hasta que otro le saque
         # MARGEN_DEL_TITULAR grados; las demás van siempre en el mismo orden.
-        por_nombre = dict(lecturas)
-        candidato = max(lecturas, key=lambda par: par[1])
+        por_clave = {clave: (nombre, grados) for clave, nombre, grados in lecturas}
+        candidato = max(lecturas, key=lambda lectura: lectura[2])
         actual = self._titular_de_temperaturas
-        if actual not in por_nombre or \
-                candidato[1] - por_nombre[actual] >= MARGEN_DEL_TITULAR:
+        if actual not in por_clave or \
+                candidato[2] - por_clave[actual][1] >= MARGEN_DEL_TITULAR:
             actual = self._titular_de_temperaturas = candidato[0]
-        nombre, grados = actual, por_nombre[actual]
-        resto = [par for par in lecturas if par[0] != actual]
+        nombre, grados = por_clave[actual]
+        resto = [(n, g) for clave, n, g in lecturas if clave != actual]
         self.temperaturas.poner(
             f"{nombre}  {render.temperature(grados, fahrenheit)}",
             _("home.temp.hottest"),
             " · ".join(f"{n} {render.temperature(g, fahrenheit)}" for n, g in resto),
             pie)
+        # The headline's: when another one takes it, the chart starts over.
+        self.temperaturas.grafica.set_series(Series(f"temp/{actual}", "°C"))
         self.temperaturas.grafica.push(grados)
         self.temperaturas.grafica.set_range(20.0, 100.0)
 
     def _red(self, snapshot: Snapshot) -> None:
-        from .network import main_interface
+        from .network import link_ceiling, main_interface
 
         principal, _todas = main_interface(snapshot.network)
         if principal is None:
@@ -524,6 +519,9 @@ class HomePage(ScrollPage):
                 render.link_summary(principal)) if p),
             cifras)
         if trafico.total_rate_bps is not None:
+            enlace = link_ceiling(principal)
+            self.red.grafica.set_series(Series(f"net:{principal.name}/total", "B/s",
+                                               2 * enlace if enlace else None))
             self.red.grafica.push(trafico.total_rate_bps)
 
     def _placa(self, snapshot: Snapshot) -> None:
