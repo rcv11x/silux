@@ -1405,6 +1405,11 @@ class Battery:
         return round(self.full_wh / self.design_wh * 100, 1)
 
     @property
+    def on_charger(self) -> bool:
+        """Full or held at its charge limit: it does not run on itself."""
+        return self.status in ("bat.status.full", "bat.status.held")
+
+    @property
     def power_settling(self) -> bool:
         """Charging or discharging at 0 W cannot be: after the charger goes
         in or out, the embedded controller takes a few seconds to update

@@ -74,6 +74,7 @@
   "bat.hm": "{h} h {m} min",
   "bat.left": "Autonomía",
   "bat.left.hint": "Al ritmo de consumo de ahora. En reposo dura mucho más que compilando, y las dos cifras son ciertas.",
+  "bat.left.oncharger": "con el cargador",
   "bat.limit.end": "Deja de cargar en",
   "bat.limit.hint": "Tu portátil permite no cargar del todo. Quedarse en el 60 u 80 % alarga bastante la vida de la celda si el equipo pasa el día enchufado.",
   "bat.limit.start": "Empieza a cargar por debajo de",

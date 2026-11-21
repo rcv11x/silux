@@ -161,6 +161,10 @@ class _SeccionBateria(QWidget):
         self.autonomia.set_label(_("bat.tofull") if cargando else _("bat.left"))
         if calculando:
             self.autonomia.update_value(_("bat.calculating"), word=True)
+        elif bateria.on_charger and not restante:
+            # Held or full on the charger: no runtime to count, which a dash
+            # would read as one that could not be read.
+            self.autonomia.update_value(_("bat.left.oncharger"), word=True)
         else:
             self.autonomia.update_value(_duracion(restante) if restante else d)
         # El ritmo solo cuando hay cuenta atrás. Con la batería llena y a cero

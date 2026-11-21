@@ -74,6 +74,7 @@
   "bat.hm": "{h} h {m} min",
   "bat.left": "Time left",
   "bat.left.hint": "At the current draw. Idle lasts far longer than compiling, and both figures are true.",
+  "bat.left.oncharger": "on the charger",
   "bat.limit.end": "Stops charging at",
   "bat.limit.hint": "Your laptop can avoid charging all the way. Stopping at 60 or 80 % noticeably extends cell life if the machine stays plugged in.",
   "bat.limit.start": "Starts charging below",

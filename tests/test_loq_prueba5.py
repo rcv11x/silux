@@ -42,6 +42,10 @@ class TestOnItsPages(unittest.TestCase):
         self.assertIn(_("gpu.apis.notseen"), textos)
         self.assertNotIn(_("gpu.apis.none"), textos)
 
+    def test_a_battery_held_on_the_charger_has_no_runtime_dash(self):
+        self.assertEqual(self.foto.batteries[0].status, "bat.status.held")
+        textos = self._texts("Batería")
+        self.assertIn(_("bat.left.oncharger"), textos)
 
     def test_its_only_battery_is_not_battery_2(self):
         aparatos = {s.device for s in self.foto.sensors if s.chip == "BAT1"}
