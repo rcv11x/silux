@@ -777,6 +777,7 @@
   "home.threads.many": "{n} hilos",
   "home.threads.one": "{n} hilo",
   "home.uptime": "encendido {tiempo}",
+  "kernel.belowminimum": "Tu kernel ({tuyo}) es anterior a Linux {minimo}, el mínimo que admite Silux: puede faltar algún dato sin que se diga por qué.",
   "kernel.tooold": "Tu kernel ({tuyo}) no publica esto; existe desde Linux {desde}.",
   "kernel.tooold.what": "{dato}: tu kernel ({tuyo}) no lo publica; existe desde Linux {desde}.",
   "list.and": "y",
