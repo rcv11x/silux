@@ -140,7 +140,7 @@
   "bench.dialog.name.tip": "Ponle un nombre: «con la pasta nueva», «verano»…",
   "bench.drift.cooler": "Esta prueba ha llegado a {grados} °C menos que la mediana de las {n} {pruebas} anteriores con la misma puntuación. Si acabas de limpiarlo o de cambiar la pasta, aquí se ve.",
   "bench.drift.hotter": "Esta prueba ha llegado a {grados} °C más que la mediana de las {n} {pruebas} anteriores con la misma puntuación. Suele ser polvo o pasta térmica seca —o simplemente que hace más calor en la habitación, algo que no mide ningún sensor del equipo.",
-  "bench.dur.comparable": "  · la medida de referencia",
+  "bench.dur.comparable": " · la medida de referencia",
   "bench.dur.each": "{n} min cada una",
   "bench.dur.endurance": "2 min · resistencia",
   "bench.dur.normal": "5 s · normal",

@@ -140,7 +140,7 @@
   "bench.dialog.name.tip": "Give it a name: «new thermal paste», «summer»…",
   "bench.drift.cooler": "This run peaked {grados} °C below the median of the {n} previous {pruebas} with the same score. If you have just cleaned it or repasted it, this is where it shows.",
   "bench.drift.hotter": "This run peaked {grados} °C above the median of the {n} previous {pruebas} with the same score. That is usually dust or dried-out thermal paste — or simply a warmer room, which no sensor in the machine measures.",
-  "bench.dur.comparable": "  · the reference measurement",
+  "bench.dur.comparable": " · the reference measurement",
   "bench.dur.each": "{n} min each",
   "bench.dur.endurance": "2 min · endurance",
   "bench.dur.normal": "5 s · normal",

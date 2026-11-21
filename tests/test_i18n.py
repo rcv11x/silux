@@ -269,6 +269,22 @@ class TestLoQueNoSeTraduce(unittest.TestCase):
                    for hijo in ast.walk(nodo))
 
 
+class TestTheSeparator(unittest.TestCase):
+    """A «·» has the same space on both sides: «sostenida  · la medida» was
+    a key starting with two spaces. A text that starts with the «·» is a
+    suffix, and whoever joins it puts the space before."""
+
+    def test_same_space_on_both_sides(self):
+        import re
+        carpeta = pathlib.Path(i18n.__file__).parent / "db" / "lang"
+        for idioma in ("es", "en"):
+            textos = json.loads((carpeta / f"{idioma}.json").read_text(encoding="utf-8"))
+            for clave, texto in textos.items():
+                for antes, despues in re.findall(r"( *)·( *)", texto.removeprefix("· ")):
+                    with self.subTest(idioma=idioma, clave=clave):
+                        self.assertEqual(len(antes), len(despues), repr(texto))
+
+
 class TestElIdiomaLlegaALaInterfaz(unittest.TestCase):
     """Traducir las cadenas no basta: hay que aplicarlas donde se montan."""
 

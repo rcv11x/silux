@@ -435,7 +435,7 @@ Falta cuánto tardan el firmware y el cargador: ni el gestor de arranque ni el f
 
 Prueba de rendimiento
 Mide el procesador con cinco cargas distintas, primero en un solo hilo y después en todos. Lo interesante no es solo la cifra: es que cada carga escala de una forma, y ahí se ve qué aprovecha los hilos y qué se queda esperando a la memoria. Mientras dura, el equipo irá al máximo.
-Cada medida: 15 s · sostenida  · la medida de referencia · la prueba entera, 2 min
+Cada medida: 15 s · sostenida · la medida de referencia · la prueba entera, 2 min
 
 ## Sensores
 
