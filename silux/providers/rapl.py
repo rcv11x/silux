@@ -11,6 +11,7 @@ deep idle, and that the part's sustained limit is 65 W.
 
 from __future__ import annotations
 
+import dataclasses
 import pathlib
 import time
 from typing import Optional
@@ -142,26 +143,31 @@ def effective_limits(msr: dict, mmio: dict) -> dict:
     return limits
 
 
-def package_limits(package: pathlib.Path) -> dict:
-    """The limits a package enforces, from both of its copies."""
-    mmio = _mmio_package()
-    return effective_limits(_limits(package), _limits(mmio) if mmio else {})
-
-
-def _limits(package: pathlib.Path) -> dict[str, Optional[float]]:
-    """PL1 and PL2, in watts, as the processor declares them, with each one's
-    time window in seconds: the fields of `Power`."""
-    limits: dict[str, Optional[float]] = {}
-    for constraint in sorted(package.glob("constraint_*_name")):
+def _constraints(zone: pathlib.Path) -> list[tuple[str, str, str]]:
+    """PL1's and PL2's files in a zone: each one's kind, power limit and time
+    window. PL4 (`peak_power`) has no window, and the kernel answers ENODATA
+    when asked for one: it isn't read here."""
+    found = []
+    for constraint in sorted(zone.glob("constraint_*_name")):
         name = (read_text(str(constraint)) or "").lower()
-        micro = read_int(str(constraint).replace("_name", "_power_limit_uw"))
-        if micro is None:
-            continue
-        window = read_int(str(constraint).replace("_name", "_time_window_us"))
         kind = "long" if "long" in name else "short" if "short" in name else None
         if kind:
-            limits[f"limit_{kind}_w"] = round(micro / 1e6, 1)
-            limits[f"window_{kind}_s"] = window / 1e6 if window else None
+            found.append((kind, str(constraint).replace("_name", "_power_limit_uw"),
+                          str(constraint).replace("_name", "_time_window_us")))
+    return found
+
+
+def _read_limits(constraints: list[tuple[str, str, str]]) -> dict[str, Optional[float]]:
+    """PL1 and PL2 in watts, with each one's time window in seconds: the
+    fields of `Power`."""
+    limits: dict[str, Optional[float]] = {}
+    for kind, power_file, window_file in constraints:
+        micro = read_int(power_file)
+        if micro is None:
+            continue
+        window = read_int(window_file)
+        limits[f"limit_{kind}_w"] = round(micro / 1e6, 1)
+        limits[f"window_{kind}_s"] = window / 1e6 if window else None
     return limits
 
 
@@ -170,24 +176,29 @@ class PowerLimits(Provider):
 
     They sit next to the energy counters but are not the same: the kernel
     keeps the counters for root, and the limits are readable by any user.
-    This runs before `RaplPower`, which writes the whole card when it has
-    power.
+    They are read every sample, since many laptops change them when the
+    charger is plugged in or out. `RaplPower` runs after this and adds the
+    watts to the same card.
     """
 
     name = "power-limits"
     provides = "cpu.power.limits"
 
     def __init__(self) -> None:
-        self._limit_values: Optional[dict] = None
+        # Which file is which doesn't change: found once, read every sample.
+        self._zones: Optional[tuple[list, list]] = None
 
     def available(self) -> bool:
         return bool(_packages())
 
     def collect(self, draft: Draft) -> None:
-        if self._limit_values is None:
-            self._limit_values = package_limits(_packages()[0])
-        if self._limit_values.get("limit_long_w") or self._limit_values.get("limit_short_w"):
-            draft.cpu_extra["power"] = Power(**self._limit_values)
+        if self._zones is None:
+            mmio = _mmio_package()
+            self._zones = (_constraints(_packages()[0]), _constraints(mmio) if mmio else [])
+        msr, mmio = self._zones
+        limits = effective_limits(_read_limits(msr), _read_limits(mmio))
+        if limits.get("limit_long_w") or limits.get("limit_short_w"):
+            draft.cpu_extra["power"] = Power(**limits)
 
 
 class RaplPower(Provider):
@@ -196,7 +207,6 @@ class RaplPower(Provider):
 
     def __init__(self, client: Optional[PrivilegedClient] = None) -> None:
         self._previous: dict[str, tuple[int, float]] = {}
-        self._limits: Optional[dict[str, Optional[float]]] = None
         # The same helper the disks and memory use. Since kernel 5.10
         # `energy_uj` is not readable without privileges, and where that
         # applies (AMD above all) the processor's power came out blank.
@@ -265,15 +275,12 @@ class RaplPower(Provider):
         if no_cores:
             draft.note("cpu.power.core_w", Need.HARDWARE,
                        _("prov.rapl.onecore"), _("prov.rapl.onecore.hint"))
-        if self._limits is None:
-            self._limits = package_limits(packages[0])
-
-        draft.cpu_extra["power"] = Power(
+        draft.cpu_extra["power"] = dataclasses.replace(
+            draft.cpu_extra.get("power") or Power(),
             package_w=round(totals["package_w"], 1),
             core_w=self._rounded(totals.get("core_w")),
             uncore_w=self._rounded(totals.get("uncore_w")),
             dram_w=self._rounded(totals.get("dram_w")),
-            **self._limits,
         )
 
     # -- internals ----------------------------------------------------------

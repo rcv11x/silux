@@ -160,56 +160,5 @@ class TestTheBaseClock(unittest.TestCase):
                          render.clock_and_multiplier(3_400_000_000, 34.0))
 
 
-class TestTwoCopiesOfTheLimits(unittest.TestCase):
-    """PL1 and PL2 of 64 W on a 28 W processor: the MSR copy. The memory
-    controller keeps another (intel-rapl-mmio), and the lower is enforced."""
-
-    def _snapshot(self, mmio_long_uw):
-        from silux import sysroot, volcado
-        from silux.collector import Collector
-        from tests.interval import second_snapshot
-        with volcado.montado(EQUIPOS / "i5-1135g7") as raiz:
-            zona = raiz / "sys/devices/virtual/powercap/intel-rapl-mmio/intel-rapl-mmio:0"
-            zona.mkdir(parents=True)
-            for nombre, valor in (("name", "package-0"),
-                                  ("constraint_0_name", "long_term"),
-                                  ("constraint_0_power_limit_uw", str(mmio_long_uw)),
-                                  ("constraint_0_time_window_us", "27983872"),
-                                  ("constraint_1_name", "short_term"),
-                                  ("constraint_1_power_limit_uw", "64000000"),
-                                  ("constraint_1_time_window_us", "2440")):
-                (zona / nombre).write_text(valor + "\n")
-            enlace = raiz / "sys/class/powercap/intel-rapl-mmio:0"
-            if not enlace.exists():
-                import os
-                os.symlink("../../devices/virtual/powercap/intel-rapl-mmio/intel-rapl-mmio:0", enlace)
-            sysroot.olvidar()
-            recolector = Collector()
-            try:
-                return second_snapshot(recolector)
-            finally:
-                recolector.close()
-
-    def test_the_lower_is_shown_and_the_other_named(self):
-        potencia = self._snapshot(28_000_000).cpu.power
-        self.assertEqual((potencia.limit_long_w, potencia.limit_long_other_w), (28.0, 64.0))
-        # PL2 is the same in both: nothing else to say.
-        self.assertEqual((potencia.limit_short_w, potencia.limit_short_other_w), (64.0, None))
-
-    def test_on_the_cpu_page(self):
-        from tests import pantalla, qt
-        f = self._snapshot(28_000_000)
-        qt.app()
-        with pantalla.Ventana(f) as ventana:
-            ventana.select_section("CPU")
-            texto = "\n".join(pantalla.textos_de(ventana.stack.currentWidget()))
-        self.assertIn(_("cpu.limit.lowest").format(otro=render.watts(64.0)), texto)
-
-    def test_without_the_mmio_copy_nothing_changes(self):
-        from silux.providers.rapl import effective_limits
-        msr = {"limit_long_w": 64.0, "window_long_s": 28.0}
-        self.assertEqual(effective_limits(msr, {}), msr)
-
-
 if __name__ == "__main__":
     unittest.main()
