@@ -161,6 +161,11 @@ en las lecciones de las notas. Valen para el código nuevo:
   la BIOS. Y «no lo tiene» no es «no lo sé»: lo primero se dice.
 - **Lo que Silux lanza lleva `system_env.system_environment()`**; solo su
   propio Python se queda con el entorno del AppImage.
+- **Lo que se usa del sistema va en `system_deps.py`**, con el paquete que lo
+  trae en Debian, Ubuntu, Fedora y Arch, preguntado a su gestor de paquetes;
+  si falta, Diagnóstico lo dice. `docs/dependencias.md` dice lo mismo
+  (`tests/test_system_deps.py`). Un programa se busca también en `/usr/sbin`:
+  el `PATH` de Debian no lo lleva.
 - **Lo que vigila `os` o `io` se prueba en Python 3.10** (el compat): su
   `pathlib` guarda sus propias copias desde que se importa.
 - **Lo imposible se descarta solo**: un voltaje que no cuadra tira el voltaje,
@@ -191,6 +196,7 @@ silux/
 ├─ volcado.py      volcar este equipo, anonimizado (tools/volcar_equipo.py)
 ├─ annex.py        el anexo del informe: ese volcado en texto, y de vuelta
 ├─ system_env.py   el entorno de lo que se lanza, sin lo que añade el AppImage
+├─ system_deps.py  lo que se usa del sistema, con su paquete en cada familia
 ├─ rawcpuid.py     CPUID desde Python, sin root (mmap + ctypes)
 ├─ gpuapi.py       OpenGL, Vulkan, OpenCL y VA-API, en otro proceso
 ├─ amdgpu.py, i915.py   ioctl DRM de cada fabricante
@@ -275,7 +281,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); el código nuevo, en inglés (ver «Código»). Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-1558 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+1572 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
