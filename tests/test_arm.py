@@ -49,7 +49,7 @@ class TestLectura(unittest.TestCase):
     def test_saca_el_midr_de_cada_una(self):
         con_fichero, con_arch = _con("unisoc-t606.txt")
         with con_fichero, con_arch:
-            midr = armcpu.midr_por_cpu()
+            midr = armcpu.midr_by_cpu()
         self.assertEqual(midr[0], (0x41, 0xd05))
         self.assertEqual(midr[7], (0x41, 0xd0b))
 
@@ -57,7 +57,7 @@ class TestLectura(unittest.TestCase):
         """Los índices son los del kernel, no la posición en el fichero."""
         con_fichero, con_arch = _con("unisoc-t606.txt")
         with con_fichero, con_arch:
-            midr = armcpu.midr_por_cpu()
+            midr = armcpu.midr_by_cpu()
         self.assertEqual(sorted(midr), [0, 1, 6, 7])
 
 

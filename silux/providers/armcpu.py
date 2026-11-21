@@ -1,14 +1,13 @@
-"""Identidad del procesador en ARM, donde no hay CPUID.
+"""The processor's identity on ARM, where there is no CPUID.
 
-Lo que en x86 responde una instrucción, aquí lo publica el kernel ya leído
-del registro MIDR_EL1: quién fabricó el núcleo, cuál es y en qué revisión va.
-Con eso sale el nombre («ARM Cortex-A55 r0p0»), que es lo que un aarch64
-tiene en lugar de la cadena de marca, porque el silicio de ARM no la lleva.
+What an instruction answers on x86, the kernel publishes here already read
+from MIDR_EL1: who made the core, which one it is and its revision. That
+gives the name («ARM Cortex-A55 r0p0»), which is what an aarch64 has instead
+of a brand string: ARM silicon carries none.
 
-Lo demás no tiene equivalente y no se finge: no hay familia ni modelo al modo
-de x86, ni cadena comercial grabada, ni socket. Sí hay banderas de juego de
-instrucciones, que el kernel lista en «Features», y suele haber un árbol de
-dispositivos que dice de qué aparato se trata.
+The rest has no equivalent and is not faked: no x86-style family or model,
+no brand string, no socket. There are instruction-set flags («Features»),
+and usually a device tree that says which device it is.
 """
 
 from __future__ import annotations
@@ -26,163 +25,158 @@ from .base import Draft, Provider, read_text
 CPUINFO = "/proc/cpuinfo"
 DEVICE_TREE = "/sys/firmware/devicetree/base"
 
-def es_arm() -> bool:
+def is_arm() -> bool:
     return rawcpuid.maquina().lower().startswith(("aarch64", "arm"))
 
 
 def _cpuinfo() -> list[dict[str, str]]:
-    """Los bloques de /proc/cpuinfo, uno por CPU lógica, en orden.
+    """The blocks of /proc/cpuinfo, one per logical CPU, in order.
 
-    En aarch64 cada bloque trae los cuatro campos del MIDR. En big.LITTLE no
-    son iguales entre sí, y esa es justamente la gracia: los bloques dicen qué
-    núcleo es cada CPU.
+    On aarch64 each block carries the four MIDR fields. On big.LITTLE they
+    differ, and that is the point: the blocks say which core each CPU is.
     """
     try:
-        crudo = pathlib.Path(sysroot.ruta(CPUINFO)).read_text(encoding="utf-8", errors="replace")
+        raw = pathlib.Path(sysroot.ruta(CPUINFO)).read_text(encoding="utf-8", errors="replace")
     except OSError:
         return []
-    bloques, actual = [], {}
-    for linea in crudo.splitlines():
-        if not linea.strip():
-            if actual:
-                bloques.append(actual)
-                actual = {}
+    blocks, current = [], {}
+    for line in raw.splitlines():
+        if not line.strip():
+            if current:
+                blocks.append(current)
+                current = {}
             continue
-        if ":" not in linea:
+        if ":" not in line:
             continue
-        clave, _sep, valor = linea.partition(":")
-        actual[clave.strip()] = valor.strip()
-    if actual:
-        bloques.append(actual)
-    return bloques
+        key, _sep, value = line.partition(":")
+        current[key.strip()] = value.strip()
+    if current:
+        blocks.append(current)
+    return blocks
 
 
-def _entero(bloque: dict[str, str], clave: str) -> Optional[int]:
-    crudo = bloque.get(clave)
-    if not crudo:
+def _integer(block: dict[str, str], key: str) -> Optional[int]:
+    raw = block.get(key)
+    if not raw:
         return None
     try:
-        return int(crudo, 16) if crudo.startswith("0x") else int(crudo)
+        return int(raw, 16) if raw.startswith("0x") else int(raw)
     except ValueError:
         return None
 
 
-def midr_por_cpu() -> dict[int, tuple[Optional[int], Optional[int]]]:
-    """Para cada CPU lógica, su (implementer, part).
+def midr_by_cpu() -> dict[int, tuple[Optional[int], Optional[int]]]:
+    """Each logical CPU's (implementer, part).
 
-    Es lo que permite separar los núcleos grandes de los pequeños sin
-    depender de los PMU de Intel, que en ARM no existen.
+    It tells big cores from little ones without Intel's PMUs, which ARM does
+    not have.
     """
-    salida: dict[int, tuple[Optional[int], Optional[int]]] = {}
-    for bloque in _cpuinfo():
-        indice = _entero(bloque, "processor")
-        if indice is None:
+    out: dict[int, tuple[Optional[int], Optional[int]]] = {}
+    for block in _cpuinfo():
+        index = _integer(block, "processor")
+        if index is None:
             continue
-        salida[indice] = (_entero(bloque, "CPU implementer"),
-                          _entero(bloque, "CPU part"))
-    return salida
+        out[index] = (_integer(block, "CPU implementer"),
+                          _integer(block, "CPU part"))
+    return out
 
 
-def _del_arbol(nombre: str) -> Optional[str]:
-    """Una cadena del árbol de dispositivos, sin el cero final que llevan."""
-    crudo = read_text(f"{DEVICE_TREE}/{nombre}")
-    if not crudo:
+def _from_tree(name: str) -> Optional[str]:
+    """A device tree string, without its trailing zero."""
+    raw = read_text(f"{DEVICE_TREE}/{name}")
+    if not raw:
         return None
-    # Son cadenas de C, y «compatible» encadena varias separadas por ceros.
-    limpio = crudo.split("\x00")[0].strip()
-    return limpio or None
+    # C strings, and «compatible» chains several separated by zeros.
+    clean = raw.split("\x00")[0].strip()
+    return clean or None
 
 
-def modelo_del_equipo() -> Optional[str]:
-    """De qué aparato se trata: «Raspberry Pi 4 Model B Rev 1.4».
+def machine_model() -> Optional[str]:
+    """Which device it is: «Raspberry Pi 4 Model B Rev 1.4».
 
-    En x86 esto lo da el DMI de la placa. Una máquina ARM no suele tener
-    SMBIOS, pero casi siempre trae árbol de dispositivos, que cumple el
-    mismo papel.
+    On x86 the board's DMI says it. An ARM machine seldom has SMBIOS, but
+    almost always a device tree, which plays the same part.
     """
-    return _del_arbol("model")
+    return _from_tree("model")
 
 
 class ArmIdentity(Provider):
-    """Rellena la identidad de cada tipo de núcleo desde /proc/cpuinfo."""
+    """Fills each core type's identity from /proc/cpuinfo."""
 
     name = "arm-cpuinfo"
     provides = "cpu.identity"
     static = True
 
     def available(self) -> bool:
-        return es_arm() and os.path.exists(sysroot.ruta(CPUINFO))
+        return is_arm() and os.path.exists(sysroot.ruta(CPUINFO))
 
     def unavailable_reason(self):
-        return None          # en x86 no falta nada: lo cubre CPUID
+        return None          # on x86 nothing is missing: CPUID covers it
 
     def collect(self, draft: Draft) -> None:
-        bloques = _cpuinfo()
-        if not bloques:
+        blocks = _cpuinfo()
+        if not blocks:
             return
         draft.capabilities.add("arm-cpuinfo")
-        # CPUID ya dejó dicho que aquí no existe. Existe la identidad, que es
-        # de lo que iba la nota, solo que se lee por otro sitio.
+        # CPUID already said it does not exist here. The identity does, read
+        # elsewhere.
         draft.resolve("cpu.identity")
 
-        por_cpu = midr_por_cpu()
+        by_cpu = midr_by_cpu()
         for key, entry in draft.types.items():
             cpus = entry.get("cpus") or [0]
-            implementer, part = por_cpu.get(cpus[0], (None, None))
-            bloque = next((b for b in bloques
-                           if _entero(b, "processor") == cpus[0]), bloques[0])
-            self._rellenar(entry, bloque, implementer, part)
+            implementer, part = by_cpu.get(cpus[0], (None, None))
+            block = next((b for b in blocks
+                           if _integer(b, "processor") == cpus[0]), blocks[0])
+            self._fill(entry, block, implementer, part)
 
-        # El árbol de dispositivos hace en ARM el papel que el DMI hace en
-        # x86: decir de qué aparato se trata. No es un dato del procesador,
-        # así que va donde iría el de la placa.
-        modelo = modelo_del_equipo()
-        if modelo and not draft.board.name:
+        # On ARM the device tree does what DMI does on x86: say which device
+        # this is. Not the processor's, so it goes where the board's would.
+        model = machine_model()
+        if model and not draft.board.name:
             draft.board = dataclasses.replace(
-                draft.board, name=modelo,
-                vendor=draft.board.vendor or _del_arbol("compatible"))
+                draft.board, name=model,
+                vendor=draft.board.vendor or _from_tree("compatible"))
 
-    # -- interno ------------------------------------------------------------
+    # -- internals ----------------------------------------------------------
 
     @staticmethod
-    def _rellenar(entry: dict, bloque: dict[str, str],
+    def _fill(entry: dict, block: dict[str, str],
                   implementer: Optional[int], part: Optional[int]) -> None:
-        # La base de datos generada ya trae la tabla de MIDR de libcpuid, con
-        # el nombre en clave de cada núcleo y su litografía.
-        identidad = (db.identify_arm(implementer, part)
+        # The generated database carries libcpuid's MIDR table, with each
+        # core's codename and process node.
+        identity = (db.identify_arm(implementer, part)
                      if None not in (implementer, part) else {})
-        fabricante = identidad.get("vendor")
-        nucleo = identidad.get("part_name")
-        variante = _entero(bloque, "CPU variant")
-        revision = _entero(bloque, "CPU revision")
+        vendor = identity.get("vendor")
+        core = identity.get("part_name")
+        variant = _integer(block, "CPU variant")
+        revision = _integer(block, "CPU revision")
 
-        # rXpY es como ARM nombra las revisiones de su silicio, y como las
-        # nombran sus propias erratas.
-        paso = (f"r{variante}p{revision}"
-                if variante is not None and revision is not None else None)
+        # rXpY is how ARM names its silicon revisions, and how its errata do.
+        stepping = (f"r{variant}p{revision}"
+                if variant is not None and revision is not None else None)
 
         entry.update(
-            vendor=fabricante,
+            vendor=vendor,
             vendor_id=f"0x{implementer:02x}" if implementer is not None else None,
-            brand=" ".join(p for p in (fabricante, nucleo, paso) if p) or None,
-            codename=identidad.get("codename"),
-            technology=identidad.get("technology"),
+            brand=" ".join(p for p in (vendor, core, stepping) if p) or None,
+            codename=identity.get("codename"),
+            technology=identity.get("technology"),
             architecture=rawcpuid.maquina(),
-            # El equivalente ARM de la firma de CPUID: los dos números que
-            # identifican el silicio, sin inventarles una familia y un modelo
-            # que aquí no significan lo mismo.
+            # ARM's equivalent of the CPUID signature: the two numbers that
+            # identify the silicon, without a family and model that mean
+            # something else here.
             signature=(implementer << 24 | part << 4) if None not in (implementer, part) else None,
-            features=_banderas(bloque),
+            features=_flags(block),
         )
-        if nucleo is None and part is not None:
+        if core is None and part is not None:
             entry["brand"] = " ".join(
-                p for p in (fabricante,
+                p for p in (vendor,
                             _("cpu.arm.core").format(id=f"0x{part:03x}"),
-                            paso) if p)
+                            stepping) if p)
 
 
-def _banderas(bloque: dict[str, str]) -> tuple[str, ...]:
-    crudo = bloque.get("Features") or bloque.get("flags") or ""
-    # Tal como las nombra el kernel. Ponerles nombre bonito es cosa de
-    # render, que es el único sitio donde un valor se convierte en texto.
-    return tuple(f for f in re.split(r"\s+", crudo) if f)
+def _flags(block: dict[str, str]) -> tuple[str, ...]:
+    raw = block.get("Features") or block.get("flags") or ""
+    # As the kernel names them. Pretty names are render's job.
+    return tuple(f for f in re.split(r"\s+", raw) if f)

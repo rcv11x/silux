@@ -1,9 +1,7 @@
-"""Uso de CPU a partir de /proc/stat.
+"""Processor usage from /proc/stat.
 
-El uso es una derivada: no hay ningún fichero que diga "35 %", solo
-contadores acumulados de jiffies. Hace falta guardar la lectura anterior y
-dividir la diferencia, así que este proveedor tiene estado, el único que lo
-tiene, junto con el de energía.
+Usage is a rate: no file says «35 %», only accumulated jiffies. The previous
+reading is kept and the difference divided.
 """
 
 from __future__ import annotations
@@ -47,11 +45,11 @@ class CpuUsage(Provider):
         current = self._read()
         if not current:
             return
-        ahora = time.monotonic()
-        if window_s(self._previous_at, ahora, draft.interval_s) is None:
+        now = time.monotonic()
+        if window_s(self._previous_at, now, draft.interval_s) is None:
             # Jiffies are time too, but a window this short gives two or three
             # of them: the usage would be 0, 50 or 100 %.
-            self._previous, self._previous_at = current, ahora
+            self._previous, self._previous_at = current, now
             return
 
         total = self._delta("cpu", current)
@@ -66,15 +64,15 @@ class CpuUsage(Provider):
         if load := self._load_average():
             draft.cpu_extra["load_average"] = load
 
-        self._previous, self._previous_at = current, ahora
+        self._previous, self._previous_at = current, now
 
     @staticmethod
     def _load_average() -> tuple[float, ...]:
-        """Carga media del sistema a 1, 5 y 15 minutos.
+        """The system's load average over 1, 5 and 15 minutes.
 
-        Complementa al porcentaje de uso: este dice cuánto se está usando la
-        CPU ahora, y la carga cuántos procesos había esperando de media. Con
-        12 hilos, una carga de 12 significa saturación completa.
+        It complements the usage: usage says how much the CPU works now, the
+        load how many processes were waiting on average. With 12 threads, a
+        load of 12 is full saturation.
         """
         try:
             with open(sysroot.ruta("/proc/loadavg"), encoding="ascii") as fh:
@@ -82,7 +80,7 @@ class CpuUsage(Provider):
         except (OSError, ValueError):
             return ()
 
-    # -- interno ------------------------------------------------------------
+    # -- internals ----------------------------------------------------------
 
     @staticmethod
     def _read() -> dict[str, tuple[int, int]]:

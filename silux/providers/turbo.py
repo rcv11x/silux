@@ -1,9 +1,8 @@
-"""Si el turbo está activado o no.
+"""Whether the turbo is on.
 
-Merece un proveedor propio porque explica una discrepancia que si no
-desconcierta: CPUID dice que el silicio llega a 4,3 GHz y el kernel dice que
-el techo son 2,9. Casi siempre es que el turbo está desactivado en la BIOS o
-por el driver, y decirlo vale más que enseñar los dos números y callarse.
+It explains a gap that otherwise puzzles: CPUID says the part reaches
+4.3 GHz and the kernel says the ceiling is 2.9. Almost always the turbo is
+off in the firmware or in the driver, and that is worth saying.
 """
 
 from __future__ import annotations
@@ -39,8 +38,8 @@ def _turbo_supported() -> Optional[bool]:
 class TurboState(Provider):
     name = "turbo"
     provides = "cpu.clocks.turbo_enabled"
-    # NO es estático: los perfiles de energía del escritorio activan y
-    # desactivan el turbo en caliente, y con él cambia el techo de frecuencia.
+    # Not static: desktop power profiles turn the turbo on and off at any
+    # time, and the frequency ceiling moves with it.
     static = False
 
     def __init__(self) -> None:
@@ -72,7 +71,5 @@ class TurboState(Provider):
             entry["clocks"] = dataclasses.replace(clocks, turbo_enabled=enabled,
                                                   turbo_supported=supported)
 
-        # No se deja nota. El estado del turbo se enseña donde corresponde
-        # (junto a las frecuencias, en la tarjeta de Relojes) y como cambia
-        # solo con el perfil de energía, una tarjeta de aviso al pie aparecía
-        # y desaparecía dando saltos por algo que ya estaba dicho arriba.
+        # No note: the turbo's state shows next to the clocks, and as it
+        # follows the power profile, a notice at the foot came and went.

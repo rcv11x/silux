@@ -48,11 +48,11 @@ def _por_nucleo_arm(cpus: tuple[int, ...]) -> dict[str, list[int]]:
     también en un ARM de un solo núcleo: en ese caso manda el reparto de
     siempre y aquí no se toca nada.
     """
-    from .armcpu import es_arm, midr_por_cpu
+    from .armcpu import is_arm, midr_by_cpu
 
-    if not es_arm():
+    if not is_arm():
         return {}
-    midr = midr_por_cpu()
+    midr = midr_by_cpu()
     grupos: dict[tuple, list[int]] = {}
     for cpu in cpus:
         identidad = midr.get(cpu)

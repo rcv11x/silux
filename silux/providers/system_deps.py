@@ -48,15 +48,15 @@ def _nvidia_driver_in_use() -> bool:
     return any(PCI_ADDRESS.match(name) for name in _entries("/sys/bus/pci/drivers/nvidia"))
 
 
-def _hint(paquetes: list[str], familia) -> str:
-    """«Viene en el paquete hwdata», «Vienen en los paquetes libva2 y
-    libva-drm2», or every family's where the distribution is none of them."""
-    if familia is None:
-        return _("deps.hint.any").format(paquete="; ".join(paquetes))
-    nombres = [n for texto in paquetes for n in texto.split()]
-    if len(nombres) == 1:
-        return _("deps.hint").format(paquete=nombres[0])
-    return _("deps.hint.many").format(paquetes=render.enumeration(nombres))
+def _hint(packages: list[str], family) -> str:
+    """«It comes in the package hwdata», «They come in the packages libva2
+    and libva-drm2», or every family's where the distribution is none of them."""
+    if family is None:
+        return _("deps.hint.any").format(paquete="; ".join(packages))
+    names = [n for text in packages for n in text.split()]
+    if len(names) == 1:
+        return _("deps.hint").format(paquete=names[0])
+    return _("deps.hint.many").format(paquetes=render.enumeration(names))
 
 
 def _missing(key: str) -> bool:
@@ -71,12 +71,12 @@ class SystemDependencies(Provider):
     static = True
 
     def collect(self, draft: Draft) -> None:
-        familia = system_deps.family(system_deps.read_os_release())
+        family = system_deps.family(system_deps.read_os_release())
 
         def note(path: str, key: str, message: str) -> None:
-            paquete = system_deps.package_text(system_deps.BY_KEY[key], familia,
+            package = system_deps.package_text(system_deps.BY_KEY[key], family,
                                                system_deps.nvidia_major())
-            draft.note(path, Need.PACKAGE, message, _hint([paquete], familia))
+            draft.note(path, Need.PACKAGE, message, _hint([package], family))
 
         if _has_pci() and _missing("pci.ids"):
             note("board.packages.pciids", "pci.ids", _("deps.pciids"))
@@ -89,7 +89,7 @@ class SystemDependencies(Provider):
                                    and n.key == "prov.drm.nvidia")]
             note("gpus.packages.nvml", "nvml", _("deps.nvml"))
         if _graphics_with_a_driver():
-            self._graphics(draft, familia)
+            self._graphics(draft, family)
         if not already_root():
             if _missing("pkexec"):
                 note("privileged.pkexec", "pkexec", _("deps.pkexec"))
@@ -104,19 +104,19 @@ class SystemDependencies(Provider):
             note("system.xdg-open", "xdg-open", _("deps.xdgopen"))
 
     @staticmethod
-    def _graphics(draft: Draft, familia) -> None:
+    def _graphics(draft: Draft, family) -> None:
         """One note for the graphics libraries that are missing, with their
         packages. With all of them missing it says what gpu-apis' «none» said."""
-        faltan = [key for key in system_deps.GRAPHICS_LIBRARIES if _missing(key)]
-        if not faltan:
+        missing = [key for key in system_deps.GRAPHICS_LIBRARIES if _missing(key)]
+        if not missing:
             return
-        if all(key in faltan for key in ("vulkan", "egl", "opengl", "opencl")):
+        if all(key in missing for key in ("vulkan", "egl", "opengl", "opencl")):
             draft.notes = [n for n in draft.notes if n.path != "gpus.apis"]
-        paquetes = []
-        for key in faltan:
-            texto = system_deps.package_text(system_deps.BY_KEY[key], familia)
-            if texto not in paquetes:
-                paquetes.append(texto)
-        lista = ", ".join(GRAPHICS_NAMES[key] for key in faltan)
+        packages = []
+        for key in missing:
+            text = system_deps.package_text(system_deps.BY_KEY[key], family)
+            if text not in packages:
+                packages.append(text)
+        listed = ", ".join(GRAPHICS_NAMES[key] for key in missing)
         draft.note("gpus.packages.apis", Need.PACKAGE,
-                   _("deps.graphics").format(cuales=lista), _hint(paquetes, familia))
+                   _("deps.graphics").format(cuales=listed), _hint(packages, family))

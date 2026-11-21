@@ -26,12 +26,12 @@ EQUIPOS = pathlib.Path(__file__).resolve().parent / "fixtures" / "equipos"
 
 def _residency(dump: str) -> list[IdleState]:
     with volcado.montado(EQUIPOS / dump):
-        estados = CpuIdle()._enumerar()
+        estados = CpuIdle()._enumerate()
     antes = {(cpu, nombre): 0 for cpu, lista in estados.items() for _b, nombre, _d in lista}
     # In one second, 10 % in C1 and 80 % in the deepest, every thread alike.
     despues = {(cpu, nombre): {"C1_ACPI": 100_000, "C2_ACPI": 800_000}.get(nombre, 0)
                for cpu, nombre in antes}
-    return CpuIdle.residencia(antes, despues, 1.0, estados)
+    return CpuIdle.residency(antes, despues, 1.0, estados)
 
 
 class TestTheBoardsAcpiStates(unittest.TestCase):

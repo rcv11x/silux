@@ -134,7 +134,7 @@ class CpuIdleStates(_Calculation):
         from silux.providers.cpuidle import CpuIdle
         (tmp / "state1").mkdir()
         self.provider = CpuIdle()
-        self.provider._estados = {0: [(str(tmp / "state1"), "C1", None)]}
+        self.provider._states = {0: [(str(tmp / "state1"), "C1", None)]}
 
     def read(self, instant, counter):
         self.clock.now = instant

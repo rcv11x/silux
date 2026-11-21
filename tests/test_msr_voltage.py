@@ -40,7 +40,7 @@ class TestInterpretarLosBits(unittest.TestCase):
         """VID 56 son 1,2 V, que es lo típico de un Ryzen trabajando."""
         valores = {msr_voltage.AMD_PSTATE_STATUS: 0,
                    msr_voltage.AMD_PSTATE_DEF: self._pstate(56)}
-        self.assertAlmostEqual(msr_voltage._voltaje_amd(valores), 1.2, places=3)
+        self.assertAlmostEqual(msr_voltage._amd_voltage(valores), 1.2, places=3)
 
     def test_sigue_al_pstate_que_este_activo(self):
         """El registro de estado dice cuál manda; leer siempre el 0 daría el
@@ -48,20 +48,20 @@ class TestInterpretarLosBits(unittest.TestCase):
         valores = {msr_voltage.AMD_PSTATE_STATUS: 2,
                    msr_voltage.AMD_PSTATE_DEF: self._pstate(56),
                    msr_voltage.AMD_PSTATE_DEF + 2: self._pstate(96)}
-        self.assertAlmostEqual(msr_voltage._voltaje_amd(valores), 0.95, places=3)
+        self.assertAlmostEqual(msr_voltage._amd_voltage(valores), 0.95, places=3)
 
     def test_un_pstate_sin_definir_no_da_voltaje(self):
         valores = {msr_voltage.AMD_PSTATE_STATUS: 1,
                    msr_voltage.AMD_PSTATE_DEF + 1: 0}
-        self.assertIsNone(msr_voltage._voltaje_amd(valores))
+        self.assertIsNone(msr_voltage._amd_voltage(valores))
 
     def test_intel_lo_trae_ya_medido(self):
         """1,2 V en coma fija de 16 bits son 9830 en los bits 47:32."""
         valores = {msr_voltage.INTEL_PERF_STATUS: 9830 << 32}
-        self.assertAlmostEqual(msr_voltage._voltaje_intel(valores), 1.2, places=2)
+        self.assertAlmostEqual(msr_voltage._intel_voltage(valores), 1.2, places=2)
 
     def test_un_registro_vacio_no_es_cero_voltios(self):
-        self.assertIsNone(msr_voltage._voltaje_intel({msr_voltage.INTEL_PERF_STATUS: 0}))
+        self.assertIsNone(msr_voltage._intel_voltage({msr_voltage.INTEL_PERF_STATUS: 0}))
 
 
 class TestElProveedor(unittest.TestCase):

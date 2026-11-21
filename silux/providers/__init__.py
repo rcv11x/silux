@@ -1,4 +1,4 @@
-"""Proveedores de datos. Cada uno lee una fuente y no sabe nada de los demás."""
+"""Data providers. Each reads one source and knows nothing of the others."""
 
 from .armcpu import ArmIdentity
 from .base import Draft, Provider

@@ -1,12 +1,11 @@
-"""Lectura del SPD y emparejado con los módulos de SMBIOS.
+"""The SPD of each memory module, matched to SMBIOS's modules.
 
-Son dos fuentes que describen los mismos módulos desde ángulos distintos:
-SMBIOS dice dónde está cada uno y a qué velocidad lo ha puesto la BIOS; el SPD
-dice de qué es capaz. Juntarlas es lo que permite decir «va a 2667 de los 3200
-que admite», que es la frase que la gente busca al abrir esta pestaña.
+Two views of the same modules: SMBIOS says where each one is and at what
+speed the firmware set it; the SPD says what it can do. Together they say
+«runs at 2667 of the 3200 it supports».
 
-No hace falta ningún permiso: en la mayoría de distribuciones el chip SPD queda
-legible por cualquiera en cuanto el kernel carga su driver.
+No permissions needed: on most distributions the SPD chip is readable by
+anyone once the kernel loads its driver.
 """
 
 from __future__ import annotations
@@ -30,17 +29,15 @@ class SpdModules(Provider):
     def unavailable_reason(self):
         if self.available():
             return None
-        # El motivo no es siempre el mismo y la solución tampoco: puede faltar
-        # el bus entero, puede estar reservado por el firmware o puede que solo
-        # falte cargar un módulo. Decir siempre «carga ee1004» era inútil en la
-        # mayoría de las placas AMD, donde ese módulo ya está y no hay bus.
-        causa = spd_module.unreadable_cause()
-        motivo, solucion = spd_module.diagnostico(causa)
-        # Sin bus, o con el bus reservado por el firmware, es la placa. Con
-        # el bus y sin driver, el SPD está y se lee cargándolo, que pide
-        # permisos: eso no se le puede achacar al equipo.
-        need = Need.DRIVER if causa == spd_module.CAUSE_NO_DRIVER else Need.HARDWARE
-        return ("spd", need, motivo, solucion)
+        # The bus may be missing, reserved by the firmware, or only lack its
+        # driver: each has its own fix, and «load ee1004» helps none of the
+        # first two.
+        cause = spd_module.unreadable_cause()
+        reason, fix = spd_module.diagnostico(cause)
+        # Without the bus, or with it reserved, it is the board's. With the bus
+        # and no driver, loading one reads it.
+        need = Need.DRIVER if cause == spd_module.CAUSE_NO_DRIVER else Need.HARDWARE
+        return ("spd", need, reason, fix)
 
     def collect(self, draft: Draft) -> None:
         readings = spd_module.read_all()
@@ -52,24 +49,21 @@ class SpdModules(Provider):
         self._merge(draft, readings)
 
         if any(not r.decoded for r in readings):
-            tipos = {r.dram_type for r in readings if not r.decoded and r.dram_type}
+            kinds = {r.dram_type for r in readings if not r.decoded and r.dram_type}
             draft.note(
                 "spd", Need.PLATFORM,
                 _("prov.spd.unsupported").format(
-                    tipos=" y ".join(sorted(tipos))
+                    tipos=" y ".join(sorted(kinds))
                           or _("prov.spd.thesemodules")),
                 _("prov.spd.unsupported.hint"),
             )
 
     @staticmethod
     def _merge(draft: Draft, readings: list) -> None:
-        """Pega cada lectura de SPD al módulo de SMBIOS que le corresponde.
+        """Attach each SPD reading to its SMBIOS module.
 
-        No hay ninguna correspondencia oficial entre la dirección del chip en
-        el bus y el nombre del zócalo que da la BIOS, así que primero se
-        intenta casar por referencia (que es fiable cuando ambas la publican)
-        y si no, por orden, que es lo que hacen todas las herramientas y
-        acierta salvo en placas muy raras.
+        Nothing maps a chip's bus address to the firmware's slot name: match
+        by part number where both have one, then in order, as every tool does.
         """
         populated = [i for i, m in enumerate(draft.modules) if m.populated]
         if not populated:
@@ -77,9 +71,8 @@ class SpdModules(Provider):
 
         pending = list(readings)
         matches: dict[int, object] = {}
-        # Every module by part number first: module by module, a ThinkPad's
-        # soldered memory took the slot's only reading by order before the
-        # slot's module could match it (F-M16).
+        # Every module by part number first: matched one by one, soldered
+        # memory could take the slot's only reading before the slot did.
         for index in populated:
             part = (draft.modules[index].part_number or "").strip()
             match = next((r for r in pending

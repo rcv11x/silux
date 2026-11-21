@@ -46,7 +46,7 @@ class TestLaResidencia(unittest.TestCase):
                  (1, "POLL"): 0, (1, "C1"): 2_000_000, (1, "C2"): 5_000_000}
         despues = {(0, "POLL"): 100, (0, "C1"): 1_100_000, (0, "C2"): 9_800_000,
                    (1, "POLL"): 0, (1, "C1"): 2_300_000, (1, "C2"): 5_500_000}
-        salida = CpuIdle.residencia(antes, despues, 1.0, estados)
+        salida = CpuIdle.residency(antes, despues, 1.0, estados)
         self.assertEqual(salida, [
             IdleState("POLL", "CPUIDLE CORE POLL IDLE", 0.0, 0.0, 0.0),
             IdleState("C1", "ACPI FFH MWAIT 0x0", 20.0, 10.0, 30.0),
@@ -80,7 +80,7 @@ class TestLaResidencia(unittest.TestCase):
 
     def test_un_contador_que_retrocede_no_da_porcentajes_negativos(self):
         estados = {0: [("", "C2", None)]}
-        salida = CpuIdle.residencia({(0, "C2"): 9_000_000}, {(0, "C2"): 100}, 1.0, estados)
+        salida = CpuIdle.residency({(0, "C2"): 9_000_000}, {(0, "C2"): 100}, 1.0, estados)
         self.assertEqual(salida, [])
 
     def test_sin_cpuidle_no_esta_disponible(self):
