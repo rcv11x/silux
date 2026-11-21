@@ -23,6 +23,10 @@ from silux.providers.privileged_memory import PrivilegedMemory
 from tests.test_equipos import foto, volcados
 from tests.test_nada_en_bruto import DOS_DE_CUATRO, SIN_TIPO
 
+# What depends on when it was collected, not on the language: the boot time
+# is now minus the dump's uptime, and two collections can straddle a second.
+CLOCK = ("monotonic", "boot_time")
+
 # The model's fields that are texts for the person: everything else is the
 # same whatever the interface's language.
 TEXTS = {
@@ -84,7 +88,8 @@ class TestEveryDumpInBothLanguages(unittest.TestCase):
         for equipo, fotos in self.fotos.items():
             es, en = (flatten(fotos[i]) for i in ("es", "en"))
             distintos = sorted(ruta for ruta in set(es) | set(en)
-                               if es.get(ruta) != en.get(ruta) and "monotonic" not in ruta)
+                               if es.get(ruta) != en.get(ruta)
+                               and not any(reloj in ruta for reloj in CLOCK))
             with self.subTest(equipo=equipo):
                 self.assertEqual(distintos, [],
                                  [(r, es.get(r), en.get(r)) for r in distintos[:5]])
