@@ -25,7 +25,7 @@ PCI_ADDRESS = re.compile(r"^[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\.[0-7]$")
 
 def _entries(path: str) -> list[str]:
     try:
-        return os.listdir(sysroot.ruta(path))
+        return os.listdir(sysroot.path(path))
     except OSError:
         return []
 
@@ -40,7 +40,7 @@ def _a_screen_is_connected() -> bool:
 
 
 def _graphics_with_a_driver() -> bool:
-    return any(os.path.exists(sysroot.ruta(f"/sys/class/drm/{name}/device/driver"))
+    return any(os.path.exists(sysroot.path(f"/sys/class/drm/{name}/device/driver"))
                for name in _entries("/sys/class/drm") if re.fullmatch(r"card\d+", name))
 
 
@@ -95,7 +95,7 @@ class SystemDependencies(Provider):
                 note("privileged.pkexec", "pkexec", _("deps.pkexec"))
             if PrivilegedClient.empaquetado() and _missing("python3"):
                 note("privileged.python3", "python3", _("deps.python3"))
-        if os.path.isdir(sysroot.ruta("/run/systemd/system")) and _missing("systemctl"):
+        if os.path.isdir(sysroot.path("/run/systemd/system")) and _missing("systemctl"):
             note("system.boot.systemctl", "systemctl", _("deps.systemctl"))
         if _missing("kmod"):
             note("system.kmod", "kmod", _("deps.kmod"))

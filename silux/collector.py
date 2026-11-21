@@ -132,7 +132,7 @@ SYSTEM_TREES = ("/sys/", "/proc/", "/dev/", "/etc/", "/run/")
 
 def is_the_systems(exc: OSError) -> bool:
     ruta = str(exc.filename) if exc.filename else ""
-    raiz = sysroot.raiz()
+    raiz = sysroot.root()
     if raiz is not None and ruta.startswith(str(raiz)):
         ruta = ruta[len(str(raiz)):]
     return ruta.startswith(SYSTEM_TREES)

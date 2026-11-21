@@ -39,7 +39,7 @@ def _snapshot(removable: bool, permissions: bool):
 
     with volcado.montado(EQUIPOS / "i5-10400") as raiz:
         _plug(raiz, removable)
-        sysroot.olvidar()
+        sysroot.forget()
         recolector = Collector()
         try:
             f = second_snapshot(recolector)

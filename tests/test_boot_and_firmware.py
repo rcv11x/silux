@@ -25,7 +25,7 @@ except ImportError:                                    # pragma: no cover
 class TestWithoutSystemd(unittest.TestCase):
     """A machine whose PID 1 is not systemd, as the kernel shows it.
 
-    The first OpenRC test replaced `sysroot.ruta` with one that always gave
+    The first OpenRC test replaced `sysroot.path` with one that always gave
     a Path; the real one gives text for text, `.is_dir()` failed and a
     tester's Gentoo lost its distribution, kernel and desktop («?»). Here
     the machine is a dump mounted for real, without a systemd: no readable

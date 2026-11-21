@@ -63,7 +63,7 @@ def _unquote(value: str) -> str:
 def _os_release() -> dict[str, str]:
     values: dict[str, str] = {}
     try:
-        with open(sysroot.ruta(OS_RELEASE), encoding="utf-8") as handle:
+        with open(sysroot.path(OS_RELEASE), encoding="utf-8") as handle:
             for line in handle:
                 line = line.strip()
                 if line.startswith("#"):
@@ -84,8 +84,8 @@ class SystemIdentity(Provider):
 
     def collect(self, draft: Draft) -> None:
         release = _os_release()
-        uname = sysroot.a_traves("plataforma", "uname", lambda: platform.uname()._asdict())
-        environment = sysroot.a_traves("plataforma", "entorno", lambda: {
+        uname = sysroot.recorded("plataforma", "uname", lambda: platform.uname()._asdict())
+        environment = sysroot.recorded("plataforma", "entorno", lambda: {
             key: os.environ.get(key)
             for key in ("XDG_CURRENT_DESKTOP", "XDG_SESSION_TYPE", "SHELL")})
 
@@ -142,13 +142,13 @@ class SystemIdentity(Provider):
     @staticmethod
     def _init_system() -> Optional[str]:
         try:
-            name = os.path.basename(os.readlink(sysroot.ruta("/proc/1/exe")))
+            name = os.path.basename(os.readlink(sysroot.path("/proc/1/exe")))
         except OSError:
             name = read_text("/proc/1/comm")
         # OpenRC runs under sysvinit's `init`, which would read «Init: init».
         # Its runlevels are in /etc, which sysroot translates and a dump
         # carries (/run is neither: a test would read this machine).
-        if name == "init" and os.path.isdir(sysroot.ruta("/etc/runlevels")):
+        if name == "init" and os.path.isdir(sysroot.path("/etc/runlevels")):
             return "openrc"
         if name == "openrc-init":
             return "openrc"
@@ -178,7 +178,7 @@ def _efi_variable(name: str) -> Optional[str]:
     """A boot loader variable's text: four bytes of attributes, then
     UTF-16."""
     try:
-        with open(sysroot.ruta(f"{EFIVARS}/{name}-{LOADER_GUID}"), "rb") as handle:
+        with open(sysroot.path(f"{EFIVARS}/{name}-{LOADER_GUID}"), "rb") as handle:
             raw = handle.read(4096)
     except OSError:
         return None
@@ -231,8 +231,8 @@ class SystemSecurity(Provider):
     @staticmethod
     def _vulnerabilities() -> tuple[Vulnerability, ...]:
         out = []
-        for path in sorted(glob.glob(os.path.join(sysroot.ruta(VULNERABILITIES), "*"))):
-            status = read_text(sysroot.fuera(path))
+        for path in sorted(glob.glob(os.path.join(sysroot.path(VULNERABILITIES), "*"))):
+            status = read_text(sysroot.unrooted(path))
             if status:
                 out.append(Vulnerability(name=os.path.basename(path), status=status,
                                             state=state_of(status)))
@@ -257,7 +257,7 @@ class SystemSecurity(Provider):
         if loader is None:
             to_loader = None
 
-        systemd = sysroot.a_traves("systemd", "arranque", _systemd_times) or {}
+        systemd = sysroot.recorded("systemd", "arranque", _systemd_times) or {}
         initrd = systemd.get("InitRDTimestampMonotonic", 0)
         userspace = systemd.get("UserspaceTimestampMonotonic", 0)
         finish = systemd.get("FinishTimestampMonotonic", 0)
@@ -313,7 +313,7 @@ class SystemState(Provider):
     provides = "system.memory"
 
     def available(self) -> bool:
-        return os.path.exists(sysroot.ruta(MEMINFO))
+        return os.path.exists(sysroot.path(MEMINFO))
 
     def unavailable_reason(self):
         if self.available():
@@ -351,33 +351,33 @@ class SystemState(Provider):
         if not mask or not mask & MODULE_TAINT_BITS:
             return ()
         try:
-            loaded = len(os.listdir(sysroot.ruta("/sys/module")))
+            loaded = len(os.listdir(sysroot.path("/sys/module")))
         except OSError:
             return ()
         key = (mask, loaded)
         if getattr(self, "_taint_key", None) != key:
             found = []
-            for path in sorted(glob.glob(os.path.join(sysroot.ruta("/sys/module"), "*", "taint"))):
-                if letters := read_text(sysroot.fuera(path)):
+            for path in sorted(glob.glob(os.path.join(sysroot.path("/sys/module"), "*", "taint"))):
+                if letters := read_text(sysroot.unrooted(path)):
                     found.append((os.path.basename(os.path.dirname(path)), letters))
             self._taint_key, self._taint_modules = key, tuple(found)
         return self._taint_modules
 
     @staticmethod
     def _processes() -> int:
-        """How many processes there are. Through `a_traves`: a dump does not
+        """How many processes there are. Through `recorded`: a dump does not
         copy all of `/proc`, and counting its folders gave «Processes: 1»."""
-        count = sysroot.a_traves(
+        count = sysroot.recorded(
             "plataforma", "procesos", lambda: len(glob.glob("/proc/[0-9]*")))
         if count is None:                      # a dump from before it was recorded
-            count = len(glob.glob(sysroot.ruta("/proc/[0-9]*")))
+            count = len(glob.glob(sysroot.path("/proc/[0-9]*")))
         return int(count)
 
     @staticmethod
     def _memory() -> Memory:
         values: dict[str, int] = {}
         try:
-            with open(sysroot.ruta(MEMINFO), encoding="ascii") as handle:
+            with open(sysroot.path(MEMINFO), encoding="ascii") as handle:
                 for line in handle:
                     key, _sep, rest = line.partition(":")
                     field = _MEM_FIELDS.get(key)

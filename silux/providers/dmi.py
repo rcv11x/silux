@@ -115,7 +115,7 @@ class DmiBoard(Provider):
     static = True
 
     def available(self) -> bool:
-        return os.path.isdir(sysroot.ruta(SYS_DMI))
+        return os.path.isdir(sysroot.path(SYS_DMI))
 
     def unavailable_reason(self):
         if self.available():
@@ -168,23 +168,23 @@ class DmiBoard(Provider):
 
     @staticmethod
     def _firmware() -> str:
-        if not sysroot.ruta(EFI).is_dir():
+        if not sysroot.path(EFI).is_dir():
             return "BIOS heredada"
-        bits = read_text(str(sysroot.ruta(EFI) / "fw_platform_size"))
+        bits = read_text(str(sysroot.path(EFI) / "fw_platform_size"))
         return f"UEFI ({bits} bits)" if bits else "UEFI"
 
     @staticmethod
     def _secure_boot() -> Optional[bool]:
         """The EFI variable holds 4 bytes of attributes, then the value."""
         try:
-            data = sysroot.ruta(SECURE_BOOT).read_bytes()
+            data = sysroot.path(SECURE_BOOT).read_bytes()
         except OSError:
             return None
         return bool(data[4]) if len(data) >= 5 else None
 
     @staticmethod
     def _tpm() -> Optional[str]:
-        for entry in sorted(pathlib.Path(sysroot.ruta("/sys/class/tpm")).glob("tpm*")):
+        for entry in sorted(pathlib.Path(sysroot.path("/sys/class/tpm")).glob("tpm*")):
             major = read_text(str(entry / "tpm_version_major"))
             if major:
                 return f"TPM {major}.0"
@@ -199,11 +199,11 @@ class DmiBoard(Provider):
     def _chipset(board: Optional[str] = None) -> tuple[Optional[str], Optional[str], Optional[str]]:
         """The LPC/eSPI bridge on bus 0 identifies the chipset; the host
         bridge, the memory controller inside the CPU."""
-        if not sysroot.ruta(PCI_DEVICES).is_dir():
+        if not sysroot.path(PCI_DEVICES).is_dir():
             return None, None, None
 
         candidates: dict[int, tuple[int, int]] = {}
-        for entry in sorted(sysroot.ruta(PCI_DEVICES).iterdir()):
+        for entry in sorted(sysroot.path(PCI_DEVICES).iterdir()):
             if not entry.name.startswith("0000:00:"):
                 continue                      # the chipset is always on bus 0
             try:

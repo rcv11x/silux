@@ -93,7 +93,7 @@ _cpu_fijada: Optional[int] = None
 
 def maquina() -> str:
     """`platform.machine()`, o la del equipo volcado."""
-    return sysroot.a_traves("plataforma", "machine", platform.machine) or ""
+    return sysroot.recorded("plataforma", "machine", platform.machine) or ""
 
 
 def is_supported() -> bool:
@@ -108,7 +108,7 @@ def pinned(cpu_index: int) -> Iterator[None]:
     existir en este, y lo que se pregunta ya está grabado CPU a CPU.
     """
     global _cpu_fijada
-    if sysroot.activo():
+    if sysroot.active():
         anterior, _cpu_fijada = _cpu_fijada, cpu_index
         try:
             yield
@@ -155,11 +155,11 @@ class CpuidReader:
     def __call__(self, leaf: int, subleaf: int = 0) -> tuple[int, int, int, int]:
         """Devuelve (eax, ebx, ecx, edx) para una hoja y subhoja.
 
-        Pasa por `sysroot.a_traves`: al volcar un equipo se graba, y al leer
+        Pasa por `sysroot.recorded`: al volcar un equipo se graba, y al leer
         uno volcado se repite sin ejecutar la instrucción.
         """
         cpu = "*" if _cpu_fijada is None else _cpu_fijada
-        return sysroot.a_traves("cpuid", f"{cpu}:{leaf}:{subleaf}",
+        return sysroot.recorded("cpuid", f"{cpu}:{leaf}:{subleaf}",
                                 self._preguntar, leaf, subleaf) or (0, 0, 0, 0)
 
     def _preguntar(self, leaf: int, subleaf: int) -> tuple[int, int, int, int]:

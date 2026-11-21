@@ -29,7 +29,7 @@ class CpuUsage(Provider):
 
     def available(self) -> bool:
         try:
-            with open(sysroot.ruta("/proc/stat")):
+            with open(sysroot.path("/proc/stat")):
                 return True
         except OSError:
             return False
@@ -75,7 +75,7 @@ class CpuUsage(Provider):
         load of 12 is full saturation.
         """
         try:
-            with open(sysroot.ruta("/proc/loadavg"), encoding="ascii") as fh:
+            with open(sysroot.path("/proc/loadavg"), encoding="ascii") as fh:
                 return tuple(float(v) for v in fh.read().split()[:3])
         except (OSError, ValueError):
             return ()
@@ -86,7 +86,7 @@ class CpuUsage(Provider):
     def _read() -> dict[str, tuple[int, int]]:
         out: dict[str, tuple[int, int]] = {}
         try:
-            with open(sysroot.ruta("/proc/stat"), encoding="ascii") as fh:
+            with open(sysroot.path("/proc/stat"), encoding="ascii") as fh:
                 for line in fh:
                     if not line.startswith("cpu"):
                         break

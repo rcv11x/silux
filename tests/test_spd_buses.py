@@ -122,7 +122,7 @@ class TestAChipWaitingForItsDriver(unittest.TestCase):
 
         with volcado.montado(EQUIPOS / "i5-10400") as raiz:
             _without_driver(raiz)
-            sysroot.olvidar()
+            sysroot.forget()
             recolector = Collector()
             try:
                 f = second_snapshot(recolector)

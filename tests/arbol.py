@@ -29,7 +29,7 @@ def arbol(archivos: dict, carpetas=()):
             (raiz / camino.lstrip("/")).mkdir(parents=True, exist_ok=True)
         anterior = os.environ.get(sysroot.VARIABLE)
         os.environ[sysroot.VARIABLE] = str(raiz)
-        sysroot.olvidar()
+        sysroot.forget()
         try:
             yield raiz
         finally:
@@ -37,4 +37,4 @@ def arbol(archivos: dict, carpetas=()):
                 os.environ.pop(sysroot.VARIABLE, None)
             else:
                 os.environ[sysroot.VARIABLE] = anterior
-            sysroot.olvidar()
+            sysroot.forget()

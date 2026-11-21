@@ -36,7 +36,7 @@ def _cpuinfo() -> list[dict[str, str]]:
     differ, and that is the point: the blocks say which core each CPU is.
     """
     try:
-        raw = pathlib.Path(sysroot.ruta(CPUINFO)).read_text(encoding="utf-8", errors="replace")
+        raw = pathlib.Path(sysroot.path(CPUINFO)).read_text(encoding="utf-8", errors="replace")
     except OSError:
         return []
     blocks, current = [], {}
@@ -108,7 +108,7 @@ class ArmIdentity(Provider):
     static = True
 
     def available(self) -> bool:
-        return is_arm() and os.path.exists(sysroot.ruta(CPUINFO))
+        return is_arm() and os.path.exists(sysroot.path(CPUINFO))
 
     def unavailable_reason(self):
         return None          # on x86 nothing is missing: CPUID covers it

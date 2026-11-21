@@ -81,11 +81,11 @@ class Disks(Provider):
         self.requested = False
 
     def available(self) -> bool:
-        return sysroot.ruta(SYS_BLOCK).is_dir()
+        return sysroot.path(SYS_BLOCK).is_dir()
 
     def collect(self, draft: Draft) -> None:
         self._interval_s = draft.interval_s
-        names = [p.name for p in sorted(sysroot.ruta(SYS_BLOCK).iterdir())
+        names = [p.name for p in sorted(sysroot.path(SYS_BLOCK).iterdir())
                    if not NOT_DISKS.match(p.name)]
         if not names:
             return
@@ -134,7 +134,7 @@ class Disks(Provider):
                     data = None
                 health = (smart_module.parse(
                     data, family, vendor=disk.vendor,
-                    model=_ata_model(sysroot.ruta(SYS_BLOCK) / name) or disk.model,
+                    model=_ata_model(sysroot.path(SYS_BLOCK) / name) or disk.model,
                     firmware=disk.firmware)
                          if data is not None else None)
                 health = _fits_what_is_used(health, disk)
@@ -179,7 +179,7 @@ class Disks(Provider):
     # -- internals ----------------------------------------------------------
 
     def _read(self, name: str, mounts: dict[str, tuple[str, str]]) -> Disk:
-        base = sysroot.ruta(SYS_BLOCK) / name
+        base = sysroot.path(SYS_BLOCK) / name
         sectors = read_int(str(base / "size")) or 0
         rotational = read_int(str(base / "queue" / "rotational"))
         transport = _transport(base, name)
@@ -417,7 +417,7 @@ def _link(base: pathlib.Path) -> Optional[PcieLink]:
     slot = _pci_slot(base)
     if not slot:
         return None
-    node = pathlib.Path(sysroot.ruta("/sys/bus/pci/devices")) / slot
+    node = pathlib.Path(sysroot.path("/sys/bus/pci/devices")) / slot
     if not node.is_dir():
         return None
 
@@ -496,7 +496,7 @@ def _usage(mountpoint: str) -> tuple[Optional[int], Optional[int]]:
         return (st.f_blocks - st.f_bfree) * st.f_frsize, st.f_bavail * st.f_frsize
 
     # With a dump, what was recorded: the mount point is another machine's.
-    return sysroot.a_traves("statvfs", mountpoint, measure) or (None, None)
+    return sysroot.recorded("statvfs", mountpoint, measure) or (None, None)
 
 
 def _supports_discard(base: pathlib.Path) -> Optional[bool]:
@@ -521,14 +521,14 @@ FSTRIM_ENABLED = "/etc/systemd/system/timers.target.wants/fstrim.timer"
 
 
 def _fstrim_enabled() -> bool:
-    return os.path.lexists(sysroot.ruta(FSTRIM_ENABLED))
+    return os.path.lexists(sysroot.path(FSTRIM_ENABLED))
 
 
 def _mounts() -> dict[str, tuple[str, str]]:
     """Which partition is mounted where, and with what file system."""
     found: dict[str, tuple[str, str]] = {}
     try:
-        with open(sysroot.ruta(PROC_MOUNTS), encoding="utf-8") as handle:
+        with open(sysroot.path(PROC_MOUNTS), encoding="utf-8") as handle:
             for line in handle:
                 fields = line.split()
                 if len(fields) < 3:
@@ -538,7 +538,7 @@ def _mounts() -> dict[str, tuple[str, str]]:
                     continue
                 # A /dev/mapper/… ends in dm-N: recorded, as /dev is not dumped.
                 name = os.path.basename(
-                    sysroot.a_traves("realpath", source, os.path.realpath, source) or source)
+                    sysroot.recorded("realpath", source, os.path.realpath, source) or source)
                 # The first mount wins: with btrfs subvolumes the same partition
                 # shows many times, and the root is the one that matters.
                 found.setdefault(name, (filesystem, _unescape(mountpoint)))

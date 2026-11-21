@@ -635,7 +635,7 @@ def memory_buses() -> list[str]:
     """
     found = []
     try:
-        entries = sorted(sysroot.ruta(SYS_I2C).iterdir())
+        entries = sorted(sysroot.path(SYS_I2C).iterdir())
     except OSError:
         return found
     for bus in entries:
@@ -643,7 +643,7 @@ def memory_buses() -> list[str]:
             continue
         try:
             parent = pathlib.PurePosixPath(os.readlink(bus)).parent.name
-            pci_class = int((sysroot.ruta(SYS_PCI) / parent / "class").read_text().strip(), 16)
+            pci_class = int((sysroot.path(SYS_PCI) / parent / "class").read_text().strip(), 16)
         except (OSError, ValueError):
             continue
         if PCI_ADDRESS.match(parent) and pci_class >> 8 == CLASE_SMBUS >> 8:
@@ -655,7 +655,7 @@ def spd_chips(buses: Optional[list[str]] = None) -> list[pathlib.Path]:
     """The devices the kernel registered at 0x50-0x57 of the memory buses."""
     buses = memory_buses() if buses is None else buses
     try:
-        entries = sorted(sysroot.ruta(SYS_I2C).iterdir())
+        entries = sorted(sysroot.path(SYS_I2C).iterdir())
     except OSError:
         return []
     return [entry for entry in entries
@@ -719,7 +719,7 @@ def diagnostico(causa: Optional[str] = None) -> tuple[str, str]:
 def _hay_controlador_smbus() -> bool:
     """Si la placa trae el bus por el que viven los chips SPD."""
     try:
-        for dispositivo in sysroot.ruta(SYS_PCI).iterdir():
+        for dispositivo in sysroot.path(SYS_PCI).iterdir():
             crudo = (dispositivo / "class").read_text().strip()
             if int(crudo, 16) == CLASE_SMBUS:
                 return True
@@ -729,9 +729,9 @@ def _hay_controlador_smbus() -> bool:
 
 
 def _eeproms() -> Iterator[tuple[pathlib.Path, int]]:
-    if not sysroot.ruta(I2C_DEVICES).is_dir():
+    if not sysroot.path(I2C_DEVICES).is_dir():
         return
-    for entry in sorted(sysroot.ruta(I2C_DEVICES).iterdir()):
+    for entry in sorted(sysroot.path(I2C_DEVICES).iterdir()):
         match = SPD_ADDRESS.match(entry.name)
         if match and (entry / "eeprom").exists():
             yield entry, int(match.group(1), 16) - 0x50

@@ -1,6 +1,6 @@
 """La fase 0 de la revisión de gráficas: lo que los volcados tienen que traer.
 
-- NVML se graba por `sysroot.a_traves`, como los ioctl, y sin el número de
+- NVML se graba por `sysroot.recorded`, como los ioctl, y sin el número de
   serie; un volcado con NVIDIA se reproduce sin la NVML de quien lo lee.
 - De cada gráfica despierta se copian los archivos de `xe` del nodo PCI
   (`tile*/gt*/freq0`, `gtidle`; Documentation/ABI/testing/sysfs-driver-xe),
@@ -36,14 +36,14 @@ class TestNvmlSeGraba(unittest.TestCase):
         return p
 
     def test_se_graba_sin_numero_de_serie_y_se_reproduce(self):
-        sysroot.empezar_a_grabar()
+        sysroot.start_recording()
         try:
             vivo = self.proveedor(mock.Mock(open=lambda: True, devices=lambda: [RTX]))
             with mock.patch.object(nvidia, "sleeping_nvidias", return_value=[]):
                 self.assertTrue(vivo.available())
             vivo.collect(Draft())
         finally:
-            grabado = sysroot.lo_grabado()
+            grabado = sysroot.recorded_data()
         self.assertTrue(grabado["nvml"]["abierta"])
         self.assertIsNone(grabado["nvml"]["tarjetas"][0]["serial"])
 

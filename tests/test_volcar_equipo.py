@@ -338,7 +338,7 @@ class TestWhatPathlibLists(unittest.TestCase):
         from silux import sysroot
         with arbol({"/sys/bus/i2c/devices/0-0050/name": "ee1004\n"}):
             with volcar._apuntando() as (_leidos, listados, mirados):
-                carpeta = pathlib.Path(sysroot.ruta("/sys/bus/i2c/devices"))
+                carpeta = pathlib.Path(sysroot.path("/sys/bus/i2c/devices"))
                 [entrada.name for entrada in carpeta.iterdir()]
                 (carpeta / "0-0050" / "eeprom").exists()
         self.assertIn("/sys/bus/i2c/devices", listados)
@@ -352,10 +352,10 @@ class TestWhatPathlibLists(unittest.TestCase):
             dormidas = volcar._Dormidas()
             with volcar._apuntando() as (leidos, _listados, _mirados), \
                     volcar._sin_despertar(dormidas):
-                enlace = pathlib.Path(sysroot.ruta(f"{GRAFICA}/current_link_speed"))
+                enlace = pathlib.Path(sysroot.path(f"{GRAFICA}/current_link_speed"))
                 with self.assertRaises(FileNotFoundError):
                     enlace.read_text()
-                self.assertEqual(pathlib.Path(sysroot.ruta(f"{GRAFICA}/vendor")).read_text(),
+                self.assertEqual(pathlib.Path(sysroot.path(f"{GRAFICA}/vendor")).read_text(),
                                  "0x1002\n")
         self.assertIn(f"{GRAFICA}/vendor", leidos)
 
@@ -519,7 +519,7 @@ class TestUnaGraficaDormidaSeQuedaDormida(unittest.TestCase):
         with _montado(estado, power_state):
             dormidas = volcar._Dormidas()
             leidos = volcar._recoger(dormidas)[0]
-            return dormidas, {sysroot.fuera(os.path.realpath(sysroot.ruta(c))) for c in leidos}
+            return dormidas, {sysroot.unrooted(os.path.realpath(sysroot.path(c))) for c in leidos}
 
     def test_el_collector_de_verdad_no_la_toca(self):
         _dormidas, leidos = self._leidos_de_verdad()

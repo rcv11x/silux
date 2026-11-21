@@ -65,7 +65,7 @@ class TestOnAMachineThatBlocksTheSwitch(unittest.TestCase):
 
         with volcado.montado(EQUIPOS / "i5-12450h") as raiz:
             (raiz / CHIP / "eeprom").write_bytes(construir_ddr5())
-            sysroot.olvidar()
+            sysroot.forget()
             with mock.patch("pathlib.Path.read_bytes", blocked):
                 recolector = Collector()
                 try:

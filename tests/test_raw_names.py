@@ -90,7 +90,7 @@ class TestTheOrderOfAChipsChannels(unittest.TestCase):
                                 (10, "Core 8"), (14, "Core 12"), (22, "Core 20")):
                 (chip / f"temp{n}_input").write_text("50000\n")
                 (chip / f"temp{n}_label").write_text(etiqueta + "\n")
-            with mock.patch.object(hwmon.sysroot, "ruta", lambda p: pathlib.Path(raiz)
+            with mock.patch.object(hwmon.sysroot, "path", lambda p: pathlib.Path(raiz)
                                    if str(p).endswith("hwmon") else pathlib.Path(p)):
                 sensores = list(hwmon.HwmonSensors()._read_hwmon("CPU", "Placa", {}))
         etiquetas = [s.label for s in sorted(sensores, key=lambda s: s.order)]

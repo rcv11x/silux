@@ -167,7 +167,7 @@ class PrivilegedMemory(Provider):
 
     def _read_directly(self, draft: Draft) -> None:
         try:
-            with open(sysroot.ruta("/sys/firmware/dmi/tables/DMI"), "rb") as handle:
+            with open(sysroot.path("/sys/firmware/dmi/tables/DMI"), "rb") as handle:
                 self._parse(draft, handle.read())
         except OSError as exc:
             self._error = str(exc)

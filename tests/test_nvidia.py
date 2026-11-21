@@ -431,7 +431,7 @@ class TestTheDesktopRtx4060WithItsSamples(unittest.TestCase):
                 power_w=53.0, power_error=None, power_cap_default_w=115.0,
                 power_cap_min_w=90.0, power_cap_max_w=115.0)
             ruta.write_text(json.dumps(grabado))
-            sysroot.olvidar()
+            sysroot.forget()
             recolector = Collector()
             try:
                 f = second_snapshot(recolector)

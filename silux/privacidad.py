@@ -543,7 +543,7 @@ def _series_de_edid(edid: bytes) -> list[str]:
 def de_esta_maquina() -> dict[str, str]:
     """Lo que identifica al equipo donde se está trabajando ahora mismo."""
     datos = {}
-    if not equipo_de_todos(socket.gethostname(), palabras_del_equipo(str(sysroot.raiz() or "/"))):
+    if not equipo_de_todos(socket.gethostname(), palabras_del_equipo(str(sysroot.root() or "/"))):
         datos[socket.gethostname()] = "el nombre de este equipo"
     for ruta in pathlib.Path("/sys/class/net").glob("*/address"):
         mac = _leer(ruta)

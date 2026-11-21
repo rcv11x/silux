@@ -170,7 +170,7 @@ def _also_in_power_supply(chip: str) -> bool:
     # hwmon writes underscores where power_supply has dashes:
     # «ucsi_source_psy_USBC000:001» is «ucsi-source-psy-USBC000:001».
     for entry_name in dict.fromkeys((chip, chip.replace("_", "-"))):
-        folder = sysroot.ruta(POWER_SUPPLY) / entry_name
+        folder = sysroot.path(POWER_SUPPLY) / entry_name
         if folder.is_dir() and any((folder / field).exists()
                                     for field in ("voltage_now", "current_now", "power_now")):
             return True
@@ -387,7 +387,7 @@ class HwmonSensors(Provider):
         self._mirrors: set[tuple[str, str]] = set()
 
     def available(self) -> bool:
-        return sysroot.ruta(HWMON).is_dir()
+        return sysroot.path(HWMON).is_dir()
 
     def unavailable_reason(self):
         if self.available():
@@ -486,9 +486,9 @@ class HwmonSensors(Provider):
 
     def _read_hwmon(self, cpu_name: str, board_name: str,
                     gpu_names: Optional[dict[str, str]] = None) -> Iterator[Sensor]:
-        if not sysroot.ruta(HWMON).is_dir():
+        if not sysroot.path(HWMON).is_dir():
             return
-        for entry in sorted(sysroot.ruta(HWMON).iterdir()):
+        for entry in sorted(sysroot.path(HWMON).iterdir()):
             chip = read_text(str(entry / "name"))
             if not chip:
                 continue
@@ -551,14 +551,14 @@ class HwmonSensors(Provider):
     def _read_power_supplies() -> Iterator[Sensor]:
         """Batteries and adapters. A desktop has none; on a laptop they are
         half of what matters."""
-        if not sysroot.ruta(POWER_SUPPLY).is_dir():
+        if not sysroot.path(POWER_SUPPLY).is_dir():
             return
         fields = (
             ("voltage_now", SensorKind.VOLTAGE, 1_000_000.0, "sensor.voltage"),
             ("current_now", SensorKind.CURRENT, 1_000_000.0, "sensor.current"),
             ("power_now", SensorKind.POWER, 1_000_000.0, "sensor.power"),
         )
-        entries = sorted(sysroot.ruta(POWER_SUPPLY).iterdir())
+        entries = sorted(sysroot.path(POWER_SUPPLY).iterdir())
         # A laptop's USB-C ports, numbered in order when there are several,
         # instead of being told apart by the kernel's name.
         ports = [e.name for e in entries if _IS_USBC.match(e.name)]
@@ -682,7 +682,7 @@ class HwmonSensors(Provider):
                                     capture_output=True, text=True,
                                     env=system_environment())
             return result.returncode == 0 and bool(result.stdout.strip())
-        return bool(sysroot.a_traves("modinfo", module, ask))
+        return bool(sysroot.recorded("modinfo", module, ask))
 
     def _missing_drivers(self, sensors: list[Sensor],
                          laptop: bool = False) -> Iterator[DriverHint]:
@@ -706,7 +706,7 @@ class HwmonSensors(Provider):
 
     @staticmethod
     def _has_ata_disks() -> bool:
-        block = pathlib.Path(sysroot.ruta("/sys/class/block"))
+        block = pathlib.Path(sysroot.path("/sys/class/block"))
         if not block.is_dir():
             return False
         return any("/ata" in str(entry.resolve()) for entry in block.glob("sd?"))

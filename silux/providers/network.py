@@ -66,11 +66,11 @@ class NetworkInterfaces(Provider):
         self._fixed: dict[tuple[str, Optional[int]], tuple[str, Optional[str], dict]] = {}
 
     def available(self) -> bool:
-        return os.path.isdir(sysroot.ruta(SYS_NET))
+        return os.path.isdir(sysroot.path(SYS_NET))
 
     def collect(self, draft: Draft) -> None:
         self._interval_s = draft.interval_s
-        names = sorted(p.name for p in pathlib.Path(sysroot.ruta(SYS_NET)).iterdir())
+        names = sorted(p.name for p in pathlib.Path(sysroot.path(SYS_NET)).iterdir())
         if not names:
             return
 
@@ -95,7 +95,7 @@ class NetworkInterfaces(Provider):
     def _read(self, name: str, routes: dict[str, str], addresses: "_Addresses",
               ipv6: tuple[str, ...], counters: Optional[dict[str, int]],
               fixed: dict) -> NetworkInterface:
-        base = pathlib.Path(sysroot.ruta(SYS_NET), name)
+        base = pathlib.Path(sysroot.path(SYS_NET), name)
         key = (name, read_int(str(base / "ifindex")))
         if (known := fixed.get(key)) is None:
             known = (_kind(name, base, read_int(str(base / "type"))),
@@ -193,7 +193,7 @@ class _Addresses:
         return self._ask(name, SIOCGIFNETMASK)
 
     def _ask(self, name: str, code: int) -> Optional[str]:
-        return sysroot.a_traves("ioctl_red", f"{name}:{code:#x}",
+        return sysroot.recorded("ioctl_red", f"{name}:{code:#x}",
                                 self._ask_the_kernel, name, code)
 
     def _ask_the_kernel(self, name: str, code: int) -> Optional[str]:
@@ -287,7 +287,7 @@ def _default_routes() -> dict[str, str]:
     """
     found: dict[str, str] = {}
     try:
-        with open(sysroot.ruta(PROC_ROUTE), encoding="utf-8") as handle:
+        with open(sysroot.path(PROC_ROUTE), encoding="utf-8") as handle:
             next(handle, None)
             for line in handle:
                 fields = line.split()
@@ -307,7 +307,7 @@ def _ipv6_by_interface() -> dict[str, tuple[str, ...]]:
     """IPv6 addresses, which the kernel writes without colons."""
     found: dict[str, list[str]] = {}
     try:
-        with open(sysroot.ruta(PROC_IPV6), encoding="utf-8") as handle:
+        with open(sysroot.path(PROC_IPV6), encoding="utf-8") as handle:
             for line in handle:
                 fields = line.split()
                 if len(fields) < 6:

@@ -112,7 +112,7 @@ class CpuUsage(_Calculation):
         super().__init__(tmp, clock)
         from silux.providers import procfs
         self.stat = tmp / "stat"
-        patch = mock.patch.object(procfs.sysroot, "ruta",
+        patch = mock.patch.object(procfs.sysroot, "path",
                                   lambda camino: str(self.stat) if camino == "/proc/stat"
                                   else camino)
         patch.start()

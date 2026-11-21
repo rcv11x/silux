@@ -60,7 +60,7 @@ def has_controller() -> bool:
     have it», so a Ryzen is not asked for a password to show nothing.
     """
     try:
-        return any(_PMU_IMC.match(name) for name in os.listdir(sysroot.ruta(PMU_ROOT)))
+        return any(_PMU_IMC.match(name) for name in os.listdir(sysroot.path(PMU_ROOT)))
     except OSError:
         return False
 
@@ -72,7 +72,7 @@ def has_counters() -> bool:
     lacks it. Listing the events needs no privileges either.
     """
     try:
-        root = sysroot.ruta(PMU_ROOT)
+        root = sysroot.path(PMU_ROOT)
         names = os.listdir(root)
     except OSError:
         return False

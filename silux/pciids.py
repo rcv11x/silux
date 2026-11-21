@@ -59,11 +59,11 @@ def lookup(
     """
     pares = sorted({(int(v), int(d)) for v, d in pairs})
     subs = sorted({tuple(int(n) for n in key) for key in subsystems})
-    if sysroot.activo() and not sysroot.grabo("pciids"):
+    if sysroot.active() and not sysroot.did_record("pciids"):
         nombres = _lookup(pares, subs)           # un volcado de antes de grabarlo
     else:
         pregunta = "|".join(_clave(k) for k in (*pares, *subs))
-        plano = sysroot.a_traves(
+        plano = sysroot.recorded(
             "pciids", pregunta,
             lambda: {_clave(k): list(v) for k, v in _lookup(pares, subs).items()})
         nombres = {tuple(int(n, 16) for n in clave.split(":")): tuple(valor)
@@ -188,9 +188,9 @@ def _recorrer(
 
 def vendor_name(vendor: int) -> Optional[str]:
     """El nombre de un fabricante, o el que se grabó en un equipo volcado."""
-    if sysroot.activo() and not sysroot.grabo("pciids"):
+    if sysroot.active() and not sysroot.did_record("pciids"):
         return _vendor_name(int(vendor))
-    return sysroot.a_traves("pciids_fabricante", f"{int(vendor):04x}",
+    return sysroot.recorded("pciids_fabricante", f"{int(vendor):04x}",
                             _vendor_name, int(vendor))
 
 

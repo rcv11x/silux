@@ -61,7 +61,7 @@ class CppcClocks(Provider):
     static = True
 
     def available(self) -> bool:
-        return os.path.isdir(sysroot.ruta(SYS_CPU))
+        return os.path.isdir(sysroot.path(SYS_CPU))
 
     def collect(self, draft: Draft) -> None:
         no_base = False
@@ -153,7 +153,7 @@ class CppcClocks(Provider):
 def _read_cppc(cpu_index: int) -> dict[str, int]:
     """The integers of acpi_cppc for one CPU. Empty without firmware support."""
     folder = f"{SYS_CPU}/cpu{cpu_index}/acpi_cppc"
-    if not os.path.isdir(sysroot.ruta(folder)):
+    if not os.path.isdir(sysroot.path(folder)):
         return {}
     fields = ("nominal_freq", "lowest_freq", "nominal_perf", "highest_perf")
     values = {}

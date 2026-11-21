@@ -396,7 +396,7 @@ que el `Collector` lee de `/sys`, `/proc` y `/etc` (lo decide el `Collector`
 ejecutándose, no una lista), graba en `grabado.json` lo que no sale de un
 archivo (CPUID, ioctl, las APIs gráficas) y lo anonimiza. Con
 `SILUX_SYSROOT` apuntando ahí, todos los proveedores leen ese equipo:
-`sysroot.ruta` traduce cada camino y `sysroot.a_traves` devuelve lo grabado.
+`sysroot.path` traduce cada camino y `sysroot.recorded` devuelve lo grabado.
 
 **Desde la terminal, un volcado se monta con `tools/montar_equipo.py NOMBRE
 ORDEN…`**, no apuntando la variable a la carpeta del repositorio: git no

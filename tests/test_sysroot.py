@@ -62,7 +62,7 @@ class TestLaRaizAlternativaNoSeSaleDeElla(unittest.TestCase):
         parche = mock.patch.dict(os.environ, {sysroot.VARIABLE: self.raiz})
         parche.start()
         self.addCleanup(parche.stop)
-        sysroot.olvidar()
+        sysroot.forget()
 
     def test_ningun_proveedor_lee_el_sistema_de_verdad(self):
         from silux.collector import Collector
@@ -97,18 +97,18 @@ class TestRutas(unittest.TestCase):
     def test_sin_raiz_no_cambia_nada(self):
         with mock.patch.dict(os.environ, {}, clear=False):
             os.environ.pop(sysroot.VARIABLE, None)
-            self.assertEqual(sysroot.ruta("/sys/class/hwmon"), "/sys/class/hwmon")
+            self.assertEqual(sysroot.path("/sys/class/hwmon"), "/sys/class/hwmon")
 
     def test_con_raiz_traduce_y_no_traduce_dos_veces(self):
         with mock.patch.dict(os.environ, {sysroot.VARIABLE: "/tmp/v"}):
-            una = sysroot.ruta("/sys/class/hwmon")
+            una = sysroot.path("/sys/class/hwmon")
             self.assertEqual(una, "/tmp/v/sys/class/hwmon")
-            self.assertEqual(sysroot.ruta(una), una)
-            self.assertEqual(sysroot.ruta(pathlib.Path("/proc/stat")),
+            self.assertEqual(sysroot.path(una), una)
+            self.assertEqual(sysroot.path(pathlib.Path("/proc/stat")),
                              pathlib.Path("/tmp/v/proc/stat"))
-            self.assertEqual(sysroot.ruta("/usr/share/hwdata/pci.ids"),
+            self.assertEqual(sysroot.path("/usr/share/hwdata/pci.ids"),
                              "/usr/share/hwdata/pci.ids")
-            self.assertEqual(sysroot.fuera("/tmp/v/sys/class/net"), "/sys/class/net")
+            self.assertEqual(sysroot.unrooted("/tmp/v/sys/class/net"), "/sys/class/net")
 
 
 if __name__ == "__main__":

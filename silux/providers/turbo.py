@@ -48,9 +48,9 @@ class TurboState(Provider):
         self._supported_read = False
 
     def available(self) -> bool:
-        return (os.path.exists(sysroot.ruta(INTEL_PSTATE_NO_TURBO))
-                or os.path.exists(sysroot.ruta(CPUFREQ_BOOST))
-                or os.path.exists(sysroot.ruta(CPUINFO)))
+        return (os.path.exists(sysroot.path(INTEL_PSTATE_NO_TURBO))
+                or os.path.exists(sysroot.path(CPUFREQ_BOOST))
+                or os.path.exists(sysroot.path(CPUINFO)))
 
     def collect(self, draft: Draft) -> None:
         enabled = None

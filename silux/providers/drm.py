@@ -141,7 +141,7 @@ def _split_name(text: str) -> tuple[Optional[str], Optional[str]]:
 
 def cards() -> list[pathlib.Path]:
     """The cardN nodes, without their connectors (named cardN-DP-1)."""
-    root = pathlib.Path(sysroot.ruta(SYS_DRM))
+    root = pathlib.Path(sysroot.path(SYS_DRM))
     if not root.is_dir():
         return []
     found = [p for p in root.glob("card*") if re.fullmatch(r"card\d+", p.name)]
@@ -156,7 +156,7 @@ class DrmGpus(Provider):
     static = True
 
     def available(self) -> bool:
-        return os.path.isdir(sysroot.ruta(SYS_DRM))
+        return os.path.isdir(sysroot.path(SYS_DRM))
 
     def unavailable_reason(self):
         if self.available():
@@ -261,9 +261,9 @@ class DrmGpus(Provider):
         node = amdgpu.render_node(device)
         if not node:
             return
-        info = sysroot.a_traves("amdgpu", node, amdgpu.query, node,
+        info = sysroot.recorded("amdgpu", node, amdgpu.query, node,
                                 expected_device_id=gpu.get("device_id"),
-                                tipo=amdgpu.DeviceInfo)
+                                kind=amdgpu.DeviceInfo)
         if info is None:
             return
 
@@ -292,9 +292,9 @@ class DrmGpus(Provider):
         node = i915.render_node(device)
         if not node:
             return
-        info = sysroot.a_traves("i915", node, i915.query, node,
+        info = sysroot.recorded("i915", node, i915.query, node,
                                 expected_device_id=gpu.get("device_id"),
-                                tipo=i915.DeviceInfo)
+                                kind=i915.DeviceInfo)
         if info is None or info.eu_total is None:
             return
         gpu["compute_units"] = info.eu_total
@@ -425,7 +425,7 @@ class GpuState(Provider):
         self._with_clock: list[tuple[pathlib.Path, pathlib.Path]] = []
 
     def available(self) -> bool:
-        return os.path.isdir(sysroot.ruta(SYS_DRM))
+        return os.path.isdir(sysroot.path(SYS_DRM))
 
     def wants_between_samples(self) -> bool:
         return bool(self._with_instants or self._with_clock)
@@ -474,7 +474,7 @@ class GpuState(Provider):
             node = gpu.get("drm_node")
             if not node:
                 continue
-            root = pathlib.Path(sysroot.ruta(f"{SYS_DRM}/{node}"))
+            root = pathlib.Path(sysroot.path(f"{SYS_DRM}/{node}"))
             device = root / "device"
             if not device.is_dir():
                 continue
@@ -708,7 +708,7 @@ def _pmu_published(item_name: str) -> bool:
     if not item_name:
         return False
     try:
-        events = os.listdir(sysroot.ruta(f"{EVENT_SOURCE}/{item_name}/events"))
+        events = os.listdir(sysroot.path(f"{EVENT_SOURCE}/{item_name}/events"))
     except OSError:
         return False
     return any(BUSY_EVENT.match(e) for e in events)
@@ -834,7 +834,7 @@ def _gpus_on_bus() -> list[pathlib.Path]:
     kernel stayed on the fallback framebuffer: the bus lists the hardware even
     with nobody able to talk to it.
     """
-    root = pathlib.Path(sysroot.ruta("/sys/bus/pci/devices"))
+    root = pathlib.Path(sysroot.path("/sys/bus/pci/devices"))
     found = []
     for device in sorted(root.glob("*")) if root.is_dir() else ():
         pci_class = _hex(device / "class")
@@ -1227,7 +1227,7 @@ def _telemetry(gpu: dict, device: pathlib.Path,
 
 def _outputs(card: str) -> tuple[Display, ...]:
     """This card's video connectors, plugged in or not."""
-    root = pathlib.Path(sysroot.ruta(SYS_DRM))
+    root = pathlib.Path(sysroot.path(SYS_DRM))
     outputs = []
     for connector in sorted(root.glob(f"{card}-*")):
         item_name = connector.name[len(card) + 1:]

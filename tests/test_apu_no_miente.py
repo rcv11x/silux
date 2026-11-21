@@ -55,13 +55,13 @@ class TestElHwmonDeUnaApu(BancoDrm):
 
     def recolectar_apu(self, es_apu: bool):
         respuesta = amdgpu.DeviceInfo(device_id=0x15BF, is_apu=es_apu)
-        real = drm.sysroot.a_traves
+        real = drm.sysroot.recorded
 
         def ioctl(espacio, clave, fn, *args, **kwargs):
             if espacio == "amdgpu":
                 return respuesta
             return real(espacio, clave, fn, *args, **kwargs)
-        with mock.patch.object(drm.sysroot, "a_traves", ioctl), \
+        with mock.patch.object(drm.sysroot, "recorded", ioctl), \
                 mock.patch.object(drm.amdgpu, "render_node", return_value="/dev/dri/renderD128"):
             draft = Draft()
             drm.DrmGpus().collect(draft)

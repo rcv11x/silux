@@ -164,7 +164,7 @@ def read_os_release() -> dict:
     datos: dict[str, str] = {}
     for ruta in ("/etc/os-release", "/usr/lib/os-release"):
         try:
-            with open(sysroot.ruta(ruta), encoding="utf-8") as archivo:
+            with open(sysroot.path(ruta), encoding="utf-8") as archivo:
                 for linea in archivo:
                     clave, signo, valor = linea.strip().partition("=")
                     if signo:
@@ -179,7 +179,7 @@ def read_os_release() -> dict:
 def nvidia_major() -> Optional[str]:
     """The proprietary driver's major version, «595», from its module."""
     try:
-        with open(sysroot.ruta("/sys/module/nvidia/version"), encoding="ascii") as archivo:
+        with open(sysroot.path("/sys/module/nvidia/version"), encoding="ascii") as archivo:
             version = archivo.read().strip()
     except OSError:
         return None
@@ -239,4 +239,4 @@ def _present_now(dep: Dependency) -> bool:
 def present(key: str) -> Optional[bool]:
     """Whether this machine has it; with a dump mounted, what it had when it
     was dumped (None if that was not recorded)."""
-    return sysroot.a_traves("paquetes", key, _present_now, BY_KEY[key])
+    return sysroot.recorded("paquetes", key, _present_now, BY_KEY[key])

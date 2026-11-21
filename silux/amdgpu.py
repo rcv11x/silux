@@ -124,12 +124,12 @@ class DeviceInfo:
 
 def render_node(device: pathlib.Path | str) -> Optional[str]:
     """El `/dev/dri/renderD*` de una tarjeta, a partir de su nodo PCI."""
-    directorio = pathlib.Path(sysroot.ruta(device), "drm")
+    directorio = pathlib.Path(sysroot.path(device), "drm")
     if not directorio.is_dir():
         return None
     for entrada in sorted(directorio.glob("renderD*")):
         camino = f"/dev/dri/{entrada.name}"
-        if sysroot.activo() or os.path.exists(camino):
+        if sysroot.active() or os.path.exists(camino):
             return camino
     return None
 

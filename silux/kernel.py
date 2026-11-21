@@ -46,7 +46,7 @@ def version(texto: Optional[str]) -> Optional[tuple[int, int]]:
 
 def running() -> Optional[tuple[int, int]]:
     """La del kernel en marcha; en un equipo volcado, la de cuando se volcó."""
-    uname = sysroot.a_traves("plataforma", "uname", lambda: platform.uname()._asdict())
+    uname = sysroot.recorded("plataforma", "uname", lambda: platform.uname()._asdict())
     return version((uname or {}).get("release"))
 
 

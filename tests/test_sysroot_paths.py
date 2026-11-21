@@ -1,10 +1,10 @@
-"""`sysroot.ruta` gives back what it gets: text for text, a Path for a Path.
+"""`sysroot.path` gives back what it gets: text for text, a Path for a Path.
 
 A tester's Gentoo with OpenRC read «?» in Distribución, Kernel and the rest
-of the system's identity: `sysroot.ruta("/run/openrc").is_dir()` called a
+of the system's identity: `sysroot.path("/run/openrc").is_dir()` called a
 Path's method on text, the provider failed whole, and only on a machine
 whose PID 1 is `init`. Its test had replaced `ruta` with one that always
-gives a Path. Here every call to a Path method on `sysroot.ruta(...)` is
+gives a Path. Here every call to a Path method on `sysroot.path(...)` is
 checked against what its argument really is.
 """
 
@@ -52,7 +52,7 @@ class TestPathMethodsOnRutaHaveAPath(unittest.TestCase):
             for nodo in ast.walk(arbol):
                 if not (isinstance(nodo, ast.Attribute) and nodo.attr in METODOS_DE_PATH
                         and isinstance(nodo.value, ast.Call)
-                        and ast.unparse(nodo.value.func) == "sysroot.ruta"
+                        and ast.unparse(nodo.value.func) == "sysroot.path"
                         and nodo.value.args):
                     continue
                 if _es_path(nodo.value.args[0], constantes) is not True:

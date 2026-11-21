@@ -94,8 +94,8 @@ class TestUnaZonaQueSiMide(unittest.TestCase):
         draft = Draft()
         with mock.patch.dict(os.environ, {"SILUX_SYSROOT": str(raiz)}):
             from silux import sysroot
-            sysroot.olvidar()
-            self.addCleanup(sysroot.olvidar)
+            sysroot.forget()
+            self.addCleanup(sysroot.forget)
             proveedor.collect(draft)
         return next(s for s in draft.sensors if s.chip == "acpitz")
 

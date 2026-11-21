@@ -61,7 +61,7 @@ class PciDevices(Provider):
         self._links: dict[str, PcieLink] = {}
 
     def available(self) -> bool:
-        return os.path.isdir(sysroot.ruta(DEVICES))
+        return os.path.isdir(sysroot.path(DEVICES))
 
     def collect(self, draft: Draft) -> None:
         if self._fixed is None:
@@ -69,7 +69,7 @@ class PciDevices(Provider):
         own = self._own_names(draft)
         out = []
         for fixed in self._fixed:
-            node = pathlib.Path(sysroot.ruta(f"{DEVICES}/{fixed['slot']}"))
+            node = pathlib.Path(sysroot.path(f"{DEVICES}/{fixed['slot']}"))
             # The link only means something for what goes in a slot. A USB,
             # SATA or sound controller lives inside the chipset or processor:
             # its node publishes the chipset's internal link, which would read
@@ -98,11 +98,11 @@ class PciDevices(Provider):
     @staticmethod
     def _enumerate() -> list[dict]:
         raws = []
-        for path in sorted(glob.glob(os.path.join(sysroot.ruta(DEVICES), "*"))):
+        for path in sorted(glob.glob(os.path.join(sysroot.path(DEVICES), "*"))):
             slot = os.path.basename(path)
             if not _ADDRESS.fullmatch(slot):
                 continue
-            base = sysroot.fuera(path)
+            base = sysroot.unrooted(path)
             code = (read_text(f"{base}/class") or "")[2:6]
             kind = CLASSES.get(code)
             if kind is None:
@@ -174,7 +174,7 @@ class PlatformInfo(Provider):
 
     @staticmethod
     def _iommu() -> Optional[int]:
-        groups = glob.glob(os.path.join(sysroot.ruta("/sys/kernel/iommu_groups"), "*"))
+        groups = glob.glob(os.path.join(sysroot.path("/sys/kernel/iommu_groups"), "*"))
         return len(groups) or None
 
     @staticmethod
@@ -188,16 +188,16 @@ class PlatformInfo(Provider):
         kind = "AMD-V" if "svm" in words else "VT-x" if "vmx" in words else None
         if kind is None:
             return None, None
-        # `/dev/kvm` is not in /sys or /proc: asked through `a_traves` so a
+        # `/dev/kvm` is not in /sys or /proc: asked through `recorded` so a
         # dump keeps what its machine answered.
-        in_use = sysroot.a_traves("plataforma", "kvm", lambda: os.path.exists("/dev/kvm"))
+        in_use = sysroot.recorded("plataforma", "kvm", lambda: os.path.exists("/dev/kvm"))
         return kind, "active" if in_use else "present"
 
     @staticmethod
     def _above_4g() -> int:
         count = 0
-        for path in glob.glob(os.path.join(sysroot.ruta(DEVICES), "*", "resource")):
-            for line in (read_text(sysroot.fuera(path)) or "").splitlines():
+        for path in glob.glob(os.path.join(sysroot.path(DEVICES), "*", "resource")):
+            for line in (read_text(sysroot.unrooted(path)) or "").splitlines():
                 fields = line.split()
                 try:
                     if len(fields) >= 2 and int(fields[1], 16) and int(fields[0], 16) >= 1 << 32:
@@ -211,8 +211,8 @@ class PlatformInfo(Provider):
     def _sensor_chip() -> Optional[str]:
         from .hwmon import BOARD_CHIP
 
-        for path in sorted(glob.glob(os.path.join(sysroot.ruta("/sys/class/hwmon"), "*", "name"))):
-            name = read_text(sysroot.fuera(path)) or ""
+        for path in sorted(glob.glob(os.path.join(sysroot.path("/sys/class/hwmon"), "*", "name"))):
+            name = read_text(sysroot.unrooted(path)) or ""
             if BOARD_CHIP.match(name) and not name.startswith(("acpitz", "thermal")) \
                     and not name.endswith("_wmi"):
                 return name
@@ -221,8 +221,8 @@ class PlatformInfo(Provider):
     @staticmethod
     def _codec() -> Optional[str]:
         """The board's sound codec. HDMI ones belong to the graphics card."""
-        for path in sorted(glob.glob(os.path.join(sysroot.ruta("/proc/asound"), "card*", "codec#*"))):
-            first = (read_text(sysroot.fuera(path)) or "").split("\n", 1)[0]
+        for path in sorted(glob.glob(os.path.join(sysroot.path("/proc/asound"), "card*", "codec#*"))):
+            first = (read_text(sysroot.unrooted(path)) or "").split("\n", 1)[0]
             name = first.partition(":")[2].strip()
             if name and "HDMI" not in name:
                 return name

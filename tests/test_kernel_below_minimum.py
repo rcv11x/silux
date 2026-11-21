@@ -19,7 +19,7 @@ def _snapshot(release: str):
         grabado = json.loads(ruta.read_text())
         grabado["plataforma"]["uname"]["release"] = release
         ruta.write_text(json.dumps(grabado))
-        sysroot.olvidar()
+        sysroot.forget()
         recolector = Collector()
         try:
             return second_snapshot(recolector)

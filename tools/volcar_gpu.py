@@ -67,7 +67,7 @@ def _volcar(titulo: str, base, nombres) -> None:
 
 
 def main() -> int:
-    drm = pathlib.Path(sysroot.ruta(SYS_DRM))
+    drm = pathlib.Path(sysroot.path(SYS_DRM))
     if not drm.is_dir():
         print("Este equipo no expone /sys/class/drm.", file=sys.stderr)
         return 1
@@ -82,7 +82,7 @@ def main() -> int:
     for tarjeta in tarjetas:
         nodo = f"{SYS_DRM}/{tarjeta}"
         dispositivo = f"{nodo}/device"
-        enlace = pathlib.Path(sysroot.ruta(f"{dispositivo}/driver"))
+        enlace = pathlib.Path(sysroot.path(f"{dispositivo}/driver"))
         driver = _real(enlace).name if enlace.exists() else None
         print(f"\n{'=' * 62}")
         print(f"{tarjeta}  ·  driver {driver or '?'}")
@@ -106,14 +106,14 @@ def main() -> int:
 
         # Qué hay dentro de gt/, que es donde el kernel moderno las guarda.
         for jerarquia in ("gt", "tile0"):
-            directorio = pathlib.Path(sysroot.ruta(f"{nodo}/{jerarquia}"))
+            directorio = pathlib.Path(sysroot.path(f"{nodo}/{jerarquia}"))
             if directorio.is_dir():
                 print(f"\n  [árbol de {jerarquia}/]")
                 for hijo in sorted(directorio.rglob("*")):
                     if hijo.is_file():
                         print(f"    {hijo.relative_to(directorio.parent)}")
 
-        hwmon = pathlib.Path(sysroot.ruta(f"{dispositivo}/hwmon"))
+        hwmon = pathlib.Path(sysroot.path(f"{dispositivo}/hwmon"))
         if hwmon.is_dir():
             for chip in sorted(hwmon.iterdir()):
                 print(f"\n  [hwmon: {_leer(chip / 'name')}]")

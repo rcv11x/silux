@@ -33,12 +33,12 @@ class CpuIdle(Provider):
         self._previous: Optional[tuple[float, dict[tuple[int, str], int]]] = None
 
     def available(self) -> bool:
-        return os.path.isdir(sysroot.ruta(f"{CPUS}/cpu0/cpuidle"))
+        return os.path.isdir(sysroot.path(f"{CPUS}/cpu0/cpuidle"))
 
     def _enumerate(self) -> dict:
         states: dict[int, list] = {}
-        for path in glob.glob(os.path.join(sysroot.ruta(CPUS), "cpu[0-9]*", "cpuidle", "state[0-9]*")):
-            base = sysroot.fuera(path)
+        for path in glob.glob(os.path.join(sysroot.path(CPUS), "cpu[0-9]*", "cpuidle", "state[0-9]*")):
+            base = sysroot.unrooted(path)
             match = re.search(r"/cpu(\d+)/cpuidle/", base)
             if not match:
                 continue
@@ -53,7 +53,7 @@ class CpuIdle(Provider):
     def collect(self, draft: Draft) -> None:
         # A dump holds one reading of each counter: subtracted from itself it
         # would read «0 % in every state», which looks like a value and is not.
-        if sysroot.activo():
+        if sysroot.active():
             return
         if self._states is None:
             self._states = self._enumerate()

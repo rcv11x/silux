@@ -121,7 +121,7 @@ class Batteries(Provider):
     provides = "batteries"
 
     def available(self) -> bool:
-        return sysroot.ruta(POWER_SUPPLY).is_dir()
+        return sysroot.path(POWER_SUPPLY).is_dir()
 
     def unavailable_reason(self):
         if self.available():
@@ -131,10 +131,10 @@ class Batteries(Provider):
                 _("prov.missing.detail").format(ruta="/sys/class/power_supply"))
 
     def collect(self, draft: Draft) -> None:
-        if not sysroot.ruta(POWER_SUPPLY).is_dir():
+        if not sysroot.path(POWER_SUPPLY).is_dir():
             return
         found = [_read(entry)
-                       for entry in sorted(sysroot.ruta(POWER_SUPPLY).iterdir())
+                       for entry in sorted(sysroot.path(POWER_SUPPLY).iterdir())
                        if _is_battery(entry)]
         if not found:
             # No note: a desktop has no battery, and saying so every time

@@ -43,10 +43,10 @@ def _kind(node: str) -> str:
         return "hub"
     if own == "e0":
         return "wireless"
-    interfaces = glob.glob(os.path.join(sysroot.ruta(node), "*:*"))
+    interfaces = glob.glob(os.path.join(sysroot.path(node), "*:*"))
     classes, protocols = set(), set()
     for interface in interfaces:
-        base = sysroot.fuera(interface)
+        base = sysroot.unrooted(interface)
         code = (read_text(f"{base}/bInterfaceClass") or "").lower()
         classes.add(code)
         if code == "03":
@@ -91,7 +91,7 @@ class ConnectedDevices(Provider):
         out = []
         seen: dict[tuple[str, int], UsbDevice] = {}
         try:
-            entries = sorted(os.scandir(sysroot.ruta(USB)), key=lambda e: e.name)
+            entries = sorted(os.scandir(sysroot.path(USB)), key=lambda e: e.name)
         except OSError:
             entries = []
         for entry in entries:
@@ -103,7 +103,7 @@ class ConnectedDevices(Provider):
                 seen[key] = known
                 out.append(known)
                 continue
-            node = sysroot.fuera(entry.path)
+            node = sysroot.unrooted(entry.path)
             vendor_id, product_id = read_text(f"{node}/idVendor"), read_text(f"{node}/idProduct")
             try:
                 speed = float(read_text(f"{node}/speed") or "")
@@ -142,8 +142,8 @@ class ConnectedDevices(Provider):
             index, driver, name = match.group(1), match.group(2), match.group(3).strip()
             codecs = []
             for path in sorted(glob.glob(os.path.join(
-                    sysroot.ruta(f"/proc/asound/card{index}"), "codec#*"))):
-                line = (read_text(sysroot.fuera(path)) or "").split("\n", 1)[0]
+                    sysroot.path(f"/proc/asound/card{index}"), "codec#*"))):
+                line = (read_text(sysroot.unrooted(path)) or "").split("\n", 1)[0]
                 if (codec := line.partition(":")[2].strip()):
                     codecs.append(codec)
             if "usb" in driver.lower() or "usb-" in second:
@@ -163,8 +163,8 @@ class ConnectedDevices(Provider):
         # A device creates several nodes (image and metadata): grouped by the
         # device they hang from. A virtual camera hangs from none.
         groups: dict[str, list] = {}
-        for path in sorted(glob.glob(os.path.join(sysroot.ruta("/sys/class/video4linux"), "video*"))):
-            name = (read_text(f"{sysroot.fuera(path)}/name") or "").split(":")[0].strip()
+        for path in sorted(glob.glob(os.path.join(sysroot.path("/sys/class/video4linux"), "video*"))):
+            name = (read_text(f"{sysroot.unrooted(path)}/name") or "").split(":")[0].strip()
             link = pathlib.Path(path, "device")
             try:
                 physical = str(link.resolve()) if link.exists() else None
@@ -180,7 +180,7 @@ class ConnectedDevices(Provider):
     @staticmethod
     def _bluetooth() -> list[BluetoothAdapter]:
         out = []
-        for path in sorted(glob.glob(os.path.join(sysroot.ruta("/sys/class/bluetooth"), "hci*"))):
+        for path in sorted(glob.glob(os.path.join(sysroot.path("/sys/class/bluetooth"), "hci*"))):
             name = os.path.basename(path)
             if ":" in name:
                 continue                 # connections («hci0:256») are not adapters
@@ -191,10 +191,10 @@ class ConnectedDevices(Provider):
             on_usb = bool(physical and "/usb" in str(physical))
             product = None
             if on_usb:
-                product = read_text(f"{sysroot.fuera(str(physical.parent))}/product") or None
+                product = read_text(f"{sysroot.unrooted(str(physical.parent))}/product") or None
             powered = None
             for rfkill in glob.glob(os.path.join(path, "rfkill*", "state")):
-                powered = (read_text(sysroot.fuera(rfkill)) or "").strip() == "1"
+                powered = (read_text(sysroot.unrooted(rfkill)) or "").strip() == "1"
             out.append(BluetoothAdapter(name=name, product=product,
                                            bus="usb" if on_usb else "board", powered=powered))
         return out
@@ -215,12 +215,12 @@ def _is_camera_mic(line: str) -> bool:
     if not match:
         return False
     controller, ports = match.groups()
-    for bus in glob.glob(os.path.join(sysroot.ruta("/sys/bus/usb/devices"), "usb*")):
+    for bus in glob.glob(os.path.join(sysroot.path("/sys/bus/usb/devices"), "usb*")):
         if controller not in os.path.realpath(bus):
             continue
         number = os.path.basename(bus)[3:]
         device_path = os.path.join(os.path.dirname(bus), f"{number}-{ports}")
         for interface in glob.glob(device_path + ":*"):
-            if (read_text(sysroot.fuera(os.path.join(interface, "bInterfaceClass"))) or "").strip() == VIDEO_CLASS:
+            if (read_text(sysroot.unrooted(os.path.join(interface, "bInterfaceClass"))) or "").strip() == VIDEO_CLASS:
                 return True
     return False

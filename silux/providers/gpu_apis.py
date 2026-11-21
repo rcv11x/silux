@@ -58,7 +58,7 @@ class GpuApis(Provider):
 
         # A single call: inside, it starts a process that loads the drivers,
         # answers and dies. Why, in `silux.gpuapi`.
-        data = sysroot.a_traves("gpuapi", "consultar", _without_crashing, gpuapi.consultar) or {}
+        data = sysroot.recorded("gpuapi", "consultar", _without_crashing, gpuapi.consultar) or {}
         vulkan = data.get("vulkan") or []
         opencl = data.get("opencl") or []
         opengl = data.get("opengl")

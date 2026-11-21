@@ -46,13 +46,13 @@ RAPL_ZONES = ("intel-rapl:*", "amd-rapl:*", "*-rapl:*")
 
 
 def _packages() -> list[pathlib.Path]:
-    if not sysroot.ruta(POWERCAP).is_dir():
+    if not sysroot.path(POWERCAP).is_dir():
         return []
 
     found: list[pathlib.Path] = []
     seen: set[str] = set()
     for pattern in RAPL_ZONES:
-        for entry in sorted(sysroot.ruta(POWERCAP).glob(pattern)):
+        for entry in sorted(sysroot.path(POWERCAP).glob(pattern)):
             if entry.name in seen:
                 continue
             # Subdomains (core, uncore, dram) carry a second «:».
@@ -119,9 +119,9 @@ MMIO_ZONES = "intel-rapl-mmio:*"
 
 
 def _mmio_package() -> Optional[pathlib.Path]:
-    if not sysroot.ruta(POWERCAP).is_dir():
+    if not sysroot.path(POWERCAP).is_dir():
         return None
-    for entry in sorted(sysroot.ruta(POWERCAP).glob(MMIO_ZONES)):
+    for entry in sorted(sysroot.path(POWERCAP).glob(MMIO_ZONES)):
         if entry.name.count(":") == 1 and (read_text(str(entry / "name")) or "").startswith("package"):
             return entry
     return None

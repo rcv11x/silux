@@ -38,23 +38,23 @@ class NvidiaGpus(Provider):
 
     def available(self) -> bool:
         # With a dump, what was recorded answers: open or not, and which cards
-        # it gave (`sysroot.a_traves`). Never this machine's NVML.
-        if sysroot.activo():
-            return bool(sysroot.a_traves("nvml", "abierta", self.client.open))
+        # it gave (`sysroot.recorded`). Never this machine's NVML.
+        if sysroot.active():
+            return bool(sysroot.recorded("nvml", "abierta", self.client.open))
         if sleeping_nvidias():
             # NVML talks to every card at once: opening it, or asking with it
             # open, wakes the one that sleeps. It is closed while one is
             # suspended and opened again when it wakes.
             self.client.close()
             return False
-        return bool(sysroot.a_traves("nvml", "abierta", self.client.open))
+        return bool(sysroot.recorded("nvml", "abierta", self.client.open))
 
     def _cards(self) -> list[nvml.NvidiaGpu]:
         """What NVML answers, recorded for the dumps: as dictionaries and
         without the serial number, which nothing uses."""
         def ask():
             return [dict(dataclasses.asdict(t), serial=None) for t in self.client.devices()]
-        raw_cards = sysroot.a_traves("nvml", "tarjetas", ask) or ()
+        raw_cards = sysroot.recorded("nvml", "tarjetas", ask) or ()
         return [nvml.NvidiaGpu(**dict(c, throttle_reasons=tuple(c.get("throttle_reasons") or ())))
                 for c in raw_cards]
 
@@ -106,7 +106,7 @@ def sleeping_nvidias() -> list[str]:
     the same. A typical Optimus laptop with RTD3 keeps it so when idle.
     """
     sleeping = []
-    for path in sorted(glob.glob(os.path.join(sysroot.ruta(PCI), "*"))):
+    for path in sorted(glob.glob(os.path.join(sysroot.path(PCI), "*"))):
         if (read_text(f"{path}/vendor") or "").lower() != "0x10de":
             continue
         if not (read_text(f"{path}/class") or "").startswith("0x03"):

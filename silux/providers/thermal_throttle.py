@@ -29,18 +29,18 @@ class ThermalThrottleCounts(Provider):
         self._packages: list[str] = []
 
     def available(self) -> bool:
-        return os.path.isdir(sysroot.ruta(f"{CPUS}/cpu0/thermal_throttle"))
+        return os.path.isdir(sysroot.path(f"{CPUS}/cpu0/thermal_throttle"))
 
     def _directories(self) -> None:
         cores: dict[tuple, str] = {}
         packages: dict[Optional[str], str] = {}
-        for path in sorted(glob.glob(os.path.join(sysroot.ruta(CPUS), "cpu[0-9]*", "thermal_throttle")),
+        for path in sorted(glob.glob(os.path.join(sysroot.path(CPUS), "cpu[0-9]*", "thermal_throttle")),
                            key=lambda p: int(os.path.basename(os.path.dirname(p))[3:])):
-            cpu = sysroot.fuera(os.path.dirname(path))
+            cpu = sysroot.unrooted(os.path.dirname(path))
             package = read_text(f"{cpu}/topology/physical_package_id")
             core = read_text(f"{cpu}/topology/core_id")
-            cores.setdefault((package, core), sysroot.fuera(path))
-            packages.setdefault(package, sysroot.fuera(path))
+            cores.setdefault((package, core), sysroot.unrooted(path))
+            packages.setdefault(package, sysroot.unrooted(path))
         self._cores, self._packages = list(cores.values()), list(packages.values())
 
     def collect(self, draft: Draft) -> None:

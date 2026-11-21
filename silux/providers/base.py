@@ -218,7 +218,7 @@ class Provider:
 
 def read_text(path: str) -> Optional[str]:
     try:
-        with open(sysroot.ruta(path), encoding="utf-8", errors="replace") as fh:
+        with open(sysroot.path(path), encoding="utf-8", errors="replace") as fh:
             return fh.read().strip()
     except (OSError, ValueError):
         return None

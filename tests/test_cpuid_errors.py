@@ -20,7 +20,7 @@ from silux.providers.base import Draft
 class TestTheExceptionTexts(unittest.TestCase):
 
     def test_a_cpu_that_cannot_be_pinned(self):
-        with mock.patch.object(rawcpuid.sysroot, "activo", lambda: False), \
+        with mock.patch.object(rawcpuid.sysroot, "active", lambda: False), \
                 mock.patch.object(rawcpuid.os, "sched_getaffinity", lambda pid: {0}), \
                 mock.patch.object(rawcpuid.os, "sched_setaffinity",
                                   side_effect=OSError(22, "Invalid argument")):

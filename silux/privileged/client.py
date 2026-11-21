@@ -215,9 +215,9 @@ def _of_this_machine(*paths: pathlib.Path) -> tuple[pathlib.Path, ...]:
     it, and a dump has none of this machine's helper. Read straight, a helper
     installed here and older than the code made every dump's photo say
     «outdated», and five tests failed on the author's machine only. Not by
-    `sysroot.ruta`, which only moves what a dump records (/sys, /proc, /etc).
+    `sysroot.path`, which only moves what a dump records (/sys, /proc, /etc).
     """
-    base = sysroot.raiz()
+    base = sysroot.root()
     if base is None:
         return paths
     return tuple(pathlib.Path(f"{base}{path}") for path in paths)

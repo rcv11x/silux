@@ -186,7 +186,7 @@ class TestTheVulkanDriverThatRejectsTheUhd(unittest.TestCase):
                 "reason": "Vulkan requires context isolation",
                 "code": "VK_ERROR_INCOMPATIBLE_DRIVER"}]
             ruta.write_text(json.dumps(grabado))
-            sysroot.olvidar()
+            sysroot.forget()
             recolector = Collector()
             try:
                 f = second_snapshot(recolector)

@@ -95,7 +95,7 @@ APAGADA = ("D3hot", "D3cold")
 
 def _leer(ruta) -> str | None:
     try:
-        return pathlib.Path(sysroot.ruta(str(ruta))).read_text(
+        return pathlib.Path(sysroot.path(str(ruta))).read_text(
             encoding="utf-8", errors="replace").strip()
     except OSError:
         return None
@@ -103,7 +103,7 @@ def _leer(ruta) -> str | None:
 
 def _real(ruta) -> pathlib.Path:
     """El camino sin enlaces, como lo vería el sistema."""
-    return pathlib.Path(sysroot.fuera(pathlib.Path(sysroot.ruta(str(ruta))).resolve()))
+    return pathlib.Path(sysroot.unrooted(pathlib.Path(sysroot.path(str(ruta))).resolve()))
 
 
 def energia(dispositivo) -> dict[str, str]:
@@ -120,7 +120,7 @@ def dormida(estado: dict[str, str]) -> bool:
 def graficas() -> list[str]:
     """Las gráficas del bus PCI (clase 0x03), tengan driver o no."""
     try:
-        nombres = sorted(p.name for p in pathlib.Path(sysroot.ruta(SYS_PCI)).iterdir())
+        nombres = sorted(p.name for p in pathlib.Path(sysroot.path(SYS_PCI)).iterdir())
     except OSError:
         return []
     return [f"{SYS_PCI}/{n}" for n in nombres
@@ -152,7 +152,7 @@ def _vigilado(camino) -> str | None:
         texto = texto.decode(errors="replace")
     # Con una raíz puesta (los tests), el camino se apunta como lo vería el
     # sistema: es el que se copia después.
-    texto = sysroot.fuera(texto)
+    texto = sysroot.unrooted(texto)
     return texto if texto.startswith(VIGILADO) else None
 
 
@@ -253,10 +253,10 @@ class _Dormidas:
             self.dormidas.append(ranura)
             real = _real(grafica)
             hermanas = [f"{real.parent}/{h.name}"
-                        for h in pathlib.Path(sysroot.ruta(str(real.parent))).iterdir()
+                        for h in pathlib.Path(sysroot.path(str(real.parent))).iterdir()
                         if h.name.rsplit(".", 1)[0] == ranura.rsplit(".", 1)[0]]
             self.nodos += hermanas + [str(p) for p in cadena(grafica)]
-            drm = pathlib.Path(sysroot.ruta(f"{real}/drm"))
+            drm = pathlib.Path(sysroot.path(f"{real}/drm"))
             if drm.is_dir():
                 self.dev.update(f"/dev/dri/{n.name}" for n in drm.iterdir()
                                 if n.name.startswith(("card", "renderD")))
@@ -279,12 +279,12 @@ class _Dormidas:
         texto = os.fspath(camino)
         if isinstance(texto, bytes):
             texto = texto.decode(errors="replace")
-        texto = sysroot.fuera(texto)
+        texto = sysroot.unrooted(texto)
         if texto in self.dev:
             return True
         if not texto.startswith("/sys/"):
             return False
-        real = sysroot.fuera(os.path.realpath(sysroot.ruta(texto)))
+        real = sysroot.unrooted(os.path.realpath(sysroot.path(texto)))
         for nodo in self.nodos:
             if real.startswith(nodo + "/"):
                 return real[len(nodo) + 1:] not in SIN_DESPERTAR
@@ -339,7 +339,7 @@ def _recoger(dormidas: _Dormidas | None = None):
     """Ejecuta el Collector de verdad, apuntando y grabando lo que pregunta."""
     from silux.collector import Collector
 
-    sysroot.empezar_a_grabar()
+    sysroot.start_recording()
     with _apuntando() as (leidos, listados, mirados), _sin_despertar(dormidas):
         recolector = Collector()
         try:
@@ -347,7 +347,7 @@ def _recoger(dormidas: _Dormidas | None = None):
             recolector.snapshot()
         finally:
             recolector.close()
-    return leidos, listados, mirados, sysroot.lo_grabado()
+    return leidos, listados, mirados, sysroot.recorded_data()
 
 
 def _alternativas(leidos: set[str]) -> set[str]:
@@ -388,7 +388,7 @@ def _extras_de_graficas() -> set[str]:
     import glob
 
     def existentes(patron: str) -> set[str]:
-        return {sysroot.fuera(c) for c in glob.glob(sysroot.ruta(patron))
+        return {sysroot.unrooted(c) for c in glob.glob(sysroot.path(patron))
                 if os.path.isfile(c)}
 
     caminos: set[str] = set()
@@ -400,7 +400,7 @@ def _extras_de_graficas() -> set[str]:
             caminos |= existentes(f"{real}/{patron}")
         for puente in cadena(grafica):
             for nombre in EXTRAS_DE_PUENTE:
-                caminos |= existentes(f"{sysroot.fuera(str(puente))}/{nombre}")
+                caminos |= existentes(f"{sysroot.unrooted(str(puente))}/{nombre}")
     for patron in ("*/type", "*/format/*", "*/events/*"):
         caminos |= existentes(f"{EVENT_SOURCE}/{patron}")
     return caminos
@@ -428,7 +428,7 @@ class _Copia:
         if dentro.is_symlink() or dentro.exists():
             return
         try:
-            destino = os.readlink(sysroot.ruta(camino))
+            destino = os.readlink(sysroot.path(camino))
         except OSError:
             # `/proc/1/exe` sin permisos: se deja fuera, y quien lo lea recibe
             # un error igual que en el equipo de verdad.
@@ -442,15 +442,15 @@ class _Copia:
         for trozo in pathlib.PurePosixPath(camino).parts[1:]:
             siguiente = os.path.join(actual, trozo)
             vueltas = 0
-            while os.path.islink(sysroot.ruta(siguiente)) and vueltas < 40:
+            while os.path.islink(sysroot.path(siguiente)) and vueltas < 40:
                 self._enlace(siguiente)
                 try:
-                    destino = os.readlink(sysroot.ruta(siguiente))
+                    destino = os.readlink(sysroot.path(siguiente))
                 except OSError:
                     return None
                 siguiente = os.path.normpath(os.path.join(os.path.dirname(siguiente), destino))
                 vueltas += 1
-            if not os.path.lexists(sysroot.ruta(siguiente)):
+            if not os.path.lexists(sysroot.path(siguiente)):
                 return None
             if not siguiente.startswith(VIGILADO) and siguiente not in ("/sys", "/proc", "/etc"):
                 # Un enlace que sale del sistema (`/proc/1/exe`): basta con él.
@@ -464,14 +464,14 @@ class _Copia:
             self._de_fuera(camino)
             return
         dentro = self._dentro(real)
-        if os.path.isdir(sysroot.ruta(real)):
+        if os.path.isdir(sysroot.path(real)):
             dentro.mkdir(parents=True, exist_ok=True)
             return
         if dentro.exists():
             return
         dentro.parent.mkdir(parents=True, exist_ok=True)
         try:
-            with open(sysroot.ruta(real), "rb") as origen:
+            with open(sysroot.path(real), "rb") as origen:
                 datos = origen.read(TOPE)
         except PermissionError:
             # Se deja el archivo y se apunta: al montar el volcado se le
@@ -490,15 +490,15 @@ class _Copia:
         tiene sentido, así que en el sitio del enlace va el archivo.
         """
         try:
-            real = sysroot.fuera(os.path.realpath(sysroot.ruta(camino)))
+            real = sysroot.unrooted(os.path.realpath(sysroot.path(camino)))
         except OSError:
             # Python 3.10 deja escapar el error de leer un enlace que no se
             # deja leer (`/proc/1/exe`); los posteriores lo tragan.
             return
-        if real.startswith(VIGILADO) or not os.path.isfile(sysroot.ruta(real)):
+        if real.startswith(VIGILADO) or not os.path.isfile(sysroot.path(real)):
             return
         try:
-            with open(sysroot.ruta(real), "rb") as origen:
+            with open(sysroot.path(real), "rb") as origen:
                 datos = origen.read(TOPE)
         except OSError:
             return
@@ -510,19 +510,19 @@ class _Copia:
 
     def directorio(self, camino: str) -> None:
         real = self.camino(camino)
-        if real is None or not os.path.isdir(sysroot.ruta(real)):
+        if real is None or not os.path.isdir(sysroot.path(real)):
             return
         dentro = self._dentro(real)
         dentro.mkdir(parents=True, exist_ok=True)
         try:
-            entradas = os.listdir(sysroot.ruta(real))
+            entradas = os.listdir(sysroot.path(real))
         except OSError:
             return
         for nombre in entradas:
             hijo = os.path.join(real, nombre)
-            if os.path.islink(sysroot.ruta(hijo)):
+            if os.path.islink(sysroot.path(hijo)):
                 self._enlace(hijo)
-            elif os.path.isdir(sysroot.ruta(hijo)):
+            elif os.path.isdir(sysroot.path(hijo)):
                 (dentro / nombre).mkdir(exist_ok=True)
             # Los archivos de un directorio recorrido y no leídos no se
             # copian: no los mira nadie, y en /proc serían miles.
@@ -663,7 +663,7 @@ class _Anonimizador:
         self.secretos: dict[str, str] = {}
         # Lo quitado de un archivo binario, que no se busca como texto.
         self.crudos: dict[bytes, str] = {}
-        nombre = pathlib.Path(sysroot.ruta("/proc/sys/kernel/hostname"))
+        nombre = pathlib.Path(sysroot.path("/proc/sys/kernel/hostname"))
         self.equipo = nombre.read_text().strip() if nombre.is_file() else ""
         # A machine named as everyone's (the distribution, the brand): it is
         # neither replaced in the texts nor looked for.
@@ -1063,10 +1063,10 @@ def _sin_lo_encontrado(trabajo: pathlib.Path, hallazgos) -> list[dict]:
     quitados: list[dict] = []
     for relativa, clase, buscado in hallazgos:
         ruta = trabajo / relativa
-        if relativa in (sysroot.GRABADO, MANIFIESTO) and ruta.is_file():
+        if relativa in (sysroot.RECORDING_FILE, MANIFIESTO) and ruta.is_file():
             limpio, caminos = _json_sin(json.loads(ruta.read_text()), buscado)
             ruta.write_text(json.dumps(limpio, ensure_ascii=False, indent=1,
-                                       sort_keys=relativa == sysroot.GRABADO) + "\n")
+                                       sort_keys=relativa == sysroot.RECORDING_FILE) + "\n")
             quitados += [{"ruta": _tapado(f"{relativa}: {c}", buscado), "dato": clase}
                          for c in caminos]
             continue
@@ -1095,7 +1095,7 @@ def montado(carpeta: pathlib.Path):
                 camino.chmod(0)
         anterior = os.environ.get(sysroot.VARIABLE)
         os.environ[sysroot.VARIABLE] = str(copia)
-        sysroot.olvidar()
+        sysroot.forget()
         try:
             yield copia
         finally:
@@ -1107,7 +1107,7 @@ def montado(carpeta: pathlib.Path):
                 os.environ.pop(sysroot.VARIABLE, None)
             else:
                 os.environ[sysroot.VARIABLE] = anterior
-            sysroot.olvidar()
+            sysroot.forget()
 
 
 def foto_de(carpeta: pathlib.Path):
@@ -1148,15 +1148,15 @@ def volcar(nombre: str, destino_base: pathlib.Path,
             copia.archivo(camino)
         for camino in sorted(mirados - leidos - listados):
             # Un `exists()` o un `is_dir()` que salió que sí: que siga saliendo.
-            if os.path.lexists(sysroot.ruta(camino)):
-                (copia.directorio(camino) if os.path.isdir(sysroot.ruta(camino))
+            if os.path.lexists(sysroot.path(camino)):
+                (copia.directorio(camino) if os.path.isdir(sysroot.path(camino))
                  else copia.archivo(camino))
 
         limpio = _Anonimizador(trabajo, grabado)
         quitadas = limpio.en_serie()
         limpio.contenidos()
         limpio.nombres()
-        (trabajo / sysroot.GRABADO).write_text(
+        (trabajo / sysroot.RECORDING_FILE).write_text(
             json.dumps(limpio.grabado_limpio(), ensure_ascii=False, indent=1, sort_keys=True) + "\n")
 
         # Git no guarda directorios vacíos, y algunos cuentan: los procesos de
