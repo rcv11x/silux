@@ -12,6 +12,25 @@ que hace falta.
 
 ## Sin publicar
 
+### Idioma
+
+- Con la interfaz en inglés, dos palabras salían en español: la «y» que une
+  los tipos de memoria del aviso del SPD y la «instancia» de la fila de
+  Vulkan.
+
+### Permisos
+
+- El ayudante con permisos lee cada petición con un tope, en vez de leerla
+  entera y mirar después cuánto ocupa. Quien lo tenga instalado verá que hay
+  que actualizarlo.
+
+## 0.4-prueba6 (21 de noviembre de 2026)
+
+Con los informes de la prueba5: las gráficas Intel integradas sin saltos ni
+ceros, ningún dato de una ventana de tiempo imposible, la interfaz en inglés
+sin una palabra en español, y lo que los informes del LOQ y del sobremesa
+con Gentoo dejaron por arreglar.
+
 ### Cambio que rompe: la salida JSON (`--json`)
 
 Para quien la lee desde un script. Lo que era texto en español pasa a ser
@@ -174,15 +193,6 @@ en el idioma de quien lee.
   usuario dentro salía con dos nombres distintos, y al reproducirlo se
   quedaba sin cifras.
 - Un espacio de más en «sostenida  · la medida de referencia».
-- Con la interfaz en inglés, dos palabras salían en español: la «y» que une
-  los tipos de memoria del aviso del SPD y la «instancia» de la fila de
-  Vulkan.
-
-### Permisos
-
-- El ayudante con permisos lee cada petición con un tope, en vez de leerla
-  entera y mirar después cuánto ocupa. Quien lo tenga instalado verá que hay
-  que actualizarlo.
 
 ---
 
