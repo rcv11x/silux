@@ -10,7 +10,12 @@ que hace falta.
 
 ---
 
-## Sin publicar
+## 0.4-prueba6 (21 de noviembre de 2026)
+
+Con los informes de la prueba5: las gráficas Intel integradas sin saltos ni
+ceros, ningún dato de una ventana de tiempo imposible, la interfaz en inglés
+sin una palabra en español, y lo que los informes del LOQ y del sobremesa
+con Gentoo dejaron por arreglar.
 
 ### Cambio que rompe: la salida JSON (`--json`)
 
