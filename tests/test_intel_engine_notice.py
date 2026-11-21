@@ -1,6 +1,6 @@
 """An Intel GPU's notice says what is known of its engines' usage.
 
-widecoocaa23's LOQ, with permissions: the helper opened the package's
+A Lenovo LOQ, with permissions: the helper opened the package's
 energy-gpu and none of the UHD's engine counters, and the notice said their
 usage «ya se está leyendo» over a «Ahora mismo» with no bars. Any counter
 coming back is not this card's coming back.

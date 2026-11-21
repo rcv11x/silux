@@ -120,7 +120,7 @@ la memoria) no va: está propuesto en las notas
   mano.
 * `spd.py` · media · el perfil 2 de XMP en DDR4 no se lee: no hay fuente de
   dónde va (memtest86+ solo lee el 1) ni un módulo que lo traiga. El
-  perfil 1 (F-A2) se arregló con los módulos de anianin27.
+  perfil 1 (F-A2) se arregló con los módulos de un sobremesa con Gentoo.
 * `spd.py` · media · `decode` revienta si el chip devuelve menos de 384 bytes,
   y se pierden todos los módulos, no solo el corto.
 * **F-M17 · `providers/drm.py`** · media · sin `pci.ids`, una AMD dedicada

@@ -1,6 +1,6 @@
 """A laptop's NVIDIA has no fan of its own to show.
 
-widecoocaa23's LOQ read «Ventilador: —» on its RTX 4050: the fans are the
+A Lenovo LOQ read «Ventilador: —» on its RTX 4050: the fans are the
 laptop's, run by its embedded controller, and NVML gives none. Here the
 i5-10400's dump as a laptop (chassis type 10, Notebook) with that card as
 the kernel and NVML show it: its PCI device with the `nvidia` driver and

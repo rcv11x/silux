@@ -432,7 +432,7 @@ class TestTeamGroup(unittest.TestCase):
 class TestAnXmpThatCannotBeRead(unittest.TestCase):
     """A profile whose values make no sense is not shown, and the page says
     the module has XMP it cannot read. It is what kept F-A2 (CL 18, tRP 4,
-    0.81 V) off the screen until anianin27's dump fixed the decoder
+    0.81 V) off the screen until a desktop's dump fixed the decoder
     (TestTheI7_10700fsModules)."""
 
     def test_an_impossible_voltage_is_not_a_profile(self):
@@ -766,7 +766,7 @@ class TestTheT14sDump(unittest.TestCase):
 
 
 class TestTheI7_10700fsModules(unittest.TestCase):
-    """anianin27's two TEAMGROUP-UD4-3200 (T-Force Vulcan Z), from the annex of
+    """A desktop's two TEAMGROUP-UD4-3200 (T-Force Vulcan Z), from the annex of
     its prueba4 report. Sold as DDR4-3200 16-18-18-38 at 1.35 V; read a byte
     off, its XMP said CL 18, tRP 4 and 0.81 V (F-A2)."""
 

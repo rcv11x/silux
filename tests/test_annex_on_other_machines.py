@@ -181,9 +181,9 @@ class TestTheT14NamedThinkpad(unittest.TestCase):
 
 
 class TestNvidiaCards(unittest.TestCase):
-    """Any awake NVIDIA: widecoocaa23's laptop (an Intel integrated and an
-    RTX 4050) and anianin27's desktop (an RTX 4060) had no annex in the
-    prueba2. And a machine with two, each with its own UUID."""
+    """Any awake NVIDIA: a laptop (an Intel integrated and an RTX 4050) and a
+    desktop (an RTX 4060) had no annex in the prueba2. And a machine with two,
+    each with its own UUID."""
 
     @staticmethod
     def _card(index, slot, uuid, name, driver, cuda, gib, bus):

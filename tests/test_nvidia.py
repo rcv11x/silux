@@ -254,7 +254,7 @@ class TestThePowerOfANewDriver(unittest.TestCase):
 
 class TestAProprietaryNvidiaInSensors(unittest.TestCase):
     """Its driver has no hwmon: temperature and clocks come from NVML, and
-    the sensor tree had none of them (anianin27's RTX 4060)."""
+    the sensor tree had none of them (a desktop RTX 4060)."""
 
     def test_its_temperature_and_clocks_are_there(self):
         import pathlib

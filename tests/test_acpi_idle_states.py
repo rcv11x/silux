@@ -1,6 +1,6 @@
 """Idle states taken from the firmware's ACPI table are not the processor's.
 
-anianin27's i7-10700F (Comet Lake-S) read «C2 es el reposo más hondo de este
+A desktop i7-10700F (Comet Lake-S) read «C2 es el reposo más hondo de este
 procesador», and the author's T14 «C3». Their states are «C1_ACPI» and
 «C2_ACPI»: intel_idle took them from the board's _CST table
 (intel_idle_init_cstates_acpi), and the number is ACPI's level.
