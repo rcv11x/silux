@@ -1,12 +1,12 @@
 """The package's power, broken down, through RAPL (powercap).
 
-The kernel publishes energy counters in microjoules that only go up. Watts
+The kernel publishes ever-increasing energy counters in microjoules; watts
 are their rate, so the previous reading is kept. The counter wraps at
-`max_energy_range_uj`, which has to be handled or absurd peaks show.
+`max_energy_range_uj`, which must be handled or absurd peaks appear.
 
-The subdomains and the limits the processor declares are read too: a «7 W»
-at idle looks like a measuring error until the breakdown shows the cores in
-deep idle, and that the part's sustained limit is 65 W.
+The subdomains and the processor's declared limits are read too: «7 W» at
+idle looks like a measuring error until the breakdown shows the cores in
+deep idle, and the part's sustained limit at 65 W.
 """
 
 from __future__ import annotations
@@ -25,14 +25,14 @@ from .counters import increase, window_s
 
 POWERCAP = pathlib.Path("/sys/class/powercap")
 
-# The kernel's name for each subdomain -> the model's field.
+# The kernel's subdomain name → the model's field.
 SUBDOMAINS = {"core": "core_w", "uncore": "uncore_w", "dram": "dram_w"}
 
 
-# Where the `core` domain is not the sum of the cores. On Intel it is PP0, a
-# package counter. On AMD the kernel takes it from
-# `MSR_AMD_CORE_ENERGY_STATUS`, which is per core, and reads it on one core
-# only, the package's first: a load pinned to another core does not move it.
+# Where the `core` domain isn't the sum of the cores. On Intel it is PP0, a
+# package counter. On AMD the kernel reads `MSR_AMD_CORE_ENERGY_STATUS`,
+# which is per core, on the package's first core only, so a load pinned to
+# another core doesn't move it.
 CORE_DOMAIN_ON_ONE_CORE = frozenset(("AuthenticAMD", "HygonGenuine"))
 
 
@@ -40,8 +40,8 @@ def _core_is_one_cores(draft: Draft) -> bool:
     return any(t.get("vendor_id") in CORE_DOMAIN_ON_ONE_CORE for t in draft.types.values())
 
 
-# The framework is called «intel-rapl» after its origin, but AMD uses it too
-# and, depending on the kernel, it shows as «amd-rapl».
+# The framework is named «intel-rapl» after its origin, but AMD uses it too
+# and, depending on the kernel, it may show as «amd-rapl».
 RAPL_ZONES = ("intel-rapl:*", "amd-rapl:*", "*-rapl:*")
 
 
@@ -55,7 +55,7 @@ def _packages() -> list[pathlib.Path]:
         for entry in sorted(sysroot.path(POWERCAP).glob(pattern)):
             if entry.name in seen:
                 continue
-            # Subdomains (core, uncore, dram) carry a second «:».
+            # Subdomains (core, uncore, dram) have a second «:».
             if entry.name.count(":") > 1:
                 continue
             if (read_text(str(entry / "name")) or "").startswith("package"):
@@ -64,16 +64,16 @@ def _packages() -> list[pathlib.Path]:
     return found
 
 
-# Without any limit declared, no single package draws this for a second.
+# With no limit declared at all, no single package draws this for a second.
 FALLBACK_CEILING_W = 1000.0
-# Where a dropped reading is told: the report's diagnosis, no page.
+# Where dropped readings are reported: the report's diagnosis, on no page.
 DISCARDED_PATH = "report.power.discarded"
 
 
 def package_ceiling_w() -> float:
     """The most a package can draw, from what RAPL declares: its PL4
-    (`peak_power`) if declared; twice its highest limit if not (it goes above
-    PL2 for an instant, never to twice); FALLBACK_CEILING_W without any."""
+    (`peak_power`) if declared, otherwise twice its highest limit (it exceeds
+    PL2 briefly, never by double), or FALLBACK_CEILING_W with none."""
     packages = _packages()
     if not packages:
         return FALLBACK_CEILING_W
@@ -88,8 +88,8 @@ def package_ceiling_w() -> float:
 
 
 class Discarded:
-    """The readings dropped as impossible, told in the report with their
-    numbers: a negative watt, or more than the part can draw."""
+    """Readings dropped as impossible (a negative watt, or more than the part
+    can draw), listed with their numbers in the report."""
 
     def __init__(self, source: str) -> None:
         self.source = source
@@ -98,7 +98,7 @@ class Discarded:
 
     def check(self, watts: float, ceiling: float, before: int, after: int,
               seconds: float) -> bool:
-        """Whether those watts can be; if not, they are counted and kept."""
+        """Whether those watts are possible; if not, they are counted and kept."""
         if 0 <= watts <= ceiling:
             return True
         self.count += 1
@@ -172,13 +172,13 @@ def _read_limits(constraints: list[tuple[str, str, str]]) -> dict[str, Optional[
 
 
 class PowerLimits(Provider):
-    """PL1 and PL2: the limits the firmware set, without waiting for power.
+    """PL1 and PL2: the limits the firmware set, available before any power.
 
-    They sit next to the energy counters but are not the same: the kernel
-    keeps the counters for root, and the limits are readable by any user.
-    They are read every sample, since many laptops change them when the
-    charger is plugged in or out. `RaplPower` runs after this and adds the
-    watts to the same card.
+    They sit next to the energy counters but differ: the kernel keeps the
+    counters root-only, while the limits are readable by anyone. They are
+    read every sample, since many laptops change them when the charger is
+    plugged in or out. `RaplPower` runs after this and adds the watts to the
+    same card.
     """
 
     name = "power-limits"
@@ -208,13 +208,13 @@ class RaplPower(Provider):
     def __init__(self, client: Optional[PrivilegedClient] = None) -> None:
         self._previous: dict[str, tuple[int, float]] = {}
         # The same helper the disks and memory use. Since kernel 5.10
-        # `energy_uj` is not readable without privileges, and where that
-        # applies (AMD above all) the processor's power came out blank.
+        # `energy_uj` is root-only, and where that applies (above all AMD) the
+        # processor's power was blank.
         self.client = client
         self._by_the_helper = False
         self._cache: dict[str, int] = {}
-        # When the helper's reading was taken: it may wait up to 100 ms for
-        # its pace, and timing it from before the request skewed the watts.
+        # When the helper took its reading: it may wait up to 100 ms to keep
+        # its pace, and timing from before the request skewed the watts.
         self._cache_instant = 0.0
         self._ceiling: Optional[float] = None
         self._discarded = Discarded("RAPL")
@@ -225,8 +225,8 @@ class RaplPower(Provider):
             return False
         if read_int(str(packages[0] / "energy_uj")) is not None:
             return True
-        # With the helper connected it can, though the kernel refuses this
-        # process.
+        # Readable with the helper connected, even though the kernel refuses
+        # this process.
         return bool(self.client and self.client.connected())
 
     def unavailable_reason(self):
@@ -244,7 +244,7 @@ class RaplPower(Provider):
         if not packages:
             return
 
-        # One request to the helper per sample, not one per zone.
+        # One helper request per sample, not one per zone.
         self._cache: dict[str, int] = {}
         totals: dict[str, float] = {}
 
@@ -261,12 +261,12 @@ class RaplPower(Provider):
         self._discarded.note(draft)
 
         if "package_w" not in totals:
-            return                          # the first pass only sets the base
+            return                          # the first pass only sets the baseline
         if totals["package_w"] == 0:
-            # A package that is on always draws something: if its counter has
-            # not moved in a whole sample it is stuck, and 0 W would look like
-            # a value. Subdomains can stay still (an integrated GPU off); the
-            # package cannot.
+            # A powered package always draws something: a counter that didn't
+            # move in a whole sample is stuck, and 0 W would look like a value.
+            # Subdomains can stand still (an integrated GPU that's off); the
+            # package can't.
             draft.note("cpu.power", Need.HARDWARE,
                        _("prov.rapl.frozen"), _("prov.rapl.frozen.hint"))
             return
@@ -290,10 +290,11 @@ class RaplPower(Provider):
         return None if value is None else round(value, 2)
 
     def _by_helper(self, zone: str) -> Optional[int]:
-        """A zone's microjoules when the kernel does not let them be read.
+        """A zone's microjoules when the kernel won't let this process read
+        them.
 
-        All are asked at once and kept: with package, cores and DRAM that is
-        four readings per sample, and four trips to the helper a second.
+        All zones are asked for at once and cached: package, cores and DRAM
+        would otherwise be four helper trips per sample.
         """
         if not (self.client and self.client.connected()):
             return None
@@ -307,7 +308,7 @@ class RaplPower(Provider):
         return self._cache.get(zone)
 
     def _read(self, zone: pathlib.Path) -> tuple[Optional[int], str, float]:
-        """The zone's microjoules, where they came from and when."""
+        """The zone's microjoules, their source and when they were read."""
         microjoules = read_int(str(zone / "energy_uj"))
         if microjoules is not None:
             return microjoules, "sysfs", time.monotonic()
@@ -323,8 +324,8 @@ class RaplPower(Provider):
         key = zone.name
         before = self._previous.get(key)
         self._previous[key] = (microjoules, instant, source)
-        # Not against a reading from the other source: they are the same
-        # counter, but timed differently.
+        # Not against a reading from the other source: same counter, read at
+        # a different time.
         if before is None or before[2] != source:
             return
 
@@ -333,7 +334,7 @@ class RaplPower(Provider):
             return
         delta = increase(before[0], microjoules)
         if delta is None:
-            # Gone round: the range is read only then.
+            # It wrapped: only then is the range read.
             delta = increase(before[0], microjoules,
                              wrap=read_int(str(zone / "max_energy_range_uj")))
         if delta is None:

@@ -1,8 +1,8 @@
 """Topology, caches and clocks from /sys/devices/system/cpu.
 
-The most reliable source there is: the kernel writes it, no permission is
-needed and it works the same on x86, ARM and RISC-V. It covers almost all
-of the CPU page but the processor's identity, which only CPUID knows.
+The most reliable source there is: the kernel writes it, it needs no
+permissions and works the same on x86, ARM and RISC-V. It covers nearly all
+of the CPU page except the processor's identity, which only CPUID knows.
 """
 
 from __future__ import annotations
@@ -18,8 +18,8 @@ from .base import Draft, Provider, mean, parse_cpu_list, parse_size, read_int, r
 
 SYS_CPU = "/sys/devices/system/cpu"
 
-# On Intel's hybrid CPUs the kernel publishes one PMU per core type: the
-# cleanest way to know which logical CPU is a P core and which an E.
+# Intel's hybrid CPUs get one PMU per core type from the kernel: the cleanest
+# way to tell which logical CPU is a P core and which an E core.
 HYBRID_PMUS = (
     ("/sys/devices/cpu_core", "performance"),
     ("/sys/devices/cpu_atom", "efficiency"),
@@ -32,7 +32,7 @@ def online_cpus() -> tuple[int, ...]:
     cpus = parse_cpu_list(read_text(f"{SYS_CPU}/online"))
     if cpus:
         return cpus
-    # A safety net: without `online`, count the cpuN folders.
+    # Fallback: without `online`, count the cpuN folders.
     found = []
     for entry in pathlib.Path(sysroot.path(SYS_CPU)).glob("cpu[0-9]*"):
         if entry.name[3:].isdigit():
@@ -41,10 +41,10 @@ def online_cpus() -> tuple[int, ...]:
 
 
 def _arm_cores(cpus: tuple[int, ...]) -> dict[str, list[int]]:
-    """Split an ARM's CPUs by the core each one carries.
+    """Split an ARM's CPUs by the core each one is.
 
-    Empty unless there is more than one type, as outside ARM and on a
-    single-core-type ARM: then the usual split stands.
+    Empty unless there is more than one core type (not ARM, or a single-type
+    ARM), and then the usual split stands.
     """
     from .armcpu import is_arm, midr_by_cpu
 
@@ -55,13 +55,13 @@ def _arm_cores(cpus: tuple[int, ...]) -> dict[str, list[int]]:
     for cpu in cpus:
         identity = midr.get(cpu)
         if identity is None or identity == (None, None):
-            return {}                     # incomplete: not guessed
+            return {}                     # incomplete: no guessing
         groups.setdefault(identity, []).append(cpu)
     if len(groups) < 2:
         return {}
 
-    # Big cores first, as the maker numbers them and as one expects to read
-    # them: the part number orders them, higher for newer and bigger cores.
+    # Big cores first, as the maker numbers them: the part number orders
+    # them, higher for newer and bigger cores.
     order = sorted(groups, key=lambda k: (k[1] or 0), reverse=True)
     names = ["performance", "efficiency"] if len(order) == 2 else [
         f"nucleo{i}" for i in range(len(order))]
@@ -132,22 +132,22 @@ class SysfsTopology(Provider):
         assigned = {c for members in buckets.values() for c in members}
         leftover = [c for c in cpus if c not in assigned]
         if leftover:
-            # Without separate PMUs there is one type; with them this should
-            # not happen, but a CPU the kernel leaves out is not lost.
+            # Without per-type PMUs there is one type. With them this shouldn't
+            # happen, but a CPU the kernel left out mustn't get lost.
             buckets["general" if not buckets else "other"] = leftover
 
         if len(buckets) == 1 and "general" in buckets:
-            # An ARM big.LITTLE is as hybrid as a 12th-gen Intel, but the
-            # kernel publishes no PMU per type. It does publish which core each
-            # CPU carries, which splits them just the same.
+            # An ARM big.LITTLE is as hybrid as a 12th-gen Intel, but the kernel
+            # publishes no PMU per type. It does say which core each CPU is,
+            # which splits them just the same.
             if split := _arm_cores(tuple(buckets["general"])):
                 return split
         return buckets or {"general": list(cpus)}
 
     @staticmethod
     def _caches_for(cpus: list[int]) -> list[Cache]:
-        # Each physical cache shows in every CPU sharing it: deduplicated by
-        # the set of CPUs that share it.
+        # A shared cache shows up in every CPU sharing it, so caches are
+        # deduplicated by that set of CPUs.
         seen: dict[tuple, set[frozenset[int]]] = {}
         for index in cpus:
             cache_dir = pathlib.Path(sysroot.path(f"{SYS_CPU}/cpu{index}/cache"))
@@ -196,9 +196,9 @@ class SysfsTopology(Provider):
     def _static_clocks(cpu_index: int) -> Clocks:
         freq = f"{SYS_CPU}/cpu{cpu_index}/cpufreq"
         khz = lambda name: (lambda v: v * 1000 if v else None)(read_int(f"{freq}/{name}"))
-        # Only what really does not change. The effective ceiling and the
-        # governor are reread every sample: desktop power profiles change
-        # them without notice.
+        # Only what truly doesn't change. The effective ceiling and the
+        # governor are reread every sample: desktop power profiles change them
+        # without notice.
         return Clocks(
             min_hz=khz("cpuinfo_min_freq"),
             base_configured_hz=khz("base_frequency"),
@@ -206,19 +206,18 @@ class SysfsTopology(Provider):
         )
 
 
-# Where each thread's frequency comes from, most reliable first, as
-# Documentation/admin-guide/pm/cpufreq.rst says:
+# Where each thread's frequency comes from, most reliable first, per
+# Documentation/admin-guide/pm/cpufreq.rst:
 #
-# - `cpuinfo_avg_freq`: the mean the hardware measures over a few
-#   milliseconds (APERF/MPERF on x86, AMU on ARM). Missing if it cannot be
-#   measured; it may fail on a thread long idle (EAGAIN on ARM), and then the
-#   next is tried.
+# - `cpuinfo_avg_freq`: the average the hardware measures over a few
+#   milliseconds (APERF/MPERF on x86, AMU on ARM). Missing where it can't be
+#   measured; it may fail on a long-idle thread (EAGAIN on ARM), and then the
+#   next source is tried.
 # - `scaling_cur_freq`: «in most cases, the last P-state the driver asked
-#   for», which may not be what it runs at. On x86 the kernel brings it close
-#   to the real one, and there both agree (2 900 688 against 2 900 719 kHz).
-#   On AMD, not checked against the other.
-# - `cpuinfo_cur_freq`: the hardware's, but almost always readable by root
-#   only.
+#   for», not necessarily what it runs at. On Intel the kernel keeps it close
+#   to the real figure, and the two agree to within a few kHz; on AMD that
+#   hasn't been checked.
+# - `cpuinfo_cur_freq`: the hardware's, but nearly always root-only.
 FREQUENCY_SOURCES = ("cpuinfo_avg_freq", "scaling_cur_freq", "cpuinfo_cur_freq")
 
 
@@ -226,11 +225,11 @@ CPUINFO = "/proc/cpuinfo"
 
 
 def cpuinfo_mhz() -> dict[int, float]:
-    """`cpu MHz` of each processor in /proc/cpuinfo.
+    """Each processor's `cpu MHz` from /proc/cpuinfo.
 
-    It is there without a frequency driver: on x86 the kernel gives the
-    APERF/MPERF measure of a thread that has been running, and the TSC's
-    frequency otherwise (`arch_freq_get_on_cpu`).
+    Present even without a frequency driver: on x86 the kernel gives a busy
+    thread's APERF/MPERF measurement, and the TSC frequency otherwise
+    (`arch_freq_get_on_cpu`).
     """
     found: dict[int, float] = {}
     processor = None
@@ -248,7 +247,7 @@ def cpuinfo_mhz() -> dict[int, float]:
 
 
 class SysfsClocks(Provider):
-    """Each logical CPU's current frequency, and the ceiling in force."""
+    """Each logical CPU's current frequency, and the ceiling in effect."""
 
     name = "sysfs-clocks"
     provides = "cpu.clocks.current_hz"
@@ -267,8 +266,8 @@ class SysfsClocks(Provider):
                 cpu["freq_hz"] = khz * 1000
                 any_read = True
         source = "cpufreq" if any_read else None
-        # Without a frequency driver /proc/cpuinfo still says it. Not in a
-        # virtual machine: there it is the host's clock, not the guest's.
+        # Without a frequency driver /proc/cpuinfo still has it, except in a
+        # virtual machine, where it's the host's clock, not the guest's.
         virtual = any(t.get("in_virtual_machine") for t in draft.types.values())
         if not any_read and not virtual:
             for index, mhz in cpuinfo_mhz().items():
@@ -288,8 +287,8 @@ class SysfsClocks(Provider):
             preference = read_text(
                 f"{SYS_CPU}/cpu{leader}/cpufreq/energy_performance_preference"
             )
-            # `replace` and not field by field: if Clocks gains a field, this
-            # does not drop it in silence.
+            # `replace` rather than field by field, so a new Clocks field isn't
+            # silently dropped here.
             entry["clocks"] = dataclasses.replace(
                 clocks,
                 current_hz=int(average),
@@ -299,16 +298,16 @@ class SysfsClocks(Provider):
                 energy_preference=preference or clocks.energy_preference,
             )
 
-        # No frequency driver is not «a kernel module is missing»: the firmware
-        # may not give the system the frequency states (Cool'n'Quiet off in
-        # the BIOS) or the driver may not have loaded, and from here the two
+        # No frequency driver isn't «a kernel module is missing»: the firmware
+        # may not hand the system its frequency states (Cool'n'Quiet off in
+        # the BIOS) or the driver may have failed to load, and from here they
         # look the same. The notice says that much and no more.
         if source == "cpuinfo":
             draft.note("cpu.clocks.driver", Need.HARDWARE,
                        _("prov.cpu.nocpufreq"), _("prov.cpu.nocpufreq.hint"))
         elif source is None:
-            # In a virtual machine there is no module to load: the hypervisor
-            # exposes no cpufreq because it does not govern the clock.
+            # A virtual machine has no module to load: the hypervisor exposes
+            # no cpufreq because it doesn't govern the clock.
             if virtual:
                 draft.note(
                     "cpu.clocks.current_hz", Need.HARDWARE,

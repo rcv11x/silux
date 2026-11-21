@@ -1,20 +1,19 @@
-"""The traffic the memory controller moves, read from its PMU.
+"""Memory controller traffic, read from its PMU.
 
-A sensor, not a benchmark: nobody causes this traffic, it is what there is.
-`membench` says what the memory *can* give and has to load the machine to
-know; this says what it moves right now. It counts the whole controller,
-with the processor's traffic inside, so `ia_requests` (what the cores ask
-for) is read as well.
+A sensor, not a benchmark: it measures the traffic there is rather than
+generating it. `membench` says what the memory *can* do and has to load the
+machine to find out; this says what it moves right now. It counts the whole
+controller, so `ia_requests` (what the cores ask for) is read too.
 
 **Intel only.** AMD publishes no named counters: from Zen 4 the kernel
-registers an `amd_umc_N` PMU without an `events/` group, so the event number
-would be written by hand with no part to check it on; before Zen 3 nothing
-is documented. Rather than make up a figure, it says this machine does not
-publish it.
+registers an `amd_umc_N` PMU without an `events/` group, so event numbers
+would be written by hand with no part to check them on, and nothing is
+documented before Zen 3. Rather than invent a figure, it says the machine
+doesn't publish it.
 
-It needs the privileged helper: uncore counters need CAP_PERFMON, and
-lowering `perf_event_paranoid` would open profiling of the whole machine to
-any process.
+It needs the privileged helper: uncore counters require CAP_PERFMON, and
+lowering `perf_event_paranoid` would let any process profile the whole
+machine.
 """
 
 from __future__ import annotations
@@ -35,20 +34,19 @@ _PMU_IMC = re.compile(PMU_IMC)
 _PMU_IMC_EVENT = re.compile(PMU_IMC_EVENT)
 
 # How each generation names the same thing. The first two rows are the
-# traffic's direction; the third is that same traffic by origin.
+# traffic's direction; the third is the same traffic by origin.
 READ_EVENTS = frozenset({"data_reads", "data_read", "cas_count_read"})
 WRITE_EVENTS = frozenset({"data_writes", "data_write", "cas_count_write"})
 CORE_EVENTS = frozenset({"ia_requests"})
 
 # The unit the kernel publishes these counters in. Checked, not assumed: the
-# scale alone does not say what it multiplies, and a mebibyte factor on
-# something else would give a believable, false figure.
+# scale alone doesn't say what it multiplies, and a mebibyte factor on
+# something else would give a plausible, wrong figure.
 UNIT = "MiB"
 BYTES_PER_UNIT = 1 << 20
 
-# The device these sensors hang from: the same as RAM usage, with its key,
-# so they are one and not two. Which goes first in the tree is decided by
-# each sensor's kind, not by this name.
+# The device these sensors hang from, with the same key as RAM usage so they
+# are one device. Each sensor's kind decides the order in the tree.
 DEVICE = "sensor.mem"
 
 
@@ -56,8 +54,8 @@ def has_controller() -> bool:
     """Whether this machine publishes any memory controller PMU.
 
     Checked without privileges (listing the folder is allowed, opening the
-    counter is not): it tells «needs permission» from «this machine does not
-    have it», so a Ryzen is not asked for a password to show nothing.
+    counter isn't), to tell «needs permission» from «not on this machine»:
+    a Ryzen shouldn't ask for a password to show nothing.
     """
     try:
         return any(_PMU_IMC.match(name) for name in os.listdir(sysroot.path(PMU_ROOT)))
@@ -68,8 +66,8 @@ def has_controller() -> bool:
 def has_counters() -> bool:
     """Whether a memory controller PMU publishes an event the helper opens.
 
-    Then the helper not opening it is an error to tell, not hardware that
-    lacks it. Listing the events needs no privileges either.
+    If so, the helper failing to open it is an error to report, not missing
+    hardware. Listing the events needs no privileges either.
     """
     try:
         root = sysroot.path(PMU_ROOT)
@@ -89,7 +87,7 @@ def has_counters() -> bool:
 
 
 class ImcTraffic(Provider):
-    """Bytes per second to and from RAM, by the uncore's PMU."""
+    """Bytes per second to and from RAM, from the uncore PMU."""
 
     name = "imc"
     provides = "memory.traffic"
@@ -97,8 +95,8 @@ class ImcTraffic(Provider):
     def __init__(self, client: Optional[PrivilegedClient] = None) -> None:
         self.client = client
         self._previous: Optional[tuple[int, dict[str, dict[str, int]]]] = None
-        self._silent = False          # this machine has none: stop asking
-        # What the helper said when it could not open them, for the report.
+        self._silent = False          # set when this machine has none
+        # What the helper said when it couldn't open them, for the report.
         self._reason = ""
 
     def available(self) -> bool:
@@ -114,8 +112,8 @@ class ImcTraffic(Provider):
                     _("prov.imc.denied"), _("prov.imc.denied.hint"),
                     _("what.memory.traffic"))
         if has_counters():
-            # The kernel publishes them and the helper could not open them:
-            # not «this machine does not have it».
+            # The kernel publishes them and the helper couldn't open them:
+            # that isn't «not on this machine».
             return ("memory.traffic", Need.ERROR,
                     _("prov.imc.unopened"), _("prov.imc.unopened.hint"), "", self._reason)
         return ("memory.traffic", Need.HARDWARE,
@@ -127,20 +125,20 @@ class ImcTraffic(Provider):
         try:
             reading = self.client.imc()       # type: ignore[union-attr]
         except PmuUnsupported as exc:
-            # It has none. Stop asking; the notice becomes «this machine does
-            # not publish it».
+            # It has none: stop asking, and the notice becomes «this machine
+            # doesn't publish it».
             self._silent = True
             self._reason = str(exc)
             self._previous = None
             return
         except HelperError:
-            # A single failure loses nothing: the pipe may have broken and the
-            # user may authorize again.
+            # A single failure loses nothing: the pipe may have broken, and the
+            # user can authorize again.
             return
 
         if reading.truncated:
-            # Channels missing, so the sum would fall short. A low, believable
-            # figure is worse than none.
+            # Missing channels would make the sum fall short, and a low,
+            # plausible figure is worse than none.
             draft.note("memory.traffic", Need.ERROR,
                        _("prov.imc.truncated"), _("prov.imc.truncated.hint"))
             return
@@ -190,11 +188,10 @@ class ImcTraffic(Provider):
         )
         draft.resolve("memory.traffic")
 
-        # And to the sensor tree, where it adds the session's maximum: the
-        # most this machine has moved. Unlike the core voltage (a P-state's
-        # step), this is a continuous measure, so its history means something.
-        # «From the processor» does not go up: next to read and write it would
-        # read as a third direction of the traffic.
+        # Also to the sensor tree, which adds the session's maximum. Unlike
+        # the core voltage (a P-state's step), this is a continuous measure, so
+        # its history means something. «From the processor» stays out: next to
+        # read and write it would look like a third traffic direction.
         for key, label, bytes_s, order in (
                 ("read", "sensor.imc.read", totals["read"], 0),
                 ("write", "sensor.imc.write", totals["write"], 1)):

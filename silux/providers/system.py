@@ -1,9 +1,8 @@
 """Operating system, kernel, memory and activity.
 
-Two providers, because the data differ in kind: the distribution and the
-kernel do not change while the program runs, and memory and the number of
-processes change every second. Reading /etc/os-release on every sample
-would be wasted work.
+Two providers because the data differ in kind: the distribution and kernel
+don't change while Silux runs, while memory and process counts change every
+second, and rereading /etc/os-release each sample would be wasted work.
 """
 
 from __future__ import annotations
@@ -25,8 +24,8 @@ from .base import Draft, Provider, on_its_own, read_int, read_text
 
 OS_RELEASE = "/etc/os-release"
 
-# The taint bits a module can set (P, F, C, O, E, K, X, T, N): the ones
-# whose culprit /sys/module/<name>/taint can name.
+# The taint bits a module can set (P, F, C, O, E, K, X, T, N): those whose
+# culprit /sys/module/<name>/taint can name.
 MODULE_TAINT_BITS = sum(1 << bit for bit in (0, 1, 10, 12, 13, 15, 16, 17, 18))
 
 MEMINFO = "/proc/meminfo"
@@ -46,17 +45,16 @@ _MEM_FIELDS = {
 
 
 def _unquote(value: str) -> str:
-    """Strip the quotes of an os-release value.
+    """Strip an os-release value's quotes.
 
-    The format is a shell fragment, so quotes can be double or single; with
-    only the double ones, single-quoted values showed with their quotes.
+    The format is a shell fragment, so quotes may be double or single.
     """
     value = value.strip()
     for quote in ('"', "'"):
         if len(value) >= 2 and value[0] == quote and value[-1] == quote:
             value = value[1:-1]
             break
-    # In double quotes, the shell lets a few characters be escaped.
+    # Inside double quotes the shell allows a few escaped characters.
     return re.sub(r"\\([\\$`\"'])", r"\1", value)
 
 
@@ -76,7 +74,7 @@ def _os_release() -> dict[str, str]:
 
 
 class SystemIdentity(Provider):
-    """What does not change: distribution, kernel, desktop, machine name."""
+    """What doesn't change: distribution, kernel, desktop, machine name."""
 
     name = "system-identity"
     provides = "system"
@@ -109,7 +107,7 @@ class SystemIdentity(Provider):
         running = kernel.version(uname["release"])
         if running is not None and running < kernel.MINIMUM:
             # What appeared after the minimum is explained value by value;
-            # below it, something may be missing and nothing would say why.
+            # below it, something could be missing without anything saying why.
             draft.note("system.kernel", Need.KERNEL, _("kernel.belowminimum").format(
                 tuyo=f"{running[0]}.{running[1]}",
                 minimo=f"{kernel.MINIMUM[0]}.{kernel.MINIMUM[1]}"), key="kernel.belowminimum")
@@ -118,9 +116,9 @@ class SystemIdentity(Provider):
     def _kernel_build() -> Optional[str]:
         """The date and compiler the kernel was built with.
 
-        What matters starts at «#», the build number, and goes on with the
-        date. The compiler is in the last parenthesis before it; with only gcc
-        accepted, a kernel built with clang repeated the kernel's own name.
+        What matters starts at «#», the build number, followed by the date.
+        The compiler is in the last parenthesised group before it, and may
+        be gcc or clang.
         """
         raw = read_text("/proc/version")
         if not raw:
@@ -130,9 +128,9 @@ class SystemIdentity(Provider):
             return None
         build = hash_mark.group(1).strip()
         head = raw[:hash_mark.start()]
-        # Who built it. Parentheses cannot be trusted: «gcc (Gentoo 14.3.0
-        # p2) 14.3.0» and «gcc-13 (Ubuntu 13.2.0) 13.2.0» nest them. Finding
-        # the name and taking the last version after it is enough.
+        # Who built it. Parentheses can't be trusted, since «gcc (Gentoo 14.3.0
+        # p2) 14.3.0» and «gcc-13 (Ubuntu 13.2.0) 13.2.0» nest them: find the
+        # name and take the last version after it.
         if compiler := re.search(r"\b(gcc|clang)\b", head, re.IGNORECASE):
             up_to_comma = head[compiler.end():].split(",")[0]
             if versions := re.findall(r"\d+\.\d+(?:\.\d+)?", up_to_comma):
@@ -146,8 +144,8 @@ class SystemIdentity(Provider):
         except OSError:
             name = read_text("/proc/1/comm")
         # OpenRC runs under sysvinit's `init`, which would read «Init: init».
-        # Its runlevels are in /etc, which sysroot translates and a dump
-        # carries (/run is neither: a test would read this machine).
+        # Its runlevels live in /etc, which sysroot translates and a dump
+        # carries (/run is neither, so a test would read this machine's).
         if name == "init" and os.path.isdir(sysroot.path("/etc/runlevels")):
             return "openrc"
         if name == "openrc-init":
@@ -157,14 +155,14 @@ class SystemIdentity(Provider):
 
 VULNERABILITIES = "/sys/devices/system/cpu/vulnerabilities"
 EFIVARS = "/sys/firmware/efi/efivars"
-# The id under which boot loaders publish their variables (systemd's Boot
-# Loader Interface). Only these four are read: the rest carry the partition's
-# UUID and a system id, nobody's business.
+# The id boot loaders publish their variables under (systemd's Boot Loader
+# Interface). Only these four are read; the rest carry the partition's UUID
+# and a system id, which are nobody's business.
 LOADER_GUID = "4a67b082-0a4c-41cf-b6c7-440b29bb8c4f"
 
 
 def state_of(status: str) -> str:
-    """What the kernel says of a vulnerability, in one of four words."""
+    """The kernel's verdict on a vulnerability, as one of four words."""
     if status.startswith("Not affected"):
         return "unaffected"
     if status.startswith("Vulnerable"):
@@ -186,13 +184,12 @@ def _efi_variable(name: str) -> Optional[str]:
 
 
 # The firmware's FPDT table: when it launched the loader and when the loader
-# handed back control on leaving boot services, in ns since power-on. Where
-# systemd takes firmware and loader times when the boot manager publishes no
-# variables, readable without permissions.
+# left boot services, in ns since power-on. systemd reads firmware and loader
+# times here when the boot manager publishes none; no permissions needed.
 FPDT = "/sys/firmware/acpi/fpdt/boot"
 
-# What systemd knows of the boot, in µs since the kernel started. Over D-Bus,
-# without permissions, with any boot loader.
+# What systemd knows about the boot, in µs since the kernel started, over
+# D-Bus, without permissions and with any boot loader.
 SYSTEMD_PROPERTIES = ("InitRDTimestampMonotonic", "UserspaceTimestampMonotonic",
                           "FinishTimestampMonotonic")
 
@@ -218,7 +215,7 @@ def _systemd_times() -> Optional[dict[str, int]]:
 
 
 class SystemSecurity(Provider):
-    """What does not change all session: mitigations and boot."""
+    """What doesn't change during the session: mitigations and boot."""
 
     name = "system-security"
     provides = "system.vulnerabilities"
@@ -270,7 +267,7 @@ class SystemSecurity(Provider):
             entry=_efi_variable("LoaderEntrySelected"),
             firmware_s=round(to_loader, 1) if to_loader is not None else None,
             loader_s=loader,
-            # Without an initrd, the kernel runs up to systemd.
+            # Without an initrd, the kernel stage runs up to systemd.
             kernel_s=span(0, initrd or userspace) if userspace else None,
             initrd_s=span(initrd, userspace) if initrd else None,
             userspace_s=span(userspace, finish) if userspace and finish else None,
@@ -278,7 +275,7 @@ class SystemSecurity(Provider):
 
 
 def read_swaps() -> tuple[Swap, ...]:
-    """Each swap space in `/proc/swaps`; zram with its own details."""
+    """Each swap space in `/proc/swaps`, with zram's own details."""
     raw = read_text("/proc/swaps") or ""
     out = []
     for line in raw.splitlines()[1:]:
@@ -333,7 +330,7 @@ class SystemState(Provider):
             swaps=read_swaps(),
             threads=self._threads(),
             open_files=self._open_files(),
-            # Can change during the session: loading a module taints it.
+            # Can change during the session: loading a module may taint it.
             tainted=(mask := read_int("/proc/sys/kernel/tainted")),
             tainting_modules=self._tainting_modules(mask),
         )
@@ -342,11 +339,10 @@ class SystemState(Provider):
     # -- internals ----------------------------------------------------------
 
     def _tainting_modules(self, mask: Optional[int]) -> tuple[tuple[str, str], ...]:
-        """Which loaded modules tainted the kernel, and with what.
+        """Which loaded modules tainted the kernel, and how.
 
-        Read again only when the mask or the number of loaded modules
-        changes, not on every sample; and not at all when no bit set is one
-        a module can set.
+        Reread only when the mask or the number of loaded modules changes,
+        and skipped when no set bit is one a module can set.
         """
         if not mask or not mask & MODULE_TAINT_BITS:
             return ()
@@ -383,7 +379,7 @@ class SystemState(Provider):
                     field = _MEM_FIELDS.get(key)
                     if field is None:
                         continue
-                    # /proc/meminfo is in kibibytes but for rare exceptions.
+                    # /proc/meminfo is in kibibytes, with rare exceptions.
                     values[field] = int(rest.split()[0]) * 1024
                     if len(values) == len(_MEM_FIELDS):
                         break
@@ -404,7 +400,7 @@ class SystemState(Provider):
         if uptime <= 0:
             return None
         # Year-month-day, like the firmware date (`render.bios_date`): «06/08»
-        # reads two ways depending on who looks, this only one.
+        # reads two ways, this only one.
         return time.strftime("%Y-%m-%d %H:%M", time.localtime(time.time() - uptime))
 
     @staticmethod
@@ -427,7 +423,7 @@ class SystemState(Provider):
 
     @staticmethod
     def _sensors(system: System) -> list[Sensor]:
-        """Memory use is a value worth following too."""
+        """Memory use is a value worth tracking too."""
         memory = system.memory
         if not memory.total_bytes:
             return []

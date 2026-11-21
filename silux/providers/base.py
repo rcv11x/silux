@@ -1,12 +1,12 @@
 """What every provider shares.
 
 A provider reads one source (CPUID, sysfs, hwmon…) and writes into a
-`Draft`. The draft is mutable because collecting is; at the end it freezes
-into an immutable `Snapshot`, the only thing that leaves the data layer.
+`Draft`, mutable because collecting is; at the end it freezes into an
+immutable `Snapshot`, the only thing that leaves the data layer.
 
-Each provider says what it needs to work. When it cannot, it does not vanish
-in silence: it leaves a `Note` saying why, and the interface shows it
-instead of an unexplained gap.
+Each provider says what it needs to work. When it can't, it doesn't vanish
+silently: it leaves a `Note` saying why, which the interface shows instead
+of an unexplained gap.
 """
 
 from __future__ import annotations
@@ -40,11 +40,11 @@ from ..model import (
 
 @dataclass
 class Draft:
-    """Mutable state during a collection. It never leaves the collector."""
+    """Mutable state during one collection. It never leaves the collector."""
 
     monotonic_ns: int = field(default_factory=time.monotonic_ns)
-    # The sampling interval: a rate from a window shorter than half of it is
-    # no rate (`counters.window_s`).
+    # The sampling interval: a window shorter than half of it gives no rate
+    # (`counters.window_s`).
     interval_s: float = 1.0
     sockets: int = 1
     hybrid: bool = False
@@ -74,9 +74,9 @@ class Draft:
     driver_hints: list[DriverHint] = field(default_factory=list)
     capabilities: set[str] = field(default_factory=set)
     notes: list[Note] = field(default_factory=list)
-    # The static data was read with something asleep that is not any more: a
-    # suspended card is not read whole so as not to wake it, and when it
-    # wakes the rest is fetched. The collector looks at this after the pass.
+    # The static data was read while something was asleep and has since woken:
+    # a suspended card isn't read in full so as not to wake it, and the rest is
+    # fetched once it wakes. The collector checks this after the pass.
     static_stale: bool = False
 
     # -- writing helpers ----------------------------------------------------
@@ -90,9 +90,9 @@ class Draft:
     def gpu(self, index: int) -> dict[str, Any]:
         """Card number N, created the first time it is named.
 
-        Dictionaries and not `Gpu`: several providers fill them in turn (the
+        Dicts rather than `Gpu`: several providers fill them in turn (the
         kernel first, the graphics APIs after), and rebuilding a frozen
-        dataclass at each step loses fields another one just set.
+        dataclass at each step would lose fields another one just set.
         """
         while len(self.gpus) <= index:
             self.gpus.append({"index": len(self.gpus)})
@@ -106,10 +106,10 @@ class Draft:
     def resolve(self, path: str) -> None:
         """Drop the notes on a value another provider did get.
 
-        Providers do not know each other, but several can reach the same value
-        by different paths, and the first one says it could not: on ARM the
-        processor's identity showed as missing («CPUID is an x86
-        instruction») with the core's name written right above.
+        Providers don't know each other, but several can reach the same value
+        by different routes, and the first may have said it couldn't: on ARM
+        the processor's identity showed as missing («CPUID is an x86
+        instruction») right under the core's name.
         """
         self.notes = [n for n in self.notes if n.path != path]
 
@@ -123,8 +123,8 @@ class Draft:
             data["caches"] = tuple(data.get("caches", ()))
             data["features"] = tuple(data.get("features", ()))
             data.setdefault("clocks", Clocks())
-            # Drop any key that is not a model field: a provider writing too
-            # much must not break the freeze.
+            # Drop keys that aren't model fields: a provider writing too much
+            # mustn't break the freeze.
             valid = {f for f in CpuType.__dataclass_fields__}
             types.append(CpuType(**{k: v for k, v in data.items() if k in valid}))
 
@@ -179,8 +179,8 @@ class Draft:
 class Provider:
     """The base of every provider.
 
-    `static` tells what is read once (identity, topology, caches) from what
-    is refreshed on every sample (clocks, temperatures, usage).
+    `static` separates what is read once (identity, topology, caches) from
+    what is refreshed every sample (clocks, temperatures, usage).
     """
 
     name: str = "unnamed"
@@ -191,10 +191,10 @@ class Provider:
         return True
 
     def unavailable_reason(self) -> Optional[tuple]:
-        """(path, need, message, hint) if it cannot be used; None if it can.
+        """(path, need, message, hint) if it can't be used; None if it can.
 
-        With a fifth item, what is missing in a few words, when it is about
-        permissions and the helper can read it (`Note.what`).
+        A fifth item, a few words on what is missing, when it is a matter of
+        permissions the helper can solve (`Note.what`).
         """
         return None
 
@@ -202,17 +202,17 @@ class Provider:
         raise NotImplementedError
 
     def wants_between_samples(self) -> bool:
-        """Whether it reads something between one sample and the next
-        (`between_samples`). Almost none: each reading wakes the thread."""
+        """Whether it also reads between samples (`between_samples`). Almost
+        none do: each reading wakes the thread."""
         return False
 
     def between_samples(self) -> None:
-        """A reading between samples, for what the hardware gives as an
-        instant and is shown as the interval's mean."""
+        """A reading between samples, for what the hardware reports as an
+        instant but is shown as the interval's mean."""
 
 
 # --------------------------------------------------------------------------
-# reading sysfs and procfs, tolerating files that do not exist
+# reading sysfs and procfs, tolerating missing files
 # --------------------------------------------------------------------------
 
 
@@ -225,21 +225,20 @@ def read_text(path: str) -> Optional[str]:
 
 
 def is_suspended(device) -> bool:
-    """Whether the kernel has the device suspended by runtime PM (D3).
+    """Whether runtime PM has the device suspended (D3).
 
-    The power management core publishes `power/runtime_status`, not the
-    driver: `runtime_status_show` (drivers/base/power/sysfs.c) returns the
-    stored state without waking the device. Almost everything else wakes it:
-    the PCIe link since Linux 6.18, hwmon and amdgpu's ioctls, opening the
-    render node, NVML. Whoever asks wakes the card and then measures it awake,
-    which is not how it was.
+    `power/runtime_status` is published by the PM core, not the driver:
+    `runtime_status_show` (drivers/base/power/sysfs.c) returns the stored
+    state without waking the device. Nearly everything else wakes it: the
+    PCIe link since Linux 6.18, hwmon, amdgpu's ioctls, opening the render
+    node, NVML. Asking would wake the card and then measure it awake.
     """
     return read_text(f"{device}/power/runtime_status") in ("suspended", "suspending")
 
 
 def on_its_own(draft: "Draft", path: str, function, *args):
-    """One value read on its own: if it fails, it is that value's notice and
-    not the provider's, which would lose everything else it reads."""
+    """One value read on its own: if it fails, the notice is that value's,
+    not the whole provider's, which would lose everything else it reads."""
     try:
         return function(*args)
     except Exception as exc:                                  # noqa: BLE001
@@ -265,7 +264,7 @@ def read_int(path: str) -> Optional[int]:
 
 
 def parse_cpu_list(raw: Optional[str]) -> tuple[int, ...]:
-    """Turns "0-3,8,10-11" into (0, 1, 2, 3, 8, 10, 11)."""
+    """"0-3,8,10-11" → (0, 1, 2, 3, 8, 10, 11)."""
     if not raw:
         return ()
     out: list[int] = []
@@ -288,7 +287,7 @@ def parse_cpu_list(raw: Optional[str]) -> tuple[int, ...]:
 
 
 def parse_size(raw: Optional[str]) -> Optional[int]:
-    """Turns "32K" / "12288K" / "8M" into bytes."""
+    """"32K", "12288K", "8M" → bytes."""
     if not raw:
         return None
     raw = raw.strip()
