@@ -664,3 +664,22 @@ class TestNotLessThanWhatItHolds(unittest.TestCase):
         pie = pagina._pies["sda"]
         self.assertTrue(pie.isVisibleTo(pagina))
         self.assertEqual(pie.text(), _("storage.na.written.unit"))
+
+    def test_a_disk_whose_smart_does_not_count_it_says_so(self):
+        # A WD Blue HDD's SMART, read with permissions: hours, no total written.
+        from silux.i18n import _
+        from silux.model import CpuInfo, DiskHealth, Snapshot
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.storage import StoragePage
+
+        app = qt.app()
+        disco = Disk(name="sdb", model="WDC WD10EZEX-21M", kind="HDD", rotational=True,
+                     size_bytes=1000 * self.GB, health=DiskHealth(power_on_hours=10_938))
+        pagina = StoragePage(theme.palette_for(app, "dark"), Preferences())
+        self.addCleanup(pagina.deleteLater)
+        pagina.apply(Snapshot(monotonic_ns=0, cpu=CpuInfo(), disks=(disco,)))
+        app.processEvents()
+        grid = pagina._grids["sdb"]
+        self.assertFalse(grid._values[_("storage.field.written")].isVisibleTo(grid))
+        self.assertIn(_("storage.na.written"), pagina._pies["sdb"].text())

@@ -1452,6 +1452,7 @@
   "storage.loading": "Leyendo los discos…",
   "storage.na.hdd.life": "Un disco de platos no tiene «vida restante»: es el desgaste de las celdas de un SSD.",
   "storage.na.virtual": "Es un disco virtual: no tiene temperatura, horas, lo escrito ni desgaste propios, y lo que contestaría a un diagnóstico se lo inventa el hipervisor.",
+  "storage.na.written": "Este disco no lleva en su SMART la cuenta de lo escrito.",
   "storage.na.written.unit": "Lo escrito y lo leído en total no se enseñan: el contador de este disco da menos de lo que ya tiene guardado, así que cuenta en una unidad que no se conoce.",
   "storage.nomounted": "Ninguna montada",
   "storage.none": "Sin unidades",

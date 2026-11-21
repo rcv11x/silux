@@ -537,14 +537,20 @@ class StoragePage(ScrollPage):
         # A counter in a unit nobody knows is not shown: it said less was
         # written than the disk holds.
         sin_unidad = salud.counters_unit_unknown
-        grid.set_visible(_("storage.field.written"), not (sin_unidad or virtual))
+        # With its SMART read and no such counter, the disk does not keep it:
+        # rule 5, hidden and named below instead of a dash.
+        no_lo_cuenta = (salud.power_on_hours is not None and salud.written_bytes is None
+                        and not sin_unidad)
+        grid.set_visible(_("storage.field.written"),
+                         not (sin_unidad or virtual or no_lo_cuenta))
         for clave in ("gpu.sensor.temp", "storage.field.hours"):
             grid.set_visible(_(clave), not virtual)
         if (pie := self._pies.get(disco.name)) is not None:
             texto = " ".join(t for t in (
                 _("storage.na.hdd.life") if de_platos else "",
                 _("storage.na.virtual") if virtual else "",
-                _("storage.na.written.unit") if sin_unidad else "") if t)
+                _("storage.na.written.unit") if sin_unidad else "",
+                _("storage.na.written") if no_lo_cuenta and not virtual else "") if t)
             pie.setText(texto)
             pie.setVisible(bool(texto))
 
@@ -582,7 +588,7 @@ class StoragePage(ScrollPage):
         daría con permisos.
 
         Mientras no se haya leído el de este disco: después, lo que siga
-        faltando es que el disco no lo cuenta, y eso sí es un guion.
+        faltando es que el disco no lo cuenta, y se esconde y se dice al pie.
         """
         if self._candado is None or disco.health.power_on_hours is not None:
             return set()
