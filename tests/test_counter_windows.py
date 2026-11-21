@@ -170,8 +170,8 @@ class MemoryTraffic(_Calculation):
 class NetworkRate(_Calculation):
     def __init__(self, tmp, clock):
         super().__init__(tmp, clock)
-        from silux.providers.network import CONTADORES, NetworkInterfaces
-        self.campos = CONTADORES
+        from silux.providers.network import COUNTERS, NetworkInterfaces
+        self.campos = COUNTERS
         self.provider = NetworkInterfaces()
         self.provider._interval_s = INTERVAL
 
@@ -179,7 +179,7 @@ class NetworkRate(_Calculation):
         self.clock.now = instant
         valores = {campo: 0 for campo in self.campos}
         valores.update(rx_bytes=10_000 + counter * 5_000, tx_bytes=10_000 + counter * 2_000)
-        return self.provider._trafico("wlan0", self.tmp, valores).rx_rate_bps
+        return self.provider._traffic("wlan0", self.tmp, valores).rx_rate_bps
 
 
 class DiskRate(_Calculation):

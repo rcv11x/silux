@@ -43,7 +43,7 @@ import tempfile
 from typing import Optional
 
 from . import privacidad, sysroot
-from .providers.sysfs_cpu import FUENTES_DE_FRECUENCIA
+from .providers.sysfs_cpu import FREQUENCY_SOURCES
 
 VIGILADO = ("/sys/", "/proc/", "/etc/")
 # Un archivo de sysfs o de procfs de más de esto no es lo que se lee para
@@ -360,8 +360,8 @@ def _alternativas(leidos: set[str]) -> set[str]:
     lista es la del proveedor, no una escrita aquí.
     """
     return {os.path.join(os.path.dirname(camino), fuente)
-            for camino in leidos if os.path.basename(camino) in FUENTES_DE_FRECUENCIA
-            for fuente in FUENTES_DE_FRECUENCIA}
+            for camino in leidos if os.path.basename(camino) in FREQUENCY_SOURCES
+            for fuente in FREQUENCY_SOURCES}
 
 
 # Lo que se copia de cada gráfica despierta aunque el Collector no lo lea

@@ -17,7 +17,7 @@ from unittest import mock
 from silux import db
 from silux.providers import armcpu
 from silux.providers.base import Draft
-from silux.providers.sysfs_cpu import _por_nucleo_arm
+from silux.providers.sysfs_cpu import _arm_cores
 
 FIXTURES = pathlib.Path(__file__).parent / "fixtures" / "arm"
 
@@ -120,19 +120,19 @@ class TestBigLittle(unittest.TestCase):
     def test_separa_los_grandes_de_los_pequenos(self):
         con_fichero, con_arch = _con("unisoc-t606.txt")
         with con_fichero, con_arch:
-            reparto = _por_nucleo_arm((0, 1, 6, 7))
+            reparto = _arm_cores((0, 1, 6, 7))
         self.assertEqual(reparto, {"performance": [6, 7], "efficiency": [0, 1]})
 
     def test_un_solo_tipo_no_se_toca(self):
         """Con todos los núcleos iguales manda el reparto de siempre."""
         con_fichero, con_arch = _con("raspberry-pi-4.txt")
         with con_fichero, con_arch:
-            self.assertEqual(_por_nucleo_arm((0, 1)), {})
+            self.assertEqual(_arm_cores((0, 1)), {})
 
     def test_en_x86_no_se_mete(self):
         con_fichero, con_arch = _con("unisoc-t606.txt", arm=False)
         with con_fichero, con_arch:
-            self.assertEqual(_por_nucleo_arm((0, 1, 6, 7)), {})
+            self.assertEqual(_arm_cores((0, 1, 6, 7)), {})
 
 
 class TestTabla(unittest.TestCase):

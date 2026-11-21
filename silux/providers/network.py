@@ -1,14 +1,14 @@
-"""Las interfaces de red: qué son, cómo están conectadas y cuánto mueven.
+"""Network interfaces: what they are, how they are connected and how much they move.
 
-Casi todo está en `/sys/class/net`, que es de lectura libre: estado del enlace,
-velocidad negociada, MAC, MTU y los contadores de tráfico. Lo único que el
-kernel no publica ahí es la dirección IP, y para esa hay que preguntarle al
-sistema con un ioctl de toda la vida (el mismo que usa `ifconfig`) porque las
-direcciones no viven en el dispositivo sino en la pila de red.
+Almost everything is in `/sys/class/net`, readable by anyone: link state,
+negotiated speed, MAC, MTU and the traffic counters. What the kernel does
+not publish there is the IP address, asked to the system with the old
+`ifconfig` ioctl, since addresses live in the network stack and not in the
+device.
 
-El ritmo de subida y bajada se calcula entre dos muestreos. Los contadores son
-totales desde que arrancó la interfaz, así que restar dos lecturas y dividir
-por el tiempo transcurrido es la única forma de saber a qué velocidad va ahora.
+Upload and download rates come from two samples: the counters are totals
+since the interface came up, so two readings over the elapsed time are the
+only way to know the speed now.
 """
 
 from __future__ import annotations
@@ -31,149 +31,149 @@ PROC_ROUTE = "/proc/net/route"
 PROC_IPV6 = "/proc/net/if_inet6"
 PROC_DEV = "/proc/net/dev"
 
-# Los de <linux/sockios.h>. Piden un socket abierto, pero no permisos.
+# From <linux/sockios.h>. They need an open socket, not permissions.
 SIOCGIFADDR = 0x8915
 SIOCGIFNETMASK = 0x891B
 
-CONTADORES = ("rx_bytes", "tx_bytes", "rx_packets", "tx_packets",
+COUNTERS = ("rx_bytes", "tx_bytes", "rx_packets", "tx_packets",
               "rx_errors", "tx_errors", "rx_dropped", "tx_dropped")
 
-# El valor de `type` en sysfs, que viene de ARPHRD_* del kernel.
-TIPO_ETHERNET, TIPO_LOOPBACK = 1, 772
+# The value of `type` in sysfs, from the kernel's ARPHRD_*.
+TYPE_ETHERNET, TYPE_LOOPBACK = 1, 772
 
-# Interfaces que existen pero no son una tarjeta: puentes de máquinas
-# virtuales, túneles, contenedores. Se enseñan igual (quien tiene libvirt
-# quiere ver su puente) pero marcadas como lo que son.
-PREFIJOS_VIRTUALES = ("virbr", "docker", "veth", "br-", "tun", "tap", "vmnet",
+# Interfaces that exist but are not a card: virtual machine bridges, tunnels,
+# containers. Shown anyway (whoever has libvirt wants to see their bridge),
+# marked as what they are.
+VIRTUAL_PREFIXES = ("virbr", "docker", "veth", "br-", "tun", "tap", "vmnet",
                       "wg", "tailscale", "zt", "bond", "dummy")
 
 
 class NetworkInterfaces(Provider):
-    """Enumera las interfaces y calcula el ritmo de tráfico de cada una."""
+    """Lists the interfaces and works out each one's traffic rate."""
 
     name = "network"
     provides = "network"
 
     def __init__(self) -> None:
-        # Contadores de la vuelta anterior, para poder restar.
-        self._previo: dict[str, tuple[float, int, int]] = {}
+        # The previous pass's counters, to subtract.
+        self._previous: dict[str, tuple[float, int, int]] = {}
         self._interval_s = 1.0
-        # Lo que no cambia de una interfaz mientras existe —qué es, su driver
-        # y su tarjeta—, por su nombre y su `ifindex`: una que se borra y se
-        # vuelve a crear con el mismo nombre trae otro índice. Docker crea un
-        # puente y un `veth` por red y por contenedor, y con cuarenta
-        # interfaces releerlo todo eran unas mil llamadas por muestreo.
-        self._fijos: dict[tuple[str, Optional[int]], tuple[str, Optional[str], dict]] = {}
+        # What does not change while an interface exists (what it is, its
+        # driver and card), by name and `ifindex`: one deleted and created
+        # again with the same name gets another index. Docker creates a bridge
+        # and a `veth` per network and container, and with forty interfaces
+        # rereading everything was about a thousand calls per sample.
+        self._fixed: dict[tuple[str, Optional[int]], tuple[str, Optional[str], dict]] = {}
 
     def available(self) -> bool:
         return os.path.isdir(sysroot.ruta(SYS_NET))
 
     def collect(self, draft: Draft) -> None:
         self._interval_s = draft.interval_s
-        nombres = sorted(p.name for p in pathlib.Path(sysroot.ruta(SYS_NET)).iterdir())
-        if not nombres:
+        names = sorted(p.name for p in pathlib.Path(sysroot.ruta(SYS_NET)).iterdir())
+        if not names:
             return
 
         draft.capabilities.add("network")
-        rutas = _rutas_por_defecto()
-        direcciones = _Direcciones()
-        ipv6 = _ipv6_por_interfaz()
-        contadores = _contadores_de_todas()
-        fijos = self._fijos
-        self._fijos = {}
+        routes = _default_routes()
+        addresses = _Addresses()
+        ipv6 = _ipv6_by_interface()
+        counters = _all_counters()
+        fixed = self._fixed
+        self._fixed = {}
         try:
             draft.network = [
-                self._leer(nombre, rutas, direcciones, ipv6.get(nombre, ()),
-                           contadores.get(nombre), fijos)
-                for nombre in nombres
+                self._read(name, routes, addresses, ipv6.get(name, ()),
+                           counters.get(name), fixed)
+                for name in names
             ]
         finally:
-            direcciones.close()
+            addresses.close()
 
-    # -- interno ------------------------------------------------------------
+    # -- internals ----------------------------------------------------------
 
-    def _leer(self, nombre: str, rutas: dict[str, str], direcciones: "_Direcciones",
-              ipv6: tuple[str, ...], contadores: Optional[dict[str, int]],
-              fijos: dict) -> NetworkInterface:
-        base = pathlib.Path(sysroot.ruta(SYS_NET), nombre)
-        clave = (nombre, read_int(str(base / "ifindex")))
-        if (ya := fijos.get(clave)) is None:
-            ya = (_clase(nombre, base, read_int(str(base / "type"))),
-                  _driver(base), _identidad_pci(base))
-        self._fijos[clave] = ya
-        clase, driver, identidad = ya
-        velocidad = read_int(str(base / "speed"))
+    def _read(self, name: str, routes: dict[str, str], addresses: "_Addresses",
+              ipv6: tuple[str, ...], counters: Optional[dict[str, int]],
+              fixed: dict) -> NetworkInterface:
+        base = pathlib.Path(sysroot.ruta(SYS_NET), name)
+        key = (name, read_int(str(base / "ifindex")))
+        if (known := fixed.get(key)) is None:
+            known = (_kind(name, base, read_int(str(base / "type"))),
+                  _driver(base), _pci_identity(base))
+        self._fixed[key] = known
+        kind, driver, identity = known
+        speed = read_int(str(base / "speed"))
 
         return NetworkInterface(
-            name=nombre,
-            kind=clase,
-            up=_activa(read_text(str(base / "operstate")), base),
-            carrier=_bandera(base / "carrier"),
+            name=name,
+            kind=kind,
+            up=_is_up(read_text(str(base / "operstate")), base),
+            carrier=_flag(base / "carrier"),
             mac=read_text(str(base / "address")) or None,
-            ipv4=direcciones.ip(nombre),
-            netmask=direcciones.mascara(nombre),
+            ipv4=addresses.ip(name),
+            netmask=addresses.netmask(name),
             ipv6=ipv6,
-            gateway=rutas.get(nombre),
-            default_route=nombre in rutas,
-            # Una interfaz caída devuelve -1 en `speed`, no su velocidad.
-            speed_mbps=velocidad if velocidad and velocidad > 0 else None,
+            gateway=routes.get(name),
+            default_route=name in routes,
+            # A down interface returns -1 in `speed`, not its speed.
+            speed_mbps=speed if speed and speed > 0 else None,
             duplex=read_text(str(base / "duplex")) or None,
             mtu=read_int(str(base / "mtu")),
             driver=driver,
-            traffic=self._trafico(nombre, base, contadores),
-            **identidad,
+            traffic=self._traffic(name, base, counters),
+            **identity,
         )
 
-    def _trafico(self, nombre: str, base: pathlib.Path,
-                 contadores: Optional[dict[str, int]] = None) -> NetworkTraffic:
-        valores = contadores or {campo: read_int(str(base / "statistics" / campo)) or 0
-                                 for campo in CONTADORES}
-        ahora = time.monotonic()
-        subida = bajada = None
+    def _traffic(self, name: str, base: pathlib.Path,
+                 counters: Optional[dict[str, int]] = None) -> NetworkTraffic:
+        values = counters or {field: read_int(str(base / "statistics" / field)) or 0
+                                 for field in COUNTERS}
+        now = time.monotonic()
+        up = down = None
 
-        anterior = self._previo.get(nombre)
-        if anterior is not None:
-            antes, rx, tx = anterior
-            # Los contadores se reinician si la interfaz se cae y vuelve; un
-            # delta negativo es eso, no un ritmo negativo.
-            bajada = rate(rx, antes, valores["rx_bytes"], ahora, self._interval_s)
-            subida = rate(tx, antes, valores["tx_bytes"], ahora, self._interval_s)
-            if bajada is None or subida is None:
-                bajada = subida = None
-        self._previo[nombre] = (ahora, valores["rx_bytes"], valores["tx_bytes"])
+        previous = self._previous.get(name)
+        if previous is not None:
+            before, rx, tx = previous
+            # The counters restart if the interface goes down and back; a
+            # negative delta is that, not a negative rate.
+            down = rate(rx, before, values["rx_bytes"], now, self._interval_s)
+            up = rate(tx, before, values["tx_bytes"], now, self._interval_s)
+            if down is None or up is None:
+                down = up = None
+        self._previous[name] = (now, values["rx_bytes"], values["tx_bytes"])
 
-        return NetworkTraffic(**valores, rx_rate_bps=bajada, tx_rate_bps=subida)
+        return NetworkTraffic(**values, rx_rate_bps=down, tx_rate_bps=up)
 
 
-def _contadores_de_todas() -> dict[str, dict[str, int]]:
-    """Los ocho contadores de cada interfaz, de una sola lectura.
+def _all_counters() -> dict[str, dict[str, int]]:
+    """Every interface's eight counters, in a single read.
 
-    `/proc/net/dev` los trae todos juntos; de sysfs son ocho archivos por
-    interfaz y muestreo. Las columnas son las de `dev_seq_printf_stats`
-    (net/core/net-procfs.c): recibido bytes, paquetes, errores y descartes,
-    y cuatro más; enviado igual. El descarte de recepción suma `rx_dropped` y
-    `rx_missed_errors`. Lo que no esté aquí (un volcado que no lo trae) se
-    lee de sysfs como siempre.
+    `/proc/net/dev` holds them together; sysfs is eight files per interface
+    and sample. The columns are those of `dev_seq_printf_stats`
+    (net/core/net-procfs.c): bytes, packets, errors and drops received, four
+    more, and the same sent. The receive drop adds `rx_dropped` and
+    `rx_missed_errors`. What is not here (a dump without it) is read from
+    sysfs as always.
     """
-    salida = {}
-    for linea in (read_text(PROC_DEV) or "").splitlines():
-        nombre, separador, resto = linea.partition(":")
-        campos = resto.split()
-        if not separador or len(campos) < 16:
-            continue                       # las dos líneas de cabecera
+    out = {}
+    for line in (read_text(PROC_DEV) or "").splitlines():
+        name, sep, rest = line.partition(":")
+        fields = rest.split()
+        if not sep or len(fields) < 16:
+            continue                       # the two header lines
         try:
-            n = [int(c) for c in campos[:16]]
+            n = [int(c) for c in fields[:16]]
         except ValueError:
             continue
-        salida[nombre.strip()] = {
+        out[name.strip()] = {
             "rx_bytes": n[0], "rx_packets": n[1], "rx_errors": n[2], "rx_dropped": n[3],
             "tx_bytes": n[8], "tx_packets": n[9], "tx_errors": n[10], "tx_dropped": n[11],
         }
-    return salida
+    return out
 
 
-class _Direcciones:
-    """Un socket abierto para preguntar las direcciones IPv4 por ioctl."""
+class _Addresses:
+    """An open socket to ask IPv4 addresses by ioctl."""
 
     def __init__(self) -> None:
         try:
@@ -186,139 +186,138 @@ class _Direcciones:
             self._socket.close()
             self._socket = None
 
-    def ip(self, nombre: str) -> Optional[str]:
-        return self._preguntar(nombre, SIOCGIFADDR)
+    def ip(self, name: str) -> Optional[str]:
+        return self._ask(name, SIOCGIFADDR)
 
-    def mascara(self, nombre: str) -> Optional[str]:
-        return self._preguntar(nombre, SIOCGIFNETMASK)
+    def netmask(self, name: str) -> Optional[str]:
+        return self._ask(name, SIOCGIFNETMASK)
 
-    def _preguntar(self, nombre: str, codigo: int) -> Optional[str]:
-        return sysroot.a_traves("ioctl_red", f"{nombre}:{codigo:#x}",
-                                self._preguntar_de_verdad, nombre, codigo)
+    def _ask(self, name: str, code: int) -> Optional[str]:
+        return sysroot.a_traves("ioctl_red", f"{name}:{code:#x}",
+                                self._ask_the_kernel, name, code)
 
-    def _preguntar_de_verdad(self, nombre: str, codigo: int) -> Optional[str]:
+    def _ask_the_kernel(self, name: str, code: int) -> Optional[str]:
         if self._socket is None:
             return None
         try:
-            respuesta = fcntl.ioctl(self._socket.fileno(), codigo,
-                                    struct.pack("256s", nombre[:15].encode()))
+            reply = fcntl.ioctl(self._socket.fileno(), code,
+                                    struct.pack("256s", name[:15].encode()))
         except OSError:
-            # Una interfaz sin dirección asignada responde con error, y eso es
-            # una respuesta legítima: todavía no tiene IP.
+            # An interface without an address answers with an error, a
+            # legitimate answer: it has no IP yet.
             return None
-        return socket.inet_ntoa(respuesta[20:24])
+        return socket.inet_ntoa(reply[20:24])
 
 
-# -- lectura suelta ----------------------------------------------------------
+# -- single readings --------------------------------------------------------
 
-def _activa(operstate: Optional[str], base: pathlib.Path) -> bool:
-    """Si la interfaz está funcionando.
+def _is_up(operstate: Optional[str], base: pathlib.Path) -> bool:
+    """Whether the interface is working.
 
-    No basta con mirar si `operstate` dice «up»: el bucle local y los túneles
-    responden «unknown» porque su driver no informa del estado del enlace, y
-    llamarlas paradas sería mentir sobre una interfaz que está trabajando. Ahí
-    manda el `carrier`.
+    `operstate` saying «up» is not enough: loopback and tunnels answer
+    «unknown» because their driver does not report link state, and calling
+    them down would be false. There `carrier` decides.
     """
-    estado = (operstate or "").lower()
-    if estado == "up":
+    state = (operstate or "").lower()
+    if state == "up":
         return True
-    if estado == "unknown":
+    if state == "unknown":
         return read_int(str(base / "carrier")) == 1
     return False
 
 
-def _bandera(ruta: pathlib.Path) -> Optional[bool]:
-    valor = read_int(str(ruta))
+def _flag(path: pathlib.Path) -> Optional[bool]:
+    valor = read_int(str(path))
     return None if valor is None else bool(valor)
 
 
-def _clase(nombre: str, base: pathlib.Path, tipo: Optional[int]) -> str:
-    if tipo == TIPO_LOOPBACK:
+def _kind(name: str, base: pathlib.Path, arphrd: Optional[int]) -> str:
+    if arphrd == TYPE_LOOPBACK:
         return "loopback"
     if (base / "wireless").is_dir() or (base / "phy80211").exists():
         return "wifi"
     if (base / "bridge").is_dir():
         return "puente"
-    if nombre.startswith(PREFIJOS_VIRTUALES) or not (base / "device").exists():
+    if name.startswith(VIRTUAL_PREFIXES) or not (base / "device").exists():
         return "virtual"
-    return "ethernet" if tipo == TIPO_ETHERNET else "otro"
+    return "ethernet" if arphrd == TYPE_ETHERNET else "otro"
 
 
 def _driver(base: pathlib.Path) -> Optional[str]:
-    enlace = base / "device" / "driver"
+    link = base / "device" / "driver"
     try:
-        return enlace.resolve().name if enlace.exists() else None
+        return link.resolve().name if link.exists() else None
     except OSError:
         return None
 
 
-def _identidad_pci(base: pathlib.Path) -> dict:
-    """El modelo de la tarjeta, si cuelga del bus PCI."""
-    dispositivo = base / "device"
-    if not dispositivo.exists():
+def _pci_identity(base: pathlib.Path) -> dict:
+    """The card's model, if it hangs from the PCI bus."""
+    device = base / "device"
+    if not device.exists():
         return {}
 
-    def hexa(campo: str) -> Optional[int]:
-        crudo = read_text(str(dispositivo / campo))
+    def hex_field(field: str) -> Optional[int]:
+        crudo = read_text(str(device / field))
         try:
             return int(crudo, 16) if crudo else None
         except ValueError:
             return None
 
-    vendedor, aparato = hexa("vendor"), hexa("device")
-    datos: dict = {}
+    vendor_id, device_id = hex_field("vendor"), hex_field("device")
+    data: dict = {}
     try:
-        datos["pci_slot"] = dispositivo.resolve().name
+        data["pci_slot"] = device.resolve().name
     except OSError:
         pass
-    if vendedor is None or aparato is None:
-        return datos
+    if vendor_id is None or device_id is None:
+        return data
 
-    nombres = pciids.lookup([(vendedor, aparato)])
-    if encontrado := nombres.get((vendedor, aparato)):
-        datos["vendor"], datos["model"] = encontrado
-    return datos
+    names = pciids.lookup([(vendor_id, device_id)])
+    if found := names.get((vendor_id, device_id)):
+        data["vendor"], data["model"] = found
+    return data
 
 
-def _rutas_por_defecto() -> dict[str, str]:
-    """Por qué interfaz sale el tráfico a internet, y hacia qué puerta.
+def _default_routes() -> dict[str, str]:
+    """Which interface traffic to the internet goes out of, and to which gateway.
 
-    Las direcciones en `/proc/net/route` van en hexadecimal y del revés, que es
-    como las guarda el kernel en memoria.
+    Addresses in `/proc/net/route` are hexadecimal and reversed, as the
+    kernel keeps them in memory.
     """
-    encontradas: dict[str, str] = {}
+    found: dict[str, str] = {}
     try:
-        with open(sysroot.ruta(PROC_ROUTE), encoding="utf-8") as fichero:
-            next(fichero, None)
-            for linea in fichero:
-                campos = linea.split()
-                if len(campos) < 3 or campos[1] != "00000000":
+        with open(sysroot.ruta(PROC_ROUTE), encoding="utf-8") as handle:
+            next(handle, None)
+            for line in handle:
+                fields = line.split()
+                if len(fields) < 3 or fields[1] != "00000000":
                     continue
                 try:
-                    puerta = socket.inet_ntoa(bytes.fromhex(campos[2])[::-1])
+                    gateway = socket.inet_ntoa(bytes.fromhex(fields[2])[::-1])
                 except (ValueError, OSError):
                     continue
-                encontradas.setdefault(campos[0], puerta)
+                found.setdefault(fields[0], gateway)
     except OSError:
         return {}
-    return encontradas
+    return found
 
 
-def _ipv6_por_interfaz() -> dict[str, tuple[str, ...]]:
-    """Las direcciones IPv6, que el kernel escribe sin los dos puntos."""
-    encontradas: dict[str, list[str]] = {}
+def _ipv6_by_interface() -> dict[str, tuple[str, ...]]:
+    """IPv6 addresses, which the kernel writes without colons."""
+    found: dict[str, list[str]] = {}
     try:
-        with open(sysroot.ruta(PROC_IPV6), encoding="utf-8") as fichero:
-            for linea in fichero:
-                campos = linea.split()
-                if len(campos) < 6:
+        with open(sysroot.ruta(PROC_IPV6), encoding="utf-8") as handle:
+            for line in handle:
+                fields = line.split()
+                if len(fields) < 6:
                     continue
                 try:
-                    direccion = socket.inet_ntop(socket.AF_INET6,
-                                                 bytes.fromhex(campos[0]))
+                    address = socket.inet_ntop(socket.AF_INET6,
+                                                 bytes.fromhex(fields[0]))
                 except (ValueError, OSError):
                     continue
-                encontradas.setdefault(campos[5], []).append(direccion)
+                found.setdefault(fields[5], []).append(address)
     except OSError:
         return {}
-    return {nombre: tuple(lista) for nombre, lista in encontradas.items()}
+    return {name: tuple(addresses_list) for name, addresses_list in found.items()}

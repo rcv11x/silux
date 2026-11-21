@@ -40,14 +40,14 @@ class BancoDeRed(unittest.TestCase):
             # carpeta de las interfaces, o se leería como una más.
             mock.patch.object(network, "PROC_DEV", str(self.root) + "-proc-net-dev"),
             # Las direcciones IPv4 vienen de un ioctl, no de un fichero.
-            mock.patch.object(network._Direcciones, "ip", lambda self, n: self._falsas.get(n)),
-            mock.patch.object(network._Direcciones, "mascara", lambda self, n: "255.255.255.0"),
+            mock.patch.object(network._Addresses, "ip", lambda self, n: self._falsas.get(n)),
+            mock.patch.object(network._Addresses, "netmask", lambda self, n: "255.255.255.0"),
         ]
         for parche in parches:
             parche.start()
             self.addCleanup(parche.stop)
         self.addCleanup(self._tmp.cleanup)
-        network._Direcciones._falsas = {"enp6s0": "192.0.2.11"}
+        network._Addresses._falsas = {"enp6s0": "192.0.2.11"}
 
     def interfaz(self, nombre: str, *, operstate="up", carrier="1", speed="2500",
                  duplex="full", mtu="1500", mac="00:00:5e:00:53:af", tipo="1",

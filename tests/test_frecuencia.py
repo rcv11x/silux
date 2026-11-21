@@ -115,7 +115,7 @@ def _hz(texto: str) -> float:
 class TestLasPaginasDicenLoMismo(unittest.TestCase):
     """Con la misma foto, Inicio, CPU y Sensores no se contradicen.
 
-    Las tres leen hoy la misma fuente —la de `FUENTES_DE_FRECUENCIA`, por
+    Las tres leen hoy la misma fuente —la de `FREQUENCY_SOURCES`, por
     hilo—, y esto vigila que siga así: una página que un día lea otra cosa, o se quede con
     la foto anterior, sale aquí. Un desacuerdo entre pantallas vistas en
     momentos distintos no es un fallo: en el i5-10400 el turbo va y viene

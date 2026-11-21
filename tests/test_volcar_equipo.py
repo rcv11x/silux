@@ -175,12 +175,12 @@ class TestLasFuentesAlternativas(unittest.TestCase):
     pasa en un kernel que no tiene la primera."""
 
     def test_con_una_fuente_van_las_demas_del_mismo_hilo(self):
-        from silux.providers.sysfs_cpu import FUENTES_DE_FRECUENCIA
+        from silux.providers.sysfs_cpu import FREQUENCY_SOURCES
 
         carpeta = "/sys/devices/system/cpu/cpu3/cpufreq"
-        leidos = {f"{carpeta}/{FUENTES_DE_FRECUENCIA[0]}", "/proc/stat"}
+        leidos = {f"{carpeta}/{FREQUENCY_SOURCES[0]}", "/proc/stat"}
         self.assertEqual(volcar._alternativas(leidos),
-                         {f"{carpeta}/{fuente}" for fuente in FUENTES_DE_FRECUENCIA})
+                         {f"{carpeta}/{fuente}" for fuente in FREQUENCY_SOURCES})
 
 
 class TestLasInterfacesEnSerie(unittest.TestCase):
