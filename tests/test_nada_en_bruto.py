@@ -145,9 +145,26 @@ EN_BRUTO = {
     "un valor que no se convirtió en texto": re.compile(r"\bNone\b|\bnull\b|\bnan\b"),
     "una razón social": re.compile(
         r"Co\., ?Ltd|\bInc\.|\bCorporation\b|\bLimited\b|\bGmbH\b|\[[A-Z/]+\]$"),
-    "un chip con su dirección": re.compile(r"\b[a-z]+\d*_[0-9a-f]{6,}\b|\b\w+_\d+_[0-9a-f]+:\d+"),
+    # Not inside a path: a temporary folder's random name can look like one.
+    "un chip con su dirección": re.compile(
+        r"(?<!/)\b[a-z]+\d*_[0-9a-f]{6,}\b|(?<!/)\b\w+_\d+_[0-9a-f]+:\d+"),
     "una clave de idioma sin traducir": re.compile(r"^[a-z]+(\.[a-z0-9_]+){1,3}$"),
 }
+
+
+class TestTheChipPattern(unittest.TestCase):
+    """A temporary folder's random name can look like a chip with its
+    address («tmp4_a33fe4»), and Settings shows where it saves: the guard
+    failed now and then in the CI."""
+
+    def test_a_chip_is_caught(self):
+        for texto in ("it8688_40050607", "Sensor de it8688_40050607", "r8169_0_600:00"):
+            with self.subTest(texto=texto):
+                self.assertTrue(EN_BRUTO["un chip con su dirección"].search(texto))
+
+    def test_a_folder_in_a_path_is_not(self):
+        texto = "Los ajustes se guardan en /tmp/tmp4_a33fe4/silux/settings.json"
+        self.assertFalse(EN_BRUTO["un chip con su dirección"].search(texto))
 
 
 @unittest.skipIf(QApplication is None, "sin PySide6")
