@@ -115,10 +115,7 @@ la memoria) no va: está propuesto en las notas
     es el ahorro de energía de Polaris o el enlace de verdad. El volcado no
     guarda `pp_dpm_pcie`, que diría qué líneas pide la tarjeta en cada
     nivel.
-* **Del T14 del autor, con la prueba7:**
-  - Procesador · media · falta comprobar con los valores reales del T14 el
-    límite de la copia MMIO de RAPL (`intel-rapl-mmio:0`): el informe de la
-    prueba7 no los traía porque Silux no la leía.
+* **Con la prueba7:**
   - Escritorio · baja · el monitor del sistema de KDE enseña Silux como
     `app.slice/app-@…` cuando se abre el AppImage con doble clic: Plasma
     nombra el *scope* de systemd por la entrada `.desktop` que lanzó, y un

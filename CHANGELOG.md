@@ -14,12 +14,13 @@ que hace falta.
 
 ### Procesador
 
-- La base de la ficha y la del TDP configurado ahora salen juntas: un
+- La base de la ficha y la del TDP configurado salen en dos filas: un
   portátil configurado con menos TDP enseñaba «Base 900 MHz» con «@ 2.40GHz»
-  en el nombre.
+  en el nombre. En un híbrido, cada tipo de núcleo sigue con su base.
 - PL1 y PL2 son los que se aplican: el procesador guarda cada límite en sus
   registros y en los del controlador de memoria, y aplica el más bajo. Si
-  difieren, se dice el otro.
+  difieren, se dice el otro. Y se leen en cada muestra: muchos portátiles
+  los cambian al enchufar o quitar el cargador.
 - El tamaño de cada caché sale con los decimales que hacen falta para que la
   cuenta cuadre: «4 × 1.25 MB», no «4 × 1.2 MB» para 5 MB.
 
