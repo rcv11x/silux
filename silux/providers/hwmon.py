@@ -17,14 +17,13 @@ from __future__ import annotations
 import dataclasses
 import pathlib
 import re
-import shutil
 import subprocess
 from typing import Iterator, Optional
 
 from ..model import DeviceKind, DriverHint, Need, Sensor, SensorKind, short_brand
 from .base import Draft, Provider, mean, read_int, read_text
 from ..i18n import _
-from .. import sysroot
+from .. import sysroot, system_deps
 from .dmi import PORTABLE_CHASSIS
 from ..system_env import system_environment
 
@@ -650,9 +649,10 @@ class HwmonSensors(Provider):
     @staticmethod
     def _module_exists(module: str) -> bool:
         def preguntar() -> bool:
-            if not shutil.which("modinfo"):
+            modinfo = system_deps.program_path("modinfo")
+            if not modinfo:
                 return False
-            result = subprocess.run(["modinfo", "-F", "filename", module],
+            result = subprocess.run([modinfo, "-F", "filename", module],
                                     capture_output=True, text=True,
                                     env=system_environment())
             return result.returncode == 0 and bool(result.stdout.strip())

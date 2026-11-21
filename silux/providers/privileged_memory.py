@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import pathlib
 import re
-import shutil
 import subprocess
 from typing import Iterator, Optional
 
@@ -30,7 +29,7 @@ from ..privileged.client import (
 )
 from .base import Draft, Provider, en_maquina_virtual
 from ..i18n import _
-from .. import sysroot
+from .. import sysroot, system_deps
 from ..system_env import system_environment
 
 
@@ -155,10 +154,11 @@ class PrivilegedMemory(Provider):
 
         # De la más nueva a la más vieja: el driver que sobra no encuentra
         # nada y no molesta, pero sin el que toca no se lee el módulo.
+        modinfo = system_deps.program_path("modinfo")
         for module in ("spd5118", "ee1004", "at24"):
-            if not shutil.which("modinfo"):
+            if not modinfo:
                 return
-            result = subprocess.run(["modinfo", "-F", "filename", module],
+            result = subprocess.run([modinfo, "-F", "filename", module],
                                     capture_output=True, text=True,
                                     env=system_environment())
             if result.returncode == 0 and result.stdout.strip():

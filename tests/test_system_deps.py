@@ -165,5 +165,21 @@ class TestTheUpdaterWithoutCertificates(unittest.TestCase):
             self.assertEqual(self._error((certificado.name,)), "network")
 
 
+class TestModinfoOutsideTheUsersPath(unittest.TestCase):
+    """A Debian user's PATH leaves out /usr/sbin, where modinfo is: hwmon took
+    drivetemp for missing, and Memoria never offered the SPD's driver."""
+
+    def test_it_is_found_in_sbin(self):
+        import os
+        from silux.providers.hwmon import HwmonSensors
+        with tempfile.TemporaryDirectory() as sbin, tempfile.TemporaryDirectory() as vacio:
+            modinfo = pathlib.Path(sbin) / "modinfo"
+            modinfo.write_text("#!/bin/sh\necho /lib/modules/7.3/drivetemp.ko\n")
+            modinfo.chmod(0o755)
+            with mock.patch.dict(os.environ, {"PATH": vacio}), \
+                    mock.patch.object(system_deps, "PROGRAM_DIRS", (sbin,)):
+                self.assertTrue(HwmonSensors._module_exists("drivetemp"))
+
+
 if __name__ == "__main__":
     unittest.main()
