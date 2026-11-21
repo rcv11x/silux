@@ -209,7 +209,7 @@ class _NvmlWithSamples(_Nvml):
     it: no power usage, no power fields, and the power samples buffer (119
     samples between 52.59 and 55.37 W, 53.11 on average)."""
 
-    SAMPLES = [52590] * 60 + [53000] * 50 + [55370] * 9
+    SAMPLES = [52590] + [53095] * 102 + [53096] * 15 + [55370]
 
     def __init__(self, **kw):
         super().__init__(**kw)
@@ -238,9 +238,10 @@ class TestThePowerSamples(unittest.TestCase):
 
     def test_the_mean_of_its_samples(self):
         lib = _NvmlWithSamples()
+        self.assertEqual((len(lib.SAMPLES), min(lib.SAMPLES), max(lib.SAMPLES),
+                          sum(lib.SAMPLES) / len(lib.SAMPLES)), (119, 52590, 55370, 53110))
         watts, reason = self._session(lib)._potencia(nvml.ctypes.c_void_p(1), 0)
-        media = sum(_NvmlWithSamples.SAMPLES) / len(_NvmlWithSamples.SAMPLES) / 1000
-        self.assertEqual(watts, round(media, 1))
+        self.assertEqual(watts, 53.1)
         self.assertIsNone(reason)
 
     def test_the_next_reading_asks_only_for_new_samples(self):
