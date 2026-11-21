@@ -1,28 +1,25 @@
-"""OpenGL, Vulkan y OpenCL preguntados directamente a sus bibliotecas.
+"""OpenGL, Vulkan and OpenCL asked directly through their libraries.
 
-Lo natural aquí sería llamar a `glxinfo`, `vulkaninfo` y `clinfo` y leerles la
-salida, que es lo que hace medio mundo. Tiene dos pegas: son tres paquetes que
-el usuario puede no tener instalados, y su salida es texto pensado para
-personas, que cambia entre versiones. Las bibliotecas, en cambio, están puestas
-siempre que el driver lo esté, y su ABI no se mueve.
+The obvious way would be running `glxinfo`, `vulkaninfo` and `clinfo` and
+reading their output. Two drawbacks: three packages the user may not have
+installed, and output written for people that changes between versions. The
+libraries are there whenever the driver is, and their ABI doesn't move.
 
-Así que se cargan con `ctypes`, igual que `rawcpuid` hace con CPUID. Cada una
-va por su cuenta: que falte Vulkan no impide leer OpenGL.
+So they are loaded with `ctypes`, as `rawcpuid` does for CPUID. Each goes on
+its own: a missing Vulkan doesn't stop OpenGL being read.
 
-De aquí sale además el dato que el kernel no sabe dar. `pci.ids` dice que esta
-tarjeta es una «Radeon RX 9070/9070 XT/9070 GRE» (tres modelos distintos con el
-mismo identificador PCI) y es el driver, a través de Vulkan, quien dice cuál de
-las tres hay puesta.
+This is also where the datum the kernel can't give comes from. `pci.ids`
+calls a card «Radeon RX 9070/9070 XT/9070 GRE» (three models with the same
+PCI id), and the driver, through Vulkan, says which of the three is fitted.
 
-Nada de esto se llama desde el hilo de la interfaz: crear una instancia Vulkan
-o un contexto de OpenGL tarda lo suyo.
+None of it is called from the interface thread: creating a Vulkan instance
+or an OpenGL context takes a while.
 
-Y no se llama en este proceso siquiera. Preguntar a las tres cuesta 118 MB de
-residente (rusticl arrastra LLVM entero por decir «OpenCL 3.1») y el programa
-tiene un presupuesto de 100 MB para todo. Así que `consultar()` lanza una copia
-de este módulo como proceso aparte, le lee la respuesta y lo deja morir con los
-drivers dentro. De paso sale gratis lo otro que preocupaba: un driver roto que
-se lleva por delante al proceso ya solo se lleva al hijo.
+Nor in this process at all. Asking the three costs 118 MB resident (rusticl
+drags all of LLVM in to say «OpenCL 3.1»), well past the program's memory
+budget. So `query()` runs a copy of this module as a separate process,
+reads its answer and lets it die with the drivers inside. It also means a
+broken driver that crashes its process only takes the child down.
 """
 
 from __future__ import annotations
@@ -37,11 +34,11 @@ import sys
 import tempfile
 from typing import Any, Iterator, Optional
 
-# Margen de sobra: cargar los drivers de las tres es lo lento, y cuando algo se
-# atasca de verdad es que el driver está colgado y no va a contestar nunca.
+# Generous: loading the three's drivers is the slow part, and when something
+# truly hangs the driver is stuck and will never answer.
 TIMEOUT_S = 20
 
-# Las bibliotecas, en el orden en que suelen llamarse los enlaces.
+# The libraries, in the order their links are usually named.
 LIB_VULKAN = ("libvulkan.so.1", "libvulkan.so")
 LIB_OPENCL = ("libOpenCL.so.1", "libOpenCL.so")
 LIB_EGL = ("libEGL.so.1", "libEGL.so")
@@ -51,7 +48,7 @@ LIB_VA_DRM = ("libva-drm.so.2", "libva-drm.so.1", "libva-drm.so")
 
 
 class ApiError(RuntimeError):
-    """No se pudo preguntar. Nunca sale del módulo: aquí se traduce a None."""
+    """Couldn't ask. Never leaves the module: here it becomes None."""
 
 
 def _load(names: tuple[str, ...]) -> Optional[ctypes.CDLL]:
@@ -65,11 +62,11 @@ def _load(names: tuple[str, ...]) -> Optional[ctypes.CDLL]:
 
 @contextlib.contextmanager
 def _silenced() -> Iterator[None]:
-    """Tapa el descriptor 2 mientras se pregunta.
+    """Cover file descriptor 2 while asking.
 
-    Los drivers de Mesa escriben avisos por su cuenta al cargarse (que RADV no
-    está certificado, que rusticl es experimental) y no hay forma de pedirles
-    que se callen. Sin esto, un `silux --json` deja de ser JSON.
+    Mesa's drivers write warnings of their own when loading (that RADV isn't
+    conformant, that rusticl is experimental) and there's no asking them to
+    be quiet. Without this, `silux --json` stops being JSON.
     """
     try:
         saved = os.dup(2)
@@ -151,7 +148,7 @@ _VULKAN_SAID: list[str] = []
 
 
 def _version(packed: int) -> str:
-    """Vulkan mete la versión en 32 bits: 7 de mayor, 10 de menor, 12 de parche."""
+    """Vulkan packs the version in 32 bits: 7 major, 10 minor, 12 patch."""
     return f"{(packed >> 22) & 0x7F}.{(packed >> 12) & 0x3FF}.{packed & 0xFFF}"
 
 
@@ -176,11 +173,11 @@ class _VkInstanceInfo(ctypes.Structure):
 
 
 class _VkProps(ctypes.Structure):
-    """`VkPhysicalDeviceProperties`, de la que solo interesa la cabecera.
+    """`VkPhysicalDeviceProperties`, of which only the head matters.
 
-    El resto va como relleno con su tamaño exacto y un colchón detrás: la
-    biblioteca escribe la estructura entera, y declararla más corta de lo que es
-    sería dejarla pisar memoria ajena.
+    The rest is padding of its exact size with a cushion after it: the
+    library writes the whole structure, and declaring it shorter than it is
+    would let it trample memory that isn't its own.
     """
 
     _fields_ = [
@@ -204,12 +201,12 @@ class _VkMemoryType(ctypes.Structure):
 
 
 class _VkMemoryProps(ctypes.Structure):
-    """`VkPhysicalDeviceMemoryProperties`: de dónde sale la memoria de la tarjeta.
+    """`VkPhysicalDeviceMemoryProperties`: where the card's memory comes from.
 
-    Es la única vía para saber cuánta VRAM tiene una gráfica cuyo driver no la
-    publica en sysfs. amdgpu la escribe en `mem_info_vram_total` y NVML la da
-    para las NVIDIA con el driver propietario, pero con nouveau no hay ni una
-    cosa ni la otra y la ficha se quedaba entera en blanco.
+    The only way to learn how much VRAM a card has when its driver doesn't
+    publish it in sysfs. amdgpu writes it in `mem_info_vram_total` and NVML
+    gives it for NVIDIA on the proprietary driver, but nouveau has neither,
+    and the card's details stayed blank.
     """
 
     _fields_ = [
@@ -220,21 +217,21 @@ class _VkMemoryProps(ctypes.Structure):
     ]
 
 
-# El montón que vive en la propia tarjeta, frente al que se le presta del
-# sistema. Es el bit que distingue la VRAM de la memoria compartida.
+# The heap that lives on the card itself, as opposed to the one lent from
+# the system. The bit that tells VRAM from shared memory.
 VK_MEMORY_HEAP_DEVICE_LOCAL_BIT = 0x1
 
 VK_KINDS = {1: "integrada", 2: "dedicada", 3: "virtual", 4: "CPU"}
 
 VK_STRUCTURE_TYPE_APPLICATION_INFO = 0
 VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO = 1
-# Se pide 1.0 a propósito: una instancia que pide más de lo que hay se niega a
-# crearse, y aquí lo que interesa es que el driver diga hasta dónde llega él.
+# 1.0 on purpose: an instance asking for more than there is refuses to be
+# created, and what matters here is the driver saying how far it goes.
 VK_API_1_0 = 1 << 22
 
 
 def vulkan() -> list[dict]:
-    """Las tarjetas que ve Vulkan, con su versión de API y su nombre real."""
+    """The cards Vulkan sees, with their API version and real name."""
     lib = _load(LIB_VULKAN)
     if lib is None:
         return []
@@ -281,11 +278,10 @@ def vulkan() -> list[dict]:
 
 
 def _vk_device_memory(lib, handle) -> Optional[int]:
-    """La memoria que la tarjeta lleva encima, sumando sus montones propios.
+    """The memory the card carries, adding up its own heaps.
 
-    Solo cuentan los marcados como locales del dispositivo: los demás son
-    memoria del sistema que el driver le deja usar, y sumarla daría una cifra
-    que no se corresponde con ningún chip.
+    Only those marked device-local count: the rest is system memory the
+    driver lets it use, and adding it would give a figure matching no chip.
     """
     try:
         props = _VkMemoryProps()
@@ -331,7 +327,7 @@ def _cl_number(fn, obj, code: int, ctype) -> Optional[int]:
 
 
 def opencl() -> list[dict]:
-    """Los dispositivos de cómputo, con sus unidades y su versión de OpenCL."""
+    """The compute devices, with their units and OpenCL version."""
     lib = _load(LIB_OPENCL)
     if lib is None:
         return []
@@ -391,11 +387,11 @@ GL_SHADING_LANGUAGE_VERSION = 0x8B8C
 
 
 def opengl() -> Optional[dict]:
-    """La versión de OpenGL, sin abrir ninguna ventana.
+    """The OpenGL version, without opening any window.
 
-    Hace falta un contexto para poder preguntar, y un contexto normalmente pide
-    una ventana. EGL permite uno «sin superficie», que es justo lo que se
-    necesita: crear, preguntar cuatro cadenas y cerrarlo.
+    Asking takes a context, and a context normally wants a window. EGL allows
+    one «surfaceless», just what's needed: create it, ask four strings and
+    close it.
     """
     egl = _load(LIB_EGL)
     gl = _load(LIB_GL)
@@ -453,8 +449,8 @@ def opengl() -> Optional[dict]:
                     "utf-8", "replace") or None,
             }
         finally:
-            # Soltar el contexto antes de cerrar: si se queda activo, la
-            # siguiente biblioteca gráfica de este proceso se lo encuentra puesto.
+            # Release the context before closing: left current, the next
+            # graphics library in this process would find it set.
             with contextlib.suppress(Exception):
                 egl.eglMakeCurrent(egl_display, None, None, None)
                 if context:
@@ -462,16 +458,16 @@ def opengl() -> Optional[dict]:
                 egl.eglTerminate(egl_display)
 
 
-# -- VA-API: qué códecs acelera la tarjeta -----------------------------------
+# -- VA-API: which codecs the card accelerates -------------------------------
 #
-# Es lo que contesta `vainfo`, y es de lo más útil que se puede saber de una
-# gráfica: si el equipo va a decodificar un vídeo en el chip o a quemarle la
-# CPU. Vale para las tres marcas —Intel con iHD, AMD con radeonsi, NVIDIA con
-# el driver de VA-API— y, a diferencia de OpenGL, se abre sobre un nodo de
-# render concreto, así que **se sabe de qué tarjeta se está hablando**.
-
-# Perfiles de VA-API, agrupados por códec. El número es el valor del enum de
-# `va.h` y no se puede deducir del nombre, así que va escrito.
+# What `vainfo` answers, and among the most useful things to know about a
+# card: whether a video will be decoded on the chip or burn the CPU. It works
+# for all three makers (Intel with iHD, AMD with radeonsi, NVIDIA with its
+# VA-API driver) and, unlike OpenGL, opens on a specific render node, so
+# **it is known which card is meant**.
+#
+# VA-API profiles, grouped by codec. The number is the enum's value in
+# `va.h` and can't be derived from the name, so it is written out.
 VA_PROFILES: dict[int, tuple[str, str, Optional[int]]] = {
     0:  ("MPEG-2", "Simple", 8),
     1:  ("MPEG-2", "Main", 8),
@@ -513,12 +509,12 @@ VA_PROFILES: dict[int, tuple[str, str, Optional[int]]] = {
     38: ("VVC", "Multilayer Main 10", 10),
 }
 
-# Qué significa cada punto de entrada. Los que no están aquí —postproceso,
-# estadísticas, contenido protegido— no son ni decodificar ni codificar.
+# What each entrypoint means. Those not here (post-processing, statistics,
+# protected content) are neither decoding nor encoding.
 VA_DECODE = frozenset({1})                    # VLD
 VA_ENCODE = frozenset({6, 7, 8, 11})            # EncSlice, EncPicture, LP, FEI
 
-# El orden en que se enseñan: primero lo que la gente busca.
+# The order they are shown in: what people look for first.
 VA_ORDER = ("AV1", "VVC", "HEVC", "H.264", "VP9", "VP8", "MPEG-2", "MPEG-4",
             "VC-1", "H.263", "JPEG")
 
@@ -532,11 +528,11 @@ def _render_nodes() -> list[str]:
 
 
 def vaapi() -> list[dict]:
-    """Los códecs que acelera cada nodo de render, uno por uno.
+    """The codecs each render node accelerates, one by one.
 
-    Se abre cada nodo por separado a propósito: así el resultado va atado a
-    una tarjeta concreta y no hay que adivinar de cuál habla, que es el
-    problema que tienen OpenGL y OpenCL en un portátil híbrido.
+    Each node is opened separately on purpose: the result is then tied to a
+    specific card and there's no guessing which one it speaks of, the
+    problem OpenGL and OpenCL have on a hybrid laptop.
     """
     lib = _load(LIB_VA)
     drm = _load(LIB_VA_DRM)
@@ -552,9 +548,10 @@ def vaapi() -> list[dict]:
     lib.vaMaxNumEntrypoints.argtypes = [ctypes.c_void_p]
     lib.vaQueryVendorString.restype = ctypes.c_char_p
     lib.vaQueryVendorString.argtypes = [ctypes.c_void_p]
-    # Sin declarar estos dos, ctypes le pasa el puntero del display truncado a
-    # 32 bits y el proceso se cae de golpe. El resto de la biblioteca perdona
-    # porque devuelve entero; estas escriben en memoria del que llama.
+    # Without declaring these two, ctypes passes the display pointer
+    # truncated to 32 bits and the process dies outright. The rest of the
+    # library forgives it, returning integers; these write to the caller's
+    # memory.
     lib.vaQueryConfigProfiles.argtypes = [
         ctypes.c_void_p, ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int)]
     lib.vaQueryConfigEntrypoints.argtypes = [
@@ -570,11 +567,11 @@ def vaapi() -> list[dict]:
 
 
 def _vaapi_of(lib, drm, path: str) -> Optional[dict]:
-    """Abre un nodo de render, pregunta y lo cierra todo pase lo que pase."""
+    """Open a render node, ask, and close everything whatever happens."""
     try:
         fd = os.open(path, os.O_RDWR)
     except OSError:
-        return None                      # sin permiso sobre el nodo, o no está
+        return None                      # no permission on the node, or it's gone
 
     display = None
     try:
@@ -607,7 +604,7 @@ def _vaapi_of(lib, drm, path: str) -> Optional[dict]:
 
 
 def _va_codecs(lib, display) -> list[dict]:
-    """Recorre los perfiles y agrupa por códec lo que sabe hacer cada uno."""
+    """Walk the profiles and group by codec what each one can do."""
     max_profiles = lib.vaMaxNumProfiles(display)
     if max_profiles <= 0:
         return []
@@ -624,7 +621,7 @@ def _va_codecs(lib, display) -> list[dict]:
     for index in range(min(profile_count.value, max_profiles)):
         known = VA_PROFILES.get(profiles[index])
         if known is None:
-            continue                     # perfil nuevo que aún no está en la tabla
+            continue                     # a new profile not in the table yet
         codec, profile, bits = known
         entrypoint_count = ctypes.c_int()
         if lib.vaQueryConfigEntrypoints(display, profiles[index], entrypoint_buffer,
@@ -650,10 +647,10 @@ def _va_codecs(lib, display) -> list[dict]:
                   key=lambda c: (order.get(c["name"], len(order)), c["name"]))
 
 
-# -- las tres a la vez, en un proceso que se tira después ---------------------
+# -- the three at once, in a process thrown away afterwards -------------------
 
 def in_this_process() -> dict[str, Any]:
-    """Pregunta a las tres aquí mismo. Es lo que ejecuta el proceso hijo."""
+    """Ask the three right here. What the child process runs."""
     found = {"vulkan": vulkan(), "opencl": opencl(), "opengl": opengl(),
              "vaapi": vaapi()}
     found["vulkan_rejected"] = vulkan_rejections("".join(_VULKAN_SAID))
@@ -662,16 +659,16 @@ def in_this_process() -> dict[str, Any]:
 
 
 def query() -> dict[str, Any]:
-    """Las tres APIs, preguntadas fuera para no cargar aquí sus drivers.
+    """The three APIs, asked elsewhere so their drivers don't load here.
 
-    Si el proceso hijo no sale adelante se devuelve vacío en vez de preguntar
-    aquí: hacerlo funcionaría, pero dejaría el programa por encima de su
-    presupuesto de memoria para siempre, y eso no se arregla luego.
+    If the child process fails, empty is returned rather than asking here:
+    it would work, but would leave the program above its memory budget for
+    good, which can't be undone later.
     """
     empty: dict[str, Any] = {"vulkan": [], "opencl": [], "opengl": None,
                              "vaapi": []}
-    # El directorio que contiene el paquete, para que el hijo lo encuentre esté
-    # silux instalado o ejecutándose desde el código fuente.
+    # The folder holding the package, so the child finds it whether silux is
+    # installed or running from source.
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     env = dict(os.environ)
     env["PYTHONPATH"] = os.pathsep.join(
@@ -695,8 +692,8 @@ def query() -> dict[str, Any]:
 
 
 def main() -> int:
-    # La salida tiene que ser JSON limpio: los avisos de los drivers ya van
-    # tapados, pero cualquier otra cosa que se imprima aquí rompería al padre.
+    # The output must be clean JSON: the drivers' warnings are already
+    # covered, but anything else printed here would break the parent.
     json.dump(in_this_process(), sys.stdout)
     return 0
 

@@ -1,19 +1,15 @@
-"""NVIDIA con el driver propietario, que no publica nada en sysfs.
+"""NVIDIA's proprietary driver, which publishes nothing in sysfs.
 
-Una Radeon cuenta su vida en `/sys/class/drm`; una GeForce con el driver de
-NVIDIA no. Ahí solo hay el nodo PCI pelado: ni memoria, ni relojes, ni
-temperatura. Todo eso está detrás de NVML, la biblioteca que trae el propio
-driver y que es lo que usa por dentro `nvidia-smi`.
+A Radeon tells its life in `/sys/class/drm`; a GeForce on NVIDIA's driver
+doesn't. There's only the bare PCI node: no memory, no clocks, no
+temperature. All of that is behind NVML, the library the driver ships and
+that `nvidia-smi` uses inside.
 
-Se carga con `ctypes` como el resto de bibliotecas del programa. NVML lleva
-más de una década con la misma ABI y versiona los símbolos que cambia (de ahí
-los sufijos `_v2` y `_v3`), así que se piden los versionados y se cae a los
-antiguos si el driver es viejo.
-
-⚠ Ojo al mantenerlo: esto está escrito contra la API documentada, pero no se
-ha podido probar con una NVIDIA delante. Los tipos de las estructuras y los
-códigos están comprobados sobre el papel; el día que alguien lo ejecute con una
-tarjeta puesta conviene contrastar las cifras con `nvidia-smi -q`.
+Loaded with `ctypes` like the program's other libraries. NVML has kept the
+same ABI for over a decade and versions the symbols it changes (hence the
+`_v2` and `_v3` suffixes), so the versioned ones are asked for first, with
+the old ones as the fallback for old drivers. What each call needs from
+which driver: docs/nvml.md.
 """
 
 from __future__ import annotations
@@ -38,11 +34,11 @@ def nvml_error(code: int) -> str:
     return f"NVML_ERROR_{name} ({code})" if name else f"NVML return {code}"
 
 GPU_TEMPERATURE = 0
-# Los relojes que interesan, por su enumeración: gráfico, SM, memoria, vídeo.
+# The clocks of interest, by their enumeration: graphics, SM, memory, video.
 CLOCK_GRAPHICS, CLOCK_SM, CLOCK_MEMORY, CLOCK_VIDEO = 0, 1, 2, 3
 NAME_LENGTH = 96
 
-# Por qué la tarjeta recorta sus relojes. Los define `nvmlClocksThrottleReasons`.
+# Why the card cuts its clocks. Defined by `nvmlClocksThrottleReasons`.
 THROTTLE_REASONS = {
     0x0000000000000001: "en reposo",
     0x0000000000000002: "relojes fijados por la aplicación",
@@ -54,17 +50,17 @@ THROTTLE_REASONS = {
     0x0000000000000080: "freno de potencia del hardware",
     0x0000000000000100: "relojes fijados por la pantalla",
 }
-# Este no es un motivo: es la respuesta cuando no hay ninguno.
+# Not a reason: the answer when there is none.
 NO_REASON = 0x0000000000000001
 
 
 # The GPU's power as a field value (nvml.h, NVML 13.4.92): the average over
 # a second (Ampere and newer, but GA100) and the current one (every
 # architecture). nvmlDeviceGetPowerUsage only answers where «power management
-# mode» is supported, and the header points to these two for the rest: a
-# tester's RTX 4060 with driver 595 gave its temperature, clocks and limit,
-# and no power. Milliwatts, like nvmlDeviceGetPowerUsage and the limits of
-# the same block; for these two the header does not write it.
+# mode» is supported, and the header points to these two for the rest: some
+# cards on driver 595 gave their temperature, clocks and limit, and no power.
+# Milliwatts, like nvmlDeviceGetPowerUsage and the limits of the same block;
+# for these two the header doesn't say.
 FIELD_POWER_AVERAGE, FIELD_POWER_INSTANT = 185, 186
 
 
@@ -119,7 +115,7 @@ class _Utilization(ctypes.Structure):
 
 
 class _Pci(ctypes.Structure):
-    """`nvmlPciInfo_t` en su versión 3, que es la que devuelve `GetPciInfo_v3`."""
+    """`nvmlPciInfo_t` version 3, the one `GetPciInfo_v3` returns."""
 
     _fields_ = [
         ("busIdLegacy", ctypes.c_char * 16),
@@ -131,7 +127,7 @@ class _Pci(ctypes.Structure):
 
 @dataclass(frozen=True, slots=True)
 class NvidiaGpu:
-    """Lo que NVML cuenta de una tarjeta."""
+    """What NVML says about a card."""
 
     index: int = 0
     pci_slot: Optional[str] = None
@@ -171,11 +167,11 @@ class NvidiaGpu:
 
 
 class Nvml:
-    """Sesión abierta con NVML. Hay que cerrarla, y por eso es un objeto.
+    """An open NVML session. It must be closed, hence an object.
 
-    NVML pide inicializarse una vez y apagarse al terminar. Abrirla y cerrarla
-    en cada muestreo cuesta bastante más que dejarla abierta, así que el
-    proveedor la conserva mientras el programa vive.
+    NVML asks to be initialized once and shut down at the end. Opening and
+    closing it every sample costs far more than keeping it open, so the
+    provider keeps it for as long as the program lives.
     """
 
     def __init__(self) -> None:
@@ -185,7 +181,7 @@ class Nvml:
         # averages only what the driver sampled since the previous one.
         self._last_power_sample: dict[int, int] = {}
 
-    # -- ciclo de vida ------------------------------------------------------
+    # -- lifecycle ----------------------------------------------------------
 
     def open(self) -> bool:
         if self._active:
@@ -213,7 +209,7 @@ class Nvml:
         self._active = False
         self._lib = None
 
-    # -- consulta -----------------------------------------------------------
+    # -- queries ------------------------------------------------------------
 
     def devices(self) -> list[NvidiaGpu]:
         if not self._active or self._lib is None:
@@ -236,10 +232,10 @@ class Nvml:
             found.append(self._read(index, handle, version))
         return found
 
-    # -- interno ------------------------------------------------------------
+    # -- internals ----------------------------------------------------------
 
     def _symbol(self, *names: str):
-        """El primero de estos símbolos que exista. NVML versiona los que cambia."""
+        """The first of these symbols that exists. NVML versions those it changes."""
         for name in names:
             symbol = getattr(self._lib, name, None)
             if symbol is not None:
@@ -248,7 +244,7 @@ class Nvml:
 
     def _integer(self, name: str, handle, *extra, kind=ctypes.c_uint,
                 reasons: Optional[list] = None) -> Optional[int]:
-        """The value, or None; `motivos` collects why not."""
+        """The value, or None; `reasons` collects why not."""
         function = self._symbol(name)
         if function is None:
             if reasons is not None:
@@ -269,11 +265,12 @@ class Nvml:
         return value.value
 
     def _utilization(self, name: str, handle) -> Optional[float]:
-        """El uso de NVENC o NVDEC, en %.
+        """NVENC's or NVDEC's usage, in %.
 
-        `nvmlDeviceGet{Encoder,Decoder}Utilization` escriben dos enteros, el
-        uso y el periodo en que se midió: con un solo puntero, como en
-        `_entero`, la biblioteca escribiría el segundo en memoria de nadie.
+        `nvmlDeviceGet{Encoder,Decoder}Utilization` write two integers, the
+        usage and the period it was measured over: with a single pointer, as
+        in `_integer`, the library would write the second into nobody's
+        memory.
         """
         function = self._symbol(name)
         if function is None:
@@ -310,7 +307,7 @@ class Nvml:
     def _fields(self, handle, *ids: int, reasons: Optional[list] = None) -> dict[int, float]:
         """Field values that came back, by id. Each one carries its own
         return code and value type: one that fails does not spoil the rest.
-        `motivos` collects why each missing one is missing."""
+        `reasons` collects why each missing one is missing."""
         reasons = reasons if reasons is not None else []
         function = self._symbol("nvmlDeviceGetFieldValues")
         if function is None:
@@ -454,9 +451,9 @@ class Nvml:
 
         return NvidiaGpu(
             index=index,
-            # NVML da la dirección en mayúsculas y con dominio de ocho dígitos;
-            # sysfs la escribe en minúsculas y con cuatro. Se normaliza para
-            # poder casarla con la tarjeta que ya se enumeró.
+            # NVML writes the address in upper case with an eight-digit
+            # domain; sysfs in lower case with four. Normalized so it matches
+            # the card already listed.
             pci_slot=_slot(pci.busId.decode("ascii", "replace")) if pci else None,
             name=self._string("nvmlDeviceGetName", handle),
             vbios=self._string("nvmlDeviceGetVbiosVersion", handle, 32),
@@ -493,7 +490,7 @@ class Nvml:
 
 
 def _slot(bus_id: str) -> Optional[str]:
-    """«00000000:0C:00.0» de NVML → «0000:0c:00.0» como lo escribe sysfs."""
+    """NVML's «00000000:0C:00.0» → «0000:0c:00.0», as sysfs writes it."""
     parts = bus_id.strip().split(":")
     if len(parts) != 3:
         return None
@@ -502,6 +499,6 @@ def _slot(bus_id: str) -> Optional[str]:
 
 
 def _reasons(flags: int) -> tuple[str, ...]:
-    """Los motivos de recorte, sin contar el «está en reposo»."""
+    """The throttle reasons, leaving out «idle»."""
     return tuple(reason for bit, reason in THROTTLE_REASONS.items()
                  if flags & bit and bit != NO_REASON)

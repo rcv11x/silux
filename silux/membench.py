@@ -1,52 +1,30 @@
-"""Cuánto se mueve de verdad la memoria de este equipo.
+"""How fast this machine's memory really moves.
 
-Los MT/s del SPD dicen a qué velocidad está catalogado el módulo, y el ancho
-de banda teórico sale de una multiplicación. Ninguno de los dos dice lo que la
-máquina consigue: eso hay que medirlo, y es lo que se echa de menos frente a
-lo que enseña AIDA64 en Windows.
+The SPD's MT/s say what the module is rated for, and the theoretical
+bandwidth is a multiplication. Neither says what the machine achieves: that
+has to be measured, and it is what's missed next to what AIDA64 shows on
+Windows.
 
-Se mide leyendo, con `memchr` buscando un byte que no está: recorre el bloque
-entero a velocidad de memoria y no necesita destino, así que gasta la mitad
-que copiar y la cifra sale de una lectura pura, que es la comparable. El bucle
-está en la libc, ya compilado, porque dentro de un AppImage no hay compilador
-con el que generar nada al vuelo.
+Bandwidth is measured by reading, with `memchr` looking for a byte that
+isn't there: it walks the whole block at memory speed and needs no
+destination, so it costs half of copying and the figure comes from a pure
+read, the comparable one. The loop is libc's, already compiled, since an
+AppImage carries no compiler to generate anything on the fly.
 
-**Y la propia herramienta tiene un techo, que hay que medir.** `memchr` no pasa
-de unos 112 GB/s en el equipo donde se escribió esto, y ese número no lo pone
-la memoria: bloques de 1, 4, 16 y 48 MB —que caben en cachés distintas— dan
-los cuatro lo mismo, y hasta la L1 con el coste de la llamada descontado se
-queda ahí. Un bloque que quepa en la caché no mide la caché: mide hasta dónde
-llega esta forma de medir.
+**The tool itself has a ceiling, which has to be measured.** `memchr`
+tops out around 112 GB/s on a fast machine, and memory doesn't set that
+number: blocks of 1, 4, 16 and 48 MB, which fit different caches, all give
+the same, and even L1 with the call's cost taken off stays there. A block
+that fits in the cache doesn't measure the cache: it measures how far this
+way of measuring goes. So it is measured anyway, as a control rather than
+data: if the RAM's bandwidth nears that ceiling, the figure is limited by
+the tool and the memory may be faster than shown.
 
-Por eso se mide igualmente, pero como control y no como dato. Si el ancho de
-banda de la RAM se acerca a ese techo, la cifra está limitada por la
-herramienta y la memoria puede ser más rápida de lo que se enseña; eso pasa en
-un equipo con memoria muy rápida, y callarlo sería dar una cifra baja con cara
-de medida.
-
-**Lo que todavía no se mide aquí, y por qué.** La latencia en nanosegundos no
-sale con lo que trae la libc, y se probaron dos caminos antes de dejarla fuera
-de esta primera versión:
-
-- Con muchos accesos aleatorios sueltos sale plana —9.7 ns en 16 KB y 11.2 en
-  256 MB— porque no dependen unos de otros y el procesador los solapa. La
-  latencia real de esa máquina va de un nanosegundo a ochenta.
-- Con búsqueda binaria, que sí encadena cada salto con el anterior, hay señal
-  (22 ns por salto dentro de la caché y 42 fuera), pero para convertirlo en un
-  número hay que suponer cuántos niveles del árbol están cacheados y descontar
-  el coste de la llamada. Serían tres suposiciones sosteniendo una cifra.
-
-Sí sale escribiendo el bucle en código máquina, que es lo que hace
-`rawcpuid.py` para llamar a CPUID: doce bytes persiguiendo punteros dan 0,9 ns
-en L1 y 76,1 en RAM en el equipo de casa. Está probado y pendiente de integrar,
-con una trampa apuntada: si se dan menos saltos que líneas tiene el array, la
-cadena recorrida cabe en la caché y se mide la caché creyendo que se mide la
-RAM.
-
-Y tampoco se miden la L1 ni la L2 por este camino: una llamada cuesta 570 ns, y
-en un bloque de 32 KB eso es casi todo el tiempo. Desde un mega baja del 2 %,
-así que se mide de ahí hacia arriba y lo demás se deja sin medir en vez de
-inventarlo.
+**Latency** can't come from libc. Many scattered random accesses come out
+flat, since they don't depend on each other and the processor overlaps
+them; a binary search chains them, but turning it into a number takes three
+guesses. So the loop is written in machine code, as `rawcpuid.py` does for
+CPUID: twelve bytes chasing pointers, each read giving the next address.
 """
 
 from __future__ import annotations
@@ -64,44 +42,42 @@ from typing import Optional
 
 from . import rawcpuid
 
-# Por debajo de esto la llamada pesa más que la memoria y la cifra deja de
-# hablar del equipo para hablar de ctypes.
+# Below this the call weighs more than the memory, and the figure stops
+# speaking about the machine and speaks about ctypes.
 MIN_RELIABLE = 1024 * 1024
 
-# Cuánto hay que pasarse del tamaño de la caché para estar seguro de que se
-# está midiendo la RAM. Con el doble todavía cabe media tirada en la caché;
-# con el triple, lo que se lee viene de fuera.
+# How far past the cache's size to go to be sure the RAM is measured. At
+# twice the size half a pass still fits in the cache; at three times, what
+# is read comes from outside.
 TIMES_PAST_CACHE = 3
 
-# Un tope, porque hay Threadripper con 256 MB de caché y el triple de eso no
-# lo debe pedir un programa que enseña fichas. Si no se llega a este tamaño la
-# medida de RAM se salta y se dice.
+# A cap, since some Threadrippers have 256 MB of cache and three times that
+# shouldn't be asked by a program that shows spec sheets. When the block
+# can't reach this size, the RAM measurement is skipped and that is said.
 MAX_BLOCK = 512 * 1024 * 1024
 
-# Lo que se deja libre en el equipo pase lo que pase. Medir no puede ser el
-# motivo de que algo se vaya a la swap.
+# What is left free on the machine whatever happens. Measuring must never
+# push something into swap.
 FREE_MARGIN = 512 * 1024 * 1024
 
-# Cuánto tiempo se le dedica a cada bloque. Iba por número de vueltas y salían
-# tres para el bloque de RAM: con tan pocas basta que una tanda pille el equipo
-# ocupado para que la cifra salga un 15 % baja, y quien pulsa el botón ve un
-# número distinto cada vez sin que su memoria haya cambiado. Repartiendo por
-# tiempo, un bloque pequeño da cientos de vueltas y uno grande las que quepan,
-# y en los dos casos hay de dónde sacar un mínimo que signifique algo.
+# How much time each block gets. By a pass count, the RAM block got three:
+# with so few, one batch catching the machine busy made the figure 15 % low,
+# and whoever pressed the button saw a different number each time. Shared by
+# time, a small block gets hundreds of passes and a big one those that fit,
+# and both have enough to take a meaningful minimum from.
 TIME_BUDGET_S = 0.15
 MIN_PASSES = 5
 MAX_PASSES = 500
 
-# Persigue punteros: cada lectura da la dirección de la siguiente, así que el
-# procesador no puede adelantarse y lo que se cronometra es lo que tarda un
-# acceso. Es lo que no se puede escribir en Python, donde el intérprete cuesta
-# más que el propio acceso.
+# Chases pointers: each read gives the address of the next, so the processor
+# can't run ahead and what's timed is how long one access takes. It can't be
+# written in Python, where the interpreter costs more than the access.
 #
-#   mov rax, rdi        48 89 f8     rdi = primer eslabón
-# bucle:
-#   mov rax, [rax]      48 8b 00     <- depende del resultado anterior
-#   dec rsi             48 ff ce     rsi = cuántos saltos
-#   jnz bucle           75 f8
+#   mov rax, rdi        48 89 f8     rdi = first link
+# loop:
+#   mov rax, [rax]      48 8b 00     <- depends on the previous result
+#   dec rsi             48 ff ce     rsi = how many hops
+#   jnz loop            75 f8
 #   ret                 c3
 _CHASE_CODE = bytes((0x48, 0x89, 0xF8,
                            0x48, 0x8B, 0x00,
@@ -109,39 +85,39 @@ _CHASE_CODE = bytes((0x48, 0x89, 0xF8,
                            0x75, 0xF8,
                            0xC3))
 
-# Una línea de caché. Se salta de una a otra porque leer dos veces la misma
-# línea sale de la misma lectura y no mide nada.
+# A cache line. Hops go from one line to another because reading the same
+# line twice comes from the same fetch and measures nothing.
 LINE = 64
 
-# Cuántos saltos se dan como mínimo, para que el coste de entrar y salir de la
-# llamada —570 ns— no pese: en la L1 un acceso son 0,9 ns, así que con pocos
-# saltos se estaría cronometrando ctypes otra vez.
+# The minimum hops, so the cost of entering and leaving the call (570 ns)
+# doesn't weigh: an L1 access is 0.9 ns, so with few hops it would be timing
+# ctypes again.
 MIN_HOPS = 200_000
 
-# Y un tope de eslabones, que es lo que cuesta tiempo de verdad: barajarlos y
-# enlazarlos son bucles de Python. Con seis millones se van cuatro segundos
-# antes de medir nada. Con este tope, un procesador de caché normal se prepara
-# en décimas y uno con una L3 enorme se queda sin la latencia de RAM y lo dice,
-# que es mejor que tener el botón parado cinco segundos.
+# And a cap on links, which is what really costs time: shuffling and linking
+# them are Python loops. Six million take four seconds before anything is
+# measured. With this cap, a processor with a normal cache gets ready in
+# tenths of a second, and one with a huge L3 goes without the RAM latency
+# and says so, which beats a button frozen for five seconds.
 MAX_LINKS = 4_000_000
 
-# Para la latencia basta con el doble de la caché: con dos, tres y cuatro veces
-# salen 80,0, 83,6 y 80,8 ns, o sea lo mismo, y cada vez que se dobla el bloque
-# se dobla el tiempo de preparar la cadena. Para el ancho de banda se usa el
-# triple porque allí no hay cadena que construir y no cuesta nada.
+# For latency, twice the cache is enough: two, three and four times give
+# 80.0, 83.6 and 80.8 ns, the same, and each doubling of the block doubles
+# the time to build the chain. Bandwidth uses three times, as there's no
+# chain to build there and it costs nothing.
 TIMES_PAST_FOR_LATENCY = 2
 
-# Un tope al bloque con el que se mide una caché, además de su fracción. La L3
-# de un Zen 3 es caché de víctimas —solo guarda lo que se expulsa de la L2—, así
-# que con la mitad de sus 96 MB recorridos al azar ya casi no retiene nada: da
-# 66 ns donde tiene que dar 12. Con 4, 8 y 16 MB sale 11,9, 12,0 y 13,2, así que
-# el escalón está bastante por debajo de la mitad y hay que quedarse abajo.
+# A cap on the block a cache is measured with, besides its fraction. A Zen 3's
+# L3 is a victim cache (it only keeps what L2 evicts), so with half of its
+# 96 MB walked at random it holds almost nothing: 66 ns where it should be
+# 12. With 4, 8 and 16 MB it gives 11.9, 12.0 and 13.2, so the step is well
+# below half and it has to stay low.
 MAX_CACHE_BLOCK = 16 * 1024 * 1024
 
-# Páginas de 2 MB en vez de 4 KB. Perseguir punteros por 288 MB toca 73728
-# páginas y el TLB de datos guarda unas 2000, así que cada acceso pagaba además
-# un recorrido de tablas: 94,7 ns con páginas normales contra 82,1 con grandes.
-# Es un consejo, no una orden: si el sistema las tiene desactivadas no pasa nada.
+# 2 MB pages instead of 4 KB. Chasing pointers through 288 MB touches 73728
+# pages and the data TLB holds about 2000, so every access also paid for a
+# page walk: 94.7 ns with normal pages against 82.1 with huge ones. Advice,
+# not an order: if the system has them off, nothing breaks.
 MADV_HUGEPAGE = 14
 HUGE_PAGE = 2 * 1024 * 1024
 
@@ -150,18 +126,18 @@ TIMEOUT_S = 60
 
 @dataclass(frozen=True)
 class Measurement:
-    """Una lectura de un bloque de un tamaño concreto."""
+    """One reading of a block of a given size."""
 
     bytes_: int
     bandwidth_bytes: int
-    # "ram" es el dato; "techo" es el control: un bloque que cabe en la caché,
-    # que no mide la caché sino lo más rápido que puede ir esta herramienta.
+    # "ram" is the datum; "techo" is the control: a block that fits in the
+    # cache, measuring not the cache but the fastest this tool can go.
     where: str                       # "techo" | "ram"
 
 
 @dataclass(frozen=True)
 class Latency:
-    """Lo que tarda un acceso que no se puede adelantar, por nivel."""
+    """How long an access that can't be anticipated takes, per level."""
 
     level: str                       # "L1", "L2", "L3", "RAM"
     bytes_: int
@@ -172,10 +148,10 @@ class Latency:
 class MemoryResult:
     measurements: tuple[Measurement, ...] = ()
     latencies: tuple[Latency, ...] = ()
-    # Por qué faltan latencias, que no es lo mismo que por qué falta el ancho
-    # de banda: se puede tener una cosa y no la otra.
+    # Why latencies are missing, which isn't why bandwidth is: one can be had
+    # without the other.
     latency_reason: Optional[str] = None
-    # Por qué no se pudo medir algo, para poder decirlo en vez de callar.
+    # Why something couldn't be measured, to say it instead of staying silent.
     reason: Optional[str] = None
 
 
@@ -187,15 +163,14 @@ def _libc():
 
 
 def _best_pass(libc, address: int, n: int) -> float:
-    """El mejor tiempo de recorrer el bloque, en segundos.
+    """The best time to walk the block, in seconds.
 
-    El mejor y no la media: lo que se busca es lo que da el equipo cuando nadie
-    le estorba, y cualquier interrupción solo puede empeorar una vuelta. Por eso
-    hacen falta unas cuantas: con el mínimo de tres que había antes, una tanda
-    entera podía caer dentro de la interferencia y no había ninguna vuelta
-    limpia de la que fiarse.
+    The best and not the mean: what's sought is what the machine gives when
+    nothing gets in its way, and any interruption can only make a pass
+    worse. Hence several passes: with only three, a whole batch could fall
+    inside the interference with no clean pass to trust.
     """
-    libc.memchr(address, 0xFF, n)                 # calentar
+    libc.memchr(address, 0xFF, n)                 # warm up
     best = None
     spent = 0.0
     passes = 0
@@ -222,11 +197,10 @@ def _available_memory() -> Optional[int]:
 
 
 def _reserve(size: int):
-    """Un bloque alineado a 2 MB y con páginas grandes pedidas.
+    """A block aligned to 2 MB, with huge pages requested.
 
-    Se pide con `mmap` y no con un búfer de ctypes porque la alineación es lo
-    que el kernel exige para poder juntar las páginas, y un búfer normal cae
-    donde caiga.
+    With `mmap` rather than a ctypes buffer because the alignment is what the
+    kernel needs to merge the pages, and a normal buffer lands wherever.
     """
     # Private: `mmap(-1)` alone is shared anonymous memory, which only gets
     # huge pages where shmem THP is on (it is off in Fedora). Without them the
@@ -246,11 +220,11 @@ def _reserve(size: int):
 
 
 def _chain(base: int, lines: int) -> int:
-    """Enlaza `lineas` líneas del bloque en un ciclo aleatorio.
+    """Link `lines` lines of the block into a random cycle.
 
-    Devuelve la dirección del primer eslabón. El orden es aleatorio a propósito:
-    con un salto constante el prefetcher lo adivina y se mide lo que tarda en
-    llegar un dato que ya venía de camino, no lo que tarda un acceso.
+    Returns the first link's address. Random on purpose: with a constant
+    stride the prefetcher guesses it, and what's measured is how long data
+    already on its way takes to arrive, not an access.
     """
     order = list(range(lines))
     random.shuffle(order)
@@ -263,8 +237,8 @@ def _chain(base: int, lines: int) -> int:
 
 
 def _latency(chase, first: int, hops: int) -> float:
-    """Nanosegundos por acceso, del mejor intento."""
-    chase(first, min(hops, 100_000))          # calentar
+    """Nanoseconds per access, from the best attempt."""
+    chase(first, min(hops, 100_000))          # warm up
     best = None
     for _attempt in range(3):
         start = time.perf_counter()
@@ -275,19 +249,19 @@ def _latency(chase, first: int, hops: int) -> float:
 
 
 def measure_latencies(levels: "list[tuple[str, int]]") -> tuple:
-    """Mide un nivel por cada caché, y la RAM detrás.
+    """Measure one level per cache, and the RAM behind them.
 
-    `niveles` son pares de nombre y tamaño, del más pequeño al más grande. De
-    cada uno se recorre la mitad, para que la cadena quepa de sobra dentro; de
-    la RAM, el triple de la caché mayor, para que no quepa de ninguna manera.
+    `levels` are pairs of name and size, smallest first. Half of each is
+    walked, so the chain fits well inside; for the RAM, three times the
+    largest cache, so it can't fit at all.
     """
     if not rawcpuid.is_supported():
         return (), "no_x86"
     try:
         mm, address = rawcpuid.executable_page(_CHASE_CODE)
     except Exception:                                          # noqa: BLE001
-        # Un entorno que prohíbe ejecutar memoria anónima. Sin latencias, pero
-        # el resto de la medida sigue valiendo.
+        # An environment that forbids executing anonymous memory. No
+        # latencies, but the rest of the measurement still stands.
         return (), "sin_ejecutable"
 
     chase = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p,
@@ -304,8 +278,8 @@ def measure_latencies(levels: "list[tuple[str, int]]") -> tuple:
         for name, size in spans:
             lines = size // LINE
             if lines > MAX_LINKS:
-                # Preparar la cadena son bucles de Python: seis millones de
-                # eslabones se llevan cuatro segundos antes de medir nada.
+                # Building the chain is Python loops: six million links take
+                # four seconds before anything is measured.
                 reason = reason or "cadena_enorme"
                 continue
             if available is not None and size + FREE_MARGIN > available:
@@ -317,9 +291,9 @@ def measure_latencies(levels: "list[tuple[str, int]]") -> tuple:
                 continue
             mapping, base = block
             first = _chain(base, lines)
-            # Al menos dos vueltas al ciclo entero: con menos saltos que líneas,
-            # lo recorrido cabe en la caché y se mide la caché creyendo que se
-            # mide la RAM. Salían 28 ns donde hay 76.
+            # At least two rounds of the whole cycle: with fewer hops than
+            # lines, what's walked fits in the cache and the cache gets
+            # measured as if it were the RAM. It read 28 ns where there are 76.
             hops = max(MIN_HOPS, lines * 2)
             results.append(Latency(name, size, round(
                 _latency(chase, first, hops), 1)))
@@ -331,19 +305,18 @@ def measure_latencies(levels: "list[tuple[str, int]]") -> tuple:
 
 def in_this_process(cache_bytes: Optional[int],
                     levels: "Optional[list]" = None) -> MemoryResult:
-    """Mide de verdad.
+    """Measure for real.
 
-    `cache_bytes` es la caché más grande, y decide los bloques del ancho de
-    banda. `niveles` son los pares de nombre y tamaño de cada caché, que es lo
-    que hace falta para las latencias; sin ellos se mide solo el ancho de banda.
+    `cache_bytes` is the largest cache and sets the bandwidth's blocks.
+    `levels` are each cache's name and size, which the latencies need;
+    without them only bandwidth is measured.
     """
     libc = _libc()
     measurements: list[Measurement] = []
     available = _available_memory()
 
-    # El techo: un bloque que cabe de sobra en la caché, así que lo que limita
-    # ahí no es la memoria. La mitad de la caché, para que quepa con holgura
-    # aunque el sistema esté usando una parte.
+    # The ceiling: a block that fits easily in the cache, so memory isn't what
+    # limits it. Half the cache, to fit with room even if the system uses some.
     if cache_bytes and cache_bytes // 2 >= MIN_RELIABLE:
         n = cache_bytes // 2
         block = ctypes.create_string_buffer(n)
@@ -352,7 +325,7 @@ def in_this_process(cache_bytes: Optional[int],
             measurements.append(Measurement(n, int(n / seconds), "techo"))
         del block
 
-    # Fuera de toda caché, que es el ancho de banda de la RAM.
+    # Past every cache: the RAM's bandwidth.
     n = max(MIN_RELIABLE * 64,
             (cache_bytes or 0) * TIMES_PAST_CACHE)
     if n > MAX_BLOCK or (available is not None
@@ -373,11 +346,11 @@ def in_this_process(cache_bytes: Optional[int],
 
 def query(cache_bytes: Optional[int],
               levels: "Optional[list]" = None) -> MemoryResult:
-    """Mide en otro proceso, que es donde puede pedir cientos de megas.
+    """Measure in another process, where it can ask for hundreds of megabytes.
 
-    Para salirse de una caché de 96 MB hace falta un bloque de casi trescientos,
-    y el programa entero tiene un presupuesto de 300. Aquí se pide, se mide y
-    se muere; lo que queda en esta memoria es una cifra.
+    Getting out of a 96 MB cache takes a block of almost three hundred, and
+    the whole program's budget is 300. It is asked for, measured and dies
+    there; what stays in this process's memory is a number.
     """
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     env = dict(os.environ)
@@ -407,8 +380,8 @@ def query(cache_bytes: Optional[int],
 
 
 def main() -> int:
-    # La salida tiene que ser JSON limpio: cualquier otra cosa impresa aquí
-    # rompería al padre.
+    # The output must be clean JSON: anything else printed here would break
+    # the parent.
     cache = int(sys.argv[1]) if len(sys.argv) > 1 else 0
     levels = json.loads(sys.argv[2]) if len(sys.argv) > 2 else []
     json.dump(asdict(in_this_process(cache or None, levels)), sys.stdout)
