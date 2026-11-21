@@ -97,6 +97,41 @@ class TestRespuestas(unittest.TestCase):
                 json.dumps(helper.handle(peticion))
 
 
+class TestALineTooLong(unittest.TestCase):
+    """The helper runs as root: a line with no end must not be held whole in
+    its memory. It read the line and checked its size afterwards."""
+
+    def _run(self, data: bytes):
+        import contextlib
+        import io
+        import tracemalloc
+        entrada = io.TextIOWrapper(io.BytesIO(data), encoding="utf-8")
+        salida = io.StringIO()
+        tracemalloc.start()
+        try:
+            with mock.patch.object(helper.sys, "stdin", entrada), \
+                    mock.patch.object(helper.os, "geteuid", return_value=0), \
+                    contextlib.redirect_stdout(salida):
+                helper.main()
+            pico = tracemalloc.get_traced_memory()[1]
+        finally:
+            tracemalloc.stop()
+        return [json.loads(l) for l in salida.getvalue().splitlines()], pico
+
+    def test_it_is_refused_without_holding_it(self):
+        enorme = b"x" * (20 * 1024 * 1024)
+        respuestas, pico = self._run(enorme + b"\n" + b'{"action": "ping"}\n')
+        self.assertEqual(respuestas[0]["error"], "bad_request")
+        self.assertLess(pico, 2 * 1024 * 1024, "the line was held whole")
+        # And the next request still goes.
+        self.assertTrue(respuestas[1]["ok"])
+
+    def test_one_with_no_end_at_all(self):
+        respuestas, pico = self._run(b"y" * (5 * 1024 * 1024))
+        self.assertEqual([r["error"] for r in respuestas], ["bad_request"])
+        self.assertLess(pico, 2 * 1024 * 1024)
+
+
 class _FakeClient:
     """Un cliente que devuelve una tabla SMBIOS fabricada."""
 

@@ -681,26 +681,46 @@ def handle(request: dict) -> dict:
     return _fail(f"acción desconocida: {action!r}", "bad_request")
 
 
+def requests(stream, limit: int = MAX_REQUEST_BYTES):
+    """Each request line as bytes, or None for one over the limit.
+
+    Read with a cap, as root: a line with no end is never held whole. What
+    is left of a long line is read and dropped up to its end.
+    """
+    while True:
+        line = stream.readline(limit + 1)
+        if not line:
+            return
+        if len(line) > limit:
+            while not line.endswith(b"\n"):
+                line = stream.readline(limit)
+                if not line:
+                    break
+            yield None
+            continue
+        yield line
+
+
 def main() -> int:
     if os.geteuid() != 0:
         print(json.dumps(_fail("el ayudante tiene que ejecutarse como root", "not_root")),
               flush=True)
         return 1
 
-    for line in sys.stdin:
-        line = line.strip()
+    for raw in requests(sys.stdin.buffer):
+        if raw is None:
+            print(json.dumps(_fail("petición demasiado larga", "bad_request")), flush=True)
+            continue
+        line = raw.decode("utf-8", errors="replace").strip()
         if not line:
             continue
-        if len(line) > MAX_REQUEST_BYTES:
-            response = _fail("petición demasiado larga", "bad_request")
+        try:
+            request = json.loads(line)
+        except ValueError:
+            response = _fail("la petición no es JSON válido", "bad_request")
         else:
-            try:
-                request = json.loads(line)
-            except ValueError:
-                response = _fail("la petición no es JSON válido", "bad_request")
-            else:
-                response = handle(request) if isinstance(request, dict) else \
-                    _fail("la petición tiene que ser un objeto", "bad_request")
+            response = handle(request) if isinstance(request, dict) else \
+                _fail("la petición tiene que ser un objeto", "bad_request")
         print(json.dumps(response), flush=True)
     return 0
 
