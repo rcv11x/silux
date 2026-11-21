@@ -11,11 +11,11 @@ from __future__ import annotations
 import time
 from typing import Optional
 
+from .. import sysroot
 from ..i18n import _
 from ..model import Need
 from .base import Draft, Provider
 from .counters import increase, window_s
-from .. import sysroot
 
 # user nice system idle iowait irq softirq steal …
 _IDLE_FIELDS = (3, 4)          # idle, iowait

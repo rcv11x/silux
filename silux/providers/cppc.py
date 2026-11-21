@@ -30,11 +30,11 @@ import os
 import re
 from typing import Optional
 
-from ..model import Clocks, Need
-from .base import Draft, Provider, en_maquina_virtual, read_int, read_text
-from .msr_pstate import is_zen
-from ..i18n import _
 from .. import kernel, sysroot
+from ..i18n import _
+from ..model import Clocks, Need
+from .base import Draft, Provider, en_maquina_virtual, read_int
+from .msr_pstate import is_zen
 
 SYS_CPU = "/sys/devices/system/cpu"
 

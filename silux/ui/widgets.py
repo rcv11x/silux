@@ -19,21 +19,28 @@ import time
 from collections import deque
 from typing import Iterable, NamedTuple, Optional, Sequence
 
-from PySide6.QtCore import (QEvent, QPoint, QPointF, QRectF, QSize, Qt,
-                            QTimer, Signal)
+from PySide6.QtCore import QEvent, QPoint, QPointF, QRectF, QSize, Qt, QTimer, Signal
 from PySide6.QtGui import (
-    QBrush, QColor, QFont, QFontMetrics, QFontMetricsF, QLinearGradient, QPainter, QPainterPath, QPen,
+    QBrush,
+    QColor,
+    QFont,
+    QFontMetrics,
+    QFontMetricsF,
+    QLinearGradient,
+    QPainter,
+    QPainterPath,
+    QPen,
 )
 from PySide6.QtWidgets import (
-    QToolTip,
     QFrame,
-    QScrollArea,
     QGridLayout,
     QHBoxLayout,
     QLabel,
     QLayout,
     QPushButton,
+    QScrollArea,
     QSizePolicy,
+    QToolTip,
     QVBoxLayout,
     QWidget,
 )
@@ -42,8 +49,7 @@ from .. import render
 from ..i18n import _
 from ..model import Need, plausible
 from . import theme
-from .theme import Palette, value_font, ui_font
-
+from .theme import Palette, ui_font, value_font
 
 # --------------------------------------------------------------------------
 # texto que se adapta

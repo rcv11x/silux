@@ -7,9 +7,11 @@ Solo la monta `pages/performance.py`. Es la única de las cuatro que sale de
 from __future__ import annotations
 
 from typing import Optional
+
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QBrush, QColor, QPainter, QPen
 from PySide6.QtWidgets import QSizePolicy, QWidget
+
 from . import theme
 
 

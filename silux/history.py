@@ -19,7 +19,7 @@ import json
 import os
 import pathlib
 import time
-from typing import Any, Optional
+from typing import Optional
 
 from .benchmark import Result
 

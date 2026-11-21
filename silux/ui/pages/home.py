@@ -17,17 +17,24 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFontMetrics
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
-from ...i18n import _
 from ... import render
+from ...i18n import _
 from ...model import DISK_KINDS, Snapshot
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette
-from ..widgets import Series
-from ..widgets import (Card, ChipRow, PermissionNotice, ResponsiveRow, Sparkline,
-                       StackedBar, memory_segments, ScrollPage)
-from ..widgets import ui_font
-
+from ..widgets import (
+    Card,
+    ChipRow,
+    PermissionNotice,
+    ResponsiveRow,
+    ScrollPage,
+    Series,
+    Sparkline,
+    StackedBar,
+    memory_segments,
+    ui_font,
+)
 
 # Cuántos grados tiene que sacarle una pieza a la que encabeza la tarjeta de
 # temperaturas para quitarle el sitio.

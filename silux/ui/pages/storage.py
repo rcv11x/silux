@@ -22,10 +22,22 @@ from ...model import DISK_KINDS, Disk, Snapshot
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette, ui_font
-from ..widgets import Series
-from ..widgets import (Plegable, Card, ChipRow, InfoGrid, Notice, ResponsiveRow,
-                       StackedBar, StatTile, Table,
-                       boton_de_permiso_permanente, clear_layout, dismiss_buttons, ScrollPage)
+from ..widgets import (
+    Card,
+    ChipRow,
+    InfoGrid,
+    Notice,
+    Plegable,
+    ResponsiveRow,
+    ScrollPage,
+    Series,
+    StackedBar,
+    StatTile,
+    Table,
+    boton_de_permiso_permanente,
+    clear_layout,
+    dismiss_buttons,
+)
 
 DISK_HEADERS = ("storage.col.unit", "storage.col.model", "gpu.vram.type", "storage.col.size", "storage.col.used",
                 "gpu.sensor.temp", "storage.tile.reading", "storage.tile.writing")
@@ -292,7 +304,6 @@ class StoragePage(ScrollPage):
             ))
 
     def _apply_header(self, discos) -> None:
-        d = render.DASH
         if not discos:
             self.title.setText(_("storage.none"))
             self.subtitle.setText("")

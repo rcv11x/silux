@@ -21,10 +21,9 @@ from ...i18n import _
 from ...model import Snapshot, thread_name
 from ...settings import Preferences
 from .. import theme
-from ..theme import Palette, ui_font
 from ..corematrix import CoreMatrix
-from ..widgets import Series
-from ..widgets import Card, ResponsiveRow, StatTile
+from ..theme import Palette, ui_font
+from ..widgets import Card, ResponsiveRow, Series, StatTile
 
 # Cuántas muestras guarda la curva de cada núcleo. Cuarenta a un segundo son
 # cuarenta segundos, que es lo que cabe en un cuadro de ese tamaño sin que la

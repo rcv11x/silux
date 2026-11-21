@@ -16,17 +16,15 @@ completo porque incluye a quien montó la tarjeta.
 
 from __future__ import annotations
 
+import dataclasses
 import os
 import re
 from typing import Optional
 
-from .. import sysroot
-from .. import amdgpu, gpuapi
-import dataclasses
-
+from .. import amdgpu, gpuapi, sysroot
+from ..i18n import _
 from ..model import GpuApi, GpuMemory, Need, VideoCodec
 from .base import Draft, Provider
-from ..i18n import _
 
 # «AMD Radeon RX 9070 XT (RADV GFX1201)» → el paréntesis es del driver, no del
 # nombre de la tarjeta.

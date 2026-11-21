@@ -11,7 +11,6 @@ dejar la aplicación en blanco.
 
 from __future__ import annotations
 
-import copy
 import dataclasses
 import inspect
 import time
@@ -19,15 +18,17 @@ from typing import Iterable, Optional, Sequence
 
 from . import sysroot
 from .failures import Failures
+from .i18n import _
 from .model import Need, Snapshot
 from .privileged.client import PrivilegedClient
-from .providers.base import en_maquina_virtual
-from .i18n import _
 from .providers import (
-    Batteries,
+    AmdPstateClocks,
     ArmIdentity,
+    Batteries,
+    ConnectedDevices,
     CppcClocks,
     CpuidIdentity,
+    CpuIdle,
     CpuUsage,
     DerivedSensors,
     Disks,
@@ -36,30 +37,29 @@ from .providers import (
     DrmGpus,
     GpuApis,
     GpuState,
-    NetworkInterfaces,
-    NvidiaGpus,
     HwmonSensors,
     ImcTraffic,
     MsrVoltage,
-    AmdPstateClocks,
-    PrivilegedMemory,
-    Provider,
-    SpdModules,
-    RaplPower,
-    SysfsClocks,
-    SysfsTopology,
-    ConnectedDevices,
-    CpuIdle,
-    ThermalThrottleCounts,
+    NetworkInterfaces,
+    NvidiaGpus,
     PciDevices,
     PlatformInfo,
     PowerLimits,
+    PrivilegedMemory,
+    Provider,
+    RaplPower,
+    SpdModules,
+    SysfsClocks,
+    SysfsTopology,
     SystemDependencies,
     SystemIdentity,
     SystemSecurity,
     SystemState,
+    ThermalThrottleCounts,
     TurboState,
 )
+from .providers.base import en_maquina_virtual
+
 
 def _instanciar(cls: type[Provider], cliente: PrivilegedClient) -> Provider:
     """Crea un proveedor pasándole el ayudante si sabe usarlo."""

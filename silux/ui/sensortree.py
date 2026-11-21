@@ -14,6 +14,7 @@ cabeceras.
 from __future__ import annotations
 
 from typing import Optional
+
 from PySide6.QtCore import QPointF, QRectF, QSize, Qt, Signal
 from PySide6.QtGui import (
     QBrush,
@@ -34,11 +35,12 @@ from PySide6.QtWidgets import (
     QTreeWidgetItem,
     QWidget,
 )
+
 from .. import render
-from ..model import Snapshot
 from ..i18n import _
+from ..model import Snapshot
 from . import theme
-from .theme import Palette, value_font, ui_font
+from .theme import Palette, ui_font, value_font
 
 
 def _cifra(texto: str) -> float:

@@ -15,14 +15,13 @@ por el mismo camino que usa para el ayudante de permisos.
 from __future__ import annotations
 
 import dataclasses
-
 import glob
 import os
 from typing import Optional
-from .. import sysroot
-from .. import nvml
+
+from .. import nvml, sysroot
 from ..i18n import _
-from ..model import GpuClocks, PcieLink, GpuMemory, Need
+from ..model import GpuClocks, GpuMemory, Need, PcieLink
 from .base import Draft, Provider, en_reposo, read_text
 from .dmi import PORTABLE_CHASSIS
 

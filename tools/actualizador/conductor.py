@@ -4,10 +4,8 @@ Se ejecuta con el entorno de su AppRun, `APPIMAGE` apuntando a la copia que se
 va a sustituir, y la red por el GitHub falso (mitmproxy).
 """
 import os
-import sys
 import time
 
-from PySide6.QtCore import QCoreApplication
 from PySide6.QtWidgets import QMessageBox
 
 from silux import desktop, updates

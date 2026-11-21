@@ -25,12 +25,12 @@ import time
 from typing import Iterator, Optional
 
 from .. import smart as smart_module
+from .. import sysroot
+from ..i18n import _
 from ..model import Disk, DiskHealth, DiskIo, Need, Partition, PcieLink
 from ..privileged.client import HelperError, PrivilegedClient
 from .base import Draft, Provider, read_int, read_text
 from .counters import rate
-from ..i18n import _
-from .. import sysroot
 
 # Cada cuánto se le vuelve a pedir el diagnóstico a un disco, en segundos.
 # Las horas y lo escrito cambian despacio, pero la temperatura no.

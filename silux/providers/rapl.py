@@ -17,12 +17,12 @@ import pathlib
 import time
 from typing import Optional
 
+from .. import sysroot
 from ..i18n import _
 from ..model import Need, Power
 from ..privileged.client import HelperError, PrivilegedClient
 from .base import Draft, Provider, read_int, read_text
 from .counters import increase, window_s
-from .. import sysroot
 
 POWERCAP = pathlib.Path("/sys/class/powercap")
 

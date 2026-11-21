@@ -129,7 +129,8 @@ def diagnostico() -> Optional[str]:
     # A partir de aquí ya no se arranca, así que lo que cueste da igual: se
     # carga el idioma que el usuario tenga guardado para que el aviso salga en
     # el suyo. Es lo último que va a leer del programa.
-    from .. import i18n, settings as prefs_module
+    from .. import i18n
+    from .. import settings as prefs_module
 
     i18n.set_language(prefs_module.load().language)
     _ = i18n._

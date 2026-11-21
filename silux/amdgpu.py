@@ -23,6 +23,7 @@ import pathlib
 import struct
 from dataclasses import dataclass
 from typing import Optional
+
 from . import sysroot
 
 # DRM_IOCTL_AMDGPU_INFO = DRM_IOWR(DRM_COMMAND_BASE + DRM_AMDGPU_INFO, …)

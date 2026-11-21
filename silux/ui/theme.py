@@ -27,7 +27,6 @@ from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QColor, QFont, QFontDatabase, QPainter, QPalette, QPixmap, QPolygonF
 from PySide6.QtWidgets import QApplication
 
-
 # --------------------------------------------------------------------------
 # color
 # --------------------------------------------------------------------------
@@ -281,10 +280,6 @@ def resolve(app: QApplication, choice: str) -> Palette:
     if choice == "light":
         return LIGHT
     return DARK if system_prefers_dark(app) else LIGHT
-
-
-def palette_for(app: QApplication) -> Palette:
-    return resolve(app, "system")
 
 
 # --------------------------------------------------------------------------

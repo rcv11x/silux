@@ -14,16 +14,14 @@ from typing import Optional
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
-from ...i18n import _
 from ... import render
+from ...i18n import _
 from ...model import Cache, Snapshot
 from ...settings import Preferences
 from .. import theme
-from ..theme import Palette, ui_font
 from ..cachemap import CacheMap
-from ..widgets import Card, ChipRow, ResponsiveRow, Table, ScrollPage
-
-
+from ..theme import Palette, ui_font
+from ..widgets import Card, ChipRow, ResponsiveRow, ScrollPage, Table
 
 
 def cache_axis(snapshot: Snapshot) -> list[int]:

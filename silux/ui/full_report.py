@@ -171,8 +171,8 @@ def _texto_de_etiqueta(etiqueta) -> str:
     `ElidingLabel` sin recortar, y el de una con texto enriquecido sin el
     HTML."""
     from PySide6.QtCore import Qt
-    from PySide6.QtGui import QTextDocument
     from PySide6.QtGui import Qt as QtGui
+    from PySide6.QtGui import QTextDocument
 
     from .widgets import ElidingLabel
 
@@ -268,13 +268,11 @@ def _tabla(filas: list[list[str]]) -> list[str]:
 
 
 def _lineas(widget, raiz) -> list[str]:
-    from PySide6.QtWidgets import (QAbstractButton, QComboBox, QLabel, QScrollArea,
-                                   QTreeWidget)
+    from PySide6.QtWidgets import QAbstractButton, QComboBox, QLabel, QScrollArea, QTreeWidget
 
     from .. import render
     from .corematrix import CoreMatrix
-    from .widgets import (Card, ChipRow, InfoGrid, LockMark, Plegable, Sparkline,
-                          StatTile, Table)
+    from .widgets import Card, ChipRow, InfoGrid, LockMark, Plegable, Sparkline, StatTile, Table
 
     if not _visible(widget, raiz):
         return []

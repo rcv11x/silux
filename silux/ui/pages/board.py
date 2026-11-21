@@ -15,14 +15,23 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
-from ...i18n import _
 from ... import render
+from ...i18n import _
 from ...model import Board, Need, Snapshot
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette, ui_font
-from ..widgets import (Card, ChipRow, InfoGrid, Notice, ResponsiveRow, Table,
-                       clear_layout, tone_for, ScrollPage)
+from ..widgets import (
+    Card,
+    ChipRow,
+    InfoGrid,
+    Notice,
+    ResponsiveRow,
+    ScrollPage,
+    Table,
+    clear_layout,
+    tone_for,
+)
 
 BOARD_FIELDS = ("memory.field.vendor", "storage.col.model",
                 "board.field.revision", "board.field.chassistype",

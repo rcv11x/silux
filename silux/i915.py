@@ -25,6 +25,7 @@ import os
 import pathlib
 from dataclasses import dataclass
 from typing import Optional
+
 from . import sysroot
 
 # DRM_IOCTL_I915_GETPARAM = DRM_IOWR(DRM_COMMAND_BASE + DRM_I915_GETPARAM, …)

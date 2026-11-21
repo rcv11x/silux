@@ -54,15 +54,15 @@ from __future__ import annotations
 import ctypes
 import json
 import mmap
-import random
 import os
+import random
 import subprocess
 import sys
 import time
 from dataclasses import asdict, dataclass
+from typing import Optional
 
 from . import rawcpuid
-from typing import Optional
 
 # Por debajo de esto la llamada pesa más que la memoria y la cifra deja de
 # hablar del equipo para hablar de ctypes.

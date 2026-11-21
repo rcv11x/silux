@@ -15,10 +15,10 @@ import dataclasses
 from typing import Optional
 
 from .. import db, features
+from ..i18n import _
 from ..model import Clocks, Need
 from ..rawcpuid import CpuidError, CpuidReader, is_supported, pinned
 from .base import Draft, Provider
-from ..i18n import _
 
 # Hoja 0x1A: tipo de núcleo nativo en las CPU híbridas de Intel.
 CORE_TYPE_ATOM = 0x20

@@ -28,15 +28,13 @@ import re
 import time
 from typing import Optional
 
-from .. import amdgpu, edid, gpumetrics, i915, pciids
-from ..model import (Display, GpuClockLevel, GpuClocks, GpuEngine, PcieLink, GpuMemory,
-                      Need)
+from .. import amdgpu, edid, gpumetrics, i915, pciids, sysroot
+from ..i18n import _
+from ..model import Display, GpuClockLevel, GpuClocks, GpuEngine, GpuMemory, Need, PcieLink
 from ..privileged.client import HelperError, PmuUnsupported, PrivilegedClient
 from .base import Draft, Provider, en_reposo, read_int, read_text
 from .counters import increase, window_s
 from .rapl import Discarded, package_ceiling_w
-from ..i18n import _
-from .. import sysroot
 
 SYS_DRM = "/sys/class/drm"
 

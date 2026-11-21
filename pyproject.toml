@@ -71,6 +71,22 @@ exclude = ["tests*", "tools*", "docs*", "dist*", "build*"]
 "silux.db.lang" = ["*.json"]
 "silux.ui.assets" = ["*.svg"]
 
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+# Pyflakes and the import order. Formatting is not enforced yet: a single
+# `ruff format` pass goes with .git-blame-ignore-revs.
+select = ["F", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+# The tests are checked when they pass to English, zone by zone.
+"tests/**" = ["F401", "F811", "F841", "F402", "I001"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["silux", "tests"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # Los volcados de equipo son árboles de /sys con enlaces que dan la vuelta:

@@ -21,10 +21,10 @@ from __future__ import annotations
 import pathlib
 from typing import Optional
 
+from .. import sysroot
 from ..i18n import _
 from ..model import Battery, Need
 from .base import Draft, Provider, read_int, read_text
-from .. import sysroot
 
 POWER_SUPPLY = pathlib.Path("/sys/class/power_supply")
 

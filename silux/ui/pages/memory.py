@@ -25,17 +25,26 @@ from PySide6.QtWidgets import (
 
 from ... import db, kernel, membench, render
 from ...i18n import _
-from ...model import MemoryModule, Snapshot
+from ...model import MemoryModule, Need, Snapshot
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette, ui_font
 from ..widgets import (
-    Card, ChipRow, InfoGrid, Notice, Plegable, ResponsiveRow, StackedBar, Table,
-    dismiss_buttons, memory_segments,
-    boton_de_permiso_permanente, clear_layout, tone_for, ScrollPage,
+    Card,
+    ChipRow,
+    InfoGrid,
+    Notice,
+    Plegable,
+    ResponsiveRow,
+    ScrollPage,
+    StackedBar,
+    Table,
+    boton_de_permiso_permanente,
+    clear_layout,
+    dismiss_buttons,
+    memory_segments,
+    tone_for,
 )
-
-from ...model import Need
 
 # A partir de esta fracción del techo de la herramienta, la cifra deja de
 # hablar solo de la memoria y hay que decirlo.

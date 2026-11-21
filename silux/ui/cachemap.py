@@ -8,12 +8,14 @@ llama nadie más.
 from __future__ import annotations
 
 from typing import Optional, Sequence
+
 from PySide6.QtCore import QRectF, QSize, Qt
 from PySide6.QtGui import QBrush, QPainter, QPen
 from PySide6.QtWidgets import QSizePolicy, QWidget
+
 from ..i18n import _
 from . import theme
-from .theme import Palette, value_font, ui_font
+from .theme import Palette, ui_font, value_font
 
 
 def _contiguous_runs(positions: Sequence[int]) -> list[tuple[int, int]]:

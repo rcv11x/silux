@@ -17,8 +17,6 @@ import time
 from PySide6.QtCore import QMutex, QThread, QWaitCondition, Signal
 
 from ..collector import Collector
-from ..model import Snapshot
-
 
 # Cada cuánto se leen, mientras se espera, los contadores que el hardware da
 # como un instante (el uso de una AMD, `GpuState.between_samples`). Medido en

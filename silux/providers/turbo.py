@@ -10,12 +10,11 @@ from __future__ import annotations
 
 import dataclasses
 import os
-
 from typing import Optional
 
+from .. import sysroot
 from ..model import Clocks
 from .base import Draft, Provider, en_maquina_virtual, read_int, read_text
-from .. import sysroot
 
 INTEL_PSTATE_NO_TURBO = "/sys/devices/system/cpu/intel_pstate/no_turbo"
 CPUFREQ_BOOST = "/sys/devices/system/cpu/cpufreq/boost"

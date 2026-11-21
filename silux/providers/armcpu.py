@@ -19,10 +19,8 @@ import pathlib
 import re
 from typing import Optional
 
-from .. import db
+from .. import db, rawcpuid, sysroot
 from ..i18n import _
-from ..model import Need
-from .. import rawcpuid, sysroot
 from .base import Draft, Provider, read_text
 
 CPUINFO = "/proc/cpuinfo"

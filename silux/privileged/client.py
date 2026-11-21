@@ -20,13 +20,21 @@ import pathlib
 import select
 import subprocess
 import sys
-from typing import Any, NamedTuple, Optional
+from typing import NamedTuple, Optional
 
 from .. import sysroot
-from . import protocol
 from ..system_env import system_environment
-from .protocol import (ACTION_GPU_PMU, ACTION_IMC, ACTION_MSR, ACTION_PING,
-                       ACTION_RAPL, ACTION_SMART, ACTION_SMBIOS, MAX_MESSAGE)
+from . import protocol
+from .protocol import (
+    ACTION_GPU_PMU,
+    ACTION_IMC,
+    ACTION_MSR,
+    ACTION_PING,
+    ACTION_RAPL,
+    ACTION_SMART,
+    ACTION_SMBIOS,
+    MAX_MESSAGE,
+)
 
 # pkexec by its absolute path. By name it would be looked up in the user's
 # PATH, which any process of theirs can change, and a fake one could draw its

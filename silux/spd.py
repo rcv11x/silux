@@ -24,8 +24,8 @@ import re
 from dataclasses import dataclass
 from typing import Iterator, Optional
 
-from .i18n import _
 from . import sysroot
+from .i18n import _
 
 I2C_DEVICES = pathlib.Path("/sys/bus/i2c/devices")
 # Un chip SPD por zócalo, en las direcciones 0x50 a 0x57 del bus.

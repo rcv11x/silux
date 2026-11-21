@@ -18,9 +18,7 @@ resuelve; lo que identifica a una pieza es su nombre, que ya está escrito.
 
 from __future__ import annotations
 
-from typing import Optional
-
-from PySide6.QtCore import QRectF, Qt
+from PySide6.QtCore import QRectF
 from PySide6.QtGui import QColor, QFont, QPainter, QPixmap
 
 from .. import __version__, build_id, render

@@ -35,8 +35,8 @@ tabulares, así que se queda.
 
 from __future__ import annotations
 
-import bisect
 import argparse
+import bisect
 import os
 import pathlib
 import re
@@ -1090,7 +1090,6 @@ def sellar_build() -> None:
 
 def escribir_metadatos(banderas: set[str] = frozenset()) -> None:
     apprun = APPDIR / "AppRun"
-    version = f"{sys.version_info.major}.{sys.version_info.minor}"
     # Después de repartir los argumentos y antes de arrancar la interfaz, que
     # es lo único que necesita Qt: el CLI pasa siempre.
     relleno = ""

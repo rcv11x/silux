@@ -18,11 +18,10 @@ from __future__ import annotations
 import argparse
 import math
 import os
+import pathlib
 import sys
 import time
 from typing import Optional
-
-import pathlib
 
 # Antes que Qt, y por eso está aquí en medio y no arriba con los demás: en un
 # procesador sin x86-64-v2 la línea siguiente es la que se lleva el programa
@@ -31,7 +30,7 @@ from .guarda import comprobar as _comprobar_procesador
 
 _comprobar_procesador()
 
-from PySide6.QtCore import QEvent, Qt, QElapsedTimer, QSize, QThread, QTimer, Signal
+from PySide6.QtCore import QElapsedTimer, QEvent, QSize, Qt, QThread, QTimer, Signal
 from PySide6.QtGui import QFont, QFontMetricsF, QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
@@ -48,25 +47,26 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .. import __version__, build_id, desktop, i18n, render, settings as prefs_module, updates
+from .. import __version__, build_id, desktop, i18n, render, updates
+from .. import settings as prefs_module
 from ..i18n import _
 from ..model import Snapshot
 from ..settings import Preferences
 from ..tracking import Tracker
 from . import icons, theme
 from .pages.battery import BatteryPage
-from .pages.devices import DevicesPage
 from .pages.board import BoardPage
 from .pages.caches import CachesPage
 from .pages.cpu import CpuPage
-from .pages.home import HomePage
+from .pages.devices import DevicesPage
 from .pages.graphics import GraphicsPage
+from .pages.home import HomePage
 from .pages.memory import MemoryPage
+from .pages.monitor import MonitorPage
 from .pages.network import NetworkPage
 from .pages.performance import PerformancePage
-from .pages.storage import StoragePage
-from .pages.monitor import MonitorPage
 from .pages.settings import SettingsPage
+from .pages.storage import StoragePage
 from .pages.system import SystemPage
 from .sampler import Sampler
 from .theme import ui_font

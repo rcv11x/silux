@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import pathlib
 import struct
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 CABECERA = "<HBB"          # tamaño, revisión de formato, revisión de contenido

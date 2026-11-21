@@ -17,12 +17,11 @@ import subprocess
 import time
 from typing import Optional
 
-from ..i18n import _
-from ..model import (Boot, DeviceKind, Memory, Need, Sensor, SensorKind, Swap, System,
-                     Vulnerability)
-from .base import Draft, Provider, aparte, read_int, read_text
 from .. import privacidad, sysroot
+from ..i18n import _
+from ..model import Boot, DeviceKind, Memory, Need, Sensor, SensorKind, Swap, System, Vulnerability
 from ..system_env import system_environment
+from .base import Draft, Provider, aparte, read_int, read_text
 
 OS_RELEASE = "/etc/os-release"
 

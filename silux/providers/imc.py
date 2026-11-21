@@ -31,13 +31,13 @@ import os
 import re
 from typing import Optional
 
+from .. import sysroot
 from ..i18n import _
 from ..model import DeviceKind, MemoryTraffic, Need, Sensor, SensorKind
 from ..privileged.client import HelperError, PmuUnsupported, PrivilegedClient
 from ..privileged.protocol import PMU_IMC, PMU_IMC_EVENT, PMU_ROOT
 from .base import Draft, Provider
 from .counters import increase, window_s
-from .. import sysroot
 
 _PMU_IMC = re.compile(PMU_IMC)
 _PMU_IMC_EVENT = re.compile(PMU_IMC_EVENT)

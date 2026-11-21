@@ -12,10 +12,10 @@ import dataclasses
 import os
 import pathlib
 
+from .. import sysroot
+from ..i18n import _
 from ..model import Cache, Clocks, Need
 from .base import Draft, Provider, mean, parse_cpu_list, parse_size, read_int, read_text
-from ..i18n import _
-from .. import sysroot
 
 SYS_CPU = "/sys/devices/system/cpu"
 

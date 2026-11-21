@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import platform
 import sys
-from typing import Iterable, Optional
+from typing import Optional
 
 from . import __version__, build_id, privacidad, render
 from .i18n import en_español
@@ -652,7 +652,6 @@ def _procedencia() -> str:
     a ninguna parte.
     """
     import os
-    import sys
 
     if os.environ.get("APPIMAGE") or "/.mount_" in sys.executable:
         return "AppImage"

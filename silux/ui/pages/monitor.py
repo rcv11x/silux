@@ -19,7 +19,6 @@ from collections import defaultdict, deque
 from typing import Optional
 
 import shiboken6
-
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QHBoxLayout,
@@ -30,27 +29,22 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ... import render
+from ... import registro, render
 from ...i18n import _
 from ...model import Sensor, SensorKind, Snapshot
-import os
-
-from ... import registro
 from ...privileged import cargar_modulo
 from ...providers.hwmon import SUPERIO
 from ...settings import Preferences
 from ...tracking import Tracker
 from .. import theme
-from ..theme import Palette, ui_font
 from ..sensortree import SensorTree
+from ..theme import Palette, ui_font
 from ..widgets import (
     Card,
     ElidingLabel,
     Notice,
-    ResponsiveRow,
-    StatTile,
-    clear_layout,
     ScrollPage,
+    clear_layout,
 )
 
 # Cuántos decimales tiene sentido enseñar en cada magnitud. La tabla está en

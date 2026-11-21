@@ -23,8 +23,7 @@ from ...model import Battery, Snapshot
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette
-from ..widgets import (Card, ChipRow, InfoGrid, ResponsiveRow, StatTile,
-                       clear_layout, ScrollPage)
+from ..widgets import Card, ChipRow, InfoGrid, ResponsiveRow, ScrollPage, StatTile
 
 CELDA = ("bat.vendor", "bat.model", "bat.tech", "bat.voltage",
          "bat.voltage.design", "bat.capacity", "bat.design")

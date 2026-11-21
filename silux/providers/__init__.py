@@ -1,32 +1,32 @@
 """Proveedores de datos. Cada uno lee una fuente y no sabe nada de los demás."""
 
-from .base import Draft, Provider
-from .cppc import CppcClocks
 from .armcpu import ArmIdentity
+from .base import Draft, Provider
+from .battery import Batteries
+from .cppc import CppcClocks
 from .cpuid_x86 import CpuidIdentity
+from .cpuidle import CpuIdle
 from .derived import DerivedSensors
+from .devices import ConnectedDevices
 from .dmi import DmiBoard
 from .drm import DrmGpus, GpuState
 from .gpu_apis import GpuApis
+from .hwmon import HwmonSensors
+from .imc import ImcTraffic
+from .msr_pstate import AmdPstateClocks
+from .msr_voltage import MsrVoltage
 from .network import NetworkInterfaces
 from .nvidia import NvidiaGpus
-from .hwmon import HwmonSensors
+from .pci import PciDevices, PlatformInfo
 from .privileged_memory import PrivilegedMemory
 from .procfs import CpuUsage
-from .battery import Batteries
-from .msr_voltage import MsrVoltage
-from .msr_pstate import AmdPstateClocks
-from .imc import ImcTraffic
-from .rapl import RaplPower, PowerLimits
+from .rapl import PowerLimits, RaplPower
 from .spd_modules import SpdModules
 from .storage import Disks
 from .sysfs_cpu import SysfsClocks, SysfsTopology
-from .cpuidle import CpuIdle
-from .thermal_throttle import ThermalThrottleCounts
-from .devices import ConnectedDevices
-from .pci import PciDevices, PlatformInfo
 from .system import SystemIdentity, SystemSecurity, SystemState
 from .system_deps import SystemDependencies
+from .thermal_throttle import ThermalThrottleCounts
 from .turbo import TurboState
 
 __all__ = [

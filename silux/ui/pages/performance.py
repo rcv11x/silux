@@ -14,19 +14,33 @@ from __future__ import annotations
 
 import threading
 
-from PySide6.QtCore import Qt, QTimer, Signal
-from PySide6.QtWidgets import (QComboBox, QHBoxLayout, QLabel, QProgressBar,
-                               QPushButton, QWidget,
-                               QVBoxLayout, QWidget)
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtWidgets import (
+    QComboBox,
+    QHBoxLayout,
+    QLabel,
+    QProgressBar,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 from ... import benchmark, history, render, score
 from ...i18n import _
 from ...settings import Preferences
 from .. import theme
-from ..theme import Palette, ui_font
 from ..scorebar import ScoreBar
-from ..widgets import (Card, InfoGrid, Notice, ResponsiveRow, Table,
-                       clear_layout, value_font, ScrollPage)
+from ..theme import Palette, ui_font
+from ..widgets import (
+    Card,
+    InfoGrid,
+    Notice,
+    ResponsiveRow,
+    ScrollPage,
+    Table,
+    clear_layout,
+    value_font,
+)
 
 RESULT_HEADERS = ("bench.col.load", "bench.col.one", "bench.col.all", "bench.col.scale")
 HISTORY_HEADERS = ("bench.col.test", "bench.col.measure", "bench.col.score", "bench.col.avgfreq",

@@ -11,8 +11,6 @@ núcleos P y los E.
 
 from __future__ import annotations
 
-from typing import Optional
-
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
@@ -23,9 +21,22 @@ from ...settings import Preferences
 from ...throttling import SeguidorDeRecortes
 from .. import theme
 from ..theme import Palette, ui_font
-from ..widgets import Series
-from ..widgets import (Plegable, Card, ChipRow, Divider, InfoGrid, LevelList, Notice, ResponsiveRow,
-                       StatTile, Table, clear_layout, tone_for, ScrollPage)
+from ..widgets import (
+    Card,
+    ChipRow,
+    Divider,
+    InfoGrid,
+    LevelList,
+    Notice,
+    Plegable,
+    ResponsiveRow,
+    ScrollPage,
+    Series,
+    StatTile,
+    Table,
+    clear_layout,
+    tone_for,
+)
 
 # Un símbolo se lee de un vistazo; un «No» hay que leerlo. Los dos son
 # distintos por su forma, no solo por el color con que los pinta la tabla.

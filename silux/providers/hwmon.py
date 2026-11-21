@@ -20,12 +20,12 @@ import re
 import subprocess
 from typing import Iterator, Optional
 
-from ..model import DeviceKind, DriverHint, Need, Sensor, SensorKind, short_brand
-from .base import Draft, Provider, mean, read_int, read_text
-from ..i18n import _
 from .. import sysroot, system_deps
-from .dmi import PORTABLE_CHASSIS
+from ..i18n import _
+from ..model import DeviceKind, DriverHint, Need, Sensor, SensorKind, short_brand
 from ..system_env import system_environment
+from .base import Draft, Provider, mean, read_int, read_text
+from .dmi import PORTABLE_CHASSIS
 
 HWMON = pathlib.Path("/sys/class/hwmon")
 POWER_SUPPLY = pathlib.Path("/sys/class/power_supply")

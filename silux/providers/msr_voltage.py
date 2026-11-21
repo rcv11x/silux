@@ -38,10 +38,10 @@ from __future__ import annotations
 
 from typing import Optional
 
+from .. import rawcpuid
 from ..i18n import _
 from ..model import Need
 from ..privileged.client import HelperError, PrivilegedClient
-from .. import rawcpuid
 from .base import Draft, Provider, en_maquina_virtual
 
 # Qué P-state está corriendo ahora mismo (bits 2:0).

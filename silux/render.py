@@ -12,13 +12,26 @@ import pathlib
 import re
 from typing import NamedTuple, Optional
 
-from .features import pretty as pretty_feature
 from .i18n import _
+from .model import (
+    LOGICAL_NON_VOLATILE,
+    MARGEN_DE_REDONDEO,
+    Cache,
+    Clocks,
+    CpuType,
+    Display,
+    Edid,
+    GpuApi,
+    GpuMemory,
+    NetworkInterface,
+    NetworkTraffic,
+    PcieLink,
+    Power,
+    SensorKind,
+    short_vendor,
+    thread_name,
+)
 from .spd import grado_jedec
-from .model import (LOGICAL_NON_VOLATILE, MARGEN_DE_REDONDEO, Cache, Clocks, CpuType, Display,
-                    Edid, GpuApi, PcieLink, GpuMemory, NetworkInterface,
-                    NetworkTraffic, Power, SensorKind, short_vendor,
-                    thread_name)
 
 DASH = "—"
 

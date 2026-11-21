@@ -14,9 +14,9 @@ from __future__ import annotations
 import dataclasses
 
 from .. import spd as spd_module
-from ..model import DriverHint, MemoryModule, Need
-from .base import Draft, Provider
 from ..i18n import _
+from ..model import Need
+from .base import Draft, Provider
 
 
 class SpdModules(Provider):

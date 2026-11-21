@@ -18,15 +18,23 @@ from typing import Optional
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
-from ...i18n import _
 from ... import render
+from ...i18n import _
 from ...model import NetworkInterface, Snapshot
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette
-from ..widgets import Series
-from ..widgets import (Card, ChipRow, InfoGrid, ResponsiveRow, ScrollPage, StatTile, Table,
-                       clear_layout)
+from ..widgets import (
+    Card,
+    ChipRow,
+    InfoGrid,
+    ResponsiveRow,
+    ScrollPage,
+    Series,
+    StatTile,
+    Table,
+    clear_layout,
+)
 
 INTERFACE_FIELDS = (
     "gpu.sensor.state", "memory.field.type", "net.field.ipv4",

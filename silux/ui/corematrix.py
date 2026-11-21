@@ -14,9 +14,11 @@ como los mejores de la pieza y no la dibuja nadie más.
 from __future__ import annotations
 
 from typing import Optional, Sequence
+
 from PySide6.QtCore import QPointF, QRectF, QSize, Qt
 from PySide6.QtGui import QBrush, QColor, QPainter, QPainterPath, QPen, QPixmap
 from PySide6.QtWidgets import QSizePolicy, QWidget
+
 from . import theme
 from .theme import Palette, value_font
 from .widgets import Deslizador, curva_suave

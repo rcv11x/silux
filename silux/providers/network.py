@@ -19,13 +19,12 @@ import pathlib
 import socket
 import struct
 import time
-from typing import Iterator, Optional
+from typing import Optional
 
-from .. import pciids
+from .. import pciids, sysroot
 from ..model import NetworkInterface, NetworkTraffic
 from .base import Draft, Provider, read_int, read_text
 from .counters import rate
-from .. import sysroot
 
 SYS_NET = "/sys/class/net"
 PROC_ROUTE = "/proc/net/route"

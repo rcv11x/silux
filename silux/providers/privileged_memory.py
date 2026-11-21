@@ -18,6 +18,8 @@ import re
 import subprocess
 from typing import Iterator, Optional
 
+from .. import sysroot, system_deps
+from ..i18n import _
 from ..model import DriverHint, MemoryArray, MemoryModule, Need, PrivilegedState
 from ..privileged import smbios
 from ..privileged.client import (
@@ -27,10 +29,8 @@ from ..privileged.client import (
     PrivilegedClient,
     already_root,
 )
-from .base import Draft, Provider, en_maquina_virtual
-from ..i18n import _
-from .. import sysroot, system_deps
 from ..system_env import system_environment
+from .base import Draft, Provider, en_maquina_virtual
 
 
 def _module(raw: dict) -> MemoryModule:

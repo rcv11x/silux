@@ -28,7 +28,6 @@ efecto sería incluso mayor, porque son miles de rondas encadenadas.
 from __future__ import annotations
 
 import bz2
-import functools
 import hashlib
 import os
 import pathlib

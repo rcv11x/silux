@@ -20,25 +20,25 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 from ... import render
-from ...i18n import _
 from ...features import para_arquitectura
+from ...i18n import _
 from ...model import CpuType, Need, Snapshot
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette, ui_font
-from .cpulive import CpuLiveSection
 from ..widgets import (
     Card,
     ChipRow,
     InfoGrid,
     Notice,
     Plegable,
-    tone_for,
     ResponsiveRow,
+    ScrollPage,
     StackedBar,
     clear_layout,
-    ScrollPage,
+    tone_for,
 )
+from .cpulive import CpuLiveSection
 
 NEED_TITLES = {
     Need.ROOT: "note.needsroot",

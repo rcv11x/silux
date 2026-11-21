@@ -22,11 +22,10 @@ import pathlib
 import re
 from typing import Optional
 
-from .. import pciids
+from .. import pciids, sysroot
+from ..i18n import _
 from ..model import Board, Need, clean_dmi
 from .base import Draft, Provider, en_maquina_virtual, read_text
-from ..i18n import _
-from .. import sysroot
 
 SYS_DMI = "/sys/class/dmi/id"
 PCI_DEVICES = pathlib.Path("/sys/bus/pci/devices")

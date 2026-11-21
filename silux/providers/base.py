@@ -18,11 +18,24 @@ from typing import Any, Iterable, Optional
 
 from .. import sysroot
 from ..model import (
-    Board, Cache, Clocks, CpuInfo, CpuType, DriverHint, Gpu, LogicalCpu,
-    NetworkInterface,
-    Disk, MemoryArray, MemoryModule, MemoryTraffic, Need, Note, Power,
-    PciDevice, Platform, PrivilegedState, Sensor,
-    Snapshot, System,
+    Board,
+    Clocks,
+    CpuInfo,
+    CpuType,
+    DriverHint,
+    Gpu,
+    LogicalCpu,
+    MemoryArray,
+    MemoryModule,
+    MemoryTraffic,
+    Need,
+    Note,
+    Platform,
+    Power,
+    PrivilegedState,
+    Sensor,
+    Snapshot,
+    System,
 )
 
 

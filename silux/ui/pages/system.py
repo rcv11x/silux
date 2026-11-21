@@ -14,8 +14,8 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
-from ...i18n import _
 from ... import render
+from ...i18n import _
 from ...model import Snapshot, System
 from ...settings import Preferences
 from .. import theme
@@ -162,7 +162,6 @@ class SystemPage(ScrollPage):
 
     def apply(self, snapshot: Snapshot) -> None:
         system = snapshot.system
-        memory = system.memory
         d = render.DASH
 
         self.title.setText(system.distribution or _("sys.unknown"))

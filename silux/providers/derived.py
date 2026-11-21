@@ -20,7 +20,6 @@ from ..i18n import _
 from ..model import DeviceKind, Need, Sensor, SensorKind, short_brand, thread_name
 from .base import Draft, Provider
 
-
 # Un voltaje redondeado a un decimal deja de ser un voltaje: 0,845 V se
 # convierte en 0,8 y ya no dice nada. Cada magnitud tiene la suya.
 DECIMALES = {SensorKind.VOLTAGE: 3, SensorKind.TEMPERATURE: 1, SensorKind.CLOCK: 1,
