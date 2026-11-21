@@ -187,15 +187,15 @@ le pasa las banderas que encontró. Desde el código fuente está en
 `ui/guarda.py`, corre antes de importar Qt y es **una regla**, no una medida:
 de 6.10 en adelante se pide x86-64-v2, porque leer el ELF del Qt del sistema
 en cada arranque costaría más que arrancar. Como es una regla puede
-equivocarse —una distribución es libre de compilar su 6.10 para x86-64 a
-secas—, así que `SILUX_SIN_GUARDA=1` la desactiva. Las dos miran la misma
+equivocarse (una distribución es libre de compilar su 6.10 para x86-64 a
+secas), así que `SILUX_SIN_GUARDA=1` la desactiva. Las dos miran la misma
 lista de cinco banderas y hay un test que no las deja separarse.
 
 ## La marca de construcción
 
 Cada copia lleva dentro de qué commit salió: debajo de la versión, en
 `--version` y en la cabecera del informe. Lo escribe el empaquetador en
-`silux/_build.txt` —dentro del AppImage no hay repositorio al que preguntar— y
+`silux/_build.txt` (dentro del AppImage no hay repositorio al que preguntar) y
 desde el código fuente se lee de git en vivo. Un `+` al final avisa de que esa
 copia tenía cambios sin guardar. Nace de que las capturas que manda la gente no
 decían de qué versión eran, y un fallo ya corregido se investigaba dos veces.

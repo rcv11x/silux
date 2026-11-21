@@ -61,7 +61,7 @@ QT_QPA_PLATFORM=offscreen python3 -m silux.ui.app \
 
 Acepta además `--font-scale`, `--anonymous` y `--samples N` (con
 `--interval 1`, `--samples 65` captura tras un minuto de gráficas). Una
-sección que el equipo no tiene —Batería en un sobremesa— sale con código 2.
+sección que el equipo no tiene (Batería en un sobremesa) sale con código 2.
 
 Las herramientas de `tools/`:
 
@@ -151,8 +151,8 @@ No son preferencias de estilo. Cada una viene de un problema concreto:
    QThread; ahí dentro se fija la afinidad para CPUID y ahí se abre el
    diálogo de polkit, que bloquea.
 
-5. **Cuando falta un dato se explica.** Un `Note` con su motivo —permisos,
-   driver, base de datos, hardware— en vez de esconder la sección, y cada
+5. **Cuando falta un dato se explica.** Un `Note` con su motivo (permisos,
+   driver, base de datos, hardware) en vez de esconder la sección, y cada
    página enseña solo sus notas. Lo que no existe en ese hardware no se pinta
    con guion: se esconde y se nombra al pie. Lo que falta por permisos lleva
    un candado, que es otro estado: tiene arreglo.
@@ -172,8 +172,8 @@ No son preferencias de estilo. Cada una viene de un problema concreto:
    que 83 son de rusticl arrastrando LLVM entero para decir «OpenCL 3.1». De
    regalo, un driver que revienta solo se lleva al hijo.
 
-9. **La interfaz responde al momento.** Lo que cambia —permisos, un disco que
-   se conecta, un dato que aparece o desaparece— se ve en la página abierta
+9. **La interfaz responde al momento.** Lo que cambia (permisos, un disco que
+   se conecta, un dato que aparece o desaparece) se ve en la página abierta
    sin salir y volver. Lo comprueba `tests/test_al_momento.py`: una página
    abierta que recibe una foto queda igual que montada directamente con ella.
 
@@ -261,7 +261,7 @@ dentro del propio programa y no como algo que haya que compilar:
 - **`CPUID`**, en `silux/rawcpuid.py`: veinte bytes de código máquina escritos
   en una página anónima, marcada como ejecutable y llamada con `ctypes`.
 - **La latencia de la memoria**, en `silux/membench.py`: doce bytes que
-  persiguen punteros —cada lectura da la dirección de la siguiente—, montados
+  persiguen punteros (cada lectura da la dirección de la siguiente), montados
   con la misma `rawcpuid.pagina_ejecutable`. Con lo que trae la biblioteca de
   C no se llega: los accesos sueltos se solapan y la latencia se esconde
   detrás del paralelismo.
@@ -292,7 +292,7 @@ extendidos y hay que recomponerlos. Por eso un i5-10400 tiene un «modelo
 base» de 5 que por sí solo no significa nada, mientras Intel lo llama
 modelo 165.
 
-Se enseña lo que publica el fabricante —familia 6, modelo 165 (0xA5)— y una
+Se enseña lo que publica el fabricante, como «familia 6, modelo 165 (0xA5)», y una
 fila con la firma en crudo, `0x000A0653`, cuyo globo desglosa de dónde sale
 cada valor.
 
@@ -392,8 +392,8 @@ generación entera.
 Un arreglo no se da por bueno con lo que dice la máquina donde se escribe.
 `tools/volcar_equipo.py NOMBRE` (el código, en `silux/volcado.py`) copia en
 `tests/fixtures/equipos/NOMBRE/` lo
-que el `Collector` lee de `/sys`, `/proc` y `/etc` —lo decide el `Collector`
-ejecutándose, no una lista—, graba en `grabado.json` lo que no sale de un
+que el `Collector` lee de `/sys`, `/proc` y `/etc` (lo decide el `Collector`
+ejecutándose, no una lista), graba en `grabado.json` lo que no sale de un
 archivo (CPUID, ioctl, las APIs gráficas) y lo anonimiza. Con
 `SILUX_SYSROOT` apuntando ahí, todos los proveedores leen ese equipo:
 `sysroot.ruta` traduce cada camino y `sysroot.a_traves` devuelve lo grabado.
@@ -441,8 +441,8 @@ Si hay una prueba de rendimiento medida con la escala vigente, lleva también
 su puntuación y las condiciones en que se tomó: así se juntan medidas de
 piezas que no están a mano.
 
-Omite el nombre del equipo, las direcciones y los números de serie —está
-pensado para pegarlo en un issue público— y lo dice al terminar. Con
+Omite el nombre del equipo, las direcciones y los números de serie (está
+pensado para pegarlo en un issue público) y lo dice al terminar. Con
 `--with-identifiers` se incluyen.
 
 ## El actualizador

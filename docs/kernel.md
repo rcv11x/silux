@@ -5,8 +5,8 @@ distribución rolling. Esta página dice, para cada dato que lee silux y que no
 existe en todos los kernels, desde qué versión de mainline existe y de dónde
 sale esa cifra.
 
-Cuando un dato falta porque el kernel es anterior —y solo por eso—, la página lo dice así
-—«Tu kernel (5.15) no publica esto; existe desde Linux 6.10»—, distinto de
+Cuando un dato falta porque el kernel es anterior (y solo por eso), la página lo dice así
+(«Tu kernel (5.15) no publica esto; existe desde Linux 6.10»), distinto de
 «este equipo no lo tiene», porque el arreglo es actualizar el kernel y no
 cambiar de hardware. Las versiones de las filas con clave están también en
 `silux/kernel.py` (`DESDE`), y `tests/test_kernel.py` comprueba que las dos

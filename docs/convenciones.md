@@ -24,23 +24,23 @@ Un fallo se reporta con el informe (`--report informe.md`) en un
 [issue](https://github.com/rcv11x/silux/issues). Un cambio, con un pull
 request desde una rama que sale de `master`, una por tema.
 
-Lo que toca privilegios —el ayudante, polkit, lo que se lee como root— se
+Lo que toca privilegios (el ayudante, polkit, lo que se lee como root) se
 propone en un issue antes de escribirlo.
 
 ## Al trabajar en este repositorio
 
 **Los commits siguen Conventional Commits, en inglés y cortos** (desde el 20
 de noviembre de 2026; los de antes, en español, no se reescriben). La primera
-línea es `type(area): description`: el tipo es uno de los del estándar —`fix`,
-`feat`, `test`, `docs`, `refactor`, `perf`, `build`, `ci`, `chore`—, la zona
-es el módulo o la carpeta que se toca —`spd`, `providers/hwmon`, `ui/widgets`,
+línea es `type(area): description`: el tipo es uno de los del estándar (`fix`,
+`feat`, `test`, `docs`, `refactor`, `perf`, `build`, `ci`, `chore`), la zona
+es el módulo o la carpeta que se toca (`spd`, `providers/hwmon`, `ui/widgets`,
 `privileged`, `bench`, `report`, `cli`, `i18n`, `appimage`, `ci`, `tests`,
-`claude`— y la descripción va en minúscula y sin punto final. El cuerpo, solo
+`claude`) y la descripción va en minúscula y sin punto final. El cuerpo, solo
 si el título no basta para entender el porqué. El autor es el del
 repositorio, y cuando el commit se escribe con Claude lleva al final la línea
 `Co-Authored-By: Claude …` que corresponda al modelo. En inglés porque el
 historial lo lee quien contribuye, como el código; lo que lee quien usa el
-programa —la interfaz, el README, el CHANGELOG y las notas de cada versión—
+programa (la interfaz, el README, el CHANGELOG y las notas de cada versión)
 sigue en español, y el README tiene además su versión en inglés.
 
 ```
@@ -55,7 +55,7 @@ aunque el commit anterior se haya empujado hace un minuto.
 
 **Lo que toca privilegios se propone antes de escribirlo.** Si el cambio roza
 los permisos, la seguridad o un estado que sobrevive entre máquinas o entre
-versiones, primero va la propuesta —medida, con lo que se ha comprobado— y se
+versiones, primero va la propuesta (medida, con lo que se ha comprobado) y se
 espera respuesta. No se escribe código y luego se pregunta: para cuando hay un
 parche delante, la conversación ya empieza discutiendo el parche en vez de si
 el enfoque es el correcto.
@@ -82,7 +82,7 @@ a entrar nada más.
 Con una rama por tema para todo, hasta un cambio de una línea en la
 documentación esperaba a su CI, y en noviembre de 2026 había veintiuna ramas
 en el remoto, todas ya en `master`, que nadie se atrevía a borrar. Lo que no
-puede romper el programa —documentación, notas, textos, arreglos pequeños—
+puede romper el programa (documentación, notas, textos, arreglos pequeños)
 va directo a `master` con la suite pasada; lo que sí puede, en su rama hasta
 que su CI sale en verde, y entonces se pasa y se borra.
 
@@ -156,24 +156,26 @@ los números quien está delante.
 El código va aparte. Lo nuevo se escribe en inglés y con el estilo de PEP 8
 (`snake_case` para funciones, variables y módulos, `CamelCase` solo para
 clases, constantes en mayúsculas), con comentarios en inglés que dicen el
-porqué y no repiten el código. Gran parte del código de antes está en
-español y se pasará en un proyecto propio después de la 0.4: hasta entonces
-no se renombra nada al pasar, pero tampoco se añade nada nuevo en español.
-Mezclar las dos lenguas en un mismo nombre no vale nunca.
+porqué y no repiten el código. Un porqué que no cabe en una o dos líneas va
+a [decisiones/](decisiones/), con sus datos y lo descartado, y el comentario
+lo enlaza. Gran parte del código de antes está en español y se pasa por
+zonas, cada una en su rama: hasta entonces no se renombra nada al pasar, pero
+tampoco se añade nada nuevo en español. Mezclar las dos lenguas en un mismo
+nombre no vale nunca.
 
-**Las claves son símbolos** —`cpu.card.clocks`—, así que el español es un
+**Las claves son símbolos** (`cpu.card.clocks`), así que el español es un
 idioma más y vive en `db/lang/es.json`. Retocar una frase en castellano es
 cambiar un valor, no una clave: la traducción inglesa no se descuelga.
 
-Lo malo conocido de las claves simbólicas —que una traducción incompleta
-enseñe `cpu.card.clocks` en pantalla— aquí no pasa, porque `_()` tiene tres
+Lo malo conocido de las claves simbólicas (que una traducción incompleta
+enseñe `cpu.card.clocks` en pantalla) aquí no pasa, porque `_()` tiene tres
 escalones: el idioma pedido, el español y por último la clave. Un `en.json` a
 medias enseña español entre inglés, que se lee; la clave solo asoma cuando la
 frase no está escrita en ninguna de las dos lenguas, y entonces es justo lo
 que hace falta ver.
 
 Las categorías del árbol de sensores también son claves. Esos nombres
-—«Temperaturas», «Ventiladores»— los inventa el programa para agrupar y no
+(«Temperaturas», «Ventiladores») los inventa el programa para agrupar y no
 salen del kernel, así que son interfaz: la frontera no está en de dónde viene
 el dato sino en quién escribió la palabra.
 
@@ -187,8 +189,8 @@ compilarlo a binario antes de que sirva, y esto se corrige desde el navegador
 de GitHub y se lee en el diff línea a línea.
 
 **Los proveedores también traducen, pero solo lo que se inventan**: el aviso
-que explica por qué falta un dato, el nombre que le ponen a un sensor —«Punto
-caliente» donde amdgpu dice `junction`—, la función de un motor gráfico. Lo
+que explica por qué falta un dato, el nombre que le ponen a un sensor («Punto
+caliente» donde amdgpu dice `junction`), la función de un motor gráfico. Lo
 que leen del equipo pasa entero y sin tocar. La línea se comprueba sin
 ejecutar nada: a `_()` solo puede llegar un literal escrito en el archivo o
 una variable que se rastree hasta una tabla declarada ahí mismo. Un
@@ -200,14 +202,14 @@ los sensores por categoría, y esas categorías son claves porque el nombre lo
 inventa el programa. Como `report.py` no importaba nada de `i18n`, salían
 crudas: «cat.temperature (2), cat.power (2)» en el archivo que se le pide a
 quien reporta un fallo. Y la traducción que necesita ahí es `en_español` y no
-`_()`: el informe es castellano fijo —«Procesador», «Placa base»—, así que con
+`_()`: el informe es castellano fijo («Procesador», «Placa base»), así que con
 la función normal, el de alguien con la interfaz en inglés mezclaría los dos
 idiomas en la misma página.
 
 **Nada de `_()` en una constante de módulo.** Se resuelve al importar, cuando
 todavía no se sabe qué idioma quiere nadie, así que se queda con el castellano
 para toda la sesión; y como quien monta la ficha vuelve a pasar cada entrada
-por `_()`, la segunda llamada recibe «Uso» —que no es una clave— y devuelve
+por `_()`, la segunda llamada recibe «Uso» (que no es una clave) y devuelve
 «Uso». Así salía la columna «LEYENDO» en medio de una tabla de discos en
 inglés: la tupla llevaba once claves y una traducción ya hecha, y era la única
 que no cambiaba de idioma. Hay un test que lo vigila.

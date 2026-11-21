@@ -45,8 +45,8 @@ informe, sin haberlo visto todavía en ese equipo.
 
 ## Por plataforma
 
-De Gráficos sale todo lo que publica el nodo DRM —identidad, VRAM, tabla DPM,
-enlace PCIe, sensores propios— más lo que solo da el ioctl de amdgpu (tipo de
+De Gráficos sale todo lo que publica el nodo DRM (identidad, VRAM, tabla DPM,
+enlace PCIe, sensores propios) más lo que solo da el ioctl de amdgpu (tipo de
 memoria, anchura del bus, ancho de banda, unidades de cómputo y ROP), las tres
 APIs y el EDID de cada monitor. De las Intel, el uso por motor y los vatios
 salen del PMU de perf leído por el ayudante privilegiado (`gpu_pmu`); el
@@ -78,9 +78,9 @@ el consumo a 4 W). NVENC y NVDEC, escritos sin una NVIDIA delante.
 
 **El contador del IMC ya está**, que era la otra mitad de esa línea: cuánto
 tráfico mueve la memoria ahora mismo, en la ficha, en el árbol de sensores y en
-el informe. Sale del PMU del uncore por el ayudante privilegiado —los
+el informe. Sale del PMU del uncore por el ayudante privilegiado (los
 contadores de perf piden CAP_PERFMON y `perf_event_paranoid` viene a 2 en
-cualquier distribución—, y el nombre del PMU cambia con la generación:
+cualquier distribución), y el nombre del PMU cambia con la generación:
 `uncore_imc` hasta Comet Lake, `uncore_imc_free_running_N` de Ice Lake en
 adelante y `uncore_imc_N` en los de servidor, que además llaman a sus eventos
 por el comando de la DRAM. Va en bytes por segundo para compartir con
@@ -94,8 +94,8 @@ reservado en `_puesto_del_aparato` desde que se escribió el orden, vacío.
 **Y es de Intel a propósito, no por falta de ganas.** De Zen 4 en adelante
 existe `amd_umc_N`, pero el kernel le registra `format` y no `events/`: los
 nombres viven en el JSON de la herramienta `perf` y no en sysfs, así que
-habría que escribir el número de evento a mano —`event=0x05` con su
-`rdwrmask`— y afirmar lo que significa sin ninguna pieza donde comprobarlo. De
+habría que escribir el número de evento a mano (`event=0x05` con su
+`rdwrmask`) y afirmar lo que significa sin ninguna pieza donde comprobarlo. De
 Zen 3 para atrás no hay ni eso: `amd_df` existe y sus eventos de DRAM no están
 documentados. Escribir ese camino sería dejarlo estrenándose en la máquina de
 otro, que es la forma exacta del `NameError` de `_identidad`. Así que en AMD
@@ -104,27 +104,27 @@ al que preguntarle, lo que falta es una tabla de posiciones más.
 
 La ficha ya está: los zócalos vacíos van juntos en una línea como las salidas
 de vídeo libres, y el título de cada uno sale de `render.slot_labels`, que
-compone el mínimo que lo distingue —«Canal A», y el controlador o el DIMM solo
-cuando sin ellos dos se llamarían igual—, así que se acabaron los dos «DIMM 0».
+compone el mínimo que lo distingue («Canal A», y el controlador o el DIMM solo
+cuando sin ellos dos se llamarían igual), así que se acabaron los dos «DIMM 0».
 Sin SMBIOS no hay zócalo que dar y se numeran «Módulo 1», «Módulo 2»: el `slot`
 del SPD es la dirección en el bus i2c y no la posición en la placa.
 
 **ARM se identifica, sin dejar de ser un programa de x86.** Donde no hay
-CPUID, `providers/armcpu.py` lee el MIDR de `/proc/cpuinfo` —quién hizo el
-núcleo, cuál es y en qué revisión va— y lo cruza con `db.identify_arm`, que
+CPUID, `providers/armcpu.py` lee el MIDR de `/proc/cpuinfo` (quién hizo el
+núcleo, cuál es y en qué revisión va) y lo cruza con `db.identify_arm`, que
 ya estaba escrita y sin usar. Sale «ARM Cortex-A76 r0p0», nombre en clave
 «Enyo» y 10-7 nm, en vez de una interrogación. Un big.LITTLE se reparte en tipos de núcleo por el mismo
 sitio por el que se reparte un Intel híbrido, que para eso `cpu.types` es una
 lista. Lo atado a x86 no se finge: CPUID, DMI, RAPL y el SPD por i2c salen
-como «no aplica». El resto —sysfs, hwmon, red, discos— funciona igual porque
+como «no aplica». El resto (sysfs, hwmon, red, discos) funciona igual porque
 sysfs es igual en toda arquitectura.
 
 **NVIDIA ya está probada contra hardware.** Se escribió a ciegas siguiendo la
 API documentada, porque en esta máquina no hay ninguna GeForce, y el 26 de
 agosto de 2026 llegaron las capturas de dos equipos ajenos: una GTX 1660 Ti
 (TU116) y una RTX 3050 Mobile (GA107M). Acertó en casi todo lo comprobable
-—anchura de bus, identificadores, UUID, el enlace bajado a PCIe 1.0 en reposo
-con su máximo bien leído, los motivos de recorte— así que `nvml.py` y
+(anchura de bus, identificadores, UUID, el enlace bajado a PCIe 1.0 en reposo
+con su máximo bien leído, los motivos de recorte) así que `nvml.py` y
 `providers/nvidia.py` ya no son código de fe. En lo que no acertaba era en los
 núcleos CUDA, y se tardó en verlo porque el arreglo estaba escrito: la 3050
 seguía diciendo 16 y una RTX 4080 Laptop, 58. Están abajo, en las lecciones. Lo que sigue sin salir en NVIDIA
@@ -139,7 +139,7 @@ esta máquina no hay ningún aarch64. Quien lo pruebe en uno, que contraste con
 
 Capturas del 1 de septiembre de 2026, de la misma persona que mandó la máquina
 virtual del día anterior y esta vez desde su equipo: un Lenovo ThinkCentre M80q
-—i5-10500T, UHD 630, 31 GB en dos SODIMM, Manjaro con XFCE— y con los permisos
+(i5-10500T, UHD 630, 31 GB en dos SODIMM, Manjaro con XFCE) y con los permisos
 ya dados, así que es el equipo ajeno más completo que ha pasado por aquí: 45
 sensores y catorce fuentes activas, `msr`, `smbios`, `spd` y `rapl` incluidos.
 Tres fallos confirmados leyendo el código, los tres ya arreglados, y dos que
@@ -151,19 +151,19 @@ necesitan su informe:
   los sobremesas de marca suelen declararse «Desktop» a secas. Ver la lección
   de abajo.
 - **El ⚠ «por debajo de su velocidad» salta por un redondeo**: un SK Hynix
-  catalogado a 2667 y funcionando a 2666 es el mismo grado JEDEC —DDR4-2666 son
-  1333,33 MHz, o sea 2666,67 MT/s, que unos redondean arriba y otros abajo— y
+  catalogado a 2667 y funcionando a 2666 es el mismo grado JEDEC (DDR4-2666 son
+  1333,33 MHz, o sea 2666,67 MT/s, que unos redondean arriba y otros abajo) y
   `MemoryModule.underclocked` comparaba `actual < rated` a pelo. **Hecho**:
-  margen del 1 %, que no puede confundir dos grados —los contiguos están a 133
-  MT/s en DDR4 y a 400 en DDR5— y absorbe el redondeo, que es de un MT/s.
+  margen del 1 %, que no puede confundir dos grados (los contiguos están a 133
+  MT/s en DDR4 y a 400 en DDR5) y absorbe el redondeo, que es de un MT/s.
 - **Y el consejo manda a la BIOS a por algo imposible**: con un módulo de 3200
   y otro de 2667, la frase «va a 2666 de los 3200 que declara admitir, suele ser
   el perfil rápido sin activar» es falsa, porque el conjunto va al ritmo del más
   lento y ese equipo no verá 3200 active lo que active. `_apply_avisos` toma
   `lentos[0]` y usaba su velocidad catalogada, así que el diagnóstico salía
   del módulo rápido e ignoraba al que manda. **Hecho**: el techo es el mínimo
-  de los catalogados y hay tres respuestas donde había dos —hay margen, no hay
-  margen pero uno declara más, o no hay nada que decir—, en
+  de los catalogados y hay tres respuestas donde había dos (hay margen, no hay
+  margen pero uno declara más, o no hay nada que decir), en
   `render.memory_speed_warning`.
 - **Por confirmar**: la insignia del hostname dice `none`, resaltada como si
   fuera la identidad del equipo. El kernel usa `(none)` cuando nadie lo
