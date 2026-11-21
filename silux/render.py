@@ -112,6 +112,12 @@ def watts(value: Optional[float]) -> str:
     return DASH if _none(value) else f"{float(value):.1f} W"
 
 
+def watt_hours(value: Optional[float]) -> str:
+    """A battery's energy, with the same decimal wherever it is: the badge
+    said «50 Wh» above a «Diseño 50.5 Wh»."""
+    return DASH if _none(value) else f"{float(value):.1f} Wh"
+
+
 def figure(value: Optional[float], decimals: int = 0) -> str:
     """La cifra de una ficha grande, sin su unidad, que va aparte.
 

@@ -439,8 +439,8 @@ def _bateria(snapshot: Snapshot) -> str:
         lineas.append("")
         if (salud := bateria.health_percent) is not None:
             lineas.append(
-                f"- Salud: {salud:.0f} % ({bateria.full_wh:.1f} Wh de "
-                f"{bateria.design_wh:.1f} Wh de diseño)")
+                f"- Salud: {salud:.0f} % ({render.watt_hours(bateria.full_wh)} de "
+                f"{render.watt_hours(bateria.design_wh)} de diseño)")
         if bateria.cycles:
             lineas.append(f"- Ciclos de carga: {bateria.cycles}")
         estado = []
@@ -448,8 +448,10 @@ def _bateria(snapshot: Snapshot) -> str:
             estado.append(f"{bateria.percent:.0f} %")
         if bateria.status:
             estado.append(en_español(bateria.status).lower())
-        if bateria.power_w is not None:
-            estado.append(f"{bateria.power_w:.1f} W")
+        if bateria.power_settling:
+            estado.append(en_español("bat.calculating").lower())
+        elif bateria.power_w is not None:
+            estado.append(render.watts(bateria.power_w))
         if estado:
             lineas.append("- Estado: " + " · ".join(estado))
         if bateria.technology:

@@ -1383,6 +1383,14 @@ class Battery:
         return round(self.full_wh / self.design_wh * 100, 1)
 
     @property
+    def power_settling(self) -> bool:
+        """Charging or discharging at 0 W cannot be: after the charger goes
+        in or out, the embedded controller takes a few seconds to update
+        `power_now` (the author's T14). Not unread, and not zero: coming."""
+        return (self.status in ("bat.status.charging", "bat.status.discharging")
+                and not self.power_w)
+
+    @property
     def seconds_left(self) -> Optional[int]:
         """Cuánto aguanta al ritmo de ahora, o cuánto le falta para llenarse.
 

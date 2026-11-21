@@ -43,6 +43,14 @@ que hace falta.
   rutas en pantalla. El detalle técnico va al informe, junto a cada dato que
   falta.
 
+### Batería
+
+- Justo después de enchufar o desenchufar el cargador, el portátil tarda
+  unos segundos en dar la potencia. Mientras, Potencia y Autonomía dicen
+  «Calculando…», no un guion ni «0».
+- La capacidad sale con la misma cifra en todos los sitios: arriba ponía
+  «50 Wh» y debajo «50.5 Wh».
+
 ### Memoria
 
 - Arreglado: el fabricante de un módulo de memoria y el de sus chips salen

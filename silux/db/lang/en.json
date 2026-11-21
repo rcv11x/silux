@@ -60,6 +60,7 @@
   "app.version": "version {v}",
   "app.version.rc": "test",
   "bat.atrate": "at the current {w} W",
+  "bat.calculating": "Calculating…",
   "bat.capacity": "Capacity",
   "bat.card.cell": "The cell",
   "bat.card.limits": "Charge limits",

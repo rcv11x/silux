@@ -60,6 +60,7 @@
   "app.version": "versión {v}",
   "app.version.rc": "prueba",
   "bat.atrate": "a {w} W de ahora",
+  "bat.calculating": "Calculando…",
   "bat.capacity": "Capacidad",
   "bat.card.cell": "La celda",
   "bat.card.limits": "Límites de carga",

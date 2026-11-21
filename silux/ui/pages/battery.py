@@ -126,21 +126,27 @@ class _SeccionBateria(QWidget):
         if bateria.cycles:
             insignias.append(_("bat.cycles.n").format(n=bateria.cycles))
         if bateria.design_wh:
-            insignias.append(f"{bateria.design_wh:.0f} Wh")
+            insignias.append(render.watt_hours(bateria.design_wh))
         self.badges.set_chips(insignias)
 
         salud = bateria.health_percent
         self.salud.update_value(render.figure(salud))
         if salud is not None and bateria.full_wh and bateria.design_wh:
             self.salud.set_detail(_("bat.health.of").format(
-                full=f"{bateria.full_wh:.1f} Wh",
-                design=f"{bateria.design_wh:.1f} Wh"))
+                full=render.watt_hours(bateria.full_wh),
+                design=render.watt_hours(bateria.design_wh)))
 
         self.carga.update_value(render.figure(bateria.percent))
         if bateria.now_wh is not None:
-            self.carga.set_detail(f"{bateria.now_wh:.1f} Wh")
+            self.carga.set_detail(render.watt_hours(bateria.now_wh))
 
-        self.potencia.update_value(render.figure(bateria.power_w, 1))
+        # Right after the charger goes in or out, the power is still coming:
+        # a dash would say it cannot be read, and «0» that nothing flows.
+        calculando = bateria.power_settling
+        if calculando:
+            self.potencia.update_value(_("bat.calculating"), word=True)
+        else:
+            self.potencia.update_value(render.figure(bateria.power_w, 1))
         self.potencia.set_detail(_(bateria.status or "bat.status.unknown"))
 
         # La etiqueta cambia según lo que se esté midiendo: lo que queda de
@@ -153,7 +159,10 @@ class _SeccionBateria(QWidget):
         # hace creíble el número: en reposo y compilando salen cifras muy
         # distintas y las dos son ciertas.
         self.autonomia.set_label(_("bat.tofull") if cargando else _("bat.left"))
-        self.autonomia.update_value(_duracion(restante) if restante else d)
+        if calculando:
+            self.autonomia.update_value(_("bat.calculating"), word=True)
+        else:
+            self.autonomia.update_value(_duracion(restante) if restante else d)
         # El ritmo solo cuando hay cuenta atrás. Con la batería llena y a cero
         # vatios salía «— · a 0.0 W de ahora», que no dice nada de nada.
         self.autonomia.set_detail(
@@ -168,10 +177,8 @@ class _SeccionBateria(QWidget):
           if bateria.voltage_v else d)
         c(_("bat.voltage.design"), f"{bateria.design_voltage_v:.2f} V"
           if bateria.design_voltage_v else d)
-        c(_("bat.capacity"), f"{bateria.full_wh:.1f} Wh"
-          if bateria.full_wh else d)
-        c(_("bat.design"), f"{bateria.design_wh:.1f} Wh"
-          if bateria.design_wh else d)
+        c(_("bat.capacity"), render.watt_hours(bateria.full_wh or None))
+        c(_("bat.design"), render.watt_hours(bateria.design_wh or None))
 
         # La tarjeta de límites solo si el portátil los trae y están puestos.
         # Un ThinkPad publica 0 y 100 cuando no hay tope configurado, y
