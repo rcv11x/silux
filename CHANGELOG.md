@@ -11,7 +11,11 @@ que hace falta.
 
 ---
 
-## Sin publicar
+## 0.4-prueba5 (21 de noviembre de 2026)
+
+Con lo que trajeron los primeros informes con sus datos en crudo: el XMP de
+DDR4, la NVIDIA en Sensores, el SPD de los portátiles con memoria soldada, y
+la lista de lo que Silux usa del sistema, que ahora se dice cuando falta.
 
 ### Procesador
 
