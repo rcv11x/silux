@@ -78,9 +78,9 @@ Es un procesador virtual: lo que declara lo decide el hipervisor, así que no se
 
 ### Jerarquía de caché
 
-- L1 datos: 4 × 32 KB, 8 vías línea 64 B · 1 hilos
-- L1 instr.: 4 × 32 KB, 8 vías línea 64 B · 1 hilos
-- L2: 4 × 4 MB, 16 vías línea 64 B · 1 hilos
+- L1 datos: 4 × 32 KB, 8 vías línea 64 B · 1 hilo
+- L1 instr.: 4 × 32 KB, 8 vías línea 64 B · 1 hilo
+- L2: 4 × 4 MB, 16 vías línea 64 B · 1 hilo
 - L3: 16 MB, 16 vías línea 64 B · 4 hilos
 
 ### Juego de instrucciones

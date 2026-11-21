@@ -296,7 +296,8 @@ class TypeSection(QWidget):
             self.caches.set(
                 label,
                 render.caches_summary(caches) + "    "
-                + _("cpu.cache.line").format(b=cache.line_bytes, hilos=cache.shared_by),
+                + _("cpu.cache.line.one" if cache.shared_by == 1 else "cpu.cache.line").format(
+                    b=cache.line_bytes, hilos=cache.shared_by),
                 tooltip=tooltip,
             )
 

@@ -362,6 +362,7 @@
   "cpu.best.threads": " ({hilos}, which are its threads)",
   "cpu.best.tip": "They are the ones that came out best from the wafer according to the firmware, and where the scheduler sends single-thread work. {reparto}.",
   "cpu.cache.line": "line {b} B · {hilos} threads",
+  "cpu.cache.line.one": "line {b} B · {hilos} thread",
   "cpu.cache.tip": "Package total: {total}\nSets: {sets}",
   "cpu.card.cache": "Cache hierarchy",
   "cpu.card.clocks": "Clocks",

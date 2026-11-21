@@ -8,6 +8,7 @@ review the new reference in the same commit; if not, it is a regression.
 
 import difflib
 import pathlib
+import re
 import unittest
 
 from tests.test_equipos import volcados
@@ -52,3 +53,17 @@ class TestScreenReferences(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestOneIsSingular(unittest.TestCase):
+    """«1 hilos» on the CPU page of every processor with one thread per core."""
+
+    PLURAL = re.compile(r"(?<![\d.,×])\b1 (hilos|núcleos|módulos|discos|dispositivos|monitores"
+                        r"|salidas|ranuras|canales|vías|threads|cores|modules|disks|devices"
+                        r"|monitors|outputs|slots|channels|ways)\b")
+
+    def test_one_with_a_singular_noun(self):
+        for referencia in sorted(SCREENS.glob("*.md")):
+            for numero, linea in enumerate(referencia.read_text(encoding="utf-8").splitlines(), 1):
+                with self.subTest(referencia=referencia.name, linea=numero):
+                    self.assertIsNone(self.PLURAL.search(linea), linea)

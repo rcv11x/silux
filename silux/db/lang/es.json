@@ -362,6 +362,7 @@
   "cpu.best.threads": " ({hilos}, que son sus hilos)",
   "cpu.best.tip": "Son los que mejor salieron de la oblea según el firmware, y a los que el planificador manda el trabajo de un hilo suelto. {reparto}.",
   "cpu.cache.line": "línea {b} B · {hilos} hilos",
+  "cpu.cache.line.one": "línea {b} B · {hilos} hilo",
   "cpu.cache.tip": "Total del paquete: {total}\nConjuntos: {sets}",
   "cpu.card.cache": "Jerarquía de caché",
   "cpu.card.clocks": "Relojes",
