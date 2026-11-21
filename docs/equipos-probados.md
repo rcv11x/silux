@@ -92,7 +92,7 @@ página que no se pueden comparar. Se validó contra tráfico de tamaño conocid
 en el i5-10400: diez GiB leídos a propósito con `memchr` y diez escritos con
 `memset`, y el contador vio 9,95 y 10,30 descontando el fondo. En el árbol de
 sensores estrena la rama «Tráfico» y el aparato «Memoria», cuyo hueco llevaba
-reservado en `_puesto_del_aparato` desde que se escribió el orden, vacío.
+reservado en `_device_order` desde que se escribió el orden, vacío.
 
 **Y es de Intel a propósito, no por falta de ganas.** De Zen 4 en adelante
 existe `amd_umc_N`, pero el kernel le registra `format` y no `events/`: los

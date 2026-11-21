@@ -120,7 +120,7 @@ llena al volver.
 
 Lo que cuesta memoria de forma permanente va en otro proceso que muere al
 contestar: OpenGL, Vulkan, OpenCL y VA-API se preguntan en un hijo
-(`gpuapi.consultar()`), y la medida de la memoria corre en otro
+(`gpuapi.query()`), y la medida de la memoria corre en otro
 (`membench.py`).
 
 Lo que solo puede leer el administrador lo lee un ayudante mínimo que se
@@ -262,7 +262,7 @@ dentro del propio programa y no como algo que haya que compilar:
   en una página anónima, marcada como ejecutable y llamada con `ctypes`.
 - **La latencia de la memoria**, en `silux/membench.py`: doce bytes que
   persiguen punteros (cada lectura da la dirección de la siguiente), montados
-  con la misma `rawcpuid.pagina_ejecutable`. Con lo que trae la biblioteca de
+  con la misma `rawcpuid.executable_page`. Con lo que trae la biblioteca de
   C no se llega: los accesos sueltos se solapan y la latencia se esconde
   detrás del paralelismo.
 
