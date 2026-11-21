@@ -29,6 +29,7 @@ python3 tools/gen_cpu_db.py            # regenerar la base de datos de CPUs (lib
 python3 tools/gen_referencias_cpu.py --libcpuid DIR  # las 411 CPU de referencia de sus volcados
 python3 tools/gen_memory_limits.py --intel-desde DIR  # el máximo de memoria por modelo
 python3 tools/gen_smart_units.py       # las unidades de cada contador SMART, de smartmontools
+python3 tools/gen_jep106.py            # los fabricantes de memoria (JEP106), de OpenOCD
 python3 tools/gen_lang.py --write      # poner al día los archivos de idioma
 python3 tools/medir_referencia.py      # rehacer la escala de puntuación
 python3 tools/anadir_puntuacion.py INFORMES  # sumar medidas ajenas a la tabla
@@ -257,8 +258,9 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
   sociales ni chips con su dirección: lo vigila `tests/test_nada_en_bruto.py`
   con cada volcado. Una marca sale de `render.maker`; un chip, de
   `render.chip_name`.
-- Lo que se toma de otro proyecto (hoy, las tablas de libcpuid y CPU-X, y la
-  base de discos de smartmontools para las unidades del SMART) lleva
+- Lo que se toma de otro proyecto (hoy, las tablas de libcpuid y CPU-X, la
+  base de discos de smartmontools para las unidades del SMART y la lista
+  JEP-106 de OpenOCD para los fabricantes de memoria) lleva
   su aviso en `silux/db/THIRD_PARTY_NOTICES.md`, que va en pip y en los
   AppImage; `tests/test_avisos_de_terceros.py` lo compara con las fuentes que
   declara la tabla. Un procesador que no está en ella dice «no está en la
@@ -281,7 +283,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); el código nuevo, en inglés (ver «Código»). Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-1572 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+1574 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
