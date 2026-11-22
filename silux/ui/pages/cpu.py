@@ -552,7 +552,7 @@ class CpuPage(ScrollPage):
             pista = _("cpu.limit.window.tip") if ventana else ""
             if valor and otro:
                 # Two copies of the limit: the lower is enforced.
-                texto += " · " + _("cpu.limit.lowest").format(otro=render.watts(otro))
+                texto += " · " + _("cpu.limit.lowest").format(otro=render.limit_watts(otro))
                 pista = " ".join(p for p in (_("cpu.limit.lowest.tip"), pista) if p)
             self.limits.set(_(clave), texto, tooltip=pista or None)
             self.limits.set_visible(_(clave), bool(valor))

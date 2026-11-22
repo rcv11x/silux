@@ -72,7 +72,7 @@ Celeron (Skylake) · LGA 1151 · 14 nm · x86_64
 
 ### Potencia y reposo
 
-- Límite sostenido (PL1): 54.0 W · ventana de 8.0 s
+- Límite sostenido (PL1): 54 W · ventana de 8.0 s
 - Límite de pico (PL2): 67.5 W · ventana de 2.4 ms
 - Frenos por temperatura: ninguno desde el arranque
 

@@ -72,7 +72,7 @@ Celeron (Gemini Lake) · BGA 1090 · 14 nm · x86_64
 ### Potencia y reposo
 
 - Límite sostenido (PL1): 9.0 W · ventana de 28.0 s
-- Límite de pico (PL2): 15.0 W · ventana de 976 µs
+- Límite de pico (PL2): 15 W · ventana de 976 µs
 
 ### Procesador
 

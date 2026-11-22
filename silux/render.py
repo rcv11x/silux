@@ -248,8 +248,16 @@ def volts(value: Optional[float]) -> str:
     return DASH if _none(value) else f"{float(value):.3f} V"
 
 
+def power_figure(value: Optional[float]) -> str:
+    """Watts without the unit: one decimal below 10 W, where a tenth still
+    says something (an idle integrated card's 0.4 W), none above."""
+    if _none(value):
+        return DASH
+    return figure(value, 1 if round(abs(float(value)), 1) < 10 else 0)
+
+
 def watts(value: Optional[float]) -> str:
-    return DASH if _none(value) else f"{float(value):.1f} W"
+    return DASH if _none(value) else f"{power_figure(value)} W"
 
 
 def watt_hours(value: Optional[float]) -> str:
@@ -547,9 +555,9 @@ def power_tooltip(power: Power) -> str:
     if breakdown := power_breakdown(power):
         lines.append(breakdown.replace(" · ", "\n"))
     if power.limit_long_w:
-        lines.append(f'\n{_("power.pl1")} {watts(power.limit_long_w)}')
+        lines.append(f'\n{_("power.pl1")} {limit_watts(power.limit_long_w)}')
     if power.limit_short_w:
-        lines.append(f'{_("power.pl2")} {watts(power.limit_short_w)}')
+        lines.append(f'{_("power.pl2")} {limit_watts(power.limit_short_w)}')
     return "\n".join(lines)
 
 
@@ -1372,8 +1380,8 @@ def thermal_throttle(throttles) -> str:
 def power_limit(limit_w: Optional[float], window_s: Optional[float]) -> str:
     """«65.0 W · ventana de 28.0 s», or the watts alone without a window."""
     if _none(window_s):
-        return watts(limit_w)
-    return _("cpu.limit.window").format(limite=watts(limit_w), ventana=time_window(window_s))
+        return limit_watts(limit_w)
+    return _("cpu.limit.window").format(limite=limit_watts(limit_w), ventana=time_window(window_s))
 
 
 # What a PCI device is by its class, to name what `pci.ids` doesn't have.
@@ -1429,9 +1437,14 @@ def pcie_errors(link) -> str:
     return " · ".join(parts) or _("pcie.errors.none")
 
 
-def _whole_watts(value: float) -> str:
-    """A power limit as the maker writes it: «340 W», «7.5 W»."""
-    return f"{figure(value, 0 if float(value).is_integer() else 1)} W"
+def limit_watts(value: Optional[float]) -> str:
+    """A power limit as the maker writes it, «340 W», «67.5 W», and with
+    its decimal below 10 W as every power: «9.0 W». A measurement goes
+    through `watts`."""
+    if _none(value):
+        return DASH
+    whole = float(value).is_integer() and abs(float(value)) >= 10
+    return f"{figure(value, 0 if whole else 1)} W"
 
 
 def gpu_factory_power_limit(gpu) -> str:
@@ -1439,9 +1452,9 @@ def gpu_factory_power_limit(gpu) -> str:
     The range the driver accepts goes in the tooltip: in the row it was cut."""
     parts = []
     if gpu.power_cap_w is not None:
-        parts.append(_whole_watts(gpu.power_cap_w))
+        parts.append(limit_watts(gpu.power_cap_w))
     if gpu.power_cap_default_w is not None and gpu.power_cap_default_w != gpu.power_cap_w:
-        parts.append(_("gpu.power.factory").format(w=_whole_watts(gpu.power_cap_default_w)))
+        parts.append(_("gpu.power.factory").format(w=limit_watts(gpu.power_cap_default_w)))
     if not parts:
         parts.append(gpu_power_range(gpu) or DASH)
     return " · ".join(parts)
@@ -1452,10 +1465,10 @@ def gpu_power_range(gpu) -> str:
     parts = []
     if gpu.power_cap_min_w and gpu.power_cap_max_w is not None:
         parts.append(_("gpu.power.range").format(desde=figure(gpu.power_cap_min_w, 0),
-                                                  hasta=_whole_watts(gpu.power_cap_max_w)))
+                                                  hasta=limit_watts(gpu.power_cap_max_w)))
     elif gpu.power_cap_max_w is not None and gpu.power_cap_max_w != gpu.power_cap_default_w:
         # A minimum of 0 W is no limit: some drivers write it as «none».
-        parts.append(_("gpu.power.upto").format(hasta=_whole_watts(gpu.power_cap_max_w)))
+        parts.append(_("gpu.power.upto").format(hasta=limit_watts(gpu.power_cap_max_w)))
     return " · ".join(parts)
 
 

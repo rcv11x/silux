@@ -65,7 +65,7 @@ class TestTheWindowOfEachLimit(unittest.TestCase):
 
     def test_shown_in_seconds_or_milliseconds(self):
         self.assertEqual(render.power_limit(65.0, 27.983872),
-                         _("cpu.limit.window").format(limite="65.0 W", ventana="28.0 s"))
+                         _("cpu.limit.window").format(limite="65 W", ventana="28.0 s"))
         self.assertEqual(render.time_window(0.00244), "2.4 ms")
         self.assertEqual(render.power_limit(65.0, None), render.watts(65.0))
 

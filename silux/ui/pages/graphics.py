@@ -1105,10 +1105,10 @@ class GpuSection(QWidget):
             self.tile_power.set_locked(_("lock.detail"), render.lock_tooltip(candado))
         else:
             self.tile_power.update_value(
-                render.figure(gpu.power_w),
+                render.power_figure(gpu.power_w),
                 gpu.power_w, series=Series(f"{gpu.pci_slot or f'gpu{gpu.index}'}/power", "W"))
             self.tile_power.set_detail(
-                _("gpu.tile.of").format(valor=render.watts(gpu.power_cap_w))
+                _("gpu.tile.of").format(valor=render.limit_watts(gpu.power_cap_w))
                 if gpu.power_cap_w else "")
 
     def _apply_now(self, gpu: Gpu) -> None:
@@ -1129,7 +1129,7 @@ class GpuSection(QWidget):
         if gpu.power_w is not None and gpu.power_cap_w:
             self.now.set(_("gpu.now.power"), gpu.power_w / gpu.power_cap_w,
                          de.format(actual=render.watts(gpu.power_w),
-                                   total=render.watts(gpu.power_cap_w)))
+                                   total=render.limit_watts(gpu.power_cap_w)))
         else:
             self.now.set(_("gpu.now.power"), None)
         # Cuánta memoria se está moviendo, que no es cuánta hay ocupada: una

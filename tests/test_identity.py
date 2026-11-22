@@ -84,7 +84,7 @@ class TestPotencia(unittest.TestCase):
         texto = render.power_tooltip(power)
         self.assertIn("PL1", texto)
         self.assertIn("PL2", texto)
-        self.assertIn("115.0 W", texto)
+        self.assertIn("115 W", texto)
 
 
 class TestVirtualizacion(unittest.TestCase):

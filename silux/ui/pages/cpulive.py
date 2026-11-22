@@ -169,7 +169,7 @@ class CpuLiveSection(QWidget):
             n.path == "cpu.power" and n.need is not Need.ROOT for n in snapshot.notes)
         self.tile_power.setVisible(not absent)
         if power.package_w is not None:
-            self.tile_power.update_value(render.figure(power.package_w), power.package_w,
+            self.tile_power.update_value(render.power_figure(power.package_w), power.package_w,
                                          series=Series("cpu/power", "W"))
             self.tile_power.chart.set_range(0.0, power.limit_long_w)
             self.tile_power.set_detail(

@@ -154,7 +154,7 @@ class _SeccionBateria(QWidget):
         if calculando:
             self.potencia.update_value(_("bat.calculating"), word=True)
         else:
-            self.potencia.update_value(render.figure(bateria.power_w, 1))
+            self.potencia.update_value(render.power_figure(bateria.power_w))
         self.potencia.set_detail(_(bateria.status or "bat.status.unknown"))
 
         # La etiqueta cambia según lo que se esté midiendo: lo que queda de
