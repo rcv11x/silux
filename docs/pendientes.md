@@ -474,6 +474,41 @@ De la quinta auditoría, sin comprobar uno a uno si siguen igual:
 
 ## Propuestas sin aplicar
 
+* **La presión del sistema (PSI) para «¿Qué frena tu equipo?»** (idea, sin
+  escribir). `/proc/pressure/{cpu,memory,io}` dicen qué parte del tiempo hubo
+  tareas esperando CPU, memoria o disco: `some` y `full`, medias de 10, 60 y
+  300 s y un total en µs, que es un contador y va por `providers/counters.py`.
+  - Se lee sin permisos desde que existe (4.20, modo 0444; 0666 desde 5.13,
+    y escribir pide CAP_SYS_RESOURCE salvo los avisos de 2 s desde 6.5).
+  - Lo que cambia es si existe. Lo traen encendido Debian 12 y 13, Ubuntu
+    22.04 y 24.04 (y Mint, que usa su kernel), Fedora, Arch, `gentoo-kernel`
+    y Tumbleweed. Lo compilan apagado (`CONFIG_PSI_DEFAULT_DISABLED=y`)
+    RHEL y CentOS Stream 9 y 10, openSUSE Leap 15.x y 16.0 y el kernel de
+    antiX: sin `psi=1` en el arranque no hay `/proc/pressure` (desde 5.6;
+    antes el archivo estaba y leerlo daba EOPNOTSUPP). Un kernel de Gentoo
+    hecho a mano lo tiene si se activó (Kconfig: «Say N if unsure»).
+  - La línea `full` de `cpu` no significa nada para todo el sistema: de 5.13
+    a 5.18 da números, desde 5.19 ceros. `irq` (6.1, con
+    `IRQ_TIME_ACCOUNTING`) solo está en Fedora, Arch, `gentoo-kernel` y
+    CentOS Stream.
+  - En un contenedor es la de todo el sistema, salvo con LXCFS (LXC,
+    Incus), que pone la del contenedor.
+  - Si falta, la nota dice que el kernel no lo publica, y que se enciende con
+    `psi=1` cuando la configuración del kernel (`/proc/config.gz` o
+    `/boot/config-*`) dice que está compilado y apagado.
+  - Fuentes: `kernel/sched/psi.c` en cada etiqueta y la configuración de cada
+    distribución; la tabla con sus enlaces, en las notas
+    (`propuestas/propuesta-psi.md`).
+
+* **Tendencias con el historial** (idea, a largo plazo). Con meses de
+  medidas, ver si algo empeora: Mann-Kendall sobre una prueba térmica fija
+  (la misma carga y la misma duración; la temperatura y la frecuencia
+  sostenida del final) diría si la pasta térmica o el polvo empeoran el
+  equipo. No supone ninguna distribución y aguanta huecos, pero pide bastantes
+  medidas espaciadas. La temperatura de la habitación influye y no se lee: el
+  resultado lo dice, y medir la subida sobre el reposo de antes de la prueba
+  la compensa en parte.
+
 * **El informe con permisos donde no hay polkit** (propuesta, sin escribir:
   toca privilegios). En antiX y otros sistemas sin systemd lo correcto es
   instalar `pkexec`, `libpam-elogind` y un agente de polkit
