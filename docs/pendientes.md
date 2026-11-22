@@ -57,7 +57,7 @@ la memoria) no va: está propuesto en las notas
 (`propuesta-anexo-con-permisos.md`). Lo marcado «con el ayudante» lo necesita.
 
 * **De los informes de la prueba7** (volcados `i5-3330`, `i5-5200u`,
-  `i5-8350u` y `core2-p8400`), lo que queda:
+  `i5-8350u`, `core2-p8400`, `celeron-560` e `i7-4710hq`), lo que queda:
   - Memoria · media · con el ayudante: en el T480s, el módulo 1 (Samsung
     M471A1K43BB1-CRC, sin SPD en el bus) es casi seguro la memoria soldada,
     pero la tabla del firmware lo llama SODIMM en «ChannelA-DIMM0» y la regla
@@ -77,6 +77,9 @@ la memoria) no va: está propuesto en las notas
   - Volcados · baja · `PrivilegedState.supported` mira el pkexec del equipo
     que pasa la suite, no el del volcado: el del P8400 ofrece «dar permisos»
     en los tests aunque en su equipo no haya pkexec.
+  - Volcados · baja · el anexo de un informe puede llegar sin `uname` (el del
+    `i7-4710hq`): el volcado se queda sin versión del kernel ni nombre del
+    equipo, que `/proc/sys/kernel/osrelease` y `hostname` darían.
 
 * **Del T14 del autor** (volcado `i5-1135g7`):
   - Gráficos · media · el pico de 1336648637.3 W en la gráfica del consumo
