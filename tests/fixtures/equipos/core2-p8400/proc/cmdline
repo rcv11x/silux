@@ -1,0 +1,1 @@
+BOOT_IMAGE=/boot/vmlinuz-6.6.119-antix.1-amd64-smp root=… ro quiet selinux=0

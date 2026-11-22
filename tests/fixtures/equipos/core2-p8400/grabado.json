@@ -1,0 +1,259 @@
+{
+ "cpuid": {
+  "*:0:0": [
+   10,
+   1970169159,
+   1818588270,
+   1231384169
+  ],
+  "*:2147483648:0": [
+   2147483656,
+   0,
+   0,
+   0
+  ],
+  "0:1:0": [
+   67190,
+   133120,
+   582653,
+   3219913727
+  ],
+  "0:2147483649:0": [
+   0,
+   0,
+   1,
+   537921536
+  ],
+  "0:2147483650:0": [
+   1702129225,
+   693250156,
+   1919894304,
+   1297360997
+  ],
+  "0:2147483651:0": [
+   1142960681,
+   1126199157,
+   538989904,
+   1344282656
+  ],
+  "0:2147483652:0": [
+   808465464,
+   541073440,
+   909258290,
+   8013895
+  ],
+  "0:7:0": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "0:7:1": [
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ "gpuapi": {
+  "consultar": {
+   "opencl": [],
+   "opengl": {
+    "egl_vendor": "Mesa Project",
+    "egl_version": "1.5",
+    "glsl": "3.30",
+    "renderer": "NV98",
+    "vendor": "Mesa",
+    "version": "3.3 (Compatibility Profile) Mesa 25.0.7-2+deb13u1"
+   },
+   "vaapi": [],
+   "vulkan": [
+    {
+     "api_version": "1.4.305",
+     "device_id": 0,
+     "device_memory_bytes": 4101165056,
+     "driver_version": 1,
+     "instance_version": "1.4.309",
+     "kind": "CPU",
+     "name": "llvmpipe (LLVM 19.1.7, 128 bits)",
+     "vendor_id": 65541
+    }
+   ],
+   "vulkan_icds": [
+    "libvulkan_gfxstream.so",
+    "libvulkan_intel_hasvk.so",
+    "libvulkan_intel.so",
+    "libvulkan_lvp.so",
+    "libvulkan_nouveau.so",
+    "libvulkan_radeon.so",
+    "libvulkan_virtio.so"
+   ],
+   "vulkan_rejected": []
+  }
+ },
+ "ioctl_red": {
+  "eth0:0x8915": null,
+  "eth0:0x891b": null,
+  "lo:0x8915": "127.0.0.1",
+  "lo:0x891b": "255.0.0.0",
+  "wlan0:0x8915": "192.168.1.120",
+  "wlan0:0x891b": "255.255.255.0",
+  "wlan1:0x8915": null,
+  "wlan1:0x891b": null
+ },
+ "modinfo": {
+  "drivetemp": true
+ },
+ "nvml": {
+  "abierta": false
+ },
+ "paquetes": {
+  "egl": true,
+  "kmod": true,
+  "opencl": true,
+  "opengl": true,
+  "pci.ids": true,
+  "pkexec": false,
+  "pnp.ids": false,
+  "python3": true,
+  "vaapi": true,
+  "vulkan": true,
+  "xdg-open": true
+ },
+ "pciids": {
+  "10de:06eb|10de:06eb:1028:0233": {
+   "10de:06eb": [
+    "NVIDIA Corporation",
+    "G98M [Quadro NVS 160M]"
+   ]
+  },
+  "10de:06eb|168c:001c|8086:10f5|8086:282a|8086:2934|8086:2935|8086:2936|8086:2937|8086:2938|8086:2939|8086:293a|8086:293c|8086:293e|8086:4232": {
+   "10de:06eb": [
+    "NVIDIA Corporation",
+    "G98M [Quadro NVS 160M]"
+   ],
+   "168c:001c": [
+    "Qualcomm Atheros",
+    "AR242x / AR542x Wireless Network Adapter (PCI-Express)"
+   ],
+   "8086:10f5": [
+    "Intel Corporation",
+    "82567LM Gigabit Network Connection"
+   ],
+   "8086:282a": [
+    "Intel Corporation",
+    "82801 Mobile SATA Controller [RAID mode]"
+   ],
+   "8086:2934": [
+    "Intel Corporation",
+    "82801I (ICH9 Family) USB UHCI Controller #1"
+   ],
+   "8086:2935": [
+    "Intel Corporation",
+    "82801I (ICH9 Family) USB UHCI Controller #2"
+   ],
+   "8086:2936": [
+    "Intel Corporation",
+    "82801I (ICH9 Family) USB UHCI Controller #3"
+   ],
+   "8086:2937": [
+    "Intel Corporation",
+    "82801I (ICH9 Family) USB UHCI Controller #4"
+   ],
+   "8086:2938": [
+    "Intel Corporation",
+    "82801I (ICH9 Family) USB UHCI Controller #5"
+   ],
+   "8086:2939": [
+    "Intel Corporation",
+    "82801I (ICH9 Family) USB UHCI Controller #6"
+   ],
+   "8086:293a": [
+    "Intel Corporation",
+    "82801I (ICH9 Family) USB2 EHCI Controller #1"
+   ],
+   "8086:293c": [
+    "Intel Corporation",
+    "82801I (ICH9 Family) USB2 EHCI Controller #2"
+   ],
+   "8086:293e": [
+    "Intel Corporation",
+    "82801I (ICH9 Family) HD Audio Controller"
+   ],
+   "8086:4232": [
+    "Intel Corporation",
+    "WiFi Link 5100"
+   ]
+  },
+  "168c:001c": {
+   "168c:001c": [
+    "Qualcomm Atheros",
+    "AR242x / AR542x Wireless Network Adapter (PCI-Express)"
+   ]
+  },
+  "8086:10f5": {
+   "8086:10f5": [
+    "Intel Corporation",
+    "82567LM Gigabit Network Connection"
+   ]
+  },
+  "8086:2917|8086:2a40": {
+   "8086:2917": [
+    "Intel Corporation",
+    "ICH9M-E LPC Interface Controller"
+   ],
+   "8086:2a40": [
+    "Intel Corporation",
+    "Mobile 4 Series Chipset Memory Controller Hub"
+   ]
+  },
+  "8086:4232": {
+   "8086:4232": [
+    "Intel Corporation",
+    "WiFi Link 5100"
+   ]
+  }
+ },
+ "pciids_fabricante": {
+  "1028": "Dell"
+ },
+ "plataforma": {
+  "entorno": {
+   "SHELL": "/usr/bin/zsh",
+   "XDG_CURRENT_DESKTOP": "icewm",
+   "XDG_SESSION_TYPE": null
+  },
+  "machine": "x86_64",
+  "procesos": 194,
+  "uname": {
+   "machine": "x86_64",
+   "node": "silux-pc",
+   "processor": "",
+   "release": "6.6.119-antix.1-amd64-smp",
+   "system": "Linux",
+   "version": "#2 SMP PREEMPT_DYNAMIC Sun Dec 28 20:03:05 EST 2025"
+  }
+ },
+ "realpath": {
+  "/dev/sda2": "/dev/sda2",
+  "/dev/sdb1": "/dev/sdb1",
+  "/dev/sdb2": "/dev/sdb2"
+ },
+ "statvfs": {
+  "/": [
+   40816308224,
+   425266094080
+  ],
+  "/media/unidad1": [
+   28490752,
+   4786688
+  ],
+  "/media/unidad2": [
+   7251820544,
+   716865536
+  ]
+ },
+ "systemd": {
+  "arranque": null
+ }
+}

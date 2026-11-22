@@ -1,0 +1,4 @@
+/dev/sda2 / ext4 rw,noatime 0 0
+/dev/sdb2 /media/unidad1 vfat rw,nosuid,nodev,noexec,noatime,uid=1000,gid=1000,fmask=0002,dmask=0002,allow_utime=0020,codepage=437,iocharset=utf8,shortname=mixed,utf8,errors=remount-ro 0 0
+/dev/sdb1 /media/unidad2 exfat rw,nosuid,nodev,noexec,noatime,uid=1000,gid=1000,fmask=0002,dmask=0002,allow_utime=0020,iocharset=utf8,errors=remount-ro 0 0
+/dev/sda2 /media/unidad3 ext4 rw,relatime 0 0
