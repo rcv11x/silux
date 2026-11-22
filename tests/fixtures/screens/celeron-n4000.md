@@ -28,7 +28,7 @@ Aplicaciones 1000.9 MB · Caché 1.1 GB · Buffers 72.8 MB · Libre 5.4 GB
 353.7 GB en 2 unidades
 1 × SSD · 1 × Flash
 62.8 GB libres
-Ocupado 33.0 GB · Libre 62.8 GB · Reservado 121.9 GB · Sin montar 136.1 GB
+Ocupado 33.0 GB · Libre 62.8 GB · Reservado 121.9 GB · Intercambio 4.5 GB · Sin montar 131.5 GB
 
 ### Temperaturas
 
@@ -360,7 +360,7 @@ Una integrada no tiene reguladores de voltaje, ventilador, SoC aparte ni memoria
 353.7 GB en 2 unidades
 33.0 GB ocupados en 3 particiones montadas
 1 × SSD · 1 × Memoria flash
-Ocupado 33.0 GB · Libre 62.8 GB · Reservado 121.9 GB · Sin montar 136.1 GB
+Ocupado 33.0 GB · Libre 62.8 GB · Reservado 121.9 GB · Intercambio 4.5 GB · Sin montar 131.5 GB
 - Leyendo: 0 B/s (suma de 2 unidades)
 - Escribiendo: 0 B/s (suma de 2 unidades)
 - Espacio libre: 62.8 GB (en 2 particiones)
@@ -388,7 +388,7 @@ El ayudante que se lanza solo sabe pedir diagnóstico y leer unas tablas del sis
 
 ### sda
 
-Ocupado 33.0 GB · Libre 62.8 GB · Reservado 6.7 GB · Sin montar 136.0 GB
+Ocupado 33.0 GB · Libre 62.8 GB · Reservado 6.7 GB · Intercambio 4.5 GB · Sin montar 131.5 GB
 - Modelo: SAMSUNG MZ7LN256
 - Fabricante: Samsung
 - Tipo: SSD

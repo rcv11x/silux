@@ -48,6 +48,9 @@ que hace falta.
 
 ### Red y Placa base
 
+- El nombre del equipo ya no sale de la versión de la BIOS ni del código de
+  plataforma («Acer V1.13»): si hace falta, se toma el nombre del producto.
+
 - Una interfaz virtual ya no enseña dirección física, driver, modelo y ranura
   PCI con guiones: se dice al pie de su tarjeta que no tiene tarjeta detrás.
 - Los paquetes que el kernel descarta se llaman descartados, no perdidos, y
@@ -62,6 +65,8 @@ que hace falta.
 - La vida restante de un pendrive lleva candado sin permisos, como el resto
   de su diagnóstico, en vez de un guion.
 - Un disco que no dice su fabricante lo dice al pie de su tarjeta.
+- Una partición de intercambio sale como «Intercambio» en la barra, no como
+  espacio sin montar.
 
 ## 0.4-prueba7 (21 de noviembre de 2026)
 

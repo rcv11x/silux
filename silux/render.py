@@ -1117,17 +1117,22 @@ def sound_card(card) -> str:
     return card.name or _("sound.other")
 
 
-def space(disks) -> tuple[int, int, int, int]:
-    """Used, free, reserved and unmounted bytes of these disks.
+def space(disks, swaps=()) -> tuple[int, int, int, int, int]:
+    """Used, free, reserved, swap and unmounted bytes of these disks.
 
     Free is what the mounted partitions say; what is mounted and is neither
     used nor free is the filesystem's own (ext4 keeps 5 % for root, and its
-    tables); what is not mounted (another system, a swap partition, space
-    outside any partition) is said apart. Without this, ext4's reserve read
-    as unmounted space.
+    tables). A partition in use as swap isn't mounted but isn't idle either:
+    it goes apart, from `swaps` (/proc/swaps). What is left unmounted
+    (another system, space outside any partition) is said apart too.
+    Without this, ext4's reserve read as unmounted space.
     """
-    used = free = reserved = mounted = 0
+    in_swap = {s.device.removeprefix("/dev/") for s in swaps
+               if s.kind == "partition" and not s.zram}
+    used = free = reserved = mounted = swap = 0
     for disk in disks:
+        swap += sum(p.size_bytes or 0 for p in disk.partitions
+                    if p.name in in_swap and not p.mountpoint)
         for partition in disk.mounted_partitions:
             used += partition.used_bytes or 0
             free += partition.free_bytes or 0
@@ -1136,10 +1141,10 @@ def space(disks) -> tuple[int, int, int, int]:
                 reserved += max(0, partition.size_bytes - (partition.used_bytes or 0)
                                  - (partition.free_bytes or 0))
     total = sum(d.size_bytes or 0 for d in disks)
-    unmounted = max(0, total - mounted)
+    unmounted = max(0, total - mounted - swap)
     # Below 1 % of what they are part of it is a vfat's clusters and the
     # partitions' alignment: «Sin montar 1.6 MB» is not space anyone looks for.
-    return (used, free, reserved if reserved >= mounted / 100 else 0,
+    return (used, free, reserved if reserved >= mounted / 100 else 0, swap,
             unmounted if unmounted >= total / 100 else 0)
 
 

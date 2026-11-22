@@ -1481,6 +1481,8 @@
   "status.refresh": "Refreshing every {n} s",
   "storage.bar.reserved": "Reserved",
   "storage.bar.reserved.tip": "What the filesystem keeps for itself: in ext4, the 5 % it reserves for root (so the system can still write with the disk full) and its own tables. It is neither used nor free for anyone else.",
+  "storage.bar.swap": "Swap",
+  "storage.bar.swap.tip": "A partition the system uses as swap memory: it isn't mounted like the rest, but it's in use.",
   "storage.bar.unmounted": "Unmounted",
   "storage.card.details": "Firmware and sectors",
   "storage.card.disks": "Drives",

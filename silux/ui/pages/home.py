@@ -440,12 +440,15 @@ class HomePage(ScrollPage):
                                                 n=len(discos)),
             " · ".join(tipos),
             _("home.storage.free").format(tam=render.size(libre)))
-        _usado, _libre, reservado, sin_montar = render.space(discos)
+        _usado, _libre, reservado, swap, sin_montar = render.space(discos, snapshot.system.swaps)
         segmentos = [render.Segment("used", _("home.bar.used"), usado, "accent"),
                      render.Segment("free", _("home.bar.free"), libre, "line")]
         if reservado:
             segmentos.append(render.Segment("reserved", _("storage.bar.reserved"), reservado,
                                             "muted/0.45", _("storage.bar.reserved.tip")))
+        if swap:
+            segmentos.append(render.Segment("swap", _("storage.bar.swap"), swap,
+                                            "accent/0.45", _("storage.bar.swap.tip")))
         if sin_montar:
             segmentos.append(render.Segment("unmounted", _("home.bar.unmounted"), sin_montar,
                                             "muted"))

@@ -324,7 +324,7 @@ class TestRootsReserveIsReserved(unittest.TestCase):
                               size_bytes=int(476.4e9), used_bytes=usados, free_bytes=libres)
         disco = Disk(name="nvme0n1", kind="NVMe", size_bytes=int(476.4e9),
                      partitions=(particion,))
-        usado, libre, reservado, sin_montar = render.space((disco,))
+        usado, libre, reservado, _swap, sin_montar = render.space((disco,))
         self.assertAlmostEqual(libre / 1e9, 427.3, delta=0.1)
         self.assertAlmostEqual(reservado / 1e9, 8.5 + (476.4 - 8.5) * 0.05, delta=0.1)
         self.assertAlmostEqual(usado / 1e9, 476.4 - 427.3 - reservado / 1e9, delta=0.1)

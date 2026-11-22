@@ -243,6 +243,7 @@ class StoragePage(ScrollPage):
 
     def apply(self, snapshot: Snapshot) -> None:
         discos = sorted(snapshot.disks, key=_orden)
+        self._swaps = snapshot.system.swaps
         # El diagnóstico (SMART) lo guarda un permiso mientras exista esta
         # nota; de él salen las horas, lo escrito, la vida y, en un SATA sin
         # `drivetemp`, la temperatura.
@@ -343,14 +344,17 @@ class StoragePage(ScrollPage):
         else:
             self.total_bar.hide()
 
-    @staticmethod
-    def _segmentos(discos) -> list:
-        usado, libre, reservado, sin_montar = render.space(discos)
+    def _segmentos(self, discos) -> list:
+        usado, libre, reservado, swap, sin_montar = render.space(
+            discos, getattr(self, "_swaps", ()))
         segmentos = [render.Segment("used", _("storage.col.used"), usado, "accent"),
                      render.Segment("free", _("storage.col.free"), libre, "line")]
         if reservado:
             segmentos.append(render.Segment("reserved", _("storage.bar.reserved"), reservado,
                                             "muted/0.45", _("storage.bar.reserved.tip")))
+        if swap:
+            segmentos.append(render.Segment("swap", _("storage.bar.swap"), swap,
+                                            "accent/0.45", _("storage.bar.swap.tip")))
         if sin_montar:
             segmentos.append(render.Segment("unmounted", _("storage.bar.unmounted"),
                                             sin_montar, "muted"))

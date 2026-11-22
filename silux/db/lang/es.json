@@ -1481,6 +1481,8 @@
   "status.refresh": "Se actualiza cada {n} s",
   "storage.bar.reserved": "Reservado",
   "storage.bar.reserved.tip": "Lo que el sistema de archivos guarda para sí: en ext4, el 5 % que reserva para root (para que el sistema pueda seguir escribiendo con el disco lleno) y sus propias tablas. No está ocupado ni libre para nadie más.",
+  "storage.bar.swap": "Intercambio",
+  "storage.bar.swap.tip": "Una partición que el sistema usa como memoria de intercambio: no se monta como las demás, pero está en uso.",
   "storage.bar.unmounted": "Sin montar",
   "storage.card.details": "Firmware y sectores",
   "storage.card.disks": "Unidades",
