@@ -1158,6 +1158,13 @@ class GpuClocks:
     core_levels: tuple[GpuClockLevel, ...] = ()
     memory_levels: tuple[GpuClockLevel, ...] = ()
     performance_level: Optional[str] = None   # auto, low, high, manual…
+    # The other DPM tables amdgpu publishes, by its file's name: fclk,
+    # socclk, dcefclk, vclk, dclk.
+    other_levels: tuple[tuple[str, tuple[GpuClockLevel, ...]], ...] = ()
+    # The power profile in force, as amdgpu names it: BOOTUP_DEFAULT, COMPUTE…
+    power_profile: Optional[str] = None
+    # Whether amdgpu lets clocks and voltages be changed (OverDrive).
+    overdrive: Optional[bool] = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -1257,6 +1264,8 @@ class Gpu:
     subsystem_name: Optional[str] = None
     revision: Optional[int] = None
     vbios: Optional[str] = None
+    vbios_version: Optional[str] = None
+    vbios_date: Optional[str] = None        # ISO, as the driver gives it
     unique_id: Optional[str] = None
     # None when it can't be decided. Not the same as not being one: nouveau
     # doesn't give the VRAM, and a dedicated card would otherwise end up as

@@ -327,6 +327,13 @@ amdgpu no publica chips de esta tarjeta.
 
 amdgpu no publica SoC de esta tarjeta.
 
+#### Para expertos
+
+- Escalones del núcleo: 200 · ▸400 · 1100 MHz
+- Escalones de la memoria: 400 · ▸933 · 1067 · 1200 MHz
+
+▸ marca el escalón en uso.
+
 ### Consumo y temperaturas
 
 Los reguladores de voltaje y el ventilador son de una tarjeta aparte: esta se alimenta y se refrigera con el resto del equipo. En una APU, el consumo que da el driver es el del procesador entero y su segunda temperatura es la del SoC: ninguna de las dos es de la gráfica. amdgpu no publica estado, chips de memoria, voltaje ni otros 3 datos de esta tarjeta.

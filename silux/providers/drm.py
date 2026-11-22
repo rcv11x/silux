@@ -279,6 +279,10 @@ class DrmGpus(Provider):
         gpu["shader_engines"] = info.shader_engines
         gpu["l2_cache_bytes"] = info.l2_cache_bytes
         gpu["infinity_cache_bytes"] = info.infinity_cache_bytes
+        firmware = sysroot.recorded("amdgpu_vbios", node, amdgpu.vbios, node,
+                                    kind=amdgpu.VbiosInfo)
+        if firmware is not None:
+            gpu["vbios_version"], gpu["vbios_date"] = firmware.version, firmware.date
         # With an underscore because it is not a model field: only
         # _is_integrated uses it, and freezing drops what it does not know.
         gpu["_is_apu"] = info.is_apu
@@ -1028,7 +1032,38 @@ def _clocks(device: pathlib.Path,
         core_levels=core,
         memory_levels=memory,
         performance_level=read_text(f"{device}/power_dpm_force_performance_level"),
+        other_levels=tuple((name, levels) for name in OTHER_DPM
+                           if (levels := _levels(device / f"pp_dpm_{name}"))),
+        power_profile=_power_profile(device),
+        overdrive=_overdrive(device) if core else None,
     )
+
+
+# The DPM tables beyond the core's and memory's, in the order shown.
+OTHER_DPM = ("fclk", "socclk", "dcefclk", "vclk", "dclk")
+# amdgpu.ppfeaturemask's PP_OVERDRIVE_MASK (amd_shared.h).
+OVERDRIVE_BIT = 0x4000
+
+
+def _power_profile(device: pathlib.Path) -> Optional[str]:
+    """The profile marked with «*» in `pp_power_profile_mode`."""
+    for line in (read_text(str(device / "pp_power_profile_mode")) or "").splitlines():
+        match = re.match(r"\s*\d+\s+([A-Z0-9_]+)\s*\*", line)
+        if match:
+            return match.group(1)
+    return None
+
+
+def _overdrive(device: pathlib.Path) -> Optional[bool]:
+    """On when the driver publishes its OverDrive table; off when its feature
+    mask leaves it out. Unknown otherwise."""
+    if os.path.exists(sysroot.path(f"{device}/pp_od_clk_voltage")):
+        return True
+    mask = read_text("/sys/module/amdgpu/parameters/ppfeaturemask")
+    try:
+        return bool(int(mask, 0) & OVERDRIVE_BIT) if mask else None
+    except ValueError:
+        return None
 
 
 # Why an Intel GPU throttles, as i915 publishes it in `gt/gt0/`: one file per

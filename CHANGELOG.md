@@ -91,6 +91,10 @@ Con informes de Felix Lara.
   cada Radeon su juego de instrucciones (gfx1201).
 - El límite de potencia dice el que aplica y el de fábrica («340 W · de
   fábrica 330 W»); el rango que admite, al pasar el ratón.
+- La BIOS de video de una Radeon dice su versión y su fecha, y bajo
+  «Relojes y enlace» hay una sección plegada para expertos: los escalones de
+  cada reloj con el que está en uso, el perfil de energía y si OverDrive
+  está activado, con cómo activarlo.
 - Un ventilador parado dice «parado (0 RPM)» y por qué es normal; las
   unidades de rasterizado se llaman ROPs y la memoria que la gráfica toma
   del sistema, GTT. «Memoria (efectiva)», que repetía el reloj de memoria

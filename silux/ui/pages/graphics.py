@@ -63,11 +63,17 @@ CARD_FIELDS = (
 # un informe o un foro. Va plegado debajo.
 INVENTORY_FIELDS = (
     "gpu.field.id", "gpu.field.subid", "gpu.field.isa", "gpu.field.slot", "gpu.field.drm",
-    "gpu.field.vbios", "gpu.field.uuid",
+    "gpu.field.vbios", "gpu.field.vbiosver", "gpu.field.uuid",
 )
+# For whoever tunes an AMD card: its DPM tables, power profile and
+# OverDrive, folded under its clocks.
+EXPERT_FIELDS = ("gpu.expert.sclk", "gpu.expert.mclk", "gpu.expert.fclk", "gpu.expert.socclk",
+                 "gpu.expert.dcefclk", "gpu.expert.vclk", "gpu.expert.dclk",
+                 "gpu.expert.profile", "gpu.expert.overdrive")
+
 # Rows only some drivers have a source for: hidden where there's none, and
 # named only where the driver could give them.
-ONLY_SOME = frozenset({"gpu.field.isa", "gpu.field.l2", "gpu.field.mall"})
+ONLY_SOME = frozenset({"gpu.field.isa", "gpu.field.l2", "gpu.field.mall", "gpu.field.vbiosver"})
 
 # Lo que está pasando ahora, en una barra por medida: cuánta memoria de video
 # hay ocupada, cuánto consume de lo que puede y cuánto bus se mueve. Juntas
@@ -442,6 +448,18 @@ class GpuSection(QWidget):
         fila = ResponsiveRow(min_item_width=280)
         self.clocks, self.clocks_pie = self._grid_card(
             fila, _("gpu.card.clocks"), CLOCK_FIELDS)
+        self.expert_fold = Plegable(_("gpu.card.expert"))
+        self.expert = InfoGrid()
+        for name in EXPERT_FIELDS:
+            self.expert.add(_(name))
+        self.expert_fold.body.addWidget(self.expert)
+        self.expert_pie = QLabel("")
+        self.expert_pie.setObjectName("Muted")
+        self.expert_pie.setWordWrap(True)
+        self.expert_pie.setFont(ui_font(theme.METRICS.small_pt))
+        self.expert_pie.hide()
+        self.expert_fold.body.addWidget(self.expert_pie)
+        self.clocks.parentWidget().body.addWidget(self.expert_fold)
         fila.add(self._build_sensor_card())
         layout.addWidget(fila)
         # Lo que explicaría «Consumo y temperaturas» cuando esa tarjeta no
@@ -681,6 +699,8 @@ class GpuSection(QWidget):
         i(_("gpu.field.slot"), gpu.pci_slot or d)
         i(_("gpu.field.drm"), gpu.drm_node or d)
         i(_("gpu.field.vbios"), gpu.vbios or d)
+        i(_("gpu.field.vbiosver"), " · ".join(p for p in (gpu.vbios_version, gpu.vbios_date) if p)
+          or d)
         i(_("gpu.field.uuid"), identificador or d)
 
         self._apply_memory(gpu)
@@ -739,6 +759,7 @@ class GpuSection(QWidget):
               tooltip=_("gpu.tip.videouse"))
 
         self._apply_no_aplica(gpu)
+        self._apply_expert(gpu)
         self._apply_engines(gpu)
         self._apply_codecs(gpu)
         # A driver that is installed and rejects this card says so, with its
@@ -880,6 +901,30 @@ class GpuSection(QWidget):
         self.sensors_outside.setText(fuera)
         self.sensors_outside.setToolTip(pies["sensors"] if fuera else "")
         self.sensors_outside.setVisible(bool(fuera))
+
+    def _apply_expert(self, gpu: Gpu) -> None:
+        """The DPM tables, power profile and OverDrive, where amdgpu has them."""
+        clocks = gpu.clocks
+        tables = {"gpu.expert.sclk": clocks.core_levels, "gpu.expert.mclk": clocks.memory_levels}
+        tables.update({f"gpu.expert.{name}": levels for name, levels in clocks.other_levels})
+        values = {key: render.dpm_levels(levels) for key, levels in tables.items() if levels}
+        if clocks.power_profile:
+            values["gpu.expert.profile"] = render.power_profile(clocks.power_profile)
+        if clocks.overdrive is not None:
+            values["gpu.expert.overdrive"] = _("gpu.expert.on" if clocks.overdrive
+                                               else "gpu.expert.off")
+        for key in EXPERT_FIELDS:
+            if key in values:
+                self.expert.set(_(key), values[key])
+            self.expert.set_visible(_(key), key in values)
+        self.expert_fold.setVisible(bool(values))
+        off = clocks.overdrive is False
+        foot = " ".join(p for p in (
+            _("gpu.expert.marker").format(marker=render.ACTIVE_STEP) if tables.get(
+                "gpu.expert.sclk") or clocks.other_levels or clocks.memory_levels else "",
+            _("gpu.expert.off.how") if off else "") if p)
+        self.expert_pie.setText(foot)
+        self.expert_pie.setVisible(bool(foot))
 
     @staticmethod
     def _relojes_de_mas(gpu: Gpu) -> set[str]:

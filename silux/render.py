@@ -1407,6 +1407,27 @@ def gpu_power_range(gpu) -> str:
     return " · ".join(parts)
 
 
+# What marks the DPM step in use: inside the list, which then fits its row.
+ACTIVE_STEP = "▸"
+
+
+def dpm_levels(levels) -> str:
+    """«▸500 · 2520 MHz»: a DPM table's steps, the one in use marked, and
+    «en reposo» after them when none is (the core sleeps below its first)."""
+    steps = " · ".join(f"{ACTIVE_STEP if level.active else ''}{figure(level.hz / 1e6, 0)}"
+                       for level in levels) + " MHz"
+    if not any(level.active for level in levels):
+        steps += " · " + _("gpu.expert.now.asleep")
+    return steps
+
+
+def power_profile(name: str) -> str:
+    """amdgpu's power profile in the interface's words, its own name after."""
+    key = f"gpu.profile.{name.lower()}"
+    text = _(key)
+    return name if text == key else f"{text} ({name})"
+
+
 def gpu_driver_version(gpu) -> Optional[str]:
     """«Mesa 26.2.6» when the version is Mesa's, the userspace driver;
     NVIDIA's own as it is."""

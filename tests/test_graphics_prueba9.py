@@ -41,12 +41,34 @@ class TestTheRadeon(unittest.TestCase):
             self.assertEqual(card[_("gpu.field.driverver")].full_text(), "Mesa 26.2.6")
             self.assertEqual(card[_("gpu.field.l2")].full_text(), render.size(8 * 1024**2))
             self.assertEqual(inventory[_("gpu.field.isa")].full_text(), "gfx1201")
+            # Its video BIOS's version and build date, from amdgpu's ioctl.
+            self.assertEqual(inventory[_("gpu.field.vbiosver")].full_text(),
+                             "023.008.000.068.000001 · 2024-12-04")
             fan = section.sensors._values[_("gpu.sensor.fan")]
             self.assertEqual(fan.full_text(), _("fan.stopped.rpm"))
             self.assertIn(_("gpu.tip.fan.zerorpm"), fan.toolTip())
             self.assertTrue(section.clocks._values[_("gpu.clock.memeff")].isHidden())
             limit = section.sensors._values[_("gpu.sensor.powercap")].full_text()
             self.assertTrue(limit.startswith("340 W · "), limit)
+            # For experts: every DPM table with its step in use, the power
+            # profile and OverDrive off, with how to turn it on.
+            expert = section.expert._values
+            self.assertEqual(expert[_("gpu.expert.fclk")].full_text(), "313 · ▸582 · 2400 MHz")
+            self.assertEqual(expert[_("gpu.expert.sclk")].full_text(),
+                             "500 · 2520 MHz · " + _("gpu.expert.now.asleep"))
+            self.assertEqual(expert[_("gpu.expert.profile")].full_text(),
+                             _("gpu.profile.bootup_default") + " (BOOTUP_DEFAULT)")
+            self.assertEqual(expert[_("gpu.expert.overdrive")].full_text(), _("gpu.expert.off"))
+            self.assertIn(_("gpu.expert.off.how"), section.expert_pie.text())
+            self.assertTrue(expert[_("gpu.expert.vclk")].isHidden())
+
+    def test_no_expert_section_without_amdgpu(self):
+        from silux.ui.pages.graphics import GpuSection
+
+        with pantalla.Ventana(foto(EQUIPOS / "i5-10400")[0]) as window:
+            window.select_section("Gráficos")
+            section = window.stack.currentWidget().findChildren(GpuSection)[0]
+            self.assertTrue(section.expert_fold.isHidden())
 
 
 class TestEveryCard(unittest.TestCase):

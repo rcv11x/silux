@@ -16,6 +16,12 @@
    "vram_type": "GDDR6"
   }
  },
+ "amdgpu_vbios": {
+  "/dev/dri/renderD128": {
+   "date": "2024-12-04",
+   "version": "023.008.000.068.000001"
+  }
+ },
  "cpuid": {
   "*:0:0": [
    16,

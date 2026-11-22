@@ -26,6 +26,10 @@ from . import sysroot
 DRM_COMMAND_BASE = 0x40
 DRM_AMDGPU_INFO = 0x05
 AMDGPU_INFO_DEV_INFO = 0x16
+# The video BIOS's identity: AMDGPU_INFO_VBIOS with its INFO subquery, which
+# answers `struct drm_amdgpu_info_vbios` (name, part number, version, the
+# version string and the build date), 200 bytes. Not its image.
+AMDGPU_INFO_VBIOS, AMDGPU_INFO_VBIOS_INFO, VBIOS_REPLY = 0x1B, 0x3, 200
 REPLY_SIZE = 1024                      # the struct is about 300 bytes
 
 # Offsets in `struct drm_amdgpu_info_device`. The struct is ABI: the kernel
@@ -178,6 +182,41 @@ def query(node: str, expected_device_id: Optional[int] = None) -> Optional[Devic
         l2_cache_bytes=l2_kib * 1024 or None,
         infinity_cache_bytes=mall or None,
     )
+
+
+@dataclass(frozen=True, slots=True)
+class VbiosInfo:
+    """The video BIOS as the driver reads it from the card."""
+
+    version: Optional[str] = None       # «023.008.000.068.000001»
+    date: Optional[str] = None          # ISO: «2024-12-04»
+
+
+def vbios(node: str) -> Optional[VbiosInfo]:
+    """Ask the driver for its video BIOS's version and date."""
+    try:
+        descriptor = os.open(node, os.O_RDWR | os.O_CLOEXEC)
+    except OSError:
+        return None
+    try:
+        buffer = ctypes.create_string_buffer(VBIOS_REPLY)
+        request = _Request(ctypes.addressof(buffer), VBIOS_REPLY, AMDGPU_INFO_VBIOS,
+                           (ctypes.c_uint32 * 4)(AMDGPU_INFO_VBIOS_INFO, 0, 0, 0))
+        order = _iowr("d", DRM_COMMAND_BASE + DRM_AMDGPU_INFO, ctypes.sizeof(_Request))
+        if fcntl.ioctl(descriptor, order, request) != 0:
+            return None
+    except (OSError, ValueError):
+        return None
+    finally:
+        os.close(descriptor)
+
+    def text(start: int, end: int) -> Optional[str]:
+        return buffer.raw[start:end].split(b"\0")[0].decode("ascii", "replace").strip() or None
+
+    # «2024/12/04 21:24»: the day is what is shown, in ISO.
+    raw_date = text(168, 200) or ""
+    date = raw_date[:10].replace("/", "-") if len(raw_date) >= 10 else None
+    return VbiosInfo(version=text(136, 168), date=date)
 
 
 def _iowr(letter: str, number: int, size: int) -> int:
