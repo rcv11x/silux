@@ -132,14 +132,6 @@ la memoria) no va: está propuesto en las notas
 * **De los informes de la prueba9** (volcados `i5-5200u`, `i7-4710hq`,
   `celeron-560`, `i5-8350u` y `core2-p8400`, rehechos; el informe del E6400
   con Mint en sesión live es el mismo equipo y no se vuelca):
-  - Memoria · media · con el ayudante · el módulo sin SPD enseña de la BIOS
-    lo que contradice al que se leyó de su chip: en el Vostro, «DDR» y
-    «DIMM» al lado de un DDR2 SODIMM, y «Funcionando a: 800 MT/s» bajo el
-    aviso de que todos van a 667; en el Acer, «DDR3» al lado de un DDR3L. La
-    cabecera los suma («DDR · DDR2 · 667 MT/s · 800 MT/s»). Una placa no
-    mezcla generaciones: el tipo de la BIOS que contradice a un módulo leído
-    de su chip no se enseña, y la velocidad de funcionamiento tampoco si
-    contradice la del conjunto.
   - Gráficos · media · con la GeForce GTX 850M en reposo (nouveau), su ficha
     son 35 filas con guion; la RTX del LOQ en reposo no tiene ninguna. Y la
     HD 4600 dice «Ni Vulkan ni OpenGL usan esta tarjeta» y «Sin bibliotecas

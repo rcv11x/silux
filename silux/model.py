@@ -791,6 +791,47 @@ class MemoryModule:
         return current < rated * (1 - ROUNDING_MARGIN)
 
 
+# The SMBIOS form factors of a slot, by whether they are small outline: a
+# board takes one or the other, never both.
+SMALL_OUTLINE_FORM = {0x09: False, 0x0D: True}
+FULL_SIZE_SPD_FORMS = ("RDIMM", "UDIMM", "LRDIMM")
+
+
+def _small_outline(spd_form: Optional[str]) -> Optional[bool]:
+    if not spd_form:
+        return None
+    if "SO" in spd_form.upper():
+        return True
+    return False if spd_form.upper() in FULL_SIZE_SPD_FORMS else None
+
+
+def firmware_contradicted(module: "MemoryModule", modules) -> frozenset[str]:
+    """What the firmware's table says of a module whose SPD wasn't read and
+    the SPD of the others contradicts: "type", "form" and "running".
+
+    A board doesn't mix generations or slot sizes, and its modules share one
+    clock. With the module's own chip unread the firmware is the only source,
+    and some write an older generation or the desktop form for it.
+    """
+    if module.spd is not None or not module.populated:
+        return frozenset()
+    read = [m for m in modules
+            if m is not module and m.populated and m.spd is not None]
+    found = set()
+    types = {m.spd.dram_type for m in read if m.spd.dram_type}
+    if module.type and types and module.type not in types:
+        found.add("type")
+    small = SMALL_OUTLINE_FORM.get(module.form_factor)
+    forms = {_small_outline(m.spd.module_type) for m in read} - {None}
+    if small is not None and forms and small not in forms:
+        found.add("form")
+    running = module.configured_mts or module.speed_mts
+    others = {m.configured_mts or m.speed_mts for m in read} - {None, 0}
+    if running and others and all(abs(running - o) > o * ROUNDING_MARGIN for o in others):
+        found.add("running")
+    return frozenset(found)
+
+
 @dataclass(frozen=True, slots=True)
 class MemoryArray:
     slots: Optional[int] = None

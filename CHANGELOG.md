@@ -73,6 +73,11 @@ que hace falta.
   igual que el módulo leído de su chip.
 - Memoria: con permisos, la fila «Rangos» de un módulo sale de su chip SPD
   cuando la tabla de la BIOS no los trae, en vez de un guion.
+- Memoria: con permisos, lo que la BIOS dice de un módulo cuyo chip SPD no se
+  pudo leer y contradice al chip del otro (el tipo, el formato o la velocidad
+  a la que va) sale marcado «según la BIOS, no coincide», y no cuenta en la
+  cabecera. Un portátil con dos DDR2 decía «DDR · DDR2 · 667 MT/s ·
+  800 MT/s».
 
 ## 0.4-prueba10 (22 de noviembre de 2026)
 

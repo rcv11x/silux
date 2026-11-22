@@ -25,7 +25,15 @@ from PySide6.QtWidgets import (
 
 from ... import db, kernel, membench, render
 from ...i18n import _
-from ...model import JEDEC_TOP_MTS, MemoryModule, Need, SensorKind, Snapshot, module_numbers
+from ...model import (
+    JEDEC_TOP_MTS,
+    MemoryModule,
+    Need,
+    SensorKind,
+    Snapshot,
+    firmware_contradicted,
+    module_numbers,
+)
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette, ui_font
@@ -611,7 +619,8 @@ class MemoryPage(ScrollPage):
         """
         if snapshot.cpu.types and db.memory_controller_in_chipset(snapshot.cpu.types[0]):
             return None
-        tipos = {m.type for m in snapshot.modules if m.populated and m.type}
+        tipos = {m.type for m in snapshot.modules if m.populated and m.type
+                 and "type" not in firmware_contradicted(m, snapshot.modules)}
         tipos |= {s.dram_type for s in snapshot.spd if s.dram_type}
         marca = snapshot.cpu.types[0].brand if snapshot.cpu.types else ""
         puestos = [m for m in snapshot.modules if m.populated]
@@ -668,13 +677,16 @@ class MemoryPage(ScrollPage):
         modules = [m for m in self._display_modules(snapshot) if m.populated]
         wanted = []
         if modules:
-            tipos = {render.module_type(m) for m in modules if render.module_type(m)}
+            # What the firmware says against the others' SPD isn't counted.
+            contradicted = {id(m): firmware_contradicted(m, modules) for m in modules}
+            tipos = {render.module_type(m) for m in modules
+                     if render.module_type(m) and "type" not in contradicted[id(m)]}
             wanted.extend(sorted(tipos))
             # The speed it runs at when the firmware says it, and else the one
             # it is rated at: «3200 MT/s · al máximo del procesador» was read
             # of memory running at 2933.
             velocidades = {render.memory_speed(m.configured_mts) or m.rated_mts
-                           for m in modules}
+                           for m in modules if "running" not in contradicted[id(m)]}
             velocidades.discard(None)
             wanted.extend(f"{v} MT/s" for v in sorted(velocidades))
             veredictos = {render.memory_module_verdict(m, self._limite) for m in modules}
@@ -813,7 +825,8 @@ class MemoryPage(ScrollPage):
                 grid.add(_(name))
             card.body.addWidget(grid)
             self._fill(grid, module, self._limite,
-                       otro_con_spd=any(o.spd is not None for o in modules if o is not module))
+                       otro_con_spd=any(o.spd is not None for o in modules if o is not module),
+                       contradicted=firmware_contradicted(module, modules))
             # El zócalo: con permisos, el de la tabla del firmware (y lo que
             # puso tal cual, al pasar el ratón); sin ellos, candado.
             if del_spd:
@@ -981,9 +994,10 @@ class MemoryPage(ScrollPage):
 
     @staticmethod
     def _fill(grid: InfoGrid, module: MemoryModule, limite=None,
-              otro_con_spd: bool = False) -> None:
+              otro_con_spd: bool = False, contradicted: frozenset = frozenset()) -> None:
         d = render.DASH
         spd = module.spd
+        mismatch = _("memory.tip.mismatch")
 
         # El del SPD primero: es el código JEDEC del propio módulo, y la tabla
         # del firmware lo escribe a su manera («Crucial Technology»). Con el
@@ -994,9 +1008,13 @@ class MemoryPage(ScrollPage):
         grid.set(_("memory.field.chips"), render.maker(spd.dram_manufacturer if spd else None) or d,
                  tooltip=_("memory.tip.chips"))
         grid.set(_("memory.field.part"), module.part_number or (spd.part_number if spd else None) or d)
-        grid.set(_("memory.field.type"), render.module_type(module) or d,
-                 tooltip=_("memory.tip.ddr3l") if (render.module_type(module) or "").endswith("L")
-                 else "")
+        if "type" in contradicted:
+            grid.set(_("memory.field.type"), render.firmware_mismatch(render.module_type(module)),
+                     tooltip=mismatch)
+        else:
+            grid.set(_("memory.field.type"), render.module_type(module) or d,
+                     tooltip=_("memory.tip.ddr3l")
+                     if (render.module_type(module) or "").endswith("L") else "")
         # La capacidad sale de SMBIOS, que pide permisos, pero el SPD de DDR5
         # la trae en la densidad de sus chips y ese se lee sin pedir nada.
         capacidad = module.size_bytes or (spd.capacity_bytes if spd else None)
@@ -1027,6 +1045,8 @@ class MemoryPage(ScrollPage):
         if crudo_mts and crudo_mts != actual:
             firmware = _("memory.tip.firmware").format(mts=crudo_mts)
             pista = f"{pista}\n\n{firmware}" if pista else firmware
+        if "running" in contradicted:
+            funcionando, pista = render.firmware_mismatch(funcionando), mismatch
         grid.set(_("memory.field.running"), funcionando, tooltip=pista)
 
         rangos = str(module.ranks) if module.ranks else d
@@ -1045,6 +1065,9 @@ class MemoryPage(ScrollPage):
             if module.spd is None and otro_con_spd:
                 motivo += " " + _("memory.tip.soldered.nospd")
             grid.set(_("memory.field.form"), _("memory.form.soldered"), tooltip=motivo)
+        elif "form" in contradicted:
+            grid.set(_("memory.field.form"), render.firmware_mismatch(render.module_form(module)),
+                     tooltip=mismatch)
         else:
             grid.set(_("memory.field.form"), render.module_form(module) or d)
 

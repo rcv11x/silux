@@ -117,6 +117,12 @@ def disk_kinds(disks) -> list[str]:
     return parts
 
 
+def firmware_mismatch(text: str) -> str:
+    """«DDR · según la BIOS, no coincide»: what the firmware's table says of a
+    module that the SPD of the others contradicts (`model.firmware_contradicted`)."""
+    return f"{text} · {_('memory.source.bios.mismatch')}"
+
+
 def memory_rated(module) -> str:
     """«3200 MT/s», saying so when only the firmware's table gives it."""
     if not module.rated_mts:
