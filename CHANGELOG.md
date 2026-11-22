@@ -10,7 +10,13 @@ que hace falta.
 
 ---
 
-## Sin publicar
+## 0.4-prueba9 (22 de noviembre de 2026)
+
+Letra más legible y unidades coherentes: memoria en GiB, discos y red en GB
+decimales como `df -H`, y «Calculando…» en la primera lectura. Y lo que
+trajeron dos informes de la prueba8: la resolución que tiene puesta cada
+monitor, el SPD de una DDR5 que bloquea el cambio de página, los paquetes de
+una Wi-Fi USB que no cuadran y los núcleos P y E en Sensores.
 
 ### Legibilidad y unidades
 
@@ -41,6 +47,8 @@ que hace falta.
   proporción (160 × 90 cm) donde va su tamaño ya no sale de 72".
 - Gráficos: la versión de Mesa de una Intel dice «Mesa» aunque OpenGL sea de
   la NVIDIA; la cabecera ya no repite el nombre en clave en sus etiquetas.
+  Al pasar el ratón por la memoria de video se explica por qué una tarjeta de
+  «16 GB» da 15.9 GiB: lleva 16 GiB y su firmware se queda una parte.
 - Gráficos y Sensores: en un Intel con gráfica integrada, la zona de RAPL que
   el kernel llama «uncore» es la de la gráfica: se llama así, y Gráficos da
   la misma cifra. Por debajo de 10 W, los vatios llevan un decimal en todas
