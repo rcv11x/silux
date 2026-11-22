@@ -56,7 +56,7 @@ class TestOnTheMemoryPage(unittest.TestCase):
             cls.text = "\n".join(pantalla.textos_de(window.stack.currentWidget()))
 
     def test_capacity_speeds_and_the_slowest(self):
-        self.assertIn("12 GB", self.text)
+        self.assertIn("12 GiB", self.text)
         self.assertIn(_("memory.spd.rated.many").format(mts="1333 " + _("list.and") + " 1600"), self.text)
         self.assertIn(_("mem.mixed.rated").format(lento=1333, rapido=1600), self.text)
 

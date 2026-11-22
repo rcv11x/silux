@@ -20,15 +20,15 @@ from tests.test_equipos import EQUIPOS, foto
 class TestCacheSizes(unittest.TestCase):
 
     def test_exact_enough_to_add_up(self):
-        for bytes_, texto in ((1280 * 1024, "1.25 MB"), (48 * 1024, "48 KB"),
-                              (1536 * 1024, "1.5 MB"), (12 * 1024**2, "12 MB"),
-                              (5 * 1024**2, "5 MB")):
+        for bytes_, texto in ((1280 * 1024, "1.25 MiB"), (48 * 1024, "48 KiB"),
+                              (1536 * 1024, "1.5 MiB"), (12 * 1024**2, "12 MiB"),
+                              (5 * 1024**2, "5 MiB")):
             with self.subTest(texto=texto):
                 self.assertEqual(render.cache_size(bytes_), texto)
 
     def test_on_a_dump(self):
         l2 = [c for t in foto(EQUIPOS / "i5-1135g7")[0].cpu.types for c in t.caches if c.level == 2][0]
-        self.assertIn("4 × 1.25 MB", render.cache_summary(l2))
+        self.assertIn("4 × 1.25 MiB", render.cache_summary(l2))
 
 
 class TestDroppedIsNotLost(unittest.TestCase):

@@ -18,16 +18,16 @@ El uso y el consumo, con permisos.
 
 ### Memoria
 
-1003.6 MB de 1.9 GB
+1003.6 MiB de 1.9 GiB
 51 % ocupada
-Aplicaciones 850.0 MB · Caché 988.8 MB · Buffers 8.3 MB · Libre 108.4 MB
+Aplicaciones 850.0 MiB · Caché 988.8 MiB · Buffers 8.3 MiB · Libre 108.4 MiB
 
 ### Almacenamiento
 
-380.1 GB en 3 unidades
+408 GB en 3 unidades
 1 × SSD · 1 × HDD · 1 × Memoria flash
-101.2 GB libres
-Ocupado 85.7 GB · Libre 101.2 GB · Reservado 14.3 GB · Sin montar 178.9 GB
+109 GB libres
+Ocupado 92.0 GB · Libre 109 GB · Reservado 15.3 GB · Sin montar 192 GB
 
 ### Temperaturas
 
@@ -93,9 +93,9 @@ Sin driver de frecuencia no hay gobernador, preferencia de energía, ni mínima 
 
 ### Jerarquía de caché
 
-- L1 datos: 32 KB, 8 vías línea 64 B · 1 hilo
-- L1 instr.: 32 KB, 8 vías línea 64 B · 1 hilo
-- L2: 1 MB, 4 vías línea 64 B · 1 hilo
+- L1 datos: 32 KiB, 8 vías línea 64 B · 1 hilo
+- L1 instr.: 32 KiB, 8 vías línea 64 B · 1 hilo
+- L2: 1 MiB, 4 vías línea 64 B · 1 hilo
 
 ### Juego de instrucciones
 
@@ -124,9 +124,9 @@ MMX · SSE · SSE2 · SSE3 · SSSE3
 
 ## Cachés
 
-1.1 MB de caché en total
+1.1 MiB de caché en total
 3 cachés distintas sobre 1 núcleo y 1 hilo
-L1 datos 32 KB · L1 instr. 32 KB · L2 1 MB
+L1 datos 32 KiB · L1 instr. 32 KiB · L2 1 MiB
 
 ### Quién comparte qué
 
@@ -136,9 +136,9 @@ Cada bloque es una instancia física de caché; su anchura son las CPUs lógicas
 
 | NIVEL | TAMAÑO | Nº | TOTAL | VÍAS | LÍNEA | CONJUNTOS | COMPARTEN |
 |---|---|---|---|---|---|---|---|
-| L1 datos | 32 KB | 1 | 32 KB | 8 | 64 B | 64 | 1 hilo |
-| L1 instr. | 32 KB | 1 | 32 KB | 8 | 64 B | 64 | 1 hilo |
-| L2 | 1 MB | 1 | 1 MB | 4 | 64 B | 4096 | 1 hilo |
+| L1 datos | 32 KiB | 1 | 32 KiB | 8 | 64 B | 64 | 1 hilo |
+| L1 instr. | 32 KiB | 1 | 32 KiB | 8 | 64 B | 64 | 1 hilo |
+| L2 | 1 MiB | 1 | 1 MiB | 4 | 64 B | 4096 | 1 hilo |
 
 ### Vías y conjuntos
 
@@ -212,22 +212,22 @@ El nombre de cada ranura («PCIEX16», «M2A_CPU») está en la tabla del firmwa
 
 ## Memoria
 
-1.9 GB utilizables
+1.9 GiB utilizables
 1 módulo leído de su chip SPD, catalogado a 667 MT/s · el resto, sin chip SPD, se sabe con permisos
 DDR2 · 667 MT/s
-Aplicaciones 850.0 MB · Caché 988.8 MB · Buffers 8.3 MB · Libre 108.4 MB
-Disponible 952.0 MB · sin intercambio
+Aplicaciones 850.0 MiB · Caché 988.8 MiB · Buffers 8.3 MiB · Libre 108.4 MiB
+Disponible 952.0 MiB · sin intercambio
 
 #### Desglose del uso
 
-- Total: 1.9 GB
-- Usada: 1003.6 MB (51 %)
-- Disponible: 952.0 MB
-- Aplicaciones: 850.0 MB
-- Caché: 988.8 MB
-- Buffers: 8.3 MB
-- Compartida: 165.3 MB
-- Libre: 108.4 MB
+- Total: 1.9 GiB
+- Usada: 1003.6 MiB (51 %)
+- Disponible: 952.0 MiB
+- Aplicaciones: 850.0 MiB
+- Caché: 988.8 MiB
+- Buffers: 8.3 MiB
+- Compartida: 165.3 MiB
+- Libre: 108.4 MiB
 - Intercambio: sin swap
 
 En este equipo la memoria la controla el chipset de la placa, no el procesador: hasta qué velocidad llega lo decide la placa.
@@ -238,7 +238,7 @@ En este equipo la memoria la controla el chipset de la placa, no el procesador: 
 - Fabricante: Samsung
 - Referencia: M4 70T2953EZ3-CE6
 - Tipo: DDR2
-- Capacidad: 1 GB
+- Capacidad: 1 GiB
 - Catalogado a: 667 MT/s
 - Funcionando a: (necesita permisos)
 - Rangos: 2
@@ -341,13 +341,13 @@ Una integrada no tiene reguladores de voltaje, ventilador, SoC aparte ni memoria
 
 ## Almacenamiento
 
-380.1 GB en 3 unidades
-85.7 GB ocupados en 1 partición montada
+408 GB en 3 unidades
+92.0 GB ocupados en 1 partición montada
 1 × SSD · 1 × HDD · 1 × Memoria flash
-Ocupado 85.7 GB · Libre 101.2 GB · Reservado 14.3 GB · Sin montar 178.9 GB
+Ocupado 92.0 GB · Libre 109 GB · Reservado 15.3 GB · Sin montar 192 GB
 - Leyendo: 0 B/s (suma de 3 unidades)
 - Escribiendo: 0 B/s (suma de 3 unidades)
-- Espacio libre: 101.2 GB (en 1 partición)
+- Espacio libre: 109 GB (en 1 partición)
 - Más caliente: — (ningún disco publica su temperatura)
 
 ### Estado de los discos
@@ -359,24 +359,24 @@ El ayudante que se lanza solo sabe pedir diagnóstico y leer unas tablas del sis
 
 | UNIDAD | MODELO | TIPO | CAPACIDAD | OCUPADO | TEMPERATURA | LEYENDO | ESCRIBIENDO |
 |---|---|---|---|---|---|---|---|
-| sdc | SSD PLUS 240 GB | SSD | 223.6 GB | 85.7 GB | — | 0 B/s | 0 B/s |
-| sda | ST9160827AS | HDD | 149.1 GB | — | — | 0 B/s | 0 B/s |
-| sdb | Cruzer U | Memoria flash | 7.5 GB | — | — | 0 B/s | 0 B/s |
+| sdc | SSD PLUS 240 GB | SSD | 240 GB | 92.0 GB | — | 0 B/s | 0 B/s |
+| sda | ST9160827AS | HDD | 160 GB | — | — | 0 B/s | 0 B/s |
+| sdb | Cruzer U | Memoria flash | 8.0 GB | — | — | 0 B/s | 0 B/s |
 
 ### Particiones montadas
 
 | PARTICIÓN | SISTEMA | MONTADA EN | TAMAÑO | USADO | LIBRE |
 |---|---|---|---|---|---|
-| sdc1 | ext4 | /media/unidad1 | 201.2 GB | 85.7 GB (43 %) | 101.2 GB |
+| sdc1 | ext4 | /media/unidad1 | 216 GB | 92.0 GB (43 %) | 109 GB |
 
 ### sdc
 
-Ocupado 85.7 GB · Libre 101.2 GB · Reservado 14.3 GB · Sin montar 22.4 GB
+Ocupado 92.0 GB · Libre 109 GB · Reservado 15.3 GB · Sin montar 24.0 GB
 - Modelo: SSD PLUS 240 GB
 - Fabricante: SanDisk
 - Tipo: SSD
 - Conexión: USB
-- Capacidad: 223.6 GB
+- Capacidad: 240 GB
 - Temperatura: (necesita permisos)
 - Horas encendido: (necesita permisos)
 - Escrito en total: (necesita permisos)
@@ -394,7 +394,7 @@ Ocupado 85.7 GB · Libre 101.2 GB · Reservado 14.3 GB · Sin montar 22.4 GB
 - Modelo: ST9160827AS
 - Tipo: HDD
 - Conexión: SATA
-- Capacidad: 149.1 GB
+- Capacidad: 160 GB
 - Temperatura: (necesita permisos)
 - Horas encendido: (necesita permisos)
 - Escrito en total: (necesita permisos)
@@ -414,7 +414,7 @@ El disco no dice su fabricante, ni en su modelo ni en lo que publica el kernel. 
 - Fabricante: SanDisk
 - Tipo: Memoria flash
 - Conexión: USB
-- Capacidad: 7.5 GB
+- Capacidad: 8.0 GB
 - Temperatura: (necesita permisos)
 - Horas encendido: (necesita permisos)
 - Escrito en total: (necesita permisos)
@@ -466,7 +466,7 @@ Ninguna interfaz tiene salida a la red.
 
 | INTERFAZ | BAJANDO | SUBIENDO | RECIBIDO | ENVIADO | PAQUETES | DESCARTADOS |
 |---|---|---|---|---|---|---|
-| lo | 0 B/s | 0 B/s | 296.9 KB | 296.9 KB | 8 534 | 0 |
+| lo | 0 B/s | 0 B/s | 304 kB | 304 kB | 8 534 | 0 |
 
 ### lo
 

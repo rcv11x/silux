@@ -371,7 +371,7 @@ class TestRenderDeGraficos(unittest.TestCase):
 
     def test_resumen_de_memoria(self):
         memoria = GpuMemory(total_bytes=16 * 1024**3, used_bytes=4 * 1024**3)
-        self.assertEqual(render.gpu_memory_summary(memoria), "4 GB de 16 GB   (25 %)")
+        self.assertEqual(render.gpu_memory_summary(memoria), "4 GiB de 16 GiB   (25 %)")
         self.assertEqual(render.gpu_memory_summary(GpuMemory()), render.DASH)
 
     def test_ventana_fija_de_la_bar(self):
@@ -552,7 +552,7 @@ class TestMemoriaQueNoSeConoce(unittest.TestCase):
 
     def test_con_los_dos_se_resume_como_siempre(self):
         memoria = GpuMemory(total_bytes=16 * 1024 ** 3, used_bytes=4 * 1024 ** 3)
-        self.assertEqual(render.gpu_memory_summary(memoria), "4 GB de 16 GB   (25 %)")
+        self.assertEqual(render.gpu_memory_summary(memoria), "4 GiB de 16 GiB   (25 %)")
 
 
 class TestCentinelasDelEnlace(unittest.TestCase):

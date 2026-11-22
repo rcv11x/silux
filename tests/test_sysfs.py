@@ -242,9 +242,9 @@ class TestRyzenDeDosChiplets(unittest.TestCase):
         from silux import render
 
         frase = render.asymmetric_l3(self._tipo())
-        self.assertIn("96 MB", frase)
+        self.assertIn("96 MiB", frase)
         self.assertIn("0-15", frase)
-        self.assertIn("32 MB", frase)
+        self.assertIn("32 MiB", frase)
         self.assertIn("16-31", frase)
 
     def test_el_vcache_lo_confirma_el_nombre_y_no_el_tamaño(self):
@@ -254,7 +254,7 @@ class TestRyzenDeDosChiplets(unittest.TestCase):
 
         self.assertIn("V-Cache", render.asymmetric_l3(self._tipo()))
         sin_marca = render.asymmetric_l3(self._tipo("Procesador genérico"))
-        self.assertIn("96 MB", sin_marca)
+        self.assertIn("96 MiB", sin_marca)
         self.assertNotIn("V-Cache", sin_marca)
 
     def test_un_ryzen_simetrico_no_tiene_nada_que_explicar(self):
@@ -266,5 +266,5 @@ class TestRyzenDeDosChiplets(unittest.TestCase):
     def test_la_etiqueta_de_vcache_sale_del_nombre(self):
         from silux import render
 
-        self.assertEqual(render.vcache(self._tipo()), "3D V-Cache · 96 MB de L3")
+        self.assertEqual(render.vcache(self._tipo()), "3D V-Cache · 96 MiB de L3")
         self.assertIsNone(render.vcache(self._tipo("AMD Ryzen 9 7950X")))

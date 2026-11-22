@@ -57,19 +57,19 @@ class TestElFondoFijo(unittest.TestCase):
         self.assertEqual(cortas, llena)
 
     def test_lo_mas_largo_cabe_entero(self):
-        """La reserva es de verdad la del texto más largo: «1023.9 MB de
+        """La reserva es de verdad la del texto más largo: «1023.9 MiB de
         15.9 GB» no se recorta."""
         pagina = self.seccion()
         self.anchos(pagina, self.con(int(1023.9 * 1024**2), 9.0, 1.0))
         cifra = pagina._sections[0].now._rows[_("gpu.now.vram")][2]
         texto = cifra.text()
-        self.assertIn("1023.9 MB", texto)
+        self.assertIn("1023.9 MiB", texto)
         self.assertGreaterEqual(cifra.width(), cifra.fontMetrics().horizontalAdvance(texto))
 
     def test_los_textos_posibles_incluyen_el_cambio_de_unidad(self):
         textos = render.possible_texts(render.size, 16 * 1024**3)
-        self.assertIn("1023.9 MB", textos)
-        self.assertIn("16 GB", textos)
+        self.assertIn("1023.9 MiB", textos)
+        self.assertIn("16 GiB", textos)
 
 
 if __name__ == "__main__":

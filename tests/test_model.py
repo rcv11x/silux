@@ -137,16 +137,16 @@ class TestFormateoDeTamano(unittest.TestCase):
         self.size = render.size
 
     def test_usa_siempre_la_unidad_mas_grande(self):
-        # 13,9 MB se enseñaban como "14208 KB" porque la división en KB era
+        # 13,9 MiB se enseñaban como "14208 KB" porque la división en KB era
         # exacta y la de MB no.
-        self.assertEqual(self.size(14548992), "13.9 MB")
-        self.assertEqual(self.size(1572864), "1.5 MB")
+        self.assertEqual(self.size(14548992), "13.9 MiB")
+        self.assertEqual(self.size(1572864), "1.5 MiB")
 
     def test_sin_decimales_cuando_sale_redondo(self):
-        self.assertEqual(self.size(12582912), "12 MB")
-        self.assertEqual(self.size(32768), "32 KB")
+        self.assertEqual(self.size(12582912), "12 MiB")
+        self.assertEqual(self.size(32768), "32 KiB")
 
     def test_extremos(self):
         self.assertEqual(self.size(512), "512 B")
-        self.assertEqual(self.size(3 * 1024 ** 3), "3 GB")
+        self.assertEqual(self.size(3 * 1024 ** 3), "3 GiB")
         self.assertEqual(self.size(None), "—")

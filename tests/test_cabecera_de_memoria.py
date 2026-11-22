@@ -93,9 +93,9 @@ class TestInstaladaYUtilizable(unittest.TestCase):
     def test_con_el_spd_dice_las_dos(self):
         from silux import render
         f, titulo = self._titulo("i5-10400")
-        self.assertEqual(titulo, "16 GB instalados · "
+        self.assertEqual(titulo, "16 GiB instalados · "
                          f"{render.size(f.system.memory.total_bytes)} utilizables")
-        self.assertEqual(render.size(f.system.memory.total_bytes), "15.4 GB")
+        self.assertEqual(render.size(f.system.memory.total_bytes), "15.4 GiB")
 
     def test_sin_modulos_ni_spd_solo_la_utilizable(self):
         from silux import render

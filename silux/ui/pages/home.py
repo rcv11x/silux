@@ -436,10 +436,12 @@ class HomePage(ScrollPage):
         tipos = render.disk_kinds(discos)
         self.discos.poner(
             _("home.storage.total.one" if len(discos) == 1
-              else "home.storage.total").format(tam=render.size(total),
+              else "home.storage.total").format(tam=render.decimal_size(total),
                                                 n=len(discos)),
             " · ".join(tipos),
-            _("home.storage.free").format(tam=render.size(libre)))
+            _("home.storage.free").format(tam=render.decimal_size(libre)))
+        self.discos.nombre.setToolTip(render.size(total))
+        self.discos.cifras.setToolTip(render.size(libre))
         _usado, _libre, reservado, swap, sin_montar = render.space(discos, snapshot.system.swaps)
         segmentos = [render.Segment("used", _("home.bar.used"), usado, "accent"),
                      render.Segment("free", _("home.bar.free"), libre, "line")]
@@ -452,7 +454,8 @@ class HomePage(ScrollPage):
         if sin_montar:
             segmentos.append(render.Segment("unmounted", _("home.bar.unmounted"), sin_montar,
                                             "muted"))
-        self.discos.barra.set_segments(segmentos, total=total, formatter=render.size)
+        self.discos.barra.set_segments(segmentos, total=total, formatter=render.decimal_size,
+                                       hover=render.size)
 
 
     def _temperaturas(self, snapshot: Snapshot) -> None:

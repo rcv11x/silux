@@ -15,16 +15,16 @@ QEMU Standard VGA
 
 ### Memoria
 
-427.5 MB de 3.8 GB
+427.5 MiB de 3.8 GiB
 11 % ocupada
-Aplicaciones 206.2 MB · Caché 773.5 MB · Buffers 34.6 MB · Libre 2.8 GB
+Aplicaciones 206.2 MiB · Caché 773.5 MiB · Buffers 34.6 MiB · Libre 2.8 GiB
 
 ### Almacenamiento
 
-32 GB en 1 unidad
+34.4 GB en 1 unidad
 1 × Virtual
-28.8 GB libres
-Ocupado 2.6 GB · Libre 28.8 GB · Reservado 593.6 MB
+30.9 GB libres
+Ocupado 2.8 GB · Libre 30.9 GB · Reservado 622 MB
 
 ### Temperaturas
 
@@ -77,10 +77,10 @@ Es un procesador virtual: lo que declara lo decide el hipervisor, así que no se
 
 ### Jerarquía de caché
 
-- L1 datos: 4 × 32 KB, 8 vías línea 64 B · 1 hilo
-- L1 instr.: 4 × 32 KB, 8 vías línea 64 B · 1 hilo
-- L2: 4 × 4 MB, 16 vías línea 64 B · 1 hilo
-- L3: 16 MB, 16 vías línea 64 B · 4 hilos
+- L1 datos: 4 × 32 KiB, 8 vías línea 64 B · 1 hilo
+- L1 instr.: 4 × 32 KiB, 8 vías línea 64 B · 1 hilo
+- L2: 4 × 4 MiB, 16 vías línea 64 B · 1 hilo
+- L3: 16 MiB, 16 vías línea 64 B · 4 hilos
 
 ### Juego de instrucciones
 
@@ -97,9 +97,9 @@ MMX · SSE · SSE2 · SSE3 · SSSE3 · SSE4.1 · SSE4.2 · AES-NI
 
 ## Cachés
 
-32.2 MB de caché en total
+32.2 MiB de caché en total
 4 cachés distintas sobre 4 núcleos y 4 hilos
-L1 datos 128 KB · L1 instr. 128 KB · L2 16 MB · L3 16 MB
+L1 datos 128 KiB · L1 instr. 128 KiB · L2 16 MiB · L3 16 MiB
 Las declara el hipervisor: no tienen por qué ser las del procesador de verdad.
 
 ### Quién comparte qué
@@ -110,10 +110,10 @@ Cada bloque es una instancia física de caché; su anchura son las CPUs lógicas
 
 | NIVEL | TAMAÑO | Nº | TOTAL | VÍAS | LÍNEA | CONJUNTOS | COMPARTEN |
 |---|---|---|---|---|---|---|---|
-| L1 datos | 32 KB | 4 | 128 KB | 8 | 64 B | 64 | 1 hilo |
-| L1 instr. | 32 KB | 4 | 128 KB | 8 | 64 B | 64 | 1 hilo |
-| L2 | 4 MB | 4 | 16 MB | 16 | 64 B | 4096 | 1 hilo |
-| L3 | 16 MB | 1 | 16 MB | 16 | 64 B | 16384 | 4 hilos |
+| L1 datos | 32 KiB | 4 | 128 KiB | 8 | 64 B | 64 | 1 hilo |
+| L1 instr. | 32 KiB | 4 | 128 KiB | 8 | 64 B | 64 | 1 hilo |
+| L2 | 4 MiB | 4 | 16 MiB | 16 | 64 B | 4096 | 1 hilo |
+| L3 | 16 MiB | 1 | 16 MiB | 16 | 64 B | 16384 | 4 hilos |
 
 ### Vías y conjuntos
 
@@ -174,21 +174,21 @@ Su identificación PCI da el nombre en clave del chipset, no un modelo comercial
 
 ## Memoria
 
-3.8 GB utilizables
+3.8 GiB utilizables
 Memoria de una máquina virtual: no hay módulos que leer
-Aplicaciones 206.2 MB · Caché 773.5 MB · Buffers 34.6 MB · Libre 2.8 GB
-Disponible 3.4 GB · sin intercambio
+Aplicaciones 206.2 MiB · Caché 773.5 MiB · Buffers 34.6 MiB · Libre 2.8 GiB
+Disponible 3.4 GiB · sin intercambio
 
 #### Desglose del uso
 
-- Total: 3.8 GB
-- Usada: 427.5 MB (11 %)
-- Disponible: 3.4 GB
-- Aplicaciones: 206.2 MB
-- Caché: 773.5 MB
-- Buffers: 34.6 MB
-- Compartida: 572 KB
-- Libre: 2.8 GB
+- Total: 3.8 GiB
+- Usada: 427.5 MiB (11 %)
+- Disponible: 3.4 GiB
+- Aplicaciones: 206.2 MiB
+- Caché: 773.5 MiB
+- Buffers: 34.6 MiB
+- Compartida: 572 KiB
+- Libre: 2.8 GiB
 - Intercambio: sin swap
 
 ### Ancho de banda y latencia
@@ -252,35 +252,35 @@ Tampoco temperaturas, voltajes, ventilador ni consumo.
 
 ## Almacenamiento
 
-32 GB en 1 unidad
-2.6 GB ocupados en 2 particiones montadas
+34.4 GB en 1 unidad
+2.8 GB ocupados en 2 particiones montadas
 1 × Virtual
-Ocupado 2.6 GB · Libre 28.8 GB · Reservado 593.6 MB
+Ocupado 2.8 GB · Libre 30.9 GB · Reservado 622 MB
 - Leyendo: 0 B/s (suma de 1 unidad)
 - Escribiendo: 0 B/s (suma de 1 unidad)
-- Espacio libre: 28.8 GB (en 2 particiones)
+- Espacio libre: 30.9 GB (en 2 particiones)
 - Más caliente: — (ningún disco publica su temperatura)
 
 ### Unidades
 
 | UNIDAD | MODELO | TIPO | CAPACIDAD | OCUPADO | TEMPERATURA | LEYENDO | ESCRIBIENDO |
 |---|---|---|---|---|---|---|---|
-| sda | QEMU HARDDISK | Virtual | 32 GB | 2.6 GB | — | 0 B/s | 0 B/s |
+| sda | QEMU HARDDISK | Virtual | 34.4 GB | 2.8 GB | — | 0 B/s | 0 B/s |
 
 ### Particiones montadas
 
 | PARTICIÓN | SISTEMA | MONTADA EN | TAMAÑO | USADO | LIBRE |
 |---|---|---|---|---|---|
-| sda1 | ext4 | / | 31.9 GB | 2.6 GB (8 %) | 28.7 GB |
-| sda15 | vfat | /boot/efi | 124 MB | 8.9 MB (7 %) | 114.8 MB |
+| sda1 | ext4 | / | 34.2 GB | 2.8 GB (8 %) | 30.8 GB |
+| sda15 | vfat | /boot/efi | 130 MB | 9.3 MB (7 %) | 120 MB |
 
 ### sda
 
-Ocupado 2.6 GB · Libre 28.8 GB · Reservado 593.6 MB
+Ocupado 2.8 GB · Libre 30.9 GB · Reservado 622 MB
 - Modelo: QEMU HARDDISK
 - Tipo: Virtual
 - Conexión: SATA
-- Capacidad: 32 GB
+- Capacidad: 34.4 GB
 
 Es un disco virtual: no tiene temperatura, horas, lo escrito ni desgaste propios, y lo que contestaría a un diagnóstico se lo inventa el hipervisor.
 
@@ -299,8 +299,8 @@ Intel 82540EM Gigabit Ethernet Controller · 1 Gb/s · dúplex completo
 puerta 192.168.1.1 · 1 de 1 activas
 - Bajando: 0 B/s (ninguno descartado)
 - Subiendo: 0 B/s
-- Recibido: 109.8 MB (79 087 paquetes)
-- Enviado: 881.5 KB (6 177 paquetes)
+- Recibido: 115 MB (79 087 paquetes)
+- Enviado: 903 kB (6 177 paquetes)
 
 ### Tráfico por interfaz
 
@@ -308,7 +308,7 @@ puerta 192.168.1.1 · 1 de 1 activas
 
 | INTERFAZ | BAJANDO | SUBIENDO | RECIBIDO | ENVIADO | PAQUETES | DESCARTADOS |
 |---|---|---|---|---|---|---|
-| ens4 | 0 B/s | 0 B/s | 109.8 MB | 881.5 KB | 85 264 | 0 |
+| ens4 | 0 B/s | 0 B/s | 115 MB | 903 kB | 85 264 | 0 |
 
 ### ens4
 
@@ -329,7 +329,7 @@ puerta 192.168.1.1 · 1 de 1 activas
 
 | INTERFAZ | BAJANDO | SUBIENDO | RECIBIDO | ENVIADO | PAQUETES | DESCARTADOS |
 |---|---|---|---|---|---|---|
-| lo | 0 B/s | 0 B/s | 6.9 KB | 6.9 KB | 172 | 0 |
+| lo | 0 B/s | 0 B/s | 7.1 kB | 7.1 kB | 172 | 0 |
 
 ### lo
 

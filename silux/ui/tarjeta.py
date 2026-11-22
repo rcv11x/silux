@@ -96,7 +96,7 @@ def _fila(snapshot: Snapshot) -> list[tuple[str, str, str]]:
                 tipos[disco.kind] = tipos.get(disco.kind, 0) + 1
         detalle = " · ".join(f"{n} × {k}" for k, n in sorted(tipos.items()))
         filas.append((_("nav.storage"),
-                      _("share.units").format(tam=render.size(total),
+                      _("share.units").format(tam=render.decimal_size(total),
                                               n=len(snapshot.disks)),
                       detalle))
 

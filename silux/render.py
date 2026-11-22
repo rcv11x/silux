@@ -194,20 +194,33 @@ def hz(value: Optional[float], decimals: int | None = None) -> str:
 
 
 def size(value: Optional[int]) -> str:
-    """Always in the largest unit that applies.
-
-    Preferring the unit the division came out exact in showed 13.9 MB of
-    total cache as "14208 KB".
+    """Memory, video memory and caches, which come in powers of two: «15.9
+    GiB», «512 MiB», with their own symbols so they aren't read as a disk's
+    GB. Always in the largest unit that applies: preferring the one the
+    division came out exact in showed 13.9 MiB of cache as «14208 KiB».
     """
     if _none(value):
         return DASH
     value = int(value)
-    # Terabytes came with disks: until then the largest unit seen was RAM,
-    # and «8849.3 GB» of total storage isn't read, it's counted.
-    for unit, factor in (("TB", 1024**4), ("GB", 1024**3), ("MB", 1024**2), ("KB", 1024)):
+    for unit, factor in (("TiB", 1024**4), ("GiB", 1024**3), ("MiB", 1024**2), ("KiB", 1024)):
         if value >= factor:
             scaled = value / factor
             return f"{int(scaled)} {unit}" if scaled.is_integer() else f"{scaled:.1f} {unit}"
+    return f"{value} B"
+
+
+def decimal_size(value: Optional[int]) -> str:
+    """Disks, partitions, what a filesystem holds and what crosses a network,
+    in decimal units as a disk is sold and `df -H` writes: «512 GB», «2.0 TB».
+    One family per block: a 1 TB disk with «418 GiB used» didn't add up.
+    Three figures at most; `size` gives the binary one for the tooltip."""
+    if _none(value):
+        return DASH
+    value = int(value)
+    for unit, factor in (("TB", 1000**4), ("GB", 1000**3), ("MB", 1000**2), ("kB", 1000)):
+        if value >= factor:
+            scaled = value / factor
+            return f"{scaled:.{0 if scaled >= 100 else 1}f} {unit}"
     return f"{value} B"
 
 
@@ -324,11 +337,11 @@ def load_average(values: tuple[float, ...], threads: int = 0) -> str:
 
 
 def cache_size(value: Optional[int]) -> str:
-    """«1.25 MB»: a cache's size with the decimals it needs, so that «4 ×
-    1.25 MB» adds up to the 5 MB of the level."""
+    """«1.25 MiB»: a cache's size with the decimals it needs, so that «4 ×
+    1.25 MiB» adds up to the 5 MiB of the level."""
     if _none(value):
         return DASH
-    for unit, factor in (("MB", 1024**2), ("KB", 1024)):
+    for unit, factor in (("MiB", 1024**2), ("KiB", 1024)):
         if value >= factor:
             scaled = value / factor
             for digits in (0, 1, 2):
@@ -339,7 +352,7 @@ def cache_size(value: Optional[int]) -> str:
 
 
 def cache_summary(cache: Cache) -> str:
-    """«6 × 32 KB, 8 vías»: how a cache hierarchy reads."""
+    """«6 × 32 KiB, 8 vías»: how a cache hierarchy reads."""
     parts = [cache_size(cache.size_bytes)]
     if cache.instances > 1:
         parts[0] = f"{cache.instances} × {parts[0]}"
@@ -349,8 +362,8 @@ def cache_summary(cache: Cache) -> str:
 
 
 def caches_summary(caches) -> str:
-    """One row for all the caches of a level: «2 × 32 MB, 16 vías», or
-    «96 MB + 32 MB, 16 vías» when the level is not the same everywhere, as in
+    """One row for all the caches of a level: «2 × 32 MiB, 16 vías», or
+    «96 MiB + 32 MiB, 16 vías» when the level is not the same everywhere, as in
     a Ryzen with V-Cache on one of its two chiplets."""
     if len(caches) == 1:
         return cache_summary(caches[0])
@@ -636,8 +649,8 @@ def rate(value: Optional[float], bits: bool = False) -> str:
     (a «gigabit» link is a billion bits per second), and following it makes
     the two units match each other and what a speed test shows, exactly eight
     times. With powers of 1024 it would come out 976 and nobody would see
-    where the difference comes from. Accumulated totals do use 1024, like
-    the rest of the program, since their reference is the disk, not the cable.
+    where the difference comes from. Accumulated totals are decimal too
+    (`decimal_size`), like the disks they end up on.
     """
     if _none(value):
         return DASH
@@ -655,7 +668,7 @@ def traffic_summary(traffic: NetworkTraffic) -> str:
     """«↓ 1.2 GB · ↑ 456 MB», the history since the interface came up."""
     if not traffic.total_bytes:
         return DASH
-    return f"↓ {size(traffic.rx_bytes)}   ↑ {size(traffic.tx_bytes)}"
+    return f"↓ {decimal_size(traffic.rx_bytes)}   ↑ {decimal_size(traffic.tx_bytes)}"
 
 
 def interface_state(interface: NetworkInterface) -> str:
@@ -1257,7 +1270,7 @@ def smart_rows(health) -> list[tuple[str, str]]:
             ("smart.cycles", health.power_cycles), ("smart.unsafe", health.unsafe_shutdowns),
             ("smart.mediaerrors", health.media_errors),
             ("smart.spare", f"{health.spare_percent} %" if health.spare_percent is not None else None),
-            ("smart.read", size(health.read_bytes) if health.read_bytes else None),
+            ("smart.read", decimal_size(health.read_bytes) if health.read_bytes else None),
             ("smart.warning", None if health.critical_warning is None
              else _("smart.warning.none") if health.critical_warning == 0
              else f"0x{health.critical_warning:02x}")):

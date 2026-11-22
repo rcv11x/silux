@@ -1,10 +1,11 @@
 """«Reservado» says what it is.
 
-On the 5800X3D's storage bar it reads «Reservado 89.9 GB», which jars:
+On the 5800X3D's storage bar it reads «Reservado 96.5 GB», which jars:
 it is the space ext4 keeps for root and its own tables. On hover, the
 segment and its legend say so, in Almacenamiento and in Inicio.
 """
 
+import re
 import unittest
 
 from silux.i18n import _
@@ -27,10 +28,14 @@ class TestTheReservedSpaceExplainsItself(unittest.TestCase):
 
     def _check(self, barra):
         insignias = {w.text().split("  ")[0]: w.toolTip() for w in barra._legend._widgets}
-        self.assertEqual(insignias[_("storage.bar.reserved")], _("storage.bar.reserved.tip"))
-        # The others have nothing to explain.
-        self.assertEqual({k: v for k, v in insignias.items() if v},
-                         {_("storage.bar.reserved"): _("storage.bar.reserved.tip")})
+        reservado = _("storage.bar.reserved")
+        # Its figure in GiB, as every chip's, and what it is.
+        self.assertRegex(insignias[reservado],
+                         rf"^\d+(\.\d)? GiB\n\n{re.escape(_('storage.bar.reserved.tip'))}$")
+        # The others have nothing to explain: only their GiB.
+        for nombre, ayuda in insignias.items():
+            if nombre != reservado:
+                self.assertRegex(ayuda, r"^\d+(\.\d)? [KMGT]iB$")
         # And over the bar, the segment under the pointer.
         x = next(x for x in range(barra.width())
                  if (tramo := barra._tramo_en(x)) and tramo.key == "reserved")

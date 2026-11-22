@@ -19,16 +19,16 @@ El uso y el consumo, con permisos.
 
 ### Memoria
 
-1.2 GB de 7.6 GB
+1.2 GiB de 7.6 GiB
 16 % ocupada
-Aplicaciones 1000.9 MB · Caché 1.1 GB · Buffers 72.8 MB · Libre 5.4 GB
+Aplicaciones 1000.9 MiB · Caché 1.1 GiB · Buffers 72.8 MiB · Libre 5.4 GiB
 
 ### Almacenamiento
 
-353.7 GB en 2 unidades
+380 GB en 2 unidades
 1 × SSD · 1 × Memoria flash
-62.8 GB libres
-Ocupado 33.0 GB · Libre 62.8 GB · Reservado 121.9 GB · Intercambio 4.5 GB · Sin montar 131.5 GB
+67.4 GB libres
+Ocupado 35.4 GB · Libre 67.4 GB · Reservado 131 GB · Intercambio 4.9 GB · Sin montar 141 GB
 
 ### Temperaturas
 
@@ -109,9 +109,9 @@ intel_cpufreq no ofrece preferencia de energía: la dan intel_pstate en modo act
 
 ### Jerarquía de caché
 
-- L1 datos: 2 × 24 KB, 6 vías línea 64 B · 1 hilo
-- L1 instr.: 2 × 32 KB, 8 vías línea 64 B · 1 hilo
-- L2: 4 MB, 16 vías línea 64 B · 2 hilos
+- L1 datos: 2 × 24 KiB, 6 vías línea 64 B · 1 hilo
+- L1 instr.: 2 × 32 KiB, 8 vías línea 64 B · 1 hilo
+- L2: 4 MiB, 16 vías línea 64 B · 2 hilos
 
 ### Juego de instrucciones
 
@@ -136,9 +136,9 @@ MMX · SSE · SSE2 · SSE3 · SSSE3 · SSE4.1 · SSE4.2 · AES-NI · SHA · CLMU
 
 ## Cachés
 
-4.1 MB de caché en total
+4.1 MiB de caché en total
 3 cachés distintas sobre 2 núcleos y 2 hilos
-L1 datos 48 KB · L1 instr. 64 KB · L2 4 MB
+L1 datos 48 KiB · L1 instr. 64 KiB · L2 4 MiB
 
 ### Quién comparte qué
 
@@ -148,9 +148,9 @@ Cada bloque es una instancia física de caché; su anchura son las CPUs lógicas
 
 | NIVEL | TAMAÑO | Nº | TOTAL | VÍAS | LÍNEA | CONJUNTOS | COMPARTEN |
 |---|---|---|---|---|---|---|---|
-| L1 datos | 24 KB | 2 | 48 KB | 6 | 64 B | 64 | 1 hilo |
-| L1 instr. | 32 KB | 2 | 64 KB | 8 | 64 B | 64 | 1 hilo |
-| L2 | 4 MB | 1 | 4 MB | 16 | 64 B | 4096 | 2 hilos |
+| L1 datos | 24 KiB | 2 | 48 KiB | 6 | 64 B | 64 | 1 hilo |
+| L1 instr. | 32 KiB | 2 | 64 KiB | 8 | 64 B | 64 | 1 hilo |
+| L2 | 4 MiB | 1 | 4 MiB | 16 | 64 B | 4096 | 2 hilos |
 
 ### Vías y conjuntos
 
@@ -220,22 +220,22 @@ El nombre de cada ranura («PCIEX16», «M2A_CPU») está en la tabla del firmwa
 
 ## Memoria
 
-7.6 GB utilizables
+7.6 GiB utilizables
 El detalle por módulo necesita permisos de administrador
-Aplicaciones 1000.9 MB · Caché 1.1 GB · Buffers 72.8 MB · Libre 5.4 GB
-Disponible 6.4 GB · intercambio 0 B de 8.3 GB
+Aplicaciones 1000.9 MiB · Caché 1.1 GiB · Buffers 72.8 MiB · Libre 5.4 GiB
+Disponible 6.4 GiB · intercambio 0 B de 8.3 GiB
 
 #### Desglose del uso
 
-- Total: 7.6 GB
-- Usada: 1.2 GB (16 %)
-- Disponible: 6.4 GB
-- Aplicaciones: 1000.9 MB
-- Caché: 1.1 GB
-- Buffers: 72.8 MB
-- Compartida: 103.5 MB
-- Libre: 5.4 GB
-- Intercambio: 8.3 GB
+- Total: 7.6 GiB
+- Usada: 1.2 GiB (16 %)
+- Disponible: 6.4 GiB
+- Aplicaciones: 1000.9 MiB
+- Caché: 1.1 GiB
+- Buffers: 72.8 MiB
+- Compartida: 103.5 MiB
+- Libre: 5.4 GiB
+- Intercambio: 8.3 GiB
 - Intercambio usado: 0 B (0 %)
 
 ### Ancho de banda y latencia
@@ -299,7 +299,7 @@ i915 no cuenta unidades de rasterizado ni motores de sombreado: el recuento de I
 
 ### Memoria de video
 
-- Memoria del sistema (GTT): hasta 5.7 GB
+- Memoria del sistema (GTT): hasta 5.7 GiB
 
 Una integrada no tiene memoria propia: usa la del sistema, así que no hay tipo, bus, ancho de banda, tasa de datos ni Resizable BAR que contar.
 
@@ -357,13 +357,13 @@ Una integrada no tiene reguladores de voltaje, ventilador, SoC aparte ni memoria
 
 ## Almacenamiento
 
-353.7 GB en 2 unidades
-33.0 GB ocupados en 3 particiones montadas
+380 GB en 2 unidades
+35.4 GB ocupados en 3 particiones montadas
 1 × SSD · 1 × Memoria flash
-Ocupado 33.0 GB · Libre 62.8 GB · Reservado 121.9 GB · Intercambio 4.5 GB · Sin montar 131.5 GB
+Ocupado 35.4 GB · Libre 67.4 GB · Reservado 131 GB · Intercambio 4.9 GB · Sin montar 141 GB
 - Leyendo: 0 B/s (suma de 2 unidades)
 - Escribiendo: 0 B/s (suma de 2 unidades)
-- Espacio libre: 62.8 GB (en 2 particiones)
+- Espacio libre: 67.4 GB (en 2 particiones)
 - Más caliente: — (ningún disco publica su temperatura)
 
 ### Estado de los discos
@@ -375,25 +375,25 @@ El ayudante que se lanza solo sabe pedir diagnóstico y leer unas tablas del sis
 
 | UNIDAD | MODELO | TIPO | CAPACIDAD | OCUPADO | TEMPERATURA | LEYENDO | ESCRIBIENDO |
 |---|---|---|---|---|---|---|---|
-| sda | SAMSUNG MZ7LN256 | SSD | 238.5 GB | 33.0 GB | — | 0 B/s | 0 B/s |
-| sdb | DataTraveler 3.0 | Memoria flash | 115.2 GB | — | — | 0 B/s | 0 B/s |
+| sda | SAMSUNG MZ7LN256 | SSD | 256 GB | 35.4 GB | — | 0 B/s | 0 B/s |
+| sdb | DataTraveler 3.0 | Memoria flash | 124 GB | — | — | 0 B/s | 0 B/s |
 
 ### Particiones montadas
 
 | PARTICIÓN | SISTEMA | MONTADA EN | TAMAÑO | USADO | LIBRE |
 |---|---|---|---|---|---|
-| sda4 | ext4 | / | 93.1 GB | 33.0 GB (35 %) | 53.5 GB |
-| sda6 | vfat | /boot/efi | 9.3 GB | 9.1 MB (0 %) | 9.3 GB |
-| sdb1 | exfat | /media/unidad1 | 115.2 GB | — | — |
+| sda4 | ext4 | / | 100.0 GB | 35.4 GB (35 %) | 57.4 GB |
+| sda6 | vfat | /boot/efi | 10.0 GB | 9.5 MB (0 %) | 10.0 GB |
+| sdb1 | exfat | /media/unidad1 | 124 GB | — | — |
 
 ### sda
 
-Ocupado 33.0 GB · Libre 62.8 GB · Reservado 6.7 GB · Intercambio 4.5 GB · Sin montar 131.5 GB
+Ocupado 35.4 GB · Libre 67.4 GB · Reservado 7.2 GB · Intercambio 4.9 GB · Sin montar 141 GB
 - Modelo: SAMSUNG MZ7LN256
 - Fabricante: Samsung
 - Tipo: SSD
 - Conexión: SATA
-- Capacidad: 238.5 GB
+- Capacidad: 256 GB
 - Temperatura: (necesita permisos)
 - Horas encendido: (necesita permisos)
 - Escrito en total: (necesita permisos)
@@ -413,7 +413,7 @@ Ocupado 33.0 GB · Libre 62.8 GB · Reservado 6.7 GB · Intercambio 4.5 GB · Si
 - Fabricante: Kingston
 - Tipo: Memoria flash
 - Conexión: USB
-- Capacidad: 115.2 GB
+- Capacidad: 124 GB
 - Temperatura: (necesita permisos)
 - Horas encendido: (necesita permisos)
 - Escrito en total: (necesita permisos)
@@ -433,8 +433,8 @@ Intel Dual Band Wireless-AC 3165 Plus Bluetooth
 puerta 192.168.1.1 · 1 de 2 activas
 - Bajando: 0 B/s (3 paquetes descartados)
 - Subiendo: 0 B/s
-- Recibido: 8.3 KB (105 paquetes)
-- Enviado: 8.3 KB (66 paquetes)
+- Recibido: 8.5 kB (105 paquetes)
+- Enviado: 8.5 kB (66 paquetes)
 
 ### Tráfico por interfaz
 
@@ -442,7 +442,7 @@ puerta 192.168.1.1 · 1 de 2 activas
 
 | INTERFAZ | BAJANDO | SUBIENDO | RECIBIDO | ENVIADO | PAQUETES | DESCARTADOS |
 |---|---|---|---|---|---|---|
-| wlp2s0 | 0 B/s | 0 B/s | 8.3 KB | 8.3 KB | 171 | 3 |
+| wlp2s0 | 0 B/s | 0 B/s | 8.5 kB | 8.5 kB | 171 | 3 |
 | enp3s0 | 0 B/s | 0 B/s | 0 B | 0 B | 0 | 0 |
 
 ### wlp2s0
@@ -473,7 +473,7 @@ puerta 192.168.1.1 · 1 de 2 activas
 
 | INTERFAZ | BAJANDO | SUBIENDO | RECIBIDO | ENVIADO | PAQUETES | DESCARTADOS |
 |---|---|---|---|---|---|---|
-| lo | 0 B/s | 0 B/s | 8.5 KB | 8.5 KB | 198 | 0 |
+| lo | 0 B/s | 0 B/s | 8.7 kB | 8.7 kB | 198 | 0 |
 
 ### lo
 
@@ -591,8 +591,8 @@ Esta distribución no declara variante.
 
 ### Intercambio
 
-- /dev/sda7 (partición): 0 B de 4.5 GB · prioridad -1
-- zram0 (en memoria): 0 B de 3.8 GB · lz4 · comprime 64.0 a 1 · prioridad 100
+- /dev/sda7 (partición): 0 B de 4.5 GiB · prioridad -1
+- zram0 (en memoria): 0 B de 3.8 GiB · lz4 · comprime 64.0 a 1 · prioridad 100
 
 ### Arranque
 

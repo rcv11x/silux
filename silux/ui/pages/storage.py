@@ -44,6 +44,8 @@ DISK_HEADERS = ("storage.col.unit", "storage.col.model", "gpu.vram.type", "stora
 PART_HEADERS = ("storage.col.part", "storage.col.fs", "storage.col.mount", "storage.col.size2", "storage.col.used2", "storage.col.free")
 
 # Dónde va la temperatura en la tabla de unidades (`DISK_HEADERS`).
+COLUMNA_CAPACIDAD = 3
+COLUMNA_OCUPADO = 4
 COLUMNA_TEMPERATURA = 5
 
 # Qué disco es y cómo está: lo que se mira. La salud va detrás de la
@@ -176,7 +178,7 @@ class StoragePage(ScrollPage):
         # cifras de grados (también en Fahrenheit).
         for tile in (self.tile_read, self.tile_write):
             tile.reserve(render.possible_texts(render.rate, 16e9))
-        self.tile_free.reserve(render.possible_texts(render.size, 1024 ** 5))
+        self.tile_free.reserve(render.possible_texts(render.decimal_size, 1000 ** 5))
         self.tile_temp.reserve([render.figure(999)])
         # El espacio libre no se mueve de un segundo a otro: su curva sería una
         # recta que no dice nada.
@@ -315,12 +317,14 @@ class StoragePage(ScrollPage):
         usado = sum(x.used_bytes or 0 for x in discos)
         self.title.setText(_("storage.title.one" if len(discos) == 1
                              else "storage.title").format(
-            tam=render.size(total), n=len(discos)))
+            tam=render.decimal_size(total), n=len(discos)))
+        self.title.setToolTip(render.size(total))
         montadas = sum(len(x.mounted_partitions) for x in discos)
         self.subtitle.setText(
             _("storage.subtitle.one" if montadas == 1
-              else "storage.subtitle").format(tam=render.size(usado), n=montadas)
+              else "storage.subtitle").format(tam=render.decimal_size(usado), n=montadas)
         )
+        self.subtitle.setToolTip(render.size(usado))
 
         chips = []
         chips.extend(render.disk_kinds(discos))
@@ -336,7 +340,8 @@ class StoragePage(ScrollPage):
             # las particiones montadas; el resto del disco es otra cosa y se
             # dice aparte.
             self.total_bar.set_segments(
-                self._segmentos(discos), total=total, formatter=render.size)
+                self._segmentos(discos), total=total, formatter=render.decimal_size,
+                hover=render.size)
             self.total_bar.show()
         else:
             self.total_bar.hide()
@@ -374,7 +379,8 @@ class StoragePage(ScrollPage):
 
         libres = [p.free_bytes for x in discos for p in x.mounted_partitions
                   if p.free_bytes is not None]
-        self.tile_free.update_value(render.size(sum(libres)) if libres else render.DASH)
+        self.tile_free.update_value(render.decimal_size(sum(libres)) if libres else render.DASH)
+        self.tile_free.setToolTip(render.size(sum(libres)) if libres else "")
         # Also cleared: with the last mounted partition gone, its count stayed.
         self.tile_free.set_detail(
             _("storage.tile.inparts.one" if len(libres) == 1
@@ -405,8 +411,8 @@ class StoragePage(ScrollPage):
             (x.name,
              (x.model or d)[:30],
              render.disk_kind(x.kind),
-             render.size(x.size_bytes),
-             render.size(x.used_bytes) if x.used_bytes else d,
+             render.decimal_size(x.size_bytes),
+             render.decimal_size(x.used_bytes) if x.used_bytes else d,
              render.temperature(x.temp_c, self._prefs.fahrenheit),
              render.rate(x.io.read_rate_bps),
              render.rate(x.io.write_rate_bps))
@@ -415,17 +421,25 @@ class StoragePage(ScrollPage):
         for fila, x in enumerate(discos):
             self.disks.set_cell_tooltip(fila, COLUMNA_TEMPERATURA,
                                         self._por_que_sin_temperatura(x))
+            # The binary figures on hover, as the capacity in a disk's card.
+            self.disks.set_cell_tooltip(fila, COLUMNA_CAPACIDAD, render.size(x.size_bytes))
+            self.disks.set_cell_tooltip(fila, COLUMNA_OCUPADO,
+                                        render.size(x.used_bytes) if x.used_bytes else "")
 
         filas = [
             (p.name, p.filesystem or d, p.mountpoint or d,
-             render.size(p.size_bytes),
-             _("sys.value.pct").format(valor=render.size(p.used_bytes),
+             render.decimal_size(p.size_bytes),
+             _("sys.value.pct").format(valor=render.decimal_size(p.used_bytes),
                                        pct=f"{p.used_percent:.0f}")
              if p.used_percent is not None else d,
-             render.size(p.free_bytes))
+             render.decimal_size(p.free_bytes))
             for x in discos for p in x.mounted_partitions
         ]
         self.parts.set_rows(filas or [(_("storage.nomounted"), d, d, d, d, d)])
+        montadas = [p for x in discos for p in x.mounted_partitions]
+        for fila, p in enumerate(montadas):
+            for columna, valor in ((3, p.size_bytes), (4, p.used_bytes), (5, p.free_bytes)):
+                self.parts.set_cell_tooltip(fila, columna, render.size(valor) if valor else "")
 
     def _apply_cards(self, discos) -> None:
         nombres = tuple(x.name for x in discos)
@@ -490,7 +504,7 @@ class StoragePage(ScrollPage):
             # The same split as the bar above: the rest of the disk was all
             # «Libre» here, and above it was not.
             barra.set_segments(self._segmentos([disco]), total=disco.size_bytes,
-                               formatter=render.size)
+                               formatter=render.decimal_size, hover=render.size)
             barra.show()
         else:
             barra.hide()
@@ -505,7 +519,8 @@ class StoragePage(ScrollPage):
         kind_unknown = disco.kind is None and disco.transport == "usb"
         grid.set_visible(_("gpu.vram.type"), not kind_unknown)
         f(_("storage.field.bus"), render.disk_bus(disco.transport))
-        f(_("storage.col.size"), render.size(disco.size_bytes))
+        f(_("storage.col.size"), render.decimal_size(disco.size_bytes),
+          tooltip=render.size(disco.size_bytes))
         # El enlace PCIe es del NVMe. Un SATA no tiene uno propio —negocia su
         # controladora, que comparte con los demás—, así que ahí la fila no
         # es un dato que falte: no existe, y no sale.
@@ -538,7 +553,8 @@ class StoragePage(ScrollPage):
 
         salud = disco.health
         g("storage.field.hours", f"{render.thousands(salud.power_on_hours)} h" if salud.power_on_hours else d)
-        g("storage.field.written", render.size(salud.written_bytes) if salud.written_bytes else d,
+        g("storage.field.written",
+          render.decimal_size(salud.written_bytes) if salud.written_bytes else d,
           tooltip=_("storage.tip.written"))
         g("storage.field.life",
           f"{salud.life_left_percent} %" if salud.life_left_percent is not None else d,

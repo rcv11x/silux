@@ -231,7 +231,7 @@ class NetworkPage(ScrollPage):
         for tile in (self.tile_down, self.tile_up):
             tile.reserve(ritmos)
         for tile in (self.tile_rx, self.tile_tx):
-            tile.reserve(render.possible_texts(render.size, 1024 ** 5))
+            tile.reserve(render.possible_texts(render.decimal_size, 1000 ** 5))
         # Las dos de totales no llevan gráfica: son contadores que solo suben,
         # y su curva sería siempre la misma recta sin decir nada.
         self.tile_rx.chart.hide()
@@ -313,8 +313,8 @@ class NetworkPage(ScrollPage):
                                     series=Series(f"net:{interfaz}/down", "B/s", enlace))
         self.tile_up.update_value(render.rate(subida, self._bits), subida,
                                   series=Series(f"net:{interfaz}/up", "B/s", enlace))
-        self.tile_rx.update_value(render.size(trafico.rx_bytes) if trafico else render.DASH)
-        self.tile_tx.update_value(render.size(trafico.tx_bytes) if trafico else render.DASH)
+        self.tile_rx.update_value(render.decimal_size(trafico.rx_bytes) if trafico else render.DASH)
+        self.tile_tx.update_value(render.decimal_size(trafico.tx_bytes) if trafico else render.DASH)
 
         if trafico:
             self.tile_rx.set_detail(_("net.packets2").format(
@@ -361,8 +361,8 @@ class NetworkPage(ScrollPage):
             (interfaz.name,
              render.rate(interfaz.traffic.rx_rate_bps, self._bits),
              render.rate(interfaz.traffic.tx_rate_bps, self._bits),
-             render.size(interfaz.traffic.rx_bytes),
-             render.size(interfaz.traffic.tx_bytes),
+             render.decimal_size(interfaz.traffic.rx_bytes),
+             render.decimal_size(interfaz.traffic.tx_bytes),
              render.thousands(interfaz.traffic.rx_packets + interfaz.traffic.tx_packets),
              render.thousands(interfaz.traffic.dropped)
              + (" " + _("net.errors.short").format(n=render.thousands(interfaz.traffic.errors))

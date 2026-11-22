@@ -10,6 +10,19 @@ que hace falta.
 
 ---
 
+## Sin publicar
+
+### Legibilidad y unidades
+
+- Un punto más de letra en la densidad normal, y los valores en seminegrita
+  junto a sus etiquetas en gris.
+- La memoria, la memoria de video y las cachés llevan su símbolo binario:
+  «15.9 GiB», «8 × 32 KiB».
+- Los discos, las particiones y lo que pasa por la red van en decimal, como
+  los vende el fabricante y como escribe `df -H`: un disco de 1 TB dice
+  «1.0 TB», no «931.5 GB», y lo ocupado y lo libre suman lo que dice. Los GiB,
+  al pasar el ratón. Ninguna tarjeta mezcla ya las dos familias.
+
 ## 0.4-prueba8 (22 de noviembre de 2026)
 
 Con informes de Felix Lara.

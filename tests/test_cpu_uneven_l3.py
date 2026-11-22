@@ -70,15 +70,15 @@ class TestTheCpuPage(unittest.TestCase):
         self.assertEqual(sorted(c.size_bytes >> 20 for c in caches), [32, 96])
         text, tip, rows = self._l3_row(caches, "AMD Ryzen 9 7950X3D 16-Core Processor")
         self.assertEqual(rows.count(_("cache.label.unified").format(n=3)), 1)
-        self.assertIn("96 MB + 32 MB", text)
-        self.assertIn(_("cache.l3.part").format(tam="96 MB", donde="0, 1"), tip)
-        self.assertIn(_("cache.l3.part").format(tam="32 MB", donde="2, 3"), tip)
+        self.assertIn("96 MiB + 32 MiB", text)
+        self.assertIn(_("cache.l3.part").format(tam="96 MiB", donde="0, 1"), tip)
+        self.assertIn(_("cache.l3.part").format(tam="32 MiB", donde="2, 3"), tip)
 
     def test_two_equal_ccds_are_two_times_one(self):
         caches = _caches((32, 32))
         self.assertEqual(len(caches), 1)
         text, _tip, _rows = self._l3_row(caches, "AMD Ryzen 9 5950X 16-Core Processor")
-        self.assertIn("2 × 32 MB", text)
+        self.assertIn("2 × 32 MiB", text)
 
 
 if __name__ == "__main__":

@@ -148,7 +148,7 @@ class TestElProveedor(unittest.TestCase):
         self.assertEqual(swap.ratio, 3.4)
         self.assertEqual(render.swap_name(swap), "zram0 (en memoria)")
         self.assertEqual(render.swap_summary(swap),
-                         "10.9 MB de 31.3 GB · zstd · comprime 3.4 a 1 · prioridad 100")
+                         "10.9 MiB de 31.3 GiB · zstd · comprime 3.4 a 1 · prioridad 100")
 
     def test_un_archivo_de_intercambio(self):
         archivos = dict(EQUIPO)
@@ -218,7 +218,7 @@ class TestEnLaPagina(unittest.TestCase):
             pagina = self._pagina(ventana)
             self.assertEqual({n: e.full_text() for n, e in pagina.swap._values.items()},
                              {"zram0 (en memoria)":
-                              "10.9 MB de 31.3 GB · zstd · comprime 3.4 a 1 · prioridad 100"})
+                              "10.9 MiB de 31.3 GiB · zstd · comprime 3.4 a 1 · prioridad 100"})
             self.assertEqual(self._fases(pagina),
                              {"Firmware": "13.3 s", "Cargador": "5.3 s", "Total": "18.6 s"})
             self.assertEqual(pagina.boot._values[_("sys.boot.loader")].full_text(),

@@ -18,16 +18,16 @@ integrada · DDR4 · PCIe 3.0 × 16 · 3 unidades de cómputo
 
 ### Memoria
 
-1.5 GB de 3.3 GB
+1.5 GiB de 3.3 GiB
 45 % ocupada
-Aplicaciones 1.3 GB · Caché 1.1 GB · Buffers 64.0 MB · Libre 918.4 MB
+Aplicaciones 1.3 GiB · Caché 1.1 GiB · Buffers 64.0 MiB · Libre 918.4 MiB
 
 ### Almacenamiento
 
-581.0 GB en 2 unidades
+624 GB en 2 unidades
 1 × HDD · 1 × Memoria flash
-426.5 GB libres
-Ocupado 7.6 GB · Libre 426.5 GB · Reservado 146.8 GB
+458 GB libres
+Ocupado 8.2 GB · Libre 458 GB · Reservado 158 GB
 
 ### Temperaturas
 
@@ -101,10 +101,10 @@ Sin driver de frecuencia no hay gobernador, preferencia de energía, ni mínima 
 
 ### Jerarquía de caché
 
-- L1 datos: 2 × 32 KB, 8 vías línea 64 B · 2 hilos
-- L1 instr.: 2 × 64 KB, 4 vías línea 64 B · 2 hilos
-- L2: 2 × 512 KB, 8 vías línea 64 B · 2 hilos
-- L3: 4 MB, 16 vías línea 64 B · 4 hilos
+- L1 datos: 2 × 32 KiB, 8 vías línea 64 B · 2 hilos
+- L1 instr.: 2 × 64 KiB, 4 vías línea 64 B · 2 hilos
+- L2: 2 × 512 KiB, 8 vías línea 64 B · 2 hilos
+- L3: 4 MiB, 16 vías línea 64 B · 4 hilos
 
 ### Juego de instrucciones
 
@@ -133,9 +133,9 @@ SMT · MMX · SSE · SSE2 · SSE3 · SSSE3 · SSE4.1 · SSE4.2 · SSE4A · AVX �
 
 ## Cachés
 
-5.2 MB de caché en total
+5.2 MiB de caché en total
 4 cachés distintas sobre 2 núcleos y 4 hilos
-L1 datos 64 KB · L1 instr. 128 KB · L2 1 MB · L3 4 MB
+L1 datos 64 KiB · L1 instr. 128 KiB · L2 1 MiB · L3 4 MiB
 
 ### Quién comparte qué
 
@@ -145,10 +145,10 @@ Cada bloque es una instancia física de caché; su anchura son las CPUs lógicas
 
 | NIVEL | TAMAÑO | Nº | TOTAL | VÍAS | LÍNEA | CONJUNTOS | COMPARTEN |
 |---|---|---|---|---|---|---|---|
-| L1 datos | 32 KB | 2 | 64 KB | 8 | 64 B | 64 | 2 hilos |
-| L1 instr. | 64 KB | 2 | 128 KB | 4 | 64 B | 256 | 2 hilos |
-| L2 | 512 KB | 2 | 1 MB | 8 | 64 B | 1024 | 2 hilos |
-| L3 | 4 MB | 1 | 4 MB | 16 | 64 B | 4096 | 4 hilos |
+| L1 datos | 32 KiB | 2 | 64 KiB | 8 | 64 B | 64 | 2 hilos |
+| L1 instr. | 64 KiB | 2 | 128 KiB | 4 | 64 B | 256 | 2 hilos |
+| L2 | 512 KiB | 2 | 1 MiB | 8 | 64 B | 1024 | 2 hilos |
+| L3 | 4 MiB | 1 | 4 MiB | 16 | 64 B | 4096 | 4 hilos |
 
 ### Vías y conjuntos
 
@@ -212,22 +212,22 @@ El nombre de cada ranura («PCIEX16», «M2A_CPU») está en la tabla del firmwa
 
 ## Memoria
 
-4 GB instalados · 3.3 GB utilizables
+4 GiB instalados · 3.3 GiB utilizables
 1 módulo leído de su chip SPD, catalogado a 2400 MT/s · el zócalo y a cuánto va, con permisos
 DDR4 · 2400 MT/s
-Aplicaciones 1.3 GB · Caché 1.1 GB · Buffers 64.0 MB · Libre 918.4 MB
-Disponible 1.8 GB · sin intercambio
+Aplicaciones 1.3 GiB · Caché 1.1 GiB · Buffers 64.0 MiB · Libre 918.4 MiB
+Disponible 1.8 GiB · sin intercambio
 
 #### Desglose del uso
 
-- Total: 3.3 GB
-- Usada: 1.5 GB (45 %)
-- Disponible: 1.8 GB
-- Aplicaciones: 1.3 GB
-- Caché: 1.1 GB
-- Buffers: 64.0 MB
-- Compartida: 53.4 MB
-- Libre: 918.4 MB
+- Total: 3.3 GiB
+- Usada: 1.5 GiB (45 %)
+- Disponible: 1.8 GiB
+- Aplicaciones: 1.3 GiB
+- Caché: 1.1 GiB
+- Buffers: 64.0 MiB
+- Compartida: 53.4 MiB
+- Libre: 918.4 MiB
 - Intercambio: sin swap
 
 ### Módulo 1
@@ -237,7 +237,7 @@ Disponible 1.8 GB · sin intercambio
 - Chips: Micron
 - Referencia: RMUA5120MB86H9F2400
 - Tipo: DDR4
-- Capacidad: 4 GB
+- Capacidad: 4 GiB
 - Catalogado a: 2400 MT/s
 - Funcionando a: (necesita permisos)
 - Rangos: 1
@@ -271,14 +271,14 @@ El ayudante que se lanza solo sabe leer esa tabla y unos registros del procesado
 
 AMD Radeon Vega 3 Graphics
 MSI · Picasso/Raven 2 · PCIe 3.0 × 16
-Picasso/Raven 2 · amdgpu · Mesa 26.3.1 · 512 MB · 3 CU · integrada · principal
+Picasso/Raven 2 · amdgpu · Mesa 26.3.1 · 512 MiB · 3 CU · integrada · principal
 - Uso: 15 %
 - Frecuencia: 400 MHz (memoria 933 MHz)
 - Temperatura: 30 °C
 
 ### Ahora mismo
 
-- Memoria de video: 266.4 MB de 512 MB · 52 %
+- Memoria de video: 266.4 MiB de 512 MiB · 52 %
 - Render / 3D: 15 %
 
 Esta gráfica no publica cuánto se usa su motor de video.
@@ -304,14 +304,14 @@ Esta gráfica no publica cuánto se usa su motor de video.
 
 ### Memoria de video
 
-- Total: 512 MB
+- Total: 512 MiB
 - Tipo: DDR4
 - Bus: 64 bits
 - Ancho de banda: 19 GB/s
 - Tasa de datos: 2.4 Gbps
-- Visible por la CPU: 512 MB
+- Visible por la CPU: 512 MiB
 - Resizable BAR: activo
-- Memoria del sistema (GTT): 124.2 MB de 1.6 GB
+- Memoria del sistema (GTT): 124.2 MiB de 1.6 GiB
 
 amdgpu no publica chips de esta tarjeta.
 
@@ -366,13 +366,13 @@ Los reguladores de voltaje y el ventilador son de una tarjeta aparte: esta se al
 
 ## Almacenamiento
 
-581.0 GB en 2 unidades
-7.6 GB ocupados en 3 particiones montadas
+624 GB en 2 unidades
+8.2 GB ocupados en 3 particiones montadas
 1 × HDD · 1 × Memoria flash
-Ocupado 7.6 GB · Libre 426.5 GB · Reservado 146.8 GB
+Ocupado 8.2 GB · Libre 458 GB · Reservado 158 GB
 - Leyendo: 0 B/s (suma de 2 unidades)
 - Escribiendo: 0 B/s (suma de 2 unidades)
-- Espacio libre: 426.5 GB (en 2 particiones)
+- Espacio libre: 458 GB (en 2 particiones)
 - Más caliente: — (ningún disco publica su temperatura)
 
 ### Estado de los discos
@@ -384,25 +384,25 @@ El ayudante que se lanza solo sabe pedir diagnóstico y leer unas tablas del sis
 
 | UNIDAD | MODELO | TIPO | CAPACIDAD | OCUPADO | TEMPERATURA | LEYENDO | ESCRIBIENDO |
 |---|---|---|---|---|---|---|---|
-| sda | WDC WD5000LPVX-0 | HDD | 465.8 GB | 7.6 GB | — | 0 B/s | 0 B/s |
-| sdb | DataTraveler 3.0 | Memoria flash | 115.2 GB | — | — | 0 B/s | 0 B/s |
+| sda | WDC WD5000LPVX-0 | HDD | 500 GB | 8.2 GB | — | 0 B/s | 0 B/s |
+| sdb | DataTraveler 3.0 | Memoria flash | 124 GB | — | — | 0 B/s | 0 B/s |
 
 ### Particiones montadas
 
 | PARTICIÓN | SISTEMA | MONTADA EN | TAMAÑO | USADO | LIBRE |
 |---|---|---|---|---|---|
-| sda1 | vfat | /boot | 1 GB | 80.3 MB (8 %) | 941.7 MB |
-| sda2 | ext4 | / | 464.8 GB | 7.6 GB (2 %) | 425.6 GB |
-| sdb1 | exfat | /media/unidad1 | 115.2 GB | — | — |
+| sda1 | vfat | /boot | 1.1 GB | 84.2 MB (8 %) | 987 MB |
+| sda2 | ext4 | / | 499 GB | 8.1 GB (2 %) | 457 GB |
+| sdb1 | exfat | /media/unidad1 | 124 GB | — | — |
 
 ### sda
 
-Ocupado 7.6 GB · Libre 426.5 GB · Reservado 31.6 GB
+Ocupado 8.2 GB · Libre 458 GB · Reservado 34.0 GB
 - Modelo: WDC WD5000LPVX-0
 - Fabricante: Western Digital
 - Tipo: HDD
 - Conexión: SATA
-- Capacidad: 465.8 GB
+- Capacidad: 500 GB
 - Temperatura: (necesita permisos)
 - Horas encendido: (necesita permisos)
 - Escrito en total: (necesita permisos)
@@ -422,7 +422,7 @@ Un disco de platos no tiene «vida restante»: es el desgaste de las celdas de u
 - Fabricante: Kingston
 - Tipo: Memoria flash
 - Conexión: USB
-- Capacidad: 115.2 GB
+- Capacidad: 124 GB
 - Temperatura: (necesita permisos)
 - Horas encendido: (necesita permisos)
 - Escrito en total: (necesita permisos)
@@ -442,8 +442,8 @@ Realtek RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller · 1 Gb/s
 puerta 192.168.1.1 · 1 de 1 activas
 - Bajando: 0 B/s (ninguno descartado)
 - Subiendo: 0 B/s
-- Recibido: 9.4 KB (77 paquetes)
-- Enviado: 11.0 KB (85 paquetes)
+- Recibido: 9.6 kB (77 paquetes)
+- Enviado: 11.3 kB (85 paquetes)
 
 ### Tráfico por interfaz
 
@@ -451,7 +451,7 @@ puerta 192.168.1.1 · 1 de 1 activas
 
 | INTERFAZ | BAJANDO | SUBIENDO | RECIBIDO | ENVIADO | PAQUETES | DESCARTADOS |
 |---|---|---|---|---|---|---|
-| enp37s0 | 0 B/s | 0 B/s | 9.4 KB | 11.0 KB | 162 | 0 |
+| enp37s0 | 0 B/s | 0 B/s | 9.6 kB | 11.3 kB | 162 | 0 |
 
 ### enp37s0
 

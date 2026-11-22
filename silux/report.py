@@ -316,7 +316,7 @@ def _storage(snapshot: Snapshot) -> str:
         bus = render.disk_bus(disk.transport) if disk.transport else None
         kind = " · ".join(p for p in (disk.kind, bus if bus != disk.kind else None)
                           if p) or "—"
-        lines.append(f"- Tipo: {kind} · {render.size(disk.size_bytes)}")
+        lines.append(f"- Tipo: {kind} · {render.decimal_size(disk.size_bytes)}")
         if disk.firmware:
             lines.append(f"- Firmware: {disk.firmware}")
         # Only NVMe disks have a link: on SATA the controller negotiates, and
@@ -377,9 +377,9 @@ def _disk_health(health) -> list[str]:
 
     traffic = []
     if health.written_bytes is not None:
-        traffic.append(f"{render.size(health.written_bytes)} escritos")
+        traffic.append(f"{render.decimal_size(health.written_bytes)} escritos")
     if health.read_bytes is not None:
-        traffic.append(f"{render.size(health.read_bytes)} leídos")
+        traffic.append(f"{render.decimal_size(health.read_bytes)} leídos")
     if traffic:
         lines.append("- Total: " + " · ".join(traffic))
 
@@ -415,7 +415,7 @@ def _partitions(disk) -> str:
         free = sum(p.free_bytes for p in mounted if p.free_bytes is not None)
         filesystems = sorted({p.filesystem for p in mounted if p.filesystem})
         plural = "montada" if len(mounted) == 1 else "montadas"
-        summary += (f" ({len(mounted)} {plural}, {render.size(free)} libres"
+        summary += (f" ({len(mounted)} {plural}, {render.decimal_size(free)} libres"
                     + (f", {', '.join(filesystems)}" if filesystems else "") + ")")
     return summary
 

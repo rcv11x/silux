@@ -2629,7 +2629,9 @@ class StackedBar(QWidget):
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
     def set_segments(self, segments: list[render.Segment], total: float,
-                     formatter=None) -> None:
+                     formatter=None, hover=None) -> None:
+        """`hover`: the same value in other units, on each chip's tooltip
+        (a disk's GiB under its GB)."""
         self._segments = list(segments)
         self._total = total or 1.0
         a_la_vista = self.isVisible()
@@ -2646,7 +2648,8 @@ class StackedBar(QWidget):
         self._legend.set_chips(
             (f"{s.label}  {self._formatter(s.value)}" for s in visibles),
             swatches=[(self._color(s.token), borde) for s in visibles],
-            tooltips=[s.tooltip for s in visibles],
+            tooltips=["\n\n".join(t for t in (hover(s.value) if hover else "", s.tooltip) if t)
+                      for s in visibles],
         )
         self._reservar_alto()
         self._repintar_la_barra()

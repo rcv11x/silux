@@ -181,10 +181,17 @@ class TestEnlacePcie(BancoDeDiscos):
 
 class TestFormatoDeTamanos(unittest.TestCase):
     def test_los_discos_se_miden_en_terabytes(self):
-        # Con la RAM nunca hizo falta, y un total de «8849.3 GB» no se lee.
-        self.assertEqual(render.size(2 * 1024**4), "2 TB")
-        self.assertEqual(render.size(int(1.8 * 1024**4)), "1.8 TB")
-        self.assertEqual(render.size(500 * 1024**3), "500 GB")
+        # Un total de «8849.3 GB» no se lee.
+        self.assertEqual(render.decimal_size(2 * 1000**4), "2.0 TB")
+        self.assertEqual(render.decimal_size(500 * 1000**3), "500 GB")
+
+    def test_decimal_like_df_h_with_three_figures(self):
+        # A 1 TB disk is sold as 1 TB: 931.5 was its GiB with the GB symbol.
+        self.assertEqual(render.decimal_size(1_000_204_886_016), "1.0 TB")
+        self.assertEqual(render.decimal_size(449_000_000_000), "449 GB")
+        self.assertEqual(render.decimal_size(85_700_000_000), "85.7 GB")
+        self.assertEqual(render.decimal_size(525_000), "525 kB")
+        self.assertEqual(render.decimal_size(None), "—")
 
 
 class TestSalud(unittest.TestCase):
@@ -572,7 +579,7 @@ class TestElNombreDelBus(unittest.TestCase):
         from tests.test_equipos import EQUIPOS, foto
 
         texto = report.build(foto(EQUIPOS / "5800x3d")[0])
-        self.assertIn("- Tipo: NVMe · 931.5 GB", texto)
+        self.assertIn("- Tipo: NVMe · 1.0 TB", texto)
         self.assertIn("- Tipo: HDD · SATA · ", texto)
         self.assertNotIn("· nvme", texto)
 
