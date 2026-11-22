@@ -123,6 +123,16 @@
    "vaapi": [],
    "vulkan": [
     {
+     "api_version": "1.4.305",
+     "device_id": 18083,
+     "device_memory_bytes": 8243134464,
+     "driver_version": 104857607,
+     "instance_version": "1.4.309",
+     "kind": "integrada",
+     "name": "Intel(R) Graphics (ADL GT2)",
+     "vendor_id": 32902
+    },
+    {
      "api_version": "1.3.277",
      "device_id": 10465,
      "device_memory_bytes": 6439305216,
@@ -135,14 +145,25 @@
     {
      "api_version": "1.4.305",
      "device_id": 0,
-     "device_memory_bytes": 16486260736,
+     "device_memory_bytes": 16486268928,
      "driver_version": 1,
      "instance_version": "1.4.309",
      "kind": "CPU",
      "name": "llvmpipe (LLVM 19.1.7, 256 bits)",
      "vendor_id": 65541
     }
-   ]
+   ],
+   "vulkan_icds": [
+    "libvulkan_gfxstream.so",
+    "libvulkan_intel_hasvk.so",
+    "libvulkan_intel.so",
+    "libvulkan_lvp.so",
+    "libvulkan_nouveau.so",
+    "libGLX_nvidia.so.0",
+    "libvulkan_radeon.so",
+    "libvulkan_virtio.so"
+   ],
+   "vulkan_rejected": []
   }
  },
  "i915": {
@@ -165,7 +186,7 @@
   "tarjetas": [
    {
     "busy_percent": 0.0,
-    "core_hz": 2130000000,
+    "core_hz": 435000000,
     "core_max_hz": 3105000000,
     "cuda_cores": 2560,
     "decode_busy_percent": 0.0,
@@ -173,30 +194,31 @@
     "encode_busy_percent": 0.0,
     "fan_percent": null,
     "index": 0,
-    "link_generation": 4,
+    "link_generation": 2,
     "link_width": 8,
     "max_link_generation": 4,
     "max_link_width": 8,
     "memory_bus_bits": 96,
     "memory_busy_percent": 0.0,
-    "memory_hz": 7000000000,
+    "memory_hz": 810000000,
     "memory_max_hz": 8001000000,
     "memory_total_bytes": 6439305216,
     "memory_used_bytes": 255655936,
     "name": "NVIDIA GeForce RTX 4050 Laptop GPU",
     "pci_slot": "0000:01:00.0",
+    "power_cap_default_w": 60.0,
+    "power_cap_max_w": 95.0,
+    "power_cap_min_w": 5.0,
     "power_cap_w": 60.0,
-    "power_w": 3.7,
+    "power_error": null,
+    "power_w": 3.0,
     "serial": null,
-    "temp_c": 33.0,
-    "throttle_reasons": [
-     "gpu.throttle.nv.swpower",
-     "gpu.throttle.nv.swthermal"
-    ],
-    "throttled": true,
+    "temp_c": 28.0,
+    "throttle_reasons": [],
+    "throttled": false,
     "uuid": "0000000000000000000000000000000000000000",
     "vbios": "95.07.22.00.15",
-    "video_hz": 1935000000
+    "video_hz": 765000000
    }
   ]
  },
@@ -290,17 +312,20 @@
  },
  "plataforma": {
   "entorno": {
+   "DESKTOP_SESSION": null,
+   "DISPLAY": ":0",
+   "GDMSESSION": null,
    "SHELL": "/bin/bash",
+   "WAYLAND_DISPLAY": "wayland-0",
    "XDG_CURRENT_DESKTOP": "LordOS",
    "XDG_SESSION_TYPE": "wayland"
   },
   "kvm": true,
   "machine": "x86_64",
-  "procesos": 340,
+  "procesos": 331,
   "uname": {
    "machine": "x86_64",
    "node": "silux-pc",
-   "processor": "",
    "release": "6.12.117+deb13-amd64",
    "system": "Linux",
    "version": "#1 SMP PREEMPT_DYNAMIC Debian 6.12.117-1 (2026-11-12)"
@@ -312,8 +337,8 @@
  },
  "statvfs": {
   "/": [
-   19391135744,
-   457405423616
+   20140412928,
+   456656146432
   ],
   "/boot/efi": [
    8548352,
@@ -322,9 +347,9 @@
  },
  "systemd": {
   "arranque": {
-   "FinishTimestampMonotonic": 8509779,
+   "FinishTimestampMonotonic": 8459612,
    "InitRDTimestampMonotonic": 0,
-   "UserspaceTimestampMonotonic": 3160898
+   "UserspaceTimestampMonotonic": 2852538
   }
  }
 }

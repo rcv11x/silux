@@ -35,6 +35,9 @@ _MESA_RELEASE = re.compile(r"Mesa\s+(\d+\.\d+\.\d+)")
 # Which Mesa driver answers, as each API's name for the card says it:
 # Vulkan's «(RADV GFX1201)», OpenGL's «(radeonsi, gfx1201, …)».
 _VULKAN_IMPLEMENTATION = re.compile(r"\((RADV|NVK|TU|V3DV|PANVK)\b")
+# Kernel drivers whose cards no Vulkan driver but Mesa's drives. Intel's
+# (ANV, hasvk) don't name themselves in the card's name.
+_ONLY_MESA_VULKAN = ("i915", "xe")
 _GL_IMPLEMENTATION = re.compile(r"\(([a-z][a-z0-9_]*)[,)]")
 _ISA = re.compile(r"\b(gfx\d{3,4}[a-z]?)\b", re.I)
 _NVIDIA_VERSION = re.compile(r"NVIDIA\s+(\d+\.\d+(?:\.\d+)?)")
@@ -156,7 +159,9 @@ class GpuApis(Provider):
                 mesa = next((m.group(1) for a in own if a.name == "OpenGL"
                              and (m := _MESA_RELEASE.search(f"Mesa {a.driver or ''}"))
                              and "Mesa" in (opengl or {}).get("version", "")), None)
-                if mesa is None and any(a.name == "Vulkan" and a.implementation for a in own):
+                if mesa is None and any(a.name == "Vulkan" and (
+                        a.implementation or gpu.get("driver") in _ONLY_MESA_VULKAN)
+                        for a in own):
                     mesa = next(a.driver for a in own if a.name == "Vulkan")
                 if mesa and not gpu.get("driver_version"):
                     # The version the libraries give is Mesa's, not the kernel module's.

@@ -4,8 +4,8 @@ cpu family	: 6
 model		: 154
 model name	: 12th Gen Intel(R) Core(TM) i5-12450H
 stepping	: 3
-microcode	: 0x43a
-cpu MHz		: 1174.490
+microcode	: 0x43b
+cpu MHz		: 782.374
 cache size	: 12288 KB
 physical id	: 0
 siblings	: 12
@@ -32,8 +32,8 @@ cpu family	: 6
 model		: 154
 model name	: 12th Gen Intel(R) Core(TM) i5-12450H
 stepping	: 3
-microcode	: 0x43a
-cpu MHz		: 1108.628
+microcode	: 0x43b
+cpu MHz		: 400.000
 cache size	: 12288 KB
 physical id	: 0
 siblings	: 12
@@ -60,8 +60,8 @@ cpu family	: 6
 model		: 154
 model name	: 12th Gen Intel(R) Core(TM) i5-12450H
 stepping	: 3
-microcode	: 0x43a
-cpu MHz		: 1172.022
+microcode	: 0x43b
+cpu MHz		: 701.293
 cache size	: 12288 KB
 physical id	: 0
 siblings	: 12
@@ -88,7 +88,7 @@ cpu family	: 6
 model		: 154
 model name	: 12th Gen Intel(R) Core(TM) i5-12450H
 stepping	: 3
-microcode	: 0x43a
+microcode	: 0x43b
 cpu MHz		: 400.000
 cache size	: 12288 KB
 physical id	: 0
@@ -116,8 +116,8 @@ cpu family	: 6
 model		: 154
 model name	: 12th Gen Intel(R) Core(TM) i5-12450H
 stepping	: 3
-microcode	: 0x43a
-cpu MHz		: 953.488
+microcode	: 0x43b
+cpu MHz		: 535.826
 cache size	: 12288 KB
 physical id	: 0
 siblings	: 12
@@ -144,8 +144,8 @@ cpu family	: 6
 model		: 154
 model name	: 12th Gen Intel(R) Core(TM) i5-12450H
 stepping	: 3
-microcode	: 0x43a
-cpu MHz		: 1061.588
+microcode	: 0x43b
+cpu MHz		: 400.000
 cache size	: 12288 KB
 physical id	: 0
 siblings	: 12
@@ -172,7 +172,7 @@ cpu family	: 6
 model		: 154
 model name	: 12th Gen Intel(R) Core(TM) i5-12450H
 stepping	: 3
-microcode	: 0x43a
+microcode	: 0x43b
 cpu MHz		: 400.000
 cache size	: 12288 KB
 physical id	: 0
@@ -200,7 +200,7 @@ cpu family	: 6
 model		: 154
 model name	: 12th Gen Intel(R) Core(TM) i5-12450H
 stepping	: 3
-microcode	: 0x43a
+microcode	: 0x43b
 cpu MHz		: 400.000
 cache size	: 12288 KB
 physical id	: 0
@@ -228,7 +228,7 @@ cpu family	: 6
 model		: 154
 model name	: 12th Gen Intel(R) Core(TM) i5-12450H
 stepping	: 3
-microcode	: 0x43a
+microcode	: 0x43b
 cpu MHz		: 400.000
 cache size	: 12288 KB
 physical id	: 0
@@ -256,8 +256,8 @@ cpu family	: 6
 model		: 154
 model name	: 12th Gen Intel(R) Core(TM) i5-12450H
 stepping	: 3
-microcode	: 0x43a
-cpu MHz		: 1196.095
+microcode	: 0x43b
+cpu MHz		: 799.997
 cache size	: 12288 KB
 physical id	: 0
 siblings	: 12
@@ -284,8 +284,8 @@ cpu family	: 6
 model		: 154
 model name	: 12th Gen Intel(R) Core(TM) i5-12450H
 stepping	: 3
-microcode	: 0x43a
-cpu MHz		: 1137.614
+microcode	: 0x43b
+cpu MHz		: 400.000
 cache size	: 12288 KB
 physical id	: 0
 siblings	: 12
@@ -312,8 +312,8 @@ cpu family	: 6
 model		: 154
 model name	: 12th Gen Intel(R) Core(TM) i5-12450H
 stepping	: 3
-microcode	: 0x43a
-cpu MHz		: 400.000
+microcode	: 0x43b
+cpu MHz		: 800.078
 cache size	: 12288 KB
 physical id	: 0
 siblings	: 12

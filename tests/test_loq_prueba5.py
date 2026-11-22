@@ -1,9 +1,10 @@
-"""What a Lenovo LOQ 15IRH8 laptop's prueba5 report showed, on its dump.
+"""What a Lenovo LOQ 15IRH8 laptop's reports showed, on its dump.
 
 A hybrid laptop: an Intel UHD inside the processor and an NVIDIA RTX 4050
 with the proprietary driver, one battery the kernel calls BAT1 and held at
 its charge limit, and a memory controller whose counters the helper could
-not open.
+not open. The dump is from its prueba8 report; what its prueba5 report
+answered and the new one doesn't goes in `PRUEBA5_VULKAN`.
 """
 
 import unittest
@@ -17,6 +18,44 @@ from tests import pantalla, qt
 from tests.test_equipos import EQUIPOS, foto
 
 DUMP = EQUIPOS / "i5-12450h"
+
+# Its Vulkan in the prueba5 report: the NVIDIA and llvmpipe, with no Intel
+# driver for the UHD, and no list of the installed drivers (that came later).
+# By prueba8 Mesa's was installed.
+PRUEBA5_VULKAN = [
+    {"api_version": "1.3.277", "device_id": 10465, "device_memory_bytes": 6439305216,
+     "driver_version": 2309537856, "instance_version": "1.4.309", "kind": "dedicada",
+     "name": "NVIDIA GeForce RTX 4050 Laptop GPU", "vendor_id": 4318},
+    {"api_version": "1.4.305", "device_id": 0, "device_memory_bytes": 16486260736,
+     "driver_version": 1, "instance_version": "1.4.309", "kind": "CPU",
+     "name": "llvmpipe (LLVM 19.1.7, 256 bits)", "vendor_id": 65541},
+]
+
+
+def _as_in_prueba5(root, **answers):
+    """The dump mounted at `root` with Vulkan answering as in prueba5."""
+    import json
+    from silux import sysroot
+    path = root / "grabado.json"
+    recorded = json.loads(path.read_text())
+    recorded["gpuapi"]["consultar"]["vulkan"] = PRUEBA5_VULKAN
+    del recorded["gpuapi"]["consultar"]["vulkan_icds"]
+    recorded["gpuapi"]["consultar"].update(answers)
+    path.write_text(json.dumps(recorded))
+    sysroot.forget()
+
+
+def _snapshot_as_in_prueba5(**answers):
+    from silux import volcado
+    from silux.collector import Collector
+    from tests.interval import second_snapshot
+    with volcado.mounted(DUMP) as root:
+        _as_in_prueba5(root, **answers)
+        collector = Collector()
+        try:
+            return second_snapshot(collector)
+        finally:
+            collector.close()
 
 
 class TestOnItsPages(unittest.TestCase):
@@ -38,7 +77,9 @@ class TestOnItsPages(unittest.TestCase):
 
     def test_an_integrated_card_no_api_uses(self):
         # Vulkan lists the NVIDIA and llvmpipe, OpenGL's context is the NVIDIA's.
-        textos = self._texts("Gráficos")
+        with pantalla.Ventana(_snapshot_as_in_prueba5()) as ventana:
+            ventana.select_section("Gráficos")
+            textos = pantalla.textos_de(ventana.stack.currentWidget())
         self.assertIn(_("gpu.apis.notseen"), textos)
         self.assertNotIn(_("gpu.apis.none"), textos)
 
@@ -48,10 +89,10 @@ class TestOnItsPages(unittest.TestCase):
         self.assertIn(_("bat.left.oncharger"), textos)
 
     def test_the_header_names_the_link_it_reaches(self):
-        # At idle its NVIDIA ran at PCIe 2.0 and the header read like a fault.
+        # At idle its NVIDIA ran at PCIe 1.0 and the header read like a fault.
         textos = self._texts("Gráficos")
         self.assertIn("Lenovo · AD107M · PCIe 4.0 × 8", textos)
-        self.assertIn("PCIe 2.0 × 8", textos)          # the Link row, as it is now
+        self.assertIn("PCIe 1.0 × 8", textos)          # the Link row, as it is now
 
     def test_its_only_battery_is_not_battery_2(self):
         aparatos = {s.device for s in self.foto.sensors if s.chip == "BAT1"}
@@ -173,25 +214,10 @@ class TestTheVulkanDriverThatRejectsTheUhd(unittest.TestCase):
     answer of the new code carries what the driver wrote on stderr."""
 
     def test_the_reason_on_its_card(self):
-        import json
-        from silux import sysroot, volcado
-        from silux.collector import Collector
-        from tests.interval import second_snapshot
-
-        with volcado.mounted(DUMP) as raiz:
-            ruta = raiz / "grabado.json"
-            grabado = json.loads(ruta.read_text())
-            grabado["gpuapi"]["consultar"]["vulkan_rejected"] = [{
-                "device": "Intel(R) Graphics (ADL GT2)",
-                "reason": "Vulkan requires context isolation",
-                "code": "VK_ERROR_INCOMPATIBLE_DRIVER"}]
-            ruta.write_text(json.dumps(grabado))
-            sysroot.forget()
-            recolector = Collector()
-            try:
-                f = second_snapshot(recolector)
-            finally:
-                recolector.close()
+        f = _snapshot_as_in_prueba5(vulkan_rejected=[{
+            "device": "Intel(R) Graphics (ADL GT2)",
+            "reason": "Vulkan requires context isolation",
+            "code": "VK_ERROR_INCOMPATIBLE_DRIVER"}])
         uhd = next(g for g in f.gpus if g.vendor == "Intel")
         self.assertEqual(uhd.api_rejections, (("Vulkan", "Vulkan requires context isolation"),))
         with pantalla.Ventana(f) as ventana:
