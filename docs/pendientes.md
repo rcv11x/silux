@@ -107,9 +107,6 @@ la memoria) no va: está propuesto en las notas
   - Memoria · baja · con el ayudante · el controlador publica sus contadores
     libres (`uncore_imc_free_running_0/1`) y el ayudante no los abrió. Desde
     la prueba6 sale como error con lo que contestó el ayudante.
-  - Placa · baja · «Chipset: —»: en un portátil Intel el puente eSPI no trae
-    modelo en `pci.ids` («Alder Lake PCH eSPI Controller»). Necesita una nota
-    que lo explique; la familia no es la identidad.
   - Red · baja · «J6C1» como ranura de la Ethernet: es lo que el firmware
     declara en SMBIOS tipo 9, y no le dice nada a nadie.
   - Placa · baja · la cabecera repite el firmware y el TPM de debajo.
@@ -137,8 +134,6 @@ la memoria) no va: está propuesto en las notas
   - Gráficos · media · los códecs solo dicen MPEG-2 y JPEG: la Mesa de Fedora
     no trae H.264 ni HEVC (patentes), y los añade `mesa-va-drivers-freeworld`
     de RPM Fusion. Se podría decir en la tabla de códecs.
-  - Gráficos · baja · «Versión del driver: 26.2.6» y «amdgpu 26.2.6» en la
-    cabecera son la versión de Mesa, no la del driver del kernel.
   - Gráficos · baja · el enlace va a x4 de x8 a 8 GT/s: hace falta saber si
     es el ahorro de energía de Polaris o el enlace de verdad. El volcado no
     guarda `pp_dpm_pcie`, que diría qué líneas pide la tarjeta en cada
@@ -194,8 +189,6 @@ la memoria) no va: está propuesto en las notas
   contadores de energía.
 * `providers/cppc.py` · media, sin comprobar · el techo del silicio con
   `acpi-cpufreq`: falta un volcado con `amd_pstate=disable`.
-* `ui/pages/cpu.py` · media-baja · «Preferencia de energía —» con
-  `acpi-cpufreq`, que no tiene EPP: la fila tendría que esconderse y decirse.
 * `providers/storage.py` · baja · el modelo de los discos SATA sale cortado a
   16 caracteres; el completo está sin permisos en `/dev/disk/by-id`.
 * `render.py` · baja · dos módulos en canales distintos pueden salir los dos
