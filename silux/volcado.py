@@ -567,11 +567,12 @@ def _edid_without_serial(data: bytes) -> bytes:
     return bytes(block) + data[128:]
 
 
-# Where the SPD keeps the module's serial number, by memory type (byte 2).
-# No checksum covers it: DDR4's ends at 253 and DDR5's at 509. silux doesn't
-# decode it, so neither the snapshot nor the checker would see it: it's
-# erased here, by position.
-SPD_SERIAL = {0x0C: (325, 329), 0x12: (517, 521)}
+# Where the SPD keeps the module's serial number, by memory type (byte 2):
+# DDR2, DDR3, DDR4 and DDR5. silux doesn't decode it, so neither the snapshot
+# nor the checker would see it: it's erased here, by position. DDR4's and
+# DDR5's checksums end before it; DDR3's covers it only when byte 0's top bit
+# is clear, and silux doesn't check that one.
+SPD_SERIAL = {0x08: (95, 99), 0x0B: (122, 126), 0x0C: (325, 329), 0x12: (517, 521)}
 
 
 def _spd_without_serial(data: bytes) -> tuple[bytes, bytes]:

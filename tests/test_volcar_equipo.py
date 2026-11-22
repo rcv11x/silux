@@ -28,8 +28,9 @@ def _spd(tipo: int, largo: int) -> bytes:
 
 class TestPiezasSinNumeroDeSerie(unittest.TestCase):
 
-    def test_spd_ddr4_y_ddr5(self):
-        for tipo, largo, (inicio, fin) in ((0x0C, 512, (325, 329)), (0x12, 1024, (517, 521))):
+    def test_spd_ddr2_ddr3_ddr4_y_ddr5(self):
+        for tipo, largo, (inicio, fin) in ((0x08, 256, (95, 99)), (0x0B, 256, (122, 126)),
+                                           (0x0C, 512, (325, 329)), (0x12, 1024, (517, 521))):
             with self.subTest(tipo=hex(tipo)):
                 datos = _spd(tipo, largo)
                 limpio, serie = volcar._spd_without_serial(datos)
@@ -39,8 +40,17 @@ class TestPiezasSinNumeroDeSerie(unittest.TestCase):
                 self.assertEqual(limpio[:inicio] + limpio[fin:], datos[:inicio] + datos[fin:])
 
     def test_un_spd_que_no_se_conoce_se_deja(self):
-        datos = _spd(0x0B, 256)
+        datos = _spd(0x01, 256)
         self.assertEqual(volcar._spd_without_serial(datos), (datos, b""))
+
+    def test_no_dump_carries_a_module_serial(self):
+        """The suite's dumps, each SPD chip: its serial is zeros."""
+        from tests.test_equipos import EQUIPOS
+        for eeprom in sorted(EQUIPOS.glob("*/sys/**/eeprom")):
+            datos = eeprom.read_bytes()
+            limpio, serie = volcar._spd_without_serial(datos)
+            with self.subTest(chip=str(eeprom.relative_to(EQUIPOS))):
+                self.assertEqual(serie, bytes(len(serie)))
 
     def test_the_ata_identify_keeps_its_model(self):
         from tests.test_storage import _identify
