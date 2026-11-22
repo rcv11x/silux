@@ -25,7 +25,7 @@ def _structure(type_: int, fields: bytes, strings: list[str]) -> bytes:
 
 def _memory_device(size_mb: int = 8192, extended_mb: int = 0, configured_mts: int = 2666,
                    memory_type: int = 0x1A, locator: str = "DIMM 1", bank: str = "P0 CHANNEL A",
-                   part: str = "KF3200C16D4/8GX") -> bytes:
+                   part: str = "KF3200C16D4/8GX", vendor: str = "Kingston") -> bytes:
     fields = bytearray(0x28 - 4)
 
     def put_word(offset: int, value: int) -> None:
@@ -55,7 +55,7 @@ def _memory_device(size_mb: int = 8192, extended_mb: int = 0, configured_mts: in
     put_word(0x26, 1200)
 
     return _structure(17, bytes(fields), [
-        locator, bank, "Kingston", "0x12345678",
+        locator, bank, vendor, "0x12345678",
         "Not Specified", part,
     ])
 
@@ -84,6 +84,13 @@ def _end() -> bytes:
 
 
 class TestRecorridoDeLaTabla(unittest.TestCase):
+    def test_a_maker_written_as_its_jedec_code(self):
+        # As the SPD's bytes, in its two layouts: some firmware does that.
+        tabla = (_memory_array() + _memory_device(vendor="CE00000000000000")
+                 + _memory_device(vendor="80AD") + _memory_device(vendor="Kingston") + _end())
+        makers = [m["manufacturer"] for m in smbios.memory_devices(list(smbios.parse_table(tabla)))]
+        self.assertEqual(makers, ["Samsung", "SK Hynix", "Kingston"])
+
     def test_separa_las_estructuras(self):
         raw = _memory_array() + _memory_device() + _empty_slot() + _end()
         tipos = [s.type for s in smbios.parse_table(raw)]

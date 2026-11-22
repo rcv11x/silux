@@ -248,6 +248,28 @@ def _details(structure: Structure) -> list[int]:
     return [bit for bit in TYPE_DETAIL_BITS if detail & (1 << bit)]
 
 
+# Some firmware writes the module's maker as its JEDEC code in hex, the
+# SPD's bytes as they are, in either of their two layouts: the code after its
+# continuation codes («CE00000000000000» for Samsung, «7F7F9E…» in the third
+# bank), or a bank byte and the code («80CE», «802C», «0198»).
+_JEDEC_HEX = re.compile(r"(?:[0-9A-F]{2}){1,8}")
+
+
+def jedec_maker(text: Optional[str]) -> Optional[str]:
+    """The maker's name for a JEDEC code in hex; any other text as it is."""
+    if not text or not _JEDEC_HEX.fullmatch(text):
+        return text
+    from ..spd import _vendor
+
+    codes = bytes.fromhex(text)
+    if len(codes) >= 2 and codes[0] != 0x7F and codes[0] & 0x7F < 0x10 and codes[1]:
+        return _vendor(codes[0], codes[1]) or text
+    for bank, code in enumerate(codes):
+        if code != 0x7F:
+            return (_vendor(bank, code) or text) if code else text
+    return text
+
+
 def memory_devices(structures: list[Structure]) -> list[dict]:
     """Extract the memory modules, empty slots included."""
     modules = []
@@ -265,7 +287,7 @@ def memory_devices(structures: list[Structure]) -> list[dict]:
             "details": _details(structure),
             "speed_mts": structure.word(0x15) or None,
             "configured_mts": structure.word(0x20) or None,
-            "manufacturer": structure.text(0x17),
+            "manufacturer": jedec_maker(structure.text(0x17)),
             "part_number": structure.text(0x1A),
             "rank": _rank(structure),
             "data_width": structure.word(0x0A) or None,
