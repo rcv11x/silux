@@ -185,6 +185,9 @@ class Collector:
         self._taken += 1
         snapshot = dataclasses.replace(draft.freeze(), failures=self.failures.recent(),
                                        first_reading=self._taken == 1)
+        if self._taken == 1:
+            # A mounted dump's counters, an interval later; nothing on a machine.
+            sysroot.apply_second_reading()
         if snapshot.privileged.outdated:
             snapshot = _with_the_helper_outdated(snapshot)
         return snapshot

@@ -40,6 +40,7 @@ import pathlib
 import re
 import shutil
 import tempfile
+import time
 from typing import Optional
 
 from . import privacidad, spd, sysroot
@@ -49,6 +50,9 @@ WATCHED_TREES = ("/sys/", "/proc/", "/etc/")
 # A sysfs or procfs file larger than this isn't what's read to describe a
 # machine; copying it would only bloat the repository.
 MAX_BYTES = 512 * 1024
+# Between a dump's two readings of its counters: the Collector's interval,
+# which is what the tests' clock moves between two snapshots.
+COUNTER_INTERVAL_S = 1.0
 MANIFEST = "manifiesto.json"
 
 # Files whose content identifies one specific part and says nothing about
@@ -442,6 +446,8 @@ class _Copy:
     def __init__(self, target: pathlib.Path):
         self.target = target
         self.unreadable: set[str] = set()
+        # When each counter file was copied, for its second reading.
+        self.counters: dict[str, float] = {}
 
     def _inside(self, path: str) -> pathlib.Path:
         return self.target / path.lstrip("/")
@@ -511,6 +517,26 @@ class _Copy:
         except OSError:
             return
         inside.write_bytes(data)
+        if sysroot.is_counter_file(real_path):
+            self.counters[real_path] = time.monotonic()
+
+    def second_reading(self, interval: float) -> dict[str, str]:
+        """Each counter file read again `interval` after it was copied: the
+        second snapshot of a mounted dump finds what a machine shows an
+        interval later. Printable counters only."""
+        readings = {}
+        for real_path, copied in sorted(self.counters.items(), key=lambda item: item[1]):
+            wait = copied + interval - time.monotonic()
+            if wait > 0:
+                time.sleep(wait)
+            try:
+                with open(sysroot.path(real_path), "rb") as source:
+                    text = source.read(MAX_BYTES).decode("ascii")
+            except (OSError, UnicodeDecodeError):
+                continue
+            if sysroot.is_counter_text(text):
+                readings[real_path] = text
+        return readings
 
     def _from_outside(self, path: str) -> None:
         """A link that leaves the dumped trees and ends in a file.
@@ -1183,6 +1209,20 @@ def _without_found(work: pathlib.Path, findings) -> list[dict]:
     return removed
 
 
+def _second_reading_of_what_is_left(work: pathlib.Path) -> None:
+    """The second reading of the files the dump still has, and no other."""
+    path = work / sysroot.RECORDING_FILE
+    recording = json.loads(path.read_text())
+    readings = recording.get(sysroot.SECOND_READING)
+    if not isinstance(readings, dict):
+        return
+    kept = {location: text for location, text in readings.items()
+            if (work / location.lstrip("/")).is_file()}
+    if kept != readings:
+        recording[sysroot.SECOND_READING] = kept
+        path.write_text(json.dumps(recording, ensure_ascii=False, indent=1, sort_keys=True) + "\n")
+
+
 @contextlib.contextmanager
 def mounted(folder: pathlib.Path):
     """The dump ready to read: a copy with the unreadable files unreadable."""
@@ -1254,12 +1294,19 @@ def dump(name: str, base: pathlib.Path,
                 (copy.directory(path) if os.path.isdir(sysroot.path(path))
                  else copy.copy_file(path))
 
+        # The counters again, an interval later: usage, rates and rests come
+        # from the difference, and one reading has none.
+        recording[sysroot.SECOND_READING] = copy.second_reading(COUNTER_INTERVAL_S)
+
         clean = _Anonymizer(work, recording)
         dropped = clean.drop_serial_interfaces()
         clean.clean_contents()
         clean.rename_interfaces()
         (work / sysroot.RECORDING_FILE).write_text(
-            json.dumps(clean.clean_recording(), ensure_ascii=False, indent=1, sort_keys=True) + "\n")
+            json.dumps(clean.clean_recording(), ensure_ascii=False, indent=1, sort_keys=True)
+            + "\n")
+        # Of what was left out (the interfaces in series), nothing goes.
+        _second_reading_of_what_is_left(work)
 
         # Git doesn't keep empty folders, and some count: /proc's processes,
         # or a /sys/firmware/efi only checked for existence. They're noted and
@@ -1275,12 +1322,8 @@ def dump(name: str, base: pathlib.Path,
             "sin_grabar": [
                 "de NVML, el número de serie de cada tarjeta",
                 "todo lo que lee el ayudante privilegiado",
-                "el uso de cada hilo: sale de restar dos lecturas de /proc/stat, "
-                "y el volcado guarda una",
-                "el consumo (RAPL): sale de restar dos lecturas del contador de "
-                "energía, y el volcado guarda una",
-                "la residencia en los estados de reposo (C-states): sale de restar "
-                "dos lecturas de cpuidle, y el volcado guarda una",
+                "el consumo (RAPL): su contador de energía solo lo lee root, y el "
+                "volcado guarda lo que se lee sin permisos",
                 "de lo enchufado por USB: la marca y el modelo que escribe el propio "
                 "aparato, y su número de serie; y el nombre de las cámaras y de las "
                 "tarjetas de sonido USB. Quedan sus identificadores (vendor:product), "
@@ -1294,8 +1337,16 @@ def dump(name: str, base: pathlib.Path,
         # What wasn't covered goes, file by file, and the annex says so: a
         # dump missing a file is still a dump, and with nothing written there
         # would be no annex at all.
-        removed = _without_found(
-            work, found_in(work, clean.secrets, clean.raw_secrets, own))
+        def findings():
+            return found_in(work, clean.secrets, clean.raw_secrets, own)
+
+        # The files first; the second reading of a file that went goes with it,
+        # unsaid; then what is still found in the two JSON files.
+        found = findings()
+        removed = _without_found(work, [f for f in found if f[0] not in (
+            sysroot.RECORDING_FILE, MANIFEST)])
+        _second_reading_of_what_is_left(work)
+        removed += _without_found(work, findings())
         if removed:
             manifest = json.loads((work / MANIFEST).read_text())
             manifest["quitados"] = removed

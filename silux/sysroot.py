@@ -18,9 +18,11 @@ the function.
 from __future__ import annotations
 
 import dataclasses
+import fnmatch
 import json
 import os
 import pathlib
+import re
 from typing import Any, Callable, Optional, TypeVar
 
 VARIABLE = "SILUX_SYSROOT"
@@ -153,3 +155,62 @@ def recorded_data() -> dict:
 def forget() -> None:
     """For tests that switch dumps within one process."""
     _cache.clear()
+    _second_applied.clear()
+
+
+# A dump's second reading: the files whose difference between two samples
+# is a usage, a rate or a rest, read again an interval after the dump's copy.
+# Only these, and only plain counters, are taken or written back.
+SECOND_READING = "segunda_lectura"
+COUNTER_FILES = (
+    "/proc/stat", "/proc/net/dev", "/proc/self/net/dev", "/proc/diskstats",
+    "/sys/devices/system/cpu/cpu*/cpuidle/state*/usage",
+    "/sys/devices/system/cpu/cpu*/cpuidle/state*/time",
+    "/sys/devices/system/cpu/cpu*/cpuidle/state*/above",
+    "/sys/devices/system/cpu/cpu*/cpuidle/state*/below",
+    "/sys/devices/system/cpu/cpu*/cpufreq/scaling_cur_freq",
+    "/sys/devices/system/cpu/cpufreq/policy*/scaling_cur_freq",
+    "/sys/devices/*/net/*/statistics/*",
+    "/sys/devices/*/block/*/stat",
+    "/sys/devices/*/drm/card*/gt/gt*/rc6_residency_ms",
+    "/sys/devices/*/drm/card*/power/rc6_residency_ms",
+    "/sys/devices/*/drm/card*/gt/gt*/rps_act_freq_mhz",
+    "/sys/devices/*/gpu_busy_percent",
+    "/sys/devices/*/hwmon/hwmon*/*_input",
+    "/sys/devices/*/hwmon/hwmon*/*_average",
+)
+# What a counter file holds: printable ASCII, and not much of it.
+_COUNTER_TEXT = re.compile(r"[\x20-\x7e\t\n]{0,65536}")
+_second_applied: set[pathlib.Path] = set()
+
+
+def is_counter_file(location: str) -> bool:
+    return ".." not in location.split("/") and any(
+        fnmatch.fnmatchcase(location, pattern) for pattern in COUNTER_FILES)
+
+
+def is_counter_text(text: str) -> bool:
+    return bool(_COUNTER_TEXT.fullmatch(text))
+
+
+def apply_second_reading() -> None:
+    """The active dump's second reading of its counters, written over its
+    first: the Collector's second snapshot finds them as a machine would an
+    interval later. Once per mount. Only counter files that are already
+    there take it; the rest of what a dump says is left alone."""
+    base = root()
+    if base is None or base in _second_applied:
+        return
+    _second_applied.add(base)
+    readings = _recorded().get(SECOND_READING)
+    if not isinstance(readings, dict):
+        return
+    inside = base.resolve()
+    for location, text in readings.items():
+        if not (isinstance(location, str) and isinstance(text, str)
+                and is_counter_file(location) and is_counter_text(text)):
+            continue
+        target = inside / location.lstrip("/")
+        if target.is_symlink() or not target.is_file() or inside not in target.resolve().parents:
+            continue
+        target.write_text(text)

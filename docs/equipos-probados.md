@@ -8,6 +8,12 @@ se escribió a ciegas, y lo que queda pendiente por plataforma.
 En `tests/fixtures/equipos/`, cada uno con su `manifiesto.json`. La suite
 monta el Collector contra todos (`tests/test_equipos.py`).
 
+Los volcados nuevos llevan una segunda lectura de sus contadores, un segundo
+después de copiarlos (`segunda_lectura` en `grabado.json`, solo los archivos
+de `sysroot.COUNTER_FILES`): montado, la segunda foto del Collector la
+encuentra, y el uso, los ritmos y el reposo salen como en el equipo. Los de
+antes no la tienen y esas cifras salen «Calculando…» o con guion.
+
 Lo ocupado de cada partición montada: los volcados nuevos guardan los campos
 de `statvfs` tal cual (`statfs` en `grabado.json`). Los anteriores guardaban
 la pareja ocupado y libre ya calculada, y los hechos antes del 20 de

@@ -19,6 +19,10 @@ que hace falta.
 
 ### Privacidad
 
+- El anexo del informe lleva una segunda lectura de los contadores del
+  equipo (el uso de cada hilo, el reposo, la frecuencia, el tráfico de la
+  red y los discos, los sensores), un segundo después de la primera: con ella
+  se reproduce lo que sale de restar dos. Son unos 10 KB, y solo números.
 - El anexo del informe lleva el EDID de cada monitor con solo su número de
   serie tapado (y su suma de control al día). Antes, una tele que escribe
   «01 01 01 01» como número de serie, que en EDID quiere decir «sin número»,
