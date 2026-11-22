@@ -27,6 +27,9 @@ que hace falta.
   generación (LGA 1155, 1150 y 1151), y «soldado» en los portátiles U e Y y
   en los Atom, Celeron y Pentium de bajo consumo. Si la tabla no lo tiene,
   con permisos se lee de la tabla del firmware.
+- Lo que el procesador no publica (el reloj de referencia, el multiplicador,
+  la máxima de fábrica) y la preferencia de energía que el driver no ofrece
+  ya no salen con guion: se esconden y se dice por qué.
 
 ### Memoria
 
@@ -45,12 +48,20 @@ que hace falta.
 
 ### Red y Placa base
 
+- Una interfaz virtual ya no enseña dirección física, driver, modelo y ranura
+  PCI con guiones: se dice al pie de su tarjeta que no tiene tarjeta detrás.
 - Los paquetes que el kernel descarta se llaman descartados, no perdidos, y
   los que llegan con error salen aparte.
 - La explicación de bytes y bits ya no da cifras que no son las del equipo.
 - El chipset de un portátil que lo lleva en el encapsulado del procesador
   sale como tal, y la versión de la BIOS sin los espacios que deja el
   firmware.
+
+### Almacenamiento
+
+- La vida restante de un pendrive lleva candado sin permisos, como el resto
+  de su diagnóstico, en vez de un guion.
+- Un disco que no dice su fabricante lo dice al pie de su tarjeta.
 
 ## 0.4-prueba7 (21 de noviembre de 2026)
 

@@ -65,6 +65,7 @@ class CppcClocks(Provider):
         no_base = False
         no_bus = False
         no_ceiling = False
+        no_ceiling_source = False
         # Only an AMD can owe its ceiling to amd-pstate: an Intel without
         # CPUID 0x16 can lack it too, for other reasons.
         ceiling_is_amds = False
@@ -109,13 +110,18 @@ class CppcClocks(Provider):
 
             no_base = no_base or base is None
             no_bus = no_bus or (bus is None and is_x86)
+            # Said only with a frequency driver: without one, the foot of the
+            # clocks card already says what's missing, and turbo may be absent.
+            no_ceiling_source = no_ceiling_source or (
+                ceiling is None and is_x86 and clocks.turbo_supported is not False
+                and os.path.isdir(sysroot.path(f"{SYS_CPU}/cpu{leader}/cpufreq")))
 
         _note_quality(draft)
 
         # A virtual machine's hypervisor exposes no clock at all, and sysfs_cpu
         # says so once.
         if is_virtual_machine(draft):
-            no_base = no_bus = False
+            no_base = no_bus = no_ceiling_source = False
 
         if no_base and any(is_zen(e) for e in draft.types.values()):
             # A Zen reports it in its P0 (msr_pstate), and permissions fix that.
@@ -133,6 +139,11 @@ class CppcClocks(Provider):
             draft.note(
                 "cpu.clocks.bus_hz", Need.HARDWARE,
                 _("prov.cppc.nobclk"), _("prov.cppc.nobclk.hint"),
+            )
+        if no_ceiling_source and not no_ceiling:
+            draft.note(
+                "cpu.clocks.max_turbo_hz", Need.HARDWARE,
+                _("prov.cppc.noceiling.source"), _("prov.cppc.noceiling.source.hint"),
             )
         if no_ceiling:
             # Without amd-pstate the ceiling isn't published; if that's because

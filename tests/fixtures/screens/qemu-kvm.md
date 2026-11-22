@@ -278,7 +278,6 @@ Ocupado 2.6 GB · Libre 28.8 GB · Reservado 593.6 MB
 
 Ocupado 2.6 GB · Libre 28.8 GB · Reservado 593.6 MB
 - Modelo: QEMU HARDDISK
-- Fabricante: —
 - Tipo: Virtual
 - Conexión: SATA
 - Capacidad: 32 GB
@@ -341,9 +340,8 @@ puerta 192.168.1.1 · 1 de 1 activas
 - Dirección IPv6: ::1
 - Dirección física: 00:00:00:00:00:00
 - MTU: 65536
-- Driver: —
-- Modelo: —
-- Ranura PCI: —
+
+No tiene driver, modelo ni ranura PCI: es una interfaz virtual, sin tarjeta detrás.
 
 ## Dispositivos
 

@@ -23,7 +23,7 @@ from ...i18n import _
 from ...model import NetworkInterface, Snapshot
 from ...settings import Preferences
 from .. import theme
-from ..theme import Palette
+from ..theme import Palette, ui_font
 from ..widgets import (
     Card,
     ChipRow,
@@ -161,6 +161,7 @@ class NetworkPage(ScrollPage):
         self._bits = prefs.network_unit == "bits"
         self._grids: dict[str, InfoGrid] = {}
         self._cards: dict[str, Card] = {}
+        self._feet: dict[str, QLabel] = {}
         # Qué interfaces tiene montadas cada grupo de tarjetas.
         self._montadas: dict[str, tuple] = {}
         self._chip_signature: tuple = ()
@@ -371,6 +372,13 @@ class NetworkPage(ScrollPage):
                 for campo in INTERFACE_FIELDS:
                     grid.add(_(campo))
                 card.body.addWidget(grid)
+                foot = QLabel("")
+                foot.setObjectName("Muted")
+                foot.setWordWrap(True)
+                foot.setFont(ui_font(theme.METRICS.small_pt))
+                foot.hide()
+                card.body.addWidget(foot)
+                self._feet[interfaz.name] = foot
                 fila.add(card)
                 self._grids[interfaz.name] = grid
                 self._cards[interfaz.name] = card
@@ -404,3 +412,12 @@ class NetworkPage(ScrollPage):
             f(_("gpu.field.driver"), interfaz.driver or d)
             f(_("storage.col.model"), render.with_maker(interfaz.vendor, interfaz.model) or d)
             f(_("net.field.slot"), interfaz.pci_slot or d)
+            # What the interface doesn't have hides, and its foot says so.
+            missing = render.interface_missing(interfaz)
+            for key in render.INTERFACE_DEVICE_FIELDS:
+                grid.set_visible(_(key), key not in missing)
+            foot = self._feet.get(interfaz.name)
+            if foot is not None:
+                text = render.interface_footnote(interfaz) or ""
+                foot.setText(text)
+                foot.setVisible(bool(text))

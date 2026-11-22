@@ -95,9 +95,7 @@ Athlon (Picasso) · AM4 · GF 12LP · x86_64
 ### Relojes
 
 - Frecuencia: 2.91 GHz
-- Multiplicador: —
 - Base: (necesita permisos)
-- Bus (BCLK): —
 
 Sin driver de frecuencia no hay gobernador, preferencia de energía, ni mínima o máxima del kernel. La frecuencia es la que anota el kernel de cada núcleo. Este procesador no tiene turbo: su frecuencia más alta es la base.
 
@@ -427,7 +425,7 @@ Un disco de platos no tiene «vida restante»: es el desgaste de las celdas de u
 - Temperatura: (necesita permisos)
 - Horas encendido: (necesita permisos)
 - Escrito en total: (necesita permisos)
-- Vida restante: —
+- Vida restante: (necesita permisos)
 
 #### Firmware y sectores
 
@@ -484,9 +482,8 @@ puerta 192.168.1.1 · 1 de 1 activas
 - Dirección IPv6: ::1
 - Dirección física: 00:00:00:00:00:00
 - MTU: 65536
-- Driver: —
-- Modelo: —
-- Ranura PCI: —
+
+No tiene driver, modelo ni ranura PCI: es una interfaz virtual, sin tarjeta detrás.
 
 ## Dispositivos
 

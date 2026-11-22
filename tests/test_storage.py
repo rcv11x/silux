@@ -653,7 +653,7 @@ class TestNotLessThanWhatItHolds(unittest.TestCase):
         from silux.ui.pages.storage import StoragePage
 
         app = qt.app()
-        disco = Disk(name="sda", model="KINGSTON SA400S3", kind="SSD", rotational=False,
+        disco = Disk(name="sda", model="KINGSTON SA400S3", vendor="Kingston", kind="SSD", rotational=False,
                      size_bytes=480 * self.GB, health=self._diagnostico(None))
         pagina = StoragePage(theme.palette_for(app, "dark"), Preferences())
         self.addCleanup(pagina.deleteLater)

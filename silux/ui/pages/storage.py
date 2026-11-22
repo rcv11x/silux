@@ -497,6 +497,7 @@ class StoragePage(ScrollPage):
         f = grid.set
         f(_("storage.col.model"), disco.model or d)
         f(_("gpu.field.vendor"), disco.vendor or d)
+        grid.set_visible(_("gpu.field.vendor"), bool(disco.vendor))
         f(_("gpu.vram.type"), render.disk_kind(disco.kind),
           tooltip=_("storage.tip.kind"))
         # Over USB a fixed disk's kind can't be known: hidden, and said below.
@@ -567,6 +568,7 @@ class StoragePage(ScrollPage):
             grid.set_visible(_("storage.field.life"), False)
         if (pie := self._pies.get(disco.name)) is not None:
             texto = " ".join(t for t in (
+                _("storage.na.vendor") if not disco.vendor and not virtual else "",
                 _("storage.na.hdd.life") if de_platos else "",
                 _("storage.na.virtual") if virtual else "",
                 _("storage.na.flash") if flash_sin_smart else "",
@@ -619,7 +621,9 @@ class StoragePage(ScrollPage):
             "gpu.sensor.temp": disco.temp_c is None,
             "storage.field.hours": True,
             "storage.field.written": not salud.written_bytes,
+            # The kind, not `rotational`: the kernel sets it on almost
+            # anything over USB.
             "storage.field.life": salud.life_left_percent is None
-            and disco.rotational is not True,
+            and disco.kind != "HDD",
         }
         return {clave for clave, falta in faltan.items() if falta}

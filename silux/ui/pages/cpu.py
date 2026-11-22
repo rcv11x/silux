@@ -196,8 +196,10 @@ class TypeSection(QWidget):
         elif self.clocks.is_locked(nombre):
             self.clocks.set(nombre, self._base_texto)
 
-    def apply(self, cpu_type: CpuType, explained: frozenset = frozenset()) -> None:
-        """`explained`: the paths of the notes on the page about the CPU table."""
+    def apply(self, cpu_type: CpuType, explained: frozenset = frozenset(),
+              absent: frozenset = frozenset()) -> None:
+        """`explained`: the paths of the notes on the page about the CPU table;
+        `absent`, of those saying this machine doesn't publish a value."""
         p = self.processor.set  # noqa: E741
         p(_("cpu.field.vendor"), cpu_type.vendor or render.DASH)
         p(_("cpu.field.spec"), cpu_type.brand or render.DASH)
@@ -268,12 +270,26 @@ class TypeSection(QWidget):
         # the turbo and a silicon ceiling above the base: the foot says why,
         # and where the frequency above comes from.
         sin_driver = render.without_frequency_driver(clocks) is not None
-        for clave in ("cpu.clock.min", "cpu.clock.maxkernel", "cpu.clock.driver",
-                      "cpu.clock.governor", "cpu.clock.epp"):
-            self.clocks.set_visible(_(clave), not sin_driver)
-        sin_turbo = clocks.turbo_supported is False
-        for clave in ("cpu.clock.turbo", "cpu.clock.maxsilicon"):
-            self.clocks.set_visible(_(clave), not sin_turbo)
+        hidden = set()
+        if sin_driver:
+            hidden |= {"cpu.clock.min", "cpu.clock.maxkernel", "cpu.clock.driver",
+                       "cpu.clock.governor", "cpu.clock.epp"}
+        if clocks.turbo_supported is False:
+            hidden |= {"cpu.clock.turbo", "cpu.clock.maxsilicon"}
+        # What this machine doesn't publish: its notice on the page says why.
+        for key, value, note in (
+                ("cpu.clock.bus", clocks.bus_hz, "cpu.clocks.bus_hz"),
+                ("cpu.clock.multiplier", clocks.multiplier, "cpu.clocks.bus_hz"),
+                ("cpu.clock.maxsilicon", clocks.max_turbo_hz, "cpu.clocks.max_turbo_hz")):
+            if value is None and note in absent:
+                hidden.add(key)
+        if render.without_energy_preference(clocks):
+            hidden.add("cpu.clock.epp")
+        # Once per row and sample: shown and hidden again, the page moved.
+        for key in ("cpu.clock.min", "cpu.clock.maxkernel", "cpu.clock.driver",
+                    "cpu.clock.governor", "cpu.clock.epp", "cpu.clock.turbo",
+                    "cpu.clock.maxsilicon", "cpu.clock.bus", "cpu.clock.multiplier"):
+            self.clocks.set_visible(_(key), key not in hidden)
         foot = render.clocks_footnote(clocks)
         self.clocks_foot.setText(foot or "")
         self.clocks_foot.setVisible(foot is not None)
@@ -509,9 +525,11 @@ class CpuPage(ScrollPage):
             self._signature = signature
 
         explained = frozenset(n.path for n in snapshot.notes if n.need == Need.DATABASE)
+        absent = frozenset(n.path for n in snapshot.notes
+                           if n.need in (Need.HARDWARE, Need.KERNEL))
         for cpu_type in cpu.types:
             if section := self._sections.get(cpu_type.key):
-                section.apply(cpu_type, explained)
+                section.apply(cpu_type, explained, absent)
                 section.lock_voltage(snapshot.permission_note("cpu.voltage_v"), self._p.info)
                 section.lock_base(snapshot.permission_note("cpu.clocks.base_hz"), self._p.info)
                 section.lock_package(snapshot.permission_note("cpu.socket"), self._p.info)

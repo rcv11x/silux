@@ -98,16 +98,14 @@ Celeron (Gemini Lake) · BGA 1090 · 14 nm · x86_64
 ### Relojes
 
 - Frecuencia: 2.54 GHz
-- Multiplicador: —
 - Base: 1.10 GHz
 - Mínima: 800 MHz
 - Máxima (kernel): 2.60 GHz
-- Máxima (silicio): —
-- Bus (BCLK): —
 - Turbo: activado
 - Driver: intel_cpufreq
 - Gobernador: schedutil
-- Preferencia de energía: —
+
+intel_cpufreq no ofrece preferencia de energía: la dan intel_pstate en modo activo con HWP y amd-pstate en modo activo.
 
 ### Jerarquía de caché
 
@@ -123,6 +121,10 @@ MMX · SSE · SSE2 · SSE3 · SSSE3 · SSE4.1 · SSE4.2 · AES-NI · SHA · CLMU
 > **Este equipo no lo expone**
 > Este equipo no publica su reloj de referencia (BCLK).
 > Solo lo dan CPUID 0x16 en Intel moderno o los registros MSR del procesador. Deducirlo del reloj base únicamente es fiable en plataformas con ACPI CPPC, donde son 100 MHz.
+
+> **Este equipo no lo expone**
+> Este procesador no publica su frecuencia máxima de fábrica.
+> La dan CPUID 0x16, en los Intel desde la sexta generación, y ACPI CPPC; este no tiene ninguno de los dos. La máxima que aplica el kernel sí está, en su fila.
 
 > **Hace falta elevar permisos**
 > El contador de energía RAPL existe pero no se puede leer.
@@ -415,7 +417,7 @@ Ocupado 33.0 GB · Libre 62.8 GB · Reservado 6.7 GB · Sin montar 136.0 GB
 - Temperatura: (necesita permisos)
 - Horas encendido: (necesita permisos)
 - Escrito en total: (necesita permisos)
-- Vida restante: —
+- Vida restante: (necesita permisos)
 
 #### Firmware y sectores
 
@@ -482,9 +484,8 @@ puerta 192.168.1.1 · 1 de 2 activas
 - Dirección IPv6: ::1
 - Dirección física: 00:00:00:00:00:00
 - MTU: 65536
-- Driver: —
-- Modelo: —
-- Ranura PCI: —
+
+No tiene driver, modelo ni ranura PCI: es una interfaz virtual, sin tarjeta detrás.
 
 ## Dispositivos
 
@@ -659,6 +660,7 @@ UHD Graphics 600: no tiene sensor de temperatura propio.
 **Datos que faltan:**
 
 - `cpu.clocks.bus_hz` (este equipo no lo expone): Este equipo no publica su reloj de referencia (BCLK).
+- `cpu.clocks.max_turbo_hz` (este equipo no lo expone): Este procesador no publica su frecuencia máxima de fábrica.
 - `gpus.packages.pnpids` (falta un paquete del sistema): Falta pnp.ids: el fabricante de cada monitor sale con su código de tres letras y no con su nombre.
 - `modules` (requiere permisos de administrador): Los módulos de memoria están en la tabla SMBIOS, que el kernel reserva al administrador.
 - `spd` (este equipo no lo expone): El bus de la memoria está, pero el kernel no ha registrado ningún chip SPD en él.

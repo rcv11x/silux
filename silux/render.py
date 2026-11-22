@@ -735,6 +735,37 @@ def network_kind(kind: Optional[str]) -> str:
     return kind if text == f"net.kind.{kind}" else text
 
 
+# What an interface may lack, and how the card's foot names it.
+INTERFACE_DEVICE_FIELDS = {
+    "net.field.mac": "net.na.mac",
+    "gpu.field.driver": "net.na.driver",
+    "storage.col.model": "net.na.model",
+    "net.field.slot": "net.na.slot",
+}
+
+
+def interface_missing(interface) -> list[str]:
+    """The fields of INTERFACE_DEVICE_FIELDS this interface doesn't have."""
+    values = {
+        "net.field.mac": interface.mac,
+        "gpu.field.driver": interface.driver,
+        "storage.col.model": with_maker(interface.vendor, interface.model),
+        "net.field.slot": interface.pci_slot,
+    }
+    return [key for key in INTERFACE_DEVICE_FIELDS if not values[key]]
+
+
+def interface_footnote(interface) -> Optional[str]:
+    """«No tiene dirección física, driver, modelo ni ranura PCI: es una
+    interfaz virtual, sin tarjeta detrás.»"""
+    missing = interface_missing(interface)
+    if not missing:
+        return None
+    fields = enumeration([_(INTERFACE_DEVICE_FIELDS[key]) for key in missing], "list.nor")
+    virtual = interface.kind in ("virtual", "loopback", "puente")
+    return _("net.na.virtual" if virtual else "net.na.device").format(fields=fields)
+
+
 def network_name(interface) -> str:
     """What a network card is called: its model with the brand, or the
     interface's name if the model isn't known."""
@@ -2017,10 +2048,23 @@ def without_frequency_driver(clocks: Clocks) -> Optional[str]:
     return None
 
 
+def without_energy_preference(clocks: Clocks) -> bool:
+    """A frequency driver that offers no energy preference (EPP).
+
+    intel_pstate offers it in active mode with HWP and amd-pstate in active
+    mode; in passive mode, or with acpi-cpufreq, the file doesn't exist.
+    """
+    return bool(clocks.driver) and not clocks.energy_preference
+
+
 def clocks_footnote(clocks: Clocks) -> Optional[str]:
-    """What the Clocks card hides and why: no frequency driver, no turbo."""
-    parts = [p for p in (without_frequency_driver(clocks),
-                         _("cpu.clocks.noturbo") if clocks.turbo_supported is False else None) if p]
+    """What the Clocks card hides and why: no frequency driver, no turbo,
+    no energy preference."""
+    parts = [p for p in (
+        without_frequency_driver(clocks),
+        _("cpu.clocks.noturbo") if clocks.turbo_supported is False else None,
+        _("cpu.clocks.noepp").format(driver=clocks.driver)
+        if without_energy_preference(clocks) else None) if p]
     return " ".join(parts) or None
 
 
