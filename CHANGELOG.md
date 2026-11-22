@@ -14,6 +14,13 @@ que hace falta.
 
 Con informes de Felix Lara.
 
+### Privacidad
+
+- El anexo del informe ya no lleva el número de serie de los módulos DDR2 y
+  DDR3 (la prueba7 lo dejaba en su chip SPD; los de DDR4 y DDR5 ya se
+  borraban), ni la lista de bibliotecas del sistema (`ld.so.cache`). Con
+  Silux abierto como root, tampoco la tabla SMBIOS en crudo.
+
 ### Informe
 
 - El informe completo sale entero en el idioma elegido: la cabecera, el

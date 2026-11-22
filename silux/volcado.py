@@ -337,13 +337,23 @@ def _without_waking(sleeping: _SleepingCards | None):
 # under «paquetes»), so a dump never reads it back. On a distribution with
 # many libraries it is a few hundred kilobytes: most of a report's annex.
 RECORDED_ELSEWHERE = frozenset({"/etc/ld.so.cache"})
+# Raw firmware tables, readable only by root: run as root, the Collector reads
+# the SMBIOS table itself, and it carries every serial number of the machine
+# and its modules (an ACPI table can carry a licence key). Parsed, what
+# Silux shows of them leaves those out; raw, they never go into a dump.
+NEVER_COPIED = ("/sys/firmware/dmi/tables/", "/sys/firmware/dmi/entries/",
+                "/sys/firmware/acpi/tables/")
+
+
+def never_copied(path: str) -> bool:
+    return path in RECORDED_ELSEWHERE or path.startswith(NEVER_COPIED)
 
 
 def _to_copy(read_paths: set[str], sleeping: _SleepingCards) -> set[str]:
     """What was read that goes into the dump. Copying is reading too: what's
     on a sleeping card doesn't even pass here."""
     return {path for path in read_paths
-            if path not in RECORDED_ELSEWHERE and not sleeping.forbidden(path)}
+            if not never_copied(path) and not sleeping.forbidden(path)}
 
 
 def _collect(sleeping: _SleepingCards | None = None):
@@ -626,6 +636,8 @@ def bring_up_to_date(folder: pathlib.Path) -> None:
     recorded elsewhere, and turn texts it recorded into today's keys."""
     for path in RECORDED_ELSEWHERE:
         (folder / path.lstrip("/")).unlink(missing_ok=True)
+    for prefix in NEVER_COPIED:
+        shutil.rmtree(folder / prefix.strip("/"), ignore_errors=True)
     _nvml_reasons_as_keys(folder)
     for top, _dirs, files in os.walk(folder):
         for name in files:
@@ -1201,7 +1213,7 @@ def dump(name: str, base: pathlib.Path,
     read_paths, listed, checked, recording = _collect(sleeping)
     read_paths |= _alternatives(read_paths) | sleeping.power_files() | _gpu_extras()
     read_paths = _to_copy(read_paths, sleeping)
-    checked = {c for c in checked if not sleeping.forbidden(c)}
+    checked = {c for c in checked if not sleeping.forbidden(c) and not never_copied(c)}
     with tempfile.TemporaryDirectory(prefix="silux-volcado-") as tmp:
         work = pathlib.Path(tmp) / name
         work.mkdir()
