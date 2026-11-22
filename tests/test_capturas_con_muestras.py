@@ -49,5 +49,47 @@ class TestLasMuestrasDeUnaCaptura(unittest.TestCase):
         self.assertEqual(self._capturar("--samples", "23"), 23)
 
 
+ULTIMA = """
+import sys
+from silux.ui import app
+vistas = []
+original = app.MainWindow._on_sample
+def guardando(self, foto):
+    vistas.append(foto)
+    return original(self, foto)
+app.MainWindow._on_sample = guardando
+codigo = app.main(sys.argv[1:])
+foto = vistas[-1]
+print("primera:", foto.first_reading, "vistas:", len(vistas))
+print("ritmos:", all(d.io.read_rate_bps is not None for d in foto.disks))
+sys.exit(codigo)
+"""
+
+
+class TestTheRatesOfACapture(unittest.TestCase):
+    """A capture's rates check their window against the pause it takes, and
+    `--samples 1` is the first reading. With a dump mounted, whose counters
+    stand still, a valid window gives 0 B/s and a broken one nothing."""
+
+    def _capturar(self, *banderas):
+        with tempfile.TemporaryDirectory() as tmp:
+            destino = pathlib.Path(tmp) / "c.png"
+            entorno = dict(os.environ, QT_QPA_PLATFORM="offscreen", XDG_CONFIG_HOME=tmp)
+            hecho = subprocess.run(
+                [sys.executable, "tools/montar_equipo.py", "5800x3d",
+                 sys.executable, "-c", ULTIMA, "--screenshot", str(destino), *banderas],
+                cwd=RAIZ, env=entorno, capture_output=True, text=True, timeout=180)
+            self.assertEqual(hecho.returncode, 0, hecho.stderr[-500:])
+            return hecho.stdout
+
+    def test_the_rates_come_out(self):
+        salida = self._capturar("--page", "Almacenamiento")
+        self.assertIn("primera: False vistas: 10", salida)
+        self.assertIn("ritmos: True", salida)
+
+    def test_one_sample_is_the_first_reading(self):
+        self.assertIn("primera: True vistas: 1", self._capturar("--samples", "1"))
+
+
 if __name__ == "__main__":
     unittest.main()

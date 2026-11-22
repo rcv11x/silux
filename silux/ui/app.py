@@ -1637,14 +1637,19 @@ def main(argv: Optional[list[str]] = None) -> int:
 
         window.show()
         collector = Collector()
-        collector.snapshot()
         preparar = _anonimizador(args.anonymous)
         # Las justas para que haya cifras derivadas, o las que se pidan: con
         # diez seguidas las gráficas de las fichas salen en una esquina, que
         # está bien para ver una página y mal para enseñar cómo queda.
         pausa = args.interval if args.interval and args.samples != MUESTRAS_DE_CAPTURA else 0.08
-        for _paso in range(max(2, args.samples)):
-            time.sleep(pausa)
+        # The rates check their window against the collector's interval: at
+        # its default second, every pause of 0.08 s was too short, and disk
+        # and network rates never came out.
+        collector.interval_s = pausa
+        # The first one is shown too: `--samples 1` is the first reading.
+        for paso in range(max(1, args.samples)):
+            if paso:
+                time.sleep(pausa)
             window._on_sample(preparar(collector.snapshot()))
             app.processEvents()
         if args.page and (motivo := seccion_que_falta(window, args.page)):
