@@ -56,6 +56,28 @@ permisos. Lo que lee el ayudante (SMART, SMBIOS, MSR, RAPL, los contadores de
 la memoria) no va: está propuesto en las notas
 (`propuesta-anexo-con-permisos.md`). Lo marcado «con el ayudante» lo necesita.
 
+* **De los informes de la prueba7** (volcados `i5-3330`, `i5-5200u`,
+  `i5-8350u` y `core2-p8400`), lo que queda:
+  - Memoria · media · con el ayudante: en el T480s, el módulo 1 (Samsung
+    M471A1K43BB1-CRC, sin SPD en el bus) es casi seguro la memoria soldada,
+    pero la tabla del firmware lo llama SODIMM en «ChannelA-DIMM0» y la regla
+    de lo soldado no lo ve. Hace falta su tabla SMBIOS para decidir con qué.
+  - Memoria · baja · el i5-5200U registra el chip SPD de uno solo de sus dos
+    módulos: el otro no aparece en el bus i2c.
+  - Almacenamiento · media · los atributos SMART estándar de un WD
+    (3, 4, 7, 10, 11, 183, 184, 190-193, 196, 200) salen como «propio del
+    fabricante»: tienen nombre por defecto en smartmontools (`ata_get_attr_name`).
+  - Red · baja · un adaptador Wi-Fi por USB enseña «Ranura PCI: 5-2:1.0», que
+    es su ruta USB.
+  - Gráficos · baja · la velocidad del enlace DisplayPort de cada monitor solo
+    la publica amdgpu en debugfs, que es de root.
+  - Gráficos · baja · el modelo comercial exacto de una tarjeta
+    (Hellhound, Reaper, Red Devil) no está en pci.ids: para 148C:2435 dice
+    «Radeon RX 9070 XT 16GB». Habría que mandarlo a la base de pci-ids.
+  - Volcados · baja · `PrivilegedState.supported` mira el pkexec del equipo
+    que pasa la suite, no el del volcado: el del P8400 ofrece «dar permisos»
+    en los tests aunque en su equipo no haya pkexec.
+
 * **Del T14 del autor** (volcado `i5-1135g7`):
   - Gráficos · media · el pico de 1336648637.3 W en la gráfica del consumo
     de la Iris Xe (glmark2, en batería) no está reproducido: 9 J en unos
