@@ -28,6 +28,7 @@ Cómo leer las tablas:
 | Instrucciones | CPUID, por la tabla de `silux/features.py` | `grep -m1 flags /proc/cpuinfo`. Cuatro cambian de nombre: `pni` es SSE3, `fma` es FMA3, `ht` y `clflush` | no |
 | Virtualización | CPUID (VT-x o AMD-V) | `lscpu \| grep Virtualization` | no |
 | Microcódigo | `/sys/devices/system/cpu/cpu0/microcode/version` | `grep -m1 microcode /proc/cpuinfo` | no |
+| Encapsulado | la tabla de Silux, por nombre en clave y número de modelo; si no está, la tabla del firmware (SMBIOS tipo 4, «Processor Upgrade») | `sudo dmidecode -t 4 \| grep Upgrade`. dmidecode escribe «Socket BGA1155» para el código 24h, que la especificación llama LGA1155 | solo la del firmware |
 | Frecuencia de cada hilo | `cpuN/cpufreq/cpuinfo_avg_freq`; si no existe, `scaling_cur_freq`; si no, `cpuinfo_cur_freq` | `cat /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_avg_freq` (kHz). `lscpu -e=CPU,MHZ` lee otra fuente y puede no coincidir | no |
 | Mínima | `cpuN/cpufreq/cpuinfo_min_freq` | `lscpu \| grep 'min MHz'` | no |
 | Máxima (kernel) | `cpuN/cpufreq/cpuinfo_max_freq`, releída en cada muestreo | `lscpu \| grep 'max MHz'` | no |

@@ -23,12 +23,23 @@ que hace falta.
   los cambian al enchufar o quitar el cargador.
 - El tamaño de cada caché sale con los decimales que hacen falta para que la
   cuenta cuadre: «4 × 1.25 MB», no «4 × 1.2 MB» para 5 MB.
+- El encapsulado de los Intel de sobremesa de la segunda a la séptima
+  generación (LGA 1155, 1150 y 1151), y «soldado» en los portátiles U e Y y
+  en los Atom, Celeron y Pentium de bajo consumo. Si la tabla no lo tiene,
+  con permisos se lee de la tabla del firmware.
 
 ### Memoria
 
 - Dos módulos en dos controladores ya no se llaman los dos «Canal A»: el
   zócalo dice su controlador cuando es lo que los distingue.
 - Un voltaje que el SPD confirma ya no dice «según la BIOS».
+- La DDR3 se lee de su chip SPD: capacidad, velocidad, temporizaciones,
+  voltaje y fabricante, y «DDR3L» cuando el módulo admite 1,35 V. Si los
+  módulos están catalogados a velocidades distintas, se dice que van todos a
+  la del más lento, también sin permisos.
+- Lo que el chip SPD de un módulo no declara se dice al pie de su ficha, sin
+  guiones, y la explicación de los perfiles es una frase: el resto, al pasar
+  el ratón.
 - La ficha de un módulo soldado dice «Soldada a la placa» y por qué se sabe,
   en vez del formato que declara la BIOS.
 

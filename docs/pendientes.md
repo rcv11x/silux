@@ -509,7 +509,11 @@ De la quinta auditoría, sin comprobar uno a uno si siguen igual:
     cada rango.
   - ARM: `arch/arm64/include/asm/cputype.h` del kernel (MIDR → núcleo).
   - Nodo y encapsulado por modelo: de las fichas oficiales (ARK, amd.com), que
-    ya lee `tools/gen_memory_limits.py` para el máximo de memoria.
+    ya lee `tools/gen_memory_limits.py` para el máximo de memoria. Hoy 160
+    de los 411 procesadores de referencia no tienen encapsulado en la tabla:
+    casi todos anteriores a 2011, y los portátiles con zócalo (rPGA), que
+    comparten nombre en clave con los soldados y solo se separan por el
+    número de modelo.
   - `tools/gen_cpu_db.py` regenera la tabla de esas fuentes, y un test compara
     el JSON con lo regenerado (el contenido, no un número de versión).
   - Los informes de la comunidad: `tools/anadir_cpu.py INFORME` saca la firma
