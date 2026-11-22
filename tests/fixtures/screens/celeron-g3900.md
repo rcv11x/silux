@@ -453,7 +453,7 @@ puerta 192.168.1.1 · 1 de 2 activas
 - Dirección física: 00:00:5e:00:53:af
 - MTU: 1500
 - Driver: rtl8192eu
-- Ranura PCI: 1-3:1.0
+- Puerto USB: bus 1, puerto 3
 
 El kernel no publica modelo de esta interfaz. Sus paquetes no se enseñan: su driver (rtl8192eu) cuenta 15.1 MB por paquete, y con una MTU de 1500 en un paquete caben 1522 bytes. Cuenta tramas agregadas, o cuenta mal.
 

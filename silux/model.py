@@ -1462,6 +1462,7 @@ class NetworkInterface:
     model: Optional[str] = None
     vendor: Optional[str] = None
     pci_slot: Optional[str] = None
+    usb_port: Optional[str] = None             # «1-3»: port 3 of USB bus 1
     traffic: NetworkTraffic = field(default_factory=NetworkTraffic)
 
     @property

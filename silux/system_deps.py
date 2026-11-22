@@ -62,6 +62,12 @@ DEPENDENCIES = (
                {"debian": "hwdata", "ubuntu": "hwdata", "fedora": "hwdata", "arch": "hwdata",
                 "gentoo": "sys-apps/hwdata"},
                "deps.pnpids"),
+    Dependency("usb.ids", "data",
+               ("/usr/share/hwdata/usb.ids", "/usr/share/misc/usb.ids", "/usr/share/usb.ids",
+                "/var/lib/usbutils/usb.ids"),
+               {"debian": "usb.ids", "ubuntu": "hwdata", "fedora": "hwdata", "arch": "hwdata",
+                "gentoo": "sys-apps/hwdata"},
+               "deps.usbids"),
     Dependency("nvml", "library", ("libnvidia-ml.so.1",),
                # Ubuntu's carries the driver's version: libnvidia-compute-595.
                {"debian": "libnvidia-ml1", "ubuntu": "libnvidia-compute-{nvidia}",

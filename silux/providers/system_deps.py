@@ -40,6 +40,17 @@ def _a_screen_is_connected() -> bool:
                for name in _entries("/sys/class/drm") if "-" in name)
 
 
+def _a_usb_network_card() -> bool:
+    for name in _entries("/sys/class/net"):
+        try:
+            device = os.path.realpath(sysroot.path(f"/sys/class/net/{name}/device"))
+        except OSError:
+            continue
+        if "/usb" in device:
+            return True
+    return False
+
+
 def _graphics_with_a_driver() -> bool:
     return any(os.path.exists(sysroot.path(f"/sys/class/drm/{name}/device/driver"))
                for name in _entries("/sys/class/drm") if re.fullmatch(r"card\d+", name))
@@ -96,6 +107,8 @@ class SystemDependencies(Provider):
             note("board.packages.pciids", "pci.ids", _("deps.pciids"))
         if _a_screen_is_connected() and _missing("pnp.ids"):
             note("gpus.packages.pnpids", "pnp.ids", _("deps.pnpids"))
+        if _a_usb_network_card() and _missing("usb.ids"):
+            note("network.packages.usbids", "usb.ids", _("deps.usbids"))
         if _nvidia_driver_in_use() and _missing("nvml"):
             # Replaces the driver's own note, adding the package.
             draft.notes = [n for n in draft.notes

@@ -859,9 +859,18 @@ def interface_missing(interface) -> list[str]:
         "net.field.mac": interface.mac,
         "gpu.field.driver": interface.driver,
         "storage.col.model": with_maker(interface.vendor, interface.model),
-        "net.field.slot": interface.pci_slot,
+        "net.field.slot": interface.pci_slot or interface.usb_port,
     }
     return [key for key in INTERFACE_DEVICE_FIELDS if not values[key]]
+
+
+def usb_port(port: Optional[str]) -> Optional[str]:
+    """«bus 1, puerto 3» for the kernel's «1-3»; «puerto 3.2» is port 2 of a
+    hub on port 3."""
+    if not port or "-" not in port:
+        return None
+    bus, _sep, path = port.partition("-")
+    return _("net.usbport").format(bus=bus, puerto=path)
 
 
 def interface_footnote(interface) -> Optional[str]:

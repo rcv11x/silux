@@ -51,6 +51,8 @@ def _package_notes(photo):
 BROUGHT_BY = {
     ("pnp.ids", "debian"): {"12": {"hwdata"}, "13": {"pnp.ids", "hwdata"}},
     ("pnp.ids", "ubuntu"): {"22.04": {"hwdata"}, "24.04": {"hwdata"}},
+    ("usb.ids", "debian"): {"12": {"usb.ids", "hwdata"}, "13": {"usb.ids", "hwdata"}},
+    ("usb.ids", "ubuntu"): {"22.04": {"usb.ids", "hwdata"}, "24.04": {"usb.ids", "hwdata"}},
 }
 
 

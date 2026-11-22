@@ -14,12 +14,13 @@ from __future__ import annotations
 import fcntl
 import os
 import pathlib
+import re
 import socket
 import struct
 import time
 from typing import Optional
 
-from .. import pciids, sysroot
+from .. import pciids, sysroot, usbids
 from ..model import NetworkInterface, NetworkTraffic
 from .base import Draft, Provider, read_int, read_text
 from .counters import rate
@@ -97,7 +98,7 @@ class NetworkInterfaces(Provider):
         key = (name, read_int(str(base / "ifindex")))
         if (known := fixed.get(key)) is None:
             known = (_kind(name, base, read_int(str(base / "type"))),
-                  _driver(base), _pci_identity(base))
+                  _driver(base), _device_identity(base))
         self._fixed[key] = known
         kind, driver, identity = known
         speed = read_int(str(base / "speed"))
@@ -246,6 +247,46 @@ def _driver(base: pathlib.Path) -> Optional[str]:
         return link.resolve().name if link.exists() else None
     except OSError:
         return None
+
+
+# A USB interface's name: its device («1-3», port 3 of bus 1) and, after the
+# colon, the configuration and the interface («1.0»).
+_USB_INTERFACE = re.compile(r"^\d+-[\d.]+:\d+\.\d+$")
+
+
+def _device_identity(base: pathlib.Path) -> dict:
+    """The card's model, and where it is plugged: a PCI slot or a USB port."""
+    device = base / "device"
+    try:
+        resolved = device.resolve() if device.exists() else None
+    except OSError:
+        resolved = None
+    if resolved is not None and _USB_INTERFACE.match(resolved.name):
+        return _usb_identity(resolved.parent)
+    return _pci_identity(base)
+
+
+def _usb_identity(device: pathlib.Path) -> dict:
+    """A USB card's model from usb.ids, or else the names its own
+    descriptor gives («802.11n NIC»), which are often the chip maker's
+    generic ones."""
+    data: dict = {"usb_port": device.name}
+
+    def hex_field(field: str) -> Optional[int]:
+        raw = read_text(str(device / field))
+        try:
+            return int(raw, 16) if raw else None
+        except ValueError:
+            return None
+
+    vendor_id, product_id = hex_field("idVendor"), hex_field("idProduct")
+    found = (usbids.lookup(vendor_id, product_id)
+             if vendor_id is not None and product_id is not None else None)
+    if found:
+        data["vendor"], data["model"] = found
+    elif product := read_text(str(device / "product")):
+        data["vendor"], data["model"] = read_text(str(device / "manufacturer")) or None, product
+    return data
 
 
 def _pci_identity(base: pathlib.Path) -> dict:

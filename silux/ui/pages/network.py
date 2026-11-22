@@ -22,25 +22,28 @@ from ... import render
 from ...i18n import _
 from ...model import NetworkInterface, Snapshot
 from ...settings import Preferences
+from .board import NEED_TITLES
 from .. import theme
 from ..theme import Palette, ui_font
 from ..widgets import (
     Card,
     ChipRow,
     InfoGrid,
+    Notice,
     ResponsiveRow,
     ScrollPage,
     Series,
     StatTile,
     Table,
     clear_layout,
+    tone_for,
 )
 
 INTERFACE_FIELDS = (
     "gpu.sensor.state", "memory.field.type", "net.field.ipv4",
     "net.field.mask", "net.field.gateway", "net.field.ipv6",
     "net.field.mac", "net.field.speed", "MTU", "gpu.field.driver",
-    "storage.col.model", "net.field.slot",
+    "storage.col.model", "net.field.slot", "net.field.usbport",
 )
 
 TRAFFIC_HEADERS = ("net.col.iface", "net.col.down", "net.col.up", "net.col.received",
@@ -116,6 +119,10 @@ class NetworkPage(ScrollPage):
         layout.setSpacing(m.section_gap)
 
         layout.addWidget(self._build_header())
+        self._notices_host = QVBoxLayout()
+        self._notices_host.setSpacing(6)
+        layout.addLayout(self._notices_host)
+        self._notice_signature: tuple = ()
         layout.addWidget(self._build_tiles())
 
         traffic_card = Card(_("net.card.traffic"))
@@ -266,6 +273,19 @@ class NetworkPage(ScrollPage):
         self.traffic.set_rows(self._filas_de_trafico(fisicas))
         self._apply_cards(fisicas, self._cards_host, "fisicas")
         self._apply_virtuales(virtuales)
+        self._apply_notices(snapshot)
+
+    def _apply_notices(self, snapshot: Snapshot) -> None:
+        notes = snapshot.notes_for("network")
+        signature = tuple((n.path, n.need) for n in notes)
+        if signature == self._notice_signature:
+            return
+        self._notice_signature = signature
+        clear_layout(self._notices_host)
+        for note in notes:
+            self._notices_host.addWidget(
+                Notice(_(NEED_TITLES.get(note.need, note.need.value)),
+                       note.message, note.hint, tone=tone_for(note.need)))
 
     def _apply_header(self, principal, interfaces) -> None:
         activas = sum(1 for i in interfaces if i.active)
@@ -437,10 +457,17 @@ class NetworkPage(ScrollPage):
             f(_("gpu.field.driver"), interfaz.driver or d)
             f(_("storage.col.model"), render.with_maker(interfaz.vendor, interfaz.model) or d)
             f(_("net.field.slot"), interfaz.pci_slot or d)
+            f(_("net.field.usbport"), render.usb_port(interfaz.usb_port) or d)
             # What the interface doesn't have hides, and its foot says so.
             missing = render.interface_missing(interfaz)
             for key in render.INTERFACE_DEVICE_FIELDS:
-                grid.set_visible(_(key), key not in missing)
+                if key != "net.field.slot":
+                    grid.set_visible(_(key), key not in missing)
+            # Where it is plugged: a PCI slot or a USB port, each in its row.
+            grid.set_visible(_("net.field.slot"),
+                             bool(interfaz.pci_slot) or not interfaz.usb_port
+                             and "net.field.slot" not in missing)
+            grid.set_visible(_("net.field.usbport"), bool(interfaz.usb_port))
             foot = self._feet.get(interfaz.name)
             if foot is not None:
                 text = " ".join(t for t in (render.interface_footnote(interfaz),
