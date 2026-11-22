@@ -77,6 +77,67 @@ class TestPiezasSinNumeroDeSerie(unittest.TestCase):
         self.assertEqual(sum(limpio) % 256, 0)
 
 
+class TestAnEdidStays(unittest.TestCase):
+    """An EDID goes into the dump with only its serial covered, not taken
+    out: a TV's was, as its «no number» (01 01 01 01) was taken for a
+    serial and found in the EDID's unused standard timings."""
+
+    def _dumped(self, raw: bytes):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = pathlib.Path(tmp.name)
+        edid = root / "sys/devices/pci0000:00/0000:00:02.0/drm/card1/card1-HDMI-A-1/edid"
+        edid.parent.mkdir(parents=True)
+        edid.write_bytes(raw)
+        cleaner = volcar._Anonymizer(root, {})
+        cleaner.clean_contents()
+        return edid.read_bytes(), volcar.found_in(root, cleaner.secrets, cleaner.raw_secrets,
+                                                 own={})
+
+    def _with_serial(self, raw: bytes, number: bytes, unused_timings: bool) -> bytes:
+        block = bytearray(raw[:128])
+        block[12:16] = number
+        if unused_timings:
+            # The last two standard timings unused, as most TVs leave them.
+            block[50:54] = b"\x01\x01\x01\x01"
+        block[127] = (-sum(block[:127])) % 256
+        return bytes(block) + raw[128:]
+
+    def test_every_real_edid_with_any_number(self):
+        from silux import edid
+        fixtures = pathlib.Path(__file__).parent / "fixtures" / "edid"
+        for source in sorted(fixtures.glob("*.bin")):
+            for number, unused in ((b"\x01\x01\x01\x01", True), (b"\x01\x01\x01\x01", False),
+                                   (bytes(4), True), (b"\x8a\x3b\x01\x00", True)):
+                with self.subTest(source.name, number=number.hex(), unused=unused):
+                    raw = self._with_serial(source.read_bytes(), number, unused)
+                    clean, findings = self._dumped(raw)
+                    self.assertEqual(findings, [])
+                    self.assertEqual(clean[12:16], bytes(4))
+                    self.assertEqual(sum(clean[:128]) % 256, 0)
+                    # Only the serial changed: the rest reads the same.
+                    before, after = edid.parse(raw), edid.parse(clean)
+                    self.assertEqual((after.model, after.native_width, after.width_mm),
+                                     (before.model, before.native_width, before.width_mm))
+                    self.assertEqual(clean[128:], raw[128:])
+
+    def test_a_text_serial_is_looked_for_elsewhere(self):
+        fixtures = pathlib.Path(__file__).parent / "fixtures" / "edid"
+        block = bytearray((fixtures / "lg-27gl850-144hz.bin").read_bytes()[:128])
+        block[90:108] = b"\x00\x00\x00\xff\x00" + b"SN12AB34567\n "
+        block[127] = (-sum(block[:127])) % 256
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = pathlib.Path(tmp.name)
+        (root / "edid").write_bytes(bytes(block))
+        (root / "nota").write_text("SN12AB34567\n")
+        cleaner = volcar._Anonymizer(root, {})
+        cleaner.clean_contents()
+        self.assertNotIn(b"SN12AB34567", (root / "edid").read_bytes())
+        found = volcar.found_in(root, cleaner.secrets, cleaner.raw_secrets, own={})
+        self.assertEqual([path for path, _kind, _what in found], ["nota"])
+
+
 class TestLaComprobacionFinal(unittest.TestCase):
 
     def test_encuentra_un_dato_sustituido_y_unos_bytes_crudos(self):

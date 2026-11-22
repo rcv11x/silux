@@ -571,6 +571,16 @@ def _text_of(path: pathlib.Path) -> str | None:
         return None
 
 
+def _edid_serial_text(data: bytes) -> str | None:
+    """The serial number a display writes in its 0xFF descriptor, if any."""
+    for start in range(54, 126, 18):
+        chunk = data[start:start + 18]
+        if len(chunk) == 18 and chunk[:3] == b"\x00\x00\x00" and chunk[3] == 0xFF:
+            text = chunk[5:].split(b"\n", 1)[0].decode("ascii", "replace").strip()
+            return text if len(text) >= 4 else None
+    return None
+
+
 def _edid_without_serial(data: bytes) -> bytes:
     """The EDID with its serial number zeroed and its checksum updated."""
     if len(data) < 128 or data[:8] != b"\x00\xff\xff\xff\xff\xff\xff\x00":
@@ -864,8 +874,14 @@ class _Anonymizer:
                 path.write_text(clean)
                 continue
             if name == "edid":
-                if len(data) >= 16 and any(data[12:16]):
+                # Its number is covered where it is, and looked for anywhere
+                # else. Zero and 01 01 01 01 are the EDID's «no number»: the
+                # second is in every EDID's unused standard timings, and as a
+                # secret it took a TV's whole EDID out of the annex.
+                if len(data) >= 16 and data[12:16] not in (bytes(4), b"\x01" * 4):
                     self.raw_secrets[data[12:16]] = "monitor_serial"
+                if text := _edid_serial_text(data):
+                    self._secret(text, "monitor_serial")
                 path.write_bytes(_edid_without_serial(data))
                 continue
             if name == "eeprom":
