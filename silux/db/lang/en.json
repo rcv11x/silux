@@ -81,6 +81,7 @@
   "bat.m": "{m} min",
   "bat.model": "Model",
   "bat.nodata": "The firmware declares a battery but gives no capacity, charge or voltage.",
+  "bat.nodata.impossible": "The firmware declares a battery, but gives neither its capacity nor its charge, and the voltage it reports, {tension}, is impossible for one of {nominal} nominal.",
   "bat.nodata.title": "Battery without data",
   "bat.none": "This machine has no battery.",
   "bat.power": "Power",

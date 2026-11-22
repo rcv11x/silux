@@ -509,23 +509,8 @@ Este equipo no tiene adaptador Bluetooth.
 
 ## Batería
 
-
-SMP · Retenida en el tope
-Li-ion
-- Salud: —
-- Carga: — (0.0 Wh)
-- Potencia: 0.0 W (Retenida en el tope)
-- Autonomía: con el cargador
-
-### La celda
-
-- Fabricante: SMP
-- Modelo: 
-- Tecnología: Li-ion
-- Tensión: 20.48 V
-- Tensión nominal: 14.80 V
-- Capacidad: —
-- Capacidad de diseño: —
+Batería sin datos
+El firmware declara una batería, pero no da su capacidad ni su carga, y la tensión que da, 20.48 V, es imposible en una de 14.80 V nominales.
 
 ## Sistema
 

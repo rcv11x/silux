@@ -464,6 +464,9 @@ def _battery(snapshot: Snapshot) -> str:
             voltages.append(f"nominal {battery.design_voltage_v:.2f} V")
         if voltages:
             lines.append("- Tensión: " + " · ".join(voltages))
+        if battery.impossible_voltage_v:
+            lines.append(f"- Tensión descartada: {battery.impossible_voltage_v:.2f} V, "
+                         f"imposible con esa nominal")
         # The thresholds only when set. A laptop without a limit publishes 0
         # and 100, the whole range: that is no threshold, and writing it made
         # it look as if something were configured.

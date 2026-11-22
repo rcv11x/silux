@@ -146,12 +146,6 @@ la memoria) no va: está propuesto en las notas
   - Memoria · baja · con el ayudante · «Hynix/Hyundai», como lo escribe la BIOS
     del Acer, no pasa por `render.maker`: el otro módulo del mismo
     fabricante sale «SK Hynix».
-  - Batería · media · la del Vostro da ahora `voltage_now` = 20.48 V en una
-    batería de 14.8 V nominales (imposible), `charge_now` = 0 sin capacidad,
-    el modelo vacío y «Not charging». Antes salía «Batería sin datos»; ahora
-    sale su ficha con «Modelo: » vacío, «Carga: — (0.0 Wh)» y los 20.48 V.
-    La tensión imposible se descarta, y sin capacidad ni carga vuelve a ser
-    «sin datos».
   - Gráficos · media · con la GeForce GTX 850M en reposo (nouveau), su ficha
     son 35 filas con guion; la RTX del LOQ en reposo no tiene ninguna. Y la
     HD 4600 dice «Ni Vulkan ni OpenGL usan esta tarjeta» y «Sin bibliotecas

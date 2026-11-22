@@ -1574,6 +1574,9 @@ class Battery:
 
     voltage_v: Optional[float] = None
     design_voltage_v: Optional[float] = None
+    # What the firmware gave as the voltage when a pack of that nominal can't
+    # have it: dropped from `voltage_v`, kept to say so.
+    impossible_voltage_v: Optional[float] = None
     # Always positive: whether it charges or discharges is `status`'s to say,
     # and a sign whose meaning depends on the firmware tells nothing.
     power_w: Optional[float] = None

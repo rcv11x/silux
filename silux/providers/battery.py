@@ -36,8 +36,30 @@ STATUSES = {
 }
 
 
+# A lithium cell lives between about 2.5 V, where the protection cuts it,
+# and 4.45 V, a high-voltage cell full; its nominal is 3.6 to 3.85 V. A pack
+# can't read outside these fractions of its nominal voltage.
+VOLTAGE_RANGE = (0.6, 1.25)
+
+
 def _technology(raw: Optional[str]) -> Optional[str]:
     return None if not raw or raw.strip().lower() == "unknown" else raw.strip()
+
+
+def _firmware_text(raw: Optional[str]) -> Optional[str]:
+    """The text as the firmware wrote it, or None if it's only control
+    characters: an empty field some firmwares fill with a byte."""
+    if not raw:
+        return None
+    text = "".join(c for c in raw if c.isprintable()).strip()
+    return text or None
+
+
+def _plausible(volts: Optional[float], nominal: Optional[float]) -> bool:
+    if not volts or not nominal:
+        return True
+    low, high = VOLTAGE_RANGE
+    return low * nominal <= volts <= high * nominal
 
 
 def _is_battery(entry: pathlib.Path) -> bool:
@@ -84,6 +106,9 @@ def _read(entry: pathlib.Path) -> Battery:
     volts = round(voltage / 1e6, 3) if voltage else None
     design = read_int(str(entry / "voltage_min_design"))
     design_volts = round(design / 1e6, 3) if design else None
+    impossible = None
+    if not _plausible(volts, design_volts):
+        impossible, volts = volts, None
 
     # The design voltage converts mAh to Wh because it goes with the nominal
     # capacity; the current voltage moves with the charge and would give a
@@ -99,23 +124,32 @@ def _read(entry: pathlib.Path) -> Battery:
     if status == "bat.status.held" and end and percent is not None and percent < end - 1:
         status = "bat.status.paused"
 
+    full_wh = _watt_hours(entry, "full", nominal)
+    design_wh = _watt_hours(entry, "full_design", nominal)
+    now_wh = _watt_hours(entry, "now", nominal)
+    # A charge of zero with no capacity or percentage to set it against is
+    # the firmware filling the field, not an empty battery.
+    if now_wh == 0 and not full_wh and not design_wh and percent is None:
+        now_wh = None
+
     return Battery(
         name=entry.name,
         present=read_int(str(entry / "present")) != 0,
         status=status,
         percent=float(percent) if percent is not None else None,
-        design_wh=_watt_hours(entry, "full_design", nominal),
-        full_wh=_watt_hours(entry, "full", nominal),
-        now_wh=_watt_hours(entry, "now", nominal),
+        design_wh=design_wh,
+        full_wh=full_wh,
+        now_wh=now_wh,
         voltage_v=volts,
         design_voltage_v=design_volts,
+        impossible_voltage_v=impossible,
         power_w=_watts(entry, volts),
         cycles=read_int(str(entry / "cycle_count")) or None,
-        manufacturer=read_text(str(entry / "manufacturer")) or None,
-        model=read_text(str(entry / "model_name")) or None,
+        manufacturer=_firmware_text(read_text(str(entry / "manufacturer"))),
+        model=_firmware_text(read_text(str(entry / "model_name"))),
         # «Unknown» is the kernel's word for none (POWER_SUPPLY_TECHNOLOGY_UNKNOWN).
-        technology=_technology(read_text(str(entry / "technology"))),
-        serial=read_text(str(entry / "serial_number")),
+        technology=_technology(_firmware_text(read_text(str(entry / "technology")))),
+        serial=_firmware_text(read_text(str(entry / "serial_number"))),
         charge_start_percent=read_int(
             str(entry / "charge_control_start_threshold")),
         charge_end_percent=end,

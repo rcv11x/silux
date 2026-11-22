@@ -63,6 +63,13 @@ que hace falta.
 - Nuevo: la entrada del menú lleva `TryExec`: si el AppImage ya no existe,
   el menú deja de enseñarla la próxima vez que se pone al día.
 
+### Arreglos
+
+- Batería: si el firmware da una tensión que una batería de esa nominal no
+  puede tener (20,48 V en una de 14,8 V), no se enseña. Sin capacidad ni
+  carga, sale «Batería sin datos» diciendo esa tensión, y no una ficha con el
+  modelo vacío y «Carga: — (0.0 Wh)».
+
 ## 0.4-prueba10 (22 de noviembre de 2026)
 
 Las temporizaciones de una DDR5 con su chip SPD legible salían mal en la

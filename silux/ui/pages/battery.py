@@ -120,7 +120,12 @@ class _SeccionBateria(QWidget):
         self.columnas.setVisible(not vacia)
         if vacia:
             self.title.setText(_("bat.nodata.title"))
-            self.subtitle.setText(_("bat.nodata"))
+            if bateria.impossible_voltage_v and bateria.design_voltage_v:
+                self.subtitle.setText(_("bat.nodata.impossible").format(
+                    tension=f"{bateria.impossible_voltage_v:.2f} V",
+                    nominal=f"{bateria.design_voltage_v:.2f} V"))
+            else:
+                self.subtitle.setText(_("bat.nodata"))
             self.badges.set_chips([])
             return
         self.title.setText(bateria.model or bateria.name)
