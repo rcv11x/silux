@@ -811,6 +811,8 @@
   "gpu.tip.videouse": "Los motores de codificación y decodificación de video, que trabajan aparte del resto de la GPU.",
   "gpu.tip.visible": "Cuánta VRAM puede direccionar la CPU de una vez.",
   "gpu.tip.vr": "Los reguladores que alimentan al chip. No los publica el sistema: los cuenta el microcontrolador de la propia tarjeta.",
+  "gpu.tip.vram.kept": "El driver puede usar {total}. La tarjeta lleva {chips} GiB de memoria, que la caja escribe «{chips} GB»: el resto, {kept}, se lo queda el firmware de la tarjeta.",
+  "gpu.tip.vram.kept.driver": "El driver puede usar {total}. La tarjeta lleva {chips} GiB de memoria, que la caja escribe «{chips} GB»: el resto, {kept}, lo reservan la tarjeta y su driver.",
   "gpu.units.count": "{n} unidades de cómputo",
   "gpu.units.cu": "unidades de cómputo",
   "gpu.units.cuda": "núcleos CUDA",

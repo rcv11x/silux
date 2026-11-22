@@ -1535,6 +1535,25 @@ def api_driver(api, gpu) -> Optional[str]:
     return api.driver
 
 
+def vram_tip(gpu) -> Optional[str]:
+    """Why a card sold as «16 GB» shows 15.9 GiB: the driver gets the chips'
+    whole GiB minus what the card's firmware keeps for itself. The chips' size
+    isn't published; memory comes in whole GiB, and what the firmware keeps
+    is under one."""
+    total = gpu.memory.total_bytes
+    if gpu.integrated or not total:
+        return None
+    chips = -(-total // 1024 ** 3)                    # the next whole GiB
+    kept = chips * 1024 ** 3 - total
+    if not 1024 ** 2 <= kept < 1024 ** 3:
+        return None
+    # amdgpu's total is already what the card's firmware hands over; through
+    # NVML, the card and its driver have both had their part.
+    key = "gpu.tip.vram.kept" if gpu.driver == "amdgpu" else "gpu.tip.vram.kept.driver"
+    return _(key).format(total=f"{thousands(total // 1024 ** 2)} MiB", chips=chips,
+                         kept=size(kept))
+
+
 def gpu_power_limit_tip(gpu) -> str:
     """The current cap, and whether someone raised it above the factory one."""
     tip = _("gpu.tip.powercap")

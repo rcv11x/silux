@@ -1204,7 +1204,7 @@ class GpuSection(QWidget):
         d = render.DASH
         memoria = gpu.memory
         m = self.memory.set
-        m(_("gpu.vram.total"), render.size(memoria.total_bytes))
+        m(_("gpu.vram.total"), render.size(memoria.total_bytes), tooltip=render.vram_tip(gpu))
         m(_("gpu.vram.type"), render.vram_kind(memoria))
         m(_("gpu.vram.bus"), render.vram_bus(memoria))
         m(_("gpu.vram.bandwidth"), render.bandwidth(memoria.bandwidth_bytes),

@@ -811,6 +811,8 @@
   "gpu.tip.videouse": "The video encode and decode engines, which work separately from the rest of the GPU.",
   "gpu.tip.visible": "How much VRAM the CPU can address at once.",
   "gpu.tip.vr": "The regulators that power the chip. The system does not publish them: the card's own microcontroller counts them.",
+  "gpu.tip.vram.kept": "The driver can use {total}. The card carries {chips} GiB of memory, which the box writes «{chips} GB»: the rest, {kept}, the card's firmware keeps for itself.",
+  "gpu.tip.vram.kept.driver": "The driver can use {total}. The card carries {chips} GiB of memory, which the box writes «{chips} GB»: the rest, {kept}, the card and its driver reserve.",
   "gpu.units.count": "{n} compute units",
   "gpu.units.cu": "compute units",
   "gpu.units.cuda": "CUDA cores",
