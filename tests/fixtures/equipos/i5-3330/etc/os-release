@@ -1,0 +1,11 @@
+NAME="Arch Linux"
+PRETTY_NAME="Arch Linux"
+ID=arch
+BUILD_ID=rolling
+ANSI_COLOR="38;2;23;147;209"
+HOME_URL="https://silux-pc.org/"
+DOCUMENTATION_URL="https://wiki.silux-pc.org/"
+SUPPORT_URL="https://bbs.silux-pc.org/"
+BUG_REPORT_URL="https://gitlab.silux-pc.org/groups/silux-pc/-/issues"
+PRIVACY_POLICY_URL="https://terms.silux-pc.org/docs/privacy-policy/"
+LOGO=silux-pc-logo

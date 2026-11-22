@@ -44,7 +44,9 @@ def _acpitz(f):
 FILLER = {"5800x3d": True, "i5-10400": True, "i5-10400-turbo": True,
           "i5-1135g7": False, "i5-12450h": True, "i7-10700f": True,
           # 16.8 °C on both zones, flat, as on our desktops.
-          "ryzen3-4100": True}
+          "ryzen3-4100": True,
+          # 27.8 and 29.8 °C, the Intel firmware's usual pair.
+          "i5-3330": True}
 
 
 class TestLasZonasQueNoMiden(unittest.TestCase):

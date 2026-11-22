@@ -1,0 +1,228 @@
+{
+ "cpuid": {
+  "*:0:0": [
+   13,
+   1970169159,
+   1818588270,
+   1231384169
+  ],
+  "*:2147483648:0": [
+   2147483656,
+   0,
+   0,
+   0
+  ],
+  "0:1:0": [
+   198313,
+   1050624,
+   2142954431,
+   3219913727
+  ],
+  "0:2147483649:0": [
+   0,
+   0,
+   1,
+   672139264
+  ],
+  "0:2147483650:0": [
+   538976288,
+   538976288,
+   1702129225,
+   693250156
+  ],
+  "0:2147483651:0": [
+   1919894304,
+   1297360997,
+   896081961,
+   858993453
+  ],
+  "0:2147483652:0": [
+   1346576432,
+   541073493,
+   808463923,
+   8013895
+  ],
+  "0:7:0": [
+   0,
+   641,
+   0,
+   2617246720
+  ],
+  "0:7:1": [
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ "gpuapi": {
+  "consultar": {
+   "opencl": [],
+   "opengl": {
+    "egl_vendor": "Mesa Project",
+    "egl_version": "1.5",
+    "glsl": "4.20",
+    "renderer": "Mesa Intel(R) HD Graphics 2500 (IVB GT1)",
+    "vendor": "Intel",
+    "version": "4.2 (Compatibility Profile) Mesa 26.3.1-arch1.2"
+   },
+   "vaapi": [],
+   "vulkan": [
+    {
+     "api_version": "1.2.363",
+     "device_id": 338,
+     "device_memory_bytes": 1610612736,
+     "driver_version": 109064193,
+     "instance_version": "1.4.363",
+     "kind": "integrada",
+     "name": "Intel(R) HD Graphics 2500 (IVB GT1)",
+     "vendor_id": 32902
+    }
+   ],
+   "vulkan_icds": [
+    "libvulkan_intel_hasvk.so",
+    "libvulkan_intel.so"
+   ],
+   "vulkan_rejected": []
+  }
+ },
+ "i915": {
+  "/dev/dri/renderD128": {
+   "chipset_id": 338,
+   "eu_total": null,
+   "subslices": null
+  }
+ },
+ "ioctl_red": {
+  "enp5s0:0x8915": null,
+  "enp5s0:0x891b": null,
+  "lo:0x8915": "127.0.0.1",
+  "lo:0x891b": "255.0.0.0",
+  "tailscale0:0x8915": "192.168.1.120",
+  "tailscale0:0x891b": "255.255.255.255",
+  "wlp2s0:0x8915": "192.168.1.120",
+  "wlp2s0:0x891b": "255.255.255.0"
+ },
+ "modinfo": {
+  "drivetemp": true
+ },
+ "nvml": {
+  "abierta": false
+ },
+ "paquetes": {
+  "egl": true,
+  "kmod": true,
+  "opencl": true,
+  "opengl": true,
+  "pci.ids": true,
+  "pkexec": true,
+  "pnp.ids": true,
+  "python3": true,
+  "systemctl": true,
+  "vaapi": true,
+  "vulkan": true,
+  "xdg-open": true
+ },
+ "pciids": {
+  "10ec:8168": {
+   "10ec:8168": [
+    "Realtek Semiconductor Co., Ltd.",
+    "RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller"
+   ]
+  },
+  "10ec:8168|8086:0152|8086:08b1|8086:1c02|8086:1c20|8086:1c26|8086:1c2d": {
+   "10ec:8168": [
+    "Realtek Semiconductor Co., Ltd.",
+    "RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller"
+   ],
+   "8086:0152": [
+    "Intel Corporation",
+    "Xeon E3-1200 v2/3rd Gen Core processor Graphics Controller"
+   ],
+   "8086:08b1": [
+    "Intel Corporation",
+    "Wireless 7260"
+   ],
+   "8086:1c02": [
+    "Intel Corporation",
+    "6 Series/C200 Series Chipset Family 6 port Desktop SATA AHCI Controller"
+   ],
+   "8086:1c20": [
+    "Intel Corporation",
+    "6 Series/C200 Series Chipset Family High Definition Audio Controller"
+   ],
+   "8086:1c26": [
+    "Intel Corporation",
+    "6 Series/C200 Series Chipset Family USB Enhanced Host Controller #1"
+   ],
+   "8086:1c2d": [
+    "Intel Corporation",
+    "6 Series/C200 Series Chipset Family USB Enhanced Host Controller #2"
+   ]
+  },
+  "8086:0150|8086:1c5c": {
+   "8086:0150": [
+    "Intel Corporation",
+    "Xeon E3-1200 v2/3rd Gen Core processor DRAM Controller"
+   ],
+   "8086:1c5c": [
+    "Intel Corporation",
+    "H61 Express Chipset LPC Controller"
+   ]
+  },
+  "8086:0152|8086:0152:1462:7680": {
+   "8086:0152": [
+    "Intel Corporation",
+    "Xeon E3-1200 v2/3rd Gen Core processor Graphics Controller"
+   ]
+  },
+  "8086:08b1": {
+   "8086:08b1": [
+    "Intel Corporation",
+    "Wireless 7260"
+   ]
+  }
+ },
+ "pciids_fabricante": {
+  "1462": "Micro-Star International Co., Ltd. [MSI]"
+ },
+ "plataforma": {
+  "entorno": {
+   "SHELL": "/usr/bin/bash",
+   "XDG_CURRENT_DESKTOP": "KDE",
+   "XDG_SESSION_TYPE": "wayland"
+  },
+  "kvm": true,
+  "machine": "x86_64",
+  "procesos": 277,
+  "uname": {
+   "machine": "x86_64",
+   "node": "silux-pc",
+   "processor": "",
+   "release": "7.3.5-arch1-1",
+   "system": "Linux",
+   "version": "#1 SMP PREEMPT_DYNAMIC Tue, 17 Nov 2026 22:28:33 +0000"
+  }
+ },
+ "realpath": {
+  "/dev/sdb1": "/dev/sdb1",
+  "/dev/sdb2": "/dev/sdb2"
+ },
+ "statvfs": {
+  "/": [
+   15900811264,
+   480278929408
+  ],
+  "/boot": [
+   123822080,
+   947802112
+  ]
+ },
+ "systemd": {
+  "arranque": {
+   "FinishTimestampMonotonic": 14134809,
+   "InitRDTimestampMonotonic": 0,
+   "UserspaceTimestampMonotonic": 3294717
+  }
+ }
+}

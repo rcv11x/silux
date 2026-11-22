@@ -1,0 +1,5 @@
+/dev/sdb2 / btrfs rw,relatime,compress=zstd:3,space_cache=v2,subvolid=256,subvol=/@ 0 0
+/dev/sdb1 /boot vfat rw,relatime,fmask=0077,dmask=0077,codepage=437,iocharset=ascii,shortname=mixed,utf8,errors=remount-ro 0 0
+/dev/sdb2 /var/log btrfs rw,relatime,compress=zstd:3,space_cache=v2,subvolid=258,subvol=/@log 0 0
+/dev/sdb2 /home btrfs rw,relatime,compress=zstd:3,space_cache=v2,subvolid=257,subvol=/@home 0 0
+/dev/sdb2 /media/unidad1 btrfs rw,relatime,compress=zstd:3,space_cache=v2,subvolid=259,subvol=/@pkg 0 0
