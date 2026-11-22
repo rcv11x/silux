@@ -323,6 +323,7 @@ class SettingsPage(ScrollPage):
     update_check_requested = Signal()
     # Silux was moved to ~/AppImages: open it from there and close this one.
     relaunch_requested = Signal(str)
+    welcome_requested = Signal()
 
     def __init__(self, prefs: Preferences, palette: Optional[Palette] = None, parent=None):
         super().__init__(parent)
@@ -422,12 +423,16 @@ class SettingsPage(ScrollPage):
 
         self.unit_box = self._combo(UNITS, self._prefs.temperature_unit)
         self.network_box = self._combo(NETWORK_UNITS, self._prefs.network_unit)
+        self.welcome_button = QPushButton(_("settings.welcome.button"))
+        self.welcome_button.clicked.connect(self.welcome_requested)
         return self._grupo(
             _("settings.group.general"),
             _Renglon(_("settings.language.label"), self.language_box,
                      _("settings.language.help")),
             _Renglon(_("settings.tempunit.label"), self.unit_box),
             _Renglon(_("settings.netunit.label"), self.network_box, _("settings.netunit.help")),
+            _Renglon(_("settings.welcome.label"), self.welcome_button,
+                     _("settings.welcome.help")),
         )
 
     def _build_appearance(self) -> Card:
@@ -855,6 +860,11 @@ class SettingsPage(ScrollPage):
                 self._mover_y_aplicar(lanzador.command[0], menu, en_escritorio)
                 return
         self._aplicar(menu, en_escritorio)
+
+    def add_to_menu(self) -> None:
+        """The menu entry, as its switch here puts it: asking first whether to
+        move an AppImage outside ~/AppImages."""
+        self._poner(True, self.desktop_shortcut.isChecked(), preguntar=True)
 
     def _preguntar_mover(self, ruta: str) -> Optional[bool]:
         """True: move it; False: leave it where it is; None: closed."""

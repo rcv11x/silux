@@ -76,6 +76,8 @@ class Preferences:
     # The Home notice about data missing for lack of permissions, dismissed
     # with «Don't show again». The status bar link stays.
     permission_notice_dismissed: bool = False
+    # The welcome of the first time, seen (or skipped).
+    welcome_shown: bool = False
 
     # -- validation ---------------------------------------------------------
 
@@ -107,6 +109,7 @@ class Preferences:
             window_width=min(3840, max(380, int(self.window_width))),
             window_height=min(2160, max(320, int(self.window_height))),
             permission_notice_dismissed=_yes_or_no(self.permission_notice_dismissed, False),
+            welcome_shown=_yes_or_no(self.welcome_shown, False),
         )
 
     @property
@@ -155,6 +158,8 @@ def load() -> Preferences:
         except (TypeError, ValueError, OverflowError):
             continue
         valid[pref_field.name] = raw[pref_field.name]
+    # Saved preferences from before the welcome existed: not the first time.
+    valid.setdefault("welcome_shown", True)
     return Preferences(**valid).normalized()
 
 

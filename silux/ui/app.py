@@ -347,6 +347,7 @@ class MainWindow(QMainWindow):
         self.settings_page.changed.connect(self._on_preferences)
         self.settings_page.update_check_requested.connect(self.buscar_actualizacion)
         self.settings_page.relaunch_requested.connect(self._relaunch)
+        self.settings_page.welcome_requested.connect(self.show_welcome)
         self.settings_page.repoint_shortcuts()
         self.settings_page.elevation_requested.connect(self._on_elevation_requested)
         self.settings_page.explain_requested.connect(self._explicar_permisos)
@@ -506,6 +507,45 @@ class MainWindow(QMainWindow):
 
     def start(self) -> None:
         self.sampler.start()
+        if not self.prefs.welcome_shown:
+            # Once the window is on screen: the welcome changes it as it goes.
+            QTimer.singleShot(300, self, self.show_welcome)
+
+    # -- the welcome ----------------------------------------------------------
+
+    def show_welcome(self, page: int = 0):
+        """The welcome of the first time, over this window. Each choice is a
+        preference like those of Settings, applied as it is picked."""
+        from .welcome import WelcomeDialog
+
+        if getattr(self, "_welcome", None) is not None:
+            return self._welcome
+        dialog = WelcomeDialog(self.prefs, self._palette, self, page=page)
+        dialog.changed.connect(self._on_welcome_choice)
+        dialog.finished.connect(self._welcome_done)
+        self._welcome = dialog
+        dialog.open()
+        return dialog
+
+    def _on_welcome_choice(self, prefs: Preferences) -> None:
+        self._on_preferences(prefs)
+        # After the signal that brought it: the combo that sent it goes too.
+        QTimer.singleShot(0, self, self._rebuild_welcome)
+
+    def _rebuild_welcome(self) -> None:
+        if getattr(self, "_welcome", None) is not None:
+            self._welcome.rebuild(self.prefs, self._palette)
+
+    def _welcome_done(self, _result: int) -> None:
+        from dataclasses import replace
+
+        dialog, self._welcome = self._welcome, None
+        self.prefs = replace(self.prefs, welcome_shown=True)
+        self._guardar(self.prefs)
+        if dialog is not None and dialog.menu_wanted:
+            self.settings_page.add_to_menu()
+        if dialog is not None:
+            dialog.deleteLater()
 
     def closeEvent(self, event) -> None:  # noqa: N802
         self.sampler.stop()
@@ -1554,6 +1594,8 @@ def build_parser():
     parser.add_argument("--samples", type=int, metavar="N", default=MUESTRAS_DE_CAPTURA,
                         help=_("gui.opt.samples"))
     parser.add_argument("--page", metavar=_("gui.metavar.page"), help=_("gui.opt.page"))
+    parser.add_argument("--welcome", type=int, choices=(1, 2), metavar="N",
+                        help=_("gui.opt.welcome"))
     for espanol, ingles in (("--intervalo", "--interval"), ("--oscuro", "--dark"),
                             ("--claro", "--light"), ("--compacto", "--compact"),
                             ("--letra", "--font-scale"), ("--tamano", "--size"),
@@ -1642,6 +1684,31 @@ def _anonimizador(activo: bool):
     return anonymize
 
 
+def _with_the_welcome(window: MainWindow, image, page: int):
+    """The window's capture with the welcome over it, centred and the window
+    dimmed, as it is seen: a dialog is a window of its own and `grab` of the
+    main one leaves it out."""
+    from PySide6.QtGui import QColor, QPainter
+
+    dialog = window.show_welcome(page)
+    for _turn in range(4):
+        QApplication.processEvents()
+    over = dialog.grab().toImage()
+    ratio = image.devicePixelRatio() or 1.0
+    painter = QPainter(image)
+    painter.fillRect(image.rect(), QColor(0, 0, 0, 90))
+    x = (image.width() / ratio - over.width() / (over.devicePixelRatio() or 1.0)) / 2
+    y = (image.height() / ratio - over.height() / (over.devicePixelRatio() or 1.0)) / 2
+    painter.drawImage(int(x), int(y), over)
+    painter.end()
+    # A capture changes nothing: the welcome isn't marked as seen.
+    dialog.finished.disconnect()
+    window._welcome = None
+    dialog.reject()
+    dialog.deleteLater()
+    return image
+
+
 def main(argv: Optional[list[str]] = None) -> int:
     app, window, args = build_app(argv)
 
@@ -1693,6 +1760,8 @@ def main(argv: Optional[list[str]] = None) -> int:
         # escribe en Latin-1 dentro del PNG —`s\xed`— y quien lo busque en
         # UTF-8 no lo encuentra; en ASCII no hay dos formas de escribirlo.
         imagen = window.grab().toImage()
+        if args.welcome:
+            imagen = _with_the_welcome(window, imagen, args.welcome - 1)
         imagen.setText("silux-anonimo",
                        "anonima" if args.anonymous else "identificable")
         imagen.save(args.screenshot)

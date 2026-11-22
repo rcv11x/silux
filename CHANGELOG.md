@@ -32,6 +32,15 @@ que hace falta.
   propio aparato (su nombre y su fabricante) y su número de serie siguen sin
   ir.
 
+### Bienvenida
+
+- Nuevo: la primera vez que se abre Silux sale una bienvenida de dos
+  pantallas. Trae marcados el idioma del sistema y el tema del escritorio, y
+  deja elegir idioma, tema y tamaño de letra mientras la ventana de detrás
+  cambia al momento; ofrece añadir Silux al menú de aplicaciones y dice en
+  una frase qué son los permisos. Se salta con un botón, no pide contraseña
+  ni toca nada del sistema sin que se pulse, y se vuelve a ver desde Ajustes.
+
 ### Ajustes y escritorio
 
 - Cambiado: «Integración con el escritorio» se llama ahora «Accesos

@@ -366,6 +366,8 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
     crit_wash = con_alfa(p.crit, 0.13)
     crit_press = con_alfa(p.crit, 0.22)
 
+    card_radius = max(8, m.card_pad_v)
+
     return f"""
     QMainWindow, QWidget#Root {{ background: {p.bg}; }}
     QWidget {{ color: {p.ink}; }}
@@ -373,7 +375,14 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
     QFrame#Card {{
         background: {p.surface};
         border: 1px solid {p.line_soft};
-        border-radius: {max(8, m.card_pad_v)}px;
+        border-radius: {card_radius}px;
+    }}
+    /* A dialog that draws its own corners, like a card's. Without them
+       the window manager's frame is the edge. */
+    QFrame#WelcomePanel {{ background: {p.surface}; border: none; }}
+    QFrame#WelcomePanel[rounded="true"] {{
+        border: 1px solid {p.line};
+        border-radius: {card_radius}px;
     }}
     QFrame#CardFlat {{
         background: {p.surface_alt};
