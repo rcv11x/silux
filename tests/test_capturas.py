@@ -82,7 +82,9 @@ class TestVentilador(unittest.TestCase):
 
     def test_parado_se_dice_parado(self):
         self.assertEqual(render.fan(None, 0.0), "parado")
-        self.assertEqual(render.fan(0, None), "parado")
+        # Its revolutions say so, and how: zero.
+        self.assertEqual(render.fan(0, None), "parado (0 RPM)")
+        self.assertEqual(render.fan(0, 30.0), "parado (0 RPM)")
 
     def test_con_las_dos_cifras_van_las_dos(self):
         self.assertEqual(render.fan(1200, 45.0), "1200 RPM   (45.0 %)")

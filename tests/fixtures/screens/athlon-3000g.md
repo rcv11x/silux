@@ -271,7 +271,7 @@ El ayudante que se lanza solo sabe leer esa tabla y unos registros del procesado
 
 AMD Radeon Vega 3 Graphics
 MSI · Picasso/Raven 2 · PCIe 3.0 × 16
-Picasso/Raven 2 · amdgpu 26.3.1 · 512 MB · 3 CU · integrada · principal
+Picasso/Raven 2 · amdgpu · Mesa 26.3.1 · 512 MB · 3 CU · integrada · principal
 - Uso: 15 %
 - Frecuencia: 400 MHz (memoria 933 MHz)
 - Temperatura: 30 °C
@@ -289,9 +289,9 @@ Esta gráfica no publica cuánto se usa su motor de video.
 - Ensamblada por: MSI
 - Nombre en clave: Picasso/Raven 2
 - Driver: amdgpu
-- Versión del driver: 26.3.1
+- Versión del driver: Mesa 26.3.1
 - Unidades de proceso: 3 unidades de cómputo
-- Unidades de rasterizado: 1
+- ROPs (unidades de rasterizado): 1
 - Motores de sombreado: 1
 
 #### Identificadores
@@ -311,7 +311,7 @@ Esta gráfica no publica cuánto se usa su motor de video.
 - Tasa de datos: 2.4 Gbps
 - Visible por la CPU: 512 MB
 - Resizable BAR: activo
-- Tomada del sistema: 124.2 MB de 1.6 GB
+- Memoria del sistema (GTT): 124.2 MB de 1.6 GB
 
 amdgpu no publica chips de esta tarjeta.
 
@@ -325,7 +325,7 @@ amdgpu no publica chips de esta tarjeta.
 - Enlace: PCIe 3.0 × 16
 - Enlace (máximo): PCIe 3.0 × 16
 
-amdgpu no publica memoria (efectiva) ni SoC de esta tarjeta.
+amdgpu no publica SoC de esta tarjeta.
 
 ### Consumo y temperaturas
 
@@ -346,8 +346,8 @@ Los reguladores de voltaje y el ventilador son de una tarjeta aparte: esta se al
 
 | API | VERSIÓN | DRIVER | DETALLE |
 |---|---|---|---|
-| Vulkan | 1.4.363 | 26.3.1 | instancia 1.4.363 |
-| OpenGL | 4.6 | 26.3.1-arch1.2 | GLSL 4.60 |
+| Vulkan | 1.4.363 | radv (Mesa 26.3.1) | — |
+| OpenGL | 4.6 | radeonsi (Mesa 26.3.1) | GLSL 4.60 |
 
 ### Monitores y salidas de video
 

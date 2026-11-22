@@ -83,6 +83,18 @@ Con informes de Felix Lara.
   dice al pie de cada tarjeta. Una integrada de Intel no tiene BIOS de video
   propia; una NVIDIA con nouveau no publica relojes, memoria ni sensores, y
   sus fichas de uso, frecuencia y consumo se van.
+- La versión del driver de una gráfica con driver libre es la de Mesa, y se
+  dice: «amdgpu · Mesa 26.2.6». Cada biblioteca nombra el suyo («radv (Mesa
+  26.2.6)», «radeonsi», «rusticl») y la versión del cargador de Vulkan, que
+  no es de la tarjeta, ya no sale.
+- Una Radeon RDNA 3 o posterior enseña su caché L2 y su Infinity Cache, y
+  cada Radeon su juego de instrucciones (gfx1201).
+- El límite de potencia dice el que aplica y el de fábrica («340 W · de
+  fábrica 330 W»); el rango que admite, al pasar el ratón.
+- Un ventilador parado dice «parado (0 RPM)» y por qué es normal; las
+  unidades de rasterizado se llaman ROPs y la memoria que la gráfica toma
+  del sistema, GTT. «Memoria (efectiva)», que repetía el reloj de memoria
+  junto a la tasa de datos, ya no sale.
 
 ### Batería
 

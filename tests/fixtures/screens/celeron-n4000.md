@@ -259,7 +259,7 @@ El ayudante que se lanza solo sabe leer esa tabla y unos registros del procesado
 
 UHD Graphics 600
 Lenovo · GeminiLake
-GeminiLake · i915 26.1.2 · 12 EU · integrada · principal
+GeminiLake · i915 · Mesa 25.2.6 · 12 EU · integrada · principal
 - Uso: (necesita permisos) (con permisos)
 - Frecuencia: 100 MHz
 - Temperatura del paquete: 41 °C (compartida con la CPU)
@@ -285,7 +285,7 @@ GeminiLake · i915 26.1.2 · 12 EU · integrada · principal
 - Ensamblada por: Lenovo
 - Nombre en clave: GeminiLake
 - Driver: i915
-- Versión del driver: 26.1.2
+- Versión del driver: Mesa 25.2.6
 - Unidades de proceso: 12 unidades de ejecución
 
 i915 no cuenta unidades de rasterizado ni motores de sombreado: el recuento de Intel son las unidades de ejecución. Una integrada de Intel no tiene BIOS de video propia: va dentro del firmware del equipo.
@@ -299,7 +299,7 @@ i915 no cuenta unidades de rasterizado ni motores de sombreado: el recuento de I
 
 ### Memoria de video
 
-- Tomada del sistema: hasta 5.7 GB
+- Memoria del sistema (GTT): hasta 5.7 GB
 
 Una integrada no tiene memoria propia: usa la del sistema, así que no hay tipo, bus, ancho de banda, tasa de datos ni Resizable BAR que contar.
 
@@ -340,7 +340,7 @@ Una integrada no tiene reguladores de voltaje, ventilador, SoC aparte ni memoria
 
 | API | VERSIÓN | DRIVER | DETALLE |
 |---|---|---|---|
-| Vulkan | 1.4.348 | 26.1.2 | instancia 1.4.309 |
+| Vulkan | 1.4.348 | 26.1.2 | — |
 | OpenGL | 4.6 | 25.2.6-1 | GLSL 4.60 |
 
 ### Monitores y salidas de video

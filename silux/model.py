@@ -1168,6 +1168,7 @@ class GpuApi:
     version: Optional[str] = None
     device: Optional[str] = None    # what the card calls itself there
     driver: Optional[str] = None
+    implementation: Optional[str] = None  # radv, radeonsi, rusticl…
     extra: Optional[str] = None     # GLSL, compute units…
 
 
@@ -1238,6 +1239,11 @@ class Gpu:
     codename: Optional[str] = None
     driver: Optional[str] = None
     driver_version: Optional[str] = None
+    # «Mesa» when the version above is Mesa's, the userspace driver, and not
+    # the kernel module's.
+    userspace_driver: Optional[str] = None
+    # The shader ISA Mesa and ROCm build for: «gfx1201».
+    isa: Optional[str] = None
     # The `gpu_metrics` version when the firmware publishes one this program
     # can't read yet. Kept to be able to say so and to put it in the report,
     # which is where its offset table can come from without the part at hand.
@@ -1326,6 +1332,8 @@ class Gpu:
     compute_units: Optional[int] = None
     rops: Optional[int] = None
     shader_engines: Optional[int] = None
+    l2_cache_bytes: Optional[int] = None
+    infinity_cache_bytes: Optional[int] = None
     asic: Optional[str] = None
 
     displays: tuple[Display, ...] = ()

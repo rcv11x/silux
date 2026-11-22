@@ -661,6 +661,10 @@ def fan(rpm_value: Optional[int], percent_value: Optional[float]) -> str:
     stopped = (rpm_value == 0) or (percent_value == 0)
     if _none(rpm_value) and _none(percent_value):
         return DASH
+    # Its revolutions say it, whatever the PWM duty asks: «0 %» next to
+    # a fan spinning down read as a broken reading.
+    if rpm_value == 0:
+        return _("fan.stopped.rpm")
     if stopped:
         return _("fan.stopped")
     parts = []
@@ -1373,24 +1377,58 @@ def pcie_errors(link) -> str:
     return " · ".join(parts) or _("pcie.errors.none")
 
 
+def _whole_watts(value: float) -> str:
+    """A power limit as the maker writes it: «340 W», «7.5 W»."""
+    return f"{figure(value, 0 if float(value).is_integer() else 1)} W"
+
+
 def gpu_factory_power_limit(gpu) -> str:
-    """«330.0 W · admite 231.0–340.0 W». The current cap isn't here: it
-    is already in the power bar of «Right now»."""
+    """«340 W · de fábrica 330 W»: the cap in force and the factory one.
+    The range the driver accepts goes in the tooltip: in the row it was cut."""
     parts = []
-    if gpu.power_cap_default_w is not None:
-        parts.append(watts(gpu.power_cap_default_w))
+    if gpu.power_cap_w is not None:
+        parts.append(_whole_watts(gpu.power_cap_w))
+    if gpu.power_cap_default_w is not None and gpu.power_cap_default_w != gpu.power_cap_w:
+        parts.append(_("gpu.power.factory").format(w=_whole_watts(gpu.power_cap_default_w)))
+    if not parts:
+        parts.append(gpu_power_range(gpu) or DASH)
+    return " · ".join(parts)
+
+
+def gpu_power_range(gpu) -> str:
+    """«admite 231–340 W», or «hasta 340 W» without a minimum."""
+    parts = []
     if gpu.power_cap_min_w and gpu.power_cap_max_w is not None:
-        parts.append(_("gpu.power.range").format(desde=figure(gpu.power_cap_min_w, 1),
-                                                  hasta=watts(gpu.power_cap_max_w)))
+        parts.append(_("gpu.power.range").format(desde=figure(gpu.power_cap_min_w, 0),
+                                                  hasta=_whole_watts(gpu.power_cap_max_w)))
     elif gpu.power_cap_max_w is not None and gpu.power_cap_max_w != gpu.power_cap_default_w:
         # A minimum of 0 W is no limit: some drivers write it as «none».
-        parts.append(_("gpu.power.upto").format(hasta=watts(gpu.power_cap_max_w)))
-    return " · ".join(parts) or DASH
+        parts.append(_("gpu.power.upto").format(hasta=_whole_watts(gpu.power_cap_max_w)))
+    return " · ".join(parts)
+
+
+def gpu_driver_version(gpu) -> Optional[str]:
+    """«Mesa 26.2.6» when the version is Mesa's, the userspace driver;
+    NVIDIA's own as it is."""
+    if not gpu.driver_version:
+        return None
+    if gpu.userspace_driver:
+        return f"{gpu.userspace_driver} {gpu.driver_version}"
+    return gpu.driver_version
+
+
+def api_driver(api, gpu) -> Optional[str]:
+    """A library's driver: «radv (Mesa 26.2.6)», «rusticl (Mesa 26.2.6)»."""
+    if api.implementation and gpu.userspace_driver and gpu.driver_version:
+        return f"{api.implementation} ({gpu.userspace_driver} {gpu.driver_version})"
+    return api.driver
 
 
 def gpu_power_limit_tip(gpu) -> str:
     """The current cap, and whether someone raised it above the factory one."""
-    tip = _("gpu.tip.powercap").format(ahora=watts(gpu.power_cap_w))
+    tip = _("gpu.tip.powercap")
+    if allowed := gpu_power_range(gpu):
+        tip = f"{allowed[:1].upper()}{allowed[1:]}. {tip}"
     if (gpu.power_cap_w is not None and gpu.power_cap_default_w is not None
             and gpu.power_cap_w > gpu.power_cap_default_w):
         tip += " " + _("gpu.power.raised")

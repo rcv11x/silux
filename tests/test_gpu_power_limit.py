@@ -25,9 +25,12 @@ class TestTheReading(unittest.TestCase):
         self.assertEqual((gpu.power_cap_w, gpu.power_cap_default_w,
                           gpu.power_cap_min_w, gpu.power_cap_max_w),
                          (340.0, 330.0, 231.0, 340.0))
+        # In force and factory in the row, in whole watts as the maker writes
+        # them; the range, which didn't fit, in its tooltip.
         self.assertEqual(render.gpu_factory_power_limit(gpu), " · ".join((
-            render.watts(330.0),
-            _("gpu.power.range").format(desde=render.figure(231.0, 1), hasta=render.watts(340.0)))))
+            "340 W", _("gpu.power.factory").format(w="330 W"))))
+        self.assertIn(_("gpu.power.range").format(desde="231", hasta="340 W")[1:],
+                      render.gpu_power_limit_tip(gpu))
         # 340 over a factory 330: the tooltip says it was raised.
         self.assertIn(_("gpu.power.raised"), render.gpu_power_limit_tip(gpu))
 
@@ -45,7 +48,7 @@ class TestOnTheGraphicsPage(unittest.TestCase):
             self.app.processEvents()
             label = next(s for s in self._sections(window)).sensors._values[_("gpu.sensor.powercap")]
             self.assertTrue(label.isVisible())
-            self.assertIn(render.watts(330.0), label.full_text())
+            self.assertIn(_("gpu.power.factory").format(w="330 W"), label.full_text())
 
     def test_hidden_with_the_intel_integrated(self):
         with pantalla.Ventana(foto(EQUIPOS / "i5-10400")[0]) as window:

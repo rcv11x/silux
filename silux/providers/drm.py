@@ -277,6 +277,8 @@ class DrmGpus(Provider):
         gpu["compute_units"] = info.compute_units or gpu.get("compute_units")
         gpu["rops"] = info.rops
         gpu["shader_engines"] = info.shader_engines
+        gpu["l2_cache_bytes"] = info.l2_cache_bytes
+        gpu["infinity_cache_bytes"] = info.infinity_cache_bytes
         # With an underscore because it is not a model field: only
         # _is_integrated uses it, and freezing drops what it does not know.
         gpu["_is_apu"] = info.is_apu

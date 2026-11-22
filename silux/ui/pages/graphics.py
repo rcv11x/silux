@@ -57,14 +57,17 @@ NEED_TITLES = {
 # Qué tarjeta es y con qué driver va: lo que se mira.
 CARD_FIELDS = (
     "gpu.field.vendor", "gpu.field.subsystem", "gpu.field.codename", "gpu.field.driver", "gpu.field.driverver",
-    "gpu.field.compute", "gpu.field.rops", "gpu.field.shaders",
+    "gpu.field.compute", "gpu.field.rops", "gpu.field.shaders", "gpu.field.l2", "gpu.field.mall",
 )
 # Y con qué números la identifica el sistema: lo que se busca una vez, para
 # un informe o un foro. Va plegado debajo.
 INVENTORY_FIELDS = (
-    "gpu.field.id", "gpu.field.subid", "gpu.field.slot", "gpu.field.drm", "gpu.field.vbios",
-    "gpu.field.uuid",
+    "gpu.field.id", "gpu.field.subid", "gpu.field.isa", "gpu.field.slot", "gpu.field.drm",
+    "gpu.field.vbios", "gpu.field.uuid",
 )
+# Rows only some drivers have a source for: hidden where there's none, and
+# named only where the driver could give them.
+ONLY_SOME = frozenset({"gpu.field.isa", "gpu.field.l2", "gpu.field.mall"})
 
 # Lo que está pasando ahora, en una barra por medida: cuánta memoria de video
 # hay ocupada, cuánto consume de lo que puede y cuánto bus se mueve. Juntas
@@ -195,7 +198,8 @@ NA_INTEL_INTEGRADA = {
 # What some drivers only give through the graphics libraries: the driver's
 # version (Mesa's) and an Intel's shared memory (Vulkan's heaps).
 FROM_THE_APIS = {"gpu.field.driverver": "gpu.na.noapi.driverver",
-                 "gpu.vram.shared": "gpu.na.noapi.shared"}
+                 "gpu.vram.shared": "gpu.na.noapi.shared",
+                 "gpu.field.isa": "gpu.na.noapi.isa"}
 
 # An Intel integrated GPU has no video BIOS of its own: its option ROM and
 # its tables come with the machine's firmware.
@@ -262,8 +266,7 @@ NA_SIN_TEMPERATURA = {
 AMD_SILENT = {
     "card": (),
     "memory": (("gpu.vram.chips", lambda g: g.memory.vendor, "gpu.na.piece.vramvendor"),),
-    "clocks": (("gpu.clock.memeff", lambda g: g.clocks.memory_effective_hz, "gpu.na.piece.memeff"),
-               ("SoC", lambda g: g.clocks.soc_hz, "gpu.na.piece.socclock")),
+    "clocks": (("SoC", lambda g: g.clocks.soc_hz, "gpu.na.piece.socclock"),),
     "sensors": (("gpu.sensor.state", lambda g: g.throttled, "gpu.na.piece.state"),
                 ("gpu.sensor.hotspot", lambda g: g.hotspot_c, "gpu.na.piece.hotspot"),
                 ("gpu.sensor.memtemp", lambda g: g.memory_temp_c, "gpu.na.piece.memtemp"),
@@ -658,12 +661,15 @@ class GpuSection(QWidget):
         c(_("gpu.field.subsystem"), render.maker(gpu.subsystem_name) or d)
         c(_("gpu.field.codename"), gpu.codename or d)
         c(_("gpu.field.driver"), gpu.driver or d)
-        c(_("gpu.field.driverver"), gpu.driver_version or d)
+        c(_("gpu.field.driverver"), render.gpu_driver_version(gpu) or d)
         c(_("gpu.field.compute"), render.compute_units(gpu),
           tooltip=_("gpu.tip.compute"))
         c(_("gpu.field.rops"), str(gpu.rops) if gpu.rops else d,
           tooltip=_("gpu.tip.rops"))
         c(_("gpu.field.shaders"), str(gpu.shader_engines) if gpu.shader_engines else d)
+        c(_("gpu.field.l2"), render.size(gpu.l2_cache_bytes) if gpu.l2_cache_bytes else d)
+        c(_("gpu.field.mall"), render.size(gpu.infinity_cache_bytes)
+          if gpu.infinity_cache_bytes else d, tooltip=_("gpu.tip.mall"))
         # Un identificador todo a ceros no identifica nada: es lo que da un
         # driver que no lo tiene, y lo que deja una captura anónima. La fila
         # se va entera; con un guion parecería un dato que falta.
@@ -671,6 +677,7 @@ class GpuSection(QWidget):
         i = self.inventory.set
         i(_("gpu.field.id"), gpu.pci_id or d)
         i(_("gpu.field.subid"), gpu.subsystem_id or d)
+        i(_("gpu.field.isa"), gpu.isa or d, tooltip=_("gpu.tip.isa"))
         i(_("gpu.field.slot"), gpu.pci_slot or d)
         i(_("gpu.field.drm"), gpu.drm_node or d)
         i(_("gpu.field.vbios"), gpu.vbios or d)
@@ -713,7 +720,8 @@ class GpuSection(QWidget):
         s(_("gpu.sensor.memtemp"), render.temperature(gpu.memory_temp_c, fahrenheit))
         s(_("gpu.sensor.powercap"), render.gpu_factory_power_limit(gpu),
           tooltip=render.gpu_power_limit_tip(gpu))
-        s(_("gpu.sensor.fan"), render.fan(gpu.fan_rpm, gpu.fan_percent))
+        s(_("gpu.sensor.fan"), render.fan(gpu.fan_rpm, gpu.fan_percent),
+          tooltip=_("gpu.tip.fan.zerorpm") if gpu.fan_rpm == 0 and not gpu.integrated else "")
         s(_("gpu.sensor.vrgfx"), render.temperature(gpu.vr_gfx_c, fahrenheit),
           tooltip=_("gpu.tip.vr"))
         s(_("gpu.sensor.vrsoc"), render.temperature(gpu.vr_soc_c, fahrenheit))
@@ -738,7 +746,7 @@ class GpuSection(QWidget):
         rejected = [(name, d, d, _("gpu.apis.rejected") + (f": {reason}" if reason else ""))
                     for name, reason in gpu.api_rejections]
         self.apis.set_rows([
-            (api.name, api.version or d, api.driver or d, api.extra or d)
+            (api.name, api.version or d, render.api_driver(api, gpu) or d, api.extra or d)
             for api in gpu.apis
         ] or rejected or [(_("gpu.apis.notseen") if self._apis_en_el_equipo
                            else _("gpu.apis.none"), d, d, d)])
@@ -802,15 +810,28 @@ class GpuSection(QWidget):
         # this driver or the PCI database doesn't give it (a GT1 Ivy Bridge's
         # unit count, a G98M under nouveau). Hidden and named at the foot.
         globos: dict[str, str] = {}
+        # What only some drivers give goes when empty, on any card: asleep
+        # or emulated, the rule below doesn't run.
+        escondidos["card"].update(c for c in ONLY_SOME
+                                  if grid_of(grupos[0][1], c).is_blank(_(c)))
         if not (gpu.suspended or gpu.virtual):
             for nombre, grids, campos, _pie in grupos:
                 mudos = [c for c in campos if c not in escondidos[nombre]
                          and grid_of(grids, c).is_blank(_(c))]
                 escondidos[nombre].update(mudos)
+                propias = []
+                if nombre == "card" and gpu.driver == "amdgpu" and gpu.apis:
+                    if "gpu.field.l2" in mudos:
+                        propias.append(_("gpu.na.amd.caches"))
+                    elif "gpu.field.mall" in mudos:
+                        propias.append(_("gpu.na.amd.nomall"))
                 # No library uses the card: theirs is the reason, not the driver.
-                sin_apis = [c for c in mudos if c in FROM_THE_APIS and not gpu.apis]
+                # The ISA is only read from them on an AMD.
+                sin_apis = [c for c in mudos if c in FROM_THE_APIS and not gpu.apis
+                            and (c != "gpu.field.isa" or gpu.driver == "amdgpu")]
+                mudos = [c for c in mudos if c not in ONLY_SOME]
                 mudos = [c for c in mudos if c not in sin_apis]
-                frases = []
+                frases = list(propias)
                 if sin_apis:
                     frases.append(_("gpu.na.noapi").format(campos=render.enumeration(
                         [_(FROM_THE_APIS[c]) for c in sin_apis])))
@@ -878,6 +899,10 @@ class GpuSection(QWidget):
             sobran.add("gpu.clock.efficient")
         if render.gpu_clock_limits(gpu.clocks) is None:
             sobran.add("gpu.clock.limits")
+        # The firmware's average memory clock next to the current one read as
+        # a third figure, «effective», beside the data rate: one is enough.
+        if gpu.clocks.memory_hz is not None:
+            sobran.add("gpu.clock.memeff")
         return sobran
 
     def _apply_engines(self, gpu: Gpu) -> None:
@@ -933,7 +958,8 @@ class GpuSection(QWidget):
     def _apply_badges(self, gpu: Gpu) -> None:
         chips = [c for c in (
             gpu.codename,
-            " ".join(p for p in (gpu.driver, gpu.driver_version) if p) if gpu.driver else None,
+            " · ".join(p for p in (gpu.driver, render.gpu_driver_version(gpu)) if p)
+            if gpu.driver else None,
             render.size(gpu.memory.total_bytes) if gpu.memory.total_bytes else None,
             render.compute_units_short(gpu),
             _("gpu.chip.integrated") if gpu.integrated else None,

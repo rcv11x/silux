@@ -58,7 +58,7 @@ class TestAPolaris(unittest.TestCase):
             actual="PCIe 3.0 × 4", max="PCIe 3.0 × 8"))
 
     def test_a_zero_minimum_is_no_power_range(self):
-        self.assertEqual(render.gpu_factory_power_limit(self.gpu), render.watts(35.0))
+        self.assertEqual(render.gpu_factory_power_limit(self.gpu), "35 W")
 
 
 class TestAnAmdThatPublishesAll(unittest.TestCase):

@@ -30,6 +30,13 @@ _DRIVER_SUFFIX = re.compile(r"\s*\((?:RADV|LLVM|ACO|radeonsi|llvmpipe)[^)]*\)\s*
                               re.IGNORECASE)
 # «4.6 (Compatibility Profile) Mesa 26.2.1-arch3.1» → 26.2.1-arch3.1
 _MESA_VERSION = re.compile(r"Mesa\s+([\w.\-]+)")
+# Mesa's own version, without the distribution's suffix: «26.2.6».
+_MESA_RELEASE = re.compile(r"Mesa\s+(\d+\.\d+\.\d+)")
+# Which Mesa driver answers, as each API's name for the card says it:
+# Vulkan's «(RADV GFX1201)», OpenGL's «(radeonsi, gfx1201, …)».
+_VULKAN_IMPLEMENTATION = re.compile(r"\((RADV|NVK|TU|V3DV|PANVK)\b")
+_GL_IMPLEMENTATION = re.compile(r"\(([a-z][a-z0-9_]*)[,)]")
+_ISA = re.compile(r"\b(gfx\d{3,4}[a-z]?)\b", re.I)
 _NVIDIA_VERSION = re.compile(r"NVIDIA\s+(\d+\.\d+(?:\.\d+)?)")
 
 
@@ -82,12 +89,13 @@ class GpuApis(Provider):
             not_the_cards_driver: set[int] = set()
 
             if device := _vulkan_of(gpu, vulkan):
+                implementation = _VULKAN_IMPLEMENTATION.search(device["name"] or "")
                 apis.append(GpuApi(
                     name="Vulkan",
                     version=device["api_version"],
                     device=device["name"],
                     driver=_driver_version(device),
-                    extra=_("gpu.api.instance").format(version=device["instance_version"]),
+                    implementation=implementation.group(1).lower() if implementation else None,
                 ))
                 _refine_name(gpu, device["name"])
                 _vulkan_memory(gpu, device)
@@ -105,11 +113,13 @@ class GpuApis(Provider):
                 extra = " · ".join(p for p in (
                     f"GLSL {opengl['glsl']}" if opengl.get("glsl") else None,
                     _("gpu.api.software") if by_software else None) if p)
+                implementation = _GL_IMPLEMENTATION.search(opengl.get("renderer") or "")
                 apis.append(GpuApi(
                     name="OpenGL",
                     version=_version_only(opengl["version"]),
                     device=opengl.get("renderer"),
                     driver=_mesa(opengl["version"]),
+                    implementation=implementation.group(1) if implementation else None,
                     extra=extra or None,
                 ))
                 if by_software:
@@ -124,6 +134,7 @@ class GpuApis(Provider):
                     version=_version_only(device.get("version") or ""),
                     device=device.get("name"),
                     driver=device.get("driver_version"),
+                    implementation=device.get("platform"),
                     extra=_units(device),
                 ))
                 # What OpenCL counts does NOT go to `compute_units`, even
@@ -141,10 +152,20 @@ class GpuApis(Provider):
                                                     rejected, icds, bool(vulkan))
             if apis:
                 gpu["apis"] = tuple(apis)
+                own = [a for i, a in enumerate(apis) if i not in not_the_cards_driver]
+                mesa = next((m.group(1) for a in own if a.name == "OpenGL"
+                             and (m := _MESA_RELEASE.search(f"Mesa {a.driver or ''}"))
+                             and "Mesa" in (opengl or {}).get("version", "")), None)
+                if mesa is None and any(a.name == "Vulkan" and a.implementation for a in own):
+                    mesa = next(a.driver for a in own if a.name == "Vulkan")
+                if mesa and not gpu.get("driver_version"):
+                    # The version the libraries give is Mesa's, not the kernel module's.
+                    gpu["driver_version"], gpu["userspace_driver"] = mesa, "Mesa"
                 gpu["driver_version"] = gpu.get("driver_version") or next(
-                    (a.driver for i, a in enumerate(apis)
-                     if a.driver and i not in not_the_cards_driver), None
-                )
+                    (a.driver for a in own if a.driver), None)
+                if gpu.get("vendor") == "AMD":
+                    gpu["isa"] = next((m.group(1).lower() for a in own
+                                       if (m := _ISA.search(a.device or ""))), None)
 
 
 # The maker a Vulkan driver library is for, by its file name.

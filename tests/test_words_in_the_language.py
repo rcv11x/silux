@@ -7,6 +7,8 @@ test does not see them: they travel inside the model, as data.
 
 import types
 import unittest
+
+from silux import render
 from unittest import mock
 
 from silux import i18n
@@ -38,12 +40,14 @@ class TestTheSpdNotice(_InEnglish):
 
 class TestTheVulkanRow(_InEnglish):
 
-    def test_its_instance_in_english(self):
+    def test_its_driver_names_mesa_in_any_language(self):
+        # The system loader's version («instance 1.4.363») is no longer
+        # there: it isn't the card's. The driver column is radv and Mesa.
         f = foto(EQUIPOS / "5800x3d")[0]
-        detalles = [a.extra for g in f.gpus for a in g.apis if a.name == "Vulkan"]
-        self.assertTrue(detalles)
-        for detalle in detalles:
-            self.assertTrue(detalle.startswith("instance "), detalle)
+        gpu = f.gpus[0]
+        vulkan = next(a for a in gpu.apis if a.name == "Vulkan")
+        self.assertIsNone(vulkan.extra)
+        self.assertEqual(render.api_driver(vulkan, gpu), "radv (Mesa 26.2.6)")
 
 
 if __name__ == "__main__":

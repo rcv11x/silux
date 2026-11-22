@@ -43,6 +43,10 @@ FIELDS = {
 # the reliable way to spot an APU: it carves its VRAM out of system RAM, so
 # the VRAM size can't tell.
 FIELDS_64 = {"max_engine_clock": 32, "max_memory_clock": 40, "ids_flags": 136}
+# The caches, appended for gfx11 (older chips leave them at 0): L2 in KiB,
+# the Infinity Cache («MALL») in bytes. Offsets from amdgpu_drm.h at v6.15,
+# where `family` and `ids_flags` above fall at 16 and 136 too.
+GL2C_CACHE_SIZE, MALL_SIZE = 404, 408
 
 AMDGPU_IDS_FLAGS_FUSION = 0x1
 
@@ -88,6 +92,8 @@ class DeviceInfo:
     render_backends: Optional[int] = None
     max_engine_hz: Optional[int] = None
     max_memory_hz: Optional[int] = None
+    l2_cache_bytes: Optional[int] = None
+    infinity_cache_bytes: Optional[int] = None
     # None when the ioctl didn't answer, which is not the same as false.
     is_apu: Optional[bool] = None
 
@@ -155,6 +161,8 @@ def query(node: str, expected_device_id: Optional[int] = None) -> Optional[Devic
 
     khz = {name: struct.unpack_from("<Q", buffer, place)[0]
            for name, place in FIELDS_64.items()}
+    l2_kib = struct.unpack_from("<I", buffer, GL2C_CACHE_SIZE)[0]
+    mall = struct.unpack_from("<Q", buffer, MALL_SIZE)[0]
     return DeviceInfo(
         device_id=read_fields["device_id"] or None,
         family=read_fields["family"] or None,
@@ -167,6 +175,8 @@ def query(node: str, expected_device_id: Optional[int] = None) -> Optional[Devic
         is_apu=bool(khz["ids_flags"] & AMDGPU_IDS_FLAGS_FUSION),
         max_engine_hz=khz["max_engine_clock"] * 1000 or None,
         max_memory_hz=khz["max_memory_clock"] * 1000 or None,
+        l2_cache_bytes=l2_kib * 1024 or None,
+        infinity_cache_bytes=mall or None,
     )
 
 
