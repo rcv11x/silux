@@ -85,8 +85,9 @@ class TestLasZonasQueNoMiden(unittest.TestCase):
         self.assertNotIn("47.6 °C (relleno", texto)
 
     def test_no_se_avisa_de_ellas(self):
+        # A zone that measures keeps its limits, and its heat with them.
         for f in self.fotos.values():
-            for sensor in _acpitz(f):
+            for sensor in (s for s in _acpitz(f) if s.placeholder):
                 self.assertEqual(sensor.alarm_level, "ok")
                 self.assertIsNone(sensor.heat)
 
@@ -95,11 +96,13 @@ class TestUnaZonaQueSiMide(unittest.TestCase):
     """En un portátil la zona de ACPI es un sensor de verdad, y puede pasar
     por 27.8 °C como por cualquier otro valor."""
 
-    def _leer(self, proveedor, raiz, miligrados):
+    def _leer(self, proveedor, raiz, miligrados, critica=None):
         zona = raiz / "sys/class/hwmon/hwmon0"
         zona.mkdir(parents=True, exist_ok=True)
         (zona / "name").write_text("acpitz\n")
         (zona / "temp1_input").write_text(f"{miligrados}\n")
+        if critica is not None:
+            (zona / "temp1_crit").write_text(f"{critica}\n")
         draft = Draft()
         with mock.patch.dict(os.environ, {"SILUX_SYSROOT": str(raiz)}):
             from silux import sysroot
@@ -115,6 +118,16 @@ class TestUnaZonaQueSiMide(unittest.TestCase):
             self.assertFalse(self._leer(proveedor, raiz, 45000).placeholder)
             # Pasa por el valor de relleno después de haber marcado otro.
             self.assertFalse(self._leer(proveedor, raiz, 27800).placeholder)
+
+    def test_la_de_relleno_pierde_sus_limites(self):
+        # ACPI zones usually declare a critical trip point, filler or not.
+        with tempfile.TemporaryDirectory() as tmp:
+            raiz = pathlib.Path(tmp)
+            relleno = self._leer(HwmonSensors(), raiz, 16800, critica=105000)
+            self.assertTrue(relleno.placeholder)
+            self.assertIsNone(relleno.heat)
+            self.assertEqual(relleno.alarm_level, "ok")
+            self.assertEqual(self._leer(HwmonSensors(), raiz, 35500, critica=105000).heat, 0.0)
 
     def test_y_la_que_arranca_en_el_valor_deja_de_marcarse_al_moverse(self):
         with tempfile.TemporaryDirectory() as tmp:
