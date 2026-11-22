@@ -71,6 +71,8 @@ que hace falta.
   modelo vacío y «Carga: — (0.0 Wh)».
 - Memoria: «Hynix/Hyundai», como lo escribe alguna BIOS, sale «SK Hynix»,
   igual que el módulo leído de su chip.
+- Memoria: con permisos, la fila «Rangos» de un módulo sale de su chip SPD
+  cuando la tabla de la BIOS no los trae, en vez de un guion.
 
 ## 0.4-prueba10 (22 de noviembre de 2026)
 

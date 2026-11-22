@@ -616,7 +616,7 @@ class MemoryPage(ScrollPage):
         marca = snapshot.cpu.types[0].brand if snapshot.cpu.types else ""
         puestos = [m for m in snapshot.modules if m.populated]
         if puestos:
-            rangos = tuple(m.rank or (m.spd.ranks if m.spd else None) for m in puestos)
+            rangos = tuple(m.ranks for m in puestos)
         else:
             rangos = tuple(s.ranks for s in snapshot.spd)
         return db.memory_limit(marca, tipos.pop(), rangos) if len(tipos) == 1 else None
@@ -1029,7 +1029,7 @@ class MemoryPage(ScrollPage):
             pista = f"{pista}\n\n{firmware}" if pista else firmware
         grid.set(_("memory.field.running"), funcionando, tooltip=pista)
 
-        rangos = str(module.rank) if module.rank else d
+        rangos = str(module.ranks) if module.ranks else d
         if module.has_ecc:
             rangos += _("memory.ranks.ecc")
         grid.set(_("memory.field.ranks"), rangos)

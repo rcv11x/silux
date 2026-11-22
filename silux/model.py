@@ -715,6 +715,11 @@ class MemoryModule:
         return "place"
 
     @property
+    def ranks(self) -> Optional[int]:
+        """From the firmware's table, else from the module's own SPD."""
+        return self.rank or (self.spd.ranks if self.spd is not None else None)
+
+    @property
     def has_ecc(self) -> Optional[bool]:
         """If the total width is larger than the data width, the extra bits are ECC."""
         if self.total_width is None or self.data_width is None or not self.data_width:
@@ -2249,7 +2254,7 @@ _COMPUTED: dict[str, tuple[str, ...]] = {
     "Board": ("display_name",),
     "MemoryModule": ("has_ecc", "underclocked", "rated_mts", "in_a_slot", "soldered_by",
                      "rated_from_firmware", "voltage_mv", "voltage_from_firmware",
-                     "above_jedec"),
+                     "above_jedec", "ranks"),
     "SpdInfo": ("rated_mts",),
     "Timings": ("summary",),
     "Memory": ("used_bytes", "used_percent", "cache_bytes", "apps_bytes",
