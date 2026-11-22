@@ -28,6 +28,34 @@ que hace falta.
   CPU, el uso de la gráfica, lo que leen y escriben los discos, lo que baja y
   sube la red) dice «Calculando…» en vez de un guion.
 
+### De los informes de la prueba8
+
+- Memoria: el chip SPD de una DDR5 se lee página a página. Donde el equipo
+  bloquea el cambio de página, la página 0 ya se lee (antes se pedía de una
+  vez más de lo que cabe en ella, y fallaba entera).
+- Memoria: el sensor de temperatura de cada módulo DDR5 dice de qué módulo
+  es, por su dirección en el bus, y sale en la ficha de ese módulo. El
+  formato del módulo es el mismo con permisos y sin ellos («UDIMM»).
+- Gráficos: la resolución de cada monitor es la que tiene puesta, no la que
+  prefiere; la preferida va aparte cuando es otra. Una tele que escribe su
+  proporción (160 × 90 cm) donde va su tamaño ya no sale de 72".
+- Gráficos: la versión de Mesa de una Intel dice «Mesa» aunque OpenGL sea de
+  la NVIDIA; la cabecera ya no repite el nombre en clave en sus etiquetas.
+- Gráficos y Sensores: en un Intel con gráfica integrada, la zona de RAPL que
+  el kernel llama «uncore» es la de la gráfica: se llama así, y Gráficos da
+  la misma cifra. Por debajo de 10 W, los vatios llevan un decimal en todas
+  partes.
+- CPU: un procesador sin turbo ya no dice «Turbo desactivado».
+- Sensores: en un procesador híbrido, cada núcleo dice si es P o E.
+- Red: una tarjeta cuyo driver cuenta más bytes por paquete de los que caben
+  en su MTU no enseña sus paquetes como dato, y dice por qué. Una tarjeta USB
+  saca su modelo de `usb.ids` y dice su puerto USB, no una «ranura PCI».
+- Placa base: «Rev X.0x» y otros rellenos del firmware ya no salen como
+  revisión, y la cabecera no repite el chipset y el firmware.
+- Sistema: un módulo de licencia no compatible con la GPL (ZFS) ya no se
+  llama «propietario».
+- En Debian, `pnp.ids` se pide con `hwdata`, que lo trae en Debian 12 y 13.
+
 ## 0.4-prueba8 (22 de noviembre de 2026)
 
 Con informes de Felix Lara.

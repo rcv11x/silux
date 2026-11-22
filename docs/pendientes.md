@@ -101,15 +101,39 @@ la memoria) no va: está propuesto en las notas
   - Discos · baja · con el ayudante · el modelo entero por el IDENTIFY de
     `ata_device` (para buscar la unidad en drivedb) está probado aquí con dos
     Seagate y un Crucial; con el A400 de verdad, falta verlo.
+* **De los informes de la prueba8** (volcados `celeron-g3900` y `i5-12450h`,
+  rehecho):
+  - Memoria · media · con el ayudante · el LOQ publica sus contadores libres
+    del controlador (`uncore_imc_free_running_0/1`, `data_read` y
+    `data_write`), pero cada evento lleva dos campos (`event=0xff,umask=0x20`)
+    y el ayudante solo abre los de uno: dice «no hay ningún controlador de
+    memoria con contadores», que es falso. Arreglarlo toca el ayudante: está
+    propuesto en las notas del autor. Sigue saliendo «Falló al leerse», que es
+    lo cierto.
+  - Memoria · media · el SPD de su DDR5 se lee ahora página a página, sin
+    búfer (el arreglo de la prueba7 pedía 4096 bytes al leer 128). El volcado
+    no lleva su página 0: el anexo no guarda un `eeprom` que no se lee
+    entero. Falta que el volcado lo guarde por páginas (lo que se leyó y qué
+    error dio cada una), con el número de serie tapado.
+  - Gráficos · media · el modo que tiene puesto cada salida sale de los ioctl
+    de modesetting y se graba en los volcados nuevos; los de la suite no lo
+    tienen, y dicen que la que enseñan es la preferida. El EDID de la tele no
+    entró en el anexo porque llevaba su número de serie: falta taparlo (y
+    rehacer su suma) en vez de quitar el archivo entero, para ver con el EDID
+    real que la regla del tamaño (160 × 90 cm, su 16:9) es la suya.
+  - Red · baja · el anexo no guarda los identificadores de lo enchufado por
+    USB, y una tarjeta de red USB sale sin modelo en su volcado. Y
+    Dispositivos la nombra por lo que dice la propia tarjeta («802.11n NIC»),
+    no por `usb.ids` como Red.
+  - Red · baja · con la tarjeta Wi-Fi USB sin modelo, el pie dice «El kernel
+    no publica modelo»: el modelo de una USB no lo publica el kernel, sale de
+    `usb.ids` o de la tarjeta.
 * **Del portátil Lenovo LOQ 15IRH8** (volcado `i5-12450h`, de la prueba5):
   - Gráficos · baja · Mesa rechaza la UHD en Vulkan («Vulkan requires
     context isolation»), y desde la prueba6 la fila de Vulkan lo dice con
     ese motivo. Falta saber por qué su i915 no da aislamiento de contextos.
     Y «Versión del driver» y «Tomada del sistema» salen con guion porque
     vienen de esas API: esconderlas y decirlo al pie.
-  - Memoria · baja · con el ayudante · el controlador publica sus contadores
-    libres (`uncore_imc_free_running_0/1`) y el ayudante no los abrió. Desde
-    la prueba6 sale como error con lo que contestó el ayudante.
   - Red · baja · «J6C1» como ranura de la Ethernet: es lo que el firmware
     declara en SMBIOS tipo 9, y no le dice nada a nadie.
   - Placa · baja · la cabecera repite el firmware y el TPM de debajo.
