@@ -506,7 +506,10 @@ class _Ddr5:
     """
 
     TCK_MIN, TCK_MAX = 20, 22
-    TAA, TRCD, TRP, TRAS, TRC = 24, 26, 28, 30, 32
+    # The CAS latencies the chip supports: forty bits, from CL20 in steps
+    # of two.
+    CAS_LATENCIES = slice(24, 29)
+    TAA, TRCD, TRP, TRAS, TRC = 30, 32, 34, 36, 38
     DENSITY, ADDRESSING, IO_WIDTH = 4, 5, 6
     ORGANIZATION, BUS_WIDTH = 234, 235
     VENDOR_BANK, VENDOR_ID = 512, 513
@@ -526,15 +529,23 @@ def _u16(spd: bytes, offset: int) -> int:
 
 
 def _ddr5_cycles(picoseconds: int, tck_ps: int) -> Optional[int]:
-    """An SPD time turned into clock cycles.
-
-    Rounded up: a CL coming out at 39.2 cycles is a CL40, because memory
-    can't answer early. Rounding to the nearest turns a CL40 into a CL39,
-    which doesn't exist.
-    """
+    """An SPD time turned into clock cycles, by JEDEC's own rounding
+    (JESD400-5): up, after taking 0.3 % off the time, so a time that is a
+    hair over a whole number of cycles doesn't take one more. 16 ns at
+    416 ps are 38.5 cycles, and 39."""
     if not (tck_ps and picoseconds):
         return None
-    return -(-picoseconds // tck_ps) or None
+    return (picoseconds * 997 // tck_ps + 1000) // 1000 or None
+
+
+def _ddr5_cas(spd: bytes, cycles: Optional[int]) -> Optional[int]:
+    """The CL: the first latency the chip supports that covers tAA's cycles.
+    DDR5's are even, and its list says which: 39 cycles are a CL40."""
+    if cycles is None:
+        return None
+    mask = int.from_bytes(spd[_Ddr5.CAS_LATENCIES], "little")
+    supported = [20 + 2 * bit for bit in range(40) if mask >> bit & 1]
+    return next((cl for cl in supported if cl >= cycles), cycles)
 
 
 def _decode_ddr5(spd: bytes, address: str, slot: int) -> SpdInfo:
@@ -546,7 +557,7 @@ def _decode_ddr5(spd: bytes, address: str, slot: int) -> SpdInfo:
     jedec = Timings(
         name="JEDEC",
         speed_mts=speed,
-        cl=_ddr5_cycles(_u16(spd, d.TAA), tck_ps),
+        cl=_ddr5_cas(spd, _ddr5_cycles(_u16(spd, d.TAA), tck_ps)),
         trcd=_ddr5_cycles(_u16(spd, d.TRCD), tck_ps),
         trp=_ddr5_cycles(_u16(spd, d.TRP), tck_ps),
         tras=_ddr5_cycles(_u16(spd, d.TRAS), tck_ps),

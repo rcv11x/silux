@@ -37,7 +37,7 @@ class TestPageZeroAlone(unittest.TestCase):
             with self.subTest(motivo=motivo):
                 roto = bytearray(pagina)
                 if valor is None:
-                    roto[24] = roto[25] = 0                 # tAA, both bytes
+                    roto[30] = roto[31] = 0                 # tAA, both bytes
                 else:
                     roto[byte] = valor
                 if byte == 20:

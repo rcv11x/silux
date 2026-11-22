@@ -506,8 +506,13 @@ if __name__ == "__main__":
     unittest.main()
 
 
+# Every even CL from 22 to 64, as the chip's list writes them (bit 0, CL20).
+CL_DE_22_A_64 = sum(1 << ((cl - 20) // 2) for cl in range(22, 66, 2))
+
+
 def construir_ddr5(*, tck_ps=357, taa=16250, trcd=16250, trp=16250,
-                   tras=32000, trc=48000, densidad=4, dies=0, io_width=2,
+                   tras=32000, trc=48000, latencias=CL_DE_22_A_64,
+                   densidad=4, dies=0, io_width=2,
                    ranks=1, canales=2, ancho_canal=2, ecc=0, tipo_modulo=0x02,
                    fabricante=(0x80, 0x2C), part="CT16G56C46U5.M8G1",
                    anno=0x24, semana=0x32, xmp=False, expo=False,
@@ -525,10 +530,11 @@ def construir_ddr5(*, tck_ps=357, taa=16250, trcd=16250, trp=16250,
     b[3] = tipo_modulo
     b[4] = (dies << 5) | densidad
     b[6] = io_width << 5
-    for offset, valor in ((20, tck_ps), (24, taa), (26, trcd), (28, trp),
-                          (30, tras), (32, trc)):
+    for offset, valor in ((20, tck_ps), (30, taa), (32, trcd), (34, trp),
+                          (36, tras), (38, trc)):
         b[offset] = valor & 0xFF
         b[offset + 1] = (valor >> 8) & 0xFF
+    b[24:29] = latencias.to_bytes(5, "little")
     b[234] = (ranks - 1) << 3
     b[235] = ((canales - 1) << 5) | (ecc << 3) | ancho_canal
     if longitud > 553:
@@ -541,6 +547,41 @@ def construir_ddr5(*, tck_ps=357, taa=16250, trcd=16250, trp=16250,
     if expo and longitud > 836:
         b[832:836] = b"EXPO"
     return bytes(b)
+
+
+# Page 0 of a Samsung M425R1GB4BB0-CQKOL (8 GB DDR5-4800 SODIMM), read on its
+# laptop with `dd bs=128 count=1`.
+PAGINA0_M425R1GB4BB0 = bytes.fromhex(
+    "3010 1203 0400 4042 0000 0000 9002 0000"
+    "0000 0000 a001 f203 7a0d 0000 0000 803e"
+    "803e 803e 007d 80bb 3075 2701 a000 8200"
+    "0000 0000 0000 0000 0000 0000 0000 0000"
+    "0000 0000 0000 8813 0888 1308 204e 2010"
+    "2710 1a41 2810 2710 c409 044c 1d0c 0000"
+    "0000 0000 0000 0000 0000 0000 0000 0000"
+    "0000 0000 0000 0000 0000 0000 0000 0000")
+
+
+class TestUnaDdr5DeVerdad(unittest.TestCase):
+    """Its timings, as JEDEC writes them and a person reads them: tCK 416 ps
+    (DDR5-4800); tAA, tRCD and tRP 16 ns; tRAS 32 ns; tRC 48 ns. The decoder
+    read them two bytes early, from the list of CAS latencies, and the test
+    chip was built with the same mistake: CL9, tRAS 39."""
+
+    def test_sus_temporizaciones(self):
+        self.assertEqual(len(PAGINA0_M425R1GB4BB0), 128)
+        info = spd.first_page(PAGINA0_M425R1GB4BB0, "0-0050", 0)
+        self.assertEqual((info.dram_type, info.module_type, info.device_width),
+                         ("DDR5", "SODIMM", 16))
+        jedec = info.jedec
+        self.assertEqual((jedec.speed_mts, jedec.cl, jedec.trcd, jedec.trp, jedec.tras,
+                          jedec.trc), (4800, 40, 39, 39, 77, 116))
+
+    def test_el_cl_es_uno_de_los_que_admite(self):
+        # 16 ns son 39 ciclos a 416 ps; su lista admite 36, 40 y 42: CL40.
+        self.assertEqual(spd._ddr5_cas(PAGINA0_M425R1GB4BB0, 39), 40)
+        self.assertEqual(spd._ddr5_cas(PAGINA0_M425R1GB4BB0, 37), 40)
+        self.assertEqual(spd._ddr5_cas(PAGINA0_M425R1GB4BB0, 23), 26)
 
 
 class TestDdr5(unittest.TestCase):
