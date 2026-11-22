@@ -78,6 +78,8 @@ que hace falta.
   a la que va) sale marcado «según la BIOS, no coincide», y no cuenta en la
   cabecera. Un portátil con dos DDR2 decía «DDR · DDR2 · 667 MT/s ·
   800 MT/s».
+- Sistema: el aviso de un kernel anterior al mínimo lleva su propio
+  encabezado, «Kernel anterior a 5.15», y no el de un dato concreto.
 
 ## 0.4-prueba10 (22 de noviembre de 2026)
 

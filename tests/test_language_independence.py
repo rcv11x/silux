@@ -31,6 +31,7 @@ CLOCK = ("monotonic", "boot_time")
 # same whatever the interface's language.
 TEXTS = {
     ("Note", "message"), ("Note", "hint"), ("Note", "what"), ("Note", "detail"),
+    ("Note", "title"),
     ("Sensor", "device"), ("Sensor", "label"),
     ("DriverHint", "provides"), ("DriverHint", "caution"),
     ("GpuApi", "extra"),

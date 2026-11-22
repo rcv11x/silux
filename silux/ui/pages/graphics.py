@@ -644,7 +644,7 @@ class GpuSection(QWidget):
         self.elevation_buttons = []
         for note in notes:
             aviso = Notice(
-                render.permission_title(note, _(NEED_TITLES.get(note.need, note.need.value))),
+                render.permission_title(note, render.note_title(note, NEED_TITLES)),
                 note.message, note.hint,
                 tone=tone_for(note.need),
                 action=(render.permission_action(note)
@@ -1378,6 +1378,6 @@ class GraphicsPage(ScrollPage):
         clear_layout(self._notices_host)
         for note in sueltos:
             self._notices_host.addWidget(
-                Notice(_(NEED_TITLES.get(note.need, note.need.value)),
+                Notice(render.note_title(note, NEED_TITLES),
                        note.message, note.hint, tone=tone_for(note.need))
             )

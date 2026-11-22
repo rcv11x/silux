@@ -141,10 +141,6 @@ la memoria) no va: está propuesto en las notas
     ya.
   - Gráficos · baja · la nota de la tarjeta en reposo lleva el encabezado
     «Este equipo no lo expone»: duerme, no es que no lo tenga.
-  - Sistema · baja · el aviso del kernel anterior a 5.15 sale con el
-    encabezado «Kernel anterior al dato», pensado para un dato concreto. En
-    el E6400, con 5.10 y con 6.14 sale lo mismo salvo lo que va por permisos
-    y por paquetes.
   - Memoria · baja · un zram con 0 B dentro dice «comprime 55.4 a 1».
   - Memoria · baja · el E6400 (ICH9M, DDR2) no registra ningún SPD, ni con
     5.10 ni con 6.14: `dmesg | grep -i spd` diría por qué.

@@ -634,7 +634,10 @@ def _diagnosis(snapshot: Snapshot, translate=in_spanish) -> str:
         lines.append(f"**{t('report.diag.missing')}**")
         lines.append("")
         for note in snapshot.notes:
-            reason = t(NEED_REASONS[note.need]) if note.need in NEED_REASONS else note.need.value
+            if note.title:
+                reason = note.title[:1].lower() + note.title[1:]
+            else:
+                reason = t(NEED_REASONS[note.need]) if note.need in NEED_REASONS else note.need.value
             # What's missing for a package says which: the hint is the datum.
             hint = f" {note.hint}" if note.need is Need.PACKAGE and note.hint else ""
             lines.append(f"- `{note.path}` ({reason}): {note.message}{hint}"

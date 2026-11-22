@@ -131,7 +131,9 @@ class SystemIdentity(Provider):
             # below it, something could be missing without anything saying why.
             draft.note("system.kernel", Need.KERNEL, _("kernel.belowminimum").format(
                 tuyo=f"{running[0]}.{running[1]}",
-                minimo=f"{kernel.MINIMUM[0]}.{kernel.MINIMUM[1]}"), key="kernel.belowminimum")
+                minimo=f"{kernel.MINIMUM[0]}.{kernel.MINIMUM[1]}"), key="kernel.belowminimum",
+                title=_("kernel.belowminimum.title").format(
+                    minimo=f"{kernel.MINIMUM[0]}.{kernel.MINIMUM[1]}"))
 
     @staticmethod
     def _kernel_build() -> Optional[str]:

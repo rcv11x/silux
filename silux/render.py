@@ -656,6 +656,11 @@ def permission_action(note) -> str:
     return _("perm.replace.button") if note.helper_outdated else _("perm.button.read")
 
 
+def note_title(note, titles: dict) -> str:
+    """A notice's heading: the note's own, else the one of its kind."""
+    return note.title or _(titles.get(note.need, note.need.value))
+
+
 def permission_title(note, title: str) -> str:
     """A notice's title: the page's own, or that the helper is out of date."""
     return _("perm.outdated.title") if note.helper_outdated else title

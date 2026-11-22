@@ -99,9 +99,9 @@ class Draft:
         return self.gpus[index]
 
     def note(self, path: str, need: Need, message: str, hint: str = "",
-             what: str = "", detail: str = "", key: str = "") -> None:
+             what: str = "", detail: str = "", key: str = "", title: str = "") -> None:
         self.notes.append(Note(path=path, need=need, message=message, hint=hint,
-                               what=what, detail=detail, key=key))
+                               what=what, detail=detail, key=key, title=title))
 
     def resolve(self, path: str) -> None:
         """Drop the notes on a value another provider did get.

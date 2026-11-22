@@ -587,7 +587,7 @@ class MemoryPage(ScrollPage):
         clear_layout(self._notices_host)
         for note in notes:
             self._notices_host.addWidget(
-                Notice(_(NEED_TITLES.get(note.need, note.need.value)),
+                Notice(render.note_title(note, NEED_TITLES),
                        note.message, note.hint, tone=tone_for(note.need))
             )
 

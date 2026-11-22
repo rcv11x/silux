@@ -54,6 +54,9 @@ class Note:
     # The key of its message: what decides on a note looks at this, never at
     # the message, which is in the interface's language.
     key: str = ""
+    # Its own heading, when the one of its kind doesn't say it: a card asleep
+    # isn't one «this machine doesn't expose».
+    title: str = ""
 
 
 @dataclass(frozen=True, slots=True)

@@ -597,7 +597,7 @@ class CpuPage(ScrollPage):
             # vatios en blanco: el aviso lo tenía delante y la salida en otra
             # sección.
             aviso = Notice(
-                render.permission_title(note, _(NEED_TITLES.get(note.need, note.need.value))),
+                render.permission_title(note, render.note_title(note, NEED_TITLES)),
                 note.message, note.hint,
                 action=(render.permission_action(note)
                         if note.need is Need.ROOT else None),
