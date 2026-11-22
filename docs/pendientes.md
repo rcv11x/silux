@@ -241,6 +241,11 @@ la memoria) no va: está propuesto en las notas
 
 ## Interfaz
 
+* `ui/pages/storage.py` · baja · con Silux abierto como root, «Vida
+  restante» de un pendrive se enseña y se esconde entre dos fotos iguales
+  (`test_nada_se_mueve` como root, en el contenedor de
+  `tools/probar_en_minimo.py`).
+
 * **La terminal, solo en español** · menor · `cli.py` escribe el volcado
   con literales en español («Núcleo», «Reloj de memoria», «de N W»), sin
   pasar por `_()`. `tests/test_interface_language.py` mira la ventana, no la
@@ -357,6 +362,11 @@ la memoria) no va: está propuesto en las notas
 
 ## Empaquetado y CI
 
+* `tools/probar_en_minimo.py` · media · pasa la suite como root dentro del
+  contenedor y sin `.git`, y el CI como usuario normal y con el repositorio:
+  en `master` da 147 fallos que el CI no tiene (avisos y candados de
+  permisos, `git ls-files`). No puede salir en verde; hasta arreglarlo, sirve
+  comparando con lo que da sobre `master`.
 * `tools/build_appimage.py` · baja · `--container` se traga `--keep` y
   `--appdir-only`; `appimagetool` se descarga en cada construcción sin fijar
   su hash.
