@@ -90,11 +90,7 @@ def _fila(snapshot: Snapshot) -> list[tuple[str, str, str]]:
 
     if snapshot.disks:
         total = sum(disco.size_bytes or 0 for disco in snapshot.disks)
-        tipos: dict[str, int] = {}
-        for disco in snapshot.disks:
-            if disco.kind:
-                tipos[disco.kind] = tipos.get(disco.kind, 0) + 1
-        detalle = " · ".join(f"{n} × {k}" for k, n in sorted(tipos.items()))
+        detalle = " · ".join(render.disk_kinds(snapshot.disks))
         filas.append((_("nav.storage"),
                       _("share.units").format(tam=render.decimal_size(total),
                                               n=len(snapshot.disks)),

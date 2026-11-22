@@ -149,3 +149,19 @@ class TestLosDatosDePruebaNoSonLosDeSustitucion(unittest.TestCase):
                       privacidad.GATEWAY, "0" * len(SERIE))
         for dato in (EQUIPO, DIRECCION, MAC, SERIE):
             self.assertNotIn(dato, sustitutos)
+
+
+class TestTheDisksRow(unittest.TestCase):
+    """The kinds as the pages count them: every disk, by its name."""
+
+    def test_as_storage_says_them(self):
+        from silux import render
+        from silux.i18n import _
+        from silux.ui.tarjeta import _fila
+        from tests.test_equipos import EQUIPOS, foto
+
+        snapshot = foto(EQUIPOS / "celeron-560")[0]
+        row = next(r for r in _fila(snapshot) if r[0] == _("nav.storage"))
+        self.assertEqual(row[2], " · ".join(render.disk_kinds(snapshot.disks)))
+        self.assertIn("1 × SSD", row[2])
+        self.assertNotIn("Flash", row[2])
