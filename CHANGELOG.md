@@ -10,9 +10,14 @@ que hace falta.
 
 ---
 
-## Sin publicar
+## 0.4-prueba8 (22 de noviembre de 2026)
 
 Con informes de Felix Lara.
+
+El primer DDR2, leído de su chip; el anexo ya no lleva el número de serie de
+los módulos DDR2 y DDR3; con pkexec sin agente de polkit se dice cuál
+instalar; las gráficas de Intel con su nombre comercial y todas las del bus a
+la vista, y sin conexión ya no se toma el bucle local por la red.
 
 ### Privacidad
 
