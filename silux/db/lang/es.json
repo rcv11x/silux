@@ -1085,6 +1085,7 @@
   "net.nolost": "ninguno descartado",
   "net.none": "Sin interfaces",
   "net.none.body": "Ninguna interfaz tiene salida a la red.",
+  "net.offline": "Sin conexión",
   "net.packets": "{n} paquetes",
   "net.packets2": "{n} paquetes",
   "net.state.down": "parada",

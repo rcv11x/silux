@@ -37,8 +37,8 @@ Esta gráfica no tiene sensor de temperatura propio.
 
 ### Red
 
-lo · 127.0.0.1
-↓ 0 B/s ↑ 0 B/s
+Sin conexión
+Ninguna interfaz tiene salida a la red.
 
 ### Placa base
 
@@ -432,12 +432,9 @@ Por USB no se sabe si un disco es de platos o SSD: el kernel marca casi todo lo 
 
 ## Red
 
-lo · 127.0.0.1
+Sin conexión
+Ninguna interfaz tiene salida a la red.
 0 de 2 activas
-- Bajando: 0 B/s (ninguno descartado)
-- Subiendo: 0 B/s
-- Recibido: 296.9 KB (4 267 paquetes)
-- Enviado: 296.9 KB (4 267 paquetes)
 
 ### Tráfico por interfaz
 

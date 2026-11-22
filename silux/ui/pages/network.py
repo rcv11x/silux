@@ -80,10 +80,13 @@ def main_interface(interfaces) -> tuple:
 
     La que lleva la ruta por defecto; si ninguna, la primera con dirección.
     Lo usan esta página y la tarjeta de Inicio, para que no digan dos cosas.
+    The loopback never serves: without a connection it was the only one
+    with an address and passed for the machine's.
     """
     ordenadas = sorted(interfaces, key=_orden)
-    principal = next((i for i in ordenadas if i.default_route),
-                     next((i for i in ordenadas if i.active), None))
+    salen = [i for i in ordenadas if i.kind != "loopback"]
+    principal = next((i for i in salen if i.default_route),
+                     next((i for i in salen if i.active), None))
     return principal, ordenadas
 
 
@@ -213,6 +216,7 @@ class NetworkPage(ScrollPage):
 
     def _build_tiles(self) -> QWidget:
         fila = ResponsiveRow(min_item_width=150)
+        self.tiles = fila
         self.tile_down = StatTile(_("net.col.down"), "", self._p)
         self.tile_up = StatTile(_("net.col.up"), "", self._p)
         self.tile_rx = StatTile(_("net.col.received"), "", self._p)
@@ -262,9 +266,16 @@ class NetworkPage(ScrollPage):
         self._apply_virtuales(virtuales)
 
     def _apply_header(self, principal, interfaces) -> None:
+        activas = sum(1 for i in interfaces if i.active)
         if principal is None:
-            self.title.setText(_("net.none"))
+            # Interfaces there are, with no way out: offline, not «none».
+            offline = any(i.kind != "loopback" for i in interfaces)
+            self.title.setText(_("net.offline" if offline else "net.none"))
             self.subtitle.setText(_("net.none.body"))
+            chips = [_("net.active2").format(n=activas, total=len(interfaces))] if offline else []
+            if tuple(chips) != self._chip_signature:
+                self._chip_signature = tuple(chips)
+                self.badges.set_chips(chips, highlight_first=True)
             return
         # El titular es la conexión, no el chip: por qué interfaz se sale y
         # con qué dirección. «RTL8125 2.5GbE Controller» arriba del todo era
@@ -275,7 +286,6 @@ class NetworkPage(ScrollPage):
             render.network_name(principal) if principal.model else None,
             render.link_summary(principal)) if p))
 
-        activas = sum(1 for i in interfaces if i.active)
         chips = [c for c in (
             (_("net.gateway2").format(ip=principal.gateway)
              if principal.gateway else None),
@@ -286,6 +296,9 @@ class NetworkPage(ScrollPage):
             self.badges.set_chips(chips, highlight_first=True)
 
     def _apply_tiles(self, principal) -> None:
+        # Offline there is no connection to measure: the header says so, and
+        # four dashes would only repeat it.
+        self.tiles.setVisible(principal is not None)
         trafico = principal.traffic if principal else None
         bajada = trafico.rx_rate_bps if trafico else None
         subida = trafico.tx_rate_bps if trafico else None

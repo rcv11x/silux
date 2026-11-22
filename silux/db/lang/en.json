@@ -1085,6 +1085,7 @@
   "net.nolost": "none dropped",
   "net.none": "No interfaces",
   "net.none.body": "No interface has a route to the network.",
+  "net.offline": "Offline",
   "net.packets": "{n} packets",
   "net.packets2": "{n} packets",
   "net.state.down": "down",

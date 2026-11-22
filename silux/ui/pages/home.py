@@ -510,9 +510,10 @@ class HomePage(ScrollPage):
     def _red(self, snapshot: Snapshot) -> None:
         from .network import link_ceiling, main_interface
 
-        principal, _todas = main_interface(snapshot.network)
+        principal, todas = main_interface(snapshot.network)
         if principal is None:
-            self.red.poner(_("net.none"), _("net.none.body"), "")
+            offline = any(i.kind != "loopback" for i in todas)
+            self.red.poner(_("net.offline" if offline else "net.none"), _("net.none.body"), "")
             return
         bits = self._prefs.network_unit == "bits"
         trafico = principal.traffic
