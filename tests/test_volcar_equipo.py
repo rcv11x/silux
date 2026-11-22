@@ -138,6 +138,51 @@ class TestAnEdidStays(unittest.TestCase):
         self.assertEqual([path for path, _kind, _what in found], ["nota"])
 
 
+class TestWhatIsPluggedIntoUsb(unittest.TestCase):
+    """Of a USB device its vendor:product stay (they name the model, not the
+    person); the names it writes go, and its serial is zeroed. The privacy
+    checker sees the names if they were left."""
+
+    def test_its_ids_stay_and_its_names_and_serial_go(self):
+        import sys
+        sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+        from tools import comprobar_privacidad
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = pathlib.Path(tmp.name)
+        device = root / "sys/devices/pci0000:00/0000:00:14.0/usb1/1-3"
+        device.mkdir(parents=True)
+        files = {"idVendor": "0bda\n", "idProduct": "818b\n", "product": "Llave de Ana\n",
+                 "manufacturer": "Realtek\n", "serial": "00E04C0001\n"}
+        for name, text in files.items():
+            (device / name).write_text(text)
+        where = lambda path: f"tests/fixtures/equipos/x/{path.relative_to(root)}"
+        before = [f for path in sorted(device.iterdir())
+                  for f in comprobar_privacidad._en_un_volcado(path, where(path))]
+        self.assertEqual(len(before), 3)          # product, manufacturer, serial
+        cleaner = volcar._Anonymizer(root, {})
+        cleaner.clean_contents()
+        self.assertEqual(sorted(p.name for p in device.iterdir()),
+                         ["idProduct", "idVendor", "serial"])
+        self.assertEqual((device / "idVendor").read_text(), "0bda\n")
+        self.assertFalse((device / "serial").read_text().strip("0\n"))
+        after = [f for path in sorted(device.iterdir())
+                 for f in comprobar_privacidad._en_un_volcado(path, where(path))]
+        self.assertEqual(after, [])
+        self.assertEqual(volcar.found_in(root, cleaner.secrets, cleaner.raw_secrets, own={}), [])
+
+    def test_the_usb_ids_answer_is_recorded(self):
+        from unittest import mock
+        from silux import sysroot, usbids
+        sysroot.start_recording()
+        try:
+            with mock.patch.object(usbids, "_lookup", return_value=("Realtek", "RTL8192EU")):
+                self.assertEqual(usbids.lookup(0x0BDA, 0x818B), ("Realtek", "RTL8192EU"))
+        finally:
+            recorded = sysroot.recorded_data()
+        self.assertEqual(recorded, {"usbids": {"0bda:818b": ["Realtek", "RTL8192EU"]}})
+
+
 class TestLaComprobacionFinal(unittest.TestCase):
 
     def test_encuentra_un_dato_sustituido_y_unos_bytes_crudos(self):

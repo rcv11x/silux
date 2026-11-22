@@ -18,6 +18,8 @@ import pathlib
 import re
 from typing import Optional
 
+from . import sysroot
+
 CANDIDATE_PATHS = (
     "/usr/share/hwdata/usb.ids",
     "/usr/share/misc/usb.ids",
@@ -43,7 +45,18 @@ _answered: dict[tuple, Optional[tuple[str, str]]] = {}
 
 
 def lookup(vendor: int, product: int) -> Optional[tuple[str, str]]:
-    """(vendor name, product name), or None if the database lacks either."""
+    """(vendor name, product name), or None if the database lacks either.
+
+    A dump answers with what the dumped system's file said, as with pci.ids.
+    """
+    if sysroot.active() and not sysroot.did_record("usbids"):
+        return _lookup(vendor, product)          # a dump older than this recording
+    found = sysroot.recorded("usbids", f"{vendor:04x}:{product:04x}",
+                             lambda: list(_lookup(vendor, product) or ()))
+    return tuple(found) if found else None
+
+
+def _lookup(vendor: int, product: int) -> Optional[tuple[str, str]]:
     path = database_path()
     if path is None:
         return None

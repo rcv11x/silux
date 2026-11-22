@@ -191,8 +191,11 @@ class TestLosNombres(unittest.TestCase):
             bluetooth=(BluetoothAdapter(name="hci0", product="Adaptador Acme", bus="usb",
                                         powered=True),))
         anonima = privacidad.anonymize(f)
-        self.assertEqual({(u.vendor, u.product, u.usb_id) for u in anonima.usb_devices},
-                         {(None, None, None)})
+        self.assertEqual({(u.vendor, u.product) for u in anonima.usb_devices}, {(None, None)})
+        # vendor:product name the model, not the person: they stay.
+        self.assertEqual([u.usb_id for u in anonima.usb_devices],
+                         [u.usb_id for u in f.usb_devices])
+        self.assertTrue(any(u.usb_id for u in anonima.usb_devices))
         self.assertEqual([u.kind for u in anonima.usb_devices],
                          [u.kind for u in f.usb_devices])
         self.assertEqual([u.speed_mbps for u in anonima.usb_devices],

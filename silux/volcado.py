@@ -57,8 +57,9 @@ SERIAL_FILES = {"serial", "serial_number", "wwid", "vpd_pg80", "vpd_pg83",
             "unique_id", "product_uuid", "product_serial", "board_serial",
             "chassis_serial", "uuid", "eui", "nguid", "perm_addr"}
 ADDRESS_FILES = {"address", "perm_address"}
-# What a USB device says about whose it is and which model.
-USB_IDENTIFYING_FILES = {"product", "manufacturer", "idVendor", "idProduct"}
+# What a USB device writes about itself, which can name whose it is. Its
+# vendor:product ids stay: they name the model, not the person.
+USB_IDENTIFYING_FILES = {"product", "manufacturer"}
 # Names that point to nobody: a hub's or a controller's.
 USB_GENERIC = re.compile(r"hub|host controller|usb\s*receiver", re.I)
 MAC = re.compile(r"\b(?:[0-9a-f]{2}:){5}[0-9a-f]{2}\b", re.I)
@@ -896,12 +897,12 @@ class _Anonymizer:
                     path.write_text(privacidad.MAC + "\n")
                 continue
             # What's plugged in. Someone's inventory points to them too: a
-            # security key, a specific microphone. Of USB, the class, the
-            # speed and what hangs from what stay, which is what the tests
-            # need; the maker, model and identifiers go, and with them the
-            # Bluetooth adapter's name, from the same file. The same as
-            # `privacidad.anonymize` does with the snapshot, so the file is
-            # deleted rather than filled: the provider must read «nothing».
+            # security key, a specific microphone. Of USB, the vendor:product
+            # ids, the class, the speed and what hangs from what stay; the
+            # names the device writes go, and with them the Bluetooth
+            # adapter's name, from the same file. The file is deleted rather
+            # than filled: the provider must read «nothing». Its serial is
+            # zeroed with every other serial (`SERIAL_FILES`).
             # The maker goes too, but is not looked for afterwards: it is a
             # company, and «Realtek» or «Generic» are also the sound codec,
             # the PHY or the HDA card.
@@ -1280,9 +1281,10 @@ def dump(name: str, base: pathlib.Path,
                 "energía, y el volcado guarda una",
                 "la residencia en los estados de reposo (C-states): sale de restar "
                 "dos lecturas de cpuidle, y el volcado guarda una",
-                "de lo enchufado por USB: la marca, el modelo y sus identificadores; "
-                "y el nombre de las cámaras y de las tarjetas de sonido USB. "
-                "Quedan la clase, la velocidad y de qué cuelga cada cosa",
+                "de lo enchufado por USB: la marca y el modelo que escribe el propio "
+                "aparato, y su número de serie; y el nombre de las cámaras y de las "
+                "tarjetas de sonido USB. Quedan sus identificadores (vendor:product), "
+                "la clase, la velocidad y de qué cuelga cada cosa",
                 "las variables del cargador de arranque que no se leen "
                 "(LoaderDevicePartUUID, LoaderSystemToken)",
             ] + sleeping.not_recorded() + ([f"{dropped} interfaces de red en serie (puentes de Docker y "

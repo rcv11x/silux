@@ -322,14 +322,13 @@ def anonymize(snapshot: Snapshot) -> Snapshot:
             for g in snapshot.gpus
         )
 
-    # What's plugged in. The serial number is never read, but the inventory
-    # points to someone too: a security key, a specific microphone, a
-    # camera's exact model. Anonymous, the snapshot says what kind of thing
-    # each is and how fast it runs, which is what a bug needs, and not its
-    # brand.
+    # What's plugged in. The serial number is never read, but the names a
+    # device writes can point to someone. Anonymous, the snapshot says what
+    # kind of thing each is, how fast it runs and its vendor:product ids,
+    # which name the model and not the person.
     if snapshot.usb_devices:
         changes["usb_devices"] = tuple(
-            dataclasses.replace(u, vendor=None, product=None, usb_id=None)
+            dataclasses.replace(u, vendor=None, product=None)
             for u in snapshot.usb_devices)
     if snapshot.sound_cards:
         changes["sound_cards"] = tuple(
