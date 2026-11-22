@@ -22,7 +22,6 @@ from ... import render
 from ...i18n import _
 from ...model import NetworkInterface, Snapshot
 from ...settings import Preferences
-from .board import NEED_TITLES
 from .. import theme
 from ..theme import Palette, ui_font
 from ..widgets import (
@@ -38,6 +37,7 @@ from ..widgets import (
     clear_layout,
     tone_for,
 )
+from .board import NEED_TITLES
 
 INTERFACE_FIELDS = (
     "gpu.sensor.state", "memory.field.type", "net.field.ipv4",
