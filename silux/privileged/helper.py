@@ -111,9 +111,11 @@ PMU_POWER_EVENT = re.compile(r"^energy-gpu$")
 
 # The memory controller, which publishes how much traffic it moves to RAM.
 # Intel renames it by generation and all three must be accepted:
-# `uncore_imc` from Sandy Bridge to Comet Lake, `uncore_imc_free_running_N`
-# from Ice Lake on, and `uncore_imc_N` on servers, which also name their
-# events by the DRAM command instead of by the direction.
+# `uncore_imc` from Sandy Bridge to Comet Lake and still on client Ice Lake
+# and Rocket Lake, `uncore_imc_free_running_N` on Tiger Lake, Alder Lake and
+# server Ice Lake, and `uncore_imc_N` on servers, which also name their
+# events by the DRAM command instead of by the direction. The free-running
+# ones write their events in two fields (`event=0xff,umask=0x20`).
 #
 # `ia_requests` is the same traffic seen by origin (what the cores ask for)
 # and is here because it was measured: against 10 GiB read on purpose it
@@ -404,26 +406,36 @@ def _pmu_allowed(family: str, pmu: str):
     return None
 
 
-def _pmu_field(pmu: str, field: str):
-    """In which bit of `config` a field starts, per the kernel itself.
+def _pmu_bits(pmu: str, field: str):
+    """The bits of `config` a field takes, (first, last), per the kernel.
 
     Each PMU publishes its format: «config:0-7» means the field is the low
     eight bits. i915 calls it `i915_eventid` and RAPL `event`, which is why
-    it's looked up instead of assumed.
+    it's looked up instead of assumed. A field split in two ranges, or in
+    another register than `config`, isn't taken.
     """
     if field == "config":
-        return 0
+        return 0, 63
     try:
         with open(f"{PMU_ROOT}/{pmu}/format/{field}", encoding="ascii") as handle:
             raw = handle.read(32).strip()
     except OSError:
         return None
-    if not raw.startswith("config:"):
+    if not raw.startswith("config:") or "," in raw:
         return None
+    first, _sep, last = raw[len("config:"):].partition("-")
     try:
-        return int(raw[len("config:"):].split("-")[0])
+        first_bit = int(first)
+        last_bit = int(last) if last else first_bit
     except ValueError:
         return None
+    return (first_bit, last_bit) if 0 <= first_bit <= last_bit <= 63 else None
+
+
+def _pmu_field(pmu: str, field: str):
+    """In which bit of `config` a field starts."""
+    bits = _pmu_bits(pmu, field)
+    return bits[0] if bits else None
 
 
 def _pmu_config(pmu: str, event: str):
@@ -431,24 +443,34 @@ def _pmu_config(pmu: str, event: str):
 
     The client sends names, never numbers: what turns a name on the list
     into a `config` is this kernel file. Its content is «config=0x2000» on
-    i915 and «event=0x04» on RAPL, which differ: the second must be placed
-    in the bits the PMU's format says.
+    i915, «event=0x04» on RAPL and «event=0xff,umask=0x20» on a memory
+    controller's free-running counters: each field goes in the bits the
+    PMU's format says, as perf places them. A field the format doesn't
+    declare, a value wider than its bits, or a parameter perf asks the user
+    for («?»), and the event isn't opened.
     """
     try:
         with open(f"{PMU_ROOT}/{pmu}/events/{event}", encoding="ascii") as handle:
             raw = handle.read(64).strip()
     except OSError:
         return None
-    if "," in raw or "=" not in raw:
-        return None            # if it carries extra parameters, it isn't touched
-    field, _, value = raw.partition("=")
-    shift = _pmu_field(pmu, field.strip())
-    if shift is None:
+    if not raw:
         return None
-    try:
-        return int(value.strip(), 0) << shift
-    except ValueError:
-        return None
+    config = 0
+    for part in raw.split(","):
+        field, sep, value = part.partition("=")
+        bits = _pmu_bits(pmu, field.strip()) if sep else None
+        if bits is None:
+            return None
+        try:
+            number = int(value.strip(), 0)
+        except ValueError:
+            return None
+        first, last = bits
+        if not 0 <= number < 1 << (last - first + 1):
+            return None
+        config |= number << first
+    return config
 
 
 def _open_pmu(family: str) -> None:
@@ -457,6 +479,9 @@ def _open_pmu(family: str) -> None:
     empty = ("no hay ningún controlador de memoria con contadores"
              if family == IMC_FAMILY
              else "no hay ninguna gráfica con contadores de ocupación")
+    # There are, and this helper doesn't know how to ask for them: not «none».
+    unknown = "este ayudante no sabe abrir los contadores que hay"
+    unread = 0
     fds: dict[str, dict[str, int]] = {}
     failure = ""
 
@@ -494,6 +519,7 @@ def _open_pmu(family: str) -> None:
                 continue
             config = _pmu_config(pmu, event)
             if config is None:
+                unread += 1
                 continue
             attr = _PerfEventAttr()
             attr.type = pmu_type
@@ -513,7 +539,7 @@ def _open_pmu(family: str) -> None:
         _PMU_FDS[family] = fds
         _PMU_TRUNCATED[family] = truncated
     if not fds and not failure:
-        failure = empty
+        failure = unknown if unread else empty
     if failure:
         _PMU_FAILURE[family] = failure
 

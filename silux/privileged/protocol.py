@@ -63,9 +63,10 @@ PMU_EVENT = r"^(rcs|bcs|vcs|vecs|ccs)\d+-busy$"
 # client asks for «the memory controller» and the helper decides what it
 # opens. The counters are cumulative totals of the whole machine (cache lines
 # to and from RAM), so they say nothing of any process. Intel renames the PMU
-# by generation: `uncore_imc` up to Comet Lake, `uncore_imc_free_running_N`
-# from Ice Lake, and `uncore_imc_N` on servers, whose events are named by the
-# DRAM command instead of the direction.
+# by generation: `uncore_imc` up to Comet Lake and on client Ice Lake and
+# Rocket Lake, `uncore_imc_free_running_N` on Tiger Lake, Alder Lake and
+# server Ice Lake, and `uncore_imc_N` on servers, whose events are named by
+# the DRAM command instead of the direction.
 PMU_IMC = r"^uncore_imc(_free_running)?(_\d+)?$"
 PMU_IMC_EVENT = r"^(data_reads?|data_writes?|cas_count_read|cas_count_write|ia_requests)$"
 

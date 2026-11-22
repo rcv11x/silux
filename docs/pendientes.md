@@ -103,13 +103,10 @@ la memoria) no va: está propuesto en las notas
     Seagate y un Crucial; con el A400 de verdad, falta verlo.
 * **De los informes de la prueba8** (volcados `celeron-g3900` y `i5-12450h`,
   rehecho):
-  - Memoria · media · con el ayudante · el LOQ publica sus contadores libres
-    del controlador (`uncore_imc_free_running_0/1`, `data_read` y
-    `data_write`), pero cada evento lleva dos campos (`event=0xff,umask=0x20`)
-    y el ayudante solo abre los de uno: dice «no hay ningún controlador de
-    memoria con contadores», que es falso. Arreglarlo toca el ayudante: está
-    propuesto en las notas del autor. Sigue saliendo «Falló al leerse», que es
-    lo cierto.
+  - Memoria · media · con el ayudante · los contadores libres del controlador
+    del LOQ (`event=0xff,umask=0x20`, dos campos) los abre ya el ayudante,
+    que coloca cada campo en sus bits como `perf`. Falta comprobarlo en el LOQ
+    contra `perf stat`.
   - Memoria · baja · el SPD de su DDR5 se lee página a página, sin búfer, y
     un volcado guarda la página que se leyó y el error de las demás. El del
     LOQ lleva la página 0 que leyó su dueño con `dd`. Falta ver en un equipo
@@ -359,10 +356,8 @@ la memoria) no va: está propuesto en las notas
 * **F-M27 · `privileged/helper.py`** · media-baja · la lista blanca de MSR
   tiene nueve registros que no se usan. Va como propuesta antes que código.
 * `privileged/helper.py` · baja · el ayudante muere con UTF-8 inválido;
-  `DISK_NAME` acepta un salto de línea final; un comentario dice que
-  `uncore_imc_free_running` es de Ice Lake en adelante y no lo es
-  ([kernel.md](kernel.md)). Va con el próximo cambio del ayudante, que obliga
-  a reinstalarlo.
+  `DISK_NAME` acepta un salto de línea final. Va con el próximo cambio del
+  ayudante, que obliga a reinstalarlo.
 * `privileged/cargar_modulo.py` · baja · admite `i2c-dev`, que no es de
   solo lectura.
 * `updates.py` · baja · sin firma: el SHA-256 sale del `SHA256SUMS` de la

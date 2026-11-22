@@ -12,6 +12,11 @@ que hace falta.
 
 ## Sin publicar
 
+- Memoria: el tráfico de la memoria se lee también en los Intel cuyo
+  controlador escribe sus contadores con dos campos (Tiger Lake y Alder
+  Lake), que el ayudante no sabía abrir y daba por inexistentes. Cambia el
+  ayudante: Ajustes pedirá actualizarlo.
+
 ### Privacidad
 
 - El anexo del informe lleva el EDID de cada monitor con solo su número de

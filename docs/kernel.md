@@ -74,7 +74,7 @@ la tabla lo dice en cada fila.
 | `energy_uj` solo para root (PLATYPUS, CVE-2020-8694) | el consumo sin permisos | 5.10 (≤ 5.15) | | T`949dd0104c496fa7c14991a23c03c62e44637e71` | Algunas distribuciones lo abren otra vez con reglas propias. |
 | PMU `cpu_core` y `cpu_atom` (híbridos de Intel) | los tipos de núcleo | 5.13 (≤ 5.15) | | T`f83d2f91d2590318e083d05bd7b1beda2489050e` | |
 | TPM `tpm_version_major` | Placa base | 5.6 (≤ 5.15) | | T`7084eddf6be94e73f8298c1a28078b91536f2975` | |
-| PMU `uncore_imc_free_running` | el tráfico de la memoria | Tiger Lake 5.7, Alder Lake 5.17, Ice Lake de servidor 5.7, Snow Ridge ≤ 5.4 | | TGL: T`fdb64822443ec9fb8c3a74b598a74790ae8d2e22` · ADL: T`5a4487f9ef5ef2fdb3215cadf0a9c3e5e8678634` · ICX: T`2b3b76b5ec67568da4bb475d3ce8a92ef494b5de` | Ice Lake de cliente y Rocket Lake siguen con `uncore_imc`, no con este: el comentario de `privileged/helper.py` que dice «de Ice Lake en adelante» es falso, aunque la expresión acepta los dos nombres. No se ha tocado porque cambiar el ayudante obliga a reinstalarlo. Un Alder Lake con 5.15 o 5.16 no lo tiene. |
+| PMU `uncore_imc_free_running` | el tráfico de la memoria | Tiger Lake 5.7, Alder Lake 5.17, Ice Lake de servidor 5.7, Snow Ridge ≤ 5.4 | | TGL: T`fdb64822443ec9fb8c3a74b598a74790ae8d2e22` · ADL: T`5a4487f9ef5ef2fdb3215cadf0a9c3e5e8678634` · ICX: T`2b3b76b5ec67568da4bb475d3ce8a92ef494b5de` | Ice Lake de cliente y Rocket Lake siguen con `uncore_imc`, no con este: la expresión del ayudante acepta los dos nombres. Sus eventos llevan dos campos (`event=0xff,umask=0x20`), que el ayudante coloca según el formato del PMU. Un Alder Lake con 5.15 o 5.16 no lo tiene. |
 
 ## Lo que no se ha confirmado
 

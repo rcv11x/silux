@@ -5,6 +5,7 @@ autenticación— así que se ejercen sus funciones directamente y se sustituye 
 cliente por uno falso para probar el proveedor de punta a punta.
 """
 
+import io
 import json
 import os
 import pathlib
@@ -361,10 +362,42 @@ class TestContadoresDeLaGrafica(unittest.TestCase):
                         mock.mock_open(read_data="config1:0-7")):
             self.assertIsNone(helper._pmu_field("x", "event"))
 
-    def test_un_evento_con_parametros_de_sobra_no_se_toca(self):
-        with mock.patch("silux.privileged.helper.open",
-                        mock.mock_open(read_data="event=0x04,umask=0x01")):
-            self.assertIsNone(helper._pmu_config("power", "energy-gpu"))
+    def test_a_memory_controllers_events_of_two_fields(self):
+        # The LOQ's free-running counters, as its kernel publishes them:
+        # «event=0xff,umask=0x20» over «config:0-7» and «config:8-15».
+        devices = (pathlib.Path(__file__).parent / "fixtures" / "equipos" / "i5-12450h"
+                   / "sys" / "bus" / "event_source" / "devices")
+        with mock.patch.object(helper, "PMU_ROOT", str(devices)):
+            self.assertEqual(helper._pmu_config("uncore_imc_free_running_0", "data_read"),
+                             0xFF | 0x20 << 8)
+            self.assertEqual(helper._pmu_config("uncore_imc_free_running_1", "data_write"),
+                             0xFF | 0x30 << 8)
+            # perf's own reading of that line: the same number.
+            self.assertEqual(_as_perf(devices / "uncore_imc_free_running_0", "data_total"),
+                             helper._pmu_config("uncore_imc_free_running_0", "data_total"))
+
+    def test_what_it_does_not_take(self):
+        formats = {"event": "config:0-7", "umask": "config:8-15", "edge": "config:18",
+                   "split": "config:8-15,32-35", "other": "config1:0-7"}
+
+        def fake_open(path, *args, **kwargs):
+            name = pathlib.Path(path).name
+            if "/events/" in str(path):
+                return io.StringIO(events[name])
+            if name in formats:
+                return io.StringIO(formats[name])
+            raise FileNotFoundError(path)
+
+        events = {"ok": "event=0x04,umask=0x01", "one_bit": "event=0x04,edge=1",
+                  "too_wide": "event=0x100", "asks": "event=0x04,umask=?",
+                  "split": "event=0x04,split=0x01", "other": "event=0x04,other=0x01",
+                  "unknown": "event=0x04,cmask=0x01", "flag": "event=0x04,edge"}
+        with mock.patch("silux.privileged.helper.open", fake_open):
+            self.assertEqual(helper._pmu_config("x", "ok"), 0x0104)
+            self.assertEqual(helper._pmu_config("x", "one_bit"), 0x04 | 1 << 18)
+            for name in ("too_wide", "asks", "split", "other", "unknown", "flag"):
+                with self.subTest(event=name):
+                    self.assertIsNone(helper._pmu_config("x", name))
 
     def test_sin_privilegios_falla_diciendo_por_qué(self):
         respuesta = helper.handle({"action": protocol.ACTION_GPU_PMU})
@@ -372,6 +405,19 @@ class TestContadoresDeLaGrafica(unittest.TestCase):
         if not respuesta["ok"]:
             self.assertEqual(respuesta["error"], "unsupported")
             self.assertTrue(respuesta["message"])
+
+
+def _as_perf(pmu: pathlib.Path, event: str) -> int:
+    """How perf turns an event line into `config` (tools/perf/util/pmu.c):
+    each term's value shifted to the first bit of its format, a field at a
+    time. Written apart from the helper's, to check it against."""
+    config = 0
+    for term in (pmu / "events" / event).read_text().strip().split(","):
+        name, value = term.split("=")
+        spec = (pmu / "format" / name).read_text().strip()
+        first = int(spec.split(":")[1].split("-")[0])
+        config += int(value, 16) * 2 ** first
+    return config
 
 
 class TestInstaladorDelAyudante(unittest.TestCase):
