@@ -69,6 +69,9 @@ MODULE_FIELDS = ("memory.field.slot", "memory.field.vendor", "memory.field.chips
 # Cómo se nombra, en la frase del pie, cada campo que solo trae el SPD.
 SOLO_DEL_SPD = {
     "memory.field.vendor": "memory.na.vendor",
+    "memory.field.part": "memory.na.part",
+    "memory.field.size": "memory.na.size",
+    "memory.field.ranks": "memory.na.ranks",
     "memory.field.chips": "memory.na.chips",
     "memory.field.profiles": "memory.na.profiles",
     "memory.field.made": "memory.na.made",
@@ -932,11 +935,20 @@ class MemoryPage(ScrollPage):
         y se nombran al pie. El fabricante sí suele venir en la tabla; solo se
         esconde si tampoco está ahí.
         """
-        # With only its first page read, what the rest holds is missing too.
+        # With only its first page read, what the rest holds is missing too:
+        # the part, and the organization the capacity and the ranks come from,
+        # unless the firmware's table gives them.
         if module.spd is not None and not module.spd.partial:
             return ()
-        return (() if module.manufacturer else ("memory.field.vendor",)) + (
-            "memory.field.chips", "memory.field.profiles", "memory.field.made")
+        partial = module.spd is not None
+        return tuple(key for key, missing in (
+            ("memory.field.vendor", not module.manufacturer),
+            ("memory.field.part", partial and not module.part_number),
+            ("memory.field.size", partial and not module.size_bytes),
+            ("memory.field.ranks", partial and not module.rank),
+            ("memory.field.chips", True),
+            ("memory.field.profiles", True),
+            ("memory.field.made", True)) if missing)
 
     def _apply_module_temperatures(self, snapshot: Snapshot, modules) -> None:
         """Each module's temperature, from the sensor on its SPD chip, in its

@@ -974,6 +974,8 @@
   "memory.na.nospd.why": "{campos} salen del chip SPD de cada módulo, y no se puede leer: {motivo}",
   "memory.na.part": "la referencia",
   "memory.na.profiles": "los perfiles rápidos",
+  "memory.na.ranks": "los rangos",
+  "memory.na.size": "la capacidad",
   "memory.na.soldered": "{campos} salen del chip SPD de cada módulo, y la memoria soldada en la placa no lo lleva.",
   "memory.na.spd.partial": "{campos} están en las páginas del chip SPD que este equipo no deja leer: para pasar de la primera a las demás el driver tiene que escribir en el chip, y el equipo lo impide.",
   "memory.na.undeclared": "El chip SPD del módulo {n} no declara {fields}.",

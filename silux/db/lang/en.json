@@ -974,6 +974,8 @@
   "memory.na.nospd.why": "{campos} come from each module's SPD chip, which cannot be read: {motivo}",
   "memory.na.part": "the part number",
   "memory.na.profiles": "the fast profiles",
+  "memory.na.ranks": "the ranks",
+  "memory.na.size": "the capacity",
   "memory.na.soldered": "{campos} come from each module's SPD chip, and memory soldered on the board has none.",
   "memory.na.spd.partial": "{campos} are on the SPD chip's pages this machine doesn't let be read: moving past the first one takes a write to the chip, and the machine blocks it.",
   "memory.na.undeclared": "Module {n}'s SPD chip doesn't declare {fields}.",

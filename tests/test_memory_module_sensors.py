@@ -49,11 +49,27 @@ class TestOnItsPages(unittest.TestCase):
     def _memory_sensors(self, snapshot):
         return [s for s in snapshot.sensors if s.bus_address and s.kind is SensorKind.TEMPERATURE]
 
-    def test_named_by_its_address_without_the_modules(self):
+    def test_named_by_its_module_and_its_address(self):
+        # Without permissions its module is the one its SPD's page 0 gives.
         sensor, = self._memory_sensors(foto(DUMP)[0])
         self.assertEqual(sensor.bus_address, "0-0050")
-        self.assertEqual(sensor.label, _("sensor.mem.address").format(direccion="0x50"))
+        self.assertEqual(sensor.label, _("sensor.mem.module").format(n=1, direccion="0x50"))
         self.assertNotIn("/temp1", sensor.key.split("-", 1)[0])
+
+    def test_by_its_address_alone_without_a_module(self):
+        from silux import volcado
+        from silux.collector import Collector
+        from tests.interval import fake_clock, next_snapshot
+        with volcado.mounted(DUMP) as root, fake_clock() as clock:
+            (root / "sys/bus/i2c/devices/0-0050/eeprom").unlink()
+            collector = Collector()
+            try:
+                collector.snapshot()
+                snapshot = next_snapshot(collector, clock)
+            finally:
+                collector.close()
+        sensor, = self._memory_sensors(snapshot)
+        self.assertEqual(sensor.label, _("sensor.mem.address").format(direccion="0x50"))
 
     def test_in_its_modules_card(self):
         snapshot = _with_permissions(foto(DUMP)[0])

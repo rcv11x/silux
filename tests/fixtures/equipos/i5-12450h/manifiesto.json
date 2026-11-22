@@ -485,6 +485,7 @@
   "hwmon",
   "network",
   "nvml",
+  "spd",
   "storage",
   "sysfs-cpu",
   "system"

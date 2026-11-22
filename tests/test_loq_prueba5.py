@@ -154,8 +154,10 @@ class TestTheSpdHint(unittest.TestCase):
         hecho = subprocess.CompletedProcess([], 0, stdout="/lib/modules/spd5118.ko\n")
         with volcado.mounted(DUMP) as raiz:
             if quitar_hwmon:
-                # As before the driver binds: the bus lists the device alone.
+                # As before the driver binds: the bus lists the device alone,
+                # with neither its sensor nor its `eeprom`.
                 shutil.rmtree(raiz / "sys/bus/i2c/devices/0-0050/hwmon")
+                (raiz / "sys/bus/i2c/devices/0-0050/eeprom").unlink()
             with mock.patch("silux.system_deps.program_path", return_value="/usr/bin/modinfo"), \
                     mock.patch("subprocess.run", return_value=hecho):
                 return list(PrivilegedMemory._spd_hint())

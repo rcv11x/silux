@@ -17,6 +17,7 @@ so it stays that way.
 
 from __future__ import annotations
 
+import errno
 import functools
 import json
 import os
@@ -949,22 +950,35 @@ def read_pages(path) -> tuple[list[Optional[bytes]], Optional[OSError]]:
     Unbuffered: asked for 128 bytes, a buffered file asks the kernel for a
     whole block (4096), which crosses into page 1; where the machine blocks
     the page switch that read fails, and page 0 with it.
+
+    The pages that fail are recorded by their error, and a dump answers them
+    so: its `eeprom` holds what was read.
     """
+    key = sysroot.unrooted(str(path))
+    recorded = sysroot.recorded("spd_pages", key, lambda: None) if sysroot.active() else None
     pages: list[Optional[bytes]] = []
-    error: Optional[OSError] = None
+    errors: list[Optional[OSError]] = []
     with open(path, "rb", buffering=0) as eeprom:
-        for offset in range(0, DDR5_SIZE, DDR5_PAGE):
+        for page, offset in enumerate(range(0, DDR5_SIZE, DDR5_PAGE)):
+            answer = recorded[page] if recorded and page < len(recorded) else "ok"
             try:
+                if answer != "ok":
+                    code = getattr(errno, answer, errno.EIO)
+                    raise OSError(code, os.strerror(code))
                 eeprom.seek(offset)
                 chunk = eeprom.read(DDR5_PAGE)
             except OSError as exc:
-                error = error or exc
                 pages.append(None)
+                errors.append(exc)
                 continue
             if not chunk:
                 break                          # a smaller chip ends here
             pages.append(chunk)
-    return pages, error
+            errors.append(None)
+    if any(errors) and not sysroot.active():
+        sysroot.recorded("spd_pages", key, lambda: [
+            "ok" if e is None else errno.errorcode.get(e.errno, "EIO") for e in errors])
+    return pages, next((e for e in errors if e is not None), None)
 
 
 def read_all(failures: Optional[list] = None) -> list[SpdInfo]:

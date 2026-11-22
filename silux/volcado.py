@@ -33,6 +33,7 @@ import dataclasses
 import errno
 import getpass
 import io
+import itertools
 import json
 import os
 import pathlib
@@ -41,7 +42,7 @@ import shutil
 import tempfile
 from typing import Optional
 
-from . import privacidad, sysroot
+from . import privacidad, spd, sysroot
 from .providers.sysfs_cpu import FREQUENCY_SOURCES
 
 WATCHED_TREES = ("/sys/", "/proc/", "/etc/")
@@ -492,8 +493,14 @@ class _Copy:
             return
         inside.parent.mkdir(parents=True, exist_ok=True)
         try:
-            with open(sysroot.path(real_path), "rb") as source:
-                data = source.read(MAX_BYTES)
+            if os.path.basename(real_path) == "eeprom":
+                # An SPD chip may read only page by page: what read goes, up
+                # to the first page that didn't, and those are recorded.
+                pages, _error = spd.read_pages(sysroot.path(real_path))
+                data = b"".join(itertools.takewhile(lambda page: page is not None, pages))
+            else:
+                with open(sysroot.path(real_path), "rb") as source:
+                    data = source.read(MAX_BYTES)
         except PermissionError:
             # The file is left and noted: when the dump is mounted it loses
             # its permissions, so reading it fails the same way as here.

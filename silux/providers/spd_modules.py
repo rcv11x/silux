@@ -51,8 +51,7 @@ class SpdModules(Provider):
             draft.note("spd", Need.HARDWARE, _("prov.spd.partial"),
                        _("prov.spd.partial.hint"),
                        detail="; ".join(f"{device}: {errno.errorcode.get(exc.errno, exc.errno)}"
-                                        f" ({exc.strerror})" for device, exc in failures
-                                        if device in partial),
+                                        for device, exc in failures if device in partial),
                        key="prov.spd.partial")
             failures = [(device, exc) for device, exc in failures if device not in partial]
         if failures:
@@ -62,8 +61,10 @@ class SpdModules(Provider):
             # can't be told from here, so the errno goes to the report.
             draft.note("spd", Need.HARDWARE, _("prov.spd.readfailed"),
                        _("prov.spd.readfailed.hint"),
+                       # The error's name and not its text, which is in
+                       # the system's language and not the report's.
                        detail="; ".join(f"{device}: {errno.errorcode.get(exc.errno, exc.errno)}"
-                                        f" ({exc.strerror})" for device, exc in failures),
+                                        for device, exc in failures),
                        key="prov.spd.readfailed")
         if not readings:
             return

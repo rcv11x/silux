@@ -335,6 +335,18 @@
   "/dev/nvme0n1p2": "/dev/nvme0n1p2",
   "/dev/nvme0n1p3": "/dev/nvme0n1p3"
  },
+ "spd_pages": {
+  "/sys/bus/i2c/devices/0-0050/eeprom": [
+   "ok",
+   "ENXIO",
+   "ENXIO",
+   "ENXIO",
+   "ENXIO",
+   "ENXIO",
+   "ENXIO",
+   "ENXIO"
+  ]
+ },
  "statvfs": {
   "/": [
    20140412928,
