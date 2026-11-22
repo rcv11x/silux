@@ -144,7 +144,8 @@ EN_BRUTO = {
         r"|not specified|not available|system product name|system manufacturer"),
     "un valor que no se convirtió en texto": re.compile(r"\bNone\b|\bnull\b|\bnan\b"),
     "una razón social": re.compile(
-        r"Co\., ?Ltd|\bInc\.|\bCorporation\b|\bLimited\b|\bGmbH\b|\[[A-Z/]+\]$"),
+        r"Co\., ?Ltd|\bInc\.|\bCorporation\b|\bLimited\b|\bGmbH\b|\[[A-Z/]+\]$"
+        r"|\bS\.A\.|\bInformatica SA\b"),
     # Not inside a path: a temporary folder's random name can look like one.
     "un chip con su dirección": re.compile(
         r"(?<!/)\b[a-z]+\d*_[0-9a-f]{6,}\b|(?<!/)\b\w+_\d+_[0-9a-f]+:\d+"),

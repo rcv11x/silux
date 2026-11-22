@@ -827,6 +827,7 @@ VENDOR_ALIASES: dict[str, str] = {
     "american megatrends": "AMI",
     "hewlett-packard": "HP",
     "lenovo": "Lenovo",
+    "positivo informatica": "Positivo",
     "dell inc.": "Dell",
     "asrock": "ASRock",
     "biostar": "Biostar",
@@ -903,17 +904,22 @@ DMI_PLACEHOLDERS = frozenset({
 # version, which isn't any machine's name. The fillers with letters
 # («Default string», «System Product Name») are already caught by
 # DMI_PLACEHOLDERS.
-_ONLY_A_VERSION = re.compile(r"(?:rev\.?\s*)?[\d.,\s]+", re.I)
+_ONLY_A_VERSION = re.compile(r"(?:(?:rev|ver(?:sion)?|v)\.?\s*)?[\d.,\s]+", re.I)
 # The other two fillers that aren't a name: a lone suffix as the system
 # version («-CF») and a family made of the chipset and «MB». With them the
 # machine came out as «Gigabyte -CF».
 _ONLY_A_SUFFIX = re.compile(r"[^0-9a-z]\S{0,6}", re.I)
 _ONLY_THE_BOARD = re.compile(r".*\bMB", re.I)
+# A platform code as the family: Acer writes Intel's («BDW», «SKL»).
+_ONLY_A_CODE = re.compile(r"[A-Z]{2,4}")
+# A product name in words, «Aspire E5-473», not a part code («20W0S14X00»,
+# «81HL») or a board's («MS-7D23»).
+_IN_WORDS = re.compile(r"(?=.*[A-Za-z]{3}).*\S\s+\S.*")
 
 
 def _names_a_machine(value: str) -> bool:
     return not (_ONLY_A_VERSION.fullmatch(value) or _ONLY_A_SUFFIX.fullmatch(value)
-                or _ONLY_THE_BOARD.fullmatch(value))
+                or _ONLY_THE_BOARD.fullmatch(value) or _ONLY_A_CODE.fullmatch(value))
 
 
 def clean_dmi(value: Optional[str]) -> Optional[str]:
@@ -962,17 +968,25 @@ class Board:
 
         OEMs write it in the system's version or family; a board sold on its
         own leaves a version number or a factory filler there. The latter
-        names nothing, so if neither is left there's no machine to name and
-        the board rules.
+        names nothing, and neither does a value repeating the BIOS's or the
+        board's version.
 
-        `system_name` isn't looked at: on an OEM it carries the product code
-        («11DQS0KM00») and on a loose board the board's own code («MS-7D23»),
-        worse both times than what's already there.
+        `system_name` comes last and only in words: on many OEMs it carries
+        a product code («11DQS0KM00») and on a loose board the board's own
+        («MS-7D23»), but some makers put the commercial name there and a
+        version and a platform code in the other two.
         """
+        versions = {clean_dmi(self.bios_version), clean_dmi(self.version)} - {None}
         for attribute in (self.system_version, self.system_family):
             name = clean_dmi(attribute)
-            if name and _names_a_machine(name):
+            if name and _names_a_machine(name) and name not in versions:
                 return name
+        # A loose board repeats its own name there: that's no machine.
+        name = clean_dmi(self.system_name)
+        board = clean_dmi(self.name)
+        if (name and _IN_WORDS.fullmatch(name) and name not in versions
+                and not (board and (board in name or name in board))):
+            return name
         return None
 
     @property
