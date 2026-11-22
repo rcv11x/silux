@@ -25,7 +25,7 @@ Aplicaciones 1.3 GB · Caché 1.1 GB · Buffers 64.0 MB · Libre 918.4 MB
 ### Almacenamiento
 
 581.0 GB en 2 unidades
-1 × HDD · 1 × Flash
+1 × HDD · 1 × Memoria flash
 426.5 GB libres
 Ocupado 7.6 GB · Libre 426.5 GB · Reservado 146.8 GB
 

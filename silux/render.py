@@ -98,6 +98,18 @@ def disk_kind(kind: Optional[str]) -> str:
     return kind or DASH
 
 
+def disk_kinds(disks) -> list[str]:
+    """«1 × HDD», «1 × Memoria flash», «1 × sin tipo conocido»: every disk
+    counted, the ones whose kind isn't known too."""
+    from .model import DISK_KINDS
+
+    counts = [(kind, sum(1 for d in disks if d.kind == kind)) for kind in DISK_KINDS]
+    parts = [f"{n} × {disk_kind(kind)}" for kind, n in counts if n]
+    if unknown := sum(1 for d in disks if d.kind is None):
+        parts.append(f"{unknown} × {_('storage.kind.unknown')}")
+    return parts
+
+
 def memory_rated(module) -> str:
     """«3200 MT/s», saying so when only the firmware's table gives it."""
     if not module.rated_mts:

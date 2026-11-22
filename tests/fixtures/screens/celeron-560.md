@@ -25,7 +25,7 @@ Aplicaciones 850.0 MB · Caché 988.8 MB · Buffers 8.3 MB · Libre 108.4 MB
 ### Almacenamiento
 
 380.1 GB en 3 unidades
-1 × HDD · 1 × Flash
+1 × SSD · 1 × HDD · 1 × Memoria flash
 101.2 GB libres
 Ocupado 85.7 GB · Libre 101.2 GB · Reservado 14.3 GB · Sin montar 178.9 GB
 
@@ -345,7 +345,7 @@ Una integrada no tiene reguladores de voltaje, ventilador, SoC aparte ni memoria
 
 380.1 GB en 3 unidades
 85.7 GB ocupados en 1 partición montada
-1 × HDD · 1 × Memoria flash
+1 × SSD · 1 × HDD · 1 × Memoria flash
 Ocupado 85.7 GB · Libre 101.2 GB · Reservado 14.3 GB · Sin montar 178.9 GB
 - Leyendo: 0 B/s (suma de 3 unidades)
 - Escribiendo: 0 B/s (suma de 3 unidades)
@@ -361,8 +361,8 @@ El ayudante que se lanza solo sabe pedir diagnóstico y leer unas tablas del sis
 
 | UNIDAD | MODELO | TIPO | CAPACIDAD | OCUPADO | TEMPERATURA | LEYENDO | ESCRIBIENDO |
 |---|---|---|---|---|---|---|---|
+| sdc | SSD PLUS 240 GB | SSD | 223.6 GB | 85.7 GB | — | 0 B/s | 0 B/s |
 | sda | ST9160827AS | HDD | 149.1 GB | — | — | 0 B/s | 0 B/s |
-| sdc | SSD PLUS 240 GB | — | 223.6 GB | 85.7 GB | — | 0 B/s | 0 B/s |
 | sdb | Cruzer U | Memoria flash | 7.5 GB | — | — | 0 B/s | 0 B/s |
 
 ### Particiones montadas
@@ -370,6 +370,26 @@ El ayudante que se lanza solo sabe pedir diagnóstico y leer unas tablas del sis
 | PARTICIÓN | SISTEMA | MONTADA EN | TAMAÑO | USADO | LIBRE |
 |---|---|---|---|---|---|
 | sdc1 | ext4 | /media/unidad1 | 201.2 GB | 85.7 GB (43 %) | 101.2 GB |
+
+### sdc
+
+Ocupado 85.7 GB · Libre 101.2 GB · Reservado 14.3 GB · Sin montar 22.4 GB
+- Modelo: SSD PLUS 240 GB
+- Fabricante: SanDisk
+- Tipo: SSD
+- Conexión: USB
+- Capacidad: 223.6 GB
+- Temperatura: (necesita permisos)
+- Horas encendido: (necesita permisos)
+- Escrito en total: (necesita permisos)
+- Vida restante: (necesita permisos)
+
+#### Firmware y sectores
+
+- Firmware: 1.02
+- Sector lógico: 512 B
+- Sector físico: 512 B
+- Planificador: mq-deadline
 
 ### sda
 
@@ -386,27 +406,6 @@ El disco no dice su fabricante, ni en su modelo ni en lo que publica el kernel. 
 #### Firmware y sectores
 
 - Firmware: B
-- Sector lógico: 512 B
-- Sector físico: 512 B
-- Planificador: mq-deadline
-
-### sdc
-
-Ocupado 85.7 GB · Libre 101.2 GB · Reservado 14.3 GB · Sin montar 22.4 GB
-- Modelo: SSD PLUS 240 GB
-- Fabricante: SanDisk
-- Conexión: USB
-- Capacidad: 223.6 GB
-- Temperatura: (necesita permisos)
-- Horas encendido: (necesita permisos)
-- Escrito en total: (necesita permisos)
-- Vida restante: (necesita permisos)
-
-Por USB no se sabe si un disco es de platos o SSD: el kernel marca casi todo lo que va por ese bus como si girara.
-
-#### Firmware y sectores
-
-- Firmware: 1.02
 - Sector lógico: 512 B
 - Sector físico: 512 B
 - Planificador: mq-deadline

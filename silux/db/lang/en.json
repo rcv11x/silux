@@ -1627,6 +1627,7 @@
   "storage.health.hint": "The helper that gets launched only knows how to ask for diagnostics and read a few system tables: it runs no commands and writes nothing.",
   "storage.health.read": "Diagnostics read from {n} of {total} drives. The rest do not publish them or did not answer.",
   "storage.kind.flash": "Flash drive",
+  "storage.kind.unknown": "of unknown kind",
   "storage.loading": "Reading the disks…",
   "storage.na.flash": "A USB flash drive reports no temperature or diagnosis.",
   "storage.na.hdd.life": "A spinning disk has no “life left”: that is the wear of an SSD's cells.",

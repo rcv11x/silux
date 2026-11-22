@@ -323,10 +323,7 @@ class StoragePage(ScrollPage):
         )
 
         chips = []
-        for tipo in DISK_KINDS:
-            cuantos = sum(1 for x in discos if x.kind == tipo)
-            if cuantos:
-                chips.append(f"{cuantos} × {render.disk_kind(tipo)}")
+        chips.extend(render.disk_kinds(discos))
         if tuple(chips) != self._chip_signature:
             self._chip_signature = tuple(chips)
             self.badges.set_chips(chips, highlight_first=True)

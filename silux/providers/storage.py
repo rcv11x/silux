@@ -195,7 +195,7 @@ class Disks(Provider):
                              or read_text(str(base / "device" / "rev"))),
             serial=_clean(read_text(str(base / "device" / "serial"))),
             size_bytes=sectors * SECTOR,
-            kind=_kind(rotational, transport, virtual, removable),
+            kind=_kind(rotational, transport, virtual, removable, model),
             transport=transport,
             rotational=None if rotational is None else bool(rotational),
             logical_sector=read_int(str(base / "queue" / "logical_block_size")),
@@ -364,7 +364,8 @@ def is_virtual(name: str, model: Optional[str], vendor: Optional[str]) -> bool:
 
 
 def _kind(rotational: Optional[int], transport: Optional[str],
-          virtual: bool = False, removable: bool = False) -> Optional[str]:
+          virtual: bool = False, removable: bool = False,
+          model: Optional[str] = None) -> Optional[str]:
     """HDD, SSD, NVMe, Flash or Virtual.
 
     No field says it. «Not rotational» covers a SATA SSD and an NVMe, alike
@@ -377,8 +378,11 @@ def _kind(rotational: Optional[int], transport: Optional[str],
     if transport == "usb" and rotational:
         # Over USB the kernel marks nearly everything as rotational, so it
         # says nothing. A removable device is flash (a pen drive, a card in
-        # a reader); a fixed one may spin or not, and that isn't known.
-        return "Flash" if removable else None
+        # a reader); a fixed one sold as an SSD says so in its name; any
+        # other may spin or not, and that isn't known.
+        if removable:
+            return "Flash"
+        return "SSD" if re.search(r"\bSSD\b", model or "", re.I) else None
     if rotational:
         return "HDD"
     return "NVMe" if transport == "nvme" else "SSD"
