@@ -25,7 +25,7 @@ from PySide6.QtWidgets import (
 
 from ... import db, kernel, membench, render
 from ...i18n import _
-from ...model import JEDEC_TOP_MTS, MemoryModule, Need, Snapshot
+from ...model import JEDEC_TOP_MTS, MemoryModule, Need, SensorKind, Snapshot, module_numbers
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette, ui_font
@@ -63,7 +63,8 @@ NEED_TITLES = {
 
 MODULE_FIELDS = ("memory.field.slot", "memory.field.vendor", "memory.field.chips", "memory.field.part", "memory.field.type", "memory.field.size",
                  "memory.field.rated", "memory.field.running", "memory.field.ranks", "memory.field.voltage",
-                 "memory.field.form", "memory.field.profiles", "memory.field.made", "memory.field.bank")
+                 "memory.field.form", "memory.field.profiles", "memory.field.made", "memory.field.bank",
+                 "memory.field.temp")
 
 # Cómo se nombra, en la frase del pie, cada campo que solo trae el SPD.
 SOLO_DEL_SPD = {
@@ -524,6 +525,7 @@ class MemoryPage(ScrollPage):
                             del_spd=not snapshot.modules,
                             candado=(snapshot.permission_note("modules")
                                      if not snapshot.modules else None))
+        self._apply_module_temperatures(snapshot, display)
         self._apply_timings(display)
         self._apply_traffic(snapshot)
         self._apply_notices(snapshot)
@@ -935,6 +937,20 @@ class MemoryPage(ScrollPage):
             return ()
         return (() if module.manufacturer else ("memory.field.vendor",)) + (
             "memory.field.chips", "memory.field.profiles", "memory.field.made")
+
+    def _apply_module_temperatures(self, snapshot: Snapshot, modules) -> None:
+        """Each module's temperature, from the sensor on its SPD chip, in its
+        card. Every sample: the cards are built once."""
+        sensors = {s.bus_address: s for s in snapshot.sensors
+                   if s.bus_address and s.kind is SensorKind.TEMPERATURE}
+        numbers = module_numbers(modules, set(sensors))
+        by_number = {number: sensors[address] for address, number in numbers.items()}
+        for number, grid in enumerate(self._slot_grids, start=1):
+            sensor = by_number.get(number)
+            grid.set(_("memory.field.temp"),
+                     render.temperature(sensor.value, self._prefs.fahrenheit)
+                     if sensor else render.DASH)
+            grid.set_visible(_("memory.field.temp"), sensor is not None)
 
     @staticmethod
     def _undeclared(module: MemoryModule) -> list[str]:

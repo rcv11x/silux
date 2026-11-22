@@ -475,6 +475,12 @@ _CORETEMP_PACKAGE = re.compile(r"^Package id (\d+)$")
 _CORETEMP_CORE = re.compile(r"^Core (\d+)$")
 
 
+def bus_address(device: str) -> str:
+    """«0x50» for the I2C device «0-0050»: the address, as on the board's
+    documentation and in `i2cdetect`."""
+    return f"0x{device.rsplit('-', 1)[-1][-2:]}"
+
+
 def sensor_label(sensor) -> str:
     """A sensor's name in the tree, in the interface's language.
 

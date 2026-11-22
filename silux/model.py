@@ -638,6 +638,26 @@ LOGICAL_NON_VOLATILE = "logical-non-volatile"
 JEDEC_TOP_MTS = {"DDR3": 2133, "DDR4": 3200, "DDR5": 8800}
 
 
+def module_numbers(modules, addresses) -> dict[str, int]:
+    """Which module («Módulo N», from 1, as the Memory page numbers the
+    populated ones) each SPD chip's bus address belongs to.
+
+    The module whose SPD reading came from that address; or else in order,
+    slots only, as SPD readings are matched to modules: soldered memory has
+    no SPD chip of its own on the bus.
+    """
+    populated = [m for m in modules if m.populated]
+    numbers: dict[str, int] = {}
+    for number, module in enumerate(populated, start=1):
+        if module.spd is not None and module.spd.address in addresses:
+            numbers[module.spd.address] = number
+    taken = set(numbers.values())
+    rest = [n for n, m in enumerate(populated, start=1) if n not in taken and m.in_a_slot]
+    for address, number in zip(sorted(a for a in addresses if a not in numbers), rest):
+        numbers[address] = number
+    return numbers
+
+
 @dataclass(frozen=True, slots=True)
 class MemoryModule:
     """A memory slot, occupied or not.
@@ -1895,6 +1915,8 @@ class Sensor:
     # On a hybrid processor, the type of the core a per-core sensor reads:
     # «performance» or «efficiency», as `CpuType.key`.
     core_type: Optional[str] = None
+    # A memory module's sensor: its SPD chip's device on the SMBus, «0-0050».
+    bus_address: Optional[str] = None
 
     @property
     def unit(self) -> str:

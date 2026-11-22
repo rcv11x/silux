@@ -159,6 +159,20 @@ def render_chip(chip: str) -> str:
     return chip_name(chip)
 
 
+def render_bus_address(device: str) -> str:
+    from ..render import bus_address
+    return bus_address(device)
+
+
+def _i2c_device(entry: pathlib.Path) -> Optional[str]:
+    """The I2C device a hwmon chip hangs from, «0-0050»; None off the bus."""
+    try:
+        name = (entry / "device").resolve().name
+    except OSError:
+        return None
+    return name if re.fullmatch(r"\d+-[0-9a-f]{4}", name) else None
+
+
 def _also_in_power_supply(chip: str) -> bool:
     """Whether this hwmon chip is the same device as a power supply entry.
 
@@ -410,6 +424,7 @@ class HwmonSensors(Provider):
         sensors = self._without_fillers(self._read_hwmon(cpu_name, board_name, gpu_names))
         sensors = self._without_repeats(sensors)
         sensors = self._with_core_types(draft, sensors)
+        sensors = self._with_their_modules(draft, sensors)
         sensors += list(self._read_power_supplies())
         if not sensors:
             return
@@ -419,6 +434,28 @@ class HwmonSensors(Provider):
         self._fill_cpu(draft, sensors)
         draft.driver_hints.extend(self._missing_drivers(
             sensors, laptop=draft.board.chassis in PORTABLE_CHASSIS))
+
+    @staticmethod
+    def _with_their_modules(draft: Draft, sensors: list[Sensor]) -> list[Sensor]:
+        """A memory sensor named by its module: «Temperatura 1» said nothing
+        of which. By the module's number where the modules are known, and by
+        its chip's address always."""
+        from ..model import MemoryModule, module_numbers
+        addresses = {s.bus_address for s in sensors if s.bus_address}
+        if not addresses:
+            return sensors
+        modules = draft.modules or [MemoryModule(populated=True, spd=info) for info in draft.spd]
+        numbers = module_numbers(modules, addresses)
+        out = []
+        for sensor in sensors:
+            if sensor.bus_address and sensor.kind is SensorKind.TEMPERATURE:
+                where = render_bus_address(sensor.bus_address)
+                number = numbers.get(sensor.bus_address)
+                label = (_("sensor.mem.module").format(n=number, direccion=where)
+                         if number else _("sensor.mem.address").format(direccion=where))
+                sensor = dataclasses.replace(sensor, label=label)
+            out.append(sensor)
+        return out
 
     @staticmethod
     def _with_core_types(draft: Draft, sensors: list[Sensor]) -> list[Sensor]:
@@ -522,8 +559,14 @@ class HwmonSensors(Provider):
             for suffix in ALTERNATIVES:
                 channels += [path for path in sorted(entry.glob(f"*{suffix}"), key=_by_number)
                             if path.name.replace(suffix, "") not in seen]
+            address = _i2c_device(entry) if device_kind == DeviceKind.MEMORY else None
             for order, path in enumerate(channels):
                 sensor = self._parse(chip, device, path, order, device_kind, key)
+                if sensor is not None and address:
+                    # Each module's chip on its own: two had the same key.
+                    sensor = dataclasses.replace(
+                        sensor, key=f"{chip}-{address}/{sensor.key.split('/', 1)[1]}",
+                        bus_address=address)
                 if sensor is not None:
                     yield sensor
 
