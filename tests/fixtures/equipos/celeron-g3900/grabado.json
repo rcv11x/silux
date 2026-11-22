@@ -1,0 +1,292 @@
+{
+ "cpuid": {
+  "*:0:0": [
+   22,
+   1970169159,
+   1818588270,
+   1231384169
+  ],
+  "*:2147483648:0": [
+   2147483656,
+   0,
+   0,
+   0
+  ],
+  "0:1:0": [
+   329443,
+   1050624,
+   1341844415,
+   3219913727
+  ],
+  "0:2147483649:0": [
+   0,
+   0,
+   289,
+   739248128
+  ],
+  "0:2147483650:0": [
+   1702129225,
+   693250156,
+   1818575648,
+   1852797541
+  ],
+  "0:2147483651:0": [
+   539578920,
+   542462019,
+   809055047,
+   541073456
+  ],
+  "0:2147483652:0": [
+   808988210,
+   8013895,
+   0,
+   0
+  ],
+  "0:22:0": [
+   2800,
+   2800,
+   100,
+   0
+  ],
+  "0:7:0": [
+   0,
+   43263495,
+   0,
+   3154128384
+  ],
+  "0:7:1": [
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ "gpuapi": {
+  "consultar": {
+   "opencl": [],
+   "opengl": {
+    "egl_vendor": "Mesa Project",
+    "egl_version": "1.5",
+    "glsl": "4.60",
+    "renderer": "Mesa Intel(R) HD Graphics 510 (SKL GT1)",
+    "vendor": "Intel",
+    "version": "4.6 (Compatibility Profile) Mesa 25.2.8-0ubuntu0.24.04.5"
+   },
+   "vaapi": [
+    {
+     "codecs": [
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": false,
+       "name": "HEVC",
+       "profiles": [
+        "Main"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": true,
+       "name": "H.264",
+       "profiles": [
+        "Main",
+        "High",
+        "Constrained Baseline"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": false,
+       "name": "VP8",
+       "profiles": [
+        "Version 0.3"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": false,
+       "name": "MPEG-2",
+       "profiles": [
+        "Simple",
+        "Main"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": true,
+       "name": "JPEG",
+       "profiles": [
+        "Baseline"
+       ]
+      }
+     ],
+     "driver": "Intel iHD driver for Intel(R) Gen Graphics - 24.1.0 ()",
+     "node": "renderD128",
+     "version": "1.20"
+    }
+   ],
+   "vulkan": [
+    {
+     "api_version": "1.4.318",
+     "device_id": 6402,
+     "device_memory_bytes": 1984837632,
+     "driver_version": 104865800,
+     "instance_version": "1.3.275",
+     "kind": "integrada",
+     "name": "Intel(R) HD Graphics 510 (SKL GT1)",
+     "vendor_id": 32902
+    },
+    {
+     "api_version": "1.4.318",
+     "device_id": 0,
+     "device_memory_bytes": 3969675264,
+     "driver_version": 104865800,
+     "instance_version": "1.3.275",
+     "kind": "CPU",
+     "name": "llvmpipe (LLVM 20.1.2, 128 bits)",
+     "vendor_id": 65541
+    }
+   ],
+   "vulkan_icds": [
+    "libvulkan_asahi.so",
+    "libvulkan_gfxstream.so",
+    "libvulkan_intel_hasvk.so",
+    "libvulkan_intel.so",
+    "libvulkan_lvp.so",
+    "libvulkan_nouveau.so",
+    "libvulkan_radeon.so",
+    "libvulkan_virtio.so"
+   ],
+   "vulkan_rejected": []
+  }
+ },
+ "i915": {
+  "/dev/dri/renderD128": {
+   "chipset_id": 6402,
+   "eu_total": 12,
+   "subslices": 2
+  }
+ },
+ "ioctl_red": {
+  "enp2s0:0x8915": null,
+  "enp2s0:0x891b": null,
+  "lo:0x8915": "127.0.0.1",
+  "lo:0x891b": "255.0.0.0",
+  "wlx00005e0053af:0x8915": "192.168.1.120",
+  "wlx00005e0053af:0x891b": "255.255.255.0"
+ },
+ "modinfo": {
+  "drivetemp": true
+ },
+ "nvml": {
+  "abierta": false
+ },
+ "paquetes": {
+  "egl": true,
+  "kmod": true,
+  "opencl": true,
+  "opengl": true,
+  "pci.ids": true,
+  "pkexec": true,
+  "pnp.ids": true,
+  "python3": true,
+  "systemctl": true,
+  "vaapi": true,
+  "vulkan": true,
+  "xdg-open": true
+ },
+ "pciids": {
+  "10ec:8168": {
+   "10ec:8168": [
+    "Realtek Semiconductor Co., Ltd.",
+    "RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller"
+   ]
+  },
+  "10ec:8168|8086:1902|8086:a102|8086:a12f|8086:a170": {
+   "10ec:8168": [
+    "Realtek Semiconductor Co., Ltd.",
+    "RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller"
+   ],
+   "8086:1902": [
+    "Intel Corporation",
+    "HD Graphics 510"
+   ],
+   "8086:a102": [
+    "Intel Corporation",
+    "Q170/Q150/B150/H170/H110/Z170/CM236 Chipset SATA Controller [AHCI Mode]"
+   ],
+   "8086:a12f": [
+    "Intel Corporation",
+    "100 Series/C230 Series Chipset Family USB 3.0 xHCI Controller"
+   ],
+   "8086:a170": [
+    "Intel Corporation",
+    "100 Series/C230 Series Chipset Family HD Audio Controller"
+   ]
+  },
+  "8086:1902|8086:1902:1043:8694": {
+   "8086:1902": [
+    "Intel Corporation",
+    "HD Graphics 510"
+   ]
+  },
+  "8086:190f|8086:a143": {
+   "8086:190f": [
+    "Intel Corporation",
+    "Xeon E3-1200 v5/E3-1500 v5/6th Gen Core Processor Host Bridge/DRAM Registers"
+   ],
+   "8086:a143": [
+    "Intel Corporation",
+    "H110 Chipset LPC/eSPI Controller"
+   ]
+  }
+ },
+ "pciids_fabricante": {
+  "1043": "ASUSTeK Computer Inc."
+ },
+ "plataforma": {
+  "entorno": {
+   "DESKTOP_SESSION": "cinnamon",
+   "DISPLAY": ":0",
+   "GDMSESSION": "cinnamon",
+   "SHELL": "/bin/bash",
+   "WAYLAND_DISPLAY": null,
+   "XDG_CURRENT_DESKTOP": "X-Cinnamon",
+   "XDG_SESSION_TYPE": "x11"
+  },
+  "machine": "x86_64",
+  "procesos": 257,
+  "uname": {
+   "machine": "x86_64",
+   "node": "silux-pc",
+   "release": "6.8.0-111-generic",
+   "system": "Linux",
+   "version": "#111-Ubuntu SMP PREEMPT_DYNAMIC Sat Apr 11 23:16:02 UTC 2026"
+  }
+ },
+ "realpath": {
+  "/dev/sda1": "/dev/sda1",
+  "/dev/sda2": "/dev/sda2"
+ },
+ "statvfs": {
+  "/": [
+   46245199872,
+   185728704512
+  ],
+  "/boot/efi": [
+   6438912,
+   529362944
+  ]
+ },
+ "systemd": {
+  "arranque": {
+   "FinishTimestampMonotonic": 18613770,
+   "InitRDTimestampMonotonic": 0,
+   "UserspaceTimestampMonotonic": 2272494
+  }
+ }
+}
