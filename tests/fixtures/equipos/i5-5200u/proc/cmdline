@@ -1,0 +1,1 @@
+BOOT_IMAGE=/boot/vmlinuz-7.0.0-43-generic root=… ro quiet splash zswap.enabled=1 vt.handoff=7

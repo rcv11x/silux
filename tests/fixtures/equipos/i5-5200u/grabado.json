@@ -1,0 +1,303 @@
+{
+ "cpuid": {
+  "*:0:0": [
+   20,
+   1970169159,
+   1818588270,
+   1231384169
+  ],
+  "*:2147483648:0": [
+   2147483656,
+   0,
+   0,
+   0
+  ],
+  "0:1:0": [
+   198356,
+   1050624,
+   2147154879,
+   3219913727
+  ],
+  "0:2147483649:0": [
+   0,
+   0,
+   289,
+   739248128
+  ],
+  "0:2147483650:0": [
+   1702129225,
+   693250156,
+   1919894304,
+   1297360997
+  ],
+  "0:2147483651:0": [
+   896081961,
+   808596781,
+   1126192432,
+   1075860816
+  ],
+  "0:2147483652:0": [
+   841888288,
+   2051557168,
+   0,
+   0
+  ],
+  "0:7:0": [
+   0,
+   35399595,
+   0,
+   2617247232
+  ],
+  "0:7:1": [
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ "gpuapi": {
+  "consultar": {
+   "opencl": [],
+   "opengl": {
+    "egl_vendor": "Mesa Project",
+    "egl_version": "1.5",
+    "glsl": "4.60",
+    "renderer": "Mesa Intel(R) HD Graphics 5500 (BDW GT2)",
+    "vendor": "Intel",
+    "version": "4.6 (Compatibility Profile) Mesa 25.2.8-0ubuntu0.24.04.4"
+   },
+   "vaapi": [
+    {
+     "codecs": [
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": false,
+       "name": "H.264",
+       "profiles": [
+        "Main",
+        "High",
+        "Constrained Baseline"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": false,
+       "name": "VP8",
+       "profiles": [
+        "Version 0.3"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": false,
+       "name": "MPEG-2",
+       "profiles": [
+        "Simple",
+        "Main"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": false,
+       "name": "JPEG",
+       "profiles": [
+        "Baseline"
+       ]
+      }
+     ],
+     "driver": "Intel iHD driver for Intel(R) Gen Graphics - 24.1.0 ()",
+     "node": "renderD128",
+     "version": "1.20"
+    }
+   ],
+   "vulkan": [
+    {
+     "api_version": "1.3.318",
+     "device_id": 5654,
+     "device_memory_bytes": 8232599552,
+     "driver_version": 104865800,
+     "instance_version": "1.3.275",
+     "kind": "integrada",
+     "name": "Intel(R) HD Graphics 5500 (BDW GT2)",
+     "vendor_id": 32902
+    },
+    {
+     "api_version": "1.4.318",
+     "device_id": 0,
+     "device_memory_bytes": 8232599552,
+     "driver_version": 104865800,
+     "instance_version": "1.3.275",
+     "kind": "CPU",
+     "name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+     "vendor_id": 65541
+    }
+   ],
+   "vulkan_icds": [
+    "libvulkan_asahi.so",
+    "libvulkan_gfxstream.so",
+    "libvulkan_intel_hasvk.so",
+    "libvulkan_intel.so",
+    "libvulkan_lvp.so",
+    "libvulkan_nouveau.so",
+    "libGLX_nvidia.so.0",
+    "libvulkan_radeon.so",
+    "libvulkan_virtio.so"
+   ],
+   "vulkan_rejected": []
+  }
+ },
+ "i915": {
+  "/dev/dri/renderD128": {
+   "chipset_id": 5654,
+   "eu_total": 24,
+   "subslices": 3
+  }
+ },
+ "ioctl_red": {
+  "docker0:0x8915": "192.168.1.120",
+  "docker0:0x891b": "255.255.0.0",
+  "enp2s0f1:0x8915": null,
+  "enp2s0f1:0x891b": null,
+  "lo:0x8915": "127.0.0.1",
+  "lo:0x891b": "255.0.0.0",
+  "veth50fcccb:0x8915": null,
+  "veth50fcccb:0x891b": null,
+  "wlp3s0:0x8915": "192.168.1.120",
+  "wlp3s0:0x891b": "255.255.255.0"
+ },
+ "modinfo": {
+  "drivetemp": true
+ },
+ "nvml": {
+  "abierta": false
+ },
+ "paquetes": {
+  "egl": true,
+  "kmod": true,
+  "opencl": true,
+  "opengl": true,
+  "pci.ids": true,
+  "pkexec": true,
+  "pnp.ids": true,
+  "python3": true,
+  "systemctl": true,
+  "vaapi": true,
+  "vulkan": true,
+  "xdg-open": true
+ },
+ "pciids": {
+  "10ec:8168": {
+   "10ec:8168": [
+    "Realtek Semiconductor Co., Ltd.",
+    "RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller"
+   ]
+  },
+  "10ec:8168|168c:0042|8086:160c|8086:1616|8086:9c83|8086:9ca0|8086:9ca6|8086:9cb1": {
+   "10ec:8168": [
+    "Realtek Semiconductor Co., Ltd.",
+    "RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller"
+   ],
+   "168c:0042": [
+    "Qualcomm Atheros",
+    "QCA9377 802.11ac Wireless Network Adapter"
+   ],
+   "8086:160c": [
+    "Intel Corporation",
+    "Broadwell-U Audio Controller"
+   ],
+   "8086:1616": [
+    "Intel Corporation",
+    "HD Graphics 5500"
+   ],
+   "8086:9c83": [
+    "Intel Corporation",
+    "Wildcat Point-LP SATA Controller [AHCI Mode]"
+   ],
+   "8086:9ca0": [
+    "Intel Corporation",
+    "Wildcat Point-LP High Definition Audio Controller"
+   ],
+   "8086:9ca6": [
+    "Intel Corporation",
+    "Wildcat Point-LP USB EHCI Controller"
+   ],
+   "8086:9cb1": [
+    "Intel Corporation",
+    "Wildcat Point-LP USB xHCI Controller"
+   ]
+  },
+  "168c:0042": {
+   "168c:0042": [
+    "Qualcomm Atheros",
+    "QCA9377 802.11ac Wireless Network Adapter"
+   ]
+  },
+  "8086:1604|8086:9cc3": {
+   "8086:1604": [
+    "Intel Corporation",
+    "Broadwell-U Host Bridge -OPI"
+   ],
+   "8086:9cc3": [
+    "Intel Corporation",
+    "Wildcat Point-LP LPC Controller"
+   ]
+  },
+  "8086:1616|8086:1616:1025:096a": {
+   "8086:1616": [
+    "Intel Corporation",
+    "HD Graphics 5500"
+   ]
+  }
+ },
+ "pciids_fabricante": {
+  "1025": "Acer Incorporated [ALI]"
+ },
+ "plataforma": {
+  "entorno": {
+   "SHELL": "/usr/bin/zsh",
+   "XDG_CURRENT_DESKTOP": "XFCE",
+   "XDG_SESSION_TYPE": "x11"
+  },
+  "kvm": true,
+  "machine": "x86_64",
+  "procesos": 229,
+  "uname": {
+   "machine": "x86_64",
+   "node": "silux-pc",
+   "processor": "x86_64",
+   "release": "7.0.0-43-generic",
+   "system": "Linux",
+   "version": "#43~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC Sat Oct 31 06:52:47 UTC 2"
+  }
+ },
+ "realpath": {
+  "/dev/sda1": "/dev/sda1",
+  "/dev/sda3": "/dev/sda3",
+  "/dev/sdb1": "/dev/sdb1"
+ },
+ "statvfs": {
+  "/": [
+   231913406464,
+   253683433472
+  ],
+  "/boot/efi": [
+   6438912,
+   1118556160
+  ],
+  "/media/unidad21": [
+   7251263488,
+   717422592
+  ]
+ },
+ "systemd": {
+  "arranque": {
+   "FinishTimestampMonotonic": 110284754,
+   "InitRDTimestampMonotonic": 0,
+   "UserspaceTimestampMonotonic": 14044357
+  }
+ }
+}
