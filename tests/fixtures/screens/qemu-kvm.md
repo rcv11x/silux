@@ -49,7 +49,6 @@ Máquina virtual · KVM · x86_64
 - Frecuencia: —
 - Uso: —
 - Temperatura: —
-- Consumo: —
 
 ### Núcleos lógicos
 
@@ -94,7 +93,7 @@ MMX · SSE · SSE2 · SSE3 · SSSE3 · SSE4.1 · SSE4.2 · AES-NI
 
 > **Este equipo no lo expone**
 > Esta CPU no expone contadores de energía RAPL.
-> Es normal en AMD antiguos, en ARM y en máquinas virtuales.
+> Llegó con los Intel de 2011 (Sandy Bridge) y con los AMD Zen: los anteriores, los ARM y las máquinas virtuales no lo tienen.
 
 ## Cachés
 
@@ -149,9 +148,10 @@ Con BIOS heredada no hay arranque seguro: es cosa de UEFI.
 
 ### Chipset
 
-- Chipset: —
 - Identificación PCI: 82371SB PIIX3 ISA [Natoma/Triton II]
 - Controlador de memoria: 440FX - 82441FX PMC [Natoma]
+
+Su identificación PCI da el nombre en clave del chipset, no un modelo comercial.
 
 ### Equipo
 

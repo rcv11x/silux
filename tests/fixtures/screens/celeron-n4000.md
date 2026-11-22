@@ -186,9 +186,10 @@ UEFI (64 bits) · TPM 2.0 · Arranque seguro
 
 ### Chipset
 
-- Chipset: —
 - Identificación PCI: Celeron/Pentium Silver Processor LPC Controller
 - Controlador de memoria: Gemini Lake Host Bridge
+
+Su identificación PCI da el nombre en clave del chipset, no un modelo comercial.
 
 ### Equipo
 

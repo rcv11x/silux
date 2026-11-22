@@ -29,7 +29,9 @@ que hace falta.
   con permisos se lee de la tabla del firmware.
 - Lo que el procesador no publica (el reloj de referencia, el multiplicador,
   la máxima de fábrica) y la preferencia de energía que el driver no ofrece
-  ya no salen con guion: se esconden y se dice por qué.
+  ya no salen con guion: se esconden y se dice por qué. Tampoco el consumo
+  de un procesador sin contador de energía (un Core 2) ni el chipset de un
+  portátil del que solo se conoce el nombre en clave.
 
 ### Memoria
 

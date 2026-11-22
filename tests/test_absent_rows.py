@@ -52,6 +52,16 @@ class TestNoDashForWhatIsNotThere(unittest.TestCase):
                         self.assertIn(_("cpu.clocks.noepp").format(driver=clocks.driver),
                                       section.clocks_foot.text())
 
+    def test_cpu_power_and_chipset(self):
+        for name, snapshot in self.snapshots.items():
+            with self.subTest(name), pantalla.Ventana(snapshot) as window:
+                page = self._page(window, "CPU")
+                tile = page.live.tile_power
+                if not tile.isHidden() and not tile.lock.isVisibleTo(tile):
+                    self.assertNotEqual(tile.value.text(), render.DASH)
+                page = self._page(window, "Placa base")
+                self.assertEqual(_dashed(page.chipset, ("board.field.chipset",)), [])
+
     def test_interfaces(self):
         for name, snapshot in self.snapshots.items():
             with self.subTest(name), pantalla.Ventana(snapshot) as window:

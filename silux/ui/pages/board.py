@@ -116,6 +116,12 @@ class BoardPage(ScrollPage):
         self.firmware_pie.setFont(ui_font(theme.METRICS.small_pt))
         self.firmware_pie.hide()
         self.firmware.parentWidget().body.addWidget(self.firmware_pie)
+        self.chipset_pie = QLabel("")
+        self.chipset_pie.setObjectName("Muted")
+        self.chipset_pie.setWordWrap(True)
+        self.chipset_pie.setFont(ui_font(theme.METRICS.small_pt))
+        self.chipset_pie.hide()
+        self.chipset.parentWidget().body.addWidget(self.chipset_pie)
         self.system = self._grid_card(bottom, _("board.card.system"),
                                       SYSTEM_FIELDS)
         self.system_card = self.system.parentWidget()
@@ -229,6 +235,12 @@ class BoardPage(ScrollPage):
           tooltip=_("board.tip.chipset"))
         c(_("board.field.memctl"), board.host_bridge or d,
           tooltip=_("board.tip.memctl"))
+        # pci.ids gives some PCHs only their codename («Wildcat Point-LP»):
+        # there's no model to say, and the row below names it.
+        sin_modelo = not board.chipset and bool(board.chipset_full)
+        self.chipset.set_visible(_("board.field.chipset"), not sin_modelo)
+        self.chipset_pie.setText(_("board.na.chipset.codename") if sin_modelo else "")
+        self.chipset_pie.setVisible(sin_modelo)
 
         # «Equipo» es para los de marca, donde el firmware dice qué equipo es
         # («ThinkCentre M80q»). En una placa suelta esos campos son códigos de

@@ -18,7 +18,7 @@ from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 from ... import render
 from ...i18n import _
-from ...model import Snapshot, thread_name
+from ...model import Need, Snapshot, thread_name
 from ...settings import Preferences
 from .. import theme
 from ..corematrix import CoreMatrix
@@ -159,6 +159,11 @@ class CpuLiveSection(QWidget):
                 and nucleos is not None else "")
 
         power = cpu.power
+        # No energy counter at all (a Core 2, ARM): its notice says so, and a
+        # tile with a dash for ever said nothing more.
+        absent = power.package_w is None and any(
+            n.path == "cpu.power" and n.need is not Need.ROOT for n in snapshot.notes)
+        self.tile_power.setVisible(not absent)
         if power.package_w is not None:
             self.tile_power.update_value(render.figure(power.package_w), power.package_w,
                                          series=Series("cpu/power", "W"))
