@@ -384,10 +384,11 @@ Esta distribución no declara variante.
 - Arquitectura: x86_64
 - Compilación: #1 SMP PREEMPT_DYNAMIC Debian 6.12.117-1 (2026-11-12) · gcc 14.2.0
 - Init: systemd
-- Escritorio: —
 - Sesión: tty
 - Shell: bash
 - Kernel contaminado: no
+
+No se sabe el escritorio: el entorno con el que se abrió Silux no lo declara.
 
 ### Actividad
 

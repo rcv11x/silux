@@ -73,6 +73,27 @@ def _os_release() -> dict[str, str]:
     return values
 
 
+def desktop(environment: dict) -> Optional[str]:
+    """The desktop: XDG's variable, and else what the display manager set.
+    Without logind (runit, sysvinit) the first is often missing."""
+    for key in ("XDG_CURRENT_DESKTOP", "DESKTOP_SESSION", "GDMSESSION"):
+        if value := (environment.get(key) or "").strip():
+            # A display manager may give the session file's path.
+            return os.path.basename(value)
+    return None
+
+
+def session_type(environment: dict) -> Optional[str]:
+    """x11 or wayland: XDG's variable, and else the display this runs on."""
+    if value := (environment.get("XDG_SESSION_TYPE") or "").strip():
+        return value
+    if environment.get("WAYLAND_DISPLAY"):
+        return "wayland"
+    if environment.get("DISPLAY"):
+        return "x11"
+    return None
+
+
 class SystemIdentity(Provider):
     """What doesn't change: distribution, kernel, desktop, machine name."""
 
@@ -85,7 +106,8 @@ class SystemIdentity(Provider):
         uname = sysroot.recorded("plataforma", "uname", lambda: platform.uname()._asdict())
         environment = sysroot.recorded("plataforma", "entorno", lambda: {
             key: os.environ.get(key)
-            for key in ("XDG_CURRENT_DESKTOP", "XDG_SESSION_TYPE", "SHELL")})
+            for key in ("XDG_CURRENT_DESKTOP", "XDG_SESSION_TYPE", "SHELL",
+                        "DESKTOP_SESSION", "GDMSESSION", "WAYLAND_DISPLAY", "DISPLAY")})
 
         draft.capabilities.add("system")
         draft.system = System(
@@ -100,8 +122,8 @@ class SystemIdentity(Provider):
 
             hostname=read_text("/proc/sys/kernel/hostname") or uname["node"],
             init=on_its_own(draft, "system.init", self._init_system),
-            desktop=environment.get("XDG_CURRENT_DESKTOP"),
-            session_type=environment.get("XDG_SESSION_TYPE"),
+            desktop=desktop(environment),
+            session_type=session_type(environment),
             shell=os.path.basename(environment.get("SHELL") or "") or None,
         )
         running = kernel.version(uname["release"])

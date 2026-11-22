@@ -95,6 +95,12 @@ class SystemPage(ScrollPage):
         self.os_pie.hide()
         self.os.parentWidget().body.addWidget(self.os_pie)
         self.kernel = self._grid_card(row, _("sys.card.kernel"), KERNEL_FIELDS)
+        self.kernel_pie = QLabel("")
+        self.kernel_pie.setObjectName("Muted")
+        self.kernel_pie.setWordWrap(True)
+        self.kernel_pie.setFont(ui_font(theme.METRICS.small_pt))
+        self.kernel_pie.hide()
+        self.kernel.parentWidget().body.addWidget(self.kernel_pie)
         activity_card = Card(_("sys.card.activity"))
         self.activity = InfoGrid()
         for name in ACTIVITY_FIELDS:
@@ -214,6 +220,17 @@ class SystemPage(ScrollPage):
         k(_("sys.kernel.init"), system.init or d)
         k(_("sys.kernel.desktop"), system.desktop or d)
         k(_("sys.field.session"), system.session_type or d)
+        # Neither declared by this program's environment: hidden and said.
+        unknown = [key for key, value in (("sys.kernel.desktop", system.desktop),
+                                          ("sys.field.session", system.session_type))
+                   if not value]
+        for key in ("sys.kernel.desktop", "sys.field.session"):
+            self.kernel.set_visible(_(key), key not in unknown)
+        sentence = {2: "sys.na.desktop.both", 1: "sys.na.desktop.one"}.get(len(unknown))
+        self.kernel_pie.setText(_(sentence).format(
+            what=_("sys.na.what.desktop" if "sys.kernel.desktop" in unknown
+                   else "sys.na.what.session")) if sentence else "")
+        self.kernel_pie.setVisible(bool(unknown))
         k(_("sys.kernel.shell"), system.shell or d)
         graficos = render.graphics_stack(snapshot)
         k(_("sys.kernel.graphics"), graficos or d)

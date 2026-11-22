@@ -18,6 +18,9 @@ que hace falta.
   diagnóstico, el tipo de firmware («BIOS heredada») y los motivos por los
   que se frena una gráfica iban en español. Lo que no se sabe ya no sale
   como «?».
+- Sin logind (runit, sysvinit) el escritorio y la sesión salen de lo que
+  deja el gestor de sesiones y de la pantalla; si aun así no se saben, la
+  página Sistema lo dice en vez de enseñar un guion.
 
 ### Procesador
 
