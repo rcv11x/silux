@@ -45,5 +45,34 @@ class TestAPartWithoutTurbo(unittest.TestCase):
         self.assertIsNotNone(reloj.turbo_enabled)
 
 
+class TestNoTurboIsNotATurboOff(unittest.TestCase):
+    """intel_pstate's `no_turbo` reads 1 on a part without turbo, and the
+    Clocks card said «Turbo desactivado», in orange, over «Este procesador
+    no tiene turbo»."""
+
+    def test_in_every_dump(self):
+        from silux import render
+        from tests.test_equipos import volcados
+        qt.app()
+        off = _("clock.turbo.off").split("{")[0]
+        for folder in volcados():
+            snapshot = foto(folder)[0]
+            with self.subTest(folder.name):
+                for cpu_type in snapshot.cpu.types:
+                    clocks = cpu_type.clocks
+                    if clocks.turbo_supported is False:
+                        self.assertIsNone(clocks.turbo_enabled)
+                        self.assertIsNone(render.turbo_note(clocks))
+                with pantalla.Ventana(snapshot) as ventana:
+                    ventana.select_section("CPU")
+                    textos = pantalla.textos_de(ventana.stack.currentWidget())
+                if _("cpu.clocks.noturbo") in " ".join(textos):
+                    self.assertFalse([t for t in textos if t.startswith(off)])
+
+    def test_its_case(self):
+        clocks = foto(EQUIPOS / "celeron-g3900")[0].cpu.types[0].clocks
+        self.assertEqual((clocks.turbo_supported, clocks.turbo_enabled), (False, None))
+
+
 if __name__ == "__main__":
     unittest.main()

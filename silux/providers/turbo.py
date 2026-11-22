@@ -70,6 +70,10 @@ class TurboState(Provider):
             if brands and all(db.amd_turbo(brand) is False for brand in brands):
                 supported = False
 
+        if supported is False:
+            # intel_pstate writes no_turbo=1 on a part without turbo: there is
+            # nothing to have switched off.
+            enabled = None
         if enabled is None and supported is None:
             return
 

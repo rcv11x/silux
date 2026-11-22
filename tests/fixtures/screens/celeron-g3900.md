@@ -109,7 +109,6 @@ Celeron (Skylake) · LGA 1151 · 14 nm · x86_64
 - Gobernador: powersave
 - Preferencia de energía: balance_performance
 
-Turbo desactivado: el silicio llegaría a 2.80 GHz
 Este procesador no tiene turbo: su frecuencia más alta es la base.
 
 ### Jerarquía de caché
