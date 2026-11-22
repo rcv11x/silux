@@ -88,11 +88,17 @@ def _read(entry: pathlib.Path) -> Battery:
 
     raw = (read_text(str(entry / "status")) or "").strip().lower()
     percent = read_int(str(entry / "capacity"))
+    end = read_int(str(entry / "charge_control_end_threshold"))
+    status = STATUSES.get(raw, "bat.status.unknown")
+    # «Not charging» below its stop threshold is waiting to drop under the
+    # start one, not held at the top.
+    if status == "bat.status.held" and end and percent is not None and percent < end - 1:
+        status = "bat.status.paused"
 
     return Battery(
         name=entry.name,
         present=read_int(str(entry / "present")) != 0,
-        status=STATUSES.get(raw, "bat.status.unknown"),
+        status=status,
         percent=float(percent) if percent is not None else None,
         design_wh=_watt_hours(entry, "full_design", nominal),
         full_wh=_watt_hours(entry, "full", nominal),
@@ -107,8 +113,7 @@ def _read(entry: pathlib.Path) -> Battery:
         serial=read_text(str(entry / "serial_number")),
         charge_start_percent=read_int(
             str(entry / "charge_control_start_threshold")),
-        charge_end_percent=read_int(
-            str(entry / "charge_control_end_threshold")),
+        charge_end_percent=end,
     )
 
 

@@ -1510,7 +1510,7 @@ class Battery:
     @property
     def on_charger(self) -> bool:
         """Full or held at its charge limit: it does not run on itself."""
-        return self.status in ("bat.status.full", "bat.status.held")
+        return self.status in ("bat.status.full", "bat.status.held", "bat.status.paused")
 
     @property
     def power_settling(self) -> bool:

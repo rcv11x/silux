@@ -87,6 +87,7 @@
   "bat.status.discharging": "Discharging",
   "bat.status.full": "Full",
   "bat.status.held": "Held at limit",
+  "bat.status.paused": "Paused by its charge limit",
   "bat.status.unknown": "Unknown",
   "bat.tech": "Chemistry",
   "bat.tofull": "Until full",

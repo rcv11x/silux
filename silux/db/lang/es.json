@@ -87,6 +87,7 @@
   "bat.status.discharging": "Descargando",
   "bat.status.full": "Llena",
   "bat.status.held": "Retenida en el tope",
+  "bat.status.paused": "En pausa por su límite de carga",
   "bat.status.unknown": "Desconocido",
   "bat.tech": "Tecnología",
   "bat.tofull": "Para llenarse",

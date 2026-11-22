@@ -79,6 +79,12 @@ que hace falta.
   propia; una NVIDIA con nouveau no publica relojes, memoria ni sensores, y
   sus fichas de uso, frecuencia y consumo se van.
 
+### Batería
+
+- Una batería entre sus dos límites de carga dice «En pausa por su límite de
+  carga», no «Retenida en el tope», que solo es cuando ha llegado al de
+  parada.
+
 ### Almacenamiento
 
 - La vida restante de un pendrive lleva candado sin permisos, como el resto
