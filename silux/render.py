@@ -106,6 +106,14 @@ def memory_rated(module) -> str:
     return f"{text} · {_('memory.source.bios')}" if module.rated_from_firmware else text
 
 
+def timing_voltage(timing, spd) -> str:
+    """A profile's voltage in the timings table: «1.35 / 1.50 V» for the
+    JEDEC row of a module declaring both (DDR3L)."""
+    if timing is spd.jedec and len(spd.voltages_v) > 1:
+        return " / ".join(f"{v:.2f}" for v in sorted(spd.voltages_v)) + " V"
+    return f"{timing.voltage_v:.2f} V" if timing.voltage_v else DASH
+
+
 def memory_voltage(module) -> str:
     """«1.35 V», saying so when only the firmware's table gives it."""
     if (choice := voltage_choice(module)):

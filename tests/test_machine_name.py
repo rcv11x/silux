@@ -24,6 +24,12 @@ class TestTheName(unittest.TestCase):
                       system_name="81HL", system_version="1.0", system_family="BDW")
         self.assertEqual(board.display_name, "Lenovo LNVNB161216")
 
+    def test_an_oem_machine_is_not_named_after_its_board(self):
+        from tests.test_equipos import EQUIPOS
+
+        board = foto(EQUIPOS / "core2-p8400")[0].board
+        self.assertEqual((board.name, board.display_name), ("0TN284", "Dell Latitude E6400"))
+
     def test_no_dump_is_named_after_a_version(self):
         for folder in volcados():
             board = foto(folder)[0].board

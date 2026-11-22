@@ -75,6 +75,19 @@ class TestOnTheMemoryPage(unittest.TestCase):
         # With the firmware's table, the voltage in use.
         configured = dataclasses.replace(module, voltage_configured_mv=1350)
         self.assertEqual(render.memory_voltage(configured), "1.35 V")
+        # The timings table says both for the profile valid at both.
+        self.assertEqual(render.timing_voltage(module.spd.jedec, module.spd), "1.35 / 1.50 V")
+
+    def test_a_real_ddr3l_on_the_page(self):
+        from tests import pantalla
+        snapshot = foto(EQUIPOS / "i5-5200u")[0]
+        with pantalla.Ventana(snapshot) as window:
+            window.select_section("Memoria")
+            page = window.stack.currentWidget()
+            text = " ".join(pantalla.textos_de(page))
+        self.assertIn("DDR3L", text)
+        self.assertIn("1.35 / 1.50 V", text)
+        self.assertIn("1.35 V " + _("list.or") + " 1.50 V", text)
 
 
 if __name__ == "__main__":

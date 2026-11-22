@@ -1042,7 +1042,7 @@ class MemoryPage(ScrollPage):
                     str(timing.trp or render.DASH),
                     str(timing.tras or render.DASH),
                     str(timing.trc or render.DASH),
-                    f"{timing.voltage_v:.2f} V" if timing.voltage_v else render.DASH,
+                    render.timing_voltage(timing, spd),
                 ])
                 tooltips.append(f"{spd.part_number or ''} · {spd.address}".strip(" ·"))
 
