@@ -10,7 +10,10 @@ que hace falta.
 
 ---
 
-## Sin publicar
+## 0.4-prueba10 (22 de noviembre de 2026)
+
+Las temporizaciones de una DDR5 con su chip SPD legible salían mal en la
+prueba9 y antes: el CL y los tiempos se leían de otro sitio.
 
 - Memoria: las temporizaciones de una DDR5 se leían dos bytes antes de donde
   están, de la lista de latencias que admite el chip: una DDR5-4800 CL40
