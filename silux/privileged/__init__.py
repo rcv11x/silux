@@ -1,15 +1,16 @@
-"""Lectura de datos que el kernel reserva a root.
+"""Reading data the kernel keeps for root.
 
-Dos cosas necesitan privilegios y no hay forma de evitarlo:
+Some things need privileges with no way around them:
 
-* La tabla SMBIOS completa (`/sys/firmware/dmi/tables/DMI`, permisos 0400), que
-  es donde están los módulos de memoria: fabricante, referencia, rangos,
-  velocidad y voltaje.
-* Los registros MSR del procesador (`/dev/cpu/*/msr`), de donde salen el
-  voltaje real del núcleo y los límites de potencia configurados.
+* The full SMBIOS table (`/sys/firmware/dmi/tables/DMI`, mode 0400), where
+  the memory modules are: maker, part number, ranks, speed and voltage.
+* The processor's MSR registers (`/dev/cpu/*/msr`), where the real core
+  voltage comes from.
+* The disks' SMART logs, the energy counters and the graphics and memory
+  controller's PMU counters.
 
-El programa principal nunca corre como root. Cuando hace falta uno de esos
-datos lanza un ayudante mínimo a través de polkit, le habla por una tubería y
-lo deja vivo mientras dure la sesión. El ayudante solo sabe hacer esas dos
-lecturas: no ejecuta órdenes, no escribe nada y no acepta rutas arbitrarias.
+The main program never runs as root. When one of those data is needed it
+launches a minimal helper through polkit, talks to it over a pipe and keeps
+it alive for the session. The helper only knows how to do those reads: it
+runs no commands, writes nothing and takes no arbitrary paths.
 """

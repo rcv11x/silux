@@ -1,34 +1,34 @@
 #!/usr/bin/env python3
-"""Ayudante privilegiado de silux. Se ejecuta como root, y solo hace esto.
+"""Silux's privileged helper. It runs as root, and this is all it does.
 
-Está escrito para poder leerse entero de una sentada, porque un programa que
-corre con privilegios hay que poder auditarlo. De ahí tres decisiones:
+Written to be read whole in one sitting, since a program running with
+privileges has to be auditable. Hence a few decisions:
 
-* **No importa nada del propio silux**, solo la biblioteca estándar. Un fallo
-  en cualquier otro módulo del programa no puede llegar hasta aquí.
-* **No interpreta lo que lee.** Devuelve los bytes crudos de la tabla SMBIOS
-  y deja que el proceso sin privilegios los analice. Analizar formatos
-  binarios es de donde salen la mayoría de los fallos de memoria, y hacerlo
-  como root sería regalar el problema.
-* **No acepta rutas ni órdenes.** Las dos rutas que abre están escritas aquí
-  como constantes, los registros MSR que admite son una lista cerrada y los
-  nombres de disco tienen que encajar en un patrón que solo deja pasar
-  `sda`, `nvme0n1` y parecidos.
-* **De los discos solo pide diagnóstico.** Los dos comandos SMART que manda
-  son de lectura y están fijados aquí; no hay forma de pedirle uno de
-  escritura ni de borrado, que van por el mismo camino.
-* **Del PMU solo cuenta, no muestrea.** Los eventos que abre son contadores
-  de ocupación del motor gráfico y de tráfico del controlador de memoria,
-  agregados de toda la máquina y sin periodo de muestreo: no hay búfer de
-  muestras, ni pila de llamadas, ni nada de ningún proceso concreto. Es lo
-  mismo que enseña `intel_gpu_top`. Los nombres los enumera el propio
-  ayudante; el cliente pide una familia —la gráfica o la memoria— y nunca un
-  nombre de PMU ni un número de evento.
+* **It imports nothing of the program's own**, only the standard library. A
+  fault in any other module of the program can't reach here.
+* **It doesn't interpret what it reads.** It returns the SMBIOS table's raw
+  bytes and lets the unprivileged process parse them. Parsing binary
+  formats is where most memory bugs come from, and doing it as root would
+  hand the problem over.
+* **It takes no paths or commands.** The two paths it opens are written here
+  as constants, the MSR registers it allows are a closed list, and disk
+  names must fit a pattern that only lets `sda`, `nvme0n1` and the like
+  through.
+* **From disks it only asks for diagnostics.** The two SMART commands it
+  sends are read-only and fixed here; there's no way to ask it for a write
+  or an erase, which travel the same road.
+* **From the PMU it only counts, never samples.** The events it opens are
+  graphics-engine busy and memory-controller traffic counters, aggregated
+  over the whole machine and with no sampling period: no sample buffer, no
+  call stack, nothing of any particular process. The same as
+  `intel_gpu_top` shows. The helper enumerates the names itself; the client
+  asks for a family (graphics or memory) and never for a PMU name or an
+  event number.
 * **Energy and busy counters at most every 100 ms**, whatever the client asks
   (`MIN_READ_INTERVAL_S`).
 
-Habla JSON por líneas: una petición por línea en la entrada, una respuesta
-por línea en la salida. Termina cuando la entrada se cierra.
+It speaks JSON by lines: one request per input line, one reply per output
+line. It ends when its input closes.
 """
 
 from __future__ import annotations
@@ -43,10 +43,10 @@ import struct
 import sys
 import time
 
-# Sube cuando cambia lo que el ayudante sabe hacer: acciones nuevas, o
-# registros nuevos en la lista blanca. El cliente la compara al conectar,
-# porque una copia instalada en /usr/local/libexec se queda congelada en la
-# fecha en que se instaló y no la actualiza nadie.
+# Bumped when what the helper can do changes: new actions, or new registers
+# on the allow list. The client compares it on connecting, because a copy
+# installed in /usr/local/libexec stays frozen at the date it was installed
+# and nobody updates it.
 VERSION = 3
 
 DMI_TABLE = "/sys/firmware/dmi/tables/DMI"
@@ -55,70 +55,70 @@ DMI_ENTRY_POINT = "/sys/firmware/dmi/tables/smbios_entry_point"
 MAX_TABLE_BYTES = 2 * 1024 * 1024
 MAX_REQUEST_BYTES = 64 * 1024
 
-# Nombres de disco admitidos. Estricto a propósito: sin esto, un nombre como
-# «../../dev/mem» le haría abrir cualquier cosa.
+# Disk names allowed. Strict on purpose: without it, a name such as
+# «../../dev/mem» would make it open anything.
 DISK_NAME = re.compile(r"^(nvme\d+n\d+|nvme\d+|sd[a-z]{1,2}|hd[a-z])$")
 
-# Las zonas de powercap que se dejan leer. El nombre lo pone el kernel y no
-# tiene rutas dentro: se comprueba igualmente, porque lo que llega viene del
-# proceso sin privilegios y aquí se es root.
+# The powercap zones it lets be read. The kernel sets the name and it has no
+# paths in it: checked anyway, because what arrives comes from the
+# unprivileged process and here we're root.
 # A package or psys zone (`intel-rapl:0`) and one level under it: core,
 # uncore and dram (`intel-rapl:0:0`). Not the MMIO copy of the package.
 RAPL_ZONE = re.compile(r"^[a-z]+-rapl:\d+(:\d+)?\Z")
 POWERCAP = "/sys/class/powercap"
 SMART_BYTES = 512
 
-# NVMe: ioctl de administración y el registro de salud.
+# NVMe: the admin ioctl and the health log.
 NVME_ADMIN_CMD = 0xC0484E41           # _IOWR('N', 0x41, struct nvme_passthru_cmd)
 NVME_GET_LOG_PAGE = 0x02
 NVME_LOG_SMART = 0x02
 
-# SATA: SMART READ DATA a través de ATA PASS-THROUGH.
+# SATA: SMART READ DATA through ATA PASS-THROUGH.
 SG_IO = 0x2285
 SG_DXFER_FROM_DEV = -3
 ATA_16 = 0x85
 ATA_SMART = 0xB0
 ATA_SMART_READ_DATA = 0xD0
 
-# Lista cerrada de registros MSR. Todos son de solo lectura y documentados en
-# los manuales de Intel y AMD; ninguno tiene efectos secundarios al leerlo.
+# Closed list of MSR registers. All read-only and documented in Intel's and
+# AMD's manuals; none has side effects when read.
 MSR_ALLOWED = frozenset({
     0x0198, 0x0199, 0x019C, 0x01A2, 0x01AD,
     0x00CE, 0x0610, 0x0606,
     0xC0010293, 0xC0010299,
-    # El voltaje del núcleo en AMD: qué P-state está activo y la definición de
-    # los tres primeros, que llevan el VID en los bits 21:14. En Intel ese dato
-    # va en 0x198, que ya estaba. Solo lectura y sin efectos, como los demás.
+    # The core voltage on AMD: which P-state is active and the definition of
+    # the first three, which carry the VID in bits 21:14. On Intel that datum
+    # is in 0x198, already listed. Read-only and side-effect free, like the rest.
     0xC0010063,
     0xC0010064, 0xC0010065, 0xC0010066,
 })
 
 MAX_CPUS = 4096
 
-# El PMU de las gráficas Intel: la ocupación por motor, que ni i915 ni xe
-# publican en sysfs. El nombre del PMU y el de cada evento se enumeran aquí
-# dentro y se filtran contra estos patrones; no hay forma de pedir otro.
+# Intel graphics' PMU: per-engine busy, which neither i915 nor xe publish in
+# sysfs. The PMU's name and each event's are enumerated in here and filtered
+# against these patterns; there's no asking for another.
 PMU_ROOT = "/sys/bus/event_source/devices"
 PMU_GPU = re.compile(r"^(i915|xe_[0-9a-f]{4}_[0-9a-f]{2}_[0-9a-f]{2}\.[0-9a-f])$")
 PMU_EVENT = re.compile(r"^(rcs|bcs|vcs|vecs|ccs)\d+-busy$")
 
-# El plano de energía de la gráfica integrada, que en los Intel de escritorio
-# solo asoma por aquí: /sys/class/powercap publica package, core, uncore y
-# dram, y ninguno de los cuatro es la gráfica. Se admite este evento y ninguno
-# más del PMU de RAPL; los otros tres ya se leen por powercap sin privilegios.
+# The integrated graphics' energy plane, which on Intel desktops only shows
+# here: /sys/class/powercap publishes package, core, uncore and dram, and none
+# of the four is the graphics. This event is allowed and no other of RAPL's
+# PMU; the other three are already read through powercap without privileges.
 PMU_POWER = "power"
 PMU_POWER_EVENT = re.compile(r"^energy-gpu$")
 
-# El controlador de memoria, que publica cuánto tráfico mueve hacia la RAM.
-# Intel le cambia el nombre según la generación y hay que aceptar los tres:
-# `uncore_imc` de Sandy Bridge a Comet Lake, `uncore_imc_free_running_N` de
-# Ice Lake en adelante y `uncore_imc_N` en los de servidor, que además llaman
-# a sus eventos por el comando de la DRAM en vez de por la dirección.
+# The memory controller, which publishes how much traffic it moves to RAM.
+# Intel renames it by generation and all three must be accepted:
+# `uncore_imc` from Sandy Bridge to Comet Lake, `uncore_imc_free_running_N`
+# from Ice Lake on, and `uncore_imc_N` on servers, which also name their
+# events by the DRAM command instead of by the direction.
 #
-# `ia_requests` es el mismo tráfico visto por origen —lo que piden los
-# núcleos— y está aquí porque se midió: contra 10 GiB leídos a propósito
-# marcó 9,92. Sus hermanos `gt_requests` e `io_requests` no están, y no por
-# falta de sitio: el segundo marca la misma cifra en reposo que bajo carga.
+# `ia_requests` is the same traffic seen by origin (what the cores ask for)
+# and is here because it was measured: against 10 GiB read on purpose it
+# marked 9.92. Its siblings `gt_requests` and `io_requests` aren't, and not
+# for lack of room: the second marks the same figure idle as under load.
 PMU_IMC = re.compile(r"^uncore_imc(_free_running)?(_\d+)?$")
 PMU_IMC_EVENT = re.compile(
     r"^(data_reads?|data_writes?|cas_count_read|cas_count_write|ia_requests)$")
@@ -144,20 +144,20 @@ def _paced(action: str) -> None:
     _LAST_READ[action] = time.monotonic()
 
 
-# Las dos familias que el cliente puede pedir. Son lo único que viaja por el
-# protocolo: dentro de cada una, qué PMU y qué evento se abre lo decide este
-# archivo.
+# The two families the client can ask for. They're all that travels over the
+# protocol: within each, which PMU and which event is opened is this file's
+# decision.
 GPU_FAMILY = "gpu"
 IMC_FAMILY = "imc"
 
-# Cuántos descriptores se abren como mucho, por familia. El del IMC es más
-# alto porque un servidor tiene un PMU por canal de memoria y hay que abrirlos
-# todos: quedarse a medias no daría un error, daría una cifra corta y creíble.
+# How many descriptors are opened at most, per family. The IMC's is higher
+# because a server has a PMU per memory channel and all must be opened:
+# stopping halfway gives no error, it gives a short, believable figure.
 MAX_PMU_FDS = 32
 MAX_IMC_FDS = 64
 
-# perf_event_open no tiene envoltorio en libc: se invoca por número, y el
-# número depende de la arquitectura. Donde no se sepa, no se intenta.
+# perf_event_open has no libc wrapper: it's invoked by number, and the number
+# depends on the architecture. Where it isn't known, it isn't tried.
 PERF_EVENT_OPEN = {"x86_64": 298, "aarch64": 241, "i686": 336, "armv7l": 364}
 
 
@@ -166,7 +166,7 @@ def _fail(message: str, code: str = "error") -> dict:
 
 
 def read_smbios() -> dict:
-    """Los bytes tal cual de la tabla SMBIOS y de su punto de entrada."""
+    """The SMBIOS table's bytes as they are, and its entry point's."""
     try:
         size = os.path.getsize(DMI_TABLE)
         if size > MAX_TABLE_BYTES:
@@ -183,7 +183,7 @@ def read_smbios() -> dict:
         with open(DMI_ENTRY_POINT, "rb") as handle:
             entry = handle.read(64)
     except OSError:
-        pass                                  # el punto de entrada es opcional
+        pass                                  # the entry point is optional
 
     return {
         "ok": True,
@@ -193,7 +193,7 @@ def read_smbios() -> dict:
 
 
 def read_msr(cpu: object, registers: object) -> dict:
-    """Lee registros de la lista blanca en una CPU concreta."""
+    """Read allow-listed registers on a given CPU."""
     if not isinstance(cpu, int) or not 0 <= cpu < MAX_CPUS:
         return _fail("número de CPU no válido", "bad_request")
     if not isinstance(registers, list) or not registers:
@@ -218,7 +218,7 @@ def read_msr(cpu: object, registers: object) -> dict:
             try:
                 raw = os.pread(descriptor, 8, register)
             except OSError:
-                continue                      # ese MSR no existe en esta CPU
+                continue                      # that MSR doesn't exist on this CPU
             if len(raw) == 8:
                 values[str(register)] = struct.unpack("<Q", raw)[0]
     finally:
@@ -228,11 +228,11 @@ def read_msr(cpu: object, registers: object) -> dict:
 
 
 def read_smart(name) -> dict:
-    """Los 512 bytes del registro de salud de un disco, sin interpretarlos.
+    """A disk's 512-byte health log, without interpreting it.
 
-    Los dos comandos que se mandan (`Get Log Page` en NVMe y `SMART READ DATA`
-    en SATA) son de diagnóstico y de solo lectura. Interpretar lo que devuelven
-    es trabajo del proceso sin privilegios: aquí solo se leen bytes.
+    The two commands sent (`Get Log Page` on NVMe and `SMART READ DATA` on
+    SATA) are diagnostic and read-only. Interpreting what they return is the
+    unprivileged process's job: here only bytes are read.
     """
     if not isinstance(name, str) or not DISK_NAME.match(name):
         return _fail(f"nombre de disco no admitido: {name!r}", "bad_request")
@@ -261,21 +261,21 @@ def read_smart(name) -> dict:
 
 
 def _smart_nvme(descriptor: int):
-    """`Get Log Page` del registro 0x02, que es el de salud."""
+    """`Get Log Page` of log 0x02, the health one."""
     buffer = ctypes.create_string_buffer(SMART_BYTES)
-    # struct nvme_passthru_cmd, 72 bytes. El número de dobles palabras va
-    # menos uno, como manda la especificación.
+    # struct nvme_passthru_cmd, 72 bytes. The number of dwords goes minus
+    # one, as the specification says.
     numd = SMART_BYTES // 4 - 1
     request = bytearray(struct.pack(
         "<BBHIIIQQIIIIIIIIII",
-        NVME_GET_LOG_PAGE, 0, 0,          # opcode, flags, reservado
-        0xFFFFFFFF,                       # nsid: el controlador entero
+        NVME_GET_LOG_PAGE, 0, 0,          # opcode, flags, reserved
+        0xFFFFFFFF,                       # nsid: the whole controller
         0, 0,                             # cdw2, cdw3
         0,                                # metadata
         ctypes.addressof(buffer),         # addr
         0, SMART_BYTES,                   # metadata_len, data_len
         NVME_LOG_SMART | (numd << 16),    # cdw10
-        0, 0, 0, 0, 0,                    # cdw11 a cdw15
+        0, 0, 0, 0, 0,                    # cdw11 to cdw15
         5000, 0,                          # timeout_ms, result
     ))
     fcntl.ioctl(descriptor, NVME_ADMIN_CMD, request)
@@ -283,12 +283,12 @@ def _smart_nvme(descriptor: int):
 
 
 class _SgIoHdr(ctypes.Structure):
-    """`struct sg_io_hdr`, la petición genérica del subsistema SCSI.
+    """`struct sg_io_hdr`, the SCSI subsystem's generic request.
 
-    Se declara con ctypes y no con `struct.pack` porque lleva punteros mezclados
-    con enteros cortos, y el compilador inserta relleno para alinearlos. Con un
-    formato empaquetado a mano los campos caen desplazados y el kernel lee
-    basura donde espera un puntero.
+    Declared with ctypes rather than `struct.pack` because it mixes pointers
+    with short integers, and the compiler inserts padding to align them.
+    With a hand-packed format the fields land shifted and the kernel reads
+    garbage where it expects a pointer.
     """
 
     _fields_ = [
@@ -318,16 +318,16 @@ class _SgIoHdr(ctypes.Structure):
 
 
 def _smart_ata(descriptor: int):
-    """`SMART READ DATA` por ATA PASS-THROUGH, que es como se pide en SATA."""
+    """`SMART READ DATA` through ATA PASS-THROUGH, as SATA asks for it."""
     command = bytes((
         ATA_16,
-        0x08,                     # protocolo 4: entrada de datos PIO
-        0x0E,                     # dirección desde el disco, cuenta en sectores
+        0x08,                     # protocol 4: PIO data in
+        0x0E,                     # direction from the disk, count in sectors
         0x00, ATA_SMART_READ_DATA,
-        0x00, 0x01,               # un sector
+        0x00, 0x01,               # one sector
         0x00, 0x00,
-        0x00, 0x4F,               # la firma que SMART exige en LBA medio
-        0x00, 0xC2,               # y en LBA alto
+        0x00, 0x4F,               # the signature SMART requires in LBA mid
+        0x00, 0xC2,               # and in LBA high
         0x00, ATA_SMART, 0x00,
     ))
     buffer = ctypes.create_string_buffer(SMART_BYTES)
@@ -346,19 +346,19 @@ def _smart_ata(descriptor: int):
         timeout=5000,
     )
     fcntl.ioctl(descriptor, SG_IO, header)
-    if header.status not in (0, 2):      # 2 es «con información de sentido»
+    if header.status not in (0, 2):      # 2 is «with sense data»
         return None
     return buffer.raw
 
 
 class _PerfEventAttr(ctypes.Structure):
-    """`struct perf_event_attr`, tal cual la espera el kernel.
+    """`struct perf_event_attr`, exactly as the kernel expects it.
 
-    Se declara entera aunque solo se usen cuatro campos: el kernel comprueba
-    el campo `size` contra las versiones que conoce, así que no vale con
-    mandar un trozo. Todo lo demás va a cero, y eso es justo lo que interesa:
-    `sample_period` a cero significa que el evento **cuenta** y no muestrea,
-    o sea que no hay búfer, ni direcciones, ni registros de nadie.
+    Declared whole although only four fields are used: the kernel checks the
+    `size` field against the versions it knows, so a piece won't do.
+    Everything else is zero, which is exactly the point: a zero
+    `sample_period` means the event **counts** and doesn't sample, so there's
+    no buffer, no addresses, no one's registers.
     """
 
     _fields_ = [
@@ -376,22 +376,22 @@ class _PerfEventAttr(ctypes.Structure):
     ]
 
 
-# Descriptores abiertos del PMU, por familia, PMU y evento. Se abren una sola
-# vez y se dejan vivos: los contadores son acumulativos desde que se abren, así
-# que cerrarlos y volver a abrirlos entre muestreos perdería la referencia.
+# Open PMU descriptors, by family, PMU and event. Opened once and kept alive:
+# the counters accumulate from when they're opened, so closing and reopening
+# them between samples would lose the reference.
 _PMU_FDS: dict[str, dict[str, dict[str, int]]] = {}
 _PMU_FAILURE: dict[str, str] = {}
-# Si el tope de descriptores dejó eventos sin abrir. Solo importa en el IMC,
-# donde los contadores se suman entre canales y faltar uno rebaja el total.
+# Whether the descriptor cap left events unopened. Only matters for the IMC,
+# where counters are added across channels and missing one lowers the total.
 _PMU_TRUNCATED: dict[str, bool] = {}
 
 
 def _pmu_allowed(family: str, pmu: str):
-    """Qué eventos se dejan abrir en ese PMU, o None si no es de la familia.
+    """Which events may be opened on that PMU, or None if not of the family.
 
-    Aquí está la lista entera de lo que este ayudante puede contar. El cliente
-    pide una familia y nada más: ni el nombre del PMU ni el número de evento
-    llegan nunca de fuera.
+    Here is the whole list of what this helper can count. The client asks for
+    a family and nothing more: neither the PMU's name nor the event number
+    ever come from outside.
     """
     if family == GPU_FAMILY:
         if PMU_GPU.match(pmu):
@@ -405,11 +405,11 @@ def _pmu_allowed(family: str, pmu: str):
 
 
 def _pmu_field(pmu: str, field: str):
-    """En qué bit de `config` empieza un campo, según el propio kernel.
+    """In which bit of `config` a field starts, per the kernel itself.
 
-    Cada PMU publica su formato: «config:0-7» quiere decir que ese campo son
-    los ocho bits bajos. i915 lo llama `i915_eventid` y RAPL `event`, y por
-    eso hay que mirarlo en vez de darlo por sabido.
+    Each PMU publishes its format: «config:0-7» means the field is the low
+    eight bits. i915 calls it `i915_eventid` and RAPL `event`, which is why
+    it's looked up instead of assumed.
     """
     if field == "config":
         return 0
@@ -427,12 +427,12 @@ def _pmu_field(pmu: str, field: str):
 
 
 def _pmu_config(pmu: str, event: str):
-    """El número de evento que el kernel publica, leído del propio sysfs.
+    """The event number the kernel publishes, read from its own sysfs.
 
-    El cliente manda nombres, nunca números: quien traduce de un nombre de la
-    lista a un `config` es este fichero del kernel. El contenido es
-    «config=0x2000» en i915 y «event=0x04» en RAPL, que no es lo mismo: el
-    segundo hay que colocarlo en los bits que diga el formato del PMU.
+    The client sends names, never numbers: what turns a name on the list
+    into a `config` is this kernel file. Its content is «config=0x2000» on
+    i915 and «event=0x04» on RAPL, which differ: the second must be placed
+    in the bits the PMU's format says.
     """
     try:
         with open(f"{PMU_ROOT}/{pmu}/events/{event}", encoding="ascii") as handle:
@@ -440,7 +440,7 @@ def _pmu_config(pmu: str, event: str):
     except OSError:
         return None
     if "," in raw or "=" not in raw:
-        return None            # si trae parámetros de sobra, no se toca
+        return None            # if it carries extra parameters, it isn't touched
     field, _, value = raw.partition("=")
     shift = _pmu_field(pmu, field.strip())
     if shift is None:
@@ -452,7 +452,7 @@ def _pmu_config(pmu: str, event: str):
 
 
 def _open_pmu(family: str) -> None:
-    """Abre los contadores de esa familia que esta máquina publique."""
+    """Open the counters of that family this machine publishes."""
     cap = MAX_IMC_FDS if family == IMC_FAMILY else MAX_PMU_FDS
     empty = ("no hay ningún controlador de memoria con contadores"
              if family == IMC_FAMILY
@@ -488,8 +488,8 @@ def _open_pmu(family: str) -> None:
             if not pattern.match(event):
                 continue
             if opened >= cap:
-                # Quedarse a medias en el IMC no da un error, da una suma
-                # corta: se avisa para que nadie publique esa cifra.
+                # Stopping halfway on the IMC gives no error, it gives a short
+                # sum: it's flagged so nobody publishes that figure.
                 truncated = True
                 continue
             config = _pmu_config(pmu, event)
@@ -499,8 +499,8 @@ def _open_pmu(family: str) -> None:
             attr.type = pmu_type
             attr.size = ctypes.sizeof(_PerfEventAttr)
             attr.config = config
-            # pid=-1 y cpu=0: es un PMU de dispositivo, no uno por núcleo, y
-            # cuenta lo que hace la máquina entera. No se ata a ningún proceso.
+            # pid=-1 and cpu=0: a device PMU, not a per-core one, counting what
+            # the whole machine does. It's tied to no process.
             descriptor = libc.syscall(number, ctypes.byref(attr), -1, 0, -1, 0)
             if descriptor < 0:
                 if not failure:
@@ -519,10 +519,10 @@ def _open_pmu(family: str) -> None:
 
 
 def _pmu_scale(pmu: str, event: str):
-    """El factor que el kernel publica para convertir el contador a su unidad.
+    """The factor the kernel publishes to turn the counter into its unit.
 
-    Solo lo traen los de energía. Devolverlo es pasar un dato del kernel tal
-    cual; interpretarlo es cosa del proceso sin privilegios.
+    Only energy counters carry one. Returning it passes a kernel datum as
+    is; interpreting it is the unprivileged process's business.
     """
     try:
         with open(f"{PMU_ROOT}/{pmu}/events/{event}.scale", encoding="ascii") as h:
@@ -532,12 +532,12 @@ def _pmu_scale(pmu: str, event: str):
 
 
 def _pmu_unit(pmu: str, event: str):
-    """La unidad que el kernel publica para un contador, si publica alguna.
+    """The unit the kernel publishes for a counter, if any.
 
-    Va con la escala y por el mismo motivo: es un dato del kernel y aquí se
-    pasa tal cual. Que el contador del controlador de memoria cuente MiB y no
-    otra cosa lo comprueba el proceso sin privilegios, que es quien va a
-    convertirlo en bytes por segundo.
+    It goes with the scale and for the same reason: a kernel datum passed
+    as is. That the memory controller's counter counts MiB and nothing else
+    is checked by the unprivileged process, which turns it into bytes per
+    second.
     """
     try:
         with open(f"{PMU_ROOT}/{pmu}/events/{event}.unit", encoding="ascii") as h:
@@ -547,15 +547,15 @@ def _pmu_unit(pmu: str, event: str):
 
 
 def _read_family(family: str, with_unit: bool = False) -> dict:
-    """Lee de una vez todos los contadores abiertos de una familia.
+    """Read every open counter of a family at once.
 
-    Ocho bytes por descriptor y nada más. Restar contra la vuelta anterior y
-    convertir a porcentajes, vatios o bytes por segundo es cosa del proceso
-    sin privilegios: aquí no se interpreta ninguna cifra.
+    Eight bytes per descriptor and nothing more. Subtracting against the
+    previous round and converting to percentages, watts or bytes per second
+    is the unprivileged process's business: no figure is interpreted here.
 
-    La unidad solo se busca donde hace falta. Los de la gráfica no la usan y
-    pedirla serían ocho aperturas de sysfs por segundo, como root, para tirar
-    lo leído.
+    The unit is only looked up where it's needed. The graphics' don't use
+    it, and asking would be eight sysfs opens a second, as root, to throw
+    away what was read.
     """
     counters: dict[str, dict[str, int]] = {}
     scales: dict[str, dict[str, float]] = {}
@@ -563,8 +563,8 @@ def _read_family(family: str, with_unit: bool = False) -> dict:
     for pmu, events in _PMU_FDS.get(family, {}).items():
         for event, descriptor in events.items():
             try:
-                # os.read y no os.pread: un descriptor de perf no es
-                # posicionable y pread devolvería ESPIPE.
+                # os.read and not os.pread: a perf descriptor isn't seekable
+                # and pread would return ESPIPE.
                 raw = os.read(descriptor, 8)
             except OSError:
                 continue
@@ -581,11 +581,11 @@ def _read_family(family: str, with_unit: bool = False) -> dict:
 
 
 def read_gpu_pmu() -> dict:
-    """Los contadores de ocupación por motor, en crudo y con su reloj.
+    """The per-engine busy counters, raw and with their clock.
 
-    Devuelve nanosegundos acumulados desde que se abrió cada contador. Quién
-    los reste y los convierta en un porcentaje es el proceso sin privilegios;
-    aquí solo se leen ocho bytes por descriptor.
+    It returns nanoseconds accumulated since each counter was opened.
+    Subtracting them and turning them into a percentage is the unprivileged
+    process's job; here only eight bytes per descriptor are read.
     """
     _paced("gpu_pmu")
     if GPU_FAMILY not in _PMU_FDS:
@@ -602,13 +602,13 @@ def read_gpu_pmu() -> dict:
 
 
 def read_imc() -> dict:
-    """Cuánto tráfico mueve el controlador de memoria, en crudo.
+    """How much traffic the memory controller moves, raw.
 
-    Cada cuenta es una línea de caché movida entre el controlador y la RAM
-    desde que se abrió el contador; cuántos bytes son lo dice la escala que
-    publica el kernel, y por eso viaja al lado. Es lo mismo que enseña
-    `intel_gpu_top` junto a la gráfica, aunque el dato no sea de la gráfica:
-    es el controlador entero, con el tráfico del procesador dentro.
+    Each count is a cache line moved between the controller and RAM since
+    the counter was opened; how many bytes that is, the scale the kernel
+    publishes says, which is why it travels alongside. The same
+    `intel_gpu_top` shows next to the graphics, though the datum isn't the
+    graphics': it's the whole controller, the processor's traffic included.
     """
     _paced("imc")
     if IMC_FAMILY not in _PMU_FDS:
@@ -627,20 +627,19 @@ def read_imc() -> dict:
 
 
 def read_rapl() -> dict:
-    """Los contadores de energía del procesador, en microjulios.
+    """The processor's energy counters, in microjoules.
 
-    Desde el kernel 5.10 `energy_uj` no se lee sin privilegios: se restringió
-    porque muestrearlo a mucha frecuencia deja ver el patrón de consumo de otro
-    proceso. Leerlo una vez por segundo, que es lo que hace esta ventana, es lo
-    mismo que hacen `powertop` o `s-tui`.
+    Since kernel 5.10 `energy_uj` can't be read without privileges: it was
+    restricted because sampling it at high rate reveals another process's
+    power pattern. Reading it once a second, as this window does, is what
+    `powertop` or `s-tui` do.
 
-    Sin esto, en las máquinas donde el kernel lo restringe —AMD sobre todo— el
-    aviso de «requiere permisos» del consumo del procesador no se iba nunca:
-    el usuario daba los permisos, el ayudante arrancaba, y nadie leía esto.
+    Without this, on machines where the kernel restricts it (AMD above all)
+    the processor power's «needs permissions» notice never went away: the
+    user gave permissions, the helper started, and nobody read this.
 
-    Se devuelven los microjulios en crudo. Los vatios son su derivada y eso lo
-    calcula el proceso sin privilegios, que es quien guarda la lectura
-    anterior.
+    The raw microjoules are returned. Watts are their derivative, computed by
+    the unprivileged process, which keeps the previous reading.
     """
     _paced("rapl")
     zones = {}

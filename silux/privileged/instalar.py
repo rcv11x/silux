@@ -1,33 +1,33 @@
 #!/usr/bin/env python3
-"""Instala el ayudante privilegiado con su propia acción de polkit.
+"""Installs the privileged helper with its own polkit action.
 
-Sin esto, Silux lanza el ayudante con `pkexec python3 -c …`, y eso cae en la
-acción genérica de polkit, cuya ventana enseña la orden y no qué se lee. Con
-una acción propia la ventana lo dice con nuestras palabras. La contraseña se
-sigue pidiendo al dar permisos (`auth_admin_keep`).
+Without it, Silux launches the helper with `pkexec python3 -c …`, which
+falls into polkit's generic action, whose window shows the command and not
+what's read. With its own action the window says it in our words. The
+password is still asked when permissions are given (`auth_admin_keep`).
 
-Hay un motivo de seguridad para copiar el ayudante en vez de apuntar a donde
-está: `pkexec` asocia la autorización a la ruta del programa que ejecuta y **no
-mira los argumentos**. Con el ayudante en el directorio del usuario, una regla
-permanente daría root sin contraseña a cualquier proceso que corra como ese
-usuario y sepa reescribir el archivo antes de que silux lo lance. Copiado a un
-sitio que solo root puede escribir, esa puerta no existe.
+There's a security reason to copy the helper rather than point to where it
+is: `pkexec` ties the authorization to the path of the program it runs and
+**doesn't look at the arguments**. With the helper in the user's folder, a
+permanent rule would give root without a password to any process running
+as that user that could rewrite the file before silux launches it. Copied
+to a place only root can write, that door doesn't exist.
 
-Por lo mismo se instala como un ejecutable con shebang y no como un argumento
-de `python3`: si la acción apuntara al intérprete, la autorización valdría para
-cualquier script de Python de la máquina.
+For the same reason it's installed as an executable with a shebang and not
+as an argument to `python3`: if the action pointed at the interpreter, the
+authorization would hold for any Python script on the machine.
 
     sudo python3 -m silux.privileged.instalar
     sudo python3 -m silux.privileged.instalar --uninstall
 
-La interfaz lo llama por su cuenta desde el aviso de permisos; a mano solo hace
-falta para instalarlo en un equipo sin entorno gráfico.
+The interface calls it on its own from the permissions notice; by hand it's
+only needed to install it on a machine without a graphical environment.
 
-Vive dentro del paquete y no en `tools/` porque lo ejecuta el usuario final,
-no quien desarrolla: `tools/` no entra en el AppImage, y allí el botón de la
-interfaz se quedaba sin instalador que lanzar. Por lo mismo no importa nada de
-`silux`: se copia como archivo suelto fuera del punto de montaje, donde el
-resto del paquete no está.
+It lives in the package and not in `tools/` because the end user runs it,
+not whoever develops: `tools/` isn't in the AppImage, where the
+interface's button had no installer to launch. For the same reason it
+imports nothing from `silux`: it's copied as a loose file outside the mount
+point, where the rest of the package isn't.
 """
 
 from __future__ import annotations
@@ -46,11 +46,11 @@ POLICY = pathlib.Path("/usr/share/polkit-1/actions/org.silux.helper.policy")
 
 ACTION = "org.silux.helper"
 
-# Lo que dice la ventana de la contraseña con la regla puesta, en cada idioma
-# de la interfaz: todo lo que abre el permiso, ni más ni menos. Va copiado
-# aquí y no leído de `db/lang` porque la regla la escribe root, y root no
-# puede leer dentro del AppImage del usuario. `tests/test_privileged.py` lo
-# compara con la clave `perm.polkit.message` de `es.json` y `en.json`.
+# What the password window says with the rule in place, in each interface
+# language: everything the permission opens, no more, no less. Copied here
+# rather than read from `db/lang` because root writes the rule, and root
+# can't read inside the user's AppImage. `tests/test_privileged.py` compares
+# it with the `perm.polkit.message` key of `es.json` and `en.json`.
 MESSAGES = {
     "es": ("Silux necesita permiso para leer datos del hardware reservados al "
            "administrador: memoria, discos, voltaje, consumo y uso de la "
@@ -60,13 +60,14 @@ MESSAGES = {
            "It only reads; it changes nothing."),
 }
 
-# `auth_admin_keep` y no `yes`: la contraseña se pide al dar permisos (polkit
-# la recuerda unos minutos y solo para ese proceso), en vez de dejar la puerta
-# abierta a cualquier proceso de la sesión. Lo que se gana instalando es que la
-# ventana diga qué se lee, no dejar de pedirla (docs/privilegios.md).
+# `auth_admin_keep` and not `yes`: the password is asked when permissions
+# are given (polkit remembers it a few minutes, for that process only),
+# instead of leaving the door open to any process of the session. What
+# installing gains is the window saying what's read, not dropping the
+# password (docs/privilegios.md).
 #
-# `allow_inactive` a `no` porque una sesión que no está delante del equipo no
-# tiene por qué leer sus sensores: eso incluye las sesiones por SSH.
+# `allow_inactive` set to `no` because a session that isn't in front of the
+# machine has no business reading its sensors: that includes SSH sessions.
 TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE policyconfig PUBLIC
  "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
@@ -93,26 +94,26 @@ TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
 
 
 def policy() -> str:
-    """La regla tal y como se escribe, para instalarla y para compararla.
+    """The rule as it's written, to install it and to compare it.
 
-    El cliente la compara con la instalada: cambiar el texto de la ventana
-    tiene que llegar también a quien ya la tenía puesta.
+    The client compares it with the installed one: changing the window's
+    text must also reach whoever already had it in place.
     """
     return TEMPLATE.format(action=ACTION, target=TARGET,
                            message_es=MESSAGES["es"], message_en=MESSAGES["en"])
 
 
 def installed() -> bool:
-    """Si el ayudante y su acción están puestos y son utilizables."""
+    """Whether the helper and its action are in place and usable."""
     return TARGET.is_file() and os.access(TARGET, os.X_OK) and POLICY.is_file()
 
 
 def _interpreter() -> str:
-    """Un Python del sistema para el shebang.
+    """A system Python for the shebang.
 
-    El de un AppImage no vale: su punto de montaje va con `nosuid` y pertenece
-    al usuario, así que pkexec se niega a ejecutar nada de ahí y root ni
-    siquiera puede leerlo.
+    An AppImage's won't do: its mount point is `nosuid` and belongs to the
+    user, so pkexec refuses to run anything from there and root can't even
+    read it.
     """
     for path in ("/usr/bin/python3", "/bin/python3", "/usr/local/bin/python3"):
         if os.path.exists(path):
@@ -176,28 +177,27 @@ def _write(target: pathlib.Path, text: str, mode: int) -> None:
 
 
 def from_package() -> str:
-    """El ayudante que viene al lado, para cuando esto se ejecuta a mano."""
+    """The helper that comes alongside, for when this is run by hand."""
     if not SOURCE.is_file():
         raise SystemExit(f"No encuentro el ayudante en {SOURCE}")
     return SOURCE.read_text(encoding="utf-8")
 
 
 def install(body: str) -> None:
-    """Deja el ayudante en el sistema con su acción de polkit.
+    """Put the helper in the system with its polkit action.
 
-    Recibe el **texto** del ayudante y no una ruta, y eso es una decisión de
-    seguridad y no de estilo. Antes la interfaz le pasaba `--from` con una ruta
-    de ~/.cache, que escribe el usuario: cualquier proceso suyo podía cambiar
-    ese archivo mientras el usuario tecleaba la contraseña —segundos, no una
-    carrera— y lo que quedaba instalado, de root y con la acción de polkit
-    apuntándole, era lo del atacante. Un texto que llega por una tubería no
-    tiene nombre que sustituir.
+    It takes the helper's **text** and not a path, a security decision and
+    not one of style: with a path to a file the user can write, any process
+    of theirs could change it while the password was typed (seconds, not a
+    race), and what got installed, owned by root with the polkit action
+    pointing at it, would be the attacker's. A text arriving through a pipe
+    has no name to swap.
     """
     if not body.strip():
         raise SystemExit("No me han pasado ningún ayudante que instalar.")
-    # El shebang que trae el archivo es `/usr/bin/env python3`, que resuelve
-    # contra el PATH de quien lo ejecute. Aquí lo ejecuta root a través de
-    # pkexec, así que se clava el intérprete y se deja de depender del entorno.
+    # The file's shebang is `/usr/bin/env python3`, which resolves against
+    # the PATH of whoever runs it. Here root runs it through pkexec, so the
+    # interpreter is pinned and the environment stops mattering.
     # `-I`: as root, no PYTHONPATH, PYTHONSTARTUP or user site-packages.
     if body.startswith("#!"):
         body = body.split("\n", 1)[1]
@@ -206,8 +206,8 @@ def install(body: str) -> None:
     TARGET.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
     _check_folders(TARGET.parent)
     _check_folders(POLICY.parent)
-    # 0755 y de root: cualquiera puede ejecutarlo (pkexec decide si se le deja),
-    # nadie más que root puede cambiar lo que hace.
+    # 0755 and root's: anyone can run it (pkexec decides whether they may),
+    # nobody but root can change what it does.
     _write(TARGET, body, 0o755)
     _write(POLICY, policy(), 0o644)
 
@@ -217,12 +217,12 @@ def install(body: str) -> None:
 
 
 def uninstall_command() -> str:
-    """La orden que quita el ayudante, valga como valga instalado silux.
+    """The command that removes the helper, however silux is installed.
 
-    Son dos archivos y se borran. `python3 -m silux.privileged.instalar
-    --uninstall` hace lo mismo, pero solo existe donde silux está instalado
-    como paquete: quien lo usa desde el AppImage no tiene ese módulo en su
-    Python, y es justo quien instaló el ayudante desde la ventana.
+    Two files, deleted. `python3 -m silux.privileged.instalar --uninstall`
+    does the same, but only exists where silux is installed as a package:
+    whoever uses the AppImage doesn't have that module in their Python, and
+    that's exactly who installed the helper from the window.
     """
     return f"sudo rm {TARGET} {POLICY}"
 

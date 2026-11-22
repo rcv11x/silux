@@ -1,14 +1,14 @@
-"""Analizador de la tabla SMBIOS.
+"""SMBIOS table parser.
 
-La tabla es una lista de estructuras binarias, cada una con una cabecera de
-cuatro bytes (tipo, longitud, identificador), una zona de campos de tamaño
-fijo y, detrás, las cadenas de texto separadas por ceros. Los campos de texto
-no guardan la cadena sino su número de orden dentro de esa lista.
+The table is a list of binary structures, each with a four-byte header
+(type, length, handle), a fixed-size field area and, after it, the text
+strings separated by zeros. Text fields don't hold the string but its
+position in that list.
 
-Solo se interpretan los tipos que hacen falta: el 16 (conjunto de memoria) y
-el 17 (cada módulo). El resto se deja pasar sin tocar.
+Only the types needed are interpreted: 16 (memory array) and 17 (each
+module). The rest is passed over untouched.
 
-Referencia: DMTF DSP0134, «System Management BIOS (SMBIOS) Reference
+Reference: DMTF DSP0134, «System Management BIOS (SMBIOS) Reference
 Specification».
 """
 
@@ -22,8 +22,8 @@ from ..model import LOGICAL_NON_VOLATILE
 TYPE_PHYSICAL_MEMORY_ARRAY = 16
 TYPE_MEMORY_DEVICE = 17
 
-# Tabla 76 de la especificación: tipo de memoria. The names of a technology,
-# the same in every language; 01h «Other» and 02h «Unknown» are no type.
+# Table 76 of the specification: memory type. The names of a technology, the
+# same in every language; 01h «Other» and 02h «Unknown» are no type.
 MEMORY_TYPES = {
     0x03: "DRAM", 0x04: "EDRAM",
     0x05: "VRAM", 0x06: "SRAM", 0x07: "RAM", 0x08: "ROM", 0x09: "Flash",
@@ -41,8 +41,8 @@ MEMORY_TYPES = {
 # (`render.memory_form_factor`…), in the interface's language.
 NOT_A_VALUE = (0x00, 0x01, 0x02)        # none, «Other», «Unknown»
 
-# Los números de bit son los de la especificación, no una numeración propia:
-# equivocarse aquí hace que un módulo sin buffer se anuncie como registrado.
+# The bit numbers are the specification's, not a numbering of our own:
+# getting them wrong announces an unbuffered module as registered.
 TYPE_DETAIL_BITS = (3, 6, 7, 9, 12, 13, 14, 15)
 
 PLACEHOLDERS = frozenset({
@@ -53,7 +53,7 @@ PLACEHOLDERS = frozenset({
 
 
 class Structure:
-    """Una estructura de la tabla, ya separada en campos y cadenas."""
+    """A table structure, already split into fields and strings."""
 
     __slots__ = ("type", "handle", "data", "strings")
 
@@ -77,7 +77,7 @@ class Structure:
         return struct.unpack_from("<I", self.data, offset)[0]
 
     def text(self, offset: int) -> Optional[str]:
-        """Los campos de texto guardan el número de la cadena, no la cadena."""
+        """Text fields hold the string's number, not the string."""
         index = self.byte(offset)
         if not index or index > len(self.strings):
             return None
@@ -86,21 +86,21 @@ class Structure:
 
 
 def parse_table(raw: bytes) -> Iterator[Structure]:
-    """Recorre la tabla entera y va soltando estructuras."""
+    """Walk the whole table, yielding structures."""
     offset = 0
     total = len(raw)
     while offset + 4 <= total:
         type_, length, handle = struct.unpack_from("<BBH", raw, offset)
         if length < 4:
-            break                            # tabla corrupta: mejor parar
+            break                            # corrupt table: better stop
         formatted = raw[offset:offset + length]
 
         cursor = offset + length
         strings: list[str] = []
-        # Cada cadena acaba en un cero y la zona entera en otro más. Cuando no
-        # hay ninguna cadena la zona son dos ceros seguidos, y contar solo uno
-        # deja el cursor a mitad de camino: a partir de ahí todo lo que se lee
-        # está desplazado un byte y las estructuras siguientes se pierden.
+        # Each string ends in a zero and the whole area in one more. With no
+        # strings the area is two zeros in a row, and counting only one leaves
+        # the cursor halfway: from there on everything read is shifted a byte
+        # and the following structures are lost.
         while cursor < total and raw[cursor] != 0:
             end = raw.find(b"\x00", cursor)
             if end == -1:
@@ -108,23 +108,23 @@ def parse_table(raw: bytes) -> Iterator[Structure]:
             strings.append(raw[cursor:end].decode("utf-8", "replace"))
             cursor = end + 1
 
-        cursor += 1                          # el cero que cierra la zona
+        cursor += 1                          # the zero that closes the area
         if not strings:
-            cursor += 1                      # y el segundo, si no había cadenas
+            cursor += 1                      # and the second, if there were no strings
         cursor = min(cursor, total)
 
         yield Structure(type_, handle, formatted, strings)
 
-        if type_ == 127:                     # tipo 127 = fin de la tabla
+        if type_ == 127:                     # type 127 = end of table
             break
         offset = cursor
 
 
 def _size_bytes(structure: Structure) -> int:
-    """El tamaño del módulo, con el rodeo que exige la especificación.
+    """The module's size, with the detour the specification requires.
 
-    El campo de 16 bits se quedó corto con los módulos de 32 GB en adelante:
-    cuando vale 0x7FFF hay que leer el campo extendido de 32 bits.
+    The 16-bit field fell short with modules of 32 GB and up: when it's
+    0x7FFF the 32-bit extended field must be read.
     """
     size = structure.word(0x0C)
     if size is None or size == 0:
@@ -132,7 +132,7 @@ def _size_bytes(structure: Structure) -> int:
     if size == 0x7FFF:
         extended = structure.dword(0x1C) or 0
         return extended * 1024 * 1024
-    # El bit 15 dice si la unidad son kibibytes en vez de mebibytes.
+    # Bit 15 says whether the unit is kibibytes instead of mebibytes.
     if size & 0x8000:
         return (size & 0x7FFF) * 1024
     return size * 1024 * 1024
@@ -159,7 +159,7 @@ def _details(structure: Structure) -> list[int]:
 
 
 def memory_devices(structures: list[Structure]) -> list[dict]:
-    """Extrae los módulos de memoria, incluidos los zócalos vacíos."""
+    """Extract the memory modules, empty slots included."""
     modules = []
     for structure in structures:
         if structure.type != TYPE_MEMORY_DEVICE:
@@ -183,8 +183,8 @@ def memory_devices(structures: list[Structure]) -> list[dict]:
             "voltage_min_mv": structure.word(0x22) or None,
             "voltage_max_mv": structure.word(0x24) or None,
             "voltage_configured_mv": structure.word(0x26) or None,
-            # El número de serie se deja fuera a propósito: identifica el
-            # equipo y no aporta nada a lo que enseña el programa.
+            # The serial number is left out on purpose: it identifies the
+            # machine and adds nothing to what the program shows.
         })
     return modules
 
@@ -195,14 +195,14 @@ def memory_arrays(structures: list[Structure]) -> list[dict]:
         if structure.type != TYPE_PHYSICAL_MEMORY_ARRAY:
             continue
         capacity = structure.dword(0x07)
-        if capacity == 0x8000_0000:          # centinela: usar el campo extendido
+        if capacity == 0x8000_0000:          # sentinel: use the extended field
             extended = structure.data[0x0F:0x17]
             capacity_bytes = struct.unpack("<Q", extended)[0] if len(extended) == 8 else 0
         else:
             capacity_bytes = (capacity or 0) * 1024
         arrays.append({
-            # El número de zócalos son dos bytes, no uno: una placa con más de
-            # 255 ranuras es rara pero la especificación lo contempla.
+            # The slot count is two bytes, not one: a board with more than 255
+            # slots is rare but the specification allows it.
             "slots": structure.word(0x0D),
             "max_capacity_bytes": capacity_bytes,
             "error_correction": _code(structure.byte(0x06)),
@@ -211,12 +211,12 @@ def memory_arrays(structures: list[Structure]) -> list[dict]:
 
 
 def system_slots(structures: list[Structure]) -> dict[str, str]:
-    """Las ranuras de la placa (tipo 9): dirección PCI → nombre de la ranura.
+    """The board's slots (type 9): PCI address → slot name.
 
-    Solo las que traen dirección (SMBIOS 2.6 en adelante) y no la marcan como
-    desconocida. Los firmwares rellenan esta tabla regular: ranuras que no
-    existen, o todas con la misma dirección. Quien la usa solo se queda con
-    las que casan con un dispositivo que existe de verdad.
+    Only those carrying an address (SMBIOS 2.6 and later) not marked
+    unknown. Firmware fills this table poorly: slots that don't exist, or
+    all with the same address. Whoever uses it keeps only those matching a
+    device that really exists.
     """
     slots: dict[str, str] = {}
     for structure in structures:
@@ -227,6 +227,6 @@ def system_slots(structures: list[Structure]) -> dict[str, str]:
         if not name or segment is None or bus is None or devfn is None:
             continue
         if segment == 0xFFFF or bus == 0xFF or devfn == 0xFF:
-            continue                         # «no se sabe», según la norma
+            continue                         # «unknown», per the standard
         slots[f"{segment:04x}:{bus:02x}:{devfn >> 3:02x}.{devfn & 7:x}"] = name
     return slots

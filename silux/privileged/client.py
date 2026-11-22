@@ -1,14 +1,13 @@
-"""El lado sin privilegios: lanza el ayudante y habla con él.
+"""The unprivileged side: starts the helper and talks to it.
 
-Nunca se llama desde el hilo de la interfaz. `pkexec` abre un diálogo de
-autenticación y bloquea hasta que el usuario responde; hacerlo en el hilo de
-Qt congelaría la ventana con el diálogo abierto delante, que es la peor
-combinación posible.
+Never called from the interface thread. `pkexec` opens an authentication
+dialog and blocks until the user answers; doing that on Qt's thread would
+freeze the window with the dialog open in front of it, the worst
+combination.
 
-El proceso se deja vivo mientras dure la sesión. Volver a pedir la contraseña
-en cada muestreo sería inaceptable, y mantener una tubería abierta con un
-proceso que solo sabe hacer dos lecturas es poco riesgo a cambio de mucha
-comodidad.
+The process is kept alive for the session. Asking for the password again
+every sample would be unacceptable, and keeping a pipe open to a process
+that can only do a few reads is little risk for a lot of convenience.
 """
 
 from __future__ import annotations
@@ -47,36 +46,34 @@ def pkexec_path() -> str:
     return next((path for path in PKEXEC_PATHS if os.path.isfile(path)), PKEXEC_PATHS[0])
 
 
-# Intérpretes del sistema con los que lanzar el ayudante cuando el del programa
-# no sirve. Al ayudante le basta la biblioteca estándar, así que vale cualquiera.
+# System interpreters to start the helper with when the program's own won't
+# do. The helper only needs the standard library, so any will.
 SYSTEM_PYTHON = ("/usr/bin/python3", "/bin/python3", "/usr/local/bin/python3")
 
 
 def _cache_dir() -> pathlib.Path:
-    """La carpeta de caché del programa, siguiendo la convención del sistema."""
+    """The program's cache folder, by the system's convention."""
     base = os.environ.get("XDG_CACHE_HOME") or (pathlib.Path.home() / ".cache")
     return pathlib.Path(base) / "silux"
 
 
-# Lo que se le pasa a `python3 -c` para ejecutar un guion que no está en
-# ningún archivo. Recibe por argv el nombre con el que compilarlo y su fuente
-# entera, y deja en `sys.argv` lo que venga detrás, que es lo que espera quien
-# se ejecute.
+# What's passed to `python3 -c` to run a script that's in no file. It gets
+# through argv the name to compile it under and its whole source, and leaves
+# in `sys.argv` what comes after, which is what the script expects.
 #
-# El nombre y el `linecache` no son adorno: sin ellos el traceback de un fallo
-# dice «File "<string>", line 40» y se queda sin el texto de la línea, y lo
-# primero que se le pide a quien reporta algo es justamente eso. Con ellos sale
-# «File "silux-helper.py", line 40» con su línea debajo, igual que si viniera
-# de un archivo.
+# The name and `linecache` aren't decoration: without them a failure's
+# traceback says «File "<string>", line 40» with no text for the line, and
+# that's the first thing asked of whoever reports something. With them it
+# says «File "silux-helper.py", line 40» with its line below, as if it came
+# from a file.
 #
-# El `excepthook` es la otra mitad y hace falta hasta Python 3.12. Quien pinta
-# una excepción que nadie atrapa es, hasta esa versión, el escritor en C, y ese
-# busca el código abriendo el archivo por su nombre: como aquí no hay archivo,
-# se queda sin línea aunque `linecache` la tenga. El módulo `traceback` sí lo
-# consulta. En 3.13 el camino por defecto ya pasa por ahí y esto sobra, pero el
-# suelo declarado es 3.10 y es el Python que va dentro del AppImage.
-# `SystemExit` no pasa por el hook, así que los guiones que avisan con
-# `raise SystemExit("...")` siguen sacando su mensaje a secas.
+# The `excepthook` is the other half, needed up to Python 3.12: until then
+# the C writer prints an uncaught exception and looks the code up by opening
+# the file by its name, so with no file it has no line even if `linecache`
+# has it. The `traceback` module does look there. From 3.13 the default path
+# already goes that way, but the declared floor is 3.10, the Python inside
+# the AppImage. `SystemExit` doesn't go through the hook, so scripts that
+# warn with `raise SystemExit("...")` still print their bare message.
 BOOTSTRAP = """\
 import linecache, sys, traceback
 _name, _source = sys.argv[1], sys.argv[2]
@@ -89,26 +86,25 @@ exec(compile(_source, _name, "exec"), {"__name__": "__main__", "__file__": _name
 
 def inline_command(interpreter: str, name: str, source: str,
                    *arguments: str) -> list[str]:
-    """La orden que ejecuta `fuente` sin que exista como archivo.
+    """The command that runs `source` without it existing as a file.
 
-    Es lo que evita que en la línea de `pkexec` aparezca una ruta que el
-    usuario pueda reescribir. Lo que va por `argv` queda fijado por el
-    `exec()` y nadie lo puede cambiar después; un archivo, sí.
+    It keeps a path the user could rewrite out of `pkexec`'s command line.
+    What goes by `argv` is fixed by `exec()` and nobody can change it later;
+    a file can be.
     """
     # `-I`: as root, no PYTHONPATH, PYTHONSTARTUP, user site-packages or
     # current folder, whatever pkexec left in the environment.
     return [interpreter, "-I", "-c", BOOTSTRAP, name, source, *arguments]
 
 
-# Lo que dejaban en la caché las versiones que copiaban los guiones ahí para
-# lanzarlos con pkexec. Ya no las escribe nadie y no las ejecuta nadie, pero
-# eran la superficie del agujero y no hay motivo para dejarlas en el disco de
-# quien actualice.
+# What the versions that copied the scripts into the cache to launch them
+# with pkexec left there. Nothing writes or runs them now, but they were the
+# hole's surface and there's no reason to leave them on an updater's disk.
 OLD_COPIES = ("helper.py", "instalar.py", "cargar_modulo.py")
 
 
 def clean_old_copies() -> None:
-    """Borra los guiones que las versiones anteriores dejaban en la caché."""
+    """Delete the scripts earlier versions left in the cache."""
     folder = _cache_dir()
     for name in OLD_COPIES:
         try:
@@ -116,28 +112,27 @@ def clean_old_copies() -> None:
         except OSError:
             pass
     try:
-        folder.rmdir()          # solo si no queda nada más dentro
+        folder.rmdir()          # only if nothing else is left inside
     except OSError:
         pass
 
 
 def interpreter() -> str:
-    """Con qué Python se lanza por pkexec un guion que va por `argv`.
+    """Which Python pkexec launches a script passed by `argv` with.
 
-    Desde un AppImage el de dentro no vale, por dos motivos distintos y los dos
-    insalvables:
+    From an AppImage the one inside won't do, for two different reasons,
+    both insurmountable:
 
-    * El punto de montaje va con `nosuid`, y pkexec se niega a ejecutar nada de
-      un sistema de archivos así. Deniega antes de preguntar, que es por lo que
-      no llegaba a salir el diálogo de la contraseña.
-    * El montaje es de FUSE y pertenece al usuario, así que **root ni siquiera
-      puede leer dentro**.
+    * The mount point is `nosuid`, and pkexec refuses to run anything from
+      such a filesystem. It denies before asking, which is why the password
+      dialog never appeared.
+    * The mount is FUSE and belongs to the user, so **root can't even read
+      inside it**.
 
-    Así que se usa el del sistema, al que le basta la biblioteca estándar.
-    Fuera del AppImage vale el nuestro, pero solo si no lo puede reescribir el
-    usuario: el de un entorno virtual suyo lo es, y entonces la ruta que recibe
-    pkexec vuelve a ser sustituible, que es justo lo que se está quitando de en
-    medio.
+    So the system's is used, for which the standard library is enough.
+    Outside an AppImage ours will do, but only if the user can't rewrite it:
+    a virtual environment of theirs can be, and then the path pkexec gets
+    becomes replaceable again, which is exactly what's being removed.
     """
     for path in SYSTEM_PYTHON:
         if os.path.exists(path):
@@ -161,14 +156,14 @@ def pkexec_inline(name: str, source: str, *args: str) -> list[str]:
 
 
 def writable_by_user(path) -> bool:
-    """Si este usuario puede cambiar lo que hay en esa ruta.
+    """Whether this user can change what's at that path.
 
-    Mira también las carpetas de encima: poder escribir el directorio permite
-    sustituir el archivo entero aunque el archivo no se deje tocar.
+    The folders above are looked at too: being able to write the directory
+    allows replacing the whole file even if the file itself can't be touched.
     """
     if already_root():
-        # Como root todo es escribible y la pregunta no significa nada; y si
-        # somos root no hay pkexec de por medio que proteger.
+        # As root everything is writable and the question means nothing; and
+        # as root there's no pkexec in between to protect.
         return False
     target = pathlib.Path(path).resolve()
     if target.exists() and os.access(target, os.W_OK):
@@ -179,43 +174,43 @@ def writable_by_user(path) -> bool:
 
 HELPER = pathlib.Path(__file__).resolve().parent / "helper.py"
 
-# El ayudante instalado en el sistema, si alguien pulsó el botón de permisos
-# permanentes. Se prefiere al del repositorio porque trae su propia acción de
-# polkit: la ventana de la contraseña dice qué se lee, con nuestras palabras.
-# Lo instala `silux/privileged/instalar.py`, que es también quien explica por qué
-# tiene que vivir en un sitio que el usuario no pueda escribir.
+# The helper installed in the system, if someone pressed the permanent
+# permissions button. Preferred to the repository's because it brings its own
+# polkit action: the password window says what's read, in our words.
+# `silux/privileged/instalar.py` installs it, and also explains why it must
+# live where the user can't write.
 INSTALLED_HELPER = pathlib.Path("/usr/local/libexec/silux/silux-helper")
-# Su acción de polkit. Sin ella el ayudante instalado sigue ejecutándose,
-# pero por la acción genérica, que enseña la orden y no qué se lee. Las dos rutas las escribe `instalar.py` y hay un test que
-# vigila que no se separen de estas.
+# Its polkit action. Without it the installed helper still runs, but through
+# the generic action, which shows the command and not what's read. Both paths
+# are written by `instalar.py`, and a test keeps them from drifting apart.
 INSTALLED_POLICY = pathlib.Path(
     "/usr/share/polkit-1/actions/org.silux.helper.policy")
 
 DEFAULT_TIMEOUT = 15.0
-# Autenticarse puede tardar lo que el usuario tarde en teclear.
+# Authenticating may take as long as the user takes to type.
 CONNECT_TIMEOUT = 120.0
 
 
 class HelperError(RuntimeError):
-    """No se pudo hablar con el ayudante."""
+    """Couldn't talk to the helper."""
 
 
 class HelperUnavailable(HelperError):
-    """Falta pkexec o el propio ayudante: no hay nada que intentar."""
+    """pkexec or the helper itself is missing: there's nothing to try."""
 
 
 class HelperDenied(HelperError):
-    """El usuario canceló el diálogo o no está autorizado."""
+    """The user cancelled the dialog or isn't authorized."""
 
 
 def _of_this_machine(*paths: pathlib.Path) -> tuple[pathlib.Path, ...]:
     """The installed helper's files as the machine being read has them.
 
-    They are files of the machine: with a dump mounted, they are read inside
-    it, and a dump has none of this machine's helper. Read straight, a helper
-    installed here and older than the code made every dump's photo say
-    «outdated», and five tests failed on the author's machine only. Not by
-    `sysroot.path`, which only moves what a dump records (/sys, /proc, /etc).
+    They're files of the machine: with a dump mounted, they're read inside
+    it, and a dump has none of this machine's helper. Read directly, a helper
+    installed here and older than the code made every dump's snapshot say
+    «outdated». Not through `sysroot.path`, which only moves what a dump
+    records (/sys, /proc, /etc).
     """
     base = sysroot.root()
     if base is None:
@@ -227,16 +222,16 @@ class PrivilegedClient:
     def __init__(self) -> None:
         self._process: Optional[subprocess.Popen] = None
         self._last_error: Optional[str] = None
-        # Se enciende cuando el ayudante instalado resulta ser de una versión
-        # anterior: a partir de ahí se usa el que viaja por argv, que siempre
-        # es el de este programa. Cuesta una contraseña por arranque, que es
-        # mejor que una función que no va y no dice por qué.
+        # Set when the installed helper turns out to be an older version: from
+        # then on the one travelling by argv is used, which is always this
+        # program's. It costs a password per start, better than a feature that
+        # doesn't work and doesn't say why.
         self._skip_installed = False
         # One password window per request: once it has failed, whatever the
         # reason, no other one opens until the user asks again.
         self._failure: Optional[HelperError] = None
 
-    # -- estado -------------------------------------------------------------
+    # -- state --------------------------------------------------------------
 
     @staticmethod
     def supported() -> bool:
@@ -244,7 +239,7 @@ class PrivilegedClient:
 
     @staticmethod
     def empaquetado() -> bool:
-        """Si el programa corre desde dentro de un AppImage."""
+        """Whether the program runs from inside an AppImage."""
         return bool(os.environ.get("APPIMAGE")) or "/.mount_" in sys.executable
 
     def connected(self) -> bool:
@@ -258,10 +253,10 @@ class PrivilegedClient:
         """The user asked for permissions: `connect` may open the window again."""
         self._failure = None
 
-    # -- ciclo de vida ------------------------------------------------------
+    # -- lifecycle ----------------------------------------------------------
 
     def connect(self) -> None:
-        """Pide autorización y deja el ayudante escuchando. Bloquea."""
+        """Ask for authorization and leave the helper listening. Blocks."""
         if self.connected():
             return
         if self._failure is not None:
@@ -273,8 +268,8 @@ class PrivilegedClient:
             raise
 
     def _open(self) -> None:
-        # Aquí es donde las versiones anteriores escribían la copia, así que
-        # aquí es donde toca recogerla.
+        # This is where earlier versions wrote the copy, so this is where it's
+        # collected.
         clean_old_copies()
         if not self.supported():
             raise HelperUnavailable(
@@ -303,7 +298,7 @@ class PrivilegedClient:
                 code = process.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 code = None
-            # 126 = el usuario canceló el diálogo; 127 = no autorizado.
+            # 126 = the user cancelled the dialog; 127 = not authorized.
             if code in (126, 127):
                 raise HelperDenied("Autorización cancelada o denegada.") from None
             if code == 1 and self.empaquetado():
@@ -316,12 +311,11 @@ class PrivilegedClient:
             self.close()
             raise HelperError("el ayudante no arrancó con privilegios")
 
-        # Y que sea el de esta versión. Instalar los permisos permanentes deja
-        # una copia en /usr/local/libexec que no la actualiza nadie: quien los
-        # diera hace meses seguiría hablando con aquel ayudante, y lo que este
-        # programa le pidiera de nuevo —una acción, un registro— saldría
-        # rechazado con un mensaje que no menciona la causa. Se cayó justo así
-        # al añadir los registros del voltaje del núcleo.
+        # And that it's this version's. Installing the permanent permissions
+        # leaves a copy in /usr/local/libexec that nobody updates: whoever gave
+        # them months ago would still talk to that helper, and whatever this
+        # program asked of it anew (an action, a register) would be refused
+        # with a message that doesn't mention the cause.
         if reply.get("version", 0) < protocol.HELPER_VERSION and self.installed():
             self.close()
             self._skip_installed = True
@@ -329,12 +323,13 @@ class PrivilegedClient:
 
     @staticmethod
     def installed() -> bool:
-        """Si el ayudante del sistema está puesto, con su acción de polkit.
+        """Whether the system helper is in place, with its polkit action.
 
-        La política cuenta: es lo que hace que la ventana de la contraseña diga
-        qué se lee, que es el motivo de instalar nada. Sin ella el ayudante se ejecuta igual, pero el botón de permisos
-        permanentes se escondía diciendo que ya estaba hecho cuando faltaba la
-        mitad. `instalar.instalado()` ya miraba las dos.
+        The policy counts: it's what makes the password window say what's
+        read, the reason to install anything. Without it the helper runs all
+        the same, but the permanent permissions button hid itself saying it
+        was done with half missing. `instalar.installed()` already looked at
+        both.
         """
         helper, policy = _of_this_machine(INSTALLED_HELPER, INSTALLED_POLICY)
         return (helper.is_file()
@@ -343,25 +338,25 @@ class PrivilegedClient:
 
     @staticmethod
     def _body(text: str) -> str:
-        """El ayudante sin su primera línea.
+        """The helper without its first line.
 
-        El instalador cambia el shebang por el intérprete clavado, así que dos
-        copias del mismo ayudante difieren siempre en esa línea y solo en esa.
+        The installer replaces the shebang with the pinned interpreter, so two
+        copies of the same helper always differ in that line and only there.
         """
         return text.split("\n", 1)[1] if text.startswith("#!") else text
 
     @classmethod
     def up_to_date(cls) -> bool:
-        """Si el ayudante instalado y su regla son los que trae este programa.
+        """Whether the installed helper and its rule are this program's.
 
-        Se compara el contenido y no un número de versión, y la diferencia
-        importa: un número hay que acordarse de subirlo, y los arreglos que no
-        cambian el contrato —los de seguridad, sobre todo— no lo tocan. El
-        contenido no se olvida de cambiar.
+        The content is compared, not a version number, and the difference
+        matters: a number has to be remembered to be bumped, and fixes that
+        keep the contract (security ones above all) don't touch it. Content
+        doesn't forget to change.
 
-        La regla también: es lo que dice la ventana de la contraseña, y una
-        regla vieja nombraba solo la memoria y los discos cuando el permiso
-        abre además el voltaje, el consumo y el uso de la gráfica.
+        The rule too: it's what the password window says, and an old rule
+        named only memory and disks while the permission also opens voltage,
+        power and graphics usage.
         """
         from . import instalar
 
@@ -377,31 +372,30 @@ class PrivilegedClient:
 
     @classmethod
     def needs_reinstall(cls) -> bool:
-        """Hay un ayudante puesto y no es el de este programa.
+        """A helper is installed and it isn't this program's.
 
-        Lo que hay que hacer entonces no es solo dejar de usarlo: hay que
-        sustituirlo. El archivo se queda en /usr/local/libexec siendo de root y
-        con su acción de polkit apuntándole, así que sigue siendo ejecutable
-        con privilegios aunque este programa lo ignore. Y si se instaló con una
-        versión anterior a los arreglos de escalada, no hay ninguna garantía de
-        que lo que hay ahí sea lo que se quiso instalar.
+        Then it isn't enough to stop using it: it must be replaced. The file
+        stays in /usr/local/libexec owned by root, with its polkit action
+        pointing at it, so it's still runnable with privileges even if this
+        program ignores it. And if it was installed by a version before the
+        escalation fixes, there's no guarantee what's there is what was meant
+        to be installed.
         """
         return cls.installed() and not cls.up_to_date()
 
     def _command(self) -> list[str]:
-        """Lo que se le pasa a pkexec, en el orden de preferencia que toca.
+        """What's passed to pkexec, in the order of preference that applies.
 
-        El ayudante instalado va solo, sin intérprete delante: pkexec asocia la
-        autorización a la ruta del programa que ejecuta, así que con `python3`
-        por delante la acción quedaría colgada del intérprete y valdría para
-        cualquier script de la máquina.
+        The installed helper goes alone, with no interpreter in front: pkexec
+        ties the authorization to the path of the program it runs, so with
+        `python3` in front the action would hang off the interpreter and be
+        valid for any script on the machine.
 
-        Y si no está instalado, el ayudante viaja por `argv` y no como archivo.
-        **En esta lista no puede aparecer ninguna ruta que el usuario pueda
-        reescribir**, y hay un test que lo comprueba en las tres órdenes de
-        pkexec que construye el programa.
+        If it isn't installed, the helper travels by `argv`, not as a file.
+        **No path the user can rewrite may appear in this list**, and a test
+        checks it in the three pkexec commands the program builds.
         """
-        # Solo se usa el instalado si es exactamente el de este programa.
+        # The installed one is only used if it's exactly this program's.
         if (self.installed() and self.up_to_date()
                 and not self._skip_installed):
             return [pkexec_path(), str(INSTALLED_HELPER)]
@@ -427,7 +421,7 @@ class PrivilegedClient:
         except (OSError, subprocess.TimeoutExpired):
             process.kill()
 
-    # -- peticiones ---------------------------------------------------------
+    # -- requests -----------------------------------------------------------
 
     def request(self, payload: dict, timeout: float = DEFAULT_TIMEOUT) -> dict:
         process = self._process
@@ -462,7 +456,7 @@ class PrivilegedClient:
             raise HelperError("la respuesta no es un objeto")
         return reply
 
-    # -- operaciones --------------------------------------------------------
+    # -- operations ---------------------------------------------------------
 
     def smbios_table(self) -> bytes:
         reply = self.request({"action": ACTION_SMBIOS})
@@ -480,10 +474,10 @@ class PrivilegedClient:
 
 
     def read_smart(self, device: str) -> tuple[bytes, str]:
-        """Los datos de diagnóstico de un disco, y de qué familia son.
+        """A disk's diagnostic data, and which family it is.
 
-        Devuelve los bytes sin tocar: interpretarlos es cosa de `silux.smart`,
-        que corre sin privilegios.
+        The bytes are returned untouched: interpreting them is `silux.smart`'s
+        job, which runs without privileges.
         """
         reply = self.request({"action": ACTION_SMART, "device": device})
         if not reply.get("ok"):
@@ -492,13 +486,13 @@ class PrivilegedClient:
         return base64.b64decode(reply.get("data", "")), reply.get("kind", "")
 
     def rapl(self) -> dict[str, int]:
-        """Los contadores de energía en microjulios, por zona.
+        """The energy counters in microjoules, per zone.
 
-        En crudo: los vatios son la derivada y eso lo calcula quien llama, que
-        es quien guarda la lectura anterior. Hace falta porque desde el kernel
-        5.10 `energy_uj` no se lee sin privilegios, y en las máquinas donde
-        pasa —AMD sobre todo— el consumo del procesador salía en blanco aunque
-        el usuario hubiera dado los permisos.
+        Raw: watts are the derivative, computed by the caller, which keeps the
+        previous reading. Needed because since kernel 5.10 `energy_uj` can't
+        be read without privileges, and on machines where that applies (AMD
+        above all) the processor's power came out blank even with permissions
+        given.
         """
         reply = self.request({"action": ACTION_RAPL})
         if not reply.get("ok"):
@@ -510,12 +504,12 @@ class PrivilegedClient:
         return {str(k): int(v) for k, v in zones.items() if isinstance(v, int)}
 
     def gpu_pmu(self) -> tuple[int, dict[str, dict[str, int]], dict[str, dict[str, float]]]:
-        """Contadores de la gráfica, en crudo, con su reloj y sus escalas.
+        """The graphics counters, raw, with their clock and scales.
 
-        Los de ocupación son nanosegundos acumulados y los de energía llevan
-        la escala que publica el kernel. Restarlos y convertirlos en un
-        porcentaje o en vatios es cosa de quien llama: el ayudante no
-        interpreta nada.
+        Busy ones are accumulated nanoseconds and energy ones carry the scale
+        the kernel publishes. Subtracting them and turning them into a
+        percentage or watts is the caller's business: the helper interprets
+        nothing.
         """
         reply = self.request({"action": ACTION_GPU_PMU})
         if not reply.get("ok"):
@@ -542,12 +536,11 @@ class PrivilegedClient:
         return clock, clean, scales
 
     def imc(self) -> ImcReading:
-        """Cuánto tráfico lleva movido el controlador de memoria, en crudo.
+        """How much traffic the memory controller has moved, raw.
 
-        Igual que los de la gráfica: contadores que solo suben, con el factor
-        y la unidad que publica el kernel al lado. Los bytes por segundo son
-        la derivada y los calcula quien llama, que es quien guarda la lectura
-        anterior.
+        Like the graphics ones: counters that only go up, with the factor and
+        the unit the kernel publishes next to them. Bytes per second are the
+        derivative, computed by the caller, which keeps the previous reading.
         """
         reply = self.request({"action": ACTION_IMC})
         if not reply.get("ok"):
@@ -581,21 +574,21 @@ class PrivilegedClient:
 
 
 class PmuUnsupported(HelperError):
-    """Esta máquina no publica los contadores que se le pedían.
+    """This machine doesn't publish the counters asked for.
 
-    No es un fallo ni un permiso que falte: es hardware que no los tiene. Sirve
-    para que quien pregunta deje de hacerlo en cada muestreo, y para que el
-    aviso salga en gris y no en ámbar.
+    Not a failure nor a missing permission: hardware that doesn't have them.
+    It lets the asker stop asking every sample, and the notice show in grey
+    rather than amber.
     """
 
 
 class ImcReading(NamedTuple):
-    """Lo que el ayudante devuelve del controlador de memoria, sin interpretar.
+    """What the helper returns from the memory controller, uninterpreted.
 
-    `counters` son cuentas acumuladas desde que se abrió cada contador, y
-    `scales` y `units` es lo que el kernel publica para convertirlas. Se
-    guardan juntas porque separadas no significan nada: una cuenta sin su
-    escala no es un tamaño.
+    `counters` are counts accumulated since each counter was opened, and
+    `scales` and `units` what the kernel publishes to convert them. Kept
+    together because apart they mean nothing: a count without its scale
+    isn't a size.
     """
 
     monotonic_ns: int
@@ -606,5 +599,5 @@ class ImcReading(NamedTuple):
 
 
 def already_root() -> bool:
-    """Si el programa ya corre como root, no hace falta ningún ayudante."""
+    """If the program already runs as root, no helper is needed."""
     return os.geteuid() == 0

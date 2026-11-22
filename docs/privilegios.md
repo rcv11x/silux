@@ -104,11 +104,11 @@ instalado si es exactamente el suyo), y lo dicen Inicio, los avisos, los
 candados y la barra de abajo: lo que lo arregla es «Actualizar el ayudante»,
 que lo sustituye.
 
-El texto de la regla va en `instalar.MENSAJES`, en español y en inglés, porque
+El texto de la regla va en `instalar.MESSAGES`, en español y en inglés, porque
 la escribe root sin poder leer el AppImage; `tests/test_privileged.py` lo
 compara con `perm.polkit.message` de `es.json` y `en.json`. polkit elige el
 `<message>` por el idioma de la sesión, y sin uno de ese idioma usa el que no
-lleva `xml:lang`, el español. `PrivilegedClient.al_dia()` compara también la
+lleva `xml:lang`, el español. `PrivilegedClient.up_to_date()` compara también la
 regla instalada, así que cambiar el texto ofrece actualizar el ayudante a
 quien ya lo tenía.
 

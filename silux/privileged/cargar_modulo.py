@@ -1,24 +1,25 @@
-"""Carga un módulo de sensores del kernel y lo deja puesto para el arranque.
+"""Loads a kernel sensor module and keeps it for the next boot.
 
-El programa ya detecta qué módulo daría datos que faltan y lo dice: «cargando
-drivetemp tendrías la temperatura de los discos SATA». Eso deja al usuario con
-una orden que copiar a una terminal, y a la mayoría ahí se le acaba el camino.
+The program already detects which module would give missing data and says
+so: «loading drivetemp you'd have the SATA disks' temperature». That leaves
+the user with a command to copy into a terminal, and for most the road ends
+there.
 
-Hace dos cosas: `modprobe` para ahora y una línea en `/etc/modules-load.d/`
-para los arranques siguientes. Lo segundo es la mitad que importa —un
-`modprobe` suelto se pierde al reiniciar— y es también la que nadie recuerda.
+It does two things: `modprobe` for now and a line in `/etc/modules-load.d/`
+for the following boots. The second is the half that matters (a lone
+`modprobe` is lost on reboot) and also the one nobody remembers.
 
-**El nombre del módulo no viene de fuera.** Se comprueba contra la lista de
-abajo antes de tocar nada: un ayudante que corre como root y carga el módulo
-que le digan es un ayudante que carga cualquier módulo del sistema, y eso no
-es lo que hace falta aquí. La lista son los que el propio programa llega a
-sugerir, y solo leen sensores.
+**The module's name doesn't come from outside.** It's checked against the
+list below before touching anything: a helper running as root that loads
+whatever module it's told loads any module on the system, which isn't what's
+needed. The list is what the program itself may suggest, and they only read
+sensors.
 
     sudo python3 -m silux.privileged.cargar_modulo drivetemp
 
-Vive dentro del paquete y no importa nada de `silux` por lo mismo que
-`instalar.py`: desde un AppImage se copia como archivo suelto fuera del punto
-de montaje, donde el resto del paquete no está.
+It lives in the package and imports nothing from `silux` for the same
+reason as `instalar.py`: from an AppImage it's copied as a loose file
+outside the mount point, where the rest of the package isn't.
 """
 
 from __future__ import annotations
@@ -31,16 +32,16 @@ import subprocess
 import sys
 import tempfile
 
-# Los que el programa sugiere, y nada más. Todos son de solo lectura: leen un
-# chip de sensores o el SPD de la memoria, y ninguno cambia configuración.
+# What the program suggests, and nothing else. All read-only: they read a
+# sensor chip or the memory's SPD, and none changes any setting.
 ALLOWED = frozenset({
-    # temperatura de los discos SATA
+    # the SATA disks' temperature
     "drivetemp",
-    # el chip de identificación de la memoria
+    # the memory's identification chip
     "spd5118", "ee1004", "at24",
-    # los buses por los que se llega a ese chip
+    # the buses that chip is reached over
     "i2c-piix4", "i2c-i801", "i2c-dev",
-    # Super I/O de las placas más comunes, por si algún día se sugieren
+    # the most common boards' Super I/O, in case they're suggested one day
     "nct6775", "nct6683", "it87", "w83627ehf", "f71882fg",
 })
 
@@ -55,17 +56,17 @@ def _modprobe() -> str:
             return path
     raise SystemExit("No encuentro modprobe en " + ", ".join(MODPROBE) + ".")
 
-# Un nombre de módulo del kernel no lleva nada más que esto. La comprobación
-# va antes de la lista blanca y no en su lugar: si algún día alguien amplía la
-# lista con una variable, el nombre sigue sin poder ser una orden de shell.
+# A kernel module name carries nothing but this. The check goes before the
+# allow list, not instead of it: if someone ever builds the list from a
+# variable, the name still can't be a shell command.
 NAME = re.compile(r"^[a-z0-9][a-z0-9_-]{0,31}$")
 
 
 def is_allowed(module: str) -> bool:
-    """Si este ayudante sabe cargar ese módulo.
+    """Whether this helper can load that module.
 
-    Lo pregunta la interfaz para decidir si pone el botón: un aviso con un
-    botón que va a fallar es peor que un aviso con una orden que copiar.
+    The interface asks, to decide whether to show the button: a notice with
+    a button that will fail is worse than a notice with a command to copy.
     """
     return bool(NAME.match(module)) and module in ALLOWED
 
@@ -90,10 +91,10 @@ def load(module: str) -> None:
 
 
 def _persist(module: str) -> None:
-    """Deja el módulo en la lista de los que se cargan al arrancar.
+    """Add the module to the list of those loaded at boot.
 
-    Se conserva lo que ya hubiera en el archivo: puede haber otro módulo
-    puesto por una sesión anterior, y reescribirlo entero lo perdería.
+    What the file already holds is kept: another module may be there from
+    an earlier session, and rewriting it whole would lose it.
     """
     TARGET.parent.mkdir(parents=True, exist_ok=True)
     listed = []
