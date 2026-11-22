@@ -1363,6 +1363,8 @@
   "report.preview.save": "Save…",
   "report.preview.title": "The machine report",
   "sensor.core": "Core {n}",
+  "sensor.core.e": "E-core {n}",
+  "sensor.core.p": "P-core {n}",
   "sensor.cores": "Cores",
   "sensor.current": "Current",
   "sensor.dev.adapter": "Power adapter",

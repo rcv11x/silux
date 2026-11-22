@@ -409,6 +409,7 @@ class HwmonSensors(Provider):
 
         sensors = self._without_fillers(self._read_hwmon(cpu_name, board_name, gpu_names))
         sensors = self._without_repeats(sensors)
+        sensors = self._with_core_types(draft, sensors)
         sensors += list(self._read_power_supplies())
         if not sensors:
             return
@@ -418,6 +419,22 @@ class HwmonSensors(Provider):
         self._fill_cpu(draft, sensors)
         draft.driver_hints.extend(self._missing_drivers(
             sensors, laptop=draft.board.chassis in PORTABLE_CHASSIS))
+
+    @staticmethod
+    def _with_core_types(draft: Draft, sensors: list[Sensor]) -> list[Sensor]:
+        """On a hybrid processor, which type of core each core sensor reads:
+        coretemp numbers them by core id («Core 20»), which doesn't say."""
+        types = {cpu.get("core_id"): cpu.get("type_key") for cpu in draft.logical.values()}
+        if len({t for t in types.values() if t}) < 2:
+            return sensors
+        out = []
+        for sensor in sensors:
+            if (sensor.chip in CPU_CHIPS
+                    and (match := _CORE_LABEL.match(sensor.chip_label or ""))
+                    and types.get(int(match.group(1))) in ("performance", "efficiency")):
+                sensor = dataclasses.replace(sensor, core_type=types[int(match.group(1))])
+            out.append(sensor)
+        return out
 
     # -- reading ------------------------------------------------------------
 

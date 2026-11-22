@@ -488,7 +488,9 @@ def sensor_label(sensor) -> str:
             number = int(match.group(1))
             return _("sensor.package") if number == 0 else f'{_("sensor.package")} {number}'
         if (match := _CORETEMP_CORE.match(sensor.label)):
-            return _("sensor.core").format(n=int(match.group(1)))
+            key = {"performance": "sensor.core.p", "efficiency": "sensor.core.e"}.get(
+                sensor.core_type or "", "sensor.core")
+            return _(key).format(n=int(match.group(1)))
     return sensor.label
 
 

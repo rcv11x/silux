@@ -1869,6 +1869,9 @@ class Sensor:
     # decides on a label («Package id 0», «Vcore») looks at this, never at
     # `label`, which may be one Silux made up in the interface's language.
     chip_label: Optional[str] = None
+    # On a hybrid processor, the type of the core a per-core sensor reads:
+    # «performance» or «efficiency», as `CpuType.key`.
+    core_type: Optional[str] = None
 
     @property
     def unit(self) -> str:

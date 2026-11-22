@@ -1363,6 +1363,8 @@
   "report.preview.save": "Guardar…",
   "report.preview.title": "El informe del equipo",
   "sensor.core": "Núcleo {n}",
+  "sensor.core.e": "Núcleo E {n}",
+  "sensor.core.p": "Núcleo P {n}",
   "sensor.cores": "Núcleos",
   "sensor.current": "Corriente",
   "sensor.dev.adapter": "Adaptador de corriente",
