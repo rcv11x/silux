@@ -126,7 +126,7 @@ La unidad mínima que viaja entre memoria y caché. Leer un solo byte trae la l�
 ## Placa base
 
 QEMU Standard PC (i440FX + PIIX, 1996)
-BIOS heredada · Otro
+Otro
 BIOS heredada
 
 ### Placa base

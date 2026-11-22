@@ -1004,8 +1004,8 @@ class GpuSection(QWidget):
                     fila, columna, _("gpu.codec.yes" if puede else "gpu.codec.no"))
 
     def _apply_badges(self, gpu: Gpu) -> None:
+        # The codename is in the subtitle, with the maker and the link.
         chips = [c for c in (
-            gpu.codename,
             " · ".join(p for p in (gpu.driver, render.gpu_driver_version(gpu)) if p)
             if gpu.driver else None,
             render.size(gpu.memory.total_bytes) if gpu.memory.total_bytes else None,

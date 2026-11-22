@@ -162,7 +162,7 @@ La unidad mínima que viaja entre memoria y caché. Leer un solo byte trae la l�
 ## Placa base
 
 ASUS H110M-D
-Intel H110 · UEFI (64 bits) · Sobremesa
+Sobremesa
 Intel H110 · UEFI (64 bits)
 
 ### Placa base

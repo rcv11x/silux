@@ -161,7 +161,7 @@ La unidad mínima que viaja entre memoria y caché. Leer un solo byte trae la l�
 ## Placa base
 
 MSI A320M-A PRO (MS-7C51)
-AMD A320 · UEFI (64 bits) · Sobremesa
+Sobremesa
 AMD A320 · UEFI (64 bits)
 
 ### Placa base
@@ -271,7 +271,7 @@ El ayudante que se lanza solo sabe leer esa tabla y unos registros del procesado
 
 AMD Radeon Vega 3 Graphics
 MSI · Picasso/Raven 2 · PCIe 3.0 × 16
-Picasso/Raven 2 · amdgpu · Mesa 26.3.1 · 512 MiB · 3 CU · integrada · principal
+amdgpu · Mesa 26.3.1 · 512 MiB · 3 CU · integrada · principal
 - Uso: 15 %
 - Frecuencia: 400 MHz (memoria 933 MHz)
 - Temperatura: 30 °C

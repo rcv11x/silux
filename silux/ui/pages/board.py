@@ -189,6 +189,7 @@ class BoardPage(ScrollPage):
 
         self.title.setText(render.board_name(board))
         self.subtitle.setText(self._subtitle(board))
+        self.subtitle.setVisible(bool(self.subtitle.text()))
         self._apply_badges(board)
 
         d = render.DASH
@@ -346,9 +347,12 @@ class BoardPage(ScrollPage):
 
     @staticmethod
     def _subtitle(board: Board) -> str:
-        parts = [board.chipset, render.firmware_type(board),
-                 _(board.chassis) if board.chassis else None]
-        return " · ".join(p for p in parts if p) or _("board.nofirmware")
+        # The chipset and the firmware are in the chips below.
+        if board.chassis:
+            return _(board.chassis)
+        if board.chipset or render.firmware_type(board):
+            return ""
+        return _("board.nofirmware")
 
     @staticmethod
     def _secure_boot(board: Board) -> str:

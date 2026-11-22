@@ -163,7 +163,7 @@ La unidad mínima que viaja entre memoria y caché. Leer un solo byte trae la l�
 ## Placa base
 
 Lenovo V130-15IGM
-UEFI (64 bits) · Portátil
+Portátil
 UEFI (64 bits) · TPM 2.0 · Arranque seguro
 
 ### Placa base
@@ -259,7 +259,7 @@ El ayudante que se lanza solo sabe leer esa tabla y unos registros del procesado
 
 UHD Graphics 600
 Lenovo · GeminiLake
-GeminiLake · i915 · Mesa 25.2.6 · 12 EU · integrada · principal
+i915 · Mesa 25.2.6 · 12 EU · integrada · principal
 - Uso: (necesita permisos) (con permisos)
 - Frecuencia: 100 MHz
 - Temperatura del paquete: 41 °C (compartida con la CPU)
