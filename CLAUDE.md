@@ -263,7 +263,8 @@ silux/
                    icons.py dibuja los iconos de la barra lateral y la marca
                    (el logo vive en ui/assets/ y es uno solo para todo);
                    background.py espera a pkexec fuera del hilo de la
-                   interfaz, y dialogs.py son los diálogos de la ventana
+                   interfaz, dialogs.py son los diálogos de la ventana y
+                   welcome.py la bienvenida de la primera vez
 ```
 
 Cada módulo, comentado: [docs/arquitectura.md](docs/arquitectura.md#el-reparto-comentado).
@@ -329,7 +330,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); el código nuevo, en inglés (ver «Código»). Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-1858 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+1879 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
@@ -399,6 +400,12 @@ cambia el otro.
   ha medido, y se espera respuesta.
 - **Lo que depende de que alguien se acuerde de subir un número no es una
   comprobación.** Se compara el contenido.
+- **GitHub ordena las releases por el día del commit de su etiqueta y, dentro
+  del mismo día, por el nombre como texto**: «0.4.0rc10» salió debajo de
+  «0.4.0rc9» y «0.4.0rc8», publicadas el mismo día. No se publica una versión
+  el día de otra cuyo nombre ordene por encima como texto, y después de
+  publicar se mira que salga la primera en la página. «Buscar ahora» compara
+  versiones, no ese orden (`updates.latest`).
 - Lo local de quien trabaja aquí (sus notas, su equipo, su forma de trabajar)
   va en `CLAUDE.local.md`, que no se publica.
 
