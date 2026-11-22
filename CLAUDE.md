@@ -26,6 +26,7 @@ python3 tools/gen_referencias_cpu.py --libcpuid DIR  # las 411 CPU de referencia
 python3 tools/gen_memory_limits.py --intel-desde DIR  # el máximo de memoria por modelo
 python3 tools/gen_smart_units.py       # las unidades de cada contador SMART, de smartmontools
 python3 tools/gen_jep106.py            # los fabricantes de memoria (JEP106), de OpenOCD
+python3 tools/gen_intel_gpus.py        # el nombre comercial de cada gráfica de Intel, de Mesa
 python3 tools/gen_lang.py --write      # poner al día los archivos de idioma
 python3 tools/medir_referencia.py      # rehacer la escala de puntuación
 python3 tools/anadir_puntuacion.py INFORMES  # sumar medidas ajenas a la tabla
@@ -271,10 +272,10 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
   que no dependen de la zlib de cada distribución. `score.VERSION` y
   `db/scores.json` van siempre en el mismo commit. [docs/benchmark.md](docs/benchmark.md)
 - Qué se ha validado contra qué pieza y qué se escribió a ciegas (NVIDIA sí,
-  ARM no): [docs/equipos-probados.md](docs/equipos-probados.md). Hay catorce
+  ARM no): [docs/equipos-probados.md](docs/equipos-probados.md). Hay dieciséis
   equipos volcados para la suite: dos del i5-10400 (en reposo y con turbo),
   el Ryzen 7 5800X3D, una máquina QEMU/KVM como la de un probador
-  (`qemu-kvm`, hecha aquí con QEMU), y diez importados del anexo de un
+  (`qemu-kvm`, hecha aquí con QEMU), y doce importados del anexo de un
   informe: un ThinkPad T14 (`i5-1135g7`), un sobremesa con Gentoo,
   OpenRC y una RTX 4060 (`i7-10700f`), un Lenovo LOQ híbrido con una RTX
   4050 (`i5-12450h`), un portátil con un Celeron N4000 (`celeron-n4000`),
@@ -283,8 +284,9 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
   firmware (`ryzen3-4100`), un i5-3330 con DDR3 de dos velocidades
   (`i5-3330`), un Acer con DDR3L y una partición de intercambio
   (`i5-5200u`), un ThinkPad T480s con batería y umbrales de carga
-  (`i5-8350u`) y un Core 2 Duo con antiX, runit, BIOS heredada y una
-  Quadro con nouveau (`core2-p8400`).
+  (`i5-8350u`), un Core 2 Duo con antiX, runit, BIOS heredada y una
+  Quadro con nouveau (`core2-p8400`), un Celeron 560 de un núcleo con DDR2
+  (`celeron-560`) y un ASUS con Optimus y la GeForce dormida (`i7-4710hq`).
 - Lo que enseña cada volcado, página a página, está en
   `tests/fixtures/screens/`: un cambio que lo altera falla en
   `test_screen_references` hasta que se rehace con
@@ -294,8 +296,9 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
   con cada volcado. Una marca sale de `render.maker`; un chip, de
   `render.chip_name`.
 - Lo que se toma de otro proyecto (hoy, las tablas de libcpuid y CPU-X, la
-  base de discos de smartmontools para las unidades del SMART y la lista
-  JEP-106 de OpenOCD para los fabricantes de memoria) lleva
+  base de discos de smartmontools para las unidades del SMART, la lista
+  JEP-106 de OpenOCD para los fabricantes de memoria y las tablas PCI de
+  Mesa para el nombre de las gráficas de Intel) lleva
   su aviso en `silux/db/THIRD_PARTY_NOTICES.md`, que va en pip y en los
   AppImage; `tests/test_avisos_de_terceros.py` lo compara con las fuentes que
   declara la tabla. Un procesador que no está en ella dice «no está en la
@@ -318,7 +321,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); el código nuevo, en inglés (ver «Código»). Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-1814 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+1833 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
