@@ -462,6 +462,8 @@
   "deps.nvml": "NVML, the NVIDIA driver's library, is missing: without it the card's usage, temperature, power, clocks and memory do not show.",
   "deps.pciids": "pci.ids is missing: PCI devices show their number and not their name.",
   "deps.pkexec": "pkexec is missing: there is no way to ask for permissions, and what needs them does not show (memory modules, voltage, disk health).",
+  "deps.pkexec.nosystemd": "Without systemd, polkit also needs elogind and a polkit agent in the session to ask for the password; then log in again.",
+  "deps.pkexec.nosystemd.debian": "Without systemd, polkit also needs libpam-elogind, which brings elogind, and a polkit agent in the session to ask for the password, such as lxpolkit; then log in again.",
   "deps.pnpids": "pnp.ids is missing: each monitor's maker shows its three-letter code and not its name.",
   "deps.python3": "The system's Python is missing: from the AppImage the permissions helper runs with it, and without it they cannot be given.",
   "deps.systemctl": "systemctl is missing: boot times do not show.",

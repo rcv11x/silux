@@ -382,6 +382,16 @@ De la quinta auditoría, sin comprobar uno a uno si siguen igual:
 
 ## Propuestas sin aplicar
 
+* **El informe con permisos donde no hay polkit** (propuesta, sin escribir:
+  toca privilegios). En antiX y otros sistemas sin systemd lo correcto es
+  instalar `pkexec`, `libpam-elogind` y un agente de polkit
+  ([dependencias.md](dependencias.md)). `sudo silux --report` funcionaría,
+  pero corre el programa entero como root (Qt, los analizadores de SMBIOS,
+  SPD y EDID, los hijos que preguntan a OpenGL y Vulkan), justo lo que el
+  ayudante mínimo evita. La alternativa segura sería que `--report` lanzase el
+  mismo ayudante con `sudo` en vez de `pkexec` cuando falta polkit: el resto
+  seguiría sin privilegios. Falta el visto bueno del autor.
+
 * **La frecuencia media de una Intel por el ayudante** (propuesta, sin
   escribir: toca su lista blanca). Sin permisos, la frecuencia es la media de
   las lecturas de `act_freq` que pillan despierta a la gráfica, cada 250 ms;

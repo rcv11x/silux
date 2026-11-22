@@ -161,18 +161,23 @@ class SystemIdentity(Provider):
 
     @staticmethod
     def _init_system() -> Optional[str]:
-        try:
-            name = os.path.basename(os.readlink(sysroot.path("/proc/1/exe")))
-        except OSError:
-            name = read_text("/proc/1/comm")
-        # OpenRC runs under sysvinit's `init`, which would read «Init: init».
-        # Its runlevels live in /etc, which sysroot translates and a dump
-        # carries (/run is neither, so a test would read this machine's).
-        if name == "init" and os.path.isdir(sysroot.path("/etc/runlevels")):
-            return "openrc"
-        if name == "openrc-init":
-            return "openrc"
-        return name
+        return init_system()
+
+
+def init_system() -> Optional[str]:
+    """What runs as PID 1: «systemd», «runit», «openrc»…"""
+    try:
+        name = os.path.basename(os.readlink(sysroot.path("/proc/1/exe")))
+    except OSError:
+        name = read_text("/proc/1/comm")
+    # OpenRC runs under sysvinit's `init`, which would read «Init: init».
+    # Its runlevels live in /etc, which sysroot translates and a dump
+    # carries (/run is neither, so a test would read this machine's).
+    if name == "init" and os.path.isdir(sysroot.path("/etc/runlevels")):
+        return "openrc"
+    if name == "openrc-init":
+        return "openrc"
+    return name
 
 
 VULNERABILITIES = "/sys/devices/system/cpu/vulnerabilities"

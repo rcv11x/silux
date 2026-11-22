@@ -16,6 +16,7 @@ from ..i18n import _
 from ..model import Need
 from ..privileged.client import PrivilegedClient, already_root
 from .base import Draft, Provider, read_text
+from .system import init_system
 
 # The graphics libraries by their common names.
 GRAPHICS_NAMES = {"vulkan": "Vulkan", "egl": "EGL", "opengl": "OpenGL", "opencl": "OpenCL",
@@ -59,6 +60,18 @@ def _hint(packages: list[str], family) -> str:
     return _("deps.hint.many").format(paquetes=render.enumeration(names))
 
 
+def _without_systemd(family) -> str:
+    """What polkit needs besides pkexec where systemd doesn't run (runit,
+    sysvinit, OpenRC): a logind to know whose session it is, and an agent
+    in that session to ask for the password."""
+    if init_system() == "systemd":
+        return ""
+    # Debian's polkitd depends on «logind», which libpam-elogind provides.
+    if family in ("debian", "ubuntu"):
+        return _("deps.pkexec.nosystemd.debian")
+    return _("deps.pkexec.nosystemd")
+
+
 def _missing(key: str) -> bool:
     """Only what is known to be missing: a dump that didn't record it says
     nothing."""
@@ -73,10 +86,11 @@ class SystemDependencies(Provider):
     def collect(self, draft: Draft) -> None:
         family = system_deps.family(system_deps.read_os_release())
 
-        def note(path: str, key: str, message: str) -> None:
+        def note(path: str, key: str, message: str, more: str = "") -> None:
             package = system_deps.package_text(system_deps.BY_KEY[key], family,
                                                system_deps.nvidia_major())
-            draft.note(path, Need.PACKAGE, message, _hint([package], family))
+            draft.note(path, Need.PACKAGE, message,
+                       " ".join(p for p in (_hint([package], family), more) if p))
 
         if _has_pci() and _missing("pci.ids"):
             note("board.packages.pciids", "pci.ids", _("deps.pciids"))
@@ -92,10 +106,10 @@ class SystemDependencies(Provider):
             self._graphics(draft, family)
         if not already_root():
             if _missing("pkexec"):
-                note("privileged.pkexec", "pkexec", _("deps.pkexec"))
+                note("privileged.pkexec", "pkexec", _("deps.pkexec"), _without_systemd(family))
             if PrivilegedClient.empaquetado() and _missing("python3"):
                 note("privileged.python3", "python3", _("deps.python3"))
-        if os.path.isdir(sysroot.path("/run/systemd/system")) and _missing("systemctl"):
+        if init_system() == "systemd" and _missing("systemctl"):
             note("system.boot.systemctl", "systemctl", _("deps.systemctl"))
         if _missing("kmod"):
             note("system.kmod", "kmod", _("deps.kmod"))

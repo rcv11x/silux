@@ -747,7 +747,12 @@ class SettingsPage(ScrollPage):
         self.permission_state = estado
         insignia, ayuda, tono = ESTADOS_DE_PERMISOS[estado]
         self.permission_badge.poner(_(insignia), tono)
-        self.permission_row.explicacion.setText(_(ayuda))
+        explicacion = _(ayuda)
+        if estado == "unsupported" and snapshot is not None:
+            # What to install on this distribution, as Diagnostics says it.
+            pista = next((n.hint for n in snapshot.notes if n.path == "privileged.pkexec"), "")
+            explicacion = " ".join(p for p in (explicacion, pista) if p)
+        self.permission_row.explicacion.setText(explicacion)
         self.permission_row.explicacion.setVisible(True)
         if boton is None:
             self.permission_button.hide()

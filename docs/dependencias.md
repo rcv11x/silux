@@ -53,6 +53,15 @@ la biblioteca está y no tiene a quién preguntar.
 | `pkexec` | Pedir la contraseña para lo que solo lee root: los módulos de memoria, el voltaje, el diagnóstico de los discos | `pkexec` | `pkexec` | `polkit` | `polkit` | `sys-auth/polkit` | No hay forma de dar permisos (salvo abrir Silux como root) | Sí |
 | `python3` del sistema | Desde el AppImage, el ayudante de permisos se lanza con él: root no puede entrar en el montaje del AppImage | `python3` | `python3` | `python3` | `python` | `dev-lang/python` (el `python3` lo pone su dependencia `dev-lang/python-exec`) | No se pueden dar permisos desde el AppImage | Sí, desde el AppImage |
 
+Sin systemd (runit, sysvinit, OpenRC: antiX, Devuan, Artix) pkexec no basta.
+polkit necesita saber de quién es la sesión, y eso lo da un `logind`. En
+Debian, `polkitd` depende de «logind», que da `libpam-elogind` (trae
+`elogind`, que choca con systemd). Además hace falta un agente de polkit en la
+sesión, que es el que pide la contraseña (`lxpolkit`, `mate-polkit`…): un
+gestor de ventanas como IceWM no arranca ninguno. Después hay que volver a
+iniciar sesión. El aviso de pkexec lo dice en esos sistemas, y Ajustes lo
+repite junto a «No disponible».
+
 ## Programas del sistema
 
 | Qué | Para qué | Debian | Ubuntu | Fedora | Arch | Gentoo | Si falta | ¿Se avisa? |
