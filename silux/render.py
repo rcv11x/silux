@@ -2102,13 +2102,23 @@ def monitor_diagonal(monitor: Optional[Edid]) -> Optional[str]:
     return f'≈ {monitor.diagonal_inches:.0f}"'
 
 
+def monitor_size(monitor: Edid) -> Optional[str]:
+    """The diagonal for the monitors table, or that the EDID gives only the
+    proportion: «16:9», as some TVs write it where the size goes."""
+    if monitor.size_is_ratio:
+        ratio = "16:9" if monitor.width_mm * 9 == monitor.height_mm * 16 else "16:10"
+        return _("gpu.display.size.ratio").format(ratio=ratio)
+    return monitor_diagonal(monitor)
+
+
 def monitor_summary(monitor: Optional[Edid]) -> str:
     """«26.7" · 590 × 334 mm · week 16 of 2024»."""
     if monitor is None:
         return DASH
     inches = monitor_diagonal(monitor)
     measurement = (f"{monitor.width_mm} × {monitor.height_mm} mm"
-              if monitor.width_mm and monitor.height_mm else None)
+              if monitor.width_mm and monitor.height_mm and not monitor.size_is_ratio
+              else None)
     parts = [p for p in (inches, measurement, made(monitor.year, monitor.week)) if p]
     return " · ".join(parts) if parts else DASH
 

@@ -76,6 +76,9 @@ class Edid:
     # don't match the others, the centimetres stay and the diagonal is shown
     # for what it is, approximate.
     size_exact: bool = False
+    # Some TVs put their aspect ratio where the size goes, in centimetres
+    # (16 × 9) or tenfold (160 × 90): a 32" TV read 72.3". No size, then.
+    size_is_ratio: bool = False
     native_width: Optional[int] = None
     native_height: Optional[int] = None
     native_refresh_hz: Optional[float] = None
@@ -107,7 +110,7 @@ class Edid:
     def diagonal_inches(self) -> Optional[float]:
         """The panel's diagonal. One decimal if the sizes are to the
         millimetre; rounded to the inch if there are only centimetres."""
-        if not (self.width_mm and self.height_mm):
+        if not (self.width_mm and self.height_mm) or self.size_is_ratio:
             return None
         diagonal = (self.width_mm ** 2 + self.height_mm ** 2) ** 0.5 / 25.4
         return round(diagonal, 1) if self.size_exact else float(round(diagonal))
@@ -180,6 +183,7 @@ def parse(raw: bytes) -> Optional[Edid]:
         width_mm=width_mm,
         height_mm=height_mm,
         size_exact=exact,
+        size_is_ratio=(width_mm, height_mm) in RATIO_SIZES_MM,
         native_width=width,
         native_height=height,
         native_refresh_hz=refresh,
@@ -259,6 +263,12 @@ def _refresh_range(raw: bytes) -> tuple[Optional[int], Optional[int]]:
         if high:
             return low or None, high
     return None, None
+
+
+# The sizes, in millimetres, that are an aspect ratio and not a panel: 16:9
+# and 16:10 in centimetres, as written or tenfold. A real 72" panel measures
+# 1594 × 897 mm.
+RATIO_SIZES_MM = frozenset({(160, 90), (1600, 900), (160, 100), (1600, 1000)})
 
 
 def _panel_size(raw: bytes) -> tuple[Optional[int], Optional[int], bool]:

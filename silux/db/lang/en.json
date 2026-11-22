@@ -595,6 +595,7 @@
   "gpu.display.refresh": "Refresh",
   "gpu.display.res": "Resolution",
   "gpu.display.size": "Size",
+  "gpu.display.size.ratio": "not given (only {ratio})",
   "gpu.display.unknown": "unidentified",
   "gpu.displays.free": "{n} free outputs: {salidas}",
   "gpu.displays.free.one": "1 free output: {salidas}",
