@@ -81,6 +81,7 @@ GenericName[en]=Hardware information and sensors
 Comment=Qué hardware tienes y qué está haciendo ahora mismo
 Comment[en]=What hardware you have and what it is doing right now
 Exec=@EXEC@
+TryExec=@TRYEXEC@
 Path=@PATH@
 Icon=@ID@
 Terminal=false
@@ -242,6 +243,14 @@ def _split(value: str) -> list[str]:
     return parts
 
 
+def _string_value(value: str) -> str:
+    """A path as a string value of the file: backslashes and control
+    characters escaped, and a leading space kept."""
+    escrito = (value.replace("\\", "\\\\").replace("\n", "\\n")
+               .replace("\t", "\\t").replace("\r", "\\r"))
+    return "\\s" + escrito[1:] if escrito.startswith(" ") else escrito
+
+
 def parse_exec(value: str) -> tuple[str, ...]:
     """The reverse of `exec_line`, without the field codes."""
     empty = re.sub(r"\\(.)", lambda m: "\\" if m.group(1) == "\\" else m.group(0), value)
@@ -254,6 +263,7 @@ def entry_text(launcher: Launcher) -> str:
              .replace("@NAME@", launcher.name)
              .replace("@NAME_EN@", launcher.name_en)
              .replace("@EXEC@", exec_line(launcher.command))
+             .replace("@TRYEXEC@", _string_value(launcher.command[0] if launcher.command else ""))
              .replace("@PATH@", launcher.working_dir)
              .replace("@ID@", launcher.app_id))
     if not launcher.working_dir:
@@ -434,11 +444,11 @@ def status(launcher: Optional[Launcher] = None) -> DesktopStatus:
     number someone would have to remember to bump.
     """
     launcher = launcher or current_launcher()
-    on_the_desktop = shortcut_path(launcher.app_id).is_file()
+    on_the_desktop = on_desktop(launcher.app_id)
     if not launcher.command:
         return DesktopStatus("unsupported", launcher, on_desktop=on_the_desktop)
     text = _read(desktop_path(launcher.app_id))
-    if text is None:
+    if text is None or not in_menu(launcher.app_id):
         return DesktopStatus("missing", launcher, on_desktop=on_the_desktop)
     command, folder = _installed_command(text)
     target = folder or (command[0] if command else "")
@@ -453,6 +463,39 @@ def status(launcher: Optional[Launcher] = None) -> DesktopStatus:
 
 
 # -- installing and removing -------------------------------------------------
+
+
+def set_shortcuts(menu: bool, on_desktop: bool,
+                  launcher: Optional[Launcher] = None) -> None:
+    """Each shortcut on its own: the menu entry and the one on the desktop.
+
+    The icons stay while either needs them. What an older version left is
+    removed whenever something is written.
+    """
+    launcher = launcher or current_launcher()
+    if (menu or on_desktop) and not launcher.command:
+        raise DesktopError("no se sabe dónde está el archivo de este AppImage")
+    for viejo in legacy_files(launcher):
+        viejo.unlink()
+    if menu or on_desktop:
+        render_icons(launcher.app_id)
+    else:
+        for icono in icon_files(launcher.app_id):
+            if icono.exists():
+                icono.unlink()
+    entrada, acceso = desktop_path(launcher.app_id), shortcut_path(launcher.app_id)
+    if menu:
+        write_desktop(launcher)
+        _drop_kde_exclusion(launcher.app_id)
+    elif in_menu(launcher.app_id):
+        # Only a visible one: a file the user hid is theirs, and removing it
+        # could uncover a system entry it was hiding.
+        entrada.unlink()
+    if on_desktop:
+        _write_shortcut(launcher)
+    elif acceso.exists():
+        acceso.unlink()
+    refresh_caches()
 
 
 def uninstall(launcher: Optional[Launcher] = None) -> int:
@@ -478,18 +521,248 @@ def install(launcher: Optional[Launcher] = None,
     leaves it as it is, updated if it exists.
     """
     launcher = launcher or current_launcher()
-    if not launcher.command:
-        raise DesktopError("no se sabe dónde está el archivo de este AppImage")
-    for old in legacy_files(launcher):
-        old.unlink()
-    icons = render_icons(launcher.app_id)
-    entry = write_desktop(launcher)
-    shortcut = shortcut_path(launcher.app_id)
     if on_desktop is None:
-        on_desktop = shortcut.is_file()
-    if on_desktop:
+        on_desktop = shortcut_path(launcher.app_id).is_file()
+    set_shortcuts(True, on_desktop, launcher)
+    return icon_files(launcher.app_id), desktop_path(launcher.app_id)
+
+
+# -- on start -----------------------------------------------------------------
+
+def stale_shortcuts(launcher: Optional[Launcher] = None) -> tuple[bool, bool]:
+    """Which shortcuts of this AppImage to rewrite on start: (menu, desktop).
+
+    One that opens a file that is no longer there (the user moved the
+    AppImage), or that opens this one but is from an older version. Not one
+    the user deleted or hid, and not one that opens another copy that still
+    exists. Only `$APPIMAGE` is looked at: the disk is never searched.
+    """
+    launcher = launcher or current_launcher()
+    if launcher.mode != "appimage" or not launcher.command:
+        return False, False
+
+    def stale(texto: Optional[str]) -> bool:
+        if texto is None:
+            return False
+        orden, carpeta = _installed_command(texto)
+        if (orden, carpeta) == (launcher.command, launcher.working_dir):
+            return texto != entry_text(launcher) or not _icons_up_to_date(launcher.app_id)
+        return not _runs(orden, carpeta)
+
+    app_id = launcher.app_id
+    return (in_menu(app_id) and stale(_read(desktop_path(app_id))),
+            on_desktop(app_id) and stale(_read(shortcut_path(app_id))))
+
+
+def repoint(launcher: Optional[Launcher] = None) -> bool:
+    """Rewrites what `stale_shortcuts` says, and only that, without asking:
+    it is what the user would want. Returns whether anything was written."""
+    launcher = launcher or current_launcher()
+    menu, escritorio = stale_shortcuts(launcher)
+    if not (menu or escritorio):
+        return False
+    for viejo in legacy_files(launcher):
+        viejo.unlink()
+    render_icons(launcher.app_id)
+    if menu:
+        write_desktop(launcher)
+    if escritorio:
         _write_shortcut(launcher)
-    elif shortcut.is_file():
-        shortcut.unlink()
     refresh_caches()
-    return icons, entry
+    return True
+
+
+# -- what the user deleted or hid ---------------------------------------------
+
+def _hidden(texto: str) -> bool:
+    """`Hidden=true` (deleted, says the specification) or `NoDisplay=true`
+    (kept out of the menus), in the entry's own group."""
+    grupo = ""
+    for linea in texto.splitlines():
+        linea = linea.strip()
+        if linea.startswith("["):
+            grupo = linea
+        elif grupo == "[Desktop Entry]" and "=" in linea:
+            clave, valor = (parte.strip() for parte in linea.split("=", 1))
+            if clave in ("Hidden", "NoDisplay") and valor == "true":
+                return True
+    return False
+
+
+def kde_menu_file() -> pathlib.Path:
+    """Where Plasma's menu editor keeps its changes. Deleting an entry there
+    leaves the file and adds an `<Exclude>` with its name."""
+    config = pathlib.Path(os.environ.get("XDG_CONFIG_HOME") or pathlib.Path.home() / ".config")
+    return config / "menus" / "applications-kmenuedit.menu"
+
+
+_EXCLUDE = re.compile(r"(?P<pre>[ \t]*)<Exclude>(?P<body>.*?)</Exclude>(?P<post>\n?)", re.S)
+
+
+def _kde_excluded(app_id: str) -> bool:
+    texto = _read(kde_menu_file())
+    if not texto:
+        return False
+    nombre = f"<Filename>{app_id}.desktop</Filename>"
+    fuera = any(nombre in m.group("body") for m in _EXCLUDE.finditer(texto))
+    # Moved to another submenu is an Exclude in one and an Include in another.
+    dentro = any(nombre in bloque for bloque in re.findall(r"<Include>.*?</Include>", texto, re.S))
+    return fuera and not dentro
+
+
+def _drop_kde_exclusion(app_id: str) -> None:
+    """Turning the menu shortcut on again undoes a delete from Plasma's menu
+    editor; otherwise the switch would say «in the menu» and it would not be."""
+    ruta = kde_menu_file()
+    texto = _read(ruta)
+    nombre = f"<Filename>{app_id}.desktop</Filename>"
+    if not texto or nombre not in texto:
+        return
+
+    def limpiar(m: re.Match) -> str:
+        cuerpo = re.sub(r"\s*" + re.escape(nombre), "", m.group("body"))
+        if cuerpo == m.group("body"):
+            return m.group(0)
+        return "" if not cuerpo.strip() else f"{m.group('pre')}<Exclude>{cuerpo}</Exclude>{m.group('post')}"
+
+    nuevo = _EXCLUDE.sub(limpiar, texto)
+    if nuevo == texto:
+        return
+    import tempfile
+    modo = ruta.stat().st_mode & 0o777
+    descriptor, temporal = tempfile.mkstemp(dir=ruta.parent, prefix=".silux-")
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as archivo:
+            archivo.write(nuevo)
+        os.chmod(temporal, modo)
+        os.replace(temporal, ruta)
+    except OSError:
+        try:
+            os.unlink(temporal)
+        except OSError:
+            pass
+        raise
+
+
+def in_menu(app_id: str = APP_ID) -> bool:
+    """Whether the menu shows this entry: the file is there, not hidden and
+    not deleted from Plasma's menu editor. Deleted by hand it is simply not
+    there: no notice, no error."""
+    texto = _read(desktop_path(app_id))
+    return texto is not None and not _hidden(texto) and not _kde_excluded(app_id)
+
+
+def on_desktop(app_id: str = APP_ID) -> bool:
+    texto = _read(shortcut_path(app_id))
+    return texto is not None and not _hidden(texto)
+
+
+# -- where the AppImage lives -------------------------------------------------
+
+def appimages_dir() -> pathlib.Path:
+    """~/AppImages: where a shortcut can point without breaking, because
+    nobody empties it the way Downloads or a temporary folder get emptied."""
+    return pathlib.Path.home() / "AppImages"
+
+
+def in_appimages(path) -> bool:
+    """Whether the file is in ~/AppImages, as a link or not: the folder is
+    resolved, the file itself is not followed."""
+    return pathlib.Path(os.path.abspath(path)).parent.resolve() == appimages_dir().resolve()
+
+
+def points_here(launcher: Optional[Launcher] = None) -> bool:
+    """Whether a shortcut the user sees opens this copy."""
+    launcher = launcher or current_launcher()
+    app_id = launcher.app_id
+    for visible, ruta in ((in_menu(app_id), desktop_path(app_id)),
+                          (on_desktop(app_id), shortcut_path(app_id))):
+        texto = _read(ruta) if visible else None
+        if texto is not None and _installed_command(texto) == (launcher.command, launcher.working_dir):
+            return True
+    return False
+
+
+@dataclass(frozen=True)
+class Moved:
+    """Where the AppImage is now, and whether the old one is still there
+    (it could not be moved, only copied)."""
+
+    path: pathlib.Path
+    copied: bool
+
+
+def _free_name(carpeta: pathlib.Path, nombre: str) -> pathlib.Path:
+    """The name, or the name with -2, -3… if one with it is already there."""
+    destino = carpeta / nombre
+    raiz, extension = os.path.splitext(nombre)
+    n = 2
+    while destino.exists():
+        destino = carpeta / f"{raiz}-{n}{extension}"
+        n += 1
+    return destino
+
+
+def move_to_appimages(path) -> Moved:
+    """Moves the AppImage into ~/AppImages without overwriting anything.
+
+    A hard link and then removing the old name: the link fails if the name is
+    taken, so another file can never be overwritten, and it is a move when
+    both are on the same file system. Across file systems or without
+    permission to remove the old one, it is copied, and the old one stays.
+    """
+    origen = pathlib.Path(path)
+    carpeta = appimages_dir()
+    carpeta.mkdir(parents=True, exist_ok=True)
+    while True:
+        destino = _free_name(carpeta, origen.name)
+        try:
+            os.link(origen, destino)
+        except FileExistsError:
+            continue
+        except OSError:
+            break
+        try:
+            origen.unlink()
+        except OSError:
+            return Moved(destino, copied=True)
+        return Moved(destino, copied=False)
+    while True:
+        destino = _free_name(carpeta, origen.name)
+        try:
+            with open(origen, "rb") as fuente, open(destino, "xb") as copia:
+                shutil.copyfileobj(fuente, copia, 1 << 20)
+        except FileExistsError:
+            continue
+        except OSError:
+            try:
+                destino.unlink()
+            except OSError:
+                pass
+            raise
+        destino.chmod(0o755)
+        return Moved(destino, copied=True)
+
+
+# What the AppImage's AppRun adds to the environment, pointing inside its
+# mount. Opening the moved copy without them: it sets its own.
+_DEL_MONTAJE = ("PYTHONHOME", "PYTHONPATH", "LD_LIBRARY_PATH", "QT_PLUGIN_PATH",
+                "QT_QPA_PLATFORM_PLUGIN_PATH")
+_DEL_RUNTIME = ("APPIMAGE", "APPDIR", "ARGV0", "OWD")
+
+
+def relaunch_environment(environ: Mapping[str, str]) -> dict[str, str]:
+    """The environment to open another AppImage from this one: what this
+    mount added, taken out again; the rest, as the user had it."""
+    montaje = environ.get("APPDIR") or ""
+    entorno = {k: v for k, v in environ.items() if k not in _DEL_RUNTIME}
+    for variable in _DEL_MONTAJE:
+        if variable not in entorno or not montaje:
+            continue
+        quedan = [parte for parte in entorno[variable].split(os.pathsep)
+                  if parte and not parte.startswith(montaje)]
+        if quedan:
+            entorno[variable] = os.pathsep.join(quedan)
+        else:
+            del entorno[variable]
+    return entorno

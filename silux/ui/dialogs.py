@@ -201,3 +201,63 @@ class ModuleLoadDialog(QDialog):
     def _load(self) -> None:
         self.accept()
         self.load_requested.emit()
+
+
+class MoveAppImageDialog(QDialog):
+    """Before a shortcut to an AppImage outside ~/AppImages: move it there?
+
+    Two answers, as asked: «Mover y añadir» (the default) and «Dejarlo donde
+    está». Closing it (Esc, the X) changes nothing: `choice` stays None.
+    """
+
+    def __init__(self, path: str, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        import html
+
+        from .. import render
+
+        self.choice: Optional[str] = None
+        self.setWindowTitle(_("settings.shortcut.move.title"))
+        self.setModal(True)
+        m = theme.METRICS
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(m.page_margin + 6, m.page_margin + 4,
+                                  m.page_margin + 6, m.page_margin + 2)
+        layout.setSpacing(m.card_gap + 4)
+        title = QLabel(_("settings.shortcut.move.title"))
+        title.setObjectName("Headline")
+        layout.addWidget(title)
+        self.paragraphs: list[QLabel] = []
+        for key in ("settings.shortcut.move.text", "settings.shortcut.move.detail"):
+            texto = html.escape(_(key).format(ruta=render.home_path(path)))
+            # «~/AppImages» in one piece: the line broke after the slash.
+            texto = texto.replace("~/AppImages", "<nobr>~/AppImages</nobr>")
+            paragraph = QLabel(texto)
+            paragraph.setWordWrap(True)
+            paragraph.setTextFormat(Qt.TextFormat.RichText)
+            paragraph.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+            layout.addWidget(paragraph)
+            self.paragraphs.append(paragraph)
+
+        self.leave_button = QPushButton(_("settings.shortcut.move.no"))
+        self.leave_button.clicked.connect(lambda: self._answer("leave"))
+        self.move_button = QPushButton(_("settings.shortcut.move.yes"))
+        self.move_button.setObjectName("Primary")
+        self.move_button.setDefault(True)
+        self.move_button.clicked.connect(lambda: self._answer("move"))
+        buttons = QHBoxLayout()
+        buttons.setContentsMargins(0, 6, 0, 0)
+        buttons.addStretch(1)
+        buttons.addWidget(self.leave_button)
+        buttons.addWidget(self.move_button)
+        layout.addLayout(buttons)
+        ajustar_tope(self)
+
+    def setVisible(self, visible: bool) -> None:  # noqa: N802
+        if visible:
+            ajustar_tope(self)
+        super().setVisible(visible)
+
+    def _answer(self, choice: str) -> None:
+        self.choice = choice
+        self.accept()

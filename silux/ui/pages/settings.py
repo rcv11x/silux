@@ -143,14 +143,12 @@ ANCHO_DEL_CONTROL = 170
 # El ancho de la columna, en anchos de letra: crece con el tamaño de la letra.
 COLUMNA_EN_LETRAS = 120
 
-# El estado de la entrada de menú: su insignia, su explicación y su color.
-ESTADOS_DEL_MENU = {
-    "missing": ("settings.desktop.missing", "settings.desktop.missing.help", "muted"),
-    "current": ("settings.desktop.current", "settings.desktop.current.help", "ok"),
-    "elsewhere": ("settings.desktop.elsewhere", "settings.desktop.elsewhere.help", "warn"),
-    "broken": ("settings.desktop.broken", "settings.desktop.broken.help", "crit"),
-    "outdated": ("settings.desktop.outdated", "settings.desktop.outdated.help", "warn"),
-    "unsupported": ("settings.desktop.unsupported", "settings.desktop.unsupported.help", "muted"),
+# What the menu entry says when there is something to put right; the path it
+# opens goes in the tooltip, not in the text.
+ESTADOS_DEL_MENU_CON_ARREGLO = {
+    "elsewhere": "settings.shortcut.elsewhere",
+    "broken": "settings.shortcut.broken",
+    "outdated": "settings.desktop.outdated.help",
 }
 
 # Lo mismo para los permisos.
@@ -323,6 +321,8 @@ class SettingsPage(ScrollPage):
     # «Buscar ahora»: la ventana busca fuera del hilo de la interfaz y
     # contesta con `set_update_status`.
     update_check_requested = Signal()
+    # Silux was moved to ~/AppImages: open it from there and close this one.
+    relaunch_requested = Signal(str)
 
     def __init__(self, prefs: Preferences, palette: Optional[Palette] = None, parent=None):
         super().__init__(parent)
@@ -333,6 +333,8 @@ class SettingsPage(ScrollPage):
         self._loading = True
         self._tarea: Optional[_Tarea] = None
         self._error_del_escritorio = ""
+        # (old path, desktop.Moved) once the AppImage has been moved.
+        self._movido: Optional[tuple] = None
         m = theme.METRICS
 
         self.setWidgetResizable(True)
@@ -492,30 +494,41 @@ class SettingsPage(ScrollPage):
         return card
 
     def _build_desktop(self) -> Card:
-        self.desktop_badge = Insignia(self._p)
-        self.desktop_row = _Renglon(_("settings.desktop.state"), self.desktop_badge)
-
+        """«Accesos directos»: each one with its switch, applied at once."""
+        m = theme.METRICS
+        self.menu_switch = Interruptor(self._p)
+        self.menu_switch.toggled.connect(lambda encendido: self._on_switch("menu", encendido))
+        self.menu_row = _Renglon(_("settings.shortcut.menu"), self.menu_switch,
+                                 _("settings.shortcut.menu.help"))
         self.desktop_shortcut = Interruptor(self._p)
-        self.desktop_shortcut.toggled.connect(self._on_shortcut_toggled)
-        self.shortcut_row = _Renglon(_("settings.desktop.shortcut"), self.desktop_shortcut,
-                                     _("settings.desktop.shortcut.help"))
-
-        self.desktop_add = QPushButton(_("settings.desktop.add"))
-        self.desktop_add.setObjectName("Primary")
-        self.desktop_add.clicked.connect(lambda: self._instalar(self.desktop_shortcut.isChecked()))
-        self.desktop_fix = QPushButton(_("settings.desktop.fix"))
-        self.desktop_fix.setObjectName("Primary")
-        self.desktop_fix.clicked.connect(lambda: self._instalar(None))
-        self.desktop_remove = QPushButton(_("settings.desktop.remove"))
-        self.desktop_remove.clicked.connect(self._quitar)
-        botones = QWidget()
-        fila = QHBoxLayout(botones)
+        self.desktop_shortcut.toggled.connect(
+            lambda encendido: self._on_switch("desktop", encendido))
+        self.shortcut_row = _Renglon(_("settings.shortcut.desktop"), self.desktop_shortcut,
+                                     _("settings.shortcut.desktop.help"))
+        # Only when an entry opens another copy, a file that is gone or an
+        # older version: there is something to put right.
+        self.desktop_fix = QPushButton(_("settings.shortcut.fix"))
+        self.desktop_fix.clicked.connect(lambda: self._poner(
+            self.menu_switch.isChecked(), self.desktop_shortcut.isChecked(), preguntar=True))
+        arreglo = QWidget()
+        fila = QHBoxLayout(arreglo)
         fila.setContentsMargins(0, 0, 0, 0)
         fila.addStretch(1)
-        for boton in (self.desktop_remove, self.desktop_fix, self.desktop_add):
-            fila.addWidget(boton)
-        return self._grupo(_("settings.group.desktop"), self.desktop_row,
-                           self.shortcut_row, botones)
+        fila.addWidget(self.desktop_fix)
+        self._arreglo = arreglo
+        # Where this copy is, small: the whole path in the tooltip.
+        self.desktop_path = QLabel("")
+        self.desktop_path.setObjectName("Muted")
+        self.desktop_path.setWordWrap(True)
+        self.desktop_path.setFont(ui_font(m.small_pt))
+        self.desktop_fragile = QLabel(_("settings.shortcut.fragile"))
+        self.desktop_fragile.setObjectName("WarnText")
+        self.desktop_fragile.setWordWrap(True)
+        self.desktop_fragile.setFont(ui_font(m.small_pt))
+        card = self._grupo(_("settings.group.desktop"), self.menu_row, self.shortcut_row, arreglo)
+        card.body.addWidget(self.desktop_fragile)
+        card.body.addWidget(self.desktop_path)
+        return card
 
     def _build_share(self) -> Card:
         # Juntos porque responden a la misma intención: sacar algo de aquí
@@ -779,7 +792,7 @@ class SettingsPage(ScrollPage):
     # -- integración con el escritorio ----------------------------------------
 
     def refresh_desktop(self) -> None:
-        """Lee cómo está la entrada de menú y pone la insignia y los botones.
+        """Lee cómo están los accesos y pone los interruptores y los textos.
 
         Son unas pocas lecturas de archivos pequeños de ~/.local/share, no de
         hardware: se hace aquí, al construir, tras cada acción y con cada foto.
@@ -788,50 +801,85 @@ class SettingsPage(ScrollPage):
             return
         estado = desktop.status()
         self.desktop_state = estado.state
-        clave, ayuda, tono = ESTADOS_DEL_MENU[estado.state]
-        self.desktop_badge.poner(_(clave), tono)
         lanzador = estado.launcher
+        disponible = estado.state != "unsupported"
+        en_menu = estado.state not in ("missing", "unsupported")
+        for interruptor, valor in ((self.menu_switch, en_menu),
+                                   (self.desktop_shortcut, estado.on_desktop)):
+            interruptor.blockSignals(True)
+            interruptor.setChecked(valor)
+            interruptor.setEnabled(disponible)
+            interruptor.blockSignals(False)
+
         if self._error_del_escritorio:
-            detalle = _("settings.desktop.failed").format(
+            ayuda = _("settings.desktop.failed").format(
                 error=render.home_path(self._error_del_escritorio))
-        elif estado.state in ("elsewhere", "broken"):
-            detalle = _(ayuda).format(destino=render.home_path(estado.target))
-        elif lanzador.mode == "development":
-            detalle = _("settings.desktop.dev").format(ruta=render.home_path(lanzador.working_dir))
-            if estado.state != "current":
-                detalle += " " + _(ayuda)
-        elif lanzador.mode == "appimage" and lanzador.command:
-            detalle = _("settings.desktop.appimage").format(
-                ruta=render.home_path(lanzador.command[0]))
-            if estado.state != "current":
-                detalle += " " + _(ayuda)
+        elif estado.state in ESTADOS_DEL_MENU_CON_ARREGLO:
+            ayuda = _(ESTADOS_DEL_MENU_CON_ARREGLO[estado.state])
+        elif not disponible:
+            ayuda = _("settings.desktop.unsupported.help")
         else:
-            detalle = _(ayuda)
-        self.desktop_row.explicacion.setText(detalle)
-        self.desktop_row.explicacion.setVisible(bool(detalle))
+            ayuda = _("settings.shortcut.menu.help")
+        self.menu_row.explicacion.setText(ayuda)
+        self.menu_row.setToolTip(render.home_path(estado.target) if estado.target else "")
+        self._arreglo.setVisible(estado.state in ESTADOS_DEL_MENU_CON_ARREGLO)
+        self.desktop_fix.setEnabled(True)
+        self.desktop_fix.setText(_("settings.shortcut.fix"))
 
-        instalada = estado.state not in ("missing", "unsupported")
-        self.desktop_add.setVisible(estado.state == "missing")
-        self.desktop_fix.setVisible(estado.state in ("elsewhere", "broken", "outdated"))
-        self.desktop_remove.setVisible(instalada)
-        for boton in (self.desktop_add, self.desktop_fix, self.desktop_remove):
-            boton.setEnabled(True)
-        self.desktop_add.setText(_("settings.desktop.add"))
-        self.desktop_fix.setText(_("settings.desktop.fix"))
-        self.desktop_remove.setText(_("settings.desktop.remove"))
-        self.shortcut_row.setVisible(estado.state != "unsupported")
-        if instalada:
-            self.desktop_shortcut.blockSignals(True)
-            self.desktop_shortcut.setChecked(estado.on_desktop)
-            self.desktop_shortcut.blockSignals(False)
+        ruta = lanzador.working_dir if lanzador.mode == "development" else (
+            lanzador.command[0] if lanzador.command else "")
+        clave = "settings.shortcut.dev" if lanzador.mode == "development" else "settings.shortcut.path"
+        self.desktop_path.setText(_(clave).format(ruta=render.home_path(ruta)) if ruta else "")
+        self.desktop_path.setToolTip(ruta)
+        self.desktop_path.setVisible(bool(ruta))
+        self.desktop_fragile.setVisible(
+            lanzador.mode == "appimage" and bool(lanzador.command)
+            and not desktop.in_appimages(lanzador.command[0]) and desktop.points_here(lanzador))
 
-    def _en_segundo_plano(self, trabajo: Callable[[], object], boton: QPushButton,
-                          texto: str) -> None:
+    def _on_switch(self, cual: str, encendido: bool) -> None:
+        menu = encendido if cual == "menu" else self.menu_switch.isChecked()
+        en_escritorio = encendido if cual == "desktop" else self.desktop_shortcut.isChecked()
+        self._poner(menu, en_escritorio, preguntar=encendido)
+
+    def _poner(self, menu: bool, en_escritorio: bool, preguntar: bool) -> None:
+        """Writes the shortcuts; turning one on (or pointing them here) from an
+        AppImage outside ~/AppImages first asks whether to move it there."""
+        lanzador = desktop.current_launcher()
+        if (preguntar and lanzador.mode == "appimage" and lanzador.command
+                and not desktop.in_appimages(lanzador.command[0])):
+            respuesta = self._preguntar_mover(lanzador.command[0])
+            if respuesta is None:                   # cerrado: no se hace nada
+                self.refresh_desktop()
+                return
+            if respuesta:
+                self._mover_y_aplicar(lanzador.command[0], menu, en_escritorio)
+                return
+        self._aplicar(menu, en_escritorio)
+
+    def _preguntar_mover(self, ruta: str) -> Optional[bool]:
+        """True: move it; False: leave it where it is; None: closed."""
+        from ..dialogs import MoveAppImageDialog
+
+        dialogo = MoveAppImageDialog(ruta, self)
+        self._caja_mover = dialogo
+        dialogo.exec()
+        dialogo.deleteLater()
+        return {"move": True, "leave": False}.get(dialogo.choice)
+
+    def repoint_shortcuts(self) -> None:
+        """On start: shortcuts to an AppImage the user moved follow it, and
+        those from an older version are brought up to date
+        (`desktop.repoint`). Deciding is a few small reads; writing, with
+        its icons and caches, goes to the background."""
+        if any(desktop.stale_shortcuts()):
+            self._en_segundo_plano(desktop.repoint)
+
+    def _en_segundo_plano(self, trabajo: Callable[[], object]) -> None:
         if self._tarea is not None:
             return
-        for otro in (self.desktop_add, self.desktop_fix, self.desktop_remove):
-            otro.setEnabled(False)
-        boton.setText(_(texto))
+        for control in (self.menu_switch, self.desktop_shortcut, self.desktop_fix):
+            control.setEnabled(False)
+        self.desktop_fix.setText(_("settings.desktop.working"))
         self._error_del_escritorio = ""
         self._tarea = _Tarea(trabajo, self)
         self._tarea.terminada.connect(self._tarea_terminada)
@@ -844,22 +892,36 @@ class SettingsPage(ScrollPage):
             tarea.deleteLater()
         self._error_del_escritorio = error
         self.refresh_desktop()
+        # Once moved, the copy this window runs from is gone from its old
+        # place: open it from the new one even if a shortcut failed, and the
+        # new window says how the shortcuts are.
+        movido, self._movido = self._movido, None
+        if movido is not None:
+            self._abrir_desde(movido)
 
-    def _instalar(self, en_escritorio: Optional[bool]) -> None:
-        boton = self.desktop_add if self.desktop_add.isVisible() else self.desktop_fix
-        self._en_segundo_plano(lambda: desktop.install(on_desktop=en_escritorio),
-                               boton, "settings.desktop.working")
+    def _aplicar(self, menu: bool, en_escritorio: bool) -> None:
+        self._en_segundo_plano(lambda: desktop.set_shortcuts(menu, en_escritorio))
 
-    def _quitar(self) -> None:
-        self._en_segundo_plano(desktop.uninstall, self.desktop_remove,
-                               "settings.desktop.working")
+    def _mover_y_aplicar(self, ruta: str, menu: bool, en_escritorio: bool) -> None:
+        """Moves the AppImage into ~/AppImages, points the shortcuts there and,
+        when it is done, opens Silux from the new place."""
+        def trabajo() -> None:
+            movido = desktop.move_to_appimages(ruta)
+            self._movido = (ruta, movido)
+            lanzador = desktop.current_launcher({"APPIMAGE": str(movido.path)})
+            desktop.set_shortcuts(menu, en_escritorio, lanzador)
+        self._en_segundo_plano(trabajo)
 
-    def _on_shortcut_toggled(self, encendido: bool) -> None:
-        # Sin entrada instalada es solo la opción para cuando se añada.
-        if desktop.status().state in ("missing", "unsupported"):
-            return
-        self._en_segundo_plano(lambda: desktop.install(on_desktop=encendido),
-                               self.desktop_fix, "settings.desktop.working")
+    def _abrir_desde(self, movido) -> None:
+        from PySide6.QtWidgets import QMessageBox
+
+        viejo, nuevo = movido
+        if nuevo.copied:
+            QMessageBox.information(self, _("settings.shortcut.move.title"),
+                                    _("settings.shortcut.copied").format(
+                                        nuevo=render.home_path(nuevo.path),
+                                        viejo=render.home_path(viejo)))
+        self.relaunch_requested.emit(str(nuevo.path))
 
     def wait_for_tasks(self) -> None:
         """Para cerrar la ventana sin dejar un hilo a medias."""

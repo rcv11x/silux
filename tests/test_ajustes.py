@@ -303,35 +303,26 @@ class TestElEscritorio(unittest.TestCase):
         for _vez in range(5):
             self.app.processEvents()
 
-    def _visibles(self):
-        p = self.pagina
-        return {nombre for nombre, boton in (("add", p.desktop_add), ("fix", p.desktop_fix),
-                                             ("remove", p.desktop_remove))
-                if boton.isVisibleTo(p)}
-
-    def test_sin_instalar_se_ofrece_anadir(self):
+    def test_sin_instalar_los_dos_interruptores_apagados(self):
         self.assertEqual(self.pagina.desktop_state, "missing")
-        self.assertEqual(self.pagina.desktop_badge.text(), _("settings.desktop.missing"))
-        self.assertEqual(self._visibles(), {"add"})
+        self.assertFalse(self.pagina.menu_switch.isChecked())
+        self.assertFalse(self.pagina.desktop_shortcut.isChecked())
+        self.assertFalse(self.pagina._arreglo.isVisibleTo(self.pagina))
 
     def test_desde_el_codigo_lo_dice(self):
-        texto = self.pagina.desktop_row.explicacion.text()
+        texto = self.pagina.desktop_path.text()
         self.assertIn(render.home_path(desktop.ROOT), texto)
         self.assertIn("desarrollo", texto)
 
-    def test_anadir_y_quitar_se_ven_en_la_misma_pagina(self):
-        self.pagina.desktop_shortcut.setChecked(True)
-        self.pagina.desktop_add.click()
+    def test_poner_y_quitar_se_ven_en_la_misma_pagina(self):
+        self.pagina.menu_switch.setChecked(True)
         self._esperar()
         self.assertEqual(self.pagina.desktop_state, "current")
-        self.assertEqual(self.pagina.desktop_badge.tono, "ok")
-        self.assertEqual(self._visibles(), {"remove"})
-        self.assertTrue(desktop.desktop_path("silux-dev").is_file())
-        self.assertTrue(desktop.shortcut_path("silux-dev").is_file())
-        self.pagina.desktop_remove.click()
+        self.assertTrue(self.pagina.menu_switch.isChecked())
+        self.pagina.menu_switch.setChecked(False)
         self._esperar()
         self.assertEqual(self.pagina.desktop_state, "missing")
-        self.assertFalse(desktop.shortcut_path("silux-dev").exists())
+        self.assertFalse(desktop.desktop_path("silux-dev").exists())
 
     def test_una_entrada_rota_se_arregla(self):
         desktop.install()
@@ -340,11 +331,12 @@ class TestElEscritorio(unittest.TestCase):
             "Path=", "Path=/home/ana/silux-que-ya-no-esta\nX-Path-Viejo="))
         self.pagina.refresh_desktop()
         self.assertEqual(self.pagina.desktop_state, "broken")
-        self.assertEqual(self.pagina.desktop_badge.tono, "crit")
-        self.assertEqual(self._visibles(), {"fix", "remove"})
+        self.assertEqual(self.pagina.menu_row.explicacion.text(), _("settings.shortcut.broken"))
+        self.assertTrue(self.pagina._arreglo.isVisibleTo(self.pagina))
         self.pagina.desktop_fix.click()
         self._esperar()
         self.assertEqual(self.pagina.desktop_state, "current")
+        self.assertFalse(self.pagina._arreglo.isVisibleTo(self.pagina))
 
     def test_lo_que_cambia_desde_fuera_se_ve_con_la_pagina_abierta(self):
         """Regla 9: instalada desde la terminal, la página lo dice con la
@@ -352,6 +344,7 @@ class TestElEscritorio(unittest.TestCase):
         desktop.install()
         self.pagina.apply(foto(EQUIPOS / "i5-10400")[0])
         self.assertEqual(self.pagina.desktop_state, "current")
+        self.assertTrue(self.pagina.menu_switch.isChecked())
 
 
 @unittest.skipIf(QApplication is None, "sin PySide6")
