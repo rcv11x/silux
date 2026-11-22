@@ -322,10 +322,11 @@ class NetworkPage(ScrollPage):
         self.tile_tx.update_value(render.decimal_size(trafico.tx_bytes) if trafico else render.DASH)
 
         if trafico:
-            self.tile_rx.set_detail(_("net.packets2").format(
-                n=render.thousands(trafico.rx_packets)))
-            self.tile_tx.set_detail(_("net.packets2").format(
-                n=render.thousands(trafico.tx_packets)))
+            self.tile_rx.set_detail(render.packets(principal, received=True))
+            self.tile_tx.set_detail(render.packets(principal, received=False))
+            porque = render.packets_misfit(principal) or ""
+            self.tile_rx.setToolTip("" if principal.received_packets_fit else porque)
+            self.tile_tx.setToolTip("" if principal.sent_packets_fit else porque)
             self.tile_down.set_detail(render.packet_problems(trafico))
             self.tile_down.setToolTip(_("net.tip.dropped") if trafico.problems else "")
 
@@ -372,7 +373,9 @@ class NetworkPage(ScrollPage):
                              self._first_reading),
              render.decimal_size(interfaz.traffic.rx_bytes),
              render.decimal_size(interfaz.traffic.tx_bytes),
-             render.thousands(interfaz.traffic.rx_packets + interfaz.traffic.tx_packets),
+             render.thousands(interfaz.traffic.rx_packets + interfaz.traffic.tx_packets)
+             if interfaz.received_packets_fit and interfaz.sent_packets_fit
+             else _("net.packets.misfit.short"),
              render.thousands(interfaz.traffic.dropped)
              + (" " + _("net.errors.short").format(n=render.thousands(interfaz.traffic.errors))
                 if interfaz.traffic.errors else ""))
@@ -440,6 +443,7 @@ class NetworkPage(ScrollPage):
                 grid.set_visible(_(key), key not in missing)
             foot = self._feet.get(interfaz.name)
             if foot is not None:
-                text = render.interface_footnote(interfaz) or ""
+                text = " ".join(t for t in (render.interface_footnote(interfaz),
+                                            render.packets_misfit(interfaz)) if t)
                 foot.setText(text)
                 foot.setVisible(bool(text))

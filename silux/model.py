@@ -1436,6 +1436,11 @@ class NetworkTraffic:
         return self.rx_errors + self.tx_errors
 
 
+# What a frame on the wire carries beyond its MTU: the Ethernet header, a
+# VLAN tag and the checksum some drivers count (14 + 4 + 4 bytes).
+FRAME_OVERHEAD = 22
+
+
 @dataclass(frozen=True, slots=True)
 class NetworkInterface:
     """A network interface: what it is, how it's connected and how much it moves."""
@@ -1467,6 +1472,23 @@ class NetworkInterface:
     def active(self) -> bool:
         """Plugged in and with an address: the one really serving."""
         return self.up and bool(self.ipv4 or self.ipv6)
+
+    @property
+    def received_packets_fit(self) -> bool:
+        return self._packets_fit(self.traffic.rx_bytes, self.traffic.rx_packets)
+
+    @property
+    def sent_packets_fit(self) -> bool:
+        return self._packets_fit(self.traffic.tx_bytes, self.traffic.tx_packets)
+
+    def _packets_fit(self, size: int, packets: int) -> bool:
+        """Whether a card's packet counter counts the frames of the wire: more
+        bytes per packet than fit in its MTU is a driver that counts
+        aggregated frames, or miscounts. A virtual interface carries the
+        kernel's aggregated packets as they are."""
+        if not self.mtu or self.kind not in ("ethernet", "wifi"):
+            return True
+        return size <= packets * (self.mtu + FRAME_OVERHEAD)
 
 
 
@@ -2172,7 +2194,8 @@ _COMPUTED: dict[str, tuple[str, ...]] = {
     "VideoMode": ("label",),
     "Gpu": ("display_name", "pci_id", "subsystem_id", "connected_displays"),
     "NetworkTraffic": ("dropped", "errors", "total_bytes", "total_rate_bps", "problems"),
-    "NetworkInterface": ("display_name", "active"),
+    "NetworkInterface": ("display_name", "active", "received_packets_fit",
+                         "sent_packets_fit"),
     "Partition": ("used_percent", "mounted"),
     "DiskIo": ("total_rate_bps",),
     "DiskHealth": ("life_left_percent", "healthy"),

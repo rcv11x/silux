@@ -430,8 +430,8 @@ wlx00005e0053af · 192.168.1.120
 puerta 192.168.1.1 · 1 de 2 activas
 - Bajando: 0 B/s (35 paquetes descartados)
 - Subiendo: 0 B/s
-- Recibido: 2.1 GB (136 paquetes)
-- Enviado: 21.8 MB (163 paquetes)
+- Recibido: 2.1 GB (paquetes: no cuadran)
+- Enviado: 21.8 MB (paquetes: no cuadran)
 
 ### Tráfico por interfaz
 
@@ -439,7 +439,7 @@ puerta 192.168.1.1 · 1 de 2 activas
 
 | INTERFAZ | BAJANDO | SUBIENDO | RECIBIDO | ENVIADO | PAQUETES | DESCARTADOS |
 |---|---|---|---|---|---|---|
-| wlx00005e0053af | 0 B/s | 0 B/s | 2.1 GB | 21.8 MB | 299 | 35 |
+| wlx00005e0053af | 0 B/s | 0 B/s | 2.1 GB | 21.8 MB | no cuadran | 35 |
 | enp2s0 | 0 B/s | 0 B/s | 0 B | 0 B | 0 | 0 |
 
 ### wlx00005e0053af
@@ -455,7 +455,7 @@ puerta 192.168.1.1 · 1 de 2 activas
 - Driver: rtl8192eu
 - Ranura PCI: 1-3:1.0
 
-El kernel no publica modelo de esta interfaz.
+El kernel no publica modelo de esta interfaz. Sus paquetes no se enseñan: su driver (rtl8192eu) cuenta 15.1 MB por paquete, y con una MTU de 1500 en un paquete caben 1522 bytes. Cuenta tramas agregadas, o cuenta mal.
 
 ### enp2s0
 

@@ -49,6 +49,7 @@ def avanzar(raiz, ocupadas: int, octetos: int) -> None:
     sentidos.
     """
     import pathlib
+    paquetes = max(1, octetos // 1000)
 
     raiz = pathlib.Path(raiz)
     estadistica = raiz / "proc" / "stat"
@@ -70,11 +71,18 @@ def avanzar(raiz, ocupadas: int, octetos: int) -> None:
             numeros = resto.split()
             numeros[0] = str(int(numeros[0]) + octetos)
             numeros[8] = str(int(numeros[8]) + octetos)
+            # The packets with them, as traffic moves them: bytes alone are
+            # more per packet than a frame holds.
+            numeros[1] = str(int(numeros[1]) + paquetes)
+            numeros[9] = str(int(numeros[9]) + paquetes)
             lineas[i] = f"{nombre}: " + " ".join(numeros)
         dev.write_text("\n".join(lineas) + "\n")
     for contador in (*raiz.glob("sys/class/net/*/statistics/rx_bytes"),
                      *raiz.glob("sys/class/net/*/statistics/tx_bytes")):
         contador.write_text(f"{int(contador.read_text()) + octetos}\n")
+    for contador in (*raiz.glob("sys/class/net/*/statistics/rx_packets"),
+                     *raiz.glob("sys/class/net/*/statistics/tx_packets")):
+        contador.write_text(f"{int(contador.read_text()) + paquetes}\n")
     for disco in raiz.glob("sys/block/*/stat"):
         campos = disco.read_text().split()
         if len(campos) >= 7:

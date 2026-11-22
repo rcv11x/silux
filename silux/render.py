@@ -2451,6 +2451,31 @@ def board_chipset(board) -> str:
     return board.chipset
 
 
+def packets(interface, received: bool) -> str:
+    """«31 074 paquetes», or that they don't add up when the driver's count
+    can't be the wire's."""
+    fit = interface.received_packets_fit if received else interface.sent_packets_fit
+    if not fit:
+        return _("net.packets.misfit")
+    count = interface.traffic.rx_packets if received else interface.traffic.tx_packets
+    return _("net.packets2").format(n=thousands(count))
+
+
+def packets_misfit(interface) -> Optional[str]:
+    """Why an interface's packets aren't shown, with its numbers; None when
+    they add up."""
+    from .model import FRAME_OVERHEAD
+    traffic = interface.traffic
+    sizes = [size / max(count, 1) for size, count, fit in (
+        (traffic.rx_bytes, traffic.rx_packets, interface.received_packets_fit),
+        (traffic.tx_bytes, traffic.tx_packets, interface.sent_packets_fit)) if not fit]
+    if not sizes:
+        return None
+    key = "net.packets.misfit.why" if interface.driver else "net.packets.misfit.why.nodriver"
+    return _(key).format(driver=interface.driver, media=decimal_size(max(sizes)),
+                         mtu=interface.mtu, maximo=interface.mtu + FRAME_OVERHEAD)
+
+
 def packet_problems(traffic) -> str:
     """«2 506 paquetes descartados», with the damaged ones apart: a discard
     is the kernel's choice, an error is a fault."""
