@@ -19,6 +19,14 @@ class TestTheName(unittest.TestCase):
                       system_version="V1.13", system_family="BDW")
         self.assertEqual(board.display_name, "Acer Aspire E5-473")
 
+    def test_a_series_letter_is_not_a_name(self):
+        board = Board(vendor="ASUSTeK COMPUTER INC.", name="X550JK", version="1.0",
+                      system_vendor="ASUSTeK COMPUTER INC.", system_name="X550JK",
+                      system_version="1.0", system_family="X")
+        self.assertEqual(board.display_name, "ASUS X550JK")
+        # A branded machine, not a loose board.
+        self.assertEqual(board.system_display_name, "X550JK")
+
     def test_a_part_code_is_not_a_name(self):
         board = Board(vendor="LENOVO", name="LNVNB161216", system_vendor="LENOVO",
                       system_name="81HL", system_version="1.0", system_family="BDW")

@@ -910,8 +910,9 @@ _ONLY_A_VERSION = re.compile(r"(?:(?:rev|ver(?:sion)?|v)\.?\s*)?[\d.,\s]+", re.I
 # machine came out as «Gigabyte -CF».
 _ONLY_A_SUFFIX = re.compile(r"[^0-9a-z]\S{0,6}", re.I)
 _ONLY_THE_BOARD = re.compile(r".*\bMB", re.I)
-# A platform code as the family: Acer writes Intel's («BDW», «SKL»).
-_ONLY_A_CODE = re.compile(r"[A-Z]{2,4}")
+# A code as the family, no name: Intel's platform as Acer writes it («BDW»,
+# «SKL»), or a series letter («X» on an ASUS X550JK).
+_ONLY_A_CODE = re.compile(r"[A-Z]{1,4}")
 # A product name in words, «Aspire E5-473», not a part code («20W0S14X00»,
 # «81HL») or a board's («MS-7D23»).
 _IN_WORDS = re.compile(r"(?=.*[A-Za-z]{3}).*\S\s+\S.*")
@@ -978,12 +979,20 @@ class Board:
         version and a platform code in the other two.
         """
         versions = {clean_dmi(self.bios_version), clean_dmi(self.version)} - {None}
+        system = clean_dmi(self.system_name)
         for attribute in (self.system_version, self.system_family):
             name = clean_dmi(attribute)
-            if name and _names_a_machine(name) and name not in versions:
+            if not name or name in versions:
+                continue
+            if _names_a_machine(name):
                 return name
+            # A series letter as the family («X») and the model in it as the
+            # system's name («X550JK»): the machine is that model.
+            if _ONLY_A_CODE.fullmatch(name) and system and system.startswith(name) \
+                    and system != name:
+                return system
         # A loose board repeats its own name there: that's no machine.
-        name = clean_dmi(self.system_name)
+        name = system
         board = clean_dmi(self.name)
         if (name and _IN_WORDS.fullmatch(name) and name not in versions
                 and not (board and (board in name or name in board))):
