@@ -1331,6 +1331,7 @@
   "report.annex.refused": "{que} was still uncovered ({campos}): so as not to publish it, the raw data are left out.",
   "report.annex.removed": "Without {n} files that held something that could not be covered without breaking it: {lista}.",
   "report.annex.removed.item": "{que} (in {ruta})",
+  "report.annex.removed.one": "Without one file that held something that could not be covered without breaking it: {lista}.",
   "report.annex.status": "With the raw data: {summary}",
   "report.annex.status.none": "Without the raw data: why, at the end of the report",
   "report.annex.summary": "{files} files, {size}",

@@ -2203,7 +2203,8 @@ def annex_removed(removed: list[dict]) -> Optional[str]:
         return None
     items = "; ".join(_("report.annex.removed.item").format(
         que=annex_what(str(q.get("dato", ""))), ruta=q.get("ruta", "")) for q in removed[:10])
-    return _("report.annex.removed").format(n=len(removed), lista=items)
+    key = "report.annex.removed.one" if len(removed) == 1 else "report.annex.removed"
+    return _(key).format(n=len(removed), lista=items)
 
 
 def turbo(clocks: Clocks) -> str:

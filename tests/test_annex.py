@@ -135,6 +135,19 @@ class TestWhatItWillNotWrite(unittest.TestCase):
                 self._write(block)
 
 
+class TestWhatWasLeftOut(unittest.TestCase):
+
+    def test_one_file_in_the_singular(self):
+        from silux import render
+        from silux.i18n import _
+        one = [{"ruta": "/sys/class/drm/card1-HDMI-A-1/edid", "dato": "monitor_serial"}]
+        self.assertTrue(render.annex_removed(one).startswith(
+            _("report.annex.removed.one").split("{")[0]))
+        self.assertNotIn("1", render.annex_removed(one).split(":")[0])
+        two = one + [{"ruta": "/sys/class/drm/card1-DP-1/edid", "dato": "monitor_serial"}]
+        self.assertIn("2", render.annex_removed(two).split(":")[0])
+
+
 class TestInTheReport(unittest.TestCase):
 
     def test_found_between_its_fences(self):
