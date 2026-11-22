@@ -12,6 +12,8 @@ que hace falta.
 
 ## Sin publicar
 
+Con informes de Felix Lara.
+
 ### Informe
 
 - El informe completo sale entero en el idioma elegido: la cabecera, el

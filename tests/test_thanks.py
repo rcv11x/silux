@@ -25,7 +25,7 @@ PUBLISHED = ROOT / "silux" / "db" / "thanks.json"
 # author. A name in the published thanks.json that is not here fails the
 # suite, and with it the CI of any release: nobody is named without being
 # written twice.
-APPROVED: frozenset[str] = frozenset()
+APPROVED: frozenset[str] = frozenset({"Felix Lara"})
 READMES = ("README.md", "README.en.md")
 BETWEEN_MARKS = re.compile(r"<!-- thanks:start -->\n(.*?)<!-- thanks:end -->", re.S)
 WITH_REPORTS_FROM = re.compile(r"^Con informes de (.+?)\.?$", re.M)

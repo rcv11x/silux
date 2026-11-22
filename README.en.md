@@ -66,6 +66,7 @@ It asks for your password so the report also includes what only the administrato
 To everyone who sends reports: with them Silux is tested on machines that are not ours. Whoever has said so is named here, and in Settings → About.
 
 <!-- thanks:start -->
+- Felix Lara
 <!-- thanks:end -->
 
 ## More

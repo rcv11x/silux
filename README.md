@@ -66,6 +66,7 @@ Pide la contraseña para leer también lo que solo ve el administrador. Al final
 A quienes mandan informes: con ellos Silux se prueba en equipos que no son el nuestro. Aquí sale quien ha dado permiso, y lo mismo en Ajustes → Acerca de.
 
 <!-- thanks:start -->
+- Felix Lara
 <!-- thanks:end -->
 
 ## Más
