@@ -349,6 +349,10 @@ la memoria) no va: está propuesto en las notas
   mira si pinta sus iconos.
 * **F-M37 · `tools/probar_en_minimo.py`** · media · cualquier fallo del
   contenedor se anuncia como «la suite no pasa», y dentro corre como root.
+  Como root no hay candados ni avisos de permisos, y `/proc/self/mounts` es
+  el del contenedor: el 22 de noviembre de 2026 dio 88 fallos y 6 errores en
+  `master`, los mismos test a test que con la zona 8 del inglés, y un
+  `Segmentation fault` al salir. El CI, que no corre como root, pasa en 3.10.
 * El paso de tests del CI solo busca `FAILED` y `ERROR`: un aborto sale sin
   la causa.
 * Tests que leen la máquina y fallan a veces con la suite en paralelo:
