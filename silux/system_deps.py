@@ -147,6 +147,34 @@ BY_KEY = {dep.key: dep for dep in DEPENDENCIES}
 GRAPHICS_LIBRARIES = ("vulkan", "egl", "opengl", "opencl", "vaapi")
 
 
+# The polkit agent that asks for the password, by desktop and family, as each
+# distribution packages it. A full desktop (GNOME, Cinnamon) brings its own;
+# a bare window manager doesn't, and then the one in every family is
+# mate-polkit. hyprpolkitagent is only in Arch.
+POLKIT_AGENTS = {
+    "kde": {"debian": "polkit-kde-agent-1", "ubuntu": "polkit-kde-agent-1",
+            "fedora": "polkit-kde", "arch": "polkit-kde-agent",
+            "gentoo": "kde-plasma/polkit-kde-agent"},
+    "lxqt": {"debian": "lxqt-policykit", "ubuntu": "lxqt-policykit",
+             "fedora": "lxqt-policykit", "arch": "lxqt-policykit",
+             "gentoo": "lxqt-base/lxqt-policykit"},
+    "hyprland": {"arch": "hyprpolkitagent"},
+    "any": {"debian": "mate-polkit", "ubuntu": "mate-polkit", "fedora": "mate-polkit",
+            "arch": "mate-polkit", "gentoo": "mate-extra/mate-polkit"},
+}
+
+
+def polkit_agent(desktop: Optional[str], distro_family: Optional[str]) -> str:
+    """The agent package to install on this desktop and distribution."""
+    name = (desktop or "").lower()
+    kind = ("kde" if "kde" in name or "plasma" in name else
+            "lxqt" if "lxqt" in name else "hyprland" if "hyprland" in name else "any")
+    for candidate in (kind, "any"):
+        if package := POLKIT_AGENTS[candidate].get(distro_family or ""):
+            return package
+    return POLKIT_AGENTS["any"]["debian"]
+
+
 def family(os_release: dict) -> Optional[str]:
     """Which family's package names apply: Ubuntu before Debian (Mint, Pop
     and the rest say both), and None for one that is none of the five."""

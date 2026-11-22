@@ -19,6 +19,7 @@ import pathlib
 import select
 import subprocess
 import sys
+import tempfile
 from typing import NamedTuple, Optional
 
 from .. import sysroot
@@ -203,6 +204,16 @@ class HelperDenied(HelperError):
     """The user cancelled the dialog or isn't authorized."""
 
 
+class HelperNoAgent(HelperUnavailable):
+    """pkexec is there but no polkit agent runs in the session to ask for the
+    password (a bare window manager: Hyprland, Sway, i3…)."""
+
+
+# What pkexec writes then, in English whatever the locale, with exit code 127:
+# the same as a refusal, so its words are what tell them apart.
+NO_AGENT = "No authentication agent found"
+
+
 def _of_this_machine(*paths: pathlib.Path) -> tuple[pathlib.Path, ...]:
     """The installed helper's files as the machine being read has them.
 
@@ -277,14 +288,18 @@ class PrivilegedClient:
             )
 
         command = self._command()
+        # pkexec's own words, read only if it fails. A file and not a pipe:
+        # nobody reads it while the helper runs, and a full pipe would stall it.
+        said = tempfile.TemporaryFile()
         try:
             process = subprocess.Popen(
                 command,
                 stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                stderr=subprocess.DEVNULL, text=True, bufsize=1,
+                stderr=said, text=True, bufsize=1,
                 env=system_environment(),
             )
         except OSError as exc:
+            said.close()
             raise HelperUnavailable(f"no se pudo lanzar pkexec: {exc}") from exc
 
         self._process = process
@@ -298,6 +313,11 @@ class PrivilegedClient:
                 code = process.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 code = None
+            said.seek(0)
+            words = said.read(4096).decode(errors="replace")
+            said.close()
+            if NO_AGENT in words:
+                raise HelperNoAgent(words.strip()) from None
             # 126 = the user cancelled the dialog; 127 = not authorized.
             if code in (126, 127):
                 raise HelperDenied("Autorización cancelada o denegada.") from None
@@ -307,6 +327,7 @@ class PrivilegedClient:
                 ) from None
             raise
 
+        said.close()
         if not reply.get("ok") or reply.get("uid") != 0:
             self.close()
             raise HelperError("el ayudante no arrancó con privilegios")

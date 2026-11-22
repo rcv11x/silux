@@ -62,6 +62,22 @@ gestor de ventanas como IceWM no arranca ninguno. Después hay que volver a
 iniciar sesión. El aviso de pkexec lo dice en esos sistemas, y Ajustes lo
 repite junto a «No disponible».
 
+Con pkexec instalado puede faltar igualmente el agente: un gestor de ventanas
+(Hyprland, Sway, i3, IceWM) no arranca ninguno, y pkexec falla con «No
+authentication agent found». Silux lo distingue de una contraseña cancelada
+y dice cuál instalar según el escritorio (`system_deps.POLKIT_AGENTS`):
+
+| Escritorio | Debian | Ubuntu | Fedora | Arch | Gentoo |
+|---|---|---|---|---|---|
+| KDE Plasma | `polkit-kde-agent-1` | `polkit-kde-agent-1` | `polkit-kde` | `polkit-kde-agent` | `kde-plasma/polkit-kde-agent` |
+| LXQt | `lxqt-policykit` | `lxqt-policykit` | `lxqt-policykit` | `lxqt-policykit` | `lxqt-base/lxqt-policykit` |
+| Hyprland | `mate-polkit` | `mate-polkit` | `mate-polkit` | `hyprpolkitagent` | `mate-extra/mate-polkit` |
+| Cualquier otro | `mate-polkit` | `mate-polkit` | `mate-polkit` | `mate-polkit` | `mate-extra/mate-polkit` |
+
+Hay que arrancarlo con la sesión (el autoarranque del escritorio o el
+`exec-once` del gestor de ventanas). GNOME, Cinnamon y los escritorios
+completos traen el suyo.
+
 ## Programas del sistema
 
 | Qué | Para qué | Debian | Ubuntu | Fedora | Arch | Gentoo | Si falta | ¿Se avisa? |

@@ -465,6 +465,8 @@
   "deps.pkexec.nosystemd": "Without systemd, polkit also needs elogind and a polkit agent in the session to ask for the password; then log in again.",
   "deps.pkexec.nosystemd.debian": "Without systemd, polkit also needs libpam-elogind, which brings elogind, and a polkit agent in the session to ask for the password, such as lxpolkit; then log in again.",
   "deps.pnpids": "pnp.ids is missing: each monitor's maker shows its three-letter code and not its name.",
+  "deps.polkitagent": "pkexec is there, but no polkit agent runs in the session to ask for the password, so permissions can't be given.",
+  "deps.polkitagent.hint": "Install {paquete} and have it start with your session (in your desktop's or window manager's autostart); then ask for the permissions again.",
   "deps.python3": "The system's Python is missing: from the AppImage the permissions helper runs with it, and without it they cannot be given.",
   "deps.systemctl": "systemctl is missing: boot times do not show.",
   "deps.xdgopen": "xdg-open is missing: the links and folders Silux opens do not open.",

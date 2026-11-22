@@ -748,10 +748,14 @@ class SettingsPage(ScrollPage):
         insignia, ayuda, tono = ESTADOS_DE_PERMISOS[estado]
         self.permission_badge.poner(_(insignia), tono)
         explicacion = _(ayuda)
-        if estado == "unsupported" and snapshot is not None:
-            # What to install on this distribution, as Diagnostics says it.
-            pista = next((n.hint for n in snapshot.notes if n.path == "privileged.pkexec"), "")
-            explicacion = " ".join(p for p in (explicacion, pista) if p)
+        if snapshot is not None:
+            # What to install on this distribution, as Diagnostics says it:
+            # pkexec, or the polkit agent the session lacks.
+            falta = "privileged.pkexec" if estado == "unsupported" else "privileged.agent"
+            nota = next((n for n in snapshot.notes if n.path == falta), None)
+            if nota is not None:
+                extra = nota.hint if falta == "privileged.pkexec" else f"{nota.message} {nota.hint}"
+                explicacion = " ".join(p for p in (explicacion, extra) if p)
         self.permission_row.explicacion.setText(explicacion)
         self.permission_row.explicacion.setVisible(True)
         if boton is None:

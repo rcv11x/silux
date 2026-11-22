@@ -319,6 +319,11 @@ la memoria) no va: está propuesto en las notas
 
 ## Privilegios y privacidad
 
+* `privileged/helper.py` · baja · aplazado por el autor: el TDP de fábrica
+  de un Intel está en `MSR_PKG_POWER_INFO` (0x614), que el ayudante no tiene
+  en su lista. Con él, un portátil cuya BIOS sube el PL1 por encima del TDP
+  (un i5-5200U de 15 W con PL1 y PL2 en 25 W) lo diría al lado del límite.
+
 * `privileged/helper.py`, `privileged/client.py` · media · los topes de
   tamaño del protocolo se comprueban después de reservar la memoria (F-M24),
   y el `timeout` de `request()` no acota la lectura (F-M25).

@@ -27,6 +27,10 @@ Con informes de Felix Lara.
   diagnóstico, el tipo de firmware («BIOS heredada») y los motivos por los
   que se frena una gráfica iban en español. Lo que no se sabe ya no sale
   como «?».
+- Con pkexec instalado pero sin agente de polkit en la sesión (Hyprland,
+  Sway, i3…), Silux ya no dice que se canceló la contraseña: dice que falta
+  el agente y cuál instalar según el escritorio. El diagnóstico del informe
+  dice el paquete de todo lo que falta por un paquete.
 - Sin systemd, el aviso de que falta pkexec dice también lo que polkit
   necesita (en Debian y derivadas, libpam-elogind y un agente como lxpolkit),
   y Ajustes lo repite junto a «No disponible».

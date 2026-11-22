@@ -12,6 +12,7 @@ uninstalled.
 
 from __future__ import annotations
 
+import os
 import subprocess
 from typing import Iterator, Optional
 
@@ -22,12 +23,14 @@ from ..privileged import smbios
 from ..privileged.client import (
     HelperDenied,
     HelperError,
+    HelperNoAgent,
     HelperUnavailable,
     PrivilegedClient,
     already_root,
 )
 from ..system_env import system_environment
 from .base import Draft, Provider, is_virtual_machine
+from .system import desktop
 
 
 def _module(raw: dict) -> MemoryModule:
@@ -92,6 +95,13 @@ class PrivilegedMemory(Provider):
             self.client.connect()
             self._parse(draft, self.client.smbios_table())
             self._error = None
+        except HelperNoAgent as exc:
+            self.requested = False
+            self._error = str(exc)
+            agent = system_deps.polkit_agent(desktop(dict(os.environ)),
+                                             system_deps.family(system_deps.read_os_release()))
+            draft.note("privileged.agent", Need.PACKAGE, _("deps.polkitagent"),
+                       _("deps.polkitagent.hint").format(paquete=agent))
         except HelperDenied as exc:
             self.requested = False
             self._error = str(exc)

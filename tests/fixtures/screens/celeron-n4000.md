@@ -661,7 +661,7 @@ UHD Graphics 600: no tiene sensor de temperatura propio.
 
 - `cpu.clocks.bus_hz` (este equipo no lo expone): Este equipo no publica su reloj de referencia (BCLK).
 - `cpu.clocks.max_turbo_hz` (este equipo no lo expone): Este procesador no publica su frecuencia máxima de fábrica.
-- `gpus.packages.pnpids` (falta un paquete del sistema): Falta pnp.ids: el fabricante de cada monitor sale con su código de tres letras y no con su nombre.
+- `gpus.packages.pnpids` (falta un paquete del sistema): Falta pnp.ids: el fabricante de cada monitor sale con su código de tres letras y no con su nombre. Viene en el paquete pnp.ids.
 - `modules` (requiere permisos de administrador): Los módulos de memoria están en la tabla SMBIOS, que el kernel reserva al administrador.
 - `spd` (este equipo no lo expone): El bus de la memoria está, pero el kernel no ha registrado ningún chip SPD en él.
 - `gpus.0` (requiere permisos de administrador): El uso y el consumo de la gráfica solo se leen con permisos de administrador.
