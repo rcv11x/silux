@@ -192,6 +192,17 @@ NA_INTEL_INTEGRADA = {
     "sensors": (("gpu.sensor.voltage", "gpu.sensor.vsoc"), "gpu.na.intel.sensors"),
 }
 
+# What some drivers only give through the graphics libraries: the driver's
+# version (Mesa's) and an Intel's shared memory (Vulkan's heaps).
+FROM_THE_APIS = {"gpu.field.driverver": "gpu.na.noapi.driverver",
+                 "gpu.vram.shared": "gpu.na.noapi.shared"}
+
+# An Intel integrated GPU has no video BIOS of its own: its option ROM and
+# its tables come with the machine's firmware.
+NA_INTEL_VBIOS = {
+    "card": (("gpu.field.vbios",), "gpu.na.intel.vbios"),
+}
+
 # Una Intel de las que no publican `throttle_reason_*` (un Comet Lake): no
 # dice si se frena ni por qué. Las recientes sí, y entonces se enseña.
 NA_INTEL_SIN_MOTIVOS = {
@@ -330,6 +341,7 @@ def no_aplica(gpu: Gpu) -> tuple[dict[str, set[str]], dict[str, str]]:
             regla["clocks"] = (tuple(c for c in claves if not c.startswith("gpu.clock.link")),
                                "gpu.na.intel.clocks.link")
         reglas.append(regla)
+        reglas.append(NA_INTEL_VBIOS)
         if gpu.throttled is None:
             reglas.append(NA_INTEL_SIN_MOTIVOS)
 
@@ -663,7 +675,6 @@ class GpuSection(QWidget):
         i(_("gpu.field.drm"), gpu.drm_node or d)
         i(_("gpu.field.vbios"), gpu.vbios or d)
         i(_("gpu.field.uuid"), identificador or d)
-        self.inventory.set_visible(_("gpu.field.uuid"), identificador is not None)
 
         self._apply_memory(gpu)
 
@@ -775,6 +786,41 @@ class GpuSection(QWidget):
         # Only cards whose driver publishes a factory limit have one to show.
         if gpu.power_cap_default_w is None and gpu.power_cap_max_w is None:
             escondidos["sensors"].add("gpu.sensor.powercap")
+        if render.unique_id(gpu.unique_id) is None:
+            escondidos["card"].add("gpu.field.uuid")
+
+        grupos = (("card", (self.card, self.inventory), CARD_FIELDS + INVENTORY_FIELDS,
+                   self.card_pie),
+                  ("memory", (self.memory,), MEMORY_FIELDS, self.memory_pie),
+                  ("clocks", (self.clocks,), CLOCK_FIELDS, self.clocks_pie),
+                  ("sensors", (self.sensors,), SENSOR_FIELDS, self.sensors_pie))
+
+        def grid_of(grids, clave):
+            return next(g for g in grids if _(clave) in g._values)
+
+        # What no rule above names and still holds a dash on an awake card:
+        # this driver or the PCI database doesn't give it (a GT1 Ivy Bridge's
+        # unit count, a G98M under nouveau). Hidden and named at the foot.
+        globos: dict[str, str] = {}
+        if not (gpu.suspended or gpu.virtual):
+            for nombre, grids, campos, _pie in grupos:
+                mudos = [c for c in campos if c not in escondidos[nombre]
+                         and grid_of(grids, c).is_blank(_(c))]
+                escondidos[nombre].update(mudos)
+                # No library uses the card: theirs is the reason, not the driver.
+                sin_apis = [c for c in mudos if c in FROM_THE_APIS and not gpu.apis]
+                mudos = [c for c in mudos if c not in sin_apis]
+                frases = []
+                if sin_apis:
+                    frases.append(_("gpu.na.noapi").format(campos=render.enumeration(
+                        [_(FROM_THE_APIS[c]) for c in sin_apis])))
+                if mudos:
+                    frase, globo = render.silent_gpu_rows(
+                        [_(c) for c in mudos], gpu.driver, card=nombre == "card")
+                    frases.append(frase)
+                    globos[nombre] = globo
+                if frases:
+                    pies[nombre] = " ".join(p for p in (pies[nombre], *frases) if p)
 
         # La ficha de la temperatura, donde la tarjeta no la publica: una
         # ficha grande con un guion para siempre era el hueco más visible de
@@ -782,19 +828,21 @@ class GpuSection(QWidget):
         # de lo que ya decidió `no_aplica` en vez de repetir aquí la condición.
         self.tile_temp.setVisible(not ((gpu.no_temperature_sensor or gpu.virtual)
                                        and gpu.temp_c is None and gpu.package_temp_c is None))
-        self.tile_power.setVisible("gpu.tile.power" not in ocultos["sensors"])
+        # nouveau gives no usage, clock or power, and the notice above the
+        # card says so: three big dashes said nothing more.
+        blind = gpu.driver == "nouveau"
+        self.tile_power.setVisible("gpu.tile.power" not in ocultos["sensors"]
+                                   and not (blind and gpu.power_w is None))
         # An emulated device has no usage or clock to follow either.
-        self.tile_usage.setVisible(not gpu.virtual)
-        self.tile_clock.setVisible(not gpu.virtual)
+        self.tile_usage.setVisible(not gpu.virtual and not (blind and gpu.busy_percent is None))
+        self.tile_clock.setVisible(not gpu.virtual
+                                   and not (blind and gpu.clocks.core_hz is None))
 
-        for nombre, grid, campos, pie in (
-                ("card", self.card, CARD_FIELDS, self.card_pie),
-                ("memory", self.memory, MEMORY_FIELDS, self.memory_pie),
-                ("clocks", self.clocks, CLOCK_FIELDS, self.clocks_pie),
-                ("sensors", self.sensors, SENSOR_FIELDS, self.sensors_pie)):
+        for nombre, grids, campos, pie in grupos:
             for clave in campos:
-                grid.set_visible(_(clave), clave not in escondidos[nombre])
+                grid_of(grids, clave).set_visible(_(clave), clave not in escondidos[nombre])
             pie.setText(pies[nombre])
+            pie.setToolTip(globos.get(nombre, ""))
             pie.setVisible(bool(pies[nombre]))
 
         # En una integrada de Intel, de «Consumo y temperaturas» solo queda el

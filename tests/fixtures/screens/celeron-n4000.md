@@ -287,7 +287,7 @@ GeminiLake · i915 26.1.2 · 12 EU · integrada · principal
 - Versión del driver: 26.1.2
 - Unidades de proceso: 12 unidades de ejecución
 
-i915 no cuenta unidades de rasterizado ni motores de sombreado: el recuento de Intel son las unidades de ejecución.
+i915 no cuenta unidades de rasterizado ni motores de sombreado: el recuento de Intel son las unidades de ejecución. Una integrada de Intel no tiene BIOS de video propia: va dentro del firmware del equipo.
 
 #### Identificadores
 
@@ -295,7 +295,6 @@ i915 no cuenta unidades de rasterizado ni motores de sombreado: el recuento de I
 - Subsistema: 17AA:3805
 - Ranura PCI: 0000:00:02.0
 - Nodo DRM: card0
-- BIOS de video: —
 
 ### Memoria de video
 

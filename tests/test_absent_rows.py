@@ -2,7 +2,8 @@
 
 Rule 5, on every dump: the clocks a processor doesn't publish, an energy
 preference its frequency driver doesn't offer, what a virtual interface has
-no card for, a disk that doesn't say its maker and a flash drive's wear.
+no card for, a disk that doesn't say its maker, a flash drive's wear, and
+what a graphics card's generation or driver gives no value for.
 """
 
 import unittest
@@ -74,6 +75,24 @@ class TestNoDashForWhatIsNotThere(unittest.TestCase):
                         continue
                     self.assertEqual(
                         _dashed(grid, ("gpu.field.vendor", "storage.field.life")), [], disk.name)
+
+
+    def test_graphics_cards(self):
+        from silux.ui.pages.graphics import GpuSection
+
+        for name, snapshot in self.snapshots.items():
+            with self.subTest(name), pantalla.Ventana(snapshot) as window:
+                page = self._page(window, "Gráficos")
+                sections = [s for s in page.findChildren(GpuSection) if not s.isHidden()]
+                for section, gpu in zip(sections, snapshot.gpus):
+                    if gpu.suspended or gpu.virtual:
+                        continue
+                    for grid in (section.card, section.inventory, section.memory,
+                                 section.clocks, section.sensors):
+                        self.assertEqual(_dashed(grid, [k for k in grid._values]), [],
+                                         render.gpu_name(gpu))
+                    if gpu.driver == "nouveau":
+                        self.assertTrue(section.tile_usage.isHidden())
 
 
 if __name__ == "__main__":

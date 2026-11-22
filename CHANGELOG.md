@@ -60,6 +60,13 @@ que hace falta.
   sale como tal, y la versión de la BIOS sin los espacios que deja el
   firmware.
 
+### Gráficos
+
+- Lo que una gráfica o su driver no da ya no sale con guion: se esconde y se
+  dice al pie de cada tarjeta. Una integrada de Intel no tiene BIOS de video
+  propia; una NVIDIA con nouveau no publica relojes, memoria ni sensores, y
+  sus fichas de uso, frecuencia y consumo se van.
+
 ### Almacenamiento
 
 - La vida restante de un pendrive lleva candado sin permisos, como el resto

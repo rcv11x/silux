@@ -311,31 +311,25 @@ Esta gráfica no publica cuánto se usa su motor de video.
 - Tasa de datos: 2.4 Gbps
 - Visible por la CPU: 512 MB
 - Resizable BAR: activo
-- Chips: —
 - Tomada del sistema: 124.2 MB de 1.6 GB
+
+amdgpu no publica chips de esta tarjeta.
 
 ### Relojes y enlace
 
 - Núcleo: 400 MHz
 - Núcleo (máximo): 1.10 GHz
 - Memoria: 933 MHz
-- Memoria (efectiva): —
 - Memoria (máximo): 1.20 GHz
-- SoC: —
 - Perfil de rendimiento: auto
 - Enlace: PCIe 3.0 × 16
 - Enlace (máximo): PCIe 3.0 × 16
 
+amdgpu no publica memoria (efectiva) ni SoC de esta tarjeta.
+
 ### Consumo y temperaturas
 
-- Estado: —
-- Chips de memoria: —
-- Voltaje: —
-- Voltaje del SoC: —
-- Voltaje de memoria: —
-- Uso del motor de video: —
-
-Los reguladores de voltaje y el ventilador son de una tarjeta aparte: esta se alimenta y se refrigera con el resto del equipo. En una APU, el consumo que da el driver es el del procesador entero y su segunda temperatura es la del SoC: ninguna de las dos es de la gráfica.
+Los reguladores de voltaje y el ventilador son de una tarjeta aparte: esta se alimenta y se refrigera con el resto del equipo. En una APU, el consumo que da el driver es el del procesador entero y su segunda temperatura es la del SoC: ninguna de las dos es de la gráfica. amdgpu no publica estado, chips de memoria, voltaje ni otros 3 datos de esta tarjeta.
 
 ### Códecs de video por hardware
 

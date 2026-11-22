@@ -744,6 +744,33 @@ INTERFACE_DEVICE_FIELDS = {
 }
 
 
+def lowercase_label(label: str) -> str:
+    """A row's name inside a sentence: «Núcleo» → «núcleo», «SoC» stays."""
+    first = label.split(" ", 1)[0]
+    return label[:1].lower() + label[1:] if first[1:].islower() else label
+
+
+# Beyond this many, a foot names the first and counts the rest.
+NAMED_AT_THE_FOOT = 4
+
+
+def silent_gpu_rows(labels: list[str], driver: Optional[str],
+                    card: bool = False) -> tuple[str, str]:
+    """«nouveau no publica núcleo, memoria…» and its tooltip: what a graphics
+    card's driver gives no value for, from the rows' own names. The card's
+    identity can be missing from the PCI database too. A long list names
+    three and counts the rest; the tooltip has them all."""
+    names = [lowercase_label(label) for label in labels]
+    tooltip = ""
+    if len(names) > NAMED_AT_THE_FOOT:
+        tooltip = "\n".join(labels)
+        names = names[:3] + [_("gpu.na.silent.more").format(n=len(names) - 3)]
+    sentence = _("gpu.na.silent.card" if card else "gpu.na.silent").format(
+        driver=driver or _("gpu.na.silent.nodriver"),
+        campos=enumeration(names, "list.nor"))
+    return sentence, tooltip
+
+
 def interface_missing(interface) -> list[str]:
     """The fields of INTERFACE_DEVICE_FIELDS this interface doesn't have."""
     values = {

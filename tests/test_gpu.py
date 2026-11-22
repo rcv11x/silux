@@ -1771,7 +1771,8 @@ class TestNoAplicaEnPantalla(unittest.TestCase):
                           integrated=False,
                           memory=GpuMemory(total_bytes=16 * 1024**3, bus_bits=256)))
         self.assertFalse(seccion.memory._values[_("gpu.vram.bus")].isHidden())
-        self.assertTrue(seccion.memory_pie.isHidden())
+        # The integrated's sentence goes; what this one doesn't give is said.
+        self.assertNotIn(_("gpu.na.novram"), seccion.memory_pie.text())
 
 
 class TestElEnlaceDeUnaArc(BancoDrm):

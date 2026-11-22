@@ -593,6 +593,12 @@ class InfoGrid(QWidget):
     def is_locked(self, name: str) -> bool:
         return name in self._bloqueadas
 
+    def is_blank(self, name: str) -> bool:
+        """The row holds a dash, not a value nor a padlock."""
+        label = self._values.get(name)
+        return (label is not None and name not in self._bloqueadas
+                and label.full_text() == "—")
+
     def set(self, name: str, value: str, tooltip: Optional[str] = None) -> None:
         label = self._values.get(name)
         if label is None:
