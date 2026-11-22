@@ -58,6 +58,10 @@ Con informes de Felix Lara.
   ya no salen con guion: se esconden y se dice por qué. Tampoco el consumo
   de un procesador sin contador de energía (un Core 2) ni el chipset de un
   portátil del que solo se conoce el nombre en clave.
+- Un procesador anterior a Sandy Bridge (un Core 2) dice que no publica su
+  voltaje, en vez de pedir permisos para leerlo.
+- Uno de un solo núcleo dice «1 núcleo · 1 hilo», y su reposo ya no sale
+  «entre el 77 % y el 77 %».
 
 ### Memoria
 
@@ -66,7 +70,8 @@ Con informes de Felix Lara.
   declara DDR para módulos DDR2 ya no los llama DDR.
 - Si la BIOS da una velocidad distinta a cada módulo, el aviso dice la del
   más lento, que es a la que van todos.
-
+- Un fabricante que la BIOS escribe con su código JEDEC en hexadecimal
+  («80CE») sale con su nombre.
 - Dos módulos en dos controladores ya no se llaman los dos «Canal A»: el
   zócalo dice su controlador cuando es lo que los distingue.
 - Un voltaje que el SPD confirma ya no dice «según la BIOS».
@@ -84,7 +89,9 @@ Con informes de Felix Lara.
 
 - El nombre del equipo ya no sale de la versión de la BIOS ni del código de
   plataforma («Acer V1.13»): si hace falta, se toma el nombre del producto.
-
+  Ni de la letra de la serie: «ASUS X550JK», no «ASUS X».
+- Sin conexión, Inicio y Red dicen «Sin conexión» en vez de tomar el bucle
+  local («lo · 127.0.0.1») por la interfaz principal.
 - Una interfaz virtual ya no enseña dirección física, driver, modelo y ranura
   PCI con guiones: se dice al pie de su tarjeta que no tiene tarjeta detrás.
 - Los paquetes que el kernel descarta se llaman descartados, no perdidos, y
@@ -96,6 +103,13 @@ Con informes de Felix Lara.
 
 ### Gráficos
 
+- Las integradas de Intel se llaman por su nombre comercial («HD Graphics
+  4600»), de las tablas de Mesa, donde pci.ids solo daba la familia; las
+  más antiguas, sin «(primary)».
+- Una gráfica que está en el bus PCI sale siempre, también sin driver o con
+  uno que no la ofrece como gráfica (vfio-pci), y dice por qué no da datos.
+  Inicio nombra también la otra gráfica de un portátil híbrido, aunque
+  duerma.
 - Lo que una gráfica o su driver no da ya no sale con guion: se esconde y se
   dice al pie de cada tarjeta. Una integrada de Intel no tiene BIOS de video
   propia; una NVIDIA con nouveau no publica relojes, memoria ni sensores, y
@@ -122,6 +136,8 @@ Con informes de Felix Lara.
 - Una batería entre sus dos límites de carga dice «En pausa por su límite de
   carga», no «Retenida en el tope», que solo es cuando ha llegado al de
   parada.
+- Una batería que el firmware declara sin nada dentro lo dice en una frase,
+  en vez de una página de guiones.
 
 ### Almacenamiento
 
@@ -130,6 +146,8 @@ Con informes de Felix Lara.
 - Un disco que no dice su fabricante lo dice al pie de su tarjeta.
 - Una partición de intercambio sale como «Intercambio» en la barra, no como
   espacio sin montar.
+- Las cabeceras cuentan todas las unidades: un SSD por USB se reconoce por su
+  modelo, y la que no dice su tipo se cuenta como «sin tipo conocido».
 
 ## 0.4-prueba7 (21 de noviembre de 2026)
 
