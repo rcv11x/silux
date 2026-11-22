@@ -557,7 +557,7 @@
  "kernel": null,
  "gpus": [
   "GeForce GTX 850M",
-  "4th Gen Core Processor Integrated Graphics Controller"
+  "HD Graphics 4600"
  ],
  "fuentes": [
   "cpuid",

@@ -132,6 +132,28 @@ def _cpu_igpu(draft) -> Optional[str]:
     return None
 
 
+# pci.ids' names that say what a device is, not what it's sold as: an Intel
+# integrated GPU by its processor's family, «(primary)» for the first PCI
+# function of an old chipset's graphics.
+_ONLY_A_FAMILY = re.compile(r"Graphics Controller|\((?:primary|secondary)\)")
+INTEL = 0x8086
+
+
+def _intel_commercial_name(name: Optional[str], vendor_id: int, device_id: int) -> Optional[str]:
+    """«HD Graphics 4600» where pci.ids says «4th Gen Core Processor
+    Integrated Graphics Controller»: Mesa's name for the device ID."""
+    if vendor_id != INTEL or not name or not _ONLY_A_FAMILY.search(name):
+        return name
+    from .. import db
+
+    commercial = db.intel_gpus().get(f"{device_id:04x}")
+    if commercial:
+        return commercial
+    # Older than Mesa names: «Mobile GM965/GL960 Integrated Graphics».
+    name = re.sub(r"\s*\((?:primary|secondary)\)", "", name)
+    return re.sub(r"\s+Controller$", "", name.strip())
+
+
 def _split_name(text: str) -> tuple[Optional[str], Optional[str]]:
     """pci.ids writes «codename [marketing name]»; this splits them."""
     if match := _NAME_IN_BRACKETS.match(text):
@@ -337,6 +359,7 @@ class DrmGpus(Provider):
             brand, model = found_one
             gpu["vendor"] = gpu["vendor"] or brand
             gpu["codename"], gpu["name"] = _split_name(model)
+            gpu["name"] = _intel_commercial_name(gpu.get("name"), vendor_id, device_id)
 
         if subsystem and (found_one := names.get(subsystem[0])):
             # Who built the card and what they called it: what turns «Radeon RX

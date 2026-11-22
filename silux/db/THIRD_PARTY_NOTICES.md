@@ -152,3 +152,36 @@ identification code list, please visit the JEDEC website at www.jedec.org .
 
 This file is aligned to revision JEP106BP September 2026.
 ```
+
+## Mesa
+
+<https://gitlab.freedesktop.org/mesa/mesa>
+
+De sus tablas de identificadores PCI de Intel (`include/pci_ids/`), en la
+etiqueta que dice `silux/db/intel_gpus.json` (`sources.Mesa`), sale el nombre
+comercial de cada gráfica de Intel por su identificador de dispositivo, donde
+pci.ids solo dice su familia. Se toman los datos, no el código. Esos archivos
+no llevan cabecera de licencia; el resto de Mesa, salvo lo que dice otra cosa
+en su archivo, está bajo la licencia MIT (`docs/license.rst`):
+
+```
+Copyright The Mesa Authors
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+```

@@ -50,6 +50,16 @@ def load() -> dict[str, Any]:
 
 
 @functools.lru_cache(maxsize=1)
+def intel_gpus() -> dict[str, str]:
+    """Intel graphics' commercial names by device ID (tools/gen_intel_gpus.py)."""
+    path = pathlib.Path(__file__).parent / "intel_gpus.json"
+    try:
+        return json.loads(path.read_text(encoding="utf-8")).get("devices", {})
+    except (OSError, ValueError):
+        return {}
+
+
+@functools.lru_cache(maxsize=1)
 def thanks() -> tuple[str, ...]:
     """The names in thanks.json, as written there, once each."""
     try:

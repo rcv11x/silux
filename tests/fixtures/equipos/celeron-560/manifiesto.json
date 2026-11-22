@@ -326,7 +326,7 @@
  "cpu": "Intel(R) Celeron(R) CPU 560 @ 2.13GHz",
  "kernel": "Linux 6.14.0-37-generic",
  "gpus": [
-  "Mobile GM965/GL960 Integrated Graphics Controller (primary)"
+  "Mobile GM965/GL960 Integrated Graphics"
  ],
  "fuentes": [
   "battery",

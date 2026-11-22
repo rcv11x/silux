@@ -70,6 +70,18 @@ class TestElArchivo(unittest.TestCase):
         self.assertIn(f"revision {tabla['revision']}", texto)
         self.assertIn("Copyright (c) 2026 JEDEC", texto)
 
+    def test_the_intel_graphics_names_too(self):
+        """intel_gpus.json, from Mesa's PCI ID tables (MIT)."""
+        import json
+
+        tabla = json.loads((RAIZ / "silux" / "db" / "intel_gpus.json").read_text(encoding="utf-8"))
+        texto = _avisos()
+        for nombre, datos in tabla["sources"].items():
+            with self.subTest(fuente=nombre):
+                self.assertRegex(texto, rf"(?im)^## {re.escape(nombre)}\s*$")
+                self.assertIn(datos["repo"], texto)
+        self.assertIn("Permission is hereby granted, free of charge", texto)
+
     def test_libcpuid_con_el_aviso_entero(self):
         texto = _avisos()
         for trozo in ("Copyright 2008  Veselin Georgiev",

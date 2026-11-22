@@ -12,7 +12,7 @@ Intel Celeron 560
 
 ### Gráfica
 
-Mobile GM965/GL960 Integrated Graphics Controller (primary)
+Mobile GM965/GL960 Integrated Graphics
 integrada
 El uso y el consumo, con permisos.
 
@@ -197,7 +197,7 @@ Su identificación PCI da el nombre en clave del chipset, no un modelo comercial
 
 | TIPO | DISPOSITIVO | ENLACE | MÁXIMO | DRIVER |
 |---|---|---|---|---|
-| Gráfica | Mobile GM965/GL960 Integrated Graphics Controller (primary) | en el procesador |  | i915 |
+| Gráfica | Mobile GM965/GL960 Integrated Graphics | en el procesador |  | i915 |
 | Gráfica | Mobile GM965/GL960 Integrated Graphics Controller (secondary) | en el procesador |  | — |
 | Ethernet | Realtek RTL810xE PCI Express Fast Ethernet controller | PCIe 1.0 × 1 | PCIe 1.0 × 1 | r8169 |
 | Ethernet | Qualcomm Atheros AR242x / AR542x Wireless Network Adapter (PCI-Express) | PCIe 1.0 × 1 | PCIe 1.0 × 1 | ath5k |
@@ -274,7 +274,7 @@ El ayudante que se lanza solo sabe leer esa tabla y unos registros del procesado
 
 ## Gráficos
 
-Mobile GM965/GL960 Integrated Graphics Controller (primary)
+Mobile GM965/GL960 Integrated Graphics
 Dell
 i915 · Mesa 25.0.7 · integrada · principal
 - Uso: (necesita permisos) (con permisos)
@@ -614,7 +614,7 @@ SENSORES · 10 en 5 dispositivos
   - Corrientes
     - Corriente · 0.00 A · 0.00 · 0.00 · 0.00
 
-Mobile GM965/GL960 Integrated Graphics Controller (primary): no tiene sensor de temperatura propio.
+Mobile GM965/GL960 Integrated Graphics: no tiene sensor de temperatura propio.
 
 > **Falta un driver de sensores**
 > Cargando drivetemp tendrías la temperatura de los discos SATA.

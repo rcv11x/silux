@@ -332,7 +332,7 @@
  "cpu": "Intel(R) Core(TM) i5-3330 CPU @ 3.00GHz",
  "kernel": "Linux 7.3.5-arch1-1",
  "gpus": [
-  "Intel(R) HD Graphics 2500 (IVB GT1)"
+  "HD Graphics 2500"
  ],
  "fuentes": [
   "cpuid",
