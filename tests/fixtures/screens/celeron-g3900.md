@@ -169,10 +169,9 @@ Intel H110 · UEFI (64 bits)
 
 - Fabricante: ASUS
 - Modelo: H110M-D
-- Revisión: Rev X.0x
 - Chasis: Sobremesa
 
-El firmware de esta placa no dice el fabricante del chasis. Es una placa suelta: el firmware no describe un equipo de marca.
+El firmware de esta placa no dice su revisión ni el fabricante del chasis. Es una placa suelta: el firmware no describe un equipo de marca.
 
 ### Firmware
 

@@ -19,13 +19,31 @@ class TestRellenosDeLaBios(unittest.TestCase):
 
     def test_descarta_los_rellenos_conocidos(self):
         for basura in ("Default string", "To be filled by O.E.M.", "System manufacturer",
-                       "Not Specified", "None", "N/A", "  DEFAULT STRING  "):
+                       "Not Specified", "None", "N/A", "  DEFAULT STRING  ",
+                       # Templates for the version: Gigabyte's and ASUS's.
+                       "x.x", "Rev X.0x", "X.XX", "...", "0x0000",
+                       "Base Board Version", "Type2 - Board Product Name"):
             with self.subTest(valor=basura):
                 self.assertIsNone(clean_dmi(basura))
 
     def test_conserva_los_valores_de_verdad(self):
         self.assertEqual(clean_dmi("H510M PRO-E (MS-7D23)"), "H510M PRO-E (MS-7D23)")
         self.assertEqual(clean_dmi("  1.80  "), "1.80")
+        # A real revision with a template's tail still says the revision.
+        for real in ("Rev 1.xx", "Rev 1.02", "x570", "1.0", "0x1F", "X"):
+            with self.subTest(valor=real):
+                self.assertEqual(clean_dmi(real), real)
+
+    def test_its_revision_on_the_board_page(self):
+        from tests import pantalla, qt
+        from tests.test_equipos import EQUIPOS, foto
+        qt.app()
+        snapshot = foto(EQUIPOS / "celeron-g3900")[0]
+        self.assertIsNone(snapshot.board.version)
+        with pantalla.Ventana(snapshot) as window:
+            window.select_section("Placa base")
+            texts = pantalla.textos_de(window.stack.currentWidget())
+        self.assertFalse([t for t in texts if "X.0x" in t])
 
     def test_vacio_y_nulo(self):
         self.assertIsNone(clean_dmi(""))

@@ -894,10 +894,16 @@ DMI_PLACEHOLDERS = frozenset({
     "system manufacturer", "system product name", "system version",
     "not specified", "not applicable", "none", "n/a", "unknown",
     "oem", "o.e.m.", "chassis manufacturer", "chassis version",
-    "0123456789", "xxxxxxxx", "empty",
-    # Some Gigabyte boards leave the board version as a template.
-    "x.x",
+    "0123456789", "xxxxxxxx", "empty", "not set", "not available", "undefined",
+    "unspecified", "null", "bad index", "out of spec",
+    # The template's own field names, left as their values.
+    "base board product name", "base board version", "base board manufacturer",
+    "type2 - board product name", "type2 - board version", "type2 - board vendor name",
 })
+# Templates with letters where the numbers go: Gigabyte's «x.x», ASUS's
+# «Rev X.0x». Also a field of only dots, or of «0x0000».
+# A lone «X» is a series letter, not a template.
+_DMI_TEMPLATE = re.compile(r"(?:rev\.?\s*)?(?=[x0]*\.)(?=[0.]*x)[x0.]+|\.+|0x0+", re.I)
 
 
 # «1.0», «Rev 1.0», «01». What a board sold on its own leaves in the system
@@ -929,7 +935,9 @@ def clean_dmi(value: Optional[str]) -> Optional[str]:
         return None
     # «N34ET64W (1.64 )»: spaces the firmware pads its fields with.
     value = re.sub(r"\s+\)", ")", re.sub(r"\(\s+", "(", " ".join(value.split())))
-    return None if value.lower() in DMI_PLACEHOLDERS else value
+    if value.lower() in DMI_PLACEHOLDERS or _DMI_TEMPLATE.fullmatch(value):
+        return None
+    return value
 
 
 @dataclass(frozen=True, slots=True)
