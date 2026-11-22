@@ -44,7 +44,24 @@ def _package_notes(photo):
     return {n.path: n for n in photo.notes if n.need is Need.PACKAGE}
 
 
+# Which packages bring a data file, release by release, as each package
+# search lists it (packages.debian.org and packages.ubuntu.com, 22 November
+# 2026): those that ship it, or depend on the one that does. The name Silux
+# gives has to bring it on every release of the family.
+BROUGHT_BY = {
+    ("pnp.ids", "debian"): {"12": {"hwdata"}, "13": {"pnp.ids", "hwdata"}},
+    ("pnp.ids", "ubuntu"): {"22.04": {"hwdata"}, "24.04": {"hwdata"}},
+}
+
+
 class TestTheTable(unittest.TestCase):
+
+    def test_a_package_that_brings_it_on_every_release(self):
+        packages = {d.key: d.packages for d in system_deps.DEPENDENCIES}
+        for (key, family), releases in BROUGHT_BY.items():
+            for release, brought_by in releases.items():
+                with self.subTest(key, family=family, release=release):
+                    self.assertIn(packages[key][family], brought_by)
 
     def test_every_piece_has_a_package_in_every_family(self):
         for dep in system_deps.DEPENDENCIES:

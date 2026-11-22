@@ -19,7 +19,9 @@ distribución que no es de estas cinco familias se nombran los cinco.
 Los nombres de los paquetes se preguntaron a cada distribución, a su propio
 gestor de paquetes, el 21 de noviembre de 2026: Debian 13, Ubuntu 24.04,
 Fedora 45 y Arch. Los de Gentoo, a packages.gentoo.org y a portagefilelist.de,
-su base de qué paquete instala cada archivo. Las derivadas usan los de su familia: Linux Mint y Pop!_OS,
+su base de qué paquete instala cada archivo. `pnp.ids` va en su propio paquete en
+Debian 13 y dentro de `hwdata` en Debian 12; `hwdata` lo trae en los dos (en
+13 depende de él). Las derivadas usan los de su familia: Linux Mint y Pop!_OS,
 los de Ubuntu; CachyOS, Manjaro y EndeavourOS, los de Arch; RHEL, Rocky y
 Alma, los de Fedora. La tabla del código es `silux/system_deps.py`, y
 `tests/test_system_deps.py` comprueba que esta página dice lo mismo.
@@ -29,7 +31,7 @@ Alma, los de Fedora. La tabla del código es `silux/system_deps.py`, y
 | Qué | Para qué | Debian | Ubuntu | Fedora | Arch | Gentoo | Si falta | ¿Se avisa? |
 |---|---|---|---|---|---|---|---|---|
 | `pci.ids` | El nombre de cada dispositivo PCI: la gráfica, la red, el chipset, lo de Dispositivos | `pci.ids` | `hwdata` | `hwdata` | `hwdata` | `sys-apps/hwdata` | Salen con su número (`8086:46a3`) y no con su nombre | Sí, en Placa base |
-| `pnp.ids` | El nombre del fabricante de cada monitor | `pnp.ids` | `hwdata` | `hwdata` | `hwdata` | `sys-apps/hwdata` | Sale el código de tres letras del EDID | Sí, en Gráficos, si hay un monitor conectado |
+| `pnp.ids` | El nombre del fabricante de cada monitor | `hwdata` | `hwdata` | `hwdata` | `hwdata` | `sys-apps/hwdata` | Sale el código de tres letras del EDID | Sí, en Gráficos, si hay un monitor conectado |
 
 ## Gráficas
 

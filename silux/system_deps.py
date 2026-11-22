@@ -55,9 +55,11 @@ DEPENDENCIES = (
                {"debian": "pci.ids", "ubuntu": "hwdata", "fedora": "hwdata", "arch": "hwdata",
                 "gentoo": "sys-apps/hwdata"},
                "deps.pciids"),
+    # Debian 13 ships it in its own package and Debian 12 inside hwdata;
+    # hwdata brings it on both.
     Dependency("pnp.ids", "data",
                ("/usr/share/hwdata/pnp.ids", "/usr/share/misc/pnp.ids", "/usr/share/pnp.ids"),
-               {"debian": "pnp.ids", "ubuntu": "hwdata", "fedora": "hwdata", "arch": "hwdata",
+               {"debian": "hwdata", "ubuntu": "hwdata", "fedora": "hwdata", "arch": "hwdata",
                 "gentoo": "sys-apps/hwdata"},
                "deps.pnpids"),
     Dependency("nvml", "library", ("libnvidia-ml.so.1",),
