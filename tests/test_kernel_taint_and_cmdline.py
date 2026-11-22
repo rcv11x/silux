@@ -137,11 +137,14 @@ class TestOnTheSystemPage(unittest.TestCase):
         return window.system_page
 
     def test_shown_when_the_machine_publishes_them(self):
-        with pantalla.Ventana(foto(EQUIPOS / "5800x3d")[0]) as window:
+        photo = foto(EQUIPOS / "5800x3d")[0]
+        self.assertEqual(photo.system.tainted, 12288)
+        with pantalla.Ventana(photo) as window:
             page = self.page(window)
             tainted = page.kernel._values[_("sys.kernel.tainted")]
             self.assertTrue(tainted.isVisible())
-            self.assertEqual(tainted.full_text(), render.tainted(12288))
+            self.assertEqual(tainted.full_text(),
+                             render.tainted(12288, photo.system.tainting_modules))
             line = page.boot._values[_("sys.boot.cmdline")]
             self.assertTrue(line.isVisible())
             self.assertIn("root=…", line.full_text())

@@ -144,13 +144,27 @@ class TestLoQueNoTieneActividadNacePlegado(unittest.TestCase):
     def setUpClass(cls):
         cls.app = qt.app()
 
-    def _pagina(self, equipo, plegadas=(), abiertas=()):
+    @staticmethod
+    def _first_sample(folder):
+        """What the collector reads first: no rates yet, as on opening."""
+        from silux import volcado
+        from silux.collector import Collector
+
+        with volcado.mounted(folder):
+            collector = Collector()
+            try:
+                return collector.snapshot()
+            finally:
+                collector.close()
+
+    def _pagina(self, equipo, plegadas=(), abiertas=(), first=False):
         from silux.settings import Preferences
         from silux.tracking import Tracker
         from silux.ui import theme
         from silux.ui.pages.monitor import MonitorPage
 
-        self.foto = foto(EQUIPOS / equipo)[0]
+        self.foto = (self._first_sample(EQUIPOS / equipo) if first
+                     else foto(EQUIPOS / equipo)[0])
         prefs = Preferences(sensor_collapsed=tuple(plegadas),
                             sensor_expanded=tuple(abiertas)).normalized()
         pagina = MonitorPage(theme.palette_for(self.app, "dark"), prefs, Tracker())
@@ -218,25 +232,29 @@ class TestLoQueNoTieneActividadNacePlegado(unittest.TestCase):
     def test_las_interfaces_sin_trafico_nacen_cerradas_y_la_principal_no(self):
         from silux.ui.pages.network import main_interface
 
-        for equipo in ("i5-10400", "5800x3d"):
-            with self.subTest(equipo=equipo):
-                pagina = self._pagina(equipo)
+        folded = 0
+        for equipo, first in (("i5-10400", False), ("5800x3d", False), ("5800x3d", True)):
+            with self.subTest(equipo=equipo, primera=first):
+                pagina = self._pagina(equipo, first=first)
                 principal, todas = main_interface(self.foto.network)
                 filas = pagina.tree._rows
-                ramas = {i.name: filas[f"::net:{i.name}"] for i in todas
+                ramas = {i.name: (i, filas[f"::net:{i.name}"]) for i in todas
                          if f"::net:{i.name}" in filas}
                 self.assertGreater(len(ramas), 1)
-                self.assertTrue(ramas[principal.name].isExpanded())
-                for nombre, rama in ramas.items():
+                self.assertTrue(ramas[principal.name][1].isExpanded())
+                for nombre, (interfaz, rama) in ramas.items():
                     if nombre != principal.name:
-                        self.assertFalse(rama.isExpanded(), nombre)
+                        traffic = bool(interfaz.traffic.rx_rate_bps or interfaz.traffic.tx_rate_bps)
+                        self.assertEqual(rama.isExpanded(), traffic, nombre)
+                        folded += not traffic
+        self.assertGreater(folded, 1)
 
     def test_la_que_resulta_tener_trafico_se_abre_al_rehacer_el_arbol(self):
         """En la primera muestra ninguna tiene ritmo todavía."""
         import dataclasses
         from silux.ui.pages.network import main_interface
 
-        pagina = self._pagina("5800x3d")
+        pagina = self._pagina("5800x3d", first=True)
         principal, todas = main_interface(self.foto.network)
         otra = next(i for i in todas if i is not principal
                     and f"::net:{i.name}" in pagina.tree._rows)
@@ -261,7 +279,7 @@ class TestLoQueNoTieneActividadNacePlegado(unittest.TestCase):
         cpu = "cpu"                 # its raw key: «AMD Ryzen 7 5800X3D»
         # (El consumo del procesador no está en el volcado: sale de restar
         # dos lecturas. Que su rama esté guardada y no exista no rompe nada.)
-        pagina = self._pagina("5800x3d", plegadas=(
+        pagina = self._pagina("5800x3d", first=True, plegadas=(
             f"::{cpu}/cat.power", f"::{cpu}/cat.temperature", "::net:enp6s0/cat.network"))
         placa = "board"
         filas = pagina.tree._rows

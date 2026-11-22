@@ -165,9 +165,14 @@ class TestEquiposVolcados(unittest.TestCase):
                 finally:
                     recolector.close()
                 self.assertTrue(f.cpu.logical)
+                # The second snapshot reads the second reading, where there is one.
+                second = json.loads((carpeta / "grabado.json").read_text()).get(
+                    "segunda_lectura", {})
                 for hilo in f.cpu.logical:
                     pedida = cpus / f"cpu{hilo.index}" / "cpufreq" / "scaling_cur_freq"
-                    self.assertEqual(hilo.freq_hz, int(pedida.read_text()) * 1000, hilo.index)
+                    path = "/" + str(pedida.resolve().relative_to(carpeta.resolve()))
+                    text = second.get(path) or pedida.read_text()
+                    self.assertEqual(hilo.freq_hz, int(text) * 1000, hilo.index)
                 for tipo in f.cpu.types:
                     c = tipo.clocks
                     techo = max(filter(None, (c.max_hz, c.max_turbo_hz)))

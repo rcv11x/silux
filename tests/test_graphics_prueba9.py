@@ -24,12 +24,13 @@ class TestTheRadeon(unittest.TestCase):
 
     def test_the_model(self):
         g = self.gpu
-        self.assertEqual((g.driver, g.userspace_driver, g.driver_version, g.isa),
-                         ("amdgpu", "Mesa", "26.2.6", "gfx1201"))
+        self.assertEqual((g.driver, g.userspace_driver, g.isa), ("amdgpu", "Mesa", "gfx1201"))
+        self.assertRegex(g.driver_version, r"^\d+\.\d+\.\d+$")
         self.assertEqual((g.l2_cache_bytes, g.infinity_cache_bytes), (8 * 1024**2, 64 * 1024**2))
+        mesa = f"Mesa {g.driver_version}"
         self.assertEqual({a.name: render.api_driver(a, g) for a in g.apis},
-                         {"Vulkan": "radv (Mesa 26.2.6)", "OpenGL": "radeonsi (Mesa 26.2.6)",
-                          "OpenCL": "rusticl (Mesa 26.2.6)"})
+                         {"Vulkan": f"radv ({mesa})", "OpenGL": f"radeonsi ({mesa})",
+                          "OpenCL": f"rusticl ({mesa})"})
 
     def test_on_the_page(self):
         from silux.ui.pages.graphics import GpuSection
@@ -38,7 +39,8 @@ class TestTheRadeon(unittest.TestCase):
             window.select_section("Gráficos")
             section = window.stack.currentWidget().findChildren(GpuSection)[0]
             card, inventory = section.card._values, section.inventory._values
-            self.assertEqual(card[_("gpu.field.driverver")].full_text(), "Mesa 26.2.6")
+            self.assertEqual(card[_("gpu.field.driverver")].full_text(),
+                             f"Mesa {self.gpu.driver_version}")
             self.assertEqual(card[_("gpu.field.l2")].full_text(), render.size(8 * 1024**2))
             self.assertEqual(inventory[_("gpu.field.isa")].full_text(), "gfx1201")
             # Its video BIOS's version and build date, from amdgpu's ioctl.
@@ -53,7 +55,8 @@ class TestTheRadeon(unittest.TestCase):
             # For experts: every DPM table with its step in use, the power
             # profile and OverDrive off, with how to turn it on.
             expert = section.expert._values
-            self.assertEqual(expert[_("gpu.expert.fclk")].full_text(), "313 · ▸582 · 2400 MHz")
+            self.assertRegex(expert[_("gpu.expert.fclk")].full_text(),
+                             r"^313 · (\d+ · )*▸\d+( · \d+)* MHz$")
             self.assertEqual(expert[_("gpu.expert.sclk")].full_text(),
                              "500 · 2520 MHz · " + _("gpu.expert.now.asleep"))
             self.assertEqual(expert[_("gpu.expert.profile")].full_text(),

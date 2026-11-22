@@ -100,10 +100,16 @@ class TestOnTheGraphicsPage(unittest.TestCase):
 
     def test_a_dump_without_the_running_mode_says_so(self):
         qt.app()
-        with pantalla.Ventana(foto(EQUIPOS / "5800x3d")[0]) as window:
+        folder = EQUIPOS / "i5-10400"
+        self.assertNotIn("drm_modes", json.loads((folder / "grabado.json").read_text()))
+        snapshot = foto(folder)[0]
+        connected = [d.connector for g in snapshot.gpus for d in g.displays if d.connected]
+        self.assertTrue(connected)
+        with pantalla.Ventana(snapshot) as window:
             window.select_section("Gráficos")
             texts = visible_texts(window.stack.currentWidget())
-        self.assertIn(_("gpu.displays.preferred.only").format(salidas="DP-1 y DP-2"), texts)
+        self.assertIn(_("gpu.displays.preferred.only").format(
+            salidas=render.enumeration(connected)), texts)
 
     def test_a_card_asleep_is_not_asked(self):
         with mock.patch.object(drmmode, "active_modes") as asked:

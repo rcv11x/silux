@@ -70,7 +70,10 @@ class TestElVolcadoNuevo(unittest.TestCase):
     def test_lo_enchufado_sin_marcas_ni_modelos(self):
         usb = self.foto.usb_devices
         self.assertGreater(len(usb), 5)
-        self.assertEqual({(u.vendor, u.product, u.usb_id) for u in usb}, {(None, None, None)})
+        # What the device writes about itself stays out; its ids don't.
+        self.assertEqual({(u.vendor, u.product) for u in usb}, {(None, None)})
+        for device in usb:
+            self.assertRegex(device.usb_id or "", r"^[0-9a-f]{4}:[0-9a-f]{4}$")
         self.assertIn("hub", {u.kind for u in usb})
         self.assertNotIn("other", {u.kind for u in usb if not u.is_hub})
         self.assertTrue(any(u.parent for u in usb))
@@ -85,8 +88,7 @@ class TestElVolcadoNuevo(unittest.TestCase):
     def test_en_el_volcado_no_hay_archivos_que_digan_de_quien_es_cada_cosa(self):
         raiz = EQUIPOS / "5800x3d"
         delatores = [str(p.relative_to(raiz)) for p in raiz.rglob("*")
-                     if p.name in ("product", "manufacturer", "idVendor", "idProduct")
-                     and "/usb" in str(p)]
+                     if p.name in ("product", "manufacturer") and "/usb" in str(p)]
         self.assertEqual(delatores, [])
         self.assertFalse(list(raiz.rglob("LoaderDevicePartUUID*")))
         self.assertFalse(list(raiz.rglob("LoaderSystemToken*")))
@@ -159,8 +161,7 @@ class TestElVolcadoNuevoDeIntel(unittest.TestCase):
             raiz = EQUIPOS / nombre
             with self.subTest(volcado=nombre):
                 delatores = [str(p.relative_to(raiz)) for p in raiz.rglob("*")
-                             if p.name in ("product", "manufacturer", "idVendor", "idProduct")
-                             and "/usb" in str(p)]
+                             if p.name in ("product", "manufacturer") and "/usb" in str(p)]
                 self.assertEqual(delatores, [])
                 self.assertFalse([p for p in raiz.rglob("serial") if "/usb" in str(p)])
 

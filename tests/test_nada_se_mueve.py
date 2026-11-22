@@ -25,8 +25,9 @@ except ImportError:                                    # pragma: no cover
 
 
 def dos_fotos(carpeta):
-    """La segunda y la tercera muestra de un volcado: con los ritmos (que
-    salen de dos lecturas) ya en las dos, así que con los mismos campos."""
+    """A dump's third and fourth samples, with the same fields. A dump with
+    a second reading has its rates on the second sample and stands still
+    from then on, like the others: no counter moves between these two."""
     from silux.collector import Collector
     from tests.test_volcar_equipo import _herramienta
 
@@ -36,6 +37,7 @@ def dos_fotos(carpeta):
         recolector = Collector()
         try:
             recolector.snapshot()
+            next_snapshot(recolector, reloj)
             return next_snapshot(recolector, reloj), next_snapshot(recolector, reloj)
         finally:
             recolector.close()

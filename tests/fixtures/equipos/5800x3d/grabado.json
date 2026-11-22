@@ -78,15 +78,29 @@
    0
   ]
  },
+ "drm_modes": {
+  "card1": {
+   "DP-1": {
+    "height": 1440,
+    "refresh_hz": 239.97,
+    "width": 2560
+   },
+   "DP-2": {
+    "height": 1440,
+    "refresh_hz": 144.0,
+    "width": 2560
+   }
+  }
+ },
  "gpuapi": {
   "consultar": {
    "opencl": [
     {
      "compute_units": 64,
-     "driver_version": "26.2.6-arch3.1",
+     "driver_version": "26.3.1-arch3.5",
      "global_memory_bytes": 17179869184,
      "max_clock_mhz": 2520,
-     "name": "AMD Radeon RX 9070 XT (radeonsi, gfx1201, ACO, DRM 3.64, 7.3.4-1-cachyos)",
+     "name": "AMD Radeon RX 9070 XT (radeonsi, gfx1201, ACO, DRM 3.64, 7.3.5-2-cachyos)",
      "platform": "rusticl",
      "platform_version": "OpenCL 3.1",
      "vendor": "AMD",
@@ -97,9 +111,9 @@
     "egl_vendor": "Mesa Project",
     "egl_version": "1.5",
     "glsl": "4.60",
-    "renderer": "AMD Radeon RX 9070 XT (radeonsi, gfx1201, ACO, DRM 3.64, 7.3.4-1-cachyos)",
+    "renderer": "AMD Radeon RX 9070 XT (radeonsi, gfx1201, ACO, DRM 3.64, 7.3.5-2-cachyos)",
     "vendor": "AMD",
-    "version": "4.6 (Compatibility Profile) Mesa 26.2.6-arch3.1"
+    "version": "4.6 (Compatibility Profile) Mesa 26.3.1-arch3.5"
    },
    "vaapi": [
     {
@@ -154,23 +168,27 @@
        ]
       }
      ],
-     "driver": "Mesa Gallium driver 26.2.6-arch3.1 for AMD Radeon RX 9070 XT (radeonsi, gfx1201, ACO, DRM 3.64, 7.3.4-1-cachyos)",
+     "driver": "Mesa Gallium driver 26.3.1-arch3.5 for AMD Radeon RX 9070 XT (radeonsi, gfx1201, ACO, DRM 3.64, 7.3.5-2-cachyos)",
      "node": "renderD128",
      "version": "1.24"
     }
    ],
    "vulkan": [
     {
-     "api_version": "1.4.354",
+     "api_version": "1.4.363",
      "device_id": 30032,
      "device_memory_bytes": 17095983104,
-     "driver_version": 109060102,
+     "driver_version": 109064193,
      "instance_version": "1.4.363",
      "kind": "dedicada",
      "name": "AMD Radeon RX 9070 XT (RADV GFX1201)",
      "vendor_id": 4098
     }
-   ]
+   ],
+   "vulkan_icds": [
+    "libvulkan_radeon.so"
+   ],
+   "vulkan_rejected": []
   }
  },
  "ioctl_red": {
@@ -186,8 +204,8 @@
   "lo:0x891b": "255.0.0.0",
   "tailscale0:0x8915": "192.168.1.120",
   "tailscale0:0x891b": "255.255.255.255",
-  "veth02917a1:0x8915": null,
-  "veth02917a1:0x891b": null,
+  "veth05b00f1:0x8915": null,
+  "veth05b00f1:0x891b": null,
   "virbr0:0x8915": "192.168.1.120",
   "virbr0:0x891b": "255.255.255.0"
  },
@@ -196,6 +214,19 @@
  },
  "nvml": {
   "abierta": false
+ },
+ "paquetes": {
+  "egl": true,
+  "kmod": true,
+  "opencl": true,
+  "opengl": true,
+  "pci.ids": true,
+  "pkexec": true,
+  "pnp.ids": true,
+  "systemctl": true,
+  "vaapi": true,
+  "vulkan": true,
+  "xdg-open": true
  },
  "pciids": {
   "1002:7550|1002:7550:148c:2435": {
@@ -271,20 +302,23 @@
  },
  "plataforma": {
   "entorno": {
+   "DESKTOP_SESSION": "/usr/share/wayland-sessions/plasma.desktop",
+   "DISPLAY": ":0",
+   "GDMSESSION": null,
    "SHELL": "/usr/bin/zsh",
+   "WAYLAND_DISPLAY": "wayland-1",
    "XDG_CURRENT_DESKTOP": "KDE",
    "XDG_SESSION_TYPE": "wayland"
   },
   "kvm": true,
   "machine": "x86_64",
-  "procesos": 507,
+  "procesos": 504,
   "uname": {
    "machine": "x86_64",
-   "node": "equipo",
-   "processor": "",
-   "release": "7.3.4-1-cachyos",
+   "node": "silux-pc",
+   "release": "7.3.5-2-cachyos",
    "system": "Linux",
-   "version": "#1 SMP PREEMPT_DYNAMIC Fri, 13 Nov 2026 19:45:18 +0000"
+   "version": "#1 SMP PREEMPT_DYNAMIC Fri, 20 Nov 2026 19:34:15 +0000"
   }
  },
  "realpath": {
@@ -293,29 +327,140 @@
   "/dev/nvme1n1p1": "/dev/nvme1n1p1",
   "/dev/sdb1": "/dev/sdb1"
  },
- "statvfs": {
+ "segunda_lectura": {
+  "/proc/self/net/dev": "Inter-|   Receive                                                |  Transmit\n face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed\n    lo: 48414288  426568    0    0    0     0          0         0 48414288  426568    0    0    0     0       0          0\nenp6s0: 8481201610 8009852    0 29399    0     0          0     26440 758158563 2459242    0    0    0     0       0          0\nenp5s0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0\ntailscale0:      86       1    0    0    0     0          0         0  1569803    4642    0    0    0     0       0          0\nvirbr0:       0       0    0    0    0     0          0         0        0       0    0   50    0     0       0          0\nbr-759aedbb66e4:       0       0    0    0    0     0          0         0        0       0    0   47    0     0       0          0\ndocker0:       0       0    0    0    0     0          0         0        0       0    0   47    0     0       0          0\nbr-fc3fda94f2b3:       0       0    0    0    0     0          0         0        0       0    0   47    0     0       0          0\nbr-82dc737f29bb:       0       0    0    0    0     0          0         0        0       0    0   47    0     0       0          0\nbr-a4340d32bbc8:       0       0    0    0    0     0          0         0        0       0    0   47    0     0       0          0\nbr-a93b06cd2a98:     168       6    0    0    0     0          0         0  2674607    4638    0    7    0     0       0          0\nbr-af7bfd3c304a:  507561    6676    0    0    0     0          0         0  6871774   11074    0    5    0     0       0          0\nbr-da01c68ce3cb:       0       0    0    0    0     0          0         0        0       0    0   47    0     0       0          0\nbr-1aa26c452e89:       0       0    0    0    0     0          0         0        0       0    0   47    0     0       0          0\nbr-58a57a02506c:       0       0    0    0    0     0          0         0        0       0    0   47    0     0       0          0\nbr-b1323ca82a9d:       0       0    0    0    0     0          0         0        0       0    0   47    0     0       0          0\nbr-d0565609c66b:     168       6    0    0    0     0          0         0  2675054    4640    0    5    0     0       0          0\nbr-fcd694417151:       0       0    0    0    0     0          0         0        0       0    0   47    0     0       0          0\nbr-194a6e44b179:     168       6    0    0    0     0          0         0  2675050    4640    0    6    0     0       0          0\nbr-3f313b6cab4b:       0       0    0    0    0     0          0         0        0       0    0   47    0     0       0          0\nbr-7aaaf4b1d6b6:     168       6    0    0    0     0          0         0  2675047    4637    0    4    0     0       0          0\nbr-e8abad770eba:       0       0    0    0    0     0          0         0        0       0    0    2    0     0       0          0\nbr-f9b005f61538:     168       6    0    0    0     0          0         0  2666896    4592    0    1    0     0       0          0\nbr-0e27aa78e95b:       0       0    0    0    0     0          0         0        0       0    0    2    0     0       0          0\nbr-4ec919845a20:       0       0    0    0    0     0          0         0        0       0    0    2    0     0       0          0\nbr-68be4b4f2681:       0       0    0    0    0     0          0         0        0       0    0    2    0     0       0          0\nveth35264ad:     735      11    0    0    0     0          0         0  3885406    6371    0    0    0     0       0          0\nveth49ea035:     126       3    0    0    0     0          0         0  3884494    6349    0    0    0     0       0          0\nveth51b2827: 45860181   92260    0    0    0     0          0         0 37410095  113056    0    0    0     0       0          0\nveth126245e:     126       3    0    0    0     0          0         0  3884501    6352    0    0    0     0       0          0\nveth978ae48:     126       3    0    0    0     0          0         0  3876343    6304    0    0    0     0       0          0\nvethac99c78: 9086420   34787    0    0    0     0          0         0 10287289   70018    0    0    0     0       0          0\nveth2ecc656:     126       3    0    0    0     0          0         0  3884188    6348    0    0    0     0       0          0\nvethed64e82:     126       3    0    0    0     0          0         0  3884497    6352    0    0    0     0       0          0\nvethc86c4b2:     126       3    0    0    0     0          0         0  3884020    6344    0    0    0     0       0          0\nveth0bb96b3:     126       3    0    0    0     0          0         0  3876166    6300    0    0    0     0       0          0\nveth05b00f1: 40525967  177000    0    0    0     0          0         0 62983211  139820    0    0    0     0       0          0\nvethf9c5495:     126       3    0    0    0     0          0         0  3884066    6346    0    0    0     0       0          0\nvethf6d633e:    2737      25    0    0    0     0          0         0  3929351    6372    0    0    0     0       0          0\nveth5584f1f:     126       3    0    0    0     0          0         0  3884054    6350    0    0    0     0       0          0\nvetha587236:     126       3    0    0    0     0          0         0  3883962    6347    0    0    0     0       0          0\n",
+  "/proc/stat": "cpu  12329639 250010 2094300 53374484 63235 234626 92516 0 0 0\ncpu0 624966 8933 111809 3492862 3477 18518 18320 0 0 0\ncpu1 882687 21033 151424 3192895 3222 11921 4074 0 0 0\ncpu2 682749 9939 128361 3398771 3386 27008 28257 0 0 0\ncpu3 901822 20734 150310 3175695 4620 11662 3356 0 0 0\ncpu4 642278 8775 111199 3491474 4158 10899 3469 0 0 0\ncpu5 738443 11074 129351 3373164 6252 11121 3148 0 0 0\ncpu6 605015 8709 118607 3502952 5279 42601 4489 0 0 0\ncpu7 584321 8062 100387 3568354 5968 10202 2653 0 0 0\ncpu8 731346 9215 114038 3408750 4172 10209 2458 0 0 0\ncpu9 1224523 50230 199103 2785397 3069 17662 2583 0 0 0\ncpu10 795388 10331 126620 3329742 4266 10122 2470 0 0 0\ncpu11 1157445 44078 192678 2870488 2907 10716 2536 0 0 0\ncpu12 671882 8923 112236 3468162 3385 10160 2439 0 0 0\ncpu13 877439 14267 140920 3230359 2708 10250 2435 0 0 0\ncpu14 628876 7805 105501 3518408 3425 10110 2363 0 0 0\ncpu15 580451 7895 101749 3567002 2935 11456 7459 0 0 0\nintr 1446043250 133 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 31 0 1 1 0 0 1 1 0 1 0 1 0 1 0 0 513 26390 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 528 0 0 0 0 0 0 0 0 0 0 0 17788490 40 0 0 0 0 0 0 0 0 58125097 0 0 0 0 0 0 0 0 247698 90109 14291 10168 13529 11207 16388 14575 14741 12072 15211 15036 15807 15310 17175 14573 16644 14626 460369 492197 456880 484331 221193 219195 330825 311305 234090 177813 170172 146804 276560 267174 197508 195053 73708093 0 0 0 0 0 0 0 0 5520457 0 0 309998 13286238 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0\nctxt 2351723390\nbtime 1795346209\nprocesses 2075461\nprocs_running 2\nprocs_blocked 0\nsoftirq 471072035 75853994 19214659 1396 10798755 365360 0 3615004 115396249 48752 245777866\n",
+  "/sys/devices/pci0000:00/0000:00:01.2/0000:02:00.0/0000:03:05.0/0000:06:00.0/mdio_bus/r8169-0-600/r8169-0-600:00/hwmon/hwmon7/temp1_input": "46000\n",
+  "/sys/devices/pci0000:00/0000:00:01.2/0000:02:00.0/0000:03:09.0/0000:08:00.0/ata3/host2/target2:0:0/2:0:0:0/block/sda/stat": "     103        0    22384      311        0        0        0        0        0      224      311        0        0        0        0        0        0\n",
+  "/sys/devices/pci0000:00/0000:00:01.2/0000:02:00.0/0000:03:09.0/0000:08:00.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/stat": "   25691    18763  5884450   337901      530      418  1809944    50794        0    57368   390660        0        0        0        0       25     1964\n",
+  "/sys/devices/pci0000:00/0000:00:01.2/0000:02:00.0/0000:03:0a.0/0000:09:00.0/ata9/host8/target8:0:0/8:0:0:0/block/sdc/stat": "     111        0     6744       52        0        0        0        0        0     4740       52        0        0        0        0        0        0\n",
+  "/sys/devices/pci0000:00/0000:00:03.1/0000:0a:00.0/0000:0b:00.0/0000:0c:00.0/gpu_busy_percent": "8\n",
+  "/sys/devices/pci0000:00/0000:00:03.1/0000:0a:00.0/0000:0b:00.0/0000:0c:00.0/hwmon/hwmon3/fan1_input": "0\n",
+  "/sys/devices/pci0000:00/0000:00:03.1/0000:0a:00.0/0000:0b:00.0/0000:0c:00.0/hwmon/hwmon3/freq1_input": "1612000000\n",
+  "/sys/devices/pci0000:00/0000:00:03.1/0000:0a:00.0/0000:0b:00.0/0000:0c:00.0/hwmon/hwmon3/freq2_input": "1258000000\n",
+  "/sys/devices/pci0000:00/0000:00:03.1/0000:0a:00.0/0000:0b:00.0/0000:0c:00.0/hwmon/hwmon3/in0_input": "694\n",
+  "/sys/devices/pci0000:00/0000:00:03.1/0000:0a:00.0/0000:0b:00.0/0000:0c:00.0/hwmon/hwmon3/power1_average": "47000000\n",
+  "/sys/devices/pci0000:00/0000:00:03.1/0000:0a:00.0/0000:0b:00.0/0000:0c:00.0/hwmon/hwmon3/temp1_input": "51000\n",
+  "/sys/devices/pci0000:00/0000:00:03.1/0000:0a:00.0/0000:0b:00.0/0000:0c:00.0/hwmon/hwmon3/temp2_input": "53000\n",
+  "/sys/devices/pci0000:00/0000:00:03.1/0000:0a:00.0/0000:0b:00.0/0000:0c:00.0/hwmon/hwmon3/temp3_input": "70000\n",
+  "/sys/devices/pci0000:00/0000:00:18.3/hwmon/hwmon5/temp1_input": "47750\n",
+  "/sys/devices/pci0000:00/0000:00:18.3/hwmon/hwmon5/temp3_input": "36000\n",
+  "/sys/devices/platform/it87.2624/hwmon/hwmon4/fan1_input": "919\n",
+  "/sys/devices/platform/it87.2624/hwmon/hwmon4/fan2_input": "1448\n",
+  "/sys/devices/platform/it87.2624/hwmon/hwmon4/fan3_input": "0\n",
+  "/sys/devices/platform/it87.2624/hwmon/hwmon4/fan4_input": "0\n",
+  "/sys/devices/platform/it87.2624/hwmon/hwmon4/fan5_input": "0\n",
+  "/sys/devices/platform/it87.2624/hwmon/hwmon4/in0_input": "1128\n",
+  "/sys/devices/platform/it87.2624/hwmon/hwmon4/in1_input": "1968\n",
+  "/sys/devices/platform/it87.2624/hwmon/hwmon4/in2_input": "2028\n",
+  "/sys/devices/platform/it87.2624/hwmon/hwmon4/in3_input": "1992\n",
+  "/sys/devices/platform/it87.2624/hwmon/hwmon4/in4_input": "996\n",
+  "/sys/devices/platform/it87.2624/hwmon/hwmon4/in5_input": "912\n",
+  "/sys/devices/platform/it87.2624/hwmon/hwmon4/in6_input": "1380\n",
+  "/sys/devices/platform/it87.2624/hwmon/hwmon4/in7_input": "3312\n",
+  "/sys/devices/platform/it87.2624/hwmon/hwmon4/in8_input": "2976\n",
+  "/sys/devices/platform/it87.2624/hwmon/hwmon4/temp1_input": "30000\n",
+  "/sys/devices/platform/it87.2624/hwmon/hwmon4/temp2_input": "29000\n",
+  "/sys/devices/platform/it87.2624/hwmon/hwmon4/temp3_input": "47000\n",
+  "/sys/devices/platform/it87.2624/hwmon/hwmon4/temp4_input": "38000\n",
+  "/sys/devices/platform/it87.2624/hwmon/hwmon4/temp5_input": "36000\n",
+  "/sys/devices/platform/it87.2624/hwmon/hwmon4/temp6_input": "42000\n",
+  "/sys/devices/system/cpu/cpu0/cpuidle/state0/time": "5282908\n",
+  "/sys/devices/system/cpu/cpu0/cpuidle/state1/time": "2479579810\n",
+  "/sys/devices/system/cpu/cpu0/cpuidle/state2/time": "32284744899\n",
+  "/sys/devices/system/cpu/cpu1/cpuidle/state0/time": "4165672\n",
+  "/sys/devices/system/cpu/cpu1/cpuidle/state1/time": "2473205404\n",
+  "/sys/devices/system/cpu/cpu1/cpuidle/state2/time": "29241786268\n",
+  "/sys/devices/system/cpu/cpu10/cpuidle/state0/time": "3955670\n",
+  "/sys/devices/system/cpu/cpu10/cpuidle/state1/time": "2365048654\n",
+  "/sys/devices/system/cpu/cpu10/cpuidle/state2/time": "30805515718\n",
+  "/sys/devices/system/cpu/cpu11/cpuidle/state0/time": "3489927\n",
+  "/sys/devices/system/cpu/cpu11/cpuidle/state1/time": "1824202334\n",
+  "/sys/devices/system/cpu/cpu11/cpuidle/state2/time": "26726492140\n",
+  "/sys/devices/system/cpu/cpu12/cpuidle/state0/time": "4196094\n",
+  "/sys/devices/system/cpu/cpu12/cpuidle/state1/time": "2436935184\n",
+  "/sys/devices/system/cpu/cpu12/cpuidle/state2/time": "32133846896\n",
+  "/sys/devices/system/cpu/cpu13/cpuidle/state0/time": "3885879\n",
+  "/sys/devices/system/cpu/cpu13/cpuidle/state1/time": "2105327759\n",
+  "/sys/devices/system/cpu/cpu13/cpuidle/state2/time": "30042147979\n",
+  "/sys/devices/system/cpu/cpu14/cpuidle/state0/time": "4284146\n",
+  "/sys/devices/system/cpu/cpu14/cpuidle/state1/time": "2240657936\n",
+  "/sys/devices/system/cpu/cpu14/cpuidle/state2/time": "32849989728\n",
+  "/sys/devices/system/cpu/cpu15/cpuidle/state0/time": "5741441\n",
+  "/sys/devices/system/cpu/cpu15/cpuidle/state1/time": "2419673483\n",
+  "/sys/devices/system/cpu/cpu15/cpuidle/state2/time": "33158413311\n",
+  "/sys/devices/system/cpu/cpu2/cpuidle/state0/time": "5699118\n",
+  "/sys/devices/system/cpu/cpu2/cpuidle/state1/time": "2859004858\n",
+  "/sys/devices/system/cpu/cpu2/cpuidle/state2/time": "30910090214\n",
+  "/sys/devices/system/cpu/cpu3/cpuidle/state0/time": "4110628\n",
+  "/sys/devices/system/cpu/cpu3/cpuidle/state1/time": "2537113615\n",
+  "/sys/devices/system/cpu/cpu3/cpuidle/state2/time": "29012926356\n",
+  "/sys/devices/system/cpu/cpu4/cpuidle/state0/time": "4341628\n",
+  "/sys/devices/system/cpu/cpu4/cpuidle/state1/time": "2358829809\n",
+  "/sys/devices/system/cpu/cpu4/cpuidle/state2/time": "32453806587\n",
+  "/sys/devices/system/cpu/cpu5/cpuidle/state0/time": "4335667\n",
+  "/sys/devices/system/cpu/cpu5/cpuidle/state1/time": "2402754140\n",
+  "/sys/devices/system/cpu/cpu5/cpuidle/state2/time": "31173499292\n",
+  "/sys/devices/system/cpu/cpu6/cpuidle/state0/time": "5682484\n",
+  "/sys/devices/system/cpu/cpu6/cpuidle/state1/time": "4110948849\n",
+  "/sys/devices/system/cpu/cpu6/cpuidle/state2/time": "30747883725\n",
+  "/sys/devices/system/cpu/cpu7/cpuidle/state0/time": "4189780\n",
+  "/sys/devices/system/cpu/cpu7/cpuidle/state1/time": "2575251066\n",
+  "/sys/devices/system/cpu/cpu7/cpuidle/state2/time": "33024897410\n",
+  "/sys/devices/system/cpu/cpu8/cpuidle/state0/time": "4080046\n",
+  "/sys/devices/system/cpu/cpu8/cpuidle/state1/time": "2173176701\n",
+  "/sys/devices/system/cpu/cpu8/cpuidle/state2/time": "31815101035\n",
+  "/sys/devices/system/cpu/cpu9/cpuidle/state0/time": "3462343\n",
+  "/sys/devices/system/cpu/cpu9/cpuidle/state1/time": "1878766043\n",
+  "/sys/devices/system/cpu/cpu9/cpuidle/state2/time": "25821932034\n",
+  "/sys/devices/system/cpu/cpufreq/policy0/scaling_cur_freq": "3558247\n",
+  "/sys/devices/system/cpu/cpufreq/policy1/scaling_cur_freq": "3592212\n",
+  "/sys/devices/system/cpu/cpufreq/policy10/scaling_cur_freq": "3694341\n",
+  "/sys/devices/system/cpu/cpufreq/policy11/scaling_cur_freq": "3599207\n",
+  "/sys/devices/system/cpu/cpufreq/policy12/scaling_cur_freq": "3789358\n",
+  "/sys/devices/system/cpu/cpufreq/policy13/scaling_cur_freq": "3559729\n",
+  "/sys/devices/system/cpu/cpufreq/policy14/scaling_cur_freq": "3599375\n",
+  "/sys/devices/system/cpu/cpufreq/policy15/scaling_cur_freq": "3599491\n",
+  "/sys/devices/system/cpu/cpufreq/policy2/scaling_cur_freq": "3597296\n",
+  "/sys/devices/system/cpu/cpufreq/policy3/scaling_cur_freq": "3590071\n",
+  "/sys/devices/system/cpu/cpufreq/policy4/scaling_cur_freq": "4349130\n",
+  "/sys/devices/system/cpu/cpufreq/policy5/scaling_cur_freq": "4445895\n",
+  "/sys/devices/system/cpu/cpufreq/policy6/scaling_cur_freq": "3563805\n",
+  "/sys/devices/system/cpu/cpufreq/policy7/scaling_cur_freq": "3638333\n",
+  "/sys/devices/system/cpu/cpufreq/policy8/scaling_cur_freq": "3557608\n",
+  "/sys/devices/system/cpu/cpufreq/policy9/scaling_cur_freq": "3976816\n"
+ },
+ "statfs": {
   "/": [
-   448840507392,
-   546966614016
+   243116973,
+   133549407,
+   131016330,
+   4096
   ],
   "/boot": [
-   299900928,
-   4087144448
+   1071056,
+   961482,
+   961482,
+   4096
   ],
   "/media/unidad2": [
-   1042097860608,
-   925748137984
+   480431152,
+   251064526,
+   226641512,
+   4096
   ],
   "/media/unidad3": [
-   479360901120,
-   3457457905664
+   961137404,
+   894625507,
+   845783703,
+   4096
   ]
  },
  "systemd": {
   "arranque": {
-   "FinishTimestampMonotonic": 48526880,
-   "InitRDTimestampMonotonic": 3964734,
-   "UserspaceTimestampMonotonic": 8563030
+   "FinishTimestampMonotonic": 24037120,
+   "InitRDTimestampMonotonic": 3198503,
+   "UserspaceTimestampMonotonic": 7765519
   }
  }
 }

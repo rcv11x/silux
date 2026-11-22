@@ -378,10 +378,14 @@ class TestWhatADumpKeepsOfTheUsage(unittest.TestCase):
         self.assertEqual(usados, (bloques - libres_raiz) * bloque)
 
     def test_an_old_dump_keeps_its_pair(self):
+        import json
         from silux import volcado
         from tests.test_equipos import EQUIPOS
-        with volcado.mounted(EQUIPOS / "5800x3d"):
-            self.assertEqual(storage._usage("/media/unidad2"), (1042097860608, 925748137984))
+        folder = EQUIPOS / "i5-10400"
+        pairs = json.loads((folder / "grabado.json").read_text())["statvfs"]
+        with volcado.mounted(folder):
+            for mountpoint, pair in pairs.items():
+                self.assertEqual(storage._usage(mountpoint), tuple(pair), mountpoint)
 
 
 class TestEspacioLibre(unittest.TestCase):

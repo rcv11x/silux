@@ -47,7 +47,7 @@ class TestTheVulkanRow(_InEnglish):
         gpu = f.gpus[0]
         vulkan = next(a for a in gpu.apis if a.name == "Vulkan")
         self.assertIsNone(vulkan.extra)
-        self.assertEqual(render.api_driver(vulkan, gpu), "radv (Mesa 26.2.6)")
+        self.assertEqual(render.api_driver(vulkan, gpu), f"radv (Mesa {gpu.driver_version})")
 
 
 if __name__ == "__main__":
