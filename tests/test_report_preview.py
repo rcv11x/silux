@@ -132,8 +132,8 @@ class TestReportPreview(unittest.TestCase):
         self.assertTrue(self.snapshot.permission_notes)
         self.assertTrue(dialog.grant_button.isVisible())
         with mock.patch.object(self.window.sampler, "request_elevation") as ask, \
-             mock.patch("silux.privileged.client.PrivilegedClient.instalado", return_value=True), \
-             mock.patch("silux.privileged.client.PrivilegedClient.al_dia", return_value=True):
+             mock.patch("silux.privileged.client.PrivilegedClient.installed", return_value=True), \
+             mock.patch("silux.privileged.client.PrivilegedClient.up_to_date", return_value=True):
             dialog.grant_button.click()
         ask.assert_called_once()
         granted = dataclasses.replace(

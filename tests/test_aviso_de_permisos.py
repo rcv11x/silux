@@ -121,8 +121,8 @@ class TestElAvisoDeInicio(unittest.TestCase):
         from silux.privileged.client import PrivilegedClient
         ventana = self._ventana()
         ventana._on_sample(self.fotos[AMD])
-        with mock.patch.object(PrivilegedClient, "instalado", return_value=True), \
-             mock.patch.object(PrivilegedClient, "al_dia", return_value=True), \
+        with mock.patch.object(PrivilegedClient, "installed", return_value=True), \
+             mock.patch.object(PrivilegedClient, "up_to_date", return_value=True), \
              mock.patch.object(ventana.sampler, "request_elevation") as pedir:
             self._aviso(ventana).grant_button.click()
         pedir.assert_called_once()
@@ -240,7 +240,7 @@ class TestLosAvisosDeLasPaginas(unittest.TestCase):
 
         # Sin un ayudante atrasado en el sistema, que añade su botón: si
         # quien ejecuta la suite tiene uno, este test no habla de eso.
-        with mock.patch.object(PrivilegedClient, "necesita_reinstalar", return_value=False):
+        with mock.patch.object(PrivilegedClient, "needs_reinstall", return_value=False):
             ventana = self._ventana()
         for nombre, pagina in (("Memoria", ventana.memory_page),
                                ("Almacenamiento", ventana.storage_page)):
@@ -269,7 +269,7 @@ class TestLosAvisosDeLasPaginas(unittest.TestCase):
                         normales.font_scale)
         # La densidad se aplica antes de montar la ventana, como al arrancar.
         theme.apply(self.app, normales.theme, "compact", normales.font_scale)
-        with mock.patch.object(PrivilegedClient, "necesita_reinstalar", return_value=True):
+        with mock.patch.object(PrivilegedClient, "needs_reinstall", return_value=True):
             ventana = self._ventana(density="compact", window_width=900, window_height=680)
             ventana.resize(900, 680)
             for nombre, pagina in (("Memoria", ventana.memory_page),
@@ -297,7 +297,7 @@ class TestLosAvisosDeLasPaginas(unittest.TestCase):
         ventana.select_section("Memoria")
         # Sin ayudante instalado, que es cuando se ofrece: con uno al día en
         # el equipo de quien ejecuta la suite el botón no sale, y está bien.
-        with mock.patch.object(PrivilegedClient, "instalado", return_value=False):
+        with mock.patch.object(PrivilegedClient, "installed", return_value=False):
             ventana.memory_page.explain_button.click()
         self.assertTrue(ventana._dialogo_permisos.isVisible())
         self.addCleanup(ventana._dialogo_permisos.close)

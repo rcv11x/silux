@@ -35,7 +35,7 @@ class _Recorded(unittest.TestCase):
                 self.while_open()
             return list(self.answer)
 
-        for patch in (mock.patch.object(PrivilegedClient, "_orden", order),
+        for patch in (mock.patch.object(PrivilegedClient, "_command", order),
                       mock.patch.object(PrivilegedClient, "supported", return_value=True),
                       mock.patch("silux.providers.privileged_memory.already_root",
                                  return_value=False)):

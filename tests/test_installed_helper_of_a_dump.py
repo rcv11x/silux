@@ -30,17 +30,17 @@ class TestTheHelperInstalledHere(unittest.TestCase):
         os.chmod(ayudante, 0o755)
         politica = pathlib.Path(tmp.name) / "org.silux.helper.policy"
         politica.write_text("<policyconfig/>\n")
-        for parche in (mock.patch.object(client, "HELPER_INSTALADO", ayudante),
-                       mock.patch.object(client, "POLITICA_INSTALADA", politica)):
+        for parche in (mock.patch.object(client, "INSTALLED_HELPER", ayudante),
+                       mock.patch.object(client, "INSTALLED_POLICY", politica)):
             parche.start()
             self.addCleanup(parche.stop)
 
     def test_here_it_needs_replacing(self):
-        self.assertTrue(client.PrivilegedClient.necesita_reinstalar())
+        self.assertTrue(client.PrivilegedClient.needs_reinstall())
 
     def test_a_dumps_photo_does_not_carry_it(self):
         with volcado.mounted(EQUIPOS / "i5-10400"):
-            self.assertFalse(client.PrivilegedClient.instalado())
+            self.assertFalse(client.PrivilegedClient.installed())
             collector = Collector()
             try:
                 photo = collector.snapshot()

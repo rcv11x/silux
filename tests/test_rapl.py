@@ -240,7 +240,7 @@ class TestTheHelperPacesItsCounters(unittest.TestCase):
         # No counters of this machine's are opened: the PMU families answer
         # «unsupported», after the wait.
         for parche in (mock.patch.object(helper, "POWERCAP", tmp.name),
-                       mock.patch.object(helper, "_abrir_pmu", lambda familia: None),
+                       mock.patch.object(helper, "_open_pmu", lambda familia: None),
                        mock.patch.dict(helper._PMU_FDS, clear=True),
                        mock.patch.dict(helper._LAST_READ, clear=True),
                        mock.patch.object(helper.time, "monotonic", self.clock.monotonic),

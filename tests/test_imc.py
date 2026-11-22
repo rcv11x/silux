@@ -16,7 +16,7 @@ from unittest import mock
 from silux.i18n import _
 from silux.model import Snapshot, MemoryTraffic, Need, SensorKind
 from silux.privileged import helper, protocol
-from silux.privileged.client import HelperError, LecturaImc, PmuUnsupported
+from silux.privileged.client import HelperError, ImcReading, PmuUnsupported
 from silux.providers.base import Draft
 from silux.providers.imc import ImcTraffic
 from tests import qt
@@ -38,7 +38,7 @@ def _lectura(reloj_ns, leido, escrito, nucleos=None, *, pmu="uncore_imc",
         contadores[pmu]["ia_requests"] = _cuentas(nucleos)
     escalas = {pmu: {e: ESCALA for e in contadores[pmu]}}
     unidades = {pmu: {e: unidad for e in contadores[pmu]}}
-    return LecturaImc(reloj_ns, contadores, escalas, unidades, truncado)
+    return ImcReading(reloj_ns, contadores, escalas, unidades, truncado)
 
 
 class ClienteFalso:
@@ -111,10 +111,10 @@ class TestElContratoDelAyudante(unittest.TestCase):
     def test_el_ayudante_decide_solo_que_abre(self):
         # El cliente manda una familia y nada más: ni nombres de PMU ni
         # números de evento viajan por el protocolo.
-        self.assertEqual(helper._pmu_admitido(helper.FAMILIA_IMC, "uncore_imc"),
+        self.assertEqual(helper._pmu_allowed(helper.IMC_FAMILY, "uncore_imc"),
                          helper.PMU_IMC_EVENT)
-        self.assertIsNone(helper._pmu_admitido(helper.FAMILIA_IMC, "i915"))
-        self.assertIsNone(helper._pmu_admitido(helper.FAMILIA_GPU, "uncore_imc"))
+        self.assertIsNone(helper._pmu_allowed(helper.IMC_FAMILY, "i915"))
+        self.assertIsNone(helper._pmu_allowed(helper.GPU_FAMILY, "uncore_imc"))
 
 
 class TestUnaMaquinaSinContadores(unittest.TestCase):
@@ -125,16 +125,16 @@ class TestUnaMaquinaSinContadores(unittest.TestCase):
         import tempfile
 
         original = helper.PMU_ROOT
-        fds, fallos = dict(helper._PMU_FDS), dict(helper._PMU_FALLO)
+        fds, fallos = dict(helper._PMU_FDS), dict(helper._PMU_FAILURE)
         helper._PMU_FDS.clear()
-        helper._PMU_FALLO.clear()
+        helper._PMU_FAILURE.clear()
 
         def restaurar():
             helper.PMU_ROOT = original
             helper._PMU_FDS.clear()
             helper._PMU_FDS.update(fds)
-            helper._PMU_FALLO.clear()
-            helper._PMU_FALLO.update(fallos)
+            helper._PMU_FAILURE.clear()
+            helper._PMU_FAILURE.update(fallos)
 
         self.addCleanup(restaurar)
         with tempfile.TemporaryDirectory() as sin_pmu:
@@ -225,7 +225,7 @@ class TestLaDerivada(unittest.TestCase):
                           for n in (0, 1)}
             escalas = {p: {e: ESCALA for e in ev} for p, ev in contadores.items()}
             unidades = {p: {e: "MiB" for e in ev} for p, ev in contadores.items()}
-            return LecturaImc(reloj, contadores, escalas, unidades, False)
+            return ImcReading(reloj, contadores, escalas, unidades, False)
 
         borrador = self._recoge(self._proveedor([
             dos_canales(0, 0), dos_canales(1_000_000_000, 5 * GiB)]))

@@ -29,7 +29,7 @@ except ImportError:                                    # pragma: no cover
 
 def _photo(outdated: bool):
     """The collector for real on the i5-10400, with the installed helper old or not."""
-    with mock.patch.object(PrivilegedClient, "necesita_reinstalar", return_value=outdated), \
+    with mock.patch.object(PrivilegedClient, "needs_reinstall", return_value=outdated), \
          mock.patch("silux.providers.privileged_memory.already_root", return_value=False), \
          mock.patch.object(PrivilegedClient, "supported", return_value=True), \
          _herramienta().mounted(EQUIPOS / "i5-10400"):

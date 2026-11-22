@@ -62,10 +62,10 @@ class TestPreparacion(unittest.TestCase):
     def _orden(self, empaquetado=True):
         with mock.patch.object(PrivilegedClient, "empaquetado",
                                staticmethod(lambda: empaquetado)), \
-             mock.patch.object(PrivilegedClient, "instalado",
+             mock.patch.object(PrivilegedClient, "installed",
                                staticmethod(lambda: False)), \
              mock.patch.object(mod, "_cache_dir", lambda: self.cache):
-            return PrivilegedClient()._orden()
+            return PrivilegedClient()._command()
 
     def test_no_se_copia_nada_a_ninguna_parte(self):
         for empaquetado in (True, False):
@@ -103,7 +103,7 @@ class TestPreparacion(unittest.TestCase):
         with mock.patch.object(PrivilegedClient, "empaquetado", staticmethod(lambda: True)), \
              mock.patch.object(mod, "SYSTEM_PYTHON", ("/no/existe",)):
             with self.assertRaises(HelperUnavailable) as caso:
-                mod.interprete()
+                mod.interpreter()
         self.assertIn("Python del sistema", str(caso.exception))
 
 

@@ -183,8 +183,8 @@ class TestDesdeElAviso(unittest.TestCase):
         for instalado, al_dia in ((False, False), (True, False)):
             with self.subTest(instalado=instalado, al_dia=al_dia):
                 ventana = self._ventana()
-                with mock.patch.object(PrivilegedClient, "instalado", return_value=instalado), \
-                     mock.patch.object(PrivilegedClient, "al_dia", return_value=al_dia), \
+                with mock.patch.object(PrivilegedClient, "installed", return_value=instalado), \
+                     mock.patch.object(PrivilegedClient, "up_to_date", return_value=al_dia), \
                      mock.patch.object(ventana.sampler, "request_elevation") as pedir:
                     ventana.home_page.permission_notice.grant_button.click()
                     pedir.assert_not_called()
@@ -196,8 +196,8 @@ class TestDesdeElAviso(unittest.TestCase):
     def test_con_la_regla_al_dia_los_pide_sin_mas(self):
         from silux.privileged.client import PrivilegedClient
         ventana = self._ventana()
-        with mock.patch.object(PrivilegedClient, "instalado", return_value=True), \
-             mock.patch.object(PrivilegedClient, "al_dia", return_value=True), \
+        with mock.patch.object(PrivilegedClient, "installed", return_value=True), \
+             mock.patch.object(PrivilegedClient, "up_to_date", return_value=True), \
              mock.patch.object(ventana.sampler, "request_elevation") as pedir:
             ventana.home_page.permission_notice.grant_button.click()
         pedir.assert_called_once()

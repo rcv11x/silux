@@ -147,8 +147,8 @@ def _paced(action: str) -> None:
 # Las dos familias que el cliente puede pedir. Son lo único que viaja por el
 # protocolo: dentro de cada una, qué PMU y qué evento se abre lo decide este
 # archivo.
-FAMILIA_GPU = "gpu"
-FAMILIA_IMC = "imc"
+GPU_FAMILY = "gpu"
+IMC_FAMILY = "imc"
 
 # Cuántos descriptores se abren como mucho, por familia. El del IMC es más
 # alto porque un servidor tiene un PMU por canal de memoria y hay que abrirlos
@@ -237,27 +237,27 @@ def read_smart(name) -> dict:
     if not isinstance(name, str) or not DISK_NAME.match(name):
         return _fail(f"nombre de disco no admitido: {name!r}", "bad_request")
 
-    ruta = f"/dev/{name}"
+    path = f"/dev/{name}"
     try:
-        descriptor = os.open(ruta, os.O_RDONLY | os.O_NONBLOCK)
+        descriptor = os.open(path, os.O_RDONLY | os.O_NONBLOCK)
     except OSError as error:
-        return _fail(f"no se pudo abrir {ruta}: {error.strerror}", "io_error")
+        return _fail(f"no se pudo abrir {path}: {error.strerror}", "io_error")
 
     try:
         if name.startswith("nvme"):
-            datos, familia = _smart_nvme(descriptor), "nvme"
+            data, kind = _smart_nvme(descriptor), "nvme"
         else:
-            datos, familia = _smart_ata(descriptor), "ata"
+            data, kind = _smart_ata(descriptor), "ata"
     except OSError as error:
         return _fail(f"el disco no respondió al diagnóstico: {error.strerror}",
                      "io_error")
     finally:
         os.close(descriptor)
 
-    if datos is None:
+    if data is None:
         return _fail("el disco no devolvió datos de diagnóstico", "io_error")
-    return {"ok": True, "device": name, "kind": familia,
-            "data": base64.b64encode(datos).decode("ascii")}
+    return {"ok": True, "device": name, "kind": kind,
+            "data": base64.b64encode(data).decode("ascii")}
 
 
 def _smart_nvme(descriptor: int):
@@ -266,7 +266,7 @@ def _smart_nvme(descriptor: int):
     # struct nvme_passthru_cmd, 72 bytes. El número de dobles palabras va
     # menos uno, como manda la especificación.
     numd = SMART_BYTES // 4 - 1
-    peticion = bytearray(struct.pack(
+    request = bytearray(struct.pack(
         "<BBHIIIQQIIIIIIIIII",
         NVME_GET_LOG_PAGE, 0, 0,          # opcode, flags, reservado
         0xFFFFFFFF,                       # nsid: el controlador entero
@@ -278,7 +278,7 @@ def _smart_nvme(descriptor: int):
         0, 0, 0, 0, 0,                    # cdw11 a cdw15
         5000, 0,                          # timeout_ms, result
     ))
-    fcntl.ioctl(descriptor, NVME_ADMIN_CMD, peticion)
+    fcntl.ioctl(descriptor, NVME_ADMIN_CMD, request)
     return buffer.raw
 
 
@@ -319,7 +319,7 @@ class _SgIoHdr(ctypes.Structure):
 
 def _smart_ata(descriptor: int):
     """`SMART READ DATA` por ATA PASS-THROUGH, que es como se pide en SATA."""
-    orden = bytes((
+    command = bytes((
         ATA_16,
         0x08,                     # protocolo 4: entrada de datos PIO
         0x0E,                     # dirección desde el disco, cuenta en sectores
@@ -331,22 +331,22 @@ def _smart_ata(descriptor: int):
         0x00, ATA_SMART, 0x00,
     ))
     buffer = ctypes.create_string_buffer(SMART_BYTES)
-    sentido = ctypes.create_string_buffer(32)
-    cmd = ctypes.create_string_buffer(orden, len(orden))
+    direction = ctypes.create_string_buffer(32)
+    cmd = ctypes.create_string_buffer(command, len(command))
 
-    cabecera = _SgIoHdr(
+    header = _SgIoHdr(
         interface_id=ord("S"),
         dxfer_direction=SG_DXFER_FROM_DEV,
-        cmd_len=len(orden),
-        mx_sb_len=len(sentido),
+        cmd_len=len(command),
+        mx_sb_len=len(direction),
         dxfer_len=SMART_BYTES,
         dxferp=ctypes.cast(buffer, ctypes.c_void_p),
         cmdp=ctypes.cast(cmd, ctypes.c_void_p),
-        sbp=ctypes.cast(sentido, ctypes.c_void_p),
+        sbp=ctypes.cast(direction, ctypes.c_void_p),
         timeout=5000,
     )
-    fcntl.ioctl(descriptor, SG_IO, cabecera)
-    if cabecera.status not in (0, 2):      # 2 es «con información de sentido»
+    fcntl.ioctl(descriptor, SG_IO, header)
+    if header.status not in (0, 2):      # 2 es «con información de sentido»
         return None
     return buffer.raw
 
@@ -380,53 +380,53 @@ class _PerfEventAttr(ctypes.Structure):
 # vez y se dejan vivos: los contadores son acumulativos desde que se abren, así
 # que cerrarlos y volver a abrirlos entre muestreos perdería la referencia.
 _PMU_FDS: dict[str, dict[str, dict[str, int]]] = {}
-_PMU_FALLO: dict[str, str] = {}
+_PMU_FAILURE: dict[str, str] = {}
 # Si el tope de descriptores dejó eventos sin abrir. Solo importa en el IMC,
 # donde los contadores se suman entre canales y faltar uno rebaja el total.
-_PMU_TRUNCADO: dict[str, bool] = {}
+_PMU_TRUNCATED: dict[str, bool] = {}
 
 
-def _pmu_admitido(familia: str, pmu: str):
+def _pmu_allowed(family: str, pmu: str):
     """Qué eventos se dejan abrir en ese PMU, o None si no es de la familia.
 
     Aquí está la lista entera de lo que este ayudante puede contar. El cliente
     pide una familia y nada más: ni el nombre del PMU ni el número de evento
     llegan nunca de fuera.
     """
-    if familia == FAMILIA_GPU:
+    if family == GPU_FAMILY:
         if PMU_GPU.match(pmu):
             return PMU_EVENT
         if pmu == PMU_POWER:
             return PMU_POWER_EVENT
-    elif familia == FAMILIA_IMC:
+    elif family == IMC_FAMILY:
         if PMU_IMC.match(pmu):
             return PMU_IMC_EVENT
     return None
 
 
-def _pmu_campo(pmu: str, campo: str):
+def _pmu_field(pmu: str, field: str):
     """En qué bit de `config` empieza un campo, según el propio kernel.
 
     Cada PMU publica su formato: «config:0-7» quiere decir que ese campo son
     los ocho bits bajos. i915 lo llama `i915_eventid` y RAPL `event`, y por
     eso hay que mirarlo en vez de darlo por sabido.
     """
-    if campo == "config":
+    if field == "config":
         return 0
     try:
-        with open(f"{PMU_ROOT}/{pmu}/format/{campo}", encoding="ascii") as handle:
-            crudo = handle.read(32).strip()
+        with open(f"{PMU_ROOT}/{pmu}/format/{field}", encoding="ascii") as handle:
+            raw = handle.read(32).strip()
     except OSError:
         return None
-    if not crudo.startswith("config:"):
+    if not raw.startswith("config:"):
         return None
     try:
-        return int(crudo[len("config:"):].split("-")[0])
+        return int(raw[len("config:"):].split("-")[0])
     except ValueError:
         return None
 
 
-def _pmu_config(pmu: str, evento: str):
+def _pmu_config(pmu: str, event: str):
     """El número de evento que el kernel publica, leído del propio sysfs.
 
     El cliente manda nombres, nunca números: quien traduce de un nombre de la
@@ -435,103 +435,103 @@ def _pmu_config(pmu: str, evento: str):
     segundo hay que colocarlo en los bits que diga el formato del PMU.
     """
     try:
-        with open(f"{PMU_ROOT}/{pmu}/events/{evento}", encoding="ascii") as handle:
-            crudo = handle.read(64).strip()
+        with open(f"{PMU_ROOT}/{pmu}/events/{event}", encoding="ascii") as handle:
+            raw = handle.read(64).strip()
     except OSError:
         return None
-    if "," in crudo or "=" not in crudo:
+    if "," in raw or "=" not in raw:
         return None            # si trae parámetros de sobra, no se toca
-    campo, _, valor = crudo.partition("=")
-    desplazamiento = _pmu_campo(pmu, campo.strip())
-    if desplazamiento is None:
+    field, _, value = raw.partition("=")
+    shift = _pmu_field(pmu, field.strip())
+    if shift is None:
         return None
     try:
-        return int(valor.strip(), 0) << desplazamiento
+        return int(value.strip(), 0) << shift
     except ValueError:
         return None
 
 
-def _abrir_pmu(familia: str) -> None:
+def _open_pmu(family: str) -> None:
     """Abre los contadores de esa familia que esta máquina publique."""
-    tope = MAX_IMC_FDS if familia == FAMILIA_IMC else MAX_PMU_FDS
-    vacio = ("no hay ningún controlador de memoria con contadores"
-             if familia == FAMILIA_IMC
+    cap = MAX_IMC_FDS if family == IMC_FAMILY else MAX_PMU_FDS
+    empty = ("no hay ningún controlador de memoria con contadores"
+             if family == IMC_FAMILY
              else "no hay ninguna gráfica con contadores de ocupación")
     fds: dict[str, dict[str, int]] = {}
-    fallo = ""
+    failure = ""
 
-    numero = PERF_EVENT_OPEN.get(os.uname().machine)
-    if numero is None:
-        _PMU_FALLO[familia] = f"perf_event_open no está mapeado en {os.uname().machine}"
+    number = PERF_EVENT_OPEN.get(os.uname().machine)
+    if number is None:
+        _PMU_FAILURE[family] = f"perf_event_open no está mapeado en {os.uname().machine}"
         return
     try:
-        nombres = sorted(os.listdir(PMU_ROOT))
+        names = sorted(os.listdir(PMU_ROOT))
     except OSError:
-        _PMU_FALLO[familia] = "este kernel no publica ningún PMU"
+        _PMU_FAILURE[family] = "este kernel no publica ningún PMU"
         return
 
     libc = ctypes.CDLL(None, use_errno=True)
-    abiertos = 0
-    truncado = False
-    for pmu in nombres:
-        patron = _pmu_admitido(familia, pmu)
-        if patron is None:
+    opened = 0
+    truncated = False
+    for pmu in names:
+        pattern = _pmu_allowed(family, pmu)
+        if pattern is None:
             continue
         try:
             with open(f"{PMU_ROOT}/{pmu}/type", encoding="ascii") as handle:
-                tipo = int(handle.read(16).strip())
-            eventos = sorted(os.listdir(f"{PMU_ROOT}/{pmu}/events"))
+                pmu_type = int(handle.read(16).strip())
+            events = sorted(os.listdir(f"{PMU_ROOT}/{pmu}/events"))
         except (OSError, ValueError):
             continue
 
-        for evento in eventos:
-            if not patron.match(evento):
+        for event in events:
+            if not pattern.match(event):
                 continue
-            if abiertos >= tope:
+            if opened >= cap:
                 # Quedarse a medias en el IMC no da un error, da una suma
                 # corta: se avisa para que nadie publique esa cifra.
-                truncado = True
+                truncated = True
                 continue
-            config = _pmu_config(pmu, evento)
+            config = _pmu_config(pmu, event)
             if config is None:
                 continue
             attr = _PerfEventAttr()
-            attr.type = tipo
+            attr.type = pmu_type
             attr.size = ctypes.sizeof(_PerfEventAttr)
             attr.config = config
             # pid=-1 y cpu=0: es un PMU de dispositivo, no uno por núcleo, y
             # cuenta lo que hace la máquina entera. No se ata a ningún proceso.
-            descriptor = libc.syscall(numero, ctypes.byref(attr), -1, 0, -1, 0)
+            descriptor = libc.syscall(number, ctypes.byref(attr), -1, 0, -1, 0)
             if descriptor < 0:
-                if not fallo:
-                    fallo = os.strerror(ctypes.get_errno())
+                if not failure:
+                    failure = os.strerror(ctypes.get_errno())
                 continue
-            fds.setdefault(pmu, {})[evento] = descriptor
-            abiertos += 1
+            fds.setdefault(pmu, {})[event] = descriptor
+            opened += 1
 
     if fds:
-        _PMU_FDS[familia] = fds
-        _PMU_TRUNCADO[familia] = truncado
-    if not fds and not fallo:
-        fallo = vacio
-    if fallo:
-        _PMU_FALLO[familia] = fallo
+        _PMU_FDS[family] = fds
+        _PMU_TRUNCATED[family] = truncated
+    if not fds and not failure:
+        failure = empty
+    if failure:
+        _PMU_FAILURE[family] = failure
 
 
-def _pmu_escala(pmu: str, evento: str):
+def _pmu_scale(pmu: str, event: str):
     """El factor que el kernel publica para convertir el contador a su unidad.
 
     Solo lo traen los de energía. Devolverlo es pasar un dato del kernel tal
     cual; interpretarlo es cosa del proceso sin privilegios.
     """
     try:
-        with open(f"{PMU_ROOT}/{pmu}/events/{evento}.scale", encoding="ascii") as h:
+        with open(f"{PMU_ROOT}/{pmu}/events/{event}.scale", encoding="ascii") as h:
             return float(h.read(64).strip())
     except (OSError, ValueError):
         return None
 
 
-def _pmu_unidad(pmu: str, evento: str):
+def _pmu_unit(pmu: str, event: str):
     """La unidad que el kernel publica para un contador, si publica alguna.
 
     Va con la escala y por el mismo motivo: es un dato del kernel y aquí se
@@ -540,13 +540,13 @@ def _pmu_unidad(pmu: str, evento: str):
     convertirlo en bytes por segundo.
     """
     try:
-        with open(f"{PMU_ROOT}/{pmu}/events/{evento}.unit", encoding="ascii") as h:
+        with open(f"{PMU_ROOT}/{pmu}/events/{event}.unit", encoding="ascii") as h:
             return h.read(32).strip()
     except OSError:
         return None
 
 
-def _leer_familia(familia: str, con_unidad: bool = False) -> dict:
+def _read_family(family: str, with_unit: bool = False) -> dict:
     """Lee de una vez todos los contadores abiertos de una familia.
 
     Ocho bytes por descriptor y nada más. Restar contra la vuelta anterior y
@@ -557,27 +557,27 @@ def _leer_familia(familia: str, con_unidad: bool = False) -> dict:
     pedirla serían ocho aperturas de sysfs por segundo, como root, para tirar
     lo leído.
     """
-    contadores: dict[str, dict[str, int]] = {}
-    escalas: dict[str, dict[str, float]] = {}
-    unidades: dict[str, dict[str, str]] = {}
-    for pmu, eventos in _PMU_FDS.get(familia, {}).items():
-        for evento, descriptor in eventos.items():
+    counters: dict[str, dict[str, int]] = {}
+    scales: dict[str, dict[str, float]] = {}
+    units: dict[str, dict[str, str]] = {}
+    for pmu, events in _PMU_FDS.get(family, {}).items():
+        for event, descriptor in events.items():
             try:
                 # os.read y no os.pread: un descriptor de perf no es
                 # posicionable y pread devolvería ESPIPE.
-                crudo = os.read(descriptor, 8)
+                raw = os.read(descriptor, 8)
             except OSError:
                 continue
-            if len(crudo) != 8:
+            if len(raw) != 8:
                 continue
-            contadores.setdefault(pmu, {})[evento] = struct.unpack("<Q", crudo)[0]
-            escala = _pmu_escala(pmu, evento)
-            if escala is not None:
-                escalas.setdefault(pmu, {})[evento] = escala
-            unidad = _pmu_unidad(pmu, evento) if con_unidad else None
-            if unidad:
-                unidades.setdefault(pmu, {})[evento] = unidad
-    return {"counters": contadores, "scales": escalas, "units": unidades}
+            counters.setdefault(pmu, {})[event] = struct.unpack("<Q", raw)[0]
+            scale = _pmu_scale(pmu, event)
+            if scale is not None:
+                scales.setdefault(pmu, {})[event] = scale
+            unit = _pmu_unit(pmu, event) if with_unit else None
+            if unit:
+                units.setdefault(pmu, {})[event] = unit
+    return {"counters": counters, "scales": scales, "units": units}
 
 
 def read_gpu_pmu() -> dict:
@@ -588,17 +588,17 @@ def read_gpu_pmu() -> dict:
     aquí solo se leen ocho bytes por descriptor.
     """
     _paced("gpu_pmu")
-    if FAMILIA_GPU not in _PMU_FDS:
-        _abrir_pmu(FAMILIA_GPU)
-    if FAMILIA_GPU not in _PMU_FDS:
+    if GPU_FAMILY not in _PMU_FDS:
+        _open_pmu(GPU_FAMILY)
+    if GPU_FAMILY not in _PMU_FDS:
         return _fail("no se pudo leer el PMU de la gráfica: "
-                     f"{_PMU_FALLO.get(FAMILIA_GPU, '')}", "unsupported")
+                     f"{_PMU_FAILURE.get(GPU_FAMILY, '')}", "unsupported")
 
-    leido = _leer_familia(FAMILIA_GPU)
-    if not leido["counters"]:
+    reading = _read_family(GPU_FAMILY)
+    if not reading["counters"]:
         return _fail("los contadores dejaron de responder", "io")
     return {"ok": True, "monotonic_ns": time.monotonic_ns(),
-            "engines": leido["counters"], "scales": leido["scales"]}
+            "engines": reading["counters"], "scales": reading["scales"]}
 
 
 def read_imc() -> dict:
@@ -611,19 +611,19 @@ def read_imc() -> dict:
     es el controlador entero, con el tráfico del procesador dentro.
     """
     _paced("imc")
-    if FAMILIA_IMC not in _PMU_FDS:
-        _abrir_pmu(FAMILIA_IMC)
-    if FAMILIA_IMC not in _PMU_FDS:
+    if IMC_FAMILY not in _PMU_FDS:
+        _open_pmu(IMC_FAMILY)
+    if IMC_FAMILY not in _PMU_FDS:
         return _fail("no se pudo leer el PMU del controlador de memoria: "
-                     f"{_PMU_FALLO.get(FAMILIA_IMC, '')}", "unsupported")
+                     f"{_PMU_FAILURE.get(IMC_FAMILY, '')}", "unsupported")
 
-    leido = _leer_familia(FAMILIA_IMC, con_unidad=True)
-    if not leido["counters"]:
+    reading = _read_family(IMC_FAMILY, with_unit=True)
+    if not reading["counters"]:
         return _fail("los contadores dejaron de responder", "io")
     return {"ok": True, "monotonic_ns": time.monotonic_ns(),
-            "counters": leido["counters"], "scales": leido["scales"],
-            "units": leido["units"],
-            "truncated": _PMU_TRUNCADO.get(FAMILIA_IMC, False)}
+            "counters": reading["counters"], "scales": reading["scales"],
+            "units": reading["units"],
+            "truncated": _PMU_TRUNCATED.get(IMC_FAMILY, False)}
 
 
 def read_rapl() -> dict:
@@ -643,23 +643,23 @@ def read_rapl() -> dict:
     anterior.
     """
     _paced("rapl")
-    zonas = {}
+    zones = {}
     try:
-        nombres = sorted(os.listdir(POWERCAP))
+        names = sorted(os.listdir(POWERCAP))
     except OSError as error:
         return _fail(f"no se pudo leer {POWERCAP}: {error.strerror}", "io_error")
 
-    for nombre in nombres:
-        if not RAPL_ZONE.match(nombre):
+    for name in names:
+        if not RAPL_ZONE.match(name):
             continue
         try:
-            with open(f"{POWERCAP}/{nombre}/energy_uj", encoding="ascii") as fh:
-                zonas[nombre] = int(fh.read().strip())
+            with open(f"{POWERCAP}/{name}/energy_uj", encoding="ascii") as fh:
+                zones[name] = int(fh.read().strip())
         except (OSError, ValueError):
             continue
-    if not zonas:
+    if not zones:
         return _fail("ninguna zona de powercap respondió", "io_error")
-    return {"ok": True, "zones": zonas}
+    return {"ok": True, "zones": zones}
 
 
 def handle(request: dict) -> dict:

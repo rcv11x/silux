@@ -353,13 +353,13 @@ class TestContadoresDeLaGrafica(unittest.TestCase):
         # mismo: el segundo va corrido a los bits que diga el formato del PMU.
         with mock.patch("silux.privileged.helper.open",
                         mock.mock_open(read_data="config:8-15")):
-            self.assertEqual(helper._pmu_campo("x", "event"), 8)
-        self.assertEqual(helper._pmu_campo("x", "config"), 0)
+            self.assertEqual(helper._pmu_field("x", "event"), 8)
+        self.assertEqual(helper._pmu_field("x", "config"), 0)
 
     def test_un_formato_que_no_apunta_a_config_se_descarta(self):
         with mock.patch("silux.privileged.helper.open",
                         mock.mock_open(read_data="config1:0-7")):
-            self.assertIsNone(helper._pmu_campo("x", "event"))
+            self.assertIsNone(helper._pmu_field("x", "event"))
 
     def test_un_evento_con_parametros_de_sobra_no_se_toca(self):
         with mock.patch("silux.privileged.helper.open",
@@ -393,13 +393,13 @@ class TestInstaladorDelAyudante(unittest.TestCase):
         self.politica.parent.mkdir(parents=True)
 
         parches = [
-            mock.patch.object(instalar, "DESTINO", self.destino),
-            mock.patch.object(instalar, "POLITICA", self.politica),
+            mock.patch.object(instalar, "TARGET", self.destino),
+            mock.patch.object(instalar, "POLICY", self.politica),
             # chown pide root; lo que importa aquí es el resto. And the folders
             # have to be root's: here, whoever runs the tests.
             mock.patch.object(instalar.os, "chown", lambda *a: None),
             mock.patch.object(instalar.os, "fchown", lambda *a: None),
-            mock.patch.object(instalar, "DUENO", os.getuid()),
+            mock.patch.object(instalar, "OWNER", os.getuid()),
         ]
         for parche in parches:
             parche.start()
@@ -417,9 +417,9 @@ class TestInstaladorDelAyudante(unittest.TestCase):
         import io
 
         if cuerpo is None:
-            cuerpo = self.modulo.del_paquete()
+            cuerpo = self.modulo.from_package()
         with contextlib.redirect_stdout(io.StringIO()):
-            self.modulo.instalar(cuerpo)
+            self.modulo.install(cuerpo)
 
     def test_instala_el_ayudante_y_su_politica(self):
         self.instalar()
@@ -446,7 +446,7 @@ class TestInstaladorDelAyudante(unittest.TestCase):
 
     def test_not_into_a_folder_someone_else_can_change(self):
         self.destino.parent.mkdir(parents=True)
-        with mock.patch.object(self.modulo, "DUENO", os.getuid() + 1), \
+        with mock.patch.object(self.modulo, "OWNER", os.getuid() + 1), \
              self.assertRaises(SystemExit):
             self.instalar()
         self.assertFalse(self.destino.exists())
@@ -490,14 +490,14 @@ class TestInstaladorDelAyudante(unittest.TestCase):
         self.instalar()
         import contextlib, io
         with contextlib.redirect_stdout(io.StringIO()):
-            self.modulo.desinstalar()
+            self.modulo.uninstall()
         self.assertFalse(self.destino.exists())
         self.assertFalse(self.politica.exists())
 
     def test_el_cuerpo_del_ayudante_llega_entero(self):
         """Se copia, no se enlaza: el original vive donde el usuario escribe."""
         self.instalar()
-        original = self.modulo.ORIGEN.read_text(encoding="utf-8")
+        original = self.modulo.SOURCE.read_text(encoding="utf-8")
         copia = self.destino.read_text(encoding="utf-8")
         cuerpo = original.split("\n", 1)[1]
         self.assertEqual(copia.split("\n", 1)[1], cuerpo)
@@ -533,7 +533,7 @@ class TestElInstaladorViajaConElPaquete(unittest.TestCase):
     def test_encuentra_el_ayudante_a_su_lado(self):
         from silux.privileged import instalar
 
-        self.assertTrue(instalar.ORIGEN.is_file(), instalar.ORIGEN)
+        self.assertTrue(instalar.SOURCE.is_file(), instalar.SOURCE)
 
 
 class TestCargarUnModulo(unittest.TestCase):
@@ -552,25 +552,25 @@ class TestCargarUnModulo(unittest.TestCase):
     def test_los_que_el_programa_sugiere_se_cargan(self):
         for nombre in ("drivetemp", "spd5118", "ee1004", "i2c-piix4"):
             with self.subTest(modulo=nombre):
-                self.assertTrue(self.modulo.se_puede(nombre))
+                self.assertTrue(self.modulo.is_allowed(nombre))
 
     def test_cualquier_otro_modulo_no(self):
         """La lista no es una comodidad: es lo que impide que esto sea un
         «cargar lo que sea» con privilegios."""
         for nombre in ("nvidia", "kvm", "overlay", "bluetooth", "usbcore"):
             with self.subTest(modulo=nombre):
-                self.assertFalse(self.modulo.se_puede(nombre))
+                self.assertFalse(self.modulo.is_allowed(nombre))
 
     def test_un_nombre_que_no_es_un_nombre_se_rechaza(self):
         for nombre in ("drivetemp; rm -rf /", "../../etc/passwd", "a" * 64,
                        "-drivetemp", "DRIVETEMP", ""):
             with self.subTest(nombre=nombre):
-                self.assertFalse(self.modulo.se_puede(nombre))
+                self.assertFalse(self.modulo.is_allowed(nombre))
 
     def test_cargar_algo_de_fuera_de_la_lista_falla_antes_de_tocar_nada(self):
         with mock.patch.object(self.modulo.subprocess, "run") as corrido:
             with self.assertRaises(SystemExit):
-                self.modulo.cargar("nvidia")
+                self.modulo.load("nvidia")
         corrido.assert_not_called()
 
     def test_modprobe_by_its_absolute_path(self):
@@ -578,9 +578,9 @@ class TestCargarUnModulo(unittest.TestCase):
         with mock.patch.object(self.modulo.subprocess, "run") as corrido, \
              mock.patch.object(self.modulo, "_modprobe", return_value="/usr/sbin/modprobe"), \
              tempfile.TemporaryDirectory() as carpeta, \
-             mock.patch.object(self.modulo, "DESTINO", pathlib.Path(carpeta) / "silux.conf"):
+             mock.patch.object(self.modulo, "TARGET", pathlib.Path(carpeta) / "silux.conf"):
             corrido.return_value = mock.Mock(returncode=0, stderr="")
-            self.modulo.cargar("drivetemp")
+            self.modulo.load("drivetemp")
         self.assertEqual(corrido.call_args.args[0], ["/usr/sbin/modprobe", "drivetemp"])
         self.assertTrue(all(ruta.startswith("/") for ruta in self.modulo.MODPROBE))
 
@@ -591,8 +591,8 @@ class TestCargarUnModulo(unittest.TestCase):
             victima.write_text("intacta\n")
             destino = pathlib.Path(carpeta) / "silux.conf"
             destino.symlink_to(victima)
-            with mock.patch.object(self.modulo, "DESTINO", destino):
-                self.modulo._fijar("drivetemp")
+            with mock.patch.object(self.modulo, "TARGET", destino):
+                self.modulo._persist("drivetemp")
             self.assertEqual(victima.read_text(), "intacta\n")
             self.assertFalse(destino.is_symlink())
             self.assertIn("drivetemp", destino.read_text())
@@ -600,7 +600,7 @@ class TestCargarUnModulo(unittest.TestCase):
     def test_el_aviso_del_super_io_no_lleva_boton(self):
         """Cada placa lleva un chip distinto y cargar el que no es lee basura,
         así que ahí se manda a `sensors-detect` a propósito."""
-        self.assertFalse(self.modulo.se_puede("(Super I/O)"))
+        self.assertFalse(self.modulo.is_allowed("(Super I/O)"))
 
     def test_se_anota_para_el_arranque_siguiente(self):
         """Un modprobe suelto se pierde al reiniciar, y esa es la mitad que
@@ -609,8 +609,8 @@ class TestCargarUnModulo(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             destino = pathlib.Path(tmp) / "silux.conf"
-            with mock.patch.object(self.modulo, "DESTINO", destino):
-                self.modulo._fijar("drivetemp")
+            with mock.patch.object(self.modulo, "TARGET", destino):
+                self.modulo._persist("drivetemp")
             self.assertIn("drivetemp", destino.read_text(encoding="utf-8"))
 
     def test_no_se_pisa_lo_que_ya_hubiera(self):
@@ -620,8 +620,8 @@ class TestCargarUnModulo(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             destino = pathlib.Path(tmp) / "silux.conf"
             destino.write_text("ee1004\n", encoding="utf-8")
-            with mock.patch.object(self.modulo, "DESTINO", destino):
-                self.modulo._fijar("drivetemp")
+            with mock.patch.object(self.modulo, "TARGET", destino):
+                self.modulo._persist("drivetemp")
             texto = destino.read_text(encoding="utf-8")
             self.assertIn("ee1004", texto)
             self.assertIn("drivetemp", texto)
@@ -631,9 +631,9 @@ class TestCargarUnModulo(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             destino = pathlib.Path(tmp) / "silux.conf"
-            with mock.patch.object(self.modulo, "DESTINO", destino):
-                self.modulo._fijar("drivetemp")
-                self.modulo._fijar("drivetemp")
+            with mock.patch.object(self.modulo, "TARGET", destino):
+                self.modulo._persist("drivetemp")
+                self.modulo._persist("drivetemp")
             lineas = [x for x in destino.read_text(encoding="utf-8").splitlines()
                       if x.strip() and not x.startswith("#")]
             self.assertEqual(lineas, ["drivetemp"])
@@ -665,18 +665,18 @@ class TestLaVersionDelAyudante(unittest.TestCase):
     def test_un_ayudante_viejo_se_deja_de_lado(self):
         from silux.privileged import client
         c = client.PrivilegedClient()
-        with mock.patch.object(client.PrivilegedClient, "instalado",
+        with mock.patch.object(client.PrivilegedClient, "installed",
                                return_value=True), \
-             mock.patch.object(client.PrivilegedClient, "al_dia",
+             mock.patch.object(client.PrivilegedClient, "up_to_date",
                                return_value=True):
-            self.assertEqual(c._orden()[1], str(client.HELPER_INSTALADO))
-            c._sin_el_instalado = True
+            self.assertEqual(c._command()[1], str(client.INSTALLED_HELPER))
+            c._skip_installed = True
             # Sin él, el ayudante viaja por argv. Se mira el programa que se
             # ejecuta y no la orden entera: la fuente del ayudante va dentro y
             # menciona esa ruta en un comentario, así que buscar la cadena
             # suelta encontraba el comentario y no el ejecutable.
-            self.assertNotEqual(c._orden()[1], str(client.HELPER_INSTALADO))
-            self.assertEqual(c._orden()[1], client.interprete())
+            self.assertNotEqual(c._command()[1], str(client.INSTALLED_HELPER))
+            self.assertEqual(c._command()[1], client.interpreter())
 
 
 class TestElAyudanteDesfasado(unittest.TestCase):
@@ -695,7 +695,7 @@ class TestElAyudanteDesfasado(unittest.TestCase):
         el contrato no lo tocan. El contenido no se olvida de cambiar."""
         from silux.privileged import client
         import inspect
-        fuente = inspect.getsource(client.PrivilegedClient.al_dia)
+        fuente = inspect.getsource(client.PrivilegedClient.up_to_date)
         self.assertIn("read_text", fuente)
         self.assertNotIn("VERSION", fuente)
 
@@ -703,39 +703,39 @@ class TestElAyudanteDesfasado(unittest.TestCase):
         """El instalador lo cambia por el intérprete clavado, así que dos
         copias del mismo ayudante difieren siempre en esa línea."""
         from silux.privileged.client import PrivilegedClient as C
-        self.assertEqual(C._cuerpo("#!/usr/bin/python3\nhola"),
-                         C._cuerpo("#!/usr/bin/env python3\nhola"))
+        self.assertEqual(C._body("#!/usr/bin/python3\nhola"),
+                         C._body("#!/usr/bin/env python3\nhola"))
 
     def test_uno_desfasado_no_se_ejecuta(self):
         from silux.privileged import client
         c = client.PrivilegedClient()
-        with mock.patch.object(client.PrivilegedClient, "instalado",
+        with mock.patch.object(client.PrivilegedClient, "installed",
                                return_value=True), \
-             mock.patch.object(client.PrivilegedClient, "al_dia",
+             mock.patch.object(client.PrivilegedClient, "up_to_date",
                                return_value=False):
-            self.assertNotEqual(c._orden()[1], str(client.HELPER_INSTALADO))
+            self.assertNotEqual(c._command()[1], str(client.INSTALLED_HELPER))
 
     def test_y_se_pide_sustituirlo_en_vez_de_solo_ignorarlo(self):
         """Ignorarlo deja el archivo en el sistema. Hay que reemplazarlo."""
         from silux.privileged import client
-        with mock.patch.object(client.PrivilegedClient, "instalado",
+        with mock.patch.object(client.PrivilegedClient, "installed",
                                return_value=True), \
-             mock.patch.object(client.PrivilegedClient, "al_dia",
+             mock.patch.object(client.PrivilegedClient, "up_to_date",
                                return_value=False):
-            self.assertTrue(client.PrivilegedClient.necesita_reinstalar())
+            self.assertTrue(client.PrivilegedClient.needs_reinstall())
 
     def _instalados(self, carpeta, regla: str):
         """El ayudante de este programa y una regla, puestos donde se miran."""
         import pathlib
         from silux.privileged import client
         binario = pathlib.Path(carpeta) / "silux-helper"
-        binario.write_text("#!/usr/bin/python3\n" + client.PrivilegedClient._cuerpo(
+        binario.write_text("#!/usr/bin/python3\n" + client.PrivilegedClient._body(
             client.HELPER.read_text(encoding="utf-8")), encoding="utf-8")
         binario.chmod(0o755)
         politica = pathlib.Path(carpeta) / "org.silux.helper.policy"
         politica.write_text(regla, encoding="utf-8")
-        return (mock.patch.object(client, "HELPER_INSTALADO", binario),
-                mock.patch.object(client, "POLITICA_INSTALADA", politica))
+        return (mock.patch.object(client, "INSTALLED_HELPER", binario),
+                mock.patch.object(client, "INSTALLED_POLICY", politica))
 
     def test_una_regla_con_el_texto_viejo_pide_sustituirlo(self):
         """La regla es lo que dice la ventana de la contraseña. La que se
@@ -743,34 +743,34 @@ class TestElAyudanteDesfasado(unittest.TestCase):
         discos; quien la tenga puesta tiene que enterarse de que hay otra."""
         import tempfile
         from silux.privileged import client, instalar
-        vieja = instalar.politica().replace(
-            instalar.MENSAJES["es"],
+        vieja = instalar.policy().replace(
+            instalar.MESSAGES["es"],
             "Se necesita autorización para leer los módulos de memoria y el "
             "diagnóstico de los discos")
         with tempfile.TemporaryDirectory() as carpeta:
             uno, otro = self._instalados(carpeta, vieja)
             with uno, otro:
-                self.assertTrue(client.PrivilegedClient.instalado())
-                self.assertFalse(client.PrivilegedClient.al_dia())
-                self.assertTrue(client.PrivilegedClient.necesita_reinstalar())
+                self.assertTrue(client.PrivilegedClient.installed())
+                self.assertFalse(client.PrivilegedClient.up_to_date())
+                self.assertTrue(client.PrivilegedClient.needs_reinstall())
 
     def test_con_la_regla_de_ahora_esta_al_dia(self):
         import tempfile
         from silux.privileged import client, instalar
         with tempfile.TemporaryDirectory() as carpeta:
-            uno, otro = self._instalados(carpeta, instalar.politica())
+            uno, otro = self._instalados(carpeta, instalar.policy())
             with uno, otro:
-                self.assertTrue(client.PrivilegedClient.al_dia())
+                self.assertTrue(client.PrivilegedClient.up_to_date())
 
     def test_el_que_esta_al_dia_se_sigue_usando(self):
         from silux.privileged import client
         c = client.PrivilegedClient()
-        with mock.patch.object(client.PrivilegedClient, "instalado",
+        with mock.patch.object(client.PrivilegedClient, "installed",
                                return_value=True), \
-             mock.patch.object(client.PrivilegedClient, "al_dia",
+             mock.patch.object(client.PrivilegedClient, "up_to_date",
                                return_value=True):
-            self.assertEqual(c._orden()[1], str(client.HELPER_INSTALADO))
-            self.assertFalse(client.PrivilegedClient.necesita_reinstalar())
+            self.assertEqual(c._command()[1], str(client.INSTALLED_HELPER))
+            self.assertFalse(client.PrivilegedClient.needs_reinstall())
 
 
 class TestElTextoDeLaVentanaDeLaContrasena(unittest.TestCase):
@@ -786,16 +786,16 @@ class TestElTextoDeLaVentanaDeLaContrasena(unittest.TestCase):
         import pathlib
         from silux.privileged import instalar
         carpeta = pathlib.Path(instalar.__file__).resolve().parent.parent / "db" / "lang"
-        for idioma, texto in instalar.MENSAJES.items():
+        for idioma, texto in instalar.MESSAGES.items():
             with self.subTest(idioma=idioma):
                 tabla = json.loads((carpeta / f"{idioma}.json").read_text(encoding="utf-8"))
                 self.assertEqual(texto, tabla["perm.polkit.message"])
 
     def test_la_regla_lleva_los_dos_y_el_ingles_marcado(self):
         from silux.privileged import instalar
-        regla = instalar.politica()
-        self.assertIn(f"<message>{instalar.MENSAJES['es']}</message>", regla)
-        self.assertIn(f'<message xml:lang="en">{instalar.MENSAJES["en"]}</message>', regla)
+        regla = instalar.policy()
+        self.assertIn(f"<message>{instalar.MESSAGES['es']}</message>", regla)
+        self.assertIn(f'<message xml:lang="en">{instalar.MESSAGES["en"]}</message>', regla)
 
     def test_nombra_todo_lo_que_abre_el_permiso(self):
         # SMBIOS (memoria), SMART (discos), MSR (voltaje), RAPL (consumo) y
@@ -803,4 +803,4 @@ class TestElTextoDeLaVentanaDeLaContrasena(unittest.TestCase):
         from silux.privileged import instalar
         for palabra in ("memoria", "discos", "voltaje", "consumo", "uso de la gráfica",
                         "Solo lee"):
-            self.assertIn(palabra, instalar.MENSAJES["es"])
+            self.assertIn(palabra, instalar.MESSAGES["es"])

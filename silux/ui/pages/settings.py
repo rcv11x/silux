@@ -720,7 +720,7 @@ class SettingsPage(ScrollPage):
 
         privilegios = snapshot.privileged if snapshot is not None else None
         faltan = bool(snapshot.permission_notes) if snapshot is not None else True
-        instalado = PrivilegedClient.instalado()
+        instalado = PrivilegedClient.installed()
         boton, explicar = None, False
         if privilegios is not None and privilegios.already_root:
             estado = "root"
@@ -737,7 +737,7 @@ class SettingsPage(ScrollPage):
             estado = "unsupported"
         elif not faltan:
             estado = "notneeded"
-        elif PrivilegedClient.necesita_reinstalar():
+        elif PrivilegedClient.needs_reinstall():
             estado, boton = "outdated", ("replace", "perm.replace.button")
         elif instalado:
             estado, boton = "installed", ("grant", "perm.read.button")

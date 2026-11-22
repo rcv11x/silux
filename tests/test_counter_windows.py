@@ -16,7 +16,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-from silux.privileged.client import LecturaImc
+from silux.privileged.client import ImcReading
 from silux.providers import counters
 from silux.providers.base import Draft
 from tests.interval import fake_clock
@@ -160,7 +160,7 @@ class MemoryTraffic(_Calculation):
         escalas = {"uncore_imc_free_running_0": {"data_read": 6.103515625e-5,
                                                  "data_write": 6.103515625e-5}}
         unidades = {"uncore_imc_free_running_0": {"data_read": "MiB", "data_write": "MiB"}}
-        self.helper.answer = LecturaImc(int(instant * 1e9), cuentas, escalas, unidades, False)
+        self.helper.answer = ImcReading(int(instant * 1e9), cuentas, escalas, unidades, False)
         draft = self.draft()
         self.provider.collect(draft)
         trafico = draft.memory_traffic

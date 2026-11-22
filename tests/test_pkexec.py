@@ -102,7 +102,7 @@ class ComprobadorDeOrdenes(unittest.TestCase):
 # for one with code. A test compares this with what it finds reading the
 # code, so a new caller cannot go unchecked.
 CONSTRUCTORES = (
-    ("silux/privileged/client.py", "PrivilegedClient._orden"),
+    ("silux/privileged/client.py", "PrivilegedClient._command"),
     ("silux/privileged/client.py", "pkexec_inline"),
     ("silux/ui/app.py", "MainWindow._orden_de_instalacion"),
     ("silux/ui/app.py", "MainWindow._orden_de_desinstalacion"),
@@ -115,8 +115,8 @@ def ordenes_de_pkexec() -> dict[str, list[str]]:
     from silux.ui.app import MainWindow
     from silux.ui.pages.monitor import MonitorPage
 
-    with mock.patch.object(PrivilegedClient, "instalado", return_value=False):
-        del_ayudante = PrivilegedClient()._orden()
+    with mock.patch.object(PrivilegedClient, "installed", return_value=False):
+        del_ayudante = PrivilegedClient()._command()
     return {
         "el ayudante": del_ayudante,
         "el instalador": MainWindow._orden_de_instalacion()[0],
@@ -180,10 +180,10 @@ class TestNingunaRutaEscribible(ComprobadorDeOrdenes):
         # `al_dia` también, porque ahora el instalado solo se usa si es
         # exactamente el de este programa; en la máquina donde se ejecutan los
         # tests puede haber uno de otra fecha.
-        with mock.patch.object(PrivilegedClient, "instalado", return_value=True), \
-             mock.patch.object(PrivilegedClient, "al_dia", return_value=True):
-            orden = PrivilegedClient()._orden()
-        self.assertEqual(orden, [client.pkexec_path(), str(client.HELPER_INSTALADO)])
+        with mock.patch.object(PrivilegedClient, "installed", return_value=True), \
+             mock.patch.object(PrivilegedClient, "up_to_date", return_value=True):
+            orden = PrivilegedClient()._command()
+        self.assertEqual(orden, [client.pkexec_path(), str(client.INSTALLED_HELPER)])
         self.comprobar(orden, "cliente instalado")
 
     def test_no_se_escribe_nada_en_la_cache(self):
@@ -192,17 +192,17 @@ class TestNingunaRutaEscribible(ComprobadorDeOrdenes):
 
         with tempfile.TemporaryDirectory() as carpeta:
             with mock.patch.dict(os.environ, {"XDG_CACHE_HOME": carpeta}), \
-                 mock.patch.object(PrivilegedClient, "instalado", return_value=False), \
+                 mock.patch.object(PrivilegedClient, "installed", return_value=False), \
                  mock.patch.object(PrivilegedClient, "empaquetado", return_value=True):
-                PrivilegedClient()._orden()
+                PrivilegedClient()._command()
             dejado = list(pathlib.Path(carpeta).rglob("*"))
         self.assertEqual(dejado, [], f"dejó archivos en la caché: {dejado}")
 
 
 class TestElAyudanteViajaPorArgv(unittest.TestCase):
     def test_la_fuente_es_la_del_ayudante_sin_tocar(self):
-        with mock.patch.object(PrivilegedClient, "instalado", return_value=False):
-            orden = PrivilegedClient()._orden()
+        with mock.patch.object(PrivilegedClient, "installed", return_value=False):
+            orden = PrivilegedClient()._command()
         self.assertIn(client.HELPER.read_text(encoding="utf-8"), orden)
 
     def test_cabe_en_un_argumento(self):
@@ -219,8 +219,8 @@ class TestElAyudanteViajaPorArgv(unittest.TestCase):
         ejecutado así, no que polkit autorice."""
         import json
 
-        with mock.patch.object(PrivilegedClient, "instalado", return_value=False):
-            orden = PrivilegedClient()._orden()[1:]
+        with mock.patch.object(PrivilegedClient, "installed", return_value=False):
+            orden = PrivilegedClient()._command()[1:]
         hecho = subprocess.run(orden, input='{"action": "ping"}\n',
                                capture_output=True, text=True, timeout=60)
         respuesta = json.loads(hecho.stdout.splitlines()[0])
@@ -252,7 +252,7 @@ class TestElTracebackSigueDiciendoDeDondeEs(unittest.TestCase):
 
     def _traceback(self) -> str:
         hecho = subprocess.run(
-            [sys.executable, "-c", client.ARRANQUE, "silux-helper.py", self.FUENTE],
+            [sys.executable, "-c", client.BOOTSTRAP, "silux-helper.py", self.FUENTE],
             capture_output=True, text=True, timeout=60)
         return hecho.stderr
 
@@ -291,20 +291,20 @@ class TestElAyudanteInstaladoNecesitaSuPolitica(unittest.TestCase):
             binario.chmod(0o755)
             politica = pathlib.Path(carpeta) / "org.silux.helper.policy"
 
-            with mock.patch.object(client, "HELPER_INSTALADO", binario), \
-                 mock.patch.object(client, "POLITICA_INSTALADA", politica):
-                self.assertFalse(PrivilegedClient.instalado(),
+            with mock.patch.object(client, "INSTALLED_HELPER", binario), \
+                 mock.patch.object(client, "INSTALLED_POLICY", politica):
+                self.assertFalse(PrivilegedClient.installed(),
                                  "sin política no está instalado del todo")
                 politica.write_text("<policyconfig/>\n", encoding="utf-8")
-                self.assertTrue(PrivilegedClient.instalado())
+                self.assertTrue(PrivilegedClient.installed())
 
     def test_las_dos_rutas_son_las_que_escribe_el_instalador(self):
         """Una en el cliente y otra en el instalador: si se separan, el cliente
         buscaría en un sitio donde nadie pone nada."""
         from silux.privileged import instalar
 
-        self.assertEqual(client.HELPER_INSTALADO, instalar.DESTINO)
-        self.assertEqual(client.POLITICA_INSTALADA, instalar.POLITICA)
+        self.assertEqual(client.INSTALLED_HELPER, instalar.TARGET)
+        self.assertEqual(client.INSTALLED_POLICY, instalar.POLICY)
 
 
 class TestLaOrdenDeInstalar(ComprobadorDeOrdenes):
@@ -381,12 +381,12 @@ class TestElInstaladorNoAceptaUnaRuta(unittest.TestCase):
             destino = raiz / "libexec" / "silux" / "silux-helper"
             politica = raiz / "acciones" / "org.silux.helper.policy"
             politica.parent.mkdir(parents=True)
-            with mock.patch.object(instalar, "DESTINO", destino), \
-                 mock.patch.object(instalar, "POLITICA", politica), \
+            with mock.patch.object(instalar, "TARGET", destino), \
+                 mock.patch.object(instalar, "POLICY", politica), \
                  mock.patch.object(instalar.os, "geteuid", lambda: 0), \
                  mock.patch.object(instalar.os, "chown", lambda *a, **k: None), \
                  mock.patch.object(instalar.os, "fchown", lambda *a, **k: None), \
-                 mock.patch.object(instalar, "DUENO", os.getuid()), \
+                 mock.patch.object(instalar, "OWNER", os.getuid()), \
                  mock.patch.object(sys, "stdin", io.StringIO(cuerpo)), \
                  mock.patch.object(sys, "stdout", io.StringIO()):
                 self.assertEqual(instalar.main(["--from-stdin"]), 0)
@@ -420,9 +420,9 @@ class TestSeRecogeLoQueDejaronLasVersionesViejas(unittest.TestCase):
             with mock.patch.dict(os.environ, {"XDG_CACHE_HOME": base}):
                 carpeta = client._cache_dir()
                 carpeta.mkdir(parents=True)
-                for nombre in client.COPIAS_VIEJAS:
+                for nombre in client.OLD_COPIES:
                     (carpeta / nombre).write_text("# de antes\n", encoding="utf-8")
-                client.limpiar_copias_viejas()
+                client.clean_old_copies()
                 self.assertFalse(carpeta.exists())
 
     def test_no_se_lleva_por_delante_lo_que_no_es_suyo(self):
@@ -435,7 +435,7 @@ class TestSeRecogeLoQueDejaronLasVersionesViejas(unittest.TestCase):
                 ajeno = carpeta / "algo-de-otro.json"
                 ajeno.write_text("{}", encoding="utf-8")
                 (carpeta / "helper.py").write_text("# de antes\n", encoding="utf-8")
-                client.limpiar_copias_viejas()
+                client.clean_old_copies()
                 self.assertTrue(ajeno.is_file())
                 self.assertFalse((carpeta / "helper.py").exists())
 
@@ -444,7 +444,7 @@ class TestSeRecogeLoQueDejaronLasVersionesViejas(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as base:
             with mock.patch.dict(os.environ, {"XDG_CACHE_HOME": base}):
-                client.limpiar_copias_viejas()      # no debe lanzar nada
+                client.clean_old_copies()      # no debe lanzar nada
 
 
 if __name__ == "__main__":

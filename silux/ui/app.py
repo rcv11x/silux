@@ -1056,7 +1056,7 @@ class MainWindow(QMainWindow):
             # Every padlock and button says «update the helper»: that is what
             # it does, with no notice first.
             self._on_permanent_requested()
-        elif PrivilegedClient.instalado() and PrivilegedClient.al_dia():
+        elif PrivilegedClient.installed() and PrivilegedClient.up_to_date():
             self._elevar()
         else:
             self._explicar_permisos()
@@ -1101,7 +1101,7 @@ class MainWindow(QMainWindow):
         # a pedirla») se leía como una tercera forma de apartar el aviso, al
         # lado de «Ahora no» y «No volver a mostrar».
         for boton in self._botones_permanentes():
-            boton.setVisible(PrivilegedClient.necesita_reinstalar())
+            boton.setVisible(PrivilegedClient.needs_reinstall())
             boton.setText(_("perm.replace.button"))
 
     def _on_permanent_requested(self) -> None:
@@ -1388,8 +1388,8 @@ class MainWindow(QMainWindow):
         from .dialogs import PermissionsDialog
 
         dialogo = PermissionsDialog(
-            permanente=(not PrivilegedClient.instalado()
-                        or PrivilegedClient.necesita_reinstalar()),
+            permanente=(not PrivilegedClient.installed()
+                        or PrivilegedClient.needs_reinstall()),
             concedidos=self._permisos_concedidos(),
             parent=self)
         dialogo.grant_requested.connect(self._elevar)

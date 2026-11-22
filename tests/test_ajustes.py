@@ -160,8 +160,8 @@ class TestLaMaqueta(unittest.TestCase):
         from silux.privileged.client import PrivilegedClient
         for instalado in (False, True):
             with self.subTest(instalado=instalado), \
-                 mock.patch.object(PrivilegedClient, "instalado", return_value=instalado), \
-                 mock.patch.object(PrivilegedClient, "necesita_reinstalar", return_value=False):
+                 mock.patch.object(PrivilegedClient, "installed", return_value=instalado), \
+                 mock.patch.object(PrivilegedClient, "needs_reinstall", return_value=False):
                 pagina = _pagina(self.app)
                 self.addCleanup(pagina.deleteLater)
                 pagina.set_privileges(None)
@@ -218,8 +218,8 @@ class TestLosPermisos(unittest.TestCase):
         notas_de_la_foto = self.foto.notes if notas is None else tuple(
             n for n in self.foto.notes if n.need is not Need.ROOT)
         muestra = dataclasses.replace(self.foto, privileged=privilegios, notes=notas_de_la_foto)
-        with mock.patch.object(PrivilegedClient, "instalado", return_value=instalado), \
-             mock.patch.object(PrivilegedClient, "necesita_reinstalar", return_value=viejo):
+        with mock.patch.object(PrivilegedClient, "installed", return_value=instalado), \
+             mock.patch.object(PrivilegedClient, "needs_reinstall", return_value=viejo):
             pagina.set_privileges(muestra)
         return pagina
 
@@ -363,8 +363,8 @@ class TestEnLaVentana(unittest.TestCase):
         from silux.privileged.client import PrivilegedClient
         app = qt.app()
         f = foto(EQUIPOS / "i5-10400")[0]
-        with mock.patch.object(PrivilegedClient, "instalado", return_value=False), \
-             mock.patch.object(PrivilegedClient, "necesita_reinstalar", return_value=False), \
+        with mock.patch.object(PrivilegedClient, "installed", return_value=False), \
+             mock.patch.object(PrivilegedClient, "needs_reinstall", return_value=False), \
              pantalla.Ventana(f) as ventana:
             ventana.select_section("Ajustes")
             for _vez in range(3):

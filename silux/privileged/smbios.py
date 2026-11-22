@@ -218,15 +218,15 @@ def system_slots(structures: list[Structure]) -> dict[str, str]:
     existen, o todas con la misma dirección. Quien la usa solo se queda con
     las que casan con un dispositivo que existe de verdad.
     """
-    salida: dict[str, str] = {}
+    slots: dict[str, str] = {}
     for structure in structures:
         if structure.type != 9:
             continue
-        nombre = structure.text(0x04)
-        segmento, bus, devfn = structure.word(0x0D), structure.byte(0x0F), structure.byte(0x10)
-        if not nombre or segmento is None or bus is None or devfn is None:
+        name = structure.text(0x04)
+        segment, bus, devfn = structure.word(0x0D), structure.byte(0x0F), structure.byte(0x10)
+        if not name or segment is None or bus is None or devfn is None:
             continue
-        if segmento == 0xFFFF or bus == 0xFF or devfn == 0xFF:
+        if segment == 0xFFFF or bus == 0xFF or devfn == 0xFF:
             continue                         # «no se sabe», según la norma
-        salida[f"{segmento:04x}:{bus:02x}:{devfn >> 3:02x}.{devfn & 7:x}"] = nombre
-    return salida
+        slots[f"{segment:04x}:{bus:02x}:{devfn >> 3:02x}.{devfn & 7:x}"] = name
+    return slots

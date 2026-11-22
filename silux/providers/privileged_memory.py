@@ -64,7 +64,7 @@ class PrivilegedMemory(Provider):
 
     def collect(self, draft: Draft) -> None:
         draft.driver_hints.extend(self._spd_hint())
-        outdated = PrivilegedClient.necesita_reinstalar()
+        outdated = PrivilegedClient.needs_reinstall()
         draft.privileged = PrivilegedState(
             supported=self.client.supported(),
             connected=self.client.connected(),

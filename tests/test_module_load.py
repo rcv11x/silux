@@ -23,7 +23,7 @@ class TestTheFileItNames(unittest.TestCase):
 
     def test_is_the_one_root_writes(self):
         from silux.ui.dialogs import MODULES_FILE
-        self.assertEqual(MODULES_FILE, str(cargar_modulo.DESTINO))
+        self.assertEqual(MODULES_FILE, str(cargar_modulo.TARGET))
 
 
 @unittest.skipIf(QApplication is None, "no PySide6")
@@ -51,7 +51,7 @@ class TestOnTheSensorsPage(unittest.TestCase):
         with pantalla.Ventana(self.photo) as window:
             page, button = self._button(window)
             module = next(h.module for h in self.photo.driver_hints
-                          if cargar_modulo.se_puede(h.module))
+                          if cargar_modulo.is_allowed(h.module))
             with mock.patch.object(page, "_cargar_driver") as load:
                 button.click()
                 self.app.processEvents()

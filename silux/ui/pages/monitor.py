@@ -482,7 +482,7 @@ class MonitorPage(ScrollPage):
             # placa lleva un chip distinto y cargar el que no es lee basura, así
             # que ahí no hay nada que automatizar.
             accion = (_("sensors.driver.button")
-                      if cargar_modulo.se_puede(hint.module) else None)
+                      if cargar_modulo.is_allowed(hint.module) else None)
             aviso = Notice(_("sensors.driver.title"), body, detail,
                            action=accion)
             if accion:

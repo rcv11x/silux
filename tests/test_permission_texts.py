@@ -72,8 +72,8 @@ class TestSettingsWithTheHelperInstalled(unittest.TestCase):
         self.addCleanup(page.deleteLater)
         photo = dataclasses.replace(self.photo, privileged=dataclasses.replace(
             self.photo.privileged, connected=connected, supported=True))
-        with mock.patch.object(PrivilegedClient, "instalado", return_value=True), \
-             mock.patch.object(PrivilegedClient, "al_dia", return_value=True):
+        with mock.patch.object(PrivilegedClient, "installed", return_value=True), \
+             mock.patch.object(PrivilegedClient, "up_to_date", return_value=True):
             page.set_privileges(photo)
         return page
 

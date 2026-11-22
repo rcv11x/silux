@@ -38,8 +38,8 @@ class TestEveryEntryWarnsFirst(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         for patch in (mock.patch.dict(os.environ, {"XDG_CONFIG_HOME": tmp.name}),
-                      mock.patch.object(PrivilegedClient, "instalado", return_value=False),
-                      mock.patch.object(PrivilegedClient, "al_dia", return_value=False)):
+                      mock.patch.object(PrivilegedClient, "installed", return_value=False),
+                      mock.patch.object(PrivilegedClient, "up_to_date", return_value=False)):
             patch.start()
             self.addCleanup(patch.stop)
 

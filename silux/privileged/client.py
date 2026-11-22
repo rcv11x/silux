@@ -44,7 +44,7 @@ PKEXEC_PATHS = ("/usr/bin/pkexec", "/bin/pkexec")
 
 def pkexec_path() -> str:
     """Where pkexec is; the usual place if it is nowhere (`supported` says so)."""
-    return next((ruta for ruta in PKEXEC_PATHS if os.path.isfile(ruta)), PKEXEC_PATHS[0])
+    return next((path for path in PKEXEC_PATHS if os.path.isfile(path)), PKEXEC_PATHS[0])
 
 
 # Intérpretes del sistema con los que lanzar el ayudante cuando el del programa
@@ -77,18 +77,18 @@ def _cache_dir() -> pathlib.Path:
 # suelo declarado es 3.10 y es el Python que va dentro del AppImage.
 # `SystemExit` no pasa por el hook, así que los guiones que avisan con
 # `raise SystemExit("...")` siguen sacando su mensaje a secas.
-ARRANQUE = """\
+BOOTSTRAP = """\
 import linecache, sys, traceback
-_nombre, _fuente = sys.argv[1], sys.argv[2]
-linecache.cache[_nombre] = (len(_fuente), None, _fuente.splitlines(True), _nombre)
-sys.argv = [_nombre] + sys.argv[3:]
-sys.excepthook = lambda *fallo: traceback.print_exception(*fallo)
-exec(compile(_fuente, _nombre, "exec"), {"__name__": "__main__", "__file__": _nombre})
+_name, _source = sys.argv[1], sys.argv[2]
+linecache.cache[_name] = (len(_source), None, _source.splitlines(True), _name)
+sys.argv = [_name] + sys.argv[3:]
+sys.excepthook = lambda *exc_info: traceback.print_exception(*exc_info)
+exec(compile(_source, _name, "exec"), {"__name__": "__main__", "__file__": _name})
 """
 
 
-def en_linea(interprete: str, nombre: str, fuente: str,
-             *argumentos: str) -> list[str]:
+def inline_command(interpreter: str, name: str, source: str,
+                   *arguments: str) -> list[str]:
     """La orden que ejecuta `fuente` sin que exista como archivo.
 
     Es lo que evita que en la línea de `pkexec` aparezca una ruta que el
@@ -97,31 +97,31 @@ def en_linea(interprete: str, nombre: str, fuente: str,
     """
     # `-I`: as root, no PYTHONPATH, PYTHONSTARTUP, user site-packages or
     # current folder, whatever pkexec left in the environment.
-    return [interprete, "-I", "-c", ARRANQUE, nombre, fuente, *argumentos]
+    return [interpreter, "-I", "-c", BOOTSTRAP, name, source, *arguments]
 
 
 # Lo que dejaban en la caché las versiones que copiaban los guiones ahí para
 # lanzarlos con pkexec. Ya no las escribe nadie y no las ejecuta nadie, pero
 # eran la superficie del agujero y no hay motivo para dejarlas en el disco de
 # quien actualice.
-COPIAS_VIEJAS = ("helper.py", "instalar.py", "cargar_modulo.py")
+OLD_COPIES = ("helper.py", "instalar.py", "cargar_modulo.py")
 
 
-def limpiar_copias_viejas() -> None:
+def clean_old_copies() -> None:
     """Borra los guiones que las versiones anteriores dejaban en la caché."""
-    carpeta = _cache_dir()
-    for nombre in COPIAS_VIEJAS:
+    folder = _cache_dir()
+    for name in OLD_COPIES:
         try:
-            (carpeta / nombre).unlink()
+            (folder / name).unlink()
         except OSError:
             pass
     try:
-        carpeta.rmdir()          # solo si no queda nada más dentro
+        folder.rmdir()          # solo si no queda nada más dentro
     except OSError:
         pass
 
 
-def interprete() -> str:
+def interpreter() -> str:
     """Con qué Python se lanza por pkexec un guion que va por `argv`.
 
     Desde un AppImage el de dentro no vale, por dos motivos distintos y los dos
@@ -139,11 +139,11 @@ def interprete() -> str:
     pkexec vuelve a ser sustituible, que es justo lo que se está quitando de en
     medio.
     """
-    for ruta in SYSTEM_PYTHON:
-        if os.path.exists(ruta):
-            return ruta
+    for path in SYSTEM_PYTHON:
+        if os.path.exists(path):
+            return path
     if (not PrivilegedClient.empaquetado()
-            and not escribible_por_el_usuario(sys.executable)):
+            and not writable_by_user(sys.executable)):
         return sys.executable
     raise HelperUnavailable(
         "No hay ningún Python del sistema con el que lanzar el ayudante."
@@ -157,10 +157,10 @@ def pkexec_inline(name: str, source: str, *args: str) -> list[str]:
     arguments go by argv, so no path the user can rewrite is in it. Raises
     HelperUnavailable without a system Python to run it.
     """
-    return [pkexec_path(), *en_linea(interprete(), name, source, *args)]
+    return [pkexec_path(), *inline_command(interpreter(), name, source, *args)]
 
 
-def escribible_por_el_usuario(ruta) -> bool:
+def writable_by_user(path) -> bool:
     """Si este usuario puede cambiar lo que hay en esa ruta.
 
     Mira también las carpetas de encima: poder escribir el directorio permite
@@ -170,11 +170,11 @@ def escribible_por_el_usuario(ruta) -> bool:
         # Como root todo es escribible y la pregunta no significa nada; y si
         # somos root no hay pkexec de por medio que proteger.
         return False
-    camino = pathlib.Path(ruta).resolve()
-    if camino.exists() and os.access(camino, os.W_OK):
+    target = pathlib.Path(path).resolve()
+    if target.exists() and os.access(target, os.W_OK):
         return True
-    return any(os.access(padre, os.W_OK)
-               for padre in camino.parents if padre.exists())
+    return any(os.access(parent, os.W_OK)
+               for parent in target.parents if parent.exists())
 
 
 HELPER = pathlib.Path(__file__).resolve().parent / "helper.py"
@@ -184,11 +184,11 @@ HELPER = pathlib.Path(__file__).resolve().parent / "helper.py"
 # polkit: la ventana de la contraseña dice qué se lee, con nuestras palabras.
 # Lo instala `silux/privileged/instalar.py`, que es también quien explica por qué
 # tiene que vivir en un sitio que el usuario no pueda escribir.
-HELPER_INSTALADO = pathlib.Path("/usr/local/libexec/silux/silux-helper")
+INSTALLED_HELPER = pathlib.Path("/usr/local/libexec/silux/silux-helper")
 # Su acción de polkit. Sin ella el ayudante instalado sigue ejecutándose,
 # pero por la acción genérica, que enseña la orden y no qué se lee. Las dos rutas las escribe `instalar.py` y hay un test que
 # vigila que no se separen de estas.
-POLITICA_INSTALADA = pathlib.Path(
+INSTALLED_POLICY = pathlib.Path(
     "/usr/share/polkit-1/actions/org.silux.helper.policy")
 
 DEFAULT_TIMEOUT = 15.0
@@ -231,7 +231,7 @@ class PrivilegedClient:
         # anterior: a partir de ahí se usa el que viaja por argv, que siempre
         # es el de este programa. Cuesta una contraseña por arranque, que es
         # mejor que una función que no va y no dice por qué.
-        self._sin_el_instalado = False
+        self._skip_installed = False
         # One password window per request: once it has failed, whatever the
         # reason, no other one opens until the user asks again.
         self._failure: Optional[HelperError] = None
@@ -275,16 +275,16 @@ class PrivilegedClient:
     def _open(self) -> None:
         # Aquí es donde las versiones anteriores escribían la copia, así que
         # aquí es donde toca recogerla.
-        limpiar_copias_viejas()
+        clean_old_copies()
         if not self.supported():
             raise HelperUnavailable(
                 "Falta pkexec. Se instala con el paquete polkit de la distribución."
             )
 
-        orden = self._orden()
+        command = self._command()
         try:
             process = subprocess.Popen(
-                orden,
+                command,
                 stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL, text=True, bufsize=1,
                 env=system_environment(),
@@ -322,13 +322,13 @@ class PrivilegedClient:
         # programa le pidiera de nuevo —una acción, un registro— saldría
         # rechazado con un mensaje que no menciona la causa. Se cayó justo así
         # al añadir los registros del voltaje del núcleo.
-        if reply.get("version", 0) < protocol.HELPER_VERSION and self.instalado():
+        if reply.get("version", 0) < protocol.HELPER_VERSION and self.installed():
             self.close()
-            self._sin_el_instalado = True
+            self._skip_installed = True
             self._open()
 
     @staticmethod
-    def instalado() -> bool:
+    def installed() -> bool:
         """Si el ayudante del sistema está puesto, con su acción de polkit.
 
         La política cuenta: es lo que hace que la ventana de la contraseña diga
@@ -336,22 +336,22 @@ class PrivilegedClient:
         permanentes se escondía diciendo que ya estaba hecho cuando faltaba la
         mitad. `instalar.instalado()` ya miraba las dos.
         """
-        ayudante, politica = _of_this_machine(HELPER_INSTALADO, POLITICA_INSTALADA)
-        return (ayudante.is_file()
-                and os.access(ayudante, os.X_OK)
-                and politica.is_file())
+        helper, policy = _of_this_machine(INSTALLED_HELPER, INSTALLED_POLICY)
+        return (helper.is_file()
+                and os.access(helper, os.X_OK)
+                and policy.is_file())
 
     @staticmethod
-    def _cuerpo(texto: str) -> str:
+    def _body(text: str) -> str:
         """El ayudante sin su primera línea.
 
         El instalador cambia el shebang por el intérprete clavado, así que dos
         copias del mismo ayudante difieren siempre en esa línea y solo en esa.
         """
-        return texto.split("\n", 1)[1] if texto.startswith("#!") else texto
+        return text.split("\n", 1)[1] if text.startswith("#!") else text
 
     @classmethod
-    def al_dia(cls) -> bool:
+    def up_to_date(cls) -> bool:
         """Si el ayudante instalado y su regla son los que trae este programa.
 
         Se compara el contenido y no un número de versión, y la diferencia
@@ -365,18 +365,18 @@ class PrivilegedClient:
         """
         from . import instalar
 
-        ayudante, politica = _of_this_machine(HELPER_INSTALADO, POLITICA_INSTALADA)
+        helper, policy = _of_this_machine(INSTALLED_HELPER, INSTALLED_POLICY)
         try:
-            instalado = ayudante.read_text(encoding="utf-8")
-            actual = HELPER.read_text(encoding="utf-8")
-            regla = politica.read_text(encoding="utf-8")
+            installed = helper.read_text(encoding="utf-8")
+            current = HELPER.read_text(encoding="utf-8")
+            rule = policy.read_text(encoding="utf-8")
         except OSError:
             return False
-        return (cls._cuerpo(instalado) == cls._cuerpo(actual)
-                and regla == instalar.politica())
+        return (cls._body(installed) == cls._body(current)
+                and rule == instalar.policy())
 
     @classmethod
-    def necesita_reinstalar(cls) -> bool:
+    def needs_reinstall(cls) -> bool:
         """Hay un ayudante puesto y no es el de este programa.
 
         Lo que hay que hacer entonces no es solo dejar de usarlo: hay que
@@ -386,9 +386,9 @@ class PrivilegedClient:
         versión anterior a los arreglos de escalada, no hay ninguna garantía de
         que lo que hay ahí sea lo que se quiso instalar.
         """
-        return cls.instalado() and not cls.al_dia()
+        return cls.installed() and not cls.up_to_date()
 
-    def _orden(self) -> list[str]:
+    def _command(self) -> list[str]:
         """Lo que se le pasa a pkexec, en el orden de preferencia que toca.
 
         El ayudante instalado va solo, sin intérprete delante: pkexec asocia la
@@ -402,13 +402,13 @@ class PrivilegedClient:
         pkexec que construye el programa.
         """
         # Solo se usa el instalado si es exactamente el de este programa.
-        if (self.instalado() and self.al_dia()
-                and not self._sin_el_instalado):
-            return [pkexec_path(), str(HELPER_INSTALADO)]
-        return pkexec_inline("silux-helper.py", self._fuente_del_ayudante())
+        if (self.installed() and self.up_to_date()
+                and not self._skip_installed):
+            return [pkexec_path(), str(INSTALLED_HELPER)]
+        return pkexec_inline("silux-helper.py", self._helper_source())
 
     @staticmethod
-    def _fuente_del_ayudante() -> str:
+    def _helper_source() -> str:
         try:
             return HELPER.read_text(encoding="utf-8")
         except OSError as exc:
@@ -504,10 +504,10 @@ class PrivilegedClient:
         if not reply.get("ok"):
             self._last_error = reply.get("message")
             raise HelperError(reply.get("message", "no se pudo leer RAPL"))
-        zonas = reply.get("zones")
-        if not isinstance(zonas, dict):
+        zones = reply.get("zones")
+        if not isinstance(zones, dict):
             raise HelperError("el ayudante contestó algo que no encaja")
-        return {str(k): int(v) for k, v in zonas.items() if isinstance(v, int)}
+        return {str(k): int(v) for k, v in zones.items() if isinstance(v, int)}
 
     def gpu_pmu(self) -> tuple[int, dict[str, dict[str, int]], dict[str, dict[str, float]]]:
         """Contadores de la gráfica, en crudo, con su reloj y sus escalas.
@@ -520,28 +520,28 @@ class PrivilegedClient:
         reply = self.request({"action": ACTION_GPU_PMU})
         if not reply.get("ok"):
             self._last_error = reply.get("message")
-            mensaje = reply.get("message", "no se pudo leer el PMU de la gráfica")
+            message = reply.get("message", "no se pudo leer el PMU de la gráfica")
             if reply.get("error") == "unsupported":
-                raise PmuUnsupported(mensaje)
-            raise HelperError(mensaje)
+                raise PmuUnsupported(message)
+            raise HelperError(message)
 
-        reloj = reply.get("monotonic_ns")
-        motores = reply.get("engines")
-        if not isinstance(reloj, int) or not isinstance(motores, dict):
+        clock = reply.get("monotonic_ns")
+        engines = reply.get("engines")
+        if not isinstance(clock, int) or not isinstance(engines, dict):
             raise HelperError("el ayudante contestó algo que no encaja")
-        limpio = {
-            str(pmu): {str(e): v for e, v in eventos.items() if isinstance(v, int)}
-            for pmu, eventos in motores.items() if isinstance(eventos, dict)
+        clean = {
+            str(pmu): {str(e): v for e, v in events.items() if isinstance(v, int)}
+            for pmu, events in engines.items() if isinstance(events, dict)
         }
-        crudas = reply.get("scales")
-        escalas = {
-            str(pmu): {str(e): float(v) for e, v in valores.items()
+        raw = reply.get("scales")
+        scales = {
+            str(pmu): {str(e): float(v) for e, v in values.items()
                        if isinstance(v, (int, float))}
-            for pmu, valores in (crudas or {}).items() if isinstance(valores, dict)
+            for pmu, values in (raw or {}).items() if isinstance(values, dict)
         }
-        return reloj, limpio, escalas
+        return clock, clean, scales
 
-    def imc(self) -> LecturaImc:
+    def imc(self) -> ImcReading:
         """Cuánto tráfico lleva movido el controlador de memoria, en crudo.
 
         Igual que los de la gráfica: contadores que solo suben, con el factor
@@ -552,31 +552,31 @@ class PrivilegedClient:
         reply = self.request({"action": ACTION_IMC})
         if not reply.get("ok"):
             self._last_error = reply.get("message")
-            mensaje = reply.get("message", "no se pudo leer el controlador de memoria")
+            message = reply.get("message", "no se pudo leer el controlador de memoria")
             if reply.get("error") == "unsupported":
-                raise PmuUnsupported(mensaje)
-            raise HelperError(mensaje)
+                raise PmuUnsupported(message)
+            raise HelperError(message)
 
-        reloj = reply.get("monotonic_ns")
-        contadores = reply.get("counters")
-        if not isinstance(reloj, int) or not isinstance(contadores, dict):
+        clock = reply.get("monotonic_ns")
+        counters = reply.get("counters")
+        if not isinstance(clock, int) or not isinstance(counters, dict):
             raise HelperError("el ayudante contestó algo que no encaja")
-        limpio = {
-            str(pmu): {str(e): v for e, v in eventos.items() if isinstance(v, int)}
-            for pmu, eventos in contadores.items() if isinstance(eventos, dict)
+        clean = {
+            str(pmu): {str(e): v for e, v in events.items() if isinstance(v, int)}
+            for pmu, events in counters.items() if isinstance(events, dict)
         }
-        escalas = {
-            str(pmu): {str(e): float(v) for e, v in valores.items()
+        scales = {
+            str(pmu): {str(e): float(v) for e, v in values.items()
                        if isinstance(v, (int, float))}
-            for pmu, valores in (reply.get("scales") or {}).items()
-            if isinstance(valores, dict)
+            for pmu, values in (reply.get("scales") or {}).items()
+            if isinstance(values, dict)
         }
-        unidades = {
-            str(pmu): {str(e): str(v) for e, v in valores.items() if isinstance(v, str)}
-            for pmu, valores in (reply.get("units") or {}).items()
-            if isinstance(valores, dict)
+        units = {
+            str(pmu): {str(e): str(v) for e, v in values.items() if isinstance(v, str)}
+            for pmu, values in (reply.get("units") or {}).items()
+            if isinstance(values, dict)
         }
-        return LecturaImc(reloj, limpio, escalas, unidades,
+        return ImcReading(clock, clean, scales, units,
                           bool(reply.get("truncated")))
 
 
@@ -589,7 +589,7 @@ class PmuUnsupported(HelperError):
     """
 
 
-class LecturaImc(NamedTuple):
+class ImcReading(NamedTuple):
     """Lo que el ayudante devuelve del controlador de memoria, sin interpretar.
 
     `counters` son cuentas acumuladas desde que se abrió cada contador, y
