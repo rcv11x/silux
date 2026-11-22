@@ -115,6 +115,19 @@ class TestLaVersionDePrueba(unittest.TestCase):
         self.assertEqual(updates.latest(lista).version, (0, 3, 0))
 
 
+class TestNotThePagesOrder(unittest.TestCase):
+    """GitHub lists releases by the day of their tag's commit and, within a
+    day, by name as text: the 0.4-prueba10 came out under the 9 and the 8,
+    published the same day. «Buscar ahora» goes by the version."""
+
+    def test_the_highest_version_wherever_it_is_listed(self):
+        page = [_release(f"0.4.0rc{n}", prerelease=True) for n in (9, 8, 10, 7, 6)]
+        found = updates.latest(page, "testing")
+        self.assertEqual(found.tag, "0.4.0rc10")
+        self.assertTrue(updates.is_newer(found, "0.4.0rc9"))
+        self.assertFalse(updates.is_newer(found, "0.4.0rc10"))
+
+
 class TestTheChannel(unittest.TestCase):
     """«Estable» or «Pruebas» in Settings: the author wants whoever runs the
     0.4-prueba2 to get the prueba3 with «Buscar ahora»."""
