@@ -271,16 +271,20 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
   que no dependen de la zlib de cada distribución. `score.VERSION` y
   `db/scores.json` van siempre en el mismo commit. [docs/benchmark.md](docs/benchmark.md)
 - Qué se ha validado contra qué pieza y qué se escribió a ciegas (NVIDIA sí,
-  ARM no): [docs/equipos-probados.md](docs/equipos-probados.md). Hay diez
+  ARM no): [docs/equipos-probados.md](docs/equipos-probados.md). Hay catorce
   equipos volcados para la suite: dos del i5-10400 (en reposo y con turbo),
   el Ryzen 7 5800X3D, una máquina QEMU/KVM como la de un probador
-  (`qemu-kvm`, hecha aquí con QEMU), y seis importados del anexo de un
+  (`qemu-kvm`, hecha aquí con QEMU), y diez importados del anexo de un
   informe: un ThinkPad T14 (`i5-1135g7`), un sobremesa con Gentoo,
   OpenRC y una RTX 4060 (`i7-10700f`), un Lenovo LOQ híbrido con una RTX
   4050 (`i5-12450h`), un portátil con un Celeron N4000 (`celeron-n4000`),
   un sobremesa con un Athlon 3000G sin turbo ni driver de frecuencia
-  (`athlon-3000g`) y otro con una Radeon RX 550 sin telemetría del
-  firmware (`ryzen3-4100`).
+  (`athlon-3000g`), otro con una Radeon RX 550 sin telemetría del
+  firmware (`ryzen3-4100`), un i5-3330 con DDR3 de dos velocidades
+  (`i5-3330`), un Acer con DDR3L y una partición de intercambio
+  (`i5-5200u`), un ThinkPad T480s con batería y umbrales de carga
+  (`i5-8350u`) y un Core 2 Duo con antiX, runit, BIOS heredada y una
+  Quadro con nouveau (`core2-p8400`).
 - Lo que enseña cada volcado, página a página, está en
   `tests/fixtures/screens/`: un cambio que lo altera falla en
   `test_screen_references` hasta que se rehace con
@@ -314,7 +318,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); el código nuevo, en inglés (ver «Código»). Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-1639 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+1781 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
