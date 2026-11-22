@@ -232,10 +232,12 @@ silux/
 ├─ nvml.py         NVIDIA propietaria
 ├─ gpumetrics.py   telemetría del firmware AMD, por versión
 ├─ edid.py         la chapa del monitor, con CTA-861
+├─ drmmode.py      el modo que tiene puesto cada salida, por los ioctl de DRM
 ├─ spd.py          el chip de identificación de la RAM (DDR4 y DDR5)
 ├─ smart.py        el diagnóstico de los discos
 ├─ features.py     tabla declarativa de banderas de CPUID
 ├─ pciids.py       nombres de dispositivos PCI
+├─ usbids.py       nombres de dispositivos USB (la tarjeta de red USB)
 ├─ benchmark.py    prueba de CPU que reporta en qué condiciones midió
 ├─ membench.py     ancho de banda y latencia de la memoria, en otro proceso
 ├─ history.py      historial de pruebas de este equipo
@@ -272,10 +274,10 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
   que no dependen de la zlib de cada distribución. `score.VERSION` y
   `db/scores.json` van siempre en el mismo commit. [docs/benchmark.md](docs/benchmark.md)
 - Qué se ha validado contra qué pieza y qué se escribió a ciegas (NVIDIA sí,
-  ARM no): [docs/equipos-probados.md](docs/equipos-probados.md). Hay dieciséis
+  ARM no): [docs/equipos-probados.md](docs/equipos-probados.md). Hay diecisiete
   equipos volcados para la suite: dos del i5-10400 (en reposo y con turbo),
   el Ryzen 7 5800X3D, una máquina QEMU/KVM como la de un probador
-  (`qemu-kvm`, hecha aquí con QEMU), y doce importados del anexo de un
+  (`qemu-kvm`, hecha aquí con QEMU), y trece importados del anexo de un
   informe: un ThinkPad T14 (`i5-1135g7`), un sobremesa con Gentoo,
   OpenRC y una RTX 4060 (`i7-10700f`), un Lenovo LOQ híbrido con una RTX
   4050 (`i5-12450h`), un portátil con un Celeron N4000 (`celeron-n4000`),
@@ -286,7 +288,9 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
   (`i5-5200u`), un ThinkPad T480s con batería y umbrales de carga
   (`i5-8350u`), un Core 2 Duo con antiX, runit, BIOS heredada y una
   Quadro con nouveau (`core2-p8400`), un Celeron 560 de un núcleo con DDR2
-  (`celeron-560`) y un ASUS con Optimus y la GeForce dormida (`i7-4710hq`).
+  (`celeron-560`), un ASUS con Optimus y la GeForce dormida (`i7-4710hq`)
+  y un sobremesa con un Celeron G3900, una Wi-Fi USB y una tele por HDMI
+  (`celeron-g3900`).
 - Lo que enseña cada volcado, página a página, está en
   `tests/fixtures/screens/`: un cambio que lo altera falla en
   `test_screen_references` hasta que se rehace con
@@ -321,7 +325,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); el código nuevo, en inglés (ver «Código»). Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-1834 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+1856 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
