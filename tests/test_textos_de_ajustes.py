@@ -75,6 +75,24 @@ class TestEnPantalla(unittest.TestCase):
             self.assertTrue([t for t in cpu
                              if t.startswith(_("cpu.flags.count").format(n=cuantas))], cuantas)
 
+    def test_network_speed_says_what_the_network_page_says(self):
+        """The same sentence in both places, not two explanations of bits
+        and bytes."""
+        app = qt.app()
+        with pantalla.Ventana(foto(EQUIPOS / "5800x3d")[0]) as window:
+            window.select_section("Red")
+            for _turn in range(3):
+                app.processEvents()
+            network = [t for t in pantalla.textos_de(window.stack.currentWidget())
+                       if "MB/s" in t and "Mb/s" in t]
+            window.select_section("Ajustes")
+            for _turn in range(3):
+                app.processEvents()
+            settings = [t for t in pantalla.textos_de(window.settings_page)
+                        if "MB/s" in t and "Mb/s" in t]
+        self.assertEqual(len(network), 1, network)
+        self.assertEqual(settings, network)
+
 
 if __name__ == "__main__":
     unittest.main()

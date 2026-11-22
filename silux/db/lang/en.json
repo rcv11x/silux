@@ -1496,7 +1496,6 @@
   "settings.interval.label": "Refresh every",
   "settings.language.help": "Spanish is the original: when a phrase has not been translated yet, it shows in Spanish rather than blank.",
   "settings.language.label": "Language",
-  "settings.netunit.help": "The same traffic is either 116 MB/s or 931 Mb/s. Speed tests and providers use bits; download managers use bytes.",
   "settings.netunit.label": "Network speed",
   "settings.perm.connected": "Granted while Silux stays open",
   "settings.perm.connected.help": "The helper is reading what the kernel reserves for the administrator. It goes away when Silux closes.",

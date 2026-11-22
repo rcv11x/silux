@@ -430,7 +430,7 @@ class SettingsPage(ScrollPage):
             _Renglon(_("settings.language.label"), self.language_box,
                      _("settings.language.help")),
             _Renglon(_("settings.tempunit.label"), self.unit_box),
-            _Renglon(_("settings.netunit.label"), self.network_box, _("settings.netunit.help")),
+            _Renglon(_("settings.netunit.label"), self.network_box, _("net.units.note")),
             _Renglon(_("settings.welcome.label"), self.welcome_button,
                      _("settings.welcome.help")),
         )

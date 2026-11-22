@@ -1496,7 +1496,6 @@
   "settings.interval.label": "Refrescar cada",
   "settings.language.help": "El español es el original: cuando una frase todavía no está traducida, sale en español en vez de quedarse en blanco.",
   "settings.language.label": "Idioma",
-  "settings.netunit.help": "Los mismos datos son 116 MB/s o 931 Mb/s. Los tests de velocidad y los operadores usan bits; los gestores de descargas, bytes.",
   "settings.netunit.label": "Velocidad de red",
   "settings.perm.connected": "Concedidos mientras Silux siga abierto",
   "settings.perm.connected.help": "El ayudante está leyendo lo que el kernel reserva al administrador. Se va al cerrar Silux.",
