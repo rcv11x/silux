@@ -115,16 +115,14 @@ la memoria) no va: está propuesto en las notas
     LOQ lleva la página 0 que leyó su dueño con `dd`. Falta ver en un equipo
     así que el volcador copia la página 0 (el test vuelve a volcar el
     volcado montado, que ya la tiene).
-  - Gráficos · media · el modo que tiene puesto cada salida sale de los ioctl
+  - Gráficos · baja · el modo que tiene puesto cada salida sale de los ioctl
     de modesetting y se graba en los volcados nuevos; los de la suite no lo
-    tienen, y dicen que la que enseñan es la preferida. El EDID de la tele no
-    entró en el anexo porque llevaba su número de serie: falta taparlo (y
-    rehacer su suma) en vez de quitar el archivo entero, para ver con el EDID
-    real que la regla del tamaño (160 × 90 cm, su 16:9) es la suya.
-  - Red · baja · el anexo no guarda los identificadores de lo enchufado por
-    USB, y una tarjeta de red USB sale sin modelo en su volcado. Y
-    Dispositivos la nombra por lo que dice la propia tarjeta («802.11n NIC»),
-    no por `usb.ids` como Red.
+    tienen, y lo dicen al pie. El anexo ya lleva el EDID con solo el número
+    de serie tapado: falta ver con el EDID real de la tele que la regla del
+    tamaño (160 × 90 cm, su 16:9) es la suya.
+  - Dispositivos · baja · nombra lo USB por lo que dice el propio aparato
+    («802.11n NIC»), no por `usb.ids` como Red; ahora que el anexo guarda
+    vendor:product, podría hacerlo igual.
   - Red · baja · con la tarjeta Wi-Fi USB sin modelo, el pie dice «El kernel
     no publica modelo»: el modelo de una USB no lo publica el kernel, sale de
     `usb.ids` o de la tarjeta.

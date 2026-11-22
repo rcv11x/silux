@@ -10,6 +10,19 @@ que hace falta.
 
 ---
 
+## Sin publicar
+
+### Privacidad
+
+- El anexo del informe lleva el EDID de cada monitor con solo su número de
+  serie tapado (y su suma de control al día). Antes, una tele que escribe
+  «01 01 01 01» como número de serie, que en EDID quiere decir «sin número»,
+  se quedaba sin EDID.
+- De lo enchufado por USB, el anexo lleva ahora sus identificadores
+  (vendor:product), que dicen el modelo y no la persona. Lo que escribe el
+  propio aparato (su nombre y su fabricante) y su número de serie siguen sin
+  ir.
+
 ## 0.4-prueba10 (22 de noviembre de 2026)
 
 Las temporizaciones de una DDR5 con su chip SPD legible salían mal en la
