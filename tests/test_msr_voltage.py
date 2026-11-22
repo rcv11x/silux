@@ -232,3 +232,62 @@ class TestSeAnunciaEnLaBarra(unittest.TestCase):
         draft = _draft()
         msr_voltage.MsrVoltage(cliente).collect(draft)
         self.assertNotIn("msr", draft.capabilities)
+
+
+class TestBeforeSandyBridge(unittest.TestCase):
+    """A Core 2 has no voltage in its MSR_PERF_STATUS: asking for permissions
+    to read it promised what no permission brings."""
+
+    def test_the_dumps_say_the_processor_does_not_publish_it(self):
+        from silux.i18n import _
+        from tests.test_equipos import EQUIPOS, foto
+
+        for machine, need in (("core2-p8400", Need.HARDWARE), ("celeron-560", Need.HARDWARE),
+                              ("i7-4710hq", Need.ROOT), ("i5-3330", Need.ROOT)):
+            snapshot = foto(EQUIPOS / machine)[0]
+            note = next(n for n in snapshot.notes if n.path == "cpu.voltage_v")
+            with self.subTest(machine):
+                self.assertEqual(note.need, need)
+                if need is Need.HARDWARE:
+                    self.assertEqual(note.message, _("prov.msr.oldintel"))
+
+    def test_with_permissions_the_register_is_not_read(self):
+        from silux import volcado
+        from tests.test_equipos import EQUIPOS
+
+        cliente = mock.Mock()
+        cliente.connected.return_value = True
+        draft = _draft("Intel")
+        with volcado.mounted(EQUIPOS / "core2-p8400"):
+            msr_voltage.MsrVoltage(cliente).collect(draft)
+        cliente.read_msr.assert_not_called()
+        self.assertEqual([n.need for n in draft.notes if n.path == "cpu.voltage_v"],
+                         [Need.HARDWARE])
+
+    def test_garbage_from_a_newer_one_is_said(self):
+        from silux import volcado
+        from tests.test_equipos import EQUIPOS
+
+        cliente = mock.Mock()
+        cliente.connected.return_value = True
+        cliente.read_msr.return_value = {msr_voltage.INTEL_PERF_STATUS: 0xFFFF << 32}
+        draft = _draft("Intel")
+        with volcado.mounted(EQUIPOS / "i7-4710hq"):
+            msr_voltage.MsrVoltage(cliente).collect(draft)
+        self.assertIsNone(draft.types["general"].get("voltage_v"))
+        self.assertEqual([n.key for n in draft.notes if n.path == "cpu.voltage_v"],
+                         ["prov.msr.novalue"])
+
+    def test_on_the_cpu_page_hidden_and_said_at_the_foot(self):
+        from silux.i18n import _
+        from tests import pantalla
+        from tests.test_interface_language import visible_texts
+        from tests.test_equipos import EQUIPOS, foto
+
+        qt.app()
+        for machine, shown in (("core2-p8400", False), ("i7-4710hq", True)):
+            with self.subTest(machine), pantalla.Ventana(foto(EQUIPOS / machine)[0]) as window:
+                window.select_section("CPU")
+                text = visible_texts(window.stack.currentWidget())
+                self.assertEqual(_("cpu.field.voltage") in text, shown)
+                self.assertEqual(_("prov.msr.oldintel") in " ".join(text), not shown)

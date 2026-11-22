@@ -231,8 +231,9 @@ class TypeSection(QWidget):
         # notice below the cards says why.
         self.identity.set_visible(_("cpu.field.microcode"),
                                   not (virtual and cpu_type.microcode is None))
-        self.processor.set_visible(_("cpu.field.voltage"),
-                                   not (virtual and cpu_type.voltage_v is None))
+        # Nor does a processor that publishes no voltage (said at the foot).
+        self.processor.set_visible(_("cpu.field.voltage"), not (
+            (virtual or "cpu.voltage_v" in absent) and cpu_type.voltage_v is None))
         self.clocks_card.setVisible(not (virtual and cpu_type.clocks.current_hz is None))
         # El voltaje va con los demás datos del silicio y no con los relojes:
         # es lo que la pieza pide para sostener la frecuencia que tiene puesta.

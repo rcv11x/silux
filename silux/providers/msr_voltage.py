@@ -33,7 +33,7 @@ from .. import rawcpuid
 from ..i18n import _
 from ..model import Need
 from ..privileged.client import HelperError, PrivilegedClient
-from .base import Draft, Provider, is_virtual_machine
+from .base import Draft, Provider, is_virtual_machine, read_text
 
 # The running P-state (bits 2:0).
 AMD_PSTATE_STATUS = 0xC0010063
@@ -62,6 +62,35 @@ MAX_V = 2.0
 
 def _is_x86() -> bool:
     return rawcpuid.machine() in ("x86_64", "AMD64", "i686", "i386")
+
+
+# Family 6 before Sandy Bridge (model 0x2A) that come after it in number:
+# Westmere-EP, Nehalem-EX and Westmere-EX.
+_OLDER_SERVERS = frozenset({0x2C, 0x2E, 0x2F})
+
+
+def intel_without_voltage() -> bool:
+    """An Intel whose MSR_PERF_STATUS carries no voltage.
+
+    Intel documents bits 47:32 from Sandy Bridge on. A Core 2, a Nehalem or
+    a Pentium 4 leaves them at zero or holds something else there, so no
+    permission brings the figure.
+    """
+    fields: dict[str, str] = {}
+    for line in (read_text("/proc/cpuinfo") or "").splitlines():
+        key, sep, value = line.partition(":")
+        if not sep:
+            if fields:
+                break
+            continue
+        fields.setdefault(key.strip(), value.strip())
+    if fields.get("vendor_id") != "GenuineIntel":
+        return False
+    try:
+        family, model = int(fields["cpu family"]), int(fields["model"])
+    except (KeyError, ValueError):
+        return False
+    return family == 0xF or (family == 6 and (model < 0x2A or model in _OLDER_SERVERS))
 
 
 def _amd_voltage(values: dict) -> Optional[float]:
@@ -107,6 +136,9 @@ class MsrVoltage(Provider):
         if not _is_x86():
             return ("cpu.voltage_v", Need.PLATFORM,
                     _("prov.msr.nox86"), _("prov.msr.nox86.hint"))
+        if intel_without_voltage():
+            return ("cpu.voltage_v", Need.HARDWARE,
+                    _("prov.msr.oldintel"), _("prov.msr.oldintel.hint"))
         return ("cpu.voltage_v", Need.ROOT,
                 _("prov.msr.novolt"), _("prov.msr.novolt.hint"), _("what.cpu.voltage"))
 
@@ -121,6 +153,10 @@ class MsrVoltage(Provider):
                for entry in draft.types.values()):
             return
 
+        if intel_without_voltage():
+            draft.note("cpu.voltage_v", Need.HARDWARE,
+                       _("prov.msr.oldintel"), _("prov.msr.oldintel.hint"))
+            return
         vendors = {(entry.get("vendor") or "").lower()
                   for entry in draft.types.values()}
         is_amd = any("amd" in m for m in vendors)
@@ -138,6 +174,9 @@ class MsrVoltage(Provider):
 
         voltage = _amd_voltage(values) if is_amd else _intel_voltage(values)
         if voltage is None or not MIN_V <= voltage <= MAX_V:
+            # Read, but not a voltage: said, with what came, for the report.
+            draft.note("cpu.voltage_v", Need.HARDWARE, _("prov.msr.novalue"),
+                       detail=f"{values!r}", key="prov.msr.novalue")
             return
 
         for entry in draft.types.values():
