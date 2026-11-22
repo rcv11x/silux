@@ -363,6 +363,7 @@ Los reguladores de voltaje y el ventilador son de una tarjeta aparte: esta se al
 | HDMI-A-1 | BLUSENS TV | 1920 × 1080 | 24–85 Hz | ≈ 46" | — | semana 6 de 2012 |
 
 2 salidas libres: DP-1, DVI-D-1
+La resolución de HDMI-A-1 es la preferida del monitor: no se ha podido preguntar cuál tiene puesta.
 
 ## Almacenamiento
 

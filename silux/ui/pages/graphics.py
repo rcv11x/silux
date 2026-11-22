@@ -517,6 +517,11 @@ class GpuSection(QWidget):
         self.displays_free.setWordWrap(True)
         self.displays_free.setFont(ui_font(theme.METRICS.small_pt))
         display_card.body.addWidget(self.displays_free)
+        self.displays_note = QLabel("")
+        self.displays_note.setObjectName("Muted")
+        self.displays_note.setWordWrap(True)
+        self.displays_note.setFont(ui_font(theme.METRICS.small_pt))
+        display_card.body.addWidget(self.displays_note)
         layout.addWidget(display_card)
 
         self._chip_signature: tuple = ()
@@ -790,6 +795,9 @@ class GpuSection(QWidget):
                                                salidas=", ".join(libres))
             if libres else "")
         self.displays_free.setVisible(bool(libres))
+        nota = render.displays_resolution_note(gpu.displays) or ""
+        self.displays_note.setText(nota)
+        self.displays_note.setVisible(bool(nota))
 
     def _apply_no_aplica(self, gpu: Gpu) -> None:
         """Esconde lo que esta tarjeta no tiene y lo dice al pie.
@@ -1236,12 +1244,12 @@ def _fila_de_salida(salida, virtual: bool = False) -> tuple[str, ...]:
     monitor = salida.monitor
     if monitor is None:
         # Conectada pero sin EDID legible: pasa con algunos adaptadores y KVM.
-        return (salida.connector, _("gpu.display.unknown"), salida.resolution or d,
+        return (salida.connector, _("gpu.display.unknown"), render.display_resolution(salida) or d,
                 d, d, d, d)
     return (
         salida.connector,
         render.monitor_name(monitor),
-        salida.resolution or d,
+        render.display_resolution(salida) or d,
         monitor.refresh_summary or d,
         "" if virtual else render.monitor_size(monitor) or d,
         render.monitor_color(monitor),

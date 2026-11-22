@@ -45,6 +45,10 @@ class BancoDrm(unittest.TestCase):
         bus = mock.patch.object(drm, "SYS_PCI", str(self.root / "bus"))
         bus.start()
         self.addCleanup(bus.stop)
+        # And the running modes, which come from /dev/dri: no card there.
+        modes = mock.patch.object(drm.drmmode, "active_modes", return_value=None)
+        modes.start()
+        self.addCleanup(modes.stop)
         self.addCleanup(self._tmp.cleanup)
 
     def tarjeta(self, numero: int, ranura: str = "0000:03:00.0",

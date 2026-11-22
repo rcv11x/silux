@@ -338,6 +338,7 @@ Una integrada no tiene reguladores de voltaje, ventilador, SoC aparte ni memoria
 | LVDS-1 | Seiko Epson | 1280 × 800 | 60 Hz | 14.1" | — | 2008 |
 
 1 salida libre: VGA-1
+La resolución de LVDS-1 es la preferida del monitor: no se ha podido preguntar cuál tiene puesta.
 
 ## Almacenamiento
 

@@ -26,7 +26,7 @@ import re
 import time
 from typing import Optional
 
-from .. import amdgpu, edid, gpumetrics, i915, pciids, sysroot
+from .. import amdgpu, drmmode, edid, gpumetrics, i915, pciids, sysroot
 from ..i18n import _
 from ..model import Display, GpuClockLevel, GpuClocks, GpuEngine, GpuMemory, Need, PcieLink
 from ..privileged.client import HelperError, PmuUnsupported, PrivilegedClient
@@ -229,7 +229,7 @@ class DrmGpus(Provider):
                 hwmon = _hwmon(device)
                 gpu["no_temperature_sensor"] = not (
                     hwmon is not None and any(hwmon.glob("temp*_input")))
-            gpu["displays"] = _outputs(node.name)
+            gpu["displays"] = _outputs(node.name, ask_modes=not asleep)
             if asleep:
                 draft.note(f"gpus.{index}", Need.HARDWARE,
                            _("prov.drm.asleep"), _("prov.drm.asleep.hint"))
@@ -1325,9 +1325,13 @@ def _telemetry(gpu: dict, device: pathlib.Path,
             gpu[field] = amount
 
 
-def _outputs(card: str) -> tuple[Display, ...]:
-    """This card's video connectors, plugged in or not."""
+def _outputs(card: str, ask_modes: bool = True) -> tuple[Display, ...]:
+    """This card's video connectors, plugged in or not, with the mode each
+    runs at when the card can be asked without waking it."""
     root = pathlib.Path(sysroot.path(SYS_DRM))
+    plugged = any((read_text(f"{c}/status") or "").lower() == "connected"
+                  for c in root.glob(f"{card}-*"))
+    active = (drmmode.active_modes(card) if ask_modes and plugged else None) or {}
     outputs = []
     for connector in sorted(root.glob(f"{card}-*")):
         item_name = connector.name[len(card) + 1:]
@@ -1352,6 +1356,9 @@ def _outputs(card: str) -> tuple[Display, ...]:
             height=high,
             refresh_hz=plate.native_refresh_hz if plate else None,
             monitor=plate,
+            active_width=(active.get(item_name) or {}).get("width"),
+            active_height=(active.get(item_name) or {}).get("height"),
+            active_refresh_hz=(active.get(item_name) or {}).get("refresh_hz"),
         ))
     return tuple(outputs)
 

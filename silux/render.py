@@ -2123,14 +2123,40 @@ def monitor_summary(monitor: Optional[Edid]) -> str:
     return " · ".join(parts) if parts else DASH
 
 
+def display_resolution(display: Display) -> Optional[str]:
+    """The mode it runs at, or else the monitor's preferred one: which it
+    is, `displays_resolution_note` says at the foot."""
+    return display.resolution
+
+
+def displays_resolution_note(displays) -> Optional[str]:
+    """Under the monitors table: a monitor whose preferred mode isn't the one
+    it runs at, and those whose running mode couldn't be asked, whose
+    resolution is the preferred one. None when neither."""
+    connected = [d for d in displays if d.connected and d.resolution]
+    parts = [_("gpu.displays.prefers").format(salida=d.connector, res=d.preferred_resolution)
+             for d in connected if d.active_width and d.preferred_resolution
+             and d.preferred_resolution != d.resolution]
+    unknown = [d.connector for d in connected if not d.active_width]
+    if unknown:
+        parts.append(_("gpu.displays.preferred.only").format(salidas=enumeration(unknown)))
+    return " ".join(parts) or None
+
+
 def display_mode(display: Display) -> str:
-    """The native resolution with its refresh: «2560 × 1440 · 48–240 Hz»."""
+    """The resolution with the refresh range: «2560 × 1440 · 48–240 Hz»."""
     if not display.connected:
         return DASH
     range_ = display.monitor.refresh_range if display.monitor else None
     if not range_ and display.refresh_hz:
         range_ = f"{display.refresh_hz:g} Hz"
-    parts = [p for p in (display.resolution, range_) if p]
+    resolution = display.resolution
+    if resolution and display.active_width and display.preferred_resolution \
+            and display.preferred_resolution != resolution:
+        resolution += f' ({_("gpu.display.preferred").format(res=display.preferred_resolution)})'
+    elif resolution and not display.active_width:
+        resolution = _("gpu.display.preferred.only").format(res=resolution)
+    parts = [p for p in (resolution, range_) if p]
     return " · ".join(parts) if parts else DASH
 
 
@@ -2145,7 +2171,7 @@ def display_summary(display: Display) -> str:
     """
     if not display.connected:
         return _("display.unplugged")
-    return display.resolution or _("display.connected")
+    return display_resolution(display) or _("display.connected")
 
 
 def gpu_api_summary(api: GpuApi) -> str:

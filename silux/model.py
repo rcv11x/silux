@@ -1229,15 +1229,29 @@ class Display:
     # Wayland compositor in charge it's False on displays that are on, so it
     # works on the console and X11 but can't say something is in use.
     enabled: bool = False
-    # The preferred mode the monitor declares, which is nearly always the one
-    # used. The resolution the compositor has set right now isn't in sysfs.
+    # The preferred mode the monitor declares. Not always the one used: a TV
+    # preferred 1360 × 768 and ran at 1920 × 1080.
     width: Optional[int] = None
     height: Optional[int] = None
     refresh_hz: Optional[float] = None
     monitor: Optional[Edid] = None
+    # The mode it runs at, from the kernel's modesetting (`drmmode`); None
+    # where the card couldn't be asked.
+    active_width: Optional[int] = None
+    active_height: Optional[int] = None
+    active_refresh_hz: Optional[float] = None
 
     @property
     def resolution(self) -> Optional[str]:
+        """The active mode's, or else the preferred one's."""
+        width, height = ((self.active_width, self.active_height) if self.active_width
+                         else (self.width, self.height))
+        if not (width and height):
+            return None
+        return f"{width} × {height}"
+
+    @property
+    def preferred_resolution(self) -> Optional[str]:
         if not (self.width and self.height):
             return None
         return f"{self.width} × {self.height}"
@@ -2211,7 +2225,7 @@ _COMPUTED: dict[str, tuple[str, ...]] = {
     "Power": ("load_percent",),
     "GpuMemory": ("used_percent", "resizable_bar"),
     "PcieLink": ("fewer_lanes_at_full_speed", "generation", "max_generation", "downgraded"),
-    "Display": ("resolution",),
+    "Display": ("resolution", "preferred_resolution"),
     "Edid": ("diagonal_inches", "refresh_range",
              "refresh_summary", "best_mode"),
     "VideoMode": ("label",),

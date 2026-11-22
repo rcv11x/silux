@@ -250,6 +250,8 @@ Tampoco temperaturas, voltajes, ventilador ni consumo.
 |---|---|---|---|---|---|---|
 | Virtual-1 | Red Hat QEMU Monitor | 1280 × 800 | 50–125 Hz |  | — |  |
 
+La resolución de Virtual-1 es la preferida del monitor: no se ha podido preguntar cuál tiene puesta.
+
 ## Almacenamiento
 
 34.4 GB en 1 unidad

@@ -111,9 +111,11 @@ módulos de 8. Lo que falta se lo quedan el firmware y la gráfica integrada.
 | Salidas y cuál está conectada | `/sys/class/drm/cardN-*/status` y `enabled` | `grep . /sys/class/drm/card*-*/status` | no |
 | Monitor: nombre, tamaño, fecha, rango, modos | el EDID: `/sys/class/drm/cardN-*/edid` | `edid-decode /sys/class/drm/card1-HDMI-A-1/edid` *, o `di-edid-decode` con la misma ruta | no |
 | Fabricante del monitor | las tres letras del EDID, por `pnp.ids` | `grep ^GSM /usr/share/hwdata/pnp.ids` | no |
+| Resolución de cada monitor | el modo que tiene puesto el kernel, por los ioctl de modesetting sobre `/dev/dri/cardN` (`drmmode.py`) | `xrandr --current` en X11, `kscreen-doctor -o` en KDE, o `drm_info` | no |
 
-La resolución que enseña silux es la nativa del monitor, no el modo que hay
-puesto. El modo activo lo dicen `xrandr` o `kscreen-doctor -o`.
+La preferida del monitor (la primera línea de `/sys/class/drm/cardN-*/modes`)
+va aparte cuando no es la que hay puesta. Bajo XWayland, `xrandr` da la
+frecuencia de un modo emulado: la del kernel puede diferir en décimas.
 
 ## Almacenamiento
 

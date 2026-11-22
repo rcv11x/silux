@@ -350,6 +350,7 @@ Una integrada no tiene reguladores de voltaje, ventilador, SoC aparte ni memoria
 | eDP-1 | Chimei Innolux | 1366 × 768 | 60 Hz | 15.5" | — | semana 45 de 2015 |
 
 3 salidas libres: DP-1, HDMI-A-1, HDMI-A-2
+La resolución de eDP-1 es la preferida del monitor: no se ha podido preguntar cuál tiene puesta.
 
 > **Falta un paquete del sistema**
 > Falta pnp.ids: el fabricante de cada monitor sale con su código de tres letras y no con su nombre.
