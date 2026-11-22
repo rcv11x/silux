@@ -863,7 +863,10 @@ VENDOR_ALIASES: dict[str, str] = {
     "micron technology": "Micron",
     "kingston": "Kingston",
     "sk hynix": "SK Hynix",
-    "hynix semiconductor": "SK Hynix",
+    # «Hynix Semiconductor», «Hynix/Hyundai»: the same company, and before
+    # 2001 «Hyundai Electronics».
+    "hynix": "SK Hynix",
+    "hyundai electronics": "SK Hynix",
     "samsung": "Samsung",
     "g skill": "G.Skill",
     "g.skill": "G.Skill",

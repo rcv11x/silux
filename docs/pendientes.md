@@ -143,9 +143,6 @@ la memoria) no va: está propuesto en las notas
   - Memoria · baja · con el ayudante · la fila «Rangos» de un módulo solo mira
     la tabla SMBIOS (`ui/pages/memory.py`): con una que no trae rangos sale
     guion aunque el SPD diga 2. El resumen de arriba ya cae al SPD.
-  - Memoria · baja · con el ayudante · «Hynix/Hyundai», como lo escribe la BIOS
-    del Acer, no pasa por `render.maker`: el otro módulo del mismo
-    fabricante sale «SK Hynix».
   - Gráficos · media · con la GeForce GTX 850M en reposo (nouveau), su ficha
     son 35 filas con guion; la RTX del LOQ en reposo no tiene ninguna. Y la
     HD 4600 dice «Ni Vulkan ni OpenGL usan esta tarjeta» y «Sin bibliotecas

@@ -69,6 +69,8 @@ que hace falta.
   puede tener (20,48 V en una de 14,8 V), no se enseña. Sin capacidad ni
   carga, sale «Batería sin datos» diciendo esa tensión, y no una ficha con el
   modelo vacío y «Carga: — (0.0 Wh)».
+- Memoria: «Hynix/Hyundai», como lo escribe alguna BIOS, sale «SK Hynix»,
+  igual que el módulo leído de su chip.
 
 ## 0.4-prueba10 (22 de noviembre de 2026)
 
