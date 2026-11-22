@@ -22,6 +22,14 @@ try:
 except ImportError:                                    # pragma: no cover
     QApplication = None
 
+def _load(language):
+    import json
+    import pathlib
+    from silux import i18n
+    return json.loads((pathlib.Path(i18n.__file__).parent / "db" / "lang"
+                       / f"{language}.json").read_text(encoding="utf-8"))
+
+
 UUID = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
 
 
@@ -57,6 +65,20 @@ class TestTaint(unittest.TestCase):
         self.assertEqual(render.tainted(None), render.DASH)
         # A bit newer than the table is said, not dropped.
         self.assertIn("1048576", render.tainted(1 << 20))
+
+    def test_p_is_the_license_not_proprietary(self):
+        # The kernel sets P for any module whose license isn't GPL-compatible:
+        # ZFS, under the CDDL, is free software.
+        snapshot = foto(EQUIPOS / "celeron-g3900")[0]
+        self.assertIn(("zfs", "PO"), snapshot.system.tainting_modules)
+        text = render.tainted(snapshot.system.tainted, snapshot.system.tainting_modules)
+        self.assertIn(_("sys.taint.0") + " (zfs)", text)
+        for language in ("es", "en"):
+            with self.subTest(language):
+                reason = _load(language)["sys.taint.0"].lower()
+                self.assertNotIn("propietario", reason)
+                self.assertNotIn("proprietary", reason)
+                self.assertIn("gpl", reason)
 
 
 MODULES = {"/proc/meminfo": "MemTotal: 1 kB\n",

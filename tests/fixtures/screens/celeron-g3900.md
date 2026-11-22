@@ -540,7 +540,7 @@ Esta distribución no declara variante.
 - Sesión: x11
 - Shell: bash
 - Gráficos: Mesa 25.2.8
-- Kernel contaminado: un módulo propietario (zfs) · un módulo de fuera del kernel (8192eu, spl, zfs) · un módulo sin firmar (8192eu)
+- Kernel contaminado: un módulo con licencia no compatible con la GPL (zfs) · un módulo de fuera del kernel (8192eu, spl, zfs) · un módulo sin firmar (8192eu)
 
 ### Actividad
 

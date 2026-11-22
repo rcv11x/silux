@@ -1735,7 +1735,7 @@
   "sys.swap.ratio": "compresses {n} to 1",
   "sys.swap.used": "{usado} of {total}",
   "sys.swap.zram": "{nombre} (in memory)",
-  "sys.taint.0": "a proprietary module",
+  "sys.taint.0": "a module under a license not compatible with the GPL",
   "sys.taint.1": "a force-loaded module",
   "sys.taint.10": "a staging driver",
   "sys.taint.11": "a workaround for a firmware bug",

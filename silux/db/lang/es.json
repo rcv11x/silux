@@ -1735,7 +1735,7 @@
   "sys.swap.ratio": "comprime {n} a 1",
   "sys.swap.used": "{usado} de {total}",
   "sys.swap.zram": "{nombre} (en memoria)",
-  "sys.taint.0": "un módulo propietario",
+  "sys.taint.0": "un módulo con licencia no compatible con la GPL",
   "sys.taint.1": "un módulo cargado a la fuerza",
   "sys.taint.10": "un driver de staging",
   "sys.taint.11": "un apaño para un fallo del firmware",
