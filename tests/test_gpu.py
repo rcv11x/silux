@@ -41,6 +41,10 @@ class BancoDrm(unittest.TestCase):
         patch = mock.patch.object(drm, "SYS_DRM", str(self.root))
         patch.start()
         self.addCleanup(patch.stop)
+        # The bus too: otherwise it lists the cards of whoever runs the suite.
+        bus = mock.patch.object(drm, "SYS_PCI", str(self.root / "bus"))
+        bus.start()
+        self.addCleanup(bus.stop)
         self.addCleanup(self._tmp.cleanup)
 
     def tarjeta(self, numero: int, ranura: str = "0000:03:00.0",

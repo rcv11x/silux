@@ -392,10 +392,16 @@ class HomePage(ScrollPage):
         self.gpu.reservar(moldes)
         # El uso y el consumo, si faltan por permisos, se dicen: sin esto la
         # tarjeta de una integrada parecía no tener nada más que un reloj.
-        pie = (_("home.gpu.locked")
-               if gpu.busy_percent is None and not gpu.suspended
-               and snapshot.permission_note(f"gpus.{indice}.usage")
-               else "")
+        bloqueada = (_("home.gpu.locked")
+                     if gpu.busy_percent is None and not gpu.suspended
+                     and snapshot.permission_note(f"gpus.{indice}.usage")
+                     else "")
+        # The card sums up the one that works; a hybrid laptop's other one,
+        # asleep or without a driver, is still the machine's and is named.
+        otras = [render.gpu_name(g) + (f" ({_('gpu.asleep.short')})" if g.suspended else "")
+                 for i, g in enumerate(snapshot.gpus) if i != indice]
+        tambien = _("home.gpu.also").format(tarjetas=" · ".join(otras)) if otras else ""
+        pie = " ".join(p for p in (tambien, bloqueada) if p)
         self.gpu.poner(render.gpu_name(gpu), detalle, "   ".join(piezas), pie)
 
     def _memoria(self, snapshot: Snapshot) -> None:

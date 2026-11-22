@@ -35,6 +35,7 @@ from .counters import increase, window_s
 from .rapl import Discarded, package_ceiling_w
 
 SYS_DRM = "/sys/class/drm"
+SYS_PCI = "/sys/bus/pci/devices"
 
 # Who makes the chip, not always who sells the card.
 VENDORS = {
@@ -189,17 +190,18 @@ class DrmGpus(Provider):
 
     def collect(self, draft: Draft) -> None:
         nodes = cards()
-        if not nodes:
+        # Listed once and handed out: with two cards and no driver, the first
+        # card takes the first one on the bus.
+        no_driver = _gpus_on_bus()
+        if not nodes and not no_driver:
             draft.note(
                 "gpus", Need.HARDWARE,
                 _("prov.drm.nogpu"), _("prov.drm.nogpu.hint"),
             )
             return
 
-        draft.capabilities.add("drm")
-        # Listed once and handed out: with two cards and no driver, the first
-        # card takes the first one on the bus.
-        no_driver = _gpus_on_bus()
+        if nodes:
+            draft.capabilities.add("drm")
         for index, node in enumerate(nodes):
             device = node / "device"
             gpu = draft.gpu(index)
@@ -244,7 +246,45 @@ class DrmGpus(Provider):
                 draft.note(f"gpus.{index}", Need.DRIVER,
                            *(_(entry_key) for entry_key in notice), key=notice[0])
 
+        self._without_a_node(draft, no_driver)
         _name_monitors(draft.gpus)
+
+    def _without_a_node(self, draft: Draft, on_bus: list[pathlib.Path]) -> None:
+        """The cards on the bus that no DRM node stands for, listed anyway.
+
+        With no driver (nouveau blacklisted and NVIDIA's not installed), or
+        with one that publishes no graphics (vfio-pci for a virtual machine,
+        NVIDIA's without nvidia-drm), the card was missing from the list.
+        """
+        listed = {gpu.get("pci_slot") for gpu in draft.gpus}
+        for device in on_bus:
+            if device.name in listed:
+                continue
+            index = len(draft.gpus)
+            gpu = draft.gpu(index)
+            gpu["pci_slot"] = device.name
+            gpu["driver"] = _driver(device)
+            gpu["primary"] = read_int(f"{device}/boot_vga") == 1
+            # Without a driver nothing can wake it, and the graphics APIs,
+            # which wait for a sleeping card, have nothing to wait for.
+            asleep = gpu["driver"] is not None and is_suspended(device)
+            gpu["suspended"] = asleep
+            self._identity(gpu, device, draft, asleep)
+            if not asleep:
+                gpu["link"] = _link(device)
+            gpu["integrated"] = _is_integrated(gpu)
+            card = gpu.get("name") or _("prov.drm.thiscard")
+            if gpu["driver"] is None:
+                draft.note(f"gpus.{index}", Need.DRIVER,
+                           _("prov.drm.unbound").format(tarjeta=card),
+                           _("prov.drm.unbound.hint"), key="prov.drm.unbound")
+            elif asleep:
+                draft.note(f"gpus.{index}", Need.HARDWARE,
+                           _("prov.drm.asleep"), _("prov.drm.asleep.hint"))
+            else:
+                draft.note(f"gpus.{index}", Need.DRIVER,
+                           _("prov.drm.nodrm").format(tarjeta=card, driver=gpu["driver"]),
+                           _("prov.drm.nodrm.hint"), key="prov.drm.nodrm")
 
     def _bus_identity(self, gpu: dict, draft: Draft, index: int,
                            candidate_cards: list) -> None:
@@ -863,7 +903,7 @@ def _gpus_on_bus() -> list[pathlib.Path]:
     kernel stayed on the fallback framebuffer: the bus lists the hardware even
     with nobody able to talk to it.
     """
-    root = pathlib.Path(sysroot.path("/sys/bus/pci/devices"))
+    root = pathlib.Path(sysroot.path(SYS_PCI))
     found = []
     for device in sorted(root.glob("*")) if root.is_dir() else ():
         pci_class = _hex(device / "class")

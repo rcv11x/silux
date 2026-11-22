@@ -2079,11 +2079,13 @@ class Snapshot:
         The awake dedicated card, if any: the one that draws on a desktop and
         is used when gaming. If the dedicated card sleeps, the awake one,
         which is the one working. If all sleep or it isn't known, the boot
-        one, and failing that the first.
+        one, and failing that the first. A card no driver talks to (on the bus,
+        with no driver and no DRM node) does not work, awake or not.
         """
         if not self.gpus:
             return None
-        awake = [i for i, g in enumerate(self.gpus) if not g.suspended]
+        awake = [i for i, g in enumerate(self.gpus)
+                 if not g.suspended and (g.driver or g.drm_node)]
         for i in awake:
             if self.gpus[i].integrated is False:
                 return i

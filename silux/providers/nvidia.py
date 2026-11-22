@@ -76,14 +76,20 @@ class NvidiaGpus(Provider):
                 target = draft.gpu(len(draft.gpus))
                 target["pci_slot"] = card.pci_slot
                 target["vendor"] = "NVIDIA"
+            # NVML answers only through NVIDIA's driver.
+            target["driver"] = target.get("driver") or "nvidia"
             _fill(target, card)
             if card.fan_percent is None and draft.board.chassis in PORTABLE_CHASSIS:
                 target["fan_of_the_machine"] = True
 
         # The notice that an NVIDIA comes empty is not needed: it does not.
+        # Nor that its driver publishes no DRM node: NVML answered for it.
+        answered = {f"gpus.{i}" for i, gpu in enumerate(draft.gpus)
+                    if gpu.get("pci_slot") in {c.pci_slot for c in cards}}
         draft.notes = [n for n in draft.notes
                        if not (n.need is Need.DRIVER and n.path.startswith("gpus.")
-                               and "NVIDIA" in n.message)]
+                               and ("NVIDIA" in n.message
+                                    or (n.path in answered and n.key == "prov.drm.nodrm")))]
 
         # A dash with no reason breaks rule 5: say the driver did not give it,
         # and what NVML answered goes in the report.
