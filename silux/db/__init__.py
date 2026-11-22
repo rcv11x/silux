@@ -369,8 +369,9 @@ def find_socket(vendor_id: str, codename: Optional[str], brand: str) -> Optional
     1. The per-model table inherited from CPU-X: exact but tiny.
     2. Our per-microarchitecture table: one rule covers a whole generation,
        so it gets processors nobody has catalogued.
-    3. Segment suffixes: a "-U" or "-H" in the codename means BGA, and
-       saying "soldered" is more useful than leaving it blank.
+    3. Segment suffixes: a "-U" or "-H" in the codename, or a U or Y model
+       number, means BGA, and saying "soldered" is more useful than leaving
+       it blank.
     """
     if not codename and not brand:
         return None
@@ -404,14 +405,18 @@ def find_socket(vendor_id: str, codename: Optional[str], brand: str) -> Optional
         return None
 
     overlay = _load_overlay()
+    # The space lets a pattern end a model number at the brand's end too.
+    spaced = f"{brand} "
     for rule in overlay.get("rules", ()):
-        if rule["vendor"] == vendor_id and rule["match"] in codename:
+        if (rule["vendor"] == vendor_id and rule["match"] in codename
+                and ("brand" not in rule or re.search(rule["brand"], spaced))):
             return rule["socket"]
 
     soldered = overlay.get("soldered_suffixes", {}).get(vendor_id, ())
-    for marker in soldered:
-        if marker in codename:
-            return "BGA (soldado)"
+    if any(marker in codename for marker in soldered) or any(
+            re.search(pattern, spaced)
+            for pattern in overlay.get("soldered_brands", {}).get(vendor_id, ())):
+        return "BGA (soldado)"
 
     return None
 

@@ -164,6 +164,7 @@ class TypeSection(QWidget):
 
         self._cache_rows: list[str] = []
         self._voltaje = None
+        self._socket = None
         self._base_hz = None
         self._base_texto = render.DASH
         self._chip_signature: tuple = ()
@@ -176,6 +177,15 @@ class TypeSection(QWidget):
         elif self.processor.is_locked(nombre):
             self.processor.set(nombre, render.volts(self._voltaje),
                                tooltip=_("cpu.tip.voltage"))
+
+    def lock_package(self, note, color: str) -> None:
+        """The package missing from the CPU table, which the firmware's table
+        may declare: read with permissions (`note`)."""
+        name = _("cpu.field.package")
+        if note is not None and not self._socket:
+            self.processor.set_locked(name, color, render.lock_tooltip(note))
+        elif self.processor.is_locked(name):
+            self.processor.set(name, render.from_cpu_table(self._socket))
 
     def lock_base(self, nota, color: str) -> None:
         """The base clock missing for permissions (`nota`): a Zen states it in
@@ -193,13 +203,15 @@ class TypeSection(QWidget):
         p(_("cpu.field.spec"), cpu_type.brand or render.DASH)
         virtual = cpu_type.in_virtual_machine
         self.virtual_foot.setVisible(virtual)
+        self._socket = cpu_type.socket
         for key, value, notes in table_fields(cpu_type):
             # Not in the CPU table: the row hides and the notice below the
             # cards says so (rule 5). Without a notice to say it, it stays.
             # A virtual CPU is not looked up: its foot says so.
             hidden = virtual or (not value and not explained.isdisjoint(notes))
             self.processor.set_visible(_(key), not hidden)
-            if not hidden:
+            # A padlock stays until the value arrives (`lock_package`).
+            if not hidden and (value or not self.processor.is_locked(_(key))):
                 p(_(key), render.from_cpu_table(value))
         p(_("cpu.field.arch"), cpu_type.architecture or render.DASH)
         p(_("cpu.field.cores"), str(cpu_type.cores))
@@ -502,6 +514,7 @@ class CpuPage(ScrollPage):
                 section.apply(cpu_type, explained)
                 section.lock_voltage(snapshot.permission_note("cpu.voltage_v"), self._p.info)
                 section.lock_base(snapshot.permission_note("cpu.clocks.base_hz"), self._p.info)
+                section.lock_package(snapshot.permission_note("cpu.socket"), self._p.info)
 
     def hide_permission_notices(self, ocultos: bool) -> None:
         """Deja de enseñar los avisos de permisos, o los vuelve a enseñar."""

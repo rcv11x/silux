@@ -5,8 +5,9 @@ The table is a list of binary structures, each with a four-byte header
 strings separated by zeros. Text fields don't hold the string but its
 position in that list.
 
-Only the types needed are interpreted: 16 (memory array) and 17 (each
-module). The rest is passed over untouched.
+Only the types needed are interpreted: 4 (the processor's socket), 9 (the
+board's slots), 16 (memory array) and 17 (each module). The rest is passed
+over untouched.
 
 Reference: DMTF DSP0134, «System Management BIOS (SMBIOS) Reference
 Specification».
@@ -14,16 +15,105 @@ Specification».
 
 from __future__ import annotations
 
+import re
 import struct
 from typing import Iterator, Optional
 
 from ..model import LOGICAL_NON_VOLATILE
 
+TYPE_PROCESSOR = 4
 TYPE_PHYSICAL_MEMORY_ARRAY = 16
 TYPE_MEMORY_DEVICE = 17
 
 # Table 76 of the specification: memory type. The names of a technology, the
 # same in every language; 01h «Other» and 02h «Unknown» are no type.
+# The Processor Upgrade field of type 4, as DSP0134 3.9.0 names it. Codes
+# 01h to 07h (other, unknown, daughter board, ZIF, piggy back, none, LIF)
+# name no socket. dmidecode prints 24h as «Socket BGA1155»: the
+# specification says LGA1155, the desktop Sandy and Ivy Bridge socket.
+PROCESSOR_UPGRADES = {
+    0x08: "Slot 1",
+    0x09: "Slot 2",
+    0x0A: "370-pin socket",
+    0x0B: "Slot A",
+    0x0C: "Slot M",
+    0x0D: "Socket 423",
+    0x0E: "Socket A (Socket 462)",
+    0x0F: "Socket 478",
+    0x10: "Socket 754",
+    0x11: "Socket 940",
+    0x12: "Socket 939",
+    0x13: "Socket mPGA604",
+    0x14: "Socket LGA771",
+    0x15: "Socket LGA775",
+    0x16: "Socket S1",
+    0x17: "Socket AM2",
+    0x18: "Socket F (1207)",
+    0x19: "Socket LGA1366",
+    0x1A: "Socket G34",
+    0x1B: "Socket AM3",
+    0x1C: "Socket C32",
+    0x1D: "Socket LGA1156",
+    0x1E: "Socket LGA1567",
+    0x1F: "Socket PGA988A",
+    0x20: "Socket BGA1288",
+    0x21: "Socket rPGA988B",
+    0x22: "Socket BGA1023",
+    0x23: "Socket BGA1224",
+    0x24: "Socket LGA1155",
+    0x25: "Socket LGA1356",
+    0x26: "Socket LGA2011",
+    0x27: "Socket FS1",
+    0x28: "Socket FS2",
+    0x29: "Socket FM1",
+    0x2A: "Socket FM2",
+    0x2B: "Socket LGA2011-3",
+    0x2C: "Socket LGA1356-3",
+    0x2D: "Socket LGA1150",
+    0x2E: "Socket BGA1168",
+    0x2F: "Socket BGA1234",
+    0x30: "Socket BGA1364",
+    0x31: "Socket AM4",
+    0x32: "Socket LGA1151",
+    0x33: "Socket BGA1356",
+    0x34: "Socket BGA1440",
+    0x35: "Socket BGA1515",
+    0x36: "Socket LGA3647-1",
+    0x37: "Socket SP3",
+    0x38: "Socket SP3r2",
+    0x39: "Socket LGA2066",
+    0x3A: "Socket BGA1392",
+    0x3B: "Socket BGA1510",
+    0x3C: "Socket BGA1528",
+    0x3D: "Socket LGA4189",
+    0x3E: "Socket LGA1200",
+    0x3F: "Socket LGA4677",
+    0x40: "Socket LGA1700",
+    0x41: "Socket BGA1744",
+    0x42: "Socket BGA1781",
+    0x43: "Socket BGA1211",
+    0x44: "Socket BGA2422",
+    0x45: "Socket LGA1211",
+    0x46: "Socket LGA2422",
+    0x47: "Socket LGA5773",
+    0x48: "Socket BGA5773",
+    0x49: "Socket AM5",
+    0x4A: "Socket SP5",
+    0x4B: "Socket SP6",
+    0x4C: "Socket BGA883",
+    0x4D: "Socket BGA1190",
+    0x4E: "Socket BGA4129",
+    0x4F: "Socket LGA4710",
+    0x50: "Socket LGA7529",
+    0x51: "Socket BGA1964",
+    0x52: "Socket BGA1792",
+    0x53: "Socket BGA2049",
+    0x54: "Socket BGA2551",
+    0x55: "Socket LGA1851",
+    0x56: "Socket BGA2114",
+    0x57: "Socket BGA2833",
+}
+
 MEMORY_TYPES = {
     0x03: "DRAM", 0x04: "EDRAM",
     0x05: "VRAM", 0x06: "SRAM", 0x07: "RAM", 0x08: "ROM", 0x09: "Flash",
@@ -230,3 +320,29 @@ def system_slots(structures: list[Structure]) -> dict[str, str]:
             continue                         # «unknown», per the standard
         slots[f"{segment:04x}:{bus:02x}:{devfn >> 3:02x}.{devfn & 7:x}"] = name
     return slots
+
+
+def package_name(spec_name: str) -> str:
+    """«Socket LGA1155» as the CPU table writes it: «LGA 1155». A bare
+    number or letter keeps its «Socket»."""
+    name = spec_name.removeprefix("Socket ")
+    if name == spec_name or not re.match(r"[A-Za-z]{2}", name):
+        return spec_name
+    return re.sub(r"^(r?[LBP]GA|[mu]PGA)(\d)", r"\1 \2", name)
+
+
+def processor_socket(structures: list[Structure]) -> Optional[str]:
+    """The socket the firmware declares for the first populated processor.
+
+    Type 4's Processor Upgrade field, not its Socket Designation: that one is
+    free text, and boards write «CPU 1» or «SOCKET 0» in it.
+    """
+    for structure in structures:
+        if structure.type != TYPE_PROCESSOR:
+            continue
+        status = structure.byte(0x18)
+        if status is not None and not status & 0x40:
+            continue                         # bit 6: socket populated
+        code = structure.byte(0x19)
+        return package_name(PROCESSOR_UPGRADES[code]) if code in PROCESSOR_UPGRADES else None
+    return None

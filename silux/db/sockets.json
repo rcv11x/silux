@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "about": "Tabla propia de encapsulados por microarquitectura. A diferencia de la tabla por modelo concreto que hereda de CPU-X, una sola regla aquí cubre una generación entera. Se consulta cuando la tabla por modelo no encuentra nada. Editable a mano: no se regenera.",
-  "matching": "Se compara `match` como subcadena del nombre en clave que devuelve la base de datos de libcpuid. Gana la primera regla que case, así que las más específicas van antes.",
+  "matching": "Se compara `match` como subcadena del nombre en clave que devuelve la base de datos de libcpuid. Gana la primera regla que case, así que las más específicas van antes. Una regla con `brand` pide además que esa expresión regular aparezca en la marca: el sobremesa y el portátil de una generación comparten nombre en clave y solo los separa el número de modelo.",
   "rules": [
     { "vendor": "GenuineIntel", "match": "Arrow Lake-S",   "socket": "LGA 1851" },
     { "vendor": "GenuineIntel", "match": "Raptor Lake-S",  "socket": "LGA 1700" },
@@ -18,6 +18,7 @@
     { "vendor": "GenuineIntel", "match": "Skylake-SP",     "socket": "LGA 3647" },
     { "vendor": "GenuineIntel", "match": "Cascade Lake-X", "socket": "LGA 2066" },
     { "vendor": "GenuineIntel", "match": "Skylake-X",      "socket": "LGA 2066" },
+    { "vendor": "GenuineIntel", "match": "Kaby Lake-X",    "socket": "LGA 2066" },
     { "vendor": "GenuineIntel", "match": "Broadwell-E",    "socket": "LGA 2011-v3" },
     { "vendor": "GenuineIntel", "match": "Haswell-E",      "socket": "LGA 2011-v3" },
     { "vendor": "GenuineIntel", "match": "Ivy Bridge-E",   "socket": "LGA 2011" },
@@ -28,6 +29,16 @@
     { "vendor": "GenuineIntel", "match": "Gulftown",       "socket": "LGA 1366" },
     { "vendor": "GenuineIntel", "match": "Lynnfield",      "socket": "LGA 1156" },
     { "vendor": "GenuineIntel", "match": "Clarkdale",      "socket": "LGA 1156" },
+    { "vendor": "GenuineIntel", "match": "Extreme (Haswell)", "socket": "LGA 2011-v3" },
+    { "vendor": "GenuineIntel", "match": "Xeon E3 (Sandy Bridge)", "brand": "E3-12\\d{2}L?\\s", "socket": "LGA 1155" },
+    { "vendor": "GenuineIntel", "match": "Xeon E3 (Ivy Bridge)", "brand": "E3-12\\d{2}L? [vV]2", "socket": "LGA 1155" },
+    { "vendor": "GenuineIntel", "match": "Xeon E3 (Haswell)", "brand": "E3-12\\d{2}L? [vV]3", "socket": "LGA 1150" },
+    { "vendor": "GenuineIntel", "match": "(Sandy Bridge)", "brand": "i[357]-2\\d{3}[KSTP]?\\s|Pentium\\(R\\) CPU G\\d{3,4}|Celeron\\(R\\) CPU G\\d{3,4}", "socket": "LGA 1155" },
+    { "vendor": "GenuineIntel", "match": "(Ivy Bridge)", "brand": "i[357]-3\\d{3}[KSTP]?\\s|Pentium\\(R\\) CPU G\\d{3,4}|Celeron\\(R\\) CPU G\\d{3,4}", "socket": "LGA 1155" },
+    { "vendor": "GenuineIntel", "match": "(Haswell)", "brand": "i[357]-4\\d{3}[KSTP]?\\s|Pentium\\(R\\) CPU G\\d{3,4}|Celeron\\(R\\) CPU G\\d{3,4}", "socket": "LGA 1150" },
+    { "vendor": "GenuineIntel", "match": "(Skylake)", "brand": "i[357]-6\\d{3}[KSTP]?\\s|Pentium\\(R\\) CPU G\\d{3,4}|Celeron\\(R\\) CPU G\\d{3,4}", "socket": "LGA 1151" },
+    { "vendor": "GenuineIntel", "match": "(Kaby Lake)", "brand": "i[357]-7\\d{3}[KSTP]?\\s|Pentium\\(R\\) CPU G\\d{3,4}|Celeron\\(R\\) CPU G\\d{3,4}", "socket": "LGA 1151" },
+    { "vendor": "GenuineIntel", "match": "CC (Coffee Lake)", "socket": "LGA 1151" },
 
     { "vendor": "AuthenticAMD", "match": "Granite Ridge",  "socket": "AM5" },
     { "vendor": "AuthenticAMD", "match": "Raphael",        "socket": "AM5" },
@@ -54,9 +65,50 @@
     { "vendor": "AuthenticAMD", "match": "Trinity",        "socket": "FM2" },
     { "vendor": "AuthenticAMD", "match": "Llano",          "socket": "FM1" }
   ],
+  "soldered_brands": {
+    "about": "Un modelo de Intel terminado en U, en Y o en G y una cifra (1035G4) va soldado, sea cual sea su generación.",
+    "GenuineIntel": ["\\d{4,5}(U|Y|G\\d)\\s", "\\dY\\d{2}\\s", "-L\\d{2}G\\d"]
+  },
   "soldered_suffixes": {
     "about": "Estos sufijos de segmento indican encapsulado BGA: el procesador va soldado a la placa y no hay socket que nombrar. Es más útil decirlo que dejar el campo vacío.",
-    "GenuineIntel": ["-U", "-Y", "-H", "-HX", "-HK", "-P", "-PS", "-G", "-M", "-QM", "-N"],
-    "AuthenticAMD": ["Rembrandt", "Phoenix", "Hawk Point", "Barceló", "Strix Point", "Strix Halo", "Krackan Point", "Mendocino", "Van Gogh", "Lucienne", "Dali"]
+    "GenuineIntel": [
+      "-U",
+      "-Y",
+      "-H",
+      "-HX",
+      "-HK",
+      "-P",
+      "-PS",
+      "-G",
+      "-M",
+      "-QM",
+      "-N",
+      "(Ice Lake)",
+      "Tiger Lake-B",
+      "Lunar Lake",
+      "Lakefield",
+      "Pineview",
+      "Cedarview",
+      "Bay Trail",
+      "Cherry Trail",
+      "Braswell",
+      "Apollo Lake",
+      "Gemini Lake",
+      "Jasper Lake",
+      "Elkhart Lake"
+    ],
+    "AuthenticAMD": [
+      "Rembrandt",
+      "Phoenix",
+      "Hawk Point",
+      "Barceló",
+      "Strix Point",
+      "Strix Halo",
+      "Krackan Point",
+      "Mendocino",
+      "Van Gogh",
+      "Lucienne",
+      "Dali"
+    ]
   }
 }

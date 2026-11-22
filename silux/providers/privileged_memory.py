@@ -85,6 +85,7 @@ class PrivilegedMemory(Provider):
 
         if not self.requested:
             self._explain(draft)
+            self._socket_needs_permissions(draft)
             return
 
         try:
@@ -191,3 +192,34 @@ class PrivilegedMemory(Provider):
         # Each board slot's name, from the same table.
         draft.pci_slot_names = smbios.system_slots(structures)
         draft.capabilities.add("smbios")
+        PrivilegedMemory._fill_socket(draft, smbios.processor_socket(structures))
+
+    @staticmethod
+    def _fill_socket(draft: Draft, socket: Optional[str]) -> None:
+        """The package the CPU table doesn't know, as the firmware declares it.
+
+        CpuidIdentity runs before and leaves its note when the table has
+        none; the table goes first because firmware fills this field poorly.
+        """
+        note = next((n for n in draft.notes if n.path == "cpu.socket"), None)
+        if note is None:
+            return
+        draft.resolve("cpu.socket")
+        if socket is None:
+            draft.note("cpu.socket", Need.DATABASE,
+                       f"{note.message} {_('prov.smbios.nosocket')}", note.hint)
+            return
+        for entry in draft.types.values():
+            if not entry.get("socket"):
+                entry["socket"] = socket
+
+    @staticmethod
+    def _socket_needs_permissions(draft: Draft) -> None:
+        """Without the table, the package the CPU table lacks has a padlock:
+        the firmware may declare it."""
+        note = next((n for n in draft.notes if n.path == "cpu.socket"), None)
+        if note is None:
+            return
+        draft.resolve("cpu.socket")
+        draft.note("cpu.socket", Need.ROOT, note.message, _("prov.smbios.socket.hint"),
+                   _("what.cpu.socket"))
