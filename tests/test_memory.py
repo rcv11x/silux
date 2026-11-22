@@ -297,7 +297,7 @@ class TestLasDosDetectorasDeCanalNoSePisan(unittest.TestCase):
 
     Una cuenta canales para saber si la memoria va en doble canal; la otra
     compone el título del zócalo. Al escribir la segunda se reutilizaron los
-    nombres `_CANAL` y `_CONTROLADOR` de la primera y se la llevaron por
+    nombres `_CHANNEL` y `_CONTROLLER` de la primera y se la llevaron por
     delante: diecisiete tests en rojo. En un módulo de novecientas líneas eso
     no se ve al escribirlo.
     """

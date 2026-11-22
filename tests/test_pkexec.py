@@ -44,7 +44,7 @@ def _ancestros(camino: pathlib.Path):
 def por_que_es_sustituible(ruta: str) -> str:
     """Por qué un usuario que no sea root podría cambiar lo que hay ahí, o "".
 
-    A propósito no usa `client.escribible_por_el_usuario`: comprobar el código
+    A propósito no usa `client.writable_by_user`: comprobar el código
     con su propia función deja pasar el día que la función se equivoque. Y va
     por propietario y modo en vez de por `os.access`, para que siga midiendo
     algo cuando la suite la ejecuta root, que es como corre el CI.
@@ -95,7 +95,7 @@ class ComprobadorDeOrdenes(unittest.TestCase):
                     f"{contexto}: pkexec ejecutaría «{ruta}» y {motivo}. "
                     "Lo que corre como root no puede salir de una ruta que el "
                     "usuario pueda cambiar; si hace falta un guion suelto, va "
-                    "por argv con `client.en_linea`.")
+                    "por argv con `client.inline_command`.")
 
 
 # Where a pkexec command is built (client.py, the only place) and who asks
@@ -177,7 +177,7 @@ class TestNingunaRutaEscribible(ComprobadorDeOrdenes):
             "escribible. Añádelo ahí y a `ordenes_de_pkexec`.")
 
     def test_tampoco_con_el_ayudante_instalado(self):
-        # `al_dia` también, porque ahora el instalado solo se usa si es
+        # `up_to_date` también, porque ahora el instalado solo se usa si es
         # exactamente el de este programa; en la máquina donde se ejecutan los
         # tests puede haber uno de otra fecha.
         with mock.patch.object(PrivilegedClient, "installed", return_value=True), \

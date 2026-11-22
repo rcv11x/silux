@@ -430,7 +430,7 @@ class TestLasCategoriasSalenEnCastellano(unittest.TestCase):
                           f"no aparece la categoría «{esperado}»")
 
     def test_sigue_en_castellano_con_la_interfaz_en_ingles(self):
-        """Lo que rompería esto es cambiar `en_español` por `_`."""
+        """Lo que rompería esto es cambiar `in_spanish` por `_`."""
         from silux import i18n
 
         anterior = i18n.current()

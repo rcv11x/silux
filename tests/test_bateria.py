@@ -209,7 +209,7 @@ class TestLaBateriaEnElInforme(unittest.TestCase):
         self.assertNotIn("SERIE-SECRETA-123", self._informe())
 
     def test_el_estado_sale_en_castellano_y_no_como_clave(self):
-        """El informe es castellano fijo, así que va con `en_español`."""
+        """El informe es castellano fijo, así que va con `in_spanish`."""
         texto = self._informe()
         self.assertIn("descargando", texto)
         self.assertNotIn("bat.status", texto)

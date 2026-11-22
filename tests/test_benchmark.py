@@ -204,7 +204,7 @@ class TestCargaDeVerificacion(unittest.TestCase):
         test pasaría también con una medida que no distinguiera nada.
 
         Los dos tamaños son los extremos que la carga toma de verdad —64 y
-        192 MB, que es lo que `_tamano_del_bloque` puede devolver— y no un par
+        192 MB, que es lo que `_block_size_mb` puede devolver— y no un par
         cualquiera. Estuvieron en 8 y 64, y 8 MB no lo produce ninguna
         máquina: cabe dentro de la L3 de casi cualquier procesador, así que
         esa medida salía de la caché y la de 64 de la memoria, y el test

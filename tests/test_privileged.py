@@ -142,7 +142,7 @@ class TestOnePkexecCommand(unittest.TestCase):
             for nodo in ast.walk(ast.parse(archivo.read_text(encoding="utf-8"))):
                 if isinstance(nodo, ast.Call):
                     nombre = getattr(nodo.func, "attr", getattr(nodo.func, "id", ""))
-                    if nombre in ("pkexec_path", "en_linea"):
+                    if nombre in ("pkexec_path", "inline_command"):
                         fuera.append(f"{archivo.relative_to(paquete)}:{nodo.lineno} {nombre}")
         self.assertEqual(fuera, [])
 

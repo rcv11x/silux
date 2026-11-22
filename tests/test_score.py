@@ -374,7 +374,7 @@ class TestLaTablaYLasMedidasEnLaMismaUnidad(unittest.TestCase):
 class TestLaCuentaViveEnUnSoloSitio(unittest.TestCase):
     """Nadie divide operaciones entre segundos por su cuenta.
 
-    Llegó a estar escrita en cuatro sitios: `Medida`, el historial, la
+    Llegó a estar escrita en cuatro sitios: `Measure`, el historial, la
     herramienta de la escala y un test. Tres de las cuatro estaban de acuerdo,
     y la que no lo estaba —la de la escala— dejó la referencia en operaciones
     por segundo mientras las medidas iban en bytes. No se notó hasta ejecutar

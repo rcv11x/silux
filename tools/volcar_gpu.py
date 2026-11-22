@@ -11,7 +11,7 @@ máquina no hay forma de adivinar cuál de las rutas tiene.
 
 No lee nada que necesite permisos y no incluye números de serie. Una gráfica
 que el sistema tiene dormida se queda dormida: de ella solo se lee quién es y
-su estado de energía (ver `SIN_DESPERTAR`).
+su estado de energía (ver `NO_WAKE_FILES`).
 """
 
 from __future__ import annotations

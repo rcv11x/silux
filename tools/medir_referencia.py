@@ -11,7 +11,7 @@ las pone a todas en la misma unidad: cada una vale lo que da en el equipo que
 sirve de patrón.
 
 Se miden y se guardan las cinco, porque la tabla describe al patrón entero.
-Cuáles entran en la puntuación lo decide `score.PUNTUABLES`, y se marca abajo
+Cuáles entran en la puntuación lo decide `score.SCORED_WORKLOADS`, y se marca abajo
 al enseñarlas: desde la v6 son dos, y las otras tres se quedan fuera porque
 las calcula una biblioteca del sistema y su cifra cambia con la distribución.
 

@@ -29,7 +29,7 @@ helper = [sys.executable, "-I", "-c",
           "import os, runpy, sys; os.geteuid = lambda: 0; "
           "runpy.run_path(sys.argv[1], run_name='__main__')", str(client.HELPER)]
 c = client.PrivilegedClient()
-c._orden = lambda: helper
+c._command = lambda: helper
 c.supported = lambda: True
 c.connect()
 print(c._process.pid, flush=True)
