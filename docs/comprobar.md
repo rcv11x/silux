@@ -202,5 +202,4 @@ Medido el mismo día. El detalle y lo que se propone, en
 | Modelo de un disco SATA | 16 caracteres | `lsblk -o MODEL`: entero | `lsblk` |
 | Tamaño del monitor | 480 × 270 mm, 21,7" | `di-edid-decode`: 476 × 268 mm, 21,5" | la orden |
 | Bandera `sgx` | sale | `/proc/cpuinfo` no la trae | los dos: el procesador la tiene y el firmware no la activa |
-| Bytes de red en Sensores | en potencias de 1024 con la etiqueta «MB» | `ip -s link` da bytes | la página de Red, que va en decimal |
 | Frecuencia de un hilo dormido | a veces el techo exacto | `/proc/cpuinfo` dice otra cosa | sin decidir |

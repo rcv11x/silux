@@ -632,12 +632,11 @@ SENSORES · 16 en 6 dispositivos
   - Temperaturas
     - Temperatura 1 · 24.0 °C · 24.0 · 24.0 · 24.0
 - Red (wlp2s0)
-  - Ocupación
+  - Tráfico
+    - Bajada · 0.0 kB/s · 0.0 · 0.0 · 0.0
+    - Subida · 0.0 kB/s · 0.0 · 0.0 · 0.0
     - Recibido · 0.0 MB · 0.0 · 0.0 · 0.0
     - Enviado · 0.0 MB · 0.0 · 0.0 · 0.0
-  - Tráfico
-    - Bajada · 0.0 KB/s · 0.0 · 0.0 · 0.0
-    - Subida · 0.0 KB/s · 0.0 · 0.0 · 0.0
 - Batería
   - Potencias
     - Potencia · 6.6 W · 6.6 · 6.6 · 6.6

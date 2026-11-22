@@ -21,7 +21,8 @@ from .base import Draft, Provider
 # Rounded to one decimal, 0.845 V becomes 0.8 and says nothing: each kind
 # has its own precision.
 DECIMALS = {SensorKind.VOLTAGE: 3, SensorKind.TEMPERATURE: 1, SensorKind.CLOCK: 1,
-             SensorKind.USAGE: 1, SensorKind.MEMORY: 0, SensorKind.NETWORK: 1}
+             SensorKind.USAGE: 1, SensorKind.MEMORY: 0, SensorKind.NETWORK: 1,
+             SensorKind.DATA: 0}
 
 
 def _mhz(hz: Optional[int]) -> Optional[float]:
@@ -30,6 +31,11 @@ def _mhz(hz: Optional[int]) -> Optional[float]:
 
 def _mebibytes(byte: Optional[int]) -> Optional[float]:
     return round(byte / 1024**2, 1) if byte else None
+
+
+def _megabytes(byte: Optional[int]) -> Optional[float]:
+    """Network totals, decimal like the Network page."""
+    return round(byte / 1e6, 1) if byte else None
 
 
 class DerivedSensors(Provider):
@@ -87,10 +93,10 @@ class DerivedSensors(Provider):
             fields = (
                 ("rx", _("sensor.net.down"), SensorKind.NETWORK, traffic.rx_rate_bps, 0),
                 ("tx", _("sensor.net.up"), SensorKind.NETWORK, traffic.tx_rate_bps, 1),
-                ("rx_total", _("sensor.net.received"), SensorKind.MEMORY,
-                 _mebibytes(traffic.rx_bytes), 10),
-                ("tx_total", _("sensor.net.sent"), SensorKind.MEMORY,
-                 _mebibytes(traffic.tx_bytes), 11),
+                ("rx_total", _("sensor.net.received"), SensorKind.DATA,
+                 _megabytes(traffic.rx_bytes), 10),
+                ("tx_total", _("sensor.net.sent"), SensorKind.DATA,
+                 _megabytes(traffic.tx_bytes), 11),
             )
             for key, label, kind, value, order in fields:
                 if value is None:
@@ -100,7 +106,7 @@ class DerivedSensors(Provider):
                     device_key=f"net:{interface.name}",
                     device_kind=DeviceKind.NETWORK,
                     label=label, kind=kind,
-                    value=round(float(value) / (1024 if kind is SensorKind.NETWORK else 1),
+                    value=round(float(value) / (1000 if kind is SensorKind.NETWORK else 1),
                                 DECIMALS.get(kind, 1)),
                     order=order,
                 ))

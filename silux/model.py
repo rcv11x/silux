@@ -1712,6 +1712,9 @@ class SensorKind(str, Enum):
     # moves. Apart from NETWORK because they share a shape and not a meaning,
     # and together they'd fall into the same branch of the tree.
     BANDWIDTH = "bandwidth"
+    # What has crossed a network interface, in decimal like its rates: apart
+    # from MEMORY, which is binary.
+    DATA = "data"
     OTHER = "other"
 
 
@@ -1729,9 +1732,10 @@ UNITS: dict[str, str] = {
     SensorKind.ENERGY: "J",
     SensorKind.CLOCK: "MHz",
     SensorKind.USAGE: "%",
-    SensorKind.MEMORY: "MB",
-    SensorKind.NETWORK: "KB/s",
+    SensorKind.MEMORY: "MiB",
+    SensorKind.NETWORK: "kB/s",
     SensorKind.BANDWIDTH: "MB/s",
+    SensorKind.DATA: "MB",
     SensorKind.OTHER: "",
 }
 
@@ -1784,6 +1788,7 @@ CATEGORIES: dict[str, str] = {
     SensorKind.MEMORY: "cat.memory",
     SensorKind.NETWORK: "cat.network",
     SensorKind.BANDWIDTH: "cat.bandwidth",
+    SensorKind.DATA: "cat.network",
     SensorKind.OTHER: "cat.other",
 }
 

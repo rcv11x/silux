@@ -11,6 +11,7 @@ import re
 import unittest
 
 from silux import render
+from silux.model import CATEGORIES, UNITS, SensorKind
 from tests import pantalla, qt
 from tests.test_equipos import EQUIPOS, foto, volcados
 from tests.test_interface_language import visible_texts
@@ -26,6 +27,22 @@ class TestTheFormatters(unittest.TestCase):
         self.assertEqual(render.size(16 * 1024**3), "16 GiB")
         self.assertEqual(render.cache_size(1280 * 1024), "1.25 MiB")
         self.assertEqual(render.decimal_size(1_000_204_886_016), "1.0 TB")
+
+
+class TestTheSensors(unittest.TestCase):
+    """The sensor tree says what the pages say: a network interface's rates
+    and totals decimal, as on Network; video memory binary, as on Graphics."""
+
+    def test_as_their_pages(self):
+        snapshot = foto(EQUIPOS / "5800x3d")[0]
+        interface = next(i for i in snapshot.network if i.name == "enp6s0")
+        received = next(s for s in snapshot.sensors if s.key == "net/enp6s0/rx_total")
+        self.assertAlmostEqual(received.value, interface.traffic.rx_bytes / 1e6, delta=1)
+        self.assertEqual(UNITS[received.kind], "MB")
+        self.assertEqual(UNITS[SensorKind.NETWORK], "kB/s")
+        self.assertEqual(UNITS[SensorKind.MEMORY], "MiB")
+        # One branch for the interface, not its totals under «memory».
+        self.assertEqual(CATEGORIES[received.kind], CATEGORIES[SensorKind.NETWORK])
 
 
 class TestEveryPage(unittest.TestCase):

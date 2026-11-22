@@ -162,9 +162,6 @@ la memoria) no va: está propuesto en las notas
 * `ui/pages/memory.py`, `ui/pages/battery.py` · media · cinco sitios
   redondean voltajes a dos decimales en vez de usar `render.volts`, que usa
   tres. Se pierde el decimal que distingue los escalones del VID.
-* `providers/derived.py` · media · el tráfico de red del árbol de sensores va
-  en potencias de 1024 y el de Red en potencias de 1000: dos cifras que se
-  llevan un 2,4 %.
 * `ui/pages/graphics.py` · baja · la tasa de datos de la VRAM, compuesta a
   mano.
 * `spd.py` · media · el perfil 2 de XMP en DDR4 no se lee: no hay fuente de

@@ -610,15 +610,14 @@ SENSORES · 16 en 4 dispositivos
   - Relojes
     - Núcleo · 400.0 MHz · 400.0 · 400.0 · 400.0
   - Ocupación
-    - Memoria de video · 266.0 MB · 266.0 · 266.0 · 266.0
-    - Memoria prestada al sistema · 124.0 MB · 124.0 · 124.0 · 124.0
+    - Memoria de video · 266.0 MiB · 266.0 · 266.0 · 266.0
+    - Memoria prestada al sistema · 124.0 MiB · 124.0 · 124.0 · 124.0
 - Red (enp37s0)
-  - Ocupación
+  - Tráfico
+    - Bajada · 0.0 kB/s · 0.0 · 0.0 · 0.0
+    - Subida · 0.0 kB/s · 0.0 · 0.0 · 0.0
     - Recibido · 0.0 MB · 0.0 · 0.0 · 0.0
     - Enviado · 0.0 MB · 0.0 · 0.0 · 0.0
-  - Tráfico
-    - Bajada · 0.0 KB/s · 0.0 · 0.0 · 0.0
-    - Subida · 0.0 KB/s · 0.0 · 0.0 · 0.0
 
 > **Falta un driver de sensores**
 > Con el driver del chip Super I/O de la placa tendrías ventiladores, voltajes de la placa y temperaturas del chipset.

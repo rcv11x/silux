@@ -22,6 +22,8 @@ que hace falta.
   los vende el fabricante y como escribe `df -H`: un disco de 1 TB dice
   «1.0 TB», no «931.5 GB», y lo ocupado y lo libre suman lo que dice. Los GiB,
   al pasar el ratón. Ninguna tarjeta mezcla ya las dos familias.
+- Sensores dice lo mismo que las páginas: la memoria de video en MiB, y la
+  red, tasas y totales, en decimal («kB/s», «MB») bajo una sola rama.
 - En la primera lectura, lo que sale de restar dos (el uso y el consumo de la
   CPU, el uso de la gráfica, lo que leen y escriben los discos, lo que baja y
   sube la red) dice «Calculando…» en vez de un guion.

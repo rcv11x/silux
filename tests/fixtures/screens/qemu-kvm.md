@@ -444,12 +444,11 @@ SENSORES · 5 en 2 dispositivos
   - Uso
     - RAM usada · 10.9 % · 10.9 · 10.9 · 10.9
 - Red (ens4)
-  - Ocupación
-    - Recibido · 110.0 MB · 110.0 · 110.0 · 110.0
-    - Enviado · 1.0 MB · 1.0 · 1.0 · 1.0
   - Tráfico
-    - Bajada · 0.0 KB/s · 0.0 · 0.0 · 0.0
-    - Subida · 0.0 KB/s · 0.0 · 0.0 · 0.0
+    - Bajada · 0.0 kB/s · 0.0 · 0.0 · 0.0
+    - Subida · 0.0 kB/s · 0.0 · 0.0 · 0.0
+    - Recibido · 115.0 MB · 115.0 · 115.0 · 115.0
+    - Enviado · 1.0 MB · 1.0 · 1.0 · 1.0
 
 ## Diagnóstico
 
