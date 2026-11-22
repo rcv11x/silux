@@ -70,7 +70,10 @@ class TestLaPaginaCpu(unittest.TestCase):
             # El porqué no se pierde: está al pasar el ratón.
             self.assertIn("oblea", leyenda.toolTip())
             self.assertIn("85 %", leyenda.toolTip())
-            self.assertLessEqual(leyenda.height(), 2 * leyenda.fontMetrics().lineSpacing())
+            # Two lines at most, counted: the label's height carries its
+            # margins too, and with a larger font they no longer fit under
+            # exactly two line spacings.
+            self.assertLessEqual(round(leyenda.height() / leyenda.fontMetrics().lineSpacing()), 2)
 
 
 class TestLaEspecificacionEnCompacto(unittest.TestCase):
