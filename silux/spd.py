@@ -931,27 +931,51 @@ def first_page(raw: bytes, address: str, slot: int) -> Optional[SpdInfo]:
     return info
 
 
+def read_pages(path) -> tuple[list[Optional[bytes]], Optional[OSError]]:
+    """A chip's pages of 128 bytes, each in a read of its own, and the first
+    error; a page that failed is None.
+
+    Unbuffered: asked for 128 bytes, a buffered file asks the kernel for a
+    whole block (4096), which crosses into page 1; where the machine blocks
+    the page switch that read fails, and page 0 with it.
+    """
+    pages: list[Optional[bytes]] = []
+    error: Optional[OSError] = None
+    with open(path, "rb", buffering=0) as eeprom:
+        for offset in range(0, DDR5_SIZE, DDR5_PAGE):
+            try:
+                eeprom.seek(offset)
+                chunk = eeprom.read(DDR5_PAGE)
+            except OSError as exc:
+                error = error or exc
+                pages.append(None)
+                continue
+            if not chunk:
+                break                          # a smaller chip ends here
+            pages.append(chunk)
+    return pages, error
+
+
 def read_all(failures: Optional[list] = None) -> list[SpdInfo]:
     """Read the SPD of every slot the kernel exposes.
 
     `failures` collects (device, OSError) for each `eeprom` that is there and
-    could not be read: that is not the same as having none.
+    could not be read whole: that is not the same as having none. A DDR5 one
+    whose page 0 read gives what that page holds.
     """
     found = []
     for entry, slot in _eeproms():
         try:
-            raw = (entry / "eeprom").read_bytes()
+            pages, error = read_pages(entry / "eeprom")
         except OSError as exc:
             if failures is not None:
                 failures.append((entry.name, exc))
-            # Only reads: page 0 needs no page switch, so no write to the chip.
-            try:
-                with open(entry / "eeprom", "rb") as eeprom:
-                    head = eeprom.read(DDR5_PAGE)
-            except OSError:
-                continue
-            if (partial := first_page(head, entry.name, slot)) is not None:
-                found.append(partial)
             continue
-        found.append(decode(raw, address=entry.name, slot=slot))
+        if error is None:
+            found.append(decode(b"".join(p for p in pages if p), address=entry.name, slot=slot))
+            continue
+        if failures is not None:
+            failures.append((entry.name, error))
+        if pages and pages[0] and (partial := first_page(pages[0], entry.name, slot)) is not None:
+            found.append(partial)
     return found

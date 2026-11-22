@@ -48,6 +48,33 @@ class TestPageZeroAlone(unittest.TestCase):
         self.assertFalse(spd.decode(construir_ddr5(), "0-0050", 0).partial)
 
 
+class TestTheKernelsAnswer(unittest.TestCase):
+    """The emulation is the kernel's: the prueba7 fix read page 0 with a
+    buffered 128-byte read, which asks for a block and failed whole."""
+
+    def test_only_a_read_of_page_zero_alone_works(self):
+        from tests.blocked_eeprom import blocked_past_page_zero
+        whole = construir_ddr5()
+        with blocked_past_page_zero("0-0050/eeprom", whole):
+            with self.assertRaises(OSError) as caught:
+                pathlib.Path("/x/0-0050/eeprom").read_bytes()
+            self.assertEqual(caught.exception.errno, errno.ENXIO)
+            with self.assertRaises(OSError), open("/x/0-0050/eeprom", "rb") as eeprom:
+                eeprom.read(128)
+            pages, error = spd.read_pages("/x/0-0050/eeprom")
+        self.assertEqual(pages, [whole[:128]] + [None] * 7)
+        self.assertEqual(error.errno, errno.ENXIO)
+
+    def test_a_chip_that_reads_whole(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            path = pathlib.Path(tmp, "eeprom")
+            path.write_bytes(bytes(range(256)) * 2)            # a DDR4's 512
+            pages, error = spd.read_pages(path)
+        self.assertIsNone(error)
+        self.assertEqual(b"".join(pages), bytes(range(256)) * 2)
+
+
 class TestOnAMachineThatBlocksTheSwitch(unittest.TestCase):
 
     def _snapshot(self):
@@ -56,17 +83,12 @@ class TestOnAMachineThatBlocksTheSwitch(unittest.TestCase):
         from tests.test_nada_en_bruto import _con_permisos
         from tests.test_smbios import _end, _memory_array, _memory_device
 
-        leer = pathlib.Path.read_bytes
-
-        def blocked(path):
-            if str(path).endswith("0-0050/eeprom"):
-                raise OSError(errno.ENXIO, "No such device or address")
-            return leer(path)
+        from tests.blocked_eeprom import blocked_past_page_zero
 
         with volcado.mounted(EQUIPOS / "i5-12450h") as raiz:
             (raiz / CHIP / "eeprom").write_bytes(construir_ddr5())
             sysroot.forget()
-            with mock.patch("pathlib.Path.read_bytes", blocked):
+            with blocked_past_page_zero("0-0050/eeprom", construir_ddr5()):
                 recolector = Collector()
                 try:
                     f = second_snapshot(recolector)
