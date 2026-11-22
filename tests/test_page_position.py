@@ -69,7 +69,12 @@ class TestButtonsDoNotMoveThePage(unittest.TestCase):
                 with self.subTest(page=key, button=button.text()):
                     self._bring(page, button)
                     before = bar.value()
-                    button.setFocus()            # what clicking it does
+                    # What clicking it does: the window becomes the active one
+                    # (pages an earlier test left open can have taken that),
+                    # and the button takes the focus.
+                    self.window.activateWindow()
+                    self._settle()
+                    button.setFocus()
                     self._settle()
                     if not button.hasFocus():
                         continue
