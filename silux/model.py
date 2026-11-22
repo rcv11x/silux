@@ -730,11 +730,13 @@ class MemoryModule:
     def voltage_from_firmware(self) -> bool:
         """Only the firmware says it: many BIOSes leave the configured voltage
         at its stock value while an XMP or EXPO profile raises the real one.
-        The SPD stating the same voltage confirms it."""
+        The SPD declaring that voltage confirms it."""
         if not self.voltage_configured_mv:
             return False
-        spd_v = self.spd.jedec.voltage_v if self.spd is not None and self.spd.jedec else None
-        return not (spd_v and abs(spd_v * 1000 - self.voltage_configured_mv) < 10)
+        declared = ()
+        if self.spd is not None:
+            declared = self.spd.voltages_v or ((self.spd.jedec.voltage_v,) if self.spd.jedec else ())
+        return not any(v and abs(v * 1000 - self.voltage_configured_mv) < 10 for v in declared)
 
     @property
     def above_jedec(self) -> bool:

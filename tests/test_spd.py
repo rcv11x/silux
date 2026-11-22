@@ -131,12 +131,12 @@ class TestCapacidadSinPermisos(unittest.TestCase):
 
 
 class TestFormatosNoSoportados(unittest.TestCase):
-    def test_ddr3_se_identifica_pero_no_se_decodifica(self):
-        # DDR4 y DDR5 sí se decodifican; lo anterior se reconoce y se dice.
+    def test_ddr2_se_identifica_pero_no_se_decodifica(self):
+        # DDR3, DDR4 y DDR5 sí se decodifican; lo anterior se reconoce y se dice.
         raw = bytearray(512)
-        raw[2] = 0x0B                                  # DDR3
+        raw[2] = 0x08                                  # DDR2
         info = spd.decode(bytes(raw))
-        self.assertEqual(info.dram_type, "DDR3")
+        self.assertEqual(info.dram_type, "DDR2")
         self.assertFalse(info.decoded)
         self.assertIsNone(info.jedec)
 
@@ -499,7 +499,7 @@ class TestAnXmpThatCannotBeRead(unittest.TestCase):
         pagina = MemoryPage(theme.palette_for(app, "dark"), Preferences())
         self.addCleanup(pagina.deleteLater)
         pagina.apply(dataclasses.replace(foto(EQUIPOS / "i5-10400")[0], modules=modulos))
-        self.assertEqual(pagina.spd_note.text(), _("memory.spd.note.xmpunread"))
+        self.assertEqual(pagina.spd_note.toolTip(), _("memory.spd.note.xmpunread"))
 
 
 if __name__ == "__main__":

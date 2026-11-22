@@ -806,11 +806,12 @@ class TestModulosSinPerfilesRapidos(unittest.TestCase):
         pagina = self._pagina()
         for ficha in pagina._slot_grids:
             self.assertFalse(ficha._values[_("memory.field.profiles")].isVisibleTo(pagina))
-        # Una sola vez, en la nota de la tabla de perfiles: ni al pie de las
-        # fichas ni repetido en otro sitio de la página.
+        # Once, on hovering the timings table's note: not at the cards' foot
+        # nor repeated anywhere else on the page.
         self.assertFalse(pagina.spd_missing.isVisibleTo(pagina))
         textos = " ".join(pantalla.textos_de(pagina))
-        self.assertEqual(textos.count("no traen perfiles rápidos"), 1)
+        self.assertEqual(textos.count("no traen perfiles rápidos"), 0)
+        self.assertIn("no traen perfiles rápidos", pagina.spd_note.toolTip())
 
     def test_ningun_guion_en_las_fichas(self):
         from silux import render
@@ -825,8 +826,8 @@ class TestModulosSinPerfilesRapidos(unittest.TestCase):
         from silux.i18n import _
 
         pagina = self._pagina()
-        self.assertEqual(pagina.spd_note.text(), _("memory.spd.note.noxmp"))
-        self.assertNotIn("activado", pagina.spd_note.text())
+        self.assertEqual(pagina.spd_note.toolTip(), _("memory.spd.note.noxmp"))
+        self.assertNotIn("activado", pagina.spd_note.toolTip())
 
 
 class TestElFabricanteNoCambiaAlDarPermisos(unittest.TestCase):

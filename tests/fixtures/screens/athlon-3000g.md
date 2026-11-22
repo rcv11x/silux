@@ -215,7 +215,7 @@ El nombre de cada ranura («PCIEX16», «M2A_CPU») está en la tabla del firmwa
 ## Memoria
 
 4 GB instalados · 3.3 GB utilizables
-1 módulo leído de su chip SPD, catalogado a 2400 MT/s · el zócalo y la capacidad necesitan permisos
+1 módulo leído de su chip SPD, catalogado a 2400 MT/s · el zócalo y a cuánto va, con permisos
 DDR4 · 2400 MT/s
 Aplicaciones 1.3 GB · Caché 1.1 GB · Buffers 64.0 MB · Libre 918.4 MB
 Disponible 1.8 GB · sin intercambio
@@ -254,7 +254,7 @@ Disponible 1.8 GB · sin intercambio
 |---|---|---|---|---|---|---|---|
 | Módulo 1 · JEDEC | 2400 MT/s | 17 | 17 | 17 | 39 | 55 | 1.20 V |
 
-El SPD es un chip que lleva cada módulo con sus características. Estos módulos no traen perfiles rápidos: la velocidad más alta que declaran es la de JEDEC, y a cuál van de verdad lo decide la BIOS.
+Lo que cada módulo declara en su chip SPD; a cuánto va de verdad lo decide la BIOS.
 
 ### Ancho de banda y latencia
 
@@ -262,7 +262,7 @@ Mide cuánto se mueve la memoria de verdad, leyendo un bloque más grande que la
 
 ### Lo que falta necesita permisos
 
-El módulo de arriba sale de su propio chip SPD, que se lee sin permisos. La capacidad de cada uno, en qué zócalo va, cuántos quedan libres y a qué velocidad los ha puesto la BIOS están en la tabla SMBIOS, que el kernel reserva al administrador.
+El módulo de arriba sale de su propio chip SPD, que se lee sin permisos. En qué zócalo va, cuántos quedan libres y a qué velocidad lo ha puesto la BIOS están en la tabla SMBIOS, que el kernel reserva al administrador.
 El ayudante que se lanza solo sabe leer esa tabla y unos registros del procesador: no ejecuta órdenes ni escribe nada.
 
 > **Este equipo no lo expone**

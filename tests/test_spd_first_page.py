@@ -105,7 +105,7 @@ class TestOnAMachineThatBlocksTheSwitch(unittest.TestCase):
             self.assertEqual(ficha._values[_("memory.field.rated")].full_text(), "5600 MT/s")
             pie = pagina.spd_missing.text()
             # Its fast profiles are unknown, not absent.
-            self.assertEqual(pagina.spd_note.text(), _("memory.spd.note.partial"))
+            self.assertEqual(pagina.spd_note.toolTip(), _("memory.spd.note.partial"))
         self.assertIn(_("memory.na.spd.partial").split("{campos}")[1][:40], pie)
 
 

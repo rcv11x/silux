@@ -142,7 +142,7 @@ class TestSinSpd(unittest.TestCase):
             self.assertTrue(pagina._slot_grids)
             # Que no traen perfiles se dice una vez, en la nota de su tabla.
             self.assertFalse(pagina.spd_missing.isVisible())
-            self.assertEqual(pagina.spd_note.text(), _("memory.spd.note.noxmp"))
+            self.assertEqual(pagina.spd_note.toolTip(), _("memory.spd.note.noxmp"))
             for rejilla in pagina._slot_grids:
                 self.assertTrue(rejilla._values[_("memory.field.chips")].isVisible())
                 self.assertTrue(rejilla._values[_("memory.field.made")].isVisible())

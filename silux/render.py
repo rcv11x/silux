@@ -108,10 +108,30 @@ def memory_rated(module) -> str:
 
 def memory_voltage(module) -> str:
     """«1.35 V», saying so when only the firmware's table gives it."""
+    if (choice := voltage_choice(module)):
+        return choice
     if module.voltage_mv is None:
         return DASH
     text = f"{module.voltage_mv / 1000:.2f} V"
     return f"{text} · {_('memory.source.bios')}" if module.voltage_from_firmware else text
+
+
+def module_type(module) -> Optional[str]:
+    """A module's technology: «DDR3L» for DDR3 its SPD declares at 1.35 V."""
+    spd = module.spd
+    name = memory_type(module.type) or (spd.dram_type if spd else None)
+    if name == "DDR3" and spd is not None and 1.35 in spd.voltages_v:
+        return "DDR3L"
+    return name
+
+
+def voltage_choice(module) -> Optional[str]:
+    """«1.35 V o 1.50 V» when the SPD declares several and the firmware's
+    table, which says the one in use, isn't read."""
+    spd = module.spd
+    if module.voltage_configured_mv or spd is None or len(spd.voltages_v) < 2:
+        return None
+    return enumeration([f"{v:.2f} V" for v in sorted(spd.voltages_v)], "list.or")
 
 
 def memory_type(name: Optional[str], translate=_) -> Optional[str]:
@@ -1554,13 +1574,16 @@ def memory_speed_warning(modules, limit=None, chipset: bool = False) -> Optional
     fitted = [m for m in modules if m.populated and m.rated_mts]
     if not fitted:
         return None
+    ceiling = min(m.rated_mts for m in fitted)
+    highest = max(m.rated_mts for m in fitted)
     current = memory_speed(
         max((m.configured_mts or m.speed_mts or 0) for m in fitted))
     if not current:
+        # Without the firmware's table the speed in use isn't known, but all
+        # modules run on one clock: the slowest's rating is the ceiling.
+        if highest > ceiling * (1 + ROUNDING_MARGIN):
+            return _("mem.mixed.rated").format(lento=ceiling, rapido=highest)
         return None
-
-    ceiling = min(m.rated_mts for m in fitted)
-    highest = max(m.rated_mts for m in fitted)
 
     if current < ceiling * (1 - ROUNDING_MARGIN):
         # At the processor's maximum there's no profile to enable: it's what

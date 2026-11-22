@@ -32,8 +32,14 @@ I2C_DEVICES = pathlib.Path("/sys/bus/i2c/devices")
 # One SPD chip per slot, at addresses 0x50 to 0x57 on the bus.
 SPD_ADDRESS = re.compile(r"^\d+-00(5[0-7])$")
 
-DRAM_TYPES = {0x0B: "DDR3", 0x0C: "DDR4", 0x0E: "LPDDR3", 0x0F: "LPDDR4",
+DRAM_TYPES = {0x07: "DDR", 0x08: "DDR2", 0x0B: "DDR3", 0x0C: "DDR4", 0x0E: "LPDDR3", 0x0F: "LPDDR4",
               0x10: "LPDDR4X", 0x12: "DDR5", 0x13: "LPDDR5"}
+
+# DDR3 numbers its module types its own way (JEDEC 21-C annex K, byte 3).
+DDR3_MODULE_TYPES = {0x01: "RDIMM", 0x02: "UDIMM", 0x03: "SODIMM", 0x04: "Micro-DIMM",
+                     0x05: "Mini-RDIMM", 0x06: "Mini-UDIMM", 0x08: "72b-SO-UDIMM",
+                     0x09: "72b-SO-RDIMM", 0x0B: "LRDIMM", 0x0C: "16b-SO-DIMM",
+                     0x0D: "32b-SO-DIMM"}
 
 MODULE_TYPES = {0x01: "RDIMM", 0x02: "UDIMM", 0x03: "SODIMM", 0x04: "LRDIMM",
                 0x05: "Mini-RDIMM", 0x06: "Mini-UDIMM", 0x08: "72b-SO-RDIMM",
@@ -120,6 +126,9 @@ class SpdInfo:
     # voltage don't. Dropping it, a DDR4-3200 module read as rated for 2400
     # and lost «at the processor's maximum».
     xmp_speeds_mts: tuple[int, ...] = ()
+    # The voltages the module declares it can run at. DDR3 can declare 1.5,
+    # 1.35 (DDR3L) and 1.25 V; the board picks one.
+    voltages_v: tuple[float, ...] = ()
     decoded: bool = False                     # False = unsupported format
 
     @property
@@ -203,7 +212,100 @@ def jedec_grade(mts: float) -> int:
 # generation numbers its own.
 DDR5_DENSITIES = {1: 4, 2: 8, 3: 12, 4: 16, 5: 24, 6: 32, 7: 48, 8: 64}
 DDR5_WIDTHS = {0: 4, 1: 8, 2: 16, 3: 32}
+DDR3_DENSITIES = {0: 0.25, 1: 0.5, 2: 1, 3: 2, 4: 4, 5: 8, 6: 16}
 DDR4_DENSITIES = {2: 1, 3: 2, 4: 4, 5: 8, 6: 16, 7: 32}
+
+
+# --------------------------------------------------------------------------
+# DDR3 decoding
+# --------------------------------------------------------------------------
+
+class _Ddr3:
+    """The DDR3 format's offsets (JEDEC 21-C, annex K), by name."""
+
+    DENSITY, VOLTAGE, ORGANIZATION, BUS_WIDTH = 4, 6, 7, 8
+    FTB, MTB_DIVIDEND, MTB_DIVISOR = 9, 10, 11
+    TCK_MIN, TAA, TRCD, TRP = 12, 16, 18, 20
+    TRAS_TRC_UPPER, TRAS_LSB, TRC_LSB = 21, 22, 23
+    FINE_TCK_MIN, FINE_TAA, FINE_TRCD, FINE_TRP, FINE_TRC = 34, 35, 36, 37, 38
+    VENDOR_BANK, VENDOR_ID = 117, 118
+    DATE_YEAR, DATE_WEEK = 120, 121
+    PART_NUMBER = slice(128, 146)
+    DRAM_BANK, DRAM_ID = 148, 149
+    XMP_MAGIC = slice(176, 178)
+    XMP_REVISION = 178
+
+
+def _ddr3_voltages(byte: int) -> tuple[float, ...]:
+    """Byte 6: bit 0 set means *not* 1.5 V operable; bits 1 and 2 add 1.35 V
+    (DDR3L) and 1.25 V (DDR3U)."""
+    voltages = [] if byte & 0x01 else [1.5]
+    if byte & 0x02:
+        voltages.append(1.35)
+    if byte & 0x04:
+        voltages.append(1.25)
+    return tuple(voltages)
+
+
+def _decode_ddr3(spd: bytes, address: str, slot: int) -> SpdInfo:
+    d = _Ddr3
+    # The medium timebase is a fraction of a nanosecond (1/8 on every module
+    # seen) and the fine one of a picosecond, both declared by the module.
+    mtb_ps = 1000 * spd[d.MTB_DIVIDEND] / spd[d.MTB_DIVISOR] if spd[d.MTB_DIVISOR] else 125
+    ftb_ps = (spd[d.FTB] >> 4) / (spd[d.FTB] & 0x0F) if spd[d.FTB] & 0x0F else 1
+
+    def time_ps(medium: int, fine: Optional[int] = None) -> float:
+        return spd[medium] * mtb_ps + (_signed(spd[fine]) * ftb_ps if fine is not None else 0)
+
+    tck_ps = time_ps(d.TCK_MIN, d.FINE_TCK_MIN)
+    # Two transfers per cycle, like DDR4: a 1.5 ns cycle is 1333 MT/s.
+    speed = jedec_grade(2_000_000 / tck_ps) if tck_ps else 0
+    upper = spd[d.TRAS_TRC_UPPER]
+    tras_ps = (((upper & 0x0F) << 8) | spd[d.TRAS_LSB]) * mtb_ps
+    trc_ps = ((((upper >> 4) & 0x0F) << 8) | spd[d.TRC_LSB]) * mtb_ps + _signed(spd[d.FINE_TRC]) * ftb_ps
+    voltages = _ddr3_voltages(spd[d.VOLTAGE])
+    jedec = Timings(
+        name="JEDEC",
+        speed_mts=speed,
+        cl=_jedec_cycles(time_ps(d.TAA, d.FINE_TAA), tck_ps),
+        trcd=_jedec_cycles(time_ps(d.TRCD, d.FINE_TRCD), tck_ps),
+        trp=_jedec_cycles(time_ps(d.TRP, d.FINE_TRP), tck_ps),
+        tras=_jedec_cycles(tras_ps, tck_ps),
+        trc=_jedec_cycles(trc_ps, tck_ps),
+        voltage_v=voltages[0] if voltages else None,
+    )
+
+    organization = spd[d.ORGANIZATION]
+    bus = spd[d.BUS_WIDTH]
+    ranks = ((organization >> 3) & 0x07) + 1
+    chip_width = 4 << (organization & 0x07)
+    bus_width = 8 << (bus & 0x07)
+    capacity = _capacity(DDR3_DENSITIES.get(spd[d.DENSITY] & 0x0F), chip_width, bus_width, ranks)
+    xmp = None
+    if spd[d.XMP_MAGIC] == b"\x0c\x4a":
+        xmp = f"{spd[d.XMP_REVISION] >> 4}.{spd[d.XMP_REVISION] & 0x0F}"
+
+    return SpdInfo(
+        address=address,
+        slot=slot,
+        dram_type=DRAM_TYPES.get(spd[2]),
+        module_type=DDR3_MODULE_TYPES.get(spd[3] & 0x0F),
+        manufacturer=_vendor(spd[d.VENDOR_BANK], spd[d.VENDOR_ID]),
+        dram_manufacturer=_vendor(spd[d.DRAM_BANK], spd[d.DRAM_ID]),
+        part_number=_text(spd[d.PART_NUMBER]),
+        **_date(spd[d.DATE_YEAR], spd[d.DATE_WEEK]),
+        ranks=ranks,
+        device_width=chip_width,
+        bus_width=bus_width,
+        ecc_bits=8 if (bus >> 3) & 0x03 else 0,
+        capacity_bytes=int(capacity) if capacity else None,
+        jedec=jedec if jedec.plausible else None,
+        # XMP 1.x on DDR3 is recognized, not interpreted: its layout has no
+        # source to check against here.
+        overclock_profiles=(f"XMP {xmp}",) if xmp else (),
+        voltages_v=voltages,
+        decoded=True,
+    )
 
 
 # --------------------------------------------------------------------------
@@ -577,12 +679,14 @@ def decode(spd: bytes, address: str = "", slot: int = 0) -> SpdInfo:
         return SpdInfo(address=address, slot=slot)
 
     dram = DRAM_TYPES.get(spd[2])
+    if spd[2] == 0x0B and len(spd) >= 176:
+        return _decode_ddr3(spd, address, slot)
     if spd[2] == 0x0C:
         return _decode_ddr4(spd, address, slot)
     if spd[2] == 0x12:
         return _decode_ddr5(spd, address, slot)
 
-    # DDR3 and older have another format. The type is identified, which is
+    # DDR2 and older have another format. The type is identified, which is
     # something, and it's made clear the detail isn't implemented.
     return SpdInfo(address=address, slot=slot, dram_type=dram, decoded=False)
 

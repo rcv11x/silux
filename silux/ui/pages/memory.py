@@ -73,6 +73,14 @@ SOLO_DEL_SPD = {
     "memory.field.made": "memory.na.made",
 }
 
+# What a module's SPD may leave blank, and how the foot names it.
+SPD_DECLARES = {
+    "memory.field.vendor": "memory.na.vendor",
+    "memory.field.chips": "memory.na.chips",
+    "memory.field.part": "memory.na.part",
+    "memory.field.made": "memory.na.made",
+}
+
 TIMING_HEADERS = ("memory.timing.profile", "memory.timing.speed", "memory.timing.cl", "memory.timing.trcd", "memory.timing.trp", "memory.timing.tras", "memory.timing.trc", "memory.field.voltage")
 
 
@@ -622,12 +630,13 @@ class MemoryPage(ScrollPage):
                 # «2 módulos… a 3200 MT/s» se leía como la velocidad real, y
                 # sin XMP activado van a 2133.
                 velocidad = (_("memory.spd.rated.one" if cuantos == 1
-                               else "memory.spd.rated.many").format(mts=max(catalogados))
+                               else "memory.spd.rated.many").format(
+                                   mts=render.enumeration([str(v) for v in sorted(catalogados)]))
                              if catalogados else "")
                 # Memory without a chip of its own (soldered) is not in the SPD:
                 # what is read is not all there is, and it is said.
-                resto = (_("memory.spd.needsroot") if snapshot.spd_accounts_for_all_memory
-                         else _("memory.spd.notall"))
+                resto = (_("memory.spd.needsroot.one" if cuantos == 1 else "memory.spd.needsroot")
+                         if snapshot.spd_accounts_for_all_memory else _("memory.spd.notall"))
                 return (_("memory.spd.read.one" if cuantos == 1
                           else "memory.spd.read.many").format(n=cuantos)
                         + velocidad + resto)
@@ -654,7 +663,7 @@ class MemoryPage(ScrollPage):
         modules = [m for m in self._display_modules(snapshot) if m.populated]
         wanted = []
         if modules:
-            tipos = {render.memory_type(m.type) for m in modules if m.type}
+            tipos = {render.module_type(m) for m in modules if render.module_type(m)}
             wanted.extend(sorted(tipos))
             # The speed it runs at when the firmware says it, and else the one
             # it is rated at: «3200 MT/s · al máximo del procesador» was read
@@ -777,6 +786,7 @@ class MemoryPage(ScrollPage):
 
         sin_spd: list[str] = []
         sin_spd_soldada: list[str] = []
+        undeclared: list[tuple[int, list[str]]] = []
         numero = 0
         for nombre, module in zip(nombres, modules):
             crudo = module.locator or ""
@@ -824,6 +834,13 @@ class MemoryPage(ScrollPage):
                 grid.set_visible(_(clave), False)
                 if clave not in sin_spd:
                     sin_spd.append(clave)
+            # Read and blank: the module doesn't declare it. Hidden, and the
+            # foot says which.
+            blank = self._undeclared(module)
+            for key in blank:
+                grid.set_visible(_(key), False)
+            if blank:
+                undeclared.append((numero, blank))
             if module.spd is not None and not module.spd.overclock_profiles:
                 # El dato no falta: esos módulos solo tienen el perfil de JEDEC.
                 grid.set_visible(_("memory.field.profiles"), False)
@@ -870,6 +887,10 @@ class MemoryPage(ScrollPage):
                 spd_reason_told = True
             else:
                 pies.append(_("memory.na.nospd").format(campos=campos))
+        for number, keys in undeclared:
+            pies.append(_("memory.na.undeclared").format(
+                n=number, fields=render.enumeration(
+                    [_(SPD_DECLARES[key]) for key in keys], "list.nor")))
         if sin_spd_soldada:
             lista = render.enumeration([_(SOLO_DEL_SPD[clave]) for clave in MODULE_FIELDS
                                         if clave in sin_spd_soldada])
@@ -907,6 +928,21 @@ class MemoryPage(ScrollPage):
             "memory.field.chips", "memory.field.profiles", "memory.field.made")
 
     @staticmethod
+    def _undeclared(module: MemoryModule) -> list[str]:
+        """The fields its SPD was read and left blank, and the firmware's
+        table doesn't fill either."""
+        spd = module.spd
+        if spd is None or not spd.decoded or spd.partial:
+            return []
+        values = {
+            "memory.field.vendor": spd.manufacturer or module.manufacturer,
+            "memory.field.chips": spd.dram_manufacturer,
+            "memory.field.part": spd.part_number or module.part_number,
+            "memory.field.made": spd.manufactured_year,
+        }
+        return [key for key in SPD_DECLARES if not values[key]]
+
+    @staticmethod
     def _fill(grid: InfoGrid, module: MemoryModule, limite=None,
               otro_con_spd: bool = False) -> None:
         d = render.DASH
@@ -921,8 +957,9 @@ class MemoryPage(ScrollPage):
         grid.set(_("memory.field.chips"), render.maker(spd.dram_manufacturer if spd else None) or d,
                  tooltip=_("memory.tip.chips"))
         grid.set(_("memory.field.part"), module.part_number or (spd.part_number if spd else None) or d)
-        grid.set(_("memory.field.type"),
-                 render.memory_type(module.type) or (spd.dram_type if spd else None) or d)
+        grid.set(_("memory.field.type"), render.module_type(module) or d,
+                 tooltip=_("memory.tip.ddr3l") if (render.module_type(module) or "").endswith("L")
+                 else "")
         # La capacidad sale de SMBIOS, que pide permisos, pero el SPD de DDR5
         # la trae en la densidad de sus chips y ese se lee sin pedir nada.
         capacidad = module.size_bytes or (spd.capacity_bytes if spd else None)
@@ -961,7 +998,8 @@ class MemoryPage(ScrollPage):
         grid.set(_("memory.field.ranks"), rangos)
 
         grid.set(_("memory.field.voltage"), render.memory_voltage(module),
-                 tooltip=_("memory.tip.voltage.bios") if module.voltage_from_firmware else "")
+                 tooltip=_("memory.tip.voltage.bios") if module.voltage_from_firmware
+                 else _("memory.tip.voltage.either") if render.voltage_choice(module) else "")
         if module.soldered_by:
             # What the firmware calls it (a T14 says «SODIMM») isn't what it is.
             motivo = (_("memory.tip.soldered.form") if module.soldered_by == "form"
@@ -1026,4 +1064,5 @@ class MemoryPage(ScrollPage):
             nota = "memory.spd.note.xmpunread"
         else:
             nota = "memory.spd.note.noxmp"
-        self.spd_note.setText(_(nota))
+        self.spd_note.setText(_("memory.spd.note.short"))
+        self.spd_note.setToolTip(_(nota))
