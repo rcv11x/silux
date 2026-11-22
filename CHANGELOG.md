@@ -10,6 +10,15 @@ que hace falta.
 
 ---
 
+## Sin publicar
+
+- Memoria: las temporizaciones de una DDR5 se leían dos bytes antes de donde
+  están, de la lista de latencias que admite el chip: una DDR5-4800 CL40
+  salía con CL9. Ahora salen como las da JEDEC: 40-39-39-77-116.
+- Memoria: con solo la primera página del SPD de una DDR5, la referencia, la
+  capacidad y los rangos ya no salen con guion: se esconden y se nombran al
+  pie, y con permisos los da la tabla del firmware.
+
 ## 0.4-prueba9 (22 de noviembre de 2026)
 
 Letra más legible y unidades coherentes: memoria en GiB, discos y red en GB

@@ -110,11 +110,11 @@ la memoria) no va: está propuesto en las notas
     memoria con contadores», que es falso. Arreglarlo toca el ayudante: está
     propuesto en las notas del autor. Sigue saliendo «Falló al leerse», que es
     lo cierto.
-  - Memoria · media · el SPD de su DDR5 se lee ahora página a página, sin
-    búfer (el arreglo de la prueba7 pedía 4096 bytes al leer 128). El volcado
-    no lleva su página 0: el anexo no guarda un `eeprom` que no se lee
-    entero. Falta que el volcado lo guarde por páginas (lo que se leyó y qué
-    error dio cada una), con el número de serie tapado.
+  - Memoria · baja · el SPD de su DDR5 se lee página a página, sin búfer, y
+    un volcado guarda la página que se leyó y el error de las demás. El del
+    LOQ lleva la página 0 que leyó su dueño con `dd`. Falta ver en un equipo
+    así que el volcador copia la página 0 (el test vuelve a volcar el
+    volcado montado, que ya la tiene).
   - Gráficos · media · el modo que tiene puesto cada salida sale de los ioctl
     de modesetting y se graba en los volcados nuevos; los de la suite no lo
     tienen, y dicen que la que enseñan es la preferida. El EDID de la tele no
