@@ -942,7 +942,8 @@ class Board:
     bios_date: Optional[str] = None
     bios_release: Optional[str] = None
 
-    firmware: Optional[str] = None          # "UEFI (64 bits)" or "BIOS heredada"
+    firmware_uefi: Optional[bool] = None    # False: a legacy BIOS
+    firmware_bits: Optional[int] = None     # UEFI's: 64 or 32
     secure_boot: Optional[bool] = None
     tpm_version: Optional[str] = None
 

@@ -68,8 +68,8 @@ class TestMotivosDeRecorte(unittest.TestCase):
 
     def test_temperatura_y_potencia(self):
         motivos = nvml._reasons(0x04 | 0x40)
-        self.assertIn("límite de potencia del driver", motivos)
-        self.assertIn("temperatura (hardware)", motivos)
+        self.assertIn("gpu.throttle.nv.swpower", motivos)
+        self.assertIn("gpu.throttle.nv.hwthermal", motivos)
 
 
 class TestCasado(unittest.TestCase):

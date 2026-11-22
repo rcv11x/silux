@@ -83,7 +83,7 @@ class TestFrenos(unittest.TestCase):
     def test_nombra_el_motivo(self):
         m = gpumetrics.parse(tabla(throttle_independent=1 << 10))
         self.assertTrue(m.throttled)
-        self.assertEqual(m.throttle_reasons, ("temperatura del punto caliente",))
+        self.assertEqual(m.throttle_reasons, ("gpu.throttle.amd.thotspot",))
 
     def test_varios_motivos_a_la_vez(self):
         m = gpumetrics.parse(tabla(throttle_independent=(1 << 0) | (1 << 7)))
@@ -92,7 +92,7 @@ class TestFrenos(unittest.TestCase):
     def test_no_repite_un_motivo_que_tiene_dos_bits(self):
         # Los bits 14 y 15 son los dos reguladores de memoria y se llaman igual.
         m = gpumetrics.parse(tabla(throttle_independent=(1 << 14) | (1 << 15)))
-        self.assertEqual(m.throttle_reasons, ("temperatura del regulador de memoria",))
+        self.assertEqual(m.throttle_reasons, ("gpu.throttle.amd.tvrmem",))
 
     def test_sin_el_campo_independiente_se_sabe_que_hay_freno_pero_no_cual(self):
         # Las v1.0 a v1.2 solo traen el estado que depende del modelo de chip.

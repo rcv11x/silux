@@ -1873,7 +1873,7 @@ def throttle_episode(episode, ahora_ns: int) -> Optional[str]:
     if episode is None:
         return None
     how_long = duration(episode.duration_s(ahora_ns))
-    reasons = ", ".join(sorted(episode.reasons)) or _("throttle.unknown")
+    reasons = ", ".join(sorted(_(r) for r in episode.reasons)) or _("throttle.unknown")
     key = "throttle.ongoing" if episode.ongoing() else "throttle.past"
     return _(key).format(tiempo=how_long, motivos=reasons)
 
@@ -1907,7 +1907,7 @@ def throttle_state(gpu) -> str:
         return _("gpu.throttle.none")
     if not gpu.throttle_reasons:
         return _("gpu.throttle.some")
-    return _("gpu.throttle.why").format(motivos=", ".join(gpu.throttle_reasons))
+    return _("gpu.throttle.why").format(motivos=", ".join(_(r) for r in gpu.throttle_reasons))
 
 
 def board_name(board) -> str:
@@ -2285,6 +2285,17 @@ _RELLENO_DE_MARCA = re.compile(
 def lost_packets(n: int) -> str:
     """«1 packet discarded», «12 682 packets discarded»."""
     return _("net.lost.one") if n == 1 else _("net.lost").format(n=thousands(n))
+
+
+def firmware_type(board, translate=_) -> Optional[str]:
+    """«UEFI (64 bits)», «UEFI» or «BIOS heredada»."""
+    if board.firmware_uefi is None:
+        return None
+    if not board.firmware_uefi:
+        return translate("board.firmware.legacy")
+    if board.firmware_bits:
+        return translate("board.firmware.uefi.bits").format(bits=board.firmware_bits)
+    return "UEFI"
 
 
 def board_chipset(board) -> str:

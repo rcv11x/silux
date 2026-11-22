@@ -959,12 +959,11 @@ class TestMotivosDeIntel(unittest.TestCase):
         self.assertEqual(_intel_throttle(self.raiz), (False, ()))
 
     def test_frenando_por_dos_motivos(self):
-        from silux.i18n import _
         from silux.providers.drm import _intel_throttle
 
         self._motivos(status=1, pl1=1, pl2=0, thermal=1, prochot=0)
         self.assertEqual(_intel_throttle(self.raiz),
-                         (True, (_("gpu.throttle.intel.pl1"), _("gpu.throttle.intel.thermal"))))
+                         (True, ("gpu.throttle.intel.pl1", "gpu.throttle.intel.thermal")))
 
 
 class TestReposoDeLaGrafica(unittest.TestCase):

@@ -512,7 +512,7 @@ class MonitorPage(ScrollPage):
         boton = aviso.action_button
         if boton is not None:
             boton.setEnabled(False)
-            boton.setText("Cargando…")
+            boton.setText(_("sensors.driver.loading"))
         try:
             orden = self._orden_de_carga(modulo)
         except (OSError, RuntimeError) as error:

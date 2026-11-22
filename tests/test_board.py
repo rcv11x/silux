@@ -68,19 +68,19 @@ class TestFirmware(unittest.TestCase):
         # Se apunta a una ruta inexistente en vez de parchear el objeto Path,
         # cuyos métodos son de solo lectura: así se ejerce el código real.
         with mock.patch.object(dmi, "EFI", pathlib.Path("/no/existe/efi")):
-            self.assertEqual(dmi.DmiBoard._firmware(), "BIOS heredada")
+            self.assertEqual(dmi.DmiBoard._firmware(), (False, None))
 
     def test_con_efi_incluye_los_bits(self):
         with tempfile.TemporaryDirectory() as carpeta:
             efi = pathlib.Path(carpeta)
             (efi / "fw_platform_size").write_text("64\n", encoding="utf-8")
             with mock.patch.object(dmi, "EFI", efi):
-                self.assertEqual(dmi.DmiBoard._firmware(), "UEFI (64 bits)")
+                self.assertEqual(dmi.DmiBoard._firmware(), (True, 64))
 
     def test_con_efi_sin_el_fichero_de_bits(self):
         with tempfile.TemporaryDirectory() as carpeta:
             with mock.patch.object(dmi, "EFI", pathlib.Path(carpeta)):
-                self.assertEqual(dmi.DmiBoard._firmware(), "UEFI")
+                self.assertEqual(dmi.DmiBoard._firmware(), (True, None))
 
     def test_arranque_seguro_desde_la_variable_efi(self):
         with tempfile.TemporaryDirectory() as carpeta:

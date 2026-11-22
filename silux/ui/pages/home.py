@@ -549,7 +549,7 @@ class HomePage(ScrollPage):
             f"BIOS {placa.bios_version}" if placa.bios_version else None,
             render.bios_date(placa.bios_date)) if p)
         arranque = " · ".join(p for p in (
-            placa.firmware,
+            render.firmware_type(placa),
             placa.tpm_version,
             _("board.field.secureboot") if placa.secure_boot else None) if p)
         # Si la placa ya es el titular de la página, aquí no se repite: manda

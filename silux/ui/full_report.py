@@ -104,7 +104,7 @@ def build(snapshot, sections: Optional[Iterable[str]] = None,
         # medias) solo sale con la segunda.
         ventana._on_sample(foto)
         ventana._on_sample(foto)
-        partes = [report._header(foto, anonymous=anonymous)]
+        partes = [report._header(foto, anonymous=anonymous, translate=_)]
         for clave, activa in SECTIONS:
             if not activa or clave in FUERA or not wanted(clave, sections):
                 continue
@@ -117,7 +117,7 @@ def build(snapshot, sections: Optional[Iterable[str]] = None,
             cuerpo = page_text(pagina)
             if cuerpo.strip():
                 partes.append(f"\n## {_(clave)}\n\n{cuerpo}")
-        partes.append(report._diagnosis(foto))
+        partes.append(report._diagnosis(foto, translate=_))
     finally:
         ventana.hide()
         ventana.deleteLater()

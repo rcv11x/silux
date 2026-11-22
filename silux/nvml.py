@@ -38,17 +38,18 @@ GPU_TEMPERATURE = 0
 CLOCK_GRAPHICS, CLOCK_SM, CLOCK_MEMORY, CLOCK_VIDEO = 0, 1, 2, 3
 NAME_LENGTH = 96
 
-# Why the card cuts its clocks. Defined by `nvmlClocksThrottleReasons`.
+# Why the card cuts its clocks, as `nvmlClocksThrottleReasons` defines them.
+# Keys: the text is chosen when painting.
 THROTTLE_REASONS = {
-    0x0000000000000001: "en reposo",
-    0x0000000000000002: "relojes fijados por la aplicación",
-    0x0000000000000004: "límite de potencia del driver",
-    0x0000000000000008: "protección del hardware",
-    0x0000000000000010: "sincronización entre tarjetas",
-    0x0000000000000020: "temperatura (driver)",
-    0x0000000000000040: "temperatura (hardware)",
-    0x0000000000000080: "freno de potencia del hardware",
-    0x0000000000000100: "relojes fijados por la pantalla",
+    0x0000000000000001: "gpu.throttle.nv.idle",
+    0x0000000000000002: "gpu.throttle.nv.appclocks",
+    0x0000000000000004: "gpu.throttle.nv.swpower",
+    0x0000000000000008: "gpu.throttle.nv.hwslowdown",
+    0x0000000000000010: "gpu.throttle.nv.sync",
+    0x0000000000000020: "gpu.throttle.nv.swthermal",
+    0x0000000000000040: "gpu.throttle.nv.hwthermal",
+    0x0000000000000080: "gpu.throttle.nv.hwpower",
+    0x0000000000000100: "gpu.throttle.nv.display",
 }
 # Not a reason: the answer when there is none.
 NO_REASON = 0x0000000000000001

@@ -190,8 +190,8 @@
     "serial": null,
     "temp_c": 33.0,
     "throttle_reasons": [
-     "límite de potencia del driver",
-     "temperatura (driver)"
+     "gpu.throttle.nv.swpower",
+     "gpu.throttle.nv.swthermal"
     ],
     "throttled": true,
     "uuid": "0000000000000000000000000000000000000000",

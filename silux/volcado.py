@@ -585,13 +585,48 @@ def _spd_without_serial(data: bytes) -> tuple[bytes, bytes]:
     return data[:start] + bytes(end - start) + data[end:], data[start:end]
 
 
+# NVML's throttle reasons as 0.4-prueba7 and earlier recorded them, written
+# in Spanish, and the key each is now.
+OLD_NVML_REASONS = {
+    "en reposo": "gpu.throttle.nv.idle",
+    "relojes fijados por la aplicación": "gpu.throttle.nv.appclocks",
+    "límite de potencia del driver": "gpu.throttle.nv.swpower",
+    "protección del hardware": "gpu.throttle.nv.hwslowdown",
+    "sincronización entre tarjetas": "gpu.throttle.nv.sync",
+    "temperatura (driver)": "gpu.throttle.nv.swthermal",
+    "temperatura (hardware)": "gpu.throttle.nv.hwthermal",
+    "freno de potencia del hardware": "gpu.throttle.nv.hwpower",
+    "relojes fijados por la pantalla": "gpu.throttle.nv.display",
+}
+
+
+def _nvml_reasons_as_keys(folder: pathlib.Path) -> None:
+    """The recorded NVML cards' throttle reasons, as keys."""
+    recording = folder / "grabado.json"
+    if not recording.is_file():
+        return
+    data = json.loads(recording.read_text(encoding="utf-8"))
+    cards = (data.get("nvml") or {}).get("tarjetas") or []
+    changed = False
+    for card in cards:
+        reasons = card.get("throttle_reasons") or []
+        keys = [OLD_NVML_REASONS.get(r, r) for r in reasons]
+        if keys != reasons:
+            card["throttle_reasons"] = keys
+            changed = True
+    if changed:
+        recording.write_text(json.dumps(data, ensure_ascii=False, indent=1, sort_keys=True) + "\n",
+                             encoding="utf-8")
+
+
 def bring_up_to_date(folder: pathlib.Path) -> None:
     """Do to a dump already written what the dumper does today, for an annex
     made by an older version: zero the serial numbers it erases by position,
-    which the privacy check can't see (they're bytes, not text), and drop
-    what is recorded elsewhere."""
+    which the privacy check can't see (they're bytes, not text), drop what is
+    recorded elsewhere, and turn texts it recorded into today's keys."""
     for path in RECORDED_ELSEWHERE:
         (folder / path.lstrip("/")).unlink(missing_ok=True)
+    _nvml_reasons_as_keys(folder)
     for top, _dirs, files in os.walk(folder):
         for name in files:
             path = pathlib.Path(top) / name

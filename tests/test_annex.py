@@ -203,6 +203,21 @@ class TestImportingAReport(unittest.TestCase):
         self.assertEqual(imported[122:126], bytes(4))
         self.assertEqual(volcado._spd_without_serial(imported)[0], imported)
 
+    def test_nvml_reasons_an_older_version_wrote_become_keys(self):
+        import json
+        import shutil
+
+        copy = self.base / "i5-12450h"
+        shutil.copytree(EQUIPOS / "i5-12450h", copy, symlinks=True)
+        recording = copy / "grabado.json"
+        data = json.loads(recording.read_text(encoding="utf-8"))
+        data["nvml"]["tarjetas"][0]["throttle_reasons"] = ["límite de potencia del driver"]
+        recording.write_text(json.dumps(data), encoding="utf-8")
+        target, photo = self.tool.import_report(
+            self._report(annex.to_text(copy)), "rtx", self.base / "equipos")
+        nvidia = next(g for g in photo.gpus if g.vendor == "NVIDIA")
+        self.assertEqual(nvidia.throttle_reasons, ("gpu.throttle.nv.swpower",))
+
     def test_the_loader_cache_from_an_older_version_is_left_out(self):
         import shutil
 

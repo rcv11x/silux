@@ -166,7 +166,7 @@ class TestInicioConLaVentanaGrande(unittest.TestCase):
                 # La fecha, sin el orden americano del firmware.
                 self.assertIn(render.bios_date(f.board.bios_date), inicio.placa.detalle.text())
                 self.assertNotIn(f.board.bios_date, inicio.placa.detalle.text())
-                self.assertIn(f.board.firmware, inicio.placa.cifras.text())
+                self.assertIn(render.firmware_type(f.board), inicio.placa.cifras.text())
                 self.assertNotIn("TPM TPM", inicio.placa.cifras.text())
 
     def test_en_un_equipo_de_marca_la_tarjeta_si_nombra_la_placa(self):

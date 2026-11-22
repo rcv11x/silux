@@ -242,13 +242,10 @@ la memoria) no va: está propuesto en las notas
   la medida de memoria.
 * **F-M7 · `ui/pages/performance.py`** · media · la carga de fondo máxima no
   se ve: `CONDITION_FIELDS` no incluye su fila.
-* **F-M8 · varios** · media · texto en español fijo con la interfaz en
-  inglés: las cargas del benchmark, «semana N de AAAA» (que además se guarda
-  ya formateado en el modelo), «Cargando…», «Bajada/Subida», «BIOS
-  heredada», «UEFI (64 bits)», «Gráfica N». También los motivos por los que
-  se frena una gráfica (`gpumetrics.THROTTLE_REASONS`, los de `nvml.py` y los
-  de `i915`): el modelo los guarda como texto en español y se pintan tal
-  cual. Deberían ser claves que se traducen al pintar.
+* **F-M8 · `benchmark.py`** · media · el nombre y la descripción de cada
+  carga del benchmark están escritos en español en `WORKLOADS` y se pintan
+  tal cual con la interfaz en inglés. Deberían ser claves que se traducen al
+  pintar, como ya lo son el tipo de firmware y los motivos de freno.
 * **F-M9 · `ui/widgets.py`** · media · las etiquetas seleccionables con el
   ratón cuestan 22 MB: cada una crea su `QTextDocument`.
 * `ui/pages/memory.py` · baja · «Banco: P0 CHANNEL A» sale en bruto del

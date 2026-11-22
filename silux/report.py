@@ -23,14 +23,14 @@ from .model import Need, Snapshot
 HIDDEN = "«omitido»"
 
 NEED_REASONS = {
-    Need.ROOT: "requiere permisos de administrador",
-    Need.DATABASE: "esta versión no lo conoce todavía",
-    Need.HARDWARE: "este equipo no lo expone",
-    Need.DRIVER: "falta un módulo del kernel",
-    Need.PLATFORM: "no aplica a esta plataforma",
-    Need.ERROR: "falló al leerse",
-    Need.KERNEL: "el kernel es anterior al dato",
-    Need.PACKAGE: "falta un paquete del sistema",
+    Need.ROOT: "report.need.root",
+    Need.DATABASE: "report.need.database",
+    Need.HARDWARE: "report.need.hardware",
+    Need.DRIVER: "report.need.driver",
+    Need.PLATFORM: "report.need.platform",
+    Need.ERROR: "report.need.error",
+    Need.KERNEL: "report.need.kernel",
+    Need.PACKAGE: "report.need.package",
 }
 
 
@@ -63,45 +63,54 @@ def build(snapshot: Snapshot, anonymous: bool = True) -> str:
 
 # -- sections ----------------------------------------------------------------
 
-def _header(snapshot: Snapshot, anonymous: bool) -> str:
+def _header(snapshot: Snapshot, anonymous: bool, translate=in_spanish) -> str:
+    """The report's first lines. `translate` is the language: Spanish for
+    the short report, the interface's for the full one."""
+    t = translate
     system = snapshot.system
     qt = _qt_version()
+    unknown = render.DASH
+    # The desktop and the session, as far as they're known: «?» read as a
+    # fault of the report.
+    desktop = " · ".join(p for p in (system.desktop, system.session_type) if p)
     # A list and not a table: a key-value table has no header to give it,
     # and an empty one was the first thing the report showed.
     lines = [
-        f"# Informe de Silux {render.version(__version__, in_spanish)}"
+        f"# {t('report.head.title')} {render.version(__version__, t)}"
         + (f" ({build_id()})" if build_id() else ""),
         "",
-        f"- **Distribución:** {system.distribution or '?'} {system.version_id or ''}".rstrip(),
-        f"- **Kernel:** {system.kernel or '?'}",
+        f"- **{t('report.head.distro')}:** "
+        f"{system.distribution or unknown} {system.version_id or ''}".rstrip(),
+        f"- **{t('report.head.kernel')}:** {system.kernel or unknown}",
         # What the kernel was built with: some distributions use clang and
         # most gcc, which changes what a machine looks like when something
         # goes odd.
-        f"- **Compilado:** {system.kernel_build or '?'}",
-        f"- **Arquitectura:** {system.architecture or '?'}",
-        f"- **Escritorio:** {system.desktop or '?'} · {system.session_type or '?'}",
-        f"- **Init:** {system.init or '?'}",
+        f"- **{t('report.head.built')}:** {system.kernel_build or unknown}",
+        f"- **{t('report.head.arch')}:** {system.architecture or unknown}",
+        f"- **{t('report.head.desktop')}:** {desktop or t('report.head.desktop.none')}",
+        f"- **Init:** {system.init or unknown}",
         f"- **Python:** {platform.python_version()}",
-        f"- **Qt (PySide6):** {qt or 'no instalado'}",
-        f"- **Fuentes activas:** {', '.join(sorted(snapshot.capabilities)) or 'ninguna'}",
-        f"- **Ejecutado desde:** {_provenance()}",
+        f"- **Qt (PySide6):** {qt or t('report.head.qt.none')}",
+        f"- **{t('report.head.sources')}:** "
+        f"{', '.join(sorted(snapshot.capabilities)) or t('report.head.sources.none')}",
+        f"- **{t('report.head.from')}:** {_provenance(t)}",
     ]
     # In the header, not the processor's section, because it isn't about the
     # processor: it changes how the whole file reads. Without this row, a VM's
     # report describes a virtual board and processor with nothing saying
     # there's no such machine.
-    if virt := _hypervisor(snapshot):
-        lines.append(f"- **Máquina virtual:** {virt}")
+    if virt := _hypervisor(snapshot, t):
+        lines.append(f"- **{t('report.head.vm')}:** {virt}")
     if not anonymous and system.hostname:
-        lines.append(f"- **Equipo:** {system.hostname}")
+        lines.append(f"- **{t('report.head.host')}:** {system.hostname}")
     return "\n".join(lines)
 
 
-def _hypervisor(snapshot: Snapshot) -> str:
+def _hypervisor(snapshot: Snapshot, translate=in_spanish) -> str:
     """Who's underneath, for the header. Empty on bare metal."""
     for cpu_type in snapshot.cpu.types:
         if cpu_type.in_virtual_machine:
-            return cpu_type.hypervisor or "sí, hipervisor sin identificar"
+            return cpu_type.hypervisor or translate("report.head.vm.unknown")
     return ""
 
 
@@ -220,7 +229,7 @@ def _board(snapshot: Snapshot, anonymous: bool) -> str:
         f"- {render.board_name(board)}",
         f"- BIOS: {render.bios_summary(board)}",
         f"- Chipset: {_chipset(board)}",
-        f"- Firmware: {board.firmware or '—'} · arranque seguro: "
+        f"- Firmware: {render.firmware_type(board, in_spanish) or '—'} · arranque seguro: "
         f"{'sí' if board.secure_boot else 'no'} · TPM: {board.tpm_version or 'no'}",
         # Raw and all five, since the headline above comes from here and each
         # maker writes the machine's name wherever it likes. Without this, «I
@@ -603,12 +612,13 @@ def _benchmark() -> str:
     return "\n".join(lines) + "\n"
 
 
-def _diagnosis(snapshot: Snapshot) -> str:
+def _diagnosis(snapshot: Snapshot, translate=in_spanish) -> str:
     """What couldn't be read and why. The useful part of a bug report."""
-    lines = ["", "## Diagnóstico", ""]
+    t = translate
+    lines = ["", f"## {t('report.diag.title')}", ""]
 
     if snapshot.driver_hints:
-        lines.append("**Módulos del kernel que ampliarían lo que se ve:**")
+        lines.append(f"**{t('report.diag.modules')}**")
         lines.append("")
         for hint in snapshot.driver_hints:
             name = "Super I/O" if hint.module == "(Super I/O)" else f"`{hint.module}`"
@@ -618,24 +628,26 @@ def _diagnosis(snapshot: Snapshot) -> str:
         lines.append("")
 
     if snapshot.notes:
-        lines.append("**Datos que faltan:**")
+        lines.append(f"**{t('report.diag.missing')}**")
         lines.append("")
         for note in snapshot.notes:
-            lines.append(f"- `{note.path}` ({NEED_REASONS.get(note.need, note.need.value)}): "
+            reason = t(NEED_REASONS[note.need]) if note.need in NEED_REASONS else note.need.value
+            lines.append(f"- `{note.path}` ({reason}): "
                           f"{note.message}" + (f" ({note.detail})" if note.detail else ""))
     else:
-        lines.append("Sin datos ausentes: todo lo que el equipo expone se ha leído.")
+        lines.append(t("report.diag.nothing"))
 
     if snapshot.failures:
-        lines += ["", "**Fallos de Silux, con su traza:**", ""]
+        lines += ["", f"**{t('report.diag.failures')}**", ""]
         for failure in snapshot.failures:
-            times = f" ({failure.count} veces)" if failure.count > 1 else ""
+            times = (" " + t("report.diag.times").format(n=failure.count)
+                     if failure.count > 1 else "")
             lines += [f"- `{failure.where}`{times}: {failure.error}", "",
                        "```text", failure.trace, "```", ""]
     return "\n".join(lines)
 
 
-def _provenance() -> str:
+def _provenance(translate=in_spanish) -> str:
     """Whether it runs from an AppImage or from source.
 
     It matters more than it seems: from an AppImage the privileged helper
@@ -645,7 +657,7 @@ def _provenance() -> str:
 
     if os.environ.get("APPIMAGE") or "/.mount_" in sys.executable:
         return "AppImage"
-    return "código fuente o paquete del sistema"
+    return translate("report.head.from.source")
 
 
 def _qt_version() -> Optional[str]:

@@ -110,7 +110,7 @@ class TestEnLaPagina(unittest.TestCase):
 
     def test_una_intel_que_dice_por_que_se_frena(self):
         seccion = self._seccion(self._con_gpu(
-            throttled=True, throttle_reasons=(_("gpu.throttle.intel.pl1"),)))
+            throttled=True, throttle_reasons=("gpu.throttle.intel.pl1",)))
         self.assertTrue(self._visible(seccion.sensors, "gpu.sensor.state"))
         self.assertEqual(seccion.sensors._values[_("gpu.sensor.state")].full_text(),
                          _("gpu.throttle.why").format(motivos=_("gpu.throttle.intel.pl1")))
@@ -164,7 +164,7 @@ class TestEnLaPagina(unittest.TestCase):
 
     def test_con_algo_propio_la_tarjeta_vuelve(self):
         seccion = self._seccion(self._con_gpu(
-            throttled=True, throttle_reasons=(_("gpu.throttle.intel.pl1"),)))
+            throttled=True, throttle_reasons=("gpu.throttle.intel.pl1",)))
         self.assertTrue(seccion.sensor_card.isVisibleTo(seccion))
         self.assertFalse(seccion.sensors_outside.isVisibleTo(seccion))
 

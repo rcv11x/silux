@@ -1057,7 +1057,7 @@ def _intel_throttle(node: pathlib.Path) -> tuple[Optional[bool], tuple[str, ...]
     reasons = []
     for reason, entry_key in INTEL_REASONS:
         if read_int(f"{base}_{reason}"):
-            reasons.append(_(entry_key))
+            reasons.append(entry_key)
     return bool(state) or bool(reasons), tuple(reasons)
 
 

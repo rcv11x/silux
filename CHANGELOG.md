@@ -12,6 +12,13 @@ que hace falta.
 
 ## Sin publicar
 
+### Informe
+
+- El informe completo sale entero en el idioma elegido: la cabecera, el
+  diagnóstico, el tipo de firmware («BIOS heredada») y los motivos por los
+  que se frena una gráfica iban en español. Lo que no se sabe ya no sale
+  como «?».
+
 ### Procesador
 
 - La base de la ficha y la del TDP configurado salen en dos filas: un

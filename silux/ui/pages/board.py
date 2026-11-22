@@ -213,7 +213,7 @@ class BoardPage(ScrollPage):
                    if sin_rellenar else [])
 
         f = self.firmware.set
-        f(_("memory.field.type"), board.firmware or d)
+        f(_("memory.field.type"), render.firmware_type(board) or d)
         f(_("memory.field.vendor"), render.maker(board.bios_vendor) or d)
         f(_("sys.field.version"), board.bios_version or d)
         f(_("board.field.date"), render.bios_date(board.bios_date) or d)
@@ -223,7 +223,7 @@ class BoardPage(ScrollPage):
         self.firmware.set_visible(_("board.field.smbios"), revision is not None)
         f(_("board.field.secureboot"), self._secure_boot(board))
         # Secure Boot is UEFI's: with a legacy BIOS there is none to read.
-        heredada = board.secure_boot is None and not (board.firmware or "").startswith("UEFI")
+        heredada = board.secure_boot is None and not board.firmware_uefi
         self.firmware.set_visible(_("board.field.secureboot"), not heredada)
         self.firmware_pie.setText(_("board.na.secureboot.legacy") if heredada else "")
         self.firmware_pie.setVisible(heredada)
@@ -346,7 +346,7 @@ class BoardPage(ScrollPage):
 
     @staticmethod
     def _subtitle(board: Board) -> str:
-        parts = [board.chipset, board.firmware,
+        parts = [board.chipset, render.firmware_type(board),
                  _(board.chassis) if board.chassis else None]
         return " · ".join(p for p in parts if p) or _("board.nofirmware")
 
@@ -358,7 +358,7 @@ class BoardPage(ScrollPage):
     def _apply_badges(self, board: Board) -> None:
         wanted = tuple(x for x in (
             board.chipset,
-            board.firmware,
+            render.firmware_type(board),
             board.tpm_version,
             _("board.field.secureboot") if board.secure_boot else None,
         ) if x)

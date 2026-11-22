@@ -126,6 +126,7 @@ class DmiBoard(Provider):
     def collect(self, draft: Draft) -> None:
         draft.capabilities.add("dmi")
         model, chipset_full, host_bridge = self._chipset(_dmi("board_name"))
+        uefi, bits = self._firmware()
 
         draft.board = Board(
             vendor=_dmi("board_vendor"),
@@ -137,7 +138,8 @@ class DmiBoard(Provider):
             bios_date=_dmi("bios_date"),
             bios_release=_dmi("bios_release"),
 
-            firmware=self._firmware(),
+            firmware_uefi=uefi,
+            firmware_bits=bits,
             secure_boot=self._secure_boot(),
             tpm_version=self._tpm(),
 
@@ -167,11 +169,12 @@ class DmiBoard(Provider):
     # -- firmware -----------------------------------------------------------
 
     @staticmethod
-    def _firmware() -> str:
+    def _firmware() -> tuple[bool, Optional[int]]:
+        """Whether it booted from UEFI, and its width."""
         if not sysroot.path(EFI).is_dir():
-            return "BIOS heredada"
+            return False, None
         bits = read_text(str(sysroot.path(EFI) / "fw_platform_size"))
-        return f"UEFI ({bits} bits)" if bits else "UEFI"
+        return True, int(bits) if bits and bits.isdigit() else None
 
     @staticmethod
     def _secure_boot() -> Optional[bool]:
