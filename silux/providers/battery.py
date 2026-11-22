@@ -36,6 +36,10 @@ STATUSES = {
 }
 
 
+def _technology(raw: Optional[str]) -> Optional[str]:
+    return None if not raw or raw.strip().lower() == "unknown" else raw.strip()
+
+
 def _is_battery(entry: pathlib.Path) -> bool:
     """The machine's battery, not the charger or a wireless mouse.
 
@@ -107,9 +111,10 @@ def _read(entry: pathlib.Path) -> Battery:
         design_voltage_v=design_volts,
         power_w=_watts(entry, volts),
         cycles=read_int(str(entry / "cycle_count")) or None,
-        manufacturer=read_text(str(entry / "manufacturer")),
-        model=read_text(str(entry / "model_name")),
-        technology=read_text(str(entry / "technology")),
+        manufacturer=read_text(str(entry / "manufacturer")) or None,
+        model=read_text(str(entry / "model_name")) or None,
+        # «Unknown» is the kernel's word for none (POWER_SUPPLY_TECHNOLOGY_UNKNOWN).
+        technology=_technology(read_text(str(entry / "technology"))),
         serial=read_text(str(entry / "serial_number")),
         charge_start_percent=read_int(
             str(entry / "charge_control_start_threshold")),

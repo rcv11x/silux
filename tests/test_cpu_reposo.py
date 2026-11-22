@@ -113,7 +113,9 @@ class TestLaResidencia(unittest.TestCase):
                          [_("cpu.idle.active"), "C1", "C2"])
         # And they are said to be the board's, not this processor's.
         self.assertEqual(render.idle_deepest(estados),
-                         _("cpu.idle.deepest.acpi").format(nombre="C2", bajo="66", alto="100"))
+                         _("cpu.idle.deepest.acpi").format(
+                             nombre="C2", tiempo=_("cpu.idle.share.range").format(
+                                 bajo="66", alto="100").capitalize()))
         # Lo que no es esa etiqueta se queda como está.
         self.assertEqual(render.idle_name("C1E"), "C1E")
         self.assertEqual(render.idle_name("C6"), "C6")

@@ -90,7 +90,9 @@ class TestElInformeDiceLoQueEnsenaLaVentana(unittest.TestCase):
                 informe = full_report.build(f)
                 if f.system.hostname and f.system.hostname not in ("equipo", "silux-pc"):
                     self.assertNotIn(f.system.hostname, informe)
-                self.assertIn("silux-pc", informe)
+                # A dump whose annex lost the hostname has none to cover.
+                if f.system.hostname:
+                    self.assertIn("silux-pc", informe)
 
     def test_las_secciones_se_eligen(self):
         from silux.i18n import _

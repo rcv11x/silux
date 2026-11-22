@@ -1,0 +1,163 @@
+{
+ "cpuid": {
+  "*:0:0": [
+   13,
+   1970169159,
+   1818588270,
+   1231384169
+  ],
+  "*:2147483648:0": [
+   2147483656,
+   0,
+   0,
+   0
+  ],
+  "0:1:0": [
+   198339,
+   1050624,
+   2147154879,
+   3219913727
+  ],
+  "0:2147483649:0": [
+   0,
+   0,
+   33,
+   739248128
+  ],
+  "0:2147483650:0": [
+   1702129225,
+   693250156,
+   1919894304,
+   1297360997
+  ],
+  "0:2147483651:0": [
+   929636393,
+   825701421,
+   542197808,
+   542462019
+  ],
+  "0:2147483652:0": [
+   775036992,
+   1212624949,
+   122,
+   0
+  ],
+  "0:7:0": [
+   0,
+   10155,
+   0,
+   0
+  ],
+  "0:7:1": [
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ "i915": {
+  "/dev/dri/renderD129": {
+   "chipset_id": 1046,
+   "eu_total": 20,
+   "subslices": 2
+  }
+ },
+ "ioctl_red": {
+  "enp4s0f1:0x8915": null,
+  "enp4s0f1:0x891b": null,
+  "lo:0x8915": "127.0.0.1",
+  "lo:0x891b": "255.0.0.0"
+ },
+ "paquetes": {
+  "egl": true,
+  "kmod": true,
+  "opencl": true,
+  "opengl": true,
+  "pci.ids": true,
+  "pkexec": true,
+  "pnp.ids": true,
+  "python3": true,
+  "systemctl": true,
+  "vaapi": true,
+  "vulkan": true,
+  "xdg-open": true
+ },
+ "pciids": {
+  "10de:1391|10de:1391:1043:178d": {
+   "10de:1391": [
+    "NVIDIA Corporation",
+    "GM107M [GeForce GTX 850M]"
+   ]
+  },
+  "10de:1391|10ec:8168|14e4:4365|8086:0416|8086:0c0c|8086:8c20|8086:8c31": {
+   "10de:1391": [
+    "NVIDIA Corporation",
+    "GM107M [GeForce GTX 850M]"
+   ],
+   "10ec:8168": [
+    "Realtek Semiconductor Co., Ltd.",
+    "RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller"
+   ],
+   "14e4:4365": [
+    "Broadcom Inc. and subsidiaries",
+    "BCM43142 802.11b/g/n"
+   ],
+   "8086:0416": [
+    "Intel Corporation",
+    "4th Gen Core Processor Integrated Graphics Controller"
+   ],
+   "8086:0c0c": [
+    "Intel Corporation",
+    "Xeon E3-1200 v3/4th Gen Core Processor HD Audio Controller"
+   ],
+   "8086:8c20": [
+    "Intel Corporation",
+    "8 Series/C220 Series Chipset High Definition Audio Controller"
+   ],
+   "8086:8c31": [
+    "Intel Corporation",
+    "8 Series/C220 Series Chipset Family USB xHCI"
+   ]
+  },
+  "10ec:8168": {
+   "10ec:8168": [
+    "Realtek Semiconductor Co., Ltd.",
+    "RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller"
+   ]
+  },
+  "8086:0416|8086:0416:1043:178d": {
+   "8086:0416": [
+    "Intel Corporation",
+    "4th Gen Core Processor Integrated Graphics Controller"
+   ]
+  },
+  "8086:0c04|8086:8c49": {
+   "8086:0c04": [
+    "Intel Corporation",
+    "Xeon E3-1200 v3/4th Gen Core Processor DRAM Controller"
+   ],
+   "8086:8c49": [
+    "Intel Corporation",
+    "HM86 Express LPC Controller"
+   ]
+  }
+ },
+ "pciids_fabricante": {
+  "1043": "ASUSTeK Computer Inc."
+ },
+ "plataforma": {
+  "kvm": true,
+  "machine": "x86_64",
+  "procesos": 250
+ },
+ "realpath": {
+  "/dev/mapper/ventoy": "/dev/mapper/ventoy",
+  "/dev/sdb1": "/dev/sdb1"
+ },
+ "statvfs": {
+  "/media/unidad3": [
+   92027281408,
+   108647153664
+  ]
+ }
+}

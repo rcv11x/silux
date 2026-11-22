@@ -11,7 +11,6 @@ checks both tables agree.
 
 from __future__ import annotations
 
-import platform
 import re
 from typing import Optional
 
@@ -44,8 +43,7 @@ def version(text: Optional[str]) -> Optional[tuple[int, int]]:
 
 def running() -> Optional[tuple[int, int]]:
     """The running kernel's version; with a dump mounted, the dumped one's."""
-    uname = sysroot.recorded("plataforma", "uname", lambda: platform.uname()._asdict())
-    return version((uname or {}).get("release"))
+    return version(sysroot.uname().get("release"))
 
 
 def too_old(key: str, current: Optional[tuple[int, int]] = None,

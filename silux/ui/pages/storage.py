@@ -378,10 +378,10 @@ class StoragePage(ScrollPage):
         libres = [p.free_bytes for x in discos for p in x.mounted_partitions
                   if p.free_bytes is not None]
         self.tile_free.update_value(render.size(sum(libres)) if libres else render.DASH)
-        if libres:
-            self.tile_free.set_detail(
-                _("storage.tile.inparts.one" if len(libres) == 1
-                  else "storage.tile.inparts").format(n=len(libres)))
+        # Also cleared: with the last mounted partition gone, its count stayed.
+        self.tile_free.set_detail(
+            _("storage.tile.inparts.one" if len(libres) == 1
+              else "storage.tile.inparts").format(n=len(libres)) if libres else "")
 
         temperaturas = [(x.temp_c, x) for x in discos if x.temp_c is not None]
         if temperaturas:

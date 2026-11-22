@@ -10,7 +10,6 @@ from __future__ import annotations
 import dataclasses
 import glob
 import os
-import platform
 import re
 import subprocess
 import time
@@ -103,11 +102,11 @@ class SystemIdentity(Provider):
 
     def collect(self, draft: Draft) -> None:
         release = _os_release()
-        uname = sysroot.recorded("plataforma", "uname", lambda: platform.uname()._asdict())
+        uname = sysroot.uname()
         environment = sysroot.recorded("plataforma", "entorno", lambda: {
             key: os.environ.get(key)
             for key in ("XDG_CURRENT_DESKTOP", "XDG_SESSION_TYPE", "SHELL",
-                        "DESKTOP_SESSION", "GDMSESSION", "WAYLAND_DISPLAY", "DISPLAY")})
+                        "DESKTOP_SESSION", "GDMSESSION", "WAYLAND_DISPLAY", "DISPLAY")}) or {}
 
         draft.capabilities.add("system")
         draft.system = System(
@@ -116,17 +115,17 @@ class SystemIdentity(Provider):
             version_id=release.get("VERSION_ID"),
             variant=release.get("VARIANT"),
 
-            kernel=f"{uname['system']} {uname['release']}",
+            kernel=" ".join(p for p in (uname.get("system"), uname.get("release")) if p) or None,
             kernel_build=on_its_own(draft, "system.kernel_build", self._kernel_build),
-            architecture=uname["machine"],
+            architecture=uname.get("machine"),
 
-            hostname=read_text("/proc/sys/kernel/hostname") or uname["node"],
+            hostname=read_text("/proc/sys/kernel/hostname") or uname.get("node"),
             init=on_its_own(draft, "system.init", self._init_system),
             desktop=desktop(environment),
             session_type=session_type(environment),
             shell=os.path.basename(environment.get("SHELL") or "") or None,
         )
-        running = kernel.version(uname["release"])
+        running = kernel.version(uname.get("release") or "")
         if running is not None and running < kernel.MINIMUM:
             # What appeared after the minimum is explained value by value;
             # below it, something could be missing without anything saying why.

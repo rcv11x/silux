@@ -131,12 +131,12 @@ class TestCapacidadSinPermisos(unittest.TestCase):
 
 
 class TestFormatosNoSoportados(unittest.TestCase):
-    def test_ddr2_se_identifica_pero_no_se_decodifica(self):
-        # DDR3, DDR4 y DDR5 sí se decodifican; lo anterior se reconoce y se dice.
+    def test_ddr_se_identifica_pero_no_se_decodifica(self):
+        # DDR2 to DDR5 are decoded; the first DDR is recognized and said.
         raw = bytearray(512)
-        raw[2] = 0x08                                  # DDR2
+        raw[2] = 0x07                                  # DDR
         info = spd.decode(bytes(raw))
-        self.assertEqual(info.dram_type, "DDR2")
+        self.assertEqual(info.dram_type, "DDR")
         self.assertFalse(info.decoded)
         self.assertIsNone(info.jedec)
 

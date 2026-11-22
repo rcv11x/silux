@@ -1525,6 +1525,13 @@ class Battery:
         return round(self.full_wh / self.design_wh * 100, 1)
 
     @property
+    def without_data(self) -> bool:
+        """Declared by the firmware with nothing in it: no capacity, charge or
+        voltage, as a battery worn out or badly seated reports itself."""
+        return (self.percent is None and not self.full_wh and not self.design_wh
+                and not self.now_wh and not self.voltage_v)
+
+    @property
     def on_charger(self) -> bool:
         """Full or held at its charge limit: it does not run on itself."""
         return self.status in ("bat.status.full", "bat.status.held", "bat.status.paused")

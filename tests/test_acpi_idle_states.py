@@ -44,7 +44,8 @@ class TestTheBoardsAcpiStates(unittest.TestCase):
     def test_they_are_said_to_be_acpis(self):
         self.assertEqual(self.estados[-1].name, "C2_ACPI")
         self.assertEqual(render.idle_deepest(self.estados),
-                         _("cpu.idle.deepest.acpi").format(nombre="C2", bajo="80", alto="80"))
+                         _("cpu.idle.deepest.acpi").format(
+                             nombre="C2", tiempo=_("cpu.idle.share.one").format(pct="80").capitalize()))
 
     def test_on_the_cpu_page(self):
         f = foto(EQUIPOS / "i7-10700f")[0]
@@ -53,13 +54,15 @@ class TestTheBoardsAcpiStates(unittest.TestCase):
             ventana.select_section("CPU")
             self.app.processEvents()
             nota = ventana.cpu_page.idle_note.text()
-        self.assertEqual(nota, _("cpu.idle.deepest.acpi").format(nombre="C2", bajo="80", alto="80"))
+        self.assertEqual(nota, _("cpu.idle.deepest.acpi").format(
+                             nombre="C2", tiempo=_("cpu.idle.share.one").format(pct="80").capitalize()))
 
     def test_a_processors_own_states_keep_their_wording(self):
         estados = (IdleState(name="C1", percent=10, low=5, high=15),
                    IdleState(name="C10", percent=80, low=70, high=90))
         self.assertEqual(render.idle_deepest(estados),
-                         _("cpu.idle.deepest").format(nombre="C10", bajo="70", alto="90"))
+                         _("cpu.idle.deepest").format(
+                             nombre="C10", tiempo=_("cpu.idle.share.range").format(bajo="70", alto="90")))
 
 
 if __name__ == "__main__":

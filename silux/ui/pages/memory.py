@@ -887,10 +887,19 @@ class MemoryPage(ScrollPage):
                 spd_reason_told = True
             else:
                 pies.append(_("memory.na.nospd").format(campos=campos))
+        no_chips_field = False
         for number, keys in undeclared:
-            pies.append(_("memory.na.undeclared").format(
-                n=number, fields=render.enumeration(
-                    [_(SPD_DECLARES[key]) for key in keys], "list.nor")))
+            # DDR2's SPD has no field for the chips' maker: not undeclared.
+            if "memory.field.chips" in keys and any(
+                    m.spd and m.spd.dram_type == "DDR2" for m in modules if m.populated):
+                keys = [k for k in keys if k != "memory.field.chips"]
+                no_chips_field = True
+            if keys:
+                pies.append(_("memory.na.undeclared").format(
+                    n=number, fields=render.enumeration(
+                        [_(SPD_DECLARES[key]) for key in keys], "list.nor")))
+        if no_chips_field:
+            pies.append(_("memory.na.ddr2.chips"))
         if sin_spd_soldada:
             lista = render.enumeration([_(SOLO_DEL_SPD[clave]) for clave in MODULE_FIELDS
                                         if clave in sin_spd_soldada])

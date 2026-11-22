@@ -1,0 +1,3 @@
+/dev/mapper/ventoy /media/unidad1 iso9660 ro,noatime,nojoliet,check=s,map=n,blocksize=2048,iocharset=utf8 0 0
+/dev/loop0 /media/unidad2 squashfs ro,noatime,errors=continue,threads=single 0 0
+/dev/sdc1 /media/unidad3 ext4 rw,nosuid,nodev,relatime,errors=remount-ro,stripe=8191 0 0

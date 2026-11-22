@@ -61,6 +61,12 @@ Con informes de Felix Lara.
 
 ### Memoria
 
+- La DDR2 se lee de su chip SPD: capacidad, velocidad, temporizaciones,
+  fabricante y fecha. Y el tipo lo dice el chip: una BIOS de la época que
+  declara DDR para módulos DDR2 ya no los llama DDR.
+- Si la BIOS da una velocidad distinta a cada módulo, el aviso dice la del
+  más lento, que es a la que van todos.
+
 - Dos módulos en dos controladores ya no se llaman los dos «Canal A»: el
   zócalo dice su controlador cuando es lo que los distingue.
 - Un voltaje que el SPD confirma ya no dice «según la BIOS».

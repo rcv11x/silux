@@ -114,4 +114,8 @@ class SpdModules(Provider):
                 break
             matches[index] = pending.pop(0)
         for index, match in matches.items():
-            draft.modules[index] = dataclasses.replace(draft.modules[index], spd=match)
+            module = draft.modules[index]
+            # The chip is the module's own word on its type: some firmware of
+            # the DDR2 years declares it DDR (0x12 for 0x13).
+            draft.modules[index] = dataclasses.replace(
+                module, spd=match, type=match.dram_type or module.type)

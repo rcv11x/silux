@@ -128,6 +128,17 @@ def recorded(space: str, key: Any, function: Callable[..., T], *args,
     return value
 
 
+def uname() -> dict:
+    """The kernel's uname, recorded with the dump; {} where it wasn't.
+
+    `os.uname()` and not `platform.uname()`, whose `processor` runs
+    `uname -p` in another process: in one report's annex the whole record
+    went missing.
+    """
+    fields = ("system", "node", "release", "version", "machine")
+    return recorded("plataforma", "uname", lambda: dict(zip(fields, os.uname()))) or {}
+
+
 def start_recording() -> None:
     global _recording
     _recording = {}

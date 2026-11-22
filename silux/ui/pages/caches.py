@@ -192,8 +192,8 @@ class CachesPage(ScrollPage):
         self.total.setText(_("caches.total").format(tam=render.size(total)))
         self.subtitle.setText(
             _("caches.subtitle").format(n=len(grouped),
-                                        nucleos=cpu.total_cores,
-                                        hilos=cpu.total_threads)
+                                        nucleos=render.cores(cpu.total_cores),
+                                        hilos=render.threads(cpu.total_threads))
         )
         etiquetas = [
             f"{self._label(level, kind, key, cpu.hybrid)} {render.size(cache.total_bytes)}"

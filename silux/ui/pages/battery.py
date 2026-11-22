@@ -92,7 +92,7 @@ class _SeccionBateria(QWidget):
         self.autonomia.reserve([_duracion(99 * 3600 + 59 * 60)])
         layout.addWidget(self.tiles)
 
-        columnas = ResponsiveRow(min_item_width=280)
+        self.columnas = columnas = ResponsiveRow(min_item_width=280)
         celda = Card(_("bat.card.cell"))
         self.celda = InfoGrid()
         for campo in CELDA:
@@ -114,6 +114,15 @@ class _SeccionBateria(QWidget):
 
     def apply(self, bateria: Battery) -> None:
         d = render.DASH
+        # Declared and empty: one sentence instead of a page of dashes.
+        vacia = bateria.without_data
+        self.tiles.setVisible(not vacia)
+        self.columnas.setVisible(not vacia)
+        if vacia:
+            self.title.setText(_("bat.nodata.title"))
+            self.subtitle.setText(_("bat.nodata"))
+            self.badges.set_chips([])
+            return
         self.title.setText(bateria.model or bateria.name)
         self.subtitle.setText(" · ".join(x for x in (
             bateria.manufacturer or "", _(bateria.status or "bat.status.unknown"),

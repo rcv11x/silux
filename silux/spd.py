@@ -51,11 +51,13 @@ JEP106 = pathlib.Path(__file__).parent / "db" / "jep106.json"
 
 # Sanity ranges. A value outside them means it was decoded wrong, and
 # showing nothing beats showing a made-up figure.
-PLAUSIBLE_MTS = (800, 12800)
-PLAUSIBLE_CL = (5, 80)
-# DDR3 runs at 1.35-1.5 V, DDR4 at 1.2-1.5 and DDR5 at 1.1-1.45: a profile
-# outside this was decoded wrong (one DDR4 XMP profile read as 0.81 V).
-PLAUSIBLE_V = (1.0, 1.65)
+# DDR2 starts at 400 MT/s and CL 3.
+PLAUSIBLE_MTS = (400, 12800)
+PLAUSIBLE_CL = (3, 80)
+# DDR2 runs at 1.8 V, DDR3 at 1.35-1.5, DDR4 at 1.2-1.5 and DDR5 at
+# 1.1-1.45: a profile outside this was decoded wrong (one DDR4 XMP profile
+# read as 0.81 V).
+PLAUSIBLE_V = (1.0, 1.9)
 
 
 @dataclass(frozen=True, slots=True)
@@ -304,6 +306,82 @@ def _decode_ddr3(spd: bytes, address: str, slot: int) -> SpdInfo:
         # source to check against here.
         overclock_profiles=(f"XMP {xmp}",) if xmp else (),
         voltages_v=voltages,
+        decoded=True,
+    )
+
+
+# --------------------------------------------------------------------------
+# DDR2 decoding (JEDEC 21-C, its SPD annex): times in nanoseconds, no
+# timebases, and the capacity per rank as a bit field.
+# --------------------------------------------------------------------------
+
+DDR2_MODULE_TYPES = {0x01: "RDIMM", 0x02: "UDIMM", 0x04: "SODIMM", 0x08: "Micro-DIMM",
+                     0x10: "Mini-RDIMM", 0x20: "Mini-UDIMM"}
+# Byte 31, the capacity of each rank: one bit per size, in MiB.
+DDR2_RANK_DENSITIES = {0: 1024, 1: 2048, 2: 4096, 3: 8192, 4: 16384, 5: 128, 6: 256, 7: 512}
+# The tenths of a cycle time, where four codes mean quarters and thirds.
+DDR2_TENTHS = {0xA: 0.25, 0xB: 1 / 3, 0xC: 2 / 3, 0xD: 0.75}
+
+
+class _Ddr2:
+    """The DDR2 format's offsets, by name."""
+
+    RANKS, BUS_WIDTH, BUS_WIDTH_HIGH, ECC = 5, 6, 7, 11
+    CHIP_WIDTH, TCK, CAS_LATENCIES, MODULE_TYPE = 13, 9, 18, 20
+    TRP, TRCD, TRAS, DENSITY, TRC = 27, 29, 30, 31, 41
+    VENDOR, PART_NUMBER, DATE_YEAR, DATE_WEEK = slice(64, 72), slice(73, 91), 93, 94
+
+
+def _ddr2_cycle_ns(byte: int) -> float:
+    """«0x30» is 3.0 ns, «0x3D» 3.75: whole nanoseconds and their tenths."""
+    tenths = byte & 0x0F
+    return (byte >> 4) + DDR2_TENTHS.get(tenths, tenths / 10)
+
+
+def _ddr2_vendor(codes: bytes) -> Optional[str]:
+    """The maker's code after as many 0x7F continuation codes as its bank."""
+    for bank, code in enumerate(codes):
+        if code != 0x7F:
+            return _vendor(bank, code) if code else None
+    return None
+
+
+def _decode_ddr2(spd: bytes, address: str, slot: int) -> SpdInfo:
+    d = _Ddr2
+    tck_ns = _ddr2_cycle_ns(spd[d.TCK])
+    latencies = [bit for bit in range(8) if spd[d.CAS_LATENCIES] >> bit & 1]
+    tck_ps = tck_ns * 1000
+    jedec = Timings(
+        name="JEDEC",
+        # Two transfers per cycle: a 3 ns cycle is 667 MT/s.
+        speed_mts=jedec_grade(2000 / tck_ns) if tck_ns else 0,
+        # The cycle time in byte 9 is the one at the highest latency.
+        cl=max(latencies) if latencies else None,
+        trcd=_jedec_cycles((spd[d.TRCD] >> 2) * 1000 + (spd[d.TRCD] & 3) * 250, tck_ps),
+        trp=_jedec_cycles((spd[d.TRP] >> 2) * 1000 + (spd[d.TRP] & 3) * 250, tck_ps),
+        tras=_jedec_cycles(spd[d.TRAS] * 1000, tck_ps),
+        trc=_jedec_cycles(spd[d.TRC] * 1000, tck_ps),
+        # Every DDR2 module runs at 1.8 V: SSTL 1.8 (byte 8) is the standard.
+        voltage_v=1.8,
+    )
+    ranks = (spd[d.RANKS] & 0x07) + 1
+    per_rank_mib = sum(size for bit, size in DDR2_RANK_DENSITIES.items()
+                       if spd[d.DENSITY] >> bit & 1)
+    return SpdInfo(
+        address=address,
+        slot=slot,
+        dram_type=DRAM_TYPES.get(spd[2]),
+        module_type=DDR2_MODULE_TYPES.get(spd[d.MODULE_TYPE] & 0x3F),
+        manufacturer=_ddr2_vendor(spd[d.VENDOR]),
+        part_number=_text(spd[d.PART_NUMBER]),
+        **_date(spd[d.DATE_YEAR], spd[d.DATE_WEEK]),
+        ranks=ranks,
+        device_width=spd[d.CHIP_WIDTH] or None,
+        bus_width=spd[d.BUS_WIDTH] | spd[d.BUS_WIDTH_HIGH] << 8 or None,
+        ecc_bits=8 if spd[d.ECC] & 0x02 else 0,
+        capacity_bytes=per_rank_mib * ranks * 1024**2 or None,
+        jedec=jedec if jedec.plausible else None,
+        voltages_v=(1.8,),
         decoded=True,
     )
 
@@ -679,6 +757,8 @@ def decode(spd: bytes, address: str = "", slot: int = 0) -> SpdInfo:
         return SpdInfo(address=address, slot=slot)
 
     dram = DRAM_TYPES.get(spd[2])
+    if spd[2] == 0x08:
+        return _decode_ddr2(spd, address, slot)
     if spd[2] == 0x0B and len(spd) >= 176:
         return _decode_ddr3(spd, address, slot)
     if spd[2] == 0x0C:
@@ -686,7 +766,7 @@ def decode(spd: bytes, address: str = "", slot: int = 0) -> SpdInfo:
     if spd[2] == 0x12:
         return _decode_ddr5(spd, address, slot)
 
-    # DDR2 and older have another format. The type is identified, which is
+    # DDR and older have another format. The type is identified, which is
     # something, and it's made clear the detail isn't implemented.
     return SpdInfo(address=address, slot=slot, dram_type=dram, decoded=False)
 

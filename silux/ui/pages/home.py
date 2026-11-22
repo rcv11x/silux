@@ -309,11 +309,7 @@ class HomePage(ScrollPage):
         principal = cpu.types[0]
         nucleos = sum(t.cores for t in cpu.types)
         hilos = sum(t.threads for t in cpu.types)
-        detalle = " · ".join((
-            _("home.cores.one" if nucleos == 1
-              else "home.cores.many").format(n=nucleos),
-            _("home.threads.one" if hilos == 1
-              else "home.threads.many").format(n=hilos)))
+        detalle = " · ".join((render.cores(nucleos), render.threads(hilos)))
         if principal.codename:
             detalle += f" · {principal.codename}"
 

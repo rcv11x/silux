@@ -484,10 +484,15 @@ def idle_deepest(states) -> Optional[str]:
     # (intel_idle_init_cstates_acpi), and the number is ACPI's level, not the
     # processor's C-state. «C2 is this processor's deepest», on a Comet
     # Lake that goes far deeper, was not true.
-    sentence = (_("cpu.idle.deepest.acpi") if deepest.name.endswith("_ACPI")
-             else _("cpu.idle.deepest"))
-    return sentence.format(nombre=idle_name(deepest.name), bajo=f"{deepest.low:.0f}",
-                        alto=f"{deepest.high:.0f}")
+    acpi = deepest.name.endswith("_ACPI")
+    low, high = f"{deepest.low:.0f}", f"{deepest.high:.0f}"
+    # One thread, or all alike: one figure, not «between 77 % and 77 %».
+    share = (_("cpu.idle.share.one").format(pct=low) if low == high
+             else _("cpu.idle.share.range").format(bajo=low, alto=high))
+    if acpi:
+        share = share[:1].upper() + share[1:]
+    sentence = _("cpu.idle.deepest.acpi") if acpi else _("cpu.idle.deepest")
+    return sentence.format(nombre=idle_name(deepest.name), tiempo=share)
 
 
 def power_breakdown(power: Power) -> str:
@@ -519,6 +524,16 @@ def plural(amount: int, singular: str, plural_: str) -> str:
     trust the figures, agreement is part of trusting.
     """
     return singular if amount == 1 else plural_
+
+
+def cores(n: int) -> str:
+    """«1 núcleo», «8 núcleos»."""
+    return _("home.cores.one" if n == 1 else "home.cores.many").format(n=n)
+
+
+def threads(n: int) -> str:
+    """«1 hilo», «16 hilos»."""
+    return _("home.threads.one" if n == 1 else "home.threads.many").format(n=n)
 
 
 def unique_id(raw: Optional[str]) -> Optional[str]:
@@ -1706,8 +1721,10 @@ def memory_speed_warning(modules, limit=None, chipset: bool = False) -> Optional
         return None
     ceiling = min(m.rated_mts for m in fitted)
     highest = max(m.rated_mts for m in fitted)
-    current = memory_speed(
-        max((m.configured_mts or m.speed_mts or 0) for m in fitted))
+    # One clock for all: where the firmware writes a different speed for
+    # each module, the slowest is the one the set can run at.
+    running = [m.configured_mts or m.speed_mts for m in fitted if m.configured_mts or m.speed_mts]
+    current = memory_speed(min(running)) if running else None
     if not current:
         # Without the firmware's table the speed in use isn't known, but all
         # modules run on one clock: the slowest's rating is the ceiling.

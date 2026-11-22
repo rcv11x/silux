@@ -484,9 +484,9 @@ class CpuPage(ScrollPage):
                            if primary.brand else _("cpu.unknown"))
         self.subtitle.setText(
             _("cpu.subtitle").format(
-                nucleos=cpu.total_cores, hilos=cpu.total_threads,
-                sockets=cpu.sockets,
-                s="s" if cpu.sockets > 1 else "")
+                nucleos=render.cores(cpu.total_cores), hilos=render.threads(cpu.total_threads),
+                sockets=_("cpu.sockets.one" if cpu.sockets == 1 else "cpu.sockets.many").format(
+                    n=cpu.sockets))
             + (_("cpu.subtitle.hybrid") if cpu.hybrid else "")
         )
         self._apply_badges(primary)
