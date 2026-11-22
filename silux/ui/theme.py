@@ -146,8 +146,8 @@ SPACIOUS = Metrics(
 
 NORMAL = Metrics(
     page_margin=14, section_gap=10, card_pad_h=15, card_pad_v=12, card_gap=8,
-    grid_vspace=5, grid_hspace=16, base_pt=10, small_pt=9, mono_pt=9,
-    headline_px=22, tile_value_pt=19, chart_height=30, cell_w=158, cell_h=40,
+    grid_vspace=5, grid_hspace=16, base_pt=11, small_pt=10, mono_pt=10,
+    headline_px=23, tile_value_pt=20, chart_height=30, cell_w=166, cell_h=42,
     nav_width=166, min_window_w=480, min_window_h=380,
 )
 
@@ -249,7 +249,8 @@ def value_font(size: int | None = None, bold: bool = False) -> QFont:
     """
     font = QFont()
     font.setPointSize(size if size is not None else METRICS.mono_pt)
-    font.setBold(bold)
+    # Values a step heavier than their grey labels: the figure is what's read.
+    font.setWeight(QFont.Weight.Bold if bold else QFont.Weight.DemiBold)
     # `setFeature` existe desde Qt 6.7. Sin ella las cifras son las
     # proporcionales de la tipografía, que en las del sistema ya suelen medir
     # todas lo mismo.

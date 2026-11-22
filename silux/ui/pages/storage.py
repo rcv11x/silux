@@ -436,7 +436,7 @@ class StoragePage(ScrollPage):
             self._details.clear()
             self._folds.clear()
             self._bars.clear()
-            fila = ResponsiveRow(min_item_width=320)
+            fila = ResponsiveRow(min_item_width=360)
             for disco in discos:
                 card = Card(disco.name)
                 barra = StackedBar(self._p)
