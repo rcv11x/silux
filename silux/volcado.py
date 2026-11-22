@@ -333,6 +333,19 @@ def _without_waking(sleeping: _SleepingCards | None):
         yield
 
 
+# Read while dumping, but its answer is recorded (`system_deps.present`,
+# under «paquetes»), so a dump never reads it back. On a distribution with
+# many libraries it is a few hundred kilobytes: most of a report's annex.
+RECORDED_ELSEWHERE = frozenset({"/etc/ld.so.cache"})
+
+
+def _to_copy(read_paths: set[str], sleeping: _SleepingCards) -> set[str]:
+    """What was read that goes into the dump. Copying is reading too: what's
+    on a sleeping card doesn't even pass here."""
+    return {path for path in read_paths
+            if path not in RECORDED_ELSEWHERE and not sleeping.forbidden(path)}
+
+
 def _collect(sleeping: _SleepingCards | None = None):
     """Run the real Collector, noting and recording what it asks for."""
     from silux.collector import Collector
@@ -1131,8 +1144,7 @@ def dump(name: str, base: pathlib.Path,
     sleeping = _SleepingCards()
     read_paths, listed, checked, recording = _collect(sleeping)
     read_paths |= _alternatives(read_paths) | sleeping.power_files() | _gpu_extras()
-    # Copying is reading too: what's on a sleeping card doesn't even pass here.
-    read_paths = {c for c in read_paths if not sleeping.forbidden(c)}
+    read_paths = _to_copy(read_paths, sleeping)
     checked = {c for c in checked if not sleeping.forbidden(c)}
     with tempfile.TemporaryDirectory(prefix="silux-volcado-") as tmp:
         work = pathlib.Path(tmp) / name
