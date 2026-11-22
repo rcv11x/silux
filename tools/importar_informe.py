@@ -47,6 +47,7 @@ def import_report(report: pathlib.Path, name: str, base: pathlib.Path = TARGET):
             raise SystemExit(f"{report}: {error}") from None
         if not (work / volcado.MANIFEST).is_file():
             raise SystemExit(f"{report}: el anexo no trae {volcado.MANIFEST}; no es un volcado")
+        volcado.bring_up_to_date(work)
         # Checked as what it will be: a dump of the suite.
         found = comprobar_privacidad.revisar(
             [p for p in sorted(work.rglob("*")) if p.is_file() and not p.is_symlink()], {},

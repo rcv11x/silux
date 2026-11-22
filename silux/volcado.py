@@ -585,6 +585,26 @@ def _spd_without_serial(data: bytes) -> tuple[bytes, bytes]:
     return data[:start] + bytes(end - start) + data[end:], data[start:end]
 
 
+def bring_up_to_date(folder: pathlib.Path) -> None:
+    """Do to a dump already written what the dumper does today, for an annex
+    made by an older version: zero the serial numbers it erases by position,
+    which the privacy check can't see (they're bytes, not text), and drop
+    what is recorded elsewhere."""
+    for path in RECORDED_ELSEWHERE:
+        (folder / path.lstrip("/")).unlink(missing_ok=True)
+    for top, _dirs, files in os.walk(folder):
+        for name in files:
+            path = pathlib.Path(top) / name
+            if path.is_symlink():
+                continue
+            if name == "eeprom":
+                path.write_bytes(_spd_without_serial(path.read_bytes())[0])
+            elif name == "edid":
+                path.write_bytes(_edid_without_serial(path.read_bytes()))
+            elif name == "id" and "/ata_device/" in path.as_posix():
+                path.write_text(_identify_without_serial(path.read_text(errors="replace"))[0])
+
+
 # The interfaces a tool creates in series: Docker, a bridge per network and a
 # `veth` per running container. They say how much runs on the machine and add
 # nothing to the dump: one of each family stays.

@@ -186,6 +186,34 @@ class TestImportingAReport(unittest.TestCase):
         self.assertNotIn("S4EWNX0M123456", str(caught.exception))
         self.assertFalse((self.base / "equipos").exists())
 
+    def test_a_module_serial_from_an_older_version_is_erased(self):
+        import shutil
+
+        from silux import volcado
+
+        copy = self.base / "i5-3330"
+        shutil.copytree(EQUIPOS / "i5-3330", copy, symlinks=True)
+        eeprom = next(copy.glob("sys/devices/*/*/i2c-*/*-0052/eeprom"))
+        data = bytearray(eeprom.read_bytes())
+        data[122:126] = b"\x07\x82\x70\xe4"
+        eeprom.write_bytes(bytes(data))
+        target, _photo = self.tool.import_report(
+            self._report(annex.to_text(copy)), "ddr3", self.base / "equipos")
+        imported = (target / eeprom.relative_to(copy)).read_bytes()
+        self.assertEqual(imported[122:126], bytes(4))
+        self.assertEqual(volcado._spd_without_serial(imported)[0], imported)
+
+    def test_the_loader_cache_from_an_older_version_is_left_out(self):
+        import shutil
+
+        copy = self.base / "qemu-kvm"
+        shutil.copytree(EQUIPOS / "qemu-kvm", copy, symlinks=True)
+        (copy / "etc").mkdir(exist_ok=True)
+        (copy / "etc" / "ld.so.cache").write_bytes(b"ld.so-1.7.0" + bytes(64))
+        target, _photo = self.tool.import_report(
+            self._report(annex.to_text(copy)), "otra-vm", self.base / "equipos")
+        self.assertFalse((target / "etc" / "ld.so.cache").exists())
+
     def test_without_an_annex_or_a_manifest(self):
         for block in ("", "silux-annex 1\nin /proc\nfile version = Linux\n"):
             with self.subTest(block=block[:20]), self.assertRaises(SystemExit):
