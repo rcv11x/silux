@@ -170,6 +170,9 @@ class Power:
     package_w: Optional[float] = None
     core_w: Optional[float] = None
     uncore_w: Optional[float] = None
+    # The same plane when the processor carries a GPU: on Intel's client
+    # parts the kernel's «uncore» (PP1) is the integrated GPU's.
+    graphics_w: Optional[float] = None
     dram_w: Optional[float] = None
     limit_long_w: Optional[float] = None       # PL1: the sustained one, usually the TDP
     limit_short_w: Optional[float] = None      # PL2: the peak for a few seconds

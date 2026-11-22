@@ -275,11 +275,20 @@ class RaplPower(Provider):
         if no_cores:
             draft.note("cpu.power.core_w", Need.HARDWARE,
                        _("prov.rapl.onecore"), _("prov.rapl.onecore.hint"))
+        uncore, graphics = self._rounded(totals.get("uncore_w")), None
+        integrated = next((g for g in draft.gpus
+                           if g.get("vendor") == "Intel" and g.get("integrated")), None)
+        if integrated is not None and uncore is not None:
+            # Intel's PP1 is its integrated GPU's plane: the GPU's power, the
+            # same figure on its page as here.
+            graphics, uncore = uncore, None
+            integrated["power_w"] = graphics
         draft.cpu_extra["power"] = dataclasses.replace(
             draft.cpu_extra.get("power") or Power(),
             package_w=round(totals["package_w"], 1),
             core_w=self._rounded(totals.get("core_w")),
-            uncore_w=self._rounded(totals.get("uncore_w")),
+            uncore_w=uncore,
+            graphics_w=graphics,
             dram_w=self._rounded(totals.get("dram_w")),
         )
 

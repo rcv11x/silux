@@ -545,6 +545,7 @@ def power_breakdown(power: Power) -> str:
     parts = [
         (f'{_("power.cores")} {watts(power.core_w)}', power.core_w),
         (f'{_("power.uncore")} {watts(power.uncore_w)}', power.uncore_w),
+        (f'{_("power.igpu")} {watts(power.graphics_w)}', power.graphics_w),
         (f"DRAM {watts(power.dram_w)}", power.dram_w),
     ]
     return " · ".join(text for text, value in parts if value is not None)

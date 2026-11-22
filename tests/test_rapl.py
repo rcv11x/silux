@@ -212,6 +212,52 @@ class TestAnIntelsSubzonesThroughTheHelper(unittest.TestCase):
         self.assertAlmostEqual(potencia.uncore_w, 0.25)
 
 
+    def test_with_the_processors_gpu_the_uncore_is_that_gpu(self):
+        """On Intel's client parts PP1, the kernel's «uncore», is the
+        integrated GPU's plane: Sensors called it «Uncore» while Graphics
+        read the same plane and showed another figure."""
+        from silux import render
+        from silux.providers.derived import DerivedSensors
+        from silux.i18n import _
+        proveedor = rapl.RaplPower(client=_InProcessClient())
+        draft = Draft()
+        draft.types["general"] = {"brand": "Intel(R) Celeron(R) CPU G3900 @ 2.80GHz"}
+        draft.gpus.append({"name": "HD Graphics 510", "vendor": "Intel", "integrated": True,
+                           "power_w": 0.0})
+        self._energia(**{"intel-rapl:0": 10, "intel-rapl:0:0": 5, "intel-rapl:0:1": 1,
+                         "intel-rapl:1": 20})
+        with mock.patch.object(rapl.time, "monotonic", return_value=100.0):
+            proveedor.collect(draft)
+        self._energia(**{"intel-rapl:0": 18.4, "intel-rapl:0:0": 11.5, "intel-rapl:0:1": 1.44,
+                         "intel-rapl:1": 23})
+        with mock.patch.object(rapl.time, "monotonic", return_value=101.0):
+            proveedor.collect(draft)
+        potencia = draft.cpu_extra["power"]
+        self.assertIsNone(potencia.uncore_w)
+        self.assertAlmostEqual(potencia.graphics_w, 0.44)
+        self.assertEqual(draft.gpus[0]["power_w"], potencia.graphics_w)
+        self.assertIn(_("power.igpu") + " 0.4 W", render.power_breakdown(potencia))
+        DerivedSensors().collect(draft)
+        sensor = next(s for s in draft.sensors if s.key == "rapl/graphics_w")
+        self.assertEqual(sensor.label, _("sensor.igpu"))
+        self.assertEqual(render.watts(sensor.value), render.watts(draft.gpus[0]["power_w"]))
+        self.assertFalse([s for s in draft.sensors if s.label == "Uncore"])
+
+    def test_without_one_it_stays_the_uncore(self):
+        proveedor = rapl.RaplPower(client=_InProcessClient())
+        draft = Draft()
+        draft.gpus.append({"name": "RTX 4060", "vendor": "NVIDIA", "integrated": False})
+        for momento, julios in ((100.0, 1), (101.0, 1.25)):
+            self._energia(**{"intel-rapl:0": 10 * momento / 100, "intel-rapl:0:0": 5,
+                             "intel-rapl:0:1": julios, "intel-rapl:1": 20})
+            with mock.patch.object(rapl.time, "monotonic", return_value=momento):
+                proveedor.collect(draft)
+        potencia = draft.cpu_extra["power"]
+        self.assertAlmostEqual(potencia.uncore_w, 0.25)
+        self.assertIsNone(potencia.graphics_w)
+        self.assertNotIn("power_w", draft.gpus[0])
+
+
 class TestTheHelperPacesItsCounters(unittest.TestCase):
     """Energy and busy counters at most every 100 ms, whatever the client
     asks: read at their own rate they are the Platypus side channel."""

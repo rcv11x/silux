@@ -206,6 +206,7 @@ class DerivedSensors(Provider):
             ("package_w", _("sensor.package"), 0),
             ("core_w", _("sensor.cores"), 1),
             ("uncore_w", "Uncore", 2),
+            ("graphics_w", _("sensor.igpu"), 2),
             ("dram_w", "DRAM", 3),
         )
         sensors = []
