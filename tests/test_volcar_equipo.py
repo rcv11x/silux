@@ -172,11 +172,11 @@ class TestLasDireccionesDeProc(unittest.TestCase):
         # statvfs: its path held something the text cover changes, and
         # statvfs was numbered after it. Replayed, the disk had no numbers.
         punto = f"{self.limpio.home}/discos/datos"
-        self.limpio.recording = {"statvfs": {"/": [1, 2], punto: [3, 4]}}
+        self.limpio.recording = {"statfs": {"/": [1, 2, 3, 4], punto: [5, 6, 7, 8]}}
         salida = self.limpio._mounts(f"/dev/sda2 / btrfs rw 0 0\n/dev/sdb1 {punto} ext4 rw 0 0\n")
         self.assertIn("/dev/sdb1 /media/unidad1 ext4", salida)
-        self.assertEqual(self.limpio.clean_recording()["statvfs"],
-                         {"/": [1, 2], "/media/unidad1": [3, 4]})
+        self.assertEqual(self.limpio.clean_recording()["statfs"],
+                         {"/": [1, 2, 3, 4], "/media/unidad1": [5, 6, 7, 8]})
 
 
 class TestLasFuentesAlternativas(unittest.TestCase):

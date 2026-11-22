@@ -8,6 +8,12 @@ se escribió a ciegas, y lo que queda pendiente por plataforma.
 En `tests/fixtures/equipos/`, cada uno con su `manifiesto.json`. La suite
 monta el Collector contra todos (`tests/test_equipos.py`).
 
+Lo ocupado de cada partición montada: los volcados nuevos guardan los campos
+de `statvfs` tal cual (`statfs` en `grabado.json`). Los anteriores guardaban
+la pareja ocupado y libre ya calculada, y los hechos antes del 20 de
+noviembre de 2026 cuentan como ocupado el 5 % que ext4 reserva para root: su
+«Reservado» es solo las tablas del sistema de archivos.
+
 | Volcado | Procesador | Gráfica | Notas |
 |---|---|---|---|
 | `i5-10400` | Intel Core i5-10400 (Comet Lake-S) | UHD Graphics 630 | Fedora 44, kernel 7.3; en reposo, con el turbo apagado por el gestor de energía (los 12 hilos a 2,9 GHz). Lleva `scaling_cur_freq` y el nombre de la gráfica grabado. De los puentes de Docker queda uno; una interfaz con nombre puesto a mano sale como `interfaz1`. Rehecho el 18 de noviembre con los datos nuevos (reposo, USB, sonido, vulnerabilidades, intercambio, arranque, PCIe); el volcado en reposo enciende a veces el turbo él solo, así que se repite hasta que dentro diga `no_turbo` 1 |

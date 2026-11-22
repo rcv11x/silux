@@ -996,7 +996,8 @@ class _Anonymizer:
                 self._secret(card["uuid"].removeprefix("GPU-"), "gpu_id")
         # Mount points are numbered by their real path, as in /proc/mounts:
         # covered first, a path holding the user's name became another one.
-        mounted_points = {self._mount(p): v for p, v in (self.recording.get("statvfs") or {}).items()}
+        mounted_points = {space: {self._mount(p): v for p, v in (self.recording.get(space) or {}).items()}
+                          for space in ("statvfs", "statfs")}
         clean = json.loads(self._replace_text(json.dumps(self.recording, ensure_ascii=False)))
         for card in (clean.get("nvml") or {}).get("tarjetas") or ():
             if isinstance(card, dict) and card.get("uuid"):
@@ -1007,8 +1008,9 @@ class _Anonymizer:
             if value and code == "0x8915" and not value.startswith("127."):
                 self._secret(value, "ip")
                 clean["ioctl_red"][key] = privacidad.IPV4
-        if "statvfs" in clean:
-            clean["statvfs"] = mounted_points
+        for space, points in mounted_points.items():
+            if space in clean:
+                clean[space] = points
         env = clean.get("plataforma", {}).get("uname")
         if isinstance(env, dict) and env.get("node"):
             env["node"] = privacidad.HOST_NAME

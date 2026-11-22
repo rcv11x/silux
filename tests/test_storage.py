@@ -338,6 +338,52 @@ class TestRootsReserveIsReserved(unittest.TestCase):
         self.assertEqual(sin_montar, 0)
 
 
+class TestWhatADumpKeepsOfTheUsage(unittest.TestCase):
+    """A dump kept the used and free that Silux had worked out, and kept
+    their meaning with them: the author's desktop, dumped on 18 November,
+    still counts root's 5 % as used («Reservado 96.5 GB», only the tables),
+    while the same disks live read 407 GB reserved. Now statvfs's own fields
+    are recorded, and what they mean is decided when they are read."""
+
+    FIELDS = [480431152, 251069053, 226646039, 4096]       # an ext4 of 2 TB
+
+    def test_the_fields_are_recorded_as_statvfs_gives_them(self):
+        from silux import sysroot
+        st = os.statvfs_result((4096, 4096, *self.FIELDS[:3], 0, 0, 0, 0, 255))
+        sysroot.start_recording()
+        try:
+            with mock.patch.object(storage.os, "statvfs", return_value=st):
+                usados, libres = storage._usage("/mnt/juegos")
+        finally:
+            grabado = sysroot.recorded_data()
+        self.assertEqual(grabado, {"statfs": {"/mnt/juegos": self.FIELDS}})
+        bloques, libres_raiz, disponibles, bloque = self.FIELDS
+        self.assertEqual((usados, libres),
+                         ((bloques - libres_raiz) * bloque, disponibles * bloque))
+
+    def test_a_new_dump_reads_them_as_df(self):
+        import json
+        from silux import sysroot, volcado
+        from tests.test_equipos import EQUIPOS
+        with volcado.mounted(EQUIPOS / "5800x3d") as raiz:
+            ruta = raiz / "grabado.json"
+            grabado = json.loads(ruta.read_text())
+            grabado["statfs"] = {"/media/unidad2": self.FIELDS}
+            ruta.write_text(json.dumps(grabado))
+            sysroot.forget()
+            usados, libres = storage._usage("/media/unidad2")
+            # A dump that records the fields reads only them.
+            self.assertEqual(storage._usage("/"), (None, None))
+        bloques, libres_raiz, disponibles, bloque = self.FIELDS
+        self.assertEqual(usados, (bloques - libres_raiz) * bloque)
+
+    def test_an_old_dump_keeps_its_pair(self):
+        from silux import volcado
+        from tests.test_equipos import EQUIPOS
+        with volcado.mounted(EQUIPOS / "5800x3d"):
+            self.assertEqual(storage._usage("/media/unidad2"), (1042097860608, 925748137984))
+
+
 class TestEspacioLibre(unittest.TestCase):
     """Lo que no está montado no está libre.
 

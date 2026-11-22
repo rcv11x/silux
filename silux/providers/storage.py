@@ -491,16 +491,25 @@ def _usage(mountpoint: str) -> tuple[Optional[int], Optional[int]]:
     can use (f_bavail), as `df` counts them. What ext4 keeps for root (5 %
     by default) is neither: it stays out with the tables, and `render.space`
     calls it «Reserved». Counted as used, it read as several times the data.
+
+    A dump records statvfs's own fields, so what they mean is decided when
+    they are read. Older dumps kept the pair already worked out, and those
+    before 20 November 2026 counted root's reserve as used.
     """
-    def measure() -> tuple[Optional[int], Optional[int]]:
+    def measure() -> Optional[list[int]]:
         try:
             st = os.statvfs(mountpoint)
         except OSError:
-            return None, None
-        return (st.f_blocks - st.f_bfree) * st.f_frsize, st.f_bavail * st.f_frsize
+            return None
+        return [st.f_blocks, st.f_bfree, st.f_bavail, st.f_frsize]
 
-    # With a dump, what was recorded: the mount point is another machine's.
-    return sysroot.recorded("statvfs", mountpoint, measure) or (None, None)
+    if sysroot.active() and not sysroot.did_record("statfs"):
+        return sysroot.recorded("statvfs", mountpoint, measure) or (None, None)
+    fields = sysroot.recorded("statfs", mountpoint, measure)
+    if not fields:
+        return None, None
+    blocks, free_blocks, available, block = fields
+    return (blocks - free_blocks) * block, available * block
 
 
 def _supports_discard(base: pathlib.Path) -> Optional[bool]:
