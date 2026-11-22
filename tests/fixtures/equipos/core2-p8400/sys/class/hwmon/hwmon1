@@ -1,1 +1,1 @@
-../../devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0003:00/power_supply/AC/hwmon1
+../../devices/virtual/thermal/thermal_zone0/hwmon1

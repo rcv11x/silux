@@ -62,8 +62,13 @@ la memoria) no va: está propuesto en las notas
     M471A1K43BB1-CRC, sin SPD en el bus) es casi seguro la memoria soldada,
     pero la tabla del firmware lo llama SODIMM en «ChannelA-DIMM0» y la regla
     de lo soldado no lo ve. Hace falta su tabla SMBIOS para decidir con qué.
-  - Memoria · baja · el i5-5200U registra el chip SPD de uno solo de sus dos
-    módulos: el otro no aparece en el bus i2c.
+  - Memoria · media · con el ayudante · el Acer y el Vostro registran el chip
+    SPD de uno solo de sus dos módulos. Es el kernel: `i2c_register_spd`
+    prueba solo de 0x50 a 0x50 + zócalos − 1, y con dos zócalos el segundo
+    módulo, que en estas placas suele ir en 0x52, no se busca (igual en el
+    master del kernel). Registrarlo (`new_device`) es escribir en sysfs como
+    root: propuesta para el ayudante, sin escribir. Confirmarlo antes con
+    `dmesg | grep -i spd` en uno de los dos.
   - Almacenamiento · media · los atributos SMART estándar de un WD
     (3, 4, 7, 10, 11, 183, 184, 190-193, 196, 200) salen como «propio del
     fabricante»: tienen nombre por defecto en smartmontools (`ata_get_attr_name`).
@@ -77,9 +82,10 @@ la memoria) no va: está propuesto en las notas
   - Volcados · baja · `PrivilegedState.supported` mira el pkexec del equipo
     que pasa la suite, no el del volcado: el del P8400 ofrece «dar permisos»
     en los tests aunque en su equipo no haya pkexec.
-  - Volcados · baja · el anexo de un informe puede llegar sin `uname` (el del
-    `i7-4710hq`): el volcado se queda sin versión del kernel ni nombre del
-    equipo, que `/proc/sys/kernel/osrelease` y `hostname` darían.
+  - Volcados · baja · el anexo de un informe puede llegar sin `uname`: el
+    volcado se queda sin versión del kernel ni nombre del equipo, que
+    `/proc/sys/kernel/osrelease` y `hostname` darían. Ningún volcado lo
+    enseña ya (el `i7-4710hq` se rehízo con la prueba9).
 
 * **Del T14 del autor** (volcado `i5-1135g7`):
   - Gráficos · media · el pico de 1336648637.3 W en la gráfica del consumo
@@ -123,6 +129,45 @@ la memoria) no va: está propuesto en las notas
   - Red · baja · con la tarjeta Wi-Fi USB sin modelo, el pie dice «El kernel
     no publica modelo»: el modelo de una USB no lo publica el kernel, sale de
     `usb.ids` o de la tarjeta.
+* **De los informes de la prueba9** (volcados `i5-5200u`, `i7-4710hq`,
+  `celeron-560`, `i5-8350u` y `core2-p8400`, rehechos; el informe del E6400
+  con Mint en sesión live es el mismo equipo y no se vuelca):
+  - Memoria · media · con el ayudante · el módulo sin SPD enseña de la BIOS
+    lo que contradice al que se leyó de su chip: en el Vostro, «DDR» y
+    «DIMM» al lado de un DDR2 SODIMM, y «Funcionando a: 800 MT/s» bajo el
+    aviso de que todos van a 667; en el Acer, «DDR3» al lado de un DDR3L. La
+    cabecera los suma («DDR · DDR2 · 667 MT/s · 800 MT/s»). Una placa no
+    mezcla generaciones: el tipo de la BIOS que contradice a un módulo leído
+    de su chip no se enseña, y la velocidad de funcionamiento tampoco si
+    contradice la del conjunto.
+  - Memoria · baja · con el ayudante · la fila «Rangos» de un módulo solo mira
+    la tabla SMBIOS (`ui/pages/memory.py`): con una que no trae rangos sale
+    guion aunque el SPD diga 2. El resumen de arriba ya cae al SPD.
+  - Memoria · baja · con el ayudante · «Hynix/Hyundai», como lo escribe la BIOS
+    del Acer, no pasa por `render.maker`: el otro módulo del mismo
+    fabricante sale «SK Hynix».
+  - Batería · media · la del Vostro da ahora `voltage_now` = 20.48 V en una
+    batería de 14.8 V nominales (imposible), `charge_now` = 0 sin capacidad,
+    el modelo vacío y «Not charging». Antes salía «Batería sin datos»; ahora
+    sale su ficha con «Modelo: » vacío, «Carga: — (0.0 Wh)» y los 20.48 V.
+    La tensión imposible se descarta, y sin capacidad ni carga vuelve a ser
+    «sin datos».
+  - Gráficos · media · con la GeForce GTX 850M en reposo (nouveau), su ficha
+    son 35 filas con guion; la RTX del LOQ en reposo no tiene ninguna. Y la
+    HD 4600 dice «Ni Vulkan ni OpenGL usan esta tarjeta» y «Sin bibliotecas
+    gráficas» sin haberles preguntado: se espera a que despierte la GeForce.
+    OpenGL abre solo la gráfica de la pantalla; medir si `glxinfo` o EGL
+    despiertan a la dormida (`power/runtime_status`) y, si no, preguntarle
+    ya.
+  - Gráficos · baja · la nota de la tarjeta en reposo lleva el encabezado
+    «Este equipo no lo expone»: duerme, no es que no lo tenga.
+  - Sistema · baja · el aviso del kernel anterior a 5.15 sale con el
+    encabezado «Kernel anterior al dato», pensado para un dato concreto. En
+    el E6400, con 5.10 y con 6.14 sale lo mismo salvo lo que va por permisos
+    y por paquetes.
+  - Memoria · baja · un zram con 0 B dentro dice «comprime 55.4 a 1».
+  - Memoria · baja · el E6400 (ICH9M, DDR2) no registra ningún SPD, ni con
+    5.10 ni con 6.14: `dmesg | grep -i spd` diría por qué.
 * **Del portátil Lenovo LOQ 15IRH8** (volcado `i5-12450h`, de la prueba5):
   - Gráficos · baja · Mesa rechaza la UHD en Vulkan («Vulkan requires
     context isolation»), y desde la prueba6 la fila de Vulkan lo dice con

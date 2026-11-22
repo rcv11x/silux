@@ -55,6 +55,15 @@
    0
   ]
  },
+ "drm_modes": {
+  "card1": {
+   "eDP-1": {
+    "height": 768,
+    "refresh_hz": 59.97,
+    "width": 1366
+   }
+  }
+ },
  "gpuapi": {
   "consultar": {
    "opencl": [],
@@ -164,8 +173,8 @@
   "enp2s0f1:0x891b": null,
   "lo:0x8915": "127.0.0.1",
   "lo:0x891b": "255.0.0.0",
-  "veth50fcccb:0x8915": null,
-  "veth50fcccb:0x891b": null,
+  "veth87c829f:0x8915": null,
+  "veth87c829f:0x891b": null,
   "wlp3s0:0x8915": "192.168.1.120",
   "wlp3s0:0x891b": "255.255.255.0"
  },
@@ -258,17 +267,20 @@
  },
  "plataforma": {
   "entorno": {
+   "DESKTOP_SESSION": "xubuntu",
+   "DISPLAY": ":0.0",
+   "GDMSESSION": "xubuntu",
    "SHELL": "/usr/bin/zsh",
+   "WAYLAND_DISPLAY": null,
    "XDG_CURRENT_DESKTOP": "XFCE",
    "XDG_SESSION_TYPE": "x11"
   },
   "kvm": true,
   "machine": "x86_64",
-  "procesos": 229,
+  "procesos": 257,
   "uname": {
    "machine": "x86_64",
    "node": "silux-pc",
-   "processor": "x86_64",
    "release": "7.0.0-43-generic",
    "system": "Linux",
    "version": "#43~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC Sat Oct 31 06:52:47 UTC 2"
@@ -279,25 +291,31 @@
   "/dev/sda3": "/dev/sda3",
   "/dev/sdb1": "/dev/sdb1"
  },
- "statvfs": {
+ "statfs": {
   "/": [
-   231913406464,
-   253683433472
+   118891265,
+   62274293,
+   61936188,
+   4096
   ],
   "/boot/efi": [
-   6438912,
-   1118556160
+   274657,
+   273085,
+   273085,
+   4096
   ],
   "/media/unidad21": [
-   7251263488,
-   717422592
+   51633842,
+   29166083,
+   26525023,
+   4096
   ]
  },
  "systemd": {
   "arranque": {
-   "FinishTimestampMonotonic": 110284754,
+   "FinishTimestampMonotonic": 88242387,
    "InitRDTimestampMonotonic": 0,
-   "UserspaceTimestampMonotonic": 14044357
+   "UserspaceTimestampMonotonic": 14496687
   }
  }
 }

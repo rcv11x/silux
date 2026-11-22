@@ -61,6 +61,15 @@
    0
   ]
  },
+ "drm_modes": {
+  "card1": {
+   "eDP-1": {
+    "height": 1080,
+    "refresh_hz": 60.01,
+    "width": 1920
+   }
+  }
+ },
  "gpuapi": {
   "consultar": {
    "opencl": [],
@@ -144,7 +153,7 @@
     {
      "api_version": "1.4.318",
      "device_id": 22807,
-     "device_memory_bytes": 12374406144,
+     "device_memory_bytes": 12374409216,
      "driver_version": 104865800,
      "instance_version": "1.3.275",
      "kind": "integrada",
@@ -154,7 +163,7 @@
     {
      "api_version": "1.4.318",
      "device_id": 0,
-     "device_memory_bytes": 16499208192,
+     "device_memory_bytes": 16499212288,
      "driver_version": 104865800,
      "instance_version": "1.3.275",
      "kind": "CPU",
@@ -192,8 +201,8 @@
   "enp0s31f6:0x891b": null,
   "lo:0x8915": "127.0.0.1",
   "lo:0x891b": "255.0.0.0",
-  "veth02dfec0:0x8915": null,
-  "veth02dfec0:0x891b": null,
+  "veth04999d2:0x8915": null,
+  "veth04999d2:0x891b": null,
   "virbr0:0x8915": "192.168.1.120",
   "virbr0:0x891b": "255.255.255.0",
   "wlp61s0:0x8915": "192.168.1.120",
@@ -284,17 +293,20 @@
  },
  "plataforma": {
   "entorno": {
+   "DESKTOP_SESSION": "bspwm",
+   "DISPLAY": ":0.0",
+   "GDMSESSION": "bspwm",
    "SHELL": "/usr/bin/zsh",
+   "WAYLAND_DISPLAY": null,
    "XDG_CURRENT_DESKTOP": null,
    "XDG_SESSION_TYPE": "x11"
   },
   "kvm": true,
   "machine": "x86_64",
-  "procesos": 520,
+  "procesos": 516,
   "uname": {
    "machine": "x86_64",
    "node": "silux-pc",
-   "processor": "x86_64",
    "release": "7.0.0-43-generic",
    "system": "Linux",
    "version": "#43~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC Sat Oct 31 06:52:47 UTC 2"
@@ -302,28 +314,27 @@
  },
  "realpath": {
   "/dev/sda1": "/dev/sda1",
-  "/dev/sda2": "/dev/sda2",
-  "/dev/sdc1": "/dev/sdc1"
+  "/dev/sda2": "/dev/sda2"
  },
- "statvfs": {
+ "statfs": {
   "/": [
-   215380426752,
-   13930987520
+   58471424,
+   6175548,
+   3633524,
+   4096
   ],
   "/boot/efi": [
-   6438912,
-   505290752
-  ],
-  "/media/unidad15": [
-   7251820544,
-   716865536
+   124934,
+   123362,
+   123362,
+   4096
   ]
  },
  "systemd": {
   "arranque": {
-   "FinishTimestampMonotonic": 24261977,
+   "FinishTimestampMonotonic": 30788071,
    "InitRDTimestampMonotonic": 0,
-   "UserspaceTimestampMonotonic": 4162584
+   "UserspaceTimestampMonotonic": 4097773
   }
  }
 }

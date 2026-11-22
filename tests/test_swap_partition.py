@@ -6,7 +6,6 @@ The kernel lists it in /proc/swaps; it is never in the mount table.
 import unittest
 
 from silux import render
-from silux.i18n import _
 from tests import pantalla, qt
 from tests.test_equipos import EQUIPOS, foto
 
@@ -31,13 +30,26 @@ class TestTheBar(unittest.TestCase):
         self.assertEqual(render.space(self.snapshot.disks, swaps)[3], 0)
 
     def test_on_the_pages(self):
+        from silux.ui.widgets import StackedBar
+
+        # Another disk may have space of its own outside any partition: what
+        # is shown as unmounted is only that.
+        swaps = self.snapshot.system.swaps
+        others = tuple(d for d in self.snapshot.disks if d.name != "sda")
+        sda = next(d for d in self.snapshot.disks if d.name == "sda")
+        swap = next(p for p in sda.partitions if p.name == "sda2")
+        unmounted = render.space(self.snapshot.disks, swaps)[4]
+        self.assertLess(unmounted, render.space(others, swaps)[4] + swap.size_bytes)
         with pantalla.Ventana(self.snapshot) as window:
             for section in ("Inicio", "Almacenamiento"):
                 window.select_section(section)
-                text = " ".join(pantalla.textos_de(window.stack.currentWidget()))
+                segments = [seg for bar in window.stack.currentWidget().findChildren(StackedBar)
+                            for seg in bar._segments]
                 with self.subTest(section):
-                    self.assertIn(_("storage.bar.swap"), text)
-                    self.assertNotIn(_("storage.bar.unmounted"), text)
+                    self.assertIn("swap", {seg.key for seg in segments})
+                    self.assertLessEqual(
+                        {seg.value for seg in segments if seg.key == "unmounted"},
+                        {unmounted} | {render.space((d,), swaps)[4] for d in others})
 
 
 if __name__ == "__main__":

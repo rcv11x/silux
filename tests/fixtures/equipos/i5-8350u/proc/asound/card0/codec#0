@@ -22,7 +22,7 @@ Node 0x02 [Audio Output] wcaps 0x41d: Stereo Amp-Out
   Control: name="Speaker Playback Volume", index=0, device=0
     ControlAmp: chs=3, dir=Out, idx=0, ofs=0
   Amp-Out caps: ofs=0x57, nsteps=0x57, stepsize=0x02, mute=0
-  Amp-Out vals:  [0x4e 0x4e]
+  Amp-Out vals:  [0x00 0x00]
   Converter: stream=0, channel=0
   PCM:
     rates [0x60]: 44100 48000
@@ -35,7 +35,7 @@ Node 0x03 [Audio Output] wcaps 0x41d: Stereo Amp-Out
     ControlAmp: chs=3, dir=Out, idx=0, ofs=0
   Device: name="ALC257 Analog", type="Audio", device=0
   Amp-Out caps: ofs=0x57, nsteps=0x57, stepsize=0x02, mute=0
-  Amp-Out vals:  [0x00 0x00]
+  Amp-Out vals:  [0x3c 0x3c]
   Converter: stream=0, channel=0
   PCM:
     rates [0x60]: 44100 48000
@@ -76,7 +76,7 @@ Node 0x08 [Audio Input] wcaps 0x10051b: Stereo Amp-In
     ControlAmp: chs=3, dir=In, idx=0, ofs=0
   Device: name="ALC257 Analog", type="Audio", device=0
   Amp-In caps: ofs=0x17, nsteps=0x3f, stepsize=0x02, mute=1
-  Amp-In vals:  [0x33 0x33]
+  Amp-In vals:  [0x3f 0x3f]
   Converter: stream=0, channel=0
   SDI-Select: 0
   PCM:
@@ -135,7 +135,7 @@ Node 0x14 [Pin Complex] wcaps 0x40058d: Stereo Amp-Out
   Control: name="Speaker Playback Switch", index=0, device=0
     ControlAmp: chs=3, dir=Out, idx=0, ofs=0
   Amp-Out caps: ofs=0x00, nsteps=0x00, stepsize=0x00, mute=1
-  Amp-Out vals:  [0x00 0x00]
+  Amp-Out vals:  [0x80 0x80]
   Pincap 0x00010014: OUT EAPD Detect
   EAPD 0x2: EAPD
   Pin Default 0x90170110: [Fixed] Speaker at Int N/A
@@ -168,7 +168,7 @@ Node 0x19 [Pin Complex] wcaps 0x40048b: Stereo Amp-In
   Control: name="Mic Boost Volume", index=0, device=0
     ControlAmp: chs=3, dir=In, idx=0, ofs=0
   Amp-In caps: ofs=0x00, nsteps=0x03, stepsize=0x27, mute=0
-  Amp-In vals:  [0x00 0x00]
+  Amp-In vals:  [0x01 0x01]
   Pincap 0x00003724: IN Detect
     Vref caps: HIZ 50 GRD 80 100
   Pin Default 0x04a11030: [Jack] Mic at Ext Right
@@ -238,7 +238,7 @@ Node 0x21 [Pin Complex] wcaps 0x40058d: Stereo Amp-Out
   Control: name="Headphone Playback Switch", index=0, device=0
     ControlAmp: chs=3, dir=Out, idx=0, ofs=0
   Amp-Out caps: ofs=0x00, nsteps=0x00, stepsize=0x00, mute=1
-  Amp-Out vals:  [0x80 0x80]
+  Amp-Out vals:  [0x00 0x00]
   Pincap 0x0001001c: OUT HP EAPD Detect
   EAPD 0x2: EAPD
   Pin Default 0x0421101f: [Jack] HP Out at Ext Right
@@ -257,7 +257,7 @@ Node 0x22 [Audio Mixer] wcaps 0x20010b: Stereo Amp-In
      0x18 0x19 0x1a 0x1b 0x1d 0x13
 Node 0x23 [Audio Mixer] wcaps 0x20010b: Stereo Amp-In
   Amp-In caps: ofs=0x00, nsteps=0x00, stepsize=0x00, mute=1
-  Amp-In vals:  [0x80 0x80] [0x80 0x80] [0x80 0x80] [0x80 0x80] [0x80 0x80] [0x00 0x00]
+  Amp-In vals:  [0x80 0x80] [0x00 0x00] [0x80 0x80] [0x80 0x80] [0x80 0x80] [0x80 0x80]
   Connection: 6
      0x18 0x19 0x1a 0x1b 0x1d 0x12
 Node 0x24 [Audio Selector] wcaps 0x300101: Stereo

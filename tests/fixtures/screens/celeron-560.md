@@ -1,14 +1,14 @@
 ## Inicio
 
 Dell Vostro A840
-Linux Mint 22.3 · Linux 6.14.0-37-generic · XFCE · x11 · encendido 13 min
+Linux Mint 22.3 · Linux 6.14.0-37-generic · XFCE · x11 · encendido 5 min
 silux-pc
 
 ### Procesador
 
 Intel Celeron 560
 1 núcleo · 1 hilo
-1.63 GHz 67.0 °C
+1.63 GHz 70.0 °C
 
 ### Gráfica
 
@@ -18,9 +18,9 @@ El uso y el consumo, con permisos.
 
 ### Memoria
 
-1003.6 MiB de 1.9 GiB
-51 % ocupada
-Aplicaciones 850.0 MiB · Caché 988.8 MiB · Buffers 8.3 MiB · Libre 108.4 MiB
+1.0 GiB de 1.9 GiB
+55 % ocupada
+Aplicaciones 918.1 MiB · Caché 936.6 MiB · Buffers 2.7 MiB · Libre 98.2 MiB
 
 ### Almacenamiento
 
@@ -31,7 +31,7 @@ Ocupado 92.0 GB · Libre 109 GB · Reservado 15.3 GB · Sin montar 192 GB
 
 ### Temperaturas
 
-Procesador 67.0 °C
+Procesador 70.0 °C
 lo más caliente ahora
 Esta gráfica no tiene sensor de temperatura propio.
 
@@ -57,11 +57,11 @@ Intel Celeron 560
 x86_64
 - Frecuencia: 1.63 GHz
 - Uso: —
-- Temperatura: 67 °C
+- Temperatura: 70 °C
 
 ### Núcleos lógicos
 
-- CPU 0: 1.63 GHz  67°
+- CPU 0: 1.63 GHz  70°
 
 ### Potencia y reposo
 
@@ -215,19 +215,19 @@ El nombre de cada ranura («PCIEX16», «M2A_CPU») está en la tabla del firmwa
 1.9 GiB utilizables
 1 módulo leído de su chip SPD, catalogado a 667 MT/s · el resto, sin chip SPD, se sabe con permisos
 DDR2 · 667 MT/s
-Aplicaciones 850.0 MiB · Caché 988.8 MiB · Buffers 8.3 MiB · Libre 108.4 MiB
-Disponible 952.0 MiB · sin intercambio
+Aplicaciones 918.1 MiB · Caché 936.6 MiB · Buffers 2.7 MiB · Libre 98.2 MiB
+Disponible 884.3 MiB · sin intercambio
 
 #### Desglose del uso
 
 - Total: 1.9 GiB
-- Usada: 1003.6 MiB (51 %)
-- Disponible: 952.0 MiB
-- Aplicaciones: 850.0 MiB
-- Caché: 988.8 MiB
-- Buffers: 8.3 MiB
-- Compartida: 165.3 MiB
-- Libre: 108.4 MiB
+- Usada: 1.0 GiB (55 %)
+- Disponible: 884.3 MiB
+- Aplicaciones: 918.1 MiB
+- Caché: 936.6 MiB
+- Buffers: 2.7 MiB
+- Compartida: 169.7 MiB
+- Libre: 98.2 MiB
 - Intercambio: sin swap
 
 En este equipo la memoria la controla el chipset de la placa, no el procesador: hasta qué velocidad llega lo decide la placa.
@@ -338,7 +338,6 @@ Una integrada no tiene reguladores de voltaje, ventilador, SoC aparte ni memoria
 | LVDS-1 | Seiko Epson | 1280 × 800 | 60 Hz | 14.1" | — | 2008 |
 
 1 salida libre: VGA-1
-La resolución de LVDS-1 es la preferida del monitor: no se ha podido preguntar cuál tiene puesta.
 
 ## Almacenamiento
 
@@ -467,7 +466,7 @@ Ninguna interfaz tiene salida a la red.
 
 | INTERFAZ | BAJANDO | SUBIENDO | RECIBIDO | ENVIADO | PAQUETES | DESCARTADOS |
 |---|---|---|---|---|---|---|
-| lo | 0 B/s | 0 B/s | 304 kB | 304 kB | 8 534 | 0 |
+| lo | 0 B/s | 0 B/s | 111 kB | 111 kB | 3 088 | 0 |
 
 ### lo
 
@@ -510,13 +509,28 @@ Este equipo no tiene adaptador Bluetooth.
 
 ## Batería
 
-Batería sin datos
-El firmware declara una batería, pero no da su capacidad, su carga ni su tensión.
+
+SMP · Retenida en el tope
+Li-ion
+- Salud: —
+- Carga: — (0.0 Wh)
+- Potencia: 0.0 W (Retenida en el tope)
+- Autonomía: con el cargador
+
+### La celda
+
+- Fabricante: SMP
+- Modelo: 
+- Tecnología: Li-ion
+- Tensión: 20.48 V
+- Tensión nominal: 14.80 V
+- Capacidad: —
+- Capacidad de diseño: —
 
 ## Sistema
 
 Linux Mint 22.3
-silux-pc · encendido 13 min
+silux-pc · encendido 5 min
 Linux 6.14.0-37-generic · XFCE · x11
 
 ### Sistema operativo
@@ -543,10 +557,10 @@ Esta distribución no declara variante.
 ### Actividad
 
 - Encendido desde: (hora de arranque)
-- Tiempo encendido: 13 min
-- Procesos: 179
-- Hilos: 439
-- Archivos abiertos: 1 984
+- Tiempo encendido: 5 min
+- Procesos: 183
+- Hilos: 441
+- Archivos abiertos: 1 952
 
 ### Vulnerabilidades del procesador
 
@@ -573,8 +587,8 @@ Esta distribución no declara variante.
 
 ### Arranque
 
-- Kernel: 32.0 s
-- Espacio de usuario: 255.3 s
+- Kernel: 32.1 s
+- Espacio de usuario: 290.3 s
 - Línea de arranque: BOOT_IMAGE=/casper/vmlinuz boot=casper initrd=/casper/initrd.lz uuid=… username=mint hostname=… quiet splash --
 
 Falta cuánto tardan el firmware y el cargador: ni el gestor de arranque ni el firmware lo publican.
@@ -591,25 +605,25 @@ SENSORES · 10 en 5 dispositivos
 *Sensor · Actual · Mín · Máx · Media*
 - Intel Celeron 560
   - Temperaturas
-    - Núcleo 0 · 67.0 °C · 67.0 · 67.0 · 67.0
+    - Núcleo 0 · 70.0 °C · 70.0 · 70.0 · 70.0
   - Relojes
-    - CPU 0 · 1625.6 MHz · 1625.6 · 1625.6 · 1625.6
+    - CPU 0 · 1630.1 MHz · 1630.1 · 1630.1 · 1630.1
 - Dell Vostro A840
   - Temperaturas
-    - Temperatura 1 · 67.5 °C · 67.5 · 67.5 · 67.5
+    - Temperatura 1 · 70.5 °C · 70.5 · 70.5 · 70.5
 - dell_smm
   - Temperaturas
-    - CPU (dell_smm) · 67.0 °C · 67.0 · 67.0 · 67.0
-    - CPU (dell_smm) · 60.0 °C · 60.0 · 60.0 · 60.0
-    - Other (dell_smm) · 47.0 °C · 47.0 · 47.0 · 47.0
+    - CPU (dell_smm) · 70.0 °C · 70.0 · 70.0 · 70.0
+    - CPU (dell_smm) · 63.0 °C · 63.0 · 63.0 · 63.0
+    - Other (dell_smm) · 43.0 °C · 43.0 · 43.0 · 43.0
   - Ventiladores
-    - Processor Fan · 3939 RPM · 3939 · 3939 · 3939
+    - Processor Fan · 4699 RPM · 4699 · 4699 · 4699
 - Memoria
   - Uso
-    - RAM usada · 51.3 % · 51.3 · 51.3 · 51.3
+    - RAM usada · 54.8 % · 54.8 · 54.8 · 54.8
 - Batería
   - Voltajes
-    - Tensión · 0.000 V · 0.000 · 0.000 · 0.000
+    - Tensión · 20.481 V · 20.481 · 20.481 · 20.481
   - Corrientes
     - Corriente · 0.00 A · 0.00 · 0.00 · 0.00
 

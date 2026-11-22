@@ -68,13 +68,12 @@ Node 0x06 [Pin Complex] wcaps 0x40778d: 8-Channels Digital Amp-Out CP
   Pin Default 0x18560010: [Jack] Digital Out at Int HDMI
     Conn = Digital, Color = Unknown
     DefAssociation = 0x1, Sequence = 0x0
-  Pin-ctls: 0x40: OUT
+  Pin-ctls: 0x00:
   Unsolicited: tag=00, enabled=0
   Power states:  D0 D3 EPSS
   Power: setting=D0, actual=D0
   Devices: 0
-  Connection: 3
-     0x02* 0x03 0x04
+  Connection: 0
 Node 0x07 [Pin Complex] wcaps 0x40778d: 8-Channels Digital Amp-Out CP
   Amp-Out caps: ofs=0x00, nsteps=0x00, stepsize=0x00, mute=1
   Amp-Out vals:  [0x00 0x00]

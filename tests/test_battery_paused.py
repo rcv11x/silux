@@ -20,8 +20,9 @@ class TestBetweenItsThresholds(unittest.TestCase):
 
     def test_the_status(self):
         battery = self.snapshot.batteries[0]
-        self.assertEqual((battery.percent, battery.charge_start_percent,
-                          battery.charge_end_percent), (70.0, 65, 80))
+        self.assertEqual((battery.charge_start_percent, battery.charge_end_percent),
+                         (65, 80))
+        self.assertTrue(65 < battery.percent < 80, battery.percent)
         self.assertEqual(battery.status, "bat.status.paused")
         self.assertTrue(battery.on_charger)
 

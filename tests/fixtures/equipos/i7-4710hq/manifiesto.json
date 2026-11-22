@@ -554,7 +554,7 @@
   "NVML: abrirla despierta la NVIDIA dormida"
  ],
  "cpu": "Intel(R) Core(TM) i7-4710HQ CPU @ 2.50GHz",
- "kernel": null,
+ "kernel": "Linux 6.14.0-37-generic",
  "gpus": [
   "GeForce GTX 850M",
   "HD Graphics 4600"

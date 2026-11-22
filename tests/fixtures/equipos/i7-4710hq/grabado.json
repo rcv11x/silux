@@ -55,6 +55,15 @@
    0
   ]
  },
+ "drm_modes": {
+  "card2": {
+   "eDP-1": {
+    "height": 1080,
+    "refresh_hz": 60.0,
+    "width": 1920
+   }
+  }
+ },
  "i915": {
   "/dev/dri/renderD129": {
    "chipset_id": 1046,
@@ -146,18 +155,36 @@
   "1043": "ASUSTeK Computer Inc."
  },
  "plataforma": {
+  "entorno": {
+   "DESKTOP_SESSION": "xfce",
+   "DISPLAY": ":0.0",
+   "GDMSESSION": "xfce",
+   "SHELL": "/bin/bash",
+   "WAYLAND_DISPLAY": null,
+   "XDG_CURRENT_DESKTOP": "XFCE",
+   "XDG_SESSION_TYPE": "x11"
+  },
   "kvm": true,
   "machine": "x86_64",
-  "procesos": 250
+  "procesos": 249,
+  "uname": {
+   "machine": "x86_64",
+   "node": "silux-pc",
+   "release": "6.14.0-37-generic",
+   "system": "Linux",
+   "version": "#37~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC Thu Nov 20 10:25:38 UTC 2"
+  }
  },
  "realpath": {
   "/dev/mapper/ventoy": "/dev/mapper/ventoy",
   "/dev/sdb1": "/dev/sdb1"
  },
- "statvfs": {
+ "statfs": {
   "/media/unidad3": [
-   92027281408,
-   108647153664
+   51633842,
+   29166211,
+   26525151,
+   4096
   ]
  }
 }

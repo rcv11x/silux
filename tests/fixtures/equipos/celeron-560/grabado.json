@@ -55,6 +55,15 @@
    0
   ]
  },
+ "drm_modes": {
+  "card0": {
+   "LVDS-1": {
+    "height": 800,
+    "refresh_hz": 60.0,
+    "width": 1280
+   }
+  }
+ },
  "gpuapi": {
   "consultar": {
    "opencl": [],
@@ -71,7 +80,7 @@
     {
      "api_version": "1.4.305",
      "device_id": 0,
-     "device_memory_bytes": 2050527232,
+     "device_memory_bytes": 2050523136,
      "driver_version": 1,
      "instance_version": "1.3.275",
      "kind": "CPU",
@@ -211,16 +220,19 @@
  },
  "plataforma": {
   "entorno": {
+   "DESKTOP_SESSION": "xfce",
+   "DISPLAY": ":0.0",
+   "GDMSESSION": "xfce",
    "SHELL": "/bin/bash",
+   "WAYLAND_DISPLAY": null,
    "XDG_CURRENT_DESKTOP": "XFCE",
    "XDG_SESSION_TYPE": "x11"
   },
   "machine": "x86_64",
-  "procesos": 179,
+  "procesos": 183,
   "uname": {
    "machine": "x86_64",
    "node": "silux-pc",
-   "processor": "x86_64",
    "release": "6.14.0-37-generic",
    "system": "Linux",
    "version": "#37~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC Thu Nov 20 10:25:38 UTC 2"
@@ -230,17 +242,19 @@
   "/dev/mapper/ventoy": "/dev/mapper/ventoy",
   "/dev/sdc1": "/dev/sdc1"
  },
- "statvfs": {
+ "statfs": {
   "/media/unidad3": [
-   92026810368,
-   108647624704
+   51633842,
+   29166111,
+   26525051,
+   4096
   ]
  },
  "systemd": {
   "arranque": {
-   "FinishTimestampMonotonic": 287251804,
+   "FinishTimestampMonotonic": 322404101,
    "InitRDTimestampMonotonic": 0,
-   "UserspaceTimestampMonotonic": 31967101
+   "UserspaceTimestampMonotonic": 32127090
   }
  }
 }

@@ -55,6 +55,15 @@
    0
   ]
  },
+ "drm_modes": {
+  "card0": {
+   "LVDS-1": {
+    "height": 900,
+    "refresh_hz": 60.15,
+    "width": 1440
+   }
+  }
+ },
  "gpuapi": {
   "consultar": {
    "opencl": [],
@@ -71,7 +80,7 @@
     {
      "api_version": "1.4.305",
      "device_id": 0,
-     "device_memory_bytes": 4101165056,
+     "device_memory_bytes": 4098551808,
      "driver_version": 1,
      "instance_version": "1.4.309",
      "kind": "CPU",
@@ -96,10 +105,10 @@
   "eth0:0x891b": null,
   "lo:0x8915": "127.0.0.1",
   "lo:0x891b": "255.0.0.0",
-  "wlan0:0x8915": "192.168.1.120",
-  "wlan0:0x891b": "255.255.255.0",
-  "wlan1:0x8915": null,
-  "wlan1:0x891b": null
+  "wlan0:0x8915": null,
+  "wlan0:0x891b": null,
+  "wlan1:0x8915": "192.168.1.120",
+  "wlan1:0x891b": "255.255.255.0"
  },
  "modinfo": {
   "drivetemp": true
@@ -219,38 +228,40 @@
  },
  "plataforma": {
   "entorno": {
+   "DESKTOP_SESSION": null,
+   "DISPLAY": ":0.0",
+   "GDMSESSION": null,
    "SHELL": "/usr/bin/zsh",
+   "WAYLAND_DISPLAY": null,
    "XDG_CURRENT_DESKTOP": "icewm",
    "XDG_SESSION_TYPE": null
   },
   "machine": "x86_64",
-  "procesos": 194,
+  "procesos": 190,
   "uname": {
    "machine": "x86_64",
    "node": "silux-pc",
-   "processor": "",
-   "release": "6.6.119-antix.1-amd64-smp",
+   "release": "5.10.240-antix.1-amd64-smp",
    "system": "Linux",
-   "version": "#2 SMP PREEMPT_DYNAMIC Sun Dec 28 20:03:05 EST 2025"
+   "version": "#1 SMP Sat Aug 23 16:01:11 EEST 2025"
   }
  },
  "realpath": {
   "/dev/sda2": "/dev/sda2",
-  "/dev/sdb1": "/dev/sdb1",
-  "/dev/sdb2": "/dev/sdb2"
+  "/dev/sdb1": "/dev/sdb1"
  },
- "statvfs": {
+ "statfs": {
   "/": [
-   40816308224,
-   425266094080
+   119898538,
+   109095385,
+   102986496,
+   4096
   ],
   "/media/unidad1": [
-   28490752,
-   4786688
-  ],
-  "/media/unidad2": [
-   7251820544,
-   716865536
+   51633842,
+   29166173,
+   26525113,
+   4096
   ]
  },
  "systemd": {

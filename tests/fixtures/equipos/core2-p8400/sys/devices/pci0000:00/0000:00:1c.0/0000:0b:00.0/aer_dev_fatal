@@ -16,9 +16,4 @@ BlockedTLP 0
 AtomicOpBlocked 0
 TLPBlockedErr 0
 PoisonTLPBlocked 0
-DMWrReqBlocked 0
-IDECheck 0
-MisIDETLP 0
-PCRC_CHECK 0
-TLPXlatBlocked 0
 TOTAL_ERR_FATAL 0
