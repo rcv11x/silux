@@ -1018,8 +1018,7 @@ class MemoryPage(ScrollPage):
                 motivo += " " + _("memory.tip.soldered.nospd")
             grid.set(_("memory.field.form"), _("memory.form.soldered"), tooltip=motivo)
         else:
-            grid.set(_("memory.field.form"), render.memory_form_factor(module.form_factor)
-                     or (spd.module_type if spd else None) or d)
+            grid.set(_("memory.field.form"), render.module_form(module) or d)
 
         perfiles = spd.overclock_profiles if spd else ()
         grid.set(_("memory.field.profiles"), ", ".join(perfiles) if perfiles else d,

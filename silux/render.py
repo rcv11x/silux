@@ -85,6 +85,13 @@ def memory_form_factor(code: Optional[int], translate=_) -> Optional[str]:
     return translate(key) if key else None
 
 
+def module_form(module) -> Optional[str]:
+    """A module's form, the same with permissions as without: its SPD's
+    («UDIMM», «SODIMM») before the firmware's coarser «DIMM»."""
+    spd = module.spd
+    return (spd.module_type if spd else None) or memory_form_factor(module.form_factor)
+
+
 def memory_error_correction(code: Optional[int], translate=_) -> Optional[str]:
     """The memory's error correction by its SMBIOS code; None if unknown."""
     key = ERROR_CORRECTION_KEYS.get(code) if code is not None else None
