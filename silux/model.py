@@ -1970,6 +1970,9 @@ class Snapshot:
     capabilities: frozenset[str] = frozenset()
     notes: tuple[Note, ...] = ()
     failures: tuple[Failure, ...] = ()
+    # The collector's first snapshot: what comes from two readings (usage,
+    # power, transfer rates) has only its baseline, and is still coming.
+    first_reading: bool = False
 
     def sensor_tree(self) -> dict[str, dict[str, tuple[Sensor, ...]]]:
         """Device → category → sensors, in the order they're drawn.

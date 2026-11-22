@@ -209,6 +209,18 @@ def size(value: Optional[int]) -> str:
     return f"{value} B"
 
 
+def calculating() -> str:
+    """A figure made of two readings, while there is only one: «Calculando…»,
+    not the dash of what can't be read."""
+    return _("value.calculating")
+
+
+def first_or(value, text: str, first_reading: bool) -> str:
+    """`text`, or «Calculando…» if `value` is still missing on the first
+    reading."""
+    return calculating() if value is None and first_reading else text
+
+
 def decimal_size(value: Optional[int]) -> str:
     """Disks, partitions, what a filesystem holds and what crosses a network,
     in decimal units as a disk is sold and `df -H` writes: «512 GB», «2.0 TB».

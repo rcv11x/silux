@@ -136,6 +136,10 @@ class CpuLiveSection(QWidget):
             self.tile_usage.chart.set_range(0.0, 100.0)
             if cpu.load_average:
                 self.tile_usage.set_detail(_("cpu.tile.load").format(v=f"{cpu.load_average[0]:.2f}"))
+        elif snapshot.first_reading:
+            self.tile_usage.update_value(render.calculating(), word=True)
+        elif self.tile_usage.value.text() == render.calculating():
+            self.tile_usage.update_value(render.DASH)
 
         # La misma que Inicio: la decide el modelo. Debajo, la media de los
         # núcleos cuando la cifra grande es la del encapsulado.
@@ -185,9 +189,12 @@ class CpuLiveSection(QWidget):
             if nota is not None:
                 self.tile_power.set_locked(_("lock.detail"), render.lock_tooltip(nota))
             else:
-                # Sin nota no hay motivo que dar: es la primera vuelta (el
-                # consumo sale de restar dos lecturas) o un equipo volcado.
-                self.tile_power.update_value(render.DASH, None)
+                # No note, no reason to give: on the first reading power is
+                # still coming (it subtracts two); otherwise, a dump.
+                if snapshot.first_reading:
+                    self.tile_power.update_value(render.calculating(), None, word=True)
+                else:
+                    self.tile_power.update_value(render.DASH, None)
                 self.tile_power.set_detail("")
 
     def _apply_cores(self, snapshot: Snapshot) -> None:

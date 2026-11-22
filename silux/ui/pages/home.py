@@ -321,6 +321,9 @@ class HomePage(ScrollPage):
             self.cpu.grafica.set_series(Series("cpu/usage", "%"))
             self.cpu.grafica.push(cpu.usage_percent)
             self.cpu.grafica.set_range(0.0, 100.0)
+        elif snapshot.first_reading:
+            piezas.append(render.calculating())
+            moldes.append((piezas[-1],))
         if principal.clocks.current_hz:
             piezas.append(render.hz(principal.clocks.current_hz))
             moldes.append(_relojes())
@@ -364,6 +367,9 @@ class HomePage(ScrollPage):
             self.gpu.grafica.set_series(Series(f"{gpu.pci_slot}/usage", "%"))
             self.gpu.grafica.push(gpu.busy_percent)
             self.gpu.grafica.set_range(0.0, 100.0)
+        elif snapshot.first_reading and not snapshot.permission_note(f"gpus.{indice}.usage"):
+            piezas.append(render.calculating())
+            moldes.append((piezas[-1],))
         if gpu.temp_c is not None:
             piezas.append(render.temperature(gpu.temp_c, fahrenheit))
             moldes.append(_grados(fahrenheit))
@@ -528,6 +534,8 @@ class HomePage(ScrollPage):
                      in (("↓", trafico.rx_rate_bps), ("↑", trafico.tx_rate_bps))
                      if ritmo is not None]
         cifras = "   ".join(f"{flecha} {render.rate(ritmo, bits)}" for flecha, ritmo in presentes)
+        if not presentes and snapshot.first_reading:
+            cifras = render.calculating()
         self.red.reservar([tuple(f"{flecha} {texto}" for texto in _ritmos(bits))
                            for flecha, _ritmo in presentes])
         # Lo mismo que el titular de la página de Red: la conexión primero

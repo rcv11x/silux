@@ -100,6 +100,7 @@ class NetworkPage(ScrollPage):
         super().__init__(parent)
         self._p = palette
         self._prefs = prefs
+        self._first_reading = False
         m = theme.METRICS
 
         self.setWidgetResizable(True)
@@ -249,6 +250,7 @@ class NetworkPage(ScrollPage):
 
     def apply(self, snapshot: Snapshot) -> None:
         self._bits = self._prefs.network_unit == "bits"
+        self._first_reading = snapshot.first_reading
         for valor, boton in getattr(self, "_unit_buttons", {}).items():
             boton.setChecked(valor == self._prefs.network_unit)
         self._refresh_formatters()
@@ -309,9 +311,12 @@ class NetworkPage(ScrollPage):
         interfaz = principal.name if principal else ""
         # Faster than its link, a rate is a raw byte counter.
         enlace = link_ceiling(principal)
-        self.tile_down.update_value(render.rate(bajada, self._bits), bajada,
+        primera = self._first_reading
+        self.tile_down.update_value(render.first_or(bajada, render.rate(bajada, self._bits), primera),
+                                    bajada, word=bajada is None and primera,
                                     series=Series(f"net:{interfaz}/down", "B/s", enlace))
-        self.tile_up.update_value(render.rate(subida, self._bits), subida,
+        self.tile_up.update_value(render.first_or(subida, render.rate(subida, self._bits), primera),
+                                  subida, word=subida is None and primera,
                                   series=Series(f"net:{interfaz}/up", "B/s", enlace))
         self.tile_rx.update_value(render.decimal_size(trafico.rx_bytes) if trafico else render.DASH)
         self.tile_tx.update_value(render.decimal_size(trafico.tx_bytes) if trafico else render.DASH)
@@ -359,8 +364,12 @@ class NetworkPage(ScrollPage):
         d = render.DASH
         filas = [
             (interfaz.name,
-             render.rate(interfaz.traffic.rx_rate_bps, self._bits),
-             render.rate(interfaz.traffic.tx_rate_bps, self._bits),
+             render.first_or(interfaz.traffic.rx_rate_bps,
+                             render.rate(interfaz.traffic.rx_rate_bps, self._bits),
+                             self._first_reading),
+             render.first_or(interfaz.traffic.tx_rate_bps,
+                             render.rate(interfaz.traffic.tx_rate_bps, self._bits),
+                             self._first_reading),
              render.decimal_size(interfaz.traffic.rx_bytes),
              render.decimal_size(interfaz.traffic.tx_bytes),
              render.thousands(interfaz.traffic.rx_packets + interfaz.traffic.tx_packets),

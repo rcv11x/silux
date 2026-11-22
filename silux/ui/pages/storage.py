@@ -69,6 +69,13 @@ def _orden(disco: Disk) -> tuple:
     return (disco.removable, arranque, PRIORIDAD.get(disco.kind or "", 9), disco.name)
 
 
+def _sum_known(rates) -> Optional[float]:
+    """The sum of the rates measured, or None if none was: a disk with no
+    rate yet is not «0 B/s»."""
+    known = [r for r in rates if r is not None]
+    return sum(known) if known else None
+
+
 class StoragePage(ScrollPage):
     # El diagnóstico de los discos exige permisos, igual que el detalle de la
     # memoria. Sin un botón aquí, los campos aparecían vacíos y sin explicación
@@ -85,6 +92,7 @@ class StoragePage(ScrollPage):
         self._candado = None
         # La última foto que ya pasó por las fichas (`record`).
         self._contada: Optional[Snapshot] = None
+        self._first_reading = False
         self._details: dict = {}
         self._folds: dict = {}
         self._pies: dict = {}
@@ -246,6 +254,7 @@ class StoragePage(ScrollPage):
     def apply(self, snapshot: Snapshot) -> None:
         discos = sorted(snapshot.disks, key=_orden)
         self._swaps = snapshot.system.swaps
+        self._first_reading = snapshot.first_reading
         # El diagnóstico (SMART) lo guarda un permiso mientras exista esta
         # nota; de él salen las horas, lo escrito, la vida y, en un SATA sin
         # `drivetemp`, la temperatura.
@@ -280,6 +289,7 @@ class StoragePage(ScrollPage):
         if snapshot is self._contada:
             return
         self._contada = snapshot
+        self._first_reading = snapshot.first_reading
         self._apply_tiles(sorted(snapshot.disks, key=_orden))
 
     def _apply_avisos(self, discos) -> None:
@@ -366,11 +376,14 @@ class StoragePage(ScrollPage):
         # La suma de todas las unidades, no la del disco del sistema: en un
         # equipo con cinco discos, la cifra que interesa es cuánto se está
         # moviendo en total. Cuál se mueve va en la tabla de abajo.
-        lectura = sum(x.io.read_rate_bps or 0 for x in discos) if discos else None
-        escritura = sum(x.io.write_rate_bps or 0 for x in discos) if discos else None
-        self.tile_read.update_value(render.rate(lectura), lectura,
+        lectura = _sum_known(x.io.read_rate_bps for x in discos)
+        escritura = _sum_known(x.io.write_rate_bps for x in discos)
+        primera = self._first_reading
+        self.tile_read.update_value(render.first_or(lectura, render.rate(lectura), primera),
+                                    lectura, word=lectura is None and primera,
                                     series=Series("disks/read", "B/s"))
-        self.tile_write.update_value(render.rate(escritura), escritura,
+        self.tile_write.update_value(render.first_or(escritura, render.rate(escritura), primera),
+                                     escritura, word=escritura is None and primera,
                                      series=Series("disks/write", "B/s"))
         cuantos = _("storage.tile.sum.one" if len(discos) == 1
                     else "storage.tile.sum").format(n=len(discos))
@@ -414,8 +427,10 @@ class StoragePage(ScrollPage):
              render.decimal_size(x.size_bytes),
              render.decimal_size(x.used_bytes) if x.used_bytes else d,
              render.temperature(x.temp_c, self._prefs.fahrenheit),
-             render.rate(x.io.read_rate_bps),
-             render.rate(x.io.write_rate_bps))
+             render.first_or(x.io.read_rate_bps, render.rate(x.io.read_rate_bps),
+                             self._first_reading),
+             render.first_or(x.io.write_rate_bps, render.rate(x.io.write_rate_bps),
+                             self._first_reading))
             for x in discos
         ] or [(_("storage.none"), d, d, d, d, d, d, d)])
         for fila, x in enumerate(discos):

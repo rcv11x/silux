@@ -959,7 +959,10 @@ class GpuSection(QWidget):
         self.engine_card.setVisible(bool(gpu.engines))
         if not gpu.engines:
             return
-        self.engine_summary.set(_("gpu.engines.idle"), render.gpu_sleep(gpu))
+        # RC6 residency subtracts two readings too.
+        self.engine_summary.set(_("gpu.engines.idle"), render.first_or(
+            gpu.sleep_percent if gpu.sleep_enabled is not False else 0,
+            render.gpu_sleep(gpu), getattr(self, "first_reading", False)))
         # El uso de cada motor sale del contador que piden los permisos: con
         # candado, como en la ficha de arriba, y no con guion.
         candado = getattr(self, "_candado", None)
@@ -1035,8 +1038,11 @@ class GpuSection(QWidget):
         # Its charts are this card's: a section can get another card when the
         # list changes, and its history is not that one's.
         tarjeta = gpu.pci_slot or f"gpu{gpu.index}"
-        self.tile_usage.update_value(render.figure(gpu.busy_percent), gpu.busy_percent,
-                                     series=Series(f"{tarjeta}/usage", "%"))
+        if gpu.busy_percent is None and getattr(self, "first_reading", False):
+            self.tile_usage.update_value(render.calculating(), word=True)
+        else:
+            self.tile_usage.update_value(render.figure(gpu.busy_percent), gpu.busy_percent,
+                                         series=Series(f"{tarjeta}/usage", "%"))
         # El detalle del uso deja de repetir la memoria: ahora tiene su cuadro.
         self.tile_usage.set_detail(
             _("gpu.tile.video").format(
@@ -1309,6 +1315,7 @@ class GraphicsPage(ScrollPage):
             # Si el uso y el consumo de esta tarjeta faltan por permisos, sus
             # fichas llevan candado en vez de guion.
             seccion.set_lock(snapshot.permission_note(f"gpus.{indice}.usage"))
+            seccion.first_reading = snapshot.first_reading
             # La ranura PCI es lo único que no cambia entre muestreos: el
             # índice se mueve si aparece o desaparece una tarjeta.
             clave = gpu.pci_slot or f"gpu{gpu.index}"

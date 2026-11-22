@@ -1823,6 +1823,7 @@
   "usb.speed.super": "SuperSpeed",
   "usb.speed.superplus": "SuperSpeed+",
   "usb.speed.usb4": "USB4",
+  "value.calculating": "Calculating…",
   "what.cpu.base": "Processor base clock",
   "what.cpu.power": "Processor power",
   "what.cpu.socket": "Processor package",
