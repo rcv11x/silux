@@ -506,8 +506,9 @@ De la quinta auditoría, sin comprobar uno a uno si siguen igual:
     de semanas o meses, y una carga larga (renderizar, compilar) sale tal
     cual, no como fallo.
   - Más adelante, con historial o bandeja: «¿Te hace falta más RAM?», con
-    los días de presión de memoria de cada programa (`memory.pressure` de su
-    cgroup) y los zócalos libres.
+    los días de presión de memoria de todo el sistema (`/proc/pressure/memory`)
+    y los zócalos libres. Nada por programa: Silux no es un administrador de
+    tareas.
 
 * **Tendencias con el historial** (idea, a largo plazo). Con meses de
   medidas, ver si algo empeora: Mann-Kendall sobre una prueba térmica fija
