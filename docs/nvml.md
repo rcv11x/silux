@@ -58,6 +58,11 @@ son los mismos con los dos nombres.
 
 ## Lo que no se ha confirmado
 
+- Que el consumo en N/A sea cosa del driver 595. Por ahora es un caso: una
+  RTX 4060 de sobremesa con el 595 da N/A en `power.draw`, `.average` y
+  `.instant` de `nvidia-smi`. Una RTX 4050 de portátil con el 550 sí lo
+  daba, y otra RTX 4060 de sobremesa con el 620 da una cifra de la que no se
+  sabe qué llamada la dio. Es una sospecha hasta que haya más casos.
 - Que «270» sea el driver de NVML 1.0 sale solo del archivo de Debian.
 - Después de 555 no hay archivo de símbolos de Debian: que las funciones
   antiguas sigan exportándose sale de las cabeceras y de los avisos.
