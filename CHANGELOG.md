@@ -51,9 +51,11 @@ que hace falta.
   otra cosa, ya no culpa al módulo.
 - Interfaz: con una letra ancha (DejaVu Sans, la de Debian y Ubuntu), los
   títulos largos de las tarjetas y los avisos bajan de línea en vez de sacar
-  la página por la derecha con la letra más grande. Y en Inicio, una ficha
-  que necesita más de media fila para sus cifras la tiene: «1000.0 MB/s» ya
-  no salta a una segunda línea y mueve las demás.
+  la página por la derecha con la letra más grande. Y en Inicio las cifras ya
+  no saltan a una segunda línea moviendo la fila: cada ficha reserva lo que
+  su pieza puede llegar a decir (el reloj hasta su máxima, la temperatura
+  hasta su límite) y, si eso no cabe en una línea, ocupa dos desde el
+  principio. Las columnas siguen siendo iguales.
 - Interfaz: «Calculando…» y las demás palabras que van en lugar de una cifra
   («con el cargador») caben enteras en las fichas grandes: bajan de tamaño
   lo justo cuando no hay sitio, también con la letra más grande. Antes salía

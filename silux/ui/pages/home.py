@@ -53,12 +53,15 @@ def _porcentajes() -> list[str]:
     return render.possible_texts(render.percent, 100.0)
 
 
-def _relojes() -> list[str]:
-    return render.possible_texts(render.hz, 10e9)
+def _relojes(top: Optional[float] = None) -> list[str]:
+    """Up to this piece's own maximum when it's known: reserving 10 GHz for
+    every processor wrapped the figures in half a row."""
+    return render.possible_texts(render.hz, top or 10e9)
 
 
-def _grados(fahrenheit: bool) -> list[str]:
-    return render.possible_texts(lambda v: render.temperature(v, fahrenheit), 200.0)
+def _grados(fahrenheit: bool, top: Optional[float] = None) -> list[str]:
+    """Up to the piece's own limit, when it declares one."""
+    return render.possible_texts(lambda v: render.temperature(v, fahrenheit), top or 200.0)
 
 
 def _vatios() -> list[str]:
@@ -136,9 +139,10 @@ class _TarjetaResumen(Card):
         # No encoge: una pieza que falta un momento (la gráfica que se duerme)
         # también movería la fila al volver. Preferred, not minimum: in a
         # narrow window the figures wrap instead of pushing the page out.
-        ancho = max(ancho, self.cifras.reserved_width)
-        if self.cifras.reserved_width != ancho:
+        if ancho > self.cifras.reserved_width:
             self.cifras.reserved_width = ancho
+            # Its height too, where it would wrap (`ReservedLabel`).
+            self.cifras.reserved_text = widest
             self.cifras.updateGeometry()
 
     def poner(self, nombre: str, detalle: str, cifras: str, pie: str = "") -> None:
@@ -331,14 +335,18 @@ class HomePage(ScrollPage):
             self.cpu.grafica.set_range(0.0, 100.0)
         elif snapshot.first_reading:
             piezas.append(render.calculating())
-            moldes.append((piezas[-1],))
+            # Room for the percentage that comes next, not for a word shown
+            # once: kept for good, it took two lines in half a row.
+            moldes.append(_porcentajes())
         if principal.clocks.current_hz:
             piezas.append(render.hz(principal.clocks.current_hz))
-            moldes.append(_relojes())
+            moldes.append(_relojes(max(filter(None, (
+                principal.clocks.max_turbo_hz, principal.clocks.max_hz,
+                principal.clocks.current_hz)), default=None)))
         levels = [thermal.OK] * len(piezas)
         if (temp := cpu.temperature_c) is not None:
             piezas.append(render.temperature(temp, fahrenheit))
-            moldes.append(_grados(fahrenheit))
+            moldes.append(_grados(fahrenheit, cpu.temp_critical_c or cpu.temp_high_c))
             levels.append(cpu.temp_level)
         self.cpu.reservar(moldes)
         self.cpu.poner(render.cpu_short_name(principal.brand), detalle,
@@ -380,12 +388,14 @@ class HomePage(ScrollPage):
             self.gpu.grafica.set_range(0.0, 100.0)
         elif snapshot.first_reading and not snapshot.permission_note(f"gpus.{indice}.usage"):
             piezas.append(render.calculating())
-            moldes.append((piezas[-1],))
+            # Room for the percentage that comes next, not for a word shown
+            # once: kept for good, it took two lines in half a row.
+            moldes.append(_porcentajes())
         temp_at = None
         if gpu.temp_c is not None:
             temp_at = len(piezas)
             piezas.append(render.temperature(gpu.temp_c, fahrenheit))
-            moldes.append(_grados(fahrenheit))
+            moldes.append(_grados(fahrenheit, gpu.temp_critical_c or gpu.temp_high_c))
         if gpu.power_w is not None:
             piezas.append(render.watts(gpu.power_w))
             moldes.append(_vatios())

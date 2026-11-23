@@ -19,7 +19,7 @@ import time
 from collections import deque
 from typing import Iterable, NamedTuple, Optional, Sequence
 
-from PySide6.QtCore import QEvent, QPoint, QPointF, QRectF, QSize, Qt, QTimer, Signal
+from PySide6.QtCore import QEvent, QPoint, QPointF, QRect, QRectF, QSize, Qt, QTimer, Signal
 from PySide6.QtGui import (
     QBrush,
     QColor,
@@ -425,7 +425,6 @@ class ResponsiveRow(QWidget):
     def _relayout(self, force: bool = False) -> None:
         columns = self._wanted_columns()
         visibles = self._a_la_vista()
-        self._hold_column_widths(columns, visibles)
         if columns == self._columns and visibles == self._colocados and not force:
             return
         self._columns = columns
@@ -446,21 +445,6 @@ class ResponsiveRow(QWidget):
             self._grid.addWidget(widget, index // columns, index % columns, 1, ancho)
         for column in range(columns):
             self._grid.setColumnStretch(column, 1)
-
-    def _hold_column_widths(self, columns: int, visibles: list[QWidget]) -> None:
-        """Each column gets at least what its widest child asked for when the
-        columns were chosen. Equal stretch alone split the row in halves,
-        and a child that asked for more than half wrapped its figures.
-
-        With a single column nothing is held: that's where they may wrap."""
-        wanted = [0] * max(columns, self._grid.columnCount())
-        if columns > 1:
-            for index, widget in enumerate(visibles):
-                column = index % columns
-                wanted[column] = max(wanted[column], self._column_width(widget))
-        for column, width in enumerate(wanted):
-            if self._grid.columnMinimumWidth(column) != width:
-                self._grid.setColumnMinimumWidth(column, width)
 
     def resizeEvent(self, event) -> None:  # noqa: N802
         super().resizeEvent(event)
@@ -2797,13 +2781,29 @@ class LevelBar(QWidget):
 class ReservedLabel(QLabel):
     """A label that asks for its reserved width when there's room, and can
     shrink and wrap when there isn't: as a minimum, the reservation pushed
-    a narrow window's page off the right edge."""
+    a narrow window's page off the right edge.
+
+    With `reserved_text`, the longest it can say, it also keeps the height
+    that text needs at its width: where it would wrap, the figures take two
+    lines from the start, instead of jumping to a second one when they grow
+    and moving the row."""
 
     reserved_width = 0
+    reserved_text = ""
 
     def sizeHint(self) -> QSize:  # noqa: N802
         hint = super().sizeHint()
         return QSize(max(hint.width(), self.reserved_width), hint.height())
+
+    def heightForWidth(self, width: int) -> int:  # noqa: N802
+        height = super().heightForWidth(width)
+        if not self.reserved_text or not self.wordWrap():
+            return height
+        margins = self.contentsMargins()
+        inner = max(1, width - margins.left() - margins.right() - 2 * self.margin())
+        needed = self.fontMetrics().boundingRect(
+            QRect(0, 0, inner, 1 << 20), int(Qt.TextFlag.TextWordWrap), self.reserved_text).height()
+        return max(height, needed + margins.top() + margins.bottom() + 2 * self.margin())
 
 
 class LevelList(QWidget):
