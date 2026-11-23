@@ -12,6 +12,8 @@ que hace falta.
 
 ## Sin publicar
 
+- AppImage: el archivo lleva el logo (`.DirIcon`, en PNG de 256 px), que es lo
+  que enseñan los gestores de archivos con vista previa de AppImage.
 - Placa base: un chipset que la base de datos PCI del sistema no conoce ya no
   sale con dos guiones: lo dice al pie.
 - Informe: un aparato USB que se llama solo por lo que es («Controller», el

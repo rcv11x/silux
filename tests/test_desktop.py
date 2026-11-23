@@ -409,5 +409,31 @@ class TestIconoDeLaVentana(unittest.TestCase):
         self.assertFalse(icono.isNull())
 
 
+
+class TestTheAppImageFileIcon(unittest.TestCase):
+    """The PNG the packager puts as `.DirIcon`: file managers read it for the
+    AppImage file's own icon, and without it Dolphin showed a generic one."""
+
+    def test_the_logo_at_256_px(self):
+        import sys
+
+        from PySide6.QtGui import QImage
+
+        qt.app()
+        sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "tools"))
+        import build_appimage
+
+        with tempfile.TemporaryDirectory() as folder:
+            png = installer.render_png(build_appimage.DIR_ICON_SIZE,
+                                       pathlib.Path(folder) / "silux.png")
+            self.assertEqual(build_appimage.png_size(png), (256, 256))
+            image = QImage(str(png))
+            # Something drawn, not a transparent square.
+            self.assertTrue(any(image.pixelColor(x, y).alpha() > 0
+                                for x in range(0, 256, 16) for y in range(0, 256, 16)))
+            (pathlib.Path(folder) / "not.png").write_bytes(b"<svg/>")
+            self.assertIsNone(build_appimage.png_size(pathlib.Path(folder) / "not.png"))
+
+
 if __name__ == "__main__":
     unittest.main()

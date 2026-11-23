@@ -193,6 +193,18 @@ equivocarse (una distribución es libre de compilar su 6.10 para x86-64 a
 secas), así que `SILUX_SIN_GUARDA=1` la desactiva. Las dos miran la misma
 lista de cinco banderas y hay un test que no las deja separarse.
 
+## El icono del archivo
+
+Los gestores de archivos sacan el icono de un AppImage de su `.DirIcon`, no
+del SVG de la raíz: el miniaturizador de KDE (`appimagethumbnail`, de
+kio-extras, con libappimage) solo lee ese. El empaquetador dibuja `silux.png`
+de 256 px desde el SVG con el Python y el Qt del propio AppDir, y `.DirIcon`
+apunta a él; el SVG se queda para los menús. Si no sale de 256 px no se
+empaqueta, y el CI lo extrae de cada AppImage y lo comprueba.
+
+En Arch y derivadas, libappimage es una dependencia opcional de kio-extras:
+sin ella Dolphin no enseña el icono de ningún AppImage.
+
 ## La marca de construcción
 
 Cada copia lleva dentro de qué commit salió: debajo de la versión, en

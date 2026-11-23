@@ -436,6 +436,7 @@ class TestUnPaqueteIncompletoNoSeEmpaqueta(unittest.TestCase):
         pasos["comprobar_juego_de_instrucciones"] = mock.Mock(return_value=[])
         pasos["comprobar_tls"] = mock.Mock(return_value=True)
         pasos["compilar_bytecode"] = mock.Mock(return_value=True)
+        pasos["draw_file_icon"] = mock.Mock(return_value=True)
         self.empaquetar = mock.Mock(return_value=None)
         pasos["empaquetar"] = self.empaquetar
         # `main` empieza borrando el AppDir y creando uno vacío; el de mentira

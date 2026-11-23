@@ -274,10 +274,27 @@ def entry_text(launcher: Launcher) -> str:
 # -- writing ------------------------------------------------------------------
 
 
-def render_icons(app_id: str = APP_ID) -> list[pathlib.Path]:
-    """Rasterize the SVG to the specification's sizes."""
+def render_png(size: int, target: pathlib.Path, svg: pathlib.Path = SVG) -> pathlib.Path:
+    """The SVG as a square PNG of `size` pixels, with Qt's SVG plugin."""
     from PySide6.QtCore import QSize
     from PySide6.QtGui import QGuiApplication, QImageReader
+
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    app = QGuiApplication.instance() or QGuiApplication([])  # noqa: F841
+    reader = QImageReader(str(svg))
+    reader.setScaledSize(QSize(size, size))
+    image = reader.read()
+    if image.isNull():
+        raise DesktopError(f"no se pudo dibujar {svg}: {reader.errorString()}")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if not image.save(str(target), "PNG"):
+        raise DesktopError(f"no se pudo escribir {target}")
+    return target
+
+
+def render_icons(app_id: str = APP_ID) -> list[pathlib.Path]:
+    """Rasterize the SVG to the specification's sizes."""
+    from PySide6.QtGui import QGuiApplication
 
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     app = QGuiApplication.instance() or QGuiApplication([])
@@ -287,19 +304,7 @@ def render_icons(app_id: str = APP_ID) -> list[pathlib.Path]:
     for old in icon_files(app_id):
         old.unlink()
 
-    written = []
-    for size in SIZES:
-        reader = QImageReader(str(SVG))
-        reader.setScaledSize(QSize(size, size))
-        image = reader.read()
-        if image.isNull():
-            raise DesktopError(f"no se pudo dibujar {SVG}: {reader.errorString()}")
-
-        target = icon_path(size, app_id)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        if not image.save(str(target), "PNG"):
-            raise DesktopError(f"no se pudo escribir {target}")
-        written.append(target)
+    written = [render_png(size, icon_path(size, app_id)) for size in SIZES]
 
     scalable = scalable_path(app_id)
     scalable.parent.mkdir(parents=True, exist_ok=True)

@@ -198,6 +198,19 @@ jobs:
           APPIMAGE_EXTRACT_AND_RUN=1 QT_QPA_PLATFORM=offscreen \
             ./dist/silux-x86_64-compat.AppImage --help
 
+      # The file's own icon: file managers read `.DirIcon` (KDE's kio-extras
+      # thumbnailer, AppImageLauncher). Without it Dolphin showed a generic one.
+      - name: Comprobar el icono del archivo
+        run: |
+          for ai in silux-x86_64.AppImage silux-x86_64-compat.AppImage; do
+            rm -rf /tmp/icono && mkdir /tmp/icono && cd /tmp/icono
+            "$GITHUB_WORKSPACE/dist/$ai" --appimage-extract .DirIcon > /dev/null
+            "$GITHUB_WORKSPACE/dist/$ai" --appimage-extract silux.png > /dev/null
+            file -L squashfs-root/.DirIcon | grep -q "PNG image data, 256 x 256" \
+              || { echo "::error::$ai: .DirIcon no es el logo en PNG de 256 px"; exit 1; }
+            cd "$GITHUB_WORKSPACE"
+          done
+
       # La ventana en una distribución al día, sin un solo aviso: un
       # fontconfig empaquetado de Ubuntu 22.04 sacaba decenas al leer la
       # configuración de uno nuevo. `--help` no carga la parte gráfica de Qt,

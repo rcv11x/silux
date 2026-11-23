@@ -378,6 +378,10 @@ def main() -> int:
     banderas = comprobar_juego_de_instrucciones()
     print("· metadatos")
     escribir_metadatos(banderas)
+    if not draw_file_icon():
+        print(f"No se empaqueta: el AppDir queda en {APPDIR} para mirarlo.",
+              file=sys.stderr)
+        return 1
     sellar_build()
     print("· bytecode")
     if not compilar_bytecode():
@@ -1122,6 +1126,61 @@ def escribir_metadatos(banderas: set[str] = frozenset()) -> None:
         destino_icono = APPDIR / "usr" / "share" / "icons" / "hicolor" / "scalable" / "apps"
         destino_icono.mkdir(parents=True, exist_ok=True)
         shutil.copy2(icono, destino_icono / f"{APP_ID}.svg")
+
+
+# The icon of the AppImage file itself: what file managers show, through
+# `.DirIcon` (KDE's kio-extras thumbnailer, AppImageLauncher). A PNG of 256 px,
+# as the AppImage specification recommends; the SVG stays for the menus.
+DIR_ICON_SIZE = 256
+
+
+def draw_file_icon() -> bool:
+    """`silux.png` at the root, `.DirIcon` pointing to it, and its copy in
+    hicolor, drawn by the AppDir's own Python and Qt from the SVG it carries.
+    Without it Dolphin showed a generic icon for the file."""
+    python = APPDIR / "usr" / "bin" / "python3"
+    png = APPDIR / f"{APP_ID}.png"
+    env = {"PYTHONHOME": str(APPDIR / "usr"), "PYTHONNOUSERSITE": "1",
+           "PYTHONPATH": str(APPDIR / "usr" / "lib" / "python"),
+           "LD_LIBRARY_PATH": ":".join(str(p) for p in (
+               APPDIR / "usr" / "lib", APPDIR / "usr" / "lib" / "python" / "PySide6" / "Qt" / "lib")),
+           "QT_PLUGIN_PATH": str(APPDIR / "usr" / "lib" / "qt" / "plugins"),
+           "QT_QPA_PLATFORM": "offscreen", "PATH": os.environ.get("PATH", "")}
+    command = [str(python), "-s", "-c",
+               "import pathlib, sys; from silux import desktop; "
+               "desktop.render_png(int(sys.argv[1]), pathlib.Path(sys.argv[2]))",
+               str(DIR_ICON_SIZE), str(png)]
+    try:
+        done = subprocess.run(command, capture_output=True, text=True,
+                              env=env, check=False, timeout=120)
+    except (OSError, subprocess.SubprocessError) as error:
+        print(f"  error: no se pudo dibujar el icono: {error}", file=sys.stderr)
+        return False
+    if done.returncode != 0 or png_size(png) != (DIR_ICON_SIZE, DIR_ICON_SIZE):
+        last = (done.stderr.strip().splitlines() or ["sin salida"])[-1]
+        print(f"  error: el icono del archivo no salió de {DIR_ICON_SIZE} px: {last}",
+              file=sys.stderr)
+        return False
+    dir_icon = APPDIR / ".DirIcon"
+    if dir_icon.is_symlink() or dir_icon.exists():
+        dir_icon.unlink()
+    dir_icon.symlink_to(png.name)
+    target = APPDIR / "usr" / "share" / "icons" / "hicolor" / f"{DIR_ICON_SIZE}x{DIR_ICON_SIZE}" / "apps"
+    target.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(png, target / png.name)
+    print(f"  icono del archivo: {png.name} de {DIR_ICON_SIZE} px, y .DirIcon")
+    return True
+
+
+def png_size(path: pathlib.Path) -> tuple[int, int] | None:
+    """A PNG's width and height, from its IHDR chunk; None if it isn't one."""
+    try:
+        header = path.read_bytes()[:24]
+    except OSError:
+        return None
+    if len(header) < 24 or header[:8] != b"\x89PNG\r\n\x1a\n" or header[12:16] != b"IHDR":
+        return None
+    return int.from_bytes(header[16:20], "big"), int.from_bytes(header[20:24], "big")
 
 
 def quitar_simbolos() -> None:
