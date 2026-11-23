@@ -80,6 +80,10 @@ que hace falta.
   800 MT/s».
 - Sistema: el aviso de un kernel anterior al mínimo lleva su propio
   encabezado, «Kernel anterior a 5.15», y no el de un dato concreto.
+- Memoria: con permisos, cuando el kernel no ha registrado el chip SPD del
+  segundo módulo (con dos zócalos solo lo busca en 0x50 y 0x51, y muchos
+  portátiles lo ponen en 0x52), Silux lo explica y da la orden para
+  registrarlo a mano, para copiarla. Silux no la ejecuta.
 
 ## 0.4-prueba10 (22 de noviembre de 2026)
 

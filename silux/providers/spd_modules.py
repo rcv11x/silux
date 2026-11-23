@@ -72,6 +72,7 @@ class SpdModules(Provider):
         draft.capabilities.add("spd")
         draft.spd = readings
         self._merge(draft, readings)
+        self._unregistered(draft, readings)
 
         if any(not r.decoded for r in readings):
             kinds = {r.dram_type for r in readings if not r.decoded and r.dram_type}
@@ -82,6 +83,24 @@ class SpdModules(Provider):
                           or _("prov.spd.thesemodules")),
                 _("prov.spd.unsupported.hint"),
             )
+
+    @staticmethod
+    def _unregistered(draft: Draft, readings: list) -> None:
+        """A module in a slot whose chip the kernel never looked for.
+
+        Only with the firmware's table, which says which modules sit in a
+        slot: memory soldered on the board has no chip to look for.
+        """
+        slots = [m for m in draft.modules if m.populated and m.in_a_slot]
+        if len(slots) <= len(readings):
+            return
+        order = spd_module.register_by_hand(readings)
+        if order is None:
+            return
+        draft.note("spd", Need.DRIVER, _("prov.spd.unregistered"),
+                   _("prov.spd.unregistered.hint").format(orden=order),
+                   detail=order, key="prov.spd.unregistered",
+                   title=_("prov.spd.unregistered.title"))
 
     @staticmethod
     def _merge(draft: Draft, readings: list) -> None:

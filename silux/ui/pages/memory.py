@@ -896,6 +896,9 @@ class MemoryPage(ScrollPage):
             if nota_spd is not None and nota_spd.key == "prov.spd.partial":
                 pies.append(_("memory.na.spd.partial").format(campos=campos))
                 spd_reason_told = True
+            elif nota_spd is not None and nota_spd.key == "prov.spd.unregistered":
+                # Its notice stays, with the order to copy.
+                pies.append(_("memory.na.nospd").format(campos=campos))
             elif nota_spd is not None:
                 # The reason and what to do about it go here, once: the note's
                 # own box is left out (`_apply_notices`).

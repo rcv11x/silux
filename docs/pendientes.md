@@ -62,13 +62,15 @@ la memoria) no va: está propuesto en las notas
     M471A1K43BB1-CRC, sin SPD en el bus) es casi seguro la memoria soldada,
     pero la tabla del firmware lo llama SODIMM en «ChannelA-DIMM0» y la regla
     de lo soldado no lo ve. Hace falta su tabla SMBIOS para decidir con qué.
-  - Memoria · media · con el ayudante · el Acer y el Vostro registran el chip
-    SPD de uno solo de sus dos módulos. Es el kernel: `i2c_register_spd`
-    prueba solo de 0x50 a 0x50 + zócalos − 1, y con dos zócalos el segundo
-    módulo, que en estas placas suele ir en 0x52, no se busca (igual en el
-    master del kernel). Registrarlo (`new_device`) es escribir en sysfs como
-    root: propuesta para el ayudante, sin escribir. Confirmarlo antes con
-    `dmesg | grep -i spd` en uno de los dos.
+  - Memoria · baja · el chip SPD que el kernel no busca (0x52 con dos
+    zócalos) se explica, con la orden para registrarlo a mano, solo con
+    permisos: hace falta la tabla del firmware para saber que es un módulo
+    en un zócalo y no memoria soldada. Sin permisos, systemd publica esa
+    tabla en `/run/udev/data/+dmi:id` (`MEMORY_DEVICE_*`, de su
+    `dmi_memory_id`), legible por cualquiera; con eudev o sin udev, no.
+    Sería una fuente de los módulos sin permisos, con su número de serie
+    tapado en el anexo. Falta confirmar la causa con `sudo dmesg | grep -i
+    spd` en el Vostro (pedido a Felix).
   - Almacenamiento · media · los atributos SMART estándar de un WD
     (3, 4, 7, 10, 11, 183, 184, 190-193, 196, 200) salen como «propio del
     fabricante»: tienen nombre por defecto en smartmontools (`ata_get_attr_name`).

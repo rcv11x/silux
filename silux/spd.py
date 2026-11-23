@@ -899,6 +899,35 @@ def diagnosis(cause: Optional[str] = None) -> tuple[str, str]:
     return _(message), _(hint)
 
 
+# `i2c_register_spd` (drivers/i2c/i2c-smbus.c) looks for each module's chip
+# at 0x50 + n, one address per slot the firmware declares: with two slots,
+# 0x50 and 0x51. Many laptops wire the second slot's chip at 0x52.
+SECOND_SLOT_ADDRESS = 0x52
+# The name it registers each generation's chip under.
+KERNEL_NAMES = {"DDR": "spd", "DDR2": "spd", "DDR3": "spd", "LPDDR3": "spd",
+                "DDR4": "ee1004", "LPDDR4": "ee1004", "DDR5": "spd5118", "LPDDR5": "spd5118"}
+
+
+def register_by_hand(readings) -> Optional[str]:
+    """The order that registers a module's chip at 0x52, where the kernel
+    doesn't look with two slots; None if the chips read don't fit that case.
+
+    That case is the kernel finding 0x50 and nothing at 0x51. A laptop with
+    memory soldered as its first «slot» has its one chip at 0x51 instead.
+    """
+    buses = {r.address.split("-", 1)[0] for r in readings}
+    types = {r.dram_type for r in readings}
+    if len(buses) != 1 or len(types) != 1:
+        return None
+    bus = buses.pop()
+    name = KERNEL_NAMES.get(types.pop())
+    registered = {int(chip.name.split("-", 1)[1], 16) for chip in spd_chips([bus])}
+    if name is None or registered != {0x50}:
+        return None
+    return (f"echo {name} 0x{SECOND_SLOT_ADDRESS:02x} | "
+            f"sudo tee /sys/bus/i2c/devices/i2c-{bus}/new_device")
+
+
 def _has_smbus_controller() -> bool:
     """Whether the board has the bus the SPD chips live on."""
     try:
