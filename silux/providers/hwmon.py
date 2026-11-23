@@ -81,10 +81,11 @@ _PACKAGE_LABEL = re.compile(r"^(Package id \d+|Tdie|Tctl|CPU Temperature)$", re.
 _VCORE_LABEL = re.compile(r"(vcore|cpu\s*v(core|oltage)|vid)", re.IGNORECASE)
 
 # What an ACPI thermal zone the firmware declares and connects to nothing
-# returns: always the same number, measured by nobody. Round tenths of
-# kelvin written in the table (2900, 3010 and 3030).
+# returns: always the same number, measured by nobody. Tenths of kelvin
+# written in the table (2900, 3010 and 3030; and 2832, 10.0 °C, an HP's
+# second zone beside its 27.8 with the processor at 49).
 ACPI_ZONES_CHIP = "acpitz"
-FILLER_VALUES = frozenset((16.8, 27.8, 29.8))
+FILLER_VALUES = frozenset((10.0, 16.8, 27.8, 29.8))
 
 # The CPU's chips, by preference: the first ones measure the die.
 CPU_CHIPS = ("coretemp", "k10temp", "zenpower", "cpu_thermal", "k8temp", "acpitz")

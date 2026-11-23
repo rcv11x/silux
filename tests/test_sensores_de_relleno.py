@@ -111,6 +111,12 @@ class TestUnaZonaQueSiMide(unittest.TestCase):
             proveedor.collect(draft)
         return next(s for s in draft.sensors if s.chip == "acpitz")
 
+    def test_each_fillers_number(self):
+        for millidegrees in (10000, 16800, 27800, 29800):
+            with self.subTest(millidegrees=millidegrees), tempfile.TemporaryDirectory() as tmp:
+                self.assertTrue(self._leer(HwmonSensors(), pathlib.Path(tmp),
+                                           millidegrees).placeholder)
+
     def test_la_que_se_ha_visto_moverse_ya_no_se_marca(self):
         with tempfile.TemporaryDirectory() as tmp:
             raiz = pathlib.Path(tmp)
