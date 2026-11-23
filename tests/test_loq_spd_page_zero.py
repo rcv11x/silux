@@ -77,6 +77,27 @@ class TestDumpedAgain(unittest.TestCase):
 
 class TestOnTheMemoryPage(unittest.TestCase):
 
+    def test_each_field_says_where_it_comes_from_the_same_in_both_modules(self):
+        qt.app()
+        snapshot = _with_permissions(shared_snapshot(DUMP))
+        self.assertEqual([m.spd is not None for m in snapshot.modules], [True, False])
+        bios = _("memory.source.bios")
+        with pantalla.Ventana(snapshot) as window:
+            window.select_section("Memoria")
+            page = window.stack.currentWidget()
+            first, second = ({key: grid._values[_(key)].full_text() for key in (
+                "memory.field.vendor", "memory.field.part", "memory.field.rated",
+                "memory.field.voltage")} for grid in page._slot_grids)
+        for module in (first, second):
+            self.assertEqual(module["memory.field.vendor"], f"Samsung · {bios}")
+            self.assertEqual(module["memory.field.part"], f"M425R1GB4BB0-CQKOL · {bios}")
+        # Page 0 holds the rated speed and confirms the voltage; the second
+        # module's chip was not read.
+        self.assertEqual((first["memory.field.rated"], first["memory.field.voltage"]),
+                         ("4800 MT/s", "1.10 V"))
+        self.assertEqual((second["memory.field.rated"], second["memory.field.voltage"]),
+                         (f"4800 MT/s · {bios}", f"1.10 V · {bios}"))
+
     def test_with_the_firmwares_maker_and_part(self):
         qt.app()
         snapshot = _with_permissions(shared_snapshot(DUMP))
@@ -90,8 +111,10 @@ class TestOnTheMemoryPage(unittest.TestCase):
                 "memory.field.rated", "memory.field.form")}
             # The timings sit in a card the test window doesn't lay out.
             texts = pantalla.textos_de(page)
-        self.assertEqual(values, {"memory.field.vendor": "Samsung",
-                                  "memory.field.part": "M425R1GB4BB0-CQKOL",
+        # Its maker and part live on page 4: they are the firmware's, and say so.
+        bios = _("memory.source.bios")
+        self.assertEqual(values, {"memory.field.vendor": f"Samsung · {bios}",
+                                  "memory.field.part": f"M425R1GB4BB0-CQKOL · {bios}",
                                   "memory.field.type": "DDR5",
                                   "memory.field.rated": "4800 MT/s",
                                   "memory.field.form": "SODIMM"})

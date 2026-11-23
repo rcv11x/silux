@@ -63,8 +63,9 @@ CERCA_DEL_TECHO = 0.85
 # The values that may carry where they come from («· según la BIOS», «· nominal
 # del SPD»), and the lines they may take: the mark is the point, and in a
 # narrow card it doesn't fit on one.
-MARKED_FIELDS = ("memory.field.type", "memory.field.rated", "memory.field.running",
-                 "memory.field.voltage", "memory.field.form")
+MARKED_FIELDS = ("memory.field.vendor", "memory.field.part", "memory.field.type",
+                 "memory.field.rated", "memory.field.running", "memory.field.voltage",
+                 "memory.field.form")
 MARKED_LINES = 3
 
 NEED_TITLES = {
@@ -1039,15 +1040,12 @@ class MemoryPage(ScrollPage):
         spd = module.spd
         mismatch = _("memory.tip.mismatch")
 
-        # El del SPD primero: es el código JEDEC del propio módulo, y la tabla
-        # del firmware lo escribe a su manera («Crucial Technology»). Con el
-        # orden al revés, la misma pieza cambiaba de nombre al dar permisos.
-        grid.set(_("memory.field.vendor"),
-                 render.memory_maker((spd.manufacturer if spd else None)
-                                     or module.manufacturer) or d)
+        grid.set(_("memory.field.vendor"), render.memory_module_maker(module) or d,
+                 tooltip=_("memory.tip.source.bios") if module.maker_from_firmware else "")
         grid.set(_("memory.field.chips"), render.maker(spd.dram_manufacturer if spd else None) or d,
                  tooltip=_("memory.tip.chips"))
-        grid.set(_("memory.field.part"), module.part_number or (spd.part_number if spd else None) or d)
+        grid.set(_("memory.field.part"), render.memory_module_part(module) or d,
+                 tooltip=_("memory.tip.source.bios") if module.part_from_firmware else "")
         if "type" in contradicted:
             grid.set(_("memory.field.type"), render.firmware_mismatch(render.module_type(module)),
                      tooltip=mismatch)

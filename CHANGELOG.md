@@ -12,6 +12,10 @@ que hace falta.
 
 ## Sin publicar
 
+- Memoria: el fabricante y la referencia de un módulo dicen «según la BIOS»
+  cuando salen de la tabla del firmware y no de su chip SPD, igual que la
+  velocidad y el voltaje, y en todos los módulos por igual. En una DDR5 de
+  la que solo se lee la primera página del chip, los dos salen de la BIOS.
 - Temperaturas: un Ryzen de Zen 2 en adelante, que no declara sus límites,
   avisa en ámbar desde el Tjmax de su ficha en amd.com (90 °C un 5800X3D),
   y nunca en rojo: la ficha no dice dónde se apaga el equipo. Al pasar el

@@ -757,6 +757,28 @@ class MemoryModule:
         return self.speed_mts
 
     @property
+    def maker(self) -> Optional[str]:
+        """Its SPD's JEDEC maker first: the firmware's table writes it its own
+        way («Crucial Technology»), and the same part would change name on
+        giving permissions."""
+        return (self.spd.manufacturer if self.spd is not None else None) or self.manufacturer
+
+    @property
+    def maker_from_firmware(self) -> bool:
+        """Whether `maker` is only what the firmware's table says."""
+        return not (self.spd is not None and self.spd.manufacturer) and bool(self.manufacturer)
+
+    @property
+    def part(self) -> Optional[str]:
+        """Its part number, from its SPD first, like `maker`."""
+        return (self.spd.part_number if self.spd is not None else None) or self.part_number
+
+    @property
+    def part_from_firmware(self) -> bool:
+        """Whether `part` is only what the firmware's table says."""
+        return not (self.spd is not None and self.spd.part_number) and bool(self.part_number)
+
+    @property
     def rated_from_firmware(self) -> bool:
         """Whether `rated_mts` is only what the firmware's table says."""
         return not (self.spd is not None and self.spd.rated_mts) and bool(self.speed_mts)
@@ -2312,6 +2334,7 @@ _COMPUTED: dict[str, tuple[str, ...]] = {
     "Sensor": ("unit", "plausible", "group", "category", "alarm", "alarm_level"),
     "Board": ("display_name",),
     "MemoryModule": ("has_ecc", "underclocked", "rated_mts", "in_a_slot", "soldered_by",
+                     "maker", "maker_from_firmware", "part", "part_from_firmware",
                      "rated_from_firmware", "voltage_mv", "nominal_voltage_mv",
                      "voltage_from_firmware",
                      "above_jedec", "ranks"),

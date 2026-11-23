@@ -117,8 +117,10 @@ class TestOnTheMemoryPage(unittest.TestCase):
             ventana.select_section("Memoria")
             pagina = ventana.stack.currentWidget()
             fichas = {g._values[_("memory.field.part")].full_text(): g for g in pagina._slot_grids}
-            soldada = fichas["M471A1G44AB0-CWE"]
-            del fichas["M471A1G44AB0-CWE"]
+            # Soldered: no SPD, so its part is the firmware's.
+            soldered_part = f"M471A1G44AB0-CWE · {_('memory.source.bios')}"
+            soldada = fichas[soldered_part]
+            del fichas[soldered_part]
             zocalo = next(iter(fichas.values()))
             return (soldada._values[_("memory.field.form")].full_text(),
                     soldada._values[_("memory.field.form")].toolTip(),

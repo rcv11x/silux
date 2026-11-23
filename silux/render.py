@@ -124,6 +124,21 @@ def firmware_mismatch(text: str) -> str:
     return f"{text} · {_('memory.source.bios.mismatch')}"
 
 
+def memory_module_maker(module) -> Optional[str]:
+    """Its maker, saying so when only the firmware's table gives it."""
+    text = memory_maker(module.maker)
+    if text and module.maker_from_firmware:
+        return f"{text} · {_('memory.source.bios')}"
+    return text
+
+
+def memory_module_part(module) -> Optional[str]:
+    """Its part number, saying so when only the firmware's table gives it."""
+    if not module.part:
+        return None
+    return f"{module.part} · {_('memory.source.bios')}" if module.part_from_firmware else module.part
+
+
 def memory_rated(module) -> str:
     """«3200 MT/s», saying so when only the firmware's table gives it."""
     if not module.rated_mts:

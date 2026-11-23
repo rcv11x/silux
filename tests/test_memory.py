@@ -1046,7 +1046,7 @@ class TestElFabricanteSiempreIgual(unittest.TestCase):
         pagina.apply(dataclasses.replace(base, modules=(modulo,), spd=()))
         app.processEvents()
         self.assertEqual(pagina._slot_grids[0]._values[_("memory.field.vendor")].full_text(),
-                         "Crucial")
+                         f"Crucial · {_('memory.source.bios')}")
 
 
 class TestLasFichasSeLlamanIgualConYSinPermisos(unittest.TestCase):
