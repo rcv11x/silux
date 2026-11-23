@@ -12,6 +12,11 @@ que hace falta.
 
 ## Sin publicar
 
+- AppImage: si el normal no puede arrancar en ese procesador, lo primero que
+  dice es qué descargar y de dónde, también como notificación del escritorio
+  cuando se abre con doble clic. La lista de procesadores de cada AppImage
+  está comprobada familia a familia: los Atom anteriores a 2013 y los AMD
+  Llano y Bobcat, aunque sean de 2011, necesitan el compatible.
 - CPU: en los AMD con `fam15h_power` (de Bulldozer a Puma), lo que el driver
   publica como potencia «crítica» es el TDP: sale como «TDP» en Potencia y
   reposo, y pasarlo un rato con el turbo ya no da «1 sensor en crítico».

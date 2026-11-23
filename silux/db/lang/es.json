@@ -861,7 +861,7 @@
   "guard.cpu.meanwhile": "Mientras tanto, esto funciona sin Qt y saca todo el hardware por la terminal:",
   "guard.cpu.missing": "A este procesador le faltan instrucciones que necesita el Qt instalado: {banderas}",
   "guard.cpu.override": "Si crees que es un error (hay distribuciones que compilan su Qt para\nx86-64 a secas), {variable}=1 se salta esta comprobación.",
-  "guard.cpu.why": "Es lo que pide Qt {mayor}.{menor} en adelante, y deja fuera a los Intel anteriores a 2008\ny a los AMD anteriores a 2011. No es un fallo del equipo.",
+  "guard.cpu.why": "Es lo que pide Qt {mayor}.{menor} en adelante. Lo tienen casi todos los PC desde 2010,\npero no los Core 2, los Atom anteriores a 2013, los Athlon II y Phenom II, ni los AMD\nLlano y Bobcat. No es un fallo del equipo.",
   "gui.description": "Abre la ventana de Silux. Sin opciones, eso es todo.",
   "gui.epilog.report": "El informe dice lo que enseña la ventana, sin el nombre del equipo, ni\ndirecciones, ni números de serie. Para contar un fallo, adjúntalo en\nhttps://github.com/rcv11x/silux/issues",
   "gui.epilog.title": "En la terminal, sin ventana:",

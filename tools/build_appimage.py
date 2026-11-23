@@ -199,31 +199,30 @@ if [ -r /proc/cpuinfo ]; then
 fi
 if [ -n "$FALTAN" ]; then
     ESTE="${APPIMAGE:-$0}"
+    DESCARGAS="https://github.com/rcv11x/silux/releases/latest"
     case "${LC_ALL:-${LC_MESSAGES:-${LANG:-}}}" in
-      es*) cat >&2 <<FIN
-A este procesador le faltan instrucciones que necesita la versión normal:$FALTAN
+      es*) LINEA="Este procesador necesita la versión compatible: descarga %%NOMBRE%%-compat.AppImage de $DESCARGAS"
+           cat >&2 <<FIN
+$LINEA
 
-Es lo que pide Qt 6.10 en adelante, y deja fuera a los Intel anteriores a 2008
-y a los AMD anteriores a 2011. No es un fallo del equipo.
-
-Hay una versión para estos procesadores, con el mismo programa dentro:
-
-    %%NOMBRE%%-compat.AppImage
+Le faltan instrucciones que pide la versión normal:$FALTAN
+Las pide Qt 6.10 en adelante. Las tienen casi todos los PC desde 2010, pero no
+los Core 2, los Atom anteriores a 2013, los Athlon II y Phenom II, ni los AMD
+Llano y Bobcat. No es un fallo del equipo: la compatible es el mismo programa.
 
 Mientras tanto, esto sí funciona y saca todo el hardware por la terminal:
 
     $ESTE --report informe.md
 FIN
       ;;
-      *) cat >&2 <<FIN
-This processor is missing instructions the normal build needs:$FALTAN
+      *) LINEA="This processor needs the compatible build: download %%NOMBRE%%-compat.AppImage from $DESCARGAS"
+         cat >&2 <<FIN
+$LINEA
 
-Qt 6.10 and later require them, which leaves out Intel chips older than 2008
-and AMD chips older than 2011. Nothing is wrong with your machine.
-
-There is a build for these processors, with the same program inside:
-
-    %%NOMBRE%%-compat.AppImage
+It is missing instructions the regular build needs:$FALTAN
+Qt 6.10 and later require them. Almost any PC from 2010 on has them, but not
+Core 2, Atom before 2013, Athlon II and Phenom II, nor AMD's Llano and Bobcat.
+Nothing is wrong with your machine: the compatible build is the same program.
 
 In the meantime this works, and dumps all the hardware to the terminal:
 
@@ -231,6 +230,13 @@ In the meantime this works, and dumps all the hardware to the terminal:
 FIN
       ;;
     esac
+    # Opened with a double click there is no terminal to read that in: the
+    # line goes as a desktop notification too, with the system's own
+    # libraries and not the AppImage's.
+    if [ ! -t 2 ] && command -v notify-send >/dev/null 2>&1; then
+        env -u LD_LIBRARY_PATH -u PYTHONHOME -u PYTHONPATH -u QT_PLUGIN_PATH \
+            -u QT_QPA_PLATFORM_PLUGIN_PATH notify-send -a Silux Silux "$LINEA" 2>/dev/null || true
+    fi
     exit 1
 fi
 # --- fin procesador --------------------------------------------------------

@@ -861,7 +861,7 @@
   "guard.cpu.meanwhile": "In the meantime this works without Qt, and dumps all the hardware to the terminal:",
   "guard.cpu.missing": "This processor is missing instructions the installed Qt needs: {banderas}",
   "guard.cpu.override": "If you think this is wrong (some distributions build their Qt for plain\nx86-64) {variable}=1 skips this check.",
-  "guard.cpu.why": "Qt {mayor}.{menor} and later require them, which leaves out Intel chips older than 2008\nand AMD chips older than 2011. Nothing is wrong with your machine.",
+  "guard.cpu.why": "Qt {mayor}.{menor} and later require them. Almost any PC from 2010 on has them, but not\nCore 2, Atom before 2013, Athlon II and Phenom II, nor AMD's Llano and Bobcat.\nNothing is wrong with your machine.",
   "gui.description": "Opens the Silux window. Without options, that is all it does.",
   "gui.epilog.report": "The report says what the window shows, without the computer name,\naddresses or serial numbers. To report a bug, attach it at\nhttps://github.com/rcv11x/silux/issues",
   "gui.epilog.title": "In the terminal, without a window:",

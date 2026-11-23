@@ -9,7 +9,7 @@ reparte y por qué, y cómo se comprueba.
 |---|---|---|
 | Python | 3.14, de python-build-standalone | 3.10, el de Ubuntu 22.04 |
 | PySide6 | la última (6.12) | 6.9 (`<6.10`) |
-| Procesador | x86-64-v2: Intel desde 2008, AMD desde 2011 | cualquier x86-64 |
+| Procesador | x86-64-v2: Intel desde Nehalem (2008), Atom desde Silvermont (2013), AMD desde Bulldozer (2011) y Jaguar (2013) | cualquier x86-64 |
 | glibc | 2.34: RHEL 9, Ubuntu 22.04, Debian 12 y posteriores | 2.35: Ubuntu 22.04, Debian 12 y posteriores |
 | Tamaño | 53 MB | 44 MB |
 
@@ -160,7 +160,9 @@ dentro de funciones normales: `QString`, `QUtf8::convertToUnicode`,
 `QPainterPath::quadTo`. En un procesador sin SSE4.1 eso es «Instrucción
 ilegal» antes de pintar nada, y el aviso que Qt trae para ese caso no llega
 a salir. x86-64-v2 es Nehalem (2008) en Intel y Bulldozer (2011) en AMD: deja
-fuera los Core 2, los Athlon II y los Phenom II, justo la clase de equipo
+fuera los Core 2, los Atom anteriores a Silvermont (2013), los Athlon II, los
+Phenom II y, aunque sean de 2011, los A-series Llano (K10, sin SSSE3 ni
+SSE4.1) y los E-series Bobcat (sin SSE4.1), justo la clase de equipo
 cuyo dueño quiere saber qué lleva dentro. Lo descubrió un Athlon II X2 250u
 ajeno.
 

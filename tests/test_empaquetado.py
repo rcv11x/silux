@@ -648,6 +648,15 @@ class TestLaGuardaDelAppRun(unittest.TestCase):
                 self.assertEqual(hecho.returncode, 0, hecho.stderr)
                 self.assertIn("arranca silux.cli", hecho.stdout)
 
+    def test_the_first_line_says_what_to_download_and_from_where(self):
+        # Before anything else, in one line: which file and where.
+        for language, words in (("es_ES.UTF-8", "descarga"), ("C", "download")):
+            with self.subTest(language=language):
+                first = self._lanzar(LANG=language).stderr.splitlines()[0]
+                self.assertIn(words, first)
+                self.assertIn("silux-x86_64-compat.AppImage", first)
+                self.assertIn("https://github.com/rcv11x/silux/releases/latest", first)
+
     def test_recomienda_el_appimage_y_no_el_punto_de_montaje(self):
         hecho = self._lanzar(APPIMAGE="/home/ana/Descargas/silux-x86_64.AppImage")
         self.assertIn("/home/ana/Descargas/silux-x86_64.AppImage --report",
@@ -656,11 +665,11 @@ class TestLaGuardaDelAppRun(unittest.TestCase):
 
     def test_el_idioma_sigue_el_orden_de_posix(self):
         casos = (
-            ({"LANG": "es_ES.UTF-8"}, "A este procesador"),
-            ({"LC_ALL": "es_ES.UTF-8"}, "A este procesador"),
-            ({"LC_MESSAGES": "es_MX.UTF-8", "LANG": "C"}, "A este procesador"),
-            ({"LC_ALL": "C", "LANG": "es_ES.UTF-8"}, "This processor"),
-            ({}, "This processor"),
+            ({"LANG": "es_ES.UTF-8"}, "Este procesador necesita"),
+            ({"LC_ALL": "es_ES.UTF-8"}, "Este procesador necesita"),
+            ({"LC_MESSAGES": "es_MX.UTF-8", "LANG": "C"}, "Este procesador necesita"),
+            ({"LC_ALL": "C", "LANG": "es_ES.UTF-8"}, "This processor needs"),
+            ({}, "This processor needs"),
         )
         for entorno, espera in casos:
             with self.subTest(entorno=entorno):
