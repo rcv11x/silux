@@ -51,8 +51,8 @@ QT_QPA_PLATFORM=offscreen uv run pytest -m a_solas  # los tres que miden, solos
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .  # sin instalar nada
 ```
 
-En paralelo tardan medio minuto entre las dos pasadas; en serie, minuto y
-medio. **`-n auto` cuando la suite es lo único pesado que corre** (sin
+En paralelo tardan unos seis minutos con seis núcleos: la suite los llena,
+y el tiempo es su trabajo total, no el del test más largo. **`-n auto` cuando la suite es lo único pesado que corre** (sin
 agentes en paralelo, sin un contenedor, sin otra suite a la vez); **`-n 4` si
 hay algo más corriendo**: cada proceso carga Qt, y varias suites a la vez
 llenan la memoria. Las dos pasadas son las del CI: tres tests comparan dos medidas de
@@ -191,6 +191,17 @@ código nuevo:
   nombre**: lo que sale de otra fuente (el voltaje nominal del SPD, la
   resolución preferida del EDID) lo dice en el propio campo, no solo al pie,
   y en `--json` va en un campo que se llama como lo que es.
+- **El color de una temperatura sale solo de los límites que declara la
+  pieza** (`silux/thermal.py`): normal, ámbar desde su `max` y rojo desde
+  su `crit`; sin límites, sin color, y nunca uno inventado ni un degradado.
+  Los valores de relleno (0, 0 K, 0xFFFF K) no son límites. Un solo código
+  para Sensores, Inicio, CPU, gráfica y discos (`theme.LEVEL_COLOURS`,
+  `widgets.paint_level`).
+- **Toda temperatura y toda diferencia de temperatura que se enseña pasa por
+  `render`** (`temperature`, `temperature_whole`, `temperature_difference`,
+  `temperature_unit`): nunca «°C» a mano. El nivel se decide en °C; en °F se
+  convierte y luego se redondea, y una diferencia es ×1,8 sin sumar 32
+  (`tests/test_fahrenheit.py` recorre cada página de cada volcado).
 - **Una lectura suelta no es el intervalo**: lo que el hardware da como un
   instante (el uso de una AMD, la frecuencia de una Intel) se lee entre
   muestras y se enseña su media. Y dormida no es 0: es «en reposo».
@@ -340,7 +351,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); el código nuevo, en inglés (ver «Código»). Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-1898 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+1903 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
@@ -395,6 +406,9 @@ cambia el otro.
   eligiendo también qué rama se ejecuta.
 - Un test que lee el hardware de quien lo ejecuta no exige encontrar algo
   concreto: en el CI no está.
+- Un test que recorre los volcados va uno por volcado (`tests/per_dump.py`),
+  y la foto de cada uno se comparte en el proceso (`shared_snapshot`) salvo
+  si el test parchea algo.
 - **Ningún cambio visual se da por hecho sin mirarlo en la captura**, y el
   mensaje del commit dice solo lo que se ve en ella. La suite no pinta: lo
   que se pinta lo vigilan `test_todo_se_pinta.py` y los tests que miran la
