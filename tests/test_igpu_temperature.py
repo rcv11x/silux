@@ -17,6 +17,7 @@ import shutil
 import unittest
 
 from silux import volcado
+from tests.per_dump import per_dump
 from silux.collector import Collector
 from silux.i18n import _
 from silux.model import SensorKind
@@ -107,15 +108,17 @@ class TestNoPathsOnScreen(unittest.TestCase):
     is the report's, not the user's. The Intel notice said «el nodo DRM no
     trae hwmon y su contador de rendimiento no tiene evento térmico»."""
 
-    def test_every_page_of_every_dump(self):
+    def _every_page(self, carpeta):
         qt.app()
-        for carpeta in sorted(p for p in EQUIPOS.iterdir() if p.is_dir()):
-            foto = photo(carpeta.name)
-            with pantalla.Ventana(foto) as ventana:
-                for clave, pagina in pantalla.recorrer(ventana):
-                    for texto in pantalla.textos_de(pagina):
-                        with self.subTest(equipo=carpeta.name, pagina=clave):
-                            self.assertIsNone(TECNICO.search(texto), texto)
+        foto = photo(carpeta.name)
+        with pantalla.Ventana(foto) as ventana:
+            for clave, pagina in pantalla.recorrer(ventana):
+                for texto in pantalla.textos_de(pagina):
+                    with self.subTest(equipo=carpeta.name, pagina=clave):
+                        self.assertIsNone(TECNICO.search(texto), texto)
+
+
+per_dump(TestNoPathsOnScreen, "every_page_of_every_dump", TestNoPathsOnScreen._every_page)
 
 
 if __name__ == "__main__":

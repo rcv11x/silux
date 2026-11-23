@@ -11,7 +11,7 @@ import unittest
 from silux import render
 from silux.i18n import _
 from tests import pantalla, qt
-from tests.test_equipos import foto, volcados
+from tests.test_equipos import foto, shared_snapshot, volcados
 
 CLOCK_ROWS = ("cpu.clock.bus", "cpu.clock.multiplier", "cpu.clock.maxsilicon", "cpu.clock.epp")
 INTERFACE_ROWS = ("net.field.mac", "gpu.field.driver", "storage.col.model", "net.field.slot")
@@ -31,7 +31,7 @@ class TestNoDashForWhatIsNotThere(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         qt.app()
-        cls.snapshots = {d.name: foto(d)[0] for d in volcados()}
+        cls.snapshots = {d.name: shared_snapshot(d) for d in volcados()}
 
     def _page(self, window, section):
         window.select_section(section)

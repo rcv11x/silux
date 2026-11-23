@@ -13,7 +13,7 @@ import unittest
 from silux import render
 from silux.i18n import _
 from tests import pantalla, qt
-from tests.test_equipos import foto, volcados
+from tests.test_equipos import foto, shared_snapshot, volcados
 
 try:
     from PySide6.QtWidgets import QApplication, QLabel
@@ -39,7 +39,7 @@ class TestEveryDump(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         qt.app()
-        cls.snapshots = {folder.name: foto(folder)[0] for folder in volcados()}
+        cls.snapshots = {folder.name: shared_snapshot(folder) for folder in volcados()}
 
     def test_some_dump_has_a_card_asleep(self):
         self.assertTrue([name for name, s in self.snapshots.items()

@@ -10,7 +10,7 @@ import unittest
 
 from silux.i18n import _
 from tests import pantalla, qt
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 try:
     from PySide6.QtWidgets import QApplication
@@ -24,7 +24,7 @@ class TestLaPaginaCpu(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = qt.app()
-        cls.fotos = {n: foto(EQUIPOS / n)[0] for n in ("5800x3d", "i5-10400")}
+        cls.fotos = {n: shared_snapshot(EQUIPOS / n) for n in ("5800x3d", "i5-10400")}
 
     def _seccion(self, ventana):
         from silux.ui.pages.cpu import TypeSection
@@ -95,7 +95,7 @@ class TestLaEspecificacionEnCompacto(unittest.TestCase):
         theme.apply(app, prefs.theme, prefs.density, prefs.font_scale)
         for equipo in ("i5-10400", "5800x3d"):
             with self.subTest(equipo=equipo):
-                f = foto(EQUIPOS / equipo)[0]
+                f = shared_snapshot(EQUIPOS / equipo)
                 ventana = MainWindow(prefs)
                 self.addCleanup(ventana.close)
                 ventana.resize(900, 680)

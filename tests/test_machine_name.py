@@ -8,13 +8,13 @@ product name instead.
 import unittest
 
 from silux.model import Board, clean_dmi
-from tests.test_equipos import foto, volcados
+from tests.test_equipos import foto, shared_snapshot, volcados
 
 
 def foto_name(dump: str) -> str:
     from tests.test_equipos import EQUIPOS
 
-    return foto(EQUIPOS / dump)[0].board.display_name or ""
+    return shared_snapshot(EQUIPOS / dump).board.display_name or ""
 
 
 class TestTheName(unittest.TestCase):
@@ -52,12 +52,12 @@ class TestTheName(unittest.TestCase):
     def test_an_oem_machine_is_not_named_after_its_board(self):
         from tests.test_equipos import EQUIPOS
 
-        board = foto(EQUIPOS / "core2-p8400")[0].board
+        board = shared_snapshot(EQUIPOS / "core2-p8400").board
         self.assertEqual((board.name, board.display_name), ("0TN284", "Dell Latitude E6400"))
 
     def test_no_dump_is_named_after_a_version(self):
         for folder in volcados():
-            board = foto(folder)[0].board
+            board = shared_snapshot(folder).board
             title = board.display_name or ""
             versions = {clean_dmi(board.bios_version), clean_dmi(board.version),
                         clean_dmi(board.system_version) if board.system_version

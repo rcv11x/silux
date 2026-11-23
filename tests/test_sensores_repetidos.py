@@ -13,7 +13,7 @@ from silux.i18n import _
 from silux.model import SensorKind
 from silux.providers.hwmon import HwmonSensors
 from tests import qt
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 try:
     from PySide6.QtWidgets import QApplication
@@ -30,7 +30,7 @@ class TestElProveedor(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.foto = foto(EQUIPOS / "5800x3d")[0]
+        cls.foto = shared_snapshot(EQUIPOS / "5800x3d")
 
     def test_el_volcado_trae_el_caso(self):
         wmi = _temperaturas(self.foto.sensors, "gigabyte_wmi")
@@ -91,7 +91,7 @@ class TestElProveedor(unittest.TestCase):
         self.assertEqual(sum(1 for s in proveedor._without_repeats(salto) if s.mirror_of), 6)
 
     def test_en_un_equipo_sin_ese_driver_no_se_marca_nada(self):
-        intel = foto(EQUIPOS / "i5-10400")[0]
+        intel = shared_snapshot(EQUIPOS / "i5-10400")
         self.assertEqual([s for s in intel.sensors if s.mirror_of], [])
 
 
@@ -105,7 +105,7 @@ class TestEnLaPaginaDeSensores(unittest.TestCase):
         from silux.ui.pages.monitor import MonitorPage
 
         app = qt.app()
-        f = foto(EQUIPOS / "5800x3d")[0]
+        f = shared_snapshot(EQUIPOS / "5800x3d")
         pagina = MonitorPage(theme.palette_for(app, "dark"), Preferences().normalized(), Tracker())
         self.addCleanup(pagina.deleteLater)
         pagina.resize(1200, 900)

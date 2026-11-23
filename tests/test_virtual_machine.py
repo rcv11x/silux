@@ -13,7 +13,7 @@ from silux import render
 from silux.i18n import _
 from silux.model import Need
 from tests import qt
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 try:
     from PySide6.QtWidgets import QApplication
@@ -22,7 +22,7 @@ except ImportError:                                    # pragma: no cover
 
 
 def vm():
-    return foto(EQUIPOS / "qemu-kvm")[0]
+    return shared_snapshot(EQUIPOS / "qemu-kvm")
 
 
 class TestTheDisk(unittest.TestCase):
@@ -42,7 +42,7 @@ class TestTheDisk(unittest.TestCase):
         self.assertNotIn("disks.health", [n.path for n in vm().notes if n.need is Need.ROOT])
 
     def test_a_real_hdd_still_is_one(self):
-        discos = foto(EQUIPOS / "5800x3d")[0].disks
+        discos = shared_snapshot(EQUIPOS / "5800x3d").disks
         self.assertIn("HDD", {d.kind for d in discos})
 
 
@@ -90,7 +90,7 @@ class TestTheProcessor(unittest.TestCase):
         self.assertNotIn("cpu.clocks.bus_hz", rutas)
 
     def test_real_hardware_still_asks(self):
-        notas = {n.path: n.need for n in foto(EQUIPOS / "i5-10400")[0].notes}
+        notas = {n.path: n.need for n in shared_snapshot(EQUIPOS / "i5-10400").notes}
         self.assertIs(notas.get("cpu.voltage_v"), Need.ROOT)
 
 
@@ -124,7 +124,7 @@ class TestTheCpuPage(unittest.TestCase):
         self.assertFalse(section.clocks_card.isVisibleTo(section))
 
     def test_real_hardware_keeps_them(self):
-        section = self._section(foto(EQUIPOS / "i5-10400")[0])
+        section = self._section(shared_snapshot(EQUIPOS / "i5-10400"))
         self.assertTrue(section.clocks_card.isVisibleTo(section))
         self.assertTrue(section.identity._values[_("cpu.field.microcode")]
                         .isVisibleTo(section.identity))
@@ -211,7 +211,7 @@ class TestTheOtherPages(unittest.TestCase):
 
         pagina = self._page(CachesPage)
         self.assertTrue(pagina.virtual_pie.isVisibleTo(pagina))
-        real = self._page(CachesPage, foto(EQUIPOS / "5800x3d")[0])
+        real = self._page(CachesPage, shared_snapshot(EQUIPOS / "5800x3d"))
         self.assertFalse(real.virtual_pie.isVisibleTo(real))
 
 

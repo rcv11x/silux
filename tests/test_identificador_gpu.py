@@ -13,7 +13,7 @@ import unittest
 
 from silux import render
 from tests import qt
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 try:
     from PySide6.QtWidgets import QApplication
@@ -38,7 +38,7 @@ class TestEnLaFicha(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = qt.app()
-        cls.foto = foto(EQUIPOS / "5800x3d")[0]
+        cls.foto = shared_snapshot(EQUIPOS / "5800x3d")
 
     def _ficha(self, gpu):
         from silux.i18n import _

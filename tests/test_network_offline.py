@@ -10,20 +10,20 @@ from silux.i18n import _
 from silux.ui.pages.network import main_interface
 from tests import pantalla, qt
 from tests.test_interface_language import visible_texts
-from tests.test_equipos import EQUIPOS, foto, volcados
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot, volcados
 
 
 class TestOffline(unittest.TestCase):
 
     def test_no_dump_heads_with_the_loopback(self):
         for folder in volcados():
-            principal, _all = main_interface(foto(folder)[0].network)
+            principal, _all = main_interface(shared_snapshot(folder).network)
             with self.subTest(folder.name):
                 self.assertFalse(principal is not None and principal.kind == "loopback")
 
     def test_said_offline_on_home_and_network(self):
         qt.app()
-        snapshot = foto(EQUIPOS / "celeron-560")[0]
+        snapshot = shared_snapshot(EQUIPOS / "celeron-560")
         self.assertIsNone(main_interface(snapshot.network)[0])
         with pantalla.Ventana(snapshot) as window:
             for section in ("Inicio", "Red"):

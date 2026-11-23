@@ -11,7 +11,7 @@ import unittest
 from silux import render
 from silux.i18n import _
 from tests import pantalla, qt
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 try:
     from PySide6.QtWidgets import QApplication
@@ -25,7 +25,7 @@ class TestSistemaYElUsoDeLaMemoria(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = qt.app()
-        cls.fotos = {n: foto(EQUIPOS / n)[0] for n in ("5800x3d", "i5-10400")}
+        cls.fotos = {n: shared_snapshot(EQUIPOS / n) for n in ("5800x3d", "i5-10400")}
 
     def _abrir(self, ventana, seccion):
         ventana.select_section(seccion)

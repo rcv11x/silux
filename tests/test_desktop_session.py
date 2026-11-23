@@ -11,7 +11,7 @@ from silux.i18n import _
 from silux.providers.system import desktop, session_type
 from tests import pantalla, qt
 from tests.test_absent_rows import _dashed
-from tests.test_equipos import foto, volcados
+from tests.test_equipos import foto, shared_snapshot, volcados
 
 
 class TestTheFallbacks(unittest.TestCase):
@@ -35,7 +35,7 @@ class TestOnTheSystemPage(unittest.TestCase):
     def test_no_dash_and_the_foot_says_why(self):
         qt.app()
         for folder in volcados():
-            snapshot = foto(folder)[0]
+            snapshot = shared_snapshot(folder)
             with self.subTest(folder.name), pantalla.Ventana(snapshot) as window:
                 window.select_section("Sistema")
                 page = window.stack.currentWidget()

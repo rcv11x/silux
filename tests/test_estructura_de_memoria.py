@@ -11,7 +11,7 @@ from silux import render
 from silux.i18n import _
 
 from tests import pantalla, qt
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 try:
     from PySide6.QtWidgets import QApplication
@@ -25,7 +25,7 @@ class TestElOrdenDeMemoria(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = qt.app()
-        cls.fotos = {n: foto(EQUIPOS / n)[0] for n in ("5800x3d", "i5-10400")}
+        cls.fotos = {n: shared_snapshot(EQUIPOS / n) for n in ("5800x3d", "i5-10400")}
 
     def _alturas(self, ventana):
         ventana.select_section("Memoria")
@@ -93,7 +93,7 @@ class TestSinSpd(unittest.TestCase):
     def test_con_la_tabla_del_firmware_y_sin_spd(self):
         from tests.test_nombres_de_zocalos import PLACAS, _con_la_tabla
 
-        base = foto(EQUIPOS / "5800x3d")[0]
+        base = shared_snapshot(EQUIPOS / "5800x3d")
         f = _con_la_tabla(base, PLACAS["Gigabyte X570 (AM4)"][0], {1, 3})
         self.assertTrue(all(m.spd is None for m in f.modules))
         with pantalla.Ventana(f) as ventana:
@@ -123,7 +123,7 @@ class TestSinSpd(unittest.TestCase):
         import dataclasses
         from tests.test_nombres_de_zocalos import PLACAS, _con_la_tabla
 
-        base = foto(EQUIPOS / "5800x3d")[0]
+        base = shared_snapshot(EQUIPOS / "5800x3d")
         f = _con_la_tabla(base, PLACAS["Gigabyte X570 (AM4)"][0], {1, 3})
         f = dataclasses.replace(f, modules=tuple(
             dataclasses.replace(m, manufacturer=None) for m in f.modules))
@@ -136,7 +136,7 @@ class TestSinSpd(unittest.TestCase):
     def test_con_spd_solo_se_esconde_lo_que_esos_modulos_no_traen(self):
         # En el i5-10400 el SPD se lee sin permisos: sus fichas salen de él.
         # Sus Crucial no traen XMP: eso, y solo eso, va al pie.
-        f = foto(EQUIPOS / "i5-10400")[0]
+        f = shared_snapshot(EQUIPOS / "i5-10400")
         with pantalla.Ventana(f) as ventana:
             pagina = self._pagina(f, ventana)
             self.assertTrue(pagina._slot_grids)

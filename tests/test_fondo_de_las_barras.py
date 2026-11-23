@@ -14,14 +14,14 @@ import unittest
 from silux import render
 from silux.i18n import _
 from tests import qt
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 
 class TestElFondoFijo(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = qt.app()
-        cls.foto = foto(EQUIPOS / "5800x3d")[0]
+        cls.foto = shared_snapshot(EQUIPOS / "5800x3d")
 
     def seccion(self):
         from silux.settings import Preferences

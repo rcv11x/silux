@@ -12,7 +12,7 @@ import unittest
 
 from silux.i18n import _
 from tests import qt
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 try:
     from PySide6.QtWidgets import QApplication
@@ -27,7 +27,7 @@ class TestReadability(unittest.TestCase):
     def setUpClass(cls):
         from silux.ui import full_report
         qt.app()
-        snapshot = foto(EQUIPOS / "5800x3d")[0]
+        snapshot = shared_snapshot(EQUIPOS / "5800x3d")
         cls.text = full_report.build(snapshot)
 
     def section(self, title):
@@ -76,7 +76,7 @@ class TestALockedFigure(unittest.TestCase):
         from silux.ui import full_report
 
         qt.app()
-        text = full_report.build(foto(EQUIPOS / "i3-1115g4")[0])
+        text = full_report.build(shared_snapshot(EQUIPOS / "i3-1115g4"))
         locked = f"({_('report.locked')})"
         lines = [line for line in text.splitlines() if line.endswith(locked)]
         self.assertTrue(lines)

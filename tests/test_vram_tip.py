@@ -12,20 +12,20 @@ from silux import render
 from silux.i18n import _
 from silux.model import GpuMemory
 from tests import pantalla, qt
-from tests.test_equipos import EQUIPOS, foto, volcados
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot, volcados
 
 
 class TestTheTip(unittest.TestCase):
 
     def test_the_9070_xt(self):
-        gpu = next(g for g in foto(EQUIPOS / "5800x3d")[0].gpus if g.driver == "amdgpu")
+        gpu = next(g for g in shared_snapshot(EQUIPOS / "5800x3d").gpus if g.driver == "amdgpu")
         self.assertEqual(gpu.memory.total_bytes, 16304 * 1024 ** 2)
         self.assertEqual(render.vram_tip(gpu), _("gpu.tip.vram.kept").format(
             total=f"{render.thousands(16304)} MiB", chips=16, kept="80 MiB"))
 
     def test_on_its_page(self):
         qt.app()
-        snapshot = foto(EQUIPOS / "5800x3d")[0]
+        snapshot = shared_snapshot(EQUIPOS / "5800x3d")
         with pantalla.Ventana(snapshot) as window:
             window.select_section("Gráficos")
             from silux.ui.pages.graphics import GpuSection
@@ -34,7 +34,7 @@ class TestTheTip(unittest.TestCase):
             self.assertIn(render.vram_tip(snapshot.gpus[0]), shown.toolTip())
 
     def test_nothing_to_say(self):
-        gpu = foto(EQUIPOS / "ryzen3-4100")[0].gpus[0]
+        gpu = shared_snapshot(EQUIPOS / "ryzen3-4100").gpus[0]
         self.assertEqual(gpu.memory.total_bytes, 2 * 1024 ** 3)      # a whole 2 GiB
         self.assertIsNone(render.vram_tip(gpu))
         whole = dataclasses.replace(gpu, memory=GpuMemory(total_bytes=3 * 1024 ** 3 - 1))
@@ -42,7 +42,7 @@ class TestTheTip(unittest.TestCase):
 
     def test_no_integrated_card_has_one(self):
         for folder in volcados():
-            for gpu in foto(folder)[0].gpus:
+            for gpu in shared_snapshot(folder).gpus:
                 if gpu.integrated:
                     with self.subTest(folder.name, gpu=gpu.name):
                         self.assertIsNone(render.vram_tip(gpu))

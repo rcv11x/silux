@@ -21,7 +21,8 @@ from silux import render
 from silux.providers.base import Draft
 from silux.providers.privileged_memory import PrivilegedMemory
 from tests import pantalla, qt
-from tests.test_equipos import EQUIPOS, foto, volcados
+from tests.per_dump import per_dump
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot, volcados
 from tests.test_smbios import _empty_slot, _end, _memory_array, _memory_device
 
 try:
@@ -82,7 +83,7 @@ class TestLaTarjetaDeMemoriaDeInicio(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         qt.app()
-        cls.amd = foto(EQUIPOS / "5800x3d")[0]
+        cls.amd = shared_snapshot(EQUIPOS / "5800x3d")
 
     def _tarjeta(self, f) -> str:
         with pantalla.Ventana(f) as ventana:
@@ -207,7 +208,7 @@ class TestNingunaPaginaDeNingunEquipo(unittest.TestCase):
     def test_se_recorren_todas_las_paginas(self):
         from silux.ui.app import SECTIONS
 
-        with pantalla.Ventana(foto(EQUIPOS / "5800x3d")[0]) as ventana:
+        with pantalla.Ventana(shared_snapshot(EQUIPOS / "5800x3d")) as ventana:
             vistas = {seccion: len(pantalla.textos_de(pagina))
                       for seccion, pagina in pantalla.recorrer(ventana)}
         self.assertEqual(set(vistas), {clave for clave, _activa in SECTIONS})
@@ -217,22 +218,25 @@ class TestNingunaPaginaDeNingunEquipo(unittest.TestCase):
 
     def test_la_guarda_ve_lo_que_busca(self):
         # Si no cazara una foto estropeada a propósito, no vigilaría nada.
-        f = foto(EQUIPOS / "5800x3d")[0]
+        f = shared_snapshot(EQUIPOS / "5800x3d")
         estropeada = dataclasses.replace(f, board=dataclasses.replace(
             f.board, name="Default string", bios_version="To be filled by O.E.M."))
         self.assertTrue(self._hallazgos(estropeada))
 
-    def test_sin_permisos(self):
-        for carpeta in volcados():
-            with self.subTest(equipo=carpeta.name):
-                self.assertEqual(self._hallazgos(foto(carpeta)[0]), [])
+    def _without_permissions(self, carpeta):
+        self.assertEqual(self._hallazgos(shared_snapshot(carpeta)), [])
 
-    def test_con_la_tabla_del_firmware_leida(self):
-        for carpeta in volcados():
-            for nombre, tabla in (("dos de cuatro", DOS_DE_CUATRO), ("sin tipo", SIN_TIPO)):
-                with self.subTest(equipo=carpeta.name, tabla=nombre):
-                    self.assertEqual(
-                        self._hallazgos(_con_permisos(foto(carpeta)[0], tabla)), [])
+    def _with_the_firmware_table(self, carpeta):
+        for nombre, tabla in (("dos de cuatro", DOS_DE_CUATRO), ("sin tipo", SIN_TIPO)):
+            with self.subTest(equipo=carpeta.name, tabla=nombre):
+                self.assertEqual(
+                    self._hallazgos(_con_permisos(shared_snapshot(carpeta), tabla)), [])
+
+
+per_dump(TestNingunaPaginaDeNingunEquipo, "sin_permisos",
+         TestNingunaPaginaDeNingunEquipo._without_permissions)
+per_dump(TestNingunaPaginaDeNingunEquipo, "con_la_tabla_del_firmware_leida",
+         TestNingunaPaginaDeNingunEquipo._with_the_firmware_table)
 
 
 if __name__ == "__main__":

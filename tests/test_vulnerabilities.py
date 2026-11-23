@@ -9,7 +9,7 @@ import unittest
 
 from silux.i18n import _
 from tests import qt
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 try:
     from PySide6.QtWidgets import QApplication
@@ -32,7 +32,7 @@ class TestTheVulnerabilities(unittest.TestCase):
         pagina = SystemPage(theme.palette_for(self.app, "dark"), Preferences().normalized())
         self.addCleanup(pagina.deleteLater)
         pagina.show()
-        pagina.apply(foto(EQUIPOS / equipo)[0])
+        pagina.apply(shared_snapshot(EQUIPOS / equipo))
         self.app.processEvents()
         return pagina
 

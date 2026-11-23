@@ -11,7 +11,7 @@ import unittest
 from silux import render
 from silux.i18n import _
 from tests import pantalla, qt
-from tests.test_equipos import EQUIPOS, foto, volcados
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot, volcados
 
 
 class TestTheRadeon(unittest.TestCase):
@@ -19,7 +19,7 @@ class TestTheRadeon(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         qt.app()
-        cls.snapshot = foto(EQUIPOS / "5800x3d")[0]
+        cls.snapshot = shared_snapshot(EQUIPOS / "5800x3d")
         cls.gpu = cls.snapshot.gpus[0]
 
     def test_the_model(self):
@@ -68,7 +68,7 @@ class TestTheRadeon(unittest.TestCase):
     def test_no_expert_section_without_amdgpu(self):
         from silux.ui.pages.graphics import GpuSection
 
-        with pantalla.Ventana(foto(EQUIPOS / "i5-10400")[0]) as window:
+        with pantalla.Ventana(shared_snapshot(EQUIPOS / "i5-10400")) as window:
             window.select_section("Gráficos")
             section = window.stack.currentWidget().findChildren(GpuSection)[0]
             self.assertTrue(section.expert_fold.isHidden())
@@ -78,7 +78,7 @@ class TestEveryCard(unittest.TestCase):
 
     def test_mesa_named_where_it_is_mesa(self):
         for folder in volcados():
-            snapshot = foto(folder)[0]
+            snapshot = shared_snapshot(folder)
             for gpu in snapshot.gpus:
                 if not gpu.driver_version:
                     continue
@@ -91,7 +91,7 @@ class TestEveryCard(unittest.TestCase):
 
     def test_older_radeons_have_no_cache_figures(self):
         # The fields are gfx11 and later: a Polaris' are zero, not «0 B».
-        gpu = foto(EQUIPOS / "ryzen3-4100")[0].gpus[0]
+        gpu = shared_snapshot(EQUIPOS / "ryzen3-4100").gpus[0]
         self.assertEqual((gpu.l2_cache_bytes, gpu.infinity_cache_bytes), (None, None))
 
 

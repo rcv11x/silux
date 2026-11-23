@@ -11,7 +11,7 @@ import unittest
 from silux import db
 from silux.i18n import _
 from tests import pantalla, qt
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 
 class TestTheSpecs(unittest.TestCase):
@@ -25,7 +25,7 @@ class TestTheSpecs(unittest.TestCase):
 class TestAPartWithoutTurbo(unittest.TestCase):
 
     def test_its_clocks_card(self):
-        f = foto(EQUIPOS / "athlon-3000g")[0]
+        f = shared_snapshot(EQUIPOS / "athlon-3000g")
         reloj = f.cpu.types[0].clocks
         self.assertIs(reloj.turbo_supported, False)
         qt.app()
@@ -40,7 +40,7 @@ class TestAPartWithoutTurbo(unittest.TestCase):
             self.assertIn(_("cpu.clocks.noturbo"), seccion.clocks_foot.text())
 
     def test_a_part_whose_kernel_publishes_its_boost_is_untouched(self):
-        reloj = foto(EQUIPOS / "5800x3d")[0].cpu.types[0].clocks
+        reloj = shared_snapshot(EQUIPOS / "5800x3d").cpu.types[0].clocks
         self.assertIsNot(reloj.turbo_supported, False)
         self.assertIsNotNone(reloj.turbo_enabled)
 
@@ -56,7 +56,7 @@ class TestNoTurboIsNotATurboOff(unittest.TestCase):
         qt.app()
         off = _("clock.turbo.off").split("{")[0]
         for folder in volcados():
-            snapshot = foto(folder)[0]
+            snapshot = shared_snapshot(folder)
             with self.subTest(folder.name):
                 for cpu_type in snapshot.cpu.types:
                     clocks = cpu_type.clocks
@@ -70,7 +70,7 @@ class TestNoTurboIsNotATurboOff(unittest.TestCase):
                     self.assertFalse([t for t in textos if t.startswith(off)])
 
     def test_its_case(self):
-        clocks = foto(EQUIPOS / "celeron-g3900")[0].cpu.types[0].clocks
+        clocks = shared_snapshot(EQUIPOS / "celeron-g3900").cpu.types[0].clocks
         self.assertEqual((clocks.turbo_supported, clocks.turbo_enabled), (False, None))
 
 

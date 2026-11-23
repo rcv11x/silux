@@ -11,7 +11,7 @@ import unittest
 from silux.i18n import _
 from silux.model import Gpu, GpuClocks, GpuMemory, PcieLink
 from tests import qt
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 try:
     from PySide6.QtWidgets import QApplication
@@ -46,7 +46,7 @@ class TestTheNvidiaPage(unittest.TestCase):
         from silux.ui import theme
         from silux.ui.pages.graphics import GraphicsPage
 
-        f = dataclasses.replace(foto(EQUIPOS / "5800x3d")[0], gpus=(rtx_4060(),))
+        f = dataclasses.replace(shared_snapshot(EQUIPOS / "5800x3d"), gpus=(rtx_4060(),))
         pagina = GraphicsPage(theme.palette_for(self.app, "dark"), Preferences().normalized())
         self.addCleanup(pagina.deleteLater)
         pagina.resize(1200, 900)

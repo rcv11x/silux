@@ -10,7 +10,7 @@ import unittest
 
 from silux.i18n import _
 from tests import pantalla, qt
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 
 class TestTheReservedSpaceExplainsItself(unittest.TestCase):
@@ -18,7 +18,7 @@ class TestTheReservedSpaceExplainsItself(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = qt.app()
-        cls.photo = foto(EQUIPOS / "5800x3d")[0]
+        cls.photo = shared_snapshot(EQUIPOS / "5800x3d")
 
     def _barra(self, ventana, seccion, barra):
         ventana.select_section(seccion)

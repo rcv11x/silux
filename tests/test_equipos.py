@@ -41,6 +41,25 @@ def foto(carpeta: pathlib.Path):
             recolector.close()
 
 
+# `shared_snapshot`'s, by dump and language.
+_SHARED: dict = {}
+
+
+def shared_snapshot(carpeta: pathlib.Path):
+    """`foto(carpeta)[0]`, once per process and interface language.
+
+    A snapshot is frozen, so the tests that only read it can share it: a dozen
+    of them took the same nineteen. Not for a test that patches something
+    before collecting: that one calls `foto`.
+    """
+    from silux import i18n
+
+    key = (str(carpeta), i18n.current())
+    if key not in _SHARED:
+        _SHARED[key] = foto(carpeta)[0]
+    return _SHARED[key]
+
+
 class TestEquiposVolcados(unittest.TestCase):
 
     @classmethod

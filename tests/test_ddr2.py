@@ -8,7 +8,7 @@ import unittest
 
 from silux import render, spd
 from silux.i18n import _
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 CHIP = EQUIPOS / "celeron-560/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/0-0050/eeprom"
 
@@ -35,7 +35,7 @@ class TestOnTheMemoryPage(unittest.TestCase):
         from tests import pantalla, qt
 
         qt.app()
-        snapshot = foto(EQUIPOS / "celeron-560")[0]
+        snapshot = shared_snapshot(EQUIPOS / "celeron-560")
         self.assertEqual(snapshot.spd[0].dram_type, "DDR2")
         with pantalla.Ventana(snapshot) as window:
             window.select_section("Memoria")
@@ -52,7 +52,7 @@ class TestOnTheMemoryPage(unittest.TestCase):
         from tests.test_nada_en_bruto import _con_permisos
         from tests.test_smbios import _end, _memory_array, _memory_device
 
-        snapshot = foto(EQUIPOS / "celeron-560")[0]
+        snapshot = shared_snapshot(EQUIPOS / "celeron-560")
         # 0x12 is DDR: what this laptop's BIOS writes for its DDR2.
         table = (_memory_array() + _memory_device(memory_type=0x12, configured_mts=667,
                                                   part="M4 70T2953EZ3-CE6") + _end())

@@ -14,7 +14,8 @@ from unittest import mock
 
 from silux.i18n import _
 from tests import qt
-from tests.test_equipos import foto, volcados
+from tests.per_dump import per_dump
+from tests.test_equipos import EQUIPOS, shared_snapshot
 
 try:
     from PySide6.QtCore import Qt
@@ -30,7 +31,6 @@ class TestEveryEntryWarnsFirst(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = qt.app()
-        cls.photos = {carpeta.name: foto(carpeta)[0] for carpeta in volcados()}
 
     def setUp(self):
         from silux.privileged.client import PrivilegedClient
@@ -89,14 +89,13 @@ class TestEveryEntryWarnsFirst(unittest.TestCase):
         entries.append(("report preview", None, window._report_preview.grant_button))
         return entries
 
-    def test_every_entry_opens_the_warning_and_asks_nothing(self):
+    def _every_entry(self, folder):
         from silux.ui.widgets import LockMark
 
-        for name, photo in self.photos.items():
-            if not photo.permission_notes:
-                # A virtual machine: nothing it has needs permissions
-                # (test_virtual_machine), so nothing asks.
-                continue
+        name, photo = folder.name, shared_snapshot(folder)
+        if photo.permission_notes:
+            # A virtual machine has nothing that needs permissions
+            # (test_virtual_machine), so nothing asks.
             window = self._window(photo)
             entries = self._entries(window)
             self.assertTrue([e for e in entries if e[0].startswith("padlock")],
@@ -125,7 +124,7 @@ class TestEveryEntryWarnsFirst(unittest.TestCase):
         in the password window; then CPU and Memory must warn again."""
         from silux.ui.widgets import LockMark
 
-        photo = self.photos["i5-10400"]
+        photo = shared_snapshot(EQUIPOS / "i5-10400")
         window = self._window(photo)
         with mock.patch.object(window.sampler, "request_elevation") as ask:
             window.home_page.permission_notice.grant_button.click()
@@ -149,6 +148,10 @@ class TestEveryEntryWarnsFirst(unittest.TestCase):
                     self.assertTrue(window._dialogo_permisos.isVisible())
                     ask.assert_not_called()
                     window._dialogo_permisos.close()
+
+
+per_dump(TestEveryEntryWarnsFirst, "every_entry_opens_the_warning_and_asks_nothing",
+         TestEveryEntryWarnsFirst._every_entry)
 
 
 if __name__ == "__main__":

@@ -22,7 +22,8 @@ import unittest
 
 from silux import i18n
 from tests import pantalla, qt
-from tests.test_equipos import foto, volcados
+from tests.per_dump import per_dump
+from tests.test_equipos import foto, shared_snapshot, volcados
 
 LANG = pathlib.Path(__file__).resolve().parent.parent / "silux" / "db" / "lang"
 # Letters with neither a letter nor a digit next to them: a commit hash such
@@ -129,23 +130,22 @@ def foreign(texto: str, idioma: str, ajenas: set, datos: set) -> set:
 
 class TestEveryPageInOneLanguage(unittest.TestCase):
 
-    def test_no_word_of_the_other_language(self):
+    def _no_word_of_the_other_language(self, carpeta):
         qt.app()
         for idioma in ("en", "es"):
             ajenas = _foreign_words(idioma)
-            for carpeta in volcados():
-                i18n.set_language(idioma)
-                try:
-                    snapshot = foto(carpeta)[0]
-                    datos = _data(snapshot)
-                    with pantalla.Ventana(snapshot) as ventana:
-                        for clave, _pagina in pantalla.recorrer(ventana):
-                            for texto in visible_texts(ventana):
-                                malas = foreign(texto, idioma, ajenas, datos)
-                                with self.subTest(idioma=idioma, equipo=carpeta.name, pagina=clave):
-                                    self.assertFalse(malas, f"{sorted(malas)} :: {texto[:120]}")
-                finally:
-                    i18n.set_language("es")
+            i18n.set_language(idioma)
+            try:
+                snapshot = shared_snapshot(carpeta)
+                datos = _data(snapshot)
+                with pantalla.Ventana(snapshot) as ventana:
+                    for clave, _pagina in pantalla.recorrer(ventana):
+                        for texto in visible_texts(ventana):
+                            malas = foreign(texto, idioma, ajenas, datos)
+                            with self.subTest(idioma=idioma, equipo=carpeta.name, pagina=clave):
+                                self.assertFalse(malas, f"{sorted(malas)} :: {texto[:120]}")
+            finally:
+                i18n.set_language("es")
 
     def test_it_sees_a_word_of_the_other_language(self):
         ajenas = _foreign_words("en")
@@ -154,6 +154,10 @@ class TestEveryPageInOneLanguage(unittest.TestCase):
         self.assertTrue(foreign("Bajando", "en", ajenas, set()))
         self.assertFalse(foreign("AES-NI", "en", ajenas, set()))
         self.assertTrue(foreign("fixed at 4.2 GHz", "es", _foreign_words("es"), set()))
+
+
+per_dump(TestEveryPageInOneLanguage, "no_word_of_the_other_language",
+         TestEveryPageInOneLanguage._no_word_of_the_other_language)
 
 
 if __name__ == "__main__":

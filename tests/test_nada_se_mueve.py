@@ -16,7 +16,8 @@ la vista, su sitio y su tamaño, y si alguno se enseña o se esconde.
 import unittest
 
 from tests import pantalla, qt
-from tests.test_equipos import volcados
+from tests.per_dump import per_dump
+from tests.test_equipos import EQUIPOS
 
 try:
     from PySide6.QtWidgets import QApplication
@@ -206,12 +207,24 @@ class Visibilidad:
 @unittest.skipIf(QApplication is None, "sin PySide6")
 class TestNadaSeMueve(unittest.TestCase):
 
+    # Each dump's two snapshots, taken when a test asks for them: split by
+    # dump, a test needs one dump's, not nineteen.
+    _equal: dict = {}
+    _advancing: dict = {}
+
     @classmethod
     def setUpClass(cls):
         qt.app()
-        cls.fotos = {carpeta.name: dos_fotos(carpeta) for carpeta in volcados()}
-        cls.avanzando = {carpeta.name: con_contadores_avanzando(carpeta)
-                         for carpeta in volcados()}
+
+    def _two(self, nombre: str) -> dict:
+        if nombre not in self._equal:
+            self._equal[nombre] = dos_fotos(EQUIPOS / nombre)
+        return {nombre: self._equal[nombre]}
+
+    def _moving(self, nombre: str) -> dict:
+        if nombre not in self._advancing:
+            self._advancing[nombre] = con_contadores_avanzando(EQUIPOS / nombre)
+        return {nombre: self._advancing[nombre]}
 
     def _sin_moverse(self, nombre: str, fotos: dict, como: str) -> None:
         primera, segunda = fotos[nombre]
@@ -227,19 +240,17 @@ class TestNadaSeMueve(unittest.TestCase):
                     self.assertEqual(visibilidad.cambios, [])
                     self.assertEqual(diferencias(antes, geometria(pagina)), [])
 
-    def test_cada_pagina_de_cada_equipo(self):
-        self.assertTrue(self.fotos)
-        for nombre in self.fotos:
-            self._sin_moverse(nombre, self.fotos, "iguales")
+    def _every_page(self, carpeta):
+        self._sin_moverse(carpeta.name, self._two(carpeta.name), "iguales")
 
-    def test_con_las_cifras_cambiando_de_ancho(self):
+    def _figures_changing_width(self, carpeta):
         # Una cifra que pasa de «0» a «100», o de «0 B/s» a megas, no mueve
         # su unidad ni nada de al lado: cada ficha reserva lo más ancho que
         # puede decir (`StatTile.reserve`).
-        for nombre in self.avanzando:
-            self._sin_moverse(nombre, self.avanzando, "con los contadores avanzando")
+        self._sin_moverse(carpeta.name, self._moving(carpeta.name),
+                          "con los contadores avanzando")
 
-    def test_con_las_cifras_en_sus_extremos(self):
+    def _figures_at_their_extremes(self, carpeta):
         # Lo de arriba depende de lo rápido que vaya la máquina: los ritmos
         # salen de 50 MB divididos por el tiempo real entre dos lecturas. En
         # el CI, con DejaVu, una tarjeta de Inicio se ensanchó 21 px y se
@@ -258,20 +269,19 @@ class TestNadaSeMueve(unittest.TestCase):
                                        cpu=dataclasses.replace(foto.cpu, usage_percent=uso))
 
         extremos = {nombre: (con(despues, 1.0, 1.0), con(despues, 999_960_000.0, 100.0))
-                    for nombre, (_antes, despues) in self.avanzando.items()}
+                    for nombre, (_antes, despues) in self._moving(carpeta.name).items()}
         for nombre in extremos:
             self._sin_moverse(nombre, extremos, "con las cifras en sus extremos")
 
-    def test_avanzar_cambia_las_cifras(self):
+    def _advancing_changes_the_figures(self, carpeta):
         # Si las dos muestras dijeran lo mismo, la prueba de arriba no
         # probaría nada.
-        for nombre, (antes, despues) in self.avanzando.items():
-            with self.subTest(equipo=nombre):
-                self.assertLess(antes.cpu.usage_percent, 10.0)
-                self.assertGreater(despues.cpu.usage_percent, 99.0)
-                self.assertTrue(any(d.io.read_rate_bps for d in despues.disks))
-                self.assertTrue(any(i.traffic and i.traffic.rx_rate_bps
-                                    for i in despues.network))
+        antes, despues = self._moving(carpeta.name)[carpeta.name]
+        self.assertLess(antes.cpu.usage_percent, 10.0)
+        self.assertGreater(despues.cpu.usage_percent, 99.0)
+        self.assertTrue(any(d.io.read_rate_bps for d in despues.disks))
+        self.assertTrue(any(i.traffic and i.traffic.rx_rate_bps
+                            for i in despues.network))
 
     def test_la_guarda_ve_una_fila_que_se_enseña_y_se_esconde(self):
         # Si no cazara una página que se deshace y se rehace, no vigilaría
@@ -280,8 +290,8 @@ class TestNadaSeMueve(unittest.TestCase):
         from silux.i18n import _
         from silux.ui.pages.graphics import GpuSection
 
-        nombre = next(n for n, (f, _s) in self.fotos.items() if f.gpus)
-        primera, segunda = self.fotos[nombre]
+        # A dump with a graphics card.
+        primera, segunda = self._two("5800x3d")["5800x3d"]
         with pantalla.Ventana(primera) as ventana:
             ventana.select_section("nav.graphics")
             asentar()
@@ -301,6 +311,14 @@ class TestNadaSeMueve(unittest.TestCase):
                 ventana._on_sample(segunda)
                 asentar()
         self.assertTrue(visibilidad.cambios)
+
+
+per_dump(TestNadaSeMueve, "cada_pagina_de_cada_equipo", TestNadaSeMueve._every_page)
+per_dump(TestNadaSeMueve, "con_las_cifras_cambiando_de_ancho",
+         TestNadaSeMueve._figures_changing_width)
+per_dump(TestNadaSeMueve, "con_las_cifras_en_sus_extremos",
+         TestNadaSeMueve._figures_at_their_extremes)
+per_dump(TestNadaSeMueve, "avanzar_cambia_las_cifras", TestNadaSeMueve._advancing_changes_the_figures)
 
 
 if __name__ == "__main__":

@@ -27,7 +27,8 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from silux.model import DiskHealth, Need
 from silux.settings import Preferences
 from tests import qt
-from tests.test_equipos import EQUIPOS, foto, volcados
+from tests.per_dump import per_dump
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot, volcados
 from tests.test_nombres_de_zocalos import PLACAS, _con_la_tabla
 
 try:
@@ -164,8 +165,8 @@ class TestLaPaginaAbiertaSePoneAlDia(unittest.TestCase):
             retratos[ventana.nav.item(fila).text()] = retrato(ventana)
         return retratos
 
-    def _comparar(self, sentido, antes, despues, equipo):
-        directo = self._de_golpe(despues)
+    def _comparar(self, sentido, antes, despues, equipo, directo=None):
+        directo = directo if directo is not None else self._de_golpe(despues)
         abierto = self._con_la_pagina_abierta(antes, despues)
         self.assertEqual(sorted(directo), sorted(abierto))
         for seccion in directo:
@@ -178,31 +179,29 @@ class TestLaPaginaAbiertaSePoneAlDia(unittest.TestCase):
 
     def test_la_foto_con_permisos_cambia_algo(self):
         for carpeta in volcados():
-            sin = foto(carpeta)[0]
+            sin = shared_snapshot(carpeta)
             con = con_permisos(sin)
             self.assertTrue(any(m.populated for m in con.modules))
             self.assertNotEqual(sin.modules, con.modules)
             self.assertIsNone(con.permission_note("modules"))
 
-    def test_al_dar_los_permisos(self):
-        for carpeta in volcados():
-            sin = foto(carpeta)[0]
-            self._comparar("se dan", sin, con_permisos(sin), carpeta.name)
+    def _on_the_spot(self, carpeta):
+        """Permissions given and lost; a USB disk that goes, an interface
+        that leaves, a monitor turned off, and back: their rows and cards
+        go with them, and come back. Each snapshot mounted straight is taken
+        once: «se pone» and «se pierden» both end on the plain one."""
+        sin = shared_snapshot(carpeta)
+        con = con_permisos(sin)
+        menos = con_menos(sin)
+        self.assertNotEqual(sin, menos)
+        sin_directo = self._de_golpe(sin)
+        self._comparar("se dan", sin, con, carpeta.name)
+        self._comparar("se quita", sin, menos, carpeta.name)
+        self._comparar("se pone", menos, sin, carpeta.name, directo=sin_directo)
+        self._comparar("se pierden", con, sin, carpeta.name, directo=sin_directo)
 
-    def test_al_desenchufar_y_al_volver_a_enchufar(self):
-        """Un disco USB que se quita, una interfaz que se va, un monitor
-        que se apaga: sus filas y sus tarjetas se van con ellos, y vuelven."""
-        for carpeta in volcados():
-            todo = foto(carpeta)[0]
-            menos = con_menos(todo)
-            self.assertNotEqual(todo, menos)
-            self._comparar("se quita", todo, menos, carpeta.name)
-            self._comparar("se pone", menos, todo, carpeta.name)
 
-    def test_y_al_perderlos(self):
-        for carpeta in volcados():
-            sin = foto(carpeta)[0]
-            self._comparar("se pierden", con_permisos(sin), sin, carpeta.name)
+per_dump(TestLaPaginaAbiertaSePoneAlDia, "al_momento", TestLaPaginaAbiertaSePoneAlDia._on_the_spot)
 
 
 if __name__ == "__main__":

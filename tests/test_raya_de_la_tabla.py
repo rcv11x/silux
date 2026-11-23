@@ -17,7 +17,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from silux.settings import Preferences
 from tests import qt
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 try:
     from PySide6.QtCore import QPoint
@@ -41,7 +41,7 @@ class TestLaRayaDeLaTabla(unittest.TestCase):
         self.addCleanup(ventana.close)
         ventana.resize(1200, 800)
         ventana.show()
-        muestra = foto(EQUIPOS / "5800x3d")[0]
+        muestra = shared_snapshot(EQUIPOS / "5800x3d")
         for _vuelta in range(3):
             ventana._on_sample(muestra)
             for _vez in range(5):

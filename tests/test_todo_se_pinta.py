@@ -24,7 +24,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from silux.settings import Preferences
 from tests import qt
-from tests.test_equipos import foto, volcados
+from tests.test_equipos import foto, shared_snapshot, volcados
 
 try:
     from PySide6.QtWidgets import QApplication
@@ -70,7 +70,7 @@ class TestTodoSePinta(unittest.TestCase):
 
     def test_cada_seccion_con_cada_volcado(self):
         for carpeta in volcados():
-            muestra = foto(carpeta)[0]
+            muestra = shared_snapshot(carpeta)
             for _vuelta in range(2):
                 self.ventana._on_sample(muestra)
                 self.app.processEvents()

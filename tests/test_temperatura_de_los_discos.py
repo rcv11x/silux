@@ -14,7 +14,7 @@ import unittest
 from silux.i18n import _
 from silux.model import DiskHealth
 from tests import qt
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 try:
     from PySide6.QtWidgets import QApplication
@@ -30,8 +30,8 @@ class TestLaFichaDeCadaDisco(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.amd = foto(EQUIPOS / "5800x3d")[0]
-        cls.intel = foto(EQUIPOS / "i5-10400")[0]
+        cls.amd = shared_snapshot(EQUIPOS / "5800x3d")
+        cls.intel = shared_snapshot(EQUIPOS / "i5-10400")
 
     def _pagina(self, f):
         from silux.settings import Preferences

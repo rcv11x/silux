@@ -13,7 +13,7 @@ import unittest
 from silux import render
 from silux.i18n import _
 from tests import qt
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 try:
     from PySide6.QtWidgets import QApplication
@@ -24,7 +24,7 @@ except ImportError:                                    # pragma: no cover
 class TestLoQueLeeDelVolcado(unittest.TestCase):
 
     def test_las_frecuencias_del_silicio(self):
-        gpu = foto(EQUIPOS / "i5-10400")[0].gpus[0]
+        gpu = shared_snapshot(EQUIPOS / "i5-10400").gpus[0]
         relojes = gpu.clocks
         self.assertEqual((relojes.silicon_min_hz, relojes.efficient_hz, relojes.silicon_max_hz),
                          (350_000_000, 350_000_000, 1_100_000_000))
@@ -34,12 +34,12 @@ class TestLoQueLeeDelVolcado(unittest.TestCase):
         self.assertIsNone(gpu.throttled)
 
     def test_en_amd_no_hay_nada_de_esto(self):
-        gpu = foto(EQUIPOS / "5800x3d")[0].gpus[0]
+        gpu = shared_snapshot(EQUIPOS / "5800x3d").gpus[0]
         self.assertIsNone(gpu.clocks.silicon_max_hz)
         self.assertIsNone(gpu.sleep_enabled)
 
     def test_los_limites_solo_si_alguien_los_cambio(self):
-        relojes = foto(EQUIPOS / "i5-10400")[0].gpus[0].clocks
+        relojes = shared_snapshot(EQUIPOS / "i5-10400").gpus[0].clocks
         self.assertIsNone(render.gpu_clock_limits(relojes))
         capado = dataclasses.replace(relojes, core_max_hz=900_000_000)
         self.assertEqual(render.gpu_clock_limits(capado), "350 MHz – 900 MHz")
@@ -51,8 +51,8 @@ class TestEnLaPagina(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = qt.app()
-        cls.intel = foto(EQUIPOS / "i5-10400")[0]
-        cls.amd = foto(EQUIPOS / "5800x3d")[0]
+        cls.intel = shared_snapshot(EQUIPOS / "i5-10400")
+        cls.amd = shared_snapshot(EQUIPOS / "5800x3d")
 
     def _seccion(self, muestra):
         from silux.settings import Preferences
@@ -195,7 +195,7 @@ class TestLaTablaDeMotores(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = qt.app()
-        cls.intel = foto(EQUIPOS / "i5-10400")[0]
+        cls.intel = shared_snapshot(EQUIPOS / "i5-10400")
 
     def _seccion(self, muestra):
         from silux.settings import Preferences

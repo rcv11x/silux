@@ -9,7 +9,7 @@ import unittest
 from silux import render
 from silux.i18n import _
 from tests import pantalla, qt
-from tests.test_equipos import EQUIPOS, foto, volcados
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot, volcados
 
 TYPE_KEYS = {"performance": "sensor.core.p", "efficiency": "sensor.core.e"}
 
@@ -18,7 +18,7 @@ class TestTheCoreSensors(unittest.TestCase):
 
     def test_named_by_the_type_of_their_core_in_every_dump(self):
         for folder in volcados():
-            snapshot = foto(folder)[0]
+            snapshot = shared_snapshot(folder)
             types = {cpu.core_id: cpu.type_key for cpu in snapshot.cpu.logical}
             hybrid = len(set(types.values())) > 1
             for sensor in snapshot.sensors:
@@ -31,7 +31,7 @@ class TestTheCoreSensors(unittest.TestCase):
 
     def test_on_the_sensors_page(self):
         qt.app()
-        with pantalla.Ventana(foto(EQUIPOS / "i5-12450h")[0]) as window:
+        with pantalla.Ventana(shared_snapshot(EQUIPOS / "i5-12450h")) as window:
             window.select_section("Sensores")
             texts = pantalla.textos_de(window.stack.currentWidget())
         joined = " | ".join(texts)

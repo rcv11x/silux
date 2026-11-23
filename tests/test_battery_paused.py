@@ -8,7 +8,7 @@ import unittest
 
 from silux.i18n import _
 from tests import pantalla, qt
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 
 class TestBetweenItsThresholds(unittest.TestCase):
@@ -16,7 +16,7 @@ class TestBetweenItsThresholds(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         qt.app()
-        cls.snapshot = foto(EQUIPOS / "i5-8350u")[0]
+        cls.snapshot = shared_snapshot(EQUIPOS / "i5-8350u")
 
     def test_the_status(self):
         battery = self.snapshot.batteries[0]

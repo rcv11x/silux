@@ -16,7 +16,7 @@ import unittest
 from silux.i18n import _
 from tests import pantalla, qt
 from tests.test_interface_language import visible_texts
-from tests.test_equipos import EQUIPOS, foto, volcados
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot, volcados
 
 GTX = "sys/devices/pci0000:00/0000:00:01.0/0000:01:00.0"
 
@@ -37,7 +37,7 @@ class TestOnHome(unittest.TestCase):
 
     def test_the_sleeping_one_is_named(self):
         qt.app()
-        snapshot = foto(EQUIPOS / "i7-4710hq")[0]
+        snapshot = shared_snapshot(EQUIPOS / "i7-4710hq")
         with pantalla.Ventana(snapshot) as window:
             window.select_section("Inicio")
             text = " ".join(visible_texts(window.stack.currentWidget()))
@@ -48,7 +48,7 @@ class TestOnHome(unittest.TestCase):
         qt.app()
         from silux import render
         for folder in volcados():
-            snapshot = foto(folder)[0]
+            snapshot = shared_snapshot(folder)
             with self.subTest(folder.name), pantalla.Ventana(snapshot) as window:
                 window.select_section("Inicio")
                 text = " ".join(visible_texts(window.stack.currentWidget()))

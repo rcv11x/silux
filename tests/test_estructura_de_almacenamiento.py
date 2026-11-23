@@ -9,7 +9,7 @@ import unittest
 
 from silux.i18n import _
 from tests import pantalla, qt
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 try:
     from PySide6.QtWidgets import QApplication
@@ -23,7 +23,7 @@ class TestLaFichaDeUnDisco(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = qt.app()
-        cls.foto = foto(EQUIPOS / "5800x3d")[0]
+        cls.foto = shared_snapshot(EQUIPOS / "5800x3d")
 
     def _pagina(self, ventana):
         ventana.select_section("Almacenamiento")

@@ -9,7 +9,7 @@ import unittest
 
 from silux import render
 from tests import pantalla, qt
-from tests.test_equipos import EQUIPOS, foto, volcados
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot, volcados
 
 # What the firmware's table calls each SPD type (SMBIOS form factor codes).
 DIMM, SODIMM = 0x09, 0x0D
@@ -33,7 +33,7 @@ class TestTheForm(unittest.TestCase):
 
     def test_with_and_without_permissions_in_every_dump(self):
         for folder in volcados():
-            snapshot = foto(folder)[0]
+            snapshot = shared_snapshot(folder)
             for info, module in zip(snapshot.spd, _from_the_firmware(snapshot)):
                 if not info.module_type:
                     continue
@@ -42,7 +42,7 @@ class TestTheForm(unittest.TestCase):
 
     def test_on_the_memory_page(self):
         qt.app()
-        snapshot = foto(EQUIPOS / "celeron-g3900")[0]
+        snapshot = shared_snapshot(EQUIPOS / "celeron-g3900")
         self.assertFalse(snapshot.modules)
         with_permissions = dataclasses.replace(snapshot, modules=_from_the_firmware(snapshot))
         texts = {}

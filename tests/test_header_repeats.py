@@ -9,7 +9,7 @@ import unittest
 
 from silux.ui import app as appmod
 from tests import pantalla, qt
-from tests.test_equipos import foto, volcados
+from tests.test_equipos import foto, shared_snapshot, volcados
 
 try:
     from PySide6.QtWidgets import QLabel
@@ -41,7 +41,7 @@ class TestEveryHeader(unittest.TestCase):
 
     def test_the_subtitle_does_not_repeat_the_chips(self):
         for folder in volcados():
-            with pantalla.Ventana(foto(folder)[0]) as window:
+            with pantalla.Ventana(shared_snapshot(folder)) as window:
                 for key, active in appmod.SECTIONS:
                     if not active or not window.select_section(key):
                         continue

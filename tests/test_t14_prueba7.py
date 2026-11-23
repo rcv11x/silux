@@ -14,7 +14,7 @@ from silux import render
 from silux.i18n import _
 from silux.model import Board, NetworkTraffic, clean_dmi
 from silux.providers.dmi import chipset
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 
 class TestCacheSizes(unittest.TestCase):
@@ -27,7 +27,7 @@ class TestCacheSizes(unittest.TestCase):
                 self.assertEqual(render.cache_size(bytes_), texto)
 
     def test_on_a_dump(self):
-        l2 = [c for t in foto(EQUIPOS / "i5-1135g7")[0].cpu.types for c in t.caches if c.level == 2][0]
+        l2 = [c for t in shared_snapshot(EQUIPOS / "i5-1135g7").cpu.types for c in t.caches if c.level == 2][0]
         self.assertIn("4 × 1.25 MiB", render.cache_summary(l2))
 
 
@@ -72,7 +72,7 @@ class TestTheMemoryOfALaptop(unittest.TestCase):
 
     def test_a_voltage_the_spd_confirms(self):
         from silux.model import MemoryModule
-        spd = foto(EQUIPOS / "i5-1135g7")[0].spd[0]
+        spd = shared_snapshot(EQUIPOS / "i5-1135g7").spd[0]
         modulo = MemoryModule(voltage_configured_mv=round(spd.jedec.voltage_v * 1000), spd=spd)
         self.assertFalse(modulo.voltage_from_firmware)
         self.assertTrue(dataclasses.replace(modulo, spd=None).voltage_from_firmware)
@@ -84,7 +84,7 @@ class TestTheMemoryOfALaptop(unittest.TestCase):
         self.assertIsNone(MemoryModule(locator="Controller1-ChannelA-DIMM0", form_factor=0x0D,
                                        populated=True).soldered_by)
         # Read from its own SPD, with no place from the firmware: not soldered.
-        spd = foto(EQUIPOS / "i5-1135g7")[0].spd[0]
+        spd = shared_snapshot(EQUIPOS / "i5-1135g7").spd[0]
         self.assertIsNone(MemoryModule(spd=spd, populated=True).soldered_by)
 
 
@@ -99,7 +99,7 @@ class TestOnTheMemoryPage(unittest.TestCase):
         from tests.test_nada_en_bruto import _con_permisos
         from tests.test_smbios import _end, _memory_array, _memory_device
 
-        f = foto(EQUIPOS / "i5-1135g7")[0]
+        f = shared_snapshot(EQUIPOS / "i5-1135g7")
         sodimm = f.spd[0]
         tabla = (_memory_array()
                  + _memory_device(configured_mts=3200, locator="Controller0-ChannelA",
@@ -142,7 +142,7 @@ class TestTheBaseClock(unittest.TestCase):
     def test_both_said_on_the_cpu_page(self):
         from silux.ui.pages.cpu import TypeSection
         from tests import pantalla, qt
-        f = foto(EQUIPOS / "i5-1135g7")[0]
+        f = shared_snapshot(EQUIPOS / "i5-1135g7")
         relojes = f.cpu.types[0].clocks
         self.assertEqual((relojes.base_hz, relojes.base_configured_hz), (2_400_000_000, 900_000_000))
         qt.app()
@@ -158,7 +158,7 @@ class TestTheBaseClock(unittest.TestCase):
     def test_a_hybrid_keeps_each_core_types_base(self):
         """CPUID gives a hybrid's whole package one base, which is neither
         type's: each one's own is intel_pstate's."""
-        tipos = foto(EQUIPOS / "i5-12450h")[0].cpu.types
+        tipos = shared_snapshot(EQUIPOS / "i5-12450h").cpu.types
         self.assertEqual([t.clocks.base_hz for t in tipos], [2_000_000_000, 1_500_000_000])
         self.assertEqual([render.configured_base(t.clocks) for t in tipos], [None, None])
 

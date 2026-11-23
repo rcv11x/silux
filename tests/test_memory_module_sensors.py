@@ -12,7 +12,7 @@ from silux import render
 from silux.i18n import _
 from silux.model import MemoryModule, SensorKind, module_numbers
 from tests import pantalla, qt
-from tests.test_equipos import EQUIPOS, foto, volcados
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot, volcados
 
 DUMP = EQUIPOS / "i5-12450h"
 
@@ -51,7 +51,7 @@ class TestOnItsPages(unittest.TestCase):
 
     def test_named_by_its_module_and_its_address(self):
         # Without permissions its module is the one its SPD's page 0 gives.
-        sensor, = self._memory_sensors(foto(DUMP)[0])
+        sensor, = self._memory_sensors(shared_snapshot(DUMP))
         self.assertEqual(sensor.bus_address, "0-0050")
         self.assertEqual(sensor.label, _("sensor.mem.module").format(n=1, direccion="0x50"))
         self.assertNotIn("/temp1", sensor.key.split("-", 1)[0])
@@ -72,7 +72,7 @@ class TestOnItsPages(unittest.TestCase):
         self.assertEqual(sensor.label, _("sensor.mem.address").format(direccion="0x50"))
 
     def test_in_its_modules_card(self):
-        snapshot = _with_permissions(foto(DUMP)[0])
+        snapshot = _with_permissions(shared_snapshot(DUMP))
         sensor, = self._memory_sensors(snapshot)
         with pantalla.Ventana(snapshot) as window:
             window.select_section("Memoria")
@@ -87,7 +87,7 @@ class TestOnItsPages(unittest.TestCase):
 
     def test_every_dump_names_each_by_its_address(self):
         for folder in volcados():
-            for sensor in self._memory_sensors(foto(folder)[0]):
+            for sensor in self._memory_sensors(shared_snapshot(folder)):
                 with self.subTest(folder.name, sensor=sensor.key):
                     self.assertIn(render.bus_address(sensor.bus_address), sensor.label)
 

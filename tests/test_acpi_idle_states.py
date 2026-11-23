@@ -19,7 +19,7 @@ from silux.i18n import _
 from silux.model import IdleState
 from silux.providers.cpuidle import CpuIdle
 from tests import pantalla, qt
-from tests.test_equipos import foto
+from tests.test_equipos import foto, shared_snapshot
 
 EQUIPOS = pathlib.Path(__file__).resolve().parent / "fixtures" / "equipos"
 
@@ -48,7 +48,7 @@ class TestTheBoardsAcpiStates(unittest.TestCase):
                              nombre="C2", tiempo=_("cpu.idle.share.one").format(pct="80").capitalize()))
 
     def test_on_the_cpu_page(self):
-        f = foto(EQUIPOS / "i7-10700f")[0]
+        f = shared_snapshot(EQUIPOS / "i7-10700f")
         f = dataclasses.replace(f, cpu=dataclasses.replace(f.cpu, idle_states=tuple(self.estados)))
         with pantalla.Ventana(f) as ventana:
             ventana.select_section("CPU")

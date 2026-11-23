@@ -15,7 +15,7 @@ QT_QPA_PLATFORM=offscreen uv run pytest -n auto -m "not a_solas"
 QT_QPA_PLATFORM=offscreen uv run pytest -m a_solas
 ```
 
-Son unos 3200 y tardan medio minuto en paralelo. Cómo se ejecuta todo lo demás, en
+Son unos 3500 y tardan unos seis minutos en paralelo con seis núcleos. Cómo se ejecuta todo lo demás, en
 [arquitectura.md](arquitectura.md#cómo-se-ejecuta-cada-cosa). El suelo es
 Python 3.10: lo que pasa en un Python reciente no dice que pase en 3.10, y
 `tools/probar_en_minimo.py --container` pasa la suite en el del suelo.

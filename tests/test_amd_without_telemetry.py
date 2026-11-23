@@ -13,7 +13,7 @@ import unittest
 from silux import render
 from silux.i18n import _
 from tests import pantalla, qt
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 
 def _section(f):
@@ -28,7 +28,7 @@ def _section(f):
 class TestAPolaris(unittest.TestCase):
 
     def setUp(self):
-        self.f = foto(EQUIPOS / "ryzen3-4100")[0]
+        self.f = shared_snapshot(EQUIPOS / "ryzen3-4100")
         self.gpu = self.f.gpus[0]
         self.gestor, self.section = _section(self.f)
 
@@ -64,7 +64,7 @@ class TestAPolaris(unittest.TestCase):
 class TestAnAmdThatPublishesAll(unittest.TestCase):
 
     def test_nothing_hidden_nor_said(self):
-        gestor, section = _section(foto(EQUIPOS / "5800x3d")[0])
+        gestor, section = _section(shared_snapshot(EQUIPOS / "5800x3d"))
         try:
             self.assertNotIn(_("gpu.na.amd.silent").split("{")[0], section.sensors_pie.text())
         finally:

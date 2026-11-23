@@ -11,7 +11,7 @@ from silux import render, report
 from silux.i18n import _
 from silux.model import Need, Note
 from tests import pantalla, qt
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 try:
     from PySide6.QtWidgets import QApplication, QLabel
@@ -31,13 +31,13 @@ class TestTheHeading(unittest.TestCase):
                          "Own")
 
     def test_the_old_kernel_has_its_own(self):
-        note = next(n for n in foto(OLD_KERNEL)[0].notes if n.key == "kernel.belowminimum")
+        note = next(n for n in shared_snapshot(OLD_KERNEL).notes if n.key == "kernel.belowminimum")
         self.assertEqual(note.title, _("kernel.belowminimum.title").format(minimo="5.15"))
         self.assertIn("5.15", note.title)
 
     def test_in_the_report(self):
         title = _("kernel.belowminimum.title").format(minimo="5.15")
-        line = next(x for x in report.build(foto(OLD_KERNEL)[0]).splitlines()
+        line = next(x for x in report.build(shared_snapshot(OLD_KERNEL)).splitlines()
                     if x.startswith("- `system.kernel`"))
         self.assertIn(f"({title[:1].lower()}{title[1:]})", line)
 
@@ -49,7 +49,7 @@ class TestOnThePage(unittest.TestCase):
         from silux.ui.widgets import Notice
 
         app = qt.app()
-        with pantalla.Ventana(foto(OLD_KERNEL)[0]) as window:
+        with pantalla.Ventana(shared_snapshot(OLD_KERNEL)) as window:
             window.select_section("Sistema")
             for _turn in range(3):
                 app.processEvents()

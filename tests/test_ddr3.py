@@ -10,7 +10,7 @@ import unittest
 
 from silux import render, spd
 from silux.i18n import _
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 BUS = EQUIPOS / "i5-3330/sys/devices/pci0000:00/0000:00:1f.3/i2c-8"
 
@@ -50,7 +50,7 @@ class TestOnTheMemoryPage(unittest.TestCase):
     def setUpClass(cls):
         from tests import pantalla, qt
         qt.app()
-        cls.snapshot = foto(EQUIPOS / "i5-3330")[0]
+        cls.snapshot = shared_snapshot(EQUIPOS / "i5-3330")
         with pantalla.Ventana(cls.snapshot) as window:
             window.select_section("Memoria")
             cls.text = "\n".join(pantalla.textos_de(window.stack.currentWidget()))
@@ -81,7 +81,7 @@ class TestOnTheMemoryPage(unittest.TestCase):
 
     def test_a_real_ddr3l_on_the_page(self):
         from tests import pantalla
-        snapshot = foto(EQUIPOS / "i5-5200u")[0]
+        snapshot = shared_snapshot(EQUIPOS / "i5-5200u")
         with pantalla.Ventana(snapshot) as window:
             window.select_section("Memoria")
             page = window.stack.currentWidget()

@@ -12,7 +12,7 @@ from silux.model import Disk
 from silux.providers.storage import _kind
 from tests import pantalla, qt
 from tests.test_interface_language import visible_texts
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 
 class TestTheKind(unittest.TestCase):
@@ -32,7 +32,7 @@ class TestOnThePages(unittest.TestCase):
 
     def test_three_disks_three_counted(self):
         qt.app()
-        snapshot = foto(EQUIPOS / "celeron-560")[0]
+        snapshot = shared_snapshot(EQUIPOS / "celeron-560")
         counts = render.disk_kinds(snapshot.disks)
         self.assertEqual(sum(int(c.split(" ×")[0]) for c in counts), len(snapshot.disks))
         self.assertIn("1 × SSD", counts)

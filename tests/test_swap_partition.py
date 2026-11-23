@@ -7,7 +7,7 @@ import unittest
 
 from silux import render
 from tests import pantalla, qt
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 
 class TestTheBar(unittest.TestCase):
@@ -15,7 +15,7 @@ class TestTheBar(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         qt.app()
-        cls.snapshot = foto(EQUIPOS / "i5-5200u")[0]
+        cls.snapshot = shared_snapshot(EQUIPOS / "i5-5200u")
 
     def test_the_numbers(self):
         sda = next(d for d in self.snapshot.disks if d.name == "sda")

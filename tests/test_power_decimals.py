@@ -10,7 +10,7 @@ import unittest
 
 from silux import render
 from tests import pantalla, qt
-from tests.test_equipos import EQUIPOS, foto, volcados
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot, volcados
 from tests.test_interface_language import visible_texts
 
 try:
@@ -66,7 +66,7 @@ class TestEveryPage(unittest.TestCase):
 
     def test_no_whole_watt_below_ten(self):
         for folder in volcados():
-            for section, texts, tiles in self._pages(foto(folder)[0]):
+            for section, texts, tiles in self._pages(shared_snapshot(folder)):
                 with self.subTest(folder.name, section=section):
                     self.assertEqual([t for t in texts if WHOLE_BELOW_TEN.search(t)], [])
                     for figure in tiles:
@@ -78,7 +78,7 @@ class TestEveryPage(unittest.TestCase):
                             self.assertIn(".", figure)
 
     def test_an_idle_integrated_card_on_home_and_graphics(self):
-        snapshot = foto(EQUIPOS / "celeron-g3900")[0]
+        snapshot = shared_snapshot(EQUIPOS / "celeron-g3900")
         gpu = dataclasses.replace(snapshot.gpus[0], power_w=0.4)
         snapshot = dataclasses.replace(snapshot, gpus=(gpu,))
         pages = {section: (texts, tiles) for section, texts, tiles in self._pages(snapshot)}

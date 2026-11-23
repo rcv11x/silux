@@ -18,7 +18,7 @@ import unittest
 from silux import i18n
 from silux.i18n import _
 from tests import pantalla, qt
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 try:
     from PySide6.QtWidgets import QApplication
@@ -57,7 +57,7 @@ class TestEnPantalla(unittest.TestCase):
 
     def test_ajustes_y_cpu_no_dan_dos_cuentas(self):
         app = qt.app()
-        f = foto(EQUIPOS / "5800x3d")[0]
+        f = shared_snapshot(EQUIPOS / "5800x3d")
         cuantas = len(f.cpu.types[0].features)
         with pantalla.Ventana(f) as ventana:
             ventana.select_section("Ajustes")
@@ -79,7 +79,7 @@ class TestEnPantalla(unittest.TestCase):
         """The same sentence in both places, not two explanations of bits
         and bytes."""
         app = qt.app()
-        with pantalla.Ventana(foto(EQUIPOS / "5800x3d")[0]) as window:
+        with pantalla.Ventana(shared_snapshot(EQUIPOS / "5800x3d")) as window:
             window.select_section("Red")
             for _turn in range(3):
                 app.processEvents()

@@ -13,14 +13,14 @@ import dataclasses
 import unittest
 
 from silux.model import Need, Note, PrivilegedState
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 
 class TestLoQueFaltaPorPermisos(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.fotos = {n: foto(EQUIPOS / n)[0] for n in ("i5-10400", "5800x3d")}
+        cls.fotos = {n: shared_snapshot(EQUIPOS / n) for n in ("i5-10400", "5800x3d")}
 
     def test_cada_nota_de_permisos_dice_que_falta(self):
         for nombre, f in self.fotos.items():

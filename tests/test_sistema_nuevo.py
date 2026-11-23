@@ -15,7 +15,7 @@ from silux.providers.base import Draft
 from silux.providers.system import SystemSecurity, state_of, read_swaps
 from tests import pantalla, qt
 from tests.arbol import arbol
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 try:
     from PySide6.QtWidgets import QApplication
@@ -170,7 +170,7 @@ class TestEnLaPagina(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = qt.app()
-        base = foto(EQUIPOS / "5800x3d")[0]
+        base = shared_snapshot(EQUIPOS / "5800x3d")
         with arbol(EQUIPO):
             draft = Draft()
             SystemSecurity().collect(draft)
@@ -242,7 +242,7 @@ class TestEnLaPagina(unittest.TestCase):
         había tiempos. El firmware los publica (FPDT) y systemd da el resto
         con cualquier gestor. Volcado del i5-10400, con su FPDT y lo que
         contestó systemd."""
-        intel = foto(EQUIPOS / "i5-10400")[0]
+        intel = shared_snapshot(EQUIPOS / "i5-10400")
         with pantalla.Ventana(intel) as ventana:
             pagina = self._pagina(ventana)
             self.assertEqual(pagina.boot._values[_("sys.boot.loader")].full_text(), "GRUB 2.12")
@@ -260,7 +260,7 @@ class TestEnLaPagina(unittest.TestCase):
     def test_sin_firmware_se_dice_solo_eso(self):
         """El mismo GRUB en un equipo cuyo firmware no publica la FPDT (el
         volcado del 5800X3D, que no la grabó), con systemd."""
-        intel = foto(EQUIPOS / "i5-10400")[0]
+        intel = shared_snapshot(EQUIPOS / "i5-10400")
         sin = dataclasses.replace(intel, system=dataclasses.replace(
             intel.system, boot=dataclasses.replace(intel.system.boot,
                                                    firmware_s=None, loader_s=None)))
@@ -286,7 +286,7 @@ class TestEnLaPagina(unittest.TestCase):
             self.assertTrue(pagina.boot_card.isVisible())
 
     def test_la_version_de_mesa_sale_de_lo_que_ya_dice_opengl(self):
-        base = foto(EQUIPOS / "5800x3d")[0]
+        base = shared_snapshot(EQUIPOS / "5800x3d")
         self.assertRegex(render.graphics_stack(base) or "", r"^Mesa \d+\.\d+")
         with pantalla.Ventana(base) as ventana:
             pagina = self._pagina(ventana)

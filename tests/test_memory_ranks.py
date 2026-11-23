@@ -11,7 +11,7 @@ import unittest
 from silux.i18n import _
 from silux.model import MemoryModule
 from tests import pantalla, qt
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 try:
     from PySide6.QtWidgets import QApplication
@@ -20,7 +20,7 @@ except ImportError:                                    # pragma: no cover
 
 
 def _with_permissions():
-    snapshot = foto(EQUIPOS / "celeron-560")[0]
+    snapshot = shared_snapshot(EQUIPOS / "celeron-560")
     module = MemoryModule(locator="DIMM_A", bank="CHANNEL A", populated=True,
                           size_bytes=1024 ** 3, type="DDR2", form_factor=0x0D,
                           speed_mts=667, configured_mts=667, spd=snapshot.spd[0])

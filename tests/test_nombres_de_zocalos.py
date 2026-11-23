@@ -19,7 +19,7 @@ from silux.i18n import _
 from silux.providers.base import Draft
 from silux.providers.privileged_memory import PrivilegedMemory
 from tests import pantalla, qt
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 from tests.test_smbios import _empty_slot, _end, _memory_array, _memory_device
 
 try:
@@ -118,7 +118,7 @@ class TestEnLaPaginaDeMemoria(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = qt.app()
-        cls.fotos = {n: foto(EQUIPOS / n)[0] for n in ("5800x3d", "i5-10400")}
+        cls.fotos = {n: shared_snapshot(EQUIPOS / n) for n in ("5800x3d", "i5-10400")}
 
     def _titulos_y_libres(self, f):
         from silux.ui.widgets import Card

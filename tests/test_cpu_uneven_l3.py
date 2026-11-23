@@ -14,7 +14,7 @@ from silux.i18n import _
 from silux.providers.sysfs_cpu import SysfsTopology
 from tests import pantalla, qt
 from tests.arbol import arbol
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 try:
     from PySide6.QtWidgets import QApplication
@@ -51,7 +51,7 @@ class TestTheCpuPage(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = qt.app()
-        cls.base = foto(EQUIPOS / "5800x3d")[0]
+        cls.base = shared_snapshot(EQUIPOS / "5800x3d")
 
     def _l3_row(self, caches, brand):
         from silux.ui.pages.cpu import TypeSection

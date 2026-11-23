@@ -12,7 +12,7 @@ el SPD leído y sin permisos.
 import unittest
 
 from tests import qt
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 try:
     from PySide6.QtWidgets import QApplication
@@ -26,7 +26,7 @@ class TestLaCabeceraDeMemoria(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = qt.app()
-        cls.foto = foto(EQUIPOS / "i5-10400")[0]
+        cls.foto = shared_snapshot(EQUIPOS / "i5-10400")
 
     def _pagina(self):
         from silux.settings import Preferences
@@ -83,7 +83,7 @@ class TestInstaladaYUtilizable(unittest.TestCase):
         from silux.ui import theme
         from silux.ui.pages.memory import MemoryPage
 
-        f = foto(EQUIPOS / carpeta)[0]
+        f = shared_snapshot(EQUIPOS / carpeta)
         theme.set_density("normal", "normal")
         self.pagina = MemoryPage(theme.palette_for(self.app, "dark"),
                                  Preferences().normalized())

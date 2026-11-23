@@ -19,7 +19,7 @@ import dataclasses
 import unittest
 
 from tests import pantalla, qt
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 RAW_WATTS = 1336648637.3        # what the T14's chart got
 RAW_DEGREES = 45000.0           # hwmon's millidegrees
@@ -65,7 +65,7 @@ class _Page(unittest.TestCase):
 
     def setUp(self):
         qt.app()
-        self.f = foto(EQUIPOS / self.dump)[0]
+        self.f = shared_snapshot(EQUIPOS / self.dump)
 
     def _run(self):
         base = self.base(self.f)
@@ -168,7 +168,7 @@ class TestSensores(unittest.TestCase):
 
     def test_a_sensors_history(self):
         qt.app()
-        f = foto(EQUIPOS / "i5-10400")[0]
+        f = shared_snapshot(EQUIPOS / "i5-10400")
         sensor = next(s for s in f.sensors if s.kind.value == "temperature")
 
         def con(valor):

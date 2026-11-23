@@ -22,7 +22,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from silux.settings import Preferences
 from tests import qt
-from tests.test_equipos import EQUIPOS, foto, volcados
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot, volcados
 
 try:
     from PySide6.QtWidgets import QApplication, QLabel
@@ -84,7 +84,7 @@ class TestNadaSeCortaPorAbajo(unittest.TestCase):
         cls.ventana.close()
 
     def _poner(self, equipo: str) -> None:
-        muestra = foto(EQUIPOS / equipo)[0]
+        muestra = shared_snapshot(EQUIPOS / equipo)
         for _vuelta in range(3):
             self.ventana._on_sample(muestra)
             _asentar(self.app)

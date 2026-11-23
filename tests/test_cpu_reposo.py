@@ -15,7 +15,7 @@ from silux.providers.base import Draft
 from silux.providers.cpuidle import CpuIdle
 from tests import pantalla, qt
 from tests.arbol import arbol
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 try:
     from PySide6.QtWidgets import QApplication
@@ -127,8 +127,8 @@ class TestEnLaPagina(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = qt.app()
-        cls.amd = foto(EQUIPOS / "5800x3d")[0]
-        cls.intel = foto(EQUIPOS / "i5-10400")[0]
+        cls.amd = shared_snapshot(EQUIPOS / "5800x3d")
+        cls.intel = shared_snapshot(EQUIPOS / "i5-10400")
         cls.reposo = (IdleState("POLL", "CPUIDLE CORE POLL IDLE", 0.0, 0.0, 0.0),
                       IdleState("C1", "ACPI FFH MWAIT 0x0", 16.0, 10.0, 25.0),
                       IdleState("C2", "ACPI IOPORT 0x414", 63.0, 45.0, 73.0))

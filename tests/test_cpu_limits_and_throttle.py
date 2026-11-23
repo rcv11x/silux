@@ -16,7 +16,7 @@ from silux.providers.rapl import PowerLimits
 from silux.providers.thermal_throttle import ThermalThrottleCounts
 from tests import pantalla, qt
 from tests.arbol import arbol
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 try:
     from PySide6.QtWidgets import QApplication
@@ -99,7 +99,7 @@ class TestOnTheCpuPage(unittest.TestCase):
         return window.cpu_page
 
     def test_the_intel_dump_shows_both(self):
-        with pantalla.Ventana(foto(EQUIPOS / "i5-10400-turbo")[0]) as window:
+        with pantalla.Ventana(shared_snapshot(EQUIPOS / "i5-10400-turbo")) as window:
             limits = self._page(window).limits
             self.assertEqual(limits._values[_("cpu.limit.pl1")].full_text(),
                              render.power_limit(65.0, 27.983872))
@@ -109,7 +109,7 @@ class TestOnTheCpuPage(unittest.TestCase):
             self.assertEqual(limits._values[_("cpu.throttle")].full_text(), _("cpu.throttle.none"))
 
     def test_counts_that_arrive_with_the_page_open(self):
-        photo = foto(EQUIPOS / "i5-10400-turbo")[0]
+        photo = shared_snapshot(EQUIPOS / "i5-10400-turbo")
         with pantalla.Ventana(photo) as window:
             page = self._page(window)
             window._on_sample(dataclasses.replace(photo, cpu=dataclasses.replace(
@@ -119,7 +119,7 @@ class TestOnTheCpuPage(unittest.TestCase):
                              _("cpu.throttle.package").format(n=1, tiempo="0.3 s"))
 
     def test_amd_has_no_row(self):
-        with pantalla.Ventana(foto(EQUIPOS / "5800x3d")[0]) as window:
+        with pantalla.Ventana(shared_snapshot(EQUIPOS / "5800x3d")) as window:
             self.assertFalse(self._page(window).limits._names[_("cpu.throttle")].isVisible())
 
 

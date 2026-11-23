@@ -11,6 +11,7 @@ import pathlib
 import re
 import unittest
 
+from tests.per_dump import per_dump
 from tests.test_equipos import volcados
 
 try:
@@ -29,19 +30,17 @@ class TestScreenReferences(unittest.TestCase):
         self.assertTrue(names)
         self.assertEqual({p.stem for p in SCREENS.glob("*.md")}, names)
 
-    def test_every_dump_is_shown_as_its_reference_says(self):
+    def _shown_as_its_reference_says(self, dump):
         from tools.update_screen_references import screen
 
-        for dump in volcados():
-            with self.subTest(dump=dump.name):
-                expected = (SCREENS / f"{dump.name}.md").read_text(encoding="utf-8")
-                actual = screen(dump)
-                if actual != expected:
-                    diff = "".join(list(difflib.unified_diff(
-                        expected.splitlines(True), actual.splitlines(True),
-                        "reference", "now", n=1))[:60])
-                    self.fail(f"{dump.name} is shown differently. If that's intended, run "
-                              f"tools/update_screen_references.py and review the diff.\n{diff}")
+        expected = (SCREENS / f"{dump.name}.md").read_text(encoding="utf-8")
+        actual = screen(dump)
+        if actual != expected:
+            diff = "".join(list(difflib.unified_diff(
+                expected.splitlines(True), actual.splitlines(True),
+                "reference", "now", n=1))[:60])
+            self.fail(f"{dump.name} is shown differently. If that's intended, run "
+                      f"tools/update_screen_references.py and review the diff.\n{diff}")
 
     def test_the_clock_does_not_leak_in(self):
         from tools.update_screen_references import normalize
@@ -51,8 +50,8 @@ class TestScreenReferences(unittest.TestCase):
         self.assertEqual(a, b)
 
 
-if __name__ == "__main__":
-    unittest.main()
+per_dump(TestScreenReferences, "every_dump_is_shown_as_its_reference_says",
+         TestScreenReferences._shown_as_its_reference_says)
 
 
 class TestOneIsSingular(unittest.TestCase):
@@ -67,3 +66,7 @@ class TestOneIsSingular(unittest.TestCase):
             for numero, linea in enumerate(referencia.read_text(encoding="utf-8").splitlines(), 1):
                 with self.subTest(referencia=referencia.name, linea=numero):
                     self.assertIsNone(self.PLURAL.search(linea), linea)
+
+
+if __name__ == "__main__":
+    unittest.main()

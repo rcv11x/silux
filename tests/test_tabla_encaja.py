@@ -14,7 +14,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from silux.settings import Preferences
 from tests import qt
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 try:
     from PySide6.QtCore import QPoint
@@ -162,7 +162,7 @@ class TestLasPaginasCortasEnUnaVentanaGrande(unittest.TestCase):
         self.addCleanup(ventana.close)
         ventana.resize(ancho, alto)
         ventana.show()
-        muestra = foto(EQUIPOS / "5800x3d")[0]
+        muestra = shared_snapshot(EQUIPOS / "5800x3d")
         for _vuelta in range(3):
             ventana._on_sample(muestra)
             _asentar(app)
@@ -248,7 +248,7 @@ class TestLasUnidadesEnCompacto(unittest.TestCase):
         self.addCleanup(ventana.close)
         ventana.resize(900, 680)
         ventana.show()
-        muestra = foto(EQUIPOS / "5800x3d")[0]
+        muestra = shared_snapshot(EQUIPOS / "5800x3d")
         self.assertEqual(len(muestra.disks), 5)
         for _vuelta in range(3):
             ventana._on_sample(muestra)

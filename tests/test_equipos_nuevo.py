@@ -14,14 +14,14 @@ import pathlib
 import unittest
 
 from silux import privacidad, render
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 
 class TestElVolcadoNuevo(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.foto = foto(EQUIPOS / "5800x3d")[0]
+        cls.foto = shared_snapshot(EQUIPOS / "5800x3d")
 
     def test_los_dispositivos_pci_con_el_nombre_de_su_pagina(self):
         por_tipo = {}
@@ -112,7 +112,7 @@ class TestElVolcadoNuevoDeIntel(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.foto = foto(EQUIPOS / "i5-10400")[0]
+        cls.foto = shared_snapshot(EQUIPOS / "i5-10400")
 
     def test_los_dispositivos_pci_con_el_nombre_de_su_pagina(self):
         por_tipo = {}

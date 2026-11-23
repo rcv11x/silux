@@ -16,7 +16,7 @@ from silux.model import MemoryModule
 from silux.providers.base import Draft
 from silux.providers.spd_modules import SpdModules
 from tests import pantalla, qt
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 DUMP = EQUIPOS / "i5-12450h"
 
@@ -39,7 +39,7 @@ def _with_permissions(snapshot):
 class TestItsPageZero(unittest.TestCase):
 
     def test_exactly_what_it_says(self):
-        reading, = foto(DUMP)[0].spd
+        reading, = shared_snapshot(DUMP).spd
         self.assertEqual((reading.dram_type, reading.module_type, reading.device_width,
                           reading.partial), ("DDR5", "SODIMM", 16, True))
         timings = reading.jedec
@@ -50,7 +50,7 @@ class TestItsPageZero(unittest.TestCase):
                           reading.capacity_bytes), (None,) * 4)
 
     def test_the_other_seven_said_blocked(self):
-        notes = [n for n in foto(DUMP)[0].notes if n.path == "spd"]
+        notes = [n for n in shared_snapshot(DUMP).notes if n.path == "spd"]
         self.assertEqual([n.key for n in notes], ["prov.spd.partial"])
         self.assertIn("ENXIO", notes[0].detail)
 
@@ -79,7 +79,7 @@ class TestOnTheMemoryPage(unittest.TestCase):
 
     def test_with_the_firmwares_maker_and_part(self):
         qt.app()
-        snapshot = _with_permissions(foto(DUMP)[0])
+        snapshot = _with_permissions(shared_snapshot(DUMP))
         self.assertEqual(snapshot.modules[0].spd.address, "0-0050")
         with pantalla.Ventana(snapshot) as window:
             window.select_section("Memoria")

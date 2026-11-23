@@ -12,7 +12,7 @@ from silux.model import Snapshot
 
 from silux.i18n import _
 from tests import qt
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 try:
     from PySide6.QtWidgets import QApplication
@@ -24,7 +24,7 @@ class TestElOrdenDelArbol(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.foto = foto(EQUIPOS / "5800x3d")[0]
+        cls.foto = shared_snapshot(EQUIPOS / "5800x3d")
         cls.arbol = cls.foto.sensor_tree()
 
     def test_las_temperaturas_van_antes_que_las_tensiones_y_los_relojes(self):
@@ -60,7 +60,7 @@ class TestLasRamasLargas(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = qt.app()
-        cls.foto = foto(EQUIPOS / "5800x3d")[0]
+        cls.foto = shared_snapshot(EQUIPOS / "5800x3d")
 
     def _arbol(self, plegadas=None):
         from silux.ui import theme
@@ -164,7 +164,7 @@ class TestLoQueNoTieneActividadNacePlegado(unittest.TestCase):
         from silux.ui.pages.monitor import MonitorPage
 
         self.foto = (self._first_sample(EQUIPOS / equipo) if first
-                     else foto(EQUIPOS / equipo)[0])
+                     else shared_snapshot(EQUIPOS / equipo))
         prefs = Preferences(sensor_collapsed=tuple(plegadas),
                             sensor_expanded=tuple(abiertas)).normalized()
         pagina = MonitorPage(theme.palette_for(self.app, "dark"), prefs, Tracker())

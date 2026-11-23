@@ -10,6 +10,7 @@ import pathlib
 import unittest
 
 from silux import volcado
+from tests.per_dump import per_dump
 from tests import qt
 
 EQUIPOS = pathlib.Path(__file__).resolve().parent / "fixtures" / "equipos"
@@ -31,13 +32,16 @@ class TestNoParagraphGluedToAList(unittest.TestCase):
     def setUpClass(cls):
         cls.app = qt.app()
 
-    def test_on_any_page_of_any_dump(self):
+    def _on_any_page(self, folder):
         from silux.ui import full_report
-        for dump in sorted(p.name for p in EQUIPOS.iterdir() if (p / "manifiesto.json").is_file()):
-            with self.subTest(dump=dump):
-                photo = volcado.snapshot_of(EQUIPOS / dump)
-                text = full_report.build(photo, anonymous=True)
-                self.assertEqual(_glued(text), [])
+
+        photo = volcado.snapshot_of(folder)
+        text = full_report.build(photo, anonymous=True)
+        self.assertEqual(_glued(text), [])
+
+
+per_dump(TestNoParagraphGluedToAList, "on_any_page_of_any_dump",
+         TestNoParagraphGluedToAList._on_any_page)
 
 
 if __name__ == "__main__":

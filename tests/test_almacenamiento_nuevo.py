@@ -15,7 +15,7 @@ from silux.providers import storage
 from tests import pantalla, qt
 from tests.arbol import arbol
 from tests.test_al_momento import con_permisos
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 try:
     from PySide6.QtWidgets import QApplication
@@ -104,7 +104,7 @@ class TestEnLaPagina(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = qt.app()
-        base = foto(EQUIPOS / "5800x3d")[0]
+        base = shared_snapshot(EQUIPOS / "5800x3d")
         # Lo que el proveedor dio en esa máquina para cada disco.
         visto = {"nvme0n1": (True, True), "nvme1n1": (True, False), "sda": (True, False),
                  "sdb": (False, False), "sdc": (True, False)}

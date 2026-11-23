@@ -12,7 +12,7 @@ from silux import render
 from silux.i18n import _
 from silux.model import FRAME_OVERHEAD, NetworkInterface, NetworkTraffic
 from tests import pantalla, qt
-from tests.test_equipos import EQUIPOS, foto, volcados
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot, volcados
 from tests.test_interface_language import visible_texts
 
 
@@ -46,7 +46,7 @@ class TestOnTheNetworkPage(unittest.TestCase):
 
     def test_in_every_dump(self):
         for folder in volcados():
-            snapshot = foto(folder)[0]
+            snapshot = shared_snapshot(folder)
             texts = self._texts(snapshot)
             for interface in snapshot.network:
                 why = render.packets_misfit(interface)
@@ -59,7 +59,7 @@ class TestOnTheNetworkPage(unittest.TestCase):
                     self.assertNotIn(count, texts)
 
     def test_its_case(self):
-        snapshot = foto(EQUIPOS / "celeron-g3900")[0]
+        snapshot = shared_snapshot(EQUIPOS / "celeron-g3900")
         wifi = next(i for i in snapshot.network if i.driver == "rtl8192eu")
         self.assertFalse(wifi.received_packets_fit)
         texts = self._texts(snapshot)

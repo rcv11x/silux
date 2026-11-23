@@ -11,7 +11,8 @@ import re
 import unittest
 
 from tests import pantalla, qt
-from tests.test_equipos import foto, volcados
+from tests.per_dump import per_dump
+from tests.test_equipos import EQUIPOS, shared_snapshot, volcados
 
 try:
     from PySide6.QtWidgets import QApplication
@@ -59,7 +60,6 @@ class TestElInformeDiceLoQueEnsenaLaVentana(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = qt.app()
-        cls.fotos = {c.name: foto(c)[0] for c in volcados()}
 
     def _comparar(self, nombre, f):
         from silux import privacidad
@@ -83,26 +83,24 @@ class TestElInformeDiceLoQueEnsenaLaVentana(unittest.TestCase):
                     faltan = [t for t in _visibles(pagina) if t not in apartado]
                     self.assertEqual(faltan, [])
 
-    def test_cada_pagina_de_cada_volcado(self):
-        self.assertTrue(self.fotos)
-        for nombre, f in self.fotos.items():
-            self._comparar(nombre, f)
+    def _every_page(self, folder):
+        self._comparar(folder.name, shared_snapshot(folder))
 
-    def test_va_anonimizado(self):
+    def _anonymized(self, folder):
         from silux.ui import full_report
-        for nombre, f in self.fotos.items():
-            with self.subTest(equipo=nombre):
-                informe = full_report.build(f)
-                if f.system.hostname and f.system.hostname not in ("equipo", "silux-pc"):
-                    self.assertNotIn(f.system.hostname, informe)
-                # A dump whose annex lost the hostname has none to cover.
-                if f.system.hostname:
-                    self.assertIn("silux-pc", informe)
+
+        f = shared_snapshot(folder)
+        informe = full_report.build(f)
+        if f.system.hostname and f.system.hostname not in ("equipo", "silux-pc"):
+            self.assertNotIn(f.system.hostname, informe)
+        # A dump whose annex lost the hostname has none to cover.
+        if f.system.hostname:
+            self.assertIn("silux-pc", informe)
 
     def test_las_secciones_se_eligen(self):
         from silux.i18n import _
         from silux.ui import full_report
-        f = next(iter(self.fotos.values()))
+        f = shared_snapshot(volcados()[0])
         apartados = _apartados(full_report.build(f, sections=["cpu", "placa"]))
         self.assertEqual(set(apartados) - {"Diagnóstico"},
                          {_("nav.cpu"), _("nav.board")})
@@ -110,9 +108,15 @@ class TestElInformeDiceLoQueEnsenaLaVentana(unittest.TestCase):
     def test_lo_que_falta_por_permisos_lo_dice(self):
         from silux.i18n import _
         from silux.ui import full_report
-        f = self.fotos["5800x3d"]
+        f = shared_snapshot(EQUIPOS / "5800x3d")
         informe = full_report.build(f)
         self.assertIn(f"Voltaje: ({_('report.locked')})", informe)
+
+
+per_dump(TestElInformeDiceLoQueEnsenaLaVentana, "cada_pagina_de_cada_volcado",
+         TestElInformeDiceLoQueEnsenaLaVentana._every_page)
+per_dump(TestElInformeDiceLoQueEnsenaLaVentana, "va_anonimizado",
+         TestElInformeDiceLoQueEnsenaLaVentana._anonymized)
 
 
 if __name__ == "__main__":

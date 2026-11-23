@@ -13,7 +13,7 @@ import unittest
 from silux import render
 from silux.model import CATEGORIES, UNITS, SensorKind
 from tests import pantalla, qt
-from tests.test_equipos import EQUIPOS, foto, volcados
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot, volcados
 from tests.test_interface_language import visible_texts
 
 BINARY = re.compile(r"\d (?:KiB|MiB|GiB|TiB)\b")
@@ -34,7 +34,7 @@ class TestTheSensors(unittest.TestCase):
     and totals decimal, as on Network; video memory binary, as on Graphics."""
 
     def test_as_their_pages(self):
-        snapshot = foto(EQUIPOS / "5800x3d")[0]
+        snapshot = shared_snapshot(EQUIPOS / "5800x3d")
         interface = next(i for i in snapshot.network if i.name == "enp6s0")
         received = next(s for s in snapshot.sensors if s.key == "net/enp6s0/rx_total")
         self.assertAlmostEqual(received.value, interface.traffic.rx_bytes / 1e6, delta=1)
@@ -52,7 +52,7 @@ class TestEveryPage(unittest.TestCase):
         cls.app = qt.app()
 
     def _pages(self, folder):
-        with pantalla.Ventana(foto(folder)[0]) as window:
+        with pantalla.Ventana(shared_snapshot(folder)) as window:
             pages = {}
             for section in ("Inicio", "CPU", "Cachés", "Memoria", "Gráficos",
                             "Almacenamiento", "Red"):
@@ -79,7 +79,7 @@ class TestEveryPage(unittest.TestCase):
                         self.assertIsNone(DECIMAL.search(memory))
 
     def test_the_gib_on_hover(self):
-        snapshot = foto(EQUIPOS / "5800x3d")[0]
+        snapshot = shared_snapshot(EQUIPOS / "5800x3d")
         nvme = next(d for d in snapshot.disks if d.name == "nvme0n1")
         with pantalla.Ventana(snapshot) as window:
             window.select_section("Almacenamiento")
