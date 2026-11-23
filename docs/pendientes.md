@@ -500,6 +500,12 @@ De la quinta auditoría, sin comprobar uno a uno si siguen igual:
     botella probablemente es la RAM o el disco. Y su límite, dicho en la
     interfaz: PSI mide espera, no lentitud por hilo. En Python puro, sin
     pandas ni numpy.
+  - El objetivo, de Felix Lara: ver con el tiempo cuándo el procesador se
+    queda corto para lo que se le pide, para saber cuándo cambiar de equipo.
+    Solo cuenta el tiempo con el equipo en uso, no el reposo; se guarda
+    cuánto rato hubo espera alta, no solo la media; se enseña la tendencia
+    de semanas o meses, y una carga larga (renderizar, compilar) sale tal
+    cual, no como fallo.
   - Más adelante, con historial o bandeja: «¿Te hace falta más RAM?», con
     los días de presión de memoria de cada programa (`memory.pressure` de su
     cgroup) y los zócalos libres.
@@ -568,7 +574,9 @@ De la quinta auditoría, sin comprobar uno a uno si siguen igual:
   la bandeja no se pinta nada: solo se leen los sensores para el historial,
   gastando lo mínimo. Por seguridad, en la bandeja el ayudante con permisos
   se cierra (o lo elige el usuario). Comprobar GNOME (necesita la extensión
-  AppIndicator) y KDE. Y con eso, alertas opcionales por notificación del
+  AppIndicator) y KDE. Donde no hay bandeja (un gestor de ventanas sin ella;
+  `QSystemTrayIcon.isSystemTrayAvailable()`), la opción no se ofrece y Silux
+  funciona como siempre. Y con eso, alertas opcionales por notificación del
   sistema (la temperatura del procesador o de la gráfica por encima de un
   límite).
 * **Medidas finas, solo si se pueden hacer de forma fiable** (después de la
