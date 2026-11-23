@@ -187,7 +187,10 @@ código nuevo:
   con lo de otra pieza. Sale sin dato y con su nota, y el informe dice qué
   contestó cada llamada. La misma medida por otra vía del driver (la media
   de un segundo donde no está la instantánea) vale; lo que su propia
-  herramienta da como N/A, no.
+  herramienta da como N/A, no. Y **un dato solo aparece con su propio
+  nombre**: lo que sale de otra fuente (el voltaje nominal del SPD, la
+  resolución preferida del EDID) lo dice en el propio campo, no solo al pie,
+  y en `--json` va en un campo que se llama como lo que es.
 - **Una lectura suelta no es el intervalo**: lo que el hardware da como un
   instante (el uso de una AMD, la frecuencia de una Intel) se lee entre
   muestras y se enseña su media. Y dormida no es 0: es «en reposo».
@@ -337,7 +340,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); el código nuevo, en inglés (ver «Código»). Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-1894 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+1898 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
