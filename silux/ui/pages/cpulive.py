@@ -124,7 +124,10 @@ class CpuLiveSection(QWidget):
             # El mismo rango que dibuja la gráfica de debajo, para que la cifra
             # y el trazo digan lo mismo. Con base y máximo se leía «2.60 – 2.60
             # GHz» en un Xeon con el turbo apagado: cierto y sin información.
-            if suelo and techo:
+            if techo and clocks.current_from != "cpufreq":
+                # Without a frequency driver its floor is unknown: not fixed.
+                self.tile_freq.set_detail(_("cpu.tile.upto").format(valor=render.hz(techo)))
+            elif suelo and techo:
                 if abs(techo - suelo) < 1e7:          # menos de 10 MHz: es fijo
                     self.tile_freq.set_detail(_("cpu.tile.fixed").format(valor=render.hz(techo)))
                 else:

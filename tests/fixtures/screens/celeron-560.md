@@ -89,7 +89,7 @@ x86_64
 - Frecuencia: 1.63 GHz
 - Base: 2.13 GHz
 
-Sin driver de frecuencia no hay gobernador, preferencia de energía, ni mínima o máxima del kernel. La frecuencia es la que anota el kernel de cada núcleo. Este procesador no tiene turbo: su frecuencia más alta es la base.
+Sin driver de frecuencia no hay gobernador, preferencia de energía, ni mínima o máxima del kernel. La de cada hilo es la efectiva que mide el propio procesador (APERF/MPERF) mientras trabaja; un hilo en reposo da la nominal. Este procesador no tiene turbo: su frecuencia más alta es la base.
 
 ### Jerarquía de caché
 

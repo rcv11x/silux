@@ -12,6 +12,10 @@ que hace falta.
 
 ## Sin publicar
 
+- CPU: sin driver de frecuencia, la ficha ya no dice que la frecuencia es
+  fija (dice hasta dónde llega), y se explica que la de cada hilo es la
+  efectiva que mide el procesador (APERF/MPERF) mientras trabaja, y la
+  nominal en reposo.
 - Gráficos: una gráfica integrada dice dónde va, «en el procesador» o «en el
   chipset» (las Intel anteriores a Clarkdale), en su cabecera y en la lista
   de la placa. La de una APU de AMD ya no enseña su enlace PCIe interno como
