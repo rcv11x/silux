@@ -288,8 +288,9 @@ def outcome(returncode: Optional[int], stdout: str, stderr: str) -> tuple[Option
     if reason and reason[-1].startswith(REFUSED):
         from . import render
         try:
-            return None, render.annex_refusal(json.loads(reason[-1][len(REFUSED):])["campos"])
-        except (ValueError, KeyError, TypeError):
+            said = json.loads(reason[-1][len(REFUSED):])
+            return None, render.annex_refusal(said["campos"], said.get("archivos") or {})
+        except (ValueError, KeyError, TypeError, AttributeError):
             pass
     return None, reason[-1] if reason else f"exit code {returncode}"
 
@@ -356,7 +357,8 @@ def main() -> int:
             block = to_text(volcado.dump("equipo", pathlib.Path(tmp)))
         except volcado.Refusal as refusal:
             # For the window to say it in words, in the user's language.
-            print(REFUSED + json.dumps({"campos": refusal.fields}), file=sys.stderr)
+            print(REFUSED + json.dumps({"campos": refusal.fields, "archivos": refusal.files}),
+                  file=sys.stderr)
             return 1
         except (SystemExit, AnnexError, OSError) as error:
             print(str(error).strip().replace("\n", " "), file=sys.stderr)

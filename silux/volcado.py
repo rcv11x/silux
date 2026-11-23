@@ -1159,12 +1159,54 @@ def check(target: pathlib.Path, secrets, raw_secrets=(),
 
 class Refusal(SystemExit):
     """Nothing is written: anonymize would still cover these fields of the
-    snapshot. Named by position («gpus[1].unique_id»), never by value."""
+    snapshot. Named by position («gpus[1].unique_id»), never by value, with
+    the dump's files that hold each one (`files`)."""
 
-    def __init__(self, fields: list[str]):
+    def __init__(self, fields: list[str], files: dict[str, list[str]] | None = None):
         self.fields = list(fields)
+        self.files = dict(files or {})
+        where = sorted({path for paths in self.files.values() for path in paths})
         super().__init__("anonimizar todavía encuentra qué tapar: "
-                         + "; ".join(self.fields[:10]) + ". No se escribe nada.")
+                         + "; ".join(self.fields[:10])
+                         + (f" (en {', '.join(where[:5])})" if where else "")
+                         + ". No se escribe nada.")
+
+
+_FIELD_STEP = re.compile(r"\.?([A-Za-z_]\w*)|\[(\d+)\]")
+
+
+def _value_at(snapshot, field: str):
+    """The value at a field path («disks[5].serial»), or None."""
+    value = snapshot
+    for name, index in _FIELD_STEP.findall(field):
+        try:
+            value = value[int(index)] if index else getattr(value, name)
+        except (AttributeError, IndexError, TypeError):
+            return None
+    return value
+
+
+def _where_in_dump(work: pathlib.Path, snapshot, fields: list[str]) -> dict[str, list[str]]:
+    """The dump's files that hold each field's value, with the value covered
+    if it is in the path itself: where to look next time, never what it was.
+    Values shorter than four characters would be found everywhere."""
+    contents = {"/" + str(path.relative_to(work)): path.read_bytes()
+                for path in sorted(work.rglob("*")) if path.is_file() and not path.is_symlink()}
+    where: dict[str, list[str]] = {}
+    for field in fields:
+        value = _value_at(snapshot, field)
+        wanted = [v.encode() for v in (value if isinstance(value, tuple) else (value,))
+                  if isinstance(v, str) and len(v) >= 4]
+        found = []
+        for path, content in contents.items():
+            hit = next((w for w in wanted if w in content or w in path.encode()), None)
+            if hit is not None:
+                found.append(_covered(path, hit))
+            if len(found) == 3:
+                break
+        if found:
+            where[field] = found
+    return where
 
 
 def _contains(wanted, text: str) -> bool:
@@ -1377,7 +1419,7 @@ def dump(name: str, base: pathlib.Path,
             (work / MANIFEST).write_text(json.dumps(manifest, ensure_ascii=False, indent=1) + "\n")
         snapshot = snapshot_of(work)
         if left := _what_anonymize_would_cover(snapshot):
-            raise Refusal(left)
+            raise Refusal(left, _where_in_dump(work, snapshot, left))
         if findings := check(work, clean.secrets, clean.raw_secrets, own):
             raise SystemExit("El volcado delata a esta máquina; no se escribe nada:\n  "
                              + "\n  ".join(findings[:20]))
@@ -1450,7 +1492,10 @@ def _what_anonymize_would_cover(snapshot) -> list[str]:
                         # By position: the name may be what is protected.
                         left.append(f"network[{before.index(i)}].{sub.name}")
             continue
-        if field.name == "disks" and _unnumbered(before) == _unnumbered(after):
+        if field.name == "disks":
+            # The dump numbers mounts by /proc/mounts and anonymize by disk:
+            # only what differs without the number is left.
+            left += _differences(_unnumbered(before), _unnumbered(after), field.name)
             continue
         if (field.name == "system" and before.hostname in privacidad.OLD_SUBSTITUTES
                 and dataclasses.replace(before, hostname=after.hostname) == after):

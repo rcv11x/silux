@@ -12,6 +12,10 @@ que hace falta.
 
 ## Sin publicar
 
+- Informe: el anexo ya no se queda fuera con un disco en una caja USB cuyo
+  adaptador rellena el número de serie con bytes nulos (ese número sí se
+  tapaba; la comprobación lo tomaba por otro). Y si algo lo deja fuera, el
+  informe dice de qué archivo salía, sin enseñarlo.
 - Sistema: la descripción más larga de una vulnerabilidad sale entera con la
   letra grande, en vez de cortada con «…».
 - CPU: sin el módulo `msr`, el aviso del voltaje (y de la frecuencia base en

@@ -2353,8 +2353,9 @@ def annex_what(kind: str) -> str:
     return _(ANNEX_WHAT.get(kind, ANNEX_WHAT["machine"]))
 
 
-def annex_refusal(fields: list[str]) -> str:
-    """Why the annex was not written: what was still to cover, never its value."""
+def annex_refusal(fields: list[str], files: Optional[dict] = None) -> str:
+    """Why the annex was not written: what was still to cover and which of
+    the dump's files held it, never its value."""
     kinds = []
     for field in fields:
         top = re.split(r"[.\[]", field, maxsplit=1)[0]
@@ -2362,8 +2363,13 @@ def annex_refusal(fields: list[str]) -> str:
         kind = _ANNEX_FIELDS.get((top, leaf)) or _ANNEX_FIELDS.get((top, ""), "machine")
         if kind not in kinds:
             kinds.append(kind)
-    return _("report.annex.refused").format(
+    text = _("report.annex.refused").format(
         que=", ".join(annex_what(c) for c in kinds), campos=", ".join(fields[:5]))
+    where = list(dict.fromkeys(str(path) for field in fields[:5]
+                               for path in (files or {}).get(field, ())))
+    if where:
+        text += " " + _("report.annex.refused.where").format(archivos=", ".join(where[:5]))
+    return text
 
 
 def annex_removed(removed: list[dict]) -> Optional[str]:

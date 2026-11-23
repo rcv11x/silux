@@ -291,8 +291,9 @@ def _fits_what_is_used(health: Optional[DiskHealth], disk: Disk) -> Optional[Dis
 
 
 def _clean(text: Optional[str]) -> Optional[str]:
-    """A disk's fields come padded with spaces to their fixed length."""
-    return " ".join(text.split()) if text else None
+    """A disk's fields come padded to their fixed length: with spaces, or
+    with NUL bytes from some USB bridges' serial."""
+    return " ".join(text.replace("\x00", " ").split()) if text else None
 
 
 # How each maker's model starts, and its real name. Disks do not publish who

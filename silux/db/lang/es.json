@@ -1391,6 +1391,7 @@
   "report.annex.onsave": "Van al final del archivo al guardarlo",
   "report.annex.preparing": "Preparando los datos en crudo…",
   "report.annex.refused": "Quedaba sin tapar {que} ({campos}): para no publicarlo, no van los datos en crudo.",
+  "report.annex.refused.where": "Se leyó de {archivos}.",
   "report.annex.removed": "Sin {n} archivos que llevaban algo que no se podía tapar sin estropearlo: {lista}.",
   "report.annex.removed.item": "{que} (en {ruta})",
   "report.annex.removed.one": "Sin un archivo que llevaba algo que no se podía tapar sin estropearlo: {lista}.",

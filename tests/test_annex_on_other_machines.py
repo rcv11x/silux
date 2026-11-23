@@ -112,6 +112,76 @@ class TestAUsbStick(unittest.TestCase):
             self.assertEqual(disks["sdz"].model, "DataTraveler 3.0")
 
 
+class TestAUsbBridge(unittest.TestCase):
+    """A SATA disk in a JMicron USB enclosure: the bridge pads its serial
+    with NUL bytes. The dump zeroed the characters and kept the NULs, the
+    disk read them as part of the serial, and the check took the zeroed
+    serial for an uncovered one: the annex was refused."""
+
+    BRIDGE = "/sys/devices/pci0000:00/0000:00:08.1/0000:0b:00.3/usb4/4-3"
+    DISK = BRIDGE + "/4-3:1.0/host9/target9:0:0/9:0:0:0"
+    SERIAL = "A1B2C3D4E5F6"
+
+    def _add(self, root):
+        for name, value in (("idVendor", "7825"), ("idProduct", "a2a4"), ("speed", "5000"),
+                            ("manufacturer", "JMicron"), ("product", "External"),
+                            ("bDeviceClass", "00"), ("version", " 3.20")):
+            _write(root, f"{self.BRIDGE}/{name}", value + "\n")
+        _write(root, f"{self.BRIDGE}/4-3:1.0/bInterfaceClass", "08\n")
+        _write(root, f"{self.BRIDGE}/4-3:1.0/bInterfaceProtocol", "62\n")
+        for name, value in (("model", "Tech            "), ("vendor", "JMicron "),
+                            ("rev", "4101"), ("serial", self.SERIAL + "\0\0\0\0")):
+            _write(root, f"{self.DISK}/{name}", value + "\n")
+        for name, value in (("size", "468862128"), ("removable", "0"), ("queue/rotational", "1"),
+                            ("queue/logical_block_size", "512"),
+                            ("queue/physical_block_size", "4096"),
+                            ("stat", "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0")):
+            _write(root, f"{self.DISK}/block/sdz/{name}", value + "\n")
+        _link(root, f"{self.DISK}/block/sdz/device", "../../../9:0:0:0")
+        _link(root, "/sys/block/sdz", "../devices/pci0000:00/0000:00:08.1/0000:0b:00.3/usb4/4-3"
+                                      "/4-3:1.0/host9/target9:0:0/9:0:0:0/block/sdz")
+        _link(root, "/sys/bus/usb/devices/4-3",
+              "../../../devices/pci0000:00/0000:00:08.1/0000:0b:00.3/usb4/4-3")
+
+    def test_its_padded_serial_is_covered_and_the_annex_goes(self):
+        with _machine("5800x3d") as (root, out):
+            self._add(root)
+            folder, manifest, everything = _dump(out, propios={
+                self.SERIAL: "el número de serie de un disco"})
+            self.assertNotIn("quitados", manifest)
+            self.assertNotIn(self.SERIAL.encode(), everything)
+            disks = {d.name: d for d in volcado.snapshot_of(folder).disks}
+            self.assertEqual(disks["sdz"].serial, "0" * len(self.SERIAL))
+
+    def test_the_live_disk_reads_it_without_the_padding(self):
+        from silux.collector import Collector
+
+        with _machine("5800x3d") as (root, _out):
+            self._add(root)
+            collector = Collector()
+            try:
+                disks = {d.name: d for d in collector.snapshot().disks}
+            finally:
+                collector.close()
+        self.assertEqual(disks["sdz"].serial, self.SERIAL)
+
+    def test_left_uncovered_the_refusal_says_where_and_only_that(self):
+        # A dumper that forgot the `serial` files, as it could forget another.
+        with _machine("5800x3d") as (root, out), \
+                mock.patch.object(volcado, "SERIAL_FILES", volcado.SERIAL_FILES - {"serial"}):
+            self._add(root)
+            with self.assertRaises(volcado.Refusal) as caught:
+                _dump(out)
+        refusal = caught.exception
+        self.assertEqual([f.rsplit(".", 1)[-1] for f in refusal.fields], ["serial"])
+        (field,) = refusal.fields
+        self.assertEqual(refusal.files[field], [self.DISK + "/serial"])
+        text = annex.outcome(1, "", annex.REFUSED + json.dumps(
+            {"campos": refusal.fields, "archivos": refusal.files}))[1]
+        self.assertIn(self.DISK + "/serial", text)
+        self.assertNotIn(self.SERIAL, text)
+
+
 class TestNamesOfMachines(unittest.TestCase):
     """A machine is called as everyone's often: its distribution (Debian's
     installer proposes «debian»), its brand, its family or its sensor chip
