@@ -286,5 +286,81 @@ class TestTheLargestFontInANarrowWindow(unittest.TestCase):
 per_dump(TestTheLargestFontInANarrowWindow, "every_page", TestTheLargestFontInANarrowWindow._every_page)
 
 
-if __name__ == "__main__":
-    unittest.main()
+def _first_snapshot(folder):
+    """A dump's first snapshot: its rates still unknown."""
+    from silux import volcado
+    from silux.collector import Collector
+
+    with volcado.mounted(folder):
+        collector = Collector()
+        try:
+            return collector.snapshot()
+        finally:
+            collector.close()
+
+
+class TestAWordInABigTile(unittest.TestCase):
+    """«Calculando…» in place of a figure, on the first reading: at figure
+    size it came out cut in narrow tiles («Calculandc» in CPU, «Calculando..»
+    in Storage). It must fit whole with the normal font and the largest, from
+    the narrowest window to a wide one: in between, the tiles go four to a
+    row with room for their figures, not for a word."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.app = _app()
+
+    def _check(self, font_scale: str, cases):
+        from PySide6.QtGui import QFontMetricsF, QPalette
+
+        from silux.ui.app import MainWindow
+        from silux.ui.widgets import _Cifra
+        from tests.test_equipos import EQUIPOS
+
+        saved = (theme.METRICS, self.app.styleSheet(), QPalette(self.app.palette()),
+                 self.app.style().name())
+
+        def restore():
+            theme.METRICS = saved[0]
+            self.app.setStyle(saved[3])
+            self.app.setPalette(saved[2])
+            self.app.setStyleSheet(saved[1])
+
+        self.addCleanup(restore)
+        metrics = theme.set_density("normal", font_scale)
+        prefs = Preferences(font_scale=font_scale, window_width=metrics.min_window_w,
+                            window_height=ALTO).normalized()
+        theme.apply(self.app, prefs.theme, prefs.density, prefs.font_scale)
+        for dump, sections in cases:
+            window = MainWindow(prefs)
+            self.addCleanup(window.close)
+            window.show()
+            first = _first_snapshot(EQUIPOS / dump)
+            self.assertTrue(first.first_reading)
+            window._on_sample(first)
+            seen = 0
+            for width in (metrics.min_window_w, 900, 1000, 1100, 1300, 1600):
+                window.resize(max(width, metrics.min_window_w), ALTO)
+                _asentar(self.app)
+                for section in sections:
+                    window.select_section(section)
+                    _asentar(self.app)
+                    page = window.stack.currentWidget()
+                    for label in page.findChildren(_Cifra):
+                        if not (label.palabra and label.isVisibleTo(page)):
+                            continue
+                        seen += 1
+                        font = getattr(label, "word_font", label.font)()
+                        with self.subTest(dump=dump, font=font_scale, width=width,
+                                          section=section, word=label.text()):
+                            # In fractions, as the painter elides.
+                            self.assertLessEqual(
+                                QFontMetricsF(font).horizontalAdvance(label.text()),
+                                label.contentsRect().width())
+            self.assertGreater(seen, 0, f"no word on {sections} of {dump}")
+
+    def test_normal_font(self):
+        self._check("normal", (("5800x3d", ("CPU", "Almacenamiento")), ("i5-8350u", ("Batería",))))
+
+    def test_largest_font(self):
+        self._check("máximo", (("5800x3d", ("CPU", "Almacenamiento")), ("i5-8350u", ("Batería",))))

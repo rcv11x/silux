@@ -12,6 +12,10 @@ que hace falta.
 
 ## Sin publicar
 
+- Interfaz: «Calculando…» y las demás palabras que van en lugar de una cifra
+  («con el cargador») caben enteras en las fichas grandes: bajan de tamaño
+  lo justo cuando no hay sitio, también con la letra más grande. Antes salía
+  «Calculandc» en CPU.
 - Textos: con una sola cosa, en singular («1 módulo», «1 núcleo · 1 hilo»,
   «1 de 1 activa», «1 ciclo»…). La imagen para compartir ya no deja un «—»
   donde falta un dato: lo quita.

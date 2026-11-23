@@ -1390,6 +1390,31 @@ class _Cifra(QLabel):
     def _con_unidad(self) -> bool:
         return bool(self._unidad) and self.text() != render.DASH and not self.palabra
 
+    def word_font(self) -> QFont:
+        """A word in place of the figure, at the figure's size if it fits its
+        room and smaller if not, down to the small text's: «Calculando…» at
+        figure size didn't fit a narrow tile and came out cut."""
+        font = QFont(self.font())
+        room = self.contentsRect().width()
+
+        def width(of: QFont) -> float:
+            # In fractions: the whole pixels of `horizontalAdvance` round
+            # 197.4 down, and the text was then cut by its last letter.
+            return QFontMetricsF(of).horizontalAdvance(self.text())
+
+        advance = width(font)
+        if room <= 0 or advance <= room:
+            return font
+        floor = float(theme.METRICS.small_pt)
+        size = max(floor, font.pointSizeF() * room / advance)
+        font.setPointSizeF(size)
+        # Text doesn't shrink exactly in proportion (hinting): half a point
+        # at a time until it fits.
+        while size > floor and width(font) > room:
+            size = max(floor, size - 0.5)
+            font.setPointSizeF(size)
+        return font
+
     def ancho_de_la_unidad(self) -> int:
         if not self._unidad:
             return 0
@@ -1405,9 +1430,17 @@ class _Cifra(QLabel):
         base = super().minimumSizeHint()
         if self._con_unidad():
             base.setWidth(base.width() + self.ancho_de_la_unidad())
+        elif self.palabra:
+            # A word shrinks to fit (`word_font`): it doesn't widen its tile.
+            small = QFont(self.font())
+            small.setPointSizeF(float(theme.METRICS.small_pt))
+            base.setWidth(min(base.width(), QFontMetrics(small).horizontalAdvance(self.text())))
         return base
 
     def paintEvent(self, event) -> None:  # noqa: N802
+        if self.palabra:
+            self._paint_word()
+            return
         if not self._con_unidad():
             super().paintEvent(event)
             return
@@ -1423,6 +1456,20 @@ class _Cifra(QLabel):
             pintor.setFont(self._fuente_unidad)
             pintor.setPen(self._color_unidad)
             pintor.drawText(x, linea, self._unidad)
+        finally:
+            pintor.end()
+
+    def _paint_word(self) -> None:
+        pintor = QPainter(self)
+        try:
+            font = self.word_font()
+            medida = QFontMetrics(font)
+            caja = self.contentsRect()
+            texto = medida.elidedText(self.text(), Qt.TextElideMode.ElideRight, caja.width())
+            linea = caja.top() + (caja.height() - medida.height()) // 2 + medida.ascent()
+            pintor.setFont(font)
+            pintor.setPen(self.palette().color(self.foregroundRole()))
+            pintor.drawText(caja.left(), linea, texto)
         finally:
             pintor.end()
 
