@@ -63,7 +63,8 @@ class GpuApis(Provider):
             # suspended card's node wakes it. Asked when it wakes: the static
             # data is read again then.
             draft.note("gpus.apis", Need.HARDWARE,
-                       _("prov.apis.asleep"), _("prov.apis.asleep.hint"))
+                       _("prov.apis.asleep"), _("prov.apis.asleep.hint"),
+                       key="prov.apis.asleep", title=_("prov.apis.asleep.title"))
             return
 
         # A single call: inside, it starts a process that loads the drivers,

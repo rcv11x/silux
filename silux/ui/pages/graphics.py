@@ -401,6 +401,7 @@ class GpuSection(QWidget):
         # Whether some card of this machine has a graphics API: without any, the
         # libraries are missing; with one, they just do not see this card.
         self._apis_en_el_equipo = False
+        self._apis_not_asked = False
         self._p = palette
         self._prefs = prefs
         m = theme.METRICS
@@ -658,8 +659,12 @@ class GpuSection(QWidget):
                 self.elevation_buttons.append(aviso.action_button)
             self._notices_host.addWidget(aviso)
 
-    def apply(self, gpu: Gpu, recorte: str = "", apis_on_this_machine: bool = False) -> None:
+    def apply(self, gpu: Gpu, recorte: str = "", apis_on_this_machine: bool = False,
+              apis_not_asked: bool = False) -> None:
+        """`apis_not_asked`: OpenGL and Vulkan weren't asked yet, to keep a
+        card asleep; that a card has none of them says nothing then."""
         self._apis_en_el_equipo = apis_on_this_machine
+        self._apis_not_asked = apis_not_asked
         d = render.DASH
         self.title.setText(render.gpu_name(gpu))
         # Va arriba, debajo del nombre: es lo que explica por qué las cifras de
@@ -774,7 +779,8 @@ class GpuSection(QWidget):
         self.apis.set_rows([
             (api.name, api.version or d, render.api_driver(api, gpu) or d, api.extra or d)
             for api in gpu.apis
-        ] or rejected or [(_("gpu.apis.notseen") if self._apis_en_el_equipo
+        ] or rejected or [(_("gpu.apis.notasked") if self._apis_not_asked
+                           else _("gpu.apis.notseen") if self._apis_en_el_equipo
                            else _("gpu.apis.none"), d, d, d)])
 
         conectadas = [s for s in gpu.displays if s.connected]
@@ -867,7 +873,8 @@ class GpuSection(QWidget):
                 mudos = [c for c in mudos if c not in sin_apis]
                 frases = list(propias)
                 if sin_apis:
-                    frases.append(_("gpu.na.noapi").format(campos=render.enumeration(
+                    frases.append(_("gpu.na.noapi.notasked" if self._apis_not_asked
+                                    else "gpu.na.noapi").format(campos=render.enumeration(
                         [_(FROM_THE_APIS[c]) for c in sin_apis])))
                 if mudos:
                     frase, globo = render.silent_gpu_rows(
@@ -1343,7 +1350,8 @@ class GraphicsPage(ScrollPage):
             seccion.show()
             seccion.apply(gpu, render.throttle_episode(
                 self._recortes.relevant(clave, ahora), ahora) or "",
-                apis_on_this_machine=any(g.apis for g in snapshot.gpus))
+                apis_on_this_machine=any(g.apis for g in snapshot.gpus),
+                apis_not_asked=any(n.key == "prov.apis.asleep" for n in snapshot.notes))
 
         self._apply_notices(snapshot)
 

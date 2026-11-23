@@ -134,13 +134,11 @@ la memoria) no va: está propuesto en las notas
 * **De los informes de la prueba9** (volcados `i5-5200u`, `i7-4710hq`,
   `celeron-560`, `i5-8350u` y `core2-p8400`, rehechos; el informe del E6400
   con Mint en sesión live es el mismo equipo y no se vuelca):
-  - Gráficos · media · con la GeForce GTX 850M en reposo (nouveau), su ficha
-    son 35 filas con guion; la RTX del LOQ en reposo no tiene ninguna. Y la
-    HD 4600 dice «Ni Vulkan ni OpenGL usan esta tarjeta» y «Sin bibliotecas
-    gráficas» sin haberles preguntado: se espera a que despierte la GeForce.
-    OpenGL abre solo la gráfica de la pantalla; medir si `glxinfo` o EGL
-    despiertan a la dormida (`power/runtime_status`) y, si no, preguntarle
-    ya.
+  - Gráficos · baja · con una tarjeta en reposo no se pregunta a OpenGL,
+    Vulkan ni OpenCL hasta que despierte, y la integrada se queda sin su
+    versión del driver mientras tanto. OpenGL abre solo la gráfica de la
+    pantalla: medir si `glxinfo` o EGL despiertan a la dormida
+    (`power/runtime_status`) y, si no, preguntarle ya a OpenGL.
   - Memoria · baja · un zram con 0 B dentro dice «comprime 55.4 a 1».
   - Memoria · baja · el E6400 (ICH9M, DDR2) no registra ningún SPD, ni con
     5.10 ni con 6.14: `dmesg | grep -i spd` diría por qué.

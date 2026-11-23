@@ -1,8 +1,11 @@
-"""A card asleep.
+"""A card asleep, and the card beside it while the libraries wait.
 
 A GeForce asleep under Optimus showed 35 rows of dashes under the heading
-«This machine doesn't expose it». Asleep, the card keeps what is known
-without waking it and says why the rest waits.
+«This machine doesn't expose it»; the integrated one beside it said
+«Neither Vulkan nor OpenGL use this card» when they hadn't been asked, so
+as not to wake the other. Asleep, the card keeps what is known without
+waking it and says why the rest waits; and what wasn't asked isn't said
+to be absent.
 """
 
 import unittest
@@ -65,6 +68,19 @@ class TestEveryDump(unittest.TestCase):
                     for card in ("gpu.card.vram", "gpu.card.clocks", "gpu.card.sensors",
                                  "gpu.card.apis"):
                         self.assertNotIn(_(card), texts)
+
+    def test_libraries_not_asked_are_not_said_absent(self):
+        for name, snapshot in self.snapshots.items():
+            if not any(n.key == "prov.apis.asleep" for n in snapshot.notes):
+                continue
+            with self.subTest(dump=name), pantalla.Ventana(snapshot) as window:
+                for section, texts in _sections(window):
+                    joined = " ".join(texts)
+                    self.assertNotIn(_("gpu.apis.none"), texts)
+                    self.assertNotIn(_("gpu.na.noapi").split("{")[0], joined)
+                awake = [t for s, t in _sections(window)
+                         if _("gpu.apis.notasked") in t]
+                self.assertTrue(awake)
 
 
 if __name__ == "__main__":

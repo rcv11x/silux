@@ -88,6 +88,9 @@ que hace falta.
   ya no enseña 35 filas con guion: queda una ficha corta con lo que se sabe
   sin despertarla (nombre, fabricante, driver, identificadores) y un aviso
   «En reposo» que dice por qué no se le pregunta nada.
+- Gráficos: mientras la otra tarjeta duerme, la integrada ya no dice «Ni
+  Vulkan ni OpenGL usan esta tarjeta» ni «Sin bibliotecas gráficas»: dice
+  que todavía no se les ha preguntado, para no despertar a la otra.
 
 ## 0.4-prueba10 (22 de noviembre de 2026)
 
