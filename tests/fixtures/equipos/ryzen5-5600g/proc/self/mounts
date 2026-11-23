@@ -1,0 +1,9 @@
+/dev/nvme0n1p2 / btrfs rw,noatime,compress=zstd:1,ssd,discard=async,space_cache=v2,subvolid=256,subvol=/@ 0 0
+/dev/nvme0n1p2 /root btrfs rw,noatime,compress=zstd:1,ssd,discard=async,space_cache=v2,subvolid=258,subvol=/@root 0 0
+/dev/nvme0n1p2 /srv btrfs rw,noatime,compress=zstd:1,ssd,discard=async,space_cache=v2,subvolid=259,subvol=/@srv 0 0
+/dev/nvme0n1p2 /home btrfs rw,noatime,compress=zstd:1,ssd,discard=async,space_cache=v2,subvolid=257,subvol=/@home 0 0
+/dev/nvme0n1p2 /var/cache btrfs rw,noatime,compress=zstd:1,ssd,discard=async,space_cache=v2,subvolid=260,subvol=/@cache 0 0
+/dev/nvme0n1p2 /var/log btrfs rw,noatime,compress=zstd:1,ssd,discard=async,space_cache=v2,subvolid=262,subvol=/@log 0 0
+/dev/nvme0n1p2 /media/unidad1 btrfs rw,noatime,compress=zstd:1,ssd,discard=async,space_cache=v2,subvolid=261,subvol=/@tmp 0 0
+/dev/nvme0n1p1 /boot vfat rw,relatime,fmask=0077,dmask=0077,codepage=437,iocharset=ascii,shortname=mixed,utf8,errors=remount-ro 0 0
+/dev/sda2 /media/unidad2 ntfs3 rw,nosuid,nodev,relatime,uid=1000,gid=1000,acl,iocharset=utf8,prealloc,ads 0 0

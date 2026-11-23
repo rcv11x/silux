@@ -1,0 +1,292 @@
+{
+ "cpuid": {
+  "*:0:0": [
+   16,
+   1752462657,
+   1145913699,
+   1769238117
+  ],
+  "*:2147483648:0": [
+   2147483683,
+   1752462657,
+   1145913699,
+   1769238117
+  ],
+  "0:1:0": [
+   10817280,
+   788480,
+   2130194955,
+   395049983
+  ],
+  "0:2147483649:0": [
+   10817280,
+   536870912,
+   1975662591,
+   802421759
+  ],
+  "0:2147483650:0": [
+   541347137,
+   1702525266,
+   540352622,
+   808465973
+  ],
+  "0:2147483651:0": [
+   1769414727,
+   1377855604,
+   1868915809,
+   1917263982
+  ],
+  "0:2147483652:0": [
+   1768452193,
+   538997603,
+   538976288,
+   2105376
+  ],
+  "0:7:0": [
+   0,
+   563910569,
+   4195996,
+   16
+  ],
+  "0:7:1": [
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ "drm_modes": {
+  "card1": {
+   "DP-3": {
+    "height": 1080,
+    "refresh_hz": 179.96,
+    "width": 1920
+   }
+  }
+ },
+ "gpuapi": {
+  "consultar": {
+   "opencl": [
+    {
+     "compute_units": 24,
+     "driver_version": "620.73.04",
+     "global_memory_bytes": 8229814272,
+     "max_clock_mhz": 2490,
+     "name": "NVIDIA GeForce RTX 4060",
+     "platform": "NVIDIA CUDA",
+     "platform_version": "OpenCL 3.0 CUDA 13.5.49",
+     "vendor": "NVIDIA Corporation",
+     "version": "OpenCL 3.0 CUDA"
+    }
+   ],
+   "opengl": {
+    "egl_vendor": "NVIDIA",
+    "egl_version": "1.5",
+    "glsl": "4.60 NVIDIA",
+    "renderer": "NVIDIA GeForce RTX 4060/PCIe/SSE2",
+    "vendor": "NVIDIA Corporation",
+    "version": "4.6.0 NVIDIA 620.73.04"
+   },
+   "vaapi": [],
+   "vulkan": [
+    {
+     "api_version": "1.4.357",
+     "device_id": 10370,
+     "device_memory_bytes": 8843689984,
+     "driver_version": 2601664768,
+     "instance_version": "1.4.363",
+     "kind": "dedicada",
+     "name": "NVIDIA GeForce RTX 4060",
+     "vendor_id": 4318
+    }
+   ],
+   "vulkan_icds": [
+    "libGLX_nvidia.so.0"
+   ],
+   "vulkan_rejected": []
+  }
+ },
+ "ioctl_red": {
+  "enp7s0:0x8915": "192.168.1.120",
+  "enp7s0:0x891b": "255.255.255.0",
+  "lo:0x8915": "127.0.0.1",
+  "lo:0x891b": "255.0.0.0"
+ },
+ "modinfo": {
+  "drivetemp": true
+ },
+ "nvml": {
+  "abierta": true,
+  "tarjetas": [
+   {
+    "busy_percent": 0.0,
+    "core_hz": 1980000000,
+    "core_max_hz": 3105000000,
+    "cuda_cores": 3072,
+    "decode_busy_percent": 0.0,
+    "driver_version": "620.73.04",
+    "encode_busy_percent": 0.0,
+    "fan_percent": 0.0,
+    "index": 0,
+    "link_generation": 3,
+    "link_width": 8,
+    "max_link_generation": 3,
+    "max_link_width": 8,
+    "memory_bus_bits": 128,
+    "memory_busy_percent": 1.0,
+    "memory_hz": 8501000000,
+    "memory_max_hz": 8501000000,
+    "memory_total_bytes": 8585740288,
+    "memory_used_bytes": 908591104,
+    "name": "NVIDIA GeForce RTX 4060",
+    "pci_slot": "0000:01:00.0",
+    "power_cap_default_w": 115.0,
+    "power_cap_max_w": 115.0,
+    "power_cap_min_w": 90.0,
+    "power_cap_w": 115.0,
+    "power_error": null,
+    "power_w": 53.4,
+    "serial": null,
+    "temp_c": 48.0,
+    "throttle_reasons": [],
+    "throttled": false,
+    "uuid": "0000000000000000000000000000000000000000",
+    "vbios": "95.07.31.40.F2",
+    "video_hz": 1695000000
+   }
+  ]
+ },
+ "paquetes": {
+  "egl": true,
+  "kmod": true,
+  "nvml": true,
+  "opencl": true,
+  "opengl": true,
+  "pci.ids": true,
+  "pkexec": true,
+  "pnp.ids": true,
+  "python3": true,
+  "systemctl": true,
+  "vaapi": true,
+  "vulkan": true,
+  "xdg-open": true
+ },
+ "pciids": {
+  "1002:1637|1022:15e3|1022:1639|1022:43eb|1022:43ec|10de:22be|10de:2882|10ec:8168|2646:5017": {
+   "1002:1637": [
+    "Advanced Micro Devices, Inc. [AMD/ATI]",
+    "Renoir/Cezanne HDMI/DP Audio Controller"
+   ],
+   "1022:15e3": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "Ryzen HD Audio Controller"
+   ],
+   "1022:1639": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "Renoir/Cezanne USB 3.1"
+   ],
+   "1022:43eb": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "500 Series Chipset SATA Controller"
+   ],
+   "1022:43ec": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "A520 Series Chipset USB 3.1 XHCI Controller"
+   ],
+   "10de:22be": [
+    "NVIDIA Corporation",
+    "AD107 High Definition Audio Controller"
+   ],
+   "10de:2882": [
+    "NVIDIA Corporation",
+    "AD107 [GeForce RTX 4060]"
+   ],
+   "10ec:8168": [
+    "Realtek Semiconductor Co., Ltd.",
+    "RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller"
+   ],
+   "2646:5017": [
+    "Kingston Technology Company, Inc.",
+    "NV2 NVMe SSD [SM2267XT] (DRAM-less)"
+   ]
+  },
+  "1022:1630|1022:790e": {
+   "1022:1630": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "Renoir/Cezanne Root Complex"
+   ],
+   "1022:790e": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "FCH LPC Bridge"
+   ]
+  },
+  "10de:2882|10de:2882:1462:5161": {
+   "10de:2882": [
+    "NVIDIA Corporation",
+    "AD107 [GeForce RTX 4060]"
+   ]
+  },
+  "10ec:8168": {
+   "10ec:8168": [
+    "Realtek Semiconductor Co., Ltd.",
+    "RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller"
+   ]
+  }
+ },
+ "pciids_fabricante": {
+  "1462": "Micro-Star International Co., Ltd. [MSI]"
+ },
+ "plataforma": {
+  "entorno": {
+   "DESKTOP_SESSION": "/usr/share/wayland-sessions/plasma.desktop",
+   "DISPLAY": ":0",
+   "GDMSESSION": null,
+   "SHELL": "/bin/fish",
+   "WAYLAND_DISPLAY": "wayland-1",
+   "XDG_CURRENT_DESKTOP": "KDE",
+   "XDG_SESSION_TYPE": "wayland"
+  },
+  "kvm": true,
+  "machine": "x86_64",
+  "procesos": 337,
+  "uname": {
+   "machine": "x86_64",
+   "node": "silux-pc",
+   "release": "7.3.5-2-cachyos",
+   "system": "Linux",
+   "version": "#1 SMP PREEMPT_DYNAMIC Fri, 20 Nov 2026 19:34:15 +0000"
+  }
+ },
+ "realpath": {
+  "/dev/nvme0n1p1": "/dev/nvme0n1p1",
+  "/dev/nvme0n1p2": "/dev/nvme0n1p2",
+  "/dev/sda2": "/dev/sda2"
+ },
+ "statfs": {
+  "/": [
+   243141549,
+   190944725,
+   190494104,
+   4096
+  ],
+  "/boot": [
+   1046526,
+   950925,
+   950925,
+   4096
+  ],
+  "/media/unidad2": [
+   244186111,
+   240860816,
+   240860816,
+   4096
+  ]
+ },
+ "systemd": {
+  "arranque": {
+   "FinishTimestampMonotonic": 10789757,
+   "InitRDTimestampMonotonic": 2001923,
+   "UserspaceTimestampMonotonic": 3913960
+  }
+ }
+}
