@@ -133,19 +133,12 @@ la memoria) no va: está propuesto en las notas
   - Batería · baja · la segunda lectura del volcado no guarda la batería:
     la potencia que sale de `energy_now` no se puede comprobar con un
     informe, solo en el equipo.
-  - Gráficos · media · la RTX 4060 marca 53 W con la página a 255 MHz de
-    núcleo y 405 MHz de memoria. La única lectura de NVML del volcado la
-    tomó a 1980 y 8501 MHz (en carga), donde 53 W es verosímil, pero el
-    volcado no guarda qué llamada dio los vatios (`GetPowerUsage` o los
-    campos de media o instantánea). La media de las muestras ya no se usa:
-    de ahí salían los 53 W de la otra 4060 de sobremesa (volcado
-    `i7-10700f`, driver 595), cuyo `nvidia-smi` da N/A en los tres
-    consumos; si esta sale sin consumo con la versión siguiente, también
-    salía de ahí. Grabar en el volcado lo que contestó
-    cada llamada y el estado P (`GetPerformanceState`) lo diría. Pedido:
-    `nvidia-smi --query-gpu=power.draw,power.draw.average,
-    power.draw.instant,clocks.gr,clocks.mem,pstate --format=csv -lms 500`
-    con Silux abierto y cerrado.
+  - Gráficos · baja · las dos RTX 4060 de sobremesa (esta, con el 620, y
+    la del volcado `i7-10700f`, con el 595) dan N/A en los tres consumos de
+    `nvidia-smi`: sus 53 W salían de la media de las muestras, que ya no se
+    usa, y ahora salen sin consumo. El volcado guarda qué llamada dio el
+    consumo (`power_source`): falta confirmarlo con la próxima prueba de
+    cada uno. El estado P (`GetPerformanceState`) no se graba.
   - Memoria · baja · el HP tiene `uncore_imc_free_running` con eventos de dos
     campos: sirve para probar el ayudante de la prueba11 con el IMC, además
     del LOQ de Coca.
