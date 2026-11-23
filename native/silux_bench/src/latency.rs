@@ -21,9 +21,12 @@ use crate::timer::{now_ns, Clock};
 /// Loads per trip round the chase loop: enough that the loop's own counter
 /// is lost in the latency of the loads.
 const UNROLL: u64 = 16;
-/// The warm-up chases this much at most: a whole lap loads a block that fits
-/// in a cache and settles the TLB, and past the caches a lap only costs time.
-const WARMUP_MAX_HOPS: u64 = 2 * 1024 * 1024;
+/// The warm-up is a whole lap, up to this many hops. A lap loads a block that
+/// fits in a cache and settles the TLB; in a block a few times the last
+/// cache it also leaves there what a steady walk would find, instead of the
+/// lines the linking wrote last, which would make the first lap look faster.
+/// Past 512 MiB the cache holds too little of the block for it to matter.
+const WARMUP_MAX_HOPS: u64 = 8 * 1024 * 1024;
 /// Chunk of work between two looks at the cancel flag: about 50 ms at the
 /// slowest, a random swap that misses every cache.
 const SWAPS_PER_CHECK: usize = 1 << 19;
