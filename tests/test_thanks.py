@@ -25,7 +25,8 @@ PUBLISHED = ROOT / "silux" / "db" / "thanks.json"
 # author. A name in the published thanks.json that is not here fails the
 # suite, and with it the CI of any release: nobody is named without being
 # written twice.
-APPROVED: frozenset[str] = frozenset({"Felix Lara"})
+APPROVED: frozenset[str] = frozenset({
+    "Anianin27", "Erziok", "Felix Lara", "jwpitr", "widecoocaa23_"})
 READMES = ("README.md", "README.en.md")
 BETWEEN_MARKS = re.compile(r"<!-- thanks:start -->\n(.*?)<!-- thanks:end -->", re.S)
 WITH_REPORTS_FROM = re.compile(r"^Con informes de (.+?)\.?$", re.M)
@@ -76,6 +77,11 @@ class TestTheList(_AList):
     def test_each_name_once_as_written(self):
         self._with(json.dumps(["Ana", " Luis ", "Ana", 3, "", None, "Marta"]))
         self.assertEqual(db.thanks(), ("Ana", "Luis", "Marta"))
+
+    def test_in_alphabetical_order_whatever_the_file_says(self):
+        self._with(json.dumps(["widecoocaa23_", "Felix Lara", "jwpitr", "Anianin27", "Erziok"]))
+        self.assertEqual(db.thanks(),
+                         ("Anianin27", "Erziok", "Felix Lara", "jwpitr", "widecoocaa23_"))
 
     def test_a_broken_file_names_nobody(self):
         for contents in ("{", '{"names": ["Ana"]}', "", '"Ana"'):

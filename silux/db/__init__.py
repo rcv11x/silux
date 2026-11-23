@@ -61,7 +61,8 @@ def intel_gpus() -> dict[str, str]:
 
 @functools.lru_cache(maxsize=1)
 def thanks() -> tuple[str, ...]:
-    """The names in thanks.json, as written there, once each."""
+    """The names in thanks.json, as written there, once each, in alphabetical
+    order whatever order the file has."""
     try:
         names = json.loads(THANKS.read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -70,7 +71,7 @@ def thanks() -> tuple[str, ...]:
     for name in names if isinstance(names, list) else ():
         if isinstance(name, str) and name.strip() and name.strip() not in found:
             found.append(name.strip())
-    return tuple(found)
+    return tuple(sorted(found, key=str.casefold))
 
 
 def available() -> bool:
