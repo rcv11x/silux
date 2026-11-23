@@ -12,6 +12,8 @@ que hace falta.
 
 ## Sin publicar
 
+- Placa base: un chipset que la base de datos PCI del sistema no conoce ya no
+  sale con dos guiones: lo dice al pie.
 - Informe: un aparato USB que se llama solo por lo que es («Controller», el
   nombre de muchos mandos) ya no se toma por un dato de la persona: el anexo
   quitaba el modelo de cada nombre PCI que llevara esa palabra.

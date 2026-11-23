@@ -223,5 +223,32 @@ class TestRecoleccionReal(unittest.TestCase):
                 self.assertIsNotNone(clean_dmi(valor), f"{campo} trae un relleno: {valor!r}")
 
 
+
+class TestAChipsetPciIdsDoesNotKnow(unittest.TestCase):
+    """A PCH newer than the system's pci.ids: no name and no identification,
+    and the two rows came out as dashes. Hidden, and the foot says why."""
+
+    def test_said_at_the_foot_not_dashed(self):
+        import dataclasses
+
+        from silux.i18n import _
+        from tests import pantalla, qt
+        from tests.test_equipos import EQUIPOS, shared_snapshot
+
+        qt.app()
+        photo = shared_snapshot(EQUIPOS / "i5-10400")
+        photo = dataclasses.replace(photo, board=dataclasses.replace(
+            photo.board, chipset=None, chipset_full=None))
+        with pantalla.Ventana(photo) as window:
+            window.select_section("Placa base")
+            for _turn in range(4):
+                qt.app().processEvents()
+            page = window.board_page
+            for row in ("board.field.chipset", "board.field.pciid"):
+                self.assertFalse(page.chipset._values[_(row)].isVisibleTo(page), row)
+            self.assertEqual(page.chipset_pie.text(), _("board.na.chipset.unknown"))
+            self.assertTrue(page.chipset_pie.isVisibleTo(page))
+
+
 if __name__ == "__main__":
     unittest.main()

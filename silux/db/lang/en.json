@@ -208,6 +208,7 @@
   "board.na.chassis": "the chassis maker",
   "board.na.chassistype": "the chassis type",
   "board.na.chipset.codename": "Its PCI identification gives the chipset's codename, not a commercial model.",
+  "board.na.chipset.unknown": "This system's PCI device database doesn't know its chipset.",
   "board.na.model": "its model",
   "board.na.revision": "its revision",
   "board.na.secureboot.legacy": "There is no Secure Boot with legacy BIOS: it belongs to UEFI.",

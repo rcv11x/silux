@@ -208,6 +208,7 @@
   "board.na.chassis": "el fabricante del chasis",
   "board.na.chassistype": "el tipo de chasis",
   "board.na.chipset.codename": "Su identificación PCI da el nombre en clave del chipset, no un modelo comercial.",
+  "board.na.chipset.unknown": "La base de datos de dispositivos PCI de este sistema no conoce su chipset.",
   "board.na.model": "su modelo",
   "board.na.revision": "su revisión",
   "board.na.secureboot.legacy": "Con BIOS heredada no hay arranque seguro: es cosa de UEFI.",

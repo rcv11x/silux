@@ -240,9 +240,15 @@ class BoardPage(ScrollPage):
         # pci.ids gives some PCHs only their codename («Wildcat Point-LP»):
         # there's no model to say, and the row below names it.
         sin_modelo = not board.chipset and bool(board.chipset_full)
-        self.chipset.set_visible(_("board.field.chipset"), not sin_modelo)
-        self.chipset_pie.setText(_("board.na.chipset.codename") if sin_modelo else "")
-        self.chipset_pie.setVisible(sin_modelo)
+        # And a PCH this system's pci.ids doesn't know at all (newer than the
+        # file): neither row has anything to say, and the foot says why.
+        unknown = not board.chipset and not board.chipset_full
+        self.chipset.set_visible(_("board.field.chipset"), not (sin_modelo or unknown))
+        self.chipset.set_visible(_("board.field.pciid"), not unknown)
+        chipset_foot = (_("board.na.chipset.codename") if sin_modelo
+                        else _("board.na.chipset.unknown") if unknown else "")
+        self.chipset_pie.setText(chipset_foot)
+        self.chipset_pie.setVisible(bool(chipset_foot))
 
         # «Equipo» es para los de marca, donde el firmware dice qué equipo es
         # («ThinkCentre M80q»). En una placa suelta esos campos son códigos de
