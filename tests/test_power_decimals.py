@@ -70,7 +70,11 @@ class TestEveryPage(unittest.TestCase):
                 with self.subTest(folder.name, section=section):
                     self.assertEqual([t for t in texts if WHOLE_BELOW_TEN.search(t)], [])
                     for figure in tiles:
-                        if figure != render.DASH and float(figure) < 10:
+                        try:
+                            watts = float(figure)
+                        except ValueError:
+                            continue        # a dash, or a word: «Calculating…»
+                        if watts < 10:
                             self.assertIn(".", figure)
 
     def test_an_idle_integrated_card_on_home_and_graphics(self):
