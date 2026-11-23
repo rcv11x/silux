@@ -1,0 +1,1 @@
+root=… zswap.enabled=0 rw rootfstype=ext4 amd_iommu=on iommu=soft mitigations=off

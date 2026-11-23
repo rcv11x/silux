@@ -1,0 +1,1 @@
+BOOT_IMAGE=(hd9,gpt2)/boot/vmlinuz-7.3.5-300.fc45.x86_64 root=… ro rhgb quiet,nova_core,nova_core rd.driver.blacklist=nouveau rd.driver.blacklist=nova-core

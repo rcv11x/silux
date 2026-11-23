@@ -94,6 +94,24 @@ def avanzar(raiz, ocupadas: int, octetos: int) -> None:
             disco.write_text(" ".join(campos) + "\n")
 
 
+def _without_their_second_reading(raiz) -> None:
+    """The counters moved here are read from their files, not from the
+    second reading the dump recorded a second later: with a dump taken on a
+    busy machine (71 % on one) that reading said the opposite of the test."""
+    import json
+    import pathlib
+
+    grabado = pathlib.Path(raiz) / "grabado.json"
+    datos = json.loads(grabado.read_text())
+    segunda = datos.get("segunda_lectura")
+    if not isinstance(segunda, dict):
+        return
+    movidos = ("/proc/stat", "/net/dev", "/statistics/rx_", "/statistics/tx_", "/stat")
+    datos["segunda_lectura"] = {ruta: texto for ruta, texto in segunda.items()
+                                if not ruta.endswith(movidos) and "/statistics/" not in ruta}
+    grabado.write_text(json.dumps(datos))
+
+
 def con_contadores_avanzando(carpeta):
     """Dos muestras de un volcado con los mismos campos y otras cifras.
 
@@ -108,6 +126,8 @@ def con_contadores_avanzando(carpeta):
     from tests.interval import fake_clock, next_snapshot
 
     with _herramienta().mounted(carpeta) as raiz, fake_clock() as reloj:
+        # Before the first snapshot, which loads the recording.
+        _without_their_second_reading(raiz)
         recolector = Collector()
         try:
             recolector.snapshot()

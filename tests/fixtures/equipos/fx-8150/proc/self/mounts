@@ -1,0 +1,4 @@
+/dev/sda3 / ext4 rw,relatime 0 0
+/dev/sdb1 /media/unidad1 ext4 rw,sync,nosuid,nodev,relatime 0 0
+/dev/sdc1 /media/unidad2 ext4 rw,sync,nosuid,nodev,relatime 0 0
+/dev/sda1 /media/unidad3 vfat rw,relatime,fmask=0077,dmask=0077,codepage=437,iocharset=ascii,shortname=mixed,utf8,errors=remount-ro 0 0
