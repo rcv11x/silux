@@ -59,21 +59,56 @@ def app():
                 "se puede crear un widget: quien la crea tiene que pedir antes "
                 "tests.qt.app()")
         _app = actual or QApplication([])
-        _use_ci_font(_app)
+        reset_font()
+        reset_theme()
     return _app
 
 
 # The CI runner draws with DejaVu Sans, wider than the Noto Sans or Cantarell
 # of many desktops: pages that fit here ran off the edge there, and figures
 # that fit in one line wrapped. The suite uses it wherever it's installed, so
-# a run here measures what the CI measures.
+# a run here measures what the CI measures; and at Qt's size on a desktop
+# that says none, the CI's, rather than this desktop's.
 CI_FONT = "DejaVu Sans"
+CI_FONT_POINTS = 9
+
+# What a test finds when it starts: this font, and before each class what a
+# new application has, no theme. A window doesn't apply the theme (the
+# program's `main` does), so a test used to get whatever the test before it
+# in the same process had left: a fault that showed alone hid in the suite.
+# With both put back, a test sees in the suite what it sees alone; one that
+# measures the theme applies the one it wants. `conftest.py` does it before
+# every class and every test.
+_default_family = None
 
 
-def _use_ci_font(application) -> None:
+def reset_font() -> None:
+    """The application's font back to the suite's, if Qt is running."""
+    global _default_family
+    if _app is None:
+        return
     from PySide6.QtGui import QFont, QFontDatabase
 
-    if CI_FONT in QFontDatabase.families():
-        font = QFont(application.font())
-        font.setFamily(CI_FONT)
-        application.setFont(font)
+    if _default_family is None:
+        _default_family = _app.font().family()
+    family = CI_FONT if CI_FONT in QFontDatabase.families() else _default_family
+    wanted = QFont(family, CI_FONT_POINTS)
+    if _app.font() != wanted:
+        _app.setFont(wanted)
+
+
+def reset_theme() -> None:
+    """No style sheet, Qt's own palette and the theme's default sizes, as a
+    new application starts, if Qt is running."""
+    if _app is None:
+        return
+    from silux.ui import theme
+
+    theme.set_density("normal", "normal")
+    # Only what differs: the windows the tests close stay alive until the
+    # process ends, and a new style sheet or palette reaches every one.
+    if _app.styleSheet():
+        _app.setStyleSheet("")
+    standard = _app.style().standardPalette()
+    if _app.palette() != standard:
+        _app.setPalette(standard)

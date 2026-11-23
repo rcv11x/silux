@@ -13,6 +13,10 @@ el equipo para él. Se pasan aparte, cuando lo demás ha terminado:
 Van aquí por nombre, y no con un decorador en cada uno, para que los
 archivos de tests no tengan que importar pytest: en el Python del suelo se
 ejecutan con `unittest` y sin él.
+
+Also puts back, before every class and every test, the font and the theme a
+test starts with (`tests/qt.py`): with pytest the order can't hand one test
+the font of another. Under `unittest` they're set once, when Qt starts.
 """
 
 import pytest
@@ -24,6 +28,24 @@ A_SOLAS = (
     "tests/test_benchmark.py::TestEjecucion::"
     "test_la_medida_de_un_hilo_no_paga_el_arranque_de_la_carga",
 )
+
+
+@pytest.fixture(autouse=True, scope="class")
+def _default_theme_for_each_class():
+    # Before the class's own setUpClass, which may apply another and keeps
+    # it for all its tests.
+    from tests import qt
+
+    qt.reset_theme()
+    yield
+
+
+@pytest.fixture(autouse=True)
+def _suite_font_for_each_test():
+    from tests import qt
+
+    qt.reset_font()
+    yield
 
 
 def pytest_collection_modifyitems(config, items):

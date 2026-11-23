@@ -130,6 +130,16 @@ def foreign(texto: str, idioma: str, ajenas: set, datos: set) -> set:
 
 class TestEveryPageInOneLanguage(unittest.TestCase):
 
+    @classmethod
+    def setUpClass(cls):
+        from silux.settings import Preferences
+        from silux.ui import theme
+
+        # What the person sees: the theme the application starts with. Which
+        # texts are on show depends on how wide they come out.
+        prefs = Preferences().normalized()
+        theme.apply(qt.app(), "dark", prefs.density, prefs.font_scale)
+
     def _no_word_of_the_other_language(self, carpeta):
         qt.app()
         for idioma in ("en", "es"):
