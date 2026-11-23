@@ -299,7 +299,7 @@ Es un disco virtual: no tiene temperatura, horas, lo escrito ni desgaste propios
 
 ens4 · 192.168.1.120
 Intel 82540EM Gigabit Ethernet Controller · 1 Gb/s · dúplex completo
-puerta 192.168.1.1 · 1 de 1 activas
+puerta 192.168.1.1 · 1 de 1 activa
 - Bajando: 0 B/s (ninguno descartado)
 - Subiendo: 0 B/s
 - Recibido: 115 MB (79 087 paquetes)

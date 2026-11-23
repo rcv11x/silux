@@ -12,6 +12,9 @@ que hace falta.
 
 ## Sin publicar
 
+- Textos: con una sola cosa, en singular («1 módulo», «1 núcleo · 1 hilo»,
+  «1 de 1 activa», «1 ciclo»…). La imagen para compartir ya no deja un «—»
+  donde falta un dato: lo quita.
 - Discos: un SATA ya no suma en «datos que no se pudieron leer» tres
   contadores distintos. El aviso dice cuántos sectores hay sustituidos por
   otros de reserva, cuántos no se pueden leer ahora y cuántos no pudo leer su

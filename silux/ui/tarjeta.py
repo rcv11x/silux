@@ -49,10 +49,12 @@ def _fila(snapshot: Snapshot) -> list[tuple[str, str, str]]:
 
     if snapshot.cpu.types:
         tipo = snapshot.cpu.types[0]
+        top_hz = tipo.clocks.max_turbo_hz or tipo.clocks.max_hz
+        # What is missing goes, not a dash between two data.
         detalle = " · ".join(x for x in (
-            _("share.cores").format(n=snapshot.cpu.total_cores,
-                                    h=snapshot.cpu.total_threads),
-            render.hz(tipo.clocks.max_turbo_hz or tipo.clocks.max_hz),
+            render.counted("share.cores", snapshot.cpu.total_cores),
+            render.counted("share.threads", snapshot.cpu.total_threads),
+            render.hz(top_hz) if top_hz else "",
             tipo.codename or "",
         ) if x)
         filas.append((_("nav.cpu"), render.cpu_short_name(tipo.brand), detalle))
@@ -73,14 +75,14 @@ def _fila(snapshot: Snapshot) -> list[tuple[str, str, str]]:
         if modulos:
             primero = modulos[0]
             detalle = " · ".join(x for x in (
-                _("share.modules").format(n=len(modulos)),
+                render.counted("share.modules", len(modulos)),
                 primero.type or "",
                 f"{primero.speed_mts} MT/s" if primero.speed_mts else "",
             ) if x)
         elif snapshot.spd:
             spd = snapshot.spd[0]
             detalle = " · ".join(x for x in (
-                _("share.modules").format(n=len(snapshot.spd)),
+                render.counted("share.modules", len(snapshot.spd)),
                 spd.dram_type or "",
             ) if x)
         filas.append((_("nav.memory"), render.size(memoria.total_bytes), detalle))
@@ -92,8 +94,8 @@ def _fila(snapshot: Snapshot) -> list[tuple[str, str, str]]:
         total = sum(disco.size_bytes or 0 for disco in snapshot.disks)
         detalle = " · ".join(render.disk_kinds(snapshot.disks))
         filas.append((_("nav.storage"),
-                      _("share.units").format(tam=render.decimal_size(total),
-                                              n=len(snapshot.disks)),
+                      render.counted("share.units", len(snapshot.disks),
+                                     tam=render.decimal_size(total)),
                       detalle))
 
     sistema = snapshot.system

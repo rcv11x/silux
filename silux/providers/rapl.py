@@ -16,7 +16,7 @@ import pathlib
 import time
 from typing import Optional
 
-from .. import sysroot
+from .. import render, sysroot
 from ..i18n import _
 from ..model import Need, Power
 from ..privileged.client import HelperError, PrivilegedClient
@@ -109,8 +109,8 @@ class Discarded:
 
     def note(self, draft: Draft) -> None:
         if self.count:
-            draft.note(DISCARDED_PATH, Need.ERROR, _("power.discarded").format(
-                n=self.count, fuente=self.source, ultima=self.last))
+            draft.note(DISCARDED_PATH, Need.ERROR, render.counted(
+                "power.discarded", self.count, fuente=self.source, ultima=self.last))
 
 
 # Intel also keeps the package's limits in the memory controller's registers

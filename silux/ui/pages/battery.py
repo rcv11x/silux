@@ -140,7 +140,7 @@ class _SeccionBateria(QWidget):
         if bateria.technology:
             insignias.append(bateria.technology)
         if bateria.cycles:
-            insignias.append(_("bat.cycles.n").format(n=bateria.cycles))
+            insignias.append(render.counted("bat.cycles.n", bateria.cycles))
         if bateria.design_wh:
             insignias.append(render.watt_hours(bateria.design_wh))
         self.badges.set_chips(insignias)

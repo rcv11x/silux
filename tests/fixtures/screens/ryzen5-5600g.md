@@ -495,7 +495,7 @@ Un disco de platos no tiene «vida restante»: es el desgaste de las celdas de u
 
 enp7s0 · 192.168.1.120
 Realtek RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller · 1 Gb/s · dúplex completo
-puerta 192.168.1.1 · 1 de 1 activas
+puerta 192.168.1.1 · 1 de 1 activa
 - Bajando: 0 B/s (ninguno descartado)
 - Subiendo: 0 B/s
 - Recibido: 850 MB (608 640 paquetes)

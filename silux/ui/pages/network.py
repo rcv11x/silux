@@ -296,7 +296,7 @@ class NetworkPage(ScrollPage):
             offline = any(i.kind != "loopback" for i in interfaces)
             self.title.setText(_("net.offline" if offline else "net.none"))
             self.subtitle.setText(_("net.none.body"))
-            chips = [_("net.active2").format(n=activas, total=len(interfaces))] if offline else []
+            chips = [render.counted("net.active2", len(interfaces), n=activas, total=len(interfaces))] if offline else []
             if tuple(chips) != self._chip_signature:
                 self._chip_signature = tuple(chips)
                 self.badges.set_chips(chips, highlight_first=True)
@@ -313,7 +313,7 @@ class NetworkPage(ScrollPage):
         chips = [c for c in (
             (_("net.gateway2").format(ip=principal.gateway)
              if principal.gateway else None),
-            _("net.active2").format(n=activas, total=len(interfaces)),
+            render.counted("net.active2", len(interfaces), n=activas, total=len(interfaces)),
         ) if c]
         if tuple(chips) != self._chip_signature:
             self._chip_signature = tuple(chips)

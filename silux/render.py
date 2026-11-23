@@ -426,8 +426,7 @@ def load_average(values: tuple[float, ...], threads: int = 0) -> str:
     if not values:
         return DASH
     text = " · ".join(f"{v:.2f}" for v in values)
-    return (_("cpu.load.threads").format(carga=text, n=threads)
-            if threads else text)
+    return counted("cpu.load.threads", threads, carga=text) if threads else text
 
 
 def cache_size(value: Optional[int]) -> str:
@@ -451,7 +450,7 @@ def cache_summary(cache: Cache) -> str:
     if cache.instances > 1:
         parts[0] = f"{cache.instances} × {parts[0]}"
     if cache.ways:
-        parts.append(_("cache.ways").format(n=cache.ways))
+        parts.append(counted("cache.ways", cache.ways))
     return ", ".join(parts)
 
 
@@ -467,7 +466,7 @@ def caches_summary(caches) -> str:
     text = " + ".join(parts)
     ways = {c.ways for c in ordered}
     if len(ways) == 1 and None not in ways:
-        text += ", " + _("cache.ways").format(n=ways.pop())
+        text += ", " + counted("cache.ways", ways.pop())
     return text
 
 
@@ -924,7 +923,7 @@ def silent_gpu_rows(labels: list[str], driver: Optional[str],
     tooltip = ""
     if len(names) > NAMED_AT_THE_FOOT:
         tooltip = "\n".join(labels)
-        names = names[:3] + [_("gpu.na.silent.more").format(n=len(names) - 3)]
+        names = names[:3] + [counted("gpu.na.silent.more", len(names) - 3)]
     sentence = _("gpu.na.silent.card" if card else "gpu.na.silent").format(
         driver=driver or _("gpu.na.silent.nodriver"),
         campos=enumeration(names, "list.nor"))
@@ -1420,7 +1419,7 @@ def iommu(platform) -> str:
     """«active · 34 groups» or «not enabled»."""
     if not platform.iommu_groups:
         return _("plat.iommu.off")
-    return _("plat.iommu.on").format(n=platform.iommu_groups)
+    return counted("plat.iommu.on", platform.iommu_groups)
 
 
 def virtualization(platform) -> Optional[str]:
@@ -1735,6 +1734,15 @@ def graphics_stack(snapshot) -> Optional[str]:
         elif gpu.driver == "nvidia" and gpu.driver_version:
             return f"NVIDIA {gpu.driver_version}"
     return None
+
+
+def counted(key: str, count: int, **values) -> str:
+    """The text for `count` of something: `key`, or `key.one` for exactly
+    one when the language has it. `n` is the count unless given."""
+    one = f"{key}.one"
+    chosen = one if count == 1 and _(one) != one else key
+    values.setdefault("n", count)
+    return _(chosen).format(**values)
 
 
 def enumeration(pieces, last: str = "list.and") -> str:
@@ -2629,7 +2637,7 @@ def packets(interface, received: bool) -> str:
     if not fit:
         return _("net.packets.misfit")
     count = interface.traffic.rx_packets if received else interface.traffic.tx_packets
-    return _("net.packets2").format(n=thousands(count))
+    return counted("net.packets2", count, n=thousands(count))
 
 
 def packets_misfit(interface) -> Optional[str]:

@@ -587,8 +587,9 @@ class PerformancePage(ScrollPage):
             return
         un_hilo, multi = puntos
         self.score_value.setText(_("bench.score.value").format(n=render.thousands(multi)))
-        self.score_detail.setText(_("bench.score.single").format(
-            n=render.thousands(un_hilo), cpu=entrada.cpu, hilos=entrada.threads))
+        self.score_detail.setText(render.counted(
+            "bench.score.single", entrada.threads, n=render.thousands(un_hilo),
+            cpu=entrada.cpu, hilos=entrada.threads))
 
         # Compararse con otros equipos pide la duración canónica; compararse
         # consigo mismo, no. Son dos preguntas y se contestan por separado.

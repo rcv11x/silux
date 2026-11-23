@@ -26,7 +26,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .. import annex
+from .. import annex, render
 from ..i18n import _
 from . import theme
 from .background import BackgroundCommand, CommandResult
@@ -103,7 +103,7 @@ class ReportPreviewDialog(QDialog):
         """Show this report; `missing` is how many data need permissions."""
         self._report = text
         self._show()
-        self.missing.setText(_("report.preview.missing").format(n=missing) if missing else "")
+        self.missing.setText(render.counted("report.preview.missing", missing) if missing else "")
         self.missing.setVisible(bool(missing))
         self.grant_button.setVisible(bool(missing))
 

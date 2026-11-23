@@ -446,7 +446,7 @@ Ocupado 63.6 GB · Libre 60.1 GB
 
 enp37s0 · 192.168.1.120
 Realtek RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller · 1 Gb/s · dúplex completo
-puerta 192.168.1.1 · 1 de 1 activas
+puerta 192.168.1.1 · 1 de 1 activa
 - Bajando: 0 B/s (7 paquetes descartados)
 - Subiendo: 0 B/s
 - Recibido: 231 kB (621 paquetes)
