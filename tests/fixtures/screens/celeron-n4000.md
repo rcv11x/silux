@@ -289,7 +289,7 @@ i915 · Mesa 25.2.6 · 12 EU · integrada · principal
 - Versión del driver: Mesa 25.2.6
 - Unidades de proceso: 12 unidades de ejecución
 
-i915 no cuenta unidades de rasterizado ni motores de sombreado: el recuento de Intel son las unidades de ejecución. Una integrada de Intel no tiene BIOS de video propia: va dentro del firmware del equipo.
+i915 no cuenta ROPs ni motores de sombreado: el recuento de Intel son las unidades de ejecución. Una integrada de Intel no tiene BIOS de video propia: va dentro del firmware del equipo.
 
 ##### Identificadores
 

@@ -292,7 +292,7 @@ Esta gráfica no publica cuánto se usa su motor de video.
 - Driver: amdgpu
 - Versión del driver: Mesa 26.3.1
 - Unidades de proceso: 3 unidades de cómputo
-- ROPs (unidades de rasterizado): 1
+- ROPs (unidades de salida de render): 4
 - Motores de sombreado: 1
 
 ##### Identificadores

@@ -59,8 +59,8 @@ class TestLectura(unittest.TestCase):
         self.assertEqual(self.info.compute_units, 64)
         self.assertEqual(self.info.shader_engines, 4)
 
-    def test_los_rop_salen_de_multiplicar(self):
-        # 16 por cada uno de los ocho arrays: los 128 de la ficha técnica.
+    def test_its_rops_as_on_its_sheet(self):
+        # 16 render backends of RDNA4, eight pixels each: AMD's 128.
         self.assertEqual(self.info.rops, 128)
 
     def test_tasa_de_datos_de_la_gddr6(self):
@@ -135,6 +135,30 @@ class TestSinDatos(unittest.TestCase):
         self.assertIsNone(info.vram_type)
         self.assertIsNone(info.rops)
         self.assertIsNone(info.bandwidth_bytes)
+
+
+
+class TestRopsOfEachGeneration(unittest.TestCase):
+    """Against each card's sheet: an RX 550 has 16, a Vega 3 has 4. Four per
+    render backend up to RDNA1, eight from RDNA2's RB+."""
+
+    def test_the_dumps(self):
+        from tests.test_equipos import EQUIPOS, shared_snapshot
+        for dump, rops in (("ryzen3-4100", 16), ("athlon-3000g", 4), ("5800x3d", 128)):
+            with self.subTest(dump=dump):
+                gpu = next(g for g in shared_snapshot(EQUIPOS / dump).gpus if g.driver == "amdgpu")
+                self.assertEqual(gpu.rops, rops)
+
+    def test_navi_1x_and_2x_by_their_revision(self):
+        def rops(**fields):
+            return amdgpu.DeviceInfo(family=amdgpu.FAMILY_NV, render_backends=16, **fields).rops
+        self.assertEqual(rops(external_rev=0x01), 64)      # RX 5700 XT
+        self.assertEqual(rops(external_rev=0x28), 128)     # RX 6900 XT
+        self.assertIsNone(rops())
+
+    def test_a_cut_down_chip_by_its_mask(self):
+        info = amdgpu.DeviceInfo(family=152, render_backends=16, enabled_rb_mask=0x0FFF)
+        self.assertEqual(info.rops, 96)
 
 
 if __name__ == "__main__":

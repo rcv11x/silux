@@ -12,6 +12,10 @@ que hace falta.
 
 ## Sin publicar
 
+- Gráficos: los ROPs de una AMD salen de contar cuatro por cada «render
+  backend», y ocho desde RDNA2: una RX 550 tiene 16 (salían 8) y una Vega 3,
+  4 (salía 1). Y un ROP es una unidad de salida de render, no de
+  rasterizado.
 - Memoria: la tabla de perfiles tiene la latencia de cada uno en
   nanosegundos, el tAA que declara el chip SPD (en DDR2, su CL por el ciclo
   que da el chip para él). Es la del chip, no la de todo el camino, y nunca

@@ -82,6 +82,24 @@ class _Request(ctypes.Structure):
     ]
 
 
+# AMDGPU_FAMILY_NV (Navi 1x and 2x) and the first revision of Navi 21,
+# from which RDNA2's RB+ counts eight pixels per backend (amdgpu_drm.h and
+# Mesa's amdgpu_id.h).
+FAMILY_NV, NAVI21_REVISION = 143, 0x28
+
+
+def _rops_per_backend(family: Optional[int], external_rev: Optional[int]) -> Optional[int]:
+    if not family:
+        return None
+    if family < FAMILY_NV:
+        return 4                           # GCN up to Vega and its APUs
+    if family > FAMILY_NV:
+        return 8                           # RDNA2 APUs, RDNA3 and RDNA4
+    if external_rev is None:
+        return None
+    return 8 if external_rev >= NAVI21_REVISION else 4
+
+
 @dataclass(frozen=True, slots=True)
 class DeviceInfo:
     """What the driver knows about the chip and doesn't publish in sysfs."""
@@ -93,7 +111,12 @@ class DeviceInfo:
     compute_units: Optional[int] = None
     shader_engines: Optional[int] = None
     arrays_per_engine: Optional[int] = None
+    # The chip's render backends, all of them (`num_rb_pipes`); the mask says
+    # which are enabled on a cut-down part.
     render_backends: Optional[int] = None
+    enabled_rb_mask: Optional[int] = None
+    # The chip's revision within its family: it tells RDNA2 from RDNA1.
+    external_rev: Optional[int] = None
     max_engine_hz: Optional[int] = None
     max_memory_hz: Optional[int] = None
     l2_cache_bytes: Optional[int] = None
@@ -103,11 +126,19 @@ class DeviceInfo:
 
     @property
     def rops(self) -> Optional[int]:
-        """The units that write pixels, across all shader arrays."""
-        if not (self.render_backends and self.shader_engines
-                and self.arrays_per_engine):
+        """The units that write the finished pixels.
+
+        Four per render backend, and eight from RDNA2 on (RB+). The kernel's
+        count is already the whole chip's, not one shader engine's. Navi 1x
+        and 2x share a family; without the revision that tells them apart,
+        none.
+        """
+        backends = (bin(self.enabled_rb_mask).count("1") if self.enabled_rb_mask
+                    else self.render_backends)
+        per_backend = _rops_per_backend(self.family, self.external_rev)
+        if not backends or per_backend is None:
             return None
-        return self.render_backends * self.shader_engines * self.arrays_per_engine
+        return backends * per_backend
 
     @property
     def memory_data_rate_hz(self) -> Optional[int]:
@@ -176,6 +207,8 @@ def query(node: str, expected_device_id: Optional[int] = None) -> Optional[Devic
         shader_engines=read_fields["num_shader_engines"] or None,
         arrays_per_engine=read_fields["num_shader_arrays_per_engine"] or None,
         render_backends=read_fields["num_rb_pipes"] or None,
+        enabled_rb_mask=read_fields["enabled_rb_pipes_mask"] or None,
+        external_rev=read_fields["external_rev"],
         is_apu=bool(khz["ids_flags"] & AMDGPU_IDS_FLAGS_FUSION),
         max_engine_hz=khz["max_engine_clock"] * 1000 or None,
         max_memory_hz=khz["max_memory_clock"] * 1000 or None,

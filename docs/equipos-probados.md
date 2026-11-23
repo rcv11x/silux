@@ -153,7 +153,7 @@ con su máximo bien leído, los motivos de recorte) así que `nvml.py` y
 `providers/nvidia.py` ya no son código de fe. En lo que no acertaba era en los
 núcleos CUDA, y se tardó en verlo porque el arreglo estaba escrito: la 3050
 seguía diciendo 16 y una RTX 4080 Laptop, 58. Están abajo, en las lecciones. Lo que sigue sin salir en NVIDIA
-es el tipo de memoria y las unidades de rasterizado: NVML no los publica.
+es el tipo de memoria y los ROPs: NVML no los publica.
 
 ⚠ **ARM no se ha ejecutado contra hardware.** Está probado contra
 `/proc/cpuinfo` de máquinas reales guardados en `tests/fixtures/arm/`, pero en

@@ -358,7 +358,7 @@ nvidia · 620.73.04 · 8.0 GiB · 3072 CUDA · principal
 - Versión del driver: 620.73.04
 - Unidades de proceso: 3072 núcleos CUDA
 
-NVML no cuenta unidades de rasterizado ni motores de sombreado: el recuento de NVIDIA son los núcleos CUDA.
+NVML no cuenta ROPs ni motores de sombreado: el recuento de NVIDIA son los núcleos CUDA.
 
 ##### Identificadores
 
