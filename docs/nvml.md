@@ -36,6 +36,12 @@ consumo, con lo que contestó cada una en el informe: no se toma la media del
 búfer de muestras (`nvmlDeviceGetSamples`, `NVML_TOTAL_POWER_SAMPLES`), que el
 driver no da como consumo de la tarjeta, ni un límite.
 
+Comprobado con `nvidia-smi` en dos RTX 4060 de sobremesa, una con el driver
+595 y otra con el 620: las dos dan N/A en `power.draw`, `power.draw.average`
+y `power.draw.instant`. Los 53 W que Silux enseñaba en las dos (desde la
+0.4-prueba7) salían de ese búfer, y las dos quedan sin consumo con el mismo
+arreglo.
+
 La temperatura y los motivos de recorte se piden primero con la función
 nueva: las antiguas están obsoletas desde CUDA 13.0 (R580) y se quitan en
 CUDA 14, donde contestarán `NVML_ERROR_DEPRECATED`. Los bits de los motivos
@@ -58,11 +64,10 @@ son los mismos con los dos nombres.
 
 ## Lo que no se ha confirmado
 
-- Que el consumo en N/A sea cosa de los drivers recientes en la RTX 4060.
-  Dos RTX 4060 de sobremesa, una con el 595 y otra con el 620, dan N/A en
-  `power.draw`, `.average` y `.instant` de `nvidia-smi`; una RTX 4050 de
-  portátil con el 550 sí lo daba. Es una sospecha hasta que haya más casos:
-  el volcado guarda ya qué llamada dio el consumo (`power_source`).
+- Por qué esas dos 4060 dan N/A: si es cosa de los drivers recientes (una
+  RTX 4050 de portátil con el 550 sí lo daba) o de esas tarjetas. Es una
+  sospecha hasta que haya más casos: el volcado guarda ya qué llamada dio el
+  consumo (`power_source`).
 - Que «270» sea el driver de NVML 1.0 sale solo del archivo de Debian.
 - Después de 555 no hay archivo de símbolos de Debian: que las funciones
   antiguas sigan exportándose sale de las cabeceras y de los avisos.
