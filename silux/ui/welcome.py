@@ -13,7 +13,7 @@ import dataclasses
 from typing import Optional
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QFont, QFontMetrics, QGuiApplication
+from PySide6.QtGui import QFont, QFontMetrics
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -34,13 +34,6 @@ from . import theme
 from .pages.settings import FONT_SCALES, THEMES, Interruptor
 from .theme import Palette, ui_font
 from .widgets import clear_layout
-
-
-def rounded_corners() -> bool:
-    """Whether the dialog can draw its own rounded corners. That needs a
-    compositor, which Wayland always has and X11 may not: without one the
-    corners come out black, so there the window manager frames it."""
-    return QGuiApplication.platformName() in ("wayland", "offscreen")
 
 
 def can_add_to_menu() -> bool:
@@ -84,12 +77,18 @@ class _Screens(QWidget):
 
 
 class WelcomeDialog(QDialog):
+    """A dialog of the main window, with the system's title bar: being its
+    child is what lets the compositor centre it over the window (on Wayland
+    a program can't place its own windows), and the bar what lets it be
+    dragged and closed. Without a frame, to draw its own corners, it came
+    out in a corner of the screen on a large window."""
+
     changed = Signal(object)           # Preferences, as they are picked
 
     def __init__(self, prefs: Preferences, palette: Palette,
                  parent: Optional[QWidget] = None, page: int = 0):
         super().__init__(parent)
-        self.setModal(True)
+        self.setWindowModality(Qt.WindowModality.WindowModal)
         self.setObjectName("Welcome")
         self._prefs = prefs
         self._p = palette
@@ -101,10 +100,6 @@ class WelcomeDialog(QDialog):
         outer.setContentsMargins(0, 0, 0, 0)
         panel = QFrame()
         panel.setObjectName("WelcomePanel")
-        if rounded_corners():
-            self.setWindowFlag(Qt.WindowType.FramelessWindowHint, True)
-            self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
-            panel.setProperty("rounded", True)
         outer.addWidget(panel)
         self._root = QVBoxLayout(panel)
         self._build()

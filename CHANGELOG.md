@@ -12,6 +12,10 @@ que hace falta.
 
 ## Sin publicar
 
+- Bienvenida: es una ventana de diálogo del programa, con su barra de
+  título: sale centrada encima de Silux (en Wayland la coloca el
+  escritorio, y antes podía salir en una esquina con la ventana grande) y
+  se puede mover y cerrar.
 - Interfaz: el nombre de una versión de prueba es el de su release en
   cualquier idioma: «0.4-prueba11», no «0.4-test11» en inglés.
 - Informe: el anexo ya no se queda fuera con un disco en una caja USB cuyo

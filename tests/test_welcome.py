@@ -179,20 +179,28 @@ class TestTheDialog(unittest.TestCase):
                                  label.text())
         dialog.reject()
 
-    def test_its_own_corners_only_where_a_compositor_draws_them(self):
+    def test_a_dialog_of_the_window_with_its_title_bar(self):
+        # Frameless, on Wayland it came out in a corner of a large window:
+        # as the window's modal child, the compositor centres it over it.
         from PySide6.QtCore import Qt
 
-        from silux.ui import welcome
-
-        frameless = Qt.WindowType.FramelessWindowHint
         dialog = self.window.show_welcome()
-        self.assertTrue(dialog.windowFlags() & frameless)
-        dialog.reject()
         self._settle()
-        with mock.patch.object(welcome.QGuiApplication, "platformName", return_value="xcb"):
-            dialog = self.window.show_welcome()
-        self.assertFalse(dialog.windowFlags() & frameless)
+        self.assertIs(dialog.parentWidget(), self.window)
+        self.assertIs(dialog.windowHandle().transientParent(), self.window.windowHandle())
+        self.assertEqual(dialog.windowType(), Qt.WindowType.Dialog)
+        self.assertFalse(dialog.windowFlags() & Qt.WindowType.FramelessWindowHint)
+        self.assertFalse(dialog.testAttribute(Qt.WidgetAttribute.WA_TranslucentBackground))
+        self.assertEqual(dialog.windowModality(), Qt.WindowModality.WindowModal)
+        self.assertTrue(dialog.windowTitle())
         dialog.reject()
+
+    def test_closing_it_from_its_bar_counts_as_seen(self):
+        dialog = self.window.show_welcome()
+        dialog.close()
+        self._settle()
+        self.assertIsNone(self.window._welcome)
+        self.assertTrue(self.window.prefs.welcome_shown)
 
     def test_settings_opens_it_again(self):
         self.window.settings_page.welcome_button.click()

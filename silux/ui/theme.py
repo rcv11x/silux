@@ -393,13 +393,7 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         border: 1px solid {p.line_soft};
         border-radius: {card_radius}px;
     }}
-    /* A dialog that draws its own corners, like a card's. Without them
-       the window manager's frame is the edge. */
     QFrame#WelcomePanel {{ background: {p.surface}; border: none; }}
-    QFrame#WelcomePanel[rounded="true"] {{
-        border: 1px solid {p.line};
-        border-radius: {card_radius}px;
-    }}
     QFrame#CardFlat {{
         background: {p.surface_alt};
         border: none;
