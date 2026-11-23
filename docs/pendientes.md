@@ -211,6 +211,24 @@ la memoria) no va: está propuesto en las notas
 
 ## Datos que se leen mal o no se leen
 
+* `providers/hwmon.py` · media · `fam15h_power` publica como `power1_crit`
+  el TDP del procesador (15,05 W en un A8-6410), y Silux lo trata como
+  umbral crítico: a 16,6 W, dentro del turbo, Inicio dice «1 sensor en
+  crítico». El ABI de hwmon dice que `crit` es donde el sistema actúa
+  (apagar, frenar); en este driver es el TDP. Propuesta: no contar como
+  alarma el `power1_crit` de `fam15h_power`, y enseñarlo como TDP. Además,
+  su `power1_average` dio 0,7 mW y 8 mW en reposo en el volcado
+  `a8-6410`, imposible con el equipo encendido: falta ver si la media del
+  driver es fiable en la familia 16h.
+* `providers/sysfs_cpu.py` · baja · con acpi-cpufreq y el turbo activo,
+  `cpuinfo_max_freq` es la máxima sin turbo, que en AMD con CPB es la
+  frecuencia base (2,0 GHz en el A8-6410): hoy dice «Base: —». Falta
+  comprobar que vale en otros AMD anteriores a Zen y qué pasa en un Intel
+  con acpi-cpufreq (su P0 es la base más 1 MHz).
+* `providers/storage.py` · baja · la velocidad de giro de un SATA de platos
+  conectado por dentro sale del mismo IDENTIFY que ya se lee de sysfs
+  (palabra 217) y hoy no se lee: solo la tienen los discos de una caja USB,
+  por udev.
 * `smart.py` · media · en un SATA, atributos estándar como el 3 (tiempo de
   arranque), 4, 7, 10, 11, 192, 193 (ciclos de carga), 196 y 200 salen como
   «propio del fabricante». `drivedb.h` de smartmontools trae sus nombres por
@@ -600,10 +618,6 @@ De la quinta auditoría, sin comprobar uno a uno si siguen igual:
   en Intel, los núcleos P y E en grupos distintos. Todo de datos reales
   (sysfs y CPUID), y validado con informes de equipos de dos CCD y con
   núcleos P y E antes de enseñarlo.
-* **Bienvenida la primera vez** (cuando aún no hay `settings.json`): una
-  ventana pequeña con idioma, tema y tamaño de letra, que se vean cambiar en
-  el momento, y «Empezar» para guardarlos. El idioma por defecto ya sigue al
-  del sistema.
 * **Escritorios**. Probado aquí (KDE Plasma): los dos AppImage abren por
   Wayland y por X11 (`QT_QPA_PLATFORM=xcb`, XWayland) y pintan bien; llevan
   los plugins de plataforma de los dos y los de Wayland (decoraciones, shell).
