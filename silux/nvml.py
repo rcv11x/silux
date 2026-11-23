@@ -136,6 +136,9 @@ class NvidiaGpu:
     decode_busy_percent: Optional[float] = None
     temp_c: Optional[float] = None
     power_w: Optional[float] = None
+    # Which call gave it, for the dumps: two cards can show the same watts
+    # from different calls.
+    power_source: Optional[str] = None
     # Without power: what NVML answered to each way of asking, for the report.
     power_error: Optional[str] = None
     power_cap_w: Optional[float] = None
@@ -322,10 +325,10 @@ class Nvml:
                 reasons.append(f"field {field.fieldId}: value type {field.valueType}")
         return values
 
-    def _power(self, handle) -> tuple[Optional[float], Optional[str]]:
-        """Watts: nvmlDeviceGetPowerUsage, else the power fields, which are
-        nvidia-smi's power.draw, .average and .instant. Without any, what NVML
-        answered to each.
+    def _power(self, handle) -> tuple[Optional[float], Optional[str], Optional[str]]:
+        """Watts and the call that gave them: nvmlDeviceGetPowerUsage, else
+        the power fields, which are nvidia-smi's power.draw, .average and
+        .instant. Without any, what NVML answered to each.
 
         Not the power samples buffer, nor a limit: where those three are N/A
         the driver isn't giving the card's power, and another figure it
@@ -333,13 +336,13 @@ class Nvml:
         """
         reasons: list[str] = []
         milliwatts = self._integer("nvmlDeviceGetPowerUsage", handle, reasons=reasons)
-        if milliwatts is None:
-            fields = self._fields(handle, FIELD_POWER_AVERAGE, FIELD_POWER_INSTANT,
-                                  reasons=reasons)
-            milliwatts = fields.get(FIELD_POWER_AVERAGE, fields.get(FIELD_POWER_INSTANT))
-        if milliwatts is None:
-            return None, "; ".join(reasons) or None
-        return round(milliwatts / 1000, 1), None
+        if milliwatts is not None:
+            return round(milliwatts / 1000, 1), "nvmlDeviceGetPowerUsage", None
+        fields = self._fields(handle, FIELD_POWER_AVERAGE, FIELD_POWER_INSTANT, reasons=reasons)
+        for field in (FIELD_POWER_AVERAGE, FIELD_POWER_INSTANT):
+            if field in fields:
+                return round(fields[field] / 1000, 1), f"field {field}", None
+        return None, None, "; ".join(reasons) or None
 
     def _limits(self, handle) -> dict[str, Optional[float]]:
         """The factory power limit and the range the card accepts, in watts."""
@@ -397,7 +400,7 @@ class Nvml:
         watts = lambda *args: (lambda v: round(v / 1000, 1) if v is not None else None)(
             self._integer(*args))
 
-        power, power_error = self._power(handle)
+        power, power_source, power_error = self._power(handle)
         # Renamed in R535 with the same bits; the old name is deprecated.
         flags = self._integer("nvmlDeviceGetCurrentClocksEventReasons", handle,
                                 kind=ctypes.c_ulonglong)
@@ -427,6 +430,7 @@ class Nvml:
             decode_busy_percent=self._utilization("nvmlDeviceGetDecoderUtilization", handle),
             temp_c=self._temperature(handle),
             power_w=power,
+            power_source=power_source,
             power_error=power_error,
             power_cap_w=watts("nvmlDeviceGetEnforcedPowerLimit", handle),
             **self._limits(handle),

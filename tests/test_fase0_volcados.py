@@ -26,7 +26,8 @@ from silux import volcado as volcar_equipo  # noqa: E402
 
 RTX = nvml.NvidiaGpu(pci_slot="0000:01:00.0", name="GeForce RTX 3060",
                      serial="1324021234567", uuid="GPU-1b2c3d4e-0000-1111-2222-333344445555",
-                     temp_c=41.0, throttle_reasons=("inactiva",))
+                     temp_c=41.0, power_w=53.4, power_source="field 185",
+                     throttle_reasons=("inactiva",))
 
 
 class TestNvmlSeGraba(unittest.TestCase):
@@ -46,6 +47,8 @@ class TestNvmlSeGraba(unittest.TestCase):
             grabado = sysroot.recorded_data()
         self.assertTrue(grabado["nvml"]["abierta"])
         self.assertIsNone(grabado["nvml"]["tarjetas"][0]["serial"])
+        # Which call gave the power: what a dump didn't say of a 4060's 53 W.
+        self.assertEqual(grabado["nvml"]["tarjetas"][0]["power_source"], "field 185")
 
         with arbol({"/grabado.json": json.dumps(grabado)}):
             def no(*_a):

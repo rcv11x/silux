@@ -388,11 +388,11 @@ class TestThePowerOfANewDriver(unittest.TestCase):
 
     def test_without_either_it_keeps_what_nvml_answered(self):
         # The same card in prueba5: neither way gave it, and nothing said why.
-        _vatios, motivo = self._leer(_Nvml())
+        _vatios, _fuente, motivo = self._leer(_Nvml())
         self.assertEqual(motivo, "nvmlDeviceGetPowerUsage: NVML_ERROR_NOT_SUPPORTED (3); "
                                  "field 185: NVML_ERROR_NOT_SUPPORTED (3); "
                                  "field 186: NVML_ERROR_NOT_SUPPORTED (3)")
-        self.assertIsNone(self._leer(_Nvml(uso=12000))[1])
+        self.assertIsNone(self._leer(_Nvml(uso=12000))[2])
 
     def test_its_page_says_the_driver_does_not_give_it(self):
         from silux.i18n import _
@@ -405,6 +405,12 @@ class TestThePowerOfANewDriver(unittest.TestCase):
             ventana.select_section("Gráficos")
             self.assertIn(_("prov.nvml.nopower"),
                           " ".join(pantalla.textos_de(ventana.stack.currentWidget())))
+
+    def test_which_call_gave_it_is_kept(self):
+        self.assertEqual(self._leer(_Nvml(uso=12000))[1], "nvmlDeviceGetPowerUsage")
+        self.assertEqual(self._leer(_Nvml(campos={185: 15234, 186: 17000}))[1], "field 185")
+        self.assertEqual(self._leer(_Nvml(campos={186: 9800}))[1], "field 186")
+        self.assertIsNone(self._leer(_Nvml())[1])
 
     def test_where_the_old_call_answers_the_fields_are_not_asked(self):
         lib = _Nvml(uso=12000, campos={185: 99000})

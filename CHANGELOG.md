@@ -35,6 +35,8 @@ que hace falta.
   se queda en «Calculando…»: la potencia sale de cuánto baja o sube la
   energía entre dos puestas al día del firmware, y lo dice al pasar el
   ratón.
+- Informe: el anexo dice qué llamada de NVML dio el consumo de una NVIDIA,
+  para saber de dónde sale una cifra que no cuadra con `nvidia-smi`.
 
 ## 0.4-prueba11 (23 de noviembre de 2026)
 
