@@ -23,6 +23,9 @@ que hace falta.
   cuando salen de la tabla del firmware y no de su chip SPD, igual que la
   velocidad y el voltaje, y en todos los módulos por igual. En una DDR5 de
   la que solo se lee la primera página del chip, los dos salen de la BIOS.
+- Memoria: la temperatura de cada módulo sale en ámbar o rojo según los
+  límites que declara su chip (el de DDR5 da 55 y 85 °C), como en Sensores,
+  y al pasar el ratón dice cuáles son.
 - Temperaturas: un Ryzen de Zen 2 en adelante, que no declara sus límites,
   avisa en ámbar desde el Tjmax de su ficha en amd.com (90 °C un 5800X3D),
   y nunca en rojo: la ficha no dice dónde se apaga el equipo. Al pasar el

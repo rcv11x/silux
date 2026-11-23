@@ -114,6 +114,44 @@ class TestTheModel(unittest.TestCase):
                          thermal.CRITICAL)
 
 
+LOQ_MODULE = "sys/devices/pci0000:00/0000:00:1f.4/i2c-0/0-0050/hwmon/hwmon5/temp1_input"
+LOQ_NVME = "sys/devices/pci0000:00/0000:00:06.0/0000:06:00.0/nvme/nvme0/hwmon2"
+
+
+@unittest.skipIf(QApplication is None, "no PySide6")
+class TestTheLoq(unittest.TestCase):
+    """spd5118 declares 55 and 85 °C for the DDR5; the SK hynix declares
+    85.85 and 86.85 for its composite and 0xFFFF K for its other two."""
+
+    def test_the_nvmes_garbage_limits_go(self):
+        from tests.test_equipos import shared_snapshot
+
+        nvme = {s.chip_label: (s.high, s.critical)
+                for s in shared_snapshot(EQUIPOS / "i5-12450h").sensors if s.chip == "nvme"}
+        self.assertEqual(nvme, {"Composite": (85.85, 86.85), "Sensor 1": (None, None),
+                                "Sensor 2": (None, None)})
+
+    def test_the_modules_temperature_on_the_memory_page(self):
+        from silux.i18n import _
+        from tests import pantalla, qt
+
+        qt.app()
+        for millidegrees, level in ((50000, ""), (60000, "high"), (86000, "critical")):
+            with volcado.mounted(EQUIPOS / "i5-12450h") as root:
+                (root / LOQ_MODULE).write_text(f"{millidegrees}\n")
+                collector = Collector()
+                try:
+                    snapshot = collector.snapshot()
+                finally:
+                    collector.close()
+            with self.subTest(millidegrees=millidegrees), pantalla.Ventana(snapshot) as window:
+                window.select_section("Memoria")
+                page = window.stack.currentWidget()
+                label = page._slot_grids[0].value_label(_("memory.field.temp"))
+                self.assertEqual(label.property("level") or "", level)
+                self.assertIn("85 °C", label.toolTip())
+
+
 @unittest.skipIf(QApplication is None, "no PySide6")
 class TestEverywhereItIsShown(unittest.TestCase):
     """Sensors, Home's warning and its temperatures card, the CPU page, the

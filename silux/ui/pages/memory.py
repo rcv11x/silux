@@ -53,6 +53,7 @@ from ..widgets import (
     clear_layout,
     dismiss_buttons,
     memory_segments,
+    paint_level,
     tone_for,
 )
 
@@ -1011,11 +1012,16 @@ class MemoryPage(ScrollPage):
                    if s.bus_address and s.kind is SensorKind.TEMPERATURE}
         numbers = module_numbers(modules, set(sensors))
         by_number = {number: sensors[address] for address, number in numbers.items()}
+        fahrenheit = self._prefs.fahrenheit
         for number, grid in enumerate(self._slot_grids, start=1):
             sensor = by_number.get(number)
+            limits = (render.temperature_limits(sensor.high, sensor.critical, fahrenheit)
+                      if sensor else None)
             grid.set(_("memory.field.temp"),
-                     render.temperature(sensor.value, self._prefs.fahrenheit)
-                     if sensor else render.DASH)
+                     render.temperature(sensor.value, fahrenheit) if sensor else render.DASH,
+                     tooltip=_("temp.limits.declared").format(limites=limits) if limits else "")
+            paint_level(grid.value_label(_("memory.field.temp")),
+                        sensor.alarm_level if sensor else "ok")
             grid.set_visible(_("memory.field.temp"), sensor is not None)
 
     @staticmethod
