@@ -599,6 +599,12 @@ class SettingsPage(ScrollPage):
         lema.setObjectName("Subhead")
         lema.setWordWrap(True)
         card.body.addWidget(lema)
+        self.compat_note: Optional[QLabel] = None
+        if updates.normal_would_run():
+            self.compat_note = QLabel(_("about.compat.normal").format(archivo=updates.NORMAL))
+            self.compat_note.setObjectName("Muted")
+            self.compat_note.setWordWrap(True)
+            card.body.addWidget(self.compat_note)
 
         fila = ResponsiveRow(min_item_width=220)
         fila.add(self._bloque(_("about.credits"), AUTORIA))

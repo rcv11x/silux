@@ -171,6 +171,14 @@ def asset_name(build: Optional[str] = None) -> str:
     return COMPAT if build_mark.endswith("-compat") else NORMAL
 
 
+def normal_would_run(build: Optional[str] = None) -> bool:
+    """Whether this is the compatible AppImage on a processor that runs the
+    normal one: it carries an older Python and Qt for no reason there."""
+    from .ui import guarda
+
+    return asset_name(build) == COMPAT and guarda.has_x86_64_v2() is True
+
+
 def replaceable_path(environ: Optional[Mapping[str, str]] = None) -> Optional[pathlib.Path]:
     """The AppImage that can be replaced, or None if all that's left is to
     tell.

@@ -12,6 +12,8 @@ que hace falta.
 
 ## Sin publicar
 
+- AppImage compatible: en un procesador que puede con el normal, Ajustes →
+  Acerca de lo dice en una línea, con el nombre del archivo que conviene.
 - Inicio: si la placa es el propio equipo y no hay chipset que nombrar, la
   ficha de la placa lleva de titular el tipo de firmware («BIOS heredada»,
   «UEFI (64 bits)») y debajo la versión de la BIOS. Una versión larga

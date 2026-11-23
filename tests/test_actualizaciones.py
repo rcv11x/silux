@@ -176,6 +176,16 @@ class TestQueCopiaEs(unittest.TestCase):
         self.assertEqual(updates.asset_name("20261118.c01944d"), updates.NORMAL)
         self.assertEqual(updates.asset_name(""), updates.NORMAL)
 
+    def test_the_compatible_one_says_when_the_normal_would_run(self):
+        from silux.ui import guarda
+
+        compat, normal = "20261123.a5b145b-compat", "20261123.a5b145b"
+        for has_v2, build, said in ((True, compat, True), (False, compat, False),
+                                    (None, compat, False), (True, normal, False)):
+            with self.subTest(has_v2=has_v2, build=build), \
+                    mock.patch.object(guarda, "has_x86_64_v2", return_value=has_v2):
+                self.assertIs(updates.normal_would_run(build), said)
+
     def test_desde_el_codigo_no_se_sustituye_nada(self):
         self.assertIsNone(updates.replaceable_path({}))
 

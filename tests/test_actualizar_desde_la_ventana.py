@@ -125,5 +125,42 @@ class TestLaVentana(unittest.TestCase):
         self.assertTrue(v.update_button.isHidden())
 
 
+
+class TestTheCompatibleOneOnAModernProcessor(unittest.TestCase):
+    """A tester downloaded the compatible AppImage for a processor that runs
+    the normal one: About says so, in one line, and only there."""
+
+    def _about_note(self, build: str, cpuinfo: str):
+        import pathlib
+        import tempfile
+
+        from silux.settings import Preferences
+        from silux.ui import guarda
+        from silux.ui.app import MainWindow
+
+        qt.app()
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        path = pathlib.Path(folder.name) / "cpuinfo"
+        path.write_text(cpuinfo, encoding="utf-8")
+        with mock.patch.object(updates, "build_id", return_value=build), \
+                mock.patch.object(guarda, "CPUINFO", str(path)), \
+                mock.patch.object(guarda.os, "uname", return_value=mock.Mock(machine="x86_64")):
+            window = MainWindow(Preferences().normalized())
+        self.addCleanup(window.close)
+        note = window.settings_page.compat_note
+        return note.text() if note is not None else None
+
+    def test_it_says_the_normal_one_would_run(self):
+        from tests.test_arranque import MODERNO
+        text = self._about_note("20261123.a5b145b-compat", MODERNO)
+        self.assertEqual(text, _("about.compat.normal").format(archivo=updates.NORMAL))
+
+    def test_not_on_a_processor_without_v2_nor_on_the_normal_one(self):
+        from tests.test_arranque import MODERNO, PHENOM_II
+        self.assertIsNone(self._about_note("20261123.a5b145b-compat", PHENOM_II))
+        self.assertIsNone(self._about_note("20261123.a5b145b", MODERNO))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -4,6 +4,7 @@
   "about.builtwith": "Construido con",
   "about.card": "Acerca de Silux",
   "about.claude": "asistente de IA de Anthropic: escribe buena parte del código, los tests y la documentación, bajo la dirección y la revisión del autor",
+  "about.compat.normal": "Esta es la versión compatible, para procesadores sin x86-64-v2. Este equipo puede usar la normal ({archivo}), con un Python y un Qt más nuevos.",
   "about.cpuid": "el nodo que las demás tablas no dan · © Todd Allen · GPL-2.0 o posterior",
   "about.cpux": "el encapsulado de cada procesador · © 2014-2025 The Tumultuous Unicorn Of Darkness · GPL-3.0 o posterior",
   "about.credits": "Autoría",

@@ -141,6 +141,25 @@ class TestLaGuardaSeCallaCuandoNoSabe(BancoDeGuarda):
         self.assertIsNone(guarda.diagnostico())
 
 
+class TestWhetherItHasV2(BancoDeGuarda):
+    """For the compatible build to say when the normal one would run: yes,
+    no, and «can't tell», which is not «no»."""
+
+    def test_a_modern_one_has_it(self):
+        self.montar(cpuinfo=MODERNO)
+        self.assertIs(guarda.has_x86_64_v2(), True)
+
+    def test_a_phenom_ii_has_not(self):
+        self.montar(cpuinfo=PHENOM_II)
+        self.assertIs(guarda.has_x86_64_v2(), False)
+
+    def test_without_flags_or_off_x86_it_cannot_tell(self):
+        self.montar(cpuinfo="processor\t: 0\n")
+        self.assertIsNone(guarda.has_x86_64_v2())
+        self.montar(cpuinfo=MODERNO, maquina="aarch64")
+        self.assertIsNone(guarda.has_x86_64_v2())
+
+
 class TestLasDosGuardasMiranLoMismo(unittest.TestCase):
     """La del AppRun y la del código fuente, con la misma lista de banderas.
 

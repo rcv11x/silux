@@ -72,17 +72,30 @@ def banderas_que_faltan() -> tuple[str, ...]:
     no aplica, sin `/proc/cpuinfo` no se sabe y sin línea `flags` tampoco.
     Ninguno de los tres es motivo para no dejar arrancar a nadie.
     """
-    if os.uname().machine not in ("x86_64", "amd64"):
-        return ()
-    try:
-        with open(CPUINFO, encoding="utf-8", errors="replace") as archivo:
-            texto = archivo.read()
-    except OSError:
-        return ()
-    banderas = banderas_de(texto)
+    banderas = _x86_flags()
     if not banderas:
         return ()
     return tuple(j for j in JUEGOS_V2 if j not in banderas)
+
+
+def has_x86_64_v2() -> Optional[bool]:
+    """Whether this processor has x86-64-v2, or None when it can't be told:
+    outside x86-64, without `/proc/cpuinfo` or without a `flags` line."""
+    banderas = _x86_flags()
+    if not banderas:
+        return None
+    return all(j in banderas for j in JUEGOS_V2)
+
+
+def _x86_flags() -> set[str]:
+    """This x86-64 processor's flags; empty when there is nothing to read."""
+    if os.uname().machine not in ("x86_64", "amd64"):
+        return set()
+    try:
+        with open(CPUINFO, encoding="utf-8", errors="replace") as archivo:
+            return banderas_de(archivo.read())
+    except OSError:
+        return set()
 
 
 def version_de_pyside() -> Optional[tuple[int, int]]:
