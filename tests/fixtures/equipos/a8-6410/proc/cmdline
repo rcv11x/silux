@@ -1,0 +1,1 @@
+BOOT_IMAGE=(hd0,msdos6)/vmlinuz-6.18.3-200.fc43.x86_64 root=… ro rhgb quiet

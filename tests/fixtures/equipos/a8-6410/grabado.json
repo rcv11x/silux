@@ -1,0 +1,303 @@
+{
+ "cpuid": {
+  "*:0:0": [
+   13,
+   1752462657,
+   1145913699,
+   1769238117
+  ],
+  "*:2147483648:0": [
+   2147483678,
+   1752462657,
+   1145913699,
+   1769238117
+  ],
+  "0:1:0": [
+   7540481,
+   264192,
+   1054351883,
+   395049983
+  ],
+  "0:2147483649:0": [
+   7540481,
+   0,
+   490747903,
+   802421759
+  ],
+  "0:2147483650:0": [
+   541347137,
+   908933185,
+   540029236,
+   542462017
+  ],
+  "0:2147483651:0": [
+   1752459639,
+   1145913632,
+   1684099616,
+   544108389
+  ],
+  "0:2147483652:0": [
+   1193293138,
+   1752195442,
+   544433001,
+   2105376
+  ],
+  "0:7:0": [
+   0,
+   8,
+   0,
+   0
+  ],
+  "0:7:1": [
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ "drm_modes": {
+  "card0": {
+   "eDP-1": {
+    "height": 768,
+    "refresh_hz": 59.97,
+    "width": 1366
+   }
+  }
+ },
+ "gpuapi": {
+  "consultar": {
+   "opencl": [],
+   "opengl": {
+    "egl_vendor": "Mesa Project",
+    "egl_version": "1.5",
+    "glsl": "4.50",
+    "renderer": "KABINI (radeonsi, , ACO, DRM 2.51, 6.18.3-200.fc43.x86_64)",
+    "vendor": "AMD",
+    "version": "4.5 (Compatibility Profile) Mesa 25.2.7"
+   },
+   "vaapi": [
+    {
+     "codecs": [
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": false,
+       "name": "MPEG-2",
+       "profiles": [
+        "Simple",
+        "Main"
+       ]
+      }
+     ],
+     "driver": "Mesa Gallium driver 25.2.7 for KABINI (radeonsi, , ACO, DRM 2.51, 6.18.3-200.fc43.x86_64)",
+     "node": "renderD128",
+     "version": "1.22"
+    }
+   ],
+   "vulkan": [
+    {
+     "api_version": "1.4.318",
+     "device_id": 0,
+     "device_memory_bytes": 3526639616,
+     "driver_version": 104865799,
+     "instance_version": "1.4.328",
+     "kind": "CPU",
+     "name": "llvmpipe (LLVM 21.1.5, 256 bits)",
+     "vendor_id": 65541
+    }
+   ],
+   "vulkan_icds": [
+    "libvulkan_asahi.so",
+    "libvulkan_asahi.so",
+    "libvulkan_broadcom.so",
+    "libvulkan_broadcom.so",
+    "libvulkan_dzn.so",
+    "libvulkan_dzn.so",
+    "libvulkan_freedreno.so",
+    "libvulkan_freedreno.so",
+    "libvulkan_intel_hasvk.so",
+    "libvulkan_intel_hasvk.so",
+    "libvulkan_intel.so",
+    "libvulkan_intel.so",
+    "libvulkan_lvp.so",
+    "libvulkan_lvp.so",
+    "libvulkan_nouveau.so",
+    "libvulkan_nouveau.so",
+    "libvulkan_panfrost.so",
+    "libvulkan_panfrost.so",
+    "libvulkan_powervr_mesa.so",
+    "libvulkan_powervr_mesa.so",
+    "libvulkan_radeon.so",
+    "libvulkan_radeon.so",
+    "libvulkan_virtio.so",
+    "libvulkan_virtio.so"
+   ],
+   "vulkan_rejected": []
+  }
+ },
+ "ioctl_red": {
+  "enp6s0:0x8915": null,
+  "enp6s0:0x891b": null,
+  "lo:0x8915": "127.0.0.1",
+  "lo:0x891b": "255.0.0.0",
+  "wlp7s0:0x8915": "192.168.1.120",
+  "wlp7s0:0x891b": "255.255.255.0"
+ },
+ "modinfo": {
+  "drivetemp": true
+ },
+ "nvml": {
+  "abierta": false
+ },
+ "paquetes": {
+  "egl": true,
+  "kmod": true,
+  "opencl": true,
+  "opengl": true,
+  "pci.ids": true,
+  "pkexec": true,
+  "pnp.ids": true,
+  "python3": true,
+  "systemctl": true,
+  "vaapi": true,
+  "vulkan": true,
+  "xdg-open": true
+ },
+ "pciids": {
+  "1002:9840|1002:9851|1022:7801|1022:7808|1022:780d|1022:7814|10ec:8168|168c:0036": {
+   "1002:9840": [
+    "Advanced Micro Devices, Inc. [AMD/ATI]",
+    "Kabini HDMI/DP Audio"
+   ],
+   "1002:9851": [
+    "Advanced Micro Devices, Inc. [AMD/ATI]",
+    "Mullins [Radeon R4/R5 Graphics]"
+   ],
+   "1022:7801": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "FCH SATA Controller [AHCI mode]"
+   ],
+   "1022:7808": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "FCH USB EHCI Controller"
+   ],
+   "1022:780d": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "FCH Azalia Controller"
+   ],
+   "1022:7814": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "FCH USB XHCI Controller"
+   ],
+   "10ec:8168": [
+    "Realtek Semiconductor Co., Ltd.",
+    "RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller"
+   ],
+   "168c:0036": [
+    "Qualcomm Atheros",
+    "QCA9565 / AR9565 Wireless Network Adapter"
+   ]
+  },
+  "1002:9851|1002:9851:17aa:3800": {
+   "1002:9851": [
+    "Advanced Micro Devices, Inc. [AMD/ATI]",
+    "Mullins [Radeon R4/R5 Graphics]"
+   ]
+  },
+  "1022:1566|1022:780e": {
+   "1022:1566": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "Family 16h (Models 30h-3fh) Processor Root Complex"
+   ],
+   "1022:780e": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "FCH LPC Bridge"
+   ]
+  },
+  "10ec:8168": {
+   "10ec:8168": [
+    "Realtek Semiconductor Co., Ltd.",
+    "RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller"
+   ]
+  },
+  "168c:0036": {
+   "168c:0036": [
+    "Qualcomm Atheros",
+    "QCA9565 / AR9565 Wireless Network Adapter"
+   ]
+  }
+ },
+ "pciids_fabricante": {
+  "17aa": "Lenovo"
+ },
+ "plataforma": {
+  "entorno": {
+   "DESKTOP_SESSION": "cinnamon",
+   "DISPLAY": ":0",
+   "GDMSESSION": "cinnamon",
+   "SHELL": "/bin/bash",
+   "WAYLAND_DISPLAY": null,
+   "XDG_CURRENT_DESKTOP": "X-Cinnamon",
+   "XDG_SESSION_TYPE": "x11"
+  },
+  "machine": "x86_64",
+  "procesos": 259,
+  "uname": {
+   "machine": "x86_64",
+   "node": "silux-pc",
+   "release": "6.18.3-200.fc43.x86_64",
+   "system": "Linux",
+   "version": "#1 SMP PREEMPT_DYNAMIC Fri Jan  2 20:10:56 UTC 2026"
+  }
+ },
+ "realpath": {
+  "/dev/sda3": "/dev/sda3",
+  "/dev/sda6": "/dev/sda6"
+ },
+ "segunda_lectura": {
+  "/proc/self/net/dev": "Inter-|   Receive                                                |  Transmit\n face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed\n    lo:   26731     221    0    0    0     0          0         0    26731     221    0    0    0     0       0          0\nenp6s0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0\nwlp7s0: 102678948   76931    0    0    0     0          0         0  5415194   26996    0    0    0     0       0          0\n",
+  "/proc/stat": "cpu  82511 1354 24352 573579 70548 4490 2138 0 0 0\ncpu0 22783 283 6200 140138 19198 950 291 0 0 0\ncpu1 20223 324 5995 144329 17354 1317 272 0 0 0\ncpu2 20540 348 6264 144478 16466 1077 491 0 0 0\ncpu3 18965 398 5892 144634 17528 1145 1083 0 0 0\nintr 4498476 181 8 0 0 0 0 0 0 1 189 0 0 140 0 0 0 0 0 402 0 0 0 0 0 0 0 0 1 0 1 0 1 94320 69859 0 0 0 0 0 0 0 7 0 62415 0 0 0 1165 46423 58204 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0\nctxt 4885935\nbtime 1795452397\nprocesses 13431\nprocs_running 1\nprocs_blocked 0\nsoftirq 1523580 69876 209835 68 795 93944 0 60099 687505 257 401201\n",
+  "/sys/devices/pci0000:00/0000:00:01.0/hwmon/hwmon1/freq1_input": "300000000\n",
+  "/sys/devices/pci0000:00/0000:00:01.0/hwmon/hwmon1/temp1_input": "52000\n",
+  "/sys/devices/pci0000:00/0000:00:11.0/ata1/host0/target0:0:0/0:0:0:0/block/sda/stat": "   66182     4529  9609070  1682232    27678     3442  1408616   440700        0   456834  2175371        0        0        0        0     1053    52438\n",
+  "/sys/devices/pci0000:00/0000:00:18.3/hwmon/hwmon2/temp1_input": "57625\n",
+  "/sys/devices/pci0000:00/0000:00:18.4/hwmon/hwmon3/power1_average": "740\n",
+  "/sys/devices/system/cpu/cpu0/cpuidle/state0/time": "116\n",
+  "/sys/devices/system/cpu/cpu0/cpuidle/state1/time": "92809875\n",
+  "/sys/devices/system/cpu/cpu0/cpuidle/state2/time": "1499399941\n",
+  "/sys/devices/system/cpu/cpu1/cpuidle/state0/time": "335\n",
+  "/sys/devices/system/cpu/cpu1/cpuidle/state1/time": "106531542\n",
+  "/sys/devices/system/cpu/cpu1/cpuidle/state2/time": "1509993595\n",
+  "/sys/devices/system/cpu/cpu2/cpuidle/state0/time": "345\n",
+  "/sys/devices/system/cpu/cpu2/cpuidle/state1/time": "115680058\n",
+  "/sys/devices/system/cpu/cpu2/cpuidle/state2/time": "1493826792\n",
+  "/sys/devices/system/cpu/cpu3/cpuidle/state0/time": "127\n",
+  "/sys/devices/system/cpu/cpu3/cpuidle/state1/time": "102268840\n",
+  "/sys/devices/system/cpu/cpu3/cpuidle/state2/time": "1518746786\n",
+  "/sys/devices/system/cpu/cpufreq/policy0/scaling_cur_freq": "2000000\n",
+  "/sys/devices/system/cpu/cpufreq/policy1/scaling_cur_freq": "1796703\n",
+  "/sys/devices/system/cpu/cpufreq/policy2/scaling_cur_freq": "2182421\n",
+  "/sys/devices/system/cpu/cpufreq/policy3/scaling_cur_freq": "1713180\n"
+ },
+ "statfs": {
+  "/": [
+   89376000,
+   62220034,
+   61713814,
+   4096
+  ],
+  "/boot": [
+   1491985,
+   1363169,
+   1282299,
+   4096
+  ]
+ },
+ "systemd": {
+  "arranque": {
+   "FinishTimestampMonotonic": 77297202,
+   "InitRDTimestampMonotonic": 1707652,
+   "UserspaceTimestampMonotonic": 21879480
+  }
+ }
+}

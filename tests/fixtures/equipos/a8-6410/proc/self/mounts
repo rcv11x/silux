@@ -1,0 +1,2 @@
+/dev/sda3 / btrfs rw,seclabel,relatime,space_cache=v2,subvolid=5,subvol=/ 0 0
+/dev/sda6 /boot ext4 rw,seclabel,relatime 0 0
