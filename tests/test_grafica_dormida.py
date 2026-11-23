@@ -85,7 +85,7 @@ class TestUnaDedicadaDormida(BancoDrm):
         self.assertEqual(gpu["device_id"], 0x73FF)
         self.assertNotIn("busy_percent", {k for k, v in gpu.items() if v is not None})
         self.assertIsNone(gpu.get("temp_c"))
-        self.assertTrue(any(n.path == "gpus.0" and "reposo" in n.message for n in draft.notes))
+        self.assertTrue(any(n.path == "gpus.0" and n.key == "prov.drm.asleep" for n in draft.notes))
 
     def test_al_despertar_se_vuelve_a_por_lo_estatico(self):
         draft = Draft()
@@ -229,7 +229,7 @@ class TestANvidiaThatFallsAsleep(BancoDrm):
         drm.GpuState().collect(draft)
         notas = [n for n in draft.notes if n.path == "gpus.0"]
         self.assertEqual([n.need.value for n in notas], ["hardware"])
-        self.assertIn("reposo", notas[0].message)
+        self.assertEqual(notas[0].key, "prov.drm.asleep")
 
 
 class TestTheBoardPageDoesNotPutItInTheProcessor(unittest.TestCase):

@@ -498,12 +498,12 @@ class GpuSection(QWidget):
         self.codec_card.body.addWidget(self.codecs)
         layout.addWidget(self.codec_card)
 
-        api_card = Card(_("gpu.card.apis"))
+        self.api_card = api_card = Card(_("gpu.card.apis"))
         self.apis = Table([_(h) for h in API_HEADERS], numeric=(False, True, False, False))
         api_card.body.addWidget(self.apis)
         layout.addWidget(api_card)
 
-        display_card = Card(_("gpu.card.displays"))
+        self.display_card = display_card = Card(_("gpu.card.displays"))
         # Si no cabe, cede el nombre del monitor y no sus cifras.
         self.displays = Table([_(h) for h in DISPLAY_HEADERS],
                               numeric=(False, False, True, True, True, False), cede=(1,))
@@ -843,6 +843,11 @@ class GpuSection(QWidget):
         # or emulated, the rule below doesn't run.
         escondidos["card"].update(c for c in ONLY_SOME
                                   if grid_of(grupos[0][1], c).is_blank(_(c)))
+        if gpu.suspended:
+            # Asleep, what only an awake card says isn't asked: its rows go,
+            # and the notice says why, once.
+            for nombre, grids, campos, _pie in grupos:
+                escondidos[nombre].update(c for c in campos if grid_of(grids, c).is_blank(_(c)))
         if not (gpu.suspended or gpu.virtual):
             for nombre, grids, campos, _pie in grupos:
                 mudos = [c for c in campos if c not in escondidos[nombre]
@@ -876,11 +881,13 @@ class GpuSection(QWidget):
         # ficha grande con un guion para siempre era el hueco más visible de
         # la página. Queda dicho al pie de «Consumo y temperaturas». Se deriva
         # de lo que ya decidió `no_aplica` en vez de repetir aquí la condición.
-        self.tile_temp.setVisible(not ((gpu.no_temperature_sensor or gpu.virtual)
+        asleep = gpu.suspended
+        self.tile_temp.setVisible(not ((gpu.no_temperature_sensor or gpu.virtual or asleep)
                                        and gpu.temp_c is None and gpu.package_temp_c is None))
         # nouveau gives no usage, clock or power, and the notice above the
         # card says so: three big dashes said nothing more.
         blind = gpu.driver == "nouveau"
+        blind = blind or asleep
         self.tile_power.setVisible("gpu.tile.power" not in ocultos["sensors"]
                                    and not (blind and gpu.power_w is None))
         # An emulated device has no usage or clock to follow either.
@@ -904,7 +911,12 @@ class GpuSection(QWidget):
         propios = [c for c in SENSOR_FIELDS
                    if c not in escondidos["sensors"] and c != "gpu.sensor.videouse"]
         solo_el_video = bool(gpu.engines) and not propios
-        self.sensor_card.setVisible(not solo_el_video)
+        self.sensor_card.setVisible(not solo_el_video and not asleep)
+        # Asleep, the cards that would only hold dashes wait for it to wake.
+        self.memory.parentWidget().setVisible(not asleep)
+        self.clocks.parentWidget().setVisible(not asleep)
+        self.api_card.setVisible(not (asleep and not gpu.apis))
+        self.display_card.setVisible(not (asleep and not gpu.displays))
         fuera = pie_de_sensores(ocultos["sensors"]) if solo_el_video else ""
         self.sensors_outside.setText(fuera)
         self.sensors_outside.setToolTip(pies["sensors"] if fuera else "")

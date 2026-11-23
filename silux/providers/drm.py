@@ -232,7 +232,8 @@ class DrmGpus(Provider):
             gpu["displays"] = _outputs(node.name, ask_modes=not asleep)
             if asleep:
                 draft.note(f"gpus.{index}", Need.HARDWARE,
-                           _("prov.drm.asleep"), _("prov.drm.asleep.hint"))
+                           _("prov.drm.asleep"), _("prov.drm.asleep.hint"),
+                           key="prov.drm.asleep", title=_("prov.drm.asleep.title"))
             else:
                 gpu["link"] = _link(device)
                 gpu["memory"] = _total_memory(device)
@@ -280,7 +281,8 @@ class DrmGpus(Provider):
                            _("prov.drm.unbound.hint"), key="prov.drm.unbound")
             elif asleep:
                 draft.note(f"gpus.{index}", Need.HARDWARE,
-                           _("prov.drm.asleep"), _("prov.drm.asleep.hint"))
+                           _("prov.drm.asleep"), _("prov.drm.asleep.hint"),
+                           key="prov.drm.asleep", title=_("prov.drm.asleep.title"))
             else:
                 draft.note(f"gpus.{index}", Need.DRIVER,
                            _("prov.drm.nodrm").format(tarjeta=card, driver=gpu["driver"]),
@@ -557,7 +559,8 @@ class GpuState(Provider):
                                if not (n.path == path and n.need is Need.DRIVER)]
                 if not any(n.path == path and n.need is Need.HARDWARE for n in draft.notes):
                     draft.note(path, Need.HARDWARE,
-                               _("prov.drm.asleep"), _("prov.drm.asleep.hint"))
+                               _("prov.drm.asleep"), _("prov.drm.asleep.hint"),
+                           key="prov.drm.asleep", title=_("prov.drm.asleep.title"))
                 continue
             if gpu.get("suspended"):
                 # The static data was read with it asleep and half the card is missing.

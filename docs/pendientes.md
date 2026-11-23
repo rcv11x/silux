@@ -141,8 +141,6 @@ la memoria) no va: está propuesto en las notas
     OpenGL abre solo la gráfica de la pantalla; medir si `glxinfo` o EGL
     despiertan a la dormida (`power/runtime_status`) y, si no, preguntarle
     ya.
-  - Gráficos · baja · la nota de la tarjeta en reposo lleva el encabezado
-    «Este equipo no lo expone»: duerme, no es que no lo tenga.
   - Memoria · baja · un zram con 0 B dentro dice «comprime 55.4 a 1».
   - Memoria · baja · el E6400 (ICH9M, DDR2) no registra ningún SPD, ni con
     5.10 ni con 6.14: `dmesg | grep -i spd` diría por qué.

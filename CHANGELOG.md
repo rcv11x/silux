@@ -84,6 +84,10 @@ que hace falta.
   segundo módulo (con dos zócalos solo lo busca en 0x50 y 0x51, y muchos
   portátiles lo ponen en 0x52), Silux lo explica y da la orden para
   registrarlo a mano, para copiarla. Silux no la ejecuta.
+- Gráficos: una tarjeta en reposo (la dedicada de un portátil con Optimus)
+  ya no enseña 35 filas con guion: queda una ficha corta con lo que se sabe
+  sin despertarla (nombre, fabricante, driver, identificadores) y un aviso
+  «En reposo» que dice por qué no se le pregunta nada.
 
 ## 0.4-prueba10 (22 de noviembre de 2026)
 
