@@ -1,39 +1,39 @@
 ## Inicio
 
 MSI A320M-A PRO (MS-7C51)
-Arch Linux · Linux 7.3.5-arch1-1 · KDE · wayland · encendido 3 min
+Arch Linux · Linux 7.3.5-arch1-1 · KDE · wayland · encendido 5 min
 silux-pc
 
 ### Procesador
 
 AMD Athlon 3000G with Radeon Vega Graphics
 2 núcleos · 4 hilos · Athlon (Picasso)
-2.91 GHz 30.1 °C
+5.9 % 2.91 GHz 27.8 °C
 
 ### Gráfica
 
 AMD Radeon Vega 3 Graphics
 integrada · DDR4 · PCIe 3.0 × 16 · 3 unidades de cómputo
-15.0 % 30.0 °C
+0.0 % 27.0 °C
 
 ### Memoria
 
-1.5 GiB de 3.3 GiB
-45 % ocupada
-Aplicaciones 1.3 GiB · Caché 1.1 GiB · Buffers 64.0 MiB · Libre 918.4 MiB
+1.6 GiB de 3.3 GiB
+50 % ocupada
+Aplicaciones 1.4 GiB · Caché 1.6 GiB · Buffers 66.2 MiB · Libre 203.6 MiB
 
 ### Almacenamiento
 
 624 GB en 2 unidades
 1 × HDD · 1 × Memoria flash
-458 GB libres
-Ocupado 8.2 GB · Libre 458 GB · Reservado 158 GB
+518 GB libres
+Ocupado 71.9 GB · Libre 518 GB · Reservado 34.0 GB
 
 ### Temperaturas
 
-Procesador 30.1 °C
+Procesador 27.8 °C
 lo más caliente ahora
-Gráfica 30.0 °C
+Gráfica 27.0 °C
 
 ### Red
 
@@ -60,16 +60,16 @@ AMD Athlon 3000G with Radeon Vega Graphics
 2 núcleos · 4 hilos · 1 socket
 Athlon (Picasso) · AM4 · GF 12LP · x86_64
 - Frecuencia: 2.91 GHz
-- Uso: —
-- Temperatura: 30 °C
+- Uso: 6 % (carga 1.39)
+- Temperatura: 28 °C
 - Consumo: (necesita permisos)
 
 ### Núcleos lógicos
 
-- CPU 0: 2.33 GHz
-- CPU 1: 3.50 GHz
-- CPU 2: 2.33 GHz
-- CPU 3: 3.50 GHz
+- CPU 0: 3.49 GHz · 17.8 %
+- CPU 1: 2.33 GHz · 1.0 %
+- CPU 2: 3.48 GHz · 1.0 %
+- CPU 3: 2.33 GHz · 4.0 %
 
 ### Procesador
 
@@ -215,19 +215,19 @@ El nombre de cada ranura («PCIEX16», «M2A_CPU») está en la tabla del firmwa
 4 GiB instalados · 3.3 GiB utilizables
 1 módulo leído de su chip SPD, catalogado a 2400 MT/s · el zócalo y a cuánto va, con permisos
 DDR4 · 2400 MT/s
-Aplicaciones 1.3 GiB · Caché 1.1 GiB · Buffers 64.0 MiB · Libre 918.4 MiB
-Disponible 1.8 GiB · sin intercambio
+Aplicaciones 1.4 GiB · Caché 1.6 GiB · Buffers 66.2 MiB · Libre 203.6 MiB
+Disponible 1.6 GiB · sin intercambio
 
 #### Desglose del uso
 
 - Total: 3.3 GiB
-- Usada: 1.5 GiB (45 %)
-- Disponible: 1.8 GiB
-- Aplicaciones: 1.3 GiB
-- Caché: 1.1 GiB
-- Buffers: 64.0 MiB
-- Compartida: 53.4 MiB
-- Libre: 918.4 MiB
+- Usada: 1.6 GiB (50 %)
+- Disponible: 1.6 GiB
+- Aplicaciones: 1.4 GiB
+- Caché: 1.6 GiB
+- Buffers: 66.2 MiB
+- Compartida: 53.3 MiB
+- Libre: 203.6 MiB
 - Intercambio: sin swap
 
 ### Módulo 1
@@ -273,14 +273,14 @@ El ayudante que se lanza solo sabe leer esa tabla y unos registros del procesado
 
 MSI · Picasso/Raven 2 · PCIe 3.0 × 16
 amdgpu · Mesa 26.3.1 · 512 MiB · 3 CU · integrada · principal
-- Uso: 15 %
+- Uso: 0 %
 - Frecuencia: 400 MHz (memoria 933 MHz)
-- Temperatura: 30 °C
+- Temperatura: 27 °C
 
 #### Ahora mismo
 
-- Memoria de video: 266.4 MiB de 512 MiB · 52 %
-- Render / 3D: 15 %
+- Memoria de video: 372.4 MiB de 512 MiB · 73 %
+- Render / 3D: 0 %
 
 Esta gráfica no publica cuánto se usa su motor de video.
 
@@ -302,6 +302,7 @@ Esta gráfica no publica cuánto se usa su motor de video.
 - Ranura PCI: 0000:29:00.0
 - Nodo DRM: card1
 - BIOS de video: 113-RAVEN2-115
+- Versión de la BIOS de video: 016.002.000.010.000000 · 2019-04-25
 
 #### Memoria de video
 
@@ -312,7 +313,7 @@ Esta gráfica no publica cuánto se usa su motor de video.
 - Tasa de datos: 2.4 Gbps
 - Visible por la CPU: 512 MiB
 - Resizable BAR: activo
-- Memoria del sistema (GTT): 124.2 MiB de 1.6 GiB
+- Memoria del sistema (GTT): 139.8 MiB de 1.6 GiB
 
 amdgpu no publica chips de esta tarjeta.
 
@@ -332,6 +333,8 @@ amdgpu no publica SoC de esta tarjeta.
 
 - Escalones del núcleo: 200 · ▸400 · 1100 MHz
 - Escalones de la memoria: 400 · ▸933 · 1067 · 1200 MHz
+- Perfil de energía: por defecto (BOOTUP_DEFAULT)
+- OverDrive: activado: el driver deja cambiar relojes y voltajes
 
 ▸ marca el escalón en uso.
 
@@ -359,22 +362,21 @@ Los reguladores de voltaje y el ventilador son de una tarjeta aparte: esta se al
 
 #### Monitores y salidas de video
 
-| SALIDA | MONITOR | RESOLUCIÓN PREFERIDA | REFRESCO | TAMAÑO | COLOR Y HDR | FABRICADO |
+| SALIDA | MONITOR | RESOLUCIÓN | REFRESCO | TAMAÑO | COLOR Y HDR | FABRICADO |
 |---|---|---|---|---|---|---|
 | HDMI-A-1 | BLUSENS TV | 1920 × 1080 | 24–85 Hz | ≈ 46" | — | semana 6 de 2012 |
 
 2 salidas libres: DP-1, DVI-D-1
-La resolución de HDMI-A-1 es la preferida del monitor: no se ha podido preguntar cuál tiene puesta.
 
 ## Almacenamiento
 
 624 GB en 2 unidades
-8.2 GB ocupados en 3 particiones montadas
+71.9 GB ocupados en 3 particiones montadas
 1 × HDD · 1 × Memoria flash
-Ocupado 8.2 GB · Libre 458 GB · Reservado 158 GB
+Ocupado 71.9 GB · Libre 518 GB · Reservado 34.0 GB
 - Leyendo: 0 B/s (suma de 2 unidades)
-- Escribiendo: 0 B/s (suma de 2 unidades)
-- Espacio libre: 458 GB (en 2 particiones)
+- Escribiendo: 8.4 MB/s (suma de 2 unidades)
+- Espacio libre: 518 GB (en 3 particiones)
 - Más caliente: — (ningún disco publica su temperatura)
 
 ### Estado de los discos
@@ -391,20 +393,20 @@ El ayudante que se lanza solo sabe pedir diagnóstico y leer unas tablas del sis
 
 | UNIDAD | MODELO | TIPO | CAPACIDAD | OCUPADO | TEMPERATURA | LEYENDO | ESCRIBIENDO |
 |---|---|---|---|---|---|---|---|
-| sda | WDC WD5000LPVX-0 | HDD | 500 GB | 8.2 GB | — | 0 B/s | 0 B/s |
-| sdb | DataTraveler 3.0 | Memoria flash | 124 GB | — | — | 0 B/s | 0 B/s |
+| sda | WDC WD5000LPVX-0 | HDD | 500 GB | 8.3 GB | — | 0 B/s | 8.4 MB/s |
+| sdb | DataTraveler 3.0 | Memoria flash | 124 GB | 63.6 GB | — | 0 B/s | 0 B/s |
 
 ### Particiones montadas
 
 | PARTICIÓN | SISTEMA | MONTADA EN | TAMAÑO | USADO | LIBRE |
 |---|---|---|---|---|---|
 | sda1 | vfat | /boot | 1.1 GB | 84.2 MB (8 %) | 987 MB |
-| sda2 | ext4 | / | 499 GB | 8.1 GB (2 %) | 457 GB |
-| sdb1 | exfat | /media/unidad1 | 124 GB | — | — |
+| sda2 | ext4 | / | 499 GB | 8.2 GB (2 %) | 457 GB |
+| sdb1 | exfat | /media/unidad1 | 124 GB | 63.6 GB (51 %) | 60.1 GB |
 
 ### sda
 
-Ocupado 8.2 GB · Libre 458 GB · Reservado 34.0 GB
+Ocupado 8.3 GB · Libre 458 GB · Reservado 34.0 GB
 - Modelo: WDC WD5000LPVX-0
 - Fabricante: Western Digital
 - Tipo: HDD
@@ -425,6 +427,7 @@ Un disco de platos no tiene «vida restante»: es el desgaste de las celdas de u
 
 ### sdb
 
+Ocupado 63.6 GB · Libre 60.1 GB
 - Modelo: DataTraveler 3.0
 - Fabricante: Kingston
 - Tipo: Memoria flash
@@ -447,10 +450,10 @@ Un disco de platos no tiene «vida restante»: es el desgaste de las celdas de u
 enp37s0 · 192.168.1.120
 Realtek RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller · 1 Gb/s · dúplex completo
 puerta 192.168.1.1 · 1 de 1 activas
-- Bajando: 0 B/s (ninguno descartado)
+- Bajando: 0 B/s (7 paquetes descartados)
 - Subiendo: 0 B/s
-- Recibido: 9.6 kB (77 paquetes)
-- Enviado: 11.3 kB (85 paquetes)
+- Recibido: 231 kB (621 paquetes)
+- Enviado: 74.0 kB (454 paquetes)
 
 ### Tráfico por interfaz
 
@@ -458,7 +461,7 @@ puerta 192.168.1.1 · 1 de 1 activas
 
 | INTERFAZ | BAJANDO | SUBIENDO | RECIBIDO | ENVIADO | PAQUETES | DESCARTADOS |
 |---|---|---|---|---|---|---|
-| enp37s0 | 0 B/s | 0 B/s | 9.6 kB | 11.3 kB | 162 | 0 |
+| enp37s0 | 0 B/s | 0 B/s | 231 kB | 74.0 kB | 1 075 | 7 |
 
 ### enp37s0
 
@@ -479,7 +482,7 @@ puerta 192.168.1.1 · 1 de 1 activas
 
 | INTERFAZ | BAJANDO | SUBIENDO | RECIBIDO | ENVIADO | PAQUETES | DESCARTADOS |
 |---|---|---|---|---|---|---|
-| lo | 0 B/s | 0 B/s | 960 B | 960 B | 32 | 0 |
+| lo | 0 B/s | 0 B/s | 3.6 kB | 3.6 kB | 64 | 0 |
 
 ### lo
 
@@ -501,9 +504,9 @@ No tiene driver, modelo ni ranura PCI: es una interfaz virtual, sin tarjeta detr
 ### USB
 
 *DISPOSITIVO · VELOCIDAD*
-- Teclado · Baja velocidad · 1.5 Mb/s
 - Almacenamiento · Alta velocidad · 480 Mb/s
 - Teclado y ratón · Velocidad completa · 12 Mb/s
+- Teclado · Baja velocidad · 1.5 Mb/s
 
 Cada cosa cuelga del concentrador al que está enchufada. El número de serie no se lee.
 
@@ -525,7 +528,7 @@ Este equipo no tiene adaptador Bluetooth.
 ## Sistema
 
 Arch Linux
-silux-pc · encendido 3 min
+silux-pc · encendido 5 min
 Linux 7.3.5-arch1-1 · KDE · wayland
 
 ### Sistema operativo
@@ -551,10 +554,10 @@ Esta distribución no declara versión ni variante.
 ### Actividad
 
 - Encendido desde: (hora de arranque)
-- Tiempo encendido: 3 min
-- Procesos: 246
-- Hilos: 497
-- Archivos abiertos: 7 167
+- Tiempo encendido: 5 min
+- Procesos: 244
+- Hilos: 515
+- Archivos abiertos: 6 790
 
 ### Vulnerabilidades del procesador
 
@@ -580,11 +583,11 @@ Esta distribución no declara versión ni variante.
 
 - Gestor de arranque: systemd-boot 262.2-1-arch
 - Entrada elegida: arch-linux.efi
-- Firmware: 12.7 s
-- Cargador: 3.8 s
-- Kernel: 13.2 s
-- Espacio de usuario: 14.6 s
-- Total: 44.3 s
+- Firmware: 13.2 s
+- Cargador: 7.0 s
+- Kernel: 8.5 s
+- Espacio de usuario: 14.5 s
+- Total: 43.2 s
 - Línea de arranque: root=… rw rootfstype=ext4
 
 ## Rendimiento
@@ -595,30 +598,36 @@ Cada medida: 15 s · sostenida · la medida de referencia · la prueba entera, 2
 
 ## Sensores
 
-SENSORES · 16 en 4 dispositivos
+SENSORES · 21 en 4 dispositivos
 *Sensor · Actual · Mín · Máx · Media*
 - AMD Athlon 3000G with Radeon Vega Graphics
   - Temperaturas
-    - Tctl · 30.1 °C · 30.1 · 30.1 · 30.1
+    - Tctl · 27.8 °C · 27.8 · 27.8 · 27.8
+  - Uso
+    - Total · 5.9 % · 5.9 · 5.9 · 5.9
+    - CPU 0 · 17.8 % · 17.8 · 17.8 · 17.8
+    - CPU 1 · 1.0 % · 1.0 · 1.0 · 1.0
+    - CPU 2 · 1.0 % · 1.0 · 1.0 · 1.0
+    - CPU 3 · 4.0 % · 4.0 · 4.0 · 4.0
   - Relojes
-    - CPU 0 · 2328.2 MHz · 2328.2 · 2328.2 · 2328.2
-    - CPU 1 · 3497.1 MHz · 3497.1 · 3497.1 · 3497.1
-    - CPU 2 · 2332.6 MHz · 2332.6 · 2332.6 · 2332.6
-    - CPU 3 · 3498.7 MHz · 3498.7 · 3498.7 · 3498.7
+    - CPU 0 · 3491.0 MHz · 3491.0 · 3491.0 · 3491.0
+    - CPU 1 · 2332.5 MHz · 2332.5 · 2332.5 · 2332.5
+    - CPU 2 · 3481.7 MHz · 3481.7 · 3481.7 · 3481.7
+    - CPU 3 · 2333.3 MHz · 2333.3 · 2333.3 · 2333.3
 - Memoria
   - Uso
-    - RAM usada · 44.9 % · 44.9 · 44.9 · 44.9
+    - RAM usada · 49.7 % · 49.7 · 49.7 · 49.7
 - AMD Radeon Vega 3 Graphics
   - Temperaturas
-    - Borde · 30.0 °C · 30.0 · 30.0 · 30.0
+    - Borde · 27.0 °C · 27.0 · 27.0 · 27.0
   - Uso
-    - Uso del núcleo · 15.0 % · 15.0 · 15.0 · 15.0
-    - Memoria de video · 52.0 % · 52.0 · 52.0 · 52.0
+    - Uso del núcleo · 0.0 % · 0.0 · 0.0 · 0.0
+    - Memoria de video · 72.7 % · 72.7 · 72.7 · 72.7
   - Relojes
     - Núcleo · 400.0 MHz · 400.0 · 400.0 · 400.0
   - Ocupación
-    - Memoria de video · 266.0 MiB · 266.0 · 266.0 · 266.0
-    - Memoria prestada al sistema · 124.0 MiB · 124.0 · 124.0 · 124.0
+    - Memoria de video · 372.0 MiB · 372.0 · 372.0 · 372.0
+    - Memoria prestada al sistema · 140.0 MiB · 140.0 · 140.0 · 140.0
 - Red (enp37s0)
   - Tráfico
     - Bajada · 0.0 kB/s · 0.0 · 0.0 · 0.0

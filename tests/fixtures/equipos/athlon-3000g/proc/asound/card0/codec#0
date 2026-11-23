@@ -16,7 +16,7 @@ State of AFG node 0x01:
   Power: setting=D0, actual=D0, Clock-stop-OK
 GPIO: io=0, o=0, i=0, unsolicited=0, wake=0
 Node 0x02 [Audio Output] wcaps 0x221: Stereo Digital Stripe
-  Converter: stream=1, channel=0
+  Converter: stream=0, channel=0
   Digital: Enabled
   Digital category: 0x0
   IEC Coding Type: 0x0

@@ -5,13 +5,21 @@
    "compute_units": 3,
    "device_id": 5592,
    "family": 142,
+   "infinity_cache_bytes": null,
    "is_apu": true,
+   "l2_cache_bytes": null,
    "max_engine_hz": 1100000000,
    "max_memory_hz": 1200000000,
    "render_backends": 1,
    "shader_engines": 1,
    "vram_bits": 64,
    "vram_type": "DDR4"
+  }
+ },
+ "amdgpu_vbios": {
+  "/dev/dri/renderD128": {
+   "date": "2019-04-25",
+   "version": "016.002.000.010.000000"
   }
  },
  "cpuid": {
@@ -69,6 +77,15 @@
    0,
    0
   ]
+ },
+ "drm_modes": {
+  "card1": {
+   "HDMI-A-1": {
+    "height": 1080,
+    "refresh_hz": 60.0,
+    "width": 1920
+   }
+  }
  },
  "gpuapi": {
   "consultar": {
@@ -162,7 +179,14 @@
      "name": "AMD Radeon Vega 3 Graphics (RADV RAVEN2)",
      "vendor_id": 4098
     }
-   ]
+   ],
+   "vulkan_icds": [
+    "libvulkan_intel_hasvk.so",
+    "libvulkan_intel.so",
+    "libvulkan_nouveau.so",
+    "libvulkan_radeon.so"
+   ],
+   "vulkan_rejected": []
   }
  },
  "ioctl_red": {
@@ -254,16 +278,19 @@
  },
  "plataforma": {
   "entorno": {
+   "DESKTOP_SESSION": "/usr/share/wayland-sessions/plasma.desktop",
+   "DISPLAY": ":0",
+   "GDMSESSION": null,
    "SHELL": "/usr/bin/bash",
+   "WAYLAND_DISPLAY": "wayland-1",
    "XDG_CURRENT_DESKTOP": "KDE",
    "XDG_SESSION_TYPE": "wayland"
   },
   "machine": "x86_64",
-  "procesos": 246,
+  "procesos": 244,
   "uname": {
    "machine": "x86_64",
    "node": "silux-pc",
-   "processor": "",
    "release": "7.3.5-arch1-1",
    "system": "Linux",
    "version": "#1 SMP PREEMPT_DYNAMIC Tue, 17 Nov 2026 22:28:33 +0000"
@@ -274,25 +301,41 @@
   "/dev/sda2": "/dev/sda2",
   "/dev/sdb1": "/dev/sdb1"
  },
- "statvfs": {
+ "segunda_lectura": {
+  "/proc/self/net/dev": "Inter-|   Receive                                                |  Transmit\n face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed\n    lo:    3581      32    0    0    0     0          0         0     3581      32    0    0    0     0       0          0\nenp37s0:  231409     621    0    7    0     0          0       218    73967     454    0    0    0     0       0          0\n",
+  "/proc/stat": "cpu  4393 141 2963 99169 21260 256 140 0 0 0\ncpu0 1102 37 588 21835 8256 122 33 0 0 0\ncpu1 1069 22 772 26245 3910 37 28 0 0 0\ncpu2 1084 41 614 25522 4732 45 41 0 0 0\ncpu3 1137 40 988 25565 4360 50 37 0 0 0\nintr 652849 146 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 0 0 1 0 0 0 0 0 16204 0 0 3452 0 0 0 0 0 7955 0 0 0 0 0 51222 0 0 858 0 540 15608 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0\nctxt 924420\nbtime 1795445872\nprocesses 2407\nprocs_running 1\nprocs_blocked 0\nsoftirq 386728 8143 55680 16 1414 16241 0 3785 173697 0 127752\n",
+  "/sys/devices/pci0000:00/0000:00:01.2/0000:12:00.0/usb1/1-9/1-9:1.0/host9/target9:0:0/9:0:0:0/block/sdb/stat": "     633     4543   117423     3692       19       10       29      329        0     2283     4021        0        0        0        0        0        0\n",
+  "/sys/devices/pci0000:00/0000:00:01.2/0000:12:00.1/ata1/host0/target0:0:0/0:0:0:0/block/sda/stat": "   10672    10769  2948661   294501     5047     5786  1852274   102711        0    94587   420222        0        0        0        0      476    23008\n",
+  "/sys/devices/pci0000:00/0000:00:08.1/0000:29:00.0/gpu_busy_percent": "0\n",
+  "/sys/devices/pci0000:00/0000:00:08.1/0000:29:00.0/hwmon/hwmon0/freq1_input": "400000000\n",
+  "/sys/devices/pci0000:00/0000:00:08.1/0000:29:00.0/hwmon/hwmon0/temp1_input": "27000\n",
+  "/sys/devices/pci0000:00/0000:00:18.3/hwmon/hwmon1/temp1_input": "27750\n"
+ },
+ "statfs": {
   "/": [
-   8127406080,
-   456950788096
+   119640250,
+   117633390,
+   111537621,
+   4096
   ],
   "/boot": [
-   84156416,
-   987467776
+   261627,
+   241081,
+   241081,
+   4096
   ],
-  "/media/unidad2": [
-   63411322880,
-   60280668160
+  "/media/unidad1": [
+   943695,
+   458803,
+   458803,
+   131072
   ]
  },
  "systemd": {
   "arranque": {
-   "FinishTimestampMonotonic": 27738039,
+   "FinishTimestampMonotonic": 23001048,
    "InitRDTimestampMonotonic": 0,
-   "UserspaceTimestampMonotonic": 13172778
+   "UserspaceTimestampMonotonic": 8516126
   }
  }
 }
