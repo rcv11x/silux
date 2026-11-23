@@ -1262,6 +1262,8 @@
   "prov.cppc.noceiling.hint": "El firmware da a cada núcleo su puesto en el ranking en vez del máximo de la pieza, y de ahí no sale una frecuencia. Con el driver amd-pstate el kernel la publica ya calculada.",
   "prov.cppc.noceiling.source": "Este procesador no publica su frecuencia máxima de fábrica.",
   "prov.cppc.noceiling.source.hint": "La dan CPUID 0x16, en los Intel desde la sexta generación, y ACPI CPPC; este no tiene ninguno de los dos. La máxima que aplica el kernel sí está, en su fila.",
+  "prov.cpu.boosthidden": "El driver acpi-cpufreq no publica los estados de turbo, así que no se sabe hasta dónde sube este procesador.",
+  "prov.cpu.boosthidden.hint": "La máxima que publica es la de sin turbo, y con el turbo activo los núcleos pasan de ella: la frecuencia de arriba es la que mide el propio procesador.",
   "prov.cpu.nocpufreq": "Este procesador no tiene driver de frecuencia (cpufreq).",
   "prov.cpu.nocpufreq.hint": "Pasa cuando el firmware no le da al sistema los estados de frecuencia —en algunas placas, con Cool'n'Quiet o SpeedStep desactivados en la BIOS— o cuando su driver no ha cargado; desde aquí no se distingue cuál de las dos. Sin él, el sistema no cambia la frecuencia del procesador.",
   "prov.cpu.nofreq": "El kernel no publica la frecuencia de este procesador.",

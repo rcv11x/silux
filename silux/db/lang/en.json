@@ -1262,6 +1262,8 @@
   "prov.cppc.noceiling.hint": "The firmware gives each core its place in the ranking rather than the maximum of the part, and no frequency comes out of that. With the amd-pstate driver the kernel publishes it already worked out.",
   "prov.cppc.noceiling.source": "This processor doesn't publish its factory maximum frequency.",
   "prov.cppc.noceiling.source.hint": "CPUID 0x16, on Intel since the sixth generation, and ACPI CPPC give it; this one has neither. The maximum the kernel applies is there, in its row.",
+  "prov.cpu.boosthidden": "The acpi-cpufreq driver doesn't publish the boost states, so how high this processor goes isn't known.",
+  "prov.cpu.boosthidden.hint": "The maximum it publishes is the one without boost, and with boost on the cores go past it: the frequency above is the one the processor itself measures.",
   "prov.cpu.nocpufreq": "This processor has no frequency driver (cpufreq).",
   "prov.cpu.nocpufreq.hint": "It happens when the firmware gives the system no frequency states —on some boards, with Cool'n'Quiet or SpeedStep disabled in the BIOS— or when its driver did not load; from here the two cannot be told apart. Without one, the system does not change the processor's frequency.",
   "prov.cpu.nofreq": "The kernel does not publish this processor's frequency.",

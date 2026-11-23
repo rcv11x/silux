@@ -287,7 +287,8 @@ class TypeSection(QWidget):
         for key, value, note in (
                 ("cpu.clock.bus", clocks.bus_hz, "cpu.clocks.bus_hz"),
                 ("cpu.clock.multiplier", clocks.multiplier, "cpu.clocks.bus_hz"),
-                ("cpu.clock.maxsilicon", clocks.max_turbo_hz, "cpu.clocks.max_turbo_hz")):
+                ("cpu.clock.maxsilicon", clocks.max_turbo_hz, "cpu.clocks.max_turbo_hz"),
+                ("cpu.clock.maxkernel", clocks.max_hz, "cpu.clocks.max_hz")):
             if value is None and note in absent:
                 hidden.add(key)
         if render.without_energy_preference(clocks):

@@ -194,9 +194,12 @@ class TestEquiposVolcados(unittest.TestCase):
                     self.assertEqual(hilo.freq_hz, int(text) * 1000, hilo.index)
                 for tipo in f.cpu.types:
                     c = tipo.clocks
-                    techo = max(filter(None, (c.max_hz, c.max_turbo_hz)))
+                    # None when nothing publishes a ceiling (acpi-cpufreq
+                    # with boost): then there's nothing to stay under.
+                    techo = max(filter(None, (c.max_hz, c.max_turbo_hz)), default=None)
                     self.assertTrue(c.current_hz)
-                    self.assertLessEqual(c.current_hz, techo * 1.02)
+                    if techo:
+                        self.assertLessEqual(c.current_hz, techo * 1.02)
                 self.assertNotIn("cpu.clocks.current_hz", [n.path for n in f.notes])
 
     def test_un_contador_de_energia_parado_no_da_cero_vatios(self):

@@ -283,6 +283,15 @@ class SysfsClocks(Provider):
             clocks: Clocks = entry.get("clocks") or Clocks()
             leader = entry["cpus"][0]
             ceiling = read_int(f"{SYS_CPU}/cpu{leader}/cpufreq/cpuinfo_max_freq")
+            # acpi-cpufreq doesn't list the boost states: with boost on, the
+            # cores run above cpuinfo_max_freq, which is then the top without
+            # boost and not a ceiling.
+            if (read_text(f"{SYS_CPU}/cpu{leader}/cpufreq/scaling_driver") == "acpi-cpufreq"
+                    and read_int(f"{SYS_CPU}/cpufreq/boost") == 1):
+                ceiling = None
+                if not any(n.path == "cpu.clocks.max_hz" for n in draft.notes):
+                    draft.note("cpu.clocks.max_hz", Need.HARDWARE,
+                               _("prov.cpu.boosthidden"), _("prov.cpu.boosthidden.hint"))
             governor = read_text(f"{SYS_CPU}/cpu{leader}/cpufreq/scaling_governor")
             preference = read_text(
                 f"{SYS_CPU}/cpu{leader}/cpufreq/energy_performance_preference"

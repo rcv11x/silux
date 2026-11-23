@@ -12,6 +12,9 @@ que hace falta.
 
 ## Sin publicar
 
+- CPU: con el driver acpi-cpufreq y el turbo activo, la máxima que publica
+  el kernel es la de sin turbo: ya no sale como techo («2.26 GHz (1.00 –
+  2.00 GHz)») y un aviso dice que no se sabe hasta dónde sube.
 - AppImage compatible: en un procesador que puede con el normal, Ajustes →
   Acerca de lo dice en una línea, con el nombre del archivo que conviene.
 - Inicio: si la placa es el propio equipo y no hay chipset que nombrar, la

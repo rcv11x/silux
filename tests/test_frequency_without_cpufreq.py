@@ -135,6 +135,32 @@ class TestWithoutPermissions(unittest.TestCase):
         self.assertIsNone(photo.cpu.types[0].clocks.turbo_supported)
 
 
+class TestAcpiCpufreqWithBoost(unittest.TestCase):
+    """acpi-cpufreq doesn't list the boost states: with boost on, the cores
+    run above cpuinfo_max_freq. An A8-6410 read 2.26 GHz «(1.00 – 2.00 GHz)»."""
+
+    def _with_acpi_cpufreq(self, root, boost: str):
+        cpus = root / "sys/devices/system/cpu"
+        for driver in cpus.glob("cpu[0-9]*/cpufreq/scaling_driver"):
+            driver.write_text("acpi-cpufreq\n")
+        (cpus / "cpufreq" / "boost").write_text(boost + "\n")
+
+    def test_its_maximum_is_no_ceiling_and_says_why(self):
+        with volcado.mounted(EQUIPOS / "5800x3d") as root:
+            self._with_acpi_cpufreq(root, "1")
+            photo = _photo()
+        self.assertIsNone(photo.cpu.types[0].clocks.max_hz)
+        notes = [n for n in photo.notes if n.path == "cpu.clocks.max_hz"]
+        self.assertEqual([n.need for n in notes], [Need.HARDWARE])
+
+    def test_with_boost_off_it_is(self):
+        with volcado.mounted(EQUIPOS / "5800x3d") as root:
+            self._with_acpi_cpufreq(root, "0")
+            photo = _photo()
+        self.assertIsNotNone(photo.cpu.types[0].clocks.max_hz)
+        self.assertFalse([n for n in photo.notes if n.path == "cpu.clocks.max_hz"])
+
+
 class TestTheTurbo(unittest.TestCase):
 
     def test_what_the_kernel_flags_say(self):
