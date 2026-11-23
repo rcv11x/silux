@@ -974,6 +974,8 @@ DMI_PLACEHOLDERS = frozenset({
     # The template's own field names, left as their values.
     "base board product name", "base board version", "base board manufacturer",
     "type2 - board product name", "type2 - board version", "type2 - board vendor name",
+    # HP's, in the system version of its consumer laptops.
+    "type1productconfigid",
 })
 # Templates with letters where the numbers go: Gigabyte's «x.x», ASUS's
 # «Rev X.0x». Also a field of only dots, or of «0x0000».
@@ -994,6 +996,9 @@ _ONLY_THE_BOARD = re.compile(r".*\bMB", re.I)
 # A code as the family, no name: Intel's platform as Acer writes it («BDW»,
 # «SKL»), or a series letter («X» on an ASUS X550JK).
 _ONLY_A_CODE = re.compile(r"[A-Z]{1,4}")
+# A family that starts with a platform code, as HP writes it: its PCI vendor
+# and the board's id, «103C_5335KV HP Notebook». The name is in the system's.
+_PLATFORM_CODE = re.compile(r"[0-9A-F]{4}_[0-9A-Z]+(?:\s.*)?", re.I)
 # A product name in words, «Aspire E5-473», not a part code («20W0S14X00»,
 # «81HL») or a board's («MS-7D23»).
 _IN_WORDS = re.compile(r"(?=.*[A-Za-z]{3}).*\S\s+\S.*")
@@ -1001,7 +1006,8 @@ _IN_WORDS = re.compile(r"(?=.*[A-Za-z]{3}).*\S\s+\S.*")
 
 def _names_a_machine(value: str) -> bool:
     return not (_ONLY_A_VERSION.fullmatch(value) or _ONLY_A_SUFFIX.fullmatch(value)
-                or _ONLY_THE_BOARD.fullmatch(value) or _ONLY_A_CODE.fullmatch(value))
+                or _ONLY_THE_BOARD.fullmatch(value) or _ONLY_A_CODE.fullmatch(value)
+                or _PLATFORM_CODE.fullmatch(value))
 
 
 def clean_dmi(value: Optional[str]) -> Optional[str]:

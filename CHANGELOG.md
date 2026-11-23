@@ -91,6 +91,8 @@ que hace falta.
 - Gráficos: mientras la otra tarjeta duerme, la integrada ya no dice «Ni
   Vulkan ni OpenGL usan esta tarjeta» ni «Sin bibliotecas gráficas»: dice
   que todavía no se les ha preguntado, para no despertar a la otra.
+- Placa base: un portátil HP ya no se llama «HP Type1ProductConfigId», que
+  es un relleno de su BIOS, sino por su nombre («HP Laptop 15-dw3xxx»).
 
 ## 0.4-prueba10 (22 de noviembre de 2026)
 
