@@ -106,6 +106,7 @@ class _SeccionBateria(QWidget):
         self.limites = InfoGrid()
         self.limites.add(_("bat.limit.start"))
         self.limites.add(_("bat.limit.end"))
+        self.limites.add(_("bat.limit.conservation"))
         self.limites_card.body.addWidget(self.limites)
         pista = QLabel(_("bat.limit.hint"))
         pista.setObjectName("Muted")
@@ -205,15 +206,20 @@ class _SeccionBateria(QWidget):
         # enseñarlo así da a entender que hay algo puesto: 0 y 100 es
         # justamente no tener límite. Un Dell con 50 y 90 sí los tiene.
         tiene = _hay_topes(bateria)
-        self.limites_card.setVisible(tiene)
-        if tiene:
-            l = self.limites.set  # noqa: E741
-            l(_("bat.limit.start"),
-              f"{bateria.charge_start_percent} %"
-              if bateria.charge_start_percent is not None else d)
-            l(_("bat.limit.end"),
-              f"{bateria.charge_end_percent} %"
-              if bateria.charge_end_percent is not None else d)
+        conservation = bateria.conservation_mode
+        self.limites_card.setVisible(tiene or conservation is not None)
+        l = self.limites.set  # noqa: E741
+        l(_("bat.limit.start"),
+          f"{bateria.charge_start_percent} %"
+          if bateria.charge_start_percent is not None else d)
+        l(_("bat.limit.end"),
+          f"{bateria.charge_end_percent} %"
+          if bateria.charge_end_percent is not None else d)
+        self.limites.set_visible(_("bat.limit.start"), tiene)
+        self.limites.set_visible(_("bat.limit.end"), tiene)
+        l(_("bat.limit.conservation"),
+          _("bat.conservation.on" if conservation else "bat.conservation.off"))
+        self.limites.set_visible(_("bat.limit.conservation"), conservation is not None)
 
 
 class BatteryPage(ScrollPage):

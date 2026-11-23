@@ -84,7 +84,8 @@ class TestOnItsPages(unittest.TestCase):
         self.assertNotIn(_("gpu.apis.none"), textos)
 
     def test_a_battery_held_on_the_charger_has_no_runtime_dash(self):
-        self.assertEqual(self.foto.batteries[0].status, "bat.status.held")
+        # At 76 % it isn't held at the top (test_battery_conservation).
+        self.assertEqual(self.foto.batteries[0].status, "bat.status.notcharging")
         textos = self._texts("Batería")
         self.assertIn(_("bat.left.oncharger"), textos)
 

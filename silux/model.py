@@ -1698,6 +1698,9 @@ class Battery:
     # laptop allows it.
     charge_start_percent: Optional[int] = None
     charge_end_percent: Optional[int] = None
+    # Lenovo's conservation mode (the kernel's Long_Life charge type): the
+    # charge held around 60–80 %. None when the laptop doesn't say.
+    conservation_mode: Optional[bool] = None
 
     @property
     def health_percent(self) -> Optional[float]:
@@ -1720,7 +1723,8 @@ class Battery:
     @property
     def on_charger(self) -> bool:
         """Full or held at its charge limit: it does not run on itself."""
-        return self.status in ("bat.status.full", "bat.status.held", "bat.status.paused")
+        return self.status in ("bat.status.full", "bat.status.held", "bat.status.paused",
+                               "bat.status.conservation", "bat.status.notcharging")
 
     @property
     def power_settling(self) -> bool:

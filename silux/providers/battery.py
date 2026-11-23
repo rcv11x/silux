@@ -27,6 +27,9 @@ from . import counters
 from .base import Draft, Provider, read_int, read_text
 
 POWER_SUPPLY = pathlib.Path("/sys/class/power_supply")
+# Lenovo IdeaPad and LOQ: the charge kept around 60–80 % to spare the cell.
+# Readable by anyone; the driver publishes it on its ACPI device.
+IDEAPAD = pathlib.Path("/sys/bus/platform/drivers/ideapad_acpi")
 
 # The kernel's status → its translation key. The kernel writes it
 # capitalised, in English, which is never shown.
@@ -104,6 +107,22 @@ def _watts(entry: pathlib.Path, voltage: Optional[float]) -> Optional[float]:
     return round(abs(microamps) / 1e6 * voltage, 2)
 
 
+def _conservation_mode(entry: pathlib.Path) -> Optional[bool]:
+    """Whether the laptop holds the charge low to spare the cell, if it says.
+
+    The kernel's generic `charge_types` calls it Long_Life; before that,
+    Lenovo's driver published it as `conservation_mode`.
+    """
+    types = read_text(str(entry / "charge_types"))
+    if types and "[" in types:
+        return "[Long_Life]" in types
+    for path in sorted(sysroot.path(IDEAPAD).glob("*/conservation_mode")):
+        value = read_int(str(path))
+        if value in (0, 1):
+            return value == 1
+    return None
+
+
 def _read(entry: pathlib.Path) -> Battery:
     voltage = read_int(str(entry / "voltage_now"))
     volts = round(voltage / 1e6, 3) if voltage else None
@@ -122,10 +141,17 @@ def _read(entry: pathlib.Path) -> Battery:
     percent = read_int(str(entry / "capacity"))
     end = read_int(str(entry / "charge_control_end_threshold"))
     status = STATUSES.get(raw, "bat.status.unknown")
-    # «Not charging» below its stop threshold is waiting to drop under the
-    # start one, not held at the top.
-    if status == "bat.status.held" and end and percent is not None and percent < end - 1:
-        status = "bat.status.paused"
+    conservation = _conservation_mode(entry)
+    # «Not charging» is held at the top only when it is at the top: below its
+    # stop threshold it waits to drop under the start one, and below full it
+    # is a conservation mode, or a charger that doesn't charge.
+    if status == "bat.status.held":
+        if conservation:
+            status = "bat.status.conservation"
+        elif end and percent is not None and percent < end - 1:
+            status = "bat.status.paused"
+        elif not end and percent is not None and percent < 99:
+            status = "bat.status.notcharging"
 
     full_wh = _watt_hours(entry, "full", nominal)
     design_wh = _watt_hours(entry, "full_design", nominal)
@@ -156,6 +182,7 @@ def _read(entry: pathlib.Path) -> Battery:
         charge_start_percent=read_int(
             str(entry / "charge_control_start_threshold")),
         charge_end_percent=end,
+        conservation_mode=conservation,
     )
 
 

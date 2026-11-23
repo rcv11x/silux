@@ -12,6 +12,10 @@ que hace falta.
 
 ## Sin publicar
 
+- Batería: «Retenida en el tope» solo cuando está llena. Enchufada y sin
+  cargar por debajo, dice eso, o «En modo conservación» cuando el portátil lo
+  tiene puesto (el de Lenovo, y el Long_Life del kernel), que además sale en
+  sus límites de carga.
 - Informe: la cifra fija de una zona térmica que no mide (un acpitz a 27,8 °C)
   dice en el árbol de sensores que no es una medida; en la ventana ya salía
   en gris, pero el informe no tiene color.
