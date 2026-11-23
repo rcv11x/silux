@@ -12,6 +12,9 @@ que hace falta.
 
 ## Sin publicar
 
+- Sensores: dos discos del mismo driver (dos NVMe) compartían una fila, y
+  con ella el mínimo, el máximo y la media, que mezclaban los dos discos.
+  Ahora cada uno tiene la suya.
 - Gráficos: una NVIDIA cuyo driver no da el consumo (`nvidia-smi` lo da como
   N/A) sale sin consumo, con su aviso, y no con la media de su búfer de
   muestras, que el driver no da como su consumo: una RTX 4060 sin consumo

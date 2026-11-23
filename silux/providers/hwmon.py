@@ -342,6 +342,15 @@ ESTIMATED_LIMITS = {
 }
 
 
+def _device_name(entry: pathlib.Path) -> str:
+    """The name of the device a hwmon hangs from («nvme1», «2:0:0:0»), or
+    its own if it hangs from none."""
+    try:
+        return (entry / "device").resolve(strict=True).name
+    except OSError:
+        return entry.name
+
+
 def _plausible(reading, kind):
     """Drop a threshold outside what that kind of sensor can give."""
     if reading is None:
@@ -543,8 +552,9 @@ class HwmonSensors(Provider):
                     gpu_names: Optional[dict[str, str]] = None) -> Iterator[Sensor]:
         if not sysroot.path(HWMON).is_dir():
             return
-        for entry in sorted(sysroot.path(HWMON).iterdir()):
-            chip = read_text(str(entry / "name"))
+        entries = sorted(sysroot.path(HWMON).iterdir())
+        names = [read_text(str(entry / "name")) for entry in entries]
+        for entry, chip in zip(entries, names):
             if not chip:
                 continue
             # A laptop's battery and USB-C ports show in two places: here and
@@ -568,6 +578,12 @@ class HwmonSensors(Provider):
                     sensor = dataclasses.replace(
                         sensor, key=f"{chip}-{address}/{sensor.key.split('/', 1)[1]}",
                         bus_address=address)
+                elif sensor is not None and names.count(chip) > 1:
+                    # Two drives of one driver (two NVMe) shared their keys,
+                    # and with them one row, its peak and its average. By the
+                    # device each hangs from, which a reboot keeps.
+                    sensor = dataclasses.replace(
+                        sensor, key=f"{chip}-{_device_name(entry)}/{sensor.key.split('/', 1)[1]}")
                 if sensor is not None:
                     yield sensor
 

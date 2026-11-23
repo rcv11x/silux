@@ -462,3 +462,22 @@ class TestLaBateriaNoSaleDosVeces(unittest.TestCase):
                       current_now=0)
         self.assertTrue(
             hwmon._also_in_power_supply("ucsi-source-psy-USBC000:001"))
+
+
+class TestEverySensorItsOwnKey(unittest.TestCase):
+    """Two drives of one driver shared their keys: one row in the tree for
+    both, and one peak and one average mixing two disks."""
+
+    def test_in_every_dump(self):
+        from tests.test_equipos import foto, volcados
+
+        for carpeta in volcados():
+            with self.subTest(dump=carpeta.name):
+                keys = [s.key for s in foto(carpeta)[0].sensors]
+                self.assertEqual(len(keys), len(set(keys)))
+
+    def test_two_nvme_by_the_controller_each_hangs_from(self):
+        from tests.test_equipos import EQUIPOS, foto
+
+        keys = {s.key for s in foto(EQUIPOS / "5800x3d")[0].sensors if s.chip == "nvme"}
+        self.assertTrue({"nvme-nvme0/temp1", "nvme-nvme1/temp1"} <= keys)
