@@ -53,7 +53,9 @@ FILLER = {"5800x3d": True, "i5-10400": True, "i5-10400-turbo": True,
           # 67.5 °C with the core at 67, and 55 °C with ASUS's sensor at 55.
           "celeron-560": False, "i7-4710hq": False,
           # 27.8 and 29.8 °C again, with the package at 39.
-          "celeron-g3900": True}
+          "celeron-g3900": True,
+          # 27.8 and 10.0 °C, with the package at 49.
+          "i3-1115g4": True}
 
 
 class TestLasZonasQueNoMiden(unittest.TestCase):

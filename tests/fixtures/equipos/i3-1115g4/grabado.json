@@ -1,0 +1,379 @@
+{
+ "cpuid": {
+  "*:0:0": [
+   27,
+   1970169159,
+   1818588270,
+   1231384169
+  ],
+  "*:2147483648:0": [
+   2147483656,
+   0,
+   0,
+   0
+  ],
+  "0:1:0": [
+   526017,
+   1050624,
+   2147154879,
+   3219913727
+  ],
+  "0:2147483649:0": [
+   0,
+   0,
+   289,
+   739248128
+  ],
+  "0:2147483650:0": [
+   1752445233,
+   1852131104,
+   1953384736,
+   1378380901
+  ],
+  "0:2147483651:0": [
+   1866670121,
+   1411933554,
+   1763715405,
+   825306419
+  ],
+  "0:2147483652:0": [
+   877081905,
+   857751584,
+   1194340398,
+   31304
+  ],
+  "0:22:0": [
+   3000,
+   4100,
+   100,
+   0
+  ],
+  "0:7:0": [
+   2,
+   4089423851,
+   415260638,
+   4228908816
+  ],
+  "0:7:1": [
+   0,
+   0,
+   0,
+   262144
+  ]
+ },
+ "drm_modes": {
+  "card1": {
+   "eDP-1": {
+    "height": 1080,
+    "refresh_hz": 60.01,
+    "width": 1920
+   }
+  }
+ },
+ "gpuapi": {
+  "consultar": {
+   "opencl": [],
+   "opengl": {
+    "egl_vendor": "Mesa Project",
+    "egl_version": "1.5",
+    "glsl": "4.60",
+    "renderer": "Mesa Intel(R) UHD Graphics (TGL GT2)",
+    "vendor": "Intel",
+    "version": "4.6 (Compatibility Profile) Mesa 26.2.7"
+   },
+   "vaapi": [
+    {
+     "codecs": [
+      {
+       "bits": 10,
+       "decode": true,
+       "encode": false,
+       "name": "AV1",
+       "profiles": [
+        "Profile 0"
+       ]
+      },
+      {
+       "bits": 12,
+       "decode": true,
+       "encode": true,
+       "name": "HEVC",
+       "profiles": [
+        "Main",
+        "Main 10",
+        "Main 12",
+        "Main 4:2:2 10",
+        "Main 4:2:2 12",
+        "Main 4:4:4",
+        "Main 4:4:4 10",
+        "Main 4:4:4 12",
+        "SCC Main",
+        "SCC Main 10",
+        "SCC Main 4:4:4",
+        "SCC Main 4:4:4 10"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": true,
+       "name": "H.264",
+       "profiles": [
+        "Main",
+        "High",
+        "Constrained Baseline"
+       ]
+      },
+      {
+       "bits": 10,
+       "decode": true,
+       "encode": false,
+       "name": "VP9",
+       "profiles": [
+        "Profile 0",
+        "Profile 1",
+        "Profile 2",
+        "Profile 3"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": false,
+       "name": "VP8",
+       "profiles": [
+        "Version 0.3"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": true,
+       "name": "MPEG-2",
+       "profiles": [
+        "Simple",
+        "Main"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": false,
+       "name": "VC-1",
+       "profiles": [
+        "Simple",
+        "Main",
+        "Advanced"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": true,
+       "name": "JPEG",
+       "profiles": [
+        "Baseline"
+       ]
+      }
+     ],
+     "driver": "Intel iHD driver for Intel(R) Gen Graphics - 26.3.5 ()",
+     "node": "renderD128",
+     "version": "1.24"
+    }
+   ],
+   "vulkan": [
+    {
+     "api_version": "1.4.354",
+     "device_id": 39544,
+     "device_memory_bytes": 6028560384,
+     "driver_version": 109060103,
+     "instance_version": "1.4.350",
+     "kind": "integrada",
+     "name": "Intel(R) UHD Graphics (TGL GT2)",
+     "vendor_id": 32902
+    },
+    {
+     "api_version": "1.4.354",
+     "device_id": 0,
+     "device_memory_bytes": 8038080512,
+     "driver_version": 109060103,
+     "instance_version": "1.4.350",
+     "kind": "CPU",
+     "name": "llvmpipe (LLVM 23.1.5, 256 bits)",
+     "vendor_id": 65541
+    }
+   ],
+   "vulkan_icds": [
+    "libvulkan_asahi.so",
+    "libvulkan_asahi.so",
+    "libvulkan_broadcom.so",
+    "libvulkan_broadcom.so",
+    "libvulkan_dzn.so",
+    "libvulkan_dzn.so",
+    "libvulkan_freedreno.so",
+    "libvulkan_freedreno.so",
+    "libvulkan_intel_hasvk.so",
+    "libvulkan_intel_hasvk.so",
+    "libvulkan_intel.so",
+    "libvulkan_intel.so",
+    "libvulkan_lvp.so",
+    "libvulkan_lvp.so",
+    "libvulkan_nouveau.so",
+    "libvulkan_nouveau.so",
+    "libvulkan_panfrost.so",
+    "libvulkan_panfrost.so",
+    "libvulkan_powervr_mesa.so",
+    "libvulkan_powervr_mesa.so",
+    "libvulkan_radeon.so",
+    "libvulkan_radeon.so",
+    "libvulkan_virtio.so",
+    "libvulkan_virtio.so"
+   ],
+   "vulkan_rejected": []
+  }
+ },
+ "i915": {
+  "/dev/dri/renderD128": {
+   "chipset_id": 39544,
+   "eu_total": 48,
+   "subslices": 3
+  }
+ },
+ "ioctl_red": {
+  "eno1:0x8915": null,
+  "eno1:0x891b": null,
+  "lo:0x8915": "127.0.0.1",
+  "lo:0x891b": "255.0.0.0",
+  "wlo1:0x8915": "192.168.1.120",
+  "wlo1:0x891b": "255.255.255.0"
+ },
+ "nvml": {
+  "abierta": false
+ },
+ "paquetes": {
+  "egl": true,
+  "kmod": true,
+  "opencl": true,
+  "opengl": true,
+  "pci.ids": true,
+  "pkexec": true,
+  "pnp.ids": true,
+  "python3": true,
+  "systemctl": true,
+  "vaapi": true,
+  "vulkan": true,
+  "xdg-open": true
+ },
+ "pciids": {
+  "10ec:8168": {
+   "10ec:8168": [
+    "Realtek Semiconductor Co., Ltd.",
+    "RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller"
+   ]
+  },
+  "10ec:8168|10ec:c821|8086:9a0b|8086:9a78|8086:a0c8|8086:a0ed": {
+   "10ec:8168": [
+    "Realtek Semiconductor Co., Ltd.",
+    "RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller"
+   ],
+   "10ec:c821": [
+    "Realtek Semiconductor Co., Ltd.",
+    "RTL8821CE 802.11ac PCIe Wireless Network Adapter"
+   ],
+   "8086:9a0b": [
+    "Intel Corporation",
+    "Volume Management Device NVMe RAID Controller"
+   ],
+   "8086:9a78": [
+    "Intel Corporation",
+    "Tiger Lake-LP GT2 [UHD Graphics G4]"
+   ],
+   "8086:a0c8": [
+    "Intel Corporation",
+    "500 Series Chipset Family On-Package High Definition Audio (HD Audio)"
+   ],
+   "8086:a0ed": [
+    "Intel Corporation",
+    "500 Series Chipset Family On-Package USB 3.2 Gen 2x1 (10 Gbs) xHCI Host Controller"
+   ]
+  },
+  "10ec:c821": {
+   "10ec:c821": [
+    "Realtek Semiconductor Co., Ltd.",
+    "RTL8821CE 802.11ac PCIe Wireless Network Adapter"
+   ]
+  },
+  "8086:9a04|8086:a082": {
+   "8086:9a04": [
+    "Intel Corporation",
+    "11th Gen Core Processor UP3 2 Cores Host Bridge/DRAM Controller"
+   ],
+   "8086:a082": [
+    "Intel Corporation",
+    "500 Series Chipset Family On-Package eSPI Controller"
+   ]
+  },
+  "8086:9a78|8086:9a78:103c:881d": {
+   "8086:9a78": [
+    "Intel Corporation",
+    "Tiger Lake-LP GT2 [UHD Graphics G4]"
+   ]
+  }
+ },
+ "pciids_fabricante": {
+  "103c": "Hewlett-Packard Company"
+ },
+ "plataforma": {
+  "entorno": {
+   "DESKTOP_SESSION": "gnome",
+   "DISPLAY": ":0",
+   "GDMSESSION": "gnome",
+   "SHELL": "/usr/bin/bash",
+   "WAYLAND_DISPLAY": "wayland-0",
+   "XDG_CURRENT_DESKTOP": "GNOME",
+   "XDG_SESSION_TYPE": "wayland"
+  },
+  "kvm": true,
+  "machine": "x86_64",
+  "procesos": 314,
+  "uname": {
+   "machine": "x86_64",
+   "node": "silux-pc",
+   "release": "7.3.4-300.fc45.x86_64",
+   "system": "Linux",
+   "version": "#1 SMP PREEMPT_DYNAMIC Wed Nov 11 00:15:32 UTC 2026"
+  }
+ },
+ "realpath": {
+  "/dev/nvme0n1p1": "/dev/nvme0n1p1",
+  "/dev/nvme0n1p2": "/dev/nvme0n1p2",
+  "/dev/nvme0n1p3": "/dev/nvme0n1p3"
+ },
+ "statfs": {
+  "/": [
+   61836544,
+   28641454,
+   27792010,
+   4096
+  ],
+  "/boot": [
+   498138,
+   344597,
+   314287,
+   4096
+  ],
+  "/boot/efi": [
+   153296,
+   148152,
+   148152,
+   4096
+  ]
+ },
+ "systemd": {
+  "arranque": {
+   "FinishTimestampMonotonic": 15260031,
+   "InitRDTimestampMonotonic": 623996,
+   "UserspaceTimestampMonotonic": 2561479
+  }
+ }
+}
