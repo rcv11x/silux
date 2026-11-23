@@ -269,21 +269,22 @@ El ayudante que se lanza solo sabe leer esa tabla y unos registros del procesado
 
 ## Gráficos
 
-AMD Radeon Vega 3 Graphics
+### AMD Radeon Vega 3 Graphics
+
 MSI · Picasso/Raven 2 · PCIe 3.0 × 16
 amdgpu · Mesa 26.3.1 · 512 MiB · 3 CU · integrada · principal
 - Uso: 15 %
 - Frecuencia: 400 MHz (memoria 933 MHz)
 - Temperatura: 30 °C
 
-### Ahora mismo
+#### Ahora mismo
 
 - Memoria de video: 266.4 MiB de 512 MiB · 52 %
 - Render / 3D: 15 %
 
 Esta gráfica no publica cuánto se usa su motor de video.
 
-### Tarjeta
+#### Tarjeta
 
 - Fabricante: AMD
 - Ensamblada por: MSI
@@ -294,7 +295,7 @@ Esta gráfica no publica cuánto se usa su motor de video.
 - ROPs (unidades de rasterizado): 1
 - Motores de sombreado: 1
 
-#### Identificadores
+##### Identificadores
 
 - Identificador: 1002:15D8
 - Subsistema: 1462:7C51
@@ -302,7 +303,7 @@ Esta gráfica no publica cuánto se usa su motor de video.
 - Nodo DRM: card1
 - BIOS de video: 113-RAVEN2-115
 
-### Memoria de video
+#### Memoria de video
 
 - Total: 512 MiB
 - Tipo: DDR4
@@ -315,7 +316,7 @@ Esta gráfica no publica cuánto se usa su motor de video.
 
 amdgpu no publica chips de esta tarjeta.
 
-### Relojes y enlace
+#### Relojes y enlace
 
 - Núcleo: 400 MHz
 - Núcleo (máximo): 1.10 GHz
@@ -327,18 +328,18 @@ amdgpu no publica chips de esta tarjeta.
 
 amdgpu no publica SoC de esta tarjeta.
 
-#### Para expertos
+##### Para expertos
 
 - Escalones del núcleo: 200 · ▸400 · 1100 MHz
 - Escalones de la memoria: 400 · ▸933 · 1067 · 1200 MHz
 
 ▸ marca el escalón en uso.
 
-### Consumo y temperaturas
+#### Consumo y temperaturas
 
 Los reguladores de voltaje y el ventilador son de una tarjeta aparte: esta se alimenta y se refrigera con el resto del equipo. En una APU, el consumo que da el driver es el del procesador entero y su segunda temperatura es la del SoC: ninguna de las dos es de la gráfica. amdgpu no publica estado, chips de memoria, voltaje ni otros 3 datos de esta tarjeta.
 
-### Códecs de video por hardware
+#### Códecs de video por hardware
 
 | CÓDEC | DECODIFICA | CODIFICA | PROFUNDIDAD | PERFILES |
 |---|---|---|---|---|
@@ -349,14 +350,14 @@ Los reguladores de voltaje y el ventilador son de una tarjeta aparte: esta se al
 | VC-1 | ✓ | ✗ | 8 bits | Simple, Main, Advanced |
 | JPEG | ✓ | ✗ | 8 bits | Baseline |
 
-### Bibliotecas gráficas
+#### Bibliotecas gráficas
 
 | API | VERSIÓN | DRIVER | DETALLE |
 |---|---|---|---|
 | Vulkan | 1.4.363 | radv (Mesa 26.3.1) | — |
 | OpenGL | 4.6 | radeonsi (Mesa 26.3.1) | GLSL 4.60 |
 
-### Monitores y salidas de video
+#### Monitores y salidas de video
 
 | SALIDA | MONITOR | RESOLUCIÓN PREFERIDA | REFRESCO | TAMAÑO | COLOR Y HDR | FABRICADO |
 |---|---|---|---|---|---|---|

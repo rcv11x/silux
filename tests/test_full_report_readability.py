@@ -83,5 +83,38 @@ class TestALockedFigure(unittest.TestCase):
         self.assertNotIn(f"{locked} ({_('lock.detail')})", text)
 
 
+
+@unittest.skipIf(QApplication is None, "no PySide6")
+class TestEachPartHasItsHeading(unittest.TestCase):
+    """A hybrid processor's core types and each graphics card are sections:
+    their name was a loose line, read as part of the text above."""
+
+    @classmethod
+    def setUpClass(cls):
+        from silux.ui import full_report
+        qt.app()
+        cls.text = full_report.build(shared_snapshot(EQUIPOS / "i5-12450h"),
+                                     sections=["cpu", "graficos"])
+
+    def _headings(self):
+        return [line for line in self.text.splitlines() if line.startswith("#")]
+
+    def test_core_types(self):
+        headings = self._headings()
+        for kind in ("core.type.p", "core.type.e"):
+            with self.subTest(kind=kind):
+                at = headings.index(f"### {_(kind)}")
+                self.assertEqual(headings[at + 1], f"#### {_('cpu.card.processor')}")
+        self.assertNotRegex(self.text, rf"(?m)^{re.escape(_('core.type.p'))}$")
+
+    def test_graphics_cards(self):
+        headings = self._headings()
+        for name in ("UHD Graphics", "NVIDIA GeForce RTX 4050 Laptop GPU"):
+            with self.subTest(card=name):
+                at = headings.index(f"### {name}")
+                self.assertTrue(headings[at + 1].startswith("#### "))
+                self.assertNotRegex(self.text, rf"(?m)^{re.escape(name)}$")
+
+
 if __name__ == "__main__":
     unittest.main()

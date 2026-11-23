@@ -272,7 +272,8 @@ El ayudante que se lanza solo sabe leer esa tabla y unos registros del procesado
 
 ## Gráficos
 
-Mobile GM965/GL960 Integrated Graphics
+### Mobile GM965/GL960 Integrated Graphics
+
 Dell
 i915 · Mesa 25.0.7 · integrada · principal
 - Uso: (necesita permisos)
@@ -286,13 +287,13 @@ i915 · Mesa 25.0.7 · integrada · principal
 > **Este equipo no lo expone**
 > Esta gráfica va dentro del procesador y no tiene sensor de temperatura propio.
 
-### Ahora mismo
+#### Ahora mismo
 
 - Render / 3D: (necesita permisos)
 
 Esta gráfica no publica cuánto se usa su motor de video.
 
-### Tarjeta
+#### Tarjeta
 
 - Fabricante: Intel
 - Ensamblada por: Dell
@@ -301,23 +302,23 @@ Esta gráfica no publica cuánto se usa su motor de video.
 
 i915 no cuenta unidades de rasterizado ni motores de sombreado: el recuento de Intel son las unidades de ejecución. Una integrada de Intel no tiene BIOS de video propia: va dentro del firmware del equipo. Ni su driver (i915) ni la base de datos de dispositivos PCI dan nombre en clave ni unidades de proceso de esta tarjeta.
 
-#### Identificadores
+##### Identificadores
 
 - Identificador: 8086:2A02
 - Subsistema: 1028:0298
 - Ranura PCI: 0000:00:02.0
 - Nodo DRM: card0
 
-### Memoria de video
+#### Memoria de video
 
 Una integrada no tiene memoria propia: usa la del sistema, así que no hay tipo, bus, ancho de banda, tasa de datos ni Resizable BAR que contar. i915 no publica memoria del sistema (GTT) de esta tarjeta.
 
-### Relojes y enlace
+#### Relojes y enlace
 
 Sin memoria de video propia no hay reloj de memoria que enseñar. No tiene reloj de SoC ni perfil de rendimiento, y va dentro del procesador: no cuelga de un enlace PCIe. i915 no publica núcleo ni núcleo (máximo) de esta tarjeta.
 Una integrada no tiene reguladores de voltaje, ventilador, SoC aparte ni memoria propia. Esta no publica su temperatura, su voltaje ni si se está frenando.
 
-### Motores gráficos
+#### Motores gráficos
 
 - En reposo: —
 
@@ -325,13 +326,13 @@ Una integrada no tiene reguladores de voltaje, ventilador, SoC aparte ni memoria
 |---|---|---|---|
 | rcs0 | render | (necesita permisos) |  |
 
-### Bibliotecas gráficas
+#### Bibliotecas gráficas
 
 | API | VERSIÓN | DRIVER | DETALLE |
 |---|---|---|---|
 | OpenGL | 2.1 | 25.0.7-0ubuntu0.24.04.2 | GLSL 1.20 |
 
-### Monitores y salidas de video
+#### Monitores y salidas de video
 
 | SALIDA | MONITOR | RESOLUCIÓN | REFRESCO | TAMAÑO | COLOR Y HDR | FABRICADO |
 |---|---|---|---|---|---|---|

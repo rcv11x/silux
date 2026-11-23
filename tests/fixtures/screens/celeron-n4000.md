@@ -257,7 +257,8 @@ El ayudante que se lanza solo sabe leer esa tabla y unos registros del procesado
 
 ## Gráficos
 
-UHD Graphics 600
+### UHD Graphics 600
+
 Lenovo · GeminiLake
 i915 · Mesa 25.2.6 · 12 EU · integrada · principal
 - Uso: (necesita permisos)
@@ -272,14 +273,14 @@ i915 · Mesa 25.2.6 · 12 EU · integrada · principal
 > **Este equipo no lo expone**
 > Esta gráfica va dentro del procesador y no tiene sensor de temperatura propio: se muestra la del paquete, que comparte con la CPU.
 
-### Ahora mismo
+#### Ahora mismo
 
 - Render / 3D: (necesita permisos)
 - Video (codificar y decodificar): (necesita permisos)
 - Mejora de video: (necesita permisos)
 - Copia: (necesita permisos)
 
-### Tarjeta
+#### Tarjeta
 
 - Fabricante: Intel
 - Ensamblada por: Lenovo
@@ -290,20 +291,20 @@ i915 · Mesa 25.2.6 · 12 EU · integrada · principal
 
 i915 no cuenta unidades de rasterizado ni motores de sombreado: el recuento de Intel son las unidades de ejecución. Una integrada de Intel no tiene BIOS de video propia: va dentro del firmware del equipo.
 
-#### Identificadores
+##### Identificadores
 
 - Identificador: 8086:3185
 - Subsistema: 17AA:3805
 - Ranura PCI: 0000:00:02.0
 - Nodo DRM: card0
 
-### Memoria de video
+#### Memoria de video
 
 - Memoria del sistema (GTT): hasta 5.7 GiB
 
 Una integrada no tiene memoria propia: usa la del sistema, así que no hay tipo, bus, ancho de banda, tasa de datos ni Resizable BAR que contar.
 
-### Relojes y enlace
+#### Relojes y enlace
 
 - Núcleo: 100 MHz
 - Máxima (silicio): 650 MHz
@@ -313,7 +314,7 @@ Una integrada no tiene memoria propia: usa la del sistema, así que no hay tipo,
 Sin memoria de video propia no hay reloj de memoria que enseñar. No tiene reloj de SoC ni perfil de rendimiento, y va dentro del procesador: no cuelga de un enlace PCIe.
 Una integrada no tiene reguladores de voltaje, ventilador, SoC aparte ni memoria propia. Esta no publica su temperatura, su voltaje ni si se está frenando.
 
-### Motores gráficos
+#### Motores gráficos
 
 - En reposo: 0.0 %
 
@@ -324,7 +325,7 @@ Una integrada no tiene reguladores de voltaje, ventilador, SoC aparte ni memoria
 | vcs0 | video | (necesita permisos) | hevc, sfc |
 | vecs0 | mejora de video | (necesita permisos) |  |
 
-### Códecs de video por hardware
+#### Códecs de video por hardware
 
 | CÓDEC | DECODIFICA | CODIFICA | PROFUNDIDAD | PERFILES |
 |---|---|---|---|---|
@@ -336,14 +337,14 @@ Una integrada no tiene reguladores de voltaje, ventilador, SoC aparte ni memoria
 | VC-1 | ✓ | ✗ | 8 bits | Simple, Main, Advanced |
 | JPEG | ✓ | ✓ | 8 bits | Baseline |
 
-### Bibliotecas gráficas
+#### Bibliotecas gráficas
 
 | API | VERSIÓN | DRIVER | DETALLE |
 |---|---|---|---|
 | Vulkan | 1.4.348 | 26.1.2 | — |
 | OpenGL | 4.6 | 25.2.6-1 | GLSL 4.60 |
 
-### Monitores y salidas de video
+#### Monitores y salidas de video
 
 | SALIDA | MONITOR | RESOLUCIÓN PREFERIDA | REFRESCO | TAMAÑO | COLOR Y HDR | FABRICADO |
 |---|---|---|---|---|---|---|

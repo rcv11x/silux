@@ -269,7 +269,10 @@ def _tabla(filas: list[list[str]]) -> list[str]:
     return salida + [""]
 
 
-def _lineas(widget, raiz) -> list[str]:
+def _lineas(widget, raiz, level: int = 3) -> list[str]:
+    """`level`: the heading level of a card here; a part of a page with its
+    own title (each core type, each graphics card) pushes what it holds one
+    level down."""
     from PySide6.QtWidgets import QAbstractButton, QComboBox, QLabel, QScrollArea, QTreeWidget
 
     from .. import render
@@ -278,6 +281,8 @@ def _lineas(widget, raiz) -> list[str]:
 
     if not _visible(widget, raiz):
         return []
+    if widget.property("report_title"):
+        return []                    # its section writes it as a heading
     if isinstance(widget, LockMark):
         return [f"({_('report.locked')})"]
     if isinstance(widget, (QAbstractButton, Sparkline)):
@@ -317,18 +322,24 @@ def _lineas(widget, raiz) -> list[str]:
         return _notice(widget, raiz)
 
     lineas: list[str] = []
+    section_title = getattr(widget, "report_title_label", None)
+    if (section_title is not None and section_title.isVisibleTo(raiz)
+            and section_title.text().strip()):
+        lineas += ["", f"{'#' * level} {_texto_de_etiqueta(section_title)}", ""]
+        level += 1
     if isinstance(widget, Card):
         titulo = getattr(widget, "_title_label", None)
         if titulo is not None and titulo.isVisibleTo(raiz) and titulo.text().strip():
-            lineas += ["", f"### {_texto_de_etiqueta(titulo)}", ""]
+            lineas += ["", f"{'#' * level} {_texto_de_etiqueta(titulo)}", ""]
     if isinstance(widget, Plegable):
-        lineas += ["", f"#### {widget._titulo}", ""]
+        lineas += ["", f"{'#' * (level + 1)} {widget._titulo}", ""]
     if isinstance(widget, QScrollArea) and widget.widget() is not None:
-        return lineas + _lineas(widget.widget(), raiz)
+        return lineas + _lineas(widget.widget(), raiz, level)
 
     disposicion = widget.layout()
     if disposicion is not None:
-        lineas += _de_layout(disposicion, raiz, saltar=getattr(widget, "_title_label", None))
+        lineas += _de_layout(disposicion, raiz, saltar=getattr(widget, "_title_label", None),
+                             level=level)
     return lineas
 
 
@@ -385,7 +396,7 @@ def _solo_hijos():
     return Qt.FindChildOption.FindDirectChildrenOnly
 
 
-def _de_layout(disposicion, raiz, saltar=None) -> list[str]:
+def _de_layout(disposicion, raiz, saltar=None, level: int = 3) -> list[str]:
     """Un layout: si todo lo que lleva son hojas, en una línea (una fila de
     una rejilla, una por fila); si lleva tarjetas o rejillas, recorrido."""
     from PySide6.QtWidgets import QBoxLayout, QGridLayout
@@ -402,7 +413,7 @@ def _de_layout(disposicion, raiz, saltar=None) -> list[str]:
     lineas: list[str] = []
     for item in items:
         if item.widget() is not None:
-            lineas += _lineas(item.widget(), raiz)
+            lineas += _lineas(item.widget(), raiz, level)
         elif item.layout() is not None:
-            lineas += _de_layout(item.layout(), raiz)
+            lineas += _de_layout(item.layout(), raiz, level=level)
     return lineas

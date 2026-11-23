@@ -202,15 +202,16 @@ El ayudante que se lanza solo sabe leer esa tabla y unos registros del procesado
 
 ## Gráficos
 
-QEMU Standard VGA
+### QEMU Standard VGA
+
 Red Hat
 bochs-drm · principal
 
-### Ahora mismo
+#### Ahora mismo
 
 Esta gráfica no publica cuánto se usa su motor gráfico ni su motor de video.
 
-### Tarjeta
+#### Tarjeta
 
 - Fabricante: QEMU
 - Ensamblada por: Red Hat
@@ -218,7 +219,7 @@ Esta gráfica no publica cuánto se usa su motor gráfico ni su motor de video.
 
 Es una gráfica emulada por el hipervisor: no tiene nombre en clave ni unidades de proceso que contar.
 
-#### Identificadores
+##### Identificadores
 
 - Identificador: 1234:1111
 - Subsistema: 1AF4:1100
@@ -226,25 +227,25 @@ Es una gráfica emulada por el hipervisor: no tiene nombre en clave ni unidades 
 - Nodo DRM: card0
 - BIOS de video: —
 
-### Memoria de video
+#### Memoria de video
 
 No tiene memoria de video propia.
 
-### Relojes y enlace
+#### Relojes y enlace
 
 No tiene relojes ni enlace PCIe: no hay silicio debajo.
 
-### Consumo y temperaturas
+#### Consumo y temperaturas
 
 Tampoco temperaturas, voltajes, ventilador ni consumo.
 
-### Bibliotecas gráficas
+#### Bibliotecas gráficas
 
 | API | VERSIÓN | DRIVER | DETALLE |
 |---|---|---|---|
 | Sin bibliotecas gráficas | — | — | — |
 
-### Monitores y salidas de video
+#### Monitores y salidas de video
 
 | SALIDA | MONITOR | RESOLUCIÓN PREFERIDA | REFRESCO | TAMAÑO | COLOR Y HDR | FABRICADO |
 |---|---|---|---|---|---|---|

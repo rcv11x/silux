@@ -331,7 +331,8 @@ El ayudante que se lanza solo sabe leer esa tabla y unos registros del procesado
 
 ## Gráficos
 
-GeForce RTX 4060
+### GeForce RTX 4060
+
 MSI · AD107 · PCIe 3.0 × 8
 nvidia · 620.73.04 · 8.0 GiB · 3072 CUDA · principal
 - Uso: 0 %
@@ -339,7 +340,7 @@ nvidia · 620.73.04 · 8.0 GiB · 3072 CUDA · principal
 - Temperatura: 48 °C
 - Consumo: 53 W (de 115 W)
 
-### Ahora mismo
+#### Ahora mismo
 
 - Memoria de video: 866.5 MiB de 8.0 GiB · 11 %
 - Consumo: 53 W de 115 W · 46 %
@@ -348,7 +349,7 @@ nvidia · 620.73.04 · 8.0 GiB · 3072 CUDA · principal
 - Decodificar video: 0 %
 - Codificar video: 0 %
 
-### Tarjeta
+#### Tarjeta
 
 - Fabricante: NVIDIA
 - Ensamblada por: MSI
@@ -359,7 +360,7 @@ nvidia · 620.73.04 · 8.0 GiB · 3072 CUDA · principal
 
 NVML no cuenta unidades de rasterizado ni motores de sombreado: el recuento de NVIDIA son los núcleos CUDA.
 
-#### Identificadores
+##### Identificadores
 
 - Identificador: 10DE:2882
 - Subsistema: 1462:5161
@@ -367,14 +368,14 @@ NVML no cuenta unidades de rasterizado ni motores de sombreado: el recuento de N
 - Nodo DRM: card1
 - BIOS de video: 95.07.31.40.F2
 
-### Memoria de video
+#### Memoria de video
 
 - Total: 8.0 GiB
 - Bus: 128 bits
 
 El driver de NVIDIA no publica el tipo de memoria, su ancho de banda, cuánta ve el procesador ni de quién son los chips.
 
-### Relojes y enlace
+#### Relojes y enlace
 
 - Núcleo: 1.98 GHz
 - Núcleo (máximo): 3.10 GHz
@@ -386,7 +387,7 @@ El driver de NVIDIA no publica el tipo de memoria, su ancho de banda, cuánta ve
 
 Una NVIDIA no tiene reloj de SoC ni perfil de rendimiento, y NVML no da la frecuencia efectiva de la memoria.
 
-### Consumo y temperaturas
+#### Consumo y temperaturas
 
 - Estado: sin límites
 - Límite de potencia: 115 W
@@ -394,7 +395,7 @@ Una NVIDIA no tiene reloj de SoC ni perfil de rendimiento, y NVML no da la frecu
 
 En una GeForce, NVML no publica el punto caliente, la temperatura de la memoria, los reguladores ni los voltajes; el uso del video está en «Ahora mismo».
 
-### Bibliotecas gráficas
+#### Bibliotecas gráficas
 
 | API | VERSIÓN | DRIVER | DETALLE |
 |---|---|---|---|
@@ -402,7 +403,7 @@ En una GeForce, NVML no publica el punto caliente, la temperatura de la memoria,
 | OpenGL | 4.6.0 | 620.73.04 | GLSL 4.60 NVIDIA |
 | OpenCL | 3.0 | 620.73.04 | 24 unidades de cómputo |
 
-### Monitores y salidas de video
+#### Monitores y salidas de video
 
 | SALIDA | MONITOR | RESOLUCIÓN | REFRESCO | TAMAÑO | COLOR Y HDR | FABRICADO |
 |---|---|---|---|---|---|---|

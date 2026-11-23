@@ -16,6 +16,9 @@ que hace falta.
   cargar por debajo, dice eso, o «En modo conservación» cuando el portátil lo
   tiene puesto (el de Lenovo, y el Long_Life del kernel), que además sale en
   sus límites de carga.
+- Informe: cada tipo de núcleo de un procesador híbrido y cada gráfica son
+  un apartado con su encabezado, y lo de dentro baja un nivel; antes su
+  nombre era una línea suelta que parecía del texto de arriba.
 - Informe: la cifra fija de una zona térmica que no mide (un acpitz a 27,8 °C)
   dice en el árbol de sensores que no es una medida; en la ventana ya salía
   en gris, pero el informe no tiene color.

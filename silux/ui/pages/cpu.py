@@ -97,11 +97,15 @@ class TypeSection(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(m.section_gap)
 
+        # The report writes it as the heading of what follows.
+        self.report_title_label: Optional[QLabel] = None
         if title:
             heading = QLabel(title)
             heading.setObjectName("Subhead")
             heading.setWordWrap(True)
+            heading.setProperty("report_title", True)
             layout.addWidget(heading)
+            self.report_title_label = heading
 
         processor_card = Card(_("cpu.card.processor"))
         self.processor = InfoGrid()

@@ -546,6 +546,9 @@ class GpuSection(QWidget):
         self.title = QLabel(_("gpu.loading"))
         self.title.setObjectName("Headline")
         self.title.setWordWrap(True)
+        # The report writes each card's name as the heading of its section.
+        self.title.setProperty("report_title", True)
+        self.report_title_label = self.title
         self.title.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         self.subtitle = QLabel("")
         self.subtitle.setObjectName("Subhead")
