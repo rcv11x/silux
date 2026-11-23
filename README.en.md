@@ -31,6 +31,8 @@ chmod +x silux-x86_64.AppImage
 ./silux-x86_64.AppImage
 ```
 
+<sub>On KDE, the file shows Silux's logo when libappimage is installed (on Arch and derivatives, `sudo pacman -S libappimage`).</sub>
+
 It works with [Linux 5.15](docs/kernel.md) or later. Some data, such as the memory modules, disk health or voltages, can only be read by the administrator: Silux asks for it when you click a padlock and explains first what it is going to read. Reading changes nothing; what does change the system (loading a kernel module, leaving the permissions installed) is said before it is done.
 
 From source, with [uv](https://docs.astral.sh/uv/), which brings Python 3.10 or later and PySide6:

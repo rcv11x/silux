@@ -31,6 +31,8 @@ chmod +x silux-x86_64.AppImage
 ./silux-x86_64.AppImage
 ```
 
+<sub>En KDE, el archivo enseña el logo de Silux si está instalada libappimage (en Arch y derivadas, `sudo pacman -S libappimage`).</sub>
+
 Funciona con [Linux 5.15](docs/kernel.md) o posterior. Algunos datos, como los módulos de memoria, la salud de los discos o el voltaje, solo los puede leer el administrador: Silux los pide al pulsar un candado y explica antes qué va a leer. Leer no cambia nada; lo que sí cambia el sistema (cargar un módulo del kernel, dejar los permisos instalados) lo dice antes de hacerlo.
 
 Desde el código, con [uv](https://docs.astral.sh/uv/), que trae Python 3.10 o posterior y PySide6:
