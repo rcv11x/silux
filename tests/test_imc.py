@@ -13,6 +13,7 @@ propósito— y comprobar que el contador veía esos mismos diez.
 import unittest
 from unittest import mock
 
+from silux import volcado
 from silux.i18n import _
 from silux.model import Snapshot, MemoryTraffic, Need, SensorKind
 from silux.privileged import helper, protocol
@@ -20,6 +21,7 @@ from silux.privileged.client import HelperError, ImcReading, PmuUnsupported
 from silux.providers.base import Draft
 from silux.providers.imc import ImcTraffic
 from tests import qt
+from tests.test_equipos import EQUIPOS
 
 BYTES_POR_CUENTA = 64
 ESCALA = 6.103515625e-05          # MiB por cuenta, tal y como la publica el kernel
@@ -301,13 +303,10 @@ class TestPorQueFaltaCuandoFalta(unittest.TestCase):
 
     def test_sin_contador_no_se_pide_nada(self):
         """En un Ryzen, pedir la contraseña para no enseñar nada sería peor."""
-        import silux.providers.imc as modulo
-        original = modulo.has_controller
-        modulo.has_controller = lambda: False
-        self.addCleanup(setattr, modulo, "has_controller", original)
-
-        proveedor = ImcTraffic(client=None)
-        self.assertEqual(proveedor.unavailable_reason()[1], Need.HARDWARE)
+        # A Ryzen's dump and not this machine's sysfs, which may have one.
+        with volcado.mounted(EQUIPOS / "5800x3d"):
+            proveedor = ImcTraffic(client=None)
+            self.assertEqual(proveedor.unavailable_reason()[1], Need.HARDWARE)
 
     def test_el_buscador_de_pmu_lee_el_sysfs_de_verdad(self):
         """Sin exigir resultado: esta máquina puede no tener ninguno."""
