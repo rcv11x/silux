@@ -253,11 +253,11 @@ class TestLosAvisosDeLasPaginas(unittest.TestCase):
                                             _("perm.notice.later"), _("perm.notice.never")])
                 self.assertFalse([t for t in visibles if "pedirla" in t])
 
-    def test_con_un_ayudante_atrasado_su_boton_va_en_otro_renglon_y_cabe(self):
-        """En el 5800X3D, con el ayudante instalado de una versión anterior,
-        «Actualizar el ayudante del sistema» iba en la fila de los otros
-        cuatro botones: en compacto a 900 px la tarjeta pedía más ancho del
-        que hay y Memoria y Almacenamiento salían cortadas por la derecha."""
+    def test_con_un_ayudante_atrasado_su_boton_va_primero_y_cabe(self):
+        """With the helper installed from another version, «Update the
+        helper» goes first, as in Home's notice, and in compact at 900 px
+        the card still fits: the row folds into a column when it doesn't.
+        In its row, before the fold, Memory and Storage came out cut."""
         from PySide6.QtCore import QPoint
         from silux.privileged.client import PrivilegedClient
         from silux.ui import theme
@@ -280,9 +280,11 @@ class TestLosAvisosDeLasPaginas(unittest.TestCase):
                 with self.subTest(pagina=nombre):
                     boton = pagina.permanent_button
                     self.assertTrue(boton.isVisible())
-                    def y(w):
-                        return w.mapTo(ventana, QPoint(0, 0)).y()
-                    self.assertGreater(y(boton), y(pagina.elevation_button))
+                    def place(w):
+                        point = w.mapTo(ventana, QPoint(0, 0))
+                        return point.y(), point.x()
+                    # First: above when the row folds, to the left when not.
+                    self.assertLess(place(boton), place(pagina.elevation_button))
                     for b in (boton, pagina.dismiss_button):
                         derecha = b.mapTo(ventana, QPoint(b.width(), 0)).x()
                         self.assertLessEqual(derecha, ventana.width(), b.text())

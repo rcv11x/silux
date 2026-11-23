@@ -22,7 +22,7 @@ from tests.test_volcar_equipo import _herramienta
 try:
     from PySide6.QtCore import Qt
     from PySide6.QtTest import QTest
-    from PySide6.QtWidgets import QApplication
+    from PySide6.QtWidgets import QApplication, QPushButton
 except ImportError:                                    # pragma: no cover
     QApplication = None
 
@@ -143,15 +143,28 @@ class TestInTheWindow(unittest.TestCase):
             self.app.processEvents()
 
     def test_memory_and_storage_leave_only_update(self):
+        # The same notice as Home's, with the same look: «Update the helper»
+        # first and as the main button, and «Not now»; it came out grey,
+        # under «What does this do».
         window = self._window()
-        window.select_section("Memoria")
-        self._settle()
-        self.assertEqual(window.memory_page.elevation_text.text(), _("perm.outdated.body"))
-        self.assertFalse(window.memory_page.elevation_button.isVisible())
-        window.select_section("Almacenamiento")
-        self._settle()
-        self.assertEqual(window.storage_page.elevation_text.text(), _("perm.outdated.body"))
-        self.assertFalse(window.storage_page.elevation_button.isVisible())
+        home = window.home_page.permission_notice
+        for section, page in (("Memoria", window.memory_page),
+                              ("Almacenamiento", window.storage_page)):
+            with self.subTest(section=section):
+                window.select_section(section)
+                self._settle()
+                self.assertEqual(page.elevation_text.text(), _("perm.outdated.body"))
+                self.assertFalse(page.elevation_button.isVisible())
+                update = page.permanent_button
+                self.assertTrue(update.isVisible())
+                self.assertEqual(update.text(), home.grant_button.text())
+                self.assertEqual(update.objectName(), home.grant_button.objectName())
+                row = update.parentWidget()
+                shown = [w for w in row.findChildren(QPushButton) if w.isVisible()]
+                self.assertIs(min(shown, key=lambda w: (w.y(), w.x())), update)
+                self.assertFalse(page.explain_button.isVisible())
+                self.assertFalse(page.dismiss_button.isVisible())
+                self.assertTrue(page.snooze_button.isVisible())
 
     def test_after_updating_the_static_part_is_read_again(self):
         window = self._window()

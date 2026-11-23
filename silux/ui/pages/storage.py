@@ -213,7 +213,7 @@ class StoragePage(ScrollPage):
         self.elevation_text.setObjectName("NoticeBody")
         self.elevation_text.setWordWrap(True)
 
-        detalle = QLabel(
+        self.elevation_hint = detalle = QLabel(
             _("storage.health.hint")
         )
         detalle.setObjectName("Muted")
@@ -235,6 +235,9 @@ class StoragePage(ScrollPage):
         self.dismiss_button.clicked.connect(self.permission_dismissed)
 
         fila = FoldingRow()
+        # First, where the one that gives permissions goes: with the helper
+        # out of date it's the only thing to do, as in Home's notice.
+        fila.add_widget(self.permanent_button)
         fila.add_widget(self.elevation_button)
         fila.add_widget(self.explain_button)
         fila.add_stretch(1)
@@ -244,10 +247,6 @@ class StoragePage(ScrollPage):
         card.body.addWidget(self.elevation_text)
         card.body.addWidget(detalle)
         card.body.addWidget(fila)
-        # El de sustituir un ayudante atrasado va en su renglón. Sale pocas
-        # veces, y en la fila de los otros cuatro no cabe: en compacto a
-        # 900 px la tarjeta se salía por la derecha y arrastraba la página.
-        card.body.addWidget(self.permanent_button, 0, Qt.AlignmentFlag.AlignLeft)
         self.elevation_card = card
         return card
 
@@ -285,8 +284,12 @@ class StoragePage(ScrollPage):
             _("perm.outdated.body") if outdated
             else _("storage.health.read").format(n=leidos, total=len(reales)) if leidos
             else _("storage.health.body"))
-        # Updating the helper is what brings it back: its button is the one left.
+        # Updating the helper is what brings it back: its button is the one
+        # left, with «Not now», as in Home's notice.
         self.elevation_button.setVisible(not outdated)
+        self.elevation_hint.setVisible(not outdated)
+        self.explain_button.setVisible(not outdated)
+        self.dismiss_button.setVisible(not outdated)
 
     def record(self, snapshot: Snapshot) -> None:
         """Las fichas de arriba, que guardan la historia de la lectura y la

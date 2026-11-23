@@ -12,6 +12,9 @@ que hace falta.
 
 ## Sin publicar
 
+- Almacenamiento y Memoria: con el ayudante desfasado, «Actualizar el
+  ayudante» sale como en Inicio: naranja, el primero y con «Ahora no»;
+  antes salía gris, debajo de «Qué hace esto».
 - Sensores: un disco SATA con drivetemp se llama por su modelo («KIOXIA-EXCERIA
   S»), sin el «ATA» de relleno delante.
 - Interfaz: en las tablas de etiqueta y valor, un valor largo baja de línea

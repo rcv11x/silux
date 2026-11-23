@@ -304,6 +304,9 @@ class MemoryPage(ScrollPage):
         self.dismiss_button.clicked.connect(self.permission_dismissed)
 
         row = FoldingRow()
+        # First, where the one that gives permissions goes: with the helper
+        # out of date it's the only thing to do, as in Home's notice.
+        row.add_widget(self.permanent_button)
         row.add_widget(self.elevation_button)
         row.add_widget(self.explain_button)
         row.add_stretch(1)
@@ -313,10 +316,6 @@ class MemoryPage(ScrollPage):
         card.body.addWidget(self.elevation_text)
         card.body.addWidget(self.elevation_hint)
         card.body.addWidget(row)
-        # El de sustituir un ayudante atrasado va en su renglón. Sale pocas
-        # veces, y en la fila de los otros cuatro no cabe: en compacto a
-        # 900 px la tarjeta se salía por la derecha y arrastraba la página.
-        card.body.addWidget(self.permanent_button, 0, Qt.AlignmentFlag.AlignLeft)
         return card
 
     def _build_traffic(self) -> QWidget:
@@ -761,6 +760,10 @@ class MemoryPage(ScrollPage):
                 _("memory.elev.helper")
             )
             self.elevation_button.show()
+        # With the helper out of date, updating it is what is left, with
+        # «Not now», as in Home's notice.
+        self.explain_button.setVisible(not state.outdated)
+        self.dismiss_button.setVisible(not state.outdated)
 
     @staticmethod
     def _display_modules(snapshot: Snapshot) -> list[MemoryModule]:

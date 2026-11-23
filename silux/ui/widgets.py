@@ -2261,7 +2261,9 @@ def boton_de_permiso_permanente() -> QPushButton:
     ofrece en «Qué hace esto».
     """
     boton = QPushButton(_("perm.replace.button"))
-    boton.setObjectName("GhostButton")
+    # When it shows it is what brings the data back: the main button, as in
+    # Home's notice.
+    boton.setObjectName("Primary")
     boton.setToolTip(
         _("perm.permanent.tip")
     )
