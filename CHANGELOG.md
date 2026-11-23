@@ -10,7 +10,15 @@ que hace falta.
 
 ---
 
-## Sin publicar
+## 0.4-prueba11 (23 de noviembre de 2026)
+
+Con informes de Felix Lara.
+
+La bienvenida de la primera vez y los accesos directos con un interruptor
+cada uno; el tráfico de la memoria en los Intel de Tiger Lake y Alder Lake
+(cambia el ayudante), y lo que trajeron los informes de la prueba9 y la
+prueba10: la memoria y la batería de un portátil con DDR2, la gráfica
+dedicada dormida de un Optimus y el nombre de los portátiles HP.
 
 - Memoria: el tráfico de la memoria se lee también en los Intel cuyo
   controlador escribe sus contadores con dos campos (Tiger Lake y Alder
