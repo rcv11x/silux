@@ -207,6 +207,38 @@ class TestWidgetDelArbol(unittest.TestCase):
         arbol.update_row("no/existe", ["1", "2", "3", "4"])
 
 
+
+class TestFam15hPowerCritIsTheTdp(unittest.TestCase):
+    """fam15h_power publishes the processor's TDP as power1_crit. An A8-6410
+    at 16.6 W, in turbo, read «1 sensor critical» against its 15 W."""
+
+    def test_in_turbo_no_alarm_and_the_tdp_on_its_card(self):
+        import json
+
+        from silux import volcado
+        from silux.collector import Collector
+
+        average = "/sys/devices/pci0000:00/0000:00:18.4/hwmon/hwmon3/power1_average"
+        folder = pathlib.Path(__file__).resolve().parent / "fixtures" / "equipos" / "a8-6410"
+        with volcado.mounted(folder) as root:
+            # Both readings at the report's 16.6 W, in microwatts.
+            (root / average.lstrip("/")).write_text("16600000\n")
+            recording = root / "grabado.json"
+            data = json.loads(recording.read_text())
+            data["segunda_lectura"][average] = "16600000"
+            recording.write_text(json.dumps(data))
+            collector = Collector()
+            try:
+                collector.snapshot()
+                photo = collector.snapshot()
+            finally:
+                collector.close()
+        power = [s for s in photo.sensors if s.chip == "fam15h_power"]
+        self.assertEqual([(s.value, s.critical, s.alarm_level) for s in power],
+                         [(16.6, None, "ok")])
+        self.assertAlmostEqual(photo.cpu.power.tdp_w, 15.05, places=2)
+
+
 if __name__ == "__main__":
     unittest.main()
 

@@ -188,6 +188,9 @@ class Power:
     # differ: the processor enforces the lower one, the one above.
     limit_long_other_w: Optional[float] = None
     limit_short_other_w: Optional[float] = None
+    # The TDP the processor declares: fam15h_power publishes it as its
+    # power «crit», which turbo runs above for a while. A figure, no alarm.
+    tdp_w: Optional[float] = None
 
     @property
     def load_percent(self) -> Optional[float]:

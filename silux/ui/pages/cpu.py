@@ -56,7 +56,7 @@ NEED_TITLES = {
 # para depurar. Antes había cuatro filas de familia y modelo (dos de ellas
 # con los bits en crudo, que por sí solos no significan nada) y ahora se
 # enseñan los valores compuestos, con el desglose en el tooltip de la firma.
-LIMIT_FIELDS = ("cpu.limit.pl1", "cpu.limit.pl2", "cpu.throttle")
+LIMIT_FIELDS = ("cpu.limit.tdp", "cpu.limit.pl1", "cpu.limit.pl2", "cpu.throttle")
 PROCESSOR_FIELDS = (
     "cpu.field.vendor", "cpu.field.spec", "cpu.field.codename", "cpu.field.process",
     "cpu.field.package", "cpu.field.arch", "cpu.field.cores", "cpu.field.threads", "cpu.field.virt",
@@ -565,11 +565,15 @@ class CpuPage(ScrollPage):
             self.limits.set(_(clave), texto, tooltip=pista or None)
             self.limits.set_visible(_(clave), bool(valor))
         hay_limites = any(valor for _clave, valor, _ventana, _otro in limites)
+        self.limits.set(_("cpu.limit.tdp"),
+                        render.limit_watts(potencia.tdp_w) if potencia.tdp_w else render.DASH,
+                        tooltip=_("cpu.limit.tdp.tip"))
+        self.limits.set_visible(_("cpu.limit.tdp"), bool(potencia.tdp_w))
         frenos = cpu.thermal_throttle
         self.limits.set(_("cpu.throttle"), render.thermal_throttle(frenos),
                         tooltip=_("cpu.throttle.tip"))
         self.limits.set_visible(_("cpu.throttle"), frenos is not None)
-        self.limits.setVisible(hay_limites or frenos is not None)
+        self.limits.setVisible(hay_limites or frenos is not None or bool(potencia.tdp_w))
         # En AMD no faltan por leer: el kernel no los publica.
         es_amd = bool(cpu.types) and cpu.types[0].vendor == "AMD"
         self.energy_pie.setText(_("cpu.limit.amd") if es_amd and not hay_limites else "")
@@ -581,7 +585,8 @@ class CpuPage(ScrollPage):
             self.idle_bar.set_segments(render.idle_segments(estados), 100.0,
                                        formatter=lambda v: f"{v:.0f} %")
             self.idle_note.setText(render.idle_deepest(estados) or "")
-        self.energy_card.setVisible(hay_limites or bool(estados) or frenos is not None)
+        self.energy_card.setVisible(hay_limites or bool(estados) or frenos is not None
+                                    or bool(potencia.tdp_w))
 
     def _apply_notices(self, snapshot: Snapshot) -> None:
         # Solo las de esta pestaña: la de los módulos de memoria salía aquí

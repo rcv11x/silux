@@ -435,6 +435,8 @@
   "cpu.limit.lowest.tip": "The processor keeps each limit in two places, its registers and the memory controller's, and enforces the lower one. Laptop makers often lower only one of them.",
   "cpu.limit.pl1": "Sustained limit (PL1)",
   "cpu.limit.pl2": "Peak limit (PL2)",
+  "cpu.limit.tdp": "TDP",
+  "cpu.limit.tdp.tip": "The design power the processor itself declares. With turbo it goes above it for a while, which is normal: it isn't a limit that shuts it down.",
   "cpu.limit.window": "{limite} · {ventana} window",
   "cpu.limit.window.tip": "Each limit applies to the average power over its window. The processor can go above PL1, up to PL2, as long as the average over the PL1 window stays below it: that is how long a sustained boost lasts.",
   "cpu.load.threads": "{carga}  (of {n} threads)",

@@ -12,6 +12,9 @@ que hace falta.
 
 ## Sin publicar
 
+- CPU: en los AMD con `fam15h_power` (de Bulldozer a Puma), lo que el driver
+  publica como potencia «crítica» es el TDP: sale como «TDP» en Potencia y
+  reposo, y pasarlo un rato con el turbo ya no da «1 sensor en crítico».
 - Almacenamiento y Memoria: con el ayudante desfasado, «Actualizar el
   ayudante» sale como en Inicio: naranja, el primero y con «Ahora no»;
   antes salía gris, debajo de «Qué hace esto».

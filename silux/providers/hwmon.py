@@ -27,6 +27,7 @@ from ..model import (
     DeviceKind,
     DriverHint,
     Need,
+    Power,
     Sensor,
     SensorKind,
     short_brand,
@@ -72,6 +73,9 @@ MIRRORS = {"gigabyte_wmi": re.compile(r"^it8\d+")}
 MIRROR_MARGIN = 2.0
 
 DISK_CHIP = re.compile(r"^(drivetemp|nvme)")
+# Drivers that publish the processor's TDP as a power «crit» (the kernel's
+# fam15h_power documentation: «power1_crit: TDP limit»).
+TDP_AS_CRIT = frozenset({"fam15h_power"})
 NET_CHIP = re.compile(r"^(r8\d+|e1000|igb|ixgbe|iwlwifi|mt79|ath\d+k?)")
 # The hint for a board's Super I/O chip, which is no module's name.
 SUPERIO = "(Super I/O)"
@@ -424,6 +428,7 @@ class HwmonSensors(Provider):
         sensors = self._with_core_types(draft, sensors)
         sensors = self._with_their_modules(draft, sensors)
         sensors = self._with_the_sheet_maximum(draft, sensors)
+        sensors = self._with_the_tdp_apart(draft, sensors)
         sensors += list(self._read_power_supplies())
         if not sensors:
             return
@@ -433,6 +438,20 @@ class HwmonSensors(Provider):
         self._fill_cpu(draft, sensors)
         draft.driver_hints.extend(self._missing_drivers(
             sensors, laptop=draft.board.chassis in PORTABLE_CHASSIS))
+
+    @staticmethod
+    def _with_the_tdp_apart(draft: Draft, sensors: list[Sensor]) -> list[Sensor]:
+        """fam15h_power's power «crit» is the processor's TDP: shown as that,
+        and no alarm. An A8-6410 at 16.6 W, in turbo, read «1 sensor critical»
+        against its 15 W."""
+        kept = []
+        for sensor in sensors:
+            if sensor.chip in TDP_AS_CRIT and sensor.kind is SensorKind.POWER and sensor.critical:
+                draft.cpu_extra["power"] = dataclasses.replace(
+                    draft.cpu_extra.get("power") or Power(), tdp_w=sensor.critical)
+                sensor = dataclasses.replace(sensor, critical=None)
+            kept.append(sensor)
+        return kept
 
     @staticmethod
     def _sheet_maximum(draft: Draft) -> Optional[float]:
