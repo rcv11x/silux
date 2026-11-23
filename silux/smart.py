@@ -81,8 +81,10 @@ def _write_unit(vendor: Optional[str], model: Optional[str],
     """What one unit of this counter is worth on this disk.
 
     What was measured first; then smartmontools' drive database, which needs
-    the whole model (sysfs cuts it to 16 characters); then 512-byte sectors.
-    None when the counter is the flash's and not what the computer wrote.
+    the whole model (sysfs cuts it to 16 characters); then 512-byte sectors,
+    as the standard counts them. None when the counter is the flash's and
+    not what the computer wrote, or when the disk's own model isn't known
+    (a USB bridge that doesn't pass it): the unit depends on the maker.
     """
     for text in (vendor, model):
         if not text:
@@ -96,7 +98,7 @@ def _write_unit(vendor: Optional[str], model: Optional[str],
             if pattern.fullmatch(model) and (
                     firmware_pattern is None or (firmware and firmware_pattern.fullmatch(firmware))):
                 return units.get(attribute, ATA_SECTOR)
-    return ATA_SECTOR
+    return ATA_SECTOR if model else None
 
 ABSOLUTE_ZERO = 273.15
 
@@ -263,11 +265,15 @@ def _parse_ata(data: bytes, vendor: Optional[str] = None,
     if hours is not None and hours > PLAUSIBLE_HOURS:
         hours = None
 
+    written = in_bytes(*ATA_WRITTEN)
     return DiskHealth(
         power_on_hours=hours,
         power_cycles=raw(ATA_POWER_CYCLES),
-        written_bytes=in_bytes(*ATA_WRITTEN),
+        written_bytes=written,
         read_bytes=in_bytes(*ATA_READ),
+        # Counted, but in a unit that isn't known for this disk.
+        counters_unit_unknown=written is None and any(
+            table.get(attr_id, (0, 0))[1] for attr_id in ATA_WRITTEN),
         # The attribute keeps the life left; the model keeps it used.
         percentage_used=100 - life_left if life_left is not None else None,
         # Each by its own name: a reallocated sector already failed and was

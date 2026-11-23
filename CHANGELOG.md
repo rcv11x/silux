@@ -16,6 +16,10 @@ que hace falta.
   su propio modelo, firmware y tipo (SSD o de platos, y a cuántas rpm),
   que udev ya le preguntó al disco; la caja va aparte («Adaptador USB:
   JMicron»). «Por USB no se sabe…» solo queda cuando el disco no contesta.
+- Discos: «Escrito en total» ya no sale cuando no se sabe la unidad de ese
+  disco (sin su modelo, detrás de una caja USB), ni cuando la cifra es más
+  de lo que el enlace pudo mover en sus horas encendido. Un Kingston A400
+  con 9630 GiB salía con 4.9 MB.
 - CPU: con el driver acpi-cpufreq y el turbo activo, la máxima que publica
   el kernel es la de sin turbo: ya no sale como techo («2.26 GHz (1.00 –
   2.00 GHz)») y un aviso dice que no se sabe hasta dónde sube.

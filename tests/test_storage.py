@@ -266,6 +266,25 @@ class TestLaCapturaAnonimaNoEnsenaDondeSeMonta(unittest.TestCase):
         self.assertIn("/run/media/zoraida/FOTOS", self._textos(self._foto()))
 
 
+
+class TestWithinTheLink(unittest.TestCase):
+    """More written than a SATA link carries in the hours a disk was on is a
+    unit misread, not a figure: not shown, and said."""
+
+    def test_an_impossible_figure_goes(self):
+        from silux.model import Disk, DiskHealth
+
+        disk = Disk(name="sdz", transport="usb", kind="SSD")
+        hours = 7135
+        possible = DiskHealth(power_on_hours=hours, written_bytes=9630 * 1024 ** 3)
+        self.assertIs(storage._within_the_link(possible, disk), possible)
+        impossible = DiskHealth(power_on_hours=hours,
+                                written_bytes=hours * 3600 * storage.SATA_MAX_BYTES_S + 1)
+        checked = storage._within_the_link(impossible, disk)
+        self.assertIsNone(checked.written_bytes)
+        self.assertTrue(checked.counters_unit_unknown)
+
+
 if __name__ == "__main__":
     unittest.main()
 

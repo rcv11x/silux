@@ -92,7 +92,7 @@ class TestAta(unittest.TestCase):
             (9, 95, 21000),          # horas encendido
             (12, 99, 1200),          # ciclos de encendido
             (241, 100, 40_000_000),  # sectores escritos
-        ]), "ata")
+        ]), "ata", model="ST2000DM008-2FR102")
         self.assertEqual(salud.power_on_hours, 21000)
         self.assertEqual(salud.power_cycles, 1200)
         self.assertEqual(salud.written_bytes, 40_000_000 * 512)
@@ -203,7 +203,7 @@ class TestContadoresDeFabricante(unittest.TestCase):
     def test_lo_escrito_sí_usa_los_48_bits(self):
         # Ahí no sobra sitio: un disco puede escribir más de lo que cabe en 32
         # bits de sectores, así que se leen los seis bytes.
-        salud = smart.parse(tabla_ata([(241, 100, 40_000_000_000)]), "ata")
+        salud = smart.parse(tabla_ata([(241, 100, 40_000_000_000)]), "ata", model="ST2000DM008-2FR102")
         self.assertEqual(salud.written_bytes, 40_000_000_000 * 512)
 
     def test_unas_horas_imposibles_se_descartan(self):
@@ -214,11 +214,12 @@ class TestContadoresDeFabricante(unittest.TestCase):
 
     def test_crucial_guarda_lo_escrito_en_otro_atributo(self):
         # Los MX500 usan el 246 donde otros usan el 241.
-        salud = smart.parse(tabla_ata([(246, 100, 17_800_000_000)]), "ata")
+        salud = smart.parse(tabla_ata([(246, 100, 17_800_000_000)]), "ata", model="CT500MX500SSD1")
         self.assertEqual(salud.written_bytes, 17_800_000_000 * 512)
 
     def test_si_están_los_dos_gana_el_de_siempre(self):
-        salud = smart.parse(tabla_ata([(241, 100, 1000), (246, 100, 2000)]), "ata")
+        salud = smart.parse(tabla_ata([(241, 100, 1000), (246, 100, 2000)]), "ata",
+                            model="CT500MX500SSD1")
         self.assertEqual(salud.written_bytes, 1000 * 512)
 
     def test_un_disco_mecanico_no_tiene_desgaste(self):
@@ -239,11 +240,24 @@ class TestUnidadDeEscritura(unittest.TestCase):
         # Lo que no esté en la tabla no cambia de comportamiento.
         for fabricante, modelo in (("Crucial", "CT500MX500SSD1"),
                                    ("Samsung", "SSD 870 EVO"),
-                                   ("WDC", "WD Blue SA510"),
-                                   (None, None)):
+                                   ("WDC", "WD Blue SA510")):
             with self.subTest(fabricante=fabricante):
                 self.assertEqual(smart._write_unit(fabricante, modelo),
                                  smart.ATA_SECTOR)
+
+    def test_without_the_disks_own_model_the_unit_is_unknown(self):
+        # A SATA SSD in a USB enclosure, read as «Tech» by «JMicron»: its
+        # 9630 units of GiB came out as 4.9 MB.
+        self.assertIsNone(smart._write_unit(None, None))
+        salud = smart.parse(tabla_ata([(9, 100, 7135), (241, 100, 9630)]), "ata")
+        self.assertIsNone(salud.written_bytes)
+        self.assertTrue(salud.counters_unit_unknown)
+
+    def test_with_it_the_kingston_a400_counts_gib(self):
+        salud = smart.parse(tabla_ata([(9, 100, 7135), (241, 100, 9630)]), "ata",
+                            vendor="Kingston", model="KINGSTON SA400S37240G")
+        self.assertEqual(salud.written_bytes, 9630 * 1024 ** 3)
+        self.assertFalse(salud.counters_unit_unknown)
 
     def test_kioxia_cuenta_en_bloques_de_32_mib(self):
         # Medido: escritos 4,09 GiB, el contador subió 133 → 31,5 MiB por unidad.

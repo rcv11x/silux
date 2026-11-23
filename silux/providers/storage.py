@@ -132,12 +132,16 @@ class Disks(Provider):
                     data, family = self.client.read_smart(name)
                 except (HelperError, OSError):
                     data = None
+                # Behind a USB bridge that didn't pass the disk's identity,
+                # the model and maker are the bridge's: no unit can be known.
+                bridge_only = disk.transport == "usb" and disk.usb_bridge is None
                 health = (smart_module.parse(
-                    data, family, vendor=disk.vendor,
-                    model=_ata_model(sysroot.path(SYS_BLOCK) / name) or disk.model,
+                    data, family, vendor=None if bridge_only else disk.vendor,
+                    model=None if bridge_only else (
+                        _ata_model(sysroot.path(SYS_BLOCK) / name) or disk.model),
                     firmware=disk.firmware)
                          if data is not None else None)
-                health = _fits_what_is_used(health, disk)
+                health = _within_the_link(_fits_what_is_used(health, disk), disk)
                 self._read_at[name] = time.monotonic()
 
                 if health is None:
@@ -330,6 +334,23 @@ def _fits_what_is_used(health: Optional[DiskHealth], disk: Disk) -> Optional[Dis
     if health is None or health.written_bytes is None or not used:
         return health
     if health.written_bytes >= used:
+        return health
+    return dataclasses.replace(health, written_bytes=None, read_bytes=None,
+                               counters_unit_unknown=True)
+
+
+# The most a SATA link carries: 6 Gb/s, 600 MB/s of data after 8b/10b. A USB
+# enclosure has a SATA disk behind it, so the same.
+SATA_MAX_BYTES_S = 600_000_000
+
+
+def _within_the_link(health: Optional[DiskHealth], disk: Disk) -> Optional[DiskHealth]:
+    """No counter shown that says more was written than the link could carry
+    in the hours the disk was on: that is a unit misread, not a figure."""
+    if (health is None or health.written_bytes is None or not health.power_on_hours
+            or disk.transport == "nvme"):
+        return health
+    if health.written_bytes <= health.power_on_hours * 3600 * SATA_MAX_BYTES_S:
         return health
     return dataclasses.replace(health, written_bytes=None, read_bytes=None,
                                counters_unit_unknown=True)
