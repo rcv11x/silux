@@ -15,12 +15,15 @@ No permissions needed: plain sysfs.
 
 from __future__ import annotations
 
+import dataclasses
 import pathlib
+import time
 from typing import Optional
 
 from .. import sysroot
 from ..i18n import _
 from ..model import Battery, Need
+from . import counters
 from .base import Draft, Provider, read_int, read_text
 
 POWER_SUPPLY = pathlib.Path("/sys/class/power_supply")
@@ -156,11 +159,49 @@ def _read(entry: pathlib.Path) -> Battery:
     )
 
 
+# Which way `energy_now` moves in each state: what it does the other way is
+# no rate (the charger went in or out between readings).
+DIRECTION = {"bat.status.charging": 1, "bat.status.discharging": -1}
+
+
+@dataclasses.dataclass
+class _EnergySeen:
+    """The last `energy_now` value and when it was first read."""
+    wh: float
+    since_s: float
+    status: str
+    # Whether `since_s` is when the firmware changed it. The first value's
+    # isn't: it was there already, and a window from it would be too short.
+    at_a_change: bool
+    power_w: Optional[float] = None
+
+
 class Batteries(Provider):
     """The machine's batteries. A desktop has none."""
 
     name = "battery"
     provides = "batteries"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._energy: dict[str, _EnergySeen] = {}
+
+    def _from_energy(self, battery: Battery, now_s: float, interval_s: float) -> Optional[float]:
+        """Watts from how much `energy_now` moved between two of the
+        firmware's updates, which come every few seconds: between two
+        readings of ours it mostly stays put."""
+        seen = self._energy.get(battery.name)
+        if seen is None or seen.status != battery.status:
+            self._energy[battery.name] = _EnergySeen(battery.now_wh, now_s, battery.status, False)
+            return None
+        if battery.now_wh == seen.wh:
+            return seen.power_w
+        moved = (battery.now_wh - seen.wh) * DIRECTION[battery.status]
+        seconds = counters.window_s(seen.since_s, now_s, interval_s)
+        power = (round(moved * 3600 / seconds, 2)
+                 if seen.at_a_change and seconds is not None and moved > 0 else None)
+        self._energy[battery.name] = _EnergySeen(battery.now_wh, now_s, battery.status, True, power)
+        return power
 
     def available(self) -> bool:
         return sysroot.path(POWER_SUPPLY).is_dir()
@@ -182,5 +223,14 @@ class Batteries(Provider):
             # No note: a desktop has no battery, and saying so would be
             # warning that a machine is what it is. The page just hides.
             return
+        now_s = time.monotonic()
+        for index, battery in enumerate(found):
+            if (battery.power_w is None and battery.now_wh is not None
+                    and battery.status in DIRECTION):
+                watts = self._from_energy(battery, now_s, draft.interval_s)
+                found[index] = dataclasses.replace(battery, power_w=watts,
+                                                   power_from_energy=watts is not None)
+            else:
+                self._energy.pop(battery.name, None)
         draft.capabilities.add("battery")
         draft.batteries = found

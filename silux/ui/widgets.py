@@ -1405,6 +1405,12 @@ class StatTile(Card):
             self._extra_tooltip = tooltip
             self._refresh_tooltip()
 
+    def set_tooltip(self, text: str) -> None:
+        """What the figure is, when its name alone doesn't say it; "" clears it."""
+        if getattr(self, "_extra_tooltip", "") != text:
+            self._extra_tooltip = text
+            self._refresh_tooltip()
+
     def _refresh_tooltip(self) -> None:
         parts = [getattr(self, "_extra_tooltip", ""), getattr(self, "_series_tooltip", "")]
         self.setToolTip("\n\n".join(p for p in parts if p))

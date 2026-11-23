@@ -31,6 +31,10 @@ que hace falta.
 - `--json`: `resolution` de un monitor es solo la que tiene puesta, y
   `voltage_mv` de un módulo, solo la de la BIOS; lo que sale del EDID y del
   SPD va en `preferred_resolution` y en `nominal_voltage_mv`.
+- Batería: una que no da su potencia ni su corriente, solo su energía, ya no
+  se queda en «Calculando…»: la potencia sale de cuánto baja o sube la
+  energía entre dos puestas al día del firmware, y lo dice al pasar el
+  ratón.
 
 ## 0.4-prueba11 (23 de noviembre de 2026)
 

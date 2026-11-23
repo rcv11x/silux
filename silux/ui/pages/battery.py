@@ -161,6 +161,7 @@ class _SeccionBateria(QWidget):
         else:
             self.potencia.update_value(render.power_figure(bateria.power_w))
         self.potencia.set_detail(_(bateria.status or "bat.status.unknown"))
+        self.potencia.set_tooltip(_("bat.power.fromenergy") if bateria.power_from_energy else "")
 
         # La etiqueta cambia según lo que se esté midiendo: lo que queda de
         # autonomía y lo que falta para llenarse no son la misma cifra.

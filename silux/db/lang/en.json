@@ -85,6 +85,7 @@
   "bat.nodata.title": "Battery without data",
   "bat.none": "This machine has no battery.",
   "bat.power": "Power",
+  "bat.power.fromenergy": "This machine doesn't give the battery's power: it comes from how much its energy fell or rose between two of the firmware's updates, which come every few seconds.",
   "bat.status": "Status",
   "bat.status.charging": "Charging",
   "bat.status.discharging": "Discharging",

@@ -130,12 +130,9 @@ la memoria) no va: está propuesto en las notas
 * **De los informes de la prueba10** (volcados `i3-1115g4`, un HP con
   Fedora y GNOME, y `ryzen5-5600g`, con la integrada desactivada en la BIOS
   y una RTX 4060):
-  - Batería · media · la del HP no publica `power_now` ni `current_now`,
-    solo `energy_now`: la potencia se queda en «Calculando…» para siempre,
-    porque se da por hecho que el controlador aún no la ha puesto al día.
-    Sin las dos, sale de lo que baja `energy_now` entre muestras (se pone
-    al día cada pocos segundos), por `providers/counters.py`. La segunda
-    lectura del volcado no guarda la batería.
+  - Batería · baja · la segunda lectura del volcado no guarda la batería:
+    la potencia que sale de `energy_now` no se puede comprobar con un
+    informe, solo en el equipo.
   - Gráficos · media · la RTX 4060 marca 53 W con la página a 255 MHz de
     núcleo y 405 MHz de memoria. La única lectura de NVML del volcado la
     tomó a 1980 y 8501 MHz (en carga), donde 53 W es verosímil, pero el

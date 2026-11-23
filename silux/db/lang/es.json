@@ -85,6 +85,7 @@
   "bat.nodata.title": "Batería sin datos",
   "bat.none": "Este equipo no tiene batería.",
   "bat.power": "Potencia",
+  "bat.power.fromenergy": "Este equipo no da la potencia de la batería: sale de cuánto ha bajado o subido su energía entre dos puestas al día del firmware, que llegan cada pocos segundos.",
   "bat.status": "Estado",
   "bat.status.charging": "Cargando",
   "bat.status.discharging": "Descargando",

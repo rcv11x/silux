@@ -1640,6 +1640,9 @@ class Battery:
     # Always positive: whether it charges or discharges is `status`'s to say,
     # and a sign whose meaning depends on the firmware tells nothing.
     power_w: Optional[float] = None
+    # Measured from how fast `energy_now` moves, the firmware giving neither
+    # `power_now` nor `current_now`.
+    power_from_energy: bool = False
     cycles: Optional[int] = None
 
     manufacturer: Optional[str] = None
