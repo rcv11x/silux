@@ -12,6 +12,11 @@ que hace falta.
 
 ## Sin publicar
 
+- Módulos del kernel: «Cargar ahora» carga el que falta (la temperatura de
+  los discos SATA, el chip SPD de la memoria) solo hasta que se apague el
+  equipo, y sale en Sensores, Almacenamiento y Memoria. Para que se cargue
+  siempre, el aviso deja la orden para copiar: Silux ya no escribe en
+  `/etc/modules-load.d/`. Los permisos instalados piden actualizarse.
 - Interfaz: con la letra más grande y la ventana estrecha, ninguna página se
   sale ya por la derecha: los títulos y las cifras bajan de línea, las filas
   de botones se ponen en columna y el título de un plegable largo se

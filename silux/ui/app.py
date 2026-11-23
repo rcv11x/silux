@@ -245,6 +245,7 @@ class MainWindow(QMainWindow):
         self.sampler = Sampler(interval_ms=prefs.interval_ms)
         self.sampler.sampled.connect(self._on_sample)
         self.sampler.failed.connect(self._on_failure)
+        self.sampler.module_loaded.connect(self._on_module_loaded)
 
         # Uno solo para todas las gráficas. Con cuarenta y tantas en pantalla,
         # cuarenta temporizadores despertando por su cuenta cuestan más que
@@ -286,10 +287,6 @@ class MainWindow(QMainWindow):
         # El suelo depende de la densidad, así que se reajusta al reconstruir.
         self.setMinimumSize(m.min_window_w, m.min_window_h)
         current_row = getattr(self, "nav", None).currentRow() if hasattr(self, "nav") else 0
-        if hasattr(self, "monitor_page"):
-            # Una orden que espera a pkexec es hija de la página que se va a
-            # destruir, y un QThread destruido en marcha aborta el proceso.
-            self.monitor_page.cancelar_ordenes()
         if hasattr(self, "settings_page"):
             # Lo mismo con la entrada de menú que se está instalando.
             self.settings_page.wait_for_tasks()
@@ -326,6 +323,8 @@ class MainWindow(QMainWindow):
         self.graphics_page.elevation_requested.connect(self._on_elevation_requested)
         self.storage_page = StoragePage(self._palette, self.prefs)
         self.storage_page.elevation_requested.connect(self._on_elevation_requested)
+        for page in self._module_pages():
+            page.module_notices.load_requested.connect(self._on_module_load)
         self.memory_page.permanent_requested.connect(self._on_permanent_requested)
         self.memory_page.explain_requested.connect(self._explicar_permisos)
         self.storage_page.explain_requested.connect(self._explicar_permisos)
@@ -554,7 +553,6 @@ class MainWindow(QMainWindow):
             self._instalacion.done.disconnect(self._instalacion_terminada)
             self._instalacion.cancel()
             self._instalacion = None
-        self.monitor_page.cancelar_ordenes()
         self.settings_page.wait_for_tasks()
         if self._report_preview is not None:
             self._report_preview.cancel_annex()
@@ -1106,6 +1104,19 @@ class MainWindow(QMainWindow):
         # dmi…`): es jerga del programa, se cortaba en compacto, y quien la
         # necesita la tiene en el informe.
         self._status.set_full_text(" · ".join(partes))
+
+    def _module_pages(self) -> list:
+        return [self.monitor_page, self.storage_page, self.memory_page]
+
+    def _on_module_load(self, module: str) -> None:
+        # The same module may be offered on two pages: both say it's loading.
+        for page in self._module_pages():
+            page.module_notices.loading(module)
+        self.sampler.request_module_load(module)
+
+    def _on_module_loaded(self, module: str, error) -> None:
+        for page in self._module_pages():
+            page.module_notices.finished(module, error)
 
     def _on_elevation_requested(self) -> None:
         """El usuario ha pedido los datos que exigen privilegios.

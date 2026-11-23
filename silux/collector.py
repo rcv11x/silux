@@ -237,6 +237,31 @@ class Collector:
                 provider.client.allow_asking()
         self.invalidate()
 
+    def load_module(self, module: str) -> None:
+        """Load an allow-listed kernel module through the helper, now.
+
+        Blocks (the password window opens here), so it runs on the sampling
+        thread. A helper started only for this is closed afterwards: loading
+        a module is not giving the session permissions to read. Raises
+        `HelperError` with what went wrong.
+        """
+        from .privileged.client import HelperUnavailable
+
+        client = next((p.client for p in self.providers
+                       if isinstance(getattr(p, "client", None), PrivilegedClient)), None)
+        if client is None:
+            raise HelperUnavailable("no helper")
+        was_connected = client.connected()
+        client.allow_asking()
+        try:
+            client.connect()
+            client.load_module(module)
+        finally:
+            if not was_connected:
+                client.close()
+        # The module's sensors, and the hint that asked for it, are static.
+        self.invalidate()
+
     def close(self) -> None:
         # Providers share a client, so each is closed once even when several
         # hold it.

@@ -89,7 +89,7 @@ class TestLosCanalesSinNombre(unittest.TestCase):
         app = qt.app()
         pagina = MonitorPage(theme.palette_for(app, "dark"), Preferences().normalized(),
                              Tracker())
-        self.addCleanup(pagina.cancelar_ordenes)
+        self.addCleanup(pagina.deleteLater)
         nombrados = tuple(s for s in self.foto.sensors if not s.unnamed)
         pagina.apply(dataclasses.replace(self.foto, sensors=nombrados))
         self.assertEqual(pagina.absent.text(), "")

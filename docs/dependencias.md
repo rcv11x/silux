@@ -108,8 +108,10 @@ en la sesión. No falta ningún dato, así que no se avisa.
 ## Módulos del kernel
 
 Van con el kernel de cada distribución, no en un paquete aparte. Silux dice
-cuándo falta uno y qué daría, y puede cargar los de su lista blanca
-(`privileged/cargar_modulo.py`) con la contraseña:
+cuándo falta uno y qué daría. Los que leen un sensor o el SPD (`drivetemp`,
+`spd5118`, `ee1004`, `at24`) los carga el ayudante con «Cargar ahora», hasta
+el siguiente arranque; para que se carguen siempre, el aviso deja la orden
+para copiar. El ayudante no escribe ese archivo:
 
 | Módulo | Para qué |
 |---|---|

@@ -106,14 +106,12 @@ CONSTRUCTORES = (
     ("silux/privileged/client.py", "pkexec_inline"),
     ("silux/ui/app.py", "MainWindow._orden_de_instalacion"),
     ("silux/ui/app.py", "MainWindow._orden_de_desinstalacion"),
-    ("silux/ui/pages/monitor.py", "MonitorPage._orden_de_carga"),
 )
 
 
 def ordenes_de_pkexec() -> dict[str, list[str]]:
-    """Las cuatro, construidas de verdad, para poder examinarlas."""
+    """Las tres, construidas de verdad, para poder examinarlas."""
     from silux.ui.app import MainWindow
-    from silux.ui.pages.monitor import MonitorPage
 
     with mock.patch.object(PrivilegedClient, "installed", return_value=False):
         del_ayudante = PrivilegedClient()._command()
@@ -121,7 +119,6 @@ def ordenes_de_pkexec() -> dict[str, list[str]]:
         "el ayudante": del_ayudante,
         "el instalador": MainWindow._orden_de_instalacion()[0],
         "el desinstalador": MainWindow._orden_de_desinstalacion(),
-        "el cargador de módulos": MonitorPage._orden_de_carga("drivetemp"),
     }
 
 

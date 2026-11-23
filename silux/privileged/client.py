@@ -28,6 +28,7 @@ from . import protocol
 from .protocol import (
     ACTION_GPU_PMU,
     ACTION_IMC,
+    ACTION_LOAD_MODULE,
     ACTION_MSR,
     ACTION_PING,
     ACTION_RAPL,
@@ -188,6 +189,8 @@ INSTALLED_POLICY = pathlib.Path(
     "/usr/share/polkit-1/actions/org.silux.helper.policy")
 
 DEFAULT_TIMEOUT = 15.0
+# modprobe has 30 s inside the helper; a little more to hear it say so.
+MODULE_LOAD_TIMEOUT = 40.0
 # Authenticating may take as long as the user takes to type.
 CONNECT_TIMEOUT = 120.0
 
@@ -505,6 +508,13 @@ class PrivilegedClient:
             self._last_error = reply.get("message")
             raise HelperError(reply.get("message", "no se pudo leer el diagnóstico"))
         return base64.b64decode(reply.get("data", "")), reply.get("kind", "")
+
+    def load_module(self, module: str) -> None:
+        """Load an allow-listed kernel module until the next boot."""
+        reply = self.request({"action": ACTION_LOAD_MODULE, "module": module},
+                             timeout=MODULE_LOAD_TIMEOUT)
+        if not reply.get("ok"):
+            raise HelperError(reply.get("message", f"no se pudo cargar {module}"))
 
     def rapl(self) -> dict[str, int]:
         """The energy counters in microjoules, per zone.

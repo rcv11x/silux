@@ -13,6 +13,7 @@ el límite entre hilos es seguro sin ningún cerrojo.
 from __future__ import annotations
 
 import time
+from typing import Optional
 
 from PySide6.QtCore import QMutex, QThread, QWaitCondition, Signal
 
@@ -29,6 +30,9 @@ ENTRE_LECTURAS_MS = 250
 class Sampler(QThread):
     sampled = Signal(object)          # Snapshot
     failed = Signal(str)
+    # The module, and why it didn't load: "" when it did, None when the user
+    # cancelled the password window.
+    module_loaded = Signal(str, object)
 
     def __init__(self, interval_ms: int = 1000, parent=None) -> None:
         super().__init__(parent)
@@ -38,6 +42,7 @@ class Sampler(QThread):
         self._stopping = False
         self._elevate = False
         self._refresh_static = False
+        self._module_to_load = ""
 
     def set_interval(self, milliseconds: int) -> None:
         self._mutex.lock()
@@ -54,11 +59,29 @@ class Sampler(QThread):
         self._elevate = True
         self._wake.wakeAll()
 
+    def request_module_load(self, module: str) -> None:
+        """Load a kernel module through the helper, on this thread: the
+        password window blocks."""
+        self._module_to_load = module
+        self._wake.wakeAll()
+
     def refresh_static(self) -> None:
         """Reads again what is read once, on the next sample: after installing
         or removing the helper, which changes what the static part says."""
         self._refresh_static = True
         self._wake.wakeAll()
+
+    @staticmethod
+    def _load(collector, module: str) -> Optional[str]:
+        from ..privileged.client import HelperDenied, HelperError
+
+        try:
+            collector.load_module(module)
+        except HelperDenied:
+            return None
+        except HelperError as exc:
+            return str(exc)
+        return ""
 
     def stop(self) -> None:
         self._mutex.lock()
@@ -88,6 +111,9 @@ class Sampler(QThread):
             if self._refresh_static:
                 self._refresh_static = False
                 collector.invalidate()
+            module, self._module_to_load = self._module_to_load, ""
+            if module:
+                self.module_loaded.emit(module, self._load(collector, module))
             elevating = self._elevate
             if elevating:
                 self._elevate = False
@@ -124,7 +150,7 @@ class Sampler(QThread):
         try:
             fin = time.monotonic() + self._interval_ms / 1000
             while not self._stopping:
-                if self._elevate:
+                if self._elevate or self._module_to_load:
                     # Pedido mientras se leía sin el cerrojo, cuando nadie
                     # esperaba el aviso: no se hace esperar al intervalo.
                     return True

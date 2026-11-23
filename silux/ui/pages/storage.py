@@ -27,6 +27,7 @@ from ..widgets import (
     ChipRow,
     FoldingRow,
     InfoGrid,
+    ModuleNotices,
     Notice,
     Plegable,
     ResponsiveRow,
@@ -125,6 +126,8 @@ class StoragePage(ScrollPage):
         self._avisos_host = QVBoxLayout()
         self._avisos_host.setSpacing(6)
         layout.addLayout(self._avisos_host)
+        self.module_notices = ModuleNotices(frozenset({"drivetemp"}))
+        layout.addWidget(self.module_notices)
 
         disk_card = Card(_("storage.card.disks"))
         self.disks = Table([_(h) for h in DISK_HEADERS],
@@ -267,6 +270,7 @@ class StoragePage(ScrollPage):
         self._apply_tables(discos)
         self._apply_cards(discos)
         self._apply_avisos(discos)
+        self.module_notices.apply(snapshot.driver_hints)
         # La tarjeta solo estorba cuando ya no hace falta.
         # A virtual disk has no diagnosis to unlock.
         reales = [x for x in discos if x.kind != "Virtual"]

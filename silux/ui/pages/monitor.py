@@ -18,7 +18,6 @@ import pathlib
 from collections import defaultdict, deque
 from typing import Optional
 
-import shiboken6
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QLabel,
@@ -31,8 +30,6 @@ from PySide6.QtWidgets import (
 from ... import registro, render
 from ...i18n import _
 from ...model import Sensor, SensorKind, Snapshot
-from ...privileged import cargar_modulo
-from ...providers.hwmon import SUPERIO
 from ...settings import Preferences
 from ...tracking import Tracker
 from .. import theme
@@ -42,9 +39,8 @@ from ..widgets import (
     Card,
     ElidingLabel,
     FoldingRow,
-    Notice,
+    ModuleNotices,
     ScrollPage,
-    clear_layout,
 )
 
 # Cuántos decimales tiene sentido enseñar en cada magnitud. La tabla está en
@@ -67,7 +63,6 @@ class MonitorPage(ScrollPage):
         # La última foto que ya se contó en el `Tracker` (`record`).
         self._contada: Optional[Snapshot] = None
         # Las cargas de módulo que esperan a pkexec: qué módulo y qué botón.
-        self._cargas: dict = {}
         m = theme.METRICS
 
         self.setWidgetResizable(True)
@@ -105,9 +100,8 @@ class MonitorPage(ScrollPage):
         sensors_card.body.addWidget(self.absent)
         self._layout.addWidget(sensors_card)
 
-        self._hint_host = QVBoxLayout()
-        self._hint_host.setSpacing(6)
-        self._layout.addLayout(self._hint_host)
+        self.module_notices = ModuleNotices()
+        self._layout.addWidget(self.module_notices)
 
         self._layout.addStretch(1)
 
@@ -116,7 +110,6 @@ class MonitorPage(ScrollPage):
         self._cuenta_completa = ""
         self._registro: Optional[registro.SensorLog] = None
         self._pendiente_abrir = False
-        self._hint_signature: tuple = ()
 
     # -- construcción -------------------------------------------------------
 
@@ -463,128 +456,7 @@ class MonitorPage(ScrollPage):
         return "\n\n".join(lines)
 
     def _apply_hints(self, snapshot: Snapshot) -> None:
-        signature = tuple(hint.module for hint in snapshot.driver_hints)
-        if signature == self._hint_signature:
-            return
-        self._hint_signature = signature
-
-        clear_layout(self._hint_host)
-        for hint in snapshot.driver_hints:
-            # The Super I/O is not a module's name: «Cargando (Super I/O)
-            # tendrías…» read like one.
-            body = (_("sensors.driver.body.superio").format(da=hint.provides)
-                    if hint.module == SUPERIO else
-                    _("sensors.driver.body").format(modulo=hint.module, da=hint.provides))
-            detail = hint.command + (f"\n{hint.caution}" if hint.caution else "")
-            # El botón solo aparece donde hay un módulo concreto que cargar. El
-            # aviso del Super I/O manda a `sensors-detect` a propósito: cada
-            # placa lleva un chip distinto y cargar el que no es lee basura, así
-            # que ahí no hay nada que automatizar.
-            accion = (_("sensors.driver.button")
-                      if cargar_modulo.is_allowed(hint.module) else None)
-            aviso = Notice(_("sensors.driver.title"), body, detail,
-                           action=accion)
-            if accion:
-                aviso.action_clicked.connect(
-                    lambda _=False, m=hint.module, d=hint.provides, a=aviso:
-                    self._confirm_load(m, d, a))
-            self._hint_host.addWidget(aviso)
-
-    def _confirm_load(self, module: str, gives: str, notice) -> None:
-        """Its own warning first: this changes the system, unlike giving
-        permissions to read. Nothing is asked for until it is accepted."""
-        from ..dialogs import ModuleLoadDialog
-
-        dialog = ModuleLoadDialog(module, gives, parent=self)
-        dialog.load_requested.connect(lambda: self._cargar_driver(module, notice))
-        self._module_dialog = dialog
-        dialog.open()
-
-    def _cargar_driver(self, modulo: str, aviso) -> None:
-        """`modprobe` ahora y una línea en `/etc/modules-load.d` para después.
-
-        Lo segundo es la mitad que importa —un modprobe suelto se pierde al
-        reiniciar— y es también la que nadie recuerda.
-        """
-        from ..background import BackgroundCommand
-
-        boton = aviso.action_button
-        if boton is not None:
-            boton.setEnabled(False)
-            boton.setText(_("sensors.driver.loading"))
-        try:
-            orden = self._orden_de_carga(modulo)
-        except (OSError, RuntimeError) as error:
-            self._aviso_de_registro(_("sensors.driver.failed").format(
-                modulo=modulo, error=error))
-            return
-        # La espera a pkexec va en otro hilo: con el diálogo de la contraseña
-        # abierto, el árbol de sensores tiene que seguir actualizándose.
-        # Sin padre y guardada aquí: la referencia es lo que la mantiene, y
-        # se suelta cuando el hilo ha terminado. Colgada de la página, Qt la
-        # borraba con ella aunque siguiera en marcha.
-        carga = BackgroundCommand(orden, timeout=120)
-        self._cargas[carga] = (modulo, boton)
-        carga.done.connect(self._carga_terminada)
-        carga.start()
-
-    def cancelar_ordenes(self) -> None:
-        """Corta lo que esté esperando a pkexec. Al cerrar o rehacer la página."""
-        cargas, self._cargas = self._cargas, {}
-        for carga in cargas:
-            carga.done.disconnect(self._carga_terminada)
-            carga.cancel()
-
-    def _carga_terminada(self, resultado) -> None:
-        carga = self.sender()
-        if carga not in self._cargas:
-            return
-        modulo, boton = self._cargas.pop(carga)
-        carga.wait()
-        if boton is not None and not shiboken6.isValid(boton):
-            boton = None                    # el aviso se repintó mientras tanto
-        if resultado.error is not None:
-            self._aviso_de_registro(_("sensors.driver.failed").format(
-                modulo=modulo, error=resultado.error))
-            return
-
-        if resultado.returncode == 0:
-            # El aviso desaparece solo en el muestreo siguiente, cuando el
-            # proveedor vea el chip nuevo. Forzar la firma lo repinta antes.
-            self._hint_signature = ()
-            return
-        if boton is not None:
-            boton.setEnabled(True)
-            boton.setText(_("sensors.driver.button"))
-        # 126 y 127 son «el usuario canceló» y «no autorizado»: eso no es un
-        # fallo del que haya que informar como si algo se hubiera roto.
-        if resultado.returncode not in (126, 127):
-            detalle = (resultado.stderr or resultado.stdout or "").strip()
-            self._aviso_de_registro(detalle.splitlines()[-1] if detalle else _("perm.failed"))
-
-    @staticmethod
-    def _orden_de_carga(modulo: str) -> list[str]:
-        """Lo mismo que hace el instalador de permisos: el guion va por `argv`.
-
-        Antes se copiaba a ~/.cache/silux y se le pasaba esa ruta a pkexec.
-        Esa carpeta la escribe el usuario, así que cualquier proceso suyo podía
-        cambiar el archivo antes de que root lo abriera y quedarse con
-        ejecución como root. Y aquí picaba doble: la lista blanca de módulos
-        que impide que esto cargue cualquier cosa vive **dentro** del propio
-        guion, o sea que se iba con el cambiazo. La defensa no puede estar en
-        lo que se sustituye.
-
-        En esta orden no puede aparecer ninguna ruta que no sea de root; hay un
-        test que lo comprueba en las tres que construye el programa.
-        """
-        from ...privileged import client as _client
-
-        guion = pathlib.Path(cargar_modulo.__file__)
-        try:
-            return _client.pkexec_inline("silux-cargar-modulo.py",
-                                         guion.read_text(encoding="utf-8"), modulo)
-        except _client.HelperUnavailable:
-            raise RuntimeError(_("perm.nopython")) from None
+        self.module_notices.apply(snapshot.driver_hints)
 
     def _reset_extremes(self) -> None:
         self._tracker.reset()

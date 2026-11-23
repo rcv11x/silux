@@ -50,7 +50,7 @@ from .. import render
 from ..i18n import _
 from ..model import Need, plausible
 from . import theme
-from .theme import Palette, ui_font, value_font
+from .theme import Palette, mono_font, ui_font, value_font
 
 # --------------------------------------------------------------------------
 # texto que se adapta
@@ -1830,6 +1830,132 @@ class Notice(QFrame):
                 fila.add_widget(self.snooze_button)
                 fila.add_widget(self.dismiss_button)
             layout.addWidget(fila)
+
+
+class ModuleNotice(Notice):
+    """A kernel module that would give missing data.
+
+    «Load now» loads it through the helper until the next boot; the line to
+    copy makes it load at every boot, which the helper never writes. A module
+    the helper doesn't load (the Super I/O's) keeps only its command.
+    """
+
+    load_requested = Signal(str)
+
+    def __init__(self, hint, title: str, body: str, loadable: bool,
+                 parent: Optional[QWidget] = None):
+        super().__init__(title, body, hint.caution, parent=parent,
+                         action=_("module.load.now") if loadable else None)
+        self.module = hint.module
+        self.loadable = loadable
+        layout = self.layout()
+        if loadable:
+            self.action_clicked.connect(lambda: self.load_requested.emit(self.module))
+            always = QLabel(_("module.load.always"))
+            always.setObjectName("NoticeBody")
+            always.setFont(ui_font(theme.METRICS.small_pt))
+            layout.addWidget(always)
+            command = f"echo {hint.module} | sudo tee /etc/modules-load.d/{hint.module}.conf"
+        else:
+            command = hint.command
+        self.command = ElidingLabel(command)
+        self.command.setObjectName("NoticeHint")
+        self.command.setFont(mono_font(theme.METRICS.small_pt))
+        self.command.hacer_copiable()
+        self.command.setToolTip(_("module.load.copy"))
+        layout.addWidget(self.command)
+        self.error = QLabel()
+        self.error.setObjectName("NoticeBody")
+        self.error.setWordWrap(True)
+        self.error.setFont(ui_font(theme.METRICS.small_pt))
+        self.error.hide()
+        layout.addWidget(self.error)
+
+    def loading(self) -> None:
+        if self.action_button is not None:
+            self.action_button.setEnabled(False)
+            self.action_button.setText(_("module.load.loading"))
+        self.error.hide()
+
+    def finished(self, error: Optional[str]) -> None:
+        """`error`: "" when it loaded, None when the password was cancelled.
+        Once loaded, the notice goes with the next reading of the static
+        data; until then the button says so."""
+        if self.action_button is None:
+            return
+        if error == "":
+            self.action_button.setText(_("module.load.done"))
+            return
+        self.action_button.setEnabled(True)
+        self.action_button.setText(_("module.load.now"))
+        if error:
+            self.error.setText(_("module.load.failed").format(error=error))
+            self.error.show()
+
+
+class ModuleNotices(QWidget):
+    """A page's module notices, rebuilt only when the hints change.
+
+    `modules` keeps the ones this page is about (Storage, drivetemp; Memory,
+    the SPD's); None keeps them all.
+    """
+
+    load_requested = Signal(str)
+
+    def __init__(self, modules: Optional[frozenset] = None,
+                 parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self._modules = modules
+        self._signature: tuple = ()
+        # Remembered, not only shown: a page painted for the first time
+        # while the module loads says so too.
+        self._loading: set[str] = set()
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(6)
+        self.hide()
+
+    def notices(self) -> list[ModuleNotice]:
+        return self.findChildren(ModuleNotice)
+
+    def apply(self, hints) -> None:
+        from ..privileged.protocol import MODULES_ALLOWED
+        from ..providers.hwmon import SUPERIO
+
+        hints = [h for h in hints if self._modules is None or h.module in self._modules]
+        signature = tuple(h.module for h in hints)
+        if signature == self._signature:
+            return
+        self._signature = signature
+        clear_layout(self.layout())
+        for hint in hints:
+            loadable = hint.module in MODULES_ALLOWED
+            # The Super I/O is not a module's name: «Loading (Super I/O)
+            # you'd have…» read like one.
+            if hint.module == SUPERIO:
+                body = _("sensors.driver.body.superio").format(da=hint.provides)
+            else:
+                body = _("sensors.driver.body").format(modulo=hint.module, da=hint.provides)
+            if loadable:
+                body += " " + _("module.load.until_boot")
+            notice = ModuleNotice(hint, _("sensors.driver.title"), body, loadable)
+            notice.load_requested.connect(self.load_requested)
+            if hint.module in self._loading:
+                notice.loading()
+            self.layout().addWidget(notice)
+        self.setVisible(bool(hints))
+
+    def loading(self, module: str) -> None:
+        self._loading.add(module)
+        for notice in self.notices():
+            if notice.module == module:
+                notice.loading()
+
+    def finished(self, module: str, error: Optional[str]) -> None:
+        self._loading.discard(module)
+        for notice in self.notices():
+            if notice.module == module:
+                notice.finished(error)
 
 
 class LockMark(QWidget):

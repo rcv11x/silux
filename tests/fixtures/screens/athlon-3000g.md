@@ -381,6 +381,11 @@ Ocupado 8.2 GB · Libre 458 GB · Reservado 158 GB
 Las horas de encendido, los terabytes escritos y el desgaste los guarda cada disco en sus propios contadores de diagnóstico. El kernel reserva esos comandos al administrador porque son los mismos que sirven para borrar un disco.
 El ayudante que se lanza solo sabe pedir diagnóstico y leer unas tablas del sistema: no ejecuta órdenes ni escribe nada.
 
+> **Falta un driver del kernel**
+> Cargando drivetemp tendrías la temperatura de los discos SATA. «Cargar ahora» lo carga hasta que se apague el equipo, con la contraseña de administrador.
+> Para que se cargue siempre:
+> echo drivetemp | sudo tee /etc/modules-load.d/drivetemp.conf
+
 ### Unidades
 
 | UNIDAD | MODELO | TIPO | CAPACIDAD | OCUPADO | TEMPERATURA | LEYENDO | ESCRIBIENDO |
@@ -620,14 +625,15 @@ SENSORES · 16 en 4 dispositivos
     - Recibido · 0.0 MB · 0.0 · 0.0 · 0.0
     - Enviado · 0.0 MB · 0.0 · 0.0 · 0.0
 
-> **Falta un driver de sensores**
+> **Falta un driver del kernel**
 > Con el driver del chip Super I/O de la placa tendrías ventiladores, voltajes de la placa y temperaturas del chipset.
-> sudo sensors-detect
 > No conviene adivinar el módulo: cada placa lleva un chip distinto y cargar el que no es puede leer basura. sensors-detect lo identifica y dice cuál cargar.
+> sudo sensors-detect
 
-> **Falta un driver de sensores**
-> Cargando drivetemp tendrías la temperatura de los discos SATA.
-> sudo modprobe drivetemp
+> **Falta un driver del kernel**
+> Cargando drivetemp tendrías la temperatura de los discos SATA. «Cargar ahora» lo carga hasta que se apague el equipo, con la contraseña de administrador.
+> Para que se cargue siempre:
+> echo drivetemp | sudo tee /etc/modules-load.d/drivetemp.conf
 
 ## Diagnóstico
 

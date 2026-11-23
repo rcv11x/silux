@@ -60,7 +60,7 @@ class TestEveryEntryWarnsFirst(unittest.TestCase):
     def _entries(self, window) -> list[tuple[str, str, object]]:
         """(where, section, widget) for everything visible that asks."""
         from silux.ui import app as appmod
-        from silux.ui.widgets import LockMark, Notice
+        from silux.ui.widgets import LockMark, ModuleNotice, Notice
 
         entries = [("Home notice", "Inicio", window.home_page.permission_notice.grant_button),
                    ("status bar", "Inicio", window._blocked),
@@ -77,13 +77,13 @@ class TestEveryEntryWarnsFirst(unittest.TestCase):
             page = window.stack.currentWidget()
             entries += [(f"padlock in {key}", key, lock) for lock in page.findChildren(LockMark)
                         if getattr(lock, "_pulsable", False) and lock.isVisibleTo(window)]
-            # Loading a sensor driver is not asking for permissions to read:
-            # it changes the system, and has its own warning (test_module_load).
+            # Loading a kernel module is not asking for permissions to read
+            # (test_module_load).
             entries += [(f"notice in {key}", key, notice.action_button)
                         for notice in page.findChildren(Notice)
                         if notice.action_button is not None
                         and notice.action_button.isVisibleTo(window)
-                        and notice.action_button.text() != _("sensors.driver.button")]
+                        and not isinstance(notice, ModuleNotice)]
         window._on_report_requested()
         self.addCleanup(window._report_preview.close)
         entries.append(("report preview", None, window._report_preview.grant_button))

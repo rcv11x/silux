@@ -11,7 +11,7 @@ from __future__ import annotations
 # The helper's version this program needs: what it can do (its actions and
 # registers). A fix that keeps the contract does not raise it; the installed
 # copy is compared by content anyway.
-HELPER_VERSION = 3
+HELPER_VERSION = 4
 
 # The actions it accepts. Anything else is refused unread.
 ACTION_PING = "ping"
@@ -21,8 +21,18 @@ ACTION_SMART = "smart"
 ACTION_GPU_PMU = "gpu_pmu"
 ACTION_IMC = "imc"
 ACTION_RAPL = "rapl"
+ACTION_LOAD_MODULE = "load_module"
 ACTIONS = frozenset({ACTION_PING, ACTION_SMBIOS, ACTION_MSR, ACTION_SMART,
-                     ACTION_GPU_PMU, ACTION_IMC, ACTION_RAPL})
+                     ACTION_GPU_PMU, ACTION_IMC, ACTION_RAPL, ACTION_LOAD_MODULE})
+
+# The kernel modules it loads, until the next boot and nothing else: each one
+# reads a sensor or a memory module's identification chip.
+MODULES_ALLOWED: dict[str, str] = {
+    "drivetemp": "SATA disks' temperature",
+    "spd5118": "DDR5 SPD chip and its thermometer",
+    "ee1004": "DDR4 SPD chip",
+    "at24": "DDR3 and older SPD chip",
+}
 
 # The SMBIOS table, the only firmware file it opens.
 DMI_TABLE = "/sys/firmware/dmi/tables/DMI"

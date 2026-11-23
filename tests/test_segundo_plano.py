@@ -173,56 +173,64 @@ class TestInstalarElAyudante(unittest.TestCase):
         self.assertIsNone(ventana._instalacion)
 
 
-@unittest.skipIf(QApplication is None, "sin PySide6")
-class TestCargarUnModulo(unittest.TestCase):
+class TestLoadingAModule(unittest.TestCase):
+    """Loading a module goes through the sampling thread, where the password
+    window may block: the button only sets a flag."""
 
-    @classmethod
-    def setUpClass(cls):
-        cls.app = qt.app()
+    def test_what_each_outcome_says(self):
+        from silux.privileged.client import HelperDenied, HelperError
+        from silux.ui.sampler import Sampler
 
-    def _pagina(self, la_orden):
-        from silux.settings import Preferences
-        from silux.tracking import Tracker
-        from silux.ui import theme
-        from silux.ui.pages.monitor import MonitorPage
-        from silux.ui.widgets import Notice
+        collector = mock.Mock()
+        self.assertEqual(Sampler._load(collector, "drivetemp"), "")
+        collector.load_module.side_effect = HelperDenied("cancelled")
+        self.assertIsNone(Sampler._load(collector, "drivetemp"))
+        collector.load_module.side_effect = HelperError("modprobe: not found")
+        self.assertEqual(Sampler._load(collector, "drivetemp"), "modprobe: not found")
 
-        theme.set_density("normal", "normal")
-        pagina = MonitorPage(theme.palette_for(self.app, "dark"),
-                             Preferences().normalized(), Tracker())
-        self.addCleanup(pagina.cancelar_ordenes)
-        parche = mock.patch.object(MonitorPage, "_orden_de_carga",
-                                   staticmethod(lambda modulo: la_orden))
-        parche.start()
-        self.addCleanup(parche.stop)
-        aviso = Notice("Falta un módulo", "drivetemp", "", action="Cargarlo")
-        return pagina, aviso
+    def test_asking_does_not_wait(self):
+        from silux.ui.sampler import Sampler
 
-    def test_el_boton_vuelve_antes_de_que_acabe_pkexec(self):
-        pagina, aviso = self._pagina(orden(LENTA))
-        antes = time.monotonic()
-        pagina._cargar_driver("drivetemp", aviso)
-        self.assertLess(time.monotonic() - antes, LENTA / 2,
-                        "el manejador del botón esperó a la orden")
-        self.assertFalse(aviso.action_button.isEnabled())
-        self.assertTrue(esperar(self.app, lambda: not pagina._cargas))
+        sampler = Sampler()
+        before = time.monotonic()
+        sampler.request_module_load("drivetemp")
+        self.assertLess(time.monotonic() - before, 0.1)
+        self.assertEqual(sampler._module_to_load, "drivetemp")
 
-    def test_si_se_cancela_el_boton_vuelve_a_estar(self):
-        pagina, aviso = self._pagina(orden(0.0, 126))
-        with mock.patch.object(pagina, "_aviso_de_registro") as queja:
-            pagina._cargar_driver("drivetemp", aviso)
-            self.assertTrue(esperar(self.app, lambda: not pagina._cargas))
-        queja.assert_not_called()
-        self.assertTrue(aviso.action_button.isEnabled())
 
-    def test_un_fallo_de_verdad_se_ensena(self):
-        pagina, aviso = self._pagina(orden(0.0, 1, "modprobe: no se encuentra"))
-        with mock.patch.object(pagina, "_aviso_de_registro") as queja:
-            pagina._cargar_driver("drivetemp", aviso)
-            self.assertTrue(esperar(self.app, lambda: not pagina._cargas))
-        queja.assert_called_once()
-        self.assertIn("modprobe", queja.call_args.args[0])
+class TestTheCollectorLoadsAModule(unittest.TestCase):
 
+    def _collector(self, connected: bool):
+        from silux.collector import Collector
+        from silux.privileged.client import PrivilegedClient
+
+        client = mock.Mock(spec=PrivilegedClient)
+        client.connected.return_value = connected
+        provider = mock.Mock(client=client, static=True)
+        collector = Collector(providers=[provider])
+        collector._static = object()
+        return collector, client
+
+    def test_a_helper_started_for_it_is_closed(self):
+        collector, client = self._collector(connected=False)
+        collector.load_module("drivetemp")
+        client.load_module.assert_called_once_with("drivetemp")
+        client.close.assert_called_once()
+        self.assertIsNone(collector._static)
+
+    def test_one_already_running_stays(self):
+        collector, client = self._collector(connected=True)
+        collector.load_module("drivetemp")
+        client.close.assert_not_called()
+
+    def test_closed_even_when_it_fails(self):
+        from silux.privileged.client import HelperError
+
+        collector, client = self._collector(connected=False)
+        client.load_module.side_effect = HelperError("no")
+        with self.assertRaises(HelperError):
+            collector.load_module("drivetemp")
+        client.close.assert_called_once()
 
 if __name__ == "__main__":
     unittest.main()

@@ -13,10 +13,6 @@ from . import theme
 # Los cuatro párrafos, en este orden: qué lee, qué pasa si se dan esta vez,
 # qué pasa si se dan para siempre y quién pide la contraseña. Cortos: se leen
 # justo antes de teclear una contraseña.
-# Where the module loader leaves the module for the next boots; written by
-# root in `privileged/cargar_modulo.py`, and checked against it in the tests.
-MODULES_FILE = "/etc/modules-load.d/silux.conf"
-
 PARRAFOS = ("perm.explain.reads", "perm.explain.once", "perm.explain.always",
             "perm.explain.polkit")
 
@@ -145,64 +141,6 @@ class PermissionsDialog(QDialog):
     def _para_siempre(self) -> None:
         self.accept()
         self.permanent_requested.emit()
-
-
-class ModuleLoadDialog(QDialog):
-    """Before loading a kernel module: this one does change the system.
-
-    It is not «Qué pasa al dar permisos», which says that Silux only reads:
-    loading a module changes the running kernel and leaves a line behind in
-    /etc so it loads on every boot. It says which module, what it gives, and
-    how to undo it. «Cancelar» is the default: nothing happens by accident.
-    """
-
-    load_requested = Signal()
-
-    def __init__(self, module: str, gives: str, parent: Optional[QWidget] = None):
-        super().__init__(parent)
-        self.setWindowTitle(_("module.load.title").format(modulo=module))
-        self.setModal(True)
-        m = theme.METRICS
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(m.page_margin + 6, m.page_margin + 4,
-                                  m.page_margin + 6, m.page_margin + 2)
-        layout.setSpacing(m.card_gap + 4)
-
-        title = QLabel(_("module.load.title").format(modulo=module))
-        title.setObjectName("Headline")
-        title.setWordWrap(True)
-        layout.addWidget(title)
-        self.paragraphs: list[QLabel] = []
-        for key in ("module.load.changes", "module.load.gives", "module.load.password",
-                    "module.load.undo"):
-            paragraph = QLabel(_(key).format(modulo=module, da=gives, archivo=MODULES_FILE))
-            paragraph.setWordWrap(True)
-            paragraph.setTextFormat(Qt.TextFormat.PlainText)
-            paragraph.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-            layout.addWidget(paragraph)
-            self.paragraphs.append(paragraph)
-
-        self.load_button = QPushButton(_("module.load.button").format(modulo=module))
-        self.load_button.clicked.connect(self._load)
-        self.cancel_button = QPushButton(_("module.load.cancel"))
-        self.cancel_button.setDefault(True)
-        self.cancel_button.clicked.connect(self.reject)
-        buttons = QHBoxLayout()
-        buttons.setContentsMargins(0, 6, 0, 0)
-        buttons.addStretch(1)
-        buttons.addWidget(self.cancel_button)
-        buttons.addWidget(self.load_button)
-        layout.addLayout(buttons)
-        ajustar_tope(self)
-
-    def setVisible(self, visible: bool) -> None:  # noqa: N802
-        if visible:
-            ajustar_tope(self)
-        super().setVisible(visible)
-
-    def _load(self) -> None:
-        self.accept()
-        self.load_requested.emit()
 
 
 class MoveAppImageDialog(QDialog):

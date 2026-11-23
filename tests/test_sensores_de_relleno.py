@@ -163,7 +163,7 @@ class TestEnLaPaginaDeSensores(unittest.TestCase):
         app = qt.app()
         pagina = MonitorPage(theme.palette_for(app, "dark"), Preferences().normalized(),
                              Tracker())
-        self.addCleanup(pagina.cancelar_ordenes)
+        self.addCleanup(pagina.deleteLater)
         pagina.apply(f)
         return pagina
 

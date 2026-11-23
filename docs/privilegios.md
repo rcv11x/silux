@@ -147,10 +147,13 @@ gravedad.
   (`O_EXCL`, `O_NOFOLLOW`), le pone dueño y modo antes de que tenga nombre y
   lo cambia por el viejo con un `rename`, que sustituye un enlace en vez de
   seguirlo. Antes escribía a través de lo que hubiera en esa ruta.
-- **Cargar un módulo**: el nombre, contra una forma fija y una lista cerrada;
-  `modprobe` por su ruta absoluta, sin shell; `/etc/modules-load.d/silux.conf`
-  escrito igual que el instalador. Y se confirma antes con su propio aviso,
-  porque sí cambia el sistema.
+- **Cargar un módulo** (`load_module`): el nombre, contra una lista cerrada
+  de los que leen un sensor o el SPD (`drivetemp`, `spd5118`, `ee1004`,
+  `at24`); `modprobe -b` por su ruta absoluta, sin shell y con un entorno
+  fijo, respetando la lista negra del sistema. Solo hasta el siguiente
+  arranque: el ayudante no escribe nada, y la línea de
+  `/etc/modules-load.d/` la copia el usuario si la quiere. Es el único
+  programa que lanza (`tests/test_privileged.py` lo comprueba en el código).
 - **El actualizador**: solo HTTPS, con verificación del certificado y
   redirecciones solo a HTTPS; topes de tamaño; el SHA-256 del
   `SHA256SUMS` de la release se comprueba antes de tocar nada; el temporal
@@ -169,7 +172,7 @@ gravedad.
 ## Lo que este modelo no cierra
 
 Desde el código fuente, el guion que viaja por `argv` a `pkexec` se lee del
-árbol de trabajo del usuario: quien pueda editar `helper.py`,
-`instalar.py` o `cargar_modulo.py` decide qué corre como root después de la
+árbol de trabajo del usuario: quien pueda editar `helper.py`
+o `instalar.py` decide qué corre como root después de la
 contraseña. No tiene arreglo dentro de este modelo y no hay que venderlo
 como cerrado. Desde el AppImage no pasa: el montaje es de solo lectura.

@@ -42,6 +42,7 @@ from ..widgets import (
     ChipRow,
     FoldingRow,
     InfoGrid,
+    ModuleNotices,
     Notice,
     Plegable,
     ResponsiveRow,
@@ -183,6 +184,8 @@ class MemoryPage(ScrollPage):
         self._notices_host = QVBoxLayout()
         self._notices_host.setSpacing(6)
         layout.addLayout(self._notices_host)
+        self.module_notices = ModuleNotices(frozenset({"spd5118", "ee1004", "at24"}))
+        layout.addWidget(self.module_notices)
 
         layout.addStretch(1)
 
@@ -496,6 +499,7 @@ class MemoryPage(ScrollPage):
         self.lat_note.setVisible(bool(texto))
 
     def apply(self, snapshot: Snapshot) -> None:
+        self.module_notices.apply(snapshot.driver_hints)
         memory = snapshot.system.memory
         array = snapshot.memory_array
         modules = snapshot.modules

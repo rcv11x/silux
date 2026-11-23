@@ -26,6 +26,10 @@ privileges has to be auditable. Hence a few decisions:
   event number.
 * **Energy and busy counters at most every 100 ms**, whatever the client asks
   (`MIN_READ_INTERVAL_S`).
+* **It loads a kernel module only from a closed list of sensor readers**, and
+  only for this boot: `modprobe` by its absolute path, with the system's
+  blacklist respected. It is the one program it runs, and it writes no file;
+  making a module load at every boot is left to the user.
 
 It speaks JSON by lines: one request per input line, one reply per output
 line. It ends when its input closes.
@@ -40,6 +44,7 @@ import json
 import os
 import re
 import struct
+import subprocess
 import sys
 import time
 
@@ -47,7 +52,7 @@ import time
 # on the allow list. The client compares it on connecting, because a copy
 # installed in /usr/local/libexec stays frozen at the date it was installed
 # and nobody updates it.
-VERSION = 3
+VERSION = 4
 
 DMI_TABLE = "/sys/firmware/dmi/tables/DMI"
 DMI_ENTRY_POINT = "/sys/firmware/dmi/tables/smbios_entry_point"
@@ -94,6 +99,13 @@ MSR_ALLOWED = frozenset({
 })
 
 MAX_CPUS = 4096
+
+# The modules it loads: they read a sensor or a memory module's SPD chip and
+# change no setting. No buses, no Super I/O (the wrong one reads garbage).
+MODULES_ALLOWED = frozenset({"drivetemp", "spd5118", "ee1004", "at24"})
+MODPROBE = ("/usr/sbin/modprobe", "/sbin/modprobe", "/usr/bin/modprobe", "/bin/modprobe")
+# What modprobe gets instead of the caller's environment.
+MODPROBE_ENV = {"PATH": "/usr/sbin:/usr/bin:/sbin:/bin", "LC_ALL": "C"}
 
 # Intel graphics' PMU: per-engine busy, which neither i915 nor xe publish in
 # sysfs. The PMU's name and each event's are enumerated in here and filtered
@@ -687,6 +699,34 @@ def read_rapl() -> dict:
     return {"ok": True, "zones": zones}
 
 
+def load_module(name: object) -> dict:
+    """Load one allow-listed module until the next boot."""
+    if not isinstance(name, str) or name not in MODULES_ALLOWED:
+        return _fail(f"módulo no permitido: {name!r}", "forbidden")
+    if os.path.isdir(f"/sys/module/{name}"):
+        return {"ok": True, "module": name}
+    modprobe = next((path for path in MODPROBE
+                     if os.path.isfile(path) and os.access(path, os.X_OK)), None)
+    if modprobe is None:
+        return _fail("no se encuentra modprobe", "unsupported")
+    try:
+        # No shell and a fixed argument list; `-b` keeps a module the system
+        # blacklisted out, as it would be at boot.
+        result = subprocess.run([modprobe, "-b", "--", name], env=MODPROBE_ENV,
+                                stdin=subprocess.DEVNULL, capture_output=True,
+                                text=True, timeout=30)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return _fail(f"modprobe {name}: {exc}", "io")
+    if result.returncode != 0:
+        said = (result.stderr or "").strip().splitlines()
+        return _fail(said[-1] if said else f"modprobe {name} falló", "io")
+    # A blacklisted module makes modprobe -b succeed without loading anything.
+    if not os.path.isdir(f"/sys/module/{name}"):
+        return _fail(f"{name} no se cargó; puede estar en la lista negra del sistema",
+                     "blacklisted")
+    return {"ok": True, "module": name}
+
+
 def handle(request: dict) -> dict:
     action = request.get("action")
     if action == "ping":
@@ -703,6 +743,8 @@ def handle(request: dict) -> dict:
         return read_imc()
     if action == "rapl":
         return read_rapl()
+    if action == "load_module":
+        return load_module(request.get("module"))
     return _fail(f"acción desconocida: {action!r}", "bad_request")
 
 

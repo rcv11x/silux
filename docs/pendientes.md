@@ -388,8 +388,6 @@ la memoria) no va: está propuesto en las notas
 * `privileged/helper.py` · baja · el ayudante muere con UTF-8 inválido;
   `DISK_NAME` acepta un salto de línea final. Va con el próximo cambio del
   ayudante, que obliga a reinstalarlo.
-* `privileged/cargar_modulo.py` · baja · admite `i2c-dev`, que no es de
-  solo lectura.
 * `updates.py` · baja · sin firma: el SHA-256 sale del `SHA256SUMS` de la
   misma release, así que protege de una descarga rota, no de quien pudiera
   escribir en las releases del repositorio.

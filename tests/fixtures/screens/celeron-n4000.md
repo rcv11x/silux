@@ -372,6 +372,11 @@ Ocupado 35.4 GB · Libre 67.4 GB · Reservado 131 GB · Intercambio 4.9 GB · Si
 Las horas de encendido, los terabytes escritos y el desgaste los guarda cada disco en sus propios contadores de diagnóstico. El kernel reserva esos comandos al administrador porque son los mismos que sirven para borrar un disco.
 El ayudante que se lanza solo sabe pedir diagnóstico y leer unas tablas del sistema: no ejecuta órdenes ni escribe nada.
 
+> **Falta un driver del kernel**
+> Cargando drivetemp tendrías la temperatura de los discos SATA. «Cargar ahora» lo carga hasta que se apague el equipo, con la contraseña de administrador.
+> Para que se cargue siempre:
+> echo drivetemp | sudo tee /etc/modules-load.d/drivetemp.conf
+
 ### Unidades
 
 | UNIDAD | MODELO | TIPO | CAPACIDAD | OCUPADO | TEMPERATURA | LEYENDO | ESCRIBIENDO |
@@ -646,9 +651,10 @@ SENSORES · 16 en 6 dispositivos
 
 UHD Graphics 600: no tiene sensor de temperatura propio.
 
-> **Falta un driver de sensores**
-> Cargando drivetemp tendrías la temperatura de los discos SATA.
-> sudo modprobe drivetemp
+> **Falta un driver del kernel**
+> Cargando drivetemp tendrías la temperatura de los discos SATA. «Cargar ahora» lo carga hasta que se apague el equipo, con la contraseña de administrador.
+> Para que se cargue siempre:
+> echo drivetemp | sudo tee /etc/modules-load.d/drivetemp.conf
 
 ## Diagnóstico
 

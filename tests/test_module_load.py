@@ -1,17 +1,19 @@
-"""«Cargar el módulo» in Sensors asks first, with its own warning.
+"""«Load now»: a kernel module that would give missing data, on the pages
+that miss it.
 
-It went straight to the password window. It is not the warning for giving
-permissions, which says that Silux only reads: this changes the system, so it
-says which module, that it stays for every boot, and how to undo it.
+The helper loads it until the next boot and writes nothing; the line that
+makes it load at every boot is left to copy. The Super I/O keeps only its
+command: each board has a different chip, and the wrong driver reads garbage.
 """
 
+import dataclasses
 import unittest
 from unittest import mock
 
 from silux.i18n import _
-from silux.privileged import cargar_modulo
+from silux.model import DriverHint
 from tests import pantalla, qt
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, shared_snapshot
 
 try:
     from PySide6.QtWidgets import QApplication
@@ -19,56 +21,97 @@ except ImportError:                                    # pragma: no cover
     QApplication = None
 
 
-class TestTheFileItNames(unittest.TestCase):
-
-    def test_is_the_one_root_writes(self):
-        from silux.ui.dialogs import MODULES_FILE
-        self.assertEqual(MODULES_FILE, str(cargar_modulo.TARGET))
+def _with_spd_hint(snapshot):
+    """As `privileged_memory._spd_hint` writes it when the SPD chips are
+    registered and spd5118 isn't loaded."""
+    hint = DriverHint(module="spd5118", provides=_("prov.hint.spd").format(n=2),
+                      command="sudo modprobe spd5118", caution=_("prov.hint.spd.caution"))
+    return dataclasses.replace(snapshot, driver_hints=snapshot.driver_hints + (hint,))
 
 
 @unittest.skipIf(QApplication is None, "no PySide6")
-class TestOnTheSensorsPage(unittest.TestCase):
+class TestTheNotice(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
         cls.app = qt.app()
-        cls.photo = foto(EQUIPOS / "5800x3d")[0]
 
-    def _button(self, window):
-        from silux.ui.widgets import Notice
-        window.select_section("Sensores")
+    def _settle(self):
         for _turn in range(4):
             self.app.processEvents()
-        page = window.stack.currentWidget()
-        buttons = [n.action_button for n in page.findChildren(Notice)
-                   if n.action_button is not None
-                   and n.action_button.text() == _("sensors.driver.button")]
-        self.assertTrue(buttons, "the dump has no module to load")
-        return page, buttons[0]
 
-    def test_it_asks_first_and_says_what_changes(self):
-        from silux.ui.dialogs import MODULES_FILE
-        with pantalla.Ventana(self.photo) as window:
-            page, button = self._button(window)
-            module = next(h.module for h in self.photo.driver_hints
-                          if cargar_modulo.is_allowed(h.module))
-            with mock.patch.object(page, "_cargar_driver") as load:
-                button.click()
-                self.app.processEvents()
-                dialog = page._module_dialog
-                self.assertTrue(dialog.isVisible())
-                text = " ".join(p.text() for p in dialog.paragraphs)
-                for piece in (module, MODULES_FILE, f"modprobe -r {module}"):
-                    with self.subTest(piece=piece):
-                        self.assertIn(piece, text)
-                self.assertTrue(dialog.cancel_button.isDefault())
-                load.assert_not_called()
-                dialog.cancel_button.click()
-                load.assert_not_called()
-                button.click()
-                page._module_dialog.load_button.click()
-                load.assert_called_once()
-                self.assertEqual(load.call_args.args[0], module)
+    def _notices(self, window, section):
+        from silux.ui.widgets import ModuleNotice
+
+        window.select_section(section)
+        self._settle()
+        return {n.module: n for n in window.stack.currentWidget().findChildren(ModuleNotice)
+                if n.isVisibleTo(window)}
+
+    def test_each_page_shows_its_own(self):
+        photo = _with_spd_hint(shared_snapshot(EQUIPOS / "athlon-3000g"))
+        with pantalla.Ventana(photo) as window:
+            self.assertEqual(set(self._notices(window, "Almacenamiento")), {"drivetemp"})
+            self.assertEqual(set(self._notices(window, "Memoria")), {"spd5118"})
+            self.assertEqual(set(self._notices(window, "Sensores")),
+                             {"drivetemp", "spd5118", "(Super I/O)"})
+
+    def test_load_now_and_the_line_to_copy(self):
+        photo = shared_snapshot(EQUIPOS / "5800x3d")
+        with pantalla.Ventana(photo) as window:
+            notice = self._notices(window, "Almacenamiento")["drivetemp"]
+            self.assertEqual(notice.action_button.text(), _("module.load.now"))
+            texts = pantalla.textos_de(notice)
+            self.assertIn(_("module.load.always"), texts)
+            self.assertEqual(notice.command.full_text(),
+                             "echo drivetemp | sudo tee /etc/modules-load.d/drivetemp.conf")
+
+    def test_the_super_io_only_has_its_command(self):
+        photo = shared_snapshot(EQUIPOS / "athlon-3000g")
+        with pantalla.Ventana(photo) as window:
+            notice = self._notices(window, "Sensores")["(Super I/O)"]
+            self.assertIsNone(notice.action_button)
+            self.assertEqual(notice.command.full_text(), "sudo sensors-detect")
+            self.assertNotIn(_("module.load.always"), pantalla.textos_de(notice))
+
+    def test_the_click_goes_to_the_sampler_and_every_page_says_so(self):
+        photo = shared_snapshot(EQUIPOS / "5800x3d")
+        with pantalla.Ventana(photo) as window:
+            storage = self._notices(window, "Almacenamiento")["drivetemp"]
+            with mock.patch.object(window.sampler, "request_module_load") as asked:
+                storage.action_button.click()
+            asked.assert_called_once_with("drivetemp")
+            sensors = self._notices(window, "Sensores")["drivetemp"]
+            for notice in (storage, sensors):
+                self.assertFalse(notice.action_button.isEnabled())
+                self.assertEqual(notice.action_button.text(), _("module.load.loading"))
+
+    def test_what_comes_back(self):
+        photo = shared_snapshot(EQUIPOS / "5800x3d")
+        with pantalla.Ventana(photo) as window:
+            notice = self._notices(window, "Almacenamiento")["drivetemp"]
+            window._on_module_load("drivetemp")
+
+            window._on_module_loaded("drivetemp", "modprobe: FATAL: Module drivetemp not found.")
+            self.assertTrue(notice.action_button.isEnabled())
+            self.assertFalse(notice.error.isHidden())
+            self.assertIn("not found", notice.error.text())
+
+            window._on_module_load("drivetemp")
+            window._on_module_loaded("drivetemp", None)          # password cancelled
+            self.assertTrue(notice.action_button.isEnabled())
+            self.assertTrue(notice.error.isHidden())
+
+            window._on_module_load("drivetemp")
+            window._on_module_loaded("drivetemp", "")
+            self.assertEqual(notice.action_button.text(), _("module.load.done"))
+
+    def test_once_loaded_the_notice_goes(self):
+        photo = shared_snapshot(EQUIPOS / "5800x3d")
+        with pantalla.Ventana(photo) as window:
+            self.assertTrue(self._notices(window, "Almacenamiento"))
+            window._on_sample(dataclasses.replace(photo, driver_hints=()))
+            self.assertEqual(self._notices(window, "Almacenamiento"), {})
 
 
 if __name__ == "__main__":

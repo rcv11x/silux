@@ -7,6 +7,7 @@ cliente por uno falso para probar el proveedor de punta a punta.
 
 import io
 import json
+import re
 import os
 import pathlib
 import struct
@@ -43,9 +44,32 @@ class TestContrato(unittest.TestCase):
         # abre están escritas como constantes en su propio módulo.
         fuente = open(helper.__file__, encoding="utf-8").read()
         self.assertIn('DMI_TABLE = "/sys/firmware/dmi/tables/DMI"', fuente)
-        for peligroso in ("subprocess", "os.system", "eval(", "exec(", "__import__"):
+        for peligroso in ("os.system", "os.exec", "os.spawn", "os.popen", "eval(", "exec(",
+                          "__import__", "shell="):
             with self.subTest(termino=peligroso):
                 self.assertNotIn(peligroso, fuente)
+
+    def test_the_one_program_it_runs_is_modprobe(self):
+        import ast
+
+        tree = ast.parse(open(helper.__file__, encoding="utf-8").read())
+        runs = []
+        for function in (n for n in tree.body if isinstance(n, ast.FunctionDef)):
+            for node in ast.walk(function):
+                if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                        and getattr(node.func.value, "id", None) == "subprocess"):
+                    runs.append((function.name, node.func.attr, ast.unparse(node.args[0])))
+        self.assertEqual(runs, [("load_module", "run", "[modprobe, '-b', '--', name]")])
+
+    def test_it_writes_no_file(self):
+        fuente = open(helper.__file__, encoding="utf-8").read()
+        for writing in ("O_WRONLY", "O_RDWR", "O_CREAT", "O_TRUNC", "O_APPEND", "write_text",
+                        "write_bytes", "os.write(", "os.rename", "os.replace", "os.unlink",
+                        "os.remove", "os.mkdir", "os.makedirs", "shutil"):
+            with self.subTest(term=writing):
+                self.assertNotIn(writing, fuente)
+        for mode in re.findall(r"open\([^)]*\)", fuente):
+            self.assertNotRegex(mode, r"[\"'][rwab+]*[wa+][rwab+]*[\"']")
 
     def test_el_ayudante_solo_importa_biblioteca_estandar(self):
         fuente = open(helper.__file__, encoding="utf-8").read()
@@ -582,116 +606,64 @@ class TestElInstaladorViajaConElPaquete(unittest.TestCase):
         self.assertTrue(instalar.SOURCE.is_file(), instalar.SOURCE)
 
 
-class TestCargarUnModulo(unittest.TestCase):
-    """El botón que carga un driver de sensores y lo deja para el arranque.
+class TestLoadingAModule(unittest.TestCase):
+    """`load_module` runs as root: what matters is where the module's name
+    comes from. A helper that loads whatever it is told loads any module on
+    the system."""
 
-    Corre como root, así que lo que importa aquí es de dónde sale el nombre
-    del módulo: un ayudante que carga el que le digan carga cualquiera del
-    sistema, y eso no es lo que hace falta.
-    """
+    def _run(self, name, loaded_before=False, loaded_after=True, returncode=0, stderr=""):
+        seen = {"before": loaded_before, "after": loaded_after}
 
-    def setUp(self):
-        from silux.privileged import cargar_modulo
+        def isdir(path):
+            return seen["after"] if run.called else seen["before"]
 
-        self.modulo = cargar_modulo
+        with mock.patch.object(helper.subprocess, "run") as run, \
+             mock.patch.object(helper.os.path, "isdir", side_effect=isdir), \
+             mock.patch.object(helper.os.path, "isfile", side_effect=lambda p: p == "/usr/sbin/modprobe"), \
+             mock.patch.object(helper.os, "access", return_value=True):
+            run.return_value = mock.Mock(returncode=returncode, stderr=stderr)
+            reply = helper.handle({"action": protocol.ACTION_LOAD_MODULE, "module": name})
+        return reply, run
 
-    def test_los_que_el_programa_sugiere_se_cargan(self):
-        for nombre in ("drivetemp", "spd5118", "ee1004", "i2c-piix4"):
-            with self.subTest(modulo=nombre):
-                self.assertTrue(self.modulo.is_allowed(nombre))
+    def test_the_two_lists_match(self):
+        self.assertEqual(set(protocol.MODULES_ALLOWED), set(helper.MODULES_ALLOWED))
 
-    def test_cualquier_otro_modulo_no(self):
-        """La lista no es una comodidad: es lo que impide que esto sea un
-        «cargar lo que sea» con privilegios."""
-        for nombre in ("nvidia", "kvm", "overlay", "bluetooth", "usbcore"):
-            with self.subTest(modulo=nombre):
-                self.assertFalse(self.modulo.is_allowed(nombre))
+    def test_only_sensor_readers(self):
+        self.assertEqual(set(helper.MODULES_ALLOWED), {"drivetemp", "spd5118", "ee1004", "at24"})
 
-    def test_un_nombre_que_no_es_un_nombre_se_rechaza(self):
-        for nombre in ("drivetemp; rm -rf /", "../../etc/passwd", "a" * 64,
-                       "-drivetemp", "DRIVETEMP", ""):
-            with self.subTest(nombre=nombre):
-                self.assertFalse(self.modulo.is_allowed(nombre))
+    def test_any_other_name_is_refused_before_running_anything(self):
+        for name in ("nvidia", "kvm", "i2c-dev", "nct6775", "msr", "drivetemp; rm -rf /",
+                     "../../etc/passwd", "-drivetemp", "DRIVETEMP", "", None, 5, ["drivetemp"]):
+            with self.subTest(name=name):
+                reply, run = self._run(name)
+                self.assertFalse(reply["ok"])
+                self.assertEqual(reply["error"], "forbidden")
+                run.assert_not_called()
 
-    def test_cargar_algo_de_fuera_de_la_lista_falla_antes_de_tocar_nada(self):
-        with mock.patch.object(self.modulo.subprocess, "run") as corrido:
-            with self.assertRaises(SystemExit):
-                self.modulo.load("nvidia")
-        corrido.assert_not_called()
+    def test_modprobe_by_its_path_with_the_blacklist_and_a_fixed_environment(self):
+        reply, run = self._run("drivetemp")
+        self.assertTrue(reply["ok"])
+        self.assertEqual(run.call_args.args[0], ["/usr/sbin/modprobe", "-b", "--", "drivetemp"])
+        self.assertEqual(run.call_args.kwargs["env"], helper.MODPROBE_ENV)
+        self.assertNotIn("shell", run.call_args.kwargs)
+        self.assertTrue(all(path.startswith("/") for path in helper.MODPROBE))
 
-    def test_modprobe_by_its_absolute_path(self):
-        import tempfile
-        with mock.patch.object(self.modulo.subprocess, "run") as corrido, \
-             mock.patch.object(self.modulo, "_modprobe", return_value="/usr/sbin/modprobe"), \
-             tempfile.TemporaryDirectory() as carpeta, \
-             mock.patch.object(self.modulo, "TARGET", pathlib.Path(carpeta) / "silux.conf"):
-            corrido.return_value = mock.Mock(returncode=0, stderr="")
-            self.modulo.load("drivetemp")
-        self.assertEqual(corrido.call_args.args[0], ["/usr/sbin/modprobe", "drivetemp"])
-        self.assertTrue(all(ruta.startswith("/") for ruta in self.modulo.MODPROBE))
+    def test_one_already_loaded_runs_nothing(self):
+        reply, run = self._run("spd5118", loaded_before=True)
+        self.assertTrue(reply["ok"])
+        run.assert_not_called()
 
-    def test_the_boot_list_is_not_written_through_a_link(self):
-        import tempfile
-        with tempfile.TemporaryDirectory() as carpeta:
-            victima = pathlib.Path(carpeta) / "victima"
-            victima.write_text("intacta\n")
-            destino = pathlib.Path(carpeta) / "silux.conf"
-            destino.symlink_to(victima)
-            with mock.patch.object(self.modulo, "TARGET", destino):
-                self.modulo._persist("drivetemp")
-            self.assertEqual(victima.read_text(), "intacta\n")
-            self.assertFalse(destino.is_symlink())
-            self.assertIn("drivetemp", destino.read_text())
+    def test_a_blacklisted_module_is_said(self):
+        # modprobe -b answers 0 and loads nothing.
+        reply, _run = self._run("drivetemp", loaded_after=False)
+        self.assertFalse(reply["ok"])
+        self.assertEqual(reply["error"], "blacklisted")
 
-    def test_el_aviso_del_super_io_no_lleva_boton(self):
-        """Cada placa lleva un chip distinto y cargar el que no es lee basura,
-        así que ahí se manda a `sensors-detect` a propósito."""
-        self.assertFalse(self.modulo.is_allowed("(Super I/O)"))
-
-    def test_se_anota_para_el_arranque_siguiente(self):
-        """Un modprobe suelto se pierde al reiniciar, y esa es la mitad que
-        importa."""
-        import tempfile
-
-        with tempfile.TemporaryDirectory() as tmp:
-            destino = pathlib.Path(tmp) / "silux.conf"
-            with mock.patch.object(self.modulo, "TARGET", destino):
-                self.modulo._persist("drivetemp")
-            self.assertIn("drivetemp", destino.read_text(encoding="utf-8"))
-
-    def test_no_se_pisa_lo_que_ya_hubiera(self):
-        """Puede haber otro módulo puesto por una sesión anterior."""
-        import tempfile
-
-        with tempfile.TemporaryDirectory() as tmp:
-            destino = pathlib.Path(tmp) / "silux.conf"
-            destino.write_text("ee1004\n", encoding="utf-8")
-            with mock.patch.object(self.modulo, "TARGET", destino):
-                self.modulo._persist("drivetemp")
-            texto = destino.read_text(encoding="utf-8")
-            self.assertIn("ee1004", texto)
-            self.assertIn("drivetemp", texto)
-
-    def test_anotar_dos_veces_no_duplica(self):
-        import tempfile
-
-        with tempfile.TemporaryDirectory() as tmp:
-            destino = pathlib.Path(tmp) / "silux.conf"
-            with mock.patch.object(self.modulo, "TARGET", destino):
-                self.modulo._persist("drivetemp")
-                self.modulo._persist("drivetemp")
-            lineas = [x for x in destino.read_text(encoding="utf-8").splitlines()
-                      if x.strip() and not x.startswith("#")]
-            self.assertEqual(lineas, ["drivetemp"])
-
-    def test_no_importa_nada_de_silux(self):
-        """Desde un AppImage se copia suelto, fuera del punto de montaje."""
-        fuente = pathlib.Path(self.modulo.__file__).read_text(encoding="utf-8")
-        for linea in fuente.splitlines():
-            limpia = linea.strip()
-            if limpia.startswith(("import ", "from ")):
-                self.assertNotIn("silux", limpia, linea)
-                self.assertFalse(limpia.startswith("from ."), linea)
+    def test_modprobe_failing_says_why(self):
+        reply, _run = self._run("ee1004", loaded_after=False, returncode=1,
+                                stderr="modprobe: FATAL: Module ee1004 not found.\n")
+        self.assertFalse(reply["ok"])
+        self.assertIn("not found", reply["message"])
 
 
 class TestLaVersionDelAyudante(unittest.TestCase):

@@ -355,6 +355,11 @@ Ocupado 92.0 GB · Libre 109 GB · Reservado 15.3 GB · Sin montar 192 GB
 Las horas de encendido, los terabytes escritos y el desgaste los guarda cada disco en sus propios contadores de diagnóstico. El kernel reserva esos comandos al administrador porque son los mismos que sirven para borrar un disco.
 El ayudante que se lanza solo sabe pedir diagnóstico y leer unas tablas del sistema: no ejecuta órdenes ni escribe nada.
 
+> **Falta un driver del kernel**
+> Cargando drivetemp tendrías la temperatura de los discos SATA. «Cargar ahora» lo carga hasta que se apague el equipo, con la contraseña de administrador.
+> Para que se cargue siempre:
+> echo drivetemp | sudo tee /etc/modules-load.d/drivetemp.conf
+
 ### Unidades
 
 | UNIDAD | MODELO | TIPO | CAPACIDAD | OCUPADO | TEMPERATURA | LEYENDO | ESCRIBIENDO |
@@ -614,9 +619,10 @@ SENSORES · 10 en 5 dispositivos
 
 Mobile GM965/GL960 Integrated Graphics: no tiene sensor de temperatura propio.
 
-> **Falta un driver de sensores**
-> Cargando drivetemp tendrías la temperatura de los discos SATA.
-> sudo modprobe drivetemp
+> **Falta un driver del kernel**
+> Cargando drivetemp tendrías la temperatura de los discos SATA. «Cargar ahora» lo carga hasta que se apague el equipo, con la contraseña de administrador.
+> Para que se cargue siempre:
+> echo drivetemp | sudo tee /etc/modules-load.d/drivetemp.conf
 
 ## Diagnóstico
 
