@@ -275,9 +275,9 @@ El ayudante que se lanza solo sabe leer esa tabla y unos registros del procesado
 Mobile GM965/GL960 Integrated Graphics
 Dell
 i915 · Mesa 25.0.7 · integrada · principal
-- Uso: (necesita permisos) (con permisos)
+- Uso: (necesita permisos)
 - Frecuencia: —
-- Consumo: (necesita permisos) (con permisos)
+- Consumo: (necesita permisos)
 
 > **Requiere permisos**
 > El uso y el consumo de la gráfica solo se leen con permisos de administrador.

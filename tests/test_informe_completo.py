@@ -31,6 +31,11 @@ def _visibles(pagina) -> list[str]:
 
     from PySide6.QtWidgets import QTreeWidget, QTreeWidgetItemIterator
 
+    from silux.ui.widgets import StatTile
+
+    # A padlocked tile's detail («with permissions») is the padlock's own,
+    # which the report writes as «(needs permissions)».
+    padlocked = {id(t.detail) for t in pagina.findChildren(StatTile) if t.is_locked()}
     textos = []
     for arbol in pagina.findChildren(QTreeWidget):
         if arbol.isVisibleTo(pagina):
@@ -40,7 +45,7 @@ def _visibles(pagina) -> list[str]:
                     textos.append(fila.value().text(0).strip())
                 fila += 1
     for etiqueta in pagina.findChildren(QLabel):
-        if etiqueta.isVisibleTo(pagina):
+        if etiqueta.isVisibleTo(pagina) and id(etiqueta) not in padlocked:
             # Line by line: a multi-line label keeps its lines in the report,
             # and inside a notice each one is quoted.
             textos += [line for line in _texto_de_etiqueta(etiqueta).splitlines()

@@ -62,7 +62,7 @@ Celeron (Gemini Lake) · BGA 1090 · 14 nm · x86_64
 - Frecuencia: 2.54 GHz (800 MHz – 2.60 GHz)
 - Uso: —
 - Temperatura: 41 °C (núcleos 40 °C)
-- Consumo: (necesita permisos) (con permisos)
+- Consumo: (necesita permisos)
 
 ### Núcleos lógicos
 
@@ -260,10 +260,10 @@ El ayudante que se lanza solo sabe leer esa tabla y unos registros del procesado
 UHD Graphics 600
 Lenovo · GeminiLake
 i915 · Mesa 25.2.6 · 12 EU · integrada · principal
-- Uso: (necesita permisos) (con permisos)
+- Uso: (necesita permisos)
 - Frecuencia: 100 MHz
 - Temperatura del paquete: 41 °C (compartida con la CPU)
-- Consumo: (necesita permisos) (con permisos)
+- Consumo: (necesita permisos)
 
 > **Requiere permisos**
 > El uso y el consumo de la gráfica solo se leen con permisos de administrador.

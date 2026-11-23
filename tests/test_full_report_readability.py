@@ -66,5 +66,22 @@ class TestReadability(unittest.TestCase):
         self.assertNotIn(": ·", performance)
 
 
+@unittest.skipIf(QApplication is None, "no PySide6")
+class TestALockedFigure(unittest.TestCase):
+
+    def test_says_so_once(self):
+        # On screen the tile's detail is «with permissions» under a padlock;
+        # written out, the padlock already says it. The processor's and the
+        # graphics card's power need permissions on this laptop.
+        from silux.ui import full_report
+
+        qt.app()
+        text = full_report.build(foto(EQUIPOS / "i3-1115g4")[0])
+        locked = f"({_('report.locked')})"
+        lines = [line for line in text.splitlines() if line.endswith(locked)]
+        self.assertTrue(lines)
+        self.assertNotIn(f"{locked} ({_('lock.detail')})", text)
+
+
 if __name__ == "__main__":
     unittest.main()

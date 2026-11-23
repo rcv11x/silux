@@ -289,9 +289,9 @@ def _lineas(widget, raiz) -> list[str]:
             for c in widget._cores]
     if isinstance(widget, StatTile):
         if widget.is_locked():
-            valor = f"({_('report.locked')})"
-        else:
-            valor = widget.figure_text()
+            # Its detail on screen says the same: «with permissions».
+            return [f"- {widget.caption.text()}: ({_('report.locked')})"]
+        valor = widget.figure_text()
         detalle = (_texto_de_etiqueta(widget.detail)
                    if widget.detail.isVisibleTo(raiz) else "")
         return [f"- {widget.caption.text()}: {valor}" + (f" ({detalle})" if detalle else "")]

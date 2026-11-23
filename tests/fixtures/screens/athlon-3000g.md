@@ -62,7 +62,7 @@ Athlon (Picasso) · AM4 · GF 12LP · x86_64
 - Frecuencia: 2.91 GHz
 - Uso: —
 - Temperatura: 30 °C
-- Consumo: (necesita permisos) (con permisos)
+- Consumo: (necesita permisos)
 
 ### Núcleos lógicos
 

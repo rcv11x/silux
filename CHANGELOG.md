@@ -93,6 +93,8 @@ que hace falta.
   que todavía no se les ha preguntado, para no despertar a la otra.
 - Placa base: un portátil HP ya no se llama «HP Type1ProductConfigId», que
   es un relleno de su BIOS, sino por su nombre («HP Laptop 15-dw3xxx»).
+- Informe: una cifra que necesita permisos dice «(necesita permisos)» una
+  vez, y no «(necesita permisos) (con permisos)».
 
 ## 0.4-prueba10 (22 de noviembre de 2026)
 
