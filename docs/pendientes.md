@@ -100,12 +100,6 @@ la memoria) no va: está propuesto en las notas
     fue la ventana o el contador.
 * **Del sobremesa con i7-10700F y RTX 4060** (volcado `i7-10700f`, de la
   prueba5):
-  - NVIDIA · media · el consumo de la RTX 4060 sale de las muestras de NVML
-    (`nvmlDeviceGetSamples`), porque ni `nvmlDeviceGetPowerUsage` ni los
-    campos 185 y 186 contestan. Falta compararlo con `nvidia-smi -q -d POWER`
-    en su equipo: NVML no documenta la unidad de esas muestras y se toman
-    como milivatios, que es lo que cuadra con los dos decimales en vatios de
-    `nvidia-smi`.
   - Discos · baja · con el ayudante · el modelo entero por el IDENTIFY de
     `ata_device` (para buscar la unidad en drivedb) está probado aquí con dos
     Seagate y un Crucial; con el A400 de verdad, falta verlo.
@@ -143,10 +137,14 @@ la memoria) no va: está propuesto en las notas
   - Gráficos · media · la RTX 4060 marca 53 W con la página a 255 MHz de
     núcleo y 405 MHz de memoria. La única lectura de NVML del volcado la
     tomó a 1980 y 8501 MHz (en carga), donde 53 W es verosímil, pero el
-    volcado no guarda qué llamada dio los vatios (`GetPowerUsage`, los
-    campos de media o instantánea, o la media de las muestras). Grabar en
-    el volcado lo que contestó cada una y el estado P (`GetPerformanceState`)
-    lo diría. Pedido: `nvidia-smi --query-gpu=power.draw,power.draw.average,
+    volcado no guarda qué llamada dio los vatios (`GetPowerUsage` o los
+    campos de media o instantánea). La media de las muestras ya no se usa:
+    de ahí salían los 53 W de la otra 4060 de sobremesa (volcado
+    `i7-10700f`, driver 595), cuyo `nvidia-smi` da N/A en los tres
+    consumos; si esta sale sin consumo con la versión siguiente, también
+    salía de ahí. Grabar en el volcado lo que contestó
+    cada llamada y el estado P (`GetPerformanceState`) lo diría. Pedido:
+    `nvidia-smi --query-gpu=power.draw,power.draw.average,
     power.draw.instant,clocks.gr,clocks.mem,pstate --format=csv -lms 500`
     con Silux abierto y cerrado.
   - Memoria · baja · el HP tiene `uncore_imc_free_running` con eventos de dos

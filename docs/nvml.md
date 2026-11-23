@@ -24,12 +24,17 @@ va al informe.
 | Ventilador | `nvmlDeviceGetFanSpeed` | 270 | las dedicadas con ventilador propio | SYM, DQ |
 | Consumo | `nvmlDeviceGetPowerUsage` | 270 | Fermi o posterior, con gestión de energía | SYM, DQ |
 | | si no, los campos 185 y 186 con `nvmlDeviceGetFieldValues` | campos R535 (la función, R384) | 185: Ampere o posterior, menos GA100; 186: todas | H, CL |
-| | si no, la media de las muestras (`nvmlDeviceGetSamples`, `NVML_TOTAL_POWER_SAMPLES`) | R340 | Kepler o posterior | SYM, CL, DQ |
 | Límite de potencia actual | `nvmlDeviceGetEnforcedPowerLimit` | R331 | Kepler o posterior | SYM, CL, DQ |
 | Límite de fábrica y rango | `nvmlDeviceGetPowerManagementDefaultLimit`, `nvmlDeviceGetPowerManagementLimitConstraints` | R304 | Kepler o posterior | SYM, CL, DQ |
 | Relojes actuales y máximos | `nvmlDeviceGetClockInfo`, `nvmlDeviceGetMaxClockInfo` | 270; R285 (el de video, R361) | Fermi o posterior | SYM, CL, DQ |
 | Enlace PCIe | `nvmlDeviceGetCurrPcieLinkGeneration`/`Width`, `nvmlDeviceGetMaxPcieLinkGeneration`/`Width` | R295 | Fermi o posterior | SYM, CL, DQ |
 | Motivos de recorte | `nvmlDeviceGetCurrentClocksEventReasons`; si no, `nvmlDeviceGetCurrentClocksThrottleReasons` | R535; R304 | todas las que NVML admite del todo | SYM, H, CL, DQ |
+
+El consumo es lo que `nvidia-smi` da como `power.draw`, `power.draw.average`
+y `power.draw.instant`. Si las tres contestan que no, la tarjeta sale sin
+consumo, con lo que contestó cada una en el informe: no se toma la media del
+búfer de muestras (`nvmlDeviceGetSamples`, `NVML_TOTAL_POWER_SAMPLES`), que el
+driver no da como consumo de la tarjeta, ni un límite.
 
 La temperatura y los motivos de recorte se piden primero con la función
 nueva: las antiguas están obsoletas desde CUDA 13.0 (R580) y se quitan en
@@ -53,10 +58,6 @@ son los mismos con los dos nombres.
 
 ## Lo que no se ha confirmado
 
-- La unidad de las muestras de potencia: NVML no la documenta. Se toman como
-  milivatios, como el resto de su consumo, y es lo que cuadra con los dos
-  decimales en vatios de `nvidia-smi -q -d POWER`. Falta compararlo en una
-  tarjeta que solo dé el consumo por ahí.
 - Que «270» sea el driver de NVML 1.0 sale solo del archivo de Debian.
 - Después de 555 no hay archivo de símbolos de Debian: que las funciones
   antiguas sigan exportándose sale de las cabeceras y de los avisos.

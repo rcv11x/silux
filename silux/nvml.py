@@ -85,17 +85,6 @@ MEMBER_BY_TYPE = {0: "dVal", 1: "uiVal", 2: "ulVal", 3: "ullVal", 4: "sllVal",
                     5: "siVal", 6: "usVal"}
 
 
-# nvmlSamplingType_t: the board's total power, which the driver samples into
-# a ring buffer whether or not the power usage call answers. nvidia-smi shows
-# their mean as «Power Samples» where «Power Draw» is N/A.
-TOTAL_POWER_SAMPLES = 0
-
-
-class _Sample(ctypes.Structure):
-    """nvmlSample_t."""
-    _fields_ = [("timeStamp", ctypes.c_ulonglong), ("sampleValue", _Value)]
-
-
 class _Temperature(ctypes.Structure):
     """nvmlTemperature_v1_t, for nvmlDeviceGetTemperatureV (R570 and newer)."""
     _fields_ = [("version", ctypes.c_uint), ("sensorType", ctypes.c_uint),
@@ -178,9 +167,6 @@ class Nvml:
     def __init__(self) -> None:
         self._lib: Optional[ctypes.CDLL] = None
         self._active = False
-        # The newest power sample already used, per card: each reading
-        # averages only what the driver sampled since the previous one.
-        self._last_power_sample: dict[int, int] = {}
 
     # -- lifecycle ----------------------------------------------------------
 
@@ -336,9 +322,15 @@ class Nvml:
                 reasons.append(f"field {field.fieldId}: value type {field.valueType}")
         return values
 
-    def _power(self, handle, index: int) -> tuple[Optional[float], Optional[str]]:
-        """Watts: nvmlDeviceGetPowerUsage, else the power fields, else the
-        mean of the power samples. Without any, what NVML answered to each."""
+    def _power(self, handle) -> tuple[Optional[float], Optional[str]]:
+        """Watts: nvmlDeviceGetPowerUsage, else the power fields, which are
+        nvidia-smi's power.draw, .average and .instant. Without any, what NVML
+        answered to each.
+
+        Not the power samples buffer, nor a limit: where those three are N/A
+        the driver isn't giving the card's power, and another figure it
+        publishes would be shown as if it were.
+        """
         reasons: list[str] = []
         milliwatts = self._integer("nvmlDeviceGetPowerUsage", handle, reasons=reasons)
         if milliwatts is None:
@@ -346,44 +338,8 @@ class Nvml:
                                   reasons=reasons)
             milliwatts = fields.get(FIELD_POWER_AVERAGE, fields.get(FIELD_POWER_INSTANT))
         if milliwatts is None:
-            milliwatts = self._power_samples(handle, index, reasons)
-        if milliwatts is None:
             return None, "; ".join(reasons) or None
         return round(milliwatts / 1000, 1), None
-
-    def _power_samples(self, handle, index: int, reasons: list) -> Optional[float]:
-        """Mean of the power samples taken since the last reading, in mW.
-
-        The first reading has nothing to start from and takes what the
-        buffer holds, a few seconds' worth.
-        """
-        function = self._symbol("nvmlDeviceGetSamples")
-        if function is None:
-            reasons.append("nvmlDeviceGetSamples: not in the library")
-            return None
-        since = ctypes.c_ulonglong(self._last_power_sample.get(index, 0))
-        kind, value_type, count = ctypes.c_uint(TOTAL_POWER_SAMPLES), ctypes.c_uint(), ctypes.c_uint()
-        samples = None
-        try:
-            # A first call without a buffer says how many there are.
-            code = function(handle, kind, since, ctypes.byref(value_type), ctypes.byref(count), None)
-            if code == NVML_SUCCESS and count.value:
-                samples = (_Sample * count.value)()
-                code = function(handle, kind, since, ctypes.byref(value_type),
-                                ctypes.byref(count), samples)
-        except (ctypes.ArgumentError, OSError) as exc:
-            reasons.append(f"nvmlDeviceGetSamples: {exc}")
-            return None
-        if code != NVML_SUCCESS:
-            reasons.append(f"nvmlDeviceGetSamples: {nvml_error(code)}")
-            return None
-        member = MEMBER_BY_TYPE.get(value_type.value)
-        taken = list(samples)[:count.value] if samples is not None else []
-        if not taken or member is None:
-            reasons.append(f"nvmlDeviceGetSamples: {len(taken)} samples, value type {value_type.value}")
-            return None
-        self._last_power_sample[index] = max(sample.timeStamp for sample in taken)
-        return sum(float(getattr(sample.sampleValue, member)) for sample in taken) / len(taken)
 
     def _limits(self, handle) -> dict[str, Optional[float]]:
         """The factory power limit and the range the card accepts, in watts."""
@@ -441,7 +397,7 @@ class Nvml:
         watts = lambda *args: (lambda v: round(v / 1000, 1) if v is not None else None)(
             self._integer(*args))
 
-        power, power_error = self._power(handle, index)
+        power, power_error = self._power(handle)
         # Renamed in R535 with the same bits; the old name is deprecated.
         flags = self._integer("nvmlDeviceGetCurrentClocksEventReasons", handle,
                                 kind=ctypes.c_ulonglong)

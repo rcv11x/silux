@@ -206,8 +206,9 @@ class _Nvml:
 
 class _NvmlWithSamples(_Nvml):
     """A desktop RTX 4060 with driver 595, as `nvidia-smi -q -d POWER` showed
-    it: no power usage, no power fields, and the power samples buffer (119
-    samples between 52.59 and 55.37 W, 53.11 on average)."""
+    it: power draw N/A, no power fields, and a power samples buffer of 119
+    samples between 52.59 and 55.37 W, 53.11 on average, which Silux showed
+    as its power."""
 
     SAMPLES = [52590] + [53095] * 102 + [53096] * 15 + [55370]
 
@@ -225,32 +226,6 @@ class _NvmlWithSamples(_Nvml):
             samples[i].timeStamp = 1000 + i
             samples[i].sampleValue.uiVal = mw
         return 0
-
-
-class TestThePowerSamples(unittest.TestCase):
-    """Neither the power usage nor the fields answer: the mean of the power
-    samples since the last reading, as nvidia-smi does."""
-
-    def _session(self, lib):
-        sesion = nvml.Nvml()
-        sesion._lib = lib
-        return sesion
-
-    def test_the_mean_of_its_samples(self):
-        lib = _NvmlWithSamples()
-        self.assertEqual((len(lib.SAMPLES), min(lib.SAMPLES), max(lib.SAMPLES),
-                          sum(lib.SAMPLES) / len(lib.SAMPLES)), (119, 52590, 55370, 53110))
-        watts, reason = self._session(lib)._power(nvml.ctypes.c_void_p(1), 0)
-        self.assertEqual(watts, 53.1)
-        self.assertIsNone(reason)
-
-    def test_the_next_reading_asks_only_for_new_samples(self):
-        lib = _NvmlWithSamples()
-        sesion = self._session(lib)
-        sesion._power(nvml.ctypes.c_void_p(1), 0)
-        sesion._power(nvml.ctypes.c_void_p(1), 0)
-        self.assertEqual(lib.since[0], 0)
-        self.assertEqual(lib.since[-1], 1000 + len(_NvmlWithSamples.SAMPLES) - 1)
 
 
 class _OldDriver:
@@ -278,6 +253,32 @@ class _OldDriver:
     def nvmlDeviceGetTemperature(self, handle, sensor, value):
         value._obj.value = 40
         return 0
+
+
+class _NoPowerButSamples(_OldDriver, _NvmlWithSamples):
+    """That card, enumerated: the three ways nvidia-smi gives the power
+    answer NOT_SUPPORTED, and the samples buffer holds its 53 W."""
+
+    def __init__(self):
+        _NvmlWithSamples.__init__(self)
+
+
+class TestNoPowerFromItsSamples(unittest.TestCase):
+    """The driver doesn't give the card's power: none, whatever else it
+    publishes."""
+
+    def test_none_with_what_each_call_answered(self):
+        lib = _NoPowerButSamples()
+        sesion = nvml.Nvml()
+        sesion._lib = lib
+        sesion._active = True
+        tarjeta = sesion.devices()[0]
+        self.assertIsNone(tarjeta.power_w)
+        self.assertEqual(tarjeta.power_error,
+                         "nvmlDeviceGetPowerUsage: NVML_ERROR_NOT_SUPPORTED (3); "
+                         "field 185: NVML_ERROR_NOT_SUPPORTED (3); "
+                         "field 186: NVML_ERROR_NOT_SUPPORTED (3)")
+        self.assertEqual(lib.since, [], "the samples buffer was asked")
 
 
 class TestAnOldDriver(unittest.TestCase):
@@ -371,7 +372,7 @@ class TestThePowerOfANewDriver(unittest.TestCase):
     def _leer(self, lib):
         sesion = nvml.Nvml()
         sesion._lib = lib
-        return sesion._power(nvml.ctypes.c_void_p(1), 0)
+        return sesion._power(nvml.ctypes.c_void_p(1))
 
     def _potencia(self, lib):
         return self._leer(lib)[0]
@@ -390,8 +391,7 @@ class TestThePowerOfANewDriver(unittest.TestCase):
         _vatios, motivo = self._leer(_Nvml())
         self.assertEqual(motivo, "nvmlDeviceGetPowerUsage: NVML_ERROR_NOT_SUPPORTED (3); "
                                  "field 185: NVML_ERROR_NOT_SUPPORTED (3); "
-                                 "field 186: NVML_ERROR_NOT_SUPPORTED (3); "
-                                 "nvmlDeviceGetSamples: not in the library")
+                                 "field 186: NVML_ERROR_NOT_SUPPORTED (3)")
         self.assertIsNone(self._leer(_Nvml(uso=12000))[1])
 
     def test_its_page_says_the_driver_does_not_give_it(self):
@@ -412,11 +412,11 @@ class TestThePowerOfANewDriver(unittest.TestCase):
         self.assertEqual(lib.pedidos, [])
 
 
-class TestTheDesktopRtx4060WithItsSamples(unittest.TestCase):
-    """What the new code records on that desktop: the power from the
-    samples, and the limits nvidia-smi showed (115 W, from 90 to 115)."""
+class TestTheDesktopRtx4060WithoutPower(unittest.TestCase):
+    """What the code records on that desktop: no power, what NVML answered,
+    and the limits nvidia-smi showed (115 W, from 90 to 115)."""
 
-    def test_its_power_and_limits_on_the_page(self):
+    def test_its_limits_on_the_page_and_no_power(self):
         import json
         from silux import render, sysroot, volcado
         from silux.collector import Collector
@@ -428,8 +428,8 @@ class TestTheDesktopRtx4060WithItsSamples(unittest.TestCase):
             ruta = raiz / "grabado.json"
             grabado = json.loads(ruta.read_text())
             grabado["nvml"]["tarjetas"][0].update(
-                power_w=53.0, power_error=None, power_cap_default_w=115.0,
-                power_cap_min_w=90.0, power_cap_max_w=115.0)
+                power_w=None, power_error="nvmlDeviceGetPowerUsage: NVML_ERROR_NOT_SUPPORTED (3)",
+                power_cap_default_w=115.0, power_cap_min_w=90.0, power_cap_max_w=115.0)
             ruta.write_text(json.dumps(grabado))
             sysroot.forget()
             recolector = Collector()
@@ -439,15 +439,16 @@ class TestTheDesktopRtx4060WithItsSamples(unittest.TestCase):
                 recolector.close()
         gpu = f.gpus[0]
         self.assertEqual((gpu.power_w, gpu.power_cap_default_w, gpu.power_cap_min_w,
-                          gpu.power_cap_max_w), (53.0, 115.0, 90.0, 115.0))
-        self.assertFalse([n for n in f.notes if n.path == "gpus.0.power_w"])
+                          gpu.power_cap_max_w), (None, 115.0, 90.0, 115.0))
+        nota = next(n for n in f.notes if n.path == "gpus.0.power_w")
+        self.assertIn("NOT_SUPPORTED", nota.detail)
         qt.app()
         with pantalla.Ventana(f) as ventana:
             ventana.select_section("Gráficos")
             textos = pantalla.textos_de(ventana.stack.currentWidget())
         self.assertIn(render.gpu_factory_power_limit(gpu), textos)
         self.assertIn(_("gpu.sensor.powercap"), textos)
-        self.assertNotIn(_("prov.nvml.nopower"), " ".join(textos))
+        self.assertIn(_("prov.nvml.nopower"), " ".join(textos))
 
 
 class TestAProprietaryNvidiaInSensors(unittest.TestCase):

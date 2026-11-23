@@ -10,6 +10,13 @@ que hace falta.
 
 ---
 
+## Sin publicar
+
+- Gráficos: una NVIDIA cuyo driver no da el consumo (`nvidia-smi` lo da como
+  N/A) sale sin consumo, con su aviso, y no con la media de su búfer de
+  muestras, que el driver no da como su consumo: una RTX 4060 sin consumo
+  marcaba 53 W.
+
 ## 0.4-prueba11 (23 de noviembre de 2026)
 
 Con informes de Felix Lara.
