@@ -802,6 +802,8 @@ class MemoryPage(ScrollPage):
         nombres = render.slot_names([(m.locator, m.bank) for m in modules])
 
         sin_spd: list[str] = []
+        # The numbers of the modules in a slot whose chip wasn't read.
+        unread: list[int] = []
         sin_spd_soldada: list[str] = []
         undeclared: list[tuple[int, list[str]]] = []
         numero = 0
@@ -852,6 +854,8 @@ class MemoryPage(ScrollPage):
                 grid.set_visible(_(clave), False)
                 if clave not in sin_spd:
                     sin_spd.append(clave)
+                if module.spd is None and numero not in unread:
+                    unread.append(numero)
             # Read and blank: the module doesn't declare it. Hidden, and the
             # foot says which.
             blank = self._undeclared(module)
@@ -893,21 +897,38 @@ class MemoryPage(ScrollPage):
             # la placa de lo que puede ser un permiso o un driver.
             nota_spd = getattr(self, "_nota_spd", None)
             campos = lista[:1].upper() + lista[1:]
+            # With another module's chip read and shown beside it, «each
+            # module's chip could not be read» is false: say whose.
+            some_read = any(m.spd is not None for m in modules if m.populated)
+            numbers = render.enumeration([str(n) for n in unread])
+            if not (some_read and unread):
+                not_read = _("memory.na.nospd").format(campos=campos)
+            elif len(unread) == 1:
+                not_read = _("memory.na.nospd.one").format(campos=campos, n=numbers)
+            else:
+                not_read = _("memory.na.nospd.many").format(campos=campos, n=numbers)
             if nota_spd is not None and nota_spd.key == "prov.spd.partial":
                 pies.append(_("memory.na.spd.partial").format(campos=campos))
                 spd_reason_told = True
             elif nota_spd is not None and nota_spd.key == "prov.spd.unregistered":
                 # Its notice stays, with the order to copy.
-                pies.append(_("memory.na.nospd").format(campos=campos))
+                pies.append(not_read)
             elif nota_spd is not None:
                 # The reason and what to do about it go here, once: the note's
                 # own box is left out (`_apply_notices`).
-                pies.append(" ".join(p for p in (_("memory.na.nospd.why").format(
-                    campos=campos, motivo=nota_spd.message[:1].lower() + nota_spd.message[1:]),
-                    nota_spd.hint) if p))
+                motivo = nota_spd.message[:1].lower() + nota_spd.message[1:]
+                if not (some_read and unread):
+                    why = _("memory.na.nospd.why").format(campos=campos, motivo=motivo)
+                elif len(unread) == 1:
+                    why = _("memory.na.nospd.why.one").format(
+                        campos=campos, n=numbers, motivo=motivo)
+                else:
+                    why = _("memory.na.nospd.why.many").format(
+                        campos=campos, n=numbers, motivo=motivo)
+                pies.append(" ".join(p for p in (why, nota_spd.hint) if p))
                 spd_reason_told = True
             else:
-                pies.append(_("memory.na.nospd").format(campos=campos))
+                pies.append(not_read)
         no_chips_field = False
         for number, keys in undeclared:
             # DDR2's SPD has no field for the chips' maker: not undeclared.

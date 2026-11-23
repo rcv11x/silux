@@ -84,6 +84,9 @@ que hace falta.
   segundo módulo (con dos zócalos solo lo busca en 0x50 y 0x51, y muchos
   portátiles lo ponen en 0x52), Silux lo explica y da la orden para
   registrarlo a mano, para copiarla. Silux no la ejecuta.
+- Memoria: con permisos y un módulo leído de su chip SPD, el pie dice de qué
+  módulo no se pudo leer el chip («y el del módulo 2 no se ha podido leer»),
+  en vez de decirlo de todos con el primero leído al lado.
 - Gráficos: una tarjeta en reposo (la dedicada de un portátil con Optimus)
   ya no enseña 35 filas con guion: queda una ficha corta con lo que se sabe
   sin despertarla (nombre, fabricante, driver, identificadores) y un aviso

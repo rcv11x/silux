@@ -9,6 +9,7 @@ The modules are what each machine's firmware table gave, as its report
 showed with permissions; the chips are the dumps'.
 """
 
+import errno
 import unittest
 from unittest import mock
 
@@ -88,6 +89,38 @@ class TestTheOrder(unittest.TestCase):
         self.assertEqual(spd.KERNEL_NAMES["DDR5"], "spd5118")
 
 
+def _with_permissions(_self, draft):
+    draft.modules = _slots("DDR2", "DDR")
+
+
+def _snapshot(prepare=None):
+    """The Vostro's dump with its firmware's table, as the app collects it."""
+    with mock.patch.object(PrivilegedMemory, "collect", _with_permissions), \
+            volcado.mounted(EQUIPOS / "celeron-560") as root, fake_clock() as clock:
+        if prepare is not None:
+            prepare(root)
+        collector = Collector()
+        try:
+            collector.snapshot()
+            return next_snapshot(collector, clock)
+        finally:
+            collector.close()
+
+
+def _foot(snapshot) -> str:
+    app = qt.app()
+    with pantalla.Ventana(snapshot) as window:
+        window.select_section("Memoria")
+        for _turn in range(3):
+            app.processEvents()
+        return window.stack.currentWidget().spd_missing.text()
+
+
+def _sentence(key: str, **fields) -> str:
+    """The sentence without the list of fields it starts with."""
+    return _(key).format(campos="", **fields).strip()
+
+
 @unittest.skipIf(QApplication is None, "no PySide6")
 class TestOnThePage(unittest.TestCase):
 
@@ -96,18 +129,8 @@ class TestOnThePage(unittest.TestCase):
 
         from silux.ui.widgets import Notice
 
-        def with_permissions(_self, draft):
-            draft.modules = _slots("DDR2", "DDR")
-
         app = qt.app()
-        with mock.patch.object(PrivilegedMemory, "collect", with_permissions), \
-                volcado.mounted(EQUIPOS / "celeron-560"), fake_clock() as clock:
-            collector = Collector()
-            try:
-                collector.snapshot()
-                snapshot = next_snapshot(collector, clock)
-            finally:
-                collector.close()
+        snapshot = _snapshot()
         order = "echo spd 0x52 | sudo tee /sys/bus/i2c/devices/i2c-0/new_device"
         with pantalla.Ventana(snapshot) as window:
             window.select_section("Memoria")
@@ -123,6 +146,36 @@ class TestOnThePage(unittest.TestCase):
             self.assertIn(order, hint.text())
             self.assertTrue(hint.textInteractionFlags()
                             & Qt.TextInteractionFlag.TextSelectableByMouse)
+
+    def test_the_foot_says_whose_chip_was_not_read(self):
+        # The first module's chip was read and is on its card.
+        foot = _foot(_snapshot())
+        self.assertIn(_sentence("memory.na.nospd.one", n="2"), foot)
+        self.assertNotIn(_sentence("memory.na.nospd"), foot)
+
+    def test_a_chip_that_fails_to_read_says_whose_too(self):
+        def a_second_chip_that_fails(root):
+            device = root / "sys/devices/pci0000:00/0000:00:1f.3/i2c-0/0-0052"
+            device.mkdir()
+            (device / "eeprom").write_bytes(b"")
+            (root / "sys/bus/i2c/devices/0-0052").symlink_to(
+                "../../../devices/pci0000:00/0000:00:1f.3/i2c-0/0-0052")
+
+        read_pages = spd.read_pages
+
+        def failing(path):
+            if path.parent.name == "0-0052":
+                raise OSError(errno.ENXIO, "No such device or address")
+            return read_pages(path)
+
+        with mock.patch.object(spd, "read_pages", failing):
+            snapshot = _snapshot(a_second_chip_that_fails)
+        self.assertEqual([n.key for n in snapshot.notes if n.path == "spd"],
+                         ["prov.spd.readfailed"])
+        foot = _foot(snapshot)
+        self.assertIn(_sentence("memory.na.nospd.why.one", n="2",
+                                motivo="").rstrip(":"), foot)
+        self.assertNotIn(_sentence("memory.na.nospd.why", motivo="").rstrip(":"), foot)
 
 
 if __name__ == "__main__":
