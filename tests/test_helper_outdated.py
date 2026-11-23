@@ -73,6 +73,13 @@ class TestInTheWindow(unittest.TestCase):
         patch = mock.patch.dict(os.environ, {"XDG_CONFIG_HOME": tmp.name})
         patch.start()
         self.addCleanup(patch.stop)
+        # The window asks about the helper too, not only the collector: the
+        # photo's answer, whatever helper this machine has installed. It
+        # passed here, with an old one installed, and failed in the CI.
+        for name in ("needs_reinstall", "supported"):
+            patch = mock.patch.object(PrivilegedClient, name, return_value=True)
+            patch.start()
+            self.addCleanup(patch.stop)
 
     def _window(self, dismissed: bool = False):
         import dataclasses
