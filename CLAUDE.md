@@ -194,6 +194,8 @@ código nuevo:
 - **El color de una temperatura sale solo de los límites que declara la
   pieza** (`silux/thermal.py`): normal, ámbar desde su `max` y rojo desde
   su `crit`; sin límites, sin color, y nunca uno inventado ni un degradado.
+  La única excepción es el Tjmax de la ficha de AMD (de Zen 2 en adelante),
+  que solo avisa, nunca en rojo, y dice de dónde sale.
   Los valores de relleno (0, 0 K, 0xFFFF K) no son límites. Un solo código
   para Sensores, Inicio, CPU, gráfica y discos (`theme.LEVEL_COLOURS`,
   `widgets.paint_level`).
@@ -220,6 +222,12 @@ código nuevo:
   textos (`tests/test_language_independence.py`), y cada página se ve solo en
   el idioma elegido (`tests/test_interface_language.py`). Ni una fecha se
   guarda ya escrita.
+- **Un número con su nombre pasa por `render.counted`**: con 1, el singular
+  (`clave.one`), en los dos idiomas (`tests/test_plurals.py`). «1 módulos»
+  salía en la imagen para compartir.
+- **Lo que corre como root no escribe ningún archivo**, sea el ayudante o
+  cualquier otro guion que se lance con pkexec: lo que deja algo puesto
+  para siempre lo copia el usuario.
 - **Una gráfica dibuja una sola serie.** Cada punto entra con su
   `Series(clave, unidad)`: otra clave empieza de cero, y lo que no cabe en
   su unidad (`model.PLAUSIBLE`) no entra (`tests/test_chart_series.py`).
@@ -351,7 +359,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); el código nuevo, en inglés (ver «Código»). Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-1903 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+1939 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
