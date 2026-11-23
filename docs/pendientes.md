@@ -297,6 +297,13 @@ la memoria) no va: está propuesto en las notas
 
 ## Interfaz
 
+* `ui/pages/memory.py` · baja · con la letra «máximo» y la ventana a 760 px,
+  la página de Memoria entera se sale por la derecha (el título de la
+  cabecera, las etiquetas de colores y las fichas quedan cortados contra el
+  borde, sin barra). A 760 px con la letra normal y a 1000 px con la
+  «máximo», cabe. Visto el 23 de noviembre de 2026 con el volcado
+  `celeron-560`; sin buscar la causa.
+
 * `ui/pages/storage.py` · baja · con Silux abierto como root, «Vida
   restante» de un pendrive se enseña y se esconde entre dos fotos iguales
   (`test_nada_se_mueve` como root, en el contenedor de
