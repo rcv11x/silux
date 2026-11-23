@@ -12,7 +12,7 @@ import unittest
 
 from silux import thermal, volcado
 from silux.collector import Collector
-from tests.test_equipos import EQUIPOS
+from tests.test_equipos import EQUIPOS, shared_snapshot
 
 try:
     from PySide6.QtWidgets import QApplication
@@ -76,12 +76,37 @@ class TestTheModel(unittest.TestCase):
         self.assertEqual(_disk(_collected("5800x3d", sn850x=93850), "WD").temp_level,
                          thermal.CRITICAL)
 
-    def test_a_ryzen_without_limits_has_no_colour(self):
-        snapshot = _collected("5800x3d", tctl=95000)
-        self.assertEqual(snapshot.cpu.temperature_c, 95.0)
-        self.assertEqual(snapshot.cpu.temp_level, thermal.OK)
-        self.assertFalse([s for s in snapshot.sensors
-                          if s.chip == "k10temp" and s.alarm_level != thermal.OK])
+    def test_a_zen_3_warns_from_its_sheet_and_never_turns_red(self):
+        # k10temp declares nothing; AMD's sheet gives the 5800X3D 90 °C.
+        for millidegrees, level in ((89000, thermal.OK), (91000, thermal.HIGH),
+                                    (120000, thermal.HIGH)):
+            with self.subTest(millidegrees=millidegrees):
+                snapshot = _collected("5800x3d", tctl=millidegrees)
+                self.assertEqual(snapshot.cpu.temp_level, level)
+                self.assertEqual((snapshot.cpu.temp_high_c, snapshot.cpu.temp_critical_c,
+                                  snapshot.cpu.temp_sheet_high_c), (None, None, 90))
+                tctl = next(s for s in snapshot.sensors if s.chip_label == "Tctl")
+                self.assertEqual((tctl.high, tctl.critical, tctl.sheet_high), (None, None, 90))
+                self.assertEqual(tctl.alarm_level, level)
+
+    def test_from_zen_2_on_only(self):
+        from silux import db
+
+        # AMD lists 95 °C for the Athlon 3000G, a Zen 1 part: the family
+        # leaves it out, not a missing row.
+        self.assertEqual(db.amd_model("AMD Athlon 3000G with Radeon Vega Graphics")["tjmax_c"], 95)
+        for dump, expected in (("athlon-3000g", None), ("ryzen3-4100", 95),
+                               ("ryzen5-5600g", 95), ("i5-10400", None)):
+            with self.subTest(dump=dump):
+                snapshot = shared_snapshot(EQUIPOS / dump)
+                self.assertEqual(snapshot.cpu.temp_sheet_high_c, expected)
+                self.assertEqual({s.sheet_high for s in snapshot.sensors
+                                  if s.chip == "k10temp"} or {None}, {expected})
+
+    def test_declared_limits_win_over_the_sheet(self):
+        self.assertEqual(thermal.level(91, 95, 100, sheet_high=90), thermal.OK)
+        self.assertEqual(thermal.level(150, None, None, sheet_high=90), thermal.HIGH)
+        self.assertEqual(thermal.level(150, None, None, sheet_high=0), thermal.OK)
 
     def test_coretemp_declares_its_own(self):
         self.assertEqual(_collected("i5-10400", package=84000).cpu.temp_level, thermal.HIGH)
@@ -137,12 +162,12 @@ class TestEverywhereItIsShown(unittest.TestCase):
             self.assertEqual(sensors.tree._rows[composite.key].foreground(1).color().name(),
                              window._palette.q("crit").name())
 
-    def test_a_hot_ryzen_and_a_cool_kioxia_have_no_colour(self):
+    def test_a_ryzen_under_its_sheet_and_a_cool_kioxia_have_no_colour(self):
         from silux.i18n import _
         from silux.ui.pages.storage import COLUMNA_TEMPERATURA
         from tests import pantalla
 
-        for dump, hot in (("5800x3d", {"tctl": 95000}), ("i5-10400", {"kioxia": 70000})):
+        for dump, hot in (("5800x3d", {"tctl": 88000}), ("i5-10400", {"kioxia": 70000})):
             snapshot = _collected(dump, **hot)
             with self.subTest(dump=dump), pantalla.Ventana(snapshot) as window:
                 home = self._page(window, "Inicio")
@@ -158,6 +183,25 @@ class TestEverywhereItIsShown(unittest.TestCase):
                     grid = storage._grids["sda"]
                     self.assertFalse(grid.value_label(
                         _("storage.field.templimits")).isVisibleTo(storage))
+
+    def test_a_ryzen_over_its_sheet_is_amber_and_says_where_it_comes_from(self):
+        from silux.i18n import _
+        from tests import pantalla
+
+        snapshot = _collected("5800x3d", tctl=95000)
+        with pantalla.Ventana(snapshot) as window:
+            cpu = self._page(window, "CPU")
+            self.assertEqual(cpu.live.tile_temp.value.property("level"), "high")
+            self.assertEqual(cpu.live.tile_temp.toolTip(),
+                             _("temp.limits.sheet").format(v="90 °C"))
+            home = self._page(window, "Inicio")
+            self.assertEqual(home.temperaturas.nombre.property("level"), "high")
+            sensors = self._page(window, "Sensores")
+            tctl = next(s for s in snapshot.sensors if s.chip_label == "Tctl")
+            row = sensors.tree._rows[tctl.key]
+            self.assertEqual(row.foreground(1).color().name(), window._palette.q("warn").name())
+            self.assertIn(_("sensors.limit.sheet").format(v="90 °C"), row.toolTip(0))
+            self.assertIn(_("sensors.alarm.sheet"), row.toolTip(0))
 
     def test_the_cpu_tile_says_its_limits(self):
         from silux.i18n import _

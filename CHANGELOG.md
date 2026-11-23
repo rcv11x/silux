@@ -12,6 +12,11 @@ que hace falta.
 
 ## Sin publicar
 
+- Temperaturas: un Ryzen de Zen 2 en adelante, que no declara sus límites,
+  avisa en ámbar desde el Tjmax de su ficha en amd.com (90 °C un 5800X3D),
+  y nunca en rojo: la ficha no dice dónde se apaga el equipo. Al pasar el
+  ratón se dice de dónde sale. Antes de Zen 2 no se usa: la cifra de la
+  ficha no se compara con lo que se lee.
 - Módulos del kernel: «Cargar ahora» carga el que falta (la temperatura de
   los discos SATA, el chip SPD de la memoria) solo hasta que se apague el
   equipo, y sale en Sensores, Almacenamiento y Memoria. Para que se cargue

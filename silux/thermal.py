@@ -41,13 +41,20 @@ def limits(high: Optional[float], critical: Optional[float]
 
 
 def level(celsius: Optional[float], high: Optional[float],
-          critical: Optional[float]) -> str:
-    """OK, HIGH from `high` on, CRITICAL from `critical` on."""
+          critical: Optional[float], sheet_high: Optional[float] = None) -> str:
+    """OK, HIGH from `high` on, CRITICAL from `critical` on.
+
+    `sheet_high` is the maximum on the maker's sheet, for a part that
+    declares no limit of its own: it only warns. The sheet says where the
+    part throttles, not where the machine shuts down.
+    """
     high, critical = limits(high, critical)
     if celsius is None:
         return OK
     if critical is not None and celsius >= critical:
         return CRITICAL
+    if high is None and critical is None:
+        high = limit(sheet_high)
     if high is not None and celsius >= high:
         return HIGH
     return OK

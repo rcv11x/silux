@@ -149,8 +149,13 @@ class CpuLiveSection(QWidget):
         paint_level(self.tile_temp.value, cpu.temp_level)
         limits = render.temperature_limits(cpu.temp_high_c, cpu.temp_critical_c,
                                            self._prefs.fahrenheit)
-        self.tile_temp.set_tooltip(_("temp.limits.declared").format(limites=limits)
-                                   if limits else "")
+        if limits:
+            self.tile_temp.set_tooltip(_("temp.limits.declared").format(limites=limits))
+        elif cpu.temp_sheet_high_c is not None:
+            self.tile_temp.set_tooltip(_("temp.limits.sheet").format(
+                v=render.temperature_whole(cpu.temp_sheet_high_c, self._prefs.fahrenheit)))
+        else:
+            self.tile_temp.set_tooltip("")
         if temperature is not None:
             shown = self._temp(temperature)
             self.tile_temp.update_value(render.figure(shown), shown,

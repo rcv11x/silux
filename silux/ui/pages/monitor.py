@@ -443,6 +443,8 @@ class MonitorPage(ScrollPage):
             limits.append(_("sensors.limit.high").format(v=shown(sensor.high)))
         if sensor.critical is not None:
             limits.append(_("sensors.limit.crit").format(v=shown(sensor.critical)))
+        if not limits and sensor.sheet_high is not None:
+            limits.append(_("sensors.limit.sheet").format(v=shown(sensor.sheet_high)))
         if limits:
             lines.append("\n".join(limits))
         if sensor.placeholder:
@@ -452,7 +454,8 @@ class MonitorPage(ScrollPage):
         if sensor.alarm_level == "crítico":
             lines.append(_("sensors.alarm.crit"))
         elif sensor.alarm_level == "alto":
-            lines.append(_("sensors.alarm.high"))
+            lines.append(_("sensors.alarm.high" if sensor.high is not None
+                           else "sensors.alarm.sheet"))
         return "\n\n".join(lines)
 
     def _apply_hints(self, snapshot: Snapshot) -> None:

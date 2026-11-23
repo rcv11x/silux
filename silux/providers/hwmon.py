@@ -24,7 +24,7 @@ from .. import sysroot, system_deps, thermal
 from ..i18n import _
 from ..model import DeviceKind, DriverHint, Need, Sensor, SensorKind, short_brand
 from ..system_env import system_environment
-from .base import Draft, Provider, mean, read_int, read_text
+from .base import Draft, Provider, is_virtual_machine, mean, read_int, read_text
 from .dmi import PORTABLE_CHASSIS
 
 HWMON = pathlib.Path("/sys/class/hwmon")
@@ -412,6 +412,7 @@ class HwmonSensors(Provider):
         sensors = self._without_repeats(sensors)
         sensors = self._with_core_types(draft, sensors)
         sensors = self._with_their_modules(draft, sensors)
+        sensors = self._with_the_sheet_maximum(draft, sensors)
         sensors += list(self._read_power_supplies())
         if not sensors:
             return
@@ -421,6 +422,40 @@ class HwmonSensors(Provider):
         self._fill_cpu(draft, sensors)
         draft.driver_hints.extend(self._missing_drivers(
             sensors, laptop=draft.board.chassis in PORTABLE_CHASSIS))
+
+    @staticmethod
+    def _sheet_maximum(draft: Draft) -> Optional[float]:
+        """AMD's Tjmax for this exact model, from Zen 2 on.
+
+        Before Zen 2, k10temp's Tctl can carry an offset for fan control and
+        older parts' sheets give a case temperature: neither compares with
+        what is read. A hypervisor's model is not looked up.
+        """
+        from .. import db
+
+        if not draft.types or is_virtual_machine(draft):
+            return None
+        cpu = next(iter(draft.types.values()))
+        family, model = cpu.get("disp_family"), cpu.get("disp_model")
+        if cpu.get("vendor_id") != "AuthenticAMD" or family is None or model is None:
+            return None
+        if not (family >= 0x19 or (family == 0x17 and model >= 0x30)):
+            return None
+        row = db.amd_model(cpu.get("brand") or "")
+        return thermal.limit(row.get("tjmax_c")) if row else None
+
+    @classmethod
+    def _with_the_sheet_maximum(cls, draft: Draft, sensors: list[Sensor]) -> list[Sensor]:
+        """k10temp declares no limit: its temperatures warn from the sheet's."""
+        if not any(s.chip == "k10temp" for s in sensors):
+            return sensors
+        maximum = cls._sheet_maximum(draft)
+        if maximum is None:
+            return sensors
+        return [dataclasses.replace(s, sheet_high=maximum)
+                if (s.chip == "k10temp" and s.kind is SensorKind.TEMPERATURE
+                    and s.high is None and s.critical is None) else s
+                for s in sensors]
 
     @staticmethod
     def _with_their_modules(draft: Draft, sensors: list[Sensor]) -> list[Sensor]:
@@ -713,6 +748,9 @@ class HwmonSensors(Provider):
         if declared:
             draft.cpu_extra["temp_high_c"] = declared[0].high
             draft.cpu_extra["temp_critical_c"] = declared[0].critical
+        elif sheet := [s.sheet_high for s in by_role[source if package else "core"]
+                       if s.sheet_high is not None]:
+            draft.cpu_extra["temp_sheet_high_c"] = sheet[0]
 
         for cpu in draft.logical.values():
             if (value := per_core.get(cpu.get("core_id", -1))) is not None:

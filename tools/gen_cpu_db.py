@@ -366,7 +366,7 @@ def _amd_value(item: dict, key: str):
 
 
 def _amd_mhz(item: dict, key: str) -> "int | None":
-    """A clock field («3500.0») as whole MHz, or None."""
+    """A number field («3500.0», «95») rounded to a whole, or None."""
     try:
         return round(float(_amd_value(item, key) or ""))
     except ValueError:
@@ -405,6 +405,9 @@ def parse_amd_specs(page: str) -> list[dict]:
             # In MHz; a model listed with a base clock and no boost has none.
             "base_mhz": _amd_mhz(item, "baseClock"),
             "boost_mhz": _amd_mhz(item, "maxBoostClock"),
+            # In °C. Comparable with what k10temp reads only from Zen 2 on;
+            # whoever reads it decides by family.
+            "tjmax_c": _amd_mhz(item, "maxOperatingTemperatureTjmax"),
             "source": (item.get("productPages") or {}).get("en") or AMD_SPECS_URL,
         })
     if len(rows) < 100:

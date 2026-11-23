@@ -142,6 +142,7 @@ class Draft:
             package_temp_c=self.cpu_extra.get("package_temp_c"),
             temp_high_c=self.cpu_extra.get("temp_high_c"),
             temp_critical_c=self.cpu_extra.get("temp_critical_c"),
+            temp_sheet_high_c=self.cpu_extra.get("temp_sheet_high_c"),
             power=self.cpu_extra.get("power") or Power(),
             load_average=tuple(self.cpu_extra.get("load_average") or ()),
             idle_states=tuple(self.cpu_extra.get("idle_states") or ()),

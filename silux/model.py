@@ -308,6 +308,9 @@ class CpuInfo:
     # The limits its sensor declares for `temperature_c`, or None.
     temp_high_c: Optional[float] = None
     temp_critical_c: Optional[float] = None
+    # The maximum on the maker's sheet (AMD's Tjmax on amd.com), only where
+    # the sensor declares none and the sheet's figure is comparable with it.
+    temp_sheet_high_c: Optional[float] = None
     power: Power = field(default_factory=Power)
     load_average: tuple[float, ...] = ()       # 1, 5 and 15 minutes
     idle_states: tuple[IdleState, ...] = ()
@@ -338,7 +341,8 @@ class CpuInfo:
     @property
     def temp_level(self) -> str:
         """`thermal.level` of `temperature_c`, by its sensor's limits."""
-        return thermal.level(self.temperature_c, self.temp_high_c, self.temp_critical_c)
+        return thermal.level(self.temperature_c, self.temp_high_c, self.temp_critical_c,
+                             self.temp_sheet_high_c)
 
     @property
     def cores_temp_c(self) -> Optional[float]:
@@ -2019,6 +2023,9 @@ class Sensor:
     core_type: Optional[str] = None
     # A memory module's sensor: its SPD chip's device on the SMBus, «0-0050».
     bus_address: Optional[str] = None
+    # The maximum on the maker's sheet for a chip that declares no limit
+    # (`CpuInfo.temp_sheet_high_c`): it warns, never more.
+    sheet_high: Optional[float] = None
 
     @property
     def unit(self) -> str:
@@ -2054,7 +2061,7 @@ class Sensor:
         to act now or just keep an eye.
         """
         if self.kind is SensorKind.TEMPERATURE:
-            return thermal.level(self.value, self.high, self.critical)
+            return thermal.level(self.value, self.high, self.critical, self.sheet_high)
         if self.value is None:
             return "ok"
         if self.critical is not None and self.value >= self.critical:
