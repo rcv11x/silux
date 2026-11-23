@@ -55,6 +55,16 @@ class TestTheName(unittest.TestCase):
         board = shared_snapshot(EQUIPOS / "core2-p8400").board
         self.assertEqual((board.name, board.display_name), ("0TN284", "Dell Latitude E6400"))
 
+    def test_the_maker_once_when_the_name_already_has_it(self):
+        # Lenovo writes «Lenovo B50-45» as the product, and as the board's
+        # name too: the board's branch put the maker in front again.
+        board = Board(vendor="LENOVO", name="Lenovo B50-45",
+                      system_vendor="LENOVO", system_name="20388",
+                      system_version="Lenovo B50-45")
+        self.assertEqual(board.display_name, "Lenovo B50-45")
+        self.assertEqual(Board(vendor="Gigabyte Technology Co., Ltd.",
+                               name="B560M DS3H").display_name, "Gigabyte B560M DS3H")
+
     def test_no_dump_is_named_after_a_version(self):
         for folder in volcados():
             board = shared_snapshot(folder).board

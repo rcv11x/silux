@@ -1060,6 +1060,15 @@ def clean_dmi(value: Optional[str]) -> Optional[str]:
     return value
 
 
+def _branded(brand: Optional[str], name: Optional[str]) -> Optional[str]:
+    """The maker in front of the name, unless the name already starts with
+    it: Lenovo writes «Lenovo B50-45» as the product, brand included, and
+    putting it in front again gave «Lenovo Lenovo B50-45»."""
+    if name and brand and re.match(re.escape(brand) + r"\b", name, re.IGNORECASE):
+        return name
+    return " ".join(p for p in (brand, name) if p) or None
+
+
 @dataclass(frozen=True, slots=True)
 class Board:
     vendor: Optional[str] = None
@@ -1142,17 +1151,11 @@ class Board:
         «Default string», and on a branded machine its name.
         """
         if self.system_display_name:
-            brand = short_vendor(self.system_vendor) or ""
-            name = self.system_display_name
-            # Lenovo writes «Lenovo ideapad 330-15ICH» there, brand included;
-            # putting it in front again gives «Lenovo Lenovo ideapad».
-            machine = (name if name.lower().startswith(brand.lower() or "\0")
-                      else " ".join(p for p in (brand, name) if p))
+            machine = _branded(short_vendor(self.system_vendor), self.system_display_name)
             # Only if it adds something: some makers repeat the board code there.
             if machine and (self.name or "") not in machine:
                 return machine
-        parts = [short_vendor(self.vendor), self.name]
-        joined = " ".join(p for p in parts if p)
+        joined = _branded(short_vendor(self.vendor), self.name)
         if joined:
             return joined
         # No board at all (a virtual machine: QEMU declares no baseboard):
