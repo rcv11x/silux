@@ -16,7 +16,7 @@ from typing import Optional
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
-from ... import render
+from ... import render, thermal
 from ...i18n import _
 from ...model import DISK_KINDS, Disk, Snapshot
 from ...settings import Preferences
@@ -37,6 +37,7 @@ from ..widgets import (
     boton_de_permiso_permanente,
     clear_layout,
     dismiss_buttons,
+    paint_level,
 )
 
 DISK_HEADERS = ("storage.col.unit", "storage.col.model", "gpu.vram.type", "storage.col.size", "storage.col.used",
@@ -52,8 +53,8 @@ COLUMNA_TEMPERATURA = 5
 # identidad y no al final de catorce filas.
 DISK_FIELDS = ("storage.col.model", "gpu.field.vendor", "gpu.vram.type", "storage.field.bus",
                "gpu.clock.link", "storage.col.size",
-               "gpu.sensor.temp", "storage.field.hours", "storage.field.written",
-               "storage.field.life")
+               "gpu.sensor.temp", "storage.field.templimits", "storage.field.hours",
+               "storage.field.written", "storage.field.life")
 # Cómo lo ve el kernel: se consulta una vez, si acaso. Va plegado.
 DISK_DETAIL_FIELDS = ("storage.field.firmware", "storage.field.logical",
                       "storage.field.physical", "storage.field.scheduler",
@@ -178,7 +179,7 @@ class StoragePage(ScrollPage):
         self.tile_read = StatTile(_("storage.tile.reading"), "", self._p)
         self.tile_write = StatTile(_("storage.tile.writing"), "", self._p)
         self.tile_free = StatTile(_("storage.tile.free"), "", self._p)
-        self.tile_temp = StatTile(_("storage.tile.hottest"), "°C", self._p)
+        self.tile_temp = StatTile(_("storage.tile.hottest"), render.temperature_unit(), self._p)
         for tile in (self.tile_read, self.tile_write, self.tile_free, self.tile_temp):
             fila.add(tile)
         # Lo más ancho que puede escribir cada una: un ritmo hasta lo de un
@@ -400,6 +401,9 @@ class StoragePage(ScrollPage):
               else "storage.tile.inparts").format(n=len(libres)) if libres else "")
 
         temperaturas = [(x.temp_c, x) for x in discos if x.temp_c is not None]
+        # The unit with or without a figure: it kept «°C» in °F when no disk
+        # gave its temperature.
+        self.tile_temp.set_unit(render.temperature_unit(self._prefs.fahrenheit))
         if temperaturas:
             # Por la clave, no por la tupla entera: con dos discos a la misma
             # temperatura Python pasa a comparar el segundo elemento, que es un
@@ -407,16 +411,17 @@ class StoragePage(ScrollPage):
             # solo cuando las cifras coincidían, que es cuando el equipo lleva
             # un rato encendido y todo se estabiliza.
             valor, disco = max(temperaturas, key=lambda par: par[0])
-            mostrado = valor * 9 / 5 + 32 if self._prefs.fahrenheit else valor
-            unidad = "°F" if self._prefs.fahrenheit else "°C"
-            self.tile_temp.set_unit(unidad)
+            mostrado = render.in_temperature_unit(valor, self._prefs.fahrenheit)
+            unidad = render.temperature_unit(self._prefs.fahrenheit)
             # The hottest disk's: when another one is, the chart starts over.
             self.tile_temp.update_value(render.figure(mostrado), mostrado,
                                         series=Series(f"disk:{disco.name}/temp", unidad))
             self.tile_temp.set_detail(disco.name)
+            paint_level(self.tile_temp.value, disco.temp_level)
         else:
             self.tile_temp.update_value(render.DASH)
             self.tile_temp.set_detail(_("storage.notemp"))
+            paint_level(self.tile_temp.value, thermal.OK)
 
     def _apply_tables(self, discos) -> None:
         d = render.DASH
@@ -436,6 +441,7 @@ class StoragePage(ScrollPage):
         for fila, x in enumerate(discos):
             self.disks.set_cell_tooltip(fila, COLUMNA_TEMPERATURA,
                                         self._por_que_sin_temperatura(x))
+            self.disks.set_cell_level(fila, COLUMNA_TEMPERATURA, x.temp_level)
             # The binary figures on hover, as the capacity in a disk's card.
             self.disks.set_cell_tooltip(fila, COLUMNA_CAPACIDAD, render.size(x.size_bytes))
             self.disks.set_cell_tooltip(fila, COLUMNA_OCUPADO,
@@ -565,6 +571,12 @@ class StoragePage(ScrollPage):
 
         g("gpu.sensor.temp", render.temperature(disco.temp_c, self._prefs.fahrenheit),
           tooltip=self._por_que_sin_temperatura(disco))
+        paint_level(grid.value_label(_("gpu.sensor.temp")), disco.temp_level)
+        limits = render.temperature_limits(disco.temp_high_c, disco.temp_critical_c,
+                                           self._prefs.fahrenheit)
+        grid.set(_("storage.field.templimits"), limits or d,
+                 tooltip=_("storage.tip.templimits"))
+        grid.set_visible(_("storage.field.templimits"), bool(limits))
 
         salud = disco.health
         g("storage.field.hours", f"{render.thousands(salud.power_on_hours)} h" if salud.power_on_hours else d)
@@ -634,9 +646,11 @@ class StoragePage(ScrollPage):
                 vieja.set(nombre, valor)
 
     def _por_que_sin_temperatura(self, disco: Disk) -> str:
-        """Lo que explica el guion de un disco que no da su temperatura."""
+        """Lo que explica el guion de un disco que no da su temperatura, o
+        que la que da no lleva color: no declara límites."""
         if disco.temp_c is not None:
-            return ""
+            return ("" if disco.temp_high_c is not None or disco.temp_critical_c is not None
+                    else _("storage.tip.nolimits"))
         return _("storage.tip.notemp.nvme" if disco.kind == "NVMe" else "storage.tip.notemp")
 
     def _candados_de(self, disco: Disk) -> set[str]:

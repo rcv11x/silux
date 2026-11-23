@@ -507,7 +507,7 @@ class CpuPage(ScrollPage):
         self.badges.set_chips(wanted, highlight_first=True)
 
     def _temp(self, celsius: float) -> float:
-        return celsius * 9 / 5 + 32 if self._prefs.fahrenheit else celsius
+        return render.in_temperature_unit(celsius, self._prefs.fahrenheit)
 
     def _apply_sections(self, snapshot: Snapshot) -> None:
         cpu = snapshot.cpu

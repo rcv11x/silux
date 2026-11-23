@@ -11,13 +11,14 @@ de índice: se mira, se elige y se entra.
 
 from __future__ import annotations
 
+import html
 from typing import Optional, Sequence
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFontMetrics
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
-from ... import render
+from ... import render, thermal
 from ...i18n import _
 from ...model import Snapshot
 from ...settings import Preferences
@@ -33,6 +34,7 @@ from ..widgets import (
     Sparkline,
     StackedBar,
     memory_segments,
+    paint_level,
     ui_font,
 )
 
@@ -327,12 +329,14 @@ class HomePage(ScrollPage):
         if principal.clocks.current_hz:
             piezas.append(render.hz(principal.clocks.current_hz))
             moldes.append(_relojes())
+        levels = [thermal.OK] * len(piezas)
         if (temp := cpu.temperature_c) is not None:
             piezas.append(render.temperature(temp, fahrenheit))
             moldes.append(_grados(fahrenheit))
+            levels.append(cpu.temp_level)
         self.cpu.reservar(moldes)
         self.cpu.poner(render.cpu_short_name(principal.brand), detalle,
-                       "   ".join(piezas))
+                       self._coloured(list(zip(piezas, levels)), "   "))
 
     def _grafica(self, snapshot: Snapshot) -> None:
         if not snapshot.gpus:
@@ -370,7 +374,9 @@ class HomePage(ScrollPage):
         elif snapshot.first_reading and not snapshot.permission_note(f"gpus.{indice}.usage"):
             piezas.append(render.calculating())
             moldes.append((piezas[-1],))
+        temp_at = None
         if gpu.temp_c is not None:
+            temp_at = len(piezas)
             piezas.append(render.temperature(gpu.temp_c, fahrenheit))
             moldes.append(_grados(fahrenheit))
         if gpu.power_w is not None:
@@ -408,7 +414,9 @@ class HomePage(ScrollPage):
                  for i, g in enumerate(snapshot.gpus) if i != indice]
         tambien = _("home.gpu.also").format(tarjetas=" · ".join(otras)) if otras else ""
         pie = " ".join(p for p in (tambien, bloqueada) if p)
-        self.gpu.poner(render.gpu_name(gpu), detalle, "   ".join(piezas), pie)
+        levels = [gpu.temp_level if i == temp_at else thermal.OK for i in range(len(piezas))]
+        self.gpu.poner(render.gpu_name(gpu), detalle,
+                       self._coloured(list(zip(piezas, levels)), "   "), pie)
 
     def _memoria(self, snapshot: Snapshot) -> None:
         memoria = snapshot.system.memory
@@ -471,17 +479,20 @@ class HomePage(ScrollPage):
         es cuál, y en un equipo sin sensor en la gráfica el segundo es otra
         cosa. La más caliente va arriba, que es la que se viene a mirar.
         """
-        # (what it is, raw; its name; °C): the headline and its chart go by
-        # the first, which no language changes.
+        # (what it is, raw; its name; °C; its `thermal` level): the headline
+        # and its chart go by the first, which no language changes.
         lecturas = []
         if (grados := snapshot.cpu.temperature_c) is not None:
-            lecturas.append(("cpu", _("home.temp.cpu"), grados))
+            lecturas.append(("cpu", _("home.temp.cpu"), grados, snapshot.cpu.temp_level))
         grafica = (snapshot.gpus[snapshot.working_gpu] if snapshot.gpus else None)
         if grafica is not None and (grados := grafica.temp_c) is not None:
-            lecturas.append(("gpu", _("home.temp.gpu"), grados))
-        discos = [d.temp_c for d in snapshot.disks if d.temp_c is not None]
-        if discos:
-            lecturas.append(("disk", _("home.temp.disk"), max(discos)))
+            lecturas.append(("gpu", _("home.temp.gpu"), grados, grafica.temp_level))
+        disks = [d for d in snapshot.disks if d.temp_c is not None]
+        if disks:
+            # The one past its own limit, if any is; else the hottest.
+            severity = {thermal.OK: 0, thermal.HIGH: 1, thermal.CRITICAL: 2}
+            disk = max(disks, key=lambda d: (severity[d.temp_level], d.temp_c))
+            lecturas.append(("disk", _("home.temp.disk"), disk.temp_c, disk.temp_level))
 
         # La gráfica que no publica su temperatura no deja un hueco entre las
         # cifras: se dice aquí abajo, que no es lo mismo que no haberla leído.
@@ -496,7 +507,8 @@ class HomePage(ScrollPage):
         # gráfica a 53,0 saltaba de uno a otro cada segundo, y la tarjeta
         # entera bailaba. Quien está arriba se queda hasta que otro le saque
         # MARGEN_DEL_TITULAR grados; las demás van siempre en el mismo orden.
-        por_clave = {clave: (nombre, grados) for clave, nombre, grados in lecturas}
+        por_clave = {clave: (nombre, grados) for clave, nombre, grados, _level in lecturas}
+        levels = {key: level for key, _name, _degrees, level in lecturas}
         candidato = max(lecturas, key=lambda lectura: lectura[2])
         actual = self._titular_de_temperaturas
         # A reading that appears or goes (a disk's, once permissions are
@@ -509,16 +521,35 @@ class HomePage(ScrollPage):
                 candidato[2] - por_clave[actual][1] >= MARGEN_DEL_TITULAR:
             actual = self._titular_de_temperaturas = candidato[0]
         nombre, grados = por_clave[actual]
-        resto = [(n, g) for clave, n, g in lecturas if clave != actual]
+        rest = [(name, degrees, level) for key, name, degrees, level in lecturas
+                if key != actual]
         self.temperaturas.poner(
             f"{nombre}  {render.temperature(grados, fahrenheit)}",
             _("home.temp.hottest"),
-            " · ".join(f"{n} {render.temperature(g, fahrenheit)}" for n, g in resto),
+            self._coloured([(f"{name} {render.temperature(degrees, fahrenheit)}", level)
+                            for name, degrees, level in rest]),
             pie)
+        paint_level(self.temperaturas.nombre, levels[actual])
         # The headline's: when another one takes it, the chart starts over.
-        self.temperaturas.grafica.set_series(Series(f"temp/{actual}", "°C"))
-        self.temperaturas.grafica.push(grados)
-        self.temperaturas.grafica.set_range(20.0, 100.0)
+        # In the unit shown: in °F it held Celsius figures.
+        unit = render.temperature_unit(fahrenheit)
+        self.temperaturas.grafica.set_series(Series(f"temp/{actual}", unit))
+        self.temperaturas.grafica.push(render.in_temperature_unit(grados, fahrenheit))
+        self.temperaturas.grafica.set_range(render.in_temperature_unit(20.0, fahrenheit),
+                                            render.in_temperature_unit(100.0, fahrenheit))
+
+    def _coloured(self, pieces: list[tuple[str, str]], separator: str = " · ") -> str:
+        """«GPU 51.0 °C · Disco 39.0 °C», each temperature in its level's
+        colour; plain text while none has one."""
+        if all(level == thermal.OK for _text, level in pieces):
+            return separator.join(text for text, _level in pieces)
+        parts = []
+        for text, level in pieces:
+            colour = self._p.for_level(level)
+            parts.append(f'<span style="color:{colour}">{html.escape(text)}</span>'
+                         if colour else html.escape(text))
+        # Rich text folds runs of spaces into one.
+        return html.escape(separator).replace(" ", "&nbsp;").join(parts)
 
     def _red(self, snapshot: Snapshot) -> None:
         from .network import link_ceiling, main_interface

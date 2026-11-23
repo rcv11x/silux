@@ -23,7 +23,7 @@ from ...settings import Preferences
 from .. import theme
 from ..corematrix import CoreMatrix
 from ..theme import Palette, ui_font
-from ..widgets import Card, ResponsiveRow, Series, StatTile
+from ..widgets import Card, ResponsiveRow, Series, StatTile, paint_level
 
 # Cuántas muestras guarda la curva de cada núcleo. Cuarenta a un segundo son
 # cuarenta segundos, que es lo que cabe en un cuadro de ese tamaño sin que la
@@ -70,7 +70,7 @@ class CpuLiveSection(QWidget):
         row = ResponsiveRow(min_item_width=150)
         self.tile_freq = StatTile(_("gpu.tile.clock"), "GHz", self._p)
         self.tile_usage = StatTile(_("gpu.tile.usage"), "%", self._p)
-        self.tile_temp = StatTile(_("gpu.tile.temp"), "°C", self._p)
+        self.tile_temp = StatTile(_("gpu.tile.temp"), render.temperature_unit(), self._p)
         self.tile_power = StatTile(_("gpu.tile.power"), "W", self._p)
         # Lo más ancho que puede escribir cada una: «0.00» gigahercios y tres
         # cifras para el uso, los grados (también en Fahrenheit) y los vatios.
@@ -82,9 +82,9 @@ class CpuLiveSection(QWidget):
         intervalo = self._prefs.interval_s
         self.tile_freq.chart.set_formatter(lambda v: render.hz(v * 1e9), intervalo)
         self.tile_usage.chart.set_formatter(render.percent, intervalo)
+        # The chart holds the figures as shown: they're already converted.
         self.tile_temp.chart.set_formatter(
-            lambda v: f"{v:.1f} °F" if self._prefs.fahrenheit else f"{v:.1f} °C",
-            intervalo)
+            lambda v: f"{v:.1f} {render.temperature_unit(self._prefs.fahrenheit)}", intervalo)
         self.tile_power.chart.set_formatter(render.watts, intervalo)
         for tile in (self.tile_freq, self.tile_usage, self.tile_temp, self.tile_power):
             row.add(tile)
@@ -98,7 +98,7 @@ class CpuLiveSection(QWidget):
         self._apply_cores(snapshot)
 
     def _temp(self, celsius: float) -> float:
-        return celsius * 9 / 5 + 32 if self._prefs.fahrenheit else celsius
+        return render.in_temperature_unit(celsius, self._prefs.fahrenheit)
 
     def _apply_tiles(self, snapshot: Snapshot) -> None:
         cpu = snapshot.cpu
@@ -144,8 +144,13 @@ class CpuLiveSection(QWidget):
         # La misma que Inicio: la decide el modelo. Debajo, la media de los
         # núcleos cuando la cifra grande es la del encapsulado.
         temperature = cpu.temperature_c
-        unit = "°F" if self._prefs.fahrenheit else "°C"
+        unit = render.temperature_unit(self._prefs.fahrenheit)
         self.tile_temp.set_unit(unit)
+        paint_level(self.tile_temp.value, cpu.temp_level)
+        limits = render.temperature_limits(cpu.temp_high_c, cpu.temp_critical_c,
+                                           self._prefs.fahrenheit)
+        self.tile_temp.set_tooltip(_("temp.limits.declared").format(limites=limits)
+                                   if limits else "")
         if temperature is not None:
             shown = self._temp(temperature)
             self.tile_temp.update_value(render.figure(shown), shown,

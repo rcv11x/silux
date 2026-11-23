@@ -8,7 +8,7 @@ día importe. Por eso aquí se prueba más lo que NO tiene que saltar.
 import unittest
 
 from silux.model import Sensor, SensorKind
-from silux.providers.hwmon import ESTIMATED_LIMITS, _thresholds
+from silux.providers.hwmon import _thresholds
 
 
 def _sensor(**campos) -> Sensor:
@@ -42,15 +42,10 @@ class TestUmbralesQueNoValen(unittest.TestCase):
     """Los chips devuelven de fábrica los campos que nadie configuró."""
 
     def test_el_centinela_de_un_nvme(self):
-        """65261.85 son 0xFFFF en kelvin: un umbral que nunca se alcanza.
-
-        Se descarta, y como el chip es conocido entra el estimado en su lugar,
-        que es justo lo que se quiere: un límite que sí se puede cruzar.
-        """
-        salida = _thresholds(SensorKind.TEMPERATURE, None, 65261.85, None, "nvme")
-        self.assertNotEqual(salida["high"], 65261.85)
-        self.assertEqual(salida["high"], ESTIMATED_LIMITS["nvme"][0])
-        self.assertTrue(salida["estimated_limits"])
+        """65261.85 son 0xFFFF en kelvin: un umbral que nunca se alcanza. Se
+        descarta y no entra otro en su lugar: sin límite, sin color."""
+        salida = _thresholds(SensorKind.TEMPERATURE, -273.15, 65261.85, None, "nvme")
+        self.assertEqual((salida["high"], salida["critical"]), (None, None))
 
     def test_y_en_un_chip_desconocido_se_queda_sin_umbral(self):
         salida = _thresholds(SensorKind.TEMPERATURE, None, 65261.85, None, "it8688")
@@ -71,38 +66,26 @@ class TestUmbralesQueNoValen(unittest.TestCase):
 
     def test_los_buenos_se_respetan(self):
         salida = _thresholds(SensorKind.TEMPERATURE, None, 84.85, 84.85, "nvme")
-        self.assertEqual(salida["high"], 84.85)
-        self.assertFalse(salida.get("estimated_limits"))
+        self.assertEqual((salida["high"], salida["critical"]), (84.85, 84.85))
 
 
-class TestUmbralesEstimados(unittest.TestCase):
-    """De 28 temperaturas de un equipo real, solo 7 traen umbral, y el
-    procesador —el que más importa— no trae ninguno."""
+class TestNoLimitIsMadeUp(unittest.TestCase):
+    """A chip that declares no limits keeps none: a made-up one painted a
+    machine's normal work as a warning (a Ryzen's Tctl at 80 °C, amber)."""
 
-    def test_se_ponen_cuando_el_chip_no_los_da(self):
-        salida = _thresholds(SensorKind.TEMPERATURE, None, None, None, "k10temp")
-        self.assertEqual(salida["high"], ESTIMATED_LIMITS["k10temp"][0])
-        self.assertTrue(salida["estimated_limits"])
+    def test_for_any_chip(self):
+        for chip in ("k10temp", "zenpower", "coretemp", "nvme", "drivetemp", "it8688"):
+            with self.subTest(chip=chip):
+                salida = _thresholds(SensorKind.TEMPERATURE, None, None, None, chip)
+                self.assertEqual((salida["high"], salida["critical"]), (None, None))
 
-    def test_pero_nunca_pisan_a_los_del_hardware(self):
-        salida = _thresholds(SensorKind.TEMPERATURE, None, 70.0, None, "k10temp")
-        self.assertEqual(salida["high"], 70.0)
-        self.assertFalse(salida.get("estimated_limits"))
+    def test_a_zero_is_no_limit(self):
+        salida = _thresholds(SensorKind.TEMPERATURE, None, 0.0, 0.0, "nvme")
+        self.assertEqual((salida["high"], salida["critical"]), (None, None))
 
-    def test_no_se_inventan_para_un_chip_desconocido(self):
-        salida = _thresholds(SensorKind.TEMPERATURE, None, None, None, "it8688")
-        self.assertIsNone(salida["high"])
-
-    def test_ni_para_lo_que_no_sea_temperatura(self):
-        """De un voltaje no hay forma de estimar nada: depende del raíl."""
-        salida = _thresholds(SensorKind.VOLTAGE, None, None, None, "k10temp")
-        self.assertIsNone(salida["high"])
-
-    def test_y_van_del_lado_prudente(self):
-        """Tctl llega a 90 en Zen 3 por diseño y no es una avería."""
-        alto, critico = ESTIMATED_LIMITS["k10temp"]
-        self.assertGreaterEqual(alto, 85.0)
-        self.assertGreater(critico, alto)
+    def test_what_the_hardware_declares_stays(self):
+        salida = _thresholds(SensorKind.TEMPERATURE, None, 84.0, 100.0, "coretemp")
+        self.assertEqual((salida["high"], salida["critical"]), (84.0, 100.0))
 
 
 class TestEsteEquipo(unittest.TestCase):

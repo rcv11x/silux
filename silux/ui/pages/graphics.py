@@ -14,7 +14,7 @@ from __future__ import annotations
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
-from ... import render
+from ... import render, thermal
 from ...i18n import _
 from ...model import Gpu, Need, Snapshot
 from ...settings import Preferences
@@ -35,6 +35,7 @@ from ..widgets import (
     StatTile,
     Table,
     clear_layout,
+    paint_level,
     tone_for,
 )
 
@@ -563,7 +564,7 @@ class GpuSection(QWidget):
     def _build_tiles(self) -> QWidget:
         fila = ResponsiveRow(min_item_width=150)
         self.tile_usage = StatTile(_("gpu.tile.usage"), "%", self._p)
-        self.tile_temp = StatTile(_("gpu.tile.temp"), "°C", self._p)
+        self.tile_temp = StatTile(_("gpu.tile.temp"), render.temperature_unit(), self._p)
         self.tile_power = StatTile(_("gpu.tile.power"), "W", self._p)
         # La frecuencia del núcleo es la primera cifra que se mira de una
         # gráfica y estaba solo en la ficha de relojes, sin curva. Sin ella no
@@ -1114,15 +1115,16 @@ class GpuSection(QWidget):
         # Without a sensor of its own, the package's, said to be that.
         del_paquete = gpu.temp_c is None and gpu.package_temp_c is not None
         temperatura = gpu.package_temp_c if del_paquete else gpu.temp_c
-        if self._prefs.fahrenheit and temperatura is not None:
-            temperatura = temperatura * 9 / 5 + 32
-        unidad = "°F" if self._prefs.fahrenheit else "°C"
+        temperatura = render.in_temperature_unit(temperatura, self._prefs.fahrenheit)
+        unidad = render.temperature_unit(self._prefs.fahrenheit)
         self.tile_temp.set_unit(unidad)
         # The package's and its own are two series, not one.
         origen = "package" if del_paquete else "own"
         self.tile_temp.update_value(
             render.figure(temperatura), temperatura,
             series=Series(f"{gpu.pci_slot or f'gpu{gpu.index}'}/temp/{origen}", unidad))
+        # Its own sensor's limits; the package's figure is the processor's.
+        paint_level(self.tile_temp.value, thermal.OK if del_paquete else gpu.temp_level)
         # Named as the package's, so neither the figure nor the report can be
         # read as the GPU's own; and back to its name if it gets a sensor.
         self.tile_temp.set_label(_("gpu.tile.temp.package") if del_paquete

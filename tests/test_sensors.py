@@ -360,12 +360,9 @@ class TestNombresDeAlimentacion(unittest.TestCase):
         self.assertEqual(limites["high"], 1.5)
 
 
-class TestCalorDeUnSensor(unittest.TestCase):
-    """El degradado que tiñe la columna del valor actual.
-
-    Noventa y nueve renglones de cifras del mismo color se leen uno a uno; el
-    que se está acercando a su umbral tiene que encontrarse mirando.
-    """
+class TestLevelOfATemperature(unittest.TestCase):
+    """Normal, amber from its max and red from its crit: no tint by nearness
+    to a limit, and no colour without limits the part declares."""
 
     def _temp(self, valor, high=None, crit=None):
         from silux.model import Sensor, SensorKind
@@ -374,48 +371,31 @@ class TestCalorDeUnSensor(unittest.TestCase):
                       kind=SensorKind.TEMPERATURE, value=valor,
                       high=high, critical=crit)
 
-    def test_bien_lejos_del_umbral_no_se_tiñe(self):
-        """Un procesador a 45 grados de 90 no está «medio caliente»: está
-        bien, y darle un color intermedio convierte el color en decoración."""
-        self.assertEqual(self._temp(45.0, crit=90.0).heat, 0.0)
+    def test_below_its_max_it_is_normal(self):
+        self.assertEqual(self._temp(83.9, high=84.0, crit=100.0).alarm_level, "ok")
 
-    def test_acercarse_lo_va_subiendo(self):
-        tibio = self._temp(75.0, crit=90.0).heat
-        caliente = self._temp(85.0, crit=90.0).heat
-        self.assertGreater(tibio, 0.0)
-        self.assertGreater(caliente, tibio)
-        self.assertLessEqual(caliente, 1.0)
+    def test_amber_from_its_max_and_red_from_its_crit(self):
+        self.assertEqual(self._temp(84.0, high=84.0, crit=100.0).alarm_level, "alto")
+        self.assertEqual(self._temp(100.0, high=84.0, crit=100.0).alarm_level, "crítico")
 
-    def test_en_el_umbral_llega_al_maximo(self):
-        self.assertEqual(self._temp(90.0, crit=90.0).heat, 1.0)
+    def test_max_and_crit_the_same_go_straight_to_red(self):
+        # As a 970 EVO Plus declares them: 84.85 and 84.85.
+        self.assertEqual(self._temp(84.8, high=84.85, crit=84.85).alarm_level, "ok")
+        self.assertEqual(self._temp(84.85, high=84.85, crit=84.85).alarm_level, "crítico")
 
-    def test_pasarse_no_se_sale_de_la_escala(self):
-        self.assertEqual(self._temp(120.0, crit=90.0).heat, 1.0)
+    def test_without_limits_no_level(self):
+        self.assertEqual(self._temp(120.0).alarm_level, "ok")
 
-    def test_sin_umbral_no_hay_escala(self):
-        """Solo siete de veintiocho temperaturas de un equipo corriente traen
-        umbral; el resto no se puede situar."""
-        self.assertIsNone(self._temp(60.0).heat)
+    def test_without_a_reading_no_level(self):
+        self.assertEqual(self._temp(None, crit=90.0).alarm_level, "ok")
 
-    def test_solo_las_temperaturas(self):
-        """Un voltaje a media escala no significa nada, y un ventilador a tope
-        es lo que se espera bajo carga."""
-        from silux.model import Sensor, SensorKind
+    def test_limits_nobody_filled_are_none(self):
+        # 0xFFFF K, 0 K and 0, as chips leave them.
+        for garbage in (65261.85, -273.15, 0.0, 250.0):
+            with self.subTest(limit=garbage):
+                self.assertEqual(self._temp(70.0, high=garbage, crit=garbage).alarm_level, "ok")
+                self.assertEqual(self._temp(300.0, high=garbage).alarm_level, "ok")
 
-        for tipo in (SensorKind.VOLTAGE, SensorKind.FAN, SensorKind.POWER):
-            with self.subTest(tipo=tipo):
-                s = Sensor(key="k", chip="c", device="d", label="l",
-                           kind=tipo, value=50.0, critical=60.0)
-                self.assertIsNone(s.heat)
-
-    def test_manda_el_critico_sobre_el_alto(self):
-        """`high` es donde el fabricante se incomoda y `critical` donde el
-        equipo se apaga solo: la escala se mide contra el segundo."""
-        sensor = self._temp(80.0, high=70.0, crit=100.0)
-        self.assertLess(sensor.heat, 1.0)
-
-    def test_un_sensor_sin_lectura_no_tiene_calor(self):
-        self.assertIsNone(self._temp(None, crit=90.0).heat)
 
 
 class TestLaBateriaNoSaleDosVeces(unittest.TestCase):

@@ -18,7 +18,7 @@ from typing import Optional
 
 from . import __version__, build_id, privacidad, render
 from .i18n import in_spanish
-from .model import Need, Snapshot
+from .model import Need, SensorKind, Snapshot
 
 HIDDEN = "«omitido»"
 
@@ -528,7 +528,9 @@ def _sensors(snapshot: Snapshot) -> str:
         # 127-degree minimum, show here and nowhere else in this file.
         for name, sensors in categories.items():
             values = " · ".join(
-                f"{s.label} {render.sensor_value(s.value, s.kind)} {s.unit}".strip()
+                (f"{s.label} {render.temperature(s.value)}"
+                 if s.kind is SensorKind.TEMPERATURE
+                 else f"{s.label} {render.sensor_value(s.value, s.kind)} {s.unit}".strip())
                 # Whoever checks a foreign machine looks at whether the number
                 # is believable: let 16.8 °C say what it is.
                 + (" (relleno del firmware, no es una medida)" if s.placeholder else "")
@@ -584,7 +586,7 @@ def _benchmark() -> str:
     if latest.frequency_avg_hz:
         lines.append(f"| Frecuencia media | {render.hz(latest.frequency_avg_hz)} |")
     if latest.temperature_peak_c is not None:
-        lines.append(f"| Temperatura máxima | {latest.temperature_peak_c:.0f} °C |")
+        lines.append(f"| Temperatura máxima | {render.temperature_whole(latest.temperature_peak_c)} |")
     if latest.background_load is not None:
         lines.append(f"| Carga de fondo | {latest.background_load:.1f} % |")
     # The peak of foreign load explains a low figure that would otherwise

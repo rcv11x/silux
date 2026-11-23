@@ -18,7 +18,7 @@ from typing import Optional
 from . import __version__, build_id, db, render, report
 from .collector import Collector
 from .i18n import _
-from .model import Need, Snapshot, to_jsonable
+from .model import Need, SensorKind, Snapshot, to_jsonable
 
 NEED_LABELS = {
     Need.ROOT: "requiere root",
@@ -235,7 +235,9 @@ def dump(snapshot: Snapshot, style: Style) -> str:
                 for sensor in sensors:
                     digits = 0 if sensor.kind.value in ("fan", "energy") else (
                         3 if sensor.kind.value == "voltage" else 1)
-                    value = f"{sensor.value:.{digits}f} {sensor.unit}".strip()
+                    value = (render.temperature(sensor.value)
+                             if sensor.kind is SensorKind.TEMPERATURE
+                             else f"{sensor.value:.{digits}f} {sensor.unit}".strip())
                     mark = style.warn(" ⚠") if sensor.alarm else ""
                     lines.append(f"      {sensor.label:<22} {value:>13}{mark}")
         lines.append("")
@@ -272,8 +274,11 @@ def sensors_text(snapshot: Snapshot, style: Style) -> str:
             for sensor in sensors:
                 digits = 3 if sensor.kind.value == "voltage" else 1
                 mark = style.warn(" ⚠") if sensor.alarm else ""
-                lines.append(f"    {sensor.label:<24} "
-                              f"{sensor.value:>10.{digits}f} {sensor.unit}{mark}")
+                # A temperature through its format; the rest as it comes.
+                reading = (f"{render.temperature(sensor.value):>13}"
+                           if sensor.kind is SensorKind.TEMPERATURE
+                           else f"{sensor.value:>10.{digits}f} {sensor.unit}")
+                lines.append(f"    {sensor.label:<24} {reading}{mark}")
     return "\n".join(lines)
 
 

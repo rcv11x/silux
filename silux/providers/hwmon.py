@@ -20,7 +20,7 @@ import re
 import subprocess
 from typing import Iterator, Optional
 
-from .. import sysroot, system_deps
+from .. import sysroot, system_deps, thermal
 from ..i18n import _
 from ..model import DeviceKind, DriverHint, Need, Sensor, SensorKind, short_brand
 from ..system_env import system_environment
@@ -321,27 +321,6 @@ CAPS = {
 }
 
 
-# When a sensor publishes no limits, Silux sets them by the chip it is: of
-# the 28 temperatures of an ordinary machine only 7 carry a threshold, and
-# the processor, which matters, usually none.
-#
-# The figures are conservative on purpose, from where the maker starts to
-# throttle, not where it breaks. An alarm that fires early burns trust in all
-# the others, so where in doubt nothing is set: board sensors (it87, nct,
-# acpitz, gigabyte_wmi) measure points only the board's designer knows.
-ESTIMATED_LIMITS = {
-    # AMD: Tctl reaches 90 by design on Zen 3, and that is no fault.
-    "k10temp": (88.0, 95.0),
-    "zenpower": (88.0, 95.0),
-    # Intel: Tjmax is about 100 on desktop parts.
-    "coretemp": (95.0, 100.0),
-    # An NVMe that declares none. Those that do win.
-    "nvme": (75.0, 85.0),
-    # Hard disks: here there is consensus, and it is lower than it seems.
-    "drivetemp": (55.0, 60.0),
-}
-
-
 def _device_name(entry: pathlib.Path) -> str:
     """The name of the device a hwmon hangs from («nvme1», «2:0:0:0»), or
     its own if it hangs from none."""
@@ -389,11 +368,9 @@ def _thresholds(kind, low, high, critical, chip=None) -> dict:
     if low is not None and high is not None and low >= high:
         low = high = None
 
-    if (high is None and critical is None
-            and kind is SensorKind.TEMPERATURE
-            and (estimated := ESTIMATED_LIMITS.get(chip or ""))):
-        return {"low": low, "high": estimated[0], "critical": estimated[1],
-                "estimated_limits": True}
+    if kind is SensorKind.TEMPERATURE:
+        # Only what the part declares: without it, no limit and no colour.
+        high, critical = thermal.limits(high, critical)
     return {"low": low, "high": high, "critical": critical}
 
 
@@ -500,8 +477,7 @@ class HwmonSensors(Provider):
                     self._live_zones.add(sensor.key)
                 elif sensor.key not in self._live_zones:
                     sensor = dataclasses.replace(sensor, placeholder=True, low=None,
-                                                 high=None, critical=None,
-                                                 estimated_limits=False)
+                                                 high=None, critical=None)
             out.append(sensor)
         return out
 
@@ -701,6 +677,9 @@ class HwmonSensors(Provider):
         # the temperature is Tdie; with Tctl alone, they are the same.
         die: list[float] = []
         unlabelled: list[float] = []
+        # The sensors each figure comes from, for their declared limits.
+        by_role: dict[str, list[Sensor]] = {"core": [], "die": [], "package": [],
+                                            "unlabelled": []}
 
         for sensor in sensors:
             if sensor.kind is not SensorKind.TEMPERATURE:
@@ -708,19 +687,32 @@ class HwmonSensors(Provider):
             label_text = sensor.chip_label or ""
             if match := _CORE_LABEL.match(label_text):
                 per_core[int(match.group(1))] = sensor.value
+                by_role["core"].append(sensor)
             elif label_text.lower() == "tdie":
                 die.append(sensor.value)
+                by_role["die"].append(sensor)
             elif _PACKAGE_LABEL.match(label_text):
                 package.append(sensor.value)
+                by_role["package"].append(sensor)
             else:
                 unlabelled.append(sensor.value)
+                by_role["unlabelled"].append(sensor)
 
+        source = "die" if die else "package"
         package = die or package
         if package:
             # The package's own sensor, which a GPU inside it shares.
             draft.cpu_extra["package_sensor_temp_c"] = round(max(package), 1)
         if not package and not per_core:
             package = unlabelled            # single-sensor chips, like acpitz
+            source = "unlabelled"
+        # `CpuInfo.temperature_c` is the package's, or else the cores': the
+        # limits are those its sensors declare.
+        declared = [s for s in by_role[source if package else "core"]
+                    if s.high is not None or s.critical is not None]
+        if declared:
+            draft.cpu_extra["temp_high_c"] = declared[0].high
+            draft.cpu_extra["temp_critical_c"] = declared[0].critical
 
         for cpu in draft.logical.values():
             if (value := per_core.get(cpu.get("core_id", -1))) is not None:

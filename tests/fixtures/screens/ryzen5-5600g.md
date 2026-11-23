@@ -451,6 +451,7 @@ Ocupado 214 GB · Libre 784 GB
 - Enlace: PCIe 3.0 × 4
 - Capacidad: 1.0 TB
 - Temperatura: 33.9 °C
+- Límites: aviso 83 °C · crítica 90 °C
 - Horas encendido: (necesita permisos)
 - Escrito en total: (necesita permisos)
 - Vida restante: (necesita permisos)

@@ -184,7 +184,7 @@ código y ninguna orden se ha ejecutado.
 |---|---|---|---|
 | Todos los de un chip | `/sys/class/hwmon/hwmonN/name` y cada `*_input` | `sensors`, o `sensors -j` para compararlo con `silux --json` | no |
 | Nombre de cada canal | `tempN_label`, `fanN_label`, `inN_label`. Si el chip no lo da, silux numera («Temperatura 1») y lo dice al pie | `grep . /sys/class/hwmon/hwmon*/*_label` | no |
-| Límites | `tempN_max`, `tempN_crit`, `tempN_min`. Si el chip no los da, silux los estima y lo marca | `sensors -j`: si no trae `_max` ni `_crit`, el de silux es estimado | no |
+| Límites | `tempN_max` y `tempN_crit`, solo si el chip los da y son razonables (`silux/thermal.py`); sin ellos, sin color | `sensors -j`: los `_max` y `_crit` que trae | no |
 | Temperatura por núcleo (Intel) | el chip `coretemp` | `sensors coretemp-isa-0000` | no |
 | Temperatura del procesador (AMD) | el chip `k10temp`: Tdie si existe, y si no Tctl | `sensors k10temp-pci-00c3` * | no |
 | Ventiladores y voltajes de la placa | el chip de la placa (`it87`, `nct6775`…), si su driver está cargado | `sensors`; si no sale ninguno, `sudo sensors-detect` * | no para leer |

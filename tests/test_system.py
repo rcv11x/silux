@@ -872,18 +872,24 @@ class TestElColorDeLasCeldas(unittest.TestCase):
     def _color(self, arbol, columna):
         return arbol._rows["t"].foreground(columna).color().name()
 
-    def test_acercarse_al_umbral_cambia_el_color_de_la_celda(self):
-        arbol = self._arbol()
-        arbol.update_row("t", ["50.0 °C", "", "", ""], heat=0.0)
-        frio = self._color(arbol, 1)
-        arbol.update_row("t", ["80.9 °C", "", "", ""], heat=0.41)
-        self.assertNotEqual(self._color(arbol, 1), frio)
+    def test_from_its_max_the_cell_turns_amber(self):
+        from silux.ui import theme
 
-    def test_el_maximo_se_tiñe_con_el_suyo_y_no_con_el_de_ahora(self):
-        """Quien lanza una prueba de dos minutos mira después, con el actual
-        ya frío: lo que sobrevive al pico es el máximo."""
         arbol = self._arbol()
-        arbol.update_row("t", ["50.0 °C", "", "82.9", ""], heat=0.0, heat_max=0.47)
+        arbol.update_row("t", ["50.0 °C", "", "", ""])
+        normal = self._color(arbol, 1)
+        arbol.update_row("t", ["84.0 °C", "", "", ""], alarm="alto")
+        self.assertNotEqual(self._color(arbol, 1), normal)
+        self.assertEqual(self._color(arbol, 1), theme.DARK.q("warn").name())
+
+    def test_the_peak_has_its_own_level_not_the_current_one(self):
+        """After a two-minute stress test, «Actual» has already cooled down
+        by the time you look: what outlives the peak is the peak."""
+        from silux.ui import theme
+
+        arbol = self._arbol()
+        arbol.update_row("t", ["50.0 °C", "", "99.0", ""], alarm_max="crítico")
+        self.assertEqual(self._color(arbol, 3), theme.DARK.q("crit").name())
         self.assertNotEqual(self._color(arbol, 3), self._color(arbol, 1))
 
     def test_un_sensor_critico_pide_su_propio_color(self):

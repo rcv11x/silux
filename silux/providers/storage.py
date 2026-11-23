@@ -24,7 +24,7 @@ import time
 from typing import Iterator, Optional
 
 from .. import smart as smart_module
-from .. import sysroot
+from .. import sysroot, thermal
 from ..i18n import _
 from ..model import Disk, DiskHealth, DiskIo, Need, Partition, PcieLink
 from ..privileged.client import HelperError, PrivilegedClient
@@ -187,6 +187,7 @@ class Disks(Provider):
 
         model = _clean(read_text(str(base / "device" / "model")))
         virtual = is_virtual(name, model, read_text(str(base / "device" / "vendor")))
+        temp_c, temp_high_c, temp_critical_c = _temperature(base)
         return Disk(
             name=name,
             model=model,
@@ -204,7 +205,9 @@ class Disks(Provider):
             removable=removable,
             pci_slot=_pci_slot(base) if transport == "nvme" else None,
             link=_link(base) if transport == "nvme" else None,
-            temp_c=_temperature(base),
+            temp_c=temp_c,
+            temp_high_c=temp_high_c,
+            temp_critical_c=temp_critical_c,
             discard=_supports_discard(base),
             discard_mounted=any(mounted_name.startswith(name)
                                 for mounted_name in _mounted_with_discard()),
@@ -441,27 +444,34 @@ def _link(base: pathlib.Path) -> Optional[PcieLink]:
     )
 
 
-def _temperature(base: pathlib.Path) -> Optional[float]:
-    """The disk's temperature, if a driver publishes it.
+def _temperature(base: pathlib.Path) -> tuple[Optional[float], Optional[float], Optional[float]]:
+    """The disk's temperature and the limits it declares, if a driver
+    publishes them: (°C, max, crit).
 
     Each kind hangs it somewhere else: NVMe disks carry it under their own
     controller, and SATA ones only with `drivetemp` loaded, which almost no
     distribution does by default. So the tree is searched rather than
-    assuming a path.
+    assuming a path. The limits are the drive's own (an NVMe's WCTEMP and
+    CCTEMP, a SATA disk's SCT ones), checked by `thermal.limits`.
     """
     try:
         root = (base / "device").resolve()
     except OSError:
-        return None
+        return None, None, None
+    celsius = lambda name: (lambda v: v / 1000 if v is not None else None)(
+        read_int(str(hwmon / name)))
     for _step in range(4):
         for hwmon in sorted(root.glob("hwmon*")) + sorted(root.glob("hwmon/hwmon*")):
             millidegrees = read_int(str(hwmon / "temp1_input"))
             if millidegrees is not None:
-                return round(millidegrees / 1000, 1)
+                high, critical = thermal.limits(celsius("temp1_max"), celsius("temp1_crit"))
+                # Three decimals, as the sensors: an NVMe's come from kelvin
+                # (358 K is 84.85 °C) and one decimal put it under its own crit.
+                return round(millidegrees / 1000, 3), high, critical
         if root.parent == root:
             break
         root = root.parent
-    return None
+    return None, None, None
 
 
 def _partitions(base: pathlib.Path, disk: str,

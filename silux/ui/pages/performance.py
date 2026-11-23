@@ -648,8 +648,9 @@ class PerformancePage(ScrollPage):
         grados, cuantas = deriva
         pruebas = _("bench.runs.one" if cuantas == 1 else "bench.runs.many")
         clave = "bench.drift.hotter" if grados > 0 else "bench.drift.cooler"
-        texto = _(clave).format(grados=f"{abs(grados):.0f}", n=cuantas,
-                                pruebas=pruebas)
+        texto = _(clave).format(
+            grados=render.temperature_difference(abs(grados), self._prefs.fahrenheit),
+            n=cuantas, pruebas=pruebas)
         self.deriva_hint.setText(texto)
         self.deriva_hint.show()
 

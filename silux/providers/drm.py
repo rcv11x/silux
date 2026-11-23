@@ -26,7 +26,7 @@ import re
 import time
 from typing import Optional
 
-from .. import amdgpu, drmmode, edid, gpumetrics, i915, pciids, sysroot
+from .. import amdgpu, drmmode, edid, gpumetrics, i915, pciids, sysroot, thermal
 from ..i18n import _
 from ..model import Display, GpuClockLevel, GpuClocks, GpuEngine, GpuMemory, Need, PcieLink
 from ..privileged.client import HelperError, PmuUnsupported, PrivilegedClient
@@ -1241,6 +1241,19 @@ def _labelled(hwmon: Optional[pathlib.Path], prefix: str) -> dict[str, int]:
     return amounts
 
 
+def _temperature_limits(hwmon: pathlib.Path) -> tuple[Optional[float], Optional[float]]:
+    """The max and crit the card declares for the channel `temp_c` reads:
+    «edge» or «pkg» by label, else the first."""
+    channel = "temp1"
+    for label_file in sorted(hwmon.glob("temp*_label")):
+        if (read_text(str(label_file)) or "").strip().lower() in ("edge", "pkg"):
+            channel = label_file.name[:-len("_label")]
+            break
+    celsius = lambda name: (lambda v: v / 1000 if v is not None else None)(
+        read_int(f"{hwmon}/{channel}_{name}"))
+    return thermal.limits(celsius("max"), celsius("crit"))
+
+
 def _sensors(gpu: dict, device: pathlib.Path) -> None:
     hwmon = _hwmon(device)
     if hwmon is None:
@@ -1259,6 +1272,7 @@ def _sensors(gpu: dict, device: pathlib.Path) -> None:
     if gpu["temp_c"] is None:
         # Intel and virtual GPUs do not label: there the first channel is right.
         gpu["temp_c"] = milli(read_int(f"{hwmon}/temp1_input"))
+    gpu["temp_high_c"], gpu["temp_critical_c"] = _temperature_limits(hwmon)
 
     micro = _first(read_int(f"{hwmon}/power1_average"),
                      read_int(f"{hwmon}/power1_input"))

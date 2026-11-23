@@ -87,11 +87,11 @@ class TestLasZonasQueNoMiden(unittest.TestCase):
         self.assertNotIn("47.6 °C (relleno", texto)
 
     def test_no_se_avisa_de_ellas(self):
-        # A zone that measures keeps its limits, and its heat with them.
+        # A zone that measures keeps its limits; a filler one has none.
         for f in self.fotos.values():
             for sensor in (s for s in _acpitz(f) if s.placeholder):
                 self.assertEqual(sensor.alarm_level, "ok")
-                self.assertIsNone(sensor.heat)
+                self.assertIsNone(sensor.critical)
 
 
 class TestUnaZonaQueSiMide(unittest.TestCase):
@@ -133,9 +133,10 @@ class TestUnaZonaQueSiMide(unittest.TestCase):
             raiz = pathlib.Path(tmp)
             relleno = self._leer(HwmonSensors(), raiz, 16800, critica=105000)
             self.assertTrue(relleno.placeholder)
-            self.assertIsNone(relleno.heat)
+            self.assertIsNone(relleno.critical)
             self.assertEqual(relleno.alarm_level, "ok")
-            self.assertEqual(self._leer(HwmonSensors(), raiz, 35500, critica=105000).heat, 0.0)
+            self.assertEqual(self._leer(HwmonSensors(), raiz, 35500, critica=105000).critical,
+                             105.0)
 
     def test_y_la_que_arranca_en_el_valor_deja_de_marcarse_al_moverse(self):
         with tempfile.TemporaryDirectory() as tmp:

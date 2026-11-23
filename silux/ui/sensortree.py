@@ -852,26 +852,9 @@ class SensorTree(QTreeWidget):
                            else self._p.q("warn") if cuantos
                            else self._p.q("ink"))
 
-    def _mezcla_calor(self, heat: float):
-        """Del color normal al de aviso, según lo cerca que esté del umbral.
-
-        La mezcla no es lineal. El ojo no ve el color así: entre el blanco de
-        las cifras y el ámbar, el primer tercio del recorrido no se distingue
-        de nada, y una CPU a 78 grados de 95 salía exactamente igual que una a
-        50. Con la raíz, ese primer tercio ya se ve.
-        """
-        avance = heat ** 0.5
-        normal = self._p.q("ink")
-        aviso = self._p.q("warn")
-        return QColor(
-            round(normal.red() + (aviso.red() - normal.red()) * avance),
-            round(normal.green() + (aviso.green() - normal.green()) * avance),
-            round(normal.blue() + (aviso.blue() - normal.blue()) * avance),
-        )
-
     def update_row(self, key: str, values: list[str], tooltip: str = "",
-                   alarm: str = "ok", history=None, heat: float = 0.0,
-                   heat_max: float = 0.0, apagada: bool = False) -> None:
+                   alarm: str = "ok", history=None, alarm_max: str = "ok",
+                   apagada: bool = False) -> None:
         item = self._rows.get(key)
         if item is None:
             return
@@ -886,28 +869,23 @@ class SensorTree(QTreeWidget):
             item.setData(self.TREND_COLUMN, ROL_SERIE, tuple(history))
         # Tres estados y no dos: «alto» es donde el fabricante empieza a
         # incomodarse y «crítico» donde el equipo se protege solo. Pintarlos
-        # igual deja sin saber si hay que hacer algo ahora o solo mirarlo.
-        #
-        # Y por debajo del umbral, el color va subiendo con `heat`: en una
-        # lista de noventa y nueve renglones iguales, el que se está acercando
-        # se encuentra mirando, no leyendo uno a uno.
-        colour = {"crítico": self._p.q("crit"),
-                  "alto": self._p.q("warn")}.get(alarm)
-        if colour is None:
-            colour = (self._p.q("ink") if not heat
-                      else self._mezcla_calor(heat))
+        # igual deja sin saber si hay que hacer algo ahora o solo mirarlo. Sin
+        # límites que declare la pieza, su color: nada se pinta por cercanía
+        # a un umbral que no existe.
+        colour = self._p.for_level(alarm)
+        colour = QColor(colour) if colour else self._p.q("ink")
         # Una lectura que no es una medida (`Sensor.placeholder`) no puede
         # pesar en la lista lo mismo que las que sí.
         if apagada:
             colour = self._p.q("muted")
         item.setForeground(1, colour)
 
-        # El máximo se tiñe con su propio calor y no con el de ahora. Es el
+        # El máximo se pinta con su propio nivel y no con el de ahora. Es el
         # dato que sobrevive al pico: quien lanza una prueba de dos minutos y
         # va a mirar después encuentra la columna «Actual» ya fría, y lo que
         # quiere ver es hasta dónde llegó.
-        item.setForeground(3, self._p.q("ink") if not heat_max
-                           else self._mezcla_calor(heat_max))
+        peak = self._p.for_level(alarm_max)
+        item.setForeground(3, QColor(peak) if peak else self._p.q("ink"))
         if tooltip:
             for column in range(len(self.COLUMNS)):
                 item.setToolTip(column, tooltip)

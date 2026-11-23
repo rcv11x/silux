@@ -15,6 +15,23 @@ que hace falta.
 - Sensores: dos discos del mismo driver (dos NVMe) compartían una fila, y
   con ella el mínimo, el máximo y la media, que mezclaban los dos discos.
   Ahora cada uno tiene la suya.
+- Temperaturas: el color sale solo de los límites que declara la propia
+  pieza: normal, ámbar desde su máximo y rojo desde su crítica (si son la
+  misma cifra, directo a rojo). Silux ya no se inventa límites para lo que no
+  los da (un Ryzen se ponía amarillo hacia los 80 °C, y un disco SATA sin
+  SCT lo hacía desde 55 °C), ni tiñe poco a poco al acercarse. Los valores
+  de relleno que dejan algunos chips (0, −273,15 o 65261,85 °C) no cuentan
+  como límite.
+- Temperaturas: el mismo color en Sensores, en el aviso y las tarjetas de
+  Inicio, en la pestaña CPU, en la de la gráfica y en los discos (la tabla de
+  unidades, «Más caliente» y la ficha de cada disco, que dice sus límites).
+- Temperaturas: los límites salen sin decimales, como los da la pieza (un
+  NVMe los declara en kelvin enteros: 358 K son 85 °C).
+- Fahrenheit: toda temperatura pasa por las mismas funciones. Ya no se
+  quedan en °C los límites que se ven al pasar el ratón en Sensores, la
+  gráfica de temperaturas de Inicio (que guardaba cifras en Celsius) ni
+  «Más caliente» cuando ningún disco da temperatura; en °F, la diferencia de
+  la deriva térmica del benchmark es ×1,8, sin sumar 32.
 - Gráficos: una NVIDIA cuyo driver no da el consumo (`nvidia-smi` lo da como
   N/A) sale sin consumo, con su aviso, y no con la media de su búfer de
   muestras, que el driver no da como su consumo: una RTX 4060 sin consumo

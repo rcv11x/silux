@@ -218,6 +218,19 @@ class ElidingLabel(QLabel):
         return QSize(min(hint.width(), 48), hint.height())
 
 
+def paint_level(label: QWidget, level: str) -> None:
+    """Colour a temperature by its `thermal.level`: amber, red or its own.
+
+    Through the style sheet's «level» property, so the theme decides the
+    colours; and only when it changes, as polishing costs a relayout.
+    """
+    value = theme.LEVEL_PROPERTY.get(level, "")
+    if (label.property("level") or "") != value:
+        label.setProperty("level", value)
+        label.style().unpolish(label)
+        label.style().polish(label)
+
+
 def balanced_columns(count: int, fits: int) -> int:
     """Cuántas columnas usar para `count` elementos si caben `fits`.
 
@@ -2092,6 +2105,11 @@ class Table(QScrollArea):
             candado.hide()
             if fila < len(self._cells) and columna < len(self._cells[fila]):
                 self._cells[fila][columna].show()
+
+    def set_cell_level(self, row: int, column: int, level: str) -> None:
+        """A temperature cell coloured by its `thermal.level`."""
+        if row < len(self._cells) and column < len(self._cells[row]):
+            paint_level(self._cells[row][column], level)
 
     def set_cell_tooltip(self, fila: int, columna: int, texto: str) -> None:
         """La explicación de una celda concreta: por qué lleva un guion."""

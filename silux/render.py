@@ -8,6 +8,7 @@ touching collection, and translating without rewriting anything.
 
 from __future__ import annotations
 
+import math
 import pathlib
 import re
 from typing import NamedTuple, Optional
@@ -252,12 +253,54 @@ def decimal_size(value: Optional[int]) -> str:
     return f"{value} B"
 
 
+def temperature_unit(fahrenheit: bool = False) -> str:
+    """«°C» or «°F»: the only place either is written for a temperature."""
+    return "°F" if fahrenheit else "°C"
+
+
+def in_temperature_unit(celsius: Optional[float], fahrenheit: bool = False) -> Optional[float]:
+    """A temperature in the unit shown. Its level is always decided in °C
+    (`thermal`): only showing it converts."""
+    if _none(celsius):
+        return None
+    return float(celsius) * 9 / 5 + 32 if fahrenheit else float(celsius)
+
+
 def temperature(value: Optional[float], fahrenheit: bool = False) -> str:
-    if _none(value):
+    """«84.9 °C», a reading with a decimal."""
+    shown = in_temperature_unit(value, fahrenheit)
+    return DASH if shown is None else f"{shown:.1f} {temperature_unit(fahrenheit)}"
+
+
+def temperature_whole(value: Optional[float], fahrenheit: bool = False) -> str:
+    """«85 °C», «185 °F»: converted first, then rounded half up. For a limit,
+    which a part declares in whole kelvin (358 K is 84.85 °C) or degrees."""
+    shown = in_temperature_unit(value, fahrenheit)
+    return DASH if shown is None else f"{math.floor(shown + 0.5)} {temperature_unit(fahrenheit)}"
+
+
+def temperature_difference(delta: Optional[float], fahrenheit: bool = False) -> str:
+    """«5 °C» between two temperatures: in °F it's 9 °F, ×1.8 with no 32
+    added, since a difference has no zero to move."""
+    if _none(delta):
         return DASH
-    if fahrenheit:
-        return f"{float(value) * 9 / 5 + 32:.1f} °F"
-    return f"{float(value):.1f} °C"
+    shown = float(delta) * 1.8 if fahrenheit else float(delta)
+    return f"{math.floor(shown + 0.5)} {temperature_unit(fahrenheit)}"
+
+
+def temperature_limits(high: Optional[float], critical: Optional[float],
+                       fahrenheit: bool = False) -> str:
+    """«aviso 70 °C · crítica 75 °C», the limits a part declares, or "".
+
+    The same figure twice is one: a part whose max is its crit goes straight
+    to red there, and «aviso» would promise a warning before it.
+    """
+    if high is not None and high == critical:
+        high = None
+    parts = [_(key).format(v=temperature_whole(value, fahrenheit))
+             for key, value in (("temp.limit.high", high), ("temp.limit.critical", critical))
+             if value is not None]
+    return " · ".join(parts)
 
 
 def volts(value: Optional[float]) -> str:

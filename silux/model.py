@@ -16,6 +16,7 @@ from dataclasses import dataclass, field, fields, is_dataclass
 from enum import Enum
 from typing import Any, Optional
 
+from . import thermal
 from .edid import Edid, VideoMode  # noqa: F401  (re-exported by the model)
 from .spd import SpdInfo, Timings  # noqa: F401  (re-exported by the model)
 
@@ -304,6 +305,9 @@ class CpuInfo:
     logical: tuple[LogicalCpu, ...] = ()
     usage_percent: Optional[float] = None
     package_temp_c: Optional[float] = None
+    # The limits its sensor declares for `temperature_c`, or None.
+    temp_high_c: Optional[float] = None
+    temp_critical_c: Optional[float] = None
     power: Power = field(default_factory=Power)
     load_average: tuple[float, ...] = ()       # 1, 5 and 15 minutes
     idle_states: tuple[IdleState, ...] = ()
@@ -330,6 +334,11 @@ class CpuInfo:
         if self.package_temp_c is not None:
             return self.package_temp_c
         return self.types[0].temp_c if self.types else None
+
+    @property
+    def temp_level(self) -> str:
+        """`thermal.level` of `temperature_c`, by its sensor's limits."""
+        return thermal.level(self.temperature_c, self.temp_high_c, self.temp_critical_c)
 
     @property
     def cores_temp_c(self) -> Optional[float]:
@@ -1417,6 +1426,9 @@ class Gpu:
     engines: tuple[GpuEngine, ...] = ()
     codecs: tuple[VideoCodec, ...] = ()
     temp_c: Optional[float] = None
+    # The limits its sensor declares for `temp_c`, or None.
+    temp_high_c: Optional[float] = None
+    temp_critical_c: Optional[float] = None
     # The card publishes its temperature by no means: Intel's. Not the same
     # as failing to read it, and painted differently: what doesn't exist is
     # hidden and named at the foot, not left with a dash.
@@ -1469,6 +1481,11 @@ class Gpu:
     def display_name(self) -> Optional[str]:
         """Its name; `render.gpu_name` says it when there is none."""
         return self.name or self.codename
+
+    @property
+    def temp_level(self) -> str:
+        """`thermal.level` of `temp_c`, by its sensor's limits."""
+        return thermal.level(self.temp_c, self.temp_high_c, self.temp_critical_c)
 
     @property
     def pci_id(self) -> Optional[str]:
@@ -1789,6 +1806,10 @@ class Disk:
     pci_slot: Optional[str] = None
     link: Optional[PcieLink] = None            # NVMe only
     temp_c: Optional[float] = None
+    # The limits the drive declares (an NVMe's WCTEMP and CCTEMP, a SATA
+    # disk's SCT ones through drivetemp), or None.
+    temp_high_c: Optional[float] = None
+    temp_critical_c: Optional[float] = None
     # Whether the drive supports discards (TRIM) and what shows they happen:
     # a partition mounted with `discard`, or the `fstrim.timer` enabled. The
     # latter is a sign, not a guarantee.
@@ -1802,6 +1823,11 @@ class Disk:
     @property
     def display_name(self) -> str:
         return self.model or self.name
+
+    @property
+    def temp_level(self) -> str:
+        """`thermal.level` of `temp_c`, by the drive's limits."""
+        return thermal.level(self.temp_c, self.temp_high_c, self.temp_critical_c)
 
     @property
     def used_bytes(self) -> Optional[int]:
@@ -1956,10 +1982,6 @@ class Sensor:
     high: Optional[float] = None    # the high threshold
     critical: Optional[float] = None
     order: int = 0                  # to keep the natural order within the branch
-    # True when the sensor doesn't publish the thresholds and silux sets them
-    # by which chip it is. Said in the window: an estimated limit and one the
-    # maker declares don't deserve the same trust.
-    estimated_limits: bool = False
     # True when the driver doesn't say what this channel measures and the
     # name is a number set here: «Voltage 3». On a Super I/O (it87, nct67xx)
     # what reaches each input was decided by the board's designer, and the
@@ -2031,6 +2053,8 @@ class Sensor:
         Painting both the same colour leaves the viewer not knowing whether
         to act now or just keep an eye.
         """
+        if self.kind is SensorKind.TEMPERATURE:
+            return thermal.level(self.value, self.high, self.critical)
         if self.value is None:
             return "ok"
         if self.critical is not None and self.value >= self.critical:
@@ -2040,33 +2064,6 @@ class Sensor:
         if self.low is not None and self.value < self.low:
             return "alto"
         return "ok"
-
-    # From which fraction of the threshold tinting starts. Below three
-    # quarters nothing is painted: a processor at 45 of 90 degrees isn't
-    # «half hot», it's fine, and an in-between colour would turn colour into
-    # decoration that warns of nothing.
-    WARM_FROM = 0.75
-
-    @property
-    def heat(self) -> Optional[float]:
-        """How close it is to its threshold, 0 to 1, or None without one.
-
-        Temperatures only: a voltage at half scale means nothing, and a fan at
-        full speed is expected under load.
-
-        It tints a long list. Ninety-nine rows of figures in one colour are
-        read one by one; with the one getting close in another colour, you
-        know where to look without reading them.
-        """
-        if self.kind is not SensorKind.TEMPERATURE or self.value is None:
-            return None
-        ceiling = self.critical if self.critical is not None else self.high
-        if not ceiling or ceiling <= 0:
-            return None
-        fraction = self.value / ceiling
-        if fraction <= self.WARM_FROM:
-            return 0.0
-        return min(1.0, (fraction - self.WARM_FROM) / (1 - self.WARM_FROM))
 
 
 @dataclass(frozen=True, slots=True)
@@ -2295,17 +2292,17 @@ _COMPUTED: dict[str, tuple[str, ...]] = {
     "Edid": ("diagonal_inches", "refresh_range",
              "refresh_summary", "best_mode"),
     "VideoMode": ("label",),
-    "Gpu": ("display_name", "pci_id", "subsystem_id", "connected_displays"),
+    "Gpu": ("display_name", "pci_id", "subsystem_id", "connected_displays", "temp_level"),
     "NetworkTraffic": ("dropped", "errors", "total_bytes", "total_rate_bps", "problems"),
     "NetworkInterface": ("display_name", "active", "received_packets_fit",
                          "sent_packets_fit"),
     "Partition": ("used_percent", "mounted"),
     "DiskIo": ("total_rate_bps",),
     "DiskHealth": ("life_left_percent", "healthy"),
-    "Disk": ("display_name", "used_bytes", "mounted_partitions"),
+    "Disk": ("display_name", "used_bytes", "mounted_partitions", "temp_level"),
     "CpuInfo": ("total_cores", "total_threads", "package_power_w", "temperature_c",
-                "cores_temp_c", "in_virtual_machine"),
-    "Sensor": ("heat", "unit", "plausible", "group", "category", "alarm", "alarm_level"),
+                "cores_temp_c", "in_virtual_machine", "temp_level"),
+    "Sensor": ("unit", "plausible", "group", "category", "alarm", "alarm_level"),
     "Board": ("display_name",),
     "MemoryModule": ("has_ecc", "underclocked", "rated_mts", "in_a_slot", "soldered_by",
                      "rated_from_firmware", "voltage_mv", "nominal_voltage_mv",

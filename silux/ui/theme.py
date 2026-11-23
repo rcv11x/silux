@@ -27,6 +27,8 @@ from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QColor, QFont, QFontDatabase, QPainter, QPalette, QPixmap, QPolygonF
 from PySide6.QtWidgets import QApplication
 
+from .. import thermal
+
 # --------------------------------------------------------------------------
 # color
 # --------------------------------------------------------------------------
@@ -56,6 +58,20 @@ class Palette:
         if alpha < 1.0:
             color.setAlphaF(alpha)
         return color
+
+    def for_level(self, level: str) -> "str | None":
+        """The colour of a `thermal.level`, or None for its own."""
+        key = LEVEL_COLOURS.get(level)
+        return getattr(self, key) if key else None
+
+
+# A temperature's level and its colour, here and nowhere else: the style
+# sheet below and what paints by hand (the sensors' tree, Home's line) read
+# it, so a reading is the same colour wherever it's shown.
+LEVEL_COLOURS = {thermal.HIGH: "warn", thermal.CRITICAL: "crit"}
+# The value of a label's «level» property for each one, which the style sheet
+# matches (`widgets.paint_level`).
+LEVEL_PROPERTY = {thermal.HIGH: "high", thermal.CRITICAL: "critical"}
 
 
 # Las superficies casi no llevan borde: lo que separa una tarjeta del fondo es
@@ -460,6 +476,12 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
     }}
 
     QLabel#TileValue {{ color: {p.ink}; font-weight: 650; }}
+    /* A temperature by the limits its part declares (`thermal`): amber from
+       its max, red from its crit. Last, so it wins over each one's colour. */
+    QLabel#TileValue[level="high"], QLabel#FieldValue[level="high"],
+    QLabel#FieldName[level="high"], QLabel#Headline[level="high"] {{ color: {p.warn}; }}
+    QLabel#TileValue[level="critical"], QLabel#FieldValue[level="critical"],
+    QLabel#FieldName[level="critical"], QLabel#Headline[level="critical"] {{ color: {p.crit}; }}
     QLabel#TileUnit  {{ color: {p.muted}; font-size: {m.small_pt + 3}px; }}
     QLabel#TileLabel {{
         color: {p.muted}; font-size: {m.small_pt + 3}px;

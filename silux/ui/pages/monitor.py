@@ -332,7 +332,7 @@ class MonitorPage(ScrollPage):
                             _("csv.stopped").format(detalle=detalle))
 
     def _temp(self, celsius: float) -> float:
-        return celsius * 9 / 5 + 32 if self._prefs.fahrenheit else celsius
+        return render.in_temperature_unit(celsius, self._prefs.fahrenheit)
 
     def _apply_sensors(self, snapshot: Snapshot) -> None:
         tree = snapshot.sensor_tree()
@@ -368,8 +368,7 @@ class MonitorPage(ScrollPage):
                 sensor.key, self._values(sensor), self._tooltip(sensor),
                 sensor.alarm_level,
                 seguimiento.history if seguimiento else None,
-                sensor.heat or 0.0,
-                self._calor_del_maximo(sensor, seguimiento),
+                self._peak_level(sensor, seguimiento),
                 apagada=sensor.placeholder,
             )
             if sensor.alarm_level != "ok":
@@ -402,17 +401,19 @@ class MonitorPage(ScrollPage):
             or (s.key.startswith("net/") and s.key.split("/")[1] in calladas))
 
     @staticmethod
-    def _calor_del_maximo(sensor: Sensor, seguimiento) -> float:
-        """Lo cerca que llegó del umbral, que no es lo mismo que dónde está.
+    def _peak_level(sensor: Sensor, tracked) -> str:
+        """The level its peak reached, not where it is now: after a
+        two-minute stress test, «Actual» has already cooled down by the time
+        you look.
 
-        Se pregunta al propio sensor sustituyendo su lectura por el máximo:
-        así la escala y el umbral son los suyos y no hay que repetirlos aquí.
+        The sensor itself is asked with its reading swapped for the peak, so
+        its limits are its own and aren't repeated here.
         """
         import dataclasses
 
-        if seguimiento is None or sensor.heat is None:
-            return 0.0
-        return dataclasses.replace(sensor, value=seguimiento.maximum).heat or 0.0
+        if tracked is None or tracked.maximum is None:
+            return "ok"
+        return dataclasses.replace(sensor, value=tracked.maximum).alarm_level
 
     def _values(self, sensor: Sensor) -> list[str]:
         digits = DECIMALS.get(sensor.kind, 1)
@@ -428,31 +429,31 @@ class MonitorPage(ScrollPage):
         return [current, f"{low:.{digits}f}", f"{high:.{digits}f}", f"{average:.{digits}f}"]
 
     def _convert(self, sensor: Sensor, value: float) -> float:
-        if sensor.kind is SensorKind.TEMPERATURE and self._prefs.fahrenheit:
-            return value * 9 / 5 + 32
+        if sensor.kind is SensorKind.TEMPERATURE:
+            return render.in_temperature_unit(value, self._prefs.fahrenheit)
         return value
 
     def _converted(self, sensor: Sensor) -> tuple[float, str]:
-        if sensor.kind is SensorKind.TEMPERATURE and self._prefs.fahrenheit:
-            return sensor.value * 9 / 5 + 32, "°F"
+        if sensor.kind is SensorKind.TEMPERATURE:
+            return (render.in_temperature_unit(sensor.value, self._prefs.fahrenheit),
+                    render.temperature_unit(self._prefs.fahrenheit))
         return sensor.value, sensor.unit
 
     def _tooltip(self, sensor: Sensor) -> str:
         lines = [f"{sensor.chip} · {sensor.key}"]
         limits = []
+        if sensor.kind is SensorKind.TEMPERATURE:
+            shown = lambda v: render.temperature_whole(v, self._prefs.fahrenheit)
+        else:
+            shown = lambda v: f"{v:g} {sensor.unit}"
         if sensor.low is not None:
-            limits.append(_("sensors.limit.low").format(
-                v=f"{sensor.low:g} {sensor.unit}"))
+            limits.append(_("sensors.limit.low").format(v=shown(sensor.low)))
         if sensor.high is not None:
-            limits.append(_("sensors.limit.high").format(
-                v=f"{sensor.high:g} {sensor.unit}"))
+            limits.append(_("sensors.limit.high").format(v=shown(sensor.high)))
         if sensor.critical is not None:
-            limits.append(_("sensors.limit.crit").format(
-                v=f"{sensor.critical:g} {sensor.unit}"))
+            limits.append(_("sensors.limit.crit").format(v=shown(sensor.critical)))
         if limits:
             lines.append("\n".join(limits))
-        if sensor.estimated_limits:
-            lines.append(_("sensors.limit.estimated"))
         if sensor.placeholder:
             lines.append(_("sensors.placeholder").format(
                 chip=sensor.chip,
