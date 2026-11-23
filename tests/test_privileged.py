@@ -115,6 +115,17 @@ class TestRespuestas(unittest.TestCase):
         self.assertFalse(respuesta["ok"])
         self.assertEqual(respuesta["error"], "unsupported")
 
+    def test_invalid_utf8_gets_an_answer_and_the_helper_goes_on(self):
+        stdin = mock.Mock(buffer=io.BytesIO(
+            b'{"action": "smart", "device": "\xff\xfe"}\n\xff\xfe\n{"action": "ping"}\n'))
+        out = io.StringIO()
+        with mock.patch.object(helper.os, "geteuid", return_value=0), \
+             mock.patch.object(helper.sys, "stdin", stdin), \
+             mock.patch("sys.stdout", out):
+            self.assertEqual(helper.main(), 0)
+        replies = [json.loads(line) for line in out.getvalue().splitlines()]
+        self.assertEqual([r["ok"] for r in replies], [False, False, True])
+
     def test_toda_respuesta_es_json_serializable(self):
         for peticion in ({"action": "ping"}, {"action": "nada"},
                          {"action": "msr", "cpu": 0, "registers": [1]}):

@@ -159,8 +159,12 @@ class TestElAyudanteSoloLeeBytes(unittest.TestCase):
         for bueno in ("sda", "sdb", "nvme0n1", "nvme0", "hda"):
             self.assertTrue(DISK_NAME.match(bueno), bueno)
         for malo in ("../etc/shadow", "sda; rm -rf /", "mem", "/dev/sda",
-                     "sda1", "", "nvme0n1p2"):
-            self.assertFalse(DISK_NAME.match(malo), malo)
+                     "sda1", "", "nvme0n1p2", "sda\n", "nvme0n1\n"):
+            self.assertFalse(DISK_NAME.match(malo), repr(malo))
+
+    def test_the_contract_says_the_same(self):
+        from silux.privileged import helper, protocol
+        self.assertEqual(protocol.DISK_NAME, helper.DISK_NAME.pattern)
 
 
 if __name__ == "__main__":

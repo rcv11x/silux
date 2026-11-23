@@ -385,9 +385,6 @@ la memoria) no va: está propuesto en las notas
   se cierra el canal, y desde ahí cada respuesta llega con una de retraso.
 * **F-M27 · `privileged/helper.py`** · media-baja · la lista blanca de MSR
   tiene nueve registros que no se usan. Va como propuesta antes que código.
-* `privileged/helper.py` · baja · el ayudante muere con UTF-8 inválido;
-  `DISK_NAME` acepta un salto de línea final. Va con el próximo cambio del
-  ayudante, que obliga a reinstalarlo.
 * `updates.py` · baja · sin firma: el SHA-256 sale del `SHA256SUMS` de la
   misma release, así que protege de una descarga rota, no de quien pudiera
   escribir en las releases del repositorio.

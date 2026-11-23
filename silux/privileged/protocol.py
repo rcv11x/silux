@@ -39,7 +39,7 @@ DMI_TABLE = "/sys/firmware/dmi/tables/DMI"
 
 # The disk names it accepts. Strict on purpose: without it, «../../etc/shadow»
 # would open anything. Only nvme0, nvme0n1, sda and the like fit.
-DISK_NAME = r"^(nvme\d+n\d+|nvme\d+|sd[a-z]{1,2}|hd[a-z])$"
+DISK_NAME = r"^(nvme\d+n\d+|nvme\d+|sd[a-z]{1,2}|hd[a-z])\Z"
 
 # The MSRs it reads, with what they mean. An arbitrary MSR can expose
 # sensitive data or have side effects; these are read-only and documented.

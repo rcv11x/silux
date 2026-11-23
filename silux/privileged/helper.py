@@ -62,7 +62,7 @@ MAX_REQUEST_BYTES = 64 * 1024
 
 # Disk names allowed. Strict on purpose: without it, a name such as
 # «../../dev/mem» would make it open anything.
-DISK_NAME = re.compile(r"^(nvme\d+n\d+|nvme\d+|sd[a-z]{1,2}|hd[a-z])$")
+DISK_NAME = re.compile(r"^(nvme\d+n\d+|nvme\d+|sd[a-z]{1,2}|hd[a-z])\Z")
 
 # The powercap zones it lets be read. The kernel sets the name and it has no
 # paths in it: checked anyway, because what arrives comes from the
