@@ -211,6 +211,14 @@ la memoria) no va: está propuesto en las notas
 
 ## Datos que se leen mal o no se leen
 
+* `providers/privileged_memory.py` · media · antes de SMBIOS 3.2, la velocidad
+  configurada de un módulo (tipo 17) se daba en MHz de reloj, no en MT/s: en
+  una DDR3-1600 son 800. Un FX-8150 con una BIOS de 2013 salía «800 MT/s de
+  los 1600» con su aviso de que va lento, y probablemente va a 1600. Hace
+  falta la versión de la tabla, que lee el ayudante y no va en el anexo: con
+  el anexo ampliado se puede comprobar.
+* `providers/hwmon.py` · baja · el ventilador de una GeForce con nouveau
+  (`pwm1`, en %) sale en el grupo «Uso» de Sensores y no en «Ventiladores».
 * `providers/hwmon.py` · media · `fam15h_power` publica como `power1_crit`
   el TDP del procesador (15,05 W en un A8-6410), y Silux lo trata como
   umbral crítico: a 16,6 W, dentro del turbo, Inicio dice «1 sensor en
