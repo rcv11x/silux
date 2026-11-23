@@ -1,0 +1,37 @@
+[package]
+name = "silux_bench"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.89"
+license = "GPL-3.0-or-later"
+description = "Silux's memory benchmark: latency by block size and bandwidth"
+publish = false
+
+[lib]
+name = "silux_bench"
+# cdylib for Python, rlib so `cargo test` can link the crate without it.
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+libc = "0.2"
+pyo3 = { version = "0.30", features = ["abi3-py310"], optional = true }
+
+[features]
+default = []
+python = ["dep:pyo3"]
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+indexing_slicing = "deny"
+undocumented_unsafe_blocks = "deny"
+
+[profile.release]
+opt-level = 3
+codegen-units = 1
+lto = "thin"
+panic = "unwind"
