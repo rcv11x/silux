@@ -18,14 +18,15 @@ class TestLaVersion(unittest.TestCase):
         self.assertEqual(render.version("0.4.1"), "0.4.1")
         self.assertEqual(render.version("0.4.10"), "0.4.10")
 
-    def test_una_de_prueba_lleva_su_nombre(self):
+    def test_una_de_prueba_lleva_su_nombre_en_cada_idioma(self):
+        # The release's name: «0.4-test11» in English matched no release.
         from silux import i18n
         self.addCleanup(i18n.set_language, i18n.current())
-        i18n.set_language("es")
-        self.assertEqual(render.version("0.4.0rc1"), "0.4-prueba1")
-        self.assertEqual(render.version("0.4.1rc2"), "0.4.1-prueba2")
-        i18n.set_language("en")
-        self.assertEqual(render.version("0.4.0rc1"), "0.4-test1")
+        for language in ("es", "en"):
+            i18n.set_language(language)
+            with self.subTest(language=language):
+                self.assertEqual(render.version("0.4.0rc1"), "0.4-prueba1")
+                self.assertEqual(render.version("0.4.1rc2"), "0.4.1-prueba2")
 
     def test_por_debajo_sigue_entera(self):
         # x.y.z, y como mucho «rcN» detrás: la versión de prueba de PEP 440.

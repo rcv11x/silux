@@ -2033,20 +2033,24 @@ def home_path(text, home: Optional[str] = None) -> str:
     return re.sub(r"(?<![\w/.-])" + re.escape(home) + r"(?=$|[/\s'\"),:;])", "~", text)
 
 
-def version(full: str, translate=_) -> str:
+# A test release's name, as GitHub and the CHANGELOG write it: a name, so
+# it isn't translated.
+TEST_RELEASE = "prueba"
+
+
+def version(full: str) -> str:
     """The version as shown: «0.4», not «0.4.0»; «0.4.1» for a fix release;
-    «0.4-prueba1» for 0.4's first test release.
+    «0.4-prueba1» for 0.4's first test release, in every language.
 
     Underneath it's always x.y.z (pyproject, the tag and `--version`, which
     are for machines). To whoever looks at the window or reads the report,
-    the third number only says something when it isn't zero. The report
-    passes `in_spanish`: it is always in Spanish.
+    the third number only says something when it isn't zero.
     """
     # A test version goes as PEP 440 asks («0.4.0rc1») and is shown by its
-    # name: «0.4-prueba1».
+    # release's name: «0.4-prueba1».
     run = re.fullmatch(r"(\d+\.\d+\.\d+)rc(\d+)", full)
     if run:
-        return f"{version(run.group(1))}-{translate('app.version.rc')}{run.group(2)}"
+        return f"{version(run.group(1))}-{TEST_RELEASE}{run.group(2)}"
     parts = full.split(".")
     if len(parts) == 3 and parts[2] == "0":
         return ".".join(parts[:2])

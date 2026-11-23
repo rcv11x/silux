@@ -76,7 +76,7 @@ def _header(snapshot: Snapshot, anonymous: bool, translate=in_spanish) -> str:
     # A list and not a table: a key-value table has no header to give it,
     # and an empty one was the first thing the report showed.
     lines = [
-        f"# {t('report.head.title')} {render.version(__version__, t)}"
+        f"# {t('report.head.title')} {render.version(__version__)}"
         + (f" ({build_id()})" if build_id() else ""),
         "",
         f"- **{t('report.head.distro')}:** "

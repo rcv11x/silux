@@ -12,6 +12,8 @@ que hace falta.
 
 ## Sin publicar
 
+- Interfaz: el nombre de una versión de prueba es el de su release en
+  cualquier idioma: «0.4-prueba11», no «0.4-test11» en inglés.
 - Informe: el anexo ya no se queda fuera con un disco en una caja USB cuyo
   adaptador rellena el número de serie con bytes nulos (ese número sí se
   tapaba; la comprobación lo tomaba por otro). Y si algo lo deja fuera, el
