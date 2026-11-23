@@ -21,9 +21,9 @@ from typing import Optional
 
 from ..i18n import _
 from ..model import Clocks, Need
-from ..privileged.client import HelperError, PrivilegedClient
+from ..privileged.client import HelperError, HelperMissingModule, PrivilegedClient
 from .base import Draft, Provider, is_virtual_machine
-from .msr_voltage import AMD_PSTATE_DEF, AMD_PSTATE_STATUS, AMD_PSTATES
+from .msr_voltage import AMD_PSTATE_DEF, AMD_PSTATE_STATUS, AMD_PSTATES, missing_msr_module
 
 ZEN_FAMILIES = (0x17, 0x19)
 PSTATE_ENABLED = 1 << 63
@@ -76,13 +76,18 @@ class AmdPstateClocks(Provider):
         registers = [AMD_PSTATE_STATUS] + [AMD_PSTATE_DEF + n for n in range(AMD_PSTATES)]
         try:
             values = self.client.read_msr(0, registers)
-        except HelperError:
-            # Usually the msr module isn't loaded; msr_voltage says so, and a
-            # padlock here would promise something permissions can't give.
+        except HelperMissingModule:
+            # The module's notice says it; a padlock would promise something
+            # permissions can't give.
             if needs_base:
                 draft.resolve("cpu.clocks.base_hz")
-                draft.note("cpu.clocks.base_hz", Need.DRIVER,
-                           _("prov.msr.nomodule"), _("prov.msr.nomodule.hint"))
+                missing_msr_module(draft, base=True)
+            return
+        except HelperError as exc:
+            if needs_base:
+                draft.resolve("cpu.clocks.base_hz")
+                draft.note("cpu.clocks.base_hz", Need.ERROR, _("prov.msr.helperfail"),
+                           detail=str(exc), key="prov.msr.helperfail")
             return
 
         base = pstate_hz(values.get(AMD_PSTATE_DEF))

@@ -14,6 +14,11 @@ que hace falta.
 
 - Sistema: la descripción más larga de una vulnerabilidad sale entera con la
   letra grande, en vez de cortada con «…».
+- CPU: sin el módulo `msr`, el aviso del voltaje (y de la frecuencia base en
+  los AMD que la necesitan) tiene «Cargar ahora», como el de la temperatura
+  de los discos: lo carga hasta que se apague el equipo, sin escribir nada,
+  y deja la línea para copiar si se quiere siempre. Si el ayudante falla por
+  otra cosa, ya no culpa al módulo.
 - Interfaz: con una letra ancha (DejaVu Sans, la de Debian y Ubuntu), los
   títulos largos de las tarjetas y los avisos bajan de línea en vez de sacar
   la página por la derecha con la letra más grande. Y en Inicio, una ficha

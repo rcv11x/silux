@@ -207,6 +207,11 @@ class HelperDenied(HelperError):
     """The user cancelled the dialog or isn't authorized."""
 
 
+class HelperMissingModule(HelperError):
+    """The helper answered, and the kernel module its device needs isn't
+    loaded (`/dev/cpu/N/msr` without `msr`)."""
+
+
 class HelperNoAgent(HelperUnavailable):
     """pkexec is there but no polkit agent runs in the session to ask for the
     password (a bare window manager: Hyprland, Sway, i3…)."""
@@ -493,7 +498,9 @@ class PrivilegedClient:
         reply = self.request({"action": ACTION_MSR, "cpu": cpu, "registers": registers})
         if not reply.get("ok"):
             self._last_error = reply.get("message")
-            raise HelperError(reply.get("message", "no se pudieron leer los MSR"))
+            error = (HelperMissingModule if reply.get("error") == "no_module"
+                     else HelperError)
+            raise error(reply.get("message", "no se pudieron leer los MSR"))
         return {int(k): v for k, v in reply.get("values", {}).items()}
 
 

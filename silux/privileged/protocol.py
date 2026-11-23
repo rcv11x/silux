@@ -26,12 +26,14 @@ ACTIONS = frozenset({ACTION_PING, ACTION_SMBIOS, ACTION_MSR, ACTION_SMART,
                      ACTION_GPU_PMU, ACTION_IMC, ACTION_RAPL, ACTION_LOAD_MODULE})
 
 # The kernel modules it loads, until the next boot and nothing else: each one
-# reads a sensor or a memory module's identification chip.
+# reads a sensor or a memory module's identification chip, or opens the
+# processor's registers to root (the helper reads its own list of them).
 MODULES_ALLOWED: dict[str, str] = {
     "drivetemp": "SATA disks' temperature",
     "spd5118": "DDR5 SPD chip and its thermometer",
     "ee1004": "DDR4 SPD chip",
     "at24": "DDR3 and older SPD chip",
+    "msr": "the processor's registers, for root only",
 }
 
 # The SMBIOS table, the only firmware file it opens.

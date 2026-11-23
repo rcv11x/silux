@@ -639,11 +639,20 @@ class TestLoadingAModule(unittest.TestCase):
     def test_the_two_lists_match(self):
         self.assertEqual(set(protocol.MODULES_ALLOWED), set(helper.MODULES_ALLOWED))
 
-    def test_only_sensor_readers(self):
-        self.assertEqual(set(helper.MODULES_ALLOWED), {"drivetemp", "spd5118", "ee1004", "at24"})
+    def test_only_readers(self):
+        # A sensor, a memory module's SPD chip, or the processor's registers
+        # (opened to root only, and read from MSR_ALLOWED).
+        self.assertEqual(set(helper.MODULES_ALLOWED),
+                         {"drivetemp", "spd5118", "ee1004", "at24", "msr"})
+
+    def test_msr_loads_like_the_others(self):
+        reply, run = self._run("msr")
+        self.assertTrue(reply["ok"])
+        self.assertEqual(run.call_args.args[0], ["/usr/sbin/modprobe", "-b", "--", "msr"])
 
     def test_any_other_name_is_refused_before_running_anything(self):
-        for name in ("nvidia", "kvm", "i2c-dev", "nct6775", "msr", "drivetemp; rm -rf /",
+        for name in ("nvidia", "kvm", "i2c-dev", "nct6775", "cpuid", "msr-safe", "MSR",
+                     "drivetemp; rm -rf /",
                      "../../etc/passwd", "-drivetemp", "DRIVETEMP", "", None, 5, ["drivetemp"]):
             with self.subTest(name=name):
                 reply, run = self._run(name)

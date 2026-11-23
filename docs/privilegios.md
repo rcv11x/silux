@@ -149,9 +149,11 @@ gravedad.
   seguirlo. Antes escribía a través de lo que hubiera en esa ruta.
 - **Cargar un módulo** (`load_module`): el nombre, contra una lista cerrada
   de los que leen un sensor o el SPD (`drivetemp`, `spd5118`, `ee1004`,
-  `at24`); `modprobe -b` por su ruta absoluta, sin shell y con un entorno
-  fijo, respetando la lista negra del sistema. Solo hasta el siguiente
-  arranque: el ayudante no escribe nada, y la línea de
+  `at24`) y `msr`, que solo crea `/dev/cpu/N/msr`: lo abre únicamente root
+  (0600 y `CAP_SYS_RAWIO`), y de ahí el ayudante lee su lista cerrada de
+  registros sin escribir ninguno. `modprobe -b` por su ruta absoluta, sin
+  shell y con un entorno fijo, respetando la lista negra del sistema. Solo
+  hasta el siguiente arranque: el ayudante no escribe nada, y la línea de
   `/etc/modules-load.d/` la copia el usuario si la quiere. Es el único
   programa que lanza (`tests/test_privileged.py` lo comprueba en el código).
 - **El actualizador**: solo HTTPS, con verificación del certificado y

@@ -19,8 +19,9 @@ goes through a small helper started with `pkexec`:
 - It only reads: devices are opened read-only, the disk commands are the
   fixed diagnostic ones, and the performance counters count without
   sampling. The one exception is asked for with a button: loading one of
-  four sensor modules (`drivetemp`, `spd5118`, `ee1004`, `at24`) with
-  `modprobe`, until the next boot. It writes no file.
+  four sensor modules (`drivetemp`, `spd5118`, `ee1004`, `at24`) or `msr`
+  (which only lets root open the processor's registers) with `modprobe`,
+  until the next boot. It writes no file.
 - It talks only to the process that started it, through a pipe.
 - It can run once (the password is asked every time) or be installed in
   `/usr/local/libexec/silux/`, owned by root, with its own polkit action.

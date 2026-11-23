@@ -100,7 +100,8 @@ class MonitorPage(ScrollPage):
         sensors_card.body.addWidget(self.absent)
         self._layout.addWidget(sensors_card)
 
-        self.module_notices = ModuleNotices()
+        # msr gives no sensor: its notice goes with the processor.
+        self.module_notices = ModuleNotices(exclude=frozenset({"msr"}))
         self._layout.addWidget(self.module_notices)
 
         self._layout.addStretch(1)

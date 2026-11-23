@@ -29,6 +29,19 @@ def _with_spd_hint(snapshot):
     return dataclasses.replace(snapshot, driver_hints=snapshot.driver_hints + (hint,))
 
 
+def _with_msr_hint(snapshot):
+    """As the voltage provider writes it when the helper finds no msr module.
+    The helper is running then, so the voltage's permission note isn't there."""
+    from silux.providers.base import Draft
+    from silux.providers.msr_voltage import missing_msr_module
+
+    draft = Draft()
+    missing_msr_module(draft, voltage=True)
+    return dataclasses.replace(
+        snapshot, driver_hints=snapshot.driver_hints + tuple(draft.driver_hints),
+        notes=tuple(n for n in snapshot.notes if n.path != "cpu.voltage_v"))
+
+
 @unittest.skipIf(QApplication is None, "no PySide6")
 class TestTheNotice(unittest.TestCase):
 
@@ -105,6 +118,20 @@ class TestTheNotice(unittest.TestCase):
             window._on_module_load("drivetemp")
             window._on_module_loaded("drivetemp", "")
             self.assertEqual(notice.action_button.text(), _("module.load.done"))
+
+    def test_msr_goes_with_the_processor_not_the_sensors(self):
+        photo = _with_msr_hint(shared_snapshot(EQUIPOS / "i5-10400"))
+        with pantalla.Ventana(photo) as window:
+            notice = self._notices(window, "CPU")["msr"]
+            self.assertNotIn("msr", self._notices(window, "Sensores"))
+            self.assertEqual(notice.action_button.text(), _("module.load.now"))
+            self.assertIn(_("prov.hint.msr.voltage"), " ".join(pantalla.textos_de(notice)))
+            self.assertEqual(notice.command.full_text(),
+                             "echo msr | sudo tee /etc/modules-load.d/msr.conf")
+            with mock.patch.object(window.sampler, "request_module_load") as asked:
+                notice.action_button.click()
+            asked.assert_called_once_with("msr")
+            self.assertEqual(notice.action_button.text(), _("module.load.loading"))
 
     def test_once_loaded_the_notice_goes(self):
         photo = shared_snapshot(EQUIPOS / "5800x3d")

@@ -1964,15 +1964,16 @@ class ModuleNotices(QWidget):
     """A page's module notices, rebuilt only when the hints change.
 
     `modules` keeps the ones this page is about (Storage, drivetemp; Memory,
-    the SPD's); None keeps them all.
+    the SPD's); None keeps them all but those in `exclude`.
     """
 
     load_requested = Signal(str)
 
     def __init__(self, modules: Optional[frozenset] = None,
-                 parent: Optional[QWidget] = None):
+                 parent: Optional[QWidget] = None, exclude: frozenset = frozenset()):
         super().__init__(parent)
         self._modules = modules
+        self._exclude = exclude
         self._signature: tuple = ()
         # Remembered, not only shown: a page painted for the first time
         # while the module loads says so too.
@@ -1989,7 +1990,8 @@ class ModuleNotices(QWidget):
         from ..privileged.protocol import MODULES_ALLOWED
         from ..providers.hwmon import SUPERIO
 
-        hints = [h for h in hints if self._modules is None or h.module in self._modules]
+        hints = [h for h in hints if h.module not in self._exclude
+                 and (self._modules is None or h.module in self._modules)]
         signature = tuple(h.module for h in hints)
         if signature == self._signature:
             return

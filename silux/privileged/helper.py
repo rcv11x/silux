@@ -102,7 +102,9 @@ MAX_CPUS = 4096
 
 # The modules it loads: they read a sensor or a memory module's SPD chip and
 # change no setting. No buses, no Super I/O (the wrong one reads garbage).
-MODULES_ALLOWED = frozenset({"drivetemp", "spd5118", "ee1004", "at24"})
+# `msr` only creates /dev/cpu/N/msr, which only root opens; what is read
+# there is MSR_ALLOWED, and nothing is written.
+MODULES_ALLOWED = frozenset({"drivetemp", "spd5118", "ee1004", "at24", "msr"})
 MODPROBE = ("/usr/sbin/modprobe", "/sbin/modprobe", "/usr/bin/modprobe", "/bin/modprobe")
 # What modprobe gets instead of the caller's environment.
 MODPROBE_ENV = {"PATH": "/usr/sbin:/usr/bin:/sbin:/bin", "LC_ALL": "C"}

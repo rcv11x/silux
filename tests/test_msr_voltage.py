@@ -9,10 +9,12 @@ de avisos.
 import unittest
 from unittest import mock
 
+from silux.i18n import _
 from silux.model import Need
+from silux.privileged import helper
+from silux.privileged.client import HelperError, HelperMissingModule, PrivilegedClient
 from silux.providers import msr_voltage
 from silux.providers.base import Draft
-from silux.privileged.client import HelperError
 from tests import qt
 
 
@@ -92,15 +94,29 @@ class TestElProveedor(unittest.TestCase):
                                msr_voltage.AMD_PSTATE_DEF: (1 << 63) | (250 << 14)})
         self.assertIsNone(draft.types["general"].get("voltage_v"))
 
-    def test_si_falta_el_modulo_se_dice_con_su_orden(self):
+    def test_without_the_module_its_notice_offers_to_load_it(self):
         cliente = mock.Mock()
         cliente.connected.return_value = True
-        cliente.read_msr.side_effect = HelperError("no_module")
+        cliente.read_msr.side_effect = HelperMissingModule("no_module")
+        draft = _draft()
+        msr_voltage.MsrVoltage(cliente).collect(draft)
+        self.assertEqual([n for n in draft.notes if n.path == "cpu.voltage_v"], [])
+        self.assertEqual([(h.module, h.provides, h.command) for h in draft.driver_hints],
+                         [("msr", _("prov.hint.msr.voltage"), "sudo modprobe msr")])
+
+    def test_the_helper_failing_otherwise_blames_no_module(self):
+        cliente = mock.Mock()
+        cliente.connected.return_value = True
+        cliente.read_msr.side_effect = HelperError("el ayudante no respondió a tiempo")
         draft = _draft()
         msr_voltage.MsrVoltage(cliente).collect(draft)
         avisos = [n for n in draft.notes if n.path == "cpu.voltage_v"]
-        self.assertEqual(len(avisos), 1)
-        self.assertIn("modprobe", avisos[0].hint)
+        self.assertEqual([(n.need, n.key) for n in avisos], [(Need.ERROR, "prov.msr.helperfail")])
+        self.assertEqual(draft.driver_hints, [])
+
+    def test_a_intel_se_le_pregunta_su_registro_y_no_los_de_amd(self):
+        _draft_, cliente = self._con({}, vendor="Intel")
+        cliente.read_msr.assert_called_once_with(0, [msr_voltage.INTEL_PERF_STATUS])
 
     def test_an_unexpected_failure_is_an_error_not_silence(self):
         # It returned without a word: the voltage was missing with no reason.
@@ -114,9 +130,28 @@ class TestElProveedor(unittest.TestCase):
         self.assertEqual([n.need for n in avisos], [Need.ERROR])
         self.assertEqual([f.where for f in recolector.failures.recent()], ["msr-voltage"])
 
-    def test_a_intel_se_le_pregunta_su_registro_y_no_los_de_amd(self):
-        _draft_, cliente = self._con({}, vendor="Intel")
-        cliente.read_msr.assert_called_once_with(0, [msr_voltage.INTEL_PERF_STATUS])
+
+class TestTheClientSaysWhichFailure(unittest.TestCase):
+    """The helper's own answer without /dev/cpu/N/msr, read by the client."""
+
+    def _client_reading(self, reply):
+        cliente = PrivilegedClient.__new__(PrivilegedClient)
+        cliente._last_error = None
+        with mock.patch.object(PrivilegedClient, "request", return_value=reply):
+            return cliente.read_msr(0, [msr_voltage.INTEL_PERF_STATUS])
+
+    def test_no_device_is_a_missing_module(self):
+        with mock.patch.object(helper.os, "open", side_effect=FileNotFoundError):
+            reply = helper.read_msr(0, [msr_voltage.INTEL_PERF_STATUS])
+        with self.assertRaises(HelperMissingModule):
+            self._client_reading(reply)
+
+    def test_any_other_failure_is_not(self):
+        with mock.patch.object(helper.os, "open", side_effect=PermissionError):
+            reply = helper.read_msr(0, [msr_voltage.INTEL_PERF_STATUS])
+        with self.assertRaises(HelperError) as caught:
+            self._client_reading(reply)
+        self.assertNotIsInstance(caught.exception, HelperMissingModule)
 
 
 class TestElAviso(unittest.TestCase):

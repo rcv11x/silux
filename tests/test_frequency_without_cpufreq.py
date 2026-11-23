@@ -19,7 +19,7 @@ from silux import render, volcado
 from silux.collector import Collector
 from silux.i18n import _
 from silux.model import Need
-from silux.privileged.client import HelperError
+from silux.privileged.client import HelperError, HelperMissingModule
 from silux.providers import msr_pstate
 from silux.providers.msr_pstate import AmdPstateClocks
 from silux.providers.msr_voltage import MsrVoltage
@@ -36,8 +36,9 @@ P_STATES_5800X3D = {0xC0010063: 0x0, 0xC0010064: 0x8000000048920888,
 class _Helper:
     """The helper as the providers see it, answering what the 5800X3D's did."""
 
-    def __init__(self, values=P_STATES_5800X3D, fails=False):
+    def __init__(self, values=P_STATES_5800X3D, fails=False, without_module=False):
         self.values, self.fails, self.reads = values, fails, 0
+        self.without_module = without_module
 
     def connected(self):
         return True
@@ -47,8 +48,10 @@ class _Helper:
 
     def read_msr(self, cpu, registers):
         self.reads += 1
+        if self.without_module:
+            raise HelperMissingModule("falta /dev/cpu/N/msr; hay que cargar el módulo «msr»")
         if self.fails:
-            raise HelperError("no msr module")
+            raise HelperError("el ayudante no respondió a tiempo")
         return {r: self.values[r] for r in registers if r in self.values}
 
 
@@ -173,11 +176,21 @@ class TestWithPermissions(unittest.TestCase):
         # The voltage provider reads once per sample; this one, never.
         self.assertEqual(helper.reads, 2)
 
-    def test_without_the_msr_module_the_padlock_goes(self):
+    def test_without_the_msr_module_its_notice_names_the_base(self):
+        with _machine(cppc=False):
+            photo = _photo(_Helper(without_module=True))
+        self.assertEqual([n for n in photo.notes if n.path == "cpu.clocks.base_hz"], [])
+        hints = [h for h in photo.driver_hints if h.module == "msr"]
+        self.assertEqual([h.provides for h in hints], [_("prov.hint.msr.both")])
+        self.assertEqual(hints[0].command, "sudo modprobe msr")
+
+    def test_a_helper_failing_otherwise_blames_no_module(self):
         with _machine(cppc=False):
             photo = _photo(_Helper(fails=True))
-        self.assertEqual([n.need for n in photo.notes if n.path == "cpu.clocks.base_hz"],
-                         [Need.DRIVER])
+        base = [n for n in photo.notes if n.path == "cpu.clocks.base_hz"]
+        self.assertEqual([(n.need, n.key) for n in base], [(Need.ERROR, "prov.msr.helperfail")])
+        self.assertIn("respondió", base[0].detail)
+        self.assertFalse([h for h in photo.driver_hints if h.module == "msr"])
 
     def test_an_unexpected_failure_is_an_error_not_silence(self):
         # It returned without a word, and the base had no reason to be missing.

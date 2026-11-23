@@ -30,6 +30,7 @@ from ..widgets import (
     Card,
     ChipRow,
     InfoGrid,
+    ModuleNotices,
     Notice,
     Plegable,
     ResponsiveRow,
@@ -436,6 +437,8 @@ class CpuPage(ScrollPage):
         self._notices_host = QVBoxLayout()
         self._notices_host.setSpacing(6)
         self._layout.addLayout(self._notices_host)
+        self.module_notices = ModuleNotices(frozenset({"msr"}))
+        self._layout.addWidget(self.module_notices)
 
         self._layout.addStretch(1)
 
@@ -477,6 +480,7 @@ class CpuPage(ScrollPage):
         # entrada en la base de datos, donde el usuario se queda mirando una
         # pantalla vacía sin nada que le explique qué ha pasado.
         self._apply_notices(snapshot)
+        self.module_notices.apply(snapshot.driver_hints)
         self._apply_energy(snapshot)
         if not cpu.types:
             return

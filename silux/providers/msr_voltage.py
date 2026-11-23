@@ -31,8 +31,8 @@ from typing import Optional
 
 from .. import rawcpuid
 from ..i18n import _
-from ..model import Need
-from ..privileged.client import HelperError, PrivilegedClient
+from ..model import DriverHint, Need
+from ..privileged.client import HelperError, HelperMissingModule, PrivilegedClient
 from .base import Draft, Provider, is_virtual_machine, read_text
 
 # The running P-state (bits 2:0).
@@ -58,6 +58,30 @@ INTEL_VOLTAGE_DIVISOR = 8192.0
 # reads as zeros, and a misread one blows up.
 MIN_V = 0.2
 MAX_V = 2.0
+
+
+# What loading msr would give, by what is missing.
+MSR_GIVES = {
+    "base": "prov.hint.msr.base",
+    "voltage": "prov.hint.msr.voltage",
+    "both": "prov.hint.msr.both",
+}
+
+
+def missing_msr_module(draft: Draft, *, base: bool = False, voltage: bool = False) -> None:
+    """The msr module isn't loaded: one notice, with «Load now», naming what
+    it would give. AmdPstateClocks (the base clock) runs before MsrVoltage in
+    the collector, so an msr notice already there is the base clock's."""
+    previous = next((h for h in draft.driver_hints if h.module == "msr"), None)
+    if previous is not None:
+        draft.driver_hints.remove(previous)
+        base = True
+    draft.driver_hints.append(DriverHint(
+        module="msr",
+        provides=_(MSR_GIVES["both" if base and voltage else "base" if base else "voltage"]),
+        command="sudo modprobe msr",
+        caution=_("prov.hint.msr.caution"),
+    ))
 
 
 def _is_x86() -> bool:
@@ -165,11 +189,12 @@ class MsrVoltage(Provider):
                      if is_amd else [INTEL_PERF_STATUS])
         try:
             values = self.client.read_msr(0, registers)
-        except HelperError:
-            # Usually the msr module isn't loaded, and one command fixes it:
-            # say which.
-            draft.note("cpu.voltage_v", Need.DRIVER,
-                       _("prov.msr.nomodule"), _("prov.msr.nomodule.hint"))
+        except HelperMissingModule:
+            missing_msr_module(draft, voltage=True)
+            return
+        except HelperError as exc:
+            draft.note("cpu.voltage_v", Need.ERROR, _("prov.msr.helperfail"),
+                       detail=str(exc), key="prov.msr.helperfail")
             return
 
         voltage = _amd_voltage(values) if is_amd else _intel_voltage(values)

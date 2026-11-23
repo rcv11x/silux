@@ -1106,7 +1106,7 @@ class MainWindow(QMainWindow):
         self._status.set_full_text(" · ".join(partes))
 
     def _module_pages(self) -> list:
-        return [self.monitor_page, self.storage_page, self.memory_page]
+        return [self.cpu_page, self.monitor_page, self.storage_page, self.memory_page]
 
     def _on_module_load(self, module: str) -> None:
         # The same module may be offered on two pages: both say it's loading.
