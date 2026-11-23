@@ -224,6 +224,19 @@ class TestLaFilaReparteSegunLoQuePidenSusHijos(unittest.TestCase):
 
 
 
+def _cut_values(page) -> list[str]:
+    """The values of name-and-value tables shown cut with «…»: they go down a
+    line instead. «Linux 7.…» and «#1 SMP …» said nothing."""
+    from silux.ui.widgets import ZERO_WIDTH_SPACE, InfoGrid
+
+    cut = []
+    for grid in page.findChildren(InfoGrid):
+        for name, label in grid._values.items():
+            if label.isVisibleTo(page) and label.text().replace(ZERO_WIDTH_SPACE, "") != label.full_text():
+                cut.append(f"{name}: {label.full_text()[:50]}")
+    return cut
+
+
 class TestTheLargestFontInANarrowWindow(unittest.TestCase):
     """With the largest font, at the narrowest the window allows, no page of
     any dump runs off the right edge. Header lines that didn't wrap, rows of
@@ -272,6 +285,7 @@ class TestTheLargestFontInANarrowWindow(unittest.TestCase):
             with self.subTest(dump=folder.name, density=density,
                               section=window.nav.item(row).text()):
                 self.assertEqual(probe._desbordados()[:12], [])
+                self.assertEqual(_cut_values(window.stack.currentWidget()), [])
 
     def _every_page(self, folder):
         self._check(folder)

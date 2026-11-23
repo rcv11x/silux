@@ -112,9 +112,6 @@ class TypeSection(QWidget):
         self.processor = InfoGrid()
         for name in PROCESSOR_FIELDS:
             self.processor.add(_(name))
-        # La cadena del procesador es larga y es una frase: dos líneas antes
-        # que puntos suspensivos.
-        self.processor._values[_("cpu.field.spec")].permitir_lineas(2)
         processor_card.body.addWidget(self.processor)
         self.virtual_foot = QLabel(_("cpu.virtual.foot"))
         self.virtual_foot.setObjectName("Muted")

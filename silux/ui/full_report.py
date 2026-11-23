@@ -235,14 +235,19 @@ def _celda(item, raiz) -> str:
     return " ".join(l.strip() for l in lineas if l.strip() and not _TITULO.match(l))
 
 
-def _filas(rejilla, raiz, columnas: bool = False) -> list[list[str]]:
+def _filas(rejilla, raiz, columnas: bool = False, stacked: bool = False) -> list[list[str]]:
     """Las celdas con algo que decir de una rejilla, fila a fila.
 
     Con `columnas`, cada celda en su columna aunque esté vacía: en una tabla,
-    quitar un hueco corre las de la derecha bajo otra cabecera."""
+    quitar un hueco corre las de la derecha bajo otra cabecera. With
+    `stacked`, each name sits above its value (a narrow name-and-value
+    table) and the two grid rows are one row of the report: what it says
+    doesn't depend on how wide the window was."""
     filas: dict[int, dict[int, str]] = {}
     for i in range(rejilla.count()):
         fila, columna, _alto, _ancho = rejilla.getItemPosition(i)
+        if stacked:
+            fila, columna = divmod(fila, 2)
         texto = _celda(rejilla.itemAt(i), raiz)
         if texto:
             filas.setdefault(fila, {})[columna] = texto
@@ -308,7 +313,7 @@ def _lineas(widget, raiz, level: int = 3) -> list[str]:
         return [" · ".join(chips)] if chips else []
     if isinstance(widget, InfoGrid):
         return [("- " + ": ".join(f)) if len(f) == 2 else "- " + " · ".join(f)
-                for f in _filas(widget._grid, raiz)]
+                for f in _filas(widget._grid, raiz, stacked=widget._stacked)]
     if isinstance(widget, Table):
         return _tabla(_filas(widget._grid, raiz, columnas=True))
     if isinstance(widget, QTreeWidget):

@@ -61,13 +61,6 @@ from ..widgets import (
 # hablar solo de la memoria y hay que decirlo.
 CERCA_DEL_TECHO = 0.85
 
-# The values that may carry where they come from («· según la BIOS», «· nominal
-# del SPD»), and the lines they may take: the mark is the point, and in a
-# narrow card it doesn't fit on one.
-MARKED_FIELDS = ("memory.field.vendor", "memory.field.part", "memory.field.type",
-                 "memory.field.rated", "memory.field.running", "memory.field.voltage",
-                 "memory.field.form")
-MARKED_LINES = 3
 
 NEED_TITLES = {
     Need.ROOT: "note.needsroot",
@@ -845,8 +838,6 @@ class MemoryPage(ScrollPage):
             grid = InfoGrid()
             for name in MODULE_FIELDS:
                 grid.add(_(name))
-            for name in MARKED_FIELDS:
-                grid.value_label(_(name)).permitir_lineas(MARKED_LINES)
             card.body.addWidget(grid)
             self._fill(grid, module, self._limite,
                        otro_con_spd=any(o.spd is not None for o in modules if o is not module),

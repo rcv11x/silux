@@ -133,10 +133,7 @@ class SystemPage(ScrollPage):
         self.boot_card = Card(_("sys.card.boot"))
         self.boot = InfoGrid()
         for name in BOOT_FIELDS:
-            label = self.boot.add(_(name))
-            if name == "sys.boot.cmdline":
-                # The whole line: it's what gets compared with a forum post.
-                label.permitir_lineas(4)
+            self.boot.add(_(name))
         self.boot_card.body.addWidget(self.boot)
         abajo.add(self.boot_card)
         layout.addWidget(abajo)
@@ -285,9 +282,7 @@ class SystemPage(ScrollPage):
         firma = tuple((v.name, v.status) for v in todas if v.state != "unaffected")
         if firma != self._vuln_signature:
             self._vuln_signature = firma
-            # Opened to be read: the kernel's longest line, whole, in a
-            # narrow window with the largest font.
-            self.vulns = self._rejilla_nueva(self.vuln_fold.body, self.vulns, firma, lineas=8)
+            self.vulns = self._rejilla_nueva(self.vuln_fold.body, self.vulns, firma)
         self.vuln_fold.setVisible(bool(firma))
 
     def _apply_swap(self, system: System) -> None:
@@ -339,7 +334,7 @@ class SystemPage(ScrollPage):
             self.boot.set_visible(_(clave), bool(valor))
 
     @staticmethod
-    def _rejilla_nueva(donde, vieja: InfoGrid, filas, lineas: int = 1) -> InfoGrid:
+    def _rejilla_nueva(donde, vieja: InfoGrid, filas) -> InfoGrid:
         """Una rejilla con esas filas en el sitio de la que había.
 
         Para las listas que cambian de forma: un intercambio que se activa,
@@ -347,9 +342,7 @@ class SystemPage(ScrollPage):
         """
         nueva = InfoGrid()
         for nombre, valor in filas:
-            etiqueta = nueva.add(nombre)
-            if lineas > 1:
-                etiqueta.permitir_lineas(lineas)
+            nueva.add(nombre)
             nueva.set(nombre, valor)
         donde.replaceWidget(vieja, nueva)
         vieja.setParent(None)

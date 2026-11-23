@@ -119,5 +119,32 @@ per_dump(TestElInformeDiceLoQueEnsenaLaVentana, "va_anonimizado",
          TestElInformeDiceLoQueEnsenaLaVentana._anonymized)
 
 
+
+class TestANarrowTableInTheReport(unittest.TestCase):
+    """In a narrow card each name goes above its value; the report still says
+    «name: value», whatever the width of the window it was taken from."""
+
+    def test_a_name_above_its_value_is_one_line(self):
+        from PySide6.QtWidgets import QApplication
+
+        from silux.ui import full_report
+        from silux.ui.widgets import InfoGrid
+
+        qt.app()
+        grid = InfoGrid()
+        grid.add("Memoria del sistema (GTT)")
+        grid.set("Memoria del sistema (GTT)", "hasta 11.6 GiB")
+        grid.add("Driver")
+        grid.set("Driver", "i915")
+        grid.show()
+        expected = ["- Memoria del sistema (GTT): hasta 11.6 GiB", "- Driver: i915"]
+        for width, stacked in ((120, True), (900, False)):
+            grid.resize(width, 200)
+            QApplication.processEvents()
+            self.assertEqual(grid._stacked, stacked, width)
+            self.assertEqual(full_report._lineas(grid, grid), expected, width)
+        grid.close()
+
+
 if __name__ == "__main__":
     unittest.main()

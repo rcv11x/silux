@@ -108,6 +108,10 @@ def avisar_copiado(cerca_de: QLabel, texto: str = "") -> None:
 MILISEGUNDOS_DEL_AVISO = 1400
 
 
+# A break opportunity that isn't seen: where a word may be split.
+ZERO_WIDTH_SPACE = "\u200b"
+
+
 class ElidingLabel(QLabel):
     """Recorta con puntos suspensivos y deja el texto completo en el tooltip.
 
@@ -190,6 +194,19 @@ class ElidingLabel(QLabel):
     def _needs_elide(self) -> bool:
         return self.fontMetrics().horizontalAdvance(self._full) > max(self.width(), 1)
 
+    @staticmethod
+    def _breakable(text: str, metrics: QFontMetrics, available: int) -> str:
+        """The text with a zero-width space between the characters of each
+        word wider than the label: word wrap never breaks inside a word, and
+        «BOOT_IMAGE=/arch/boot/…» came out cut at the edge with no «…». Only
+        what is painted: copying and the tooltip keep the text as it is."""
+        if not text or max((metrics.horizontalAdvance(w) for w in text.split()),
+                           default=0) <= available:
+            return text
+        return " ".join(ZERO_WIDTH_SPACE.join(word)
+                        if metrics.horizontalAdvance(word) > available else word
+                        for word in text.split(" "))
+
     def _refresh(self) -> None:
         available = max(self.width(), 1)
         metricas = self.fontMetrics()
@@ -197,12 +214,13 @@ class ElidingLabel(QLabel):
             # Entero si cabe en sus líneas partiendo por palabras; si no, se
             # recorta lo que cabría en ellas, con algo de margen porque las
             # líneas no se llenan hasta el borde.
+            shown = self._breakable(self._full, metricas, available)
             alto = metricas.boundingRect(0, 0, available, 100000,
-                                         int(Qt.TextFlag.TextWordWrap), self._full).height()
+                                         int(Qt.TextFlag.TextWordWrap), shown).height()
             if alto <= metricas.lineSpacing() * self._lineas + 1:
-                elided = self._full
+                elided = shown
             else:
-                elided = metricas.elidedText(self._full, Qt.TextElideMode.ElideRight,
+                elided = metricas.elidedText(shown, Qt.TextElideMode.ElideRight,
                                              int(available * (self._lineas - 0.25)))
         else:
             elided = metricas.elidedText(self._full, Qt.TextElideMode.ElideRight, available)
@@ -646,6 +664,15 @@ class Divider(QFrame):
 # --------------------------------------------------------------------------
 
 
+# A value of a name-and-value table takes the lines it needs: it goes down a
+# line, never cut. (A limit only so the measure has an end.)
+VALUE_LINES = 1000
+# Below this many characters of room for its values, a table puts each name
+# above its value: with the largest font in a narrow window, the names took
+# half the card and «Linux 7.3.5-2-cachyos» was broken in three.
+VALUE_MIN_CHARACTERS = 18
+
+
 class InfoGrid(QWidget):
     """Filas de nombre y valor, con los valores en tipografía monoespaciada
     para que las cifras queden alineadas al refrescar."""
@@ -671,6 +698,44 @@ class InfoGrid(QWidget):
         self._values: dict[str, ElidingLabel] = {}
         self._names: dict[str, ElidingLabel] = {}
         self._rows = 0
+        # Each name above its value, where the values have no room beside.
+        self._stacked = False
+
+    def _place(self, name: str) -> None:
+        """Put a row's widgets where the current arrangement wants them."""
+        row = self._filas[name]
+        widgets = [(self._names[name], Qt.AlignmentFlag.AlignTop),
+                   (self._values[name], Qt.AlignmentFlag(0))]
+        if (candado := self._candados.get(name)) is not None:
+            widgets.append((candado, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter))
+        for widget, _alignment in widgets:
+            self._grid.removeWidget(widget)
+        name_label, value = widgets[0][0], widgets[1:]
+        if self._stacked:
+            self._grid.addWidget(name_label, 2 * row, 0, 1, 2, Qt.AlignmentFlag.AlignTop)
+            for widget, alignment in value:
+                self._grid.addWidget(widget, 2 * row + 1, 0, 1, 2, alignment)
+        else:
+            self._grid.addWidget(name_label, row, 0, Qt.AlignmentFlag.AlignTop)
+            for widget, alignment in value:
+                self._grid.addWidget(widget, row, 1, alignment)
+
+    def _wants_stacked(self, width: int) -> bool:
+        names = [label.sizeHint().width() for label in self._names.values()
+                 if not label.isHidden()]
+        if not names:
+            return False
+        room = width - max(names) - self._grid.horizontalSpacing()
+        sample = next(iter(self._values.values()))
+        return room < sample.fontMetrics().averageCharWidth() * VALUE_MIN_CHARACTERS
+
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        stacked = self._wants_stacked(event.size().width())
+        if stacked != self._stacked:
+            self._stacked = stacked
+            for name in self._filas:
+                self._place(name)
 
     def add(self, name: str, value: str = "—", tooltip: str = "") -> ElidingLabel:
         name_label = ElidingLabel(name)
@@ -681,6 +746,9 @@ class InfoGrid(QWidget):
         value_label.setObjectName("FieldValue")
         value_label.setFont(value_font())
         value_label.hacer_copiable()
+        # In a narrow window with a large font a value goes down a line
+        # instead of being cut: «Linux 7.…» said nothing.
+        value_label.permitir_lineas(VALUE_LINES)
 
         # Sin altura mínima, el layout comprime la tarjeta con más filas para
         # igualar la de al lado y las filas acaban solapándose.
@@ -691,12 +759,11 @@ class InfoGrid(QWidget):
         if tooltip:
             name_label.setToolTip(tooltip)
 
-        self._grid.addWidget(name_label, self._rows, 0, Qt.AlignmentFlag.AlignTop)
-        self._grid.addWidget(value_label, self._rows, 1)
         self._values[name] = value_label
         self._names[name] = name_label
         self._filas[name] = self._rows
         self._rows += 1
+        self._place(name)
         return value_label
 
     def set_locked(self, name: str, color: str, tooltip: str = "") -> None:
@@ -716,9 +783,8 @@ class InfoGrid(QWidget):
             candado.hacer_pulsable()
             candado.clicked.connect(self.locked_clicked)
             candado.hide()
-            self._grid.addWidget(candado, self._filas[name], 1,
-                                 Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
             self._candados[name] = candado
+            self._place(name)
         candado.setToolTip(tooltip)
         self._bloqueadas.add(name)
         label.set_full_text("")
@@ -785,6 +851,7 @@ class InfoGrid(QWidget):
         self._ocultas.clear()
         self._bloqueadas.clear()
         self._rows = 0
+        self._stacked = False
 
 
 # --------------------------------------------------------------------------

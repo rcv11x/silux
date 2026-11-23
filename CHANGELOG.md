@@ -12,6 +12,10 @@ que hace falta.
 
 ## Sin publicar
 
+- Interfaz: en las tablas de etiqueta y valor, un valor largo baja de línea
+  en vez de cortarse con «…» («Linux 7.…», la compilación, la línea de
+  arranque). Y en una tarjeta estrecha con letra grande, cada etiqueta
+  va encima de su valor, que ocupa el ancho entero.
 - Discos: un SATA en una caja USB que deja pasar los comandos ATA sale con
   su propio modelo, firmware y tipo (SSD o de platos, y a cuántas rpm),
   que udev ya le preguntó al disco; la caja va aparte («Adaptador USB:
