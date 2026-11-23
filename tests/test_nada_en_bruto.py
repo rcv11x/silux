@@ -147,8 +147,9 @@ EN_BRUTO = {
         r"Co\., ?Ltd|\bInc\.|\bCorporation\b|\bLimited\b|\bGmbH\b|\[[A-Z/]+\]$"
         r"|\bS\.A\.|\bInformatica SA\b"),
     # Not inside a path: a temporary folder's random name can look like one.
+    # The address is eight hex digits: a Realtek driver is «rtw88_8821ce».
     "un chip con su dirección": re.compile(
-        r"(?<!/)\b[a-z]+\d*_[0-9a-f]{6,}\b|(?<!/)\b\w+_\d+_[0-9a-f]+:\d+"),
+        r"(?<!/)\b[a-z]+\d*_[0-9a-f]{8,}\b|(?<!/)\b\w+_\d+_[0-9a-f]+:\d+"),
     "una clave de idioma sin traducir": re.compile(r"^[a-z]+(\.[a-z0-9_]+){1,3}$"),
 }
 
@@ -162,6 +163,11 @@ class TestTheChipPattern(unittest.TestCase):
         for texto in ("it8688_40050607", "Sensor de it8688_40050607", "r8169_0_600:00"):
             with self.subTest(texto=texto):
                 self.assertTrue(EN_BRUTO["un chip con su dirección"].search(texto))
+
+    def test_a_drivers_name_is_not(self):
+        for texto in ("rtw88_8821ce", "rtw89_8852be"):
+            with self.subTest(texto=texto):
+                self.assertFalse(EN_BRUTO["un chip con su dirección"].search(texto))
 
     def test_a_folder_in_a_path_is_not(self):
         texto = "Los ajustes se guardan en /tmp/tmp4_a33fe4/silux/settings.json"
