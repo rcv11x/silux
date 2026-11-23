@@ -12,6 +12,9 @@ que hace falta.
 
 ## Sin publicar
 
+- Informe: un aparato USB que se llama solo por lo que es («Controller», el
+  nombre de muchos mandos) ya no se toma por un dato de la persona: el anexo
+  quitaba el modelo de cada nombre PCI que llevara esa palabra.
 - CPU: el voltaje del núcleo de los AMD anteriores a Zen (y de Zen 5) ya no se
   lee con el formato de los Ryzen, que daba una cifra falsa (1.550 V en un
   FX-8150): el aviso dice que esta versión no sabe leer ese formato.

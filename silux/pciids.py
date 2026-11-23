@@ -65,6 +65,10 @@ def lookup(
             lambda: {_key(k): list(v) for k, v in _lookup(pair_list, subs).items()})
         names = {tuple(int(n, 16) for n in lookup_key.split(":")): tuple(value_text)
                    for lookup_key, value_text in (flat or {}).items()}
+    # A dump's answer without its model: the dumper takes out what it could
+    # not cover, and a pair needs both names.
+    names = {key: value for key, value in names.items()
+             if len(key) != 2 or (len(value) == 2 and all(value))}
     for pair in pair_list:
         if pair not in names and pair in NOT_IN_PCI_IDS:
             names[pair] = NOT_IN_PCI_IDS[pair]

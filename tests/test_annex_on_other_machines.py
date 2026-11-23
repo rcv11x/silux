@@ -277,6 +277,33 @@ class TestAUsbBridge(unittest.TestCase):
         self.assertNotIn(self.SERIAL, text)
 
 
+class TestAGamepadCalledController(unittest.TestCase):
+    """A USB gamepad whose product name is «Controller»: taken for someone's,
+    the dumper took the model out of every PCI name with that word, and the
+    network page failed on the half answer."""
+
+    PAD = "/sys/devices/pci0000:00/0000:00:08.1/0000:0b:00.3/usb4/4-4"
+
+    def test_a_word_for_what_it_is_points_to_nobody(self):
+        with _machine("5800x3d") as (root, out):
+            for name, value in (("idVendor", "045e"), ("idProduct", "0b12"), ("speed", "12"),
+                                ("manufacturer", "Microsoft"), ("product", "Controller"),
+                                ("bDeviceClass", "ff"), ("version", " 2.00")):
+                _write(root, f"{self.PAD}/{name}", value + "\n")
+            _link(root, "/sys/bus/usb/devices/4-4",
+                  "../../../devices/pci0000:00/0000:00:08.1/0000:0b:00.3/usb4/4-4")
+            folder, manifest, _everything = _dump(out)
+            self.assertNotIn("quitados", manifest)
+            answers = json.loads((folder / "grabado.json").read_text())["pciids"]
+            names = [value for answer in answers.values() for value in answer.values()]
+            photo = volcado.snapshot_of(folder)
+        # This machine has «… Controller»s on its PCI bus, and they keep both
+        # names: maker and model.
+        self.assertTrue(any("Controller" in " ".join(value) for value in names))
+        self.assertEqual([value for value in names if len(value) != 2], [])
+        self.assertEqual(photo.failures, ())
+
+
 class TestNamesOfMachines(unittest.TestCase):
     """A machine is called as everyone's often: its distribution (Debian's
     installer proposes «debian»), its brand, its family or its sensor chip

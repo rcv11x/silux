@@ -66,8 +66,14 @@ ADDRESS_FILES = {"address", "perm_address"}
 # What a USB device writes about itself, which can name whose it is. Its
 # vendor:product ids stay: they name the model, not the person.
 USB_IDENTIFYING_FILES = {"product", "manufacturer"}
-# Names that point to nobody: a hub's or a controller's.
-USB_GENERIC = re.compile(r"hub|host controller|usb\s*receiver", re.I)
+# Names that point to nobody: a hub's or a controller's, or a product called
+# by what it is and nothing more. A gamepad named «Controller», taken for
+# someone's, took the model out of every PCI name with that word in it.
+USB_GENERIC = re.compile(
+    r"hub|host controller|usb\s*receiver"
+    r"|^\s*(?:usb\s+)?(?:controller|gamepad|game\s*pad|joystick|keyboard|mouse|"
+    r"receiver|headset|audio(?:\s+device)?|composite\s+device|wireless\s+adapter)\s*$",
+    re.I)
 MAC = re.compile(r"\b(?:[0-9a-f]{2}:){5}[0-9a-f]{2}\b", re.I)
 EMAIL_SUBSTITUTE = "usuario@example.org"
 UUID = re.compile(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", re.I)
