@@ -219,5 +219,18 @@ class TestEnumerar(unittest.TestCase):
         self.assertEqual(render.enumeration([]), "")
 
 
+
+class TestTheDiskBehindASensor(unittest.TestCase):
+    """drivetemp names its disk with the SCSI vendor and model, and a SATA
+    disk's vendor is libata's «ATA»: «ATA KIOXIA-EXCERIA S» in Sensors."""
+
+    def test_no_ata_in_front(self):
+        from tests.test_equipos import EQUIPOS, shared_snapshot
+
+        names = {s.device for s in shared_snapshot(EQUIPOS / "i5-10400").sensors
+                 if s.chip == "drivetemp"}
+        self.assertEqual(names, {"KIOXIA-EXCERIA S"})
+
+
 if __name__ == "__main__":
     unittest.main()

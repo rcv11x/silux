@@ -1001,6 +1001,10 @@ def short_brand(brand: Optional[str]) -> str:
     return " ".join(_BRAND_NOISE.sub("", brand).split()) or "Procesador"
 
 
+# What a disk's SCSI `vendor` says that is no maker: libata writes «ATA» for
+# every SATA disk, and NVMe «NVME».
+DISK_VENDOR_FILLERS = frozenset({"ATA", "NVME"})
+
 # Values makers leave unfilled in the SMBIOS table. Showing "Default string"
 # as if it were data is worse than showing nothing.
 DMI_PLACEHOLDERS = frozenset({

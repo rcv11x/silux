@@ -22,7 +22,15 @@ from typing import Iterator, Optional
 
 from .. import sysroot, system_deps, thermal
 from ..i18n import _
-from ..model import DeviceKind, DriverHint, Need, Sensor, SensorKind, short_brand
+from ..model import (
+    DISK_VENDOR_FILLERS,
+    DeviceKind,
+    DriverHint,
+    Need,
+    Sensor,
+    SensorKind,
+    short_brand,
+)
 from ..system_env import system_environment
 from .base import Draft, Provider, is_virtual_machine, mean, read_int, read_text
 from .dmi import PORTABLE_CHASSIS
@@ -274,7 +282,10 @@ def _disk_name(entry: pathlib.Path) -> Optional[str]:
     """The model of the disk a temperature chip belongs to."""
     for candidate in (entry / "device" / "model", entry / "device" / "device" / "model"):
         if (model := read_text(str(candidate))):
-            vendor = read_text(str(candidate.parent / "vendor")) or ""
+            vendor = (read_text(str(candidate.parent / "vendor")) or "").strip()
+            # drivetemp's SATA disk read «ATA KIOXIA-EXCERIA S».
+            if vendor in DISK_VENDOR_FILLERS:
+                vendor = ""
             return " ".join(f"{vendor} {model}".split())
     return None
 

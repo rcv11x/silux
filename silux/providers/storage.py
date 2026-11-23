@@ -26,7 +26,7 @@ from typing import Iterator, Optional
 from .. import smart as smart_module
 from .. import sysroot, thermal
 from ..i18n import _
-from ..model import Disk, DiskHealth, DiskIo, Need, Partition, PcieLink
+from ..model import DISK_VENDOR_FILLERS, Disk, DiskHealth, DiskIo, Need, Partition, PcieLink
 from ..privileged.client import HelperError, PrivilegedClient
 from .base import Draft, Provider, read_int, read_text
 from .counters import rate
@@ -402,7 +402,7 @@ def _maker_from_model(model: Optional[str]) -> Optional[str]:
 def _vendor(base: pathlib.Path, model: Optional[str] = None) -> Optional[str]:
     """A SATA disk's `vendor` field says «ATA», which is no maker."""
     value = _clean(read_text(str(base / "device" / "vendor")))
-    if value not in (None, "ATA", "NVME"):
+    if value is not None and value not in DISK_VENDOR_FILLERS:
         return value
     return _maker_from_model(model)
 

@@ -12,6 +12,8 @@ que hace falta.
 
 ## Sin publicar
 
+- Sensores: un disco SATA con drivetemp se llama por su modelo («KIOXIA-EXCERIA
+  S»), sin el «ATA» de relleno delante.
 - Interfaz: en las tablas de etiqueta y valor, un valor largo baja de línea
   en vez de cortarse con «…» («Linux 7.…», la compilación, la línea de
   arranque). Y en una tarjeta estrecha con letra grande, cada etiqueta
