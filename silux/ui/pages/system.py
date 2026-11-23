@@ -285,7 +285,9 @@ class SystemPage(ScrollPage):
         firma = tuple((v.name, v.status) for v in todas if v.state != "unaffected")
         if firma != self._vuln_signature:
             self._vuln_signature = firma
-            self.vulns = self._rejilla_nueva(self.vuln_fold.body, self.vulns, firma, lineas=3)
+            # Opened to be read: the kernel's longest line, whole, in a
+            # narrow window with the largest font.
+            self.vulns = self._rejilla_nueva(self.vuln_fold.body, self.vulns, firma, lineas=8)
         self.vuln_fold.setVisible(bool(firma))
 
     def _apply_swap(self, system: System) -> None:

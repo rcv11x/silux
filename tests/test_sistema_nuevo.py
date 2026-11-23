@@ -13,6 +13,8 @@ from silux.i18n import _
 from silux.model import Boot, Swap
 from silux.providers.base import Draft
 from silux.providers.system import SystemSecurity, state_of, read_swaps
+from silux.settings import Preferences
+from silux.ui import theme
 from tests import pantalla, qt
 from tests.arbol import arbol
 from tests.test_equipos import EQUIPOS, foto, shared_snapshot
@@ -170,6 +172,11 @@ class TestEnLaPagina(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = qt.app()
+        # The default font, not whichever the previous test in this process
+        # left: the long line fitted in three lines with one and not another.
+        cls._metrics = theme.METRICS
+        prefs = Preferences().normalized()
+        theme.set_density(prefs.density, prefs.font_scale)
         base = shared_snapshot(EQUIPOS / "5800x3d")
         with arbol(EQUIPO):
             draft = Draft()
@@ -179,6 +186,10 @@ class TestEnLaPagina(unittest.TestCase):
                 boot=draft.system.boot, swaps=read_swaps()))
         cls.sin_nada = dataclasses.replace(base, system=dataclasses.replace(
             base.system, vulnerabilities=(), boot=Boot(), swaps=()))
+
+    @classmethod
+    def tearDownClass(cls):
+        theme.METRICS = cls._metrics
 
     @staticmethod
     def _fases(pagina):

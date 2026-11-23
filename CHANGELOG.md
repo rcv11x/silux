@@ -12,6 +12,8 @@ que hace falta.
 
 ## Sin publicar
 
+- Sistema: la descripción más larga de una vulnerabilidad sale entera con la
+  letra grande, en vez de cortada con «…».
 - Interfaz: con una letra ancha (DejaVu Sans, la de Debian y Ubuntu), los
   títulos largos de las tarjetas y los avisos bajan de línea en vez de sacar
   la página por la derecha con la letra más grande. Y en Inicio, una ficha
