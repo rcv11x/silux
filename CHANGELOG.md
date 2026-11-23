@@ -12,6 +12,10 @@ que hace falta.
 
 ## Sin publicar
 
+- Memoria: la tabla de perfiles tiene la latencia de cada uno en
+  nanosegundos, el tAA que declara el chip SPD (en DDR2, su CL por el ciclo
+  que da el chip para él). Es la del chip, no la de todo el camino, y nunca
+  sale de la velocidad que ha puesto la BIOS.
 - Anexo del informe: cada tarjeta de red lleva su propia dirección física
   sustituta, la misma que arriba; antes todas salían con una sola.
 - Batería: «Retenida en el tope» solo cuando está llena. Enchufada y sin

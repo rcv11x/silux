@@ -248,9 +248,9 @@ Disponible 1.8 GiB · sin intercambio
 
 ### Perfiles y temporizaciones
 
-| PERFIL | VELOCIDAD | CL | TRCD | TRP | TRAS | TRC | VOLTAJE |
-|---|---|---|---|---|---|---|---|
-| Módulo 1 · JEDEC | 2400 MT/s | 17 | 17 | 17 | 39 | 55 | 1.20 V |
+| PERFIL | VELOCIDAD | CL | LATENCIA | TRCD | TRP | TRAS | TRC | VOLTAJE |
+|---|---|---|---|---|---|---|---|---|
+| Módulo 1 · JEDEC | 2400 MT/s | 17 | 13.75 ns | 17 | 17 | 39 | 55 | 1.20 V |
 
 Lo que cada módulo declara en su chip SPD; a cuánto va de verdad lo decide la BIOS.
 

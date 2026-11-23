@@ -2523,6 +2523,11 @@ class Table(QScrollArea):
         label.setText(text)
         self._encajar()
 
+    def set_header_tooltip(self, column: int, text: str) -> None:
+        item = self._grid.itemAtPosition(0, column)
+        if item and item.widget():
+            item.widget().setToolTip(text)
+
     def _ancho_de_cabecera(self, columna: int) -> int:
         item = self._grid.itemAtPosition(0, columna)
         return item.widget().sizeHint().width() if item and item.widget() else 0

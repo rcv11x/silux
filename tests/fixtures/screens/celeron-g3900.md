@@ -246,9 +246,9 @@ El chip SPD del módulo 1 no declara la fecha de fabricación.
 
 ### Perfiles y temporizaciones
 
-| PERFIL | VELOCIDAD | CL | TRCD | TRP | TRAS | TRC | VOLTAJE |
-|---|---|---|---|---|---|---|---|
-| Módulo 1 · JEDEC | 2133 MT/s | 15 | 15 | 15 | 35 | 50 | 1.20 V |
+| PERFIL | VELOCIDAD | CL | LATENCIA | TRCD | TRP | TRAS | TRC | VOLTAJE |
+|---|---|---|---|---|---|---|---|---|
+| Módulo 1 · JEDEC | 2133 MT/s | 15 | 13.5 ns | 15 | 15 | 35 | 50 | 1.20 V |
 
 Lo que cada módulo declara en su chip SPD; a cuánto va de verdad lo decide la BIOS.
 

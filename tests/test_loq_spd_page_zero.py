@@ -119,8 +119,8 @@ class TestOnTheMemoryPage(unittest.TestCase):
                                   "memory.field.rated": "4800 MT/s",
                                   "memory.field.form": "SODIMM"})
         row = texts.index(_("memory.module.n").format(n=1) + " · JEDEC")
-        self.assertEqual(texts[row + 1:row + 8],
-                         ["4800 MT/s", "40", "39", "39", "77", "116", "1.10 V"])
+        self.assertEqual(texts[row + 1:row + 9],
+                         ["4800 MT/s", "40", "16 ns", "39", "39", "77", "116", "1.10 V"])
 
 
 if __name__ == "__main__":

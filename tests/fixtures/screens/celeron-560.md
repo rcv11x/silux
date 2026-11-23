@@ -251,9 +251,9 @@ El SPD de una DDR2 no tiene campo para el fabricante de los chips.
 
 ### Perfiles y temporizaciones
 
-| PERFIL | VELOCIDAD | CL | TRCD | TRP | TRAS | TRC | VOLTAJE |
-|---|---|---|---|---|---|---|---|
-| Módulo 1 · JEDEC | 667 MT/s | 5 | 5 | 5 | 15 | 20 | 1.80 V |
+| PERFIL | VELOCIDAD | CL | LATENCIA | TRCD | TRP | TRAS | TRC | VOLTAJE |
+|---|---|---|---|---|---|---|---|---|
+| Módulo 1 · JEDEC | 667 MT/s | 5 | 15 ns | 5 | 5 | 15 | 20 | 1.80 V |
 
 Lo que cada módulo declara en su chip SPD; a cuánto va de verdad lo decide la BIOS.
 

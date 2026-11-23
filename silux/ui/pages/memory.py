@@ -104,7 +104,9 @@ SPD_DECLARES = {
     "memory.field.made": "memory.na.made",
 }
 
-TIMING_HEADERS = ("memory.timing.profile", "memory.timing.speed", "memory.timing.cl", "memory.timing.trcd", "memory.timing.trp", "memory.timing.tras", "memory.timing.trc", "memory.field.voltage")
+TIMING_HEADERS = ("memory.timing.profile", "memory.timing.speed", "memory.timing.cl",
+                  "memory.timing.taa", "memory.timing.trcd", "memory.timing.trp",
+                  "memory.timing.tras", "memory.timing.trc", "memory.field.voltage")
 
 
 # El desglose del uso, tal como lo cuenta el kernel. Va plegado en la
@@ -170,7 +172,9 @@ class MemoryPage(ScrollPage):
 
         self.timings_card = Card(_("memory.card.timings"))
         self.timings = Table([_(h) for h in TIMING_HEADERS],
-                             numeric=(False, True, True, True, True, True, True, True))
+                             numeric=(False, True, True, True, True, True, True, True, True))
+        self.timings.set_header_tooltip(TIMING_HEADERS.index("memory.timing.taa"),
+                                        _("memory.tip.taa"))
         self.spd_note = QLabel(_("memory.spd.note"))
         self.spd_note.setObjectName("Muted")
         self.spd_note.setWordWrap(True)
@@ -1144,6 +1148,7 @@ class MemoryPage(ScrollPage):
                     f"{etiqueta} · {timing.name}",
                     f"{timing.speed_mts} MT/s",
                     str(timing.cl or render.DASH),
+                    render.spd_time(timing.taa_ps),
                     str(timing.trcd or render.DASH),
                     str(timing.trp or render.DASH),
                     str(timing.tras or render.DASH),

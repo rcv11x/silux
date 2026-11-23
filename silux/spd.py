@@ -73,6 +73,10 @@ class Timings:
     tras: Optional[int] = None
     trc: Optional[int] = None
     voltage_v: Optional[float] = None
+    # The CAS latency as the chip declares it, in picoseconds (tAAmin): the
+    # chip's own time, not CL times the speed the BIOS set. On DDR2, which
+    # has no such field, its CL times the cycle the chip gives for that CL.
+    taa_ps: Optional[int] = None
 
     @property
     def summary(self) -> str:
@@ -271,6 +275,7 @@ def _decode_ddr3(spd: bytes, address: str, slot: int) -> SpdInfo:
         name="JEDEC",
         speed_mts=speed,
         cl=_jedec_cycles(time_ps(d.TAA, d.FINE_TAA), tck_ps),
+        taa_ps=round(time_ps(d.TAA, d.FINE_TAA)) or None,
         trcd=_jedec_cycles(time_ps(d.TRCD, d.FINE_TRCD), tck_ps),
         trp=_jedec_cycles(time_ps(d.TRP, d.FINE_TRP), tck_ps),
         tras=_jedec_cycles(tras_ps, tck_ps),
@@ -358,6 +363,7 @@ def _decode_ddr2(spd: bytes, address: str, slot: int) -> SpdInfo:
         speed_mts=jedec_grade(2000 / tck_ns) if tck_ns else 0,
         # The cycle time in byte 9 is the one at the highest latency.
         cl=max(latencies) if latencies else None,
+        taa_ps=round(max(latencies) * tck_ps) if latencies and tck_ps else None,
         trcd=_jedec_cycles((spd[d.TRCD] >> 2) * 1000 + (spd[d.TRCD] & 3) * 250, tck_ps),
         trp=_jedec_cycles((spd[d.TRP] >> 2) * 1000 + (spd[d.TRP] & 3) * 250, tck_ps),
         tras=_jedec_cycles(spd[d.TRAS] * 1000, tck_ps),
@@ -456,6 +462,7 @@ def _decode_ddr4(spd: bytes, address: str, slot: int) -> SpdInfo:
         name="JEDEC",
         speed_mts=speed,
         cl=_ddr4_timing(spd, d.TAA, d.FINE_TAA, tck_ps),
+        taa_ps=spd[d.TAA] * 125 + _signed(spd[d.FINE_TAA]) or None,
         trcd=_ddr4_timing(spd, d.TRCD, d.FINE_TRCD, tck_ps),
         trp=_ddr4_timing(spd, d.TRP, d.FINE_TRP, tck_ps),
         tras=_jedec_cycles(after, tck_ps),
@@ -559,6 +566,7 @@ def _decode_ddr5(spd: bytes, address: str, slot: int) -> SpdInfo:
         name="JEDEC",
         speed_mts=speed,
         cl=_ddr5_cas(spd, _ddr5_cycles(_u16(spd, d.TAA), tck_ps)),
+        taa_ps=_u16(spd, d.TAA) or None,
         trcd=_ddr5_cycles(_u16(spd, d.TRCD), tck_ps),
         trp=_ddr5_cycles(_u16(spd, d.TRP), tck_ps),
         tras=_ddr5_cycles(_u16(spd, d.TRAS), tck_ps),
@@ -749,6 +757,7 @@ def _xmp_profiles(spd: bytes) -> Iterator[Timings]:
         name="XMP 1",
         speed_mts=jedec_grade(2_000_000 / tck),
         cl=_jedec_cycles(timing(XMP1_TAA, XMP1_TAA_FINE), tck),
+        taa_ps=timing(XMP1_TAA, XMP1_TAA_FINE) or None,
         trcd=_jedec_cycles(timing(XMP1_TRCD, XMP1_TRCD_FINE), tck),
         trp=_jedec_cycles(timing(XMP1_TRP, XMP1_TRP_FINE), tck),
         tras=_jedec_cycles(after, tck),

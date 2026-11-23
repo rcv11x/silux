@@ -303,16 +303,16 @@ Disponible 25.8 GiB · intercambio 1.4 MiB de 31.1 GiB
 
 ### Perfiles y temporizaciones
 
-| PERFIL | VELOCIDAD | CL | TRCD | TRP | TRAS | TRC | VOLTAJE |
-|---|---|---|---|---|---|---|---|
-| Módulo 1 · JEDEC | 2400 MT/s | 17 | 17 | 17 | 39 | 55 | 1.20 V |
-| Módulo 1 · XMP 1 | 3200 MT/s | 16 | 18 | 18 | 36 | 74 | 1.35 V |
-| Módulo 2 · JEDEC | 2400 MT/s | 17 | 17 | 17 | 39 | 55 | 1.20 V |
-| Módulo 2 · XMP 1 | 3200 MT/s | 16 | 18 | 18 | 36 | 74 | 1.35 V |
-| Módulo 3 · JEDEC | 2400 MT/s | 17 | 17 | 17 | 39 | 55 | 1.20 V |
-| Módulo 3 · XMP 1 | 3200 MT/s | 16 | 18 | 18 | 36 | 74 | 1.35 V |
-| Módulo 4 · JEDEC | 2400 MT/s | 17 | 17 | 17 | 39 | 55 | 1.20 V |
-| Módulo 4 · XMP 1 | 3200 MT/s | 16 | 18 | 18 | 36 | 74 | 1.35 V |
+| PERFIL | VELOCIDAD | CL | LATENCIA | TRCD | TRP | TRAS | TRC | VOLTAJE |
+|---|---|---|---|---|---|---|---|---|
+| Módulo 1 · JEDEC | 2400 MT/s | 17 | 13.75 ns | 17 | 17 | 39 | 55 | 1.20 V |
+| Módulo 1 · XMP 1 | 3200 MT/s | 16 | 10 ns | 18 | 18 | 36 | 74 | 1.35 V |
+| Módulo 2 · JEDEC | 2400 MT/s | 17 | 13.75 ns | 17 | 17 | 39 | 55 | 1.20 V |
+| Módulo 2 · XMP 1 | 3200 MT/s | 16 | 10 ns | 18 | 18 | 36 | 74 | 1.35 V |
+| Módulo 3 · JEDEC | 2400 MT/s | 17 | 13.75 ns | 17 | 17 | 39 | 55 | 1.20 V |
+| Módulo 3 · XMP 1 | 3200 MT/s | 16 | 10 ns | 18 | 18 | 36 | 74 | 1.35 V |
+| Módulo 4 · JEDEC | 2400 MT/s | 17 | 13.75 ns | 17 | 17 | 39 | 55 | 1.20 V |
+| Módulo 4 · XMP 1 | 3200 MT/s | 16 | 10 ns | 18 | 18 | 36 | 74 | 1.35 V |
 
 Lo que cada módulo declara en su chip SPD; a cuánto va de verdad lo decide la BIOS.
 

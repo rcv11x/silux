@@ -1196,6 +1196,14 @@ def memory_channel_label(modules) -> Optional[str]:
     return f"{name} · {modules_text}"
 
 
+def spd_time(picoseconds: Optional[int]) -> str:
+    """A time from a module's SPD, exact to the picosecond it declares:
+    «13.75 ns», «13.125 ns», «16 ns»."""
+    if not picoseconds:
+        return DASH
+    return f"{picoseconds / 1000:.3f}".rstrip("0").rstrip(".") + " ns"
+
+
 def nanoseconds(value: Optional[float]) -> str:
     """«0.9 ns». One decimal: any processor's L1 is around there, and with
     no decimals all the fast caches would come out the same."""

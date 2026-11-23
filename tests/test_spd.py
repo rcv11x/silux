@@ -807,7 +807,7 @@ class TestTheI7_10700fsModules(unittest.TestCase):
                 self.assertEqual(lectura.jedec.speed_mts, 2400)
                 self.assertEqual(lectura.profiles, (spd.Timings(
                     name="XMP 1", speed_mts=3200, cl=16, trcd=18, trp=18, tras=38,
-                    trc=56, voltage_v=1.35),))
+                    trc=56, voltage_v=1.35, taa_ps=10000),))
                 self.assertEqual(lectura.rated_mts, 3200)
 
 
