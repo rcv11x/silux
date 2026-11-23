@@ -22,7 +22,9 @@ class TestRellenosDeLaBios(unittest.TestCase):
                        "Not Specified", "None", "N/A", "  DEFAULT STRING  ",
                        # Templates for the version: Gigabyte's and ASUS's.
                        "x.x", "Rev X.0x", "X.XX", "...", "0x0000",
-                       "Base Board Version", "Type2 - Board Product Name"):
+                       "Base Board Version", "Type2 - Board Product Name",
+                       # Lenovo's board version on its IdeaPads.
+                       "Not Defined"):
             with self.subTest(valor=basura):
                 self.assertIsNone(clean_dmi(basura))
 

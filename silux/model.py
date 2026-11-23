@@ -1009,6 +1009,7 @@ DMI_PLACEHOLDERS = frozenset({
     "not specified", "not applicable", "none", "n/a", "unknown",
     "oem", "o.e.m.", "chassis manufacturer", "chassis version",
     "0123456789", "xxxxxxxx", "empty", "not set", "not available", "undefined",
+    "not defined",
     "unspecified", "null", "bad index", "out of spec",
     # The template's own field names, left as their values.
     "base board product name", "base board version", "base board manufacturer",
