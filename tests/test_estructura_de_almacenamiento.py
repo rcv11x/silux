@@ -35,9 +35,12 @@ class TestLaFichaDeUnDisco(unittest.TestCase):
         with pantalla.Ventana(self.foto) as ventana:
             pagina = self._pagina(ventana)
             rejilla, detalle = pagina._grids["nvme0n1"], pagina._details["nvme0n1"]
-            # Ten, and the temperature limits the drive declares under its
-            # temperature.
-            self.assertEqual(len(rejilla._filas), 11)
+            # Ten, the temperature limits the drive declares under its
+            # temperature, and the rotation and the USB adapter, which only
+            # show behind a USB bridge.
+            self.assertEqual(len(rejilla._filas), 13)
+            for hidden in ("storage.field.rpm", "storage.field.bridge"):
+                self.assertFalse(rejilla._values[_(hidden)].isVisibleTo(pagina), hidden)
             self.assertIn(_("gpu.sensor.temp"), rejilla._filas)
             self.assertIn(_("storage.field.templimits"), rejilla._filas)
             self.assertNotIn(_("storage.field.scheduler"), rejilla._filas)

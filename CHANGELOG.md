@@ -12,6 +12,10 @@ que hace falta.
 
 ## Sin publicar
 
+- Discos: un SATA en una caja USB que deja pasar los comandos ATA sale con
+  su propio modelo, firmware y tipo (SSD o de platos, y a cuántas rpm),
+  que udev ya le preguntó al disco; la caja va aparte («Adaptador USB:
+  JMicron»). «Por USB no se sabe…» solo queda cuando el disco no contesta.
 - CPU: con el driver acpi-cpufreq y el turbo activo, la máxima que publica
   el kernel es la de sin turbo: ya no sale como techo («2.26 GHz (1.00 –
   2.00 GHz)») y un aviso dice que no se sabe hasta dónde sube.

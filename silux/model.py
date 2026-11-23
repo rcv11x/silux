@@ -1868,6 +1868,10 @@ class Disk:
     kind: Optional[str] = None
     transport: Optional[str] = None            # sata, nvme, usb…
     rotational: Optional[bool] = None
+    # Behind a USB bridge whose disk answered for itself: the bridge's maker
+    # («JMicron»), and the disk's own rotation (0, it doesn't spin).
+    usb_bridge: Optional[str] = None
+    rotation_rpm: Optional[int] = None
     logical_sector: Optional[int] = None
     physical_sector: Optional[int] = None
     scheduler: Optional[str] = None

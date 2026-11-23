@@ -187,16 +187,27 @@ class Disks(Provider):
 
         model = _clean(read_text(str(base / "device" / "model")))
         virtual = is_virtual(name, model, read_text(str(base / "device" / "vendor")))
+        vendor = _vendor(base, model)
+        firmware = _clean(read_text(str(base / "device" / "firmware_rev"))
+                          or read_text(str(base / "device" / "rev")))
+        bridge = rotation_rpm = None
+        if transport == "usb" and (ata := _udev_ata(base)) is not None:
+            # sysfs has the bridge's INQUIRY; the disk's own answer is udev's.
+            bridge, model = vendor, ata.get("model") or model
+            vendor = _maker_from_model(model)
+            firmware = ata.get("firmware") or firmware
+            rotation_rpm = ata.get("rpm")
         temp_c, temp_high_c, temp_critical_c = _temperature(base)
         return Disk(
             name=name,
             model=model,
-            vendor=_vendor(base, model),
-            firmware=_clean(read_text(str(base / "device" / "firmware_rev"))
-                             or read_text(str(base / "device" / "rev"))),
+            vendor=vendor,
+            firmware=firmware,
             serial=_clean(read_text(str(base / "device" / "serial"))),
             size_bytes=sectors * SECTOR,
-            kind=_kind(rotational, transport, virtual, removable, model),
+            kind=_kind(rotational, transport, virtual, removable, model, rotation_rpm),
+            usb_bridge=bridge,
+            rotation_rpm=rotation_rpm,
             transport=transport,
             rotational=None if rotational is None else bool(rotational),
             logical_sector=read_int(str(base / "queue" / "logical_block_size")),
@@ -273,6 +284,40 @@ def _ata_model(base: pathlib.Path) -> Optional[str]:
             raw = b"".join(p.to_bytes(2, "big") for p in words[27:47])
             return raw.decode("ascii", "replace").strip() or None
     return None
+
+
+# udev's database: what it learnt from each device when it appeared. For a
+# disk behind a USB bridge that passes ATA commands (SAT), udev's ata_id asked
+# the disk itself for its IDENTIFY, so the disk's model, firmware and
+# rotation are there while sysfs only has the bridge's. Readable by anyone.
+UDEV_DATA = "/run/udev/data"
+
+# The keys read, and the only ones a dump keeps: the record also carries the
+# disk's and the bridge's serial numbers, the WWN and the partition table's
+# UUID.
+UDEV_KEYS = frozenset({"ID_ATA", "ID_MODEL_ENC", "ID_REVISION", "ID_ATA_ROTATION_RATE_RPM"})
+
+
+def _udev_ata(base: pathlib.Path) -> Optional[dict]:
+    """What the disk behind a USB bridge said of itself, through udev: its
+    model, firmware and rotation (0 is «doesn't spin»). None when udev has
+    no ATA answer for it: no udev, or a bridge that doesn't pass it."""
+    dev = (read_text(str(base / "dev")) or "").strip()
+    if not re.fullmatch(r"\d+:\d+", dev):
+        return None
+    values = {}
+    for line in (read_text(f"{UDEV_DATA}/b{dev}") or "").splitlines():
+        key, sep, value = line.removeprefix("E:").partition("=")
+        if line.startswith("E:") and sep and key in UDEV_KEYS:
+            values[key] = value
+    if values.get("ID_ATA") != "1":
+        return None
+    # `_ENC` keeps the spaces udev turns into «_» elsewhere, as \x20.
+    model = re.sub(r"\\x([0-9a-fA-F]{2})", lambda m: chr(int(m.group(1), 16)),
+                   values.get("ID_MODEL_ENC", ""))
+    rpm = values.get("ID_ATA_ROTATION_RATE_RPM", "")
+    return {"model": _clean(model), "firmware": _clean(values.get("ID_REVISION")),
+            "rpm": int(rpm) if rpm.isdigit() else None}
 
 
 def _fits_what_is_used(health: Optional[DiskHealth], disk: Disk) -> Optional[DiskHealth]:
@@ -369,14 +414,17 @@ def is_virtual(name: str, model: Optional[str], vendor: Optional[str]) -> bool:
 
 def _kind(rotational: Optional[int], transport: Optional[str],
           virtual: bool = False, removable: bool = False,
-          model: Optional[str] = None) -> Optional[str]:
+          model: Optional[str] = None, rotation_rpm: Optional[int] = None) -> Optional[str]:
     """HDD, SSD, NVMe, Flash or Virtual.
 
     No field says it. «Not rotational» covers a SATA SSD and an NVMe, alike
-    in neither speed nor connection, so the bus decides between them.
+    in neither speed nor connection, so the bus decides between them. The
+    disk's own word (its IDENTIFY's rotation, through udev) wins.
     """
     if virtual:
         return "Virtual"
+    if rotation_rpm is not None and transport != "nvme":
+        return "HDD" if rotation_rpm > 0 else "SSD"
     if rotational is None:
         return None
     if transport == "usb" and rotational:

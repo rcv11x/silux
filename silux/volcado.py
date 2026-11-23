@@ -44,9 +44,11 @@ import time
 from typing import Optional
 
 from . import privacidad, spd, sysroot
+from .providers.storage import UDEV_DATA, UDEV_KEYS
 from .providers.sysfs_cpu import FREQUENCY_SOURCES
 
-WATCHED_TREES = ("/sys/", "/proc/", "/etc/")
+# What is copied is what the mounted dump answers: one list for both.
+WATCHED_TREES = sysroot.PREFIXES
 # A sysfs or procfs file larger than this isn't what's read to describe a
 # machine; copying it would only bloat the repository.
 MAX_BYTES = 512 * 1024
@@ -481,7 +483,8 @@ class _Copy:
                 hops += 1
             if not os.path.lexists(sysroot.path(following)):
                 return None
-            if not following.startswith(WATCHED_TREES) and following not in ("/sys", "/proc", "/etc"):
+            if not (following.startswith(WATCHED_TREES)
+                    or any(tree.startswith(following + "/") for tree in WATCHED_TREES)):
                 # A link leaving the system (`/proc/1/exe`): the link is enough.
                 return None
             current = following
@@ -707,6 +710,27 @@ IN_SERIES = (re.compile(r"br-[0-9a-f]{12}"), re.compile(r"veth[0-9a-f]+"))
 IDENTIFY_SERIAL = (*range(10, 20), *range(108, 112), *range(176, 206))
 
 
+# In a udev record, what identifies the disk or its bridge: looked for in the
+# rest of the dump once the record keeps only `UDEV_KEYS`.
+UDEV_IDENTIFIERS = re.compile(r"ID_(USB_)?SERIAL(_SHORT)?|ID_WWN(_WITH_EXTENSION)?")
+
+
+def _udev_record_kept(text: str) -> tuple[str, list[str]]:
+    """A udev record with only the keys Silux reads, and the identifiers it
+    had: serial numbers, the bridge's, the WWN. The rest (the partition
+    table's UUID, the by-id links named after the serial) just goes."""
+    kept, secrets = [], []
+    for line in text.splitlines():
+        key, sep, value = line.removeprefix("E:").partition("=")
+        if not (line.startswith("E:") and sep):
+            continue
+        if key in UDEV_KEYS:
+            kept.append(line)
+        elif UDEV_IDENTIFIERS.fullmatch(key) and len(value) >= 4:
+            secrets.append(value)
+    return "".join(f"{line}\n" for line in kept), secrets
+
+
 def _identify_without_serial(text: str) -> tuple[str, str]:
     """`ata_device/*/id` with its serial words at zero, and the serial.
 
@@ -915,6 +939,12 @@ class _Anonymizer:
             if name in SERIAL_FILES and data.strip():
                 self._secret(data.strip().decode(errors="replace"), "serial")
                 path.write_bytes(re.sub(rb"[^\n\x00]", b"0", data))
+                continue
+            if relative.startswith(UDEV_DATA + "/"):
+                clean, identifiers = _udev_record_kept(data.decode(errors="replace"))
+                for identifier in identifiers:
+                    self._secret(identifier, "disk_serial")
+                path.write_text(clean)
                 continue
             if name == "id" and "/ata_device/" in relative:
                 clean, serial = _identify_without_serial(data.decode(errors="replace"))

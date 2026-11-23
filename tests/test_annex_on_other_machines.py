@@ -121,6 +121,27 @@ class TestAUsbBridge(unittest.TestCase):
     BRIDGE = "/sys/devices/pci0000:00/0000:00:08.1/0000:0b:00.3/usb4/4-3"
     DISK = BRIDGE + "/4-3:1.0/host9/target9:0:0/9:0:0:0"
     SERIAL = "A1B2C3D4E5F6"
+    # The disk's own serial, its WWN and its partition table's UUID, in the
+    # record udev wrote when its ata_id asked the disk through the bridge.
+    DISK_SERIAL = "50026B7785F2A9C1"
+    WWN = "0x50026b7785f2a9c1"
+    TABLE_UUID = "9cf4b6f1-70b8-7962-4582-b467b28d9ac1"
+    UDEV_RECORD = (
+        f"S:disk/by-id/ata-KINGSTON_SA400S37240G_{DISK_SERIAL}\n"
+        "S:disk/by-path/pci-0000:0b:00.3-usb-0:3:1.0-scsi-0:0:0:0\n"
+        "I:689869423\n"
+        "E:ID_ATA=1\nE:ID_TYPE=disk\nE:ID_BUS=ata\n"
+        "E:ID_MODEL=KINGSTON_SA400S37240G\n"
+        "E:ID_MODEL_ENC=KINGSTON\\x20SA400S37240G\\x20\\x20\\x20\n"
+        "E:ID_REVISION=SBFKB1D1\n"
+        f"E:ID_SERIAL=KINGSTON_SA400S37240G_{DISK_SERIAL}\n"
+        f"E:ID_SERIAL_SHORT={DISK_SERIAL}\n"
+        "E:ID_ATA_ROTATION_RATE_RPM=0\n"
+        f"E:ID_WWN={WWN}\nE:ID_WWN_WITH_EXTENSION={WWN}\n"
+        "E:ID_USB_MODEL=Tech\nE:ID_USB_VENDOR=JMicron\n"
+        f"E:ID_USB_SERIAL=JMicron_Tech_{SERIAL}-0:0\nE:ID_USB_SERIAL_SHORT={SERIAL}\n"
+        f"E:ID_PART_TABLE_UUID={TABLE_UUID}\nE:ID_PART_TABLE_TYPE=gpt\n"
+        "G:systemd\nV:1\n")
 
     def _add(self, root):
         for name, value in (("idVendor", "7825"), ("idProduct", "a2a4"), ("speed", "5000"),
@@ -137,6 +158,7 @@ class TestAUsbBridge(unittest.TestCase):
                             ("queue/physical_block_size", "4096"),
                             ("stat", "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0")):
             _write(root, f"{self.DISK}/block/sdz/{name}", value + "\n")
+        _write(root, f"{self.DISK}/block/sdz/dev", "65:240\n")
         _link(root, f"{self.DISK}/block/sdz/device", "../../../9:0:0:0")
         _link(root, "/sys/block/sdz", "../devices/pci0000:00/0000:00:08.1/0000:0b:00.3/usb4/4-3"
                                       "/4-3:1.0/host9/target9:0:0/9:0:0:0/block/sdz")
@@ -164,6 +186,79 @@ class TestAUsbBridge(unittest.TestCase):
             finally:
                 collector.close()
         self.assertEqual(disks["sdz"].serial, self.SERIAL)
+
+    def _add_udev(self, root):
+        _write(root, "/run/udev/data/b65:240", self.UDEV_RECORD)
+
+    def test_the_disk_behind_says_who_it_is_through_udev(self):
+        # As udev has it, without permissions: the disk's model, firmware
+        # and that it doesn't spin; the bridge apart.
+        from silux.collector import Collector
+
+        with _machine("5800x3d") as (root, _out):
+            self._add(root)
+            self._add_udev(root)
+            collector = Collector()
+            try:
+                disks = {d.name: d for d in collector.snapshot().disks}
+            finally:
+                collector.close()
+        disk = disks["sdz"]
+        self.assertEqual((disk.model, disk.vendor, disk.firmware, disk.kind, disk.usb_bridge,
+                          disk.rotation_rpm),
+                         ("KINGSTON SA400S37240G", "Kingston", "SBFKB1D1", "SSD", "JMicron", 0))
+
+    def test_without_it_the_bridge_is_all_there_is(self):
+        from silux.collector import Collector
+
+        with _machine("5800x3d") as (root, _out):
+            self._add(root)
+            collector = Collector()
+            try:
+                disk = {d.name: d for d in collector.snapshot().disks}["sdz"]
+            finally:
+                collector.close()
+        self.assertEqual((disk.model, disk.kind, disk.usb_bridge), ("Tech", None, None))
+
+    def test_the_storage_page_says_it(self):
+        from silux.collector import Collector
+        from silux.i18n import _
+        from tests import pantalla, qt
+
+        qt.app()
+        with _machine("5800x3d") as (root, _out):
+            self._add(root)
+            self._add_udev(root)
+            collector = Collector()
+            try:
+                collector.snapshot()
+                photo = collector.snapshot()
+            finally:
+                collector.close()
+        with pantalla.Ventana(photo) as window:
+            window.select_section("Almacenamiento")
+            for _turn in range(4):
+                qt.app().processEvents()
+            texts = pantalla.textos_de(window.storage_page)
+        self.assertIn("KINGSTON SA400S37240G", texts)
+        self.assertIn(_("storage.field.bridge"), texts)
+        self.assertIn("JMicron", texts)
+        self.assertNotIn(_("storage.na.kind.usb"), texts)
+
+    def test_the_dump_keeps_the_udev_keys_read_and_no_identifier(self):
+        with _machine("5800x3d") as (root, out):
+            self._add(root)
+            self._add_udev(root)
+            folder, manifest, everything = _dump(out)
+            self.assertNotIn("quitados", manifest)
+            for identifier in (self.DISK_SERIAL, self.WWN, self.TABLE_UUID, self.SERIAL):
+                self.assertNotIn(identifier.encode(), everything, identifier)
+            record = (folder / "run/udev/data/b65:240").read_text()
+            self.assertEqual(sorted(line.split("=")[0] for line in record.splitlines()),
+                             ["E:ID_ATA", "E:ID_ATA_ROTATION_RATE_RPM", "E:ID_MODEL_ENC",
+                              "E:ID_REVISION"])
+            disk = {d.name: d for d in volcado.snapshot_of(folder).disks}["sdz"]
+            self.assertEqual((disk.model, disk.kind), ("KINGSTON SA400S37240G", "SSD"))
 
     def test_left_uncovered_the_refusal_says_where_and_only_that(self):
         # A dumper that forgot the `serial` files, as it could forget another.

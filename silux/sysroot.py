@@ -30,7 +30,8 @@ VARIABLE = "SILUX_SYSROOT"
 RECORDING_FILE = "grabado.json"
 
 # Not `/dev`: what is read there goes through ioctls, which are recorded.
-PREFIXES = ("/sys/", "/proc/", "/etc/")
+# Of `/run`, only udev's database: the rest is sockets and runtime state.
+PREFIXES = ("/sys/", "/proc/", "/etc/", "/run/udev/data/")
 
 T = TypeVar("T")
 

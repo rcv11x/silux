@@ -53,8 +53,8 @@ COLUMNA_TEMPERATURA = 5
 
 # Qué disco es y cómo está: lo que se mira. La salud va detrás de la
 # identidad y no al final de catorce filas.
-DISK_FIELDS = ("storage.col.model", "gpu.field.vendor", "gpu.vram.type", "storage.field.bus",
-               "gpu.clock.link", "storage.col.size",
+DISK_FIELDS = ("storage.col.model", "gpu.field.vendor", "gpu.vram.type", "storage.field.rpm",
+               "storage.field.bus", "storage.field.bridge", "gpu.clock.link", "storage.col.size",
                "gpu.sensor.temp", "storage.field.templimits", "storage.field.hours",
                "storage.field.written", "storage.field.life")
 # Cómo lo ve el kernel: se consulta una vez, si acaso. Va plegado.
@@ -545,7 +545,14 @@ class StoragePage(ScrollPage):
         # Over USB a fixed disk's kind can't be known: hidden, and said below.
         kind_unknown = disco.kind is None and disco.transport == "usb"
         grid.set_visible(_("gpu.vram.type"), not kind_unknown)
+        # What the disk said of itself behind a USB bridge: how fast it spins
+        # (a disk that doesn't spin has no row), and the bridge apart.
+        spins = bool(disco.rotation_rpm)
+        f(_("storage.field.rpm"), render.rpm(disco.rotation_rpm) if spins else d)
+        grid.set_visible(_("storage.field.rpm"), spins)
         f(_("storage.field.bus"), render.disk_bus(disco.transport))
+        f(_("storage.field.bridge"), render.maker(disco.usb_bridge) if disco.usb_bridge else d)
+        grid.set_visible(_("storage.field.bridge"), bool(disco.usb_bridge))
         f(_("storage.col.size"), render.decimal_size(disco.size_bytes),
           tooltip=render.size(disco.size_bytes))
         # El enlace PCIe es del NVMe. Un SATA no tiene uno propio —negocia su
