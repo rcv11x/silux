@@ -1385,6 +1385,16 @@ class GpuEngine:
     capabilities: tuple[str, ...] = ()
 
 
+# Intel's graphics in the chipset, from the 830M to the G45 (the kernel's
+# i915_pciids.h, gen 2 to 4 without Pineview). Every later one is in the
+# processor.
+INTEL_CHIPSET_GRAPHICS = frozenset({
+    0x3577, 0x2562, 0x3582, 0x358E, 0x2572, 0x2582, 0x258A, 0x2592, 0x2772, 0x27A2,
+    0x27AE, 0x2972, 0x2982, 0x2992, 0x29A2, 0x29B2, 0x29C2, 0x29D2, 0x2A02, 0x2A12,
+    0x2A42, 0x2E02, 0x2E12, 0x2E22, 0x2E32, 0x2E42, 0x2E92,
+})
+
+
 @dataclass(frozen=True, slots=True)
 class Gpu:
     """A graphics card: what the kernel knows and what the APIs say."""
@@ -1512,6 +1522,23 @@ class Gpu:
     def temp_level(self) -> str:
         """`thermal.level` of `temp_c`, by its sensor's limits."""
         return thermal.level(self.temp_c, self.temp_high_c, self.temp_critical_c)
+
+    @property
+    def built_in(self) -> Optional[str]:
+        """Where an integrated GPU lives: «cpu» or «chipset»; None for a card.
+
+        An AMD integrated GPU is an APU's. Intel's went into the processor
+        with Clarkdale and Pineview; before, it was the chipset's
+        (`INTEL_CHIPSET_GRAPHICS`). Another maker's integrated GPU is a
+        chipset's (nForce, VIA, SiS).
+        """
+        if not self.integrated:
+            return None
+        if self.vendor_id == 0x1002 or (self.vendor_id is None and self.vendor == "AMD"):
+            return "cpu"
+        if self.vendor_id == 0x8086 or (self.vendor_id is None and self.vendor == "Intel"):
+            return "chipset" if self.device_id in INTEL_CHIPSET_GRAPHICS else "cpu"
+        return "chipset"
 
     @property
     def pci_id(self) -> Optional[str]:
@@ -2325,7 +2352,8 @@ _COMPUTED: dict[str, tuple[str, ...]] = {
     "Edid": ("diagonal_inches", "refresh_range",
              "refresh_summary", "best_mode"),
     "VideoMode": ("label",),
-    "Gpu": ("display_name", "pci_id", "subsystem_id", "connected_displays", "temp_level"),
+    "Gpu": ("display_name", "pci_id", "subsystem_id", "connected_displays", "temp_level",
+            "built_in"),
     "NetworkTraffic": ("dropped", "errors", "total_bytes", "total_rate_bps", "problems"),
     "NetworkInterface": ("display_name", "active", "received_packets_fit",
                          "sent_packets_fit"),

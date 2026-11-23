@@ -247,6 +247,11 @@ SENSORES_CALLADOS = (
 # la ficha: es la de arriba, la del consumo.
 NA_APU_AMD = {
     "sensors": (("gpu.sensor.hotspot", "gpu.tile.power"), "gpu.na.apu"),
+    # Its link is the processor's own wiring, and the CPU sees all of its
+    # memory: no slot and no Resizable BAR to speak of.
+    "clocks": (("gpu.clock.link", "gpu.clock.linkmax", "gpu.clock.linkerrors"),
+               "gpu.na.apu.link"),
+    "memory": (("gpu.vram.rebar",), "gpu.na.apu.rebar"),
 }
 
 # Una Arc: su enlace no se lee con seguridad (`_arc_tras_su_conmutador` en
@@ -1133,7 +1138,8 @@ class GpuSection(QWidget):
         # read as the GPU's own; and back to its name if it gets a sensor.
         self.tile_temp.set_label(_("gpu.tile.temp.package") if del_paquete
                                  else _("gpu.tile.temp"))
-        if del_paquete:
+        if del_paquete or (gpu.built_in == "cpu" and gpu.temp_c is not None):
+            # Intel's is the package's; an APU's own sensor reads the whole chip.
             self.tile_temp.set_detail(_("gpu.tile.package"))
         else:
             self.tile_temp.set_detail(

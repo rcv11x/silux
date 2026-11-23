@@ -296,15 +296,22 @@ class BoardPage(ScrollPage):
         filas, pistas = [], []
         for d in dispositivos:
             grafica = graficas.get(d.slot)
+            if grafica is None and d.kind == "gpu":
+                # A second function of the same GPU (an old Intel's «secondary»).
+                grafica = next((g for slot, g in graficas.items()
+                                if slot and slot.rsplit(".", 1)[0] == d.slot.rsplit(".", 1)[0]),
+                               None)
+            built = grafica is not None and bool(grafica.built_in) and not grafica.suspended
             if virtual:
                 donde = _("board.pci.virtual")
             elif grafica is not None and grafica.suspended:
                 # A laptop's dedicated card asleep: its link is not read so as
                 # not to wake it. It used to say «en el procesador».
                 donde = _("board.pci.asleep")
+            elif grafica is not None and grafica.built_in:
+                donde = render.built_in(grafica.built_in)
             elif d.kind == "gpu":
-                # Una gráfica sin enlace es la integrada: va en el procesador.
-                donde = _("board.pci.oncpu")
+                donde = _("board.pci.onboard")
             elif d.slot.rsplit(".", 1)[0] in de_graficas:
                 donde = _("board.pci.ongpu")
             else:
@@ -313,8 +320,8 @@ class BoardPage(ScrollPage):
             if d.kind in ("ethernet", "wifi") and d.name:
                 nombre = render.with_maker(d.vendor, d.name)
             fila = [_(PCI_KINDS[d.kind]), nombre,
-                    render.pcie_link(d.link) if d.link else donde,
-                    render.pcie_link(d.link, maximum=True) if d.link else "",
+                    render.pcie_link(d.link) if d.link and not built else donde,
+                    render.pcie_link(d.link, maximum=True) if d.link and not built else "",
                     d.driver or render.DASH]
             if con_ranura:
                 fila.append(d.slot_name or "")

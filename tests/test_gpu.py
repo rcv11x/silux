@@ -1666,19 +1666,17 @@ class TestNoAplica(unittest.TestCase):
         self.assertNotIn("gpu.clock.core", ocultos["clocks"])
         self.assertNotIn("gpu.sensor.power", ocultos["sensors"])
 
-    def test_el_enlace_pcie_no_se_esconde_por_ser_integrada(self):
-        """La Radeon 740M es integrada y publica «PCIe 4.0 × 16».
-
-        «Integrada» no implica «sin enlace»: en una AMD, un enlace vacío es un
-        dato que falta y le corresponde su guion.
-        """
+    def test_an_apus_link_is_internal(self):
+        """The Radeon 740M is integrated and publishes «PCIe 4.0 × 16»: the
+        processor's own wiring, not a slot (test_built_in_gpu)."""
         from silux.ui.pages.graphics import no_aplica
 
         radeon = Gpu(index=0, name="Radeon 740M", vendor="AMD", driver="amdgpu",
                      integrated=True)
-        ocultos, _pies = no_aplica(radeon)
-        self.assertNotIn("gpu.clock.link", ocultos["clocks"])
-        self.assertNotIn("gpu.clock.linkmax", ocultos["clocks"])
+        ocultos, pies = no_aplica(radeon)
+        self.assertIn("gpu.clock.link", ocultos["clocks"])
+        self.assertIn("gpu.clock.linkmax", ocultos["clocks"])
+        self.assertIn(_("gpu.na.apu.link"), pies["clocks"])
 
     def test_pero_la_de_intel_va_dentro_del_procesador_y_no_tiene_enlace(self):
         import dataclasses
@@ -1702,8 +1700,9 @@ class TestNoAplica(unittest.TestCase):
                      memory=GpuMemory(total_bytes=512 * 1024**2, kind="DDR5",
                                       bus_bits=64))
         ocultos, _pies = no_aplica(radeon)
-        self.assertEqual(ocultos["memory"], set())
-        self.assertEqual(ocultos["clocks"], set())
+        # All but a Resizable BAR: the processor sees all of its memory.
+        self.assertEqual(ocultos["memory"], {"gpu.vram.rebar"})
+        self.assertFalse({"gpu.clock.memory", "gpu.clock.memmax"} & ocultos["clocks"])
         # Lo suyo sigue sin ser suyo: no tiene ventilador propio.
         self.assertIn("gpu.sensor.fan", ocultos["sensors"])
 

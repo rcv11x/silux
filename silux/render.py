@@ -991,6 +991,11 @@ def disk_bus(transport: Optional[str]) -> str:
     return _BUSES.get(transport, transport.upper())
 
 
+def built_in(where: str) -> str:
+    """«en el procesador», «en el chipset»."""
+    return _("board.pci.oncpu" if where == "cpu" else "board.pci.onchipset")
+
+
 def pcie_link(link: PcieLink, maximum: bool = False) -> str:
     """«PCIe 5.0 × 16», as everyone but sysfs names it."""
     generation = link.max_generation if maximum else link.generation
@@ -1004,7 +1009,10 @@ def pcie_link(link: PcieLink, maximum: bool = False) -> str:
 
 def gpu_link(gpu) -> str:
     """The link a card reaches, which names it: the maximum, not the one of
-    the moment, which drops at idle; the current one when that's all."""
+    the moment, which drops at idle; the current one when that's all. An
+    integrated GPU says where it is: an APU's link is internal, not a slot."""
+    if gpu.built_in:
+        return built_in(gpu.built_in)
     if not gpu.link:
         return DASH
     reached = pcie_link(gpu.link, maximum=True)

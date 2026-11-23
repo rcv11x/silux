@@ -12,6 +12,11 @@ que hace falta.
 
 ## Sin publicar
 
+- Gráficos: una gráfica integrada dice dónde va, «en el procesador» o «en el
+  chipset» (las Intel anteriores a Clarkdale), en su cabecera y en la lista
+  de la placa. La de una APU de AMD ya no enseña su enlace PCIe interno como
+  si fuera una ranura, ni una Resizable BAR, e Inicio dice que su
+  temperatura es compartida con la CPU.
 - Gráficos: los ROPs de una AMD salen de contar cuatro por cada «render
   backend», y ocho desde RDNA2: una RX 550 tiene 16 (salían 8) y una Vega 3,
   4 (salía 1). Y un ROP es una unidad de salida de render, no de

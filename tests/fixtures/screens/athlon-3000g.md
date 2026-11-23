@@ -13,7 +13,7 @@ AMD Athlon 3000G with Radeon Vega Graphics
 ### Gráfica
 
 AMD Radeon Vega 3 Graphics
-integrada · DDR4 · PCIe 3.0 × 16 · 3 unidades de cómputo
+integrada · DDR4 · 3 unidades de cómputo
 0.0 % 27.0 °C
 
 ### Memoria
@@ -33,7 +33,7 @@ Ocupado 71.9 GB · Libre 518 GB · Reservado 34.0 GB
 
 Procesador 27.8 °C
 lo más caliente ahora
-Gráfica 27.0 °C
+Gráfica (compartida con la CPU) 27.0 °C
 
 ### Red
 
@@ -199,7 +199,7 @@ Es una placa suelta: el firmware no describe un equipo de marca.
 
 | TIPO | DISPOSITIVO | ENLACE | MÁXIMO | DRIVER |
 |---|---|---|---|---|
-| Gráfica | AMD Radeon Vega 3 Graphics | PCIe 3.0 × 16 | PCIe 3.0 × 16 | amdgpu |
+| Gráfica | AMD Radeon Vega 3 Graphics | en el procesador |  | amdgpu |
 | Ethernet | Realtek RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller | PCIe 1.0 × 1 | PCIe 1.0 × 1 | r8169 |
 | SATA | A320 Chipset SATA Controller [AHCI mode] | en la placa |  | ahci |
 | SATA | FCH SATA Controller [AHCI mode] | en la placa |  | ahci |
@@ -271,11 +271,11 @@ El ayudante que se lanza solo sabe leer esa tabla y unos registros del procesado
 
 ### AMD Radeon Vega 3 Graphics
 
-MSI · Picasso/Raven 2 · PCIe 3.0 × 16
+MSI · Picasso/Raven 2 · en el procesador
 amdgpu · Mesa 26.3.1 · 512 MiB · 3 CU · integrada · principal
 - Uso: 0 %
 - Frecuencia: 400 MHz (memoria 933 MHz)
-- Temperatura: 27 °C
+- Temperatura: 27 °C (compartida con la CPU)
 
 #### Ahora mismo
 
@@ -312,10 +312,9 @@ Esta gráfica no publica cuánto se usa su motor de video.
 - Ancho de banda: 19 GB/s
 - Tasa de datos: 2.4 Gbps
 - Visible por la CPU: 512 MiB
-- Resizable BAR: activo
 - Memoria del sistema (GTT): 139.8 MiB de 1.6 GiB
 
-amdgpu no publica chips de esta tarjeta.
+Una integrada no tiene Resizable BAR: el procesador ya ve toda su memoria. amdgpu no publica chips de esta tarjeta.
 
 #### Relojes y enlace
 
@@ -324,10 +323,8 @@ amdgpu no publica chips de esta tarjeta.
 - Memoria: 933 MHz
 - Memoria (máximo): 1.20 GHz
 - Perfil de rendimiento: auto
-- Enlace: PCIe 3.0 × 16
-- Enlace (máximo): PCIe 3.0 × 16
 
-amdgpu no publica SoC de esta tarjeta.
+Va dentro del procesador: el enlace PCIe que publica el kernel es interno, no el de una ranura. amdgpu no publica SoC de esta tarjeta.
 
 ##### Para expertos
 

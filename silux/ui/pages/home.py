@@ -359,7 +359,8 @@ class HomePage(ScrollPage):
         detalle = " · ".join(p for p in (
             _("gpu.chip.integrated") if gpu.integrated else None,
             render.vram_kind(gpu.memory) if gpu.memory.total_bytes else None,
-            render.gpu_link(gpu),
+            # «integrada» already says it isn't on a slot.
+            None if gpu.integrated else render.gpu_link(gpu),
             render.compute_units(gpu) if gpu.compute_units else None,
         ) if p and p != render.DASH)
 
@@ -490,7 +491,9 @@ class HomePage(ScrollPage):
             lecturas.append(("cpu", _("home.temp.cpu"), grados, snapshot.cpu.temp_level))
         grafica = (snapshot.gpus[snapshot.working_gpu] if snapshot.gpus else None)
         if grafica is not None and (grados := grafica.temp_c) is not None:
-            lecturas.append(("gpu", _("home.temp.gpu"), grados, grafica.temp_level))
+            # An APU's sensor reads the whole chip, the CPU's too.
+            nombre = _("home.temp.gpu.shared" if grafica.built_in == "cpu" else "home.temp.gpu")
+            lecturas.append(("gpu", nombre, grados, grafica.temp_level))
         disks = [d for d in snapshot.disks if d.temp_c is not None]
         if disks:
             # The one past its own limit, if any is; else the hottest.

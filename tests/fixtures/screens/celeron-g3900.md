@@ -265,7 +265,7 @@ El ayudante que se lanza solo sabe leer esa tabla y unos registros del procesado
 
 ### HD Graphics 510
 
-ASUS
+ASUS · en el procesador
 i915 · Mesa 25.2.8 · 12 EU · integrada · principal
 - Uso: (necesita permisos)
 - Frecuencia: 350 MHz

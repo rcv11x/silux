@@ -259,7 +259,7 @@ El ayudante que se lanza solo sabe leer esa tabla y unos registros del procesado
 
 ### UHD Graphics 600
 
-Lenovo · GeminiLake
+Lenovo · GeminiLake · en el procesador
 i915 · Mesa 25.2.6 · 12 EU · integrada · principal
 - Uso: (necesita permisos)
 - Frecuencia: 100 MHz
