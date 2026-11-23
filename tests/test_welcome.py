@@ -145,21 +145,42 @@ class TestTheDialog(unittest.TestCase):
         i18n.set_language("es")
 
     def test_each_screen_as_tall_as_what_it_holds(self):
+        # With the app's stylesheet, as it runs: without it the first screen
+        # came out shorter than the second, and the test said so; with it,
+        # the first is the taller, and the order of the suite decided which.
+        # What holds either way: the dialog asks for the screen on show, not
+        # for the tallest, and is never shorter than it.
+        from PySide6.QtGui import QPalette
+
+        from silux.ui import theme
+
+        saved = (theme.METRICS, self.app.styleSheet(), QPalette(self.app.palette()),
+                 self.app.style().name())
+
+        def restore():
+            theme.METRICS = saved[0]
+            self.app.setStyle(saved[3])
+            self.app.setPalette(saved[2])
+            self.app.setStyleSheet(saved[1])
+
+        self.addCleanup(restore)
+        prefs = settings.Preferences(language="es").normalized()
+        theme.apply(self.app, prefs.theme, prefs.density, prefs.font_scale)
+
+        needs = {}
+        for page in (0, 1):
+            dialog = self.window.show_welcome(page=page)
+            self._settle()
+            needs[page] = dialog.minimumSizeHint().height()
+            dialog.reject()
+            self._settle()
+        self.assertNotEqual(needs[0], needs[1])
         dialog = self.window.show_welcome(page=1)
-        self._settle()
-        second = dialog.height()
-        dialog.back_button.click()
-        self._settle()
-        first = dialog.height()
-        self.assertLess(first, second)
-        dialog.next_button.click()
-        self._settle()
-        self.assertEqual(dialog.height(), second)
-        dialog.reject()
-        self._settle()
-        dialog = self.window.show_welcome(page=0)
-        self._settle()
-        self.assertEqual(dialog.height(), first)
+        for button, page in ((dialog.back_button, 0), (dialog.next_button, 1)):
+            button.click()
+            self._settle()
+            self.assertEqual(dialog.minimumSizeHint().height(), needs[page])
+            self.assertGreaterEqual(dialog.height(), needs[page])
         dialog.reject()
 
     def test_the_explanations_follow_the_text_size(self):
