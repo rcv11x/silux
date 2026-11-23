@@ -19,6 +19,9 @@ que hace falta.
 - Memoria: un valor marcado «según la BIOS» o «según la BIOS, no coincide»
   baja de línea en vez de cortarse con puntos suspensivos, que escondían
   justo la marca.
+- Memoria: sin permisos, la cabecera ya no dice que el resto de la memoria
+  no tiene chip SPD, que no se sabe (el kernel puede no haberlo registrado):
+  dice que no se ha podido leer.
 
 ## 0.4-prueba11 (23 de noviembre de 2026)
 

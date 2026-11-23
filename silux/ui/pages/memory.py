@@ -654,8 +654,9 @@ class MemoryPage(ScrollPage):
                                else "memory.spd.rated.many").format(
                                    mts=render.enumeration([str(v) for v in sorted(catalogados)]))
                              if catalogados else "")
-                # Memory without a chip of its own (soldered) is not in the SPD:
-                # what is read is not all there is, and it is said.
+                # What the chips read don't account for may be soldered (no
+                # chip) or a chip the kernel didn't register: only that it
+                # wasn't read is known.
                 resto = (_("memory.spd.needsroot.one" if cuantos == 1 else "memory.spd.needsroot")
                          if snapshot.spd_accounts_for_all_memory else _("memory.spd.notall"))
                 return (_("memory.spd.read.one" if cuantos == 1

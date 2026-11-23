@@ -1001,7 +1001,7 @@
   "memory.source.bios.mismatch": "según la BIOS, no coincide",
   "memory.spd.needsroot": " · el zócalo y a cuánto van, con permisos",
   "memory.spd.needsroot.one": " · el zócalo y a cuánto va, con permisos",
-  "memory.spd.notall": " · el resto, sin chip SPD, se sabe con permisos",
+  "memory.spd.notall": " · el resto no se ha podido leer; se sabe con permisos",
   "memory.spd.note": "El SPD es un chip que lleva cada módulo con sus características. Dice a qué velocidad puede ir, mientras que la BIOS decide a cuál va de verdad: sin XMP activado se queda en los valores conservadores de JEDEC.",
   "memory.spd.note.noxmp": "El SPD es un chip que lleva cada módulo con sus características. Estos módulos no traen perfiles rápidos: la velocidad más alta que declaran es la de JEDEC, y a cuál van de verdad lo decide la BIOS.",
   "memory.spd.note.partial": "El SPD es un chip que lleva cada módulo con sus características. Aquí solo sale el perfil de JEDEC: los perfiles rápidos, si los tiene, están en las páginas del chip que este equipo no deja leer.",

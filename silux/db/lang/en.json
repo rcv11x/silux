@@ -1001,7 +1001,7 @@
   "memory.source.bios.mismatch": "per the BIOS, doesn't match",
   "memory.spd.needsroot": " · the slot and what they run at, with permissions",
   "memory.spd.needsroot.one": " · the slot and what it runs at, with permissions",
-  "memory.spd.notall": " · the rest, without an SPD chip, is known with permissions",
+  "memory.spd.notall": " · the rest could not be read; it is known with permissions",
   "memory.spd.note": "The SPD is a chip every module carries with its own specifications. It says what speed it can run at, while the BIOS decides the one it actually runs at: without XMP enabled it stays on JEDEC's conservative values.",
   "memory.spd.note.noxmp": "The SPD is a chip each module carries with its characteristics. These modules carry no fast profiles: the highest speed they declare is the JEDEC one, and the BIOS decides which one they actually run at.",
   "memory.spd.note.partial": "The SPD is a chip on each module with its characteristics. Only the JEDEC profile shows here: the fast profiles, if any, are on the chip's pages this machine doesn't let be read.",

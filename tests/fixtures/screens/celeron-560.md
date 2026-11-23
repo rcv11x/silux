@@ -213,7 +213,7 @@ El nombre de cada ranura («PCIEX16», «M2A_CPU») está en la tabla del firmwa
 ## Memoria
 
 1.9 GiB utilizables
-1 módulo leído de su chip SPD, catalogado a 667 MT/s · el resto, sin chip SPD, se sabe con permisos
+1 módulo leído de su chip SPD, catalogado a 667 MT/s · el resto no se ha podido leer; se sabe con permisos
 DDR2 · 667 MT/s
 Aplicaciones 918.1 MiB · Caché 936.6 MiB · Buffers 2.7 MiB · Libre 98.2 MiB
 Disponible 884.3 MiB · sin intercambio
