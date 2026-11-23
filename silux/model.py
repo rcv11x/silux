@@ -750,9 +750,13 @@ class MemoryModule:
 
     @property
     def voltage_mv(self) -> Optional[int]:
-        """The firmware's configured voltage, else the SPD's JEDEC one."""
-        if self.voltage_configured_mv:
-            return self.voltage_configured_mv
+        """The voltage the firmware's table says it runs at."""
+        return self.voltage_configured_mv or None
+
+    @property
+    def nominal_voltage_mv(self) -> Optional[int]:
+        """The JEDEC voltage the module's SPD declares: what it's made for,
+        not what it runs at."""
         if self.spd is not None and self.spd.jedec and self.spd.jedec.voltage_v:
             return round(self.spd.jedec.voltage_v * 1000)
         return None
@@ -1301,12 +1305,10 @@ class Display:
 
     @property
     def resolution(self) -> Optional[str]:
-        """The active mode's, or else the preferred one's."""
-        width, height = ((self.active_width, self.active_height) if self.active_width
-                         else (self.width, self.height))
-        if not (width and height):
+        """The mode it runs at; None where it couldn't be asked."""
+        if not (self.active_width and self.active_height):
             return None
-        return f"{width} × {height}"
+        return f"{self.active_width} × {self.active_height}"
 
     @property
     def preferred_resolution(self) -> Optional[str]:
@@ -2303,7 +2305,8 @@ _COMPUTED: dict[str, tuple[str, ...]] = {
     "Sensor": ("heat", "unit", "plausible", "group", "category", "alarm", "alarm_level"),
     "Board": ("display_name",),
     "MemoryModule": ("has_ecc", "underclocked", "rated_mts", "in_a_slot", "soldered_by",
-                     "rated_from_firmware", "voltage_mv", "voltage_from_firmware",
+                     "rated_from_firmware", "voltage_mv", "nominal_voltage_mv",
+                     "voltage_from_firmware",
                      "above_jedec", "ranks"),
     "SpdInfo": ("rated_mts",),
     "Timings": ("summary",),

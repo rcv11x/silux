@@ -140,13 +140,16 @@ def timing_voltage(timing, spd) -> str:
 
 
 def memory_voltage(module) -> str:
-    """«1.35 V», saying so when only the firmware's table gives it."""
+    """«1.35 V»: the one the firmware's table says it runs at, marked when
+    only that table says so; without it, the SPD's nominal, named so."""
+    if module.voltage_mv is not None:
+        text = f"{module.voltage_mv / 1000:.2f} V"
+        return f"{text} · {_('memory.source.bios')}" if module.voltage_from_firmware else text
     if (choice := voltage_choice(module)):
-        return choice
-    if module.voltage_mv is None:
-        return DASH
-    text = f"{module.voltage_mv / 1000:.2f} V"
-    return f"{text} · {_('memory.source.bios')}" if module.voltage_from_firmware else text
+        return f"{choice} · {_('memory.source.spd.nominal')}"
+    if module.nominal_voltage_mv is not None:
+        return f"{module.nominal_voltage_mv / 1000:.2f} V · {_('memory.source.spd.nominal')}"
+    return DASH
 
 
 def module_type(module) -> Optional[str]:
@@ -2154,20 +2157,24 @@ def monitor_summary(monitor: Optional[Edid]) -> str:
 
 
 def display_resolution(display: Display) -> Optional[str]:
-    """The mode it runs at, or else the monitor's preferred one: which it
-    is, `displays_resolution_note` says at the foot."""
-    return display.resolution
+    """The mode it runs at; where that couldn't be asked, the monitor's
+    preferred one, named so (and why, `displays_resolution_note`)."""
+    if display.resolution:
+        return display.resolution
+    if display.preferred_resolution:
+        return _("gpu.display.preferred.only").format(res=display.preferred_resolution)
+    return None
 
 
 def displays_resolution_note(displays) -> Optional[str]:
     """Under the monitors table: a monitor whose preferred mode isn't the one
     it runs at, and those whose running mode couldn't be asked, whose
     resolution is the preferred one. None when neither."""
-    connected = [d for d in displays if d.connected and d.resolution]
+    connected = [d for d in displays if d.connected]
     parts = [_("gpu.displays.prefers").format(salida=d.connector, res=d.preferred_resolution)
-             for d in connected if d.active_width and d.preferred_resolution
+             for d in connected if d.resolution and d.preferred_resolution
              and d.preferred_resolution != d.resolution]
-    unknown = [d.connector for d in connected if not d.active_width]
+    unknown = [d.connector for d in connected if not d.resolution and d.preferred_resolution]
     if unknown:
         parts.append(_("gpu.displays.preferred.only").format(salidas=enumeration(unknown)))
     return " ".join(parts) or None
@@ -2181,11 +2188,11 @@ def display_mode(display: Display) -> str:
     if not range_ and display.refresh_hz:
         range_ = f"{display.refresh_hz:g} Hz"
     resolution = display.resolution
-    if resolution and display.active_width and display.preferred_resolution \
+    if resolution and display.preferred_resolution \
             and display.preferred_resolution != resolution:
         resolution += f' ({_("gpu.display.preferred").format(res=display.preferred_resolution)})'
-    elif resolution and not display.active_width:
-        resolution = _("gpu.display.preferred.only").format(res=resolution)
+    elif not resolution and display.preferred_resolution:
+        resolution = _("gpu.display.preferred.only").format(res=display.preferred_resolution)
     parts = [p for p in (resolution, range_) if p]
     return " · ".join(parts) if parts else DASH
 

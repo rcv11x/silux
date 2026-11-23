@@ -198,7 +198,7 @@ class TestAmdCompleta(BancoDrm):
         gpu = self.recolectar().freeze().gpus[0]
         # Writeback no es una salida: es un destino interno del compositor.
         self.assertEqual([d.connector for d in gpu.displays], ["DP-1", "DP-2"])
-        self.assertEqual(gpu.connected_displays[0].resolution, "2560 × 1440")
+        self.assertEqual(gpu.connected_displays[0].preferred_resolution, "2560 × 1440")
 
 
 class TestEnlacePcieReal(BancoDrm):
@@ -327,7 +327,7 @@ class TestMonitoresPorEdid(BancoDrm):
 
     def test_el_edid_manda_sobre_la_lista_de_modos(self):
         salida = self.recolectar().freeze().gpus[0].displays[0]
-        self.assertEqual(salida.resolution, "2560 × 1440")
+        self.assertEqual(salida.preferred_resolution, "2560 × 1440")
 
     def test_una_salida_libre_no_tiene_monitor(self):
         salidas = {d.connector: d for d in self.recolectar().freeze().gpus[0].displays}
@@ -353,7 +353,9 @@ class TestPantallasBajoWayland(BancoDrm):
         salida = gpu.displays[0]
         self.assertTrue(salida.connected)
         self.assertFalse(salida.enabled)
-        self.assertEqual(render.display_summary(salida), "2560 × 1440")
+        # Its running mode isn't asked here: the preferred one, named so.
+        self.assertEqual(render.display_summary(salida),
+                         _("gpu.display.preferred.only").format(res="2560 × 1440"))
 
 
 class TestRenderDeGraficos(unittest.TestCase):
@@ -1876,3 +1878,37 @@ class TestLasArc(BancoDrm):
         (self.root / "i915").mkdir()
         (self.root / "pci0000:00" / "0000:00:02.0" / "driver").symlink_to(self.root / "i915")
         self.assertTrue(self.recolectar().freeze().gpus[0].no_temperature_sensor)
+
+
+class TestEachResolutionUnderItsName(unittest.TestCase):
+    """Where a card's running modes couldn't be asked, the monitor's
+    preferred resolution is shown named so, not as the one it runs at."""
+
+    def _table(self, dump):
+        from silux.ui.pages.graphics import GpuSection
+        from tests import pantalla
+        from tests.test_equipos import EQUIPOS, foto
+
+        snapshot = foto(EQUIPOS / dump)[0]
+        app = qt.app()
+        with pantalla.Ventana(snapshot) as window:
+            window.select_section("Gráficos")
+            app.processEvents()
+            section = next(s for s in window.stack.currentWidget().findChildren(GpuSection)
+                           if s.displays._cells and s.displays._cells[0][2].full_text() != "—")
+            table = section.displays
+            # A longer title takes two lines so as not to widen the table.
+            header = table._grid.itemAtPosition(0, 2).widget().text().replace("\n", " ")
+            return snapshot, header, table._cells[0][2].full_text()
+
+    def test_without_its_running_mode_the_column_says_preferred(self):
+        snapshot, header, cell = self._table("i5-3330")
+        display = next(d for g in snapshot.gpus for d in g.displays if d.connected)
+        self.assertIsNone(display.resolution)
+        self.assertEqual(header, _("gpu.display.res.preferred").upper())
+        self.assertEqual(cell, display.preferred_resolution)
+
+    def test_with_it_the_column_is_the_resolution(self):
+        snapshot, header, cell = self._table("5800x3d")
+        self.assertEqual(header, _("gpu.display.res").upper())
+        self.assertIn(cell, {d.resolution for g in snapshot.gpus for d in g.displays})

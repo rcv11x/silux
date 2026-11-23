@@ -137,7 +137,7 @@ class TestTheMarkIsRead(unittest.TestCase):
         prefs = Preferences().normalized()
         self.addCleanup(theme.apply, app, prefs.theme, prefs.density, prefs.font_scale)
         theme.apply(app, prefs.theme, prefs.density, prefs.font_scale)
-        marks = (_("memory.source.bios"),)
+        marks = (_("memory.source.bios"), _("memory.source.spd.nominal"))
         with pantalla.Ventana(_collected_with_its_report()) as window:
             window.resize(1000, 900)
             window.select_section("Memoria")
@@ -147,8 +147,8 @@ class TestTheMarkIsRead(unittest.TestCase):
             marked = [label for grid in page.findChildren(InfoGrid)
                       for label in grid._values.values()
                       if label.isVisible() and any(m in label.full_text() for m in marks)]
-            # Type, form, running and rated of the second.
-            self.assertGreaterEqual(len(marked), 4)
+            # Type, form, running and rated of the second; the first's voltage.
+            self.assertGreaterEqual(len(marked), 5)
             for label in marked:
                 self.assertEqual(label.text(), label.full_text())
 

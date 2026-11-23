@@ -345,7 +345,7 @@ Una integrada no tiene reguladores de voltaje, ventilador, SoC aparte ni memoria
 
 ### Monitores y salidas de video
 
-| SALIDA | MONITOR | RESOLUCIÓN | REFRESCO | TAMAÑO | COLOR Y HDR | FABRICADO |
+| SALIDA | MONITOR | RESOLUCIÓN PREFERIDA | REFRESCO | TAMAÑO | COLOR Y HDR | FABRICADO |
 |---|---|---|---|---|---|---|
 | eDP-1 | Chimei Innolux | 1366 × 768 | 60 Hz | 15.5" | — | semana 45 de 2015 |
 

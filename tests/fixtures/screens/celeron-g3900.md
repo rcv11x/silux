@@ -238,7 +238,7 @@ Disponible 1.6 GiB · intercambio 91.2 MiB de 2.0 GiB
 - Catalogado a: 2133 MT/s
 - Funcionando a: (necesita permisos)
 - Rangos: 1
-- Voltaje: 1.20 V
+- Voltaje: 1.20 V · nominal del SPD
 - Formato: UDIMM
 - Banco: (necesita permisos)
 

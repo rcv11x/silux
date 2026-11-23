@@ -246,7 +246,7 @@ Tampoco temperaturas, voltajes, ventilador ni consumo.
 
 ### Monitores y salidas de video
 
-| SALIDA | MONITOR | RESOLUCIÓN | REFRESCO | TAMAÑO | COLOR Y HDR | FABRICADO |
+| SALIDA | MONITOR | RESOLUCIÓN PREFERIDA | REFRESCO | TAMAÑO | COLOR Y HDR | FABRICADO |
 |---|---|---|---|---|---|---|
 | Virtual-1 | Red Hat QEMU Monitor | 1280 × 800 | 50–125 Hz |  | — |  |
 

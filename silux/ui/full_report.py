@@ -261,7 +261,9 @@ def _tabla(filas: list[list[str]]) -> list[str]:
     salida = [""]
     for n, fila in enumerate(filas):
         fila = fila + [""] * (ancho - len(fila))
-        salida.append("| " + " | ".join(c.replace("|", "\\|") for c in fila) + " |")
+        # A Markdown cell is one line: a title in two is one title.
+        salida.append("| " + " | ".join(c.replace("|", "\\|").replace("\n", " ")
+                                        for c in fila) + " |")
         if n == 0:
             salida.append("|" + "---|" * ancho)
     return salida + [""]

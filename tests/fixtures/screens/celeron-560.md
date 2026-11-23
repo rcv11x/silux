@@ -242,7 +242,7 @@ En este equipo la memoria la controla el chipset de la placa, no el procesador: 
 - Catalogado a: 667 MT/s
 - Funcionando a: (necesita permisos)
 - Rangos: 2
-- Voltaje: 1.80 V
+- Voltaje: 1.80 V · nominal del SPD
 - Formato: SODIMM
 - Fabricado: semana 14 de 2008
 - Banco: (necesita permisos)

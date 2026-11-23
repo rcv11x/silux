@@ -22,6 +22,15 @@ que hace falta.
 - Memoria: sin permisos, la cabecera ya no dice que el resto de la memoria
   no tiene chip SPD, que no se sabe (el kernel puede no haberlo registrado):
   dice que no se ha podido leer.
+- Memoria: un voltaje que sale del chip SPD y no de la BIOS dice «nominal
+  del SPD»: es para el que está hecho el módulo, no el que tiene puesto.
+- Gráficos: si no se ha podido preguntar a qué resolución va cada monitor,
+  la columna se llama «Resolución preferida» (en dos líneas, para que la
+  tabla quepa como antes), no solo el pie; el resumen de la terminal y del
+  informe dice «(la preferida)».
+- `--json`: `resolution` de un monitor es solo la que tiene puesta, y
+  `voltage_mv` de un módulo, solo la de la BIOS; lo que sale del EDID y del
+  SPD va en `preferred_resolution` y en `nominal_voltage_mv`.
 
 ## 0.4-prueba11 (23 de noviembre de 2026)
 

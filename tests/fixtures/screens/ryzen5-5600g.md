@@ -248,7 +248,7 @@ Disponible 25.8 GiB · intercambio 1.4 MiB de 31.1 GiB
 - Catalogado a: 3200 MT/s
 - Funcionando a: (necesita permisos)
 - Rangos: 1
-- Voltaje: 1.20 V
+- Voltaje: 1.20 V · nominal del SPD
 - Formato: UDIMM
 - Fabricado: semana 36 de 2024
 - Banco: (necesita permisos)
@@ -264,7 +264,7 @@ Disponible 25.8 GiB · intercambio 1.4 MiB de 31.1 GiB
 - Catalogado a: 3200 MT/s
 - Funcionando a: (necesita permisos)
 - Rangos: 1
-- Voltaje: 1.20 V
+- Voltaje: 1.20 V · nominal del SPD
 - Formato: UDIMM
 - Fabricado: semana 36 de 2024
 - Banco: (necesita permisos)
@@ -280,7 +280,7 @@ Disponible 25.8 GiB · intercambio 1.4 MiB de 31.1 GiB
 - Catalogado a: 3200 MT/s
 - Funcionando a: (necesita permisos)
 - Rangos: 1
-- Voltaje: 1.20 V
+- Voltaje: 1.20 V · nominal del SPD
 - Formato: UDIMM
 - Fabricado: semana 16 de 2023
 - Banco: (necesita permisos)
@@ -296,7 +296,7 @@ Disponible 25.8 GiB · intercambio 1.4 MiB de 31.1 GiB
 - Catalogado a: 3200 MT/s
 - Funcionando a: (necesita permisos)
 - Rangos: 1
-- Voltaje: 1.20 V
+- Voltaje: 1.20 V · nominal del SPD
 - Formato: UDIMM
 - Fabricado: semana 16 de 2023
 - Banco: (necesita permisos)

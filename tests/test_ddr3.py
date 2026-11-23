@@ -71,7 +71,8 @@ class TestOnTheMemoryPage(unittest.TestCase):
         module = MemoryModule(populated=True, type="DDR3",
                               spd=spd.decode(_with_voltage(_chip("8-0052"), 0x02)))
         self.assertEqual(render.module_type(module), "DDR3L")
-        self.assertEqual(render.memory_voltage(module), "1.35 V " + _("list.or") + " 1.50 V")
+        self.assertEqual(render.memory_voltage(module), "1.35 V " + _("list.or") + " 1.50 V · "
+                         + _("memory.source.spd.nominal"))
         # With the firmware's table, the voltage in use.
         configured = dataclasses.replace(module, voltage_configured_mv=1350)
         self.assertEqual(render.memory_voltage(configured), "1.35 V")

@@ -241,7 +241,7 @@ Disponible 1.8 GiB · sin intercambio
 - Catalogado a: 2400 MT/s
 - Funcionando a: (necesita permisos)
 - Rangos: 1
-- Voltaje: 1.20 V
+- Voltaje: 1.20 V · nominal del SPD
 - Formato: UDIMM
 - Fabricado: semana 38 de 2016
 - Banco: (necesita permisos)
@@ -358,7 +358,7 @@ Los reguladores de voltaje y el ventilador son de una tarjeta aparte: esta se al
 
 ### Monitores y salidas de video
 
-| SALIDA | MONITOR | RESOLUCIÓN | REFRESCO | TAMAÑO | COLOR Y HDR | FABRICADO |
+| SALIDA | MONITOR | RESOLUCIÓN PREFERIDA | REFRESCO | TAMAÑO | COLOR Y HDR | FABRICADO |
 |---|---|---|---|---|---|---|
 | HDMI-A-1 | BLUSENS TV | 1920 × 1080 | 24–85 Hz | ≈ 46" | — | semana 6 de 2012 |
 

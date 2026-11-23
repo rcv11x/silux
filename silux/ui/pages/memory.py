@@ -58,9 +58,9 @@ from ..widgets import (
 # hablar solo de la memoria y hay que decirlo.
 CERCA_DEL_TECHO = 0.85
 
-# The values that may carry where they come from («· según la BIOS»), and the
-# lines they may take: the mark is the point, and in a narrow card it doesn't
-# fit on one.
+# The values that may carry where they come from («· según la BIOS», «· nominal
+# del SPD»), and the lines they may take: the mark is the point, and in a
+# narrow card it doesn't fit on one.
 MARKED_FIELDS = ("memory.field.type", "memory.field.rated", "memory.field.running",
                  "memory.field.voltage", "memory.field.form")
 MARKED_LINES = 3
@@ -1090,7 +1090,10 @@ class MemoryPage(ScrollPage):
 
         grid.set(_("memory.field.voltage"), render.memory_voltage(module),
                  tooltip=_("memory.tip.voltage.bios") if module.voltage_from_firmware
-                 else _("memory.tip.voltage.either") if render.voltage_choice(module) else "")
+                 else "" if module.voltage_mv is not None
+                 else _("memory.tip.voltage.either") if render.voltage_choice(module)
+                 else _("memory.tip.voltage.spd") if module.nominal_voltage_mv is not None
+                 else "")
         if module.soldered_by:
             # What the firmware calls it (a T14 says «SODIMM») isn't what it is.
             motivo = (_("memory.tip.soldered.form") if module.soldered_by == "form"

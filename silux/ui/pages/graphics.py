@@ -793,7 +793,14 @@ class GpuSection(QWidget):
             vacia = _("gpu.displays.unpublished")
         else:
             vacia = _("gpu.displays.none")
-        self.displays.set_rows([_fila_de_salida(s, gpu.virtual) for s in conectadas]
+        # A card whose running modes couldn't be asked gives each monitor's
+        # preferred one: the column says so, and not just the foot.
+        preferred = bool(conectadas) and all(
+            not s.resolution and s.preferred_resolution for s in conectadas)
+        self.displays.set_header(DISPLAY_HEADERS.index("gpu.display.res"),
+                                 _("gpu.display.res.preferred" if preferred else "gpu.display.res"),
+                                 two_lines=preferred)
+        self.displays.set_rows([_fila_de_salida(s, gpu.virtual, preferred) for s in conectadas]
                                or [(vacia, d, d, d, d, d)])
         self.displays_free.setText(
             _("gpu.displays.free.one" if len(libres) == 1
@@ -1251,24 +1258,26 @@ class GpuSection(QWidget):
           tooltip=_("gpu.tip.shared"))
 
 
-def _fila_de_salida(salida, virtual: bool = False) -> tuple[str, ...]:
+def _fila_de_salida(salida, virtual: bool = False, preferred: bool = False) -> tuple[str, ...]:
     """Una línea de la tabla de monitores; la mitad se queda vacía si no hay.
 
     A hypervisor's monitor has no size or date of manufacture of its own:
-    those cells stay empty.
+    those cells stay empty. `preferred`: the column is named for the
+    preferred resolution, and the cell needn't say it again.
     """
     d = render.DASH
+    resolution = (salida.preferred_resolution if preferred
+                  else render.display_resolution(salida)) or d
     if not salida.connected:
         return (salida.connector, _("gpu.display.free"), d, d, d, d, d)
     monitor = salida.monitor
     if monitor is None:
         # Conectada pero sin EDID legible: pasa con algunos adaptadores y KVM.
-        return (salida.connector, _("gpu.display.unknown"), render.display_resolution(salida) or d,
-                d, d, d, d)
+        return (salida.connector, _("gpu.display.unknown"), resolution, d, d, d, d)
     return (
         salida.connector,
         render.monitor_name(monitor),
-        render.display_resolution(salida) or d,
+        resolution,
         monitor.refresh_summary or d,
         "" if virtual else render.monitor_size(monitor) or d,
         render.monitor_color(monitor),

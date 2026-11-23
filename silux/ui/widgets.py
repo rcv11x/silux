@@ -2243,6 +2243,20 @@ class Table(QScrollArea):
     # Cuánto puede separarse como mucho cada columna, en anchos de letra.
     HOLGURA_MAXIMA = 14
 
+    def set_header(self, column: int, title: str, two_lines: bool = False) -> None:
+        """Rename a column, for a datum whose name depends on what it holds.
+
+        `two_lines`: the title breaks after its first word, so a longer name
+        doesn't widen the table.
+        """
+        item = self._grid.itemAtPosition(0, column)
+        label = item.widget() if item else None
+        text = title.upper().replace(" ", "\n", 1) if two_lines else title.upper()
+        if label is None or label.text() == text:
+            return
+        label.setText(text)
+        self._encajar()
+
     def _ancho_de_cabecera(self, columna: int) -> int:
         item = self._grid.itemAtPosition(0, columna)
         return item.widget().sizeHint().width() if item and item.widget() else 0

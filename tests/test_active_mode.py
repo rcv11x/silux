@@ -53,7 +53,9 @@ class TestTheText(unittest.TestCase):
 
     def test_the_cell_is_the_running_mode(self):
         self.assertEqual(render.display_resolution(self.TV), "1920 × 1080")
-        self.assertEqual(render.display_resolution(self.UNKNOWN), "2560 × 1440")
+        # Unknown, the preferred one, named so.
+        self.assertEqual(render.display_resolution(self.UNKNOWN),
+                         _("gpu.display.preferred.only").format(res="2560 × 1440"))
 
     def test_the_foot_says_what_the_cell_is(self):
         self.assertEqual(render.displays_resolution_note([self.TV, self.SAME]),
