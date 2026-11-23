@@ -211,6 +211,17 @@ la memoria) no va: está propuesto en las notas
 
 ## Datos que se leen mal o no se leen
 
+* `smart.py` · media · en un SATA, atributos estándar como el 3 (tiempo de
+  arranque), 4, 7, 10, 11, 192, 193 (ciclos de carga), 196 y 200 salen como
+  «propio del fabricante». `drivedb.h` de smartmontools trae sus nombres por
+  defecto; habría que sacarlos de ahí como las unidades. Visto en el informe
+  de la prueba11 de un Athlon 3000G (un WD5000LPVX).
+* `providers/storage.py` · baja · el modelo de un NVMe SK hynix sale con el
+  guion bajo del firmware («SKHynix_HFS512GEJ4X112N») como nombre del
+  dispositivo en Sensores.
+* `amdgpu.py` · baja · los volcados de antes no guardan la revisión del chip
+  ni la máscara de los «render backends»: una Navi 1x o 2x volcada así no
+  tiene ROPs. Se arregla al volcarla otra vez.
 * `ui/pages/memory.py`, `ui/pages/battery.py` · media · cinco sitios
   redondean voltajes a dos decimales en vez de usar `render.volts`, que usa
   tres. Se pierde el decimal que distingue los escalones del VID.
