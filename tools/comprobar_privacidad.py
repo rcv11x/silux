@@ -85,6 +85,7 @@ _IPV4_PRIVADA = re.compile(
 _MAC = re.compile(r"(?<![0-9A-Fa-f:])(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}(?![0-9A-Fa-f:])")
 _IPV6_TEXTO = re.compile(r"(?<![0-9A-Za-z:.])(?:fe80|[23][0-9a-f]{3}):[0-9a-f:]*[0-9a-f](?![0-9A-Za-z:])", re.I)
 _IPV6_HEXA = re.compile(r"\b(?:fe80[0-9a-f]{28}|[23][0-9a-f]{31})\b")
+_BUILD_HOST = "mockbuild@"
 _SECRETOS = (
     (re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"), "una clave privada"),
     (re.compile(r"PrivateKey\s*=\s*[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]="), "una clave de WireGuard"),
@@ -132,6 +133,10 @@ def _en_el_texto(texto: str) -> list[tuple[int, str]]:
             hallazgos.append((linea(m.start()), "una dirección física"))
     for patron in (_IPV6_TEXTO, _IPV6_HEXA):
         for m in patron.finditer(texto):
+            # The container Fedora's builders compile a kernel in: in its
+            # version string, the same for whoever runs that kernel.
+            if texto.endswith(_BUILD_HOST, 0, m.start()):
+                continue
             if _ipv6_con_identificador(m.group()):
                 hallazgos.append((linea(m.start()), "una dirección IPv6 con identificador"))
     for m in _CORREO.finditer(texto):

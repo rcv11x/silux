@@ -66,6 +66,16 @@ class TestLoQueNoEsDeDocumentacion(unittest.TestCase):
                               "fe800000000000000000000000000001 "
                               "20010db8000000000000000000000011"), [])
 
+    def test_a_kernel_build_host_is_no_address(self):
+        # Fedora's builder container, in /proc/version: 3ddd… falls in
+        # 2000::/3 and read as a global IPv6 with an identifier.
+        version = ("Linux version 7.3.5-300.fc45.x86_64 "
+                   "(mockbuild@3ddd4a9e31a9496ca8c0dbd9bc4d67ce) (gcc (GCC) 16.2.1)")
+        self.assertEqual(_que(version), [])
+        # The same characters anywhere else still count (split here so this
+        # file itself doesn't hold them whole).
+        self.assertTrue(_que("3ddd4a9e31a9496c" + "a8c0dbd9bc4d67ce 02 40 20 80 enp1s0"))
+
     def test_las_horas_no_son_ipv6(self):
         self.assertEqual(_que("encendido a las 20:34:09, host 2:0:0:0"), [])
 
