@@ -307,10 +307,10 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
   que no dependen de la zlib de cada distribución. `score.VERSION` y
   `db/scores.json` van siempre en el mismo commit. [docs/benchmark.md](docs/benchmark.md)
 - Qué se ha validado contra qué pieza y qué se escribió a ciegas (NVIDIA sí,
-  ARM no): [docs/equipos-probados.md](docs/equipos-probados.md). Hay diecinueve
+  ARM no): [docs/equipos-probados.md](docs/equipos-probados.md). Hay veinte
   equipos volcados para la suite: dos del i5-10400 (en reposo y con turbo),
   el Ryzen 7 5800X3D, una máquina QEMU/KVM como la de un probador
-  (`qemu-kvm`, hecha aquí con QEMU), y quince importados del anexo de un
+  (`qemu-kvm`, hecha aquí con QEMU), y dieciséis importados del anexo de un
   informe: un ThinkPad T14 (`i5-1135g7`), un sobremesa con Gentoo,
   OpenRC y una RTX 4060 (`i7-10700f`), un Lenovo LOQ híbrido con una RTX
   4050 (`i5-12450h`), un portátil con un Celeron N4000 (`celeron-n4000`),
@@ -323,8 +323,10 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
   Quadro con nouveau (`core2-p8400`), un Celeron 560 de un núcleo con DDR2
   (`celeron-560`), un ASUS con Optimus y la GeForce dormida (`i7-4710hq`),
   un sobremesa con un Celeron G3900, una Wi-Fi USB y una tele por HDMI
-  (`celeron-g3900`), un HP con Fedora y GNOME (`i3-1115g4`) y un Ryzen 5
-  5600G con la integrada desactivada y una RTX 4060 (`ryzen5-5600g`).
+  (`celeron-g3900`), un HP con Fedora y GNOME (`i3-1115g4`), un Ryzen 5
+  5600G con la integrada desactivada y una RTX 4060 (`ryzen5-5600g`) y un
+  Lenovo con un A8-6410, el primer AMD anterior a Zen, acpi-cpufreq con
+  turbo y el AppImage compatible (`a8-6410`).
 - Lo que enseña cada volcado, página a página, está en
   `tests/fixtures/screens/`: un cambio que lo altera falla en
   `test_screen_references` hasta que se rehace con
@@ -359,7 +361,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); el código nuevo, en inglés (ver «Código»). Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-1939 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+1947 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
@@ -417,6 +419,10 @@ cambia el otro.
 - Un test que recorre los volcados va uno por volcado (`tests/per_dump.py`),
   y la foto de cada uno se comparte en el proceso (`shared_snapshot`) salvo
   si el test parchea algo.
+- La suite pinta con DejaVu Sans, la letra del CI (`tests/qt.py`): un ancho
+  que cabe con la de quien desarrolla no dice nada. Y un test que mide anchos
+  o alturas aplica el tema que quiere y lo repone: si no, hereda la letra y
+  la hoja de estilos del test anterior del mismo proceso.
 - **Ningún cambio visual se da por hecho sin mirarlo en la captura**, y el
   mensaje del commit dice solo lo que se ve en ella. La suite no pinta: lo
   que se pinta lo vigilan `test_todo_se_pinta.py` y los tests que miran la
