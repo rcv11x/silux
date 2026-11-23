@@ -600,18 +600,23 @@ class HomePage(ScrollPage):
         bios = " · ".join(p for p in (
             f"BIOS {placa.bios_version}" if placa.bios_version else None,
             render.bios_date(placa.bios_date)) if p)
-        arranque = " · ".join(p for p in (
-            render.firmware_type(placa),
-            placa.tpm_version,
-            _("board.field.secureboot") if placa.secure_boot else None) if p)
+        firmware = render.firmware_type(placa)
+        rest = (placa.tpm_version, _("board.field.secureboot") if placa.secure_boot else None)
+        arranque = " · ".join(p for p in (firmware, *rest) if p)
         # Si la placa ya es el titular de la página, aquí no se repite: manda
         # el chipset, que arriba no está. En un equipo de marca el titular es
         # el equipo y la placa sí es un dato nuevo.
         nombre = placa.display_name
         if nombre == self.title.text():
-            nombre = placa.chipset or bios or nombre
-            if nombre == bios:
-                bios = ""
+            if placa.chipset:
+                nombre = placa.chipset
+            elif firmware:
+                # The firmware's kind, and its version below: a BIOS version
+                # is one long word («A1CN28WW(V1.16.COMP.01)») that a
+                # headline can't wrap, and it pushed the page off the edge.
+                nombre, arranque = firmware, " · ".join(p for p in rest if p)
+            elif bios:
+                nombre, bios = bios, ""
         self.placa.poner(nombre, bios, arranque)
 
 

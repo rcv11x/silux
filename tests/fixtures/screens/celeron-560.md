@@ -42,8 +42,8 @@ Ninguna interfaz tiene salida a la red.
 
 ### Placa base
 
-BIOS A03 · 2008-09-18
 BIOS heredada
+BIOS A03 · 2008-09-18
 
 > **Faltan 3 datos que este equipo sí tiene**
 > Detalle de los módulos de memoria

@@ -38,8 +38,8 @@ Intel 82540EM Gigabit Ethernet Controller · 1 Gb/s · dúplex completo
 
 ### Placa base
 
-BIOS Arch Linux 1.17.0-2-2 · 2014-04-01
 BIOS heredada
+BIOS Arch Linux 1.17.0-2-2 · 2014-04-01
 
 ## CPU
 

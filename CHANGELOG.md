@@ -12,6 +12,13 @@ que hace falta.
 
 ## Sin publicar
 
+- Inicio: si la placa es el propio equipo y no hay chipset que nombrar, la
+  ficha de la placa lleva de titular el tipo de firmware («BIOS heredada»,
+  «UEFI (64 bits)») y debajo la versión de la BIOS. Una versión larga
+  sin espacios sacaba la página por la derecha con la letra más grande.
+- Placa base: un equipo cuyo nombre ya lleva la marca no la repite
+  («Lenovo B50-45», no «Lenovo Lenovo B50-45»), y «Not Defined» ya no
+  sale como revisión.
 - Bienvenida: es una ventana de diálogo del programa, con su barra de
   título: sale centrada encima de Silux (en Wayland la coloca el
   escritorio, y antes podía salir en una esquina con la ventana grande) y

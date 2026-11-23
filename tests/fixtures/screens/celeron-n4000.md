@@ -44,8 +44,9 @@ Intel Dual Band Wireless-AC 3165 Plus Bluetooth
 
 ### Placa base
 
+UEFI (64 bits)
 BIOS 6VCN43WW · 2021-11-26
-UEFI (64 bits) · TPM 2.0 · Arranque seguro
+TPM 2.0 · Arranque seguro
 
 > **Faltan 5 datos que este equipo sí tiene**
 > Detalle de los módulos de memoria
